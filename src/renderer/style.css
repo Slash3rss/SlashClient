@@ -337,10 +337,10 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .shot .icon-btn { width: 30px; height: 30px; padding: 0; font-size: 12px; }
 
 /* ---------- news ---------- */
-.news { flex: 1; min-height: 120px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; align-content: start; }
+.news { flex: 1; min-height: 120px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); grid-auto-rows: max-content; gap: 12px; align-content: start; padding-bottom: 12px; }
 .news-card { border-radius: 12px; overflow: hidden; border: 1px solid var(--glass-border); background: rgba(255, 255, 255, .02); display: flex; flex-direction: column; transition: var(--transition); }
 .news-card:hover { border-color: rgba(59, 130, 246, .35); transform: translateY(-2px); }
-.news-card img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--bg-secondary); }
+.news-card img { width: 100%; height: 120px; flex-shrink: 0; object-fit: cover; background: var(--bg-secondary); }
 .news-card div { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
 .news-card b { font-size: 14px; }
 .news-card small { color: var(--text-muted); font-size: 11.5px; }
@@ -354,3 +354,27 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .skin-card canvas { width: 220px; height: 300px; cursor: grab; }
 .skin-info { display: flex; flex-direction: column; gap: 10px; }
 .skin-info p { margin: 0; max-width: 420px; }
+
+/* ---------- dropdowns with pictures ---------- */
+.native-hidden { display: none !important; }
+.picker { position: relative; }
+.picker-button, .picker-item {
+  width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; justify-content: flex-start;
+  padding: 6px 12px 6px 6px; border-radius: var(--btn-radius); font-weight: 600;
+}
+.picker-button { background: rgba(0, 0, 0, .2); border: 1px solid var(--glass-border); height: 48px; }
+.picker-button i { margin-left: auto; font-size: 11px; color: var(--text-muted); }
+.picker img { width: 34px; height: 34px; border-radius: 7px; object-fit: contain; flex-shrink: 0; }
+.picker img.pixelated { image-rendering: pixelated; }
+.picker-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.picker-text b { font-size: 14px; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-text small { font-size: 11.5px; color: var(--text-muted); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-menu {
+  position: absolute; bottom: calc(100% + 6px); left: 0; min-width: 100%; max-height: 320px; overflow-y: auto; z-index: 20;
+  padding: 6px; border-radius: 12px; background: rgba(17, 22, 34, .97); border: 1px solid var(--glass-border);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .5); display: flex; flex-direction: column; gap: 2px;
+}
+.picker-item { border: 1px solid transparent; background: transparent; }
+.picker-item:hover { background: var(--glass-bg-hover); }
+.picker-item.selected { background: rgba(59, 130, 246, .15); border-color: rgba(59, 130, 246, .3); }
+.play-bar .field { width: 230px; }

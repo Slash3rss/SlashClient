@@ -13,6 +13,7 @@ await Promise.all([
 cpSync('src/renderer/index.html', 'dist/renderer/index.html');
 cpSync('src/renderer/style.css', 'dist/renderer/style.css');
 cpSync('build/icons/256x256.png', 'dist/renderer/logo.png');
+cpSync('src/renderer/img', 'dist/renderer/img', { recursive: true });
 
 // Fonts and icons are bundled locally so the launcher looks right offline too.
 const fonts = {

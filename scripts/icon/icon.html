@@ -491,6 +491,12 @@ Object.assign(variants, {
     voxels(add('g'), [grassCube(21)], { n: 16, fit: slot - 4 * u, cy: 512 });
   },
 
+  // Just the grass block on a transparent background (used for profile pictures in the launcher).
+  grassBlock() {
+    document.getElementById("tile-bg").remove();
+    voxels(add('g'), [grassCube(21)], { n: 16, fit: 960, cy: 512 });
+  },
+
   // A pixel sword item in an inventory slot.
   mcSword() {
     document.getElementById("tile-bg").remove();

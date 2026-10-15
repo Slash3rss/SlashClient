@@ -99,12 +99,60 @@ function fillSelect(select: HTMLSelectElement, items: { value: string; label: st
   select.replaceChildren(...items.map(({ value, label }) => el('option', { value, textContent: label, selected: value === selected })));
 }
 
+// ---------- dropdowns with pictures ----------
+
+interface PickItem { value: string; label: string; sub?: string; img: string; pixelated?: boolean }
+
+/**
+ * Replaces a <select>'s look with a list that can show pictures. The real
+ * <select> stays (hidden) and keeps the value, so the rest of the code reads it as before.
+ */
+function picker(select: HTMLSelectElement, items: PickItem[], empty = 'Brak') {
+  let box = select.nextElementSibling as HTMLElement | null;
+  if (!box?.classList.contains('picker')) {
+    box = el('div', { className: 'picker' });
+    select.classList.add('native-hidden');
+    select.after(box);
+  }
+  const current = items.find((i) => i.value === select.value);
+  const face = (item: PickItem | undefined) => {
+    const img = el('img', { alt: '', className: item?.pixelated ? 'pixelated' : '' });
+    img.src = item?.img ?? 'logo.png';
+    return [img, el('span', { className: 'picker-text' }, el('b', { textContent: item?.label ?? empty }), el('small', { textContent: item?.sub ?? '' }))];
+  };
+  const button = el('button', { type: 'button', className: 'picker-button', disabled: !items.length }, ...face(current), el('i', { className: 'fa-solid fa-chevron-up' }));
+  const menu = el('div', { className: 'picker-menu hidden' }, ...items.map((item) => {
+    const row = el('button', { type: 'button', className: `picker-item${item.value === select.value ? ' selected' : ''}` }, ...face(item));
+    row.addEventListener('click', () => {
+      select.value = item.value;
+      select.dispatchEvent(new Event('change'));
+      menu.classList.add('hidden');
+    });
+    return row;
+  }));
+  button.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.picker-menu').forEach((m) => m !== menu && m.classList.add('hidden'));
+    menu.classList.toggle('hidden');
+  });
+  box.replaceChildren(button, menu);
+}
+
+document.addEventListener('click', () => document.querySelectorAll('.picker-menu').forEach((m) => m.classList.add('hidden')));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') document.querySelectorAll('.picker-menu').forEach((m) => m.classList.add('hidden'));
+});
+
+const avatarUrl = (uuid: string) => `https://mc-heads.net/avatar/${uuid.replace(/-/g, '')}/64`;
+
 function renderPlay() {
   const profileSel = $<HTMLSelectElement>('#play-profile');
   const accountSel = $<HTMLSelectElement>('#play-account');
   fillSelect(profileSel, store.profiles.map((p) => ({ value: p.id, label: p.name })), store.settings.selectedProfileId);
   fillSelect(accountSel, store.accounts.map((a) => ({ value: a.id, label: `${a.name}${a.type === 'offline' ? ' (offline)' : ''}` })), store.settings.selectedAccountId);
   if (store.accounts.length === 0) accountSel.append(el('option', { value: '', textContent: 'Brak kont' }));
+  picker(profileSel, store.profiles.map((p) => ({ value: p.id, label: p.name, sub: profileLabel(p), img: 'img/grass.png' })));
+  picker(accountSel, store.accounts.map((a) => ({ value: a.id, label: a.name, sub: a.type === 'msa' ? 'Microsoft' : 'Offline', img: avatarUrl(a.uuid), pixelated: true })), 'Brak kont');
 
   const profile = store.profiles.find((p) => p.id === profileSel.value) ?? store.profiles[0];
   $('#hero-title').textContent = profile?.name ?? 'Minecraft';
@@ -115,11 +163,6 @@ function renderPlay() {
   btn.classList.toggle('stop', store.running);
   btn.disabled = launching;
 
-  const account = store.accounts.find((a) => a.id === accountSel.value);
-  const chip = $('#account-chip');
-  chip.replaceChildren();
-  if (account) chip.append(avatar(account.uuid), el('div', {}, account.name, el('small', { textContent: account.type === 'msa' ? 'Microsoft' : 'Offline' })));
-  else chip.append(el('div', { className: 'muted', textContent: 'Nie zalogowano' }));
 }
 
 function renderProfiles() {
