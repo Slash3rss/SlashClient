@@ -52,7 +52,7 @@ const RULES: Rule[] = [
           ? [t('Brakuje wymaganych modów: {0}.', missing.join(', '))]
           : [t('Loader wykrył niezgodne wersje modów albo brakującą zależność. Szczegóły są w logu poniżej.')],
         fix: missing.length
-          ? t('Zainstaluj brakujące mody w zakładce Mody (Modrinth dociąga zależności sam przy instalacji).')
+          ? t('Zainstaluj brakujące mody w Profile → Mody i zasoby (Modrinth dociąga zależności sam przy instalacji).')
           : t('Zaktualizuj mody do wersji zgodnych z tą wersją gry albo wyłącz ostatnio dodane.'),
       };
     },
@@ -62,7 +62,7 @@ const RULES: Rule[] = [
     explain: () => ({
       title: t('Ten sam mod jest zainstalowany dwa razy'),
       details: [t('W folderze mods są dwie wersje tego samego moda.')],
-      fix: t('Usuń starszą kopię w zakładce Mody → Zainstalowane.'),
+      fix: t('Usuń starszą kopię w Profile → Mody i zasoby → Zainstalowane.'),
     }),
   },
   {
@@ -158,7 +158,7 @@ export async function analyzeCrash(opts: {
   return {
     title: t('Gra zakończyła się błędem{0}', opts.code !== null ? ` (${opts.code})` : opts.signal ? ` (${opts.signal})` : ''),
     details: details.length ? details : [t('Nie rozpoznałem przyczyny. Szczegóły są w logu poniżej i w crash reporcie.')],
-    fix: suspected && !/^None$/i.test(suspected.trim()) ? t('Wyłącz podejrzane mody w zakładce Mody i spróbuj ponownie.') : undefined,
+    fix: suspected && !/^None$/i.test(suspected.trim()) ? t('Wyłącz podejrzane mody w Profile → Mody i zasoby i spróbuj ponownie.') : undefined,
     crashReport,
   };
 }

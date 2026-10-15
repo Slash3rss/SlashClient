@@ -296,7 +296,7 @@ export function checkMods(mods: ModMeta[], profileLoader: string, gameVersion: s
   const problems: ModProblem[] = [];
   if (!mods.length) return problems;
   if (profileLoader === 'vanilla') {
-    return [{ severity: 'warning', kind: 'noloader', file: '', mod: '', message: t('Profil nie ma mod loadera, więc gra nie wczyta żadnego z {0} modów. Ustaw Fabric, Quilt, Forge albo NeoForge w zakładce Profile.', mods.length) }];
+    return [{ severity: 'warning', kind: 'noloader', file: '', mod: '', message: t('Profil nie ma mod loadera, więc gra nie wczyta żadnego z {0} modów. Ustaw Fabric, Quilt, Forge albo NeoForge w ustawieniach profilu.', mods.length) }];
   }
   const usable = runsOn(profileLoader);
   const active = mods.filter((m) => m.loaders.some((l) => usable.includes(l)));

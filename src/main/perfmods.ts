@@ -36,6 +36,6 @@ PERF_MODS.quilt = PERF_MODS.fabric;
 
 export function perfModsFor(loader: string): { slugs: string[]; why: string }[] {
   const list = PERF_MODS[loader];
-  if (!list) throw new Error(t('Mody wydajności wymagają mod loadera. Ustaw Fabric w zakładce Profile.'));
+  if (!list) throw new Error(t('Mody wydajności wymagają mod loadera. Ustaw Fabric w ustawieniach profilu.'));
   return list;
 }

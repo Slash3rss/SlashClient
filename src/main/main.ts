@@ -169,6 +169,8 @@ handle('profile:new', () => newProfile({ versionId: 'latest-release' }));
 handle('profile:delete', async (id: string) => {
   if (store.profiles.length <= 1) throw new Error('Musi zostać przynajmniej jeden profil.');
   store.profiles = store.profiles.filter((p) => p.id !== id);
+  // the Play bar and Profiles must not point at a profile that is gone
+  if (store.settings.selectedProfileId === id) store.settings.selectedProfileId = store.profiles[0].id;
   await persist();
 });
 handle('profile:openDir', async (id: string) => {
@@ -422,7 +424,7 @@ handle('mods:fixMissing', async (profileId: string, ids: string[]) => {
 
 handle('content:install', async (profileId: string, projectId: string, type: ContentType, title?: string, icon?: string, versionId?: string) => {
   const { profile, gameDir, gameVersion } = await profileTarget(profileId);
-  if (type === 'mod' && profile.loader === 'vanilla') throw new Error('Ten profil nie ma mod loadera. Ustaw Fabric w zakładce Profile.');
+  if (type === 'mod' && profile.loader === 'vanilla') throw new Error('Ten profil nie ma mod loadera. Ustaw Fabric w ustawieniach profilu.');
   const task = startTask(t('Instalowanie: {0}', title ?? ''), icon);
   try {
     const titles = await installProject(gameDir, projectId, type, gameVersion, profile.loader, (done, total, stats) =>

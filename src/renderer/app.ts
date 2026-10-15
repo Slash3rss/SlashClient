@@ -574,21 +574,66 @@ function renderPlay() {
 }
 
 function renderProfiles() {
-  if (!store.profiles.some((p) => p.id === editingId)) editingId = store.settings.selectedProfileId ?? store.profiles[0]?.id;
+  // the remembered profile may have been deleted: fall back to one that exists
+  const exists = (id?: string) => !!id && store.profiles.some((p) => p.id === id);
+  if (!exists(editingId)) editingId = exists(store.settings.selectedProfileId) ? store.settings.selectedProfileId : store.profiles[0]?.id;
   $('#profile-list').replaceChildren(
     ...store.profiles.map((p) => {
-      const li = el('li', { className: p.id === editingId ? 'selected' : '' },
+      const li = el('li', { className: p.id === editingId && profilePane !== 'stats' ? 'selected' : '' },
         profileIconImg(p),
         el('div', { className: 'grow' }, p.name, el('small', { textContent: [profileLabel(p), p.playTimeMs ? fmtPlaytime(p.playTimeMs) : ''].filter(Boolean).join(' · ') })));
+      li.title = p.name;
       li.addEventListener('click', () => {
+        const changed = editingId !== p.id;
         editingId = p.id;
+        if (profilePane === 'stats') showPane('settings');
         renderProfiles();
+        if (changed) refreshPane();
       });
       return li;
     }),
   );
   const profile = store.profiles.find((p) => p.id === editingId);
   if (profile) loadProfileForm(profile);
+}
+
+// ---------- profile panes: settings, mods, worlds, and the statistics of all profiles ----------
+
+type ProfilePane = 'settings' | 'content' | 'worlds' | 'stats';
+let profilePane: ProfilePane = 'settings';
+
+function showPane(pane: ProfilePane) {
+  profilePane = pane;
+  document.querySelectorAll<HTMLElement>('.profile-pane').forEach((p) => p.classList.toggle('hidden', p.dataset.pane !== pane));
+  document.querySelectorAll<HTMLButtonElement>('#profile-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.pane === pane));
+  $('#profile-tabs').classList.toggle('hidden', pane === 'stats');
+  $('#stats-entry').classList.toggle('selected', pane === 'stats');
+  // mods, worlds and stats need the width: the profile list shrinks to icons
+  $('.split.profiles').classList.toggle('compact', pane !== 'settings');
+  renderProfiles();
+  refreshPane();
+}
+
+/** Loads what the open pane shows, for the profile picked on the left. */
+function refreshPane() {
+  if (profilePane === 'content') openContentPane(true);
+  else if (profilePane === 'worlds') {
+    renderContentProfiles();
+    renderWorlds();
+  } else if (profilePane === 'stats') renderStats();
+}
+
+document.querySelectorAll<HTMLButtonElement>('#profile-tabs button').forEach((b) =>
+  b.addEventListener('click', () => showPane(b.dataset.pane as ProfilePane)));
+$('#stats-entry').addEventListener('click', () => showPane('stats'));
+// coming back to Profiles shows the open pane up to date
+document.querySelector('.nav[data-view="profiles"]')?.addEventListener('click', () => refreshPane());
+
+/** Opens Profiles on one pane, e.g. Mods from a hint elsewhere. */
+function openProfilePane(pane: ProfilePane, profileId?: string) {
+  if (profileId) editingId = profileId;
+  showView('profiles');
+  showPane(pane);
 }
 
 function renderVersionOptions(selected: string) {
@@ -1451,7 +1496,7 @@ async function confirmModsOk(profileId: string): Promise<boolean> {
   const errors = problems.filter((p) => p.severity === 'error');
   if (!errors.length) return true;
   const lines = errors.slice(0, 6).map((p) => `• ${p.message}`).join('\n') + (errors.length > 6 ? `\n• ${t('…i {0} więcej', errors.length - 6)}` : '');
-  return confirm(t('Gra prawdopodobnie się nie uruchomi:\n\n{0}\n\nSzczegóły i naprawa: Mody → Zainstalowane. Uruchomić mimo to?', lines));
+  return confirm(t('Gra prawdopodobnie się nie uruchomi:\n\n{0}\n\nSzczegóły i naprawa: Profile → Mody i zasoby → Zainstalowane. Uruchomić mimo to?', lines));
 }
 
 // ---------- statistics ----------
@@ -1535,7 +1580,6 @@ document.querySelectorAll<HTMLButtonElement>('#stats-range button').forEach((b) 
     document.querySelectorAll('#stats-range button').forEach((x) => x.classList.toggle('active', x === b));
     renderStats();
   }));
-document.querySelector('.nav[data-view="stats"]')?.addEventListener('click', () => renderStats());
 
 // ---------- importing from other launchers ----------
 
@@ -1607,7 +1651,7 @@ $('#perf-open').addEventListener('click', async () => {
   const profileId = contentProfileId();
   const profile = store.profiles.find((p) => p.id === profileId);
   if (!profile) return;
-  if (profile.loader === 'vanilla') return toast(t('Mody wydajności wymagają mod loadera. Ustaw Fabric w zakładce Profile.'), true);
+  if (profile.loader === 'vanilla') return toast(t('Mody wydajności wymagają mod loadera. Ustaw Fabric w ustawieniach profilu.'), true);
   $('#perf-sub').textContent = t('Sprawdzone mody przyspieszające grę, dobrane do profilu {0} ({1}).', profile.name, profileLabel(profile));
   $('#perf-list').replaceChildren(...skeletons('project', 4));
   $('#perf-modal').classList.remove('hidden');
@@ -1656,9 +1700,9 @@ function contentNotice() {
   const profile = store.profiles.find((p) => p.id === contentProfileId());
   const box = $('#content-notice');
   let text = '';
-  if (contentType === 'mod' && profile?.loader === 'vanilla') text = 'Ten profil nie ma mod loadera. Ustaw Fabric, NeoForge lub Forge w zakładce Profile, żeby instalować mody.';
+  if (contentType === 'mod' && profile?.loader === 'vanilla') text = 'Ten profil nie ma mod loadera. Ustaw Fabric, NeoForge lub Forge w ustawieniach profilu, żeby instalować mody.';
   else if (contentType === 'shader') text = profile?.loader === 'fabric' || profile?.loader === 'quilt'
-    ? 'Shadery wymagają moda Iris. Zainstaluj go w zakładce Mody.'
+    ? 'Shadery wymagają moda Iris. Znajdziesz go wyżej, w „Mody”.'
     : 'Shadery wymagają moda Iris (Fabric) albo Oculus (Forge/NeoForge).';
   else if (contentType === 'modpack') text = 'Modpack tworzy nowy profil z własnym folderem gry.';
   box.textContent = text;
@@ -1809,11 +1853,11 @@ async function installHit(hit: ProjectHit, versionId?: string) {
   }
 }
 
+/** Mods and Worlds work on the profile picked in Profiles; their (hidden) pickers follow it. */
 function renderContentProfiles() {
   for (const id of ['#content-profile', '#worlds-profile']) {
     const sel = $<HTMLSelectElement>(id);
-    const current = sel.value || store.settings.selectedProfileId;
-    fillSelect(sel, store.profiles.map((p) => ({ value: p.id, label: `${p.name} (${profileLabel(p)})` })), current);
+    fillSelect(sel, store.profiles.map((p) => ({ value: p.id, label: p.name })), editingId ?? store.settings.selectedProfileId ?? '');
   }
 }
 
@@ -1847,11 +1891,12 @@ $('#content-profile').addEventListener('change', () => {
   searchContent();
 });
 $('#modpack-import').addEventListener('click', () => busy($<HTMLButtonElement>('#modpack-import'), () => api.importModpack().catch(() => undefined), 'Importuję…'));
-document.querySelector('.nav[data-view="content"]')?.addEventListener('click', () => {
+/** The Mods pane opened, or its profile changed: installed list and search for that profile. */
+function openContentPane(profileChanged: boolean) {
   renderContentProfiles();
   refreshInstalled(true);
-  if (!contentHits.length) searchContent();
-});
+  if (profileChanged || !contentHits.length) searchContent();
+}
 
 // ---------- worlds, backups, screenshots ----------
 
@@ -1951,7 +1996,6 @@ document.querySelectorAll<HTMLButtonElement>('#worlds-tab button').forEach((b) =
     renderWorlds();
   }));
 $('#worlds-profile').addEventListener('change', renderWorlds);
-document.querySelector('.nav[data-view="worlds"]')?.addEventListener('click', renderWorlds);
 
 // ---------- news (Mojang patch notes) ----------
 
@@ -2643,7 +2687,7 @@ $('#language-select').addEventListener('change', async () => {
   renderProfiles();
   if (servers.length) renderServers();
   if (contentHits.length || installed.length) renderContent();
-  if (document.querySelector('#view-worlds.active')) renderWorlds();
+  if (document.querySelector('#view-profiles.active') && profilePane === 'worlds') renderWorlds();
   skinAccountId = undefined;
   if (document.querySelector('#view-accounts.active')) renderSkin();
   loadNews();

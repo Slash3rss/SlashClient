@@ -632,7 +632,7 @@ body.entering main { animation: rise-in .55s cubic-bezier(.2, .7, .3, 1) .12s bo
 .perf-choice.off { opacity: .55; cursor: default; }
 
 /* ---------- statistics ---------- */
-#view-stats { gap: 14px; }
+.profile-pane[data-pane="stats"] { gap: 14px; }
 .stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
 .stat-card { padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; animation: appear .35s ease both; }
 .stat-card small { color: var(--text-muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
@@ -810,3 +810,27 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 
 .hud-share { margin: -4px 0 4px 28px; flex-wrap: wrap; }
 .hud-share button { font-size: 12.5px; padding: 6px 10px; }
+
+/* ---------- Profiles: list on the left, the profile's panes on the right ---------- */
+.split.profiles .profile-side { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; transition: width .2s ease; }
+.split.profiles .profile-side .list { width: auto; }
+.profile-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.profile-main .form { max-width: none; }
+.profile-pane { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.profile-pane .sub { margin: 0; }
+.profile-tabs { align-self: flex-start; flex-wrap: wrap; }
+.stats-head { justify-content: space-between; flex-wrap: wrap; }
+.stats-head h3 { margin: 0; display: flex; gap: 8px; align-items: center; }
+.stats-entry {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px; justify-content: flex-start; font-weight: 600;
+  background: rgba(255, 255, 255, .02); border: 1px solid var(--glass-border); border-radius: var(--btn-radius);
+}
+.stats-entry i { width: 28px; text-align: center; color: var(--accent-light); font-size: 16px; }
+.stats-entry.selected { background: linear-gradient(135deg, rgba(59, 130, 246, .15) 0%, rgba(59, 130, 246, .05) 100%); border-color: rgba(59, 130, 246, .35); }
+/* compact: only the icons (names show on hover) */
+.split.profiles.compact .profile-side { width: 60px; }
+.split.profiles.compact .profile-side .list li { padding: 8px; justify-content: center; }
+.split.profiles.compact .profile-side .list li .grow,
+.split.profiles.compact .stats-entry span { display: none; }
+.split.profiles.compact .stats-entry { padding: 10px 8px; justify-content: center; }
+.split.profiles.compact .stats-entry i { width: auto; }

@@ -30,10 +30,7 @@
       <button class="nav active" data-view="play"><i class="fa-solid fa-play"></i>Graj</button>
       <button class="nav" data-view="servers"><i class="fa-solid fa-server"></i>Serwery</button>
       <button class="nav" data-view="friends"><i class="fa-solid fa-user-group"></i>Znajomi<span class="nav-badge hidden" id="friends-badge"></span></button>
-      <button class="nav" data-view="content"><i class="fa-solid fa-puzzle-piece"></i>Mody</button>
-      <button class="nav" data-view="worlds"><i class="fa-solid fa-earth-europe"></i>Światy</button>
       <button class="nav" data-view="profiles"><i class="fa-solid fa-layer-group"></i>Profile</button>
-      <button class="nav" data-view="stats"><i class="fa-solid fa-chart-simple"></i>Statystyki</button>
       <button class="nav" data-view="accounts"><i class="fa-solid fa-user"></i>Konta</button>
       <button class="nav" data-view="settings"><i class="fa-solid fa-gear"></i>Ustawienia</button>
     </nav>
@@ -126,97 +123,8 @@
     </section>
 
     <!-- Mods, resource packs, shaders, modpacks (Modrinth) -->
-    <section class="view" id="view-content">
-      <header class="view-head">
-        <div>
-          <h2 class="gradient-title">Mody</h2>
-          <p class="muted sub">Z <a href="https://modrinth.com" target="_blank">Modrinth</a>, instalowane do wybranego profilu</p>
-        </div>
-        <label class="field compact">Profil<select id="content-profile"></select></label>
-      </header>
-      <div class="filters glass-panel">
-        <div class="segmented" id="content-type">
-          <button class="active" data-type="mod"><i class="fa-solid fa-puzzle-piece"></i> Mody</button>
-          <button data-type="resourcepack"><i class="fa-solid fa-palette"></i> Paczki zasobów</button>
-          <button data-type="shader"><i class="fa-solid fa-sun"></i> Shadery</button>
-          <button data-type="modpack"><i class="fa-solid fa-box"></i> Modpacki</button>
-        </div>
-        <div class="segmented" id="content-tab">
-          <button class="active" data-tab="browse">Przeglądaj</button>
-          <button data-tab="installed">Zainstalowane <span id="installed-count"></span></button>
-        </div>
-      </div>
-      <div class="notice hidden" id="content-notice"></div>
-      <div class="filters glass-panel" id="content-search-bar">
-        <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="content-search" placeholder="Szukaj na Modrinth…"></div>
-        <button id="modpack-import" class="hidden"><i class="fa-solid fa-file-import"></i> Importuj .mrpack</button>
-        <button id="perf-open" class="hidden"><i class="fa-solid fa-bolt"></i> Mody wydajności</button>
-      </div>
-      <div class="updates-bar glass-panel hidden" id="updates-bar">
-        <span id="updates-text"></span>
-        <button type="button" id="updates-check"><i class="fa-solid fa-rotate"></i> Sprawdź aktualizacje</button>
-        <button type="button" class="primary hidden" id="updates-all"><i class="fa-solid fa-circle-arrow-up"></i> Aktualizuj wszystko</button>
-      </div>
-      <div class="mod-check glass-panel hidden" id="mod-check">
-        <div class="mod-check-head">
-          <span id="mod-check-text"></span>
-          <button type="button" class="primary hidden" id="mod-fix"><i class="fa-solid fa-wand-magic-sparkles"></i> Zainstaluj brakujące</button>
-        </div>
-        <ul id="mod-problems"></ul>
-      </div>
-      <div class="project-list" id="content-list"></div>
-      <button class="more hidden" id="content-more">Pokaż więcej</button>
-    </section>
 
-    <!-- Worlds, backups, screenshots -->
-    <section class="view" id="view-worlds">
-      <header class="view-head">
-        <h2 class="gradient-title">Światy</h2>
-        <label class="field compact">Profil<select id="worlds-profile"></select></label>
-      </header>
-      <div class="filters glass-panel">
-        <div class="segmented" id="worlds-tab">
-          <button class="active" data-tab="worlds"><i class="fa-solid fa-earth-europe"></i> Światy</button>
-          <button data-tab="backups"><i class="fa-solid fa-box-archive"></i> Kopie zapasowe</button>
-          <button data-tab="screenshots"><i class="fa-regular fa-image"></i> Zrzuty ekranu</button>
-        </div>
-      </div>
-      <div id="worlds-content"></div>
-    </section>
 
-    <!-- Statistics -->
-    <section class="view" id="view-stats">
-      <header class="view-head">
-        <h2 class="gradient-title">Statystyki</h2>
-        <div class="segmented" id="stats-range">
-          <button data-days="7">7 dni</button>
-          <button class="active" data-days="30">30 dni</button>
-          <button data-days="90">90 dni</button>
-          <button data-days="0">Wszystko</button>
-        </div>
-      </header>
-      <div class="stat-cards" id="stat-cards"></div>
-      <div class="card glass-panel">
-        <h3><i class="fa-solid fa-calendar-days"></i> Czas gry według dni</h3>
-        <div class="day-chart" id="day-chart"></div>
-        <div class="day-axis" id="day-axis"></div>
-      </div>
-      <div class="split two">
-        <div class="card glass-panel">
-          <h3><i class="fa-solid fa-layer-group"></i> Profile</h3>
-          <div class="rank" id="stats-profiles"></div>
-        </div>
-        <div class="card glass-panel">
-          <h3><i class="fa-solid fa-server"></i> Serwery</h3>
-          <div class="rank" id="stats-servers"></div>
-        </div>
-      </div>
-      <div class="card glass-panel">
-        <h3><i class="fa-solid fa-clock"></i> Pory grania</h3>
-        <div class="hour-chart" id="hour-chart"></div>
-        <div class="hour-axis"><span>0:00</span><span>6:00</span><span>12:00</span><span>18:00</span><span>23:00</span></div>
-      </div>
-    </section>
 
     <!-- Profiles -->
     <section class="view" id="view-profiles">
@@ -226,81 +134,172 @@
           <button class="primary" id="profile-add"><i class="fa-solid fa-plus"></i> Nowy profil</button>
         </div>
       </header>
-      <div class="split">
-        <ul class="list" id="profile-list"></ul>
-        <form class="card glass-panel form" id="profile-form">
-          <label class="field">Nazwa<input name="name" required maxlength="40"></label>
-          <label class="field">Wersja
-            <div class="row">
-              <select name="versionId" id="version-select"></select>
-              <label class="chip-toggle"><input type="checkbox" id="show-snapshots"><span>Snapshoty</span></label>
-              <label class="chip-toggle"><input type="checkbox" id="show-old"><span>Stare</span></label>
+      <div class="split profiles">
+        <div class="profile-side">
+          <button type="button" class="stats-entry" id="stats-entry"><i class="fa-solid fa-chart-simple"></i><span>Statystyki</span></button>
+          <ul class="list" id="profile-list"></ul>
+        </div>
+        <div class="profile-main">
+          <!-- Mods and Worlds follow the profile picked on the left; these stay as their hidden source -->
+          <select id="content-profile" hidden></select>
+          <select id="worlds-profile" hidden></select>
+          <div class="segmented profile-tabs" id="profile-tabs">
+            <button type="button" class="active" data-pane="settings"><i class="fa-solid fa-sliders"></i> Ustawienia</button>
+            <button type="button" data-pane="content"><i class="fa-solid fa-puzzle-piece"></i> Mody i zasoby</button>
+            <button type="button" data-pane="worlds"><i class="fa-solid fa-earth-europe"></i> Światy i zrzuty</button>
+          </div>
+          <div class="profile-pane" data-pane="settings">
+            <form class="card glass-panel form" id="profile-form">
+              <label class="field">Nazwa<input name="name" required maxlength="40"></label>
+              <label class="field">Wersja
+                <div class="row">
+                  <select name="versionId" id="version-select"></select>
+                  <label class="chip-toggle"><input type="checkbox" id="show-snapshots"><span>Snapshoty</span></label>
+                  <label class="chip-toggle"><input type="checkbox" id="show-old"><span>Stare</span></label>
+                </div>
+              </label>
+              <div class="row">
+                <label class="field"><span class="label">Mod loader <span class="hint hidden" id="loader-hint">Quilt nie wspiera wersji 26.x</span></span>
+                  <select name="loader" id="loader-select">
+                    <option value="vanilla">Brak (vanilla)</option>
+                    <option value="fabric">Fabric</option>
+                    <option value="quilt">Quilt</option>
+                    <option value="neoforge">NeoForge</option>
+                    <option value="forge">Forge</option>
+                  </select>
+                </label>
+                <label class="field" id="loader-version-field">Wersja loadera
+                  <select name="loaderVersion" id="loader-version-select"></select>
+                </label>
+              </div>
+              <div class="modpack-box hidden" id="modpack-box">
+                <div class="modpack-info"><i class="fa-solid fa-box"></i> <span>Modpack: <b id="modpack-title"></b> · <code id="modpack-version"></code></span></div>
+                <span class="muted" id="modpack-status"></span>
+                <div class="row">
+                  <button type="button" id="modpack-check"><i class="fa-solid fa-rotate"></i> Sprawdź aktualizację</button>
+                  <button type="button" id="modpack-versions"><i class="fa-solid fa-code-branch"></i> Zmień wersję…</button>
+                  <button type="button" class="primary hidden" id="modpack-update"></button>
+                </div>
+              </div>
+              <div class="field">Ikona
+                <div class="icon-choices" id="icon-choices"></div>
+              </div>
+              <label class="check" id="hud-row"><input type="checkbox" name="hud">
+                <span>SlashClient HUD <span class="hint" id="hud-hint"></span></span>
+              </label>
+              <div class="row hud-share" id="hud-share">
+                <button type="button" id="hud-copy"><i class="fa-solid fa-share-nodes"></i> Kopiuj kod HUD</button>
+                <button type="button" id="hud-paste"><i class="fa-solid fa-paste"></i> Wklej kod HUD</button>
+              </div>
+              <label class="check"><input type="checkbox" name="syncOptions">
+                <span>Wspólne ustawienia gry z innymi profilami <span class="hint">grafika, dźwięk, sterowanie, lista serwerów</span></span>
+              </label>
+              <label class="field"><span class="label">Pamięć RAM <b id="memory-value"></b></span><input type="range" name="memoryMb" min="1024" max="16384" step="512"></label>
+              <div class="memory-hint" id="memory-hint">
+                <span id="memory-hint-text"></span>
+                <button type="button" id="memory-recommended">Ustaw zalecane</button>
+              </div>
+              <div class="row">
+                <label class="field">Szerokość okna<input type="number" name="width" min="320"></label>
+                <label class="field">Wysokość okna<input type="number" name="height" min="240"></label>
+              </div>
+              <label class="field"><span class="label">Folder gry <span class="hint">puste = osobny folder profilu</span></span><input name="gameDir"></label>
+              <label class="field">Wydajność (flagi JVM)
+                <select name="jvmPreset">
+                  <option value="g1">Zoptymalizowane G1 (zalecane)</option>
+                  <option value="zgc">ZGC: najkrótsze przycięcia (Java 21+, dużo RAM)</option>
+                  <option value="default">Domyślne Minecrafta</option>
+                </select>
+              </label>
+              <label class="field"><span class="label">Dodatkowe argumenty JVM <span class="hint">opcjonalne</span></span><input name="jvmArgs" placeholder="-Dfml.ignorePatchDiscrepancies=true"></label>
+              <label class="field"><span class="label">Ścieżka do Javy <span class="hint">puste = automatycznie</span></span><input name="javaPath"></label>
+              <div class="row actions">
+                <button type="button" id="profile-folder"><i class="fa-regular fa-folder-open"></i> Otwórz folder</button>
+                <button type="button" id="profile-mods"><i class="fa-solid fa-puzzle-piece"></i> Folder modów</button>
+                <button type="button" id="profile-duplicate"><i class="fa-regular fa-clone"></i> Kopiuj profil</button>
+                <button type="button" id="profile-export"><i class="fa-solid fa-file-export"></i> Eksportuj .mrpack</button>
+                <button type="button" class="danger" id="profile-delete"><i class="fa-regular fa-trash-can"></i> Usuń</button>
+                <button type="submit" class="primary">Zapisz</button>
+              </div>
+            </form>
+          </div>
+          <div class="profile-pane hidden" data-pane="content">
+            <p class="muted sub">Z <a href="https://modrinth.com" target="_blank">Modrinth</a>, instalowane do tego profilu</p>
+            <div class="filters glass-panel">
+              <div class="segmented" id="content-type">
+                <button class="active" data-type="mod"><i class="fa-solid fa-puzzle-piece"></i> Mody</button>
+                <button data-type="resourcepack"><i class="fa-solid fa-palette"></i> Paczki zasobów</button>
+                <button data-type="shader"><i class="fa-solid fa-sun"></i> Shadery</button>
+                <button data-type="modpack"><i class="fa-solid fa-box"></i> Modpacki</button>
+              </div>
+              <div class="segmented" id="content-tab">
+                <button class="active" data-tab="browse">Przeglądaj</button>
+                <button data-tab="installed">Zainstalowane <span id="installed-count"></span></button>
+              </div>
             </div>
-          </label>
-          <div class="row">
-            <label class="field"><span class="label">Mod loader <span class="hint hidden" id="loader-hint">Quilt nie wspiera wersji 26.x</span></span>
-              <select name="loader" id="loader-select">
-                <option value="vanilla">Brak (vanilla)</option>
-                <option value="fabric">Fabric</option>
-                <option value="quilt">Quilt</option>
-                <option value="neoforge">NeoForge</option>
-                <option value="forge">Forge</option>
-              </select>
-            </label>
-            <label class="field" id="loader-version-field">Wersja loadera
-              <select name="loaderVersion" id="loader-version-select"></select>
-            </label>
+            <div class="notice hidden" id="content-notice"></div>
+            <div class="filters glass-panel" id="content-search-bar">
+              <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="content-search" placeholder="Szukaj na Modrinth…"></div>
+              <button id="modpack-import" class="hidden"><i class="fa-solid fa-file-import"></i> Importuj .mrpack</button>
+              <button id="perf-open" class="hidden"><i class="fa-solid fa-bolt"></i> Mody wydajności</button>
+            </div>
+            <div class="updates-bar glass-panel hidden" id="updates-bar">
+              <span id="updates-text"></span>
+              <button type="button" id="updates-check"><i class="fa-solid fa-rotate"></i> Sprawdź aktualizacje</button>
+              <button type="button" class="primary hidden" id="updates-all"><i class="fa-solid fa-circle-arrow-up"></i> Aktualizuj wszystko</button>
+            </div>
+            <div class="mod-check glass-panel hidden" id="mod-check">
+              <div class="mod-check-head">
+                <span id="mod-check-text"></span>
+                <button type="button" class="primary hidden" id="mod-fix"><i class="fa-solid fa-wand-magic-sparkles"></i> Zainstaluj brakujące</button>
+              </div>
+              <ul id="mod-problems"></ul>
+            </div>
+            <div class="project-list" id="content-list"></div>
+            <button class="more hidden" id="content-more">Pokaż więcej</button>
           </div>
-          <div class="modpack-box hidden" id="modpack-box">
-            <div class="modpack-info"><i class="fa-solid fa-box"></i> <span>Modpack: <b id="modpack-title"></b> · <code id="modpack-version"></code></span></div>
-            <span class="muted" id="modpack-status"></span>
-            <div class="row">
-              <button type="button" id="modpack-check"><i class="fa-solid fa-rotate"></i> Sprawdź aktualizację</button>
-              <button type="button" id="modpack-versions"><i class="fa-solid fa-code-branch"></i> Zmień wersję…</button>
-              <button type="button" class="primary hidden" id="modpack-update"></button>
+          <div class="profile-pane hidden" data-pane="worlds">
+            <div class="filters glass-panel">
+              <div class="segmented" id="worlds-tab">
+                <button class="active" data-tab="worlds"><i class="fa-solid fa-earth-europe"></i> Światy</button>
+                <button data-tab="backups"><i class="fa-solid fa-box-archive"></i> Kopie zapasowe</button>
+                <button data-tab="screenshots"><i class="fa-regular fa-image"></i> Zrzuty ekranu</button>
+              </div>
+            </div>
+            <div id="worlds-content"></div>
+          </div>
+          <div class="profile-pane hidden" data-pane="stats">
+            <div class="row stats-head"><h3><i class="fa-solid fa-chart-simple"></i> Statystyki</h3>
+              <div class="segmented" id="stats-range">
+          <button data-days="7">7 dni</button>
+          <button class="active" data-days="30">30 dni</button>
+          <button data-days="90">90 dni</button>
+          <button data-days="0">Wszystko</button>
+        </div>
+            </div>
+            <div class="stat-cards" id="stat-cards"></div>
+            <div class="card glass-panel">
+              <h3><i class="fa-solid fa-calendar-days"></i> Czas gry według dni</h3>
+              <div class="day-chart" id="day-chart"></div>
+              <div class="day-axis" id="day-axis"></div>
+            </div>
+            <div class="split two">
+              <div class="card glass-panel">
+                <h3><i class="fa-solid fa-layer-group"></i> Profile</h3>
+                <div class="rank" id="stats-profiles"></div>
+              </div>
+              <div class="card glass-panel">
+                <h3><i class="fa-solid fa-server"></i> Serwery</h3>
+                <div class="rank" id="stats-servers"></div>
+              </div>
+            </div>
+            <div class="card glass-panel">
+              <h3><i class="fa-solid fa-clock"></i> Pory grania</h3>
+              <div class="hour-chart" id="hour-chart"></div>
+              <div class="hour-axis"><span>0:00</span><span>6:00</span><span>12:00</span><span>18:00</span><span>23:00</span></div>
             </div>
           </div>
-          <div class="field">Ikona
-            <div class="icon-choices" id="icon-choices"></div>
-          </div>
-          <label class="check" id="hud-row"><input type="checkbox" name="hud">
-            <span>SlashClient HUD <span class="hint" id="hud-hint"></span></span>
-          </label>
-          <div class="row hud-share" id="hud-share">
-            <button type="button" id="hud-copy"><i class="fa-solid fa-share-nodes"></i> Kopiuj kod HUD</button>
-            <button type="button" id="hud-paste"><i class="fa-solid fa-paste"></i> Wklej kod HUD</button>
-          </div>
-          <label class="check"><input type="checkbox" name="syncOptions">
-            <span>Wspólne ustawienia gry z innymi profilami <span class="hint">grafika, dźwięk, sterowanie, lista serwerów</span></span>
-          </label>
-          <label class="field"><span class="label">Pamięć RAM <b id="memory-value"></b></span><input type="range" name="memoryMb" min="1024" max="16384" step="512"></label>
-          <div class="memory-hint" id="memory-hint">
-            <span id="memory-hint-text"></span>
-            <button type="button" id="memory-recommended">Ustaw zalecane</button>
-          </div>
-          <div class="row">
-            <label class="field">Szerokość okna<input type="number" name="width" min="320"></label>
-            <label class="field">Wysokość okna<input type="number" name="height" min="240"></label>
-          </div>
-          <label class="field"><span class="label">Folder gry <span class="hint">puste = osobny folder profilu</span></span><input name="gameDir"></label>
-          <label class="field">Wydajność (flagi JVM)
-            <select name="jvmPreset">
-              <option value="g1">Zoptymalizowane G1 (zalecane)</option>
-              <option value="zgc">ZGC: najkrótsze przycięcia (Java 21+, dużo RAM)</option>
-              <option value="default">Domyślne Minecrafta</option>
-            </select>
-          </label>
-          <label class="field"><span class="label">Dodatkowe argumenty JVM <span class="hint">opcjonalne</span></span><input name="jvmArgs" placeholder="-Dfml.ignorePatchDiscrepancies=true"></label>
-          <label class="field"><span class="label">Ścieżka do Javy <span class="hint">puste = automatycznie</span></span><input name="javaPath"></label>
-          <div class="row actions">
-            <button type="button" id="profile-folder"><i class="fa-regular fa-folder-open"></i> Otwórz folder</button>
-            <button type="button" id="profile-mods"><i class="fa-solid fa-puzzle-piece"></i> Folder modów</button>
-            <button type="button" id="profile-duplicate"><i class="fa-regular fa-clone"></i> Kopiuj profil</button>
-            <button type="button" id="profile-export"><i class="fa-solid fa-file-export"></i> Eksportuj .mrpack</button>
-            <button type="button" class="danger" id="profile-delete"><i class="fa-regular fa-trash-can"></i> Usuń</button>
-            <button type="submit" class="primary">Zapisz</button>
-          </div>
-        </form>
+        </div>
       </div>
     </section>
 
