@@ -45,6 +45,14 @@ const EN: Record<string, string> = {
 
   // play screen
   'Gotowe do gry': 'Ready to play',
+  'Wróć do gry': 'Back to the game',
+  '{0} · serwer': '{0} · server',
+  '{0} · świat': '{0} · world',
+  'Ostatnio {0}': 'Last played {0}',
+  'mniej niż minuta': 'under a minute',
+  '{0} h {1} min': '{0} h {1} min',
+  '{0} min': '{0} min',
+  '{0} gry': '{0} played',
   'Gra działa': 'Game running',
   'Błąd uruchamiania': 'Launch failed',
   'Gra już działa.': 'The game is already running.',

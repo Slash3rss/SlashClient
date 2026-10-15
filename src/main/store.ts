@@ -39,6 +39,11 @@ export interface Profile {
   iconVersion: number;
   /** Share options.txt, servers.dat and hotbar.nbt with the other synced profiles. */
   syncOptions: boolean;
+  /** Total time spent in game with this profile. */
+  playTimeMs: number;
+  lastPlayedAt?: number;
+  /** Where the player was at the end of the last session, for "Back to the game". */
+  lastTarget?: { kind: 'server'; address: string } | { kind: 'world'; folder: string; name: string };
   /** The Modrinth modpack this profile was created from, for updates and version changes. */
   modpack?: { projectId: string; versionId: string; versionNumber: string; title: string };
   /** Game directory; empty means instances/<id>. */
@@ -101,6 +106,7 @@ export function newProfile(partial: Partial<Profile> = {}): Profile {
     icon: '',
     iconVersion: 0,
     syncOptions: true,
+    playTimeMs: 0,
     gameDir: '',
     memoryMb: 4096,
     jvmArgs: '',

@@ -8,6 +8,7 @@ import { setLang } from '../shared/i18n';
 import { analyzeCrash } from './crash';
 import { iconFile, iconFromFile, iconFromUrl } from './profileIcon';
 import { pullShared, pushShared } from './sync';
+import { lastTarget, serverFromLog, worldPlayedSince } from './sessions';
 import { installUpdate, startUpdateChecks } from './updates';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { launch, resolveVersionId } from './launch';
@@ -393,6 +394,22 @@ function isInsideInstances(file: string): boolean {
   return store.profiles.some((p) => full.startsWith(path.resolve(profileGameDir(p)) + path.sep));
 }
 
+// ---------- play time and "back to the game" ----------
+
+/** Adds the session to the profile's play time and remembers where the player ended up. */
+async function recordSession(profile: Profile, startedAt: number, server: { address: string; at: number } | undefined) {
+  const live = store.profiles.find((p) => p.id === profile.id);
+  if (!live) return;
+  const now = Date.now();
+  live.playTimeMs = (live.playTimeMs ?? 0) + (now - startedAt);
+  live.lastPlayedAt = now;
+  const gameDir = profileGameDir(live);
+  const played = await worldPlayedSince(gameDir, startedAt);
+  const world = played && { ...played, name: (await listWorlds(gameDir)).find((w) => w.folder === played.folder)?.name ?? played.folder };
+  live.lastTarget = lastTarget(server, world) ?? live.lastTarget;
+  await persist();
+}
+
 // ---------- skins and news ----------
 
 handle('skin:get', (accountId: string) => {
@@ -468,6 +485,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
 
   // keep the tail of the output for crash analysis
   const recentLog: string[] = [];
+  let lastServer: { address: string; at: number } | undefined = server ? { address: server, at: Date.now() } : undefined;
   const startedAt = Date.now();
   const loaderName = profile.loader === 'vanilla' ? '' : ` · ${LOADER_NAMES[profile.loader]}`;
   const presence: Presence = {
@@ -485,6 +503,8 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
       recentLog.push(line);
       if (recentLog.length > 3000) recentLog.shift();
       send('game:log', line);
+      const joined = serverFromLog(line);
+      if (joined) lastServer = { address: joined, at: Date.now() };
       const update = presenceFromLog(line);
       if (update && update.state !== presence.state) {
         presence.state = update.state;
@@ -502,6 +522,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
   child.on('exit', (code, signal) => {
     game = undefined;
     if (profile.syncOptions) pushShared(profileGameDir(profile)).catch(() => {});
+    recordSession(profile, startedAt, lastServer).catch(() => {});
     showPresence(idlePresence());
     send('game:exit', { code, signal, byUser: killRequested });
     if (code !== 0 && !killRequested) {

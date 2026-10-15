@@ -14,6 +14,26 @@ interface Profile {
   jvmArgs: string; javaPath: string; width: number; height: number;
   icon: string; iconVersion: number; syncOptions: boolean; iconFile?: string;
   modpack?: { projectId: string; versionId: string; versionNumber: string; title: string };
+  playTimeMs?: number; lastPlayedAt?: number;
+  lastTarget?: { kind: 'server'; address: string } | { kind: 'world'; folder: string; name: string };
+}
+
+/** "12 h 30 min", "45 min", "mniej niż minuta". */
+function fmtPlaytime(ms = 0): string {
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 1) return t('mniej niż minuta');
+  const h = Math.floor(minutes / 60);
+  return h ? t('{0} h {1} min', h, minutes % 60) : t('{0} min', minutes);
+}
+
+/** "2 godziny temu" in the UI language. */
+function fmtAgo(at: number): string {
+  const rtf = new Intl.RelativeTimeFormat(locale(), { numeric: 'auto' });
+  const s = (at - Date.now()) / 1000;
+  for (const [unit, size] of [['day', 86400], ['hour', 3600], ['minute', 60]] as const) {
+    if (Math.abs(s) >= size) return rtf.format(Math.round(s / size), unit);
+  }
+  return rtf.format(0, 'minute');
 }
 interface PublicStore {
   accounts: PublicAccount[];
@@ -357,6 +377,28 @@ function renderIconChoices(profile: Profile) {
   $('#icon-choices').replaceChildren(...items, upload);
 }
 
+// ---------- back to the game ----------
+
+function renderContinue(profile: Profile | undefined) {
+  const box = $('#continue');
+  const target = profile?.lastTarget;
+  box.classList.toggle('hidden', !target || store.running || launching);
+  if (!target || !profile) return;
+  $('#continue-icon').className = target.kind === 'server' ? 'fa-solid fa-server' : 'fa-solid fa-earth-europe';
+  $('#continue-where').textContent = target.kind === 'server'
+    ? t('{0} · serwer', servers.find((s) => s.ip.toLowerCase() === target.address.toLowerCase())?.name ?? target.address)
+    : t('{0} · świat', target.name);
+  $('#continue-when').textContent = profile.lastPlayedAt ? t('Ostatnio {0}', fmtAgo(profile.lastPlayedAt)) : '';
+}
+
+$('#continue-play').addEventListener('click', () => {
+  const profile = store.profiles.find((p) => p.id === $<HTMLSelectElement>('#play-profile').value);
+  const target = profile?.lastTarget;
+  if (!target) return;
+  if (target.kind === 'server') startGame(target.address);
+  else startGame(undefined, target.folder);
+});
+
 // ---------- dropdowns with pictures ----------
 
 interface PickItem { value: string; label: string; sub?: string; img: string; pixelated?: boolean }
@@ -422,7 +464,10 @@ function renderPlay() {
   const heroIcon = $<HTMLImageElement>('#hero-icon');
   if (profile && heroIcon.getAttribute('src') !== profileIconUrl(profile)) heroIcon.src = profileIconUrl(profile);
   heroIcon.classList.toggle('custom', profile?.icon === 'custom');
-  $('#hero-sub').textContent = profile ? `${profileLabel(profile)} · ${profile.memoryMb} MB RAM` : '';
+  $('#hero-sub').textContent = profile
+    ? [profileLabel(profile), `${profile.memoryMb} MB RAM`, profile.playTimeMs ? t('{0} gry', fmtPlaytime(profile.playTimeMs)) : ''].filter(Boolean).join(' · ')
+    : '';
+  renderContinue(profile);
 
   const btn = $<HTMLButtonElement>('#play-btn');
   btn.textContent = store.running ? 'ZATRZYMAJ' : 'GRAJ';
@@ -437,7 +482,7 @@ function renderProfiles() {
     ...store.profiles.map((p) => {
       const li = el('li', { className: p.id === editingId ? 'selected' : '' },
         profileIconImg(p),
-        el('div', { className: 'grow' }, p.name, el('small', { textContent: profileLabel(p) })));
+        el('div', { className: 'grow' }, p.name, el('small', { textContent: [profileLabel(p), p.playTimeMs ? fmtPlaytime(p.playTimeMs) : ''].filter(Boolean).join(' · ') })));
       li.addEventListener('click', () => {
         editingId = p.id;
         renderProfiles();
