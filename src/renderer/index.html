@@ -81,7 +81,19 @@
         </div>
         <div class="news" id="news"></div>
       </div>
-      <div class="log hidden" id="log"></div>
+      <div class="log-wrap hidden" id="log-wrap">
+        <div class="log-tools">
+          <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="log-search" placeholder="Szukaj w logu…"></div>
+          <div class="segmented" id="log-level">
+            <button class="active" data-level="all">Wszystko</button>
+            <button data-level="warn">Ostrzeżenia</button>
+            <button data-level="error">Błędy</button>
+          </div>
+          <button class="icon-btn" id="log-copy" title="Kopiuj log"><i class="fa-regular fa-copy"></i></button>
+          <button id="log-share"><i class="fa-solid fa-share-nodes"></i> Udostępnij</button>
+        </div>
+        <div class="log" id="log" data-level="all"></div>
+      </div>
       <footer class="play-bar glass-panel">
         <label class="field">Profil<select id="play-profile"></select></label>
         <label class="field">Konto<select id="play-account"></select></label>

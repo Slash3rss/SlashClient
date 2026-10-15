@@ -45,6 +45,7 @@ const api = {
   pingServer: (address: string) => invoke('servers:ping', address),
   kill: () => invoke('game:kill'),
   revealFile: (file: string) => invoke('file:reveal', file),
+  shareLog: (text: string) => invoke('log:share', text),
   openFile: (file: string) => invoke('file:open', file),
   getSkin: (accountId: string) => invoke('skin:get', accountId),
   saveSkin: (accountId: string) => invoke('skin:save', accountId),

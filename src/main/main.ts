@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, Notification, protocol, safeStorage, shell } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, net, Notification, protocol, safeStorage, shell } from 'electron';
 import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
@@ -10,6 +10,7 @@ import { analyzeCrash } from './crash';
 import { iconFile, iconFromFile, iconFromUrl } from './profileIcon';
 import { pullShared, pushShared } from './sync';
 import { recommendedMemoryMb } from './jvm';
+import { shareLog } from './logshare';
 import { lastTarget, serverFromLog, worldPlayedSince } from './sessions';
 import { installUpdate, startUpdateChecks } from './updates';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
@@ -451,6 +452,21 @@ handle('profile:export', async (id: string) => {
   }
 });
 
+/** Publishes the log on mclo.gs after the player agrees, and copies the link. */
+handle('log:share', async (text: string) => {
+  const { response } = await dialog.showMessageBox(win!, {
+    type: 'question',
+    message: t('Udostępnić log publicznie?'),
+    detail: t('Log zostanie wysłany na mclo.gs, a link skopiowany do schowka. Każdy, kto dostanie link, zobaczy jego treść. Ścieżki z Twoją nazwą użytkownika zostaną ukryte.'),
+    buttons: [t('Udostępnij'), t('Anuluj')],
+    defaultId: 0,
+    cancelId: 1,
+  });
+  if (response !== 0) return undefined;
+  const url = await shareLog(text);
+  clipboard.writeText(url);
+  return url;
+});
 handle('servers:list', (force?: boolean) => listServers(force));
 handle('servers:ping', (address: string) => pingServer(address));
 

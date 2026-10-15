@@ -15,7 +15,12 @@ Launcher Minecraft: Java Edition w Electronie i TypeScripcie.
 - panel postępu instalacji modów i modpacków z komunikatem o ukończeniu i przyciskiem „Graj teraz”,
 - aktualizacje modów, paczek zasobów i shaderów (rozpoznawanie po SHA1, także plików dodanych ręcznie; wydania nie są
   „aktualizowane” do bet i alf) oraz aktualizacje modpacków z usuwaniem plików, których nowa wersja już nie ma,
-- wybór konkretnej wersji przy instalacji i zmiana wersji zainstalowanego moda lub modpacka.
+- wybór konkretnej wersji przy instalacji i zmiana wersji zainstalowanego moda lub modpacka,
+- zmiana skina (Steve/Alex, podgląd 3D) i peleryny dla kont Microsoft,
+- czas gry w każdym profilu i kafelek „Wróć do gry” (ostatni serwer albo świat),
+- rekomendacja RAM i zestawy flag JVM (G1, ZGC) dobierane do wersji Javy,
+- kopiowanie profili i eksport do `.mrpack`,
+- logi z wyszukiwarką, filtrem poziomów i udostępnianiem na mclo.gs (po zgodzie, z ukrytymi ścieżkami).
 
 ## Uruchomienie
 

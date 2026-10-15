@@ -618,13 +618,49 @@ function renderSettings() {
 // ---------- play ----------
 
 const log = $('#log');
+/** Level of a game log line: errors (and stack traces), warnings, or plain info. */
+function lineLevel(line: string): 'error' | 'warn' | '' {
+  if (/\/(ERROR|FATAL)\]|^\s+at |Exception|^Caused by:/.test(line)) return 'error';
+  if (/\/WARN\]/.test(line)) return 'warn';
+  return '';
+}
+
+let logQuery = '';
+
 function appendLog(line: string) {
   const atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 20;
-  log.append(line + '\n');
+  const level = lineLevel(line);
+  const div = el('div', { className: `line${level ? ` lvl-${level}` : ''}`, textContent: line });
+  if (logQuery && !line.toLowerCase().includes(logQuery)) div.classList.add('miss');
+  log.append(div);
   // Keep the DOM small during long sessions.
-  while (log.childNodes.length > 2000) log.firstChild?.remove();
+  while (log.childElementCount > 2000) log.firstElementChild?.remove();
   if (atBottom) log.scrollTop = log.scrollHeight;
 }
+
+const logText = () => [...log.children].map((l) => l.textContent).join('\n');
+
+$('#log-search').addEventListener('input', () => {
+  logQuery = $<HTMLInputElement>('#log-search').value.trim().toLowerCase();
+  for (const line of log.children) line.classList.toggle('miss', Boolean(logQuery) && !(line.textContent ?? '').toLowerCase().includes(logQuery));
+});
+document.querySelectorAll<HTMLButtonElement>('#log-level button').forEach((b) =>
+  b.addEventListener('click', () => {
+    log.dataset.level = b.dataset.level;
+    document.querySelectorAll('#log-level button').forEach((x) => x.classList.toggle('active', x === b));
+  }));
+$('#log-copy').addEventListener('click', async () => {
+  await navigator.clipboard.writeText(logText());
+  toast(t('Skopiowano log'));
+});
+$('#log-share').addEventListener('click', () => busy($<HTMLButtonElement>('#log-share'), async () => {
+  try {
+    const url: string | undefined = await api.shareLog(logText());
+    if (url) toast(t('Link do logu skopiowany: {0}', url));
+  } catch (err) {
+    toast(errorText(err), true);
+  }
+}));
 
 function setProgress(label: string, fraction: number, stats = '', indeterminate = false) {
   $('.progress').classList.toggle('indeterminate', indeterminate);
@@ -708,7 +744,7 @@ api.on('game:crash', (a: CrashAnalysis) => {
 $('#crash-close').addEventListener('click', () => $('#crash').classList.add('hidden'));
 $('#crash-report').addEventListener('click', () => crashReport && api.revealFile(crashReport));
 $('#crash-copy').addEventListener('click', async () => {
-  await navigator.clipboard.writeText(log.textContent ?? '');
+  await navigator.clipboard.writeText(logText());
   toast('Skopiowano log');
 });
 
@@ -1584,7 +1620,7 @@ document.addEventListener('keydown', (e) => {
 /** News while idle, the game log once a launch starts. */
 function showLog(show: boolean) {
   $('#news-wrap').classList.toggle('hidden', show);
-  $('#log').classList.toggle('hidden', !show);
+  $('#log-wrap').classList.toggle('hidden', !show);
 }
 
 // ---------- skin preview ----------
