@@ -15,7 +15,7 @@ import {
 } from './modrinth';
 import { listServers, pingServer } from './servers';
 import { getManifest } from './versions';
-import { latestNews, newsArticle } from './news';
+import { newsArticle, newsPage, type NewsFilter } from './news';
 import { skinFor } from './skins';
 import fsp from 'node:fs/promises';
 import { backupWorld, deleteFile, listBackups, listScreenshots, listWorlds, restoreBackup } from './worlds';
@@ -249,7 +249,7 @@ handle('skin:save', async (accountId: string) => {
   const { canceled, filePath } = await dialog.showSaveDialog(win!, { defaultPath: `${account.name}.png`, filters: [{ name: 'PNG', extensions: ['png'] }] });
   if (!canceled && filePath) await fsp.writeFile(filePath, Buffer.from(dataUrl.split(',')[1], 'base64'));
 });
-handle('news:list', () => latestNews());
+handle('news:list', (offset: number, limit: number, filter: NewsFilter) => newsPage(offset, limit, filter));
 handle('news:article', (id: string) => newsArticle(id));
 
 handle('game:launch', async (profileId: string, accountId: string, server?: string, world?: string) => {

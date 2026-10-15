@@ -15,8 +15,8 @@ export interface NewsItem {
 
 let cache: { at: number; items: NewsItem[] } | undefined;
 
-/** Latest Java Edition patch notes from Mojang's launcher content feed. */
-export async function latestNews(limit = 6): Promise<NewsItem[]> {
+/** Java Edition patch notes from Mojang's launcher content feed, newest first. */
+export async function latestNews(): Promise<NewsItem[]> {
   if (!cache || Date.now() - cache.at > 30 * 60_000) {
     const feed = await fetchJson<{ entries: Record<string, any>[] }>(`${BASE}/v2/javaPatchNotes.json`);
     cache = {
@@ -35,7 +35,14 @@ export async function latestNews(limit = 6): Promise<NewsItem[]> {
         })),
     };
   }
-  return cache.items.slice(0, limit);
+  return cache.items;
+}
+
+export type NewsFilter = 'all' | 'release' | 'snapshot';
+
+export async function newsPage(offset: number, limit: number, filter: NewsFilter): Promise<{ items: NewsItem[]; total: number }> {
+  const all = (await latestNews()).filter((n) => filter === 'all' || n.type === filter);
+  return { items: all.slice(offset, offset + limit), total: all.length };
 }
 
 /** Full patch notes (HTML from Mojang; the page sanitises it before showing). */

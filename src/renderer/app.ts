@@ -37,6 +37,66 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLEl
   return node;
 }
 
+// ---------- loading & entrance animations ----------
+
+/** Staggered fade/slide-in for freshly rendered items. */
+function appear<T extends Element>(nodes: T[], start = 0): T[] {
+  nodes.forEach((n, i) => {
+    n.classList.add('appear');
+    (n as unknown as HTMLElement).style.setProperty('--i', String(Math.min(start + i, 14)));
+  });
+  return nodes;
+}
+
+const sk = (cls = '') => el('div', { className: `sk ${cls}` });
+
+/** Placeholder rows with a shimmer, shaped like the content that is loading. */
+function skeletons(kind: 'server' | 'project' | 'news' | 'shot', n: number): HTMLElement[] {
+  return Array.from({ length: n }, (_, i) => {
+    const card =
+      kind === 'server' ? el('div', { className: 'server skeleton-card' }, sk('icon big'), el('div', { className: 'server-main' }, sk('title'), sk('short'), sk('line')), el('div', { className: 'server-side' }, sk('short'), sk('btn')))
+      : kind === 'project' ? el('div', { className: 'project skeleton-card' }, sk('icon'), el('div', { className: 'project-main' }, sk('title'), sk('line'), sk('short')), el('div', { className: 'project-actions' }, sk('btn')))
+      : kind === 'news' ? el('div', { className: 'news-card skeleton-card' }, sk('thumb'), el('div', {}, sk('short'), sk('title'), sk('line'), sk('line')))
+      : el('div', { className: 'shot skeleton-card' }, sk('thumb'));
+    card.style.setProperty('--i', String(i));
+    card.classList.add('appear');
+    return card;
+  });
+}
+
+/** Every <img> fades in once loaded instead of popping in. */
+function fadeImage(img: HTMLImageElement) {
+  if (img.classList.contains('fade')) return;
+  img.classList.add('fade');
+  const done = () => img.classList.add('loaded');
+  if (img.complete && img.naturalWidth) done();
+  else {
+    img.addEventListener('load', done, { once: true });
+    img.addEventListener('error', done, { once: true });
+  }
+}
+new MutationObserver((records) => {
+  for (const r of records) r.addedNodes.forEach((n) => {
+    if (n instanceof HTMLImageElement) fadeImage(n);
+    else if (n instanceof HTMLElement) n.querySelectorAll('img').forEach(fadeImage);
+  });
+}).observe(document.body, { childList: true, subtree: true });
+
+/** Shows a spinner in a button while `work` runs. */
+async function busy<T>(button: HTMLButtonElement, work: () => Promise<T>, label?: string): Promise<T> {
+  const before = [...button.childNodes];
+  button.classList.add('busy');
+  button.disabled = true;
+  button.replaceChildren(el('span', { className: 'spinner' }), ...(label ? [label] : before.filter((n) => n.nodeType === Node.TEXT_NODE)));
+  try {
+    return await work();
+  } finally {
+    button.classList.remove('busy');
+    button.disabled = false;
+    button.replaceChildren(...before);
+  }
+}
+
 /** Strips Electron's "Error invoking remote method 'x': Error:" prefix. */
 function errorText(err: unknown): string {
   return String((err as Error)?.message ?? err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
@@ -269,7 +329,8 @@ function appendLog(line: string) {
   if (atBottom) log.scrollTop = log.scrollHeight;
 }
 
-function setProgress(label: string, fraction: number, stats = '') {
+function setProgress(label: string, fraction: number, stats = '', indeterminate = false) {
+  $('.progress').classList.toggle('indeterminate', indeterminate);
   $('#progress-label').textContent = label;
   $('#progress-stats').textContent = stats;
   $('#progress-bar').style.width = `${(fraction * 100).toFixed(1)}%`;
@@ -285,7 +346,8 @@ function fmtSpeed(bps: number): string {
 interface StageEvent { stage: string; done: number; total: number; bytes?: number; totalBytes?: number; speed?: number }
 
 function showStage({ stage, done, total, bytes, totalBytes, speed }: StageEvent) {
-  if (total <= 1 && !totalBytes) return setProgress(`${stage}…`, total ? done / total : 0);
+  // single-step stages have no meaningful percentage: show a moving bar instead
+  if (total <= 1 && !totalBytes) return setProgress(`${stage}…`, 0, '', done < total || total === 0 || !/Gra|Gotowe/.test(stage));
   // Byte-based progress when sizes are known; otherwise fall back to file count.
   const fraction = totalBytes ? Math.min(1, (bytes ?? 0) / totalBytes) : done / total;
   const pct = (fraction * 100).toLocaleString('pl-PL', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -427,12 +489,14 @@ $('#offline-form').addEventListener('submit', async (e) => {
 $('#ms-login').addEventListener('click', async () => {
   const btn = $<HTMLButtonElement>('#ms-login');
   btn.disabled = true;
+  btn.prepend(el('span', { className: 'spinner' }));
   try {
     const name = await api.loginMicrosoft();
     toast(`Zalogowano jako ${name}`);
   } catch (err) {
     toast(errorText(err), true);
   } finally {
+    btn.querySelector('.spinner')?.remove();
     btn.disabled = false;
     $('#ms-code').classList.add('hidden');
   }
@@ -541,7 +605,7 @@ function serverCard(s: ListedServer): HTMLElement {
   } else if (ping?.error) {
     stats.append(el('span', { className: 'offline', textContent: 'Offline' }));
   } else {
-    stats.append(el('span', {}, el('b', { textContent: `${s.playersOnline}` }), ` / ${s.playersMax}`), el('span', { textContent: '… ms' }));
+    stats.append(el('span', {}, el('b', { textContent: `${s.playersOnline}` }), ` / ${s.playersMax}`), el('span', { className: 'sk ping-sk', title: 'Sprawdzanie…' }));
   }
   stats.append(el('span', { title: 'Głosy' }, el('i', { className: 'fa-solid fa-thumbs-up' }), ` ${s.votes}`));
 
@@ -572,8 +636,9 @@ function serverCard(s: ListedServer): HTMLElement {
 function renderServers() {
   const list = filteredServers();
   const page = list.slice(0, shown);
-  $('#server-list').replaceChildren(...page.map(serverCard));
-  if (!list.length) $('#server-list').append(el('p', { className: 'muted', textContent: servers.length ? 'Brak serwerów pasujących do filtrów.' : 'Ładowanie listy…' }));
+  $('#server-list').replaceChildren(...appear(page.map(serverCard)));
+  if (!servers.length) $('#server-list').replaceChildren(...skeletons('server', 5));
+  else if (!list.length) $('#server-list').append(el('p', { className: 'muted appear', textContent: 'Brak serwerów pasujących do filtrów.' }));
   $('#servers-more').classList.toggle('hidden', list.length <= shown);
   pingVisible(page);
 }
@@ -608,6 +673,8 @@ function pingVisible(page: ListedServer[]) {
 async function loadServers(force = false) {
   const btn = $<HTMLButtonElement>('#servers-refresh');
   btn.disabled = true;
+  btn.querySelector('i')?.classList.add('spin-icon');
+  if (!servers.length || force) $('#server-list').replaceChildren(...skeletons('server', 5));
   try {
     servers = await api.listServers(force);
     if (force) pings.clear();
@@ -620,6 +687,7 @@ async function loadServers(force = false) {
     toast(`Nie udało się pobrać listy serwerów: ${errorText(err)}`, true);
   } finally {
     btn.disabled = false;
+    btn.querySelector('i')?.classList.remove('spin-icon');
   }
 }
 
@@ -657,6 +725,8 @@ let contentTab = 'browse';
 let contentHits: ProjectHit[] = [];
 let contentTotal = 0;
 let contentLoading = false;
+/** Index from which result cards animate in on the next render (new results only, no flicker on re-renders). */
+let animateFrom: number | undefined;
 let installed: InstalledItem[] = [];
 const installing = new Set<string>();
 
@@ -685,7 +755,7 @@ function projectIcon(url?: string) {
 function hitCard(hit: ProjectHit): HTMLElement {
   const isInstalled = installed.some((i) => i.projectId === hit.id);
   const btn = el('button', { className: isInstalled ? '' : 'primary', disabled: installing.has(hit.id) },
-    el('i', { className: isInstalled ? 'fa-solid fa-check' : 'fa-solid fa-download' }),
+    installing.has(hit.id) ? el('span', { className: 'spinner' }) : el('i', { className: isInstalled ? 'fa-solid fa-check' : 'fa-solid fa-download' }),
     installing.has(hit.id) ? 'Instaluję…' : isInstalled ? 'Zainstalowany' : contentType === 'modpack' ? 'Utwórz profil' : 'Instaluj');
   btn.addEventListener('click', () => installHit(hit));
   return el('div', { className: 'project' },
@@ -737,20 +807,27 @@ function renderContent() {
   const forType = installed.filter((i) => i.type === contentType);
   $('#installed-count').textContent = forType.length ? `(${forType.length})` : '';
   const list = $('#content-list');
+  const from = animateFrom;
+  animateFrom = undefined;
   if (contentTab === 'installed' && !isPack) {
-    list.replaceChildren(...forType.map(installedCard));
-    if (!forType.length) list.append(el('p', { className: 'muted', textContent: 'Nic tu jeszcze nie ma.' }));
+    const cards = forType.map(installedCard);
+    list.replaceChildren(...(from !== undefined ? appear(cards) : cards));
+    if (!forType.length) list.append(el('p', { className: 'muted appear', textContent: 'Nic tu jeszcze nie ma.' }));
     $('#content-more').classList.add('hidden');
     return;
   }
-  list.replaceChildren(...contentHits.map(hitCard));
-  if (!contentHits.length) list.append(el('p', { className: 'muted', textContent: contentLoading ? 'Ładowanie…' : 'Brak wyników.' }));
+  const cards = contentHits.map(hitCard);
+  if (from !== undefined) appear(cards.slice(from));
+  list.replaceChildren(...cards);
+  if (contentLoading) list.append(...skeletons('project', contentHits.length ? 3 : 6));
+  else if (!contentHits.length) list.append(el('p', { className: 'muted appear', textContent: 'Brak wyników.' }));
   $('#content-more').classList.toggle('hidden', contentLoading || contentHits.length >= contentTotal);
 }
 
-async function refreshInstalled() {
+async function refreshInstalled(animate = false) {
   if (!contentProfileId()) return;
   installed = (await guard(() => api.listContent(contentProfileId()))) ?? [];
+  if (animate) animateFrom = 0;
   renderContent();
 }
 
@@ -764,6 +841,7 @@ async function searchContent(append = false) {
   if (request !== searchRequest) return;
   contentLoading = false;
   if (!res) return renderContent();
+  animateFrom = append ? contentHits.length : 0;
   contentHits = append ? [...contentHits, ...res.hits] : res.hits;
   contentTotal = res.total;
   renderContent();
@@ -812,6 +890,7 @@ document.querySelectorAll<HTMLButtonElement>('#content-tab button').forEach((b) 
   b.addEventListener('click', () => {
     contentTab = b.dataset.tab!;
     document.querySelectorAll('#content-tab button').forEach((x) => x.classList.toggle('active', x === b));
+    animateFrom = 0;
     renderContent();
   }));
 let searchTimer: number | undefined;
@@ -821,11 +900,11 @@ $('#content-search').addEventListener('input', () => {
 });
 $('#content-more').addEventListener('click', () => searchContent(true));
 $('#content-profile').addEventListener('change', () => {
-  refreshInstalled();
+  refreshInstalled(true);
   searchContent();
 });
 $('#modpack-import').addEventListener('click', () => guard(async () => {
-  const id = await api.importModpack();
+  const id = await busy($<HTMLButtonElement>('#modpack-import'), () => api.importModpack(), 'Importuję…');
   if (!id) return;
   toast('Zaimportowano modpack jako nowy profil');
   store.settings.selectedProfileId = id;
@@ -833,7 +912,7 @@ $('#modpack-import').addEventListener('click', () => guard(async () => {
 }));
 document.querySelector('.nav[data-view="content"]')?.addEventListener('click', () => {
   renderContentProfiles();
-  refreshInstalled();
+  refreshInstalled(true);
   if (!contentHits.length) searchContent();
 });
 
@@ -860,7 +939,7 @@ async function renderWorlds() {
   const box = $('#worlds-content');
   const profileId = worldsProfileId();
   if (!profileId) return;
-  box.replaceChildren(el('p', { className: 'muted', textContent: 'Ładowanie…' }));
+  box.replaceChildren(worldsTab === 'screenshots' ? el('div', { className: 'shots' }, ...skeletons('shot', 6)) : el('div', { className: 'project-list' }, ...skeletons('project', 3)));
 
   if (worldsTab === 'worlds') {
     const worlds: WorldInfo[] = (await guard(() => api.listWorlds(profileId))) ?? [];
@@ -875,9 +954,7 @@ async function renderWorlds() {
       });
       const backup = el('button', {}, el('i', { className: 'fa-solid fa-box-archive' }), 'Kopia');
       backup.addEventListener('click', async () => {
-        backup.disabled = true;
-        const b = await guard(() => api.backupWorld(profileId, w.folder));
-        backup.disabled = false;
+        const b = await busy(backup, () => guard(() => api.backupWorld(profileId, w.folder)), 'Zapisuję…');
         if (b) toast(`Zapisano kopię „${w.name}” (${fmtSize(b.sizeBytes)})`);
       });
       return el('div', { className: 'project' }, icon,
@@ -896,7 +973,7 @@ async function renderWorlds() {
     box.replaceChildren(el('div', { className: 'project-list' }, ...backups.map((b) => {
       const restore = el('button', {}, el('i', { className: 'fa-solid fa-clock-rotate-left' }), 'Przywróć');
       restore.addEventListener('click', async () => {
-        const name = await guard(() => api.restoreBackup(profileId, fileName(b.file)));
+        const name = await busy(restore, () => guard(() => api.restoreBackup(profileId, fileName(b.file))), 'Przywracam…');
         if (name) toast(`Przywrócono jako „${name}”`);
       });
       return el('div', { className: 'project' },
@@ -926,6 +1003,8 @@ async function renderWorlds() {
     })));
     if (!shots.length) box.replaceChildren(el('p', { className: 'muted', textContent: 'Brak zrzutów. W grze zrobisz je klawiszem F2.' }));
   }
+  const listEl = box.firstElementChild;
+  if (listEl) appear(listEl.children.length ? [...listEl.children] : [listEl]);
 }
 
 document.querySelectorAll<HTMLButtonElement>('#worlds-tab button').forEach((b) =>
@@ -941,22 +1020,65 @@ document.querySelector('.nav[data-view="worlds"]')?.addEventListener('click', re
 
 interface NewsItem { id: string; title: string; version: string; type: string; date: string; imageUrl?: string; text: string }
 
-async function loadNews() {
-  const items: NewsItem[] = (await api.listNews().catch(() => [])) ?? [];
-  $('#news').replaceChildren(...items.map((n) => {
-    const img = el('img', { alt: '', loading: 'lazy' });
-    if (n.imageUrl) img.src = n.imageUrl;
-    // a real button: keyboard- and screen-reader-friendly
-    const card = el('button', { type: 'button', className: 'news-card', title: 'Kliknij, aby przeczytać' }, img,
-      el('div', {},
-        el('span', { className: `tag ${n.type}`, textContent: n.type === 'snapshot' ? 'Snapshot' : 'Wydanie' }),
-        el('b', { textContent: n.title }),
-        el('small', { textContent: new Date(n.date).toLocaleDateString('pl-PL', { dateStyle: 'long' }) }),
-        el('p', { textContent: n.text })));
-    card.addEventListener('click', () => openArticle(n));
-    return card;
-  }));
+const NEWS_PAGE = 9;
+let newsItems: NewsItem[] = [];
+let newsTotal = 0;
+let newsFilter = 'all';
+let newsLoading = false;
+
+function newsCard(n: NewsItem): HTMLElement {
+  const img = el('img', { alt: '', loading: 'lazy' });
+  if (n.imageUrl) img.src = n.imageUrl;
+  // a real button: keyboard- and screen-reader-friendly
+  const card = el('button', { type: 'button', className: 'news-card', title: 'Kliknij, aby przeczytać' }, img,
+    el('div', {},
+      el('span', { className: `tag ${n.type}`, textContent: n.type === 'snapshot' ? 'Snapshot' : 'Wydanie' }),
+      el('b', { textContent: n.title }),
+      el('small', { textContent: new Date(n.date).toLocaleDateString('pl-PL', { dateStyle: 'long' }) }),
+      el('p', { textContent: n.text })));
+  card.addEventListener('click', () => openArticle(n));
+  return card;
 }
+
+/** Loads the first page of news (or the next one with `more`). */
+async function loadNews(more = false) {
+  if (newsLoading) return;
+  newsLoading = true;
+  const grid = $('#news');
+  const offset = more ? newsItems.length : 0;
+  const placeholders = skeletons('news', more ? 3 : 6);
+  if (more) {
+    grid.querySelector('.more')?.remove();
+    grid.append(...placeholders);
+  } else {
+    grid.replaceChildren(...placeholders);
+  }
+  try {
+    const page: { items: NewsItem[]; total: number } = await api.listNews(offset, NEWS_PAGE, newsFilter);
+    newsItems = more ? [...newsItems, ...page.items] : page.items;
+    newsTotal = page.total;
+    placeholders.forEach((p) => p.remove());
+    grid.append(...appear(page.items.map(newsCard)));
+    if (newsItems.length < newsTotal) {
+      const btn = el('button', { className: 'more', type: 'button' }, el('i', { className: 'fa-solid fa-chevron-down' }), ` Pokaż więcej (${newsTotal - newsItems.length})`);
+      btn.addEventListener('click', () => loadNews(true));
+      grid.append(btn);
+    }
+  } catch {
+    placeholders.forEach((p) => p.remove());
+    if (!more) grid.replaceChildren(el('p', { className: 'muted', textContent: 'Nie udało się pobrać nowości.' }));
+  } finally {
+    newsLoading = false;
+  }
+}
+
+document.querySelectorAll<HTMLButtonElement>('#news-filter button').forEach((b) =>
+  b.addEventListener('click', () => {
+    if (newsLoading) return;
+    newsFilter = b.dataset.filter!;
+    document.querySelectorAll('#news-filter button').forEach((x) => x.classList.toggle('active', x === b));
+    loadNews();
+  }));
 
 const ARTICLE_TAGS = new Set(['P', 'H1', 'H2', 'H3', 'H4', 'UL', 'OL', 'LI', 'CODE', 'B', 'STRONG', 'I', 'EM', 'BR', 'A', 'BLOCKQUOTE']);
 
@@ -1024,7 +1146,7 @@ document.addEventListener('keydown', (e) => {
 
 /** News while idle, the game log once a launch starts. */
 function showLog(show: boolean) {
-  $('#news').classList.toggle('hidden', show);
+  $('#news-wrap').classList.toggle('hidden', show);
   $('#log').classList.toggle('hidden', !show);
 }
 
@@ -1040,6 +1162,7 @@ async function renderSkin() {
   skinAccountId = account.id;
   $('#skin-name').textContent = account.name;
   $('#skin-note').textContent = 'Ładowanie skina…';
+  $('#skin-stage').classList.add('loading');
   skinViewer ??= new SkinViewer({ canvas: $<HTMLCanvasElement>('#skin-canvas'), width: 220, height: 300 });
   skinViewer.autoRotate = true;
   skinViewer.autoRotateSpeed = 0.6;
@@ -1047,6 +1170,7 @@ async function renderSkin() {
   const skin = await guard(() => api.getSkin(account.id));
   if (!skin || skinAccountId !== account.id) return;
   await skinViewer.loadSkin(skin.dataUrl, { model: skin.model });
+  $('#skin-stage').classList.remove('loading');
   if (skin.cape) await skinViewer.loadCape(skin.cape, { backEquipment: 'cape' });
   else skinViewer.resetCape();
   $('#skin-back').classList.toggle('hidden', !skin.cape);

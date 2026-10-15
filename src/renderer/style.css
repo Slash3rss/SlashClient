@@ -337,7 +337,11 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .shot .icon-btn { width: 30px; height: 30px; padding: 0; font-size: 12px; }
 
 /* ---------- news ---------- */
-.news { flex: 1; min-height: 120px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); grid-auto-rows: max-content; gap: 12px; align-content: start; padding-bottom: 12px; }
+.news-wrap { flex: 1; min-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 12px; }
+.news-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.news-head h3 { font-size: 16px; }
+.news { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); grid-auto-rows: max-content; gap: 12px; align-content: start; }
+.news .more { grid-column: 1 / -1; }
 .news-card { border-radius: 12px; overflow: hidden; border: 1px solid var(--glass-border); background: rgba(255, 255, 255, .02); display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0; padding: 0; text-align: left; font-weight: 400; transition: var(--transition); }
 .news-card:hover:not(:disabled) { background: rgba(255, 255, 255, .04); }
 .news-card:hover { border-color: rgba(59, 130, 246, .35); transform: translateY(-2px); }
@@ -395,3 +399,54 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .article ul, .article ol { padding-left: 22px; margin: 6px 0; }
 .article li { margin: 3px 0; }
 .article code { font-size: 12.5px; }
+
+/* ---------- loading & entrance animations ---------- */
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+@keyframes appear { from { opacity: 0; transform: translateY(8px) scale(.985); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes indeterminate { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+@keyframes pulse { 50% { opacity: .45; } }
+
+.skeleton, .sk {
+  background: linear-gradient(90deg, rgba(255, 255, 255, .035) 25%, rgba(255, 255, 255, .09) 37%, rgba(255, 255, 255, .035) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+.sk { border-radius: 6px; height: 12px; }
+.sk.title { height: 16px; width: 45%; }
+.sk.line { width: 85%; }
+.sk.short { width: 30%; }
+.sk.icon { width: 52px; height: 52px; border-radius: 10px; flex-shrink: 0; }
+.sk.icon.big { width: 64px; height: 64px; }
+.sk.btn { width: 90px; height: 36px; border-radius: var(--btn-radius); }
+.sk.thumb { width: 100%; height: 120px; border-radius: 0; }
+.skeleton-card { pointer-events: none; }
+.skeleton-card .project-main, .skeleton-card .server-main { gap: 8px; }
+
+/* items fade and slide in one after another (--i is set from JS) */
+.appear { animation: appear .4s cubic-bezier(.2, .7, .3, 1) both; animation-delay: calc(var(--i, 0) * 35ms); }
+
+/* pictures fade in once loaded instead of popping in */
+img.fade { opacity: 0; transition: opacity .35s ease; }
+img.fade.loaded { opacity: 1; }
+
+.spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .25); border-top-color: currentColor; animation: spin .7s linear infinite; display: inline-block; flex-shrink: 0; }
+.spinner.big { width: 28px; height: 28px; border-width: 3px; color: var(--accent-light); }
+button.busy { pointer-events: none; }
+.spin-icon { animation: spin .8s linear infinite; }
+.loading-text { animation: pulse 1.4s ease infinite; }
+
+/* progress bar while the total isn't known yet */
+.progress.indeterminate #progress-bar { width: 40% !important; transition: none; animation: indeterminate 1.1s ease-in-out infinite; }
+
+/* skin viewer: spinner until the model is ready */
+.skin-stage { position: relative; width: 220px; height: 300px; flex-shrink: 0; }
+.skin-stage canvas { transition: opacity .4s ease; }
+.skin-stage.loading canvas { opacity: 0; }
+.skin-stage .spinner { position: absolute; left: 50%; top: 50%; margin: -14px 0 0 -14px; }
+.skin-stage:not(.loading) .spinner { display: none; }
+
+.modal-box { animation: appear .3s cubic-bezier(.2, .7, .3, 1); }
+.picker-menu:not(.hidden) { animation: appear .18s ease; }
+.toast:not(.hidden) { animation: appear .25s ease; }
+.sk.ping-sk { display: inline-block; width: 46px; height: 12px; vertical-align: middle; }

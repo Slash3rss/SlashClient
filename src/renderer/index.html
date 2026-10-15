@@ -52,7 +52,17 @@
           <button id="crash-copy"><i class="fa-regular fa-copy"></i> Kopiuj log</button>
         </div>
       </div>
-      <div class="news" id="news"></div>
+      <div class="news-wrap" id="news-wrap">
+        <div class="news-head">
+          <h3><i class="fa-regular fa-newspaper"></i> Nowości</h3>
+          <div class="segmented" id="news-filter">
+            <button class="active" data-filter="all">Wszystkie</button>
+            <button data-filter="release">Wydania</button>
+            <button data-filter="snapshot">Snapshoty</button>
+          </div>
+        </div>
+        <div class="news" id="news"></div>
+      </div>
       <div class="log hidden" id="log"></div>
       <footer class="play-bar glass-panel">
         <label class="field">Profil<select id="play-profile"></select></label>
@@ -183,7 +193,10 @@
     <section class="view" id="view-accounts">
       <header class="view-head"><h2 class="gradient-title">Konta</h2></header>
       <div class="skin-card glass-panel">
-        <canvas id="skin-canvas" width="220" height="300"></canvas>
+        <div class="skin-stage loading" id="skin-stage">
+          <canvas id="skin-canvas" width="220" height="300"></canvas>
+          <span class="spinner big"></span>
+        </div>
         <div class="skin-info">
           <h3 id="skin-name"></h3>
           <p class="muted" id="skin-note"></p>
