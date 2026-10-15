@@ -276,10 +276,10 @@ public final class Ui {
 	private static final Map<net.minecraft.world.item.Item, net.minecraft.world.item.ItemStack> STACKS = new HashMap<>();
 
 	/**
-	 * An item as an icon. Before the game has finished loading (main menu at start) items
-	 * cannot be made yet, so a symbol on an accent badge stands in for them.
+	 * One of an item, cached; null until items can be made (their components are bound
+	 * only once a world has loaded, so not in the main menu at start).
 	 */
-	public static void icon(GuiGraphicsExtractor g, net.minecraft.world.item.Item item, String fallback, int x, int y) {
+	public static net.minecraft.world.item.ItemStack stack(net.minecraft.world.item.Item item) {
 		net.minecraft.world.item.ItemStack stack = STACKS.get(item);
 		if (stack == null && Minecraft.getInstance().level != null) {
 			try {
@@ -289,6 +289,15 @@ public final class Ui {
 				stack = null;
 			}
 		}
+		return stack;
+	}
+
+	/**
+	 * An item as an icon. Before the game has finished loading (main menu at start) items
+	 * cannot be made yet, so a symbol on an accent badge stands in for them.
+	 */
+	public static void icon(GuiGraphicsExtractor g, net.minecraft.world.item.Item item, String fallback, int x, int y) {
+		net.minecraft.world.item.ItemStack stack = stack(item);
 		if (stack != null) {
 			g.item(stack, x, y);
 			return;

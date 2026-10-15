@@ -1,6 +1,7 @@
 package dev.slash3rss.slashclient.hud;
 
 import net.minecraft.client.Minecraft;
+import dev.slash3rss.slashclient.hud.ui.Ui;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.LivingEntity;
@@ -272,7 +273,8 @@ final class MoreModules {
 		private void drawCounts(GuiGraphicsExtractor g, Minecraft mc, int x, int y, List<int[]> list) {
 			int cx = x + PAD;
 			for (int[] c : list) {
-				g.item(new ItemStack(GROUPS[c[0]][0]), cx, y + PAD);
+				// in the main menu (editor before any world) items can't be made yet: an icon badge instead
+				Ui.icon(g, GROUPS[c[0]][0], "#", cx, y + PAD);
 				String n = String.valueOf(c[1]);
 				text(g, mc, n, cx + 18, y + PAD + 4, cfg.textColor);
 				cx += 18 + mc.font.width(n) + 4;

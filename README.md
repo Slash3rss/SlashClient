@@ -56,8 +56,9 @@ cd hud
 ./gradlew runClientGameTest  # uruchamia grę, robi zrzuty HUD-a do build/run/clientGameTest/screenshots
 ```
 
-`npm run build` dołącza zbudowany jar do launchera (`dist/hud/`). Launcher wkłada go do `mods/` profili Fabric
-w obsługiwanej wersji i dociąga Fabric API z Modrinth. Test z linii poleceń: `npm run test:launch -- 26.3 MojNick --fabric`.
+`npm run build` dołącza zbudowany jar do launchera (`dist/hud/`). HUD nie trafia do `mods/` gracza: launcher kopiuje
+go do `hud/` w folderze danych i wstrzykuje przy starcie profili Fabric w obsługiwanej wersji przez `-Dfabric.addMods`.
+Gdy profil nie ma własnego Fabric API, launcher pobiera je z Modrinth do `hud/fabric-api/<wersja>/` i wstrzykuje tak samo. Test z linii poleceń: `npm run test:launch -- 26.3 MojNick --fabric`.
 
 ## Testy i wydania
 

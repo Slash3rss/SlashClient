@@ -51,7 +51,7 @@ const EN: Record<string, string> = {
   'działa z Fabric ({0})': 'works with Fabric ({0})',
   'FPS, ping, CPS, pancerz, klawisze i więcej. W grze Prawy Shift otwiera edycję.': 'FPS, ping, CPS, armour, keystrokes and more. In game, Right Shift opens the editor.',
   'jeszcze nie dla {0}; dostępny dla {1}': 'not for {0} yet; available for {1}',
-  'Instalowanie Fabric API dla SlashClient HUD': 'Installing Fabric API for SlashClient HUD',
+  'Pobieranie Fabric API dla SlashClient HUD': 'Downloading Fabric API for SlashClient HUD',
   'Logowanie zostało anulowane.': 'The sign-in was cancelled.',
   'Nie udało się potwierdzić logowania. Spróbuj ponownie.': 'The sign-in could not be confirmed. Try again.',
   'To konto jest już połączone z innym kontem SlashClient.': 'This account is already linked to another SlashClient account.',

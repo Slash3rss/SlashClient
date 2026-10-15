@@ -53,9 +53,11 @@ export interface LaunchOptions {
   server?: string;
   /** Folder name in saves/ to open right after the game starts (1.20+). */
   world?: string;
+  /** More JVM arguments from the launcher itself (e.g. -Dfabric.addMods for SlashClient HUD). */
+  extraJvmArgs?: string[];
 }
 
-export async function launch({ profile, account, onStage, onLog, server, world }: LaunchOptions): Promise<ChildProcess> {
+export async function launch({ profile, account, onStage, onLog, server, world, extraJvmArgs = [] }: LaunchOptions): Promise<ChildProcess> {
   const gameVersion = await resolveVersionId(profile.versionId);
   const gameDir = profileGameDir(profile);
   await fs.mkdir(gameDir, { recursive: true });
@@ -130,6 +132,7 @@ export async function launch({ profile, account, onStage, onLog, server, world }
     ...(osName === 'osx' ? [`-Xdock:name=Minecraft ${versionId}`] : []),
     ...presetArgs(profile.jvmPreset, version.javaVersion?.majorVersion ?? 8),
     ...splitArgs(profile.jvmArgs),
+    ...extraJvmArgs,
     ...jvmArgs.map((a) => substitute(a, vars)),
     ...(loggingConfig && version.logging?.client ? [substitute(version.logging.client.argument, { path: loggingConfig })] : []),
     version.mainClass,

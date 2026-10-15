@@ -2,6 +2,7 @@ package dev.slash3rss.slashclient.hud;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import dev.slash3rss.slashclient.hud.ui.Ui;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
@@ -224,8 +225,14 @@ public final class Modules {
 			return out;
 		}
 
+		/** Example armour for the editor; empty in the main menu, where items can't be made yet. */
 		private static List<ItemStack> sample() {
-			return List.of(new ItemStack(Items.DIAMOND_HELMET), new ItemStack(Items.DIAMOND_CHESTPLATE), new ItemStack(Items.IRON_LEGGINGS), new ItemStack(Items.DIAMOND_BOOTS));
+			List<ItemStack> out = new ArrayList<>();
+			for (var item : List.of(Items.DIAMOND_HELMET, Items.DIAMOND_CHESTPLATE, Items.IRON_LEGGINGS, Items.DIAMOND_BOOTS)) {
+				ItemStack s = Ui.stack(item);
+				if (s != null) out.add(s);
+			}
+			return out;
 		}
 
 		private static String label(ItemStack s) {

@@ -41,6 +41,15 @@ public class HudScreenshots implements FabricClientGameTest {
 		context.runOnClient(mc -> TestHooks.slashMenu());
 		context.waitTicks(5);
 
+		// the HUD editor opened from the main menu, before any world: item icons can't be made
+		// yet there (components are bound only with a world), which used to crash the game
+		context.runOnClient(mc -> TestHooks.allModules());
+		context.setScreen(HudEditScreen::settingsWindow);
+		context.waitTicks(10);
+		context.takeScreenshot("editor-main-menu");
+		context.setScreen(() -> null);
+		context.waitTicks(5);
+
 		// SkyUp.pl pinned first in the multiplayer list
 		context.runOnClient(mc -> TestHooks.checkPinnedServer());
 		context.setScreen(() -> new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(new net.minecraft.client.gui.screens.TitleScreen()));

@@ -29,7 +29,7 @@ import { getManifest } from './versions';
 import { newsArticle, newsPage, type NewsFilter } from './news';
 import { ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin } from './skins';
 import { checkModsFolder, installedModIds } from './modcheck';
-import { hudVersions, prepareHud } from './hud';
+import { addModsArgs, hudVersions, prepareHud } from './hud';
 import { exportHud, importHud } from './hudShare';
 import { appendSession, readSessions, summarize } from './stats';
 import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type ForeignInstance } from './importers';
@@ -782,7 +782,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     largeImageKey: 'logo',
     largeImageText: 'SlashClient',
   };
-  await prepareProfileHud(profile);
+  const hudArgs = await prepareProfileHud(profile);
   const activityVersion = `${await resolveVersionId(profile.versionId)}${loaderName}`;
   social.setActivity({ kind: server ? 'server' : 'menu', server: server || undefined, version: activityVersion, since: startedAt });
   const child = await launch({
@@ -809,6 +809,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     },
     server,
     world,
+    extraJvmArgs: hudArgs,
   });
   game = child;
   killRequested = false;
@@ -857,9 +858,13 @@ handle('hud:pasteCode', async (profileId: string) => {
   await importHud(profileGameDir(profile), await clipboard.readText());
 });
 
-async function prepareProfileHud(profile: Profile) {
-  await prepareHud(HUD_DIR, profileGameDir(profile), { enabled: profile.hud ?? true, loader: profile.loader, gameVersion: await resolveVersionId(profile.versionId), socialUrl: store.settings.socialUrl },
-    () => send('launch:stage', { stage: t('Instalowanie Fabric API dla SlashClient HUD'), done: 0, total: 1 }));
+/** The HUD (and Fabric API, if the profile lacks it) as JVM arguments: injected, never copied into mods/. */
+async function prepareProfileHud(profile: Profile): Promise<string[]> {
+  const jars = await prepareHud(HUD_DIR, profileGameDir(profile), {
+    enabled: profile.hud ?? true, loader: profile.loader, gameVersion: await resolveVersionId(profile.versionId),
+    cacheDir: path.join(paths.root, 'hud'), socialUrl: store.settings.socialUrl,
+  }, () => send('launch:stage', { stage: t('Pobieranie Fabric API dla SlashClient HUD'), done: 0, total: 1 }));
+  return addModsArgs(jars);
 }
 
 // ---------- friends, statuses and messages ----------

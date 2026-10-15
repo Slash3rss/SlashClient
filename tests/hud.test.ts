@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
-import { hudVersions, syncHud, writeLauncherInfo } from '../src/main/hud';
+import { addModsArgs, hasFabricApi, hudJarFor, hudVersions, prepareHud, stageJar, writeLauncherInfo } from '../src/main/hud';
 import { decodeHud, encodeHud, exportHud, importHud } from '../src/main/hudShare';
 import { setLang } from '../src/shared/i18n';
 
@@ -34,19 +34,37 @@ describe('SlashClient HUD', () => {
     await fs.rm(root, { recursive: true });
   });
 
-  it('puts the matching jar in, replaces old ones and asks for Fabric API', async () => {
+  it('injects the HUD, and Fabric API only when the profile has none', async () => {
     const { root, bundle, game, mods } = await setup();
+    const cacheDir = path.join(root, 'cache');
+    // an old launcher put the HUD into mods/: it goes, the player's mods stay
     await fs.writeFile(path.join(mods, 'slashclient-hud-26.2.jar'), 'old');
-    const plan = await syncHud(bundle, game, { enabled: true, loader: 'fabric', gameVersion: '26.3' });
-    assert.deepEqual(plan, { active: true, needsFabricApi: true });
-    assert.deepEqual(await fs.readdir(mods), ['slashclient-hud-26.3.jar']);
-
     await fs.writeFile(path.join(mods, 'fabric-api-0.162.0.jar'), fabricJar('fabric-api'));
-    assert.equal((await syncHud(bundle, game, { enabled: true, loader: 'fabric', gameVersion: '26.3' })).needsFabricApi, false);
+    const jars = await prepareHud(bundle, game, { enabled: true, loader: 'fabric', gameVersion: '26.3', cacheDir });
+    assert.deepEqual(jars, [path.join(cacheDir, 'slashclient-hud-26.3.jar')]);
+    assert.deepEqual(await fs.readdir(mods), ['fabric-api-0.162.0.jar']);
+    assert.equal(await hasFabricApi(game), true);
+    assert.deepEqual(addModsArgs(jars), [`-Dfabric.addMods=${jars[0]}`]);
+    assert.deepEqual(addModsArgs([]), []);
     await fs.rm(root, { recursive: true });
   });
 
-  it('takes it out when switched off, on other loaders and on versions it does not support', async () => {
+  it('copies the jar out of the launcher only when it changed', async () => {
+    const { root, bundle } = await setup();
+    const cacheDir = path.join(root, 'cache');
+    const source = path.join(bundle, 'slashclient-hud-26.3.jar');
+    const staged = await stageJar(source, cacheDir);
+    const first = (await fs.stat(staged)).mtimeMs;
+    await new Promise((r) => setTimeout(r, 20));
+    await stageJar(source, cacheDir);
+    assert.equal((await fs.stat(staged)).mtimeMs, first);
+    await fs.writeFile(source, fabricJar('slashclient-hud-v2'));
+    await stageJar(source, cacheDir);
+    assert.deepEqual(await fs.readFile(staged), await fs.readFile(source));
+    await fs.rm(root, { recursive: true });
+  });
+
+  it('stays out when switched off, on other loaders and on versions it does not support', async () => {
     for (const opts of [
       { enabled: false, loader: 'fabric', gameVersion: '26.3' },
       { enabled: true, loader: 'neoforge', gameVersion: '26.3' },
@@ -55,7 +73,8 @@ describe('SlashClient HUD', () => {
       const { root, bundle, game, mods } = await setup();
       await fs.writeFile(path.join(mods, 'slashclient-hud-26.3.jar'), 'x');
       await fs.writeFile(path.join(mods, 'sodium.jar'), 'keep');
-      assert.deepEqual(await syncHud(bundle, game, opts), { active: false, needsFabricApi: false });
+      assert.equal(await hudJarFor(bundle, opts), undefined);
+      assert.deepEqual(await prepareHud(bundle, game, { ...opts, cacheDir: path.join(root, 'cache') }), []);
       assert.deepEqual(await fs.readdir(mods), ['sodium.jar']);
       await fs.rm(root, { recursive: true });
     }

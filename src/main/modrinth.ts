@@ -144,6 +144,30 @@ export async function findFitting(slugOrId: string, gameVersion: string, loader?
   }
 }
 
+/**
+ * The newest fitting file of a mod, kept in `dir` (outside any mods/ folder) and reused
+ * while it is still the newest. Without a connection the copy already there is used.
+ */
+export async function cachedModFile(slugOrId: string, gameVersion: string, loader: string, dir: string): Promise<string> {
+  await fs.mkdir(dir, { recursive: true });
+  const present = (await fs.readdir(dir)).filter((f) => f.endsWith('.jar'));
+  let version: ModrinthVersion;
+  try {
+    version = await pickVersion(slugOrId, gameVersion, loader);
+  } catch (err) {
+    if (present[0]) return path.join(dir, present[0]);
+    throw err;
+  }
+  const file = version.files.find((f) => f.primary) ?? version.files[0];
+  const dest = path.join(dir, path.basename(file.filename));
+  if (!(present.includes(path.basename(dest)) && (await sha1File(dest)) === file.hashes.sha1)) {
+    await downloadAll([{ url: file.url, dest, sha1: file.hashes.sha1, size: file.size }], undefined, { verifyHash: true });
+  }
+  // only one version in the folder, or Fabric would see the mod twice
+  for (const f of present) if (f !== path.basename(dest)) await fs.rm(path.join(dir, f), { force: true });
+  return dest;
+}
+
 /** Mod ids that are already installed (by Modrinth project id), so a pack doesn't reinstall them. */
 export async function installedProjectIds(gameDir: string): Promise<Set<string>> {
   return new Set((await readManifest(gameDir)).map((m) => m.projectId));

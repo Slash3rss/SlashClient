@@ -22,6 +22,11 @@ public final class TestHooks {
 		net.minecraft.client.Minecraft.getInstance().setScreenAndShow(new net.minecraft.client.gui.screens.TitleScreen());
 	}
 
+	/** Every module on, so the editor draws all their previews. */
+	public static void allModules() {
+		SlashHud.config.modules.values().forEach(p -> p.enabled = true);
+	}
+
 	public static void slashMenu() {
 		SlashHud.config.customMenu = true;
 	}
