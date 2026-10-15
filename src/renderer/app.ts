@@ -323,6 +323,8 @@ document.querySelectorAll<HTMLButtonElement>('.nav').forEach((btn) =>
   btn.addEventListener('click', () => {
     document.querySelectorAll('.nav').forEach((b) => b.classList.toggle('active', b === btn));
     document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${btn.dataset.view}`));
+    // the 3D skin preview renders every frame: only while it can be seen
+    if (skinViewer) skinViewer.renderPaused = btn.dataset.view !== 'accounts';
   }),
 );
 
@@ -2081,6 +2083,7 @@ async function renderSkin() {
     skinViewer = new SkinViewer({ canvas: $<HTMLCanvasElement>('#skin-canvas'), width: 220, height: 300 });
     // the wheel scrolls the page; zoom has its own buttons
     skinViewer.controls.enableZoom = false;
+    skinViewer.renderPaused = !$('#view-accounts').classList.contains('active');
   }
   skinViewer.autoRotate = true;
   skinViewer.autoRotateSpeed = 0.6;
@@ -2502,21 +2505,29 @@ function startStars() {
     }
   };
 
-  // ~20 fps is plenty for a slow twinkle and keeps the launcher light while the game runs.
-  let last = 0;
-  const loop = (t: number) => {
-    if (t - last > 50) {
-      draw(t);
-      last = t;
-    }
-    if (!still) requestAnimationFrame(loop);
+  // A slow twinkle needs few frames: 15 fps in front, 4 fps when another window has focus
+  // (e.g. the game), none while minimised. A timer instead of requestAnimationFrame, so
+  // the page is not woken up 60 times a second just to skip most frames.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const tick = () => {
+    draw(performance.now());
+    timer = document.hidden || still ? undefined : setTimeout(tick, document.hasFocus() ? 66 : 250);
+  };
+  const wake = () => {
+    if (timer === undefined && !still) tick();
   };
   addEventListener('resize', () => {
     resize();
     draw(performance.now());
   });
+  document.addEventListener('visibilitychange', wake);
+  addEventListener('focus', () => {
+    clearTimeout(timer);
+    timer = undefined;
+    wake();
+  });
   resize();
-  requestAnimationFrame(loop);
+  tick();
 }
 
 // ---------- task panel: install progress and completion ----------
