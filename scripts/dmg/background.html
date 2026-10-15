@@ -71,10 +71,17 @@ const slot = (cx) => {
 slot(160);
 slot(380);
 
-// pixel arrow pointing right, like the crafting arrow in the game
-const arrow = ['......X.....', '......XX....', 'XXXXXXXXX...', 'XXXXXXXXXX..', 'XXXXXXXXX...', '......XX....', '......X.....'];
-const px = 5, ax = 270 - (arrow[0].length * px) / 2, ay = 205 - (arrow.length * px) / 2;
-arrow.forEach((row, j) => [...row].forEach((c, i) => { if (c === 'X') rect(gui, ax + i * px, ay + j * px, px, px, '#555'); }));
+// pixel arrow pointing right, like the crafting arrow in the game: a 3-pixel shaft and a
+// symmetric head, centred exactly between the two icons (x = 270, y = 205)
+const px = 6, shaftLen = 7, half = 4; // the head is 2·half+1 pixels tall
+const cells = [];
+for (let r = -half; r <= half; r++) {
+  if (Math.abs(r) <= 1) for (let c = 0; c < shaftLen; c++) cells.push([c, r]);
+  for (let c = shaftLen; c <= shaftLen + half - Math.abs(r); c++) cells.push([c, r]);
+}
+const cols = shaftLen + half + 1;
+const ax = 270 - (cols * px) / 2, ay = 205 - px / 2;
+for (const [c, r] of cells) rect(gui, ax + c * px, ay + r * px, px, px, '#555');
 
 // size the drawing to the window (1× or 2× for Retina)
 const scale = Number(new URLSearchParams(location.search).get('scale') || 1);
