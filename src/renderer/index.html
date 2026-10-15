@@ -234,6 +234,24 @@
             <button id="skin-back" class="hidden"><i class="fa-solid fa-feather"></i> Elytra</button>
             <button id="skin-save"><i class="fa-solid fa-download"></i> Pobierz PNG</button>
           </div>
+          <div class="skin-edit hidden" id="skin-edit">
+            <div class="row" id="skin-actions">
+              <button id="skin-change"><i class="fa-solid fa-shirt"></i> Zmień skin…</button>
+              <button id="skin-reset"><i class="fa-solid fa-rotate-left"></i> Domyślny skin</button>
+            </div>
+            <div class="row hidden" id="skin-pending">
+              <div class="segmented" id="skin-variant">
+                <button class="active" data-variant="classic">Steve (klasyczny)</button>
+                <button data-variant="slim">Alex (smukły)</button>
+              </div>
+              <button class="primary" id="skin-upload"><i class="fa-solid fa-check"></i> Zapisz skin</button>
+              <button id="skin-cancel">Anuluj</button>
+            </div>
+            <div class="row" id="cape-row">
+              <label class="field">Peleryna<select id="cape-select"></select></label>
+              <button class="primary hidden" id="cape-apply"><i class="fa-solid fa-check"></i> Ustaw</button>
+            </div>
+          </div>
         </div>
       </div>
       <ul class="list accounts" id="account-list"></ul>

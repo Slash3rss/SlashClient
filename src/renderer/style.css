@@ -547,3 +547,11 @@ body.entering main { animation: rise-in .55s cubic-bezier(.2, .7, .3, 1) .12s bo
 .modpack-info { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .modpack-info i { color: var(--accent-light); }
 .modpack-box .row button { height: 34px; padding: 0 12px; font-size: 13px; }
+
+/* ---------- skin editing ---------- */
+.skin-edit { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; border-top: 1px solid var(--glass-border); margin-top: 4px; }
+.skin-edit .row { flex-wrap: wrap; }
+.skin-edit button { height: 36px; padding: 0 14px; font-size: 13px; }
+.skin-edit .segmented button { height: auto; }
+#cape-row { align-items: flex-end; }
+#cape-row .field { flex: 0 1 260px; }

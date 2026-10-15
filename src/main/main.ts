@@ -12,7 +12,7 @@ import { installUpdate, startUpdateChecks } from './updates';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { launch, resolveVersionId } from './launch';
 import { paths } from './paths';
-import { loadStore, newProfile, profileGameDir, saveStore, setSecretCodec, type Profile, type Settings, type StoreData } from './store';
+import { loadStore, newProfile, profileGameDir, saveStore, setSecretCodec, type MicrosoftAccount, type Profile, type Settings, type StoreData } from './store';
 import { LOADER_NAMES, loaderVersions, type Loader } from './loaders';
 import {
   checkUpdates, downloadModpack, identifyModpack, installMrpack, installProject, latestModpackVersion, listContentVersions,
@@ -22,7 +22,7 @@ import {
 import { listServers, pingServer } from './servers';
 import { getManifest } from './versions';
 import { newsArticle, newsPage, type NewsFilter } from './news';
-import { skinFor } from './skins';
+import { ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin } from './skins';
 import fsp from 'node:fs/promises';
 import { backupWorld, deleteFile, listBackups, listScreenshots, listWorlds, restoreBackup } from './worlds';
 import { t } from '../shared/i18n';
@@ -409,6 +409,40 @@ handle('skin:save', async (accountId: string) => {
 });
 handle('update:install', () => installUpdate());
 handle('app:version', () => app.getVersion());
+/** A Microsoft account with a valid Minecraft token (refreshed and saved if needed). */
+async function freshMsa(accountId: string): Promise<MicrosoftAccount> {
+  const account = store.accounts.find((a) => a.id === accountId);
+  if (account?.type !== 'msa') throw new Error(t('Skin i pelerynę można zmienić tylko na koncie Microsoft.'));
+  const fresh = await ensureFreshAccount(account, store.settings.msClientId.trim());
+  if (fresh !== account) {
+    store.accounts = store.accounts.map((a) => (a.id === fresh.id ? fresh : a));
+    await saveStore(store);
+  }
+  return fresh;
+}
+
+/** The skin file the player picked, kept here until they confirm (the page only gets a preview). */
+let pendingSkin: Buffer | undefined;
+
+handle('skin:capes', async (accountId: string) => ownedCapes((await freshMsa(accountId)).accessToken));
+handle('skin:pickFile', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
+    title: t('Wybierz skin'), filters: [{ name: 'PNG', extensions: ['png'] }], properties: ['openFile'],
+  });
+  if (canceled || !filePaths[0]) return undefined;
+  const png = await fsp.readFile(filePaths[0]);
+  const preview = readSkinFile(png);
+  pendingSkin = png;
+  return preview;
+});
+handle('skin:upload', async (accountId: string, variant: 'classic' | 'slim') => {
+  if (!pendingSkin) throw new Error(t('Najpierw wybierz plik skina.'));
+  await uploadSkin((await freshMsa(accountId)).accessToken, pendingSkin, variant);
+  pendingSkin = undefined;
+});
+handle('skin:reset', async (accountId: string) => resetSkin((await freshMsa(accountId)).accessToken));
+handle('skin:setCape', async (accountId: string, capeId: string | null) => setCape((await freshMsa(accountId)).accessToken, capeId));
+
 handle('news:list', (offset: number, limit: number, filter: NewsFilter) => newsPage(offset, limit, filter));
 handle('news:article', (id: string) => newsArticle(id));
 

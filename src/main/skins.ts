@@ -1,3 +1,4 @@
+import { t } from '../shared/i18n';
 import { fetchJson, httpMessage, netFetch } from './download';
 import type { Account } from './store';
 
@@ -74,4 +75,71 @@ export async function skinFor(account: Account): Promise<SkinData> {
     // fall back to the default skin below
   }
   return withCape({ dataUrl: await toDataUrl(`https://mc-heads.net/skin/${encodeURIComponent(account.name)}`), model: 'default', isDefault: true }, account.name);
+}
+
+// ---------- changing the skin and cape of a Microsoft account ----------
+
+const SERVICES = 'https://api.minecraftservices.com/minecraft/profile';
+
+export interface OwnedCape {
+  id: string;
+  alias: string;
+  active: boolean;
+  /** data:image/png;base64,… of the cape texture, for the preview */
+  texture?: string;
+}
+
+async function servicesCall(token: string, path: string, init: RequestInit = {}): Promise<Record<string, any>> {
+  const url = `${SERVICES}${path}`;
+  const res = await netFetch(url, { ...init, headers: { Authorization: `Bearer ${token}`, ...init.headers } });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { errorMessage?: string; error?: string };
+    // Mojang explains rejected skins in errorMessage (e.g. wrong size)
+    throw new Error(body.errorMessage ? t('Mojang odrzucił zmianę: {0}', body.errorMessage) : httpMessage(res.status, url));
+  }
+  return res.status === 204 ? {} : ((await res.json()) as Record<string, any>);
+}
+
+/** The capes this account owns, with their textures for the preview. */
+export async function ownedCapes(token: string): Promise<OwnedCape[]> {
+  const profile = await servicesCall(token, '');
+  return Promise.all(
+    ((profile.capes ?? []) as { id: string; alias: string; state: string; url: string }[]).map(async (c) => ({
+      id: c.id,
+      alias: c.alias,
+      active: c.state === 'ACTIVE',
+      texture: /^https?:\/\/textures\.minecraft\.net\//.test(c.url) ? await toDataUrl(c.url.replace('http://', 'https://')).catch(() => undefined) : undefined,
+    })),
+  );
+}
+
+/** Checks a skin file before anything is sent: a PNG of 64×64 (or legacy 64×32) pixels. */
+export function readSkinFile(png: Buffer): string {
+  if (!png.subarray(0, 4).equals(PNG_MAGIC)) throw new Error(t('Skin musi być plikiem PNG.'));
+  const width = png.readUInt32BE(16);
+  const height = png.readUInt32BE(20);
+  if (width !== 64 || (height !== 64 && height !== 32)) throw new Error(t('Skin musi mieć 64×64 albo 64×32 piksele (ten ma {0}×{1}).', width, height));
+  return `data:image/png;base64,${png.toString('base64')}`;
+}
+
+export async function uploadSkin(token: string, png: Buffer, variant: 'classic' | 'slim'): Promise<void> {
+  readSkinFile(png);
+  const form = new FormData();
+  form.append('variant', variant);
+  form.append('file', new Blob([new Uint8Array(png)], { type: 'image/png' }), 'skin.png');
+  await servicesCall(token, '/skins', { method: 'POST', body: form });
+}
+
+/** Back to the default Steve/Alex skin. */
+export async function resetSkin(token: string): Promise<void> {
+  await servicesCall(token, '/skins/active', { method: 'DELETE' });
+}
+
+/** Shows one of the owned capes, or hides the cape with null. */
+export async function setCape(token: string, capeId: string | null): Promise<void> {
+  if (capeId) {
+    await servicesCall(token, '/capes/active', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ capeId }) });
+  } else {
+    await servicesCall(token, '/capes/active', { method: 'DELETE' });
+  }
 }

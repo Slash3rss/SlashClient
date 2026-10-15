@@ -1508,6 +1508,10 @@ async function renderSkin() {
   const skin = await guard(() => api.getSkin(account.id));
   if (!skin || skinAccountId !== account.id) return;
   await skinViewer.loadSkin(skin.dataUrl, { model: skin.model });
+  skinViewer.playerObject.userData.pending = undefined;
+  skinVariant = skin.model === 'slim' ? 'slim' : 'classic';
+  document.querySelectorAll<HTMLButtonElement>('#skin-variant button').forEach((x) => x.classList.toggle('active', x.dataset.variant === skinVariant));
+  loadSkinEditor(account);
   $('#skin-stage').classList.remove('loading');
   if (skin.cape) await skinViewer.loadCape(skin.cape, { backEquipment: 'cape' });
   else skinViewer.resetCape();
@@ -1527,6 +1531,106 @@ $('#skin-back').addEventListener('click', () => {
   const elytra = skinViewer.playerObject.backEquipment === 'elytra';
   skinViewer.playerObject.backEquipment = elytra ? 'cape' : 'elytra';
   $('#skin-back').replaceChildren(el('i', { className: elytra ? 'fa-solid fa-feather' : 'fa-solid fa-flag' }), t(elytra ? ' Elytra' : ' Peleryna'));
+});
+
+// ---------- changing skin and cape (Microsoft accounts) ----------
+
+interface OwnedCape { id: string; alias: string; active: boolean; texture?: string }
+let capes: OwnedCape[] = [];
+let skinVariant: 'classic' | 'slim' = 'classic';
+
+/** Forgets the cached skin and head so the next render fetches the new look from Mojang. */
+function refreshSkinCaches(accountId: string) {
+  heads.delete(accountId);
+  headRequests.delete(accountId);
+  skinAccountId = undefined;
+}
+
+async function loadSkinEditor(account: { id: string; type: string }) {
+  $('#skin-edit').classList.toggle('hidden', account.type !== 'msa');
+  $('#skin-pending').classList.add('hidden');
+  $('#skin-actions').classList.remove('hidden');
+  $('#cape-apply').classList.add('hidden');
+  if (account.type !== 'msa') return;
+  const sel = $<HTMLSelectElement>('#cape-select');
+  fillSelect(sel, [{ value: '', label: t('Ładowanie…') }], '');
+  capes = (await guard(() => api.ownedCapes(account.id))) ?? [];
+  fillSelect(sel, [{ value: '', label: t('Bez peleryny') }, ...capes.map((c) => ({ value: c.id, label: c.alias }))], capes.find((c) => c.active)?.id ?? '');
+  $('#cape-row').classList.toggle('hidden', !capes.length);
+}
+
+$('#cape-select').addEventListener('change', () => {
+  const id = $<HTMLSelectElement>('#cape-select').value;
+  const cape = capes.find((c) => c.id === id);
+  // preview on the model before anything is saved
+  if (cape?.texture) skinViewer?.loadCape(cape.texture);
+  else skinViewer?.resetCape();
+  $('#cape-apply').classList.toggle('hidden', id === (capes.find((c) => c.active)?.id ?? ''));
+});
+$('#cape-apply').addEventListener('click', () => {
+  const accountId = skinAccountId;
+  if (!accountId) return;
+  const id = $<HTMLSelectElement>('#cape-select').value || null;
+  busy($<HTMLButtonElement>('#cape-apply'), async () => {
+    try {
+      await api.setCape(accountId, id);
+      toast(id ? t('Ustawiono pelerynę.') : t('Peleryna ukryta.'));
+      refreshSkinCaches(accountId);
+      renderSkin();
+    } catch (err) {
+      toast(errorText(err), true);
+    }
+  });
+});
+
+$('#skin-change').addEventListener('click', async () => {
+  const preview: string | undefined = await guard(() => api.pickSkinFile());
+  if (!preview || !skinViewer) return;
+  await skinViewer.loadSkin(preview, { model: skinVariant === 'slim' ? 'slim' : 'default' });
+  skinViewer.playerObject.userData.pending = preview;
+  $('#skin-actions').classList.add('hidden');
+  $('#skin-pending').classList.remove('hidden');
+  $('#skin-note').textContent = t('Podgląd nowego skina. Zapisz, żeby ustawić go w grze.');
+});
+document.querySelectorAll<HTMLButtonElement>('#skin-variant button').forEach((b) =>
+  b.addEventListener('click', () => {
+    skinVariant = b.dataset.variant as 'classic' | 'slim';
+    document.querySelectorAll('#skin-variant button').forEach((x) => x.classList.toggle('active', x === b));
+    const pending = skinViewer?.playerObject.userData.pending as string | undefined;
+    if (pending) skinViewer!.loadSkin(pending, { model: skinVariant === 'slim' ? 'slim' : 'default' });
+  }));
+$('#skin-cancel').addEventListener('click', () => {
+  const accountId = skinAccountId;
+  if (accountId) refreshSkinCaches(accountId);
+  renderSkin();
+});
+$('#skin-upload').addEventListener('click', () => {
+  const accountId = skinAccountId;
+  if (!accountId) return;
+  busy($<HTMLButtonElement>('#skin-upload'), async () => {
+    try {
+      await api.uploadSkin(accountId, skinVariant);
+      toast(t('Skin zmieniony. W grze i na serwerach zobaczysz go od następnego wejścia.'));
+      refreshSkinCaches(accountId);
+      renderSkin();
+    } catch (err) {
+      toast(errorText(err), true);
+    }
+  });
+});
+$('#skin-reset').addEventListener('click', () => {
+  const accountId = skinAccountId;
+  if (!accountId || !confirm(t('Przywrócić domyślny skin na koncie Minecraft?'))) return;
+  busy($<HTMLButtonElement>('#skin-reset'), async () => {
+    try {
+      await api.resetSkin(accountId);
+      toast(t('Przywrócono domyślny skin.'));
+      refreshSkinCaches(accountId);
+      renderSkin();
+    } catch (err) {
+      toast(errorText(err), true);
+    }
+  });
 });
 
 $('#skin-anim').addEventListener('click', () => {
