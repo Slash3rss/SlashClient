@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: slash-media: https://mc-heads.net https://api.slash3rss.dev https://cdn.modrinth.com; style-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: slash-media: https://launchercontent.mojang.com https://mc-heads.net https://api.slash3rss.dev https://cdn.modrinth.com; style-src 'self'">
   <title>SlashClient</title>
   <link rel="stylesheet" href="fa/css/all.min.css">
   <link rel="stylesheet" href="style.css">
@@ -53,7 +53,8 @@
           <button id="crash-copy"><i class="fa-regular fa-copy"></i> Kopiuj log</button>
         </div>
       </div>
-      <div class="log" id="log"></div>
+      <div class="news" id="news"></div>
+      <div class="log hidden" id="log"></div>
       <footer class="play-bar glass-panel">
         <label class="field">Profil<select id="play-profile"></select></label>
         <label class="field">Konto<select id="play-account"></select></label>
@@ -180,6 +181,17 @@
     <!-- Accounts -->
     <section class="view" id="view-accounts">
       <header class="view-head"><h2 class="gradient-title">Konta</h2></header>
+      <div class="skin-card glass-panel">
+        <canvas id="skin-canvas" width="220" height="300"></canvas>
+        <div class="skin-info">
+          <h3 id="skin-name"></h3>
+          <p class="muted" id="skin-note"></p>
+          <div class="row">
+            <button id="skin-anim"><i class="fa-solid fa-person-walking"></i> Chodzenie</button>
+            <button id="skin-save"><i class="fa-solid fa-download"></i> Pobierz PNG</button>
+          </div>
+        </div>
+      </div>
       <ul class="list accounts" id="account-list"></ul>
       <div class="split two">
         <div class="card glass-panel">

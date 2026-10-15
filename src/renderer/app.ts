@@ -1,3 +1,4 @@
+import { SkinViewer, WalkingAnimation, IdleAnimation } from 'skinview3d';
 import type { SlashApi } from '../main/preload';
 
 declare global {
@@ -192,6 +193,7 @@ async function renderLoaderVersions(selected: string) {
 }
 
 function renderAccounts() {
+  if (document.querySelector('#view-accounts.active')) renderSkin();
   const list = $('#account-list');
   list.replaceChildren(
     ...store.accounts.map((a) => {
@@ -270,6 +272,7 @@ async function startGame(server?: string, world?: string) {
   if (store.running || launching) return toast('Gra już działa.', true);
   launching = true;
   log.replaceChildren();
+  showLog(true);
   $('#crash').classList.add('hidden');
   showView('play');
   renderPlay();
@@ -889,6 +892,65 @@ document.querySelectorAll<HTMLButtonElement>('#worlds-tab button').forEach((b) =
 $('#worlds-profile').addEventListener('change', renderWorlds);
 document.querySelector('.nav[data-view="worlds"]')?.addEventListener('click', renderWorlds);
 
+// ---------- news (Mojang patch notes) ----------
+
+interface NewsItem { id: string; title: string; version: string; type: string; date: string; imageUrl?: string; text: string }
+
+async function loadNews() {
+  const items: NewsItem[] = (await api.listNews().catch(() => [])) ?? [];
+  $('#news').replaceChildren(...items.map((n) => {
+    const img = el('img', { alt: '', loading: 'lazy' });
+    if (n.imageUrl) img.src = n.imageUrl;
+    return el('div', { className: 'news-card', title: n.text }, img,
+      el('div', {},
+        el('span', { className: `tag ${n.type}`, textContent: n.type === 'snapshot' ? 'Snapshot' : 'Wydanie' }),
+        el('b', { textContent: n.title }),
+        el('small', { textContent: new Date(n.date).toLocaleDateString('pl-PL', { dateStyle: 'long' }) }),
+        el('p', { textContent: n.text })));
+  }));
+}
+
+/** News while idle, the game log once a launch starts. */
+function showLog(show: boolean) {
+  $('#news').classList.toggle('hidden', show);
+  $('#log').classList.toggle('hidden', !show);
+}
+
+// ---------- skin preview ----------
+
+let skinViewer: SkinViewer | undefined;
+let skinAccountId: string | undefined;
+
+async function renderSkin() {
+  const account = store.accounts.find((a) => a.id === store.settings.selectedAccountId) ?? store.accounts[0];
+  $('.skin-card').classList.toggle('hidden', !account);
+  if (!account || account.id === skinAccountId) return;
+  skinAccountId = account.id;
+  $('#skin-name').textContent = account.name;
+  $('#skin-note').textContent = 'Ładowanie skina…';
+  skinViewer ??= new SkinViewer({ canvas: $<HTMLCanvasElement>('#skin-canvas'), width: 220, height: 300 });
+  skinViewer.autoRotate = true;
+  skinViewer.autoRotateSpeed = 0.6;
+  skinViewer.animation ??= new IdleAnimation();
+  const skin = await guard(() => api.getSkin(account.id));
+  if (!skin || skinAccountId !== account.id) return;
+  await skinViewer.loadSkin(skin.dataUrl, { model: skin.model });
+  $('#skin-note').textContent = account.type === 'msa'
+    ? 'Skin Twojego konta Minecraft.'
+    : skin.isDefault
+      ? 'Konto offline nie ma własnego skina; w grze zobaczysz domyślny.'
+      : 'Konto offline: to skin gracza premium o tym samym nicku. Na serwerach offline inni zobaczą domyślny skin.';
+}
+
+$('#skin-anim').addEventListener('click', () => {
+  if (!skinViewer) return;
+  const walking = skinViewer.animation instanceof WalkingAnimation;
+  skinViewer.animation = walking ? new IdleAnimation() : new WalkingAnimation();
+  $('#skin-anim').replaceChildren(el('i', { className: walking ? 'fa-solid fa-person-walking' : 'fa-solid fa-person' }), walking ? ' Chodzenie' : ' Stój');
+});
+$('#skin-save').addEventListener('click', () => skinAccountId && guard(() => api.saveSkin(skinAccountId!)));
+document.querySelector('.nav[data-view="accounts"]')?.addEventListener('click', () => renderSkin());
+
 // ---------- starfield (as on lista.slash3rss.dev) ----------
 
 function startStars() {
@@ -947,6 +1009,7 @@ function startStars() {
 
 (async () => {
   startStars();
+  loadNews();
   store = await api.getStore();
   render();
   versions = (await guard(() => api.listVersions())) ?? [];

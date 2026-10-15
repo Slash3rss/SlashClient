@@ -15,6 +15,9 @@ import {
 } from './modrinth';
 import { listServers, pingServer } from './servers';
 import { getManifest } from './versions';
+import { latestNews } from './news';
+import { skinFor } from './skins';
+import fsp from 'node:fs/promises';
 import { backupWorld, deleteFile, listBackups, listScreenshots, listWorlds, restoreBackup } from './worlds';
 
 let win: BrowserWindow | undefined;
@@ -225,6 +228,22 @@ function isInsideInstances(file: string): boolean {
   const full = path.resolve(file);
   return store.profiles.some((p) => full.startsWith(path.resolve(profileGameDir(p)) + path.sep));
 }
+
+// ---------- skins and news ----------
+
+handle('skin:get', (accountId: string) => {
+  const account = store.accounts.find((a) => a.id === accountId);
+  if (!account) throw new Error('Nie znaleziono konta.');
+  return skinFor(account);
+});
+handle('skin:save', async (accountId: string) => {
+  const account = store.accounts.find((a) => a.id === accountId);
+  if (!account) return;
+  const { dataUrl } = await skinFor(account);
+  const { canceled, filePath } = await dialog.showSaveDialog(win!, { defaultPath: `${account.name}.png`, filters: [{ name: 'PNG', extensions: ['png'] }] });
+  if (!canceled && filePath) await fsp.writeFile(filePath, Buffer.from(dataUrl.split(',')[1], 'base64'));
+});
+handle('news:list', () => latestNews());
 
 handle('game:launch', async (profileId: string, accountId: string, server?: string, world?: string) => {
   if (game) throw new Error('Gra już działa.');
