@@ -5,6 +5,7 @@
 	"client": [
 		"CameraMixin",
 		"ChatComponentMixin",
+		"GuiMixin",
 		"LightmapMixin",
 		"MouseHandlerMixin",
 		"ScreenEffectRendererMixin"

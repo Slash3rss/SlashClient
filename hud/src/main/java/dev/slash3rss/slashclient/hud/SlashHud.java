@@ -8,7 +8,13 @@ import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.minecraft.world.InteractionResult;
+import dev.slash3rss.slashclient.hud.ui.SlashTitleScreen;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.network.chat.Component;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.resources.Identifier;
@@ -26,8 +32,12 @@ public class SlashHud implements ClientModInitializer {
 	public static final String ID = "slashclient-hud";
 	public static final Logger LOG = LoggerFactory.getLogger(ID);
 
-	static HudConfig config;
+	public static HudConfig config;
 	static final List<HudModule> MODULES = Modules.all();
+
+	public static List<HudModule> modules() {
+		return MODULES;
+	}
 	private static Vec3 lastPos;
 
 	@Override
@@ -42,6 +52,15 @@ public class SlashHud implements ClientModInitializer {
 		// no key by default: G and the like are taken by other mods too often
 		Extras.fullbrightKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.fullbright", InputConstants.UNKNOWN.getValue(), category));
 		ChatTabs.register();
+		// the game's own menu gets a way back to ours
+		ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
+			if (!(screen instanceof TitleScreen)) return;
+			Screens.getWidgets(screen).add(Button.builder(Component.translatable("slashclient-hud.menu.ours"), b -> {
+				config.customMenu = true;
+				config.save();
+				mc.setScreenAndShow(new SlashTitleScreen());
+			}).bounds(4, 4, 110, 20).build());
+		});
 
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
 			Extras.tick(mc);
@@ -95,18 +114,27 @@ public class SlashHud implements ClientModInitializer {
 		return new int[] { Math.max(0, Math.min(screenW - w, x)), Math.max(0, Math.min(screenH - h, y)) };
 	}
 
+	/** On-screen size of a module, with its scale. */
+	static int[] size(HudModule m, Minecraft mc, HudConfig.Placement p) {
+		return new int[] { Math.round(m.width(mc) * p.scale()), Math.round(m.height(mc) * p.scale()) };
+	}
+
 	static void drawAll(GuiGraphicsExtractor g, Minecraft mc, boolean preview) {
 		Modules.CLICKS.sample(mc);
 		for (HudModule m : MODULES) {
 			HudConfig.Placement p = config.placement(m.id());
 			if (!p.enabled || (!preview && !m.visible(mc))) continue;
-			int w = m.width(mc);
-			int h = m.height(mc);
-			int[] at = position(p, w, h, g.guiWidth(), g.guiHeight());
+			int[] size = size(m, mc, p);
+			int[] at = position(p, size[0], size[1], g.guiWidth(), g.guiHeight());
+			var pose = g.pose();
+			pose.pushMatrix();
+			pose.translate(at[0], at[1]);
+			pose.scale(p.scale(), p.scale());
 			// keystrokes draw their own boxes
-			if (config.background && !(m instanceof Modules.Keystrokes)) g.fill(at[0], at[1], at[0] + w, at[1] + h, 0x70000000);
-			if (preview) m.drawPreview(g, mc, at[0], at[1]);
-			else m.draw(g, mc, at[0], at[1]);
+			if (p.background(config) && !(m instanceof Modules.Keystrokes)) g.fill(0, 0, m.width(mc), m.height(mc), 0x70000000);
+			if (preview) m.drawPreview(g, mc, 0, 0);
+			else m.draw(g, mc, 0, 0);
+			pose.popMatrix();
 		}
 	}
 }

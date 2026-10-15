@@ -19,9 +19,12 @@ public class ChatTabsScreen extends Screen {
 	private static final int MAX_TABS = 8;
 	private final List<HudConfig.ChatTab> tabs;
 	private String error = "";
+	/** Where "Done" goes back to; null = the chat. */
+	private final Screen parent;
 
-	public ChatTabsScreen() {
+	public ChatTabsScreen(Screen parent) {
 		super(Component.translatable("slashclient-hud.chat.tabs"));
+		this.parent = parent;
 		// edited on a copy, saved on "Done"
 		tabs = new ArrayList<>();
 		for (HudConfig.ChatTab t : SlashHud.config.chatTabs) {
@@ -110,6 +113,6 @@ public class ChatTabsScreen extends Screen {
 		SlashHud.config.chatTabs = tabs;
 		SlashHud.config.save();
 		ChatTabs.changed();
-		minecraft.setScreenAndShow(new ChatScreen("", false));
+		minecraft.setScreenAndShow(parent != null ? parent : new ChatScreen("", false));
 	}
 }

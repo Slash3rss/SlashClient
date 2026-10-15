@@ -11,6 +11,15 @@ import net.minecraft.client.gui.screens.ChatScreen;
 public class HudScreenshots implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		// the game starts on the main menu: ours, then the game's own with the button back
+		context.waitTicks(40);
+		context.takeScreenshot("main-menu");
+		context.runOnClient(mc -> TestHooks.vanillaMenu());
+		context.waitTicks(10);
+		context.takeScreenshot("main-menu-vanilla");
+		context.runOnClient(mc -> TestHooks.slashMenu());
+		context.waitTicks(5);
+
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			// gear and effects so the armour, item and effect modules have something to show
 			for (String cmd : new String[] {
@@ -31,9 +40,20 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.waitTicks(10);
 			context.takeScreenshot("hud-in-game");
 			context.getInput().releaseKey(o -> o.keyUp);
+			// the advancement toasts from the armour would cover the editor
+			context.waitTicks(160);
 			context.setScreen(HudEditScreen::new);
 			context.waitTicks(5);
 			context.takeScreenshot("hud-editor");
+			context.setScreen(HudEditScreen::settingsWindow);
+			context.waitTicks(5);
+			context.takeScreenshot("hud-editor-window");
+			context.setScreen(() -> new HudEditScreen("crosshair"));
+			context.waitTicks(5);
+			context.takeScreenshot("hud-editor-settings");
+			context.setScreen(() -> HudEditScreen.category("share"));
+			context.waitTicks(5);
+			context.takeScreenshot("hud-editor-share");
 
 			// every module on, to see that nothing overlaps
 			context.runOnClient(mc -> HudEditScreen.enableAll());
@@ -63,6 +83,8 @@ public class HudScreenshots implements FabricClientGameTest {
 
 			// sharing: a code made here must give the same settings back
 			context.runOnClient(mc -> TestHooks.shareRoundTrip());
+			// the test runner expects to end on the game's own title screen
+			context.runOnClient(mc -> TestHooks.endOnVanillaMenu());
 			context.setScreen(() -> null);
 		}
 	}

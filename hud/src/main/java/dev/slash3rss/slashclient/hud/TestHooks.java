@@ -17,6 +17,19 @@ public final class TestHooks {
 		return Extras.zoomKey;
 	}
 
+	public static void vanillaMenu() {
+		SlashHud.config.customMenu = false;
+		net.minecraft.client.Minecraft.getInstance().setScreenAndShow(new net.minecraft.client.gui.screens.TitleScreen());
+	}
+
+	public static void slashMenu() {
+		SlashHud.config.customMenu = true;
+	}
+
+	public static void endOnVanillaMenu() {
+		SlashHud.config.customMenu = false;
+	}
+
 	public static void selectTab(int index) {
 		ChatTabs.select(index);
 	}

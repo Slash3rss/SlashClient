@@ -28,6 +28,21 @@ public final class HudConfig {
 		public float ay;
 		public int dx;
 		public int dy;
+		/** Size of the module, 0.5 to 2. */
+		public float scale = 1f;
+		/** Own background setting; null = the HUD-wide one. */
+		public Boolean background;
+
+		/** For Gson, so missing fields keep the defaults above. */
+		Placement() {}
+
+		public float scale() {
+			return scale <= 0 ? 1f : scale;
+		}
+
+		public boolean background(HudConfig cfg) {
+			return background == null ? cfg.background : background;
+		}
 
 		Placement(boolean enabled, float ax, float ay, int dx, int dy) {
 			this.enabled = enabled;
@@ -73,6 +88,8 @@ public final class HudConfig {
 	public int crosshairColor = 0xFFFFFFFF;
 	public int crosshairSize = 5;
 	public int crosshairGap = 2;
+	/** The SlashClient main menu instead of Minecraft's own. */
+	public boolean customMenu = true;
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("slashclient-hud.json");
@@ -154,6 +171,7 @@ public final class HudConfig {
 		crosshairColor = other.crosshairColor;
 		crosshairSize = other.crosshairSize;
 		crosshairGap = other.crosshairGap;
+		customMenu = other.customMenu;
 		save();
 	}
 
