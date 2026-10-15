@@ -92,13 +92,13 @@
 	"slashclient-hud.chat.new": "New",
 	"slashclient-hud.chat.help": "A tab shows the chat lines that contain its text or match its regex.",
 	"slashclient-hud.ui.search": "Search…",
-	"slashclient-hud.ui.open": "SlashClient settings",
-	"slashclient-hud.ui.dragHint": "Drag a module to move it · Right click: module settings",
-	"slashclient-hud.ui.editLayout": "✥ Edit HUD layout",
+	"slashclient-hud.ui.open": "Settings",
+	"slashclient-hud.ui.dragHint": "Drag a module to move it  ·  Right click a module: its settings",
+	"slashclient-hud.ui.editLayout": "Edit layout",
 	"slashclient-hud.ui.nothing": "Nothing matches the search.",
 	"slashclient-hud.ui.settings": "Settings",
 	"slashclient-hud.ui.openIt": "Open",
-	"slashclient-hud.ui.back": "← Back",
+	"slashclient-hud.ui.back": "Back",
 	"slashclient-hud.ui.enabled": "Enabled",
 	"slashclient-hud.ui.noSettings": "This extra has no settings.",
 	"slashclient-hud.ui.moveIt": "✥ Move on screen",
@@ -123,5 +123,8 @@
 	"slashclient-hud.menu.subtitle": "Minecraft %s with SlashClient",
 	"slashclient-hud.menu.servers": "Your servers",
 	"slashclient-hud.menu.join": "Join",
-	"slashclient-hud.menu.ours": "SlashClient menu"
+	"slashclient-hud.menu.ours": "SlashClient menu",
+	"slashclient-hud.ui.on": "On",
+	"slashclient-hud.ui.off": "Off",
+	"slashclient-hud.menu.noServers": "Add servers in Multiplayer and they will show up here."
 }

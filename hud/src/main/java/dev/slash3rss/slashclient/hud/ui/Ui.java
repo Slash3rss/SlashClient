@@ -19,7 +19,10 @@ public final class Ui {
 	private Ui() {}
 
 	public static final int BG = 0xF00A0D14;
-	public static final int PANEL = 0xF2111622;
+	public static final int PANEL = 0xFF111622;
+	/** Cards and rows inside a panel: a step lighter than the panel, fully opaque so nothing shows through. */
+	public static final int CARD = 0xFF161C2A;
+	public static final int CARD_HOVER = 0xFF1C2435;
 	public static final int GLASS = 0x0DFFFFFF;
 	public static final int GLASS_HOVER = 0x1AFFFFFF;
 	public static final int BORDER = 0x1CFFFFFF;
@@ -27,7 +30,7 @@ public final class Ui {
 	public static final int ACCENT_LIGHT = 0xFF60A5FA;
 	public static final int ACCENT_DARK = 0xFF1D4ED8;
 	public static final int TEXT = 0xFFF3F4F6;
-	public static final int TEXT_2 = 0xFF9CA3AF;
+	public static final int TEXT_2 = 0xFFB4BCC8;
 	public static final int MUTED = 0xFF6B7280;
 	public static final int DANGER = 0xFFEF4444;
 	public static final int GREEN = 0xFF4ADE80;
@@ -137,14 +140,26 @@ public final class Ui {
 
 	/** A button; `primary` is the blue one. Returns nothing: clicks are checked with `inside`. */
 	public static void button(GuiGraphicsExtractor g, String id, int x, int y, int w, int h, Component label, boolean primary, int mx, int my) {
+		button(g, id, x, y, w, h, null, label, primary, mx, my);
+	}
+
+	/** A button with one of the launcher's icons before the label (or alone when the label is empty). */
+	public static void button(GuiGraphicsExtractor g, String id, int x, int y, int w, int h, String iconName, Component label, boolean primary, int mx, int my) {
 		float t = hover(id, inside(mx, my, x, y, w, h));
 		if (primary) accent(g, x, y, w, h, 4, t);
 		else {
-			round(g, x, y, w, h, 4, blend(GLASS, GLASS_HOVER, t));
-			roundOutline(g, x, y, w, h, 4, blend(BORDER, 0x33FFFFFF, t));
+			round(g, x, y, w, h, 4, blend(CARD, CARD_HOVER, t));
+			roundOutline(g, x, y, w, h, 4, blend(BORDER, 0x40FFFFFF, t));
 		}
-		Component fitted = fit(label, w - 8);
-		centered(g, fitted, x + w / 2, y + (h - 9) / 2, primary ? 0xFFFFFFFF : blend(TEXT_2, TEXT, t));
+		int color = primary ? 0xFFFFFFFF : blend(TEXT_2, TEXT, t);
+		int iconSize = Math.min(10, h - 6);
+		boolean hasLabel = !label.getString().isEmpty();
+		int iconW = iconName == null ? 0 : iconSize + (hasLabel ? 5 : 0);
+		Component fitted = fit(label, w - 10 - iconW);
+		int total = iconW + (hasLabel ? width(fitted) : 0);
+		int left = x + (w - total) / 2;
+		if (iconName != null) icon(g, iconName, left, y + (h - iconSize) / 2, iconSize, color);
+		if (hasLabel) draw(g, fitted, left + iconW, y + (h - 8) / 2, color);
 	}
 
 	/** An on/off switch, 20×10. */
@@ -173,6 +188,20 @@ public final class Ui {
 	}
 
 	// ---------- icons ----------
+
+	/**
+	 * One of the launcher's icons (Font Awesome, rendered to textures/icon/*.png by the
+	 * build helper), drawn `size` pixels wide in `color`.
+	 */
+	public static void icon(GuiGraphicsExtractor g, String name, int x, int y, int size, int color) {
+		Identifier id = Identifier.fromNamespaceAndPath("slashclient-hud", "textures/icon/" + name + ".png");
+		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, id, x, y, 0, 0, size, size, 64, 64, 64, 64, color);
+	}
+
+	/** Text with a soft shadow, for places where it sits on the game or the panorama. */
+	public static void drawOnWorld(GuiGraphicsExtractor g, Component c, int x, int y, int color) {
+		g.text(Minecraft.getInstance().font, c, x, y, color, true);
+	}
 
 	private static final Map<net.minecraft.world.item.Item, net.minecraft.world.item.ItemStack> STACKS = new HashMap<>();
 

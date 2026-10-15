@@ -105,7 +105,7 @@ public class HudEditScreen extends Screen {
 		entries();
 		search = null;
 		if (window && settingsOf == null && !category.equals("share")) {
-			search = new EditBox(font, winX() + winW() - 186, winY() + 11, 140, 12, Ui.tr("slashclient-hud.ui.search"));
+			search = new EditBox(font, winX() + winW() - 176, winY() + 12, 132, 12, Ui.tr("slashclient-hud.ui.search"));
 			search.setBordered(false);
 			search.setTextColor(Ui.TEXT);
 			search.setHint(Ui.tr("slashclient-hud.ui.search"));
@@ -127,7 +127,7 @@ public class HudEditScreen extends Screen {
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		hits.clear();
-		g.fill(0, 0, width, height, window ? 0x99000000 : 0x40000000);
+		g.fill(0, 0, width, height, window ? 0xB0050710 : 0x30000000);
 		if (dragging != null) {
 			g.fill(width / 2, 0, width / 2 + 1, height, snappedX ? 0xAA60A5FA : 0x30FFFFFF);
 			g.fill(0, height / 2, width, height / 2 + 1, snappedY ? 0xAA60A5FA : 0x30FFFFFF);
@@ -138,82 +138,107 @@ public class HudEditScreen extends Screen {
 		super.extractRenderState(g, mx, my, delta);
 	}
 
-	/** The drag view: outlines, names on hover, and the button to the settings. */
+	/**
+	 * The drag view: outlines, names on hover, and a toolbar at the top (on a solid
+	 * panel, so it reads well over any world) with the way into the settings.
+	 */
 	private void drawLayout(GuiGraphicsExtractor g, int mx, int my) {
 		HudModule hovered = dragging != null ? dragging : moduleAt(mx, my);
 		for (HudModule m : SlashHud.MODULES) {
 			if (!SlashHud.config.placement(m.id()).enabled) continue;
 			int[] b = box(m);
 			boolean hot = m == hovered;
-			g.outline(b[0] - 1, b[1] - 1, b[2] + 2, b[3] + 2, hot ? Ui.ACCENT_LIGHT : 0x50FFFFFF);
+			Ui.roundOutline(g, b[0] - 2, b[1] - 2, b[2] + 4, b[3] + 4, 3, hot ? Ui.ACCENT_LIGHT : 0x66FFFFFF);
 			if (hot) {
 				Component name = Ui.tr("slashclient-hud.module." + m.id());
-				int tw = Ui.width(name) + 8;
-				int ty = b[1] > 14 ? b[1] - 13 : b[1] + b[3] + 2;
-				Ui.round(g, b[0] - 1, ty, tw, 12, 3, Ui.ACCENT_DARK);
-				Ui.draw(g, name, b[0] + 3, ty + 2, 0xFFFFFFFF);
+				int tw = Ui.width(name) + 10;
+				int ty = b[1] > 16 ? b[1] - 15 : b[1] + b[3] + 3;
+				Ui.round(g, b[0] - 2, ty, tw, 13, 3, Ui.ACCENT_DARK);
+				Ui.draw(g, name, b[0] + 3, ty + 3, 0xFFFFFFFF);
 			}
 		}
 		if (dragging != null) return;
-		Component label = Ui.trBold("slashclient-hud.ui.open");
-		int bw = Ui.width(label) + 34;
-		int bx = (width - bw) / 2;
-		int by = height / 2 - 12;
-		Ui.button(g, "open", bx, by, bw, 24, label, true, mx, my);
-		hits.add(new Hit(bx, by, bw, 24, () -> {
+		Component open = Ui.trBold("slashclient-hud.ui.open");
+		Component done = Ui.tr("gui.done");
+		int openW = Ui.width(open) + 30;
+		int doneW = Ui.width(done) + 20;
+		int brandW = Ui.brandWidth(1f);
+		int barW = 12 + brandW + 14 + openW + 6 + doneW + 10;
+		int barH = 28;
+		int bx = (width - barW) / 2;
+		// at the top middle, where the game shows nothing but boss bars; the hotbar stays visible
+		int by = 8;
+		Ui.panel(g, bx, by, barW, barH);
+		Ui.brand(g, bx + 12, by + 10, 1f);
+		int x = bx + 12 + brandW + 14;
+		Ui.button(g, "open", x, by + 5, openW, 18, "gear", open, true, mx, my);
+		hits.add(new Hit(x, by + 5, openW, 18, () -> {
 			window = true;
 			reopen();
 		}));
-		Ui.brand(g, (width - Ui.brandWidth(1.4f)) / 2, by - 30, 1.4f);
-		Ui.centered(g, Ui.tr("slashclient-hud.ui.dragHint"), width / 2, by + 34, Ui.TEXT_2);
+		x += openW + 6;
+		Ui.button(g, "done", x, by + 5, doneW, 18, done, false, mx, my);
+		hits.add(new Hit(x, by + 5, doneW, 18, this::onClose));
+		Component hint = Ui.tr("slashclient-hud.ui.dragHint");
+		int hw = Ui.width(hint) + 16;
+		Ui.round(g, (width - hw) / 2, by + barH + 4, hw, 14, 4, 0xCC0A0D14);
+		Ui.centered(g, hint, width / 2, by + barH + 7, Ui.TEXT_2);
 	}
+
 
 	private void drawWindow(GuiGraphicsExtractor g, int mx, int my) {
 		int x = winX(), y = winY(), w = winW(), h = winH();
 		Ui.panel(g, x, y, w, h);
 		// header: brand, search, close
-		Ui.brand(g, x + 14, y + 11, 1.15f);
+		Ui.brand(g, x + 14, y + 12, 1.15f);
 		g.fill(x + 1, y + 32, x + w - 1, y + 33, Ui.BORDER);
 		if (search != null) {
-			Ui.round(g, x + w - 192, y + 7, 152, 18, 4, 0x33000000);
-			Ui.roundOutline(g, x + w - 192, y + 7, 152, 18, 4, search.isFocused() ? 0x663B82F6 : Ui.BORDER);
+			boolean focused = search.isFocused();
+			Ui.round(g, x + w - 196, y + 7, 156, 18, 4, Ui.CARD);
+			Ui.roundOutline(g, x + w - 196, y + 7, 156, 18, 4, focused ? 0x993B82F6 : Ui.BORDER);
+			Ui.icon(g, "search", x + w - 190, y + 11, 10, focused ? Ui.ACCENT_LIGHT : Ui.MUTED);
 		}
-		Ui.button(g, "close", x + w - 32, y + 7, 18, 18, Ui.text("✕"), false, mx, my);
+		Ui.button(g, "close", x + w - 32, y + 7, 18, 18, "close", Component.empty(), false, mx, my);
 		hits.add(new Hit(x + w - 32, y + 7, 18, 18, this::onClose));
 
-		// sidebar
+		// sidebar with the launcher's icons
 		int sy = y + 40;
 		// rows get shorter in a small window, so "Edit HUD layout" keeps its place at the bottom
 		int rowH = Math.max(14, Math.min(20, (h - 40 - 34) / Catalog.CATEGORIES.length - 2));
 		for (String cat : Catalog.CATEGORIES) {
 			boolean active = cat.equals(category) && settingsOf == null;
-			boolean over = Ui.inside(mx, my, x + 8, sy, 104, rowH);
-			float t = Ui.hover("cat:" + cat, over || active);
+			boolean over = Ui.inside(mx, my, x + 8, sy, 106, rowH);
+			float t = Ui.hover("cat:" + cat, over);
 			if (active) {
-				Ui.round(g, x + 8, sy, 104, rowH, 4, 0x2E3B82F6);
+				Ui.round(g, x + 8, sy, 106, rowH, 4, 0xFF1B2B4D);
 				g.fill(x + 8, sy + 3, x + 10, sy + rowH - 3, Ui.ACCENT_LIGHT);
-			} else if (t > 0) Ui.round(g, x + 8, sy, 104, rowH, 4, Ui.blend(0x00FFFFFF, Ui.GLASS_HOVER, t));
-			Ui.draw(g, Ui.tr("slashclient-hud.cat." + cat), x + 18, sy + (rowH - 8) / 2, active ? Ui.TEXT : Ui.TEXT_2);
+			} else if (t > 0) Ui.round(g, x + 8, sy, 106, rowH, 4, Ui.blend(Ui.PANEL, Ui.CARD_HOVER, t));
+			int color = active ? Ui.ACCENT_LIGHT : Ui.blend(Ui.TEXT_2, Ui.TEXT, t);
+			Ui.icon(g, CATEGORY_ICONS[java.util.Arrays.asList(Catalog.CATEGORIES).indexOf(cat)], x + 16, sy + (rowH - 9) / 2, 9, color);
+			Ui.draw(g, Ui.tr("slashclient-hud.cat." + cat), x + 31, sy + (rowH - 8) / 2, active ? Ui.TEXT : color);
 			String target = cat;
-			hits.add(new Hit(x + 8, sy, 104, rowH, () -> {
+			hits.add(new Hit(x + 8, sy, 106, rowH, () -> {
 				category = target;
 				settingsOf = null;
 				reopen();
 			}));
 			sy += rowH + 2;
 		}
-		Ui.draw(g, Ui.tr("slashclient-hud.ui.editLayout"), x + 18, y + h - 22, Ui.ACCENT_LIGHT);
-		hits.add(new Hit(x + 8, y + h - 28, 104, 20, () -> {
+		Ui.button(g, "layout", x + 8, y + h - 26, 106, 18, "move", Ui.tr("slashclient-hud.ui.editLayout"), false, mx, my);
+		hits.add(new Hit(x + 8, y + h - 26, 106, 18, () -> {
 			window = false;
 			rebuildWidgets();
 		}));
-		g.fill(x + 120, y + 33, x + 121, y + h - 1, Ui.BORDER);
+		g.fill(x + 122, y + 33, x + 123, y + h - 1, Ui.BORDER);
 
-		int cx = x + 130, cy = y + 42, cw = w - 140, ch = h - 50;
+		int cx = x + 132, cy = y + 42, cw = w - 144, ch = h - 50;
 		if (settingsOf != null) drawSettings(g, mx, my, cx, cy, cw, ch);
 		else if (category.equals("share")) drawShare(g, mx, my, cx, cy, cw);
 		else drawCards(g, mx, my, cx, cy, cw, ch);
 	}
+
+	private static final String[] CATEGORY_ICONS = { "all", "info", "combat", "world", "extras", "chat", "share" };
+
 
 	private void drawCards(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h) {
 		String query = search == null ? "" : search.getValue().trim().toLowerCase(Locale.ROOT);
@@ -224,9 +249,9 @@ public class HudEditScreen extends Screen {
 			shown.add(e);
 		}
 		int gap = 6;
-		int cols = Math.max(1, (w + gap) / (96 + gap));
+		int cols = Math.max(1, (w + gap) / (104 + gap));
 		int cardW = (w - gap * (cols - 1)) / cols;
-		int cardH = 66;
+		int cardH = 72;
 		int rows = (shown.size() + cols - 1) / cols;
 		maxScroll = Math.max(0, rows * (cardH + gap) - gap - h);
 		scroll = Math.max(0, Math.min(maxScroll, scroll));
@@ -250,27 +275,38 @@ public class HudEditScreen extends Screen {
 	private void drawCard(GuiGraphicsExtractor g, int mx, int my, Catalog.Entry e, int x, int y, int w, int h, boolean clickable) {
 		boolean on = e.hasSwitch() && e.get().get();
 		float t = Ui.hover("card:" + e.id(), clickable && Ui.inside(mx, my, x, y, w, h));
-		Ui.round(g, x, y, w, h, 5, Ui.blend(Ui.GLASS, Ui.GLASS_HOVER, t));
-		Ui.roundOutline(g, x, y, w, h, 5, on ? 0x553B82F6 : Ui.blend(Ui.BORDER, 0x33FFFFFF, t));
-		Ui.icon(g, e.icon(), e.nameKey().isEmpty() ? "?" : Component.translatable(e.nameKey()).getString().substring(0, 1), x + w / 2 - 8, y + 8);
-		Ui.centered(g, Ui.fit(Ui.tr(e.nameKey()), w - 8), x + w / 2, y + 29, on || !e.hasSwitch() ? Ui.TEXT : Ui.TEXT_2);
+		Ui.round(g, x, y, w, h, 5, Ui.blend(Ui.CARD, Ui.CARD_HOVER, t));
+		Ui.roundOutline(g, x, y, w, h, 5, on ? 0xAA3B82F6 : Ui.blend(Ui.BORDER, 0x40FFFFFF, t));
+		// the icon sits on a small tile, tinted blue when the module is on
+		Ui.round(g, x + w / 2 - 13, y + 7, 26, 26, 5, on ? 0xFF1B2B4D : 0xFF202839);
+		var pose = g.pose();
+		pose.pushMatrix();
+		pose.translate(x + w / 2 - 12, y + 8);
+		pose.scale(1.5f, 1.5f);
+		Ui.icon(g, e.icon(), Component.translatable(e.nameKey()).getString().substring(0, 1), 0, 0);
+		pose.popMatrix();
+		Ui.centered(g, Ui.fit(Ui.trBold(e.nameKey()), w - 10), x + w / 2, y + 38, Ui.TEXT);
 		boolean gear = !e.settings().isEmpty();
 		if (e.hasSwitch()) {
 			Ui.toggle(g, e.id(), x + 8, y + h - 16, on);
+			Ui.draw(g, Ui.tr(on ? "slashclient-hud.ui.on" : "slashclient-hud.ui.off"), x + 32, y + h - 16, on ? Ui.ACCENT_LIGHT : Ui.MUTED);
 			if (gear) {
-				Ui.button(g, "gear:" + e.id(), x + w - 24, y + h - 20, 16, 16, Ui.text("⚙"), false, mx, my);
-				if (clickable) hits.add(new Hit(x + w - 24, y + h - 20, 16, 16, () -> openSettings(e)));
+				Ui.button(g, "gear:" + e.id(), x + w - 24, y + h - 21, 16, 16, "gear", Component.empty(), false, mx, my);
+				if (clickable) hits.add(new Hit(x + w - 24, y + h - 21, 16, 16, () -> openSettings(e)));
 			}
 			if (clickable) hits.add(new Hit(x, y, w, h, () -> e.set().accept(!e.get().get())));
 		} else {
 			Component action = Ui.tr(gear ? "slashclient-hud.ui.settings" : "slashclient-hud.ui.openIt");
-			Ui.centered(g, action, x + w / 2, y + h - 15, Ui.ACCENT_LIGHT);
+			int aw = Ui.width(action) + 22;
+			Ui.icon(g, gear ? "gear" : "arrow", x + (w - aw) / 2, y + h - 16, 9, Ui.ACCENT_LIGHT);
+			Ui.draw(g, action, x + (w - aw) / 2 + 13, y + h - 16, Ui.ACCENT_LIGHT);
 			if (clickable) hits.add(new Hit(x, y, w, h, () -> {
 				if (e.open() != null) e.open().run();
 				else openSettings(e);
 			}));
 		}
 	}
+
 
 	private void openSettings(Catalog.Entry e) {
 		settingsOf = e;
@@ -279,13 +315,14 @@ public class HudEditScreen extends Screen {
 
 	private void drawSettings(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h) {
 		Catalog.Entry e = settingsOf;
-		Ui.button(g, "back", x, y, 70, 18, Ui.tr("slashclient-hud.ui.back"), false, mx, my);
+		Ui.button(g, "back", x, y, 70, 18, "back", Ui.tr("slashclient-hud.ui.back"), false, mx, my);
 		hits.add(new Hit(x, y, 70, 18, () -> {
 			settingsOf = null;
 			reopen();
 		}));
+		Ui.round(g, x + 78, y - 1, 20, 20, 4, 0xFF1B2B4D);
 		Ui.icon(g, e.icon(), Component.translatable(e.nameKey()).getString().substring(0, 1), x + 80, y + 1);
-		Ui.draw(g, Ui.trBold(e.nameKey()), x + 100, y + 5, Ui.TEXT);
+		Ui.draw(g, Ui.trBold(e.nameKey()), x + 104, y + 5, Ui.TEXT);
 		List<Catalog.Setting> rows = new ArrayList<>(e.settings());
 		if (e.hasSwitch()) {
 			rows.add(0, new Catalog.Toggle("slashclient-hud.ui.enabled", e.get(), e.set()));
@@ -300,7 +337,7 @@ public class HudEditScreen extends Screen {
 		int ry = listTop + 2 - Math.round(scroll);
 		boolean inList = my >= listTop && my < listTop + listH;
 		for (Catalog.Setting s : rows) {
-			Ui.round(g, x, ry, w, 26, 4, Ui.GLASS);
+			Ui.round(g, x, ry, w, 26, 4, Ui.CARD);
 			Component label = Ui.tr(s.labelKey());
 			Ui.draw(g, label, x + 10, ry + 9, Ui.TEXT);
 			int labelEnd = x + 10 + Ui.width(label) + 14;
@@ -318,7 +355,9 @@ public class HudEditScreen extends Screen {
 					float value = sl.get().get();
 					Ui.slider(g, sx, ry + 8, sw, (value - sl.min()) / (sl.max() - sl.min()));
 					Component shownValue = Ui.text(String.format(Locale.ROOT, sl.format(), value));
-					Ui.draw(g, shownValue, right - Ui.width(shownValue), ry + 9, Ui.TEXT_2);
+					int vw = Ui.width(shownValue) + 10;
+					Ui.round(g, right - vw, ry + 6, vw, 14, 4, 0xFF202839);
+					Ui.draw(g, shownValue, right - vw + 5, ry + 9, Ui.TEXT);
 					hits.add(new Hit(sx - 4, ry + 4, sw + 8, 18, () -> {
 						draggingSlider = sl;
 						sliderX = sx;
@@ -358,7 +397,7 @@ public class HudEditScreen extends Screen {
 		if (rows.isEmpty()) Ui.draw(g, Ui.tr("slashclient-hud.ui.noSettings"), x, ry, Ui.MUTED);
 		// modules can also be moved from here
 		if (isModule) {
-			Ui.button(g, "move", x, ry + 4, 150, 18, Ui.tr("slashclient-hud.ui.moveIt"), false, mx, my);
+			Ui.button(g, "move", x, ry + 4, 150, 18, "move", Ui.tr("slashclient-hud.ui.moveIt"), false, mx, my);
 			if (inList) hits.add(new Hit(x, ry + 4, 150, 18, () -> {
 				window = false;
 				rebuildWidgets();
@@ -372,12 +411,12 @@ public class HudEditScreen extends Screen {
 		Ui.draw(g, Ui.tr("slashclient-hud.share.help"), x, y + 16, Ui.TEXT_2);
 		HudConfig cfg = SlashHud.config;
 		int bw = Math.min(150, (w - 12) / 3);
-		Ui.button(g, "copy", x, y + 36, bw, 22, Ui.tr("slashclient-hud.share.copy"), true, mx, my);
+		Ui.button(g, "copy", x, y + 36, bw, 22, "copy", Ui.tr("slashclient-hud.share.copy"), true, mx, my);
 		hits.add(new Hit(x, y + 36, bw, 22, () -> {
 			minecraft.keyboardHandler.setClipboard(ShareCode.encode(cfg));
 			status = Ui.tr("slashclient-hud.share.copied");
 		}));
-		Ui.button(g, "paste", x + bw + 6, y + 36, bw, 22, Ui.tr("slashclient-hud.share.paste"), false, mx, my);
+		Ui.button(g, "paste", x + bw + 6, y + 36, bw, 22, "paste", Ui.tr("slashclient-hud.share.paste"), false, mx, my);
 		hits.add(new Hit(x + bw + 6, y + 36, bw, 22, () -> {
 			HudConfig pasted = ShareCode.decode(minecraft.keyboardHandler.getClipboard());
 			if (pasted == null) status = Ui.tr("slashclient-hud.share.invalid").withColor(Ui.DANGER);
@@ -389,7 +428,7 @@ public class HudEditScreen extends Screen {
 				status = Ui.tr("slashclient-hud.share.pasted");
 			}
 		}));
-		Ui.button(g, "reset", x + (bw + 6) * 2, y + 36, bw, 22, Ui.tr("slashclient-hud.reset"), false, mx, my);
+		Ui.button(g, "reset", x + (bw + 6) * 2, y + 36, bw, 22, "reset", Ui.tr("slashclient-hud.reset"), false, mx, my);
 		hits.add(new Hit(x + (bw + 6) * 2, y + 36, bw, 22, () -> {
 			cfg.copyFrom(HudConfig.defaults());
 			ChatTabs.changed();

@@ -92,13 +92,13 @@
 	"slashclient-hud.chat.new": "Nowa",
 	"slashclient-hud.chat.help": "Zakładka pokazuje linie czatu z jej tekstem albo pasujące do jej regexa.",
 	"slashclient-hud.ui.search": "Szukaj…",
-	"slashclient-hud.ui.open": "Ustawienia SlashClient",
-	"slashclient-hud.ui.dragHint": "Przeciągnij moduł, żeby go przesunąć · PPM: ustawienia modułu",
-	"slashclient-hud.ui.editLayout": "✥ Edytuj układ HUD",
+	"slashclient-hud.ui.open": "Ustawienia",
+	"slashclient-hud.ui.dragHint": "Przeciągnij moduł, żeby go przesunąć  ·  PPM na module: jego ustawienia",
+	"slashclient-hud.ui.editLayout": "Edytuj układ",
 	"slashclient-hud.ui.nothing": "Nic nie pasuje do wyszukiwania.",
 	"slashclient-hud.ui.settings": "Ustawienia",
 	"slashclient-hud.ui.openIt": "Otwórz",
-	"slashclient-hud.ui.back": "← Wstecz",
+	"slashclient-hud.ui.back": "Wstecz",
 	"slashclient-hud.ui.enabled": "Włączony",
 	"slashclient-hud.ui.noSettings": "Ten dodatek nie ma ustawień.",
 	"slashclient-hud.ui.moveIt": "✥ Przesuń na ekranie",
@@ -123,5 +123,8 @@
 	"slashclient-hud.menu.subtitle": "Minecraft %s z SlashClient",
 	"slashclient-hud.menu.servers": "Twoje serwery",
 	"slashclient-hud.menu.join": "Dołącz",
-	"slashclient-hud.menu.ours": "Menu SlashClient"
+	"slashclient-hud.menu.ours": "Menu SlashClient",
+	"slashclient-hud.ui.on": "Włączony",
+	"slashclient-hud.ui.off": "Wyłączony",
+	"slashclient-hud.menu.noServers": "Dodaj serwery w Wieloosobowej, a pojawią się tutaj."
 }
