@@ -14,7 +14,7 @@ interface Profile {
   jvmArgs: string; javaPath: string; width: number; height: number;
   icon: string; iconVersion: number; syncOptions: boolean; iconFile?: string;
   modpack?: { projectId: string; versionId: string; versionNumber: string; title: string };
-  playTimeMs?: number; lastPlayedAt?: number;
+  playTimeMs?: number; lastPlayedAt?: number; jvmPreset?: 'default' | 'g1' | 'zgc';
   lastTarget?: { kind: 'server'; address: string } | { kind: 'world'; folder: string; name: string };
 }
 
@@ -41,6 +41,7 @@ interface PublicStore {
   settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; discordEnabled: boolean; language: string };
   running: boolean;
   dataDir: string;
+  systemMemoryMb: number;
 }
 interface VersionInfo { id: string; type: string }
 
@@ -303,6 +304,34 @@ function fillSelect(select: HTMLSelectElement, items: { value: string; label: st
   select.replaceChildren(...items.map(({ value, label }) => el('option', { value, textContent: label, selected: value === selected })));
 }
 
+// ---------- memory recommendation ----------
+
+let memoryRecommendation: { mb: number; mods: number } | undefined;
+const gb = (mb: number) => (mb / 1024).toLocaleString(locale(), { maximumFractionDigits: 1 });
+
+function renderMemoryHint(currentMb: number) {
+  const system = store.systemMemoryMb;
+  const parts = [t('Komputer ma {0} GB RAM', gb(system))];
+  if (memoryRecommendation) {
+    parts.push(memoryRecommendation.mods
+      ? t('zalecane {0} GB ({1} modów)', gb(memoryRecommendation.mb), memoryRecommendation.mods)
+      : t('zalecane {0} GB', gb(memoryRecommendation.mb)));
+  }
+  const tooMuch = currentMb > system - 4096;
+  if (tooMuch) parts.push(t('zostaw co najmniej 4 GB dla systemu'));
+  $('#memory-hint-text').textContent = parts.join(' · ');
+  $('#memory-hint').classList.toggle('warn', tooMuch);
+  $('#memory-recommended').classList.toggle('hidden', !memoryRecommendation || memoryRecommendation.mb === currentMb);
+}
+
+$('#memory-recommended').addEventListener('click', () => {
+  if (!memoryRecommendation) return;
+  const slider = $<HTMLFormElement>('#profile-form').elements.namedItem('memoryMb') as HTMLInputElement;
+  slider.value = String(memoryRecommendation.mb);
+  $('#memory-value').textContent = `${memoryRecommendation.mb} MB`;
+  renderMemoryHint(memoryRecommendation.mb);
+});
+
 // ---------- modpack of a profile ----------
 
 let modpackLatest: ProjectVersion | undefined;
@@ -521,6 +550,18 @@ function loadProfileForm(profile: Profile) {
   $<HTMLSelectElement>('#loader-select').value = profile.loader ?? 'vanilla';
   renderLoaderVersions(profile.loaderVersion ?? '');
   $('#memory-value').textContent = `${profile.memoryMb} MB`;
+  (form.elements.namedItem('jvmPreset') as HTMLSelectElement).value = profile.jvmPreset ?? 'default';
+  // the slider goes up to what this computer has (leaving 2 GB), the hint suggests a value
+  const slider = form.elements.namedItem('memoryMb') as HTMLInputElement;
+  slider.max = String(Math.max(4096, Math.floor((store.systemMemoryMb - 2048) / 512) * 512));
+  slider.value = String(profile.memoryMb);
+  memoryRecommendation = undefined;
+  renderMemoryHint(profile.memoryMb);
+  api.recommendedMemory(profile.id).then((r: { mb: number; mods: number }) => {
+    if (editingId !== profile.id) return;
+    memoryRecommendation = r;
+    renderMemoryHint(Number(slider.value));
+  });
 }
 
 /** Fills the loader-version dropdown for the chosen loader and game version. */
@@ -697,7 +738,10 @@ $('#show-snapshots').addEventListener('change', () => renderVersionOptions($<HTM
 $('#show-old').addEventListener('change', () => renderVersionOptions($<HTMLSelectElement>('#version-select').value));
 $('#profile-form').addEventListener('input', (e) => {
   const target = e.target as HTMLInputElement;
-  if (target.name === 'memoryMb') $('#memory-value').textContent = `${target.value} MB`;
+  if (target.name === 'memoryMb') {
+    $('#memory-value').textContent = `${target.value} MB`;
+    renderMemoryHint(Number(target.value));
+  }
 });
 
 $('#profile-form').addEventListener('submit', async (e) => {
@@ -712,6 +756,7 @@ $('#profile-form').addEventListener('submit', async (e) => {
     versionId: str('versionId'),
     loader: str('loader') as Profile['loader'],
     syncOptions: data.get('syncOptions') === 'on',
+    jvmPreset: str('jvmPreset') as Profile['jvmPreset'],
     loaderVersion: str('loaderVersion'),
     gameDir: str('gameDir'),
     jvmArgs: str('jvmArgs'),

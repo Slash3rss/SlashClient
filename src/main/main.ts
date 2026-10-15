@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, Notification, protocol, safeStorage, shell } from 'electron';
 import { randomUUID } from 'node:crypto';
+import os from 'node:os';
 import { pathToFileURL } from 'node:url';
 import type { ChildProcess } from 'node:child_process';
 import path from 'node:path';
@@ -8,6 +9,7 @@ import { setLang } from '../shared/i18n';
 import { analyzeCrash } from './crash';
 import { iconFile, iconFromFile, iconFromUrl } from './profileIcon';
 import { pullShared, pushShared } from './sync';
+import { recommendedMemoryMb } from './jvm';
 import { lastTarget, serverFromLog, worldPlayedSince } from './sessions';
 import { installUpdate, startUpdateChecks } from './updates';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
@@ -90,6 +92,7 @@ function publicStore() {
     profiles: store.profiles.map((p) => ({ ...p, iconFile: p.icon === 'custom' ? iconFile(profileGameDir(p)) : undefined })),
     running: Boolean(game),
     dataDir: paths.root,
+    systemMemoryMb: Math.round(os.totalmem() / 1024 / 1024),
   };
 }
 
@@ -371,6 +374,11 @@ handle('modpack:update', async (profileId: string, versionId?: string) => {
   }
 });
 
+handle('profile:recommendedMemory', async (id: string) => {
+  const profile = profileById(id);
+  const mods = (await listInstalled(profileGameDir(profile))).filter((i) => i.type === 'mod' && i.enabled).length;
+  return { mb: recommendedMemoryMb(Math.round(os.totalmem() / 1024 / 1024), profile.loader, mods), mods };
+});
 handle('servers:list', (force?: boolean) => listServers(force));
 handle('servers:ping', (address: string) => pingServer(address));
 

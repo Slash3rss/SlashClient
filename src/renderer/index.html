@@ -210,12 +210,23 @@
             <span>Wspólne ustawienia gry z innymi profilami <span class="hint">grafika, dźwięk, sterowanie, lista serwerów</span></span>
           </label>
           <label class="field"><span class="label">Pamięć RAM <b id="memory-value"></b></span><input type="range" name="memoryMb" min="1024" max="16384" step="512"></label>
+          <div class="memory-hint" id="memory-hint">
+            <span id="memory-hint-text"></span>
+            <button type="button" id="memory-recommended">Ustaw zalecane</button>
+          </div>
           <div class="row">
             <label class="field">Szerokość okna<input type="number" name="width" min="320"></label>
             <label class="field">Wysokość okna<input type="number" name="height" min="240"></label>
           </div>
           <label class="field"><span class="label">Folder gry <span class="hint">puste = osobny folder profilu</span></span><input name="gameDir"></label>
-          <label class="field">Argumenty JVM<input name="jvmArgs" placeholder="-XX:+UseG1GC"></label>
+          <label class="field">Wydajność (flagi JVM)
+            <select name="jvmPreset">
+              <option value="g1">Zoptymalizowane G1 (zalecane)</option>
+              <option value="zgc">ZGC: najkrótsze przycięcia (Java 21+, dużo RAM)</option>
+              <option value="default">Domyślne Minecrafta</option>
+            </select>
+          </label>
+          <label class="field"><span class="label">Dodatkowe argumenty JVM <span class="hint">opcjonalne</span></span><input name="jvmArgs" placeholder="-Dfml.ignorePatchDiscrepancies=true"></label>
           <label class="field"><span class="label">Ścieżka do Javy <span class="hint">puste = automatycznie</span></span><input name="javaPath"></label>
           <div class="row actions">
             <button type="button" id="profile-folder"><i class="fa-regular fa-folder-open"></i> Otwórz folder</button>

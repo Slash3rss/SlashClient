@@ -50,6 +50,8 @@ export interface Profile {
   gameDir: string;
   memoryMb: number;
   jvmArgs: string;
+  /** JVM flag preset ('default' | 'g1' | 'zgc'), expanded for the game's Java at launch. */
+  jvmPreset: 'default' | 'g1' | 'zgc';
   /** Overrides the automatically installed Java; empty means automatic. */
   javaPath: string;
   width: number;
@@ -107,6 +109,7 @@ export function newProfile(partial: Partial<Profile> = {}): Profile {
     iconVersion: 0,
     syncOptions: true,
     playTimeMs: 0,
+    jvmPreset: 'g1',
     gameDir: '',
     memoryMb: 4096,
     jvmArgs: '',
@@ -132,7 +135,8 @@ export async function loadStore(): Promise<StoreData> {
     return {
       accounts: data.accounts ?? base.accounts,
       // profiles saved before settings sync existed keep their own settings until the player turns it on
-      profiles: data.profiles?.length ? data.profiles.map((p) => newProfile({ ...p, syncOptions: p.syncOptions ?? false })) : base.profiles,
+      // older profiles keep the plain JVM settings they had
+      profiles: data.profiles?.length ? data.profiles.map((p) => newProfile({ ...p, syncOptions: p.syncOptions ?? false, jvmPreset: p.jvmPreset ?? 'default' })) : base.profiles,
       settings: { ...base.settings, ...data.settings },
     };
   } catch {

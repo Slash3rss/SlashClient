@@ -16,6 +16,7 @@ const api = {
   deleteProfile: (id: string) => invoke('profile:delete', id),
   openProfileDir: (id: string) => invoke('profile:openDir', id),
   openModsDir: (id: string) => invoke('profile:openMods', id),
+  recommendedMemory: (id: string) => invoke('profile:recommendedMemory', id),
   setProfileIcon: (id: string, icon: string) => invoke('profile:setIcon', id, icon),
   chooseProfileIcon: (id: string) => invoke('profile:chooseIcon', id),
   loaderVersions: (loader: string, versionId: string) => invoke('loaders:versions', loader, versionId),

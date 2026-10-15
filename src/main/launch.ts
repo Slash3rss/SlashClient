@@ -5,6 +5,7 @@ import path from 'node:path';
 import { APP_VERSION } from '../shared/version';
 import { createLogParser } from './gamelog';
 import { installLoader, LOADER_NAMES } from './loaders';
+import { presetArgs } from './jvm';
 import { installVersion, libraryClasspath, type StageFn } from './install';
 import { ensureJava } from './java';
 import { paths } from './paths';
@@ -127,6 +128,7 @@ export async function launch({ profile, account, onStage, onLog, server, world }
   const args = [
     `-Xmx${profile.memoryMb}M`,
     ...(osName === 'osx' ? [`-Xdock:name=Minecraft ${versionId}`] : []),
+    ...presetArgs(profile.jvmPreset, version.javaVersion?.majorVersion ?? 8),
     ...splitArgs(profile.jvmArgs),
     ...jvmArgs.map((a) => substitute(a, vars)),
     ...(loggingConfig && version.logging?.client ? [substitute(version.logging.client.argument, { path: loggingConfig })] : []),
