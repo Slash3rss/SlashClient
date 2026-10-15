@@ -14,7 +14,8 @@
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:win": "npm run build && electron-builder --win",
-    "dist:linux": "npm run build && electron-builder --linux"
+    "dist:linux": "npm run build && electron-builder --linux",
+    "dmg-background": "electron scripts/make-dmg-background.cjs"
   },
   "license": "MIT",
   "devDependencies": {
@@ -112,6 +113,29 @@
         "repo": "SlashClient",
         "releaseType": "release"
       }
-    ]
+    ],
+    "dmg": {
+      "title": "SlashClient ${version}",
+      "background": "build/background.tiff",
+      "window": {
+        "width": 540,
+        "height": 380
+      },
+      "iconSize": 96,
+      "iconTextSize": 13,
+      "contents": [
+        {
+          "x": 160,
+          "y": 205,
+          "type": "file"
+        },
+        {
+          "x": 380,
+          "y": 205,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
   }
 }

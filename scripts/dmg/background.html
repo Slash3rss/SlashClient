@@ -1,0 +1,86 @@
+<!doctype html>
+<!-- Background of the macOS installer window (540×380 points). Rendered by scripts/make-dmg-background.cjs. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: "Outfit"; font-weight: 100 900; src: url(../../node_modules/@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2) format("woff2"); }
+  @font-face { font-family: "Outfit"; font-weight: 100 900; src: url(../../node_modules/@fontsource-variable/outfit/files/outfit-latin-ext-wght-normal.woff2) format("woff2"); unicode-range: U+0100-02AF; }
+  html, body { margin: 0; background: #0a0d14; overflow: hidden; }
+  svg { display: block; }
+  text { font-family: "Outfit"; }
+</style>
+</head>
+<body>
+<!-- the icons Finder draws sit at (160, 205) and (380, 205); their names appear ~62 pt lower -->
+<svg id="bg" viewBox="0 0 540 380" xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision">
+  <defs>
+    <radialGradient id="blue"><stop offset="0" stop-color="#2563eb" stop-opacity=".55"/><stop offset="1" stop-color="#2563eb" stop-opacity="0"/></radialGradient>
+    <radialGradient id="violet"><stop offset="0" stop-color="#7c3aed" stop-opacity=".45"/><stop offset="1" stop-color="#7c3aed" stop-opacity="0"/></radialGradient>
+    <linearGradient id="client" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#60a5fa"/><stop offset=".5" stop-color="#3b82f6"/><stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
+  </defs>
+
+  <rect width="540" height="380" fill="#0a0d14"/>
+  <circle cx="70" cy="40" r="240" fill="url(#blue)"/>
+  <circle cx="500" cy="380" r="260" fill="url(#violet)"/>
+  <g id="stars" fill="#bfdbfe"></g>
+
+  <!-- header -->
+  <image href="../../build/icons/128x128.png" x="168" y="22" width="44" height="44"/>
+  <text x="222" y="54" font-size="26" font-weight="800" fill="#f3f4f6" letter-spacing="-0.5">Slash<tspan fill="url(#client)">Client</tspan></text>
+  <text x="270" y="94" font-size="13" font-weight="500" fill="#9ca3af" text-anchor="middle">Przeciągnij SlashClient do folderu Aplikacje</text>
+
+  <!-- Minecraft inventory window with two slots and an arrow -->
+  <g id="gui" shape-rendering="crispEdges"></g>
+</svg>
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const add = (parent, tag, attrs) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); parent.appendChild(e); return e; };
+const rect = (p, x, y, w, h, fill) => add(p, 'rect', { x, y, width: w, height: h, fill });
+
+// stars, same seeded scatter every render
+let seed = 7;
+const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
+const stars = document.getElementById('stars');
+for (let i = 0; i < 70; i++) add(stars, 'circle', { cx: (rnd() * 540).toFixed(1), cy: (rnd() * 380).toFixed(1), r: (rnd() * 0.9 + 0.3).toFixed(2), opacity: (rnd() * 0.5 + 0.25).toFixed(2) });
+
+// GUI panel: black outline with clipped corners, white/grey bevel, #c6c6c6 body (u = one GUI pixel)
+const gui = document.getElementById('gui');
+const u = 3, X = 70, Y = 124, W = 400, H = 210;
+rect(gui, X + u, Y, W - 2 * u, H, '#000');
+rect(gui, X, Y + u, W, H - 2 * u, '#000');
+rect(gui, X + u, Y + u, W - 2 * u, H - 2 * u, '#c6c6c6');
+rect(gui, X + u, Y + u, W - 3 * u, 2 * u, '#fff');
+rect(gui, X + u, Y + u, 2 * u, H - 3 * u, '#fff');
+rect(gui, X + 2 * u, Y + H - 3 * u, W - 3 * u, 2 * u, '#555');
+rect(gui, X + W - 3 * u, Y + 2 * u, 2 * u, H - 3 * u, '#555');
+rect(gui, X + u, Y + u, u, u, '#c6c6c6');
+rect(gui, X + W - 2 * u, Y + H - 2 * u, u, u, '#c6c6c6');
+rect(gui, X + 3 * u, Y + 3 * u, W - 6 * u, H - 6 * u, '#c6c6c6');
+
+// slots: dark top-left edge, white bottom-right edge, grey inside
+const slot = (cx) => {
+  const w = 136, h = 160, x = cx - w / 2, y = 145;
+  rect(gui, x, y, w, h, '#373737');
+  rect(gui, x + u, y + u, w - u, h - u, '#fff');
+  rect(gui, x + u, y + u, w - 2 * u, h - 2 * u, '#8b8b8b');
+};
+slot(160);
+slot(380);
+
+// pixel arrow pointing right, like the crafting arrow in the game
+const arrow = ['......X.....', '......XX....', 'XXXXXXXXX...', 'XXXXXXXXXX..', 'XXXXXXXXX...', '......XX....', '......X.....'];
+const px = 5, ax = 270 - (arrow[0].length * px) / 2, ay = 205 - (arrow.length * px) / 2;
+arrow.forEach((row, j) => [...row].forEach((c, i) => { if (c === 'X') rect(gui, ax + i * px, ay + j * px, px, px, '#555'); }));
+
+// size the drawing to the window (1× or 2× for Retina)
+const scale = Number(new URLSearchParams(location.search).get('scale') || 1);
+const svg = document.getElementById('bg');
+svg.setAttribute('width', 540 * scale);
+svg.setAttribute('height', 380 * scale);
+</script>
+</body>
+</html>
