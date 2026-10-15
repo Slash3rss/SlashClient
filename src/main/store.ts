@@ -33,6 +33,12 @@ export interface Profile {
   loader: 'vanilla' | 'fabric' | 'quilt' | 'forge' | 'neoforge';
   /** Loader version; empty = newest stable. */
   loaderVersion: string;
+  /** 'block:<kind>' (built-in picture) or 'custom' (.slashclient/icon.png in the game folder); empty = default. */
+  icon: string;
+  /** Bumped when a custom icon changes, so the page reloads the picture. */
+  iconVersion: number;
+  /** Share options.txt, servers.dat and hotbar.nbt with the other synced profiles. */
+  syncOptions: boolean;
   /** Game directory; empty means instances/<id>. */
   gameDir: string;
   memoryMb: number;
@@ -91,6 +97,9 @@ export function newProfile(partial: Partial<Profile> = {}): Profile {
     versionId: '',
     loader: 'vanilla',
     loaderVersion: '',
+    icon: '',
+    iconVersion: 0,
+    syncOptions: true,
     gameDir: '',
     memoryMb: 4096,
     jvmArgs: '',
@@ -115,7 +124,8 @@ export async function loadStore(): Promise<StoreData> {
     const base = defaults();
     return {
       accounts: data.accounts ?? base.accounts,
-      profiles: data.profiles?.length ? data.profiles.map((p) => newProfile(p)) : base.profiles,
+      // profiles saved before settings sync existed keep their own settings until the player turns it on
+      profiles: data.profiles?.length ? data.profiles.map((p) => newProfile({ ...p, syncOptions: p.syncOptions ?? false })) : base.profiles,
       settings: { ...base.settings, ...data.settings },
     };
   } catch {

@@ -1,10 +1,13 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, protocol, safeStorage, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, Notification, protocol, safeStorage, shell } from 'electron';
+import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import type { ChildProcess } from 'node:child_process';
 import path from 'node:path';
 import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, pollDeviceCode, startDeviceCode } from './auth';
 import { setLang } from '../shared/i18n';
 import { analyzeCrash } from './crash';
+import { iconFile, iconFromFile, iconFromUrl } from './profileIcon';
+import { pullShared, pushShared } from './sync';
 import { installUpdate, startUpdateChecks } from './updates';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { launch, resolveVersionId } from './launch';
@@ -62,6 +65,7 @@ function publicStore() {
   return {
     ...store,
     accounts: store.accounts.map(({ id, type, name, uuid }) => ({ id, type, name, uuid })),
+    profiles: store.profiles.map((p) => ({ ...p, iconFile: p.icon === 'custom' ? iconFile(profileGameDir(p)) : undefined })),
     running: Boolean(game),
     dataDir: paths.root,
   };
@@ -168,6 +172,44 @@ handle('profile:openMods', async (id: string) => {
   await import('node:fs/promises').then((fs) => fs.mkdir(dir, { recursive: true }));
   await shell.openPath(dir);
 });
+// ---------- background tasks (shown in the page's task panel) ----------
+
+/** A long-running job the page shows with its own progress panel and a completion message. */
+function startTask(title: string, icon?: string) {
+  const id = randomUUID();
+  send('task:start', { id, title, icon });
+  return {
+    progress: (stage: string, done: number, total: number, stats?: { bytes: number; totalBytes: number; speed: number }) =>
+      send('task:progress', { id, stage, done, total, ...stats }),
+    finish: (ok: boolean, message: string, profileId?: string) => {
+      send('task:done', { id, ok, message, profileId });
+      // tell the player even when the launcher is in the background
+      if (!win?.isFocused() && Notification.isSupported()) new Notification({ title: 'SlashClient', body: message, icon: ICON }).show();
+    },
+  };
+}
+
+// ---------- profile icons ----------
+
+handle('profile:setIcon', async (id: string, icon: string) => {
+  const profile = profileById(id);
+  if (!/^block:[a-z-]+$/.test(icon) && icon !== '') throw new Error('Nieprawidłowa ikona');
+  profile.icon = icon;
+  await persist();
+});
+handle('profile:chooseIcon', async (id: string) => {
+  const profile = profileById(id);
+  const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
+    title: t('Wybierz ikonę profilu'), filters: [{ name: t('Obrazy'), extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }], properties: ['openFile'],
+  });
+  if (canceled || !filePaths[0]) return false;
+  await iconFromFile(profileGameDir(profile), filePaths[0]);
+  profile.icon = 'custom';
+  profile.iconVersion = Date.now();
+  await persist();
+  return true;
+});
+
 // ---------- Modrinth content ----------
 
 function profileById(id: string): Profile {
@@ -187,11 +229,19 @@ handle('content:search', async (profileId: string, query: string, type: ProjectT
   return search({ query, type, gameVersion, loader: profile.loader === 'vanilla' ? undefined : profile.loader, offset });
 });
 handle('content:list', async (profileId: string) => listInstalled((await profileTarget(profileId)).gameDir));
-handle('content:install', async (profileId: string, projectId: string, type: ContentType) => {
+handle('content:install', async (profileId: string, projectId: string, type: ContentType, title?: string, icon?: string) => {
   const { profile, gameDir, gameVersion } = await profileTarget(profileId);
   if (type === 'mod' && profile.loader === 'vanilla') throw new Error('Ten profil nie ma mod loadera. Ustaw Fabric w zakładce Profile.');
-  return installProject(gameDir, projectId, type, gameVersion, profile.loader, (done, total, stats) =>
-    send('launch:stage', { stage: t('Pobieranie'), done, total, ...stats }));
+  const task = startTask(t('Instalowanie: {0}', title ?? ''), icon);
+  try {
+    const titles = await installProject(gameDir, projectId, type, gameVersion, profile.loader, (done, total, stats) =>
+      task.progress(t('Pobieranie'), done, total, stats));
+    task.finish(true, titles.length > 1 ? t('Zainstalowano {0} i zależności: {1}', titles[0], titles.slice(1).join(', ')) : t('Zainstalowano {0}', titles[0]));
+    return titles;
+  } catch (err) {
+    task.finish(false, (err as Error).message);
+    throw err;
+  }
 });
 handle('content:toggle', async (profileId: string, type: ContentType, filename: string, enabled: boolean) =>
   setEnabled((await profileTarget(profileId)).gameDir, type, filename, enabled));
@@ -199,24 +249,42 @@ handle('content:remove', async (profileId: string, type: ContentType, filename: 
   removeContent((await profileTarget(profileId)).gameDir, type, filename));
 
 /** Creates a new profile from a .mrpack file and returns its id. */
-async function profileFromMrpack(file: string): Promise<string> {
-  const profile = newProfile();
-  const progress = (done: number, total: number, stats: { bytes: number; totalBytes: number; speed: number }) =>
-    send('launch:stage', { stage: t('Instalowanie modpacka'), done, total, ...stats });
-  const info = await installMrpack(file, profileGameDir(profile), progress);
-  Object.assign(profile, { name: info.name, versionId: info.gameVersion, loader: info.loader, loaderVersion: info.loaderVersion });
-  store.profiles.push(profile);
-  store.settings.selectedProfileId = profile.id;
-  await persist();
-  return profile.id;
+/**
+ * Creates a profile from a .mrpack with a visible progress panel, a completion
+ * message and (for Modrinth packs) the pack's own icon.
+ */
+async function installModpackTask(title: string, iconUrl: string | undefined, getFile: (task: ReturnType<typeof startTask>) => Promise<string>): Promise<string> {
+  const task = startTask(t('Instalowanie modpacka: {0}', title), iconUrl);
+  try {
+    const file = await getFile(task);
+    const profile = newProfile();
+    const gameDir = profileGameDir(profile);
+    const info = await installMrpack(file, gameDir, task.progress);
+    Object.assign(profile, { name: info.name, versionId: info.gameVersion, loader: info.loader, loaderVersion: info.loaderVersion });
+    if (iconUrl) {
+      task.progress(t('Pobieranie ikony'), 0, 1);
+      // a missing icon is not worth failing the install
+      await iconFromUrl(gameDir, iconUrl).then(() => Object.assign(profile, { icon: 'custom', iconVersion: Date.now() }), () => {});
+    }
+    store.profiles.push(profile);
+    store.settings.selectedProfileId = profile.id;
+    await persist();
+    task.finish(true, t('Zainstalowano modpack {0}. Profil jest gotowy do gry.', info.name), profile.id);
+    return profile.id;
+  } catch (err) {
+    task.finish(false, t('Nie udało się zainstalować modpacka: {0}', (err as Error).message));
+    throw err;
+  }
 }
 
-handle('modpack:install', async (projectId: string) => profileFromMrpack(await downloadModpack(projectId)));
+handle('modpack:install', (projectId: string, title: string, iconUrl?: string) =>
+  installModpackTask(title, iconUrl, (task) => downloadModpack(projectId, (d, n, s) => task.progress(t('Pobieranie modpacka'), d, n, s))));
 handle('modpack:import', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
-    title: 'Importuj modpack', filters: [{ name: 'Modpack Modrinth', extensions: ['mrpack'] }], properties: ['openFile'],
+    title: t('Importuj modpack'), filters: [{ name: 'Modpack Modrinth', extensions: ['mrpack'] }], properties: ['openFile'],
   });
-  return canceled || !filePaths[0] ? undefined : profileFromMrpack(filePaths[0]);
+  if (canceled || !filePaths[0]) return undefined;
+  return installModpackTask(path.basename(filePaths[0], '.mrpack'), undefined, async () => filePaths[0]);
 });
 
 handle('servers:list', (force?: boolean) => listServers(force));
@@ -278,6 +346,9 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
   }
   await persist();
 
+  // shared game settings: the profile gets them before the game starts and gives them back afterwards
+  if (profile.syncOptions) await pullShared(profileGameDir(profile));
+
   // keep the tail of the output for crash analysis
   const recentLog: string[] = [];
   const startedAt = Date.now();
@@ -313,6 +384,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
   if (store.settings.closeOnLaunch) win?.hide();
   child.on('exit', (code, signal) => {
     game = undefined;
+    if (profile.syncOptions) pushShared(profileGameDir(profile)).catch(() => {});
     discordClient()?.set(null);
     send('game:exit', { code, signal, byUser: killRequested });
     if (code !== 0 && !killRequested) {
@@ -339,7 +411,7 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'slash-media', privileges: { sta
 app.whenReady().then(async () => {
   protocol.handle('slash-media', (request) => {
     const file = new URL(request.url).searchParams.get('path') ?? '';
-    if (!/\.(png|jpe?g)$/i.test(file) || !isInsideInstances(file)) return new Response('Not found', { status: 404 });
+    if (!/\.(png|jpe?g|webp|gif)$/i.test(file) || !isInsideInstances(file)) return new Response('Not found', { status: 404 });
     return net.fetch(pathToFileURL(file).toString());
   });
   if (safeStorage.isEncryptionAvailable()) {

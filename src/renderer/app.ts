@@ -12,6 +12,7 @@ interface PublicAccount { id: string; type: 'offline' | 'msa'; name: string; uui
 interface Profile {
   id: string; name: string; versionId: string; loader: 'vanilla' | 'fabric' | 'quilt' | 'forge' | 'neoforge'; loaderVersion: string; gameDir: string; memoryMb: number;
   jvmArgs: string; javaPath: string; width: number; height: number;
+  icon: string; iconVersion: number; syncOptions: boolean; iconFile?: string;
 }
 interface PublicStore {
   accounts: PublicAccount[];
@@ -236,6 +237,39 @@ function fillSelect(select: HTMLSelectElement, items: { value: string; label: st
   select.replaceChildren(...items.map(({ value, label }) => el('option', { value, textContent: label, selected: value === selected })));
 }
 
+// ---------- profile icons ----------
+
+const BLOCKS = ['grass', 'dirt', 'stone', 'sand', 'planks', 'log', 'diamond-ore', 'obsidian', 'netherrack'];
+
+function profileIconUrl(p: Profile): string {
+  if (p.icon === 'custom' && p.iconFile) return `slash-media://local/?path=${encodeURIComponent(p.iconFile)}&v=${p.iconVersion}`;
+  const kind = p.icon?.startsWith('block:') ? p.icon.slice(6) : 'grass';
+  return `img/blocks/${BLOCKS.includes(kind) ? kind : 'grass'}.png`;
+}
+
+function profileIconImg(p: Profile): HTMLImageElement {
+  const img = el('img', { className: 'profile-icon', alt: '' });
+  img.src = profileIconUrl(p);
+  return img;
+}
+
+/** Block buttons, the profile's own picture (if any) and an upload button. */
+function renderIconChoices(profile: Profile) {
+  const current = profile.icon || 'block:grass';
+  const choice = (value: string, src: string, title: string) => {
+    const b = el('button', { type: 'button', className: `icon-choice${value === current ? ' selected' : ''}`, title }, el('img', { src, alt: '' }));
+    b.addEventListener('click', () => guard(async () => {
+      await api.setProfileIcon(profile.id, value === 'block:grass' ? '' : value);
+    }));
+    return b;
+  };
+  const items = BLOCKS.map((k) => choice(`block:${k}`, `img/blocks/${k}.png`, k));
+  if (profile.icon === 'custom') items.push(choice('custom', profileIconUrl(profile), t('Własny obrazek')));
+  const upload = el('button', { type: 'button', className: 'icon-choice upload' }, el('i', { className: 'fa-regular fa-image' }), ` ${t('Własny obrazek…')}`);
+  upload.addEventListener('click', () => guard(() => busy(upload, () => api.chooseProfileIcon(profile.id))));
+  $('#icon-choices').replaceChildren(...items, upload);
+}
+
 // ---------- dropdowns with pictures ----------
 
 interface PickItem { value: string; label: string; sub?: string; img: string; pixelated?: boolean }
@@ -288,11 +322,14 @@ function renderPlay() {
   fillSelect(profileSel, store.profiles.map((p) => ({ value: p.id, label: p.name })), store.settings.selectedProfileId);
   fillSelect(accountSel, store.accounts.map((a) => ({ value: a.id, label: `${a.name}${a.type === 'offline' ? ' (offline)' : ''}` })), store.settings.selectedAccountId);
   if (store.accounts.length === 0) accountSel.append(el('option', { value: '', textContent: 'Brak kont' }));
-  picker(profileSel, store.profiles.map((p) => ({ value: p.id, label: p.name, sub: profileLabel(p), img: 'img/grass.png' })));
+  picker(profileSel, store.profiles.map((p) => ({ value: p.id, label: p.name, sub: profileLabel(p), img: profileIconUrl(p), pixelated: p.icon !== 'custom' })));
   picker(accountSel, store.accounts.map((a) => ({ value: a.id, label: a.name, sub: a.type === 'msa' ? 'Microsoft' : 'Offline', img: avatarUrl(a.uuid), pixelated: true })), 'Brak kont');
 
   const profile = store.profiles.find((p) => p.id === profileSel.value) ?? store.profiles[0];
   $('#hero-title').textContent = profile?.name ?? 'Minecraft';
+  const heroIcon = $<HTMLImageElement>('#hero-icon');
+  if (profile && heroIcon.getAttribute('src') !== profileIconUrl(profile)) heroIcon.src = profileIconUrl(profile);
+  heroIcon.classList.toggle('custom', profile?.icon === 'custom');
   $('#hero-sub').textContent = profile ? `${profileLabel(profile)} · ${profile.memoryMb} MB RAM` : '';
 
   const btn = $<HTMLButtonElement>('#play-btn');
@@ -307,6 +344,7 @@ function renderProfiles() {
   $('#profile-list').replaceChildren(
     ...store.profiles.map((p) => {
       const li = el('li', { className: p.id === editingId ? 'selected' : '' },
+        profileIconImg(p),
         el('div', { className: 'grow' }, p.name, el('small', { textContent: profileLabel(p) })));
       li.addEventListener('click', () => {
         editingId = p.id;
@@ -340,6 +378,8 @@ function loadProfileForm(profile: Profile) {
     (form.elements.namedItem(key) as HTMLInputElement).value = String(profile[key]);
   }
   renderVersionOptions(profile.versionId);
+  renderIconChoices(profile);
+  (form.elements.namedItem('syncOptions') as HTMLInputElement).checked = profile.syncOptions ?? false;
   $<HTMLSelectElement>('#loader-select').value = profile.loader ?? 'vanilla';
   renderLoaderVersions(profile.loaderVersion ?? '');
   $('#memory-value').textContent = `${profile.memoryMb} MB`;
@@ -534,6 +574,7 @@ $('#profile-form').addEventListener('submit', async (e) => {
     name: str('name') || 'Profil',
     versionId: str('versionId'),
     loader: str('loader') as Profile['loader'],
+    syncOptions: data.get('syncOptions') === 'on',
     loaderVersion: str('loaderVersion'),
     gameDir: str('gameDir'),
     jvmArgs: str('jvmArgs'),
@@ -931,21 +972,16 @@ async function installHit(hit: ProjectHit) {
   installing.add(hit.id);
   renderContent();
   try {
-    if (contentType === 'modpack') {
-      const id = await api.installModpack(hit.id);
-      toast(t('Utworzono profil „{0}”', hit.title));
-      store.settings.selectedProfileId = id;
-      showView('play');
-    } else {
-      const titles: string[] = await api.installContent(contentProfileId(), hit.id, contentType);
-      toast(titles.length > 1 ? t('Zainstalowano {0} i zależności: {1}', titles[0], titles.slice(1).join(', ')) : t('Zainstalowano {0}', titles[0]));
+    // progress and the result are shown in the task panel (see the task section)
+    if (contentType === 'modpack') await api.installModpack(hit.id, hit.title, hit.iconUrl);
+    else {
+      await api.installContent(contentProfileId(), hit.id, contentType, hit.title, hit.iconUrl);
       await refreshInstalled();
     }
-  } catch (err) {
-    toast(errorText(err), true);
+  } catch {
+    // already reported in the task panel
   } finally {
     installing.delete(hit.id);
-    setProgress('Gotowe do gry', 0);
     renderContent();
   }
 }
@@ -983,13 +1019,7 @@ $('#content-profile').addEventListener('change', () => {
   refreshInstalled(true);
   searchContent();
 });
-$('#modpack-import').addEventListener('click', () => guard(async () => {
-  const id = await busy($<HTMLButtonElement>('#modpack-import'), () => api.importModpack(), 'Importuję…');
-  if (!id) return;
-  toast('Zaimportowano modpack jako nowy profil');
-  store.settings.selectedProfileId = id;
-  showView('play');
-}));
+$('#modpack-import').addEventListener('click', () => busy($<HTMLButtonElement>('#modpack-import'), () => api.importModpack().catch(() => undefined), 'Importuję…'));
 document.querySelector('.nav[data-view="content"]')?.addEventListener('click', () => {
   renderContentProfiles();
   refreshInstalled(true);
@@ -1333,6 +1363,74 @@ function startStars() {
   resize();
   requestAnimationFrame(loop);
 }
+
+// ---------- task panel: install progress and completion ----------
+
+interface TaskStart { id: string; title: string; icon?: string }
+interface TaskProgress { id: string; stage: string; done: number; total: number; bytes?: number; totalBytes?: number; speed?: number }
+interface TaskDone { id: string; ok: boolean; message: string; profileId?: string }
+
+const taskCards = new Map<string, HTMLElement>();
+
+api.on('task:start', ({ id, title, icon }: TaskStart) => {
+  const img = el('img', { alt: '' });
+  img.src = icon?.startsWith('https://cdn.modrinth.com/') ? icon : 'logo.png';
+  const bar = el('div', { className: 'progress indeterminate' }, el('div'));
+  const card = el('div', { className: 'task' }, img,
+    el('div', { className: 'task-body' },
+      el('div', { className: 'task-title', textContent: title, title }),
+      el('div', { className: 'task-stage loading-text', textContent: t('Przygotowanie…') }),
+      bar,
+      el('div', { className: 'task-stats' })));
+  taskCards.set(id, card);
+  $('#tasks').prepend(card);
+});
+
+api.on('task:progress', ({ id, stage, done, total, bytes, totalBytes, speed }: TaskProgress) => {
+  const card = taskCards.get(id);
+  if (!card) return;
+  const label = card.querySelector<HTMLElement>('.task-stage')!;
+  const stats = card.querySelector<HTMLElement>('.task-stats')!;
+  const bar = card.querySelector<HTMLElement>('.progress')!;
+  const known = total > 1 || Boolean(totalBytes);
+  const fraction = totalBytes ? Math.min(1, (bytes ?? 0) / totalBytes) : total ? done / total : 0;
+  label.classList.toggle('loading-text', !known);
+  label.textContent = known ? `${stage} · ${Math.round(fraction * 100)}%` : `${stage}…`;
+  const parts: string[] = [];
+  if (total > 1) parts.push(`${done}/${total}`);
+  if (totalBytes) parts.push(`${fmtMb(bytes ?? 0)}/${fmtMb(totalBytes)} MB`);
+  if (speed && done < total) parts.push(fmtSpeed(speed));
+  stats.textContent = parts.join(' · ');
+  bar.classList.toggle('indeterminate', !known);
+  (bar.firstElementChild as HTMLElement).style.width = `${(fraction * 100).toFixed(1)}%`;
+});
+
+api.on('task:done', ({ id, ok, message, profileId }: TaskDone) => {
+  const card = taskCards.get(id);
+  if (!card) return;
+  taskCards.delete(id);
+  card.classList.add(ok ? 'done' : 'failed');
+  const body = card.querySelector('.task-body')!;
+  const close = el('button', { type: 'button', textContent: t('Zamknij') });
+  close.addEventListener('click', () => card.remove());
+  const actions = el('div', { className: 'task-actions' });
+  if (ok && profileId) {
+    const play = el('button', { type: 'button', className: 'primary' }, el('i', { className: 'fa-solid fa-play' }), t('Graj teraz'));
+    play.addEventListener('click', () => {
+      card.remove();
+      store.settings.selectedProfileId = profileId;
+      renderPlay();
+      startGame();
+    });
+    actions.append(close, play);
+  } else actions.append(close);
+  body.replaceChildren(
+    body.querySelector('.task-title')!,
+    el('div', { className: 'task-result' }, el('i', { className: ok ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle-xmark' }), el('span', { textContent: message })),
+    actions);
+  // single mods disappear on their own; modpacks and errors wait for the player
+  if (ok && !profileId) setTimeout(() => card.remove(), 6000);
+});
 
 // ---------- updates ----------
 

@@ -588,6 +588,62 @@ Object.assign(variants, {
   },
 });
 
+// ---------- block icons for profiles (?variant=block-<kind>) ----------
+
+const PALETTES = {
+  dirt: ['#5a3d28', '#6b4a31', '#79553a', '#886144', '#97704f'],
+  stone: ['#5f5f5f', '#6f6f6f', '#7d7d7d', '#8a8a8a', '#989898'],
+  sand: ['#cbbd8a', '#d6c895', '#dfd3a2', '#e7dcae', '#d0c18e'],
+  planks: ['#7a5a33', '#8b6a3e', '#9c7748', '#ad8653', '#bb935c'],
+  bark: ['#3f2f1c', '#4c3923', '#58432a', '#634b30'],
+  logTop: ['#9c7748', '#ad8653', '#bb935c', '#8b6a3e'],
+  obsidian: ['#0f0b17', '#170f24', '#211533', '#2c1c44', '#3a2559'],
+  netherrack: ['#5c1f1f', '#6e2626', '#7f2c2c', '#923535', '#a33c3c'],
+  diamond: ['#4ee3e3', '#8ef2f2', '#c8fafa', '#2bb9c4'],
+};
+
+function blockCube(kind) {
+  const n = 16, rnd = rng(kind.length * 97 + 13);
+  const shade = (pal, levels) => levels.map((l) => hex(pal[l]));
+  const noise = (seed, pal, smooth = 0) => shade(pal, clustered(n, seed, pal.length, smooth));
+  const at = (arr) => (i, j) => arr[j * n + i];
+  let top, side;
+  if (kind === 'grass') return grassCube(21);
+  if (kind === 'planks') {
+    const base = noise(5, PALETTES.planks, 1);
+    // four boards: dark seams every 4 rows and a few nail-like knots
+    side = top = (i, j) => (j % 4 === 3 ? hex('#5e4426') : (i + Math.floor(j / 4) * 5) % 16 === 0 ? hex('#6b4e2c') : base[j * n + i]);
+  } else if (kind === 'log') {
+    const bark = noise(7, PALETTES.bark, 0);
+    side = (i, j) => ((i * 7 + j * 3) % 11 === 0 ? hex('#2d2214') : bark[j * n + i]);
+    top = (i, j) => {
+      const r = Math.max(Math.abs(i - 7.5), Math.abs(j - 7.5));
+      if (r > 6.5) return bark[j * n + i];
+      return hex(PALETTES.logTop[Math.floor(r) % 2 === 0 ? 0 : 2]);
+    };
+  } else if (kind === 'diamond-ore') {
+    const stone = noise(9, PALETTES.stone, 1);
+    const spots = new Set();
+    for (let k = 0; k < 7; k++) {
+      const cx = 2 + Math.floor(rnd() * 12), cy = 2 + Math.floor(rnd() * 12);
+      for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) if (rnd() > 0.25) spots.add(`${cx + dx},${cy + dy}`);
+    }
+    side = top = (i, j) => (spots.has(`${i},${j}`) ? hex(PALETTES.diamond[(i + j) % PALETTES.diamond.length]) : stone[j * n + i]);
+  } else {
+    const pal = PALETTES[kind] ?? PALETTES.stone;
+    const smooth = kind === 'stone' || kind === 'obsidian' ? 1 : 0;
+    side = top = at(noise(kind.length * 31, pal, smooth));
+  }
+  return { x: 0, y: 0, z: 0, tex: (face, i, j) => rgb(face === 'top' ? top(i, j) : side(face === 'right' ? n - 1 - i : i, j), LIGHT[face]) };
+}
+
+if (variant.startsWith('block-')) {
+  variants[variant] = () => {
+    document.getElementById("tile-bg").remove();
+    voxels(add('g'), [blockCube(variant.slice(6))], { n: 16, fit: 960, cy: 512 });
+  };
+}
+
 (variants[variant] || variants.ring)();
 </script>
 </body>

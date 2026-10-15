@@ -41,9 +41,12 @@
     <!-- Play -->
     <section class="view active" id="view-play">
       <div class="hero">
-        <span class="eyebrow"><i class="fa-solid fa-cube"></i> Minecraft: Java Edition</span>
-        <h1 class="gradient-title" id="hero-title">Minecraft</h1>
-        <p id="hero-sub" class="muted"></p>
+        <img class="hero-icon" id="hero-icon" src="img/blocks/grass.png" alt="">
+        <div>
+          <span class="eyebrow"><i class="fa-solid fa-cube"></i> Minecraft: Java Edition</span>
+          <h1 class="gradient-title" id="hero-title">Minecraft</h1>
+          <p id="hero-sub" class="muted"></p>
+        </div>
       </div>
       <div class="crash hidden" id="crash">
         <div class="crash-head">
@@ -177,6 +180,12 @@
               <select name="loaderVersion" id="loader-version-select"></select>
             </label>
           </div>
+          <div class="field">Ikona
+            <div class="icon-choices" id="icon-choices"></div>
+          </div>
+          <label class="check"><input type="checkbox" name="syncOptions">
+            <span>Wspólne ustawienia gry z innymi profilami <span class="hint">grafika, dźwięk, sterowanie, lista serwerów</span></span>
+          </label>
           <label class="field"><span class="label">Pamięć RAM <b id="memory-value"></b></span><input type="range" name="memoryMb" min="1024" max="16384" step="512"></label>
           <div class="row">
             <label class="field">Szerokość okna<input type="number" name="width" min="320"></label>
@@ -273,6 +282,7 @@
     <span>Nowa wersja SlashClient jest gotowa: <b id="update-version"></b></span>
     <button class="primary" id="update-install">Uruchom ponownie</button>
   </div>
+  <div class="tasks" id="tasks" aria-live="polite"></div>
   <div class="toast glass-panel hidden" id="toast"></div>
   <script src="app.js"></script>
 </body>

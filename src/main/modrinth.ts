@@ -224,7 +224,9 @@ function safeJoin(root: string, rel: string): string {
 }
 
 /** Reads a .mrpack, downloads its files into `gameDir` and copies its overrides. */
-export async function installMrpack(mrpack: string, gameDir: string, onProgress?: ProgressFn): Promise<ModpackInfo> {
+export type StageProgress = (stage: string, done: number, total: number, stats?: { bytes: number; totalBytes: number; speed: number }) => void;
+
+export async function installMrpack(mrpack: string, gameDir: string, onStage?: StageProgress): Promise<ModpackInfo> {
   const zip = new AdmZip(mrpack);
   const indexEntry = zip.getEntry('modrinth.index.json');
   if (!indexEntry) throw new Error('To nie jest modpack Modrinth (.mrpack).');
@@ -239,11 +241,14 @@ export async function installMrpack(mrpack: string, gameDir: string, onProgress?
       if (!url) throw new Error(t('Brak adresu pobierania dla {0}', f.path));
       return { url, dest: safeJoin(gameDir, f.path), sha1: f.hashes.sha1, size: f.fileSize };
     });
-  await downloadAll(tasks, onProgress, { verifyHash: true });
+  await downloadAll(tasks, (d, n, s) => onStage?.(t('Pobieranie plików'), d, n, s), { verifyHash: true });
 
-  for (const entry of zip.getEntries()) {
+  const overrides = zip.getEntries().filter((e) => !e.isDirectory && /^(overrides|client-overrides)\//.test(e.entryName));
+  let copied = 0;
+  for (const entry of overrides) {
+    onStage?.(t('Kopiowanie konfiguracji'), copied++, overrides.length);
     const m = entry.entryName.match(/^(overrides|client-overrides)\/(.+)$/);
-    if (!m || entry.isDirectory) continue;
+    if (!m) continue;
     const dest = safeJoin(gameDir, m[2]);
     await fs.mkdir(path.dirname(dest), { recursive: true });
     await fs.writeFile(dest, entry.getData());
@@ -259,6 +264,7 @@ export async function installMrpack(mrpack: string, gameDir: string, onProgress?
 
 /** Downloads the newest .mrpack of a Modrinth modpack project to a temp file. */
 export async function downloadModpack(projectId: string, onProgress?: ProgressFn): Promise<string> {
+  onProgress?.(0, 1, { bytes: 0, totalBytes: 0, speed: 0 });
   const versions = await get<ModrinthVersion[]>(`${API}/project/${projectId}/version`);
   const file = versions[0]?.files.find((f) => f.filename.endsWith('.mrpack'));
   if (!file) throw new Error('Ten modpack nie ma pliku .mrpack.');
