@@ -1,11 +1,11 @@
 // Headless entry point for testing installs and launches without the GUI:
-//   node dist/cli.js <version|latest-release> [nick]
+//   node dist/cli.js <version|latest-release> [nick] [server]
 import { createOfflineAccount } from './auth';
 import { launch } from './launch';
 import { newProfile } from './store';
 
 async function main() {
-  const [versionId = 'latest-release', nick = 'Gracz'] = process.argv.slice(2);
+  const [versionId = 'latest-release', nick = 'Gracz', server] = process.argv.slice(2);
   let lastStage = '';
   const child = await launch({
     profile: newProfile({ name: 'cli', versionId, memoryMb: 2048 }),
@@ -18,6 +18,7 @@ async function main() {
       process.stdout.write(`\r[${stage}] ${done}/${total}${pct}${speed}   `);
     },
     onLog: (line) => console.log(line),
+    server,
   });
   child.on('exit', (code, signal) => {
     console.log(`Gra zakończona (kod ${code}${signal ? `, sygnał ${signal}` : ''})`);

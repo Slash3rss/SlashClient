@@ -5,6 +5,7 @@ import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, pollD
 import { launch } from './launch';
 import { paths } from './paths';
 import { loadStore, newProfile, profileGameDir, saveStore, setSecretCodec, type Profile, type Settings, type StoreData } from './store';
+import { listServers, pingServer } from './servers';
 import { getManifest } from './versions';
 
 let win: BrowserWindow | undefined;
@@ -118,7 +119,10 @@ handle('account:loginMicrosoft', async () => {
 });
 handle('account:cancelLogin', () => loginAbort?.abort());
 
-handle('game:launch', async (profileId: string, accountId: string) => {
+handle('servers:list', (force?: boolean) => listServers(force));
+handle('servers:ping', (address: string) => pingServer(address));
+
+handle('game:launch', async (profileId: string, accountId: string, server?: string) => {
   if (game) throw new Error('Gra już działa.');
   const profile = store.profiles.find((p) => p.id === profileId);
   let account = store.accounts.find((a) => a.id === accountId);
@@ -140,6 +144,7 @@ handle('game:launch', async (profileId: string, accountId: string) => {
     account,
     onStage: (stage, done, total, stats) => send('launch:stage', { stage, done, total, ...stats }),
     onLog: (line) => send('game:log', line),
+    server,
   });
   game = child;
   killRequested = false;

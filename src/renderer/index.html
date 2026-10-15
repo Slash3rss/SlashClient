@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://mc-heads.net; style-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://mc-heads.net https://api.slash3rss.dev; style-src 'self'">
   <title>SlashClient</title>
   <link rel="stylesheet" href="fa/css/all.min.css">
   <link rel="stylesheet" href="style.css">
@@ -22,6 +22,7 @@
     </div>
     <nav>
       <button class="nav active" data-view="play"><i class="fa-solid fa-play"></i>Graj</button>
+      <button class="nav" data-view="servers"><i class="fa-solid fa-server"></i>Serwery</button>
       <button class="nav" data-view="profiles"><i class="fa-solid fa-layer-group"></i>Profile</button>
       <button class="nav" data-view="accounts"><i class="fa-solid fa-user"></i>Konta</button>
       <button class="nav" data-view="settings"><i class="fa-solid fa-gear"></i>Ustawienia</button>
@@ -47,6 +48,28 @@
         </div>
         <button class="primary big" id="play-btn">GRAJ</button>
       </footer>
+    </section>
+
+    <!-- Servers (lista.slash3rss.dev) -->
+    <section class="view" id="view-servers">
+      <header class="view-head">
+        <div>
+          <h2 class="gradient-title">Serwery</h2>
+          <p class="muted sub">Z <a href="https://lista.slash3rss.dev" target="_blank">lista.slash3rss.dev</a>, status na żywo prosto z serwera</p>
+        </div>
+        <button id="servers-refresh" title="Odśwież"><i class="fa-solid fa-rotate"></i></button>
+      </header>
+      <div class="filters glass-panel">
+        <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="servers-search" placeholder="Szukaj po nazwie lub IP…"></div>
+        <select id="servers-mode"><option value="">Wszystkie tryby</option></select>
+        <div class="segmented" id="servers-sort">
+          <button class="active" data-sort="votes">Najwięcej głosów</button>
+          <button data-sort="players">Gracze online</button>
+          <button data-sort="name">Nazwa</button>
+        </div>
+      </div>
+      <div class="server-list" id="server-list"></div>
+      <button class="more hidden" id="servers-more">Pokaż więcej</button>
     </section>
 
     <!-- Profiles -->

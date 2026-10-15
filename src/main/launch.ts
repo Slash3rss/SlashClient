@@ -8,6 +8,7 @@ import { paths } from './paths';
 import { classpathSeparator, osName } from './platform';
 import { rulesAllow, type Features } from './rules';
 import { profileGameDir, type Account, type Profile } from './store';
+import { resolveAddress } from './servers';
 import { getManifest, type Argument } from './versions';
 
 export const LAUNCHER_NAME = 'SlashClient';
@@ -43,9 +44,11 @@ export interface LaunchOptions {
   account: Account;
   onStage: StageFn;
   onLog: (line: string) => void;
+  /** "host" or "host:port" to join right after the game starts. */
+  server?: string;
 }
 
-export async function launch({ profile, account, onStage, onLog }: LaunchOptions): Promise<ChildProcess> {
+export async function launch({ profile, account, onStage, onLog, server }: LaunchOptions): Promise<ChildProcess> {
   const versionId = await resolveVersionId(profile.versionId);
   const gameDir = profileGameDir(profile);
   await fs.mkdir(gameDir, { recursive: true });
@@ -54,7 +57,9 @@ export async function launch({ profile, account, onStage, onLog }: LaunchOptions
   const java = profile.javaPath || (await ensureJava(version, (d, t, s) => onStage('Java', d, t, s)));
 
   const classpath = [...libraryClasspath(version), clientJar].join(classpathSeparator);
-  const features: Features = { has_custom_resolution: true };
+  // 1.20+ joins a server through Quick Play; older versions take --server/--port.
+  const quickPlay = JSON.stringify(version.arguments?.game ?? []).includes('is_quick_play_multiplayer');
+  const features: Features = { has_custom_resolution: true, is_quick_play_multiplayer: Boolean(server && quickPlay) };
   const vars: Record<string, string> = {
     auth_player_name: account.name,
     version_name: versionId,
@@ -77,6 +82,7 @@ export async function launch({ profile, account, onStage, onLog }: LaunchOptions
     classpath_separator: classpathSeparator,
     launcher_name: LAUNCHER_NAME,
     launcher_version: LAUNCHER_VERSION,
+    quickPlayMultiplayer: server ?? '',
     classpath,
   };
 
@@ -96,6 +102,12 @@ export async function launch({ profile, account, onStage, onLog }: LaunchOptions
     gameArgs = [...(version.minecraftArguments ?? '').split(' ').filter(Boolean), '--width', '${resolution_width}', '--height', '${resolution_height}'];
   }
 
+  if (server && !quickPlay) {
+    // old clients don't follow SRV records, so resolve the real host and port here
+    const { host, port } = await resolveAddress(server);
+    gameArgs.push('--server', host, '--port', String(port));
+  }
+
   const args = [
     `-Xmx${profile.memoryMb}M`,
     ...(osName === 'osx' ? [`-Xdock:name=Minecraft ${versionId}`] : []),
@@ -107,7 +119,7 @@ export async function launch({ profile, account, onStage, onLog }: LaunchOptions
   ];
 
   onStage('Uruchamianie gry', 1, 1);
-  onLog(`> ${java} (wersja ${versionId}, ${profile.memoryMb} MB RAM)`);
+  onLog(`> ${java} (wersja ${versionId}, ${profile.memoryMb} MB RAM${server ? `, serwer ${server}` : ''})`);
   const child = spawn(java, args, { cwd: gameDir, stdio: ['ignore', 'pipe', 'pipe'] });
   child.stdout?.setEncoding('utf8').on('data', createLogParser(onLog));
   child.stderr?.setEncoding('utf8').on('data', createLogParser(onLog));

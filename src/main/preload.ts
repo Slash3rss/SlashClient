@@ -19,7 +19,9 @@ const api = {
   deleteAccount: (id: string) => invoke('account:delete', id),
   loginMicrosoft: () => invoke('account:loginMicrosoft'),
   cancelLogin: () => invoke('account:cancelLogin'),
-  launch: (profileId: string, accountId: string) => invoke('game:launch', profileId, accountId),
+  launch: (profileId: string, accountId: string, server?: string) => invoke('game:launch', profileId, accountId, server),
+  listServers: (force?: boolean) => invoke('servers:list', force),
+  pingServer: (address: string) => invoke('servers:ping', address),
   kill: () => invoke('game:kill'),
   on,
 };

@@ -222,13 +222,19 @@ $('#play-account').addEventListener('change', (e) => {
   renderPlay();
 });
 
-$('#play-btn').addEventListener('click', async () => {
-  if (store.running) return void api.kill();
+function showView(name: string) {
+  document.querySelector<HTMLButtonElement>(`.nav[data-view="${name}"]`)?.click();
+}
+
+/** Starts the selected profile with the selected account, optionally joining a server. */
+async function startGame(server?: string) {
+  if (store.running || launching) return toast('Gra już działa.', true);
   launching = true;
   log.replaceChildren();
+  showView('play');
   renderPlay();
   try {
-    await api.launch($<HTMLSelectElement>('#play-profile').value, $<HTMLSelectElement>('#play-account').value);
+    await api.launch($<HTMLSelectElement>('#play-profile').value, $<HTMLSelectElement>('#play-account').value, server);
     setProgress('Gra działa', 1);
   } catch (err) {
     setProgress('Błąd uruchamiania', 0);
@@ -238,7 +244,9 @@ $('#play-btn').addEventListener('click', async () => {
     launching = false;
     renderPlay();
   }
-});
+}
+
+$('#play-btn').addEventListener('click', () => (store.running ? void api.kill() : startGame()));
 
 api.on('launch:stage', showStage);
 api.on('game:log', appendLog);
@@ -339,6 +347,189 @@ $('#settings-form').addEventListener('submit', async (e) => {
   );
   toast('Zapisano ustawienia');
 });
+
+// ---------- servers (lista.slash3rss.dev) ----------
+
+interface ListedServer {
+  id: string; name: string; ip: string; description: string; motdHtml: string[]; motdClean: string[];
+  modes: string[]; versions: string[]; votes: number; online: boolean; playersOnline: number; playersMax: number;
+  hasIcon: boolean; promoted: boolean; featured: boolean; website?: string; discord?: string;
+}
+interface MotdSegment { text: string; color?: string; bold?: boolean; italic?: boolean }
+interface PingResult { latency: number; version: string; playersOnline: number; playersMax: number; motd: MotdSegment[][]; favicon?: string }
+
+const LIST_API = 'https://api.slash3rss.dev';
+const PAGE = 30;
+let servers: ListedServer[] = [];
+let serverSort = 'votes';
+let shown = PAGE;
+const pings = new Map<string, { at: number; result?: PingResult; error?: string }>();
+
+/**
+ * Turns the API's MOTD HTML into plain segments. DOMParser builds an inert
+ * document (no scripts run), and only text plus colour/bold/italic are kept.
+ */
+function motdFromHtml(html: string): MotdSegment[] {
+  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
+  const out: MotdSegment[] = [];
+  doc.body.querySelectorAll('span').forEach((span) => {
+    if (span.querySelector('span')) return;
+    const color = span.style.color;
+    out.push({ text: span.textContent ?? '', color: color || undefined, bold: span.style.fontWeight === 'bold', italic: span.style.fontStyle === 'italic' });
+  });
+  return out.length ? out : [{ text: doc.body.textContent ?? '' }];
+}
+
+function renderMotd(lines: MotdSegment[][]) {
+  return el('div', { className: 'motd' }, ...lines.map((line) =>
+    el('div', {}, ...(line.length ? line : [{ text: ' ' }]).map((seg) => {
+      const span = el('span', { textContent: seg.text });
+      if (seg.color) span.style.color = seg.color;
+      if (seg.bold) span.style.fontWeight = '700';
+      if (seg.italic) span.style.fontStyle = 'italic';
+      return span;
+    }))));
+}
+
+function pingClass(ms: number) {
+  return ms < 80 ? 'ping-good' : ms < 200 ? 'ping-ok' : 'ping-bad';
+}
+
+function filteredServers(): ListedServer[] {
+  const q = $<HTMLInputElement>('#servers-search').value.trim().toLowerCase();
+  const mode = $<HTMLSelectElement>('#servers-mode').value;
+  const list = servers.filter((s) =>
+    (!q || s.name.toLowerCase().includes(q) || s.ip.toLowerCase().includes(q)) && (!mode || s.modes.includes(mode)));
+  const players = (s: ListedServer) => pings.get(s.ip)?.result?.playersOnline ?? s.playersOnline;
+  const byKey = serverSort === 'players' ? (a: ListedServer, b: ListedServer) => players(b) - players(a)
+    : serverSort === 'name' ? (a: ListedServer, b: ListedServer) => a.name.localeCompare(b.name, 'pl')
+    : (a: ListedServer, b: ListedServer) => b.votes - a.votes;
+  // promoted servers stay on top, like on the website
+  return list.sort((a, b) => Number(b.promoted) - Number(a.promoted) || byKey(a, b));
+}
+
+function serverCard(s: ListedServer): HTMLElement {
+  const ping = pings.get(s.ip);
+  const live = ping?.result;
+  const icon = el('img', { className: 'server-icon', alt: '', loading: 'lazy' });
+  icon.src = live?.favicon ?? (s.hasIcon ? `${LIST_API}/servers/${s.id}/icon` : 'logo.png');
+
+  const title = el('div', { className: 'server-title' }, el('b', { textContent: s.name }));
+  if (s.promoted) title.append(el('span', { className: 'tag promo', textContent: 'Promowany' }));
+  for (const m of s.modes.slice(0, 3)) title.append(el('span', { className: 'tag mode', textContent: m }));
+
+  const motd = live ? live.motd : s.motdHtml.length ? s.motdHtml.map(motdFromHtml) : s.motdClean.map((t) => [{ text: t }]);
+
+  const stats = el('div', { className: 'server-stats' });
+  if (live) {
+    stats.append(
+      el('span', {}, el('b', { textContent: `${live.playersOnline}` }), ` / ${live.playersMax}`),
+      el('span', { className: pingClass(live.latency), textContent: `${live.latency} ms` }),
+    );
+  } else if (ping?.error) {
+    stats.append(el('span', { className: 'offline', textContent: 'Offline' }));
+  } else {
+    stats.append(el('span', {}, el('b', { textContent: `${s.playersOnline}` }), ` / ${s.playersMax}`), el('span', { textContent: '… ms' }));
+  }
+  stats.append(el('span', { title: 'Głosy' }, el('i', { className: 'fa-solid fa-thumbs-up' }), ` ${s.votes}`));
+
+  const play = el('button', { className: 'primary' }, el('i', { className: 'fa-solid fa-play' }), 'Graj');
+  play.addEventListener('click', () => startGame(s.ip));
+  const copy = el('button', { className: 'icon-btn', title: 'Kopiuj IP' }, el('i', { className: 'fa-regular fa-copy' }));
+  copy.addEventListener('click', async () => {
+    await navigator.clipboard.writeText(s.ip);
+    toast(`Skopiowano ${s.ip}`);
+  });
+  const actions = el('div', { className: 'server-actions' }, play, copy);
+  for (const [url, icon, label] of [[s.website, 'fa-solid fa-globe', 'Strona'], [s.discord, 'fa-brands fa-discord', 'Discord']] as const) {
+    if (url?.startsWith('https://')) actions.append(el('a', { href: url, target: '_blank', title: label }, el('button', { className: 'icon-btn' }, el('i', { className: icon }))));
+  }
+
+  const card = el('div', { className: `server${s.promoted ? ' promoted' : ''}` },
+    icon,
+    el('div', { className: 'server-main' }, title, el('span', { className: 'server-ip', textContent: s.ip }), renderMotd(motd)),
+    el('div', { className: 'server-side' }, stats, actions));
+  card.dataset.ip = s.ip;
+  return card;
+}
+
+function renderServers() {
+  const list = filteredServers();
+  const page = list.slice(0, shown);
+  $('#server-list').replaceChildren(...page.map(serverCard));
+  if (!list.length) $('#server-list').append(el('p', { className: 'muted', textContent: servers.length ? 'Brak serwerów pasujących do filtrów.' : 'Ładowanie listy…' }));
+  $('#servers-more').classList.toggle('hidden', list.length <= shown);
+  pingVisible(page);
+}
+
+/** Pings the shown servers (6 at a time) and refreshes each card as answers arrive. */
+let pingQueue: ListedServer[] = [];
+let pinging = 0;
+function pingVisible(page: ListedServer[]) {
+  const fresh = (s: ListedServer) => {
+    const p = pings.get(s.ip);
+    return p && Date.now() - p.at < 60_000;
+  };
+  pingQueue = page.filter((s) => !fresh(s));
+  const next = async () => {
+    const s = pingQueue.shift();
+    if (!s) return;
+    pinging++;
+    pings.set(s.ip, { at: Date.now() });
+    try {
+      pings.set(s.ip, { at: Date.now(), result: await api.pingServer(s.ip) });
+    } catch (err) {
+      pings.set(s.ip, { at: Date.now(), error: errorText(err) });
+    }
+    pinging--;
+    const old = document.querySelector<HTMLElement>(`.server[data-ip="${CSS.escape(s.ip)}"]`);
+    old?.replaceWith(serverCard(s));
+    next();
+  };
+  for (let i = pinging; i < 6; i++) next();
+}
+
+async function loadServers(force = false) {
+  const btn = $<HTMLButtonElement>('#servers-refresh');
+  btn.disabled = true;
+  try {
+    servers = await api.listServers(force);
+    if (force) pings.clear();
+    const modes = [...new Set(servers.flatMap((s) => s.modes))].sort((a, b) => a.localeCompare(b, 'pl'));
+    const sel = $<HTMLSelectElement>('#servers-mode');
+    const current = sel.value;
+    fillSelect(sel, [{ value: '', label: 'Wszystkie tryby' }, ...modes.map((m) => ({ value: m, label: m }))], current);
+    renderServers();
+  } catch (err) {
+    toast(`Nie udało się pobrać listy serwerów: ${errorText(err)}`, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+$('#servers-search').addEventListener('input', () => {
+  shown = PAGE;
+  renderServers();
+});
+$('#servers-mode').addEventListener('change', () => {
+  shown = PAGE;
+  renderServers();
+});
+document.querySelectorAll<HTMLButtonElement>('#servers-sort button').forEach((b) =>
+  b.addEventListener('click', () => {
+    serverSort = b.dataset.sort!;
+    document.querySelectorAll('#servers-sort button').forEach((x) => x.classList.toggle('active', x === b));
+    renderServers();
+  }));
+$('#servers-more').addEventListener('click', () => {
+  shown += PAGE;
+  renderServers();
+});
+$('#servers-refresh').addEventListener('click', () => loadServers(true));
+// Load the list the first time the tab is opened.
+document.querySelector('.nav[data-view="servers"]')?.addEventListener('click', () => {
+  if (!servers.length) loadServers();
+}, { once: true });
 
 // ---------- starfield (as on lista.slash3rss.dev) ----------
 
