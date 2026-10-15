@@ -352,10 +352,21 @@ document.querySelectorAll<HTMLButtonElement>('.nav').forEach((btn) =>
   btn.addEventListener('click', () => {
     document.querySelectorAll('.nav').forEach((b) => b.classList.toggle('active', b === btn));
     document.querySelectorAll('.view').forEach((v) => v.classList.toggle('active', v.id === `view-${btn.dataset.view}`));
-    // the 3D skin preview renders every frame: only while it can be seen
-    if (skinViewer) skinViewer.renderPaused = btn.dataset.view !== 'accounts';
+    updateSkinRendering();
   }),
 );
+
+/**
+ * The 3D skin preview renders every frame (~8% CPU): only while it can be seen and
+ * the launcher is the active window; in the background it stops on its last frame.
+ */
+function updateSkinRendering() {
+  if (!skinViewer) return;
+  skinViewer.renderPaused = !$('#view-accounts').classList.contains('active') || document.hidden || !document.hasFocus();
+}
+addEventListener('focus', updateSkinRendering);
+addEventListener('blur', updateSkinRendering);
+document.addEventListener('visibilitychange', updateSkinRendering);
 
 // ---------- rendering ----------
 
@@ -2148,7 +2159,7 @@ async function renderSkin() {
     skinViewer = new SkinViewer({ canvas: $<HTMLCanvasElement>('#skin-canvas'), width: 220, height: 300 });
     // the wheel scrolls the page; zoom has its own buttons
     skinViewer.controls.enableZoom = false;
-    skinViewer.renderPaused = !$('#view-accounts').classList.contains('active');
+    updateSkinRendering();
   }
   skinViewer.autoRotate = true;
   skinViewer.autoRotateSpeed = 0.6;
