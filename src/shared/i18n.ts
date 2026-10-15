@@ -323,6 +323,7 @@ const EN: Record<string, string> = {
   'Peleryna': 'Cape',
   'Ustaw': 'Apply',
   'Bez peleryny': 'No cape',
+  'ustawiona': 'current',
   'Ustawiono pelerynę.': 'Cape set.',
   'Peleryna ukryta.': 'Cape hidden.',
   'Podgląd nowego skina. Zapisz, żeby ustawić go w grze.': 'Preview of the new skin. Save it to use it in game.',

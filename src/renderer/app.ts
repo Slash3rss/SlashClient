@@ -1681,31 +1681,70 @@ function refreshSkinCaches(accountId: string) {
   skinAccountId = undefined;
 }
 
+/** The cape the player picked in the grid ('' = no cape); saved only with "Apply". */
+let chosenCape = '';
+
+/** Cuts the front of a cape texture (10×16 pixels at 1,1) into a small canvas. */
+function capeThumbnail(texture: string): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = 10;
+  canvas.height = 16;
+  const img = new Image();
+  img.onload = () => {
+    // capes are 64×32, some HD ones 2× larger: scale the crop with the texture
+    const scale = img.naturalWidth / 64;
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, scale, scale, 10 * scale, 16 * scale, 0, 0, 10, 16);
+  };
+  img.src = texture;
+  return canvas;
+}
+
+function renderCapeGrid() {
+  const activeId = capes.find((c) => c.active)?.id ?? '';
+  const tile = (id: string, title: string, content: Node) => {
+    const b = el('button', {
+      type: 'button',
+      className: `cape-choice${id === chosenCape ? ' selected' : ''}${id === activeId ? ' active' : ''}${id ? '' : ' none'}`,
+      title,
+    }, content);
+    b.addEventListener('click', () => {
+      chosenCape = id;
+      // preview on the model before anything is saved
+      const cape = capes.find((c) => c.id === id);
+      if (cape?.texture) skinViewer?.loadCape(cape.texture);
+      else skinViewer?.resetCape();
+      renderCapeGrid();
+    });
+    return b;
+  };
+  $('#cape-grid').replaceChildren(
+    tile('', t('Bez peleryny'), el('i', { className: 'fa-solid fa-ban' })),
+    ...capes.map((c) => tile(c.id, c.alias, c.texture ? capeThumbnail(c.texture) : el('span', { textContent: c.alias.slice(0, 2) }))),
+  );
+  const chosen = capes.find((c) => c.id === chosenCape);
+  $('#cape-name').textContent = (chosen ? chosen.alias : t('Bez peleryny')) + (chosenCape === activeId ? ` · ${t('ustawiona')}` : '');
+  $('#cape-apply').classList.toggle('hidden', chosenCape === activeId);
+}
+
 async function loadSkinEditor(account: { id: string; type: string }) {
   $('#skin-edit').classList.toggle('hidden', account.type !== 'msa');
   $('#skin-pending').classList.add('hidden');
   $('#skin-actions').classList.remove('hidden');
   $('#cape-apply').classList.add('hidden');
   if (account.type !== 'msa') return;
-  const sel = $<HTMLSelectElement>('#cape-select');
-  fillSelect(sel, [{ value: '', label: t('Ładowanie…') }], '');
+  $('#cape-grid').replaceChildren(...skeletons('shot', 3).map((s) => Object.assign(s, { className: 'cape-choice sk' })));
   capes = (await guard(() => api.ownedCapes(account.id))) ?? [];
-  fillSelect(sel, [{ value: '', label: t('Bez peleryny') }, ...capes.map((c) => ({ value: c.id, label: c.alias }))], capes.find((c) => c.active)?.id ?? '');
+  chosenCape = capes.find((c) => c.active)?.id ?? '';
   $('#cape-row').classList.toggle('hidden', !capes.length);
+  renderCapeGrid();
 }
 
-$('#cape-select').addEventListener('change', () => {
-  const id = $<HTMLSelectElement>('#cape-select').value;
-  const cape = capes.find((c) => c.id === id);
-  // preview on the model before anything is saved
-  if (cape?.texture) skinViewer?.loadCape(cape.texture);
-  else skinViewer?.resetCape();
-  $('#cape-apply').classList.toggle('hidden', id === (capes.find((c) => c.active)?.id ?? ''));
-});
 $('#cape-apply').addEventListener('click', () => {
   const accountId = skinAccountId;
   if (!accountId) return;
-  const id = $<HTMLSelectElement>('#cape-select').value || null;
+  const id = chosenCape || null;
   busy($<HTMLButtonElement>('#cape-apply'), async () => {
     try {
       await api.setCape(accountId, id);
