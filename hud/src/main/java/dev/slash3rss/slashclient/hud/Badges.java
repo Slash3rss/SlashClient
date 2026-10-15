@@ -30,11 +30,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * SlashClient server every few minutes and asks it about the players on the tab list.
  * The server's address comes from the launcher (config/slashclient-launcher.json).
  */
+/* The logo is a vector glyph (font/badge.ttf, from scripts/icon/badge-font.py): white, no text shadow. */
 public final class Badges {
 	private Badges() {}
 
 	private static final MutableComponent BADGE = Component.literal("")
-		.withStyle(Style.EMPTY.withFont(new FontDescription.Resource(Identifier.fromNamespaceAndPath(SlashHud.ID, "badge"))).withColor(0xFFFFFF));
+		.withStyle(Style.EMPTY.withFont(new FontDescription.Resource(Identifier.fromNamespaceAndPath(SlashHud.ID, "badge"))).withColor(0xFFFFFF).withoutShadow());
 	private static final long HEARTBEAT_MS = 4 * 60_000;
 	/** How long an answer about a player is trusted before asking again. */
 	private static final long RECHECK_MS = 2 * 60_000;

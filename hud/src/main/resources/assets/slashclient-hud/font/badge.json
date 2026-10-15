@@ -1,5 +1,14 @@
 {
 	"providers": [
-		{ "type": "bitmap", "file": "slashclient-hud:font/badge.png", "ascent": 7, "height": 8, "chars": [""] }
+		{
+			"type": "ttf",
+			"file": "slashclient-hud:badge.ttf",
+			"size": 11.0,
+			"oversample": 8.0,
+			"shift": [
+				0,
+				1.0
+			]
+		}
 	]
 }

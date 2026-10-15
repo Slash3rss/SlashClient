@@ -146,7 +146,12 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.getInput().holdKey(o -> o.keyPlayerList);
 			context.waitTicks(5);
 			context.takeScreenshot("badge-tab");
+			// as most players see it: Full HD at the automatic GUI scale
+			size(context, new int[] { 1920, 1080, 3 });
+			context.waitTicks(5);
+			context.takeScreenshot("badge-tab-fullhd");
 			context.getInput().releaseKey(o -> o.keyPlayerList);
+			size(context, SIZES[1]);
 			context.runOnClient(mc -> TestHooks.logBadge());
 			context.runOnClient(mc -> TestHooks.endOnVanillaMenu());
 		}
