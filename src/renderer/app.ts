@@ -199,7 +199,47 @@ async function guard<T>(fn: () => Promise<T>): Promise<T | undefined> {
   }
 }
 
-const avatar = (uuid: string) => el('img', { src: `https://mc-heads.net/avatar/${uuid.replace(/-/g, '')}/32`, alt: '' });
+// ---------- player heads, cut from the real skin ----------
+
+/**
+ * Heads are drawn from the skin texture the launcher already gets from Mojang
+ * (face 8×8 at (8,8) plus the hat/hair overlay at (40,8)), instead of relying on
+ * a third-party avatar service that sometimes answers with Steve.
+ */
+const heads = new Map<string, string>();
+const headRequests = new Map<string, Promise<string | undefined>>();
+
+function headFor(accountId: string): Promise<string | undefined> {
+  if (!headRequests.has(accountId)) {
+    headRequests.set(accountId, (async () => {
+      const skin = await api.getSkin(accountId).catch(() => undefined);
+      if (!skin) return undefined;
+      const img = new Image();
+      img.src = skin.dataUrl;
+      await img.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 64;
+      const ctx = canvas.getContext('2d')!;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(img, 8, 8, 8, 8, 0, 0, 64, 64);
+      ctx.drawImage(img, 40, 8, 8, 8, 0, 0, 64, 64);
+      const url = canvas.toDataURL('image/png');
+      heads.set(accountId, url);
+      return url;
+    })());
+  }
+  return headRequests.get(accountId)!;
+}
+
+/** An <img> that shows the account's head as soon as it has been cut from the skin. */
+function avatar(account: { id: string }) {
+  const img = el('img', { alt: '' });
+  img.style.imageRendering = 'pixelated';
+  const known = heads.get(account.id);
+  if (known) img.src = known;
+  else headFor(account.id).then((url) => url && (img.src = url));
+  return img;
+}
 
 function versionLabel(id: string): string {
   if (id === 'latest-release') return t('Najnowsze wydanie');
@@ -314,7 +354,12 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') document.querySelectorAll('.picker-menu').forEach((m) => m.classList.add('hidden'));
 });
 
-const avatarUrl = (uuid: string) => `https://mc-heads.net/avatar/${uuid.replace(/-/g, '')}/64`;
+/** Head for the account picker; until it is ready the picker shows a placeholder and redraws once it is. */
+function avatarUrl(accountId: string): string {
+  const known = heads.get(accountId);
+  if (!known) headFor(accountId).then((url) => url && renderPlay());
+  return known ?? 'logo.png';
+}
 
 function renderPlay() {
   const profileSel = $<HTMLSelectElement>('#play-profile');
@@ -323,7 +368,7 @@ function renderPlay() {
   fillSelect(accountSel, store.accounts.map((a) => ({ value: a.id, label: `${a.name}${a.type === 'offline' ? ' (offline)' : ''}` })), store.settings.selectedAccountId);
   if (store.accounts.length === 0) accountSel.append(el('option', { value: '', textContent: 'Brak kont' }));
   picker(profileSel, store.profiles.map((p) => ({ value: p.id, label: p.name, sub: profileLabel(p), img: profileIconUrl(p), pixelated: p.icon !== 'custom' })));
-  picker(accountSel, store.accounts.map((a) => ({ value: a.id, label: a.name, sub: a.type === 'msa' ? 'Microsoft' : 'Offline', img: avatarUrl(a.uuid), pixelated: true })), 'Brak kont');
+  picker(accountSel, store.accounts.map((a) => ({ value: a.id, label: a.name, sub: a.type === 'msa' ? 'Microsoft' : 'Offline', img: avatarUrl(a.id), pixelated: true })), 'Brak kont');
 
   const profile = store.profiles.find((p) => p.id === profileSel.value) ?? store.profiles[0];
   $('#hero-title').textContent = profile?.name ?? 'Minecraft';
@@ -419,7 +464,7 @@ function renderAccounts() {
     ...store.accounts.map((a) => {
       const remove = el('button', { className: 'danger', textContent: 'Usuń' });
       remove.addEventListener('click', () => guard(() => api.deleteAccount(a.id)));
-      return el('li', {}, avatar(a.uuid), el('div', { className: 'grow' }, a.name, el('small', { textContent: a.uuid })),
+      return el('li', {}, avatar(a), el('div', { className: 'grow' }, a.name, el('small', { textContent: a.uuid })),
         el('span', { className: `badge ${a.type}`, textContent: a.type === 'msa' ? 'Microsoft' : 'Offline' }), remove);
     }),
   );
