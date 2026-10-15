@@ -4,10 +4,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { downloadAll, fetchJson, sha1File, type ProgressFn } from './download';
 import { t } from '../shared/i18n';
+import { USER_AGENT } from '../shared/version';
 
 const API = 'https://api.modrinth.com/v2';
 // Modrinth asks every client to identify itself.
-const HEADERS = { 'User-Agent': 'slash3rss/SlashClient/0.1.0 (https://slash3rss.dev)' };
+const HEADERS = { 'User-Agent': USER_AGENT };
 
 export type ContentType = 'mod' | 'resourcepack' | 'shader';
 export type ProjectType = ContentType | 'modpack';

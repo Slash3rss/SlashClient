@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { APP_VERSION } from '../shared/version';
 import { createLogParser } from './gamelog';
 import { installLoader, LOADER_NAMES } from './loaders';
 import { installVersion, libraryClasspath, type StageFn } from './install';
@@ -15,7 +16,7 @@ import { getManifest, type Argument } from './versions';
 import { t } from '../shared/i18n';
 
 export const LAUNCHER_NAME = 'SlashClient';
-export const LAUNCHER_VERSION = '0.1.0';
+export const LAUNCHER_VERSION = APP_VERSION;
 
 /** Turns the "latest-release" / "latest-snapshot" aliases into a real version id. */
 export async function resolveVersionId(id: string): Promise<string> {

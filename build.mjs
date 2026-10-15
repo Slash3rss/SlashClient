@@ -1,7 +1,8 @@
 import { build } from 'esbuild';
-import { cpSync, mkdirSync } from 'node:fs';
+import { cpSync, mkdirSync, readFileSync } from 'node:fs';
 
-const common = { bundle: true, sourcemap: true, logLevel: 'info', target: 'es2023' };
+const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
+const common = { bundle: true, sourcemap: true, logLevel: 'info', target: 'es2023', define: { __APP_VERSION__: JSON.stringify(version) } };
 
 mkdirSync('dist/renderer', { recursive: true });
 await Promise.all([

@@ -5,6 +5,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { t } from '../shared/i18n';
+import { USER_AGENT } from '../shared/version';
 
 export interface DownloadTask {
   url: string;
@@ -25,7 +26,6 @@ export interface ByteStats {
 
 export type ProgressFn = (done: number, total: number, stats: ByteStats) => void;
 
-const USER_AGENT = 'SlashClient/0.1';
 
 const hostOf = (url: string) => {
   try {
