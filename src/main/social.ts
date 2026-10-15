@@ -15,7 +15,7 @@ export interface Activity {
   since?: number;
 }
 
-export interface SocialUser { id: string; handle: string; name: string; avatar: string; showServer: boolean }
+export interface SocialUser { id: string; handle: string; name: string; avatar: string; showServer: boolean; providers: string[] }
 
 export interface SocialState {
   url: string;
@@ -94,6 +94,12 @@ export class SocialClient {
     this.user = result.user;
     this.start();
     return this.state();
+  }
+
+  /** After a provider was linked or unlinked: the page shows the new list. */
+  updateUser(user: SocialUser) {
+    this.user = user;
+    this.opts.emit({ type: 'state', state: this.state() });
   }
 
   async logout() {

@@ -11,7 +11,7 @@ interface Presence { status: 'online' | 'away' | 'busy' | 'offline'; activity?: 
 interface Person { id: string; handle: string; name: string; avatar: string }
 interface Friend extends Person { presence: Presence; unread: number; lastMessageAt: number; since: number }
 interface Request extends Person { at: number }
-interface Me extends Person { showServer: boolean }
+interface Me extends Person { showServer: boolean; providers: string[] }
 interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null }
 interface SocialState { url: string; user?: Me; connected: boolean; status: Status }
 interface FriendList { friends: Friend[]; incoming: Request[]; outgoing: Request[] }
@@ -25,6 +25,8 @@ export interface FriendsDeps {
 }
 
 const MAX_MESSAGE = 2000;
+const PROVIDERS: Record<string, string> = { discord: 'Discord', microsoft: 'Microsoft', google: 'Google', github: 'GitHub', dev: 'Test' };
+const providerIcon = (p: string) => el('i', { className: p in PROVIDERS && p !== 'dev' ? `fa-brands fa-${p}` : 'fa-solid fa-flask' });
 const PAGE = 50;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLElementTagNameMap[K]> = {}, ...children: (Node | string)[]) {
@@ -51,8 +53,10 @@ export function socialErrorText(code: string): string {
     bad_name: t('Nick musi mieć 3–16 znaków: litery, cyfry lub _.'),
     provider_disabled: t('Ten sposób logowania jest wyłączony na serwerze.'),
     login_expired: t('Logowanie wygasło. Spróbuj ponownie.'),
-    discord_denied: t('Logowanie przez Discord zostało anulowane.'),
-    discord_failed: t('Discord nie potwierdził logowania. Spróbuj ponownie.'),
+    provider_denied: t('Logowanie zostało anulowane.'),
+    provider_failed: t('Nie udało się potwierdzić logowania. Spróbuj ponownie.'),
+    already_linked: t('To konto jest już połączone z innym kontem SlashClient.'),
+    last_provider: t('To jedyny sposób logowania. Najpierw połącz inny.'),
     cancelled: t('Logowanie anulowane.'),
   };
   return texts[code] ?? t('Błąd serwera znajomych ({0}).', code);
@@ -61,7 +65,7 @@ export function socialErrorText(code: string): string {
 export function createFriends(root: HTMLElement, badge: HTMLElement, deps: FriendsDeps) {
   const { api } = deps;
   let state: SocialState | undefined;
-  let health: { discord: boolean; dev: boolean } | undefined;
+  let health: { providers: string[]; dev: boolean } | undefined;
   let healthError = false;
   let list: FriendList = { friends: [], incoming: [], outgoing: [] };
   let selected: string | undefined;
@@ -73,14 +77,14 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   const isVisible = () => root.closest('.view')?.classList.contains('active') && document.hasFocus();
   const friend = (id: string | undefined) => list.friends.find((f) => f.id === id);
 
-  // ---------- avatars: the Discord picture, or a letter ----------
+  // ---------- avatars: the picture from Discord, Google or GitHub, or a letter ----------
 
   function avatar(p: Person, presence?: Presence) {
     const box = el('div', { className: 'fr-avatar' });
     const dot = presence ? el('span', { className: `fr-dot ${presenceClass(presence)}` }) : undefined;
     const letter = el('span', { textContent: (p.name || p.handle).slice(0, 1).toUpperCase() });
     box.append(letter);
-    if (p.avatar.startsWith('https://cdn.discordapp.com/')) {
+    if (/^https:\/\/(cdn\.discordapp\.com|lh3\.googleusercontent\.com|avatars\.githubusercontent\.com)\//.test(p.avatar)) {
       const img = el('img', { alt: '', src: p.avatar });
       img.onerror = () => img.replaceWith(letter);
       box.replaceChildren(img);
@@ -122,10 +126,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   async function refreshState() {
     state = await api.socialState();
-    if (!state?.user) {
-      health = await api.socialHealth().catch(() => undefined);
-      healthError = !health;
-    }
+    health = await api.socialHealth().catch(() => undefined);
+    healthError = !health;
     if (state?.user) await refreshList();
     render();
   }
@@ -172,9 +174,9 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       cancel.addEventListener('click', () => api.socialCancelLogin());
       buttons.append(el('p', { className: 'muted' }, el('span', { className: 'spinner' }), t(' Dokończ logowanie w przeglądarce…')), cancel);
     } else {
-      if (health?.discord) {
-        const b = el('button', { type: 'button', className: 'primary fr-discord' }, el('i', { className: 'fa-brands fa-discord' }), t(' Zaloguj przez Discord'));
-        b.addEventListener('click', () => signIn(() => api.socialLoginDiscord()));
+      for (const provider of health?.providers ?? []) {
+        const b = el('button', { type: 'button', className: `primary fr-${provider}` }, providerIcon(provider), t(' Zaloguj przez {0}', PROVIDERS[provider] ?? provider));
+        b.addEventListener('click', () => signIn(() => api.socialLoginOAuth(provider)));
         buttons.append(b);
       }
       if (health?.dev) {
@@ -299,12 +301,45 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       await refreshState();
     });
     const self: Presence = state!.connected ? { status: state!.status === 'invisible' ? 'offline' : state!.status } : { status: 'offline' };
+    const linked = el('div', { className: 'fr-linked' });
+    for (const provider of new Set([...(me.providers ?? []), ...(health?.providers ?? [])])) {
+      const has = (me.providers ?? []).includes(provider);
+      const chip = el('button', {
+        type: 'button',
+        className: `fr-chip${has ? ' on' : ''}`,
+        title: has ? t('Połączone: {0}. Kliknij, żeby odłączyć.', PROVIDERS[provider] ?? provider) : t('Połącz konto {0}', PROVIDERS[provider] ?? provider),
+      }, providerIcon(provider), has ? icon('fa-check') : icon('fa-plus'));
+      chip.addEventListener('click', async () => {
+        if (has) {
+          if (!confirm(t('Odłączyć {0} od konta SlashClient?', PROVIDERS[provider] ?? provider))) return;
+          try {
+            state!.user = await api.socialApi('DELETE', `/v1/me/providers/${provider}`);
+            renderMe();
+          } catch (err) {
+            deps.toast(deps.errorText(err), true);
+          }
+        } else if (provider !== 'dev') {
+          chip.disabled = true;
+          try {
+            state = await api.socialLoginOAuth(provider, true);
+            deps.toast(t('Połączono konto {0}.', PROVIDERS[provider] ?? provider));
+            renderMe();
+          } catch (err) {
+            deps.toast(deps.errorText(err), true);
+          } finally {
+            chip.disabled = false;
+          }
+        }
+      });
+      linked.append(chip);
+    }
     meBox.replaceChildren(
       el('div', { className: 'fr-me-row' }, avatar(me, self),
         el('div', { className: 'grow fr-names' }, el('b', { textContent: me.name }), el('small', { className: 'muted', textContent: `@${me.handle}` })),
         logout),
       el('div', { className: 'row' }, status, state!.connected ? '' : el('small', { className: 'fr-error', textContent: t('Łączenie…') })),
-      el('label', { className: 'check fr-share' }, share, t(' Pokazuj znajomym, na jakim serwerze gram')));
+      el('label', { className: 'check fr-share' }, share, t(' Pokazuj znajomym, na jakim serwerze gram')),
+      el('div', { className: 'fr-linked-row' }, el('small', { className: 'muted', textContent: t('Logowanie:') }), linked));
   }
 
   function renderList() {

@@ -12,9 +12,21 @@ let base = '';
 let app: ReturnType<typeof createApp>;
 
 // a fake Discord, so sign-in can be tested without the internet
-const fakeFetch: typeof fetch = async (input) => {
+const fakeFetch: typeof fetch = async (input, init) => {
   const url = String(input);
-  if (url.endsWith('/oauth2/token')) return Response.json({ access_token: 'discord-token' });
+  if (url.endsWith('discord.com/api/oauth2/token')) return Response.json({ access_token: 'discord-token' });
+  if (url === 'https://oauth2.googleapis.com/token') {
+    const claims = Buffer.from(JSON.stringify({ sub: 'g-1', name: 'Zosia Nowak', picture: 'https://evil.example/x.png' })).toString('base64url');
+    return Response.json({ id_token: `x.${claims}.y` });
+  }
+  if (url === 'https://github.com/login/oauth/access_token') return Response.json({ access_token: 'gh-token' });
+  if (url === 'https://api.github.com/user') return Response.json({ id: 7, login: 'octo', name: null, avatar_url: 'https://avatars.githubusercontent.com/u/7' });
+  if (url.endsWith('/oauth2/v2.0/token')) {
+    // the code says which Microsoft user signed in
+    const code = new URLSearchParams(String(init?.body)).get('code');
+    const claims = Buffer.from(JSON.stringify({ sub: `ms-${code}`, name: code === 'jan' ? 'Jan Kowalski' : 'Ola' })).toString('base64url');
+    return Response.json({ id_token: `x.${claims}.y` });
+  }
   if (url.endsWith('/users/@me')) return Response.json({ id: '42', username: 'kasia', global_name: 'Kasia', avatar: 'abc' });
   throw new Error(`unexpected ${url}`);
 };
@@ -49,7 +61,7 @@ async function connect(token: string, presence?: unknown) {
 }
 
 before(async () => {
-  app = createApp({ dbFile: path.join(dir, 'test.db'), publicUrl: 'http://localhost', allowDevLogin: true, discord: { clientId: 'id', clientSecret: 'secret' }, fetchImpl: fakeFetch });
+  app = createApp({ dbFile: path.join(dir, 'test.db'), publicUrl: 'http://localhost', allowDevLogin: true, oauth: { discord: { clientId: 'id', clientSecret: 'secret' }, microsoft: { clientId: 'ms', clientSecret: 'secret' }, google: { clientId: 'g', clientSecret: 's' }, github: { clientId: 'gh', clientSecret: 's' } }, fetchImpl: fakeFetch });
   await new Promise<void>((r) => app.server.listen(0, r));
   base = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
 });
@@ -67,14 +79,53 @@ describe('social server', () => {
   it('signs in with Discord through the browser and polling', async () => {
     const { state, url } = (await call('POST', '/v1/auth/discord/start')).body;
     assert.match(url, /discord\.com\/oauth2\/authorize/);
-    assert.equal((await call('GET', `/v1/auth/discord/poll?state=${state}`)).body.pending, true);
+    assert.equal((await call('GET', `/v1/auth/poll?state=${state}`)).body.pending, true);
     const page = await fetch(`${base}/v1/auth/discord/callback?state=${state}&code=xyz`);
     assert.equal(page.status, 200);
-    const done = (await call('GET', `/v1/auth/discord/poll?state=${state}`)).body;
+    const done = (await call('GET', `/v1/auth/poll?state=${state}`)).body;
     assert.equal(done.user.handle, 'kasia');
     assert.equal(done.user.name, 'Kasia');
     // the result is handed out once
-    assert.equal((await call('GET', `/v1/auth/discord/poll?state=${state}`)).status, 404);
+    assert.equal((await call('GET', `/v1/auth/poll?state=${state}`)).status, 404);
+  });
+
+  /** Runs a browser sign-in with a Microsoft "code" (which user), optionally linking to a session. */
+  async function microsoftLogin(code: string, token?: string) {
+    const { state } = (await call('POST', '/v1/auth/microsoft/start', token)).body;
+    await fetch(`${base}/v1/auth/microsoft/callback?state=${state}&code=${code}`);
+    return call('GET', `/v1/auth/poll?state=${state}`);
+  }
+
+  it('signs in with Microsoft and links it to an existing account', async () => {
+    const jan = (await microsoftLogin('jan')).body;
+    assert.equal(jan.user.handle, 'JanKowalski');
+    assert.equal(jan.user.name, 'Jan Kowalski');
+
+    const dev = await login('Linker');
+    const linked = (await microsoftLogin('ola', dev.token)).body;
+    assert.equal(linked.linked, true);
+    assert.deepEqual(linked.user.providers, ['dev', 'microsoft']);
+    // signing in with that Microsoft account now opens the same SlashClient account
+    assert.equal((await microsoftLogin('ola')).body.user.id, dev.user.id);
+    // Jan's Microsoft account already has its own SlashClient account
+    assert.equal((await microsoftLogin('jan', dev.token)).body.error, 'already_linked');
+    // the last way to sign in cannot be removed
+    assert.equal((await call('DELETE', '/v1/me/providers/microsoft', jan.token)).body.error, 'last_provider');
+    const after = await call('DELETE', '/v1/me/providers/microsoft', dev.token);
+    assert.deepEqual(after.body.providers, ['dev']);
+  });
+
+  it('signs in with Google and GitHub', async () => {
+    for (const [provider, handle, avatar] of [['google', 'ZosiaNowak', ''], ['github', 'octo', 'https://avatars.githubusercontent.com/u/7']]) {
+      const { state, url } = (await call('POST', `/v1/auth/${provider}/start`)).body;
+      assert.match(url, provider === 'google' ? /accounts\.google\.com/ : /github\.com\/login\/oauth/);
+      await fetch(`${base}/v1/auth/${provider}/callback?state=${state}&code=c`);
+      const done = (await call('GET', `/v1/auth/poll?state=${state}`)).body;
+      assert.equal(done.user.handle, handle);
+      // pictures only from the provider's own host
+      assert.equal(done.user.avatar, avatar);
+    }
+    assert.deepEqual((await call('GET', '/v1/health')).body.providers, ['discord', 'microsoft', 'google', 'github']);
   });
 
   it('gives a free handle when the name is taken', async () => {

@@ -15,17 +15,20 @@ ALLOW_DEV_LOGIN=1 npm start
 W launcherze: Ustawienia → **Serwer znajomych** = `http://localhost:8787` (domyślnie), potem zakładka **Znajomi**.
 `ALLOW_DEV_LOGIN=1` pozwala zalogować się samym nickiem, bez hasła. Służy tylko do testów i nigdy nie powinno być włączone publicznie.
 
-## Logowanie przez Discord
+## Logowanie: Discord, Microsoft, Google, GitHub
 
-1. <https://discord.com/developers/applications> → aplikacja (może być ta od statusu, `812524751053914112`) → **OAuth2**.
-2. **Redirects**: dodaj `<PUBLIC_URL>/v1/auth/discord/callback`, lokalnie `http://localhost:8787/v1/auth/discord/callback`.
-3. Skopiuj **Client ID** i **Client Secret**:
+Konto SlashClient można założyć przez dowolny z tych serwisów, a w zakładce Znajomi podłączyć kolejne
+(ikony przy „Logowanie”). Każdy włącza się parą zmiennych `<NAZWA>_CLIENT_ID` i `<NAZWA>_CLIENT_SECRET`.
+Adres przekierowania jest zawsze taki sam: `<PUBLIC_URL>/v1/auth/<nazwa>/callback`, lokalnie np. `http://localhost:8787/v1/auth/google/callback`.
 
-```bash
-DISCORD_CLIENT_ID=... DISCORD_CLIENT_SECRET=... npm start
-```
+| Serwis | Gdzie utworzyć aplikację | Uwagi |
+|--------|--------------------------|-------|
+| Discord | <https://discord.com/developers/applications> → OAuth2 | może być aplikacja od statusu (`812524751053914112`); zakres `identify` |
+| Microsoft | <https://portal.azure.com> → App registrations | konta osobiste; platforma **Web** z adresem przekierowania; **Certificates & secrets** → nowy sekret. To zwykłe logowanie Microsoft, niezależne od kont Minecraft w launcherze |
+| Google | <https://console.cloud.google.com/apis/credentials> → OAuth client ID (Web application) | zakresy `openid profile` |
+| GitHub | <https://github.com/settings/developers> → OAuth Apps | bez dodatkowych zakresów (publiczny profil) |
 
-Launcher otwiera przeglądarkę, a po zalogowaniu sam odbiera wynik (odpytuje `/v1/auth/discord/poll`). Nie potrzebuje do tego własnego protokołu ani portu.
+Launcher otwiera przeglądarkę, a po zalogowaniu sam odbiera wynik (odpytuje `/v1/auth/poll`). Nie potrzebuje do tego własnego protokołu ani portu.
 
 ## Zmienne środowiskowe
 
@@ -34,7 +37,7 @@ Launcher otwiera przeglądarkę, a po zalogowaniu sam odbiera wynik (odpytuje `/
 | `PORT` | `8787` | port HTTP i WebSocket |
 | `DB_FILE` | `./data/social.db` | plik bazy SQLite |
 | `PUBLIC_URL` | `http://localhost:PORT` | adres widoczny z zewnątrz (przekierowanie Discorda) |
-| `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` | – | włączają logowanie przez Discord |
+| `DISCORD_…`, `MICROSOFT_…`, `GOOGLE_…`, `GITHUB_…` (`_CLIENT_ID`, `_CLIENT_SECRET`) | – | włączają dany sposób logowania |
 | `ALLOW_DEV_LOGIN` | – | `1` = logowanie samym nickiem (tylko testy) |
 
 ## API (`/v1`)
@@ -43,12 +46,13 @@ Błędy mają postać `{ "error": "<kod>" }`, a launcher tłumaczy kody na tekst
 
 | Metoda | Ścieżka | |
 |--------|---------|--|
-| GET | `/health` | dostępne sposoby logowania |
+| GET | `/health` | `{ providers, dev }`: dostępne sposoby logowania |
 | POST | `/auth/dev` | `{ name }` → `{ token, user }` (tylko z `ALLOW_DEV_LOGIN`) |
-| POST | `/auth/discord/start` | `{ state, url }` |
-| GET | `/auth/discord/poll?state=` | `{ pending: true }` albo `{ token, user }` |
+| POST | `/auth/:provider/start` | `{ state, url }`; z nagłówkiem `Authorization` łączy serwis z kontem zamiast logować |
+| GET | `/auth/poll?state=` | `{ pending: true }`, `{ token, user }` albo `{ linked: true, user }` |
 | POST | `/auth/logout` | |
-| GET/POST | `/me` | konto; POST `{ showServer }` |
+| GET/POST | `/me` | konto z listą `providers`; POST `{ showServer }` |
+| DELETE | `/me/providers/:provider` | odłącza serwis (ostatniego nie można) |
 | GET | `/friends` | `{ friends, incoming, outgoing }`, przy znajomych status, liczba nieprzeczytanych |
 | POST | `/friends/requests` | `{ handle }`. Gdy druga strona też zaprosiła, od razu jesteście znajomymi |
 | POST | `/friends/requests/:id/accept` | |

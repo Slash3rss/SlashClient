@@ -8,7 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 
 /** A SlashClient account; `handle` is the unique name friends search for. */
 export interface User { id: string; handle: string; name: string; avatar: string; showServer: boolean }
-export type Provider = 'discord' | 'dev';
+export type Provider = 'discord' | 'microsoft' | 'google' | 'github' | 'dev';
 export interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null }
 /** Another player as friends lists show them. */
 export interface Person { id: string; handle: string; name: string; avatar: string }
@@ -80,7 +80,7 @@ export class Db {
   // ---- players and sessions ----
 
   /**
-   * The account behind a login (Discord user, Minecraft profile…), created on first
+   * The account behind a login (Discord, Microsoft, Google or GitHub user, test name), created on first
    * sign-in. The name and avatar follow the provider; the handle stays once chosen.
    */
   signIn(provider: Provider, subject: string, wanted: { handle: string; name: string; avatar: string }): User {
@@ -96,6 +96,22 @@ export class Db {
       .run(uuid, handle, handle.toLowerCase(), wanted.name, wanted.avatar, now, now);
     this.db.prepare('INSERT INTO identities (provider, subject, uuid) VALUES (?, ?, ?)').run(provider, subject, uuid);
     return this.user(uuid)!;
+  }
+
+  /** Adds a sign-in method to an account; false when it already belongs to someone. */
+  link(provider: Provider, subject: string, uuid: string): boolean {
+    const owner = this.db.prepare('SELECT uuid FROM identities WHERE provider = ? AND subject = ?').get(provider, subject) as { uuid: string } | undefined;
+    if (owner) return owner.uuid === uuid;
+    this.db.prepare('INSERT INTO identities (provider, subject, uuid) VALUES (?, ?, ?)').run(provider, subject, uuid);
+    return true;
+  }
+
+  unlink(uuid: string, provider: string) {
+    this.db.prepare('DELETE FROM identities WHERE uuid = ? AND provider = ?').run(uuid, provider);
+  }
+
+  providers(uuid: string): string[] {
+    return (this.db.prepare('SELECT provider FROM identities WHERE uuid = ? ORDER BY provider').all(uuid) as { provider: string }[]).map((r) => r.provider);
   }
 
   /** `base`, or `base2`, `base3`… when someone already has it. */

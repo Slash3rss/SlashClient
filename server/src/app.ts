@@ -2,8 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import http from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { Db, type User } from './db.ts';
-import { authorizeUrl, userFromCode, type DiscordConfig } from './discord.ts';
-
+import { PROVIDERS, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, type Presence } from './presence.ts';
 
 /**
@@ -16,9 +15,10 @@ import { cleanPresence, publicPresence, type Presence } from './presence.ts';
 
 export interface Config {
   dbFile: string;
-  /** Address the server is reachable at, for the Discord redirect. */
+  /** Address the server is reachable at, for the sign-in redirects. */
   publicUrl: string;
-  discord?: Omit<DiscordConfig, 'redirectUri'>;
+  /** Sign-in providers that are configured (Discord, Microsoft, Google, GitHub). */
+  oauth: Partial<Record<ProviderId, OAuthApp>>;
   /** Sign-in with just a name, for local testing only. */
   allowDevLogin: boolean;
   fetchImpl?: typeof fetch;
@@ -58,9 +58,17 @@ function rateLimiter(perMinute: number) {
 
 export function createApp(cfg: Config) {
   const db = new Db(cfg.dbFile);
-  const discord = cfg.discord && { ...cfg.discord, redirectUri: `${cfg.publicUrl}/v1/auth/discord/callback` };
-  /** Discord sign-ins in progress: the launcher polls with `state` until the browser part is done. */
-  const logins = new Map<string, { at: number; result?: { token: string; user: User }; error?: string }>();
+  const providers: Partial<Record<ProviderId, Provider>> = {};
+  for (const id of Object.keys(PROVIDERS) as ProviderId[]) {
+    const app = cfg.oauth[id];
+    if (app) providers[id] = PROVIDERS[id](app);
+  }
+  const redirectUri = (provider: string) => `${cfg.publicUrl}/v1/auth/${provider}/callback`;
+  /**
+   * Sign-ins in progress: the launcher opens the browser and polls with `state` until the
+   * browser part is done. With `linkTo` the login adds a provider to an existing account.
+   */
+  const logins = new Map<string, { provider: ProviderId; at: number; linkTo?: string; result?: unknown; error?: string }>();
   const sockets = new Map<string, Set<WebSocket>>();
   const presences = new Map<string, Presence>();
   const limitMessages = rateLimiter(40);
@@ -126,13 +134,17 @@ export function createApp(cfg: Config) {
     };
   }
 
+  function meWithProviders(me: string) {
+    return { ...db.user(me)!, providers: db.providers(me) };
+  }
+
   function friendOrThrow(me: string, other: string) {
     if (!db.areFriends(me, other)) throw new HttpError(403, 'not_friends');
   }
 
   type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
   const routes: [string, RegExp, Handler][] = [
-    ['GET', /^\/v1\/health$/, () => ({ ok: true, discord: !!discord, dev: cfg.allowDevLogin })],
+    ['GET', /^\/v1\/health$/, () => ({ ok: true, providers: Object.keys(providers), dev: cfg.allowDevLogin })],
 
     // -- signing in --
     ['POST', /^\/v1\/auth\/dev$/, async (req) => {
@@ -141,14 +153,17 @@ export function createApp(cfg: Config) {
       if (typeof name !== 'string' || !VALID_NAME.test(name)) throw new HttpError(400, 'bad_name');
       return newSession(db.signIn('dev', name.toLowerCase(), { handle: name, name, avatar: '' }));
     }],
-    ['POST', /^\/v1\/auth\/discord\/start$/, (req) => {
-      if (!discord) throw new HttpError(404, 'provider_disabled');
+    // with a session this links the provider to the account instead of signing in
+    ['POST', /^\/v1\/auth\/(discord|microsoft|google|github)\/start$/, (req, [provider]) => {
+      const p = providers[provider as ProviderId];
+      if (!p) throw new HttpError(404, 'provider_disabled');
       limitLogins(req.socket.remoteAddress ?? '');
+      const linkTo = req.headers.authorization ? authed(req) : undefined;
       const state = randomBytes(24).toString('base64url');
-      logins.set(state, { at: Date.now() });
-      return { state, url: authorizeUrl(discord, state) };
+      logins.set(state, { provider: provider as ProviderId, at: Date.now(), linkTo });
+      return { state, url: p.authorizeUrl(state, redirectUri(provider)) };
     }],
-    ['GET', /^\/v1\/auth\/discord\/poll$/, (_req, _p, url) => {
+    ['GET', /^\/v1\/auth\/poll$/, (_req, _p, url) => {
       const state = url.searchParams.get('state') ?? '';
       const login = logins.get(state);
       if (!login || Date.now() - login.at > LOGIN_TTL_MS) throw new HttpError(404, 'login_expired');
@@ -167,7 +182,16 @@ export function createApp(cfg: Config) {
     }],
 
     // -- my account --
-    ['GET', /^\/v1\/me$/, (req) => db.user(authed(req))],
+    ['GET', /^\/v1\/me$/, (req) => meWithProviders(authed(req))],
+    // a provider can go as long as another one is left to sign in with
+    ['DELETE', /^\/v1\/me\/providers\/(discord|microsoft|google|github)$/, (req, [provider]) => {
+      const me = authed(req);
+      const linked = db.providers(me);
+      if (!linked.includes(provider)) throw new HttpError(404, 'not_found');
+      if (linked.length < 2) throw new HttpError(400, 'last_provider');
+      db.unlink(me, provider);
+      return meWithProviders(me);
+    }],
     ['POST', /^\/v1\/me$/, async (req) => {
       const me = authed(req);
       const { showServer } = await body(req);
@@ -175,7 +199,7 @@ export function createApp(cfg: Config) {
         db.setShowServer(me, showServer);
         broadcastPresence(me);
       }
-      return db.user(me);
+      return meWithProviders(me);
     }],
 
     // -- friends --
@@ -257,20 +281,29 @@ export function createApp(cfg: Config) {
     const url = new URL(req.url ?? '/', 'http://localhost');
     res.setHeader('Cache-Control', 'no-store');
 
-    // the browser lands here after Discord; it shows a short page and the launcher picks the result up
-    if (req.method === 'GET' && url.pathname === '/v1/auth/discord/callback') {
+    // the browser lands here after the provider; it shows a short page and the launcher picks the result up
+    const callback = /^\/v1\/auth\/(discord|microsoft|google|github)\/callback$/.exec(url.pathname);
+    if (req.method === 'GET' && callback) {
+      const provider = callback[1] as ProviderId;
       const login = logins.get(url.searchParams.get('state') ?? '');
       const code = url.searchParams.get('code');
       let ok = false;
-      if (login && discord && code) {
+      if (login && login.provider === provider && providers[provider] && code) {
         try {
-          const d = await userFromCode(discord, code, cfg.fetchImpl);
-          login.result = newSession(db.signIn('discord', d.id, { handle: d.username, name: d.name, avatar: d.avatar }));
-          ok = true;
+          const id = await providers[provider].identityFromCode(code, redirectUri(provider), cfg.fetchImpl ?? fetch);
+          if (login.linkTo) {
+            if (db.link(provider, id.subject, login.linkTo)) {
+              login.result = { linked: true, user: meWithProviders(login.linkTo) };
+              ok = true;
+            } else login.error = 'already_linked';
+          } else {
+            login.result = newSession(db.signIn(provider, id.subject, id));
+            ok = true;
+          }
         } catch {
-          login.error = 'discord_failed';
+          login.error = 'provider_failed';
         }
-      } else if (login) login.error = 'discord_denied';
+      } else if (login) login.error = 'provider_denied';
       res.writeHead(ok ? 200 : 400, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(callbackPage(ok));
       return;
@@ -323,7 +356,7 @@ export function createApp(cfg: Config) {
         sockets.get(me)!.add(ws);
         const presence = cleanPresence(msg.presence);
         if (presence) presences.set(me, presence);
-        ws.send(JSON.stringify({ type: 'ready', me: db.user(me) }));
+        ws.send(JSON.stringify({ type: 'ready', me: meWithProviders(me) }));
         if (first || presence) broadcastPresence(me);
         return;
       }

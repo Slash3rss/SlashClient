@@ -749,6 +749,13 @@ body.entering main { animation: rise-in .55s cubic-bezier(.2, .7, .3, 1) .12s bo
 .fr-providers { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .fr-providers > button { min-width: 260px; justify-content: flex-start; }
 .fr-discord { background: #5865f2 !important; box-shadow: 0 4px 18px rgba(88, 101, 242, .4) !important; }
+.fr-microsoft, .fr-github { background: #2f2f2f !important; box-shadow: none !important; border-color: rgba(255, 255, 255, .15) !important; }
+.fr-google { background: #fff !important; color: #1f1f1f !important; box-shadow: none !important; }
+.fr-linked-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; }
+.fr-linked { display: flex; flex-wrap: wrap; gap: 6px; }
+.fr-chip { display: flex; align-items: center; gap: 5px; padding: 4px 8px; font-size: 12px; border-radius: 99px; color: var(--text-muted); }
+.fr-chip.on { color: var(--text-primary); border-color: rgba(74, 222, 128, .4); }
+.fr-chip.on .fa-check { color: #4ade80; }
 .fr-dev input { width: 220px; }
 .fr-error { color: #fca5a5; }
 .fr-layout { flex: 1; min-height: 420px; display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 14px; }

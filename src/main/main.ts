@@ -867,23 +867,32 @@ handle('social:api', (method: string, apiPath: string, body?: unknown) => {
   return socialCall(() => social.call(method, apiPath, body));
 });
 handle('social:loginDev', (name: string) => socialCall(async () => social.signedIn(await social.call('POST', '/v1/auth/dev', { name }, false))));
-let discordLogin = 0;
-/** Opens Discord in the browser and waits (up to 10 minutes) until the player is back. */
-handle('social:loginDiscord', () => socialCall(async () => {
-  const attempt = ++discordLogin;
-  const { state, url } = await social.call<{ state: string; url: string }>('POST', '/v1/auth/discord/start', undefined, false);
+let browserLogin = 0;
+/**
+ * Opens Discord, Microsoft, Google or GitHub in the browser and waits (up to 10 minutes) until the
+ * player is back. `link` adds that provider to the signed-in account instead.
+ */
+handle('social:loginOAuth', (provider: string, link: boolean) => socialCall(async () => {
+  if (!['discord', 'microsoft', 'google', 'github'].includes(provider)) throw new SocialError('provider_disabled');
+  const attempt = ++browserLogin;
+  const { state, url } = await social.call<{ state: string; url: string }>('POST', `/v1/auth/${provider}/start`, undefined, link);
   await shell.openExternal(url);
   const until = Date.now() + 10 * 60_000;
   while (Date.now() < until) {
     await new Promise((r) => setTimeout(r, 2000));
-    if (attempt !== discordLogin) throw new SocialError('cancelled');
-    const res = await social.call<{ pending?: boolean; token: string; user: never }>('GET', `/v1/auth/discord/poll?state=${state}`, undefined, false);
-    if (!res.pending) return social.signedIn(res);
+    if (attempt !== browserLogin) throw new SocialError('cancelled');
+    const res = await social.call<{ pending?: boolean; linked?: boolean; token: string; user: never }>('GET', `/v1/auth/poll?state=${state}`, undefined, false);
+    if (res.pending) continue;
+    if (res.linked) {
+      social.updateUser(res.user);
+      return social.state();
+    }
+    return social.signedIn(res);
   }
   throw new SocialError('login_expired');
 }));
 handle('social:cancelLogin', () => {
-  discordLogin++;
+  browserLogin++;
 });
 handle('social:logout', () => social.logout());
 handle('social:setStatus', async (status: Status) => {
