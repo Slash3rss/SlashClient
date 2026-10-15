@@ -27,6 +27,7 @@ import { listServers, pingServer } from './servers';
 import { getManifest } from './versions';
 import { newsArticle, newsPage, type NewsFilter } from './news';
 import { ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin } from './skins';
+import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePreset, type SkinPreset } from './skinLibrary';
 import fsp from 'node:fs/promises';
 import { backupWorld, deleteFile, listBackups, listScreenshots, listWorlds, restoreBackup } from './worlds';
 import { t } from '../shared/i18n';
@@ -179,7 +180,9 @@ handle('account:loginMicrosoft', async () => {
   loginAbort = new AbortController();
   const clientId = store.settings.msClientId.trim();
   const code = await startDeviceCode(clientId);
-  send('login:code', { userCode: code.user_code, url: code.verification_uri });
+  // copied right away so the player only has to paste it on the Microsoft page
+  clipboard.writeText(code.user_code);
+  send('login:code', { userCode: code.user_code, url: code.verification_uri, copied: true });
   shell.openExternal(code.verification_uri);
   const tokens = await pollDeviceCode(clientId, code, loginAbort.signal);
   const account = await completeMicrosoftLogin(tokens);
@@ -555,6 +558,43 @@ handle('skin:upload', async (accountId: string, variant: 'classic' | 'slim') => 
 });
 handle('skin:reset', async (accountId: string) => resetSkin((await freshMsa(accountId)).accessToken));
 handle('skin:setCape', async (accountId: string, capeId: string | null) => setCape((await freshMsa(accountId)).accessToken, capeId));
+
+// ---------- skin library ----------
+
+handle('skinlib:list', () => listPresets());
+/** Saves the account's current skin (and the cape it wears) as a preset. */
+handle('skinlib:saveCurrent', async (accountId: string, name: string, capeId?: string | null) => {
+  const account = store.accounts.find((a) => a.id === accountId);
+  if (!account) throw new Error('Nie znaleziono konta.');
+  const skin = await skinFor(account);
+  const png = Buffer.from(skin.dataUrl.split(',')[1], 'base64');
+  return addPreset(png, { name: name || account.name, variant: skin.model === 'slim' ? 'slim' : 'classic', capeId: account.type === 'msa' ? capeId : undefined });
+});
+handle('skinlib:import', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
+    title: t('Dodaj skiny do biblioteki'), filters: [{ name: 'PNG', extensions: ['png'] }], properties: ['openFile', 'multiSelections'],
+  });
+  if (canceled) return [];
+  const added: SkinPreset[] = [];
+  for (const file of filePaths) {
+    const png = await fsp.readFile(file);
+    const image = nativeImage.createFromBuffer(png);
+    const { width, height } = image.getSize();
+    const variant = looksSlim(image.toBitmap(), width, height) ? 'slim' : 'classic';
+    added.push(await addPreset(png, { name: path.basename(file, path.extname(file)), variant }));
+  }
+  return added;
+});
+handle('skinlib:update', (id: string, changes: Partial<Pick<SkinPreset, 'name' | 'variant' | 'capeId'>>) => updatePreset(id, changes));
+handle('skinlib:remove', (id: string) => removePreset(id));
+/** Puts a preset on the account: the skin, then its cape when the account owns it. */
+handle('skinlib:apply', async (accountId: string, id: string) => {
+  const { preset, png } = await readPreset(id);
+  const { accessToken } = await freshMsa(accountId);
+  await uploadSkin(accessToken, png, preset.variant);
+  if (preset.capeId === null) await setCape(accessToken, null);
+  else if (preset.capeId && (await ownedCapes(accessToken)).some((c) => c.id === preset.capeId)) await setCape(accessToken, preset.capeId);
+});
 
 handle('news:list', (offset: number, limit: number, filter: NewsFilter) => newsPage(offset, limit, filter));
 handle('news:article', (id: string) => newsArticle(id));

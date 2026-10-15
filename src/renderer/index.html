@@ -291,6 +291,25 @@
           </div>
         </div>
       </div>
+      <div class="card glass-panel skin-library" id="skin-library">
+        <div class="row lib-head">
+          <h3><i class="fa-solid fa-shirt"></i> Biblioteka skinów</h3>
+          <button id="lib-save"><i class="fa-solid fa-bookmark"></i> Zapisz obecny</button>
+          <button id="lib-import"><i class="fa-solid fa-file-import"></i> Dodaj z pliku…</button>
+        </div>
+        <p class="muted" id="lib-empty">Zapisz obecny wygląd albo dodaj pliki PNG, żeby jednym kliknięciem przełączać się między skinami.</p>
+        <div class="lib-grid" id="lib-grid"></div>
+        <div class="row lib-detail hidden" id="lib-detail">
+          <input id="lib-name" maxlength="40" placeholder="Nazwa">
+          <div class="segmented" id="lib-variant">
+            <button data-variant="classic">Steve</button>
+            <button data-variant="slim">Alex</button>
+          </div>
+          <span class="muted" id="lib-cape"></span>
+          <button class="primary" id="lib-apply"><i class="fa-solid fa-check"></i> Ustaw na koncie</button>
+          <button class="danger icon-btn" id="lib-remove" title="Usuń z biblioteki"><i class="fa-solid fa-trash"></i></button>
+        </div>
+      </div>
       <ul class="list accounts" id="account-list"></ul>
       <div class="split two">
         <div class="card glass-panel">
@@ -299,7 +318,11 @@
           <button class="primary" id="ms-login"><i class="fa-brands fa-microsoft"></i> Zaloguj przez Microsoft</button>
           <div id="ms-code" class="ms-code hidden">
             <p>Otwórz <a id="ms-url" target="_blank"></a> i wpisz kod:</p>
-            <div class="code" id="ms-user-code"></div>
+            <div class="code-row">
+              <div class="code" id="ms-user-code"></div>
+              <button id="ms-copy"><i class="fa-regular fa-copy"></i> Kopiuj kod</button>
+            </div>
+            <p class="muted hidden" id="ms-copied"><i class="fa-solid fa-check"></i> Kod jest już w schowku, wystarczy go wkleić.</p>
             <button id="ms-cancel">Anuluj</button>
           </div>
         </div>

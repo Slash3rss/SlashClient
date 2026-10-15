@@ -229,6 +229,9 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 }
 .badge.msa { color: #fff; background: var(--accent-gradient); border-color: transparent; }
 
+.code-row { display: flex; align-items: stretch; gap: 10px; }
+.code-row button { white-space: nowrap; flex-shrink: 0; }
+.ms-code p { margin: 0; }
 .ms-code { gap: 10px; display: flex; flex-direction: column; align-items: flex-start; padding-top: 6px; }
 .code {
   font: 700 28px var(--font-mono); letter-spacing: .18em; user-select: text; padding: 8px 16px; border-radius: 10px;
@@ -567,6 +570,24 @@ body.entering main { animation: rise-in .55s cubic-bezier(.2, .7, .3, 1) .12s bo
 .cape-choice.active::after { content: ""; position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: #4ade80; }
 .cape-actions { min-height: 34px; }
 .cape-actions span { flex: 1; font-size: 13px; }
+
+/* ---------- skin library ---------- */
+.lib-head h3 { margin: 0; flex: 1; }
+.lib-head button, .lib-detail button { height: 36px; padding: 0 14px; font-size: 13px; }
+.lib-detail .segmented button { height: auto; }
+.lib-detail .icon-btn { width: 36px; padding: 0; }
+.lib-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+.lib-grid:empty { display: none; }
+.lib-choice {
+  width: 92px; padding: 10px 6px 8px; border-radius: 12px; background: rgba(0, 0, 0, .25); border: 1px solid var(--glass-border);
+  display: flex; flex-direction: column; align-items: center; gap: 8px; animation: appear .3s ease;
+}
+.lib-choice canvas { width: 40px; height: 80px; image-rendering: pixelated; }
+.lib-choice span { font-size: 12px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lib-choice.selected { border-color: var(--accent); background: rgba(59, 130, 246, .15); box-shadow: 0 0 0 3px rgba(59, 130, 246, .15); }
+.lib-detail { flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--glass-border); }
+.lib-detail input { flex: 1; min-width: 140px; }
+.lib-detail #lib-cape { font-size: 13px; }
 
 /* ---------- back to the game ---------- */
 .continue { display: flex; align-items: center; gap: 14px; padding: 12px 14px; animation: appear .35s ease; }

@@ -849,8 +849,14 @@ $('#ms-login').addEventListener('click', async () => {
   }
 });
 $('#ms-cancel').addEventListener('click', () => api.cancelLogin());
-api.on('login:code', ({ userCode, url }: { userCode: string; url: string }) => {
+$('#ms-copy').addEventListener('click', async () => {
+  await navigator.clipboard.writeText($('#ms-user-code').textContent ?? '');
+  $('#ms-copy').replaceChildren(el('i', { className: 'fa-solid fa-check' }), t(' Skopiowano'));
+  setTimeout(() => $('#ms-copy').replaceChildren(el('i', { className: 'fa-regular fa-copy' }), t(' Kopiuj kod')), 1500);
+});
+api.on('login:code', ({ userCode, url, copied }: { userCode: string; url: string; copied?: boolean }) => {
   $('#ms-user-code').textContent = userCode;
+  $('#ms-copied').classList.toggle('hidden', !copied);
   Object.assign($<HTMLAnchorElement>('#ms-url'), { href: url, textContent: url });
   $('#ms-code').classList.remove('hidden');
 });
@@ -1807,6 +1813,159 @@ $('#skin-reset').addEventListener('click', () => {
   });
 });
 
+// ---------- skin library ----------
+
+interface SkinPreset { id: string; name: string; variant: 'classic' | 'slim'; capeId?: string | null; dataUrl: string }
+let presets: SkinPreset[] = [];
+/** The preset being previewed on the model; undefined = the account's own skin is shown. */
+let chosenPreset: string | undefined;
+
+/** Draws the front of a skin (head, body, arms, legs and their outer layers) into a 16×32 canvas. */
+function skinFront(dataUrl: string, slim: boolean): HTMLCanvasElement {
+  const canvas = el('canvas', { width: 16, height: 32 });
+  const img = new Image();
+  img.onload = () => {
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+    const legacy = img.naturalHeight === 32;
+    const arm = slim ? 3 : 4;
+    const part = (sx: number, sy: number, w: number, h: number, dx: number, dy: number) => ctx.drawImage(img, sx, sy, w, h, dx, dy, w, h);
+    // inner layer
+    part(8, 8, 8, 8, 4, 0);
+    part(20, 20, 8, 12, 4, 8);
+    part(44, 20, arm, 12, 4 - arm, 8);
+    part(legacy ? 44 : 36, legacy ? 20 : 52, arm, 12, 12, 8);
+    part(4, 20, 4, 12, 4, 20);
+    part(legacy ? 4 : 20, legacy ? 20 : 52, 4, 12, 8, 20);
+    // outer layer
+    part(40, 8, 8, 8, 4, 0);
+    if (!legacy) {
+      part(20, 36, 8, 12, 4, 8);
+      part(44, 36, arm, 12, 4 - arm, 8);
+      part(52, 52, arm, 12, 12, 8);
+      part(4, 36, 4, 12, 4, 20);
+      part(4, 52, 4, 12, 8, 20);
+    }
+  };
+  img.src = dataUrl;
+  return canvas;
+}
+
+async function loadLibrary() {
+  presets = (await guard(() => api.listSkinPresets())) ?? presets;
+  if (chosenPreset && !presets.some((p) => p.id === chosenPreset)) chosenPreset = undefined;
+  renderLibrary();
+}
+
+function renderLibrary() {
+  $('#lib-empty').classList.toggle('hidden', presets.length > 0);
+  $('#lib-grid').replaceChildren(...presets.map((p, i) => {
+    const b = el('button', { type: 'button', className: `lib-choice${p.id === chosenPreset ? ' selected' : ''}`, title: p.name },
+      skinFront(p.dataUrl, p.variant === 'slim'), el('span', { textContent: p.name }));
+    b.style.animationDelay = `${Math.min(i, 12) * 25}ms`;
+    b.addEventListener('click', () => (p.id === chosenPreset ? leavePreview() : previewPreset(p.id)));
+    return b;
+  }));
+  const p = presets.find((x) => x.id === chosenPreset);
+  $('#lib-detail').classList.toggle('hidden', !p);
+  if (!p) return;
+  const name = $<HTMLInputElement>('#lib-name');
+  if (document.activeElement !== name) name.value = p.name;
+  document.querySelectorAll<HTMLButtonElement>('#lib-variant button').forEach((x) => x.classList.toggle('active', x.dataset.variant === p.variant));
+  const cape = capes.find((c) => c.id === p.capeId);
+  $('#lib-cape').textContent = p.capeId === undefined ? '' : p.capeId === null ? t('Bez peleryny') : t('Peleryna: {0}', cape?.alias ?? t('z innego konta'));
+  const account = store.accounts.find((a) => a.id === skinAccountId);
+  const apply = $<HTMLButtonElement>('#lib-apply');
+  apply.disabled = account?.type !== 'msa';
+  apply.title = apply.disabled ? t('Skin i pelerynę można zmienić tylko na koncie Microsoft.') : '';
+}
+
+/** Shows a preset on the 3D model without changing anything on the account. */
+async function previewPreset(id: string) {
+  const p = presets.find((x) => x.id === id);
+  if (!p || !skinViewer) return;
+  chosenPreset = id;
+  renderLibrary();
+  await skinViewer.loadSkin(p.dataUrl, { model: p.variant === 'slim' ? 'slim' : 'default' });
+  const cape = capes.find((c) => c.id === p.capeId);
+  if (cape?.texture) await skinViewer.loadCape(cape.texture);
+  else if (p.capeId === null) skinViewer.resetCape();
+  $('#skin-note').textContent = t('Podgląd skina „{0}” z biblioteki.', p.name);
+}
+
+/** Back to the account's own skin. */
+function leavePreview() {
+  chosenPreset = undefined;
+  renderLibrary();
+  skinAccountId = undefined;
+  renderSkin();
+}
+
+$('#lib-save').addEventListener('click', () => {
+  const account = store.accounts.find((a) => a.id === skinAccountId);
+  if (!account) return;
+  // the cape it wears now goes with it; offline accounts and accounts without capes leave capes alone
+  const capeId = account.type === 'msa' && capes.length ? capes.find((c) => c.active)?.id ?? null : undefined;
+  busy($<HTMLButtonElement>('#lib-save'), async () => {
+    try {
+      const preset = await api.saveCurrentSkin(account.id, account.name, capeId);
+      toast(t('Zapisano skin w bibliotece.'));
+      chosenPreset = preset.id;
+      await loadLibrary();
+    } catch (err) {
+      toast(errorText(err), true);
+    }
+  });
+});
+$('#lib-import').addEventListener('click', async () => {
+  const added: { id: string }[] | undefined = await guard(() => api.importSkinPresets());
+  if (!added?.length) return;
+  toast(t('Dodano do biblioteki: {0}', added.length));
+  await loadLibrary();
+  previewPreset(added[added.length - 1].id);
+});
+$('#lib-name').addEventListener('change', async () => {
+  const id = chosenPreset;
+  if (!id) return;
+  await guard(() => api.updateSkinPreset(id, { name: $<HTMLInputElement>('#lib-name').value }));
+  await loadLibrary();
+});
+$('#lib-name').addEventListener('keydown', (e) => {
+  if ((e as KeyboardEvent).key === 'Enter') $<HTMLInputElement>('#lib-name').blur();
+});
+document.querySelectorAll<HTMLButtonElement>('#lib-variant button').forEach((b) =>
+  b.addEventListener('click', async () => {
+    const id = chosenPreset;
+    if (!id) return;
+    await guard(() => api.updateSkinPreset(id, { variant: b.dataset.variant }));
+    await loadLibrary();
+    previewPreset(id);
+  }));
+$('#lib-remove').addEventListener('click', async () => {
+  const p = presets.find((x) => x.id === chosenPreset);
+  if (!p || !confirm(t('Usunąć „{0}” z biblioteki?', p.name))) return;
+  await guard(() => api.removeSkinPreset(p.id));
+  leavePreview();
+  await loadLibrary();
+});
+$('#lib-apply').addEventListener('click', () => {
+  const accountId = skinAccountId;
+  const p = presets.find((x) => x.id === chosenPreset);
+  if (!accountId || !p) return;
+  busy($<HTMLButtonElement>('#lib-apply'), async () => {
+    try {
+      await api.applySkinPreset(accountId, p.id);
+      toast(t('Ustawiono skin „{0}”. W grze zobaczysz go od następnego wejścia.', p.name));
+      chosenPreset = undefined;
+      refreshSkinCaches(accountId);
+      renderSkin();
+      renderLibrary();
+    } catch (err) {
+      toast(errorText(err), true);
+    }
+  });
+});
+
 $('#skin-anim').addEventListener('click', () => {
   if (!skinViewer) return;
   const walking = skinViewer.animation instanceof WalkingAnimation;
@@ -1814,7 +1973,10 @@ $('#skin-anim').addEventListener('click', () => {
   $('#skin-anim').replaceChildren(el('i', { className: walking ? 'fa-solid fa-person-walking' : 'fa-solid fa-person' }), t(walking ? ' Chodzenie' : ' Stój'));
 });
 $('#skin-save').addEventListener('click', () => skinAccountId && guard(() => api.saveSkin(skinAccountId!)));
-document.querySelector('.nav[data-view="accounts"]')?.addEventListener('click', () => renderSkin());
+document.querySelector('.nav[data-view="accounts"]')?.addEventListener('click', () => {
+  renderSkin();
+  loadLibrary();
+});
 
 // ---------- starfield (as on lista.slash3rss.dev) ----------
 
