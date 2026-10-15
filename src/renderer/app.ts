@@ -978,12 +978,25 @@ async function renderSkin() {
   const skin = await guard(() => api.getSkin(account.id));
   if (!skin || skinAccountId !== account.id) return;
   await skinViewer.loadSkin(skin.dataUrl, { model: skin.model });
-  $('#skin-note').textContent = account.type === 'msa'
+  if (skin.cape) await skinViewer.loadCape(skin.cape, { backEquipment: 'cape' });
+  else skinViewer.resetCape();
+  $('#skin-back').classList.toggle('hidden', !skin.cape);
+  $('#skin-back').replaceChildren(el('i', { className: 'fa-solid fa-feather' }), ' Elytra');
+  const capeNote = skin.cape ? ` Peleryna: ${skin.capeSource}.` : '';
+  $('#skin-note').textContent = (account.type === 'msa'
     ? 'Skin Twojego konta Minecraft.'
     : skin.isDefault
       ? 'Konto offline nie ma własnego skina; w grze zobaczysz domyślny.'
-      : 'Konto offline: to skin gracza premium o tym samym nicku. Na serwerach offline inni zobaczą domyślny skin.';
+      : 'Konto offline: to skin gracza premium o tym samym nicku. Na serwerach offline inni zobaczą domyślny skin.') + capeNote;
 }
+
+// cape ⇄ elytra, both drawn from the same cape texture
+$('#skin-back').addEventListener('click', () => {
+  if (!skinViewer?.playerObject.backEquipment) return;
+  const elytra = skinViewer.playerObject.backEquipment === 'elytra';
+  skinViewer.playerObject.backEquipment = elytra ? 'cape' : 'elytra';
+  $('#skin-back').replaceChildren(el('i', { className: elytra ? 'fa-solid fa-feather' : 'fa-solid fa-flag' }), elytra ? ' Elytra' : ' Peleryna');
+});
 
 $('#skin-anim').addEventListener('click', () => {
   if (!skinViewer) return;
