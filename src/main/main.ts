@@ -319,20 +319,30 @@ handle('import:folder', async () => {
 handle('import:run', async (keys: string[]) => {
   const chosen = keys.map((k) => foreign.get(k)).filter((i): i is ForeignInstance => !!i);
   const created: string[] = [];
-  for (const inst of chosen) {
-    const task = startTask(t('Import: {0}', inst.name));
+  const failed: string[] = [];
+  // several instances share one progress card, so a big import does not flood the notification stack
+  const many = chosen.length > 1;
+  const shared = many ? startTask(t('Import profili ({0})', chosen.length)) : undefined;
+  for (const [n, inst] of chosen.entries()) {
+    const task = shared ?? startTask(t('Import: {0}', inst.name));
+    const prefix = many ? `${inst.name} (${n + 1}/${chosen.length}) · ` : '';
     try {
       const profile = newProfile({ name: inst.name, versionId: inst.versionId, loader: inst.loader, loaderVersion: inst.loaderVersion });
       const dest = profileGameDir(profile);
-      await copyInstance(inst, dest, (done, total, item) => task.progress(item ? t('Kopiowanie: {0}', item) : t('Gotowe'), done, total));
+      await copyInstance(inst, dest, (done, total, item) => task.progress(prefix + (item ? t('Kopiowanie: {0}', item) : t('Gotowe')), done, total));
       if (inst.icon) await iconFromFile(dest, inst.icon).then(() => { profile.icon = 'custom'; profile.iconVersion = Date.now(); }, () => {});
       store.profiles.push(profile);
       await persist();
       created.push(profile.id);
-      task.finish(true, t('Zaimportowano {0} z {1}.', inst.name, SOURCE_NAMES[inst.source]), profile.id);
+      if (!many) task.finish(true, t('Zaimportowano {0} z {1}.', inst.name, SOURCE_NAMES[inst.source]), profile.id);
     } catch (err) {
-      task.finish(false, (err as Error).message);
+      failed.push(inst.name);
+      if (!many) task.finish(false, (err as Error).message);
     }
+  }
+  if (shared) {
+    const summary = t('Zaimportowane profile: {0} z {1}.', created.length, chosen.length);
+    shared.finish(created.length > 0, failed.length ? `${summary} ${t('Nie udało się: {0}.', failed.join(', '))}` : summary);
   }
   return created;
 });
@@ -666,6 +676,13 @@ handle('skin:pickFile', async () => {
   pendingSkin = png;
   return preview;
 });
+/** A skin made in the editor: checked like a picked file, then waits for "Save skin". */
+handle('skin:setPending', (dataUrl: string) => {
+  const png = Buffer.from(dataUrl.split(',')[1] ?? '', 'base64');
+  const preview = readSkinFile(png);
+  pendingSkin = png;
+  return preview;
+});
 handle('skin:upload', async (accountId: string, variant: 'classic' | 'slim') => {
   if (!pendingSkin) throw new Error(t('Najpierw wybierz plik skina.'));
   await uploadSkin((await freshMsa(accountId)).accessToken, pendingSkin, variant);
@@ -684,6 +701,11 @@ handle('skinlib:saveCurrent', async (accountId: string, name: string, capeId?: s
   const skin = await skinFor(account);
   const png = Buffer.from(skin.dataUrl.split(',')[1], 'base64');
   return addPreset(png, { name: name || account.name, variant: skin.model === 'slim' ? 'slim' : 'classic', capeId: account.type === 'msa' ? capeId : undefined });
+});
+handle('skinlib:addData', (dataUrl: string, name: string, variant: 'classic' | 'slim') => {
+  const png = Buffer.from(dataUrl.split(',')[1] ?? '', 'base64');
+  readSkinFile(png);
+  return addPreset(png, { name, variant });
 });
 handle('skinlib:import', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog(win!, {

@@ -1,4 +1,5 @@
 import { SkinViewer, WalkingAnimation, IdleAnimation } from 'skinview3d';
+import { openSkinEditor } from './skinEditor';
 import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
 import type { SlashApi } from '../main/preload';
 
@@ -223,8 +224,21 @@ function dismissLater(card: HTMLElement, ms: number) {
   card.append(bar);
 }
 
-/** Notifications stack in the top right corner; only the newest few toasts stay. */
-const MAX_TOASTS = 4;
+/**
+ * Notifications stack in the top right corner. Running tasks always stay; finished
+ * cards and toasts beyond the newest few go away, so a burst never overflows the window.
+ */
+const MAX_CARDS = 5;
+function trimStack() {
+  const cards = [...document.querySelectorAll<HTMLElement>('#tasks .task:not(.leaving)')];
+  let room = MAX_CARDS - cards.filter((c) => !c.classList.contains('notif') && !c.classList.contains('done') && !c.classList.contains('failed')).length;
+  for (const c of cards) {
+    const running = !c.classList.contains('notif') && !c.classList.contains('done') && !c.classList.contains('failed');
+    if (running) continue;
+    if (room > 0) room--;
+    else dismiss(c);
+  }
+}
 function toast(message: string, isError = false) {
   const close = el('button', { type: 'button', className: 'notif-close', title: t('Zamknij') }, el('i', { className: 'fa-solid fa-xmark' }));
   const card = el('div', { className: `task notif${isError ? ' failed' : ''}`, role: isError ? 'alert' : 'status' },
@@ -234,8 +248,7 @@ function toast(message: string, isError = false) {
   close.addEventListener('click', () => dismiss(card));
   $('#tasks').prepend(card);
   dismissLater(card, isError ? 9000 : 4500);
-  const toasts = [...document.querySelectorAll<HTMLElement>('#tasks .notif:not(.leaving)')];
-  toasts.slice(MAX_TOASTS).forEach(dismiss);
+  trimStack();
 }
 
 async function guard<T>(fn: () => Promise<T>): Promise<T | undefined> {
@@ -2044,7 +2057,11 @@ async function renderSkin() {
   $('#skin-name').textContent = account.name;
   $('#skin-note').textContent = 'Ładowanie skina…';
   $('#skin-stage').classList.add('loading');
-  skinViewer ??= new SkinViewer({ canvas: $<HTMLCanvasElement>('#skin-canvas'), width: 220, height: 300 });
+  if (!skinViewer) {
+    skinViewer = new SkinViewer({ canvas: $<HTMLCanvasElement>('#skin-canvas'), width: 220, height: 300 });
+    // the wheel scrolls the page; zoom has its own buttons
+    skinViewer.controls.enableZoom = false;
+  }
   skinViewer.autoRotate = true;
   skinViewer.autoRotateSpeed = 0.6;
   skinViewer.animation ??= new IdleAnimation();
@@ -2374,6 +2391,54 @@ $('#skin-anim').addEventListener('click', () => {
   skinViewer.animation = walking ? new IdleAnimation() : new WalkingAnimation();
   $('#skin-anim').replaceChildren(el('i', { className: walking ? 'fa-solid fa-person-walking' : 'fa-solid fa-person' }), t(walking ? ' Chodzenie' : ' Stój'));
 });
+$('#skin-editor').addEventListener('click', async () => {
+  const account = store.accounts.find((a) => a.id === skinAccountId);
+  if (!account) return;
+  // edit what the model shows: a picked file, a library preset or the account's own skin
+  const pending = skinViewer?.playerObject.userData.pending as string | undefined;
+  const preset = presets.find((p) => p.id === chosenPreset);
+  const source = pending ?? preset?.dataUrl ?? (await guard(() => api.getSkin(account.id)))?.dataUrl;
+  if (!source) return;
+  const slim = preset ? preset.variant === 'slim' : skinVariant === 'slim';
+  await openSkinEditor({
+    dataUrl: source,
+    slim,
+    name: preset?.name ?? account.name,
+    canUse: account.type === 'msa',
+    onSave: async (dataUrl, name, isSlim) => {
+      try {
+        await api.addSkinPreset(dataUrl, name, isSlim ? 'slim' : 'classic');
+        toast(t('Zapisano skin w bibliotece.'));
+        loadLibrary();
+      } catch (err) {
+        toast(errorText(err), true);
+        throw err;
+      }
+    },
+    onUse: async (dataUrl, isSlim) => {
+      try {
+        const preview: string = await api.setPendingSkin(dataUrl);
+        skinVariant = isSlim ? 'slim' : 'classic';
+        document.querySelectorAll<HTMLButtonElement>('#skin-variant button').forEach((x) => x.classList.toggle('active', x.dataset.variant === skinVariant));
+        await skinViewer?.loadSkin(preview, { model: isSlim ? 'slim' : 'default' });
+        if (skinViewer) skinViewer.playerObject.userData.pending = preview;
+        $('#skin-actions').classList.add('hidden');
+        $('#skin-pending').classList.remove('hidden');
+        $('#skin-note').textContent = t('Podgląd nowego skina. Zapisz, żeby ustawić go w grze.');
+      } catch (err) {
+        toast(errorText(err), true);
+        throw err;
+      }
+    },
+  }).catch((err) => toast(errorText(err), true));
+});
+/** Zoom steps for the preview buttons (skinview3d's default is 0.9). */
+function zoomSkin(step: number) {
+  if (!skinViewer) return;
+  skinViewer.zoom = Math.min(1.4, Math.max(0.5, Math.round((skinViewer.zoom + step) * 10) / 10));
+}
+$('#skin-zoom-in').addEventListener('click', () => zoomSkin(0.15));
+$('#skin-zoom-out').addEventListener('click', () => zoomSkin(-0.15));
 $('#skin-save').addEventListener('click', () => skinAccountId && guard(() => api.saveSkin(skinAccountId!)));
 document.querySelector('.nav[data-view="accounts"]')?.addEventListener('click', () => {
   renderSkin();
@@ -2454,6 +2519,7 @@ api.on('task:start', ({ id, title, icon }: TaskStart) => {
       el('div', { className: 'task-stats' })));
   taskCards.set(id, card);
   $('#tasks').prepend(card);
+  trimStack();
 });
 
 api.on('task:progress', ({ id, stage, done, total, bytes, totalBytes, speed }: TaskProgress) => {
