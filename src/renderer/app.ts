@@ -14,7 +14,7 @@ interface PublicAccount { id: string; type: 'offline' | 'msa'; name: string; uui
 interface Profile {
   id: string; name: string; versionId: string; loader: 'vanilla' | 'fabric' | 'quilt' | 'forge' | 'neoforge'; loaderVersion: string; gameDir: string; memoryMb: number;
   jvmArgs: string; javaPath: string; width: number; height: number;
-  icon: string; iconVersion: number; syncOptions: boolean; iconFile?: string;
+  icon: string; iconVersion: number; syncOptions: boolean; hud?: boolean; iconFile?: string;
   modpack?: { projectId: string; versionId: string; versionNumber: string; title: string };
   playTimeMs?: number; lastPlayedAt?: number; jvmPreset?: 'default' | 'g1' | 'zgc';
   lastTarget?: { kind: 'server'; address: string } | { kind: 'world'; folder: string; name: string };
@@ -44,6 +44,7 @@ interface PublicStore {
   running: boolean;
   dataDir: string;
   systemMemoryMb: number;
+  hudVersions?: string[];
 }
 interface VersionInfo { id: string; type: string }
 
@@ -317,6 +318,26 @@ function profileLabel(p: Profile): string {
   return loader ? `${versionLabel(p.versionId)} · ${loader}${p.loaderVersion ? ` ${p.loaderVersion}` : ''}` : versionLabel(p.versionId);
 }
 
+// ---------- SlashClient HUD in the profile form ----------
+
+/** Says whether the HUD will be in the game with the loader and version picked in the form. */
+function renderHudHint() {
+  const form = $<HTMLFormElement>('#profile-form');
+  const loader = (form.elements.namedItem('loader') as HTMLSelectElement).value;
+  const version = resolvedVersion((form.elements.namedItem('versionId') as HTMLSelectElement | HTMLInputElement).value);
+  const supported = store.hudVersions ?? [];
+  const hint = loader !== 'fabric'
+    ? t('działa z Fabric ({0})', supported.join(', ') || '—')
+    : supported.includes(version)
+      ? t('FPS, ping, CPS, pancerz, klawisze i więcej. W grze Prawy Shift otwiera edycję.')
+      : t('jeszcze nie dla {0}; dostępny dla {1}', version, supported.join(', ') || '—');
+  $('#hud-hint').textContent = hint;
+}
+$('#profile-form').addEventListener('change', (e) => {
+  const name = (e.target as HTMLInputElement).name;
+  if (name === 'loader' || name === 'versionId') renderHudHint();
+});
+
 // ---------- navigation ----------
 
 document.querySelectorAll<HTMLButtonElement>('.nav').forEach((btn) =>
@@ -585,6 +606,8 @@ function loadProfileForm(profile: Profile) {
   renderIconChoices(profile);
   renderModpackBox(profile);
   (form.elements.namedItem('syncOptions') as HTMLInputElement).checked = profile.syncOptions ?? false;
+  (form.elements.namedItem('hud') as HTMLInputElement).checked = profile.hud ?? true;
+  renderHudHint();
   $<HTMLSelectElement>('#loader-select').value = profile.loader ?? 'vanilla';
   renderLoaderVersions(profile.loaderVersion ?? '');
   $('#memory-value').textContent = `${profile.memoryMb} MB`;
@@ -851,6 +874,7 @@ $('#profile-form').addEventListener('submit', async (e) => {
     versionId: str('versionId'),
     loader: str('loader') as Profile['loader'],
     syncOptions: data.get('syncOptions') === 'on',
+    hud: data.get('hud') === 'on',
     jvmPreset: str('jvmPreset') as Profile['jvmPreset'],
     loaderVersion: str('loaderVersion'),
     gameDir: str('gameDir'),

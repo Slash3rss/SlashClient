@@ -1,0 +1,11 @@
+{
+	"schemaVersion": 1,
+	"id": "slashclient-hud-test",
+	"version": "1.0.0",
+	"name": "SlashClient HUD tests",
+	"environment": "client",
+	"entrypoints": {
+		"fabric-client-gametest": ["dev.slash3rss.slashclient.hud.test.HudScreenshots"]
+	},
+	"depends": { "slashclient-hud": "*" }
+}

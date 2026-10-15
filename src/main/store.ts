@@ -39,6 +39,8 @@ export interface Profile {
   iconVersion: number;
   /** Share options.txt, servers.dat and hotbar.nbt with the other synced profiles. */
   syncOptions: boolean;
+  /** SlashClient HUD in game (Fabric profiles on supported versions). */
+  hud: boolean;
   /** Total time spent in game with this profile. */
   playTimeMs: number;
   lastPlayedAt?: number;
@@ -116,6 +118,7 @@ export function newProfile(partial: Partial<Profile> = {}): Profile {
     icon: '',
     iconVersion: 0,
     syncOptions: true,
+    hud: true,
     playTimeMs: 0,
     jvmPreset: 'g1',
     gameDir: '',

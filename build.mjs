@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { cpSync, mkdirSync, readFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 
 const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
 const common = { bundle: true, sourcemap: true, logLevel: 'info', target: 'es2023', define: { __APP_VERSION__: JSON.stringify(version) } };
@@ -15,6 +15,16 @@ cpSync('src/renderer/index.html', 'dist/renderer/index.html');
 cpSync('src/renderer/style.css', 'dist/renderer/style.css');
 cpSync('build/icons/256x256.png', 'dist/renderer/logo.png');
 cpSync('src/renderer/img', 'dist/renderer/img', { recursive: true });
+
+// SlashClient HUD (hud/, built with Gradle): bundled when it has been built
+mkdirSync('dist/hud', { recursive: true });
+const hudLibs = 'hud/build/libs';
+if (existsSync(hudLibs)) {
+  for (const f of readdirSync(hudLibs)) {
+    const m = /^slashclient-hud-(.+)-[\d.]+\.jar$/.exec(f);
+    if (m && !f.includes('-sources')) cpSync(`${hudLibs}/${f}`, `dist/hud/slashclient-hud-${m[1]}.jar`);
+  }
+} else console.warn('hud/build/libs is missing: the launcher is built without SlashClient HUD (cd hud && ./gradlew build)');
 
 // Fonts and icons are bundled locally so the launcher looks right offline too.
 const fonts = {
