@@ -44,6 +44,20 @@ public final class TestHooks {
 		for (String p : problems) SlashHud.LOG.info("LAYOUT {}", p);
 	}
 
+	/** The SlashClient server for the logo test (the launcher normally writes it to a file). */
+	public static void badgeServer(String url) {
+		Badges.server = url;
+	}
+
+	public static void defaults() {
+		SlashHud.config.copyFrom(HudConfig.defaults());
+	}
+
+	public static void logBadge() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		SlashHud.LOG.info("Badge test: own uuid {} shows logo: {}, server says SlashClient: {}", mc.player.getUUID(), Badges.usesSlash(mc.player.getUUID()), Badges.knownFromServer(mc.player.getUUID()));
+	}
+
 	public static void endOnVanillaMenu() {
 		SlashHud.config.customMenu = false;
 	}

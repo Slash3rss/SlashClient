@@ -56,6 +56,16 @@ async function hasFabricApi(mods: string): Promise<boolean> {
   return false;
 }
 
+/**
+ * What the mod needs from the launcher: the SlashClient server, for the logo next to
+ * other SlashClient players. Separate from the HUD settings, which the player edits.
+ */
+export async function writeLauncherInfo(gameDir: string, socialUrl: string): Promise<void> {
+  const dir = path.join(gameDir, 'config');
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(path.join(dir, 'slashclient-launcher.json'), JSON.stringify({ socialUrl }, null, 2));
+}
+
 /** Takes the HUD out again, e.g. when Fabric API could not be installed and the game would not start with it. */
 export async function removeHud(gameDir: string): Promise<void> {
   const mods = path.join(gameDir, 'mods');
@@ -67,9 +77,10 @@ export async function removeHud(gameDir: string): Promise<void> {
  * Problems here never stop the game: without Fabric API the HUD is left out, since Fabric
  * would refuse to start with it.
  */
-export async function prepareHud(bundleDir: string, gameDir: string, opts: { enabled: boolean; loader: string; gameVersion: string }, onStage?: () => void): Promise<boolean> {
+export async function prepareHud(bundleDir: string, gameDir: string, opts: { enabled: boolean; loader: string; gameVersion: string; socialUrl?: string }, onStage?: () => void): Promise<boolean> {
   try {
     const plan = await syncHud(bundleDir, gameDir, opts);
+    if (plan.active && opts.socialUrl) await writeLauncherInfo(gameDir, opts.socialUrl);
     if (!plan.needsFabricApi) return plan.active;
     onStage?.();
     const api = await findFitting('fabric-api', opts.gameVersion, 'fabric');

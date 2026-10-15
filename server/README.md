@@ -61,6 +61,8 @@ Błędy mają postać `{ "error": "<kod>" }`, a launcher tłumaczy kody na tekst
 | GET | `/messages/:id?before=&limit=` | historia, najstarsze pierwsze |
 | POST | `/messages/:id` | `{ text }` (do 2000 znaków) |
 | POST | `/messages/:id/read` | |
+| POST | `/mc/heartbeat` | `{ uuid }`: ten gracz Minecraft gra teraz przez SlashClient (bez logowania, mod wysyła co 4 min) |
+| POST | `/mc/lookup` | `{ uuids }` (do 250) → `{ active }`: którzy z nich grają przez SlashClient (logo na TAB-ie i nad głową) |
 
 WebSocket `/v1/ws`: pierwsza wiadomość to `{ type: "auth", token, presence }`. Potem klient wysyła
 `presence` i `typing`, a serwer `ready`, `presence`, `message`, `read`, `typing` i `friends` (lista się zmieniła).

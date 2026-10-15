@@ -858,7 +858,7 @@ handle('hud:pasteCode', async (profileId: string) => {
 });
 
 async function prepareProfileHud(profile: Profile) {
-  await prepareHud(HUD_DIR, profileGameDir(profile), { enabled: profile.hud ?? true, loader: profile.loader, gameVersion: await resolveVersionId(profile.versionId) },
+  await prepareHud(HUD_DIR, profileGameDir(profile), { enabled: profile.hud ?? true, loader: profile.loader, gameVersion: await resolveVersionId(profile.versionId), socialUrl: store.settings.socialUrl },
     () => send('launch:stage', { stage: t('Instalowanie Fabric API dla SlashClient HUD'), done: 0, total: 1 }));
 }
 

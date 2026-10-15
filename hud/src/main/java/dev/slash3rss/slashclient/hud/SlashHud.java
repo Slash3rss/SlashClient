@@ -52,6 +52,9 @@ public class SlashHud implements ClientModInitializer {
 		// no key by default: G and the like are taken by other mods too often
 		Extras.fullbrightKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.fullbright", InputConstants.UNKNOWN.getValue(), category));
 		ChatTabs.register();
+		Badges.load();
+		// another server or world: what we knew about its players is gone
+		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> Badges.reset());
 		// the game's own menu gets a way back to ours
 		ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
 			if (!(screen instanceof TitleScreen)) return;
@@ -64,6 +67,7 @@ public class SlashHud implements ClientModInitializer {
 
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
 			Extras.tick(mc);
+			Badges.tick(mc);
 			while (edit.consumeClick()) {
 				if (mc.gui.screen() == null) mc.setScreenAndShow(new HudEditScreen());
 			}
@@ -95,7 +99,8 @@ public class SlashHud implements ClientModInitializer {
 			if (!Extras.drawCrosshair(g, Minecraft.getInstance())) vanilla.extractRenderState(g, delta);
 		});
 
-		HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(ID, "hud"), (g, delta) -> {
+		// under the chat and the tab list, as in other clients: those stay readable over the HUD
+		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, Identifier.fromNamespaceAndPath(ID, "hud"), (g, delta) -> {
 			Minecraft mc = Minecraft.getInstance();
 			if (mc.getDebugOverlay().showDebugScreen() || mc.gui.screen() instanceof HudEditScreen) return;
 			drawAll(g, mc, false);

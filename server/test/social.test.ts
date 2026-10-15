@@ -190,6 +190,16 @@ describe('social server', () => {
     assert.equal(removed.body.friends.length, 0);
   });
 
+  it('knows which Minecraft players use SlashClient', async () => {
+    const steve = '8667ba71-b85a-4004-af54-457a9734eed7';
+    const alex = 'ec561538-f3fd-461d-aff5-086b22154bce';
+    assert.equal((await call('POST', '/v1/mc/heartbeat', undefined, { uuid: 'nope' })).status, 400);
+    assert.equal((await call('POST', '/v1/mc/heartbeat', undefined, { uuid: steve })).body.ok, true);
+    const found = await call('POST', '/v1/mc/lookup', undefined, { uuids: [steve, alex, 'x'] });
+    assert.deepEqual(found.body.active, [steve]);
+    assert.equal((await call('POST', '/v1/mc/lookup', undefined, { uuids: 'all' })).status, 400);
+  });
+
   it('rejects messages that are empty or too long', async () => {
     const p = await login('Piotr');
     const q = await login('Quinn');

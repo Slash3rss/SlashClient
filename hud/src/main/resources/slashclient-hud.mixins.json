@@ -5,9 +5,11 @@
 	"client": [
 		"CameraMixin",
 		"ChatComponentMixin",
+		"EntityRendererMixin",
 		"GuiMixin",
 		"LightmapMixin",
 		"MouseHandlerMixin",
+		"PlayerTabOverlayMixin",
 		"ScreenEffectRendererMixin"
 	],
 	"injectors": {

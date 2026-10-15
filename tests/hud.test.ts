@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
-import { hudVersions, syncHud } from '../src/main/hud';
+import { hudVersions, syncHud, writeLauncherInfo } from '../src/main/hud';
 import { decodeHud, encodeHud, exportHud, importHud } from '../src/main/hudShare';
 import { setLang } from '../src/shared/i18n';
 
@@ -59,6 +59,15 @@ describe('SlashClient HUD', () => {
       assert.deepEqual(await fs.readdir(mods), ['sodium.jar']);
       await fs.rm(root, { recursive: true });
     }
+  });
+});
+
+describe('HUD and the launcher', () => {
+  it('tells the mod where the SlashClient server is', async () => {
+    const { root, game } = await setup();
+    await writeLauncherInfo(game, 'https://api.slash3rss.dev');
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(game, 'config', 'slashclient-launcher.json'), 'utf8')), { socialUrl: 'https://api.slash3rss.dev' });
+    await fs.rm(root, { recursive: true });
   });
 });
 

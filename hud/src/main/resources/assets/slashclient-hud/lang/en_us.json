@@ -127,5 +127,6 @@
 	"slashclient-hud.ui.on": "On",
 	"slashclient-hud.ui.off": "Off",
 	"slashclient-hud.menu.noServers": "Add servers in Multiplayer and they will show up here.",
-	"slashclient-hud.chat.more": "%s more tabs: make the window bigger to edit them."
+	"slashclient-hud.chat.more": "%s more tabs: make the window bigger to edit them.",
+	"slashclient-hud.set.badges": "Logo next to names"
 }

@@ -1,0 +1,19 @@
+package dev.slash3rss.slashclient.hud.mixin;
+
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
+import dev.slash3rss.slashclient.hud.Badges;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+
+/** The same logo in the name above the heads of other SlashClient players. */
+@Mixin(EntityRenderer.class)
+abstract class EntityRendererMixin {
+	@ModifyReturnValue(method = "getNameTag", at = @At("RETURN"))
+	private Component slashclient$badge(Component name, Entity entity) {
+		return entity instanceof Player ? Badges.decorate(entity.getUUID(), name) : name;
+	}
+}

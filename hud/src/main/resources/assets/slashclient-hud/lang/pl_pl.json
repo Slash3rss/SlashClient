@@ -127,5 +127,6 @@
 	"slashclient-hud.ui.on": "Włączony",
 	"slashclient-hud.ui.off": "Wyłączony",
 	"slashclient-hud.menu.noServers": "Dodaj serwery w Wieloosobowej, a pojawią się tutaj.",
-	"slashclient-hud.chat.more": "Jeszcze %s zakładek: powiększ okno, żeby je edytować."
+	"slashclient-hud.chat.more": "Jeszcze %s zakładek: powiększ okno, żeby je edytować.",
+	"slashclient-hud.set.badges": "Logo przy nickach"
 }

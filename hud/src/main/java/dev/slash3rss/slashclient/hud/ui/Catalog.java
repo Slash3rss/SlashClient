@@ -85,6 +85,7 @@ public final class Catalog {
 			new Colors("slashclient-hud.textColor", COLORS, () -> cfg.textColor, v -> cfg.textColor = v),
 			new Toggle("slashclient-hud.shadow", () -> cfg.textShadow, v -> cfg.textShadow = v),
 			new Toggle("slashclient-hud.set.backgroundAll", () -> cfg.background, v -> cfg.background = v)), null));
+		out.add(new Entry("badges", "slashclient-hud.set.badges", "extras", Items.NAME_TAG, () -> cfg.badges, v -> cfg.badges = v, List.of(), null));
 		out.add(new Entry("menu", "slashclient-hud.set.menu", "extras", Items.GRASS_BLOCK, () -> cfg.customMenu, v -> cfg.customMenu = v, List.of(), null));
 		out.add(new Entry("chatTimestamps", "slashclient-hud.chatTimestamps", "chat", Items.WRITABLE_BOOK, () -> cfg.chatTimestamps, v -> cfg.chatTimestamps = v, List.of(), null));
 		out.add(new Entry("chatTabs", "slashclient-hud.chat.tabs", "chat", Items.BOOKSHELF, null, null, List.of(), openChatTabs));

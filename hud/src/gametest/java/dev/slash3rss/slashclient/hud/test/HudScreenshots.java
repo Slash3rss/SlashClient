@@ -135,5 +135,20 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.endOnVanillaMenu());
 			context.setScreen(() -> null);
 		}
+
+		// the logo on the tab list needs multiplayer: a real dedicated server
+		context.runOnClient(mc -> TestHooks.badgeServer("http://localhost:8787"));
+		context.runOnClient(mc -> TestHooks.defaults());
+		try (var server = context.worldBuilder().createServer(); var connection = server.connect()) {
+			connection.waitForChunksRender();
+			// the game's own "chat cannot be verified" toast would cover the tab list
+			context.waitTicks(240);
+			context.getInput().holdKey(o -> o.keyPlayerList);
+			context.waitTicks(5);
+			context.takeScreenshot("badge-tab");
+			context.getInput().releaseKey(o -> o.keyPlayerList);
+			context.runOnClient(mc -> TestHooks.logBadge());
+			context.runOnClient(mc -> TestHooks.endOnVanillaMenu());
+		}
 	}
 }

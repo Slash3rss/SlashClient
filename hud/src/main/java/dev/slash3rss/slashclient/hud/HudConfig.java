@@ -88,6 +88,8 @@ public final class HudConfig {
 	public int crosshairColor = 0xFFFFFFFF;
 	public int crosshairSize = 5;
 	public int crosshairGap = 2;
+	/** The logo next to SlashClient players (and telling the server that you are one). */
+	public boolean badges = true;
 	/** The SlashClient main menu instead of Minecraft's own. */
 	public boolean customMenu = true;
 
@@ -172,6 +174,7 @@ public final class HudConfig {
 		crosshairSize = other.crosshairSize;
 		crosshairGap = other.crosshairGap;
 		customMenu = other.customMenu;
+		badges = other.badges;
 		save();
 	}
 

@@ -29,6 +29,9 @@ const VALID_NAME = /^\w{3,16}$/;
 const SESSION_IDLE_MS = 90 * 24 * 3_600_000;
 const LOGIN_TTL_MS = 10 * 60_000;
 const MAX_MESSAGE = 2000;
+/** A game counts as running this long after its last report (the mod reports every 4 minutes). */
+const IN_GAME_TTL_MS = 10 * 60_000;
+const UUID = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
 
 class HttpError extends Error {
   readonly status: number;
@@ -74,6 +77,12 @@ export function createApp(cfg: Config) {
   const limitMessages = rateLimiter(40);
   const limitRequests = rateLimiter(15);
   const limitLogins = rateLimiter(10);
+  /**
+   * Minecraft players in a game with SlashClient right now (uuid → last report), for the
+   * logo next to their name. Kept in memory: the mod reports again every few minutes.
+   */
+  const inGame = new Map<string, number>();
+  const limitGame = rateLimiter(30);
 
   function newSession(user: User) {
     const token = randomBytes(32).toString('base64url');
@@ -248,6 +257,23 @@ export function createApp(cfg: Config) {
       return friendList(me);
     }],
 
+    // -- who plays with SlashClient (the logo on the tab list and above heads) --
+    ['POST', /^\/v1\/mc\/heartbeat$/, async (req) => {
+      limitGame(req.socket.remoteAddress ?? '');
+      const { uuid } = await body(req);
+      if (typeof uuid !== 'string' || !UUID.test(uuid)) throw new HttpError(400, 'bad_request');
+      inGame.set(uuid.toLowerCase(), Date.now());
+      return { ok: true, ttl: IN_GAME_TTL_MS };
+    }],
+    ['POST', /^\/v1\/mc\/lookup$/, async (req) => {
+      limitGame(req.socket.remoteAddress ?? '');
+      const { uuids } = await body(req);
+      if (!Array.isArray(uuids) || uuids.length > 250) throw new HttpError(400, 'bad_request');
+      const now = Date.now();
+      const active = uuids.filter((u): u is string => typeof u === 'string' && now - (inGame.get(u.toLowerCase()) ?? 0) < IN_GAME_TTL_MS);
+      return { active };
+    }],
+
     // -- messages --
     ['GET', /^\/v1\/messages\/([\w-]+)$/, (req, [other], url) => {
       const me = authed(req);
@@ -393,6 +419,7 @@ export function createApp(cfg: Config) {
       ws.ping();
     }
     for (const [state, login] of logins) if (Date.now() - login.at > LOGIN_TTL_MS) logins.delete(state);
+    for (const [uuid, at] of inGame) if (Date.now() - at > IN_GAME_TTL_MS) inGame.delete(uuid);
   }, 30_000);
 
   return {
