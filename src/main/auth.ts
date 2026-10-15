@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { fetchJson } from './download';
+import { fetchJson, httpMessage, netFetch } from './download';
 import { secrets, type MicrosoftAccount, type OfflineAccount } from './store';
 import { t } from '../shared/i18n';
 
@@ -42,13 +42,13 @@ interface MsTokens {
 }
 
 async function postForm<T>(url: string, form: Record<string, string>): Promise<T> {
-  const res = await fetch(url, {
+  const res = await netFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(form),
   });
   const body = (await res.json()) as T & { error?: string; error_description?: string };
-  if (!res.ok) throw Object.assign(new Error(body.error_description ?? body.error ?? `HTTP ${res.status}`), { code: body.error });
+  if (!res.ok) throw Object.assign(new Error(body.error_description ?? body.error ?? httpMessage(res.status, url)), { code: body.error });
   return body;
 }
 
@@ -112,7 +112,7 @@ async function minecraftLogin(msAccessToken: string): Promise<Omit<MicrosoftAcco
     },
   );
 
-  const xstsRes = await fetch('https://xsts.auth.xboxlive.com/xsts/authorize', {
+  const xstsRes = await netFetch('https://xsts.auth.xboxlive.com/xsts/authorize', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
@@ -133,7 +133,7 @@ async function minecraftLogin(msAccessToken: string): Promise<Omit<MicrosoftAcco
     },
   );
 
-  const profileRes = await fetch('https://api.minecraftservices.com/minecraft/profile', {
+  const profileRes = await netFetch('https://api.minecraftservices.com/minecraft/profile', {
     headers: { Authorization: `Bearer ${mc.access_token}` },
   });
   if (profileRes.status === 404) throw new Error('To konto nie posiada Minecraft: Java Edition.');

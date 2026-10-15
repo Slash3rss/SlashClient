@@ -177,7 +177,12 @@ async function busy<T>(button: HTMLButtonElement, work: () => Promise<T>, label?
 
 /** Strips Electron's "Error invoking remote method 'x': Error:" prefix. */
 function errorText(err: unknown): string {
-  return String((err as Error)?.message ?? err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+  const text = String((err as Error)?.message ?? err)
+    .replace(/^Error invoking remote method '[^']+': /, '')
+    .replace(/^(?:[A-Z][A-Za-z]*Error|Error): /, '');
+  // a raw network failure that slipped through: say it in words
+  if (/^fetch failed$|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT/.test(text)) return t('Brak połączenia z internetem. Sprawdź połączenie i spróbuj ponownie.');
+  return text;
 }
 
 let toastTimer: number | undefined;

@@ -27,9 +27,56 @@ export type ProgressFn = (done: number, total: number, stats: ByteStats) => void
 
 const USER_AGENT = 'SlashClient/0.1';
 
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+};
+
+/** Explains why a request never got an answer (no internet, DNS, timeout…), naming the server. */
+function networkMessage(err: unknown, url: string): string {
+  const e = err as { cause?: { code?: string }; code?: string; name?: string };
+  const code = e?.cause?.code ?? e?.code ?? '';
+  const host = hostOf(url);
+  if (e?.name === 'AbortError' || e?.name === 'TimeoutError' || /TIMEOUT|ETIMEDOUT/.test(code)) return t('Serwer {0} nie odpowiada. Spróbuj ponownie za chwilę.', host);
+  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') return t('Brak połączenia z internetem (nie można znaleźć {0}).', host);
+  if (code === 'ECONNREFUSED') return t('Serwer {0} odrzucił połączenie.', host);
+  if (code === 'ECONNRESET' || code === 'UND_ERR_SOCKET' || code === 'EPIPE') return t('Połączenie z {0} zostało przerwane. Spróbuj ponownie.', host);
+  if (/CERT|SSL|TLS/.test(code)) return t('Nie udało się bezpiecznie połączyć z {0}.', host);
+  return t('Nie udało się połączyć z {0}. Sprawdź połączenie z internetem.', host);
+}
+
+/** Turns an HTTP error status into a short, readable message. */
+export function httpMessage(status: number, url: string): string {
+  const host = hostOf(url);
+  if (status === 404) return t('Nie znaleziono zasobu na {0} (404).', host);
+  if (status === 401 || status === 403) return t('Brak dostępu do {0} ({1}).', host, status);
+  if (status === 429) return t('Za dużo zapytań do {0}. Spróbuj ponownie za chwilę.', host);
+  if (status >= 500) return t('Serwer {0} ma chwilowe problemy ({1}). Spróbuj ponownie później.', host, status);
+  return t('Serwer {0} zwrócił błąd {1}.', host, status);
+}
+
+/**
+ * fetch() with readable errors: network failures ("fetch failed") become a
+ * message that says what went wrong and which server it was. HTTP errors are left to the caller.
+ */
+export async function netFetch(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, headers: { 'User-Agent': USER_AGENT, ...init?.headers } });
+  } catch (err) {
+    throw new Error(networkMessage(err, url), { cause: err });
+  }
+}
+
 export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, { ...init, headers: { 'User-Agent': USER_AGENT, ...init?.headers } });
-  if (!res.ok) throw new Error(`HTTP ${res.status} dla ${url}: ${await res.text().catch(() => '')}`);
+  const res = await netFetch(url, init);
+  if (!res.ok) {
+    // the response body helps when debugging, but isn't something to show the player
+    console.error(`HTTP ${res.status} ${url}: ${(await res.text().catch(() => '')).slice(0, 300)}`);
+    throw new Error(httpMessage(res.status, url));
+  }
   return (await res.json()) as T;
 }
 
@@ -68,8 +115,8 @@ async function downloadOne(task: DownloadTask, onBytes: (n: number) => void): Pr
   for (let attempt = 1; attempt <= 3; attempt++) {
     let received = 0;
     try {
-      const res = await fetch(task.url, { headers: { 'User-Agent': USER_AGENT } });
-      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      const res = await netFetch(task.url);
+      if (!res.ok || !res.body) throw new Error(httpMessage(res.status, task.url));
       const hash = createHash('sha1');
       const body = Readable.fromWeb(res.body as import('node:stream/web').ReadableStream);
       body.on('data', (chunk: Buffer) => {
@@ -90,7 +137,7 @@ async function downloadOne(task: DownloadTask, onBytes: (n: number) => void): Pr
       await fs.rm(tmp, { force: true });
     }
   }
-  throw new Error(t('Nie udało się pobrać {0}: {1}', task.url, String(lastError)));
+  throw new Error(t('Nie udało się pobrać pliku {0}. {1}', path.basename(task.dest), (lastError as Error)?.message ?? String(lastError)));
 }
 
 /** Sliding-window speed meter: bytes per second over the last `windowMs`. */

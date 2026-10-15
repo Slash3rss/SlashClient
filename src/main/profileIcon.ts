@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { t } from '../shared/i18n';
+import { httpMessage, netFetch } from './download';
 
 const SIZE = 128;
 const MAX_RAW = 2 * 1024 * 1024;
@@ -57,7 +58,7 @@ export async function iconFromFile(gameDir: string, source: string): Promise<voi
 /** Downloads a project icon (e.g. a Modrinth modpack's) and stores it as the profile icon. */
 export async function iconFromUrl(gameDir: string, url: string): Promise<void> {
   if (!url.startsWith('https://')) throw new Error('Nieprawidłowa ikona');
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const res = await netFetch(url);
+  if (!res.ok) throw new Error(httpMessage(res.status, url));
   await store(gameDir, Buffer.from(await res.arrayBuffer()));
 }

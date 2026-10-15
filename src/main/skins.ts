@@ -1,4 +1,4 @@
-import { fetchJson } from './download';
+import { fetchJson, httpMessage, netFetch } from './download';
 import type { Account } from './store';
 
 export interface SkinData {
@@ -15,8 +15,8 @@ export interface SkinData {
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
 async function toDataUrl(url: string): Promise<string> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const res = await netFetch(url);
+  if (!res.ok) throw new Error(httpMessage(res.status, url));
   const buf = Buffer.from(await res.arrayBuffer());
   // only ever hand real PNGs to the page
   if (!buf.subarray(0, 4).equals(PNG_MAGIC)) throw new Error('To nie jest obrazek PNG');
@@ -63,7 +63,7 @@ export async function skinFor(account: Account): Promise<SkinData> {
       const s = await premiumSkin(account.uuid);
       if (s) return withCape(s, account.name);
     } else {
-      const res = await fetch(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(account.name)}`);
+      const res = await netFetch(`https://api.mojang.com/users/profiles/minecraft/${encodeURIComponent(account.name)}`);
       if (res.ok) {
         const { id } = (await res.json()) as { id: string };
         const s = await premiumSkin(id);
