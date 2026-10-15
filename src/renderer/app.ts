@@ -8,7 +8,7 @@ declare global {
 
 interface PublicAccount { id: string; type: 'offline' | 'msa'; name: string; uuid: string }
 interface Profile {
-  id: string; name: string; versionId: string; gameDir: string; memoryMb: number;
+  id: string; name: string; versionId: string; loader: 'vanilla' | 'fabric' | 'quilt'; loaderVersion: string; gameDir: string; memoryMb: number;
   jvmArgs: string; javaPath: string; width: number; height: number;
 }
 interface PublicStore {
@@ -68,6 +68,13 @@ function versionLabel(id: string): string {
   return id;
 }
 
+const LOADER_NAMES = { vanilla: '', fabric: 'Fabric', quilt: 'Quilt' } as const;
+
+function profileLabel(p: Profile): string {
+  const loader = LOADER_NAMES[p.loader ?? 'vanilla'];
+  return loader ? `${versionLabel(p.versionId)} · ${loader}${p.loaderVersion ? ` ${p.loaderVersion}` : ''}` : versionLabel(p.versionId);
+}
+
 // ---------- navigation ----------
 
 document.querySelectorAll<HTMLButtonElement>('.nav').forEach((btn) =>
@@ -81,6 +88,7 @@ document.querySelectorAll<HTMLButtonElement>('.nav').forEach((btn) =>
 
 function render() {
   renderPlay();
+  renderContentProfiles();
   renderProfiles();
   renderAccounts();
   renderSettings();
@@ -99,7 +107,7 @@ function renderPlay() {
 
   const profile = store.profiles.find((p) => p.id === profileSel.value) ?? store.profiles[0];
   $('#hero-title').textContent = profile?.name ?? 'Minecraft';
-  $('#hero-sub').textContent = profile ? `${versionLabel(profile.versionId)} · ${profile.memoryMb} MB RAM` : '';
+  $('#hero-sub').textContent = profile ? `${profileLabel(profile)} · ${profile.memoryMb} MB RAM` : '';
 
   const btn = $<HTMLButtonElement>('#play-btn');
   btn.textContent = store.running ? 'ZATRZYMAJ' : 'GRAJ';
@@ -118,7 +126,7 @@ function renderProfiles() {
   $('#profile-list').replaceChildren(
     ...store.profiles.map((p) => {
       const li = el('li', { className: p.id === editingId ? 'selected' : '' },
-        el('div', { className: 'grow' }, p.name, el('small', { textContent: versionLabel(p.versionId) })));
+        el('div', { className: 'grow' }, p.name, el('small', { textContent: profileLabel(p) })));
       li.addEventListener('click', () => {
         editingId = p.id;
         renderProfiles();
@@ -151,7 +159,36 @@ function loadProfileForm(profile: Profile) {
     (form.elements.namedItem(key) as HTMLInputElement).value = String(profile[key]);
   }
   renderVersionOptions(profile.versionId);
+  $<HTMLSelectElement>('#loader-select').value = profile.loader ?? 'vanilla';
+  renderLoaderVersions(profile.loaderVersion ?? '');
   $('#memory-value').textContent = `${profile.memoryMb} MB`;
+}
+
+/** Fills the loader-version dropdown for the chosen loader and game version. */
+let loaderRequest = 0;
+async function renderLoaderVersions(selected: string) {
+  const loader = $<HTMLSelectElement>('#loader-select').value;
+  const select = $<HTMLSelectElement>('#loader-version-select');
+  $('#loader-version-field').classList.toggle('hidden', loader === 'vanilla');
+  // Quilt is no longer actively developed and its loaders can't read Java 25 class files (MC 26.x).
+  $('#loader-hint').classList.toggle('hidden', loader !== 'quilt');
+  if (loader === 'vanilla') return;
+  const request = ++loaderRequest;
+  fillSelect(select, [{ value: selected, label: selected || 'Najnowsza stabilna' }], selected);
+  try {
+    const list: { version: string; stable: boolean }[] = await api.loaderVersions(loader, $<HTMLSelectElement>('#version-select').value);
+    if (request !== loaderRequest) return; // a newer choice replaced this one
+    if (!list.length) {
+      fillSelect(select, [{ value: '', label: 'Brak wsparcia dla tej wersji' }], '');
+      return;
+    }
+    fillSelect(select, [
+      { value: '', label: `Najnowsza stabilna (${(list.find((v) => v.stable) ?? list[0]).version})` },
+      ...list.slice(0, 40).map((v) => ({ value: v.version, label: v.stable ? v.version : `${v.version} (beta)` })),
+    ], selected);
+  } catch (err) {
+    if (request === loaderRequest) fillSelect(select, [{ value: selected, label: `Błąd: ${errorText(err)}` }], selected);
+  }
 }
 
 function renderAccounts() {
@@ -287,6 +324,8 @@ $('#profile-form').addEventListener('submit', async (e) => {
     ...current,
     name: str('name') || 'Profil',
     versionId: str('versionId'),
+    loader: str('loader') as Profile['loader'],
+    loaderVersion: str('loaderVersion'),
     gameDir: str('gameDir'),
     jvmArgs: str('jvmArgs'),
     javaPath: str('javaPath'),
@@ -301,6 +340,9 @@ $('#profile-delete').addEventListener('click', () => {
   if (editingId && confirm('Usunąć ten profil? Pliki gry zostaną na dysku.')) guard(() => api.deleteProfile(editingId!));
 });
 $('#profile-folder').addEventListener('click', () => editingId && guard(() => api.openProfileDir(editingId!)));
+$('#profile-mods').addEventListener('click', () => editingId && guard(() => api.openModsDir(editingId!)));
+$('#loader-select').addEventListener('change', () => renderLoaderVersions(''));
+$('#version-select').addEventListener('change', () => renderLoaderVersions(''));
 
 // ---------- accounts ----------
 
@@ -442,7 +484,11 @@ function serverCard(s: ListedServer): HTMLElement {
   });
   const actions = el('div', { className: 'server-actions' }, play, copy);
   for (const [url, icon, label] of [[s.website, 'fa-solid fa-globe', 'Strona'], [s.discord, 'fa-brands fa-discord', 'Discord']] as const) {
-    if (url?.startsWith('https://')) actions.append(el('a', { href: url, target: '_blank', title: label }, el('button', { className: 'icon-btn' }, el('i', { className: icon }))));
+    if (!url?.startsWith('https://')) continue;
+    // a plain button (not <a><button>) so it lines up with the others; the main process opens it in the browser
+    const link = el('button', { className: 'icon-btn', title: label }, el('i', { className: icon }));
+    link.addEventListener('click', () => window.open(url, '_blank'));
+    actions.append(link);
   }
 
   const card = el('div', { className: `server${s.promoted ? ' promoted' : ''}` },
@@ -530,6 +576,192 @@ $('#servers-refresh').addEventListener('click', () => loadServers(true));
 document.querySelector('.nav[data-view="servers"]')?.addEventListener('click', () => {
   if (!servers.length) loadServers();
 }, { once: true });
+
+// ---------- mods, resource packs, shaders, modpacks (Modrinth) ----------
+
+interface ProjectHit { id: string; slug: string; title: string; description: string; author: string; iconUrl?: string; downloads: number; categories: string[] }
+interface InstalledItem { type: string; filename: string; enabled: boolean; title: string; projectId?: string; versionNumber?: string; iconUrl?: string }
+
+let contentType = 'mod';
+let contentTab = 'browse';
+let contentHits: ProjectHit[] = [];
+let contentTotal = 0;
+let contentLoading = false;
+let installed: InstalledItem[] = [];
+const installing = new Set<string>();
+
+const contentProfileId = () => $<HTMLSelectElement>('#content-profile').value;
+const fmtCount = (n: number) => (n >= 1e6 ? `${(n / 1e6).toLocaleString('pl-PL', { maximumFractionDigits: 1 })} mln` : n >= 1e3 ? `${Math.round(n / 1e3)} tys.` : String(n));
+
+function contentNotice() {
+  const profile = store.profiles.find((p) => p.id === contentProfileId());
+  const box = $('#content-notice');
+  let text = '';
+  if (contentType === 'mod' && profile?.loader === 'vanilla') text = 'Ten profil nie ma mod loadera. Ustaw Fabric w zakładce Profile, żeby instalować mody.';
+  else if (contentType === 'shader') text = 'Shadery wymagają moda Iris (Fabric). Zainstaluj go w zakładce Mody.';
+  else if (contentType === 'modpack') text = 'Modpack tworzy nowy profil z własnym folderem gry.';
+  box.textContent = text;
+  box.classList.toggle('hidden', !text);
+}
+
+function projectIcon(url?: string) {
+  const img = el('img', { alt: '', loading: 'lazy' });
+  img.src = url?.startsWith('https://cdn.modrinth.com/') ? url : 'logo.png';
+  return img;
+}
+
+function hitCard(hit: ProjectHit): HTMLElement {
+  const isInstalled = installed.some((i) => i.projectId === hit.id);
+  const btn = el('button', { className: isInstalled ? '' : 'primary', disabled: installing.has(hit.id) },
+    el('i', { className: isInstalled ? 'fa-solid fa-check' : 'fa-solid fa-download' }),
+    installing.has(hit.id) ? 'Instaluję…' : isInstalled ? 'Zainstalowany' : contentType === 'modpack' ? 'Utwórz profil' : 'Instaluj');
+  btn.addEventListener('click', () => installHit(hit));
+  return el('div', { className: 'project' },
+    projectIcon(hit.iconUrl),
+    el('div', { className: 'project-main' },
+      el('b', {}, hit.title, el('small', { textContent: `od ${hit.author}` })),
+      el('p', { textContent: hit.description, title: hit.description }),
+      el('div', { className: 'project-meta' },
+        el('span', {}, el('i', { className: 'fa-solid fa-download' }), ` ${fmtCount(hit.downloads)}`),
+        el('span', { textContent: hit.categories.slice(0, 4).join(' · ') }))),
+    el('div', { className: 'project-actions' }, btn));
+}
+
+function installedCard(item: InstalledItem): HTMLElement {
+  // built by hand: el('input', …) makes the TypeScript checker give up on the props union
+  const toggle = document.createElement('input');
+  toggle.type = 'checkbox';
+  toggle.checked = item.enabled;
+  const switchLabel = document.createElement('label');
+  switchLabel.className = 'switch';
+  switchLabel.title = item.enabled ? 'Wyłącz' : 'Włącz';
+  switchLabel.append(toggle, document.createElement('span'));
+  toggle.addEventListener('change', () => guard(async () => {
+    await api.toggleContent(contentProfileId(), item.type, item.filename, toggle.checked);
+    await refreshInstalled();
+  }));
+  const remove = el('button', { className: 'icon-btn danger', title: 'Usuń' }, el('i', { className: 'fa-regular fa-trash-can' }));
+  remove.addEventListener('click', () => {
+    if (!confirm(`Usunąć ${item.title}?`)) return;
+    guard(async () => {
+      await api.removeContent(contentProfileId(), item.type, item.filename);
+      await refreshInstalled();
+    });
+  });
+  return el('div', { className: `project${item.enabled ? '' : ' disabled'}` },
+    projectIcon(item.iconUrl),
+    el('div', { className: 'project-main' },
+      el('b', {}, item.title, el('small', { textContent: item.versionNumber ?? '' })),
+      el('p', { textContent: item.filename })),
+    el('div', { className: 'project-actions' }, switchLabel, remove));
+}
+
+function renderContent() {
+  contentNotice();
+  const isPack = contentType === 'modpack';
+  $('#modpack-import').classList.toggle('hidden', !isPack);
+  $('#content-tab').classList.toggle('hidden', isPack);
+  $('#content-search-bar').classList.toggle('hidden', contentTab === 'installed' && !isPack);
+  const forType = installed.filter((i) => i.type === contentType);
+  $('#installed-count').textContent = forType.length ? `(${forType.length})` : '';
+  const list = $('#content-list');
+  if (contentTab === 'installed' && !isPack) {
+    list.replaceChildren(...forType.map(installedCard));
+    if (!forType.length) list.append(el('p', { className: 'muted', textContent: 'Nic tu jeszcze nie ma.' }));
+    $('#content-more').classList.add('hidden');
+    return;
+  }
+  list.replaceChildren(...contentHits.map(hitCard));
+  if (!contentHits.length) list.append(el('p', { className: 'muted', textContent: contentLoading ? 'Ładowanie…' : 'Brak wyników.' }));
+  $('#content-more').classList.toggle('hidden', contentLoading || contentHits.length >= contentTotal);
+}
+
+async function refreshInstalled() {
+  if (!contentProfileId()) return;
+  installed = (await guard(() => api.listContent(contentProfileId()))) ?? [];
+  renderContent();
+}
+
+let searchRequest = 0;
+async function searchContent(append = false) {
+  const request = ++searchRequest;
+  contentLoading = true;
+  if (!append) contentHits = [];
+  renderContent();
+  const res = await guard(() => api.searchContent(contentProfileId(), $<HTMLInputElement>('#content-search').value.trim(), contentType, append ? contentHits.length : 0));
+  if (request !== searchRequest) return;
+  contentLoading = false;
+  if (!res) return renderContent();
+  contentHits = append ? [...contentHits, ...res.hits] : res.hits;
+  contentTotal = res.total;
+  renderContent();
+}
+
+async function installHit(hit: ProjectHit) {
+  installing.add(hit.id);
+  renderContent();
+  try {
+    if (contentType === 'modpack') {
+      const id = await api.installModpack(hit.id);
+      toast(`Utworzono profil „${hit.title}”`);
+      store.settings.selectedProfileId = id;
+      showView('play');
+    } else {
+      const titles: string[] = await api.installContent(contentProfileId(), hit.id, contentType);
+      toast(titles.length > 1 ? `Zainstalowano ${titles[0]} i zależności: ${titles.slice(1).join(', ')}` : `Zainstalowano ${titles[0]}`);
+      await refreshInstalled();
+    }
+  } catch (err) {
+    toast(errorText(err), true);
+  } finally {
+    installing.delete(hit.id);
+    setProgress('Gotowe do gry', 0);
+    renderContent();
+  }
+}
+
+function renderContentProfiles() {
+  const sel = $<HTMLSelectElement>('#content-profile');
+  const current = sel.value || store.settings.selectedProfileId;
+  fillSelect(sel, store.profiles.map((p) => ({ value: p.id, label: `${p.name} (${profileLabel(p)})` })), current);
+}
+
+document.querySelectorAll<HTMLButtonElement>('#content-type button').forEach((b) =>
+  b.addEventListener('click', () => {
+    contentType = b.dataset.type!;
+    document.querySelectorAll('#content-type button').forEach((x) => x.classList.toggle('active', x === b));
+    contentHits = [];
+    renderContent();
+    searchContent();
+  }));
+document.querySelectorAll<HTMLButtonElement>('#content-tab button').forEach((b) =>
+  b.addEventListener('click', () => {
+    contentTab = b.dataset.tab!;
+    document.querySelectorAll('#content-tab button').forEach((x) => x.classList.toggle('active', x === b));
+    renderContent();
+  }));
+let searchTimer: number | undefined;
+$('#content-search').addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = window.setTimeout(() => searchContent(), 300);
+});
+$('#content-more').addEventListener('click', () => searchContent(true));
+$('#content-profile').addEventListener('change', () => {
+  refreshInstalled();
+  searchContent();
+});
+$('#modpack-import').addEventListener('click', () => guard(async () => {
+  const id = await api.importModpack();
+  if (!id) return;
+  toast('Zaimportowano modpack jako nowy profil');
+  store.settings.selectedProfileId = id;
+  showView('play');
+}));
+document.querySelector('.nav[data-view="content"]')?.addEventListener('click', () => {
+  renderContentProfiles();
+  refreshInstalled();
+  if (!contentHits.length) searchContent();
+});
 
 // ---------- starfield (as on lista.slash3rss.dev) ----------
 

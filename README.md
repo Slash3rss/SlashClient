@@ -6,6 +6,9 @@ Launcher Minecraft: Java Edition w Electronie i TypeScripcie.
 - profile z osobnym folderem gry, ilością RAM, rozdzielczością i argumentami JVM,
 - automatyczne pobieranie Javy właściwej dla danej wersji (oficjalne środowiska Mojang),
 - logowanie kontem Microsoft (device code) albo tryb offline (sam nick).
+- zakładka **Serwery** z lista.slash3rss.dev: status na żywo (ping, gracze, MOTD) i dołączanie jednym kliknięciem,
+- mod loadery **Fabric** i **Quilt** (Quilt nie wspiera wersji 26.x),
+- zakładka **Mody** z Modrinth: mody z zależnościami, paczki zasobów, shadery i modpacki (`.mrpack`).
 
 ## Uruchomienie
 
@@ -61,5 +64,5 @@ Launcher potrzebuje własnej aplikacji w Azure:
 
 ## Ograniczenia
 
-- Brak Fabric i Forge (struktura `inheritsFrom` jest już obsłużona, więc Fabric da się łatwo dodać).
+- Brak Forge i NeoForge.
 - Wersje sprzed 1.19 na Macach z Apple Silicon działają przez Rosettę (Java x64).

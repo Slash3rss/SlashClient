@@ -28,7 +28,30 @@ function libraryArtifact(lib: Library): Artifact | undefined {
   if (lib.downloads) return lib.downloads.artifact;
   // Libraries without `downloads` (mod loaders) only give a Maven repository URL.
   const rel = mavenPath(lib.name);
-  return { path: rel, url: (lib.url ?? MAVEN_URL) + rel };
+  return { path: rel, url: (lib.url ?? MAVEN_URL) + rel, sha1: lib.sha1, size: lib.size };
+}
+
+/** "group:artifact[:version][:classifier]" without the version, to spot the same library twice. */
+function libraryKey(name: string): string {
+  const [group, artifact, , classifier = ''] = name.split(':');
+  return `${group}:${artifact}:${classifier}`;
+}
+
+/**
+ * Classpath jars, one per library. When a mod loader and vanilla both list a
+ * library (e.g. ASM), the loader's copy wins because its libraries come first.
+ */
+function classpathArtifacts(version: VersionJson): Artifact[] {
+  const seen = new Set<string>();
+  const out: Artifact[] = [];
+  for (const lib of activeLibraries(version)) {
+    const art = libraryArtifact(lib);
+    const key = libraryKey(lib.name);
+    if (!art?.path || seen.has(key)) continue;
+    seen.add(key);
+    out.push(art);
+  }
+  return out;
 }
 
 export function activeLibraries(version: VersionJson): Library[] {
@@ -37,25 +60,14 @@ export function activeLibraries(version: VersionJson): Library[] {
 
 /** Absolute paths of all jars that belong on the classpath (excluding the client jar). */
 export function libraryClasspath(version: VersionJson): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const lib of activeLibraries(version)) {
-    const art = libraryArtifact(lib);
-    if (!art?.path) continue;
-    const file = path.join(paths.libraries, art.path);
-    if (!seen.has(file)) {
-      seen.add(file);
-      out.push(file);
-    }
-  }
-  return out;
+  return classpathArtifacts(version).map((art) => path.join(paths.libraries, art.path!));
 }
 
 function libraryTasks(version: VersionJson): DownloadTask[] {
-  const tasks: DownloadTask[] = [];
+  const tasks: DownloadTask[] = classpathArtifacts(version).map((art) => ({
+    url: art.url, dest: path.join(paths.libraries, art.path!), sha1: art.sha1, size: art.size,
+  }));
   for (const lib of activeLibraries(version)) {
-    const art = libraryArtifact(lib);
-    if (art?.path) tasks.push({ url: art.url, dest: path.join(paths.libraries, art.path), sha1: art.sha1, size: art.size });
     const classifier = nativeClassifier(lib);
     const native = classifier ? lib.downloads?.classifiers?.[classifier] : undefined;
     if (native?.path) tasks.push({ url: native.url, dest: path.join(paths.libraries, native.path), sha1: native.sha1, size: native.size });

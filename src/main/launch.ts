@@ -1,7 +1,9 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import { createLogParser } from './gamelog';
+import { installLoader } from './loaders';
 import { installVersion, libraryClasspath, type StageFn } from './install';
 import { ensureJava } from './java';
 import { paths } from './paths';
@@ -49,9 +51,14 @@ export interface LaunchOptions {
 }
 
 export async function launch({ profile, account, onStage, onLog, server }: LaunchOptions): Promise<ChildProcess> {
-  const versionId = await resolveVersionId(profile.versionId);
+  const gameVersion = await resolveVersionId(profile.versionId);
   const gameDir = profileGameDir(profile);
   await fs.mkdir(gameDir, { recursive: true });
+  if (profile.loader !== 'vanilla') {
+    onStage(`Instalowanie ${profile.loader === 'fabric' ? 'Fabric' : 'Quilt'}`, 0, 1);
+    await fs.mkdir(path.join(gameDir, 'mods'), { recursive: true });
+  }
+  const versionId = await installLoader(profile.loader, gameVersion, profile.loaderVersion);
 
   const { version, clientJar, assetsDir, loggingConfig } = await installVersion(versionId, gameDir, onStage);
   const java = profile.javaPath || (await ensureJava(version, (d, t, s) => onStage('Java', d, t, s)));

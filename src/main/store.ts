@@ -29,6 +29,10 @@ export interface Profile {
   id: string;
   name: string;
   versionId: string;
+  /** Mod loader; 'vanilla' = none. */
+  loader: 'vanilla' | 'fabric' | 'quilt';
+  /** Loader version; empty = newest stable. */
+  loaderVersion: string;
   /** Game directory; empty means instances/<id>. */
   gameDir: string;
   memoryMb: number;
@@ -80,6 +84,8 @@ export function newProfile(partial: Partial<Profile> = {}): Profile {
     id: randomUUID(),
     name: 'Nowy profil',
     versionId: '',
+    loader: 'vanilla',
+    loaderVersion: '',
     gameDir: '',
     memoryMb: 4096,
     jvmArgs: '',

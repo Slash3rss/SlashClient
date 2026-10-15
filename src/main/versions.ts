@@ -28,6 +28,9 @@ export interface Artifact {
 export interface Library {
   name: string;
   url?: string;
+  /** Mod loaders give checksums on the library itself instead of under `downloads`. */
+  sha1?: string;
+  size?: number;
   downloads?: { artifact?: Artifact; classifiers?: Record<string, Artifact> };
   natives?: Partial<Record<'osx' | 'windows' | 'linux', string>>;
   extract?: { exclude?: string[] };

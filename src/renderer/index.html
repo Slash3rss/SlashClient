@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://mc-heads.net https://api.slash3rss.dev; style-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://mc-heads.net https://api.slash3rss.dev https://cdn.modrinth.com; style-src 'self'">
   <title>SlashClient</title>
   <link rel="stylesheet" href="fa/css/all.min.css">
   <link rel="stylesheet" href="style.css">
@@ -23,6 +23,7 @@
     <nav>
       <button class="nav active" data-view="play"><i class="fa-solid fa-play"></i>Graj</button>
       <button class="nav" data-view="servers"><i class="fa-solid fa-server"></i>Serwery</button>
+      <button class="nav" data-view="content"><i class="fa-solid fa-puzzle-piece"></i>Mody</button>
       <button class="nav" data-view="profiles"><i class="fa-solid fa-layer-group"></i>Profile</button>
       <button class="nav" data-view="accounts"><i class="fa-solid fa-user"></i>Konta</button>
       <button class="nav" data-view="settings"><i class="fa-solid fa-gear"></i>Ustawienia</button>
@@ -72,6 +73,36 @@
       <button class="more hidden" id="servers-more">Pokaż więcej</button>
     </section>
 
+    <!-- Mods, resource packs, shaders, modpacks (Modrinth) -->
+    <section class="view" id="view-content">
+      <header class="view-head">
+        <div>
+          <h2 class="gradient-title">Mody</h2>
+          <p class="muted sub">Z <a href="https://modrinth.com" target="_blank">Modrinth</a>, instalowane do wybranego profilu</p>
+        </div>
+        <label class="field compact">Profil<select id="content-profile"></select></label>
+      </header>
+      <div class="filters glass-panel">
+        <div class="segmented" id="content-type">
+          <button class="active" data-type="mod"><i class="fa-solid fa-puzzle-piece"></i> Mody</button>
+          <button data-type="resourcepack"><i class="fa-solid fa-palette"></i> Paczki zasobów</button>
+          <button data-type="shader"><i class="fa-solid fa-sun"></i> Shadery</button>
+          <button data-type="modpack"><i class="fa-solid fa-box"></i> Modpacki</button>
+        </div>
+        <div class="segmented" id="content-tab">
+          <button class="active" data-tab="browse">Przeglądaj</button>
+          <button data-tab="installed">Zainstalowane <span id="installed-count"></span></button>
+        </div>
+      </div>
+      <div class="notice hidden" id="content-notice"></div>
+      <div class="filters glass-panel" id="content-search-bar">
+        <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="content-search" placeholder="Szukaj na Modrinth…"></div>
+        <button id="modpack-import" class="hidden"><i class="fa-solid fa-file-import"></i> Importuj .mrpack</button>
+      </div>
+      <div class="project-list" id="content-list"></div>
+      <button class="more hidden" id="content-more">Pokaż więcej</button>
+    </section>
+
     <!-- Profiles -->
     <section class="view" id="view-profiles">
       <header class="view-head"><h2 class="gradient-title">Profile</h2><button class="primary" id="profile-add"><i class="fa-solid fa-plus"></i> Nowy profil</button></header>
@@ -86,6 +117,18 @@
               <label class="chip-toggle"><input type="checkbox" id="show-old"><span>Stare</span></label>
             </div>
           </label>
+          <div class="row">
+            <label class="field"><span class="label">Mod loader <span class="hint hidden" id="loader-hint">Quilt nie wspiera wersji 26.x</span></span>
+              <select name="loader" id="loader-select">
+                <option value="vanilla">Brak (vanilla)</option>
+                <option value="fabric">Fabric</option>
+                <option value="quilt">Quilt</option>
+              </select>
+            </label>
+            <label class="field" id="loader-version-field">Wersja loadera
+              <select name="loaderVersion" id="loader-version-select"></select>
+            </label>
+          </div>
           <label class="field"><span class="label">Pamięć RAM <b id="memory-value"></b></span><input type="range" name="memoryMb" min="1024" max="16384" step="512"></label>
           <div class="row">
             <label class="field">Szerokość okna<input type="number" name="width" min="320"></label>
@@ -96,6 +139,7 @@
           <label class="field"><span class="label">Ścieżka do Javy <span class="hint">puste = automatycznie</span></span><input name="javaPath"></label>
           <div class="row actions">
             <button type="button" id="profile-folder"><i class="fa-regular fa-folder-open"></i> Otwórz folder</button>
+            <button type="button" id="profile-mods"><i class="fa-solid fa-puzzle-piece"></i> Folder modów</button>
             <button type="button" class="danger" id="profile-delete"><i class="fa-regular fa-trash-can"></i> Usuń</button>
             <button type="submit" class="primary">Zapisz</button>
           </div>

@@ -1,10 +1,15 @@
-import { app, BrowserWindow, ipcMain, nativeImage, safeStorage, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, safeStorage, shell } from 'electron';
 import type { ChildProcess } from 'node:child_process';
 import path from 'node:path';
 import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, pollDeviceCode, startDeviceCode } from './auth';
-import { launch } from './launch';
+import { launch, resolveVersionId } from './launch';
 import { paths } from './paths';
 import { loadStore, newProfile, profileGameDir, saveStore, setSecretCodec, type Profile, type Settings, type StoreData } from './store';
+import { loaderVersions, type Loader } from './loaders';
+import {
+  downloadModpack, installMrpack, installProject, listInstalled, removeContent, search, setEnabled,
+  type ContentType, type ProjectType,
+} from './modrinth';
 import { listServers, pingServer } from './servers';
 import { getManifest } from './versions';
 
@@ -118,6 +123,65 @@ handle('account:loginMicrosoft', async () => {
   return account.name;
 });
 handle('account:cancelLogin', () => loginAbort?.abort());
+
+handle('loaders:versions', async (loader: Loader, versionId: string) => loaderVersions(loader, await resolveVersionId(versionId)));
+handle('profile:openMods', async (id: string) => {
+  const profile = store.profiles.find((p) => p.id === id);
+  if (!profile) return;
+  const dir = path.join(profileGameDir(profile), 'mods');
+  await import('node:fs/promises').then((fs) => fs.mkdir(dir, { recursive: true }));
+  await shell.openPath(dir);
+});
+// ---------- Modrinth content ----------
+
+function profileById(id: string): Profile {
+  const profile = store.profiles.find((p) => p.id === id);
+  if (!profile) throw new Error('Nie znaleziono profilu.');
+  return profile;
+}
+
+async function profileTarget(id: string) {
+  const profile = profileById(id);
+  return { profile, gameDir: profileGameDir(profile), gameVersion: await resolveVersionId(profile.versionId) };
+}
+
+handle('content:search', async (profileId: string, query: string, type: ProjectType, offset?: number) => {
+  if (type === 'modpack') return search({ query, type, offset });
+  const { profile, gameVersion } = await profileTarget(profileId);
+  return search({ query, type, gameVersion, loader: profile.loader === 'vanilla' ? undefined : profile.loader, offset });
+});
+handle('content:list', async (profileId: string) => listInstalled((await profileTarget(profileId)).gameDir));
+handle('content:install', async (profileId: string, projectId: string, type: ContentType) => {
+  const { profile, gameDir, gameVersion } = await profileTarget(profileId);
+  if (type === 'mod' && profile.loader === 'vanilla') throw new Error('Ten profil nie ma mod loadera. Ustaw Fabric w zakładce Profile.');
+  return installProject(gameDir, projectId, type, gameVersion, profile.loader, (done, total, stats) =>
+    send('launch:stage', { stage: 'Pobieranie', done, total, ...stats }));
+});
+handle('content:toggle', async (profileId: string, type: ContentType, filename: string, enabled: boolean) =>
+  setEnabled((await profileTarget(profileId)).gameDir, type, filename, enabled));
+handle('content:remove', async (profileId: string, type: ContentType, filename: string) =>
+  removeContent((await profileTarget(profileId)).gameDir, type, filename));
+
+/** Creates a new profile from a .mrpack file and returns its id. */
+async function profileFromMrpack(file: string): Promise<string> {
+  const profile = newProfile();
+  const progress = (done: number, total: number, stats: { bytes: number; totalBytes: number; speed: number }) =>
+    send('launch:stage', { stage: 'Instalowanie modpacka', done, total, ...stats });
+  const info = await installMrpack(file, profileGameDir(profile), progress);
+  Object.assign(profile, { name: info.name, versionId: info.gameVersion, loader: info.loader, loaderVersion: info.loaderVersion });
+  store.profiles.push(profile);
+  store.settings.selectedProfileId = profile.id;
+  await persist();
+  return profile.id;
+}
+
+handle('modpack:install', async (projectId: string) => profileFromMrpack(await downloadModpack(projectId)));
+handle('modpack:import', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
+    title: 'Importuj modpack', filters: [{ name: 'Modpack Modrinth', extensions: ['mrpack'] }], properties: ['openFile'],
+  });
+  return canceled || !filePaths[0] ? undefined : profileFromMrpack(filePaths[0]);
+});
 
 handle('servers:list', (force?: boolean) => listServers(force));
 handle('servers:ping', (address: string) => pingServer(address));
