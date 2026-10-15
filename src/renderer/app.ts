@@ -1,4 +1,5 @@
 import { SkinViewer, WalkingAnimation, IdleAnimation } from 'skinview3d';
+import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
 import type { SlashApi } from '../main/preload';
 
 declare global {
@@ -15,7 +16,7 @@ interface Profile {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; discordClientId: string; discordEnabled: boolean };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; discordClientId: string; discordEnabled: boolean; language: string };
   running: boolean;
   dataDir: string;
 }
@@ -35,6 +36,82 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLEl
   const node = Object.assign(document.createElement(tag), props);
   node.append(...children);
   return node;
+}
+
+// ---------- translation of the page ----------
+
+/**
+ * Translates plain texts in the page (static HTML and texts set from code) by
+ * looking them up in the dictionary. Originals are remembered so switching back
+ * to Polish works without a restart. Game logs, MOTDs and articles are left alone.
+ */
+const originals = new WeakMap<Text, string>();
+/** What we last wrote into each node/attribute, to tell our own changes apart from the app's (observer callbacks run later). */
+const written = new WeakMap<Text, string>();
+const writtenAttrs = new WeakMap<Element, Record<string, string>>();
+const attrOriginals = new WeakMap<Element, Record<string, string>>();
+const SKIP = '.log, .motd, .article, code, [data-no-i18n]';
+const ATTRS = ['placeholder', 'title'] as const;
+
+function translateText(node: Text) {
+  // new text from the app (not our own translation) becomes the original
+  if (!originals.has(node) || written.get(node) !== node.data) originals.set(node, node.data);
+  if (node.parentElement?.closest(SKIP)) return;
+  const orig = originals.get(node)!;
+  const trimmed = orig.trim();
+  if (!trimmed) return;
+  const translated = lookup(trimmed);
+  const next = translated ? orig.replace(trimmed, translated) : orig;
+  written.set(node, next);
+  if (node.data !== next) node.data = next;
+}
+
+function translateAttrs(elm: Element) {
+  if (elm.closest(SKIP)) return;
+  const orig = attrOriginals.get(elm) ?? {};
+  const mine = writtenAttrs.get(elm) ?? {};
+  for (const attr of ATTRS) {
+    const value = elm.getAttribute(attr);
+    if (value === null) continue;
+    if (orig[attr] === undefined || mine[attr] !== value) orig[attr] = value;
+    const next = lookup(orig[attr]) ?? orig[attr];
+    mine[attr] = next;
+    if (value !== next) elm.setAttribute(attr, next);
+  }
+  attrOriginals.set(elm, orig);
+  writtenAttrs.set(elm, mine);
+}
+
+function translateTree(root: Node) {
+  if (root instanceof Text) return translateText(root);
+  if (!(root instanceof Element)) return;
+  translateAttrs(root);
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (n instanceof Text) translateText(n);
+    else translateAttrs(n as Element);
+  }
+}
+
+new MutationObserver((records) => {
+  for (const r of records) {
+    if (r.type === 'characterData') {
+      const node = r.target as Text;
+      if (written.get(node) !== node.data) translateText(node);
+    } else if (r.type === 'attributes') {
+      const elm = r.target as Element;
+      if (writtenAttrs.get(elm)?.[r.attributeName!] !== elm.getAttribute(r.attributeName!)) translateAttrs(elm);
+    } else r.addedNodes.forEach(translateTree);
+  }
+}).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: [...ATTRS] });
+
+/** Switches the UI language and refreshes the texts kept outside the DOM. */
+function applyLanguage(lang: string) {
+  setLang(lang);
+  document.documentElement.lang = getLang();
+  translateTree(document.body);
+  $('#log').dataset.empty = t('Tu pojawią się logi gry.');
+  $('#news-lang-hint').textContent = getLang() === 'pl' ? t('Nowości Mojanga są dostępne tylko po angielsku.') : '';
 }
 
 // ---------- loading & entrance animations ----------
@@ -124,8 +201,8 @@ async function guard<T>(fn: () => Promise<T>): Promise<T | undefined> {
 const avatar = (uuid: string) => el('img', { src: `https://mc-heads.net/avatar/${uuid.replace(/-/g, '')}/32`, alt: '' });
 
 function versionLabel(id: string): string {
-  if (id === 'latest-release') return 'Najnowsze wydanie';
-  if (id === 'latest-snapshot') return 'Najnowszy snapshot';
+  if (id === 'latest-release') return t('Najnowsze wydanie');
+  if (id === 'latest-snapshot') return t('Najnowszy snapshot');
   return id;
 }
 
@@ -249,8 +326,8 @@ function renderVersionOptions(selected: string) {
   fillSelect(
     $<HTMLSelectElement>('#version-select'),
     [
-      { value: 'latest-release', label: 'Najnowsze wydanie' },
-      { value: 'latest-snapshot', label: 'Najnowszy snapshot' },
+      { value: 'latest-release', label: t('Najnowsze wydanie') },
+      { value: 'latest-snapshot', label: t('Najnowszy snapshot') },
       ...list.map((v) => ({ value: v.id, label: v.type === 'release' ? v.id : `${v.id} (${v.type.replace('old_', '')})` })),
     ],
     selected,
@@ -278,20 +355,20 @@ async function renderLoaderVersions(selected: string) {
   $('#loader-hint').classList.toggle('hidden', loader !== 'quilt');
   if (loader === 'vanilla') return;
   const request = ++loaderRequest;
-  fillSelect(select, [{ value: selected, label: selected || 'Najnowsza stabilna' }], selected);
+  fillSelect(select, [{ value: selected, label: selected || t('Najnowsza stabilna') }], selected);
   try {
     const list: { version: string; stable: boolean }[] = await api.loaderVersions(loader, $<HTMLSelectElement>('#version-select').value);
     if (request !== loaderRequest) return; // a newer choice replaced this one
     if (!list.length) {
-      fillSelect(select, [{ value: '', label: 'Brak wsparcia dla tej wersji' }], '');
+      fillSelect(select, [{ value: '', label: t('Brak wsparcia dla tej wersji') }], '');
       return;
     }
     fillSelect(select, [
-      { value: '', label: `Najnowsza stabilna (${(list.find((v) => v.stable) ?? list[0]).version})` },
+      { value: '', label: t('Najnowsza stabilna ({0})', (list.find((v) => v.stable) ?? list[0]).version) },
       ...list.slice(0, 40).map((v) => ({ value: v.version, label: v.stable ? v.version : `${v.version} (beta)` })),
     ], selected);
   } catch (err) {
-    if (request === loaderRequest) fillSelect(select, [{ value: selected, label: `Błąd: ${errorText(err)}` }], selected);
+    if (request === loaderRequest) fillSelect(select, [{ value: selected, label: t('Błąd: {0}', errorText(err)) }], selected);
   }
 }
 
@@ -312,6 +389,7 @@ function renderAccounts() {
 function renderSettings() {
   const form = $<HTMLFormElement>('#settings-form');
   (form.elements.namedItem('msClientId') as HTMLInputElement).value = store.settings.msClientId;
+  fillSelect($<HTMLSelectElement>('#language-select'), LANGUAGES.map((l) => ({ value: l.code, label: l.name })), getLang());
   (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked = store.settings.closeOnLaunch;
   (form.elements.namedItem('discordClientId') as HTMLInputElement).value = store.settings.discordClientId ?? '';
   (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked = store.settings.discordEnabled ?? true;
@@ -337,9 +415,9 @@ function setProgress(label: string, fraction: number, stats = '', indeterminate 
 }
 
 const MB = 1024 * 1024;
-const fmtMb = (bytes: number) => (bytes / MB).toLocaleString('pl-PL', { maximumFractionDigits: bytes < 10 * MB ? 1 : 0 });
+const fmtMb = (bytes: number) => (bytes / MB).toLocaleString(locale(), { maximumFractionDigits: bytes < 10 * MB ? 1 : 0 });
 function fmtSpeed(bps: number): string {
-  if (bps >= MB) return `${(bps / MB).toLocaleString('pl-PL', { maximumFractionDigits: 1 })} MB/s`;
+  if (bps >= MB) return `${(bps / MB).toLocaleString(locale(), { maximumFractionDigits: 1 })} MB/s`;
   return `${Math.round(bps / 1024)} KB/s`;
 }
 
@@ -350,11 +428,11 @@ function showStage({ stage, done, total, bytes, totalBytes, speed }: StageEvent)
   if (total <= 1 && !totalBytes) return setProgress(`${stage}…`, 0, '', done < total || total === 0 || !/Gra|Gotowe/.test(stage));
   // Byte-based progress when sizes are known; otherwise fall back to file count.
   const fraction = totalBytes ? Math.min(1, (bytes ?? 0) / totalBytes) : done / total;
-  const pct = (fraction * 100).toLocaleString('pl-PL', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  const parts = [`${done} / ${total} plików`];
+  const pct = (fraction * 100).toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const parts = [t('{0} / {1} plików', done, total)];
   if (totalBytes) parts.push(`${fmtMb(bytes ?? 0)} / ${fmtMb(totalBytes)} MB`);
   if (speed && done < total) parts.push(fmtSpeed(speed));
-  setProgress(`${stage}: ${pct}%`, fraction, parts.join(' · '));
+  setProgress(t('{0}: {1}%', stage, pct), fraction, parts.join(' · '));
 }
 
 $('#play-profile').addEventListener('change', (e) => {
@@ -420,10 +498,10 @@ api.on('game:log', appendLog);
 api.on('game:exit', ({ code, signal, byUser }: { code: number | null; signal: string | null; byUser: boolean }) => {
   if (code === 0 || byUser) return setProgress('Gotowe do gry', 0);
   // A signal without a user request means the OS killed the game (crash, code signature, out of memory).
-  const reason = signal ? `została zabita przez system (${signal})` : `zakończyła się z kodem ${code}`;
-  setProgress(`Gra ${reason}`, 0);
-  appendLog(`[SlashClient] Gra ${reason}.`);
-  toast(`Gra ${reason}. Sprawdź logi.`, true);
+  const reason = signal ? t('Gra została zabita przez system ({0})', signal) : t('Gra zakończyła się z kodem {0}', String(code));
+  setProgress(reason, 0);
+  appendLog(`[SlashClient] ${reason}.`);
+  toast(t('{0}. Sprawdź logi.', reason), true);
 });
 api.on('store', (s: PublicStore) => {
   store = s;
@@ -467,7 +545,7 @@ $('#profile-form').addEventListener('submit', async (e) => {
 });
 
 $('#profile-delete').addEventListener('click', () => {
-  if (editingId && confirm('Usunąć ten profil? Pliki gry zostaną na dysku.')) guard(() => api.deleteProfile(editingId!));
+  if (editingId && confirm(t('Usunąć ten profil? Pliki gry zostaną na dysku.'))) guard(() => api.deleteProfile(editingId!));
 });
 $('#profile-folder').addEventListener('click', () => editingId && guard(() => api.openProfileDir(editingId!)));
 $('#profile-mods').addEventListener('click', () => editingId && guard(() => api.openModsDir(editingId!)));
@@ -492,7 +570,7 @@ $('#ms-login').addEventListener('click', async () => {
   btn.prepend(el('span', { className: 'spinner' }));
   try {
     const name = await api.loginMicrosoft();
-    toast(`Zalogowano jako ${name}`);
+    toast(t('Zalogowano jako {0}', name));
   } catch (err) {
     toast(errorText(err), true);
   } finally {
@@ -519,6 +597,7 @@ $('#settings-form').addEventListener('submit', async (e) => {
       closeOnLaunch: (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked,
       discordClientId: (form.elements.namedItem('discordClientId') as HTMLInputElement).value.trim(),
       discordEnabled: (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked,
+      language: $<HTMLSelectElement>('#language-select').value,
     }),
   );
   toast('Zapisano ustawienia');
@@ -614,7 +693,7 @@ function serverCard(s: ListedServer): HTMLElement {
   const copy = el('button', { className: 'icon-btn', title: 'Kopiuj IP' }, el('i', { className: 'fa-regular fa-copy' }));
   copy.addEventListener('click', async () => {
     await navigator.clipboard.writeText(s.ip);
-    toast(`Skopiowano ${s.ip}`);
+    toast(t('Skopiowano {0}', s.ip));
   });
   const actions = el('div', { className: 'server-actions' }, play, copy);
   for (const [url, icon, label] of [[s.website, 'fa-solid fa-globe', 'Strona'], [s.discord, 'fa-brands fa-discord', 'Discord']] as const) {
@@ -681,10 +760,10 @@ async function loadServers(force = false) {
     const modes = [...new Set(servers.flatMap((s) => s.modes))].sort((a, b) => a.localeCompare(b, 'pl'));
     const sel = $<HTMLSelectElement>('#servers-mode');
     const current = sel.value;
-    fillSelect(sel, [{ value: '', label: 'Wszystkie tryby' }, ...modes.map((m) => ({ value: m, label: m }))], current);
+    fillSelect(sel, [{ value: '', label: t('Wszystkie tryby') }, ...modes.map((m) => ({ value: m, label: m }))], current);
     renderServers();
   } catch (err) {
-    toast(`Nie udało się pobrać listy serwerów: ${errorText(err)}`, true);
+    toast(t('Nie udało się pobrać listy serwerów: {0}', errorText(err)), true);
   } finally {
     btn.disabled = false;
     btn.querySelector('i')?.classList.remove('spin-icon');
@@ -731,7 +810,7 @@ let installed: InstalledItem[] = [];
 const installing = new Set<string>();
 
 const contentProfileId = () => $<HTMLSelectElement>('#content-profile').value;
-const fmtCount = (n: number) => (n >= 1e6 ? `${(n / 1e6).toLocaleString('pl-PL', { maximumFractionDigits: 1 })} mln` : n >= 1e3 ? `${Math.round(n / 1e3)} tys.` : String(n));
+const fmtCount = (n: number) => (n >= 1e6 ? t('{0} mln', (n / 1e6).toLocaleString(locale(), { maximumFractionDigits: 1 })) : n >= 1e3 ? t('{0} tys.', Math.round(n / 1e3)) : String(n));
 
 function contentNotice() {
   const profile = store.profiles.find((p) => p.id === contentProfileId());
@@ -761,7 +840,7 @@ function hitCard(hit: ProjectHit): HTMLElement {
   return el('div', { className: 'project' },
     projectIcon(hit.iconUrl),
     el('div', { className: 'project-main' },
-      el('b', {}, hit.title, el('small', { textContent: `od ${hit.author}` })),
+      el('b', {}, hit.title, el('small', { textContent: t('od {0}', hit.author) })),
       el('p', { textContent: hit.description, title: hit.description }),
       el('div', { className: 'project-meta' },
         el('span', {}, el('i', { className: 'fa-solid fa-download' }), ` ${fmtCount(hit.downloads)}`),
@@ -784,7 +863,7 @@ function installedCard(item: InstalledItem): HTMLElement {
   }));
   const remove = el('button', { className: 'icon-btn danger', title: 'Usuń' }, el('i', { className: 'fa-regular fa-trash-can' }));
   remove.addEventListener('click', () => {
-    if (!confirm(`Usunąć ${item.title}?`)) return;
+    if (!confirm(t('Usunąć {0}?', item.title))) return;
     guard(async () => {
       await api.removeContent(contentProfileId(), item.type, item.filename);
       await refreshInstalled();
@@ -853,12 +932,12 @@ async function installHit(hit: ProjectHit) {
   try {
     if (contentType === 'modpack') {
       const id = await api.installModpack(hit.id);
-      toast(`Utworzono profil „${hit.title}”`);
+      toast(t('Utworzono profil „{0}”', hit.title));
       store.settings.selectedProfileId = id;
       showView('play');
     } else {
       const titles: string[] = await api.installContent(contentProfileId(), hit.id, contentType);
-      toast(titles.length > 1 ? `Zainstalowano ${titles[0]} i zależności: ${titles.slice(1).join(', ')}` : `Zainstalowano ${titles[0]}`);
+      toast(titles.length > 1 ? t('Zainstalowano {0} i zależności: {1}', titles[0], titles.slice(1).join(', ')) : t('Zainstalowano {0}', titles[0]));
       await refreshInstalled();
     }
   } catch (err) {
@@ -925,7 +1004,7 @@ interface Screenshot { file: string; name: string; createdAt: number; sizeBytes:
 let worldsTab = 'worlds';
 const worldsProfileId = () => $<HTMLSelectElement>('#worlds-profile').value;
 const media = (file: string) => `slash-media://local/?path=${encodeURIComponent(file)}`;
-const fmtDate = (ms: number) => new Date(ms).toLocaleString('pl-PL', { dateStyle: 'medium', timeStyle: 'short' });
+const fmtDate = (ms: number) => new Date(ms).toLocaleString(locale(), { dateStyle: 'medium', timeStyle: 'short' });
 const fmtSize = (b: number) => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(1)} GB` : b >= MB ? `${(b / MB).toFixed(1)} MB` : `${Math.round(b / 1024)} KB`);
 const fileName = (p: string) => p.split(/[\\/]/).pop() ?? p;
 
@@ -955,16 +1034,16 @@ async function renderWorlds() {
       const backup = el('button', {}, el('i', { className: 'fa-solid fa-box-archive' }), 'Kopia');
       backup.addEventListener('click', async () => {
         const b = await busy(backup, () => guard(() => api.backupWorld(profileId, w.folder)), 'Zapisuję…');
-        if (b) toast(`Zapisano kopię „${w.name}” (${fmtSize(b.sizeBytes)})`);
+        if (b) toast(t('Zapisano kopię „{0}” ({1})', w.name, fmtSize(b.sizeBytes)));
       });
       return el('div', { className: 'project' }, icon,
         el('div', { className: 'project-main' },
           el('b', {}, w.name, el('small', { textContent: w.folder !== w.name ? w.folder : '' })),
           el('div', { className: 'project-meta' },
             el('span', { textContent: w.hardcore ? 'Hardcore' : w.gameMode }),
-            el('span', { textContent: w.version ? `Minecraft ${w.version}` : '' }),
+            el('span', { textContent: w.version ? t('Minecraft {0}', w.version) : '' }),
             el('span', { textContent: fmtSize(w.sizeBytes) }),
-            el('span', { textContent: `Grano: ${fmtDate(w.lastPlayed)}` }))),
+            el('span', { textContent: t('Grano: {0}', fmtDate(w.lastPlayed)) }))),
         el('div', { className: 'project-actions' }, play, backup));
     })));
     if (!worlds.length) box.replaceChildren(el('p', { className: 'muted', textContent: 'Ten profil nie ma jeszcze żadnych światów.' }));
@@ -974,7 +1053,7 @@ async function renderWorlds() {
       const restore = el('button', {}, el('i', { className: 'fa-solid fa-clock-rotate-left' }), 'Przywróć');
       restore.addEventListener('click', async () => {
         const name = await busy(restore, () => guard(() => api.restoreBackup(profileId, fileName(b.file))), 'Przywracam…');
-        if (name) toast(`Przywrócono jako „${name}”`);
+        if (name) toast(t('Przywrócono jako „{0}”', name));
       });
       return el('div', { className: 'project' },
         el('img', { src: 'logo.png', alt: '' }),
@@ -984,7 +1063,7 @@ async function renderWorlds() {
         el('div', { className: 'project-actions' }, restore,
           iconButton('fa-regular fa-folder-open', 'Pokaż w folderze', () => api.revealFile(b.file)),
           iconButton('fa-regular fa-trash-can', 'Usuń', () => {
-            if (confirm(`Usunąć kopię z ${fmtDate(b.createdAt)}?`)) guard(() => api.deleteBackup(profileId, fileName(b.file))).then(renderWorlds);
+            if (confirm(t('Usunąć kopię z {0}?', fmtDate(b.createdAt)))) guard(() => api.deleteBackup(profileId, fileName(b.file))).then(renderWorlds);
           }, 'danger')));
     })));
     if (!backups.length) box.replaceChildren(el('p', { className: 'muted', textContent: 'Brak kopii. Utworzysz je przyciskiem „Kopia” przy świecie.' }));
@@ -998,7 +1077,7 @@ async function renderWorlds() {
         el('div', {}, el('span', { textContent: fmtDate(sh.createdAt) }),
           iconButton('fa-regular fa-folder-open', 'Pokaż w folderze', () => api.revealFile(sh.file)),
           iconButton('fa-regular fa-trash-can', 'Usuń', () => {
-            if (confirm('Usunąć ten zrzut ekranu?')) guard(() => api.deleteScreenshot(profileId, sh.name)).then(renderWorlds);
+            if (confirm(t('Usunąć ten zrzut ekranu?'))) guard(() => api.deleteScreenshot(profileId, sh.name)).then(renderWorlds);
           }, 'danger')));
     })));
     if (!shots.length) box.replaceChildren(el('p', { className: 'muted', textContent: 'Brak zrzutów. W grze zrobisz je klawiszem F2.' }));
@@ -1034,7 +1113,7 @@ function newsCard(n: NewsItem): HTMLElement {
     el('div', {},
       el('span', { className: `tag ${n.type}`, textContent: n.type === 'snapshot' ? 'Snapshot' : 'Wydanie' }),
       el('b', { textContent: n.title }),
-      el('small', { textContent: new Date(n.date).toLocaleDateString('pl-PL', { dateStyle: 'long' }) }),
+      el('small', { textContent: new Date(n.date).toLocaleDateString(locale(), { dateStyle: 'long' }) }),
       el('p', { textContent: n.text })));
   card.addEventListener('click', () => openArticle(n));
   return card;
@@ -1060,7 +1139,7 @@ async function loadNews(more = false) {
     placeholders.forEach((p) => p.remove());
     grid.append(...appear(page.items.map(newsCard)));
     if (newsItems.length < newsTotal) {
-      const btn = el('button', { className: 'more', type: 'button' }, el('i', { className: 'fa-solid fa-chevron-down' }), ` Pokaż więcej (${newsTotal - newsItems.length})`);
+      const btn = el('button', { className: 'more', type: 'button' }, el('i', { className: 'fa-solid fa-chevron-down' }), ` ${t('Pokaż więcej ({0})', newsTotal - newsItems.length)}`);
       btn.addEventListener('click', () => loadNews(true));
       grid.append(btn);
     }
@@ -1126,7 +1205,7 @@ async function openArticle(n: NewsItem) {
   $('#news-tag').className = `tag ${n.type}`;
   $('#news-tag').textContent = n.type === 'snapshot' ? 'Snapshot' : 'Wydanie';
   $('#news-title').textContent = n.title;
-  $('#news-date').textContent = new Date(n.date).toLocaleDateString('pl-PL', { dateStyle: 'long' });
+  $('#news-date').textContent = new Date(n.date).toLocaleDateString(locale(), { dateStyle: 'long' });
   $('#news-body').replaceChildren(el('p', { className: 'muted', textContent: 'Ładowanie…' }));
   $('#news-modal').classList.remove('hidden');
   const article = await guard(() => api.newsArticle(n.id));
@@ -1174,9 +1253,9 @@ async function renderSkin() {
   if (skin.cape) await skinViewer.loadCape(skin.cape, { backEquipment: 'cape' });
   else skinViewer.resetCape();
   $('#skin-back').classList.toggle('hidden', !skin.cape);
-  $('#skin-back').replaceChildren(el('i', { className: 'fa-solid fa-feather' }), ' Elytra');
-  const capeNote = skin.cape ? ` Peleryna: ${skin.capeSource}.` : '';
-  $('#skin-note').textContent = (account.type === 'msa'
+  $('#skin-back').replaceChildren(el('i', { className: 'fa-solid fa-feather' }), t(' Elytra'));
+  const capeNote = skin.cape ? t(' Peleryna: {0}.', skin.capeSource ?? '') : '';
+  $('#skin-note').textContent = t(account.type === 'msa'
     ? 'Skin Twojego konta Minecraft.'
     : skin.isDefault
       ? 'Konto offline nie ma własnego skina; w grze zobaczysz domyślny.'
@@ -1188,14 +1267,14 @@ $('#skin-back').addEventListener('click', () => {
   if (!skinViewer?.playerObject.backEquipment) return;
   const elytra = skinViewer.playerObject.backEquipment === 'elytra';
   skinViewer.playerObject.backEquipment = elytra ? 'cape' : 'elytra';
-  $('#skin-back').replaceChildren(el('i', { className: elytra ? 'fa-solid fa-feather' : 'fa-solid fa-flag' }), elytra ? ' Elytra' : ' Peleryna');
+  $('#skin-back').replaceChildren(el('i', { className: elytra ? 'fa-solid fa-feather' : 'fa-solid fa-flag' }), t(elytra ? ' Elytra' : ' Peleryna'));
 });
 
 $('#skin-anim').addEventListener('click', () => {
   if (!skinViewer) return;
   const walking = skinViewer.animation instanceof WalkingAnimation;
   skinViewer.animation = walking ? new IdleAnimation() : new WalkingAnimation();
-  $('#skin-anim').replaceChildren(el('i', { className: walking ? 'fa-solid fa-person-walking' : 'fa-solid fa-person' }), walking ? ' Chodzenie' : ' Stój');
+  $('#skin-anim').replaceChildren(el('i', { className: walking ? 'fa-solid fa-person-walking' : 'fa-solid fa-person' }), t(walking ? ' Chodzenie' : ' Stój'));
 });
 $('#skin-save').addEventListener('click', () => skinAccountId && guard(() => api.saveSkin(skinAccountId!)));
 document.querySelector('.nav[data-view="accounts"]')?.addEventListener('click', () => renderSkin());
@@ -1254,12 +1333,28 @@ function startStars() {
   requestAnimationFrame(loop);
 }
 
+// switching the language takes effect immediately
+$('#language-select').addEventListener('change', async () => {
+  const lang = $<HTMLSelectElement>('#language-select').value;
+  await api.saveSettings({ language: lang });
+  applyLanguage(lang);
+  render();
+  renderProfiles();
+  if (servers.length) renderServers();
+  if (contentHits.length || installed.length) renderContent();
+  if (document.querySelector('#view-worlds.active')) renderWorlds();
+  skinAccountId = undefined;
+  if (document.querySelector('#view-accounts.active')) renderSkin();
+  loadNews();
+});
+
 // ---------- boot ----------
 
 (async () => {
   startStars();
-  loadNews();
   store = await api.getStore();
+  applyLanguage(store.settings.language);
+  loadNews();
   render();
   versions = (await guard(() => api.listVersions())) ?? [];
   renderProfiles();

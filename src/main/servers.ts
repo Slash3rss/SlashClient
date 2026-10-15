@@ -1,6 +1,7 @@
 import dns from 'node:dns/promises';
 import net from 'node:net';
 import { fetchJson } from './download';
+import { t } from '../shared/i18n';
 
 export const LIST_API = 'https://api.slash3rss.dev';
 
@@ -180,8 +181,8 @@ export async function pingServer(address: string, timeoutMs = 6000): Promise<Pin
       socket.destroy();
       reject(err);
     };
-    socket.setTimeout(timeoutMs, () => fail(new Error('Serwer nie odpowiada')));
-    socket.on('error', (err) => fail(new Error(`Brak połączenia: ${err.message}`)));
+    socket.setTimeout(timeoutMs, () => fail(new Error(t('Serwer nie odpowiada'))));
+    socket.on('error', (err) => fail(new Error(t('Brak połączenia: {0}', err.message))));
     socket.on('connect', () => {
       const portBuf = Buffer.alloc(2);
       portBuf.writeUInt16BE(port);

@@ -46,7 +46,7 @@
           <button class="icon-btn" id="crash-close" title="Zamknij"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <ul id="crash-details"></ul>
-        <p id="crash-fix"></p>
+        <p class="crash-fix"><b>Co zrobić: </b><span id="crash-fix"></span></p>
         <div class="row">
           <button id="crash-report"><i class="fa-regular fa-file-lines"></i> Pokaż crash report</button>
           <button id="crash-copy"><i class="fa-regular fa-copy"></i> Kopiuj log</button>
@@ -54,7 +54,7 @@
       </div>
       <div class="news-wrap" id="news-wrap">
         <div class="news-head">
-          <h3><i class="fa-regular fa-newspaper"></i> Nowości</h3>
+          <h3><i class="fa-regular fa-newspaper"></i> Nowości <small class="hint" id="news-lang-hint"></small></h3>
           <div class="segmented" id="news-filter">
             <button class="active" data-filter="all">Wszystkie</button>
             <button data-filter="release">Wydania</button>
@@ -231,6 +231,9 @@
     <section class="view" id="view-settings">
       <header class="view-head"><h2 class="gradient-title">Ustawienia</h2></header>
       <form class="card glass-panel form" id="settings-form">
+        <label class="field">Język
+          <select name="language" id="language-select"></select>
+        </label>
         <label class="field">Identyfikator aplikacji Azure (Client ID)
           <input name="msClientId" placeholder="00000000-0000-0000-0000-000000000000">
         </label>

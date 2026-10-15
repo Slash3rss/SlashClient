@@ -8,6 +8,7 @@ import { installVersion, type StageFn } from './install';
 import { ensureJava } from './java';
 import { paths } from './paths';
 import { resolveVersion, type VersionJson } from './versions';
+import { t } from '../shared/i18n';
 
 export type Loader = 'vanilla' | 'fabric' | 'quilt' | 'forge' | 'neoforge';
 
@@ -70,7 +71,7 @@ export async function installLoader(loader: Loader, gameVersion: string, loaderV
   let version = loaderVersion;
   if (!version) {
     const all = await loaderVersions(loader, gameVersion);
-    if (!all.length) throw new Error(`${LOADER_NAMES[loader]} nie wspiera jeszcze wersji ${gameVersion}.`);
+    if (!all.length) throw new Error(t('{0} nie wspiera jeszcze wersji {1}.', LOADER_NAMES[loader], gameVersion));
     version = (all.find((v) => v.stable) ?? all[0]).version;
   }
   if (loader === 'forge' || loader === 'neoforge') return installForgeLike(loader, gameVersion, version, ctx);
@@ -126,11 +127,11 @@ async function installForgeLike(loader: 'forge' | 'neoforge', gameVersion: strin
     throw new Error('Forge jest obsługiwany od Minecraft 1.13.');
   }
   const installer = path.join(os.tmpdir(), `slashclient-${loader}-${gameVersion}-${version}-installer.jar`);
-  ctx.onStage(`Pobieranie instalatora ${name}`, 0, 1);
+  ctx.onStage(t('Pobieranie instalatora {0}', name), 0, 1);
   await downloadAll([{ url: installerUrl(loader, gameVersion, version), dest: installer }]);
 
   const profileEntry = new AdmZip(installer).getEntry('install_profile.json');
-  if (!profileEntry) throw new Error(`Nieobsługiwany instalator ${name} (brak install_profile.json).`);
+  if (!profileEntry) throw new Error(t('Nieobsługiwany instalator {0} (brak install_profile.json).', name));
   const versionId = String(JSON.parse(profileEntry.getData().toString('utf8')).version);
   try {
     await fs.access(paths.versionJson(versionId));
@@ -141,11 +142,11 @@ async function installForgeLike(loader: 'forge' | 'neoforge', gameVersion: strin
 
   // the installer needs the vanilla client and a launcher_profiles.json next to it
   await installVersion(gameVersion, ctx.gameDir, ctx.onStage);
-  const java = await ensureJava(await resolveVersion(gameVersion), (d, t, s) => ctx.onStage('Java', d, t, s));
+  const java = await ensureJava(await resolveVersion(gameVersion), (d, n, s) => ctx.onStage('Java', d, n, s));
   const profiles = path.join(paths.root, 'launcher_profiles.json');
   await fs.access(profiles).catch(() => fs.writeFile(profiles, JSON.stringify({ profiles: {} })));
 
-  ctx.onStage(`Instalowanie ${name} ${version} (to może potrwać kilka minut)`, 0, 1);
+  ctx.onStage(t('Instalowanie {0} {1} (to może potrwać kilka minut)', name, version), 0, 1);
   const work = await fs.mkdtemp(path.join(os.tmpdir(), `slashclient-${loader}-`));
   await new Promise<void>((resolve, reject) => {
     const child = spawn(java, ['-Djava.awt.headless=true', '-jar', installer, '--installClient', paths.root], { cwd: work });
@@ -153,11 +154,11 @@ async function installForgeLike(loader: 'forge' | 'neoforge', gameVersion: strin
     child.stdout.on('data', forward);
     child.stderr.on('data', forward);
     child.on('error', reject);
-    child.on('exit', (code) => (code === 0 ? resolve() : reject(new Error(`Instalator ${name} zakończył się błędem (kod ${code}). Szczegóły są w logu.`))));
+    child.on('exit', (code) => (code === 0 ? resolve() : reject(new Error(t('Instalator {0} zakończył się błędem (kod {1}). Szczegóły są w logu.', name, String(code))))));
   });
   await fs.rm(work, { recursive: true, force: true });
   await fs.access(paths.versionJson(versionId)).catch(() => {
-    throw new Error(`Instalator ${name} nie utworzył wersji ${versionId}.`);
+    throw new Error(t('Instalator {0} nie utworzył wersji {1}.', name, versionId));
   });
   return versionId;
 }

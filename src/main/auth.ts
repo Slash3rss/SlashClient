@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { fetchJson } from './download';
 import { secrets, type MicrosoftAccount, type OfflineAccount } from './store';
+import { t } from '../shared/i18n';
 
 const MS_AUTHORITY = 'https://login.microsoftonline.com/consumers/oauth2/v2.0';
 const SCOPE = 'XboxLive.signin offline_access';
@@ -121,7 +122,7 @@ async function minecraftLogin(msAccessToken: string): Promise<Omit<MicrosoftAcco
     }),
   });
   const xsts = (await xstsRes.json()) as { Token: string; DisplayClaims: { xui: { uhs: string }[] }; XErr?: number };
-  if (!xstsRes.ok) throw new Error(XSTS_ERRORS[xsts.XErr ?? 0] ?? `Błąd XSTS (${xsts.XErr ?? xstsRes.status})`);
+  if (!xstsRes.ok) throw new Error(XSTS_ERRORS[xsts.XErr ?? 0] ? t(XSTS_ERRORS[xsts.XErr ?? 0]) : t('Błąd XSTS ({0})', xsts.XErr ?? xstsRes.status));
 
   const mc = await fetchJson<{ access_token: string; expires_in: number }>(
     'https://api.minecraftservices.com/authentication/login_with_xbox',
@@ -136,7 +137,7 @@ async function minecraftLogin(msAccessToken: string): Promise<Omit<MicrosoftAcco
     headers: { Authorization: `Bearer ${mc.access_token}` },
   });
   if (profileRes.status === 404) throw new Error('To konto nie posiada Minecraft: Java Edition.');
-  if (!profileRes.ok) throw new Error(`Nie udało się pobrać profilu Minecraft (HTTP ${profileRes.status})`);
+  if (!profileRes.ok) throw new Error(t('Nie udało się pobrać profilu Minecraft (HTTP {0})', profileRes.status));
   const profile = (await profileRes.json()) as { id: string; name: string };
 
   return {
@@ -174,7 +175,7 @@ export async function ensureFreshAccount(account: MicrosoftAccount, clientId: st
     refresh_token: secrets.decrypt(account.refreshToken),
     scope: SCOPE,
   }).catch((err: Error) => {
-    throw new Error(`Sesja Microsoft wygasła — zaloguj się ponownie. (${err.message})`);
+    throw new Error(t('Sesja Microsoft wygasła — zaloguj się ponownie. ({0})', err.message));
   });
   const fresh = await minecraftLogin(tokens.access_token);
   return { ...account, ...fresh, refreshToken: secrets.encrypt(tokens.refresh_token) };

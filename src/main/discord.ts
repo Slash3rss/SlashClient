@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
+import { t } from '../shared/i18n';
 
 /**
  * Minimal Discord Rich Presence client over Discord's local IPC socket.
@@ -125,8 +126,8 @@ export class DiscordPresence {
 /** Reads what the player is doing from the game's log lines. */
 export function presenceFromLog(line: string): { state: string } | undefined {
   const server = line.match(/Connecting to ([^,\s]+), (\d+)/);
-  if (server) return { state: `Na serwerze ${server[1]}${server[2] === '25565' ? '' : `:${server[2]}`}` };
-  if (/Starting integrated minecraft server/.test(line)) return { state: 'Gra jednoosobowa' };
-  if (/Stopping server|Disconnected from server|Lost connection/i.test(line)) return { state: 'W menu' };
+  if (server) return { state: t('Na serwerze {0}', `${server[1]}${server[2] === '25565' ? '' : `:${server[2]}`}`) };
+  if (/Starting integrated minecraft server/.test(line)) return { state: t('Gra jednoosobowa') };
+  if (/Stopping server|Disconnected from server|Lost connection/i.test(line)) return { state: t('W menu') };
   return undefined;
 }

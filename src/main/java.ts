@@ -4,6 +4,7 @@ import path from 'node:path';
 import { downloadAll, fetchJson, type ProgressFn } from './download';
 import { paths } from './paths';
 import type { VersionJson } from './versions';
+import { t } from '../shared/i18n';
 
 const RUNTIMES_URL =
   'https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json';
@@ -44,7 +45,7 @@ export async function ensureJava(version: VersionJson, onProgress?: ProgressFn):
 
   // Apple Silicon has no native build of some old runtimes; fall back to x64 (Rosetta).
   const platform = platformKeys().find((key) => (index[key]?.[component]?.length ?? 0) > 0);
-  if (!platform) throw new Error(`Mojang nie udostępnia Javy „${component}” dla tej platformy`);
+  if (!platform) throw new Error(t('Mojang nie udostępnia Javy „{0}” dla tej platformy', component));
   const release = index[platform][component][0];
 
   const home = path.join(paths.runtimes, component, platform);
@@ -58,7 +59,7 @@ export async function ensureJava(version: VersionJson, onProgress?: ProgressFn):
   await fs.rm(marker, { force: true });
   await installRuntime(home, release.manifest.url, onProgress);
   if (!(await javaWorks(java))) {
-    throw new Error(`Pobrana Java (${component}) nie uruchamia się. Usuń folder ${home} i spróbuj ponownie.`);
+    throw new Error(t('Pobrana Java ({0}) nie uruchamia się. Usuń folder {1} i spróbuj ponownie.', component, home));
   }
   await fs.writeFile(marker, release.manifest.sha1);
   return java;

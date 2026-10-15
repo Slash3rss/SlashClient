@@ -2,6 +2,7 @@ import AdmZip from 'adm-zip';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { readNbt } from './nbt';
+import { t } from '../shared/i18n';
 
 export interface WorldInfo {
   folder: string;
@@ -58,7 +59,7 @@ export async function listWorlds(gameDir: string): Promise<WorldInfo[]> {
       out.push({
         folder: entry.name,
         name: String(data.LevelName ?? entry.name),
-        gameMode: GAME_MODES[Number(data.GameType ?? 0)] ?? 'Przetrwanie',
+        gameMode: t(GAME_MODES[Number(data.GameType ?? 0)] ?? 'Przetrwanie'),
         hardcore: Boolean(data.hardcore),
         version: data.Version?.Name,
         lastPlayed: Number(data.LastPlayed ?? (await fs.stat(levelDat)).mtimeMs),

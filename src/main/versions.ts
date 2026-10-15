@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import { fetchJson } from './download';
 import { paths } from './paths';
 import type { Rule } from './rules';
+import { t } from '../shared/i18n';
 
 const MANIFEST_URL = 'https://piston-meta.mojang.com/mc/game/version_manifest_v2.json';
 
@@ -75,7 +76,7 @@ async function loadRaw(id: string): Promise<VersionJson> {
   const local = await readLocal(id);
   if (local) return local;
   const entry = (await getManifest()).versions.find((v) => v.id === id);
-  if (!entry) throw new Error(`Nieznana wersja: ${id}`);
+  if (!entry) throw new Error(t('Nieznana wersja: {0}', id));
   const json = await fetchJson<VersionJson>(entry.url);
   await fs.mkdir(paths.versionDir(id), { recursive: true });
   await fs.writeFile(paths.versionJson(id), JSON.stringify(json, null, 2));

@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import type { ChildProcess } from 'node:child_process';
 import path from 'node:path';
 import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, pollDeviceCode, startDeviceCode } from './auth';
+import { setLang } from '../shared/i18n';
 import { analyzeCrash } from './crash';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { launch, resolveVersionId } from './launch';
@@ -19,6 +20,7 @@ import { newsArticle, newsPage, type NewsFilter } from './news';
 import { skinFor } from './skins';
 import fsp from 'node:fs/promises';
 import { backupWorld, deleteFile, listBackups, listScreenshots, listWorlds, restoreBackup } from './worlds';
+import { t } from '../shared/i18n';
 
 let win: BrowserWindow | undefined;
 let store: StoreData;
@@ -99,6 +101,7 @@ handle('versions:list', async () => (await getManifest()).versions.map(({ id, ty
 
 handle('settings:save', async (settings: Partial<Settings>) => {
   store.settings = { ...store.settings, ...settings };
+  setLang(store.settings.language);
   await persist();
 });
 
@@ -184,7 +187,7 @@ handle('content:install', async (profileId: string, projectId: string, type: Con
   const { profile, gameDir, gameVersion } = await profileTarget(profileId);
   if (type === 'mod' && profile.loader === 'vanilla') throw new Error('Ten profil nie ma mod loadera. Ustaw Fabric w zakładce Profile.');
   return installProject(gameDir, projectId, type, gameVersion, profile.loader, (done, total, stats) =>
-    send('launch:stage', { stage: 'Pobieranie', done, total, ...stats }));
+    send('launch:stage', { stage: t('Pobieranie'), done, total, ...stats }));
 });
 handle('content:toggle', async (profileId: string, type: ContentType, filename: string, enabled: boolean) =>
   setEnabled((await profileTarget(profileId)).gameDir, type, filename, enabled));
@@ -195,7 +198,7 @@ handle('content:remove', async (profileId: string, type: ContentType, filename: 
 async function profileFromMrpack(file: string): Promise<string> {
   const profile = newProfile();
   const progress = (done: number, total: number, stats: { bytes: number; totalBytes: number; speed: number }) =>
-    send('launch:stage', { stage: 'Instalowanie modpacka', done, total, ...stats });
+    send('launch:stage', { stage: t('Instalowanie modpacka'), done, total, ...stats });
   const info = await installMrpack(file, profileGameDir(profile), progress);
   Object.assign(profile, { name: info.name, versionId: info.gameVersion, loader: info.loader, loaderVersion: info.loaderVersion });
   store.profiles.push(profile);
@@ -262,7 +265,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
   store.settings.selectedProfileId = profile.id;
   store.settings.selectedAccountId = account.id;
   if (account.type === 'msa') {
-    send('launch:stage', { stage: 'Odświeżanie sesji Microsoft', done: 0, total: 1 });
+    send('launch:stage', { stage: t('Odświeżanie sesji Microsoft'), done: 0, total: 1 });
     const fresh = await ensureFreshAccount(account, store.settings.msClientId.trim());
     store.accounts = store.accounts.map((a) => (a.id === fresh.id ? fresh : a));
     account = fresh;
@@ -275,7 +278,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
   const loaderName = profile.loader === 'vanilla' ? '' : ` · ${LOADER_NAMES[profile.loader]}`;
   const presence: Presence = {
     details: `Minecraft ${await resolveVersionId(profile.versionId)}${loaderName}`,
-    state: server ? `Na serwerze ${server}` : 'W menu',
+    state: server ? t('Na serwerze {0}', server) : t('W menu'),
     startTimestamp: startedAt,
     largeImageKey: 'logo',
     largeImageText: 'SlashClient',
@@ -343,6 +346,9 @@ app.whenReady().then(async () => {
   // In development the Dock would otherwise show Electron's default icon.
   if (process.platform === 'darwin') app.dock?.setIcon(nativeImage.createFromPath(ICON));
   store = await loadStore();
+  // first start: follow the system language
+  if (!store.settings.language) store.settings.language = app.getLocale().toLowerCase().startsWith('pl') ? 'pl' : 'en';
+  setLang(store.settings.language);
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

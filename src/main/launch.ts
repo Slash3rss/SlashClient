@@ -12,6 +12,7 @@ import { rulesAllow, type Features } from './rules';
 import { profileGameDir, type Account, type Profile } from './store';
 import { resolveAddress } from './servers';
 import { getManifest, type Argument } from './versions';
+import { t } from '../shared/i18n';
 
 export const LAUNCHER_NAME = 'SlashClient';
 export const LAUNCHER_VERSION = '0.1.0';
@@ -57,7 +58,7 @@ export async function launch({ profile, account, onStage, onLog, server, world }
   const gameDir = profileGameDir(profile);
   await fs.mkdir(gameDir, { recursive: true });
   if (profile.loader !== 'vanilla') {
-    onStage(`Przygotowanie ${LOADER_NAMES[profile.loader]}`, 0, 1);
+    onStage(t('Przygotowanie {0}', LOADER_NAMES[profile.loader]), 0, 1);
     await fs.mkdir(path.join(gameDir, 'mods'), { recursive: true });
   }
   const versionId = await installLoader(profile.loader, gameVersion, profile.loaderVersion, { gameDir, onStage, onLog });
@@ -132,7 +133,7 @@ export async function launch({ profile, account, onStage, onLog, server, world }
     ...gameArgs.map((a) => substitute(a, vars)),
   ];
 
-  onStage('Uruchamianie gry', 1, 1);
+  onStage(t('Uruchamianie gry'), 1, 1);
   onLog(`> ${java} (wersja ${versionId}, ${profile.memoryMb} MB RAM${server ? `, serwer ${server}` : ''})`);
   const child = spawn(java, args, { cwd: gameDir, stdio: ['ignore', 'pipe', 'pipe'] });
   child.stdout?.setEncoding('utf8').on('data', createLogParser(onLog));

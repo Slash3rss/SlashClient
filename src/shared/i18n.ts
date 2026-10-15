@@ -1,0 +1,345 @@
+/**
+ * Launcher translations. Keys are the Polish texts themselves, so the code stays
+ * readable; `{0}`, `{1}` mark values filled in by `t()`. Plain texts shown in the
+ * page are also translated automatically by the renderer (see translateDom).
+ */
+
+export type Lang = 'pl' | 'en';
+
+export const LANGUAGES: { code: Lang; name: string; locale: string }[] = [
+  { code: 'pl', name: 'Polski', locale: 'pl-PL' },
+  { code: 'en', name: 'English', locale: 'en-GB' },
+];
+
+const EN: Record<string, string> = {
+  // navigation and common
+  'Graj': 'Play',
+  'GRAJ': 'PLAY',
+  'ZATRZYMAJ': 'STOP',
+  'Serwery': 'Servers',
+  'Mody': 'Mods',
+  'Światy': 'Worlds',
+  'Profile': 'Profiles',
+  'Konta': 'Accounts',
+  'Ustawienia': 'Settings',
+  'Profil': 'Profile',
+  'Konto': 'Account',
+  'Brak': 'None',
+  'Brak kont': 'No accounts',
+  'Usuń': 'Delete',
+  'Zapisz': 'Save',
+  'Anuluj': 'Cancel',
+  'Dodaj': 'Add',
+  'Zamknij': 'Close',
+  'Odśwież': 'Refresh',
+  'Otwórz': 'Open',
+  'Otwórz folder': 'Open folder',
+  'Pokaż w folderze': 'Show in folder',
+  'Pokaż więcej': 'Show more',
+  'Pokaż więcej ({0})': 'Show more ({0})',
+  'Ładowanie…': 'Loading…',
+  'Brak wyników.': 'No results.',
+  'Nic tu jeszcze nie ma.': 'Nothing here yet.',
+  'Błąd: {0}': 'Error: {0}',
+  'Minecraft {0}': 'Minecraft {0}',
+
+  // play screen
+  'Gotowe do gry': 'Ready to play',
+  'Gra działa': 'Game running',
+  'Błąd uruchamiania': 'Launch failed',
+  'Gra już działa.': 'The game is already running.',
+  'Tu pojawią się logi gry.': 'Game logs will appear here.',
+  'Nowości': 'News',
+  'Wszystkie': 'All',
+  'Wydania': 'Releases',
+  'Snapshoty': 'Snapshots',
+  'Wydanie': 'Release',
+  'Snapshot': 'Snapshot',
+  'Kliknij, aby przeczytać': 'Click to read',
+  'Nie udało się pobrać nowości.': 'Could not load the news.',
+  'Najnowsze wydanie': 'Latest release',
+  'Najnowszy snapshot': 'Latest snapshot',
+  '{0} · {1} MB RAM': '{0} · {1} MB RAM',
+  '{0} / {1} plików': '{0} / {1} files',
+  '{0}: {1}%': '{0}: {1}%',
+  'Gra została zabita przez system ({0})': 'The game was killed by the system ({0})',
+  'Gra zakończyła się z kodem {0}': 'The game exited with code {0}',
+  '{0}. Sprawdź logi.': '{0}. Check the logs.',
+  'Pokaż crash report': 'Show crash report',
+  'Kopiuj log': 'Copy log',
+  'Skopiowano log': 'Log copied',
+  'Co zrobić: ': 'What to do: ',
+  'Co zrobić:': 'What to do:',
+  'np. 1234567890123456789': 'e.g. 1234567890123456789',
+  'Zainstaluj modpacki, mody i serwery…': 'Install modpacks, mods and servers…',
+
+  // download stages
+  'Pobieranie informacji o wersji': 'Fetching version info',
+  'Biblioteki': 'Libraries',
+  'Rozpakowywanie natywnych bibliotek': 'Extracting native libraries',
+  'Assety': 'Assets',
+  'Java': 'Java',
+  'Uruchamianie gry': 'Starting the game',
+  'Pobieranie': 'Downloading',
+  'Instalowanie modpacka': 'Installing modpack',
+  'Odświeżanie sesji Microsoft': 'Refreshing Microsoft session',
+  'Przygotowanie {0}': 'Preparing {0}',
+  'Pobieranie instalatora {0}': 'Downloading {0} installer',
+  'Instalowanie {0} {1} (to może potrwać kilka minut)': 'Installing {0} {1} (this may take a few minutes)',
+
+  // servers
+  'Z ': 'From ',
+  ', status na żywo prosto z serwera': ', live status straight from the server',
+  'Szukaj po nazwie lub IP…': 'Search by name or IP…',
+  'Wszystkie tryby': 'All game modes',
+  'Najwięcej głosów': 'Most votes',
+  'Gracze online': 'Players online',
+  'Nazwa': 'Name',
+  'Promowany': 'Promoted',
+  'Głosy': 'Votes',
+  'Strona': 'Website',
+  'Kopiuj IP': 'Copy IP',
+  'Skopiowano {0}': 'Copied {0}',
+  'Offline': 'Offline',
+  'Sprawdzanie…': 'Checking…',
+  'Brak serwerów pasujących do filtrów.': 'No servers match the filters.',
+  'Nie udało się pobrać listy serwerów: {0}': 'Could not load the server list: {0}',
+  'Serwer nie odpowiada': 'The server is not responding',
+  'Brak połączenia: {0}': 'Connection failed: {0}',
+  'Nieprawidłowa odpowiedź serwera': 'Invalid server response',
+
+  // mods
+  ', instalowane do wybranego profilu': ', installed into the selected profile',
+  'Paczki zasobów': 'Resource packs',
+  'Shadery': 'Shaders',
+  'Modpacki': 'Modpacks',
+  'Przeglądaj': 'Browse',
+  'Zainstalowane': 'Installed',
+  'Szukaj na Modrinth…': 'Search Modrinth…',
+  'Importuj .mrpack': 'Import .mrpack',
+  'Instaluj': 'Install',
+  'Instaluję…': 'Installing…',
+  'Zainstalowany': 'Installed',
+  'Utwórz profil': 'Create profile',
+  'od {0}': 'by {0}',
+  'Wyłącz': 'Disable',
+  'Włącz': 'Enable',
+  'Usunąć {0}?': 'Delete {0}?',
+  'Zainstalowano {0}': 'Installed {0}',
+  'Zainstalowano {0} i zależności: {1}': 'Installed {0} and dependencies: {1}',
+  'Utworzono profil „{0}”': 'Created profile “{0}”',
+  'Zaimportowano modpack jako nowy profil': 'Imported the modpack as a new profile',
+  'Importuję…': 'Importing…',
+  '{0} mln': '{0}M',
+  '{0} tys.': '{0}K',
+  'Ten profil nie ma mod loadera. Ustaw Fabric, NeoForge lub Forge w zakładce Profile, żeby instalować mody.':
+    'This profile has no mod loader. Set Fabric, NeoForge or Forge in Profiles to install mods.',
+  'Shadery wymagają moda Iris. Zainstaluj go w zakładce Mody.': 'Shaders need the Iris mod. Install it in the Mods tab.',
+  'Shadery wymagają moda Iris (Fabric) albo Oculus (Forge/NeoForge).': 'Shaders need the Iris mod (Fabric) or Oculus (Forge/NeoForge).',
+  'Modpack tworzy nowy profil z własnym folderem gry.': 'A modpack creates a new profile with its own game folder.',
+  'Ten profil nie ma mod loadera. Ustaw Fabric w zakładce Profile.': 'This profile has no mod loader. Set Fabric in Profiles.',
+  'Brak wersji dla Minecraft {0}{1}.': 'No version for Minecraft {0}{1}.',
+  'Nieprawidłowa nazwa pliku': 'Invalid file name',
+  'Niebezpieczna ścieżka w modpacku: {0}': 'Unsafe path in modpack: {0}',
+  'To nie jest modpack Modrinth (.mrpack).': 'This is not a Modrinth modpack (.mrpack).',
+  'Brak adresu pobierania dla {0}': 'No download URL for {0}',
+  'Ten modpack nie ma pliku .mrpack.': 'This modpack has no .mrpack file.',
+
+  // worlds
+  'Kopie zapasowe': 'Backups',
+  'Zrzuty ekranu': 'Screenshots',
+  'Kopia': 'Backup',
+  'Zapisuję…': 'Saving…',
+  'Przywróć': 'Restore',
+  'Przywracam…': 'Restoring…',
+  'Zapisano kopię „{0}” ({1})': 'Saved a backup of “{0}” ({1})',
+  'Przywrócono jako „{0}”': 'Restored as “{0}”',
+  'Usunąć kopię z {0}?': 'Delete the backup from {0}?',
+  'Usunąć ten zrzut ekranu?': 'Delete this screenshot?',
+  'Ten profil nie ma jeszcze żadnych światów.': 'This profile has no worlds yet.',
+  'Brak kopii. Utworzysz je przyciskiem „Kopia” przy świecie.': 'No backups yet. Create one with the “Backup” button next to a world.',
+  'Brak zrzutów. W grze zrobisz je klawiszem F2.': 'No screenshots yet. Press F2 in game to take one.',
+  'Grano: {0}': 'Played: {0}',
+  'Przetrwanie': 'Survival',
+  'Kreatywny': 'Creative',
+  'Przygoda': 'Adventure',
+  'Obserwator': 'Spectator',
+  'Hardcore': 'Hardcore',
+  'Nieprawidłowa nazwa': 'Invalid name',
+
+  // profiles
+  'Nowy profil': 'New profile',
+  'Zapisano profil': 'Profile saved',
+  'Wersja': 'Version',
+  'Stare': 'Old',
+  'Mod loader': 'Mod loader',
+  'Quilt nie wspiera wersji 26.x': 'Quilt does not support 26.x',
+  'Brak (vanilla)': 'None (vanilla)',
+  'Wersja loadera': 'Loader version',
+  'Najnowsza stabilna': 'Latest stable',
+  'Najnowsza stabilna ({0})': 'Latest stable ({0})',
+  'Brak wsparcia dla tej wersji': 'Not available for this version',
+  'Pamięć RAM': 'Memory (RAM)',
+  'Szerokość okna': 'Window width',
+  'Wysokość okna': 'Window height',
+  'Folder gry': 'Game folder',
+  'puste = osobny folder profilu': 'empty = separate folder per profile',
+  'Argumenty JVM': 'JVM arguments',
+  'Ścieżka do Javy': 'Java path',
+  'puste = automatycznie': 'empty = automatic',
+  'Folder modów': 'Mods folder',
+  'Usunąć ten profil? Pliki gry zostaną na dysku.': 'Delete this profile? Game files will stay on disk.',
+  'Musi zostać przynajmniej jeden profil.': 'At least one profile must remain.',
+  'Nie znaleziono profilu.': 'Profile not found.',
+  'Wybierz profil.': 'Choose a profile.',
+  'Dodaj i wybierz konto.': 'Add and choose an account.',
+
+  // accounts and skins
+  'Konto Microsoft': 'Microsoft account',
+  'Oficjalne logowanie. Pozwala grać na serwerach premium.': 'Official sign-in. Lets you play on premium servers.',
+  'Zaloguj przez Microsoft': 'Sign in with Microsoft',
+  'i wpisz kod:': 'and enter the code:',
+  'Konto offline': 'Offline account',
+  'Tylko nick. Działa w trybie jednego gracza i na serwerach offline.': 'Just a nickname. Works in singleplayer and on offline-mode servers.',
+  'Nie dodano jeszcze żadnego konta.': 'No accounts added yet.',
+  'Dodano konto offline': 'Offline account added',
+  'Zalogowano jako {0}': 'Signed in as {0}',
+  'Chodzenie': 'Walk',
+  ' Chodzenie': ' Walk',
+  ' Stój': ' Stand',
+  'Elytra': 'Elytra',
+  ' Elytra': ' Elytra',
+  ' Peleryna': ' Cape',
+  'Pobierz PNG': 'Download PNG',
+  'Ładowanie skina…': 'Loading skin…',
+  'Skin Twojego konta Minecraft.': 'The skin of your Minecraft account.',
+  'Konto offline nie ma własnego skina; w grze zobaczysz domyślny.': 'Offline accounts have no skin of their own; you will see the default one in game.',
+  'Konto offline: to skin gracza premium o tym samym nicku. Na serwerach offline inni zobaczą domyślny skin.':
+    'Offline account: this is the skin of the premium player with the same nickname. On offline servers others will see the default skin.',
+  ' Peleryna: {0}.': ' Cape: {0}.',
+  'Nie znaleziono konta.': 'Account not found.',
+  'Nick musi mieć 3–16 znaków: litery, cyfry lub podkreślnik.': 'The nickname must be 3–16 characters: letters, digits or underscore.',
+  'Brak identyfikatora aplikacji Azure. Wpisz go w Ustawieniach, aby logować się kontem Microsoft.':
+    'No Azure application ID. Enter it in Settings to sign in with Microsoft.',
+  'Kod logowania wygasł. Spróbuj ponownie.': 'The sign-in code expired. Try again.',
+  'Logowanie anulowane': 'Sign-in cancelled',
+  'To konto Microsoft nie ma profilu Xbox. Zaloguj się raz na minecraft.net, aby go utworzyć.':
+    'This Microsoft account has no Xbox profile. Sign in once at minecraft.net to create it.',
+  'Xbox Live jest niedostępny w Twoim kraju.': 'Xbox Live is not available in your country.',
+  'Konto wymaga weryfikacji wieku na xbox.com.': 'The account needs age verification at xbox.com.',
+  'Konto dziecka musi zostać dodane do rodziny przez osobę dorosłą.': 'A child account must be added to a family by an adult.',
+  'Błąd XSTS ({0})': 'XSTS error ({0})',
+  'To konto nie posiada Minecraft: Java Edition.': 'This account does not own Minecraft: Java Edition.',
+  'Nie udało się pobrać profilu Minecraft (HTTP {0})': 'Could not load the Minecraft profile (HTTP {0})',
+  'Sesja Microsoft wygasła — zaloguj się ponownie. ({0})': 'The Microsoft session expired, please sign in again. ({0})',
+  'Logowanie do Xbox Live nie powiodło się: {0}': 'Xbox Live sign-in failed: {0}',
+
+  // settings
+  'Identyfikator aplikacji Azure (Client ID)': 'Azure application ID (Client ID)',
+  'Potrzebny do logowania kontem Microsoft. Instrukcja jest w pliku README.': 'Needed to sign in with Microsoft. See the README for instructions.',
+  'Chowaj launcher podczas gry': 'Hide the launcher while playing',
+  'Discord Application ID': 'Discord Application ID',
+  'status „Gra w SlashClient” na Discordzie': '“Playing SlashClient” status on Discord',
+  'Pokazuj na Discordzie, w co grasz': 'Show on Discord what you are playing',
+  'Folder danych:': 'Data folder:',
+  'Zapisano ustawienia': 'Settings saved',
+  'Język': 'Language',
+  'Nowości Mojanga są dostępne tylko po angielsku.': 'Mojang publishes news in English only.',
+
+  // Discord presence
+  'W menu': 'In the menu',
+  'Gra jednoosobowa': 'Singleplayer',
+  'Na serwerze {0}': 'On server {0}',
+
+  // crash analysis
+  'Grze zabrakło pamięci RAM': 'The game ran out of memory',
+  'Java zgłosiła OutOfMemoryError, czyli przydzielona pamięć się skończyła.': 'Java reported OutOfMemoryError: the memory assigned to the game ran out.',
+  'Zwiększ ilość RAM w ustawieniach profilu (np. do 6–8 GB przy modpackach) albo zmniejsz liczbę modów i zasięg renderowania.':
+    'Give the profile more RAM (e.g. 6–8 GB for modpacks) or use fewer mods and a lower render distance.',
+  'Mod loader nie obsługuje tej wersji Javy': 'The mod loader does not support this Java version',
+  'Gra wymaga Javy {0}, a loader albo któryś mod jest starszy i nie potrafi jej odczytać.': 'The game needs Java {0}, but the loader or a mod is older and cannot read it.',
+  'Zaktualizuj mod loader w profilu (np. Fabric zamiast Quilta dla wersji 26.x) i mody do wersji pod tę wersję gry.':
+    'Update the mod loader in the profile (e.g. Fabric instead of Quilt for 26.x) and the mods to versions for this game version.',
+  'Mody nie pasują do siebie': 'The mods are not compatible',
+  'Brakuje wymaganych modów: {0}.': 'Required mods are missing: {0}.',
+  'Loader wykrył niezgodne wersje modów albo brakującą zależność. Szczegóły są w logu poniżej.':
+    'The loader found incompatible mod versions or a missing dependency. See the log below.',
+  'Zainstaluj brakujące mody w zakładce Mody (Modrinth dociąga zależności sam przy instalacji).':
+    'Install the missing mods in the Mods tab (Modrinth pulls in dependencies automatically).',
+  'Zaktualizuj mody do wersji zgodnych z tą wersją gry albo wyłącz ostatnio dodane.': 'Update the mods to versions for this game version, or disable the ones added last.',
+  'Ten sam mod jest zainstalowany dwa razy': 'The same mod is installed twice',
+  'W folderze mods są dwie wersje tego samego moda.': 'The mods folder has two versions of the same mod.',
+  'Usuń starszą kopię w zakładce Mody → Zainstalowane.': 'Delete the older copy in Mods → Installed.',
+  'Mod „{0}” nie działa z tą wersją gry': 'The mod “{0}” does not work with this game version',
+  'Mod {0} próbował zmienić kod gry, który wygląda inaczej niż oczekiwał.': 'The mod {0} tried to change game code that looks different from what it expected.',
+  'Zaktualizuj albo wyłącz mod {0}.': 'Update or disable the mod {0}.',
+  'Uszkodzony plik': 'Corrupted file',
+  'Któryś plik .jar (mod albo biblioteka) jest uszkodzony lub niepełny.': 'A .jar file (a mod or library) is corrupted or incomplete.',
+  'Usuń i zainstaluj ponownie ostatnio dodane mody. Jeśli to nie pomoże, uruchom grę jeszcze raz, a launcher sprawdzi pliki.':
+    'Delete and reinstall the mods added last. If that does not help, launch again and the launcher will check its files.',
+  'Niepełna instalacja gry': 'Incomplete game installation',
+  'Java nie znalazła głównej klasy Minecrafta.': 'Java could not find the main Minecraft class.',
+  'Uruchom grę ponownie, żeby launcher dociągnął brakujące pliki.': 'Launch again so the launcher can download the missing files.',
+  'Problem ze sterownikami grafiki': 'Graphics driver problem',
+  'Karta graficzna lub jej sterownik nie udostępnia wymaganej wersji OpenGL.': 'The graphics card or its driver does not provide the required OpenGL version.',
+  'Zaktualizuj sterowniki karty graficznej. Na laptopach z dwiema kartami ustaw dla Javy kartę dedykowaną.':
+    'Update your graphics drivers. On laptops with two GPUs, make Java use the dedicated one.',
+  'Gra wysypała się w kodzie natywnym': 'The game crashed in native code',
+  'Błąd wystąpił poza Javą: najczęściej w sterowniku grafiki albo w modzie z kodem natywnym.': 'The crash happened outside Java, usually in the graphics driver or a mod with native code.',
+  'Zaktualizuj sterowniki grafiki. Jeśli używasz shaderów lub modów graficznych (Sodium, Iris), spróbuj bez nich.':
+    'Update your graphics drivers. If you use shaders or graphics mods (Sodium, Iris), try without them.',
+  'System zamknął grę': 'The system closed the game',
+  'Proces gry został zabity przez system (SIGKILL), zwykle przez brak pamięci albo uszkodzoną Javę.': 'The game process was killed by the system (SIGKILL), usually because of low memory or a broken Java.',
+  'Zamknij inne programy albo zmniejsz RAM w profilu. Launcher sam sprawdza Javę przy następnym starcie.': 'Close other programs or lower the profile RAM. The launcher checks Java on the next start.',
+  'Opis z crash reportu: {0}': 'Crash report description: {0}',
+  'Błąd: {0}{1}': 'Error: {0}{1}',
+  'Podejrzane mody: {0}': 'Suspected mods: {0}',
+  'Gra zakończyła się błędem{0}': 'The game exited with an error{0}',
+  'Nie rozpoznałem przyczyny. Szczegóły są w logu poniżej i w crash reporcie.': 'Could not tell the cause. See the log below and the crash report.',
+  'Wyłącz podejrzane mody w zakładce Mody i spróbuj ponownie.': 'Disable the suspected mods in the Mods tab and try again.',
+
+  // installation errors
+  'zła suma SHA1 ({0} ≠ {1})': 'bad SHA1 checksum ({0} ≠ {1})',
+  'Nie udało się pobrać {0}: {1}': 'Could not download {0}: {1}',
+  'Wersja {0} nie ma pliku klienta': 'Version {0} has no client file',
+  'Nieznana wersja: {0}': 'Unknown version: {0}',
+  'Mojang nie udostępnia Javy „{0}” dla tej platformy': 'Mojang does not provide Java “{0}” for this platform',
+  'Pobrana Java ({0}) nie uruchamia się. Usuń folder {1} i spróbuj ponownie.': 'The downloaded Java ({0}) does not start. Delete the folder {1} and try again.',
+  '{0} nie wspiera jeszcze wersji {1}.': '{0} does not support version {1} yet.',
+  'Forge jest obsługiwany od Minecraft 1.13.': 'Forge is supported from Minecraft 1.13.',
+  'Nieobsługiwany instalator {0} (brak install_profile.json).': 'Unsupported {0} installer (no install_profile.json).',
+  'Instalator {0} zakończył się błędem (kod {1}). Szczegóły są w logu.': 'The {0} installer failed (code {1}). See the log for details.',
+  'Instalator {0} nie utworzył wersji {1}.': 'The {0} installer did not create version {1}.',
+  'Nie znaleziono artykułu.': 'Article not found.',
+  'To nie jest obrazek PNG': 'This is not a PNG image',
+  'Discord nie jest uruchomiony': 'Discord is not running',
+  'Discord odrzucił połączenie': 'Discord refused the connection',
+  'Discord zamknął połączenie': 'Discord closed the connection',
+};
+
+const DICTS: Record<Lang, Record<string, string>> = { pl: {}, en: EN };
+
+let current: Lang = 'pl';
+
+export function setLang(lang: string): void {
+  current = lang === 'en' ? 'en' : 'pl';
+}
+
+export function getLang(): Lang {
+  return current;
+}
+
+export function locale(): string {
+  return LANGUAGES.find((l) => l.code === current)!.locale;
+}
+
+/** Translates a Polish text (with {0}, {1}… placeholders) into the current language. */
+export function t(text: string, ...args: (string | number)[]): string {
+  const template = DICTS[current][text] ?? text;
+  return template.replace(/\{(\d+)\}/g, (_, i: string) => String(args[Number(i)] ?? ''));
+}
+
+/** Plain lookup without placeholders; undefined when there is no translation. */
+export function lookup(text: string): string | undefined {
+  return current === 'pl' ? undefined : DICTS[current][text];
+}

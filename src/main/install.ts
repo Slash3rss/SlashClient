@@ -6,6 +6,7 @@ import { paths } from './paths';
 import { is64, osName } from './platform';
 import { rulesAllow } from './rules';
 import { mavenPath, resolveVersion, type Artifact, type Library, type VersionJson } from './versions';
+import { t } from '../shared/i18n';
 
 export type StageFn = (stage: string, done: number, total: number, stats?: ByteStats) => void;
 
@@ -116,7 +117,7 @@ async function installAssets(version: VersionJson, gameDir: string, onStage: Sta
     sha1: hash,
     size,
   }));
-  await downloadAll(tasks, (d, t, s) => onStage('Assety', d, t, s));
+  await downloadAll(tasks, (d, n, s) => onStage(t('Assety'), d, n, s));
 
   // Pre-1.7 versions read assets by name instead of by hash.
   if (index.virtual || index.map_to_resources) {
@@ -142,13 +143,13 @@ export interface InstalledVersion {
 
 /** Downloads everything a version needs and returns the resolved version. */
 export async function installVersion(id: string, gameDir: string, onStage: StageFn): Promise<InstalledVersion> {
-  onStage('Pobieranie informacji o wersji', 0, 1);
+  onStage(t('Pobieranie informacji o wersji'), 0, 1);
   const version = await resolveVersion(id);
 
   const jarId = version.jar ?? version.id;
   const jarVersion = jarId === version.id ? version : await resolveVersion(jarId);
   const client = jarVersion.downloads?.client;
-  if (!client) throw new Error(`Wersja ${jarId} nie ma pliku klienta`);
+  if (!client) throw new Error(t('Wersja {0} nie ma pliku klienta', jarId));
   const clientJar = paths.versionJar(jarId);
 
   const tasks: DownloadTask[] = [{ url: client.url, dest: clientJar, sha1: client.sha1, size: client.size }, ...libraryTasks(version)];
@@ -160,8 +161,8 @@ export async function installVersion(id: string, gameDir: string, onStage: Stage
     tasks.push({ url: logging.file.url, dest: loggingConfig, sha1: logging.file.sha1, size: logging.file.size });
   }
 
-  await downloadAll(tasks, (d, t, s) => onStage('Biblioteki', d, t, s));
-  onStage('Rozpakowywanie natywnych bibliotek', 0, 1);
+  await downloadAll(tasks, (d, n, s) => onStage(t('Biblioteki'), d, n, s));
+  onStage(t('Rozpakowywanie natywnych bibliotek'), 0, 1);
   await extractNatives(version);
   await installAssets(version, gameDir, onStage);
 

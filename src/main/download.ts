@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
+import { t } from '../shared/i18n';
 
 export interface DownloadTask {
   url: string;
@@ -78,7 +79,7 @@ async function downloadOne(task: DownloadTask, onBytes: (n: number) => void): Pr
       });
       await pipeline(body, createWriteStream(tmp));
       const digest = hash.digest('hex');
-      if (task.sha1 && digest !== task.sha1) throw new Error(`zła suma SHA1 (${digest} ≠ ${task.sha1})`);
+      if (task.sha1 && digest !== task.sha1) throw new Error(t('zła suma SHA1 ({0} ≠ {1})', digest, task.sha1));
       await fs.rename(tmp, task.dest);
       if (task.executable && process.platform !== 'win32') await fs.chmod(task.dest, 0o755);
       return;
@@ -89,7 +90,7 @@ async function downloadOne(task: DownloadTask, onBytes: (n: number) => void): Pr
       await fs.rm(tmp, { force: true });
     }
   }
-  throw new Error(`Nie udało się pobrać ${task.url}: ${String(lastError)}`);
+  throw new Error(t('Nie udało się pobrać {0}: {1}', task.url, String(lastError)));
 }
 
 /** Sliding-window speed meter: bytes per second over the last `windowMs`. */

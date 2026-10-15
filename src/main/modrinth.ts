@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { downloadAll, fetchJson, type ProgressFn } from './download';
+import { t } from '../shared/i18n';
 
 const API = 'https://api.modrinth.com/v2';
 // Modrinth asks every client to identify itself.
@@ -76,7 +77,7 @@ async function pickVersion(projectId: string, gameVersion: string, loader?: stri
   const params = new URLSearchParams({ game_versions: JSON.stringify([gameVersion]) });
   if (loader) params.set('loaders', JSON.stringify([loader]));
   const versions = await get<ModrinthVersion[]>(`${API}/project/${projectId}/version?${params}`);
-  if (!versions.length) throw new Error(`Brak wersji dla Minecraft ${gameVersion}${loader ? ` (${loader})` : ''}.`);
+  if (!versions.length) throw new Error(t('Brak wersji dla Minecraft {0}{1}.', gameVersion, loader ? ` (${loader})` : ''));
   return versions[0];
 }
 
@@ -218,7 +219,7 @@ interface MrpackIndex {
 /** Joins `rel` onto `root`, refusing anything that would escape it ("../", absolute paths). */
 function safeJoin(root: string, rel: string): string {
   const full = path.resolve(root, rel);
-  if (!full.startsWith(path.resolve(root) + path.sep)) throw new Error(`Niebezpieczna ścieżka w modpacku: ${rel}`);
+  if (!full.startsWith(path.resolve(root) + path.sep)) throw new Error(t('Niebezpieczna ścieżka w modpacku: {0}', rel));
   return full;
 }
 
@@ -235,7 +236,7 @@ export async function installMrpack(mrpack: string, gameDir: string, onProgress?
     .filter((f) => f.env?.client !== 'unsupported')
     .map((f) => {
       const url = f.downloads.find((u) => u.startsWith('https://'));
-      if (!url) throw new Error(`Brak adresu pobierania dla ${f.path}`);
+      if (!url) throw new Error(t('Brak adresu pobierania dla {0}', f.path));
       return { url, dest: safeJoin(gameDir, f.path), sha1: f.hashes.sha1, size: f.fileSize };
     });
   await downloadAll(tasks, onProgress, { verifyHash: true });
