@@ -12,7 +12,10 @@ Launcher Minecraft: Java Edition w Electronie i TypeScripcie.
 - język interfejsu: polski albo angielski (Ustawienia → Język, zmiana bez restartu; słownik w `src/shared/i18n.ts`),
 - ikony profili: 9 bloków w stylu Minecrafta albo własny obrazek; modpacki z Modrinth dostają swoją ikonę,
 - wspólne ustawienia gry między profilami (options.txt, lista serwerów, zapisane paski) — przełącznik w profilu,
-- panel postępu instalacji modów i modpacków z komunikatem o ukończeniu i przyciskiem „Graj teraz”.
+- panel postępu instalacji modów i modpacków z komunikatem o ukończeniu i przyciskiem „Graj teraz”,
+- aktualizacje modów, paczek zasobów i shaderów (rozpoznawanie po SHA1, także plików dodanych ręcznie; wydania nie są
+  „aktualizowane” do bet i alf) oraz aktualizacje modpacków z usuwaniem plików, których nowa wersja już nie ma,
+- wybór konkretnej wersji przy instalacji i zmiana wersji zainstalowanego moda lub modpacka.
 
 ## Uruchomienie
 
@@ -75,12 +78,9 @@ Launcher potrzebuje własnej aplikacji w Azure:
 
 ## Status na Discordzie
 
-1. Wejdź na <https://discord.com/developers/applications> → **New Application**, nazwij ją `SlashClient`
-   (ta nazwa wyświetla się jako „Gra w SlashClient”).
-2. W **Rich Presence → Art Assets** dodaj obrazek `build/icons/512x512.png` z kluczem `logo`.
-3. Skopiuj **Application ID** z zakładki **General Information** i wklej w launcherze w **Ustawieniach**.
-
-Launcher pokazuje wersję gry, loader, czas gry oraz to, czy jesteś w menu, w świecie czy na serwerze.
+Launcher pokazuje na Discordzie „Gra w SlashClient” z wersją gry, loaderem, czasem gry oraz tym, czy jesteś w menu,
+w świecie czy na serwerze (aplikacja Discord `812524751053914112`). Można to wyłączyć w Ustawieniach.
+Obrazek statusu to zasób `logo` w Rich Presence → Art Assets tej aplikacji.
 
 ## Struktura
 

@@ -15,8 +15,9 @@ import { paths } from './paths';
 import { loadStore, newProfile, profileGameDir, saveStore, setSecretCodec, type Profile, type Settings, type StoreData } from './store';
 import { LOADER_NAMES, loaderVersions, type Loader } from './loaders';
 import {
-  downloadModpack, installMrpack, installProject, listInstalled, removeContent, search, setEnabled,
-  type ContentType, type ProjectType,
+  checkUpdates, downloadModpack, identifyModpack, installMrpack, installProject, latestModpackVersion, listContentVersions,
+  listInstalled, removeContent, search, setEnabled, updateMrpack,
+  type ContentType, type ModpackInfo, type ProjectType, type UpdateInfo, type VersionInfo,
 } from './modrinth';
 import { listServers, pingServer } from './servers';
 import { getManifest } from './versions';
@@ -33,18 +34,17 @@ let loginAbort: AbortController | undefined;
 let killRequested = false;
 let discord: DiscordPresence | undefined;
 
-/** Discord client for the configured app ID (recreated when the ID changes). */
+/** SlashClient's Discord application (shows as "Playing SlashClient"); public, not a secret. */
+const DISCORD_APP_ID = '812524751053914112';
+
+/** Discord Rich Presence client, unless the player turned it off in Settings. */
 function discordClient(): DiscordPresence | undefined {
-  const id = store.settings.discordClientId.trim();
-  if (!store.settings.discordEnabled || !/^\d{15,22}$/.test(id)) {
+  if (!store.settings.discordEnabled) {
     discord?.close();
     discord = undefined;
     return undefined;
   }
-  if (!discord || discord.clientId !== id) {
-    discord?.close();
-    discord = new DiscordPresence(id);
-  }
+  discord ??= new DiscordPresence(DISCORD_APP_ID);
   return discord;
 }
 
@@ -229,13 +229,37 @@ handle('content:search', async (profileId: string, query: string, type: ProjectT
   return search({ query, type, gameVersion, loader: profile.loader === 'vanilla' ? undefined : profile.loader, offset });
 });
 handle('content:list', async (profileId: string) => listInstalled((await profileTarget(profileId)).gameDir));
-handle('content:install', async (profileId: string, projectId: string, type: ContentType, title?: string, icon?: string) => {
+handle('content:versions', async (profileId: string, projectId: string, type: ProjectType, onlyCompatible: boolean) => {
+  if (!onlyCompatible || type === 'modpack') return listContentVersions(projectId, 'modpack');
+  const { profile, gameVersion } = await profileTarget(profileId);
+  return listContentVersions(projectId, type, gameVersion, profile.loader === 'vanilla' ? undefined : profile.loader);
+});
+handle('content:checkUpdates', async (profileId: string) => {
+  const { profile, gameDir, gameVersion } = await profileTarget(profileId);
+  return checkUpdates(gameDir, gameVersion, profile.loader === 'vanilla' ? undefined : profile.loader);
+});
+/** Updates (or changes the version of) installed items, one task for the whole batch. */
+handle('content:update', async (profileId: string, items: Pick<UpdateInfo, 'type' | 'projectId' | 'latestVersionId' | 'title'>[]) => {
+  const { profile, gameDir, gameVersion } = await profileTarget(profileId);
+  const task = startTask(items.length === 1 ? t('Aktualizowanie: {0}', items[0].title) : t('Aktualizowanie {0} elementów', items.length));
+  try {
+    for (const [i, item] of items.entries()) {
+      task.progress(t('{0} ({1}/{2})', item.title, i + 1, items.length), i, items.length);
+      await installProject(gameDir, item.projectId, item.type, gameVersion, profile.loader, undefined, item.latestVersionId);
+    }
+    task.finish(true, items.length === 1 ? t('Zaktualizowano {0}.', items[0].title) : t('Zaktualizowano {0} elementów.', items.length));
+  } catch (err) {
+    task.finish(false, (err as Error).message);
+    throw err;
+  }
+});
+handle('content:install', async (profileId: string, projectId: string, type: ContentType, title?: string, icon?: string, versionId?: string) => {
   const { profile, gameDir, gameVersion } = await profileTarget(profileId);
   if (type === 'mod' && profile.loader === 'vanilla') throw new Error('Ten profil nie ma mod loadera. Ustaw Fabric w zakładce Profile.');
   const task = startTask(t('Instalowanie: {0}', title ?? ''), icon);
   try {
     const titles = await installProject(gameDir, projectId, type, gameVersion, profile.loader, (done, total, stats) =>
-      task.progress(t('Pobieranie'), done, total, stats));
+      task.progress(t('Pobieranie'), done, total, stats), versionId);
     task.finish(true, titles.length > 1 ? t('Zainstalowano {0} i zależności: {1}', titles[0], titles.slice(1).join(', ')) : t('Zainstalowano {0}', titles[0]));
     return titles;
   } catch (err) {
@@ -253,14 +277,23 @@ handle('content:remove', async (profileId: string, type: ContentType, filename: 
  * Creates a profile from a .mrpack with a visible progress panel, a completion
  * message and (for Modrinth packs) the pack's own icon.
  */
-async function installModpackTask(title: string, iconUrl: string | undefined, getFile: (task: ReturnType<typeof startTask>) => Promise<string>): Promise<string> {
+type Pack = { file: string; version?: VersionInfo };
+
+/** Applies a modpack's game version and loader to a profile and remembers which pack/version it is. */
+function applyPack(profile: Profile, info: ModpackInfo, version: VersionInfo | undefined, title: string) {
+  Object.assign(profile, { versionId: info.gameVersion, loader: info.loader, loaderVersion: info.loaderVersion });
+  if (version) profile.modpack = { projectId: version.projectId, versionId: version.id, versionNumber: version.versionNumber, title };
+}
+
+async function installModpackTask(title: string, iconUrl: string | undefined, getPack: (task: ReturnType<typeof startTask>) => Promise<Pack>): Promise<string> {
   const task = startTask(t('Instalowanie modpacka: {0}', title), iconUrl);
   try {
-    const file = await getFile(task);
+    const { file, version } = await getPack(task);
     const profile = newProfile();
     const gameDir = profileGameDir(profile);
     const info = await installMrpack(file, gameDir, task.progress);
-    Object.assign(profile, { name: info.name, versionId: info.gameVersion, loader: info.loader, loaderVersion: info.loaderVersion });
+    profile.name = info.name;
+    applyPack(profile, info, version, info.name);
     if (iconUrl) {
       task.progress(t('Pobieranie ikony'), 0, 1);
       // a missing icon is not worth failing the install
@@ -277,14 +310,41 @@ async function installModpackTask(title: string, iconUrl: string | undefined, ge
   }
 }
 
-handle('modpack:install', (projectId: string, title: string, iconUrl?: string) =>
-  installModpackTask(title, iconUrl, (task) => downloadModpack(projectId, (d, n, s) => task.progress(t('Pobieranie modpacka'), d, n, s))));
+handle('modpack:install', (projectId: string, title: string, iconUrl?: string, versionId?: string) =>
+  installModpackTask(title, iconUrl, (task) => downloadModpack(projectId, (d, n, s) => task.progress(t('Pobieranie modpacka'), d, n, s), versionId)));
 handle('modpack:import', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
     title: t('Importuj modpack'), filters: [{ name: 'Modpack Modrinth', extensions: ['mrpack'] }], properties: ['openFile'],
   });
   if (canceled || !filePaths[0]) return undefined;
-  return installModpackTask(path.basename(filePaths[0], '.mrpack'), undefined, async () => filePaths[0]);
+  // a file downloaded from Modrinth is recognised, so the profile can be updated later
+  return installModpackTask(path.basename(filePaths[0], '.mrpack'), undefined, async () => ({ file: filePaths[0], version: await identifyModpack(filePaths[0]) }));
+});
+
+/** The modpack a profile came from, and the newest version available. */
+handle('modpack:check', async (profileId: string) => {
+  const profile = profileById(profileId);
+  if (!profile.modpack) return undefined;
+  return { current: profile.modpack, latest: await latestModpackVersion(profile.modpack.projectId) };
+});
+
+/** Moves a modpack profile to another version (newest when none is given). */
+handle('modpack:update', async (profileId: string, versionId?: string) => {
+  const profile = profileById(profileId);
+  const pack = profile.modpack;
+  if (!pack) throw new Error(t('Ten profil nie pochodzi z modpacka Modrinth.'));
+  if (game) throw new Error(t('Zamknij grę przed aktualizacją modpacka.'));
+  const task = startTask(t('Aktualizowanie modpacka: {0}', pack.title), undefined);
+  try {
+    const { file, version } = await downloadModpack(pack.projectId, (d, n, s) => task.progress(t('Pobieranie modpacka'), d, n, s), versionId);
+    const info = await updateMrpack(file, profileGameDir(profile), task.progress);
+    applyPack(profile, info, version, pack.title);
+    await persist();
+    task.finish(true, t('Modpack {0} ma teraz wersję {1}.', pack.title, version.versionNumber), profile.id);
+  } catch (err) {
+    task.finish(false, t('Nie udało się zaktualizować modpacka: {0}', (err as Error).message));
+    throw err;
+  }
 });
 
 handle('servers:list', (force?: boolean) => listServers(force));

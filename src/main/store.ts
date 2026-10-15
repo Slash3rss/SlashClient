@@ -39,6 +39,8 @@ export interface Profile {
   iconVersion: number;
   /** Share options.txt, servers.dat and hotbar.nbt with the other synced profiles. */
   syncOptions: boolean;
+  /** The Modrinth modpack this profile was created from, for updates and version changes. */
+  modpack?: { projectId: string; versionId: string; versionNumber: string; title: string };
   /** Game directory; empty means instances/<id>. */
   gameDir: string;
   memoryMb: number;
@@ -55,8 +57,7 @@ export interface Settings {
   selectedProfileId?: string;
   selectedAccountId?: string;
   closeOnLaunch: boolean;
-  /** Discord application ID for Rich Presence; empty disables it. */
-  discordClientId: string;
+  /** Show the game status on Discord (Rich Presence). */
   discordEnabled: boolean;
   /** UI language ('pl' | 'en'); empty = follow the system. */
   language: string;
@@ -114,7 +115,7 @@ function defaults(): StoreData {
   return {
     accounts: [],
     profiles: [newProfile({ name: 'Najnowsza wersja', versionId: 'latest-release' })],
-    settings: { msClientId: process.env.SLASHCLIENT_MS_CLIENT_ID ?? '', closeOnLaunch: false, discordClientId: '', discordEnabled: true, language: '' },
+    settings: { msClientId: process.env.SLASHCLIENT_MS_CLIENT_ID ?? '', closeOnLaunch: false, discordEnabled: true, language: '' },
   };
 }
 

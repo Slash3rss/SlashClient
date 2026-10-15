@@ -132,6 +132,11 @@
         <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="content-search" placeholder="Szukaj na Modrinth…"></div>
         <button id="modpack-import" class="hidden"><i class="fa-solid fa-file-import"></i> Importuj .mrpack</button>
       </div>
+      <div class="updates-bar glass-panel hidden" id="updates-bar">
+        <span id="updates-text"></span>
+        <button type="button" id="updates-check"><i class="fa-solid fa-rotate"></i> Sprawdź aktualizacje</button>
+        <button type="button" class="primary hidden" id="updates-all"><i class="fa-solid fa-circle-arrow-up"></i> Aktualizuj wszystko</button>
+      </div>
       <div class="project-list" id="content-list"></div>
       <button class="more hidden" id="content-more">Pokaż więcej</button>
     </section>
@@ -179,6 +184,15 @@
             <label class="field" id="loader-version-field">Wersja loadera
               <select name="loaderVersion" id="loader-version-select"></select>
             </label>
+          </div>
+          <div class="modpack-box hidden" id="modpack-box">
+            <div class="modpack-info"><i class="fa-solid fa-box"></i> <span>Modpack: <b id="modpack-title"></b> · <code id="modpack-version"></code></span></div>
+            <span class="muted" id="modpack-status"></span>
+            <div class="row">
+              <button type="button" id="modpack-check"><i class="fa-solid fa-rotate"></i> Sprawdź aktualizację</button>
+              <button type="button" id="modpack-versions"><i class="fa-solid fa-code-branch"></i> Zmień wersję…</button>
+              <button type="button" class="primary hidden" id="modpack-update"></button>
+            </div>
           </div>
           <div class="field">Ikona
             <div class="icon-choices" id="icon-choices"></div>
@@ -254,9 +268,6 @@
         </label>
         <p class="muted">Potrzebny do logowania kontem Microsoft. Instrukcja jest w pliku README.</p>
         <label class="check"><input type="checkbox" name="closeOnLaunch"> Chowaj launcher podczas gry</label>
-        <label class="field">Discord Application ID <span class="hint">status „Gra w SlashClient” na Discordzie</span>
-          <input name="discordClientId" placeholder="np. 1234567890123456789" inputmode="numeric">
-        </label>
         <label class="check"><input type="checkbox" name="discordEnabled"> Pokazuj na Discordzie, w co grasz</label>
         <p class="muted">Folder danych: <code id="data-dir"></code></p>
         <p class="muted">Wersja launchera: <code id="app-version"></code></p>
@@ -281,6 +292,16 @@
     <i class="fa-solid fa-circle-arrow-up"></i>
     <span>Nowa wersja SlashClient jest gotowa: <b id="update-version"></b></span>
     <button class="primary" id="update-install">Uruchom ponownie</button>
+  </div>
+  <div class="modal hidden" id="versions-modal">
+    <div class="modal-box glass-panel versions-box">
+      <button class="icon-btn modal-close" id="versions-close" title="Zamknij"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-body">
+        <h2 id="versions-title"></h2>
+        <label class="check" id="versions-compat-wrap"><input type="checkbox" id="versions-compat" checked> Tylko wersje zgodne z tym profilem</label>
+        <div class="version-list" id="versions-list"></div>
+      </div>
+    </div>
   </div>
   <div class="tasks" id="tasks" aria-live="polite"></div>
   <div class="toast glass-panel hidden" id="toast"></div>

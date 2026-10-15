@@ -13,11 +13,12 @@ interface Profile {
   id: string; name: string; versionId: string; loader: 'vanilla' | 'fabric' | 'quilt' | 'forge' | 'neoforge'; loaderVersion: string; gameDir: string; memoryMb: number;
   jvmArgs: string; javaPath: string; width: number; height: number;
   icon: string; iconVersion: number; syncOptions: boolean; iconFile?: string;
+  modpack?: { projectId: string; versionId: string; versionNumber: string; title: string };
 }
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; discordClientId: string; discordEnabled: boolean; language: string };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; discordEnabled: boolean; language: string };
   running: boolean;
   dataDir: string;
 }
@@ -282,6 +283,47 @@ function fillSelect(select: HTMLSelectElement, items: { value: string; label: st
   select.replaceChildren(...items.map(({ value, label }) => el('option', { value, textContent: label, selected: value === selected })));
 }
 
+// ---------- modpack of a profile ----------
+
+let modpackLatest: ProjectVersion | undefined;
+
+function renderModpackBox(profile: Profile) {
+  const pack = profile.modpack;
+  $('#modpack-box').classList.toggle('hidden', !pack);
+  if (!pack) return;
+  $('#modpack-title').textContent = pack.title;
+  $('#modpack-version').textContent = pack.versionNumber;
+  const upd = $<HTMLButtonElement>('#modpack-update');
+  const newer = modpackLatest && modpackLatest.projectId === pack.projectId && modpackLatest.id !== pack.versionId ? modpackLatest : undefined;
+  upd.classList.toggle('hidden', !newer);
+  if (newer) upd.replaceChildren(el('i', { className: 'fa-solid fa-circle-arrow-up' }), t('Aktualizuj do {0}', newer.versionNumber));
+  if (!modpackLatest || modpackLatest.projectId !== pack.projectId) $('#modpack-status').textContent = '';
+}
+
+$('#modpack-check').addEventListener('click', () => {
+  const profile = store.profiles.find((p) => p.id === editingId);
+  if (!profile?.modpack) return;
+  busy($<HTMLButtonElement>('#modpack-check'), async () => {
+    const res = await guard(() => api.checkModpack(profile.id));
+    if (!res) return;
+    modpackLatest = res.latest;
+    $('#modpack-status').textContent = res.latest && res.latest.id !== profile.modpack!.versionId
+      ? t('Dostępna nowa wersja: {0}', res.latest.versionNumber)
+      : t('Masz najnowszą wersję.');
+    renderModpackBox(profile);
+  });
+});
+$('#modpack-update').addEventListener('click', () => {
+  const profile = store.profiles.find((p) => p.id === editingId);
+  if (profile && modpackLatest) guard(() => api.updateModpack(profile.id, modpackLatest!.id)).then(() => ($('#modpack-status').textContent = ''));
+});
+$('#modpack-versions').addEventListener('click', async () => {
+  const profile = store.profiles.find((p) => p.id === editingId);
+  if (!profile?.modpack) return;
+  const v = await chooseVersion({ title: profile.modpack.title, projectId: profile.modpack.projectId, type: 'modpack', currentVersionId: profile.modpack.versionId, profileId: profile.id });
+  if (v) guard(() => api.updateModpack(profile.id, v.id));
+});
+
 // ---------- profile icons ----------
 
 const BLOCKS = ['grass', 'dirt', 'stone', 'sand', 'planks', 'log', 'diamond-ore', 'obsidian', 'netherrack'];
@@ -429,6 +471,7 @@ function loadProfileForm(profile: Profile) {
   }
   renderVersionOptions(profile.versionId);
   renderIconChoices(profile);
+  renderModpackBox(profile);
   (form.elements.namedItem('syncOptions') as HTMLInputElement).checked = profile.syncOptions ?? false;
   $<HTMLSelectElement>('#loader-select').value = profile.loader ?? 'vanilla';
   renderLoaderVersions(profile.loaderVersion ?? '');
@@ -481,7 +524,6 @@ function renderSettings() {
   (form.elements.namedItem('msClientId') as HTMLInputElement).value = store.settings.msClientId;
   fillSelect($<HTMLSelectElement>('#language-select'), LANGUAGES.map((l) => ({ value: l.code, label: l.name })), getLang());
   (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked = store.settings.closeOnLaunch;
-  (form.elements.namedItem('discordClientId') as HTMLInputElement).value = store.settings.discordClientId ?? '';
   (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked = store.settings.discordEnabled ?? true;
   $('#data-dir').textContent = store.dataDir;
   api.appVersion().then((v: string) => ($('#app-version').textContent = v));
@@ -687,7 +729,6 @@ $('#settings-form').addEventListener('submit', async (e) => {
     api.saveSettings({
       msClientId: (form.elements.namedItem('msClientId') as HTMLInputElement).value.trim(),
       closeOnLaunch: (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked,
-      discordClientId: (form.elements.namedItem('discordClientId') as HTMLInputElement).value.trim(),
       discordEnabled: (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked,
       language: $<HTMLSelectElement>('#language-select').value,
     }),
@@ -889,7 +930,121 @@ document.querySelector('.nav[data-view="servers"]')?.addEventListener('click', (
 // ---------- mods, resource packs, shaders, modpacks (Modrinth) ----------
 
 interface ProjectHit { id: string; slug: string; title: string; description: string; author: string; iconUrl?: string; downloads: number; categories: string[] }
-interface InstalledItem { type: string; filename: string; enabled: boolean; title: string; projectId?: string; versionNumber?: string; iconUrl?: string }
+interface InstalledItem { type: string; filename: string; enabled: boolean; title: string; projectId?: string; versionId?: string; versionNumber?: string; iconUrl?: string }
+interface ProjectVersion { id: string; projectId: string; name: string; versionNumber: string; type: 'release' | 'beta' | 'alpha'; date: string; gameVersions: string[]; loaders: string[]; downloads: number }
+interface UpdateInfo { type: string; filename: string; projectId: string; title: string; currentVersion: string; latestVersionId: string; latestVersion: string }
+
+// ---------- version picker ----------
+
+let resolvePicker: ((v: ProjectVersion | undefined) => void) | undefined;
+let pickerArgs: { projectId: string; type: string; currentVersionId?: string; profileId: string } | undefined;
+
+const TYPE_NAMES: Record<string, string> = { release: 'Wydanie', beta: 'Beta', alpha: 'Alfa' };
+
+/** Short list of game versions, e.g. "26.3, 26.2 +4". */
+function shortVersions(list: string[]): string {
+  return list.length > 3 ? `${list.slice(-3).reverse().join(', ')} +${list.length - 3}` : [...list].reverse().join(', ');
+}
+
+async function renderVersionList() {
+  if (!pickerArgs) return;
+  const box = $('#versions-list');
+  box.replaceChildren(...skeletons('project', 4));
+  const onlyCompatible = $<HTMLInputElement>('#versions-compat').checked;
+  const versions: ProjectVersion[] = (await guard(() => api.contentVersions(pickerArgs!.profileId, pickerArgs!.projectId, pickerArgs!.type, onlyCompatible))) ?? [];
+  box.replaceChildren(...appear(versions.slice(0, 60).map((v) => {
+    const current = v.id === pickerArgs?.currentVersionId;
+    const choose = el('button', { type: 'button', className: current ? '' : 'primary', disabled: current, textContent: current ? t('Zainstalowana') : t('Wybierz') });
+    choose.addEventListener('click', () => closePicker(v));
+    return el('div', { className: `version-row${current ? ' current' : ''}` },
+      el('div', {},
+        el('b', {}, v.versionNumber, el('span', { className: `tag ${v.type}`, textContent: t(TYPE_NAMES[v.type] ?? v.type) })),
+        el('div', { className: 'version-meta' },
+          el('span', { textContent: v.name !== v.versionNumber ? v.name : '' }),
+          el('span', { textContent: `MC ${shortVersions(v.gameVersions)}` }),
+          el('span', { textContent: v.loaders.filter((l) => l !== 'minecraft').join(', ') }),
+          el('span', { textContent: new Date(v.date).toLocaleDateString(locale(), { dateStyle: 'medium' }) }),
+          el('span', {}, el('i', { className: 'fa-solid fa-download' }), ` ${fmtCount(v.downloads)}`))),
+      choose);
+  })));
+  if (!versions.length) box.replaceChildren(el('p', { className: 'muted', textContent: onlyCompatible ? t('Brak wersji zgodnych z tym profilem. Odznacz filtr, żeby zobaczyć wszystkie.') : t('Brak wersji.') }));
+}
+
+/** Opens the version list for a project and resolves with the chosen version (or nothing). */
+function chooseVersion(args: { title: string; projectId: string; type: string; currentVersionId?: string; profileId: string }): Promise<ProjectVersion | undefined> {
+  closePicker(undefined);
+  pickerArgs = args;
+  $('#versions-title').textContent = t('Wersje: {0}', args.title);
+  $('#versions-compat-wrap').classList.toggle('hidden', args.type === 'modpack');
+  $<HTMLInputElement>('#versions-compat').checked = true;
+  $('#versions-modal').classList.remove('hidden');
+  renderVersionList();
+  return new Promise((resolve) => (resolvePicker = resolve));
+}
+
+function closePicker(v: ProjectVersion | undefined) {
+  $('#versions-modal').classList.add('hidden');
+  resolvePicker?.(v);
+  resolvePicker = undefined;
+}
+
+$('#versions-close').addEventListener('click', () => closePicker(undefined));
+$('#versions-modal').addEventListener('click', (e) => e.target === e.currentTarget && closePicker(undefined));
+$('#versions-compat').addEventListener('change', renderVersionList);
+document.addEventListener('keydown', (e) => e.key === 'Escape' && resolvePicker && closePicker(undefined));
+
+// ---------- updates of installed content ----------
+
+let updates: UpdateInfo[] = [];
+let updatesFor = '';
+let updatesAt = 0;
+let checkingUpdates = false;
+
+/** Asks Modrinth about newer versions of everything in the profile (cached for 10 minutes). */
+async function checkContentUpdates(force = false) {
+  const profileId = contentProfileId();
+  if (!profileId || checkingUpdates || (!force && updatesFor === profileId && Date.now() - updatesAt < 10 * 60_000)) return;
+  checkingUpdates = true;
+  renderContent();
+  try {
+    updates = await api.checkUpdates(profileId);
+    updatesFor = profileId;
+    updatesAt = Date.now();
+    await refreshInstalled(); // recognised files now have names and icons
+  } catch (err) {
+    toast(errorText(err), true);
+  } finally {
+    checkingUpdates = false;
+    renderContent();
+  }
+}
+
+async function applyUpdates(items: { type: string; projectId: string; latestVersionId: string; title: string }[]) {
+  if (!items.length) return;
+  try {
+    await api.updateContent(contentProfileId(), items);
+  } catch {
+    // reported in the task panel
+  }
+  updates = updates.filter((u) => !items.some((i) => i.projectId === u.projectId));
+  await refreshInstalled(true);
+}
+
+function renderUpdatesBar(forType: InstalledItem[]) {
+  const bar = $('#updates-bar');
+  bar.classList.toggle('hidden', !forType.length);
+  const pending = updates.filter((u) => u.type === contentType && updatesFor === contentProfileId());
+  const text = $('#updates-text');
+  if (checkingUpdates) text.replaceChildren(el('span', { className: 'spinner' }), t('Sprawdzanie aktualizacji…'));
+  else if (updatesFor !== contentProfileId()) text.replaceChildren(t('Nie sprawdzono jeszcze aktualizacji.'));
+  else if (pending.length) text.replaceChildren(el('b', { textContent: t('Dostępne aktualizacje: {0}', pending.length) }));
+  else text.replaceChildren(el('i', { className: 'fa-solid fa-circle-check' }), t('Wszystko jest aktualne.'));
+  $<HTMLButtonElement>('#updates-check').disabled = checkingUpdates;
+  $('#updates-all').classList.toggle('hidden', !pending.length || checkingUpdates);
+}
+
+$('#updates-check').addEventListener('click', () => checkContentUpdates(true));
+$('#updates-all').addEventListener('click', () => applyUpdates(updates.filter((u) => u.type === contentType)));
 
 let contentType = 'mod';
 let contentTab = 'browse';
@@ -929,6 +1084,11 @@ function hitCard(hit: ProjectHit): HTMLElement {
     installing.has(hit.id) ? el('span', { className: 'spinner' }) : el('i', { className: isInstalled ? 'fa-solid fa-check' : 'fa-solid fa-download' }),
     installing.has(hit.id) ? 'Instaluję…' : isInstalled ? 'Zainstalowany' : contentType === 'modpack' ? 'Utwórz profil' : 'Instaluj');
   btn.addEventListener('click', () => installHit(hit));
+  const pick = el('button', { type: 'button', className: 'icon-btn', title: t('Wybierz wersję') }, el('i', { className: 'fa-solid fa-code-branch' }));
+  pick.addEventListener('click', async () => {
+    const v = await chooseVersion({ title: hit.title, projectId: hit.id, type: contentType, profileId: contentProfileId() });
+    if (v) installHit(hit, v.id);
+  });
   return el('div', { className: 'project' },
     projectIcon(hit.iconUrl),
     el('div', { className: 'project-main' },
@@ -937,7 +1097,7 @@ function hitCard(hit: ProjectHit): HTMLElement {
       el('div', { className: 'project-meta' },
         el('span', {}, el('i', { className: 'fa-solid fa-download' }), ` ${fmtCount(hit.downloads)}`),
         el('span', { textContent: hit.categories.slice(0, 4).join(' · ') }))),
-    el('div', { className: 'project-actions' }, btn));
+    el('div', { className: 'project-actions' }, btn, pick));
 }
 
 function installedCard(item: InstalledItem): HTMLElement {
@@ -961,12 +1121,28 @@ function installedCard(item: InstalledItem): HTMLElement {
       await refreshInstalled();
     });
   });
+  const update = updates.find((u) => u.type === item.type && u.filename === item.filename);
+  const actions: HTMLElement[] = [];
+  if (update) {
+    const btn = el('button', { type: 'button', className: 'primary' }, el('i', { className: 'fa-solid fa-circle-arrow-up' }), t('Aktualizuj'));
+    btn.addEventListener('click', () => busy(btn, () => applyUpdates([update])));
+    actions.push(btn);
+  }
+  if (item.projectId) {
+    const versions = el('button', { type: 'button', className: 'icon-btn', title: t('Zmień wersję') }, el('i', { className: 'fa-solid fa-code-branch' }));
+    versions.addEventListener('click', async () => {
+      const v = await chooseVersion({ title: item.title, projectId: item.projectId!, type: item.type, currentVersionId: item.versionId, profileId: contentProfileId() });
+      if (v) applyUpdates([{ type: item.type, projectId: item.projectId!, latestVersionId: v.id, title: item.title }]);
+    });
+    actions.push(versions);
+  }
   return el('div', { className: `project${item.enabled ? '' : ' disabled'}` },
     projectIcon(item.iconUrl),
     el('div', { className: 'project-main' },
-      el('b', {}, item.title, el('small', { textContent: item.versionNumber ?? '' })),
+      el('b', {}, item.title, el('small', { textContent: item.versionNumber ?? '' }),
+        ...(update ? [el('span', { className: 'tag update', textContent: t('Nowa wersja: {0}', update.latestVersion) })] : [])),
       el('p', { textContent: item.filename })),
-    el('div', { className: 'project-actions' }, switchLabel, remove));
+    el('div', { className: 'project-actions' }, ...actions, switchLabel, remove));
 }
 
 function renderContent() {
@@ -980,6 +1156,7 @@ function renderContent() {
   const list = $('#content-list');
   const from = animateFrom;
   animateFrom = undefined;
+  renderUpdatesBar(contentTab === 'installed' && !isPack ? forType : []);
   if (contentTab === 'installed' && !isPack) {
     const cards = forType.map(installedCard);
     list.replaceChildren(...(from !== undefined ? appear(cards) : cards));
@@ -1018,14 +1195,14 @@ async function searchContent(append = false) {
   renderContent();
 }
 
-async function installHit(hit: ProjectHit) {
+async function installHit(hit: ProjectHit, versionId?: string) {
   installing.add(hit.id);
   renderContent();
   try {
     // progress and the result are shown in the task panel (see the task section)
-    if (contentType === 'modpack') await api.installModpack(hit.id, hit.title, hit.iconUrl);
+    if (contentType === 'modpack') await api.installModpack(hit.id, hit.title, hit.iconUrl, versionId);
     else {
-      await api.installContent(contentProfileId(), hit.id, contentType, hit.title, hit.iconUrl);
+      await api.installContent(contentProfileId(), hit.id, contentType, hit.title, hit.iconUrl, versionId);
       await refreshInstalled();
     }
   } catch {
@@ -1058,6 +1235,7 @@ document.querySelectorAll<HTMLButtonElement>('#content-tab button').forEach((b) 
     document.querySelectorAll('#content-tab button').forEach((x) => x.classList.toggle('active', x === b));
     animateFrom = 0;
     renderContent();
+    if (contentTab === 'installed') checkContentUpdates();
   }));
 let searchTimer: number | undefined;
 $('#content-search').addEventListener('input', () => {

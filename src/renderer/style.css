@@ -522,3 +522,28 @@ body.entering main { animation: rise-in .55s cubic-bezier(.2, .7, .3, 1) .12s bo
 .task.failed .task-result i { color: #f87171; margin-top: 2px; }
 .task-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .task-actions button { height: 32px; padding: 0 12px; font-size: 13px; }
+
+/* ---------- updates & versions ---------- */
+.updates-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; font-size: 14px; }
+.updates-bar span { flex: 1; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+.updates-bar span b { color: var(--text-primary); }
+.updates-bar button { height: 34px; padding: 0 12px; font-size: 13px; }
+.tag.update { background: rgba(59, 130, 246, .18); color: #93c5fd; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.project-main b .tag { margin-left: 8px; vertical-align: middle; }
+
+.versions-box { width: min(680px, 100%); }
+.versions-box .modal-body { padding-top: 26px; }
+.version-list { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; max-height: 420px; overflow-y: auto; padding-right: 4px; }
+.version-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--glass-border); background: rgba(255, 255, 255, .02); }
+.version-row.current { border-color: rgba(74, 222, 128, .4); }
+.version-row b { font-size: 14px; }
+.version-row b .tag { margin-left: 8px; vertical-align: middle; }
+.version-meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 10px; flex-wrap: wrap; margin-top: 3px; }
+.version-row button { height: 32px; padding: 0 12px; font-size: 13px; }
+.tag.beta { background: rgba(250, 204, 21, .15); color: #fde68a; }
+.tag.alpha { background: rgba(239, 68, 68, .15); color: #fca5a5; }
+
+.modpack-box { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 10px; background: rgba(59, 130, 246, .08); border: 1px solid rgba(59, 130, 246, .25); }
+.modpack-info { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.modpack-info i { color: var(--accent-light); }
+.modpack-box .row button { height: 34px; padding: 0 12px; font-size: 13px; }

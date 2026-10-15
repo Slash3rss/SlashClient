@@ -2,7 +2,7 @@ import AdmZip from 'adm-zip';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { downloadAll, fetchJson, type ProgressFn } from './download';
+import { downloadAll, fetchJson, sha1File, type ProgressFn } from './download';
 import { t } from '../shared/i18n';
 
 const API = 'https://api.modrinth.com/v2';
@@ -15,6 +15,8 @@ export type ProjectType = ContentType | 'modpack';
 export const FOLDERS: Record<ContentType, string> = { mod: 'mods', resourcepack: 'resourcepacks', shader: 'shaderpacks' };
 
 const get = <T>(url: string) => fetchJson<T>(url, { headers: HEADERS });
+const post = <T>(url: string, body: unknown) =>
+  fetchJson<T>(url, { method: 'POST', headers: { ...HEADERS, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
 export interface ProjectHit {
   id: string;
@@ -67,9 +69,54 @@ interface ModrinthFile { url: string; filename: string; primary: boolean; size: 
 interface ModrinthVersion {
   id: string;
   project_id: string;
+  name: string;
   version_number: string;
+  version_type: 'release' | 'beta' | 'alpha';
+  date_published: string;
+  game_versions: string[];
+  loaders: string[];
+  downloads: number;
   files: ModrinthFile[];
   dependencies: { project_id: string | null; version_id: string | null; dependency_type: string }[];
+}
+
+/** One version of a project, as shown in the version picker. */
+export interface VersionInfo {
+  id: string;
+  projectId: string;
+  name: string;
+  versionNumber: string;
+  type: 'release' | 'beta' | 'alpha';
+  date: string;
+  gameVersions: string[];
+  loaders: string[];
+  downloads: number;
+}
+
+const toInfo = (v: ModrinthVersion): VersionInfo => ({
+  id: v.id, projectId: v.project_id, name: v.name, versionNumber: v.version_number, type: v.version_type,
+  date: v.date_published, gameVersions: v.game_versions, loaders: v.loaders, downloads: v.downloads,
+});
+
+/** Loaders Modrinth uses for each kind of content, for compatibility filters. */
+function loadersFor(type: ContentType, loader?: string): string[] | undefined {
+  if (type === 'mod') return loader ? [loader] : undefined;
+  if (type === 'resourcepack') return ['minecraft'];
+  return ['iris', 'optifine', 'canvas', 'vanilla'];
+}
+
+/** Versions of a project, newest first; optionally only those for this game version / loader. */
+export async function listVersions(projectId: string, filter: { gameVersion?: string; loaders?: string[] } = {}): Promise<VersionInfo[]> {
+  const params = new URLSearchParams();
+  if (filter.gameVersion) params.set('game_versions', JSON.stringify([filter.gameVersion]));
+  if (filter.loaders) params.set('loaders', JSON.stringify(filter.loaders));
+  const versions = await get<ModrinthVersion[]>(`${API}/project/${projectId}/version?${params}`);
+  return versions.map(toInfo);
+}
+
+export async function listContentVersions(projectId: string, type: ProjectType, gameVersion?: string, loader?: string): Promise<VersionInfo[]> {
+  if (type === 'modpack') return listVersions(projectId);
+  return listVersions(projectId, { gameVersion, loaders: loadersFor(type, loader) });
 }
 
 /** Newest version of a project that fits the game version (and loader, for mods). */
@@ -89,6 +136,7 @@ export interface InstalledItem {
   enabled: boolean;
   title: string;
   projectId?: string;
+  versionId?: string;
   versionNumber?: string;
   iconUrl?: string;
 }
@@ -121,7 +169,7 @@ export async function listInstalled(gameDir: string): Promise<InstalledItem[]> {
       const enabled = !file.endsWith('.disabled');
       const filename = file.replace(/\.disabled$/, '');
       const entry = manifest.find((m) => m.type === type && m.filename === filename);
-      out.push({ type, filename, enabled, title: entry?.title ?? filename.replace(/\.(jar|zip)$/, ''), projectId: entry?.projectId, versionNumber: entry?.versionNumber, iconUrl: entry?.iconUrl });
+      out.push({ type, filename, enabled, title: entry?.title ?? filename.replace(/\.(jar|zip)$/, ''), projectId: entry?.projectId, versionId: entry?.versionId, versionNumber: entry?.versionNumber, iconUrl: entry?.iconUrl });
     }
   }
   return out.sort((a, b) => a.title.localeCompare(b.title, 'pl'));
@@ -157,6 +205,8 @@ export async function installProject(
   gameVersion: string,
   loader: string | undefined,
   onProgress?: ProgressFn,
+  /** Install exactly this version of the project (dependencies still get their newest fitting version). */
+  versionId?: string,
 ): Promise<string[]> {
   const manifest = await readManifest(gameDir);
   const installed: string[] = [];
@@ -166,16 +216,21 @@ export async function installProject(
     const id = queue.shift()!;
     if (seen.has(id)) continue;
     seen.add(id);
-    const version = await pickVersion(id, gameVersion, type === 'mod' ? loader : undefined);
+    const version = id === projectId && versionId
+      ? await get<ModrinthVersion>(`${API}/version/${versionId}`)
+      : await pickVersion(id, gameVersion, type === 'mod' ? loader : undefined);
     const project = await get<{ title: string; icon_url?: string }>(`${API}/project/${id}`);
     const file = version.files.find((f) => f.primary) ?? version.files[0];
     const dest = contentFile(gameDir, type, path.basename(file.filename));
 
-    // drop the previous file of this project, if any
+    // drop the previous file of this project, if any (a disabled mod stays disabled after an update)
+    let keepDisabled = false;
     for (const old of manifest.filter((m) => m.projectId === id && m.filename !== file.filename)) {
+      keepDisabled ||= await fs.access(`${contentFile(gameDir, old.type, old.filename)}.disabled`).then(() => true, () => false);
       await removeContent(gameDir, old.type, old.filename).catch(() => {});
     }
     await downloadAll([{ url: file.url, dest, sha1: file.hashes.sha1, size: file.size }], onProgress, { verifyHash: true });
+    if (keepDisabled) await fs.rename(dest, `${dest}.disabled`);
 
     const entry: ManifestEntry = {
       type, filename: path.basename(file.filename), projectId: id, versionId: version.id, versionNumber: version.version_number, title: project.title, iconUrl: project.icon_url,
@@ -199,6 +254,82 @@ function mergeManifest(current: ManifestEntry[], updated: ManifestEntry[]): Mani
   const byKey = new Map(current.map((m) => [`${m.type}:${m.filename}`, m]));
   for (const m of updated) byKey.set(`${m.type}:${m.filename}`, m);
   return [...byKey.values()];
+}
+
+// ---------- updates ----------
+
+export interface UpdateInfo {
+  type: ContentType;
+  filename: string;
+  projectId: string;
+  title: string;
+  currentVersion: string;
+  latestVersionId: string;
+  latestVersion: string;
+}
+
+interface ProjectSummary { id: string; title: string; icon_url?: string }
+
+/** Every content file with its SHA1, including disabled ones. */
+async function hashedFiles(gameDir: string) {
+  const out: { type: ContentType; filename: string; sha1: string }[] = [];
+  for (const [type, folder] of Object.entries(FOLDERS) as [ContentType, string][]) {
+    for (const file of await fs.readdir(path.join(gameDir, folder)).catch(() => [] as string[])) {
+      if (file.startsWith('.') || !/\.(jar|zip)(\.disabled)?$/.test(file)) continue;
+      out.push({ type, filename: file.replace(/\.disabled$/, ''), sha1: await sha1File(path.join(gameDir, folder, file)) });
+    }
+  }
+  return out;
+}
+
+/**
+ * Finds newer versions of everything installed, by asking Modrinth about each
+ * file's SHA1 (so mods added by hand or by a modpack are recognised too). Files
+ * Modrinth knows but the launcher didn't track yet get a proper name and icon.
+ */
+export async function checkUpdates(gameDir: string, gameVersion: string, loader: string | undefined): Promise<UpdateInfo[]> {
+  const files = await hashedFiles(gameDir);
+  if (!files.length) return [];
+  const hashes = files.map((f) => f.sha1);
+  const current = await post<Record<string, ModrinthVersion>>(`${API}/version_files`, { hashes, algorithm: 'sha1' });
+
+  // adopt files Modrinth recognises into the manifest
+  const manifest = await readManifest(gameDir);
+  const unknown = files.filter((f) => current[f.sha1] && !manifest.some((m) => m.type === f.type && m.filename === f.filename));
+  if (unknown.length) {
+    const ids = [...new Set(unknown.map((f) => current[f.sha1].project_id))];
+    const projects = await get<ProjectSummary[]>(`${API}/projects?ids=${encodeURIComponent(JSON.stringify(ids))}`);
+    for (const f of unknown) {
+      const v = current[f.sha1];
+      const p = projects.find((x) => x.id === v.project_id);
+      manifest.push({ type: f.type, filename: f.filename, projectId: v.project_id, versionId: v.id, versionNumber: v.version_number, title: p?.title ?? f.filename, iconUrl: p?.icon_url });
+    }
+    await writeManifest(gameDir, manifest);
+  }
+
+  // never "update" a stable release to a beta or alpha: each file only gets versions at least as stable as it is
+  const CHANNELS: Record<string, string[]> = { release: ['release'], beta: ['release', 'beta'], alpha: ['release', 'beta', 'alpha'] };
+  const updates: UpdateInfo[] = [];
+  for (const type of Object.keys(FOLDERS) as ContentType[]) {
+    for (const [channel, versionTypes] of Object.entries(CHANNELS)) {
+      const ofType = files.filter((f) => f.type === type && current[f.sha1] && (current[f.sha1].version_type ?? 'release') === channel);
+      if (!ofType.length) continue;
+      const latest = await post<Record<string, ModrinthVersion>>(`${API}/version_files/update`, {
+        hashes: ofType.map((f) => f.sha1), algorithm: 'sha1', loaders: loadersFor(type, loader), game_versions: [gameVersion], version_types: versionTypes,
+      });
+      for (const f of ofType) {
+        const now = current[f.sha1];
+        const next = latest[f.sha1];
+        if (!next || next.id === now.id) continue;
+        const entry = manifest.find((m) => m.type === type && m.filename === f.filename);
+        updates.push({
+          type, filename: f.filename, projectId: now.project_id, title: entry?.title ?? f.filename,
+          currentVersion: now.version_number, latestVersionId: next.id, latestVersion: next.version_number,
+        });
+      }
+    }
+  }
+  return updates;
 }
 
 // ---------- modpacks (.mrpack) ----------
@@ -254,6 +385,10 @@ export async function installMrpack(mrpack: string, gameDir: string, onStage?: S
     await fs.writeFile(dest, entry.getData());
   }
 
+  // remember what this pack version installed, so an update can remove files it no longer ships
+  await fs.mkdir(path.join(gameDir, '.slashclient'), { recursive: true });
+  await fs.writeFile(packSnapshot(gameDir), JSON.stringify(tasks.map((task) => path.relative(gameDir, task.dest))));
+
   return {
     name: index.name,
     gameVersion: deps.minecraft,
@@ -262,13 +397,52 @@ export async function installMrpack(mrpack: string, gameDir: string, onStage?: S
   };
 }
 
-/** Downloads the newest .mrpack of a Modrinth modpack project to a temp file. */
-export async function downloadModpack(projectId: string, onProgress?: ProgressFn): Promise<string> {
+const packSnapshot = (gameDir: string) => path.join(gameDir, '.slashclient', 'modpack-files.json');
+
+/**
+ * Updates (or changes the version of) a modpack in place: files the old version
+ * installed but the new one doesn't ship are removed, then the new version is installed
+ * over it (its config overrides replace the old ones; worlds and the player's own files stay).
+ */
+export async function updateMrpack(mrpack: string, gameDir: string, onStage?: StageProgress): Promise<ModpackInfo> {
+  const zip = new AdmZip(mrpack);
+  const indexEntry = zip.getEntry('modrinth.index.json');
+  if (!indexEntry) throw new Error('To nie jest modpack Modrinth (.mrpack).');
+  const index = JSON.parse(indexEntry.getData().toString('utf8')) as MrpackIndex;
+  const keep = new Set(index.files.filter((f) => f.env?.client !== 'unsupported').map((f) => path.normalize(f.path)));
+  const previous: string[] = JSON.parse(await fs.readFile(packSnapshot(gameDir), 'utf8').catch(() => '[]'));
+  for (const rel of previous) {
+    if (keep.has(path.normalize(rel))) continue;
+    const file = safeJoin(gameDir, rel);
+    await fs.rm(file, { force: true });
+    await fs.rm(`${file}.disabled`, { force: true });
+  }
+  return installMrpack(mrpack, gameDir, onStage);
+}
+
+/** Downloads a modpack's .mrpack (the given version, or the newest) to a temp file. */
+export async function downloadModpack(projectId: string, onProgress?: ProgressFn, versionId?: string): Promise<{ file: string; version: VersionInfo }> {
   onProgress?.(0, 1, { bytes: 0, totalBytes: 0, speed: 0 });
-  const versions = await get<ModrinthVersion[]>(`${API}/project/${projectId}/version`);
-  const file = versions[0]?.files.find((f) => f.filename.endsWith('.mrpack'));
+  const version = versionId
+    ? await get<ModrinthVersion>(`${API}/version/${versionId}`)
+    : (await get<ModrinthVersion[]>(`${API}/project/${projectId}/version`))[0];
+  const file = version?.files.find((f) => f.filename.endsWith('.mrpack'));
   if (!file) throw new Error('Ten modpack nie ma pliku .mrpack.');
-  const dest = path.join(os.tmpdir(), `slashclient-${versions[0].id}.mrpack`);
+  const dest = path.join(os.tmpdir(), `slashclient-${version.id}.mrpack`);
   await downloadAll([{ url: file.url, dest, sha1: file.hashes.sha1, size: file.size }], onProgress, { verifyHash: true });
-  return dest;
+  return { file: dest, version: toInfo(version) };
+}
+
+/** Recognises an imported .mrpack file as a Modrinth modpack version (by its SHA1), so it can be updated later. */
+export async function identifyModpack(file: string): Promise<VersionInfo | undefined> {
+  const sha1 = await sha1File(file);
+  const found = await post<Record<string, ModrinthVersion>>(`${API}/version_files`, { hashes: [sha1], algorithm: 'sha1' }).catch(() => ({}));
+  const version = (found as Record<string, ModrinthVersion>)[sha1];
+  return version ? toInfo(version) : undefined;
+}
+
+/** The newest version of a modpack, preferring full releases over betas. */
+export async function latestModpackVersion(projectId: string): Promise<VersionInfo | undefined> {
+  const versions = await listVersions(projectId);
+  return versions.find((v) => v.type === 'release') ?? versions[0];
 }
