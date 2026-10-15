@@ -1,4 +1,5 @@
 import { SkinViewer, WalkingAnimation, IdleAnimation } from 'skinview3d';
+import { createFriends, socialErrorText } from './friends';
 import { openSkinEditor } from './skinEditor';
 import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
 import type { SlashApi } from '../main/preload';
@@ -39,7 +40,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string> };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
   running: boolean;
   dataDir: string;
   systemMemoryMb: number;
@@ -203,6 +204,7 @@ function errorText(err: unknown): string {
   const text = String((err as Error)?.message ?? err)
     .replace(/^Error invoking remote method '[^']+': /, '')
     .replace(/^(?:[A-Z][A-Za-z]*Error|Error): /, '');
+  if (text.startsWith('social:')) return socialErrorText(text.slice(7));
   // a raw network failure that slipped through: say it in words
   if (/^fetch failed$|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT/.test(text)) return t('Brak połączenia z internetem. Sprawdź połączenie i spróbuj ponownie.');
   return text;
@@ -652,6 +654,7 @@ function renderAccounts() {
 function renderSettings() {
   const form = $<HTMLFormElement>('#settings-form');
   (form.elements.namedItem('msClientId') as HTMLInputElement).value = store.settings.msClientId;
+  (form.elements.namedItem('socialUrl') as HTMLInputElement).value = store.settings.socialUrl;
   fillSelect($<HTMLSelectElement>('#language-select'), LANGUAGES.map((l) => ({ value: l.code, label: l.name })), getLang());
   (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked = store.settings.closeOnLaunch;
   (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked = store.settings.discordEnabled ?? true;
@@ -930,11 +933,28 @@ $('#settings-form').addEventListener('submit', async (e) => {
       msClientId: (form.elements.namedItem('msClientId') as HTMLInputElement).value.trim(),
       closeOnLaunch: (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked,
       discordEnabled: (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked,
+      socialUrl: (form.elements.namedItem('socialUrl') as HTMLInputElement).value.trim().replace(/\/$/, '') || store.settings.socialUrl,
       language: $<HTMLSelectElement>('#language-select').value,
     }),
   );
   toast('Zapisano ustawienia');
+  store = await api.getStore();
+  friends.init();
 });
+
+// ---------- friends ----------
+
+const friends = createFriends($('#friends-root'), $('#friends-badge'), {
+  api,
+  toast,
+  errorText,
+  // a friend's server is not on the list: the join window gets what we know about it
+  join: (address, version) => openJoin({
+    id: '', name: address, ip: address, description: '', motdHtml: [], motdClean: [], modes: [], versions: version ? [version] : [],
+    votes: 0, online: true, playersOnline: 0, playersMax: 0, hasIcon: false, promoted: false, featured: false,
+  }),
+});
+document.querySelector('.nav[data-view="friends"]')?.addEventListener('click', () => friends.show());
 
 // ---------- servers (lista.slash3rss.dev) ----------
 
@@ -2612,6 +2632,7 @@ function finishBoot() {
     applyLanguage(store.settings.language);
     loadNews();
     render();
+    friends.init();
   } finally {
     // keep the splash until fonts are ready and for at least a moment so it doesn't flicker,
     // but never wait on the network (and always hide it, even after an error)

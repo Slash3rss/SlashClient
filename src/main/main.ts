@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, net, Notification, protocol, safeStorage, shell } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, net, Notification, powerMonitor, protocol, safeStorage, shell } from 'electron';
 import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
@@ -14,9 +14,10 @@ import { shareLog } from './logshare';
 import { lastTarget, serverFromLog, worldPlayedSince } from './sessions';
 import { installUpdate, startUpdateChecks } from './updates';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
+import { activityFromLog, SocialClient, SocialError, type Status } from './social';
 import { launch, resolveVersionId } from './launch';
 import { paths } from './paths';
-import { loadStore, newProfile, profileGameDir, saveStore, setSecretCodec, type MicrosoftAccount, type Profile, type Settings, type StoreData } from './store';
+import { loadStore, newProfile, profileGameDir, saveStore, secrets, setSecretCodec, type MicrosoftAccount, type Profile, type Settings, type StoreData } from './store';
 import { LOADER_NAMES, loaderVersions, type Loader } from './loaders';
 import {
   checkUpdates, downloadModpack, identifyModpack, installMrpack, installProject, latestModpackVersion, listContentVersions,
@@ -94,6 +95,7 @@ async function persist() {
 function publicStore() {
   return {
     ...store,
+    settings: { ...store.settings, socialToken: undefined },
     accounts: store.accounts.map(({ id, type, name, uuid }) => ({ id, type, name, uuid })),
     profiles: store.profiles.map((p) => ({ ...p, iconFile: p.icon === 'custom' ? iconFile(profileGameDir(p)) : undefined })),
     running: Boolean(game),
@@ -139,7 +141,10 @@ handle('store:get', () => publicStore());
 handle('versions:list', async () => (await getManifest()).versions.map(({ id, type }) => ({ id, type })));
 
 handle('settings:save', async (settings: Partial<Settings>) => {
-  store.settings = { ...store.settings, ...settings };
+  const { socialToken: _ignored, ...allowed } = settings;
+  const urlChanged = allowed.socialUrl !== undefined && allowed.socialUrl !== store.settings.socialUrl;
+  store.settings = { ...store.settings, ...allowed };
+  if (urlChanged) await social.logout();
   setLang(store.settings.language);
   if (store.settings.discordEnabled) showPresence(game ? currentPresence ?? idlePresence() : idlePresence());
   else discordClient(); // closes the connection, which clears the status
@@ -769,6 +774,8 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     largeImageKey: 'logo',
     largeImageText: 'SlashClient',
   };
+  const activityVersion = `${await resolveVersionId(profile.versionId)}${loaderName}`;
+  social.setActivity({ kind: server ? 'server' : 'menu', server: server || undefined, version: activityVersion, since: startedAt });
   const child = await launch({
     profile,
     account,
@@ -783,6 +790,8 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
         // Quick Play logs the same connect we already counted
         if (joins.at(-1)?.address !== joined || Date.now() - joins.at(-1)!.at > 30_000) joins.push(lastServer);
       }
+      const now = activityFromLog(line);
+      if (now) social.setActivity({ ...now, version: activityVersion, since: startedAt });
       const update = presenceFromLog(line);
       if (update && update.state !== presence.state) {
         presence.state = update.state;
@@ -805,6 +814,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
       start: startedAt, end: Date.now(), profileId: profile.id, profileName: profile.name, versionId, loader: profile.loader, servers: joins,
     })).catch(() => {});
     showPresence(idlePresence());
+    social.setActivity({ kind: 'launcher' });
     send('game:exit', { code, signal, byUser: killRequested });
     if (code !== 0 && !killRequested) {
       analyzeCrash({ log: recentLog, gameDir: profileGameDir(profile), startedAt, code, signal })
@@ -823,6 +833,66 @@ handle('game:kill', () => {
   killRequested = true;
   game?.kill();
 });
+
+// ---------- friends, statuses and messages ----------
+// The SlashClient account is separate from the game accounts: signing in or out here
+// never touches the Minecraft accounts or which one is selected.
+
+const social = new SocialClient({
+  url: () => store.settings.socialUrl,
+  token: () => (store.settings.socialToken ? secrets.decrypt(store.settings.socialToken) : undefined),
+  saveToken: async (token) => {
+    store.settings.socialToken = token ? secrets.encrypt(token) : undefined;
+    await persist();
+  },
+  status: () => store.settings.socialStatus,
+  emit: (event) => send('social:event', event),
+});
+
+/** SocialError codes cross IPC as "social:<code>", which the page translates. */
+async function socialCall<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err instanceof SocialError) throw new Error(`social:${err.code}`);
+    throw err;
+  }
+}
+
+handle('social:state', () => social.state());
+handle('social:health', () => socialCall(() => social.call('GET', '/v1/health', undefined, false)));
+/** The page's requests; only the parts of the API that work on the player's own data. */
+handle('social:api', (method: string, apiPath: string, body?: unknown) => {
+  if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages)(\/[\w-]+)*(\?[\w=&-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
+  return socialCall(() => social.call(method, apiPath, body));
+});
+handle('social:loginDev', (name: string) => socialCall(async () => social.signedIn(await social.call('POST', '/v1/auth/dev', { name }, false))));
+let discordLogin = 0;
+/** Opens Discord in the browser and waits (up to 10 minutes) until the player is back. */
+handle('social:loginDiscord', () => socialCall(async () => {
+  const attempt = ++discordLogin;
+  const { state, url } = await social.call<{ state: string; url: string }>('POST', '/v1/auth/discord/start', undefined, false);
+  await shell.openExternal(url);
+  const until = Date.now() + 10 * 60_000;
+  while (Date.now() < until) {
+    await new Promise((r) => setTimeout(r, 2000));
+    if (attempt !== discordLogin) throw new SocialError('cancelled');
+    const res = await social.call<{ pending?: boolean; token: string; user: never }>('GET', `/v1/auth/discord/poll?state=${state}`, undefined, false);
+    if (!res.pending) return social.signedIn(res);
+  }
+  throw new SocialError('login_expired');
+}));
+handle('social:cancelLogin', () => {
+  discordLogin++;
+});
+handle('social:logout', () => social.logout());
+handle('social:setStatus', async (status: Status) => {
+  if (!['online', 'away', 'busy', 'invisible'].includes(status)) return;
+  store.settings.socialStatus = status;
+  await persist();
+  social.statusChanged();
+});
+handle('social:typing', (friendId: string) => social.typing(friendId));
 
 // Lets the page show screenshots and world icons (only images inside profile folders).
 protocol.registerSchemesAsPrivileged([{ scheme: 'slash-media', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
@@ -849,6 +919,9 @@ app.whenReady().then(async () => {
   createWindow();
   startUpdateChecks({ onReady: (version) => send('update:ready', version), onLog: (m) => console.error(m) });
   showPresence(idlePresence());
+  social.start();
+  // ten idle minutes in the launcher show as "away" to friends
+  setInterval(() => social.setAway(powerMonitor.getSystemIdleTime() >= 600), 60_000);
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

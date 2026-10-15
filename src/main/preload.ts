@@ -81,6 +81,15 @@ const api = {
   deleteBackup: (profileId: string, name: string) => invoke('backups:delete', profileId, name),
   listScreenshots: (profileId: string) => invoke('screenshots:list', profileId),
   deleteScreenshot: (profileId: string, name: string) => invoke('screenshots:delete', profileId, name),
+  socialState: () => invoke('social:state'),
+  socialHealth: () => invoke('social:health'),
+  socialApi: (method: string, path: string, body?: unknown) => invoke('social:api', method, path, body),
+  socialLoginDev: (name: string) => invoke('social:loginDev', name),
+  socialLoginDiscord: () => invoke('social:loginDiscord'),
+  socialCancelLogin: () => invoke('social:cancelLogin'),
+  socialLogout: () => invoke('social:logout'),
+  socialSetStatus: (status: string) => invoke('social:setStatus', status),
+  socialTyping: (friendId: string) => invoke('social:typing', friendId),
   on,
 };
 

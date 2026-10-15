@@ -26,3 +26,6 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - name: Serwer znajomych
+        working-directory: server
+        run: npm ci && npm run typecheck && npm test

@@ -70,6 +70,12 @@ export interface Settings {
   language: string;
   /** The profile last used for each server address, offered first next time. */
   serverProfiles?: Record<string, string>;
+  /** Address of the friends and messages server. */
+  socialUrl: string;
+  /** Session on that server, encrypted like the Microsoft tokens; never sent to the page. */
+  socialToken?: string;
+  /** The status the player picked for friends. */
+  socialStatus: 'online' | 'away' | 'busy' | 'invisible';
 }
 
 export interface StoreData {
@@ -126,7 +132,8 @@ function defaults(): StoreData {
   return {
     accounts: [],
     profiles: [newProfile({ name: 'Najnowsza wersja', versionId: 'latest-release' })],
-    settings: { msClientId: process.env.SLASHCLIENT_MS_CLIENT_ID ?? '', closeOnLaunch: false, discordEnabled: true, language: '' },
+    settings: { msClientId: process.env.SLASHCLIENT_MS_CLIENT_ID ?? '', closeOnLaunch: false, discordEnabled: true, language: '',
+      socialUrl: process.env.SLASHCLIENT_SOCIAL_URL ?? 'http://localhost:8787', socialStatus: 'online' },
   };
 }
 

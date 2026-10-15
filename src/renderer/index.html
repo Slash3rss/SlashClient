@@ -29,6 +29,7 @@
     <nav>
       <button class="nav active" data-view="play"><i class="fa-solid fa-play"></i>Graj</button>
       <button class="nav" data-view="servers"><i class="fa-solid fa-server"></i>Serwery</button>
+      <button class="nav" data-view="friends"><i class="fa-solid fa-user-group"></i>Znajomi<span class="nav-badge hidden" id="friends-badge"></span></button>
       <button class="nav" data-view="content"><i class="fa-solid fa-puzzle-piece"></i>Mody</button>
       <button class="nav" data-view="worlds"><i class="fa-solid fa-earth-europe"></i>Światy</button>
       <button class="nav" data-view="profiles"><i class="fa-solid fa-layer-group"></i>Profile</button>
@@ -388,6 +389,11 @@
     </section>
 
     <!-- Settings -->
+    <section class="view" id="view-friends">
+      <header class="view-head"><h2 class="gradient-title">Znajomi</h2></header>
+      <div class="fr-root" id="friends-root"></div>
+    </section>
+
     <section class="view" id="view-settings">
       <header class="view-head"><h2 class="gradient-title">Ustawienia</h2></header>
       <form class="card glass-panel form" id="settings-form">
@@ -398,6 +404,9 @@
           <input name="msClientId" placeholder="00000000-0000-0000-0000-000000000000">
         </label>
         <p class="muted">Potrzebny do logowania kontem Microsoft. Instrukcja jest w pliku README.</p>
+        <label class="field">Serwer znajomych
+          <input name="socialUrl" placeholder="https://api.slash3rss.dev">
+        </label>
         <label class="check"><input type="checkbox" name="closeOnLaunch"> Chowaj launcher podczas gry</label>
         <label class="check"><input type="checkbox" name="discordEnabled"> Pokazuj na Discordzie, w co grasz</label>
         <p class="muted">Folder danych: <code id="data-dir"></code></p>
