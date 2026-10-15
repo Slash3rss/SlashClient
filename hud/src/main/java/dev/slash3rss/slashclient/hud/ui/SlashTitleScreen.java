@@ -77,6 +77,7 @@ public class SlashTitleScreen extends Screen {
 		int sw = Math.min(210, Math.max(160, width / 4));
 		int sx = margin, sy = margin, sh = height - margin * 2;
 		Ui.panel(g, sx, sy, sw, sh);
+		Ui.begin("menu sidebar", sx, sy, sw, sh);
 
 		// logo and name, as at the top of the launcher's sidebar; small windows get only the name
 		List<Nav> items = nav();
@@ -117,6 +118,7 @@ public class SlashTitleScreen extends Screen {
 			SlashHud.config.save();
 			minecraft.setScreenAndShow(new TitleScreen());
 		}));
+		Ui.end();
 
 		Component info = Ui.text("Minecraft " + SharedConstants.getCurrentVersion().name() + "  ·  SlashClient HUD");
 		Ui.drawOnWorld(g, info, width - Ui.width(info) - 8, height - 13, 0xCCFFFFFF);
@@ -127,13 +129,15 @@ public class SlashTitleScreen extends Screen {
 		if (cw < 150) return;
 		int gy = sy;
 		Ui.panel(g, cx, gy, cw, 52);
+		Ui.begin("greeting", cx, gy, cw, 52);
 		var pose = g.pose();
 		pose.pushMatrix();
 		pose.translate(cx + 14, gy + 11);
 		pose.scale(1.6f, 1.6f);
 		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.menu.hello", minecraft.getUser().getName()), Math.round((cw - 28) / 1.6f)), 0, 0, Ui.TEXT);
 		pose.popMatrix();
-		Ui.draw(g, Ui.tr("slashclient-hud.menu.subtitle", SharedConstants.getCurrentVersion().name()), cx + 14, gy + 33, Ui.TEXT_2);
+		Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.menu.subtitle", SharedConstants.getCurrentVersion().name()), cw - 28), cx + 14, gy + 33, Ui.TEXT_2);
+		Ui.end();
 
 		int listY = gy + 52 + margin;
 		int rowH = 30;
@@ -141,9 +145,10 @@ public class SlashTitleScreen extends Screen {
 		int panelH = 26 + (shown == 0 ? 22 : shown * (rowH + 4));
 		if (listY + panelH > sy + sh) return;
 		Ui.panel(g, cx, listY, cw, panelH);
+		Ui.begin("servers", cx, listY, cw, panelH);
 		Ui.icon(g, "server", cx + 14, listY + 9, 9, Ui.ACCENT_LIGHT);
 		Ui.draw(g, Ui.trBold("slashclient-hud.menu.servers"), cx + 28, listY + 9, Ui.TEXT);
-		if (shown == 0) Ui.draw(g, Ui.tr("slashclient-hud.menu.noServers"), cx + 14, listY + 26, Ui.TEXT_2);
+		if (shown == 0) Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.menu.noServers"), cw - 28), cx + 14, listY + 26, Ui.TEXT_2);
 		int y = listY + 24;
 		for (int i = 0; i < shown; i++) {
 			ServerData s = servers.get(i);
@@ -160,6 +165,7 @@ public class SlashTitleScreen extends Screen {
 			hits.add(new Hit(rx, y, rw, rowH, () -> ConnectScreen.startConnecting(this, minecraft, ServerAddress.parseString(s.ip), s, false, null)));
 			y += rowH + 4;
 		}
+		Ui.end();
 	}
 
 	/** One row of the sidebar, like the launcher's navigation: icon, label, a light border on hover. */

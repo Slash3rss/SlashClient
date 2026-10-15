@@ -169,6 +169,7 @@ public class HudEditScreen extends Screen {
 		// at the top middle, where the game shows nothing but boss bars; the hotbar stays visible
 		int by = 8;
 		Ui.panel(g, bx, by, barW, barH);
+		Ui.begin("toolbar", bx, by, barW, barH);
 		Ui.brand(g, bx + 12, by + 10, 1f);
 		int x = bx + 12 + brandW + 14;
 		Ui.button(g, "open", x, by + 5, openW, 18, "gear", open, true, mx, my);
@@ -179,6 +180,7 @@ public class HudEditScreen extends Screen {
 		x += openW + 6;
 		Ui.button(g, "done", x, by + 5, doneW, 18, done, false, mx, my);
 		hits.add(new Hit(x, by + 5, doneW, 18, this::onClose));
+		Ui.end();
 		Component hint = Ui.tr("slashclient-hud.ui.dragHint");
 		int hw = Ui.width(hint) + 16;
 		Ui.round(g, (width - hw) / 2, by + barH + 4, hw, 14, 4, 0xCC0A0D14);
@@ -189,6 +191,7 @@ public class HudEditScreen extends Screen {
 	private void drawWindow(GuiGraphicsExtractor g, int mx, int my) {
 		int x = winX(), y = winY(), w = winW(), h = winH();
 		Ui.panel(g, x, y, w, h);
+		Ui.begin("window", x, y, w, h);
 		// header: brand, search, close
 		Ui.brand(g, x + 14, y + 12, 1.15f);
 		g.fill(x + 1, y + 32, x + w - 1, y + 33, Ui.BORDER);
@@ -202,6 +205,7 @@ public class HudEditScreen extends Screen {
 		hits.add(new Hit(x + w - 32, y + 7, 18, 18, this::onClose));
 
 		// sidebar with the launcher's icons
+		Ui.begin("sidebar", x, y + 33, 122, h - 33);
 		int sy = y + 40;
 		// rows get shorter in a small window, so "Edit HUD layout" keeps its place at the bottom
 		int rowH = Math.max(14, Math.min(20, (h - 40 - 34) / Catalog.CATEGORIES.length - 2));
@@ -229,12 +233,16 @@ public class HudEditScreen extends Screen {
 			window = false;
 			rebuildWidgets();
 		}));
+		Ui.end();
 		g.fill(x + 122, y + 33, x + 123, y + h - 1, Ui.BORDER);
 
 		int cx = x + 132, cy = y + 42, cw = w - 144, ch = h - 50;
+		Ui.begin("content", cx, cy, cw, ch);
 		if (settingsOf != null) drawSettings(g, mx, my, cx, cy, cw, ch);
 		else if (category.equals("share")) drawShare(g, mx, my, cx, cy, cw);
 		else drawCards(g, mx, my, cx, cy, cw, ch);
+		Ui.end();
+		Ui.end();
 	}
 
 	private static final String[] CATEGORY_ICONS = { "all", "info", "combat", "world", "extras", "chat", "share" };
@@ -257,18 +265,24 @@ public class HudEditScreen extends Screen {
 		scroll = Math.max(0, Math.min(maxScroll, scroll));
 		if (shown.isEmpty()) Ui.centered(g, Ui.tr("slashclient-hud.ui.nothing"), x + w / 2, y + 30, Ui.MUTED);
 		g.enableScissor(x, y, x + w, y + h);
+		Ui.beginClip("card list", x, y, w, h);
 		for (int i = 0; i < shown.size(); i++) {
 			Catalog.Entry e = shown.get(i);
 			int px = x + (i % cols) * (cardW + gap);
 			int py = y + (i / cols) * (cardH + gap) - Math.round(scroll);
 			if (py + cardH < y || py > y + h) continue;
+			Ui.begin("card " + e.id(), px, py, cardW, cardH);
 			drawCard(g, mx, my, e, px, py, cardW, cardH, my >= y && my < y + h);
+			Ui.end();
 		}
+		Ui.end();
 		g.disableScissor();
 		if (maxScroll > 0) {
 			int barH = Math.max(20, h * h / (h + Math.round(maxScroll)));
 			int barY = y + Math.round((h - barH) * scroll / maxScroll);
+			Ui.end();
 			Ui.round(g, x + w + 4, barY, 3, barH, 1, 0x40FFFFFF);
+			Ui.begin("content", x, y, w, h);
 		}
 	}
 
@@ -313,6 +327,20 @@ public class HudEditScreen extends Screen {
 		reopen();
 	}
 
+	/** Width the controls of a setting need on one line. */
+	private static int controlsWidth(Catalog.Setting s) {
+		return switch (s) {
+			case Catalog.Toggle tg -> 20;
+			case Catalog.Slider sl -> 150;
+			case Catalog.Choice ch -> {
+				int total = 0;
+				for (String v : ch.values()) total += Ui.width(Ui.tr(ch.valueKeyPrefix() + v)) + 16;
+				yield total - 4;
+			}
+			case Catalog.Colors co -> co.colors().length * 16;
+		};
+	}
+
 	private void drawSettings(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h) {
 		Catalog.Entry e = settingsOf;
 		Ui.button(g, "back", x, y, 70, 18, "back", Ui.tr("slashclient-hud.ui.back"), false, mx, my);
@@ -320,104 +348,144 @@ public class HudEditScreen extends Screen {
 			settingsOf = null;
 			reopen();
 		}));
-		Ui.round(g, x + 78, y - 1, 20, 20, 4, 0xFF1B2B4D);
+		Ui.round(g, x + 78, y, 20, 18, 4, 0xFF1B2B4D);
 		Ui.icon(g, e.icon(), Component.translatable(e.nameKey()).getString().substring(0, 1), x + 80, y + 1);
-		Ui.draw(g, Ui.trBold(e.nameKey()), x + 104, y + 5, Ui.TEXT);
+		Ui.draw(g, Ui.fit(Ui.trBold(e.nameKey()), w - 106), x + 104, y + 5, Ui.TEXT);
 		List<Catalog.Setting> rows = new ArrayList<>(e.settings());
 		if (e.hasSwitch()) {
 			rows.add(0, new Catalog.Toggle("slashclient-hud.ui.enabled", e.get(), e.set()));
 		}
 		boolean isModule = SlashHud.MODULES.stream().anyMatch(m -> m.id().equals(e.id()));
-		int listTop = y + 28;
-		int listH = h - 28;
-		int contentH = rows.size() * 30 + (isModule ? 30 : 0) + (rows.isEmpty() ? 14 : 0);
+
+		// a row is one line, or two when its controls do not fit beside the label (narrow windows)
+		int[] heights = new int[rows.size()];
+		int contentH = (isModule ? 28 : 0) + (rows.isEmpty() ? 14 : 0);
+		for (int i = 0; i < rows.size(); i++) {
+			Catalog.Setting s = rows.get(i);
+			int labelW = Ui.width(Ui.tr(s.labelKey())) + 24;
+			boolean oneLine = s instanceof Catalog.Toggle || labelW + controlsWidth(s) <= w - 20;
+			heights[i] = oneLine ? 26 : 44;
+			contentH += heights[i] + 4;
+		}
+		int listTop = y + 26;
+		int listH = h - 26;
 		maxScroll = Math.max(0, contentH - listH);
 		scroll = Math.max(0, Math.min(maxScroll, scroll));
 		g.enableScissor(x, listTop, x + w, listTop + listH);
+		Ui.beginClip("settings list", x, listTop, w, listH);
 		int ry = listTop + 2 - Math.round(scroll);
 		boolean inList = my >= listTop && my < listTop + listH;
-		for (Catalog.Setting s : rows) {
-			Ui.round(g, x, ry, w, 26, 4, Ui.CARD);
-			Component label = Ui.tr(s.labelKey());
+		for (int i = 0; i < rows.size(); i++) {
+			Catalog.Setting s = rows.get(i);
+			int rh = heights[i];
+			boolean twoLines = rh > 26;
+			Ui.round(g, x, ry, w, rh, 4, Ui.CARD);
+			Ui.begin("row " + s.labelKey(), x, ry, w, rh);
+			Component label = Ui.fit(Ui.tr(s.labelKey()), w - 20);
 			Ui.draw(g, label, x + 10, ry + 9, Ui.TEXT);
 			int labelEnd = x + 10 + Ui.width(label) + 14;
 			int right = x + w - 10;
+			// controls start after the label, or at the left edge of the second line
+			int left = twoLines ? x + 10 : labelEnd;
+			int cy = twoLines ? ry + 24 : ry + 5;
 			int hitsBefore = hits.size();
 			switch (s) {
 				case Catalog.Toggle tg -> {
 					boolean on = tg.get().get();
 					Ui.toggle(g, e.id() + ":" + s.labelKey(), right - 20, ry + 8, on);
-					hits.add(new Hit(x, ry, w, 26, () -> tg.set().accept(!tg.get().get())));
+					hits.add(new Hit(x, ry, w, rh, () -> tg.set().accept(!tg.get().get())));
 				}
 				case Catalog.Slider sl -> {
-					int sx = Math.max(labelEnd, right - 196);
-					int sw = Math.max(40, right - 46 - sx);
 					float value = sl.get().get();
-					Ui.slider(g, sx, ry + 8, sw, (value - sl.min()) / (sl.max() - sl.min()));
 					Component shownValue = Ui.text(String.format(Locale.ROOT, sl.format(), value));
 					int vw = Ui.width(shownValue) + 10;
-					Ui.round(g, right - vw, ry + 6, vw, 14, 4, 0xFF202839);
-					Ui.draw(g, shownValue, right - vw + 5, ry + 9, Ui.TEXT);
-					hits.add(new Hit(sx - 4, ry + 4, sw + 8, 18, () -> {
+					int sx = twoLines ? left + 4 : Math.max(left, right - 196);
+					int sw = Math.max(30, right - vw - 12 - sx);
+					Ui.slider(g, sx, cy + 3, sw, (value - sl.min()) / (sl.max() - sl.min()));
+					Ui.round(g, right - vw, cy + 1, vw, 14, 4, 0xFF202839);
+					Ui.draw(g, shownValue, right - vw + 5, cy + 4, Ui.TEXT);
+					hits.add(new Hit(sx - 4, cy - 1, sw + 8, 18, () -> {
 						draggingSlider = sl;
 						sliderX = sx;
 						sliderW = sw;
 					}));
 				}
 				case Catalog.Choice ch -> {
-					int bx = right;
-					for (int i = ch.values().length - 1; i >= 0; i--) {
-						String v = ch.values()[i];
-						Component option = Ui.tr(ch.valueKeyPrefix() + v);
-						int bw = Ui.width(option) + 12;
-						bx -= bw;
-						boolean active = v.equals(ch.get().get());
-						if (active) Ui.accent(g, bx, ry + 5, bw, 16, 4, 0);
-						else Ui.button(g, "choice:" + v, bx, ry + 5, bw, 16, option, false, mx, my);
-						if (active) Ui.centered(g, option, bx + bw / 2, ry + 9, 0xFFFFFFFF);
-						hits.add(new Hit(bx, ry + 5, bw, 16, () -> ch.set().accept(v)));
-						bx -= 4;
+					if (controlsWidth(s) <= right - left) {
+						// every option as a button, right-aligned
+						int bx = right;
+						for (int k = ch.values().length - 1; k >= 0; k--) {
+							String v = ch.values()[k];
+							Component option = Ui.tr(ch.valueKeyPrefix() + v);
+							int bw = Ui.width(option) + 12;
+							bx -= bw;
+							boolean active = v.equals(ch.get().get());
+							if (active) {
+								Ui.accent(g, bx, cy, bw, 16, 4, 0);
+								Ui.centered(g, option, bx + bw / 2, cy + 4, 0xFFFFFFFF);
+							} else Ui.button(g, "choice:" + v, bx, cy, bw, 16, option, false, mx, my);
+							hits.add(new Hit(bx, cy, bw, 16, () -> ch.set().accept(v)));
+							bx -= 4;
+						}
+					} else {
+						// too narrow even for its own line: one button that steps through the options
+						List<String> values = List.of(ch.values());
+						String current = values.contains(ch.get().get()) ? ch.get().get() : values.get(0);
+						Component option = Ui.text("‹  ").append(Ui.tr(ch.valueKeyPrefix() + current)).append(Ui.text("  ›"));
+						Ui.button(g, "choice:" + s.labelKey(), left, cy, right - left, 16, option, true, mx, my);
+						hits.add(new Hit(left, cy, right - left, 16, () -> ch.set().accept(values.get((values.indexOf(current) + 1) % values.size()))));
 					}
 				}
 				case Catalog.Colors co -> {
-					int bx = right - co.colors().length * 16;
+					int bx = twoLines ? left : right - co.colors().length * 16 + 4;
 					for (int c : co.colors()) {
 						boolean active = c == co.get().get();
-						if (active) Ui.round(g, bx - 1, ry + 6, 14, 14, 4, 0xFFFFFFFF);
-						Ui.round(g, bx, ry + 7, 12, 12, 3, c);
-						hits.add(new Hit(bx, ry + 7, 12, 12, () -> co.set().accept(c)));
+						if (active) Ui.round(g, bx - 1, cy + 1, 14, 14, 4, 0xFFFFFFFF);
+						Ui.round(g, bx, cy + 2, 12, 12, 3, c);
+						hits.add(new Hit(bx, cy + 2, 12, 12, () -> co.set().accept(c)));
 						bx += 16;
 					}
 				}
 			}
+			// controls on the label's line must not cover it
+			if (!twoLines && !(s instanceof Catalog.Toggle)) Ui.expect(labelEnd - 14 <= right - controlsWidth(s) || s instanceof Catalog.Slider, "controls cover the label of " + s.labelKey());
+			Ui.end();
 			// rows scrolled out of the box cannot be clicked
 			if (!inList) while (hits.size() > hitsBefore) hits.remove(hits.size() - 1);
-			ry += 30;
+			ry += rh + 4;
 		}
 		if (rows.isEmpty()) Ui.draw(g, Ui.tr("slashclient-hud.ui.noSettings"), x, ry, Ui.MUTED);
 		// modules can also be moved from here
 		if (isModule) {
-			Ui.button(g, "move", x, ry + 4, 150, 18, "move", Ui.tr("slashclient-hud.ui.moveIt"), false, mx, my);
-			if (inList) hits.add(new Hit(x, ry + 4, 150, 18, () -> {
+			int bw = Math.min(150, w);
+			Ui.button(g, "move", x, ry, bw, 18, "move", Ui.tr("slashclient-hud.ui.moveIt"), false, mx, my);
+			if (inList) hits.add(new Hit(x, ry, bw, 18, () -> {
 				window = false;
 				rebuildWidgets();
 			}));
 		}
+		Ui.end();
 		g.disableScissor();
 	}
 
+
 	private void drawShare(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w) {
-		Ui.draw(g, Ui.trBold("slashclient-hud.share.title"), x, y + 2, Ui.TEXT);
-		Ui.draw(g, Ui.tr("slashclient-hud.share.help"), x, y + 16, Ui.TEXT_2);
+		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.share.title"), w), x, y + 2, Ui.TEXT);
+		int ty = Ui.wrapped(g, Ui.tr("slashclient-hud.share.help"), x, y + 16, w, Ui.TEXT_2) + 8;
 		HudConfig cfg = SlashHud.config;
-		int bw = Math.min(150, (w - 12) / 3);
-		Ui.button(g, "copy", x, y + 36, bw, 22, "copy", Ui.tr("slashclient-hud.share.copy"), true, mx, my);
-		hits.add(new Hit(x, y + 36, bw, 22, () -> {
+		// three buttons side by side, or one under another when they would be cut
+		boolean stacked = w < 300;
+		int bw = stacked ? w : (w - 12) / 3;
+		int[][] at = stacked
+			? new int[][] { { x, ty }, { x, ty + 26 }, { x, ty + 52 } }
+			: new int[][] { { x, ty }, { x + bw + 6, ty }, { x + (bw + 6) * 2, ty } };
+		Ui.button(g, "copy", at[0][0], at[0][1], bw, 22, "copy", Ui.tr("slashclient-hud.share.copy"), true, mx, my);
+		hits.add(new Hit(at[0][0], at[0][1], bw, 22, () -> {
 			minecraft.keyboardHandler.setClipboard(ShareCode.encode(cfg));
 			status = Ui.tr("slashclient-hud.share.copied");
 		}));
-		Ui.button(g, "paste", x + bw + 6, y + 36, bw, 22, "paste", Ui.tr("slashclient-hud.share.paste"), false, mx, my);
-		hits.add(new Hit(x + bw + 6, y + 36, bw, 22, () -> {
+		Ui.button(g, "paste", at[1][0], at[1][1], bw, 22, "paste", Ui.tr("slashclient-hud.share.paste"), false, mx, my);
+		hits.add(new Hit(at[1][0], at[1][1], bw, 22, () -> {
 			HudConfig pasted = ShareCode.decode(minecraft.keyboardHandler.getClipboard());
 			if (pasted == null) status = Ui.tr("slashclient-hud.share.invalid").withColor(Ui.DANGER);
 			else {
@@ -428,16 +496,17 @@ public class HudEditScreen extends Screen {
 				status = Ui.tr("slashclient-hud.share.pasted");
 			}
 		}));
-		Ui.button(g, "reset", x + (bw + 6) * 2, y + 36, bw, 22, "reset", Ui.tr("slashclient-hud.reset"), false, mx, my);
-		hits.add(new Hit(x + (bw + 6) * 2, y + 36, bw, 22, () -> {
+		Ui.button(g, "reset", at[2][0], at[2][1], bw, 22, "reset", Ui.tr("slashclient-hud.reset"), false, mx, my);
+		hits.add(new Hit(at[2][0], at[2][1], bw, 22, () -> {
 			cfg.copyFrom(HudConfig.defaults());
 			ChatTabs.changed();
 			entries = null;
 			entries();
 			status = Ui.tr("slashclient-hud.share.reset");
 		}));
-		Ui.draw(g, status, x, y + 68, Ui.GREEN);
+		Ui.wrapped(g, status, x, at[2][1] + 30, w, Ui.GREEN);
 	}
+
 
 	// ---------- input ----------
 

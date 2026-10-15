@@ -9,8 +9,29 @@ import net.minecraft.client.gui.screens.ChatScreen;
 
 /** Plays a little and takes screenshots, so the HUD and the extras can be checked by eye. */
 public class HudScreenshots implements FabricClientGameTest {
+	/** Window size and GUI scale: from the smallest screen Minecraft allows to Full HD. */
+	private static final int[][] SIZES = { { 640, 480, 2 }, { 854, 480, 2 }, { 1920, 1080, 4 }, { 1024, 768, 2 }, { 1280, 720, 2 }, { 1920, 1080, 2 } };
+
+	private static void size(ClientGameTestContext context, int[] s) {
+		context.getInput().resizeWindow(s[0], s[1]);
+		context.runOnClient(mc -> TestHooks.guiScale(s[2]));
+		context.waitTicks(3);
+	}
+
+	private static String name(int[] s) {
+		return s[0] + "x" + s[1] + "-gui" + s[2];
+	}
+
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		context.runOnClient(mc -> TestHooks.audit(true));
+		// every screen at every size: does everything fit?
+		context.waitTicks(40);
+		for (int[] s : SIZES) {
+			size(context, s);
+			context.takeScreenshot("size-" + name(s) + "-menu");
+		}
+		size(context, SIZES[1]);
 		// the game starts on the main menu: ours, then the game's own with the button back
 		context.waitTicks(40);
 		context.takeScreenshot("main-menu");
@@ -54,6 +75,33 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.setScreen(() -> HudEditScreen.category("share"));
 			context.waitTicks(5);
 			context.takeScreenshot("hud-editor-share");
+
+			for (int[] sz : SIZES) {
+				size(context, sz);
+				context.setScreen(HudEditScreen::new);
+				context.waitTicks(3);
+				context.takeScreenshot("size-" + name(sz) + "-layout");
+				context.setScreen(HudEditScreen::settingsWindow);
+				context.waitTicks(3);
+				context.takeScreenshot("size-" + name(sz) + "-window");
+				context.setScreen(() -> new HudEditScreen("crosshair"));
+				context.waitTicks(3);
+				context.takeScreenshot("size-" + name(sz) + "-settings");
+				context.setScreen(() -> new HudEditScreen("fps"));
+				context.waitTicks(3);
+				context.takeScreenshot("size-" + name(sz) + "-module");
+				context.setScreen(() -> HudEditScreen.category("share"));
+				context.waitTicks(3);
+				context.takeScreenshot("size-" + name(sz) + "-share");
+				context.setScreen(() -> new dev.slash3rss.slashclient.hud.ChatTabsScreen(null));
+				context.waitTicks(3);
+				context.takeScreenshot("size-" + name(sz) + "-chattabs");
+				context.setScreen(() -> new ChatScreen("", false));
+				context.waitTicks(3);
+				context.takeScreenshot("size-" + name(sz) + "-chat");
+			}
+			size(context, SIZES[1]);
+			context.runOnClient(mc -> TestHooks.reportAudit());
 
 			// every module on, to see that nothing overlaps
 			context.runOnClient(mc -> HudEditScreen.enableAll());

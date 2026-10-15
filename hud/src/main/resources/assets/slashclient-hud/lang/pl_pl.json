@@ -101,7 +101,7 @@
 	"slashclient-hud.ui.back": "Wstecz",
 	"slashclient-hud.ui.enabled": "Włączony",
 	"slashclient-hud.ui.noSettings": "Ten dodatek nie ma ustawień.",
-	"slashclient-hud.ui.moveIt": "✥ Przesuń na ekranie",
+	"slashclient-hud.ui.moveIt": "Przesuń na ekranie",
 	"slashclient-hud.cat.all": "Wszystkie",
 	"slashclient-hud.cat.hud": "Informacje",
 	"slashclient-hud.cat.combat": "Walka",
@@ -126,5 +126,6 @@
 	"slashclient-hud.menu.ours": "Menu SlashClient",
 	"slashclient-hud.ui.on": "Włączony",
 	"slashclient-hud.ui.off": "Wyłączony",
-	"slashclient-hud.menu.noServers": "Dodaj serwery w Wieloosobowej, a pojawią się tutaj."
+	"slashclient-hud.menu.noServers": "Dodaj serwery w Wieloosobowej, a pojawią się tutaj.",
+	"slashclient-hud.chat.more": "Jeszcze %s zakładek: powiększ okno, żeby je edytować."
 }

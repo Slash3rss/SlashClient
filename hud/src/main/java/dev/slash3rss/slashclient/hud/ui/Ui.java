@@ -38,7 +38,71 @@ public final class Ui {
 	private static final FontDescription OUTFIT = new FontDescription.Resource(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit"));
 	private static final FontDescription OUTFIT_BOLD = new FontDescription.Resource(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_bold"));
 
+	// ---------- layout audit (for the screenshot test) ----------
+
+	/** Set by the in-game test: every drawn piece is checked against the screen and its box. */
+	public static boolean audit;
+	public static final java.util.Set<String> PROBLEMS = new java.util.LinkedHashSet<>();
+	/** x, y, w, h, clip (1 = contents may be cut by a scissor and are not checked) */
+	private static final java.util.ArrayDeque<int[]> BOXES = new java.util.ArrayDeque<>();
+	private static final java.util.ArrayDeque<String> NAMES = new java.util.ArrayDeque<>();
+
+	/** Things drawn until `end()` must stay inside this box. */
+	public static void begin(String name, int x, int y, int w, int h) {
+		BOXES.push(new int[] { x, y, w, h, 0 });
+		NAMES.push(name);
+	}
+
+	/** A scrolled area: its contents may be cut at its edges, so only what is fully inside counts. */
+	public static void beginClip(String name, int x, int y, int w, int h) {
+		BOXES.push(new int[] { x, y, w, h, 1 });
+		NAMES.push(name);
+	}
+
+	public static void end() {
+		BOXES.pop();
+		NAMES.pop();
+	}
+
+	private static void check(GuiGraphicsExtractor g, String what, float x, float y, float w, float h) {
+		if (!audit) return;
+		// to screen pixels, through any scale or move of the pose
+		org.joml.Vector2f a = g.pose().transformPosition(new org.joml.Vector2f(x, y));
+		org.joml.Vector2f b = g.pose().transformPosition(new org.joml.Vector2f(x + w, y + h));
+		int x1 = Math.round(Math.min(a.x, b.x)), y1 = Math.round(Math.min(a.y, b.y));
+		int x2 = Math.round(Math.max(a.x, b.x)), y2 = Math.round(Math.max(a.y, b.y));
+		String size = g.guiWidth() + "x" + g.guiHeight();
+		// cut by a scroll area: hidden on purpose, nothing to report
+		for (int[] box : BOXES) {
+			if (box[4] == 1 && !(x1 >= box[0] && y1 >= box[1] && x2 <= box[0] + box[2] && y2 <= box[1] + box[3])) return;
+		}
+		if (x1 < 0 || y1 < 0 || x2 > g.guiWidth() || y2 > g.guiHeight()) PROBLEMS.add(size + ": off screen: " + what + " [" + x1 + "," + y1 + "-" + x2 + "," + y2 + "]");
+		var names = NAMES.iterator();
+		for (int[] box : BOXES) {
+			String name = names.next();
+			if (box[4] == 1) continue;
+			boolean inside = x1 >= box[0] && y1 >= box[1] && x2 <= box[0] + box[2] && y2 <= box[1] + box[3];
+			if (!inside) PROBLEMS.add(size + ": sticks out of " + name + ": " + what + " [" + x1 + "," + y1 + "-" + x2 + "," + y2 + "] box [" + box[0] + "," + box[1] + "-" + (box[0] + box[2]) + "," + (box[1] + box[3]) + "]");
+			return;
+		}
+	}
+
+	/** A rule the layout must keep; broken ones are listed by the test. */
+	public static void expect(boolean ok, String what) {
+		if (audit && !ok) PROBLEMS.add(what);
+	}
+
 	// ---------- text ----------
+
+	/** Text broken into lines of at most `w` pixels; returns the y below the last line. */
+	public static int wrapped(GuiGraphicsExtractor g, Component c, int x, int y, int w, int color) {
+		for (var line : Minecraft.getInstance().font.split(c, w)) {
+			check(g, "wrapped line", x, y, Minecraft.getInstance().font.width(line), 8);
+			g.text(Minecraft.getInstance().font, line, x, y, color, false);
+			y += 11;
+		}
+		return y;
+	}
 
 	public static MutableComponent text(String s) {
 		return Component.literal(s).withStyle(Style.EMPTY.withFont(OUTFIT));
@@ -62,6 +126,7 @@ public final class Ui {
 	}
 
 	public static void draw(GuiGraphicsExtractor g, Component c, int x, int y, int color) {
+		check(g, "text \"" + c.getString() + "\"", x, y, width(c), 8);
 		g.text(Minecraft.getInstance().font, c, x, y, color, false);
 	}
 
@@ -83,6 +148,7 @@ public final class Ui {
 	/** A rectangle with corners rounded by `r` pixels (stepped, like the game's own art). */
 	public static void round(GuiGraphicsExtractor g, int x, int y, int w, int h, int r, int color) {
 		if (w <= 0 || h <= 0) return;
+		check(g, "shape " + w + "x" + h, x, y, w, h);
 		r = Math.min(r, Math.min(w, h) / 2);
 		g.fill(x + r, y, x + w - r, y + h, color);
 		for (int i = 0; i < r; i++) {
@@ -151,6 +217,7 @@ public final class Ui {
 			round(g, x, y, w, h, 4, blend(CARD, CARD_HOVER, t));
 			roundOutline(g, x, y, w, h, 4, blend(BORDER, 0x40FFFFFF, t));
 		}
+		begin("button " + id, x, y, w, h);
 		int color = primary ? 0xFFFFFFFF : blend(TEXT_2, TEXT, t);
 		int iconSize = Math.min(10, h - 6);
 		boolean hasLabel = !label.getString().isEmpty();
@@ -160,6 +227,7 @@ public final class Ui {
 		int left = x + (w - total) / 2;
 		if (iconName != null) icon(g, iconName, left, y + (h - iconSize) / 2, iconSize, color);
 		if (hasLabel) draw(g, fitted, left + iconW, y + (h - 8) / 2, color);
+		end();
 	}
 
 	/** An on/off switch, 20×10. */
@@ -194,12 +262,14 @@ public final class Ui {
 	 * build helper), drawn `size` pixels wide in `color`.
 	 */
 	public static void icon(GuiGraphicsExtractor g, String name, int x, int y, int size, int color) {
+		check(g, "icon " + name, x, y, size, size);
 		Identifier id = Identifier.fromNamespaceAndPath("slashclient-hud", "textures/icon/" + name + ".png");
 		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, id, x, y, 0, 0, size, size, 64, 64, 64, 64, color);
 	}
 
 	/** Text with a soft shadow, for places where it sits on the game or the panorama. */
 	public static void drawOnWorld(GuiGraphicsExtractor g, Component c, int x, int y, int color) {
+		check(g, "text \"" + c.getString() + "\"", x, y, width(c), 8);
 		g.text(Minecraft.getInstance().font, c, x, y, color, true);
 	}
 

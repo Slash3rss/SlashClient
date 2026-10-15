@@ -26,6 +26,24 @@ public final class TestHooks {
 		SlashHud.config.customMenu = true;
 	}
 
+	/** GUI scale for the size test (the window size is set by the test itself). */
+	public static void guiScale(int scale) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		mc.options.guiScale().set(scale);
+		mc.resizeGui();
+	}
+
+	public static void audit(boolean on) {
+		dev.slash3rss.slashclient.hud.ui.Ui.audit = on;
+	}
+
+	/** Everything the layout audit found, one line each; empty when all fits. */
+	public static void reportAudit() {
+		var problems = dev.slash3rss.slashclient.hud.ui.Ui.PROBLEMS;
+		SlashHud.LOG.info("Layout audit: {} problem(s)", problems.size());
+		for (String p : problems) SlashHud.LOG.info("LAYOUT {}", p);
+	}
+
 	public static void endOnVanillaMenu() {
 		SlashHud.config.customMenu = false;
 	}

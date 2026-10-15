@@ -101,7 +101,7 @@
 	"slashclient-hud.ui.back": "Back",
 	"slashclient-hud.ui.enabled": "Enabled",
 	"slashclient-hud.ui.noSettings": "This extra has no settings.",
-	"slashclient-hud.ui.moveIt": "✥ Move on screen",
+	"slashclient-hud.ui.moveIt": "Move on screen",
 	"slashclient-hud.cat.all": "All",
 	"slashclient-hud.cat.hud": "Info",
 	"slashclient-hud.cat.combat": "Combat",
@@ -126,5 +126,6 @@
 	"slashclient-hud.menu.ours": "SlashClient menu",
 	"slashclient-hud.ui.on": "On",
 	"slashclient-hud.ui.off": "Off",
-	"slashclient-hud.menu.noServers": "Add servers in Multiplayer and they will show up here."
+	"slashclient-hud.menu.noServers": "Add servers in Multiplayer and they will show up here.",
+	"slashclient-hud.chat.more": "%s more tabs: make the window bigger to edit them."
 }
