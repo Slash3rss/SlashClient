@@ -205,7 +205,7 @@ function mergeManifest(current: ManifestEntry[], updated: ManifestEntry[]): Mani
 export interface ModpackInfo {
   name: string;
   gameVersion: string;
-  loader: 'vanilla' | 'fabric' | 'quilt';
+  loader: 'vanilla' | 'fabric' | 'quilt' | 'forge' | 'neoforge';
   loaderVersion: string;
 }
 
@@ -229,7 +229,6 @@ export async function installMrpack(mrpack: string, gameDir: string, onProgress?
   if (!indexEntry) throw new Error('To nie jest modpack Modrinth (.mrpack).');
   const index = JSON.parse(indexEntry.getData().toString('utf8')) as MrpackIndex;
   const deps = index.dependencies;
-  if (deps.forge || deps.neoforge) throw new Error('Modpacki na Forge/NeoForge nie są jeszcze obsługiwane.');
 
   await fs.mkdir(gameDir, { recursive: true });
   const tasks = index.files
@@ -252,8 +251,8 @@ export async function installMrpack(mrpack: string, gameDir: string, onProgress?
   return {
     name: index.name,
     gameVersion: deps.minecraft,
-    loader: deps['fabric-loader'] ? 'fabric' : deps['quilt-loader'] ? 'quilt' : 'vanilla',
-    loaderVersion: deps['fabric-loader'] ?? deps['quilt-loader'] ?? '',
+    loader: deps['fabric-loader'] ? 'fabric' : deps['quilt-loader'] ? 'quilt' : deps.neoforge ? 'neoforge' : deps.forge ? 'forge' : 'vanilla',
+    loaderVersion: deps['fabric-loader'] ?? deps['quilt-loader'] ?? deps.neoforge ?? deps.forge ?? '',
   };
 }
 

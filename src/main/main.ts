@@ -8,14 +8,14 @@ import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { launch, resolveVersionId } from './launch';
 import { paths } from './paths';
 import { loadStore, newProfile, profileGameDir, saveStore, setSecretCodec, type Profile, type Settings, type StoreData } from './store';
-import { loaderVersions, type Loader } from './loaders';
+import { LOADER_NAMES, loaderVersions, type Loader } from './loaders';
 import {
   downloadModpack, installMrpack, installProject, listInstalled, removeContent, search, setEnabled,
   type ContentType, type ProjectType,
 } from './modrinth';
 import { listServers, pingServer } from './servers';
 import { getManifest } from './versions';
-import { latestNews } from './news';
+import { latestNews, newsArticle } from './news';
 import { skinFor } from './skins';
 import fsp from 'node:fs/promises';
 import { backupWorld, deleteFile, listBackups, listScreenshots, listWorlds, restoreBackup } from './worlds';
@@ -76,6 +76,12 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true },
   });
   win.removeMenu();
+  // development: surface page errors in the terminal
+  if (!app.isPackaged) {
+    win.webContents.on('console-message', (e) => {
+      if (e.level === 'error' || e.level === 'warning') console.error(`[renderer ${e.level}] ${e.message} (${e.sourceId}:${e.lineNumber})`);
+    });
+  }
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   // Open external links in the system browser instead of inside the launcher.
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -244,6 +250,7 @@ handle('skin:save', async (accountId: string) => {
   if (!canceled && filePath) await fsp.writeFile(filePath, Buffer.from(dataUrl.split(',')[1], 'base64'));
 });
 handle('news:list', () => latestNews());
+handle('news:article', (id: string) => newsArticle(id));
 
 handle('game:launch', async (profileId: string, accountId: string, server?: string, world?: string) => {
   if (game) throw new Error('Gra już działa.');
@@ -265,7 +272,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
   // keep the tail of the output for crash analysis
   const recentLog: string[] = [];
   const startedAt = Date.now();
-  const loaderName = profile.loader === 'fabric' ? ' · Fabric' : profile.loader === 'quilt' ? ' · Quilt' : '';
+  const loaderName = profile.loader === 'vanilla' ? '' : ` · ${LOADER_NAMES[profile.loader]}`;
   const presence: Presence = {
     details: `Minecraft ${await resolveVersionId(profile.versionId)}${loaderName}`,
     state: server ? `Na serwerze ${server}` : 'W menu',

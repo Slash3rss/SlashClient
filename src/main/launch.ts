@@ -3,7 +3,7 @@ import { randomBytes } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createLogParser } from './gamelog';
-import { installLoader } from './loaders';
+import { installLoader, LOADER_NAMES } from './loaders';
 import { installVersion, libraryClasspath, type StageFn } from './install';
 import { ensureJava } from './java';
 import { paths } from './paths';
@@ -57,10 +57,10 @@ export async function launch({ profile, account, onStage, onLog, server, world }
   const gameDir = profileGameDir(profile);
   await fs.mkdir(gameDir, { recursive: true });
   if (profile.loader !== 'vanilla') {
-    onStage(`Instalowanie ${profile.loader === 'fabric' ? 'Fabric' : 'Quilt'}`, 0, 1);
+    onStage(`Przygotowanie ${LOADER_NAMES[profile.loader]}`, 0, 1);
     await fs.mkdir(path.join(gameDir, 'mods'), { recursive: true });
   }
-  const versionId = await installLoader(profile.loader, gameVersion, profile.loaderVersion);
+  const versionId = await installLoader(profile.loader, gameVersion, profile.loaderVersion, { gameDir, onStage, onLog });
 
   const { version, clientJar, assetsDir, loggingConfig } = await installVersion(versionId, gameDir, onStage);
   const java = profile.javaPath || (await ensureJava(version, (d, t, s) => onStage('Java', d, t, s)));

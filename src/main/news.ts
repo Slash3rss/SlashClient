@@ -10,6 +10,7 @@ export interface NewsItem {
   date: string;
   imageUrl?: string;
   text: string;
+  contentPath?: string;
 }
 
 let cache: { at: number; items: NewsItem[] } | undefined;
@@ -30,8 +31,18 @@ export async function latestNews(limit = 6): Promise<NewsItem[]> {
           date: String(e.date),
           imageUrl: typeof e.image?.url === 'string' && e.image.url.startsWith('/') ? BASE + e.image.url : undefined,
           text: String(e.shortText ?? ''),
+          contentPath: /^[\w\-/.]+\.json$/.test(String(e.contentPath)) ? String(e.contentPath) : undefined,
         })),
     };
   }
   return cache.items.slice(0, limit);
+}
+
+/** Full patch notes (HTML from Mojang; the page sanitises it before showing). */
+export async function newsArticle(id: string): Promise<{ body: string }> {
+  await latestNews();
+  const item = cache?.items.find((i) => i.id === id);
+  if (!item?.contentPath) throw new Error('Nie znaleziono artykułu.');
+  const { body } = await fetchJson<{ body: string }>(`${BASE}/v2/${item.contentPath}`);
+  return { body: String(body ?? '') };
 }

@@ -7,7 +7,7 @@ Launcher Minecraft: Java Edition w Electronie i TypeScripcie.
 - automatyczne pobieranie Javy właściwej dla danej wersji (oficjalne środowiska Mojang),
 - logowanie kontem Microsoft (device code) albo tryb offline (sam nick),
 - zakładka **Serwery** z lista.slash3rss.dev: status na żywo (ping, gracze, MOTD) i dołączanie jednym kliknięciem,
-- mod loadery **Fabric** i **Quilt** (Quilt nie wspiera wersji 26.x),
+- mod loadery **Fabric**, **Quilt**, **NeoForge** i **Forge** (Forge od 1.13; Quilt nie wspiera wersji 26.x),
 - zakładka **Mody** z Modrinth: mody z zależnościami, paczki zasobów, shadery i modpacki (`.mrpack`).
 
 ## Uruchomienie
@@ -73,5 +73,4 @@ Launcher pokazuje wersję gry, loader, czas gry oraz to, czy jesteś w menu, w �
 
 ## Ograniczenia
 
-- Brak Forge i NeoForge.
 - Wersje sprzed 1.19 na Macach z Apple Silicon działają przez Rosettę (Java x64).

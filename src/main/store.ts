@@ -30,7 +30,7 @@ export interface Profile {
   name: string;
   versionId: string;
   /** Mod loader; 'vanilla' = none. */
-  loader: 'vanilla' | 'fabric' | 'quilt';
+  loader: 'vanilla' | 'fabric' | 'quilt' | 'forge' | 'neoforge';
   /** Loader version; empty = newest stable. */
   loaderVersion: string;
   /** Game directory; empty means instances/<id>. */

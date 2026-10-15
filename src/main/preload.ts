@@ -37,6 +37,7 @@ const api = {
   getSkin: (accountId: string) => invoke('skin:get', accountId),
   saveSkin: (accountId: string) => invoke('skin:save', accountId),
   listNews: () => invoke('news:list'),
+  newsArticle: (id: string) => invoke('news:article', id),
   listWorlds: (profileId: string) => invoke('worlds:list', profileId),
   backupWorld: (profileId: string, folder: string) => invoke('worlds:backup', profileId, folder),
   listBackups: (profileId: string) => invoke('backups:list', profileId),

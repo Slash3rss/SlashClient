@@ -64,7 +64,8 @@ export function libraryClasspath(version: VersionJson): string[] {
 }
 
 function libraryTasks(version: VersionJson): DownloadTask[] {
-  const tasks: DownloadTask[] = classpathArtifacts(version).map((art) => ({
+  // Forge/NeoForge list files their installer generates locally with an empty URL; nothing to download for those.
+  const tasks: DownloadTask[] = classpathArtifacts(version).filter((art) => art.url).map((art) => ({
     url: art.url, dest: path.join(paths.libraries, art.path!), sha1: art.sha1, size: art.size,
   }));
   for (const lib of activeLibraries(version)) {

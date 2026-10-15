@@ -9,7 +9,7 @@ declare global {
 
 interface PublicAccount { id: string; type: 'offline' | 'msa'; name: string; uuid: string }
 interface Profile {
-  id: string; name: string; versionId: string; loader: 'vanilla' | 'fabric' | 'quilt'; loaderVersion: string; gameDir: string; memoryMb: number;
+  id: string; name: string; versionId: string; loader: 'vanilla' | 'fabric' | 'quilt' | 'forge' | 'neoforge'; loaderVersion: string; gameDir: string; memoryMb: number;
   jvmArgs: string; javaPath: string; width: number; height: number;
 }
 interface PublicStore {
@@ -69,7 +69,7 @@ function versionLabel(id: string): string {
   return id;
 }
 
-const LOADER_NAMES = { vanilla: '', fabric: 'Fabric', quilt: 'Quilt' } as const;
+const LOADER_NAMES = { vanilla: '', fabric: 'Fabric', quilt: 'Quilt', forge: 'Forge', neoforge: 'NeoForge' } as const;
 
 function profileLabel(p: Profile): string {
   const loader = LOADER_NAMES[p.loader ?? 'vanilla'];
@@ -667,8 +667,10 @@ function contentNotice() {
   const profile = store.profiles.find((p) => p.id === contentProfileId());
   const box = $('#content-notice');
   let text = '';
-  if (contentType === 'mod' && profile?.loader === 'vanilla') text = 'Ten profil nie ma mod loadera. Ustaw Fabric w zakładce Profile, żeby instalować mody.';
-  else if (contentType === 'shader') text = 'Shadery wymagają moda Iris (Fabric). Zainstaluj go w zakładce Mody.';
+  if (contentType === 'mod' && profile?.loader === 'vanilla') text = 'Ten profil nie ma mod loadera. Ustaw Fabric, NeoForge lub Forge w zakładce Profile, żeby instalować mody.';
+  else if (contentType === 'shader') text = profile?.loader === 'fabric' || profile?.loader === 'quilt'
+    ? 'Shadery wymagają moda Iris. Zainstaluj go w zakładce Mody.'
+    : 'Shadery wymagają moda Iris (Fabric) albo Oculus (Forge/NeoForge).';
   else if (contentType === 'modpack') text = 'Modpack tworzy nowy profil z własnym folderem gry.';
   box.textContent = text;
   box.classList.toggle('hidden', !text);
@@ -944,14 +946,81 @@ async function loadNews() {
   $('#news').replaceChildren(...items.map((n) => {
     const img = el('img', { alt: '', loading: 'lazy' });
     if (n.imageUrl) img.src = n.imageUrl;
-    return el('div', { className: 'news-card', title: n.text }, img,
+    // a real button: keyboard- and screen-reader-friendly
+    const card = el('button', { type: 'button', className: 'news-card', title: 'Kliknij, aby przeczytać' }, img,
       el('div', {},
         el('span', { className: `tag ${n.type}`, textContent: n.type === 'snapshot' ? 'Snapshot' : 'Wydanie' }),
         el('b', { textContent: n.title }),
         el('small', { textContent: new Date(n.date).toLocaleDateString('pl-PL', { dateStyle: 'long' }) }),
         el('p', { textContent: n.text })));
+    card.addEventListener('click', () => openArticle(n));
+    return card;
   }));
 }
+
+const ARTICLE_TAGS = new Set(['P', 'H1', 'H2', 'H3', 'H4', 'UL', 'OL', 'LI', 'CODE', 'B', 'STRONG', 'I', 'EM', 'BR', 'A', 'BLOCKQUOTE']);
+
+/**
+ * Rebuilds Mojang's article HTML from an inert DOMParser document, keeping only
+ * simple text tags. Nothing from the source (attributes, scripts, styles) is copied,
+ * except https links, which open in the system browser.
+ */
+function sanitizeArticle(html: string): DocumentFragment {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const copy = (node: Node, into: Node) => {
+    for (const child of node.childNodes) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        into.appendChild(document.createTextNode(child.textContent ?? ''));
+      } else if (child instanceof Element) {
+        if (!ARTICLE_TAGS.has(child.tagName)) {
+          copy(child, into); // unknown wrapper: keep its text
+          continue;
+        }
+        const out = document.createElement(child.tagName.toLowerCase());
+        if (child.tagName === 'A') {
+          const href = child.getAttribute('href') ?? '';
+          if (/^https:\/\//.test(href)) {
+            out.setAttribute('href', href);
+            out.addEventListener('click', (e) => {
+              e.preventDefault();
+              window.open(href, '_blank');
+            });
+          }
+        }
+        copy(child, out);
+        into.appendChild(out);
+      }
+    }
+  };
+  const frag = document.createDocumentFragment();
+  copy(doc.body, frag);
+  return frag;
+}
+
+async function openArticle(n: NewsItem) {
+  const img = $<HTMLImageElement>('#news-image');
+  img.classList.toggle('hidden', !n.imageUrl);
+  if (n.imageUrl) img.src = n.imageUrl;
+  $('#news-tag').className = `tag ${n.type}`;
+  $('#news-tag').textContent = n.type === 'snapshot' ? 'Snapshot' : 'Wydanie';
+  $('#news-title').textContent = n.title;
+  $('#news-date').textContent = new Date(n.date).toLocaleDateString('pl-PL', { dateStyle: 'long' });
+  $('#news-body').replaceChildren(el('p', { className: 'muted', textContent: 'Ładowanie…' }));
+  $('#news-modal').classList.remove('hidden');
+  const article = await guard(() => api.newsArticle(n.id));
+  if (article) $('#news-body').replaceChildren(sanitizeArticle(article.body));
+}
+
+function closeArticle() {
+  $('#news-modal').classList.add('hidden');
+}
+$('#news-close').addEventListener('click', closeArticle);
+$('#news-modal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeArticle();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeArticle();
+});
 
 /** News while idle, the game log once a launch starts. */
 function showLog(show: boolean) {

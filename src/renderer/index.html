@@ -153,6 +153,8 @@
                 <option value="vanilla">Brak (vanilla)</option>
                 <option value="fabric">Fabric</option>
                 <option value="quilt">Quilt</option>
+                <option value="neoforge">NeoForge</option>
+                <option value="forge">Forge</option>
               </select>
             </label>
             <label class="field" id="loader-version-field">Wersja loadera
@@ -231,6 +233,18 @@
     </section>
   </main>
 
+  <div class="modal hidden" id="news-modal">
+    <article class="modal-box glass-panel">
+      <button class="icon-btn modal-close" id="news-close" title="Zamknij"><i class="fa-solid fa-xmark"></i></button>
+      <img id="news-image" alt="">
+      <div class="modal-body">
+        <span class="tag" id="news-tag"></span>
+        <h2 id="news-title"></h2>
+        <small class="muted" id="news-date"></small>
+        <div class="article" id="news-body"></div>
+      </div>
+    </article>
+  </div>
   <div class="toast glass-panel hidden" id="toast"></div>
   <script src="app.js"></script>
 </body>
