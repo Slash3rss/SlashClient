@@ -111,7 +111,7 @@ function applyLanguage(lang: string) {
   document.documentElement.lang = getLang();
   translateTree(document.body);
   $('#log').dataset.empty = t('Tu pojawią się logi gry.');
-  $('#news-lang-hint').textContent = getLang() === 'pl' ? t('Nowości Mojanga są dostępne tylko po angielsku.') : '';
+  $('#news-lang-hint').textContent = getLang() === 'pl' ? t('Nowości z Minecrafta są dostępne tylko po angielsku.') : '';
 }
 
 // ---------- loading & entrance animations ----------
@@ -394,6 +394,7 @@ function renderSettings() {
   (form.elements.namedItem('discordClientId') as HTMLInputElement).value = store.settings.discordClientId ?? '';
   (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked = store.settings.discordEnabled ?? true;
   $('#data-dir').textContent = store.dataDir;
+  api.appVersion().then((v: string) => ($('#app-version').textContent = v));
 }
 
 // ---------- play ----------
@@ -1333,6 +1334,14 @@ function startStars() {
   requestAnimationFrame(loop);
 }
 
+// ---------- updates ----------
+
+api.on('update:ready', (version: string) => {
+  $('#update-version').textContent = version;
+  $('#update-bar').classList.remove('hidden');
+});
+$('#update-install').addEventListener('click', () => api.installUpdate());
+
 // switching the language takes effect immediately
 $('#language-select').addEventListener('change', async () => {
   const lang = $<HTMLSelectElement>('#language-select').value;
@@ -1350,12 +1359,32 @@ $('#language-select').addEventListener('change', async () => {
 
 // ---------- boot ----------
 
+/** Hides the start-up screen and lets the interface slide in. */
+function finishBoot() {
+  $('#splash').classList.add('done');
+  document.body.classList.remove('booting');
+  document.body.classList.add('entering');
+  setTimeout(() => {
+    document.body.classList.remove('entering');
+    $('#splash').remove();
+  }, 900);
+}
+
 (async () => {
-  startStars();
-  store = await api.getStore();
-  applyLanguage(store.settings.language);
-  loadNews();
-  render();
+  const shownAt = performance.now();
+  try {
+    startStars();
+    store = await api.getStore();
+    applyLanguage(store.settings.language);
+    loadNews();
+    render();
+  } finally {
+    // keep the splash until fonts are ready and for at least a moment so it doesn't flicker,
+    // but never wait on the network (and always hide it, even after an error)
+    await document.fonts.ready;
+    await new Promise((r) => setTimeout(r, Math.max(0, 700 - (performance.now() - shownAt))));
+    finishBoot();
+  }
   versions = (await guard(() => api.listVersions())) ?? [];
   renderProfiles();
 })();

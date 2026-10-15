@@ -9,7 +9,12 @@
     "typecheck": "tsc --noEmit",
     "start": "npm run build && electron .",
     "test:launch": "npm run build && node dist/cli.js",
-    "icons": "electron scripts/make-icons.cjs"
+    "icons": "electron scripts/make-icons.cjs",
+    "test": "node scripts/test.mjs",
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:linux": "npm run build && electron-builder --linux"
   },
   "license": "MIT",
   "devDependencies": {
@@ -19,15 +24,93 @@
     "@types/adm-zip": "^0.5.8",
     "@types/node": "^26.6.5",
     "electron": "^44.7.2",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
     "skinview3d": "^3.4.2",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "adm-zip": "^0.6.1"
   },
   "dependencies": {
-    "adm-zip": "^0.6.1"
+    "electron-updater": "^6.8.9"
   },
   "allowScripts": {
     "electron@44.7.2": true,
-    "esbuild@0.28.2": true
+    "esbuild@0.28.2": true,
+    "electron-winstaller": false
+  },
+  "author": {
+    "name": "slash3rss",
+    "url": "https://slash3rss.dev"
+  },
+  "homepage": "https://slash3rss.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/slash3rss/SlashClient.git"
+  },
+  "build": {
+    "appId": "dev.slash3rss.slashclient",
+    "productName": "SlashClient",
+    "copyright": "© slash3rss",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "!dist/**/*.map",
+      "build/icon.png",
+      "package.json"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.games",
+      "icon": "build/icon.icns"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "SlashClient"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "icon": "build/icons",
+      "category": "Game"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "slash3rss",
+        "repo": "SlashClient"
+      }
+    ]
   }
 }

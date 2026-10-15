@@ -5,6 +5,7 @@ import path from 'node:path';
 import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, pollDeviceCode, startDeviceCode } from './auth';
 import { setLang } from '../shared/i18n';
 import { analyzeCrash } from './crash';
+import { installUpdate, startUpdateChecks } from './updates';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { launch, resolveVersionId } from './launch';
 import { paths } from './paths';
@@ -75,9 +76,12 @@ function createWindow() {
     title: 'SlashClient',
     backgroundColor: '#0a0d14',
     icon: ICON,
+    // shown once the first frame is ready, so there's no flash of an empty window
+    show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true },
   });
   win.removeMenu();
+  win.once('ready-to-show', () => win?.show());
   // development: surface page errors in the terminal
   if (!app.isPackaged) {
     win.webContents.on('console-message', (e) => {
@@ -252,6 +256,8 @@ handle('skin:save', async (accountId: string) => {
   const { canceled, filePath } = await dialog.showSaveDialog(win!, { defaultPath: `${account.name}.png`, filters: [{ name: 'PNG', extensions: ['png'] }] });
   if (!canceled && filePath) await fsp.writeFile(filePath, Buffer.from(dataUrl.split(',')[1], 'base64'));
 });
+handle('update:install', () => installUpdate());
+handle('app:version', () => app.getVersion());
 handle('news:list', (offset: number, limit: number, filter: NewsFilter) => newsPage(offset, limit, filter));
 handle('news:article', (id: string) => newsArticle(id));
 
@@ -350,6 +356,7 @@ app.whenReady().then(async () => {
   if (!store.settings.language) store.settings.language = app.getLocale().toLowerCase().startsWith('pl') ? 'pl' : 'en';
   setLang(store.settings.language);
   createWindow();
+  startUpdateChecks({ onReady: (version) => send('update:ready', version), onLog: (m) => console.error(m) });
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

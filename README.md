@@ -24,6 +24,25 @@ Test bez interfejsu (instaluje i uruchamia grę na koncie offline):
 npm run test:launch -- 1.21.4 MojNick
 ```
 
+## Testy i wydania
+
+```bash
+npm test          # testy jednostkowe i integracyjne (node:test)
+npm run dist:mac  # instalator lokalnie (także dist:win, dist:linux) → release/
+```
+
+GitHub Actions (`.github/workflows/`):
+
+- **CI**: typecheck, testy i build na Linuksie, macOS i Windowsie przy każdym pushu i PR.
+- **Release**: tag `v*` (np. `git tag v0.2.0 && git push --tags`) buduje `.dmg`, `.exe` i AppImage
+  i publikuje je w GitHub Releases repozytorium `slash3rss/SlashClient` (pole `build.publish` w `package.json`).
+  Zainstalowane launchery pobierają nową wersję same i pokazują pasek „Uruchom ponownie”.
+
+Na macOS automatyczne aktualizacje i otwieranie bez ostrzeżeń Gatekeepera wymagają podpisu
+(konto Apple Developer). Wtedy wystarczy dodać sekrety `MAC_CERT_P12_BASE64`, `MAC_CERT_PASSWORD`, `APPLE_ID`,
+`APPLE_APP_SPECIFIC_PASSWORD` i `APPLE_TEAM_ID`. Bez nich instalator działa, ale trzeba go otworzyć
+przez prawy klik → Otwórz, a aktualizacje na Macu trzeba instalować ręcznie.
+
 ## Dane
 
 Wszystko trafia do jednego folderu (można go zmienić zmienną `SLASHCLIENT_HOME`):

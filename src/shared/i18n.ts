@@ -242,9 +242,12 @@ const EN: Record<string, string> = {
   'status „Gra w SlashClient” na Discordzie': '“Playing SlashClient” status on Discord',
   'Pokazuj na Discordzie, w co grasz': 'Show on Discord what you are playing',
   'Folder danych:': 'Data folder:',
+  'Wersja launchera:': 'Launcher version:',
+  'Nowa wersja SlashClient jest gotowa:': 'A new SlashClient version is ready:',
+  'Uruchom ponownie': 'Restart',
   'Zapisano ustawienia': 'Settings saved',
   'Język': 'Language',
-  'Nowości Mojanga są dostępne tylko po angielsku.': 'Mojang publishes news in English only.',
+  'Nowości z Minecrafta są dostępne tylko po angielsku.': 'Minecraft news is available in English only.',
 
   // Discord presence
   'W menu': 'In the menu',
