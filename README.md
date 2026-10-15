@@ -5,7 +5,7 @@ Launcher Minecraft: Java Edition w Electronie i TypeScripcie.
 - dowolna wersja vanilla z oficjalnego manifestu Mojang (wydania, snapshoty, stare bety i alfy),
 - profile z osobnym folderem gry, ilością RAM, rozdzielczością i argumentami JVM,
 - automatyczne pobieranie Javy właściwej dla danej wersji (oficjalne środowiska Mojang),
-- logowanie kontem Microsoft (device code) albo tryb offline (sam nick).
+- logowanie kontem Microsoft (device code) albo tryb offline (sam nick),
 - zakładka **Serwery** z lista.slash3rss.dev: status na żywo (ping, gracze, MOTD) i dołączanie jednym kliknięciem,
 - mod loadery **Fabric** i **Quilt** (Quilt nie wspiera wersji 26.x),
 - zakładka **Mody** z Modrinth: mody z zależnościami, paczki zasobów, shadery i modpacki (`.mrpack`).

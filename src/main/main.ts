@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, nativeImage, safeStorage, shell } 
 import type { ChildProcess } from 'node:child_process';
 import path from 'node:path';
 import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, pollDeviceCode, startDeviceCode } from './auth';
+import { analyzeCrash } from './crash';
 import { launch, resolveVersionId } from './launch';
 import { paths } from './paths';
 import { loadStore, newProfile, profileGameDir, saveStore, setSecretCodec, type Profile, type Settings, type StoreData } from './store';
@@ -203,11 +204,18 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
   }
   await persist();
 
+  // keep the tail of the output for crash analysis
+  const recentLog: string[] = [];
+  const startedAt = Date.now();
   const child = await launch({
     profile,
     account,
     onStage: (stage, done, total, stats) => send('launch:stage', { stage, done, total, ...stats }),
-    onLog: (line) => send('game:log', line),
+    onLog: (line) => {
+      recentLog.push(line);
+      if (recentLog.length > 3000) recentLog.shift();
+      send('game:log', line);
+    },
     server,
   });
   game = child;
@@ -217,9 +225,18 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
   child.on('exit', (code, signal) => {
     game = undefined;
     send('game:exit', { code, signal, byUser: killRequested });
+    if (code !== 0 && !killRequested) {
+      analyzeCrash({ log: recentLog, gameDir: profileGameDir(profile), startedAt, code, signal })
+        .then((analysis) => send('game:crash', analysis))
+        .catch(() => {});
+    }
     send('store', publicStore());
     if (store.settings.closeOnLaunch) win?.show();
   });
+});
+handle('file:reveal', (file: string) => {
+  // only crash reports inside the launcher's own folders
+  if (path.resolve(file).startsWith(paths.root + path.sep) || store.profiles.some((p) => path.resolve(file).startsWith(path.resolve(profileGameDir(p)) + path.sep))) shell.showItemInFolder(file);
 });
 handle('game:kill', () => {
   killRequested = true;

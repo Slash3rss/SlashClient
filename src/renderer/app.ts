@@ -268,6 +268,7 @@ async function startGame(server?: string) {
   if (store.running || launching) return toast('Gra już działa.', true);
   launching = true;
   log.replaceChildren();
+  $('#crash').classList.add('hidden');
   showView('play');
   renderPlay();
   try {
@@ -284,6 +285,25 @@ async function startGame(server?: string) {
 }
 
 $('#play-btn').addEventListener('click', () => (store.running ? void api.kill() : startGame()));
+
+interface CrashAnalysis { title: string; details: string[]; fix?: string; crashReport?: string }
+let crashReport: string | undefined;
+
+api.on('game:crash', (a: CrashAnalysis) => {
+  $('#crash-title').textContent = a.title;
+  $('#crash-details').replaceChildren(...a.details.map((d) => el('li', { textContent: d })));
+  $('#crash-fix').textContent = a.fix ?? '';
+  crashReport = a.crashReport;
+  $('#crash-report').classList.toggle('hidden', !a.crashReport);
+  $('#crash').classList.remove('hidden');
+  showView('play');
+});
+$('#crash-close').addEventListener('click', () => $('#crash').classList.add('hidden'));
+$('#crash-report').addEventListener('click', () => crashReport && api.revealFile(crashReport));
+$('#crash-copy').addEventListener('click', async () => {
+  await navigator.clipboard.writeText(log.textContent ?? '');
+  toast('Skopiowano log');
+});
 
 api.on('launch:stage', showStage);
 api.on('game:log', appendLog);

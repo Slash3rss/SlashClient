@@ -314,3 +314,15 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: var(--transition); }
 .switch input:checked + span { background: var(--accent); }
 .switch input:checked + span::after { transform: translateX(18px); }
+
+/* ---------- crash analysis ---------- */
+.crash { padding: 16px 18px; border-radius: 12px; border: 1px solid rgba(239, 68, 68, .4); background: linear-gradient(135deg, rgba(239, 68, 68, .12), rgba(239, 68, 68, .04)); display: flex; flex-direction: column; gap: 8px; }
+.crash-head { display: flex; align-items: center; gap: 10px; }
+.crash-head i { color: #f87171; }
+.crash-head b { flex: 1; font-size: 16px; }
+.crash-head .icon-btn { width: 30px; height: 30px; padding: 0; }
+.crash ul { margin: 0; padding-left: 20px; color: var(--text-secondary); font-size: 14px; }
+.crash p { margin: 0; font-size: 14px; }
+.crash p:empty { display: none; }
+.crash p::before { content: "Co zrobić: "; font-weight: 700; color: #fca5a5; }
+.crash .row button { height: 34px; font-size: 13px; }

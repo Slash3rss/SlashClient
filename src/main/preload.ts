@@ -32,6 +32,7 @@ const api = {
   importModpack: () => invoke('modpack:import'),
   pingServer: (address: string) => invoke('servers:ping', address),
   kill: () => invoke('game:kill'),
+  revealFile: (file: string) => invoke('file:reveal', file),
   on,
 };
 
