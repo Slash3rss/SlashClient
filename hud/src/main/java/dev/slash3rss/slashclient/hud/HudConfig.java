@@ -8,7 +8,9 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -36,11 +38,41 @@ public final class HudConfig {
 		}
 	}
 
+	/** A chat tab: shows only the lines that match one of its patterns. */
+	public static final class ChatTab {
+		public String name;
+		/** Plain text (case does not matter) or regular expressions; "{nick}" is the player's name. */
+		public List<String> patterns = new ArrayList<>();
+		public boolean regex;
+
+		public ChatTab(String name, boolean regex, String... patterns) {
+			this.name = name;
+			this.regex = regex;
+			this.patterns.addAll(List.of(patterns));
+		}
+	}
+
 	public Map<String, Placement> modules = new LinkedHashMap<>();
+	public List<ChatTab> chatTabs = new ArrayList<>();
 	/** ARGB colour of the text. */
 	public int textColor = 0xFFFFFFFF;
 	public boolean background = true;
 	public boolean textShadow = true;
+
+	// ---- extras, the other things clients usually have ----
+	/** Hold the zoom key (C) to zoom; the mouse wheel changes how far while held. */
+	public boolean zoom = true;
+	public float zoomFactor = 4f;
+	public boolean zoomSmooth = true;
+	public boolean fullbright = false;
+	/** The fire overlay sits lower, so it covers less of the screen. */
+	public boolean lowFire = false;
+	public boolean chatTimestamps = false;
+	/** "vanilla", "plus", "dot", "plusdot" or "x". */
+	public String crosshair = "vanilla";
+	public int crosshairColor = 0xFFFFFFFF;
+	public int crosshairSize = 5;
+	public int crosshairGap = 2;
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("slashclient-hud.json");
@@ -72,6 +104,10 @@ public final class HudConfig {
 		c.modules.put("combo", new Placement(false, 0.5f, 0.5f, 30, 12));
 		c.modules.put("reach", new Placement(false, 0.5f, 0.5f, -30, 12));
 		c.modules.put("keystrokes", new Placement(true, 0, 0.5f, 2, 20));
+		c.modules.put("movement", new Placement(false, 0, 0.5f, 2, -2));
+		c.chatTabs.add(new ChatTab("@", false, "{nick}"));
+		// private messages look different on every server; these catch the common ones
+		c.chatTabs.add(new ChatTab("PM", true, "(?i)(whispers to you|szepcze|\\[msg\\]|-> ?(me|ja)\\b|\\bfrom \\w+:)"));
 		return c;
 	}
 
@@ -83,14 +119,42 @@ public final class HudConfig {
 				return defaults;
 			}
 			HudConfig read = GSON.fromJson(Files.readString(FILE), HudConfig.class);
-			if (read == null) return defaults;
-			// modules added in newer versions get their default place
-			for (var e : defaults.modules.entrySet()) read.modules.putIfAbsent(e.getKey(), e.getValue());
-			return read;
+			return read == null ? defaults : fillMissing(read);
 		} catch (IOException | JsonSyntaxException e) {
 			SlashHud.LOG.warn("Nie udało się wczytać {}: {}", FILE, e.toString());
 			return defaults;
 		}
+	}
+
+	/** Settings from an older version or a share code: whatever is missing gets its default. */
+	static HudConfig fillMissing(HudConfig read) {
+		HudConfig defaults = defaults();
+		if (read.modules == null) read.modules = new LinkedHashMap<>();
+		// modules added in newer versions get their default place
+		for (var e : defaults.modules.entrySet()) read.modules.putIfAbsent(e.getKey(), e.getValue());
+		if (read.chatTabs == null) read.chatTabs = defaults.chatTabs;
+		if (read.crosshair == null) read.crosshair = defaults.crosshair;
+		return read;
+	}
+
+	/** Takes over everything from `other` (a pasted code) and saves. */
+	public void copyFrom(HudConfig other) {
+		modules = other.modules;
+		chatTabs = other.chatTabs;
+		textColor = other.textColor;
+		background = other.background;
+		textShadow = other.textShadow;
+		zoom = other.zoom;
+		zoomFactor = other.zoomFactor;
+		zoomSmooth = other.zoomSmooth;
+		fullbright = other.fullbright;
+		lowFire = other.lowFire;
+		chatTimestamps = other.chatTimestamps;
+		crosshair = other.crosshair;
+		crosshairColor = other.crosshairColor;
+		crosshairSize = other.crosshairSize;
+		crosshairGap = other.crosshairGap;
+		save();
 	}
 
 	public void save() {

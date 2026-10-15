@@ -30,6 +30,7 @@ import { newsArticle, newsPage, type NewsFilter } from './news';
 import { ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin } from './skins';
 import { checkModsFolder, installedModIds } from './modcheck';
 import { hudVersions, prepareHud } from './hud';
+import { exportHud, importHud } from './hudShare';
 import { appendSession, readSessions, summarize } from './stats';
 import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type ForeignInstance } from './importers';
 import { perfModsFor } from './perfmods';
@@ -841,6 +842,18 @@ handle('game:kill', () => {
 });
 
 // ---------- SlashClient HUD ----------
+
+/** HUD settings of a profile as a share code in the clipboard, and back. */
+handle('hud:copyCode', async (profileId: string) => {
+  const profile = profileById(profileId);
+  if (!profile) throw new Error(t('Nie znaleziono profilu.'));
+  clipboard.writeText(await exportHud(profileGameDir(profile)));
+});
+handle('hud:pasteCode', async (profileId: string) => {
+  const profile = profileById(profileId);
+  if (!profile) throw new Error(t('Nie znaleziono profilu.'));
+  await importHud(profileGameDir(profile), await clipboard.readText());
+});
 
 async function prepareProfileHud(profile: Profile) {
   await prepareHud(HUD_DIR, profileGameDir(profile), { enabled: profile.hud ?? true, loader: profile.loader, gameVersion: await resolveVersionId(profile.versionId) },

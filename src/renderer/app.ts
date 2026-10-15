@@ -333,6 +333,14 @@ function renderHudHint() {
       : t('jeszcze nie dla {0}; dostępny dla {1}', version, supported.join(', ') || '—');
   $('#hud-hint').textContent = hint;
 }
+$('#hud-copy').addEventListener('click', async () => {
+  if (!editingId) return;
+  if ((await guard(() => api.copyHudCode(editingId!))) !== undefined) toast(t('Skopiowano kod HUD. Wklej go znajomemu albo w innym profilu.'));
+});
+$('#hud-paste').addEventListener('click', async () => {
+  if (!editingId) return;
+  if ((await guard(() => api.pasteHudCode(editingId!))) !== undefined) toast(t('Wczytano ustawienia HUD z kodu. Zobaczysz je przy następnym uruchomieniu gry.'));
+});
 $('#profile-form').addEventListener('change', (e) => {
   const name = (e.target as HTMLInputElement).name;
   if (name === 'loader' || name === 'versionId') renderHudHint();

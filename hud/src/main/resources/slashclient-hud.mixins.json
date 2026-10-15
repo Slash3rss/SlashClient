@@ -1,0 +1,15 @@
+{
+	"required": true,
+	"package": "dev.slash3rss.slashclient.hud.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"CameraMixin",
+		"ChatComponentMixin",
+		"LightmapMixin",
+		"MouseHandlerMixin",
+		"ScreenEffectRendererMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

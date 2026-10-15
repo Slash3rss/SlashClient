@@ -199,6 +199,25 @@ final class MoreModules {
 		}
 	}
 
+	/** Sprinting and sneaking, and whether the key is set to toggle. */
+	static final class Movement extends Modules.TextModule {
+		public String id() {
+			return "movement";
+		}
+
+		@Override
+		public boolean visible(Minecraft mc) {
+			return mc.player != null && (mc.player.isSprinting() || mc.player.isShiftKeyDown());
+		}
+
+		Component content(Minecraft mc) {
+			boolean sneaking = mc.player != null && mc.player.isShiftKeyDown();
+			boolean toggled = sneaking ? mc.options.toggleCrouch().get() : mc.options.toggleSprint().get();
+			Component state = Component.translatable(sneaking ? "slashclient-hud.sneaking" : "slashclient-hud.sprinting");
+			return toggled ? Component.empty().append(state).append(" ").append(Component.translatable("slashclient-hud.toggled")) : state;
+		}
+	}
+
 	// ---------- items worth counting in PvP and on long trips ----------
 
 	static final class ItemCounter implements HudModule {

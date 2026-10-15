@@ -26,7 +26,14 @@ Launcher Minecraft: Java Edition w Electronie i TypeScripcie.
 - sprawdzanie modów przed startem: brakujące zależności (z instalacją z Modrinth), zły loader, zła wersja gry, konflikty, duplikaty,
 - import instancji z Prism Launcher, MultiMC, CurseForge, Modrinth App i oficjalnego launchera,
 - biblioteka skinów (presety ze skinem, modelem rąk i peleryną) i przełączanie kont w zakładce Konta,
-- statystyki: czas gry według dni, profile, serwery, pory grania i seria dni.
+- statystyki: czas gry według dni, profile, serwery, pory grania i seria dni,
+- edytor skinów (piksele, warstwy, podgląd 3D) i zapis do biblioteki,
+- znajomi, statusy aktywności i wiadomości (serwer w `server/`, konto SlashClient przez Discord, Microsoft, Google lub GitHub),
+- **SlashClient HUD** (mod Fabric w `hud/`, Minecraft 26.3), instalowany przez launcher razem z Fabric API:
+  FPS, ping, CPS, współrzędne, prędkość, zegar, serwer, gracze, pamięć, biom, pora dnia, światło, czas sesji, combo, zasięg,
+  sprint/skradanie, nasycenie, licznik przedmiotów, cel, pancerz, efekty i klawisze. Do tego przybliżenie (C), fullbright,
+  niski ogień, godzina w czacie, własny celownik i zakładki czatu wyłapujące wiadomości po tekście albo regexie.
+  W grze Prawy Shift otwiera edycję. Ustawienia można udostępnić kodem (w grze albo w profilu w launcherze).
 
 ## Uruchomienie
 
@@ -40,6 +47,17 @@ Test bez interfejsu (instaluje i uruchamia grę na koncie offline):
 ```bash
 npm run test:launch -- 1.21.4 MojNick
 ```
+
+## SlashClient HUD
+
+```bash
+cd hud
+./gradlew build              # build/libs/slashclient-hud-26.3-*.jar (wymaga JDK 25)
+./gradlew runClientGameTest  # uruchamia grę, robi zrzuty HUD-a do build/run/clientGameTest/screenshots
+```
+
+`npm run build` dołącza zbudowany jar do launchera (`dist/hud/`). Launcher wkłada go do `mods/` profili Fabric
+w obsługiwanej wersji i dociąga Fabric API z Modrinth. Test z linii poleceń: `npm run test:launch -- 26.3 MojNick --fabric`.
 
 ## Testy i wydania
 

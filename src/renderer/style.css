@@ -809,3 +809,6 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .fr-composer button { width: 42px; height: 40px; padding: 0; flex-shrink: 0; }
 .fr-counter { font-size: 11px; color: var(--text-muted); align-self: center; }
 @media (max-width: 900px) { .fr-layout { grid-template-columns: 240px minmax(0, 1fr); } }
+
+.hud-share { margin: -4px 0 4px 28px; flex-wrap: wrap; }
+.hud-share button { font-size: 12.5px; padding: 6px 10px; }

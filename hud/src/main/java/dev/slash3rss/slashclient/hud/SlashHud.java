@@ -38,7 +38,13 @@ public class SlashHud implements ClientModInitializer {
 		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(ID, "main"));
 		KeyMapping edit = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.edit", InputConstants.KEY_RSHIFT, category));
 
+		Extras.zoomKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.zoom", InputConstants.KEY_C, category));
+		// no key by default: G and the like are taken by other mods too often
+		Extras.fullbrightKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.fullbright", InputConstants.UNKNOWN.getValue(), category));
+		ChatTabs.register();
+
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
+			Extras.tick(mc);
 			while (edit.consumeClick()) {
 				if (mc.gui.screen() == null) mc.setScreenAndShow(new HudEditScreen());
 			}
@@ -64,6 +70,10 @@ public class SlashHud implements ClientModInitializer {
 		// with our effect list on, Minecraft's own effect icons would show the same twice
 		HudElementRegistry.replaceElement(VanillaHudElements.MOB_EFFECTS, vanilla -> (g, delta) -> {
 			if (!config.placement("effects").enabled) vanilla.extractRenderState(g, delta);
+		});
+
+		HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, vanilla -> (g, delta) -> {
+			if (!Extras.drawCrosshair(g, Minecraft.getInstance())) vanilla.extractRenderState(g, delta);
 		});
 
 		HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(ID, "hud"), (g, delta) -> {
