@@ -302,6 +302,7 @@ const EN: Record<string, string> = {
 
   // Discord presence
   'W menu': 'In the menu',
+  'W launcherze': 'In the launcher',
   'Gra jednoosobowa': 'Singleplayer',
   'Na serwerze {0}': 'On server {0}',
 

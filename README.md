@@ -78,8 +78,9 @@ Launcher potrzebuje własnej aplikacji w Azure:
 
 ## Status na Discordzie
 
-Launcher pokazuje na Discordzie „Gra w SlashClient” z wersją gry, loaderem, czasem gry oraz tym, czy jesteś w menu,
-w świecie czy na serwerze (aplikacja Discord `812524751053914112`). Można to wyłączyć w Ustawieniach.
+Launcher pokazuje na Discordzie „Gra w SlashClient”: przy otwartym launcherze „W launcherze”, a w grze wersję,
+loader, czas gry oraz to, czy jesteś w menu, w świecie czy na serwerze (aplikacja Discord `812524751053914112`).
+Status odnawia się co 30 s, więc pojawi się też, gdy Discord zostanie uruchomiony po launcherze. Można go wyłączyć w Ustawieniach.
 Obrazek statusu to zasób `logo` w Rich Presence → Art Assets tej aplikacji.
 
 ## Struktura
