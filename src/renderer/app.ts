@@ -207,14 +207,35 @@ function errorText(err: unknown): string {
   return text;
 }
 
-let toastTimer: number | undefined;
+/** Slides a notification out, then removes it. */
+function dismiss(card: HTMLElement) {
+  if (card.classList.contains('leaving')) return;
+  card.classList.add('leaving');
+  card.addEventListener('animationend', () => card.remove(), { once: true });
+  setTimeout(() => card.remove(), 400); // in case animations are off
+}
+
+/** Removes a notification after `ms`, with a shrinking bar; the countdown waits while the mouse is over it. */
+function dismissLater(card: HTMLElement, ms: number) {
+  const bar = el('div', { className: 'notif-timer' });
+  bar.style.animationDuration = `${ms}ms`;
+  bar.addEventListener('animationend', () => dismiss(card));
+  card.append(bar);
+}
+
+/** Notifications stack in the top right corner; only the newest few toasts stay. */
+const MAX_TOASTS = 4;
 function toast(message: string, isError = false) {
-  const t = $('#toast');
-  t.textContent = message;
-  t.classList.toggle('error', isError);
-  t.classList.remove('hidden');
-  clearTimeout(toastTimer);
-  toastTimer = window.setTimeout(() => t.classList.add('hidden'), isError ? 8000 : 3000);
+  const close = el('button', { type: 'button', className: 'notif-close', title: t('Zamknij') }, el('i', { className: 'fa-solid fa-xmark' }));
+  const card = el('div', { className: `task notif${isError ? ' failed' : ''}`, role: isError ? 'alert' : 'status' },
+    el('i', { className: `notif-icon fa-solid ${isError ? 'fa-circle-exclamation' : 'fa-circle-check'}` }),
+    el('div', { className: 'notif-text', textContent: message }),
+    close);
+  close.addEventListener('click', () => dismiss(card));
+  $('#tasks').prepend(card);
+  dismissLater(card, isError ? 9000 : 4500);
+  const toasts = [...document.querySelectorAll<HTMLElement>('#tasks .notif:not(.leaving)')];
+  toasts.slice(MAX_TOASTS).forEach(dismiss);
 }
 
 async function guard<T>(fn: () => Promise<T>): Promise<T | undefined> {
@@ -2461,12 +2482,12 @@ api.on('task:done', ({ id, ok, message, profileId }: TaskDone) => {
   card.classList.add(ok ? 'done' : 'failed');
   const body = card.querySelector('.task-body')!;
   const close = el('button', { type: 'button', textContent: t('Zamknij') });
-  close.addEventListener('click', () => card.remove());
+  close.addEventListener('click', () => dismiss(card));
   const actions = el('div', { className: 'task-actions' });
   if (ok && profileId) {
     const play = el('button', { type: 'button', className: 'primary' }, el('i', { className: 'fa-solid fa-play' }), t('Graj teraz'));
     play.addEventListener('click', () => {
-      card.remove();
+      dismiss(card);
       store.settings.selectedProfileId = profileId;
       renderPlay();
       startGame();
@@ -2477,8 +2498,8 @@ api.on('task:done', ({ id, ok, message, profileId }: TaskDone) => {
     body.querySelector('.task-title')!,
     el('div', { className: 'task-result' }, el('i', { className: ok ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle-xmark' }), el('span', { textContent: message })),
     actions);
-  // single mods disappear on their own; modpacks and errors wait for the player
-  if (ok && !profileId) setTimeout(() => card.remove(), 6000);
+  // everything goes away on its own; a modpack ("Play now") and errors stay longer to be read
+  dismissLater(card, !ok ? 15000 : profileId ? 20000 : 6000);
 });
 
 // ---------- updates ----------
