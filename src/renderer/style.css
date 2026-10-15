@@ -221,7 +221,11 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 }
 .list li .grow { flex: 1; min-width: 0; }
 .list li small { display: block; color: var(--text-muted); font-weight: 500; font: 11px var(--font-mono); overflow: hidden; text-overflow: ellipsis; }
-.accounts li { cursor: default; }
+.accounts li { cursor: default; transition: border-color .2s ease, background .2s ease; }
+.accounts li.switchable { cursor: pointer; }
+.accounts li.switchable:hover { background: var(--glass-bg-hover); }
+.accounts li.current { border-color: rgba(59, 130, 246, .5); box-shadow: inset 3px 0 0 var(--accent); }
+.accounts .in-use { font-size: 13px; font-weight: 600; color: #4ade80; white-space: nowrap; }
 .badge {
   font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
   padding: 2px 9px; border-radius: 5px; color: var(--text-secondary);

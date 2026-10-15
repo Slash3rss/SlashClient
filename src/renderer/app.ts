@@ -596,10 +596,20 @@ function renderAccounts() {
   const list = $('#account-list');
   list.replaceChildren(
     ...store.accounts.map((a) => {
+      const current = a.id === (store.settings.selectedAccountId ?? store.accounts[0]?.id);
       const remove = el('button', { className: 'danger', textContent: 'Usuń' });
-      remove.addEventListener('click', () => guard(() => api.deleteAccount(a.id)));
-      return el('li', {}, avatar(a), el('div', { className: 'grow' }, a.name, el('small', { textContent: a.uuid })),
-        el('span', { className: `badge ${a.type}`, textContent: a.type === 'msa' ? 'Microsoft' : 'Offline' }), remove);
+      remove.addEventListener('click', (e) => {
+        e.stopPropagation();
+        guard(() => api.deleteAccount(a.id));
+      });
+      const use = current
+        ? el('span', { className: 'in-use' }, el('i', { className: 'fa-solid fa-check' }), t(' W użyciu'))
+        : el('button', { className: 'use', textContent: t('Użyj') });
+      const li = el('li', { className: current ? 'current' : 'switchable', title: current ? '' : t('Przełącz na to konto') },
+        avatar(a), el('div', { className: 'grow' }, a.name, el('small', { textContent: a.uuid })),
+        el('span', { className: `badge ${a.type}`, textContent: a.type === 'msa' ? 'Microsoft' : 'Offline' }), use, remove);
+      if (!current) li.addEventListener('click', () => selectAccount(a.id));
+      return li;
     }),
   );
   if (store.accounts.length === 0) list.append(el('li', { className: 'muted', textContent: 'Nie dodano jeszcze żadnego konta.' }));
@@ -695,11 +705,17 @@ $('#play-profile').addEventListener('change', (e) => {
   api.saveSettings({ selectedProfileId: store.settings.selectedProfileId });
   renderPlay();
 });
-$('#play-account').addEventListener('change', (e) => {
-  store.settings.selectedAccountId = (e.target as HTMLSelectElement).value;
-  api.saveSettings({ selectedAccountId: store.settings.selectedAccountId });
+$('#play-account').addEventListener('change', (e) => selectAccount((e.target as HTMLSelectElement).value));
+
+/** Makes an account the one used to play; the Play bar and the Accounts tab follow. */
+function selectAccount(id: string) {
+  store.settings.selectedAccountId = id;
+  api.saveSettings({ selectedAccountId: id });
+  chosenPreset = undefined;
   renderPlay();
-});
+  renderAccounts();
+  renderLibrary();
+}
 
 function showView(name: string) {
   document.querySelector<HTMLButtonElement>(`.nav[data-view="${name}"]`)?.click();
