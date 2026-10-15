@@ -36,7 +36,7 @@ Launcher otwiera przeglądarkę, a po zalogowaniu sam odbiera wynik (odpytuje `/
 |---------|-----------|------|
 | `PORT` | `8787` | port HTTP i WebSocket |
 | `DB_FILE` | `./data/social.db` | plik bazy SQLite |
-| `PUBLIC_URL` | `http://localhost:PORT` | adres widoczny z zewnątrz (przekierowanie Discorda) |
+| `PUBLIC_URL` | `http://localhost:PORT` | adres widoczny z zewnątrz (przekierowania po logowaniu) |
 | `DISCORD_…`, `MICROSOFT_…`, `GOOGLE_…`, `GITHUB_…` (`_CLIENT_ID`, `_CLIENT_SECRET`) | – | włączają dany sposób logowania |
 | `ALLOW_DEV_LOGIN` | – | `1` = logowanie samym nickiem (tylko testy) |
 
