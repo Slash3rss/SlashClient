@@ -1,0 +1,588 @@
+<!doctype html>
+<!-- Source of the app icon. Rendered to PNG by scripts/make-icons.cjs. -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: "Outfit"; font-weight: 100 900; src: url(../../node_modules/@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2) format("woff2"); }
+  html, body { margin: 0; width: 1024px; height: 1024px; background: transparent; overflow: hidden; }
+  svg { display: block; }
+  text { font-family: "Outfit"; font-weight: 800; }
+</style>
+</head>
+<body>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- macOS icon grid: 824×824 rounded square centred in a 1024 canvas -->
+    <clipPath id="tile"><rect x="100" y="100" width="824" height="824" rx="185"/></clipPath>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#161e30"/>
+      <stop offset="1" stop-color="#0a0d14"/>
+    </linearGradient>
+    <radialGradient id="orbBlue"><stop offset="0" stop-color="#2563eb" stop-opacity=".55"/><stop offset="1" stop-color="#2563eb" stop-opacity="0"/></radialGradient>
+    <radialGradient id="orbViolet"><stop offset="0" stop-color="#7c3aed" stop-opacity=".45"/><stop offset="1" stop-color="#7c3aed" stop-opacity="0"/></radialGradient>
+    <radialGradient id="core"><stop offset="0" stop-color="#3b82f6" stop-opacity=".22"/><stop offset=".7" stop-color="#0a0d14" stop-opacity=".6"/><stop offset="1" stop-color="#05070b" stop-opacity=".75"/></radialGradient>
+    <linearGradient id="letter" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#93c5fd"/>
+      <stop offset=".5" stop-color="#3b82f6"/>
+      <stop offset="1" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#60a5fa"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="22" result="b"/>
+      <feColorMatrix in="b" values="0 0 0 0 0.231  0 0 0 0 0.51  0 0 0 0 0.965  0 0 0 .75 0"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="softglow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feColorMatrix in="b" values="0 0 0 0 0.231  0 0 0 0 0.51  0 0 0 0 0.965  0 0 0 .35 0"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity=".45"/>
+    </filter>
+  </defs>
+
+  <!-- tile -->
+  <g id="tile-bg">
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)" filter="url(#shadow)"/>
+  <g clip-path="url(#tile)">
+    <circle cx="210" cy="190" r="420" fill="url(#orbBlue)"/>
+    <circle cx="880" cy="900" r="460" fill="url(#orbViolet)"/>
+    <g fill="#bfdbfe">
+      <circle cx="205" cy="300" r="4" opacity=".7"/>
+      <circle cx="790" cy="215" r="5" opacity=".8"/>
+      <circle cx="845" cy="420" r="3" opacity=".5"/>
+      <circle cx="250" cy="760" r="3.5" opacity=".55"/>
+      <circle cx="700" cy="830" r="4" opacity=".6"/>
+      <circle cx="330" cy="180" r="3" opacity=".45"/>
+      <circle cx="170" cy="560" r="3" opacity=".4"/>
+      <circle cx="600" cy="150" r="2.5" opacity=".5"/>
+    </g>
+  </g>
+  <rect x="102" y="102" width="820" height="820" rx="183" fill="none" stroke="#fff" stroke-opacity=".09" stroke-width="4"/>
+  </g>
+
+  <!-- centre artwork, chosen by ?variant= (see script below) -->
+  <g id="art"></g>
+</svg>
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const art = document.getElementById('art');
+const variant = new URLSearchParams(location.search).get('variant') || 'slashS';
+
+function add(tag, attrs = {}, parent = art) {
+  const el = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  parent.appendChild(el);
+  return el;
+}
+
+/** Draws a pixel map: rows of characters, each mapped to a colour ('.' = empty). */
+function pixels(rows, palette, { x0, y0, size, parent = art }) {
+  rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (palette[ch]) add('rect', { x: x0 + x * size, y: y0 + y * size, width: size + 0.5, height: size + 0.5, fill: palette[ch] }, parent);
+  }));
+}
+
+/** Small deterministic PRNG so textures look the same on every render. */
+function rng(seed) {
+  return () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
+}
+
+function ring() {
+  add('circle', { cx: 512, cy: 512, r: 262, fill: 'url(#core)' });
+  add('circle', { cx: 512, cy: 512, r: 262, fill: 'none', stroke: 'url(#ring)', 'stroke-width': 34, filter: 'url(#glow)' });
+}
+
+const variants = {
+  // Original: avatar ring with the Outfit "S", as on slash3rss.dev.
+  ring() {
+    ring();
+    const t = add('text', { x: 512, y: 518, 'font-size': 380, 'text-anchor': 'middle', 'dominant-baseline': 'central', fill: 'url(#letter)', filter: 'url(#glow)' });
+    t.textContent = 'S';
+  },
+
+  // Blocky "S" in the style of the Minecraft font, with the usual drop shadow and bevelled pixels.
+  pixelS() {
+    ring();
+    const S = [
+      '.XXXX.',
+      'XX..XX',
+      'XX....',
+      '.XXXX.',
+      '....XX',
+      'XX..XX',
+      '.XXXX.',
+    ];
+    const size = 46, x0 = 512 - 3 * size, y0 = 512 - 3.5 * size;
+    const g = add('g', { filter: 'url(#glow)' });
+    pixels(S, { X: '#172554' }, { x0: x0 + 12, y0: y0 + 12, size, parent: g }); // shadow
+    S.forEach((row, y) => [...row].forEach((ch, x) => {
+      if (ch !== 'X') return;
+      const px = x0 + x * size, py = y0 + y * size, b = 7;
+      add('rect', { x: px, y: py, width: size, height: size, fill: y < 3 ? '#60a5fa' : '#3b82f6' }, g);
+      add('rect', { x: px, y: py, width: size, height: b, fill: '#bfdbfe', opacity: .7 }, g);
+      add('rect', { x: px, y: py, width: b, height: size, fill: '#bfdbfe', opacity: .45 }, g);
+      add('rect', { x: px, y: py + size - b, width: size, height: b, fill: '#1d4ed8' }, g);
+      add('rect', { x: px + size - b, y: py, width: b, height: size, fill: '#1e40af' }, g);
+    }));
+  },
+
+  // A pixel-art sword drawn diagonally: the "slash" in SlashClient.
+  sword() {
+    ring();
+    const rows = [
+      '.............oWo',
+      '............oWLB',
+      '...........oWLBo',
+      '..........oWLBo.',
+      '.........oWLBo..',
+      '........oWLBo...',
+      '..oo...oWLBo....',
+      '.oGYo.oWLBo.....',
+      '..oGYoWLBo......',
+      '...oGYLBo.......',
+      '...ooGYo........',
+      '..oHHoGYo.......',
+      '.oHHo.oo........',
+      'oPPo............',
+      'oPPo............',
+      '.oo.............',
+    ];
+    const size = 24, x0 = 512 - 8 * size, y0 = 512 - 8 * size;
+    const g = add('g', { filter: 'url(#glow)' });
+    pixels(rows, { o: '#0b1226', W: '#eff6ff', L: '#93c5fd', B: '#3b82f6', G: '#facc15', Y: '#ca8a04', H: '#7c4a1e', P: '#60a5fa' }, { x0, y0, size, parent: g });
+  },
+
+  // An isometric "ore" block: dark deepslate with glowing blue ore.
+  block() {
+    const n = 8, cx = 512, top = 230, w = 290; // half-width of the cube
+    const h = w * 0.58;                         // vertical half of the top face
+    const depth = 2 * h + 40;
+    const rnd = rng(7);
+    const tex = Array.from({ length: n }, () => Array.from({ length: n }, () => rnd()));
+    const ore = new Set(['2,1', '3,1', '2,2', '5,4', '6,4', '5,5', '1,5', '2,6', '6,1']);
+    const shade = (face, x, y) => {
+      const k = `${x},${y}`;
+      if (ore.has(k)) return face === 'top' ? '#93c5fd' : face === 'left' ? '#3b82f6' : '#1d4ed8';
+      const v = tex[y][x];
+      const base = face === 'top' ? [52, 58, 74] : face === 'left' ? [36, 41, 54] : [24, 28, 38];
+      const d = Math.round((v - .5) * 16);
+      return `rgb(${base[0] + d},${base[1] + d},${base[2] + d})`;
+    };
+    const quad = (pts, fill) => add('polygon', { points: pts.map((p) => p.join(',')).join(' '), fill, stroke: fill, 'stroke-width': 0.8 });
+    // glow behind the block
+    add('circle', { cx, cy: top + h + depth / 2, r: 300, fill: 'url(#orbBlue)', opacity: .9 });
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      // top face: a rhombus subdivided into n×n cells
+      const P = (u, v) => [cx + (u - v) * (w / n), top + (u + v) * (h / n)];
+      quad([P(x, y), P(x + 1, y), P(x + 1, y + 1), P(x, y + 1)], shade('top', x, y));
+      // left face
+      const L = (u, v) => [cx - w + u * (w / n), top + h + u * (h / n) + v * (depth / n)];
+      quad([L(x, y), L(x + 1, y), L(x + 1, y + 1), L(x, y + 1)], shade('left', x, y));
+      // right face
+      const R = (u, v) => [cx + u * (w / n), top + 2 * h - u * (h / n) + v * (depth / n)];
+      quad([R(x, y), R(x + 1, y), R(x + 1, y + 1), R(x, y + 1)], shade('right', (x + 3) % n, y));
+    }
+    // soft glow on the ore pixels
+    art.setAttribute('filter', 'url(#softglow)');
+  },
+};
+
+// ---------- isometric voxel helpers ----------
+
+const lerp = (a, b, t) => a + (b - a) * t;
+const lerpP = (a, b, t) => [lerp(a[0], b[0], t), lerp(a[1], b[1], t)];
+const rgb = (c, k = 1) => `rgb(${c.map((v) => Math.max(0, Math.min(255, Math.round(v * k)))).join(',')})`;
+
+/** Fills a quad (corners in u/v order: 00, 10, 11, 01) with an n×n pixel texture. */
+function texturedFace(parent, [p00, p10, p11, p01], n, colorAt) {
+  const at = (u, v) => lerpP(lerpP(p00, p10, u), lerpP(p01, p11, u), v);
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const c = colorAt(i, j);
+    if (!c) continue;
+    const pts = [at(i / n, j / n), at((i + 1) / n, j / n), at((i + 1) / n, (j + 1) / n), at(i / n, (j + 1) / n)];
+    add('polygon', { points: pts.map((q) => q.join(',')).join(' '), fill: c, stroke: c, 'stroke-width': 0.6, 'stroke-linejoin': 'round' }, parent);
+  }
+}
+
+/**
+ * Draws unit cubes in isometric projection, scaled and centred on (cx, cy).
+ * cubes: [{x, y, z, tex(face, i, j) => colour}], z is up. Hidden faces are skipped.
+ */
+function voxels(parent, cubes, { n, cx = 512, cy = 512, fit = 560 }) {
+  const key = (x, y, z) => `${x},${y},${z}`;
+  const filled = new Set(cubes.map((c) => key(c.x, c.y, c.z)));
+  const cos = Math.cos(Math.PI / 6);
+  const raw = (x, y, z) => [(x - y) * cos, (x + y) * 0.5 - z];
+  // fit the whole model into a `fit`-sized box
+  const pts = cubes.flatMap(({ x, y, z }) => [[x, y, z + 1], [x + 1, y, z + 1], [x, y + 1, z + 1], [x + 1, y + 1, z], [x + 1, y, z], [x, y + 1, z]].map((p) => raw(...p)));
+  const minX = Math.min(...pts.map((p) => p[0])), maxX = Math.max(...pts.map((p) => p[0]));
+  const minY = Math.min(...pts.map((p) => p[1])), maxY = Math.max(...pts.map((p) => p[1]));
+  const scale = fit / Math.max(maxX - minX, maxY - minY);
+  const P = (x, y, z) => {
+    const [sx, sy] = raw(x, y, z);
+    return [cx + (sx - (minX + maxX) / 2) * scale, cy + (sy - (minY + maxY) / 2) * scale];
+  };
+  const sorted = [...cubes].sort((a, b) => a.x + a.y + a.z - (b.x + b.y + b.z) || a.z - b.z);
+  for (const c of sorted) {
+    const { x, y, z } = c;
+    if (!filled.has(key(x, y, z + 1)))
+      texturedFace(parent, [P(x, y, z + 1), P(x + 1, y, z + 1), P(x + 1, y + 1, z + 1), P(x, y + 1, z + 1)], n, (i, j) => c.tex('top', i, j));
+    if (!filled.has(key(x, y + 1, z)))
+      texturedFace(parent, [P(x, y + 1, z + 1), P(x + 1, y + 1, z + 1), P(x + 1, y + 1, z), P(x, y + 1, z)], n, (i, j) => c.tex('left', i, j));
+    if (!filled.has(key(x + 1, y, z)))
+      texturedFace(parent, [P(x + 1, y + 1, z + 1), P(x + 1, y, z + 1), P(x + 1, y, z), P(x + 1, y + 1, z)], n, (i, j) => c.tex('right', i, j));
+  }
+}
+
+const LIGHT = { top: 1.0, left: 0.78, right: 0.58 };
+
+/**
+ * Front-facing blocks with depth going up and to the right, like the Minecraft
+ * title logo. cubes: [{x, z, tex(face, i, j)}] with faces 'front', 'top', 'right'.
+ */
+function extruded(parent, cubes, { n, depth = 0.55, cx = 512, cy = 512, fit = 560 }) {
+  const kx = depth * 0.8, ky = depth * 0.6;
+  const filled = new Set(cubes.map((c) => `${c.x},${c.z}`));
+  const xs = cubes.map((c) => c.x), zs = cubes.map((c) => c.z);
+  const minX = Math.min(...xs), maxX = Math.max(...xs) + 1 + kx;
+  const minZ = Math.min(...zs), maxZ = Math.max(...zs) + 1 + ky;
+  const scale = fit / Math.max(maxX - minX, maxZ - minZ);
+  // y = 0 is the front plane, y = 1 the back
+  const P = (x, y, z) => [cx + (x + y * kx - (minX + maxX) / 2) * scale, cy - (z + y * ky - (minZ + maxZ) / 2) * scale];
+  const sorted = [...cubes].sort((a, b) => a.x - b.x || a.z - b.z);
+  for (const c of sorted) {
+    const { x, z } = c;
+    if (!filled.has(`${x},${z + 1}`)) texturedFace(parent, [P(x, 1, z + 1), P(x + 1, 1, z + 1), P(x + 1, 0, z + 1), P(x, 0, z + 1)], n, (i, j) => c.tex('top', i, j));
+    if (!filled.has(`${x + 1},${z}`)) texturedFace(parent, [P(x + 1, 0, z + 1), P(x + 1, 1, z + 1), P(x + 1, 1, z), P(x + 1, 0, z)], n, (i, j) => c.tex('right', i, j));
+  }
+  // fronts last: they are always nearest to the viewer
+  for (const c of sorted) {
+    const { x, z } = c;
+    texturedFace(parent, [P(x, 0, z + 1), P(x + 1, 0, z + 1), P(x + 1, 0, z), P(x, 0, z)], n, (i, j) => c.tex('front', i, j));
+  }
+}
+
+Object.assign(variants, {
+  // The letter S in the Minecraft font, built from glowing blue blocks like the game's title logo.
+  voxelS() {
+    const S = [
+      '.XXXX',
+      'XX...',
+      'XX...',
+      '.XXX.',
+      '...XX',
+      '...XX',
+      'XXXX.',
+    ];
+    const n = 8, rnd = rng(11);
+    const shadeOf = { front: 1, top: 1.15, right: 0.62 };
+    const cubes = [];
+    S.forEach((row, r) => [...row].forEach((ch, col) => {
+      if (ch !== 'X') return;
+      const tex = Array.from({ length: n * n }, () => rnd());
+      cubes.push({
+        x: col, z: S.length - 1 - r,
+        tex(face, i, j) {
+          const v = tex[j * n + i];
+          // diamond-like block: blue body, light sparkles, darker rim
+          const rim = i === 0 || j === 0 || i === n - 1 || j === n - 1;
+          let c = v > 0.9 ? [224, 242, 254] : v > 0.62 ? [96, 165, 250] : v > 0.25 ? [59, 130, 246] : [37, 99, 235];
+          if (rim) c = [29, 78, 216];
+          return rgb(c, shadeOf[face]);
+        },
+      });
+    }));
+    add('circle', { cx: 512, cy: 520, r: 320, fill: 'url(#orbBlue)', opacity: .9 });
+    // dark drop shadow, then the glowing letter
+    const shadow = add('g', { transform: 'translate(14 18)', opacity: .55 });
+    extruded(shadow, cubes.map((c) => ({ ...c, tex: () => '#05070b' })), { n: 1, fit: 520 });
+    const g = add('g', { filter: 'url(#glow)' });
+    extruded(g, cubes, { n, fit: 520 });
+  },
+
+  // A grass block with a glowing blue slash cut across the front.
+  grass() {
+    const n = 16, rnd = rng(3);
+    const noise = Array.from({ length: 3 * n * n }, () => rnd());
+    const greens = [[93, 160, 48], [107, 178, 56], [79, 140, 41], [121, 192, 66]];
+    const dirt = [[134, 96, 67], [118, 84, 58], [150, 110, 80], [99, 71, 48]];
+    const lip = Array.from({ length: n }, () => 2 + Math.floor(rnd() * 3)); // jagged grass edge on the sides
+    const slash = (i, j) => Math.abs(i + j - 15) <= 1 && i > 2 && i < 14; // "/" across the left face
+    const cube = {
+      x: 0, y: 0, z: 0,
+      tex(face, i, j) {
+        const v = noise[(face === 'top' ? 0 : face === 'left' ? n * n : 2 * n * n) + j * n + i];
+        const pick = (pal) => pal[Math.floor(v * pal.length)];
+        if (face === 'left' && slash(i, j)) return Math.abs(i + j - 15) === 0 ? '#eff6ff' : '#60a5fa';
+        if (face === 'top') return rgb(pick(greens), LIGHT.top);
+        return rgb(j < lip[i] ? pick(greens) : pick(dirt), LIGHT[face]);
+      },
+    };
+    add('circle', { cx: 512, cy: 540, r: 330, fill: 'url(#orbBlue)', opacity: .8 });
+    const g = add('g', { filter: 'url(#softglow)' });
+    voxels(g, [cube], { n, fit: 540, cy: 520 });
+    // glow pass for the slash only
+    const glow = add('g', { filter: 'url(#glow)' });
+    voxels(glow, [{ ...cube, tex: (face, i, j) => (face === 'left' && slash(i, j) ? (Math.abs(i + j - 15) === 0 ? '#eff6ff' : '#60a5fa') : null) }], { n, fit: 540, cy: 520 });
+  },
+
+  // A portal in the brand colours: dark frame, blue-to-violet swirl.
+  portal() {
+    const W = 5, H = 7, block = 92, px = block / 8;
+    const x0 = 512 - (W * block) / 2, y0 = 512 - (H * block) / 2 + 6;
+    const rnd = rng(5);
+    const frame = [[20, 18, 32], [30, 25, 50], [42, 33, 72], [58, 42, 98], [16, 14, 24]];
+    add('circle', { cx: 512, cy: 512, r: 320, fill: 'url(#orbViolet)', opacity: .9 });
+    const swirl = add('g', { filter: 'url(#glow)' });
+    const solid = add('g');
+    for (let by = 0; by < H; by++) for (let bx = 0; bx < W; bx++) {
+      const isFrame = bx === 0 || by === 0 || bx === W - 1 || by === H - 1;
+      for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) {
+        const X = x0 + bx * block + i * px, Y = y0 + by * block + j * px;
+        let fill;
+        if (isFrame) {
+          // obsidian-like block: mostly dark, a few purple flecks, bevelled edges
+          const v = rnd();
+          const base = v > 0.85 ? frame[3] : v > 0.6 ? frame[2] : v > 0.25 ? frame[1] : frame[0];
+          const bevel = (i === 0 || j === 0) ? 1.6 : (i === 7 || j === 7) ? 0.55 : 1;
+          fill = rgb(base, bevel);
+          add('rect', { x: X, y: Y, width: px + .5, height: px + .5, fill }, solid);
+        } else {
+          // swirl: two interfering waves around the portal centre
+          const gx = (bx * 8 + i) - (W * 8) / 2, gy = (by * 8 + j) - (H * 8) / 2;
+          const a = Math.atan2(gy, gx), r = Math.hypot(gx, gy);
+          // diagonal waves bent by a slow swirl
+          const t = 0.5 + 0.5 * Math.sin((gx + gy) * 0.55 + Math.sin(gy * 0.25 + a) * 2.4 + r * 0.12);
+          const c1 = [59, 130, 246], c2 = [124, 58, 237], hi = [191, 219, 254];
+          let c = c1.map((v, k) => lerp(v, c2[k], t));
+          if (t > 0.93) c = hi;
+          add('rect', { x: X, y: Y, width: px + .5, height: px + .5, fill: rgb(c, 0.75 + 0.35 * rnd()) }, swirl);
+        }
+      }
+    }
+    // a few floating particles
+    for (const [x, y, s] of [[300, 260, 14], [742, 330, 12], [262, 700, 10], [760, 650, 16], [700, 210, 9], [330, 820, 9]]) {
+      add('rect', { x, y, width: s, height: s, fill: '#a78bfa', opacity: .85 }, swirl);
+    }
+  },
+});
+
+// ---------- Minecraft-style 16×16 textures ----------
+// Original textures drawn in the game's style (small palettes, clustered noise,
+// flat inventory lighting), not copies of Mojang's files.
+
+const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+
+/** Clustered noise quantised into `levels` bands by percentile, like hand-shaded pixel art. */
+function clustered(n, seed, levels, smooth = 1) {
+  const rnd = rng(seed);
+  let g = Array.from({ length: n * n }, () => rnd());
+  for (let s = 0; s < smooth; s++) {
+    g = g.map((_, k) => {
+      const x = k % n, y = Math.floor(k / n);
+      let sum = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const w = dx === 0 && dy === 0 ? 2 : 1;
+        sum += w * g[((y + dy + n) % n) * n + ((x + dx + n) % n)];
+      }
+      return sum / 10 + (rnd() - 0.5) * 0.12;
+    });
+  }
+  const sorted = [...g].sort((a, b) => a - b);
+  const cut = Array.from({ length: levels - 1 }, (_, i) => sorted[Math.floor(((i + 1) / levels) * g.length)]);
+  return g.map((v) => cut.filter((c) => v >= c).length);
+}
+
+const GRASS = ['#4c7d2a', '#5a9132', '#67a33a', '#74b343', '#82c24d'].map(hex);
+const GRASS_SIDE = ['#4a7a29', '#578d30', '#63a038', '#70b040'].map(hex);
+const DIRT = ['#5a3d28', '#6b4a31', '#79553a', '#886144', '#97704f'].map(hex);
+
+function grassTextures(seed = 21) {
+  const n = 16, rnd = rng(seed);
+  const top = clustered(n, seed, GRASS.length, 0).map((l) => GRASS[l]); // speckled, like in-game grass
+  const dirtL = clustered(n, seed + 1, DIRT.length, 1);
+  // a few single-pixel pebbles and dark specks, as in the game's dirt
+  const specks = new Map();
+  for (let k = 0; k < 10; k++) specks.set(Math.floor(rnd() * n * n), rnd() > 0.5 ? hex('#a07a57') : hex('#46301f'));
+  // jagged grass overhang: 3 rows, plus drips of 1–2 pixels in some columns
+  const lip = Array.from({ length: n }, () => 3 + (rnd() > 0.55 ? 1 : 0) + (rnd() > 0.85 ? 1 : 0));
+  const sideGreen = clustered(n, seed + 2, GRASS_SIDE.length, 1).map((l) => GRASS_SIDE[l]);
+  const side = (i, j) => {
+    if (j < lip[i]) return j === lip[i] - 1 && j > 2 ? GRASS_SIDE[0] : sideGreen[j * n + i];
+    return specks.get(j * n + i) ?? DIRT[dirtL[j * n + i]];
+  };
+  return { n, top: (i, j) => top[j * n + i], side };
+}
+
+function grassCube(seed) {
+  const t = grassTextures(seed);
+  return {
+    x: 0, y: 0, z: 0,
+    // the right face mirrors the texture, like the game does for opposite sides
+    tex: (face, i, j) => rgb(face === 'top' ? t.top(i, j) : face === 'left' ? t.side(i, j) : t.side(t.n - 1 - i, j), LIGHT[face]),
+  };
+}
+
+/** Classic Minecraft GUI panel: black outline with clipped corners, white/grey bevel. */
+function guiPanel(x, y, size, u) {
+  const g = add('g', { 'shape-rendering': 'crispEdges' });
+  const r = (X, Y, W, H, fill) => add('rect', { x: X, y: Y, width: W, height: H, fill }, g);
+  r(x + u, y, size - 2 * u, size, '#000');
+  r(x, y + u, size, size - 2 * u, '#000');
+  r(x + u, y + u, size - 2 * u, size - 2 * u, '#c6c6c6');
+  r(x + u, y + u, size - 3 * u, 2 * u, '#fff');              // top highlight
+  r(x + u, y + u, 2 * u, size - 3 * u, '#fff');              // left highlight
+  r(x + 2 * u, y + size - 3 * u, size - 3 * u, 2 * u, '#555'); // bottom shadow
+  r(x + size - 3 * u, y + 2 * u, 2 * u, size - 3 * u, '#555'); // right shadow
+  r(x + u, y + u, u, u, '#c6c6c6');
+  r(x + size - 2 * u, y + size - 2 * u, u, u, '#c6c6c6');
+  r(x + 3 * u, y + 3 * u, size - 6 * u, size - 6 * u, '#c6c6c6');
+}
+
+/** Inventory slot: dark top-left edge, white bottom-right edge, grey inside. */
+function guiSlot(x, y, size, u) {
+  const g = add('g', { 'shape-rendering': 'crispEdges' });
+  const r = (X, Y, W, H, fill) => add('rect', { x: X, y: Y, width: W, height: H, fill }, g);
+  r(x, y, size, size, '#373737');
+  r(x + u, y + u, size - u, size - u, '#fff');
+  r(x + u, y + u, size - 2 * u, size - 2 * u, '#8b8b8b');
+}
+
+const SWORD = [
+  '.............ooo',
+  '............oWWo',
+  '...........oWLBo',
+  '..........oWLBo.',
+  '.........oWLBo..',
+  '........oWLBo...',
+  '.......oWLBo....',
+  '..oo..oWLBo.....',
+  '..oGooWLBo......',
+  '...oGoLBo.......',
+  '....oGDo........',
+  '...oHoGDo.......',
+  '..oHHo.oDo......',
+  '.oHHo...oo......',
+  'oPHo............',
+  'ooo.............',
+];
+const SWORD_COLORS = { o: '#0c1f33', W: '#e6f4ff', L: '#7cc0f2', B: '#2f7bd6', G: '#7a5a2e', D: '#4e3a1c', H: '#5c4326', P: '#2f7bd6' };
+
+Object.assign(variants, {
+  // Inventory-style grass block on the dark brand tile; crisp, no glow.
+  mcGrass() {
+    add('ellipse', { cx: 512, cy: 785, rx: 200, ry: 34, fill: '#000', opacity: .3 });
+    voxels(add('g'), [grassCube(21)], { n: 16, fit: 560, cy: 500 });
+  },
+
+  // The grass block sitting in a Minecraft inventory slot on a GUI panel.
+  mcSlot() {
+    document.getElementById("tile-bg").remove();
+    const u = 22, size = 836, x = 512 - size / 2;
+    guiPanel(x, x, size, u);
+    const slot = 28 * u;
+    guiSlot(512 - slot / 2, 512 - slot / 2, slot, u);
+    voxels(add('g'), [grassCube(21)], { n: 16, fit: slot - 4 * u, cy: 512 });
+  },
+
+  // A pixel sword item in an inventory slot.
+  mcSword() {
+    document.getElementById("tile-bg").remove();
+    const u = 22, size = 836, x = 512 - size / 2;
+    guiPanel(x, x, size, u);
+    const slot = 28 * u;
+    guiSlot(512 - slot / 2, 512 - slot / 2, slot, u);
+    const px = 32;
+    pixels(SWORD, SWORD_COLORS, { x0: 512 - 8 * px, y0: 512 - 8 * px, size: px, parent: add('g', { 'shape-rendering': 'crispEdges' }) });
+  },
+});
+
+// ---------- clean pixel "S" marks (Lunar-style minimal, Minecraft font shape) ----------
+
+const S_GLYPH = [
+  '.XXXX.',
+  'XX..XX',
+  'XX....',
+  '.XXXX.',
+  '....XX',
+  'XX..XX',
+  '.XXXX.',
+];
+
+/** One SVG path for all filled glyph pixels, so a single gradient spans the whole letter. */
+function glyphPath(rows, x0, y0, size) {
+  let d = '';
+  rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ch === 'X') d += `M${x0 + x * size} ${y0 + y * size}h${size}v${size}h${-size}z`;
+  }));
+  return d;
+}
+
+function defs() {
+  return document.querySelector('defs');
+}
+
+function gradient(id, stops, { x1 = 0, y1 = 0, x2 = 0, y2 = 1 } = {}) {
+  const g = add('linearGradient', { id, x1, y1, x2, y2 }, defs());
+  stops.forEach(([o, c]) => add('stop', { offset: o, 'stop-color': c }, g));
+}
+
+Object.assign(variants, {
+  // Flat pixel S in the Minecraft font with the game's 1-pixel text shadow.
+  logoS() {
+    gradient('sFill', [[0, '#bfdbfe'], [0.45, '#60a5fa'], [1, '#2563eb']]);
+    const size = 62, x0 = 512 - 3 * size, y0 = 512 - 3.5 * size - 8;
+    add('path', { d: glyphPath(S_GLYPH, x0 + size / 3, y0 + size / 3, size), fill: '#0b1530', opacity: .9, 'shape-rendering': 'crispEdges' });
+    const g = add('g', { filter: 'url(#softglow)' });
+    add('path', { d: glyphPath(S_GLYPH, x0, y0, size), fill: 'url(#sFill)', 'shape-rendering': 'crispEdges' }, g);
+  },
+
+  // The pixel S sliced along a "/" and slightly offset: the "slash" in SlashClient.
+  slashS() {
+    gradient('sFill2', [[0, '#bfdbfe'], [0.45, '#60a5fa'], [1, '#2563eb']]);
+    const size = 62, x0 = 512 - 3 * size, y0 = 512 - 3.5 * size;
+    const d = glyphPath(S_GLYPH, x0, y0, size);
+    // cut line through the centre going up-right, with a gap of `gap` px
+    const cx = 512, cy = 512, gap = 30, shift = 18;
+    const far = 2000;
+    const half = (sign) => {
+      const o = sign * gap / 2 / Math.SQRT2; // offset perpendicular to the "/" line
+      return [[cx - far + o, cy + far + o], [cx + far + o, cy - far + o], [cx + far + sign * far, cy - far + sign * far], [cx - far + sign * far, cy + far + sign * far]]
+        .map((p) => p.join(',')).join(' ');
+    };
+    const clipA = add('clipPath', { id: 'cutA' }, defs());
+    add('polygon', { points: half(-1) }, clipA);
+    const clipB = add('clipPath', { id: 'cutB' }, defs());
+    add('polygon', { points: half(1) }, clipB);
+    const g = add('g', { filter: 'url(#softglow)' });
+    // upper-left half stays, lower-right half slides along the cut
+    add('path', { d, fill: 'url(#sFill2)', 'clip-path': 'url(#cutA)', 'shape-rendering': 'crispEdges', transform: `translate(${-shift / 2} ${shift / 2})` }, g);
+    add('path', { d, fill: 'url(#sFill2)', 'clip-path': 'url(#cutB)', 'shape-rendering': 'crispEdges', transform: `translate(${shift / 2} ${-shift / 2})` }, g);
+  },
+
+  // Clean extruded S: flat faces, no texture noise, like a modern take on the Minecraft logo.
+  blockS() {
+    const front = (r) => ['#93c5fd', '#7cb6fb', '#60a5fa', '#4f95f8', '#3b82f6', '#2f74ec', '#2563eb'][r];
+    const cubes = [];
+    S_GLYPH.forEach((row, r) => [...row].forEach((ch, col) => {
+      if (ch !== 'X') return;
+      cubes.push({
+        x: col, z: S_GLYPH.length - 1 - r,
+        tex: (face) => (face === 'front' ? front(r) : face === 'top' ? '#dbeafe' : '#1e3a8a'),
+      });
+    }));
+    const g = add('g', { filter: 'url(#softglow)' });
+    extruded(g, cubes, { n: 1, fit: 470, depth: 0.42, cy: 515 });
+  },
+});
+
+(variants[variant] || variants.ring)();
+</script>
+</body>
+</html>

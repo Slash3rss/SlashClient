@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' https://mc-heads.net; style-src 'self'">
+  <title>SlashClient</title>
+  <link rel="stylesheet" href="fa/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="stars" aria-hidden="true"></canvas>
+  <div class="background-decorations" aria-hidden="true">
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+    <div class="glow-orb orb-3"></div>
+  </div>
+
+  <aside class="sidebar glass-panel">
+    <div class="brand">
+      <img class="brand-logo" src="logo.png" alt="">
+      <div class="brand-name">Slash<span>Client</span></div>
+    </div>
+    <nav>
+      <button class="nav active" data-view="play"><i class="fa-solid fa-play"></i>Graj</button>
+      <button class="nav" data-view="profiles"><i class="fa-solid fa-layer-group"></i>Profile</button>
+      <button class="nav" data-view="accounts"><i class="fa-solid fa-user"></i>Konta</button>
+      <button class="nav" data-view="settings"><i class="fa-solid fa-gear"></i>Ustawienia</button>
+    </nav>
+    <div class="account-chip" id="account-chip"></div>
+  </aside>
+
+  <main>
+    <!-- Play -->
+    <section class="view active" id="view-play">
+      <div class="hero">
+        <span class="eyebrow"><i class="fa-solid fa-cube"></i> Minecraft: Java Edition</span>
+        <h1 class="gradient-title" id="hero-title">Minecraft</h1>
+        <p id="hero-sub" class="muted"></p>
+      </div>
+      <div class="log" id="log"></div>
+      <footer class="play-bar glass-panel">
+        <label class="field">Profil<select id="play-profile"></select></label>
+        <label class="field">Konto<select id="play-account"></select></label>
+        <div class="progress-wrap">
+          <div class="progress-label"><span id="progress-label">Gotowe do gry</span><span id="progress-stats"></span></div>
+          <div class="progress"><div id="progress-bar"></div></div>
+        </div>
+        <button class="primary big" id="play-btn">GRAJ</button>
+      </footer>
+    </section>
+
+    <!-- Profiles -->
+    <section class="view" id="view-profiles">
+      <header class="view-head"><h2 class="gradient-title">Profile</h2><button class="primary" id="profile-add"><i class="fa-solid fa-plus"></i> Nowy profil</button></header>
+      <div class="split">
+        <ul class="list" id="profile-list"></ul>
+        <form class="card glass-panel form" id="profile-form">
+          <label class="field">Nazwa<input name="name" required maxlength="40"></label>
+          <label class="field">Wersja
+            <div class="row">
+              <select name="versionId" id="version-select"></select>
+              <label class="chip-toggle"><input type="checkbox" id="show-snapshots"><span>Snapshoty</span></label>
+              <label class="chip-toggle"><input type="checkbox" id="show-old"><span>Stare</span></label>
+            </div>
+          </label>
+          <label class="field"><span class="label">Pamięć RAM <b id="memory-value"></b></span><input type="range" name="memoryMb" min="1024" max="16384" step="512"></label>
+          <div class="row">
+            <label class="field">Szerokość okna<input type="number" name="width" min="320"></label>
+            <label class="field">Wysokość okna<input type="number" name="height" min="240"></label>
+          </div>
+          <label class="field"><span class="label">Folder gry <span class="hint">puste = osobny folder profilu</span></span><input name="gameDir"></label>
+          <label class="field">Argumenty JVM<input name="jvmArgs" placeholder="-XX:+UseG1GC"></label>
+          <label class="field"><span class="label">Ścieżka do Javy <span class="hint">puste = automatycznie</span></span><input name="javaPath"></label>
+          <div class="row actions">
+            <button type="button" id="profile-folder"><i class="fa-regular fa-folder-open"></i> Otwórz folder</button>
+            <button type="button" class="danger" id="profile-delete"><i class="fa-regular fa-trash-can"></i> Usuń</button>
+            <button type="submit" class="primary">Zapisz</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Accounts -->
+    <section class="view" id="view-accounts">
+      <header class="view-head"><h2 class="gradient-title">Konta</h2></header>
+      <ul class="list accounts" id="account-list"></ul>
+      <div class="split two">
+        <div class="card glass-panel">
+          <h3><i class="fa-brands fa-microsoft"></i> Konto Microsoft</h3>
+          <p class="muted">Oficjalne logowanie. Pozwala grać na serwerach premium.</p>
+          <button class="primary" id="ms-login"><i class="fa-brands fa-microsoft"></i> Zaloguj przez Microsoft</button>
+          <div id="ms-code" class="ms-code hidden">
+            <p>Otwórz <a id="ms-url" target="_blank"></a> i wpisz kod:</p>
+            <div class="code" id="ms-user-code"></div>
+            <button id="ms-cancel">Anuluj</button>
+          </div>
+        </div>
+        <form class="card glass-panel" id="offline-form">
+          <h3><i class="fa-solid fa-user-secret"></i> Konto offline</h3>
+          <p class="muted">Tylko nick. Działa w trybie jednego gracza i na serwerach offline.</p>
+          <div class="row"><input name="nick" placeholder="Nick" maxlength="16" required><button class="primary" type="submit">Dodaj</button></div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Settings -->
+    <section class="view" id="view-settings">
+      <header class="view-head"><h2 class="gradient-title">Ustawienia</h2></header>
+      <form class="card glass-panel form" id="settings-form">
+        <label class="field">Identyfikator aplikacji Azure (Client ID)
+          <input name="msClientId" placeholder="00000000-0000-0000-0000-000000000000">
+        </label>
+        <p class="muted">Potrzebny do logowania kontem Microsoft. Instrukcja jest w pliku README.</p>
+        <label class="check"><input type="checkbox" name="closeOnLaunch"> Chowaj launcher podczas gry</label>
+        <p class="muted">Folder danych: <code id="data-dir"></code></p>
+        <div class="row actions"><button class="primary" type="submit">Zapisz</button></div>
+      </form>
+    </section>
+  </main>
+
+  <div class="toast glass-panel hidden" id="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>

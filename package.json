@@ -1,0 +1,32 @@
+{
+  "name": "slashclient",
+  "version": "0.1.0",
+  "description": "SlashClient – launcher Minecrafta",
+  "main": "dist/main.js",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "start": "npm run build && electron .",
+    "test:launch": "npm run build && node dist/cli.js",
+    "icons": "electron scripts/make-icons.cjs"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@fontsource-variable/outfit": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fortawesome/fontawesome-free": "^7.3.1",
+    "@types/adm-zip": "^0.5.8",
+    "@types/node": "^26.6.5",
+    "electron": "^44.7.2",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "adm-zip": "^0.6.1"
+  },
+  "allowScripts": {
+    "electron@44.7.2": true,
+    "esbuild@0.28.2": true
+  }
+}
