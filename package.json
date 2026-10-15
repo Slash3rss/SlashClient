@@ -108,8 +108,9 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "slash3rss",
-        "repo": "SlashClient"
+        "owner": "Slash3rss",
+        "repo": "SlashClient",
+        "releaseType": "release"
       }
     ]
   }
