@@ -68,6 +68,8 @@ export interface Settings {
   discordEnabled: boolean;
   /** UI language ('pl' | 'en'); empty = follow the system. */
   language: string;
+  /** The profile last used for each server address, offered first next time. */
+  serverProfiles?: Record<string, string>;
 }
 
 export interface StoreData {

@@ -38,7 +38,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; discordEnabled: boolean; language: string };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string> };
   running: boolean;
   dataDir: string;
   systemMemoryMb: number;
@@ -725,6 +725,10 @@ function showView(name: string) {
 async function startGame(server?: string, world?: string) {
   if (store.running || launching) return toast('Gra już działa.', true);
   launching = true;
+  if (!(await confirmModsOk($<HTMLSelectElement>('#play-profile').value))) {
+    launching = false;
+    return;
+  }
   log.replaceChildren();
   showLog(true);
   $('#crash').classList.add('hidden');
@@ -979,7 +983,7 @@ function serverCard(s: ListedServer): HTMLElement {
   stats.append(el('span', { title: 'Głosy' }, el('i', { className: 'fa-solid fa-thumbs-up' }), ` ${s.votes}`));
 
   const play = el('button', { className: 'primary' }, el('i', { className: 'fa-solid fa-play' }), 'Graj');
-  play.addEventListener('click', () => startGame(s.ip));
+  play.addEventListener('click', () => openJoin(s));
   const copy = el('button', { className: 'icon-btn', title: 'Kopiuj IP' }, el('i', { className: 'fa-regular fa-copy' }));
   copy.addEventListener('click', async () => {
     await navigator.clipboard.writeText(s.ip);
@@ -1001,6 +1005,107 @@ function serverCard(s: ListedServer): HTMLElement {
   card.dataset.ip = s.ip;
   return card;
 }
+
+// ---------- joining a server: pick a profile that fits ----------
+
+let joinServer: ListedServer | undefined;
+let joinProfile: string | undefined;
+
+/** "latest-release" and friends as the real version id, so they can be compared with a server's versions. */
+function resolvedVersion(id: string): string {
+  if (id === 'latest-release') return versions.find((v) => v.type === 'release')?.id ?? id;
+  if (id === 'latest-snapshot') return versions[0]?.id ?? id;
+  return id;
+}
+
+/** The server's versions, newest first as in Mojang's list (unknown ones at the end). */
+function serverVersions(s: ListedServer): string[] {
+  const order = new Map(versions.map((v, i) => [v.id, i]));
+  return [...s.versions].sort((a, b) => (order.get(a) ?? 1e9) - (order.get(b) ?? 1e9));
+}
+
+function fitsServer(p: Profile, s: ListedServer): boolean {
+  return s.versions.includes(resolvedVersion(p.versionId));
+}
+
+function openJoin(s: ListedServer) {
+  if (store.running || launching) return toast('Gra już działa.', true);
+  joinServer = s;
+  const remembered = store.settings.serverProfiles?.[s.ip];
+  joinProfile = store.profiles.find((p) => p.id === remembered)?.id
+    ?? store.profiles.find((p) => fitsServer(p, s))?.id
+    ?? store.settings.selectedProfileId ?? store.profiles[0]?.id;
+  const live = pings.get(s.ip)?.result;
+  $<HTMLImageElement>('#join-icon').src = live?.favicon ?? (s.hasIcon ? `${LIST_API}/servers/${s.id}/icon` : 'logo.png');
+  $('#join-name').textContent = s.name;
+  const list = serverVersions(s);
+  const range = list.length > 1 ? `${list[list.length - 1]} – ${list[0]}` : list[0];
+  $('#join-meta').textContent = [s.ip, range && t('Wersje: {0}', range)].filter(Boolean).join(' · ');
+  renderJoin();
+  $('#join-modal').classList.remove('hidden');
+}
+
+function renderJoin() {
+  const s = joinServer;
+  if (!s) return;
+  const known = s.versions.length > 0;
+  $('#join-list').replaceChildren(...store.profiles.map((p) => {
+    const fit = fitsServer(p, s);
+    const b = el('button', { type: 'button', className: `join-choice${p.id === joinProfile ? ' selected' : ''}` },
+      profileIconImg(p),
+      el('div', { className: 'grow' }, p.name, el('small', { textContent: profileLabel(p) })),
+      known ? el('span', { className: fit ? 'fit' : 'unfit', textContent: t(fit ? '✓ Pasuje' : 'Inna wersja') }) : '');
+    b.addEventListener('click', () => {
+      joinProfile = p.id;
+      renderJoin();
+    });
+    b.addEventListener('dblclick', () => joinGo());
+    return b;
+  }));
+  const anyFit = store.profiles.some((p) => fitsServer(p, s));
+  const newest = serverVersions(s).find((v) => versions.some((x) => x.id === v));
+  $('#join-hint').textContent = !known
+    ? t('Serwer nie podaje wersji. Wybierz profil, którym chcesz się połączyć.')
+    : anyFit
+      ? t('Wybierz profil. Te z dopiskiem „Pasuje” mają wersję obsługiwaną przez serwer.')
+      : t('Żaden profil nie ma wersji obsługiwanej przez serwer. Utwórz nowy albo spróbuj innej wersji.');
+  $('#join-create').classList.toggle('hidden', !known || anyFit || !newest);
+  if (newest) $('#join-create-label').textContent = t('Nowy profil {0}', newest);
+}
+
+async function joinGo() {
+  const s = joinServer;
+  const profileId = joinProfile;
+  if (!s || !profileId) return;
+  closeJoin();
+  store.settings.selectedProfileId = profileId;
+  store.settings.serverProfiles = { ...store.settings.serverProfiles, [s.ip]: profileId };
+  await guard(() => api.saveSettings({ selectedProfileId: profileId, serverProfiles: store.settings.serverProfiles }));
+  renderPlay();
+  startGame(s.ip);
+}
+
+function closeJoin() {
+  $('#join-modal').classList.add('hidden');
+  joinServer = undefined;
+}
+
+$('#join-go').addEventListener('click', () => joinGo());
+$('#join-close').addEventListener('click', closeJoin);
+$('#join-modal').addEventListener('click', (e) => e.target === e.currentTarget && closeJoin());
+$('#join-create').addEventListener('click', () => {
+  const s = joinServer;
+  const version = s && serverVersions(s).find((v) => versions.some((x) => x.id === v));
+  if (!s || !version) return;
+  busy($<HTMLButtonElement>('#join-create'), async () => {
+    const profile = { ...(await api.newProfile()), name: s.name, versionId: version };
+    const id: string | undefined = await guard(() => api.saveProfile(profile));
+    if (!id) return;
+    joinProfile = id;
+    // the store update with the new profile arrives right after the save
+    setTimeout(renderJoin, 100);
+  });
+});
 
 function renderServers() {
   const list = filteredServers();
@@ -1216,6 +1321,255 @@ const installing = new Set<string>();
 const contentProfileId = () => $<HTMLSelectElement>('#content-profile').value;
 const fmtCount = (n: number) => (n >= 1e6 ? t('{0} mln', (n / 1e6).toLocaleString(locale(), { maximumFractionDigits: 1 })) : n >= 1e3 ? t('{0} tys.', Math.round(n / 1e3)) : String(n));
 
+// ---------- mod checks: missing dependencies, wrong loader or game version, conflicts ----------
+
+interface ModProblem { severity: 'error' | 'warning'; kind: string; file: string; mod: string; message: string; missingId?: string }
+let modProblems: ModProblem[] = [];
+let modProblemsFor: string | undefined;
+
+async function runModCheck() {
+  const profileId = contentProfileId();
+  if (!profileId) return;
+  modProblems = (await guard(() => api.checkMods(profileId))) ?? [];
+  modProblemsFor = profileId;
+  renderModCheck();
+}
+
+function renderModCheck() {
+  const box = $('#mod-check');
+  const show = contentType === 'mod' && contentTab === 'installed' && modProblemsFor === contentProfileId()
+    && installed.some((i) => i.type === 'mod');
+  box.classList.toggle('hidden', !show);
+  if (!show) return;
+  const errors = modProblems.filter((p) => p.severity === 'error').length;
+  box.classList.toggle('ok', !modProblems.length);
+  box.classList.toggle('bad', errors > 0);
+  box.classList.toggle('warn', !errors && modProblems.length > 0);
+  $('#mod-check-text').replaceChildren(...(!modProblems.length
+    ? [el('i', { className: 'fa-solid fa-shield-halved' }), t('Nie wykryto problemów z modami.')]
+    : [el('b', { textContent: errors ? t('Problemy z modami: {0}', modProblems.length) : t('Ostrzeżenia: {0}', modProblems.length) })]));
+  $('#mod-problems').replaceChildren(...modProblems.map((p) => el('li', { className: p.severity },
+    el('i', { className: p.severity === 'error' ? 'fa-solid fa-circle-xmark' : 'fa-solid fa-triangle-exclamation' }), p.message)));
+  $('#mod-fix').classList.toggle('hidden', !modProblems.some((p) => p.kind === 'missing'));
+}
+
+$('#mod-fix').addEventListener('click', () => {
+  const profileId = contentProfileId();
+  const ids = [...new Set(modProblems.filter((p) => p.kind === 'missing').map((p) => p.missingId!))];
+  busy($<HTMLButtonElement>('#mod-fix'), async () => {
+    const res: { installed: string[]; notFound: string[] } | undefined = await guard(() => api.fixMissingMods(profileId, ids));
+    if (res?.notFound.length) toast(t('Nie znaleziono na Modrinth: {0}. Poszukaj ich ręcznie.', res.notFound.join(', ')), true);
+    await refreshInstalled(true);
+  });
+});
+
+/** Before starting: real errors get a chance to stop the launch, warnings don't. */
+async function confirmModsOk(profileId: string): Promise<boolean> {
+  const problems: ModProblem[] = (await api.checkMods(profileId).catch(() => [])) ?? [];
+  const errors = problems.filter((p) => p.severity === 'error');
+  if (!errors.length) return true;
+  const lines = errors.slice(0, 6).map((p) => `• ${p.message}`).join('\n') + (errors.length > 6 ? `\n• ${t('…i {0} więcej', errors.length - 6)}` : '');
+  return confirm(t('Gra prawdopodobnie się nie uruchomi:\n\n{0}\n\nSzczegóły i naprawa: Mody → Zainstalowane. Uruchomić mimo to?', lines));
+}
+
+// ---------- statistics ----------
+
+interface StatsSummary {
+  totalMs: number; sessions: number; avgMs: number; longestMs: number; streak: number; allTimeMs: number;
+  byDay: { date: string; ms: number }[];
+  byProfile: { profileId: string; name: string; ms: number; sessions: number }[];
+  byServer: { address: string; ms: number; joins: number }[];
+  byHour: number[];
+  names: Record<string, string>;
+}
+let statsDays = 30;
+
+/** Short durations for the charts: "3 h 20 min", "45 min". */
+const fmtShort = (ms: number) => (ms < 60_000 ? '0 min' : fmtPlaytime(ms));
+
+async function renderStats() {
+  const s: StatsSummary | undefined = await guard(() => api.getStats(statsDays));
+  if (!s) return;
+  const card = (label: string, value: string, note = '', i = 0) => {
+    const c = el('div', { className: 'stat-card glass-panel' }, el('small', { textContent: label }), el('b', { textContent: value }), el('span', { textContent: note }));
+    c.style.animationDelay = `${i * 40}ms`;
+    return c;
+  };
+  const rangeName = statsDays ? t('ostatnie {0} dni', statsDays) : t('od początku');
+  $('#stat-cards').replaceChildren(
+    card(t('Łącznie'), fmtShort(s.allTimeMs), t('we wszystkich profilach'), 0),
+    card(t('W tym okresie'), fmtShort(s.totalMs), rangeName, 1),
+    card(t('Sesje'), String(s.sessions), s.sessions ? t('średnio {0}, najdłuższa {1}', fmtShort(s.avgMs), fmtShort(s.longestMs)) : '', 2),
+    card(t('Seria'), t(s.streak === 1 ? '{0} dzień' : '{0} dni', s.streak), t('dni z rzędu z graniem'), 3),
+  );
+
+  // days: one bar per day; for "all time" over many months, group into weeks so bars stay readable
+  let buckets = s.byDay.map((d) => ({ label: d.date, ms: d.ms }));
+  if (buckets.length > 120) {
+    const weeks: { label: string; ms: number }[] = [];
+    for (let i = 0; i < buckets.length; i += 7) weeks.push({ label: buckets[i].label, ms: buckets.slice(i, i + 7).reduce((a, b) => a + b.ms, 0) });
+    buckets = weeks;
+  }
+  const max = Math.max(...buckets.map((b) => b.ms), 1);
+  const fmtDate = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
+  $('#day-chart').replaceChildren(...buckets.map((b, i) => {
+    const bar = el('div', { className: b.ms ? '' : 'zero', title: `${fmtDate(b.label)}: ${fmtShort(b.ms)}` });
+    bar.style.height = `${Math.max(3, (b.ms / max) * 100)}%`;
+    bar.style.animationDelay = `${Math.min(i * 12, 600)}ms`;
+    return bar;
+  }));
+  $('#day-axis').replaceChildren(...(buckets.length ? [el('span', { textContent: fmtDate(buckets[0].label) }), el('span', { textContent: fmtDate(buckets[buckets.length - 1].label) })] : []));
+
+  const rank = (rows: { name: string; ms: number; note: string }[], empty: string) => {
+    const top = Math.max(...rows.map((r) => r.ms), 1);
+    return rows.length ? rows.slice(0, 8).map((r, i) => {
+      const fill = el('i');
+      fill.style.width = `${(r.ms / top) * 100}%`;
+      const row = el('div', { className: 'rank-row' },
+        el('div', { className: 'rank-top' }, el('span', { textContent: r.name }), el('span', { textContent: r.note })),
+        el('div', { className: 'rank-bar' }, fill));
+      row.style.animationDelay = `${i * 40}ms`;
+      return row;
+    }) : [el('p', { className: 'muted', textContent: empty })];
+  };
+  $('#stats-profiles').replaceChildren(...rank(s.byProfile.map((p) => ({
+    name: s.names[p.profileId] ?? p.name, ms: p.ms, note: `${fmtShort(p.ms)} · ${t('sesje: {0}', p.sessions)}`,
+  })), t('Brak sesji w tym okresie.')));
+  $('#stats-servers').replaceChildren(...rank(s.byServer.map((v) => ({
+    name: v.address, ms: v.ms, note: `${fmtShort(v.ms)} · ${t('wejścia: {0}', v.joins)}`,
+  })), t('Brak gry na serwerach w tym okresie.')));
+
+  const hourMax = Math.max(...s.byHour, 1);
+  $('#hour-chart').replaceChildren(...s.byHour.map((ms, h) => {
+    const cell = el('div', { title: `${h}:00–${h + 1}:00 · ${fmtShort(ms)}` });
+    cell.style.setProperty('--a', String(ms ? 0.15 + (ms / hourMax) * 0.85 : 0.03));
+    return cell;
+  }));
+}
+
+document.querySelectorAll<HTMLButtonElement>('#stats-range button').forEach((b) =>
+  b.addEventListener('click', () => {
+    statsDays = Number(b.dataset.days);
+    document.querySelectorAll('#stats-range button').forEach((x) => x.classList.toggle('active', x === b));
+    renderStats();
+  }));
+document.querySelector('.nav[data-view="stats"]')?.addEventListener('click', () => renderStats());
+
+// ---------- importing from other launchers ----------
+
+interface FoundInstance { key: string; source: string; sourceName: string; name: string; versionId: string; loader: Profile['loader']; loaderVersion: string; mods: number; sharedDir: boolean; gameDir: string }
+let foundInstances: FoundInstance[] = [];
+const importChosen = new Set<string>();
+
+$('#import-open').addEventListener('click', async () => {
+  $('#import-list').replaceChildren(...skeletons('project', 3));
+  $('#import-modal').classList.remove('hidden');
+  foundInstances = (await guard(() => api.findInstances())) ?? [];
+  importChosen.clear();
+  renderImport();
+});
+
+function renderImport() {
+  const list = $('#import-list');
+  if (!foundInstances.length) {
+    list.replaceChildren(el('p', { className: 'muted', textContent: t('Nie znaleziono instancji w znanych miejscach. Wskaż folder ręcznie.') }));
+  } else {
+    list.replaceChildren(...foundInstances.map((i): HTMLElement => {
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.checked = importChosen.has(i.key);
+      box.addEventListener('change', () => {
+        if (box.checked) importChosen.add(i.key);
+        else importChosen.delete(i.key);
+        renderImport();
+      });
+      const row = document.createElement('label');
+      row.className = `join-choice perf-choice${importChosen.has(i.key) ? ' selected' : ''}`;
+      row.title = i.gameDir;
+      const loader = LOADER_NAMES[i.loader];
+      const details = [versionLabel(i.versionId), loader ? `${loader}${i.loaderVersion ? ` ${i.loaderVersion}` : ''}` : '', i.mods ? t('modów: {0}', i.mods) : '']
+        .filter(Boolean).join(' · ');
+      row.append(box, el('div', { className: 'grow' }, i.name, el('small', { textContent: details })), el('span', { className: 'import-src', textContent: i.sourceName }));
+      return row;
+    }));
+  }
+  $<HTMLButtonElement>('#import-go').disabled = !importChosen.size;
+}
+
+$('#import-folder').addEventListener('click', async () => {
+  const more: FoundInstance[] | undefined = await guard(() => api.instancesFromFolder());
+  if (!more) return;
+  if (!more.length) return toast(t('W tym folderze nie ma instancji Prism, MultiMC, CurseForge, Modrinth App ani oficjalnego launchera.'), true);
+  for (const i of more) {
+    if (!foundInstances.some((x) => x.key === i.key)) foundInstances.push(i);
+    importChosen.add(i.key);
+  }
+  renderImport();
+});
+$('#import-go').addEventListener('click', async () => {
+  const keys = [...importChosen];
+  $('#import-modal').classList.add('hidden');
+  const created: string[] | undefined = await guard(() => api.importInstances(keys));
+  if (created?.length) editingId = created[created.length - 1];
+});
+$('#import-close').addEventListener('click', () => $('#import-modal').classList.add('hidden'));
+$('#import-modal').addEventListener('click', (e) => e.target === e.currentTarget && $('#import-modal').classList.add('hidden'));
+
+// ---------- performance mods ----------
+
+interface PerfPlanItem { projectId?: string; title: string; why: string; iconUrl?: string; installed: boolean }
+let perfPlan: PerfPlanItem[] = [];
+const perfChosen = new Set<string>();
+
+$('#perf-open').addEventListener('click', async () => {
+  const profileId = contentProfileId();
+  const profile = store.profiles.find((p) => p.id === profileId);
+  if (!profile) return;
+  if (profile.loader === 'vanilla') return toast(t('Mody wydajności wymagają mod loadera. Ustaw Fabric w zakładce Profile.'), true);
+  $('#perf-sub').textContent = t('Sprawdzone mody przyspieszające grę, dobrane do profilu {0} ({1}).', profile.name, profileLabel(profile));
+  $('#perf-list').replaceChildren(...skeletons('project', 4));
+  $('#perf-modal').classList.remove('hidden');
+  perfPlan = (await guard(() => api.perfPlan(profileId))) ?? [];
+  perfChosen.clear();
+  for (const p of perfPlan) if (p.projectId && !p.installed) perfChosen.add(p.projectId);
+  renderPerf();
+});
+
+function renderPerf() {
+  $('#perf-list').replaceChildren(...perfPlan.map((p): HTMLElement => {
+    const available = !!p.projectId && !p.installed;
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = available && perfChosen.has(p.projectId!);
+    box.disabled = !available;
+    box.addEventListener('change', () => {
+      if (box.checked) perfChosen.add(p.projectId!);
+      else perfChosen.delete(p.projectId!);
+      renderPerf();
+    });
+    const status: Node | string = p.installed ? el('span', { className: 'fit', textContent: t('✓ Zainstalowany') })
+      : !p.projectId ? el('span', { className: 'unfit', textContent: t('Brak dla tej wersji') }) : '';
+    const row = document.createElement('label');
+    row.className = `join-choice perf-choice${available ? '' : ' off'}`;
+    row.append(box, projectIcon(p.iconUrl),
+      el('div', { className: 'grow' }, p.title, el('small', { textContent: p.why })), status);
+    return row;
+  }));
+  const go = $<HTMLButtonElement>('#perf-go');
+  go.disabled = !perfChosen.size;
+  if (!perfPlan.some((p) => p.projectId && !p.installed)) $('#perf-sub').textContent = t('Wszystkie dostępne mody wydajności są już zainstalowane.');
+}
+
+$('#perf-go').addEventListener('click', async () => {
+  const profileId = contentProfileId();
+  const items = perfPlan.filter((p) => p.projectId && perfChosen.has(p.projectId)).map((p) => ({ projectId: p.projectId!, title: p.title }));
+  $('#perf-modal').classList.add('hidden');
+  await guard(() => api.installPerf(profileId, items));
+  await refreshInstalled(true);
+});
+$('#perf-close').addEventListener('click', () => $('#perf-modal').classList.add('hidden'));
+$('#perf-modal').addEventListener('click', (e) => e.target === e.currentTarget && $('#perf-modal').classList.add('hidden'));
+
 function contentNotice() {
   const profile = store.profiles.find((p) => p.id === contentProfileId());
   const box = $('#content-notice');
@@ -1306,6 +1660,8 @@ function renderContent() {
   contentNotice();
   const isPack = contentType === 'modpack';
   $('#modpack-import').classList.toggle('hidden', !isPack);
+  $('#perf-open').classList.toggle('hidden', contentType !== 'mod');
+  renderModCheck();
   $('#content-tab').classList.toggle('hidden', isPack);
   $('#content-search-bar').classList.toggle('hidden', contentTab === 'installed' && !isPack);
   const forType = installed.filter((i) => i.type === contentType);
@@ -1334,6 +1690,7 @@ async function refreshInstalled(animate = false) {
   installed = (await guard(() => api.listContent(contentProfileId()))) ?? [];
   if (animate) animateFrom = 0;
   renderContent();
+  if (contentType === 'mod' && contentTab === 'installed') runModCheck();
 }
 
 let searchRequest = 0;
@@ -1392,7 +1749,10 @@ document.querySelectorAll<HTMLButtonElement>('#content-tab button').forEach((b) 
     document.querySelectorAll('#content-tab button').forEach((x) => x.classList.toggle('active', x === b));
     animateFrom = 0;
     renderContent();
-    if (contentTab === 'installed') checkContentUpdates();
+    if (contentTab === 'installed') {
+      checkContentUpdates();
+      runModCheck();
+    }
   }));
 let searchTimer: number | undefined;
 $('#content-search').addEventListener('input', () => {

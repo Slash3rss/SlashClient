@@ -129,6 +129,26 @@ async function pickVersion(projectId: string, gameVersion: string, loader?: stri
   return versions[0];
 }
 
+/**
+ * A project (by slug or id) that has a version for this game version and loader,
+ * or undefined when it doesn't exist or doesn't fit.
+ */
+export async function findFitting(slugOrId: string, gameVersion: string, loader?: string): Promise<{ projectId: string; slug: string; title: string; iconUrl?: string } | undefined> {
+  try {
+    const project = await get<{ id: string; slug: string; title: string; icon_url?: string; project_type: string }>(`${API}/project/${encodeURIComponent(slugOrId)}`);
+    if (project.project_type !== 'mod') return undefined;
+    await pickVersion(project.id, gameVersion, loader);
+    return { projectId: project.id, slug: project.slug, title: project.title, iconUrl: project.icon_url };
+  } catch {
+    return undefined;
+  }
+}
+
+/** Mod ids that are already installed (by Modrinth project id), so a pack doesn't reinstall them. */
+export async function installedProjectIds(gameDir: string): Promise<Set<string>> {
+  return new Set((await readManifest(gameDir)).map((m) => m.projectId));
+}
+
 // ---------- installed content, tracked per instance ----------
 
 export interface InstalledItem {

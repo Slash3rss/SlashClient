@@ -20,13 +20,17 @@ import { loadStore, newProfile, profileGameDir, saveStore, setSecretCodec, type 
 import { LOADER_NAMES, loaderVersions, type Loader } from './loaders';
 import {
   checkUpdates, downloadModpack, identifyModpack, installMrpack, installProject, latestModpackVersion, listContentVersions,
-  exportMrpack, listInstalled, removeContent, search, setEnabled, updateMrpack,
+  exportMrpack, findFitting, installedProjectIds, listInstalled, removeContent, search, setEnabled, updateMrpack,
   type ContentType, type ModpackInfo, type ProjectType, type UpdateInfo, type VersionInfo,
 } from './modrinth';
 import { listServers, pingServer } from './servers';
 import { getManifest } from './versions';
 import { newsArticle, newsPage, type NewsFilter } from './news';
 import { ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin } from './skins';
+import { checkModsFolder, installedModIds } from './modcheck';
+import { appendSession, readSessions, summarize } from './stats';
+import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type ForeignInstance } from './importers';
+import { perfModsFor } from './perfmods';
 import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePreset, type SkinPreset } from './skinLibrary';
 import fsp from 'node:fs/promises';
 import { backupWorld, deleteFile, listBackups, listScreenshots, listWorlds, restoreBackup } from './worlds';
@@ -284,6 +288,117 @@ handle('content:update', async (profileId: string, items: Pick<UpdateInfo, 'type
     throw err;
   }
 });
+// ---------- statistics ----------
+
+handle('stats:get', async (days: number) => {
+  const sessions = await readSessions();
+  const summary = summarize(sessions, Date.now(), days);
+  // profiles counted play time before stats.json existed; sessions also cover deleted profiles: take the larger
+  const allTimeMs = Math.max(store.profiles.reduce((sum, p) => sum + (p.playTimeMs ?? 0), 0), sessions.reduce((sum, s) => sum + s.end - s.start, 0));
+  return { ...summary, allTimeMs, names: Object.fromEntries(store.profiles.map((p) => [p.id, p.name])) };
+});
+
+// ---------- importing instances from other launchers ----------
+
+/** Instances found by the last scan; the page picks from these by key, never by path. */
+let foreign = new Map<string, ForeignInstance>();
+const foreignKey = (i: ForeignInstance) => `${i.source}|${i.gameDir}|${i.name}`;
+function remember(list: ForeignInstance[]) {
+  for (const i of list) foreign.set(foreignKey(i), i);
+  return list.map((i) => ({ key: foreignKey(i), source: i.source, sourceName: SOURCE_NAMES[i.source], name: i.name, versionId: i.versionId, loader: i.loader, loaderVersion: i.loaderVersion, mods: i.mods, sharedDir: i.sharedDir, gameDir: i.gameDir }));
+}
+handle('import:find', async () => {
+  foreign = new Map();
+  return remember(await findInstances());
+});
+handle('import:folder', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(win!, { title: t('Wybierz folder instancji'), properties: ['openDirectory'] });
+  if (canceled || !filePaths[0]) return undefined;
+  return remember(await instanceFromFolder(filePaths[0]));
+});
+handle('import:run', async (keys: string[]) => {
+  const chosen = keys.map((k) => foreign.get(k)).filter((i): i is ForeignInstance => !!i);
+  const created: string[] = [];
+  for (const inst of chosen) {
+    const task = startTask(t('Import: {0}', inst.name));
+    try {
+      const profile = newProfile({ name: inst.name, versionId: inst.versionId, loader: inst.loader, loaderVersion: inst.loaderVersion });
+      const dest = profileGameDir(profile);
+      await copyInstance(inst, dest, (done, total, item) => task.progress(item ? t('Kopiowanie: {0}', item) : t('Gotowe'), done, total));
+      if (inst.icon) await iconFromFile(dest, inst.icon).then(() => { profile.icon = 'custom'; profile.iconVersion = Date.now(); }, () => {});
+      store.profiles.push(profile);
+      await persist();
+      created.push(profile.id);
+      task.finish(true, t('Zaimportowano {0} z {1}.', inst.name, SOURCE_NAMES[inst.source]), profile.id);
+    } catch (err) {
+      task.finish(false, (err as Error).message);
+    }
+  }
+  return created;
+});
+
+// ---------- performance mods and mod checks ----------
+
+interface PerfPlanItem { projectId?: string; title: string; why: string; iconUrl?: string; installed: boolean }
+
+/** Which performance mods fit this profile, and which of them are already there. */
+handle('perf:plan', async (profileId: string): Promise<PerfPlanItem[]> => {
+  const { profile, gameDir, gameVersion } = await profileTarget(profileId);
+  const entries = perfModsFor(profile.loader);
+  const have = await installedProjectIds(gameDir);
+  // mods from a modpack or added by hand are not in our list: match them by mod id ("ferrite-core" ↔ "ferritecore")
+  const norm = (s: string) => s.toLowerCase().replace(/[-_]/g, '');
+  const ids = new Set([...(await installedModIds(gameDir))].map(norm));
+  return Promise.all(entries.map(async (e) => {
+    for (const slug of e.slugs) {
+      const hit = await findFitting(slug, gameVersion, profile.loader);
+      if (hit) return { projectId: hit.projectId, title: hit.title, why: t(e.why), iconUrl: hit.iconUrl, installed: have.has(hit.projectId) || ids.has(norm(hit.slug)) };
+    }
+    // nothing fits this version, but it may still be there already
+    if (e.slugs.some((s) => ids.has(norm(s)))) return { title: e.slugs[0], why: t(e.why), installed: true };
+    return { title: e.slugs[0], why: t(e.why), installed: false };
+  }));
+});
+/** Installs several Modrinth mods (with their dependencies) as one task. */
+async function installMany(profileId: string, items: { projectId: string; title: string }[], title: string) {
+  const { profile, gameDir, gameVersion } = await profileTarget(profileId);
+  const task = startTask(title);
+  const done: string[] = [];
+  const failed: string[] = [];
+  for (const [i, item] of items.entries()) {
+    task.progress(t('{0} ({1}/{2})', item.title, i + 1, items.length), i, items.length);
+    try {
+      done.push(...(await installProject(gameDir, item.projectId, 'mod', gameVersion, profile.loader)));
+    } catch {
+      failed.push(item.title);
+    }
+  }
+  const summary = t('Zainstalowano: {0}', [...new Set(done)].join(', ') || '—') + (failed.length ? ` · ${t('Nie udało się: {0}', failed.join(', '))}` : '');
+  task.finish(!failed.length || done.length > 0, summary);
+  return { done, failed };
+}
+handle('perf:install', (profileId: string, items: { projectId: string; title: string }[]) => installMany(profileId, items, t('Mody wydajności')));
+handle('mods:check', async (profileId: string) => {
+  const { profile, gameDir, gameVersion } = await profileTarget(profileId);
+  return checkModsFolder(gameDir, profile.loader, gameVersion);
+});
+/** Looks the missing mod ids up on Modrinth (id = slug for most mods) and installs those found. */
+handle('mods:fixMissing', async (profileId: string, ids: string[]) => {
+  const { profile, gameVersion } = await profileTarget(profileId);
+  const aliases: Record<string, string> = { fabric: 'fabric-api', 'fabric-api-base': 'fabric-api', quilted_fabric_api: 'qsl', cloth_config: 'cloth-config', architectury: 'architectury-api' };
+  const found: { projectId: string; title: string }[] = [];
+  const notFound: string[] = [];
+  for (const id of ids) {
+    const candidates = [aliases[id], id.startsWith('fabric-') ? 'fabric-api' : undefined, id, id.replace(/_/g, '-')].filter((x): x is string => !!x);
+    let hit;
+    for (const c of [...new Set(candidates)]) if ((hit = await findFitting(c, gameVersion, profile.loader))) break;
+    if (hit && !found.some((f) => f.projectId === hit!.projectId)) found.push({ projectId: hit.projectId, title: hit.title });
+    else if (!hit) notFound.push(id);
+  }
+  if (found.length) await installMany(profileId, found, t('Brakujące mody'));
+  return { installed: found.map((f) => f.title), notFound };
+});
+
 handle('content:install', async (profileId: string, projectId: string, type: ContentType, title?: string, icon?: string, versionId?: string) => {
   const { profile, gameDir, gameVersion } = await profileTarget(profileId);
   if (type === 'mod' && profile.loader === 'vanilla') throw new Error('Ten profil nie ma mod loadera. Ustaw Fabric w zakładce Profile.');
@@ -622,6 +737,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
   // keep the tail of the output for crash analysis
   const recentLog: string[] = [];
   let lastServer: { address: string; at: number } | undefined = server ? { address: server, at: Date.now() } : undefined;
+  const joins: { address: string; at: number }[] = lastServer ? [lastServer] : [];
   const startedAt = Date.now();
   const loaderName = profile.loader === 'vanilla' ? '' : ` · ${LOADER_NAMES[profile.loader]}`;
   const presence: Presence = {
@@ -640,7 +756,11 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
       if (recentLog.length > 3000) recentLog.shift();
       send('game:log', line);
       const joined = serverFromLog(line);
-      if (joined) lastServer = { address: joined, at: Date.now() };
+      if (joined) {
+        lastServer = { address: joined, at: Date.now() };
+        // Quick Play logs the same connect we already counted
+        if (joins.at(-1)?.address !== joined || Date.now() - joins.at(-1)!.at > 30_000) joins.push(lastServer);
+      }
       const update = presenceFromLog(line);
       if (update && update.state !== presence.state) {
         presence.state = update.state;
@@ -659,6 +779,9 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     game = undefined;
     if (profile.syncOptions) pushShared(profileGameDir(profile)).catch(() => {});
     recordSession(profile, startedAt, lastServer).catch(() => {});
+    resolveVersionId(profile.versionId).then((versionId) => appendSession({
+      start: startedAt, end: Date.now(), profileId: profile.id, profileName: profile.name, versionId, loader: profile.loader, servers: joins,
+    })).catch(() => {});
     showPresence(idlePresence());
     send('game:exit', { code, signal, byUser: killRequested });
     if (code !== 0 && !killRequested) {

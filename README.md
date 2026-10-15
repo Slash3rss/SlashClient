@@ -20,7 +20,13 @@ Launcher Minecraft: Java Edition w Electronie i TypeScripcie.
 - czas gry w każdym profilu i kafelek „Wróć do gry” (ostatni serwer albo świat),
 - rekomendacja RAM i zestawy flag JVM (G1, ZGC) dobierane do wersji Javy,
 - kopiowanie profili i eksport do `.mrpack`,
-- logi z wyszukiwarką, filtrem poziomów i udostępnianiem na mclo.gs (po zgodzie, z ukrytymi ścieżkami).
+- logi z wyszukiwarką, filtrem poziomów i udostępnianiem na mclo.gs (po zgodzie, z ukrytymi ścieżkami),
+- dołączanie do serwera z wyborem profilu: profile pasujące do wersji serwera są oznaczone, launcher pamięta wybór,
+- mody wydajności jednym kliknięciem (Sodium, Lithium, FerriteCore i inne, dobrane do loadera i wersji),
+- sprawdzanie modów przed startem: brakujące zależności (z instalacją z Modrinth), zły loader, zła wersja gry, konflikty, duplikaty,
+- import instancji z Prism Launcher, MultiMC, CurseForge, Modrinth App i oficjalnego launchera,
+- biblioteka skinów (presety ze skinem, modelem rąk i peleryną) i przełączanie kont w zakładce Konta,
+- statystyki: czas gry według dni, profile, serwery, pory grania i seria dni.
 
 ## Uruchomienie
 

@@ -32,6 +32,7 @@
       <button class="nav" data-view="content"><i class="fa-solid fa-puzzle-piece"></i>Mody</button>
       <button class="nav" data-view="worlds"><i class="fa-solid fa-earth-europe"></i>Światy</button>
       <button class="nav" data-view="profiles"><i class="fa-solid fa-layer-group"></i>Profile</button>
+      <button class="nav" data-view="stats"><i class="fa-solid fa-chart-simple"></i>Statystyki</button>
       <button class="nav" data-view="accounts"><i class="fa-solid fa-user"></i>Konta</button>
       <button class="nav" data-view="settings"><i class="fa-solid fa-gear"></i>Ustawienia</button>
     </nav>
@@ -152,11 +153,19 @@
       <div class="filters glass-panel" id="content-search-bar">
         <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="content-search" placeholder="Szukaj na Modrinth…"></div>
         <button id="modpack-import" class="hidden"><i class="fa-solid fa-file-import"></i> Importuj .mrpack</button>
+        <button id="perf-open" class="hidden"><i class="fa-solid fa-bolt"></i> Mody wydajności</button>
       </div>
       <div class="updates-bar glass-panel hidden" id="updates-bar">
         <span id="updates-text"></span>
         <button type="button" id="updates-check"><i class="fa-solid fa-rotate"></i> Sprawdź aktualizacje</button>
         <button type="button" class="primary hidden" id="updates-all"><i class="fa-solid fa-circle-arrow-up"></i> Aktualizuj wszystko</button>
+      </div>
+      <div class="mod-check glass-panel hidden" id="mod-check">
+        <div class="mod-check-head">
+          <span id="mod-check-text"></span>
+          <button type="button" class="primary hidden" id="mod-fix"><i class="fa-solid fa-wand-magic-sparkles"></i> Zainstaluj brakujące</button>
+        </div>
+        <ul id="mod-problems"></ul>
       </div>
       <div class="project-list" id="content-list"></div>
       <button class="more hidden" id="content-more">Pokaż więcej</button>
@@ -178,9 +187,48 @@
       <div id="worlds-content"></div>
     </section>
 
+    <!-- Statistics -->
+    <section class="view" id="view-stats">
+      <header class="view-head">
+        <h2 class="gradient-title">Statystyki</h2>
+        <div class="segmented" id="stats-range">
+          <button data-days="7">7 dni</button>
+          <button class="active" data-days="30">30 dni</button>
+          <button data-days="90">90 dni</button>
+          <button data-days="0">Wszystko</button>
+        </div>
+      </header>
+      <div class="stat-cards" id="stat-cards"></div>
+      <div class="card glass-panel">
+        <h3><i class="fa-solid fa-calendar-days"></i> Czas gry według dni</h3>
+        <div class="day-chart" id="day-chart"></div>
+        <div class="day-axis" id="day-axis"></div>
+      </div>
+      <div class="split two">
+        <div class="card glass-panel">
+          <h3><i class="fa-solid fa-layer-group"></i> Profile</h3>
+          <div class="rank" id="stats-profiles"></div>
+        </div>
+        <div class="card glass-panel">
+          <h3><i class="fa-solid fa-server"></i> Serwery</h3>
+          <div class="rank" id="stats-servers"></div>
+        </div>
+      </div>
+      <div class="card glass-panel">
+        <h3><i class="fa-solid fa-clock"></i> Pory grania</h3>
+        <div class="hour-chart" id="hour-chart"></div>
+        <div class="hour-axis"><span>0:00</span><span>6:00</span><span>12:00</span><span>18:00</span><span>23:00</span></div>
+      </div>
+    </section>
+
     <!-- Profiles -->
     <section class="view" id="view-profiles">
-      <header class="view-head"><h2 class="gradient-title">Profile</h2><button class="primary" id="profile-add"><i class="fa-solid fa-plus"></i> Nowy profil</button></header>
+      <header class="view-head"><h2 class="gradient-title">Profile</h2>
+        <div class="row head-actions">
+          <button id="import-open"><i class="fa-solid fa-file-import"></i> Importuj z innego launchera</button>
+          <button class="primary" id="profile-add"><i class="fa-solid fa-plus"></i> Nowy profil</button>
+        </div>
+      </header>
       <div class="split">
         <ul class="list" id="profile-list"></ul>
         <form class="card glass-panel form" id="profile-form">
@@ -378,6 +426,53 @@
         <h2 id="versions-title"></h2>
         <label class="check" id="versions-compat-wrap"><input type="checkbox" id="versions-compat" checked> Tylko wersje zgodne z tym profilem</label>
         <div class="version-list" id="versions-list"></div>
+      </div>
+    </div>
+  </div>
+  <div class="modal hidden" id="join-modal">
+    <div class="modal-box glass-panel join-box">
+      <button class="icon-btn modal-close" id="join-close" title="Zamknij"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-body">
+        <div class="join-head">
+          <img id="join-icon" alt="">
+          <div>
+            <h2 id="join-name"></h2>
+            <small class="muted" id="join-meta"></small>
+          </div>
+        </div>
+        <p class="muted" id="join-hint"></p>
+        <div class="join-list" id="join-list"></div>
+        <div class="row join-actions">
+          <button class="hidden" id="join-create"><i class="fa-solid fa-plus"></i> <span id="join-create-label"></span></button>
+          <button class="primary" id="join-go"><i class="fa-solid fa-play"></i> Dołącz</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal hidden" id="import-modal">
+    <div class="modal-box glass-panel join-box import-box">
+      <button class="icon-btn modal-close" id="import-close" title="Zamknij"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-body">
+        <h2><i class="fa-solid fa-file-import"></i> Import z innego launchera</h2>
+        <p class="muted" id="import-sub">Prism Launcher, MultiMC, CurseForge, Modrinth App i oficjalny launcher. Pliki są kopiowane, oryginały zostają bez zmian.</p>
+        <div class="join-list" id="import-list"></div>
+        <div class="row join-actions">
+          <button id="import-folder"><i class="fa-solid fa-folder-open"></i> Inny folder…</button>
+          <button class="primary" id="import-go"><i class="fa-solid fa-download"></i> Importuj zaznaczone</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal hidden" id="perf-modal">
+    <div class="modal-box glass-panel join-box">
+      <button class="icon-btn modal-close" id="perf-close" title="Zamknij"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-body">
+        <h2><i class="fa-solid fa-bolt"></i> Mody wydajności</h2>
+        <p class="muted" id="perf-sub"></p>
+        <div class="join-list" id="perf-list"></div>
+        <div class="row join-actions">
+          <button class="primary" id="perf-go"><i class="fa-solid fa-download"></i> Zainstaluj zaznaczone</button>
+        </div>
       </div>
     </div>
   </div>
