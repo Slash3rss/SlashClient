@@ -58,6 +58,37 @@ public final class TestHooks {
 		SlashHud.LOG.info("Badge test: own uuid {} shows logo: {}, server says SlashClient: {}", mc.player.getUUID(), Badges.usesSlash(mc.player.getUUID()), Badges.knownFromServer(mc.player.getUUID()));
 	}
 
+	/** SkyUp.pl: first after loading, and removing or moving it does nothing. */
+	public static void checkPinnedServer() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		var list = new net.minecraft.client.multiplayer.ServerList(mc);
+		list.load();
+		list.add(new net.minecraft.client.multiplayer.ServerData("Inny serwer", "example.org", net.minecraft.client.multiplayer.ServerData.Type.OTHER), false);
+		list.save();
+		list.load();
+		check(PinnedServer.is(list.get(0)), "SkyUp.pl is first after loading");
+		list.remove(list.get(0));
+		check(PinnedServer.is(list.get(0)), "SkyUp.pl cannot be removed");
+		list.swap(0, 1);
+		list.swap(1, 0);
+		check(PinnedServer.is(list.get(0)) && "example.org".equals(list.get(1).ip), "SkyUp.pl cannot be moved");
+		list.save();
+		SlashHud.LOG.info("Pinned server test: OK ({} servers, first {})", list.size(), list.get(0).ip);
+	}
+
+	private static void check(boolean ok, String what) {
+		if (!ok) throw new AssertionError(what);
+	}
+
+	public static boolean deleteButtonActive() {
+		var screen = net.minecraft.client.Minecraft.getInstance().gui.screen();
+		if (screen == null) return false;
+		for (var w : net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(screen)) {
+			if (w.getMessage().getString().equals(net.minecraft.network.chat.Component.translatable("selectServer.delete").getString())) return w.active;
+		}
+		throw new AssertionError("no Delete button");
+	}
+
 	public static void endOnVanillaMenu() {
 		SlashHud.config.customMenu = false;
 	}

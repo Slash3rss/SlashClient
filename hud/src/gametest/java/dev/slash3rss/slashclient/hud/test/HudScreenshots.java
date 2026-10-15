@@ -41,6 +41,24 @@ public class HudScreenshots implements FabricClientGameTest {
 		context.runOnClient(mc -> TestHooks.slashMenu());
 		context.waitTicks(5);
 
+		// SkyUp.pl pinned first in the multiplayer list
+		context.runOnClient(mc -> TestHooks.checkPinnedServer());
+		context.setScreen(() -> new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(new net.minecraft.client.gui.screens.TitleScreen()));
+		context.waitTicks(20);
+		context.getInput().setCursorPos(427, 98);
+		context.getInput().pressMouse(0);
+		context.waitTicks(5);
+		boolean deleteActive = context.computeOnClient(mc -> TestHooks.deleteButtonActive());
+		if (deleteActive) throw new AssertionError("Delete must be greyed out for SkyUp.pl");
+		context.getInput().setCursorPos(150, 98);
+		context.waitTicks(5);
+		context.takeScreenshot("servers-pinned-hover");
+		context.getInput().setCursorPos(150, 170);
+		context.waitTicks(5);
+		context.takeScreenshot("servers-second-hover");
+		context.setScreen(() -> null);
+		context.waitTicks(5);
+
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			// gear and effects so the armour, item and effect modules have something to show
 			for (String cmd : new String[] {

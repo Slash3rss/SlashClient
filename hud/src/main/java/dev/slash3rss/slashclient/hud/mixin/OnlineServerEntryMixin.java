@@ -1,0 +1,50 @@
+package dev.slash3rss.slashclient.hud.mixin;
+
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
+import dev.slash3rss.slashclient.hud.PinnedServer;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
+import net.minecraft.client.gui.screens.multiplayer.ServerSelectionList;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.ServerList;
+import net.minecraft.resources.Identifier;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+/**
+ * No move arrows that would move SkyUp.pl: none down on SkyUp.pl itself, none up on the
+ * server right under it. Clicks and Shift+arrow keys go through swap(), stopped here too.
+ */
+@Mixin(ServerSelectionList.OnlineServerEntry.class)
+abstract class OnlineServerEntryMixin {
+	@Shadow @Final private JoinMultiplayerScreen screen;
+	@Shadow @Final private ServerData serverData;
+
+	private int slashclient$index() {
+		ServerList servers = screen.getServers();
+		for (int i = 0; i < servers.size(); i++) if (servers.get(i) == serverData) return i;
+		return -1;
+	}
+
+	@WrapOperation(method = "extractContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
+	private void slashclient$hideArrows(GuiGraphicsExtractor g, RenderPipeline pipeline, Identifier sprite, int x, int y, int w, int h, Operation<Void> original) {
+		String path = sprite.getPath();
+		boolean up = path.contains("move_up");
+		boolean down = path.contains("move_down");
+		if (down && PinnedServer.is(serverData)) return;
+		if (up && slashclient$index() == 1 && PinnedServer.is(screen.getServers().get(0))) return;
+		original.call(g, pipeline, sprite, x, y, w, h);
+	}
+
+	@Inject(method = "swap", at = @At("HEAD"), cancellable = true)
+	private void slashclient$noMovePinned(int a, int b, CallbackInfo ci) {
+		ServerList servers = screen.getServers();
+		if ((a >= 0 && a < servers.size() && PinnedServer.is(servers.get(a))) || (b >= 0 && b < servers.size() && PinnedServer.is(servers.get(b)))) ci.cancel();
+	}
+}

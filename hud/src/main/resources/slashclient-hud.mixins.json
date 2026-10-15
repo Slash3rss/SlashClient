@@ -7,10 +7,13 @@
 		"ChatComponentMixin",
 		"EntityRendererMixin",
 		"GuiMixin",
+		"JoinMultiplayerScreenMixin",
 		"LightmapMixin",
 		"MouseHandlerMixin",
+		"OnlineServerEntryMixin",
 		"PlayerTabOverlayMixin",
-		"ScreenEffectRendererMixin"
+		"ScreenEffectRendererMixin",
+		"ServerListMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
