@@ -1,4 +1,5 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeImage, safeStorage, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, protocol, safeStorage, shell } from 'electron';
+import { pathToFileURL } from 'node:url';
 import type { ChildProcess } from 'node:child_process';
 import path from 'node:path';
 import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, pollDeviceCode, startDeviceCode } from './auth';
@@ -14,6 +15,7 @@ import {
 } from './modrinth';
 import { listServers, pingServer } from './servers';
 import { getManifest } from './versions';
+import { backupWorld, deleteFile, listBackups, listScreenshots, listWorlds, restoreBackup } from './worlds';
 
 let win: BrowserWindow | undefined;
 let store: StoreData;
@@ -204,7 +206,27 @@ handle('modpack:import', async () => {
 handle('servers:list', (force?: boolean) => listServers(force));
 handle('servers:ping', (address: string) => pingServer(address));
 
-handle('game:launch', async (profileId: string, accountId: string, server?: string) => {
+// ---------- worlds, backups, screenshots ----------
+
+const gameDirOf = (profileId: string) => profileGameDir(profileById(profileId));
+handle('worlds:list', (profileId: string) => listWorlds(gameDirOf(profileId)));
+handle('worlds:backup', (profileId: string, folder: string) => backupWorld(gameDirOf(profileId), folder));
+handle('backups:list', (profileId: string) => listBackups(gameDirOf(profileId)));
+handle('backups:restore', (profileId: string, name: string) => restoreBackup(gameDirOf(profileId), name));
+handle('backups:delete', (profileId: string, name: string) => deleteFile(gameDirOf(profileId), 'backups', name));
+handle('screenshots:list', (profileId: string) => listScreenshots(gameDirOf(profileId)));
+handle('screenshots:delete', (profileId: string, name: string) => deleteFile(gameDirOf(profileId), 'screenshots', name));
+handle('file:open', (file: string) => {
+  if (isInsideInstances(file)) return shell.openPath(file);
+});
+
+/** True for files inside one of the profiles' game folders. */
+function isInsideInstances(file: string): boolean {
+  const full = path.resolve(file);
+  return store.profiles.some((p) => full.startsWith(path.resolve(profileGameDir(p)) + path.sep));
+}
+
+handle('game:launch', async (profileId: string, accountId: string, server?: string, world?: string) => {
   if (game) throw new Error('Gra już działa.');
   const profile = store.profiles.find((p) => p.id === profileId);
   let account = store.accounts.find((a) => a.id === accountId);
@@ -247,6 +269,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
       }
     },
     server,
+    world,
   });
   game = child;
   killRequested = false;
@@ -275,7 +298,15 @@ handle('game:kill', () => {
   game?.kill();
 });
 
+// Lets the page show screenshots and world icons (only images inside profile folders).
+protocol.registerSchemesAsPrivileged([{ scheme: 'slash-media', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
+
 app.whenReady().then(async () => {
+  protocol.handle('slash-media', (request) => {
+    const file = new URL(request.url).searchParams.get('path') ?? '';
+    if (!/\.(png|jpe?g)$/i.test(file) || !isInsideInstances(file)) return new Response('Not found', { status: 404 });
+    return net.fetch(pathToFileURL(file).toString());
+  });
   if (safeStorage.isEncryptionAvailable()) {
     setSecretCodec({
       encrypt: (s) => `enc:${safeStorage.encryptString(s).toString('base64')}`,

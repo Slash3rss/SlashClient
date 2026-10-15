@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://mc-heads.net https://api.slash3rss.dev https://cdn.modrinth.com; style-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: slash-media: https://mc-heads.net https://api.slash3rss.dev https://cdn.modrinth.com; style-src 'self'">
   <title>SlashClient</title>
   <link rel="stylesheet" href="fa/css/all.min.css">
   <link rel="stylesheet" href="style.css">
@@ -24,6 +24,7 @@
       <button class="nav active" data-view="play"><i class="fa-solid fa-play"></i>Graj</button>
       <button class="nav" data-view="servers"><i class="fa-solid fa-server"></i>Serwery</button>
       <button class="nav" data-view="content"><i class="fa-solid fa-puzzle-piece"></i>Mody</button>
+      <button class="nav" data-view="worlds"><i class="fa-solid fa-earth-europe"></i>Światy</button>
       <button class="nav" data-view="profiles"><i class="fa-solid fa-layer-group"></i>Profile</button>
       <button class="nav" data-view="accounts"><i class="fa-solid fa-user"></i>Konta</button>
       <button class="nav" data-view="settings"><i class="fa-solid fa-gear"></i>Ustawienia</button>
@@ -114,6 +115,22 @@
       </div>
       <div class="project-list" id="content-list"></div>
       <button class="more hidden" id="content-more">Pokaż więcej</button>
+    </section>
+
+    <!-- Worlds, backups, screenshots -->
+    <section class="view" id="view-worlds">
+      <header class="view-head">
+        <h2 class="gradient-title">Światy</h2>
+        <label class="field compact">Profil<select id="worlds-profile"></select></label>
+      </header>
+      <div class="filters glass-panel">
+        <div class="segmented" id="worlds-tab">
+          <button class="active" data-tab="worlds"><i class="fa-solid fa-earth-europe"></i> Światy</button>
+          <button data-tab="backups"><i class="fa-solid fa-box-archive"></i> Kopie zapasowe</button>
+          <button data-tab="screenshots"><i class="fa-regular fa-image"></i> Zrzuty ekranu</button>
+        </div>
+      </div>
+      <div id="worlds-content"></div>
     </section>
 
     <!-- Profiles -->

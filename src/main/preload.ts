@@ -21,7 +21,7 @@ const api = {
   deleteAccount: (id: string) => invoke('account:delete', id),
   loginMicrosoft: () => invoke('account:loginMicrosoft'),
   cancelLogin: () => invoke('account:cancelLogin'),
-  launch: (profileId: string, accountId: string, server?: string) => invoke('game:launch', profileId, accountId, server),
+  launch: (profileId: string, accountId: string, server?: string, world?: string) => invoke('game:launch', profileId, accountId, server, world),
   listServers: (force?: boolean) => invoke('servers:list', force),
   searchContent: (profileId: string, query: string, type: string, offset?: number) => invoke('content:search', profileId, query, type, offset),
   listContent: (profileId: string) => invoke('content:list', profileId),
@@ -33,6 +33,14 @@ const api = {
   pingServer: (address: string) => invoke('servers:ping', address),
   kill: () => invoke('game:kill'),
   revealFile: (file: string) => invoke('file:reveal', file),
+  openFile: (file: string) => invoke('file:open', file),
+  listWorlds: (profileId: string) => invoke('worlds:list', profileId),
+  backupWorld: (profileId: string, folder: string) => invoke('worlds:backup', profileId, folder),
+  listBackups: (profileId: string) => invoke('backups:list', profileId),
+  restoreBackup: (profileId: string, name: string) => invoke('backups:restore', profileId, name),
+  deleteBackup: (profileId: string, name: string) => invoke('backups:delete', profileId, name),
+  listScreenshots: (profileId: string) => invoke('screenshots:list', profileId),
+  deleteScreenshot: (profileId: string, name: string) => invoke('screenshots:delete', profileId, name),
   on,
 };
 

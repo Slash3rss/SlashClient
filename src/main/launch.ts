@@ -48,9 +48,11 @@ export interface LaunchOptions {
   onLog: (line: string) => void;
   /** "host" or "host:port" to join right after the game starts. */
   server?: string;
+  /** Folder name in saves/ to open right after the game starts (1.20+). */
+  world?: string;
 }
 
-export async function launch({ profile, account, onStage, onLog, server }: LaunchOptions): Promise<ChildProcess> {
+export async function launch({ profile, account, onStage, onLog, server, world }: LaunchOptions): Promise<ChildProcess> {
   const gameVersion = await resolveVersionId(profile.versionId);
   const gameDir = profileGameDir(profile);
   await fs.mkdir(gameDir, { recursive: true });
@@ -66,7 +68,11 @@ export async function launch({ profile, account, onStage, onLog, server }: Launc
   const classpath = [...libraryClasspath(version), clientJar].join(classpathSeparator);
   // 1.20+ joins a server through Quick Play; older versions take --server/--port.
   const quickPlay = JSON.stringify(version.arguments?.game ?? []).includes('is_quick_play_multiplayer');
-  const features: Features = { has_custom_resolution: true, is_quick_play_multiplayer: Boolean(server && quickPlay) };
+  const features: Features = {
+    has_custom_resolution: true,
+    is_quick_play_multiplayer: Boolean(server && quickPlay),
+    is_quick_play_singleplayer: Boolean(world && quickPlay && !server),
+  };
   const vars: Record<string, string> = {
     auth_player_name: account.name,
     version_name: versionId,
@@ -90,6 +96,7 @@ export async function launch({ profile, account, onStage, onLog, server }: Launc
     launcher_name: LAUNCHER_NAME,
     launcher_version: LAUNCHER_VERSION,
     quickPlayMultiplayer: server ?? '',
+    quickPlaySingleplayer: world ?? '',
     classpath,
   };
 

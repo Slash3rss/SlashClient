@@ -266,7 +266,7 @@ function showView(name: string) {
 }
 
 /** Starts the selected profile with the selected account, optionally joining a server. */
-async function startGame(server?: string) {
+async function startGame(server?: string, world?: string) {
   if (store.running || launching) return toast('Gra już działa.', true);
   launching = true;
   log.replaceChildren();
@@ -274,7 +274,7 @@ async function startGame(server?: string) {
   showView('play');
   renderPlay();
   try {
-    await api.launch($<HTMLSelectElement>('#play-profile').value, $<HTMLSelectElement>('#play-account').value, server);
+    await api.launch($<HTMLSelectElement>('#play-profile').value, $<HTMLSelectElement>('#play-account').value, server, world);
     setProgress('Gra działa', 1);
   } catch (err) {
     setProgress('Błąd uruchamiania', 0);
@@ -745,9 +745,11 @@ async function installHit(hit: ProjectHit) {
 }
 
 function renderContentProfiles() {
-  const sel = $<HTMLSelectElement>('#content-profile');
-  const current = sel.value || store.settings.selectedProfileId;
-  fillSelect(sel, store.profiles.map((p) => ({ value: p.id, label: `${p.name} (${profileLabel(p)})` })), current);
+  for (const id of ['#content-profile', '#worlds-profile']) {
+    const sel = $<HTMLSelectElement>(id);
+    const current = sel.value || store.settings.selectedProfileId;
+    fillSelect(sel, store.profiles.map((p) => ({ value: p.id, label: `${p.name} (${profileLabel(p)})` })), current);
+  }
 }
 
 document.querySelectorAll<HTMLButtonElement>('#content-type button').forEach((b) =>
@@ -786,6 +788,106 @@ document.querySelector('.nav[data-view="content"]')?.addEventListener('click', (
   refreshInstalled();
   if (!contentHits.length) searchContent();
 });
+
+// ---------- worlds, backups, screenshots ----------
+
+interface WorldInfo { folder: string; name: string; gameMode: string; hardcore: boolean; version?: string; lastPlayed: number; sizeBytes: number; icon?: string }
+interface Backup { file: string; world: string; createdAt: number; sizeBytes: number }
+interface Screenshot { file: string; name: string; createdAt: number; sizeBytes: number }
+
+let worldsTab = 'worlds';
+const worldsProfileId = () => $<HTMLSelectElement>('#worlds-profile').value;
+const media = (file: string) => `slash-media://local/?path=${encodeURIComponent(file)}`;
+const fmtDate = (ms: number) => new Date(ms).toLocaleString('pl-PL', { dateStyle: 'medium', timeStyle: 'short' });
+const fmtSize = (b: number) => (b >= 1024 ** 3 ? `${(b / 1024 ** 3).toFixed(1)} GB` : b >= MB ? `${(b / MB).toFixed(1)} MB` : `${Math.round(b / 1024)} KB`);
+const fileName = (p: string) => p.split(/[\\/]/).pop() ?? p;
+
+function iconButton(icon: string, title: string, onClick: () => void, extra = '') {
+  const b = el('button', { className: `icon-btn ${extra}`.trim(), title }, el('i', { className: icon }));
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+async function renderWorlds() {
+  const box = $('#worlds-content');
+  const profileId = worldsProfileId();
+  if (!profileId) return;
+  box.replaceChildren(el('p', { className: 'muted', textContent: 'Ładowanie…' }));
+
+  if (worldsTab === 'worlds') {
+    const worlds: WorldInfo[] = (await guard(() => api.listWorlds(profileId))) ?? [];
+    box.replaceChildren(el('div', { className: 'project-list' }, ...worlds.map((w) => {
+      const icon = el('img', { className: 'world-icon', alt: '' });
+      icon.src = w.icon ? media(w.icon) : 'logo.png';
+      const play = el('button', { className: 'primary' }, el('i', { className: 'fa-solid fa-play' }), 'Graj');
+      play.addEventListener('click', () => {
+        store.settings.selectedProfileId = profileId;
+        renderPlay();
+        startGame(undefined, w.folder);
+      });
+      const backup = el('button', {}, el('i', { className: 'fa-solid fa-box-archive' }), 'Kopia');
+      backup.addEventListener('click', async () => {
+        backup.disabled = true;
+        const b = await guard(() => api.backupWorld(profileId, w.folder));
+        backup.disabled = false;
+        if (b) toast(`Zapisano kopię „${w.name}” (${fmtSize(b.sizeBytes)})`);
+      });
+      return el('div', { className: 'project' }, icon,
+        el('div', { className: 'project-main' },
+          el('b', {}, w.name, el('small', { textContent: w.folder !== w.name ? w.folder : '' })),
+          el('div', { className: 'project-meta' },
+            el('span', { textContent: w.hardcore ? 'Hardcore' : w.gameMode }),
+            el('span', { textContent: w.version ? `Minecraft ${w.version}` : '' }),
+            el('span', { textContent: fmtSize(w.sizeBytes) }),
+            el('span', { textContent: `Grano: ${fmtDate(w.lastPlayed)}` }))),
+        el('div', { className: 'project-actions' }, play, backup));
+    })));
+    if (!worlds.length) box.replaceChildren(el('p', { className: 'muted', textContent: 'Ten profil nie ma jeszcze żadnych światów.' }));
+  } else if (worldsTab === 'backups') {
+    const backups: Backup[] = (await guard(() => api.listBackups(profileId))) ?? [];
+    box.replaceChildren(el('div', { className: 'project-list' }, ...backups.map((b) => {
+      const restore = el('button', {}, el('i', { className: 'fa-solid fa-clock-rotate-left' }), 'Przywróć');
+      restore.addEventListener('click', async () => {
+        const name = await guard(() => api.restoreBackup(profileId, fileName(b.file)));
+        if (name) toast(`Przywrócono jako „${name}”`);
+      });
+      return el('div', { className: 'project' },
+        el('img', { src: 'logo.png', alt: '' }),
+        el('div', { className: 'project-main' },
+          el('b', { textContent: b.world }),
+          el('div', { className: 'project-meta' }, el('span', { textContent: fmtDate(b.createdAt) }), el('span', { textContent: fmtSize(b.sizeBytes) }))),
+        el('div', { className: 'project-actions' }, restore,
+          iconButton('fa-regular fa-folder-open', 'Pokaż w folderze', () => api.revealFile(b.file)),
+          iconButton('fa-regular fa-trash-can', 'Usuń', () => {
+            if (confirm(`Usunąć kopię z ${fmtDate(b.createdAt)}?`)) guard(() => api.deleteBackup(profileId, fileName(b.file))).then(renderWorlds);
+          }, 'danger')));
+    })));
+    if (!backups.length) box.replaceChildren(el('p', { className: 'muted', textContent: 'Brak kopii. Utworzysz je przyciskiem „Kopia” przy świecie.' }));
+  } else {
+    const shots: Screenshot[] = (await guard(() => api.listScreenshots(profileId))) ?? [];
+    box.replaceChildren(el('div', { className: 'shots' }, ...shots.map((sh) => {
+      const img = el('img', { alt: sh.name, loading: 'lazy' });
+      img.src = media(sh.file);
+      img.addEventListener('click', () => api.openFile(sh.file));
+      return el('div', { className: 'shot' }, img,
+        el('div', {}, el('span', { textContent: fmtDate(sh.createdAt) }),
+          iconButton('fa-regular fa-folder-open', 'Pokaż w folderze', () => api.revealFile(sh.file)),
+          iconButton('fa-regular fa-trash-can', 'Usuń', () => {
+            if (confirm('Usunąć ten zrzut ekranu?')) guard(() => api.deleteScreenshot(profileId, sh.name)).then(renderWorlds);
+          }, 'danger')));
+    })));
+    if (!shots.length) box.replaceChildren(el('p', { className: 'muted', textContent: 'Brak zrzutów. W grze zrobisz je klawiszem F2.' }));
+  }
+}
+
+document.querySelectorAll<HTMLButtonElement>('#worlds-tab button').forEach((b) =>
+  b.addEventListener('click', () => {
+    worldsTab = b.dataset.tab!;
+    document.querySelectorAll('#worlds-tab button').forEach((x) => x.classList.toggle('active', x === b));
+    renderWorlds();
+  }));
+$('#worlds-profile').addEventListener('change', renderWorlds);
+document.querySelector('.nav[data-view="worlds"]')?.addEventListener('click', renderWorlds);
 
 // ---------- starfield (as on lista.slash3rss.dev) ----------
 
