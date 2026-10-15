@@ -48,8 +48,9 @@ public class HudScreenshots implements FabricClientGameTest {
 		context.getInput().setCursorPos(427, 98);
 		context.getInput().pressMouse(0);
 		context.waitTicks(5);
-		boolean deleteActive = context.computeOnClient(mc -> TestHooks.deleteButtonActive());
-		if (deleteActive) throw new AssertionError("Delete must be greyed out for SkyUp.pl");
+		boolean deleteActive = context.computeOnClient(mc -> TestHooks.buttonActive("selectServer.delete"));
+		boolean editActive = context.computeOnClient(mc -> TestHooks.buttonActive("selectServer.edit"));
+		if (deleteActive || editActive) throw new AssertionError("Edit and Delete must be greyed out for SkyUp.pl");
 		context.getInput().setCursorPos(150, 98);
 		context.waitTicks(5);
 		context.takeScreenshot("servers-pinned-hover");

@@ -27,6 +27,12 @@ abstract class ServerListMixin {
 		if (PinnedServer.is(server)) ci.cancel();
 	}
 
+	// editing ends in replace(): SkyUp.pl keeps its name and address
+	@Inject(method = "replace", at = @At("HEAD"), cancellable = true)
+	private void slashclient$noEditPinned(int index, ServerData server, CallbackInfo ci) {
+		if (index >= 0 && index < serverList.size() && PinnedServer.is(serverList.get(index))) ci.cancel();
+	}
+
 	@Inject(method = "swap", at = @At("HEAD"), cancellable = true)
 	private void slashclient$noMovePinned(int a, int b, CallbackInfo ci) {
 		if (PinnedServer.blocksSwap(serverList, a, b)) ci.cancel();

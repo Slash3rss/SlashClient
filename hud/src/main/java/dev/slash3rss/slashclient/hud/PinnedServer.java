@@ -7,7 +7,7 @@ import java.util.Locale;
 
 /**
  * SkyUp.pl always sits first in the multiplayer list: it is added when missing, moved to
- * the top when elsewhere, and cannot be deleted or moved (see the server list mixins).
+ * the top when elsewhere, and cannot be edited, deleted or moved (see the server list mixins).
  */
 public final class PinnedServer {
 	private PinnedServer() {}

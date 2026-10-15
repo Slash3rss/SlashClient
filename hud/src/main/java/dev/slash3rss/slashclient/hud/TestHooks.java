@@ -72,6 +72,8 @@ public final class TestHooks {
 		list.swap(0, 1);
 		list.swap(1, 0);
 		check(PinnedServer.is(list.get(0)) && "example.org".equals(list.get(1).ip), "SkyUp.pl cannot be moved");
+		list.replace(0, new net.minecraft.client.multiplayer.ServerData("Zmieniony", "other.example", net.minecraft.client.multiplayer.ServerData.Type.OTHER));
+		check(PinnedServer.is(list.get(0)) && PinnedServer.NAME.equals(list.get(0).name), "SkyUp.pl cannot be edited");
 		list.save();
 		SlashHud.LOG.info("Pinned server test: OK ({} servers, first {})", list.size(), list.get(0).ip);
 	}
@@ -80,13 +82,14 @@ public final class TestHooks {
 		if (!ok) throw new AssertionError(what);
 	}
 
-	public static boolean deleteButtonActive() {
+	/** Whether the multiplayer screen's button with this translation key can be pressed. */
+	public static boolean buttonActive(String key) {
 		var screen = net.minecraft.client.Minecraft.getInstance().gui.screen();
 		if (screen == null) return false;
 		for (var w : net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(screen)) {
-			if (w.getMessage().getString().equals(net.minecraft.network.chat.Component.translatable("selectServer.delete").getString())) return w.active;
+			if (w.getMessage().getString().equals(net.minecraft.network.chat.Component.translatable(key).getString())) return w.active;
 		}
-		throw new AssertionError("no Delete button");
+		throw new AssertionError("no button " + key);
 	}
 
 	public static void endOnVanillaMenu() {
