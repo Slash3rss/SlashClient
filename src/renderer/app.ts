@@ -825,7 +825,12 @@ $('#profile-form').addEventListener('submit', async (e) => {
 });
 
 $('#profile-delete').addEventListener('click', () => {
-  if (editingId && confirm(t('Usunąć ten profil? Pliki gry zostaną na dysku.'))) guard(() => api.deleteProfile(editingId!));
+  if (!editingId || !confirm(t('Usunąć ten profil? Pliki gry zostaną na dysku.'))) return;
+  guard(async () => {
+    await api.deleteProfile(editingId!);
+    // the form now shows another profile: start from the top of the list
+    $('#view-profiles').scrollTo({ top: 0, behavior: 'smooth' });
+  });
 });
 $('#profile-folder').addEventListener('click', () => editingId && guard(() => api.openProfileDir(editingId!)));
 $('#profile-mods').addEventListener('click', () => editingId && guard(() => api.openModsDir(editingId!)));
