@@ -773,6 +773,15 @@ $('#profile-delete').addEventListener('click', () => {
 });
 $('#profile-folder').addEventListener('click', () => editingId && guard(() => api.openProfileDir(editingId!)));
 $('#profile-mods').addEventListener('click', () => editingId && guard(() => api.openModsDir(editingId!)));
+$('#profile-duplicate').addEventListener('click', async () => {
+  if (!editingId) return;
+  const id: string | undefined = await guard(() => api.duplicateProfile(editingId!));
+  if (id) {
+    editingId = id;
+    renderProfiles();
+  }
+});
+$('#profile-export').addEventListener('click', () => editingId && busy($<HTMLButtonElement>('#profile-export'), () => guard(() => api.exportProfile(editingId!))));
 $('#loader-select').addEventListener('change', () => renderLoaderVersions(''));
 $('#version-select').addEventListener('change', () => renderLoaderVersions(''));
 

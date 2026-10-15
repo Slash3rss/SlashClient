@@ -66,7 +66,7 @@ export async function search({ query, type, gameVersion, loader, offset = 0 }: S
   };
 }
 
-interface ModrinthFile { url: string; filename: string; primary: boolean; size: number; hashes: { sha1: string } }
+interface ModrinthFile { url: string; filename: string; primary: boolean; size: number; hashes: { sha1: string; sha512?: string } }
 interface ModrinthVersion {
   id: string;
   project_id: string;
@@ -446,4 +446,70 @@ export async function identifyModpack(file: string): Promise<VersionInfo | undef
 export async function latestModpackVersion(projectId: string): Promise<VersionInfo | undefined> {
   const versions = await listVersions(projectId);
   return versions.find((v) => v.type === 'release') ?? versions[0];
+}
+
+// ---------- exporting a profile as a modpack ----------
+
+/** Folders and files (besides mods/packs/shaders) that go into the pack's overrides. */
+const EXPORT_OVERRIDES = ['config', 'defaultconfigs', 'kubejs', 'scripts', 'options.txt'];
+
+const LOADER_KEYS: Record<string, string> = { fabric: 'fabric-loader', quilt: 'quilt-loader', forge: 'forge', neoforge: 'neoforge' };
+
+async function addFolder(zip: AdmZip, dir: string, zipPath: string): Promise<void> {
+  const stat = await fs.stat(dir).catch(() => undefined);
+  if (!stat) return;
+  if (stat.isFile()) zip.addFile(zipPath, await fs.readFile(dir));
+  else await zip.addLocalFolderPromise(dir, { zipPath });
+}
+
+/**
+ * Writes the profile as a Modrinth .mrpack: content Modrinth knows is referenced
+ * by download link (so the pack stays small), everything else and the
+ * configuration go into overrides/. Disabled mods are left out.
+ */
+export async function exportMrpack(opts: {
+  gameDir: string;
+  out: string;
+  name: string;
+  gameVersion: string;
+  loader: string;
+  loaderVersion: string;
+  onStage?: StageProgress;
+}): Promise<{ linked: number; bundled: number }> {
+  const { gameDir } = opts;
+  opts.onStage?.(t('Rozpoznawanie modów'), 0, 1);
+  const files = (await hashedFiles(gameDir)).filter((f) => !f.filename.endsWith('.disabled'));
+  const enabled: typeof files = [];
+  for (const f of files) {
+    if (await fs.access(path.join(gameDir, FOLDERS[f.type], f.filename)).then(() => true, () => false)) enabled.push(f);
+  }
+  const known = enabled.length
+    ? await post<Record<string, ModrinthVersion>>(`${API}/version_files`, { hashes: enabled.map((f) => f.sha1), algorithm: 'sha1' })
+    : {};
+
+  const zip = new AdmZip();
+  const indexFiles: unknown[] = [];
+  let bundled = 0;
+  for (const [i, f] of enabled.entries()) {
+    opts.onStage?.(t('Pakowanie'), i, enabled.length);
+    const rel = `${FOLDERS[f.type]}/${f.filename}`;
+    const file = known[f.sha1]?.files.find((x) => x.hashes.sha1 === f.sha1);
+    if (file?.hashes.sha512) {
+      indexFiles.push({ path: rel, hashes: { sha1: f.sha1, sha512: file.hashes.sha512 }, env: { client: 'required', server: 'required' }, downloads: [file.url], fileSize: file.size });
+    } else {
+      // not on Modrinth: ship the file itself
+      zip.addFile(`overrides/${rel}`, await fs.readFile(path.join(gameDir, rel)));
+      bundled++;
+    }
+  }
+  for (const item of EXPORT_OVERRIDES) await addFolder(zip, path.join(gameDir, item), `overrides/${item}`);
+
+  const dependencies: Record<string, string> = { minecraft: opts.gameVersion };
+  if (LOADER_KEYS[opts.loader]) dependencies[LOADER_KEYS[opts.loader]] = opts.loaderVersion;
+  zip.addFile('modrinth.index.json', Buffer.from(JSON.stringify({
+    formatVersion: 1, game: 'minecraft', versionId: '1.0.0', name: opts.name, files: indexFiles, dependencies,
+  }, null, 2)));
+  opts.onStage?.(t('Zapisywanie paczki'), 0, 1);
+  await zip.writeZipPromise(opts.out);
+  return { linked: indexFiles.length, bundled };
 }

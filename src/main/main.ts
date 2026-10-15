@@ -19,7 +19,7 @@ import { loadStore, newProfile, profileGameDir, saveStore, setSecretCodec, type 
 import { LOADER_NAMES, loaderVersions, type Loader } from './loaders';
 import {
   checkUpdates, downloadModpack, identifyModpack, installMrpack, installProject, latestModpackVersion, listContentVersions,
-  listInstalled, removeContent, search, setEnabled, updateMrpack,
+  exportMrpack, listInstalled, removeContent, search, setEnabled, updateMrpack,
   type ContentType, type ModpackInfo, type ProjectType, type UpdateInfo, type VersionInfo,
 } from './modrinth';
 import { listServers, pingServer } from './servers';
@@ -379,6 +379,78 @@ handle('profile:recommendedMemory', async (id: string) => {
   const mods = (await listInstalled(profileGameDir(profile))).filter((i) => i.type === 'mod' && i.enabled).length;
   return { mb: recommendedMemoryMb(Math.round(os.totalmem() / 1024 / 1024), profile.loader, mods), mods };
 });
+// ---------- copying and exporting profiles ----------
+
+/** Folders that are never copied with a profile: per-session files and potentially huge archives. */
+const NOT_COPIED = new Set(['logs', 'crash-reports', 'screenshots', 'backups', 'debug']);
+
+handle('profile:duplicate', async (id: string) => {
+  const source = profileById(id);
+  const { response } = await dialog.showMessageBox(win!, {
+    type: 'question',
+    message: t('Skopiować profil „{0}”?', source.name),
+    detail: t('Mody, konfiguracja, paczki zasobów i ustawienia zostaną skopiowane. Światy mogą zajmować dużo miejsca.'),
+    buttons: [t('Bez światów'), t('Ze światami'), t('Anuluj')],
+    defaultId: 0,
+    cancelId: 2,
+  });
+  if (response === 2) return undefined;
+  const withWorlds = response === 1;
+  // everything but the identity, folder and play history comes along
+  const { id: _id, gameDir: _dir, playTimeMs: _time, lastPlayedAt: _at, lastTarget: _target, ...settings } = source;
+  const copy = newProfile({ ...settings, name: t('{0} (kopia)', source.name) });
+  const task = startTask(t('Kopiowanie profilu: {0}', source.name));
+  try {
+    const from = profileGameDir(source);
+    task.progress(t('Kopiowanie plików'), 0, 1);
+    await fsp.cp(from, profileGameDir(copy), {
+      recursive: true,
+      filter: (src) => {
+        const top = path.relative(from, src).split(path.sep)[0];
+        return !NOT_COPIED.has(top) && (withWorlds || top !== 'saves');
+      },
+    }).catch((err: NodeJS.ErrnoException) => {
+      if (err.code !== 'ENOENT') throw err; // a profile that was never started has no folder yet
+    });
+    store.profiles.push(copy);
+    await persist();
+    task.finish(true, t('Utworzono profil „{0}”', copy.name));
+    return copy.id;
+  } catch (err) {
+    task.finish(false, (err as Error).message);
+    throw err;
+  }
+});
+
+handle('profile:export', async (id: string) => {
+  const profile = profileById(id);
+  const { canceled, filePath } = await dialog.showSaveDialog(win!, {
+    title: t('Eksportuj profil jako modpack'),
+    defaultPath: `${profile.name.replace(/[\\/:*?"<>|]/g, '_')}.mrpack`,
+    filters: [{ name: 'Modpack Modrinth', extensions: ['mrpack'] }],
+  });
+  if (canceled || !filePath) return undefined;
+  const task = startTask(t('Eksport: {0}', profile.name));
+  try {
+    const gameVersion = await resolveVersionId(profile.versionId);
+    // a pack needs an exact loader version; "newest stable" is resolved now
+    let loaderVersion = profile.loaderVersion;
+    if (profile.loader !== 'vanilla' && !loaderVersion) {
+      const all = await loaderVersions(profile.loader, gameVersion);
+      loaderVersion = (all.find((v) => v.stable) ?? all[0])?.version ?? '';
+    }
+    const res = await exportMrpack({
+      gameDir: profileGameDir(profile), out: filePath, name: profile.name, gameVersion, loader: profile.loader, loaderVersion, onStage: task.progress,
+    });
+    task.finish(true, t('Zapisano {0}: {1} plików z linkami, {2} w paczce.', path.basename(filePath), res.linked, res.bundled));
+    shell.showItemInFolder(filePath);
+    return filePath;
+  } catch (err) {
+    task.finish(false, (err as Error).message);
+    throw err;
+  }
+});
+
 handle('servers:list', (force?: boolean) => listServers(force));
 handle('servers:ping', (address: string) => pingServer(address));
 
