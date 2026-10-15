@@ -50,6 +50,15 @@ Launcher potrzebuje własnej aplikacji w Azure:
    Wniosek: <https://aka.ms/mce-reviewappid>. Do czasu akceptacji logowanie kończy się błędem
    na etapie `login_with_xbox` (HTTP 403).
 
+## Status na Discordzie
+
+1. Wejdź na <https://discord.com/developers/applications> → **New Application**, nazwij ją `SlashClient`
+   (ta nazwa wyświetla się jako „Gra w SlashClient”).
+2. W **Rich Presence → Art Assets** dodaj obrazek `build/icons/512x512.png` z kluczem `logo`.
+3. Skopiuj **Application ID** z zakładki **General Information** i wklej w launcherze w **Ustawieniach**.
+
+Launcher pokazuje wersję gry, loader, czas gry oraz to, czy jesteś w menu, w świecie czy na serwerze.
+
 ## Struktura
 
 | Plik | Rola |

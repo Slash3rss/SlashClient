@@ -14,7 +14,7 @@ interface Profile {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; discordClientId: string; discordEnabled: boolean };
   running: boolean;
   dataDir: string;
 }
@@ -208,6 +208,8 @@ function renderSettings() {
   const form = $<HTMLFormElement>('#settings-form');
   (form.elements.namedItem('msClientId') as HTMLInputElement).value = store.settings.msClientId;
   (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked = store.settings.closeOnLaunch;
+  (form.elements.namedItem('discordClientId') as HTMLInputElement).value = store.settings.discordClientId ?? '';
+  (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked = store.settings.discordEnabled ?? true;
   $('#data-dir').textContent = store.dataDir;
 }
 
@@ -405,6 +407,8 @@ $('#settings-form').addEventListener('submit', async (e) => {
     api.saveSettings({
       msClientId: (form.elements.namedItem('msClientId') as HTMLInputElement).value.trim(),
       closeOnLaunch: (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked,
+      discordClientId: (form.elements.namedItem('discordClientId') as HTMLInputElement).value.trim(),
+      discordEnabled: (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked,
     }),
   );
   toast('Zapisano ustawienia');

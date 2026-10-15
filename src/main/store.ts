@@ -49,6 +49,9 @@ export interface Settings {
   selectedProfileId?: string;
   selectedAccountId?: string;
   closeOnLaunch: boolean;
+  /** Discord application ID for Rich Presence; empty disables it. */
+  discordClientId: string;
+  discordEnabled: boolean;
 }
 
 export interface StoreData {
@@ -100,7 +103,7 @@ function defaults(): StoreData {
   return {
     accounts: [],
     profiles: [newProfile({ name: 'Najnowsza wersja', versionId: 'latest-release' })],
-    settings: { msClientId: process.env.SLASHCLIENT_MS_CLIENT_ID ?? '', closeOnLaunch: false },
+    settings: { msClientId: process.env.SLASHCLIENT_MS_CLIENT_ID ?? '', closeOnLaunch: false, discordClientId: '', discordEnabled: true },
   };
 }
 
