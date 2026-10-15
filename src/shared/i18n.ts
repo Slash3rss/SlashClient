@@ -32,6 +32,9 @@ const EN: Record<string, string> = {
   'Dodaj': 'Add',
   'Zamknij': 'Close',
   'Przybliż': 'Zoom in',
+  'Uruchamianie: {0}': 'Starting: {0}',
+  'Gra uruchomiona': 'The game is running',
+  'URUCHAMIANIE…': 'STARTING…',
   'To nie jest kod SlashClient HUD.': 'This is not a SlashClient HUD code.',
   'Kod SlashClient HUD jest uszkodzony.': 'The SlashClient HUD code is damaged.',
   'Ten profil nie ma jeszcze ustawień HUD. Uruchom w nim grę z HUD albo wklej kod.': 'This profile has no HUD settings yet. Start the game with the HUD in it, or paste a code.',
@@ -166,7 +169,6 @@ const EN: Record<string, string> = {
   'Minecraft {0}': 'Minecraft {0}',
 
   // play screen
-  'Gotowe do gry': 'Ready to play',
   'Wróć do gry': 'Back to the game',
   '{0} · serwer': '{0} · server',
   '{0} · świat': '{0} · world',
@@ -175,8 +177,6 @@ const EN: Record<string, string> = {
   '{0} h {1} min': '{0} h {1} min',
   '{0} min': '{0} min',
   '{0} gry': '{0} played',
-  'Gra działa': 'Game running',
-  'Błąd uruchamiania': 'Launch failed',
   'Gra już działa.': 'The game is already running.',
   'Tu pojawią się logi gry.': 'Game logs will appear here.',
   'Nowości': 'News',

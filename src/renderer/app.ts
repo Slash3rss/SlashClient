@@ -566,8 +566,9 @@ function renderPlay() {
   renderContinue(profile);
 
   const btn = $<HTMLButtonElement>('#play-btn');
-  btn.textContent = store.running ? 'ZATRZYMAJ' : 'GRAJ';
+  btn.textContent = store.running ? 'ZATRZYMAJ' : launching ? t('URUCHAMIANIE…') : 'GRAJ';
   btn.classList.toggle('stop', store.running);
+  btn.classList.toggle('starting', launching && !store.running);
   btn.disabled = launching;
 
 }
@@ -742,13 +743,6 @@ $('#log-share').addEventListener('click', () => busy($<HTMLButtonElement>('#log-
   }
 }));
 
-function setProgress(label: string, fraction: number, stats = '', indeterminate = false) {
-  $('.progress').classList.toggle('indeterminate', indeterminate);
-  $('#progress-label').textContent = label;
-  $('#progress-stats').textContent = stats;
-  $('#progress-bar').style.width = `${(fraction * 100).toFixed(1)}%`;
-}
-
 const MB = 1024 * 1024;
 const fmtMb = (bytes: number) => (bytes / MB).toLocaleString(locale(), { maximumFractionDigits: bytes < 10 * MB ? 1 : 0 });
 function fmtSpeed(bps: number): string {
@@ -758,16 +752,11 @@ function fmtSpeed(bps: number): string {
 
 interface StageEvent { stage: string; done: number; total: number; bytes?: number; totalBytes?: number; speed?: number }
 
-function showStage({ stage, done, total, bytes, totalBytes, speed }: StageEvent) {
-  // single-step stages have no meaningful percentage: show a moving bar instead
-  if (total <= 1 && !totalBytes) return setProgress(`${stage}…`, 0, '', done < total || total === 0 || !/Gra|Gotowe/.test(stage));
-  // Byte-based progress when sizes are known; otherwise fall back to file count.
-  const fraction = totalBytes ? Math.min(1, (bytes ?? 0) / totalBytes) : done / total;
-  const pct = (fraction * 100).toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  const parts = [t('{0} / {1} plików', done, total)];
-  if (totalBytes) parts.push(`${fmtMb(bytes ?? 0)} / ${fmtMb(totalBytes)} MB`);
-  if (speed && done < total) parts.push(fmtSpeed(speed));
-  setProgress(t('{0}: {1}%', stage, pct), fraction, parts.join(' · '));
+/** Launch progress goes to its own card, like installs: the Play bar stays uncluttered. */
+const LAUNCH_CARD = 'launch';
+function showStage(stage: StageEvent) {
+  if (!taskCards.has(LAUNCH_CARD)) return;
+  progressTaskCard({ id: LAUNCH_CARD, ...stage });
 }
 
 $('#play-profile').addEventListener('change', (e) => {
@@ -804,12 +793,13 @@ async function startGame(server?: string, world?: string) {
   $('#crash').classList.add('hidden');
   showView('play');
   renderPlay();
+  const profile = store.profiles.find((p) => p.id === $<HTMLSelectElement>('#play-profile').value);
+  startTaskCard(LAUNCH_CARD, t('Uruchamianie: {0}', profile?.name ?? 'Minecraft'), profile ? profileIconUrl(profile) : 'logo.png');
   try {
     await api.launch($<HTMLSelectElement>('#play-profile').value, $<HTMLSelectElement>('#play-account').value, server, world);
-    setProgress('Gra działa', 1);
+    finishTaskCard({ id: LAUNCH_CARD, ok: true, message: t('Gra uruchomiona') }, 3500);
   } catch (err) {
-    setProgress('Błąd uruchamiania', 0);
-    toast(errorText(err), true);
+    finishTaskCard({ id: LAUNCH_CARD, ok: false, message: errorText(err) });
     appendLog(`[SlashClient] ${errorText(err)}`);
   } finally {
     launching = false;
@@ -841,10 +831,9 @@ $('#crash-copy').addEventListener('click', async () => {
 api.on('launch:stage', showStage);
 api.on('game:log', appendLog);
 api.on('game:exit', ({ code, signal, byUser }: { code: number | null; signal: string | null; byUser: boolean }) => {
-  if (code === 0 || byUser) return setProgress('Gotowe do gry', 0);
+  if (code === 0 || byUser) return;
   // A signal without a user request means the OS killed the game (crash, code signature, out of memory).
   const reason = signal ? t('Gra została zabita przez system ({0})', signal) : t('Gra zakończyła się z kodem {0}', String(code));
-  setProgress(reason, 0);
   appendLog(`[SlashClient] ${reason}.`);
   toast(t('{0}. Sprawdź logi.', reason), true);
 });
@@ -2570,9 +2559,14 @@ interface TaskDone { id: string; ok: boolean; message: string; profileId?: strin
 
 const taskCards = new Map<string, HTMLElement>();
 
-api.on('task:start', ({ id, title, icon }: TaskStart) => {
+api.on('task:start', ({ id, title, icon }: TaskStart) => startTaskCard(id, title, icon?.startsWith('https://cdn.modrinth.com/') ? icon : 'logo.png'));
+api.on('task:progress', (p: TaskProgress) => progressTaskCard(p));
+api.on('task:done', (d: TaskDone) => finishTaskCard(d));
+
+/** A progress card in the top right corner; `iconSrc` is a safe local or Modrinth picture. */
+function startTaskCard(id: string, title: string, iconSrc: string) {
   const img = el('img', { alt: '' });
-  img.src = icon?.startsWith('https://cdn.modrinth.com/') ? icon : 'logo.png';
+  img.src = iconSrc;
   const bar = el('div', { className: 'progress indeterminate' }, el('div'));
   const card = el('div', { className: 'task' }, img,
     el('div', { className: 'task-body' },
@@ -2583,9 +2577,9 @@ api.on('task:start', ({ id, title, icon }: TaskStart) => {
   taskCards.set(id, card);
   $('#tasks').prepend(card);
   trimStack();
-});
+}
 
-api.on('task:progress', ({ id, stage, done, total, bytes, totalBytes, speed }: TaskProgress) => {
+function progressTaskCard({ id, stage, done, total, bytes, totalBytes, speed }: TaskProgress) {
   const card = taskCards.get(id);
   if (!card) return;
   const label = card.querySelector<HTMLElement>('.task-stage')!;
@@ -2602,9 +2596,10 @@ api.on('task:progress', ({ id, stage, done, total, bytes, totalBytes, speed }: T
   stats.textContent = parts.join(' · ');
   bar.classList.toggle('indeterminate', !known);
   (bar.firstElementChild as HTMLElement).style.width = `${(fraction * 100).toFixed(1)}%`;
-});
+}
 
-api.on('task:done', ({ id, ok, message, profileId }: TaskDone) => {
+/** Turns a card into its result; `stayMs` overrides how long it stays. */
+function finishTaskCard({ id, ok, message, profileId }: TaskDone, stayMs?: number) {
   const card = taskCards.get(id);
   if (!card) return;
   taskCards.delete(id);
@@ -2628,8 +2623,8 @@ api.on('task:done', ({ id, ok, message, profileId }: TaskDone) => {
     el('div', { className: 'task-result' }, el('i', { className: ok ? 'fa-solid fa-circle-check' : 'fa-solid fa-circle-xmark' }), el('span', { textContent: message })),
     actions);
   // everything goes away on its own; a modpack ("Play now") and errors stay longer to be read
-  dismissLater(card, !ok ? 15000 : profileId ? 20000 : 6000);
-});
+  dismissLater(card, stayMs ?? (!ok ? 15000 : profileId ? 20000 : 6000));
+}
 
 // ---------- updates ----------
 
