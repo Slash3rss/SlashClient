@@ -159,6 +159,19 @@ public final class HudConfig {
 		c.modules.put("session", new Placement(false, 1, 0, -2, 32));
 		c.modules.put("cpu", new Placement(false, 1, 0, -2, 62));
 		c.modules.put("gpu", new Placement(false, 1, 0, -2, 77));
+		c.modules.put("tps", new Placement(false, 1, 0, -2, 92));
+		c.modules.put("network", new Placement(false, 1, 0, -2, 107));
+		c.modules.put("fpsgraph", new Placement(false, 0, 0, 2, 74));
+		c.modules.put("friends", new Placement(false, 1, 1, -2, -28));
+		c.modules.put("kd", new Placement(false, 0.5f, 0, 0, 45));
+		c.modules.put("sky", new Placement(false, 0.5f, 0, 0, 30));
+		// the compass at the top in the middle; around the crosshair what you need while aiming
+		c.modules.put("compass", new Placement(false, 0.5f, 0, 0, 2));
+		c.modules.put("hits", new Placement(false, 0.5f, 0.5f, 0, -22));
+		c.modules.put("durability", new Placement(false, 0.5f, 0.5f, 60, 0));
+		c.modules.put("ammo", new Placement(false, 0.5f, 0.5f, -60, 0));
+		c.modules.put("block", new Placement(false, 0.5f, 0.5f, 0, -45));
+		c.modules.put("elytra", new Placement(false, 0.5f, 1, 0, -60));
 		c.modules.put("effects", new Placement(true, 1, 0, -2, 47));
 		c.modules.put("armor", new Placement(true, 1, 0.5f, -2, 20));
 		c.modules.put("items", new Placement(true, 1, 1, -2, -2));

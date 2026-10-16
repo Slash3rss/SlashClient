@@ -93,6 +93,8 @@ public class SlashHud implements ClientModInitializer {
 				if (Compat.screen(mc) == null) mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.social.FriendsScreen(null));
 			}
 			MoreModules.Combat.tick(mc);
+			ExtraModules.Stats.tick(mc);
+			if (mc.getConnection() == null) ExtraModules.Stats.disconnected();
 			// a new world or server starts a new session
 			if (mc.player != null && MoreModules.sessionStart == 0) MoreModules.sessionStart = System.currentTimeMillis();
 			if (mc.player == null) MoreModules.sessionStart = 0;
@@ -107,7 +109,10 @@ public class SlashHud implements ClientModInitializer {
 		// reach and combo: only the local player's own hits, measured from the eyes to the hitbox
 		AttackEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {
 			Minecraft mc = Minecraft.getInstance();
-			if (level.isClientSide() && player == mc.player) MoreModules.Combat.hit(Math.sqrt(entity.getBoundingBox().distanceToSqr(player.getEyePosition())));
+			if (level.isClientSide() && player == mc.player) {
+				MoreModules.Combat.hit(Math.sqrt(entity.getBoundingBox().distanceToSqr(player.getEyePosition())));
+				ExtraModules.Stats.attack(player, entity);
+			}
 			return InteractionResult.PASS;
 		});
 

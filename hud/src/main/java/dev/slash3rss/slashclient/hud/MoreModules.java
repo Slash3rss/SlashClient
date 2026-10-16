@@ -154,7 +154,7 @@ final class MoreModules {
 		}
 
 		Component content(Minecraft mc) {
-			// no measurement in the first frames, nor ever on macOS (its OpenGL gives no GPU timestamps)
+			// no measurement in the first frames, nor on macOS from 26.1 on (its new renderer gets no GPU timestamps there)
 			double v = mc.getGpuUtilization();
 			return v > 0 ? Component.translatable("slashclient-hud.gpu", Math.round(load(mc))) : Component.translatable("slashclient-hud.gpu.none");
 		}

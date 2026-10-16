@@ -55,7 +55,7 @@ public class GameExtras implements FabricClientGameTest {
 			context.waitTicks(40);
 			String loads = context.computeOnClient(mc -> TestHooks.cpuGpuValues());
 			String[] cg = loads.split(" ");
-			// macOS's OpenGL gives no GPU timestamps (F3 shows no GPU load there either)
+			// from 26.1 on, the game gets no GPU timestamps on macOS (F3 shows no GPU load there either)
 			boolean mac = System.getProperty("os.name").toLowerCase().contains("mac");
 			if (Double.parseDouble(cg[0]) < 0 || (!mac && Double.parseDouble(cg[1]) <= 0)) throw new AssertionError("CPU or GPU not measured: " + loads);
 			context.takeScreenshot("extras-crosshair-circle");

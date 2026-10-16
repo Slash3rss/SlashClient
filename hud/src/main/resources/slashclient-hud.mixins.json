@@ -9,6 +9,7 @@
 		"ChatComponentMixin",
 		"ChatFilterMixin",
 		"ChatScreenMixin",
+		"ConnectionBytesMixin",
 		"EntityRendererMixin",
 		"FreelookCameraMixin",
 		"FreelookMixin",
@@ -25,7 +26,8 @@
 		"ScreenshotMixin",
 		"ScreenEffectRendererMixin",
 		"ServerListMixin",
-		"TimeMixin"
+		"TimeMixin",
+		"TimePacketMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

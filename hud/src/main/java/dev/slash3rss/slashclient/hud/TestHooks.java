@@ -45,6 +45,30 @@ public final class TestHooks {
 		return ((HudEditScreen) screen()).closeCenter(id);
 	}
 
+	/** The modules from ExtraModules on (the editor shows them all, the HUD those with something to show). */
+	public static void extraModules(boolean on) {
+		for (HudModule m : ExtraModules.all()) SlashHud.config.placement(m.id()).enabled = on;
+	}
+
+	/** Hits the nearest other living entity, as a left click on it would. */
+	public static boolean attackNearest() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		net.minecraft.world.entity.Entity best = null;
+		for (var e : mc.level.entitiesForRendering()) {
+			if (e == mc.player || !(e instanceof net.minecraft.world.entity.LivingEntity)) continue;
+			if (best == null || e.distanceTo(mc.player) < best.distanceTo(mc.player)) best = e;
+		}
+		if (best == null) return false;
+		mc.gameMode.attack(mc.player, best);
+		return true;
+	}
+
+	/** Kills, deaths and TPS as the modules see them. */
+	public static String moduleStats() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		return ExtraModules.Stats.kills + " " + ExtraModules.Stats.deaths + " " + ExtraModules.Tps.tps(mc) + " " + ExtraModules.Stats.hitAt;
+	}
+
 	/** CPU and GPU modules on. */
 	public static void cpuGpu() {
 		SlashHud.config.placement("cpu").enabled = true;
