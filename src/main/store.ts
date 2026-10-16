@@ -131,6 +131,8 @@ export function newProfile(partial: Partial<Profile> = {}): Profile {
   };
 }
 
+/** SlashClient's Microsoft app, approved by Mojang for Minecraft sign-in (a public id, not a secret). */
+export const DEFAULT_MS_CLIENT_ID = process.env.SLASHCLIENT_MS_CLIENT_ID ?? '956312be-af3a-4279-bdbd-1e91128b7e73';
 /** The public SlashClient server; SLASHCLIENT_SOCIAL_URL points a development build at a local one. */
 export const DEFAULT_SOCIAL_URL = process.env.SLASHCLIENT_SOCIAL_URL ?? 'https://client.slash3rss.dev';
 /** The default before the public server existed: installs that never changed it move to the public one. */
@@ -140,7 +142,7 @@ function defaults(): StoreData {
   return {
     accounts: [],
     profiles: [newProfile({ name: 'Najnowsza wersja', versionId: 'latest-release' })],
-    settings: { msClientId: process.env.SLASHCLIENT_MS_CLIENT_ID ?? '', closeOnLaunch: false, discordEnabled: true, language: '',
+    settings: { msClientId: DEFAULT_MS_CLIENT_ID, closeOnLaunch: false, discordEnabled: true, language: '',
       socialUrl: DEFAULT_SOCIAL_URL, socialStatus: 'online' },
   };
 }
@@ -149,6 +151,8 @@ export async function loadStore(): Promise<StoreData> {
   try {
     const data = JSON.parse(await fs.readFile(FILE(), 'utf8')) as Partial<StoreData>;
     const base = defaults();
+    // saved before the app id was built in: an empty one would block Microsoft sign-in
+    if (data.settings && !data.settings.msClientId?.trim()) data.settings.msClientId = DEFAULT_MS_CLIENT_ID;
     if (data.settings?.socialUrl === OLD_DEFAULT_SOCIAL_URL && !process.env.SLASHCLIENT_SOCIAL_URL) data.settings.socialUrl = DEFAULT_SOCIAL_URL;
     return {
       accounts: data.accounts ?? base.accounts,
