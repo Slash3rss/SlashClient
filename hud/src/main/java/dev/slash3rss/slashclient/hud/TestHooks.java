@@ -22,6 +22,24 @@ public final class TestHooks {
 		net.minecraft.client.Minecraft.getInstance().setScreenAndShow(new net.minecraft.client.gui.screens.TitleScreen());
 	}
 
+	/** The game HUD parts changed so the screenshot shows every setting at work. */
+	public static void gameParts() {
+		HudConfig c = SlashHud.config;
+		c.scoreboardScale = 0.8f;
+		c.scoreboardOffset = -40;
+		c.scoreboardNumbers = false;
+		c.bossBarScale = 0.8f;
+		c.bossBarOffset = 6;
+		c.tabNumericPing = true;
+		c.titleScale = 0.6f;
+		c.ownNametag = true;
+	}
+
+	public static void thirdPerson(boolean on) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		mc.options.setCameraType(on ? net.minecraft.client.CameraType.THIRD_PERSON_BACK : net.minecraft.client.CameraType.FIRST_PERSON);
+	}
+
 	/** One chat tab, so the chat tabs page has a row to show. */
 	public static void sampleChatTab() {
 		if (!SlashHud.config.chatTabs.isEmpty()) return;

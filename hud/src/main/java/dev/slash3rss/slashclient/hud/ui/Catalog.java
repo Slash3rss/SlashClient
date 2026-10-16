@@ -13,7 +13,7 @@ import java.util.function.Supplier;
 public final class Catalog {
 	private Catalog() {}
 
-	public static final String[] CATEGORIES = { "all", "hud", "combat", "world", "extras", "chat", "share" };
+	public static final String[] CATEGORIES = { "all", "hud", "combat", "world", "game", "extras", "chat", "share" };
 
 	/** One row in an entry's settings. */
 	public sealed interface Setting permits Toggle, Slider, Choice, Colors {
@@ -78,6 +78,20 @@ public final class Catalog {
 			new Toggle("slashclient-hud.set.backgroundAll", () -> cfg.background, v -> cfg.background = v)), null));
 		out.add(new Entry("badges", "slashclient-hud.set.badges", "extras", "m-badges", () -> cfg.badges, v -> cfg.badges = v, List.of(), null));
 		out.add(new Entry("menu", "slashclient-hud.set.menu", "extras", "m-menu", () -> cfg.customMenu, v -> cfg.customMenu = v, List.of(), null));
+		// the game's own HUD parts
+		out.add(new Entry("scoreboard", "slashclient-hud.game.scoreboard", "game", "m-scoreboard", () -> cfg.scoreboard, v -> cfg.scoreboard = v, List.of(
+			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.scoreboardScale, v -> cfg.scoreboardScale = v),
+			new Slider("slashclient-hud.set.offset", -120f, 120f, 2f, "%.0f", () -> (float) cfg.scoreboardOffset, v -> cfg.scoreboardOffset = Math.round(v)),
+			new Toggle("slashclient-hud.game.numbers", () -> cfg.scoreboardNumbers, v -> cfg.scoreboardNumbers = v)), null));
+		out.add(new Entry("bossbar", "slashclient-hud.game.bossbar", "game", "m-bossbar", () -> cfg.bossBar, v -> cfg.bossBar = v, List.of(
+			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.bossBarScale, v -> cfg.bossBarScale = v),
+			new Slider("slashclient-hud.set.offset", 0f, 120f, 2f, "%.0f", () -> (float) cfg.bossBarOffset, v -> cfg.bossBarOffset = Math.round(v))), null));
+		out.add(new Entry("tablist", "slashclient-hud.game.tablist", "game", "m-tablist", null, null, List.of(
+			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.tabScale, v -> cfg.tabScale = v),
+			new Toggle("slashclient-hud.game.numericPing", () -> cfg.tabNumericPing, v -> cfg.tabNumericPing = v)), null));
+		out.add(new Entry("titles", "slashclient-hud.game.titles", "game", "m-titles", () -> cfg.titles, v -> cfg.titles = v, List.of(
+			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.titleScale, v -> cfg.titleScale = v)), null));
+		out.add(new Entry("nametag", "slashclient-hud.game.nametag", "game", "m-nametag", () -> cfg.ownNametag, v -> cfg.ownNametag = v, List.of(), null));
 		out.add(new Entry("chatTimestamps", "slashclient-hud.chatTimestamps", "chat", "m-chattimestamps", () -> cfg.chatTimestamps, v -> cfg.chatTimestamps = v, List.of(), null));
 		out.add(new Entry("chatTabs", "slashclient-hud.chat.tabs", "chat", "m-chattabs", null, null, List.of(), openChatTabs));
 		return out;

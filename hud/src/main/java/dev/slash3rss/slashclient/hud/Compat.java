@@ -31,6 +31,15 @@ public final class Compat {
 		//#endif
 	}
 
+	/** The HUD hidden with F1 (then no names are drawn either). */
+	public static boolean hudHidden(Minecraft mc) {
+		//#if MC >= 26.2
+		return mc.gui.hud.isHidden();
+		//#else
+		//$ return !Minecraft.renderNames();
+		//#endif
+	}
+
 	/** The line above the hotbar ("Fullbright on"). */
 	public static void overlay(Minecraft mc, Component text) {
 		//#if MC >= 26.2

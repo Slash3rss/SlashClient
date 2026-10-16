@@ -363,7 +363,7 @@ public class HudEditScreen extends Screen {
 		Ui.end();
 	}
 
-	private static final String[] CATEGORY_ICONS = { "all", "info", "combat", "world", "extras", "chat", "share" };
+	private static final String[] CATEGORY_ICONS = { "all", "info", "combat", "world", "layout", "extras", "chat", "share" };
 
 
 	private void drawCards(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h) {

@@ -100,6 +100,8 @@ public class SlashHud implements ClientModInitializer {
 			if (!config.placement("effects").enabled) vanilla.extractRenderState(g, delta);
 		});
 
+		GameHud.register();
+
 		HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, vanilla -> (g, delta) -> {
 			if (!Extras.drawCrosshair(g, Minecraft.getInstance())) vanilla.extractRenderState(g, delta);
 		});

@@ -11,8 +11,10 @@
 		"JoinMultiplayerScreenMixin",
 		"LightmapMixin",
 		"MouseHandlerMixin",
+		"NametagMixin",
 		"OnlineServerEntryMixin",
 		"PlayerTabOverlayMixin",
+		"ScoreboardNumbersMixin",
 		"ScreenEffectRendererMixin",
 		"ServerListMixin"
 	],

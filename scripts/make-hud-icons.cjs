@@ -21,6 +21,8 @@ const ICONS = {
   'm-zoom': 'magnifying-glass-plus', 'm-fullbright': 'circle-half-stroke', 'm-lowfire': 'fire-flame-simple',
   'm-crosshair': 'crosshairs', 'm-appearance': 'palette', 'm-badges': 'id-badge', 'm-menu': 'house',
   'm-chattimestamps': 'comment-dots', 'm-chattabs': 'table-columns',
+  // the game's own HUD parts
+  'm-scoreboard': 'list-ol', 'm-bossbar': 'skull', 'm-tablist': 'table-list', 'm-titles': 'heading', 'm-nametag': 'tag',
 };
 
 /** Size of the glyph inside the 64×64 square, matching the icons already there. */

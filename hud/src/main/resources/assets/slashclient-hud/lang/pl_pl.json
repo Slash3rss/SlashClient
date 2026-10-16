@@ -147,5 +147,14 @@
 	"slashclient-hud.friends.menu": "W menu gry",
 	"slashclient-hud.friends.launcher": "W launcherze",
 	"slashclient-hud.friends.invite": "zaprasza Cię do znajomych",
-	"slashclient-hud.friends.notSent": "Nie wysłano wiadomości"
+	"slashclient-hud.friends.notSent": "Nie wysłano wiadomości",
+	"slashclient-hud.cat.game": "Interfejs gry",
+	"slashclient-hud.game.scoreboard": "Tablica wyników",
+	"slashclient-hud.game.bossbar": "Pasek bossa",
+	"slashclient-hud.game.tablist": "Lista graczy (TAB)",
+	"slashclient-hud.game.titles": "Tytuły na ekranie",
+	"slashclient-hud.game.nametag": "Twój nick na F5",
+	"slashclient-hud.game.numbers": "Czerwone liczby",
+	"slashclient-hud.game.numericPing": "Ping w milisekundach",
+	"slashclient-hud.set.offset": "Przesunięcie"
 }

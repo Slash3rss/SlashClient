@@ -147,5 +147,14 @@
 	"slashclient-hud.friends.menu": "In the game menu",
 	"slashclient-hud.friends.launcher": "In the launcher",
 	"slashclient-hud.friends.invite": "wants to be your friend",
-	"slashclient-hud.friends.notSent": "Message not sent"
+	"slashclient-hud.friends.notSent": "Message not sent",
+	"slashclient-hud.cat.game": "Game HUD",
+	"slashclient-hud.game.scoreboard": "Scoreboard",
+	"slashclient-hud.game.bossbar": "Boss bar",
+	"slashclient-hud.game.tablist": "Player list (Tab)",
+	"slashclient-hud.game.titles": "Titles",
+	"slashclient-hud.game.nametag": "Your name on F5",
+	"slashclient-hud.game.numbers": "Red numbers",
+	"slashclient-hud.game.numericPing": "Ping in milliseconds",
+	"slashclient-hud.set.offset": "Offset"
 }

@@ -93,6 +93,24 @@ public final class HudConfig {
 	/** The SlashClient main menu instead of Minecraft's own. */
 	public boolean customMenu = true;
 
+	// ---- the game's own HUD parts: shown or hidden, scaled, moved ----
+	public boolean scoreboard = true;
+	public float scoreboardScale = 1f;
+	/** Pixels up (negative) or down from the middle of the right edge. */
+	public int scoreboardOffset = 0;
+	/** The red numbers next to the lines. */
+	public boolean scoreboardNumbers = true;
+	public boolean bossBar = true;
+	public float bossBarScale = 1f;
+	public int bossBarOffset = 0;
+	public float tabScale = 1f;
+	/** The ping in milliseconds instead of the signal bars. */
+	public boolean tabNumericPing = false;
+	public boolean titles = true;
+	public float titleScale = 1f;
+	/** Your own name above your head in third person (F5). */
+	public boolean ownNametag = false;
+
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("slashclient-hud.json");
 
@@ -175,6 +193,18 @@ public final class HudConfig {
 		crosshairGap = other.crosshairGap;
 		customMenu = other.customMenu;
 		badges = other.badges;
+		scoreboard = other.scoreboard;
+		scoreboardScale = other.scoreboardScale;
+		scoreboardOffset = other.scoreboardOffset;
+		scoreboardNumbers = other.scoreboardNumbers;
+		bossBar = other.bossBar;
+		bossBarScale = other.bossBarScale;
+		bossBarOffset = other.bossBarOffset;
+		tabScale = other.tabScale;
+		tabNumericPing = other.tabNumericPing;
+		titles = other.titles;
+		titleScale = other.titleScale;
+		ownNametag = other.ownNametag;
 		save();
 	}
 
