@@ -108,6 +108,63 @@ final class MoreModules {
 		}
 	}
 
+	/** The game's share of the processor, over the last second (all cores together = 100%). */
+	static final class Cpu extends Modules.TextModule {
+		private static final java.lang.management.OperatingSystemMXBean OS = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+		private static long sampledAt;
+		private static double load = -1;
+
+		public String id() {
+			return "cpu";
+		}
+
+		/** 0..1, or -1 when the JVM cannot tell; read once a second, the call is not free. */
+		static double load() {
+			long now = System.currentTimeMillis();
+			if (now - sampledAt >= 1000) {
+				sampledAt = now;
+				load = OS instanceof com.sun.management.OperatingSystemMXBean sun ? sun.getProcessCpuLoad() : -1;
+			}
+			return load;
+		}
+
+		@Override
+		public boolean visible(Minecraft mc) {
+			return load() >= 0;
+		}
+
+		Component content(Minecraft mc) {
+			return Component.translatable("slashclient-hud.cpu", Math.round(Math.max(0, load()) * 100));
+		}
+
+		@Override
+		int color(Minecraft mc) {
+			return grade(Math.max(0, load()), 0.6, 0.9);
+		}
+	}
+
+	/** How busy the graphics card is with the game's frames, measured by the game (as on F3). */
+	static final class Gpu extends Modules.TextModule {
+		public String id() {
+			return "gpu";
+		}
+
+		private static double load(Minecraft mc) {
+			return Math.max(0, Math.min(100, mc.getGpuUtilization()));
+		}
+
+		Component content(Minecraft mc) {
+			// no measurement in the first frames, nor ever on macOS (its OpenGL gives no GPU timestamps)
+			double v = mc.getGpuUtilization();
+			return v > 0 ? Component.translatable("slashclient-hud.gpu", Math.round(load(mc))) : Component.translatable("slashclient-hud.gpu.none");
+		}
+
+		@Override
+		int color(Minecraft mc) {
+			return grade(load(mc) / 100, 0.7, 0.95);
+		}
+	}
+
 	static final class Biome extends Modules.TextModule {
 		public String id() {
 			return "biome";

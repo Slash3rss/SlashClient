@@ -12,6 +12,7 @@
 		"EntityRendererMixin",
 		"FreelookCameraMixin",
 		"FreelookMixin",
+		"GpuTimerMixin",
 		"GuiMixin",
 		"JoinMultiplayerScreenMixin",
 		"LightmapMixin",

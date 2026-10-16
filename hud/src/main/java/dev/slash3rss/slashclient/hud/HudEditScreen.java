@@ -197,6 +197,168 @@ public class HudEditScreen extends Screen {
 		else if (hidden > 0) Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.chat.more", hidden), w), x, y + h - 10, Ui.MUTED);
 	}
 
+	// ---------- crosshair page ----------
+
+	/** The painting grid of the last frame: where it is and how big one of its pixels is. */
+	private int gridX, gridY, gridCell;
+	/** While the mouse paints the grid: true draws pixels, false erases them. */
+	private Boolean painting;
+
+	private boolean crosshairPage() {
+		return window && settingsOf != null && settingsOf.id().equals("crosshair");
+	}
+
+	private Catalog.Setting crosshairSetting(String labelKey) {
+		return settingsOf.settings().stream().filter(s -> s.labelKey().equals(labelKey)).findFirst().orElseThrow();
+	}
+
+	/** Presets to pick from on the right, and on the left the crosshair big, to paint pixel by pixel. */
+	private void drawCrosshairPage(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h) {
+		Catalog.Entry e = settingsOf;
+		HudConfig cfg = SlashHud.config;
+		Ui.button(g, "back", x, y, 70, 18, "back", Ui.tr("slashclient-hud.ui.back"), false, mx, my);
+		hits.add(new Hit(x, y, 70, 18, () -> {
+			settingsOf = null;
+			reopen();
+		}));
+		Ui.round(g, x + 78, y, 20, 18, 4, 0xFF1B2B4D);
+		Ui.icon(g, e.icon(), x + 82, y + 3, 12, Ui.ACCENT_LIGHT);
+		Ui.draw(g, Ui.fit(Ui.trBold(e.nameKey()), w - 134), x + 104, y + 5, Ui.TEXT);
+		boolean on = e.get().get();
+		Ui.toggle(g, "crosshair:on", x + w - 20, y + 4, on);
+		hits.add(new Hit(x + w - 26, y, 26, 18, () -> e.set().accept(!e.get().get())));
+
+		String style = Crosshair.style();
+		boolean[] shown = Crosshair.current();
+		int color = cfg.crosshairColor;
+		int top = y + 26, bodyH = h - 26;
+
+		// the grid, as big as the height allows, with the clear button under it
+		int cell = Math.max(3, Math.min(10, (bodyH - 30) / Crosshair.N));
+		int grid = cell * Crosshair.N;
+		gridX = x + 2;
+		gridY = top + 2;
+		gridCell = cell;
+		Ui.round(g, x, top, grid + 4, grid + 4, 4, 0xFF0B0F18);
+		for (int cy = 0; cy < Crosshair.N; cy++) for (int cx = 0; cx < Crosshair.N; cx++) {
+			boolean middle = cx == Crosshair.MID || cy == Crosshair.MID;
+			int bg = (cx + cy) % 2 == 0 ? (middle ? 0xFF182238 : 0xFF131926) : (middle ? 0xFF141D30 : 0xFF0F141F);
+			g.fill(gridX + cx * cell, gridY + cy * cell, gridX + (cx + 1) * cell, gridY + (cy + 1) * cell, bg);
+		}
+		Crosshair.draw(g, gridX, gridY, shown, cell, on ? color : Ui.blend(color, 0xFF0F141F, 0.5f), false);
+		Ui.roundOutline(g, x, top, grid + 4, grid + 4, 4, painting != null ? 0x993B82F6 : Ui.BORDER);
+		int by = top + grid + 8;
+		Component clear = Ui.tr("slashclient-hud.crosshair.clear");
+		Ui.button(g, "crosshair:clear", x, by, grid + 4, 16, "reset", Ui.fit(clear, grid - 20), false, mx, my);
+		hits.add(new Hit(x, by, grid + 4, 16, () -> {
+			cfg.crosshair = Crosshair.CUSTOM;
+			cfg.crosshairPattern = Crosshair.encode(new boolean[Crosshair.N * Crosshair.N]);
+		}));
+
+		// on the right, scrolled when the window is small: presets, colour, outline, size and gap
+		int rx = x + grid + 16, rw = x + w - rx;
+		g.enableScissor(rx, top, rx + rw, top + bodyH);
+		Ui.beginClip("crosshair options", rx, top, rw, bodyH);
+		int ry = top - Math.round(scroll);
+		Component name = Ui.tr("slashclient-hud.crosshair." + style);
+		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.crosshair.presets").append(Ui.text("  ")).append(name.copy().withColor(Ui.ACCENT_LIGHT)), rw), rx, ry + 2, Ui.TEXT);
+		ry += 14;
+		List<String> styles = new ArrayList<>(List.of(Crosshair.PRESETS));
+		if (cfg.crosshairPattern != null) styles.add(Crosshair.CUSTOM);
+		int tile = 27, cols = Math.max(1, (rw + 4) / (tile + 4));
+		for (int i = 0; i < styles.size(); i++) {
+			String st = styles.get(i);
+			int tx = rx + (i % cols) * (tile + 4), ty = ry + (i / cols) * (tile + 4);
+			boolean over = Ui.inside(mx, my, tx, ty, tile, tile) && my >= top && my < top + bodyH;
+			boolean active = st.equals(style);
+			Ui.round(g, tx, ty, tile, tile, 4, over ? 0xFF1C2435 : 0xFF0B0F18);
+			Ui.roundOutline(g, tx, ty, tile, tile, 4, active ? Ui.ACCENT_LIGHT : over ? 0x40FFFFFF : Ui.BORDER);
+			// each at its real size, one pixel of the grid for one of the game's
+			Crosshair.draw(g, tx + 3, ty + 3, Crosshair.pixels(st), 1, color, cfg.crosshairOutline);
+			if (ty >= top && ty + tile <= top + bodyH) hits.add(new Hit(tx, ty, tile, tile, () -> cfg.crosshair = st));
+		}
+		ry += (styles.size() + cols - 1) / cols * (tile + 4) + 6;
+
+		// colour
+		Catalog.Colors colors = (Catalog.Colors) crosshairSetting("slashclient-hud.crosshairColor");
+		Ui.draw(g, Ui.fit(Ui.tr(colors.labelKey()), rw), rx, ry, Ui.TEXT_2);
+		ry += 12;
+		int per = Math.max(1, (rw + 4) / 16);
+		for (int i = 0; i < colors.colors().length; i++) {
+			int c = colors.colors()[i];
+			int sx = rx + (i % per) * 16, sy = ry + (i / per) * 16;
+			if (c == color) Ui.round(g, sx - 1, sy, 14, 14, 4, 0xFFFFFFFF);
+			Ui.round(g, sx, sy + 1, 12, 12, 3, c);
+			if (sy >= top && sy + 14 <= top + bodyH) hits.add(new Hit(sx, sy + 1, 12, 12, () -> colors.set().accept(c)));
+		}
+		ry += (colors.colors().length + per - 1) / per * 16 + 6;
+
+		// outline
+		Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.crosshair.outline"), rw - 28), rx, ry + 1, Ui.TEXT_2);
+		Ui.toggle(g, "crosshair:outline", rx + rw - 20, ry, cfg.crosshairOutline);
+		if (ry >= top && ry + 12 <= top + bodyH) hits.add(new Hit(rx, ry - 2, rw, 14, () -> cfg.crosshairOutline = !cfg.crosshairOutline));
+		ry += 18;
+
+		// size and gap shape the presets; a painted crosshair is what it is
+		if (Crosshair.CUSTOM.equals(style)) {
+			ry = Ui.wrapped(g, Ui.tr("slashclient-hud.crosshair.customHint"), rx, ry, rw, Ui.MUTED) + 4;
+		} else for (String key : new String[] { "slashclient-hud.set.size", "slashclient-hud.set.gap" }) {
+			Catalog.Slider sl = (Catalog.Slider) crosshairSetting(key);
+			float value = sl.get().get();
+			Component v = Ui.text(String.format(Locale.ROOT, sl.format(), value));
+			Ui.draw(g, Ui.fit(Ui.tr(key), rw - Ui.width(v) - 6), rx, ry, Ui.TEXT_2);
+			Ui.draw(g, v, rx + rw - Ui.width(v), ry, Ui.TEXT);
+			ry += 12;
+			int sw = rw - 4;
+			Ui.slider(g, rx + 2, ry, sw, (value - sl.min()) / (sl.max() - sl.min()));
+			int sx = rx + 2;
+			if (ry >= top && ry + 12 <= top + bodyH) hits.add(new Hit(rx, ry - 2, rw, 14, () -> {
+				draggingSlider = sl;
+				sliderX = sx;
+				sliderW = sw;
+			}));
+			ry += 18;
+		}
+		ry = Ui.wrapped(g, Ui.tr("slashclient-hud.crosshair.paintHint"), rx, ry, rw, Ui.MUTED);
+		maxScroll = Math.max(0, ry + Math.round(scroll) - top - bodyH);
+		Ui.end();
+		g.disableScissor();
+	}
+
+	/** For the in-game test: the middle of one of the grid's pixels, in GUI coordinates. */
+	double[] gridCellCenter(int cx, int cy) {
+		return new double[] { gridX + (cx + 0.5) * gridCell, gridY + (cy + 0.5) * gridCell };
+	}
+
+	/** For the in-game test: the middle of a module's ×. */
+	double[] closeCenter(String id) {
+		HudModule m = SlashHud.MODULES.stream().filter(x -> x.id().equals(id)).findFirst().orElseThrow();
+		int[] c = closeBox(m);
+		return new double[] { c[0] + c[2] / 2.0, c[1] + c[2] / 2.0 };
+	}
+
+	/** The grid's pixel painted last, so a quick drag fills the pixels it jumped over. */
+	private int lastCellX = -1, lastCellY = -1;
+
+	/** Draws or erases the grid's pixels from the last one painted to the one under the mouse. */
+	private void paintAt(double mx, double my) {
+		int cx = (int) Math.floor((mx - gridX) / gridCell), cy = (int) Math.floor((my - gridY) / gridCell);
+		if (painting == null || cx < 0 || cy < 0 || cx >= Crosshair.N || cy >= Crosshair.N) return;
+		HudConfig cfg = SlashHud.config;
+		boolean[] p = Crosshair.CUSTOM.equals(cfg.crosshair) ? Crosshair.decode(cfg.crosshairPattern) : Crosshair.editable();
+		int fromX = lastCellX < 0 ? cx : lastCellX, fromY = lastCellY < 0 ? cy : lastCellY;
+		int steps = Math.max(Math.abs(cx - fromX), Math.abs(cy - fromY));
+		for (int i = 0; i <= steps; i++) {
+			int x = steps == 0 ? cx : Math.round(fromX + (cx - fromX) * (float) i / steps);
+			int y = steps == 0 ? cy : Math.round(fromY + (cy - fromY) * (float) i / steps);
+			p[y * Crosshair.N + x] = painting;
+		}
+		lastCellX = cx;
+		lastCellY = cy;
+		cfg.crosshairPattern = Crosshair.encode(p);
+	}
+
+
 	// ---------- window geometry ----------
 
 	private int winW() {
@@ -261,8 +423,14 @@ public class HudEditScreen extends Screen {
 	 */
 	private void drawLayout(GuiGraphicsExtractor g, int mx, int my) {
 		HudModule hovered = dragging != null ? dragging : moduleAt(mx, my);
+		// the mouse on a module's × still counts as on the module, though the × sticks out of it
+		if (hovered == null) for (HudModule m : SlashHud.MODULES) {
+			int[] c = closeBox(m);
+			if (SlashHud.config.placement(m.id()).enabled && Ui.inside(mx, my, c[0], c[1], c[2], c[2])) hovered = m;
+		}
 		for (HudModule m : SlashHud.MODULES) {
-			if (!SlashHud.config.placement(m.id()).enabled) continue;
+			HudConfig.Placement p = SlashHud.config.placement(m.id());
+			if (!p.enabled) continue;
 			int[] b = box(m);
 			boolean hot = m == hovered;
 			Ui.roundOutline(g, b[0] - 2, b[1] - 2, b[2] + 4, b[3] + 4, 3, hot ? Ui.ACCENT_LIGHT : 0x66FFFFFF);
@@ -272,6 +440,18 @@ public class HudEditScreen extends Screen {
 				int ty = b[1] > 16 ? b[1] - 15 : b[1] + b[3] + 3;
 				Ui.round(g, b[0] - 2, ty, tw, 13, 3, Ui.ACCENT_DARK);
 				Ui.draw(g, name, b[0] + 3, ty + 3, 0xFFFFFFFF);
+				if (dragging == null) {
+					// × on the corner hides the module; it comes back from its card in the settings
+					int[] c = closeBox(m);
+					boolean over = Ui.inside(mx, my, c[0], c[1], c[2], c[2]);
+					Ui.round(g, c[0], c[1], c[2], c[2], 3, over ? Ui.DANGER : 0xE0161C2A);
+					Ui.roundOutline(g, c[0], c[1], c[2], c[2], 3, over ? Ui.DANGER : 0x66FFFFFF);
+					Ui.icon(g, "close", c[0] + 2, c[1] + 2, c[2] - 4, 0xFFFFFFFF);
+					hits.add(new Hit(c[0], c[1], c[2], c[2], () -> {
+						p.enabled = false;
+						SlashHud.config.save();
+					}));
+				}
 			}
 		}
 		if (dragging != null) return;
@@ -355,6 +535,7 @@ public class HudEditScreen extends Screen {
 		int cx = x + 132, cy = y + 42, cw = w - 144, ch = h - 50;
 		Ui.begin("content", cx, cy, cw, ch);
 		if (chatTabsPage()) drawChatTabs(g, mx, my, cx, cy, cw, ch);
+		else if (crosshairPage()) drawCrosshairPage(g, mx, my, cx, cy, cw, ch);
 		else if (settingsOf != null) drawSettings(g, mx, my, cx, cy, cw, ch);
 		else if (category.equals("share")) drawShare(g, mx, my, cx, cy, cw);
 		else drawCards(g, mx, my, cx, cy, cw, ch);
@@ -638,6 +819,15 @@ public class HudEditScreen extends Screen {
 			}
 		}
 		if (e.button() != InputConstants.MOUSE_BUTTON_LEFT) return false;
+		int span = gridCell * Crosshair.N;
+		if (crosshairPage() && Ui.inside(e.x(), e.y(), gridX, gridY, span, span)) {
+			// the first pixel decides: drag from an empty one to draw, from a full one to erase
+			int cx = (int) ((e.x() - gridX) / gridCell), cy = (int) ((e.y() - gridY) / gridCell);
+			painting = !Crosshair.current()[cy * Crosshair.N + cx];
+			if (!Crosshair.CUSTOM.equals(SlashHud.config.crosshair)) Crosshair.editable();
+			paintAt(e.x(), e.y());
+			return true;
+		}
 		for (int i = hits.size() - 1; i >= 0; i--) {
 			Hit h = hits.get(i);
 			if (Ui.inside(e.x(), e.y(), h.x(), h.y(), h.w(), h.h())) {
@@ -676,6 +866,10 @@ public class HudEditScreen extends Screen {
 
 	@Override
 	public boolean mouseDragged(MouseButtonEvent e, double dx, double dy) {
+		if (painting != null) {
+			paintAt(e.x(), e.y());
+			return true;
+		}
 		if (draggingSlider != null) {
 			dragSlider(e.x());
 			return true;
@@ -697,6 +891,8 @@ public class HudEditScreen extends Screen {
 	public boolean mouseReleased(MouseButtonEvent e) {
 		dragging = null;
 		draggingSlider = null;
+		painting = null;
+		lastCellX = lastCellY = -1;
 		snappedX = snappedY = false;
 		return super.mouseReleased(e);
 	}
@@ -756,6 +952,15 @@ public class HudEditScreen extends Screen {
 			if (free) return y;
 		}
 		return candidates[0];
+	}
+
+	/** x, y and size of the × that hides a module: on its top-right corner, kept on the screen. */
+	private int[] closeBox(HudModule m) {
+		int[] b = box(m);
+		int size = 11;
+		int x = Math.max(0, Math.min(width - size, b[0] + b[2] - size + 5));
+		int y = Math.max(0, Math.min(height - size, b[1] - 6));
+		return new int[] { x, y, size };
 	}
 
 	private int[] box(HudModule m) {

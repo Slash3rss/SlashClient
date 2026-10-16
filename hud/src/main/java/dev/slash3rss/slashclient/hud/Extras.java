@@ -96,41 +96,16 @@ public final class Extras {
 
 	// ---------- crosshair ----------
 
-	static final String[] CROSSHAIRS = { "vanilla", "plus", "dot", "plusdot", "x" };
-	static final int[] COLORS = { 0xFFFFFFFF, 0xFF55FF55, 0xFF55FFFF, 0xFFFF5555, 0xFFFFFF55, 0xFFFF55FF, 0xFF000000 };
+		static final int[] COLORS = { 0xFFFFFFFF, 0xFF55FF55, 0xFF55FFFF, 0xFFFF5555, 0xFFFFFF55, 0xFFFF55FF, 0xFF000000 };
 
 	/** False when the game's own crosshair should be drawn. */
 	static boolean drawCrosshair(GuiGraphicsExtractor g, Minecraft mc) {
 		String style = cfg().crosshair;
 		if ("vanilla".equals(style)) return false;
 		if (!mc.options.getCameraType().isFirstPerson()) return true;
-		int cx = g.guiWidth() / 2;
-		int cy = g.guiHeight() / 2;
-		int c = cfg().crosshairColor;
-		int size = cfg().crosshairSize;
-		int gap = cfg().crosshairGap;
-		int outline = 0x80000000;
-		if (style.equals("plus") || style.equals("plusdot")) {
-			// a dark edge keeps it visible on snow and sky
-			bar(g, cx - gap - size, cy, cx - gap, cy + 1, c, outline);
-			bar(g, cx + gap + 1, cy, cx + gap + 1 + size, cy + 1, c, outline);
-			bar(g, cx, cy - gap - size, cx + 1, cy - gap, c, outline);
-			bar(g, cx, cy + gap + 1, cx + 1, cy + gap + 1 + size, c, outline);
-		}
-		if (style.equals("dot") || style.equals("plusdot")) bar(g, cx, cy, cx + 1, cy + 1, c, outline);
-		if (style.equals("x")) {
-			for (int i = gap; i < gap + size; i++) {
-				g.fill(cx + i, cy + i, cx + i + 1, cy + i + 1, c);
-				g.fill(cx - i, cy + i, cx - i + 1, cy + i + 1, c);
-				g.fill(cx + i, cy - i, cx + i + 1, cy - i + 1, c);
-				g.fill(cx - i, cy - i, cx - i + 1, cy - i + 1, c);
-			}
-		}
+		// the grid's middle pixel on the screen's middle, where the game puts its own
+		int mid = Crosshair.MID;
+		Crosshair.draw(g, g.guiWidth() / 2 - mid, g.guiHeight() / 2 - mid, Crosshair.current(), 1, cfg().crosshairColor, cfg().crosshairOutline);
 		return true;
-	}
-
-	private static void bar(GuiGraphicsExtractor g, int x1, int y1, int x2, int y2, int color, int outline) {
-		g.fill(x1 - 1, y1 - 1, x2 + 1, y2 + 1, outline);
-		g.fill(x1, y1, x2, y2, color);
 	}
 }

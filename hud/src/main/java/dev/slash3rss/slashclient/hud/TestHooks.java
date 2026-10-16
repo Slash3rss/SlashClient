@@ -13,6 +13,58 @@ public final class TestHooks {
 		SlashHud.config.chatTimestamps = true;
 	}
 
+	public static void crosshairStyle(String style) {
+		SlashHud.config.crosshair = style;
+		SlashHud.config.crosshairOutline = true;
+	}
+
+	private static net.minecraft.client.gui.screens.Screen screen() {
+		return Compat.screen(net.minecraft.client.Minecraft.getInstance());
+	}
+
+	/**
+	 * The left mouse button straight on the open screen, in GUI coordinates: "press", "drag" or
+	 * "release" (the test's own mouse does not reach an unfocused game window).
+	 */
+	public static void mouse(String action, double[] at) {
+		var e = new net.minecraft.client.input.MouseButtonEvent(at[0], at[1], new net.minecraft.client.input.MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0));
+		switch (action) {
+			case "press" -> screen().mouseClicked(e, false);
+			case "drag" -> screen().mouseDragged(e, 0, 0);
+			default -> screen().mouseReleased(e);
+		}
+	}
+
+	public static double[] gridPoint(int cx, int cy) {
+		return ((HudEditScreen) screen()).gridCellCenter(cx, cy);
+	}
+
+	/** The × of a module in the layout editor, with the mouse put on the module first so it shows. */
+	public static double[] closePoint(String id) {
+		SlashHud.config.placement(id).enabled = true;
+		return ((HudEditScreen) screen()).closeCenter(id);
+	}
+
+	/** CPU and GPU modules on. */
+	public static void cpuGpu() {
+		SlashHud.config.placement("cpu").enabled = true;
+		SlashHud.config.placement("gpu").enabled = true;
+	}
+
+	/** What the CPU and GPU modules read: 0..1 and 0..100. */
+	public static String cpuGpuValues() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		return MoreModules.Cpu.load() + " " + mc.getGpuUtilization();
+	}
+
+	public static boolean moduleOn(String id) {
+		return SlashHud.config.placement(id).enabled;
+	}
+
+	public static String crosshairState() {
+		return SlashHud.config.crosshair + " " + SlashHud.config.crosshairPattern;
+	}
+
 	public static KeyMapping zoomKey(Options options) {
 		return Extras.zoomKey;
 	}

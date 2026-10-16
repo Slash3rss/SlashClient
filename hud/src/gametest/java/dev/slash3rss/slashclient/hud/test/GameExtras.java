@@ -47,6 +47,45 @@ public class GameExtras implements FabricClientGameTest {
 			context.getInput().releaseKey(o -> dev.slash3rss.slashclient.hud.Freelook.key);
 			if (!ok) throw new AssertionError("Freelook turned the player");
 
+			// crosshair presets, the pixel editor, and the × that hides a module in the layout editor
+			context.runOnClient(mc -> {
+				TestHooks.crosshairStyle("circledot");
+				TestHooks.cpuGpu();
+			});
+			context.waitTicks(40);
+			String loads = context.computeOnClient(mc -> TestHooks.cpuGpuValues());
+			String[] cg = loads.split(" ");
+			// macOS's OpenGL gives no GPU timestamps (F3 shows no GPU load there either)
+			boolean mac = System.getProperty("os.name").toLowerCase().contains("mac");
+			if (Double.parseDouble(cg[0]) < 0 || (!mac && Double.parseDouble(cg[1]) <= 0)) throw new AssertionError("CPU or GPU not measured: " + loads);
+			context.takeScreenshot("extras-crosshair-circle");
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("crosshair"));
+			context.waitTicks(5);
+			double[] from = context.computeOnClient(mc -> TestHooks.gridPoint(13, 4));
+			double[] to = context.computeOnClient(mc -> TestHooks.gridPoint(16, 4));
+			context.runOnClient(mc -> {
+				TestHooks.mouse("press", from);
+				TestHooks.mouse("drag", to);
+				TestHooks.mouse("release", to);
+			});
+			context.waitTicks(3);
+			context.takeScreenshot("extras-crosshair-editor");
+			String state = context.computeOnClient(mc -> TestHooks.crosshairState());
+			String row4 = state.startsWith("custom ") ? state.substring(7).split("/")[4] : "";
+			if (!row4.startsWith(".............####")) throw new AssertionError("Painting the crosshair failed: " + state);
+			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::new);
+			context.waitTicks(3);
+			double[] x = context.computeOnClient(mc -> TestHooks.closePoint("fps"));
+			// the × shows with the mouse on the module (the test's cursor sits in GUI points × scale)
+			double scale = context.computeOnClient(mc -> mc.getWindow().getScreenWidth() / (double) mc.getWindow().getGuiScaledWidth());
+			context.getInput().setCursorPos(x[0] * scale, x[1] * scale);
+			context.waitTicks(3);
+			context.takeScreenshot("extras-hide-module");
+			context.runOnClient(mc -> TestHooks.mouse("press", x));
+			context.waitTicks(2);
+			if (context.computeOnClient(mc -> TestHooks.moduleOn("fps"))) throw new AssertionError("The × did not hide the module");
+			context.setScreen(() -> null);
+
 			// the SlashClient pause menu
 			context.setScreen(dev.slash3rss.slashclient.hud.ui.SlashPauseScreen::new);
 			context.waitTicks(10);

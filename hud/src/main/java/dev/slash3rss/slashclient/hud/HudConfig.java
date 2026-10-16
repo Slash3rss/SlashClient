@@ -83,8 +83,12 @@ public final class HudConfig {
 	/** The fire overlay sits lower, so it covers less of the screen. */
 	public boolean lowFire = false;
 	public boolean chatTimestamps = false;
-	/** "vanilla", "plus", "dot", "plusdot" or "x". */
+	/** "vanilla", one of Crosshair.PRESETS, or "custom" for the painted crosshairPattern. */
 	public String crosshair = "vanilla";
+	public String crosshairPattern;
+	/** The crosshair to come back to when it is switched on again. */
+	public String crosshairLast = "plusdot";
+	public boolean crosshairOutline = true;
 	public int crosshairColor = 0xFFFFFFFF;
 	public int crosshairSize = 5;
 	public int crosshairGap = 2;
@@ -153,6 +157,8 @@ public final class HudConfig {
 		c.modules.put("clock", new Placement(false, 1, 0, -2, 2));
 		c.modules.put("memory", new Placement(false, 1, 0, -2, 17));
 		c.modules.put("session", new Placement(false, 1, 0, -2, 32));
+		c.modules.put("cpu", new Placement(false, 1, 0, -2, 62));
+		c.modules.put("gpu", new Placement(false, 1, 0, -2, 77));
 		c.modules.put("effects", new Placement(true, 1, 0, -2, 47));
 		c.modules.put("armor", new Placement(true, 1, 0.5f, -2, 20));
 		c.modules.put("items", new Placement(true, 1, 1, -2, -2));
@@ -192,6 +198,7 @@ public final class HudConfig {
 		for (var e : defaults.modules.entrySet()) read.modules.putIfAbsent(e.getKey(), e.getValue());
 		if (read.chatTabs == null) read.chatTabs = defaults.chatTabs;
 		if (read.crosshair == null) read.crosshair = defaults.crosshair;
+		if (read.crosshairLast == null) read.crosshairLast = defaults.crosshairLast;
 		return read;
 	}
 
@@ -212,6 +219,9 @@ public final class HudConfig {
 		crosshairColor = other.crosshairColor;
 		crosshairSize = other.crosshairSize;
 		crosshairGap = other.crosshairGap;
+		crosshairPattern = other.crosshairPattern;
+		crosshairLast = other.crosshairLast;
+		crosshairOutline = other.crosshairOutline;
 		customMenu = other.customMenu;
 		customPause = other.customPause;
 		badges = other.badges;

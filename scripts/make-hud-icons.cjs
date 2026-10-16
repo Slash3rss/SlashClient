@@ -16,7 +16,7 @@ const ICONS = {
   'm-speed': 'person-running', 'm-clock': 'clock', 'm-server': 'server', 'm-players': 'users', 'm-memory': 'memory',
   'm-biome': 'tree', 'm-daytime': 'sun', 'm-light': 'lightbulb', 'm-session': 'hourglass-half', 'm-combo': 'fire',
   'm-reach': 'ruler-horizontal', 'm-movement': 'shoe-prints', 'm-saturation': 'drumstick-bite', 'm-items': 'boxes-stacked',
-  'm-target': 'bullseye', 'm-armor': 'shield-halved', 'm-effects': 'flask', 'm-keystrokes': 'keyboard',
+  'm-cpu': 'microchip', 'm-gpu': 'display', 'm-target': 'bullseye', 'm-armor': 'shield-halved', 'm-effects': 'flask', 'm-keystrokes': 'keyboard',
   // extras and chat
   'm-zoom': 'magnifying-glass-plus', 'm-fullbright': 'circle-half-stroke', 'm-lowfire': 'fire-flame-simple',
   'm-crosshair': 'crosshairs', 'm-appearance': 'palette', 'm-badges': 'id-badge', 'm-menu': 'house',
