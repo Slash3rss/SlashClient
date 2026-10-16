@@ -95,6 +95,17 @@ public final class TestHooks {
 		return mc.player.getYRot() == yaw;
 	}
 
+	/** Plays as an offline account of this name from now on; returns the game's user name after. */
+	public static String switchAccount(String name) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		try {
+			AccountSwitch.apply(mc, name, java.util.UUID.nameUUIDFromBytes(("OfflinePlayer:" + name).getBytes()), "0", "", true);
+		} catch (Exception e) {
+			return "error: " + e;
+		}
+		return mc.getUser().getName();
+	}
+
 	/** One chat tab, so the chat tabs page has a row to show. */
 	public static void sampleChatTab() {
 		if (!SlashHud.config.chatTabs.isEmpty()) return;

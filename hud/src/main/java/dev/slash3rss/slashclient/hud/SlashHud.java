@@ -62,6 +62,15 @@ public class SlashHud implements ClientModInitializer {
 		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> Badges.reset());
 		// the game's own menu gets a way back to ours
 		ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
+			// the game's own pause menu gets a way back to ours too
+			if (screen instanceof net.minecraft.client.gui.screens.PauseScreen pause && pause.showsPauseMenu()) {
+				Screens.getWidgets(screen).add(Button.builder(Component.translatable("slashclient-hud.menu.oursPause"), b -> {
+					config.customPause = true;
+					config.save();
+					mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.ui.SlashPauseScreen());
+				}).bounds(4, 4, 110, 20).build());
+				return;
+			}
 			if (!(screen instanceof TitleScreen)) return;
 			Screens.getWidgets(screen).add(Button.builder(Component.translatable("slashclient-hud.menu.ours"), b -> {
 				config.customMenu = true;

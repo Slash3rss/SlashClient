@@ -46,7 +46,22 @@ public class GameExtras implements FabricClientGameTest {
 			context.takeScreenshot("extras-freelook");
 			context.getInput().releaseKey(o -> dev.slash3rss.slashclient.hud.Freelook.key);
 			if (!ok) throw new AssertionError("Freelook turned the player");
+
+			// the SlashClient pause menu
+			context.setScreen(dev.slash3rss.slashclient.hud.ui.SlashPauseScreen::new);
+			context.waitTicks(10);
+			context.takeScreenshot("extras-pause-menu");
+			context.setScreen(() -> null);
 		}
+		// switching accounts in the main menu, without a restart (an offline account here)
+		context.runOnClient(mc -> TestHooks.slashMenu());
+		context.setScreen(dev.slash3rss.slashclient.hud.ui.SlashTitleScreen::new);
+		context.waitTicks(10);
+		String name = context.computeOnClient(mc -> TestHooks.switchAccount("Drugi"));
+		if (!"Drugi".equals(name)) throw new AssertionError("Account switch failed: " + name);
+		context.setScreen(dev.slash3rss.slashclient.hud.ui.SlashTitleScreen::new);
+		context.waitTicks(10);
+		context.takeScreenshot("extras-switched-account");
 		context.runOnClient(mc -> TestHooks.vanillaMenu());
 	}
 }

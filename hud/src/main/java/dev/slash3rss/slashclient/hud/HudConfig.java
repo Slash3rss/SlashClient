@@ -92,6 +92,8 @@ public final class HudConfig {
 	public boolean badges = true;
 	/** The SlashClient main menu instead of Minecraft's own. */
 	public boolean customMenu = true;
+	/** The SlashClient pause menu instead of Minecraft's own. */
+	public boolean customPause = true;
 
 	// ---- the game's own HUD parts: shown or hidden, scaled, moved ----
 	public boolean scoreboard = true;
@@ -211,6 +213,7 @@ public final class HudConfig {
 		crosshairSize = other.crosshairSize;
 		crosshairGap = other.crosshairGap;
 		customMenu = other.customMenu;
+		customPause = other.customPause;
 		badges = other.badges;
 		scoreboard = other.scoreboard;
 		scoreboardScale = other.scoreboardScale;

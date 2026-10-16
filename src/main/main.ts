@@ -1,5 +1,5 @@
 import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, nativeImage, net, Notification, powerMonitor, protocol, safeStorage, shell } from 'electron';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
 import type { ChildProcess } from 'node:child_process';
@@ -788,6 +788,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     largeImageKey: 'logo',
     largeImageText: 'SlashClient',
   };
+  gameAccountId = account.id;
   const hud = await prepareProfileHud(profile);
   // only a game with our HUD talks to the bridge
   if (hud.jvmArgs.length) {
@@ -912,12 +913,28 @@ const social = new SocialClient({
   },
 });
 
+/** The account the running game plays as (it can change from the game's menu). */
+let gameAccountId: string | undefined;
+
 /** Friends and chat for SlashClient HUD in the game, without handing it the account token. */
 const bridge = new GameBridge({
   call: (method, apiPath, body) => social.call(method, apiPath, body),
   state: () => {
     const s = social.state();
     return { signedIn: !!s.user, user: s.user, connected: s.connected };
+  },
+  accounts: () => store.accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, current: a.id === gameAccountId })),
+  // switching accounts in the game's menu: the game gets this one account's session, nothing else
+  useAccount: async (id) => {
+    const account = store.accounts.find((a) => a.id === id);
+    if (!account) throw new Error('no_account');
+    const session = account.type === 'msa'
+      ? await freshMsa(id).then((a) => ({ name: a.name, uuid: a.uuid, accessToken: a.accessToken, xuid: a.xuid, type: 'msa' }))
+      : { name: account.name, uuid: account.uuid, accessToken: randomBytes(16).toString('hex'), xuid: '', type: 'offline' };
+    gameAccountId = id;
+    store.settings.selectedAccountId = id;
+    await persist();
+    return session;
   },
   // F2 in game: only a PNG in the screenshots folder of one of the profiles
   copyImage: async (file) => {

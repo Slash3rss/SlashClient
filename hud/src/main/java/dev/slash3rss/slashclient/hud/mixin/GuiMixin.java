@@ -5,6 +5,7 @@ import dev.slash3rss.slashclient.hud.ui.SlashTitleScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -19,7 +20,9 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 abstract class GuiMixin {
 	@ModifyVariable(method = "setScreen", at = @At("HEAD"), argsOnly = true)
 	private Screen slashclient$mainMenu(Screen screen) {
-		if (SlashHud.config == null || !SlashHud.config.customMenu) return screen;
+		if (SlashHud.config == null) return screen;
+		if (screen instanceof PauseScreen pause && pause.showsPauseMenu() && SlashHud.config.customPause) return new dev.slash3rss.slashclient.hud.ui.SlashPauseScreen();
+		if (!SlashHud.config.customMenu) return screen;
 		if (screen instanceof TitleScreen) return new SlashTitleScreen();
 		// closing a screen without a world (the HUD editor, friends, options from our menu): the game
 		// would make its own title screen further down in this method, so answer with ours here

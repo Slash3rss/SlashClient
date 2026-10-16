@@ -18,6 +18,10 @@ export interface BridgeOptions {
   state: () => unknown;
   /** Puts a screenshot on the clipboard; rejects paths that are not a profile's screenshot. */
   copyImage?: (file: string) => Promise<void>;
+  /** The launcher's accounts, without tokens; `current` is the one the game plays as. */
+  accounts?: () => { id: string; name: string; type: string; current: boolean }[];
+  /** The session for one account, picked in the game's menu (a fresh token for Microsoft). */
+  useAccount?: (id: string) => Promise<{ name: string; uuid: string; accessToken: string; xuid: string; type: string }>;
 }
 
 /** What the game may ask for: its friends and the messages with them. */
@@ -100,6 +104,17 @@ export class GameBridge {
     const method = req.method ?? 'GET';
 
     if (method === 'GET' && url === '/state') return this.send(res, 200, this.opts.state());
+
+    if (method === 'GET' && url === '/accounts') return this.send(res, 200, { accounts: this.opts.accounts?.() ?? [] });
+    if (method === 'POST' && url === '/accounts/use') {
+      const { id } = ((await this.body(req)) ?? {}) as { id?: unknown };
+      if (typeof id !== 'string' || !this.opts.useAccount) return this.send(res, 400, { error: 'bad_request' });
+      try {
+        return this.send(res, 200, await this.opts.useAccount(id));
+      } catch (err) {
+        return this.send(res, 502, { error: (err as Error).message });
+      }
+    }
 
     if (method === 'POST' && url === '/clipboard/image') {
       const { path } = ((await this.body(req)) ?? {}) as { path?: unknown };

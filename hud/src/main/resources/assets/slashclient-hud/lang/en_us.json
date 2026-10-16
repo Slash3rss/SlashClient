@@ -186,5 +186,15 @@
 	"slashclient-hud.waypoints.none": "No waypoints in this world yet. Add the first one where you stand.",
 	"slashclient-hud.waypoints.point": "Point %s",
 	"slashclient-hud.screenshot.copied": "Copied to clipboard",
-	"slashclient-hud.screenshot.saved": "Screenshot saved"
+	"slashclient-hud.screenshot.saved": "Screenshot saved",
+	"slashclient-hud.set.pause": "SlashClient pause menu",
+	"slashclient-hud.menu.vanillaPause": "Switch to Minecraft's pause menu",
+	"slashclient-hud.menu.oursPause": "SlashClient menu",
+	"slashclient-hud.accounts": "Accounts",
+	"slashclient-hud.accounts.switch": "Switch account",
+	"slashclient-hud.accounts.current": "In use",
+	"slashclient-hud.accounts.microsoft": "Microsoft",
+	"slashclient-hud.accounts.offline": "Offline",
+	"slashclient-hud.accounts.switching": "Switching to %s…",
+	"slashclient-hud.accounts.failed": "Could not switch account"
 }

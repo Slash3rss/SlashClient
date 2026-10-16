@@ -24,6 +24,7 @@ const ICONS = {
   // the game's own HUD parts
   'm-togglesprint': 'forward-fast', 'm-time': 'cloud-sun', 'm-freelook': 'eye', 'm-waypoints': 'location-dot',
   'm-screenshot': 'camera', 'm-chatstack': 'layer-group', 'm-chatcopy': 'copy', 'm-chatsearch': 'magnifying-glass',
+  'm-advancements': 'trophy', 'm-stats': 'chart-simple', 'm-pause': 'pause', 'm-accounts': 'user-gear',
   'm-scoreboard': 'list-ol', 'm-bossbar': 'skull', 'm-tablist': 'table-list', 'm-titles': 'heading', 'm-nametag': 'tag',
 };
 

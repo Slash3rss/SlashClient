@@ -292,6 +292,35 @@ public final class Social {
 		});
 	}
 
+	/** An account in the launcher (no tokens: those come only for the one picked). */
+	public record Account(String id, String name, String type, boolean current) {}
+
+	public static List<Account> accounts() throws Exception {
+		JsonObject res = request("GET", "/accounts", null, 5);
+		List<Account> out = new ArrayList<>();
+		for (JsonElement el : res.getAsJsonArray("accounts")) {
+			JsonObject o = el.getAsJsonObject();
+			out.add(new Account(str(o, "id"), str(o, "name"), str(o, "type"), o.has("current") && o.get("current").getAsBoolean()));
+		}
+		return out;
+	}
+
+	/** The picked account's session from the launcher (a fresh Microsoft token), applied to the game. */
+	public static void useAccount(String id) throws Exception {
+		JsonObject body = new JsonObject();
+		body.addProperty("id", id);
+		JsonObject s = request("POST", "/accounts/use", body, 30);
+		Minecraft mc = Minecraft.getInstance();
+		java.util.UUID uuid = java.util.UUID.fromString(str(s, "uuid"));
+		mc.execute(() -> {
+			try {
+				dev.slash3rss.slashclient.hud.AccountSwitch.apply(mc, str(s, "name"), uuid, str(s, "accessToken"), str(s, "xuid"), "offline".equals(str(s, "type")));
+			} catch (Exception e) {
+				toast(Component.translatable("slashclient-hud.accounts.failed").getString(), String.valueOf(e.getMessage()));
+			}
+		});
+	}
+
 	/** Asks the launcher to put a picture file on the clipboard; false without a launcher. */
 	public static boolean copyImage(String path) {
 		if (!available()) return false;
