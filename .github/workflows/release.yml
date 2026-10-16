@@ -10,8 +10,31 @@ permissions:
   contents: write
 
 jobs:
+  # One release first, so the three installer jobs below all upload to it
+  # (left to themselves they raced and each made its own release with the same tag).
+  release:
+    name: Wydanie na GitHubie
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Create the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 && exit 0
+          # the description comes from release-notes/<tag>.md when there is one
+          notes="release-notes/$TAG.md"
+          if [ -f "$notes" ]; then
+            gh release create "$TAG" --title "SlashClient ${TAG#v}" --notes-file "$notes"
+          else
+            gh release create "$TAG" --title "SlashClient ${TAG#v}" --generate-notes
+          fi
+
   installers:
     name: Instalator (${{ matrix.os }})
+    needs: release
     strategy:
       fail-fast: false
       matrix:
