@@ -56,11 +56,14 @@ public class SlashHud implements ClientModInitializer {
 		// Left Alt holds freelook (only once it is switched on in the HUD window); B opens the waypoints
 		Freelook.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.freelook", InputConstants.KEY_LALT, category));
 		KeyMapping waypointsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.waypoints", InputConstants.KEY_B, category));
+		Clips.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.clip", InputConstants.KEY_F8, category));
+		Cosmetics.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.emote", InputConstants.KEY_N, category));
 		ChatTabs.register();
 		Badges.load();
 		// another server or world: what we knew about its players is gone
 		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> {
 			Badges.reset();
+			Cosmetics.reset();
 			NetCounter.attach(handler.getConnection());
 		});
 		// the game's own menu gets a way back to ours
@@ -85,6 +88,8 @@ public class SlashHud implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
 			Extras.tick(mc);
 			Benchmark.tick(mc);
+			Cosmetics.tick(mc);
+			Clips.tick(mc);
 			Badges.tick(mc);
 			while (edit.consumeClick()) {
 				if (Compat.screen(mc) == null) mc.setScreenAndShow(new HudEditScreen());

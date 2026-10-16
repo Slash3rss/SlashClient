@@ -83,6 +83,8 @@ const api = {
   deleteBackup: (profileId: string, name: string) => invoke('backups:delete', profileId, name),
   listScreenshots: (profileId: string) => invoke('screenshots:list', profileId),
   deleteScreenshot: (profileId: string, name: string) => invoke('screenshots:delete', profileId, name),
+  listClips: (profileId: string) => invoke('clips:list', profileId),
+  deleteClip: (profileId: string, name: string) => invoke('clips:delete', profileId, name),
   copyHudCode: (profileId: string) => invoke('hud:copyCode', profileId),
   pasteHudCode: (profileId: string) => invoke('hud:pasteCode', profileId),
   socialState: () => invoke('social:state'),
@@ -94,6 +96,8 @@ const api = {
   socialLogout: () => invoke('social:logout'),
   socialSetStatus: (status: string) => invoke('social:setStatus', status),
   socialTyping: (friendId: string) => invoke('social:typing', friendId),
+  socialActivity: () => invoke('social:activity'),
+  joinInGame: (address: string) => invoke('game:join', address),
   on,
 };
 

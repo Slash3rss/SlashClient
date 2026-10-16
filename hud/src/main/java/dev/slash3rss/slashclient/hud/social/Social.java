@@ -30,7 +30,8 @@ public final class Social {
 	private Social() {}
 
 	public record Friend(String id, String name, String handle, String status, String activity, String server, int unread, long lastMessageAt) {}
-	public record Message(long id, String from, String to, String text, long at, boolean read) {}
+	/** `invite` is a server address when the message is a "join me" invite, else empty. */
+	public record Message(long id, String from, String to, String text, long at, boolean read, String invite, String inviteVersion) {}
 
 	private static final String URL = System.getProperty("slashclient.bridge", "");
 	private static final String KEY = System.getProperty("slashclient.bridgeKey", "");
@@ -51,7 +52,17 @@ public final class Social {
 
 	/** Whether the game was started by the launcher with friends available. */
 	public static boolean available() {
-		return !URL.isEmpty() && !KEY.isEmpty();
+		return !URL.isEmpty() && !KEY.isEmpty() || sample;
+	}
+
+	/** Made-up friends and a chat for the screenshot test (no launcher there). */
+	private static volatile boolean sample;
+
+	public static void sampleForTest(Friend friend, List<Message> chat, String me) {
+		sample = signedIn = reachable = true;
+		myId = me;
+		friends = List.of(friend);
+		chats.put(friend.id(), new CopyOnWriteArrayList<>(chat));
 	}
 
 	public static boolean signedIn() {
@@ -177,8 +188,9 @@ public final class Social {
 	}
 
 	private static Message messageFrom(JsonObject o) {
+		JsonObject inv = o.has("invite") && o.get("invite").isJsonObject() ? o.getAsJsonObject("invite") : null;
 		return new Message(o.get("id").getAsLong(), str(o, "from"), str(o, "to"), str(o, "text"), o.get("at").getAsLong(),
-			o.has("readAt") && !o.get("readAt").isJsonNull());
+			o.has("readAt") && !o.get("readAt").isJsonNull(), inv == null ? "" : str(inv, "server"), inv == null ? "" : str(inv, "version"));
 	}
 
 	private static String str(JsonObject o, String key) {
@@ -198,7 +210,8 @@ public final class Social {
 				else {
 					bump(other, 1, m.at());
 					Friend f = friend(other);
-					toast(f != null ? f.name() : "?", m.text());
+					if (!m.invite().isEmpty()) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.invite.toast", m.invite()).getString());
+					else toast(f != null ? f.name() : "?", m.text());
 				}
 			}
 			case "presence" -> {
@@ -214,6 +227,15 @@ public final class Social {
 				friends = List.copyOf(list);
 			}
 			case "typing" -> typingUntil.put(str(e, "from"), System.currentTimeMillis() + 6_000);
+			// "Join" on a friend's invite in the launcher while this game runs
+			case "join" -> join(str(e, "server"));
+			case "emote" -> {
+				try {
+					dev.slash3rss.slashclient.hud.Cosmetics.show(java.util.UUID.fromString(str(e, "uuid")), str(e, "emote"));
+				} catch (IllegalArgumentException ignored) {
+					// not a uuid: nothing to show it on
+				}
+			}
 			case "friends" -> {
 				refreshFriends();
 				if (e.has("request") && e.get("request").isJsonObject()) toast(str(e.getAsJsonObject("request"), "name"), Component.translatable("slashclient-hud.friends.invite").getString());
@@ -289,6 +311,62 @@ public final class Social {
 			} catch (Exception e) {
 				toast(Component.translatable("slashclient-hud.friends.notSent").getString(), e.getMessage() == null ? "" : e.getMessage());
 			}
+		});
+	}
+
+	// ---------- "join me" invites ----------
+
+	/** The multiplayer server this game is on, or null (singleplayer, menu, LAN). */
+	public static String currentServer() {
+		Minecraft mc = Minecraft.getInstance();
+		var server = mc.getCurrentServer();
+		return server == null || mc.isLocalServer() || server.isLan() ? null : server.ip;
+	}
+
+	/** Invites a friend to the server this game is on. */
+	public static void invite(String friendId) {
+		String server = currentServer();
+		if (server == null) return;
+		JsonObject body = new JsonObject();
+		body.addProperty("server", server.toLowerCase(java.util.Locale.ROOT));
+		body.addProperty("version", net.minecraft.SharedConstants.getCurrentVersion().name());
+		Thread.ofVirtual().start(() -> {
+			try {
+				JsonObject res = request("POST", "/v1/invites/" + friendId, body, 8);
+				Message m = messageFrom(res.getAsJsonObject("message"));
+				List<Message> chat = chats.computeIfAbsent(friendId, k -> new CopyOnWriteArrayList<>());
+				if (chat.stream().noneMatch(x -> x.id() == m.id())) chat.add(m);
+				bump(friendId, 0, m.at());
+			} catch (Exception e) {
+				toast(Component.translatable("slashclient-hud.friends.notSent").getString(), e.getMessage() == null ? "" : e.getMessage());
+			}
+		});
+	}
+
+	/** An emote to launcher players around (through the launcher, which knows the account). */
+	public static void emote(java.util.UUID player, String emote) {
+		JsonObject body = new JsonObject();
+		body.addProperty("uuid", player.toString());
+		body.addProperty("emote", emote);
+		Thread.ofVirtual().start(() -> {
+			try {
+				request("POST", "/v1/mc/emote", body, 5);
+			} catch (Exception e) {
+				SlashHud.LOG.debug("SlashClient: emote: {}", e.toString());
+			}
+		});
+	}
+
+	/** Leaves the world or server this game is in and joins `address`, as the server list would. */
+	public static void join(String address) {
+		if (address == null || !address.matches("[\\w.-]{1,253}(:\\d{1,5})?")) return;
+		Minecraft mc = Minecraft.getInstance();
+		mc.execute(() -> {
+			if (address.equalsIgnoreCase(currentServer())) return;
+			if (mc.level != null) mc.disconnectFromWorld(Component.translatable("slashclient-hud.invite.leaving"));
+			var parent = new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(new net.minecraft.client.gui.screens.TitleScreen());
+			var data = new net.minecraft.client.multiplayer.ServerData(address, address, net.minecraft.client.multiplayer.ServerData.Type.OTHER);
+			net.minecraft.client.gui.screens.ConnectScreen.startConnecting(parent, mc, net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(address), data, false, null);
 		});
 	}
 

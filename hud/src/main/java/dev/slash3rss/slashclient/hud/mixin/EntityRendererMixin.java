@@ -9,11 +9,11 @@ import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
-/** The same logo in the name above the heads of other SlashClient players. */
+/** The same logo in the name above the heads of other SlashClient players, and their emotes. */
 @Mixin(EntityRenderer.class)
 abstract class EntityRendererMixin {
 	@ModifyReturnValue(method = "getNameTag", at = @At("RETURN"))
 	private Component slashclient$badge(Component name, Entity entity) {
-		return entity instanceof Player ? Badges.decorate(entity.getUUID(), name) : name;
+		return entity instanceof Player ? dev.slash3rss.slashclient.hud.Cosmetics.decorate(entity.getUUID(), Badges.decorate(entity.getUUID(), name)) : name;
 	}
 }

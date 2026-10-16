@@ -12,13 +12,16 @@ interface Person { id: string; handle: string; name: string; avatar: string }
 interface Friend extends Person { presence: Presence; unread: number; lastMessageAt: number; since: number }
 interface Request extends Person { at: number }
 interface Me extends Person { showServer: boolean; providers: string[] }
-interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null }
+interface Invite { server: string; version?: string }
+interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite }
 interface SocialState { url: string; user?: Me; connected: boolean; status: Status }
 interface FriendList { friends: Friend[]; incoming: Request[]; outgoing: Request[] }
 
 export interface FriendsDeps {
   api: any;
-  toast: (message: string, isError?: boolean) => void;
+  toast: (message: string, isError?: boolean, action?: { label: string; run: () => void }) => void;
+  /** Where the player is now (or played last): the server a "Join me" invite offers. */
+  inviteTarget: () => Promise<Invite | undefined>;
   errorText: (err: unknown) => string;
   /** Opens the usual "join server" window. */
   join: (address: string, version?: string) => void;
@@ -210,6 +213,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   // the layout is built once, so the message box keeps its text and focus
   let meBox: HTMLElement, listBox: HTMLElement, chatBox: HTMLElement, messagesBox: HTMLElement, chatHead: HTMLElement, typingBox: HTMLElement;
+  let inviteBar: HTMLFormElement;
   let input: HTMLTextAreaElement, counter: HTMLElement, sendBtn: HTMLButtonElement, composer: HTMLFormElement;
 
   function buildLayout() {
@@ -265,7 +269,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       e.preventDefault();
       send();
     });
-    chatBox = el('div', { className: 'fr-chat glass-panel' }, chatHead, messagesBox, typingBox, composer);
+    inviteBar = el('form', { className: 'fr-invite-bar hidden' });
+    chatBox = el('div', { className: 'fr-chat glass-panel' }, chatHead, messagesBox, typingBox, inviteBar, composer);
     root.replaceChildren(el('div', { className: 'fr-layout' },
       el('div', { className: 'fr-side glass-panel' }, meBox, addForm, listBox),
       chatBox));
@@ -482,6 +487,9 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       join.addEventListener('click', () => deps.join(a.server!, a.version?.split(' · ')[0]));
       actions.push(join);
     }
+    const invite = el('button', { type: 'button', className: 'icon-btn', title: t('Zaproś do gry') }, icon('fa-gamepad'));
+    invite.addEventListener('click', () => openInvite(f));
+    actions.push(invite);
     const remove = el('button', { type: 'button', className: 'icon-btn danger', title: t('Usuń ze znajomych') }, icon('fa-user-minus'));
     remove.addEventListener('click', () => {
       if (confirm(t('Usunąć {0} ze znajomych?', f.name))) act(() => api.socialApi('DELETE', `/v1/friends/${f.id}`), t('Usunięto {0} ze znajomych.', f.name));
@@ -492,6 +500,48 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       ...actions);
     renderMessages();
     typingBox.textContent = typing.has(f.id) ? t('{0} pisze…', f.name) : '';
+  }
+
+  /** "Join me": the server to invite to, filled in with where the player is or played last. */
+  async function openInvite(f: Friend) {
+    const target = await deps.inviteTarget().catch(() => undefined);
+    const address = control<HTMLInputElement>('input', { placeholder: t('Adres serwera, np. skyup.pl'), value: target?.server ?? '', maxLength: 253 });
+    const cancel = el('button', { type: 'button' }, t('Anuluj'));
+    const go = el('button', { type: 'submit', className: 'primary' }, icon('fa-paper-plane'), t(' Zaproś'));
+    inviteBar.replaceChildren(el('div', { className: 'fr-invite-title' }, icon('fa-gamepad'), el('span', { textContent: t('Zaproś {0} na serwer', f.name) })), address, cancel, go);
+    inviteBar.classList.remove('hidden');
+    address.focus();
+    address.select();
+    cancel.addEventListener('click', () => inviteBar.classList.add('hidden'));
+    inviteBar.onsubmit = async (e) => {
+      e.preventDefault();
+      const server = address.value.trim().toLowerCase();
+      if (!/^[\w.-]{1,253}(:\d{1,5})?$/.test(server)) return deps.toast(t('To nie wygląda na adres serwera.'), true);
+      go.disabled = true;
+      try {
+        const { message }: { message: Message } = await api.socialApi('POST', `/v1/invites/${f.id}`, { server, version: server === target?.server ? target?.version : undefined });
+        addMessage(message);
+        inviteBar.classList.add('hidden');
+        renderMessages();
+      } catch (err) {
+        deps.toast(deps.errorText(err), true);
+      } finally {
+        go.disabled = false;
+      }
+    };
+  }
+
+  function inviteCard(m: Message, mine: boolean): HTMLElement {
+    const inv = m.invite!;
+    const card = el('div', { className: 'fr-bubble fr-invite' }, icon('fa-gamepad'),
+      el('div', { className: 'grow' }, el('b', { textContent: mine ? t('Zaproszenie wysłane') : t('Zaproszenie do gry') }),
+        el('small', { textContent: [inv.server, inv.version].filter(Boolean).join(' · ') })));
+    if (!mine) {
+      const join = el('button', { type: 'button', className: 'primary' }, icon('fa-right-to-bracket'), t(' Dołącz'));
+      join.addEventListener('click', () => deps.join(inv.server, inv.version));
+      card.append(join);
+    }
+    return card;
   }
 
   function renderMessages() {
@@ -515,7 +565,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       // messages sent close together stick to each other
       const grouped = m.from === lastFrom && m.at - lastAt < 5 * 60_000;
       nodes.push(el('div', { className: `fr-msg${m.from === me ? ' mine' : ''}${grouped ? ' grouped' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
-        el('div', { className: 'fr-bubble', textContent: m.text }),
+        m.invite ? inviteCard(m, m.from === me) : el('div', { className: 'fr-bubble', textContent: m.text }),
         grouped ? '' : el('small', { className: 'fr-time', textContent: time.format(m.at) })));
       if (m === lastMineRead) nodes.push(el('small', { className: 'fr-read', textContent: t('Przeczytano') }));
       lastDay = d;
@@ -559,7 +609,10 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         if (m.from === selected && isVisible()) markRead(m.from);
         else if (f) {
           f.unread++;
-          notify(f, m.text);
+          if (m.invite) {
+            const inv = m.invite;
+            deps.toast(t('{0} zaprasza Cię na {1}', f.name, inv.server), false, { label: t('Dołącz'), run: () => deps.join(inv.server, inv.version) });
+          } else notify(f, m.text);
         }
         renderList();
         if (m.from === selected) renderChat();

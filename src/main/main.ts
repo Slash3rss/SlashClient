@@ -39,12 +39,14 @@ import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type For
 import { perfModsFor } from './perfmods';
 import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePreset, type SkinPreset } from './skinLibrary';
 import fsp from 'node:fs/promises';
-import { backupWorld, deleteFile, listBackups, listScreenshots, listWorlds, restoreBackup } from './worlds';
+import { backupWorld, deleteFile, listBackups, listClips, listScreenshots, listWorlds, restoreBackup } from './worlds';
 import { t } from '../shared/i18n';
 
 let win: BrowserWindow | undefined;
 let store: StoreData;
 let game: ChildProcess | undefined;
+/** The running game has SlashClient HUD, so it can be told to join a server. */
+let gameHasHud = false;
 let loginAbort: AbortController | undefined;
 let killRequested = false;
 let discord: DiscordPresence | undefined;
@@ -369,7 +371,7 @@ handle('import:run', async (keys: string[]) => {
 
 // ---------- performance mods and mod checks ----------
 
-interface PerfPlanItem { projectId?: string; title: string; why: string; iconUrl?: string; installed: boolean }
+interface PerfPlanItem { slug: string; projectId?: string; title: string; why: string; iconUrl?: string; installed: boolean }
 
 /** Which performance mods fit this profile, and which of them are already there. */
 handle('perf:plan', async (profileId: string): Promise<PerfPlanItem[]> => {
@@ -382,11 +384,11 @@ handle('perf:plan', async (profileId: string): Promise<PerfPlanItem[]> => {
   return Promise.all(entries.map(async (e) => {
     for (const slug of e.slugs) {
       const hit = await findFitting(slug, gameVersion, profile.loader);
-      if (hit) return { projectId: hit.projectId, title: hit.title, why: t(e.why), iconUrl: hit.iconUrl, installed: have.has(hit.projectId) || ids.has(norm(hit.slug)) };
+      if (hit) return { slug: e.slugs[0], projectId: hit.projectId, title: hit.title, why: t(e.why), iconUrl: hit.iconUrl, installed: have.has(hit.projectId) || ids.has(norm(hit.slug)) };
     }
     // nothing fits this version, but it may still be there already
-    if (e.slugs.some((s) => ids.has(norm(s)))) return { title: e.slugs[0], why: t(e.why), installed: true };
-    return { title: e.slugs[0], why: t(e.why), installed: false };
+    if (e.slugs.some((s) => ids.has(norm(s)))) return { slug: e.slugs[0], title: e.slugs[0], why: t(e.why), installed: true };
+    return { slug: e.slugs[0], title: e.slugs[0], why: t(e.why), installed: false };
   }));
 });
 /** Installs several Modrinth mods (with their dependencies) as one task. */
@@ -628,6 +630,8 @@ handle('backups:list', (profileId: string) => listBackups(gameDirOf(profileId)))
 handle('backups:restore', (profileId: string, name: string) => restoreBackup(gameDirOf(profileId), name));
 handle('backups:delete', (profileId: string, name: string) => deleteFile(gameDirOf(profileId), 'backups', name));
 handle('screenshots:list', (profileId: string) => listScreenshots(gameDirOf(profileId)));
+handle('clips:list', (profileId: string) => listClips(gameDirOf(profileId)));
+handle('clips:delete', (profileId: string, name: string) => deleteFile(gameDirOf(profileId), 'clips', name));
 handle('screenshots:delete', (profileId: string, name: string) => deleteFile(gameDirOf(profileId), 'screenshots', name));
 handle('file:open', (file: string) => {
   if (isInsideInstances(file)) return shell.openPath(file);
@@ -832,12 +836,21 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     extraJvmArgs: hud.jvmArgs,
   });
   game = child;
+  gameHasHud = hud.jvmArgs.length > 0;
+  // capes and emotes: the SlashClient account says which Minecraft player it is, while the game runs
+  const linkPlayer = () => {
+    if (social.state().user && account.uuid) social.call('POST', '/v1/mc/link', { uuid: account.uuid }).catch(() => {});
+  };
+  linkPlayer();
+  const linkTimer = setInterval(linkPlayer, 4 * 60_000);
   killRequested = false;
   showPresence(presence);
   send('store', publicStore());
   if (store.settings.closeOnLaunch) win?.hide();
   child.on('exit', (code, signal) => {
     game = undefined;
+    gameHasHud = false;
+    clearInterval(linkTimer);
     // a finished benchmark run: tell the page, which shows the result
     if (benchmark) readBenchmarks(profileGameDir(profile)).then((runs) => {
       if (runs[0] && runs[0].at > benchmarksBefore) send('benchmark:done', { profileId: profile.id, result: runs[0], before: runs[1] });
@@ -978,9 +991,16 @@ handle('social:state', () => social.state());
 handle('social:health', () => socialCall(() => social.call('GET', '/v1/health', undefined, false)));
 /** The page's requests; only the parts of the API that work on the player's own data. */
 handle('social:api', (method: string, apiPath: string, body?: unknown) => {
-  if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages)(\/[\w-]+)*(\?[\w=&-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
+  if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages|invites)(\/[\w-]+)*(\?[\w=&-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
   return socialCall(() => social.call(method, apiPath, body));
 });
+/** A friend's invite while the game runs: the HUD leaves where it is and joins that server. */
+handle('game:join', (address: string) => {
+  if (!game || !gameHasHud || !/^[\w.-]{1,253}(:\d{1,5})?$/.test(address)) return false;
+  bridge.push({ type: 'join', server: address });
+  return true;
+});
+handle('social:activity', () => social.currentActivity());
 handle('social:loginDev', (name: string) => socialCall(async () => social.signedIn(await social.call('POST', '/v1/auth/dev', { name }, false))));
 let browserLogin = 0;
 /**

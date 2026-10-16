@@ -1,0 +1,76 @@
+{
+	"providers": [
+		{
+			"type": "bitmap",
+			"file": "slashclient-hud:emote/wave.png",
+			"ascent": 10,
+			"height": 12,
+			"chars": [
+				""
+			]
+		},
+		{
+			"type": "bitmap",
+			"file": "slashclient-hud:emote/heart.png",
+			"ascent": 10,
+			"height": 12,
+			"chars": [
+				""
+			]
+		},
+		{
+			"type": "bitmap",
+			"file": "slashclient-hud:emote/laugh.png",
+			"ascent": 10,
+			"height": 12,
+			"chars": [
+				""
+			]
+		},
+		{
+			"type": "bitmap",
+			"file": "slashclient-hud:emote/gg.png",
+			"ascent": 10,
+			"height": 12,
+			"chars": [
+				""
+			]
+		},
+		{
+			"type": "bitmap",
+			"file": "slashclient-hud:emote/like.png",
+			"ascent": 10,
+			"height": 12,
+			"chars": [
+				""
+			]
+		},
+		{
+			"type": "bitmap",
+			"file": "slashclient-hud:emote/angry.png",
+			"ascent": 10,
+			"height": 12,
+			"chars": [
+				""
+			]
+		},
+		{
+			"type": "bitmap",
+			"file": "slashclient-hud:emote/question.png",
+			"ascent": 10,
+			"height": 12,
+			"chars": [
+				""
+			]
+		},
+		{
+			"type": "bitmap",
+			"file": "slashclient-hud:emote/fire.png",
+			"ascent": 10,
+			"height": 12,
+			"chars": [
+				""
+			]
+		}
+	]
+}

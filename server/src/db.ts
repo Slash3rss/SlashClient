@@ -7,9 +7,12 @@ import { DatabaseSync } from 'node:sqlite';
  */
 
 /** A SlashClient account; `handle` is the unique name friends search for. */
-export interface User { id: string; handle: string; name: string; avatar: string; showServer: boolean }
+/** `cape`: one of the SlashClient capes (cosmetics.ts), '' for none. */
+export interface User { id: string; handle: string; name: string; avatar: string; showServer: boolean; cape: string }
 export type Provider = 'discord' | 'microsoft' | 'google' | 'github' | 'dev';
-export interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null }
+/** "Join me": a server to play on together, sent as a message so it stays in the chat. */
+export interface Invite { server: string; version?: string }
+export interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite }
 /** Another player as friends lists show them. */
 export interface Person { id: string; handle: string; name: string; avatar: string }
 export interface Request extends Person { at: number }
@@ -71,6 +74,11 @@ export class Db {
     this.db = new DatabaseSync(file);
     this.db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
     this.db.exec(SCHEMA);
+    // added after the first release: older files get the column on start
+    const columns = this.db.prepare('PRAGMA table_info(messages)').all() as { name: string }[];
+    if (!columns.some((c) => c.name === 'invite')) this.db.exec('ALTER TABLE messages ADD COLUMN invite TEXT');
+    const userColumns = this.db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
+    if (!userColumns.some((c) => c.name === 'cape')) this.db.exec("ALTER TABLE users ADD COLUMN cape TEXT NOT NULL DEFAULT ''");
   }
 
   close() {
@@ -124,14 +132,18 @@ export class Db {
   }
 
   user(uuid: string): User | undefined {
-    const row = this.db.prepare('SELECT uuid, handle, name, avatar, show_server FROM users WHERE uuid = ?').get(uuid) as
-      { uuid: string; handle: string; name: string; avatar: string; show_server: number } | undefined;
-    return row && { id: row.uuid, handle: row.handle, name: row.name, avatar: row.avatar, showServer: !!row.show_server };
+    const row = this.db.prepare('SELECT uuid, handle, name, avatar, show_server, cape FROM users WHERE uuid = ?').get(uuid) as
+      { uuid: string; handle: string; name: string; avatar: string; show_server: number; cape: string } | undefined;
+    return row && { id: row.uuid, handle: row.handle, name: row.name, avatar: row.avatar, showServer: !!row.show_server, cape: row.cape };
   }
 
   userByHandle(handle: string): User | undefined {
     const row = this.db.prepare('SELECT uuid FROM users WHERE handle_lower = ?').get(handle.toLowerCase()) as { uuid: string } | undefined;
     return row && this.user(row.uuid);
+  }
+
+  setCape(uuid: string, cape: string) {
+    this.db.prepare('UPDATE users SET cape = ? WHERE uuid = ?').run(cape, uuid);
   }
 
   setShowServer(uuid: string, show: boolean) {
@@ -217,18 +229,19 @@ export class Db {
 
   // ---- messages ----
 
-  addMessage(from: string, to: string, text: string): Message {
+  addMessage(from: string, to: string, text: string, invite?: Invite): Message {
     const at = Date.now();
-    const { lastInsertRowid } = this.db.prepare('INSERT INTO messages (from_uuid, to_uuid, text, created_at) VALUES (?, ?, ?, ?)').run(from, to, text, at);
-    return { id: Number(lastInsertRowid), from, to, text, at, readAt: null };
+    const { lastInsertRowid } = this.db.prepare('INSERT INTO messages (from_uuid, to_uuid, text, created_at, invite) VALUES (?, ?, ?, ?, ?)')
+      .run(from, to, text, at, invite ? JSON.stringify(invite) : null);
+    return { id: Number(lastInsertRowid), from, to, text, at, readAt: null, ...(invite ? { invite } : {}) };
   }
 
   /** The conversation between two players, newest last; `before` pages back by message id. */
   conversation(x: string, y: string, limit: number, before?: number): Message[] {
-    const rows = this.db.prepare(`SELECT id, from_uuid AS "from", to_uuid AS "to", text, created_at AS at, read_at AS readAt FROM messages
+    const rows = this.db.prepare(`SELECT id, from_uuid AS "from", to_uuid AS "to", text, created_at AS at, read_at AS readAt, invite FROM messages
       WHERE ((from_uuid = ? AND to_uuid = ?) OR (from_uuid = ? AND to_uuid = ?)) AND id < ?
-      ORDER BY id DESC LIMIT ?`).all(x, y, y, x, before ?? Number.MAX_SAFE_INTEGER, limit) as unknown as Message[];
-    return rows.reverse();
+      ORDER BY id DESC LIMIT ?`).all(x, y, y, x, before ?? Number.MAX_SAFE_INTEGER, limit) as unknown as (Omit<Message, 'invite'> & { invite: string | null })[];
+    return rows.reverse().map(({ invite, ...m }) => (invite ? { ...m, invite: JSON.parse(invite) as Invite } : m));
   }
 
   /** Marks what `from` sent to `reader` as read; returns the time used, or undefined when nothing was unread. */

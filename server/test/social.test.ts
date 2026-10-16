@@ -179,6 +179,56 @@ describe('social server', () => {
     bobLive.ws.close();
   });
 
+  it('sends game invites that stay in the chat', async () => {
+    const ola = await login('Ola');
+    const pit = await login('Piotr');
+    assert.equal((await call('POST', `/v1/invites/${pit.user.id}`, ola.token, { server: 'skyup.pl' })).status, 403);
+    await call('POST', '/v1/friends/requests', ola.token, { handle: 'Piotr' });
+    await call('POST', `/v1/friends/requests/${ola.user.id}/accept`, pit.token);
+    const live = await connect(pit.token);
+    assert.equal((await call('POST', `/v1/invites/${pit.user.id}`, ola.token, { server: 'not a server!' })).body.error, 'bad_server');
+    const sent = await call('POST', `/v1/invites/${pit.user.id}`, ola.token, { server: 'SkyUp.pl:25565', version: '26.1.2', extra: 'x' });
+    assert.deepEqual(sent.body.message.invite, { server: 'skyup.pl:25565', version: '26.1.2' });
+    await live.waitFor((e) => e.type === 'message' && e.message.invite?.server === 'skyup.pl:25565');
+    const history = (await call('GET', `/v1/messages/${ola.user.id}`, pit.token)).body.messages;
+    assert.deepEqual(history.at(-1).invite, { server: 'skyup.pl:25565', version: '26.1.2' });
+    // plain messages have no invite field
+    await call('POST', `/v1/messages/${pit.user.id}`, ola.token, { text: 'wchodzisz?' });
+    assert.equal((await call('GET', `/v1/messages/${ola.user.id}`, pit.token)).body.messages.at(-1).invite, undefined);
+    live.ws.close();
+  });
+
+  it('shows capes and emotes of launcher players', async () => {
+    const ewa = await login('Ewa');
+    const tom = await login('Tomek');
+    const ewaMc = '11111111-2222-3333-4444-555555555555';
+    const tomMc = '66666666-7777-8888-9999-000000000000';
+    assert.equal((await call('POST', '/v1/me', ewa.token, { cape: 'nope' })).body.error, 'bad_cape');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { cape: 'galaxy' })).body.cape, 'galaxy');
+    // nothing until the launcher links the game's player to the account
+    assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc] })).body, { active: [], capes: {} });
+    await call('POST', '/v1/mc/link', ewa.token, { uuid: ewaMc });
+    await call('POST', '/v1/mc/link', tom.token, { uuid: tomMc });
+    const seen = (await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc, tomMc] })).body;
+    assert.deepEqual(seen.capes, { [ewaMc]: 'galaxy' });
+    assert.deepEqual(seen.active.sort(), [ewaMc, tomMc].sort());
+
+    // emotes reach launcher players on the same server, not others
+    const onServer = { status: 'online', activity: { kind: 'server', server: 'skyup.pl' } };
+    const ewaLive = await connect(ewa.token, onServer);
+    const tomLive = await connect(tom.token, onServer);
+    const ola = await login('Olka');
+    const olaLive = await connect(ola.token, { status: 'online', activity: { kind: 'server', server: 'other.pl' } });
+    assert.equal((await call('POST', '/v1/mc/emote', ewa.token, { uuid: tomMc, emote: 'wave' })).body.error, 'not_linked');
+    assert.equal((await call('POST', '/v1/mc/emote', ewa.token, { uuid: ewaMc, emote: 'dance' })).status, 400);
+    await call('POST', '/v1/mc/emote', ewa.token, { uuid: ewaMc, emote: 'wave' });
+    await tomLive.waitFor((e) => e.type === 'emote' && e.uuid === ewaMc && e.emote === 'wave');
+    await ewaLive.waitFor((e) => e.type === 'emote' && e.uuid === ewaMc);
+    await new Promise((r) => setTimeout(r, 100));
+    assert.ok(!olaLive.events.some((e) => e.type === 'emote'));
+    for (const l of [ewaLive, tomLive, olaLive]) l.ws.close();
+  });
+
   it('accepts at once when both sides asked', async () => {
     const x = await login('Xavier');
     const y = await login('Yvonne');

@@ -112,9 +112,13 @@ public final class Badges {
 			JsonObject o = GSON.fromJson(response, JsonObject.class);
 			Set<UUID> active = ConcurrentHashMap.newKeySet();
 			o.getAsJsonArray("active").forEach(e -> active.add(UUID.fromString(e.getAsString())));
+			JsonObject capes = o.has("capes") && o.get("capes").isJsonObject() ? o.getAsJsonObject("capes") : new JsonObject();
 			for (UUID id : ask) {
 				if (active.contains(id)) slash.add(id);
 				else slash.remove(id);
+				// the server answers with the uuid as it was asked
+				var cape = capes.get(id.toString());
+				Cosmetics.setCape(id, cape != null && cape.isJsonPrimitive() ? cape.getAsString() : null);
 			}
 		});
 	}

@@ -3,6 +3,7 @@ import { createFriends, socialErrorText } from './friends';
 import { openSkinEditor } from './skinEditor';
 import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
 import type { SlashApi } from '../main/preload';
+import { benchTips, type BenchTip } from '../shared/benchTips';
 
 declare global {
   interface Window {
@@ -242,15 +243,25 @@ function trimStack() {
     else dismiss(c);
   }
 }
-function toast(message: string, isError = false) {
+function toast(message: string, isError = false, action?: { label: string; run: () => void }) {
   const close = el('button', { type: 'button', className: 'notif-close', title: t('Zamknij') }, el('i', { className: 'fa-solid fa-xmark' }));
+  const text = el('div', { className: 'notif-text', textContent: message });
   const card = el('div', { className: `task notif${isError ? ' failed' : ''}`, role: isError ? 'alert' : 'status' },
-    el('i', { className: `notif-icon fa-solid ${isError ? 'fa-circle-exclamation' : 'fa-circle-check'}` }),
-    el('div', { className: 'notif-text', textContent: message }),
+    el('i', { className: `notif-icon fa-solid ${isError ? 'fa-circle-exclamation' : action ? 'fa-gamepad' : 'fa-circle-check'}` }),
+    text,
     close);
+  if (action) {
+    const go = el('button', { type: 'button', className: 'primary notif-action' }, action.label);
+    go.addEventListener('click', () => {
+      dismiss(card);
+      action.run();
+    });
+    text.append(go);
+  }
   close.addEventListener('click', () => dismiss(card));
   $('#tasks').prepend(card);
-  dismissLater(card, isError ? 9000 : 4500);
+  // an invite stays long enough to be seen
+  dismissLater(card, isError ? 9000 : action ? 20000 : 4500);
   trimStack();
 }
 
@@ -794,6 +805,41 @@ async function renderBenchmarks(profileId: string) {
       el('small', { textContent: details }),
       el('small', { className: 'muted', textContent: setup + (diff.length ? ` · ${t('zmiana: {0}', diff.join(', '))}` : '') }));
   }));
+  renderBenchTips(profileId, runs[0]);
+}
+
+/** What the newest run says about the profile, with the missing performance mods one click away. */
+async function renderBenchTips(profileId: string, run: BenchmarkResult) {
+  const profile = store.profiles.find((p) => p.id === profileId);
+  if (!profile) return;
+  const box = el('div', { className: 'bench-tips' });
+  $('#bench-list').prepend(box);
+  // the mod list asks Modrinth: tips without mods first, then again once it is known
+  const draw = (plan: PerfPlanItem[] | null) => {
+    const missing = plan ? plan.filter((p) => p.projectId && !p.installed).map((p) => p.slug) : profile.loader === 'vanilla' ? null : [];
+    box.replaceChildren(el('h4', { textContent: t('Co poprawić') }), ...benchTips(run, missing).map((tip) => benchTipRow(profileId, tip, plan ?? [])));
+  };
+  draw(null);
+  if (profile.loader === 'vanilla') return;
+  const plan: PerfPlanItem[] | undefined = await api.perfPlan(profileId).catch(() => undefined);
+  if (plan && profileId === editingId && box.isConnected) draw(plan);
+}
+
+function benchTipRow(profileId: string, tip: BenchTip, plan: PerfPlanItem[]): HTMLElement {
+  const icon = tip.level === 'good' ? 'fa-circle-check' : tip.level === 'warn' ? 'fa-triangle-exclamation' : 'fa-circle-info';
+  const items = (tip.mods ?? []).map((slug) => plan.find((p) => p.slug === slug && p.projectId && !p.installed)).filter((p): p is PerfPlanItem => !!p);
+  const row = el('div', { className: `bench-tip ${tip.level}` }, el('i', { className: `fa-solid ${icon}` }),
+    el('div', { className: 'grow' }, el('span', { textContent: t(tip.text, ...(tip.args ?? [])) })));
+  if (items.length) {
+    const install = el('button', { className: 'small' }, el('i', { className: 'fa-solid fa-download' }), t('Zainstaluj: {0}', items.map((p) => p.title).join(', ')));
+    install.addEventListener('click', async () => {
+      install.disabled = true;
+      await guard(() => api.installPerf(profileId, items.map((p) => ({ projectId: p.projectId!, title: p.title }))));
+      if (profileId === editingId) renderBenchmarks(profileId);
+    });
+    row.querySelector('.grow')!.append(install);
+  }
+  return row;
 }
 
 /** The world for a run from the profile card: the last one played, or the first one there is. */
@@ -1191,6 +1237,14 @@ const friends = createFriends($('#friends-root'), $('#friends-badge'), {
   toast,
   errorText,
   // a friend's server is not on the list: the join window gets what we know about it
+  inviteTarget: async () => {
+    // on a server now: that one; otherwise the server the chosen profile played last
+    const now: { kind: string; server?: string; version?: string } | undefined = await api.socialActivity();
+    if (now?.kind === 'server' && now.server) return { server: now.server, version: now.version?.split(' · ')[0] };
+    const profile = store.profiles.find((p) => p.id === store.settings.selectedProfileId);
+    if (profile?.lastTarget?.kind === 'server') return { server: profile.lastTarget.address, version: resolvedVersion(profile.versionId) };
+    return undefined;
+  },
   join: (address, version) => openJoin({
     id: '', name: address, ip: address, description: '', motdHtml: [], motdClean: [], modes: [], versions: version ? [version] : [],
     votes: 0, online: true, playersOnline: 0, playersMax: 0, hasIcon: false, promoted: false, featured: false,
@@ -1337,7 +1391,12 @@ function fitsServer(p: Profile, s: ListedServer): boolean {
 }
 
 function openJoin(s: ListedServer) {
-  if (store.running || launching) return toast('Gra już działa.', true);
+  if (store.running) {
+    // a game with our HUD switches servers by itself
+    api.joinInGame(s.ip).then((ok: boolean) => toast(ok ? t('Gra łączy się z {0}.', s.ip) : t('Gra już działa.'), !ok));
+    return;
+  }
+  if (launching) return toast(t('Gra już działa.'), true);
   joinServer = s;
   const remembered = store.settings.serverProfiles?.[s.ip];
   joinProfile = store.profiles.find((p) => p.id === remembered)?.id
@@ -1825,7 +1884,7 @@ $('#import-modal').addEventListener('click', (e) => e.target === e.currentTarget
 
 // ---------- performance mods ----------
 
-interface PerfPlanItem { projectId?: string; title: string; why: string; iconUrl?: string; installed: boolean }
+interface PerfPlanItem { slug: string; projectId?: string; title: string; why: string; iconUrl?: string; installed: boolean }
 let perfPlan: PerfPlanItem[] = [];
 const perfChosen = new Set<string>();
 
@@ -2159,6 +2218,23 @@ async function renderWorlds() {
           }, 'danger')));
     })));
     if (!backups.length) box.replaceChildren(el('p', { className: 'muted', textContent: 'Brak kopii. Utworzysz je przyciskiem „Kopia” przy świecie.' }));
+  } else if (worldsTab === 'clips') {
+    const clips: Screenshot[] = (await guard(() => api.listClips(profileId))) ?? [];
+    box.replaceChildren(el('div', { className: 'project-list' }, ...clips.map((c) => {
+      const play = el('button', { className: 'primary' }, el('i', { className: 'fa-solid fa-play' }), t(' Odtwórz'));
+      play.addEventListener('click', () => api.openFile(c.file));
+      return el('div', { className: 'project' },
+        el('div', { className: 'clip-icon' }, el('i', { className: 'fa-solid fa-film' })),
+        el('div', { className: 'project-main' },
+          el('b', { textContent: c.name.replace(/\.(avi|mp4)$/i, '') }),
+          el('div', { className: 'project-meta' }, el('span', { textContent: fmtDate(c.createdAt) }), el('span', { textContent: fmtSize(c.sizeBytes) }))),
+        el('div', { className: 'project-actions' }, play,
+          iconButton('fa-regular fa-folder-open', t('Pokaż w folderze'), () => api.revealFile(c.file)),
+          iconButton('fa-regular fa-trash-can', t('Usuń'), () => {
+            if (confirm(t('Usunąć ten klip?'))) guard(() => api.deleteClip(profileId, c.name)).then(renderWorlds);
+          }, 'danger')));
+    })));
+    if (!clips.length) box.replaceChildren(el('p', { className: 'muted', textContent: t('Brak klipów. Włącz „Klipy” w ustawieniach HUD w grze (Prawy Shift), a F8 zapisze ostatnie sekundy gry.') }));
   } else {
     const shots: Screenshot[] = (await guard(() => api.listScreenshots(profileId))) ?? [];
     box.replaceChildren(el('div', { className: 'shots' }, ...shots.map((sh) => {
@@ -2430,7 +2506,46 @@ function renderCapeGrid() {
   $('#cape-apply').classList.toggle('hidden', chosenCape === activeId);
 }
 
+// ---------- SlashClient capes (seen by other players with the launcher) ----------
+
+const SLASH_CAPES: [string, string][] = [
+  ['slash', 'SlashClient'], ['ocean', 'Ocean'], ['ember', 'Ember'], ['forest', 'Forest'],
+  ['galaxy', 'Galaxy'], ['rose', 'Rose'], ['gold', 'Gold'], ['mono', 'Mono'],
+];
+
+async function renderSlashCapes() {
+  // the cape is read fresh: the launcher's copy of the account may predate the last change
+  const state: { user?: unknown } | undefined = await api.socialState().catch(() => undefined);
+  const me: { cape?: string } | undefined = state?.user ? await api.socialApi('GET', '/v1/me').catch(() => undefined) : undefined;
+  const current = me?.cape ?? '';
+  const signedIn = !!me;
+  $('#slash-cape-note').textContent = signedIn
+    ? t('Widzą ją inni gracze z SlashClient, na każdym serwerze. Zastępuje pelerynę Minecraft.')
+    : t('Zaloguj się w zakładce Znajomi (konto SlashClient), żeby nosić pelerynę SlashClient.');
+  const tile = (id: string, title: string, content: Node) => {
+    const b = el('button', { type: 'button', className: `cape-choice${id === current ? ' selected active' : ''}${id ? '' : ' none'}`, title }, content);
+    b.disabled = !signedIn;
+    b.addEventListener('click', async () => {
+      const me = await guard(() => api.socialApi('POST', '/v1/me', { cape: id }));
+      if (!me) return;
+      if (id) {
+        await skinViewer?.loadCape(`img/capes/${id}.png`, { backEquipment: 'cape' });
+        $('#skin-back').classList.remove('hidden');
+      }
+      toast(id ? t('Peleryna {0} ustawiona.', title) : t('Peleryna SlashClient zdjęta.'));
+      renderSlashCapes();
+    });
+    return b;
+  };
+  $('#slash-cape-grid').replaceChildren(
+    tile('', t('Bez peleryny SlashClient'), el('i', { className: 'fa-solid fa-ban' })),
+    ...SLASH_CAPES.map(([id, name]) => tile(id, name, capeThumbnail(`img/capes/${id}.png`))));
+  // the preview wears what other players will see
+  if (current && skinViewer) await skinViewer.loadCape(`img/capes/${current}.png`, { backEquipment: 'cape' });
+}
+
 async function loadSkinEditor(account: { id: string; type: string }) {
+  renderSlashCapes();
   $('#skin-edit').classList.toggle('hidden', account.type !== 'msa');
   $('#skin-pending').classList.add('hidden');
   $('#skin-actions').classList.remove('hidden');

@@ -5,6 +5,8 @@
 	"client": [
 		"AuthServiceMixin",
 		"CameraMixin",
+		"CapeMixin",
+		"ClipFrameMixin",
 		"ChatComponentAccessor",
 		"ChatComponentMixin",
 		"ChatFilterMixin",

@@ -169,9 +169,20 @@ public class FriendsScreen extends Screen {
 			return;
 		}
 		input.visible = true;
-		Ui.draw(g, Ui.fit(Ui.bold(f.name()), cw - 46), cx + 10, py + 10, Ui.TEXT);
+		// on a server: one click invites this friend there
+		int headW = cw - 46;
+		if (Social.currentServer() != null) {
+			Component here = Ui.tr("slashclient-hud.invite.here");
+			int iw = Ui.buttonWidth(here, "play", 18, 2);
+			int ix = cx + cw - 36 - iw;
+			Ui.button(g, "friends:invite", ix, py + 8, iw, 18, "play", here, false, mx, my);
+			String id = f.id();
+			hits.add(new Hit(ix, py + 8, iw, 18, () -> Social.invite(id)));
+			headW -= iw + 4;
+		}
+		Ui.draw(g, Ui.fit(Ui.bold(f.name()), headW), cx + 10, py + 10, Ui.TEXT);
 		Component sub = Social.typing(f.id()) ? Ui.tr("slashclient-hud.friends.typing") : Social.activity(f).copy().withStyle(Ui.text("").getStyle());
-		Ui.draw(g, Ui.fit(sub, cw - 46), cx + 10, py + 21, Social.typing(f.id()) ? Ui.ACCENT_LIGHT : Ui.MUTED);
+		Ui.draw(g, Ui.fit(sub, headW), cx + 10, py + 21, Social.typing(f.id()) ? Ui.ACCENT_LIGHT : Ui.MUTED);
 		g.fill(cx + 8, py + 33, cx + cw - 8, py + 34, Ui.BORDER);
 
 		// messages from the bottom up, each a bubble: yours on the right in blue
@@ -184,6 +195,12 @@ public class FriendsScreen extends Screen {
 		for (int i = messages.size() - 1; i >= 0; i--) {
 			Social.Message m = messages.get(i);
 			boolean mine = m.from().equals(Social.myId());
+			if (!m.invite().isEmpty()) {
+				int[] used = drawInvite(g, m, mine, cx, cw, maxBubble, y, top, bottom, mx, my);
+				y = used[0];
+				total += used[1];
+				continue;
+			}
 			List<FormattedCharSequence> lines = font.split(Ui.text(m.text()), maxBubble - 12);
 			int textW = 0;
 			for (FormattedCharSequence l : lines) textW = Math.max(textW, font.width(l));
@@ -213,6 +230,30 @@ public class FriendsScreen extends Screen {
 		int sx = cx + cw - 10 - 24;
 		Ui.button(g, "friends:send", sx, fy, 24, INPUT_H, "arrow", Component.empty(), true, mx, my);
 		hits.add(new Hit(sx, fy, 24, INPUT_H, this::send));
+	}
+
+	/** A "join me" invite as a card with a Join button (for the one invited); returns the new y and the height used. */
+	private int[] drawInvite(GuiGraphicsExtractor g, Social.Message m, boolean mine, int cx, int cw, int maxBubble, int y, int top, int bottom, int mx, int my) {
+		Component title = Ui.trBold(mine ? "slashclient-hud.invite.sent" : "slashclient-hud.invite.title");
+		Component where = Ui.text(m.inviteVersion().isEmpty() ? m.invite() : m.invite() + " · " + m.inviteVersion());
+		Component join = Ui.tr("slashclient-hud.invite.join");
+		int bw = Math.min(maxBubble, Math.max(Math.max(Ui.width(title), Ui.width(where)) + 18, mine ? 0 : Ui.buttonWidth(join, "play", 16, 2)) + 12);
+		int bh = mine ? 30 : 50;
+		y -= bh + 4;
+		if (y > bottom || y + bh < top) return new int[] { y, bh + 4 };
+		int bx = mine ? cx + cw - 10 - bw : cx + 10;
+		Ui.round(g, bx, y, bw, bh, 5, mine ? Ui.ACCENT_DARK : Ui.CARD);
+		Ui.roundOutline(g, bx, y, bw, bh, 5, mine ? 0x40FFFFFF : 0x663B82F6);
+		Ui.icon(g, "play", bx + 6, y + 6, 8, mine ? Ui.TEXT : Ui.ACCENT_LIGHT);
+		Ui.draw(g, Ui.fit(title, bw - 24), bx + 18, y + 6, Ui.TEXT);
+		Ui.draw(g, Ui.fit(where, bw - 12), bx + 6, y + 17, mine ? 0xCCFFFFFF : Ui.TEXT_2);
+		if (!mine) {
+			int jw = bw - 12;
+			// only clickable where it is not cut off by the scroll area
+			Ui.button(g, "friends:join:" + m.id(), bx + 6, y + 29, jw, 16, "play", join, true, mx, my);
+			if (y + 29 >= top && y + 45 <= bottom) hits.add(new Hit(bx + 6, y + 29, jw, 16, () -> Social.join(m.invite())));
+		}
+		return new int[] { y, bh + 4 };
 	}
 
 	// ---------- input ----------

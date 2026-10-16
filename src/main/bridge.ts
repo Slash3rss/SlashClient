@@ -30,10 +30,12 @@ const ALLOWED: [string, RegExp][] = [
   ['GET', /^\/v1\/messages\/[\w-]{1,64}(\?(before=\d+&?|limit=\d+&?)*)?$/],
   ['POST', /^\/v1\/messages\/[\w-]{1,64}$/],
   ['POST', /^\/v1\/messages\/[\w-]{1,64}\/read$/],
+  ['POST', /^\/v1\/invites\/[\w-]{1,64}$/],
+  ['POST', /^\/v1\/mc\/emote$/],
 ];
 
 /** Events the game cares about; the rest (login flow, account state) stays in the launcher. */
-const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', 'state']);
+const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', 'state', 'join', 'emote']);
 const KEEP = 200;
 const LONG_POLL_MS = 25_000;
 

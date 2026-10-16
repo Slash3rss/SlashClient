@@ -122,8 +122,21 @@ export async function restoreBackup(gameDir: string, backupName: string): Promis
   return target;
 }
 
-export async function deleteFile(gameDir: string, folder: 'backups' | 'screenshots', name: string): Promise<void> {
+export async function deleteFile(gameDir: string, folder: 'backups' | 'screenshots' | 'clips', name: string): Promise<void> {
   await fs.rm(path.join(gameDir, folder, plainName(name)), { force: true });
+}
+
+/** Clips saved in the game (F8 with clips on), newest first. */
+export async function listClips(gameDir: string): Promise<Screenshot[]> {
+  const dir = path.join(gameDir, 'clips');
+  const out: Screenshot[] = [];
+  for (const name of await fs.readdir(dir).catch(() => [] as string[])) {
+    if (!/\.(avi|mp4)$/i.test(name)) continue;
+    const file = path.join(dir, name);
+    const st = await fs.stat(file);
+    out.push({ file, name, createdAt: st.mtimeMs, sizeBytes: st.size });
+  }
+  return out.sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export async function listScreenshots(gameDir: string): Promise<Screenshot[]> {

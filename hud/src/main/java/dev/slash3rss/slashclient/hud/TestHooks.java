@@ -305,4 +305,72 @@ public final class TestHooks {
 	public static float yaw() {
 		return net.minecraft.client.Minecraft.getInstance().player.getYRot();
 	}
+
+	/** A friend on a server with a chat holding an invite each way, for the friends screen test. */
+	public static String sampleInvites() {
+		long now = System.currentTimeMillis();
+		var f = new dev.slash3rss.slashclient.hud.social.Social.Friend("kumpel", "Kumpel", "kumpel", "online", "server", "skyup.pl", 0, now);
+		var chat = java.util.List.of(
+			new dev.slash3rss.slashclient.hud.social.Social.Message(1, "kumpel", "me", "Siema! Wbijasz?", now - 120_000, true, "", ""),
+			new dev.slash3rss.slashclient.hud.social.Social.Message(2, "kumpel", "me", "skyup.pl", now - 60_000, true, "skyup.pl", "26.1.2"),
+			new dev.slash3rss.slashclient.hud.social.Social.Message(3, "me", "kumpel", "mc.hypixel.net", now, false, "mc.hypixel.net", "26.3"));
+		dev.slash3rss.slashclient.hud.social.Social.sampleForTest(f, chat, "me");
+		return f.id();
+	}
+
+	/** Our own player in a SlashClient cape, seen from behind, with the name shown (for emotes). */
+	public static void cosmeticsSelf(String cape, boolean front) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		Cosmetics.setCape(mc.player.getUUID(), cape);
+		SlashHud.config.ownNametag = cape != null;
+		mc.options.setCameraType(front ? net.minecraft.client.CameraType.THIRD_PERSON_FRONT : net.minecraft.client.CameraType.THIRD_PERSON_BACK);
+	}
+
+	public static void firstPerson() {
+		net.minecraft.client.Minecraft.getInstance().options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
+	}
+
+	/** Where the player's cape texture comes from now. */
+	public static String capeTexture() {
+		var cape = net.minecraft.client.Minecraft.getInstance().player.getSkin().cape();
+		return cape == null ? "none" : cape.texturePath().toString();
+	}
+
+	public static void emoteSelf(String emote) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		Cosmetics.show(mc.player.getUUID(), emote);
+	}
+
+	public static void emoteWheel() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		mc.setScreenAndShow(new EmoteScreen(Cosmetics.emoteKey()));
+	}
+
+	public static void clips(boolean on) {
+		SlashHud.config.clips = on;
+		SlashHud.config.clipSeconds = 10;
+	}
+
+	public static int clipFrames() {
+		return Clips.bufferedFrames();
+	}
+
+	public static void saveClip() {
+		Clips.save(net.minecraft.client.Minecraft.getInstance());
+	}
+
+	/** The newest clip as "<name> <bytes> <frames in its header>", or "none". */
+	public static String newestClip() {
+		try (var files = java.nio.file.Files.list(net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir().resolve("clips"))) {
+			var newest = files.filter(f -> f.toString().endsWith(".avi")).max(java.util.Comparator.comparing(f -> f.toFile().lastModified()));
+			if (newest.isEmpty()) return "none";
+			byte[] head = java.nio.file.Files.readAllBytes(newest.get());
+			var b = java.nio.ByteBuffer.wrap(head).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+			String riff = new String(head, 0, 4) + new String(head, 8, 4);
+			// avih: total frames at 24 + 16
+			return newest.get().getFileName() + " " + head.length + " " + b.getInt(48) + " " + riff;
+		} catch (Exception e) {
+			return "none";
+		}
+	}
 }

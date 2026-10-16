@@ -15,6 +15,7 @@ cpSync('src/renderer/index.html', 'dist/renderer/index.html');
 cpSync('src/renderer/style.css', 'dist/renderer/style.css');
 cpSync('build/icons/256x256.png', 'dist/renderer/logo.png');
 cpSync('src/renderer/img', 'dist/renderer/img', { recursive: true });
+cpSync('hud/src/main/resources/assets/slashclient-hud/textures/cape', 'dist/renderer/img/capes', { recursive: true });
 
 // SlashClient HUD (hud/, built with Gradle for every game version): bundled when it has been built
 mkdirSync('dist/hud', { recursive: true });

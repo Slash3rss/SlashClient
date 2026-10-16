@@ -57,6 +57,14 @@ public class FriendsChat implements FabricClientGameTest {
 		if (!Social.available()) {
 			context.waitTicks(10);
 			context.takeScreenshot("friends-no-launcher");
+			// "join me" invites as cards in the chat, with Join on the one received
+			String friend = context.computeOnClient(mc -> TestHooks.sampleInvites());
+			context.setScreen(() -> {
+				Social.viewing = friend;
+				return new FriendsScreen(null);
+			});
+			context.waitTicks(10);
+			context.takeScreenshot("friends-invites");
 			context.runOnClient(mc -> TestHooks.vanillaMenu());
 			return;
 		}

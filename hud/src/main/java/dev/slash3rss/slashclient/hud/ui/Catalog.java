@@ -124,6 +124,14 @@ public final class Catalog {
 			if (mc.player != null) dev.slash3rss.slashclient.hud.Benchmark.start(mc);
 			else mc.setScreenAndShow(dev.slash3rss.slashclient.hud.BenchmarkScreen.latest());
 		}));
+		// the emote wheel (key N): in a world it opens at once
+		out.add(new Entry("emotes", "slashclient-hud.emote", "extras", "m-emotes", null, null, List.of(), () -> {
+			var mc = net.minecraft.client.Minecraft.getInstance();
+			if (mc.player != null) mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.EmoteScreen(dev.slash3rss.slashclient.hud.Cosmetics.emoteKey()));
+		}));
+		// clips: the last seconds of the game, saved with F8
+		out.add(new Entry("clips", "slashclient-hud.clips", "extras", "m-clips", () -> cfg.clips, v -> cfg.clips = v, List.of(
+			new Slider("slashclient-hud.clips.length", 10f, 60f, 5f, "%.0f s", () -> (float) cfg.clipSeconds, v -> cfg.clipSeconds = Math.round(v))), null));
 		out.add(new Entry("chatTabs", "slashclient-hud.chat.tabs", "chat", "m-chattabs", null, null, List.of(), openChatTabs));
 		return out;
 	}

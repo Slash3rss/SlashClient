@@ -39,6 +39,15 @@ public final class Compat {
 		//#endif
 	}
 
+	/** What the game draws into before it reaches the screen. */
+	public static com.mojang.blaze3d.pipeline.RenderTarget mainTarget(Minecraft mc) {
+		//#if MC >= 26.2
+		return mc.gameRenderer.mainRenderTarget();
+		//#else
+		//$ return mc.getMainRenderTarget();
+		//#endif
+	}
+
 	/** The HUD hidden with F1 (then no names are drawn either). */
 	public static boolean hudHidden(Minecraft mc) {
 		//#if MC >= 26.2

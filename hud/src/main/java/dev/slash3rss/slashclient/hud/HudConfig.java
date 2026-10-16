@@ -116,6 +116,9 @@ public final class HudConfig {
 	public float titleScale = 1f;
 	/** Your own name above your head in third person (F5). */
 	public boolean ownNametag = false;
+	/** Clips: the last seconds of the screen in memory, saved with a key (off: it costs memory and a little CPU). */
+	public boolean clips = false;
+	public int clipSeconds = 30;
 
 	// ---- chat ----
 	/** The same line again becomes "×2", "×3" on the last one instead of a new line. */
@@ -250,6 +253,8 @@ public final class HudConfig {
 		titles = other.titles;
 		titleScale = other.titleScale;
 		ownNametag = other.ownNametag;
+		clips = other.clips;
+		clipSeconds = Math.max(10, Math.min(60, other.clipSeconds));
 		chatStack = other.chatStack;
 		chatCopy = other.chatCopy;
 		chatSearch = other.chatSearch;

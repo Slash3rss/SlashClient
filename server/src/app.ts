@@ -4,6 +4,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import { Db, type User } from './db.ts';
 import { PROVIDERS, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, type Presence } from './presence.ts';
+import { CAPES, EMOTES } from './cosmetics.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -31,6 +32,8 @@ const LOGIN_TTL_MS = 10 * 60_000;
 const MAX_MESSAGE = 2000;
 /** A game counts as running this long after its last report (the mod reports every 4 minutes). */
 const IN_GAME_TTL_MS = 10 * 60_000;
+/** host or host:port, as players type it in the server list. */
+const SERVER_ADDRESS = /^[\w.-]{1,253}(:\d{1,5})?$/;
 const UUID = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
 
 class HttpError extends Error {
@@ -82,7 +85,10 @@ export function createApp(cfg: Config) {
    * logo next to their name. Kept in memory: the mod reports again every few minutes.
    */
   const inGame = new Map<string, number>();
+  /** Minecraft uuid (lower case) → the SlashClient account playing as it, from the launcher. */
+  const linked = new Map<string, { user: string; at: number }>();
   const limitGame = rateLimiter(30);
+  const limitEmotes = rateLimiter(20);
 
   function newSession(user: User) {
     const token = randomBytes(32).toString('base64url');
@@ -203,10 +209,14 @@ export function createApp(cfg: Config) {
     }],
     ['POST', /^\/v1\/me$/, async (req) => {
       const me = authed(req);
-      const { showServer } = await body(req);
+      const { showServer, cape } = await body(req);
       if (typeof showServer === 'boolean') {
         db.setShowServer(me, showServer);
         broadcastPresence(me);
+      }
+      if (cape !== undefined) {
+        if (cape !== '' && !CAPES.includes(cape as string)) throw new HttpError(400, 'bad_cape');
+        db.setCape(me, cape as string);
       }
       return meWithProviders(me);
     }],
@@ -271,7 +281,43 @@ export function createApp(cfg: Config) {
       if (!Array.isArray(uuids) || uuids.length > 250) throw new HttpError(400, 'bad_request');
       const now = Date.now();
       const active = uuids.filter((u): u is string => typeof u === 'string' && now - (inGame.get(u.toLowerCase()) ?? 0) < IN_GAME_TTL_MS);
-      return { active };
+      // the capes of players whose launcher said which account they play as
+      const capes: Record<string, string> = {};
+      for (const u of active) {
+        const link = linked.get(u.toLowerCase());
+        const cape = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user)?.cape : undefined;
+        if (cape) capes[u] = cape;
+      }
+      return { active, capes };
+    }],
+    // the launcher says which Minecraft player its SlashClient account plays as, while the game runs
+    ['POST', /^\/v1\/mc\/link$/, async (req) => {
+      const me = authed(req);
+      limitGame(req.socket.remoteAddress ?? '');
+      const { uuid } = await body(req);
+      if (typeof uuid !== 'string' || !UUID.test(uuid)) throw new HttpError(400, 'bad_request');
+      const key = uuid.toLowerCase();
+      linked.set(key, { user: me, at: Date.now() });
+      inGame.set(key, Date.now());
+      return { ok: true, ttl: IN_GAME_TTL_MS };
+    }],
+    // an emote: shown above the player's head to launcher players on the same server
+    ['POST', /^\/v1\/mc\/emote$/, async (req) => {
+      const me = authed(req);
+      limitEmotes(me);
+      const { uuid, emote } = await body(req);
+      if (typeof uuid !== 'string' || !UUID.test(uuid) || !EMOTES.includes(emote as string)) throw new HttpError(400, 'bad_request');
+      if (linked.get(uuid.toLowerCase())?.user !== me) throw new HttpError(403, 'not_linked');
+      const where = presences.get(me)?.activity;
+      const event = { type: 'emote', uuid: uuid.toLowerCase(), emote, at: Date.now() };
+      push(me, event);
+      if (where?.kind === 'server' && where.server) {
+        const server = where.server.toLowerCase();
+        for (const [other, p] of presences) {
+          if (other !== me && p.activity?.kind === 'server' && p.activity.server?.toLowerCase() === server) push(other, event);
+        }
+      }
+      return { ok: true };
     }],
 
     // -- messages --
@@ -292,6 +338,19 @@ export function createApp(cfg: Config) {
       const message = db.addMessage(me, other, text.trim());
       push(other, { type: 'message', message });
       push(me, { type: 'message', message }); // the player's other launchers
+      return { message };
+    }],
+    // "join me": a server address (and the game version) as a message with a Join button
+    ['POST', /^\/v1\/invites\/([\w-]+)$/, async (req, [other]) => {
+      const me = authed(req);
+      friendOrThrow(me, other);
+      limitMessages(me);
+      const { server, version } = await body(req);
+      if (typeof server !== 'string' || !SERVER_ADDRESS.test(server)) throw new HttpError(400, 'bad_server');
+      const invite = { server: server.toLowerCase(), ...(typeof version === 'string' && /^[\w.+ -]{1,32}$/.test(version) ? { version } : {}) };
+      const message = db.addMessage(me, other, invite.server, invite);
+      push(other, { type: 'message', message });
+      push(me, { type: 'message', message });
       return { message };
     }],
     ['POST', /^\/v1\/messages\/([\w-]+)\/read$/, (req, [other]) => {
@@ -420,6 +479,7 @@ export function createApp(cfg: Config) {
     }
     for (const [state, login] of logins) if (Date.now() - login.at > LOGIN_TTL_MS) logins.delete(state);
     for (const [uuid, at] of inGame) if (Date.now() - at > IN_GAME_TTL_MS) inGame.delete(uuid);
+    for (const [uuid, l] of linked) if (Date.now() - l.at > IN_GAME_TTL_MS) linked.delete(uuid);
   }, 30_000);
 
   return {

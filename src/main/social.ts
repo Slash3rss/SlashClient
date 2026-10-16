@@ -194,6 +194,11 @@ export class SocialClient {
     if (this.ws?.readyState === WebSocket.OPEN && this.connected) this.ws.send(JSON.stringify({ type: 'presence', presence: this.presence() }));
   }
 
+  /** What the player is doing now, as friends see it. */
+  currentActivity(): Activity {
+    return this.activity;
+  }
+
   setActivity(activity: Activity) {
     const same = activity.kind === this.activity.kind && activity.server === this.activity.server && activity.version === this.activity.version;
     if (same) return;
