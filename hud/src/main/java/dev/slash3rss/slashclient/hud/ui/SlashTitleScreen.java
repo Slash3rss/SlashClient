@@ -3,7 +3,6 @@ package dev.slash3rss.slashclient.hud.ui;
 import com.mojang.realmsclient.RealmsMainScreen;
 import dev.slash3rss.slashclient.hud.HudEditScreen;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.ConnectScreen;
 import net.minecraft.client.gui.screens.Screen;
@@ -39,6 +38,8 @@ public class SlashTitleScreen extends Screen {
 	private final List<Hit> hits = new ArrayList<>();
 	private final List<ServerData> servers = new ArrayList<>();
 
+	private SkinPreview skin;
+
 	public SlashTitleScreen() {
 		super(Component.translatable("slashclient-hud.menu.title"));
 	}
@@ -55,6 +56,7 @@ public class SlashTitleScreen extends Screen {
 		return List.of(
 			new Nav("menu.singleplayer", "user", () -> minecraft.setScreenAndShow(new SelectWorldScreen(this))),
 			new Nav("menu.multiplayer", "server", () -> minecraft.setScreenAndShow(new JoinMultiplayerScreen(this))),
+			new Nav("slashclient-hud.friends", "user", () -> minecraft.setScreenAndShow(new dev.slash3rss.slashclient.hud.social.FriendsScreen(this))),
 			new Nav("menu.online", "cloud", () -> minecraft.setScreenAndShow(new RealmsMainScreen(this))),
 			new Nav("menu.options", "gear", () -> minecraft.setScreenAndShow(new OptionsScreen(this, minecraft.options))),
 			new Nav("options.language", "language", () -> minecraft.setScreenAndShow(new LanguageSelectScreen(this, minecraft.options, minecraft.getLanguageManager()))),
@@ -120,26 +122,34 @@ public class SlashTitleScreen extends Screen {
 		}));
 		Ui.end();
 
-		Component info = Ui.text("Minecraft " + SharedConstants.getCurrentVersion().name() + "  ·  SlashClient HUD");
-		Ui.drawOnWorld(g, info, width - Ui.width(info) - 8, height - 13, 0xCCFFFFFF);
-
 		// right side: a greeting card, then the servers
 		int cx = sx + sw + margin;
 		int cw = Math.min(360, width - cx - margin);
 		if (cw < 150) return;
+
+		// your skin in the free space on the right, looking at the mouse
+		int free = width - (cx + cw) - margin * 2;
+		if (free >= 70) {
+			if (skin == null) skin = new SkinPreview(minecraft);
+			int fh = Math.min(sh - 20, Math.min(240, free * 2));
+			int fw = fh / 2;
+			int fx = cx + cw + margin + (free - fw) / 2;
+			skin.draw(g, fx, sy + sh - fh, fw, fh, mx, my);
+		}
 		int gy = sy;
-		Ui.panel(g, cx, gy, cw, 52);
-		Ui.begin("greeting", cx, gy, cw, 52);
+		// just the greeting: the game version and the client name are said elsewhere already
+		int gh = 36;
+		Ui.panel(g, cx, gy, cw, gh);
+		Ui.begin("greeting", cx, gy, cw, gh);
 		var pose = g.pose();
 		pose.pushMatrix();
 		pose.translate(cx + 14, gy + 11);
 		pose.scale(1.6f, 1.6f);
 		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.menu.hello", minecraft.getUser().getName()), Math.round((cw - 28) / 1.6f)), 0, 0, Ui.TEXT);
 		pose.popMatrix();
-		Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.menu.subtitle", SharedConstants.getCurrentVersion().name()), cw - 28), cx + 14, gy + 33, Ui.TEXT_2);
 		Ui.end();
 
-		int listY = gy + 52 + margin;
+		int listY = gy + gh + margin;
 		int rowH = 30;
 		int shown = Math.max(0, Math.min(servers.size(), (sy + sh - listY - 30) / (rowH + 4)));
 		int panelH = 26 + (shown == 0 ? 22 : shown * (rowH + 4));
@@ -158,7 +168,7 @@ public class SlashTitleScreen extends Screen {
 			Ui.round(g, rx, y, rw, rowH, 5, Ui.blend(Ui.CARD, Ui.CARD_HOVER, t));
 			Ui.roundOutline(g, rx, y, rw, rowH, 5, Ui.blend(Ui.BORDER, 0x883B82F6, t));
 			Component join = Ui.tr("slashclient-hud.menu.join");
-			int jw = Ui.width(join) + 24;
+			int jw = Ui.buttonWidth(join, "play", 18, 4);
 			Ui.draw(g, Ui.fit(Ui.bold(s.name), rw - jw - 24), rx + 10, y + 6, Ui.TEXT);
 			Ui.draw(g, Ui.fit(Ui.text(s.ip), rw - jw - 24), rx + 10, y + 17, Ui.TEXT_2);
 			Ui.button(g, "join:" + s.ip, rx + rw - jw - 6, y + 6, jw, 18, "play", join, over, mx, my);

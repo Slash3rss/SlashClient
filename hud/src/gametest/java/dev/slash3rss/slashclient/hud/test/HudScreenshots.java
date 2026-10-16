@@ -24,6 +24,12 @@ public class HudScreenshots implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		// the friends test alone (with a launcher bridge) skips the long screenshot tour
+		if (Boolean.getBoolean("slashclient.test.friendsOnly")) {
+			// the runner wants every test to end on the game's own title screen
+			context.runOnClient(mc -> TestHooks.vanillaMenu());
+			return;
+		}
 		context.runOnClient(mc -> TestHooks.audit(true));
 		// every screen at every size: does everything fit?
 		context.waitTicks(40);

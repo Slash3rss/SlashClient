@@ -36,11 +36,11 @@ public class ChatTabsScreen extends Screen {
 		}
 	}
 
-	private static String joined(HudConfig.ChatTab t) {
+	static String joined(HudConfig.ChatTab t) {
 		return t.regex ? (t.patterns.isEmpty() ? "" : t.patterns.get(0)) : String.join(", ", t.patterns);
 	}
 
-	private static void setPatterns(HudConfig.ChatTab t, String value) {
+	static void setPatterns(HudConfig.ChatTab t, String value) {
 		t.patterns.clear();
 		if (t.regex) t.patterns.add(value);
 		else Arrays.stream(value.split(",")).map(String::trim).filter(s -> !s.isEmpty()).forEach(t.patterns::add);

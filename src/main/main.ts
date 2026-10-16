@@ -28,6 +28,7 @@ import { listServers, pingServer } from './servers';
 import { getManifest } from './versions';
 import { newsArticle, newsPage, type NewsFilter } from './news';
 import { ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin } from './skins';
+import { GameBridge } from './bridge';
 import { checkModsFolder, installedModIds } from './modcheck';
 import { addModsArgs, hudVersions, prepareHud } from './hud';
 import { exportHud, importHud } from './hudShare';
@@ -782,11 +783,16 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     largeImageKey: 'logo',
     largeImageText: 'SlashClient',
   };
-  const hudArgs = await prepareProfileHud(profile);
+  const hud = await prepareProfileHud(profile);
+  // only a game with our HUD talks to the bridge
+  if (hud.jvmArgs.length) {
+    await bridge.start();
+    hud.jvmArgs.push(...bridge.jvmArgs());
+  }
   const activityVersion = `${await resolveVersionId(profile.versionId)}${loaderName}`;
   social.setActivity({ kind: server ? 'server' : 'menu', server: server || undefined, version: activityVersion, since: startedAt });
   const child = await launch({
-    profile,
+    profile: hud.profile,
     account,
     onStage: (stage, done, total, stats) => send('launch:stage', { stage, done, total, ...stats }),
     onLog: (line) => {
@@ -809,7 +815,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     },
     server,
     world,
-    extraJvmArgs: hudArgs,
+    extraJvmArgs: hud.jvmArgs,
   });
   game = child;
   killRequested = false;
@@ -858,13 +864,29 @@ handle('hud:pasteCode', async (profileId: string) => {
   await importHud(profileGameDir(profile), await clipboard.readText());
 });
 
-/** The HUD (and Fabric API, if the profile lacks it) as JVM arguments: injected, never copied into mods/. */
-async function prepareProfileHud(profile: Profile): Promise<string[]> {
+/**
+ * How a profile is started with SlashClient HUD, the way Feather does it: Fabric profiles get the
+ * HUD (and Fabric API, if they lack it) injected; vanilla profiles are started through a hidden
+ * Fabric Loader that loads only our jars (its mods folder points at an empty one), so the profile
+ * stays vanilla for the player and nothing lands in mods/.
+ */
+async function prepareProfileHud(profile: Profile): Promise<{ profile: Profile; jvmArgs: string[] }> {
+  const gameVersion = await resolveVersionId(profile.versionId);
+  const hidden = profile.loader === 'vanilla' && (profile.hud ?? true) && hudSupported.includes(gameVersion);
+  const loader = hidden ? 'fabric' : profile.loader;
+  const cacheDir = path.join(paths.root, 'hud');
   const jars = await prepareHud(HUD_DIR, profileGameDir(profile), {
-    enabled: profile.hud ?? true, loader: profile.loader, gameVersion: await resolveVersionId(profile.versionId),
-    cacheDir: path.join(paths.root, 'hud'), socialUrl: store.settings.socialUrl,
+    enabled: profile.hud ?? true, loader, gameVersion, cacheDir, socialUrl: store.settings.socialUrl,
+    // the hidden Fabric has no mods of its own: Fabric API always comes from us
+    ignoreProfileMods: hidden,
   }, () => send('launch:stage', { stage: t('Pobieranie Fabric API dla SlashClient HUD'), done: 0, total: 1 }));
-  return addModsArgs(jars);
+  if (!hidden || !jars.length) return { profile, jvmArgs: addModsArgs(jars) };
+  const noMods = path.join(cacheDir, 'no-mods');
+  await fsp.mkdir(noMods, { recursive: true });
+  return {
+    profile: { ...profile, loader: 'fabric', loaderVersion: '' },
+    jvmArgs: [...addModsArgs(jars), `-Dfabric.modsFolder=${noMods}`],
+  };
 }
 
 // ---------- friends, statuses and messages ----------
@@ -879,7 +901,19 @@ const social = new SocialClient({
     await persist();
   },
   status: () => store.settings.socialStatus,
-  emit: (event) => send('social:event', event),
+  emit: (event) => {
+    send('social:event', event);
+    bridge.push(event as { type: string });
+  },
+});
+
+/** Friends and chat for SlashClient HUD in the game, without handing it the account token. */
+const bridge = new GameBridge({
+  call: (method, apiPath, body) => social.call(method, apiPath, body),
+  state: () => {
+    const s = social.state();
+    return { signedIn: !!s.user, user: s.user, connected: s.connected };
+  },
 });
 
 /** SocialError codes cross IPC as "social:<code>", which the page translates. */

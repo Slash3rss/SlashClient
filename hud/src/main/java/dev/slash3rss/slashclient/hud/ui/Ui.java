@@ -35,8 +35,23 @@ public final class Ui {
 	public static final int DANGER = 0xFFEF4444;
 	public static final int GREEN = 0xFF4ADE80;
 
-	private static final FontDescription OUTFIT = new FontDescription.Resource(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit"));
-	private static final FontDescription OUTFIT_BOLD = new FontDescription.Resource(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_bold"));
+	/**
+	 * Outfit rasterised for each GUI scale (font/outfit_s1..s6.json, "oversample" = the scale):
+	 * one pixel of a letter is then exactly one pixel on screen, so text stays sharp instead of
+	 * being shrunk from a bigger bitmap.
+	 */
+	private static final FontDescription[] OUTFIT = new FontDescription[7];
+	private static final FontDescription[] OUTFIT_BOLD = new FontDescription[7];
+	static {
+		for (int s = 1; s <= 6; s++) {
+			OUTFIT[s] = new FontDescription.Resource(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_s" + s));
+			OUTFIT_BOLD[s] = new FontDescription.Resource(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_bold_s" + s));
+		}
+	}
+
+	private static int scale() {
+		return Math.max(1, Math.min(6, Minecraft.getInstance().getWindow().getGuiScale()));
+	}
 
 	// ---------- layout audit (for the screenshot test) ----------
 
@@ -105,20 +120,20 @@ public final class Ui {
 	}
 
 	public static MutableComponent text(String s) {
-		return Component.literal(s).withStyle(Style.EMPTY.withFont(OUTFIT));
+		return Component.literal(s).withStyle(Style.EMPTY.withFont(OUTFIT[scale()]));
 	}
 
 	public static MutableComponent bold(String s) {
-		return Component.literal(s).withStyle(Style.EMPTY.withFont(OUTFIT_BOLD));
+		return Component.literal(s).withStyle(Style.EMPTY.withFont(OUTFIT_BOLD[scale()]));
 	}
 
 	/** A translated text in the launcher font. */
 	public static MutableComponent tr(String key, Object... args) {
-		return Component.translatable(key, args).withStyle(Style.EMPTY.withFont(OUTFIT));
+		return Component.translatable(key, args).withStyle(Style.EMPTY.withFont(OUTFIT[scale()]));
 	}
 
 	public static MutableComponent trBold(String key, Object... args) {
-		return Component.translatable(key, args).withStyle(Style.EMPTY.withFont(OUTFIT_BOLD));
+		return Component.translatable(key, args).withStyle(Style.EMPTY.withFont(OUTFIT_BOLD[scale()]));
 	}
 
 	public static int width(Component c) {
@@ -153,25 +168,42 @@ public final class Ui {
 		g.fill(x + r, y, x + w - r, y + h, color);
 		for (int i = 0; i < r; i++) {
 			// how far this column is cut at the top and bottom
-			int cut = r - (int) Math.round(Math.sqrt(r * r - (r - i - 0.5) * (r - i - 0.5)));
+			int cut = inset(i, r);
 			g.fill(x + i, y + cut, x + i + 1, y + h - cut, color);
 			g.fill(x + w - i - 1, y + cut, x + w - i, y + h - cut, color);
 		}
 	}
 
-	/** A rounded outline, one pixel wide. */
+	/** How far row (or column) `k` of a corner with radius `r` is cut in; the same curve `round` fills. */
+	private static int inset(int k, int r) {
+		return r - (int) Math.round(Math.sqrt(r * r - (r - k - 0.5) * (r - k - 0.5)));
+	}
+
+	/**
+	 * A rounded outline, one pixel wide, that follows exactly the edge of `round` with the same
+	 * size: in the corners each row is filled from the outer curve to the inner one, so the line has
+	 * no gaps where the curve drops several pixels at once and no pixel is drawn twice (which would
+	 * show as brighter dots on see-through colours).
+	 */
 	public static void roundOutline(GuiGraphicsExtractor g, int x, int y, int w, int h, int r, int color) {
+		if (w <= 1 || h <= 1) return;
 		r = Math.min(r, Math.min(w, h) / 2);
-		g.fill(x + r, y, x + w - r, y + 1, color);
-		g.fill(x + r, y + h - 1, x + w - r, y + h, color);
-		g.fill(x, y + r, x + 1, y + h - r, color);
-		g.fill(x + w - 1, y + r, x + w, y + h - r, color);
-		for (int i = 1; i < r; i++) {
-			int cut = r - (int) Math.round(Math.sqrt(r * r - (r - i) * (r - i)));
-			g.fill(x + i, y + cut, x + i + 1, y + cut + 1, color);
-			g.fill(x + w - i - 1, y + cut, x + w - i, y + cut + 1, color);
-			g.fill(x + i, y + h - cut - 1, x + i + 1, y + h - cut, color);
-			g.fill(x + w - i - 1, y + h - cut - 1, x + w - i, y + h - cut, color);
+		for (int k = 0; k < Math.min(r, h / 2 + 1); k++) {
+			int o = inset(k, r);
+			for (int row : k == h - 1 - k ? new int[] { k } : new int[] { k, h - 1 - k }) {
+				if (k == 0) {
+					g.fill(x + o, y + row, x + w - o, y + row + 1, color);
+					continue;
+				}
+				int in = 1 + (k - 1 < r - 1 ? inset(k - 1, r - 1) : 0);
+				int end = Math.max(in, o + 1);
+				g.fill(x + o, y + row, x + end, y + row + 1, color);
+				g.fill(x + w - end, y + row, x + w - o, y + row + 1, color);
+			}
+		}
+		if (h - 2 * r > 0) {
+			g.fill(x, y + r, x + 1, y + h - r, color);
+			g.fill(x + w - 1, y + r, x + w, y + h - r, color);
 		}
 	}
 
@@ -228,6 +260,13 @@ public final class Ui {
 		if (iconName != null) icon(g, iconName, left, y + (h - iconSize) / 2, iconSize, color);
 		if (hasLabel) draw(g, fitted, left + iconW, y + (h - 8) / 2, color);
 		end();
+	}
+
+	/** The width a button needs to show its whole label (and icon) at height `h`, plus `pad` on each side. */
+	public static int buttonWidth(Component label, String iconName, int h, int pad) {
+		int iconW = iconName == null ? 0 : Math.min(10, h - 6) + (label.getString().isEmpty() ? 0 : 5);
+		// the button keeps 5 px free on each side before it cuts the label
+		return width(label) + iconW + 10 + pad * 2;
 	}
 
 	/** An on/off switch, 20×10. */

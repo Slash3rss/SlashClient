@@ -42,7 +42,7 @@ public final class ChatTabs {
 				buttons.add(b);
 				x += w + 2;
 			}
-			Button edit = Button.builder(Component.literal("+"), btn -> mc.setScreenAndShow(new ChatTabsScreen(null))).bounds(x, y, 14, 12).build();
+			Button edit = Button.builder(Component.literal("+"), btn -> mc.setScreenAndShow(new HudEditScreen("chatTabs"))).bounds(x, y, 14, 12).build();
 			buttons.add(edit);
 			Screens.getWidgets(screen).addAll(buttons);
 			ScreenEvents.afterExtract(screen).register((s, g, mouseX, mouseY, delta) -> {

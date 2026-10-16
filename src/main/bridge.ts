@@ -1,0 +1,131 @@
+import { randomBytes, timingSafeEqual } from 'node:crypto';
+import http from 'node:http';
+import type { AddressInfo } from 'node:net';
+
+/**
+ * A small HTTP server on 127.0.0.1 through which SlashClient HUD (in the game) reaches
+ * friends and messages. The game never sees the SlashClient account token: it gets this
+ * server's address and a random key for the launcher's run, and the launcher makes the
+ * real calls. Only the friends list and messages are reachable, nothing about the account.
+ */
+
+export interface BridgeEvent { seq: number; type: string; [key: string]: unknown }
+
+export interface BridgeOptions {
+  /** The SlashClient server call, with the launcher's token. */
+  call: (method: string, path: string, body?: unknown) => Promise<unknown>;
+  /** Signed in or not, and who. */
+  state: () => unknown;
+}
+
+/** What the game may ask for: its friends and the messages with them. */
+const ALLOWED: [string, RegExp][] = [
+  ['GET', /^\/v1\/friends$/],
+  ['GET', /^\/v1\/messages\/[\w-]{1,64}(\?(before=\d+&?|limit=\d+&?)*)?$/],
+  ['POST', /^\/v1\/messages\/[\w-]{1,64}$/],
+  ['POST', /^\/v1\/messages\/[\w-]{1,64}\/read$/],
+];
+
+/** Events the game cares about; the rest (login flow, account state) stays in the launcher. */
+const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', 'state']);
+const KEEP = 200;
+const LONG_POLL_MS = 25_000;
+
+export class GameBridge {
+  private server?: http.Server;
+  private key = randomBytes(24).toString('base64url');
+  private seq = 0;
+  private events: BridgeEvent[] = [];
+  private waiting = new Set<() => void>();
+  url = '';
+
+  constructor(private readonly opts: BridgeOptions) {}
+
+  /** Starts once; later calls return the same address. */
+  async start(): Promise<{ url: string; key: string }> {
+    if (!this.server) {
+      this.server = http.createServer((req, res) => this.handle(req, res).catch((err) => this.send(res, 500, { error: String((err as Error).message ?? err) })));
+      await new Promise<void>((resolve) => this.server!.listen(0, '127.0.0.1', resolve));
+      this.url = `http://127.0.0.1:${(this.server.address() as AddressInfo).port}`;
+    }
+    return { url: this.url, key: this.key };
+  }
+
+  stop() {
+    this.server?.close();
+    this.server = undefined;
+    for (const wake of this.waiting) wake();
+  }
+
+  /** JVM arguments that tell the HUD where the bridge is. */
+  jvmArgs(): string[] {
+    return this.url ? [`-Dslashclient.bridge=${this.url}`, `-Dslashclient.bridgeKey=${this.key}`] : [];
+  }
+
+  /** A social event from the launcher's WebSocket, passed on to the game. */
+  push(event: { type: string; [key: string]: unknown }) {
+    if (!FORWARDED.has(event.type)) return;
+    this.events.push({ ...event, seq: ++this.seq });
+    if (this.events.length > KEEP) this.events.splice(0, this.events.length - KEEP);
+    for (const wake of this.waiting) wake();
+  }
+
+  private authorized(req: http.IncomingMessage): boolean {
+    const given = Buffer.from(String(req.headers.authorization ?? '').replace(/^Bearer /, ''));
+    const want = Buffer.from(this.key);
+    return given.length === want.length && timingSafeEqual(given, want);
+  }
+
+  private send(res: http.ServerResponse, status: number, body: unknown) {
+    if (res.headersSent) return;
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(body));
+  }
+
+  private async body(req: http.IncomingMessage): Promise<unknown> {
+    let raw = '';
+    for await (const chunk of req) {
+      raw += chunk;
+      if (raw.length > 16_384) throw new Error('too_large');
+    }
+    return raw ? JSON.parse(raw) : undefined;
+  }
+
+  private async handle(req: http.IncomingMessage, res: http.ServerResponse) {
+    // only the game on this computer, with the key; a browser page can't send the header cross-origin without a preflight we never answer
+    if (!this.authorized(req)) return this.send(res, 401, { error: 'unauthorized' });
+    const url = req.url ?? '/';
+    const method = req.method ?? 'GET';
+
+    if (method === 'GET' && url === '/state') return this.send(res, 200, this.opts.state());
+
+    if (method === 'GET' && url.startsWith('/events')) {
+      const after = Number(new URL(url, 'http://x').searchParams.get('after') ?? 0);
+      const pending = () => this.events.filter((e) => e.seq > after);
+      // a new launcher run starts counting from 0 again: the game catches up from there
+      if (after > this.seq) return this.send(res, 200, { seq: this.seq, events: [] });
+      if (!pending().length) {
+        await new Promise<void>((resolve) => {
+          const wake = () => {
+            clearTimeout(timer);
+            this.waiting.delete(wake);
+            resolve();
+          };
+          const timer = setTimeout(wake, LONG_POLL_MS);
+          this.waiting.add(wake);
+          req.on('close', wake);
+        });
+      }
+      return this.send(res, 200, { seq: this.seq, events: pending() });
+    }
+
+    if (!ALLOWED.some(([m, re]) => m === method && re.test(url))) return this.send(res, 403, { error: 'forbidden' });
+    try {
+      const body = method === 'POST' ? await this.body(req) : undefined;
+      this.send(res, 200, (await this.opts.call(method, url, body)) ?? {});
+    } catch (err) {
+      const code = (err as { code?: string }).code ?? (err as Error).message;
+      this.send(res, 502, { error: code });
+    }
+  }
+}

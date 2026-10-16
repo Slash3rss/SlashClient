@@ -75,11 +75,126 @@ public class HudEditScreen extends Screen {
 	}
 
 	private List<Catalog.Entry> entries() {
+		// chat tabs are a page of this window, like any other settings
 		if (entries == null) entries = Catalog.entries(() -> {
-			SlashHud.config.save();
-			minecraft.setScreenAndShow(new ChatTabsScreen(this));
+			settingsOf = entries.stream().filter(e -> e.id().equals("chatTabs")).findFirst().orElse(null);
+			reopen();
 		});
 		return entries;
+	}
+
+	// ---------- chat tabs page ----------
+
+	private static final int MAX_TABS = 8;
+	private static final int TAB_ROW = 24;
+	/** The text fields of the shown tabs: name and patterns, in pairs. */
+	private final List<EditBox> tabFields = new ArrayList<>();
+	private int tabsTop;
+	private int tabsFit;
+
+	private boolean chatTabsPage() {
+		return window && settingsOf != null && settingsOf.id().equals("chatTabs");
+	}
+
+	private void tabsChanged() {
+		SlashHud.config.save();
+		ChatTabs.changed();
+	}
+
+	private void initChatTabs() {
+		int cx = winX() + 132, cy = winY() + 42, cw = winW() - 144, ch = winH() - 50;
+		int help = font.split(Ui.tr("slashclient-hud.chat.help"), cw).size();
+		tabsTop = cy + 26 + help * 11 + 4;
+		tabsFit = Math.max(1, (cy + ch - 26 - tabsTop) / TAB_ROW);
+		List<HudConfig.ChatTab> tabs = SlashHud.config.chatTabs;
+		for (int i = 0; i < Math.min(tabs.size(), tabsFit); i++) {
+			HudConfig.ChatTab tab = tabs.get(i);
+			int y = tabsTop + i * TAB_ROW + 5;
+			EditBox name = new EditBox(font, cx + 6, y, 62, 12, Ui.tr("slashclient-hud.chat.name"));
+			name.setBordered(false);
+			name.setTextColor(Ui.TEXT);
+			name.setMaxLength(16);
+			name.setValue(tab.name);
+			name.setHint(Ui.tr("slashclient-hud.chat.name"));
+			name.setResponder(v -> {
+				tab.name = v;
+				tabsChanged();
+			});
+			EditBox patterns = new EditBox(font, cx + 82, y, cw - 82 - 98, 12, Ui.tr("slashclient-hud.chat.patterns"));
+			patterns.setBordered(false);
+			patterns.setTextColor(Ui.TEXT);
+			patterns.setMaxLength(256);
+			patterns.setValue(ChatTabsScreen.joined(tab));
+			patterns.setHint(Ui.tr(tab.regex ? "slashclient-hud.chat.hint.regex" : "slashclient-hud.chat.hint.text"));
+			patterns.setResponder(v -> {
+				ChatTabsScreen.setPatterns(tab, v);
+				tabsChanged();
+			});
+			addRenderableWidget(name);
+			addRenderableWidget(patterns);
+			tabFields.add(name);
+			tabFields.add(patterns);
+		}
+	}
+
+	private void drawChatTabs(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h) {
+		Catalog.Entry e = settingsOf;
+		Ui.button(g, "back", x, y, 70, 18, "back", Ui.tr("slashclient-hud.ui.back"), false, mx, my);
+		hits.add(new Hit(x, y, 70, 18, () -> {
+			SlashHud.config.chatTabs.removeIf(t -> t.name.isBlank());
+			tabsChanged();
+			settingsOf = null;
+			reopen();
+		}));
+		Ui.round(g, x + 78, y, 20, 18, 4, 0xFF1B2B4D);
+		Ui.icon(g, e.icon(), "#", x + 80, y + 1);
+		Ui.draw(g, Ui.fit(Ui.trBold(e.nameKey()), w - 106), x + 104, y + 5, Ui.TEXT);
+		Ui.wrapped(g, Ui.tr("slashclient-hud.chat.help"), x, y + 26, w, Ui.TEXT_2);
+
+		List<HudConfig.ChatTab> tabs = SlashHud.config.chatTabs;
+		String error = "";
+		for (int i = 0; i < tabFields.size() / 2 && i < tabs.size(); i++) {
+			HudConfig.ChatTab tab = tabs.get(i);
+			int ry = tabsTop + i * TAB_ROW;
+			EditBox name = tabFields.get(i * 2), patterns = tabFields.get(i * 2 + 1);
+			for (EditBox box : List.of(name, patterns)) {
+				Ui.round(g, box.getX() - 5, ry, box.getWidth() + 10, 18, 4, Ui.CARD);
+				Ui.roundOutline(g, box.getX() - 5, ry, box.getWidth() + 10, 18, 4, box.isFocused() ? 0x993B82F6 : Ui.BORDER);
+			}
+			int bx = x + w - 92;
+			Ui.button(g, "mode:" + i, bx, ry, 64, 18, Ui.tr(tab.regex ? "slashclient-hud.chat.regex" : "slashclient-hud.chat.text"), tab.regex, mx, my);
+			hits.add(new Hit(bx, ry, 64, 18, () -> {
+				String current = patterns.getValue();
+				tab.regex = !tab.regex;
+				ChatTabsScreen.setPatterns(tab, current);
+				tabsChanged();
+				reopen();
+			}));
+			Ui.button(g, "remove:" + i, x + w - 22, ry, 22, 18, "close", Component.empty(), false, mx, my);
+			hits.add(new Hit(x + w - 22, ry, 22, 18, () -> {
+				tabs.remove(tab);
+				tabsChanged();
+				reopen();
+			}));
+			if (tab.regex) for (String p : tab.patterns) {
+				String problem = ChatTabs.problem(p);
+				if (problem != null) error = tab.name + ": " + problem;
+			}
+		}
+		int below = tabsTop + Math.min(tabs.size(), tabsFit) * TAB_ROW + 2;
+		if (tabs.size() < Math.min(MAX_TABS, tabsFit)) {
+			Component add = Ui.tr("slashclient-hud.chat.add");
+			int aw = Ui.buttonWidth(add, null, 18, 6);
+			Ui.button(g, "addTab", x, below, aw, 18, add, true, mx, my);
+			hits.add(new Hit(x, below, aw, 18, () -> {
+				tabs.add(new HudConfig.ChatTab(Component.translatable("slashclient-hud.chat.new").getString(), false));
+				tabsChanged();
+				reopen();
+			}));
+		}
+		int hidden = Math.max(0, tabs.size() - tabsFit);
+		if (!error.isEmpty()) Ui.draw(g, Ui.fit(Ui.text(error), w), x, y + h - 10, Ui.DANGER);
+		else if (hidden > 0) Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.chat.more", hidden), w), x, y + h - 10, Ui.MUTED);
 	}
 
 	// ---------- window geometry ----------
@@ -104,6 +219,8 @@ public class HudEditScreen extends Screen {
 	protected void init() {
 		entries();
 		search = null;
+		tabFields.clear();
+		if (chatTabsPage()) initChatTabs();
 		if (window && settingsOf == null && !category.equals("share")) {
 			search = new EditBox(font, winX() + winW() - 176, winY() + 12, 132, 12, Ui.tr("slashclient-hud.ui.search"));
 			search.setBordered(false);
@@ -238,7 +355,8 @@ public class HudEditScreen extends Screen {
 
 		int cx = x + 132, cy = y + 42, cw = w - 144, ch = h - 50;
 		Ui.begin("content", cx, cy, cw, ch);
-		if (settingsOf != null) drawSettings(g, mx, my, cx, cy, cw, ch);
+		if (chatTabsPage()) drawChatTabs(g, mx, my, cx, cy, cw, ch);
+		else if (settingsOf != null) drawSettings(g, mx, my, cx, cy, cw, ch);
 		else if (category.equals("share")) drawShare(g, mx, my, cx, cy, cw);
 		else drawCards(g, mx, my, cx, cy, cw, ch);
 		Ui.end();
@@ -304,11 +422,13 @@ public class HudEditScreen extends Screen {
 		if (e.hasSwitch()) {
 			Ui.toggle(g, e.id(), x + 8, y + h - 16, on);
 			Ui.draw(g, Ui.tr(on ? "slashclient-hud.ui.on" : "slashclient-hud.ui.off"), x + 32, y + h - 16, on ? Ui.ACCENT_LIGHT : Ui.MUTED);
+			// the whole card switches the module; the gear on it opens its settings. Clicks are matched
+			// from the last added, so the gear goes in after the card or the card would take its clicks
+			if (clickable) hits.add(new Hit(x, y, w, h, () -> e.set().accept(!e.get().get())));
 			if (gear) {
 				Ui.button(g, "gear:" + e.id(), x + w - 24, y + h - 21, 16, 16, "gear", Component.empty(), false, mx, my);
 				if (clickable) hits.add(new Hit(x + w - 24, y + h - 21, 16, 16, () -> openSettings(e)));
 			}
-			if (clickable) hits.add(new Hit(x, y, w, h, () -> e.set().accept(!e.get().get())));
 		} else {
 			Component action = Ui.tr(gear ? "slashclient-hud.ui.settings" : "slashclient-hud.ui.openIt");
 			int aw = Ui.width(action) + 22;
@@ -654,6 +774,8 @@ public class HudEditScreen extends Screen {
 
 	@Override
 	public void onClose() {
+		// a tab left without a name would be an empty button above the chat
+		if (SlashHud.config.chatTabs.removeIf(t -> t.name.isBlank())) ChatTabs.changed();
 		SlashHud.config.save();
 		super.onClose();
 	}

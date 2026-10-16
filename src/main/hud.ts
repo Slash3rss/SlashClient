@@ -7,7 +7,8 @@ import { cachedModFile } from './modrinth';
  * SlashClient HUD: our own Fabric mod (folder hud/), shipped inside the launcher as
  * dist/hud/slashclient-hud-<game version>.jar. It is not put into the player's mods/:
  * the launcher keeps it (and Fabric API, when the profile has none) in its own folder
- * and hands both to Fabric at start with -Dfabric.addMods.
+ * and hands both to Fabric at start with -Dfabric.addMods. Vanilla profiles get a hidden
+ * Fabric Loader for it (see prepareProfileHud in main.ts).
  */
 
 const OURS = /^slashclient-hud-.*\.jar$/;
@@ -80,7 +81,7 @@ export function addModsArgs(jars: string[]): string[] {
 export async function prepareHud(
   bundleDir: string,
   gameDir: string,
-  opts: HudOptions & { cacheDir: string; socialUrl?: string },
+  opts: HudOptions & { cacheDir: string; socialUrl?: string; ignoreProfileMods?: boolean },
   onStage?: () => void,
 ): Promise<string[]> {
   try {
@@ -89,7 +90,7 @@ export async function prepareHud(
     if (!source) return [];
     const jars = [await stageJar(source, opts.cacheDir)];
     if (opts.socialUrl) await writeLauncherInfo(gameDir, opts.socialUrl);
-    if (!(await hasFabricApi(gameDir))) {
+    if (opts.ignoreProfileMods || !(await hasFabricApi(gameDir))) {
       onStage?.();
       jars.push(await cachedModFile('fabric-api', opts.gameVersion, 'fabric', path.join(opts.cacheDir, 'fabric-api', opts.gameVersion)));
     }

@@ -48,7 +48,7 @@ const EN: Record<string, string> = {
   ' Wklej kod HUD': ' Paste HUD code',
   'Skopiowano kod HUD. Wklej go znajomemu albo w innym profilu.': 'HUD code copied. Send it to a friend or paste it in another profile.',
   'Wczytano ustawienia HUD z kodu. Zobaczysz je przy następnym uruchomieniu gry.': 'HUD settings loaded from the code. You will see them the next time the game starts.',
-  'działa z Fabric ({0})': 'works with Fabric ({0})',
+  'działa w profilach vanilla i Fabric ({0})': 'works in vanilla and Fabric profiles ({0})',
   'FPS, ping, CPS, pancerz, klawisze i więcej. W grze Prawy Shift otwiera edycję.': 'FPS, ping, CPS, armour, keystrokes and more. In game, Right Shift opens the editor.',
   'jeszcze nie dla {0}; dostępny dla {1}': 'not for {0} yet; available for {1}',
   'Pobieranie Fabric API dla SlashClient HUD': 'Downloading Fabric API for SlashClient HUD',

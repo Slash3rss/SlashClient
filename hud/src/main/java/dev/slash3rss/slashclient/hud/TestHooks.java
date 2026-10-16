@@ -22,6 +22,14 @@ public final class TestHooks {
 		net.minecraft.client.Minecraft.getInstance().setScreenAndShow(new net.minecraft.client.gui.screens.TitleScreen());
 	}
 
+	/** One chat tab, so the chat tabs page has a row to show. */
+	public static void sampleChatTab() {
+		if (!SlashHud.config.chatTabs.isEmpty()) return;
+		HudConfig.ChatTab tab = new HudConfig.ChatTab("Party", false);
+		tab.patterns.add("[Party]");
+		SlashHud.config.chatTabs.add(tab);
+	}
+
 	/** Every module on, so the editor draws all their previews. */
 	public static void allModules() {
 		SlashHud.config.modules.values().forEach(p -> p.enabled = true);

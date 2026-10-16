@@ -40,3 +40,12 @@ fabricApi {
 		eula = true
 	}
 }
+
+// the friends test talks to a running launcher: gradlew runClientGameTest -Pbridge=<url> -PbridgeKey=<key>
+if (project.hasProperty('bridge')) {
+	loom.runs.matching { it.name == 'clientGameTest' }.configureEach {
+		vmArg "-Dslashclient.bridge=${project.property('bridge')}"
+		vmArg "-Dslashclient.bridgeKey=${project.property('bridgeKey')}"
+		vmArg "-Dslashclient.test.friendsOnly=true"
+	}
+}

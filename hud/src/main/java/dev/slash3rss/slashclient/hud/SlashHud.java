@@ -51,6 +51,8 @@ public class SlashHud implements ClientModInitializer {
 		Extras.zoomKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.zoom", InputConstants.KEY_C, category));
 		// no key by default: G and the like are taken by other mods too often
 		Extras.fullbrightKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.fullbright", InputConstants.UNKNOWN.getValue(), category));
+		KeyMapping friends = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.friends", InputConstants.KEY_O, category));
+		dev.slash3rss.slashclient.hud.social.Social.start();
 		ChatTabs.register();
 		Badges.load();
 		// another server or world: what we knew about its players is gone
@@ -70,6 +72,9 @@ public class SlashHud implements ClientModInitializer {
 			Badges.tick(mc);
 			while (edit.consumeClick()) {
 				if (mc.gui.screen() == null) mc.setScreenAndShow(new HudEditScreen());
+			}
+			while (friends.consumeClick()) {
+				if (mc.gui.screen() == null) mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.social.FriendsScreen(null));
 			}
 			MoreModules.Combat.tick(mc);
 			// a new world or server starts a new session

@@ -326,8 +326,9 @@ function renderHudHint() {
   const loader = (form.elements.namedItem('loader') as HTMLSelectElement).value;
   const version = resolvedVersion((form.elements.namedItem('versionId') as HTMLSelectElement | HTMLInputElement).value);
   const supported = store.hudVersions ?? [];
-  const hint = loader !== 'fabric'
-    ? t('działa z Fabric ({0})', supported.join(', ') || '—')
+  // vanilla profiles get it through a hidden Fabric, like Feather; Forge/NeoForge/Quilt can't
+  const hint = loader !== 'fabric' && loader !== 'vanilla'
+    ? t('działa w profilach vanilla i Fabric ({0})', supported.join(', ') || '—')
     : supported.includes(version)
       ? t('FPS, ping, CPS, pancerz, klawisze i więcej. W grze Prawy Shift otwiera edycję.')
       : t('jeszcze nie dla {0}; dostępny dla {1}', version, supported.join(', ') || '—');
