@@ -19,6 +19,6 @@ import org.spongepowered.asm.mixin.injection.At;
 abstract class GpuTimerMixin {
 	@WrapOperation(method = { "renderFrame", "runTick" }, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/debug/DebugScreenEntryList;isCurrentlyEnabled(Lnet/minecraft/resources/Identifier;)Z"))
 	private boolean slashclient$gpuTimer(DebugScreenEntryList list, Identifier id, Operation<Boolean> original) {
-		return original.call(list, id) || id.equals(DebugScreenEntries.GPU_UTILIZATION) && SlashHud.config.placement("gpu").enabled;
+		return original.call(list, id) || id.equals(DebugScreenEntries.GPU_UTILIZATION) && (SlashHud.config.placement("gpu").enabled || dev.slash3rss.slashclient.hud.Benchmark.running());
 	}
 }

@@ -71,7 +71,8 @@ public final class ExtraModules {
 			hitCritical = hitStrength > 0.9f && p.fallDistance > 0 && !p.onGround() && !p.onClimbable() && !p.isInWater()
 				&& !p.hasEffect(MobEffects.BLINDNESS) && !p.isPassenger() && !p.isSprinting() && target instanceof LivingEntity;
 			hitAt = System.currentTimeMillis();
-			if (target instanceof LivingEntity) hitRecently.put(target.getId(), hitAt);
+			// a body still falling over is not a new kill (fast clicking hits it again)
+			if (target instanceof LivingEntity le && !le.isDeadOrDying()) hitRecently.put(target.getId(), hitAt);
 		}
 
 		static void tick(Minecraft mc) {

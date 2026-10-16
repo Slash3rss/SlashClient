@@ -5,7 +5,7 @@
 	"name": "SlashClient HUD tests",
 	"environment": "client",
 	"entrypoints": {
-		"fabric-client-gametest": ["dev.slash3rss.slashclient.hud.test.HudScreenshots", "dev.slash3rss.slashclient.hud.test.FriendsChat", "dev.slash3rss.slashclient.hud.test.GameHudParts", "dev.slash3rss.slashclient.hud.test.GameExtras", "dev.slash3rss.slashclient.hud.test.GameModules"]
+		"fabric-client-gametest": ["dev.slash3rss.slashclient.hud.test.HudScreenshots", "dev.slash3rss.slashclient.hud.test.FriendsChat", "dev.slash3rss.slashclient.hud.test.GameHudParts", "dev.slash3rss.slashclient.hud.test.GameExtras", "dev.slash3rss.slashclient.hud.test.GameModules", "dev.slash3rss.slashclient.hud.test.GameBenchmark"]
 	},
 	"depends": { "slashclient-hud": "*" }
 }

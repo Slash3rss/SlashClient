@@ -246,5 +246,21 @@
 	"slashclient-hud.accounts.microsoft": "Microsoft",
 	"slashclient-hud.accounts.offline": "Offline",
 	"slashclient-hud.accounts.switching": "Switching to %s…",
-	"slashclient-hud.accounts.failed": "Could not switch account"
+	"slashclient-hud.accounts.failed": "Could not switch account",
+	"slashclient-hud.benchmark": "Benchmark",
+	"slashclient-hud.benchmark.warmup": "Benchmark: warming up…",
+	"slashclient-hud.benchmark.running": "Benchmark: measuring…",
+	"slashclient-hud.benchmark.cancelled": "Benchmark cancelled",
+	"slashclient-hud.benchmark.none": "No results yet. Join a world and start the benchmark in the HUD settings, or with the Benchmark button next to a world in the launcher.",
+	"slashclient-hud.benchmark.avg": "FPS average",
+	"slashclient-hud.benchmark.change": "%s from the last run",
+	"slashclient-hud.benchmark.low1": "1%% low",
+	"slashclient-hud.benchmark.low01": "0.1%% low",
+	"slashclient-hud.benchmark.median": "Median",
+	"slashclient-hud.benchmark.stutters": "Stutters",
+	"slashclient-hud.benchmark.cpu": "CPU",
+	"slashclient-hud.benchmark.gpu": "GPU",
+	"slashclient-hud.benchmark.settings": "Distance %s  ·  %s  ·  VSync %s  ·  limit %s  ·  mods: %s",
+	"slashclient-hud.benchmark.again": "Again",
+	"slashclient-hud.benchmark.quit": "Quit game"
 }

@@ -33,6 +33,7 @@ import { BLOCK_FACES, blockTextures } from './blockTextures';
 import { checkModsFolder, installedModIds } from './modcheck';
 import { addModsArgs, hudVersions, prepareHud } from './hud';
 import { exportHud, importHud } from './hudShare';
+import { readBenchmarks } from './benchmark';
 import { appendSession, readSessions, summarize } from './stats';
 import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type ForeignInstance } from './importers';
 import { perfModsFor } from './perfmods';
@@ -615,7 +616,8 @@ handle('log:share', async (text: string) => {
   return url;
 });
 handle('servers:list', (force?: boolean) => listServers(force));
-handle('servers:ping', (address: string) => pingServer(address));
+// a server that is off is an answer, not an error: no noise in the log for every offline server
+handle('servers:ping', (address: string) => pingServer(address).catch((err: Error) => ({ offline: err.message })));
 
 // ---------- worlds, backups, screenshots ----------
 
@@ -755,7 +757,7 @@ handle('skinlib:apply', async (accountId: string, id: string) => {
 handle('news:list', (offset: number, limit: number, filter: NewsFilter) => newsPage(offset, limit, filter));
 handle('news:article', (id: string) => newsArticle(id));
 
-handle('game:launch', async (profileId: string, accountId: string, server?: string, world?: string) => {
+handle('game:launch', async (profileId: string, accountId: string, server?: string, world?: string, benchmark = false) => {
   if (game) throw new Error('Gra już działa.');
   const profile = store.profiles.find((p) => p.id === profileId);
   let account = store.accounts.find((a) => a.id === accountId);
@@ -795,6 +797,12 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     await bridge.start();
     hud.jvmArgs.push(...bridge.jvmArgs());
   }
+  // the benchmark runs inside SlashClient HUD: it starts by itself once the world is loaded
+  if (benchmark) {
+    if (!hud.jvmArgs.length) throw new Error(t('Benchmark działa z SlashClient HUD: w profilu Fabric lub vanilla w wersji, którą HUD obsługuje.'));
+    hud.jvmArgs.push('-Dslashclient.benchmark=true');
+  }
+  const benchmarksBefore = benchmark ? (await readBenchmarks(profileGameDir(profile)))[0]?.at ?? 0 : 0;
   const activityVersion = `${await resolveVersionId(profile.versionId)}${loaderName}`;
   social.setActivity({ kind: server ? 'server' : 'menu', server: server || undefined, version: activityVersion, since: startedAt });
   const child = await launch({
@@ -830,6 +838,10 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
   if (store.settings.closeOnLaunch) win?.hide();
   child.on('exit', (code, signal) => {
     game = undefined;
+    // a finished benchmark run: tell the page, which shows the result
+    if (benchmark) readBenchmarks(profileGameDir(profile)).then((runs) => {
+      if (runs[0] && runs[0].at > benchmarksBefore) send('benchmark:done', { profileId: profile.id, result: runs[0], before: runs[1] });
+    }).catch(() => {});
     if (profile.syncOptions) pushShared(profileGameDir(profile)).catch(() => {});
     recordSession(profile, startedAt, lastServer).catch(() => {});
     resolveVersionId(profile.versionId).then((versionId) => appendSession({
@@ -857,6 +869,11 @@ handle('game:kill', () => {
 });
 
 // ---------- SlashClient HUD ----------
+
+handle('benchmark:list', (profileId: string) => {
+  const profile = profileById(profileId);
+  return profile ? readBenchmarks(profileGameDir(profile)) : [];
+});
 
 /** HUD settings of a profile as a share code in the clipboard, and back. */
 handle('hud:copyCode', async (profileId: string) => {

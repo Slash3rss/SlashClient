@@ -21,17 +21,27 @@ public class GameModules implements FabricClientGameTest {
 				"item replace entity @a armor.chest with elytra",
 				"give @a arrow 12",
 				"give @a firework_rocket 5",
-				"setblock ~ ~1 ~3 diamond_ore",
+				// next to the player: on 1.21.x the player spawns somewhere around the world spawn
+				"execute at @a run setblock ~ ~1 ~3 diamond_ore",
 				"time set 11000",
 				"weather rain",
-				"summon chicken ~ ~ ~1.5 {Health:1f,NoAI:1b}",
+				"execute at @a run summon chicken ~ ~ ~1.5 {Health:1f,NoAI:1b}",
 			}) world.getServer().runCommand(cmd);
 			context.waitTicks(20);
 			if (!context.computeOnClient(mc -> TestHooks.attackNearest())) throw new AssertionError("Nothing to hit");
+			// right after the gear is given the first hit sometimes does not land (seen on 1.21.11): hit again until it does
+			for (int i = 0; i < 5 && !context.computeOnClient(mc -> TestHooks.moduleStats()).startsWith("1 "); i++) {
+				context.waitTicks(15);
+				context.runOnClient(mc -> TestHooks.attackNearest());
+			}
 			context.waitTicks(5);
 			context.takeScreenshot("modules-in-game");
-			context.waitTicks(20);
+			// the death reaches the client a little later on some versions: wait for it, up to 5 s
 			String stats = context.computeOnClient(mc -> TestHooks.moduleStats());
+			for (int i = 0; i < 100 && !stats.startsWith("1 "); i++) {
+				context.waitTick();
+				stats = context.computeOnClient(mc -> TestHooks.moduleStats());
+			}
 			String[] st = stats.split(" ");
 			if (!"1".equals(st[0])) throw new AssertionError("The kill was not counted: " + stats);
 			if (Double.parseDouble(st[2]) < 15) throw new AssertionError("TPS looks wrong: " + stats);

@@ -176,6 +176,14 @@ afterEvaluate {
 	if (sourceSets.findByName('gametest')) sourceSets.gametest.java.srcDirs = [new File(generated, 'gametest/java')]
 }
 
+// on 1.21.x the test framework's network sync trips over the server list's pings (the
+// pinned SkyUp.pl is pinged in the tests); the game itself has no such sync
+if (obfuscated) {
+	loom.runs.matching { it.name == 'clientGameTest' }.configureEach {
+		vmArg "-Dfabric.client.gametest.disableNetworkSynchronizer=true"
+	}
+}
+
 // the friends test talks to a running launcher: gradlew runClientGameTest -Pbridge=<url> -PbridgeKey=<key>
 if (project.hasProperty('bridge')) {
 	loom.runs.matching { it.name == 'clientGameTest' }.configureEach {

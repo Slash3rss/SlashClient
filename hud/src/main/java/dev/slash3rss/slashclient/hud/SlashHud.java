@@ -59,7 +59,10 @@ public class SlashHud implements ClientModInitializer {
 		ChatTabs.register();
 		Badges.load();
 		// another server or world: what we knew about its players is gone
-		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> Badges.reset());
+		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> {
+			Badges.reset();
+			NetCounter.attach(handler.getConnection());
+		});
 		// the game's own menu gets a way back to ours
 		ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
 			// the game's own pause menu gets a way back to ours too
@@ -81,6 +84,7 @@ public class SlashHud implements ClientModInitializer {
 
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
 			Extras.tick(mc);
+			Benchmark.tick(mc);
 			Badges.tick(mc);
 			while (edit.consumeClick()) {
 				if (Compat.screen(mc) == null) mc.setScreenAndShow(new HudEditScreen());
@@ -130,6 +134,7 @@ public class SlashHud implements ClientModInitializer {
 		// under the chat and the tab list, as in other clients: those stay readable over the HUD
 		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, Identifier.fromNamespaceAndPath(ID, "hud"), (g, delta) -> {
 			Minecraft mc = Minecraft.getInstance();
+			Benchmark.frame(g, mc);
 			if (mc.getDebugOverlay().showDebugScreen() || Compat.screen(mc) instanceof HudEditScreen) return;
 			drawAll(g, mc, false);
 			Waypoints.draw(g, mc);

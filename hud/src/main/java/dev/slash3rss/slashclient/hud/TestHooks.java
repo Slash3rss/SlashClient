@@ -66,7 +66,11 @@ public final class TestHooks {
 	/** Kills, deaths and TPS as the modules see them. */
 	public static String moduleStats() {
 		var mc = net.minecraft.client.Minecraft.getInstance();
-		return ExtraModules.Stats.kills + " " + ExtraModules.Stats.deaths + " " + ExtraModules.Tps.tps(mc) + " " + ExtraModules.Stats.hitAt;
+		StringBuilder near = new StringBuilder();
+		for (var e : mc.level.entitiesForRendering()) {
+			if (e instanceof net.minecraft.world.entity.LivingEntity le && e != mc.player) near.append(" [").append(e.getType().toShortString()).append(" hp=").append(le.getHealth()).append(" dead=").append(le.isDeadOrDying()).append(" removed=").append(e.isRemoved()).append(']');
+		}
+		return ExtraModules.Stats.kills + " " + ExtraModules.Stats.deaths + " " + ExtraModules.Tps.tps(mc) + " " + ExtraModules.Stats.hitAt + near;
 	}
 
 	/** CPU and GPU modules on. */
@@ -208,6 +212,8 @@ public final class TestHooks {
 
 	public static void audit(boolean on) {
 		dev.slash3rss.slashclient.hud.ui.Ui.audit = on;
+		// a fresh list: what an earlier test reported is not counted again
+		if (on) dev.slash3rss.slashclient.hud.ui.Ui.PROBLEMS.clear();
 	}
 
 	/** Everything the layout audit found, one line each; empty when all fits. */
@@ -279,5 +285,24 @@ public final class TestHooks {
 		if (back == null || !ShareCode.encode(back).equals(code)) throw new AssertionError("share code does not round-trip: " + code);
 		if (ShareCode.decode("SCHUD1:not-a-code") != null || ShareCode.decode("hello") != null) throw new AssertionError("bad codes must be refused");
 		SlashHud.LOG.info("Share code ({} chars): {}", code.length(), code);
+	}
+
+	public static void startBenchmark() {
+		Benchmark.start(net.minecraft.client.Minecraft.getInstance());
+	}
+
+	public static boolean benchmarkRunning() {
+		return Benchmark.running();
+	}
+
+	/** The newest saved run as "frames avg low1 screen", for the benchmark test. */
+	public static String benchmarkResult() {
+		Benchmark.Result r = Benchmark.latest();
+		if (r == null) return "none";
+		return r.frames + " " + r.fps.avg + " " + r.fps.low1 + " " + (screen() instanceof BenchmarkScreen) + " " + r.settings.renderDistance;
+	}
+
+	public static float yaw() {
+		return net.minecraft.client.Minecraft.getInstance().player.getYRot();
 	}
 }

@@ -828,3 +828,21 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .split.profiles.compact .stats-entry span { display: none; }
 .split.profiles.compact .stats-entry { padding: 10px 8px; justify-content: center; }
 .split.profiles.compact .stats-entry i { width: auto; }
+
+/* ---------- benchmark results in the profile ---------- */
+.bench-head { justify-content: space-between; flex-wrap: wrap; }
+.bench-head h3 { margin: 0; display: flex; gap: 8px; align-items: center; }
+.bench-head h3 i { color: var(--accent-light); }
+.bench-list { display: flex; flex-direction: column; gap: 10px; }
+.bench-run { display: flex; flex-direction: column; gap: 5px; padding: 12px 14px; border-radius: var(--btn-radius); background: rgba(255, 255, 255, .02); border: 1px solid var(--glass-border); }
+.bench-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.bench-fps { font-size: 18px; }
+.bench-top small { margin-left: auto; }
+.bench-change { font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 99px; }
+.bench-change.up { color: #4ade80; background: rgba(74, 222, 128, .12); }
+.bench-change.down { color: #f87171; background: rgba(248, 113, 113, .12); }
+.bench-bar { height: 6px; border-radius: 99px; background: rgba(0, 0, 0, .35); overflow: hidden; }
+.bench-bar > div { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #1d4ed8, #3b82f6, #60a5fa); }
+.bench-bar.low { height: 4px; }
+.bench-bar.low > div { background: rgba(250, 204, 21, .7); }
+.bench-run small { font-size: 12px; }

@@ -740,7 +740,88 @@ function renderVersionOptions(selected: string) {
   );
 }
 
+// ---------- benchmark: results of the profile and starting a run ----------
+
+interface BenchmarkResult {
+  at: number; version: string; world?: string;
+  fps: { avg: number; low1: number; low01: number; median: number; min: number; max: number };
+  frames: number; stutters: number; cpu?: number; gpu?: number;
+  settings: { renderDistance: number; simulationDistance?: number; width: number; height: number; vsync: boolean; maxFps: number; fullscreen: boolean; mods: number; memoryMb?: number };
+}
+
+const fmtFps = (v: number) => Math.round(v).toLocaleString(locale());
+
+/** What was different between two runs, so a change in FPS has its likely reason next to it. */
+function benchDiff(now: BenchmarkResult, before: BenchmarkResult): string[] {
+  const out: string[] = [];
+  const a = now.settings, b = before.settings;
+  if (a.renderDistance !== b.renderDistance) out.push(t('zasięg {0} → {1}', b.renderDistance, a.renderDistance));
+  if (a.mods !== b.mods) out.push(t('mody {0} → {1}', b.mods, a.mods));
+  if (a.width !== b.width || a.height !== b.height) out.push(`${b.width}×${b.height} → ${a.width}×${a.height}`);
+  if (a.vsync !== b.vsync) out.push(a.vsync ? t('VSync włączony') : t('VSync wyłączony'));
+  if (now.version !== before.version) out.push(`${before.version} → ${now.version}`);
+  return out;
+}
+
+async function renderBenchmarks(profileId: string) {
+  const list = $('#bench-list');
+  const runs: BenchmarkResult[] = (await guard(() => api.listBenchmarks(profileId))) ?? [];
+  if (profileId !== editingId) return;
+  if (!runs.length) {
+    list.replaceChildren(el('p', { className: 'muted', textContent: t('Jeszcze nie było pomiaru w tym profilu.') }));
+    return;
+  }
+  const best = Math.max(...runs.map((r) => r.fps.avg));
+  list.replaceChildren(...runs.slice(0, 8).map((r, i) => {
+    const before = runs[i + 1];
+    const change = before && before.fps.avg > 0 ? ((r.fps.avg - before.fps.avg) / before.fps.avg) * 100 : undefined;
+    const bar = el('div', { className: 'bench-bar' }, el('div'));
+    (bar.firstElementChild as HTMLElement).style.width = `${Math.max(4, (r.fps.avg / best) * 100).toFixed(1)}%`;
+    const low = el('div', { className: 'bench-bar low' }, el('div'));
+    (low.firstElementChild as HTMLElement).style.width = `${Math.max(2, (r.fps.low1 / best) * 100).toFixed(1)}%`;
+    const details = [
+      t('1% low {0}', fmtFps(r.fps.low1)), t('0,1% low {0}', fmtFps(r.fps.low01)), t('przycięcia: {0}', r.stutters),
+      r.cpu !== undefined ? t('CPU {0}%', Math.round(r.cpu * 100)) : '', r.gpu !== undefined && r.gpu >= 0 ? t('GPU {0}%', Math.round(r.gpu)) : '',
+    ].filter(Boolean).join(' · ');
+    const setup = [`Minecraft ${r.version}`, t('zasięg {0}', r.settings.renderDistance), `${r.settings.width}×${r.settings.height}`, t('modów: {0}', r.settings.mods), r.settings.vsync ? 'VSync' : ''].filter(Boolean).join(' · ');
+    const diff = before ? benchDiff(r, before) : [];
+    return el('div', { className: 'bench-run' },
+      el('div', { className: 'bench-top' },
+        el('b', { className: 'bench-fps', textContent: t('{0} FPS', fmtFps(r.fps.avg)) }),
+        change === undefined ? '' : el('span', { className: `bench-change ${change >= 0 ? 'up' : 'down'}`, textContent: `${change >= 0 ? '+' : ''}${change.toFixed(0)}%` }),
+        el('small', { className: 'muted', textContent: new Date(r.at).toLocaleString(locale(), { dateStyle: 'medium', timeStyle: 'short' }) })),
+      bar, low,
+      el('small', { textContent: details }),
+      el('small', { className: 'muted', textContent: setup + (diff.length ? ` · ${t('zmiana: {0}', diff.join(', '))}` : '') }));
+  }));
+}
+
+/** The world for a run from the profile card: the last one played, or the first one there is. */
+async function benchmarkFromProfile(profileId: string) {
+  const profile = store.profiles.find((p) => p.id === profileId);
+  if (!profile) return;
+  let folder = profile.lastTarget?.kind === 'world' ? profile.lastTarget.folder : undefined;
+  if (!folder) {
+    const worlds: WorldInfo[] = (await guard(() => api.listWorlds(profileId))) ?? [];
+    folder = worlds[0]?.folder;
+  }
+  // no world yet: the game opens on its menu and the benchmark starts in whatever world the player enters
+  if (!folder) toast(t('Ten profil nie ma jeszcze świata: stwórz go w grze albo wejdź na serwer, a benchmark ruszy sam.'));
+  store.settings.selectedProfileId = profileId;
+  renderPlay();
+  startGame(undefined, folder, true);
+}
+
+$('#bench-run').addEventListener('click', () => editingId && benchmarkFromProfile(editingId));
+
+api.on('benchmark:done', ({ profileId, result, before }: { profileId: string; result: BenchmarkResult; before?: BenchmarkResult }) => {
+  const change = before && before.fps.avg > 0 ? ((result.fps.avg - before.fps.avg) / before.fps.avg) * 100 : undefined;
+  toast(t('Benchmark: średnio {0} FPS, 1% low {1} FPS', fmtFps(result.fps.avg), fmtFps(result.fps.low1)) + (change === undefined ? '' : ` (${change >= 0 ? '+' : ''}${change.toFixed(0)}%)`));
+  if (profileId === editingId) renderBenchmarks(profileId);
+});
+
 function loadProfileForm(profile: Profile) {
+  renderBenchmarks(profile.id);
   const form = $<HTMLFormElement>('#profile-form');
   for (const key of ['name', 'gameDir', 'jvmArgs', 'javaPath', 'memoryMb', 'width', 'height'] as const) {
     (form.elements.namedItem(key) as HTMLInputElement).value = String(profile[key]);
@@ -915,7 +996,7 @@ function showView(name: string) {
 }
 
 /** Starts the selected profile with the selected account, optionally joining a server. */
-async function startGame(server?: string, world?: string) {
+async function startGame(server?: string, world?: string, benchmark = false) {
   if (store.running || launching) return toast('Gra już działa.', true);
   launching = true;
   if (!(await confirmModsOk($<HTMLSelectElement>('#play-profile').value))) {
@@ -928,9 +1009,9 @@ async function startGame(server?: string, world?: string) {
   showView('play');
   renderPlay();
   const profile = store.profiles.find((p) => p.id === $<HTMLSelectElement>('#play-profile').value);
-  startTaskCard(LAUNCH_CARD, t('Uruchamianie: {0}', profile?.name ?? 'Minecraft'), profile ? profileIconUrl(profile) : 'logo.png');
+  startTaskCard(LAUNCH_CARD, t(benchmark ? 'Benchmark: {0}' : 'Uruchamianie: {0}', profile?.name ?? 'Minecraft'), profile ? profileIconUrl(profile) : 'logo.png');
   try {
-    await api.launch($<HTMLSelectElement>('#play-profile').value, $<HTMLSelectElement>('#play-account').value, server, world);
+    await api.launch($<HTMLSelectElement>('#play-profile').value, $<HTMLSelectElement>('#play-account').value, server, world, benchmark);
     finishTaskCard({ id: LAUNCH_CARD, ok: true, message: t('Gra uruchomiona') }, 3500);
   } catch (err) {
     finishTaskCard({ id: LAUNCH_CARD, ok: false, message: errorText(err) });
@@ -1138,13 +1219,20 @@ const pings = new Map<string, { at: number; result?: PingResult; error?: string 
  * Turns the API's MOTD HTML into plain segments. DOMParser builds an inert
  * document (no scripts run), and only text plus colour/bold/italic are kept.
  */
+/** A colour from the server list's MOTD markup, only in the forms it uses. */
+const SAFE_COLOR = /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\)|[a-z]+)$/i;
+
 function motdFromHtml(html: string): MotdSegment[] {
-  const doc = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html');
+  // The page's CSP blocks style attributes even in a parsed document (and logs every one),
+  // so they are renamed before parsing and read as plain text.
+  const doc = new DOMParser().parseFromString(`<div>${html.replace(/\sstyle=/gi, ' data-style=')}</div>`, 'text/html');
   const out: MotdSegment[] = [];
   doc.body.querySelectorAll('span').forEach((span) => {
     if (span.querySelector('span')) return;
-    const color = span.style.color;
-    out.push({ text: span.textContent ?? '', color: color || undefined, bold: span.style.fontWeight === 'bold', italic: span.style.fontStyle === 'italic' });
+    const style = span.getAttribute('data-style') ?? '';
+    const prop = (name: string) => new RegExp(`(?:^|;)\\s*${name}\\s*:\\s*([^;]+)`, 'i').exec(style)?.[1].trim().toLowerCase();
+    const color = prop('color');
+    out.push({ text: span.textContent ?? '', color: color && SAFE_COLOR.test(color) ? color : undefined, bold: prop('font-weight') === 'bold', italic: prop('font-style') === 'italic' });
   });
   return out.length ? out : [{ text: doc.body.textContent ?? '' }];
 }
@@ -1352,7 +1440,8 @@ function pingVisible(page: ListedServer[]) {
     pinging++;
     pings.set(s.ip, { at: Date.now() });
     try {
-      pings.set(s.ip, { at: Date.now(), result: await api.pingServer(s.ip) });
+      const result = await api.pingServer(s.ip);
+      pings.set(s.ip, 'offline' in result ? { at: Date.now(), error: result.offline } : { at: Date.now(), result });
     } catch (err) {
       pings.set(s.ip, { at: Date.now(), error: errorText(err) });
     }
@@ -2027,6 +2116,13 @@ async function renderWorlds() {
         renderPlay();
         startGame(undefined, w.folder);
       });
+      const bench = el('button', { className: 'icon-btn', title: t('Benchmark w tym świecie') }, el('i', { className: 'fa-solid fa-gauge-high' }));
+      bench.setAttribute('aria-label', t('Benchmark w tym świecie'));
+      bench.addEventListener('click', () => {
+        store.settings.selectedProfileId = profileId;
+        renderPlay();
+        startGame(undefined, w.folder, true);
+      });
       const backup = el('button', {}, el('i', { className: 'fa-solid fa-box-archive' }), 'Kopia');
       backup.addEventListener('click', async () => {
         const b = await busy(backup, () => guard(() => api.backupWorld(profileId, w.folder)), 'Zapisuję…');
@@ -2040,7 +2136,7 @@ async function renderWorlds() {
             el('span', { textContent: w.version ? t('Minecraft {0}', w.version) : '' }),
             el('span', { textContent: fmtSize(w.sizeBytes) }),
             el('span', { textContent: t('Grano: {0}', fmtDate(w.lastPlayed)) }))),
-        el('div', { className: 'project-actions' }, play, backup));
+        el('div', { className: 'project-actions' }, play, bench, backup));
     })));
     if (!worlds.length) box.replaceChildren(el('p', { className: 'muted', textContent: 'Ten profil nie ma jeszcze żadnych światów.' }));
   } else if (worldsTab === 'backups') {
