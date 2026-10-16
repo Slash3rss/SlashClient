@@ -7,8 +7,12 @@ import { DatabaseSync } from 'node:sqlite';
  */
 
 /** A SlashClient account; `handle` is the unique name friends search for. */
-/** `cape`: one of the SlashClient capes (cosmetics.ts), '' for none. */
-export interface User { id: string; handle: string; name: string; avatar: string; showServer: boolean; cape: string }
+/** `cape`: one of the SlashClient capes (cosmetics.ts), '' for none. `role`: 'admin' or ''. */
+export interface User { id: string; handle: string; name: string; avatar: string; showServer: boolean; cape: string; role: string; banned: boolean }
+/** An account as the admin panel lists it. */
+export interface AdminUser extends User { createdAt: number; lastSeen: number; providers: string[]; friends: number; sessions: number }
+export interface CosmeticSetting { id: string; enabled: boolean; exclusive: boolean }
+export interface LogEntry { id: number; at: number; admin: string; action: string; target: string; detail: string }
 export type Provider = 'discord' | 'microsoft' | 'google' | 'github' | 'dev';
 /** "Join me": a server to play on together, sent as a message so it stays in the chat. */
 export interface Invite { server: string; version?: string }
@@ -64,6 +68,9 @@ CREATE INDEX IF NOT EXISTS messages_pair ON messages(from_uuid, to_uuid, id);
 CREATE INDEX IF NOT EXISTS messages_unread ON messages(to_uuid, read_at);
 `;
 
+interface UserRow { uuid: string; handle: string; name: string; avatar: string; show_server: number; cape: string; role: string; banned: number }
+const toUser = (r: UserRow): User => ({ id: r.uuid, handle: r.handle, name: r.name, avatar: r.avatar, showServer: !!r.show_server, cape: r.cape, role: r.role, banned: !!r.banned });
+
 /** Friendships are stored once, with the smaller uuid first. */
 const pair = (x: string, y: string) => (x < y ? [x, y] : [y, x]);
 
@@ -79,6 +86,13 @@ export class Db {
     if (!columns.some((c) => c.name === 'invite')) this.db.exec('ALTER TABLE messages ADD COLUMN invite TEXT');
     const userColumns = this.db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
     if (!userColumns.some((c) => c.name === 'cape')) this.db.exec("ALTER TABLE users ADD COLUMN cape TEXT NOT NULL DEFAULT ''");
+    if (!userColumns.some((c) => c.name === 'role')) this.db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT ''");
+    if (!userColumns.some((c) => c.name === 'banned')) this.db.exec('ALTER TABLE users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0');
+    this.db.exec(`
+CREATE TABLE IF NOT EXISTS cosmetics (id TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1, exclusive INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS cape_grants (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, cape TEXT NOT NULL, PRIMARY KEY (uuid, cape));
+CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, admin TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '');
+`);
   }
 
   close() {
@@ -132,9 +146,8 @@ export class Db {
   }
 
   user(uuid: string): User | undefined {
-    const row = this.db.prepare('SELECT uuid, handle, name, avatar, show_server, cape FROM users WHERE uuid = ?').get(uuid) as
-      { uuid: string; handle: string; name: string; avatar: string; show_server: number; cape: string } | undefined;
-    return row && { id: row.uuid, handle: row.handle, name: row.name, avatar: row.avatar, showServer: !!row.show_server, cape: row.cape };
+    const row = this.db.prepare('SELECT uuid, handle, name, avatar, show_server, cape, role, banned FROM users WHERE uuid = ?').get(uuid) as UserRow | undefined;
+    return row && toUser(row);
   }
 
   userByHandle(handle: string): User | undefined {
@@ -144,6 +157,115 @@ export class Db {
 
   setCape(uuid: string, cape: string) {
     this.db.prepare('UPDATE users SET cape = ? WHERE uuid = ?').run(cape, uuid);
+  }
+
+  setRole(uuid: string, role: string) {
+    this.db.prepare('UPDATE users SET role = ? WHERE uuid = ?').run(role, uuid);
+  }
+
+  setBanned(uuid: string, banned: boolean) {
+    this.db.prepare('UPDATE users SET banned = ? WHERE uuid = ?').run(banned ? 1 : 0, uuid);
+    if (banned) this.removeSessions(uuid);
+  }
+
+  /** Removes an account with everything that hangs on it (sign-ins, sessions, friends, messages, grants). */
+  deleteUser(uuid: string) {
+    this.db.prepare('DELETE FROM messages WHERE from_uuid = ? OR to_uuid = ?').run(uuid, uuid);
+    this.db.prepare('DELETE FROM users WHERE uuid = ?').run(uuid);
+  }
+
+  removeSessions(uuid: string) {
+    this.db.prepare('DELETE FROM sessions WHERE uuid = ?').run(uuid);
+  }
+
+  // ---- the admin panel ----
+
+  /** Accounts matching `query` (handle, name or id), newest first. */
+  listUsers(query: string, limit: number, offset: number): { users: AdminUser[]; total: number } {
+    const like = `%${query.toLowerCase().replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
+    const where = "WHERE handle_lower LIKE ? ESCAPE '\\' OR lower(name) LIKE ? ESCAPE '\\' OR uuid = ?";
+    const total = (this.db.prepare(`SELECT COUNT(*) AS n FROM users ${where}`).get(like, like, query) as { n: number }).n;
+    const rows = this.db.prepare(`SELECT uuid FROM users ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`).all(like, like, query, limit, offset) as { uuid: string }[];
+    return { users: rows.map((r) => this.adminUser(r.uuid)!), total };
+  }
+
+  adminUser(uuid: string): AdminUser | undefined {
+    const row = this.db.prepare('SELECT uuid, handle, name, avatar, show_server, cape, role, banned, created_at, last_seen FROM users WHERE uuid = ?').get(uuid) as
+      (UserRow & { created_at: number; last_seen: number }) | undefined;
+    if (!row) return undefined;
+    const count = (sql: string, ...args: string[]) => (this.db.prepare(sql).get(...args) as { n: number }).n;
+    return {
+      ...toUser(row), createdAt: row.created_at, lastSeen: row.last_seen, providers: this.providers(uuid),
+      friends: count('SELECT COUNT(*) AS n FROM friendships WHERE a = ? OR b = ?', uuid, uuid),
+      sessions: count('SELECT COUNT(*) AS n FROM sessions WHERE uuid = ?', uuid),
+    };
+  }
+
+  stats(since: number) {
+    const n = (sql: string, ...args: (string | number)[]) => (this.db.prepare(sql).get(...args) as { n: number }).n;
+    const capes = this.db.prepare("SELECT cape, COUNT(*) AS n FROM users WHERE cape != '' GROUP BY cape").all() as { cape: string; n: number }[];
+    return {
+      users: n('SELECT COUNT(*) AS n FROM users'),
+      newUsers: n('SELECT COUNT(*) AS n FROM users WHERE created_at >= ?', since),
+      activeUsers: n('SELECT COUNT(*) AS n FROM users WHERE last_seen >= ?', since),
+      banned: n('SELECT COUNT(*) AS n FROM users WHERE banned = 1'),
+      friendships: n('SELECT COUNT(*) AS n FROM friendships'),
+      messages: n('SELECT COUNT(*) AS n FROM messages'),
+      newMessages: n('SELECT COUNT(*) AS n FROM messages WHERE created_at >= ?', since),
+      capes: Object.fromEntries(capes.map((c) => [c.cape, c.n])),
+    };
+  }
+
+  /** Accounts made per day over the last `days` days (oldest first), for the chart. */
+  signupsPerDay(days: number): number[] {
+    const dayMs = 86_400_000;
+    const start = Math.floor(Date.now() / dayMs) * dayMs - (days - 1) * dayMs;
+    const out = new Array<number>(days).fill(0);
+    for (const r of this.db.prepare('SELECT created_at FROM users WHERE created_at >= ?').all(start) as { created_at: number }[]) {
+      out[Math.floor((r.created_at - start) / dayMs)]++;
+    }
+    return out;
+  }
+
+  cosmeticSettings(): Map<string, CosmeticSetting> {
+    const rows = this.db.prepare('SELECT id, enabled, exclusive FROM cosmetics').all() as { id: string; enabled: number; exclusive: number }[];
+    return new Map(rows.map((r) => [r.id, { id: r.id, enabled: !!r.enabled, exclusive: !!r.exclusive }]));
+  }
+
+  setCosmetic(id: string, enabled: boolean, exclusive: boolean) {
+    this.db.prepare('INSERT INTO cosmetics (id, enabled, exclusive) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET enabled = excluded.enabled, exclusive = excluded.exclusive')
+      .run(id, enabled ? 1 : 0, exclusive ? 1 : 0);
+  }
+
+  grants(uuid: string): string[] {
+    return (this.db.prepare('SELECT cape FROM cape_grants WHERE uuid = ? ORDER BY cape').all(uuid) as { cape: string }[]).map((r) => r.cape);
+  }
+
+  /** Who may wear an exclusive cape. */
+  grantees(cape: string): { id: string; handle: string; name: string }[] {
+    return (this.db.prepare('SELECT u.uuid AS id, u.handle, u.name FROM cape_grants g JOIN users u ON u.uuid = g.uuid WHERE g.cape = ? ORDER BY u.handle_lower').all(cape)) as { id: string; handle: string; name: string }[];
+  }
+
+  grant(uuid: string, cape: string) {
+    this.db.prepare('INSERT OR IGNORE INTO cape_grants (uuid, cape) VALUES (?, ?)').run(uuid, cape);
+  }
+
+  revoke(uuid: string, cape: string) {
+    this.db.prepare('DELETE FROM cape_grants WHERE uuid = ? AND cape = ?').run(uuid, cape);
+  }
+
+  /** Takes a cape off everyone wearing it who may not any more. */
+  clearCape(cape: string, exceptGranted: boolean) {
+    this.db.prepare(`UPDATE users SET cape = '' WHERE cape = ?${exceptGranted ? ' AND uuid NOT IN (SELECT uuid FROM cape_grants WHERE cape = ?)' : ''}`)
+      .run(...(exceptGranted ? [cape, cape] : [cape]));
+  }
+
+  log(admin: string, action: string, target: string, detail = '') {
+    this.db.prepare('INSERT INTO admin_log (at, admin, action, target, detail) VALUES (?, ?, ?, ?, ?)').run(Date.now(), admin, action, target, detail);
+  }
+
+  logEntries(limit: number): LogEntry[] {
+    return this.db.prepare('SELECT id, at, admin, action, target, detail FROM admin_log ORDER BY id DESC LIMIT ?').all(limit) as unknown as LogEntry[];
   }
 
   setShowServer(uuid: string, show: boolean) {

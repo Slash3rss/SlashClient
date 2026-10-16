@@ -16,6 +16,8 @@ import { createApp } from './app.ts';
  *   GITHUB_CLIENT_ID        with GITHUB_CLIENT_SECRET: enables "Sign in with GitHub"
  *   GITHUB_CLIENT_SECRET
  *   ALLOW_DEV_LOGIN=1       sign-in with just a name; local testing only
+ *   ADMIN_HANDLES           comma-separated handles that are admins (the panel at /admin)
+ *   WEB_DIR                 the website's files, default ./web
  */
 const port = Number(process.env.PORT) || 8787;
 const dbFile = process.env.DB_FILE ?? path.resolve('data/social.db');
@@ -38,9 +40,11 @@ const { server } = createApp({
     github: app('GITHUB'),
   },
   allowDevLogin: process.env.ALLOW_DEV_LOGIN === '1',
+  adminHandles: (process.env.ADMIN_HANDLES ?? '').split(','),
+  webDir: process.env.WEB_DIR ?? path.resolve('web'),
 });
 
 server.listen(port, () => {
-  console.log(`SlashClient social: http://localhost:${port}/v1/health (baza: ${dbFile})`);
+  console.log(`SlashClient social: http://localhost:${port}/ (strona), /admin (panel), /v1/health (baza: ${dbFile})`);
   if (process.env.ALLOW_DEV_LOGIN === '1') console.log('Uwaga: logowanie samym nickiem jest włączone (ALLOW_DEV_LOGIN=1), tylko do testów.');
 });

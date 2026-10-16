@@ -86,6 +86,7 @@ const EN: Record<string, string> = {
   'Usunąć ten klip?': 'Delete this clip?',
   'Brak klipów. Włącz „Klipy” w ustawieniach HUD w grze (Prawy Shift), a F8 zapisze ostatnie sekundy gry.': 'No clips. Turn on “Clips” in the HUD settings in the game (Right Shift), and F8 saves the last seconds of play.',
   'Klipy': 'Clips',
+  '{0}: ekskluzywna, przyznaje ją admin': '{0}: exclusive, given by an admin',
   'Około 30 sekund w Twoim świecie: kamera obraca się sama, a SlashClient mierzy każdą klatkę. Porównaj wyniki np. z modami wydajności i bez nich.': 'About 30 seconds in your world: the camera turns by itself while SlashClient measures every frame. Compare runs, e.g. with and without performance mods.',
   'Mody i zasoby': 'Mods and resources',
   ' Mody i zasoby': ' Mods and resources',

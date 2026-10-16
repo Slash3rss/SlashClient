@@ -875,3 +875,5 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .slash-capes .cape-choice:disabled { opacity: .45; cursor: default; }
 
 .clip-icon { width: 48px; height: 48px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; background: linear-gradient(135deg, rgba(59, 130, 246, .25), rgba(29, 78, 216, .35)); color: var(--accent-light); font-size: 20px; }
+.slash-capes .cape-choice { position: relative; }
+.cape-lock { position: absolute; top: 4px; right: 4px; font-size: 10px; color: #facc15; }

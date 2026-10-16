@@ -35,3 +35,13 @@ mkdirSync('dist/renderer/fonts', { recursive: true });
 for (const [name, src] of Object.entries(fonts)) cpSync(`node_modules/${src}`, `dist/renderer/fonts/${name}`);
 cpSync('node_modules/@fortawesome/fontawesome-free/css/all.min.css', 'dist/renderer/fa/css/all.min.css');
 cpSync('node_modules/@fortawesome/fontawesome-free/webfonts', 'dist/renderer/fa/webfonts', { recursive: true });
+
+// the website (server/web) uses the same fonts, icons, logo and capes; it is served on its own, so it keeps copies
+const web = 'server/web/vendor';
+mkdirSync(`${web}/fonts`, { recursive: true });
+for (const name of ['outfit-latin.woff2', 'outfit-latin-ext.woff2']) cpSync(`node_modules/${fonts[name]}`, `${web}/fonts/${name}`);
+cpSync('node_modules/@fortawesome/fontawesome-free/css/all.min.css', `${web}/fa/css/all.min.css`);
+cpSync('node_modules/@fortawesome/fontawesome-free/webfonts', `${web}/fa/webfonts`, { recursive: true });
+cpSync('build/icons/256x256.png', `${web}/logo.png`);
+cpSync('hud/src/main/resources/assets/slashclient-hud/textures/cape', `${web}/capes`, { recursive: true });
+

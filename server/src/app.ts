@@ -4,7 +4,9 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import { Db, type User } from './db.ts';
 import { PROVIDERS, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, type Presence } from './presence.ts';
-import { CAPES, EMOTES } from './cosmetics.ts';
+import { CAPE_NAMES, CAPES, EMOTES, capeSetting, mayWear } from './cosmetics.ts';
+import { adminRoutes } from './admin.ts';
+import { serveWeb } from './web.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -23,6 +25,10 @@ export interface Config {
   /** Sign-in with just a name, for local testing only. */
   allowDevLogin: boolean;
   fetchImpl?: typeof fetch;
+  /** Handles that are admins whatever the database says (ADMIN_HANDLES), so the first admin can get in. */
+  adminHandles?: string[];
+  /** The website's files (web/); without it only the API is served. */
+  webDir?: string;
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -91,6 +97,7 @@ export function createApp(cfg: Config) {
   const limitEmotes = rateLimiter(20);
 
   function newSession(user: User) {
+    if (user.banned) throw new HttpError(403, 'banned');
     const token = randomBytes(32).toString('base64url');
     db.addSession(hashToken(token), user.id);
     return { token, user };
@@ -136,7 +143,23 @@ export function createApp(cfg: Config) {
     const token = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1];
     const userId = token && db.sessionUser(hashToken(token), SESSION_IDLE_MS);
     if (!userId) throw new HttpError(401, 'unauthorized');
+    if (db.user(userId)?.banned) throw new HttpError(403, 'banned');
     return userId;
+  }
+
+  const configAdmins = new Set((cfg.adminHandles ?? []).map((h) => h.trim().toLowerCase()).filter(Boolean));
+  const isAdmin = (userId: string) => {
+    const u = db.user(userId);
+    return !!u && (u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()));
+  };
+  function admin(req: http.IncomingMessage): string {
+    const me = authed(req);
+    if (!isAdmin(me)) throw new HttpError(403, 'not_admin');
+    return me;
+  }
+  /** Ends every live connection of an account (after a ban, a sign-out from the panel, a deletion). */
+  function kick(userId: string) {
+    for (const ws of sockets.get(userId) ?? []) ws.close(4003, 'signed out');
   }
 
   function friendList(me: string) {
@@ -150,7 +173,8 @@ export function createApp(cfg: Config) {
   }
 
   function meWithProviders(me: string) {
-    return { ...db.user(me)!, providers: db.providers(me) };
+    const { banned: _banned, ...user } = db.user(me)!;
+    return { ...user, providers: db.providers(me), admin: isAdmin(me), grants: db.grants(me) };
   }
 
   function friendOrThrow(me: string, other: string) {
@@ -159,6 +183,18 @@ export function createApp(cfg: Config) {
 
   type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
   const routes: [string, RegExp, Handler][] = [
+    // the capes one can pick: switched-off ones are left out, exclusive ones say whether they are yours
+    ['GET', /^\/v1\/cosmetics$/, (req) => {
+      const me = req.headers.authorization ? authed(req) : undefined;
+      const settings = db.cosmeticSettings();
+      const granted = me ? db.grants(me) : [];
+      return {
+        capes: CAPES.filter((id) => capeSetting(settings, id).enabled).map((id) => ({
+          id, name: CAPE_NAMES[id], exclusive: capeSetting(settings, id).exclusive, available: mayWear(settings, granted, id),
+        })),
+        emotes: EMOTES,
+      };
+    }],
     ['GET', /^\/v1\/health$/, () => ({ ok: true, providers: Object.keys(providers), dev: cfg.allowDevLogin })],
 
     // -- signing in --
@@ -215,7 +251,7 @@ export function createApp(cfg: Config) {
         broadcastPresence(me);
       }
       if (cape !== undefined) {
-        if (cape !== '' && !CAPES.includes(cape as string)) throw new HttpError(400, 'bad_cape');
+        if (cape !== '' && !mayWear(db.cosmeticSettings(), db.grants(me), cape as string)) throw new HttpError(400, 'bad_cape');
         db.setCape(me, cape as string);
       }
       return meWithProviders(me);
@@ -283,10 +319,12 @@ export function createApp(cfg: Config) {
       const active = uuids.filter((u): u is string => typeof u === 'string' && now - (inGame.get(u.toLowerCase()) ?? 0) < IN_GAME_TTL_MS);
       // the capes of players whose launcher said which account they play as
       const capes: Record<string, string> = {};
+      const settings = db.cosmeticSettings();
       for (const u of active) {
         const link = linked.get(u.toLowerCase());
-        const cape = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user)?.cape : undefined;
-        if (cape) capes[u] = cape;
+        const owner = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user) : undefined;
+        // a cape the admin switched off is not shown, nor anything on a banned account
+        if (owner?.cape && !owner.banned && capeSetting(settings, owner.cape).enabled) capes[u] = owner.cape;
       }
       return { active, capes };
     }],
@@ -360,6 +398,13 @@ export function createApp(cfg: Config) {
       if (at) push(other, { type: 'read', by: me, at });
       return { ok: true };
     }],
+    ...adminRoutes({
+      db, admin, body, kick, configAdmins,
+      fail: (status, code) => {
+        throw new HttpError(status, code);
+      },
+      live: () => ({ online: sockets.size, inGame: [...inGame.values()].filter((at) => Date.now() - at < IN_GAME_TTL_MS).length }),
+    }),
   ];
 
   async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
@@ -385,8 +430,8 @@ export function createApp(cfg: Config) {
             login.result = newSession(db.signIn(provider, id.subject, id));
             ok = true;
           }
-        } catch {
-          login.error = 'provider_failed';
+        } catch (err) {
+          login.error = err instanceof HttpError && err.code === 'banned' ? 'banned' : 'provider_failed';
         }
       } else if (login) login.error = 'provider_denied';
       res.writeHead(ok ? 200 : 400, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -409,6 +454,8 @@ export function createApp(cfg: Config) {
       }
       return;
     }
+    // everything that is not the API is the website
+    if (cfg.webDir && req.method === 'GET' && !url.pathname.startsWith('/v1/') && await serveWeb(cfg.webDir, url.pathname, res)) return;
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'not_found' }));
   }
@@ -433,7 +480,7 @@ export function createApp(cfg: Config) {
       }
       if (!me) {
         const userId = msg.type === 'auth' && typeof msg.token === 'string' ? db.sessionUser(hashToken(msg.token), SESSION_IDLE_MS) : undefined;
-        if (!userId) return ws.close(4001, 'unauthorized');
+        if (!userId || db.user(userId)?.banned) return ws.close(4001, 'unauthorized');
         clearTimeout(authTimer);
         me = userId;
         const first = !sockets.get(me)?.size;

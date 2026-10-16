@@ -15,6 +15,27 @@ ALLOW_DEV_LOGIN=1 npm start
 W launcherze: Ustawienia → **Serwer znajomych** = `http://localhost:8787` (domyślnie), potem zakładka **Znajomi**.
 `ALLOW_DEV_LOGIN=1` pozwala zalogować się samym nickiem, bez hasła. Służy tylko do testów i nigdy nie powinno być włączone publicznie.
 
+## Strona i panel admina
+
+Ten sam serwer pokazuje stronę SlashClient (pliki z `web/`):
+
+- `/`: opis launchera, pobieranie i **Twoje konto**. Gracz loguje się tym samym kontem co w launcherze i wybiera pelerynę.
+- `/admin`: **panel admina**, dostępny tylko dla adminów:
+  - pulpit (konta, online, gracze w grze, wiadomości, nowe konta z 30 dni, noszone peleryny);
+  - konta: wyszukiwanie, blokada (wylogowuje od razu i blokuje ponowne logowanie), wylogowanie wszędzie, rola admina, zmiana peleryny, usunięcie konta z wiadomościami;
+  - kosmetyki: włączanie i wyłączanie peleryn oraz peleryny ekskluzywne, przydzielane wybranym graczom;
+  - dziennik wszystkich zmian zrobionych w panelu.
+
+Pierwszego admina ustawia zmienna `ADMIN_HANDLES` (nicki oddzielone przecinkami, np. `ADMIN_HANDLES=Slash3rss`).
+Taki admin zawsze nim zostaje; kolejnych można mianować w panelu.
+
+```bash
+ALLOW_DEV_LOGIN=1 ADMIN_HANDLES=TwojNick npm start
+# strona: http://localhost:8787/   panel: http://localhost:8787/admin
+```
+
+Fonty, ikony, logo i obrazki peleryn w `web/vendor` kopiuje `npm run build` w głównym katalogu (z launchera i moda).
+
 ## Logowanie: Discord, Microsoft, Google, GitHub
 
 Konto SlashClient można założyć przez dowolny z tych serwisów, a w zakładce Znajomi podłączyć kolejne
@@ -37,6 +58,8 @@ Launcher otwiera przeglądarkę, a po zalogowaniu sam odbiera wynik (odpytuje `/
 | `PORT` | `8787` | port HTTP i WebSocket |
 | `DB_FILE` | `./data/social.db` | plik bazy SQLite |
 | `PUBLIC_URL` | `http://localhost:PORT` | adres widoczny z zewnątrz (przekierowania po logowaniu) |
+| `ADMIN_HANDLES` | – | nicki adminów (panel `/admin`), oddzielone przecinkami |
+| `WEB_DIR` | `./web` | pliki strony |
 | `DISCORD_…`, `MICROSOFT_…`, `GOOGLE_…`, `GITHUB_…` (`_CLIENT_ID`, `_CLIENT_SECRET`) | – | włączają dany sposób logowania |
 | `ALLOW_DEV_LOGIN` | – | `1` = logowanie samym nickiem (tylko testy) |
 

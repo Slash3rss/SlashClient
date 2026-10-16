@@ -2519,12 +2519,17 @@ async function renderSlashCapes() {
   const me: { cape?: string } | undefined = state?.user ? await api.socialApi('GET', '/v1/me').catch(() => undefined) : undefined;
   const current = me?.cape ?? '';
   const signedIn = !!me;
+  // which capes the server offers now: switched-off ones are left out, exclusive ones say if they are ours
+  type CatalogCape = { id: string; name: string; exclusive: boolean; available: boolean };
+  const catalog: CatalogCape[] = (await api.socialApi('GET', '/v1/cosmetics').then((r: { capes: CatalogCape[] }) => r.capes).catch(() => undefined))
+    ?? SLASH_CAPES.map(([id, name]) => ({ id, name, exclusive: false, available: true }));
   $('#slash-cape-note').textContent = signedIn
     ? t('Widzą ją inni gracze z SlashClient, na każdym serwerze. Zastępuje pelerynę Minecraft.')
     : t('Zaloguj się w zakładce Znajomi (konto SlashClient), żeby nosić pelerynę SlashClient.');
-  const tile = (id: string, title: string, content: Node) => {
-    const b = el('button', { type: 'button', className: `cape-choice${id === current ? ' selected active' : ''}${id ? '' : ' none'}`, title }, content);
-    b.disabled = !signedIn;
+  const tile = (id: string, title: string, content: Node, locked = false) => {
+    const b = el('button', { type: 'button', className: `cape-choice${id === current ? ' selected active' : ''}${id ? '' : ' none'}`, title: locked ? t('{0}: ekskluzywna, przyznaje ją admin', title) : title }, content);
+    if (locked) b.append(el('i', { className: 'fa-solid fa-lock cape-lock' }));
+    b.disabled = !signedIn || locked;
     b.addEventListener('click', async () => {
       const me = await guard(() => api.socialApi('POST', '/v1/me', { cape: id }));
       if (!me) return;
@@ -2539,7 +2544,7 @@ async function renderSlashCapes() {
   };
   $('#slash-cape-grid').replaceChildren(
     tile('', t('Bez peleryny SlashClient'), el('i', { className: 'fa-solid fa-ban' })),
-    ...SLASH_CAPES.map(([id, name]) => tile(id, name, capeThumbnail(`img/capes/${id}.png`))));
+    ...catalog.map((c) => tile(c.id, c.name, capeThumbnail(`img/capes/${c.id}.png`), !c.available)));
   // the preview wears what other players will see
   if (current && skinViewer) await skinViewer.loadCape(`img/capes/${current}.png`, { backEquipment: 'cape' });
 }

@@ -1,0 +1,141 @@
+// Shared by the player page and the admin panel: the API with the saved session, sign-in,
+// small DOM helpers and toasts. The session token stays in this browser only (localStorage).
+
+const TOKEN = 'slashclient.token';
+
+export const token = {
+  get: () => localStorage.getItem(TOKEN) ?? '',
+  set: (t) => (t ? localStorage.setItem(TOKEN, t) : localStorage.removeItem(TOKEN)),
+};
+
+export class ApiError extends Error {
+  constructor(code, status) {
+    super(code);
+    this.code = code;
+    this.status = status;
+  }
+}
+
+export async function api(method, path, body) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token.get()) headers.Authorization = `Bearer ${token.get()}`;
+  const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    // a session that ended (signed out elsewhere, banned) is forgotten here too
+    if (res.status === 401) token.set('');
+    throw new ApiError(data.error ?? 'server_error', res.status);
+  }
+  return data;
+}
+
+const ERRORS = {
+  unauthorized: 'Sesja wygasła, zaloguj się ponownie.',
+  banned: 'To konto jest zablokowane.',
+  not_admin: 'To konto nie ma dostępu do panelu admina.',
+  bad_name: 'Nick: 3–16 znaków, litery, cyfry i _.',
+  bad_cape: 'Tej peleryny nie możesz teraz założyć.',
+  provider_disabled: 'Ten sposób logowania jest wyłączony.',
+  provider_failed: 'Logowanie się nie udało, spróbuj ponownie.',
+  provider_denied: 'Logowanie przerwane.',
+  login_expired: 'Logowanie wygasło, spróbuj ponownie.',
+  rate_limited: 'Za dużo prób, odczekaj chwilę.',
+  self: 'Nie możesz zrobić tego swojemu kontu.',
+  config_admin: 'To konto jest adminem z konfiguracji serwera (ADMIN_HANDLES).',
+  no_such_user: 'Nie ma takiego gracza.',
+  not_found: 'Nie znaleziono.',
+};
+export const errorText = (err) => ERRORS[err?.code] ?? (err?.message || 'Coś poszło nie tak.');
+
+export function el(tag, props = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) {
+    if (k === 'class') node.className = v;
+    else if (k === 'dataset') Object.assign(node.dataset, v);
+    else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+    else if (v !== undefined && v !== null && v !== false) node[k] = v;
+  }
+  node.append(...children.filter((c) => c !== null && c !== undefined && c !== false));
+  return node;
+}
+export const icon = (name) => el('i', { class: name });
+export const $ = (sel) => document.querySelector(sel);
+
+export function toast(text, isError = false) {
+  let box = document.getElementById('toasts');
+  if (!box) document.body.append(box = el('div', { id: 'toasts' }));
+  const t = el('div', { class: `toast${isError ? ' error' : ''}`, role: isError ? 'alert' : 'status' },
+    icon(`fa-solid ${isError ? 'fa-circle-exclamation' : 'fa-circle-check'}`), el('span', { textContent: text }));
+  box.append(t);
+  setTimeout(() => t.remove(), isError ? 7000 : 3500);
+}
+
+export async function guard(fn) {
+  try {
+    return await fn();
+  } catch (err) {
+    toast(errorText(err), true);
+    return undefined;
+  }
+}
+
+/** A cape's front, cut from its texture. */
+export function capeEl(id, small = false) {
+  const c = el('div', { class: `cape${small ? ' sm' : ''}`, title: id });
+  c.style.backgroundImage = `url(vendor/capes/${id}.png)`;
+  return c;
+}
+
+export function avatarEl(user, big = false) {
+  if (user.avatar) return el('img', { class: `avatar${big ? ' big' : ''}`, src: user.avatar, alt: '', referrerPolicy: 'no-referrer' });
+  return el('div', { class: `avatar${big ? ' big' : ''}`, textContent: (user.name || user.handle || '?').slice(0, 1).toUpperCase() });
+}
+
+export const PROVIDERS = {
+  discord: ['Discord', 'fa-brands fa-discord'],
+  microsoft: ['Microsoft', 'fa-brands fa-microsoft'],
+  google: ['Google', 'fa-brands fa-google'],
+  github: ['GitHub', 'fa-brands fa-github'],
+};
+
+/**
+ * Signs in through Discord, Microsoft, Google or GitHub: the provider opens in a new window and
+ * this page asks the server until that window is done (the same flow the launcher uses).
+ */
+export async function signInWith(provider) {
+  const popup = window.open('about:blank', 'slashclient-login', 'width=520,height=720');
+  const { state, url } = await api('POST', `/v1/auth/${provider}/start`);
+  if (popup) popup.location.href = url;
+  else window.open(url, '_blank', 'noopener');
+  const started = Date.now();
+  while (Date.now() - started < 10 * 60_000) {
+    await new Promise((r) => setTimeout(r, 1500));
+    const res = await api('GET', `/v1/auth/poll?state=${encodeURIComponent(state)}`);
+    if (res.pending) continue;
+    token.set(res.token);
+    popup?.close();
+    return res.user;
+  }
+  throw new ApiError('login_expired', 400);
+}
+
+export async function signInDev(name) {
+  const res = await api('POST', '/v1/auth/dev', { name });
+  token.set(res.token);
+  return res.user;
+}
+
+export async function signOut() {
+  await api('POST', '/v1/auth/logout').catch(() => {});
+  token.set('');
+}
+
+export const fmtDate = (ms) => (ms ? new Date(ms).toLocaleString('pl-PL', { dateStyle: 'medium', timeStyle: 'short' }) : '—');
+export function ago(ms) {
+  if (!ms) return '—';
+  const s = Math.round((Date.now() - ms) / 1000);
+  if (s < 60) return 'przed chwilą';
+  if (s < 3600) return `${Math.floor(s / 60)} min temu`;
+  if (s < 86_400) return `${Math.floor(s / 3600)} godz. temu`;
+  return `${Math.floor(s / 86_400)} dni temu`;
+}
