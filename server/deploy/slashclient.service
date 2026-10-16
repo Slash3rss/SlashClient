@@ -1,0 +1,26 @@
+[Unit]
+Description=SlashClient server (website, friends, chat, admin panel)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=slashclient
+Group=slashclient
+WorkingDirectory=/opt/slashclient/app
+EnvironmentFile=/etc/slashclient/env
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning src/index.ts
+Restart=always
+RestartSec=3
+# the server only needs its database folder
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/slashclient
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+MemoryMax=768M
+
+[Install]
+WantedBy=multi-user.target

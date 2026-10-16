@@ -105,3 +105,13 @@ Status `invisible` znajomi widzą jako offline. Adres serwera widzą tylko wtedy
 ```bash
 npm test
 ```
+
+## Serwer publiczny (VPS)
+
+Strona, API i panel działają pod **https://client.slash3rss.dev** (VPS z Ubuntu 24.04, Node 24, Caddy z automatycznym HTTPS).
+
+- **Wdrożenie:** `./server/deploy/deploy.sh` wysyła `server/` przez SSH (rsync), instaluje zależności i restartuje usługę. VPS nie ma dostępu do GitHuba.
+- **Ustawienia:** `/etc/slashclient/env` na serwerze (token wydań, klucze logowania, admini). Po zmianie: `systemctl restart slashclient`.
+- **Baza:** `/var/lib/slashclient/social.db`.
+- **Logi:** `journalctl -u slashclient -f` (serwer) i `/var/log/caddy/slashclient.log` (ruch).
+- **Pliki usługi:** `server/deploy/slashclient.service` i `server/deploy/Caddyfile`; `deploy.sh` instaluje je przy każdym wdrożeniu.
