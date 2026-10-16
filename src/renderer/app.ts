@@ -948,8 +948,6 @@ function renderAccounts() {
 
 function renderSettings() {
   const form = $<HTMLFormElement>('#settings-form');
-  (form.elements.namedItem('msClientId') as HTMLInputElement).value = store.settings.msClientId;
-  (form.elements.namedItem('socialUrl') as HTMLInputElement).value = store.settings.socialUrl;
   fillSelect($<HTMLSelectElement>('#language-select'), LANGUAGES.map((l) => ({ value: l.code, label: l.name })), getLang());
   (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked = store.settings.closeOnLaunch;
   (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked = store.settings.discordEnabled ?? true;
@@ -1218,10 +1216,8 @@ $('#settings-form').addEventListener('submit', async (e) => {
   const form = e.target as HTMLFormElement;
   await guard(() =>
     api.saveSettings({
-      msClientId: (form.elements.namedItem('msClientId') as HTMLInputElement).value.trim(),
       closeOnLaunch: (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked,
       discordEnabled: (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked,
-      socialUrl: (form.elements.namedItem('socialUrl') as HTMLInputElement).value.trim().replace(/\/$/, '') || store.settings.socialUrl,
       language: $<HTMLSelectElement>('#language-select').value,
     }),
   );

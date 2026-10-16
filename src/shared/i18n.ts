@@ -146,7 +146,7 @@ const EN: Record<string, string> = {
   ' Znajomi w SlashClient': ' Friends on SlashClient',
   'Zaloguj się, żeby dodawać znajomych, widzieć, w co grają, i pisać do nich prosto z launchera. To osobne konto SlashClient: nie zmienia kont Minecraft, którymi grasz.': 'Sign in to add friends, see what they are playing and message them right from the launcher. This is a separate SlashClient account: it does not change the Minecraft accounts you play with.',
   ' Spróbuj ponownie': ' Try again',
-  'Serwer znajomych ({0}) jest niedostępny. Adres możesz zmienić w Ustawieniach.': 'The friends server ({0}) is unreachable. You can change the address in Settings.',
+  'Serwer znajomych jest chwilowo niedostępny. Spróbuj ponownie za chwilę.': 'The friends server is unavailable right now. Try again in a moment.',
   ' Dokończ logowanie w przeglądarce…': ' Finish signing in in your browser…',
   'Nick (tryb testowy)': 'Name (test mode)',
   'Zaloguj': 'Sign in',
@@ -636,8 +636,8 @@ const EN: Record<string, string> = {
   'Skin i pelerynę można zmienić tylko na koncie Microsoft.': 'The skin and cape can only be changed on a Microsoft account.',
   'Mojang odrzucił zmianę: {0}': 'Mojang rejected the change: {0}',
   'Nick musi mieć 3–16 znaków: litery, cyfry lub podkreślnik.': 'The nickname must be 3–16 characters: letters, digits or underscore.',
-  'Brak identyfikatora aplikacji Azure. Wpisz go w Ustawieniach, aby logować się kontem Microsoft.':
-    'No Azure application ID. Enter it in Settings to sign in with Microsoft.',
+  'Brak identyfikatora aplikacji Microsoft, logowanie kontem Microsoft jest niedostępne.':
+    'No Microsoft application ID, Microsoft sign-in is unavailable.',
   'Kod logowania wygasł. Spróbuj ponownie.': 'The sign-in code expired. Try again.',
   'Logowanie anulowane': 'Sign-in cancelled',
   'To konto Microsoft nie ma profilu Xbox. Zaloguj się raz na minecraft.net, aby go utworzyć.':
@@ -652,8 +652,6 @@ const EN: Record<string, string> = {
   'Logowanie do Xbox Live nie powiodło się: {0}': 'Xbox Live sign-in failed: {0}',
 
   // settings
-  'Identyfikator aplikacji Azure (Client ID)': 'Azure application ID (Client ID)',
-  'Potrzebny do logowania kontem Microsoft. Instrukcja jest w pliku README.': 'Needed to sign in with Microsoft. See the README for instructions.',
   'Chowaj launcher podczas gry': 'Hide the launcher while playing',
   'Pokazuj na Discordzie, w co grasz': 'Show on Discord what you are playing',
   'Folder danych:': 'Data folder:',

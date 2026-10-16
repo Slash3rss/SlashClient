@@ -167,7 +167,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     if (healthError) {
       const retry = el('button', { type: 'button' }, icon('fa-rotate-right'), t(' Spróbuj ponownie'));
       retry.addEventListener('click', () => refreshState());
-      card.append(el('p', { className: 'fr-error', textContent: t('Serwer znajomych ({0}) jest niedostępny. Adres możesz zmienić w Ustawieniach.', state?.url ?? '') }), el('div', { className: 'row' }, retry));
+      card.append(el('p', { className: 'fr-error', textContent: t('Serwer znajomych jest chwilowo niedostępny. Spróbuj ponownie za chwilę.') }), el('div', { className: 'row' }, retry));
       root.replaceChildren(card);
       return;
     }

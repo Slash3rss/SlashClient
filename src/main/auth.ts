@@ -54,7 +54,7 @@ async function postForm<T>(url: string, form: Record<string, string>): Promise<T
 
 function requireClientId(clientId: string): void {
   if (!clientId) {
-    throw new Error('Brak identyfikatora aplikacji Azure. Wpisz go w Ustawieniach, aby logować się kontem Microsoft.');
+    throw new Error('Brak identyfikatora aplikacji Microsoft, logowanie kontem Microsoft jest niedostępne.');
   }
 }
 

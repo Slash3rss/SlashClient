@@ -135,8 +135,6 @@ export function newProfile(partial: Partial<Profile> = {}): Profile {
 export const DEFAULT_MS_CLIENT_ID = process.env.SLASHCLIENT_MS_CLIENT_ID ?? '956312be-af3a-4279-bdbd-1e91128b7e73';
 /** The public SlashClient server; SLASHCLIENT_SOCIAL_URL points a development build at a local one. */
 export const DEFAULT_SOCIAL_URL = process.env.SLASHCLIENT_SOCIAL_URL ?? 'https://client.slash3rss.dev';
-/** The default before the public server existed: installs that never changed it move to the public one. */
-const OLD_DEFAULT_SOCIAL_URL = 'http://localhost:8787';
 
 function defaults(): StoreData {
   return {
@@ -151,9 +149,8 @@ export async function loadStore(): Promise<StoreData> {
   try {
     const data = JSON.parse(await fs.readFile(FILE(), 'utf8')) as Partial<StoreData>;
     const base = defaults();
-    // saved before the app id was built in: an empty one would block Microsoft sign-in
-    if (data.settings && !data.settings.msClientId?.trim()) data.settings.msClientId = DEFAULT_MS_CLIENT_ID;
-    if (data.settings?.socialUrl === OLD_DEFAULT_SOCIAL_URL && !process.env.SLASHCLIENT_SOCIAL_URL) data.settings.socialUrl = DEFAULT_SOCIAL_URL;
+    // both are built in (no field in Settings any more): what an older version saved does not count
+    if (data.settings) Object.assign(data.settings, { msClientId: DEFAULT_MS_CLIENT_ID, socialUrl: DEFAULT_SOCIAL_URL });
     return {
       accounts: data.accounts ?? base.accounts,
       // profiles saved before settings sync existed keep their own settings until the player turns it on
