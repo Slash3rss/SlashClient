@@ -454,12 +454,89 @@ $('#modpack-versions').addEventListener('click', async () => {
 
 // ---------- profile icons ----------
 
-const BLOCKS = ['grass', 'dirt', 'stone', 'sand', 'planks', 'log', 'diamond-ore', 'obsidian', 'netherrack'];
+/** Blocks with a drawn fallback picture (img/blocks), used until a game has been downloaded. */
+const FALLBACK_BLOCKS = ['grass', 'dirt', 'stone', 'sand', 'planks', 'log', 'diamond-ore', 'obsidian', 'netherrack'];
+/** 3D icons drawn from the game's own textures, once the launcher has a game jar (blocks:textures). */
+let blockIcons: Record<string, string> = {};
+
+const blockNames = () => (Object.keys(blockIcons).length ? Object.keys(blockIcons) : FALLBACK_BLOCKS);
+
+function blockIconUrl(kind: string): string {
+  return blockIcons[kind] ?? `img/blocks/${FALLBACK_BLOCKS.includes(kind) ? kind : 'grass'}.png`;
+}
 
 function profileIconUrl(p: Profile): string {
   if (p.icon === 'custom' && p.iconFile) return `slash-media://local/?path=${encodeURIComponent(p.iconFile)}&v=${p.iconVersion}`;
-  const kind = p.icon?.startsWith('block:') ? p.icon.slice(6) : 'grass';
-  return `img/blocks/${BLOCKS.includes(kind) ? kind : 'grass'}.png`;
+  return blockIconUrl(p.icon?.startsWith('block:') ? p.icon.slice(6) : 'grass');
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+/** Plains grass colour: the game's grass texture is grey and tinted per biome. */
+const GRASS_TINT = '#91bd59';
+
+/** A 16×16 face, tinted like the game does for grass. */
+function face(img: HTMLImageElement, tint?: string): CanvasImageSource {
+  if (!tint) return img;
+  const c = el('canvas', { width: 16, height: 16 });
+  const ctx = c.getContext('2d')!;
+  ctx.drawImage(img, 0, 0, 16, 16);
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.fillStyle = tint;
+  ctx.fillRect(0, 0, 16, 16);
+  // multiply fills the transparent pixels too: keep only the texture's own shape
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.drawImage(img, 0, 0, 16, 16);
+  return c;
+}
+
+/**
+ * An isometric block like in the game's inventory: the top and two sides, the sides shaded,
+ * every texel kept square-edged (no smoothing). Returns a PNG data URL.
+ */
+function drawBlock(top: CanvasImageSource, left: CanvasImageSource, right: CanvasImageSource): string {
+  const size = 128;
+  const c = el('canvas', { width: size, height: size });
+  const ctx = c.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  const w = 54, half = 31, h = 62, top0 = 2;
+  const T = [size / 2, top0], R = [size / 2 + w, top0 + half], B = [size / 2, top0 + half * 2], L = [size / 2 - w, top0 + half];
+  const paint = (src: CanvasImageSource, a: number, b: number, cc: number, d: number, e: number, f: number, shade: number) => {
+    ctx.setTransform(a / 16, b / 16, cc / 16, d / 16, e, f);
+    ctx.drawImage(src, 0, 0, 16, 16);
+    if (shade) {
+      ctx.fillStyle = `rgba(0, 0, 0, ${shade})`;
+      ctx.fillRect(0, 0, 16, 16);
+    }
+  };
+  // a hair of overlap closes the seams between faces
+  paint(left, B[0] - L[0] + 0.5, B[1] - L[1], 0, h, L[0], L[1], 0.22);
+  paint(right, R[0] - B[0], R[1] - B[1], 0, h, B[0] - 0.5, B[1], 0.42);
+  paint(top, R[0] - T[0], R[1] - T[1], L[0] - T[0], L[1] - T[1], T[0], T[1] - 0.3, 0);
+  return c.toDataURL('image/png');
+}
+
+/** Builds the 3D icons once the main process has found textures in a downloaded game. */
+async function loadBlockIcons() {
+  const res: { faces: Record<string, { top: string; side: string; front?: string; tint?: string }>; textures: Record<string, string> } | null =
+    await api.blockTextures().catch(() => null);
+  if (!res) return;
+  const images: Record<string, HTMLImageElement> = {};
+  await Promise.all(Object.entries(res.textures).map(async ([name, src]) => (images[name] = await loadImage(src))));
+  const icons: Record<string, string> = {};
+  for (const [kind, f] of Object.entries(res.faces)) {
+    const tint = f.tint === 'grass' ? GRASS_TINT : undefined;
+    icons[kind] = drawBlock(face(images[f.top], tint), images[f.front ?? f.side], images[f.side]);
+  }
+  blockIcons = icons;
+  render();
 }
 
 function profileIconImg(p: Profile): HTMLImageElement {
@@ -478,7 +555,7 @@ function renderIconChoices(profile: Profile) {
     }));
     return b;
   };
-  const items = BLOCKS.map((k) => choice(`block:${k}`, `img/blocks/${k}.png`, k));
+  const items = blockNames().map((k) => choice(`block:${k}`, blockIconUrl(k), k));
   if (profile.icon === 'custom') items.push(choice('custom', profileIconUrl(profile), t('Własny obrazek')));
   const upload = el('button', { type: 'button', className: 'icon-choice upload' }, el('i', { className: 'fa-regular fa-image' }), ` ${t('Własny obrazek…')}`);
   upload.addEventListener('click', () => guard(() => busy(upload, () => api.chooseProfileIcon(profile.id))));
@@ -887,6 +964,10 @@ $('#crash-copy').addEventListener('click', async () => {
 
 api.on('launch:stage', showStage);
 api.on('game:log', appendLog);
+// the first game download brings the textures for the 3D profile icons
+api.on('game:exit', () => {
+  if (!Object.keys(blockIcons).length) loadBlockIcons();
+});
 api.on('game:exit', ({ code, signal, byUser }: { code: number | null; signal: string | null; byUser: boolean }) => {
   if (code === 0 || byUser) return;
   // A signal without a user request means the OS killed the game (crash, code signature, out of memory).
@@ -2735,5 +2816,6 @@ function finishBoot() {
     finishBoot();
   }
   versions = (await guard(() => api.listVersions())) ?? [];
+  loadBlockIcons();
   renderProfiles();
 })();

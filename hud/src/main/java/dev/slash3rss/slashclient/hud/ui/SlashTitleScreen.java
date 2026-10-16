@@ -124,13 +124,16 @@ public class SlashTitleScreen extends Screen {
 
 		// right side: a greeting card, then the servers
 		int cx = sx + sw + margin;
-		int cw = Math.min(360, width - cx - margin);
+		int avail = width - cx - margin;
+		// your skin gets a column on the right, looking at the mouse: in small windows the cards
+		// get narrower for it (down to 150), and only the very smallest leave it out
+		int skinCol = Math.min(130, avail - 150 - margin);
+		if (skinCol < 56) skinCol = 0;
+		int cw = Math.min(360, avail - (skinCol > 0 ? skinCol + margin : 0));
 		if (cw < 150) return;
-
-		// your skin in the free space on the right, looking at the mouse
-		int free = width - (cx + cw) - margin * 2;
-		if (free >= 70) {
+		if (skinCol > 0) {
 			if (skin == null) skin = new SkinPreview(minecraft);
+			int free = width - (cx + cw) - margin * 2;
 			int fh = Math.min(sh - 20, Math.min(240, free * 2));
 			int fw = fh / 2;
 			int fx = cx + cw + margin + (free - fw) / 2;

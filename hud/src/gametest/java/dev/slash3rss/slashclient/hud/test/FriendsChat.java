@@ -20,6 +20,11 @@ public class FriendsChat implements FabricClientGameTest {
 		context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("chatTabs"));
 		context.waitTicks(10);
 		context.takeScreenshot("chat-tabs-page");
+		// closing the HUD window without a world goes back to our menu, not the game's
+		context.runOnClient(mc -> TestHooks.slashMenu());
+		context.runOnClient(mc -> mc.gui.screen().onClose());
+		context.waitTicks(5);
+		if (!context.computeOnClient(mc -> mc.gui.screen() instanceof dev.slash3rss.slashclient.hud.ui.SlashTitleScreen)) throw new AssertionError("Closing the HUD window must return to the SlashClient menu");
 
 		// the skin in the menu looks at the mouse: left, right and above
 		context.getInput().resizeWindow(1920, 1080);
@@ -31,7 +36,11 @@ public class FriendsChat implements FabricClientGameTest {
 			context.waitTicks(30);
 			context.takeScreenshot("menu-skin-" + at[0] + "-" + at[1]);
 		}
+		// a small window: the cards get narrower so the skin still fits
 		context.getInput().resizeWindow(854, 480);
+		context.getInput().setCursorPos(100, 240);
+		context.waitTicks(30);
+		context.takeScreenshot("menu-skin-small");
 		context.setScreen(() -> new FriendsScreen(null));
 		if (!Social.available()) {
 			context.waitTicks(10);

@@ -55,6 +55,7 @@ const api = {
   uploadSkin: (accountId: string, variant: string) => invoke('skin:upload', accountId, variant),
   resetSkin: (accountId: string) => invoke('skin:reset', accountId),
   setCape: (accountId: string, capeId: string | null) => invoke('skin:setCape', accountId, capeId),
+  blockTextures: () => invoke('blocks:textures'),
   getStats: (days: number) => invoke('stats:get', days),
   findInstances: () => invoke('import:find'),
   instancesFromFolder: () => invoke('import:folder'),
