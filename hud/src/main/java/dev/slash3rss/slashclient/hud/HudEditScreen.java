@@ -256,8 +256,8 @@ public class HudEditScreen extends Screen {
 	}
 
 	/**
-	 * The drag view: outlines, names on hover, and a toolbar at the top (on a solid
-	 * panel, so it reads well over any world) with the way into the settings.
+	 * The drag view: outlines, names on hover, and a toolbar where it covers no module (on a
+	 * solid panel, so it reads well over any world) with the way into the settings.
 	 */
 	private void drawLayout(GuiGraphicsExtractor g, int mx, int my) {
 		HudModule hovered = dragging != null ? dragging : moduleAt(mx, my);
@@ -283,8 +283,7 @@ public class HudEditScreen extends Screen {
 		int barW = 12 + brandW + 14 + openW + 6 + doneW + 10;
 		int barH = 28;
 		int bx = (width - barW) / 2;
-		// at the top middle, a little down so it sits under a boss bar and off the window's edge
-		int by = Math.min(36, Math.max(12, height / 12));
+		int by = toolbarY(bx, barW, barH + 4 + 14);
 		Ui.panel(g, bx, by, barW, barH);
 		Ui.begin("toolbar", bx, by, barW, barH);
 		Ui.brand(g, bx + 12, by + 10, 1f);
@@ -736,6 +735,29 @@ public class HudEditScreen extends Screen {
 	}
 
 	/** x, y, width, height of a module on screen, with its scale. */
+	/**
+	 * Where the toolbar (and the hint under it) covers no module: just above the crosshair first
+	 * (the middle is where the HUD usually leaves room), then under it, then the top and the
+	 * bottom. While a module is dragged the bar is hidden anyway.
+	 */
+	private int toolbarY(int bx, int bw, int bh) {
+		int[] candidates = { height / 2 - 14 - bh, height / 2 + 14, 12, height - 56 - bh };
+		for (int y : candidates) {
+			if (y < 4 || y + bh > height - 4) continue;
+			boolean free = true;
+			for (HudModule m : SlashHud.MODULES) {
+				if (!SlashHud.config.placement(m.id()).enabled) continue;
+				int[] b = box(m);
+				if (b[0] - 4 < bx + bw && b[0] + b[2] + 4 > bx && b[1] - 4 < y + bh && b[1] + b[3] + 4 > y) {
+					free = false;
+					break;
+				}
+			}
+			if (free) return y;
+		}
+		return candidates[0];
+	}
+
 	private int[] box(HudModule m) {
 		HudConfig.Placement p = SlashHud.config.placement(m.id());
 		int[] size = SlashHud.size(m, minecraft, p);
