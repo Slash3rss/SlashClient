@@ -19,6 +19,10 @@ public class FriendsChat implements FabricClientGameTest {
 		context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::settingsWindow);
 		context.waitTicks(10);
 		context.takeScreenshot("editor-cards");
+		// layout mode, with the toolbar at the top
+		context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::new);
+		context.waitTicks(10);
+		context.takeScreenshot("editor-layout");
 		// chat tabs as a page of the HUD window (with one tab to show the row)
 		context.runOnClient(mc -> TestHooks.sampleChatTab());
 		context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("chatTabs"));

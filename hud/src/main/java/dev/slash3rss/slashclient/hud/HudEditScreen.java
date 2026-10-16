@@ -283,8 +283,8 @@ public class HudEditScreen extends Screen {
 		int barW = 12 + brandW + 14 + openW + 6 + doneW + 10;
 		int barH = 28;
 		int bx = (width - barW) / 2;
-		// at the top middle, where the game shows nothing but boss bars; the hotbar stays visible
-		int by = 8;
+		// at the top middle, a little down so it sits under a boss bar and off the window's edge
+		int by = Math.min(36, Math.max(12, height / 12));
 		Ui.panel(g, bx, by, barW, barH);
 		Ui.begin("toolbar", bx, by, barW, barH);
 		Ui.brand(g, bx + 12, by + 10, 1f);
@@ -782,6 +782,11 @@ public class HudEditScreen extends Screen {
 
 	@Override
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
-		// the game stays visible and sharp behind the editor
+		// in game the world stays visible and sharp behind the editor; opened from the main menu
+		// there is no world, so the menu's panorama with the launcher's blue, as in our menus
+		if (minecraft.level != null) return;
+		extractPanorama(g, delta);
+		g.fill(0, 0, width, height, 0x800A0D14);
+		g.fillGradient(0, height / 2, width, height, 0x000A0D14, 0xB00A0D14);
 	}
 }
