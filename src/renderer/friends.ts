@@ -25,6 +25,8 @@ export interface FriendsDeps {
   errorText: (err: unknown) => string;
   /** Opens the usual "join server" window. */
   join: (address: string, version?: string) => void;
+  /** Signed in or out of the SlashClient account (other parts of the launcher, like capes, depend on it). */
+  accountChanged?: () => void;
 }
 
 const MAX_MESSAGE = 2000;
@@ -203,6 +205,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       state = await fn();
       await refreshList();
       deps.toast(t('Zalogowano jako {0}', state.user?.name ?? ''));
+      deps.accountChanged?.();
     } catch (err) {
       deps.toast(deps.errorText(err), true);
     } finally {
@@ -304,6 +307,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       chats.clear();
       root.replaceChildren();
       await refreshState();
+      deps.accountChanged?.();
     });
     const self: Presence = state!.connected ? { status: state!.status === 'invisible' ? 'offline' : state!.status } : { status: 'offline' };
     const linked = el('div', { className: 'fr-linked' });

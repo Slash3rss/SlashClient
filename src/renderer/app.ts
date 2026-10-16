@@ -1232,6 +1232,8 @@ const friends = createFriends($('#friends-root'), $('#friends-badge'), {
   api,
   toast,
   errorText,
+  // the cape choice in Accounts unlocks (or locks) with the SlashClient account
+  accountChanged: () => void renderSlashCapes(),
   // a friend's server is not on the list: the join window gets what we know about it
   inviteTarget: async () => {
     // on a server now: that one; otherwise the server the chosen profile played last
