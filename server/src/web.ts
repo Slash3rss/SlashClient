@@ -14,7 +14,7 @@ const TYPES: Record<string, string> = {
 const PAGES: Record<string, string> = { '/': 'index.html', '/konto': 'konto.html', '/admin': 'admin.html', '/admin/': 'admin.html' };
 
 /** Serves a file of the site; false when there is none (the caller answers 404). */
-export async function serveWeb(webDir: string, pathname: string, res: http.ServerResponse): Promise<boolean> {
+export async function serveWeb(webDir: string, pathname: string, res: http.ServerResponse, ifModifiedSince?: string): Promise<boolean> {
   const root = path.resolve(webDir);
   let rel: string;
   try {
@@ -28,13 +28,21 @@ export async function serveWeb(webDir: string, pathname: string, res: http.Serve
   const type = TYPES[path.extname(file).toLowerCase()];
   if (!type) return false;
   try {
-    if (!(await stat(file)).isFile()) return false;
+    const info = await stat(file);
+    if (!info.isFile()) return false;
+    // every file is checked on each visit (a cheap 304 when unchanged), so an update reaches everyone at once
+    const modified = new Date(Math.floor(info.mtimeMs / 1000) * 1000);
+    if (ifModifiedSince && !Number.isNaN(Date.parse(ifModifiedSince)) && Date.parse(ifModifiedSince) >= modified.getTime()) {
+      res.writeHead(304, { 'Cache-Control': 'no-cache', 'Last-Modified': modified.toUTCString() });
+      res.end();
+      return true;
+    }
     const data = await readFile(file);
     const headers: Record<string, string> = {
       'Content-Type': type,
       'X-Content-Type-Options': 'nosniff',
-      // pages, scripts and styles are checked on every visit, so an update reaches everyone at once
-      'Cache-Control': /^text\/(html|css|javascript)/.test(type) ? 'no-cache' : 'public, max-age=86400',
+      'Cache-Control': 'no-cache',
+      'Last-Modified': modified.toUTCString(),
     };
     if (type.startsWith('text/html')) {
       // avatars come from the sign-in providers

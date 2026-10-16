@@ -50,8 +50,18 @@ public final class Cosmetics {
 		emotes.clear();
 	}
 
+	/** For the screenshots of the website (TestHooks): our own player in a given skin. */
+	static ClientAsset.Texture testSkin;
+	static UUID testSkinFor;
+
+	public static PlayerSkin withTestSkin(UUID id, PlayerSkin skin) {
+		if (testSkin == null || !id.equals(testSkinFor)) return skin;
+		return new PlayerSkin(testSkin, skin.cape(), skin.elytra(), net.minecraft.world.entity.player.PlayerModelType.WIDE, skin.secure());
+	}
+
 	/** The skin with our cape in place of the player's own, when they picked one. */
 	public static PlayerSkin withCape(UUID id, PlayerSkin skin) {
+		skin = withTestSkin(id, skin);
 		if (!SlashHud.config.badges) return skin;
 		String cape = capes.get(id);
 		if (cape == null) return skin;

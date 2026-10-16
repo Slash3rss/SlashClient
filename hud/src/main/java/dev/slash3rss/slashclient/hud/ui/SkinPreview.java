@@ -51,7 +51,7 @@ public final class SkinPreview {
 
 	/** Draws the figure in the box; the head looks at (mx, my). */
 	public void draw(GuiGraphicsExtractor g, int x, int y, int w, int h, int mx, int my) {
-		PlayerSkin s = skin.get();
+		PlayerSkin s = dev.slash3rss.slashclient.hud.Cosmetics.withTestSkin(Minecraft.getInstance().getGameProfile().id(), skin.get());
 		var model = s.model() == PlayerModelType.SLIM ? slim : wide;
 		float scale = 0.97f * h / MODEL_HEIGHT;
 		// where the eyes are on screen: a little below the top of the box, in the middle

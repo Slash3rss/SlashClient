@@ -373,4 +373,24 @@ public final class TestHooks {
 			return "none";
 		}
 	}
+
+	/** Our own player wears this skin (a texture of the test mod), for the website's screenshots. */
+	public static void testSkin(String texture) {
+		var id = net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "skin/" + texture);
+		Cosmetics.testSkin = new net.minecraft.core.ClientAsset.ResourceTexture(id,
+			net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "textures/skin/" + texture + ".png"));
+		Cosmetics.testSkinFor = net.minecraft.client.Minecraft.getInstance().getGameProfile().id();
+	}
+
+
+	/** No toasts or chat lines over a screenshot. */
+	public static void cleanScreen() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		Compat.toasts(mc).clear();
+		Compat.chat(mc).clearMessages(false);
+	}
+
+	public static void renderDistance(int chunks) {
+		net.minecraft.client.Minecraft.getInstance().options.renderDistance().set(chunks);
+	}
 }

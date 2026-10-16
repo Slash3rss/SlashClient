@@ -52,6 +52,10 @@ describe('website', () => {
     assert.match(page.csp, /default-src 'self'/);
     assert.match((await call('GET', '/admin')).text, /panel/);
     assert.equal((await call('GET', '/style.css')).type, 'text/css; charset=utf-8');
+    // unchanged files answer 304 to a browser that has them
+    const first = await fetch(base + '/style.css');
+    const again = await fetch(base + '/style.css', { headers: { 'If-Modified-Since': first.headers.get('last-modified')! } });
+    assert.equal(again.status, 304);
     for (const evil of ['/../secret.txt', '/%2e%2e/secret.txt', '/..%5csecret.txt', '/.env', '/x.exe']) {
       assert.equal((await call('GET', evil)).status, 404, evil);
     }

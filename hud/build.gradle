@@ -184,6 +184,15 @@ if (obfuscated) {
 	}
 }
 
+// the website's screenshots: gradlew runClientGameTest -Pshots[=<nick>] (the player has that nick, and the skin in gametest resources)
+if (project.hasProperty('shots')) {
+	loom.runs.matching { it.name == 'clientGameTest' }.configureEach {
+		vmArg "-Dslashclient.test.shots=true"
+		def nick = project.property('shots') ?: ''
+		programArgs "--username", nick.isEmpty() ? "Slash3rss" : nick
+	}
+}
+
 // the friends test talks to a running launcher: gradlew runClientGameTest -Pbridge=<url> -PbridgeKey=<key>
 if (project.hasProperty('bridge')) {
 	loom.runs.matching { it.name == 'clientGameTest' }.configureEach {

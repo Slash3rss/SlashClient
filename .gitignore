@@ -3,3 +3,4 @@ dist/
 .DS_Store
 .test-out/
 release/
+hud/src/gametest/resources/assets/slashclient-hud-test/textures/skin/
