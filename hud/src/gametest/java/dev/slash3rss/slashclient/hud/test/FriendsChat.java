@@ -15,6 +15,10 @@ public class FriendsChat implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		context.waitTicks(40);
+		// the HUD window's cards, with the launcher's icons
+		context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::settingsWindow);
+		context.waitTicks(10);
+		context.takeScreenshot("editor-cards");
 		// chat tabs as a page of the HUD window (with one tab to show the row)
 		context.runOnClient(mc -> TestHooks.sampleChatTab());
 		context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("chatTabs"));

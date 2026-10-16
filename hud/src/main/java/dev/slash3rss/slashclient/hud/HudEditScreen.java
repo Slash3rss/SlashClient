@@ -147,7 +147,7 @@ public class HudEditScreen extends Screen {
 			reopen();
 		}));
 		Ui.round(g, x + 78, y, 20, 18, 4, 0xFF1B2B4D);
-		Ui.icon(g, e.icon(), "#", x + 80, y + 1);
+		Ui.icon(g, e.icon(), x + 82, y + 3, 12, Ui.ACCENT_LIGHT);
 		Ui.draw(g, Ui.fit(Ui.trBold(e.nameKey()), w - 106), x + 104, y + 5, Ui.TEXT);
 		Ui.wrapped(g, Ui.tr("slashclient-hud.chat.help"), x, y + 26, w, Ui.TEXT_2);
 
@@ -409,14 +409,9 @@ public class HudEditScreen extends Screen {
 		float t = Ui.hover("card:" + e.id(), clickable && Ui.inside(mx, my, x, y, w, h));
 		Ui.round(g, x, y, w, h, 5, Ui.blend(Ui.CARD, Ui.CARD_HOVER, t));
 		Ui.roundOutline(g, x, y, w, h, 5, on ? 0xAA3B82F6 : Ui.blend(Ui.BORDER, 0x40FFFFFF, t));
-		// the icon sits on a small tile, tinted blue when the module is on
+		// the icon sits on a small tile, blue when the module is on: the same icons as the launcher and the menu
 		Ui.round(g, x + w / 2 - 13, y + 7, 26, 26, 5, on ? 0xFF1B2B4D : 0xFF202839);
-		var pose = g.pose();
-		pose.pushMatrix();
-		pose.translate(x + w / 2 - 12, y + 8);
-		pose.scale(1.5f, 1.5f);
-		Ui.icon(g, e.icon(), Component.translatable(e.nameKey()).getString().substring(0, 1), 0, 0);
-		pose.popMatrix();
+		Ui.icon(g, e.icon(), x + w / 2 - 8, y + 12, 16, on ? Ui.ACCENT_LIGHT : Ui.blend(Ui.TEXT_2, Ui.TEXT, t));
 		Ui.centered(g, Ui.fit(Ui.trBold(e.nameKey()), w - 10), x + w / 2, y + 38, Ui.TEXT);
 		boolean gear = !e.settings().isEmpty();
 		if (e.hasSwitch()) {
@@ -469,7 +464,7 @@ public class HudEditScreen extends Screen {
 			reopen();
 		}));
 		Ui.round(g, x + 78, y, 20, 18, 4, 0xFF1B2B4D);
-		Ui.icon(g, e.icon(), Component.translatable(e.nameKey()).getString().substring(0, 1), x + 80, y + 1);
+		Ui.icon(g, e.icon(), x + 82, y + 3, 12, Ui.ACCENT_LIGHT);
 		Ui.draw(g, Ui.fit(Ui.trBold(e.nameKey()), w - 106), x + 104, y + 5, Ui.TEXT);
 		List<Catalog.Setting> rows = new ArrayList<>(e.settings());
 		if (e.hasSwitch()) {
