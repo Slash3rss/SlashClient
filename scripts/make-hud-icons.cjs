@@ -22,6 +22,8 @@ const ICONS = {
   'm-crosshair': 'crosshairs', 'm-appearance': 'palette', 'm-badges': 'id-badge', 'm-menu': 'house',
   'm-chattimestamps': 'comment-dots', 'm-chattabs': 'table-columns',
   // the game's own HUD parts
+  'm-togglesprint': 'forward-fast', 'm-time': 'cloud-sun', 'm-freelook': 'eye', 'm-waypoints': 'location-dot',
+  'm-screenshot': 'camera', 'm-chatstack': 'layer-group', 'm-chatcopy': 'copy', 'm-chatsearch': 'magnifying-glass',
   'm-scoreboard': 'list-ol', 'm-bossbar': 'skull', 'm-tablist': 'table-list', 'm-titles': 'heading', 'm-nametag': 'tag',
 };
 

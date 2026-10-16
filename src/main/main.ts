@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, net, Notification, powerMonitor, protocol, safeStorage, shell } from 'electron';
+import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, nativeImage, net, Notification, powerMonitor, protocol, safeStorage, shell } from 'electron';
 import { randomUUID } from 'node:crypto';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
@@ -918,6 +918,15 @@ const bridge = new GameBridge({
   state: () => {
     const s = social.state();
     return { signedIn: !!s.user, user: s.user, connected: s.connected };
+  },
+  // F2 in game: only a PNG in the screenshots folder of one of the profiles
+  copyImage: async (file) => {
+    const real = await fsp.realpath(file);
+    const dirs = await Promise.all(store.profiles.map((p) => fsp.realpath(path.join(profileGameDir(p), 'screenshots')).catch(() => '')));
+    if (!real.endsWith('.png') || !dirs.some((d) => d && path.dirname(real) === d)) throw new Error('not_a_screenshot');
+    const png = await fsp.readFile(real);
+    if (nativeImage.createFromBuffer(png).isEmpty()) throw new Error('not_an_image');
+    await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(png)], { type: 'image/png' }) })]);
   },
 });
 

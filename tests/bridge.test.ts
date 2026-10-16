@@ -11,6 +11,10 @@ describe('game bridge', () => {
         return { ok: true };
       },
       state: () => ({ signedIn: true, user: { name: 'Slash3rss' } }),
+      copyImage: async (file) => {
+        if (!file.endsWith('/screenshots/a.png')) throw new Error('not_a_screenshot');
+        calls.push(`copy ${file}`);
+      },
     });
     const { url, key } = await bridge.start();
     const req = (path: string, init: RequestInit = {}, k = key) =>
@@ -22,7 +26,9 @@ describe('game bridge', () => {
     assert.equal((await req('/v1/me')).status, 403);
     assert.equal((await req('/v1/auth/logout', { method: 'POST' })).status, 403);
     assert.equal((await req('/v1/friends/x', { method: 'DELETE' })).status, 403);
-    assert.deepEqual(calls, ['GET /v1/friends', 'POST /v1/messages/abc {"text":"hej"}']);
+    assert.equal((await req('/clipboard/image', { method: 'POST', body: JSON.stringify({ path: '/x/screenshots/a.png' }) })).status, 200);
+    assert.equal((await req('/clipboard/image', { method: 'POST', body: JSON.stringify({ path: '/etc/passwd' }) })).status, 403);
+    assert.deepEqual(calls, ['GET /v1/friends', 'POST /v1/messages/abc {"text":"hej"}', 'copy /x/screenshots/a.png']);
     assert.deepEqual(await (await req('/state')).json(), { signedIn: true, user: { name: 'Slash3rss' } });
 
     // a waiting poll wakes up on the next event; launcher-only events are not passed on

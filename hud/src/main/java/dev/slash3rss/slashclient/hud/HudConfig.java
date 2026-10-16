@@ -111,6 +111,24 @@ public final class HudConfig {
 	/** Your own name above your head in third person (F5). */
 	public boolean ownNametag = false;
 
+	// ---- chat ----
+	/** The same line again becomes "×2", "×3" on the last one instead of a new line. */
+	public boolean chatStack = true;
+	/** Right click on a chat line copies it. */
+	public boolean chatCopy = true;
+	/** A search box over the open chat. */
+	public boolean chatSearch = true;
+
+	// ---- more extras ----
+	/** Your own time of day, only for you; the server's time stays as it is. */
+	public boolean timeChanger = false;
+	public int fixedTime = 6000;
+	/** Hold the key to look around without turning (off by default: some servers forbid it). */
+	public boolean freelook = false;
+	public boolean waypoints = true;
+	/** F2 also puts the picture on the clipboard (through the launcher) and shows it in the corner. */
+	public boolean screenshotClipboard = true;
+
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("slashclient-hud.json");
 
@@ -140,6 +158,7 @@ public final class HudConfig {
 		c.modules.put("target", new Placement(true, 0.5f, 0.5f, 0, 40));
 		c.modules.put("combo", new Placement(false, 0.5f, 0.5f, 30, 12));
 		c.modules.put("reach", new Placement(false, 0.5f, 0.5f, -30, 12));
+		c.modules.put("sprint", new Placement(false, 0, 1, 2, -2));
 		c.modules.put("keystrokes", new Placement(true, 0, 0.5f, 2, 20));
 		c.modules.put("movement", new Placement(false, 0, 0.5f, 2, -2));
 		c.chatTabs.add(new ChatTab("@", false, "{nick}"));
@@ -205,6 +224,14 @@ public final class HudConfig {
 		titles = other.titles;
 		titleScale = other.titleScale;
 		ownNametag = other.ownNametag;
+		chatStack = other.chatStack;
+		chatCopy = other.chatCopy;
+		chatSearch = other.chatSearch;
+		timeChanger = other.timeChanger;
+		fixedTime = other.fixedTime;
+		freelook = other.freelook;
+		waypoints = other.waypoints;
+		screenshotClipboard = other.screenshotClipboard;
 		save();
 	}
 

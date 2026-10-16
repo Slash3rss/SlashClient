@@ -292,6 +292,20 @@ public final class Social {
 		});
 	}
 
+	/** Asks the launcher to put a picture file on the clipboard; false without a launcher. */
+	public static boolean copyImage(String path) {
+		if (!available()) return false;
+		try {
+			JsonObject body = new JsonObject();
+			body.addProperty("path", path);
+			request("POST", "/clipboard/image", body, 5);
+			return true;
+		} catch (Exception e) {
+			SlashHud.LOG.info("SlashClient: clipboard: {}", e.toString());
+			return false;
+		}
+	}
+
 	/** The friend's activity in a few words: "on mc.example.com", "in singleplayer"… */
 	public static Component activity(Friend f) {
 		if ("offline".equals(f.status())) return Component.translatable("slashclient-hud.friends.offline");

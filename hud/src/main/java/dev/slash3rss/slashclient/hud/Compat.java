@@ -31,6 +31,14 @@ public final class Compat {
 		//#endif
 	}
 
+	public static net.minecraft.client.Camera camera(Minecraft mc) {
+		//#if MC >= 26.2
+		return mc.gameRenderer.mainCamera();
+		//#else
+		//$ return mc.gameRenderer.getMainCamera();
+		//#endif
+	}
+
 	/** The HUD hidden with F1 (then no names are drawn either). */
 	public static boolean hudHidden(Minecraft mc) {
 		//#if MC >= 26.2

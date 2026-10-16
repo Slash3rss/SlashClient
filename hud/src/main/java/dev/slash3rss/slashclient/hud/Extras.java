@@ -31,6 +31,15 @@ public final class Extras {
 	}
 
 	/** Field of view with the zoom applied; called every frame. */
+	/** The field of view of the last frame, for placing waypoints on screen. */
+	public static float lastFov = 70f;
+
+	/** Your own time of day: the same day as the server's (so the moon keeps its phase), your hour. */
+	public static long time(long ticks) {
+		if (cfg() == null || !cfg().timeChanger) return ticks;
+		return Math.floorDiv(ticks, 24000L) * 24000L + cfg().fixedTime;
+	}
+
 	public static float zoomFov(float fov) {
 		boolean on = zooming();
 		if (on && held < 0) held = cfg().zoomFactor;
@@ -41,7 +50,8 @@ public final class Extras {
 		lastFrame = now;
 		current = cfg().zoomSmooth ? current + (target - current) * Math.min(1f, dt * 14f) : target;
 		if (Math.abs(current - target) < 0.001f) current = target;
-		return fov / current;
+		lastFov = fov / current;
+		return lastFov;
 	}
 
 	/** The mouse wheel while zooming: true when it was used here (and should not change the hotbar slot). */

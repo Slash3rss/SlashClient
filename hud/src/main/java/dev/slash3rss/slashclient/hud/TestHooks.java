@@ -40,6 +40,61 @@ public final class TestHooks {
 		mc.options.setCameraType(on ? net.minecraft.client.CameraType.THIRD_PERSON_BACK : net.minecraft.client.CameraType.FIRST_PERSON);
 	}
 
+	/** A waypoint ahead of the player, night only for us, the sprint indicator on. */
+	public static void worldExtras() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		HudConfig c = SlashHud.config;
+		c.timeChanger = true;
+		c.fixedTime = 18000;
+		c.freelook = true;
+		c.placement("sprint").enabled = true;
+		var p = Waypoints.add(mc, "Baza");
+		p.z += 12;
+		p.y += 1;
+		Waypoints.save();
+	}
+
+	/** The chat's messages, newest first, as plain text. */
+	public static String chatLines() {
+		var chat = Compat.chat(net.minecraft.client.Minecraft.getInstance());
+		StringBuilder sb = new StringBuilder();
+		for (Object m : ((dev.slash3rss.slashclient.hud.mixin.ChatComponentAccessor) chat).slashclient$allMessages()) {
+			sb.append(((net.minecraft.client.multiplayer.chat.GuiMessage) m).content().getString()).append(" | ");
+		}
+		return sb.toString();
+	}
+
+	/** What a right click on the n-th line from the bottom of the open chat copies. */
+	public static String copyLine(int fromBottom) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		double scale = mc.options.chatScale().get();
+		int lineHeight = (int) (9.0 * (mc.options.chatLineSpacing().get() + 1.0));
+		double y = ((mc.getWindow().getGuiScaledHeight() - 40) / scale - lineHeight * (fromBottom + 0.5)) * scale;
+		return ChatExtras.messageAt(10, y);
+	}
+
+	public static void chatSearch(String text) {
+		ChatTabs.searchFor(text);
+	}
+
+	public static void screenshot() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		//#if MC >= 26.2
+		net.minecraft.client.Screenshot.grab(mc, false);
+		//#else
+		//$ net.minecraft.client.Screenshot.grab(mc.gameDirectory, mc.getMainRenderTarget(), m -> {});
+		//#endif
+	}
+
+	/** Turns the mouse a lot while freelook is held: true when the player kept facing the same way. */
+	public static boolean freelookTurn() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		if (!Freelook.active()) return false;
+		float yaw = mc.player.getYRot();
+		mc.player.turn(600, -100);
+		return mc.player.getYRot() == yaw;
+	}
+
 	/** One chat tab, so the chat tabs page has a row to show. */
 	public static void sampleChatTab() {
 		if (!SlashHud.config.chatTabs.isEmpty()) return;

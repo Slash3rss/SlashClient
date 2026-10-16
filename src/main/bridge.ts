@@ -16,6 +16,8 @@ export interface BridgeOptions {
   call: (method: string, path: string, body?: unknown) => Promise<unknown>;
   /** Signed in or not, and who. */
   state: () => unknown;
+  /** Puts a screenshot on the clipboard; rejects paths that are not a profile's screenshot. */
+  copyImage?: (file: string) => Promise<void>;
 }
 
 /** What the game may ask for: its friends and the messages with them. */
@@ -98,6 +100,17 @@ export class GameBridge {
     const method = req.method ?? 'GET';
 
     if (method === 'GET' && url === '/state') return this.send(res, 200, this.opts.state());
+
+    if (method === 'POST' && url === '/clipboard/image') {
+      const { path } = ((await this.body(req)) ?? {}) as { path?: unknown };
+      if (typeof path !== 'string' || !this.opts.copyImage) return this.send(res, 400, { error: 'bad_request' });
+      try {
+        await this.opts.copyImage(path);
+        return this.send(res, 200, { ok: true });
+      } catch (err) {
+        return this.send(res, 403, { error: (err as Error).message });
+      }
+    }
 
     if (method === 'GET' && url.startsWith('/events')) {
       const after = Number(new URL(url, 'http://x').searchParams.get('after') ?? 0);

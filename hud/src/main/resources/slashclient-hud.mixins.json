@@ -4,9 +4,13 @@
 	"compatibilityLevel": "JAVA_${java}",
 	"client": [
 		"CameraMixin",
+		"ChatComponentAccessor",
 		"ChatComponentMixin",
 		"ChatFilterMixin",
+		"ChatScreenMixin",
 		"EntityRendererMixin",
+		"FreelookCameraMixin",
+		"FreelookMixin",
 		"GuiMixin",
 		"JoinMultiplayerScreenMixin",
 		"LightmapMixin",
@@ -15,8 +19,10 @@
 		"OnlineServerEntryMixin",
 		"PlayerTabOverlayMixin",
 		"ScoreboardNumbersMixin",
+		"ScreenshotMixin",
 		"ScreenEffectRendererMixin",
-		"ServerListMixin"
+		"ServerListMixin",
+		"TimeMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

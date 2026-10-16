@@ -29,7 +29,7 @@ public final class Modules {
 		return List.of(new Fps(), new Ping(), new Cps(), new Coords(), new Speed(), new Clock(), new MoreModules.Server(), new MoreModules.Players(),
 			new MoreModules.Memory(), new MoreModules.Biome(), new MoreModules.DayTime(), new MoreModules.Light(), new MoreModules.Session(),
 			new MoreModules.Combo(), new MoreModules.Reach(), new MoreModules.Movement(), new MoreModules.Saturation(), new MoreModules.ItemCounter(), new MoreModules.Target(),
-			new Armor(), new Effects(), new Keystrokes());
+			new Armor(), new Effects(), new Keystrokes(), new Sprint());
 	}
 
 	static void text(GuiGraphicsExtractor g, Minecraft mc, String s, int x, int y, int color) {
@@ -104,6 +104,37 @@ public final class Modules {
 		@Override
 		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
 			text(g, mc, content(mc), x + PAD, y + PAD, color(mc));
+		}
+	}
+
+	/** Sprinting and sneaking, and whether the game's toggle mode holds them for you. */
+	static final class Sprint extends TextModule {
+		public String id() {
+			return "sprint";
+		}
+
+		Component content(Minecraft mc) {
+			if (mc.player == null) return Component.empty();
+			boolean toggle = mc.options.toggleSprint().get(), sneakToggle = mc.options.toggleCrouch().get();
+			if (mc.player.isShiftKeyDown()) return Component.translatable(sneakToggle ? "slashclient-hud.sprint.sneakToggled" : "slashclient-hud.sprint.sneak");
+			if (mc.player.isSprinting() || (toggle && mc.options.keySprint.isDown())) return Component.translatable(toggle ? "slashclient-hud.sprint.toggled" : "slashclient-hud.sprint.on");
+			return Component.empty();
+		}
+
+		@Override
+		public boolean visible(Minecraft mc) {
+			return !content(mc).getString().isEmpty();
+		}
+
+		@Override
+		public void drawPreview(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
+			text(g, mc, Component.translatable("slashclient-hud.sprint.toggled"), x + PAD, y + PAD, color(mc));
+		}
+
+		@Override
+		public int width(Minecraft mc) {
+			Component c = content(mc);
+			return mc.font.width(c.getString().isEmpty() ? Component.translatable("slashclient-hud.sprint.toggled") : c) + PAD * 2;
 		}
 	}
 

@@ -1,5 +1,6 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
+import dev.slash3rss.slashclient.hud.ChatExtras;
 import dev.slash3rss.slashclient.hud.ChatTabs;
 import dev.slash3rss.slashclient.hud.Extras;
 import net.minecraft.client.gui.components.ChatComponent;
@@ -19,6 +20,6 @@ abstract class ChatComponentMixin {
 	//#endif
 	private Component slashclient$incoming(Component message) {
 		ChatTabs.onMessage(message.getString());
-		return Extras.timestamp(message);
+		return ChatExtras.stack((ChatComponent) (Object) this, message.getString(), Extras.timestamp(message));
 	}
 }
