@@ -2,14 +2,41 @@
 // as you scroll, sections that fade in, the modules marquee, features and FAQ.
 import { $, api, el, icon, token } from './common.js';
 
-const RELEASES = 'https://github.com/Slash3rss/SlashClient/releases/latest';
-
 // ---------- download for this system ----------
+// /pobierz/<system> on this server sends the installer of the latest release straight away
 const ua = navigator.userAgent;
-const os = /Mac/i.test(ua) && !/iPhone|iPad/i.test(ua) ? ['macOS', 'fa-brands fa-apple'] : /Linux/i.test(ua) && !/Android/i.test(ua) ? ['Linux', 'fa-brands fa-linux'] : ['Windows', 'fa-brands fa-windows'];
-$('#os-label').textContent = `Pobierz dla ${os[0]}`;
-$('#os-icon').className = os[1];
-for (const id of ['#download-main', '#download-final']) $(id).href = RELEASES;
+// an iPad says it is a Mac, but a Mac has no touch screen
+const phone = /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+const SYSTEMS = {
+  windows: ['Windows', 'fa-brands fa-windows'],
+  mac: ['macOS', 'fa-brands fa-apple'],
+  linux: ['Linux', 'fa-brands fa-linux'],
+};
+const mine = /Mac/i.test(ua) ? 'mac' : /Linux|X11|CrOS/i.test(ua) ? 'linux' : 'windows';
+if (phone) {
+  // nothing to install on a phone: say so instead of offering a file it can't open
+  for (const id of ['#download-main', '#download-final']) {
+    const b = $(id);
+    b.removeAttribute('href');
+    b.classList.add('disabled');
+    b.setAttribute('aria-disabled', 'true');
+  }
+  $('#os-icon').className = 'fa-solid fa-desktop';
+  $('#os-label').textContent = 'SlashClient działa na komputerze';
+  $('#download-final').replaceChildren(icon('fa-solid fa-desktop'), ' SlashClient działa na komputerze');
+  $('#download-note').textContent = 'Otwórz tę stronę na komputerze z Windows, macOS lub Linuksem, żeby pobrać launcher.';
+} else {
+  $('#os-label').textContent = `Pobierz dla ${SYSTEMS[mine][0]}`;
+  $('#os-icon').className = SYSTEMS[mine][1];
+  for (const id of ['#download-main', '#download-final']) $(id).href = `/pobierz/${mine}`;
+  // the others, and the Intel build for older Macs (the main macOS button is Apple Silicon)
+  const links = [['windows', 'Windows'], ['mac', 'macOS (Apple Silicon)'], ['mac-intel', 'macOS (Intel)'], ['linux', 'Linux']]
+    .filter(([os]) => os !== mine)
+    .map(([os, name]) => el('a', { href: `/pobierz/${os}` }, name));
+  const note = $('#download-note');
+  note.replaceChildren('Inne systemy: ');
+  links.forEach((a, i) => note.append(...(i ? [' · ', a] : [a])));
+}
 
 // ---------- the account button ----------
 if (token.get()) {

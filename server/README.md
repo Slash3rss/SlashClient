@@ -26,6 +26,15 @@ Ten sam serwer pokazuje stronę SlashClient (pliki z `web/`):
   - kosmetyki: włączanie i wyłączanie peleryn oraz peleryny ekskluzywne, przydzielane wybranym graczom;
   - dziennik wszystkich zmian zrobionych w panelu.
 
+### Pobieranie launchera
+
+Przycisk „Pobierz” prowadzi do `/pobierz/windows`, `/pobierz/mac` (Apple Silicon), `/pobierz/mac-intel` albo `/pobierz/linux`.
+Serwer szuka instalatora w najnowszym wydaniu na GitHubie i przekierowuje przeglądarkę prosto do pliku. Nic nie trzyma i nic przez siebie nie przesyła.
+
+- `RELEASES_REPO`: repozytorium z wydaniami (domyślnie `Slash3rss/SlashClient`).
+- `RELEASES_TOKEN`: potrzebny, gdy repozytorium jest prywatne. Użyj tokena *fine-grained* z dostępem tylko do tego repozytorium i uprawnieniem **Contents: Read-only**.
+  GitHub daje wtedy jednorazowy link do pliku ważny kilka minut, a token zostaje na serwerze.
+
 Pierwszego admina ustawia zmienna `ADMIN_HANDLES` (nicki oddzielone przecinkami, np. `ADMIN_HANDLES=Slash3rss`).
 Taki admin zawsze nim zostaje; kolejnych można mianować w panelu.
 

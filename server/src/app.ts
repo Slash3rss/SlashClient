@@ -7,6 +7,7 @@ import { cleanPresence, publicPresence, type Presence } from './presence.ts';
 import { CAPE_NAMES, CAPES, EMOTES, capeSetting, mayWear } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
 import { serveWeb } from './web.ts';
+import { createDownloads, isDownloadOs } from './downloads.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -29,6 +30,10 @@ export interface Config {
   adminHandles?: string[];
   /** The website's files (web/); without it only the API is served. */
   webDir?: string;
+  /** GitHub repository with the launcher's releases, for /pobierz/<system> (owner/name). */
+  releasesRepo?: string;
+  /** Read access to that repository when it is private. */
+  releasesToken?: string;
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -454,11 +459,27 @@ export function createApp(cfg: Config) {
       }
       return;
     }
+    // the installer for one system, straight from the latest release
+    const download = /^\/pobierz\/([\w-]+)$/.exec(url.pathname);
+    if (req.method === 'GET' && download && isDownloadOs(download[1])) {
+      try {
+        const to = await downloads.link(download[1]);
+        res.writeHead(to ? 302 : 404, to ? { Location: to, 'Cache-Control': 'no-store' } : { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end(to ? undefined : 'Brak instalatora dla tego systemu w najnowszym wydaniu.');
+      } catch (err) {
+        console.error('pobieranie:', (err as Error).message);
+        res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('Pobieranie jest chwilowo niedostępne. Spróbuj za chwilę.');
+      }
+      return;
+    }
     // everything that is not the API is the website
     if (cfg.webDir && req.method === 'GET' && !url.pathname.startsWith('/v1/') && await serveWeb(cfg.webDir, url.pathname, res, req.headers['if-modified-since'])) return;
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'not_found' }));
   }
+
+  const downloads = createDownloads({ repo: cfg.releasesRepo ?? 'Slash3rss/SlashClient', token: cfg.releasesToken, fetchImpl: cfg.fetchImpl ?? fetch });
 
   const server = http.createServer((req, res) => void handle(req, res));
 

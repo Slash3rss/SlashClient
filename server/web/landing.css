@@ -41,6 +41,10 @@ html:has(body.landing) { overflow-x: clip; }
 .lead { font-size: clamp(16px, 2vw, 20px); color: var(--text-2); max-width: 680px; margin: 22px auto 0; }
 .cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 34px; }
 .btn.huge { height: 58px; padding: 0 30px; font-size: 17px; border-radius: 14px; }
+.btn.disabled { cursor: default; filter: saturate(.6); }
+.download-note { margin-top: 16px; color: var(--muted, #8b93a3); font-size: 14px; }
+.download-note a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.download-note a:hover { color: #fff; }
 .btn.ghost { background: rgba(255, 255, 255, .04); border-color: rgba(255, 255, 255, .12); }
 .btn.glow { box-shadow: 0 10px 40px rgba(59, 130, 246, .55), inset 0 1px 0 rgba(255, 255, 255, .25); position: relative; }
 .btn.glow::after { content: ""; position: absolute; inset: -2px; border-radius: 16px; background: linear-gradient(120deg, #60a5fa, #a855f7, #60a5fa); background-size: 200% auto; z-index: -1; filter: blur(14px); opacity: .55; animation: shine 4s linear infinite; }
