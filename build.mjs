@@ -16,15 +16,12 @@ cpSync('src/renderer/style.css', 'dist/renderer/style.css');
 cpSync('build/icons/256x256.png', 'dist/renderer/logo.png');
 cpSync('src/renderer/img', 'dist/renderer/img', { recursive: true });
 
-// SlashClient HUD (hud/, built with Gradle): bundled when it has been built
+// SlashClient HUD (hud/, built with Gradle for every game version): bundled when it has been built
 mkdirSync('dist/hud', { recursive: true });
-const hudLibs = 'hud/build/libs';
-if (existsSync(hudLibs)) {
-  for (const f of readdirSync(hudLibs)) {
-    const m = /^slashclient-hud-(.+)-[\d.]+\.jar$/.exec(f);
-    if (m && !f.includes('-sources')) cpSync(`${hudLibs}/${f}`, `dist/hud/slashclient-hud-${m[1]}.jar`);
-  }
-} else console.warn('hud/build/libs is missing: the launcher is built without SlashClient HUD (cd hud && ./gradlew build)');
+const hudBundle = 'hud/build/bundle';
+if (existsSync(hudBundle)) {
+  for (const f of readdirSync(hudBundle)) if (/^slashclient-hud-.+\.jar$/.test(f)) cpSync(`${hudBundle}/${f}`, `dist/hud/${f}`);
+} else console.warn('hud/build/bundle is missing: the launcher is built without SlashClient HUD (hud/build-all.sh)');
 
 // Fonts and icons are bundled locally so the launcher looks right offline too.
 const fonts = {

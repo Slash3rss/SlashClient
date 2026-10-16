@@ -97,7 +97,7 @@ public final class TestHooks {
 
 	/** Whether the multiplayer screen's button with this translation key can be pressed. */
 	public static boolean buttonActive(String key) {
-		var screen = net.minecraft.client.Minecraft.getInstance().gui.screen();
+		var screen = Compat.screen(net.minecraft.client.Minecraft.getInstance());
 		if (screen == null) return false;
 		for (var w : net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(screen)) {
 			if (w.getMessage().getString().equals(net.minecraft.network.chat.Component.translatable(key).getString())) return w.active;

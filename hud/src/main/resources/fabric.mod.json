@@ -15,8 +15,8 @@
 	"mixins": ["slashclient-hud.mixins.json"],
 	"depends": {
 		"fabricloader": ">=0.19.5",
-		"minecraft": "~${minecraft}",
-		"java": ">=25",
+		"minecraft": "${range}",
+		"java": ">=${java}",
 		"fabric-api": "*"
 	}
 }

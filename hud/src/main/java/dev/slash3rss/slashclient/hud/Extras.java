@@ -27,7 +27,7 @@ public final class Extras {
 	}
 
 	public static boolean zooming() {
-		return cfg().zoom && zoomKey != null && zoomKey.isDown() && Minecraft.getInstance().gui.screen() == null;
+		return cfg().zoom && zoomKey != null && zoomKey.isDown() && Compat.screen(Minecraft.getInstance()) == null;
 	}
 
 	/** Field of view with the zoom applied; called every frame. */
@@ -80,7 +80,7 @@ public final class Extras {
 		while (fullbrightKey != null && fullbrightKey.consumeClick()) {
 			cfg().fullbright = !cfg().fullbright;
 			cfg().save();
-			mc.gui.hud.setOverlayMessage(Component.translatable(cfg().fullbright ? "slashclient-hud.fullbright.on" : "slashclient-hud.fullbright.off"), false);
+			Compat.overlay(mc, Component.translatable(cfg().fullbright ? "slashclient-hud.fullbright.on" : "slashclient-hud.fullbright.off"));
 		}
 	}
 

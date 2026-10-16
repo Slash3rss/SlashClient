@@ -11,7 +11,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 /** Every way to the main menu ends here: our menu instead of the game's, when it is switched on. */
+//#if MC >= 26.2
 @Mixin(Gui.class)
+//#else
+//$ @Mixin(Minecraft.class)
+//#endif
 abstract class GuiMixin {
 	@ModifyVariable(method = "setScreen", at = @At("HEAD"), argsOnly = true)
 	private Screen slashclient$mainMenu(Screen screen) {

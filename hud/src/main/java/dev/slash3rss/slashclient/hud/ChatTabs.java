@@ -71,14 +71,14 @@ public final class ChatTabs {
 
 	/** Sets the game's chat filter for the open tab. */
 	static void apply() {
-		var chat = Minecraft.getInstance().gui.hud.getChat();
+		var chat = Compat.chat(Minecraft.getInstance());
 		if (active < 0 || active >= SlashHud.config.chatTabs.size()) {
 			active = -1;
-			chat.setVisibleMessageFilter(m -> true);
+			Compat.setChatFilter(chat, m -> true);
 			return;
 		}
 		HudConfig.ChatTab tab = SlashHud.config.chatTabs.get(active);
-		chat.setVisibleMessageFilter(m -> matches(tab, m.content().getString()));
+		Compat.setChatFilter(chat, m -> matches(tab, m.content().getString()));
 	}
 
 	/** A new line in chat: tabs that catch it and are not open count it. */

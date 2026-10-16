@@ -239,7 +239,7 @@ public final class Social {
 	private static void toast(String title, String text) {
 		Minecraft mc = Minecraft.getInstance();
 		String shortText = text.length() > 60 ? text.substring(0, 59) + "…" : text;
-		mc.execute(() -> SystemToast.add(mc.gui.toastManager(), SystemToast.SystemToastId.FRIEND_SYSTEM_NOTIFICATION, Component.literal(title), Component.literal(shortText)));
+		mc.execute(() -> SystemToast.add(dev.slash3rss.slashclient.hud.Compat.toasts(mc), dev.slash3rss.slashclient.hud.Compat.friendToast(), Component.literal(title), Component.literal(shortText)));
 	}
 
 	// ---------- actions from the screens (off the render thread) ----------

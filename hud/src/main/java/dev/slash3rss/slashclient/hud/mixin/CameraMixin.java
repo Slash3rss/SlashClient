@@ -7,9 +7,17 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
 /** Zoom: a narrower field of view while the zoom key is held. */
+//#if MC >= 26.1
 @Mixin(Camera.class)
+//#else
+//$ @Mixin(net.minecraft.client.renderer.GameRenderer.class)
+//#endif
 abstract class CameraMixin {
+	//#if MC >= 26.1
 	@ModifyReturnValue(method = "calculateFov", at = @At("RETURN"))
+	//#else
+	//$ @ModifyReturnValue(method = "getFov", at = @At("RETURN"))
+	//#endif
 	private float slashclient$zoom(float fov) {
 		return Extras.zoomFov(fov);
 	}

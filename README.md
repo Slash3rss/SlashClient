@@ -50,15 +50,24 @@ npm run test:launch -- 1.21.4 MojNick
 
 ## SlashClient HUD
 
+Jeden kod dla Minecrafta 1.21.11, 26.1.x, 26.2 i 26.3 (wymaga JDK 25):
+
 ```bash
 cd hud
-./gradlew build              # build/libs/slashclient-hud-26.3-*.jar (wymaga JDK 25)
-./gradlew runClientGameTest  # uruchamia grę, robi zrzuty HUD-a do build/run/clientGameTest/screenshots
+./build-all.sh                              # wszystkie wersje → build/bundle/slashclient-hud-<wersja>.jar
+./gradlew build -Pmc=26.2                   # jedna wersja (versions/26.2.properties)
+./gradlew runClientGameTest -Pmc=1.21.11    # gra z testem; zrzuty w build/run/clientGameTest/screenshots
 ```
 
-`npm run build` dołącza zbudowany jar do launchera (`dist/hud/`). HUD nie trafia do `mods/` gracza: launcher kopiuje
-go do `hud/` w folderze danych i wstrzykuje przy starcie profili Fabric w obsługiwanej wersji przez `-Dfabric.addMods`.
-Gdy profil nie ma własnego Fabric API, launcher pobiera je z Modrinth do `hud/fabric-api/<wersja>/` i wstrzykuje tak samo. Test z linii poleceń: `npm run test:launch -- 26.3 MojNick --fabric`.
+Różnice między wersjami: `versions/<mc>.properties` (wersje, Java, zmiany nazw `rename.`/`replace.`) i gałęzie
+`//#if MC >= 26.2` … `//#else` / `//$ kod` … `//#endif` w kodzie (preprocesor w `build.gradle`); większość siedzi w `Compat.java`.
+
+`npm run build` dołącza zbudowane pliki do launchera (`dist/hud/`). HUD nie trafia do `mods/` gracza: launcher kopiuje
+go do `hud/` w folderze danych i wstrzykuje przy starcie przez `-Dfabric.addMods`. Profile Fabric dostają go wprost, a profile
+vanilla są uruchamiane przez ukryty Fabric Loader (jak w Feather), którego folder modów wskazuje pusty katalog.
+Gdy profil nie ma własnego Fabric API, launcher pobiera je z Modrinth do `hud/fabric-api/<wersja>/` i wstrzykuje tak samo.
+Znajomi i czat w grze idą przez lokalny most launchera (127.0.0.1, klucz na sesję), więc gra nie dostaje tokenu konta.
+Test z linii poleceń: `npm run test:launch -- 26.3 MojNick --fabric`.
 
 ## Testy i wydania
 

@@ -5,7 +5,9 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.model.Model;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.model.geom.ModelPart;
+//#if MC >= 26.2
 import net.minecraft.client.renderer.rendertype.RenderTypes;
+//#endif
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.PlayerModelType;
 import net.minecraft.world.entity.player.PlayerSkin;
@@ -23,16 +25,26 @@ public final class SkinPreview {
 	/** A slight three-quarter view, so the figure has depth. */
 	private static final float BODY_YAW = 15;
 
+	//#if MC >= 26.2
 	private final Model.Simple wide;
 	private final Model.Simple slim;
+	//#else
+	//$ private final net.minecraft.client.model.player.PlayerModel wide;
+	//$ private final net.minecraft.client.model.player.PlayerModel slim;
+	//#endif
 	private final Supplier<PlayerSkin> skin;
 	// smoothed so the head eases after the mouse instead of snapping
 	private float headYaw, headPitch, bodyYaw = BODY_YAW;
 
 	public SkinPreview(Minecraft mc) {
 		var models = mc.getEntityModels();
+		//#if MC >= 26.2
 		wide = new Model.Simple(models.bakeLayer(ModelLayers.PLAYER), RenderTypes::entityTranslucent);
 		slim = new Model.Simple(models.bakeLayer(ModelLayers.PLAYER_SLIM), RenderTypes::entityTranslucent);
+		//#else
+		//$ wide = new net.minecraft.client.model.player.PlayerModel(models.bakeLayer(ModelLayers.PLAYER), false);
+		//$ slim = new net.minecraft.client.model.player.PlayerModel(models.bakeLayer(ModelLayers.PLAYER_SLIM), true);
+		//#endif
 		// the session's skin, fetched in the background; the default skin until it arrives
 		skin = mc.getSkinManager().createLookup(mc.getGameProfile(), false);
 	}
@@ -40,7 +52,7 @@ public final class SkinPreview {
 	/** Draws the figure in the box; the head looks at (mx, my). */
 	public void draw(GuiGraphicsExtractor g, int x, int y, int w, int h, int mx, int my) {
 		PlayerSkin s = skin.get();
-		Model.Simple model = s.model() == PlayerModelType.SLIM ? slim : wide;
+		var model = s.model() == PlayerModelType.SLIM ? slim : wide;
 		float scale = 0.97f * h / MODEL_HEIGHT;
 		// where the eyes are on screen: a little below the top of the box, in the middle
 		float eyesX = x + w / 2f;

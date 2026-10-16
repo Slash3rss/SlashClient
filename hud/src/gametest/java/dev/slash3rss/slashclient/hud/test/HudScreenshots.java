@@ -174,7 +174,11 @@ public class HudScreenshots implements FabricClientGameTest {
 		context.runOnClient(mc -> TestHooks.badgeServer("http://localhost:8787"));
 		context.runOnClient(mc -> TestHooks.defaults());
 		try (var server = context.worldBuilder().createServer(); var connection = server.connect()) {
+			//#if MC >= 26.2
 			connection.waitForChunksRender();
+			//#else
+			//$ context.waitTicks(100);
+			//#endif
 			// the game's own "chat cannot be verified" toast would cover the tab list
 			context.waitTicks(240);
 			context.getInput().holdKey(o -> o.keyPlayerList);

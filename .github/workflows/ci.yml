@@ -26,10 +26,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 25
-      - name: SlashClient HUD (mod Fabric)
+      - name: SlashClient HUD (mod Fabric, every game version)
         working-directory: hud
         shell: bash
-        run: ./gradlew build --no-daemon
+        run: ./build-all.sh
       - run: npm ci
       - run: npm run typecheck
       - run: npm test

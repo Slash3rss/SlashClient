@@ -71,10 +71,10 @@ public class SlashHud implements ClientModInitializer {
 			Extras.tick(mc);
 			Badges.tick(mc);
 			while (edit.consumeClick()) {
-				if (mc.gui.screen() == null) mc.setScreenAndShow(new HudEditScreen());
+				if (Compat.screen(mc) == null) mc.setScreenAndShow(new HudEditScreen());
 			}
 			while (friends.consumeClick()) {
-				if (mc.gui.screen() == null) mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.social.FriendsScreen(null));
+				if (Compat.screen(mc) == null) mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.social.FriendsScreen(null));
 			}
 			MoreModules.Combat.tick(mc);
 			// a new world or server starts a new session
@@ -107,7 +107,7 @@ public class SlashHud implements ClientModInitializer {
 		// under the chat and the tab list, as in other clients: those stay readable over the HUD
 		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, Identifier.fromNamespaceAndPath(ID, "hud"), (g, delta) -> {
 			Minecraft mc = Minecraft.getInstance();
-			if (mc.getDebugOverlay().showDebugScreen() || mc.gui.screen() instanceof HudEditScreen) return;
+			if (mc.getDebugOverlay().showDebugScreen() || Compat.screen(mc) instanceof HudEditScreen) return;
 			drawAll(g, mc, false);
 		});
 	}

@@ -2,7 +2,11 @@ package dev.slash3rss.slashclient.hud.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+//#if MC >= 26.3
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
+//#else
+//$ import com.mojang.blaze3d.pipeline.RenderPipeline;
+//#endif
 import dev.slash3rss.slashclient.hud.PinnedServer;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
@@ -32,7 +36,11 @@ abstract class OnlineServerEntryMixin {
 		return -1;
 	}
 
+	//#if MC >= 26.3
 	@WrapOperation(method = "extractContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
+	//#else
+	//$ @WrapOperation(method = "extractContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
+	//#endif
 	private void slashclient$hideArrows(GuiGraphicsExtractor g, RenderPipeline pipeline, Identifier sprite, int x, int y, int w, int h, Operation<Void> original) {
 		String path = sprite.getPath();
 		boolean up = path.contains("move_up");

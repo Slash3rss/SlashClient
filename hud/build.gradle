@@ -1,36 +1,168 @@
 plugins {
-	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+	// 26.1+ ships without obfuscation (no remapping); older versions use Mojang's mappings
+	id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
+	id 'fabric-loom' version "${loom_version}" apply false
 }
 
+// ---------- which game version: ./gradlew build -Pmc=26.2 (versions/<mc>.properties) ----------
+
+def mc = (project.findProperty('mc') ?: '26.3').toString()
+def vfile = file("versions/${mc}.properties")
+if (!vfile.exists()) throw new GradleException("No versions/${mc}.properties")
+def v = new Properties()
+vfile.withInputStream { v.load(it) }
+def obfuscated = v.getProperty('obfuscated') == 'true'
+def javaLevel = v.getProperty('java').toInteger()
+ext.minecraft_version = v.getProperty('minecraft_version')
+ext.fabric_api_version = v.getProperty('fabric_api_version')
+
+apply plugin: obfuscated ? 'fabric-loom' : 'net.fabricmc.fabric-loom'
+
+// every version builds in its own folder: build/<mc>/libs/slashclient-hud-<mc>-<version>.jar
+layout.buildDirectory = file("build/${mc}")
+
 base {
-	archivesName = "slashclient-hud-${project.minecraft_version}"
+	archivesName = "slashclient-hud-${mc}"
 }
 
 dependencies {
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+	minecraft "com.mojang:minecraft:${minecraft_version}"
+	if (obfuscated) {
+		mappings loom.officialMojangMappings()
+		modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+		modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+	} else {
+		implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+		implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+	}
 }
 
+// ---------- one source tree for all versions ----------
+//
+// Lines between `//#if MC >= 26.2`, `//#elif …`, `//#else` and `//#endif` are kept only for
+// the versions they name. The code for the newest version is written plainly; the other
+// branches are commented out with `//$ ` and come alive when their version is built.
+// `rename.Old=New` in versions/<mc>.properties renames whole words (for API renames),
+// `replace.old=new` replaces exact text (for calls whose name alone is too common).
+
+static int[] parseVersion(String s) {
+	return s.trim().split('\\.').collect { it.toInteger() } as int[]
+}
+
+static int compareVersions(String a, String b) {
+	int[] x = parseVersion(a), y = parseVersion(b)
+	for (int i = 0; i < Math.max(x.length, y.length); i++) {
+		int d = (i < x.length ? x[i] : 0) - (i < y.length ? y[i] : 0)
+		if (d != 0) return Integer.signum(d)
+	}
+	return 0
+}
+
+static boolean condition(String expr, String mc, String where) {
+	return expr.split('&&').every { part ->
+		def m = (part.trim() =~ /^MC\s*(>=|<=|==|!=|>|<)\s*([\d.]+)$/)
+		if (!m.matches()) throw new GradleException("${where}: bad condition '${part.trim()}'")
+		int c = compareVersions(mc, m.group(2))
+		switch (m.group(1)) {
+			case '>=': return c >= 0
+			case '<=': return c <= 0
+			case '>': return c > 0
+			case '<': return c < 0
+			case '==': return c == 0
+			default: return c != 0
+		}
+	}
+}
+
+static String preprocess(String text, String mc, Map<String, String> renames, Map<String, String> replaces, String where) {
+	// a stack of [this branch is on, a branch of this block was already taken]
+	def stack = []
+	def out = new StringBuilder()
+	int n = 0
+	for (String line : text.split('\n', -1)) {
+		n++
+		def t = line.trim()
+		boolean parentOn = stack.every { it[0] }
+		if (t.startsWith('//#if ')) {
+			boolean on = condition(t.substring(6), mc, "${where}:${n}")
+			stack << [on, on]
+			out << '\n'
+			continue
+		}
+		if (t.startsWith('//#elif ')) {
+			if (stack.isEmpty()) throw new GradleException("${where}:${n}: //#elif without //#if")
+			def top = stack[-1]
+			boolean on = !top[1] && condition(t.substring(8), mc, "${where}:${n}")
+			stack[-1] = [on, top[1] || on]
+			out << '\n'
+			continue
+		}
+		if (t == '//#else') {
+			if (stack.isEmpty()) throw new GradleException("${where}:${n}: //#else without //#if")
+			def top = stack[-1]
+			stack[-1] = [!top[1], true]
+			out << '\n'
+			continue
+		}
+		if (t == '//#endif') {
+			if (stack.isEmpty()) throw new GradleException("${where}:${n}: //#endif without //#if")
+			stack.remove(stack.size() - 1)
+			out << '\n'
+			continue
+		}
+		boolean on = stack.every { it[0] }
+		if (!on) {
+			out << '\n'
+			continue
+		}
+		def code = line.replaceFirst(/^(\s*)\/\/\$ ?/, '$1')
+		renames.each { from, to -> code = code.replaceAll("\\b${java.util.regex.Pattern.quote(from)}\\b", java.util.regex.Matcher.quoteReplacement(to)) }
+		replaces.each { from, to -> code = code.replace(from, to) }
+		out << code << '\n'
+	}
+	if (!stack.isEmpty()) throw new GradleException("${where}: //#if without //#endif")
+	return out.substring(0, out.length() - 1)
+}
+
+def renames = v.stringPropertyNames().findAll { it.startsWith('rename.') }.collectEntries { [(it.substring(7)): v.getProperty(it)] }
+// `replace.text=other` replaces exact text anywhere (e.g. a method call with its receiver)
+def replaces = v.stringPropertyNames().findAll { it.startsWith('replace.') }.collectEntries { [(it.substring(8)): v.getProperty(it)] }
+def generated = layout.buildDirectory.dir('preprocessed').get().asFile
+
+// done while configuring, so Loom and the IDE see plain Java folders
+['main', 'gametest'].each { set ->
+	def from = file("src/${set}/java")
+	def to = new File(generated, "${set}/java")
+	project.delete(to)
+	if (!from.exists()) return
+	from.eachFileRecurse(groovy.io.FileType.FILES) { f ->
+		def rel = from.toPath().relativize(f.toPath()).toString()
+		def target = new File(to, rel)
+		target.parentFile.mkdirs()
+		target.text = f.name.endsWith('.java') ? preprocess(f.text, mc, renames, replaces, "src/${set}/java/${rel}") : f.text
+	}
+}
+sourceSets.main.java.srcDirs = [new File(generated, 'main/java')]
+
 processResources {
-	def props = [version: project.version, minecraft: project.minecraft_version]
+	def props = [version: project.version, minecraft: minecraft_version, range: v.getProperty('range'), java: javaLevel]
 	inputs.properties props
-	filesMatching("fabric.mod.json") {
+	filesMatching(["fabric.mod.json", "*.mixins.json"]) {
 		expand props
 	}
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 25
+	it.options.release = javaLevel
 }
 
 java {
-	sourceCompatibility = JavaVersion.VERSION_25
-	targetCompatibility = JavaVersion.VERSION_25
+	sourceCompatibility = JavaVersion.toVersion(javaLevel)
+	targetCompatibility = JavaVersion.toVersion(javaLevel)
 }
 
 // `gradlew runClientGameTest` starts the real game, makes a world and saves screenshots
-// of the HUD and the editor to build/run/clientGameTest/screenshots
+// of the HUD and the editor to build/<mc>/run/clientGameTest/screenshots
 fabricApi {
 	configureTests {
 		createSourceSet = true
@@ -40,6 +172,9 @@ fabricApi {
 		eula = true
 	}
 }
+afterEvaluate {
+	if (sourceSets.findByName('gametest')) sourceSets.gametest.java.srcDirs = [new File(generated, 'gametest/java')]
+}
 
 // the friends test talks to a running launcher: gradlew runClientGameTest -Pbridge=<url> -PbridgeKey=<key>
 if (project.hasProperty('bridge')) {
@@ -47,5 +182,16 @@ if (project.hasProperty('bridge')) {
 		vmArg "-Dslashclient.bridge=${project.property('bridge')}"
 		vmArg "-Dslashclient.bridgeKey=${project.property('bridgeKey')}"
 		vmArg "-Dslashclient.test.friendsOnly=true"
+	}
+}
+
+// every target version gets a copy named after it, for the launcher (dist/hud/slashclient-hud-<target>.jar)
+tasks.register('bundle', Copy) {
+	dependsOn tasks.named(obfuscated ? 'remapJar' : 'jar')
+	def jarFile = tasks.named(obfuscated ? 'remapJar' : 'jar').flatMap { it.archiveFile }
+	def targets = v.getProperty('targets').split(',')*.trim()
+	into rootProject.file('build/bundle')
+	targets.each { target ->
+		from(jarFile) { rename { "slashclient-hud-${target}.jar" } }
 	}
 }

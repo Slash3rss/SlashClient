@@ -1,10 +1,11 @@
 {
 	"required": true,
 	"package": "dev.slash3rss.slashclient.hud.mixin",
-	"compatibilityLevel": "JAVA_25",
+	"compatibilityLevel": "JAVA_${java}",
 	"client": [
 		"CameraMixin",
 		"ChatComponentMixin",
+		"ChatFilterMixin",
 		"EntityRendererMixin",
 		"GuiMixin",
 		"JoinMultiplayerScreenMixin",
