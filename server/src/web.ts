@@ -9,9 +9,9 @@ import path from 'node:path';
 
 const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-  '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.json': 'application/json',
+  '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.json': 'application/json',
 };
-const PAGES: Record<string, string> = { '/': 'index.html', '/admin': 'admin.html', '/admin/': 'admin.html' };
+const PAGES: Record<string, string> = { '/': 'index.html', '/konto': 'konto.html', '/admin': 'admin.html', '/admin/': 'admin.html' };
 
 /** Serves a file of the site; false when there is none (the caller answers 404). */
 export async function serveWeb(webDir: string, pathname: string, res: http.ServerResponse): Promise<boolean> {

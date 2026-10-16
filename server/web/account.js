@@ -1,32 +1,9 @@
-// The page for players: what SlashClient is, and the account (sign in, pick a cape, privacy).
+// The account page (/konto): sign in, pick a cape, privacy, sign out.
 import { $, PROVIDERS, api, avatarEl, capeEl, el, errorText, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
-
-const FEATURES = [
-  ['fa-solid fa-gauge-high', 'HUD jak w Lunarze', 'FPS, ping, CPS, zbroja, efekty, klawisze i dziesiątki innych modułów, ustawiane w edytorze przeciągnij-upuść.'],
-  ['fa-solid fa-user-group', 'Znajomi i czat', 'Statusy, na jakim serwerze grają znajomi, wiadomości w launcherze i w grze.'],
-  ['fa-solid fa-gamepad', 'Zaproszenia do gry', 'Zaproś znajomego jednym kliknięciem; „Dołącz” przenosi go na Twój serwer, nawet gdy gra już działa.'],
-  ['fa-solid fa-wand-magic-sparkles', 'Peleryny i emotki', 'Peleryny widoczne dla graczy z SlashClient i koło emotek pod klawiszem N.'],
-  ['fa-solid fa-chart-column', 'Benchmark', '30 sekund pomiaru w Twoim świecie, porównanie wyników i podpowiedzi, co przyspieszy grę.'],
-  ['fa-solid fa-film', 'Klipy', 'F8 zapisuje ostatnie sekundy gry jako film, bez dodatkowych programów.'],
-  ['fa-solid fa-users-gear', 'Wiele kont', 'Kilka kont Microsoft i offline naraz, skiny i peleryny Minecraft w launcherze.'],
-  ['fa-solid fa-puzzle-piece', 'Mody z Modrinth', 'Wyszukiwarka modów, paczek i zasobów; mody wydajności dobrane do wersji.'],
-];
 
 let me;
 let health = { providers: [], dev: false };
 let cosmetics = { capes: [] };
-
-function renderFeatures() {
-  $('#features').replaceChildren(...FEATURES.map(([i, title, text]) =>
-    el('div', { class: 'glass feature' }, icon(i), el('h3', { textContent: title }), el('p', { textContent: text }))));
-  for (const c of document.querySelectorAll('.hero-art .cape')) c.style.backgroundImage = `url(vendor/capes/${c.dataset.cape}.png)`;
-}
-
-function renderCapesRow() {
-  const capes = cosmetics.capes.length ? cosmetics.capes : [];
-  $('#capes-row').replaceChildren(...capes.map((c) =>
-    el('figure', {}, capeEl(c.id), el('figcaption', {}, c.name, c.exclusive ? el('span', { class: 'chip gold', textContent: 'ekskluzywna' }) : ''))));
-}
 
 function renderNav() {
   $('#nav-account .label').textContent = me ? me.name : 'Zaloguj się';
@@ -102,10 +79,8 @@ async function refresh() {
   me = token.get() ? await api('GET', '/v1/me').catch(() => undefined) : undefined;
   cosmetics = await api('GET', '/v1/cosmetics').catch(() => ({ capes: [] }));
   renderNav();
-  renderCapesRow();
   renderAccount();
 }
 
-renderFeatures();
 health = await api('GET', '/v1/health').catch(() => health);
 refresh().catch((err) => toast(errorText(err), true));
