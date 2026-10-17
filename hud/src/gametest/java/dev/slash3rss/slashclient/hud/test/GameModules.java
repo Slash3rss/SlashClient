@@ -47,13 +47,9 @@ public class GameModules implements FabricClientGameTest {
 			if (Double.parseDouble(st[2]) < 15) throw new AssertionError("TPS looks wrong: " + stats);
 
 			// the SlashClient logo on the tab list in the colours of the ranks
-			for (String rank : new String[] { "admin", "support", "partner" }) {
-				context.runOnClient(mc -> TestHooks.ownRank(rank));
-				context.getInput().holdKey(o -> o.keyPlayerList);
-				context.waitTicks(5);
-				context.takeScreenshot("rank-" + rank);
-				context.getInput().releaseKey(o -> o.keyPlayerList);
-			}
+			for (String rank : new String[] { "admin", "support", "partner" }) context.runOnClient(mc -> TestHooks.ownRank(rank));
+			context.waitTicks(5);
+			context.takeScreenshot("ranks");
 			context.runOnClient(mc -> TestHooks.ownRank(null));
 
 			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::new);

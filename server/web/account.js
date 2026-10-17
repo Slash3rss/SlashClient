@@ -43,7 +43,9 @@ function renderAccount() {
     el('div', { class: 'row' }, avatarEl(me, true),
       el('div', { class: 'grow' }, el('h3', { textContent: me.name }), el('span', { class: 'muted', textContent: `@${me.handle}` }))),
     el('div', { class: 'row' }, ...me.providers.filter((p) => p !== 'minecraft').map((p) => el('span', { class: 'chip' }, icon((PROVIDERS[p] ?? ['', 'fa-solid fa-flask'])[1]), (PROVIDERS[p] ?? ['Test'])[0])),
-      me.admin ? el('span', { class: 'chip blue' }, icon('fa-solid fa-shield-halved'), 'admin') : ''));
+      me.admin ? el('span', { class: 'chip red' }, icon('fa-solid fa-shield-halved'), 'Admin') : '',
+      me.badge === 'support' ? el('span', { class: 'chip sky' }, icon('fa-solid fa-certificate'), 'Support') : '',
+      me.badge === 'partner' ? el('span', { class: 'chip gold' }, icon('fa-solid fa-certificate'), 'Partner') : ''));
   const share = el('input', { type: 'checkbox', checked: me.showServer });
   share.addEventListener('change', async () => {
     const u = await guard(() => api('POST', '/v1/me', { showServer: share.checked }));
@@ -51,7 +53,7 @@ function renderAccount() {
   });
   // the Minecraft accounts of this account; one can go while another way to sign in is left
   if (me.minecraft?.length) {
-    profile.append(el('div', { class: 'row small' }, el('span', { class: 'muted', textContent: 'Konta Minecraft:' }),
+    profile.append(el('div', { class: 'row small mc-accounts' }, el('span', { class: 'muted', textContent: 'Minecraft:' }),
       ...me.minecraft.map((mc) => el('button', { class: 'chip', title: 'Kliknij, żeby odłączyć', onclick: async () => {
         if (!confirm(`Odłączyć konto Minecraft ${mc.name}?`)) return;
         const u = await guard(() => api('DELETE', `/v1/me/minecraft/${mc.uuid}`));

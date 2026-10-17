@@ -89,6 +89,9 @@ public final class TestHooks {
 	public static void ownRank(String rank) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
 		Badges.setRank(mc.player.getUUID(), rank);
+		// the name as the tab list and the nametag show it, written to the chat so the screenshot has it
+		if (rank != null) Compat.chat(mc).addClientSystemMessage(net.minecraft.network.chat.Component.literal(rank + ": ")
+			.append(Badges.decorate(mc.player.getUUID(), mc.player.getName())));
 	}
 
 	public static boolean moduleOn(String id) {

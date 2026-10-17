@@ -12,7 +12,11 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 public class WebsiteShots implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
-		if (!Boolean.getBoolean("slashclient.test.shots")) return;
+		// without -Pshots there is nothing to do; every test has to end on the vanilla title screen
+		if (!Boolean.getBoolean("slashclient.test.shots")) {
+			context.runOnClient(mc -> TestHooks.vanillaMenu());
+			return;
+		}
 		context.getInput().resizeWindow(1920, 1080);
 		context.runOnClient(mc -> TestHooks.guiScale(3));
 		context.runOnClient(mc -> TestHooks.testSkin("slash3rss"));

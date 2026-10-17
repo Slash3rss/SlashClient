@@ -140,10 +140,10 @@ async function loadUsers() {
 }
 
 const badges = (u) => el('div', { class: 'row' },
-  u.banned ? el('span', { class: 'chip red' }, icon('fa-solid fa-ban'), 'zablokowany') : '',
-  u.role === 'admin' || u.configAdmin ? el('span', { class: 'chip red' }, icon('fa-solid fa-shield-halved'), 'admin') : '',
+  u.banned ? el('span', { class: 'chip red' }, icon('fa-solid fa-ban'), 'Zablokowany') : '',
+  u.role === 'admin' || u.configAdmin ? el('span', { class: 'chip red' }, icon('fa-solid fa-shield-halved'), 'Admin') : '',
   RANKS[u.rank] ? el('span', { class: `chip ${RANKS[u.rank][1]}` }, icon('fa-solid fa-certificate'), RANKS[u.rank][0]) : '',
-  !u.banned && !(u.role === 'admin' || u.configAdmin) ? el('span', { class: 'chip green', textContent: 'aktywny' }) : '');
+  !u.banned && !(u.role === 'admin' || u.configAdmin) ? el('span', { class: 'chip green', textContent: 'Aktywny' }) : '');
 
 function closeDrawer() {
   document.querySelector('.drawer')?.remove();
