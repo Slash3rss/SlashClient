@@ -52,6 +52,19 @@ describe('shared logs', () => {
     assert.equal((await call('POST', '/v1/logs', undefined, undefined, Buffer.from('  \n'))).body.error, 'empty');
   });
 
+  it('lists the logs for the admin, who can take one down', async () => {
+    const boss = await login('Szef');
+    const player = await login('Logowiec');
+    const id = (await call('POST', '/v1/logs', player.token, undefined, Buffer.from('mój log'))).body.id;
+    assert.equal((await call('GET', '/v1/admin/logs', player.token)).body.error, 'not_admin');
+    const list = (await call('GET', '/v1/admin/logs?q=logowiec', boss.token)).body;
+    assert.equal(list.total, 1);
+    assert.equal(list.logs[0].id, id);
+    assert.equal(list.logs[0].ownerHandle, 'Logowiec');
+    assert.equal((await call('DELETE', `/v1/admin/logs/${id}`, boss.token)).body.ok, true);
+    assert.equal((await call('GET', `/v1/logs/${id}`)).status, 404);
+  });
+
   it('refuses a too big log', async () => {
     const res = await call('POST', '/v1/logs', undefined, undefined, Buffer.alloc(4 * 1024 * 1024 + 10, 97));
     assert.equal(res.status, 413);

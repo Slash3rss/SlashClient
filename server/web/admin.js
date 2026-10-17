@@ -6,12 +6,14 @@ const TABS = [
   ['users', 'Konta', 'fa-solid fa-users'],
   ['cosmetics', 'Kosmetyki', 'fa-solid fa-wand-magic-sparkles'],
   ['partners', 'Partnerzy', 'fa-solid fa-handshake'],
+  ['logs', 'Logi graczy', 'fa-solid fa-file-lines'],
   ['log', 'Dziennik', 'fa-solid fa-clock-rotate-left'],
 ];
 const ACTIONS = {
   ban: 'zablokował(a)', unban: 'odblokował(a)', make_admin: 'nadał(a) admina', remove_admin: 'odebrał(a) admina',
   set_cape: 'zmienił(a) pelerynę', logout: 'wylogował(a)', delete: 'usunął(ęła) konto', cape_settings: 'zmienił(a) ustawienia peleryny',
   grant: 'przyznał(a) pelerynę', revoke: 'odebrał(a) pelerynę',
+  log_remove: 'usunął(ęła) log', bug_status: 'zmienił(a) status zgłoszenia', bug_remove: 'usunął(ęła) zgłoszenie',
   partner_add: 'dodał(a) serwer partnerski', partner_edit: 'zmienił(a) serwer partnerski', partner_remove: 'usunął(ęła) serwer partnerski',
   partner_background: 'zmienił(a) tło serwera', set_rank: 'zmienił(a) rangę',
 };
@@ -73,7 +75,7 @@ function layout() {
     el('button', { class: 'icon-btn', title: 'Wyloguj', onclick: async () => { await signOut(); me = undefined; gate(); } }, icon('fa-solid fa-right-from-bracket'))));
   const main = el('main', { class: 'main', id: 'main' });
   $('#root').replaceChildren(el('div', { class: 'admin' }, side, main));
-  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, partners: partnersPage, log: logPage })[tab]?.();
+  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, partners: partnersPage, logs: logsPage, log: logPage })[tab]?.();
 }
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);
@@ -290,6 +292,47 @@ async function partnersPage() {
     el('div', { class: 'partner-list' }, ...(cards.length ? cards : [el('p', { class: 'muted', textContent: 'Nie ma jeszcze serwerów partnerskich.' })])));
 }
 
+// ---------- players' logs ----------
+
+const logsState = { q: '', offset: 0 };
+/** 1 log, 3 logi, 5 logów. */
+const plural = (n, one, few, many) => (n === 1 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? few : many);
+
+async function logsPage() {
+  const q = el('input', { type: 'search', placeholder: 'Szukaj po nicku albo id logu…', value: logsState.q });
+  const box = el('div', { class: 'glass card' }, el('p', { class: 'muted', textContent: 'Wczytuję…' }));
+  let timer;
+  q.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { logsState.q = q.value.trim(); logsState.offset = 0; load(); }, 250);
+  });
+  $('#main').replaceChildren(head('Logi graczy', q), box);
+
+  async function load() {
+    const res = await guard(() => api('GET', `/v1/admin/logs?q=${encodeURIComponent(logsState.q)}&offset=${logsState.offset}`));
+    if (!res) return;
+    const rows = res.logs.map((l) => el('tr', {},
+      el('td', { title: fmtDate(l.createdAt), textContent: ago(l.createdAt) }),
+      el('td', { textContent: l.ownerHandle ? `@${l.ownerHandle}` : l.owner ? 'usunięte konto' : 'bez konta' }),
+      el('td', { class: 'hide-sm', textContent: `${l.lines} linii · ${(l.size / 1024).toFixed(0)} KB` }),
+      el('td', {}, l.bugs ? el('span', { class: 'chip blue', title: 'Zgłoszenia z tym logiem' }, icon('fa-solid fa-bug'), String(l.bugs)) : el('span', { class: 'muted', textContent: '—' })),
+      el('td', { class: 'row' },
+        el('a', { class: 'btn', href: `/logi/${l.id}`, target: '_blank', rel: 'noopener' }, icon('fa-solid fa-up-right-from-square'), el('span', { class: 'hide-sm', textContent: ' Otwórz' })),
+        el('button', { class: 'icon-btn danger', title: 'Usuń log', onclick: async () => {
+          if (!confirm(`Usunąć log ${l.id}? Link przestanie działać.`)) return;
+          if (await guard(() => api('DELETE', `/v1/admin/logs/${l.id}`))) { toast('Usunięto log'); load(); }
+        } }, icon('fa-solid fa-trash')))));
+    const pages = el('div', { class: 'row pager' });
+    if (res.offset > 0) pages.append(el('button', { onclick: () => { logsState.offset = Math.max(0, res.offset - res.limit); load(); } }, icon('fa-solid fa-chevron-left'), 'Nowsze'));
+    pages.append(el('span', { class: 'muted small', textContent: `${res.total} ${plural(res.total, 'log', 'logi', 'logów')} · trzymane ${res.days} dni` }));
+    if (res.offset + res.limit < res.total) pages.append(el('button', { onclick: () => { logsState.offset += res.limit; load(); } }, 'Starsze', icon('fa-solid fa-chevron-right')));
+    box.replaceChildren(res.logs.length
+      ? el('table', {}, el('thead', {}, el('tr', {}, el('th', { textContent: 'Kiedy' }), el('th', { textContent: 'Kto' }), el('th', { class: 'hide-sm', textContent: 'Rozmiar' }), el('th', { textContent: 'Zgłoszenia' }), el('th', { textContent: '' }))), el('tbody', {}, ...rows))
+      : el('p', { class: 'muted', textContent: logsState.q ? 'Nic nie pasuje.' : 'Gracze nie wysłali jeszcze żadnego logu.' }), pages);
+  }
+  load();
+}
+
 // ---------- log ----------
 
 async function logPage() {
@@ -300,7 +343,7 @@ async function logPage() {
   const rows = await Promise.all(res.entries.map(async (e) => el('tr', {},
     el('td', { textContent: fmtDate(e.at) }),
     el('td', { textContent: `@${await nameOf(e.admin)}` }),
-    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' ? capeNames[e.target] ?? e.target : e.action.startsWith('partner') ? e.target : `@${e.target}` })),
+    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' ? capeNames[e.target] ?? e.target : /^(partner|log_|bug_)/.test(e.action) ? e.target : `@${e.target}` })),
     el('td', { class: 'log-detail', textContent: ['grant', 'revoke', 'set_cape'].includes(e.action) ? capeNames[e.detail] ?? e.detail : e.detail }))));
   $('#main').replaceChildren(head('Dziennik'),
     el('div', { class: 'glass card' }, res.entries.length

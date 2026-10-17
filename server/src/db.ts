@@ -553,6 +553,18 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
     return this.db.prepare('SELECT id, owner, size, lines, created_at AS createdAt FROM logs WHERE id = ?').get(id) as { id: string; owner: string; size: number; lines: number; createdAt: number } | undefined;
   }
 
+  /** Shared logs for the admin panel, newest first, with who sent them and the reports that point at them. */
+  logs(query: string, limit: number, offset: number): { logs: { id: string; owner: string; ownerHandle: string | null; size: number; lines: number; createdAt: number; bugs: number }[]; total: number } {
+    const like = `%${query.toLowerCase().replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
+    const where = `WHERE (? = '' OR lower(l.id) LIKE ? ESCAPE '\\' OR lower(coalesce(u.handle, '')) LIKE ? ESCAPE '\\')`;
+    const args = [query, like, like];
+    const total = (this.db.prepare(`SELECT COUNT(*) AS n FROM logs l LEFT JOIN users u ON u.uuid = l.owner ${where}`).get(...args) as { n: number }).n;
+    const rows = this.db.prepare(`SELECT l.id, l.owner, u.handle AS ownerHandle, l.size, l.lines, l.created_at AS createdAt,
+      (SELECT COUNT(*) FROM bugs b WHERE b.log_id = l.id) AS bugs
+      FROM logs l LEFT JOIN users u ON u.uuid = l.owner ${where} ORDER BY l.created_at DESC LIMIT ? OFFSET ?`).all(...args, limit, offset) as unknown as { id: string; owner: string; ownerHandle: string | null; size: number; lines: number; createdAt: number; bugs: number }[];
+    return { logs: rows, total };
+  }
+
   /** Logs older than `before`, to remove with their files. */
   oldLogs(before: number): string[] {
     return (this.db.prepare('SELECT id FROM logs WHERE created_at < ?').all(before) as { id: string }[]).map((r) => r.id);

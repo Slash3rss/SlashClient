@@ -80,6 +80,23 @@ export function trackerRoutes(ctx: TrackerContext): { routes: [string, RegExp, H
       return { id, size: log.size, lines: log.lines, createdAt: log.createdAt, expiresAt: log.createdAt + LOG_DAYS * 86_400_000, text: (await unpack(data)).toString('utf8') };
     }],
 
+    // the admin panel: every log players sent, and taking one down
+    ['GET', /^\/v1\/admin\/logs$/, (req, _p, url) => {
+      const me = ctx.authed(req);
+      if (!ctx.isAdmin(me)) ctx.fail(403, 'not_admin');
+      const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0);
+      return { ...db.logs(str(url.searchParams.get('q'), 60), 50, offset), offset, limit: 50, days: LOG_DAYS };
+    }],
+    ['DELETE', /^\/v1\/admin\/logs\/(\w+)$/, async (req, [id]) => {
+      const me = ctx.authed(req);
+      if (!ctx.isAdmin(me)) ctx.fail(403, 'not_admin');
+      if (!LOG_ID.test(id) || !db.sharedLog(id)) ctx.fail(404, 'not_found');
+      await rm(fileOf(id), { force: true });
+      db.removeLog(id);
+      db.log(me, 'log_remove', id);
+      return { ok: true };
+    }],
+
     // ---- bugs ----
     ['GET', /^\/v1\/bugs$/, (_req, _p, url) => {
       const status = url.searchParams.get('status') ?? '';
