@@ -1,11 +1,13 @@
 import { createHash, randomBytes } from 'node:crypto';
 import http from 'node:http';
+import path from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { Db, type User } from './db.ts';
 import { PROVIDERS, type DeviceStart, type Identity, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, type Presence } from './presence.ts';
 import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, mayWear, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
+import { partnerRoutes } from './partners.ts';
 import { serveWeb } from './web.ts';
 import { createDownloads, isDownloadOs } from './downloads.ts';
 
@@ -280,6 +282,13 @@ export function createApp(cfg: Config) {
   }
 
   type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
+  const partners = partnerRoutes({
+    db, authed, admin, body, dir: path.join(path.dirname(cfg.dbFile), 'partners'),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
   const routes: [string, RegExp, Handler][] = [
     // the cosmetics one can pick: switched-off ones are left out, exclusive and rank ones say whether they are yours
     ['GET', /^\/v1\/cosmetics$/, (req) => {
@@ -629,6 +638,7 @@ export function createApp(cfg: Config) {
       if (at) push(other, { type: 'read', by: me, at });
       return { ok: true };
     }],
+    ...partners.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins,
       fail: (status, code) => {
@@ -641,6 +651,20 @@ export function createApp(cfg: Config) {
   async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
     const url = new URL(req.url ?? '/', 'http://localhost');
     res.setHeader('Cache-Control', 'no-store');
+
+    // a partner server's picture: the address carries its version, so it may be kept for long
+    const picture = /^\/v1\/partners\/(\w+)\/background$/.exec(url.pathname);
+    if (req.method === 'GET' && picture) {
+      const found = await partners.picture(picture[1]);
+      if (!found) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'not_found' }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': found.type, 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' });
+      res.end(found.data);
+      return;
+    }
 
     // the browser lands here after the provider; it shows a short page and the launcher picks the result up
     const callback = /^\/v1\/auth\/(discord|microsoft|google|github)\/callback$/.exec(url.pathname);

@@ -29,10 +29,34 @@ export async function api(method, path, body) {
   return data;
 }
 
+/** Sends a picture (PNG or JPG) as it is, for a partner server's background. */
+export async function uploadPicture(path, file) {
+  if (file.size > 3 * 1024 * 1024) throw new ApiError('too_large', 413);
+  const headers = { 'Content-Type': file.type || 'application/octet-stream' };
+  if (token.get()) headers.Authorization = `Bearer ${token.get()}`;
+  const res = await fetch(path, { method: 'PUT', headers, body: file });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(data.error ?? 'server_error', res.status);
+  return data;
+}
+
+/** A partner server's card: its background as it shows behind the server in the game's list. */
+export function partnerBanner(p, extra = []) {
+  const banner = el('div', { class: `partner-banner${p.background ? '' : ' empty'}` },
+    el('div', { class: 'partner-text' }, el('b', { textContent: p.name || p.address }), el('small', { textContent: p.address })), ...extra);
+  if (p.background) banner.style.backgroundImage = `linear-gradient(90deg, rgba(0,0,0,.65), rgba(0,0,0,.15)), url("${p.background}")`;
+  return banner;
+}
+
 const ERRORS = {
   unauthorized: 'Sesja wygasła, zaloguj się ponownie.',
   banned: 'To konto jest zablokowane.',
   not_admin: 'To konto nie ma dostępu do panelu admina.',
+  bad_picture: 'To nie jest obrazek PNG ani JPG.',
+  too_large: 'Obrazek jest za duży (do 3 MB).',
+  bad_server: 'To nie wygląda na adres serwera.',
+  exists: 'Ten serwer już jest na liście.',
+  not_owner: 'To nie Twój serwer.',
   bad_name: 'Nick: 3–16 znaków, litery, cyfry i _.',
   bad_cape: 'Tej peleryny nie możesz teraz założyć.',
   provider_disabled: 'Ten sposób logowania jest wyłączony.',

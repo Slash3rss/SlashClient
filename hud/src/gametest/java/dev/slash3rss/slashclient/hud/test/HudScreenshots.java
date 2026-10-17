@@ -72,6 +72,11 @@ public class HudScreenshots implements FabricClientGameTest {
 		context.getInput().setCursorPos(150, 170);
 		context.waitTicks(5);
 		context.takeScreenshot("servers-second-hover");
+		// a partner server's picture behind its row
+		context.runOnClient(mc -> TestHooks.samplePartner("skyup.pl"));
+		context.getInput().setCursorPos(10, 10);
+		context.waitTicks(40);
+		context.takeScreenshot("servers-partner");
 		context.setScreen(() -> null);
 		context.waitTicks(5);
 

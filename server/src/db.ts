@@ -111,6 +111,7 @@ export class Db {
 CREATE TABLE IF NOT EXISTS cosmetics (id TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1, exclusive INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS cape_grants (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, cape TEXT NOT NULL, PRIMARY KEY (uuid, cape));
 CREATE TABLE IF NOT EXISTS device_keys (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, device TEXT NOT NULL, pub TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (uuid, device));
+CREATE TABLE IF NOT EXISTS partners (id TEXT PRIMARY KEY, address TEXT NOT NULL UNIQUE, name TEXT NOT NULL DEFAULT '', owner TEXT NOT NULL DEFAULT '', background TEXT NOT NULL DEFAULT '', updated_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, admin TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '');
 `);
   }
@@ -502,5 +503,35 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
     const rows = this.db.prepare(`SELECT CASE WHEN from_uuid = ? THEN to_uuid ELSE from_uuid END AS other, MAX(created_at) AS at
       FROM messages WHERE from_uuid = ? OR to_uuid = ? GROUP BY other`).all(uuid, uuid, uuid) as { other: string; at: number }[];
     return Object.fromEntries(rows.map((r) => [r.other, Number(r.at)]));
+  }
+
+  // ---- partner servers ----
+
+  partners(): import('./partners.ts').Partner[] {
+    return (this.db.prepare('SELECT id, address, name, owner, background, updated_at AS updatedAt FROM partners ORDER BY address').all() as unknown) as import('./partners.ts').Partner[];
+  }
+
+  partner(id: string): import('./partners.ts').Partner | undefined {
+    return this.db.prepare('SELECT id, address, name, owner, background, updated_at AS updatedAt FROM partners WHERE id = ?').get(id) as import('./partners.ts').Partner | undefined;
+  }
+
+  partnerByAddress(address: string): import('./partners.ts').Partner | undefined {
+    return this.db.prepare('SELECT id, address, name, owner, background, updated_at AS updatedAt FROM partners WHERE address = ?').get(address) as import('./partners.ts').Partner | undefined;
+  }
+
+  addPartner(p: import('./partners.ts').Partner) {
+    this.db.prepare('INSERT INTO partners (id, address, name, owner, background, updated_at) VALUES (?, ?, ?, ?, ?, ?)').run(p.id, p.address, p.name, p.owner, p.background, p.updatedAt);
+  }
+
+  updatePartner(id: string, name: string, owner: string) {
+    this.db.prepare('UPDATE partners SET name = ?, owner = ?, updated_at = ? WHERE id = ?').run(name, owner, Date.now(), id);
+  }
+
+  setPartnerBackground(id: string, background: string) {
+    this.db.prepare('UPDATE partners SET background = ?, updated_at = ? WHERE id = ?').run(background, Date.now(), id);
+  }
+
+  removePartner(id: string) {
+    this.db.prepare('DELETE FROM partners WHERE id = ?').run(id);
   }
 }

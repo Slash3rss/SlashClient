@@ -22,7 +22,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * No move arrows that would move SkyUp.pl: none down on SkyUp.pl itself, none up on the
+ * Partner servers get their picture behind them. No move arrows that would move SkyUp.pl: none down on SkyUp.pl itself, none up on the
  * server right under it. Clicks and Shift+arrow keys go through swap(), stopped here too.
  */
 @Mixin(ServerSelectionList.OnlineServerEntry.class)
@@ -48,6 +48,20 @@ abstract class OnlineServerEntryMixin {
 		if (down && PinnedServer.is(serverData)) return;
 		if (up && slashclient$index() == 1 && PinnedServer.is(screen.getServers().get(0))) return;
 		original.call(g, pipeline, sprite, x, y, w, h);
+	}
+
+	/** A partner server's picture behind its row (PartnerServers), under the game's icon and text. */
+	@Inject(method = "extractContent", at = @At("HEAD"))
+	private void slashclient$partnerBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
+		var entry = (ServerSelectionList.Entry) (Object) this;
+		dev.slash3rss.slashclient.hud.PartnerServers.drawBehind(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
+	}
+
+	/** The "Partner" badge on top of the row. */
+	@Inject(method = "extractContent", at = @At("TAIL"))
+	private void slashclient$partnerBadge(GuiGraphicsExtractor g, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
+		var entry = (ServerSelectionList.Entry) (Object) this;
+		dev.slash3rss.slashclient.hud.PartnerServers.drawBadge(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
 	}
 
 	@Inject(method = "swap", at = @At("HEAD"), cancellable = true)

@@ -25,6 +25,7 @@ Ten sam serwer pokazuje stronę SlashClient (pliki z `web/`):
   - konta: wyszukiwanie, blokada (wylogowuje od razu i blokuje ponowne logowanie), wylogowanie wszędzie, rola admina, zmiana peleryny, usunięcie konta z wiadomościami;
   - kosmetyki: włączanie i wyłączanie peleryn oraz peleryny ekskluzywne, przydzielane wybranym graczom;
   - dziennik wszystkich zmian zrobionych w panelu.
+  - partnerzy: serwery partnerskie z tłem (PNG lub JPG), które SlashClient HUD rysuje za tym serwerem na liście serwerów w grze, z plakietką „Partner”; właściciel (konto partnera) zmienia tło sam na /konto. Obrazki leżą w `data/partners` obok bazy.
 
 ### Pobieranie launchera
 

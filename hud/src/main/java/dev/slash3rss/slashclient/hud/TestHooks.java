@@ -420,4 +420,14 @@ public final class TestHooks {
 	public static void renderDistance(int chunks) {
 		net.minecraft.client.Minecraft.getInstance().options.renderDistance().set(chunks);
 	}
+
+	/** SkyUp.pl (or any address) as a partner server with a made-up picture, for the server list test. */
+	public static void samplePartner(String address) {
+		// with -PsocialUrl=<url> the real way: the list and the picture from that SlashClient server
+		String server = System.getProperty("slashclient.test.socialUrl", "");
+		if (!server.isEmpty()) {
+			Badges.server = server;
+			PartnerServers.refresh();
+		} else PartnerServers.sampleForTest(address);
+	}
 }

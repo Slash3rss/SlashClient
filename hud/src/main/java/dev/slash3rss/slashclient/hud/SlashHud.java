@@ -73,6 +73,8 @@ public class SlashHud implements ClientModInitializer {
 		});
 		// the game's own menu gets a way back to ours
 		ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
+			// the server list: partner servers' pictures, fresh enough
+			if (screen instanceof net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen) PartnerServers.refresh();
 			// the game's own pause menu gets a way back to ours too
 			if (screen instanceof net.minecraft.client.gui.screens.PauseScreen pause && pause.showsPauseMenu()) {
 				Screens.getWidgets(screen).add(Button.builder(Component.translatable("slashclient-hud.menu.oursPause"), b -> {

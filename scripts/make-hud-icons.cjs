@@ -28,7 +28,7 @@ const ICONS = {
   'm-screenshot': 'camera', 'm-chatstack': 'layer-group', 'm-chatcopy': 'copy', 'm-chatsearch': 'magnifying-glass',
   'm-advancements': 'trophy', 'm-stats': 'chart-simple', 'm-pause': 'pause', 'm-accounts': 'user-gear',
   'm-scoreboard': 'list-ol', 'm-bossbar': 'skull', 'm-tablist': 'table-list', 'm-titles': 'heading', 'm-nametag': 'tag',
-  'm-benchmark': 'chart-column', 'm-sprint': 'person-running', 'm-emotes': 'face-smile', 'm-clips': 'film',
+  'm-benchmark': 'chart-column', 'm-sprint': 'person-running', 'm-emotes': 'face-smile', 'm-clips': 'film', 'partner': 'handshake',
 };
 
 /** Size of the glyph inside the 64×64 square, matching the icons already there. */

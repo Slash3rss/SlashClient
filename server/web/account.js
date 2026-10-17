@@ -1,5 +1,5 @@
 // The account page (/konto): sign in, pick a cape, privacy, sign out.
-import { $, PROVIDERS, SLOTS, api, avatarEl, capeEl, cosmeticEl, el, errorText, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
+import { $, partnerBanner, uploadPicture, PROVIDERS, SLOTS, api, avatarEl, capeEl, cosmeticEl, el, errorText, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 
 let me;
 let health = { providers: [], dev: false };
@@ -110,6 +110,27 @@ function renderAccount() {
       character?.loadout ? el('button', { onclick: () => send({ own: false }, `${character.name} nosi teraz zestaw całego konta.`) }, icon('fa-solid fa-rotate-left'), 'Jak całe konto') : '') : '',
     tabs, pick);
   $('#account').replaceChildren(el('div', { class: 'account' }, profile, capes));
+  renderPartners();
+}
+
+/** A partner account's own servers: the background shown behind them in the game's server list. */
+async function renderPartners() {
+  const res = await api('GET', '/v1/me/partners').catch(() => undefined);
+  if (!res?.partners.length) return;
+  const section = el('div', { class: 'glass card partner-own' }, el('h3', { textContent: 'Twój serwer partnerski' }),
+    el('p', { class: 'muted small', textContent: 'Tło widać za Twoim serwerem na liście serwerów w grze, u graczy z SlashClient. Najlepiej szeroki obrazek, np. 1200×120 (PNG lub JPG, do 3 MB).' }));
+  for (const p of res.partners) {
+    const input = el('input', { type: 'file', accept: 'image/png,image/jpeg', class: 'hidden' });
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      input.value = '';
+      if (file && await guard(() => uploadPicture(`/v1/me/partners/${p.id}/background`, file))) { toast('Tło zapisane.'); renderAccount(); }
+    });
+    section.append(partnerBanner(p), el('div', { class: 'row' },
+      el('label', { class: 'btn' }, icon('fa-solid fa-image'), p.background ? 'Zmień tło' : 'Wgraj tło', input),
+      p.background ? el('button', { onclick: async () => { if (await guard(() => api('DELETE', `/v1/me/partners/${p.id}/background`))) renderAccount(); } }, icon('fa-solid fa-eraser'), 'Usuń tło') : ''));
+  }
+  $('#account').append(section);
 }
 
 async function refresh() {

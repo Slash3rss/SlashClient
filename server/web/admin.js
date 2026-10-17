@@ -1,16 +1,19 @@
 // The admin panel: numbers, accounts (ban, sign out, role, cape, delete), cosmetics and the log.
-import { $, PROVIDERS, SLOTS, ago, api, avatarEl, capeEl, cosmeticEl, el, errorText, fmtDate, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
+import { $, PROVIDERS, partnerBanner, uploadPicture, SLOTS, ago, api, avatarEl, capeEl, cosmeticEl, el, errorText, fmtDate, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 
 const TABS = [
   ['dashboard', 'Pulpit', 'fa-solid fa-chart-line'],
   ['users', 'Konta', 'fa-solid fa-users'],
   ['cosmetics', 'Kosmetyki', 'fa-solid fa-wand-magic-sparkles'],
+  ['partners', 'Partnerzy', 'fa-solid fa-handshake'],
   ['log', 'Dziennik', 'fa-solid fa-clock-rotate-left'],
 ];
 const ACTIONS = {
   ban: 'zablokował(a)', unban: 'odblokował(a)', make_admin: 'nadał(a) admina', remove_admin: 'odebrał(a) admina',
   set_cape: 'zmienił(a) pelerynę', logout: 'wylogował(a)', delete: 'usunął(ęła) konto', cape_settings: 'zmienił(a) ustawienia peleryny',
-  grant: 'przyznał(a) pelerynę', revoke: 'odebrał(a) pelerynę', set_rank: 'zmienił(a) rangę',
+  grant: 'przyznał(a) pelerynę', revoke: 'odebrał(a) pelerynę',
+  partner_add: 'dodał(a) serwer partnerski', partner_edit: 'zmienił(a) serwer partnerski', partner_remove: 'usunął(ęła) serwer partnerski',
+  partner_background: 'zmienił(a) tło serwera', set_rank: 'zmienił(a) rangę',
 };
 /** Ranks: the colour of the SlashClient logo next to the name in game (admins are red without one). */
 const RANKS = { support: ['Support', 'sky'], partner: ['Partner', 'gold'] };
@@ -70,7 +73,7 @@ function layout() {
     el('button', { class: 'icon-btn', title: 'Wyloguj', onclick: async () => { await signOut(); me = undefined; gate(); } }, icon('fa-solid fa-right-from-bracket'))));
   const main = el('main', { class: 'main', id: 'main' });
   $('#root').replaceChildren(el('div', { class: 'admin' }, side, main));
-  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, log: logPage })[tab]?.();
+  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, partners: partnersPage, log: logPage })[tab]?.();
 }
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);
@@ -239,6 +242,54 @@ async function cosmeticsPage() {
     })));
 }
 
+// ---------- partner servers ----------
+
+/** A file picker that sends the chosen picture to `path`. */
+function pictureButton(label, path, done) {
+  const input = el('input', { type: 'file', accept: 'image/png,image/jpeg', class: 'hidden' });
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    input.value = '';
+    if (file && await guard(() => uploadPicture(path, file))) done();
+  });
+  return el('label', { class: 'btn' }, icon('fa-solid fa-image'), label, input);
+}
+
+async function partnersPage() {
+  const res = await guard(() => api('GET', '/v1/admin/partners'));
+  if (!res) return;
+  const address = el('input', { type: 'text', placeholder: 'Adres, np. skyup.pl' });
+  const name = el('input', { type: 'text', placeholder: 'Nazwa (opcjonalnie)', maxLength: 48 });
+  const owner = el('input', { type: 'text', placeholder: '@właściciel (opcjonalnie)' });
+  const add = el('form', { class: 'glass card row partner-add', onsubmit: async (e) => {
+    e.preventDefault();
+    if (await guard(() => api('POST', '/v1/admin/partners', { address: address.value, name: name.value, owner: owner.value }))) { toast('Dodano serwer partnerski.'); partnersPage(); }
+  } }, address, name, owner, el('button', { type: 'submit', class: 'primary' }, icon('fa-solid fa-plus'), 'Dodaj'));
+
+  const cards = res.partners.map((p) => {
+    const ownerInput = el('input', { type: 'text', value: p.owner ? `@${p.owner}` : '', placeholder: '@właściciel' });
+    const save = el('form', { class: 'row', onsubmit: async (e) => {
+      e.preventDefault();
+      if (await guard(() => api('POST', `/v1/admin/partners/${p.id}`, { owner: ownerInput.value }))) { toast('Zapisano.'); partnersPage(); }
+    } }, el('small', { class: 'muted', textContent: 'Właściciel (konto partnera) może sam zmieniać tło na stronie Konto:' }), ownerInput, el('button', { type: 'submit', class: 'icon-btn', title: 'Zapisz' }, icon('fa-solid fa-check')));
+    return el('div', { class: 'glass card partner-card' },
+      partnerBanner(p),
+      el('div', { class: 'row' },
+        pictureButton(p.background ? 'Zmień tło' : 'Wgraj tło', `/v1/admin/partners/${p.id}/background`, partnersPage),
+        p.background ? el('button', { onclick: async () => { if (await guard(() => api('DELETE', `/v1/admin/partners/${p.id}/background`))) partnersPage(); } }, icon('fa-solid fa-eraser'), 'Usuń tło') : '',
+        el('div', { class: 'grow' }),
+        el('button', { class: 'danger', onclick: async () => {
+          if (!confirm(`Usunąć ${p.address} z serwerów partnerskich?`)) return;
+          if (await guard(() => api('DELETE', `/v1/admin/partners/${p.id}`))) partnersPage();
+        } }, icon('fa-solid fa-trash-can'), 'Usuń')),
+      save);
+  });
+  $('#main').replaceChildren(head('Serwery partnerskie'),
+    el('p', { class: 'muted', textContent: 'Tło pojawia się za tym serwerem na liście serwerów w grze, u graczy z SlashClient HUD. Najlepiej obrazek 1200×120 albo podobnie szeroki (PNG lub JPG, do 3 MB).' }),
+    add,
+    el('div', { class: 'partner-list' }, ...(cards.length ? cards : [el('p', { class: 'muted', textContent: 'Nie ma jeszcze serwerów partnerskich.' })])));
+}
+
 // ---------- log ----------
 
 async function logPage() {
@@ -249,7 +300,7 @@ async function logPage() {
   const rows = await Promise.all(res.entries.map(async (e) => el('tr', {},
     el('td', { textContent: fmtDate(e.at) }),
     el('td', { textContent: `@${await nameOf(e.admin)}` }),
-    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' ? capeNames[e.target] ?? e.target : `@${e.target}` })),
+    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' ? capeNames[e.target] ?? e.target : e.action.startsWith('partner') ? e.target : `@${e.target}` })),
     el('td', { class: 'log-detail', textContent: ['grant', 'revoke', 'set_cape'].includes(e.action) ? capeNames[e.detail] ?? e.detail : e.detail }))));
   $('#main').replaceChildren(head('Dziennik'),
     el('div', { class: 'glass card' }, res.entries.length

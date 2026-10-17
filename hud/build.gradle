@@ -193,6 +193,13 @@ if (project.hasProperty('shots')) {
 	}
 }
 
+// partner servers from a running SlashClient server: gradlew runClientGameTest -PsocialUrl=http://localhost:8787
+if (project.hasProperty('socialUrl')) {
+	loom.runs.matching { it.name == 'clientGameTest' }.configureEach {
+		vmArg "-Dslashclient.test.socialUrl=${project.property('socialUrl')}"
+	}
+}
+
 // the friends test talks to a running launcher: gradlew runClientGameTest -Pbridge=<url> -PbridgeKey=<key>
 if (project.hasProperty('bridge')) {
 	loom.runs.matching { it.name == 'clientGameTest' }.configureEach {

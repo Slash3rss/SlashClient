@@ -307,5 +307,6 @@
 	"slashclient-hud.cosmetics.slot.elytra": "Elytra",
 	"slashclient-hud.cosmetics.slot.trail": "Trail",
 	"slashclient-hud.cosmetics.slot.aura": "Aura",
-	"slashclient-hud.cosmetics.slot.pet": "Pet"
+	"slashclient-hud.cosmetics.slot.pet": "Pet",
+	"slashclient-hud.partner": "Partner"
 }
