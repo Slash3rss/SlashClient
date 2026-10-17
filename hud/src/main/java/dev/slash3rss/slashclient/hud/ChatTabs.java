@@ -57,7 +57,7 @@ public final class ChatTabs {
 			buttons.add(edit);
 			Screens.getWidgets(screen).addAll(buttons);
 			// pulled-out tabs: drag them by their title, dock them back with the ×
-			ChatWindows.addHandles(screen, width, height, () -> mc.execute(() -> screen.resize(screen.width, screen.height)));
+			ChatWindows.addHandles(screen, width, height, () -> mc.execute(() -> Compat.relayout(screen)));
 			// a tab being dragged out shows where its window will go
 			ScreenEvents.afterExtract(screen).register((s, g, mouseX, mouseY, delta) -> drawDrag(g, mouseX, mouseY));
 			// a search box on the right of the same row; it filters the chat until it is closed
@@ -140,7 +140,7 @@ public final class ChatTabs {
 		if (active == index) active = -1;
 		SlashHud.config.save();
 		apply();
-		mc.execute(() -> screen.resize(screen.width, screen.height));
+		mc.execute(() -> Compat.relayout(screen));
 	}
 
 	/** Sets the game's chat filter for the open tab. */

@@ -134,4 +134,13 @@ public final class Compat {
 		//$ return net.minecraft.client.gui.Gui.getMobEffectSprite(effect);
 		//#endif
 	}
+
+	/** Lays a screen out again at its size (its widgets made anew). */
+	static void relayout(Screen screen) {
+		//#if MC >= 1.21.11
+		screen.resize(screen.width, screen.height);
+		//#else
+		//$ screen.resize(Minecraft.getInstance(), screen.width, screen.height);
+		//#endif
+	}
 }
