@@ -69,7 +69,7 @@ public class EmoteScreen extends Screen {
 	}
 
 	@Override
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.9
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
 	//#else
 	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
@@ -80,7 +80,7 @@ public class EmoteScreen extends Screen {
 			pick(at(e.x(), e.y()));
 			return true;
 		}
-		//#if MC >= 1.20.2
+		//#if MC >= 1.21.9
 		return super.mouseClicked(e, doubleClick);
 		//#else
 		//$ return super.mouseClicked(e.x(), e.y(), e.button());
@@ -88,7 +88,7 @@ public class EmoteScreen extends Screen {
 	}
 
 	@Override
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.9
 	public boolean keyPressed(KeyEvent e) {
 	//#else
 	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
@@ -99,7 +99,7 @@ public class EmoteScreen extends Screen {
 			pick(n);
 			return true;
 		}
-		//#if MC >= 1.20.2
+		//#if MC >= 1.21.9
 		return super.keyPressed(e);
 		//#else
 		//$ return super.keyPressed(e.key(), e.scancode(), e.modifiers());
@@ -108,7 +108,7 @@ public class EmoteScreen extends Screen {
 
 	/** Holding the key, pointing and letting go picks what is pointed at. */
 	@Override
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.9
 	public boolean keyReleased(KeyEvent e) {
 	//#else
 	//$ public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
@@ -118,7 +118,7 @@ public class EmoteScreen extends Screen {
 			pick(hovered);
 			return true;
 		}
-		//#if MC >= 1.20.2
+		//#if MC >= 1.21.9
 		return super.keyReleased(e);
 		//#else
 		//$ return super.keyReleased(e.key(), e.scancode(), e.modifiers());

@@ -4,10 +4,8 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
-//#if MC >= 1.20.2
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
-//#endif
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.minecraft.world.InteractionResult;
 import dev.slash3rss.slashclient.hud.ui.SlashTitleScreen;
@@ -47,7 +45,7 @@ public class SlashHud implements ClientModInitializer {
 		config = HudConfig.load();
 		Modules.cfg = config;
 
-		//#if MC >= 1.20.2
+		//#if MC >= 1.21.9
 		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(ID, "main"));
 		//#else
 		//$ String category = "key.category.slashclient-hud.main";
@@ -66,13 +64,15 @@ public class SlashHud implements ClientModInitializer {
 		Cosmetics.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.emote", InputConstants.KEY_N, category));
 		ChatTabs.register();
 		Assist.register(category);
-		//#if MC >= 1.20.2
-		// wings and pets: a layer more on every player's model
+		// wings and pets: a layer more on every player's model (drawn from render states, which 1.21.1 does not have)
+		//#if MC >= 1.21.2
 		net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback.EVENT.register((type, renderer, helper, context) -> {
 			if (renderer instanceof net.minecraft.client.renderer.entity.player.AvatarRenderer<?> avatar) helper.register(new CosmeticLayer(avatar, context));
 		});
 		//#endif
 		Badges.load();
+		// the partners (and which are pinned on top of the server list) before the list is first opened
+		PartnerServers.refresh();
 		// another server or world: what we knew about its players is gone
 		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> {
 			Badges.reset();
@@ -144,8 +144,6 @@ public class SlashHud implements ClientModInitializer {
 			return InteractionResult.PASS;
 		});
 
-		// 1.20.1 has no HUD element registry: LegacyGuiMixin does the same in the game's Gui
-		//#if MC >= 1.20.2
 		// with our effect list on, Minecraft's own effect icons would show the same twice
 		HudElementRegistry.replaceElement(VanillaHudElements.MOB_EFFECTS, vanilla -> (g, delta) -> {
 			if (!config.placement("effects").enabled) vanilla.extractRenderState(g, delta);
@@ -158,20 +156,16 @@ public class SlashHud implements ClientModInitializer {
 		});
 
 		// under the chat and the tab list, as in other clients: those stay readable over the HUD
-		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, Identifier.fromNamespaceAndPath(ID, "hud"), (g, delta) -> drawHud(g));
-		//#endif
-	}
-
-	/** Our HUD: every module, the waypoints, the chat badge and windows, the screenshot preview. */
-	public static void drawHud(GuiGraphicsExtractor g) {
-		Minecraft mc = Minecraft.getInstance();
-		Benchmark.frame(g, mc);
-		if (mc.getDebugOverlay().showDebugScreen() || Compat.screen(mc) instanceof HudEditScreen) return;
-		drawAll(g, mc, false);
-		Waypoints.draw(g, mc);
-		ChatTabs.drawMentionBadge(g, mc);
-		ChatWindows.draw(g, mc);
-		Shots.draw(g);
+		HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, Identifier.fromNamespaceAndPath(ID, "hud"), (g, delta) -> {
+			Minecraft mc = Minecraft.getInstance();
+			Benchmark.frame(g, mc);
+			if (mc.getDebugOverlay().showDebugScreen() || Compat.screen(mc) instanceof HudEditScreen) return;
+			drawAll(g, mc, false);
+			Waypoints.draw(g, mc);
+			ChatTabs.drawMentionBadge(g, mc);
+			ChatWindows.draw(g, mc);
+			Shots.draw(g);
+		});
 	}
 
 	private static void speed(double value) {

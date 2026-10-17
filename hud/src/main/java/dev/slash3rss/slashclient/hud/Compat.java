@@ -109,15 +109,22 @@ public final class Compat {
 		//#endif
 	}
 
-	// 1.20.1 has no render states: the cosmetic layers that use this are left out there
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.2
 	/** A model drawn with the frame (the outline colour is for glowing players). */
+	//#if MC >= 1.21.9
 	public static <S> void submitModel(net.minecraft.client.renderer.SubmitNodeCollector out, net.minecraft.client.model.Model<? super S> model, S state,
+	//#else
+	//$ public static <S> void submitModel(net.minecraft.client.renderer.SubmitNodeCollector out, net.minecraft.client.model.EntityModel<? super S> model, S state,
+	//#endif
 			com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.client.renderer.rendertype.RenderType type, int light, int overlay, int outline) {
 		//#if MC >= 26.3
 		out.submitModel(model, state, pose, type, light, overlay, outline);
-		//#else
+		//#elif MC >= 1.21.9
 		//$ out.submitModel(model, state, pose, type, light, overlay, outline, null);
+		//#else
+		//$ // drawn at once (a glowing player's outline comes from the buffers themselves)
+		//$ model.setupAnim(state);
+		//$ model.renderToBuffer(pose, out.getBuffer(type), light, overlay);
 		//#endif
 	}
 	//#endif
@@ -131,7 +138,7 @@ public final class Compat {
 		//#endif
 	}
 
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.2
 	/** The game's picture of a status effect (the one in the corner of the screen). */
 	static net.minecraft.resources.Identifier effectSprite(net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
 		//#if MC >= 26.2
@@ -140,11 +147,6 @@ public final class Compat {
 		//$ return net.minecraft.client.gui.Gui.getMobEffectSprite(effect);
 		//#endif
 	}
-	//#else
-	//$ /** The game's picture of a status effect (1.20.1: a sprite of the effect atlas). */
-	//$ static net.minecraft.client.renderer.texture.TextureAtlasSprite effectSprite(net.minecraft.world.effect.MobEffect effect) {
-	//$ 	return Minecraft.getInstance().getMobEffectTextures().get(effect);
-	//$ }
 	//#endif
 
 	/** Whether a pause screen shows its buttons (not with F3+Esc). */
@@ -156,16 +158,6 @@ public final class Compat {
 		//#endif
 	}
 
-	/** Leaves the world or server for the menu. */
-	public static void disconnect(Minecraft mc, Component reason) {
-		//#if MC >= 1.20.2
-		mc.disconnectFromWorld(reason);
-		//#else
-		//$ if (mc.level != null) mc.level.disconnect();
-		//$ mc.clearLevel(new net.minecraft.client.gui.screens.GenericDirtMessageScreen(reason));
-		//#endif
-	}
-
 	/** Lays a screen out again at its size (its widgets made anew). */
 	static void relayout(Screen screen) {
 		//#if MC >= 1.21.11
@@ -174,4 +166,44 @@ public final class Compat {
 		//$ screen.resize(Minecraft.getInstance(), screen.width, screen.height);
 		//#endif
 	}
+
+	/** Leaves the world or server, as the pause menu's button would (`reason` shows while it goes). */
+	public static void leaveWorld(Minecraft mc, Component reason) {
+		//#if MC >= 1.21.9
+		mc.disconnectFromWorld(reason);
+		//#elif MC >= 1.21.2
+		//$ boolean local = mc.isLocalServer();
+		//$ var server = mc.getCurrentServer();
+		//$ if (mc.level != null) mc.level.disconnect(reason);
+		//$ if (local) mc.disconnectWithSavingScreen();
+		//$ else mc.disconnectWithProgressScreen();
+		//$ var title = new net.minecraft.client.gui.screens.TitleScreen();
+		//$ if (local) mc.setScreen(title);
+		//$ else if (server != null && server.isRealm()) mc.setScreen(new com.mojang.realmsclient.RealmsMainScreen(title));
+		//$ else mc.setScreen(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(title));
+		//#else
+		//$ dev.slash3rss.slashclient.hud.compat.Legacy.disconnectFromWorld(mc);
+		//#endif
+	}
+
+	/** The chat, opened empty. */
+	public static net.minecraft.client.gui.screens.ChatScreen chatScreen() {
+		//#if MC >= 1.21.9
+		return new net.minecraft.client.gui.screens.ChatScreen("", false);
+		//#else
+		//$ return new net.minecraft.client.gui.screens.ChatScreen("");
+		//#endif
+	}
+
+	//#if MC >= 1.21.9
+	/** A font of our resources, for Style.withFont. */
+	public static net.minecraft.network.chat.FontDescription font(net.minecraft.resources.Identifier id) {
+		return new net.minecraft.network.chat.FontDescription.Resource(id);
+	}
+	//#else
+	//$ /** A font of our resources, for Style.withFont (before 1.21.9 a font is just its id). */
+	//$ public static net.minecraft.resources.Identifier font(net.minecraft.resources.Identifier id) {
+	//$ 	return id;
+	//$ }
+	//#endif
 }

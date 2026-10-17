@@ -3,8 +3,10 @@ package dev.slash3rss.slashclient.hud.mixin;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import dev.slash3rss.slashclient.hud.Cosmetics;
 import net.minecraft.client.player.AbstractClientPlayer;
-//#if MC >= 1.20.2
+//#if MC >= 1.21.9
 import net.minecraft.world.entity.player.PlayerSkin;
+//#elif MC >= 1.20.2
+//$ import net.minecraft.client.resources.PlayerSkin;
 //#endif
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

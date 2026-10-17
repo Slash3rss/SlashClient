@@ -18,11 +18,12 @@ abstract class CameraMixin {
 	//#else
 	//$ @ModifyReturnValue(method = "getFov", at = @At("RETURN"))
 	//#endif
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.2
 	private float slashclient$zoom(float fov) {
 		return Extras.zoomFov(fov);
 	}
 	//#else
+	//$ // the field of view was a double before 1.21.2
 	//$ private double slashclient$zoom(double fov) {
 	//$ 	return Extras.zoomFov((float) fov);
 	//$ }

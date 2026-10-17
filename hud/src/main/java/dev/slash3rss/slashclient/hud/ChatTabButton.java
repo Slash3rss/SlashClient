@@ -30,17 +30,17 @@ final class ChatTabButton extends Button {
 	}
 
 	@Override
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.9
 	public void onClick(net.minecraft.client.input.MouseButtonEvent e, boolean doubleClick) {
 	//#else
 	//$ public void onClick(double mouseX, double mouseY) {
-	//$ 	net.minecraft.client.input.MouseButtonEvent e = new net.minecraft.client.input.MouseButtonEvent(mouseX, mouseY, 0);
+	//$ 	var e = new net.minecraft.client.input.MouseButtonEvent(mouseX, mouseY, 0);
 	//$ 	boolean doubleClick = false;
 	//#endif
 		pressX = e.x();
 		pressY = e.y();
 		pulling = false;
-		//#if MC >= 1.20.2
+		//#if MC >= 1.21.9
 		super.onClick(e, doubleClick);
 		//#else
 		//$ super.onClick(e.x(), e.y());
@@ -48,11 +48,11 @@ final class ChatTabButton extends Button {
 	}
 
 	@Override
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.9
 	protected void onDrag(net.minecraft.client.input.MouseButtonEvent e, double dx, double dy) {
 	//#else
 	//$ protected void onDrag(double mouseX, double mouseY, double dx, double dy) {
-	//$ 	net.minecraft.client.input.MouseButtonEvent e = new net.minecraft.client.input.MouseButtonEvent(mouseX, mouseY, 0);
+	//$ 	var e = new net.minecraft.client.input.MouseButtonEvent(mouseX, mouseY, 0);
 	//#endif
 		// "All" stays; any other tab comes out once the mouse has left the row upwards
 		if (index < 0) return;
@@ -61,11 +61,11 @@ final class ChatTabButton extends Button {
 	}
 
 	@Override
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.9
 	public void onRelease(net.minecraft.client.input.MouseButtonEvent e) {
 	//#else
 	//$ public void onRelease(double mouseX, double mouseY) {
-	//$ 	net.minecraft.client.input.MouseButtonEvent e = new net.minecraft.client.input.MouseButtonEvent(mouseX, mouseY, 0);
+	//$ 	var e = new net.minecraft.client.input.MouseButtonEvent(mouseX, mouseY, 0);
 	//#endif
 		if (pulling && index >= 0 && e.y() < rowY - 4) ChatTabs.detach(index, (int) e.x(), (int) e.y());
 		ChatTabs.dragging = -1;

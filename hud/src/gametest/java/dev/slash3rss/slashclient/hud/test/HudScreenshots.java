@@ -56,7 +56,7 @@ public class HudScreenshots implements FabricClientGameTest {
 		context.setScreen(() -> null);
 		context.waitTicks(5);
 
-		// SkyUp.pl pinned first in the multiplayer list
+		// pinned partner servers first in the multiplayer list
 		context.runOnClient(mc -> TestHooks.checkPinnedServer());
 		context.setScreen(() -> new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(new net.minecraft.client.gui.screens.TitleScreen()));
 		context.waitTicks(20);
@@ -65,7 +65,7 @@ public class HudScreenshots implements FabricClientGameTest {
 		context.waitTicks(5);
 		boolean deleteActive = context.computeOnClient(mc -> TestHooks.buttonActive("selectServer.delete"));
 		boolean editActive = context.computeOnClient(mc -> TestHooks.buttonActive("selectServer.edit"));
-		if (deleteActive || editActive) throw new AssertionError("Edit and Delete must be greyed out for SkyUp.pl");
+		if (deleteActive || !editActive) throw new AssertionError("A pinned server: Delete greyed out, Edit available (for the resource pack)");
 		context.getInput().setCursorPos(150, 98);
 		context.waitTicks(5);
 		context.takeScreenshot("servers-pinned-hover");
@@ -135,7 +135,7 @@ public class HudScreenshots implements FabricClientGameTest {
 				context.setScreen(() -> new dev.slash3rss.slashclient.hud.ChatTabsScreen(null));
 				context.waitTicks(3);
 				context.takeScreenshot("size-" + name(sz) + "-chattabs");
-				context.setScreen(() -> new ChatScreen("", false));
+				context.setScreen(() -> dev.slash3rss.slashclient.hud.Compat.chatScreen());
 				context.waitTicks(3);
 				context.takeScreenshot("size-" + name(sz) + "-chat");
 			}
@@ -160,7 +160,7 @@ public class HudScreenshots implements FabricClientGameTest {
 			world.getServer().runCommand("tellraw @a \"Player0, are you there?\"");
 			world.getServer().runCommand("tellraw @a \"[Party] Steve: gg\"");
 			context.waitTicks(5);
-			context.setScreen(() -> new ChatScreen("", false));
+			context.setScreen(() -> dev.slash3rss.slashclient.hud.Compat.chatScreen());
 			context.waitTicks(5);
 			context.takeScreenshot("chat-all");
 			context.runOnClient(mc -> TestHooks.selectTab(0));
@@ -169,13 +169,13 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.selectTab(-1));
 			// with the tabs there, the up arrow still brings back the last message sent (not the "All" tab)
 			context.runOnClient(mc -> TestHooks.rememberSent("/say last one"));
-			context.setScreen(() -> new ChatScreen("", false));
+			context.setScreen(() -> dev.slash3rss.slashclient.hud.Compat.chatScreen());
 			context.waitTicks(3);
 			context.getInput().pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_UP);
 			context.waitTicks(2);
 			String recalled = context.computeOnClient(mc -> TestHooks.chatInput());
 			if (!"/say last one".equals(recalled)) throw new AssertionError("Up arrow in the chat gave: " + recalled);
-			context.setScreen(() -> new ChatScreen("", false));
+			context.setScreen(() -> dev.slash3rss.slashclient.hud.Compat.chatScreen());
 
 			// "but not": what the second field names stays out; only it filled = everything except it
 			if (!context.computeOnClient(mc -> TestHooks.tabCatches("gg", "", "[Party] Steve: gg"))

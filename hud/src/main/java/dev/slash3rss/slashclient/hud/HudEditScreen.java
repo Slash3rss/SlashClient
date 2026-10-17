@@ -819,14 +819,14 @@ public class HudEditScreen extends Screen {
 	// ---------- input ----------
 
 	@Override
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.9
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
 	//#else
 	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
 	//$ 	boolean doubleClick = false;
 	//#endif
-		//#if MC >= 1.20.2
+		//#if MC >= 1.21.9
 		if (super.mouseClicked(e, doubleClick)) return true;
 		//#else
 		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
@@ -888,7 +888,7 @@ public class HudEditScreen extends Screen {
 	}
 
 	@Override
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.9
 	public boolean mouseDragged(MouseButtonEvent e, double dx, double dy) {
 	//#else
 	//$ public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
@@ -902,7 +902,7 @@ public class HudEditScreen extends Screen {
 			dragSlider(e.x());
 			return true;
 		}
-		//#if MC >= 1.20.2
+		//#if MC >= 1.21.9
 		if (dragging == null) return super.mouseDragged(e, dx, dy);
 		//#else
 		//$ if (dragging == null) return super.mouseDragged(e.x(), e.y(), e.button(), dx, dy);
@@ -920,7 +920,7 @@ public class HudEditScreen extends Screen {
 	}
 
 	@Override
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.9
 	public boolean mouseReleased(MouseButtonEvent e) {
 	//#else
 	//$ public boolean mouseReleased(double mouseX, double mouseY, int button) {
@@ -931,7 +931,7 @@ public class HudEditScreen extends Screen {
 		painting = null;
 		lastCellX = lastCellY = -1;
 		snappedX = snappedY = false;
-		//#if MC >= 1.20.2
+		//#if MC >= 1.21.9
 		return super.mouseReleased(e);
 		//#else
 		//$ return super.mouseReleased(e.x(), e.y(), e.button());
@@ -957,7 +957,7 @@ public class HudEditScreen extends Screen {
 	}
 
 	@Override
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.9
 	public boolean keyPressed(KeyEvent e) {
 	//#else
 	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
@@ -970,7 +970,7 @@ public class HudEditScreen extends Screen {
 			reopen();
 			return true;
 		}
-		//#if MC >= 1.20.2
+		//#if MC >= 1.21.9
 		return super.keyPressed(e);
 		//#else
 		//$ return super.keyPressed(e.key(), e.scancode(), e.modifiers());

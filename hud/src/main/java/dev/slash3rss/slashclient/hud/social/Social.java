@@ -374,7 +374,7 @@ public final class Social {
 		Minecraft mc = Minecraft.getInstance();
 		mc.execute(() -> {
 			if (address.equalsIgnoreCase(currentServer())) return;
-			if (mc.level != null) mc.disconnectFromWorld(Component.translatable("slashclient-hud.invite.leaving"));
+			if (mc.level != null) dev.slash3rss.slashclient.hud.Compat.leaveWorld(mc, Component.translatable("slashclient-hud.invite.leaving"));
 			var parent = new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(new net.minecraft.client.gui.screens.TitleScreen());
 			var data = new net.minecraft.client.multiplayer.ServerData(address, address, net.minecraft.client.multiplayer.ServerData.Type.OTHER);
 			//#if MC >= 1.20.2

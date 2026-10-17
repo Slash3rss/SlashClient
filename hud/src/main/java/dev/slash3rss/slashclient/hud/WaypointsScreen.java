@@ -105,14 +105,14 @@ public class WaypointsScreen extends Screen {
 	}
 
 	@Override
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.9
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
 	//#else
 	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
 	//$ 	boolean doubleClick = false;
 	//#endif
-		//#if MC >= 1.20.2
+		//#if MC >= 1.21.9
 		if (super.mouseClicked(e, doubleClick)) return true;
 		//#else
 		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
@@ -138,7 +138,7 @@ public class WaypointsScreen extends Screen {
 	}
 
 	@Override
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.9
 	public boolean keyPressed(KeyEvent e) {
 	//#else
 	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
@@ -148,7 +148,7 @@ public class WaypointsScreen extends Screen {
 			add();
 			return true;
 		}
-		//#if MC >= 1.20.2
+		//#if MC >= 1.21.9
 		return super.keyPressed(e);
 		//#else
 		//$ return super.keyPressed(e.key(), e.scancode(), e.modifiers());

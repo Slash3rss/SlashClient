@@ -47,11 +47,7 @@ public final class Assist {
 		return SlashHud.config;
 	}
 
-	//#if MC >= 1.20.2
 	static void register(KeyMapping.Category category) {
-	//#else
-	//$ static void register(String category) {
-	//#endif
 		holdAttackKey = net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.holdAttack", InputConstants.UNKNOWN.getValue(), category));
 		holdUseKey = net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.holdUse", InputConstants.UNKNOWN.getValue(), category));
 		autoClickKey = net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.autoClick", InputConstants.UNKNOWN.getValue(), category));

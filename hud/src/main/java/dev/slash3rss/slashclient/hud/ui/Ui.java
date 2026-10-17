@@ -3,7 +3,9 @@ package dev.slash3rss.slashclient.hud.ui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
+//#if MC >= 1.21.9
 import net.minecraft.network.chat.FontDescription;
+//#endif
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
@@ -40,17 +42,29 @@ public final class Ui {
 	 * one pixel of a letter is then exactly one pixel on screen, so text stays sharp instead of
 	 * being shrunk from a bigger bitmap.
 	 */
+	//#if MC >= 1.21.9
 	private static final FontDescription[] OUTFIT = new FontDescription[7];
 	private static final FontDescription[] OUTFIT_BOLD = new FontDescription[7];
 	static {
 		for (int s = 1; s <= 6; s++) {
-			OUTFIT[s] = new FontDescription.Resource(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_s" + s));
-			OUTFIT_BOLD[s] = new FontDescription.Resource(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_bold_s" + s));
+			OUTFIT[s] = dev.slash3rss.slashclient.hud.Compat.font(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_s" + s));
+			OUTFIT_BOLD[s] = dev.slash3rss.slashclient.hud.Compat.font(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_bold_s" + s));
 		}
 	}
+	//#else
+	//$ // fonts were named by their id before 1.21.9
+	//$ private static final Identifier[] OUTFIT = new Identifier[7];
+	//$ private static final Identifier[] OUTFIT_BOLD = new Identifier[7];
+	//$ static {
+	//$ 	for (int s = 1; s <= 6; s++) {
+	//$ 		OUTFIT[s] = Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_s" + s);
+	//$ 		OUTFIT_BOLD[s] = Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_bold_s" + s);
+	//$ 	}
+	//$ }
+	//#endif
 
 	private static int scale() {
-		return Math.max(1, Math.min(6, Minecraft.getInstance().getWindow().getGuiScale()));
+		return Math.max(1, Math.min(6, (int) Minecraft.getInstance().getWindow().getGuiScale()));
 	}
 
 	// ---------- layout audit (for the screenshot test) ----------

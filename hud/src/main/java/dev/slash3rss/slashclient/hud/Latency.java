@@ -35,7 +35,6 @@ public final class Latency {
 		sent = now;
 		connection.send(new ServerboundPingRequestPacket(now));
 		//#else
-		//$ // 1.20.1 has no ping packets while playing: the tab list's number stands in
 		//$ var info = mc.player == null ? null : connection.getPlayerInfo(mc.player.getUUID());
 		//$ ms = info == null ? -1 : info.getLatency();
 		//#endif

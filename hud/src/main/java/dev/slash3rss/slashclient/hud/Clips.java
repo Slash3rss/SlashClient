@@ -80,20 +80,7 @@ public final class Clips {
 		int scale = Math.max(1, (int) Math.ceil(mc.getWindow().getWidth() / 1280.0));
 		inFlight.incrementAndGet();
 		try {
-			//#if MC >= 1.20.2
 			Screenshot.takeScreenshot(target, scale, image -> WORKER.execute(() -> encode(image, now)));
-			//#else
-			//$ // 1.20.1 reads the frame at full size and at once: it is made smaller here
-			//$ NativeImage full = Screenshot.takeScreenshot(target);
-			//$ NativeImage small = full;
-			//$ if (scale > 1) {
-			//$ 	small = new NativeImage(full.getWidth() / scale, full.getHeight() / scale, false);
-			//$ 	full.resizeSubRectTo(0, 0, full.getWidth(), full.getHeight(), small);
-			//$ 	full.close();
-			//$ }
-			//$ NativeImage frame = small;
-			//$ WORKER.execute(() -> encode(frame, now));
-			//#endif
 		} catch (RuntimeException e) {
 			inFlight.decrementAndGet();
 			SlashHud.LOG.debug("SlashClient clips: {}", e.toString());
@@ -106,14 +93,7 @@ public final class Clips {
 			BufferedImage rgb = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
 			int[] row = new int[w];
 			for (int y = 0; y < h; y++) {
-				//#if MC >= 1.20.2
 				for (int x = 0; x < w; x++) row[x] = image.getPixel(x, y);
-				//#else
-				//$ for (int x = 0; x < w; x++) {
-				//$ 	int p = image.getPixelRGBA(x, y);
-				//$ 	row[x] = (p & 255) << 16 | (p >> 8 & 255) << 8 | (p >> 16 & 255);
-				//$ }
-				//#endif
 				rgb.setRGB(0, y, w, 1, row, 0, w);
 			}
 			byte[] jpeg = jpeg(rgb);

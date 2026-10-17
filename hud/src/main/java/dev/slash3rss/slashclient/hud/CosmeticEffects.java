@@ -68,6 +68,10 @@ final class CosmeticEffects {
 			case "bubbles" -> add(mc, ParticleTypes.BUBBLE_POP, x, y + 0.2, z, 0, 0.02, 0);
 			case "emerald" -> add(mc, ParticleTypes.HAPPY_VILLAGER, x, y + 0.2, z, 0, 0, 0);
 			case "soulfire" -> add(mc, ParticleTypes.SOUL_FIRE_FLAME, x, y, z, 0, 0.01, 0);
+			case "crits" -> add(mc, ParticleTypes.CRIT, x, y + 0.2, z, (RANDOM.nextDouble() - 0.5) * 0.2, 0.1, (RANDOM.nextDouble() - 0.5) * 0.2);
+			case "witch" -> add(mc, ParticleTypes.WITCH, x, y + 0.2, z, 0, 0, 0);
+			case "ink" -> add(mc, ParticleTypes.SQUID_INK, x, y, z, 0, 0.01, 0);
+			case "ash" -> add(mc, ParticleTypes.WHITE_ASH, x, y + 0.3, z, 0, 0, 0);
 			default -> {}
 		}
 	}
@@ -89,6 +93,14 @@ final class CosmeticEffects {
 			case "magic" -> add(mc, ParticleTypes.ENCHANTED_HIT, x, y, z, 0, 0.05, 0);
 			case "amber" -> add(mc, ParticleTypes.WAX_ON, x, y, z, 0, 0.3, 0);
 			case "sculk" -> add(mc, ParticleTypes.SCULK_SOUL, x, p.getY() + 0.1, z, 0, 0.03, 0);
+			case "spores" -> add(mc, ParticleTypes.SPORE_BLOSSOM_AIR, x, y, z, 0, 0, 0);
+			// like the conduit's: flies from where it starts towards the player
+			case "nautilus" -> add(mc, ParticleTypes.NAUTILUS, p.getX(), p.getY() + 1.0, p.getZ(), x - p.getX(), y - p.getY() - 1.0, z - p.getZ());
+			case "tears" -> add(mc, ParticleTypes.DRIPPING_OBSIDIAN_TEAR, x, p.getY() + 1.9, z, 0, 0, 0);
+			// fireflies came with 1.21.5
+			//#if MC >= 1.21.5
+			case "fireflies" -> add(mc, ParticleTypes.FIREFLY, x, y, z, 0, 0, 0);
+			//#endif
 			case "royal" -> {
 				add(mc, ParticleTypes.TOTEM_OF_UNDYING, x, y, z, 0, 0.04, 0);
 				if (RANDOM.nextInt(3) == 0) add(mc, ParticleTypes.END_ROD, p.getX() - (x - p.getX()), y, p.getZ() - (z - p.getZ()), 0, 0.01, 0);

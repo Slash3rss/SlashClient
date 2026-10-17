@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.At;
 //$ @Mixin(net.minecraft.client.gui.Gui.class)
 //#endif
 abstract class ScoreboardNumbersMixin {
-	// 1.20.1 draws the red numbers as plain text (no number formats): left as they are there
+	// 1.20.1 writes the red numbers as plain text (no number formats): they stay there
 	//#if MC >= 1.20.2
 	@ModifyExpressionValue(method = "displayScoreboardSidebar", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/scores/Objective;numberFormatOrDefault(Lnet/minecraft/network/chat/numbers/NumberFormat;)Lnet/minecraft/network/chat/numbers/NumberFormat;"))
 	private NumberFormat slashclient$hideNumbers(NumberFormat format) {

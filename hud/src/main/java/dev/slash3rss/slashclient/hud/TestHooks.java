@@ -1,3 +1,5 @@
+// only the client gametests call these, and their API came in 1.21.4
+//#if MC >= 1.21.4
 package dev.slash3rss.slashclient.hud;
 
 import net.minecraft.client.KeyMapping;
@@ -28,19 +30,17 @@ public final class TestHooks {
 	 */
 	public static void mouse(String action, double[] at) {
 		var e = new net.minecraft.client.input.MouseButtonEvent(at[0], at[1], new net.minecraft.client.input.MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0));
-		//#if MC >= 1.20.2
 		switch (action) {
+			//#if MC >= 1.21.9
 			case "press" -> screen().mouseClicked(e, false);
 			case "drag" -> screen().mouseDragged(e, 0, 0);
 			default -> screen().mouseReleased(e);
-		}
-		//#else
-		//$ switch (action) {
+			//#else
 			//$ case "press" -> screen().mouseClicked(e.x(), e.y(), e.button());
 			//$ case "drag" -> screen().mouseDragged(e.x(), e.y(), e.button(), 0, 0);
 			//$ default -> screen().mouseReleased(e.x(), e.y(), e.button());
-		//$ }
-		//#endif
+			//#endif
+		}
 	}
 
 	public static double[] gridPoint(int cx, int cy) {
@@ -254,22 +254,32 @@ public final class TestHooks {
 		SlashHud.LOG.info("Badge test: own uuid {} shows logo: {}, server says SlashClient: {}", mc.player.getUUID(), Badges.usesSlash(mc.player.getUUID()), Badges.knownFromServer(mc.player.getUUID()));
 	}
 
-	/** SkyUp.pl: first after loading, and removing or moving it does nothing. */
+	/**
+	 * Pinned partners: on top after loading (the rotating ones taking turns first, the fixed one
+	 * after them), not removed, moved or re-addressed; the resource pack setting can change.
+	 */
 	public static void checkPinnedServer() {
 		var mc = net.minecraft.client.Minecraft.getInstance();
+		PinnedServer.sampleForTest(java.util.List.of(new PinnedServer.Pin("skyup.pl", "SkyUp.pl", false),
+			new PinnedServer.Pin("a.example", "Rotujący A", true), new PinnedServer.Pin("b.example", "Rotujący B", true)));
 		var list = new net.minecraft.client.multiplayer.ServerList(mc);
 		list.load();
 		list.add(new net.minecraft.client.multiplayer.ServerData("Inny serwer", "example.org", net.minecraft.client.multiplayer.ServerData.Type.OTHER), false);
 		list.save();
 		list.load();
-		check(PinnedServer.is(list.get(0)), "SkyUp.pl is first after loading");
+		String first = list.get(0).ip;
+		check(PinnedServer.is(list.get(0)) && PinnedServer.is(list.get(1)) && "skyup.pl".equals(list.get(2).ip), "pinned servers on top, the fixed one after the rotating ones");
+		list.load();
+		check(!first.equals(list.get(0).ip) && "skyup.pl".equals(list.get(2).ip), "rotating ones take turns at the very top");
 		list.remove(list.get(0));
-		check(PinnedServer.is(list.get(0)), "SkyUp.pl cannot be removed");
-		list.swap(0, 1);
-		list.swap(1, 0);
-		check(PinnedServer.is(list.get(0)) && "example.org".equals(list.get(1).ip), "SkyUp.pl cannot be moved");
-		list.replace(0, new net.minecraft.client.multiplayer.ServerData("Zmieniony", "other.example", net.minecraft.client.multiplayer.ServerData.Type.OTHER));
-		check(PinnedServer.is(list.get(0)) && PinnedServer.NAME.equals(list.get(0).name), "SkyUp.pl cannot be edited");
+		check(PinnedServer.is(list.get(0)) && list.size() >= 4, "a pinned server cannot be removed");
+		list.swap(2, 3);
+		check("skyup.pl".equals(list.get(2).ip), "a pinned server cannot be moved");
+		var edited = new net.minecraft.client.multiplayer.ServerData("Zmieniony", "other.example", net.minecraft.client.multiplayer.ServerData.Type.OTHER);
+		edited.setResourcePackStatus(net.minecraft.client.multiplayer.ServerData.ServerPackStatus.DISABLED);
+		list.replace(2, edited);
+		check("skyup.pl".equals(list.get(2).ip) && "SkyUp.pl".equals(list.get(2).name)
+			&& list.get(2).getResourcePackStatus() == net.minecraft.client.multiplayer.ServerData.ServerPackStatus.DISABLED, "only the resource pack setting of a pinned server changes");
 		list.save();
 		SlashHud.LOG.info("Pinned server test: OK ({} servers, first {})", list.size(), list.get(0).ip);
 	}
@@ -367,11 +377,10 @@ public final class TestHooks {
 
 	/** Where the player's cape texture comes from now. */
 	public static String capeTexture() {
-		//#if MC >= 1.20.2
 		var cape = net.minecraft.client.Minecraft.getInstance().player.getSkin().cape();
+		//#if MC >= 1.21.9
 		return cape == null ? "none" : cape.texturePath().toString();
 		//#else
-		//$ var cape = net.minecraft.client.Minecraft.getInstance().player.getCloakTextureLocation();
 		//$ return cape == null ? "none" : cape.toString();
 		//#endif
 	}
@@ -417,9 +426,11 @@ public final class TestHooks {
 	/** Our own player wears this skin (a texture of the test mod), for the website's screenshots. */
 	public static void testSkin(String texture) {
 		var id = net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "skin/" + texture);
-		//#if MC >= 1.20.2
+		//#if MC >= 1.21.9
 		Cosmetics.testSkin = new net.minecraft.core.ClientAsset.ResourceTexture(id,
 			net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "textures/skin/" + texture + ".png"));
+		//#else
+		//$ Cosmetics.testSkin = net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "textures/skin/" + texture + ".png");
 		//#endif
 		Cosmetics.testSkinFor = net.minecraft.client.Minecraft.getInstance().getGameProfile().id();
 	}
@@ -521,3 +532,4 @@ public final class TestHooks {
 		}
 	}
 }
+//#endif

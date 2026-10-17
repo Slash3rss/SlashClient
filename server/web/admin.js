@@ -275,8 +275,20 @@ async function partnersPage() {
       e.preventDefault();
       if (await guard(() => api('POST', `/v1/admin/partners/${p.id}`, { owner: ownerInput.value }))) { toast('Zapisano.'); partnersPage(); }
     } }, el('small', { class: 'muted', textContent: 'Właściciel (konto partnera) może sam zmieniać tło na stronie Konto:' }), ownerInput, el('button', { type: 'submit', class: 'icon-btn', title: 'Zapisz' }, icon('fa-solid fa-check')));
+    // pinned: always on top of the game's server list (it cannot be removed there); rotating: the
+    // pinned ones with it take turns at the very top
+    const pinning = async (change, done) => { if (await guard(() => api('POST', `/v1/admin/partners/${p.id}`, change))) { toast(done); partnersPage(); } };
+    const pin = el('input', { type: 'checkbox', checked: !!p.pinned });
+    pin.addEventListener('change', () => pinning({ pinned: pin.checked }, pin.checked ? 'Przypięty na górze listy serwerów.' : 'Już nie jest przypięty.'));
+    const rot = el('input', { type: 'checkbox', checked: !!p.rotate, disabled: !p.pinned });
+    rot.addEventListener('change', () => pinning({ rotate: rot.checked }, rot.checked ? 'Rotuje na pierwszym miejscu.' : 'Stałe miejsce.'));
+    const toggles = el('div', { class: 'row wrap partner-pins' },
+      el('label', { class: 'row small', title: 'Mod sam dodaje ten serwer na górę listy serwerów; gracz nie może go usunąć ani zmienić nazwy i adresu (tylko paczkę zasobów).' },
+        el('span', { class: 'switch' }, pin, el('span')), 'Przypinaj na górze listy'),
+      el('label', { class: `row small${p.pinned ? '' : ' muted'}`, title: 'Przypięte serwery z tą opcją zmieniają się na pierwszym miejscu przy każdym otwarciu listy.' },
+        el('span', { class: 'switch' }, rot, el('span')), 'Rotuj na pierwszym miejscu'));
     return el('div', { class: 'glass card partner-card' },
-      partnerBanner(p),
+      partnerBanner(p), toggles,
       el('div', { class: 'row' },
         pictureButton(p.background ? 'Zmień tło' : 'Wgraj tło', `/v1/admin/partners/${p.id}/background`, partnersPage),
         p.background ? el('button', { onclick: async () => { if (await guard(() => api('DELETE', `/v1/admin/partners/${p.id}/background`))) partnersPage(); } }, icon('fa-solid fa-eraser'), 'Usuń tło') : '',

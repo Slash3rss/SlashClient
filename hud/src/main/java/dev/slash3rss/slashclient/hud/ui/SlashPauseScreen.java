@@ -32,11 +32,7 @@ public class SlashPauseScreen extends MenuScreen {
 			new Nav(Ui.tr("slashclient-hud.cosmetics"), "m-appearance", () -> minecraft.setScreenAndShow(new dev.slash3rss.slashclient.hud.CosmeticsScreen(this))),
 			new Nav(Ui.tr("slashclient-hud.editor"), "sliders", () -> minecraft.setScreenAndShow(HudEditScreen.settingsWindow())),
 			new Nav(Ui.tr("menu.options"), "gear", () -> minecraft.setScreenAndShow(Compat.options(minecraft, this))),
-			//#if MC >= 1.20.2
 			new Nav(CommonComponents.disconnectButtonLabel(minecraft.isLocalServer()), "power", this::leave, true));
-			//#else
-			//$ new Nav(Component.translatable(minecraft.isLocalServer() ? "menu.returnToMenu" : "menu.disconnect"), "power", this::leave, true));
-			//#endif
 	}
 
 	private List<Nav> tools() {
@@ -61,10 +57,10 @@ public class SlashPauseScreen extends MenuScreen {
 
 	/** Leaving the world or server, exactly as the game's own pause menu does it. */
 	private void leave() {
-		//#if MC >= 1.20.2
-		minecraft.getReportingContext().draftReportHandled(minecraft, this, () -> minecraft.disconnectFromWorld(ClientLevel.DEFAULT_QUIT_MESSAGE), true);
+		//#if MC >= 1.21.2
+		minecraft.getReportingContext().draftReportHandled(minecraft, this, () -> dev.slash3rss.slashclient.hud.Compat.leaveWorld(minecraft, ClientLevel.DEFAULT_QUIT_MESSAGE), true);
 		//#else
-		//$ minecraft.getReportingContext().draftReportHandled(minecraft, this, () -> minecraft.disconnectFromWorld(Component.translatable("menu.savingLevel")), true);
+		//$ minecraft.getReportingContext().draftReportHandled(minecraft, this, () -> dev.slash3rss.slashclient.hud.Compat.leaveWorld(minecraft, Component.translatable(minecraft.isLocalServer() ? "menu.savingLevel" : "disconnect.quitting")), true);
 		//#endif
 	}
 

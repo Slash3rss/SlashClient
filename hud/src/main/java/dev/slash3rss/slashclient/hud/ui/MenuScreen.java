@@ -121,14 +121,14 @@ public abstract class MenuScreen extends Screen {
 	}
 
 	@Override
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.9
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
 	//#else
 	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
 	//$ 	boolean doubleClick = false;
 	//#endif
-		//#if MC >= 1.20.2
+		//#if MC >= 1.21.9
 		if (super.mouseClicked(e, doubleClick)) return true;
 		//#else
 		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;

@@ -42,8 +42,10 @@ public final class AccountSwitch {
 	/** Makes the game play as this account from now on. */
 	public static void apply(Minecraft mc, String name, UUID uuid, String token, String xuid, boolean offline) throws Exception {
 		if (!available(mc)) throw new IllegalStateException("Account switching only works in the menu");
-		//#if MC >= 1.20.2
+		//#if MC >= 1.21.9
 		User user = new User(name, uuid, token, Optional.ofNullable(xuid).filter(x -> !x.isBlank() && !x.equals("0")), Optional.empty());
+		//#elif MC >= 1.20.2
+		//$ User user = new User(name, uuid, token, Optional.ofNullable(xuid).filter(x -> !x.isBlank() && !x.equals("0")), Optional.empty(), User.Type.MSA);
 		//#else
 		//$ User user = new User(name, uuid.toString().replace("-", ""), token, Optional.ofNullable(xuid).filter(x -> !x.isBlank() && !x.equals("0")), Optional.empty(), User.Type.MSA);
 		//#endif
@@ -51,7 +53,7 @@ public final class AccountSwitch {
 		MinecraftAccessor access = (MinecraftAccessor) mc;
 		access.slashclient$setUser(user);
 		access.slashclient$setUserApiService(api);
-		// 1.20.1 asks the service for the properties when it needs them
+		// 1.20.1 asks the service for the properties when it needs them, and has no profile future
 		//#if MC >= 1.20.2
 		access.slashclient$setUserProperties(CompletableFuture.supplyAsync(() -> {
 			try {
@@ -67,7 +69,6 @@ public final class AccountSwitch {
 		//$ access.slashclient$setPlayerSocialManager(new PlayerSocialManager(mc, api));
 		//#endif
 		// from 26.2 the block list also runs the game's own friends: it stays until the next start
-		// 1.20.1 has no profile future: the skin comes with the user's profile
 		//#if MC >= 1.20.2
 		access.slashclient$setProfileFuture(CompletableFuture.supplyAsync(() -> mc.services().sessionService().fetchProfile(uuid, true)));
 		//#endif

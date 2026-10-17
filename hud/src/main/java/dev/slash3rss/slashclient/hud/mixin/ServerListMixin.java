@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.List;
 
-/** SkyUp.pl first in the server list, and never removed or moved away from there. */
+/** Pinned partner servers first in the server list, and never removed or moved away from there. */
 @Mixin(ServerList.class)
 abstract class ServerListMixin {
 	@Shadow @Final private List<ServerData> serverList;
@@ -27,10 +27,13 @@ abstract class ServerListMixin {
 		if (PinnedServer.is(server)) ci.cancel();
 	}
 
-	// editing ends in replace(): SkyUp.pl keeps its name and address
+	// a pinned server keeps its name and address; only its resource pack setting can change
 	@Inject(method = "replace", at = @At("HEAD"), cancellable = true)
 	private void slashclient$noEditPinned(int index, ServerData server, CallbackInfo ci) {
-		if (index >= 0 && index < serverList.size() && PinnedServer.is(serverList.get(index))) ci.cancel();
+		if (index >= 0 && index < serverList.size() && PinnedServer.is(serverList.get(index))) {
+			serverList.get(index).setResourcePackStatus(server.getResourcePackStatus());
+			ci.cancel();
+		}
 	}
 
 	@Inject(method = "swap", at = @At("HEAD"), cancellable = true)

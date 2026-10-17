@@ -1,16 +1,18 @@
 package dev.slash3rss.slashclient.hud;
 
 import net.minecraft.client.Minecraft;
-//#if MC >= 1.20.2
+//#if MC >= 1.21.9
 import net.minecraft.core.ClientAsset;
+import net.minecraft.network.chat.FontDescription;
 //#endif
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FontDescription;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
-//#if MC >= 1.20.2
+//#if MC >= 1.21.9
 import net.minecraft.world.entity.player.PlayerSkin;
+//#elif MC >= 1.20.2
+//$ import net.minecraft.client.resources.PlayerSkin;
 //#endif
 
 import java.util.List;
@@ -30,23 +32,33 @@ public final class Cosmetics {
 	public static final List<String> EMOTES = List.of("wave", "heart", "laugh", "gg", "like", "angry", "question", "fire");
 	static final List<String> CAPES = List.of("slash", "ocean", "ember", "forest", "galaxy", "rose", "gold", "mono",
 		"aurora", "inferno", "waves", "pulse", "staff_admin", "staff_support", "staff_partner",
-		"sakura", "night", "rainbow", "ice", "toxic", "checker", "matrix", "storm");
+		"sakura", "night", "rainbow", "ice", "toxic", "checker", "matrix", "storm",
+		"lava", "desert", "cyber", "honey", "mint", "vortex", "starfall");
 	/** Capes drawn as a loop of frames (textures/cape/<id>_<n>.png), and how many. */
-	static final Map<String, Integer> ANIMATED = Map.of("aurora", 8, "inferno", 8, "waves", 8, "pulse", 8, "matrix", 8, "storm", 8);
+	static final Map<String, Integer> ANIMATED = Map.of("aurora", 8, "inferno", 8, "waves", 8, "pulse", 8, "matrix", 8, "storm", 8,
+		"vortex", 8, "starfall", 8);
 	private static final long FRAME_MS = 120;
-	static final List<String> WINGS = List.of("angel", "demon", "butterfly", "dragon", "phoenix", "crystal", "batwing", "frost", "prism", "shadow");
-	static final List<String> ELYTRAS = List.of("feather", "neon", "void", "sunset", "nebula", "venom", "tide");
-	static final List<String> TRAILS = List.of("hearts", "sparks", "snow", "notes", "flames", "clouds", "stars", "bubbles", "emerald", "soulfire");
-	static final List<String> AURAS = List.of("enchant", "portal", "cherry", "souls", "royal", "glow", "magic", "amber", "sculk");
-	static final List<String> PETS = List.of("allay", "vex", "bat", "parrot", "bee", "blaze", "phantom");
+	static final List<String> WINGS = List.of("angel", "demon", "butterfly", "dragon", "phoenix", "crystal", "batwing", "frost", "prism", "shadow", "fairy", "bone", "gilded");
+	static final List<String> ELYTRAS = List.of("feather", "neon", "void", "sunset", "nebula", "venom", "tide", "magma", "circuit", "autumn");
+	static final List<String> TRAILS = List.of("hearts", "sparks", "snow", "notes", "flames", "clouds", "stars", "bubbles", "emerald", "soulfire",
+		"crits", "witch", "ink", "ash");
+	// fireflies came with 1.21.5
+	//#if MC >= 1.21.5
+	static final List<String> AURAS = List.of("enchant", "portal", "cherry", "souls", "royal", "glow", "magic", "amber", "sculk",
+		"spores", "nautilus", "tears", "fireflies");
+	//#else
+	//$ static final List<String> AURAS = List.of("enchant", "portal", "cherry", "souls", "royal", "glow", "magic", "amber", "sculk",
+	//$ 	"spores", "nautilus", "tears");
+	//#endif
+	static final List<String> PETS = List.of("allay", "vex", "bat", "parrot", "bee", "blaze", "phantom", "axolotl", "frog", "fox");
 	private static final Map<String, List<String>> SLOTS = Map.of("cape", CAPES, "wings", WINGS, "elytra", ELYTRAS,
 		"trail", TRAILS, "aura", AURAS, "pet", PETS);
 	private static final long EMOTE_MS = 3500;
-	private static final FontDescription EMOTE_FONT = new FontDescription.Resource(Identifier.fromNamespaceAndPath(SlashHud.ID, "emote"));
+	private static final FontDescription EMOTE_FONT = Compat.font(Identifier.fromNamespaceAndPath(SlashHud.ID, "emote"));
 
 	/** uuid → slot → item, what the server says each player wears (only items this mod knows). */
 	private static final Map<UUID, Map<String, String>> worn = new ConcurrentHashMap<>();
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.9
 	private static final Map<String, ClientAsset.Texture> textures = new ConcurrentHashMap<>();
 	//#endif
 	private record Shown(String emote, long until) {}
@@ -103,14 +115,22 @@ public final class Cosmetics {
 		emotes.clear();
 	}
 
-	//#if MC >= 1.20.2
 	/** For the screenshots of the website (TestHooks): our own player in a given skin. */
+	//#if MC >= 1.21.9
 	static ClientAsset.Texture testSkin;
+	//#else
+	//$ static Identifier testSkin;
+	//#endif
 	static UUID testSkinFor;
 
+	//#if MC >= 1.20.2
 	public static PlayerSkin withTestSkin(UUID id, PlayerSkin skin) {
 		if (testSkin == null || !id.equals(testSkinFor)) return skin;
+		//#if MC >= 1.21.9
 		return new PlayerSkin(testSkin, skin.cape(), skin.elytra(), net.minecraft.world.entity.player.PlayerModelType.WIDE, skin.secure());
+		//#else
+		//$ return new PlayerSkin(testSkin, null, skin.capeTexture(), skin.elytraTexture(), PlayerSkin.Model.WIDE, skin.secure());
+		//#endif
 	}
 
 	/** The skin with our cape in place of the player's own, when they picked one. */
@@ -119,22 +139,31 @@ public final class Cosmetics {
 		if (!SlashHud.config.badges) return skin;
 		String cape = worn(id, "cape");
 		// wings take the cape's place on the back (an elytra, when worn, takes theirs)
+		//#if MC >= 1.21.9
 		if (!wearsElytra && worn(id, "wings") != null) return new PlayerSkin(skin.body(), null, skin.elytra(), skin.model(), skin.secure());
+		//#elif MC >= 1.21.2
+		//$ if (!wearsElytra && worn(id, "wings") != null) return new PlayerSkin(skin.body(), skin.textureUrl(), null, skin.elytra(), skin.model(), skin.secure());
+		//#endif
 		String elytra = worn(id, "elytra");
 		if (cape == null && elytra == null) return skin;
 		if (cape != null) {
 			Integer frames = ANIMATED.get(cape);
 			if (frames != null) cape = cape + "_" + (System.currentTimeMillis() / FRAME_MS) % frames;
 		}
+		//#if MC >= 1.21.9
 		ClientAsset.Texture capeTexture = cape == null ? skin.cape() : texture("cape", cape);
 		// without an elytra of its own the elytra is drawn from the cape, as for Minecraft's own capes
 		ClientAsset.Texture elytraTexture = elytra != null ? texture("elytra", elytra) : cape != null ? null : skin.elytra();
 		return new PlayerSkin(skin.body(), capeTexture, elytraTexture, skin.model(), skin.secure());
+		//#else
+		//$ Identifier capeTexture = cape == null ? skin.capeTexture() : textureId("cape", cape);
+		//$ // without an elytra of its own the elytra is drawn from the cape, as for Minecraft's own capes
+		//$ Identifier elytraTexture = elytra != null ? textureId("elytra", elytra) : cape != null ? null : skin.elytraTexture();
+		//$ return new PlayerSkin(skin.texture(), skin.textureUrl(), capeTexture, elytraTexture, skin.model(), skin.secure());
+		//#endif
 	}
 	//#else
 	//$ // 1.20.1 has no PlayerSkin: the cape and elytra pictures are asked for one by one (CapeMixin)
-	//$ static UUID testSkinFor;
-	//$
 	//$ /** The cape picture to wear, or `own` (the player's own, maybe null). */
 	//$ public static Identifier capeFor(UUID id, Identifier own) {
 	//$ 	if (SlashHud.config == null || !SlashHud.config.badges) return own;
@@ -156,11 +185,16 @@ public final class Cosmetics {
 		return Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/" + kind + "/" + name + ".png");
 	}
 
-	//#if MC >= 1.20.2
 	/** One of our textures (textures/<kind>/<name>.png), made once. */
+	//#if MC >= 1.21.9
 	static ClientAsset.Texture texture(String kind, String name) {
+		//#if MC >= 1.21.9
 		return textures.computeIfAbsent(kind + "/" + name, k -> new ClientAsset.ResourceTexture(
 			Identifier.fromNamespaceAndPath(SlashHud.ID, k), Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/" + k + ".png")));
+		//#else
+		//$ // before 1.21.9 a skin holds the textures' own ids
+		//$ return textures.computeIfAbsent(kind + "/" + name, k -> Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/" + k + ".png"));
+		//#endif
 	}
 	//#endif
 

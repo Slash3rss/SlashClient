@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(ChatScreen.class)
 abstract class ChatScreenMixin {
 	@Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.9
 	private void slashclient$copyLine(MouseButtonEvent e, boolean doubleClick, CallbackInfoReturnable<Boolean> cir) {
 	//#else
 	//$ private void slashclient$copyLine(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {

@@ -12,15 +12,18 @@ import org.spongepowered.asm.mixin.injection.At;
 /** The same logo in the name above the heads of other SlashClient players, and their emotes. */
 @Mixin(EntityRenderer.class)
 abstract class EntityRendererMixin {
-	//#if MC >= 1.20.2
+	//#if MC >= 1.21.2
 	@ModifyReturnValue(method = "getNameTag", at = @At("RETURN"))
 	private Component slashclient$badge(Component name, Entity entity) {
+	//#else
+	//$ // before render states the name goes straight into renderNameTag
+	//$ @org.spongepowered.asm.mixin.injection.ModifyVariable(method = "renderNameTag", at = @At("HEAD"), argsOnly = true)
+	//#if MC >= 1.20.2
+	//$ private Component slashclient$badge(Component name, Entity entity, Component same, com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.client.renderer.MultiBufferSource buffers, int light, float partialTick) {
+	//#else
+	//$ private Component slashclient$badge(Component name, Entity entity, Component same, com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.client.renderer.MultiBufferSource buffers, int light) {
+	//#endif
+	//#endif
 		return entity instanceof Player ? dev.slash3rss.slashclient.hud.Cosmetics.decorate(entity.getUUID(), Badges.decorate(entity.getUUID(), name)) : name;
 	}
-	//#else
-	//$ @org.spongepowered.asm.mixin.injection.ModifyVariable(method = "renderNameTag", at = @At("HEAD"), argsOnly = true)
-	//$ private Component slashclient$badge(Component name, Entity entity) {
-	//$ 	return entity instanceof Player ? dev.slash3rss.slashclient.hud.Cosmetics.decorate(entity.getUUID(), Badges.decorate(entity.getUUID(), name)) : name;
-	//$ }
-	//#endif
 }
