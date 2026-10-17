@@ -47,6 +47,7 @@ const api = {
   kill: (profileId?: string) => invoke('game:kill', profileId),
   revealFile: (file: string) => invoke('file:reveal', file),
   shareLog: (text: string) => invoke('log:share', text),
+  reportBug: (text?: string) => invoke('bug:report', text),
   openFile: (file: string) => invoke('file:open', file),
   getSkin: (accountId: string) => invoke('skin:get', accountId),
   saveSkin: (accountId: string) => invoke('skin:save', accountId),

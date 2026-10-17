@@ -21,15 +21,17 @@ describe('sharing logs', () => {
       let body = '';
       req.on('data', (c) => (body += c));
       req.on('end', () => {
-        received = new URLSearchParams(body).get('content') ?? '';
+        received = req.url === '/v1/logs' ? body : '';
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ success: true, id: 'abc', url: 'https://mclo.gs/abc' }));
+        res.end(JSON.stringify({ id: 'AbCdE12345', url: '/logi/AbCdE12345' }));
       });
     });
     await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
-    const url = await shareLog(`${os.homedir()}/x\nline`, `http://127.0.0.1:${(server.address() as net.AddressInfo).port}/1/log`);
+    const base = `http://127.0.0.1:${(server.address() as net.AddressInfo).port}`;
+    const shared = await shareLog(`${os.homedir()}/x
+line`, `${base}/`);
     server.close();
-    assert.equal(url, 'https://mclo.gs/abc');
+    assert.deepEqual(shared, { url: `${base}/logi/AbCdE12345`, id: 'AbCdE12345' });
     assert.equal(received, '~/x\nline');
   });
 });

@@ -14,15 +14,17 @@ export function redactLog(text: string): string {
     .replace(/\b(eyJ[\w-]{10,}\.[\w-]{10,}\.[\w-]{10,})\b/g, '[ukryty token]');
 }
 
-/** Uploads a log to mclo.gs (a paste service for Minecraft logs) and returns its link. */
-export async function shareLog(text: string, endpoint = 'https://api.mclo.gs/1/log'): Promise<string> {
+/** Uploads a log to the SlashClient server (kept 90 days) and returns its page and id. */
+export async function shareLog(text: string, serverUrl: string): Promise<{ url: string; id: string }> {
+  const base = serverUrl.replace(/\/$/, '');
+  const endpoint = `${base}/v1/logs`;
   const res = await netFetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ content: redactLog(text) }),
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    body: redactLog(text),
   });
-  if (!res.ok) throw new Error(httpMessage(res.status, endpoint));
-  const body = (await res.json()) as { success: boolean; url?: string; error?: string };
-  if (!body.success || !body.url) throw new Error(t('Nie udało się udostępnić logu: {0}', body.error ?? '?'));
-  return body.url;
+  if (!res.ok) throw new Error(res.status === 413 ? t('Log jest za duży (do 4 MB).') : httpMessage(res.status, endpoint));
+  const body = (await res.json()) as { id?: string; url?: string; error?: string };
+  if (!body.id || !body.url) throw new Error(t('Nie udało się udostępnić logu: {0}', body.error ?? '?'));
+  return { url: base + body.url, id: body.id };
 }

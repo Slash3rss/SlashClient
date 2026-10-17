@@ -620,20 +620,32 @@ handle('profile:export', async (id: string) => {
   }
 });
 
-/** Publishes the log on mclo.gs after the player agrees, and copies the link. */
-handle('log:share', async (text: string) => {
+/** Publishes the log on the SlashClient server after the player agrees. */
+async function askAndShareLog(text: string) {
   const { response } = await dialog.showMessageBox(win!, {
     type: 'question',
     message: t('Udostępnić log publicznie?'),
-    detail: t('Log zostanie wysłany na mclo.gs, a link skopiowany do schowka. Każdy, kto dostanie link, zobaczy jego treść. Ścieżki z Twoją nazwą użytkownika zostaną ukryte.'),
+    detail: t('Log zostanie wysłany na serwer SlashClient (trzymany 90 dni), a link skopiowany do schowka. Każdy, kto dostanie link, zobaczy jego treść. Ścieżki z Twoją nazwą użytkownika i tokeny zostaną ukryte.'),
     buttons: [t('Udostępnij'), t('Anuluj')],
     defaultId: 0,
     cancelId: 1,
   });
   if (response !== 0) return undefined;
-  const url = await shareLog(text);
-  clipboard.writeText(url);
-  return url;
+  const shared = await shareLog(text, store.settings.socialUrl);
+  clipboard.writeText(shared.url);
+  return shared;
+}
+handle('log:share', async (text: string) => (await askAndShareLog(text))?.url);
+/** A bug report on the site, with the log attached when there is one and the player agrees to share it. */
+handle('bug:report', async (text?: string) => {
+  const params = new URLSearchParams({ nowe: '1', wersja: app.getVersion() });
+  if (text?.trim()) {
+    const shared = await askAndShareLog(text);
+    if (!shared) return false;
+    params.set('log', shared.id);
+  }
+  await shell.openExternal(`${store.settings.socialUrl.replace(/\/$/, '')}/zgloszenia?${params}`);
+  return true;
 });
 handle('servers:list', (force?: boolean) => listServers(force));
 // a server that is off is an answer, not an error: no noise in the log for every offline server

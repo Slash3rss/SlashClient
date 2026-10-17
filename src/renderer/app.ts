@@ -1135,6 +1135,13 @@ api.on('game:crash', (a: CrashAnalysis) => {
 });
 $('#crash-close').addEventListener('click', () => $('#crash').classList.add('hidden'));
 $('#crash-report').addEventListener('click', () => crashReport && api.revealFile(crashReport));
+$('#crash-bug').addEventListener('click', () => busy($<HTMLButtonElement>('#crash-bug'), async () => {
+  try {
+    await api.reportBug(logText());
+  } catch (err) {
+    toast(errorText(err), true);
+  }
+}));
 $('#crash-copy').addEventListener('click', async () => {
   await navigator.clipboard.writeText(logText());
   toast('Skopiowano log');
