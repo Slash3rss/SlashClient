@@ -21,6 +21,10 @@ public interface ChatComponentAccessor {
 	@Accessor("chatScrollbarPos")
 	int slashclient$scroll();
 
+	//#if MC >= 1.20.2
 	@Invoker("refreshTrimmedMessages")
+	//#else
+	//$ @Invoker("refreshTrimmedMessage")
+	//#endif
 	void slashclient$refresh();
 }

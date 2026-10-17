@@ -18,7 +18,11 @@ abstract class EntityRendererMixin {
 	//#else
 	//$ // before render states the name goes straight into renderNameTag
 	//$ @org.spongepowered.asm.mixin.injection.ModifyVariable(method = "renderNameTag", at = @At("HEAD"), argsOnly = true)
+	//#if MC >= 1.20.2
 	//$ private Component slashclient$badge(Component name, Entity entity, Component same, com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.client.renderer.MultiBufferSource buffers, int light, float partialTick) {
+	//#else
+	//$ private Component slashclient$badge(Component name, Entity entity, Component same, com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.client.renderer.MultiBufferSource buffers, int light) {
+	//#endif
 	//#endif
 		return entity instanceof Player ? dev.slash3rss.slashclient.hud.Cosmetics.decorate(entity.getUUID(), Badges.decorate(entity.getUUID(), name)) : name;
 	}

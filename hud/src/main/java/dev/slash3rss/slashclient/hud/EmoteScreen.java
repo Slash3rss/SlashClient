@@ -40,6 +40,9 @@ public class EmoteScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+		//#if MC < 1.20.2
+		//$ extractBackground(g, mx, my, delta);
+		//#endif
 		hovered = at(mx, my);
 		int cx = width / 2, cy = height / 2;
 		Ui.round(g, cx - RADIUS - SLOT / 2 - 8, cy - RADIUS - SLOT / 2 - 8, (RADIUS + SLOT / 2 + 8) * 2, (RADIUS + SLOT / 2 + 8) * 2, RADIUS + SLOT / 2 + 8, 0xB0111622);
@@ -127,7 +130,9 @@ public class EmoteScreen extends Screen {
 		return false;
 	}
 
+	//#if MC >= 1.20.2
 	@Override
+	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		g.fill(0, 0, width, height, 0x40000000);
 	}

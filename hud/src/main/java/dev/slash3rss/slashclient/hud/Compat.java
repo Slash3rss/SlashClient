@@ -89,8 +89,10 @@ public final class Compat {
 		return new net.minecraft.client.gui.screens.options.OptionsScreen(parent, mc.options);
 		//#elif MC >= 26.1
 		//$ return new net.minecraft.client.gui.screens.options.OptionsScreen(parent, mc.options, false);
-		//#else
+		//#elif MC >= 1.20.2
 		//$ return new net.minecraft.client.gui.screens.options.OptionsScreen(parent, mc.options);
+		//#else
+		//$ return new net.minecraft.client.gui.screens.OptionsScreen(parent, mc.options);
 		//#endif
 	}
 
@@ -147,6 +149,15 @@ public final class Compat {
 	}
 	//#endif
 
+	/** Whether a pause screen shows its buttons (not with F3+Esc). */
+	public static boolean showsPauseMenu(net.minecraft.client.gui.screens.PauseScreen pause) {
+		//#if MC >= 1.20.2
+		return pause.showsPauseMenu();
+		//#else
+		//$ return ((dev.slash3rss.slashclient.hud.mixin.PauseScreenAccessor) pause).slashclient$showPauseMenu();
+		//#endif
+	}
+
 	/** Lays a screen out again at its size (its widgets made anew). */
 	static void relayout(Screen screen) {
 		//#if MC >= 1.21.11
@@ -160,7 +171,6 @@ public final class Compat {
 	public static void leaveWorld(Minecraft mc, Component reason) {
 		//#if MC >= 1.21.9
 		mc.disconnectFromWorld(reason);
-		//#else
 		//#elif MC >= 1.21.2
 		//$ boolean local = mc.isLocalServer();
 		//$ var server = mc.getCurrentServer();

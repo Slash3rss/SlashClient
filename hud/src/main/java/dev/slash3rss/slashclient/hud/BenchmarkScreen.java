@@ -38,6 +38,9 @@ public class BenchmarkScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+		//#if MC < 1.20.2
+		//$ extractBackground(g, mx, my, delta);
+		//#endif
 		hits.clear();
 		int pw = Math.min(width - 16, 440);
 		int ph = Math.min(height - 16, 286);
@@ -201,7 +204,9 @@ public class BenchmarkScreen extends Screen {
 		return false;
 	}
 
+	//#if MC >= 1.20.2
 	@Override
+	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		g.fill(0, 0, width, height, 0x90000000);
 	}

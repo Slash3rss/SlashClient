@@ -302,7 +302,11 @@ public final class ExtraModules {
 		static double tps(Minecraft mc) {
 			var server = mc.getSingleplayerServer();
 			if (server != null) {
+				//#if MC >= 1.20.2
 				double mspt = server.getAverageTickTimeNanos() / 1e6;
+				//#else
+				//$ double mspt = server.getAverageTickTime();
+				//#endif
 				return mspt <= 50 ? 20 : 1000 / mspt;
 			}
 			return Stats.tps;
@@ -616,7 +620,7 @@ public final class ExtraModules {
 		}
 
 		private static Component line(Row r) {
-			return Component.literal(r.name()).append(Component.literal("  ")).append(r.activity().copy().withColor(0xFF9CA3AF));
+			return Component.literal(r.name()).append(Component.literal("  ")).append(r.activity().copy().withStyle(st -> st.withColor(0xFF9CA3AF)));
 		}
 
 		public int width(Minecraft mc) {

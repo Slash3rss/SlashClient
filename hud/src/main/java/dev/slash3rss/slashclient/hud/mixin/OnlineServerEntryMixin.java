@@ -36,6 +36,8 @@ abstract class OnlineServerEntryMixin {
 		return -1;
 	}
 
+	// 1.20.1 draws the move arrows from a texture sheet: they stay (swap() is still stopped below)
+	//#if MC >= 1.20.2
 	//#if MC >= 26.3
 	@WrapOperation(method = "extractContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
 	//#elif MC >= 1.21.2
@@ -60,6 +62,7 @@ abstract class OnlineServerEntryMixin {
 		//$ original.call(g, sprite, x, y, w, h);
 		//#endif
 	}
+	//#endif
 
 	/** A partner server's picture behind its row (PartnerServers), under the game's icon and text. */
 	//#if MC >= 1.21.9

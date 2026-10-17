@@ -232,6 +232,9 @@ public class CosmeticsScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+		//#if MC < 1.20.2
+		//$ extractBackground(g, mx, my, delta);
+		//#endif
 		super.extractRenderState(g, mx, my, delta);
 		hits.clear();
 		tooltip = null;
@@ -366,7 +369,9 @@ public class CosmeticsScreen extends Screen {
 		return false;
 	}
 
+	//#if MC >= 1.20.2
 	@Override
+	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		// the player stays in full view: only the panel's side is darkened
 		g.fill(px - 12, 0, width, height, 0x70000000);

@@ -55,6 +55,9 @@ public class AccountsScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+		//#if MC < 1.20.2
+		//$ extractBackground(g, mx, my, delta);
+		//#endif
 		hits.clear();
 		List<Social.Account> list = accounts;
 		int pw = Math.min(width - 24, 260), rows = list == null ? 1 : Math.max(1, list.size());
@@ -111,7 +114,9 @@ public class AccountsScreen extends Screen {
 		minecraft.setScreenAndShow(parent);
 	}
 
+	//#if MC >= 1.20.2
 	@Override
+	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		extractPanorama(g, delta);
 		g.fill(0, 0, width, height, 0xA00A0D14);

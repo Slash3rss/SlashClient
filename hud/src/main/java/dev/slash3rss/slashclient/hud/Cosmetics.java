@@ -11,7 +11,7 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 //#if MC >= 1.21.9
 import net.minecraft.world.entity.player.PlayerSkin;
-//#else
+//#elif MC >= 1.20.2
 //$ import net.minecraft.client.resources.PlayerSkin;
 //#endif
 
@@ -123,6 +123,7 @@ public final class Cosmetics {
 	//#endif
 	static UUID testSkinFor;
 
+	//#if MC >= 1.20.2
 	public static PlayerSkin withTestSkin(UUID id, PlayerSkin skin) {
 		if (testSkin == null || !id.equals(testSkinFor)) return skin;
 		//#if MC >= 1.21.9
@@ -161,6 +162,23 @@ public final class Cosmetics {
 		//$ return new PlayerSkin(skin.texture(), skin.textureUrl(), capeTexture, elytraTexture, skin.model(), skin.secure());
 		//#endif
 	}
+	//#else
+	//$ // 1.20.1 has no PlayerSkin: the cape and elytra pictures are asked for one by one (CapeMixin)
+	//$ /** The cape picture to wear, or `own` (the player's own, maybe null). */
+	//$ public static Identifier capeFor(UUID id, Identifier own) {
+	//$ 	if (SlashHud.config == null || !SlashHud.config.badges) return own;
+	//$ 	String cape = worn(id, "cape");
+	//$ 	return cape == null ? own : capeTexture(cape);
+	//$ }
+	//$
+	//$ /** The elytra picture to wear: our elytra, else our cape (as for Minecraft's own capes), else `own`. */
+	//$ public static Identifier elytraFor(UUID id, Identifier own) {
+	//$ 	if (SlashHud.config == null || !SlashHud.config.badges) return own;
+	//$ 	String elytra = worn(id, "elytra");
+	//$ 	if (elytra != null) return textureId("elytra", elytra);
+	//$ 	return worn(id, "cape") != null ? capeFor(id, own) : own;
+	//$ }
+	//#endif
 
 	/** Where one of our pictures is, for models drawn with it directly (the wings). */
 	public static Identifier textureId(String kind, String name) {

@@ -28,6 +28,7 @@
 		"MouseHandlerMixin",
 		"NametagMixin",
 		"OnlineServerEntryMixin",
+		"PauseScreenAccessor",
 		"PlayerTabOverlayMixin",
 		"ScoreboardNumbersMixin",
 		"ScreenshotMixin",

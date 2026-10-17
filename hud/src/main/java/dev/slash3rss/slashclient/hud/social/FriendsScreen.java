@@ -91,6 +91,9 @@ public class FriendsScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+		//#if MC < 1.20.2
+		//$ extractBackground(g, mx, my, delta);
+		//#endif
 		hits.clear();
 		Ui.panel(g, px, py, pw, ph);
 		Ui.begin("friends panel", px, py, pw, ph);
@@ -282,7 +285,12 @@ public class FriendsScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.20.2
 	public boolean mouseScrolled(double x, double y, double h, double v) {
+	//#else
+	//$ public boolean mouseScrolled(double x, double y, double v) {
+	//$ 	double h = 0;
+	//#endif
 		scroll = (int) Math.max(0, Math.min(maxScroll, scroll + v * 20));
 		return true;
 	}
@@ -316,7 +324,9 @@ public class FriendsScreen extends Screen {
 		return false;
 	}
 
+	//#if MC >= 1.20.2
 	@Override
+	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		if (minecraft.level == null) {
 			// from the main menu there is no world behind: the menu's panorama, as on our title screen

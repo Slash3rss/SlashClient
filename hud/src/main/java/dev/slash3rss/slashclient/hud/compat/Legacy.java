@@ -50,10 +50,49 @@
 //$ 	}
 //$
 //$ 	public static void blitSprite(GuiGraphics gfx, Object pipeline, ResourceLocation sprite, int x, int y, int w, int h, int color) {
+//#if MC >= 1.20.2
 //$ 		tint(color);
 //$ 		gfx.blitSprite(sprite, x, y, w, h);
 //$ 		untint();
+//#else
+//$ 		// 1.20.1 has no GUI sprites: the hearts sit in gui/icons.png
+//$ 		int[] uv = heartUv(sprite);
+//$ 		if (uv != null) blit(gfx, pipeline, ICONS, x, y, uv[0], uv[1], w, h, 9, 9, 256, 256, color);
+//#endif
 //$ 	}
+//#if MC < 1.20.2
+//$
+//$ 	private static final ResourceLocation ICONS = new ResourceLocation("textures/gui/icons.png");
+//$
+//$ 	/** Where a heart sprite of the newer game sits in 1.20.1's icons.png, or null. */
+//$ 	private static int[] heartUv(ResourceLocation sprite) {
+//$ 		switch (sprite.getPath()) {
+//$ 			case "hud/heart/container": return new int[] { 16, 0 };
+//$ 			case "hud/heart/container_blinking": return new int[] { 25, 0 };
+//$ 			case "hud/heart/full": return new int[] { 52, 0 };
+//$ 			case "hud/heart/half": return new int[] { 61, 0 };
+//$ 			case "hud/heart/frozen_full": return new int[] { 178, 0 };
+//$ 			case "hud/heart/frozen_half": return new int[] { 187, 0 };
+//$ 			default: return null;
+//$ 		}
+//$ 	}
+//$
+//$ 	/** The title screen's panorama (Screen.renderPanorama from 1.20.2 on). */
+//$ 	private static net.minecraft.client.renderer.PanoramaRenderer panorama;
+//$
+//$ 	public static void panorama(GuiGraphics gfx, float delta) {
+//$ 		if (panorama == null) panorama = new net.minecraft.client.renderer.PanoramaRenderer(net.minecraft.client.gui.screens.TitleScreen.CUBE_MAP);
+//$ 		panorama.render(delta, 1f);
+//$ 	}
+//$
+//$ 	/** Thread.ofVirtual().start (Java 21): a daemon thread on Java 17. */
+//$ 	public static Thread thread(Runnable task) {
+//$ 		Thread t = new Thread(task, "SlashClient worker");
+//$ 		t.setDaemon(true);
+//$ 		t.start();
+//$ 		return t;
+//$ 	}
+//#endif
 //$
 //$ 	/** A status effect's picture (1.21.1 keeps them in their own atlas, not in the GUI sprites). */
 //$ 	public static void effect(GuiGraphics gfx, net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect, int x, int y, int size) {
@@ -93,24 +132,40 @@
 //$ 	}
 //$
 //$ 	public static net.minecraft.network.chat.Component disconnectButtonLabel(boolean local) {
-//$ 		return local ? net.minecraft.network.chat.Component.translatable("menu.returnToMenu") : net.minecraft.network.chat.CommonComponents.GUI_DISCONNECT;
+//$ 		return local ? net.minecraft.network.chat.Component.translatable("menu.returnToMenu") : net.minecraft.network.chat.Component.translatable("menu.disconnect");
 //$ 	}
 //$
 //$ 	/** Leaves the world or server as 1.21.1's pause menu does, ending on the title or server list. */
 //$ 	public static void disconnectFromWorld(net.minecraft.client.Minecraft mc) {
+//$ 		leaveWorld(mc, net.minecraft.network.chat.Component.translatable(mc.isLocalServer() ? "menu.savingLevel" : "disconnect.quitting"));
+//$ 	}
+//$
+//$ 	/** The same with `message` on screen while it goes. */
+//$ 	public static void leaveWorld(net.minecraft.client.Minecraft mc, net.minecraft.network.chat.Component message) {
 //$ 		boolean local = mc.isLocalServer();
 //$ 		var server = mc.getCurrentServer();
-//$ 		disconnectFromWorld(mc, net.minecraft.network.chat.Component.translatable(local ? "menu.savingLevel" : "disconnect.quitting"));
+//#if MC < 1.20.2
+//$ 		boolean realm = mc.isConnectedToRealms();
+//#endif
+//$ 		disconnectFromWorld(mc, message);
 //$ 		var title = new net.minecraft.client.gui.screens.TitleScreen();
 //$ 		if (local) mc.setScreen(title);
+//#if MC >= 1.20.2
 //$ 		else if (server != null && server.isRealm()) mc.setScreen(new com.mojang.realmsclient.RealmsMainScreen(title));
+//#else
+//$ 		else if (realm) mc.setScreen(new com.mojang.realmsclient.RealmsMainScreen(title));
+//#endif
 //$ 		else mc.setScreen(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(title));
 //$ 	}
 //$
 //$ 	/** Leaves the world or server with `message` on screen meanwhile. */
 //$ 	public static void disconnectFromWorld(net.minecraft.client.Minecraft mc, net.minecraft.network.chat.Component message) {
 //$ 		if (mc.level != null) mc.level.disconnect();
+//#if MC >= 1.20.2
 //$ 		mc.disconnect(new net.minecraft.client.gui.screens.GenericMessageScreen(message));
+//#else
+//$ 		mc.clearLevel(new net.minecraft.client.gui.screens.GenericDirtMessageScreen(message));
+//#endif
 //$ 	}
 //$ }
 //#endif

@@ -26,11 +26,18 @@ abstract class GpuTimerMixin {
 	private boolean slashclient$gpuTimer(DebugScreenEntryList list, Identifier id, Operation<Boolean> original) {
 		return original.call(list, id) || id.equals(DebugScreenEntries.GPU_UTILIZATION) && (SlashHud.config.placement("gpu").enabled || dev.slash3rss.slashclient.hud.Benchmark.running());
 	}
-	//#else
+	//#elif MC >= 1.20.2
 	//$ // before 1.21.9 the frame is timed whenever F3 is open
 	//$ @WrapOperation(method = "runTick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/DebugScreenOverlay;showDebugScreen()Z"))
 	//$ private boolean slashclient$gpuTimer(DebugScreenOverlay overlay, Operation<Boolean> original) {
 	//$ 	return original.call(overlay) || SlashHud.config.placement("gpu").enabled || dev.slash3rss.slashclient.hud.Benchmark.running();
+	//$ }
+	//#endif
+	//#if MC < 1.20.2
+	//$ // 1.20.1 times the frame while F3 is open: options.renderDebug is the first thing runTick reads for it
+	//$ @com.llamalad7.mixinextras.injector.ModifyExpressionValue(method = "runTick", at = @At(value = "FIELD", target = "Lnet/minecraft/client/Options;renderDebug:Z", ordinal = 0))
+	//$ private boolean slashclient$gpuTimerF3(boolean f3) {
+	//$ 	return f3 || SlashHud.config != null && (SlashHud.config.placement("gpu").enabled || dev.slash3rss.slashclient.hud.Benchmark.running());
 	//$ }
 	//#endif
 }

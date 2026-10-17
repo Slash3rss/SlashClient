@@ -47,6 +47,9 @@ public class WaypointsScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+		//#if MC < 1.20.2
+		//$ extractBackground(g, mx, my, delta);
+		//#endif
 		hits.clear();
 		Ui.panel(g, px, py, pw, ph);
 		Ui.begin("waypoints", px, py, pw, ph);
@@ -124,7 +127,12 @@ public class WaypointsScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.20.2
 	public boolean mouseScrolled(double x, double y, double h, double v) {
+	//#else
+	//$ public boolean mouseScrolled(double x, double y, double v) {
+	//$ 	double h = 0;
+	//#endif
 		scroll = Math.max(0, scroll - (int) Math.signum(v));
 		return true;
 	}
@@ -152,7 +160,9 @@ public class WaypointsScreen extends Screen {
 		return false;
 	}
 
+	//#if MC >= 1.20.2
 	@Override
+	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		g.fill(0, 0, width, height, 0x50000000);
 	}
