@@ -153,5 +153,10 @@ describe('bug tracker', () => {
     assert.equal(await serveWeb(web, '/zgloszenia', fake), true);
     assert.equal(await serveWeb(web, '/zgloszenia/12', fake), true);
     assert.equal(await serveWeb(web, '/logi/../admin', fake), false);
+    // the English names lead to the same pages
+    assert.equal(await serveWeb(web, '/logs/AbCdE12345', fake), true);
+    assert.equal(await serveWeb(web, '/bugs', fake), true);
+    assert.equal(await serveWeb(web, '/bugs/7', fake), true);
+    assert.equal(await serveWeb(web, '/account', fake), true);
   });
 });

@@ -675,9 +675,53 @@ export function createApp(cfg: Config) {
     }),
   ];
 
+  /** Skins by Minecraft uuid, kept an hour so the page does not ask Mojang on every visit. */
+  const skins = new Map<string, { at: number; data: Buffer; slim: boolean } | null>();
+  async function skinOf(uuid: string): Promise<{ data: Buffer; slim: boolean } | undefined> {
+    if (!/^[0-9a-f]{32}$/.test(uuid)) return undefined;
+    const kept = skins.get(uuid);
+    if (kept !== undefined && (kept === null || Date.now() - kept.at < 3_600_000)) return kept ?? undefined;
+    const doFetch = cfg.fetchImpl ?? fetch;
+    const profile = await doFetch(`https://sessionserver.mojang.com/session/minecraft/profile/${uuid}`);
+    if (!profile.ok) {
+      skins.set(uuid, null);
+      return undefined;
+    }
+    const prop = ((await profile.json()) as { properties?: { name: string; value: string }[] }).properties?.find((p) => p.name === 'textures');
+    const textures = prop ? JSON.parse(Buffer.from(prop.value, 'base64').toString('utf8')) as { textures?: { SKIN?: { url: string; metadata?: { model?: string } } } } : undefined;
+    const link = textures?.textures?.SKIN?.url;
+    // only Mojang's own picture server
+    if (!link || !/^https?:\/\/textures\.minecraft\.net\//.test(link)) {
+      skins.set(uuid, null);
+      return undefined;
+    }
+    const png = await doFetch(link.replace(/^http:/, 'https:'));
+    if (!png.ok) return undefined;
+    const data = Buffer.from(await png.arrayBuffer());
+    if (data.length > 256 * 1024) return undefined;
+    if (skins.size > 2000) skins.clear();
+    const found = { at: Date.now(), data, slim: textures?.textures?.SKIN?.metadata?.model === 'slim' };
+    skins.set(uuid, found);
+    return found;
+  }
+
   async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
     const url = new URL(req.url ?? '/', 'http://localhost');
     res.setHeader('Cache-Control', 'no-store');
+
+    // a Minecraft player's skin for the site's 3D preview, from Mojang through here (the page may only talk to us)
+    const skin = /^\/v1\/skin\/([0-9a-fA-F-]{32,36})$/.exec(url.pathname);
+    if (req.method === 'GET' && skin) {
+      const found = await skinOf(skin[1].replace(/-/g, '').toLowerCase()).catch(() => undefined);
+      if (!found) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'not_found' }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=3600', 'X-Skin-Model': found.slim ? 'slim' : 'default', 'X-Content-Type-Options': 'nosniff' });
+      res.end(found.data);
+      return;
+    }
 
     // a partner server's picture: the address carries its version, so it may be kept for long
     const picture = /^\/v1\/partners\/(\w+)\/background$/.exec(url.pathname);
@@ -731,7 +775,8 @@ export function createApp(cfg: Config) {
       return;
     }
     // the installer for one system, straight from the latest release
-    const download = /^\/pobierz\/([\w-]+)$/.exec(url.pathname);
+    // English addresses too (/download, /updates); the Polish ones stay for links and launchers out there
+    const download = /^\/(?:pobierz|download)\/([\w-]+)$/.exec(url.pathname);
     if (req.method === 'GET' && download && isDownloadOs(download[1])) {
       try {
         const to = await downloads.link(download[1]);
@@ -745,7 +790,7 @@ export function createApp(cfg: Config) {
       return;
     }
     // the launcher's update feed: what is new (latest*.yml) from here, the files as signed links
-    const update = /^\/aktualizacje\/([\w][\w.-]{0,120})$/.exec(url.pathname);
+    const update = /^\/(?:aktualizacje|updates)\/([\w][\w.-]{0,120})$/.exec(url.pathname);
     if (req.method === 'GET' && update) {
       const name = update[1];
       try {
@@ -778,7 +823,7 @@ export function createApp(cfg: Config) {
     const started = performance.now();
     res.on('finish', () => {
       const path = (req.url ?? '/').split('?')[0];
-      if (!/^\/(v1|pobierz|aktualizacje)\//.test(path)) return;
+      if (!/^\/(v1|pobierz|download|aktualizacje|updates)\//.test(path)) return;
       // the panel asking for this list every few seconds would fill it
       if (path === '/v1/admin/requests') return;
       const seen = req as SeenRequest;

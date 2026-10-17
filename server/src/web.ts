@@ -11,12 +11,13 @@ const TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.json': 'application/json',
 };
-const PAGES: Record<string, string> = { '/': 'index.html', '/konto': 'konto.html', '/admin': 'admin.html', '/admin/': 'admin.html' };
+const PAGES: Record<string, string> = { '/': 'index.html', '/konto': 'konto.html', '/account': 'konto.html', '/admin': 'admin.html', '/admin/': 'admin.html' };
 
 /** Pages with an id in the address: a shared log, one bug report. */
 function pageOf(pathname: string): string | undefined {
-  if (/^\/logi\/[A-Za-z0-9]{10}$/.test(pathname)) return 'logi.html';
-  if (/^\/zgloszenia(\/\d+)?\/?$/.test(pathname)) return 'zgloszenia.html';
+  // each under its Polish and its English name
+  if (/^\/(logi|logs)\/[A-Za-z0-9]{10}$/.test(pathname)) return 'logi.html';
+  if (/^\/(zgloszenia|bugs)(\/\d+)?\/?$/.test(pathname)) return 'zgloszenia.html';
   return undefined;
 }
 

@@ -65,6 +65,9 @@ describe('downloads', () => {
     assert.equal(exe.headers.get('location'), 'https://objects.githubusercontent.com/signed/1');
     assert.equal((await fetch(`${base}/aktualizacje/latest-mac.yml`)).status, 404);
     assert.equal((await fetch(`${base}/aktualizacje/..%2Fsecret`, { redirect: 'manual' })).status, 404);
+    // the same under English names
+    assert.match(await (await fetch(`${base}/updates/latest.yml`)).text(), /version: 0\.6\.0/);
+    assert.equal((await fetch(`${base}/download/windows`, { redirect: 'manual' })).headers.get('location'), 'https://objects.githubusercontent.com/signed/1');
   });
 
   it('falls back to the newest release that has the system\'s installer, and knows only real systems', async () => {
