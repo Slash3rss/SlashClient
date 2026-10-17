@@ -1,3 +1,5 @@
+// 1.20.1 has no entity render states: wings and pets are not drawn there
+//#if MC >= 1.20.2
 package dev.slash3rss.slashclient.hud;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -175,3 +177,4 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		pose.popPose();
 	}
 }
+//#endif

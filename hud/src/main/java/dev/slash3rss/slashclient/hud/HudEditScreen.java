@@ -278,7 +278,7 @@ public class HudEditScreen extends Screen {
 		Ui.beginClip("crosshair options", rx, top, rw, bodyH);
 		int ry = top - Math.round(scroll);
 		Component name = Ui.tr("slashclient-hud.crosshair." + style);
-		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.crosshair.presets").append(Ui.text("  ")).append(name.copy().withColor(Ui.ACCENT_LIGHT)), rw), rx, ry + 2, Ui.TEXT);
+		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.crosshair.presets").append(Ui.text("  ")).append(name.copy().withStyle(st -> st.withColor(Ui.ACCENT_LIGHT))), rw), rx, ry + 2, Ui.TEXT);
 		ry += 14;
 		List<String> styles = new ArrayList<>(List.of(Crosshair.PRESETS));
 		if (cfg.crosshairPattern != null) styles.add(Crosshair.CUSTOM);
@@ -422,6 +422,9 @@ public class HudEditScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+		//#if MC < 1.20.2
+		//$ extractBackground(g, mx, my, delta);
+		//#endif
 		hits.clear();
 		g.fill(0, 0, width, height, window ? 0xB0050710 : 0x30000000);
 		if (dragging != null) {
@@ -641,16 +644,14 @@ public class HudEditScreen extends Screen {
 
 	/** Width the controls of a setting need on one line. */
 	private static int controlsWidth(Catalog.Setting s) {
-		return switch (s) {
-			case Catalog.Toggle tg -> 20;
-			case Catalog.Slider sl -> 150;
-			case Catalog.Choice ch -> {
-				int total = 0;
-				for (String v : ch.values()) total += Ui.width(Ui.tr(ch.valueKeyPrefix() + v)) + 16;
-				yield total - 4;
-			}
-			case Catalog.Colors co -> co.colors().length * 16;
-		};
+		if (s instanceof Catalog.Toggle) return 20;
+		if (s instanceof Catalog.Slider) return 150;
+		if (s instanceof Catalog.Choice ch) {
+			int total = 0;
+			for (String v : ch.values()) total += Ui.width(Ui.tr(ch.valueKeyPrefix() + v)) + 16;
+			return total - 4;
+		}
+		return ((Catalog.Colors) s).colors().length * 16;
 	}
 
 	private void drawSettings(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h) {
@@ -701,62 +702,57 @@ public class HudEditScreen extends Screen {
 			int left = twoLines ? x + 10 : labelEnd;
 			int cy = twoLines ? ry + 24 : ry + 5;
 			int hitsBefore = hits.size();
-			switch (s) {
-				case Catalog.Toggle tg -> {
-					boolean on = tg.get().get();
-					Ui.toggle(g, e.id() + ":" + s.labelKey(), right - 20, ry + 8, on);
-					hits.add(new Hit(x, ry, w, rh, () -> tg.set().accept(!tg.get().get())));
-				}
-				case Catalog.Slider sl -> {
-					float value = sl.get().get();
-					Component shownValue = Ui.text(String.format(Locale.ROOT, sl.format(), value));
-					int vw = Ui.width(shownValue) + 10;
-					int sx = twoLines ? left + 4 : Math.max(left, right - 196);
-					int sw = Math.max(30, right - vw - 12 - sx);
-					Ui.slider(g, sx, cy + 3, sw, (value - sl.min()) / (sl.max() - sl.min()));
-					Ui.round(g, right - vw, cy + 1, vw, 14, 4, 0xFF202839);
-					Ui.draw(g, shownValue, right - vw + 5, cy + 4, Ui.TEXT);
-					hits.add(new Hit(sx - 4, cy - 1, sw + 8, 18, () -> {
-						draggingSlider = sl;
-						sliderX = sx;
-						sliderW = sw;
-					}));
-				}
-				case Catalog.Choice ch -> {
-					if (controlsWidth(s) <= right - left) {
-						// every option as a button, right-aligned
-						int bx = right;
-						for (int k = ch.values().length - 1; k >= 0; k--) {
-							String v = ch.values()[k];
-							Component option = Ui.tr(ch.valueKeyPrefix() + v);
-							int bw = Ui.width(option) + 12;
-							bx -= bw;
-							boolean active = v.equals(ch.get().get());
-							if (active) {
-								Ui.accent(g, bx, cy, bw, 16, 4, 0);
-								Ui.centered(g, option, bx + bw / 2, cy + 4, 0xFFFFFFFF);
-							} else Ui.button(g, "choice:" + v, bx, cy, bw, 16, option, false, mx, my);
-							hits.add(new Hit(bx, cy, bw, 16, () -> ch.set().accept(v)));
-							bx -= 4;
-						}
-					} else {
-						// too narrow even for its own line: one button that steps through the options
-						List<String> values = List.of(ch.values());
-						String current = values.contains(ch.get().get()) ? ch.get().get() : values.get(0);
-						Component option = Ui.text("‹  ").append(Ui.tr(ch.valueKeyPrefix() + current)).append(Ui.text("  ›"));
-						Ui.button(g, "choice:" + s.labelKey(), left, cy, right - left, 16, option, true, mx, my);
-						hits.add(new Hit(left, cy, right - left, 16, () -> ch.set().accept(values.get((values.indexOf(current) + 1) % values.size()))));
+			if (s instanceof Catalog.Toggle tg) {
+				boolean on = tg.get().get();
+				Ui.toggle(g, e.id() + ":" + s.labelKey(), right - 20, ry + 8, on);
+				hits.add(new Hit(x, ry, w, rh, () -> tg.set().accept(!tg.get().get())));
+			} else if (s instanceof Catalog.Slider sl) {
+				float value = sl.get().get();
+				Component shownValue = Ui.text(String.format(Locale.ROOT, sl.format(), value));
+				int vw = Ui.width(shownValue) + 10;
+				int sx = twoLines ? left + 4 : Math.max(left, right - 196);
+				int sw = Math.max(30, right - vw - 12 - sx);
+				Ui.slider(g, sx, cy + 3, sw, (value - sl.min()) / (sl.max() - sl.min()));
+				Ui.round(g, right - vw, cy + 1, vw, 14, 4, 0xFF202839);
+				Ui.draw(g, shownValue, right - vw + 5, cy + 4, Ui.TEXT);
+				hits.add(new Hit(sx - 4, cy - 1, sw + 8, 18, () -> {
+					draggingSlider = sl;
+					sliderX = sx;
+					sliderW = sw;
+				}));
+			} else if (s instanceof Catalog.Choice ch) {
+				if (controlsWidth(s) <= right - left) {
+					// every option as a button, right-aligned
+					int bx = right;
+					for (int k = ch.values().length - 1; k >= 0; k--) {
+						String v = ch.values()[k];
+						Component option = Ui.tr(ch.valueKeyPrefix() + v);
+						int bw = Ui.width(option) + 12;
+						bx -= bw;
+						boolean active = v.equals(ch.get().get());
+						if (active) {
+							Ui.accent(g, bx, cy, bw, 16, 4, 0);
+							Ui.centered(g, option, bx + bw / 2, cy + 4, 0xFFFFFFFF);
+						} else Ui.button(g, "choice:" + v, bx, cy, bw, 16, option, false, mx, my);
+						hits.add(new Hit(bx, cy, bw, 16, () -> ch.set().accept(v)));
+						bx -= 4;
 					}
+				} else {
+					// too narrow even for its own line: one button that steps through the options
+					List<String> values = List.of(ch.values());
+					String current = values.contains(ch.get().get()) ? ch.get().get() : values.get(0);
+					Component option = Ui.text("‹  ").append(Ui.tr(ch.valueKeyPrefix() + current)).append(Ui.text("  ›"));
+					Ui.button(g, "choice:" + s.labelKey(), left, cy, right - left, 16, option, true, mx, my);
+					hits.add(new Hit(left, cy, right - left, 16, () -> ch.set().accept(values.get((values.indexOf(current) + 1) % values.size()))));
 				}
-				case Catalog.Colors co -> {
-					int bx = twoLines ? left : right - co.colors().length * 16 + 4;
-					for (int c : co.colors()) {
-						boolean active = c == co.get().get();
-						if (active) Ui.round(g, bx - 1, cy + 1, 14, 14, 4, 0xFFFFFFFF);
-						Ui.round(g, bx, cy + 2, 12, 12, 3, c);
-						hits.add(new Hit(bx, cy + 2, 12, 12, () -> co.set().accept(c)));
-						bx += 16;
-					}
+			} else if (s instanceof Catalog.Colors co) {
+				int bx = twoLines ? left : right - co.colors().length * 16 + 4;
+				for (int c : co.colors()) {
+					boolean active = c == co.get().get();
+					if (active) Ui.round(g, bx - 1, cy + 1, 14, 14, 4, 0xFFFFFFFF);
+					Ui.round(g, bx, cy + 2, 12, 12, 3, c);
+					hits.add(new Hit(bx, cy + 2, 12, 12, () -> co.set().accept(c)));
+					bx += 16;
 				}
 			}
 			// controls on the label's line must not cover it
@@ -799,7 +795,7 @@ public class HudEditScreen extends Screen {
 		Ui.button(g, "paste", at[1][0], at[1][1], bw, 22, "paste", Ui.tr("slashclient-hud.share.paste"), false, mx, my);
 		hits.add(new Hit(at[1][0], at[1][1], bw, 22, () -> {
 			HudConfig pasted = ShareCode.decode(minecraft.keyboardHandler.getClipboard());
-			if (pasted == null) status = Ui.tr("slashclient-hud.share.invalid").withColor(Ui.DANGER);
+			if (pasted == null) status = Ui.tr("slashclient-hud.share.invalid").withStyle(st -> st.withColor(Ui.DANGER));
 			else {
 				cfg.copyFrom(pasted);
 				ChatTabs.changed();
@@ -823,8 +819,18 @@ public class HudEditScreen extends Screen {
 	// ---------- input ----------
 
 	@Override
+	//#if MC >= 1.20.2
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
+	//#else
+	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//$ 	boolean doubleClick = false;
+	//#endif
+		//#if MC >= 1.20.2
 		if (super.mouseClicked(e, doubleClick)) return true;
+		//#else
+		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
+		//#endif
 		if (search != null) search.setFocused(false);
 		if (e.button() == InputConstants.MOUSE_BUTTON_RIGHT && !window) {
 			HudModule m = moduleAt(e.x(), e.y());
@@ -882,7 +888,12 @@ public class HudEditScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.20.2
 	public boolean mouseDragged(MouseButtonEvent e, double dx, double dy) {
+	//#else
+	//$ public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//#endif
 		if (painting != null) {
 			paintAt(e.x(), e.y());
 			return true;
@@ -891,7 +902,11 @@ public class HudEditScreen extends Screen {
 			dragSlider(e.x());
 			return true;
 		}
+		//#if MC >= 1.20.2
 		if (dragging == null) return super.mouseDragged(e, dx, dy);
+		//#else
+		//$ if (dragging == null) return super.mouseDragged(e.x(), e.y(), e.button(), dx, dy);
+		//#endif
 		int[] b = box(dragging);
 		HudConfig.Placement p = SlashHud.config.placement(dragging.id());
 		int x = snap((int) Math.round(e.x() - grabX), b[2], width, true);
@@ -905,26 +920,49 @@ public class HudEditScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.20.2
 	public boolean mouseReleased(MouseButtonEvent e) {
+	//#else
+	//$ public boolean mouseReleased(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//#endif
 		dragging = null;
 		draggingSlider = null;
 		painting = null;
 		lastCellX = lastCellY = -1;
 		snappedX = snappedY = false;
+		//#if MC >= 1.20.2
 		return super.mouseReleased(e);
+		//#else
+		//$ return super.mouseReleased(e.x(), e.y(), e.button());
+		//#endif
 	}
 
 	@Override
+	//#if MC >= 1.20.2
 	public boolean mouseScrolled(double x, double y, double h, double v) {
+	//#else
+	//$ public boolean mouseScrolled(double x, double y, double v) {
+	//$ 	double h = 0;
+	//#endif
 		if (window) {
 			scroll = Math.max(0, Math.min(maxScroll, scroll - (float) v * 24));
 			return true;
 		}
+		//#if MC >= 1.20.2
 		return super.mouseScrolled(x, y, h, v);
+		//#else
+		//$ return super.mouseScrolled(x, y, v);
+		//#endif
 	}
 
 	@Override
+	//#if MC >= 1.20.2
 	public boolean keyPressed(KeyEvent e) {
+	//#else
+	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+	//$ 	KeyEvent e = new KeyEvent(keyCode, scanCode, modifiers);
+	//#endif
 		// Esc closes the window first, then the editor
 		if (e.key() == InputConstants.KEY_ESCAPE && window) {
 			if (settingsOf != null) settingsOf = null;
@@ -932,7 +970,11 @@ public class HudEditScreen extends Screen {
 			reopen();
 			return true;
 		}
+		//#if MC >= 1.20.2
 		return super.keyPressed(e);
+		//#else
+		//$ return super.keyPressed(e.key(), e.scancode(), e.modifiers());
+		//#endif
 	}
 
 	// ---------- module boxes ----------
@@ -1024,7 +1066,9 @@ public class HudEditScreen extends Screen {
 		return false;
 	}
 
+	//#if MC >= 1.20.2
 	@Override
+	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		// in game the world stays visible and sharp behind the editor; opened from the main menu
 		// there is no world, so the menu's panorama with the launcher's blue, as in our menus

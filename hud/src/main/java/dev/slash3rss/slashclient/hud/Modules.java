@@ -331,11 +331,17 @@ public final class Modules {
 			List<Component[]> out = new ArrayList<>();
 			icons.clear();
 			if (mc.player != null && mc.level != null) {
+				//#if MC >= 1.20.2
 				float tickrate = mc.level.tickRateManager().tickrate();
+				//#endif
 				for (MobEffectInstance e : mc.player.getActiveEffects()) {
 					Component name = Component.translatable(e.getDescriptionId());
 					if (e.getAmplifier() > 0) name = Component.empty().append(name).append(" ").append(Component.translatable("enchantment.level." + (e.getAmplifier() + 1)));
+					//#if MC >= 1.20.2
 					out.add(new Component[] { name, MobEffectUtil.formatDuration(e, 1.0f, tickrate) });
+					//#else
+					//$ out.add(new Component[] { name, MobEffectUtil.formatDuration(e, 1.0f) });
+					//#endif
 					icons.add(e.getEffect());
 				}
 			}

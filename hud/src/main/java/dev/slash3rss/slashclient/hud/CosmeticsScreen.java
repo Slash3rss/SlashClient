@@ -225,6 +225,9 @@ public class CosmeticsScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+		//#if MC < 1.20.2
+		//$ extractBackground(g, mx, my, delta);
+		//#endif
 		super.extractRenderState(g, mx, my, delta);
 		hits.clear();
 		tooltip = null;
@@ -337,8 +340,18 @@ public class CosmeticsScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.20.2
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
+	//#else
+	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//$ 	boolean doubleClick = false;
+	//#endif
+		//#if MC >= 1.20.2
 		if (super.mouseClicked(e, doubleClick)) return true;
+		//#else
+		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
+		//#endif
 		for (int i = hits.size() - 1; i >= 0; i--) {
 			Hit h = hits.get(i);
 			if (Ui.inside(e.x(), e.y(), h.x(), h.y(), h.w(), h.h())) {
@@ -349,7 +362,9 @@ public class CosmeticsScreen extends Screen {
 		return false;
 	}
 
+	//#if MC >= 1.20.2
 	@Override
+	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		// the player stays in full view: only the panel's side is darkened
 		g.fill(px - 12, 0, width, height, 0x70000000);

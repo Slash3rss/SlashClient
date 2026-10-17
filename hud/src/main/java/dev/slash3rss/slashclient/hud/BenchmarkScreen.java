@@ -38,6 +38,9 @@ public class BenchmarkScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+		//#if MC < 1.20.2
+		//$ extractBackground(g, mx, my, delta);
+		//#endif
 		hits.clear();
 		int pw = Math.min(width - 16, 440);
 		int ph = Math.min(height - 16, 286);
@@ -175,8 +178,18 @@ public class BenchmarkScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.20.2
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
+	//#else
+	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//$ 	boolean doubleClick = false;
+	//#endif
+		//#if MC >= 1.20.2
 		if (super.mouseClicked(e, doubleClick)) return true;
+		//#else
+		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
+		//#endif
 		for (Hit h : List.copyOf(hits)) {
 			if (Ui.inside(e.x(), e.y(), h.x(), h.y(), h.w(), h.h())) {
 				h.action().run();
@@ -191,7 +204,9 @@ public class BenchmarkScreen extends Screen {
 		return false;
 	}
 
+	//#if MC >= 1.20.2
 	@Override
+	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		g.fill(0, 0, width, height, 0x90000000);
 	}

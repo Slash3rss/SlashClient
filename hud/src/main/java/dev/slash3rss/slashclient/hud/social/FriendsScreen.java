@@ -91,6 +91,9 @@ public class FriendsScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+		//#if MC < 1.20.2
+		//$ extractBackground(g, mx, my, delta);
+		//#endif
 		hits.clear();
 		Ui.panel(g, px, py, pw, ph);
 		Ui.begin("friends panel", px, py, pw, ph);
@@ -259,8 +262,18 @@ public class FriendsScreen extends Screen {
 	// ---------- input ----------
 
 	@Override
+	//#if MC >= 1.20.2
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
+	//#else
+	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//$ 	boolean doubleClick = false;
+	//#endif
+		//#if MC >= 1.20.2
 		if (super.mouseClicked(e, doubleClick)) return true;
+		//#else
+		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
+		//#endif
 		if (e.button() != InputConstants.MOUSE_BUTTON_LEFT) return false;
 		for (Hit h : List.copyOf(hits)) {
 			if (Ui.inside(e.x(), e.y(), h.x(), h.y(), h.w(), h.h())) {
@@ -272,18 +285,32 @@ public class FriendsScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.20.2
 	public boolean mouseScrolled(double x, double y, double h, double v) {
+	//#else
+	//$ public boolean mouseScrolled(double x, double y, double v) {
+	//$ 	double h = 0;
+	//#endif
 		scroll = (int) Math.max(0, Math.min(maxScroll, scroll + v * 20));
 		return true;
 	}
 
 	@Override
+	//#if MC >= 1.20.2
 	public boolean keyPressed(KeyEvent e) {
+	//#else
+	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+	//$ 	KeyEvent e = new KeyEvent(keyCode, scanCode, modifiers);
+	//#endif
 		if ((e.key() == InputConstants.KEY_RETURN || e.key() == InputConstants.KEY_NUMPADENTER) && input.isFocused()) {
 			send();
 			return true;
 		}
+		//#if MC >= 1.20.2
 		return super.keyPressed(e);
+		//#else
+		//$ return super.keyPressed(e.key(), e.scancode(), e.modifiers());
+		//#endif
 	}
 
 	@Override
@@ -297,7 +324,9 @@ public class FriendsScreen extends Screen {
 		return false;
 	}
 
+	//#if MC >= 1.20.2
 	@Override
+	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		if (minecraft.level == null) {
 			// from the main menu there is no world behind: the menu's panorama, as on our title screen

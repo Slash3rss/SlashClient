@@ -1,7 +1,9 @@
 package dev.slash3rss.slashclient.hud;
 
 import net.minecraft.client.Minecraft;
+//#if MC >= 1.20.2
 import net.minecraft.network.protocol.ping.ServerboundPingRequestPacket;
+//#endif
 import net.minecraft.util.Util;
 
 /**
@@ -27,10 +29,16 @@ public final class Latency {
 			ms = -1;
 			return;
 		}
+		//#if MC >= 1.20.2
 		long now = Util.getMillis();
 		if (now - sent < EVERY_MS) return;
 		sent = now;
 		connection.send(new ServerboundPingRequestPacket(now));
+		//#else
+		//$ // 1.20.1 has no ping packets while playing: the tab list's number stands in
+		//$ var info = mc.player == null ? null : connection.getPlayerInfo(mc.player.getUUID());
+		//$ ms = info == null ? -1 : info.getLatency();
+		//#endif
 	}
 
 	/** A pong from the server (the game's own debug pings come back here too). */

@@ -4,7 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 //#if MC >= 26.3
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
-//#else
+//#elif MC >= 1.20.2
 //$ import com.mojang.blaze3d.pipeline.RenderPipeline;
 //#endif
 import dev.slash3rss.slashclient.hud.PinnedServer;
@@ -36,6 +36,8 @@ abstract class OnlineServerEntryMixin {
 		return -1;
 	}
 
+	// 1.20.1 draws the move arrows from a texture sheet: they stay there (swap() is still stopped below)
+	//#if MC >= 1.20.2
 	//#if MC >= 26.3
 	@WrapOperation(method = "extractContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
 	//#else
@@ -63,6 +65,19 @@ abstract class OnlineServerEntryMixin {
 		var entry = (ServerSelectionList.Entry) (Object) this;
 		dev.slash3rss.slashclient.hud.PartnerServers.drawBadge(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
 	}
+	//#else
+	//$ /** A partner server's picture behind its row (PartnerServers), under the game's icon and text. */
+	//$ @Inject(method = "render", at = @At("HEAD"))
+	//$ private void slashclient$partnerBackground(GuiGraphicsExtractor g, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
+	//$ 	dev.slash3rss.slashclient.hud.PartnerServers.drawBehind(g, serverData, left, top, width, height);
+	//$ }
+	//$
+	//$ /** The "Partner" badge on top of the row. */
+	//$ @Inject(method = "render", at = @At("TAIL"))
+	//$ private void slashclient$partnerBadge(GuiGraphicsExtractor g, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
+	//$ 	dev.slash3rss.slashclient.hud.PartnerServers.drawBadge(g, serverData, left, top, width, height);
+	//$ }
+	//#endif
 
 	@Inject(method = "swap", at = @At("HEAD"), cancellable = true)
 	private void slashclient$noMovePinned(int a, int b, CallbackInfo ci) {

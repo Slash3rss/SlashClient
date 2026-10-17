@@ -163,13 +163,16 @@ java {
 
 // `gradlew runClientGameTest` starts the real game, makes a world and saves screenshots
 // of the HUD and the editor to build/<mc>/run/clientGameTest/screenshots
-fabricApi {
-	configureTests {
-		createSourceSet = true
-		modId = "slashclient-hud-test"
-		enableGameTests = false
-		enableClientGameTests = true
-		eula = true
+// versions without Fabric's client gametest API (before 1.21.4) set gametest=false
+if (v.getProperty('gametest') != 'false') {
+	fabricApi {
+		configureTests {
+			createSourceSet = true
+			modId = "slashclient-hud-test"
+			enableGameTests = false
+			enableClientGameTests = true
+			eula = true
+		}
 	}
 }
 afterEvaluate {

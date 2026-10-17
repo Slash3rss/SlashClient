@@ -18,7 +18,13 @@ abstract class CameraMixin {
 	//#else
 	//$ @ModifyReturnValue(method = "getFov", at = @At("RETURN"))
 	//#endif
+	//#if MC >= 1.20.2
 	private float slashclient$zoom(float fov) {
 		return Extras.zoomFov(fov);
 	}
+	//#else
+	//$ private double slashclient$zoom(double fov) {
+	//$ 	return Extras.zoomFov((float) fov);
+	//$ }
+	//#endif
 }

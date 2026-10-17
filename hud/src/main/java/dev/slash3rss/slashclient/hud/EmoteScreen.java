@@ -40,6 +40,9 @@ public class EmoteScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+		//#if MC < 1.20.2
+		//$ extractBackground(g, mx, my, delta);
+		//#endif
 		hovered = at(mx, my);
 		int cx = width / 2, cy = height / 2;
 		Ui.round(g, cx - RADIUS - SLOT / 2 - 8, cy - RADIUS - SLOT / 2 - 8, (RADIUS + SLOT / 2 + 8) * 2, (RADIUS + SLOT / 2 + 8) * 2, RADIUS + SLOT / 2 + 8, 0xB0111622);
@@ -66,32 +69,60 @@ public class EmoteScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.20.2
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
+	//#else
+	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//$ 	boolean doubleClick = false;
+	//#endif
 		if (e.button() == InputConstants.MOUSE_BUTTON_LEFT) {
 			pick(at(e.x(), e.y()));
 			return true;
 		}
+		//#if MC >= 1.20.2
 		return super.mouseClicked(e, doubleClick);
+		//#else
+		//$ return super.mouseClicked(e.x(), e.y(), e.button());
+		//#endif
 	}
 
 	@Override
+	//#if MC >= 1.20.2
 	public boolean keyPressed(KeyEvent e) {
+	//#else
+	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+	//$ 	KeyEvent e = new KeyEvent(keyCode, scanCode, modifiers);
+	//#endif
 		int n = e.key() - InputConstants.KEY_1;
 		if (n >= 0 && n < Cosmetics.EMOTES.size()) {
 			pick(n);
 			return true;
 		}
+		//#if MC >= 1.20.2
 		return super.keyPressed(e);
+		//#else
+		//$ return super.keyPressed(e.key(), e.scancode(), e.modifiers());
+		//#endif
 	}
 
 	/** Holding the key, pointing and letting go picks what is pointed at. */
 	@Override
+	//#if MC >= 1.20.2
 	public boolean keyReleased(KeyEvent e) {
+	//#else
+	//$ public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+	//$ 	KeyEvent e = new KeyEvent(keyCode, scanCode, modifiers);
+	//#endif
 		if (key.matches(e) && hovered >= 0) {
 			pick(hovered);
 			return true;
 		}
+		//#if MC >= 1.20.2
 		return super.keyReleased(e);
+		//#else
+		//$ return super.keyReleased(e.key(), e.scancode(), e.modifiers());
+		//#endif
 	}
 
 	@Override
@@ -99,7 +130,9 @@ public class EmoteScreen extends Screen {
 		return false;
 	}
 
+	//#if MC >= 1.20.2
 	@Override
+	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		g.fill(0, 0, width, height, 0x40000000);
 	}

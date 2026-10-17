@@ -21,8 +21,13 @@ abstract class ScreenEffectRendererMixin {
 	@Inject(method = "submitFire", at = @At("HEAD"))
 	private static void slashclient$lowerFire(PoseStack pose, SubmitNodeCollector collector, TextureAtlasSprite sprite, CallbackInfo ci) {
 	//#else
+	//#if MC >= 1.20.2
 	//$ @Inject(method = "renderFire", at = @At("HEAD"))
 	//$ private static void slashclient$lowerFire(PoseStack pose, MultiBufferSource buffers, TextureAtlasSprite sprite, CallbackInfo ci) {
+	//#else
+	//$ @Inject(method = "renderFire", at = @At("HEAD"))
+	//$ private static void slashclient$lowerFire(net.minecraft.client.Minecraft mc, PoseStack pose, CallbackInfo ci) {
+	//#endif
 	//#endif
 		pose.pushPose();
 		if (Extras.lowFire()) pose.translate(0f, -0.35f, 0f);
@@ -32,8 +37,13 @@ abstract class ScreenEffectRendererMixin {
 	@Inject(method = "submitFire", at = @At("RETURN"))
 	private static void slashclient$lowerFireEnd(PoseStack pose, SubmitNodeCollector collector, TextureAtlasSprite sprite, CallbackInfo ci) {
 	//#else
+	//#if MC >= 1.20.2
 	//$ @Inject(method = "renderFire", at = @At("RETURN"))
 	//$ private static void slashclient$lowerFireEnd(PoseStack pose, MultiBufferSource buffers, TextureAtlasSprite sprite, CallbackInfo ci) {
+	//#else
+	//$ @Inject(method = "renderFire", at = @At("RETURN"))
+	//$ private static void slashclient$lowerFireEnd(net.minecraft.client.Minecraft mc, PoseStack pose, CallbackInfo ci) {
+	//#endif
 	//#endif
 		pose.popPose();
 	}

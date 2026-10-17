@@ -32,13 +32,21 @@ public class SlashPauseScreen extends MenuScreen {
 			new Nav(Ui.tr("slashclient-hud.cosmetics"), "m-appearance", () -> minecraft.setScreenAndShow(new dev.slash3rss.slashclient.hud.CosmeticsScreen(this))),
 			new Nav(Ui.tr("slashclient-hud.editor"), "sliders", () -> minecraft.setScreenAndShow(HudEditScreen.settingsWindow())),
 			new Nav(Ui.tr("menu.options"), "gear", () -> minecraft.setScreenAndShow(Compat.options(minecraft, this))),
+			//#if MC >= 1.20.2
 			new Nav(CommonComponents.disconnectButtonLabel(minecraft.isLocalServer()), "power", this::leave, true));
+			//#else
+			//$ new Nav(Component.translatable(minecraft.isLocalServer() ? "menu.returnToMenu" : "menu.disconnect"), "power", this::leave, true));
+			//#endif
 	}
 
 	private List<Nav> tools() {
 		return List.of(
 			new Nav(Ui.tr("gui.advancements"), "m-advancements", () -> {
+				//#if MC >= 1.20.2
 				if (minecraft.player != null) minecraft.setScreenAndShow(new AdvancementsScreen(minecraft.player.connection.getAdvancements(), this));
+				//#else
+				//$ if (minecraft.player != null) minecraft.setScreenAndShow(new AdvancementsScreen(minecraft.player.connection.getAdvancements()));
+				//#endif
 			}),
 			new Nav(Ui.tr("gui.stats"), "m-stats", () -> {
 				if (minecraft.player != null) minecraft.setScreenAndShow(new StatsScreen(this, minecraft.player.getStats()));
@@ -53,11 +61,18 @@ public class SlashPauseScreen extends MenuScreen {
 
 	/** Leaving the world or server, exactly as the game's own pause menu does it. */
 	private void leave() {
+		//#if MC >= 1.20.2
 		minecraft.getReportingContext().draftReportHandled(minecraft, this, () -> minecraft.disconnectFromWorld(ClientLevel.DEFAULT_QUIT_MESSAGE), true);
+		//#else
+		//$ minecraft.getReportingContext().draftReportHandled(minecraft, this, () -> minecraft.disconnectFromWorld(Component.translatable("menu.savingLevel")), true);
+		//#endif
 	}
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+		//#if MC < 1.20.2
+		//$ extractBackground(g, mx, my, delta);
+		//#endif
 		super.extractRenderState(g, mx, my, delta);
 		beginFrame();
 		List<Nav> items = nav();
@@ -71,7 +86,9 @@ public class SlashPauseScreen extends MenuScreen {
 		drawTooltip(g);
 	}
 
+	//#if MC >= 1.20.2
 	@Override
+	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		// the game stays visible behind, darker so the panel reads well
 		g.fill(0, 0, width, height, 0x90000000);

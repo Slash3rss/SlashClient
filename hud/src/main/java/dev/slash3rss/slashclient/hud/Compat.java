@@ -89,8 +89,10 @@ public final class Compat {
 		return new net.minecraft.client.gui.screens.options.OptionsScreen(parent, mc.options);
 		//#elif MC >= 26.1
 		//$ return new net.minecraft.client.gui.screens.options.OptionsScreen(parent, mc.options, false);
-		//#else
+		//#elif MC >= 1.20.2
 		//$ return new net.minecraft.client.gui.screens.options.OptionsScreen(parent, mc.options);
+		//#else
+		//$ return new net.minecraft.client.gui.screens.OptionsScreen(parent, mc.options);
 		//#endif
 	}
 
@@ -107,6 +109,8 @@ public final class Compat {
 		//#endif
 	}
 
+	// 1.20.1 has no render states: the cosmetic layers that use this are left out there
+	//#if MC >= 1.20.2
 	/** A model drawn with the frame (the outline colour is for glowing players). */
 	public static <S> void submitModel(net.minecraft.client.renderer.SubmitNodeCollector out, net.minecraft.client.model.Model<? super S> model, S state,
 			com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.client.renderer.rendertype.RenderType type, int light, int overlay, int outline) {
@@ -116,6 +120,7 @@ public final class Compat {
 		//$ out.submitModel(model, state, pose, type, light, overlay, outline, null);
 		//#endif
 	}
+	//#endif
 
 	/** Moves an inventory slot's stack into a hotbar slot (as pressing that slot's number over it would). */
 	static void swapIntoHotbar(Minecraft mc, net.minecraft.world.entity.player.Player player, int slot, int hotbar) {
@@ -126,12 +131,38 @@ public final class Compat {
 		//#endif
 	}
 
+	//#if MC >= 1.20.2
 	/** The game's picture of a status effect (the one in the corner of the screen). */
 	static net.minecraft.resources.Identifier effectSprite(net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
 		//#if MC >= 26.2
 		return net.minecraft.client.gui.Hud.getMobEffectSprite(effect);
 		//#else
 		//$ return net.minecraft.client.gui.Gui.getMobEffectSprite(effect);
+		//#endif
+	}
+	//#else
+	//$ /** The game's picture of a status effect (1.20.1: a sprite of the effect atlas). */
+	//$ static net.minecraft.client.renderer.texture.TextureAtlasSprite effectSprite(net.minecraft.world.effect.MobEffect effect) {
+	//$ 	return Minecraft.getInstance().getMobEffectTextures().get(effect);
+	//$ }
+	//#endif
+
+	/** Whether a pause screen shows its buttons (not with F3+Esc). */
+	public static boolean showsPauseMenu(net.minecraft.client.gui.screens.PauseScreen pause) {
+		//#if MC >= 1.20.2
+		return pause.showsPauseMenu();
+		//#else
+		//$ return ((dev.slash3rss.slashclient.hud.mixin.PauseScreenAccessor) pause).slashclient$showPauseMenu();
+		//#endif
+	}
+
+	/** Leaves the world or server for the menu. */
+	public static void disconnect(Minecraft mc, Component reason) {
+		//#if MC >= 1.20.2
+		mc.disconnectFromWorld(reason);
+		//#else
+		//$ if (mc.level != null) mc.level.disconnect();
+		//$ mc.clearLevel(new net.minecraft.client.gui.screens.GenericDirtMessageScreen(reason));
 		//#endif
 	}
 

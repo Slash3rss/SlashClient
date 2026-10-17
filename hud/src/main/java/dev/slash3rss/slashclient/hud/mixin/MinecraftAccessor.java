@@ -23,9 +23,12 @@ public interface MinecraftAccessor {
 	@Accessor("userApiService")
 	void slashclient$setUserApiService(UserApiService service);
 
+	// not in 1.20.1
+	//#if MC >= 1.20.2
 	@Mutable
 	@Accessor("userPropertiesFuture")
 	void slashclient$setUserProperties(CompletableFuture<UserApiService.UserProperties> properties);
+	//#endif
 
 	@Mutable
 	@Accessor("profileKeyPairManager")
@@ -38,8 +41,11 @@ public interface MinecraftAccessor {
 	@Accessor("playerSocialManager")
 	void slashclient$setPlayerSocialManager(PlayerSocialManager manager);
 
+	// not in 1.20.1
+	//#if MC >= 1.20.2
 	@SuppressWarnings("rawtypes")
 	@Mutable
 	@Accessor("profileFuture")
 	void slashclient$setProfileFuture(CompletableFuture profile);
+	//#endif
 }

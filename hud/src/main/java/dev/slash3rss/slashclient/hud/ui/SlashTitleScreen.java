@@ -59,7 +59,9 @@ public class SlashTitleScreen extends MenuScreen {
 			new Nav(Ui.tr("menu.quit"), "power", minecraft::stop, true));
 	}
 
+	//#if MC >= 1.20.2
 	@Override
+	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		extractPanorama(g, delta);
 		// the launcher's dark blue over the panorama, deeper towards the bottom
@@ -69,6 +71,9 @@ public class SlashTitleScreen extends MenuScreen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+		//#if MC < 1.20.2
+		//$ extractBackground(g, mx, my, delta);
+		//#endif
 		super.extractRenderState(g, mx, my, delta);
 		beginFrame();
 		List<Nav> items = nav();

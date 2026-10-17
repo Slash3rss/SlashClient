@@ -1,3 +1,4 @@
+//#if MC >= 1.20.2
 package dev.slash3rss.slashclient.hud.ui;
 
 import net.minecraft.client.Minecraft;
@@ -171,3 +172,113 @@ public final class SkinPreview {
 		//#endif
 	}
 }
+//#else
+//$ package dev.slash3rss.slashclient.hud.ui;
+//$
+//$ import com.mojang.authlib.minecraft.MinecraftProfileTexture;
+//$ import com.mojang.blaze3d.platform.Lighting;
+//$ import com.mojang.blaze3d.vertex.PoseStack;
+//$ import com.mojang.math.Axis;
+//$ import net.minecraft.client.Minecraft;
+//$ import net.minecraft.client.gui.GuiGraphics;
+//$ import net.minecraft.client.model.PlayerModel;
+//$ import net.minecraft.client.model.geom.ModelLayers;
+//$ import net.minecraft.client.model.geom.ModelPart;
+//$ import net.minecraft.client.renderer.RenderType;
+//$ import net.minecraft.client.renderer.texture.OverlayTexture;
+//$ import net.minecraft.client.resources.DefaultPlayerSkin;
+//$ import net.minecraft.resources.ResourceLocation;
+//$ import net.minecraft.util.Mth;
+//$
+//$ /**
+//$  * The player's own skin standing in the menu, the head turning towards the mouse (1.20.1: the
+//$  * player model drawn straight into the GUI, with the picked cape; wings and pets are not shown).
+//$  */
+//$ public final class SkinPreview {
+//$ 	private static final float BODY_YAW = 15;
+//$
+//$ 	private final PlayerModel<?> wide;
+//$ 	private final PlayerModel<?> slim;
+//$ 	private volatile ResourceLocation skin;
+//$ 	private volatile boolean slimSkin;
+//$ 	private float headYaw, headPitch, bodyYaw = BODY_YAW;
+//$
+//$ 	public SkinPreview(Minecraft mc) {
+//$ 		var models = mc.getEntityModels();
+//$ 		wide = new PlayerModel<>(models.bakeLayer(ModelLayers.PLAYER), false);
+//$ 		slim = new PlayerModel<>(models.bakeLayer(ModelLayers.PLAYER_SLIM), true);
+//$ 		var profile = mc.getUser().getGameProfile();
+//$ 		skin = DefaultPlayerSkin.getDefaultSkin(profile.getId());
+//$ 		slimSkin = "slim".equals(DefaultPlayerSkin.getSkinModelName(profile.getId()));
+//$ 		// the session's skin, fetched in the background; the default skin until it arrives
+//$ 		Thread t = new Thread(() -> {
+//$ 			try {
+//$ 				var filled = mc.getMinecraftSessionService().fillProfileProperties(profile, false);
+//$ 				MinecraftProfileTexture texture = mc.getSkinManager().getInsecureSkinInformation(filled).get(MinecraftProfileTexture.Type.SKIN);
+//$ 				if (texture == null) return;
+//$ 				mc.execute(() -> {
+//$ 					skin = mc.getSkinManager().registerTexture(texture, MinecraftProfileTexture.Type.SKIN);
+//$ 					slimSkin = "slim".equals(texture.getMetadata("model"));
+//$ 				});
+//$ 			} catch (RuntimeException e) {
+//$ 				// offline or no skin: the default one stays
+//$ 			}
+//$ 		}, "SlashClient skin");
+//$ 		t.setDaemon(true);
+//$ 		t.start();
+//$ 	}
+//$
+//$ 	/** Draws the figure in the box; the head looks at (mx, my). */
+//$ 	public void draw(GuiGraphics g, int x, int y, int w, int h, int mx, int my) {
+//$ 		PlayerModel<?> model = slimSkin ? slim : wide;
+//$ 		float scale = 0.97f * h / 2.125f;
+//$ 		float eyesX = x + w / 2f;
+//$ 		float eyesY = y + h * 0.12f;
+//$ 		float dx = mx - eyesX, dy = my - eyesY;
+//$ 		float wantYaw = Mth.clamp((float) Math.toDegrees(Math.atan(dx / 100f)), -45, 45);
+//$ 		float wantPitch = Mth.clamp((float) Math.toDegrees(Math.atan(dy / 120f)), -25, 30);
+//$ 		headYaw += (wantYaw - headYaw) * 0.25f;
+//$ 		headPitch += (wantPitch - headPitch) * 0.25f;
+//$ 		bodyYaw += (BODY_YAW + wantYaw * 0.35f - bodyYaw) * 0.15f;
+//$
+//$ 		model.young = false;
+//$ 		model.crouching = false;
+//$ 		model.riding = false;
+//$ 		model.attackTime = 0;
+//$ 		model.setAllVisible(true);
+//$ 		for (ModelPart p : new ModelPart[] { model.body, model.leftArm, model.rightArm, model.leftLeg, model.rightLeg }) p.resetPose();
+//$ 		model.head.resetPose();
+//$ 		model.head.yRot = (float) Math.toRadians(headYaw - bodyYaw);
+//$ 		model.head.xRot = (float) Math.toRadians(headPitch);
+//$ 		model.hat.copyFrom(model.head);
+//$ 		model.jacket.copyFrom(model.body);
+//$ 		model.leftSleeve.copyFrom(model.leftArm);
+//$ 		model.rightSleeve.copyFrom(model.rightArm);
+//$ 		model.leftPants.copyFrom(model.leftLeg);
+//$ 		model.rightPants.copyFrom(model.rightLeg);
+//$
+//$ 		PoseStack pose = ((GuiGraphics) g).pose();
+//$ 		pose.pushPose();
+//$ 		// the model's origin is at the neck: the head 0.5 blocks above it, the feet 1.5 below
+//$ 		pose.translate(x + w / 2f, y + h / 2f - 0.5f * scale, 100);
+//$ 		pose.scale(scale, scale, -scale);
+//$ 		pose.mulPose(Axis.YP.rotationDegrees(bodyYaw));
+//$ 		Lighting.setupForEntityInInventory();
+//$ 		var buffers = g.bufferSource();
+//$ 		var self = Minecraft.getInstance().getUser().getProfileId();
+//$ 		String cape = dev.slash3rss.slashclient.hud.Cosmetics.worn(self, "cape");
+//$ 		if (cape != null) {
+//$ 			pose.pushPose();
+//$ 			pose.translate(0, 0, 0.125f);
+//$ 			pose.mulPose(Axis.XP.rotationDegrees(6));
+//$ 			pose.mulPose(Axis.YP.rotationDegrees(180));
+//$ 			model.renderCloak(pose, buffers.getBuffer(RenderType.entitySolid(dev.slash3rss.slashclient.hud.Cosmetics.capeTexture(cape))), 0xF000F0, OverlayTexture.NO_OVERLAY);
+//$ 			pose.popPose();
+//$ 		}
+//$ 		model.renderToBuffer(pose, buffers.getBuffer(RenderType.entityTranslucent(skin)), 0xF000F0, OverlayTexture.NO_OVERLAY, 1, 1, 1, 1);
+//$ 		g.flush();
+//$ 		Lighting.setupFor3DItems();
+//$ 		pose.popPose();
+//$ 	}
+//$ }
+//#endif

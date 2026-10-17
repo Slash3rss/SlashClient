@@ -1,13 +1,17 @@
 package dev.slash3rss.slashclient.hud;
 
 import net.minecraft.client.Minecraft;
+//#if MC >= 1.20.2
 import net.minecraft.core.ClientAsset;
+//#endif
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FontDescription;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
+//#if MC >= 1.20.2
 import net.minecraft.world.entity.player.PlayerSkin;
+//#endif
 
 import java.util.List;
 import java.util.Map;
@@ -42,7 +46,9 @@ public final class Cosmetics {
 
 	/** uuid → slot → item, what the server says each player wears (only items this mod knows). */
 	private static final Map<UUID, Map<String, String>> worn = new ConcurrentHashMap<>();
+	//#if MC >= 1.20.2
 	private static final Map<String, ClientAsset.Texture> textures = new ConcurrentHashMap<>();
+	//#endif
 	private record Shown(String emote, long until) {}
 	private static final Map<UUID, Shown> emotes = new ConcurrentHashMap<>();
 
@@ -97,6 +103,7 @@ public final class Cosmetics {
 		emotes.clear();
 	}
 
+	//#if MC >= 1.20.2
 	/** For the screenshots of the website (TestHooks): our own player in a given skin. */
 	static ClientAsset.Texture testSkin;
 	static UUID testSkinFor;
@@ -124,17 +131,38 @@ public final class Cosmetics {
 		ClientAsset.Texture elytraTexture = elytra != null ? texture("elytra", elytra) : cape != null ? null : skin.elytra();
 		return new PlayerSkin(skin.body(), capeTexture, elytraTexture, skin.model(), skin.secure());
 	}
+	//#else
+	//$ // 1.20.1 has no PlayerSkin: the cape and elytra pictures are asked for one by one (CapeMixin)
+	//$ static UUID testSkinFor;
+	//$
+	//$ /** The cape picture to wear, or `own` (the player's own, maybe null). */
+	//$ public static Identifier capeFor(UUID id, Identifier own) {
+	//$ 	if (SlashHud.config == null || !SlashHud.config.badges) return own;
+	//$ 	String cape = worn(id, "cape");
+	//$ 	return cape == null ? own : capeTexture(cape);
+	//$ }
+	//$
+	//$ /** The elytra picture to wear: our elytra, else our cape (as for Minecraft's own capes), else `own`. */
+	//$ public static Identifier elytraFor(UUID id, Identifier own) {
+	//$ 	if (SlashHud.config == null || !SlashHud.config.badges) return own;
+	//$ 	String elytra = worn(id, "elytra");
+	//$ 	if (elytra != null) return textureId("elytra", elytra);
+	//$ 	return worn(id, "cape") != null ? capeFor(id, own) : own;
+	//$ }
+	//#endif
 
 	/** Where one of our pictures is, for models drawn with it directly (the wings). */
 	public static Identifier textureId(String kind, String name) {
 		return Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/" + kind + "/" + name + ".png");
 	}
 
+	//#if MC >= 1.20.2
 	/** One of our textures (textures/<kind>/<name>.png), made once. */
 	static ClientAsset.Texture texture(String kind, String name) {
 		return textures.computeIfAbsent(kind + "/" + name, k -> new ClientAsset.ResourceTexture(
 			Identifier.fromNamespaceAndPath(SlashHud.ID, k), Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/" + k + ".png")));
 	}
+	//#endif
 
 	/** An emote arrived (from the launcher) or was sent: it shows by the name for a few seconds. */
 	public static void show(UUID id, String emote) {

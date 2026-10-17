@@ -1,8 +1,10 @@
 package dev.slash3rss.slashclient.hud;
 
+//#if MC >= 1.20.2
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+//#endif
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.entity.Entity;
@@ -34,7 +36,23 @@ public final class GameHud {
 		pose.popMatrix();
 	}
 
+	//#if MC < 1.20.2
+	//$ // 1.20.1: called around the game's own drawing by LegacyGuiMixin
+	//$ public static void scoreboard(GuiGraphicsExtractor g, Runnable part) {
+	//$ 	if (cfg().scoreboard) framed(g, cfg().scoreboardScale, g.guiWidth(), g.guiHeight() / 2f, cfg().scoreboardOffset, part);
+	//$ }
+	//$
+	//$ public static void bossBar(GuiGraphicsExtractor g, Runnable part) {
+	//$ 	if (cfg().bossBar) framed(g, cfg().bossBarScale, g.guiWidth() / 2f, 0, cfg().bossBarOffset, part);
+	//$ }
+	//$
+	//$ public static void tabList(GuiGraphicsExtractor g, Runnable part) {
+	//$ 	framed(g, cfg().tabScale, g.guiWidth() / 2f, 0, 0, part);
+	//$ }
+	//#endif
+
 	static void register() {
+		//#if MC >= 1.20.2
 		// the scoreboard sits in the middle of the right edge
 		HudElementRegistry.replaceElement(VanillaHudElements.SCOREBOARD, vanilla -> (HudElement) (g, delta) -> {
 			if (!cfg().scoreboard) return;
@@ -52,6 +70,7 @@ public final class GameHud {
 			if (!cfg().titles) return;
 			framed(g, cfg().titleScale, g.guiWidth() / 2f, g.guiHeight() / 2f, 0, () -> vanilla.extractRenderState(g, delta));
 		});
+		//#endif
 	}
 
 	/** Your own name above your head: in third person, unless the HUD is hidden (F1) or you are invisible. */

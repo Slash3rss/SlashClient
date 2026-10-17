@@ -99,7 +99,7 @@ public final class Extras {
 		static final int[] COLORS = { 0xFFFFFFFF, 0xFF55FF55, 0xFF55FFFF, 0xFFFF5555, 0xFFFFFF55, 0xFFFF55FF, 0xFF000000 };
 
 	/** False when the game's own crosshair should be drawn. */
-	static boolean drawCrosshair(GuiGraphicsExtractor g, Minecraft mc) {
+	public static boolean drawCrosshair(GuiGraphicsExtractor g, Minecraft mc) {
 		String style = cfg().crosshair;
 		if ("vanilla".equals(style)) return false;
 		if (!mc.options.getCameraType().isFirstPerson()) return true;
