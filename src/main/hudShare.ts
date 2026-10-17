@@ -17,15 +17,15 @@ export function encodeHud(json: string): string {
 /** The settings JSON in a code; throws with a message for the player when it is not one. */
 export function decodeHud(code: string): Record<string, unknown> {
   const s = code.trim();
-  if (!s.startsWith(PREFIX)) throw new Error(t('To nie jest kod SlashClient HUD.'));
+  if (!s.startsWith(PREFIX)) throw new Error(t('To nie jest kod ustawień SlashClient.'));
   let json: unknown;
   try {
     // a real code is a few kB; the limit keeps a crafted one from filling memory
     json = JSON.parse(zlib.inflateRawSync(Buffer.from(s.slice(PREFIX.length), 'base64url'), { maxOutputLength: 256 * 1024 }).toString('utf8'));
   } catch {
-    throw new Error(t('Kod SlashClient HUD jest uszkodzony.'));
+    throw new Error(t('Kod ustawień SlashClient jest uszkodzony.'));
   }
-  if (!json || typeof json !== 'object' || typeof (json as { modules?: unknown }).modules !== 'object') throw new Error(t('Kod SlashClient HUD jest uszkodzony.'));
+  if (!json || typeof json !== 'object' || typeof (json as { modules?: unknown }).modules !== 'object') throw new Error(t('Kod ustawień SlashClient jest uszkodzony.'));
   return json as Record<string, unknown>;
 }
 

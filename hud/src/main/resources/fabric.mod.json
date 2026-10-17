@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"id": "slashclient-hud",
 	"version": "${version}",
-	"name": "SlashClient HUD",
+	"name": "SlashClient",
 	"description": "Nakładki w grze: FPS, ping, CPS, współrzędne, pancerz, efekty i klawisze. Prawy Shift otwiera edycję.",
 	"authors": ["slash3rss"],
 	"contact": { "homepage": "https://slash3rss.dev", "sources": "https://github.com/Slash3rss/SlashClient" },

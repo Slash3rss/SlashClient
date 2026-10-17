@@ -1,7 +1,7 @@
 {
 	"key.slashclient-hud.edit": "Edit HUD",
 	"key.category.slashclient-hud.main": "SlashClient",
-	"slashclient-hud.editor": "SlashClient HUD",
+	"slashclient-hud.editor": "SlashClient",
 	"slashclient-hud.hint": "Drag modules to move them",
 	"slashclient-hud.background": "Background",
 	"slashclient-hud.shadow": "Shadow",
@@ -95,7 +95,7 @@
 	"slashclient-hud.share.help": "The code holds modules, positions, extras and chat tabs.",
 	"slashclient-hud.share.copied": "Code copied: paste it in chat or on Discord.",
 	"slashclient-hud.share.pasted": "Settings from the code are in place.",
-	"slashclient-hud.share.invalid": "The clipboard has no SlashClient HUD code.",
+	"slashclient-hud.share.invalid": "The clipboard has no SlashClient settings code.",
 	"slashclient-hud.share.reset": "Default settings restored.",
 	"slashclient-hud.zoom": "Zoom (C)",
 	"slashclient-hud.zoomSmooth": "Smooth zoom",

@@ -18,7 +18,7 @@ async function main() {
     hudArgs = addModsArgs(await prepareHud(path.join(__dirname, 'hud'), profileGameDir(profile), {
       enabled: true, loader: 'fabric', gameVersion: await resolveVersionId(versionId), cacheDir: path.join(paths.root, 'hud'),
     }));
-    console.log(hudArgs.length ? 'SlashClient HUD: włączony' : 'SlashClient HUD: niedostępny dla tej wersji');
+    console.log(hudArgs.length ? 'Mod SlashClient: włączony' : 'Mod SlashClient: niedostępny dla tej wersji');
   }
   let lastStage = '';
   const child = await launch({

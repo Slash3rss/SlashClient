@@ -24,7 +24,7 @@ mkdirSync('dist/hud', { recursive: true });
 const hudBundle = 'hud/build/bundle';
 if (existsSync(hudBundle)) {
   for (const f of readdirSync(hudBundle)) if (/^slashclient-hud-.+\.jar$/.test(f)) cpSync(`${hudBundle}/${f}`, `dist/hud/${f}`);
-} else console.warn('hud/build/bundle is missing: the launcher is built without SlashClient HUD (hud/build-all.sh)');
+} else console.warn('hud/build/bundle is missing: the launcher is built without the SlashClient mod (hud/build-all.sh)');
 
 // Fonts and icons are bundled locally so the launcher looks right offline too.
 const fonts = {

@@ -56,7 +56,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 25
-      - name: SlashClient HUD (mod Fabric, every game version)
+      - name: Mod SlashClient (Fabric, every game version)
         working-directory: hud
         shell: bash
         run: ./build-all.sh

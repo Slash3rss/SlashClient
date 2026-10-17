@@ -838,7 +838,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
   }
   // the benchmark runs inside SlashClient HUD: it starts by itself once the world is loaded
   if (benchmark) {
-    if (!hud.jvmArgs.length) throw new Error(t('Benchmark działa z SlashClient HUD: w profilu Fabric lub vanilla w wersji, którą HUD obsługuje.'));
+    if (!hud.jvmArgs.length) throw new Error(t('Benchmark działa z modem SlashClient: w profilu Fabric lub vanilla w wersji, którą mod obsługuje.'));
     hud.jvmArgs.push('-Dslashclient.benchmark=true');
   }
   const benchmarksBefore = benchmark ? (await readBenchmarks(profileGameDir(profile)))[0]?.at ?? 0 : 0;
@@ -955,7 +955,7 @@ async function prepareProfileHud(profile: Profile): Promise<{ profile: Profile; 
     enabled: profile.hud ?? true, loader, gameVersion, cacheDir, socialUrl: store.settings.socialUrl,
     // the hidden Fabric has no mods of its own: Fabric API always comes from us
     ignoreProfileMods: hidden,
-  }, () => send('launch:stage', { stage: t('Pobieranie Fabric API dla SlashClient HUD'), done: 0, total: 1 }));
+  }, () => send('launch:stage', { stage: t('Pobieranie Fabric API dla moda SlashClient'), done: 0, total: 1 }));
   if (!hidden || !jars.length) return { profile, jvmArgs: addModsArgs(jars) };
   const noMods = path.join(cacheDir, 'no-mods');
   await fsp.mkdir(noMods, { recursive: true });

@@ -238,7 +238,7 @@ async function cosmeticsPage() {
             : [el('span', { class: 'muted small', textContent: 'nikomu' })])), grant) : ''));
   });
   $('#main').replaceChildren(head('Kosmetyki'),
-    el('p', { class: 'muted', textContent: 'Kosmetyki są wbudowane w mod SlashClient HUD; tutaj decydujesz, które są dostępne i dla kogo. Przedmioty rang noszą tylko gracze z tą rangą (admini wszystkie) albo ci, którym je przyznasz. Emotki są dostępne dla wszystkich.' }),
+    el('p', { class: 'muted', textContent: 'Kosmetyki są wbudowane w mod SlashClient; tutaj decydujesz, które są dostępne i dla kogo. Przedmioty rang noszą tylko gracze z tą rangą (admini wszystkie) albo ci, którym je przyznasz. Emotki są dostępne dla wszystkich.' }),
     el('div', { class: 'cosmetics' }, ...SLOTS.flatMap(([slot, name, ic]) => {
       const mine = cards.filter((_, i) => (all[i].slot ?? 'cape') === slot);
       return mine.length ? [el('h3', { class: 'slot-head' }, icon(ic), name), ...mine] : [];
@@ -288,7 +288,7 @@ async function partnersPage() {
       save);
   });
   $('#main').replaceChildren(head('Serwery partnerskie'),
-    el('p', { class: 'muted', textContent: 'Tło pojawia się za tym serwerem na liście serwerów w grze, u graczy z SlashClient HUD. Najlepiej obrazek 1200×120 albo podobnie szeroki (PNG lub JPG, do 3 MB).' }),
+    el('p', { class: 'muted', textContent: 'Tło pojawia się za tym serwerem na liście serwerów w grze, u graczy z modem SlashClient. Najlepiej obrazek 1200×120 albo podobnie szeroki (PNG lub JPG, do 3 MB).' }),
     add,
     el('div', { class: 'partner-list' }, ...(cards.length ? cards : [el('p', { class: 'muted', textContent: 'Nie ma jeszcze serwerów partnerskich.' })])));
 }

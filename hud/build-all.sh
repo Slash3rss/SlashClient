@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 rm -rf build/bundle
 for f in versions/*.properties; do
   mc=$(basename "$f" .properties)
-  echo "== SlashClient HUD for Minecraft $mc"
+  echo "== SlashClient mod for Minecraft $mc"
   ./gradlew build bundle -Pmc="$mc" --no-daemon "$@"
 done
 ls build/bundle

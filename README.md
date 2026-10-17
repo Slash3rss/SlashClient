@@ -29,7 +29,7 @@ Launcher Minecraft: Java Edition w Electronie i TypeScripcie.
 - statystyki: czas gry według dni, profile, serwery, pory grania i seria dni,
 - edytor skinów (piksele, warstwy, podgląd 3D) i zapis do biblioteki,
 - znajomi, statusy aktywności i wiadomości (serwer w `server/`, konto SlashClient przez Discord, Microsoft, Google lub GitHub),
-- **SlashClient HUD** (mod Fabric w `hud/`, Minecraft 26.3), instalowany przez launcher razem z Fabric API:
+- **mod SlashClient** (mod Fabric w `hud/`, dawniej „SlashClient HUD”, Minecraft 26.3), instalowany przez launcher razem z Fabric API:
   FPS, ping, CPS, współrzędne, prędkość, zegar, serwer, gracze, pamięć, biom, pora dnia, światło, czas sesji, combo, zasięg,
   sprint/skradanie, nasycenie, licznik przedmiotów, cel, pancerz, efekty i klawisze. Do tego przybliżenie (C), fullbright,
   niski ogień, godzina w czacie, własny celownik i zakładki czatu wyłapujące wiadomości po tekście albo regexie.
@@ -48,7 +48,7 @@ Test bez interfejsu (instaluje i uruchamia grę na koncie offline):
 npm run test:launch -- 1.21.4 MojNick
 ```
 
-## SlashClient HUD
+## Mod SlashClient
 
 Jeden kod dla Minecrafta 1.21.11, 26.1.x, 26.2 i 26.3 (wymaga JDK 25):
 

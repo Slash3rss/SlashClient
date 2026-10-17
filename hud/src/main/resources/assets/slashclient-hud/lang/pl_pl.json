@@ -1,7 +1,7 @@
 {
 	"key.slashclient-hud.edit": "Edytuj HUD",
 	"key.category.slashclient-hud.main": "SlashClient",
-	"slashclient-hud.editor": "SlashClient HUD",
+	"slashclient-hud.editor": "SlashClient",
 	"slashclient-hud.hint": "Przeciągnij moduły, żeby je przesunąć",
 	"slashclient-hud.background": "Tło",
 	"slashclient-hud.shadow": "Cień",
@@ -95,7 +95,7 @@
 	"slashclient-hud.share.help": "Kod zawiera moduły, ich miejsca, dodatki i zakładki czatu.",
 	"slashclient-hud.share.copied": "Skopiowano kod: wklej go na czacie albo na Discordzie.",
 	"slashclient-hud.share.pasted": "Ustawienia z kodu są wczytane.",
-	"slashclient-hud.share.invalid": "W schowku nie ma kodu SlashClient HUD.",
+	"slashclient-hud.share.invalid": "W schowku nie ma kodu ustawień SlashClient.",
 	"slashclient-hud.share.reset": "Przywrócono domyślne ustawienia.",
 	"slashclient-hud.zoom": "Przybliżenie (C)",
 	"slashclient-hud.zoomSmooth": "Płynne przybl.",
