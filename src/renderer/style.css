@@ -359,8 +359,7 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .tag.release { background: rgba(74, 222, 128, .15); color: #86efac; }
 
 /* ---------- skin ---------- */
-/* the model stands in the middle of its canvas: less room on the left, more between it and the buttons */
-.skin-card { display: flex; align-items: flex-start; gap: 36px; padding: 12px 22px 12px 6px; }
+.skin-card { display: flex; align-items: flex-start; gap: 24px; padding: 16px; }
 .skin-card canvas { width: 220px; height: 300px; cursor: grab; }
 .skin-info { display: flex; flex-direction: column; gap: 10px; }
 .skin-info p { margin: 0; max-width: 420px; }
@@ -444,10 +443,11 @@ button.busy { pointer-events: none; }
 .progress.indeterminate #progress-bar { width: 40% !important; transition: none; animation: indeterminate 1.1s ease-in-out infinite; }
 
 /* skin viewer: spinner until the model is ready */
-.skin-stage { position: relative; width: 220px; flex-shrink: 0; }
+/* the preview on its own tile: the model and its zoom buttons as one block, square with the card */
+.skin-stage { position: relative; width: 240px; flex-shrink: 0; padding: 10px 10px 8px; border-radius: 14px; background: rgba(255, 255, 255, .03); border: 1px solid var(--glass-border); }
 .skin-stage canvas { display: block; transition: opacity .4s ease; }
 .skin-stage.loading canvas { opacity: 0; }
-.skin-stage .spinner { position: absolute; left: 50%; top: 150px; margin: -14px 0 0 -14px; }
+.skin-stage .spinner { position: absolute; left: 50%; top: 160px; margin: -14px 0 0 -14px; }
 .skin-stage:not(.loading) .spinner { display: none; }
 /* under the preview, so the model never covers them */
 .skin-zoom { display: flex; justify-content: center; gap: 6px; margin-top: 6px; opacity: .7; transition: opacity .2s ease; }
@@ -889,10 +889,10 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 
 /* a small window: a smaller preview and tighter buttons, so the column beside it is not one button per line */
 @media (max-width: 1000px) {
-  .skin-card { gap: 26px; padding: 12px 14px 12px 2px; }
-  .skin-stage { width: 170px; }
+  .skin-card { gap: 16px; padding: 12px; }
+  .skin-stage { width: 186px; padding: 8px 8px 6px; }
   .skin-stage canvas { width: 170px; height: 232px; }
-  .skin-stage .spinner { top: 116px; }
+  .skin-stage .spinner { top: 124px; }
   .skin-info { gap: 8px; min-width: 0; }
   .skin-info .row { gap: 6px; }
   .skin-info button:not(.cape-choice), .skin-edit button:not(.cape-choice) { height: 32px; padding: 0 10px; font-size: 12.5px; }
