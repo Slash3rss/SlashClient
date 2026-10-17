@@ -1,13 +1,19 @@
 package dev.slash3rss.slashclient.hud;
 
 import net.minecraft.client.Minecraft;
+//#if MC >= 1.21.9
 import net.minecraft.core.ClientAsset;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FontDescription;
+//#endif
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
+//#if MC >= 1.21.9
 import net.minecraft.world.entity.player.PlayerSkin;
+//#else
+//$ import net.minecraft.client.resources.PlayerSkin;
+//#endif
 
 import java.util.List;
 import java.util.Map;
@@ -38,11 +44,17 @@ public final class Cosmetics {
 	private static final Map<String, List<String>> SLOTS = Map.of("cape", CAPES, "wings", WINGS, "elytra", ELYTRAS,
 		"trail", TRAILS, "aura", AURAS, "pet", PETS);
 	private static final long EMOTE_MS = 3500;
+	//#if MC >= 1.21.9
 	private static final FontDescription EMOTE_FONT = new FontDescription.Resource(Identifier.fromNamespaceAndPath(SlashHud.ID, "emote"));
+	//#else
+	//$ private static final Identifier EMOTE_FONT = Identifier.fromNamespaceAndPath(SlashHud.ID, "emote");
+	//#endif
 
 	/** uuid → slot → item, what the server says each player wears (only items this mod knows). */
 	private static final Map<UUID, Map<String, String>> worn = new ConcurrentHashMap<>();
+	//#if MC >= 1.21.9
 	private static final Map<String, ClientAsset.Texture> textures = new ConcurrentHashMap<>();
+	//#endif
 	private record Shown(String emote, long until) {}
 	private static final Map<UUID, Shown> emotes = new ConcurrentHashMap<>();
 
@@ -98,12 +110,20 @@ public final class Cosmetics {
 	}
 
 	/** For the screenshots of the website (TestHooks): our own player in a given skin. */
+	//#if MC >= 1.21.9
 	static ClientAsset.Texture testSkin;
+	//#else
+	//$ static Identifier testSkin;
+	//#endif
 	static UUID testSkinFor;
 
 	public static PlayerSkin withTestSkin(UUID id, PlayerSkin skin) {
 		if (testSkin == null || !id.equals(testSkinFor)) return skin;
+		//#if MC >= 1.21.9
 		return new PlayerSkin(testSkin, skin.cape(), skin.elytra(), net.minecraft.world.entity.player.PlayerModelType.WIDE, skin.secure());
+		//#else
+		//$ return new PlayerSkin(testSkin, null, skin.capeTexture(), skin.elytraTexture(), PlayerSkin.Model.WIDE, skin.secure());
+		//#endif
 	}
 
 	/** The skin with our cape in place of the player's own, when they picked one. */
@@ -112,17 +132,26 @@ public final class Cosmetics {
 		if (!SlashHud.config.badges) return skin;
 		String cape = worn(id, "cape");
 		// wings take the cape's place on the back (an elytra, when worn, takes theirs)
+		//#if MC >= 1.21.9
 		if (!wearsElytra && worn(id, "wings") != null) return new PlayerSkin(skin.body(), null, skin.elytra(), skin.model(), skin.secure());
+		//#endif
 		String elytra = worn(id, "elytra");
 		if (cape == null && elytra == null) return skin;
 		if (cape != null) {
 			Integer frames = ANIMATED.get(cape);
 			if (frames != null) cape = cape + "_" + (System.currentTimeMillis() / FRAME_MS) % frames;
 		}
+		//#if MC >= 1.21.9
 		ClientAsset.Texture capeTexture = cape == null ? skin.cape() : texture("cape", cape);
 		// without an elytra of its own the elytra is drawn from the cape, as for Minecraft's own capes
 		ClientAsset.Texture elytraTexture = elytra != null ? texture("elytra", elytra) : cape != null ? null : skin.elytra();
 		return new PlayerSkin(skin.body(), capeTexture, elytraTexture, skin.model(), skin.secure());
+		//#else
+		//$ Identifier capeTexture = cape == null ? skin.capeTexture() : textureId("cape", cape);
+		//$ // without an elytra of its own the elytra is drawn from the cape, as for Minecraft's own capes
+		//$ Identifier elytraTexture = elytra != null ? textureId("elytra", elytra) : cape != null ? null : skin.elytraTexture();
+		//$ return new PlayerSkin(skin.texture(), skin.textureUrl(), capeTexture, elytraTexture, skin.model(), skin.secure());
+		//#endif
 	}
 
 	/** Where one of our pictures is, for models drawn with it directly (the wings). */
@@ -131,10 +160,12 @@ public final class Cosmetics {
 	}
 
 	/** One of our textures (textures/<kind>/<name>.png), made once. */
+	//#if MC >= 1.21.9
 	static ClientAsset.Texture texture(String kind, String name) {
 		return textures.computeIfAbsent(kind + "/" + name, k -> new ClientAsset.ResourceTexture(
 			Identifier.fromNamespaceAndPath(SlashHud.ID, k), Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/" + k + ".png")));
 	}
+	//#endif
 
 	/** An emote arrived (from the launcher) or was sent: it shows by the name for a few seconds. */
 	public static void show(UUID id, String emote) {

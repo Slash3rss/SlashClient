@@ -6,7 +6,9 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
+//#if MC >= 1.21.9
 import net.minecraft.network.chat.FontDescription;
+//#endif
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
@@ -35,7 +37,11 @@ public final class Badges {
 	private Badges() {}
 
 	private static final String GLYPH = "\uE000";
+	//#if MC >= 1.21.9
 	private static final Style BADGE_STYLE = Style.EMPTY.withFont(new FontDescription.Resource(Identifier.fromNamespaceAndPath(SlashHud.ID, "badge"))).withoutShadow();
+	//#else
+	//$ private static final Style BADGE_STYLE = Style.EMPTY.withFont(Identifier.fromNamespaceAndPath(SlashHud.ID, "badge")).withoutShadow();
+	//#endif
 	private static final MutableComponent BADGE = badge(0xFFFFFF);
 	/** The logo's colour by rank: SlashClient's admins red, support light blue, partners gold. */
 	private static final Map<String, MutableComponent> RANK_BADGES = Map.of(

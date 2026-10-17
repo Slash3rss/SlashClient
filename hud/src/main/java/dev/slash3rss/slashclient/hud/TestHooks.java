@@ -1,3 +1,5 @@
+// only the client gametests call these, and their API came in 1.21.4
+//#if MC >= 1.21.4
 package dev.slash3rss.slashclient.hud;
 
 import net.minecraft.client.KeyMapping;
@@ -506,3 +508,4 @@ public final class TestHooks {
 		}
 	}
 }
+//#endif

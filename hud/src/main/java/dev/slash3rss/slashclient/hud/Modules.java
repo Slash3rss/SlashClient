@@ -377,7 +377,11 @@ public final class Modules {
 			for (int i = 0; i < rows.size(); i++) {
 				Component[] r = rows.get(i);
 				if (cfg.effectIcons && i < icons.size())
+					//#if MC >= 1.21.2
 					g.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, Compat.effectSprite(icons.get(i)), x + PAD, row - 1, 9, 9);
+					//#else
+					//$ dev.slash3rss.slashclient.hud.compat.Legacy.effect(g, icons.get(i), x + PAD, row - 1, 9);
+					//#endif
 				text(g, mc, r[0], x + PAD + iconRoom(), row, cfg.textColor);
 				text(g, mc, r[1], x + w - PAD - mc.font.width(r[1]), row, 0xFFAAAAAA);
 				row += mc.font.lineHeight + 2;

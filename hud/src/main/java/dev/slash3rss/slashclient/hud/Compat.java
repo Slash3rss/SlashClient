@@ -107,6 +107,7 @@ public final class Compat {
 		//#endif
 	}
 
+	//#if MC >= 1.21.2
 	/** A model drawn with the frame (the outline colour is for glowing players). */
 	public static <S> void submitModel(net.minecraft.client.renderer.SubmitNodeCollector out, net.minecraft.client.model.Model<? super S> model, S state,
 			com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.client.renderer.rendertype.RenderType type, int light, int overlay, int outline) {
@@ -116,6 +117,7 @@ public final class Compat {
 		//$ out.submitModel(model, state, pose, type, light, overlay, outline, null);
 		//#endif
 	}
+	//#endif
 
 	/** Moves an inventory slot's stack into a hotbar slot (as pressing that slot's number over it would). */
 	static void swapIntoHotbar(Minecraft mc, net.minecraft.world.entity.player.Player player, int slot, int hotbar) {
@@ -126,6 +128,7 @@ public final class Compat {
 		//#endif
 	}
 
+	//#if MC >= 1.21.2
 	/** The game's picture of a status effect (the one in the corner of the screen). */
 	static net.minecraft.resources.Identifier effectSprite(net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
 		//#if MC >= 26.2
@@ -134,6 +137,7 @@ public final class Compat {
 		//$ return net.minecraft.client.gui.Gui.getMobEffectSprite(effect);
 		//#endif
 	}
+	//#endif
 
 	/** Lays a screen out again at its size (its widgets made anew). */
 	static void relayout(Screen screen) {

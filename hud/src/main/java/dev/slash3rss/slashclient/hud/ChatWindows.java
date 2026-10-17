@@ -170,13 +170,24 @@ public final class ChatWindows {
 		}
 
 		@Override
+		//#if MC >= 1.21.9
 		public void onClick(MouseButtonEvent e, boolean doubleClick) {
+		//#else
+		//$ public void onClick(double mouseX, double mouseY) {
+		//$ 	var e = new dev.slash3rss.slashclient.hud.compat.MouseButtonEvent(mouseX, mouseY, 0);
+		//$ 	boolean doubleClick = false;
+		//#endif
 			grabX = e.x() - getX();
 			grabY = e.y() - getY();
 		}
 
 		@Override
+		//#if MC >= 1.21.9
 		protected void onDrag(MouseButtonEvent e, double dx, double dy) {
+		//#else
+		//$ protected void onDrag(double mouseX, double mouseY, double dx, double dy) {
+		//$ 	var e = new dev.slash3rss.slashclient.hud.compat.MouseButtonEvent(mouseX, mouseY, 0);
+		//#endif
 			moveTo(tab, (int) Math.round(e.x() - grabX), (int) Math.round(e.y() - grabY), sw, sh);
 			int[] p = at(tab, sw, sh);
 			setX(p[0]);
@@ -186,7 +197,12 @@ public final class ChatWindows {
 		}
 
 		@Override
+		//#if MC >= 1.21.9
 		public void onRelease(MouseButtonEvent e) {
+		//#else
+		//$ public void onRelease(double mouseX, double mouseY) {
+		//$ 	var e = new dev.slash3rss.slashclient.hud.compat.MouseButtonEvent(mouseX, mouseY, 0);
+		//#endif
 			SlashHud.config.save();
 		}
 
