@@ -1,6 +1,6 @@
 import type http from 'node:http';
 import type { Db } from './db.ts';
-import { CAPE_NAMES, CAPES, capeSetting } from './cosmetics.ts';
+import { CAPES, ITEMS, capeSetting, item } from './cosmetics.ts';
 
 /**
  * The admin panel's API, under /v1/admin. Only accounts with the admin role (or listed in
@@ -104,27 +104,29 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
     ['GET', /^\/v1\/admin\/cosmetics$/, (req) => {
       ctx.admin(req);
       const settings = db.cosmeticSettings();
-      const worn = db.stats(0).capes;
-      return {
-        capes: CAPES.map((id) => ({ ...capeSetting(settings, id), name: CAPE_NAMES[id], wearing: worn[id] ?? 0, grantees: db.grantees(id) })),
-      };
+      const worn = db.wornCounts();
+      const all = ITEMS.map((i) => ({ ...capeSetting(settings, i.id), name: i.name, slot: i.slot, rank: i.rank, frames: i.frames, wearing: worn[i.id] ?? 0, grantees: db.grantees(i.id) }));
+      // `capes` for the panel before 0.8
+      return { capes: all.filter((i) => i.slot === 'cape'), items: all };
     }],
     ['POST', /^\/v1\/admin\/cosmetics\/(\w+)$/, async (req, [id]) => {
       const me = ctx.admin(req);
-      if (!CAPES.includes(id)) ctx.fail(404, 'not_found');
+      const it = item(id);
+      if (!it) ctx.fail(404, 'not_found');
       const now = capeSetting(db.cosmeticSettings(), id);
       const { enabled, exclusive } = await ctx.body(req);
       const next = { enabled: typeof enabled === 'boolean' ? enabled : now.enabled, exclusive: typeof exclusive === 'boolean' ? exclusive : now.exclusive };
       db.setCosmetic(id, next.enabled, next.exclusive);
       // who may not wear it any more takes it off
-      if (!next.enabled) db.clearCape(id, false);
-      else if (next.exclusive) db.clearCape(id, true);
+      const clear = (exceptGranted: boolean) => (it!.slot === 'cape' ? db.clearCape(id, exceptGranted) : db.clearItem(id, exceptGranted));
+      if (!next.enabled) clear(false);
+      else if (next.exclusive) clear(true);
       db.log(me, 'cape_settings', id, `${next.enabled ? 'włączona' : 'wyłączona'}${next.exclusive ? ', ekskluzywna' : ''}`);
       return { ...next, id };
     }],
     ['POST', /^\/v1\/admin\/cosmetics\/(\w+)\/grants$/, async (req, [id]) => {
       const me = ctx.admin(req);
-      if (!CAPES.includes(id)) ctx.fail(404, 'not_found');
+      if (!item(id)) ctx.fail(404, 'not_found');
       const { handle } = await ctx.body(req);
       const user = typeof handle === 'string' ? db.userByHandle(handle.replace(/^@/, '')) : undefined;
       if (!user) ctx.fail(404, 'no_such_user');
@@ -136,7 +138,12 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
       const me = ctx.admin(req);
       const user = userOr404(userId);
       db.revoke(userId, id);
-      if (capeSetting(db.cosmeticSettings(), id).exclusive && user.cape === id) db.setCape(userId, '');
+      // what was granted alone (exclusive, or another rank's) comes off with the grant
+      const it = item(id);
+      if (it && (capeSetting(db.cosmeticSettings(), id).exclusive || it.rank)) {
+        if (user.cape === id) db.setCape(userId, '');
+        if (Object.values(user.loadout).includes(id)) db.setLoadout(userId, Object.fromEntries(Object.entries(user.loadout).filter(([, v]) => v !== id)));
+      }
       db.log(me, 'revoke', user.handle, id);
       return { grantees: db.grantees(id) };
     }],

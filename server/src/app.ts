@@ -4,7 +4,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import { Db, type User } from './db.ts';
 import { PROVIDERS, type DeviceStart, type Identity, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, type Presence } from './presence.ts';
-import { CAPE_NAMES, CAPES, EMOTES, capeSetting, mayWear } from './cosmetics.ts';
+import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, mayWear, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
 import { serveWeb } from './web.ts';
 import { createDownloads, isDownloadOs } from './downloads.ts';
@@ -280,15 +280,21 @@ export function createApp(cfg: Config) {
 
   type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
   const routes: [string, RegExp, Handler][] = [
-    // the capes one can pick: switched-off ones are left out, exclusive ones say whether they are yours
+    // the cosmetics one can pick: switched-off ones are left out, exclusive and rank ones say whether they are yours
     ['GET', /^\/v1\/cosmetics$/, (req) => {
       const me = req.headers.authorization ? authed(req) : undefined;
       const settings = db.cosmeticSettings();
       const granted = me ? db.grants(me) : [];
+      const user = me ? db.user(me) : undefined;
+      const badge = user ? badgeOf(user) : '';
+      const items = ITEMS.filter((i) => capeSetting(settings, i.id).enabled).map((i) => ({
+        id: i.id, slot: i.slot, name: i.name, rank: i.rank, frames: i.frames,
+        exclusive: capeSetting(settings, i.id).exclusive, available: mayWear(settings, granted, i.id, i.slot, badge),
+      }));
       return {
-        capes: CAPES.filter((id) => capeSetting(settings, id).enabled).map((id) => ({
-          id, name: CAPE_NAMES[id], exclusive: capeSetting(settings, id).exclusive, available: mayWear(settings, granted, id),
-        })),
+        // the launcher before 0.8 knows capes only
+        capes: items.filter((i) => i.slot === 'cape').map(({ id, name, exclusive, available }) => ({ id, name, exclusive: exclusive || !!ITEMS.find((x) => x.id === id)?.rank, available })),
+        items,
         emotes: EMOTES,
       };
     }],
@@ -389,14 +395,29 @@ export function createApp(cfg: Config) {
     }],
     ['POST', /^\/v1\/me$/, async (req) => {
       const me = authed(req);
-      const { showServer, cape } = await body(req);
+      const { showServer, cape, loadout } = await body(req);
       if (typeof showServer === 'boolean') {
         db.setShowServer(me, showServer);
         broadcastPresence(me);
       }
+      const badge = badgeOf(db.user(me)!);
       if (cape !== undefined) {
-        if (cape !== '' && !mayWear(db.cosmeticSettings(), db.grants(me), cape as string)) throw new HttpError(400, 'bad_cape');
+        if (cape !== '' && !mayWear(db.cosmeticSettings(), db.grants(me), cape as string, 'cape', badge)) throw new HttpError(400, 'bad_cape');
         db.setCape(me, cape as string);
+      }
+      // the other slots: { wings: 'angel', trail: '' … }, '' takes the item off
+      if (loadout !== undefined) {
+        if (!loadout || typeof loadout !== 'object' || Array.isArray(loadout)) throw new HttpError(400, 'bad_request');
+        const next = { ...db.user(me)!.loadout };
+        const settings = db.cosmeticSettings();
+        const granted = db.grants(me);
+        for (const [slot, id] of Object.entries(loadout as Record<string, unknown>)) {
+          if (slot === 'cape' || !SLOTS.includes(slot as Slot) || typeof id !== 'string') throw new HttpError(400, 'bad_item');
+          if (id === '') delete next[slot];
+          else if (mayWear(settings, granted, id, slot as Slot, badge)) next[slot] = id;
+          else throw new HttpError(400, 'bad_item');
+        }
+        db.setLoadout(me, next);
       }
       return meWithProviders(me);
     }],
@@ -465,17 +486,24 @@ export function createApp(cfg: Config) {
       const capes: Record<string, string> = {};
       // the logo's colour: only for a Minecraft account proven to be that SlashClient account's own
       const ranks: Record<string, string> = {};
+      // everything the player wears; HUDs before 0.8 read only `capes`
+      const cosmetics: Record<string, Record<string, string>> = {};
       const settings = db.cosmeticSettings();
       for (const u of active) {
         const link = linked.get(u.toLowerCase());
         const owner = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user) : undefined;
         if (!owner || owner.banned) continue;
-        // a cape the admin switched off is not shown
-        if (owner.cape && capeSetting(settings, owner.cape).enabled) capes[u] = owner.cape;
         const badge = badgeOf(owner);
         if (badge) ranks[u] = badge;
+        // only what the player may still wear: the admin may have switched it off, or the rank may be gone
+        const granted = db.grants(owner.id);
+        const worn: Record<string, string> = {};
+        if (owner.cape && mayWear(settings, granted, owner.cape, 'cape', badge)) worn.cape = owner.cape;
+        for (const [slot, id] of Object.entries(owner.loadout)) if (mayWear(settings, granted, id, slot as Slot, badge)) worn[slot] = id;
+        if (worn.cape) capes[u] = worn.cape;
+        if (Object.keys(worn).length) cosmetics[u] = worn;
       }
-      return { active, capes, ranks };
+      return { active, capes, ranks, cosmetics };
     }],
     // the launcher says which Minecraft player its SlashClient account plays as, while the game runs
     ['POST', /^\/v1\/mc\/link$/, async (req) => {

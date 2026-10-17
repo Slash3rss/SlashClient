@@ -305,7 +305,7 @@ describe('social server', () => {
     assert.equal((await call('POST', '/v1/me', ewa.token, { cape: 'nope' })).body.error, 'bad_cape');
     assert.equal((await call('POST', '/v1/me', ewa.token, { cape: 'galaxy' })).body.cape, 'galaxy');
     // nothing until the launcher links the game's player to the account
-    assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc] })).body, { active: [], capes: {}, ranks: {} });
+    assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc] })).body, { active: [], capes: {}, ranks: {}, cosmetics: {} });
     // only a Minecraft account proven at Mojang to be the player's own
     assert.equal((await call('POST', '/v1/mc/link', ewa.token, { uuid: ewaMc })).body.error, 'not_linked');
     await minecraftLogin('Ewa', ewaMc.replace(/-/g, ''), ewa.token);
@@ -316,6 +316,22 @@ describe('social server', () => {
     assert.deepEqual(seen.capes, { [ewaMc]: 'galaxy' });
     // the logo's colour: Tomek is an admin
     assert.deepEqual(seen.ranks, { [tomMc]: 'admin' });
+    // the other slots: wings, a trail and a pet go with the cape; rank items only for that rank
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { wings: 'angel', trail: 'hearts', pet: 'allay' } })).body.loadout.wings, 'angel');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { wings: 'phoenix' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { wings: 'hearts' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { cape: 'staff_admin' })).body.error, 'bad_cape');
+    // Tomek is an admin: he may wear every rank's items
+    assert.equal((await call('POST', '/v1/me', tom.token, { cape: 'staff_admin', loadout: { aura: 'royal' } })).body.cape, 'staff_admin');
+    const worn = (await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc, tomMc] })).body.cosmetics;
+    assert.deepEqual(worn[ewaMc], { cape: 'galaxy', wings: 'angel', trail: 'hearts', pet: 'allay' });
+    assert.deepEqual(worn[tomMc], { cape: 'staff_admin', aura: 'royal' });
+    // '' takes an item off
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { pet: '' } })).body.loadout.pet, undefined);
+    const catalog = (await call('GET', '/v1/cosmetics', ewa.token)).body;
+    assert.ok(catalog.items.some((i: any) => i.id === 'phoenix' && i.rank === 'partner' && !i.available));
+    assert.ok(catalog.items.some((i: any) => i.id === 'angel' && i.slot === 'wings' && i.available));
+
     // on an offline-mode server Ewa's uuid is made from her name: the cape goes with it too
     assert.equal(offlineUuid('Guardes'), 'e2f755a8-fc71-367d-8353-0c1f31b4ee12');
     const ewaOffline = offlineUuid('Ewa');

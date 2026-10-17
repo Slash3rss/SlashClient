@@ -11,7 +11,7 @@ import { DatabaseSync } from 'node:sqlite';
  * `cape`: one of the SlashClient capes (cosmetics.ts), '' for none. `role`: 'admin' or ''.
  * `rank`: the colour of the logo next to the name in game: 'support', 'partner' or '' (admins are red anyway).
  */
-export interface User { id: string; handle: string; name: string; avatar: string; showServer: boolean; cape: string; role: string; rank: string; banned: boolean }
+export interface User { id: string; handle: string; name: string; avatar: string; showServer: boolean; cape: string; role: string; rank: string; banned: boolean; loadout: Record<string, string> }
 /** An account as the admin panel lists it. */
 export interface AdminUser extends User { createdAt: number; lastSeen: number; providers: string[]; friends: number; sessions: number }
 export interface CosmeticSetting { id: string; enabled: boolean; exclusive: boolean }
@@ -71,8 +71,17 @@ CREATE INDEX IF NOT EXISTS messages_pair ON messages(from_uuid, to_uuid, id);
 CREATE INDEX IF NOT EXISTS messages_unread ON messages(to_uuid, read_at);
 `;
 
-interface UserRow { uuid: string; handle: string; name: string; avatar: string; show_server: number; cape: string; role: string; rank: string; banned: number }
-const toUser = (r: UserRow): User => ({ id: r.uuid, handle: r.handle, name: r.name, avatar: r.avatar, showServer: !!r.show_server, cape: r.cape, role: r.role, rank: r.rank, banned: !!r.banned });
+interface UserRow { uuid: string; handle: string; name: string; avatar: string; show_server: number; cape: string; role: string; rank: string; banned: number; loadout: string }
+/** Wings, elytra, trail, aura and pet (the cape has its own column); broken JSON counts as nothing. */
+function parseLoadout(json: string): Record<string, string> {
+  try {
+    const v = JSON.parse(json || '{}');
+    return v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([, x]) => typeof x === 'string' && x)) as Record<string, string> : {};
+  } catch {
+    return {};
+  }
+}
+const toUser = (r: UserRow): User => ({ id: r.uuid, handle: r.handle, name: r.name, avatar: r.avatar, showServer: !!r.show_server, cape: r.cape, role: r.role, rank: r.rank, banned: !!r.banned, loadout: parseLoadout(r.loadout) });
 
 /** Friendships are stored once, with the smaller uuid first. */
 const pair = (x: string, y: string) => (x < y ? [x, y] : [y, x]);
@@ -92,6 +101,7 @@ export class Db {
     if (!userColumns.some((c) => c.name === 'role')) this.db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT ''");
     if (!userColumns.some((c) => c.name === 'banned')) this.db.exec('ALTER TABLE users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0');
     if (!userColumns.some((c) => c.name === 'rank')) this.db.exec("ALTER TABLE users ADD COLUMN rank TEXT NOT NULL DEFAULT ''");
+    if (!userColumns.some((c) => c.name === 'loadout')) this.db.exec("ALTER TABLE users ADD COLUMN loadout TEXT NOT NULL DEFAULT '{}'");
     // the Minecraft name of a linked Minecraft account (other providers leave it empty)
     const identityColumns = this.db.prepare('PRAGMA table_info(identities)').all() as { name: string }[];
     if (!identityColumns.some((c) => c.name === 'label')) this.db.exec("ALTER TABLE identities ADD COLUMN label TEXT NOT NULL DEFAULT ''");
@@ -180,7 +190,7 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
   }
 
   user(uuid: string): User | undefined {
-    const row = this.db.prepare('SELECT uuid, handle, name, avatar, show_server, cape, role, rank, banned FROM users WHERE uuid = ?').get(uuid) as UserRow | undefined;
+    const row = this.db.prepare('SELECT uuid, handle, name, avatar, show_server, cape, role, rank, banned, loadout FROM users WHERE uuid = ?').get(uuid) as UserRow | undefined;
     return row && toUser(row);
   }
 
@@ -241,7 +251,7 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
   }
 
   adminUser(uuid: string): AdminUser | undefined {
-    const row = this.db.prepare('SELECT uuid, handle, name, avatar, show_server, cape, role, rank, banned, created_at, last_seen FROM users WHERE uuid = ?').get(uuid) as
+    const row = this.db.prepare('SELECT uuid, handle, name, avatar, show_server, cape, role, rank, banned, loadout, created_at, last_seen FROM users WHERE uuid = ?').get(uuid) as
       (UserRow & { created_at: number; last_seen: number }) | undefined;
     if (!row) return undefined;
     const count = (sql: string, ...args: string[]) => (this.db.prepare(sql).get(...args) as { n: number }).n;
@@ -309,6 +319,31 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
   clearCape(cape: string, exceptGranted: boolean) {
     this.db.prepare(`UPDATE users SET cape = '' WHERE cape = ?${exceptGranted ? ' AND uuid NOT IN (SELECT uuid FROM cape_grants WHERE cape = ?)' : ''}`)
       .run(...(exceptGranted ? [cape, cape] : [cape]));
+  }
+
+  setLoadout(uuid: string, loadout: Record<string, string>) {
+    this.db.prepare('UPDATE users SET loadout = ? WHERE uuid = ?').run(JSON.stringify(loadout), uuid);
+  }
+
+  /** Takes an item (wings, elytra, trail, aura, pet) off everyone wearing it who may not any more. */
+  clearItem(id: string, exceptGranted: boolean) {
+    const granted = new Set(exceptGranted ? this.grantees(id).map((g) => g.id) : []);
+    const rows = this.db.prepare('SELECT uuid, loadout FROM users WHERE loadout LIKE ?').all(`%"${id}"%`) as { uuid: string; loadout: string }[];
+    for (const r of rows) {
+      if (granted.has(r.uuid)) continue;
+      const l = parseLoadout(r.loadout);
+      for (const [slot, v] of Object.entries(l)) if (v === id) delete l[slot];
+      this.setLoadout(r.uuid, l);
+    }
+  }
+
+  /** How many players wear each item (cape and the other slots). */
+  wornCounts(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const r of this.db.prepare("SELECT cape, loadout FROM users WHERE cape != '' OR loadout != '{}'").all() as { cape: string; loadout: string }[]) {
+      for (const id of [r.cape, ...Object.values(parseLoadout(r.loadout))]) if (id) counts[id] = (counts[id] ?? 0) + 1;
+    }
+    return counts;
   }
 
   log(admin: string, action: string, target: string, detail = '') {

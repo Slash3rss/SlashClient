@@ -158,6 +158,21 @@ describe('admin panel', () => {
     assert.ok(['grant', 'cape_settings', 'revoke', 'set_cape'].every((a) => log.includes(a)));
   });
 
+  it('switches any cosmetic off or makes it exclusive, which takes it off who may not wear it', async () => {
+    const boss = await login('Szef');
+    const nina = await login('Nina');
+    await call('POST', '/v1/me', nina.token, { loadout: { wings: 'dragon', trail: 'snow' } });
+    const list = (await call('GET', '/v1/admin/cosmetics', boss.token)).body;
+    assert.ok(list.items.some((i: any) => i.id === 'dragon' && i.slot === 'wings' && i.wearing >= 1));
+    await call('POST', '/v1/admin/cosmetics/dragon', boss.token, { exclusive: true });
+    assert.deepEqual((await call('GET', '/v1/me', nina.token)).body.loadout, { trail: 'snow' });
+    // granted, she may wear it again; the rank items can be granted too
+    await call('POST', '/v1/admin/cosmetics/dragon/grants', boss.token, { handle: 'Nina' });
+    await call('POST', '/v1/admin/cosmetics/phoenix/grants', boss.token, { handle: 'Nina' });
+    assert.equal((await call('POST', '/v1/me', nina.token, { loadout: { wings: 'phoenix' } })).body.loadout.wings, 'phoenix');
+    await call('POST', '/v1/admin/cosmetics/dragon', boss.token, { exclusive: false });
+  });
+
   it('deletes an account with its friends and messages', async () => {
     const boss = await login('Szef');
     const x = await login('Usuwany');
