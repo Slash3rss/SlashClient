@@ -52,7 +52,7 @@ const PET_TEXTURES: Record<string, string[]> = {
   parrot: ['entity/parrot/parrot_red_blue'], bee: ['entity/bee/bee'],
   blaze: ['entity/blaze/blaze', 'entity/blaze'], phantom: ['entity/phantom/phantom', 'entity/phantom'],
 };
-const PET_SCALE: Record<string, number> = { allay: 0.6, vex: 0.6, bat: 0.45, parrot: 0.55, bee: 0.5, blaze: 0.3, phantom: 0.35 };
+const PET_SCALE: Record<string, number> = { allay: 0.6, vex: 0.6, bat: 0.45, parrot: 0.55, bee: 0.5, blaze: 0.3, phantom: 0.5 };
 
 /**
  * Frames that read well as an icon, where the first ones would not: the dots that start small,
@@ -75,7 +75,7 @@ export class CosmeticPreview {
   private particles: Particle[] = [];
   private pet?: Object3D;
   private petId = '';
-  private wings: { part: Object3D; base: number; side: number; axis: 'y' | 'z' }[] = [];
+  private wings: { part: Object3D; base: number; side: number; axis: 'y' | 'z'; speed: number }[] = [];
   private trail?: Effect;
   private aura?: Effect;
   private spawnTrail = 0;
@@ -157,10 +157,11 @@ export class CosmeticPreview {
         geometry.computeVertexNormals();
         g.add(new Mesh(geometry, material));
       }
-      if (/^(left|right)_wing$/.test(part.name)) {
-        // bees and bats beat their wings up and down, the others back and forth
-        const axis = id === 'bee' || id === 'bat' || id === 'parrot' ? 'z' : 'y';
-        this.wings.push({ part: g, base: axis === 'z' ? rz : ry, side: part.name.startsWith('left') ? 1 : -1, axis });
+      if (/^(left|right)_wing(_base)?$/.test(part.name)) {
+        // bees, bats, parrots and phantoms beat their wings up and down, the others back and forth
+        const axis = id === 'bee' || id === 'bat' || id === 'parrot' || id === 'phantom' ? 'z' : 'y';
+        // the phantom glides with slow beats; the small ones buzz
+        this.wings.push({ part: g, base: axis === 'z' ? rz : ry, side: part.name.startsWith('left') ? 1 : -1, axis, speed: id === 'phantom' ? 4 : axis === 'z' ? 18 : 9 });
       }
       for (const c of part.children) g.add(build(c));
       return g;
@@ -214,7 +215,7 @@ export class CosmeticPreview {
       // by the shoulder: the model's feet (24 px under its origin) a little above it, bobbing
       const scale = this.pet instanceof Sprite ? 0 : this.pet.scale.x;
       this.pet.position.set(10, 6 + 24 * scale + Math.sin(time * 2.2) * 1.2, -3);
-      for (const w of this.wings) w.part.rotation[w.axis] = w.base + w.side * Math.sin(time * (w.axis === 'z' ? 18 : 9)) * 0.35;
+      for (const w of this.wings) w.part.rotation[w.axis] = w.base + w.side * Math.sin(time * w.speed) * 0.35;
     }
     if (this.trail && (this.spawnTrail += dt) > 0.09) {
       this.spawnTrail = 0;
