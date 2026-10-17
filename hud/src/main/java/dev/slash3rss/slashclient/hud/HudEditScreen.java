@@ -87,7 +87,7 @@ public class HudEditScreen extends Screen {
 
 	private static final int MAX_TABS = 8;
 	private static final int TAB_ROW = 24;
-	/** The text fields of the shown tabs: name and patterns, in pairs. */
+	/** The text fields of the shown tabs: name, patterns and exclusions, three each. */
 	private final List<EditBox> tabFields = new ArrayList<>();
 	private int tabsTop;
 	private int tabsFit;
@@ -120,7 +120,9 @@ public class HudEditScreen extends Screen {
 				tab.name = v;
 				tabsChanged();
 			});
-			EditBox patterns = new EditBox(font, cx + 82, y, cw - 82 - 98, 12, Ui.tr("slashclient-hud.chat.patterns"));
+			// "catches" takes most of the room, "but not" the rest
+			int room = cw - 82 - 98, pw = Math.round((room - 10) * 0.52f);
+			EditBox patterns = new EditBox(font, cx + 82, y, pw, 12, Ui.tr("slashclient-hud.chat.patterns"));
 			patterns.setBordered(false);
 			patterns.setTextColor(Ui.TEXT);
 			patterns.setMaxLength(256);
@@ -130,10 +132,22 @@ public class HudEditScreen extends Screen {
 				ChatTabsScreen.setPatterns(tab, v);
 				tabsChanged();
 			});
+			EditBox excludes = new EditBox(font, cx + 82 + pw + 10, y, room - pw - 10, 12, Ui.tr("slashclient-hud.chat.excludes"));
+			excludes.setBordered(false);
+			excludes.setTextColor(Ui.TEXT);
+			excludes.setMaxLength(256);
+			excludes.setValue(ChatTabsScreen.joinedExcludes(tab));
+			excludes.setHint(Ui.tr("slashclient-hud.chat.hint.excludes"));
+			excludes.setResponder(v -> {
+				ChatTabsScreen.setExcludes(tab, v);
+				tabsChanged();
+			});
 			addRenderableWidget(name);
 			addRenderableWidget(patterns);
+			addRenderableWidget(excludes);
 			tabFields.add(name);
 			tabFields.add(patterns);
+			tabFields.add(excludes);
 		}
 	}
 
@@ -153,20 +167,23 @@ public class HudEditScreen extends Screen {
 
 		List<HudConfig.ChatTab> tabs = SlashHud.config.chatTabs;
 		String error = "";
-		for (int i = 0; i < tabFields.size() / 2 && i < tabs.size(); i++) {
+		for (int i = 0; i < tabFields.size() / 3 && i < tabs.size(); i++) {
 			HudConfig.ChatTab tab = tabs.get(i);
 			int ry = tabsTop + i * TAB_ROW;
-			EditBox name = tabFields.get(i * 2), patterns = tabFields.get(i * 2 + 1);
-			for (EditBox box : List.of(name, patterns)) {
+			EditBox name = tabFields.get(i * 3), patterns = tabFields.get(i * 3 + 1), excludes = tabFields.get(i * 3 + 2);
+			for (EditBox box : List.of(name, patterns, excludes)) {
 				Ui.round(g, box.getX() - 5, ry, box.getWidth() + 10, 18, 4, Ui.CARD);
-				Ui.roundOutline(g, box.getX() - 5, ry, box.getWidth() + 10, 18, 4, box.isFocused() ? 0x993B82F6 : Ui.BORDER);
+				// the exclusions field has a faint red edge: what is written there keeps lines out
+				int edge = box == excludes ? 0x40F87171 : Ui.BORDER;
+				Ui.roundOutline(g, box.getX() - 5, ry, box.getWidth() + 10, 18, 4, box.isFocused() ? 0x993B82F6 : edge);
 			}
 			int bx = x + w - 92;
 			Ui.button(g, "mode:" + i, bx, ry, 64, 18, Ui.tr(tab.regex ? "slashclient-hud.chat.regex" : "slashclient-hud.chat.text"), tab.regex, mx, my);
 			hits.add(new Hit(bx, ry, 64, 18, () -> {
-				String current = patterns.getValue();
+				String current = patterns.getValue(), currentEx = excludes.getValue();
 				tab.regex = !tab.regex;
 				ChatTabsScreen.setPatterns(tab, current);
+				ChatTabsScreen.setExcludes(tab, currentEx);
 				tabsChanged();
 				reopen();
 			}));
@@ -176,7 +193,7 @@ public class HudEditScreen extends Screen {
 				tabsChanged();
 				reopen();
 			}));
-			if (tab.regex) for (String p : tab.patterns) {
+			if (tab.regex) for (String p : java.util.stream.Stream.concat(tab.patterns.stream(), tab.excludes().stream()).toList()) {
 				String problem = ChatTabs.problem(p);
 				if (problem != null) error = tab.name + ": " + problem;
 			}

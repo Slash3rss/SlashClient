@@ -20,6 +20,8 @@ abstract class ChatComponentMixin {
 	//#endif
 	private Component slashclient$incoming(Component message) {
 		ChatTabs.onMessage(message.getString());
-		return ChatExtras.stack((ChatComponent) (Object) this, message.getString(), Extras.timestamp(message));
+		Component shown = ChatExtras.stack((ChatComponent) (Object) this, message.getString(), Extras.timestamp(message));
+		dev.slash3rss.slashclient.hud.ChatWindows.onLine(message.getString(), shown);
+		return shown;
 	}
 }

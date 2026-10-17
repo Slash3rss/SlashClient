@@ -32,12 +32,26 @@ public class ChatTabsScreen extends Screen {
 		for (HudConfig.ChatTab t : SlashHud.config.chatTabs) {
 			HudConfig.ChatTab copy = new HudConfig.ChatTab(t.name, t.regex);
 			copy.patterns.addAll(t.patterns);
+			copy.excludes().addAll(t.excludes());
 			tabs.add(copy);
 		}
 	}
 
 	static String joined(HudConfig.ChatTab t) {
 		return t.regex ? (t.patterns.isEmpty() ? "" : t.patterns.get(0)) : String.join(", ", t.patterns);
+	}
+
+	static String joinedExcludes(HudConfig.ChatTab t) {
+		List<String> ex = t.excludes();
+		return t.regex ? (ex.isEmpty() ? "" : ex.get(0)) : String.join(", ", ex);
+	}
+
+	static void setExcludes(HudConfig.ChatTab t, String value) {
+		List<String> ex = t.excludes();
+		ex.clear();
+		if (t.regex) {
+			if (!value.isBlank()) ex.add(value);
+		} else Arrays.stream(value.split(",")).map(String::trim).filter(s -> !s.isEmpty()).forEach(ex::add);
 	}
 
 	static void setPatterns(HudConfig.ChatTab t, String value) {

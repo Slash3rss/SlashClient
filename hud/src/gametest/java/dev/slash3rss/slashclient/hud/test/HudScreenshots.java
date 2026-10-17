@@ -168,6 +168,42 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.takeScreenshot("chat-mentions-tab");
 			context.runOnClient(mc -> TestHooks.selectTab(-1));
 
+			// "but not": what the second field names stays out; only it filled = everything except it
+			if (!context.computeOnClient(mc -> TestHooks.tabCatches("gg", "", "[Party] Steve: gg"))
+				|| context.computeOnClient(mc -> TestHooks.tabCatches("gg", "party", "[Party] Steve: gg"))
+				|| !context.computeOnClient(mc -> TestHooks.tabCatches("", "party", "Hello everyone"))
+				|| context.computeOnClient(mc -> TestHooks.tabCatches("", "party", "[Party] Steve: gg")))
+				throw new AssertionError("The chat tab's exclusions do not work");
+			// a mention is the nick as a word, not the line's own sender
+			for (String[] c : new String[][] { { "Player0, are you there?", "true" }, { "<Player0> hello", "false" }, { "[VIP] Player0: hi", "false" }, { "Player01 joined", "false" }, { "hej player0 :)", "true" } }) {
+				boolean got = context.computeOnClient(mc -> TestHooks.mentionCheck(c[0], "Player0"));
+				if (got != Boolean.parseBoolean(c[1])) throw new AssertionError("Mention of \"" + c[0] + "\": " + got);
+			}
+
+			// pulling the "PM" tab out of the row with the mouse: it becomes a window of its own
+			double[] pm = context.computeOnClient(mc -> TestHooks.chatTabCenter("PM"));
+			if (pm == null) throw new AssertionError("No PM tab in the chat");
+			context.runOnClient(mc -> TestHooks.mouse("press", pm));
+			context.runOnClient(mc -> TestHooks.mouse("drag", new double[] { pm[0] + 20, pm[1] - 40 }));
+			context.runOnClient(mc -> TestHooks.mouse("drag", new double[] { 330, 90 }));
+			context.waitTicks(2);
+			context.takeScreenshot("chat-window-dragging");
+			context.runOnClient(mc -> TestHooks.mouse("release", new double[] { 330, 90 }));
+			context.waitTicks(5);
+			if (!"pulled-out".equals(context.computeOnClient(mc -> TestHooks.chatTabState("PM")))) throw new AssertionError("The PM tab did not come out of the chat");
+			world.getServer().runCommand("tellraw @a \"[MSG] Steve -> me: are you coming?\"");
+			world.getServer().runCommand("tellraw @a \"[MSG] Alex -> me: ok, see you\"");
+			world.getServer().runCommand("tellraw @a \"Hello again everyone\"");
+			context.waitTicks(5);
+			if (context.computeOnClient(mc -> TestHooks.chatWindowLines("PM")) < 2) throw new AssertionError("The PM window got no lines");
+			context.takeScreenshot("chat-window-open");
+			// in the game: the window's lines fade like the chat's; a mention shows the "@" badge
+			context.setScreen(() -> null);
+			world.getServer().runCommand("tellraw @a \"Player0 look over here!\"");
+			context.waitTicks(5);
+			context.takeScreenshot("chat-window-game");
+			context.runOnClient(mc -> TestHooks.dockAllChatTabs());
+
 			// sharing: a code made here must give the same settings back
 			context.runOnClient(mc -> TestHooks.shareRoundTrip());
 			// the test runner expects to end on the game's own title screen

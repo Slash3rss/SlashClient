@@ -151,6 +151,8 @@ public class SlashHud implements ClientModInitializer {
 			if (mc.getDebugOverlay().showDebugScreen() || Compat.screen(mc) instanceof HudEditScreen) return;
 			drawAll(g, mc, false);
 			Waypoints.draw(g, mc);
+			ChatTabs.drawMentionBadge(g, mc);
+			ChatWindows.draw(g, mc);
 			Shots.draw(g);
 		});
 	}

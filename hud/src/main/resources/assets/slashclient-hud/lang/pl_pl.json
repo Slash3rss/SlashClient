@@ -140,7 +140,7 @@
 	"slashclient-hud.chat.text": "Tekst",
 	"slashclient-hud.chat.add": "+ Dodaj zakładkę",
 	"slashclient-hud.chat.new": "Nowa",
-	"slashclient-hud.chat.help": "Zakładka pokazuje linie czatu z jej tekstem albo pasujące do jej regexa.",
+	"slashclient-hud.chat.help": "Zakładka pokazuje linie czatu z jej tekstem albo pasujące do jej regexa. Linie z tekstem z pola „Bez” do niej nie trafiają; puste pierwsze pole i coś w „Bez” to wszystko oprócz.",
 	"slashclient-hud.ui.search": "Szukaj…",
 	"slashclient-hud.ui.open": "Ustawienia",
 	"slashclient-hud.ui.dragHint": "Przeciągnij moduł, żeby go przesunąć  ·  PPM na module: jego ustawienia",
@@ -308,5 +308,11 @@
 	"slashclient-hud.cosmetics.slot.trail": "Ślad",
 	"slashclient-hud.cosmetics.slot.aura": "Aura",
 	"slashclient-hud.cosmetics.slot.pet": "Pupil",
-	"slashclient-hud.partner": "Partner"
+	"slashclient-hud.partner": "Partner",
+	"slashclient-hud.chat.excludes": "Bez",
+	"slashclient-hud.chat.hint.excludes": "bez…",
+	"slashclient-hud.chat.mentions": "Oznaczenia (dźwięk i @)",
+	"slashclient-hud.chat.window.drop": "Upuść: okno „%s”",
+	"slashclient-hud.chat.window.dock": "Przypnij z powrotem do czatu",
+	"slashclient-hud.chat.window.empty": "Tu pojawią się linie tej zakładki"
 }

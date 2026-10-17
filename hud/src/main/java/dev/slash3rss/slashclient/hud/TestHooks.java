@@ -430,4 +430,43 @@ public final class TestHooks {
 			PartnerServers.refresh();
 		} else PartnerServers.sampleForTest(address);
 	}
+
+	/** "name the player": what the chat would do with this line, for the test. */
+	public static boolean mentionCheck(String line, String nick) {
+		return ChatTabs.mentions(line, nick);
+	}
+
+	/** Where a chat tab's button is in the open chat (its centre), or null. */
+	public static double[] chatTabCenter(String name) {
+		var screen = screen();
+		if (screen == null) return null;
+		for (var w : net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(screen)) {
+			if (w instanceof net.minecraft.client.gui.components.Button b && b.getMessage().getString().equals(name) && b.getY() > screen.height - 40)
+				return new double[] { b.getX() + b.getWidth() / 2.0, b.getY() + b.getHeight() / 2.0 };
+		}
+		return null;
+	}
+
+	/** "pulled-out", "docked" or "missing" for the test. */
+	public static String chatTabState(String name) {
+		for (var tab : SlashHud.config.chatTabs) if (tab.name.equals(name)) return tab.window != null ? "pulled-out" : "docked";
+		return "missing";
+	}
+
+	public static int chatWindowLines(String name) {
+		return ChatWindows.linesOf(name);
+	}
+
+	public static void dockAllChatTabs() {
+		for (var tab : SlashHud.config.chatTabs) tab.window = null;
+		ChatTabs.changed();
+	}
+
+	/** Whether a tab with these words (comma separated) and exclusions would catch the line. */
+	public static boolean tabCatches(String patterns, String excludes, String line) {
+		var tab = new HudConfig.ChatTab("test", false);
+		ChatTabsScreen.setPatterns(tab, patterns);
+		ChatTabsScreen.setExcludes(tab, excludes);
+		return ChatTabs.matches(tab, line);
+	}
 }

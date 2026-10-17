@@ -23,6 +23,11 @@ public final class HudConfig {
 	 * offset in GUI pixels. Modules stay by their corner or edge at any window size.
 	 */
 	public static final class Placement {
+		/** A pulled-out chat tab's window, placed where it was dropped. */
+		public static Placement at(float ax, float ay) {
+			return new Placement(true, ax, ay, 0, 0);
+		}
+
 		public boolean enabled = true;
 		public float ax;
 		public float ay;
@@ -58,7 +63,17 @@ public final class HudConfig {
 		public String name;
 		/** Plain text (case does not matter) or regular expressions; "{nick}" is the player's name. */
 		public List<String> patterns = new ArrayList<>();
+		/** Pulled out of the chat: its own window there (null = a tab in the chat's row). */
+		public Placement window;
+		/** Lines that match one of these stay out of the tab, even when `patterns` catch them. */
+		public List<String> excludes = new ArrayList<>();
 		public boolean regex;
+
+		/** Never null: configs from before the field get an empty list. */
+		public List<String> excludes() {
+			if (excludes == null) excludes = new ArrayList<>();
+			return excludes;
+		}
 
 		public ChatTab(String name, boolean regex, String... patterns) {
 			this.name = name;
@@ -83,6 +98,8 @@ public final class HudConfig {
 	/** The fire overlay sits lower, so it covers less of the screen. */
 	public boolean lowFire = false;
 	public boolean chatTimestamps = false;
+	/** A chime when someone writes your nick, and the "@" badge over the closed chat. */
+	public boolean chatMentions = true;
 	/** "vanilla", one of Crosshair.PRESETS, or "custom" for the painted crosshairPattern. */
 	public String crosshair = "vanilla";
 	public String crosshairPattern;
@@ -231,6 +248,7 @@ public final class HudConfig {
 		fullbright = other.fullbright;
 		lowFire = other.lowFire;
 		chatTimestamps = other.chatTimestamps;
+		chatMentions = other.chatMentions;
 		crosshair = other.crosshair;
 		crosshairColor = other.crosshairColor;
 		crosshairSize = other.crosshairSize;

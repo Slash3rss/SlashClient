@@ -140,7 +140,7 @@
 	"slashclient-hud.chat.text": "Text",
 	"slashclient-hud.chat.add": "+ Add tab",
 	"slashclient-hud.chat.new": "New",
-	"slashclient-hud.chat.help": "A tab shows the chat lines that contain its text or match its regex.",
+	"slashclient-hud.chat.help": "A tab shows the chat lines that contain its text or match its regex. Lines with the text from the “Except” field stay out; an empty first field with something in “Except” means everything except that.",
 	"slashclient-hud.ui.search": "Search…",
 	"slashclient-hud.ui.open": "Settings",
 	"slashclient-hud.ui.dragHint": "Drag a module to move it  ·  Right click a module: its settings",
@@ -308,5 +308,11 @@
 	"slashclient-hud.cosmetics.slot.trail": "Trail",
 	"slashclient-hud.cosmetics.slot.aura": "Aura",
 	"slashclient-hud.cosmetics.slot.pet": "Pet",
-	"slashclient-hud.partner": "Partner"
+	"slashclient-hud.partner": "Partner",
+	"slashclient-hud.chat.excludes": "Except",
+	"slashclient-hud.chat.hint.excludes": "except…",
+	"slashclient-hud.chat.mentions": "Mentions (sound and @)",
+	"slashclient-hud.chat.window.drop": "Drop: “%s” window",
+	"slashclient-hud.chat.window.dock": "Put back into the chat",
+	"slashclient-hud.chat.window.empty": "This tab's lines will show here"
 }
