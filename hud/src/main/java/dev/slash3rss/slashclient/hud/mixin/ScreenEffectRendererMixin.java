@@ -25,7 +25,7 @@ abstract class ScreenEffectRendererMixin {
 	//$ private static void slashclient$lowerFire(PoseStack pose, MultiBufferSource buffers, TextureAtlasSprite sprite, CallbackInfo ci) {
 	//#else
 	//$ @Inject(method = "renderFire", at = @At("HEAD"))
-	//$ private static void slashclient$lowerFire(PoseStack pose, MultiBufferSource buffers, CallbackInfo ci) {
+	//$ private static void slashclient$lowerFire(net.minecraft.client.Minecraft mc, PoseStack pose, CallbackInfo ci) {
 	//#endif
 		pose.pushPose();
 		if (Extras.lowFire()) pose.translate(0f, -0.35f, 0f);
@@ -39,7 +39,7 @@ abstract class ScreenEffectRendererMixin {
 	//$ private static void slashclient$lowerFireEnd(PoseStack pose, MultiBufferSource buffers, TextureAtlasSprite sprite, CallbackInfo ci) {
 	//#else
 	//$ @Inject(method = "renderFire", at = @At("RETURN"))
-	//$ private static void slashclient$lowerFireEnd(PoseStack pose, MultiBufferSource buffers, CallbackInfo ci) {
+	//$ private static void slashclient$lowerFireEnd(net.minecraft.client.Minecraft mc, PoseStack pose, CallbackInfo ci) {
 	//#endif
 		pose.popPose();
 	}

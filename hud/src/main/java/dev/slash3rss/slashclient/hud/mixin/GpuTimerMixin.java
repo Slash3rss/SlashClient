@@ -11,6 +11,7 @@ import net.minecraft.client.gui.components.debug.DebugScreenEntryList;
 //$ import net.minecraft.client.gui.components.DebugScreenOverlay;
 //#endif
 import net.minecraft.resources.Identifier;
+//#endif
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 

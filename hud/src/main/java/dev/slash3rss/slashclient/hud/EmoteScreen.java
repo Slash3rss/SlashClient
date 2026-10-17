@@ -71,6 +71,7 @@ public class EmoteScreen extends Screen {
 	//#else
 	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//$ 	boolean doubleClick = false;
 	//#endif
 		if (e.button() == InputConstants.MOUSE_BUTTON_LEFT) {
 			pick(at(e.x(), e.y()));
@@ -79,7 +80,7 @@ public class EmoteScreen extends Screen {
 		//#if MC >= 1.21.9
 		return super.mouseClicked(e, doubleClick);
 		//#else
-		//$ return super.mouseClicked(mouseX, mouseY, button);
+		//$ return super.mouseClicked(e.x(), e.y(), e.button());
 		//#endif
 	}
 
@@ -98,7 +99,7 @@ public class EmoteScreen extends Screen {
 		//#if MC >= 1.21.9
 		return super.keyPressed(e);
 		//#else
-		//$ return super.keyPressed(keyCode, scanCode, modifiers);
+		//$ return super.keyPressed(e.key(), e.scancode(), e.modifiers());
 		//#endif
 	}
 
@@ -117,7 +118,7 @@ public class EmoteScreen extends Screen {
 		//#if MC >= 1.21.9
 		return super.keyReleased(e);
 		//#else
-		//$ return super.keyReleased(keyCode, scanCode, modifiers);
+		//$ return super.keyReleased(e.key(), e.scancode(), e.modifiers());
 		//#endif
 	}
 

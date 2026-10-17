@@ -126,11 +126,12 @@ public abstract class MenuScreen extends Screen {
 	//#else
 	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//$ 	boolean doubleClick = false;
 	//#endif
 		//#if MC >= 1.21.9
 		if (super.mouseClicked(e, doubleClick)) return true;
 		//#else
-		//$ if (super.mouseClicked(mouseX, mouseY, button)) return true;
+		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
 		//#endif
 		for (int i = hits.size() - 1; i >= 0; i--) {
 			Hit h = hits.get(i);

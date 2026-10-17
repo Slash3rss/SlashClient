@@ -1,3 +1,5 @@
+// wings and pets are drawn from entity render states, which came in 1.21.2
+//#if MC >= 1.21.2
 package dev.slash3rss.slashclient.hud;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -199,3 +201,4 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		pose.popPose();
 	}
 }
+//#endif

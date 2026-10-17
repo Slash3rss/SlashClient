@@ -1,3 +1,5 @@
+// before 1.21.2 (no render states) the figure is drawn as 1.21.1's PlayerSkinWidget draws it
+//#if MC >= 1.21.2
 package dev.slash3rss.slashclient.hud.ui;
 
 import net.minecraft.client.Minecraft;
@@ -181,3 +183,78 @@ public final class SkinPreview {
 		//#endif
 	}
 }
+//#else
+//$ package dev.slash3rss.slashclient.hud.ui;
+//$
+//$ import com.mojang.blaze3d.platform.Lighting;
+//$ import com.mojang.blaze3d.vertex.PoseStack;
+//$ import com.mojang.math.Axis;
+//$ import net.minecraft.client.Minecraft;
+//$ import net.minecraft.client.gui.GuiGraphics;
+//$ import net.minecraft.client.model.PlayerModel;
+//$ import net.minecraft.client.model.geom.ModelLayers;
+//$ import net.minecraft.client.renderer.texture.OverlayTexture;
+//$ import net.minecraft.client.resources.PlayerSkin;
+//$ import net.minecraft.util.Mth;
+//$
+//$ import java.util.function.Supplier;
+//$
+//$ /**
+//$  * The player's own skin standing in the menu, the head turning towards the mouse, drawn the way
+//$  * 1.21.1's PlayerSkinWidget draws it (before render states). Only the figure: the cosmetics
+//$  * beside it need the newer model API.
+//$  */
+//$ public final class SkinPreview {
+//$ 	private static final float MODEL_HEIGHT = 2.125f;
+//$ 	private static final float BODY_YAW = 15;
+//$
+//$ 	private final PlayerModel<?> wide;
+//$ 	private final PlayerModel<?> slim;
+//$ 	private final Supplier<PlayerSkin> skin;
+//$ 	private float headYaw, headPitch, bodyYaw = BODY_YAW;
+//$
+//$ 	public SkinPreview(Minecraft mc) {
+//$ 		var models = mc.getEntityModels();
+//$ 		wide = new PlayerModel<>(models.bakeLayer(ModelLayers.PLAYER), false);
+//$ 		slim = new PlayerModel<>(models.bakeLayer(ModelLayers.PLAYER_SLIM), true);
+//$ 		wide.young = slim.young = false;
+//$ 		skin = mc.getSkinManager().lookupInsecure(mc.getGameProfile());
+//$ 	}
+//$
+//$ 	/** Draws the figure in the box; the head looks at (mx, my). */
+//$ 	public void draw(GuiGraphics graphics, int x, int y, int w, int h, int mx, int my) {
+//$ 		PlayerSkin s = dev.slash3rss.slashclient.hud.Cosmetics.withTestSkin(Minecraft.getInstance().getGameProfile().getId(), skin.get());
+//$ 		PlayerModel<?> model = s.model() == PlayerSkin.Model.SLIM ? slim : wide;
+//$ 		float eyesX = x + w / 2f;
+//$ 		float eyesY = y + h * 0.12f;
+//$ 		float dx = mx - eyesX, dy = my - eyesY;
+//$ 		float wantYaw = Mth.clamp((float) Math.toDegrees(Math.atan(dx / 100f)), -45, 45);
+//$ 		float wantPitch = Mth.clamp((float) Math.toDegrees(Math.atan(dy / 120f)), -25, 30);
+//$ 		headYaw += (wantYaw - headYaw) * 0.25f;
+//$ 		headPitch += (wantPitch - headPitch) * 0.25f;
+//$ 		bodyYaw += (BODY_YAW + wantYaw * 0.35f - bodyYaw) * 0.15f;
+//$ 		model.head.yRot = (float) Math.toRadians(bodyYaw - headYaw);
+//$ 		model.head.xRot = (float) Math.toRadians(headPitch);
+//$ 		model.hat.copyFrom(model.head);
+//$
+//$ 		PoseStack pose = graphics.pose();
+//$ 		pose.pushPose();
+//$ 		pose.translate(x + w / 2f, y + h, 100f);
+//$ 		float scale = 0.97f * h / MODEL_HEIGHT;
+//$ 		pose.scale(scale, scale, scale);
+//$ 		pose.translate(0f, -0.0625f, 0f);
+//$ 		pose.rotateAround(Axis.XP.rotationDegrees(-5), 0f, -1.0625f, 0f);
+//$ 		pose.mulPose(Axis.YP.rotationDegrees(bodyYaw));
+//$ 		graphics.flush();
+//$ 		Lighting.setupForEntityInInventory(Axis.XP.rotationDegrees(-5));
+//$ 		pose.pushPose();
+//$ 		pose.scale(1f, 1f, -1f);
+//$ 		pose.translate(0f, -1.5f, 0f);
+//$ 		model.renderToBuffer(pose, graphics.bufferSource().getBuffer(model.renderType(s.texture())), 15728880, OverlayTexture.NO_OVERLAY);
+//$ 		pose.popPose();
+//$ 		graphics.flush();
+//$ 		Lighting.setupFor3DItems();
+//$ 		pose.popPose();
+//$ 	}
+//$ }
+//#endif
