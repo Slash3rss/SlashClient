@@ -563,9 +563,19 @@ public final class TestHooks {
 	 * beside it, a little off; `start` stops while still dragging (for the screenshot), the second
 	 * call lets go and says whether "ping" ended exactly beside "fps" with the tops level.
 	 */
+	/** The modules that were on before the snapping test (only "fps" and "ping" are on during it). */
+	private static java.util.Map<String, Boolean> snapSaved;
+
 	public static String snapDrag(boolean start) {
 		var editor = (HudEditScreen) screen();
 		if (start) {
+			// alone on the screen, so no other module's edge pulls "ping" first
+			snapSaved = new java.util.HashMap<>();
+			for (var m : SlashHud.MODULES) {
+				var p = SlashHud.config.placement(m.id());
+				snapSaved.put(m.id(), p.enabled);
+				p.enabled = m.id().equals("fps") || m.id().equals("ping");
+			}
 			int[] a = editor.boxOf("fps");
 			mouse("press", new double[] { a[0] + 2, a[1] + 2 });
 			mouse("drag", new double[] { editor.width / 2.0 - 40, editor.height / 2.0 - 60 });
@@ -581,6 +591,7 @@ public final class TestHooks {
 		int[] before = editor.boxOf("ping");
 		mouse("release", new double[] { before[0] + 2, before[1] + 2 });
 		int[] b = editor.boxOf("ping");
+		snapSaved.forEach((id, on) -> SlashHud.config.placement(id).enabled = on);
 		return b[0] == a[0] + a[2] + 2 && b[1] == a[1] ? "ok" : "fps " + java.util.Arrays.toString(a) + " ping " + java.util.Arrays.toString(b);
 	}
 }
