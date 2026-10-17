@@ -50,6 +50,15 @@ const MAX_MESSAGE = 2000;
 const MAX_ENCRYPTED = 14_000;
 /** A game counts as running this long after its last report (the mod reports every 4 minutes). */
 const IN_GAME_TTL_MS = 10 * 60_000;
+/** The uuid an offline-mode server gives a player: UUID.nameUUIDFromBytes("OfflinePlayer:" + name). */
+export function offlineUuid(name: string): string {
+  const h = createHash('md5').update(`OfflinePlayer:${name}`).digest();
+  h[6] = (h[6] & 0x0f) | 0x30;
+  h[8] = (h[8] & 0x3f) | 0x80;
+  const x = h.toString('hex');
+  return `${x.slice(0, 8)}-${x.slice(8, 12)}-${x.slice(12, 16)}-${x.slice(16, 20)}-${x.slice(20)}`;
+}
+
 /** host or host:port, as players type it in the server list. */
 const SERVER_ADDRESS = /^[\w.-]{1,253}(:\d{1,5})?$/;
 const UUID = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$/i;
@@ -477,8 +486,13 @@ export function createApp(cfg: Config) {
       const key = uuid.toLowerCase();
       // only a Minecraft account proven to be ours, or anyone could wear their cape as someone else
       if (db.owner('minecraft', key.replace(/-/g, '')) !== me) throw new HttpError(403, 'not_linked');
-      linked.set(key, { user: me, at: Date.now() });
-      inGame.set(key, Date.now());
+      const now = Date.now();
+      linked.set(key, { user: me, at: now });
+      inGame.set(key, now);
+      // servers in offline mode (many Polish networks, e.g. behind a proxy) give players a uuid made
+      // from their name: the same player's cape and rank go with that one too, while this game runs
+      const name = db.minecraftAccounts(me).find((m) => m.uuid === key.replace(/-/g, ''))?.name;
+      if (name) linked.set(offlineUuid(name), { user: me, at: now });
       return { ok: true, ttl: IN_GAME_TTL_MS };
     }],
     // an emote: shown above the player's head to launcher players on the same server

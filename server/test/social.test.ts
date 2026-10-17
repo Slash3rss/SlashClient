@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import WebSocket from 'ws';
-import { createApp } from '../src/app.ts';
+import { createApp, offlineUuid } from '../src/app.ts';
 
 const dir = mkdtempSync(path.join(os.tmpdir(), 'slash-social-'));
 let base = '';
@@ -316,6 +316,11 @@ describe('social server', () => {
     assert.deepEqual(seen.capes, { [ewaMc]: 'galaxy' });
     // the logo's colour: Tomek is an admin
     assert.deepEqual(seen.ranks, { [tomMc]: 'admin' });
+    // on an offline-mode server Ewa's uuid is made from her name: the cape goes with it too
+    assert.equal(offlineUuid('Guardes'), 'e2f755a8-fc71-367d-8353-0c1f31b4ee12');
+    const ewaOffline = offlineUuid('Ewa');
+    await call('POST', '/v1/mc/heartbeat', undefined, { uuid: ewaOffline });
+    assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaOffline] })).body.capes, { [ewaOffline]: 'galaxy' });
     assert.deepEqual(seen.active.sort(), [ewaMc, tomMc].sort());
 
     // emotes reach launcher players on the same server, not others

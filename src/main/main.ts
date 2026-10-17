@@ -49,7 +49,7 @@ let store: StoreData;
  * The games running now, one per profile: several profiles can play at once, one profile only
  * once (two games in the same folder would fight over its worlds and settings).
  */
-interface RunningGame { child: ChildProcess; hasHud: boolean; killRequested: boolean; presence: Presence }
+interface RunningGame { child: ChildProcess; hasHud: boolean; killRequested: boolean; presence: Presence; link: () => void }
 const games = new Map<string, RunningGame>();
 let loginAbort: AbortController | undefined;
 let discord: DiscordPresence | undefined;
@@ -854,12 +854,12 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     world,
     extraJvmArgs: hud.jvmArgs,
   });
-  const running: RunningGame = { child, hasHud: hud.jvmArgs.length > 0, killRequested: false, presence };
-  games.set(profile.id, running);
   // capes and emotes: the SlashClient account says which Minecraft player it is, while the game runs
   const linkPlayer = () => {
     if (social.state().user && account.uuid) social.call('POST', '/v1/mc/link', { uuid: account.uuid }).catch(() => {});
   };
+  const running: RunningGame = { child, hasHud: hud.jvmArgs.length > 0, killRequested: false, presence, link: linkPlayer };
+  games.set(profile.id, running);
   linkPlayer();
   const linkTimer = setInterval(linkPlayer, 4 * 60_000);
   showPresence(presence);
@@ -968,7 +968,11 @@ const social = new SocialClient({
     send('social:event', event);
     bridge.push(event as { type: string });
   },
-  onReady: () => void registerChatKey(),
+  onReady: () => {
+    void registerChatKey();
+    // connected again (the server restarted, or the network was away): the running games say who plays, right away
+    for (const g of games.values()) g.link();
+  },
 });
 
 /** The account the running game plays as (it can change from the game's menu). */
