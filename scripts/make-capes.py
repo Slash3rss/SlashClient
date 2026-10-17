@@ -191,32 +191,196 @@ def stripe(img, color, edge):
     return img
 
 
-def texture(cape):
-    art = design(cape)
+def texture(cape, art=None, wing=None, cape_part=True):
+    """A texture in Minecraft's cape layout: the cape (unless `cape_part` is off) and the elytra wing."""
+    art = art if art is not None else design(cape)
+    wing = wing if wing is not None else (wing_art(cape) if cape in CAPES else art)
     tex = Image.new('RGBA', (64 * K, 32 * K), (0, 0, 0, 0))
     edge = art.resize((1, 1)).getpixel((0, 0))
     dark = tuple(round(c * 0.55) for c in edge[:3]) + (255,)
-    # outer face, and a calmer inner face (the side against the back)
-    tex.paste(art, (1 * K, 1 * K))
-    inner = Image.blend(art, Image.new('RGBA', art.size, dark), 0.6)
-    tex.paste(inner, (12 * K, 1 * K))
-    d = ImageDraw.Draw(tex)
-    d.rectangle([0, 1 * K, 1 * K - 1, 17 * K - 1], fill=dark)
-    d.rectangle([11 * K, 1 * K, 12 * K - 1, 17 * K - 1], fill=dark)
-    d.rectangle([1 * K, 0, 21 * K - 1, 1 * K - 1], fill=dark)
+    if cape_part:
+        # outer face, and a calmer inner face (the side against the back)
+        tex.paste(art, (1 * K, 1 * K))
+        inner = Image.blend(art, Image.new('RGBA', art.size, dark), 0.6)
+        tex.paste(inner, (12 * K, 1 * K))
+        d = ImageDraw.Draw(tex)
+        d.rectangle([0, 1 * K, 1 * K - 1, 17 * K - 1], fill=dark)
+        d.rectangle([11 * K, 1 * K, 12 * K - 1, 17 * K - 1], fill=dark)
+        d.rectangle([1 * K, 0, 21 * K - 1, 1 * K - 1], fill=dark)
     # elytra wings: the art fills the part of the texture the vanilla elytra draws, and is cut to the
     # vanilla wing's shape (its transparency), so it looks as thin as Minecraft's own elytra. The shape
     # comes from the game's elytra.png at generation time; Mojang's picture itself is not copied.
     if WING is not None:
         region = Image.new('RGBA', (24 * K, 22 * K), dark)
-        region.paste(wing_art(cape).resize((12 * K, 20 * K), Image.LANCZOS), (12 * K, 2 * K))
+        region.paste(wing.resize((12 * K, 20 * K), Image.LANCZOS), (12 * K, 2 * K))
         alpha = WING.resize((24 * K, 22 * K), Image.NEAREST)
         region.putalpha(Image.composite(region.getchannel('A'), Image.new('L', region.size, 0), alpha))
         tex.paste(region, (22 * K, 0))
     return tex
 
 
+# ---------- animated capes: FRAMES pictures, the mod shows them one after another ----------
+
+FRAMES = 8
+
+
+def animated(cape, f):
+    t = f / FRAMES
+    rnd = random.Random(cape)
+    if cape == 'aurora':
+        img = gradient('#020617', '#0f172a')
+        d = ImageDraw.Draw(img)
+        for band, (col, base) in enumerate([((52, 211, 153), 0.30), ((45, 212, 191), 0.45), ((167, 139, 250), 0.60)]):
+            pts_top, pts_bot = [], []
+            for x in range(0, W + 1, 2):
+                y = H * base + math.sin(x / W * math.pi * 2 + t * math.pi * 2 + band) * 5
+                pts_top.append((x, y - 4))
+                pts_bot.append((x, y + 4))
+            d.polygon(pts_top + pts_bot[::-1], fill=col + (150,))
+        for _ in range(18):
+            d.point((rnd.randrange(W), rnd.randrange(H)), fill=(255, 255, 255, 200))
+        return border(img, '#34d399')
+    if cape == 'inferno':
+        img = gradient('#1c0a05', '#7c2d12')
+        d = ImageDraw.Draw(img)
+        for i in range(10):
+            cx = 2 + i * (W - 4) / 9
+            h = H * (0.45 + 0.25 * (0.5 + 0.5 * math.sin(t * math.pi * 2 + i * 1.7)))
+            d.polygon([(cx - 4, H), (cx + 4, H), (cx + math.sin(t * math.pi * 2 + i) * 2, H - h)], fill=(249, 115, 22, 230))
+            d.polygon([(cx - 2, H), (cx + 2, H), (cx, H - h * 0.55)], fill=(253, 224, 71, 240))
+        return border(img, '#f97316')
+    if cape == 'waves':
+        img = gradient('#0c4a6e', '#082f49')
+        d = ImageDraw.Draw(img)
+        for row in range(7):
+            y0 = H * (0.1 + row * 0.13)
+            pts = [(x, y0 + math.sin(x / W * math.pi * 2 + row + t * math.pi * 2) * 3) for x in range(0, W + 1, 2)]
+            d.line(pts, fill=(125, 211, 252, 210), width=2)
+        return border(img, '#38bdf8')
+    if cape == 'pulse':
+        glow = 0.5 + 0.5 * math.sin(t * math.pi * 2)
+        img = border(gradient('#0b1220', mix_hex('#1d4ed8', '#60a5fa', glow)), mix_hex('#3b82f6', '#bfdbfe', glow))
+        return logo(img, '#f3f4f6', '#1e3a8a')
+    raise ValueError(cape)
+
+
+def mix_hex(a, b, t):
+    return '#%02x%02x%02x' % mix(hexrgb(a), hexrgb(b), t)
+
+
+# ---------- capes for the ranks: the logo in the rank's colour ----------
+
+RANK_CAPES = {'staff_admin': ('#450a0a', '#dc2626', '#fca5a5'), 'staff_support': ('#082f49', '#0284c7', '#7dd3fc'), 'staff_partner': ('#422006', '#ca8a04', '#fde68a')}
+
+
+def rank_cape(cape):
+    top, bottom, light = RANK_CAPES[cape]
+    img = border(gradient(top, bottom), light)
+    return logo(img, '#ffffff', top)
+
+
+def rank_wing(cape):
+    top, bottom, light = RANK_CAPES[cape]
+    img = gradient(top, bottom)
+    stripe(img, '#ffffff', light)
+    return border(img, light)
+
+
+# ---------- wings and elytras: pictures for the wing, cut to the elytra's shape ----------
+
+def feathers(top, bottom, line, rows=9):
+    img = gradient(top, bottom)
+    d = ImageDraw.Draw(img)
+    for r in range(rows):
+        y = H * (0.08 + r * 0.9 / rows)
+        for x in range(0, W, 8):
+            d.arc([x - 2, y - 6, x + 8, y + 6], 0, 180, fill=hexrgb(line) + (255,), width=2)
+    return img
+
+
+def wing_design(kind):
+    rnd = random.Random(kind)
+    if kind == 'angel':
+        return border(feathers('#ffffff', '#cbd5e1', '#94a3b8'), '#f1f5f9')
+    if kind == 'demon':
+        img = gradient('#450a0a', '#0c0a09')
+        d = ImageDraw.Draw(img)
+        for i in range(5):
+            d.line([(0, H * 0.05), (W * (0.2 + i * 0.2), H)], fill=(127, 29, 29, 255), width=2)
+        return border(img, '#7f1d1d')
+    if kind == 'butterfly':
+        img = gradient('#7c3aed', '#06b6d4')
+        d = ImageDraw.Draw(img)
+        for cx, cy, r in [(W * 0.5, H * 0.3, 8), (W * 0.45, H * 0.68, 6)]:
+            d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(250, 204, 21, 255))
+            d.ellipse([cx - r / 2, cy - r / 2, cx + r / 2, cy + r / 2], fill=(17, 24, 39, 255))
+        return border(img, '#1e1b4b', 3)
+    if kind == 'dragon':
+        img = gradient('#166534', '#052e16')
+        d = ImageDraw.Draw(img)
+        for y in range(0, H, 6):
+            for x in range(-(y // 6 % 2) * 4, W, 8):
+                d.arc([x, y, x + 8, y + 8], 0, 180, fill=(74, 222, 128, 255), width=1)
+        return border(img, '#14532d', 3)
+    if kind == 'phoenix':
+        return border(feathers('#fde047', '#dc2626', '#f97316'), '#fef08a')
+    if kind == 'crystal':
+        img = gradient('#cffafe', '#0891b2')
+        d = ImageDraw.Draw(img)
+        for _ in range(9):
+            x, y = rnd.uniform(0, W), rnd.uniform(0, H)
+            d.line([(x, y), (x + rnd.uniform(-10, 10), y + rnd.uniform(6, 16))], fill=(255, 255, 255, 220), width=1)
+        return border(img, '#ecfeff')
+    if kind == 'feather':
+        return border(feathers('#fef3c7', '#92400e', '#78350f'), '#fde68a')
+    if kind == 'neon':
+        img = gradient('#020617', '#0f172a')
+        d = ImageDraw.Draw(img)
+        for i in range(6):
+            col = (34, 211, 238) if i % 2 else (232, 121, 249)
+            d.line([(0, H * (0.1 + i * 0.16)), (W, H * (0.0 + i * 0.16))], fill=col + (255,), width=2)
+        return border(img, '#22d3ee')
+    if kind == 'void':
+        img = gradient('#1e1b4b', '#000000')
+        d = ImageDraw.Draw(img)
+        for _ in range(40):
+            d.point((rnd.randrange(W), rnd.randrange(H)), fill=(196, 181, 253, 255))
+        return border(img, '#6d28d9')
+    if kind == 'sunset':
+        img = gradient('#f97316', '#7c3aed')
+        d = ImageDraw.Draw(img)
+        for i in range(4):
+            d.line([(0, H * (0.25 + i * 0.18)), (W, H * (0.25 + i * 0.18))], fill=(254, 215, 170, 160), width=1)
+        return border(img, '#fdba74')
+    raise ValueError(kind)
+
+
+WINGS = ['angel', 'demon', 'butterfly', 'dragon', 'phoenix', 'crystal']
+ELYTRAS = ['feather', 'neon', 'void', 'sunset']
+ANIMATED = ['aurora', 'inferno', 'waves', 'pulse']
+
 os.makedirs(OUT, exist_ok=True)
+count = 0
 for cape in CAPES:
     texture(cape).save(os.path.join(OUT, f'{cape}.png'))
-print(len(CAPES), 'capes ->', os.path.normpath(OUT))
+    count += 1
+for cape in RANK_CAPES:
+    texture(cape, rank_cape(cape), rank_wing(cape)).save(os.path.join(OUT, f'{cape}.png'))
+    count += 1
+for cape in ANIMATED:
+    for f in range(FRAMES):
+        art = animated(cape, f)
+        tex = texture(cape, art, art)
+        tex.save(os.path.join(OUT, f'{cape}_{f}.png'))
+        # the first frame without a number: the launcher's and the website's picture of it
+        if f == 0:
+            tex.save(os.path.join(OUT, f'{cape}.png'))
+    count += 1
+# wings and elytras: only the elytra part of the layout (the mod draws them with the elytra model)
+for folder, kinds in (('wings', WINGS), ('elytra', ELYTRAS)):
+    out = os.path.join(OUT, '..', folder)
+    os.makedirs(out, exist_ok=True)
+    for kind in kinds:
+        texture(kind, wing_design(kind), cape_part=False).save(os.path.join(out, f'{kind}.png'))
+        count += 1
+print(count, 'cosmetics ->', os.path.normpath(os.path.join(OUT, '..')))
