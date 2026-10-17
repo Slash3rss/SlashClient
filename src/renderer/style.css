@@ -359,7 +359,8 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .tag.release { background: rgba(74, 222, 128, .15); color: #86efac; }
 
 /* ---------- skin ---------- */
-.skin-card { display: flex; align-items: flex-start; gap: 22px; padding: 12px 22px; }
+/* the model stands in the middle of its canvas: less room on the left, more between it and the buttons */
+.skin-card { display: flex; align-items: flex-start; gap: 36px; padding: 12px 22px 12px 6px; }
 .skin-card canvas { width: 220px; height: 300px; cursor: grab; }
 .skin-info { display: flex; flex-direction: column; gap: 10px; }
 .skin-info p { margin: 0; max-width: 420px; }
@@ -888,7 +889,7 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 
 /* a small window: a smaller preview and tighter buttons, so the column beside it is not one button per line */
 @media (max-width: 1000px) {
-  .skin-card { gap: 14px; padding: 12px 14px; }
+  .skin-card { gap: 26px; padding: 12px 14px 12px 2px; }
   .skin-stage { width: 170px; }
   .skin-stage canvas { width: 170px; height: 232px; }
   .skin-stage .spinner { top: 116px; }
