@@ -12,6 +12,7 @@ import org.spongepowered.asm.mixin.injection.At;
 abstract class CapeMixin {
 	@ModifyReturnValue(method = "getSkin", at = @At("RETURN"))
 	private PlayerSkin slashclient$cape(PlayerSkin skin) {
-		return Cosmetics.withCape(((AbstractClientPlayer) (Object) this).getUUID(), skin);
+		AbstractClientPlayer player = (AbstractClientPlayer) (Object) this;
+		return Cosmetics.withCape(player.getUUID(), skin, player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).is(net.minecraft.world.item.Items.ELYTRA));
 	}
 }

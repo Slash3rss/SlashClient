@@ -32,7 +32,13 @@ const ALLOWED: [string, RegExp][] = [
   ['POST', /^\/v1\/messages\/[\w-]{1,64}\/read$/],
   ['POST', /^\/v1\/invites\/[\w-]{1,64}$/],
   ['POST', /^\/v1\/mc\/emote$/],
+  // the cosmetics menu in the game: what there is, what is worn, and changing it
+  ['GET', /^\/v1\/cosmetics$/],
+  ['GET', /^\/v1\/me$/],
+  ['POST', /^\/v1\/me$/],
 ];
+/** From the game, /v1/me changes only cosmetics (not, say, whether friends see the server). */
+const ME_KEYS = new Set(['cape', 'loadout', 'character', 'own']);
 
 /** Events the game cares about; the rest (login flow, account state) stays in the launcher. */
 const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', 'state', 'join', 'emote']);
@@ -152,6 +158,7 @@ export class GameBridge {
     if (!ALLOWED.some(([m, re]) => m === method && re.test(url))) return this.send(res, 403, { error: 'forbidden' });
     try {
       const body = method === 'POST' ? await this.body(req) : undefined;
+      if (url === '/v1/me' && Object.keys((body as object | undefined) ?? {}).some((k) => !ME_KEYS.has(k))) return this.send(res, 403, { error: 'forbidden' });
       this.send(res, 200, (await this.opts.call(method, url, body)) ?? {});
     } catch (err) {
       const code = (err as { code?: string }).code ?? (err as Error).message;

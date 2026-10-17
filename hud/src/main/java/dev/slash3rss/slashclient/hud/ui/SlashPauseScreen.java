@@ -29,6 +29,7 @@ public class SlashPauseScreen extends MenuScreen {
 		return List.of(
 			new Nav(Ui.tr("menu.returnToGame"), "play", this::onClose),
 			new Nav(Ui.tr("slashclient-hud.friends"), "user", () -> minecraft.setScreenAndShow(new FriendsScreen(this))),
+			new Nav(Ui.tr("slashclient-hud.cosmetics"), "m-appearance", () -> minecraft.setScreenAndShow(new dev.slash3rss.slashclient.hud.CosmeticsScreen(this))),
 			new Nav(Ui.tr("slashclient-hud.editor"), "sliders", () -> minecraft.setScreenAndShow(HudEditScreen.settingsWindow())),
 			new Nav(Ui.tr("menu.options"), "gear", () -> minecraft.setScreenAndShow(Compat.options(minecraft, this))),
 			new Nav(CommonComponents.disconnectButtonLabel(minecraft.isLocalServer()), "power", this::leave, true));

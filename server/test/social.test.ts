@@ -105,7 +105,7 @@ describe('social server', () => {
     assert.equal((await minecraftLogin('Kasia', mcId(1), undefined, false)).body.error, 'not_verified');
     const kasia = (await minecraftLogin('Kasia', mcId(1))).body;
     assert.equal(kasia.user.handle, 'Kasia');
-    assert.deepEqual(kasia.user.minecraft, [{ uuid: mcId(1), name: 'Kasia' }]);
+    assert.deepEqual(kasia.user.minecraft, [{ uuid: mcId(1), name: 'Kasia', loadout: null }]);
     // a server id works once
     const { serverId } = (await call('POST', '/v1/auth/minecraft/start')).body;
     joined.set(serverId, { id: mcId(1), name: 'Kasia' });
@@ -124,7 +124,7 @@ describe('social server', () => {
     assert.equal((await call('GET', '/v1/me', kasia.token)).body.minecraft.length, 2);
     // a Minecraft account can go while another way to sign in is left
     const after = (await call('DELETE', `/v1/me/minecraft/${mcId(2)}`, kasia.token)).body;
-    assert.deepEqual(after.minecraft, [{ uuid: mcId(1), name: 'Kasia' }]);
+    assert.deepEqual(after.minecraft, [{ uuid: mcId(1), name: 'Kasia', loadout: null }]);
     assert.equal((await call('DELETE', `/v1/me/minecraft/${mcId(1)}`, kasia.token)).body.error, 'last_provider');
   });
 
@@ -338,6 +338,22 @@ describe('social server', () => {
     await call('POST', '/v1/mc/heartbeat', undefined, { uuid: ewaOffline });
     assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaOffline] })).body.capes, { [ewaOffline]: 'galaxy' });
     assert.deepEqual(seen.active.sort(), [ewaMc, tomMc].sort());
+
+    // each Minecraft account may have its own set; it starts from the account's and replaces it
+    const ewaAlt = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    await minecraftLogin('EwaPvP', ewaAlt.replace(/-/g, ''), ewa.token);
+    assert.equal((await call('POST', '/v1/me', ewa.token, { character: tomMc, cape: 'ocean' })).body.error, 'not_linked');
+    const mine = (await call('POST', '/v1/me', ewa.token, { character: ewaAlt, cape: 'ember', loadout: { wings: '', aura: 'portal' } })).body;
+    assert.deepEqual(mine.minecraft.find((m: any) => m.name === 'EwaPvP').loadout, { trail: 'hearts', cape: 'ember', aura: 'portal' });
+    assert.equal(mine.minecraft.find((m: any) => m.name === 'Ewa').loadout, null);
+    assert.equal((await call('POST', '/v1/me', ewa.token, { character: ewaAlt, loadout: { wings: 'phoenix' } })).body.error, 'bad_item');
+    await call('POST', '/v1/mc/link', ewa.token, { uuid: ewaAlt });
+    const both = (await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc, ewaAlt] })).body.cosmetics;
+    assert.deepEqual(both[ewaAlt], { trail: 'hearts', cape: 'ember', aura: 'portal' });
+    assert.deepEqual(both[ewaMc], { cape: 'galaxy', wings: 'angel', trail: 'hearts' });
+    // back to the account's set
+    await call('POST', '/v1/me', ewa.token, { character: ewaAlt, own: false });
+    assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaAlt] })).body.cosmetics[ewaAlt], { cape: 'galaxy', wings: 'angel', trail: 'hearts' });
 
     // emotes reach launcher players on the same server, not others
     const onServer = { status: 'online', activity: { kind: 'server', server: 'skyup.pl' } };

@@ -335,6 +335,19 @@ public final class TestHooks {
 		mc.options.setCameraType(front ? net.minecraft.client.CameraType.THIRD_PERSON_FRONT : net.minecraft.client.CameraType.THIRD_PERSON_BACK);
 	}
 
+	/** As if the server said our own player wears this in a slot (null takes it off). */
+	public static void wear(String slot, String item) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		Cosmetics.set(mc.player.getUUID(), slot, item);
+	}
+
+	/** The cosmetics menu with a made-up catalog, open on a slot. */
+	public static void cosmeticsMenu(String slot) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
+		mc.setScreenAndShow(CosmeticsScreen.sample(slot));
+	}
+
 	public static void firstPerson() {
 		net.minecraft.client.Minecraft.getInstance().options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
 	}

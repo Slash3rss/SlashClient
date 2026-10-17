@@ -886,6 +886,17 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .clip-icon { width: 48px; height: 48px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; background: linear-gradient(135deg, rgba(59, 130, 246, .25), rgba(29, 78, 216, .35)); color: var(--accent-light); font-size: 20px; }
 .slash-capes .cape-choice { position: relative; }
 .cape-lock { position: absolute; top: 4px; right: 4px; font-size: 10px; color: #facc15; }
+.cape-lock.rank-admin { color: #ef4444; }
+.cape-lock.rank-support { color: #38bdf8; }
+.cape-lock.rank-partner { color: #facc15; }
+.cosmetic-owner-row { justify-content: space-between; gap: 8px; min-height: 18px; }
+.skin-info button.link-button { height: auto; padding: 0; border: 0; background: none; box-shadow: none; color: var(--accent-light); font-size: 12px; cursor: pointer; }
+.slot-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.skin-info .slot-tabs button.slot-tab { height: 26px; padding: 0 9px; font-size: 12px; border-radius: 13px; background: transparent; color: var(--text-secondary); position: relative; }
+.skin-info .slot-tabs button.slot-tab.active { background: var(--glass-bg-hover); color: var(--text-primary); border-color: var(--accent); }
+.slot-tab.worn::after { content: ""; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: #4ade80; }
+.cape-choice.wide canvas { width: 58px; height: 48px; }
+.cosmetic-icon { font-size: 22px; color: var(--accent-light); width: 30px; text-align: center; }
 
 /* a small window: a smaller preview and tighter buttons, so the column beside it is not one button per line */
 @media (max-width: 1000px) {

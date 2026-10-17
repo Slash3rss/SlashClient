@@ -115,6 +115,16 @@ button.chip:hover { background: rgba(255, 255, 255, .12); color: var(--text); }
 .signin .providers { display: grid; gap: 10px; margin-top: 16px; }
 .signin .providers button { justify-content: flex-start; height: 46px; }
 .profile-card { display: flex; flex-direction: column; gap: 14px; }
+.cape.wing { background-size: 307px 154px; background-position: -163px -10px; }
+.cape.wing.sm { background-size: 154px 77px; background-position: -82px -5px; }
+.cape.icon-item { display: grid; place-items: center; background: rgba(255, 255, 255, .04); color: var(--accent-light, #93c5fd); font-size: 26px; }
+.cape.icon-item.sm { font-size: 14px; }
+.slot-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.slot-tabs button { height: 32px; padding: 0 12px; font-size: 13px; position: relative; }
+.slot-tabs button.active { border-color: var(--accent); background: rgba(59, 130, 246, .12); }
+.slot-tabs button.worn::after { content: ""; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: #4ade80; }
+.cosmetic-for { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.slot-head { grid-column: 1 / -1; margin: 10px 0 0; display: flex; align-items: center; gap: 8px; }
 .cape-picker { display: flex; flex-wrap: wrap; gap: 12px; }
 .cape-choice { height: auto; padding: 10px; flex-direction: column; gap: 6px; font-weight: 500; font-size: 12px; min-width: 84px; position: relative; }
 .cape-choice.selected { border-color: var(--accent); background: rgba(59, 130, 246, .12); box-shadow: 0 0 0 3px rgba(59, 130, 246, .15); }

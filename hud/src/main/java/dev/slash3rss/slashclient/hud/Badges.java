@@ -142,13 +142,22 @@ public final class Badges {
 			Set<UUID> active = ConcurrentHashMap.newKeySet();
 			o.getAsJsonArray("active").forEach(e -> active.add(UUID.fromString(e.getAsString())));
 			JsonObject capes = o.has("capes") && o.get("capes").isJsonObject() ? o.getAsJsonObject("capes") : new JsonObject();
+			JsonObject wornBy = o.has("cosmetics") && o.get("cosmetics").isJsonObject() ? o.getAsJsonObject("cosmetics") : new JsonObject();
 			JsonObject rankOf = o.has("ranks") && o.get("ranks").isJsonObject() ? o.getAsJsonObject("ranks") : new JsonObject();
 			for (UUID id : ask) {
 				if (active.contains(id)) slash.add(id);
 				else slash.remove(id);
 				// the server answers with the uuid as it was asked
-				var cape = capes.get(id.toString());
-				Cosmetics.setCape(id, cape != null && cape.isJsonPrimitive() ? cape.getAsString() : null);
+				var items = wornBy.get(id.toString());
+				if (items != null && items.isJsonObject()) {
+					Map<String, String> all = new java.util.HashMap<>();
+					items.getAsJsonObject().entrySet().forEach(e -> { if (e.getValue().isJsonPrimitive()) all.put(e.getKey(), e.getValue().getAsString()); });
+					Cosmetics.setAll(id, all);
+				} else {
+					// an older server: only the cape
+					var cape = capes.get(id.toString());
+					Cosmetics.setAll(id, cape != null && cape.isJsonPrimitive() ? Map.of("cape", cape.getAsString()) : Map.of());
+				}
 				var rank = rankOf.get(id.toString());
 				if (rank != null && rank.isJsonPrimitive() && RANK_BADGES.containsKey(rank.getAsString())) ranks.put(id, rank.getAsString());
 				else ranks.remove(id);

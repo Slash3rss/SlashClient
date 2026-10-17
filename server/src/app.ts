@@ -170,7 +170,8 @@ export function createApp(cfg: Config) {
    */
   const inGame = new Map<string, number>();
   /** Minecraft uuid (lower case) → the SlashClient account playing as it, from the launcher. */
-  const linked = new Map<string, { user: string; at: number }>();
+  /** uuid in game → the SlashClient account and which of its Minecraft accounts (no dashes) plays. */
+  const linked = new Map<string, { user: string; at: number; character?: string }>();
   const limitGame = rateLimiter(30);
   const limitEmotes = rateLimiter(20);
 
@@ -395,12 +396,35 @@ export function createApp(cfg: Config) {
     }],
     ['POST', /^\/v1\/me$/, async (req) => {
       const me = authed(req);
-      const { showServer, cape, loadout } = await body(req);
+      const { showServer, cape, loadout, character, own } = await body(req);
       if (typeof showServer === 'boolean') {
         db.setShowServer(me, showServer);
         broadcastPresence(me);
       }
       const badge = badgeOf(db.user(me)!);
+      // one Minecraft account's own set: { character, cape?, loadout? }; { character, own: false } goes back to the account's
+      if (character !== undefined) {
+        const subject = typeof character === 'string' ? character.toLowerCase().replace(/-/g, '') : '';
+        if (!db.minecraftAccounts(me).some((m) => m.uuid === subject)) throw new HttpError(403, 'not_linked');
+        if (own === false) {
+          db.setCharacterLoadout(me, subject, null);
+          return meWithProviders(me);
+        }
+        const user = db.user(me)!;
+        const next = db.characterLoadout(me, subject) ?? { ...user.loadout, ...(user.cape ? { cape: user.cape } : {}) };
+        const settings = db.cosmeticSettings();
+        const granted = db.grants(me);
+        const changes: [string, unknown][] = [...(cape !== undefined ? [['cape', cape] as [string, unknown]] : []), ...Object.entries(loadout && typeof loadout === 'object' && !Array.isArray(loadout) ? loadout : {})];
+        if (loadout !== undefined && (!loadout || typeof loadout !== 'object' || Array.isArray(loadout))) throw new HttpError(400, 'bad_request');
+        for (const [slot, id] of changes) {
+          if (!SLOTS.includes(slot as Slot) || typeof id !== 'string') throw new HttpError(400, 'bad_item');
+          if (id === '') delete next[slot];
+          else if (mayWear(settings, granted, id, slot as Slot, badge)) next[slot] = id;
+          else throw new HttpError(400, slot === 'cape' ? 'bad_cape' : 'bad_item');
+        }
+        db.setCharacterLoadout(me, subject, next);
+        return meWithProviders(me);
+      }
       if (cape !== undefined) {
         if (cape !== '' && !mayWear(db.cosmeticSettings(), db.grants(me), cape as string, 'cape', badge)) throw new HttpError(400, 'bad_cape');
         db.setCape(me, cape as string);
@@ -498,8 +522,10 @@ export function createApp(cfg: Config) {
         // only what the player may still wear: the admin may have switched it off, or the rank may be gone
         const granted = db.grants(owner.id);
         const worn: Record<string, string> = {};
-        if (owner.cape && mayWear(settings, granted, owner.cape, 'cape', badge)) worn.cape = owner.cape;
-        for (const [slot, id] of Object.entries(owner.loadout)) if (mayWear(settings, granted, id, slot as Slot, badge)) worn[slot] = id;
+        // the character's own set, or the account's
+        const own = link?.character ? db.characterLoadout(owner.id, link.character) : null;
+        const all = own ?? { ...owner.loadout, ...(owner.cape ? { cape: owner.cape } : {}) };
+        for (const [slot, id] of Object.entries(all)) if (mayWear(settings, granted, id, slot as Slot, badge)) worn[slot] = id;
         if (worn.cape) capes[u] = worn.cape;
         if (Object.keys(worn).length) cosmetics[u] = worn;
       }
@@ -515,12 +541,13 @@ export function createApp(cfg: Config) {
       // only a Minecraft account proven to be ours, or anyone could wear their cape as someone else
       if (db.owner('minecraft', key.replace(/-/g, '')) !== me) throw new HttpError(403, 'not_linked');
       const now = Date.now();
-      linked.set(key, { user: me, at: now });
+      const character = key.replace(/-/g, '');
+      linked.set(key, { user: me, at: now, character });
       inGame.set(key, now);
       // servers in offline mode (many Polish networks, e.g. behind a proxy) give players a uuid made
       // from their name: the same player's cape and rank go with that one too, while this game runs
       const name = db.minecraftAccounts(me).find((m) => m.uuid === key.replace(/-/g, ''))?.name;
-      if (name) linked.set(offlineUuid(name), { user: me, at: now });
+      if (name) linked.set(offlineUuid(name), { user: me, at: now, character });
       return { ok: true, ttl: IN_GAME_TTL_MS };
     }],
     // an emote: shown above the player's head to launcher players on the same server

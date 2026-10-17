@@ -115,6 +115,12 @@ public final class Social {
 		return GSON.fromJson(res.body(), JsonObject.class);
 	}
 
+	/** A call to the SlashClient server through the launcher (the cosmetics menu); blocks, so not on the game's thread. */
+	public static JsonObject api(String method, String path, JsonObject body) throws Exception {
+		if (!available()) throw new IllegalStateException("no launcher");
+		return request(method, path, body, 8);
+	}
+
 	/** Starts the background thread; does nothing when the launcher gave no bridge. */
 	public static void start() {
 		if (!available()) return;

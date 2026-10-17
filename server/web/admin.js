@@ -1,5 +1,5 @@
 // The admin panel: numbers, accounts (ban, sign out, role, cape, delete), cosmetics and the log.
-import { $, PROVIDERS, ago, api, avatarEl, capeEl, el, errorText, fmtDate, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
+import { $, PROVIDERS, SLOTS, ago, api, avatarEl, capeEl, cosmeticEl, el, errorText, fmtDate, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 
 const TABS = [
   ['dashboard', 'Pulpit', 'fa-solid fa-chart-line'],
@@ -19,6 +19,7 @@ let me;
 let tab = location.hash.slice(1) || 'dashboard';
 const users = { q: '', offset: 0, limit: 25 };
 let capeNames = {};
+let capeSlots = {};
 
 // ---------- the gate: signed in as an admin ----------
 
@@ -52,7 +53,8 @@ async function start() {
   if (!me) return gate();
   if (!me.admin) return gate(`Konto ${me.name} (@${me.handle}) nie ma uprawnień admina.`);
   const cos = await api('GET', '/v1/cosmetics').catch(() => ({ capes: [] }));
-  capeNames = Object.fromEntries(cos.capes.map((c) => [c.id, c.name]));
+  capeNames = Object.fromEntries((cos.items ?? cos.capes).map((c) => [c.id, c.name]));
+  capeSlots = Object.fromEntries((cos.items ?? cos.capes).map((c) => [c.id, c.slot ?? 'cape']));
   layout();
 }
 
@@ -90,7 +92,7 @@ async function dashboard() {
   const bars = el('div', { class: 'bars' }, ...(worn.length ? worn.map(([id, n]) => {
     const fill = el('div');
     fill.style.width = `${(n / top) * 100}%`;
-    return el('div', { class: 'bar' }, capeEl(id, true), el('span', { textContent: capeNames[id] ?? id }), el('div', { class: 'track' }, fill), el('b', { textContent: String(n) }));
+    return el('div', { class: 'bar' }, cosmeticEl(id, capeSlots[id] ?? 'cape', true), el('span', { textContent: capeNames[id] ?? id }), el('div', { class: 'track' }, fill), el('b', { textContent: String(n) }));
   }) : [el('p', { class: 'muted', textContent: 'Nikt jeszcze nie nosi peleryny.' })]));
   $('#main').replaceChildren(
     head('Pulpit', el('button', { onclick: dashboard }, icon('fa-solid fa-rotate'), 'Odśwież')),
@@ -202,7 +204,8 @@ async function openUser(id) {
 async function cosmeticsPage() {
   const res = await guard(() => api('GET', '/v1/admin/cosmetics'));
   if (!res) return;
-  const cards = res.capes.map((c) => {
+  const all = res.items ?? res.capes;
+  const cards = all.map((c) => {
     const toggle = (label, key, hint) => {
       const box = el('input', { type: 'checkbox', checked: c[key] });
       box.addEventListener('change', async () => {
@@ -218,9 +221,9 @@ async function cosmeticsPage() {
       e.preventDefault();
       if (await guard(() => api('POST', `/v1/admin/cosmetics/${c.id}/grants`, { handle: handle.value.trim() }))) { toast('Przyznano.'); cosmeticsPage(); }
     } }, handle, el('button', { type: 'submit', class: 'icon-btn', title: 'Przyznaj' }, icon('fa-solid fa-plus')));
-    return el('div', { class: 'glass cos' }, capeEl(c.id),
+    return el('div', { class: 'glass cos' }, cosmeticEl(c.id, c.slot ?? 'cape'),
       el('div', { class: 'opts' },
-        el('div', { class: 'row' }, el('h3', { class: 'grow', textContent: c.name }), el('span', { class: 'chip', textContent: `${c.wearing} nosi` })),
+        el('div', { class: 'row' }, el('h3', { class: 'grow', textContent: c.name }), c.rank ? el('span', { class: `chip ${{ admin: 'red', support: 'sky', partner: 'gold' }[c.rank] ?? ''}`, textContent: c.rank }) : '', el('span', { class: 'chip', textContent: `${c.wearing} nosi` })),
         toggle('Włączona', 'enabled', 'Wyłączonej nie można wybrać i nikt jej nie widzi'),
         toggle('Ekskluzywna', 'exclusive', 'Tylko dla graczy, którym ją przyznasz'),
         c.exclusive ? el('div', {}, el('small', { class: 'muted', textContent: 'Przyznana:' }),
@@ -229,8 +232,11 @@ async function cosmeticsPage() {
             : [el('span', { class: 'muted small', textContent: 'nikomu' })])), grant) : ''));
   });
   $('#main').replaceChildren(head('Kosmetyki'),
-    el('p', { class: 'muted', textContent: 'Peleryny są wbudowane w mod SlashClient HUD; tutaj decydujesz, które są dostępne i dla kogo. Emotki są dostępne dla wszystkich.' }),
-    el('div', { class: 'cosmetics' }, ...cards));
+    el('p', { class: 'muted', textContent: 'Kosmetyki są wbudowane w mod SlashClient HUD; tutaj decydujesz, które są dostępne i dla kogo. Przedmioty rang noszą tylko gracze z tą rangą (admini wszystkie) albo ci, którym je przyznasz. Emotki są dostępne dla wszystkich.' }),
+    el('div', { class: 'cosmetics' }, ...SLOTS.flatMap(([slot, name, ic]) => {
+      const mine = cards.filter((_, i) => (all[i].slot ?? 'cape') === slot);
+      return mine.length ? [el('h3', { class: 'slot-head' }, icon(ic), name), ...mine] : [];
+    })));
 }
 
 // ---------- log ----------

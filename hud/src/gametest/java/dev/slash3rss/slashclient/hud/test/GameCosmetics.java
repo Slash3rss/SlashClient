@@ -27,6 +27,49 @@ public class GameCosmetics implements FabricClientGameTest {
 			world.getServer().runCommand("item replace entity @a armor.chest with air");
 			context.waitTicks(10);
 			context.takeScreenshot("cosmetics-logo-cape");
+			// an animated cape: its frames take turns
+			context.runOnClient(mc -> TestHooks.cosmeticsSelf("aurora", false));
+			context.waitTicks(2);
+			String first = context.computeOnClient(mc -> TestHooks.capeTexture());
+			if (!first.matches("slashclient-hud:textures/cape/aurora_[0-7]\\.png")) throw new AssertionError("Not a frame of the animated cape: " + first);
+			context.waitTicks(4);
+			if (first.equals(context.computeOnClient(mc -> TestHooks.capeTexture()))) throw new AssertionError("The animated cape does not move: " + first);
+			context.takeScreenshot("cosmetics-animated");
+			// an elytra of its own, over the cape's picture
+			world.getServer().runCommand("item replace entity @a armor.chest with elytra");
+			context.runOnClient(mc -> TestHooks.wear("elytra", "neon"));
+			context.waitTicks(10);
+			context.takeScreenshot("cosmetics-own-elytra");
+			world.getServer().runCommand("item replace entity @a armor.chest with air");
+			context.runOnClient(mc -> TestHooks.wear("elytra", null));
+			// wings take the cape's place; a pet at the shoulder; an aura while standing still
+			context.runOnClient(mc -> TestHooks.wear("wings", "angel"));
+			context.runOnClient(mc -> TestHooks.wear("pet", "allay"));
+			context.runOnClient(mc -> TestHooks.wear("aura", "souls"));
+			context.waitTicks(30);
+			if (!context.computeOnClient(mc -> TestHooks.capeTexture()).equals("none")) throw new AssertionError("The cape shows under the wings");
+			context.takeScreenshot("cosmetics-wings-back");
+			context.runOnClient(mc -> TestHooks.cosmeticsSelf("aurora", true));
+			context.waitTicks(10);
+			context.takeScreenshot("cosmetics-wings-front");
+			for (String pet : new String[] {"vex", "bat", "parrot", "bee"}) {
+				context.runOnClient(mc -> TestHooks.wear("pet", pet));
+				context.runOnClient(mc -> TestHooks.wear("wings", pet.equals("bat") ? "demon" : pet.equals("bee") ? "butterfly" : "dragon"));
+				context.waitTicks(5);
+				context.takeScreenshot("cosmetics-pet-" + pet);
+			}
+			// the menu in the game, on two slots
+			context.runOnClient(mc -> TestHooks.audit(true));
+			context.runOnClient(mc -> TestHooks.cosmeticsMenu("cape"));
+			context.waitTicks(5);
+			context.takeScreenshot("cosmetics-menu-capes");
+			context.runOnClient(mc -> TestHooks.cosmeticsMenu("pet"));
+			context.waitTicks(5);
+			context.takeScreenshot("cosmetics-menu-pets");
+			context.runOnClient(mc -> TestHooks.reportAudit());
+			context.runOnClient(mc -> TestHooks.audit(false));
+			context.setScreen(() -> null);
+			context.runOnClient(mc -> { TestHooks.wear("wings", null); TestHooks.wear("pet", null); TestHooks.wear("aura", null); });
 			// an emote by the name, looking at the player's face
 			context.runOnClient(mc -> TestHooks.cosmeticsSelf("slash", true));
 			context.runOnClient(mc -> TestHooks.emoteSelf("heart"));

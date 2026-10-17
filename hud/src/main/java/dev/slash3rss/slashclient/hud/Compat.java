@@ -106,4 +106,14 @@ public final class Compat {
 		//$ chat.rescaleChat();
 		//#endif
 	}
+
+	/** A model drawn with the frame (the outline colour is for glowing players). */
+	public static <S> void submitModel(net.minecraft.client.renderer.SubmitNodeCollector out, net.minecraft.client.model.Model<? super S> model, S state,
+			com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.client.renderer.rendertype.RenderType type, int light, int overlay, int outline) {
+		//#if MC >= 26.3
+		out.submitModel(model, state, pose, type, light, overlay, outline);
+		//#else
+		//$ out.submitModel(model, state, pose, type, light, overlay, outline, null);
+		//#endif
+	}
 }

@@ -89,6 +89,29 @@ export function capeEl(id, small = false) {
   return c;
 }
 
+/** The cosmetics' slots: name and icon, in the order they are shown. */
+export const SLOTS = [
+  ['cape', 'Peleryna', 'fa-solid fa-flag'], ['wings', 'Skrzydła', 'fa-solid fa-dove'], ['elytra', 'Elytra', 'fa-solid fa-feather'],
+  ['trail', 'Ślad', 'fa-solid fa-shoe-prints'], ['aura', 'Aura', 'fa-solid fa-wand-sparkles'], ['pet', 'Pupil', 'fa-solid fa-paw'],
+];
+/** Particles and pets are the game's own: on the site they get an icon. */
+const ITEM_ICONS = {
+  hearts: 'fa-heart', sparks: 'fa-bolt', snow: 'fa-snowflake', notes: 'fa-music', flames: 'fa-fire',
+  enchant: 'fa-book-open', portal: 'fa-circle-notch', cherry: 'fa-spa', souls: 'fa-ghost', royal: 'fa-crown',
+  allay: 'fa-feather-pointed', vex: 'fa-skull', bat: 'fa-moon', parrot: 'fa-crow', bee: 'fa-bug',
+};
+
+/** A picture of any cosmetic: the cape's front, a wing's back, or an icon. */
+export function cosmeticEl(id, slot = 'cape', small = false) {
+  if (slot === 'cape') return capeEl(id, small);
+  if (slot === 'wings' || slot === 'elytra') {
+    const c = el('div', { class: `cape wing${small ? ' sm' : ''}`, title: id });
+    c.style.backgroundImage = `url(vendor/${slot}/${id}.png)`;
+    return c;
+  }
+  return el('div', { class: `cape icon-item${small ? ' sm' : ''}`, title: id }, icon(`fa-solid ${ITEM_ICONS[id] ?? 'fa-star'}`));
+}
+
 export function avatarEl(user, big = false) {
   if (user.avatar) return el('img', { class: `avatar${big ? ' big' : ''}`, src: user.avatar, alt: '', referrerPolicy: 'no-referrer' });
   return el('div', { class: `avatar${big ? ' big' : ''}`, textContent: (user.name || user.handle || '?').slice(0, 1).toUpperCase() });

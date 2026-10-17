@@ -23,17 +23,20 @@ describe('game bridge', () => {
     assert.equal((await req('/v1/friends', {}, 'wrong')).status, 401);
     assert.equal((await req('/v1/friends')).status, 200);
     assert.equal((await req('/v1/messages/abc', { method: 'POST', body: JSON.stringify({ text: 'hej' }) })).status, 200);
-    assert.equal((await req('/v1/me')).status, 403);
+    assert.equal((await req('/v1/me')).status, 200);
     assert.equal((await req('/v1/auth/logout', { method: 'POST' })).status, 403);
     assert.equal((await req('/v1/friends/x', { method: 'DELETE' })).status, 403);
     assert.equal((await req('/clipboard/image', { method: 'POST', body: JSON.stringify({ path: '/x/screenshots/a.png' }) })).status, 200);
     assert.equal((await req('/clipboard/image', { method: 'POST', body: JSON.stringify({ path: '/etc/passwd' }) })).status, 403);
-    // invites and emotes go through; changing the account (the cape) does not
+    // invites, emotes and cosmetics go through; other changes to the account do not
     assert.equal((await req('/v1/invites/abc', { method: 'POST', body: JSON.stringify({ server: 'skyup.pl' }) })).status, 200);
     assert.equal((await req('/v1/mc/emote', { method: 'POST', body: JSON.stringify({ emote: 'wave' }) })).status, 200);
-    assert.equal((await req('/v1/me', { method: 'POST', body: JSON.stringify({ cape: 'gold' }) })).status, 403);
-    assert.deepEqual(calls, ['GET /v1/friends', 'POST /v1/messages/abc {"text":"hej"}', 'copy /x/screenshots/a.png',
-      'POST /v1/invites/abc {"server":"skyup.pl"}', 'POST /v1/mc/emote {"emote":"wave"}']);
+    assert.equal((await req('/v1/me', { method: 'POST', body: JSON.stringify({ character: 'abc', cape: 'gold', loadout: { pet: 'bee' } }) })).status, 200);
+    assert.equal((await req('/v1/me', { method: 'POST', body: JSON.stringify({ showServer: false }) })).status, 403);
+    assert.equal((await req('/v1/cosmetics')).status, 200);
+    assert.deepEqual(calls, ['GET /v1/friends', 'POST /v1/messages/abc {"text":"hej"}', 'GET /v1/me', 'copy /x/screenshots/a.png',
+      'POST /v1/invites/abc {"server":"skyup.pl"}', 'POST /v1/mc/emote {"emote":"wave"}',
+      'POST /v1/me {"character":"abc","cape":"gold","loadout":{"pet":"bee"}}', 'GET /v1/cosmetics']);
     assert.deepEqual(await (await req('/state')).json(), { signedIn: true, user: { name: 'Slash3rss' } });
 
     // a waiting poll wakes up on the next event; launcher-only events are not passed on

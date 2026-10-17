@@ -143,6 +143,9 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
       if (it && (capeSetting(db.cosmeticSettings(), id).exclusive || it.rank)) {
         if (user.cape === id) db.setCape(userId, '');
         if (Object.values(user.loadout).includes(id)) db.setLoadout(userId, Object.fromEntries(Object.entries(user.loadout).filter(([, v]) => v !== id)));
+        for (const m of db.minecraftAccounts(userId)) {
+          if (m.loadout && Object.values(m.loadout).includes(id)) db.setCharacterLoadout(userId, m.uuid, Object.fromEntries(Object.entries(m.loadout).filter(([, v]) => v !== id)));
+        }
       }
       db.log(me, 'revoke', user.handle, id);
       return { grantees: db.grantees(id) };

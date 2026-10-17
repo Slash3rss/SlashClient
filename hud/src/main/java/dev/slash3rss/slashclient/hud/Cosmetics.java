@@ -24,11 +24,23 @@ public final class Cosmetics {
 
 	/** The order of the emote wheel and of the glyphs in font/emote.json (U+E100 onwards). */
 	public static final List<String> EMOTES = List.of("wave", "heart", "laugh", "gg", "like", "angry", "question", "fire");
-	static final List<String> CAPES = List.of("slash", "ocean", "ember", "forest", "galaxy", "rose", "gold", "mono");
+	static final List<String> CAPES = List.of("slash", "ocean", "ember", "forest", "galaxy", "rose", "gold", "mono",
+		"aurora", "inferno", "waves", "pulse", "staff_admin", "staff_support", "staff_partner");
+	/** Capes drawn as a loop of frames (textures/cape/<id>_<n>.png), and how many. */
+	static final Map<String, Integer> ANIMATED = Map.of("aurora", 8, "inferno", 8, "waves", 8, "pulse", 8);
+	private static final long FRAME_MS = 120;
+	static final List<String> WINGS = List.of("angel", "demon", "butterfly", "dragon", "phoenix", "crystal");
+	static final List<String> ELYTRAS = List.of("feather", "neon", "void", "sunset");
+	static final List<String> TRAILS = List.of("hearts", "sparks", "snow", "notes", "flames");
+	static final List<String> AURAS = List.of("enchant", "portal", "cherry", "souls", "royal");
+	static final List<String> PETS = List.of("allay", "vex", "bat", "parrot", "bee");
+	private static final Map<String, List<String>> SLOTS = Map.of("cape", CAPES, "wings", WINGS, "elytra", ELYTRAS,
+		"trail", TRAILS, "aura", AURAS, "pet", PETS);
 	private static final long EMOTE_MS = 3500;
 	private static final FontDescription EMOTE_FONT = new FontDescription.Resource(Identifier.fromNamespaceAndPath(SlashHud.ID, "emote"));
 
-	private static final Map<UUID, String> capes = new ConcurrentHashMap<>();
+	/** uuid → slot → item, what the server says each player wears (only items this mod knows). */
+	private static final Map<UUID, Map<String, String>> worn = new ConcurrentHashMap<>();
 	private static final Map<String, ClientAsset.Texture> textures = new ConcurrentHashMap<>();
 	private record Shown(String emote, long until) {}
 	private static final Map<UUID, Shown> emotes = new ConcurrentHashMap<>();
@@ -41,12 +53,33 @@ public final class Cosmetics {
 	}
 
 	static void setCape(UUID id, String cape) {
-		if (cape != null && CAPES.contains(cape)) capes.put(id, cape);
-		else capes.remove(id);
+		set(id, "cape", cape);
+	}
+
+	/** What a player wears in a slot; null takes it off. Items this version of the mod does not know are left out. */
+	static void set(UUID id, String slot, String item) {
+		List<String> known = SLOTS.get(slot);
+		if (item != null && known != null && known.contains(item)) worn.computeIfAbsent(id, k -> new ConcurrentHashMap<>()).put(slot, item);
+		else {
+			var w = worn.get(id);
+			if (w != null) w.remove(slot);
+		}
+	}
+
+	/** Everything a player wears, at once (from the server's answer). */
+	static void setAll(UUID id, Map<String, String> items) {
+		for (String slot : SLOTS.keySet()) set(id, slot, items.get(slot));
+	}
+
+	/** The item a player wears in a slot, or null. */
+	public static String worn(UUID id, String slot) {
+		if (!SlashHud.config.badges) return null;
+		var w = worn.get(id);
+		return w == null ? null : w.get(slot);
 	}
 
 	static void reset() {
-		capes.clear();
+		worn.clear();
 		emotes.clear();
 	}
 
@@ -60,15 +93,33 @@ public final class Cosmetics {
 	}
 
 	/** The skin with our cape in place of the player's own, when they picked one. */
-	public static PlayerSkin withCape(UUID id, PlayerSkin skin) {
+	public static PlayerSkin withCape(UUID id, PlayerSkin skin, boolean wearsElytra) {
 		skin = withTestSkin(id, skin);
 		if (!SlashHud.config.badges) return skin;
-		String cape = capes.get(id);
-		if (cape == null) return skin;
-		ClientAsset.Texture texture = textures.computeIfAbsent(cape, c -> new ClientAsset.ResourceTexture(
-			Identifier.fromNamespaceAndPath(SlashHud.ID, "cape/" + c), Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/cape/" + c + ".png")));
-		// elytra drawn from the cape, as for Minecraft's own capes
-		return new PlayerSkin(skin.body(), texture, null, skin.model(), skin.secure());
+		String cape = worn(id, "cape");
+		// wings take the cape's place on the back (an elytra, when worn, takes theirs)
+		if (!wearsElytra && worn(id, "wings") != null) return new PlayerSkin(skin.body(), null, skin.elytra(), skin.model(), skin.secure());
+		String elytra = worn(id, "elytra");
+		if (cape == null && elytra == null) return skin;
+		if (cape != null) {
+			Integer frames = ANIMATED.get(cape);
+			if (frames != null) cape = cape + "_" + (System.currentTimeMillis() / FRAME_MS) % frames;
+		}
+		ClientAsset.Texture capeTexture = cape == null ? skin.cape() : texture("cape", cape);
+		// without an elytra of its own the elytra is drawn from the cape, as for Minecraft's own capes
+		ClientAsset.Texture elytraTexture = elytra != null ? texture("elytra", elytra) : cape != null ? null : skin.elytra();
+		return new PlayerSkin(skin.body(), capeTexture, elytraTexture, skin.model(), skin.secure());
+	}
+
+	/** Where one of our pictures is, for models drawn with it directly (the wings). */
+	static Identifier textureId(String kind, String name) {
+		return Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/" + kind + "/" + name + ".png");
+	}
+
+	/** One of our textures (textures/<kind>/<name>.png), made once. */
+	static ClientAsset.Texture texture(String kind, String name) {
+		return textures.computeIfAbsent(kind + "/" + name, k -> new ClientAsset.ResourceTexture(
+			Identifier.fromNamespaceAndPath(SlashHud.ID, k), Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/" + k + ".png")));
 	}
 
 	/** An emote arrived (from the launcher) or was sent: it shows by the name for a few seconds. */
@@ -94,7 +145,8 @@ public final class Cosmetics {
 
 	/** For the test: whether a player shows this cape. */
 	public static String cape(UUID id) {
-		return capes.get(id);
+		var w = worn.get(id);
+		return w == null ? null : w.get("cape");
 	}
 
 	static void tick(Minecraft mc) {

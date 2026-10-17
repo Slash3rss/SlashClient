@@ -1,9 +1,12 @@
 // The account page (/konto): sign in, pick a cape, privacy, sign out.
-import { $, PROVIDERS, api, avatarEl, capeEl, el, errorText, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
+import { $, PROVIDERS, SLOTS, api, avatarEl, capeEl, cosmeticEl, el, errorText, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 
 let me;
 let health = { providers: [], dev: false };
 let cosmetics = { capes: [] };
+/** Which slot is shown, and whose set is changed: '' = the whole account, else a Minecraft account's uuid. */
+let slot = 'cape';
+let forCharacter = '';
 
 function renderNav() {
   $('#nav-account .label').textContent = me ? me.name : 'Zaloguj się';
@@ -69,23 +72,43 @@ function renderAccount() {
       me.admin ? el('a', { class: 'btn', href: '/admin' }, icon('fa-solid fa-shield-halved'), 'Panel admina') : '',
       el('button', { onclick: async () => { await signOut(); me = undefined; renderNav(); renderAccount(); } }, icon('fa-solid fa-right-from-bracket'), 'Wyloguj')));
 
+  const items = cosmetics.items ?? cosmetics.capes.map((c) => ({ ...c, slot: 'cape' }));
+  const characters = me.minecraft ?? [];
+  if (!characters.some((m) => m.uuid === forCharacter)) forCharacter = '';
+  const character = characters.find((m) => m.uuid === forCharacter);
+  // a Minecraft account without a set of its own wears the account's
+  const worn = character?.loadout ?? { ...me.loadout, ...(me.cape ? { cape: me.cape } : {}) };
+  const whose = el('select', {}, el('option', { value: '', textContent: 'Całe konto (domyślny zestaw)' }),
+    ...characters.map((m) => el('option', { value: m.uuid, textContent: `${m.name}${m.loadout ? '' : ' (jak konto)'}`, selected: m.uuid === forCharacter })));
+  whose.addEventListener('change', () => { forCharacter = whose.value; renderAccount(); });
+  const send = async (change, done) => {
+    const u = await guard(() => api('POST', '/v1/me', forCharacter ? { character: forCharacter, ...change } : change));
+    if (!u) return;
+    me = u;
+    toast(done);
+    renderAccount();
+  };
+  const tabs = el('div', { class: 'slot-tabs' }, ...SLOTS.filter(([s]) => items.some((i) => i.slot === s)).map(([s, name, ic]) =>
+    el('button', { class: `${s === slot ? 'active' : ''}${worn[s] ? ' worn' : ''}`, onclick: () => { slot = s; renderAccount(); } }, icon(ic), name)));
   const pick = el('div', { class: 'cape-picker' });
-  const choice = (id, name, content, available = true, locked = false) => {
-    const b = el('button', { class: `cape-choice${(me.cape || '') === id ? ' selected' : ''}${id ? '' : ' none'}`, disabled: !available, title: locked ? 'Ekskluzywna: przyznaje ją admin' : name },
-      content, el('span', { textContent: name }), locked ? el('i', { class: 'fa-solid fa-lock lock' }) : '');
-    b.addEventListener('click', async () => {
-      const u = await guard(() => api('POST', '/v1/me', { cape: id }));
-      if (!u) return;
-      me = u;
-      toast(id ? `Peleryna ${name} założona. Widać ją po następnym wejściu do gry.` : 'Peleryna zdjęta.');
-      renderAccount();
-    });
+  const choice = (item) => {
+    const id = item?.id ?? '';
+    const name = item?.name ?? 'Nic';
+    const locked = item && !item.available;
+    const why = item?.rank ? `${name}: tylko dla rangi ${item.rank}` : `${name}: ekskluzywne, przyznaje admin`;
+    const b = el('button', { class: `cape-choice${(worn[slot] || '') === id ? ' selected' : ''}${id ? '' : ' none'}`, disabled: !!locked, title: locked ? why : name },
+      item ? cosmeticEl(item.id, item.slot) : el('div', { class: 'cape' }, icon('fa-solid fa-ban')), el('span', { textContent: name }), locked ? el('i', { class: 'fa-solid fa-lock lock' }) : '');
+    b.addEventListener('click', () => send(slot === 'cape' ? { cape: id } : { loadout: { [slot]: id } },
+      id ? `${name}: założone. Widać po następnym wejściu do gry.` : 'Zdjęte.'));
     return b;
   };
-  pick.append(choice('', 'Bez peleryny', el('div', { class: 'cape' }, icon('fa-solid fa-ban'))));
-  for (const c of cosmetics.capes) pick.append(choice(c.id, c.name, capeEl(c.id), c.available, c.exclusive && !c.available));
-  const capes = el('div', { class: 'glass card' }, el('h3', { textContent: 'Peleryna' }),
-    el('p', { class: 'muted small', textContent: 'Widzą ją gracze z SlashClient na każdym serwerze. Zastępuje pelerynę Minecraft.' }), pick);
+  pick.append(choice(undefined));
+  for (const c of items.filter((i) => i.slot === slot)) pick.append(choice(c));
+  const capes = el('div', { class: 'glass card' }, el('h3', { textContent: 'Kosmetyki' }),
+    el('p', { class: 'muted small', textContent: 'Widzą je gracze z SlashClient na każdym serwerze. Każde konto Minecraft może mieć własny zestaw.' }),
+    characters.length ? el('div', { class: 'cosmetic-for' }, el('span', { class: 'small', textContent: 'Zestaw dla:' }), whose,
+      character?.loadout ? el('button', { onclick: () => send({ own: false }, `${character.name} nosi teraz zestaw całego konta.`) }, icon('fa-solid fa-rotate-left'), 'Jak całe konto') : '') : '',
+    tabs, pick);
   $('#account').replaceChildren(el('div', { class: 'account' }, profile, capes));
 }
 

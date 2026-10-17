@@ -2566,53 +2566,137 @@ function renderCapeGrid() {
   $('#cape-apply').classList.toggle('hidden', chosenCape === activeId);
 }
 
-// ---------- SlashClient capes (seen by other players with the launcher) ----------
+// ---------- SlashClient cosmetics (seen by other players with the launcher) ----------
 
+type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet';
+const SLOTS: [Slot, string, string][] = [
+  ['cape', 'Peleryna', 'fa-flag'], ['wings', 'Skrzydła', 'fa-dove'], ['elytra', 'Elytra', 'fa-feather'],
+  ['trail', 'Ślad', 'fa-shoe-prints'], ['aura', 'Aura', 'fa-wand-sparkles'], ['pet', 'Pupil', 'fa-paw'],
+];
+/** Without the server (or before 0.8) only the first eight capes are known. */
 const SLASH_CAPES: [string, string][] = [
   ['slash', 'SlashClient'], ['ocean', 'Ocean'], ['ember', 'Ember'], ['forest', 'Forest'],
   ['galaxy', 'Galaxy'], ['rose', 'Rose'], ['gold', 'Gold'], ['mono', 'Mono'],
 ];
+/** Particles and pets are the game's own: in the launcher they get an icon. */
+const ITEM_ICONS: Record<string, string> = {
+  hearts: 'fa-heart', sparks: 'fa-bolt', snow: 'fa-snowflake', notes: 'fa-music', flames: 'fa-fire',
+  enchant: 'fa-book-open', portal: 'fa-circle-notch', cherry: 'fa-spa', souls: 'fa-ghost', royal: 'fa-crown',
+  allay: 'fa-feather-pointed', vex: 'fa-skull', bat: 'fa-moon', parrot: 'fa-crow', bee: 'fa-bug',
+};
+const RANK_NAMES: Record<string, string> = { admin: 'Admin', support: 'Support', partner: 'Partner' };
+let cosmeticSlot: Slot = 'cape';
+/** The Minecraft account (uuid without dashes) shown in the Accounts tab: it may have a set of its own. */
+let cosmeticCharacter = '';
+
+/** The back of a wing (64×32 elytra layout, HD 4×), twice, mirrored: a pair of wings. */
+function wingsThumbnail(texture: string): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = 24;
+  canvas.height = 20;
+  const img = new Image();
+  img.onload = () => {
+    const s = img.naturalWidth / 64;
+    canvas.width = 24 * s;
+    canvas.height = 20 * s;
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, 34 * s, 2 * s, 12 * s, 20 * s, 12 * s, 0, 12 * s, 20 * s);
+    ctx.scale(-1, 1);
+    ctx.drawImage(img, 34 * s, 2 * s, 12 * s, 20 * s, -12 * s, 0, 12 * s, 20 * s);
+  };
+  img.src = texture;
+  return canvas;
+}
+
+function cosmeticPicture(slot: Slot, id: string): Node {
+  if (slot === 'cape') return capeThumbnail(`img/capes/${id}.png`);
+  if (slot === 'wings' || slot === 'elytra') return wingsThumbnail(`img/${slot}/${id}.png`);
+  return el('i', { className: `fa-solid ${ITEM_ICONS[id] ?? 'fa-star'} cosmetic-icon` });
+}
 
 async function renderSlashCapes() {
-  // the cape is read fresh: the launcher's copy of the account may predate the last change
+  // what is worn is read fresh: the launcher's copy of the account may predate the last change
   const state: { user?: unknown } | undefined = await api.socialState().catch(() => undefined);
-  const me: { cape?: string } | undefined = state?.user ? await api.socialApi('GET', '/v1/me').catch(() => undefined) : undefined;
-  const current = me?.cape ?? '';
+  type Me = { cape?: string; loadout?: Partial<Record<Slot, string>>; minecraft?: { uuid: string; name: string; loadout: Partial<Record<Slot, string>> | null }[] };
+  const me: Me | undefined = state?.user ? await api.socialApi('GET', '/v1/me').catch(() => undefined) : undefined;
+  // a Minecraft account linked to the SlashClient account has a set of its own; others wear the account's
+  const character = me?.minecraft?.find((m) => m.uuid === cosmeticCharacter);
+  const worn: Partial<Record<Slot, string>> = character?.loadout ? { ...character.loadout } : { ...me?.loadout, cape: me?.cape ?? '' };
+  $('#cosmetic-owner').textContent = character ? t('Zestaw postaci {0}', character.name) + (character.loadout ? '' : t(' (jak całe konto)')) : me ? t('Zestaw całego konta') : '';
+  $('#cosmetic-shared').classList.toggle('hidden', !character?.loadout);
   const signedIn = !!me;
-  // which capes the server offers now: switched-off ones are left out, exclusive ones say if they are ours
-  type CatalogCape = { id: string; name: string; exclusive: boolean; available: boolean };
-  const catalog: CatalogCape[] = (await api.socialApi('GET', '/v1/cosmetics').then((r: { capes: CatalogCape[] }) => r.capes).catch(() => undefined))
-    ?? SLASH_CAPES.map(([id, name]) => ({ id, name, exclusive: false, available: true }));
-  $('#slash-cape-note').textContent = signedIn
-    ? t('Widzą ją inni gracze z SlashClient, na każdym serwerze. Zastępuje pelerynę Minecraft.')
-    : t('Zaloguj się w zakładce Znajomi (konto SlashClient), żeby nosić pelerynę SlashClient.');
-  const tile = (id: string, title: string, content: Node, locked = false) => {
-    const b = el('button', { type: 'button', className: `cape-choice${id === current ? ' selected active' : ''}${id ? '' : ' none'}`, title: locked ? t('{0}: ekskluzywna, przyznaje ją admin', title) : title }, content);
+  // what the server offers now: switched-off items are left out, exclusive and rank ones say if they are ours
+  type CatalogItem = { id: string; slot: Slot; name: string; rank?: string; exclusive: boolean; available: boolean };
+  const catalog: CatalogItem[] = (await api.socialApi('GET', '/v1/cosmetics').then((r: { capes: CatalogItem[]; items?: CatalogItem[] }) => r.items ?? r.capes.map((c) => ({ ...c, slot: 'cape' as Slot }))).catch(() => undefined))
+    ?? SLASH_CAPES.map(([id, name]) => ({ id, slot: 'cape' as Slot, name, exclusive: false, available: true }));
+  const slots = SLOTS.filter(([slot]) => catalog.some((c) => c.slot === slot));
+  if (!slots.some(([slot]) => slot === cosmeticSlot)) cosmeticSlot = 'cape';
+  $('#slot-tabs').replaceChildren(...slots.map(([slot, name, icon]) => {
+    const b = el('button', { type: 'button', className: `slot-tab${slot === cosmeticSlot ? ' active' : ''}${worn[slot] ? ' worn' : ''}`, title: t(name) },
+      el('i', { className: `fa-solid ${icon}` }), ` ${t(name)}`);
+    b.addEventListener('click', () => {
+      cosmeticSlot = slot;
+      renderSlashCapes();
+    });
+    return b;
+  }));
+  $('#slot-tabs').classList.toggle('hidden', slots.length < 2);
+  $('#slash-cape-note').textContent = !signedIn
+    ? t('Zaloguj się w zakładce Znajomi (konto SlashClient), żeby nosić pelerynę SlashClient.')
+    : cosmeticSlot === 'cape' ? t('Widzą ją inni gracze z SlashClient, na każdym serwerze. Zastępuje pelerynę Minecraft.')
+    : cosmeticSlot === 'wings' ? t('Skrzydła zastępują pelerynę na plecach; z prawdziwą elytrą widać elytrę.')
+    : cosmeticSlot === 'elytra' ? t('Wygląd elytry, gdy ją założysz (bez tego elytra ma wzór peleryny).')
+    : cosmeticSlot === 'trail' ? t('Cząsteczki za Tobą, kiedy chodzisz.')
+    : cosmeticSlot === 'aura' ? t('Cząsteczki wokół Ciebie, kiedy stoisz.')
+    : t('Mały towarzysz lata przy Twoim ramieniu.');
+  const current = worn[cosmeticSlot] ?? '';
+  const tile = (item: CatalogItem | undefined, content: Node) => {
+    const id = item?.id ?? '';
+    const title = item ? item.name : t('Nic');
+    const locked = !!item && !item.available;
+    const why = item?.rank ? t('{0}: tylko dla rangi {1}', title, RANK_NAMES[item.rank] ?? item.rank) : t('{0}: ekskluzywna, przyznaje ją admin', title);
+    const b = el('button', { type: 'button', className: `cape-choice${cosmeticSlot === 'cape' ? '' : ' wide'}${id === current ? ' selected active' : ''}${id ? '' : ' none'}`, title: locked ? why : title }, content);
     if (locked) b.append(el('i', { className: 'fa-solid fa-lock cape-lock' }));
+    else if (item?.rank) b.append(el('i', { className: `fa-solid fa-shield-halved cape-lock rank-${item.rank}` }));
     b.disabled = !signedIn || locked;
     b.addEventListener('click', async () => {
-      const me = await guard(() => api.socialApi('POST', '/v1/me', { cape: id }));
+      const slot = cosmeticSlot;
+      const change = slot === 'cape' ? { cape: id } : { loadout: { [slot]: id } };
+      const me = await guard(() => api.socialApi('POST', '/v1/me', character ? { character: character.uuid, ...change } : change));
       if (!me) return;
-      if (id) {
+      if (slot === 'cape' && id) {
         await skinViewer?.loadCape(`img/capes/${id}.png`, { backEquipment: 'cape' });
         $('#skin-back').classList.remove('hidden');
       }
-      toast(id ? t('Peleryna {0} ustawiona.', title) : t('Peleryna SlashClient zdjęta.'));
+      if (slot === 'elytra' && id) {
+        await skinViewer?.loadCape(`img/elytra/${id}.png`, { backEquipment: 'elytra' });
+        $('#skin-back').classList.remove('hidden');
+      }
+      toast(id ? t('{0} założone.', title) : t('Zdjęte.'));
       renderSlashCapes();
     });
     return b;
   };
   $('#slash-cape-grid').replaceChildren(
-    tile('', t('Bez peleryny SlashClient'), el('i', { className: 'fa-solid fa-ban' })),
-    ...catalog.map((c) => tile(c.id, c.name, capeThumbnail(`img/capes/${c.id}.png`), !c.available)));
+    tile(undefined, el('i', { className: 'fa-solid fa-ban' })),
+    ...catalog.filter((c) => c.slot === cosmeticSlot).map((c) => tile(c, cosmeticPicture(c.slot, c.id))));
   // the preview wears what other players will see, and the note says which cape that is
+  const capeId = worn.cape ?? '';
   const note = $('#skin-note');
   if (note.dataset.base !== undefined) {
-    const name = catalog.find((c) => c.id === current)?.name;
-    note.textContent = note.dataset.base + (current ? t(' Peleryna: {0}.', !name || name === 'SlashClient' ? 'SlashClient' : `SlashClient · ${name}`) : note.dataset.cape ?? '');
+    const name = catalog.find((c) => c.slot === 'cape' && c.id === capeId)?.name;
+    note.textContent = note.dataset.base + (capeId ? t(' Peleryna: {0}.', !name || name === 'SlashClient' ? 'SlashClient' : `SlashClient · ${name}`) : note.dataset.cape ?? '');
   }
-  if (current && skinViewer) await skinViewer.loadCape(`img/capes/${current}.png`, { backEquipment: 'cape' });
+  if (cosmeticSlot === 'elytra' && worn.elytra && skinViewer) await skinViewer.loadCape(`img/elytra/${worn.elytra}.png`, { backEquipment: 'elytra' });
+  else if (capeId && skinViewer) await skinViewer.loadCape(`img/capes/${capeId}.png`, { backEquipment: 'cape' });
 }
+
+$('#cosmetic-shared').addEventListener('click', async () => {
+  if (!cosmeticCharacter || !(await guard(() => api.socialApi('POST', '/v1/me', { character: cosmeticCharacter, own: false })))) return;
+  toast(t('Ta postać nosi teraz zestaw całego konta.'));
+  renderSlashCapes();
+});
 
 /** Which capes are shown: SlashClient's, or the Minecraft account's own (Microsoft accounts only). */
 function showCapeTab(tab: 'slash' | 'mojang') {
@@ -2622,7 +2706,8 @@ function showCapeTab(tab: 'slash' | 'mojang') {
 }
 document.querySelectorAll<HTMLButtonElement>('#cape-tabs button').forEach((b) => b.addEventListener('click', () => showCapeTab(b.dataset.tab as 'slash' | 'mojang')));
 
-async function loadSkinEditor(account: { id: string; type: string }) {
+async function loadSkinEditor(account: { id: string; type: string; uuid?: string }) {
+  cosmeticCharacter = (account.uuid ?? '').toLowerCase().replace(/-/g, '');
   renderSlashCapes();
   $('#skin-edit').classList.toggle('hidden', account.type !== 'msa');
   // an offline account has no Minecraft capes: only SlashClient's

@@ -59,11 +59,16 @@ public class SlashHud implements ClientModInitializer {
 		Clips.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.clip", InputConstants.KEY_F8, category));
 		Cosmetics.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.emote", InputConstants.KEY_N, category));
 		ChatTabs.register();
+		// wings and pets: a layer more on every player's model
+		net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback.EVENT.register((type, renderer, helper, context) -> {
+			if (renderer instanceof net.minecraft.client.renderer.entity.player.AvatarRenderer<?> avatar) helper.register(new CosmeticLayer(avatar, context));
+		});
 		Badges.load();
 		// another server or world: what we knew about its players is gone
 		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> {
 			Badges.reset();
 			Cosmetics.reset();
+			CosmeticEffects.reset();
 			NetCounter.attach(handler.getConnection());
 		});
 		// the game's own menu gets a way back to ours
@@ -89,6 +94,7 @@ public class SlashHud implements ClientModInitializer {
 			Extras.tick(mc);
 			Benchmark.tick(mc);
 			Cosmetics.tick(mc);
+			CosmeticEffects.tick(mc);
 			Clips.tick(mc);
 			Badges.tick(mc);
 			while (edit.consumeClick()) {

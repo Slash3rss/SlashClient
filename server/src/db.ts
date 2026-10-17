@@ -105,6 +105,8 @@ export class Db {
     // the Minecraft name of a linked Minecraft account (other providers leave it empty)
     const identityColumns = this.db.prepare('PRAGMA table_info(identities)').all() as { name: string }[];
     if (!identityColumns.some((c) => c.name === 'label')) this.db.exec("ALTER TABLE identities ADD COLUMN label TEXT NOT NULL DEFAULT ''");
+    // a Minecraft account's own cosmetics (cape and the other slots, JSON); '' = the account's default
+    if (!identityColumns.some((c) => c.name === 'loadout')) this.db.exec("ALTER TABLE identities ADD COLUMN loadout TEXT NOT NULL DEFAULT ''");
     this.db.exec(`
 CREATE TABLE IF NOT EXISTS cosmetics (id TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1, exclusive INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS cape_grants (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, cape TEXT NOT NULL, PRIMARY KEY (uuid, cape));
@@ -146,10 +148,24 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
     return (this.db.prepare('SELECT uuid FROM identities WHERE provider = ? AND subject = ?').get(provider, subject) as { uuid: string } | undefined)?.uuid;
   }
 
-  /** The Minecraft accounts linked to an account: Mojang uuid (no dashes) and name. */
-  minecraftAccounts(uuid: string): { uuid: string; name: string }[] {
-    return (this.db.prepare("SELECT subject, label FROM identities WHERE uuid = ? AND provider = 'minecraft' ORDER BY label").all(uuid) as { subject: string; label: string }[])
-      .map((r) => ({ uuid: r.subject, name: r.label }));
+  /**
+   * The Minecraft accounts linked to an account: Mojang uuid (no dashes), name, and what that
+   * character wears when it has its own set (cape among the slots), else null: the account's default.
+   */
+  minecraftAccounts(uuid: string): { uuid: string; name: string; loadout: Record<string, string> | null }[] {
+    return (this.db.prepare("SELECT subject, label, loadout FROM identities WHERE uuid = ? AND provider = 'minecraft' ORDER BY label").all(uuid) as { subject: string; label: string; loadout: string }[])
+      .map((r) => ({ uuid: r.subject, name: r.label, loadout: r.loadout ? parseLoadout(r.loadout) : null }));
+  }
+
+  /** A character's own set (null = none: it wears the account's), only for one of `uuid`'s own. */
+  characterLoadout(uuid: string, subject: string): Record<string, string> | null {
+    const row = this.db.prepare("SELECT loadout FROM identities WHERE uuid = ? AND provider = 'minecraft' AND subject = ?").get(uuid, subject) as { loadout: string } | undefined;
+    return row?.loadout ? parseLoadout(row.loadout) : null;
+  }
+
+  /** Gives a character its own set, or (null) sends it back to the account's default. */
+  setCharacterLoadout(uuid: string, subject: string, loadout: Record<string, string> | null) {
+    this.db.prepare("UPDATE identities SET loadout = ? WHERE uuid = ? AND provider = 'minecraft' AND subject = ?").run(loadout ? JSON.stringify(loadout) : '', uuid, subject);
   }
 
   /** How many ways there are to sign in to an account (each Minecraft account counts). */
@@ -319,6 +335,19 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
   clearCape(cape: string, exceptGranted: boolean) {
     this.db.prepare(`UPDATE users SET cape = '' WHERE cape = ?${exceptGranted ? ' AND uuid NOT IN (SELECT uuid FROM cape_grants WHERE cape = ?)' : ''}`)
       .run(...(exceptGranted ? [cape, cape] : [cape]));
+    this.clearFromCharacters(cape, exceptGranted);
+  }
+
+  /** The same for the characters' own sets. */
+  private clearFromCharacters(id: string, exceptGranted: boolean) {
+    const granted = new Set(exceptGranted ? this.grantees(id).map((g) => g.id) : []);
+    const rows = this.db.prepare("SELECT uuid, subject, loadout FROM identities WHERE provider = 'minecraft' AND loadout LIKE ?").all(`%"${id}"%`) as { uuid: string; subject: string; loadout: string }[];
+    for (const r of rows) {
+      if (granted.has(r.uuid)) continue;
+      const l = parseLoadout(r.loadout);
+      for (const [slot, v] of Object.entries(l)) if (v === id) delete l[slot];
+      this.setCharacterLoadout(r.uuid, r.subject, l);
+    }
   }
 
   setLoadout(uuid: string, loadout: Record<string, string>) {
@@ -335,6 +364,7 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
       for (const [slot, v] of Object.entries(l)) if (v === id) delete l[slot];
       this.setLoadout(r.uuid, l);
     }
+    this.clearFromCharacters(id, exceptGranted);
   }
 
   /** How many players wear each item (cape and the other slots). */
@@ -342,6 +372,9 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
     const counts: Record<string, number> = {};
     for (const r of this.db.prepare("SELECT cape, loadout FROM users WHERE cape != '' OR loadout != '{}'").all() as { cape: string; loadout: string }[]) {
       for (const id of [r.cape, ...Object.values(parseLoadout(r.loadout))]) if (id) counts[id] = (counts[id] ?? 0) + 1;
+    }
+    for (const r of this.db.prepare("SELECT loadout FROM identities WHERE provider = 'minecraft' AND loadout != ''").all() as { loadout: string }[]) {
+      for (const id of Object.values(parseLoadout(r.loadout))) counts[id] = (counts[id] ?? 0) + 1;
     }
     return counts;
   }
