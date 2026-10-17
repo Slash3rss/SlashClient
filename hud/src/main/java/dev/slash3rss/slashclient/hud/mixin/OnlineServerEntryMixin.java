@@ -51,18 +51,32 @@ abstract class OnlineServerEntryMixin {
 	}
 
 	/** A partner server's picture behind its row (PartnerServers), under the game's icon and text. */
+	//#if MC >= 1.21.9
 	@Inject(method = "extractContent", at = @At("HEAD"))
 	private void slashclient$partnerBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
 		var entry = (ServerSelectionList.Entry) (Object) this;
 		dev.slash3rss.slashclient.hud.PartnerServers.drawBehind(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
 	}
+	//#else
+	//$ @Inject(method = "extractContent", at = @At("HEAD"))
+	//$ private void slashclient$partnerBackground(GuiGraphicsExtractor g, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
+	//$ 	dev.slash3rss.slashclient.hud.PartnerServers.drawBehind(g, serverData, left, top, width, height);
+	//$ }
+	//#endif
 
 	/** The "Partner" badge on top of the row. */
+	//#if MC >= 1.21.9
 	@Inject(method = "extractContent", at = @At("TAIL"))
 	private void slashclient$partnerBadge(GuiGraphicsExtractor g, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
 		var entry = (ServerSelectionList.Entry) (Object) this;
 		dev.slash3rss.slashclient.hud.PartnerServers.drawBadge(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
 	}
+	//#else
+	//$ @Inject(method = "extractContent", at = @At("TAIL"))
+	//$ private void slashclient$partnerBadge(GuiGraphicsExtractor g, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
+	//$ 	dev.slash3rss.slashclient.hud.PartnerServers.drawBadge(g, serverData, left, top, width, height);
+	//$ }
+	//#endif
 
 	@Inject(method = "swap", at = @At("HEAD"), cancellable = true)
 	private void slashclient$noMovePinned(int a, int b, CallbackInfo ci) {

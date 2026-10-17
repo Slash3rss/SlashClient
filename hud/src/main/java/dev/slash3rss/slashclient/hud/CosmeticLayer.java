@@ -112,7 +112,11 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public void submit(PoseStack pose, SubmitNodeCollector out, int light, AvatarRenderState state, float yRot, float xRot) {
+	//#else
+	//$ public void render(PoseStack pose, SubmitNodeCollector out, int light, AvatarRenderState state, float yRot, float xRot) {
+	//#endif
 		if (state.isInvisible || state.isSpectator || !Badges.enabled()) return;
 		UUID id = playerOf(state);
 		if (id == null) return;
