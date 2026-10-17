@@ -115,13 +115,20 @@ public abstract class MenuScreen extends Screen {
 		int w = Ui.width(text) + 12, h = 15;
 		int x = Math.max(4, Math.min(width - w - 4, tipX - w / 2));
 		int y = tipY - h;
+		Ui.layer(g);
 		Ui.round(g, x, y, w, h, 4, 0xF0111622);
 		Ui.roundOutline(g, x, y, w, h, 4, 0x403B82F6);
 		Ui.draw(g, text, x + 6, y + 4, Ui.TEXT);
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
+	//#else
+	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//$ 	boolean doubleClick = false;
+	//#endif
 		if (super.mouseClicked(e, doubleClick)) return true;
 		for (int i = hits.size() - 1; i >= 0; i--) {
 			Hit h = hits.get(i);

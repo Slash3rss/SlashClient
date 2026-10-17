@@ -137,6 +137,6 @@ public class ChatTabsScreen extends Screen {
 		SlashHud.config.chatTabs = tabs;
 		SlashHud.config.save();
 		ChatTabs.changed();
-		minecraft.setScreenAndShow(parent != null ? parent : new ChatScreen("", false));
+		minecraft.setScreenAndShow(parent != null ? parent : Compat.chatScreen());
 	}
 }

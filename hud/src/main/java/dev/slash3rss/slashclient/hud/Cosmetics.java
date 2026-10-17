@@ -38,7 +38,7 @@ public final class Cosmetics {
 	private static final Map<String, List<String>> SLOTS = Map.of("cape", CAPES, "wings", WINGS, "elytra", ELYTRAS,
 		"trail", TRAILS, "aura", AURAS, "pet", PETS);
 	private static final long EMOTE_MS = 3500;
-	private static final FontDescription EMOTE_FONT = new FontDescription.Resource(Identifier.fromNamespaceAndPath(SlashHud.ID, "emote"));
+	private static final FontDescription EMOTE_FONT = Compat.font(Identifier.fromNamespaceAndPath(SlashHud.ID, "emote"));
 
 	/** uuid → slot → item, what the server says each player wears (only items this mod knows). */
 	private static final Map<UUID, Map<String, String>> worn = new ConcurrentHashMap<>();
@@ -103,7 +103,7 @@ public final class Cosmetics {
 
 	public static PlayerSkin withTestSkin(UUID id, PlayerSkin skin) {
 		if (testSkin == null || !id.equals(testSkinFor)) return skin;
-		return new PlayerSkin(testSkin, skin.cape(), skin.elytra(), net.minecraft.world.entity.player.PlayerModelType.WIDE, skin.secure());
+		return Compat.playerSkin(testSkin, skin.cape(), skin.elytra(), net.minecraft.world.entity.player.PlayerModelType.WIDE, skin.secure());
 	}
 
 	/** The skin with our cape in place of the player's own, when they picked one. */
@@ -112,7 +112,7 @@ public final class Cosmetics {
 		if (!SlashHud.config.badges) return skin;
 		String cape = worn(id, "cape");
 		// wings take the cape's place on the back (an elytra, when worn, takes theirs)
-		if (!wearsElytra && worn(id, "wings") != null) return new PlayerSkin(skin.body(), null, skin.elytra(), skin.model(), skin.secure());
+		if (!wearsElytra && worn(id, "wings") != null) return Compat.playerSkin(skin.body(), null, skin.elytra(), skin.model(), skin.secure());
 		String elytra = worn(id, "elytra");
 		if (cape == null && elytra == null) return skin;
 		if (cape != null) {
@@ -122,7 +122,7 @@ public final class Cosmetics {
 		ClientAsset.Texture capeTexture = cape == null ? skin.cape() : texture("cape", cape);
 		// without an elytra of its own the elytra is drawn from the cape, as for Minecraft's own capes
 		ClientAsset.Texture elytraTexture = elytra != null ? texture("elytra", elytra) : cape != null ? null : skin.elytra();
-		return new PlayerSkin(skin.body(), capeTexture, elytraTexture, skin.model(), skin.secure());
+		return Compat.playerSkin(skin.body(), capeTexture, elytraTexture, skin.model(), skin.secure());
 	}
 
 	/** Where one of our pictures is, for models drawn with it directly (the wings). */
@@ -132,7 +132,7 @@ public final class Cosmetics {
 
 	/** One of our textures (textures/<kind>/<name>.png), made once. */
 	static ClientAsset.Texture texture(String kind, String name) {
-		return textures.computeIfAbsent(kind + "/" + name, k -> new ClientAsset.ResourceTexture(
+		return textures.computeIfAbsent(kind + "/" + name, k -> Compat.texture(
 			Identifier.fromNamespaceAndPath(SlashHud.ID, k), Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/" + k + ".png")));
 	}
 

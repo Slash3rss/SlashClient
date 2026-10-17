@@ -66,7 +66,13 @@ public class EmoteScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
+	//#else
+	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//$ 	boolean doubleClick = false;
+	//#endif
 		if (e.button() == InputConstants.MOUSE_BUTTON_LEFT) {
 			pick(at(e.x(), e.y()));
 			return true;
@@ -75,7 +81,12 @@ public class EmoteScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean keyPressed(KeyEvent e) {
+	//#else
+	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+	//$ 	KeyEvent e = new KeyEvent(keyCode, scanCode, modifiers);
+	//#endif
 		int n = e.key() - InputConstants.KEY_1;
 		if (n >= 0 && n < Cosmetics.EMOTES.size()) {
 			pick(n);
@@ -86,7 +97,12 @@ public class EmoteScreen extends Screen {
 
 	/** Holding the key, pointing and letting go picks what is pointed at. */
 	@Override
+	//#if MC >= 1.21.9
 	public boolean keyReleased(KeyEvent e) {
+	//#else
+	//$ public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+	//$ 	KeyEvent e = new KeyEvent(keyCode, scanCode, modifiers);
+	//#endif
 		if (key.matches(e) && hovered >= 0) {
 			pick(hovered);
 			return true;

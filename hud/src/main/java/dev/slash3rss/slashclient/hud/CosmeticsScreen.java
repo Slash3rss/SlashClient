@@ -337,7 +337,13 @@ public class CosmeticsScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
+	//#else
+	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//$ 	boolean doubleClick = false;
+	//#endif
 		if (super.mouseClicked(e, doubleClick)) return true;
 		for (int i = hits.size() - 1; i >= 0; i--) {
 			Hit h = hits.get(i);

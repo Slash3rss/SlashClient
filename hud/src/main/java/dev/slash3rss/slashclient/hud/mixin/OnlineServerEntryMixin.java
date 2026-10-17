@@ -4,7 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 //#if MC >= 26.3
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
-//#else
+//#elif MC >= 1.21.6
 //$ import com.mojang.blaze3d.pipeline.RenderPipeline;
 //#endif
 import dev.slash3rss.slashclient.hud.PinnedServer;
@@ -38,10 +38,16 @@ abstract class OnlineServerEntryMixin {
 
 	//#if MC >= 26.3
 	@WrapOperation(method = "extractContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
-	//#else
+	//#elif MC >= 1.21.6
 	//$ @WrapOperation(method = "extractContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
+	//#else
+	//$ @WrapOperation(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Ljava/util/function/Function;Lnet/minecraft/resources/ResourceLocation;IIII)V"))
 	//#endif
+	//#if MC >= 1.21.6
 	private void slashclient$hideArrows(GuiGraphicsExtractor g, RenderPipeline pipeline, Identifier sprite, int x, int y, int w, int h, Operation<Void> original) {
+	//#else
+	//$ private void slashclient$hideArrows(GuiGraphicsExtractor g, java.util.function.Function<Identifier, net.minecraft.client.renderer.RenderType> pipeline, Identifier sprite, int x, int y, int w, int h, Operation<Void> original) {
+	//#endif
 		String path = sprite.getPath();
 		boolean up = path.contains("move_up");
 		boolean down = path.contains("move_down");
@@ -51,18 +57,32 @@ abstract class OnlineServerEntryMixin {
 	}
 
 	/** A partner server's picture behind its row (PartnerServers), under the game's icon and text. */
+	//#if MC >= 1.21.6
 	@Inject(method = "extractContent", at = @At("HEAD"))
 	private void slashclient$partnerBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
 		var entry = (ServerSelectionList.Entry) (Object) this;
 		dev.slash3rss.slashclient.hud.PartnerServers.drawBehind(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
 	}
+	//#else
+	//$ @Inject(method = "render", at = @At("HEAD"))
+	//$ private void slashclient$partnerBackground(GuiGraphicsExtractor g, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
+	//$ 	dev.slash3rss.slashclient.hud.PartnerServers.drawBehind(g, serverData, left, top, width, height);
+	//$ }
+	//#endif
 
 	/** The "Partner" badge on top of the row. */
+	//#if MC >= 1.21.6
 	@Inject(method = "extractContent", at = @At("TAIL"))
 	private void slashclient$partnerBadge(GuiGraphicsExtractor g, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
 		var entry = (ServerSelectionList.Entry) (Object) this;
 		dev.slash3rss.slashclient.hud.PartnerServers.drawBadge(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
 	}
+	//#else
+	//$ @Inject(method = "render", at = @At("TAIL"))
+	//$ private void slashclient$partnerBadge(GuiGraphicsExtractor g, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
+	//$ 	dev.slash3rss.slashclient.hud.PartnerServers.drawBadge(g, serverData, left, top, width, height);
+	//$ }
+	//#endif
 
 	@Inject(method = "swap", at = @At("HEAD"), cancellable = true)
 	private void slashclient$noMovePinned(int a, int b, CallbackInfo ci) {

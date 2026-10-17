@@ -45,7 +45,11 @@ public class SlashHud implements ClientModInitializer {
 		config = HudConfig.load();
 		Modules.cfg = config;
 
+		//#if MC >= 1.21.6
 		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(ID, "main"));
+		//#else
+		//$ String category = "key.category.slashclient-hud.main";
+		//#endif
 		KeyMapping edit = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.edit", InputConstants.KEY_RSHIFT, category));
 
 		Extras.zoomKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.zoom", InputConstants.KEY_C, category));

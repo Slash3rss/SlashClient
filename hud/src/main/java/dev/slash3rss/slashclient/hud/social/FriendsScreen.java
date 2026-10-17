@@ -259,7 +259,13 @@ public class FriendsScreen extends Screen {
 	// ---------- input ----------
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
+	//#else
+	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//$ 	boolean doubleClick = false;
+	//#endif
 		if (super.mouseClicked(e, doubleClick)) return true;
 		if (e.button() != InputConstants.MOUSE_BUTTON_LEFT) return false;
 		for (Hit h : List.copyOf(hits)) {
@@ -278,7 +284,12 @@ public class FriendsScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean keyPressed(KeyEvent e) {
+	//#else
+	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+	//$ 	KeyEvent e = new KeyEvent(keyCode, scanCode, modifiers);
+	//#endif
 		if ((e.key() == InputConstants.KEY_RETURN || e.key() == InputConstants.KEY_NUMPADENTER) && input.isFocused()) {
 			send();
 			return true;

@@ -9,7 +9,7 @@ import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 //#endif
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.player.PlayerModelType;
+
 import net.minecraft.world.entity.player.PlayerSkin;
 
 import java.util.function.Supplier;
@@ -46,7 +46,11 @@ public final class SkinPreview {
 		//$ slim = new net.minecraft.client.model.player.PlayerModel(models.bakeLayer(ModelLayers.PLAYER_SLIM), true);
 		//#endif
 		// the session's skin, fetched in the background; the default skin until it arrives
+		//#if MC >= 1.21.6
 		skin = mc.getSkinManager().createLookup(mc.getGameProfile(), false);
+		//#else
+		//$ skin = mc.getSkinManager().lookupInsecure(mc.getGameProfile());
+		//#endif
 	}
 
 	// ---------- SlashClient cosmetics beside the figure: cape, wings, pet ----------
@@ -64,7 +68,7 @@ public final class SkinPreview {
 	private static Model.Simple wrap(ModelPart extra) {
 		return new Model.Simple(new ModelPart(java.util.List.of(), java.util.Map.of("slashclient", extra)), RenderTypes::entityTranslucent);
 	}
-	//#else
+	//#elif MC >= 1.21.6
 	//$ private static net.minecraft.client.model.player.PlayerModel wrap(ModelPart extra) {
 	//$ 	ModelPart base = Minecraft.getInstance().getEntityModels().bakeLayer(ModelLayers.PLAYER_CAPE);
 	//$ 	java.util.Map<String, ModelPart> parts = new java.util.HashMap<>();
@@ -72,6 +76,11 @@ public final class SkinPreview {
 	//$ 	base.getChild("body").getChild("cape").visible = false;
 	//$ 	parts.put("slashclient", extra);
 	//$ 	return new net.minecraft.client.model.player.PlayerModel(new ModelPart(java.util.List.of(), parts), false);
+	//$ }
+	//#else
+	//$ // before 1.21.6 Compat.skin draws any model: a bare one holding only `extra`
+	//$ private static net.minecraft.client.model.Model wrap(ModelPart extra) {
+	//$ 	return new net.minecraft.client.model.Model(new ModelPart(java.util.List.of(), java.util.Map.of("slashclient", extra)), net.minecraft.client.renderer.RenderType::entityTranslucent) {};
 	//$ }
 	//#endif
 
@@ -128,7 +137,7 @@ public final class SkinPreview {
 	/** Draws the figure in the box; the head looks at (mx, my). */
 	public void draw(GuiGraphicsExtractor g, int x, int y, int w, int h, int mx, int my) {
 		PlayerSkin s = dev.slash3rss.slashclient.hud.Cosmetics.withTestSkin(Minecraft.getInstance().getGameProfile().id(), skin.get());
-		var model = s.model() == PlayerModelType.SLIM ? slim : wide;
+		var model = s.model() == net.minecraft.world.entity.player.PlayerModelType.SLIM ? slim : wide;
 		float scale = 0.97f * h / MODEL_HEIGHT;
 		// where the eyes are on screen: a little below the top of the box, in the middle
 		float eyesX = x + w / 2f;
@@ -166,8 +175,10 @@ public final class SkinPreview {
 	private void draw(GuiGraphicsExtractor g, Object model, net.minecraft.resources.Identifier texture, float scale, int x, int y, int w, int h) {
 		//#if MC >= 26.2
 		g.skin((Model.Simple) model, texture, scale, -5, bodyYaw, PIVOT_Y, x, y, x + w, y + h);
-		//#else
+		//#elif MC >= 1.21.6
 		//$ g.skin((net.minecraft.client.model.player.PlayerModel) model, texture, scale, -5, bodyYaw, PIVOT_Y, x, y, x + w, y + h);
+		//#else
+		//$ g.skin((net.minecraft.client.model.Model) model, texture, scale, -5, bodyYaw, PIVOT_Y, x, y, x + w, y + h);
 		//#endif
 	}
 }

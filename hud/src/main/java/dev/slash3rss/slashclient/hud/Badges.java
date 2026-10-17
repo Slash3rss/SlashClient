@@ -35,7 +35,7 @@ public final class Badges {
 	private Badges() {}
 
 	private static final String GLYPH = "\uE000";
-	private static final Style BADGE_STYLE = Style.EMPTY.withFont(new FontDescription.Resource(Identifier.fromNamespaceAndPath(SlashHud.ID, "badge"))).withoutShadow();
+	private static final Style BADGE_STYLE = Style.EMPTY.withFont(Compat.font(Identifier.fromNamespaceAndPath(SlashHud.ID, "badge"))).withoutShadow();
 	private static final MutableComponent BADGE = badge(0xFFFFFF);
 	/** The logo's colour by rank: SlashClient's admins red, support light blue, partners gold. */
 	private static final Map<String, MutableComponent> RANK_BADGES = Map.of(

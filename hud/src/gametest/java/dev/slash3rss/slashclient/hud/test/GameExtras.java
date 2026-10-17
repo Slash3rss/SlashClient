@@ -24,7 +24,7 @@ public class GameExtras implements FabricClientGameTest {
 			context.takeScreenshot("extras-world");
 
 			// open chat: a right click on the second line from the bottom copies it
-			context.setScreen(() -> new net.minecraft.client.gui.screens.ChatScreen("", false));
+			context.setScreen(() -> dev.slash3rss.slashclient.hud.Compat.chatScreen());
 			context.waitTicks(5);
 			String copied = context.computeOnClient(mc -> TestHooks.copyLine(1));
 			if (copied == null || !copied.contains("Ta sama wiadomość")) throw new AssertionError("Copied the wrong line: " + copied);

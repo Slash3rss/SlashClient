@@ -823,7 +823,13 @@ public class HudEditScreen extends Screen {
 	// ---------- input ----------
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
+	//#else
+	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//$ 	boolean doubleClick = false;
+	//#endif
 		if (super.mouseClicked(e, doubleClick)) return true;
 		if (search != null) search.setFocused(false);
 		if (e.button() == InputConstants.MOUSE_BUTTON_RIGHT && !window) {
@@ -882,7 +888,12 @@ public class HudEditScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean mouseDragged(MouseButtonEvent e, double dx, double dy) {
+	//#else
+	//$ public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//#endif
 		if (painting != null) {
 			paintAt(e.x(), e.y());
 			return true;
@@ -905,7 +916,12 @@ public class HudEditScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean mouseReleased(MouseButtonEvent e) {
+	//#else
+	//$ public boolean mouseReleased(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//#endif
 		dragging = null;
 		draggingSlider = null;
 		painting = null;
@@ -924,7 +940,12 @@ public class HudEditScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean keyPressed(KeyEvent e) {
+	//#else
+	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+	//$ 	KeyEvent e = new KeyEvent(keyCode, scanCode, modifiers);
+	//#endif
 		// Esc closes the window first, then the editor
 		if (e.key() == InputConstants.KEY_ESCAPE && window) {
 			if (settingsOf != null) settingsOf = null;

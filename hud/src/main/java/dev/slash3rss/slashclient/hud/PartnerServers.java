@@ -102,7 +102,7 @@ public final class PartnerServers {
 	private static void register(String key, NativeImage image) {
 		Identifier id = Identifier.fromNamespaceAndPath(SlashHud.ID, "partner/" + counter++);
 		int w = image.getWidth(), h = image.getHeight();
-		Minecraft.getInstance().getTextureManager().register(id, new DynamicTexture(() -> "SlashClient partner server", image));
+		Minecraft.getInstance().getTextureManager().register(id, Compat.dynamicTexture("SlashClient partner server", image));
 		pictures.put(key, new Picture(id, w, h));
 	}
 

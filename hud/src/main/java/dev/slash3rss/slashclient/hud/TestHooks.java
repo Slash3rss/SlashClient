@@ -27,12 +27,21 @@ public final class TestHooks {
 	 * "release" (the test's own mouse does not reach an unfocused game window).
 	 */
 	public static void mouse(String action, double[] at) {
+		//#if MC >= 1.21.9
 		var e = new net.minecraft.client.input.MouseButtonEvent(at[0], at[1], new net.minecraft.client.input.MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0));
 		switch (action) {
 			case "press" -> screen().mouseClicked(e, false);
 			case "drag" -> screen().mouseDragged(e, 0, 0);
 			default -> screen().mouseReleased(e);
 		}
+		//#else
+		//$ int left = com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT;
+		//$ switch (action) {
+		//$ 	case "press" -> screen().mouseClicked(at[0], at[1], left);
+		//$ 	case "drag" -> screen().mouseDragged(at[0], at[1], left, 0, 0);
+		//$ 	default -> screen().mouseReleased(at[0], at[1], left);
+		//$ }
+		//#endif
 	}
 
 	public static double[] gridPoint(int cx, int cy) {
@@ -404,7 +413,7 @@ public final class TestHooks {
 	/** Our own player wears this skin (a texture of the test mod), for the website's screenshots. */
 	public static void testSkin(String texture) {
 		var id = net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "skin/" + texture);
-		Cosmetics.testSkin = new net.minecraft.core.ClientAsset.ResourceTexture(id,
+		Cosmetics.testSkin = Compat.texture(id,
 			net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "textures/skin/" + texture + ".png"));
 		Cosmetics.testSkinFor = net.minecraft.client.Minecraft.getInstance().getGameProfile().id();
 	}

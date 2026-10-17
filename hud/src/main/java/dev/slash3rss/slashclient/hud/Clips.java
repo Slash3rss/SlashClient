@@ -80,25 +80,36 @@ public final class Clips {
 		int scale = Math.max(1, (int) Math.ceil(mc.getWindow().getWidth() / 1280.0));
 		inFlight.incrementAndGet();
 		try {
-			Screenshot.takeScreenshot(target, scale, image -> WORKER.execute(() -> encode(image, now)));
+			//#if MC >= 1.21.6
+			Screenshot.takeScreenshot(target, scale, image -> WORKER.execute(() -> encode(image, now, 1)));
+			//#elif MC >= 1.21.5
+			//$ // no downscaled grab before 1.21.6: the frame is shrunk while it is encoded
+			//$ Screenshot.takeScreenshot(target, image -> WORKER.execute(() -> encode(image, now, scale)));
+			//#else
+			//$ NativeImage image = Screenshot.takeScreenshot(target);
+			//$ WORKER.execute(() -> encode(image, now, scale));
+			//#endif
 		} catch (RuntimeException e) {
 			inFlight.decrementAndGet();
 			SlashHud.LOG.debug("SlashClient clips: {}", e.toString());
 		}
 	}
 
-	private static void encode(NativeImage image, long at) {
+	/** Squeezes a frame to JPEG, taking every `step`-th pixel (1 = all). */
+	private static void encode(NativeImage image, long at, int step) {
 		try (image) {
-			int w = image.getWidth() & ~1, h = image.getHeight() & ~1;
+			int w = (image.getWidth() / step) & ~1, h = (image.getHeight() / step) & ~1;
 			BufferedImage rgb = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
 			int[] row = new int[w];
 			for (int y = 0; y < h; y++) {
-				for (int x = 0; x < w; x++) row[x] = image.getPixel(x, y);
+				for (int x = 0; x < w; x++) row[x] = image.getPixel(x * step, y * step);
 				rgb.setRGB(0, y, w, 1, row, 0, w);
 			}
 			byte[] jpeg = jpeg(rgb);
 			long keep = SlashHud.config.clipSeconds * 1_000_000_000L;
 			synchronized (frames) {
+				// switched off while this frame was on its way
+				if (!enabled()) return;
 				frames.addLast(new Frame(jpeg, w, h, at));
 				while (!frames.isEmpty() && at - frames.getFirst().at() > keep) frames.removeFirst();
 			}
