@@ -20,6 +20,8 @@
 		"HeartsMixin",
 		"PongMixin",
 		"JoinMultiplayerScreenMixin",
+		"LegacyBossBarMixin",
+		"LegacyHudMixin",
 		"LightmapMixin",
 		"MinecraftAccessor",
 		"MouseHandlerMixin",

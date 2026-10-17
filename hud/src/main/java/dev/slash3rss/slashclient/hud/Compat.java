@@ -107,23 +107,24 @@ public final class Compat {
 		//#endif
 	}
 
+	//#if MC >= 1.21.2
 	/** A model drawn with the frame (the outline colour is for glowing players). */
-	//#if MC >= 1.21.6
+	//#if MC >= 1.21.9
 	public static <S> void submitModel(net.minecraft.client.renderer.SubmitNodeCollector out, net.minecraft.client.model.Model<? super S> model, S state,
+	//#else
+	//$ public static <S> void submitModel(net.minecraft.client.renderer.SubmitNodeCollector out, net.minecraft.client.model.EntityModel<? super S> model, S state,
+	//#endif
 			com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.client.renderer.rendertype.RenderType type, int light, int overlay, int outline) {
 		//#if MC >= 26.3
 		out.submitModel(model, state, pose, type, light, overlay, outline);
-		//#else
+		//#elif MC >= 1.21.9
 		//$ out.submitModel(model, state, pose, type, light, overlay, outline, null);
+		//#else
+		//$ // drawn at once (a glowing player's outline comes from the buffers themselves)
+		//$ model.setupAnim(state);
+		//$ model.renderToBuffer(pose, out.getBuffer(type), light, overlay);
 		//#endif
 	}
-	//#else
-	//$ public static <S> void submitModel(net.minecraft.client.renderer.MultiBufferSource out, net.minecraft.client.model.EntityModel<? super S> model, S state,
-	//$ 		com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.client.renderer.RenderType type, int light, int overlay, int outline) {
-	//$ 	// drawn at once into the frame's buffers; the outline of glowing players is left to the game
-	//$ 	model.setupAnim(state);
-	//$ 	model.renderToBuffer(pose, out.getBuffer(type), light, overlay);
-	//$ }
 	//#endif
 
 	/** Moves an inventory slot's stack into a hotbar slot (as pressing that slot's number over it would). */
@@ -135,8 +136,13 @@ public final class Compat {
 		//#endif
 	}
 
+	//#if MC >= 1.21.2 && MC < 1.21.6
+	//$ /** The game's picture of a status effect (before 1.21.6 a sprite of the effect atlas). */
+	//$ static net.minecraft.client.renderer.texture.TextureAtlasSprite effectSprite(net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
+	//$ 	return Minecraft.getInstance().getMobEffectTextures().get(effect);
+	//$ }
+	//#elif MC >= 1.21.2
 	/** The game's picture of a status effect (the one in the corner of the screen). */
-	//#if MC >= 1.21.6
 	static net.minecraft.resources.Identifier effectSprite(net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
 		//#if MC >= 26.2
 		return net.minecraft.client.gui.Hud.getMobEffectSprite(effect);
@@ -144,10 +150,6 @@ public final class Compat {
 		//$ return net.minecraft.client.gui.Gui.getMobEffectSprite(effect);
 		//#endif
 	}
-	//#else
-	//$ static net.minecraft.client.renderer.texture.TextureAtlasSprite effectSprite(net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
-	//$ 	return Minecraft.getInstance().getMobEffectTextures().get(effect);
-	//$ }
 	//#endif
 
 	/** Lays a screen out again at its size (its widgets made anew). */
@@ -159,80 +161,60 @@ public final class Compat {
 		//#endif
 	}
 
-	/** A texture made from a picture in memory; `label` names it in the game's debug output. */
-	public static net.minecraft.client.renderer.texture.DynamicTexture dynamicTexture(String label, com.mojang.blaze3d.platform.NativeImage image) {
-		//#if MC >= 1.21.5
-		return new net.minecraft.client.renderer.texture.DynamicTexture(() -> label, image);
+	/** Leaves the world or server, as the pause menu's button would (`reason` shows while it goes). */
+	public static void leaveWorld(Minecraft mc, Component reason) {
+		//#if MC >= 1.21.9
+		mc.disconnectFromWorld(reason);
+		//#elif MC < 1.21.6
+		//$ boolean local = mc.isLocalServer();
+		//$ var server = mc.getCurrentServer();
+		//$ if (mc.level != null) mc.level.disconnect();
+		//$ if (local) mc.disconnect(new net.minecraft.client.gui.screens.GenericMessageScreen(Component.translatable("menu.savingLevel")));
+		//$ else mc.disconnect();
+		//$ var title = new net.minecraft.client.gui.screens.TitleScreen();
+		//$ if (local) mc.setScreen(title);
+		//$ else if (server != null && server.isRealm()) mc.setScreen(new com.mojang.realmsclient.RealmsMainScreen(title));
+		//$ else mc.setScreen(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(title));
 		//#else
-		//$ return new net.minecraft.client.renderer.texture.DynamicTexture(image);
+		//$ boolean local = mc.isLocalServer();
+		//$ var server = mc.getCurrentServer();
+		//$ if (mc.level != null) mc.level.disconnect(reason);
+		//$ if (local) mc.disconnectWithSavingScreen();
+		//$ else mc.disconnectWithProgressScreen();
+		//$ var title = new net.minecraft.client.gui.screens.TitleScreen();
+		//$ if (local) mc.setScreen(title);
+		//$ else if (server != null && server.isRealm()) mc.setScreen(new com.mojang.realmsclient.RealmsMainScreen(title));
+		//$ else mc.setScreen(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(title));
 		//#endif
 	}
 
-	//#if MC < 1.21.5
-	//$ /** The hotbar slot in hand (a plain field of the inventory before 1.21.5). */
-	//$ static void setSelectedSlot(net.minecraft.world.entity.player.Inventory inv, int slot) {
-	//$ 	inv.selected = slot;
-	//$ }
-	//#endif
-
-	/** An empty chat line being typed (the chat opened with T). */
+	/** The chat, opened empty. */
 	public static net.minecraft.client.gui.screens.ChatScreen chatScreen() {
-		//#if MC >= 1.21.6
+		//#if MC >= 1.21.9
 		return new net.minecraft.client.gui.screens.ChatScreen("", false);
 		//#else
 		//$ return new net.minecraft.client.gui.screens.ChatScreen("");
 		//#endif
 	}
 
-	/** Takes a value only so it is used (where versions/<mc>.properties folds a later call's argument away); always false. */
-	public static boolean ignore(Object unused) {
-		return false;
-	}
-
-	//#if MC >= 1.21.6
-	/** A font of this mod by its id (fonts/<id>.json). */
+	/** A font of our resources, for Style.withFont. */
 	public static net.minecraft.network.chat.FontDescription font(net.minecraft.resources.Identifier id) {
+		//#if MC >= 1.21.9
 		return new net.minecraft.network.chat.FontDescription.Resource(id);
+		//#else
+		//$ return id;
+		//#endif
 	}
 
-	/** One of our textures as a skin part: `id` names it, `path` is the picture. */
-	public static net.minecraft.core.ClientAsset.Texture texture(net.minecraft.resources.Identifier id, net.minecraft.resources.Identifier path) {
-		return new net.minecraft.core.ClientAsset.ResourceTexture(id, path);
-	}
+	//#if MC >= 1.21.2 && MC < 1.21.5
+	//$ /** The hotbar slot in hand, a plain field of the inventory before 1.21.5. */
+	//$ static void setSelectedSlot(net.minecraft.world.entity.player.Inventory inv, int slot) {
+	//$ 	inv.selected = slot;
+	//$ }
+	//#endif
 
-	public static net.minecraft.world.entity.player.PlayerSkin playerSkin(net.minecraft.core.ClientAsset.Texture body, net.minecraft.core.ClientAsset.Texture cape,
-			net.minecraft.core.ClientAsset.Texture elytra, net.minecraft.world.entity.player.PlayerModelType model, boolean secure) {
-		return new net.minecraft.world.entity.player.PlayerSkin(body, cape, elytra, model, secure);
-	}
-	//#else
-	//$ /** Before 1.21.9 a font was named by its id alone. */
-	//$ public static net.minecraft.resources.Identifier font(net.minecraft.resources.Identifier id) {
-	//$ 	return id;
-	//$ }
-	//$
-	//$ /** Before 1.21.9 a skin part was just the picture. */
-	//$ public static net.minecraft.resources.Identifier texture(net.minecraft.resources.Identifier id, net.minecraft.resources.Identifier path) {
-	//$ 	return path;
-	//$ }
-	//$
-	//$ public static net.minecraft.client.resources.PlayerSkin playerSkin(net.minecraft.resources.Identifier body, net.minecraft.resources.Identifier cape,
-	//$ 		net.minecraft.resources.Identifier elytra, net.minecraft.client.resources.PlayerSkin.Model model, boolean secure) {
-	//$ 	return new net.minecraft.client.resources.PlayerSkin(body, null, cape, elytra, model, secure);
-	//$ }
-	//$
-	//$ /** Leaves the world or server, as the pause menu's button does (later versions have Minecraft.disconnectFromWorld). */
-	//$ public static void disconnectFromWorld(Minecraft mc, Component reason) {
-	//$ 	boolean local = mc.isLocalServer();
-	//$ 	net.minecraft.client.multiplayer.ServerData server = mc.getCurrentServer();
-	//$ 	if (mc.level != null) mc.level.disconnect();
-	//$ 	if (local) mc.disconnect(new net.minecraft.client.gui.screens.GenericMessageScreen(Component.translatable("menu.savingLevel")));
-	//$ 	else mc.disconnect();
-	//$ 	var title = new net.minecraft.client.gui.screens.TitleScreen();
-	//$ 	if (local) mc.setScreen(title);
-	//$ 	else if (server != null && server.isRealm()) mc.setScreen(new com.mojang.realmsclient.RealmsMainScreen(title));
-	//$ 	else mc.setScreen(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(title));
-	//$ }
-	//$
+	//#if MC >= 1.21.2 && MC < 1.21.6
+	//$ /** The pause menu's leave button: back to the title screen from a world, disconnect from a server. */
 	//$ public static Component disconnectButtonLabel(boolean local) {
 	//$ 	return local ? Component.translatable("menu.returnToMenu") : net.minecraft.network.chat.CommonComponents.GUI_DISCONNECT;
 	//$ }

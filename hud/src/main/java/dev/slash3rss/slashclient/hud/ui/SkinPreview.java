@@ -1,3 +1,5 @@
+// before 1.21.2 (no render states) the figure is drawn as 1.21.1's PlayerSkinWidget draws it
+//#if MC >= 1.21.2
 package dev.slash3rss.slashclient.hud.ui;
 
 import net.minecraft.client.Minecraft;
@@ -9,7 +11,7 @@ import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 //#endif
 import net.minecraft.util.Mth;
-
+import net.minecraft.world.entity.player.PlayerModelType;
 import net.minecraft.world.entity.player.PlayerSkin;
 
 import java.util.function.Supplier;
@@ -46,7 +48,7 @@ public final class SkinPreview {
 		//$ slim = new net.minecraft.client.model.player.PlayerModel(models.bakeLayer(ModelLayers.PLAYER_SLIM), true);
 		//#endif
 		// the session's skin, fetched in the background; the default skin until it arrives
-		//#if MC >= 1.21.6
+		//#if MC >= 1.21.9
 		skin = mc.getSkinManager().createLookup(mc.getGameProfile(), false);
 		//#else
 		//$ skin = mc.getSkinManager().lookupInsecure(mc.getGameProfile());
@@ -68,19 +70,20 @@ public final class SkinPreview {
 	private static Model.Simple wrap(ModelPart extra) {
 		return new Model.Simple(new ModelPart(java.util.List.of(), java.util.Map.of("slashclient", extra)), RenderTypes::entityTranslucent);
 	}
-	//#elif MC >= 1.21.6
+	//#else
 	//$ private static net.minecraft.client.model.player.PlayerModel wrap(ModelPart extra) {
 	//$ 	ModelPart base = Minecraft.getInstance().getEntityModels().bakeLayer(ModelLayers.PLAYER_CAPE);
 	//$ 	java.util.Map<String, ModelPart> parts = new java.util.HashMap<>();
 	//$ 	for (String n : java.util.List.of("head", "body", "left_arm", "right_arm", "left_leg", "right_leg")) parts.put(n, base.getChild(n));
 	//$ 	base.getChild("body").getChild("cape").visible = false;
+	//#if MC < 1.21.9
+	//$ 	// here the cape layer's limbs lack the outer layer the player model looks up: empty parts stand in
+	//$ 	java.util.Map<String, String> outer = java.util.Map.of("head", "hat", "body", "jacket", "left_arm", "left_sleeve",
+	//$ 		"right_arm", "right_sleeve", "left_leg", "left_pants", "right_leg", "right_pants");
+	//$ 	outer.forEach((part, child) -> parts.put(part, new ModelPart(java.util.List.of(), java.util.Map.of(child, new ModelPart(java.util.List.of(), java.util.Map.of())))));
+	//#endif
 	//$ 	parts.put("slashclient", extra);
 	//$ 	return new net.minecraft.client.model.player.PlayerModel(new ModelPart(java.util.List.of(), parts), false);
-	//$ }
-	//#else
-	//$ // before 1.21.6 Compat.skin draws any model: a bare one holding only `extra`
-	//$ private static net.minecraft.client.model.Model wrap(ModelPart extra) {
-	//$ 	return new net.minecraft.client.model.Model(new ModelPart(java.util.List.of(), java.util.Map.of("slashclient", extra)), net.minecraft.client.renderer.RenderType::entityTranslucent) {};
 	//$ }
 	//#endif
 
@@ -137,7 +140,7 @@ public final class SkinPreview {
 	/** Draws the figure in the box; the head looks at (mx, my). */
 	public void draw(GuiGraphicsExtractor g, int x, int y, int w, int h, int mx, int my) {
 		PlayerSkin s = dev.slash3rss.slashclient.hud.Cosmetics.withTestSkin(Minecraft.getInstance().getGameProfile().id(), skin.get());
-		var model = s.model() == net.minecraft.world.entity.player.PlayerModelType.SLIM ? slim : wide;
+		var model = s.model() == PlayerModelType.SLIM ? slim : wide;
 		float scale = 0.97f * h / MODEL_HEIGHT;
 		// where the eyes are on screen: a little below the top of the box, in the middle
 		float eyesX = x + w / 2f;
@@ -175,10 +178,83 @@ public final class SkinPreview {
 	private void draw(GuiGraphicsExtractor g, Object model, net.minecraft.resources.Identifier texture, float scale, int x, int y, int w, int h) {
 		//#if MC >= 26.2
 		g.skin((Model.Simple) model, texture, scale, -5, bodyYaw, PIVOT_Y, x, y, x + w, y + h);
-		//#elif MC >= 1.21.6
-		//$ g.skin((net.minecraft.client.model.player.PlayerModel) model, texture, scale, -5, bodyYaw, PIVOT_Y, x, y, x + w, y + h);
 		//#else
-		//$ g.skin((net.minecraft.client.model.Model) model, texture, scale, -5, bodyYaw, PIVOT_Y, x, y, x + w, y + h);
+		//$ g.skin((net.minecraft.client.model.player.PlayerModel) model, texture, scale, -5, bodyYaw, PIVOT_Y, x, y, x + w, y + h);
 		//#endif
 	}
 }
+//#else
+//$ package dev.slash3rss.slashclient.hud.ui;
+//$
+//$ import com.mojang.blaze3d.platform.Lighting;
+//$ import com.mojang.blaze3d.vertex.PoseStack;
+//$ import com.mojang.math.Axis;
+//$ import net.minecraft.client.Minecraft;
+//$ import net.minecraft.client.gui.GuiGraphics;
+//$ import net.minecraft.client.model.PlayerModel;
+//$ import net.minecraft.client.model.geom.ModelLayers;
+//$ import net.minecraft.client.renderer.texture.OverlayTexture;
+//$ import net.minecraft.client.resources.PlayerSkin;
+//$ import net.minecraft.util.Mth;
+//$
+//$ import java.util.function.Supplier;
+//$
+//$ /**
+//$  * The player's own skin standing in the menu, the head turning towards the mouse, drawn the way
+//$  * 1.21.1's PlayerSkinWidget draws it (before render states). Only the figure: the cosmetics
+//$  * beside it need the newer model API.
+//$  */
+//$ public final class SkinPreview {
+//$ 	private static final float MODEL_HEIGHT = 2.125f;
+//$ 	private static final float BODY_YAW = 15;
+//$
+//$ 	private final PlayerModel<?> wide;
+//$ 	private final PlayerModel<?> slim;
+//$ 	private final Supplier<PlayerSkin> skin;
+//$ 	private float headYaw, headPitch, bodyYaw = BODY_YAW;
+//$
+//$ 	public SkinPreview(Minecraft mc) {
+//$ 		var models = mc.getEntityModels();
+//$ 		wide = new PlayerModel<>(models.bakeLayer(ModelLayers.PLAYER), false);
+//$ 		slim = new PlayerModel<>(models.bakeLayer(ModelLayers.PLAYER_SLIM), true);
+//$ 		wide.young = slim.young = false;
+//$ 		skin = mc.getSkinManager().lookupInsecure(mc.getGameProfile());
+//$ 	}
+//$
+//$ 	/** Draws the figure in the box; the head looks at (mx, my). */
+//$ 	public void draw(GuiGraphics graphics, int x, int y, int w, int h, int mx, int my) {
+//$ 		PlayerSkin s = dev.slash3rss.slashclient.hud.Cosmetics.withTestSkin(Minecraft.getInstance().getGameProfile().getId(), skin.get());
+//$ 		PlayerModel<?> model = s.model() == PlayerSkin.Model.SLIM ? slim : wide;
+//$ 		float eyesX = x + w / 2f;
+//$ 		float eyesY = y + h * 0.12f;
+//$ 		float dx = mx - eyesX, dy = my - eyesY;
+//$ 		float wantYaw = Mth.clamp((float) Math.toDegrees(Math.atan(dx / 100f)), -45, 45);
+//$ 		float wantPitch = Mth.clamp((float) Math.toDegrees(Math.atan(dy / 120f)), -25, 30);
+//$ 		headYaw += (wantYaw - headYaw) * 0.25f;
+//$ 		headPitch += (wantPitch - headPitch) * 0.25f;
+//$ 		bodyYaw += (BODY_YAW + wantYaw * 0.35f - bodyYaw) * 0.15f;
+//$ 		model.head.yRot = (float) Math.toRadians(bodyYaw - headYaw);
+//$ 		model.head.xRot = (float) Math.toRadians(headPitch);
+//$ 		model.hat.copyFrom(model.head);
+//$
+//$ 		PoseStack pose = graphics.pose();
+//$ 		pose.pushPose();
+//$ 		pose.translate(x + w / 2f, y + h, 100f);
+//$ 		float scale = 0.97f * h / MODEL_HEIGHT;
+//$ 		pose.scale(scale, scale, scale);
+//$ 		pose.translate(0f, -0.0625f, 0f);
+//$ 		pose.rotateAround(Axis.XP.rotationDegrees(-5), 0f, -1.0625f, 0f);
+//$ 		pose.mulPose(Axis.YP.rotationDegrees(bodyYaw));
+//$ 		graphics.flush();
+//$ 		Lighting.setupForEntityInInventory(Axis.XP.rotationDegrees(-5));
+//$ 		pose.pushPose();
+//$ 		pose.scale(1f, 1f, -1f);
+//$ 		pose.translate(0f, -1.5f, 0f);
+//$ 		model.renderToBuffer(pose, graphics.bufferSource().getBuffer(model.renderType(s.texture())), 15728880, OverlayTexture.NO_OVERLAY);
+//$ 		pose.popPose();
+//$ 		graphics.flush();
+//$ 		Lighting.setupFor3DItems();
+//$ 		pose.popPose();
+//$ 	}
+//$ }
+//#endif

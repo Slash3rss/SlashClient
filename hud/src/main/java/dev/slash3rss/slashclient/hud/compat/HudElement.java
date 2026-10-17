@@ -1,7 +1,12 @@
-package dev.slash3rss.slashclient.hud.compat;
-
 //#if MC < 1.21.6
-//$ /** Fabric's HudElement (1.21.6+) for the older layered HUD: a layer drawn with the frame. */
+//$ package dev.slash3rss.slashclient.hud.compat;
+//$
+//$ import net.minecraft.client.DeltaTracker;
+//$ import net.minecraft.client.gui.GuiGraphics;
+//$
+//$ /** A part of the HUD, as Fabric's HUD element API has it from 1.21.6 on (see HudElementRegistry). */
 //$ @FunctionalInterface
-//$ public interface HudElement extends net.minecraft.client.gui.LayeredDraw.Layer {}
+//$ public interface HudElement {
+//$ 	void render(GuiGraphics g, DeltaTracker delta);
+//$ }
 //#endif

@@ -42,7 +42,7 @@ public final class AccountSwitch {
 	/** Makes the game play as this account from now on. */
 	public static void apply(Minecraft mc, String name, UUID uuid, String token, String xuid, boolean offline) throws Exception {
 		if (!available(mc)) throw new IllegalStateException("Account switching only works in the menu");
-		//#if MC >= 1.21.6
+		//#if MC >= 1.21.9
 		User user = new User(name, uuid, token, Optional.ofNullable(xuid).filter(x -> !x.isBlank() && !x.equals("0")), Optional.empty());
 		//#else
 		//$ User user = new User(name, uuid, token, Optional.ofNullable(xuid).filter(x -> !x.isBlank() && !x.equals("0")), Optional.empty(), User.Type.MSA);
@@ -64,11 +64,7 @@ public final class AccountSwitch {
 		//$ access.slashclient$setPlayerSocialManager(new PlayerSocialManager(mc, api));
 		//#endif
 		// from 26.2 the block list also runs the game's own friends: it stays until the next start
-		//#if MC >= 1.21.6
 		access.slashclient$setProfileFuture(CompletableFuture.supplyAsync(() -> mc.services().sessionService().fetchProfile(uuid, true)));
-		//#else
-		//$ access.slashclient$setProfileFuture(CompletableFuture.supplyAsync(() -> mc.getMinecraftSessionService().fetchProfile(uuid, true)));
-		//#endif
 		SlashHud.LOG.info("SlashClient: playing as {} now", name);
 	}
 }

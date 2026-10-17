@@ -44,7 +44,7 @@ public final class Shots {
 				imgW = img.getWidth();
 				imgH = img.getHeight();
 				mc.getTextureManager().release(THUMB);
-				mc.getTextureManager().register(THUMB, Compat.dynamicTexture("SlashClient screenshot preview", img));
+				mc.getTextureManager().register(THUMB, new DynamicTexture(() -> "SlashClient screenshot preview", img));
 				shownAt = System.currentTimeMillis();
 			} catch (Exception e) {
 				SlashHud.LOG.warn("SlashClient: screenshot preview: {}", e.toString());

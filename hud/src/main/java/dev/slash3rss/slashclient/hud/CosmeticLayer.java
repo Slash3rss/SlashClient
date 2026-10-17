@@ -1,3 +1,5 @@
+// wings and pets are drawn from entity render states, which came in 1.21.2
+//#if MC >= 1.21.2
 package dev.slash3rss.slashclient.hud;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -59,7 +61,16 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			//#endif
 			"parrot", new Pet(new ParrotModel(context.bakeLayer(ModelLayers.PARROT)), ParrotRenderState::new, vanilla("parrot/parrot_red_blue"), 0.65f),
 			"blaze", new Pet(new net.minecraft.client.model.monster.blaze.BlazeModel(context.bakeLayer(ModelLayers.BLAZE)), LivingEntityRenderState::new, petTexture("blaze"), 0.4f),
-			"phantom", new Pet(new net.minecraft.client.model.monster.phantom.PhantomModel(context.bakeLayer(ModelLayers.PHANTOM)), net.minecraft.client.renderer.entity.state.PhantomRenderState::new, petTexture("phantom"), 0.55f));
+			"phantom", new Pet(new net.minecraft.client.model.monster.phantom.PhantomModel(context.bakeLayer(ModelLayers.PHANTOM)), net.minecraft.client.renderer.entity.state.PhantomRenderState::new, petTexture("phantom"), 0.55f),
+			// the axolotl's and the fox's models got baby twins in 26.1: the adult one is ours
+			//#if MC >= 26.1
+			"axolotl", new Pet(new net.minecraft.client.model.animal.axolotl.AdultAxolotlModel(context.bakeLayer(ModelLayers.AXOLOTL)), net.minecraft.client.renderer.entity.state.AxolotlRenderState::new, petTexture("axolotl"), 0.7f),
+			"fox", new Pet(new net.minecraft.client.model.animal.fox.AdultFoxModel(context.bakeLayer(ModelLayers.FOX)), net.minecraft.client.renderer.entity.state.FoxRenderState::new, petTexture("fox"), 0.55f),
+			//#else
+			//$ "axolotl", new Pet(new net.minecraft.client.model.animal.axolotl.AxolotlModel(context.bakeLayer(ModelLayers.AXOLOTL)), net.minecraft.client.renderer.entity.state.AxolotlRenderState::new, petTexture("axolotl"), 0.7f),
+			//$ "fox", new Pet(new net.minecraft.client.model.animal.fox.FoxModel(context.bakeLayer(ModelLayers.FOX)), net.minecraft.client.renderer.entity.state.FoxRenderState::new, petTexture("fox"), 0.55f),
+			//#endif
+			"frog", new Pet(new net.minecraft.client.model.animal.frog.FrogModel(context.bakeLayer(ModelLayers.FROG)), net.minecraft.client.renderer.entity.state.FrogRenderState::new, petTexture("frog"), 0.8f));
 	}
 
 	/** A pet's model layer and picture, for drawing it elsewhere too (the menu's skin preview). */
@@ -72,6 +83,9 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			case "parrot" -> ModelLayers.PARROT;
 			case "blaze" -> ModelLayers.BLAZE;
 			case "phantom" -> ModelLayers.PHANTOM;
+			case "axolotl" -> ModelLayers.AXOLOTL;
+			case "frog" -> ModelLayers.FROG;
+			case "fox" -> ModelLayers.FOX;
 			default -> null;
 		};
 	}
@@ -95,6 +109,14 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			//$ case "blaze" -> vanilla("blaze");
 			//$ case "phantom" -> vanilla("phantom");
 			//#endif
+			case "axolotl" -> vanilla("axolotl/axolotl_lucy");
+			case "fox" -> vanilla("fox/fox");
+			// renamed in 26.1 (temperate_frog → frog_temperate)
+			//#if MC >= 26.1
+			case "frog" -> vanilla("frog/frog_temperate");
+			//#else
+			//$ case "frog" -> vanilla("frog/temperate_frog");
+			//#endif
 			default -> null;
 		};
 	}
@@ -112,7 +134,7 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 	}
 
 	@Override
-	//#if MC >= 1.21.6
+	//#if MC >= 1.21.9
 	public void submit(PoseStack pose, SubmitNodeCollector out, int light, AvatarRenderState state, float yRot, float xRot) {
 	//#else
 	//$ public void render(PoseStack pose, SubmitNodeCollector out, int light, AvatarRenderState state, float yRot, float xRot) {
@@ -179,3 +201,4 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		pose.popPose();
 	}
 }
+//#endif

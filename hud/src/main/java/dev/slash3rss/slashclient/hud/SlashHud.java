@@ -45,7 +45,7 @@ public class SlashHud implements ClientModInitializer {
 		config = HudConfig.load();
 		Modules.cfg = config;
 
-		//#if MC >= 1.21.6
+		//#if MC >= 1.21.9
 		KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(ID, "main"));
 		//#else
 		//$ String category = "key.category.slashclient-hud.main";
@@ -64,10 +64,12 @@ public class SlashHud implements ClientModInitializer {
 		Cosmetics.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.emote", InputConstants.KEY_N, category));
 		ChatTabs.register();
 		Assist.register(category);
-		// wings and pets: a layer more on every player's model
+		// wings and pets: a layer more on every player's model (drawn from render states, which 1.21.1 does not have)
+		//#if MC >= 1.21.2
 		net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback.EVENT.register((type, renderer, helper, context) -> {
 			if (renderer instanceof net.minecraft.client.renderer.entity.player.AvatarRenderer<?> avatar) helper.register(new CosmeticLayer(avatar, context));
 		});
+		//#endif
 		Badges.load();
 		// another server or world: what we knew about its players is gone
 		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> {

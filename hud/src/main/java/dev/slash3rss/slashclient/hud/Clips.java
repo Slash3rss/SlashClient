@@ -85,9 +85,11 @@ public final class Clips {
 			//#elif MC >= 1.21.5
 			//$ // no downscaled grab before 1.21.6: the frame is shrunk while it is encoded
 			//$ Screenshot.takeScreenshot(target, image -> WORKER.execute(() -> encode(image, now, scale)));
-			//#else
+			//#elif MC >= 1.21.2
 			//$ NativeImage image = Screenshot.takeScreenshot(target);
 			//$ WORKER.execute(() -> encode(image, now, scale));
+			//#else
+			//$ Screenshot.takeScreenshot(target, scale, image -> WORKER.execute(() -> encode(image, now, 1)));
 			//#endif
 		} catch (RuntimeException e) {
 			inFlight.decrementAndGet();

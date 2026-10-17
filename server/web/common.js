@@ -133,6 +133,9 @@ const ITEM_ICONS = {
   clouds: 'fa-cloud', stars: 'fa-star', bubbles: 'fa-circle', emerald: 'fa-gem', soulfire: 'fa-fire-flame-curved',
   glow: 'fa-lightbulb', magic: 'fa-hat-wizard', amber: 'fa-droplet', sculk: 'fa-ghost',
   blaze: 'fa-fire', phantom: 'fa-dragon',
+  crits: 'fa-burst', witch: 'fa-flask', ink: 'fa-droplet', ash: 'fa-smog',
+  spores: 'fa-seedling', nautilus: 'fa-water', tears: 'fa-face-sad-tear', fireflies: 'fa-lightbulb',
+  axolotl: 'fa-fish', frog: 'fa-frog', fox: 'fa-paw',
 };
 
 /** A picture of any cosmetic: the cape's front, a wing's back, or an icon. */

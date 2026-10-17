@@ -21,10 +21,10 @@ export interface Item {
   /** An animated cape: how many frames (textures/cape/<id>_<n>.png). */
   frames?: number;
   /**
-   * Added after the first launchers with cosmetics (0.9.0): those have no pictures for it, so
-   * their menu leaves it out (see `knownTo`).
+   * The first launcher version with pictures for it (it came after the first launchers with
+   * cosmetics, 0.9.0): older ones leave it out of their menu (see `knownTo`).
    */
-  since?: number;
+  since?: string;
 }
 
 export const ITEMS: Item[] = [
@@ -41,14 +41,21 @@ export const ITEMS: Item[] = [
   { id: 'inferno', slot: 'cape', name: 'Inferno', frames: 8 },
   { id: 'waves', slot: 'cape', name: 'Fale', frames: 8 },
   { id: 'pulse', slot: 'cape', name: 'Puls', frames: 8 },
-  { id: 'sakura', slot: 'cape', name: 'Sakura', since: 2 },
-  { id: 'night', slot: 'cape', name: 'Noc', since: 2 },
-  { id: 'rainbow', slot: 'cape', name: 'Tęcza', since: 2 },
-  { id: 'ice', slot: 'cape', name: 'Lód', since: 2 },
-  { id: 'toxic', slot: 'cape', name: 'Toksyczna', since: 2 },
-  { id: 'checker', slot: 'cape', name: 'Szachownica', since: 2 },
-  { id: 'matrix', slot: 'cape', name: 'Matrix', frames: 8, since: 2 },
-  { id: 'storm', slot: 'cape', name: 'Burza', frames: 8, since: 2 },
+  { id: 'sakura', slot: 'cape', name: 'Sakura', since: '0.9.1' },
+  { id: 'night', slot: 'cape', name: 'Noc', since: '0.9.1' },
+  { id: 'rainbow', slot: 'cape', name: 'Tęcza', since: '0.9.1' },
+  { id: 'ice', slot: 'cape', name: 'Lód', since: '0.9.1' },
+  { id: 'toxic', slot: 'cape', name: 'Toksyczna', since: '0.9.1' },
+  { id: 'checker', slot: 'cape', name: 'Szachownica', since: '0.9.1' },
+  { id: 'matrix', slot: 'cape', name: 'Matrix', frames: 8, since: '0.9.1' },
+  { id: 'storm', slot: 'cape', name: 'Burza', frames: 8, since: '0.9.1' },
+  { id: 'lava', slot: 'cape', name: 'Lawa', since: '0.9.2' },
+  { id: 'desert', slot: 'cape', name: 'Pustynia', since: '0.9.2' },
+  { id: 'cyber', slot: 'cape', name: 'Cyber', since: '0.9.2' },
+  { id: 'honey', slot: 'cape', name: 'Miód', since: '0.9.2' },
+  { id: 'mint', slot: 'cape', name: 'Mięta', since: '0.9.2' },
+  { id: 'vortex', slot: 'cape', name: 'Wir', frames: 8, since: '0.9.2' },
+  { id: 'starfall', slot: 'cape', name: 'Gwiezdny deszcz', frames: 8, since: '0.9.2' },
   { id: 'staff_admin', slot: 'cape', name: 'Admin', rank: 'admin' },
   { id: 'staff_support', slot: 'cape', name: 'Support', rank: 'support' },
   { id: 'staff_partner', slot: 'cape', name: 'Partner', rank: 'partner' },
@@ -59,56 +66,86 @@ export const ITEMS: Item[] = [
   { id: 'dragon', slot: 'wings', name: 'Smocze' },
   { id: 'phoenix', slot: 'wings', name: 'Feniks', rank: 'partner' },
   { id: 'crystal', slot: 'wings', name: 'Kryształowe', rank: 'support' },
-  { id: 'batwing', slot: 'wings', name: 'Nietoperza', since: 2 },
-  { id: 'frost', slot: 'wings', name: 'Lodowe', since: 2 },
-  { id: 'prism', slot: 'wings', name: 'Pryzmat', since: 2 },
-  { id: 'shadow', slot: 'wings', name: 'Cienia', since: 2 },
+  { id: 'batwing', slot: 'wings', name: 'Nietoperza', since: '0.9.1' },
+  { id: 'frost', slot: 'wings', name: 'Lodowe', since: '0.9.1' },
+  { id: 'prism', slot: 'wings', name: 'Pryzmat', since: '0.9.1' },
+  { id: 'shadow', slot: 'wings', name: 'Cienia', since: '0.9.1' },
+  { id: 'fairy', slot: 'wings', name: 'Wróżki', since: '0.9.2' },
+  { id: 'bone', slot: 'wings', name: 'Kościane', since: '0.9.2' },
+  { id: 'gilded', slot: 'wings', name: 'Złote', since: '0.9.2' },
   // elytras: worn instead of the cape's picture on a real elytra
   { id: 'feather', slot: 'elytra', name: 'Pióra' },
   { id: 'neon', slot: 'elytra', name: 'Neon' },
   { id: 'void', slot: 'elytra', name: 'Pustka' },
   { id: 'sunset', slot: 'elytra', name: 'Zachód słońca' },
-  { id: 'nebula', slot: 'elytra', name: 'Mgławica', since: 2 },
-  { id: 'venom', slot: 'elytra', name: 'Jad', since: 2 },
-  { id: 'tide', slot: 'elytra', name: 'Przypływ', since: 2 },
+  { id: 'nebula', slot: 'elytra', name: 'Mgławica', since: '0.9.1' },
+  { id: 'venom', slot: 'elytra', name: 'Jad', since: '0.9.1' },
+  { id: 'tide', slot: 'elytra', name: 'Przypływ', since: '0.9.1' },
+  { id: 'magma', slot: 'elytra', name: 'Magma', since: '0.9.2' },
+  { id: 'circuit', slot: 'elytra', name: 'Obwód', since: '0.9.2' },
+  { id: 'autumn', slot: 'elytra', name: 'Jesień', since: '0.9.2' },
   // trails (while moving) and auras (around a player standing still): the game's particles
   { id: 'hearts', slot: 'trail', name: 'Serca' },
   { id: 'sparks', slot: 'trail', name: 'Iskry' },
   { id: 'snow', slot: 'trail', name: 'Śnieg' },
   { id: 'notes', slot: 'trail', name: 'Nuty' },
   { id: 'flames', slot: 'trail', name: 'Płomienie' },
-  { id: 'clouds', slot: 'trail', name: 'Chmurki', since: 2 },
-  { id: 'stars', slot: 'trail', name: 'Fajerwerki', since: 2 },
-  { id: 'bubbles', slot: 'trail', name: 'Bąbelki', since: 2 },
-  { id: 'emerald', slot: 'trail', name: 'Szmaragdy', since: 2 },
-  { id: 'soulfire', slot: 'trail', name: 'Błękitny ogień', since: 2 },
+  { id: 'clouds', slot: 'trail', name: 'Chmurki', since: '0.9.1' },
+  { id: 'stars', slot: 'trail', name: 'Fajerwerki', since: '0.9.1' },
+  { id: 'bubbles', slot: 'trail', name: 'Bąbelki', since: '0.9.1' },
+  { id: 'emerald', slot: 'trail', name: 'Szmaragdy', since: '0.9.1' },
+  { id: 'soulfire', slot: 'trail', name: 'Błękitny ogień', since: '0.9.1' },
+  { id: 'crits', slot: 'trail', name: 'Krytyki', since: '0.9.2' },
+  { id: 'witch', slot: 'trail', name: 'Czary', since: '0.9.2' },
+  { id: 'ink', slot: 'trail', name: 'Atrament', since: '0.9.2' },
+  { id: 'ash', slot: 'trail', name: 'Popiół', since: '0.9.2' },
   { id: 'enchant', slot: 'aura', name: 'Runy' },
   { id: 'portal', slot: 'aura', name: 'Portal' },
   { id: 'cherry', slot: 'aura', name: 'Wiśnia' },
   { id: 'souls', slot: 'aura', name: 'Dusze' },
   { id: 'royal', slot: 'aura', name: 'Królewska', rank: 'admin' },
-  { id: 'glow', slot: 'aura', name: 'Poświata', since: 2 },
-  { id: 'magic', slot: 'aura', name: 'Magia', since: 2 },
-  { id: 'amber', slot: 'aura', name: 'Bursztyn', since: 2 },
-  { id: 'sculk', slot: 'aura', name: 'Sculk', since: 2 },
+  { id: 'glow', slot: 'aura', name: 'Poświata', since: '0.9.1' },
+  { id: 'magic', slot: 'aura', name: 'Magia', since: '0.9.1' },
+  { id: 'amber', slot: 'aura', name: 'Bursztyn', since: '0.9.1' },
+  { id: 'sculk', slot: 'aura', name: 'Sculk', since: '0.9.1' },
+  { id: 'spores', slot: 'aura', name: 'Zarodniki', since: '0.9.2' },
+  { id: 'nautilus', slot: 'aura', name: 'Głębiny', since: '0.9.2' },
+  { id: 'tears', slot: 'aura', name: 'Łzy', since: '0.9.2' },
+  { id: 'fireflies', slot: 'aura', name: 'Świetliki', since: '0.9.2' },
   // pets: a small copy of one of the game's mobs flying at the shoulder
   { id: 'allay', slot: 'pet', name: 'Allay' },
   { id: 'vex', slot: 'pet', name: 'Vex' },
   { id: 'bat', slot: 'pet', name: 'Nietoperz' },
   { id: 'parrot', slot: 'pet', name: 'Papuga' },
   { id: 'bee', slot: 'pet', name: 'Pszczoła' },
-  { id: 'blaze', slot: 'pet', name: 'Blaze', since: 2 },
-  { id: 'phantom', slot: 'pet', name: 'Fantom', since: 2 },
+  { id: 'blaze', slot: 'pet', name: 'Blaze', since: '0.9.1' },
+  { id: 'phantom', slot: 'pet', name: 'Fantom', since: '0.9.1' },
+  { id: 'axolotl', slot: 'pet', name: 'Aksolotl', since: '0.9.2' },
+  { id: 'frog', slot: 'pet', name: 'Żaba', since: '0.9.2' },
+  { id: 'fox', slot: 'pet', name: 'Lis', since: '0.9.2' },
 ];
 
+/** Compares two versions like 0.9.1 number by number: below 0, 0 or above 0. */
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split(/[.+-]/).map((n) => parseInt(n, 10) || 0);
+  const pb = b.split(/[.+-]/).map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (d) return d;
+  }
+  return 0;
+}
+
 /**
- * Which items a client can draw: launchers from 0.9.1 on say so in X-SlashClient (also for the game
- * they start, through their bridge); the page shows everything; an older launcher knows the first set.
+ * Which items a client can draw: launchers from 0.9.1 on name their version in X-SlashClient
+ * (launcher/<version>, also for the game they start, through their bridge) and get the items up
+ * to it; the page shows everything; without the header it is a launcher from before (0.9.0).
  */
 export function knownTo(headers: Record<string, string | string[] | undefined>): (i: Item) => boolean {
-  const named = typeof headers['x-slashclient'] === 'string';
+  const named = /^(?:launcher|mod)\/([\w.+-]{1,32})$/.exec(String(headers['x-slashclient'] ?? ''));
   const browser = /Mozilla\//.test(String(headers['user-agent'] ?? ''));
-  return (i) => !i.since || named || browser;
+  const version = named ? named[1] : '0.9.0';
+  return (i) => !i.since || (!named && browser) || compareVersions(version, i.since) >= 0;
 }
 
 const BY_ID = new Map(ITEMS.map((i) => [i.id, i]));

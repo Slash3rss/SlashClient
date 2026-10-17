@@ -266,7 +266,11 @@ public class FriendsScreen extends Screen {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
 	//$ 	boolean doubleClick = false;
 	//#endif
+		//#if MC >= 1.21.9
 		if (super.mouseClicked(e, doubleClick)) return true;
+		//#else
+		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
+		//#endif
 		if (e.button() != InputConstants.MOUSE_BUTTON_LEFT) return false;
 		for (Hit h : List.copyOf(hits)) {
 			if (Ui.inside(e.x(), e.y(), h.x(), h.y(), h.w(), h.h())) {
@@ -294,7 +298,11 @@ public class FriendsScreen extends Screen {
 			send();
 			return true;
 		}
+		//#if MC >= 1.21.9
 		return super.keyPressed(e);
+		//#else
+		//$ return super.keyPressed(e.key(), e.scancode(), e.modifiers());
+		//#endif
 	}
 
 	@Override

@@ -77,7 +77,11 @@ public class EmoteScreen extends Screen {
 			pick(at(e.x(), e.y()));
 			return true;
 		}
+		//#if MC >= 1.21.9
 		return super.mouseClicked(e, doubleClick);
+		//#else
+		//$ return super.mouseClicked(e.x(), e.y(), e.button());
+		//#endif
 	}
 
 	@Override
@@ -92,7 +96,11 @@ public class EmoteScreen extends Screen {
 			pick(n);
 			return true;
 		}
+		//#if MC >= 1.21.9
 		return super.keyPressed(e);
+		//#else
+		//$ return super.keyPressed(e.key(), e.scancode(), e.modifiers());
+		//#endif
 	}
 
 	/** Holding the key, pointing and letting go picks what is pointed at. */
@@ -107,7 +115,11 @@ public class EmoteScreen extends Screen {
 			pick(hovered);
 			return true;
 		}
+		//#if MC >= 1.21.9
 		return super.keyReleased(e);
+		//#else
+		//$ return super.keyReleased(e.key(), e.scancode(), e.modifiers());
+		//#endif
 	}
 
 	@Override

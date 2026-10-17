@@ -3,7 +3,9 @@ package dev.slash3rss.slashclient.hud.ui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
+//#if MC >= 1.21.9
 import net.minecraft.network.chat.FontDescription;
+//#endif
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
@@ -40,6 +42,7 @@ public final class Ui {
 	 * one pixel of a letter is then exactly one pixel on screen, so text stays sharp instead of
 	 * being shrunk from a bigger bitmap.
 	 */
+	//#if MC >= 1.21.9
 	private static final FontDescription[] OUTFIT = new FontDescription[7];
 	private static final FontDescription[] OUTFIT_BOLD = new FontDescription[7];
 	static {
@@ -48,6 +51,17 @@ public final class Ui {
 			OUTFIT_BOLD[s] = dev.slash3rss.slashclient.hud.Compat.font(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_bold_s" + s));
 		}
 	}
+	//#else
+	//$ // fonts were named by their id before 1.21.9
+	//$ private static final Identifier[] OUTFIT = new Identifier[7];
+	//$ private static final Identifier[] OUTFIT_BOLD = new Identifier[7];
+	//$ static {
+	//$ 	for (int s = 1; s <= 6; s++) {
+	//$ 		OUTFIT[s] = Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_s" + s);
+	//$ 		OUTFIT_BOLD[s] = Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_bold_s" + s);
+	//$ 	}
+	//$ }
+	//#endif
 
 	private static int scale() {
 		return Math.max(1, Math.min(6, (int) Minecraft.getInstance().getWindow().getGuiScale()));
@@ -207,23 +221,23 @@ public final class Ui {
 		}
 	}
 
+	/** A card like the launcher's glass panels. */
 	/**
-	 * Starts a layer over what was drawn so far. Before 1.21.6 text waited in a batch drawn after
-	 * all shapes and items sat higher in the depth buffer, so both showed through panels laid over
+	 * Starts a layer over what was drawn so far. In 1.21.2–1.21.5 text waits in a batch drawn after
+	 * all shapes and items sit higher in the depth buffer, so both showed through panels laid over
 	 * them: here they are drawn out first and the depth is cleared.
 	 */
 	public static void layer(GuiGraphicsExtractor g) {
-		//#if MC < 1.21.6
+		//#if MC >= 1.21.2 && MC < 1.21.6
 		//$ g.flush();
 		//#endif
 		//#if MC >= 1.21.5 && MC < 1.21.6
 		//$ com.mojang.blaze3d.systems.RenderSystem.getDevice().createCommandEncoder().clearDepthTexture(Minecraft.getInstance().getMainRenderTarget().getDepthTexture(), 1.0);
-		//#elif MC < 1.21.5
+		//#elif MC >= 1.21.2 && MC < 1.21.5
 		//$ com.mojang.blaze3d.systems.RenderSystem.clear(256);
 		//#endif
 	}
 
-	/** A card like the launcher's glass panels. */
 	public static void panel(GuiGraphicsExtractor g, int x, int y, int w, int h) {
 		layer(g);
 		round(g, x, y, w, h, 6, PANEL);

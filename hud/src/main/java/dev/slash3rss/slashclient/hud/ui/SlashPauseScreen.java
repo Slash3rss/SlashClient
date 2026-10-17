@@ -53,7 +53,7 @@ public class SlashPauseScreen extends MenuScreen {
 
 	/** Leaving the world or server, exactly as the game's own pause menu does it. */
 	private void leave() {
-		minecraft.getReportingContext().draftReportHandled(minecraft, this, () -> minecraft.disconnectFromWorld(ClientLevel.DEFAULT_QUIT_MESSAGE), true);
+		minecraft.getReportingContext().draftReportHandled(minecraft, this, () -> dev.slash3rss.slashclient.hud.Compat.leaveWorld(minecraft, ClientLevel.DEFAULT_QUIT_MESSAGE), true);
 	}
 
 	@Override

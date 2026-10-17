@@ -40,24 +40,32 @@ abstract class OnlineServerEntryMixin {
 	@WrapOperation(method = "extractContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
 	//#elif MC >= 1.21.6
 	//$ @WrapOperation(method = "extractContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
-	//#else
-	//$ @WrapOperation(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Ljava/util/function/Function;Lnet/minecraft/resources/ResourceLocation;IIII)V"))
 	//#endif
 	//#if MC >= 1.21.6
 	private void slashclient$hideArrows(GuiGraphicsExtractor g, RenderPipeline pipeline, Identifier sprite, int x, int y, int w, int h, Operation<Void> original) {
-	//#else
+	//#elif MC >= 1.21.2
+	//$ // before 1.21.6 sprites are drawn with a RenderType function instead of a pipeline
+	//$ @WrapOperation(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Ljava/util/function/Function;Lnet/minecraft/resources/ResourceLocation;IIII)V"))
 	//$ private void slashclient$hideArrows(GuiGraphicsExtractor g, java.util.function.Function<Identifier, net.minecraft.client.renderer.RenderType> pipeline, Identifier sprite, int x, int y, int w, int h, Operation<Void> original) {
+	//#else
+	//$ // before 1.21.2 the row is drawn in render(), its sprites without a pipeline
+	//$ @WrapOperation(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Lnet/minecraft/resources/ResourceLocation;IIII)V"))
+	//$ private void slashclient$hideArrows(GuiGraphicsExtractor g, Identifier sprite, int x, int y, int w, int h, Operation<Void> original) {
 	//#endif
 		String path = sprite.getPath();
 		boolean up = path.contains("move_up");
 		boolean down = path.contains("move_down");
 		if (down && PinnedServer.is(serverData)) return;
 		if (up && slashclient$index() == 1 && PinnedServer.is(screen.getServers().get(0))) return;
+		//#if MC >= 1.21.2
 		original.call(g, pipeline, sprite, x, y, w, h);
+		//#else
+		//$ original.call(g, sprite, x, y, w, h);
+		//#endif
 	}
 
 	/** A partner server's picture behind its row (PartnerServers), under the game's icon and text. */
-	//#if MC >= 1.21.6
+	//#if MC >= 1.21.9
 	@Inject(method = "extractContent", at = @At("HEAD"))
 	private void slashclient$partnerBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
 		var entry = (ServerSelectionList.Entry) (Object) this;
@@ -71,7 +79,7 @@ abstract class OnlineServerEntryMixin {
 	//#endif
 
 	/** The "Partner" badge on top of the row. */
-	//#if MC >= 1.21.6
+	//#if MC >= 1.21.9
 	@Inject(method = "extractContent", at = @At("TAIL"))
 	private void slashclient$partnerBadge(GuiGraphicsExtractor g, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
 		var entry = (ServerSelectionList.Entry) (Object) this;

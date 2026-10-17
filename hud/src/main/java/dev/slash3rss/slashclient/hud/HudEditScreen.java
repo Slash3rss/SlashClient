@@ -830,7 +830,11 @@ public class HudEditScreen extends Screen {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
 	//$ 	boolean doubleClick = false;
 	//#endif
+		//#if MC >= 1.21.9
 		if (super.mouseClicked(e, doubleClick)) return true;
+		//#else
+		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
+		//#endif
 		if (search != null) search.setFocused(false);
 		if (e.button() == InputConstants.MOUSE_BUTTON_RIGHT && !window) {
 			HudModule m = moduleAt(e.x(), e.y());
@@ -902,7 +906,11 @@ public class HudEditScreen extends Screen {
 			dragSlider(e.x());
 			return true;
 		}
+		//#if MC >= 1.21.9
 		if (dragging == null) return super.mouseDragged(e, dx, dy);
+		//#else
+		//$ if (dragging == null) return super.mouseDragged(e.x(), e.y(), e.button(), dx, dy);
+		//#endif
 		int[] b = box(dragging);
 		HudConfig.Placement p = SlashHud.config.placement(dragging.id());
 		int x = snap((int) Math.round(e.x() - grabX), b[2], width, true);
@@ -927,7 +935,11 @@ public class HudEditScreen extends Screen {
 		painting = null;
 		lastCellX = lastCellY = -1;
 		snappedX = snappedY = false;
+		//#if MC >= 1.21.9
 		return super.mouseReleased(e);
+		//#else
+		//$ return super.mouseReleased(e.x(), e.y(), e.button());
+		//#endif
 	}
 
 	@Override
@@ -953,7 +965,11 @@ public class HudEditScreen extends Screen {
 			reopen();
 			return true;
 		}
+		//#if MC >= 1.21.9
 		return super.keyPressed(e);
+		//#else
+		//$ return super.keyPressed(e.key(), e.scancode(), e.modifiers());
+		//#endif
 	}
 
 	// ---------- module boxes ----------
