@@ -2487,6 +2487,7 @@ async function renderSkin() {
   document.querySelectorAll<HTMLButtonElement>('#skin-variant button').forEach((x) => x.classList.toggle('active', x.dataset.variant === skinVariant));
   loadSkinEditor(account);
   $('#skin-stage').classList.remove('loading');
+  stopCapeAnimation();
   if (skin.cape) await skinViewer.loadCape(skin.cape, { backEquipment: 'cape' });
   else skinViewer.resetCape();
   // a SlashClient cape is what other players see, so the preview wears it over the Mojang one
@@ -2529,6 +2530,51 @@ function refreshSkinCaches(accountId: string) {
 let chosenCape = '';
 
 /** Cuts the front of a cape texture (10×16 pixels at 1,1) into a small canvas. */
+/** Animated SlashClient capes and their frame count (img/capes/<id>_<n>.png), from the server's catalog. */
+const capeFrames = new Map<string, number>();
+const FRAME_MS = 150;
+let capeTimer: ReturnType<typeof setInterval> | undefined;
+
+/** Puts a cape on the preview; an animated one keeps turning its frames, as in the game. */
+async function wearCape(id: string) {
+  clearInterval(capeTimer);
+  await skinViewer?.loadCape(`img/capes/${id}.png`, { backEquipment: 'cape' });
+  const frames = capeFrames.get(id);
+  if (!frames) return;
+  let f = 0;
+  capeTimer = setInterval(() => {
+    if (!document.hidden) void skinViewer?.loadCape(`img/capes/${id}_${(f = (f + 1) % frames)}.png`, { backEquipment: 'cape' });
+  }, FRAME_MS);
+}
+
+/** Anything else on the back stops an animated cape. */
+function stopCapeAnimation() {
+  clearInterval(capeTimer);
+}
+
+/** A cape's tile: animated ones play their frames while the tile is on the page. */
+function animatedCapeThumbnail(id: string): HTMLCanvasElement {
+  const canvas = capeThumbnail(`img/capes/${id}.png`);
+  const frames = capeFrames.get(id);
+  if (!frames) return canvas;
+  let f = 0;
+  const timer = setInterval(() => {
+    if (!canvas.isConnected && f > 0) return clearInterval(timer);
+    if (document.hidden) return;
+    f = (f + 1) % frames;
+    const img = new Image();
+    img.onload = () => {
+      const scale = img.naturalWidth / 64;
+      const ctx = canvas.getContext('2d')!;
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, scale, scale, 10 * scale, 16 * scale, 0, 0, 10 * scale, 16 * scale);
+    };
+    img.src = `img/capes/${id}_${f}.png`;
+  }, FRAME_MS);
+  return canvas;
+}
+
 function capeThumbnail(texture: string): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = 10;
@@ -2560,7 +2606,10 @@ function renderCapeGrid() {
       chosenCape = id;
       // preview on the model before anything is saved
       const cape = capes.find((c) => c.id === id);
-      if (cape?.texture) skinViewer?.loadCape(cape.texture);
+      if (cape?.texture) {
+        stopCapeAnimation();
+        skinViewer?.loadCape(cape.texture);
+      }
       else skinViewer?.resetCape();
       renderCapeGrid();
     });
@@ -2636,7 +2685,7 @@ let cosmeticPreview: CosmeticPreview | undefined;
 
 
 function cosmeticPicture(slot: Slot, id: string): Node {
-  if (slot === 'cape') return capeThumbnail(`img/capes/${id}.png`);
+  if (slot === 'cape') return animatedCapeThumbnail(id);
   if (slot === 'wings' || slot === 'elytra') return wingsThumbnail(`img/${slot}/${id}.png`);
   const icon = gamePictures && cosmeticIcon(gamePictures, id);
   if (icon) return gameIcon(icon.srcs, icon.tint);
@@ -2656,9 +2705,10 @@ async function renderSlashCapes() {
   $('#cosmetic-shared').classList.toggle('hidden', !character?.loadout);
   const signedIn = !!me;
   // what the server offers now: switched-off items are left out, exclusive and rank ones say if they are ours
-  type CatalogItem = { id: string; slot: Slot; name: string; rank?: string; exclusive: boolean; available: boolean };
+  type CatalogItem = { id: string; slot: Slot; name: string; rank?: string; exclusive: boolean; available: boolean; frames?: number };
   const catalog: CatalogItem[] = (await api.socialApi('GET', '/v1/cosmetics').then((r: { capes: CatalogItem[]; items?: CatalogItem[] }) => r.items ?? r.capes.map((c) => ({ ...c, slot: 'cape' as Slot }))).catch(() => undefined))
     ?? SLASH_CAPES.map(([id, name]) => ({ id, slot: 'cape' as Slot, name, exclusive: false, available: true }));
+  for (const c of catalog) if (c.frames) capeFrames.set(c.id, c.frames);
   const slots = SLOTS.filter(([slot]) => catalog.some((c) => c.slot === slot));
   if (!slots.some(([slot]) => slot === cosmeticSlot)) cosmeticSlot = 'cape';
   $('#slot-tabs').replaceChildren(...slots.map(([slot, name, icon]) => {
@@ -2695,10 +2745,11 @@ async function renderSlashCapes() {
       const me = await guard(() => api.socialApi('POST', '/v1/me', character ? { character: character.uuid, ...change } : change));
       if (!me) return;
       if (slot === 'cape' && id) {
-        await skinViewer?.loadCape(`img/capes/${id}.png`, { backEquipment: 'cape' });
+        await wearCape(id);
         $('#skin-back').classList.remove('hidden');
       }
       if (slot === 'elytra' && id) {
+        stopCapeAnimation();
         await skinViewer?.loadCape(`img/elytra/${id}.png`, { backEquipment: 'elytra' });
         $('#skin-back').classList.remove('hidden');
       }
@@ -2722,9 +2773,10 @@ async function renderSlashCapes() {
   cosmeticPreview ??= new CosmeticPreview(skinViewer, pictures);
   cosmeticPreview.pictures = pictures;
   cosmeticPreview.show(worn);
+  stopCapeAnimation();
   if (worn.wings) await skinViewer.loadCape(`img/wings/${worn.wings}.png`, { backEquipment: 'elytra' });
   else if (cosmeticSlot === 'elytra' && worn.elytra) await skinViewer.loadCape(`img/elytra/${worn.elytra}.png`, { backEquipment: 'elytra' });
-  else if (capeId) await skinViewer.loadCape(`img/capes/${capeId}.png`, { backEquipment: 'cape' });
+  else if (capeId) await wearCape(capeId);
 }
 
 $('#cosmetic-shared').addEventListener('click', async () => {
@@ -2902,7 +2954,10 @@ async function previewPreset(id: string) {
   renderLibrary();
   await skinViewer.loadSkin(p.dataUrl, { model: p.variant === 'slim' ? 'slim' : 'default' });
   const cape = capes.find((c) => c.id === p.capeId);
-  if (cape?.texture) await skinViewer.loadCape(cape.texture);
+  if (cape?.texture) {
+    stopCapeAnimation();
+    await skinViewer.loadCape(cape.texture);
+  }
   else if (p.capeId === null) skinViewer.resetCape();
   $('#skin-note').textContent = t('Podgląd skina „{0}” z biblioteki.', p.name);
 }
