@@ -85,8 +85,17 @@ public class AccountsScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
+	//#else
+	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//#endif
+		//#if MC >= 1.21.9
 		if (super.mouseClicked(e, doubleClick)) return true;
+		//#else
+		//$ if (super.mouseClicked(mouseX, mouseY, button)) return true;
+		//#endif
 		for (Hit h : List.copyOf(hits)) {
 			if (Ui.inside(e.x(), e.y(), h.x(), h.y(), h.w(), h.h())) {
 				h.action().run();

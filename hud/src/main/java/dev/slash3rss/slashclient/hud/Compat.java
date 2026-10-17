@@ -108,12 +108,20 @@ public final class Compat {
 	}
 
 	/** A model drawn with the frame (the outline colour is for glowing players). */
+	//#if MC >= 1.21.9
 	public static <S> void submitModel(net.minecraft.client.renderer.SubmitNodeCollector out, net.minecraft.client.model.Model<? super S> model, S state,
+	//#else
+	//$ public static <S> void submitModel(net.minecraft.client.renderer.SubmitNodeCollector out, net.minecraft.client.model.EntityModel<? super S> model, S state,
+	//#endif
 			com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.client.renderer.rendertype.RenderType type, int light, int overlay, int outline) {
 		//#if MC >= 26.3
 		out.submitModel(model, state, pose, type, light, overlay, outline);
-		//#else
+		//#elif MC >= 1.21.9
 		//$ out.submitModel(model, state, pose, type, light, overlay, outline, null);
+		//#else
+		//$ // drawn at once (a glowing player's outline comes from the buffers themselves)
+		//$ model.setupAnim(state);
+		//$ model.renderToBuffer(pose, out.getBuffer(type), light, overlay);
 		//#endif
 	}
 
@@ -141,6 +149,41 @@ public final class Compat {
 		screen.resize(screen.width, screen.height);
 		//#else
 		//$ screen.resize(Minecraft.getInstance(), screen.width, screen.height);
+		//#endif
+	}
+
+	/** Leaves the world or server, as the pause menu's button would (`reason` shows while it goes). */
+	public static void leaveWorld(Minecraft mc, Component reason) {
+		//#if MC >= 1.21.9
+		mc.disconnectFromWorld(reason);
+		//#else
+		//$ boolean local = mc.isLocalServer();
+		//$ var server = mc.getCurrentServer();
+		//$ if (mc.level != null) mc.level.disconnect(reason);
+		//$ if (local) mc.disconnectWithSavingScreen();
+		//$ else mc.disconnectWithProgressScreen();
+		//$ var title = new net.minecraft.client.gui.screens.TitleScreen();
+		//$ if (local) mc.setScreen(title);
+		//$ else if (server != null && server.isRealm()) mc.setScreen(new com.mojang.realmsclient.RealmsMainScreen(title));
+		//$ else mc.setScreen(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(title));
+		//#endif
+	}
+
+	/** The chat, opened empty. */
+	public static net.minecraft.client.gui.screens.ChatScreen chatScreen() {
+		//#if MC >= 1.21.9
+		return new net.minecraft.client.gui.screens.ChatScreen("", false);
+		//#else
+		//$ return new net.minecraft.client.gui.screens.ChatScreen("");
+		//#endif
+	}
+
+	/** A font of our resources, for Style.withFont. */
+	public static net.minecraft.network.chat.FontDescription font(net.minecraft.resources.Identifier id) {
+		//#if MC >= 1.21.9
+		return new net.minecraft.network.chat.FontDescription.Resource(id);
+		//#else
+		//$ return id;
 		//#endif
 	}
 }

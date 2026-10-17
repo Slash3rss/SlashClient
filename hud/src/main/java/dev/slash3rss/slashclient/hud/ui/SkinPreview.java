@@ -46,7 +46,11 @@ public final class SkinPreview {
 		//$ slim = new net.minecraft.client.model.player.PlayerModel(models.bakeLayer(ModelLayers.PLAYER_SLIM), true);
 		//#endif
 		// the session's skin, fetched in the background; the default skin until it arrives
+		//#if MC >= 1.21.9
 		skin = mc.getSkinManager().createLookup(mc.getGameProfile(), false);
+		//#else
+		//$ skin = mc.getSkinManager().lookupInsecure(mc.getGameProfile());
+		//#endif
 	}
 
 	// ---------- SlashClient cosmetics beside the figure: cape, wings, pet ----------
@@ -70,6 +74,12 @@ public final class SkinPreview {
 	//$ 	java.util.Map<String, ModelPart> parts = new java.util.HashMap<>();
 	//$ 	for (String n : java.util.List.of("head", "body", "left_arm", "right_arm", "left_leg", "right_leg")) parts.put(n, base.getChild(n));
 	//$ 	base.getChild("body").getChild("cape").visible = false;
+	//#if MC < 1.21.9
+	//$ 	// here the cape layer's limbs lack the outer layer the player model looks up: empty parts stand in
+	//$ 	java.util.Map<String, String> outer = java.util.Map.of("head", "hat", "body", "jacket", "left_arm", "left_sleeve",
+	//$ 		"right_arm", "right_sleeve", "left_leg", "left_pants", "right_leg", "right_pants");
+	//$ 	outer.forEach((part, child) -> parts.put(part, new ModelPart(java.util.List.of(), java.util.Map.of(child, new ModelPart(java.util.List.of(), java.util.Map.of())))));
+	//#endif
 	//$ 	parts.put("slashclient", extra);
 	//$ 	return new net.minecraft.client.model.player.PlayerModel(new ModelPart(java.util.List.of(), parts), false);
 	//$ }

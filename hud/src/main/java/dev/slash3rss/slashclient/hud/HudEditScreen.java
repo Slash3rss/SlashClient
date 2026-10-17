@@ -823,8 +823,17 @@ public class HudEditScreen extends Screen {
 	// ---------- input ----------
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
+	//#else
+	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//#endif
+		//#if MC >= 1.21.9
 		if (super.mouseClicked(e, doubleClick)) return true;
+		//#else
+		//$ if (super.mouseClicked(mouseX, mouseY, button)) return true;
+		//#endif
 		if (search != null) search.setFocused(false);
 		if (e.button() == InputConstants.MOUSE_BUTTON_RIGHT && !window) {
 			HudModule m = moduleAt(e.x(), e.y());
@@ -882,7 +891,12 @@ public class HudEditScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean mouseDragged(MouseButtonEvent e, double dx, double dy) {
+	//#else
+	//$ public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//#endif
 		if (painting != null) {
 			paintAt(e.x(), e.y());
 			return true;
@@ -891,7 +905,11 @@ public class HudEditScreen extends Screen {
 			dragSlider(e.x());
 			return true;
 		}
+		//#if MC >= 1.21.9
 		if (dragging == null) return super.mouseDragged(e, dx, dy);
+		//#else
+		//$ if (dragging == null) return super.mouseDragged(mouseX, mouseY, button, dx, dy);
+		//#endif
 		int[] b = box(dragging);
 		HudConfig.Placement p = SlashHud.config.placement(dragging.id());
 		int x = snap((int) Math.round(e.x() - grabX), b[2], width, true);
@@ -905,13 +923,22 @@ public class HudEditScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean mouseReleased(MouseButtonEvent e) {
+	//#else
+	//$ public boolean mouseReleased(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//#endif
 		dragging = null;
 		draggingSlider = null;
 		painting = null;
 		lastCellX = lastCellY = -1;
 		snappedX = snappedY = false;
+		//#if MC >= 1.21.9
 		return super.mouseReleased(e);
+		//#else
+		//$ return super.mouseReleased(mouseX, mouseY, button);
+		//#endif
 	}
 
 	@Override
@@ -924,7 +951,12 @@ public class HudEditScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean keyPressed(KeyEvent e) {
+	//#else
+	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+	//$ 	KeyEvent e = new KeyEvent(keyCode, scanCode, modifiers);
+	//#endif
 		// Esc closes the window first, then the editor
 		if (e.key() == InputConstants.KEY_ESCAPE && window) {
 			if (settingsOf != null) settingsOf = null;
@@ -932,7 +964,11 @@ public class HudEditScreen extends Screen {
 			reopen();
 			return true;
 		}
+		//#if MC >= 1.21.9
 		return super.keyPressed(e);
+		//#else
+		//$ return super.keyPressed(keyCode, scanCode, modifiers);
+		//#endif
 	}
 
 	// ---------- module boxes ----------

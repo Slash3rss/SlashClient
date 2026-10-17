@@ -42,7 +42,11 @@ public final class AccountSwitch {
 	/** Makes the game play as this account from now on. */
 	public static void apply(Minecraft mc, String name, UUID uuid, String token, String xuid, boolean offline) throws Exception {
 		if (!available(mc)) throw new IllegalStateException("Account switching only works in the menu");
+		//#if MC >= 1.21.9
 		User user = new User(name, uuid, token, Optional.ofNullable(xuid).filter(x -> !x.isBlank() && !x.equals("0")), Optional.empty());
+		//#else
+		//$ User user = new User(name, uuid, token, Optional.ofNullable(xuid).filter(x -> !x.isBlank() && !x.equals("0")), Optional.empty(), User.Type.MSA);
+		//#endif
 		UserApiService api = offline ? UserApiService.OFFLINE : apiFor(token);
 		MinecraftAccessor access = (MinecraftAccessor) mc;
 		access.slashclient$setUser(user);

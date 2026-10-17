@@ -44,8 +44,8 @@ public final class Ui {
 	private static final FontDescription[] OUTFIT_BOLD = new FontDescription[7];
 	static {
 		for (int s = 1; s <= 6; s++) {
-			OUTFIT[s] = new FontDescription.Resource(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_s" + s));
-			OUTFIT_BOLD[s] = new FontDescription.Resource(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_bold_s" + s));
+			OUTFIT[s] = dev.slash3rss.slashclient.hud.Compat.font(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_s" + s));
+			OUTFIT_BOLD[s] = dev.slash3rss.slashclient.hud.Compat.font(Identifier.fromNamespaceAndPath("slashclient-hud", "outfit_bold_s" + s));
 		}
 	}
 

@@ -29,9 +29,15 @@ public final class TestHooks {
 	public static void mouse(String action, double[] at) {
 		var e = new net.minecraft.client.input.MouseButtonEvent(at[0], at[1], new net.minecraft.client.input.MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0));
 		switch (action) {
+			//#if MC >= 1.21.9
 			case "press" -> screen().mouseClicked(e, false);
 			case "drag" -> screen().mouseDragged(e, 0, 0);
 			default -> screen().mouseReleased(e);
+			//#else
+			//$ case "press" -> screen().mouseClicked(e.x(), e.y(), e.button());
+			//$ case "drag" -> screen().mouseDragged(e.x(), e.y(), e.button(), 0, 0);
+			//$ default -> screen().mouseReleased(e.x(), e.y(), e.button());
+			//#endif
 		}
 	}
 
@@ -360,7 +366,11 @@ public final class TestHooks {
 	/** Where the player's cape texture comes from now. */
 	public static String capeTexture() {
 		var cape = net.minecraft.client.Minecraft.getInstance().player.getSkin().cape();
+		//#if MC >= 1.21.9
 		return cape == null ? "none" : cape.texturePath().toString();
+		//#else
+		//$ return cape == null ? "none" : cape.toString();
+		//#endif
 	}
 
 	public static void emoteSelf(String emote) {
@@ -404,8 +414,12 @@ public final class TestHooks {
 	/** Our own player wears this skin (a texture of the test mod), for the website's screenshots. */
 	public static void testSkin(String texture) {
 		var id = net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "skin/" + texture);
+		//#if MC >= 1.21.9
 		Cosmetics.testSkin = new net.minecraft.core.ClientAsset.ResourceTexture(id,
 			net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "textures/skin/" + texture + ".png"));
+		//#else
+		//$ Cosmetics.testSkin = net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "textures/skin/" + texture + ".png");
+		//#endif
 		Cosmetics.testSkinFor = net.minecraft.client.Minecraft.getInstance().getGameProfile().id();
 	}
 
