@@ -36,6 +36,42 @@ def border(img, color, width=2):
     return img
 
 
+def logo(img, color, shade):
+    """The SlashClient logo (the badge next to names): a pixel "S" cut by a "/" whose halves slide
+    apart along the cut, in the proportions of scripts/icon/badge-font.py (gap 30 and shift 18 of a
+    62-wide cell). Drawn 8x larger and scaled down, so the cut is a clean line, not steps."""
+    rows = ['.XXXX.', 'XX..XX', 'XX....', '.XXXX.', '....XX', 'XX..XX', '.XXXX.']
+    up = 8
+    cell = round(4.4 * up)
+    w, h = 6 * cell, 7 * cell
+    big_w, big_h = W * up, H * up
+    # exactly in the middle of the cape
+    x0, y0 = (big_w - w) // 2, (big_h - h) // 2
+    cx, cy = x0 + w / 2, y0 + h / 2
+    gap, shift = cell * 30 / 62, cell * 18 / 62
+    letter = Image.new('L', (big_w, big_h), 0)
+    d = ImageDraw.Draw(letter)
+    for y, row in enumerate(rows):
+        for x, ch in enumerate(row):
+            if ch == 'X':
+                d.rectangle([x0 + x * cell, y0 + y * cell, x0 + (x + 1) * cell - 1, y0 + (y + 1) * cell - 1], fill=255)
+    # the two halves of the "/" through the middle, each moved away from the cut along it
+    far = big_w + big_h
+    o = gap / 2 / 2 ** 0.5
+    upper = Image.new('L', (big_w, big_h), 0)
+    ImageDraw.Draw(upper).polygon([(cx - far - o, cy + far - o), (cx + far - o, cy - far - o), (-far, -far)], fill=255)
+    lower = Image.new('L', (big_w, big_h), 0)
+    ImageDraw.Draw(lower).polygon([(cx - far + o, cy + far + o), (cx + far + o, cy - far + o), (big_w + far, big_h + far)], fill=255)
+    from PIL import ImageChops
+    s_ = round(shift / 2 ** 0.5)
+    a = ImageChops.offset(ImageChops.multiply(letter, upper), -s_, s_)
+    b = ImageChops.offset(ImageChops.multiply(letter, lower), s_, -s_)
+    mark = ImageChops.lighter(a, b).resize((W, H), Image.LANCZOS)
+    img.paste(Image.new('RGBA', (W, H), hexrgb(shade) + (255,)), (1, 1), mark)
+    img.paste(Image.new('RGBA', (W, H), hexrgb(color) + (255,)), (0, 0), mark)
+    return img
+
+
 def slash(img, color, glow):
     # the SlashClient stroke: a thick diagonal with a lighter edge
     d = ImageDraw.Draw(img)
@@ -48,7 +84,7 @@ def design(cape):
     rnd = random.Random(cape)
     if cape == 'slash':
         img = border(gradient('#0b1220', '#1d4ed8'), '#60a5fa')
-        return slash(img, '#f3f4f6', '#93c5fd')
+        return logo(img, '#f3f4f6', '#1e3a8a')
     if cape == 'ocean':
         img = gradient('#0e7490', '#082f49')
         d = ImageDraw.Draw(img)
@@ -105,7 +141,7 @@ def design(cape):
         return border(img, '#fef3c7')
     if cape == 'mono':
         img = border(gradient('#f9fafb', '#d1d5db'), '#111827', 3)
-        return slash(img, '#111827', '#4b5563')
+        return logo(img, '#111827', '#9ca3af')
     raise ValueError(cape)
 
 
