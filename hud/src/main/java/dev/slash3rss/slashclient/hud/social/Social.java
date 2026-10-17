@@ -55,6 +55,11 @@ public final class Social {
 		return !URL.isEmpty() && !KEY.isEmpty() || sample;
 	}
 
+	/** A real launcher bridge (not the screenshot test's made-up friends). */
+	public static boolean bridged() {
+		return !URL.isEmpty() && !KEY.isEmpty();
+	}
+
 	/** Made-up friends and a chat for the screenshot test (no launcher there). */
 	private static volatile boolean sample;
 

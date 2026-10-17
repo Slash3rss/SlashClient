@@ -1,6 +1,8 @@
 // Shared by the player page and the admin panel: the API with the saved session, sign-in,
 // small DOM helpers and toasts. The session token stays in this browser only (localStorage).
 
+import { gameIconInto } from './preview.js';
+
 const TOKEN = 'slashclient.token';
 
 export const token = {
@@ -128,6 +130,9 @@ const ITEM_ICONS = {
   hearts: 'fa-heart', sparks: 'fa-bolt', snow: 'fa-snowflake', notes: 'fa-music', flames: 'fa-fire',
   enchant: 'fa-book-open', portal: 'fa-circle-notch', cherry: 'fa-spa', souls: 'fa-ghost', royal: 'fa-crown',
   allay: 'fa-feather-pointed', vex: 'fa-skull', bat: 'fa-moon', parrot: 'fa-crow', bee: 'fa-bug',
+  clouds: 'fa-cloud', stars: 'fa-star', bubbles: 'fa-circle', emerald: 'fa-gem', soulfire: 'fa-fire-flame-curved',
+  glow: 'fa-lightbulb', magic: 'fa-hat-wizard', amber: 'fa-droplet', sculk: 'fa-ghost',
+  blaze: 'fa-fire', phantom: 'fa-dragon',
 };
 
 /** A picture of any cosmetic: the cape's front, a wing's back, or an icon. */
@@ -138,7 +143,10 @@ export function cosmeticEl(id, slot = 'cape', small = false) {
     c.style.backgroundImage = `url(vendor/${slot}/${id}.png)`;
     return c;
   }
-  return el('div', { class: `cape icon-item${small ? ' sm' : ''}`, title: id }, icon(`fa-solid ${ITEM_ICONS[id] ?? 'fa-star'}`));
+  // the game's own pictures (the launcher's icons) replace the Font Awesome one once loaded
+  const box = el('div', { class: `cape icon-item${small ? ' sm' : ''}`, title: id }, icon(`fa-solid ${ITEM_ICONS[id] ?? 'fa-star'}`));
+  gameIconInto(box, id);
+  return box;
 }
 
 export function avatarEl(user, big = false) {

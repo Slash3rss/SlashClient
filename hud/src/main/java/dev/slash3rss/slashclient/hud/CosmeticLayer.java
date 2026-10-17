@@ -57,7 +57,9 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			//$ "bat", new Pet(new BatModel(context.bakeLayer(ModelLayers.BAT)), BatRenderState::new, vanilla("bat"), 0.6f),
 			//$ "bee", new Pet(new net.minecraft.client.model.animal.bee.BeeModel(context.bakeLayer(ModelLayers.BEE)), BeeRenderState::new, vanilla("bee/bee"), 0.6f),
 			//#endif
-			"parrot", new Pet(new ParrotModel(context.bakeLayer(ModelLayers.PARROT)), ParrotRenderState::new, vanilla("parrot/parrot_red_blue"), 0.65f));
+			"parrot", new Pet(new ParrotModel(context.bakeLayer(ModelLayers.PARROT)), ParrotRenderState::new, vanilla("parrot/parrot_red_blue"), 0.65f),
+			"blaze", new Pet(new net.minecraft.client.model.monster.blaze.BlazeModel(context.bakeLayer(ModelLayers.BLAZE)), LivingEntityRenderState::new, petTexture("blaze"), 0.4f),
+			"phantom", new Pet(new net.minecraft.client.model.monster.phantom.PhantomModel(context.bakeLayer(ModelLayers.PHANTOM)), net.minecraft.client.renderer.entity.state.PhantomRenderState::new, petTexture("phantom"), 0.55f));
 	}
 
 	/** A pet's model layer and picture, for drawing it elsewhere too (the menu's skin preview). */
@@ -68,6 +70,8 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			case "bat" -> ModelLayers.BAT;
 			case "bee" -> ModelLayers.BEE;
 			case "parrot" -> ModelLayers.PARROT;
+			case "blaze" -> ModelLayers.BLAZE;
+			case "phantom" -> ModelLayers.PHANTOM;
 			default -> null;
 		};
 	}
@@ -83,6 +87,14 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			//#endif
 			case "bee" -> vanilla("bee/bee");
 			case "parrot" -> vanilla("parrot/parrot_red_blue");
+			// both moved into folders of their own in 26.1
+			//#if MC >= 26.1
+			case "blaze" -> vanilla("blaze/blaze");
+			case "phantom" -> vanilla("phantom/phantom");
+			//#else
+			//$ case "blaze" -> vanilla("blaze");
+			//$ case "phantom" -> vanilla("phantom");
+			//#endif
 			default -> null;
 		};
 	}
@@ -150,6 +162,14 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		pose.pushPose();
 		pose.translate(0.62f, (state.isCrouching ? 0.05f : -0.25f) + bob - 1.501f * scale, 0.2f);
 		pose.scale(scale, scale, scale);
+		// the phantom flies lying flat: tipped towards the viewer, or it is only a line
+		if (s instanceof net.minecraft.client.renderer.entity.state.PhantomRenderState) {
+			//#if MC >= 26.3
+			pose.rotate(com.mojang.math.Axis.XP.rotationDegrees(-55));
+			//#else
+			//$ pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(-55));
+			//#endif
+		}
 		EntityModel model = pet.model();
 		Compat.submitModel(out, model, s, pose, model.renderType(pet.texture()), light, OverlayTexture.NO_OVERLAY, state.outlineColor);
 		pose.popPose();

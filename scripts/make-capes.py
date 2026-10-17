@@ -142,10 +142,80 @@ def design(cape):
     if cape == 'mono':
         img = border(gradient('#f9fafb', '#d1d5db'), '#111827', 3)
         return logo(img, '#111827', '#9ca3af')
+    if cape == 'sakura':
+        img = gradient('#fdf2f8', '#f9a8d4')
+        d = ImageDraw.Draw(img)
+        # a branch across, with blossoms of five petals
+        d.line([(0, H * 0.3), (W * 0.5, H * 0.38), (W, H * 0.25)], fill=(87, 50, 38, 255), width=2)
+        d.line([(W * 0.45, H * 0.37), (W * 0.7, H * 0.55)], fill=(87, 50, 38, 255), width=1)
+        for _ in range(9):
+            cx, cy = rnd.uniform(3, W - 3), rnd.uniform(H * 0.15, H * 0.9)
+            for k in range(5):
+                a = k / 5 * math.pi * 2
+                px, py = cx + math.cos(a) * 2.2, cy + math.sin(a) * 2.2
+                d.ellipse([px - 1.6, py - 1.6, px + 1.6, py + 1.6], fill=(236, 72, 153, 255) if k % 2 else (244, 114, 182, 255))
+            d.point((cx, cy), fill=(254, 240, 138, 255))
+        return border(img, '#ec4899')
+    if cape == 'night':
+        img = gradient('#0f172a', '#1e3a8a')
+        d = ImageDraw.Draw(img)
+        for _ in range(35):
+            d.point((rnd.randrange(W), rnd.randrange(int(H * 0.75))), fill=(255, 255, 255, rnd.choice([150, 220, 255])))
+        # the moon, cut by a second circle into a crescent
+        cx, cy, r = W * 0.62, H * 0.28, 7
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(254, 249, 195, 255))
+        d.ellipse([cx - r + 4, cy - r - 2, cx + r + 4, cy + r - 2], fill=(23, 37, 84, 255))
+        # hills at the bottom
+        d.polygon([(0, H), (0, H * 0.82), (W * 0.35, H * 0.74), (W * 0.7, H * 0.84), (W, H * 0.78), (W, H)], fill=(2, 6, 23, 255))
+        return border(img, '#93c5fd')
+    if cape == 'rainbow':
+        img = Image.new('RGBA', (W, H))
+        d = ImageDraw.Draw(img)
+        colors = ['#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#8b5cf6']
+        band = H / len(colors)
+        for i, c in enumerate(colors):
+            d.rectangle([0, round(i * band), W, round((i + 1) * band)], fill=hexrgb(c) + (255,))
+        return border(img, '#ffffff')
+    if cape == 'ice':
+        img = gradient('#e0f2fe', '#0ea5e9')
+        d = ImageDraw.Draw(img)
+        # a snowflake: three crossed lines with small branches
+        cx, cy, r = W / 2, H * 0.45, 12
+        for k in range(3):
+            a = k / 3 * math.pi
+            dx, dy = math.cos(a) * r, math.sin(a) * r
+            d.line([(cx - dx, cy - dy), (cx + dx, cy + dy)], fill=(255, 255, 255, 255), width=2)
+            for s in (-1, 1):
+                bx, by = cx + dx * 0.6 * s, cy + dy * 0.6 * s
+                for t in (-1, 1):
+                    b = a + t * 0.7
+                    d.line([(bx, by), (bx + math.cos(b) * 4 * s, by + math.sin(b) * 4 * s)], fill=(255, 255, 255, 255), width=1)
+        return border(img, '#f0f9ff')
+    if cape == 'toxic':
+        img = gradient('#1a2e05', '#3f6212')
+        d = ImageDraw.Draw(img)
+        # the drips from the top and bubbles below
+        for i in range(7):
+            x = 3 + i * (W - 6) / 6
+            h = rnd.uniform(H * 0.15, H * 0.45)
+            d.rectangle([x - 2, 0, x + 2, h], fill=(163, 230, 53, 255))
+            d.ellipse([x - 3, h - 3, x + 3, h + 3], fill=(163, 230, 53, 255))
+        for _ in range(8):
+            x, y, r = rnd.uniform(3, W - 3), rnd.uniform(H * 0.55, H - 4), rnd.uniform(1, 2.5)
+            d.ellipse([x - r, y - r, x + r, y + r], outline=(190, 242, 100, 255))
+        return border(img, '#a3e635')
+    if cape == 'checker':
+        img = Image.new('RGBA', (W, H))
+        d = ImageDraw.Draw(img)
+        s = 8
+        for y in range(0, H, s):
+            for x in range(0, W, s):
+                d.rectangle([x, y, x + s - 1, y + s - 1], fill=(17, 24, 39, 255) if (x // s + y // s) % 2 else (243, 244, 246, 255))
+        return border(img, '#3b82f6')
     raise ValueError(cape)
 
 
-CAPES = ['slash', 'ocean', 'ember', 'forest', 'galaxy', 'rose', 'gold', 'mono']
+CAPES = ['slash', 'ocean', 'ember', 'forest', 'galaxy', 'rose', 'gold', 'mono', 'sakura', 'night', 'rainbow', 'ice', 'toxic', 'checker']
 
 
 def vanilla_wing():
@@ -261,6 +331,38 @@ def animated(cape, f):
         glow = 0.5 + 0.5 * math.sin(t * math.pi * 2)
         img = border(gradient('#0b1220', mix_hex('#1d4ed8', '#60a5fa', glow)), mix_hex('#3b82f6', '#bfdbfe', glow))
         return logo(img, '#f3f4f6', '#1e3a8a')
+    if cape == 'matrix':
+        img = gradient('#000000', '#03140a')
+        d = ImageDraw.Draw(img)
+        # columns of falling green glyphs, each column at its own speed, bright at its head
+        for c in range(8):
+            x = 1 + c * 5
+            speed = 1 + (c * 7) % 3
+            head = (rnd.uniform(0, H) + t * H * speed) % (H + 20)
+            for k in range(9):
+                y = head - k * 4
+                if 0 <= y < H:
+                    g = 255 - k * 26
+                    col = (220, 255, 220) if k == 0 else (34, g, 90)
+                    d.rectangle([x, y, x + 2, y + 2], fill=col + (255,))
+        return border(img, '#22c55e')
+    if cape == 'storm':
+        flash = 1.0 if f in (2, 3) else 0.0
+        img = gradient(mix_hex('#1e293b', '#94a3b8', flash * 0.6), mix_hex('#0f172a', '#334155', flash * 0.4))
+        d = ImageDraw.Draw(img)
+        # clouds at the top
+        for i in range(6):
+            cx = i * W / 5
+            d.ellipse([cx - 9, -6, cx + 9, 10], fill=(71, 85, 105, 255))
+        # rain moving down
+        for i in range(24):
+            x = (i * 7) % W
+            y = ((i * 13) + t * H * 2) % H
+            d.line([(x, y), (x - 1, y + 4)], fill=(148, 163, 184, 200), width=1)
+        if flash:
+            pts = [(W * 0.55, 6), (W * 0.42, H * 0.38), (W * 0.58, H * 0.4), (W * 0.4, H * 0.85)]
+            d.line(pts, fill=(254, 249, 195, 255), width=2)
+        return border(img, '#cbd5e1')
     raise ValueError(cape)
 
 
@@ -298,6 +400,16 @@ def feathers(top, bottom, line, rows=9):
     return img
 
 
+def feathers_over(img, line):
+    """Rows of feather edges over a picture."""
+    d = ImageDraw.Draw(img)
+    for r in range(9):
+        y = H * (0.08 + r * 0.1)
+        for x in range(0, W, 8):
+            d.arc([x - 2, y - 6, x + 8, y + 6], 0, 180, fill=hexrgb(line) + (255,), width=1)
+    return img
+
+
 def wing_design(kind):
     rnd = random.Random(kind)
     if kind == 'angel':
@@ -331,6 +443,57 @@ def wing_design(kind):
             x, y = rnd.uniform(0, W), rnd.uniform(0, H)
             d.line([(x, y), (x + rnd.uniform(-10, 10), y + rnd.uniform(6, 16))], fill=(255, 255, 255, 220), width=1)
         return border(img, '#ecfeff')
+    if kind == 'batwing':
+        img = gradient('#292524', '#0c0a09')
+        d = ImageDraw.Draw(img)
+        # the membrane's bones fanning out from the top
+        for i in range(5):
+            d.line([(W * 0.1, 0), (W * (0.1 + i * 0.22), H)], fill=(87, 83, 78, 255), width=2)
+        return border(img, '#44403c')
+    if kind == 'frost':
+        img = gradient('#f0f9ff', '#7dd3fc')
+        d = ImageDraw.Draw(img)
+        for _ in range(14):
+            x, y = rnd.uniform(0, W), rnd.uniform(0, H)
+            d.line([(x - 3, y), (x + 3, y)], fill=(255, 255, 255, 255))
+            d.line([(x, y - 3), (x, y + 3)], fill=(255, 255, 255, 255))
+        return border(feathers_over(img, '#bae6fd'), '#e0f2fe')
+    if kind == 'prism':
+        img = Image.new('RGBA', (W, H))
+        d = ImageDraw.Draw(img)
+        colors = ['#f43f5e', '#f59e0b', '#84cc16', '#06b6d4', '#6366f1', '#d946ef']
+        for i, c in enumerate(colors):
+            d.polygon([(0, H * i / 6 - 6), (W, H * i / 6 + 4), (W, H * (i + 1) / 6 + 4), (0, H * (i + 1) / 6 - 6)], fill=hexrgb(c) + (255,))
+        return border(img, '#ffffff')
+    if kind == 'shadow':
+        img = gradient('#18181b', '#000000')
+        d = ImageDraw.Draw(img)
+        for _ in range(16):
+            x, y = rnd.uniform(0, W), rnd.uniform(0, H)
+            d.ellipse([x - 2, y - 1, x + 2, y + 1], fill=(139, 92, 246, 160))
+        return border(feathers_over(img, '#3f3f46'), '#27272a')
+    if kind == 'nebula':
+        img = gradient('#312e81', '#020617')
+        d = ImageDraw.Draw(img)
+        for _ in range(5):
+            x, y, r = rnd.uniform(0, W), rnd.uniform(0, H), rnd.uniform(5, 10)
+            d.ellipse([x - r, y - r, x + r, y + r], fill=rnd.choice([(236, 72, 153, 90), (59, 130, 246, 90), (168, 85, 247, 90)]))
+        for _ in range(30):
+            d.point((rnd.randrange(W), rnd.randrange(H)), fill=(255, 255, 255, 255))
+        return border(img, '#a855f7')
+    if kind == 'venom':
+        img = gradient('#14532d', '#022c22')
+        d = ImageDraw.Draw(img)
+        for i in range(6):
+            d.line([(W * i / 5, 0), (W * i / 5 + 6, H)], fill=(132, 204, 22, 255), width=2)
+        return border(img, '#65a30d')
+    if kind == 'tide':
+        img = gradient('#0891b2', '#164e63')
+        d = ImageDraw.Draw(img)
+        for row in range(6):
+            y0 = H * (0.1 + row * 0.15)
+            d.line([(x, y0 + math.sin(x / W * math.pi * 3 + row) * 3) for x in range(0, W + 1, 2)], fill=(207, 250, 254, 220), width=2)
+        return border(img, '#67e8f9')
     if kind == 'feather':
         return border(feathers('#fef3c7', '#92400e', '#78350f'), '#fde68a')
     if kind == 'neon':
@@ -355,9 +518,9 @@ def wing_design(kind):
     raise ValueError(kind)
 
 
-WINGS = ['angel', 'demon', 'butterfly', 'dragon', 'phoenix', 'crystal']
-ELYTRAS = ['feather', 'neon', 'void', 'sunset']
-ANIMATED = ['aurora', 'inferno', 'waves', 'pulse']
+WINGS = ['angel', 'demon', 'butterfly', 'dragon', 'phoenix', 'crystal', 'batwing', 'frost', 'prism', 'shadow']
+ELYTRAS = ['feather', 'neon', 'void', 'sunset', 'nebula', 'venom', 'tide']
+ANIMATED = ['aurora', 'inferno', 'waves', 'pulse', 'matrix', 'storm']
 
 os.makedirs(OUT, exist_ok=True)
 count = 0

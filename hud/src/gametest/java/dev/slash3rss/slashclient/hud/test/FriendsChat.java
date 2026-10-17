@@ -54,7 +54,8 @@ public class FriendsChat implements FabricClientGameTest {
 		context.waitTicks(30);
 		context.takeScreenshot("menu-skin-small");
 		context.setScreen(() -> new FriendsScreen(null));
-		if (!Social.available()) {
+		// without a launcher (the made-up friends of the screenshots do not count): only the screens
+		if (!Social.bridged()) {
 			context.waitTicks(10);
 			context.takeScreenshot("friends-no-launcher");
 			// "join me" invites as cards in the chat, with Join on the one received

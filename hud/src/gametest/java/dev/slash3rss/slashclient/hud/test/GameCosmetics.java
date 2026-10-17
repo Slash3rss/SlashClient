@@ -58,6 +58,25 @@ public class GameCosmetics implements FabricClientGameTest {
 				context.waitTicks(5);
 				context.takeScreenshot("cosmetics-pet-" + pet);
 			}
+			// the newer ones: two pets with new wings, a new aura, and a new animated cape
+			for (String pet : new String[] {"blaze", "phantom"}) {
+				context.runOnClient(mc -> TestHooks.wear("pet", pet));
+				context.runOnClient(mc -> TestHooks.wear("wings", pet.equals("blaze") ? "prism" : "batwing"));
+				context.waitTicks(5);
+				context.takeScreenshot("cosmetics-pet-" + pet);
+			}
+			context.runOnClient(mc -> TestHooks.wear("wings", "frost"));
+			context.runOnClient(mc -> TestHooks.wear("aura", "sculk"));
+			context.waitTicks(30);
+			context.takeScreenshot("cosmetics-new-aura");
+			context.runOnClient(mc -> TestHooks.wear("wings", null));
+			context.runOnClient(mc -> TestHooks.wear("pet", null));
+			context.runOnClient(mc -> TestHooks.cosmeticsSelf("matrix", false));
+			context.waitTicks(2);
+			String matrix = context.computeOnClient(mc -> TestHooks.capeTexture());
+			if (!matrix.matches("slashclient-hud:textures/cape/matrix_[0-7][.]png")) throw new AssertionError("Not a frame of the matrix cape: " + matrix);
+			context.takeScreenshot("cosmetics-new-cape");
+			context.runOnClient(mc -> TestHooks.wear("aura", "souls"));
 			// the main menu's figure wears them too: the cape or the wings behind it, the pet by it
 			context.runOnClient(mc -> { TestHooks.wearOwn("cape", "aurora"); TestHooks.wearOwn("pet", "parrot"); });
 			context.setScreen(dev.slash3rss.slashclient.hud.ui.SlashTitleScreen::new);

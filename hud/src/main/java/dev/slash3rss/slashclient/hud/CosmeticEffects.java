@@ -63,6 +63,11 @@ final class CosmeticEffects {
 			// a note's "speed" is its colour, from 0 to 1 around the colour wheel
 			case "notes" -> add(mc, ParticleTypes.NOTE, x, y + 0.4, z, (tick % 48) / 24.0, 0, 0);
 			case "flames" -> add(mc, ParticleTypes.FLAME, x, y, z, 0, 0.01, 0);
+			case "clouds" -> add(mc, ParticleTypes.CLOUD, x, y, z, 0, 0.01, 0);
+			case "stars" -> add(mc, ParticleTypes.FIREWORK, x, y + 0.1, z, (RANDOM.nextDouble() - 0.5) * 0.04, 0.03, (RANDOM.nextDouble() - 0.5) * 0.04);
+			case "bubbles" -> add(mc, ParticleTypes.BUBBLE_POP, x, y + 0.2, z, 0, 0.02, 0);
+			case "emerald" -> add(mc, ParticleTypes.HAPPY_VILLAGER, x, y + 0.2, z, 0, 0, 0);
+			case "soulfire" -> add(mc, ParticleTypes.SOUL_FIRE_FLAME, x, y, z, 0, 0.01, 0);
 			default -> {}
 		}
 	}
@@ -80,6 +85,10 @@ final class CosmeticEffects {
 			case "portal" -> add(mc, ParticleTypes.PORTAL, p.getX(), p.getY() + 0.8, p.getZ(), (x - p.getX()) * 1.5, y - p.getY() - 0.8, (z - p.getZ()) * 1.5);
 			case "cherry" -> add(mc, ParticleTypes.CHERRY_LEAVES, x, p.getY() + 2.2, z, 0, 0, 0);
 			case "souls" -> add(mc, ParticleTypes.SOUL, x, p.getY() + 0.1, z, 0, 0.02, 0);
+			case "glow" -> add(mc, ParticleTypes.GLOW, x, y, z, 0, 0.02, 0);
+			case "magic" -> add(mc, ParticleTypes.ENCHANTED_HIT, x, y, z, 0, 0.05, 0);
+			case "amber" -> add(mc, ParticleTypes.WAX_ON, x, y, z, 0, 0.3, 0);
+			case "sculk" -> add(mc, ParticleTypes.SCULK_SOUL, x, p.getY() + 0.1, z, 0, 0.03, 0);
 			case "royal" -> {
 				add(mc, ParticleTypes.TOTEM_OF_UNDYING, x, y, z, 0, 0.04, 0);
 				if (RANDOM.nextInt(3) == 0) add(mc, ParticleTypes.END_ROD, p.getX() - (x - p.getX()), y, p.getZ() - (z - p.getZ()), 0, 0.01, 0);

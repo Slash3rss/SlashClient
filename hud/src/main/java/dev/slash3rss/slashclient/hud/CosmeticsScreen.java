@@ -34,7 +34,12 @@ public class CosmeticsScreen extends Screen {
 		Map.entry("enchant", Items.ENCHANTED_BOOK), Map.entry("portal", Items.ENDER_PEARL), Map.entry("cherry", Items.CHERRY_SAPLING),
 		Map.entry("souls", Items.SOUL_LANTERN), Map.entry("royal", Items.TOTEM_OF_UNDYING),
 		Map.entry("allay", Items.ALLAY_SPAWN_EGG), Map.entry("vex", Items.VEX_SPAWN_EGG), Map.entry("bat", Items.BAT_SPAWN_EGG),
-		Map.entry("parrot", Items.PARROT_SPAWN_EGG), Map.entry("bee", Items.BEE_SPAWN_EGG));
+		Map.entry("parrot", Items.PARROT_SPAWN_EGG), Map.entry("bee", Items.BEE_SPAWN_EGG),
+		Map.entry("clouds", Items.FEATHER), Map.entry("stars", Items.FIREWORK_ROCKET), Map.entry("bubbles", Items.HEART_OF_THE_SEA),
+		Map.entry("emerald", Items.EMERALD), Map.entry("soulfire", Items.SOUL_TORCH),
+		Map.entry("glow", Items.GLOW_INK_SAC), Map.entry("magic", Items.EXPERIENCE_BOTTLE), Map.entry("amber", Items.HONEYCOMB),
+		Map.entry("sculk", Items.SCULK_CATALYST),
+		Map.entry("blaze", Items.BLAZE_SPAWN_EGG), Map.entry("phantom", Items.PHANTOM_SPAWN_EGG));
 	private static final int TILE_W = 32, TILE_H = 40, GAP = 4;
 
 	private record Entry(String id, String slot, String name, String rank, boolean available) {}

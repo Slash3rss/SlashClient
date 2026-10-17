@@ -35,14 +35,24 @@ const EFFECTS: Record<string, Effect> = {
   cherry: { kind: 'aura', frames: range('cherry', 12), size: 2.6, motion: 'fall', life: 2.2 },
   souls: { kind: 'aura', frames: range('soul', 11), animate: true, size: 3.2, motion: 'rise', life: 1.6 },
   royal: { kind: 'aura', frames: range('glitter', 8).reverse(), animate: true, tint: 0xffd54a, size: 2.6, motion: 'rise', life: 1.4 },
+  clouds: { kind: 'trail', frames: range('generic', 8).reverse(), animate: true, tint: 0xf4f4f4, size: 3.4, motion: 'drift', life: 1.2 },
+  stars: { kind: 'trail', frames: range('spark', 8).reverse(), animate: true, size: 2.4, motion: 'drift', life: 1 },
+  bubbles: { kind: 'trail', frames: ['particle/bubble'], size: 2.2, motion: 'rise', life: 0.9 },
+  emerald: { kind: 'trail', frames: ['particle/glint'], tint: 0x6bff7a, size: 2.4, motion: 'rise', life: 1 },
+  soulfire: { kind: 'trail', frames: ['particle/soul_fire_flame'], size: 2.4, motion: 'rise', life: 0.8 },
+  glow: { kind: 'aura', frames: ['particle/glow'], tint: 0x7dffd8, size: 2.2, motion: 'rise', life: 1.6 },
+  magic: { kind: 'aura', frames: ['particle/enchanted_hit'], size: 2.4, motion: 'rise', life: 1.2 },
+  amber: { kind: 'aura', frames: ['particle/glow'], tint: 0xffb02e, size: 2.2, motion: 'rise', life: 1.4 },
+  sculk: { kind: 'aura', frames: range('sculk_soul', 10), animate: true, size: 3.2, motion: 'rise', life: 1.6 },
 };
 
 /** The pets' pictures (the bat's moved into a folder in 26.1) and their size next to the player. */
 const PET_TEXTURES: Record<string, string[]> = {
   allay: ['entity/allay/allay'], vex: ['entity/illager/vex'], bat: ['entity/bat/bat', 'entity/bat'],
   parrot: ['entity/parrot/parrot_red_blue'], bee: ['entity/bee/bee'],
+  blaze: ['entity/blaze/blaze', 'entity/blaze'], phantom: ['entity/phantom/phantom', 'entity/phantom'],
 };
-const PET_SCALE: Record<string, number> = { allay: 0.6, vex: 0.6, bat: 0.45, parrot: 0.55, bee: 0.5 };
+const PET_SCALE: Record<string, number> = { allay: 0.6, vex: 0.6, bat: 0.45, parrot: 0.55, bee: 0.5, blaze: 0.3, phantom: 0.35 };
 
 /**
  * Frames that read well as an icon, where the first ones would not: the dots that start small,
@@ -53,6 +63,9 @@ const ICON_FRAMES: Record<string, string[]> = {
   portal: ['particle/generic_7', 'particle/generic_5', 'particle/generic_6'],
   souls: ['particle/soul_8', 'particle/soul_9', 'particle/soul_8'],
   royal: ['particle/glitter_7', 'particle/glitter_5', 'particle/glitter_6'],
+  clouds: ['particle/generic_7', 'particle/generic_6', 'particle/generic_5'],
+  stars: ['particle/spark_7', 'particle/spark_5', 'particle/spark_6'],
+  sculk: ['particle/sculk_soul_8', 'particle/sculk_soul_9', 'particle/sculk_soul_8'],
 };
 
 interface Particle { sprite: Sprite; effect: Effect; age: number; vx: number; vy: number; vz: number; frame: number }
