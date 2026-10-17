@@ -20,7 +20,13 @@ public class GameCosmetics implements FabricClientGameTest {
 			world.getServer().runCommand("item replace entity @a armor.chest with elytra");
 			context.waitTicks(10);
 			context.takeScreenshot("cosmetics-elytra");
+			// the SlashClient cape: the logo on the cape, the logo's cut as a chevron on the elytra
+			context.runOnClient(mc -> TestHooks.cosmeticsSelf("slash", false));
+			context.waitTicks(10);
+			context.takeScreenshot("cosmetics-logo-elytra");
 			world.getServer().runCommand("item replace entity @a armor.chest with air");
+			context.waitTicks(10);
+			context.takeScreenshot("cosmetics-logo-cape");
 			// an emote by the name, looking at the player's face
 			context.runOnClient(mc -> TestHooks.cosmeticsSelf("slash", true));
 			context.runOnClient(mc -> TestHooks.emoteSelf("heart"));

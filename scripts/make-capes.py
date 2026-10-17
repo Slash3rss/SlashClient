@@ -169,6 +169,28 @@ def vanilla_wing():
 WING = vanilla_wing()
 
 
+def wing_art(cape):
+    """What the elytra wings show. Minecraft draws one wing mirrored, so a letter would read
+    backwards on it: the logo capes put the logo's "/" cut on the wings instead, a stripe that turns
+    into a chevron across the open wings. Other capes show their own picture."""
+    if cape == 'slash':
+        img = gradient('#0b1220', '#1d4ed8')
+        stripe(img, '#f3f4f6', '#93c5fd')
+        return border(img, '#60a5fa')
+    if cape == 'mono':
+        img = gradient('#f9fafb', '#d1d5db')
+        stripe(img, '#111827', '#6b7280')
+        return border(img, '#111827', 3)
+    return design(cape)
+
+
+def stripe(img, color, edge):
+    d = ImageDraw.Draw(img)
+    d.polygon([(0, H * 0.30), (W, H * 0.06), (W, H * 0.30), (0, H * 0.54)], fill=hexrgb(color) + (255,))
+    d.line([(0, H * 0.54), (W, H * 0.30)], fill=hexrgb(edge) + (255,), width=2)
+    return img
+
+
 def texture(cape):
     art = design(cape)
     tex = Image.new('RGBA', (64 * K, 32 * K), (0, 0, 0, 0))
@@ -187,7 +209,7 @@ def texture(cape):
     # comes from the game's elytra.png at generation time; Mojang's picture itself is not copied.
     if WING is not None:
         region = Image.new('RGBA', (24 * K, 22 * K), dark)
-        region.paste(art.resize((12 * K, 20 * K), Image.LANCZOS), (12 * K, 2 * K))
+        region.paste(wing_art(cape).resize((12 * K, 20 * K), Image.LANCZOS), (12 * K, 2 * K))
         alpha = WING.resize((24 * K, 22 * K), Image.NEAREST)
         region.putalpha(Image.composite(region.getchannel('A'), Image.new('L', region.size, 0), alpha))
         tex.paste(region, (22 * K, 0))
