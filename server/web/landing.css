@@ -142,7 +142,7 @@ html:has(body.landing) { overflow-x: clip; }
 .final .btn.ghost { color: #fff; border-color: rgba(255, 255, 255, .35); background: rgba(255, 255, 255, .08); }
 
 /* ---------- footer ---------- */
-.foot { border-top: 1px solid var(--border); padding: 18px 0 22px; margin-top: 20px; }
+.foot { border-top: 1px solid var(--border); padding: 14px 0 16px; margin-top: 20px; }
 .foot-row { display: flex; align-items: center; gap: 10px 18px; flex-wrap: wrap; }
 .foot-row .push { margin-left: auto; color: var(--text-2); }
 .foot-row .push:hover { color: var(--text); }
@@ -173,9 +173,10 @@ html:has(body.landing) { overflow-x: clip; }
 }
 
 /* ---------- the account page ---------- */
-.account-page { padding-top: 60px !important; padding-bottom: 20px !important; }
+.account-page { padding-top: 28px !important; padding-bottom: 20px !important; }
 /* a short page: the footer sits at the bottom of the window, with nothing to scroll to below it */
 body.landing { display: flex; flex-direction: column; min-height: 100vh; }
 body.landing > main { flex: 1 0 auto; }
-.account-page .head { margin-bottom: 30px; }
+.account-page .head { margin-bottom: 18px; }
+.account-page .head h1, .account-page .head h2 { font-size: clamp(30px, 4vw, 40px); }
 .account-page .head p { margin-left: 0; }
