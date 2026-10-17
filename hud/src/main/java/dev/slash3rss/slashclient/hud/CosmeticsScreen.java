@@ -43,7 +43,9 @@ public class CosmeticsScreen extends Screen {
 		Map.entry("crits", Items.IRON_SWORD), Map.entry("witch", Items.WITCH_SPAWN_EGG), Map.entry("ink", Items.INK_SAC),
 		Map.entry("ash", Items.BASALT),
 		Map.entry("spores", Items.SPORE_BLOSSOM), Map.entry("nautilus", Items.NAUTILUS_SHELL), Map.entry("tears", Items.CRYING_OBSIDIAN),
+		//#if MC >= 1.21.5
 		Map.entry("fireflies", Items.FIREFLY_BUSH),
+		//#endif
 		Map.entry("axolotl", Items.AXOLOTL_SPAWN_EGG), Map.entry("frog", Items.FROG_SPAWN_EGG), Map.entry("fox", Items.FOX_SPAWN_EGG));
 	private static final int TILE_W = 32, TILE_H = 40, GAP = 4;
 

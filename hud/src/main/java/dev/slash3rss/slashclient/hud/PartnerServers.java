@@ -59,14 +59,23 @@ public final class PartnerServers {
 			if (res.statusCode() != 200) return;
 			Map<String, String> next = new ConcurrentHashMap<>();
 			java.util.Set<String> all = ConcurrentHashMap.newKeySet();
+			java.util.List<PinnedServer.Pin> pins = new java.util.ArrayList<>();
+			boolean saysPinned = false;
 			for (JsonElement e : GSON.fromJson(res.body(), JsonObject.class).getAsJsonArray("partners")) {
 				JsonObject p = e.getAsJsonObject();
 				String address = normalize(p.get("address").getAsString());
 				all.add(address);
+				// the ones the admin pinned on top of the server list (servers before 0.9.2 do not say)
+				saysPinned |= p.has("pinned");
+				if (p.has("pinned") && p.get("pinned").getAsBoolean()) {
+					String name = p.has("name") && !p.get("name").isJsonNull() ? p.get("name").getAsString() : "";
+					pins.add(new PinnedServer.Pin(address, name, p.has("rotate") && p.get("rotate").getAsBoolean()));
+				}
 				if (p.has("background") && !p.get("background").isJsonNull()) next.put(address, server + p.get("background").getAsString());
 			}
 			partners = all;
 			backgrounds = next;
+			if (saysPinned) PinnedServer.set(pins);
 			next.values().forEach(PartnerServers::load);
 		}).exceptionally(err -> {
 			SlashHud.LOG.debug("SlashClient: partner servers: {}", err.toString());

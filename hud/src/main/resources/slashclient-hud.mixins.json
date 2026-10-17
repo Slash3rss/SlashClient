@@ -16,6 +16,7 @@
 		"FreelookCameraMixin",
 		"FreelookMixin",
 		"GpuTimerMixin",
+		"EditServerScreenMixin",
 		"GuiMixin",
 		"HeartsMixin",
 		"PongMixin",

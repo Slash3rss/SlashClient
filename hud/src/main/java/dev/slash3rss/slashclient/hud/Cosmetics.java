@@ -42,8 +42,14 @@ public final class Cosmetics {
 	static final List<String> ELYTRAS = List.of("feather", "neon", "void", "sunset", "nebula", "venom", "tide", "magma", "circuit", "autumn");
 	static final List<String> TRAILS = List.of("hearts", "sparks", "snow", "notes", "flames", "clouds", "stars", "bubbles", "emerald", "soulfire",
 		"crits", "witch", "ink", "ash");
+	// fireflies came with 1.21.5
+	//#if MC >= 1.21.5
 	static final List<String> AURAS = List.of("enchant", "portal", "cherry", "souls", "royal", "glow", "magic", "amber", "sculk",
 		"spores", "nautilus", "tears", "fireflies");
+	//#else
+	//$ static final List<String> AURAS = List.of("enchant", "portal", "cherry", "souls", "royal", "glow", "magic", "amber", "sculk",
+	//$ 	"spores", "nautilus", "tears");
+	//#endif
 	static final List<String> PETS = List.of("allay", "vex", "bat", "parrot", "bee", "blaze", "phantom", "axolotl", "frog", "fox");
 	private static final Map<String, List<String>> SLOTS = Map.of("cape", CAPES, "wings", WINGS, "elytra", ELYTRAS,
 		"trail", TRAILS, "aura", AURAS, "pet", PETS);
@@ -147,7 +153,6 @@ public final class Cosmetics {
 		ClientAsset.Texture capeTexture = cape == null ? skin.cape() : texture("cape", cape);
 		// without an elytra of its own the elytra is drawn from the cape, as for Minecraft's own capes
 		ClientAsset.Texture elytraTexture = elytra != null ? texture("elytra", elytra) : cape != null ? null : skin.elytra();
-		//#if MC >= 1.21.9
 		return new PlayerSkin(skin.body(), capeTexture, elytraTexture, skin.model(), skin.secure());
 		//#else
 		//$ Identifier capeTexture = cape == null ? skin.capeTexture() : textureId("cape", cape);

@@ -71,6 +71,8 @@ public class SlashHud implements ClientModInitializer {
 		});
 		//#endif
 		Badges.load();
+		// the partners (and which are pinned on top of the server list) before the list is first opened
+		PartnerServers.refresh();
 		// another server or world: what we knew about its players is gone
 		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> {
 			Badges.reset();

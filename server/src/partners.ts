@@ -11,7 +11,7 @@ import type { Db } from './db.ts';
  * the owner may change the picture itself. Pictures are files next to the database.
  */
 
-export interface Partner { id: string; address: string; name: string; owner: string; background: string; updatedAt: number }
+export interface Partner { id: string; address: string; name: string; owner: string; background: string; pinned: boolean; rotate: boolean; updatedAt: number }
 
 const MAX_PICTURE = 3 * 1024 * 1024;
 // PNG and JPEG only: the game reads those itself (no WebP)
@@ -59,7 +59,7 @@ export function partnerRoutes(ctx: PartnerContext): { routes: [string, RegExp, H
   const fileOf = (p: Partner) => path.join(ctx.dir, p.background);
   /** What the game and the pages see; the picture's address changes with it, so it can be kept long. */
   const view = (p: Partner) => ({
-    id: p.id, address: p.address, name: p.name,
+    id: p.id, address: p.address, name: p.name, pinned: p.pinned, rotate: p.rotate,
     background: p.background ? `/v1/partners/${p.id}/background?v=${p.updatedAt}` : null,
   });
   const withOwner = (p: Partner) => ({ ...view(p), owner: p.owner ? db.user(p.owner)?.handle ?? '' : '' });
@@ -104,15 +104,20 @@ export function partnerRoutes(ctx: PartnerContext): { routes: [string, RegExp, H
       const norm = normalizeAddress(address);
       if (db.partnerByAddress(norm)) ctx.fail(409, 'exists');
       const id = randomBytes(6).toString('hex');
-      db.addPartner({ id, address: norm, name: typeof name === 'string' ? name.trim().slice(0, 48) : '', owner: ownerFrom(owner), background: '', updatedAt: Date.now() });
+      db.addPartner({ id, address: norm, name: typeof name === 'string' ? name.trim().slice(0, 48) : '', owner: ownerFrom(owner), background: '', pinned: false, rotate: false, updatedAt: Date.now() });
       db.log(me, 'partner_add', norm);
       return withOwner(db.partner(id)!);
     }],
     ['POST', /^\/v1\/admin\/partners\/(\w+)$/, async (req, [id]) => {
       const me = ctx.admin(req);
       const p = partnerOr404(id);
-      const { name, owner } = await ctx.body(req);
+      const { name, owner, pinned, rotate } = await ctx.body(req);
       db.updatePartner(id, typeof name === 'string' ? name.trim().slice(0, 48) : p.name, owner === undefined ? p.owner : ownerFrom(owner));
+      if (typeof pinned === 'boolean' || typeof rotate === 'boolean') {
+        const pin = typeof pinned === 'boolean' ? pinned : p.pinned;
+        // only a pinned server can take turns at the top
+        db.setPartnerPinning(id, pin, pin && (typeof rotate === 'boolean' ? rotate : p.rotate));
+      }
       db.log(me, 'partner_edit', p.address);
       return withOwner(db.partner(id)!);
     }],
