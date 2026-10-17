@@ -92,6 +92,7 @@ const api = {
   socialApi: (method: string, path: string, body?: unknown) => invoke('social:api', method, path, body),
   socialLoginDev: (name: string) => invoke('social:loginDev', name),
   socialLoginOAuth: (provider: string, link = false) => invoke('social:loginOAuth', provider, link),
+  socialLoginMinecraft: () => invoke('social:loginMinecraft'),
   socialCancelLogin: () => invoke('social:cancelLogin'),
   socialLogout: () => invoke('social:logout'),
   socialSetStatus: (status: string) => invoke('social:setStatus', status),

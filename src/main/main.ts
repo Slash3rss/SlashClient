@@ -14,7 +14,7 @@ import { shareLog } from './logshare';
 import { lastTarget, serverFromLog, worldPlayedSince } from './sessions';
 import { installUpdate, startUpdateChecks } from './updates';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
-import { activityFromLog, SocialClient, SocialError, type Status } from './social';
+import { activityFromLog, SocialClient, SocialError, type SocialUser, type Status } from './social';
 import { launch, resolveVersionId } from './launch';
 import { paths } from './paths';
 import { loadStore, newProfile, profileGameDir, saveStore, secrets, setSecretCodec, type MicrosoftAccount, type Profile, type Settings, type StoreData } from './store';
@@ -154,7 +154,9 @@ handle('versions:list', async () => (await getManifest()).versions.map(({ id, ty
 handle('settings:save', async (settings: Partial<Settings>) => {
   const { socialToken: _ignored, ...allowed } = settings;
   const urlChanged = allowed.socialUrl !== undefined && allowed.socialUrl !== store.settings.socialUrl;
+  const accountChanged = allowed.selectedAccountId !== undefined && allowed.selectedAccountId !== store.settings.selectedAccountId;
   store.settings = { ...store.settings, ...allowed };
+  if (accountChanged) void signInWithMinecraft();
   if (urlChanged) await social.logout();
   setLang(store.settings.language);
   if (store.settings.discordEnabled) showPresence(game ? currentPresence ?? idlePresence() : idlePresence());
@@ -213,6 +215,7 @@ handle('account:loginMicrosoft', async () => {
   store.accounts.push(account);
   store.settings.selectedAccountId = account.id;
   await persist();
+  void signInWithMinecraft();
   return account.name;
 });
 handle('account:cancelLogin', () => loginAbort?.abort());
@@ -964,6 +967,7 @@ const bridge = new GameBridge({
     gameAccountId = id;
     store.settings.selectedAccountId = id;
     await persist();
+    void signInWithMinecraft();
     return session;
   },
   // F2 in game: only a PNG in the screenshots folder of one of the profiles
@@ -976,6 +980,48 @@ const bridge = new GameBridge({
     await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(png)], { type: 'image/png' }) })]);
   },
 });
+
+/**
+ * The SlashClient account follows the Minecraft account: a Microsoft account signs in (or, when
+ * already signed in, is linked to the account) the way Minecraft servers check players. The
+ * launcher "joins" a random server id at Mojang with its Minecraft token, and the SlashClient
+ * server asks Mojang whether this player did, so the token itself never leaves for our server.
+ * Offline accounts can't be proven and are left out (Discord and the rest sign in then).
+ */
+let minecraftSignIn: Promise<unknown> = Promise.resolve();
+function signInWithMinecraft(accountId?: string, quiet = true): Promise<unknown> {
+  const run = minecraftSignIn.then(() => linkMinecraft(accountId ?? store.settings.selectedAccountId));
+  minecraftSignIn = run.catch((err) => {
+    if (quiet) console.error('Konto SlashClient przez Minecraft:', (err as Error).message);
+  });
+  return quiet ? minecraftSignIn : run;
+}
+
+async function linkMinecraft(accountId?: string) {
+  const account = store.accounts.find((a) => a.id === accountId);
+  if (account?.type !== 'msa') return;
+  const mcUuid = account.uuid.replace(/-/g, '').toLowerCase();
+  const hasSession = !!store.settings.socialToken;
+  // the page may not have asked who we are yet
+  if (hasSession && !social.state().user) social.updateUser(await social.call<SocialUser>('GET', '/v1/me'));
+  if (social.state().user?.minecraft?.some((m) => m.uuid === mcUuid)) return;
+  const fresh = await freshMsa(account.id);
+  const { serverId } = await social.call<{ serverId: string }>('POST', '/v1/auth/minecraft/start', undefined, false);
+  const joined = await fetch('https://sessionserver.mojang.com/session/minecraft/join', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessToken: fresh.accessToken, selectedProfile: mcUuid, serverId }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!joined.ok) throw new SocialError('not_verified', joined.status);
+  const res = await social.call<{ linked?: boolean; user: SocialUser; token: string }>('POST', '/v1/auth/minecraft/finish', { serverId, name: fresh.name }, !!store.settings.socialToken);
+  if (res.linked) social.updateUser(res.user);
+  else await social.signedIn(res);
+}
+handle('social:loginMinecraft', () => socialCall(async () => {
+  await signInWithMinecraft(undefined, false);
+  return social.state();
+}));
 
 /** SocialError codes cross IPC as "social:<code>", which the page translates. */
 async function socialCall<T>(fn: () => Promise<T>): Promise<T> {
@@ -1070,6 +1116,7 @@ app.whenReady().then(async () => {
   startUpdateChecks({ onReady: (version) => send('update:ready', version), onLog: (m) => console.error(m) });
   showPresence(idlePresence());
   social.start();
+  void signInWithMinecraft();
   // ten idle minutes in the launcher show as "away" to friends
   setInterval(() => social.setAway(powerMonitor.getSystemIdleTime() >= 600), 60_000);
   app.on('activate', () => {

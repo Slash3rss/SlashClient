@@ -11,7 +11,7 @@ interface Presence { status: 'online' | 'away' | 'busy' | 'offline'; activity?: 
 interface Person { id: string; handle: string; name: string; avatar: string }
 interface Friend extends Person { presence: Presence; unread: number; lastMessageAt: number; since: number }
 interface Request extends Person { at: number }
-interface Me extends Person { showServer: boolean; providers: string[] }
+interface Me extends Person { showServer: boolean; providers: string[]; minecraft?: { uuid: string; name: string }[] }
 interface Invite { server: string; version?: string }
 interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite }
 interface SocialState { url: string; user?: Me; connected: boolean; status: Status }
@@ -27,6 +27,8 @@ export interface FriendsDeps {
   join: (address: string, version?: string) => void;
   /** Signed in or out of the SlashClient account (other parts of the launcher, like capes, depend on it). */
   accountChanged?: () => void;
+  /** Whether the launcher has a Microsoft (Minecraft) account to sign in with. */
+  hasMinecraft?: () => boolean;
 }
 
 const MAX_MESSAGE = 2000;
@@ -63,6 +65,8 @@ export function socialErrorText(code: string): string {
     already_linked: t('To konto jest już połączone z innym kontem SlashClient.'),
     last_provider: t('To jedyny sposób logowania. Najpierw połącz inny.'),
     cancelled: t('Logowanie anulowane.'),
+    not_linked: t('To konto nie jest podpięte do żadnego konta SlashClient. Zaloguj się kontem Minecraft i podepnij je w zakładce Znajomi.'),
+    not_verified: t('Mojang nie potwierdził konta Minecraft. Spróbuj ponownie.'),
   };
   return texts[code] ?? t('Błąd serwera znajomych ({0}).', code);
 }
@@ -168,6 +172,26 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     renderChat();
   }
 
+  /** The Minecraft accounts of this SlashClient account; one can be unlinked while another way to sign in is left. */
+  function minecraftRow(me: Me) {
+    const row = el('div', { className: 'fr-linked' });
+    for (const mc of me.minecraft ?? []) {
+      const chip = el('button', { type: 'button', className: 'fr-chip on', title: t('Konto Minecraft {0}. Kliknij, żeby odłączyć.', mc.name) }, icon('fa-cube'), mc.name);
+      chip.addEventListener('click', async () => {
+        if (!confirm(t('Odłączyć konto Minecraft {0} od konta SlashClient?', mc.name))) return;
+        try {
+          state!.user = await api.socialApi('DELETE', `/v1/me/minecraft/${mc.uuid}`);
+          renderMe();
+        } catch (err) {
+          deps.toast(deps.errorText(err), true);
+        }
+      });
+      row.append(chip);
+    }
+    if (!row.childElementCount) row.append(el('small', { className: 'muted', textContent: t('Wybierz konto Microsoft w zakładce Konta, żeby je podpiąć.') }));
+    return el('div', { className: 'fr-linked-row' }, el('small', { className: 'muted', textContent: t('Minecraft:') }), row);
+  }
+
   function renderSignIn() {
     const card = el('div', { className: 'card glass-panel fr-signin' },
       el('h3', {}, icon('fa-user-group'), t(' Znajomi w SlashClient')),
@@ -199,8 +223,15 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
           cancel));
       } else buttons.append(el('p', { className: 'muted' }, el('span', { className: 'spinner' }), t(' Dokończ logowanie w przeglądarce…')), cancel);
     } else {
+      // the account comes with the Minecraft account; the rest only opens an account they were linked to
+      if (deps.hasMinecraft?.()) {
+        const mc = el('button', { type: 'button', className: 'primary' }, icon('fa-cube'), t(' Zaloguj kontem Minecraft'));
+        mc.addEventListener('click', () => signIn(() => api.socialLoginMinecraft()));
+        buttons.append(mc);
+      } else buttons.append(el('p', { className: 'muted', textContent: t('Dodaj konto Microsoft w zakładce Konta: konto SlashClient założy się samo i będzie logować się razem z nim.') }));
+      if (health?.providers?.length) buttons.append(el('small', { className: 'muted fr-other', textContent: t('Masz już konto SlashClient? Zaloguj się sposobem, który wcześniej do niego podpiąłeś:') }));
       for (const provider of health?.providers ?? []) {
-        const b = el('button', { type: 'button', className: `primary fr-${provider}` }, providerIcon(provider), t(' Zaloguj przez {0}', PROVIDERS[provider] ?? provider));
+        const b = el('button', { type: 'button', className: `fr-${provider}` }, providerIcon(provider), t(' Zaloguj przez {0}', PROVIDERS[provider] ?? provider));
         b.addEventListener('click', () => signIn(() => api.socialLoginOAuth(provider)));
         buttons.append(b);
       }
@@ -212,7 +243,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         input.addEventListener('keydown', (e) => e.key === 'Enter' && go());
         buttons.append(el('div', { className: 'row fr-dev' }, input, b), el('small', { className: 'muted', textContent: t('Tryb testowy serwera: logowanie samym nickiem, bez hasła.') }));
       }
-      if (!buttons.childElementCount) buttons.append(el('p', { className: 'muted', textContent: t('Serwer nie ma włączonego żadnego sposobu logowania.') }));
+
     }
     card.append(buttons);
     root.replaceChildren(card);
@@ -333,6 +364,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     const self: Presence = state!.connected ? { status: state!.status === 'invisible' ? 'offline' : state!.status } : { status: 'offline' };
     const linked = el('div', { className: 'fr-linked' });
     for (const provider of new Set([...(me.providers ?? []), ...(health?.providers ?? [])])) {
+      // Minecraft accounts have their own row below
+      if (provider === 'minecraft') continue;
       const has = (me.providers ?? []).includes(provider);
       const chip = el('button', {
         type: 'button',
@@ -369,7 +402,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         logout),
       el('div', { className: 'row' }, status, state!.connected ? '' : el('small', { className: 'fr-error', textContent: t('Łączenie…') })),
       el('label', { className: 'check fr-share' }, share, t(' Pokazuj znajomym, na jakim serwerze gram')),
-      el('div', { className: 'fr-linked-row' }, el('small', { className: 'muted', textContent: t('Logowanie:') }), linked));
+      el('div', { className: 'fr-linked-row' }, el('small', { className: 'muted', textContent: t('Logowanie:') }), linked),
+      minecraftRow(me));
   }
 
   function renderList() {
@@ -607,6 +641,13 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       case 'state': {
         const was = state?.user?.id;
         state = e.state;
+        if (state?.user?.id !== was) {
+          // another SlashClient account (a Minecraft account of someone else was picked): nothing of the old one stays
+          selected = undefined;
+          chats.clear();
+          if (was && state?.user) root.replaceChildren();
+          deps.accountChanged?.();
+        }
         if (state?.user && state.user.id !== was) await refreshList();
         if (!state?.user) {
           root.replaceChildren();

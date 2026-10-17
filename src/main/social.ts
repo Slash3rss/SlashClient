@@ -15,7 +15,11 @@ export interface Activity {
   since?: number;
 }
 
-export interface SocialUser { id: string; handle: string; name: string; avatar: string; showServer: boolean; providers: string[] }
+export interface SocialUser {
+  id: string; handle: string; name: string; avatar: string; showServer: boolean; providers: string[];
+  /** Minecraft accounts linked to this SlashClient account (Mojang uuid without dashes, name). */
+  minecraft?: { uuid: string; name: string }[];
+}
 
 export interface SocialState {
   url: string;

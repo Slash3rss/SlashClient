@@ -11,6 +11,8 @@ const dir = mkdtempSync(path.join(os.tmpdir(), 'slash-social-'));
 let base = '';
 let app: ReturnType<typeof createApp>;
 
+/** Players who "joined" at Mojang: server id → Minecraft profile (what hasJoined answers). */
+const joined = new Map<string, { id: string; name: string }>();
 /** Microsoft codes the "player" has typed: device code → which user. */
 const typedCodes = new Map<string, string>();
 let deviceCodes = 0;
@@ -18,6 +20,11 @@ let deviceCodes = 0;
 // a fake Discord, so sign-in can be tested without the internet
 const fakeFetch: typeof fetch = async (input, init) => {
   const url = String(input);
+  if (url.startsWith('https://sessionserver.mojang.com/session/minecraft/hasJoined?')) {
+    const q = new URL(url).searchParams;
+    const p = joined.get(q.get('serverId') ?? '');
+    return p && p.name === q.get('username') ? Response.json({ ...p, properties: [] }) : new Response(null, { status: 204 });
+  }
   if (url.endsWith('/oauth2/v2.0/devicecode')) {
     const n = ++deviceCodes;
     return Response.json({ device_code: `device-${n}`, user_code: `CODE${n}`, verification_uri: 'https://www.microsoft.com/link', interval: 0, expires_in: 900 });
@@ -70,7 +77,7 @@ async function connect(token: string, presence?: unknown) {
 }
 
 before(async () => {
-  app = createApp({ dbFile: path.join(dir, 'test.db'), publicUrl: 'http://localhost', allowDevLogin: true, oauth: { discord: { clientId: 'id', clientSecret: 'secret' }, microsoft: { clientId: 'ms', clientSecret: '' }, google: { clientId: 'g', clientSecret: 's' }, github: { clientId: 'gh', clientSecret: 's' } }, fetchImpl: fakeFetch });
+  app = createApp({ dbFile: path.join(dir, 'test.db'), publicUrl: 'http://localhost', allowDevLogin: true, loginsPerMinute: 1000, oauth: { discord: { clientId: 'id', clientSecret: 'secret' }, microsoft: { clientId: 'ms', clientSecret: '' }, google: { clientId: 'g', clientSecret: 's' }, github: { clientId: 'gh', clientSecret: 's' } }, fetchImpl: fakeFetch });
   await new Promise<void>((r) => app.server.listen(0, r));
   base = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
 });
@@ -85,17 +92,66 @@ describe('social server', () => {
     assert.equal((await call('GET', '/v1/friends', 'nope')).status, 401);
   });
 
-  it('signs in with Discord through the browser and polling', async () => {
-    const { state, url } = (await call('POST', '/v1/auth/discord/start')).body;
-    assert.match(url, /discord\.com\/oauth2\/authorize/);
-    assert.equal((await call('GET', `/v1/auth/poll?state=${state}`)).body.pending, true);
-    const page = await fetch(`${base}/v1/auth/discord/callback?state=${state}&code=xyz`);
-    assert.equal(page.status, 200);
-    const done = (await call('GET', `/v1/auth/poll?state=${state}`)).body;
-    assert.equal(done.user.handle, 'kasia');
-    assert.equal(done.user.name, 'Kasia');
+  /** The launcher's Minecraft sign-in: `name` (Mojang id `id`) "joins" the server id at Mojang. */
+  async function minecraftLogin(name: string, id: string, token?: string, join = true) {
+    const { serverId } = (await call('POST', '/v1/auth/minecraft/start')).body;
+    if (join) joined.set(serverId, { id, name });
+    return call('POST', '/v1/auth/minecraft/finish', token, { serverId, name });
+  }
+  const mcId = (n: number) => String(n).repeat(32).slice(0, 32);
+
+  it('starts accounts with Minecraft, proven at Mojang, and links more Minecraft accounts', async () => {
+    // not joined at Mojang: no account
+    assert.equal((await minecraftLogin('Kasia', mcId(1), undefined, false)).body.error, 'not_verified');
+    const kasia = (await minecraftLogin('Kasia', mcId(1))).body;
+    assert.equal(kasia.user.handle, 'Kasia');
+    assert.deepEqual(kasia.user.minecraft, [{ uuid: mcId(1), name: 'Kasia' }]);
+    // a server id works once
+    const { serverId } = (await call('POST', '/v1/auth/minecraft/start')).body;
+    joined.set(serverId, { id: mcId(1), name: 'Kasia' });
+    assert.equal((await call('POST', '/v1/auth/minecraft/finish', undefined, { serverId, name: 'Kasia' })).status, 200);
+    assert.equal((await call('POST', '/v1/auth/minecraft/finish', undefined, { serverId, name: 'Kasia' })).body.error, 'login_expired');
+    // a second Minecraft account joins the same SlashClient account
+    const linked = (await minecraftLogin('KasiaPvP', mcId(2), kasia.token)).body;
+    assert.equal(linked.linked, true);
+    assert.deepEqual(linked.user.minecraft.map((m: { name: string }) => m.name), ['Kasia', 'KasiaPvP']);
+    assert.equal((await minecraftLogin('KasiaPvP', mcId(2))).body.user.id, kasia.user.id);
+    // someone else's Minecraft account: the launcher is switched to that account, nothing is taken over
+    const other = (await minecraftLogin('Brat', mcId(3))).body;
+    const switched = (await minecraftLogin('Brat', mcId(3), kasia.token)).body;
+    assert.equal(switched.switched, true);
+    assert.equal(switched.user.id, other.user.id);
+    assert.equal((await call('GET', '/v1/me', kasia.token)).body.minecraft.length, 2);
+    // a Minecraft account can go while another way to sign in is left
+    const after = (await call('DELETE', `/v1/me/minecraft/${mcId(2)}`, kasia.token)).body;
+    assert.deepEqual(after.minecraft, [{ uuid: mcId(1), name: 'Kasia' }]);
+    assert.equal((await call('DELETE', `/v1/me/minecraft/${mcId(1)}`, kasia.token)).body.error, 'last_provider');
+  });
+
+  it('signs in with Discord only to an account it was linked to', async () => {
+    const discordLogin = async (token?: string) => {
+      const { state, url } = (await call('POST', '/v1/auth/discord/start', token)).body;
+      assert.match(url, /discord\.com\/oauth2\/authorize/);
+      assert.equal((await call('GET', `/v1/auth/poll?state=${state}`)).body.pending, true);
+      const page = await fetch(`${base}/v1/auth/discord/callback?state=${state}&code=xyz`);
+      return { page: page.status, done: await call('GET', `/v1/auth/poll?state=${state}`) };
+    };
+    // nobody has this Discord account yet: no new account from Discord
+    const first = await discordLogin();
+    assert.equal(first.page, 400);
+    assert.equal(first.done.body.error, 'not_linked');
+    // linked from a signed-in account, Discord then opens it
+    const owner = (await minecraftLogin('Discordowy', mcId(4))).body;
+    const link = await discordLogin(owner.token);
+    assert.equal(link.done.body.linked, true);
+    const again = await discordLogin();
+    assert.equal(again.page, 200);
+    assert.equal(again.done.body.user.id, owner.user.id);
+    // the name stays the account's own; the picture follows Discord
+    assert.equal(again.done.body.user.name, 'Discordowy');
+    assert.match(again.done.body.user.avatar, /cdn\.discordapp\.com/);
     // the result is handed out once
-    assert.equal((await call('GET', `/v1/auth/poll?state=${state}`)).status, 404);
+    assert.equal(again.done.status, 200);
   });
 
   /** A Microsoft sign-in with a code: `who` types it on microsoft.com/link, optionally linking to a session. */
@@ -114,34 +170,38 @@ describe('social server', () => {
     throw new Error('the sign-in did not finish');
   }
 
-  it('signs in with Microsoft and links it to an existing account', async () => {
-    const jan = (await microsoftLogin('jan')).body;
-    assert.equal(jan.user.handle, 'JanKowalski');
-    assert.equal(jan.user.name, 'Jan Kowalski');
+  it('signs in with Microsoft once linked, and keeps one Microsoft account per SlashClient account', async () => {
+    assert.equal((await microsoftLogin('jan')).body.error, 'not_linked');
+    const jan = (await minecraftLogin('Jan', mcId(5))).body;
+    assert.equal((await microsoftLogin('jan', jan.token)).body.linked, true);
+    assert.equal((await microsoftLogin('jan')).body.user.id, jan.user.id);
 
     const dev = await login('Linker');
     const linked = (await microsoftLogin('ola', dev.token)).body;
-    assert.equal(linked.linked, true);
     assert.deepEqual(linked.user.providers, ['dev', 'microsoft']);
-    // signing in with that Microsoft account now opens the same SlashClient account
     assert.equal((await microsoftLogin('ola')).body.user.id, dev.user.id);
-    // Jan's Microsoft account already has its own SlashClient account
+    // Jan's Microsoft account already belongs to Jan
     assert.equal((await microsoftLogin('jan', dev.token)).body.error, 'already_linked');
-    // the last way to sign in cannot be removed
-    assert.equal((await call('DELETE', '/v1/me/providers/microsoft', jan.token)).body.error, 'last_provider');
     const after = await call('DELETE', '/v1/me/providers/microsoft', dev.token);
     assert.deepEqual(after.body.providers, ['dev']);
+    assert.equal((await call('DELETE', '/v1/me/providers/dev', dev.token)).status, 404);
   });
 
-  it('signs in with Google and GitHub', async () => {
-    for (const [provider, handle, avatar] of [['google', 'ZosiaNowak', ''], ['github', 'octo', 'https://avatars.githubusercontent.com/u/7']]) {
-      const { state, url } = (await call('POST', `/v1/auth/${provider}/start`)).body;
-      assert.match(url, provider === 'google' ? /accounts\.google\.com/ : /github\.com\/login\/oauth/);
-      await fetch(`${base}/v1/auth/${provider}/callback?state=${state}&code=c`);
-      const done = (await call('GET', `/v1/auth/poll?state=${state}`)).body;
-      assert.equal(done.user.handle, handle);
-      // pictures only from the provider's own host
-      assert.equal(done.user.avatar, avatar);
+  it('signs in with Google and GitHub once linked', async () => {
+    const zosia = (await minecraftLogin('Zosia', mcId(6))).body;
+    for (const [provider, avatar] of [['google', ''], ['github', 'https://avatars.githubusercontent.com/u/7']]) {
+      for (const token of [zosia.token, undefined]) {
+        const { state, url } = (await call('POST', `/v1/auth/${provider}/start`, token)).body;
+        assert.match(url, provider === 'google' ? /accounts\.google\.com/ : /github\.com\/login\/oauth/);
+        await fetch(`${base}/v1/auth/${provider}/callback?state=${state}&code=c`);
+        const done = (await call('GET', `/v1/auth/poll?state=${state}`)).body;
+        if (token) assert.equal(done.linked, true);
+        else {
+          assert.equal(done.user.id, zosia.user.id);
+          // pictures only from the provider's own host (Google's fake one is left out)
+          if (avatar) assert.equal(done.user.avatar, avatar);
+        }
+      }
     }
     assert.deepEqual((await call('GET', '/v1/health')).body.providers, ['discord', 'microsoft', 'google', 'github']);
   });
@@ -225,6 +285,10 @@ describe('social server', () => {
     assert.equal((await call('POST', '/v1/me', ewa.token, { cape: 'galaxy' })).body.cape, 'galaxy');
     // nothing until the launcher links the game's player to the account
     assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc] })).body, { active: [], capes: {} });
+    // only a Minecraft account proven at Mojang to be the player's own
+    assert.equal((await call('POST', '/v1/mc/link', ewa.token, { uuid: ewaMc })).body.error, 'not_linked');
+    await minecraftLogin('Ewa', ewaMc.replace(/-/g, ''), ewa.token);
+    await minecraftLogin('Tomek', tomMc.replace(/-/g, ''), tom.token);
     await call('POST', '/v1/mc/link', ewa.token, { uuid: ewaMc });
     await call('POST', '/v1/mc/link', tom.token, { uuid: tomMc });
     const seen = (await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc, tomMc] })).body;

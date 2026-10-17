@@ -13,7 +13,7 @@ function renderNav() {
 function renderSignIn() {
   const box = el('div', { class: 'glass card signin' },
     el('h3', { textContent: 'Zaloguj się' }),
-    el('p', { class: 'muted small', textContent: 'Tym samym kontem co w zakładce Znajomi w launcherze.' }));
+    el('p', { class: 'muted small', textContent: 'Konto SlashClient zakłada się samo w launcherze, razem z kontem Minecraft. Tutaj zalogujesz się sposobem, który do niego podpiąłeś w zakładce Znajomi.' }));
   const list = el('div', { class: 'providers' });
   for (const p of health.providers) {
     const [name, cls] = PROVIDERS[p] ?? [p, 'fa-solid fa-key'];
@@ -42,13 +42,25 @@ function renderAccount() {
   const profile = el('div', { class: 'glass card profile-card' },
     el('div', { class: 'row' }, avatarEl(me, true),
       el('div', { class: 'grow' }, el('h3', { textContent: me.name }), el('span', { class: 'muted', textContent: `@${me.handle}` }))),
-    el('div', { class: 'row' }, ...me.providers.map((p) => el('span', { class: 'chip' }, icon((PROVIDERS[p] ?? ['', 'fa-solid fa-flask'])[1]), (PROVIDERS[p] ?? ['Test'])[0])),
+    el('div', { class: 'row' }, ...me.providers.filter((p) => p !== 'minecraft').map((p) => el('span', { class: 'chip' }, icon((PROVIDERS[p] ?? ['', 'fa-solid fa-flask'])[1]), (PROVIDERS[p] ?? ['Test'])[0])),
       me.admin ? el('span', { class: 'chip blue' }, icon('fa-solid fa-shield-halved'), 'admin') : ''));
   const share = el('input', { type: 'checkbox', checked: me.showServer });
   share.addEventListener('change', async () => {
     const u = await guard(() => api('POST', '/v1/me', { showServer: share.checked }));
     if (u) me = u;
   });
+  // the Minecraft accounts of this account; one can go while another way to sign in is left
+  if (me.minecraft?.length) {
+    profile.append(el('div', { class: 'row small' }, el('span', { class: 'muted', textContent: 'Konta Minecraft:' }),
+      ...me.minecraft.map((mc) => el('button', { class: 'chip', title: 'Kliknij, żeby odłączyć', onclick: async () => {
+        if (!confirm(`Odłączyć konto Minecraft ${mc.name}?`)) return;
+        const u = await guard(() => api('DELETE', `/v1/me/minecraft/${mc.uuid}`));
+        if (u) {
+          me = u;
+          renderAccount();
+        }
+      } }, icon('fa-solid fa-cube'), mc.name))));
+  }
   profile.append(
     el('label', { class: 'row small' }, el('span', { class: 'switch' }, share, el('span')), 'Pokazuj znajomym, na jakim serwerze gram'),
     el('div', { class: 'row' },

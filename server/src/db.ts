@@ -13,7 +13,7 @@ export interface User { id: string; handle: string; name: string; avatar: string
 export interface AdminUser extends User { createdAt: number; lastSeen: number; providers: string[]; friends: number; sessions: number }
 export interface CosmeticSetting { id: string; enabled: boolean; exclusive: boolean }
 export interface LogEntry { id: number; at: number; admin: string; action: string; target: string; detail: string }
-export type Provider = 'discord' | 'microsoft' | 'google' | 'github' | 'dev';
+export type Provider = 'discord' | 'microsoft' | 'google' | 'github' | 'dev' | 'minecraft';
 /** "Join me": a server to play on together, sent as a message so it stays in the chat. */
 export interface Invite { server: string; version?: string }
 export interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite }
@@ -88,6 +88,9 @@ export class Db {
     if (!userColumns.some((c) => c.name === 'cape')) this.db.exec("ALTER TABLE users ADD COLUMN cape TEXT NOT NULL DEFAULT ''");
     if (!userColumns.some((c) => c.name === 'role')) this.db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT ''");
     if (!userColumns.some((c) => c.name === 'banned')) this.db.exec('ALTER TABLE users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0');
+    // the Minecraft name of a linked Minecraft account (other providers leave it empty)
+    const identityColumns = this.db.prepare('PRAGMA table_info(identities)').all() as { name: string }[];
+    if (!identityColumns.some((c) => c.name === 'label')) this.db.exec("ALTER TABLE identities ADD COLUMN label TEXT NOT NULL DEFAULT ''");
     this.db.exec(`
 CREATE TABLE IF NOT EXISTS cosmetics (id TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1, exclusive INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS cape_grants (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, cape TEXT NOT NULL, PRIMARY KEY (uuid, cape));
@@ -102,29 +105,55 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
   // ---- players and sessions ----
 
   /**
-   * The account behind a login (Discord, Microsoft, Google or GitHub user, test name), created on first
-   * sign-in. The name and avatar follow the provider; the handle stays once chosen.
+   * The account behind a login, created on first sign-in (Minecraft and the test login create
+   * accounts; Discord and the rest only sign in to accounts they are linked to, see `owner`).
+   * The name stays as it was at the start; the avatar follows the provider when it has one.
    */
-  signIn(provider: Provider, subject: string, wanted: { handle: string; name: string; avatar: string }): User {
+  signIn(provider: Provider, subject: string, wanted: { handle: string; name: string; avatar: string }, label = ''): User {
     const now = Date.now();
-    const known = this.db.prepare('SELECT uuid FROM identities WHERE provider = ? AND subject = ?').get(provider, subject) as { uuid: string } | undefined;
+    const known = this.owner(provider, subject);
     if (known) {
-      this.db.prepare('UPDATE users SET name = ?, avatar = ?, last_seen = ? WHERE uuid = ?').run(wanted.name, wanted.avatar, now, known.uuid);
-      return this.user(known.uuid)!;
+      if (wanted.avatar) this.db.prepare('UPDATE users SET avatar = ? WHERE uuid = ?').run(wanted.avatar, known);
+      this.db.prepare('UPDATE users SET last_seen = ? WHERE uuid = ?').run(now, known);
+      if (label) this.db.prepare('UPDATE identities SET label = ? WHERE provider = ? AND subject = ?').run(label, provider, subject);
+      return this.user(known)!;
     }
     const uuid = randomUUID();
     const handle = this.freeHandle(wanted.handle);
     this.db.prepare('INSERT INTO users (uuid, handle, handle_lower, name, avatar, created_at, last_seen) VALUES (?, ?, ?, ?, ?, ?, ?)')
       .run(uuid, handle, handle.toLowerCase(), wanted.name, wanted.avatar, now, now);
-    this.db.prepare('INSERT INTO identities (provider, subject, uuid) VALUES (?, ?, ?)').run(provider, subject, uuid);
+    this.db.prepare('INSERT INTO identities (provider, subject, uuid, label) VALUES (?, ?, ?, ?)').run(provider, subject, uuid, label);
     return this.user(uuid)!;
   }
 
+  /** Whose account a login belongs to, if anyone's. */
+  owner(provider: Provider, subject: string): string | undefined {
+    return (this.db.prepare('SELECT uuid FROM identities WHERE provider = ? AND subject = ?').get(provider, subject) as { uuid: string } | undefined)?.uuid;
+  }
+
+  /** The Minecraft accounts linked to an account: Mojang uuid (no dashes) and name. */
+  minecraftAccounts(uuid: string): { uuid: string; name: string }[] {
+    return (this.db.prepare("SELECT subject, label FROM identities WHERE uuid = ? AND provider = 'minecraft' ORDER BY label").all(uuid) as { subject: string; label: string }[])
+      .map((r) => ({ uuid: r.subject, name: r.label }));
+  }
+
+  /** How many ways there are to sign in to an account (each Minecraft account counts). */
+  identityCount(uuid: string): number {
+    return (this.db.prepare('SELECT COUNT(*) AS n FROM identities WHERE uuid = ?').get(uuid) as { n: number }).n;
+  }
+
+  unlinkIdentity(uuid: string, provider: Provider, subject: string): boolean {
+    return this.db.prepare('DELETE FROM identities WHERE uuid = ? AND provider = ? AND subject = ?').run(uuid, provider, subject).changes > 0;
+  }
+
   /** Adds a sign-in method to an account; false when it already belongs to someone. */
-  link(provider: Provider, subject: string, uuid: string): boolean {
-    const owner = this.db.prepare('SELECT uuid FROM identities WHERE provider = ? AND subject = ?').get(provider, subject) as { uuid: string } | undefined;
-    if (owner) return owner.uuid === uuid;
-    this.db.prepare('INSERT INTO identities (provider, subject, uuid) VALUES (?, ?, ?)').run(provider, subject, uuid);
+  link(provider: Provider, subject: string, uuid: string, label = ''): boolean {
+    const owner = this.owner(provider, subject);
+    if (owner) {
+      if (owner === uuid && label) this.db.prepare('UPDATE identities SET label = ? WHERE provider = ? AND subject = ?').run(label, provider, subject);
+      return owner === uuid;
+    }
+    this.db.prepare('INSERT INTO identities (provider, subject, uuid, label) VALUES (?, ?, ?, ?)').run(provider, subject, uuid, label);
     return true;
   }
 
@@ -133,7 +162,7 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
   }
 
   providers(uuid: string): string[] {
-    return (this.db.prepare('SELECT provider FROM identities WHERE uuid = ? ORDER BY provider').all(uuid) as { provider: string }[]).map((r) => r.provider);
+    return (this.db.prepare('SELECT DISTINCT provider FROM identities WHERE uuid = ? ORDER BY provider').all(uuid) as { provider: string }[]).map((r) => r.provider);
   }
 
   /** `base`, or `base2`, `base3`… when someone already has it. */

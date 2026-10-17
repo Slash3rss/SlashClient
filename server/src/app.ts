@@ -30,6 +30,10 @@ export interface Config {
   adminHandles?: string[];
   /** The website's files (web/); without it only the API is served. */
   webDir?: string;
+  /** Behind a reverse proxy (Caddy): the player's address is the last one in X-Forwarded-For. */
+  trustProxy?: boolean;
+  /** Sign-ins allowed per address per minute (tests raise it). */
+  loginsPerMinute?: number;
   /** GitHub repository with the launcher's releases, for /pobierz/<system> (owner/name). */
   releasesRepo?: string;
   /** Read access to that repository when it is private. */
@@ -40,6 +44,7 @@ export interface Config {
 const VALID_NAME = /^\w{3,16}$/;
 const SESSION_IDLE_MS = 90 * 24 * 3_600_000;
 const LOGIN_TTL_MS = 10 * 60_000;
+const MC_CHALLENGE_MS = 2 * 60_000;
 const MAX_MESSAGE = 2000;
 /** A game counts as running this long after its last report (the mod reports every 4 minutes). */
 const IN_GAME_TTL_MS = 10 * 60_000;
@@ -85,6 +90,8 @@ export function createApp(cfg: Config) {
    * Sign-ins in progress: the launcher opens the browser and polls with `state` until the
    * browser part is done. With `linkTo` the login adds a provider to an existing account.
    */
+  /** Minecraft sign-ins waiting for the launcher to "join" at Mojang: server id → when. */
+  const mcChallenges = new Map<string, number>();
   type Login = { provider: ProviderId; at: number; linkTo?: string; result?: unknown; error?: string };
   const logins = new Map<string, Login>();
 
@@ -96,6 +103,11 @@ export function createApp(cfg: Config) {
         return true;
       }
       login.error = 'already_linked';
+      return false;
+    }
+    // Discord and the rest only open an account they were linked to (accounts start with Minecraft)
+    if (!db.owner(provider, id.subject)) {
+      login.error = 'not_linked';
       return false;
     }
     try {
@@ -135,7 +147,12 @@ export function createApp(cfg: Config) {
   const presences = new Map<string, Presence>();
   const limitMessages = rateLimiter(40);
   const limitRequests = rateLimiter(15);
-  const limitLogins = rateLimiter(10);
+  const limitLogins = rateLimiter(cfg.loginsPerMinute ?? 10);
+  /** Who is asking, for the rate limits: behind Caddy every request comes from 127.0.0.1. */
+  const clientIp = (req: http.IncomingMessage): string => {
+    const forwarded = cfg.trustProxy ? String(req.headers['x-forwarded-for'] ?? '').split(',').pop()?.trim() : '';
+    return forwarded || req.socket.remoteAddress || '';
+  };
   /**
    * Minecraft players in a game with SlashClient right now (uuid → last report), for the
    * logo next to their name. Kept in memory: the mod reports again every few minutes.
@@ -224,7 +241,7 @@ export function createApp(cfg: Config) {
 
   function meWithProviders(me: string) {
     const { banned: _banned, ...user } = db.user(me)!;
-    return { ...user, providers: db.providers(me), admin: isAdmin(me), grants: db.grants(me) };
+    return { ...user, providers: db.providers(me), minecraft: db.minecraftAccounts(me), admin: isAdmin(me), grants: db.grants(me) };
   }
 
   function friendOrThrow(me: string, other: string) {
@@ -254,11 +271,42 @@ export function createApp(cfg: Config) {
       if (typeof name !== 'string' || !VALID_NAME.test(name)) throw new HttpError(400, 'bad_name');
       return newSession(db.signIn('dev', name.toLowerCase(), { handle: name, name, avatar: '' }));
     }],
+    // Minecraft: the launcher proves it plays as a Minecraft account the way a Minecraft server
+    // checks it (it "joins" a random server id at Mojang, the server asks Mojang whether it did),
+    // so its Minecraft token never comes here. With a session the account is linked to it.
+    ['POST', /^\/v1\/auth\/minecraft\/start$/, (req) => {
+      limitLogins(clientIp(req));
+      const serverId = randomBytes(20).toString('hex');
+      mcChallenges.set(serverId, Date.now());
+      for (const [id, at] of mcChallenges) if (Date.now() - at > MC_CHALLENGE_MS) mcChallenges.delete(id);
+      return { serverId };
+    }],
+    ['POST', /^\/v1\/auth\/minecraft\/finish$/, async (req) => {
+      limitLogins(clientIp(req));
+      const { serverId, name } = await body(req);
+      if (typeof serverId !== 'string' || typeof name !== 'string' || !/^\w{1,16}$/.test(name)) throw new HttpError(400, 'bad_request');
+      const at = mcChallenges.get(serverId);
+      mcChallenges.delete(serverId);
+      if (!at || Date.now() - at > MC_CHALLENGE_MS) throw new HttpError(400, 'login_expired');
+      const res = await (cfg.fetchImpl ?? fetch)(`https://sessionserver.mojang.com/session/minecraft/hasJoined?${new URLSearchParams({ username: name, serverId })}`, { signal: AbortSignal.timeout(10_000) });
+      if (res.status !== 200) throw new HttpError(403, 'not_verified');
+      const profile = (await res.json()) as { id?: string; name?: string };
+      if (!profile.id || !/^[0-9a-f]{32}$/.test(profile.id) || !profile.name) throw new HttpError(403, 'not_verified');
+      const me = req.headers.authorization ? authed(req) : undefined;
+      const owner = db.owner('minecraft', profile.id);
+      if (me && (!owner || owner === me)) {
+        db.link('minecraft', profile.id, me, profile.name);
+        return { linked: true, user: meWithProviders(me) };
+      }
+      // a new player, or the account this Minecraft account belongs to (someone else's: the launcher switches to it)
+      const session = newSession(db.signIn('minecraft', profile.id, { handle: profile.name, name: profile.name, avatar: '' }, profile.name));
+      return { ...session, user: meWithProviders(session.user.id), switched: !!me };
+    }],
     // with a session this links the provider to the account instead of signing in
     ['POST', /^\/v1\/auth\/(discord|microsoft|google|github)\/start$/, (req, [provider]) => {
       const p = providers[provider as ProviderId];
       if (!p) throw new HttpError(404, 'provider_disabled');
-      limitLogins(req.socket.remoteAddress ?? '');
+      limitLogins(clientIp(req));
       const linkTo = req.headers.authorization ? authed(req) : undefined;
       const state = randomBytes(24).toString('base64url');
       const login = { provider: provider as ProviderId, at: Date.now(), linkTo };
@@ -295,8 +343,15 @@ export function createApp(cfg: Config) {
       const me = authed(req);
       const linked = db.providers(me);
       if (!linked.includes(provider)) throw new HttpError(404, 'not_found');
-      if (linked.length < 2) throw new HttpError(400, 'last_provider');
+      if (db.identityCount(me) < 2) throw new HttpError(400, 'last_provider');
       db.unlink(me, provider);
+      return meWithProviders(me);
+    }],
+    ['DELETE', /^\/v1\/me\/minecraft\/([0-9a-f]{32})$/, (req, [mcUuid]) => {
+      const me = authed(req);
+      if (db.owner('minecraft', mcUuid) !== me) throw new HttpError(404, 'not_found');
+      if (db.identityCount(me) < 2) throw new HttpError(400, 'last_provider');
+      db.unlinkIdentity(me, 'minecraft', mcUuid);
       return meWithProviders(me);
     }],
     ['POST', /^\/v1\/me$/, async (req) => {
@@ -361,14 +416,14 @@ export function createApp(cfg: Config) {
 
     // -- who plays with SlashClient (the logo on the tab list and above heads) --
     ['POST', /^\/v1\/mc\/heartbeat$/, async (req) => {
-      limitGame(req.socket.remoteAddress ?? '');
+      limitGame(clientIp(req));
       const { uuid } = await body(req);
       if (typeof uuid !== 'string' || !UUID.test(uuid)) throw new HttpError(400, 'bad_request');
       inGame.set(uuid.toLowerCase(), Date.now());
       return { ok: true, ttl: IN_GAME_TTL_MS };
     }],
     ['POST', /^\/v1\/mc\/lookup$/, async (req) => {
-      limitGame(req.socket.remoteAddress ?? '');
+      limitGame(clientIp(req));
       const { uuids } = await body(req);
       if (!Array.isArray(uuids) || uuids.length > 250) throw new HttpError(400, 'bad_request');
       const now = Date.now();
@@ -387,10 +442,12 @@ export function createApp(cfg: Config) {
     // the launcher says which Minecraft player its SlashClient account plays as, while the game runs
     ['POST', /^\/v1\/mc\/link$/, async (req) => {
       const me = authed(req);
-      limitGame(req.socket.remoteAddress ?? '');
+      limitGame(clientIp(req));
       const { uuid } = await body(req);
       if (typeof uuid !== 'string' || !UUID.test(uuid)) throw new HttpError(400, 'bad_request');
       const key = uuid.toLowerCase();
+      // only a Minecraft account proven to be ours, or anyone could wear their cape as someone else
+      if (db.owner('minecraft', key.replace(/-/g, '')) !== me) throw new HttpError(403, 'not_linked');
       linked.set(key, { user: me, at: Date.now() });
       inGame.set(key, Date.now());
       return { ok: true, ttl: IN_GAME_TTL_MS };

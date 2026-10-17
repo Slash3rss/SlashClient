@@ -42,6 +42,7 @@ const { server } = createApp({
   allowDevLogin: process.env.ALLOW_DEV_LOGIN === '1',
   adminHandles: (process.env.ADMIN_HANDLES ?? '').split(','),
   webDir: process.env.WEB_DIR ?? path.resolve('web'),
+  trustProxy: process.env.TRUST_PROXY === '1',
   releasesRepo: process.env.RELEASES_REPO,
   releasesToken: process.env.RELEASES_TOKEN || undefined,
 });

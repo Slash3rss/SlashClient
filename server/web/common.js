@@ -45,6 +45,8 @@ const ERRORS = {
   no_such_user: 'Nie ma takiego gracza.',
   not_found: 'Nie znaleziono.',
   cancelled: 'Logowanie anulowane.',
+  not_linked: 'To konto nie jest podpięte do żadnego konta SlashClient. Załóż konto w launcherze (kontem Minecraft) i podepnij ten sposób logowania w zakładce Znajomi.',
+  last_provider: 'To jedyny sposób logowania. Najpierw podepnij inny.',
 };
 export const errorText = (err) => ERRORS[err?.code] ?? (err?.message || 'Coś poszło nie tak.');
 
@@ -97,6 +99,7 @@ export const PROVIDERS = {
   microsoft: ['Microsoft', 'fa-brands fa-microsoft'],
   google: ['Google', 'fa-brands fa-google'],
   github: ['GitHub', 'fa-brands fa-github'],
+  minecraft: ['Minecraft', 'fa-solid fa-cube'],
 };
 
 /**
