@@ -13,12 +13,19 @@ const TYPES: Record<string, string> = {
 };
 const PAGES: Record<string, string> = { '/': 'index.html', '/konto': 'konto.html', '/admin': 'admin.html', '/admin/': 'admin.html' };
 
+/** Pages with an id in the address: a shared log, one bug report. */
+function pageOf(pathname: string): string | undefined {
+  if (/^\/logi\/[A-Za-z0-9]{10}$/.test(pathname)) return 'logi.html';
+  if (/^\/zgloszenia(\/\d+)?\/?$/.test(pathname)) return 'zgloszenia.html';
+  return undefined;
+}
+
 /** Serves a file of the site; false when there is none (the caller answers 404). */
 export async function serveWeb(webDir: string, pathname: string, res: http.ServerResponse, ifModifiedSince?: string): Promise<boolean> {
   const root = path.resolve(webDir);
   let rel: string;
   try {
-    rel = PAGES[pathname] ?? decodeURIComponent(pathname).replace(/^\/+/, '');
+    rel = PAGES[pathname] ?? pageOf(pathname) ?? decodeURIComponent(pathname).replace(/^\/+/, '');
   } catch {
     return false;
   }

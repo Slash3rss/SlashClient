@@ -1,0 +1,54 @@
+/* Shared logs (/logi) and the bug tracker (/zgloszenia). */
+.nav-links a.on { color: var(--text); }
+textarea {
+  width: 100%; min-height: 140px; padding: 10px 12px; color: var(--text); background: rgba(0, 0, 0, .25); border: 1px solid var(--border);
+  border-radius: var(--btn-radius); font: 14px/1.5 "Outfit", sans-serif; outline: none; resize: vertical;
+}
+textarea:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(59, 130, 246, .15); }
+
+/* ---------- log ---------- */
+.log-tools { padding: 10px; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; position: sticky; top: 70px; z-index: 2; }
+.log-tools input[type=search] { flex: 1; min-width: 180px; }
+.log-view { padding: 8px 0; overflow-x: auto; font: 12.5px/1.55 ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.log-line { display: flex; white-space: pre; padding: 0 14px 0 0; }
+.log-line:hover { background: rgba(255, 255, 255, .03); }
+.log-line .n { flex: 0 0 56px; text-align: right; padding-right: 14px; color: var(--muted); user-select: none; }
+.log-line .n a { color: inherit; }
+.log-line.warn { color: #fcd34d; background: rgba(250, 204, 21, .04); }
+.log-line.error { color: #fca5a5; background: rgba(239, 68, 68, .07); }
+.log-line.trace { color: #f9a8d4; }
+.log-line.target { background: rgba(59, 130, 246, .18); }
+.log-line mark { background: rgba(59, 130, 246, .45); color: #fff; border-radius: 2px; }
+.log-more { padding: 10px 14px; }
+
+/* ---------- bugs ---------- */
+.bug-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.bug-bar input[type=search] { flex: 1; min-width: 180px; }
+.bug-list { display: flex; flex-direction: column; gap: 8px; }
+.bug-row { display: flex; gap: 14px; align-items: center; padding: 14px 18px; color: var(--text); }
+.bug-row:hover { background: rgba(255, 255, 255, .05); text-decoration: none; }
+.bug-row .grow { min-width: 0; }
+.bug-row h4 { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bug-row p { margin: 2px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bug-row .count { color: var(--text-2); font-size: 13px; white-space: nowrap; }
+.bug-head { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 6px; }
+.bug-head h3 { font-size: 24px; flex: 1; min-width: 200px; }
+.bug-body { white-space: pre-wrap; word-wrap: break-word; margin: 12px 0 0; }
+.bug-facts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.comments { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.comment { padding: 14px 18px; }
+.comment.staff { border-color: rgba(59, 130, 246, .35); background: rgba(29, 78, 216, .10); }
+.comment .who { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.comment p { margin: 0; white-space: pre-wrap; word-wrap: break-word; }
+.bug-form { display: flex; flex-direction: column; gap: 10px; }
+.bug-form input[type=text] { width: 100%; }
+.pager { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
+.st-open { background: rgba(59, 130, 246, .15); color: var(--accent-light); }
+.st-confirmed { background: rgba(250, 204, 21, .14); color: var(--gold); }
+.st-fixed { background: rgba(74, 222, 128, .12); color: var(--green); }
+.st-closed, .st-duplicate { background: rgba(255, 255, 255, .06); color: var(--text-2); }
+@media (max-width: 640px) {
+  .log-tools .label { display: none; }
+  .log-tools { top: 60px; }
+  .bug-row { padding: 12px 14px; }
+}

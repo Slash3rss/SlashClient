@@ -8,6 +8,7 @@ import { cleanPresence, publicPresence, type Presence } from './presence.ts';
 import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, mayWear, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
 import { partnerRoutes } from './partners.ts';
+import { trackerRoutes } from './tracker.ts';
 import { serveWeb } from './web.ts';
 import { createDownloads, isDownloadOs } from './downloads.ts';
 
@@ -284,6 +285,14 @@ export function createApp(cfg: Config) {
   type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
   const partners = partnerRoutes({
     db, authed, admin, body, dir: path.join(path.dirname(cfg.dbFile), 'partners'),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  const limitReports = rateLimiter(6);
+  const tracker = trackerRoutes({
+    db, authed, isAdmin, body, clientIp, limit: limitReports, dir: path.join(path.dirname(cfg.dbFile), 'logs'),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -639,6 +648,7 @@ export function createApp(cfg: Config) {
       return { ok: true };
     }],
     ...partners.routes,
+    ...tracker.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins,
       fail: (status, code) => {
@@ -816,11 +826,14 @@ export function createApp(cfg: Config) {
     for (const [uuid, at] of inGame) if (Date.now() - at > IN_GAME_TTL_MS) inGame.delete(uuid);
     for (const [uuid, l] of linked) if (Date.now() - l.at > IN_GAME_TTL_MS) linked.delete(uuid);
   }, 30_000);
+  // shared logs past their time, once an hour
+  const logCleanup = setInterval(() => void tracker.cleanup().catch((err) => console.error('logi:', (err as Error).message)), 3_600_000);
 
   return {
     server,
     close: () => new Promise<void>((resolve) => {
       clearInterval(heartbeat);
+      clearInterval(logCleanup);
       for (const ws of wss.clients) ws.terminate();
       wss.close();
       server.close(() => {

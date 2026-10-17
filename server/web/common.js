@@ -70,6 +70,11 @@ const ERRORS = {
   not_found: 'Nie znaleziono.',
   cancelled: 'Logowanie anulowane.',
   not_linked: 'To konto nie jest podpięte do żadnego konta SlashClient. Załóż konto w launcherze (kontem Minecraft) i podepnij ten sposób logowania w zakładce Znajomi.',
+  title_too_short: 'Tytuł jest za krótki.',
+  body_too_short: 'Opisz problem trochę dokładniej.',
+  bad_log: 'Nie ma takiego logu (może już wygasł).',
+  empty: 'Nic nie wpisano.',
+  forbidden: 'Nie możesz tego zrobić.',
   last_provider: 'To jedyny sposób logowania. Najpierw podepnij inny.',
 };
 export const errorText = (err) => ERRORS[err?.code] ?? (err?.message || 'Coś poszło nie tak.');

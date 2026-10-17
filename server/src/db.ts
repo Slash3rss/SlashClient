@@ -83,6 +83,10 @@ function parseLoadout(json: string): Record<string, string> {
 }
 const toUser = (r: UserRow): User => ({ id: r.uuid, handle: r.handle, name: r.name, avatar: r.avatar, showServer: !!r.show_server, cape: r.cape, role: r.role, rank: r.rank, banned: !!r.banned, loadout: parseLoadout(r.loadout) });
 
+/** A bug report as the tracker lists it; `authorHandle` is null once the account is gone. */
+export interface Bug { id: number; author: string; authorHandle: string | null; title: string; body: string; logId: string; version: string; os: string; status: string; createdAt: number; updatedAt: number; comments: number }
+export interface BugComment { id: number; author: string; authorHandle: string | null; authorRole: string | null; body: string; createdAt: number }
+
 /** Friendships are stored once, with the smaller uuid first. */
 const pair = (x: string, y: string) => (x < y ? [x, y] : [y, x]);
 
@@ -111,6 +115,10 @@ export class Db {
 CREATE TABLE IF NOT EXISTS cosmetics (id TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1, exclusive INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS cape_grants (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, cape TEXT NOT NULL, PRIMARY KEY (uuid, cape));
 CREATE TABLE IF NOT EXISTS device_keys (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, device TEXT NOT NULL, pub TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (uuid, device));
+CREATE TABLE IF NOT EXISTS logs (id TEXT PRIMARY KEY, owner TEXT NOT NULL DEFAULT '', size INTEGER NOT NULL, lines INTEGER NOT NULL, created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS bugs (id INTEGER PRIMARY KEY AUTOINCREMENT, author TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, log_id TEXT NOT NULL DEFAULT '', version TEXT NOT NULL DEFAULT '', os TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS bug_comments (id INTEGER PRIMARY KEY AUTOINCREMENT, bug_id INTEGER NOT NULL REFERENCES bugs(id) ON DELETE CASCADE, author TEXT NOT NULL, body TEXT NOT NULL, created_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS bug_comments_bug ON bug_comments(bug_id, id);
 CREATE TABLE IF NOT EXISTS partners (id TEXT PRIMARY KEY, address TEXT NOT NULL UNIQUE, name TEXT NOT NULL DEFAULT '', owner TEXT NOT NULL DEFAULT '', background TEXT NOT NULL DEFAULT '', updated_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, admin TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '');
 `);
@@ -533,5 +541,74 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
 
   removePartner(id: string) {
     this.db.prepare('DELETE FROM partners WHERE id = ?').run(id);
+  }
+
+  // ---- shared logs ----
+
+  addLog(id: string, owner: string, size: number, lines: number) {
+    this.db.prepare('INSERT INTO logs (id, owner, size, lines, created_at) VALUES (?, ?, ?, ?, ?)').run(id, owner, size, lines, Date.now());
+  }
+
+  sharedLog(id: string): { id: string; owner: string; size: number; lines: number; createdAt: number } | undefined {
+    return this.db.prepare('SELECT id, owner, size, lines, created_at AS createdAt FROM logs WHERE id = ?').get(id) as { id: string; owner: string; size: number; lines: number; createdAt: number } | undefined;
+  }
+
+  /** Logs older than `before`, to remove with their files. */
+  oldLogs(before: number): string[] {
+    return (this.db.prepare('SELECT id FROM logs WHERE created_at < ?').all(before) as { id: string }[]).map((r) => r.id);
+  }
+
+  removeLog(id: string) {
+    this.db.prepare('DELETE FROM logs WHERE id = ?').run(id);
+  }
+
+  // ---- bug reports ----
+
+  addBug(b: { author: string; title: string; body: string; logId: string; version: string; os: string }): number {
+    const now = Date.now();
+    const { lastInsertRowid } = this.db.prepare('INSERT INTO bugs (author, title, body, log_id, version, os, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(b.author, b.title, b.body, b.logId, b.version, b.os, 'open', now, now);
+    return Number(lastInsertRowid);
+  }
+
+  bugs(status: string, query: string, limit: number, offset: number): { bugs: Bug[]; total: number } {
+    const like = `%${query.toLowerCase().replace(/[%_\\]/g, (c) => `\\${c}`)}%`;
+    const where = `WHERE (? = '' OR b.status = ?) AND (lower(b.title) LIKE ? ESCAPE '\\' OR lower(b.body) LIKE ? ESCAPE '\\')`;
+    const args = [status, status, like, like];
+    const total = (this.db.prepare(`SELECT COUNT(*) AS n FROM bugs b ${where}`).get(...args) as { n: number }).n;
+    const rows = this.db.prepare(`SELECT b.id, b.author, u.handle AS authorHandle, b.title, b.body, b.log_id AS logId, b.version, b.os, b.status, b.created_at AS createdAt, b.updated_at AS updatedAt,
+      (SELECT COUNT(*) FROM bug_comments c WHERE c.bug_id = b.id) AS comments
+      FROM bugs b LEFT JOIN users u ON u.uuid = b.author ${where} ORDER BY b.updated_at DESC LIMIT ? OFFSET ?`).all(...args, limit, offset) as unknown as Bug[];
+    return { bugs: rows, total };
+  }
+
+  bug(id: number): Bug | undefined {
+    return this.db.prepare(`SELECT b.id, b.author, u.handle AS authorHandle, b.title, b.body, b.log_id AS logId, b.version, b.os, b.status, b.created_at AS createdAt, b.updated_at AS updatedAt,
+      (SELECT COUNT(*) FROM bug_comments c WHERE c.bug_id = b.id) AS comments
+      FROM bugs b LEFT JOIN users u ON u.uuid = b.author WHERE b.id = ?`).get(id) as Bug | undefined;
+  }
+
+  setBugStatus(id: number, status: string) {
+    this.db.prepare('UPDATE bugs SET status = ?, updated_at = ? WHERE id = ?').run(status, Date.now(), id);
+  }
+
+  removeBug(id: number) {
+    this.db.prepare('DELETE FROM bugs WHERE id = ?').run(id);
+  }
+
+  bugComments(id: number): BugComment[] {
+    return this.db.prepare(`SELECT c.id, c.author, u.handle AS authorHandle, u.rank AS authorRole, c.body, c.created_at AS createdAt
+      FROM bug_comments c LEFT JOIN users u ON u.uuid = c.author WHERE c.bug_id = ? ORDER BY c.id`).all(id) as unknown as BugComment[];
+  }
+
+  addBugComment(bugId: number, author: string, body: string): number {
+    const now = Date.now();
+    const { lastInsertRowid } = this.db.prepare('INSERT INTO bug_comments (bug_id, author, body, created_at) VALUES (?, ?, ?, ?)').run(bugId, author, body, now);
+    this.db.prepare('UPDATE bugs SET updated_at = ? WHERE id = ?').run(now, bugId);
+    return Number(lastInsertRowid);
+  }
+
+  removeBugComment(id: number) {
+    this.db.prepare('DELETE FROM bug_comments WHERE id = ?').run(id);
   }
 }

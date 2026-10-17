@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SlashClient – Log</title>
+  <meta name="theme-color" content="#07090f">
+  <link rel="icon" href="/vendor/logo.png">
+  <link rel="stylesheet" href="/vendor/fa/css/all.min.css">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/landing.css">
+  <link rel="stylesheet" href="/tracker.css">
+  <script type="module" src="/logs.js"></script>
+</head>
+<body class="landing">
+  <div class="bg" aria-hidden="true"><div class="bg-grid"></div><div class="bg-glow g1"></div></div>
+
+  <header class="nav scrolled">
+    <div class="wrap">
+      <a class="brand" href="/"><img src="/vendor/logo.png" alt=""><span>Slash<b>Client</b></span></a>
+      <nav class="nav-links">
+        <a href="/#funkcje">Funkcje</a>
+        <a href="/#kosmetyki">Kosmetyki</a>
+        <a href="/#faq">FAQ</a>
+        <a href="/zgloszenia">Zgłoszenia</a>
+      </nav>
+      <div class="push row">
+        <a class="btn hidden" id="nav-admin" href="/admin" title="Panel admina"><i class="fa-solid fa-shield-halved"></i> <span class="label">Panel admina</span></a>
+        <a class="btn" id="nav-account" href="/konto" title="Twoje konto"><i class="fa-solid fa-user"></i> <span class="label">Zaloguj się</span></a>
+        <a class="btn primary" href="/#pobierz"><i class="fa-solid fa-download"></i> <span class="label">Pobierz</span></a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="account-page">
+      <div class="wrap">
+        <div class="head">
+          <span class="eyebrow">Log</span>
+          <h2 id="log-title">Log gry</h2>
+          <p class="muted" id="log-meta">Wczytuję…</p>
+        </div>
+        <div class="glass log-tools row">
+          <input type="search" id="log-search" placeholder="Szukaj w logu…">
+          <label class="row small"><span class="switch"><input type="checkbox" id="log-problems"><span></span></span> Tylko błędy i ostrzeżenia</label>
+          <span class="push row">
+            <button type="button" id="log-copy"><i class="fa-regular fa-copy"></i> <span class="label">Kopiuj link</span></button>
+            <button type="button" id="log-download"><i class="fa-solid fa-download"></i> <span class="label">Pobierz</span></button>
+            <a class="btn primary" id="log-report" href="/zgloszenia"><i class="fa-solid fa-bug"></i> <span class="label">Zgłoś błąd</span></a>
+          </span>
+        </div>
+        <div class="glass log-view" id="log"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap row">
+      <span class="muted small">SlashClient · nie jest powiązany z Mojang ani Microsoft.</span>
+      <a class="push" href="/">Strona główna</a>
+    </div>
+  </footer>
+</body>
+</html>
