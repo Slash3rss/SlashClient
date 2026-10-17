@@ -13,6 +13,8 @@ declare global {
 
 interface PublicAccount { id: string; type: 'offline' | 'msa'; name: string; uuid: string }
 interface Profile {
+  /** The Minecraft account this profile always plays as. */
+  accountId?: string;
   id: string; name: string; versionId: string; loader: 'vanilla' | 'fabric' | 'quilt' | 'forge' | 'neoforge'; loaderVersion: string; gameDir: string; memoryMb: number;
   jvmArgs: string; javaPath: string; width: number; height: number;
   icon: string; iconVersion: number; syncOptions: boolean; hud?: boolean; iconFile?: string;
@@ -43,6 +45,8 @@ interface PublicStore {
   profiles: Profile[];
   settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
   running: boolean;
+  /** Profiles whose game runs now (several can at once). */
+  runningProfiles?: string[];
   dataDir: string;
   systemMemoryMb: number;
   hudVersions?: string[];
@@ -56,6 +60,8 @@ let store: PublicStore;
 let versions: VersionInfo[] = [];
 let editingId: string | undefined;
 let launching = false;
+/** The game of the profile picked on the Play tab runs now (other profiles may run too). */
+const selectedRunning = () => (store.runningProfiles ?? []).includes($<HTMLSelectElement>('#play-profile').value);
 
 // ---------- helpers ----------
 
@@ -592,7 +598,7 @@ function renderIconChoices(profile: Profile) {
 function renderContinue(profile: Profile | undefined) {
   const box = $('#continue');
   const target = profile?.lastTarget;
-  box.classList.toggle('hidden', !target || store.running || launching);
+  box.classList.toggle('hidden', !target || selectedRunning() || launching);
   if (!target || !profile) return;
   $('#continue-icon').className = target.kind === 'server' ? 'fa-solid fa-server' : 'fa-solid fa-earth-europe';
   $('#continue-where').textContent = target.kind === 'server'
@@ -664,9 +670,13 @@ function renderPlay() {
   const profileSel = $<HTMLSelectElement>('#play-profile');
   const accountSel = $<HTMLSelectElement>('#play-account');
   fillSelect(profileSel, store.profiles.map((p) => ({ value: p.id, label: p.name })), store.settings.selectedProfileId);
-  fillSelect(accountSel, store.accounts.map((a) => ({ value: a.id, label: `${a.name}${a.type === 'offline' ? ' (offline)' : ''}` })), store.settings.selectedAccountId);
+  // a profile with its own account plays as it: the account picker follows the profile
+  const own = store.profiles.find((p) => p.id === store.settings.selectedProfileId)?.accountId;
+  const accountId = own && store.accounts.some((a) => a.id === own) ? own : store.settings.selectedAccountId;
+  fillSelect(accountSel, store.accounts.map((a) => ({ value: a.id, label: `${a.name}${a.type === 'offline' ? ' (offline)' : ''}` })), accountId);
   if (store.accounts.length === 0) accountSel.append(el('option', { value: '', textContent: 'Brak kont' }));
-  picker(profileSel, store.profiles.map((p) => ({ value: p.id, label: p.name, sub: profileLabel(p), img: profileIconUrl(p), pixelated: p.icon !== 'custom' })));
+  const runningIds = store.runningProfiles ?? [];
+  picker(profileSel, store.profiles.map((p) => ({ value: p.id, label: p.name, sub: runningIds.includes(p.id) ? `${profileLabel(p)} · ${t('działa')}` : profileLabel(p), img: profileIconUrl(p), pixelated: p.icon !== 'custom' })));
   picker(accountSel, store.accounts.map((a) => ({ value: a.id, label: a.name, sub: a.type === 'msa' ? 'Microsoft' : 'Offline', img: avatarUrl(a.id), pixelated: true })), 'Brak kont');
 
   const profile = store.profiles.find((p) => p.id === profileSel.value) ?? store.profiles[0];
@@ -680,9 +690,10 @@ function renderPlay() {
   renderContinue(profile);
 
   const btn = $<HTMLButtonElement>('#play-btn');
-  btn.textContent = store.running ? 'ZATRZYMAJ' : launching ? t('URUCHAMIANIE…') : 'GRAJ';
-  btn.classList.toggle('stop', store.running);
-  btn.classList.toggle('starting', launching && !store.running);
+  const running = selectedRunning();
+  btn.textContent = running ? 'ZATRZYMAJ' : launching ? t('URUCHAMIANIE…') : 'GRAJ';
+  btn.classList.toggle('stop', running);
+  btn.classList.toggle('starting', launching && !running);
   btn.disabled = launching;
 
 }
@@ -889,6 +900,10 @@ function loadProfileForm(profile: Profile) {
   renderVersionOptions(profile.versionId);
   renderIconChoices(profile);
   renderModpackBox(profile);
+  fillSelect($<HTMLSelectElement>('#profile-account'), [
+    { value: '', label: t('Wybrane na karcie Graj') },
+    ...store.accounts.map((a) => ({ value: a.id, label: `${a.name}${a.type === 'offline' ? ' (offline)' : ''}` })),
+  ], store.accounts.some((a) => a.id === profile.accountId) ? profile.accountId : '');
   (form.elements.namedItem('syncOptions') as HTMLInputElement).checked = profile.syncOptions ?? false;
   (form.elements.namedItem('hud') as HTMLInputElement).checked = profile.hud ?? true;
   renderHudHint();
@@ -994,6 +1009,24 @@ function appendLog(line: string) {
 
 const logText = () => [...log.children].map((l) => l.textContent).join('\n');
 
+/** Each profile's game log (several games can run at once); the console shows the picked profile's. */
+const logs = new Map<string, string[]>();
+const pickedProfile = () => $<HTMLSelectElement>('#play-profile').value;
+function logTo(profileId: string, line: string) {
+  const lines = logs.get(profileId) ?? [];
+  lines.push(line);
+  if (lines.length > 2000) lines.splice(0, lines.length - 2000);
+  logs.set(profileId, lines);
+  if (profileId === pickedProfile()) appendLog(line);
+}
+/** The console with the picked profile's log, or the news when that profile has none yet. */
+function showProfileLog() {
+  const lines = logs.get(pickedProfile());
+  log.replaceChildren();
+  for (const line of lines ?? []) appendLog(line);
+  showLog(!!lines);
+}
+
 $('#log-search').addEventListener('input', () => {
   logQuery = $<HTMLInputElement>('#log-search').value.trim().toLowerCase();
   for (const line of log.children) line.classList.toggle('miss', Boolean(logQuery) && !(line.textContent ?? '').toLowerCase().includes(logQuery));
@@ -1035,7 +1068,11 @@ function showStage(stage: StageEvent) {
 $('#play-profile').addEventListener('change', (e) => {
   store.settings.selectedProfileId = (e.target as HTMLSelectElement).value;
   api.saveSettings({ selectedProfileId: store.settings.selectedProfileId });
+  // the profile's own account becomes the chosen one (Accounts tab and skin follow)
+  const own = store.profiles.find((p) => p.id === store.settings.selectedProfileId)?.accountId;
+  if (own && own !== store.settings.selectedAccountId && store.accounts.some((a) => a.id === own)) selectAccount(own);
   renderPlay();
+  showProfileLog();
 });
 $('#play-account').addEventListener('change', (e) => selectAccount((e.target as HTMLSelectElement).value));
 
@@ -1055,14 +1092,15 @@ function showView(name: string) {
 
 /** Starts the selected profile with the selected account, optionally joining a server. */
 async function startGame(server?: string, world?: string, benchmark = false) {
-  if (store.running || launching) return toast('Gra już działa.', true);
+  if (launching) return;
+  if (selectedRunning()) return toast(t('Ten profil już działa.'), true);
   launching = true;
   if (!(await confirmModsOk($<HTMLSelectElement>('#play-profile').value))) {
     launching = false;
     return;
   }
-  log.replaceChildren();
-  showLog(true);
+  logs.set(pickedProfile(), []);
+  showProfileLog();
   $('#crash').classList.add('hidden');
   showView('play');
   renderPlay();
@@ -1073,14 +1111,14 @@ async function startGame(server?: string, world?: string, benchmark = false) {
     finishTaskCard({ id: LAUNCH_CARD, ok: true, message: t('Gra uruchomiona') }, 3500);
   } catch (err) {
     finishTaskCard({ id: LAUNCH_CARD, ok: false, message: errorText(err) });
-    appendLog(`[SlashClient] ${errorText(err)}`);
+    logTo(profile?.id ?? pickedProfile(), `[SlashClient] ${errorText(err)}`);
   } finally {
     launching = false;
     renderPlay();
   }
 }
 
-$('#play-btn').addEventListener('click', () => (store.running ? void api.kill() : startGame()));
+$('#play-btn').addEventListener('click', () => (selectedRunning() ? void api.kill($<HTMLSelectElement>('#play-profile').value) : startGame()));
 
 interface CrashAnalysis { title: string; details: string[]; fix?: string; crashReport?: string }
 let crashReport: string | undefined;
@@ -1102,16 +1140,16 @@ $('#crash-copy').addEventListener('click', async () => {
 });
 
 api.on('launch:stage', showStage);
-api.on('game:log', appendLog);
+api.on('game:log', ({ profileId, line }: { profileId: string; line: string }) => logTo(profileId, line));
 // the first game download brings the textures for the 3D profile icons
 api.on('game:exit', () => {
   if (!Object.keys(blockIcons).length) loadBlockIcons();
 });
-api.on('game:exit', ({ code, signal, byUser }: { code: number | null; signal: string | null; byUser: boolean }) => {
+api.on('game:exit', ({ code, signal, byUser, profileId }: { code: number | null; signal: string | null; byUser: boolean; profileId: string }) => {
   if (code === 0 || byUser) return;
   // A signal without a user request means the OS killed the game (crash, code signature, out of memory).
   const reason = signal ? t('Gra została zabita przez system ({0})', signal) : t('Gra zakończyła się z kodem {0}', String(code));
-  appendLog(`[SlashClient] ${reason}.`);
+  logTo(profileId, `[SlashClient] ${reason}.`);
   toast(t('{0}. Sprawdź logi.', reason), true);
 });
 api.on('store', (s: PublicStore) => {
@@ -1147,6 +1185,7 @@ $('#profile-form').addEventListener('submit', async (e) => {
     name: str('name') || 'Profil',
     versionId: str('versionId'),
     loader: str('loader') as Profile['loader'],
+    accountId: str('accountId') || undefined,
     syncOptions: data.get('syncOptions') === 'on',
     hud: data.get('hud') === 'on',
     jvmPreset: str('jvmPreset') as Profile['jvmPreset'],
@@ -1404,7 +1443,7 @@ function fitsServer(p: Profile, s: ListedServer): boolean {
 }
 
 function openJoin(s: ListedServer) {
-  if (store.running) {
+  if (selectedRunning()) {
     // a game with our HUD switches servers by itself
     api.joinInGame(s.ip).then((ok: boolean) => toast(ok ? t('Gra łączy się z {0}.', s.ip) : t('Gra już działa.'), !ok));
     return;

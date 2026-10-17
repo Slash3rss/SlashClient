@@ -150,6 +150,9 @@
           <div class="profile-pane" data-pane="settings">
             <form class="card glass-panel form" id="profile-form">
               <label class="field">Nazwa<input name="name" required maxlength="40"></label>
+              <label class="field"><span class="label">Konto <span class="hint">ten profil zawsze gra tym kontem</span></span>
+                <select name="accountId" id="profile-account"></select>
+              </label>
               <label class="field">Wersja
                 <div class="row">
                   <select name="versionId" id="version-select"></select>

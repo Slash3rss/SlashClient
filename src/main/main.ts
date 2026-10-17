@@ -45,11 +45,13 @@ import { t } from '../shared/i18n';
 
 let win: BrowserWindow | undefined;
 let store: StoreData;
-let game: ChildProcess | undefined;
-/** The running game has SlashClient HUD, so it can be told to join a server. */
-let gameHasHud = false;
+/**
+ * The games running now, one per profile: several profiles can play at once, one profile only
+ * once (two games in the same folder would fight over its worlds and settings).
+ */
+interface RunningGame { child: ChildProcess; hasHud: boolean; killRequested: boolean; presence: Presence }
+const games = new Map<string, RunningGame>();
 let loginAbort: AbortController | undefined;
-let killRequested = false;
 let discord: DiscordPresence | undefined;
 
 /** SlashClient's Discord application (shows as "Playing SlashClient"); public, not a secret. */
@@ -110,7 +112,8 @@ function publicStore() {
     settings: { ...store.settings, socialToken: undefined, chatKey: undefined },
     accounts: store.accounts.map(({ id, type, name, uuid }) => ({ id, type, name, uuid })),
     profiles: store.profiles.map((p) => ({ ...p, iconFile: p.icon === 'custom' ? iconFile(profileGameDir(p)) : undefined })),
-    running: Boolean(game),
+    running: games.size > 0,
+    runningProfiles: [...games.keys()],
     dataDir: paths.root,
     systemMemoryMb: Math.round(os.totalmem() / 1024 / 1024),
     hudVersions: hudSupported,
@@ -167,7 +170,7 @@ handle('settings:save', async (settings: Partial<Settings>) => {
   if (accountChanged) void signInWithMinecraft();
   if (urlChanged) await social.logout();
   setLang(store.settings.language);
-  if (store.settings.discordEnabled) showPresence(game ? currentPresence ?? idlePresence() : idlePresence());
+  if (store.settings.discordEnabled) showPresence(games.size ? currentPresence ?? idlePresence() : idlePresence());
   else discordClient(); // closes the connection, which clears the status
   await persist();
 });
@@ -522,7 +525,7 @@ handle('modpack:update', async (profileId: string, versionId?: string) => {
   const profile = profileById(profileId);
   const pack = profile.modpack;
   if (!pack) throw new Error(t('Ten profil nie pochodzi z modpacka Modrinth.'));
-  if (game) throw new Error(t('Zamknij grę przed aktualizacją modpacka.'));
+  if (games.has(profile.id)) throw new Error(t('Zamknij grę przed aktualizacją modpacka.'));
   const task = startTask(t('Aktualizowanie modpacka: {0}', pack.title), undefined);
   try {
     const { file, version } = await downloadModpack(pack.projectId, (d, n, s) => task.progress(t('Pobieranie modpacka'), d, n, s), versionId);
@@ -777,9 +780,10 @@ handle('news:list', (offset: number, limit: number, filter: NewsFilter) => newsP
 handle('news:article', (id: string) => newsArticle(id));
 
 handle('game:launch', async (profileId: string, accountId: string, server?: string, world?: string, benchmark = false) => {
-  if (game) throw new Error('Gra już działa.');
+  if (games.has(profileId)) throw new Error(t('Ten profil już działa.'));
   const profile = store.profiles.find((p) => p.id === profileId);
-  let account = store.accounts.find((a) => a.id === accountId);
+  // a profile with its own account always plays as it
+  let account = store.accounts.find((a) => a.id === (profile?.accountId && store.accounts.some((x) => x.id === profile.accountId) ? profile.accountId : accountId));
   if (!profile) throw new Error('Wybierz profil.');
   if (!account) throw new Error('Dodaj i wybierz konto.');
 
@@ -831,7 +835,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     onLog: (line) => {
       recentLog.push(line);
       if (recentLog.length > 3000) recentLog.shift();
-      send('game:log', line);
+      send('game:log', { profileId: profile.id, line });
       const joined = serverFromLog(line);
       if (joined) {
         lastServer = { address: joined, at: Date.now() };
@@ -850,21 +854,20 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     world,
     extraJvmArgs: hud.jvmArgs,
   });
-  game = child;
-  gameHasHud = hud.jvmArgs.length > 0;
+  const running: RunningGame = { child, hasHud: hud.jvmArgs.length > 0, killRequested: false, presence };
+  games.set(profile.id, running);
   // capes and emotes: the SlashClient account says which Minecraft player it is, while the game runs
   const linkPlayer = () => {
     if (social.state().user && account.uuid) social.call('POST', '/v1/mc/link', { uuid: account.uuid }).catch(() => {});
   };
   linkPlayer();
   const linkTimer = setInterval(linkPlayer, 4 * 60_000);
-  killRequested = false;
   showPresence(presence);
   send('store', publicStore());
   if (store.settings.closeOnLaunch) win?.hide();
   child.on('exit', (code, signal) => {
-    game = undefined;
-    gameHasHud = false;
+    games.delete(profile.id);
+    const killRequested = running.killRequested;
     clearInterval(linkTimer);
     // a finished benchmark run: tell the page, which shows the result
     if (benchmark) readBenchmarks(profileGameDir(profile)).then((runs) => {
@@ -875,25 +878,31 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     resolveVersionId(profile.versionId).then((versionId) => appendSession({
       start: startedAt, end: Date.now(), profileId: profile.id, profileName: profile.name, versionId, loader: profile.loader, servers: joins,
     })).catch(() => {});
-    showPresence(idlePresence());
-    social.setActivity({ kind: 'launcher' });
-    send('game:exit', { code, signal, byUser: killRequested });
+    // another game still running keeps Discord and friends up to date; the last one closing goes back to idle
+    const other = [...games.values()].at(-1);
+    showPresence(other ? other.presence : idlePresence());
+    if (!other) social.setActivity({ kind: 'launcher' });
+    send('game:exit', { code, signal, byUser: killRequested, profileId: profile.id });
     if (code !== 0 && !killRequested) {
       analyzeCrash({ log: recentLog, gameDir: profileGameDir(profile), startedAt, code, signal })
         .then((analysis) => send('game:crash', analysis))
         .catch(() => {});
     }
     send('store', publicStore());
-    if (store.settings.closeOnLaunch) win?.show();
+    if (store.settings.closeOnLaunch && !games.size) win?.show();
   });
 });
 handle('file:reveal', (file: string) => {
   // only crash reports inside the launcher's own folders
   if (path.resolve(file).startsWith(paths.root + path.sep) || store.profiles.some((p) => path.resolve(file).startsWith(path.resolve(profileGameDir(p)) + path.sep))) shell.showItemInFolder(file);
 });
-handle('game:kill', () => {
-  killRequested = true;
-  game?.kill();
+/** Stops one profile's game, or every game when no profile is given. */
+handle('game:kill', (profileId?: string) => {
+  for (const [id, g] of games) {
+    if (profileId && id !== profileId) continue;
+    g.killRequested = true;
+    g.child.kill();
+  }
 });
 
 // ---------- SlashClient HUD ----------
@@ -1122,7 +1131,7 @@ async function chatCall(method: string, apiPath: string, body?: unknown) {
 }
 /** A friend's invite while the game runs: the HUD leaves where it is and joins that server. */
 handle('game:join', (address: string) => {
-  if (!game || !gameHasHud || !/^[\w.-]{1,253}(:\d{1,5})?$/.test(address)) return false;
+  if (![...games.values()].some((g) => g.hasHud) || !/^[\w.-]{1,253}(:\d{1,5})?$/.test(address)) return false;
   bridge.push({ type: 'join', server: address });
   return true;
 });

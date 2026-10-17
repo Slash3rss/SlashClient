@@ -48,6 +48,8 @@ export interface Profile {
   lastTarget?: { kind: 'server'; address: string } | { kind: 'world'; folder: string; name: string };
   /** The Modrinth modpack this profile was created from, for updates and version changes. */
   modpack?: { projectId: string; versionId: string; versionNumber: string; title: string };
+  /** The Minecraft account this profile always plays as; none = the one picked on the Play tab. */
+  accountId?: string;
   /** Game directory; empty means instances/<id>. */
   gameDir: string;
   memoryMb: number;
@@ -165,12 +167,24 @@ export async function loadStore(): Promise<StoreData> {
   }
 }
 
-/** Writes atomically so a crash never leaves a half-written config behind. */
-export async function saveStore(data: StoreData): Promise<void> {
-  await fs.mkdir(paths.config, { recursive: true });
-  const tmp = `${FILE()}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(data, null, 2), { mode: 0o600 });
-  await fs.rename(tmp, FILE());
+let saving: Promise<void> = Promise.resolve();
+let saves = 0;
+/**
+ * Writes atomically so a crash never leaves a half-written config behind. Saves go one after
+ * another, each through its own temporary file: two at once used to share one and the second
+ * rename failed (ENOENT).
+ */
+export function saveStore(data: StoreData): Promise<void> {
+  const json = JSON.stringify(data, null, 2);
+  const write = async () => {
+    await fs.mkdir(paths.config, { recursive: true });
+    const tmp = `${FILE()}.${process.pid}.${++saves}.tmp`;
+    await fs.writeFile(tmp, json, { mode: 0o600 });
+    await fs.rename(tmp, FILE());
+  };
+  const next = saving.then(write, write);
+  saving = next.catch(() => {});
+  return next;
 }
 
 export function profileGameDir(profile: Profile): string {
