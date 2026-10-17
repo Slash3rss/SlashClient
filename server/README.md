@@ -115,3 +115,12 @@ Strona, API i panel działają pod **https://client.slash3rss.dev** (VPS z Ubunt
 - **Baza:** `/var/lib/slashclient/social.db`.
 - **Logi:** `journalctl -u slashclient -f` (serwer) i `/var/log/caddy/slashclient.log` (ruch).
 - **Pliki usługi:** `server/deploy/slashclient.service` i `server/deploy/Caddyfile`; `deploy.sh` instaluje je przy każdym wdrożeniu.
+
+## Bezpieczeństwo
+
+- **Konto SlashClient** zakłada się tylko kontem Minecraft potwierdzonym w Mojangu (`/v1/auth/minecraft/*`: launcher robi „join” z losowym `serverId`, serwer pyta `hasJoined`). Token Minecrafta nie trafia na serwer. Discord, Microsoft, Google i GitHub logują tylko do kont, do których zostały wcześniej podpięte.
+- **Sesje**: losowy token 32 bajty, w bazie tylko jego skrót; wylogowanie zamyka też połączenia WebSocket tej sesji.
+- **Czat szyfrowany od nadawcy do odbiorcy**: każdy launcher ma klucz X25519, na serwerze są tylko klucze publiczne (`/v1/keys`, widoczne dla znajomych) i szyfrogram (`e2e1:…`). Serwer nie może przeczytać wiadomości. Nie chroni to przed serwerem, który podmieniłby klucze publiczne (brak porównywania odcisków kluczy). Zaproszenia do gry (adres serwera) są jawne.
+- **Peleryny, emotki i rangi** dotyczą tylko kont Minecraft potwierdzonych w Mojangu. Samo logo „gra z SlashClient” (heartbeat) nie wymaga konta, więc da się je pokazać przy dowolnym nicku; nie daje ono żadnych uprawnień.
+- **Limity**: logowania, prośby o znajomość, wiadomości, emotki i ruch WebSocket mają limity na minutę; za Caddy liczone po prawdziwym IP (`TRUST_PROXY=1`).
+- **Admin**: pierwszy admin z `ADMIN_HANDLES` (po nicku). Po pierwszym logowaniu warto nadać rolę admina w bazie i usunąć `ADMIN_HANDLES`, żeby uprawnienia nie zależały od nicku.
