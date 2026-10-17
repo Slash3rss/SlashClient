@@ -464,6 +464,9 @@ button.busy { pointer-events: none; }
 }
 .update-bar i { color: var(--accent-light); }
 .update-bar button { height: 34px; padding: 0 14px; font-size: 13px; }
+.update-bar .icon-btn { width: 34px; padding: 0; }
+.update-row { justify-content: space-between; gap: 12px; }
+.update-row p { margin: 0; }
 
 /* ---------- start-up screen ---------- */
 @keyframes logo-pulse { 50% { transform: scale(1.04); filter: drop-shadow(0 0 34px rgba(59, 130, 246, .55)); } }

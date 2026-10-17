@@ -12,7 +12,7 @@ import { pullShared, pushShared } from './sync';
 import { recommendedMemoryMb } from './jvm';
 import { shareLog } from './logshare';
 import { lastTarget, serverFromLog, worldPlayedSince } from './sessions';
-import { installUpdate, startUpdateChecks } from './updates';
+import { checkForUpdates, installUpdate, startUpdateChecks, updateStatus } from './updates';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { activityFromLog, SocialClient, SocialError, type SocialUser, type Status } from './social';
 import { launch, resolveVersionId } from './launch';
@@ -677,6 +677,10 @@ handle('skin:save', async (accountId: string) => {
   if (!canceled && filePath) await fsp.writeFile(filePath, Buffer.from(dataUrl.split(',')[1], 'base64'));
 });
 handle('update:install', () => installUpdate());
+handle('update:status', () => updateStatus());
+handle('update:check', () => checkForUpdates());
+// macOS: the new version from the website (Apple Silicon or Intel, like this build)
+handle('update:download', () => shell.openExternal(`${store.settings.socialUrl}/pobierz/${process.arch === 'arm64' ? 'mac' : 'mac-intel'}`));
 handle('app:version', () => app.getVersion());
 /** A Microsoft account with a valid Minecraft token (refreshed and saved if needed). */
 async function freshMsa(accountId: string): Promise<MicrosoftAccount> {
@@ -1113,7 +1117,7 @@ app.whenReady().then(async () => {
   if (!store.settings.language) store.settings.language = app.getLocale().toLowerCase().startsWith('pl') ? 'pl' : 'en';
   setLang(store.settings.language);
   createWindow();
-  startUpdateChecks({ onReady: (version) => send('update:ready', version), onLog: (m) => console.error(m) });
+  startUpdateChecks({ serverUrl: () => store.settings.socialUrl, send: (status) => send('update:status', status), onLog: (m) => console.error(m) });
   showPresence(idlePresence());
   social.start();
   void signInWithMinecraft();

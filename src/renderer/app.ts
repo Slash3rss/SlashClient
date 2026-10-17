@@ -2980,11 +2980,49 @@ function finishTaskCard({ id, ok, message, profileId }: TaskDone, stayMs?: numbe
 
 // ---------- updates ----------
 
-api.on('update:ready', (version: string) => {
-  $('#update-version').textContent = version;
-  $('#update-bar').classList.remove('hidden');
-});
+type UpdateStatus = { state: string; version?: string; percent?: number; manual?: boolean; error?: string };
+let updateClosed = '';
+/** The bar at the top (a new version: downloading, ready, or to download on macOS) and the line in Settings. */
+function showUpdate(u: UpdateStatus) {
+  const bar = $('#update-bar');
+  const text: Record<string, string> = {
+    available: t('Dostępna nowa wersja SlashClient: {0}', u.version ?? ''),
+    downloading: t('Pobieram nową wersję SlashClient {0}… {1}%', u.version ?? '', u.percent ?? 0),
+    ready: t('Nowa wersja SlashClient jest gotowa: {0}', u.version ?? ''),
+  };
+  const key = `${u.state}:${u.version}`;
+  bar.classList.toggle('hidden', !text[u.state] || updateClosed === key);
+  $('#update-text').textContent = text[u.state] ?? '';
+  $('#update-install').classList.toggle('hidden', u.state !== 'ready');
+  $('#update-download').classList.toggle('hidden', !(u.state === 'available' && u.manual));
+  const settings: Record<string, string> = {
+    dev: t('(wersja deweloperska, bez aktualizacji)'),
+    checking: t('· sprawdzam…'),
+    none: t('· najnowsza'),
+    available: t('· dostępna {0}', u.version ?? ''),
+    downloading: t('· pobieram {0} ({1}%)', u.version ?? '', u.percent ?? 0),
+    ready: t('· {0} gotowa, uruchom ponownie', u.version ?? ''),
+    error: t('· nie udało się sprawdzić'),
+  };
+  $('#update-state').textContent = settings[u.state] ?? '';
+  $('#update-state').title = u.error ?? '';
+}
+api.on('update:status', showUpdate);
+api.updateStatus().then(showUpdate);
 $('#update-install').addEventListener('click', () => api.installUpdate());
+$('#update-download').addEventListener('click', () => api.downloadUpdate());
+$('#update-close').addEventListener('click', async () => {
+  const u: UpdateStatus = await api.updateStatus();
+  updateClosed = `${u.state}:${u.version}`;
+  $('#update-bar').classList.add('hidden');
+});
+$('#update-check').addEventListener('click', async () => {
+  const b = $<HTMLButtonElement>('#update-check');
+  b.disabled = true;
+  updateClosed = '';
+  showUpdate(await api.checkForUpdates());
+  b.disabled = false;
+});
 
 // switching the language takes effect immediately
 $('#language-select').addEventListener('change', async () => {

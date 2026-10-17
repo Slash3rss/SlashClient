@@ -574,6 +574,27 @@ export function createApp(cfg: Config) {
       }
       return;
     }
+    // the launcher's update feed: what is new (latest*.yml) from here, the files as signed links
+    const update = /^\/aktualizacje\/([\w][\w.-]{0,120})$/.exec(url.pathname);
+    if (req.method === 'GET' && update) {
+      const name = update[1];
+      try {
+        if (name.endsWith('.yml')) {
+          const text = await downloads.fileText(name);
+          res.writeHead(text === undefined ? 404 : 200, { 'Content-Type': 'text/yaml; charset=utf-8', 'Cache-Control': 'no-cache' });
+          res.end(text ?? '');
+        } else {
+          const to = await downloads.fileLink(name);
+          res.writeHead(to ? 302 : 404, to ? { Location: to, 'Cache-Control': 'no-store' } : {});
+          res.end();
+        }
+      } catch (err) {
+        console.error('aktualizacje:', (err as Error).message);
+        res.writeHead(503);
+        res.end();
+      }
+      return;
+    }
     // everything that is not the API is the website
     if (cfg.webDir && req.method === 'GET' && !url.pathname.startsWith('/v1/') && await serveWeb(cfg.webDir, url.pathname, res, req.headers['if-modified-since'])) return;
     res.writeHead(404, { 'Content-Type': 'application/json' });

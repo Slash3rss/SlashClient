@@ -418,7 +418,10 @@
         <label class="check"><input type="checkbox" name="closeOnLaunch"> Chowaj launcher podczas gry</label>
         <label class="check"><input type="checkbox" name="discordEnabled"> Pokazuj na Discordzie, w co grasz</label>
         <p class="muted">Folder danych: <code id="data-dir"></code></p>
-        <p class="muted">Wersja launchera: <code id="app-version"></code></p>
+        <div class="row update-row">
+          <p class="muted">Wersja launchera: <code id="app-version"></code> <span id="update-state"></span></p>
+          <button type="button" id="update-check"><i class="fa-solid fa-rotate"></i> Sprawdź aktualizacje</button>
+        </div>
         <div class="row actions"><button class="primary" type="submit">Zapisz</button></div>
       </form>
     </section>
@@ -438,8 +441,10 @@
   </div>
   <div class="update-bar hidden" id="update-bar">
     <i class="fa-solid fa-circle-arrow-up"></i>
-    <span>Nowa wersja SlashClient jest gotowa: <b id="update-version"></b></span>
+    <span id="update-text"></span>
     <button class="primary" id="update-install">Uruchom ponownie</button>
+    <button class="primary hidden" id="update-download"><i class="fa-solid fa-download"></i> Pobierz</button>
+    <button class="icon-btn" id="update-close" title="Zamknij"><i class="fa-solid fa-xmark"></i></button>
   </div>
   <div class="modal hidden" id="versions-modal">
     <div class="modal-box glass-panel versions-box">

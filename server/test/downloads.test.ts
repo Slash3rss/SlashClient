@@ -16,6 +16,8 @@ const fakeGitHub = (async (input: string | URL | Request, init?: RequestInit) =>
   const url = String(input);
   const auth = new Headers(init?.headers).get('authorization');
   seen.push({ url, auth });
+  // the signed link of latest.yml, as the server downloads it
+  if (url === 'https://objects.githubusercontent.com/signed/5') return new Response('version: 0.6.0\npath: SlashClient-Setup-0.6.0.exe\n');
   if (auth !== 'Bearer sekret') return new Response('{"message":"Not Found"}', { status: 404 });
   if (url.endsWith('/releases/latest')) {
     const asset = (name: string, id: number) => ({ name, url: `https://api.github.com/repos/x/y/releases/assets/${id}`, browser_download_url: `https://github.com/x/y/releases/download/v0.5.0/${name}` });
@@ -45,6 +47,16 @@ describe('downloads', () => {
     }
     // the release list is asked for once and kept
     assert.equal(seen.filter((s) => s.url.endsWith('/releases/latest')).length, 1);
+  });
+
+  it('is the launcher\'s update feed: the yml from here, the files as signed links', async () => {
+    const yml = await fetch(`${base}/aktualizacje/latest.yml`);
+    assert.equal(yml.status, 200);
+    assert.match(await yml.text(), /version: 0\.6\.0/);
+    const exe = await fetch(`${base}/aktualizacje/SlashClient-Setup-0.5.0.exe`, { redirect: 'manual' });
+    assert.equal(exe.headers.get('location'), 'https://objects.githubusercontent.com/signed/1');
+    assert.equal((await fetch(`${base}/aktualizacje/latest-linux.yml`)).status, 404);
+    assert.equal((await fetch(`${base}/aktualizacje/..%2Fsecret`, { redirect: 'manual' })).status, 404);
   });
 
   it('says so when a system has no installer, and knows only real systems', async () => {
