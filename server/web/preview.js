@@ -4,7 +4,7 @@
 // pictures are in /vendor/mc (listed in index.json).
 
 /** Capes drawn as a loop of frames (vendor/capes/<id>_<n>.png), as in the game. */
-const ANIMATED = new Set(['aurora', 'inferno', 'waves', 'pulse', 'matrix', 'storm']);
+const ANIMATED = new Set(['aurora', 'inferno', 'waves', 'pulse', 'matrix', 'storm', 'vortex', 'starfall']);
 const FRAMES = 8;
 
 let loading;

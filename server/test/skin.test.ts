@@ -48,11 +48,18 @@ describe('skins for the site', () => {
 });
 
 describe('cosmetics for older launchers', () => {
-  it('leaves out what launchers before 0.9.1 have no pictures for, the page and newer ones see all', async () => {
+  it('leaves out what older launchers have no pictures for (by their version), the page sees all', async () => {
     const ids = async (headers: Record<string, string>) => ((await (await fetch(`${base}/v1/cosmetics`, { headers })).json()) as { items: { id: string }[] }).items.map((i) => i.id);
     const old = await ids({});
     assert.ok(old.includes('aurora') && !old.includes('sakura') && !old.includes('phantom'));
-    assert.ok((await ids({ 'X-SlashClient': 'launcher/0.9.1' })).includes('sakura'));
-    assert.ok((await ids({ 'User-Agent': 'Mozilla/5.0' })).includes('phantom'));
+    const v091 = await ids({ 'X-SlashClient': 'launcher/0.9.1' });
+    assert.ok(v091.includes('sakura') && v091.includes('phantom') && !v091.includes('fox') && !v091.includes('vortex'));
+    const v092 = await ids({ 'X-SlashClient': 'launcher/0.9.2' });
+    assert.ok(v092.includes('sakura') && v092.includes('fox') && v092.includes('vortex'));
+    assert.ok((await ids({ 'X-SlashClient': 'launcher/0.10.0' })).includes('fox'));
+    // a launcher's own window says Mozilla too: its version still counts
+    assert.ok(!(await ids({ 'X-SlashClient': 'launcher/0.9.1', 'User-Agent': 'Mozilla/5.0' })).includes('fox'));
+    const page = await ids({ 'User-Agent': 'Mozilla/5.0' });
+    assert.ok(page.includes('phantom') && page.includes('fox'));
   });
 });

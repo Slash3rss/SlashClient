@@ -76,6 +76,22 @@ public class GameCosmetics implements FabricClientGameTest {
 			String matrix = context.computeOnClient(mc -> TestHooks.capeTexture());
 			if (!matrix.matches("slashclient-hud:textures/cape/matrix_[0-7][.]png")) throw new AssertionError("Not a frame of the matrix cape: " + matrix);
 			context.takeScreenshot("cosmetics-new-cape");
+			// the 0.9.2 ones: three pets with new wings, new auras, and a new animated cape
+			for (String pet : new String[] {"axolotl", "frog", "fox"}) {
+				context.runOnClient(mc -> TestHooks.wear("pet", pet));
+				context.runOnClient(mc -> TestHooks.wear("wings", pet.equals("axolotl") ? "fairy" : pet.equals("frog") ? "bone" : "gilded"));
+				context.runOnClient(mc -> TestHooks.wear("aura", pet.equals("axolotl") ? "spores" : pet.equals("frog") ? "tears" : "nautilus"));
+				context.waitTicks(30);
+				context.takeScreenshot("cosmetics-pet-" + pet);
+			}
+			context.runOnClient(mc -> TestHooks.wear("wings", null));
+			context.runOnClient(mc -> TestHooks.wear("pet", null));
+			context.runOnClient(mc -> TestHooks.wear("aura", "fireflies"));
+			context.runOnClient(mc -> TestHooks.cosmeticsSelf("vortex", false));
+			context.waitTicks(30);
+			String vortex = context.computeOnClient(mc -> TestHooks.capeTexture());
+			if (!vortex.matches("slashclient-hud:textures/cape/vortex_[0-7][.]png")) throw new AssertionError("Not a frame of the vortex cape: " + vortex);
+			context.takeScreenshot("cosmetics-new-cape-vortex");
 			context.runOnClient(mc -> TestHooks.wear("aura", "souls"));
 			// the main menu's figure wears them too: the cape or the wings behind it, the pet by it
 			context.runOnClient(mc -> { TestHooks.wearOwn("cape", "aurora"); TestHooks.wearOwn("pet", "parrot"); });
