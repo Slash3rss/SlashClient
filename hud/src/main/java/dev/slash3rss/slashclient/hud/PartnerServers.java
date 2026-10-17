@@ -139,19 +139,27 @@ public final class PartnerServers {
 		var font = Minecraft.getInstance().font;
 		net.minecraft.network.chat.Component label = dev.slash3rss.slashclient.hud.ui.Ui.trBold("slashclient-hud.partner");
 		int bw = 4 + 7 + 3 + font.width(label) + 5, bh = 11;
+		// drawn at three quarters: a small mark next to the name, not a second title
+		float s = 0.75f;
+		int sw = Math.round(bw * s), sh = Math.round(bh * s);
 		// the game writes the name at 32 + 3 px from the row's left edge, the player count at its right
-		int bx = x + 35 + font.width(server.name == null ? "" : server.name) + 5, by = y;
-		if (bx + bw > x + w - 72) {
-			bx = x + w - bw - 2;
-			by = y + h - bh - 1;
+		int bx = x + 35 + font.width(server.name == null ? "" : server.name) + 4, by = y + 1;
+		if (bx + sw > x + w - 72) {
+			bx = x + w - sw - 2;
+			by = y + h - sh - 1;
 		}
+		var pose = g.pose();
+		pose.pushMatrix();
+		pose.translate(bx, by);
+		pose.scale(s, s);
 		// a soft shadow, the gold body with a lighter top, a thin bright edge on top
-		dev.slash3rss.slashclient.hud.ui.Ui.round(g, bx, by + 1, bw, bh, 4, 0x55000000);
-		dev.slash3rss.slashclient.hud.ui.Ui.round(g, bx, by, bw, bh, 4, 0xFFD97706);
-		g.fillGradient(bx + 2, by + 1, bx + bw - 2, by + bh - 1, 0xFFFDE68A, 0xFFF59E0B);
-		g.fill(bx + 3, by, bx + bw - 3, by + 1, 0xFFFEF3C7);
-		dev.slash3rss.slashclient.hud.ui.Ui.icon(g, "partner", bx + 4, by + 2, 7, 0xFF451A03);
-		dev.slash3rss.slashclient.hud.ui.Ui.draw(g, label, bx + 14, by + 2, 0xFF451A03);
+		dev.slash3rss.slashclient.hud.ui.Ui.round(g, 0, 1, bw, bh, 4, 0x55000000);
+		dev.slash3rss.slashclient.hud.ui.Ui.round(g, 0, 0, bw, bh, 4, 0xFFD97706);
+		g.fillGradient(2, 1, bw - 2, bh - 1, 0xFFFDE68A, 0xFFF59E0B);
+		g.fill(3, 0, bw - 3, 1, 0xFFFEF3C7);
+		dev.slash3rss.slashclient.hud.ui.Ui.icon(g, "partner", 4, 2, 7, 0xFF451A03);
+		dev.slash3rss.slashclient.hud.ui.Ui.draw(g, label, 14, 2, 0xFF451A03);
+		pose.popMatrix();
 	}
 
 	/** For the test: a partner with a made-up picture, without the network. */
