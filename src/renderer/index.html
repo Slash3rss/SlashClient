@@ -345,18 +345,27 @@
               <button class="primary" id="skin-upload"><i class="fa-solid fa-check"></i> Zapisz skin</button>
               <button id="skin-cancel">Anuluj</button>
             </div>
-            <div class="field" id="cape-row">Peleryna
+          </div>
+          <!-- capes: SlashClient's and the Minecraft account's, one at a time so the column stays short -->
+          <div class="capes-box">
+            <div class="row capes-head">
+              <span class="capes-title">Peleryna</span>
+              <div class="segmented hidden" id="cape-tabs">
+                <button type="button" class="active" data-tab="slash"><i class="fa-solid fa-wand-magic-sparkles"></i> SlashClient</button>
+                <button type="button" data-tab="mojang"><i class="fa-solid fa-cube"></i> Minecraft</button>
+              </div>
+            </div>
+            <div class="slash-capes" id="slash-cape-row">
+              <div class="cape-grid" id="slash-cape-grid"></div>
+              <small class="muted" id="slash-cape-note"></small>
+            </div>
+            <div class="hidden" id="cape-row">
               <div class="cape-grid" id="cape-grid"></div>
               <div class="row cape-actions">
                 <span class="muted" id="cape-name"></span>
                 <button class="primary hidden" id="cape-apply"><i class="fa-solid fa-check"></i> Ustaw</button>
               </div>
             </div>
-          </div>
-          <div class="field slash-capes" id="slash-cape-row">
-            <span class="slash-capes-head"><i class="fa-solid fa-wand-magic-sparkles"></i> Peleryna SlashClient</span>
-            <div class="cape-grid" id="slash-cape-grid"></div>
-            <small class="muted" id="slash-cape-note"></small>
           </div>
         </div>
       </div>

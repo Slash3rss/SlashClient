@@ -2572,9 +2572,20 @@ async function renderSlashCapes() {
   if (current && skinViewer) await skinViewer.loadCape(`img/capes/${current}.png`, { backEquipment: 'cape' });
 }
 
+/** Which capes are shown: SlashClient's, or the Minecraft account's own (Microsoft accounts only). */
+function showCapeTab(tab: 'slash' | 'mojang') {
+  $('#slash-cape-row').classList.toggle('hidden', tab !== 'slash');
+  $('#cape-row').classList.toggle('hidden', tab !== 'mojang');
+  document.querySelectorAll<HTMLButtonElement>('#cape-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+}
+document.querySelectorAll<HTMLButtonElement>('#cape-tabs button').forEach((b) => b.addEventListener('click', () => showCapeTab(b.dataset.tab as 'slash' | 'mojang')));
+
 async function loadSkinEditor(account: { id: string; type: string }) {
   renderSlashCapes();
   $('#skin-edit').classList.toggle('hidden', account.type !== 'msa');
+  // an offline account has no Minecraft capes: only SlashClient's
+  $('#cape-tabs').classList.toggle('hidden', account.type !== 'msa');
+  if (account.type !== 'msa') showCapeTab('slash');
   $('#skin-pending').classList.add('hidden');
   $('#skin-actions').classList.remove('hidden');
   $('#cape-apply').classList.add('hidden');
@@ -2582,7 +2593,9 @@ async function loadSkinEditor(account: { id: string; type: string }) {
   $('#cape-grid').replaceChildren(...skeletons('shot', 3).map((s) => Object.assign(s, { className: 'cape-choice sk' })));
   capes = (await guard(() => api.ownedCapes(account.id))) ?? [];
   chosenCape = capes.find((c) => c.active)?.id ?? '';
-  $('#cape-row').classList.toggle('hidden', !capes.length);
+  // no Minecraft capes on this account: no tab to switch to
+  $('#cape-tabs').classList.toggle('hidden', !capes.length);
+  if (!capes.length) showCapeTab('slash');
   renderCapeGrid();
 }
 
