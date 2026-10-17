@@ -34,8 +34,32 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class Badges {
 	private Badges() {}
 
-	private static final MutableComponent BADGE = Component.literal("")
-		.withStyle(Style.EMPTY.withFont(new FontDescription.Resource(Identifier.fromNamespaceAndPath(SlashHud.ID, "badge"))).withColor(0xFFFFFF).withoutShadow());
+	private static final String GLYPH = "\uE000";
+	private static final Style BADGE_STYLE = Style.EMPTY.withFont(new FontDescription.Resource(Identifier.fromNamespaceAndPath(SlashHud.ID, "badge"))).withoutShadow();
+	private static final MutableComponent BADGE = badge(0xFFFFFF);
+	/** The logo's colour by rank: SlashClient's admins red, support light blue, partners gold. */
+	private static final Map<String, MutableComponent> RANK_BADGES = Map.of(
+		"admin", badge(0xEF4444),
+		"support", badge(0x38BDF8),
+		"partner", badge(0xFACC15));
+	/** uuid → rank, from the server (only Minecraft accounts proven to belong to that SlashClient account). */
+	private static final Map<UUID, String> ranks = new ConcurrentHashMap<>();
+
+	private static MutableComponent badge(int color) {
+		return Component.literal(GLYPH).withStyle(BADGE_STYLE.withColor(color));
+	}
+
+	/** The rank the server gave a player, or null (for the test). */
+	static String rank(UUID id) {
+		return ranks.get(id);
+	}
+
+	/** For the in-game test: as if the server had answered with this rank. */
+	static void setRank(UUID id, String rank) {
+		if (rank == null) ranks.remove(id);
+		else ranks.put(id, rank);
+	}
+
 	private static final long HEARTBEAT_MS = 4 * 60_000;
 	/** How long an answer about a player is trusted before asking again. */
 	private static final long RECHECK_MS = 2 * 60_000;
@@ -82,7 +106,7 @@ public final class Badges {
 	/** `name` with the logo in front, when that player plays with SlashClient. */
 	public static Component decorate(UUID id, Component name) {
 		if (name == null || !usesSlash(id)) return name;
-		return Component.empty().append(BADGE).append(" ").append(name);
+		return Component.empty().append(RANK_BADGES.getOrDefault(ranks.getOrDefault(id, ""), BADGE)).append(" ").append(name);
 	}
 
 	/** Once a second: report ourselves now and then, and ask about players we know nothing recent of. */
@@ -113,12 +137,16 @@ public final class Badges {
 			Set<UUID> active = ConcurrentHashMap.newKeySet();
 			o.getAsJsonArray("active").forEach(e -> active.add(UUID.fromString(e.getAsString())));
 			JsonObject capes = o.has("capes") && o.get("capes").isJsonObject() ? o.getAsJsonObject("capes") : new JsonObject();
+			JsonObject rankOf = o.has("ranks") && o.get("ranks").isJsonObject() ? o.getAsJsonObject("ranks") : new JsonObject();
 			for (UUID id : ask) {
 				if (active.contains(id)) slash.add(id);
 				else slash.remove(id);
 				// the server answers with the uuid as it was asked
 				var cape = capes.get(id.toString());
 				Cosmetics.setCape(id, cape != null && cape.isJsonPrimitive() ? cape.getAsString() : null);
+				var rank = rankOf.get(id.toString());
+				if (rank != null && rank.isJsonPrimitive() && RANK_BADGES.containsKey(rank.getAsString())) ranks.put(id, rank.getAsString());
+				else ranks.remove(id);
 			}
 		});
 	}

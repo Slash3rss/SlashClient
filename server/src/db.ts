@@ -7,8 +7,11 @@ import { DatabaseSync } from 'node:sqlite';
  */
 
 /** A SlashClient account; `handle` is the unique name friends search for. */
-/** `cape`: one of the SlashClient capes (cosmetics.ts), '' for none. `role`: 'admin' or ''. */
-export interface User { id: string; handle: string; name: string; avatar: string; showServer: boolean; cape: string; role: string; banned: boolean }
+/**
+ * `cape`: one of the SlashClient capes (cosmetics.ts), '' for none. `role`: 'admin' or ''.
+ * `rank`: the colour of the logo next to the name in game: 'support', 'partner' or '' (admins are red anyway).
+ */
+export interface User { id: string; handle: string; name: string; avatar: string; showServer: boolean; cape: string; role: string; rank: string; banned: boolean }
 /** An account as the admin panel lists it. */
 export interface AdminUser extends User { createdAt: number; lastSeen: number; providers: string[]; friends: number; sessions: number }
 export interface CosmeticSetting { id: string; enabled: boolean; exclusive: boolean }
@@ -68,8 +71,8 @@ CREATE INDEX IF NOT EXISTS messages_pair ON messages(from_uuid, to_uuid, id);
 CREATE INDEX IF NOT EXISTS messages_unread ON messages(to_uuid, read_at);
 `;
 
-interface UserRow { uuid: string; handle: string; name: string; avatar: string; show_server: number; cape: string; role: string; banned: number }
-const toUser = (r: UserRow): User => ({ id: r.uuid, handle: r.handle, name: r.name, avatar: r.avatar, showServer: !!r.show_server, cape: r.cape, role: r.role, banned: !!r.banned });
+interface UserRow { uuid: string; handle: string; name: string; avatar: string; show_server: number; cape: string; role: string; rank: string; banned: number }
+const toUser = (r: UserRow): User => ({ id: r.uuid, handle: r.handle, name: r.name, avatar: r.avatar, showServer: !!r.show_server, cape: r.cape, role: r.role, rank: r.rank, banned: !!r.banned });
 
 /** Friendships are stored once, with the smaller uuid first. */
 const pair = (x: string, y: string) => (x < y ? [x, y] : [y, x]);
@@ -88,12 +91,14 @@ export class Db {
     if (!userColumns.some((c) => c.name === 'cape')) this.db.exec("ALTER TABLE users ADD COLUMN cape TEXT NOT NULL DEFAULT ''");
     if (!userColumns.some((c) => c.name === 'role')) this.db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT ''");
     if (!userColumns.some((c) => c.name === 'banned')) this.db.exec('ALTER TABLE users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0');
+    if (!userColumns.some((c) => c.name === 'rank')) this.db.exec("ALTER TABLE users ADD COLUMN rank TEXT NOT NULL DEFAULT ''");
     // the Minecraft name of a linked Minecraft account (other providers leave it empty)
     const identityColumns = this.db.prepare('PRAGMA table_info(identities)').all() as { name: string }[];
     if (!identityColumns.some((c) => c.name === 'label')) this.db.exec("ALTER TABLE identities ADD COLUMN label TEXT NOT NULL DEFAULT ''");
     this.db.exec(`
 CREATE TABLE IF NOT EXISTS cosmetics (id TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1, exclusive INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS cape_grants (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, cape TEXT NOT NULL, PRIMARY KEY (uuid, cape));
+CREATE TABLE IF NOT EXISTS device_keys (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, device TEXT NOT NULL, pub TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (uuid, device));
 CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, admin TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '');
 `);
   }
@@ -175,7 +180,7 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
   }
 
   user(uuid: string): User | undefined {
-    const row = this.db.prepare('SELECT uuid, handle, name, avatar, show_server, cape, role, banned FROM users WHERE uuid = ?').get(uuid) as UserRow | undefined;
+    const row = this.db.prepare('SELECT uuid, handle, name, avatar, show_server, cape, role, rank, banned FROM users WHERE uuid = ?').get(uuid) as UserRow | undefined;
     return row && toUser(row);
   }
 
@@ -186,6 +191,23 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
 
   setCape(uuid: string, cape: string) {
     this.db.prepare('UPDATE users SET cape = ? WHERE uuid = ?').run(cape, uuid);
+  }
+
+  // ---- chat encryption: the public keys of each account's launchers ----
+
+  /** Adds or refreshes a launcher's key; an account keeps its 10 most recent launchers. */
+  setDeviceKey(uuid: string, device: string, pub: string) {
+    this.db.prepare('INSERT INTO device_keys (uuid, device, pub, at) VALUES (?, ?, ?, ?) ON CONFLICT (uuid, device) DO UPDATE SET pub = excluded.pub, at = excluded.at')
+      .run(uuid, device, pub, Date.now());
+    this.db.prepare('DELETE FROM device_keys WHERE uuid = ? AND device NOT IN (SELECT device FROM device_keys WHERE uuid = ? ORDER BY at DESC LIMIT 10)').run(uuid, uuid);
+  }
+
+  deviceKeys(uuid: string): { device: string; pub: string }[] {
+    return this.db.prepare('SELECT device, pub FROM device_keys WHERE uuid = ? ORDER BY at DESC').all(uuid) as { device: string; pub: string }[];
+  }
+
+  setRank(uuid: string, rank: string) {
+    this.db.prepare('UPDATE users SET rank = ? WHERE uuid = ?').run(rank, uuid);
   }
 
   setRole(uuid: string, role: string) {
@@ -219,7 +241,7 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
   }
 
   adminUser(uuid: string): AdminUser | undefined {
-    const row = this.db.prepare('SELECT uuid, handle, name, avatar, show_server, cape, role, banned, created_at, last_seen FROM users WHERE uuid = ?').get(uuid) as
+    const row = this.db.prepare('SELECT uuid, handle, name, avatar, show_server, cape, role, rank, banned, created_at, last_seen FROM users WHERE uuid = ?').get(uuid) as
       (UserRow & { created_at: number; last_seen: number }) | undefined;
     if (!row) return undefined;
     const count = (sql: string, ...args: string[]) => (this.db.prepare(sql).get(...args) as { n: number }).n;

@@ -13,7 +13,7 @@ interface Friend extends Person { presence: Presence; unread: number; lastMessag
 interface Request extends Person { at: number }
 interface Me extends Person { showServer: boolean; providers: string[]; minecraft?: { uuid: string; name: string }[] }
 interface Invite { server: string; version?: string }
-interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite }
+interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite; encrypted?: boolean; unreadable?: boolean }
 interface SocialState { url: string; user?: Me; connected: boolean; status: Status }
 interface FriendList { friends: Friend[]; incoming: Request[]; outgoing: Request[] }
 
@@ -590,6 +590,13 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     };
   }
 
+  /** A message; encrypted ones carry a small lock, ones for another launcher say so. */
+  function bubble(m: Message) {
+    const b = el('div', { className: `fr-bubble${m.unreadable ? ' unreadable' : ''}`, textContent: m.text });
+    if (m.encrypted) b.append(el('i', { className: 'fa-solid fa-lock fr-lock', title: t('Zaszyfrowana od nadawcy do odbiorcy') }));
+    return b;
+  }
+
   function inviteCard(m: Message, mine: boolean): HTMLElement {
     const inv = m.invite!;
     const card = el('div', { className: 'fr-bubble fr-invite' }, icon('fa-gamepad'),
@@ -624,7 +631,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       // messages sent close together stick to each other
       const grouped = m.from === lastFrom && m.at - lastAt < 5 * 60_000;
       nodes.push(el('div', { className: `fr-msg${m.from === me ? ' mine' : ''}${grouped ? ' grouped' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
-        m.invite ? inviteCard(m, m.from === me) : el('div', { className: 'fr-bubble', textContent: m.text }),
+        m.invite ? inviteCard(m, m.from === me) : bubble(m),
         grouped ? '' : el('small', { className: 'fr-time', textContent: time.format(m.at) })));
       if (m === lastMineRead) nodes.push(el('small', { className: 'fr-read', textContent: t('Przeczytano') }));
       lastDay = d;

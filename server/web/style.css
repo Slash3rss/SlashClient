@@ -75,6 +75,7 @@ input:focus, select:focus { border-color: var(--border-focus); box-shadow: 0 0 0
 .chip.blue { background: rgba(59, 130, 246, .15); color: var(--accent-light); }
 .chip.red { background: rgba(239, 68, 68, .14); color: #fca5a5; }
 .chip.gold { background: rgba(250, 204, 21, .14); color: var(--gold); }
+.chip.sky { background: rgba(56, 189, 248, .14); color: #7dd3fc; }
 .chip.green { background: rgba(74, 222, 128, .12); color: var(--green); }
 .avatar { width: 40px; height: 40px; border-radius: 12px; object-fit: cover; background: var(--accent-gradient, linear-gradient(135deg, #3b82f6, #1d4ed8)); display: grid; place-items: center; font-weight: 700; color: #fff; flex-shrink: 0; overflow: hidden; }
 .avatar.big { width: 64px; height: 64px; border-radius: 18px; font-size: 26px; }

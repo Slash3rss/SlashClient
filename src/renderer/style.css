@@ -890,3 +890,7 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
   .skin-info .row { gap: 6px; }
   .skin-info button:not(.cape-choice), .skin-edit button:not(.cape-choice) { height: 32px; padding: 0 10px; font-size: 12.5px; }
 }
+
+/* end-to-end encrypted chat */
+.fr-lock { margin-left: 6px; font-size: 9px; opacity: .45; vertical-align: 1px; }
+.fr-bubble.unreadable { font-style: italic; opacity: .6; }

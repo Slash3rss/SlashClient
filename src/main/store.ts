@@ -76,6 +76,8 @@ export interface Settings {
   socialUrl: string;
   /** Session on that server, encrypted like the Microsoft tokens; never sent to the page. */
   socialToken?: string;
+  /** This launcher's chat encryption key; the private half encrypted like the token. */
+  chatKey?: { device: string; publicKey: string; privateKey: string };
   /** The status the player picked for friends. */
   socialStatus: 'online' | 'away' | 'busy' | 'invisible';
 }

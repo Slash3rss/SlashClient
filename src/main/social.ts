@@ -50,6 +50,8 @@ interface Options {
   status: () => Status;
   /** Live events for the page. */
   emit: (event: Record<string, unknown>) => void;
+  /** Connected and signed in (again): e.g. publish this launcher's chat key. */
+  onReady?: () => void;
   fetchImpl?: typeof fetch;
 }
 
@@ -160,6 +162,7 @@ export class SocialClient {
         this.user = event.me as SocialUser;
         this.retry = 0;
         this.setConnected(true);
+        this.opts.onReady?.();
         return;
       }
       this.opts.emit(event);

@@ -10,8 +10,10 @@ const TABS = [
 const ACTIONS = {
   ban: 'zablokował(a)', unban: 'odblokował(a)', make_admin: 'nadał(a) admina', remove_admin: 'odebrał(a) admina',
   set_cape: 'zmienił(a) pelerynę', logout: 'wylogował(a)', delete: 'usunął(ęła) konto', cape_settings: 'zmienił(a) ustawienia peleryny',
-  grant: 'przyznał(a) pelerynę', revoke: 'odebrał(a) pelerynę',
+  grant: 'przyznał(a) pelerynę', revoke: 'odebrał(a) pelerynę', set_rank: 'zmienił(a) rangę',
 };
+/** Ranks: the colour of the SlashClient logo next to the name in game (admins are red without one). */
+const RANKS = { support: ['Support', 'sky'], partner: ['Partner', 'gold'] };
 
 let me;
 let tab = location.hash.slice(1) || 'dashboard';
@@ -139,7 +141,8 @@ async function loadUsers() {
 
 const badges = (u) => el('div', { class: 'row' },
   u.banned ? el('span', { class: 'chip red' }, icon('fa-solid fa-ban'), 'zablokowany') : '',
-  u.role === 'admin' || u.configAdmin ? el('span', { class: 'chip blue' }, icon('fa-solid fa-shield-halved'), 'admin') : '',
+  u.role === 'admin' || u.configAdmin ? el('span', { class: 'chip red' }, icon('fa-solid fa-shield-halved'), 'admin') : '',
+  RANKS[u.rank] ? el('span', { class: `chip ${RANKS[u.rank][1]}` }, icon('fa-solid fa-certificate'), RANKS[u.rank][0]) : '',
   !u.banned && !(u.role === 'admin' || u.configAdmin) ? el('span', { class: 'chip green', textContent: 'aktywny' }) : '');
 
 function closeDrawer() {
@@ -160,6 +163,8 @@ async function openUser(id) {
   };
   const capeSel = el('select', {}, el('option', { value: '', textContent: 'Bez peleryny' }), ...Object.entries(capeNames).map(([cid, name]) => el('option', { value: cid, textContent: name, selected: u.cape === cid })));
   capeSel.addEventListener('change', () => update({ cape: capeSel.value }, 'Peleryna zmieniona.'));
+  const rankSel = el('select', {}, el('option', { value: '', textContent: 'Bez rangi' }), ...Object.entries(RANKS).map(([rid, [name]]) => el('option', { value: rid, textContent: name, selected: u.rank === rid })));
+  rankSel.addEventListener('change', () => update({ rank: rankSel.value }, 'Ranga zmieniona.'));
   const self = u.id === me.id;
   const drawer = el('aside', { class: 'glass drawer' },
     el('div', { class: 'row' }, avatarEl(u, true), el('div', { class: 'grow' }, el('h2', { textContent: u.name }), el('span', { class: 'muted', textContent: `@${u.handle}` })),
@@ -175,6 +180,9 @@ async function openUser(id) {
       el('dt', { textContent: 'Serwer' }), el('dd', { textContent: u.showServer ? 'widoczny dla znajomych' : 'ukryty' }),
       el('dt', { textContent: 'Przyznane' }), el('dd', { textContent: u.grants.map((g) => capeNames[g] ?? g).join(', ') || '—' })),
     el('div', {}, el('h4', { textContent: 'Peleryna' }), el('div', { class: 'row' }, u.cape ? capeEl(u.cape, true) : '', capeSel)),
+    el('div', {}, el('h4', { textContent: 'Ranga' }),
+      el('p', { class: 'muted small', textContent: 'Kolor logo SlashClient przy nicku w grze: admin czerwony, support błękitny, partner złoty.' }),
+      el('div', { class: 'row' }, rankSel)),
     el('div', { class: 'actions' },
       el('button', { disabled: self, onclick: () => update({ banned: !u.banned }, u.banned ? 'Konto odblokowane.' : 'Konto zablokowane i wylogowane.'), class: u.banned ? '' : 'danger' },
         icon(u.banned ? 'fa-solid fa-unlock' : 'fa-solid fa-ban'), u.banned ? 'Odblokuj' : 'Zablokuj'),

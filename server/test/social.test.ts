@@ -77,7 +77,7 @@ async function connect(token: string, presence?: unknown) {
 }
 
 before(async () => {
-  app = createApp({ dbFile: path.join(dir, 'test.db'), publicUrl: 'http://localhost', allowDevLogin: true, loginsPerMinute: 1000, oauth: { discord: { clientId: 'id', clientSecret: 'secret' }, microsoft: { clientId: 'ms', clientSecret: '' }, google: { clientId: 'g', clientSecret: 's' }, github: { clientId: 'gh', clientSecret: 's' } }, fetchImpl: fakeFetch });
+  app = createApp({ dbFile: path.join(dir, 'test.db'), publicUrl: 'http://localhost', allowDevLogin: true, loginsPerMinute: 1000, adminHandles: ['Tomek'], oauth: { discord: { clientId: 'id', clientSecret: 'secret' }, microsoft: { clientId: 'ms', clientSecret: '' }, google: { clientId: 'g', clientSecret: 's' }, github: { clientId: 'gh', clientSecret: 's' } }, fetchImpl: fakeFetch });
   await new Promise<void>((r) => app.server.listen(0, r));
   base = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
 });
@@ -211,6 +211,27 @@ describe('social server', () => {
     assert.equal(other.body.user.handle, 'Kasia2');
   });
 
+  it('keeps launchers\' public keys for friends, and passes encrypted messages on untouched', async () => {
+    const a = await login('Szyfr');
+    const b = await login('Tajny');
+    const c = await login('Obcy');
+    await call('POST', '/v1/friends/requests', a.token, { handle: 'Tajny' });
+    await call('POST', `/v1/friends/requests/${a.user.id}/accept`, b.token);
+    const key = { device: 'ab'.repeat(12), pub: 'MCowBQYDK2VuAyEA' + 'A'.repeat(44) };
+    assert.equal((await call('POST', '/v1/keys', b.token, { device: 'x', pub: key.pub })).status, 400);
+    assert.equal((await call('POST', '/v1/keys', b.token, key)).body.ok, true);
+    // a friend can fetch them, a stranger cannot
+    assert.deepEqual((await call('GET', `/v1/keys/${b.user.id}`, a.token)).body.keys, [key]);
+    assert.equal((await call('GET', `/v1/keys/${b.user.id}`, c.token)).status, 403);
+    const sealed = 'e2e1:' + Buffer.from('x'.repeat(5000)).toString('base64');
+    const sent = (await call('POST', `/v1/messages/${b.user.id}`, a.token, { text: sealed })).body.message;
+    assert.equal(sent.text, sealed);
+    assert.equal((await call('GET', `/v1/messages/${a.user.id}`, b.token)).body.messages.at(-1).text, sealed);
+    // a plain message stays short; an "encrypted" one must look like one
+    assert.equal((await call('POST', `/v1/messages/${b.user.id}`, a.token, { text: 'x'.repeat(2001) })).body.error, 'too_long');
+    assert.equal((await call('POST', `/v1/messages/${b.user.id}`, a.token, { text: 'e2e1:<script>' })).body.error, 'bad_request');
+  });
+
   it('makes friends, shows statuses and delivers messages live', async () => {
     const ala = await login('Ala');
     const bob = await login('Bob');
@@ -284,7 +305,7 @@ describe('social server', () => {
     assert.equal((await call('POST', '/v1/me', ewa.token, { cape: 'nope' })).body.error, 'bad_cape');
     assert.equal((await call('POST', '/v1/me', ewa.token, { cape: 'galaxy' })).body.cape, 'galaxy');
     // nothing until the launcher links the game's player to the account
-    assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc] })).body, { active: [], capes: {} });
+    assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc] })).body, { active: [], capes: {}, ranks: {} });
     // only a Minecraft account proven at Mojang to be the player's own
     assert.equal((await call('POST', '/v1/mc/link', ewa.token, { uuid: ewaMc })).body.error, 'not_linked');
     await minecraftLogin('Ewa', ewaMc.replace(/-/g, ''), ewa.token);
@@ -293,6 +314,8 @@ describe('social server', () => {
     await call('POST', '/v1/mc/link', tom.token, { uuid: tomMc });
     const seen = (await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc, tomMc] })).body;
     assert.deepEqual(seen.capes, { [ewaMc]: 'galaxy' });
+    // the logo's colour: Tomek is an admin
+    assert.deepEqual(seen.ranks, { [tomMc]: 'admin' });
     assert.deepEqual(seen.active.sort(), [ewaMc, tomMc].sort());
 
     // emotes reach launcher players on the same server, not others

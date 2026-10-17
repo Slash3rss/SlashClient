@@ -49,7 +49,7 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
     ['POST', /^\/v1\/admin\/users\/([\w-]+)$/, async (req, [id]) => {
       const me = ctx.admin(req);
       const user = userOr404(id);
-      const { banned, role, cape } = await ctx.body(req);
+      const { banned, role, cape, rank } = await ctx.body(req);
       if (typeof banned === 'boolean' && banned !== user.banned) {
         if (id === me) ctx.fail(400, 'self');
         if (banned && ctx.configAdmins.has(user.handle.toLowerCase())) ctx.fail(400, 'config_admin');
@@ -66,6 +66,12 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
           db.setRole(id, role);
           db.log(me, role ? 'make_admin' : 'remove_admin', user.handle);
         }
+      }
+      // the colour of the logo in game: support (light blue) or partner (gold); admins are red without it
+      if (typeof rank === 'string' && rank !== user.rank) {
+        if (!['', 'support', 'partner'].includes(rank)) ctx.fail(400, 'bad_rank');
+        db.setRank(id, rank);
+        db.log(me, 'set_rank', user.handle, rank || '—');
       }
       // the admin may give any cape, also an exclusive one without a grant
       if (typeof cape === 'string' && cape !== user.cape) {

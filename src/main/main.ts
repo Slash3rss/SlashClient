@@ -15,6 +15,7 @@ import { lastTarget, serverFromLog, worldPlayedSince } from './sessions';
 import { checkForUpdates, installUpdate, startUpdateChecks, updateStatus } from './updates';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { activityFromLog, SocialClient, SocialError, type SocialUser, type Status } from './social';
+import { decrypt, encrypt, isEncrypted, newDeviceKey, type DeviceKey, type PublicDevice } from './chatCrypto';
 import { launch, resolveVersionId } from './launch';
 import { paths } from './paths';
 import { loadStore, newProfile, profileGameDir, saveStore, secrets, setSecretCodec, type MicrosoftAccount, type Profile, type Settings, type StoreData } from './store';
@@ -105,7 +106,8 @@ async function persist() {
 function publicStore() {
   return {
     ...store,
-    settings: { ...store.settings, socialToken: undefined },
+    // secrets stay in the main process
+    settings: { ...store.settings, socialToken: undefined, chatKey: undefined },
     accounts: store.accounts.map(({ id, type, name, uuid }) => ({ id, type, name, uuid })),
     profiles: store.profiles.map((p) => ({ ...p, iconFile: p.icon === 'custom' ? iconFile(profileGameDir(p)) : undefined })),
     running: Boolean(game),
@@ -142,6 +144,12 @@ function createWindow() {
     if (url.startsWith('https://')) shell.openExternal(url);
     return { action: 'deny' };
   });
+  // the window only ever shows the launcher's own page: a page from elsewhere would get its API (preload)
+  win.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('file://')) return;
+    event.preventDefault();
+    if (url.startsWith('https://')) shell.openExternal(url);
+  });
 }
 
 function handle<T extends unknown[], R>(channel: string, fn: (...args: T) => Promise<R> | R) {
@@ -152,7 +160,7 @@ handle('store:get', () => publicStore());
 handle('versions:list', async () => (await getManifest()).versions.map(({ id, type }) => ({ id, type })));
 
 handle('settings:save', async (settings: Partial<Settings>) => {
-  const { socialToken: _ignored, ...allowed } = settings;
+  const { socialToken: _ignored, chatKey: _key, ...allowed } = settings;
   const urlChanged = allowed.socialUrl !== undefined && allowed.socialUrl !== store.settings.socialUrl;
   const accountChanged = allowed.selectedAccountId !== undefined && allowed.selectedAccountId !== store.settings.selectedAccountId;
   store.settings = { ...store.settings, ...allowed };
@@ -207,7 +215,7 @@ handle('account:loginMicrosoft', async () => {
   // copied right away so the player only has to paste it on the Microsoft page
   clipboard.writeText(code.user_code);
   send('login:code', { userCode: code.user_code, url: code.verification_uri, copied: true });
-  shell.openExternal(code.verification_uri);
+  if (code.verification_uri.startsWith('https://')) shell.openExternal(code.verification_uri);
   const tokens = await pollDeviceCode(clientId, code, loginAbort.signal);
   const account = await completeMicrosoftLogin(tokens);
   // Signing in again with the same Minecraft profile replaces the old entry.
@@ -945,9 +953,13 @@ const social = new SocialClient({
   },
   status: () => store.settings.socialStatus,
   emit: (event) => {
+    // the page and the game get messages already decrypted; a launcher's new key drops the cached ones
+    if (event.type === 'message' && event.message) event = { ...event, message: openMessage(event.message as ChatMessage) };
+    if (event.type === 'keys' && typeof event.user === 'string') chatKeys.delete(event.user);
     send('social:event', event);
     bridge.push(event as { type: string });
   },
+  onReady: () => void registerChatKey(),
 });
 
 /** The account the running game plays as (it can change from the game's menu). */
@@ -955,7 +967,7 @@ let gameAccountId: string | undefined;
 
 /** Friends and chat for SlashClient HUD in the game, without handing it the account token. */
 const bridge = new GameBridge({
-  call: (method, apiPath, body) => social.call(method, apiPath, body),
+  call: (method, apiPath, body) => chatCall(method, apiPath, body),
   state: () => {
     const s = social.state();
     return { signedIn: !!s.user, user: s.user, connected: s.connected };
@@ -1042,8 +1054,72 @@ handle('social:health', () => socialCall(() => social.call('GET', '/v1/health', 
 /** The page's requests; only the parts of the API that work on the player's own data. */
 handle('social:api', (method: string, apiPath: string, body?: unknown) => {
   if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages|invites|cosmetics)(\/[\w-]+)*(\?[\w=&-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
-  return socialCall(() => social.call(method, apiPath, body));
+  return socialCall(() => chatCall(method, apiPath, body));
 });
+
+// ---------- end-to-end encrypted chat (chatCrypto.ts) ----------
+
+interface ChatMessage { from: string; to: string; text: string; invite?: unknown; encrypted?: boolean; unreadable?: boolean }
+
+/** This launcher's key, made on first use and kept in the config (the private half encrypted). */
+function chatKey(): DeviceKey {
+  if (!store.settings.chatKey) {
+    const k = newDeviceKey();
+    store.settings.chatKey = { device: k.device, publicKey: k.publicKey, privateKey: secrets.encrypt(k.privateKey) };
+    void persist();
+  }
+  const k = store.settings.chatKey;
+  return { device: k.device, publicKey: k.publicKey, privateKey: secrets.decrypt(k.privateKey) };
+}
+
+/** Publishes this launcher's public key, so friends (and our other launchers) can encrypt for it. */
+async function registerChatKey() {
+  const k = chatKey();
+  await social.call('POST', '/v1/keys', { device: k.device, pub: k.publicKey }).catch((err) => console.error('Klucz czatu:', (err as Error).message));
+}
+
+const chatKeys = new Map<string, { at: number; keys: PublicDevice[] }>();
+async function keysOf(userId: string): Promise<PublicDevice[]> {
+  const hit = chatKeys.get(userId);
+  if (hit && Date.now() - hit.at < 5 * 60_000) return hit.keys;
+  const { keys } = await social.call<{ keys: PublicDevice[] }>('GET', `/v1/keys/${userId}`);
+  chatKeys.set(userId, { at: Date.now(), keys });
+  return keys;
+}
+
+/**
+ * The text as it goes to the server: encrypted for the friend's launchers and ours. A friend whose
+ * launcher has no key yet (an older version) gets it as it is, or they could not read it.
+ */
+async function sealText(to: string, text: string): Promise<string> {
+  const me = social.state().user?.id;
+  if (!me || text.length > 2000) return text;
+  const own = chatKey();
+  const [theirs, mine] = await Promise.all([keysOf(to), keysOf(me)]);
+  if (!theirs.length) return text;
+  const devices = [...theirs, ...mine.filter((d) => d.device !== own.device), { device: own.device, pub: own.publicKey }];
+  return encrypt(text, own, devices, `${me}|${to}`);
+}
+
+function openMessage(m: ChatMessage): ChatMessage {
+  if (!isEncrypted(m.text)) return m;
+  const text = decrypt(m.text, chatKey(), `${m.from}|${m.to}`);
+  return text === undefined
+    ? { ...m, text: t('Wiadomość zaszyfrowana dla innego urządzenia.'), encrypted: true, unreadable: true }
+    : { ...m, text, encrypted: true };
+}
+
+/** A call to the social server with the chat encrypted on the way out and decrypted on the way in. */
+async function chatCall(method: string, apiPath: string, body?: unknown) {
+  const send = /^\/v1\/messages\/([\w-]+)$/.exec(apiPath);
+  if (method === 'POST' && send && body && typeof (body as { text?: unknown }).text === 'string') {
+    body = { ...(body as object), text: await sealText(send[1], (body as { text: string }).text) };
+  }
+  const res = await social.call<Record<string, unknown>>(method, apiPath, body);
+  if (res && Array.isArray(res.messages)) return { ...res, messages: (res.messages as ChatMessage[]).map(openMessage) };
+  if (res && res.message && typeof res.message === 'object') return { ...res, message: openMessage(res.message as ChatMessage) };
+  return res;
+}
 /** A friend's invite while the game runs: the HUD leaves where it is and joins that server. */
 handle('game:join', (address: string) => {
   if (!game || !gameHasHud || !/^[\w.-]{1,253}(:\d{1,5})?$/.test(address)) return false;
@@ -1062,6 +1138,8 @@ handle('social:loginOAuth', (provider: string, link: boolean) => socialCall(asyn
   const attempt = ++browserLogin;
   const { state, url, code } = await social.call<{ state: string; url: string; code?: string }>('POST', `/v1/auth/${provider}/start`, undefined, link);
   // Microsoft signs in with a code typed on its page: copied right away, and shown in Friends
+  // the server says where to sign in; only a web page is opened, never another kind of link
+  if (!/^https:\/\//.test(url)) throw new SocialError('provider_failed');
   if (code) {
     clipboard.writeText(code);
     send('social:loginCode', { code, url });

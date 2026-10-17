@@ -95,6 +95,21 @@ describe('admin panel', () => {
     assert.equal((await call('GET', '/v1/admin/stats', ola.token)).body.error, 'not_admin');
   });
 
+  it('gives ranks: support and partner, admins are red anyway; only admins can', async () => {
+    const boss = await login('Szef');
+    const kuba = await login('Kuba');
+    assert.equal((await call('GET', '/v1/me', boss.token)).body.badge, 'admin');
+    assert.equal((await call('POST', `/v1/admin/users/${kuba.user.id}`, boss.token, { rank: 'king' })).body.error, 'bad_rank');
+    const after = (await call('POST', `/v1/admin/users/${kuba.user.id}`, boss.token, { rank: 'partner' })).body;
+    assert.equal(after.rank, 'partner');
+    assert.equal((await call('GET', '/v1/me', kuba.token)).body.badge, 'partner');
+    // a player cannot give themselves a rank
+    assert.equal((await call('POST', `/v1/admin/users/${kuba.user.id}`, kuba.token, { rank: 'support' })).body.error, 'not_admin');
+    assert.equal((await call('POST', '/v1/me', kuba.token, { rank: 'support' })).body.rank, 'partner');
+    const log = (await call('GET', '/v1/admin/log', boss.token)).body;
+    assert.ok(JSON.stringify(log).includes('set_rank'));
+  });
+
   it('bans: the session ends, the live connection closes, signing in again is refused', async () => {
     const boss = await login('Szef');
     const bad = await login('Troll');

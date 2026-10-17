@@ -46,6 +46,8 @@ const SESSION_IDLE_MS = 90 * 24 * 3_600_000;
 const LOGIN_TTL_MS = 10 * 60_000;
 const MC_CHALLENGE_MS = 2 * 60_000;
 const MAX_MESSAGE = 2000;
+/** An encrypted message: the text plus a wrapped key for each launcher of both friends. */
+const MAX_ENCRYPTED = 14_000;
 /** A game counts as running this long after its last report (the mod reports every 4 minutes). */
 const IN_GAME_TTL_MS = 10 * 60_000;
 /** host or host:port, as players type it in the server list. */
@@ -215,6 +217,9 @@ export function createApp(cfg: Config) {
   }
 
   const configAdmins = new Set((cfg.adminHandles ?? []).map((h) => h.trim().toLowerCase()).filter(Boolean));
+  /** The logo colour in game: admins red, then the rank the admin panel gave (support, partner). */
+  const badgeOf = (u: { role: string; handle: string; rank: string }) =>
+    u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()) ? 'admin' : u.rank === 'support' || u.rank === 'partner' ? u.rank : '';
   const isAdmin = (userId: string) => {
     const u = db.user(userId);
     return !!u && (u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()));
@@ -227,6 +232,22 @@ export function createApp(cfg: Config) {
   /** Ends every live connection of an account (after a ban, a sign-out from the panel, a deletion). */
   function kick(userId: string) {
     for (const ws of sockets.get(userId) ?? []) ws.close(4003, 'signed out');
+  }
+  /** Which session each live connection signed in with, so signing out also closes it. */
+  const sessionOf = new WeakMap<WebSocket, string>();
+  function closeSession(tokenHash: string) {
+    for (const set of sockets.values()) for (const ws of set) if (sessionOf.get(ws) === tokenHash) ws.close(4003, 'signed out');
+  }
+  /** At most 20 messages per 10 seconds from one connection. */
+  const socketBudget = new WeakMap<WebSocket, { at: number; n: number }>();
+  function socketLimit(ws: WebSocket): boolean {
+    const now = Date.now();
+    const b = socketBudget.get(ws);
+    if (!b || now - b.at > 10_000) {
+      socketBudget.set(ws, { at: now, n: 1 });
+      return true;
+    }
+    return ++b.n <= 20;
   }
 
   function friendList(me: string) {
@@ -241,7 +262,7 @@ export function createApp(cfg: Config) {
 
   function meWithProviders(me: string) {
     const { banned: _banned, ...user } = db.user(me)!;
-    return { ...user, providers: db.providers(me), minecraft: db.minecraftAccounts(me), admin: isAdmin(me), grants: db.grants(me) };
+    return { ...user, providers: db.providers(me), minecraft: db.minecraftAccounts(me), admin: isAdmin(me), badge: badgeOf(user), grants: db.grants(me) };
   }
 
   function friendOrThrow(me: string, other: string) {
@@ -332,7 +353,10 @@ export function createApp(cfg: Config) {
     }],
     ['POST', /^\/v1\/auth\/logout$/, (req) => {
       const token = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1];
-      if (token) db.removeSession(hashToken(token));
+      if (token) {
+        db.removeSession(hashToken(token));
+        closeSession(hashToken(token));
+      }
       return { ok: true };
     }],
 
@@ -430,14 +454,19 @@ export function createApp(cfg: Config) {
       const active = uuids.filter((u): u is string => typeof u === 'string' && now - (inGame.get(u.toLowerCase()) ?? 0) < IN_GAME_TTL_MS);
       // the capes of players whose launcher said which account they play as
       const capes: Record<string, string> = {};
+      // the logo's colour: only for a Minecraft account proven to be that SlashClient account's own
+      const ranks: Record<string, string> = {};
       const settings = db.cosmeticSettings();
       for (const u of active) {
         const link = linked.get(u.toLowerCase());
         const owner = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user) : undefined;
-        // a cape the admin switched off is not shown, nor anything on a banned account
-        if (owner?.cape && !owner.banned && capeSetting(settings, owner.cape).enabled) capes[u] = owner.cape;
+        if (!owner || owner.banned) continue;
+        // a cape the admin switched off is not shown
+        if (owner.cape && capeSetting(settings, owner.cape).enabled) capes[u] = owner.cape;
+        const badge = badgeOf(owner);
+        if (badge) ranks[u] = badge;
       }
-      return { active, capes };
+      return { active, capes, ranks };
     }],
     // the launcher says which Minecraft player its SlashClient account plays as, while the game runs
     ['POST', /^\/v1\/mc\/link$/, async (req) => {
@@ -471,6 +500,23 @@ export function createApp(cfg: Config) {
       return { ok: true };
     }],
 
+    // -- chat encryption: launchers publish their public key; friends fetch them to encrypt --
+    ['POST', /^\/v1\/keys$/, async (req) => {
+      const me = authed(req);
+      const { device, pub } = await body(req);
+      // an X25519 public key in DER (spki) is 44 bytes: 60 characters of base64
+      if (typeof device !== 'string' || !/^[0-9a-f]{24}$/.test(device) || typeof pub !== 'string' || !/^[A-Za-z0-9+/=]{40,80}$/.test(pub)) throw new HttpError(400, 'bad_request');
+      db.setDeviceKey(me, device, pub);
+      push(me, { type: 'keys', user: me });
+      for (const f of db.friends(me)) push(f.id, { type: 'keys', user: me });
+      return { ok: true };
+    }],
+    ['GET', /^\/v1\/keys\/([\w-]+)$/, (req, [other]) => {
+      const me = authed(req);
+      if (other !== me) friendOrThrow(me, other);
+      return { keys: db.deviceKeys(other) };
+    }],
+
     // -- messages --
     ['GET', /^\/v1\/messages\/([\w-]+)$/, (req, [other], url) => {
       const me = authed(req);
@@ -485,7 +531,10 @@ export function createApp(cfg: Config) {
       limitMessages(me);
       const { text } = await body(req);
       if (typeof text !== 'string' || !text.trim()) throw new HttpError(400, 'empty');
-      if (text.length > MAX_MESSAGE) throw new HttpError(400, 'too_long');
+      // an encrypted message is longer than its text (the launcher keeps the text itself to MAX_MESSAGE)
+      const encrypted = text.startsWith('e2e1:');
+      if (text.length > (encrypted ? MAX_ENCRYPTED : MAX_MESSAGE)) throw new HttpError(400, 'too_long');
+      if (encrypted && !/^e2e1:[A-Za-z0-9+/=]+$/.test(text)) throw new HttpError(400, 'bad_request');
       const message = db.addMessage(me, other, text.trim());
       push(other, { type: 'message', message });
       push(me, { type: 'message', message }); // the player's other launchers
@@ -626,6 +675,7 @@ export function createApp(cfg: Config) {
         if (!userId || db.user(userId)?.banned) return ws.close(4001, 'unauthorized');
         clearTimeout(authTimer);
         me = userId;
+        sessionOf.set(ws, hashToken(msg.token as string));
         const first = !sockets.get(me)?.size;
         if (!sockets.has(me)) sockets.set(me, new Set());
         sockets.get(me)!.add(ws);
@@ -635,6 +685,8 @@ export function createApp(cfg: Config) {
         if (first || presence) broadcastPresence(me);
         return;
       }
+      // a connection that floods (presence or typing many times a second) is only ignored, friends are not spammed
+      if (!socketLimit(ws)) return;
       if (msg.type === 'presence') {
         const presence = cleanPresence(msg.presence);
         if (!presence) return;

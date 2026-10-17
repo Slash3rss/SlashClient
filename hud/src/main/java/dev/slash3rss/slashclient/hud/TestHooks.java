@@ -85,6 +85,12 @@ public final class TestHooks {
 		return MoreModules.Cpu.load() + " " + mc.getGpuUtilization();
 	}
 
+	/** The local player's logo in a rank's colour, as the server would answer. */
+	public static void ownRank(String rank) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		Badges.setRank(mc.player.getUUID(), rank);
+	}
+
 	public static boolean moduleOn(String id) {
 		return SlashHud.config.placement(id).enabled;
 	}

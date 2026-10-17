@@ -534,6 +534,8 @@ const EN: Record<string, string> = {
   '· nie udało się sprawdzić': '· could not check',
   ' Sprawdź aktualizacje': ' Check for updates',
   ' Pobierz': ' Download',
+  'Wiadomość zaszyfrowana dla innego urządzenia.': 'Message encrypted for another device.',
+  'Zaszyfrowana od nadawcy do odbiorcy': 'End-to-end encrypted',
   'Kopiuj kod': 'Copy code',
   'Statystyki': 'Statistics',
   '7 dni': '7 days',
