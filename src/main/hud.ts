@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { readModMeta } from './modcheck';
@@ -32,12 +33,32 @@ export async function hudJarFor(bundleDir: string, opts: HudOptions): Promise<st
  * Copies the jar out of the launcher (inside app.asar Java could not read it) into
  * `cacheDir`, rewriting it only when a launcher update brought a different one.
  */
+/**
+ * Copies the HUD jar for a game to start with. Each build gets its own file name (with a hash of
+ * its content) and is written next to it first, then renamed: a game that is still running keeps
+ * reading its own jar. Overwriting it in place (as before) broke a running game the moment it
+ * loaded a class it had not loaded yet ("ZipFile invalid LOC header").
+ */
 export async function stageJar(source: string, cacheDir: string): Promise<string> {
   await fs.mkdir(cacheDir, { recursive: true });
-  const dest = path.join(cacheDir, path.basename(source));
   const fresh = await fs.readFile(source);
-  const current = await fs.readFile(dest).catch(() => undefined);
-  if (!current?.equals(fresh)) await fs.writeFile(dest, fresh);
+  const base = path.basename(source, '.jar');
+  const name = `${base}-${createHash('sha256').update(fresh).digest('hex').slice(0, 12)}.jar`;
+  const dest = path.join(cacheDir, name);
+  if (!(await fs.stat(dest).catch(() => undefined))) {
+    const tmp = `${dest}.${process.pid}.tmp`;
+    await fs.writeFile(tmp, fresh);
+    await fs.rename(tmp, dest);
+  }
+  // older builds of the same jar go after two days, when no game started with them is still running
+  const old = Date.now() - 2 * 24 * 3_600_000;
+  for (const f of await fs.readdir(cacheDir).catch(() => [] as string[])) {
+    const same = f === `${base}.jar` || (f.startsWith(`${base}-`) && /^[0-9a-f]{12}\.jar$/.test(f.slice(base.length + 1)));
+    if (f === name || !same) continue;
+    const file = path.join(cacheDir, f);
+    const stat = await fs.stat(file).catch(() => undefined);
+    if (stat && stat.mtimeMs < old) await fs.rm(file, { force: true }).catch(() => {});
+  }
   return dest;
 }
 

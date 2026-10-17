@@ -41,7 +41,9 @@ describe('SlashClient HUD', () => {
     await fs.writeFile(path.join(mods, 'slashclient-hud-26.2.jar'), 'old');
     await fs.writeFile(path.join(mods, 'fabric-api-0.162.0.jar'), fabricJar('fabric-api'));
     const jars = await prepareHud(bundle, game, { enabled: true, loader: 'fabric', gameVersion: '26.3', cacheDir });
-    assert.deepEqual(jars, [path.join(cacheDir, 'slashclient-hud-26.3.jar')]);
+    assert.equal(jars.length, 1);
+    assert.equal(path.dirname(jars[0]), cacheDir);
+    assert.match(path.basename(jars[0]), /^slashclient-hud-26\.3-[0-9a-f]{12}\.jar$/);
     assert.deepEqual(await fs.readdir(mods), ['fabric-api-0.162.0.jar']);
     assert.equal(await hasFabricApi(game), true);
     assert.deepEqual(addModsArgs(jars), [`-Dfabric.addMods=${jars[0]}`]);
@@ -49,18 +51,31 @@ describe('SlashClient HUD', () => {
     await fs.rm(root, { recursive: true });
   });
 
-  it('copies the jar out of the launcher only when it changed', async () => {
+  it('copies the jar out of the launcher under a name of its own, never over one a game may be running', async () => {
     const { root, bundle } = await setup();
     const cacheDir = path.join(root, 'cache');
     const source = path.join(bundle, 'slashclient-hud-26.3.jar');
     const staged = await stageJar(source, cacheDir);
+    assert.match(path.basename(staged), /^slashclient-hud-26\.3-[0-9a-f]{12}\.jar$/);
     const first = (await fs.stat(staged)).mtimeMs;
     await new Promise((r) => setTimeout(r, 20));
-    await stageJar(source, cacheDir);
+    assert.equal(await stageJar(source, cacheDir), staged);
     assert.equal((await fs.stat(staged)).mtimeMs, first);
+    // a new build: a new file, the running game's jar is left as it was
+    const before = await fs.readFile(staged);
     await fs.writeFile(source, fabricJar('slashclient-hud-v2'));
+    const next = await stageJar(source, cacheDir);
+    assert.notEqual(next, staged);
+    assert.deepEqual(await fs.readFile(next), await fs.readFile(source));
+    assert.deepEqual(await fs.readFile(staged), before);
+    // old builds go once no game can still be using them (the old fixed name too)
+    const legacy = path.join(cacheDir, 'slashclient-hud-26.3.jar');
+    await fs.writeFile(legacy, before);
+    const longAgo = new Date(Date.now() - 3 * 24 * 3_600_000);
+    await fs.utimes(staged, longAgo, longAgo);
+    await fs.utimes(legacy, longAgo, longAgo);
     await stageJar(source, cacheDir);
-    assert.deepEqual(await fs.readFile(staged), await fs.readFile(source));
+    assert.deepEqual((await fs.readdir(cacheDir)).sort(), [path.basename(next)]);
     await fs.rm(root, { recursive: true });
   });
 
