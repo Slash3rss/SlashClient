@@ -136,6 +136,7 @@ public final class PartnerServers {
 	 */
 	public static void drawBadge(GuiGraphicsExtractor g, ServerData server, int x, int y, int w, int h) {
 		if (!isPartner(server)) return;
+		drawFrame(g, x, y, w, h);
 		var font = Minecraft.getInstance().font;
 		net.minecraft.network.chat.Component label = dev.slash3rss.slashclient.hud.ui.Ui.trBold("slashclient-hud.partner");
 		int bw = 4 + 7 + 3 + font.width(label) + 5, bh = 11;
@@ -160,6 +161,17 @@ public final class PartnerServers {
 		dev.slash3rss.slashclient.hud.ui.Ui.icon(g, "partner", 4, 2, 7, 0xFF451A03);
 		dev.slash3rss.slashclient.hud.ui.Ui.draw(g, label, 14, 2, 0xFF451A03);
 		pose.popMatrix();
+	}
+
+	/**
+	 * A gold frame around the row: a deep gold edge, a light inner line like polished metal, and
+	 * a brighter strip along the top where the light falls.
+	 */
+	private static void drawFrame(GuiGraphicsExtractor g, int x, int y, int w, int h) {
+		dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, x - 2, y - 2, w + 4, h + 4, 3, 0x66B45309);
+		dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, x - 1, y - 1, w + 2, h + 2, 3, 0xFFF59E0B);
+		dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, x, y, w, h, 2, 0x80FDE68A);
+		g.fill(x + 3, y - 1, x + w - 3, y, 0xFFFEF3C7);
 	}
 
 	/** For the test: a partner with a made-up picture, without the network. */
