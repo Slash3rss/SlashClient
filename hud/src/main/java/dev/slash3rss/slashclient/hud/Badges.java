@@ -119,9 +119,14 @@ public final class Badges {
 			// ask a second later, so our own report is already in when we ask
 			return;
 		}
+		// ourselves first, then the players around us, then the tab list: many servers fill the
+		// tab list with their own entries, and the real players (us included) are not on it
+		java.util.LinkedHashSet<UUID> seen = new java.util.LinkedHashSet<>();
+		seen.add(mc.player.getUUID());
+		if (mc.level != null) for (var p : mc.level.players()) seen.add(p.getUUID());
+		for (PlayerInfo p : mc.getConnection().getOnlinePlayers()) seen.add(p.getProfile().id());
 		List<UUID> ask = new ArrayList<>();
-		for (PlayerInfo p : mc.getConnection().getOnlinePlayers()) {
-			UUID id = p.getProfile().id();
+		for (UUID id : seen) {
 			if (id != null && now - checkedAt.getOrDefault(id, 0L) > RECHECK_MS) ask.add(id);
 			if (ask.size() >= 200) break;
 		}
