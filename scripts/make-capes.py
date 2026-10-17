@@ -261,10 +261,26 @@ def stripe(img, color, edge):
     return img
 
 
+def sized(w, h, draw):
+    """Draws a picture at another size: the designs use W and H, so they are set for the call.
+    The wing is drawn at its own size this way instead of a cape-sized picture being scaled
+    (scaling 40x64 to 48x80 smeared the pixels)."""
+    global W, H
+    saved = W, H
+    W, H = w, h
+    try:
+        return draw()
+    finally:
+        W, H = saved
+
+
 def texture(cape, art=None, wing=None, cape_part=True):
-    """A texture in Minecraft's cape layout: the cape (unless `cape_part` is off) and the elytra wing."""
+    """A texture in Minecraft's cape layout: the cape (unless `cape_part` is off) and the elytra wing.
+    `wing` draws the wing's picture (it is called at the wing's size)."""
     art = art if art is not None else design(cape)
-    wing = wing if wing is not None else (wing_art(cape) if cape in CAPES else art)
+    if wing is None:
+        wing = (lambda: wing_art(cape)) if cape in CAPES else (lambda: design(cape))
+    wing = sized(12 * K, 20 * K, wing)
     tex = Image.new('RGBA', (64 * K, 32 * K), (0, 0, 0, 0))
     edge = art.resize((1, 1)).getpixel((0, 0))
     dark = tuple(round(c * 0.55) for c in edge[:3]) + (255,)
@@ -282,7 +298,7 @@ def texture(cape, art=None, wing=None, cape_part=True):
     # comes from the game's elytra.png at generation time; Mojang's picture itself is not copied.
     if WING is not None:
         region = Image.new('RGBA', (24 * K, 22 * K), dark)
-        region.paste(wing.resize((12 * K, 20 * K), Image.LANCZOS), (12 * K, 2 * K))
+        region.paste(wing, (12 * K, 2 * K))
         alpha = WING.resize((24 * K, 22 * K), Image.NEAREST)
         region.putalpha(Image.composite(region.getchannel('A'), Image.new('L', region.size, 0), alpha))
         tex.paste(region, (22 * K, 0))
@@ -528,12 +544,12 @@ for cape in CAPES:
     texture(cape).save(os.path.join(OUT, f'{cape}.png'))
     count += 1
 for cape in RANK_CAPES:
-    texture(cape, rank_cape(cape), rank_wing(cape)).save(os.path.join(OUT, f'{cape}.png'))
+    texture(cape, rank_cape(cape), lambda: rank_wing(cape)).save(os.path.join(OUT, f'{cape}.png'))
     count += 1
 for cape in ANIMATED:
     for f in range(FRAMES):
         art = animated(cape, f)
-        tex = texture(cape, art, art)
+        tex = texture(cape, art, lambda: animated(cape, f))
         tex.save(os.path.join(OUT, f'{cape}_{f}.png'))
         # the first frame without a number: the launcher's and the website's picture of it
         if f == 0:
@@ -544,6 +560,6 @@ for folder, kinds in (('wings', WINGS), ('elytra', ELYTRAS)):
     out = os.path.join(OUT, '..', folder)
     os.makedirs(out, exist_ok=True)
     for kind in kinds:
-        texture(kind, wing_design(kind), cape_part=False).save(os.path.join(out, f'{kind}.png'))
+        texture(kind, sized(12 * K, 20 * K, lambda: wing_design(kind)), lambda: wing_design(kind), cape_part=False).save(os.path.join(out, f'{kind}.png'))
         count += 1
 print(count, 'cosmetics ->', os.path.normpath(os.path.join(OUT, '..')))
