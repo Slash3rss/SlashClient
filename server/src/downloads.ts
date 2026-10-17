@@ -43,9 +43,13 @@ export function createDownloads(opts: { repo: string; token?: string; fetchImpl:
     return cached.assets;
   }
 
-  /** A short-lived link to one file of the latest release (the visitor or the launcher goes there). */
+  /**
+   * A short-lived link to one file of the latest release (the visitor or the launcher goes there),
+   * or of the newest release that has it while the latest is still being built.
+   */
   async function fileLink(name: string): Promise<string | undefined> {
-    const asset = (await assets()).find((a) => a.name === name);
+    let asset = (await assets()).find((a) => a.name === name);
+    if (!asset) for (const release of await recentReleases()) if ((asset = release.find((a) => a.name === name))) break;
     return asset && signed(asset);
   }
 

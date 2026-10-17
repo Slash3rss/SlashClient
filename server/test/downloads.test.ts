@@ -63,7 +63,7 @@ describe('downloads', () => {
     assert.match(await yml.text(), /version: 0\.6\.0/);
     const exe = await fetch(`${base}/aktualizacje/SlashClient-Setup-0.5.0.exe`, { redirect: 'manual' });
     assert.equal(exe.headers.get('location'), 'https://objects.githubusercontent.com/signed/1');
-    assert.equal((await fetch(`${base}/aktualizacje/latest-linux.yml`)).status, 404);
+    assert.equal((await fetch(`${base}/aktualizacje/latest-mac.yml`)).status, 404);
     assert.equal((await fetch(`${base}/aktualizacje/..%2Fsecret`, { redirect: 'manual' })).status, 404);
   });
 
