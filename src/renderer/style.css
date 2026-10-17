@@ -359,7 +359,7 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .tag.release { background: rgba(74, 222, 128, .15); color: #86efac; }
 
 /* ---------- skin ---------- */
-.skin-card { display: flex; align-items: center; gap: 22px; padding: 12px 22px; }
+.skin-card { display: flex; align-items: flex-start; gap: 22px; padding: 12px 22px; }
 .skin-card canvas { width: 220px; height: 300px; cursor: grab; }
 .skin-info { display: flex; flex-direction: column; gap: 10px; }
 .skin-info p { margin: 0; max-width: 420px; }
@@ -443,7 +443,8 @@ button.busy { pointer-events: none; }
 .progress.indeterminate #progress-bar { width: 40% !important; transition: none; animation: indeterminate 1.1s ease-in-out infinite; }
 
 /* skin viewer: spinner until the model is ready */
-.skin-stage { position: relative; width: 220px; height: 300px; flex-shrink: 0; }
+/* the preview stays in sight while the long column next to it scrolls */
+.skin-stage { position: sticky; top: 12px; width: 220px; height: 300px; flex-shrink: 0; }
 .skin-stage canvas { transition: opacity .4s ease; }
 .skin-stage.loading canvas { opacity: 0; }
 .skin-stage .spinner { position: absolute; left: 50%; top: 50%; margin: -14px 0 0 -14px; }
@@ -880,3 +881,12 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .clip-icon { width: 48px; height: 48px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; background: linear-gradient(135deg, rgba(59, 130, 246, .25), rgba(29, 78, 216, .35)); color: var(--accent-light); font-size: 20px; }
 .slash-capes .cape-choice { position: relative; }
 .cape-lock { position: absolute; top: 4px; right: 4px; font-size: 10px; color: #facc15; }
+
+/* a small window: a smaller preview and tighter buttons, so the column beside it is not one button per line */
+@media (max-width: 1000px) {
+  .skin-card { gap: 14px; padding: 12px 14px; }
+  .skin-stage, .skin-stage canvas { width: 170px; height: 232px; }
+  .skin-info { gap: 8px; min-width: 0; }
+  .skin-info .row { gap: 6px; }
+  .skin-info button:not(.cape-choice), .skin-edit button:not(.cape-choice) { height: 32px; padding: 0 10px; font-size: 12.5px; }
+}

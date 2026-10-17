@@ -75,25 +75,27 @@ for (const [id, list] of [['#mq1', MODULES.slice(0, half)], ['#mq2', MODULES.sli
 
 // ---------- more features ----------
 const FEATURES = [
-  ['fa-solid fa-users-gear', 'Wiele kont', 'Kilka kont Microsoft i offline naraz; przełączasz je nawet w grze.'],
-  ['fa-solid fa-puzzle-piece', 'Mody z Modrinth', 'Wyszukiwarka modów, paczek i zasobów, dobranych do wersji profilu.'],
-  ['fa-solid fa-file-import', 'Import profili', 'Przenieś profile z innych launcherów jednym kliknięciem.'],
-  ['fa-solid fa-shirt', 'Skiny i peleryny', 'Edytor skina, biblioteka skinów i podgląd 3D z peleryną.'],
-  ['fa-solid fa-server', 'Lista serwerów', 'Serwery z opisem, liczbą graczy i pingiem; wejście jednym kliknięciem.'],
-  ['fa-solid fa-earth-europe', 'Światy i kopie', 'Kopie zapasowe światów, zrzuty ekranu i klipy w jednym miejscu.'],
-  ['fa-solid fa-triangle-exclamation', 'Pomoc przy crashach', 'Launcher czyta log i mówi, co poszło nie tak i jak to naprawić.'],
-  ['fa-brands fa-discord', 'Status na Discordzie', 'Znajomi widzą, w co i gdzie grasz.'],
+  ['fa-solid fa-users-gear', 'Wiele kont', 'Konta Microsoft i offline; przełączasz je także w grze, bez restartu.'],
+  ['fa-solid fa-puzzle-piece', 'Mody z Modrinth', 'Mody, paczki i zasoby dobrane do wersji profilu.'],
+  ['fa-solid fa-file-import', 'Import profili', 'Profile z Prism, MultiMC, CurseForge, Modrinth App i oficjalnego launchera.'],
+  ['fa-solid fa-shirt', 'Skiny', 'Edytor skina, biblioteka skinów i podgląd 3D.'],
+  ['fa-solid fa-server', 'Serwery', 'Opis, liczba graczy i ping; wejście jednym kliknięciem.'],
+  ['fa-solid fa-earth-europe', 'Światy', 'Kopie zapasowe światów, zrzuty ekranu i klipy.'],
+  ['fa-solid fa-triangle-exclamation', 'Crashe', 'Launcher czyta log i mówi, co poszło nie tak.'],
+  ['fa-solid fa-rotate', 'Aktualizacje', 'Launcher sam sprawdza i instaluje nowe wersje.'],
 ];
 $('#features').replaceChildren(...FEATURES.map(([i, t, p]) => el('div', { class: 'gf reveal' }, icon(i), el('h3', { textContent: t }), el('p', { textContent: p }))));
 
 // ---------- faq ----------
 const FAQ = [
-  ['Czy SlashClient jest darmowy?', 'Tak, w całości i na zawsze. Launcher, HUD, znajomi i peleryny nic nie kosztują.'],
-  ['Czy mogę dostać bana za SlashClient?', 'HUD pokazuje tylko informacje, które gra i tak ma, i nie daje przewagi jak cheaty. Każdy serwer ma jednak własne zasady; jeśli zabrania modów (np. minimapy czy freelooka), wyłącz je w ustawieniach HUD.'],
-  ['Na jakich wersjach Minecrafta działa?', 'HUD działa na Minecrafcie 1.21.11 oraz 26.1–26.3, z Fabricem albo na czystym Minecrafcie; launcher uruchamia też starsze wersje, wtedy bez HUD-u.'],
-  ['Czy działa z innymi modami, np. Sodium?', 'Tak. SlashClient HUD to zwykły mod Fabric; Sodium, Lithium i inne mody wydajności działają razem z nim, a launcher sam je podpowiada.'],
-  ['Czy moje konto Microsoft jest bezpieczne?', 'Logujesz się oficjalnym oknem Microsoftu; launcher nie widzi Twojego hasła. Konto SlashClient do znajomych jest osobne i nie zmienia logowania do gry.'],
-  ['Kto widzi moją pelerynę?', 'Wszyscy gracze, którzy grają z SlashClient, na dowolnym serwerze. Gracze bez SlashClienta widzą Twój zwykły wygląd.'],
+  ['Ile kosztuje SlashClient?', 'Nic. Launcher, HUD, znajomi i peleryny są darmowe.'],
+  ['Czy dostanę bana za SlashClient?', 'HUD pokazuje tylko to, co gra i tak wie, i nie daje przewagi jak cheaty. Serwery mają jednak własne zasady: jeśli serwer zabrania np. freelooka, wyłącz go w ustawieniach HUD.'],
+  ['Na jakich wersjach działa HUD?', 'Minecraft 1.21.11 oraz 26.1–26.3, z Fabricem albo bez. Starsze wersje launcher też uruchomi, ale bez HUD-u.'],
+  ['Czy działa z Sodium i innymi modami?', 'Tak. HUD to zwykły mod Fabric i działa razem z modami wydajności.'],
+  ['Czy moje konto jest bezpieczne?', 'Do Microsoftu logujesz się na jego stronie, launcher nie widzi hasła. Konto SlashClient potwierdza Mojang, tak jak serwery Minecrafta, więc Twój token Minecrafta nie trafia na serwer SlashClient. Wiadomości do znajomych są szyfrowane i serwer nie może ich przeczytać.'],
+  ['macOS mówi, że nie może sprawdzić aplikacji. Co zrobić?', 'SlashClient nie jest jeszcze podpisany przez Apple. Kliknij aplikację prawym przyciskiem, wybierz Otwórz i potwierdź. Wystarczy raz.'],
+  ['Jak zaktualizować launcher?', 'Na Windowsie i Linuksie nowa wersja pobiera się sama i instaluje przy ponownym uruchomieniu. Na Macu launcher pokaże przycisk Pobierz.'],
+  ['Kto widzi moją pelerynę?', 'Gracze z SlashClient, na każdym serwerze. Pozostali widzą Twój zwykły wygląd.'],
 ];
 $('#faq-list').replaceChildren(...FAQ.map(([q, a], i) => el('details', { open: i === 0 }, el('summary', { textContent: q }), el('p', { textContent: a }))));
 

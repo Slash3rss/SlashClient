@@ -220,12 +220,27 @@ function dismiss(card: HTMLElement) {
   setTimeout(() => card.remove(), 400); // in case animations are off
 }
 
-/** Removes a notification after `ms`, with a shrinking bar; the countdown waits while the mouse is over it. */
+/**
+ * Removes a notification after `ms`; the countdown waits while the mouse is over it. A timer does
+ * the counting: the shrinking bar is only a picture, and animations stop with "reduce motion" or
+ * in a window in the background, which used to leave notifications on screen for good.
+ */
 function dismissLater(card: HTMLElement, ms: number) {
   const bar = el('div', { className: 'notif-timer' });
   bar.style.animationDuration = `${ms}ms`;
-  bar.addEventListener('animationend', () => dismiss(card));
   card.append(bar);
+  let left = ms;
+  let startedAt = Date.now();
+  let timer = setTimeout(() => dismiss(card), left);
+  card.addEventListener('mouseenter', () => {
+    clearTimeout(timer);
+    left = Math.max(800, left - (Date.now() - startedAt));
+  });
+  card.addEventListener('mouseleave', () => {
+    startedAt = Date.now();
+    clearTimeout(timer);
+    timer = setTimeout(() => dismiss(card), left);
+  });
 }
 
 /**
@@ -374,10 +389,9 @@ document.querySelectorAll<HTMLButtonElement>('.nav').forEach((btn) =>
  */
 function updateSkinRendering() {
   if (!skinViewer) return;
-  skinViewer.renderPaused = !$('#view-accounts').classList.contains('active') || document.hidden || !document.hasFocus();
+  // paused only when nobody can see it (a window in the background still shows the preview)
+  skinViewer.renderPaused = !$('#view-accounts').classList.contains('active') || document.hidden;
 }
-addEventListener('focus', updateSkinRendering);
-addEventListener('blur', updateSkinRendering);
 document.addEventListener('visibilitychange', updateSkinRendering);
 
 // ---------- rendering ----------
@@ -2427,14 +2441,19 @@ async function renderSkin() {
   $('#skin-stage').classList.remove('loading');
   if (skin.cape) await skinViewer.loadCape(skin.cape, { backEquipment: 'cape' });
   else skinViewer.resetCape();
+  // a SlashClient cape is what other players see, so the preview wears it over the Mojang one
+  void renderSlashCapes();
   $('#skin-back').classList.toggle('hidden', !skin.cape);
   $('#skin-back').replaceChildren(el('i', { className: 'fa-solid fa-feather' }), t(' Elytra'));
   const capeNote = skin.cape ? t(' Peleryna: {0}.', skin.capeSource ?? '') : '';
-  $('#skin-note').textContent = t(account.type === 'msa'
+  const note = $('#skin-note');
+  note.dataset.base = t(account.type === 'msa'
     ? 'Skin Twojego konta Minecraft.'
     : skin.isDefault
       ? 'Konto offline nie ma własnego skina; w grze zobaczysz domyślny.'
-      : 'Konto offline: to skin gracza premium o tym samym nicku. Na serwerach offline inni zobaczą domyślny skin.') + capeNote;
+      : 'Konto offline: to skin gracza premium o tym samym nicku. Na serwerach offline inni zobaczą domyślny skin.');
+  note.dataset.cape = capeNote;
+  note.textContent = note.dataset.base + capeNote;
 }
 
 // cape ⇄ elytra, both drawn from the same cape texture
@@ -2544,7 +2563,12 @@ async function renderSlashCapes() {
   $('#slash-cape-grid').replaceChildren(
     tile('', t('Bez peleryny SlashClient'), el('i', { className: 'fa-solid fa-ban' })),
     ...catalog.map((c) => tile(c.id, c.name, capeThumbnail(`img/capes/${c.id}.png`), !c.available)));
-  // the preview wears what other players will see
+  // the preview wears what other players will see, and the note says which cape that is
+  const note = $('#skin-note');
+  if (note.dataset.base !== undefined) {
+    const name = catalog.find((c) => c.id === current)?.name;
+    note.textContent = note.dataset.base + (current ? t(' Peleryna: {0}.', !name || name === 'SlashClient' ? 'SlashClient' : `SlashClient · ${name}`) : note.dataset.cape ?? '');
+  }
   if (current && skinViewer) await skinViewer.loadCape(`img/capes/${current}.png`, { backEquipment: 'cape' });
 }
 

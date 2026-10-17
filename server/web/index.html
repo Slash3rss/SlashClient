@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SlashClient – launcher Minecraft</title>
-  <meta name="description" content="SlashClient: darmowy launcher Minecraft z własnym HUD-em, znajomymi, zaproszeniami do gry, pelerynami, benchmarkiem i klipami.">
-  <meta property="og:title" content="SlashClient – launcher Minecraft">
-  <meta property="og:description" content="HUD jak w najlepszych klientach, znajomi, peleryny, benchmark i klipy. Za darmo.">
+  <title>SlashClient – Launcher Minecraft z HUD-em i znajomymi</title>
+  <meta name="description" content="Darmowy launcher Minecraft z własnym HUD-em, znajomymi, pelerynami, benchmarkiem FPS i klipami. Windows, macOS i Linux.">
+  <meta property="og:title" content="SlashClient – Launcher Minecraft z HUD-em i znajomymi">
+  <meta property="og:description" content="Darmowy launcher Minecraft z HUD-em, znajomymi, pelerynami, benchmarkiem FPS i klipami.">
   <meta property="og:image" content="img/hero-menu.jpg">
   <meta name="theme-color" content="#07090f">
   <link rel="icon" href="vendor/logo.png">
@@ -41,7 +41,7 @@
       <div class="wrap center">
         <a class="pill" href="#kosmetyki"><span class="dot"></span> Nowość: peleryny, emotki i klipy <i class="fa-solid fa-arrow-right"></i></a>
         <h1>Minecraft, tylko <span class="grad">lepiej</span>.</h1>
-        <p class="lead">Darmowy launcher z własnym HUD-em, znajomymi i zaproszeniami do gry, pelerynami widocznymi dla innych, benchmarkiem i klipami. Wszystko w jednym, bez szukania modów.</p>
+        <p class="lead">Darmowy launcher Minecraft z własnym HUD-em, znajomymi, pelerynami, benchmarkiem FPS i klipami. Bez szukania i instalowania modów.</p>
         <div class="cta">
           <a class="btn primary huge glow" id="download-main" href="/pobierz/windows"><i class="fa-brands fa-windows" id="os-icon"></i> <span id="os-label">Pobierz dla Windows</span></a>
           <a class="btn huge ghost" href="#funkcje"><i class="fa-solid fa-play"></i> Zobacz, co potrafi</a>
@@ -78,18 +78,16 @@
       <div class="wrap">
         <div class="head center reveal">
           <span class="eyebrow">Funkcje</span>
-          <h2>Wszystko, czego potrzebujesz do gry</h2>
-          <p>To, co zwykle wymaga kilku modów i programów, jest od razu w launcherze.</p>
+          <h2>Co jest w środku</h2>
         </div>
 
         <div class="show reveal" id="hud">
           <div class="show-text">
             <span class="tag"><i class="fa-solid fa-gauge-high"></i> HUD</span>
             <h3>HUD, który ustawisz po swojemu</h3>
-            <p>FPS, ping, CPS, zbroja, efekty, klawisze, kompas, licznik zabójstw i dziesiątki innych modułów. Przeciągasz je myszką, zmieniasz kolory i rozmiar, a gotowy układ udostępniasz znajomym jednym kodem.</p>
+            <p>Ponad 40 modułów: FPS, ping, CPS, zbroja, efekty, klawisze, kompas, zabójstwa i więcej. Ustawiasz je myszką w edytorze (prawy Shift), a układ udostępniasz kodem.</p>
             <ul class="checks">
-              <li>Edytor przeciągnij-upuść z siatką</li>
-              <li>Celowniki, zoom, freelook, fullbright</li>
+              <li>Własne celowniki, zoom, freelook, fullbright</li>
               <li>Zakładki czatu z filtrami i wyszukiwaniem</li>
             </ul>
           </div>
@@ -102,12 +100,12 @@
         <div class="show reverse reveal" id="znajomi">
           <div class="show-text">
             <span class="tag"><i class="fa-solid fa-user-group"></i> Znajomi</span>
-            <h3>Grajcie razem, bez przepisywania adresów</h3>
-            <p>Widzisz, kto jest online i na jakim serwerze gra. Piszesz w launcherze albo prosto z gry, a „Zaproś” wysyła znajomemu przycisk „Dołącz”. Jeśli jego gra już działa, sama przeniesie go na Twój serwer.</p>
+            <h3>Znajomi i zaproszenia do gry</h3>
+            <p>Widzisz, kto jest online i na jakim serwerze gra. Piszesz w launcherze albo w grze, a „Zaproś” daje znajomemu przycisk „Dołącz”, który przenosi go na Twój serwer.</p>
             <ul class="checks">
-              <li>Logowanie przez Discord, Microsoft, Google lub GitHub</li>
-              <li>Czat w launcherze i w grze (klawisz O)</li>
-              <li>Logo SlashClient przy nicku innych graczy</li>
+              <li>Konto zakłada się samo, razem z kontem Minecraft</li>
+              <li>Wiadomości szyfrowane od nadawcy do odbiorcy</li>
+              <li>Czat w grze pod klawiszem O</li>
             </ul>
           </div>
           <div class="show-media stack">
@@ -119,8 +117,8 @@
         <div class="show reveal" id="kosmetyki">
           <div class="show-text">
             <span class="tag"><i class="fa-solid fa-wand-magic-sparkles"></i> Kosmetyki</span>
-            <h3>Peleryny i emotki, które widzą inni</h3>
-            <p>Wybierz jedną z peleryn SlashClient. Zobaczą ją wszyscy gracze z launcherem, na każdym serwerze, także na elytrze. Pod klawiszem N jest koło emotek, które pojawiają się nad Twoją głową.</p>
+            <h3>Peleryny i emotki</h3>
+            <p>Peleryna SlashClient jest widoczna dla graczy z SlashClient na każdym serwerze, także na elytrze. Emotki wybierasz z koła pod klawiszem N.</p>
             <div class="cape-strip" id="cape-strip"></div>
             <a class="btn" href="/konto"><i class="fa-solid fa-wand-magic-sparkles"></i> Wybierz pelerynę</a>
           </div>
@@ -133,12 +131,11 @@
         <div class="show reverse reveal" id="benchmark">
           <div class="show-text">
             <span class="tag"><i class="fa-solid fa-chart-column"></i> Wydajność</span>
-            <h3>Zmierz FPS i dowiedz się, co je zjada</h3>
-            <p>30-sekundowy benchmark w Twoim świecie mierzy każdą klatkę: średnią, 1% low i przycięcia. Launcher porównuje wyniki i podpowiada, co poprawić; brakujące mody wydajności instalujesz jednym kliknięciem.</p>
+            <h3>Benchmark FPS z poradami</h3>
+            <p>30-sekundowy test w Twoim świecie: średnie FPS, 1% low i przycięcia. Launcher porównuje wyniki, mówi, co poprawić, i instaluje brakujące mody wydajności jednym kliknięciem.</p>
             <ul class="checks">
-              <li>Wykres czasów klatek i porównanie przebiegów</li>
-              <li>Porady: VSync, CPU czy GPU, pamięć, zasięg</li>
-              <li>Sodium, Lithium i spółka jednym przyciskiem</li>
+              <li>Wykres czasów klatek i porównanie wyników</li>
+              <li>Sodium, Lithium i inne mody jednym kliknięciem</li>
             </ul>
           </div>
           <div class="show-media stack">
@@ -150,8 +147,8 @@
         <div class="show reveal" id="klipy">
           <div class="show-text">
             <span class="tag"><i class="fa-solid fa-film"></i> Klipy</span>
-            <h3>Złap ten moment klawiszem F8</h3>
-            <p>Gra trzyma w pamięci ostatnie sekundy, a F8 zapisuje je jako film, bez OBS-a i dodatkowych programów. Klipy znajdziesz w launcherze przy profilu.</p>
+            <h3>Klipy pod F8</h3>
+            <p>F8 zapisuje ostatnie 10–60 sekund gry jako film, bez OBS-a. Klipy są w launcherze, w zakładce profilu.</p>
           </div>
           <div class="show-media">
             <img class="frame" src="img/clips-launcher.jpg" alt="Klipy w launcherze" loading="lazy">
@@ -164,7 +161,7 @@
     <section class="modules">
       <div class="wrap head center reveal">
         <span class="eyebrow">Moduły</span>
-        <h2>Każdy moduł, jakiego szukasz</h2>
+        <h2>Moduły HUD</h2>
       </div>
       <div class="marquee" aria-hidden="true"><div class="track" id="mq1"></div></div>
       <div class="marquee reverse" aria-hidden="true"><div class="track" id="mq2"></div></div>
@@ -174,8 +171,8 @@
     <section>
       <div class="wrap">
         <div class="head center reveal">
-          <span class="eyebrow">I więcej</span>
-          <h2>Launcher, który robi resztę za Ciebie</h2>
+          <span class="eyebrow">Launcher</span>
+          <h2>Więcej w launcherze</h2>
         </div>
         <div class="grid-features" id="features"></div>
       </div>
@@ -197,8 +194,8 @@
       <div class="wrap">
         <div class="final reveal">
           <img src="vendor/logo.png" alt="" width="72" height="72">
-          <h2>Gotowy na lepszego Minecrafta?</h2>
-          <p>Pobierz SlashClient za darmo i zagraj w kilka minut.</p>
+          <h2>Pobierz SlashClient</h2>
+          <p>Za darmo, na Windows, macOS i Linux.</p>
           <div class="cta">
             <a class="btn huge light" id="download-final" href="/pobierz/windows"><i class="fa-solid fa-download"></i> Pobierz SlashClient</a>
           </div>
@@ -208,14 +205,10 @@
   </main>
 
   <footer class="foot">
-    <div class="wrap foot-grid">
-      <div>
-        <a class="brand" href="/"><img src="vendor/logo.png" alt=""><span>Slash<b>Client</b></span></a>
-        <p class="muted small">Launcher Minecraft z HUD-em, znajomymi i kosmetykami.<br>Nie jest powiązany z Mojang ani Microsoft.</p>
-      </div>
-      <div><h4>Produkt</h4><a href="#funkcje">Funkcje</a><a href="#kosmetyki">Peleryny</a><a href="#pobierz">Pobierz</a></div>
-      <div><h4>Konto</h4><a href="/konto">Twoje konto</a><a href="/admin">Panel admina</a></div>
-      <div><h4>Projekt</h4><a href="https://github.com/Slash3rss/SlashClient">GitHub</a><a href="https://github.com/Slash3rss/SlashClient/issues">Zgłoś błąd</a></div>
+    <div class="wrap foot-row">
+      <a class="brand" href="/"><img src="vendor/logo.png" alt=""><span>Slash<b>Client</b></span></a>
+      <span class="muted small">Nie jest powiązany z Mojang ani Microsoft.</span>
+      <a class="push" href="/konto">Twoje konto</a>
     </div>
   </footer>
 </body>
