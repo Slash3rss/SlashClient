@@ -160,14 +160,16 @@ function jwtClaim(jwt: string, claim: string): string | undefined {
   }
 }
 
-export async function completeMicrosoftLogin(tokens: MsTokens): Promise<MicrosoftAccount> {
+export async function completeMicrosoftLogin(tokens: MsTokens, clientId: string): Promise<MicrosoftAccount> {
   const account = await minecraftLogin(tokens.access_token);
-  return { id: randomUUID(), ...account, refreshToken: secrets.encrypt(tokens.refresh_token) };
+  return { id: randomUUID(), ...account, refreshToken: secrets.encrypt(tokens.refresh_token), clientId };
 }
 
 /** Returns the account with a valid Minecraft token, refreshing it through Microsoft if needed. */
-export async function ensureFreshAccount(account: MicrosoftAccount, clientId: string): Promise<MicrosoftAccount> {
+export async function ensureFreshAccount(account: MicrosoftAccount, defaultClientId: string): Promise<MicrosoftAccount> {
   if (Date.now() < account.expiresAt) return account;
+  // a refresh token works only with the app that issued it, even after the launcher's default changes
+  const clientId = account.clientId || defaultClientId;
   requireClientId(clientId);
   const tokens = await postForm<MsTokens>(`${MS_AUTHORITY}/token`, {
     grant_type: 'refresh_token',
@@ -178,5 +180,5 @@ export async function ensureFreshAccount(account: MicrosoftAccount, clientId: st
     throw new Error(t('Sesja Microsoft wygasła — zaloguj się ponownie. ({0})', err.message));
   });
   const fresh = await minecraftLogin(tokens.access_token);
-  return { ...account, ...fresh, refreshToken: secrets.encrypt(tokens.refresh_token) };
+  return { ...account, ...fresh, refreshToken: secrets.encrypt(tokens.refresh_token), clientId };
 }

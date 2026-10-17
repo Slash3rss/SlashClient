@@ -21,6 +21,8 @@ export interface MicrosoftAccount {
   expiresAt: number;
   /** Microsoft refresh token, encrypted with the OS keychain when available. */
   refreshToken: string;
+  /** The Microsoft app the refresh token belongs to: it only refreshes with that one (older accounts lack it). */
+  clientId?: string;
 }
 
 export type Account = OfflineAccount | MicrosoftAccount;

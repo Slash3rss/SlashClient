@@ -220,8 +220,11 @@ handle('account:loginMicrosoft', async () => {
   send('login:code', { userCode: code.user_code, url: code.verification_uri, copied: true });
   if (code.verification_uri.startsWith('https://')) shell.openExternal(code.verification_uri);
   const tokens = await pollDeviceCode(clientId, code, loginAbort.signal);
-  const account = await completeMicrosoftLogin(tokens);
-  // Signing in again with the same Minecraft profile replaces the old entry.
+  const account = await completeMicrosoftLogin(tokens, clientId);
+  // Signing in again with the same Minecraft profile replaces the old entry, under the same id
+  // (profiles that play as this account keep it)
+  const before = store.accounts.find((a) => a.uuid === account.uuid);
+  if (before) account.id = before.id;
   store.accounts = store.accounts.filter((a) => a.uuid !== account.uuid);
   store.accounts.push(account);
   store.settings.selectedAccountId = account.id;
