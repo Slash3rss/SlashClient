@@ -5,7 +5,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import { Db, type User } from './db.ts';
 import { PROVIDERS, type DeviceStart, type Identity, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, type Presence } from './presence.ts';
-import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, mayWear, type Slot } from './cosmetics.ts';
+import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, knownTo, mayWear, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
 import { partnerRoutes } from './partners.ts';
 import { trackerRoutes } from './tracker.ts';
@@ -323,7 +323,8 @@ export function createApp(cfg: Config) {
       const granted = me ? db.grants(me) : [];
       const user = me ? db.user(me) : undefined;
       const badge = user ? badgeOf(user) : '';
-      const items = ITEMS.filter((i) => capeSetting(settings, i.id).enabled).map((i) => ({
+      const known = knownTo(req.headers);
+      const items = ITEMS.filter((i) => capeSetting(settings, i.id).enabled && known(i)).map((i) => ({
         id: i.id, slot: i.slot, name: i.name, rank: i.rank, frames: i.frames,
         exclusive: capeSetting(settings, i.id).exclusive, available: mayWear(settings, granted, i.id, i.slot, badge),
       }));

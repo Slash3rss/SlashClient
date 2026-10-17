@@ -20,6 +20,11 @@ export interface Item {
   rank?: Rank;
   /** An animated cape: how many frames (textures/cape/<id>_<n>.png). */
   frames?: number;
+  /**
+   * Added after the first launchers with cosmetics (0.9.0): those have no pictures for it, so
+   * their menu leaves it out (see `knownTo`).
+   */
+  since?: number;
 }
 
 export const ITEMS: Item[] = [
@@ -36,14 +41,14 @@ export const ITEMS: Item[] = [
   { id: 'inferno', slot: 'cape', name: 'Inferno', frames: 8 },
   { id: 'waves', slot: 'cape', name: 'Fale', frames: 8 },
   { id: 'pulse', slot: 'cape', name: 'Puls', frames: 8 },
-  { id: 'sakura', slot: 'cape', name: 'Sakura' },
-  { id: 'night', slot: 'cape', name: 'Noc' },
-  { id: 'rainbow', slot: 'cape', name: 'Tęcza' },
-  { id: 'ice', slot: 'cape', name: 'Lód' },
-  { id: 'toxic', slot: 'cape', name: 'Toksyczna' },
-  { id: 'checker', slot: 'cape', name: 'Szachownica' },
-  { id: 'matrix', slot: 'cape', name: 'Matrix', frames: 8 },
-  { id: 'storm', slot: 'cape', name: 'Burza', frames: 8 },
+  { id: 'sakura', slot: 'cape', name: 'Sakura', since: 2 },
+  { id: 'night', slot: 'cape', name: 'Noc', since: 2 },
+  { id: 'rainbow', slot: 'cape', name: 'Tęcza', since: 2 },
+  { id: 'ice', slot: 'cape', name: 'Lód', since: 2 },
+  { id: 'toxic', slot: 'cape', name: 'Toksyczna', since: 2 },
+  { id: 'checker', slot: 'cape', name: 'Szachownica', since: 2 },
+  { id: 'matrix', slot: 'cape', name: 'Matrix', frames: 8, since: 2 },
+  { id: 'storm', slot: 'cape', name: 'Burza', frames: 8, since: 2 },
   { id: 'staff_admin', slot: 'cape', name: 'Admin', rank: 'admin' },
   { id: 'staff_support', slot: 'cape', name: 'Support', rank: 'support' },
   { id: 'staff_partner', slot: 'cape', name: 'Partner', rank: 'partner' },
@@ -54,47 +59,57 @@ export const ITEMS: Item[] = [
   { id: 'dragon', slot: 'wings', name: 'Smocze' },
   { id: 'phoenix', slot: 'wings', name: 'Feniks', rank: 'partner' },
   { id: 'crystal', slot: 'wings', name: 'Kryształowe', rank: 'support' },
-  { id: 'batwing', slot: 'wings', name: 'Nietoperza' },
-  { id: 'frost', slot: 'wings', name: 'Lodowe' },
-  { id: 'prism', slot: 'wings', name: 'Pryzmat' },
-  { id: 'shadow', slot: 'wings', name: 'Cienia' },
+  { id: 'batwing', slot: 'wings', name: 'Nietoperza', since: 2 },
+  { id: 'frost', slot: 'wings', name: 'Lodowe', since: 2 },
+  { id: 'prism', slot: 'wings', name: 'Pryzmat', since: 2 },
+  { id: 'shadow', slot: 'wings', name: 'Cienia', since: 2 },
   // elytras: worn instead of the cape's picture on a real elytra
   { id: 'feather', slot: 'elytra', name: 'Pióra' },
   { id: 'neon', slot: 'elytra', name: 'Neon' },
   { id: 'void', slot: 'elytra', name: 'Pustka' },
   { id: 'sunset', slot: 'elytra', name: 'Zachód słońca' },
-  { id: 'nebula', slot: 'elytra', name: 'Mgławica' },
-  { id: 'venom', slot: 'elytra', name: 'Jad' },
-  { id: 'tide', slot: 'elytra', name: 'Przypływ' },
+  { id: 'nebula', slot: 'elytra', name: 'Mgławica', since: 2 },
+  { id: 'venom', slot: 'elytra', name: 'Jad', since: 2 },
+  { id: 'tide', slot: 'elytra', name: 'Przypływ', since: 2 },
   // trails (while moving) and auras (around a player standing still): the game's particles
   { id: 'hearts', slot: 'trail', name: 'Serca' },
   { id: 'sparks', slot: 'trail', name: 'Iskry' },
   { id: 'snow', slot: 'trail', name: 'Śnieg' },
   { id: 'notes', slot: 'trail', name: 'Nuty' },
   { id: 'flames', slot: 'trail', name: 'Płomienie' },
-  { id: 'clouds', slot: 'trail', name: 'Chmurki' },
-  { id: 'stars', slot: 'trail', name: 'Fajerwerki' },
-  { id: 'bubbles', slot: 'trail', name: 'Bąbelki' },
-  { id: 'emerald', slot: 'trail', name: 'Szmaragdy' },
-  { id: 'soulfire', slot: 'trail', name: 'Błękitny ogień' },
+  { id: 'clouds', slot: 'trail', name: 'Chmurki', since: 2 },
+  { id: 'stars', slot: 'trail', name: 'Fajerwerki', since: 2 },
+  { id: 'bubbles', slot: 'trail', name: 'Bąbelki', since: 2 },
+  { id: 'emerald', slot: 'trail', name: 'Szmaragdy', since: 2 },
+  { id: 'soulfire', slot: 'trail', name: 'Błękitny ogień', since: 2 },
   { id: 'enchant', slot: 'aura', name: 'Runy' },
   { id: 'portal', slot: 'aura', name: 'Portal' },
   { id: 'cherry', slot: 'aura', name: 'Wiśnia' },
   { id: 'souls', slot: 'aura', name: 'Dusze' },
   { id: 'royal', slot: 'aura', name: 'Królewska', rank: 'admin' },
-  { id: 'glow', slot: 'aura', name: 'Poświata' },
-  { id: 'magic', slot: 'aura', name: 'Magia' },
-  { id: 'amber', slot: 'aura', name: 'Bursztyn' },
-  { id: 'sculk', slot: 'aura', name: 'Sculk' },
+  { id: 'glow', slot: 'aura', name: 'Poświata', since: 2 },
+  { id: 'magic', slot: 'aura', name: 'Magia', since: 2 },
+  { id: 'amber', slot: 'aura', name: 'Bursztyn', since: 2 },
+  { id: 'sculk', slot: 'aura', name: 'Sculk', since: 2 },
   // pets: a small copy of one of the game's mobs flying at the shoulder
   { id: 'allay', slot: 'pet', name: 'Allay' },
   { id: 'vex', slot: 'pet', name: 'Vex' },
   { id: 'bat', slot: 'pet', name: 'Nietoperz' },
   { id: 'parrot', slot: 'pet', name: 'Papuga' },
   { id: 'bee', slot: 'pet', name: 'Pszczoła' },
-  { id: 'blaze', slot: 'pet', name: 'Blaze' },
-  { id: 'phantom', slot: 'pet', name: 'Fantom' },
+  { id: 'blaze', slot: 'pet', name: 'Blaze', since: 2 },
+  { id: 'phantom', slot: 'pet', name: 'Fantom', since: 2 },
 ];
+
+/**
+ * Which items a client can draw: launchers from 0.9.1 on say so in X-SlashClient (also for the game
+ * they start, through their bridge); the page shows everything; an older launcher knows the first set.
+ */
+export function knownTo(headers: Record<string, string | string[] | undefined>): (i: Item) => boolean {
+  const named = typeof headers['x-slashclient'] === 'string';
+  const browser = /Mozilla\//.test(String(headers['user-agent'] ?? ''));
+  return (i) => !i.since || named || browser;
+}
 
 const BY_ID = new Map(ITEMS.map((i) => [i.id, i]));
 export const item = (id: string): Item | undefined => BY_ID.get(id);

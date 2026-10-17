@@ -18,6 +18,7 @@
 		"GpuTimerMixin",
 		"GuiMixin",
 		"HeartsMixin",
+		"PongMixin",
 		"JoinMultiplayerScreenMixin",
 		"LightmapMixin",
 		"MinecraftAccessor",

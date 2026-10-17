@@ -155,10 +155,12 @@ public final class Modules {
 			return "ping";
 		}
 
+		/** Our own measurement; until its first answer the tab list's number (0 there means unknown). */
 		private int latency(Minecraft mc) {
 			if (mc.player == null || mc.getConnection() == null) return -1;
+			if (Latency.ms() >= 0) return Latency.ms();
 			PlayerInfo info = mc.getConnection().getPlayerInfo(mc.player.getUUID());
-			return info == null ? -1 : info.getLatency();
+			return info == null || info.getLatency() <= 0 ? -1 : info.getLatency();
 		}
 
 		@Override

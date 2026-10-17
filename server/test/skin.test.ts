@@ -46,3 +46,13 @@ describe('skins for the site', () => {
     assert.equal((await fetch(`${base}/v1/skin/ffffffffffffffffffffffffffffffff`)).status, 404);
   });
 });
+
+describe('cosmetics for older launchers', () => {
+  it('leaves out what launchers before 0.9.1 have no pictures for, the page and newer ones see all', async () => {
+    const ids = async (headers: Record<string, string>) => ((await (await fetch(`${base}/v1/cosmetics`, { headers })).json()) as { items: { id: string }[] }).items.map((i) => i.id);
+    const old = await ids({});
+    assert.ok(old.includes('aurora') && !old.includes('sakura') && !old.includes('phantom'));
+    assert.ok((await ids({ 'X-SlashClient': 'launcher/0.9.1' })).includes('sakura'));
+    assert.ok((await ids({ 'User-Agent': 'Mozilla/5.0' })).includes('phantom'));
+  });
+});

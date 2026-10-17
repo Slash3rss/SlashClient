@@ -67,6 +67,12 @@ public final class Cosmetics {
 		}
 	}
 
+	/** Whether this version of the mod can draw an item. */
+	static boolean knows(String slot, String item) {
+		List<String> known = SLOTS.get(slot);
+		return known != null && known.contains(item);
+	}
+
 	/** Everything a player wears, at once (from the server's answer). */
 	static void setAll(UUID id, Map<String, String> items) {
 		for (String slot : SLOTS.keySet()) set(id, slot, items.get(slot));

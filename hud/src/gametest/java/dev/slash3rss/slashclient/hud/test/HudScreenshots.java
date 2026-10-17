@@ -247,6 +247,9 @@ public class HudScreenshots implements FabricClientGameTest {
 			//#endif
 			// the game's own "chat cannot be verified" toast would cover the tab list
 			context.waitTicks(240);
+			// the ping is measured with ping packets, not read from the tab list (0 on many servers)
+			int ping = context.computeOnClient(mc -> TestHooks.ping());
+			if (ping < 0) throw new AssertionError("No measured ping from the server");
 			context.getInput().holdKey(o -> o.keyPlayerList);
 			context.waitTicks(5);
 			context.takeScreenshot("badge-tab");

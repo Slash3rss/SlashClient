@@ -483,4 +483,9 @@ public final class TestHooks {
 		var stack = p.getMainHandItem();
 		return net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()) + " x" + stack.getCount();
 	}
+
+	/** The measured ping (-1 before the server answered). */
+	public static int ping() {
+		return Latency.ms();
+	}
 }

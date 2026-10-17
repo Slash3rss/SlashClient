@@ -96,6 +96,7 @@ public class SlashHud implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
 			Extras.tick(mc);
 			Assist.tick(mc);
+			Latency.tick(mc);
 			Benchmark.tick(mc);
 			Cosmetics.tick(mc);
 			CosmeticEffects.tick(mc);

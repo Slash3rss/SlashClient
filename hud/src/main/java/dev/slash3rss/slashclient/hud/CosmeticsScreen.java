@@ -120,6 +120,8 @@ public class CosmeticsScreen extends Screen {
 				List<Entry> list = new ArrayList<>();
 				for (JsonElement e : catalog.getAsJsonArray("items")) {
 					JsonObject o = e.getAsJsonObject();
+					// newer cosmetics than this version has pictures for stay out of the menu
+					if (!Cosmetics.knows(o.get("slot").getAsString(), o.get("id").getAsString())) continue;
 					list.add(new Entry(o.get("id").getAsString(), o.get("slot").getAsString(), o.get("name").getAsString(),
 						o.has("rank") && !o.get("rank").isJsonNull() ? o.get("rank").getAsString() : "", o.get("available").getAsBoolean()));
 				}
