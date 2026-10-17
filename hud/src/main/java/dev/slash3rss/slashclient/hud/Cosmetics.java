@@ -26,15 +26,19 @@ public final class Cosmetics {
 	public static final List<String> EMOTES = List.of("wave", "heart", "laugh", "gg", "like", "angry", "question", "fire");
 	static final List<String> CAPES = List.of("slash", "ocean", "ember", "forest", "galaxy", "rose", "gold", "mono",
 		"aurora", "inferno", "waves", "pulse", "staff_admin", "staff_support", "staff_partner",
-		"sakura", "night", "rainbow", "ice", "toxic", "checker", "matrix", "storm");
+		"sakura", "night", "rainbow", "ice", "toxic", "checker", "matrix", "storm",
+		"lava", "desert", "cyber", "honey", "mint", "vortex", "starfall");
 	/** Capes drawn as a loop of frames (textures/cape/<id>_<n>.png), and how many. */
-	static final Map<String, Integer> ANIMATED = Map.of("aurora", 8, "inferno", 8, "waves", 8, "pulse", 8, "matrix", 8, "storm", 8);
+	static final Map<String, Integer> ANIMATED = Map.of("aurora", 8, "inferno", 8, "waves", 8, "pulse", 8, "matrix", 8, "storm", 8,
+		"vortex", 8, "starfall", 8);
 	private static final long FRAME_MS = 120;
-	static final List<String> WINGS = List.of("angel", "demon", "butterfly", "dragon", "phoenix", "crystal", "batwing", "frost", "prism", "shadow");
-	static final List<String> ELYTRAS = List.of("feather", "neon", "void", "sunset", "nebula", "venom", "tide");
-	static final List<String> TRAILS = List.of("hearts", "sparks", "snow", "notes", "flames", "clouds", "stars", "bubbles", "emerald", "soulfire");
-	static final List<String> AURAS = List.of("enchant", "portal", "cherry", "souls", "royal", "glow", "magic", "amber", "sculk");
-	static final List<String> PETS = List.of("allay", "vex", "bat", "parrot", "bee", "blaze", "phantom");
+	static final List<String> WINGS = List.of("angel", "demon", "butterfly", "dragon", "phoenix", "crystal", "batwing", "frost", "prism", "shadow", "fairy", "bone", "gilded");
+	static final List<String> ELYTRAS = List.of("feather", "neon", "void", "sunset", "nebula", "venom", "tide", "magma", "circuit", "autumn");
+	static final List<String> TRAILS = List.of("hearts", "sparks", "snow", "notes", "flames", "clouds", "stars", "bubbles", "emerald", "soulfire",
+		"crits", "witch", "ink", "ash");
+	static final List<String> AURAS = List.of("enchant", "portal", "cherry", "souls", "royal", "glow", "magic", "amber", "sculk",
+		"spores", "nautilus", "tears", "fireflies");
+	static final List<String> PETS = List.of("allay", "vex", "bat", "parrot", "bee", "blaze", "phantom", "axolotl", "frog", "fox");
 	private static final Map<String, List<String>> SLOTS = Map.of("cape", CAPES, "wings", WINGS, "elytra", ELYTRAS,
 		"trail", TRAILS, "aura", AURAS, "pet", PETS);
 	private static final long EMOTE_MS = 3500;

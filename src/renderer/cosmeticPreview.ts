@@ -44,6 +44,14 @@ const EFFECTS: Record<string, Effect> = {
   magic: { kind: 'aura', frames: ['particle/enchanted_hit'], size: 2.4, motion: 'rise', life: 1.2 },
   amber: { kind: 'aura', frames: ['particle/glow'], tint: 0xffb02e, size: 2.2, motion: 'rise', life: 1.4 },
   sculk: { kind: 'aura', frames: range('sculk_soul', 10), animate: true, size: 3.2, motion: 'rise', life: 1.6 },
+  crits: { kind: 'trail', frames: ['particle/critical_hit'], tint: 0xc8d6e8, size: 2.2, motion: 'drift', life: 0.6 },
+  witch: { kind: 'trail', frames: range('spell', 8).reverse(), animate: true, tint: 0xa14de0, size: 2.4, motion: 'rise', life: 1 },
+  ink: { kind: 'trail', frames: range('generic', 8).reverse(), animate: true, tint: 0x24242c, size: 3, motion: 'drift', life: 1 },
+  ash: { kind: 'trail', frames: ['particle/generic_0'], tint: 0xd8d8d8, size: 1.6, motion: 'fall', life: 1.6 },
+  spores: { kind: 'aura', frames: ['particle/drip_fall'], tint: 0x52803a, size: 1.8, motion: 'fall', life: 2 },
+  nautilus: { kind: 'aura', frames: ['particle/nautilus'], size: 2.4, motion: 'inward', life: 1.2 },
+  tears: { kind: 'aura', frames: ['particle/drip_hang'], tint: 0x6a0fd0, size: 2.2, motion: 'fall', life: 1.4 },
+  fireflies: { kind: 'aura', frames: ['particle/firefly'], size: 2, motion: 'rise', life: 2 },
 };
 
 /** The pets' pictures (the bat's moved into a folder in 26.1) and their size next to the player. */
@@ -51,8 +59,10 @@ const PET_TEXTURES: Record<string, string[]> = {
   allay: ['entity/allay/allay'], vex: ['entity/illager/vex'], bat: ['entity/bat/bat', 'entity/bat'],
   parrot: ['entity/parrot/parrot_red_blue'], bee: ['entity/bee/bee'],
   blaze: ['entity/blaze/blaze', 'entity/blaze'], phantom: ['entity/phantom/phantom', 'entity/phantom'],
+  // the frog's was renamed in 26.1
+  axolotl: ['entity/axolotl/axolotl_lucy'], frog: ['entity/frog/frog_temperate', 'entity/frog/temperate_frog'], fox: ['entity/fox/fox'],
 };
-const PET_SCALE: Record<string, number> = { allay: 0.6, vex: 0.6, bat: 0.45, parrot: 0.55, bee: 0.5, blaze: 0.3, phantom: 0.5 };
+const PET_SCALE: Record<string, number> = { allay: 0.6, vex: 0.6, bat: 0.45, parrot: 0.55, bee: 0.5, blaze: 0.3, phantom: 0.5, axolotl: 0.55, frog: 0.6, fox: 0.5 };
 
 /**
  * Frames that read well as an icon, where the first ones would not: the dots that start small,
@@ -66,6 +76,8 @@ const ICON_FRAMES: Record<string, string[]> = {
   clouds: ['particle/generic_7', 'particle/generic_6', 'particle/generic_5'],
   stars: ['particle/spark_7', 'particle/spark_5', 'particle/spark_6'],
   sculk: ['particle/sculk_soul_8', 'particle/sculk_soul_9', 'particle/sculk_soul_8'],
+  witch: ['particle/spell_7', 'particle/spell_5', 'particle/spell_6'],
+  ink: ['particle/generic_7', 'particle/generic_6', 'particle/generic_5'],
 };
 
 interface Particle { sprite: Sprite; effect: Effect; age: number; vx: number; vy: number; vz: number; frame: number }
