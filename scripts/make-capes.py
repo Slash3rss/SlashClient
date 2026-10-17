@@ -2,7 +2,7 @@
 # hud/src/main/resources/assets/slashclient-hud/textures/cape/<id>.png.
 # Cape textures use Minecraft's cape layout at 4x (256x128): the outer face at (1,1)-(11,17),
 # the inner one at (12,1)-(22,17), the edges around them and the elytra wings at (22,0)-(46,22).
-# Run with: python scripts/make-capes.py
+# Run with: python scripts/make-capes.py [minecraft.jar] (the jar gives the vanilla elytra's shape)
 import math
 import os
 import random
@@ -112,6 +112,27 @@ def design(cape):
 CAPES = ['slash', 'ocean', 'ember', 'forest', 'galaxy', 'rose', 'gold', 'mono']
 
 
+def vanilla_wing():
+    """The vanilla elytra's shape (alpha of its 24x22 part), from a Minecraft jar in the Gradle cache."""
+    import glob
+    import io
+    import sys
+    import zipfile
+    jars = sys.argv[1:] or sorted(glob.glob(os.path.expanduser('~/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged-deobf/*/*.jar')))
+    for jar in jars:
+        try:
+            with zipfile.ZipFile(jar) as z:
+                png = z.read('assets/minecraft/textures/entity/equipment/wings/elytra.png')
+            return Image.open(io.BytesIO(png)).convert('RGBA').crop((22, 0, 46, 22)).getchannel('A')
+        except (KeyError, OSError, zipfile.BadZipFile):
+            continue
+    print('no Minecraft jar with elytra.png found: capes get no elytra part (pass a jar path)')
+    return None
+
+
+WING = vanilla_wing()
+
+
 def texture(cape):
     art = design(cape)
     tex = Image.new('RGBA', (64 * K, 32 * K), (0, 0, 0, 0))
@@ -125,8 +146,15 @@ def texture(cape):
     d.rectangle([0, 1 * K, 1 * K - 1, 17 * K - 1], fill=dark)
     d.rectangle([11 * K, 1 * K, 12 * K - 1, 17 * K - 1], fill=dark)
     d.rectangle([1 * K, 0, 21 * K - 1, 1 * K - 1], fill=dark)
-    # elytra wings: the same art, stretched over their part of the texture
-    tex.paste(art.resize((24 * K, 22 * K), Image.NEAREST), (22 * K, 0))
+    # elytra wings: the art fills the part of the texture the vanilla elytra draws, and is cut to the
+    # vanilla wing's shape (its transparency), so it looks as thin as Minecraft's own elytra. The shape
+    # comes from the game's elytra.png at generation time; Mojang's picture itself is not copied.
+    if WING is not None:
+        region = Image.new('RGBA', (24 * K, 22 * K), dark)
+        region.paste(art.resize((12 * K, 20 * K), Image.LANCZOS), (12 * K, 2 * K))
+        alpha = WING.resize((24 * K, 22 * K), Image.NEAREST)
+        region.putalpha(Image.composite(region.getchannel('A'), Image.new('L', region.size, 0), alpha))
+        tex.paste(region, (22 * K, 0))
     return tex
 
 
