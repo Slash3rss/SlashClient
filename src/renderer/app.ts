@@ -2526,11 +2526,14 @@ function capeThumbnail(texture: string): HTMLCanvasElement {
   canvas.height = 16;
   const img = new Image();
   img.onload = () => {
-    // capes are 64×32, some HD ones 2× larger: scale the crop with the texture
+    // capes are 64×32, HD ones (like SlashClient's, 4×) larger: the picture keeps all its pixels,
+    // squeezing it into 10×16 turned the logo and the patterns into a smudge
     const scale = img.naturalWidth / 64;
+    canvas.width = 10 * scale;
+    canvas.height = 16 * scale;
     const ctx = canvas.getContext('2d')!;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(img, scale, scale, 10 * scale, 16 * scale, 0, 0, 10, 16);
+    ctx.drawImage(img, scale, scale, 10 * scale, 16 * scale, 0, 0, 10 * scale, 16 * scale);
   };
   img.src = texture;
   return canvas;
