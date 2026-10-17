@@ -202,9 +202,20 @@ public class SlashHud implements ClientModInitializer {
 			pose.translate(at[0], at[1]);
 			pose.scale(p.scale(), p.scale());
 			// keystrokes draw their own boxes
-			if (p.background(config) && !(m instanceof Modules.Keystrokes)) g.fill(0, 0, m.width(mc), m.height(mc), 0x70000000);
+			int w = m.width(mc), h = m.height(mc);
+			if (p.background(config) && !(m instanceof Modules.Keystrokes)) g.fill(0, 0, w, h, Math.round(p.opacity() * 2.55f) << 24);
+			if (p.outline) {
+				int c = 0xCC60A5FA;
+				g.fill(-1, -1, w + 1, 0, c);
+				g.fill(-1, h, w + 1, h + 1, c);
+				g.fill(-1, 0, 0, h, c);
+				g.fill(w, 0, w + 1, h, c);
+			}
+			// the module's own text colour and shadow, where it draws in the HUD's
+			Modules.drawing = p;
 			if (preview) m.drawPreview(g, mc, 0, 0);
 			else m.draw(g, mc, 0, 0);
+			Modules.drawing = null;
 			pose.popMatrix();
 		}
 	}

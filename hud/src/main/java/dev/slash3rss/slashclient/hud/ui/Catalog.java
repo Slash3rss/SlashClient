@@ -64,7 +64,25 @@ public final class Catalog {
 			HudConfig.Placement p = cfg.placement(m.id());
 			List<Setting> settings = new ArrayList<>(List.of(
 				new Slider("slashclient-hud.set.scale", 0.5f, 2f, 0.05f, "%.2f×", p::scale, v -> p.scale = v),
-				new Toggle("slashclient-hud.background", () -> p.background(cfg), v -> p.background = v)));
+				new Toggle("slashclient-hud.background", () -> p.background(cfg), v -> p.background = v),
+				new Slider("slashclient-hud.set.opacity", 0f, 100f, 5f, "%.0f%%", () -> (float) p.opacity(), v -> p.opacity = Math.round(v)),
+				new Toggle("slashclient-hud.set.outline", () -> p.outline, v -> p.outline = v),
+				new Toggle("slashclient-hud.set.ownColor", () -> p.color != null, v -> p.color = v ? cfg.textColor : null),
+				new Colors("slashclient-hud.textColor", COLORS, () -> p.textColor(cfg), v -> p.color = v),
+				new Toggle("slashclient-hud.shadow", () -> p.shadow(cfg), v -> p.shadow = v)));
+			// options of single modules
+			switch (m.id()) {
+				case "clock" -> {
+					settings.add(new Toggle("slashclient-hud.set.clockSeconds", () -> cfg.clockSeconds, v -> cfg.clockSeconds = v));
+					settings.add(new Toggle("slashclient-hud.set.clock12h", () -> cfg.clock12h, v -> cfg.clock12h = v));
+				}
+				case "coords" -> {
+					settings.add(new Slider("slashclient-hud.set.coordsDecimals", 0f, 2f, 1f, "%.0f", () -> (float) cfg.coordsDecimals, v -> cfg.coordsDecimals = Math.round(v)));
+					settings.add(new Toggle("slashclient-hud.set.coordsFacing", () -> cfg.coordsFacing, v -> cfg.coordsFacing = v));
+				}
+				case "fps" -> settings.add(new Toggle("slashclient-hud.set.fpsColored", () -> cfg.fpsColored, v -> cfg.fpsColored = v));
+				default -> {}
+			}
 			if (m.id().equals("effects")) settings.add(new Toggle("slashclient-hud.effectIcons", () -> cfg.effectIcons, v -> cfg.effectIcons = v));
 			out.add(new Entry(m.id(), "slashclient-hud.module." + m.id(), MODULE_CATEGORIES.getOrDefault(m.id(), "hud"),
 				"m-" + m.id().toLowerCase(java.util.Locale.ROOT), () -> p.enabled, v -> p.enabled = v, settings, null));

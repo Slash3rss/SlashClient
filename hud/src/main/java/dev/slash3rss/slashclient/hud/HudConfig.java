@@ -37,6 +37,13 @@ public final class HudConfig {
 		public float scale = 1f;
 		/** Own background setting; null = the HUD-wide one. */
 		public Boolean background;
+		/** Own text colour and shadow; null = the HUD-wide ones. */
+		public Integer color;
+		public Boolean shadow;
+		/** How opaque the background is, 0 to 100 (null = 44, the HUD's usual). */
+		public Integer opacity;
+		/** A thin accent frame around the module. */
+		public boolean outline;
 
 		/** For Gson, so missing fields keep the defaults above. */
 		Placement() {}
@@ -47,6 +54,18 @@ public final class HudConfig {
 
 		public boolean background(HudConfig cfg) {
 			return background == null ? cfg.background : background;
+		}
+
+		public int textColor(HudConfig cfg) {
+			return color == null ? cfg.textColor : color;
+		}
+
+		public boolean shadow(HudConfig cfg) {
+			return shadow == null ? cfg.textShadow : shadow;
+		}
+
+		public int opacity() {
+			return opacity == null ? 44 : Math.max(0, Math.min(100, opacity));
 		}
 
 		Placement(boolean enabled, float ax, float ay, int dx, int dy) {
@@ -159,6 +178,13 @@ public final class HudConfig {
 	public boolean compactHearts = true;
 	/** Shift-drag over slots and the wheel move items in inventories. */
 	public boolean mouseTweaks = true;
+	// ---- options of single modules ----
+	public boolean clockSeconds = false;
+	public boolean clock12h = false;
+	public int coordsDecimals = 0;
+	public boolean coordsFacing = true;
+	/** FPS green, yellow or red by how smooth the game runs. */
+	public boolean fpsColored = false;
 	public boolean effectIcons = true;
 
 	// ---- chat ----
@@ -313,6 +339,11 @@ public final class HudConfig {
 		toolWarningPercent = Math.max(1, Math.min(50, other.toolWarningPercent));
 		compactHearts = other.compactHearts;
 		mouseTweaks = other.mouseTweaks;
+		clockSeconds = other.clockSeconds;
+		clock12h = other.clock12h;
+		coordsDecimals = Math.max(0, Math.min(2, other.coordsDecimals));
+		coordsFacing = other.coordsFacing;
+		fpsColored = other.fpsColored;
 		effectIcons = other.effectIcons;
 		chatStack = other.chatStack;
 		chatCopy = other.chatCopy;

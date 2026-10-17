@@ -34,12 +34,23 @@ public final class Modules {
 		return List.copyOf(out);
 	}
 
+	/** The module being drawn: its own text colour and shadow stand in for the HUD-wide ones. */
+	static HudConfig.Placement drawing;
+
+	private static int color(int color) {
+		return drawing != null && color == cfg.textColor ? drawing.textColor(cfg) : color;
+	}
+
+	private static boolean shadow() {
+		return drawing != null ? drawing.shadow(cfg) : cfg.textShadow;
+	}
+
 	static void text(GuiGraphicsExtractor g, Minecraft mc, String s, int x, int y, int color) {
-		g.text(mc.font, s, x, y, color, cfg.textShadow);
+		g.text(mc.font, s, x, y, color(color), shadow());
 	}
 
 	static void text(GuiGraphicsExtractor g, Minecraft mc, Component s, int x, int y, int color) {
-		g.text(mc.font, s, x, y, color, cfg.textShadow);
+		g.text(mc.font, s, x, y, color(color), shadow());
 	}
 
 	/** Green when good, yellow, then red: for ping, FPS and durability. */
@@ -148,6 +159,12 @@ public final class Modules {
 		Component content(Minecraft mc) {
 			return Component.translatable("slashclient-hud.fps", mc.getFps());
 		}
+
+		@Override
+		int color(Minecraft mc) {
+			// green from 60 up, red at 20 and below
+			return cfg.fpsColored ? grade(-mc.getFps(), -60, -20) : cfg.textColor;
+		}
 	}
 
 	static final class Ping extends TextModule {
@@ -196,10 +213,14 @@ public final class Modules {
 		}
 
 		private String[] lines(Minecraft mc) {
-			if (mc.player == null) return new String[] { "XYZ: 128 64 -256", "N" };
+			if (mc.player == null) return cfg.coordsFacing ? new String[] { "XYZ: 128 64 -256", "N" } : new String[] { "XYZ: 128 64 -256" };
 			var p = mc.player;
+			int d = cfg.coordsDecimals;
+			String xyz = d == 0 ? "XYZ: " + p.getBlockX() + " " + p.getBlockY() + " " + p.getBlockZ()
+				: String.format(java.util.Locale.ROOT, "XYZ: %." + d + "f %." + d + "f %." + d + "f", p.getX(), p.getY(), p.getZ());
+			if (!cfg.coordsFacing) return new String[] { xyz };
 			String facing = Component.translatable("slashclient-hud.dir." + p.getDirection().getName()).getString();
-			return new String[] { "XYZ: " + p.getBlockX() + " " + p.getBlockY() + " " + p.getBlockZ(), facing };
+			return new String[] { xyz, facing };
 		}
 
 		public int width(Minecraft mc) {
@@ -209,13 +230,13 @@ public final class Modules {
 		}
 
 		public int height(Minecraft mc) {
-			return mc.font.lineHeight * 2 + 1 + PAD * 2 - 1;
+			return cfg.coordsFacing ? mc.font.lineHeight * 2 + 1 + PAD * 2 - 1 : mc.font.lineHeight + PAD * 2 - 1;
 		}
 
 		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
 			String[] l = lines(mc);
 			text(g, mc, l[0], x + PAD, y + PAD, cfg.textColor);
-			text(g, mc, l[1], x + PAD, y + PAD + mc.font.lineHeight + 1, 0xFFAAAAAA);
+			if (l.length > 1) text(g, mc, l[1], x + PAD, y + PAD + mc.font.lineHeight + 1, 0xFFAAAAAA);
 		}
 	}
 
@@ -230,14 +251,16 @@ public final class Modules {
 	}
 
 	static final class Clock extends TextModule {
-		private static final DateTimeFormatter FORMAT = DateTimeFormatter.ofPattern("HH:mm");
+		private static final DateTimeFormatter H24 = DateTimeFormatter.ofPattern("HH:mm"), H24S = DateTimeFormatter.ofPattern("HH:mm:ss");
+		private static final DateTimeFormatter H12 = DateTimeFormatter.ofPattern("h:mm a", java.util.Locale.ENGLISH), H12S = DateTimeFormatter.ofPattern("h:mm:ss a", java.util.Locale.ENGLISH);
 
 		public String id() {
 			return "clock";
 		}
 
 		Component content(Minecraft mc) {
-			return Component.literal(LocalTime.now().format(FORMAT));
+			DateTimeFormatter f = cfg.clock12h ? (cfg.clockSeconds ? H12S : H12) : (cfg.clockSeconds ? H24S : H24);
+			return Component.literal(LocalTime.now().format(f));
 		}
 	}
 

@@ -344,5 +344,13 @@
 	"slashclient-hud.assist.autoClick.disabled": "Najpierw włącz autoclicker w ustawieniach SlashClient",
 	"slashclient-hud.game.compactHearts": "Stackowanie serc",
 	"slashclient-hud.effectIcons": "Ikonki efektów",
-	"slashclient-hud.extra.mouseTweaks": "Mouse tweaks (Shift+przeciąganie, kółko w ekwipunku)"
+	"slashclient-hud.extra.mouseTweaks": "Mouse tweaks (Shift+przeciąganie, kółko w ekwipunku)",
+	"slashclient-hud.set.opacity": "Krycie tła",
+	"slashclient-hud.set.outline": "Ramka",
+	"slashclient-hud.set.ownColor": "Własny kolor tekstu",
+	"slashclient-hud.set.clockSeconds": "Sekundy",
+	"slashclient-hud.set.clock12h": "Format 12-godzinny",
+	"slashclient-hud.set.coordsDecimals": "Miejsca po przecinku",
+	"slashclient-hud.set.coordsFacing": "Pokazuj kierunek",
+	"slashclient-hud.set.fpsColored": "Kolor zależny od FPS"
 }
