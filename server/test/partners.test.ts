@@ -85,4 +85,18 @@ describe('partner servers', () => {
     const log = (await call('GET', '/v1/admin/log', boss.token)).body.entries.map((e: any) => e.action);
     assert.ok(['partner_add', 'partner_background', 'partner_remove'].every((a) => log.includes(a)));
   });
+
+  it('pins chosen partners for the game, and only pinned ones rotate', async () => {
+    const boss = await login('Szef');
+    const p = (await call('POST', '/v1/admin/partners', boss.token, { address: 'pin.example.pl', name: 'Pin' })).body;
+    assert.equal(p.pinned, false);
+    assert.equal((await call('POST', `/v1/admin/partners/${p.id}`, boss.token, { rotate: true })).body.rotate, false);
+    const pinned = (await call('POST', `/v1/admin/partners/${p.id}`, boss.token, { pinned: true, rotate: true })).body;
+    assert.equal(pinned.pinned, true);
+    assert.equal(pinned.rotate, true);
+    const listed = (await call('GET', '/v1/partners')).body.partners.find((x: any) => x.address === 'pin.example.pl');
+    assert.equal(listed.pinned, true);
+    assert.equal(listed.rotate, true);
+    assert.equal((await call('POST', `/v1/admin/partners/${p.id}`, boss.token, { pinned: false })).body.rotate, false);
+  });
 });

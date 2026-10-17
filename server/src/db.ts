@@ -100,6 +100,14 @@ export class Db {
     // added after the first release: older files get the column on start
     const columns = this.db.prepare('PRAGMA table_info(messages)').all() as { name: string }[];
     if (!columns.some((c) => c.name === 'invite')) this.db.exec('ALTER TABLE messages ADD COLUMN invite TEXT');
+    // partners pinned on top of the game's server list, some of them taking turns at the very top
+    const partnerColumns = this.db.prepare('PRAGMA table_info(partners)').all() as { name: string }[];
+    if (partnerColumns.length && !partnerColumns.some((c) => c.name === 'pinned')) {
+      this.db.exec('ALTER TABLE partners ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0');
+      this.db.exec('ALTER TABLE partners ADD COLUMN rotate INTEGER NOT NULL DEFAULT 0');
+      // SkyUp was pinned in the mod itself before: it stays pinned
+      this.db.exec("UPDATE partners SET pinned = 1 WHERE address = 'skyup.pl'");
+    }
     const userColumns = this.db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
     if (!userColumns.some((c) => c.name === 'cape')) this.db.exec("ALTER TABLE users ADD COLUMN cape TEXT NOT NULL DEFAULT ''");
     if (!userColumns.some((c) => c.name === 'role')) this.db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT ''");
@@ -119,7 +127,7 @@ CREATE TABLE IF NOT EXISTS logs (id TEXT PRIMARY KEY, owner TEXT NOT NULL DEFAUL
 CREATE TABLE IF NOT EXISTS bugs (id INTEGER PRIMARY KEY AUTOINCREMENT, author TEXT NOT NULL, title TEXT NOT NULL, body TEXT NOT NULL, log_id TEXT NOT NULL DEFAULT '', version TEXT NOT NULL DEFAULT '', os TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'open', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS bug_comments (id INTEGER PRIMARY KEY AUTOINCREMENT, bug_id INTEGER NOT NULL REFERENCES bugs(id) ON DELETE CASCADE, author TEXT NOT NULL, body TEXT NOT NULL, created_at INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS bug_comments_bug ON bug_comments(bug_id, id);
-CREATE TABLE IF NOT EXISTS partners (id TEXT PRIMARY KEY, address TEXT NOT NULL UNIQUE, name TEXT NOT NULL DEFAULT '', owner TEXT NOT NULL DEFAULT '', background TEXT NOT NULL DEFAULT '', updated_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS partners (id TEXT PRIMARY KEY, address TEXT NOT NULL UNIQUE, name TEXT NOT NULL DEFAULT '', owner TEXT NOT NULL DEFAULT '', background TEXT NOT NULL DEFAULT '', pinned INTEGER NOT NULL DEFAULT 0, rotate INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, admin TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '');
 `);
   }
@@ -516,15 +524,17 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
   // ---- partner servers ----
 
   partners(): import('./partners.ts').Partner[] {
-    return (this.db.prepare('SELECT id, address, name, owner, background, updated_at AS updatedAt FROM partners ORDER BY address').all() as unknown) as import('./partners.ts').Partner[];
+    return (this.db.prepare('SELECT id, address, name, owner, background, pinned, rotate, updated_at AS updatedAt FROM partners ORDER BY address').all() as { pinned: number; rotate: number }[])
+      .map((p) => ({ ...p, pinned: !!p.pinned, rotate: !!p.rotate })) as unknown as import('./partners.ts').Partner[];
   }
 
   partner(id: string): import('./partners.ts').Partner | undefined {
-    return this.db.prepare('SELECT id, address, name, owner, background, updated_at AS updatedAt FROM partners WHERE id = ?').get(id) as import('./partners.ts').Partner | undefined;
+    const p = this.db.prepare('SELECT id, address, name, owner, background, pinned, rotate, updated_at AS updatedAt FROM partners WHERE id = ?').get(id) as { pinned: number; rotate: number } | undefined;
+    return p ? ({ ...p, pinned: !!p.pinned, rotate: !!p.rotate } as unknown as import('./partners.ts').Partner) : undefined;
   }
 
   partnerByAddress(address: string): import('./partners.ts').Partner | undefined {
-    return this.db.prepare('SELECT id, address, name, owner, background, updated_at AS updatedAt FROM partners WHERE address = ?').get(address) as import('./partners.ts').Partner | undefined;
+    return this.db.prepare('SELECT id, address, name, owner, background, pinned, rotate, updated_at AS updatedAt FROM partners WHERE address = ?').get(address) as import('./partners.ts').Partner | undefined;
   }
 
   addPartner(p: import('./partners.ts').Partner) {
@@ -541,6 +551,11 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
 
   removePartner(id: string) {
     this.db.prepare('DELETE FROM partners WHERE id = ?').run(id);
+  }
+
+  /** Whether the game pins this partner on top of its server list, and lets it take turns at the very top. */
+  setPartnerPinning(id: string, pinned: boolean, rotate: boolean) {
+    this.db.prepare('UPDATE partners SET pinned = ?, rotate = ?, updated_at = ? WHERE id = ?').run(pinned ? 1 : 0, rotate ? 1 : 0, Date.now(), id);
   }
 
   // ---- shared logs ----

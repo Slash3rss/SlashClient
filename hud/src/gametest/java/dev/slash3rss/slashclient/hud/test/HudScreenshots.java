@@ -56,7 +56,7 @@ public class HudScreenshots implements FabricClientGameTest {
 		context.setScreen(() -> null);
 		context.waitTicks(5);
 
-		// SkyUp.pl pinned first in the multiplayer list
+		// pinned partner servers first in the multiplayer list
 		context.runOnClient(mc -> TestHooks.checkPinnedServer());
 		context.setScreen(() -> new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(new net.minecraft.client.gui.screens.TitleScreen()));
 		context.waitTicks(20);
@@ -65,7 +65,7 @@ public class HudScreenshots implements FabricClientGameTest {
 		context.waitTicks(5);
 		boolean deleteActive = context.computeOnClient(mc -> TestHooks.buttonActive("selectServer.delete"));
 		boolean editActive = context.computeOnClient(mc -> TestHooks.buttonActive("selectServer.edit"));
-		if (deleteActive || editActive) throw new AssertionError("Edit and Delete must be greyed out for SkyUp.pl");
+		if (deleteActive || !editActive) throw new AssertionError("A pinned server: Delete greyed out, Edit available (for the resource pack)");
 		context.getInput().setCursorPos(150, 98);
 		context.waitTicks(5);
 		context.takeScreenshot("servers-pinned-hover");

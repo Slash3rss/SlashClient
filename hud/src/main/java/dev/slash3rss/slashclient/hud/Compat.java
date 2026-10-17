@@ -165,7 +165,17 @@ public final class Compat {
 	public static void leaveWorld(Minecraft mc, Component reason) {
 		//#if MC >= 1.21.9
 		mc.disconnectFromWorld(reason);
-		//#elif MC < 1.21.6
+		//#elif MC >= 1.21.6
+		//$ boolean local = mc.isLocalServer();
+		//$ var server = mc.getCurrentServer();
+		//$ if (mc.level != null) mc.level.disconnect(reason);
+		//$ if (local) mc.disconnectWithSavingScreen();
+		//$ else mc.disconnectWithProgressScreen();
+		//$ var title = new net.minecraft.client.gui.screens.TitleScreen();
+		//$ if (local) mc.setScreen(title);
+		//$ else if (server != null && server.isRealm()) mc.setScreen(new com.mojang.realmsclient.RealmsMainScreen(title));
+		//$ else mc.setScreen(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(title));
+		//#elif MC >= 1.21.2
 		//$ boolean local = mc.isLocalServer();
 		//$ var server = mc.getCurrentServer();
 		//$ if (mc.level != null) mc.level.disconnect();
@@ -176,15 +186,7 @@ public final class Compat {
 		//$ else if (server != null && server.isRealm()) mc.setScreen(new com.mojang.realmsclient.RealmsMainScreen(title));
 		//$ else mc.setScreen(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(title));
 		//#else
-		//$ boolean local = mc.isLocalServer();
-		//$ var server = mc.getCurrentServer();
-		//$ if (mc.level != null) mc.level.disconnect(reason);
-		//$ if (local) mc.disconnectWithSavingScreen();
-		//$ else mc.disconnectWithProgressScreen();
-		//$ var title = new net.minecraft.client.gui.screens.TitleScreen();
-		//$ if (local) mc.setScreen(title);
-		//$ else if (server != null && server.isRealm()) mc.setScreen(new com.mojang.realmsclient.RealmsMainScreen(title));
-		//$ else mc.setScreen(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(title));
+		//$ dev.slash3rss.slashclient.hud.compat.Legacy.disconnectFromWorld(mc);
 		//#endif
 	}
 
@@ -197,14 +199,17 @@ public final class Compat {
 		//#endif
 	}
 
+	//#if MC >= 1.21.9
 	/** A font of our resources, for Style.withFont. */
 	public static net.minecraft.network.chat.FontDescription font(net.minecraft.resources.Identifier id) {
-		//#if MC >= 1.21.9
 		return new net.minecraft.network.chat.FontDescription.Resource(id);
-		//#else
-		//$ return id;
-		//#endif
 	}
+	//#else
+	//$ /** A font of our resources, for Style.withFont (before 1.21.9 a font is just its id). */
+	//$ public static net.minecraft.resources.Identifier font(net.minecraft.resources.Identifier id) {
+	//$ 	return id;
+	//$ }
+	//#endif
 
 	//#if MC >= 1.21.2 && MC < 1.21.5
 	//$ /** The hotbar slot in hand, a plain field of the inventory before 1.21.5. */

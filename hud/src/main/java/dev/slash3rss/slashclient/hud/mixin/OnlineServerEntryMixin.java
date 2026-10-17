@@ -56,7 +56,8 @@ abstract class OnlineServerEntryMixin {
 		boolean up = path.contains("move_up");
 		boolean down = path.contains("move_down");
 		if (down && PinnedServer.is(serverData)) return;
-		if (up && slashclient$index() == 1 && PinnedServer.is(screen.getServers().get(0))) return;
+		// no moving up into the pinned servers on top
+		if (up && slashclient$index() >= 1 && PinnedServer.is(screen.getServers().get(slashclient$index() - 1))) return;
 		//#if MC >= 1.21.2
 		original.call(g, pipeline, sprite, x, y, w, h);
 		//#else

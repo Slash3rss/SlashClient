@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** "Edit" and "Delete" are greyed out while SkyUp.pl is selected. */
+/** "Delete" is greyed out while a pinned partner server is selected ("Edit" only lets its resource pack setting change). */
 @Mixin(JoinMultiplayerScreen.class)
 abstract class JoinMultiplayerScreenMixin {
 	@Shadow private Button deleteButton;
@@ -21,7 +21,6 @@ abstract class JoinMultiplayerScreenMixin {
 	private void slashclient$noDeletePinned(CallbackInfo ci) {
 		if (serverSelectionList.getSelected() instanceof ServerSelectionList.OnlineServerEntry entry && PinnedServer.is(entry.getServerData())) {
 			if (deleteButton != null) deleteButton.active = false;
-			if (editButton != null) editButton.active = false;
 		}
 	}
 }

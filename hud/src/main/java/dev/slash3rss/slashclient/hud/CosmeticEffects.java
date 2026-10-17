@@ -97,7 +97,7 @@ final class CosmeticEffects {
 			// like the conduit's: flies from where it starts towards the player
 			case "nautilus" -> add(mc, ParticleTypes.NAUTILUS, p.getX(), p.getY() + 1.0, p.getZ(), x - p.getX(), y - p.getY() - 1.0, z - p.getZ());
 			case "tears" -> add(mc, ParticleTypes.DRIPPING_OBSIDIAN_TEAR, x, p.getY() + 1.9, z, 0, 0, 0);
-			// the firefly particle came with 1.21.5
+			// fireflies came with 1.21.5
 			//#if MC >= 1.21.5
 			case "fireflies" -> add(mc, ParticleTypes.FIREFLY, x, y, z, 0, 0, 0);
 			//#endif

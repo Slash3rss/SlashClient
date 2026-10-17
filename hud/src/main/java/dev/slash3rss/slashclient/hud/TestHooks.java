@@ -254,22 +254,32 @@ public final class TestHooks {
 		SlashHud.LOG.info("Badge test: own uuid {} shows logo: {}, server says SlashClient: {}", mc.player.getUUID(), Badges.usesSlash(mc.player.getUUID()), Badges.knownFromServer(mc.player.getUUID()));
 	}
 
-	/** SkyUp.pl: first after loading, and removing or moving it does nothing. */
+	/**
+	 * Pinned partners: on top after loading (the rotating ones taking turns first, the fixed one
+	 * after them), not removed, moved or re-addressed; the resource pack setting can change.
+	 */
 	public static void checkPinnedServer() {
 		var mc = net.minecraft.client.Minecraft.getInstance();
+		PinnedServer.sampleForTest(java.util.List.of(new PinnedServer.Pin("skyup.pl", "SkyUp.pl", false),
+			new PinnedServer.Pin("a.example", "Rotujący A", true), new PinnedServer.Pin("b.example", "Rotujący B", true)));
 		var list = new net.minecraft.client.multiplayer.ServerList(mc);
 		list.load();
 		list.add(new net.minecraft.client.multiplayer.ServerData("Inny serwer", "example.org", net.minecraft.client.multiplayer.ServerData.Type.OTHER), false);
 		list.save();
 		list.load();
-		check(PinnedServer.is(list.get(0)), "SkyUp.pl is first after loading");
+		String first = list.get(0).ip;
+		check(PinnedServer.is(list.get(0)) && PinnedServer.is(list.get(1)) && "skyup.pl".equals(list.get(2).ip), "pinned servers on top, the fixed one after the rotating ones");
+		list.load();
+		check(!first.equals(list.get(0).ip) && "skyup.pl".equals(list.get(2).ip), "rotating ones take turns at the very top");
 		list.remove(list.get(0));
-		check(PinnedServer.is(list.get(0)), "SkyUp.pl cannot be removed");
-		list.swap(0, 1);
-		list.swap(1, 0);
-		check(PinnedServer.is(list.get(0)) && "example.org".equals(list.get(1).ip), "SkyUp.pl cannot be moved");
-		list.replace(0, new net.minecraft.client.multiplayer.ServerData("Zmieniony", "other.example", net.minecraft.client.multiplayer.ServerData.Type.OTHER));
-		check(PinnedServer.is(list.get(0)) && PinnedServer.NAME.equals(list.get(0).name), "SkyUp.pl cannot be edited");
+		check(PinnedServer.is(list.get(0)) && list.size() >= 4, "a pinned server cannot be removed");
+		list.swap(2, 3);
+		check("skyup.pl".equals(list.get(2).ip), "a pinned server cannot be moved");
+		var edited = new net.minecraft.client.multiplayer.ServerData("Zmieniony", "other.example", net.minecraft.client.multiplayer.ServerData.Type.OTHER);
+		edited.setResourcePackStatus(net.minecraft.client.multiplayer.ServerData.ServerPackStatus.DISABLED);
+		list.replace(2, edited);
+		check("skyup.pl".equals(list.get(2).ip) && "SkyUp.pl".equals(list.get(2).name)
+			&& list.get(2).getResourcePackStatus() == net.minecraft.client.multiplayer.ServerData.ServerPackStatus.DISABLED, "only the resource pack setting of a pinned server changes");
 		list.save();
 		SlashHud.LOG.info("Pinned server test: OK ({} servers, first {})", list.size(), list.get(0).ip);
 	}
