@@ -30,7 +30,7 @@ import { getManifest } from './versions';
 import { newsArticle, newsPage, type NewsFilter } from './news';
 import { ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin } from './skins';
 import { GameBridge } from './bridge';
-import { BLOCK_FACES, blockTextures } from './blockTextures';
+import { BLOCK_FACES, blockTextures, cosmeticTextures } from './blockTextures';
 import { checkModsFolder, installedModIds } from './modcheck';
 import { addModsArgs, hudVersions, prepareHud } from './hud';
 import { exportHud, importHud } from './hudShare';
@@ -265,6 +265,7 @@ handle('blocks:textures', async () => {
   const textures = await blockTextures();
   return textures && { faces: BLOCK_FACES, textures };
 });
+handle('cosmetics:textures', () => cosmeticTextures());
 handle('profile:setIcon', async (id: string, icon: string) => {
   const profile = profileById(id);
   if (!/^block:[a-z-]+$/.test(icon) && icon !== '') throw new Error('Nieprawidłowa ikona');

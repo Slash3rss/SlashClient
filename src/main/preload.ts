@@ -57,6 +57,7 @@ const api = {
   resetSkin: (accountId: string) => invoke('skin:reset', accountId),
   setCape: (accountId: string, capeId: string | null) => invoke('skin:setCape', accountId, capeId),
   blockTextures: () => invoke('blocks:textures'),
+  cosmeticTextures: () => invoke('cosmetics:textures'),
   getStats: (days: number) => invoke('stats:get', days),
   findInstances: () => invoke('import:find'),
   instancesFromFolder: () => invoke('import:folder'),

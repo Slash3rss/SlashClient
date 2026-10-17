@@ -341,6 +341,11 @@ public final class TestHooks {
 		Cosmetics.set(mc.player.getUUID(), slot, item);
 	}
 
+	/** As if our account wore this, in the main menu too (there it is the session's player). */
+	public static void wearOwn(String slot, String item) {
+		Cosmetics.set(net.minecraft.client.Minecraft.getInstance().getGameProfile().id(), slot, item);
+	}
+
 	/** The cosmetics menu with a made-up catalog, open on a slot. */
 	public static void cosmeticsMenu(String slot) {
 		var mc = net.minecraft.client.Minecraft.getInstance();

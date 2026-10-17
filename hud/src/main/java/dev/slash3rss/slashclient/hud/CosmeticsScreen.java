@@ -130,7 +130,6 @@ public class CosmeticsScreen extends Screen {
 	/** Reads what is worn: the played account's own set, or the whole account's. */
 	private void applyMe(JsonObject me) {
 		String mine = self().toString().replace("-", "");
-		JsonObject set = null;
 		character = null;
 		ownSet = false;
 		if (me.has("minecraft")) for (JsonElement e : me.getAsJsonArray("minecraft")) {
@@ -138,17 +137,9 @@ public class CosmeticsScreen extends Screen {
 			if (!mine.equals(m.get("uuid").getAsString())) continue;
 			character = mine;
 			characterName = m.get("name").getAsString();
-			if (m.has("loadout") && m.get("loadout").isJsonObject()) {
-				set = m.getAsJsonObject("loadout");
-				ownSet = true;
-			}
+			ownSet = m.has("loadout") && m.get("loadout").isJsonObject();
 		}
-		Map<String, String> now = new HashMap<>();
-		if (set == null) {
-			if (me.has("loadout") && me.get("loadout").isJsonObject()) set = me.getAsJsonObject("loadout");
-			if (me.has("cape") && !me.get("cape").getAsString().isEmpty()) now.put("cape", me.get("cape").getAsString());
-		}
-		if (set != null) set.entrySet().forEach(e -> now.put(e.getKey(), e.getValue().getAsString()));
+		Map<String, String> now = wornIn(me, self());
 		synchronized (worn) {
 			worn.clear();
 			worn.putAll(now);
@@ -158,6 +149,44 @@ public class CosmeticsScreen extends Screen {
 			Cosmetics.setAll(self(), now);
 			if (minecraft.player != null) Cosmetics.setAll(minecraft.player.getUUID(), now);
 		});
+	}
+
+	/** What `self` wears, from the account (/v1/me): its own set when it has one, else the account's. */
+	static Map<String, String> wornIn(JsonObject me, UUID self) {
+		String mine = self.toString().replace("-", "");
+		JsonObject set = null;
+		if (me.has("minecraft")) for (JsonElement e : me.getAsJsonArray("minecraft")) {
+			JsonObject m = e.getAsJsonObject();
+			if (mine.equals(m.get("uuid").getAsString()) && m.has("loadout") && m.get("loadout").isJsonObject()) set = m.getAsJsonObject("loadout");
+		}
+		Map<String, String> now = new HashMap<>();
+		if (set == null) {
+			if (me.has("loadout") && me.get("loadout").isJsonObject()) set = me.getAsJsonObject("loadout");
+			if (me.has("cape") && !me.get("cape").getAsString().isEmpty()) now.put("cape", me.get("cape").getAsString());
+		}
+		if (set != null) set.entrySet().forEach(e -> now.put(e.getKey(), e.getValue().getAsString()));
+		return now;
+	}
+
+	/** Out of the game (the main menu), what we wear, asked once: the preview there shows it. */
+	public static void loadOwn(net.minecraft.client.Minecraft mc) {
+		if (ownLoaded || !Social.available()) return;
+		ownLoaded = true;
+		UUID self = mc.getGameProfile().id();
+		Thread.ofVirtual().start(() -> {
+			try {
+				Map<String, String> now = wornIn(Social.api("GET", "/v1/me", null), self);
+				mc.execute(() -> Cosmetics.setAll(self, now));
+			} catch (Exception e) {
+				ownLoaded = false;
+			}
+		});
+	}
+	private static volatile boolean ownLoaded;
+
+	/** After a game the own set is asked again (it may have changed in the game's menu). */
+	static void forgetOwn() {
+		ownLoaded = false;
 	}
 
 	private void wear(Entry item) {

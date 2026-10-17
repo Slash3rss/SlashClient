@@ -444,7 +444,7 @@ button.busy { pointer-events: none; }
 
 /* skin viewer: spinner until the model is ready */
 /* the preview on its own tile: the model and its zoom buttons as one block, square with the card */
-.skin-stage { position: relative; width: 240px; flex-shrink: 0; padding: 10px 10px 8px; border-radius: 14px; background: rgba(255, 255, 255, .03); border: 1px solid var(--glass-border); }
+.skin-stage { position: relative; overflow: hidden; width: 240px; flex-shrink: 0; padding: 10px 10px 8px; border-radius: 14px; background: rgba(255, 255, 255, .03); border: 1px solid var(--glass-border); }
 .skin-stage canvas { display: block; transition: opacity .4s ease; }
 .skin-stage.loading canvas { opacity: 0; }
 .skin-stage .spinner { position: absolute; left: 50%; top: 160px; margin: -14px 0 0 -14px; }
@@ -895,14 +895,17 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .skin-info .slot-tabs button.slot-tab { height: 26px; padding: 0 9px; font-size: 12px; border-radius: 13px; background: transparent; color: var(--text-secondary); position: relative; }
 .skin-info .slot-tabs button.slot-tab.active { background: var(--glass-bg-hover); color: var(--text-primary); border-color: var(--accent); }
 .slot-tab.worn::after { content: ""; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: #4ade80; }
-.cape-choice.wide canvas { width: 58px; height: 48px; }
+.slash-capes .cape-choice.square { width: 72px; height: 72px; }
+.cape-choice.square canvas { width: 56px; height: 47px; }
+.cape-choice.square canvas.game-icon { width: 40px; height: 40px; }
 .cosmetic-icon { font-size: 22px; color: var(--accent-light); width: 30px; text-align: center; }
 
 /* a small window: a smaller preview and tighter buttons, so the column beside it is not one button per line */
 @media (max-width: 1000px) {
   .skin-card { gap: 16px; padding: 12px; }
   .skin-stage { width: 186px; padding: 8px 8px 6px; }
-  .skin-stage canvas { width: 170px; height: 232px; }
+  /* skinview3d sizes the canvas inline: scaled down here, not cut off (pets and particles reach its edges) */
+  .skin-stage canvas { width: 170px !important; height: 232px !important; }
   .skin-stage .spinner { top: 124px; }
   .skin-info { gap: 8px; min-width: 0; }
   .skin-info .row { gap: 6px; }

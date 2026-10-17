@@ -64,3 +64,42 @@ export async function blockTextures(versionsDir = paths.versions): Promise<Recor
   // not cached: the next call (after a game is downloaded) looks again
   return null;
 }
+
+/**
+ * The game's pictures for the cosmetics in the launcher: spawn eggs for the pets, particles for
+ * trails and auras (taken from a downloaded game jar, like the blocks). Each path is under
+ * assets/minecraft/textures/, without .png; missing ones (older games) are left out.
+ */
+export const COSMETIC_TEXTURES = [
+  ...['allay', 'vex', 'bat', 'parrot', 'bee'].map((m) => `item/${m}_spawn_egg`),
+  // the pets' own pictures, for their models in the preview (the bat's moved into a folder in 26.1)
+  'entity/allay/allay', 'entity/illager/vex', 'entity/bat/bat', 'entity/bat', 'entity/parrot/parrot_red_blue', 'entity/bee/bee',
+  'particle/heart', 'particle/glow', 'particle/note', 'particle/flame',
+  ...Array.from({ length: 8 }, (_, i) => `particle/generic_${i}`),
+  ...'abcdefghijklmnop'.split('').map((c) => `particle/sga_${c}`),
+  ...Array.from({ length: 12 }, (_, i) => `particle/cherry_${i}`),
+  ...Array.from({ length: 11 }, (_, i) => `particle/soul_${i}`),
+  ...Array.from({ length: 8 }, (_, i) => `particle/glitter_${i}`),
+];
+
+let cosmeticCache: Record<string, string> | null | undefined;
+
+/** path → data:image/png URL; null when no game has been downloaded yet. */
+export async function cosmeticTextures(versionsDir = paths.versions): Promise<Record<string, string> | null> {
+  if (cosmeticCache !== undefined) return cosmeticCache;
+  for (const jar of await clientJars(versionsDir)) {
+    try {
+      const zip = new AdmZip(jar);
+      const out: Record<string, string> = {};
+      for (const name of COSMETIC_TEXTURES) {
+        const data = zip.getEntry(`assets/minecraft/textures/${name}.png`)?.getData();
+        if (data?.subarray(0, 4).equals(PNG)) out[name] = `data:image/png;base64,${data.toString('base64')}`;
+      }
+      // a game with the pets' own spawn eggs (1.21.5 and newer); older ones only have plain eggs
+      if (out['item/allay_spawn_egg'] && out['particle/heart']) return (cosmeticCache = out);
+    } catch {
+      // a broken jar: try the next one
+    }
+  }
+  return null;
+}

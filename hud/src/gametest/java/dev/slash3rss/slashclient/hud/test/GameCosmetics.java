@@ -58,6 +58,16 @@ public class GameCosmetics implements FabricClientGameTest {
 				context.waitTicks(5);
 				context.takeScreenshot("cosmetics-pet-" + pet);
 			}
+			// the main menu's figure wears them too: the cape or the wings behind it, the pet by it
+			context.runOnClient(mc -> { TestHooks.wearOwn("cape", "aurora"); TestHooks.wearOwn("pet", "parrot"); });
+			context.setScreen(dev.slash3rss.slashclient.hud.ui.SlashTitleScreen::new);
+			context.waitTicks(10);
+			context.takeScreenshot("cosmetics-menu-figure-cape");
+			context.runOnClient(mc -> { TestHooks.wearOwn("wings", "dragon"); TestHooks.wearOwn("pet", "bee"); });
+			context.waitTicks(5);
+			context.takeScreenshot("cosmetics-menu-figure-wings");
+			context.runOnClient(mc -> { TestHooks.wearOwn("wings", null); TestHooks.wearOwn("pet", null); TestHooks.wearOwn("cape", null); });
+			context.setScreen(() -> null);
 			// the menu in the game, on two slots
 			context.runOnClient(mc -> TestHooks.audit(true));
 			context.runOnClient(mc -> TestHooks.cosmeticsMenu("cape"));

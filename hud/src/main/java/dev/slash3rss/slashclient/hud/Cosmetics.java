@@ -72,6 +72,12 @@ public final class Cosmetics {
 	}
 
 	/** The item a player wears in a slot, or null. */
+	/** The cape's picture now (an animated cape's current frame). */
+	public static Identifier capeTexture(String cape) {
+		Integer frames = ANIMATED.get(cape);
+		return textureId("cape", frames == null ? cape : cape + "_" + (System.currentTimeMillis() / FRAME_MS) % frames);
+	}
+
 	public static String worn(UUID id, String slot) {
 		if (!SlashHud.config.badges) return null;
 		var w = worn.get(id);
@@ -80,6 +86,7 @@ public final class Cosmetics {
 
 	static void reset() {
 		worn.clear();
+		CosmeticsScreen.forgetOwn();
 		emotes.clear();
 	}
 
@@ -112,7 +119,7 @@ public final class Cosmetics {
 	}
 
 	/** Where one of our pictures is, for models drawn with it directly (the wings). */
-	static Identifier textureId(String kind, String name) {
+	public static Identifier textureId(String kind, String name) {
 		return Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/" + kind + "/" + name + ".png");
 	}
 

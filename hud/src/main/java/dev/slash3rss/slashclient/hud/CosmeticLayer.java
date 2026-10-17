@@ -37,7 +37,7 @@ import java.util.function.Supplier;
  * own models: the wings are the elytra's (with our pictures, gently opening and closing), the
  * pets small copies of a few flying mobs.
  */
-final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerModel> {
+public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerModel> {
 	private final ElytraModel wings;
 	private final Map<String, Pet> pets;
 
@@ -58,6 +58,33 @@ final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerModel> {
 			//$ "bee", new Pet(new net.minecraft.client.model.animal.bee.BeeModel(context.bakeLayer(ModelLayers.BEE)), BeeRenderState::new, vanilla("bee/bee"), 0.6f),
 			//#endif
 			"parrot", new Pet(new ParrotModel(context.bakeLayer(ModelLayers.PARROT)), ParrotRenderState::new, vanilla("parrot/parrot_red_blue"), 0.65f));
+	}
+
+	/** A pet's model layer and picture, for drawing it elsewhere too (the menu's skin preview). */
+	public static net.minecraft.client.model.geom.ModelLayerLocation petLayer(String id) {
+		return switch (id) {
+			case "allay" -> ModelLayers.ALLAY;
+			case "vex" -> ModelLayers.VEX;
+			case "bat" -> ModelLayers.BAT;
+			case "bee" -> ModelLayers.BEE;
+			case "parrot" -> ModelLayers.PARROT;
+			default -> null;
+		};
+	}
+
+	public static Identifier petTexture(String id) {
+		return switch (id) {
+			case "allay" -> vanilla("allay/allay");
+			case "vex" -> vanilla("illager/vex");
+			//#if MC >= 26.1
+			case "bat" -> vanilla("bat/bat");
+			//#else
+			//$ case "bat" -> vanilla("bat");
+			//#endif
+			case "bee" -> vanilla("bee/bee");
+			case "parrot" -> vanilla("parrot/parrot_red_blue");
+			default -> null;
+		};
 	}
 
 	private static Identifier vanilla(String path) {
