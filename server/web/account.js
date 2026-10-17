@@ -1,4 +1,5 @@
 // The account page (/konto): sign in, pick a cape, privacy, sign out.
+import { Preview } from './preview.js';
 import { $, partnerBanner, uploadPicture, PROVIDERS, SLOTS, api, avatarEl, capeEl, cosmeticEl, el, errorText, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 
 let me;
@@ -7,6 +8,25 @@ let cosmetics = { capes: [] };
 /** Which slot is shown, and whose set is changed: '' = the whole account, else a Minecraft account's uuid. */
 let slot = 'cape';
 let forCharacter = '';
+/** The 3D figure: made once, moved into each new render of the page. */
+let preview;
+let previewBox;
+let previewSkin;
+let previewWorn = {};
+
+async function figure(uuid, worn) {
+  previewBox ??= el('div', { class: 'figure' });
+  previewWorn = worn;
+  try {
+    if (!preview) preview = await Preview.create(previewBox, { width: 240, height: 320, uuid });
+    else if (uuid !== previewSkin) await preview.skin(uuid);
+    previewSkin = uuid;
+    await preview.show(worn);
+  } catch {
+    previewBox.classList.add('hidden');
+  }
+}
+const tryOn = (slot, id) => preview?.show({ ...previewWorn, ...(slot === 'cape' || slot === 'wings' || slot === 'elytra' ? { cape: '', wings: '', elytra: '' } : {}), [slot]: id });
 
 function renderNav() {
   $('#nav-account .label').textContent = me ? me.name : 'Zaloguj się';
@@ -98,6 +118,9 @@ function renderAccount() {
     const why = item?.rank ? `${name}: tylko dla rangi ${item.rank}` : `${name}: ekskluzywne, przyznaje admin`;
     const b = el('button', { class: `cape-choice${(worn[slot] || '') === id ? ' selected' : ''}${id ? '' : ' none'}`, disabled: !!locked, title: locked ? why : name },
       item ? cosmeticEl(item.id, item.slot) : el('div', { class: 'cape' }, icon('fa-solid fa-ban')), el('span', { textContent: name }), locked ? el('i', { class: 'fa-solid fa-lock lock' }) : '');
+    // under the mouse the figure tries it on; leaving puts back what is worn
+    b.addEventListener('mouseenter', () => tryOn(slot, id));
+    b.addEventListener('mouseleave', () => preview?.show(previewWorn));
     b.addEventListener('click', () => send(slot === 'cape' ? { cape: id } : { loadout: { [slot]: id } },
       id ? `${name}: założone. Widać po następnym wejściu do gry.` : 'Zdjęte.'));
     return b;
@@ -108,8 +131,9 @@ function renderAccount() {
     el('p', { class: 'muted small', textContent: 'Widzą je gracze z SlashClient na każdym serwerze. Każde konto Minecraft może mieć własny zestaw.' }),
     characters.length ? el('div', { class: 'cosmetic-for' }, el('span', { class: 'small', textContent: 'Zestaw dla:' }), whose,
       character?.loadout ? el('button', { onclick: () => send({ own: false }, `${character.name} nosi teraz zestaw całego konta.`) }, icon('fa-solid fa-rotate-left'), 'Jak całe konto') : '') : '',
-    tabs, pick);
+    el('div', { class: 'cosmetic-stage' }, previewBox ??= el('div', { class: 'figure' }), el('div', { class: 'grow' }, tabs, pick)));
   $('#account').replaceChildren(el('div', { class: 'account' }, profile, capes));
+  figure(character?.uuid ?? characters[0]?.uuid, worn);
   renderPartners();
 }
 

@@ -56,6 +56,38 @@ api('GET', '/v1/cosmetics').then(({ capes }) => {
   }));
 }).catch(() => {});
 
+// ---------- the 3D figure: a few sets in turn ----------
+const SETS = [
+  [{ cape: 'aurora', trail: 'stars' }, 'Peleryna Zorza i ślad Fajerwerki'],
+  [{ wings: 'phoenix', aura: 'royal', pet: 'allay' }, 'Skrzydła Feniks, aura Królewska, pupil Allay'],
+  [{ cape: 'matrix', pet: 'bee' }, 'Peleryna Matrix i pupil Pszczoła'],
+  [{ wings: 'prism', trail: 'hearts' }, 'Skrzydła Pryzmat i ślad Serca'],
+  [{ elytra: 'nebula', aura: 'sculk', pet: 'phantom' }, 'Elytra Mgławica, aura Sculk, pupil Fantom'],
+  [{ cape: 'sakura', aura: 'cherry', pet: 'parrot' }, 'Peleryna Sakura, aura Wiśnia, pupil Papuga'],
+];
+const stage = $('#cosmetic-3d');
+if (stage) {
+  const seen = new IntersectionObserver(async ([e]) => {
+    if (!e.isIntersecting) return;
+    seen.disconnect();
+    try {
+      const { Preview } = await import('./preview.js');
+      const p = await Preview.create(stage, { width: 300, height: 380 });
+      let i = 0;
+      const next = () => {
+        const [set, label] = SETS[i++ % SETS.length];
+        p.show(set);
+        $('#cosmetic-3d-caption').textContent = label;
+      };
+      next();
+      setInterval(() => { if (!document.hidden) next(); }, 4500);
+    } catch {
+      stage.classList.add('hidden');
+    }
+  });
+  seen.observe(stage);
+}
+
 // ---------- modules marquee ----------
 const MODULES = [
   ['fa-solid fa-gauge-high', 'FPS'], ['fa-solid fa-wifi', 'Ping'], ['fa-solid fa-computer-mouse', 'CPS'], ['fa-solid fa-keyboard', 'Keystrokes'],

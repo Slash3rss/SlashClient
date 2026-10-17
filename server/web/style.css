@@ -234,3 +234,17 @@ label.btn input.hidden { display: none; }
 .scroll-x { overflow-x: auto; }
 .req-card { margin-bottom: 14px; }
 .req-card h3, .req-card + .card h3 { font-size: 15px; margin-bottom: 10px; }
+
+/* the 3D figure (account page, home page) */
+.figure { position: relative; flex-shrink: 0; border-radius: 14px; background: radial-gradient(closest-side, rgba(59, 130, 246, .22), transparent 75%); cursor: grab; }
+.figure:active { cursor: grabbing; }
+.figure canvas { display: block; }
+.cosmetic-stage { display: flex; gap: 16px; align-items: flex-start; margin-top: 12px; }
+.cosmetic-stage .grow { min-width: 0; }
+.figure-stage { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.figure-caption { color: var(--text-2); font-size: 14px; min-height: 1.4em; text-align: center; }
+.cape.icon-item .game-icon { width: 40px; height: 40px; image-rendering: pixelated; }
+.cape.icon-item.sm .game-icon { width: 22px; height: 22px; }
+@media (max-width: 720px) {
+  .cosmetic-stage { flex-direction: column; align-items: center; }
+}
