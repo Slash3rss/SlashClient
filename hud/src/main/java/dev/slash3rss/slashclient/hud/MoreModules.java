@@ -351,7 +351,8 @@ final class MoreModules {
 	// ---------- the creature under the crosshair: name, health, distance ----------
 
 	static final class Target implements HudModule {
-		private static final int WIDTH = 120;
+		/** As wide as the name needs (servers put ranks and icons in it), within these bounds. */
+		private static final int MIN_WIDTH = 120, MAX_WIDTH = 240;
 
 		public String id() {
 			return "target";
@@ -366,8 +367,28 @@ final class MoreModules {
 			return target(mc) != null;
 		}
 
+		private static Component nameOf(LivingEntity e) {
+			return e == null ? Component.literal("Steve") : e.getDisplayName();
+		}
+
+		/** The name cut to fit, keeping its colours and the server's icons, with "…" at the end. */
+		private static Component cut(Minecraft mc, Component name, int max) {
+			if (mc.font.width(name) <= max) return name;
+			var kept = mc.font.substrByWidth(name, max - mc.font.width("…"));
+			var out = Component.empty();
+			kept.visit((style, part) -> {
+				out.append(Component.literal(part).withStyle(style));
+				return java.util.Optional.empty();
+			}, net.minecraft.network.chat.Style.EMPTY);
+			return out.append("…");
+		}
+
+		private static int widthFor(Minecraft mc, Component name) {
+			return Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, mc.font.width(name) + PAD * 2));
+		}
+
 		public int width(Minecraft mc) {
-			return WIDTH;
+			return widthFor(mc, nameOf(target(mc)));
 		}
 
 		public int height(Minecraft mc) {
@@ -375,15 +396,17 @@ final class MoreModules {
 		}
 
 		private void drawFor(GuiGraphicsExtractor g, Minecraft mc, int x, int y, Component name, float health, float max, float absorb, double distance) {
-			text(g, mc, name, x + PAD, y + PAD, cfg.textColor);
+			int width = widthFor(mc, name);
+			// a name longer than the widest box is cut with "…"
+			text(g, mc, cut(mc, name, width - PAD * 2), x + PAD, y + PAD, cfg.textColor);
 			String hp = String.format("❤ %.1f", health) + (absorb > 0 ? String.format(" +%.0f", absorb) : "");
 			int barY = y + PAD + mc.font.lineHeight + 2;
-			int barW = WIDTH - PAD * 2;
+			int barW = width - PAD * 2;
 			g.fill(x + PAD, barY, x + PAD + barW, barY + 3, 0xFF333333);
 			g.fill(x + PAD, barY, x + PAD + Math.round(barW * Math.min(1, health / max)), barY + 3, grade(max - health, 0, max));
 			text(g, mc, hp, x + PAD, barY + 5, 0xFFFF7777);
 			String dist = String.format("%.1f m", distance);
-			text(g, mc, dist, x + WIDTH - PAD - mc.font.width(dist), barY + 5, 0xFFAAAAAA);
+			text(g, mc, dist, x + width - PAD - mc.font.width(dist), barY + 5, 0xFFAAAAAA);
 		}
 
 		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {

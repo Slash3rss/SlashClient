@@ -64,7 +64,13 @@ public final class ChatTabs {
 			if (SlashHud.config.chatSearch) {
 				int bw = 130, bx = width - bw - 2;
 				// borderless text on our own rounded field, like the HUD window's search
-				EditBox box = new EditBox(mc.font, bx + 16, y + 3, bw - 20, 9, Component.translatable("slashclient-hud.chat.search"));
+				// clicked to search; the arrow keys and Tab never move into it (they belong to the chat's input)
+				EditBox box = new EditBox(mc.font, bx + 16, y + 3, bw - 20, 9, Component.translatable("slashclient-hud.chat.search")) {
+					@Override
+					public net.minecraft.client.gui.ComponentPath nextFocusPath(net.minecraft.client.gui.navigation.FocusNavigationEvent event) {
+						return null;
+					}
+				};
 				box.setBordered(false);
 				box.setTextColor(dev.slash3rss.slashclient.hud.ui.Ui.TEXT);
 				box.setHint(Component.translatable("slashclient-hud.chat.search"));

@@ -488,4 +488,21 @@ public final class TestHooks {
 	public static int ping() {
 		return Latency.ms();
 	}
+
+	/** As if this had been sent from the chat (for the up arrow). */
+	public static void rememberSent(String text) {
+		Compat.chat(net.minecraft.client.Minecraft.getInstance()).addRecentChat(text);
+	}
+
+	/** What is typed in the open chat, or null. */
+	public static String chatInput() {
+		if (!(screen() instanceof net.minecraft.client.gui.screens.ChatScreen chat)) return null;
+		try {
+			var f = net.minecraft.client.gui.screens.ChatScreen.class.getDeclaredField("input");
+			f.setAccessible(true);
+			return ((net.minecraft.client.gui.components.EditBox) f.get(chat)).getValue();
+		} catch (ReflectiveOperationException e) {
+			return null;
+		}
+	}
 }

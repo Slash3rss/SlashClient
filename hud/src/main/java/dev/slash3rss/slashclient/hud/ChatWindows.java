@@ -163,6 +163,12 @@ public final class ChatWindows {
 			this.sh = sh;
 		}
 
+		/** Only the mouse moves it: the arrow keys stay with the chat's history. */
+		@Override
+		public net.minecraft.client.gui.ComponentPath nextFocusPath(net.minecraft.client.gui.navigation.FocusNavigationEvent event) {
+			return null;
+		}
+
 		@Override
 		public void onClick(MouseButtonEvent e, boolean doubleClick) {
 			grabX = e.x() - getX();

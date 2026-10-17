@@ -167,6 +167,15 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.waitTicks(5);
 			context.takeScreenshot("chat-mentions-tab");
 			context.runOnClient(mc -> TestHooks.selectTab(-1));
+			// with the tabs there, the up arrow still brings back the last message sent (not the "All" tab)
+			context.runOnClient(mc -> TestHooks.rememberSent("/say last one"));
+			context.setScreen(() -> new ChatScreen("", false));
+			context.waitTicks(3);
+			context.getInput().pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_UP);
+			context.waitTicks(2);
+			String recalled = context.computeOnClient(mc -> TestHooks.chatInput());
+			if (!"/say last one".equals(recalled)) throw new AssertionError("Up arrow in the chat gave: " + recalled);
+			context.setScreen(() -> new ChatScreen("", false));
 
 			// "but not": what the second field names stays out; only it filled = everything except it
 			if (!context.computeOnClient(mc -> TestHooks.tabCatches("gg", "", "[Party] Steve: gg"))

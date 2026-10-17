@@ -52,6 +52,15 @@ final class ChatTabButton extends Button {
 		pulling = false;
 	}
 
+	/**
+	 * Not reached with the arrow keys or Tab: in the chat, up and down go through the sent
+	 * messages, and a tab taking the focus would stop that. The mouse still clicks it.
+	 */
+	@Override
+	public net.minecraft.client.gui.ComponentPath nextFocusPath(net.minecraft.client.gui.navigation.FocusNavigationEvent event) {
+		return null;
+	}
+
 	/** Counts in red: this tab catches the player's nick. */
 	ChatTabButton mention(boolean on) {
 		mention = on;
