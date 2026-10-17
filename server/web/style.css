@@ -77,8 +77,8 @@ input:focus, select:focus { border-color: var(--border-focus); box-shadow: 0 0 0
 .chip.gold { background: rgba(250, 204, 21, .14); color: var(--gold); }
 .chip.sky { background: rgba(56, 189, 248, .14); color: #7dd3fc; }
 .chip.green { background: rgba(74, 222, 128, .12); color: var(--green); }
-.avatar { width: 40px; height: 40px; border-radius: 12px; object-fit: cover; background: var(--accent-gradient, linear-gradient(135deg, #3b82f6, #1d4ed8)); display: grid; place-items: center; font-weight: 700; color: #fff; flex-shrink: 0; overflow: hidden; }
-.avatar.big { width: 64px; height: 64px; border-radius: 18px; font-size: 26px; }
+.avatar { padding: 0; width: 40px; height: 40px; border-radius: 12px; object-fit: cover; background: var(--accent-gradient, linear-gradient(135deg, #3b82f6, #1d4ed8)); display: grid; place-items: center; font-weight: 700; color: #fff; flex-shrink: 0; overflow: hidden; }
+.avatar.big { width: 64px; height: 64px; padding: 0; border-radius: 18px; font-size: 26px; }
 /* a picture (often with a transparent background) sits on a neutral tile, not on the letter's gradient */
 img.avatar { background: rgba(255, 255, 255, .06); }
 /* chips that can be clicked keep the size of the others */
