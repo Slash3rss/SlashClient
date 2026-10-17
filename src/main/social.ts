@@ -6,6 +6,8 @@
  * live events and carries the player's status; it reconnects on its own.
  */
 
+import { APP_VERSION } from '../shared/version';
+
 export type Status = 'online' | 'away' | 'busy' | 'invisible';
 
 export interface Activity {
@@ -79,7 +81,7 @@ export class SocialClient {
     try {
       res = await (this.opts.fetchImpl ?? fetch)(this.opts.url().replace(/\/$/, '') + path, {
         method,
-        headers: { 'Content-Type': 'application/json', ...(auth && token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: { 'Content-Type': 'application/json', 'X-SlashClient': `launcher/${APP_VERSION}`, ...(auth && token ? { Authorization: `Bearer ${token}` } : {}) },
         body: body === undefined ? undefined : JSON.stringify(body),
         signal: AbortSignal.timeout(15_000),
       });

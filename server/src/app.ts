@@ -9,6 +9,7 @@ import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, mayWear, type Slo
 import { adminRoutes } from './admin.ts';
 import { partnerRoutes } from './partners.ts';
 import { trackerRoutes } from './tracker.ts';
+import { RequestLog, clientOf, maskIp, routeOf } from './requests.ts';
 import { serveWeb } from './web.ts';
 import { createDownloads, isDownloadOs } from './downloads.ts';
 
@@ -92,6 +93,9 @@ function rateLimiter(perMinute: number) {
   };
 }
 
+/** What the request log learns while a request is handled. */
+type SeenRequest = http.IncomingMessage & { slashUser?: string; slashError?: string };
+
 export function createApp(cfg: Config) {
   const db = new Db(cfg.dbFile);
   const providers: Partial<Record<ProviderId, Provider>> = {};
@@ -163,6 +167,7 @@ export function createApp(cfg: Config) {
   const limitRequests = rateLimiter(15);
   const limitLogins = rateLimiter(cfg.loginsPerMinute ?? 10);
   /** Who is asking, for the rate limits: behind Caddy every request comes from 127.0.0.1. */
+  const requests = new RequestLog();
   const clientIp = (req: http.IncomingMessage): string => {
     const forwarded = cfg.trustProxy ? String(req.headers['x-forwarded-for'] ?? '').split(',').pop()?.trim() : '';
     return forwarded || req.socket.remoteAddress || '';
@@ -226,6 +231,7 @@ export function createApp(cfg: Config) {
     const userId = token && db.sessionUser(hashToken(token), SESSION_IDLE_MS);
     if (!userId) throw new HttpError(401, 'unauthorized');
     if (db.user(userId)?.banned) throw new HttpError(403, 'banned');
+    (req as SeenRequest).slashUser = userId;
     return userId;
   }
 
@@ -299,6 +305,17 @@ export function createApp(cfg: Config) {
   });
 
   const routes: [string, RegExp, Handler][] = [
+    // the request log: newest first, with who asked (handles looked up once per request)
+    ['GET', /^\/v1\/admin\/requests$/, (req, _p, url) => {
+      admin(req);
+      const res = requests.query({
+        q: url.searchParams.get('q') ?? '', errors: url.searchParams.get('errors') === '1',
+        client: url.searchParams.get('client') ?? '', user: url.searchParams.get('user') ?? '', limit: Number(url.searchParams.get('limit')) || 200,
+      });
+      const handles = new Map<string, string>();
+      for (const e of res.entries) if (e.user && !handles.has(e.user)) handles.set(e.user, db.user(e.user)?.handle ?? '');
+      return { ...res, entries: res.entries.map((e) => ({ ...e, handle: e.user ? handles.get(e.user) || null : null })) };
+    }],
     // the cosmetics one can pick: switched-off ones are left out, exclusive and rank ones say whether they are yours
     ['GET', /^\/v1\/cosmetics$/, (req) => {
       const me = req.headers.authorization ? authed(req) : undefined;
@@ -707,6 +724,7 @@ export function createApp(cfg: Config) {
       } catch (err) {
         const known = err instanceof HttpError;
         if (!known) console.error(err);
+        (req as SeenRequest).slashError = known ? err.code : 'server_error';
         res.writeHead(known ? err.status : 500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: known ? err.code : 'server_error' }));
       }
@@ -755,7 +773,22 @@ export function createApp(cfg: Config) {
 
   const downloads = createDownloads({ repo: cfg.releasesRepo ?? 'Slash3rss/SlashClient', token: cfg.releasesToken, fetchImpl: cfg.fetchImpl ?? fetch });
 
-  const server = http.createServer((req, res) => void handle(req, res));
+  // every API request (not the site's files) goes into the request log for the admin panel
+  const server = http.createServer((req, res) => {
+    const started = performance.now();
+    res.on('finish', () => {
+      const path = (req.url ?? '/').split('?')[0];
+      if (!/^\/(v1|pobierz|aktualizacje)\//.test(path)) return;
+      // the panel asking for this list every few seconds would fill it
+      if (path === '/v1/admin/requests') return;
+      const seen = req as SeenRequest;
+      requests.add({
+        at: Date.now(), method: req.method ?? '', path: path.slice(0, 200), route: routeOf(path), status: res.statusCode,
+        ms: Math.round(performance.now() - started), user: seen.slashUser ?? '', ip: maskIp(clientIp(req)), ...clientOf(req), error: seen.slashError ?? '',
+      });
+    });
+    void handle(req, res);
+  });
 
   // ---- WebSocket: /v1/ws, the first message must be { type: 'auth', token } ----
 

@@ -6,6 +6,7 @@ const TABS = [
   ['users', 'Konta', 'fa-solid fa-users'],
   ['cosmetics', 'Kosmetyki', 'fa-solid fa-wand-magic-sparkles'],
   ['partners', 'Partnerzy', 'fa-solid fa-handshake'],
+  ['requests', 'Zapytania', 'fa-solid fa-satellite-dish'],
   ['logs', 'Logi graczy', 'fa-solid fa-file-lines'],
   ['log', 'Dziennik', 'fa-solid fa-clock-rotate-left'],
 ];
@@ -75,7 +76,7 @@ function layout() {
     el('button', { class: 'icon-btn', title: 'Wyloguj', onclick: async () => { await signOut(); me = undefined; gate(); } }, icon('fa-solid fa-right-from-bracket'))));
   const main = el('main', { class: 'main', id: 'main' });
   $('#root').replaceChildren(el('div', { class: 'admin' }, side, main));
-  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, partners: partnersPage, logs: logsPage, log: logPage })[tab]?.();
+  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, partners: partnersPage, requests: requestsPage, logs: logsPage, log: logPage })[tab]?.();
 }
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);
@@ -290,6 +291,76 @@ async function partnersPage() {
     el('p', { class: 'muted', textContent: 'Tło pojawia się za tym serwerem na liście serwerów w grze, u graczy z SlashClient HUD. Najlepiej obrazek 1200×120 albo podobnie szeroki (PNG lub JPG, do 3 MB).' }),
     add,
     el('div', { class: 'partner-list' }, ...(cards.length ? cards : [el('p', { class: 'muted', textContent: 'Nie ma jeszcze serwerów partnerskich.' })])));
+}
+
+// ---------- requests from launchers, games and pages ----------
+
+const reqState = { q: '', errors: false, client: '', user: '', handle: '', live: true };
+const CLIENTS = { launcher: ['Launcher', 'fa-solid fa-rocket'], mod: ['Gra (mod)', 'fa-solid fa-cube'], strona: ['Strona', 'fa-solid fa-globe'], inne: ['Inne', 'fa-solid fa-question'] };
+const statusClass = (s) => (s >= 500 ? 'red' : s >= 400 ? 'gold' : s >= 300 ? 'sky' : 'green');
+const clock = (ms) => new Date(ms).toLocaleTimeString('pl-PL');
+let reqTimer;
+
+async function requestsPage() {
+  clearInterval(reqTimer);
+  const q = el('input', { type: 'search', placeholder: 'Ścieżka albo kod błędu…', value: reqState.q });
+  const client = el('select', {}, el('option', { value: '', textContent: 'Wszyscy klienci' }),
+    ...Object.entries(CLIENTS).map(([k, [name]]) => el('option', { value: k, textContent: name, selected: reqState.client === k })));
+  const errors = el('input', { type: 'checkbox', checked: reqState.errors });
+  const live = el('input', { type: 'checkbox', checked: reqState.live });
+  const who = el('div', { class: 'row' });
+  const stats = el('div', { class: 'stats' });
+  const routesBox = el('div', { class: 'glass card req-card' });
+  const list = el('div', { class: 'glass card' }, el('p', { class: 'muted', textContent: 'Wczytuję…' }));
+  let timer;
+  q.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => { reqState.q = q.value.trim(); load(); }, 250); });
+  client.addEventListener('change', () => { reqState.client = client.value; load(); });
+  errors.addEventListener('change', () => { reqState.errors = errors.checked; load(); });
+  live.addEventListener('change', () => { reqState.live = live.checked; });
+  const toggle = (input, text) => el('label', { class: 'row small' }, el('span', { class: 'switch' }, input, el('span')), text);
+  $('#main').replaceChildren(head('Zapytania', el('span', { class: 'muted small', textContent: 'Na żywo z serwera, bez treści i tokenów. Po restarcie serwera lista zaczyna się od nowa.' })),
+    el('div', { class: 'row wrap req-bar' }, q, client, toggle(errors, 'Tylko błędy'), toggle(live, 'Odświeżaj co 5 s'), who), stats, routesBox, list);
+
+  async function load() {
+    if (!document.body.contains(list)) return clearInterval(reqTimer);
+    const p = new URLSearchParams({ q: reqState.q, client: reqState.client, user: reqState.user, errors: reqState.errors ? '1' : '' });
+    const res = await api('GET', `/v1/admin/requests?${p}`).catch((err) => { toast(errorText(err), true); return undefined; });
+    if (!res) return;
+    const s = res.summary;
+    stats.replaceChildren(
+      stat('fa-solid fa-gauge-high', 'Na minutę', s.lastMinute),
+      stat('fa-solid fa-clock', 'Ostatnia godzina', s.lastHour),
+      stat('fa-solid fa-triangle-exclamation', 'Błędy (godzina)', s.errors, s.serverErrors ? `w tym ${s.serverErrors} po stronie serwera` : ''),
+      stat('fa-solid fa-users-viewfinder', 'Klienci (godzina)', Object.values(s.clients).reduce((a, b) => a + b, 0),
+        Object.entries(s.clients).map(([k, n]) => `${(CLIENTS[k] ?? [k])[0]} ${n}`).join(' · ')));
+    routesBox.replaceChildren(el('h3', { textContent: 'Najczęstsze w ostatniej godzinie' }), s.routes.length
+      ? el('table', {}, el('thead', {}, el('tr', {}, el('th', { textContent: 'Zapytanie' }), el('th', { textContent: 'Ile' }), el('th', { textContent: 'Błędy' }), el('th', { class: 'hide-sm', textContent: 'Śr. czas' }), el('th', { class: 'hide-sm', textContent: 'Najdłużej' }))),
+        el('tbody', {}, ...s.routes.map((r) => el('tr', {},
+          el('td', {}, el('code', { textContent: r.route })),
+          el('td', { textContent: String(r.count) }),
+          el('td', {}, r.errors ? el('span', { class: 'chip gold', textContent: String(r.errors) }) : el('span', { class: 'muted', textContent: '0' })),
+          el('td', { class: 'hide-sm', textContent: `${r.avgMs} ms` }),
+          el('td', { class: 'hide-sm', textContent: `${r.maxMs} ms` })))))
+      : el('p', { class: 'muted', textContent: 'Jeszcze nic.' }));
+    who.replaceChildren(reqState.user ? el('button', { class: 'chip blue', title: 'Pokaż wszystkich', onclick: () => { reqState.user = ''; reqState.handle = ''; load(); } },
+      icon('fa-solid fa-user'), `@${reqState.handle}`, icon('fa-solid fa-xmark')) : '');
+    const rows = res.entries.map((e) => {
+      const [cname, cicon] = CLIENTS[e.client] ?? [e.client, 'fa-solid fa-question'];
+      return el('tr', {},
+        el('td', { title: fmtDate(e.at), textContent: clock(e.at) }),
+        el('td', {}, e.handle ? el('button', { class: 'chip', title: 'Tylko zapytania tego konta', onclick: () => { reqState.user = e.user; reqState.handle = e.handle; load(); } }, `@${e.handle}`)
+          : el('span', { class: 'muted small', textContent: e.ip })),
+        el('td', { class: 'hide-sm' }, el('span', { class: 'chip', title: e.version ? `${cname} ${e.version}` : cname }, icon(cicon), e.version || cname)),
+        el('td', { class: 'req-path' }, el('b', { textContent: e.method }), ' ', el('code', { textContent: e.path })),
+        el('td', {}, el('span', { class: `chip ${statusClass(e.status)}`, title: e.error, textContent: e.error ? `${e.status} ${e.error}` : String(e.status) })),
+        el('td', { class: 'hide-sm', textContent: `${e.ms} ms` }));
+    });
+    list.replaceChildren(el('h3', { textContent: `Ostatnie zapytania (${res.entries.length} z ${res.kept} zapamiętanych od ${clock(res.since)})` }), rows.length
+      ? el('div', { class: 'scroll-x' }, el('table', {}, el('thead', {}, el('tr', {}, el('th', { textContent: 'Kiedy' }), el('th', { textContent: 'Kto' }), el('th', { class: 'hide-sm', textContent: 'Klient' }), el('th', { textContent: 'Zapytanie' }), el('th', { textContent: 'Status' }), el('th', { class: 'hide-sm', textContent: 'Czas' }))), el('tbody', {}, ...rows)))
+      : el('p', { class: 'muted', textContent: 'Nic nie pasuje.' }));
+  }
+  await load();
+  reqTimer = setInterval(() => { if (reqState.live && !document.hidden) load(); }, 5000);
 }
 
 // ---------- players' logs ----------

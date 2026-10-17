@@ -71,6 +71,39 @@ describe('shared logs', () => {
   });
 });
 
+describe('request log', () => {
+  it('shows the admin what clients asked for, without tokens or queries', async () => {
+    const boss = await login('Szef');
+    const player = await login('Pytajacy');
+    await fetch(`${base}/v1/friends?secret=1`, { headers: { Authorization: `Bearer ${player.token}`, 'X-SlashClient': 'launcher/0.9.1' } });
+    await fetch(`${base}/v1/nie-ma-takiego`);
+    assert.equal((await call('GET', '/v1/admin/requests', player.token)).body.error, 'not_admin');
+    const res = (await call('GET', '/v1/admin/requests', boss.token)).body;
+    const friends = res.entries.find((e: any) => e.path === '/v1/friends');
+    assert.ok(friends, JSON.stringify(res.entries.slice(0, 3)));
+    assert.equal(friends.client, 'launcher');
+    assert.equal(friends.version, '0.9.1');
+    assert.equal(friends.handle, 'Pytajacy');
+    assert.equal(friends.status, 200);
+    assert.ok(!JSON.stringify(res).includes(player.token));
+    assert.ok(!JSON.stringify(res).includes('secret'));
+    assert.equal(res.entries.find((e: any) => e.path === '/v1/nie-ma-takiego').status, 404);
+    const errors = (await call('GET', '/v1/admin/requests?errors=1', boss.token)).body;
+    assert.ok(errors.entries.every((e: any) => e.status >= 400));
+    assert.ok(res.summary.routes.some((r: any) => r.route === 'GET /v1/friends'));
+  });
+
+  it('groups ids and hides the end of addresses', async () => {
+    const { routeOf, maskIp } = await import('../src/requests.ts');
+    assert.equal(routeOf('/v1/messages/95a7d547-9f17-4b2b-9f38-227a6988cb59/read'), '/v1/messages/:id/read');
+    assert.equal(routeOf('/v1/bugs/12/comments/3'), '/v1/bugs/:n/comments/:n');
+    assert.equal(routeOf('/v1/logs/AbCdE12345'), '/v1/logs/:id');
+    assert.equal(maskIp('203.0.113.57'), '203.0.113.x');
+    assert.equal(maskIp('::ffff:127.0.0.1'), '127.0.0.x');
+    assert.equal(maskIp('2001:db8:85a3:1:2:3:4:5'), '2001:db8:85a3::x');
+  });
+});
+
 describe('bug tracker', () => {
   it('takes reports from players and lets the team answer and close them', async () => {
     const boss = await login('Szef');

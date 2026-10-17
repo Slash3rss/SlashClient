@@ -226,3 +226,11 @@ tbody tr:hover { background: var(--card); }
 .partner-text small { color: var(--text-2); }
 .partner-own { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
 label.btn input.hidden { display: none; }
+
+/* the request log in the admin panel */
+.req-bar { gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.req-bar input[type=search] { flex: 1; min-width: 200px; }
+.req-path code { font-size: 12.5px; word-break: break-all; }
+.scroll-x { overflow-x: auto; }
+.req-card { margin-bottom: 14px; }
+.req-card h3, .req-card + .card h3 { font-size: 15px; margin-bottom: 10px; }
