@@ -29,6 +29,7 @@ const ICONS = {
   'm-advancements': 'trophy', 'm-stats': 'chart-simple', 'm-pause': 'pause', 'm-accounts': 'user-gear',
   'm-scoreboard': 'list-ol', 'm-bossbar': 'skull', 'm-tablist': 'table-list', 'm-titles': 'heading', 'm-nametag': 'tag',
   'm-benchmark': 'chart-column', 'm-sprint': 'person-running', 'm-emotes': 'face-smile', 'm-clips': 'film', 'partner': 'handshake', 'm-mentions': 'at',
+  'm-autoclicker': 'computer-mouse', 'm-autotool': 'screwdriver-wrench', 'm-autorefill': 'arrows-rotate', 'm-holdkeys': 'hand-pointer', 'm-toolwarning': 'triangle-exclamation', 'm-hearts': 'heart',
 };
 
 /** Size of the glyph inside the 64×64 square, matching the icons already there. */

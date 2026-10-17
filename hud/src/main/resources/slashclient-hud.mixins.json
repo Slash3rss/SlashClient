@@ -17,6 +17,7 @@
 		"FreelookMixin",
 		"GpuTimerMixin",
 		"GuiMixin",
+		"HeartsMixin",
 		"JoinMultiplayerScreenMixin",
 		"LightmapMixin",
 		"MinecraftAccessor",

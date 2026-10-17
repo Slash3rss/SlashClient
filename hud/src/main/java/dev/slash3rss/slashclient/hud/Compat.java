@@ -116,4 +116,22 @@ public final class Compat {
 		//$ out.submitModel(model, state, pose, type, light, overlay, outline, null);
 		//#endif
 	}
+
+	/** Moves an inventory slot's stack into a hotbar slot (as pressing that slot's number over it would). */
+	static void swapIntoHotbar(Minecraft mc, net.minecraft.world.entity.player.Player player, int slot, int hotbar) {
+		//#if MC >= 26.1
+		mc.gameMode.handleContainerInput(player.inventoryMenu.containerId, slot, hotbar, net.minecraft.world.inventory.ContainerInput.SWAP, player);
+		//#else
+		//$ mc.gameMode.handleInventoryMouseClick(player.inventoryMenu.containerId, slot, hotbar, net.minecraft.world.inventory.ClickType.SWAP, player);
+		//#endif
+	}
+
+	/** The game's picture of a status effect (the one in the corner of the screen). */
+	static net.minecraft.resources.Identifier effectSprite(net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
+		//#if MC >= 26.2
+		return net.minecraft.client.gui.Hud.getMobEffectSprite(effect);
+		//#else
+		//$ return net.minecraft.client.gui.Gui.getMobEffectSprite(effect);
+		//#endif
+	}
 }

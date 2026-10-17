@@ -204,6 +204,31 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.takeScreenshot("chat-window-game");
 			context.runOnClient(mc -> TestHooks.dockAllChatTabs());
 
+			// lots of health in one row, with absorption on top
+			world.getServer().runCommand("attribute @p minecraft:max_health base set 70");
+			world.getServer().runCommand("effect give @p instant_health 1 20");
+			world.getServer().runCommand("effect give @p absorption 60 1");
+			context.waitTicks(10);
+			context.takeScreenshot("hearts-compact");
+			world.getServer().runCommand("attribute @p minecraft:max_health base set 20");
+			world.getServer().runCommand("effect clear @p absorption");
+
+			// a tool nearly gone: the warning once
+			world.getServer().runCommand("item replace entity @p weapon.mainhand with minecraft:diamond_pickaxe[minecraft:damage=1555]");
+			context.waitTicks(5);
+			context.takeScreenshot("tool-warning");
+
+			// the hand refill: an emptied hand gets the same blocks from the backpack
+			context.runOnClient(mc -> TestHooks.assist(true));
+			world.getServer().runCommand("item replace entity @p weapon.mainhand with minecraft:cobblestone 1");
+			world.getServer().runCommand("item replace entity @p inventory.10 with minecraft:cobblestone 40");
+			context.waitTicks(5);
+			world.getServer().runCommand("item replace entity @p weapon.mainhand with minecraft:air");
+			context.waitTicks(10);
+			String hand = context.computeOnClient(mc -> TestHooks.handItem());
+			if (!hand.equals("minecraft:cobblestone x40")) throw new AssertionError("hand refill: " + hand);
+			context.runOnClient(mc -> TestHooks.assist(false));
+
 			// sharing: a code made here must give the same settings back
 			context.runOnClient(mc -> TestHooks.shareRoundTrip());
 			// the test runner expects to end on the game's own title screen

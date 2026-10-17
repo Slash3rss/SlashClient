@@ -137,6 +137,28 @@ public final class HudConfig {
 	public boolean clips = false;
 	public int clipSeconds = 30;
 
+	// ---- helpers (see Assist) ----
+	/** The player has read that servers may ban for the automatic helpers. */
+	public boolean assistWarned = false;
+	public boolean autoClicker = false;
+	public boolean autoClickLeft = true;
+	public boolean autoClickRight = false;
+	public int cpsMin = 8;
+	public int cpsMax = 12;
+	/** Left clicks wait for the weapon to charge fully instead of the clicks per second. */
+	public boolean autoClickCooldown = true;
+	/** Left clicks on their own whenever a mob is under the crosshair. */
+	public boolean autoClickMobs = false;
+	public boolean autoClickPlayers = false;
+	public boolean autoTool = false;
+	public boolean autoToolRestore = true;
+	public boolean autoRefill = false;
+	public boolean toolWarning = true;
+	public int toolWarningPercent = 10;
+	/** Health above 10 hearts in one row, each 10 hearts more in another colour. */
+	public boolean compactHearts = true;
+	public boolean effectIcons = true;
+
 	// ---- chat ----
 	/** The same line again becomes "×2", "×3" on the last one instead of a new line. */
 	public boolean chatStack = true;
@@ -273,6 +295,22 @@ public final class HudConfig {
 		ownNametag = other.ownNametag;
 		clips = other.clips;
 		clipSeconds = Math.max(10, Math.min(60, other.clipSeconds));
+		assistWarned = other.assistWarned;
+		autoClicker = other.autoClicker;
+		autoClickLeft = other.autoClickLeft;
+		autoClickRight = other.autoClickRight;
+		cpsMin = Math.max(1, Math.min(20, other.cpsMin));
+		cpsMax = Math.max(1, Math.min(20, other.cpsMax));
+		autoClickCooldown = other.autoClickCooldown;
+		autoClickMobs = other.autoClickMobs;
+		autoClickPlayers = other.autoClickPlayers;
+		autoTool = other.autoTool;
+		autoToolRestore = other.autoToolRestore;
+		autoRefill = other.autoRefill;
+		toolWarning = other.toolWarning;
+		toolWarningPercent = Math.max(1, Math.min(50, other.toolWarningPercent));
+		compactHearts = other.compactHearts;
+		effectIcons = other.effectIcons;
 		chatStack = other.chatStack;
 		chatCopy = other.chatCopy;
 		chatSearch = other.chatSearch;

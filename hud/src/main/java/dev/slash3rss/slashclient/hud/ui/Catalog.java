@@ -51,17 +51,23 @@ public final class Catalog {
 
 	static final int[] COLORS = { 0xFFFFFFFF, 0xFF60A5FA, 0xFF4ADE80, 0xFF55FFFF, 0xFFFACC15, 0xFFF87171, 0xFFA855F7, 0xFFFF55FF };
 
+	/** Switching on asks first (once); switching off is at once. */
+	private static void risky(boolean on, Runnable apply) {
+		if (on) dev.slash3rss.slashclient.hud.Assist.enableRisky(apply);
+		else apply.run();
+	}
+
 	public static List<Entry> entries(Runnable openChatTabs) {
 		HudConfig cfg = SlashHud.config;
 		List<Entry> out = new ArrayList<>();
 		for (var m : SlashHud.modules()) {
 			HudConfig.Placement p = cfg.placement(m.id());
+			List<Setting> settings = new ArrayList<>(List.of(
+				new Slider("slashclient-hud.set.scale", 0.5f, 2f, 0.05f, "%.2f×", p::scale, v -> p.scale = v),
+				new Toggle("slashclient-hud.background", () -> p.background(cfg), v -> p.background = v)));
+			if (m.id().equals("effects")) settings.add(new Toggle("slashclient-hud.effectIcons", () -> cfg.effectIcons, v -> cfg.effectIcons = v));
 			out.add(new Entry(m.id(), "slashclient-hud.module." + m.id(), MODULE_CATEGORIES.getOrDefault(m.id(), "hud"),
-				"m-" + m.id().toLowerCase(java.util.Locale.ROOT), () -> p.enabled, v -> p.enabled = v,
-				List.of(
-					new Slider("slashclient-hud.set.scale", 0.5f, 2f, 0.05f, "%.2f×", p::scale, v -> p.scale = v),
-					new Toggle("slashclient-hud.background", () -> p.background(cfg), v -> p.background = v)),
-				null));
+				"m-" + m.id().toLowerCase(java.util.Locale.ROOT), () -> p.enabled, v -> p.enabled = v, settings, null));
 		}
 		out.add(new Entry("zoom", "slashclient-hud.zoom", "extras", "m-zoom", () -> cfg.zoom, v -> cfg.zoom = v, List.of(
 			new Slider("slashclient-hud.set.zoomFactor", 2f, 12f, 0.5f, "%.1f×", () -> cfg.zoomFactor, v -> cfg.zoomFactor = v),
@@ -133,6 +139,29 @@ public final class Catalog {
 		// clips: the last seconds of the game, saved with F8
 		out.add(new Entry("clips", "slashclient-hud.clips", "extras", "m-clips", () -> cfg.clips, v -> cfg.clips = v, List.of(
 			new Slider("slashclient-hud.clips.length", 10f, 60f, 5f, "%.0f s", () -> (float) cfg.clipSeconds, v -> cfg.clipSeconds = Math.round(v))), null));
+		// helpers; the automatic ones say first that servers may ban for them
+		out.add(new Entry("autoClicker", "slashclient-hud.assist.autoClicker", "combat", "m-autoclicker", () -> cfg.autoClicker,
+			v -> risky(v, () -> cfg.autoClicker = v), List.of(
+			new Toggle("slashclient-hud.assist.left", () -> cfg.autoClickLeft, v -> cfg.autoClickLeft = v),
+			new Toggle("slashclient-hud.assist.right", () -> cfg.autoClickRight, v -> cfg.autoClickRight = v),
+			new Slider("slashclient-hud.assist.cpsMin", 1f, 20f, 1f, "%.0f CPS", () -> (float) cfg.cpsMin, v -> cfg.cpsMin = Math.round(v)),
+			new Slider("slashclient-hud.assist.cpsMax", 1f, 20f, 1f, "%.0f CPS", () -> (float) cfg.cpsMax, v -> cfg.cpsMax = Math.round(v)),
+			new Toggle("slashclient-hud.assist.cooldown", () -> cfg.autoClickCooldown, v -> cfg.autoClickCooldown = v),
+			new Toggle("slashclient-hud.assist.mobs", () -> cfg.autoClickMobs, v -> cfg.autoClickMobs = v),
+			new Toggle("slashclient-hud.assist.players", () -> cfg.autoClickPlayers, v -> cfg.autoClickPlayers = v)), null));
+		out.add(new Entry("autoTool", "slashclient-hud.assist.autoTool", "world", "m-autotool", () -> cfg.autoTool,
+			v -> risky(v, () -> cfg.autoTool = v), List.of(
+			new Toggle("slashclient-hud.assist.restore", () -> cfg.autoToolRestore, v -> cfg.autoToolRestore = v)), null));
+		out.add(new Entry("autoRefill", "slashclient-hud.assist.autoRefill", "world", "m-autorefill", () -> cfg.autoRefill,
+			v -> risky(v, () -> cfg.autoRefill = v), List.of(), null));
+		// holding a button is set up with keys of its own, in the game's controls
+		out.add(new Entry("holdKeys", "slashclient-hud.assist.holdKeys", "extras", "m-holdkeys", null, null, List.of(), () -> {
+			var mc = net.minecraft.client.Minecraft.getInstance();
+			mc.setScreenAndShow(new net.minecraft.client.gui.screens.options.controls.KeyBindsScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc), mc.options));
+		}));
+		out.add(new Entry("toolWarning", "slashclient-hud.assist.toolWarning", "combat", "m-toolwarning", () -> cfg.toolWarning, v -> cfg.toolWarning = v, List.of(
+			new Slider("slashclient-hud.assist.toolWarningAt", 1f, 30f, 1f, "%.0f%%", () -> (float) cfg.toolWarningPercent, v -> cfg.toolWarningPercent = Math.round(v))), null));
+		out.add(new Entry("compactHearts", "slashclient-hud.game.compactHearts", "game", "m-hearts", () -> cfg.compactHearts, v -> cfg.compactHearts = v, List.of(), null));
 		out.add(new Entry("chatTabs", "slashclient-hud.chat.tabs", "chat", "m-chattabs", null, null, List.of(), openChatTabs));
 		return out;
 	}

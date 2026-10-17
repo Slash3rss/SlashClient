@@ -469,4 +469,18 @@ public final class TestHooks {
 		ChatTabsScreen.setExcludes(tab, excludes);
 		return ChatTabs.matches(tab, line);
 	}
+
+	/** The hand refill on or off, without the warning (the test has read it). */
+	public static void assist(boolean on) {
+		SlashHud.config.assistWarned = true;
+		SlashHud.config.autoRefill = on;
+	}
+
+	/** "minecraft:cobblestone x40": what the player holds. */
+	public static String handItem() {
+		var p = net.minecraft.client.Minecraft.getInstance().player;
+		if (p == null) return "none";
+		var stack = p.getMainHandItem();
+		return net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()) + " x" + stack.getCount();
+	}
 }

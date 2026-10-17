@@ -322,21 +322,32 @@ public final class Modules {
 			return "effects";
 		}
 
+		/** Each effect's picture, in the order of `rows` (null = none). */
+		private final List<net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect>> icons = new ArrayList<>();
+
 		private List<Component[]> rows(Minecraft mc, boolean preview) {
 			List<Component[]> out = new ArrayList<>();
+			icons.clear();
 			if (mc.player != null && mc.level != null) {
 				float tickrate = mc.level.tickRateManager().tickrate();
 				for (MobEffectInstance e : mc.player.getActiveEffects()) {
 					Component name = Component.translatable(e.getDescriptionId());
 					if (e.getAmplifier() > 0) name = Component.empty().append(name).append(" ").append(Component.translatable("enchantment.level." + (e.getAmplifier() + 1)));
 					out.add(new Component[] { name, MobEffectUtil.formatDuration(e, 1.0f, tickrate) });
+					icons.add(e.getEffect());
 				}
 			}
 			if (out.isEmpty() && preview) {
 				out.add(new Component[] { Component.empty().append(Component.translatable("effect.minecraft.speed")).append(" II"), Component.literal("1:30") });
 				out.add(new Component[] { Component.translatable("effect.minecraft.fire_resistance"), Component.literal("7:45") });
+				icons.add(net.minecraft.world.effect.MobEffects.SPEED);
+				icons.add(net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE);
 			}
 			return out;
+		}
+
+		private static int iconRoom() {
+			return cfg.effectIcons ? 11 : 0;
 		}
 
 		@Override
@@ -347,7 +358,7 @@ public final class Modules {
 		private int width(Minecraft mc, List<Component[]> rows) {
 			int w = 0;
 			for (Component[] r : rows) w = Math.max(w, mc.font.width(r[0]) + 6 + mc.font.width(r[1]));
-			return w + PAD * 2;
+			return w + PAD * 2 + iconRoom();
 		}
 
 		public int width(Minecraft mc) {
@@ -361,8 +372,11 @@ public final class Modules {
 		private void drawRows(GuiGraphicsExtractor g, Minecraft mc, int x, int y, List<Component[]> rows) {
 			int w = width(mc, rows);
 			int row = y + PAD;
-			for (Component[] r : rows) {
-				text(g, mc, r[0], x + PAD, row, cfg.textColor);
+			for (int i = 0; i < rows.size(); i++) {
+				Component[] r = rows.get(i);
+				if (cfg.effectIcons && i < icons.size())
+					g.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, Compat.effectSprite(icons.get(i)), x + PAD, row - 1, 9, 9);
+				text(g, mc, r[0], x + PAD + iconRoom(), row, cfg.textColor);
 				text(g, mc, r[1], x + w - PAD - mc.font.width(r[1]), row, 0xFFAAAAAA);
 				row += mc.font.lineHeight + 2;
 			}
