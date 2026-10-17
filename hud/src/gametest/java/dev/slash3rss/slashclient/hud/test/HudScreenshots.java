@@ -238,6 +238,25 @@ public class HudScreenshots implements FabricClientGameTest {
 			if (!hand.equals("minecraft:cobblestone x40")) throw new AssertionError("hand refill: " + hand);
 			context.runOnClient(mc -> TestHooks.assist(false));
 
+			// mouse tweaks: the wheel over a hotbar stack sends one to the backpack, and brings it back
+			world.getServer().runCommand("clear @p");
+			world.getServer().runCommand("item replace entity @p hotbar.0 with minecraft:cobblestone 10");
+			context.waitTicks(5);
+			context.setScreen(() -> new net.minecraft.client.gui.screens.inventory.InventoryScreen(net.minecraft.client.Minecraft.getInstance().player));
+			context.waitTicks(5);
+			double[] at = context.computeOnClient(mc -> TestHooks.slotOnWindow(36));
+			context.getInput().setCursorPos(at[0], at[1]);
+			context.waitTicks(3);
+			context.getInput().scroll(-1);
+			context.waitTicks(5);
+			String afterDown = context.computeOnClient(mc -> TestHooks.cobblestone());
+			if (!afterDown.equals("9/1")) throw new AssertionError("wheel down should send one to the backpack: " + afterDown);
+			context.getInput().scroll(1);
+			context.waitTicks(5);
+			String afterUp = context.computeOnClient(mc -> TestHooks.cobblestone());
+			if (!afterUp.equals("10/0")) throw new AssertionError("wheel up should bring it back: " + afterUp);
+			context.setScreen(() -> null);
+
 			// sharing: a code made here must give the same settings back
 			context.runOnClient(mc -> TestHooks.shareRoundTrip());
 			// the test runner expects to end on the game's own title screen

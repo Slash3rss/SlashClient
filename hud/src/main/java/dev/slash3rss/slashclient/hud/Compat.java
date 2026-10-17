@@ -130,6 +130,20 @@ public final class Compat {
 	//#endif
 
 	/** Moves an inventory slot's stack into a hotbar slot (as pressing that slot's number over it would). */
+	/** The clicks the mouse tweaks make in an open container. */
+	enum Click { PICKUP, QUICK_MOVE }
+
+	/** A click in the open container, as the game makes it for a mouse click on that slot. */
+	static void containerClick(Minecraft mc, net.minecraft.world.entity.player.Player player, int containerId, int slot, int button, Click click) {
+		//#if MC >= 26.1
+		var kind = click == Click.PICKUP ? net.minecraft.world.inventory.ContainerInput.PICKUP : net.minecraft.world.inventory.ContainerInput.QUICK_MOVE;
+		mc.gameMode.handleContainerInput(containerId, slot, button, kind, player);
+		//#else
+		//$ var kind = click == Click.PICKUP ? net.minecraft.world.inventory.ClickType.PICKUP : net.minecraft.world.inventory.ClickType.QUICK_MOVE;
+		//$ mc.gameMode.handleInventoryMouseClick(containerId, slot, button, kind, player);
+		//#endif
+	}
+
 	static void swapIntoHotbar(Minecraft mc, net.minecraft.world.entity.player.Player player, int slot, int hotbar) {
 		//#if MC >= 26.1
 		mc.gameMode.handleContainerInput(player.inventoryMenu.containerId, slot, hotbar, net.minecraft.world.inventory.ContainerInput.SWAP, player);

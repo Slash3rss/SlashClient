@@ -343,5 +343,6 @@
 	"slashclient-hud.assist.autoClick.off": "Autoclicker: wyłączony",
 	"slashclient-hud.assist.autoClick.disabled": "Najpierw włącz autoclicker w ustawieniach SlashClient",
 	"slashclient-hud.game.compactHearts": "Stackowanie serc",
-	"slashclient-hud.effectIcons": "Ikonki efektów"
+	"slashclient-hud.effectIcons": "Ikonki efektów",
+	"slashclient-hud.extra.mouseTweaks": "Mouse tweaks (Shift+przeciąganie, kółko w ekwipunku)"
 }

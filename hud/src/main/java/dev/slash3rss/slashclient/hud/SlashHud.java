@@ -82,6 +82,11 @@ public class SlashHud implements ClientModInitializer {
 		});
 		// the game's own menu gets a way back to ours
 		ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
+			// inventories: Shift-drag and the wheel move items (MouseTweaks)
+			if (screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> container) {
+				ScreenEvents.afterExtract(screen).register((s, g, mx, my, delta) -> MouseTweaks.frame(container));
+				net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseScroll(screen).register((s, mx, my, h2, v) -> !MouseTweaks.scroll(container, v));
+			}
 			// the server list: partner servers' pictures, fresh enough
 			if (screen instanceof net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen) PartnerServers.refresh();
 			// the game's own pause menu gets a way back to ours too

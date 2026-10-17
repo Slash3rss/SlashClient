@@ -343,5 +343,6 @@
 	"slashclient-hud.assist.autoClick.off": "Autoclicker: off",
 	"slashclient-hud.assist.autoClick.disabled": "Switch the autoclicker on in the SlashClient settings first",
 	"slashclient-hud.game.compactHearts": "Stacked hearts",
-	"slashclient-hud.effectIcons": "Effect icons"
+	"slashclient-hud.effectIcons": "Effect icons",
+	"slashclient-hud.extra.mouseTweaks": "Mouse tweaks (Shift-drag, wheel in inventories)"
 }

@@ -531,5 +531,31 @@ public final class TestHooks {
 			return null;
 		}
 	}
+
+	/** Where a slot of the open inventory screen is, in window pixels (for the cursor). */
+	public static double[] slotOnWindow(int index) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		if (!(screen() instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> s)) return new double[] { 0, 0 };
+		var slot = s.getMenu().slots.get(index);
+		try {
+			var left = net.minecraft.client.gui.screens.inventory.AbstractContainerScreen.class.getDeclaredField("leftPos");
+			var top = net.minecraft.client.gui.screens.inventory.AbstractContainerScreen.class.getDeclaredField("topPos");
+			left.setAccessible(true);
+			top.setAccessible(true);
+			double scale = mc.getWindow().getGuiScale();
+			return new double[] { (left.getInt(s) + slot.x + 8) * scale, (top.getInt(s) + slot.y + 8) * scale };
+		} catch (ReflectiveOperationException e) {
+			return new double[] { 0, 0 };
+		}
+	}
+
+	/** "hotbar/backpack": cobblestone in the first hotbar slot and in the backpack. */
+	public static String cobblestone() {
+		var inv = net.minecraft.client.Minecraft.getInstance().player.getInventory();
+		int pack = 0;
+		for (int i = 9; i < 36; i++) if (inv.getItem(i).is(net.minecraft.world.item.Items.COBBLESTONE)) pack += inv.getItem(i).getCount();
+		int bar = inv.getItem(0).is(net.minecraft.world.item.Items.COBBLESTONE) ? inv.getItem(0).getCount() : 0;
+		return bar + "/" + pack;
+	}
 }
 //#endif

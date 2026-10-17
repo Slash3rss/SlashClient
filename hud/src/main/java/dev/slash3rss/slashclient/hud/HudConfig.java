@@ -157,6 +157,8 @@ public final class HudConfig {
 	public int toolWarningPercent = 10;
 	/** Health above 10 hearts in one row, each 10 hearts more in another colour. */
 	public boolean compactHearts = true;
+	/** Shift-drag over slots and the wheel move items in inventories. */
+	public boolean mouseTweaks = true;
 	public boolean effectIcons = true;
 
 	// ---- chat ----
@@ -310,6 +312,7 @@ public final class HudConfig {
 		toolWarning = other.toolWarning;
 		toolWarningPercent = Math.max(1, Math.min(50, other.toolWarningPercent));
 		compactHearts = other.compactHearts;
+		mouseTweaks = other.mouseTweaks;
 		effectIcons = other.effectIcons;
 		chatStack = other.chatStack;
 		chatCopy = other.chatCopy;
