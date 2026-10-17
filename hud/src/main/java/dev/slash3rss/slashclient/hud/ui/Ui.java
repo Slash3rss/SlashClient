@@ -222,7 +222,24 @@ public final class Ui {
 	}
 
 	/** A card like the launcher's glass panels. */
+	/**
+	 * Starts a layer over what was drawn so far. In 1.21.2–1.21.5 text waits in a batch drawn after
+	 * all shapes and items sit higher in the depth buffer, so both showed through panels laid over
+	 * them: here they are drawn out first and the depth is cleared.
+	 */
+	public static void layer(GuiGraphicsExtractor g) {
+		//#if MC >= 1.21.2 && MC < 1.21.6
+		//$ g.flush();
+		//#endif
+		//#if MC >= 1.21.5 && MC < 1.21.6
+		//$ com.mojang.blaze3d.systems.RenderSystem.getDevice().createCommandEncoder().clearDepthTexture(Minecraft.getInstance().getMainRenderTarget().getDepthTexture(), 1.0);
+		//#elif MC >= 1.21.2 && MC < 1.21.5
+		//$ com.mojang.blaze3d.systems.RenderSystem.clear(256);
+		//#endif
+	}
+
 	public static void panel(GuiGraphicsExtractor g, int x, int y, int w, int h) {
+		layer(g);
 		round(g, x, y, w, h, 6, PANEL);
 		roundOutline(g, x, y, w, h, 6, BORDER);
 	}

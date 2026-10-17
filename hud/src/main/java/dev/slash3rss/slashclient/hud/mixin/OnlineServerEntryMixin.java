@@ -4,7 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 //#if MC >= 26.3
 import com.mojang.renderpearl.api.pipeline.RenderPipeline;
-//#elif MC >= 1.21.2
+//#elif MC >= 1.21.6
 //$ import com.mojang.blaze3d.pipeline.RenderPipeline;
 //#endif
 import dev.slash3rss.slashclient.hud.PinnedServer;
@@ -40,11 +40,15 @@ abstract class OnlineServerEntryMixin {
 	//#if MC >= 1.20.2
 	//#if MC >= 26.3
 	@WrapOperation(method = "extractContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/renderpearl/api/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
-	//#elif MC >= 1.21.2
+	//#elif MC >= 1.21.6
 	//$ @WrapOperation(method = "extractContent", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
 	//#endif
-	//#if MC >= 1.21.2
+	//#if MC >= 1.21.6
 	private void slashclient$hideArrows(GuiGraphicsExtractor g, RenderPipeline pipeline, Identifier sprite, int x, int y, int w, int h, Operation<Void> original) {
+	//#elif MC >= 1.21.2
+	//$ // before 1.21.6 sprites are drawn with a RenderType function instead of a pipeline
+	//$ @WrapOperation(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Ljava/util/function/Function;Lnet/minecraft/resources/ResourceLocation;IIII)V"))
+	//$ private void slashclient$hideArrows(GuiGraphicsExtractor g, java.util.function.Function<Identifier, net.minecraft.client.renderer.RenderType> pipeline, Identifier sprite, int x, int y, int w, int h, Operation<Void> original) {
 	//#else
 	//$ // before 1.21.2 the row is drawn in render(), its sprites without a pipeline
 	//$ @WrapOperation(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Lnet/minecraft/resources/ResourceLocation;IIII)V"))

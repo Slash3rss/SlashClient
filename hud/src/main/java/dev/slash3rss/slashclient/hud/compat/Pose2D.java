@@ -1,11 +1,11 @@
-//#if MC < 1.21.2
+//#if MC < 1.21.6
 //$ package dev.slash3rss.slashclient.hud.compat;
 //$
 //$ import com.mojang.blaze3d.vertex.PoseStack;
 //$ import net.minecraft.client.gui.GuiGraphics;
 //$
 //$ /**
-//$  * The GUI's 2D pose as newer versions have it (a Matrix3x2fStack), over the PoseStack 1.21.1
+//$  * The GUI's 2D pose as newer versions have it (a Matrix3x2fStack), over the PoseStack 1.21.1–1.21.5
 //$  * draws the GUI with; `g.pose()` in the shared code becomes `Pose2D.of(g)`.
 //$  */
 //$ public final class Pose2D {

@@ -16,7 +16,7 @@ import java.util.function.Consumer;
  */
 @Mixin(Screenshot.class)
 abstract class ScreenshotMixin {
-	//#if MC >= 1.21.2
+	//#if MC >= 1.21.6
 	@ModifyVariable(method = "grab(Ljava/io/File;Ljava/lang/String;Lcom/mojang/blaze3d/pipeline/RenderTarget;ILjava/util/function/Consumer;)V", at = @At("HEAD"), argsOnly = true)
 	//#else
 	//$ @ModifyVariable(method = "grab(Ljava/io/File;Ljava/lang/String;Lcom/mojang/blaze3d/pipeline/RenderTarget;Ljava/util/function/Consumer;)V", at = @At("HEAD"), argsOnly = true)

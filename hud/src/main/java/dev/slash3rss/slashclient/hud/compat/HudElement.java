@@ -1,4 +1,4 @@
-//#if MC < 1.21.2
+//#if MC < 1.21.6
 //$ package dev.slash3rss.slashclient.hud.compat;
 //$
 //#if MC >= 1.20.2

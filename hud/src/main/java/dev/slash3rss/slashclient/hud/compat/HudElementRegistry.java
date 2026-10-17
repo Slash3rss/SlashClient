@@ -41,4 +41,28 @@
 //$ 		element.render(g, delta);
 //$ 	}
 //$ }
+//#elif MC < 1.21.6
+//$ package dev.slash3rss.slashclient.hud.compat;
+//$
+//$ import net.fabricmc.fabric.api.client.rendering.v1.HudLayerRegistrationCallback;
+//$ import net.fabricmc.fabric.api.client.rendering.v1.IdentifiedLayer;
+//$ import net.minecraft.resources.ResourceLocation;
+//$
+//$ import java.util.function.Function;
+//$
+//$ /** Fabric's HUD element registry (1.21.6+) on the layered HUD Fabric has before (HudLayerRegistrationCallback). */
+//$ public final class HudElementRegistry {
+//$ 	private HudElementRegistry() {}
+//$
+//$ 	public static void replaceElement(ResourceLocation id, Function<HudElement, HudElement> replace) {
+//$ 		HudLayerRegistrationCallback.EVENT.register(layers -> layers.replaceLayer(id, old -> {
+//$ 			HudElement element = replace.apply(old::render);
+//$ 			return IdentifiedLayer.of(id, element::render);
+//$ 		}));
+//$ 	}
+//$
+//$ 	public static void attachElementBefore(ResourceLocation before, ResourceLocation id, HudElement element) {
+//$ 		HudLayerRegistrationCallback.EVENT.register(layers -> layers.attachLayerBefore(before, IdentifiedLayer.of(id, element::render)));
+//$ 	}
+//$ }
 //#endif

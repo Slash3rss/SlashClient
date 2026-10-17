@@ -138,7 +138,12 @@ public final class Compat {
 		//#endif
 	}
 
-	//#if MC >= 1.21.2
+	//#if MC >= 1.21.2 && MC < 1.21.6
+	//$ /** The game's picture of a status effect (before 1.21.6 a sprite of the effect atlas). */
+	//$ static net.minecraft.client.renderer.texture.TextureAtlasSprite effectSprite(net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
+	//$ 	return Minecraft.getInstance().getMobEffectTextures().get(effect);
+	//$ }
+	//#elif MC >= 1.21.2
 	/** The game's picture of a status effect (the one in the corner of the screen). */
 	static net.minecraft.resources.Identifier effectSprite(net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
 		//#if MC >= 26.2
@@ -171,12 +176,22 @@ public final class Compat {
 	public static void leaveWorld(Minecraft mc, Component reason) {
 		//#if MC >= 1.21.9
 		mc.disconnectFromWorld(reason);
-		//#elif MC >= 1.21.2
+		//#elif MC >= 1.21.6
 		//$ boolean local = mc.isLocalServer();
 		//$ var server = mc.getCurrentServer();
 		//$ if (mc.level != null) mc.level.disconnect(reason);
 		//$ if (local) mc.disconnectWithSavingScreen();
 		//$ else mc.disconnectWithProgressScreen();
+		//$ var title = new net.minecraft.client.gui.screens.TitleScreen();
+		//$ if (local) mc.setScreen(title);
+		//$ else if (server != null && server.isRealm()) mc.setScreen(new com.mojang.realmsclient.RealmsMainScreen(title));
+		//$ else mc.setScreen(new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(title));
+		//#elif MC >= 1.21.2
+		//$ boolean local = mc.isLocalServer();
+		//$ var server = mc.getCurrentServer();
+		//$ if (mc.level != null) mc.level.disconnect();
+		//$ if (local) mc.disconnect(new net.minecraft.client.gui.screens.GenericMessageScreen(Component.translatable("menu.savingLevel")));
+		//$ else mc.disconnect();
 		//$ var title = new net.minecraft.client.gui.screens.TitleScreen();
 		//$ if (local) mc.setScreen(title);
 		//$ else if (server != null && server.isRealm()) mc.setScreen(new com.mojang.realmsclient.RealmsMainScreen(title));
@@ -204,6 +219,45 @@ public final class Compat {
 	//$ /** A font of our resources, for Style.withFont (before 1.21.9 a font is just its id). */
 	//$ public static net.minecraft.resources.Identifier font(net.minecraft.resources.Identifier id) {
 	//$ 	return id;
+	//$ }
+	//#endif
+
+	//#if MC >= 1.21.2 && MC < 1.21.5
+	//$ /** The hotbar slot in hand, a plain field of the inventory before 1.21.5. */
+	//$ static void setSelectedSlot(net.minecraft.world.entity.player.Inventory inv, int slot) {
+	//$ 	inv.selected = slot;
+	//$ }
+	//#endif
+
+	//#if MC >= 1.21.2 && MC < 1.21.6
+	//$ /** The pause menu's leave button: back to the title screen from a world, disconnect from a server. */
+	//$ public static Component disconnectButtonLabel(boolean local) {
+	//$ 	return local ? Component.translatable("menu.returnToMenu") : net.minecraft.network.chat.CommonComponents.GUI_DISCONNECT;
+	//$ }
+	//$
+	//$ /**
+	//$  * A player model standing in the box, as the game's PlayerSkinWidget draws it before 1.21.6
+	//$  * (later versions have GuiGraphics.submitSkinRenderState with these arguments).
+	//$  */
+	//$ public static void skin(net.minecraft.client.gui.GuiGraphics graphics, net.minecraft.client.model.Model model, net.minecraft.resources.Identifier texture,
+	//$ 		float scale, float rotX, float rotY, float pivotY, int x0, int y0, int x1, int y1) {
+	//$ 	var pose = graphics.pose();
+	//$ 	pose.pushPose();
+	//$ 	pose.translate((x0 + x1) / 2f, y1, 100);
+	//$ 	pose.scale(scale, scale, scale);
+	//$ 	pose.translate(0, -0.0625f, 0);
+	//$ 	pose.rotateAround(com.mojang.math.Axis.XP.rotationDegrees(rotX), 0, pivotY, 0);
+	//$ 	pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(rotY));
+	//$ 	graphics.flush();
+	//$ 	com.mojang.blaze3d.platform.Lighting.setupForEntityInInventory(com.mojang.math.Axis.XP.rotationDegrees(rotX));
+	//$ 	pose.pushPose();
+	//$ 	pose.scale(1, 1, -1);
+	//$ 	pose.translate(0, -1.5f, 0);
+	//$ 	graphics.drawSpecial(buffers -> model.renderToBuffer(pose, buffers.getBuffer(model.renderType(texture)), 0xF000F0, net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY));
+	//$ 	pose.popPose();
+	//$ 	graphics.flush();
+	//$ 	com.mojang.blaze3d.platform.Lighting.setupFor3DItems();
+	//$ 	pose.popPose();
 	//$ }
 	//#endif
 }
