@@ -3,7 +3,7 @@
 body.landing { background: #07090f; overflow-x: hidden; position: relative; }
 html:has(body.landing) { overflow-x: clip; }
 /* the background pieces stay inside a box of their own, so nothing makes the page wider than the screen */
-.bg { position: absolute; left: 0; top: 0; width: 100%; height: 1400px; overflow: hidden; z-index: -1; pointer-events: none; }
+.bg { position: absolute; left: 0; top: 0; width: 100%; height: 1400px; max-height: 100%; overflow: hidden; z-index: -1; pointer-events: none; }
 .bg-grid {
   position: absolute; inset: 0;
   background-image: linear-gradient(rgba(255, 255, 255, .035) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .035) 1px, transparent 1px);
@@ -175,7 +175,7 @@ html:has(body.landing) { overflow-x: clip; }
 /* ---------- the account page ---------- */
 .account-page { padding-top: 28px !important; padding-bottom: 20px !important; }
 /* a short page: the footer sits at the bottom of the window, with nothing to scroll to below it */
-body.landing { display: flex; flex-direction: column; min-height: 100vh; }
+body.landing { position: relative; display: flex; flex-direction: column; min-height: 100vh; }
 body.landing > main { flex: 1 0 auto; }
 .account-page .head { margin-bottom: 18px; }
 .account-page .head h1, .account-page .head h2 { font-size: clamp(30px, 4vw, 40px); }
