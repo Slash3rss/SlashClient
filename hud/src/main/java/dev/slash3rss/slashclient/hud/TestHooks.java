@@ -557,5 +557,31 @@ public final class TestHooks {
 		int bar = inv.getItem(0).is(net.minecraft.world.item.Items.COBBLESTONE) ? inv.getItem(0).getCount() : 0;
 		return bar + "/" + pack;
 	}
+
+	/**
+	 * The layout editor's snapping: "fps" is put in the open middle, then "ping" is dragged to just
+	 * beside it, a little off; `start` stops while still dragging (for the screenshot), the second
+	 * call lets go and says whether "ping" ended exactly beside "fps" with the tops level.
+	 */
+	public static String snapDrag(boolean start) {
+		var editor = (HudEditScreen) screen();
+		if (start) {
+			int[] a = editor.boxOf("fps");
+			mouse("press", new double[] { a[0] + 2, a[1] + 2 });
+			mouse("drag", new double[] { editor.width / 2.0 - 40, editor.height / 2.0 - 60 });
+			mouse("release", new double[] { editor.width / 2.0 - 40, editor.height / 2.0 - 60 });
+			a = editor.boxOf("fps");
+			int[] b = editor.boxOf("ping");
+			mouse("press", new double[] { b[0] + 2, b[1] + 2 });
+			// 3 px past the gap and 3 px lower than "fps": close enough to be pulled in
+			mouse("drag", new double[] { a[0] + a[2] + 2 + 3 + 2, a[1] + 3 + 2 });
+			return "dragging";
+		}
+		int[] a = editor.boxOf("fps");
+		int[] before = editor.boxOf("ping");
+		mouse("release", new double[] { before[0] + 2, before[1] + 2 });
+		int[] b = editor.boxOf("ping");
+		return b[0] == a[0] + a[2] + 2 && b[1] == a[1] ? "ok" : "fps " + java.util.Arrays.toString(a) + " ping " + java.util.Arrays.toString(b);
+	}
 }
 //#endif

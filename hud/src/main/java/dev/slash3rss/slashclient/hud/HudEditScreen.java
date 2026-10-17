@@ -30,6 +30,10 @@ public class HudEditScreen extends Screen {
 	private double grabY;
 	private boolean snappedX;
 	private boolean snappedY;
+	/** Lines the dragged module lines up with on other modules: {0 = vertical at x, 1 = horizontal at y, coordinate}. */
+	private final java.util.List<int[]> guides = new java.util.ArrayList<>();
+	/** The gap left between modules snapped side by side. */
+	private static final int GAP = 2;
 
 	private boolean window;
 	private String category = "all";
@@ -430,6 +434,10 @@ public class HudEditScreen extends Screen {
 		if (dragging != null) {
 			g.fill(width / 2, 0, width / 2 + 1, height, snappedX ? 0xAA60A5FA : 0x30FFFFFF);
 			g.fill(0, height / 2, width, height / 2 + 1, snappedY ? 0xAA60A5FA : 0x30FFFFFF);
+			for (int[] line : guides) {
+				if (line[0] == 0) g.fill(line[1], 0, line[1] + 1, height, 0xCCFACC15);
+				else g.fill(0, line[1], width, line[1] + 1, 0xCCFACC15);
+			}
 		}
 		SlashHud.drawAll(g, minecraft, true);
 		if (!window) drawLayout(g, mx, my);
@@ -909,8 +917,13 @@ public class HudEditScreen extends Screen {
 		//#endif
 		int[] b = box(dragging);
 		HudConfig.Placement p = SlashHud.config.placement(dragging.id());
-		int x = snap((int) Math.round(e.x() - grabX), b[2], width, true);
-		int y = snap((int) Math.round(e.y() - grabY), b[3], height, false);
+		int rawX = (int) Math.round(e.x() - grabX), rawY = (int) Math.round(e.y() - grabY);
+		int x = snap(rawX, b[2], width, true);
+		int y = snap(rawY, b[3], height, false);
+		// not held by the screen's edge or centre: line up with the other modules (edges, centres, side by side)
+		guides.clear();
+		if (x == Math.max(0, Math.min(width - b[2], rawX))) x = alignTo(x, b[2], y, b[3], true);
+		if (y == Math.max(0, Math.min(height - b[3], rawY))) y = alignTo(y, b[3], x, b[2], false);
 		// keep to the third of the screen the module is in, so it stays there when the window changes
 		p.ax = anchor(x + b[2] / 2.0, width);
 		p.ay = anchor(y + b[3] / 2.0, height);
@@ -931,6 +944,7 @@ public class HudEditScreen extends Screen {
 		painting = null;
 		lastCellX = lastCellY = -1;
 		snappedX = snappedY = false;
+		guides.clear();
 		//#if MC >= 1.21.9
 		return super.mouseReleased(e);
 		//#else
@@ -1022,6 +1036,12 @@ public class HudEditScreen extends Screen {
 		return new int[] { x, y, size };
 	}
 
+	/** A module's box on this screen, for the test. */
+	public int[] boxOf(String id) {
+		for (HudModule m : SlashHud.MODULES) if (m.id().equals(id)) return box(m);
+		return null;
+	}
+
 	private int[] box(HudModule m) {
 		HudConfig.Placement p = SlashHud.config.placement(m.id());
 		int[] size = SlashHud.size(m, minecraft, p);
@@ -1031,6 +1051,37 @@ public class HudEditScreen extends Screen {
 
 	private static float anchor(double center, int screen) {
 		return center < screen / 3.0 ? 0f : center > screen * 2 / 3.0 ? 1f : 0.5f;
+	}
+
+	/**
+	 * Pulls the dragged module onto another module's line when it is close: the same left, right or
+	 * centre (or top, bottom, middle), or right beside it with a small gap when they sit next to
+	 * each other. The line it took is drawn while dragging.
+	 */
+	private int alignTo(int pos, int size, int cross, int crossSize, boolean horizontal) {
+		int best = pos, bestD = SNAP + 1, line = Integer.MIN_VALUE;
+		for (HudModule m : SlashHud.MODULES) {
+			if (m == dragging || !SlashHud.config.placement(m.id()).enabled) continue;
+			int[] o = box(m);
+			int op = horizontal ? o[0] : o[1], os = horizontal ? o[2] : o[3];
+			int cp = horizontal ? o[1] : o[0], cs = horizontal ? o[3] : o[2];
+			// side by side only with a module level with this one
+			boolean level = cross < cp + cs + 30 && cross + crossSize > cp - 30;
+			int[][] candidates = {
+				{ op, op }, { op + os - size, op + os }, { op + (os - size) / 2, op + os / 2 },
+				level ? new int[] { op + os + GAP, op + os } : null, level ? new int[] { op - size - GAP, op } : null };
+			for (int[] c : candidates) {
+				if (c == null) continue;
+				int d = Math.abs(c[0] - pos);
+				if (d < bestD) {
+					bestD = d;
+					best = c[0];
+					line = c[1];
+				}
+			}
+		}
+		if (line != Integer.MIN_VALUE) guides.add(new int[] { horizontal ? 0 : 1, line });
+		return best;
 	}
 
 	/** Pulls a position onto the screen edge or the centre line when it is close. */

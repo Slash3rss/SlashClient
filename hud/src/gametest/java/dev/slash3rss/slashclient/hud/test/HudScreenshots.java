@@ -105,6 +105,12 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.setScreen(HudEditScreen::new);
 			context.waitTicks(5);
 			context.takeScreenshot("hud-editor");
+			// snapping: a module dragged close beside another lands right next to it, top edges level
+			context.runOnClient(mc -> TestHooks.snapDrag(true));
+			context.waitTicks(2);
+			context.takeScreenshot("hud-editor-snap");
+			String snapped = context.computeOnClient(mc -> TestHooks.snapDrag(false));
+			if (!snapped.equals("ok")) throw new AssertionError("module snapping: " + snapped);
 			context.setScreen(HudEditScreen::settingsWindow);
 			context.waitTicks(5);
 			context.takeScreenshot("hud-editor-window");
