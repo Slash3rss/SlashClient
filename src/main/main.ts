@@ -1010,7 +1010,12 @@ let browserLogin = 0;
 handle('social:loginOAuth', (provider: string, link: boolean) => socialCall(async () => {
   if (!['discord', 'microsoft', 'google', 'github'].includes(provider)) throw new SocialError('provider_disabled');
   const attempt = ++browserLogin;
-  const { state, url } = await social.call<{ state: string; url: string }>('POST', `/v1/auth/${provider}/start`, undefined, link);
+  const { state, url, code } = await social.call<{ state: string; url: string; code?: string }>('POST', `/v1/auth/${provider}/start`, undefined, link);
+  // Microsoft signs in with a code typed on its page: copied right away, and shown in Friends
+  if (code) {
+    clipboard.writeText(code);
+    send('social:loginCode', { code, url });
+  }
   await shell.openExternal(url);
   const until = Date.now() + 10 * 60_000;
   while (Date.now() < until) {

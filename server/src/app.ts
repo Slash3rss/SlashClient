@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import http from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { Db, type User } from './db.ts';
-import { PROVIDERS, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
+import { PROVIDERS, type DeviceStart, type Identity, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, type Presence } from './presence.ts';
 import { CAPE_NAMES, CAPES, EMOTES, capeSetting, mayWear } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
@@ -85,7 +85,52 @@ export function createApp(cfg: Config) {
    * Sign-ins in progress: the launcher opens the browser and polls with `state` until the
    * browser part is done. With `linkTo` the login adds a provider to an existing account.
    */
-  const logins = new Map<string, { provider: ProviderId; at: number; linkTo?: string; result?: unknown; error?: string }>();
+  type Login = { provider: ProviderId; at: number; linkTo?: string; result?: unknown; error?: string };
+  const logins = new Map<string, Login>();
+
+  /** Who the provider says signed in: a new session, or the provider added to the account. */
+  function finishLogin(login: Login, provider: ProviderId, id: Identity): boolean {
+    if (login.linkTo) {
+      if (db.link(provider, id.subject, login.linkTo)) {
+        login.result = { linked: true, user: meWithProviders(login.linkTo) };
+        return true;
+      }
+      login.error = 'already_linked';
+      return false;
+    }
+    try {
+      login.result = newSession(db.signIn(provider, id.subject, id));
+      return true;
+    } catch (err) {
+      login.error = err instanceof HttpError && err.code === 'banned' ? 'banned' : 'provider_failed';
+      return false;
+    }
+  }
+
+  /** Asks the provider, at the pace it wants, until the player has typed the code (or gives up). */
+  async function waitForDevice(state: string, login: Login, p: Provider, d: DeviceStart) {
+    let interval = Math.max(200, d.intervalMs);
+    const until = Date.now() + Math.min(d.expiresMs, LOGIN_TTL_MS);
+    while (Date.now() < until) {
+      await new Promise((r) => setTimeout(r, interval));
+      // picked up, expired or cancelled
+      if (logins.get(state) !== login) return;
+      try {
+        const r = await p.device!.poll(d.deviceCode, cfg.fetchImpl ?? fetch);
+        if (r === 'pending') continue;
+        if (r === 'slow_down') {
+          interval += 5000;
+          continue;
+        }
+        finishLogin(login, login.provider, r);
+      } catch (err) {
+        console.error('logowanie kodem:', (err as Error).message);
+        login.error = 'provider_failed';
+      }
+      return;
+    }
+    login.error = 'login_expired';
+  }
   const sockets = new Map<string, Set<WebSocket>>();
   const presences = new Map<string, Presence>();
   const limitMessages = rateLimiter(40);
@@ -216,8 +261,14 @@ export function createApp(cfg: Config) {
       limitLogins(req.socket.remoteAddress ?? '');
       const linkTo = req.headers.authorization ? authed(req) : undefined;
       const state = randomBytes(24).toString('base64url');
-      logins.set(state, { provider: provider as ProviderId, at: Date.now(), linkTo });
-      return { state, url: p.authorizeUrl(state, redirectUri(provider)) };
+      const login = { provider: provider as ProviderId, at: Date.now(), linkTo };
+      logins.set(state, login);
+      if (!p.device) return { state, url: p.authorizeUrl(state, redirectUri(provider)) };
+      // a code to type on the provider's page; the server waits for it and /v1/auth/poll reports as usual
+      return p.device.start(cfg.fetchImpl ?? fetch).then((d) => {
+        void waitForDevice(state, login, p, d);
+        return { state, url: d.url, code: d.userCode };
+      });
     }],
     ['GET', /^\/v1\/auth\/poll$/, (_req, _p, url) => {
       const state = url.searchParams.get('state') ?? '';
@@ -425,18 +476,11 @@ export function createApp(cfg: Config) {
       let ok = false;
       if (login && login.provider === provider && providers[provider] && code) {
         try {
-          const id = await providers[provider].identityFromCode(code, redirectUri(provider), cfg.fetchImpl ?? fetch);
-          if (login.linkTo) {
-            if (db.link(provider, id.subject, login.linkTo)) {
-              login.result = { linked: true, user: meWithProviders(login.linkTo) };
-              ok = true;
-            } else login.error = 'already_linked';
-          } else {
-            login.result = newSession(db.signIn(provider, id.subject, id));
-            ok = true;
-          }
+          const id = await providers[provider]!.identityFromCode(code, redirectUri(provider), cfg.fetchImpl ?? fetch);
+          ok = finishLogin(login, provider, id);
         } catch (err) {
-          login.error = err instanceof HttpError && err.code === 'banned' ? 'banned' : 'provider_failed';
+          console.error(`logowanie ${provider}:`, (err as Error).message);
+          login.error = 'provider_failed';
         }
       } else if (login) login.error = 'provider_denied';
       res.writeHead(ok ? 200 : 400, { 'Content-Type': 'text/html; charset=utf-8' });

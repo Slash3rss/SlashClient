@@ -78,6 +78,12 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   const typing = new Map<string, ReturnType<typeof setTimeout>>();
   let lastTypingSent = 0;
   let signingIn = false;
+  /** The code of a "type this code" sign-in (Microsoft) while it waits. */
+  let loginCode: { code: string; url: string } | undefined;
+  api.on('social:loginCode', (c: { code: string; url: string }) => {
+    loginCode = c;
+    if (signingIn) render();
+  });
 
   const isVisible = () => root.closest('.view')?.classList.contains('active') && document.hasFocus();
   const friend = (id: string | undefined) => list.friends.find((f) => f.id === id);
@@ -177,7 +183,21 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     if (signingIn) {
       const cancel = el('button', { type: 'button', textContent: t('Anuluj') });
       cancel.addEventListener('click', () => api.socialCancelLogin());
-      buttons.append(el('p', { className: 'muted' }, el('span', { className: 'spinner' }), t(' Dokończ logowanie w przeglądarce…')), cancel);
+      if (loginCode) {
+        // the same box as the Minecraft sign-in: the code (already copied) to paste on the provider's page
+        const copy = el('button', { type: 'button' }, icon('fa-copy'), t(' Kopiuj kod'));
+        copy.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(loginCode!.code);
+          deps.toast(t('Skopiowano kod'));
+        });
+        const link = el('a', { href: loginCode.url, target: '_blank', textContent: loginCode.url.replace(/^https:\/\/(www\.)?/, '') });
+        buttons.append(el('div', { className: 'ms-code' },
+          el('p', {}, t('Otwórz '), link, t(' i wpisz kod:')),
+          el('div', { className: 'code-row' }, el('div', { className: 'code', textContent: loginCode.code }), copy),
+          el('p', { className: 'muted' }, icon('fa-check'), t(' Kod jest już w schowku, wystarczy go wkleić.')),
+          el('p', { className: 'muted' }, el('span', { className: 'spinner' }), t(' Czekam na zalogowanie…')),
+          cancel));
+      } else buttons.append(el('p', { className: 'muted' }, el('span', { className: 'spinner' }), t(' Dokończ logowanie w przeglądarce…')), cancel);
     } else {
       for (const provider of health?.providers ?? []) {
         const b = el('button', { type: 'button', className: `primary fr-${provider}` }, providerIcon(provider), t(' Zaloguj przez {0}', PROVIDERS[provider] ?? provider));
@@ -210,6 +230,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       deps.toast(deps.errorText(err), true);
     } finally {
       signingIn = false;
+      loginCode = undefined;
       render();
     }
   }

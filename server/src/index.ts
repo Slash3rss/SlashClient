@@ -23,11 +23,11 @@ const port = Number(process.env.PORT) || 8787;
 const dbFile = process.env.DB_FILE ?? path.resolve('data/social.db');
 mkdirSync(path.dirname(dbFile), { recursive: true });
 
-/** A provider is on when both its id and secret are set. */
-const app = (prefix: string) => {
+/** A provider is on when both its id and secret are set (Microsoft signs in with a code and needs only the id). */
+const app = (prefix: string, secretNeeded = true) => {
   const clientId = process.env[`${prefix}_CLIENT_ID`];
-  const clientSecret = process.env[`${prefix}_CLIENT_SECRET`];
-  return clientId && clientSecret ? { clientId, clientSecret } : undefined;
+  const clientSecret = process.env[`${prefix}_CLIENT_SECRET`] ?? '';
+  return clientId && (clientSecret || !secretNeeded) ? { clientId, clientSecret } : undefined;
 };
 
 const { server } = createApp({
@@ -35,7 +35,7 @@ const { server } = createApp({
   publicUrl: (process.env.PUBLIC_URL ?? `http://localhost:${port}`).replace(/\/$/, ''),
   oauth: {
     discord: app('DISCORD'),
-    microsoft: app('MICROSOFT'),
+    microsoft: app('MICROSOFT', false),
     google: app('GOOGLE'),
     github: app('GITHUB'),
   },

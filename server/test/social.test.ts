@@ -11,9 +11,17 @@ const dir = mkdtempSync(path.join(os.tmpdir(), 'slash-social-'));
 let base = '';
 let app: ReturnType<typeof createApp>;
 
+/** Microsoft codes the "player" has typed: device code → which user. */
+const typedCodes = new Map<string, string>();
+let deviceCodes = 0;
+
 // a fake Discord, so sign-in can be tested without the internet
 const fakeFetch: typeof fetch = async (input, init) => {
   const url = String(input);
+  if (url.endsWith('/oauth2/v2.0/devicecode')) {
+    const n = ++deviceCodes;
+    return Response.json({ device_code: `device-${n}`, user_code: `CODE${n}`, verification_uri: 'https://www.microsoft.com/link', interval: 0, expires_in: 900 });
+  }
   if (url.endsWith('discord.com/api/oauth2/token')) return Response.json({ access_token: 'discord-token' });
   if (url === 'https://oauth2.googleapis.com/token') {
     const claims = Buffer.from(JSON.stringify({ sub: 'g-1', name: 'Zosia Nowak', picture: 'https://evil.example/x.png' })).toString('base64url');
@@ -22,8 +30,9 @@ const fakeFetch: typeof fetch = async (input, init) => {
   if (url === 'https://github.com/login/oauth/access_token') return Response.json({ access_token: 'gh-token' });
   if (url === 'https://api.github.com/user') return Response.json({ id: 7, login: 'octo', name: null, avatar_url: 'https://avatars.githubusercontent.com/u/7' });
   if (url.endsWith('/oauth2/v2.0/token')) {
-    // the code says which Microsoft user signed in
-    const code = new URLSearchParams(String(init?.body)).get('code');
+    // until the code is typed Microsoft says "pending"; then the typed code says which user signed in
+    const code = typedCodes.get(new URLSearchParams(String(init?.body)).get('device_code') ?? '');
+    if (!code) return Response.json({ error: 'authorization_pending' }, { status: 400 });
     const claims = Buffer.from(JSON.stringify({ sub: `ms-${code}`, name: code === 'jan' ? 'Jan Kowalski' : 'Ola' })).toString('base64url');
     return Response.json({ id_token: `x.${claims}.y` });
   }
@@ -61,7 +70,7 @@ async function connect(token: string, presence?: unknown) {
 }
 
 before(async () => {
-  app = createApp({ dbFile: path.join(dir, 'test.db'), publicUrl: 'http://localhost', allowDevLogin: true, oauth: { discord: { clientId: 'id', clientSecret: 'secret' }, microsoft: { clientId: 'ms', clientSecret: 'secret' }, google: { clientId: 'g', clientSecret: 's' }, github: { clientId: 'gh', clientSecret: 's' } }, fetchImpl: fakeFetch });
+  app = createApp({ dbFile: path.join(dir, 'test.db'), publicUrl: 'http://localhost', allowDevLogin: true, oauth: { discord: { clientId: 'id', clientSecret: 'secret' }, microsoft: { clientId: 'ms', clientSecret: '' }, google: { clientId: 'g', clientSecret: 's' }, github: { clientId: 'gh', clientSecret: 's' } }, fetchImpl: fakeFetch });
   await new Promise<void>((r) => app.server.listen(0, r));
   base = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
 });
@@ -89,11 +98,20 @@ describe('social server', () => {
     assert.equal((await call('GET', `/v1/auth/poll?state=${state}`)).status, 404);
   });
 
-  /** Runs a browser sign-in with a Microsoft "code" (which user), optionally linking to a session. */
-  async function microsoftLogin(code: string, token?: string) {
-    const { state } = (await call('POST', '/v1/auth/microsoft/start', token)).body;
-    await fetch(`${base}/v1/auth/microsoft/callback?state=${state}&code=${code}`);
-    return call('GET', `/v1/auth/poll?state=${state}`);
+  /** A Microsoft sign-in with a code: `who` types it on microsoft.com/link, optionally linking to a session. */
+  async function microsoftLogin(who: string, token?: string) {
+    const start = (await call('POST', '/v1/auth/microsoft/start', token)).body;
+    assert.equal(start.url, 'https://www.microsoft.com/link');
+    assert.match(start.code, /^CODE\d+$/);
+    // nobody has typed it yet
+    assert.equal((await call('GET', `/v1/auth/poll?state=${start.state}`)).body.pending, true);
+    typedCodes.set(`device-${start.code.slice(4)}`, who);
+    for (let i = 0; i < 50; i++) {
+      const res = await call('GET', `/v1/auth/poll?state=${start.state}`);
+      if (!res.body.pending) return res;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    throw new Error('the sign-in did not finish');
   }
 
   it('signs in with Microsoft and links it to an existing account', async () => {

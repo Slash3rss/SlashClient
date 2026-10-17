@@ -44,6 +44,7 @@ const ERRORS = {
   config_admin: 'To konto jest adminem z konfiguracji serwera (ADMIN_HANDLES).',
   no_such_user: 'Nie ma takiego gracza.',
   not_found: 'Nie znaleziono.',
+  cancelled: 'Logowanie anulowane.',
 };
 export const errorText = (err) => ERRORS[err?.code] ?? (err?.message || 'Coś poszło nie tak.');
 
@@ -104,19 +105,46 @@ export const PROVIDERS = {
  */
 export async function signInWith(provider) {
   const popup = window.open('about:blank', 'slashclient-login', 'width=520,height=720');
-  const { state, url } = await api('POST', `/v1/auth/${provider}/start`);
+  const { state, url, code } = await api('POST', `/v1/auth/${provider}/start`);
   if (popup) popup.location.href = url;
   else window.open(url, '_blank', 'noopener');
-  const started = Date.now();
-  while (Date.now() - started < 10 * 60_000) {
-    await new Promise((r) => setTimeout(r, 1500));
-    const res = await api('GET', `/v1/auth/poll?state=${encodeURIComponent(state)}`);
-    if (res.pending) continue;
-    token.set(res.token);
-    popup?.close();
-    return res.user;
+  // Microsoft: a code to type on its page, shown here until the sign-in is done
+  const box = code ? showLoginCode(code, url) : undefined;
+  try {
+    const started = Date.now();
+    while (Date.now() - started < 10 * 60_000) {
+      await new Promise((r) => setTimeout(r, 1500));
+      if (box?.cancelled) throw new ApiError('cancelled', 400);
+      const res = await api('GET', `/v1/auth/poll?state=${encodeURIComponent(state)}`);
+      if (res.pending) continue;
+      token.set(res.token);
+      popup?.close();
+      return res.user;
+    }
+    throw new ApiError('login_expired', 400);
+  } finally {
+    box?.remove();
   }
-  throw new ApiError('login_expired', 400);
+}
+
+/** The box with a sign-in code: copy it, paste it on the provider's page. */
+function showLoginCode(code, url) {
+  const copy = el('button', { type: 'button', onclick: async () => {
+    await navigator.clipboard.writeText(code).catch(() => {});
+    toast('Skopiowano kod');
+  } }, icon('fa-regular fa-copy'), ' Kopiuj kod');
+  const state = { cancelled: false };
+  const cancel = el('button', { type: 'button', onclick: () => { state.cancelled = true; } }, 'Anuluj');
+  const box = el('div', { class: 'login-code-backdrop' },
+    el('div', { class: 'glass card login-code', role: 'dialog' },
+      el('h3', { textContent: 'Wpisz kod u Microsoftu' }),
+      el('p', { class: 'muted' }, 'Otwórz ', el('a', { href: url, target: '_blank', rel: 'noopener', textContent: url.replace(/^https:\/\/(www\.)?/, '') }), ' i wpisz kod:'),
+      el('div', { class: 'login-code-value', textContent: code }),
+      el('div', { class: 'row' }, copy, cancel),
+      el('p', { class: 'muted small', textContent: 'Czekam na zalogowanie…' })));
+  document.body.append(box);
+  navigator.clipboard?.writeText(code).catch(() => {});
+  return Object.assign(state, { remove: () => box.remove() });
 }
 
 export async function signInDev(name) {
