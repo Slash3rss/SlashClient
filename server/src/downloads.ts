@@ -58,9 +58,24 @@ export function createDownloads(opts: { repo: string; token?: string; fetchImpl:
     return location;
   }
 
-  /** Where to send the visitor for this system's installer; undefined when the release has none. */
+  let recent: { at: number; releases: Asset[][] } | undefined;
+  /** The assets of the last few published releases, newest first. */
+  async function recentReleases(): Promise<Asset[][]> {
+    if (recent && Date.now() - recent.at < CACHE_MS) return recent.releases;
+    const res = await opts.fetchImpl(`https://api.github.com/repos/${opts.repo}/releases?per_page=10`, { headers: headers('application/vnd.github+json') });
+    if (!res.ok) throw new Error(`GitHub ${res.status}`);
+    const list = (await res.json()) as { draft?: boolean; prerelease?: boolean; assets?: Asset[] }[];
+    recent = { at: Date.now(), releases: list.filter((r) => !r.draft && !r.prerelease).map((r) => r.assets ?? []) };
+    return recent.releases;
+  }
+
+  /**
+   * Where to send the visitor for this system's installer: from the latest release, or, while that
+   * one is still being built (its files go up one system at a time), from the newest that has it.
+   */
   async function link(os: DownloadOs): Promise<string | undefined> {
-    const asset = (await assets()).find((a) => FILES[os].test(a.name));
+    let asset = (await assets()).find((a) => FILES[os].test(a.name));
+    if (!asset) for (const release of await recentReleases()) if ((asset = release.find((a) => FILES[os].test(a.name)))) break;
     return asset && signed(asset);
   }
 

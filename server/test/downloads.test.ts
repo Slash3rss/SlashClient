@@ -23,6 +23,14 @@ const fakeGitHub = (async (input: string | URL | Request, init?: RequestInit) =>
     const asset = (name: string, id: number) => ({ name, url: `https://api.github.com/repos/x/y/releases/assets/${id}`, browser_download_url: `https://github.com/x/y/releases/download/v0.5.0/${name}` });
     return Response.json({ assets: [asset('SlashClient-Setup-0.5.0.exe', 1), asset('SlashClient-0.5.0-arm64.dmg', 2), asset('SlashClient-0.5.0.dmg', 3), asset('SlashClient-0.5.0-arm64.dmg.blockmap', 4), asset('latest.yml', 5)] });
   }
+  // an older release, which still has a Linux build
+  if (url.endsWith('/releases?per_page=10')) {
+    return Response.json([
+      { assets: [{ name: 'SlashClient-Setup-0.5.0.exe', url: 'https://api.github.com/repos/x/y/releases/assets/1', browser_download_url: '' }] },
+      { draft: true, assets: [{ name: 'SlashClient-0.4.9.AppImage', url: 'https://api.github.com/repos/x/y/releases/assets/8', browser_download_url: '' }] },
+      { assets: [{ name: 'SlashClient-0.4.0.AppImage', url: 'https://api.github.com/repos/x/y/releases/assets/9', browser_download_url: '' }] },
+    ]);
+  }
   const id = /assets\/(\d+)$/.exec(url)?.[1];
   if (id) return new Response(null, { status: 302, headers: { Location: `https://objects.githubusercontent.com/signed/${id}` } });
   return new Response('', { status: 500 });
@@ -59,10 +67,11 @@ describe('downloads', () => {
     assert.equal((await fetch(`${base}/aktualizacje/..%2Fsecret`, { redirect: 'manual' })).status, 404);
   });
 
-  it('says so when a system has no installer, and knows only real systems', async () => {
+  it('falls back to the newest release that has the system\'s installer, and knows only real systems', async () => {
+    // the latest release has no Linux file yet: the newest published one that has it (not a draft)
     const linux = await fetch(`${base}/pobierz/linux`, { redirect: 'manual' });
-    assert.equal(linux.status, 404);
-    assert.match(await linux.text(), /Brak instalatora/);
+    assert.equal(linux.status, 302);
+    assert.equal(linux.headers.get('location'), 'https://objects.githubusercontent.com/signed/9');
     assert.equal((await fetch(`${base}/pobierz/android`, { redirect: 'manual' })).status, 404);
   });
 });
