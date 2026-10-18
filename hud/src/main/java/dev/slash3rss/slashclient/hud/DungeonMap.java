@@ -9,7 +9,13 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.regex.Matcher;
@@ -25,6 +31,9 @@ import java.util.regex.Pattern;
  * The hint on entering ("Dungeon » Czy wiesz że…") comes still in the lobby, just before the
  * teleport: it starts the map too, and a jump far from where it started begins it anew there.
  * Leaving ("Dungeon » Opuszczono Dungeon…", the boss bar gone) ends it.
+ *
+ * What is shown is drawn into a picture of its own each tick: all that was seen, or a part of it
+ * around the player (zoomed in, or following them), square or round.
  */
 public final class DungeonMap implements HudModule {
 	/** The blocks the map can hold, around where the dungeon was entered. */
@@ -40,15 +49,19 @@ public final class DungeonMap implements HudModule {
 	private static int originX, originZ;
 	private static int minX = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
 	private static NativeImage image;
-	private static DynamicTexture texture;
-	private static Identifier textureId;
-	private static boolean dirty;
 	private static int tick;
 	private static String dungeonLevel = "";
 	/** The dungeon's boss bar was on screen at the last look. */
 	private static boolean bossBar;
 	/** Started by the entering hint (no boss bar seen yet): it may still be the lobby. */
 	private static long hintedAt;
+	/** The height the map was read at: a fixed one, or MIN_VALUE for the player's feet. */
+	private static int readAt = Integer.MIN_VALUE;
+	/** The picture on screen, and where it is in the map: its corner and pixels per block. */
+	private static NativeImage view;
+	private static DynamicTexture viewTexture;
+	private static Identifier viewId;
+	private static float viewX, viewZ, viewScale = 1f;
 
 	public String id() {
 		return "dungeonmap";
@@ -82,12 +95,21 @@ public final class DungeonMap implements HudModule {
 		maxX = maxZ = Integer.MIN_VALUE;
 		if (image == null) {
 			image = new NativeImage(SIZE, SIZE, true);
-			texture = new DynamicTexture(() -> "SlashClient dungeon map", image);
-			textureId = Identifier.fromNamespaceAndPath(SlashHud.ID, "dungeon_map");
-			mc.getTextureManager().register(textureId, texture);
 		}
+		if (view == null) {
+			view = new NativeImage(W, H, true);
+			viewTexture = new DynamicTexture(() -> "SlashClient dungeon map view", view);
+			viewId = Identifier.fromNamespaceAndPath(SlashHud.ID, "dungeon_map_view");
+			mc.getTextureManager().register(viewId, viewTexture);
+		}
+		clear();
+	}
+
+	/** Nothing seen yet (a new dungeon, or the map read at another height). */
+	private static void clear() {
+		minX = minZ = Integer.MAX_VALUE;
+		maxX = maxZ = Integer.MIN_VALUE;
 		for (int y = 0; y < SIZE; y++) for (int x = 0; x < SIZE; x++) image.setPixel(x, y, UNKNOWN);
-		dirty = true;
 	}
 
 	static void stop() {
@@ -122,10 +144,43 @@ public final class DungeonMap implements HudModule {
 		int px = mc.player.getBlockX() - originX, pz = mc.player.getBlockZ() - originZ;
 		if (mc.level != level || px < -64 || pz < -64 || px > SIZE + 64 || pz > SIZE + 64) start();
 		if (tick % 10 == 0) scan(mc);
-		if (dirty) {
-			texture.upload();
-			dirty = false;
+		render(mc);
+	}
+
+	/** The picture on screen: the part of the map shown, in its shape. */
+	private static void render(Minecraft mc) {
+		if (minX > maxX) return;
+		HudConfig cfg = SlashHud.config;
+		boolean circle = "circle".equals(cfg.dungeonShape);
+		int mx0 = Math.max(0, minX - 2), mz0 = Math.max(0, minZ - 2);
+		int mw = Math.min(SIZE, maxX + 3) - mx0, mh = Math.min(SIZE, maxZ + 3) - mz0;
+		if (!circle && !cfg.dungeonFollow && cfg.dungeonZoom <= 1.001f) {
+			// all that was seen, as large as fits
+			viewScale = Math.min((float) W / mw, (float) H / mh);
+			viewX = mx0 - (W / viewScale - mw) / 2f;
+			viewZ = mz0 - (H / viewScale - mh) / 2f;
+		} else {
+			// around the player: the whole of it at 1×, closer as it zooms in
+			float span = Math.max(12f, Math.max(mw, mh) / Math.max(1f, cfg.dungeonZoom));
+			viewScale = W / span;
+			viewX = (float) (mc.player.getX() - originX) - span / 2f;
+			viewZ = (float) (mc.player.getZ() - originZ) - span / 2f;
 		}
+		float r = W / 2f;
+		for (int py = 0; py < H; py++) {
+			for (int px = 0; px < W; px++) {
+				int color = UNKNOWN;
+				float dx = px + 0.5f - r, dz = py + 0.5f - r;
+				if (!circle || dx * dx + dz * dz <= r * r) {
+					int ix = (int) Math.floor(viewX + (px + 0.5f) / viewScale), iz = (int) Math.floor(viewZ + (py + 0.5f) / viewScale);
+					if (ix >= 0 && iz >= 0 && ix < SIZE && iz < SIZE) color = image.getPixel(ix, iz);
+					// a round map shows its whole disc, also where nothing was seen yet
+					if (circle && color == UNKNOWN) color = 0x90101828;
+				}
+				view.setPixel(px, py, color);
+			}
+		}
+		viewTexture.upload();
 	}
 
 	/** "Dungeon poz. 2" on the boss bar: whether it is there, and the dungeon's level for the map's title. */
@@ -149,7 +204,12 @@ public final class DungeonMap implements HudModule {
 	private static void scan(Minecraft mc) {
 		ClientLevel world = mc.level;
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-		int cx = mc.player.getBlockX(), cy = mc.player.getBlockY(), cz = mc.player.getBlockZ();
+		int at = SlashHud.config.dungeonFixedY ? SlashHud.config.dungeonY : Integer.MIN_VALUE;
+		if (at != readAt) {
+			readAt = at;
+			clear();
+		}
+		int cx = mc.player.getBlockX(), cy = at == Integer.MIN_VALUE ? mc.player.getBlockY() : at, cz = mc.player.getBlockZ();
 		for (int x = cx - RADIUS; x <= cx + RADIUS; x++) {
 			for (int z = cz - RADIUS; z <= cz + RADIUS; z++) {
 				int ix = x - originX, iz = z - originZ;
@@ -168,7 +228,6 @@ public final class DungeonMap implements HudModule {
 				if (color == WALL && !anySolid(world, pos, x, cy, z)) continue;
 				if (image.getPixel(ix, iz) != color) {
 					image.setPixel(ix, iz, color);
-					dirty = true;
 				}
 				minX = Math.min(minX, ix);
 				minZ = Math.min(minZ, iz);
@@ -221,22 +280,71 @@ public final class DungeonMap implements HudModule {
 	@Override
 	public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
 		if (!visible(mc)) return;
+		if (viewTexture == null) render(mc);
 		title(g, mc, x, y);
-		// the part seen so far, a little margin around it, as large as fits and square blocks
-		int mx0 = Math.max(0, minX - 2), mz0 = Math.max(0, minZ - 2);
-		int mw = Math.min(SIZE, maxX + 3) - mx0, mh = Math.min(SIZE, maxZ + 3) - mz0;
-		float scale = Math.min((float) W / mw, (float) H / mh);
-		int dw = Math.round(mw * scale), dh = Math.round(mh * scale);
-		int ox = x + (W - dw) / 2, oy = y + TITLE + (H - dh) / 2;
-		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, textureId, ox, oy, mx0, mz0, dw, dh, mw, mh, SIZE, SIZE, 0xFFFFFFFF);
-		// other players, then the player on top
-		for (Player p : mc.level.players()) {
-			if (p == mc.player) continue;
-			int sx = ox + Math.round((float) (p.getX() - originX - mx0) * scale), sz = oy + Math.round((float) (p.getZ() - originZ - mz0) * scale);
-			if (sx >= ox && sz >= oy && sx < ox + dw && sz < oy + dh) g.fill(sx - 1, sz - 1, sx + 2, sz + 2, 0xFF60A5FA);
+		int ox = x, oy = y + TITLE;
+		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, viewId, ox, oy, 0, 0, W, H, W, H, W, H, 0xFFFFFFFF);
+		markers(g, mc, ox, oy);
+		int sx = Math.round((float) (mc.player.getX() - originX - viewX) * viewScale), sz = Math.round((float) (mc.player.getZ() - originZ - viewZ) * viewScale);
+		if (shown(sx, sz)) arrow(g, ox + sx, oy + sz, mc.player.getYRot());
+	}
+
+	/**
+	 * What is about in the dungeon: spawners (armour stands with a spawner on the head), mobs as
+	 * their head, NPCs (players with a skin, not on the tab list) with a red frame, and players
+	 * with a blue one.
+	 */
+	private static void markers(GuiGraphicsExtractor g, Minecraft mc, int ox, int oy) {
+		HudConfig cfg = SlashHud.config;
+		var connection = mc.getConnection();
+		for (Entity e : mc.level.entitiesForRendering()) {
+			if (e == mc.player || !e.isAlive()) continue;
+			int sx = Math.round((float) (e.getX() - originX - viewX) * viewScale), sz = Math.round((float) (e.getZ() - originZ - viewZ) * viewScale);
+			if (!shown(sx, sz)) continue;
+			if (e instanceof ArmorStand stand) {
+				ItemStack head = stand.getItemBySlot(EquipmentSlot.HEAD);
+				if (cfg.dungeonSpawners && head.is(Items.SPAWNER)) {
+					// the cage alone is hard to see: on an orange square
+					g.fill(ox + sx - 5, oy + sz - 5, ox + sx + 5, oy + sz + 5, 0xFFF59E0B);
+					g.fill(ox + sx - 4, oy + sz - 4, ox + sx + 4, oy + sz + 4, 0xFF1F2937);
+					item(g, head, ox + sx, oy + sz);
+				}
+			} else if (e instanceof AbstractClientPlayer p) {
+				boolean real = connection != null && connection.getPlayerInfo(p.getUUID()) != null;
+				if (real ? cfg.dungeonPlayers : cfg.dungeonMobs) face(g, p, ox + sx, oy + sz, real ? 0xFF60A5FA : 0xFFEF4444);
+			} else if (e instanceof Mob mob && cfg.dungeonMobs && !mob.isInvisible()) {
+				// a head it wears (servers dress their mobs in player heads), else its own face, else a dot
+				ItemStack worn = mob.getItemBySlot(EquipmentSlot.HEAD);
+				if (!worn.isEmpty() && worn.getItem() instanceof net.minecraft.world.item.BlockItem block && block.getBlock() instanceof net.minecraft.world.level.block.AbstractSkullBlock) item(g, worn, ox + sx, oy + sz);
+				else if (!MobHeads.draw(g, mob.getType(), ox + sx, oy + sz)) g.fill(ox + sx - 1, oy + sz - 1, ox + sx + 2, oy + sz + 2, 0xFFEF4444);
+			}
 		}
-		int sx = ox + Math.round((float) (mc.player.getX() - originX - mx0) * scale), sz = oy + Math.round((float) (mc.player.getZ() - originZ - mz0) * scale);
-		arrow(g, sx, sz, mc.player.getYRot());
+	}
+
+	/** A face from the skin (with its hat layer) in a frame of the given colour, 8 pixels round the point. */
+	private static void face(GuiGraphicsExtractor g, AbstractClientPlayer p, int x, int y, int frame) {
+		Identifier skin = Compat.skinTexture(p);
+		g.fill(x - 4, y - 4, x + 4, y + 4, frame);
+		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, skin, x - 3, y - 3, 8, 8, 6, 6, 8, 8, 64, 64, 0xFFFFFFFF);
+		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, skin, x - 3, y - 3, 40, 8, 6, 6, 8, 8, 64, 64, 0xFFFFFFFF);
+	}
+
+	/** An item at half its size (8 pixels), centred on the point. */
+	private static void item(GuiGraphicsExtractor g, ItemStack stack, int x, int y) {
+		var pose = g.pose();
+		pose.pushMatrix();
+		pose.translate(x - 4, y - 4);
+		pose.scale(0.5f, 0.5f);
+		g.item(stack, 0, 0);
+		pose.popMatrix();
+	}
+
+	/** A point of the picture inside its shape. */
+	private static boolean shown(int px, int pz) {
+		if (px < 1 || pz < 1 || px >= W - 1 || pz >= H - 1) return false;
+		if (!"circle".equals(SlashHud.config.dungeonShape)) return true;
+		float dx = px - W / 2f, dz = pz - H / 2f;
+		return dx * dx + dz * dz <= (W / 2f - 1) * (W / 2f - 1);
 	}
 
 	private static void title(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {

@@ -275,6 +275,19 @@ public final class Compat {
 	//$ }
 	//#endif
 
+	/** A player's skin (for their face on the dungeon map). */
+	public static net.minecraft.resources.Identifier skinTexture(net.minecraft.client.player.AbstractClientPlayer player) {
+		//#if MC >= 1.21.9
+		return player.getSkin().body().texturePath();
+		//#endif
+		//#if MC >= 1.20.2 && MC < 1.21.9
+		//$ return player.getSkin().texture();
+		//#endif
+		//#if MC < 1.20.2
+		//$ return player.getSkinTextureLocation();
+		//#endif
+	}
+
 	/** The boss bars on screen. */
 	public static net.minecraft.client.gui.components.BossHealthOverlay bossOverlay(Minecraft mc) {
 		//#if MC >= 26.2

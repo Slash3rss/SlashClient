@@ -13,7 +13,7 @@ import java.util.function.Supplier;
 public final class Catalog {
 	private Catalog() {}
 
-	public static final String[] CATEGORIES = { "all", "hud", "combat", "world", "game", "extras", "chat", "share" };
+	public static final String[] CATEGORIES = { "all", "hud", "combat", "world", "game", "extras", "skyup", "chat", "share" };
 
 	/** One row in an entry's settings. */
 	public sealed interface Setting permits Toggle, Slider, Choice, Colors {
@@ -47,7 +47,7 @@ public final class Catalog {
 		Map.entry("block", "world"), Map.entry("durability", "combat"), Map.entry("ammo", "combat"), Map.entry("kd", "combat"), Map.entry("hits", "combat"), Map.entry("session", "hud"), Map.entry("biome", "world"), Map.entry("daytime", "world"),
 		Map.entry("light", "world"), Map.entry("saturation", "world"), Map.entry("movement", "world"), Map.entry("combo", "combat"),
 		Map.entry("reach", "combat"), Map.entry("target", "combat"), Map.entry("armor", "combat"), Map.entry("effects", "combat"),
-		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "world"));
+		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"));
 
 	static final int[] COLORS = { 0xFFFFFFFF, 0xFF60A5FA, 0xFF4ADE80, 0xFF55FFFF, 0xFFFACC15, 0xFFF87171, 0xFFA855F7, 0xFFFF55FF };
 
@@ -81,6 +81,22 @@ public final class Catalog {
 				case "coords" -> {
 					settings.add(new Slider("slashclient-hud.set.coordsDecimals", 0f, 2f, 1f, "%.0f", () -> (float) cfg.coordsDecimals, v -> cfg.coordsDecimals = Math.round(v)));
 					settings.add(new Toggle("slashclient-hud.set.coordsFacing", () -> cfg.coordsFacing, v -> cfg.coordsFacing = v));
+				}
+				case "dungeonmap" -> {
+					settings.add(new Choice("slashclient-hud.set.shape", new String[] { "square", "circle" }, "slashclient-hud.dungeon.shape.",
+						() -> cfg.dungeonShape, v -> cfg.dungeonShape = v));
+					settings.add(new Slider("slashclient-hud.dungeon.zoom", 1f, 4f, 0.25f, "%.2f×", () -> cfg.dungeonZoom, v -> cfg.dungeonZoom = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.follow", () -> cfg.dungeonFollow, v -> cfg.dungeonFollow = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.players", () -> cfg.dungeonPlayers, v -> cfg.dungeonPlayers = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.mobs", () -> cfg.dungeonMobs, v -> cfg.dungeonMobs = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.spawners", () -> cfg.dungeonSpawners, v -> cfg.dungeonSpawners = v));
+					// switched on, it holds the height the player stands at now; the slider moves it
+					settings.add(new Toggle("slashclient-hud.dungeon.fixedY", () -> cfg.dungeonFixedY, v -> {
+						var player = net.minecraft.client.Minecraft.getInstance().player;
+						if (v && player != null) cfg.dungeonY = player.getBlockY();
+						cfg.dungeonFixedY = v;
+					}));
+					settings.add(new Slider("slashclient-hud.dungeon.y", -64f, 320f, 1f, "Y %.0f", () -> (float) cfg.dungeonY, v -> cfg.dungeonY = Math.round(v)));
 				}
 				case "fps" -> settings.add(new Toggle("slashclient-hud.set.fpsColored", () -> cfg.fpsColored, v -> cfg.fpsColored = v));
 				default -> {}

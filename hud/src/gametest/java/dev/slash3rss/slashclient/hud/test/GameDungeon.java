@@ -51,6 +51,13 @@ public class GameDungeon implements FabricClientGameTest {
 			String[] parts = map.split(",");
 			if (Integer.parseInt(parts[0]) < 500 || !parts[1].equals("true") || !parts[2].equals("true")) throw new AssertionError("The dungeon map saw nothing: " + map);
 			context.takeScreenshot("dungeon-map");
+			// what is about: a mob, a spawner (an armour stand with one on its head), round and zoomed in
+			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b}", x0 + 6, y, z0 + 6));
+			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,equipment:{head:{id:\"minecraft:spawner\",count:1}}}", x0 - 6, y, z0 + 6));
+			context.runOnClient(mc -> TestHooks.dungeonRound(true));
+			context.waitTicks(30);
+			context.takeScreenshot("dungeon-map-round");
+			context.runOnClient(mc -> TestHooks.dungeonRound(false));
 			// leaving: the server's line and the boss bar gone end the map; the lobby is not mapped
 			server.runCommand("tellraw @a \"Dungeon » Opuszczono drużynę.\"");
 			server.runCommand("tellraw @a \"Dungeon » Opuszczono Dungeon poz. 3\"");

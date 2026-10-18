@@ -123,6 +123,21 @@ public final class HudConfig {
 	public boolean dropGuard = true;
 	/** Seconds left above lit TNT. */
 	public boolean tntTimer = true;
+	/** The dungeon map: how much closer than the whole of it (1 = all that was seen). */
+	public float dungeonZoom = 1f;
+	/** Other players on the dungeon map. */
+	public boolean dungeonPlayers = true;
+	/** Mobs and NPCs (players with a skin who are not on the tab list) on the dungeon map. */
+	public boolean dungeonMobs = true;
+	/** Spawners on the dungeon map: armour stands with a spawner on the head. */
+	public boolean dungeonSpawners = true;
+	/** The dungeon map keeps the player in its middle. */
+	public boolean dungeonFollow = false;
+	/** The dungeon map is read at one height (dungeonY) instead of at the player's feet. */
+	public boolean dungeonFixedY = false;
+	public int dungeonY = 64;
+	/** "square" or "circle". */
+	public String dungeonShape = "square";
 	/** How much health a mob or player just lost, rising from it. */
 	public boolean damageNumbers = true;
 	/** Your nick written differently in chat, the tab list and above your head (for recordings and streams). */
@@ -327,6 +342,14 @@ public final class HudConfig {
 		zoomRemember = other.zoomRemember;
 		dropGuard = other.dropGuard;
 		tntTimer = other.tntTimer;
+		dungeonZoom = other.dungeonZoom;
+		dungeonPlayers = other.dungeonPlayers;
+		dungeonMobs = other.dungeonMobs;
+		dungeonSpawners = other.dungeonSpawners;
+		dungeonFollow = other.dungeonFollow;
+		dungeonFixedY = other.dungeonFixedY;
+		dungeonY = other.dungeonY;
+		dungeonShape = other.dungeonShape;
 		damageNumbers = other.damageNumbers;
 		nickHider = other.nickHider;
 		nickAlias = other.nickAlias;

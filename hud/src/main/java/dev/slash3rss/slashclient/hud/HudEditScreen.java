@@ -574,14 +574,15 @@ public class HudEditScreen extends Screen {
 		Ui.end();
 	}
 
-	private static final String[] CATEGORY_ICONS = { "all", "info", "combat", "world", "layout", "extras", "chat", "share" };
+	private static final String[] CATEGORY_ICONS = { "all", "info", "combat", "world", "layout", "extras", "skyup", "chat", "share" };
 
 
 	private void drawCards(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h) {
 		String query = search == null ? "" : search.getValue().trim().toLowerCase(Locale.ROOT);
 		List<Catalog.Entry> shown = new ArrayList<>();
 		for (Catalog.Entry e : entries) {
-			if (!category.equals("all") && !e.category().equals(category)) continue;
+			// "all" is everything for any server; a server's own tab (SkyUp) only in that tab
+			if (category.equals("all") ? e.category().equals("skyup") : !e.category().equals(category)) continue;
 			if (!query.isEmpty() && !Component.translatable(e.nameKey()).getString().toLowerCase(Locale.ROOT).contains(query)) continue;
 			shown.add(e);
 		}

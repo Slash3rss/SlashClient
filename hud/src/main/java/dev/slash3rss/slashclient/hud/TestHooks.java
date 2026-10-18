@@ -424,6 +424,13 @@ public final class TestHooks {
 		return DungeonMap.known() + "," + DungeonMap.active() + "," + new DungeonMap().visible(mc);
 	}
 
+	/** The dungeon map round, zoomed in and following the player, or back as it was. */
+	public static void dungeonRound(boolean round) {
+		SlashHud.config.dungeonShape = round ? "circle" : "square";
+		SlashHud.config.dungeonZoom = round ? 1.5f : 1f;
+		SlashHud.config.dungeonFollow = round;
+	}
+
 	/** The keys window, and how many SlashClient keys it lists. */
 	public static int openKeybinds() {
 		var mc = net.minecraft.client.Minecraft.getInstance();

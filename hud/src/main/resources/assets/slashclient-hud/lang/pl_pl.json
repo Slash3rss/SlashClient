@@ -157,6 +157,7 @@
 	"slashclient-hud.cat.combat": "Walka",
 	"slashclient-hud.cat.world": "Świat",
 	"slashclient-hud.cat.extras": "Dodatki",
+	"slashclient-hud.cat.skyup": "SkyUp",
 	"slashclient-hud.cat.chat": "Czat",
 	"slashclient-hud.cat.share": "Udostępnij",
 	"slashclient-hud.set.scale": "Rozmiar",
@@ -387,5 +388,14 @@
 	"slashclient-hud.module.actionbar": "Pasek akcji",
 	"slashclient-hud.module.dungeonmap": "Mapa dungeonu",
 	"slashclient-hud.dungeon": "Dungeon",
-	"slashclient-hud.dungeon.level": "Dungeon · poziom %s"
+	"slashclient-hud.dungeon.level": "Dungeon · poziom %s",
+	"slashclient-hud.dungeon.shape.square": "Kwadrat",
+	"slashclient-hud.dungeon.shape.circle": "Koło",
+	"slashclient-hud.dungeon.zoom": "Przybliżenie",
+	"slashclient-hud.dungeon.follow": "Śledź gracza (ty na środku)",
+	"slashclient-hud.dungeon.players": "Pokazuj innych graczy",
+	"slashclient-hud.dungeon.mobs": "Pokazuj moby i NPC",
+	"slashclient-hud.dungeon.spawners": "Pokazuj spawnery",
+	"slashclient-hud.dungeon.fixedY": "Stała wysokość mapy",
+	"slashclient-hud.dungeon.y": "Wysokość"
 }
