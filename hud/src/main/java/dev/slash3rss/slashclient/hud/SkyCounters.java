@@ -323,8 +323,8 @@ public final class SkyCounters {
 
 	/** SkyUp's fish (cod with a name of their own): "Wyłowił » nick", "Waga » 8 090,31g (niewielki)". */
 	private static final java.util.regex.Pattern WEIGHT = java.util.regex.Pattern.compile("Waga\\s*(?:»|>>|:)\\s*([\\d  ]+(?:[.,]\\d+)?)\\s*g\\b\\s*(?:\\(([^)]+)\\))?");
-	/** The sizes from the smallest; a word's start is enough ("ogromne" is "ogromny"). */
-	static final String[] SIZES = { "mał", "niewiel", "przeciętn", "duż", "wielk", "ogromn", "mamu" };
+	/** SkyUp's fish sizes from the smallest; a word's start is enough ("ogromne" is "ogromny"). */
+	static final String[] SIZES = { "niewiel", "przeciętn", "wymiarow", "ogromn", "mamu" };
 
 	static int size(String word) {
 		String w = word.toLowerCase(Locale.ROOT).strip();
