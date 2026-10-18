@@ -805,5 +805,92 @@ public final class TestHooks {
 		snapSaved.forEach((id, on) -> SlashHud.config.placement(id).enabled = on);
 		return b[0] == a[0] + a[2] + 2 && b[1] == a[1] ? "ok" : "fps " + java.util.Arrays.toString(a) + " ping " + java.util.Arrays.toString(b);
 	}
+
+	//#if MC >= 26.3
+	// ---------- SkyUp's tasks ----------
+
+	/** A lore line as SkyUp writes it: a grey bullet, then the text in `color`. */
+	private static net.minecraft.network.chat.Component line(String text, net.minecraft.ChatFormatting color) {
+		return net.minecraft.network.chat.Component.literal(text.isEmpty() ? "" : "▪ ").withStyle(net.minecraft.ChatFormatting.DARK_GRAY)
+			.append(net.minecraft.network.chat.Component.literal(text).withStyle(color));
+	}
+
+	private static net.minecraft.world.item.ItemStack task(net.minecraft.world.item.Item item, String name, String... lore) {
+		var stack = new net.minecraft.world.item.ItemStack(item);
+		stack.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal("» ").withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE)
+			.append(net.minecraft.network.chat.Component.literal(name).withStyle(net.minecraft.ChatFormatting.GOLD, net.minecraft.ChatFormatting.BOLD))
+			.append(net.minecraft.network.chat.Component.literal(" «").withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE)));
+		java.util.List<net.minecraft.network.chat.Component> lines = new java.util.ArrayList<>();
+		for (String l : lore) {
+			// "»" lines indented under their header, the rest bulleted
+			if (l.startsWith("»")) lines.add(net.minecraft.network.chat.Component.literal("  " + l).withStyle(net.minecraft.ChatFormatting.YELLOW));
+			else if (l.startsWith("  ")) lines.add(net.minecraft.network.chat.Component.literal(l).withStyle(net.minecraft.ChatFormatting.YELLOW));
+			else lines.add(line(l, net.minecraft.ChatFormatting.AQUA));
+		}
+		stack.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(lines));
+		return stack;
+	}
+
+	/**
+	 * SkyUp's tasks GUI ("NOWICJUSZ"), made on the client with tasks as in the owner's screenshots
+	 * (one of them, Huta, left out when `withoutHuta`, as after completing it).
+	 */
+	public static void skyTasksScreen(boolean withoutHuta) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		if (!withoutHuta) SkyTasks.resetForTest();
+		SlashHud.config.placement("skytasks").enabled = true;
+		// the iron ingot as the game names it in the language the test plays in
+		String iron = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_INGOT).getHoverName().getString();
+		var chest = new net.minecraft.world.SimpleContainer(27);
+		chest.setItem(0, task(net.minecraft.world.item.Items.LAVA_BUCKET, "Od czego zacząć?", "Opis » Żeby wygenerować kamień musimy", "  znaleźć lawę. Powinna być w tej", "  jaskini koło domku!", "",
+			"Posiadaj w ekwipunku:", "» Wiadro lawy: 1", "", "Za ukończenie otrzymasz:", "» 1 x Generator kamienia", "» 100.0 SC", "» 30 xp", "", "LPM » Ukończ"));
+		chest.setItem(1, task(net.minecraft.world.item.Items.STONE, "Podstawowy kamieniołom", "Zalecane ukończenie wyzwania Od czego", "  zacząć?", "", "Opis » Postaw generator i zobacz jak", "  działa!", "",
+			"Zbierz:", "» Kamień: 28/128", "", "Za ukończenie otrzymasz:", "» Przedmioty na kolejny generator", "  kamienia /recipe Generator:", "» 4 x Sproszkowany redstone", "» 100.0 SC", "", "LPM » Ukończ"));
+		chest.setItem(2, task(net.minecraft.world.item.Items.TORCH, "A co tutaj tak ciemno?", "Opis » Rozświetl wyspę pochodniami, bo", "  zjedzą Cię potwory!", "",
+			"Stwórz:", "» Pochodnia: 0/64", "Postaw", "» Pochodnia: 0/64", "", "Za ukończenie otrzymasz:", "» 2 x Latarnia", "» 100.0 SC", "» 30 xp", "", "LPM » Ukończ"));
+		if (!withoutHuta) chest.setItem(3, task(net.minecraft.world.item.Items.IRON_INGOT, "Huta", "Opis » Przepal surowe żelazo. Od", "  czegoś trzeba zacząć, co nie?", "",
+			"Posiadaj w ekwipunku:", "» " + iron + ": 16", "", "Za ukończenie otrzymasz:", "» 10 x Węgiel", "» 150.0 SC", "» 50 xp", "", "LPM » Ukończ"));
+		chest.setItem(4, task(net.minecraft.world.item.Items.BELL, "Dobra praca się opłaca", "Opis » Zacznij piąć się w swojej", "  karierze. Awansuj w wybranej pracy!", "",
+			"Posiadaj poziom dowolnej pracy: 5 poz.", "", "Za ukończenie otrzymasz:", "» 16 x Zaklęta butelka", "» 150.0 SC", "» 50 xp", "", "LPM » Ukończ"));
+		chest.setItem(5, task(net.minecraft.world.item.Items.BARRIER, "Stacja inkubacja", "Opis » Kaktusiarki to pieśń", "  przeszłości!", "",
+			"Posiadaj w ekwipunku:", "» Kaktus: 16", "Posiadaj na wyspie co najmniej:", "» kaktus: 1 poz.", "", "Za ukończenie otrzymasz:", "» Redstone na rozwój inkubatora:",
+			"» 24 x Sproszkowany redstone", "", "Uwaga » Przedmioty zostaną zabrane!", "LPM » Ukończ"));
+		// the "i" item and a plain one: no tasks
+		chest.setItem(13, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.OAK_SIGN));
+		var menu = net.minecraft.world.inventory.ChestMenu.threeRows(1000, mc.player.getInventory(), chest);
+		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, mc.player.getInventory(), net.minecraft.network.chat.Component.literal("NOWICJUSZ")));
+	}
+
+	/** The middle of a slot of the open GUI, in window pixels (where the test's cursor goes). */
+	public static double[] slotPoint(int index) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		var screen = (net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>) screen();
+		var at = (dev.slash3rss.slashclient.hud.mixin.ContainerScreenAccessor) screen;
+		var slot = screen.getMenu().slots.get(index);
+		double scale = mc.getWindow().getGuiScale();
+		return new double[] { (at.slashclient$leftPos() + slot.x + 8) * scale, (at.slashclient$topPos() + slot.y + 8) * scale };
+	}
+
+	public static KeyMapping skyTrackKey() {
+		return SkyTasks.trackKey;
+	}
+
+	public static String skyTasks() {
+		return SkyTasks.debugTasks();
+	}
+
+	public static String skyTracked() {
+		return SkyTasks.debugTracked();
+	}
+
+	public static String skyRows() {
+		return SkyTasks.debugRows(net.minecraft.client.Minecraft.getInstance());
+	}
+
+	public static void skyTasksOptions(boolean rewards, boolean compact) {
+		SlashHud.config.skyTasksRewards = rewards;
+		SlashHud.config.skyTasksCompact = compact;
+	}
+	//#endif
 }
 //#endif

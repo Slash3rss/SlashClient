@@ -72,6 +72,8 @@ public class SlashHud implements ClientModInitializer {
 		//#if MC >= 26.3
 		// SkyUp's GUIs (the island tasks): F7 on an open one saves what it holds
 		SkyDump.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyDump", InputConstants.KEY_F7, category));
+		// and on a task in its GUI, J (or the middle button) tracks it
+		SkyTasks.trackKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyTasksTrack", InputConstants.KEY_J, category));
 		//#endif
 		ChatTabs.register();
 		Assist.register(category);
@@ -97,6 +99,9 @@ public class SlashHud implements ClientModInitializer {
 			NetCounter.attach(handler.getConnection());
 			Reconnect.joined(mc);
 			DungeonMap.stop();
+			//#if MC >= 26.3
+			SkyTasks.joined(mc);
+			//#endif
 		});
 		// the game's own menu gets a way back to ours
 		ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
@@ -105,7 +110,9 @@ public class SlashHud implements ClientModInitializer {
 				ScreenEvents.afterExtract(screen).register((s, g, mx, my, delta) -> MouseTweaks.frame(container));
 				net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseScroll(screen).register((s, mx, my, h2, v) -> !MouseTweaks.scroll(container, v));
 				//#if MC >= 26.3
-				net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents.allowKeyPress(screen).register((s, e) -> !SkyDump.key(container, e));
+				net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents.allowKeyPress(screen).register((s, e) -> !SkyDump.key(container, e) && !SkyTasks.key(container, e));
+				net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(screen).register((s, e) -> !SkyTasks.click(container, e));
+				ScreenEvents.afterExtract(screen).register((s, g, mx, my, delta) -> SkyTasks.drawOver(container, g));
 				//#endif
 			}
 			// dropped by a server: a way straight back to it
@@ -134,6 +141,9 @@ public class SlashHud implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
 			TntTimer.tick(mc);
 			DungeonMap.tick(mc);
+			//#if MC >= 26.3
+			SkyTasks.tick(mc);
+			//#endif
 			if (mc.level != null && mc.level.getGameTime() % 20 == 0) dev.slash3rss.slashclient.hud.social.Social.watchLan(mc);
 			DamageNumbers.tick(mc);
 			Extras.tick(mc);

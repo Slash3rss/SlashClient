@@ -166,6 +166,15 @@ public final class HudConfig {
 	public int dungeonY = 64;
 	/** "square" or "circle". */
 	public String dungeonShape = "square";
+	/** SkyUp's tasks on the HUD: how many at most, one line each, those ready to complete hidden, rewards shown. */
+	public int skyTasksMax = 5;
+	public boolean skyTasksCompact = false, skyTasksHideDone = false, skyTasksRewards = false;
+	/** Every unfinished task tracked (those switched off one by one aside). */
+	public boolean skyTasksTrackAll = false;
+	/** The category last open and how many of its tasks are left. */
+	public boolean skyTasksTierCount = true;
+	/** On joining SkyUp, a line saying the tasks GUI loads the progress. */
+	public boolean skyTasksJoinHint = true;
 	/** How much health a mob or player just lost, rising from it. */
 	public boolean damageNumbers = true;
 	/** Your nick written differently in chat, the tab list and above your head (for recordings and streams). */
@@ -285,6 +294,8 @@ public final class HudConfig {
 		// left column, one text line (14 px) apart
 		// the dungeon map on the left, under the usual modules; it shows only in a dungeon
 		c.modules.put("dungeonmap", new Placement(true, 0f, 0.55f, 2, 0));
+		// SkyUp's tasks on the right, under the effects; shown only with tasks to show
+		c.modules.put("skytasks", new Placement(true, 1f, 0.3f, -2, 0));
 		GameParts.defaults(c);
 		c.modules.put("fps", new Placement(true, 0, 0, 2, 2));
 		c.modules.put("ping", new Placement(true, 0, 0, 2, 17));
@@ -411,6 +422,13 @@ public final class HudConfig {
 		dungeonFixedY = other.dungeonFixedY;
 		dungeonY = other.dungeonY;
 		dungeonShape = other.dungeonShape;
+		skyTasksMax = Math.max(1, Math.min(10, other.skyTasksMax));
+		skyTasksCompact = other.skyTasksCompact;
+		skyTasksHideDone = other.skyTasksHideDone;
+		skyTasksRewards = other.skyTasksRewards;
+		skyTasksTrackAll = other.skyTasksTrackAll;
+		skyTasksTierCount = other.skyTasksTierCount;
+		skyTasksJoinHint = other.skyTasksJoinHint;
 		damageNumbers = other.damageNumbers;
 		nickHider = other.nickHider;
 		nickAlias = other.nickAlias;
