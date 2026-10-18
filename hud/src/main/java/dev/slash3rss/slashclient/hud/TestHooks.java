@@ -380,6 +380,24 @@ public final class TestHooks {
 		Cosmetics.set(mc.player.getUUID(), slot, item);
 	}
 
+	/** Holds (or lets go of) the sneak key, as the player would. */
+	public static void sneak(boolean on) {
+		net.minecraft.client.Minecraft.getInstance().options.keyShift.setDown(on);
+	}
+
+	/** The clothing this mod can draw: "hats|tops". */
+	public static String clothing() {
+		return String.join(",", Clothing.HATS) + "|" + String.join(",", Clothing.TOPS);
+	}
+
+	/** Turns our own player by this many degrees (a view from the side). */
+	public static void turn(float degrees) {
+		var p = net.minecraft.client.Minecraft.getInstance().player;
+		p.setYRot(p.getYRot() + degrees);
+		p.setYHeadRot(p.getYRot());
+		p.setYBodyRot(p.getYRot());
+	}
+
 	/** As if our account wore this, in the main menu too (there it is the session's player). */
 	public static void wearOwn(String slot, String item) {
 		Cosmetics.set(net.minecraft.client.Minecraft.getInstance().getGameProfile().id(), slot, item);

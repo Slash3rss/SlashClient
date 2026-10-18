@@ -1,11 +1,13 @@
 import { BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, NearestFilter, Object3D, SRGBColorSpace, Sprite, SpriteMaterial, Texture } from 'three';
 import { PET_MODELS, type PetPart } from './petModels';
+import { boxQuads, clothingItem, layout, slimBox, type Bone, type ClothingBox } from '../shared/clothing';
 import type { SkinViewer } from 'skinview3d';
 
 /**
  * What the game shows around a player, in the skin preview: the pet floating by the shoulder
- * (the mob's own model and picture) and the particles of trails and auras, made of the game's own
- * particle pictures (read from a downloaded game; without one, the preview shows neither).
+ * (the mob's own model and picture), the particles of trails and auras, made of the game's own
+ * particle pictures (read from a downloaded game; without one, the preview shows neither), and the
+ * clothing, our own boxes and pictures (src/shared/clothing.ts) fixed to the figure's head, body and arms.
  * Units are the model's pixels: feet at y -16, shoulders at 8, the face towards +z.
  */
 
@@ -95,7 +97,13 @@ export class CosmeticPreview {
   private last = performance.now();
   private frame = 0;
 
-  constructor(private viewer: SkinViewer, public pictures: Record<string, string>) {
+  private clothes: { mesh: Mesh; holder: Object3D }[] = [];
+  /** What the clothing was made for: the items and the arms' width (a new skin may change it). */
+  private dressed = '';
+  private wearing: { hat?: string; top?: string } = {};
+
+  /** `clothing` is where the clothing's pictures are (<id>.png). */
+  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/') {
     const tick = (now: number) => {
       this.update(Math.min(0.1, (now - this.last) / 1000), now / 1000);
       this.last = now;
@@ -128,7 +136,9 @@ export class CosmeticPreview {
   }
 
   /** Shows what a set wears (the cape, wings and elytra are the viewer's own back equipment). */
-  show(set: { trail?: string; aura?: string; pet?: string }) {
+  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string }) {
+    this.wearing = { hat: set.hat || undefined, top: set.top || undefined };
+    this.dress();
     this.trail = set.trail ? EFFECTS[set.trail] : undefined;
     this.aura = set.aura ? EFFECTS[set.aura] : undefined;
     if ((set.pet ?? '') === this.petId && (this.pet || !set.pet)) return;
@@ -187,6 +197,72 @@ export class CosmeticPreview {
     return holder;
   }
 
+  /** Puts the clothing on, again when the items or the arms' width changed. */
+  private dress() {
+    const skin = this.viewer.playerObject.skin;
+    const slim = skin.modelType === 'slim';
+    const key = `${this.wearing.hat ?? ''}|${this.wearing.top ?? ''}|${slim}`;
+    if (key === this.dressed) return;
+    this.dressed = key;
+    for (const c of this.clothes) {
+      c.holder.parent?.remove(c.holder);
+      c.mesh.geometry.dispose();
+      (c.mesh.material as MeshStandardMaterial).dispose();
+    }
+    this.clothes = [];
+    // the figure's parts, and where the game's own pivot of each is in it (the body's group sits at its middle)
+    const bones: Record<Bone, [Object3D, number]> = { head: [skin.head, 0], body: [skin.body, 6], right_arm: [skin.rightArm, 0], left_arm: [skin.leftArm, 0] };
+    for (const id of [this.wearing.hat, this.wearing.top]) {
+      const item = id ? clothingItem(id) : undefined;
+      if (!item) continue;
+      const material = new MeshStandardMaterial({ map: this.clothingTexture(item.id), transparent: true, alphaTest: 0.1, side: DoubleSide });
+      const uvs = layout(item);
+      const byBone = new Map<Bone, [ClothingBox, [number, number]][]>();
+      item.boxes.forEach((b, i) => byBone.set(b.bone, [...(byBone.get(b.bone) ?? []), [slim ? slimBox(b) : b, uvs[i]]]));
+      for (const [bone, boxes] of byBone) {
+        const pos: number[] = [], uv: number[] = [], index: number[] = [];
+        for (const [box, at] of boxes) for (const q of boxQuads(box, at)) {
+          const base = pos.length / 3;
+          for (const c of q.corners) {
+            pos.push(c[0], c[1], c[2]);
+            uv.push(c[3], 1 - c[4]);
+          }
+          index.push(base, base + 1, base + 2, base, base + 2, base + 3);
+        }
+        const geometry = new BufferGeometry();
+        geometry.setAttribute('position', new Float32BufferAttribute(pos, 3));
+        geometry.setAttribute('uv', new Float32BufferAttribute(uv, 2));
+        geometry.setIndex(index);
+        geometry.computeVertexNormals();
+        const mesh = new Mesh(geometry, material);
+        // the game's model space points y down and faces -z
+        const holder = new Group();
+        holder.scale.set(1, -1, -1);
+        holder.position.y = bones[bone][1];
+        holder.add(mesh);
+        bones[bone][0].add(holder);
+        this.clothes.push({ mesh, holder });
+      }
+    }
+  }
+
+  private clothingTexture(id: string): Texture {
+    const key = `clothing/${id}`;
+    let t = this.textures.get(key);
+    if (!t) {
+      const img = new Image();
+      t = new Texture(img);
+      const tex = t;
+      img.onload = () => { tex.needsUpdate = true; };
+      img.src = `${this.clothing}${id}.png`;
+      t.magFilter = NearestFilter;
+      t.minFilter = NearestFilter;
+      t.colorSpace = SRGBColorSpace;
+      this.textures.set(key, t);
+    }
+    return t;
+  }
+
   /** Without the mob's picture (an old game), its spawn egg. */
   private eggSprite(id: string): Sprite | undefined {
     const egg = this.texture(`item/${id}_spawn_egg`);
@@ -223,6 +299,8 @@ export class CosmeticPreview {
   }
 
   private update(dt: number, time: number) {
+    // a skin with the other arms' width came: the sleeves follow
+    this.dress();
     if (this.pet) {
       // by the shoulder: the model's feet (24 px under its origin) a little above it, bobbing
       const scale = this.pet instanceof Sprite ? 0 : this.pet.scale.x;

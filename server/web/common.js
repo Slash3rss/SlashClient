@@ -135,6 +135,7 @@ export function capeEl(id, small = false) {
 export const SLOTS = [
   ['cape', 'Peleryna', 'fa-solid fa-flag'], ['wings', 'Skrzydła', 'fa-solid fa-dove'], ['elytra', 'Elytra', 'fa-solid fa-feather'],
   ['trail', 'Ślad', 'fa-solid fa-shoe-prints'], ['aura', 'Aura', 'fa-solid fa-wand-sparkles'], ['pet', 'Pupil', 'fa-solid fa-paw'],
+  ['hat', 'Na głowę', 'fa-solid fa-hat-cowboy'], ['top', 'Ubranie', 'fa-solid fa-shirt'],
 ];
 /** Particles and pets are the game's own: on the site they get an icon. */
 const ITEM_ICONS = {
@@ -149,9 +150,14 @@ const ITEM_ICONS = {
   axolotl: 'fa-fish', frog: 'fa-frog', fox: 'fa-paw',
 };
 
-/** A picture of any cosmetic: the cape's front, a wing's back, or an icon. */
+/** A picture of any cosmetic: the cape's front, a wing's back, a view of the clothing, or an icon. */
 export function cosmeticEl(id, slot = 'cape', small = false) {
   if (slot === 'cape') return capeEl(id, small);
+  if (slot === 'hat' || slot === 'top') {
+    const c = el('div', { class: `cape clothing${small ? ' sm' : ''}`, title: id });
+    c.style.backgroundImage = `url(vendor/clothing/icon/${id}.png)`;
+    return c;
+  }
   if (slot === 'wings' || slot === 'elytra') {
     const c = el('div', { class: `cape wing${small ? ' sm' : ''}`, title: id });
     c.style.backgroundImage = `url(vendor/${slot}/${id}.png)`;

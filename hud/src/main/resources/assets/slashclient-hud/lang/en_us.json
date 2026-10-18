@@ -319,6 +319,8 @@
 	"slashclient-hud.cosmetics.slot.trail": "Trail",
 	"slashclient-hud.cosmetics.slot.aura": "Aura",
 	"slashclient-hud.cosmetics.slot.pet": "Pet",
+	"slashclient-hud.cosmetics.slot.hat": "Hat",
+	"slashclient-hud.cosmetics.slot.top": "Outfit",
 	"slashclient-hud.partner": "Partner",
 	"slashclient-hud.chat.excludes": "Except",
 	"slashclient-hud.chat.hint.excludes": "except…",

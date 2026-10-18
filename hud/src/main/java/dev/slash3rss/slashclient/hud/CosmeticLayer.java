@@ -1,4 +1,4 @@
-// wings and pets are drawn from entity render states, which came in 1.21.2
+// wings, pets and clothing are drawn from entity render states, which came in 1.21.2 (before: ClothingLayer)
 //#if MC >= 1.21.2
 package dev.slash3rss.slashclient.hud;
 
@@ -9,6 +9,8 @@ import net.minecraft.client.model.ambient.BatModel;
 import net.minecraft.client.model.animal.allay.AllayModel;
 import net.minecraft.client.model.animal.parrot.ParrotModel;
 import net.minecraft.client.model.geom.ModelLayers;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.model.geom.PartPose;
 import net.minecraft.client.model.monster.vex.VexModel;
 import net.minecraft.client.model.object.equipment.ElytraModel;
 import net.minecraft.client.model.player.PlayerModel;
@@ -20,6 +22,7 @@ import net.minecraft.client.renderer.entity.state.AllayRenderState;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.entity.state.BatRenderState;
 import net.minecraft.client.renderer.entity.state.BeeRenderState;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.HumanoidRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
 import net.minecraft.client.renderer.entity.state.ParrotRenderState;
@@ -28,20 +31,53 @@ import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.PlayerModelType;
 import net.minecraft.world.item.Items;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
- * Wings on the back and a pet at the shoulder, for players who wear them. Both are the game's
- * own models: the wings are the elytra's (with our pictures, gently opening and closing), the
- * pets small copies of a few flying mobs.
+ * Wings on the back, a pet at the shoulder and clothing, for players who wear them. The wings
+ * and pets are the game's own models: the wings are the elytra's (with our pictures, gently
+ * opening and closing), the pets small copies of a few flying mobs; the clothing is ours ({@link Clothing}).
  */
 public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerModel> {
 	private final ElytraModel wings;
 	private final Map<String, Pet> pets;
+	/** Each clothing item as a model, for wide and slim arms ("id" and "id/slim"), made when first worn. */
+	private final Map<String, ClothingModel> clothes = new HashMap<>();
+
+	/**
+	 * A clothing item: its boxes on the head, the body and the arms, posed like the player's own
+	 * (copied into the state when it is submitted, since the model is drawn later).
+	 */
+	private static final class ClothingModel extends EntityModel<ClothingModel.Poses> {
+		static final class Poses extends EntityRenderState {
+			PartPose head, body, rightArm, leftArm;
+		}
+
+		private final ModelPart head, body, rightArm, leftArm;
+
+		ClothingModel(ModelPart root) {
+			super(root);
+			head = root.getChild("head");
+			body = root.getChild("body");
+			rightArm = root.getChild("right_arm");
+			leftArm = root.getChild("left_arm");
+		}
+
+		@Override
+		public void setupAnim(Poses p) {
+			super.setupAnim(p);
+			head.loadPose(p.head);
+			body.loadPose(p.body);
+			rightArm.loadPose(p.rightArm);
+			leftArm.loadPose(p.leftArm);
+		}
+	}
 
 	/** A pet: its model, a fresh state for each frame (the model reads it later), its picture and size. */
 	private record Pet(EntityModel<?> model, Supplier<LivingEntityRenderState> state, Identifier texture, float scale, float out) {
@@ -151,6 +187,27 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		if (wing != null && !state.chestEquipment.is(Items.ELYTRA)) submitWings(pose, out, light, state, wing);
 		String pet = Cosmetics.worn(id, "pet");
 		if (pet != null && pets.containsKey(pet)) submitPet(pose, out, light, state, pets.get(pet));
+		ClothingModel.Poses poses = null;
+		for (String slot : Clothing.SLOTS) {
+			String item = Cosmetics.worn(id, slot);
+			if (item == null || Clothing.covered(slot, state.headEquipment, state.chestEquipment)) continue;
+			if (poses == null) poses = poses(state);
+			boolean slim = state.skin.model() == PlayerModelType.SLIM;
+			ClothingModel model = clothes.computeIfAbsent(slim ? item + "/slim" : item, k -> new ClothingModel(Clothing.bake(item, slim)));
+			Compat.submitModel(out, model, poses, pose, model.renderType(Clothing.texture(item)), light, OverlayTexture.NO_OVERLAY, state.outlineColor);
+		}
+	}
+
+	/** Where the player's head, body and arms are in this frame (the player model posed for this player first). */
+	private ClothingModel.Poses poses(AvatarRenderState state) {
+		PlayerModel model = getParentModel();
+		model.setupAnim(state);
+		ClothingModel.Poses p = new ClothingModel.Poses();
+		p.head = model.head.storePose();
+		p.body = model.body.storePose();
+		p.rightArm = model.rightArm.storePose();
+		p.leftArm = model.leftArm.storePose();
+		return p;
 	}
 
 	private void submitWings(PoseStack pose, SubmitNodeCollector out, int light, AvatarRenderState state, String wing) {

@@ -359,6 +359,15 @@ describe('social server', () => {
     assert.deepEqual(worn[tomMc], { cape: 'staff_admin', aura: 'royal' });
     // '' takes an item off
     assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { pet: '' } })).body.loadout.pet, undefined);
+    // clothing: a hat and a top go with the rest, each only in its own slot
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { hat: 'tophat', top: 'scarf' } })).body.loadout.hat, 'tophat');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { top: 'crown' } })).body.error, 'bad_item');
+    assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc] })).body.cosmetics[ewaMc], { cape: 'galaxy', wings: 'angel', trail: 'hearts', hat: 'tophat', top: 'scarf' });
+    await call('POST', '/v1/me', ewa.token, { loadout: { hat: '', top: '' } });
+    // only launchers that can draw it see it in their menu
+    const askAs = async (client?: string) => (await (await fetch(`${base}/v1/cosmetics`, { headers: { Authorization: `Bearer ${ewa.token}`, ...(client ? { 'X-SlashClient': client } : {}) } })).json()) as { items: { id: string; slot: string }[] };
+    assert.ok((await askAs('launcher/0.9.11')).items.some((i) => i.id === 'tophat' && i.slot === 'hat'));
+    assert.ok(!(await askAs('launcher/0.9.10')).items.some((i) => i.slot === 'hat' || i.slot === 'top'));
     const catalog = (await call('GET', '/v1/cosmetics', ewa.token)).body;
     assert.ok(catalog.items.some((i: any) => i.id === 'phoenix' && i.rank === 'partner' && !i.available));
     assert.ok(catalog.items.some((i: any) => i.id === 'angel' && i.slot === 'wings' && i.available));

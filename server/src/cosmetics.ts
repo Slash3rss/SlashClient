@@ -2,14 +2,15 @@ import type { CosmeticSetting } from './db.ts';
 
 /**
  * The SlashClient cosmetics. Their pictures live in the HUD mod (textures/cape, textures/elytra,
- * textures/wings; trails, auras and pets are drawn from the game's own particles and mobs) and on
- * the website (web/capes); the server checks choices against these and the admin's settings.
+ * textures/wings, textures/clothing with the clothing's boxes in src/shared/clothing.ts; trails,
+ * auras and pets are drawn from the game's own particles and mobs) and on the website (web/vendor);
+ * the server checks choices against these and the admin's settings.
  *
  * A player wears one item per slot. `rank` items are for that rank only (admins may wear all);
  * any item can also be made exclusive in the admin panel and granted to chosen players.
  */
-export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet';
-export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet'];
+export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top';
+export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top'];
 export type Rank = 'admin' | 'support' | 'partner' | 'friend';
 
 export interface Item {
@@ -126,6 +127,19 @@ export const ITEMS: Item[] = [
   { id: 'axolotl', slot: 'pet', name: 'Aksolotl', since: '0.9.2' },
   { id: 'frog', slot: 'pet', name: 'Żaba', since: '0.9.2' },
   { id: 'fox', slot: 'pet', name: 'Lis', since: '0.9.2' },
+  // clothing: hats on the head and tops over the body (and arms), made of boxes over the skin
+  { id: 'tophat', slot: 'hat', name: 'Cylinder', since: '0.9.11' },
+  { id: 'crown', slot: 'hat', name: 'Korona', since: '0.9.11' },
+  { id: 'cap', slot: 'hat', name: 'Czapka z daszkiem', since: '0.9.11' },
+  { id: 'headphones', slot: 'hat', name: 'Słuchawki', since: '0.9.11' },
+  { id: 'beanie', slot: 'hat', name: 'Czapka zimowa', since: '0.9.11' },
+  { id: 'wizard', slot: 'hat', name: 'Kapelusz czarodzieja', since: '0.9.11' },
+  { id: 'halo', slot: 'hat', name: 'Aureola', since: '0.9.11' },
+  { id: 'scarf', slot: 'top', name: 'Szalik', since: '0.9.11' },
+  { id: 'bowtie', slot: 'top', name: 'Muszka', since: '0.9.11' },
+  { id: 'tie', slot: 'top', name: 'Krawat', since: '0.9.11' },
+  { id: 'medal', slot: 'top', name: 'Medal', since: '0.9.11' },
+  { id: 'jacket', slot: 'top', name: 'Kurtka', since: '0.9.11' },
 ];
 
 /** Compares two versions like 0.9.1 number by number: below 0, 0 or above 0. */

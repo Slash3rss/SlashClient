@@ -55,7 +55,7 @@ public final class SkinPreview {
 		//#endif
 	}
 
-	// ---------- SlashClient cosmetics beside the figure: cape, wings, pet ----------
+	// ---------- SlashClient cosmetics beside the figure: cape, wings, pet, clothing ----------
 
 	/** The cape, the wings and pets, each as a model the preview can draw (made when first worn). */
 	private Object cape, wings;
@@ -133,6 +133,15 @@ public final class SkinPreview {
 		return model;
 	}
 
+	/** A clothing item on the figure, its head, body and arms where the figure's are. */
+	private Object clothingModel(String id, boolean slimArms, ModelPart figure) {
+		Object model = clothes.computeIfAbsent(slimArms ? id + "/slim" : id, k -> wrap(dev.slash3rss.slashclient.hud.Clothing.bake(id, slimArms)));
+		ModelPart parts = root(model).getChild("slashclient");
+		for (String bone : java.util.List.of("head", "body", "right_arm", "left_arm")) parts.getChild(bone).loadPose(figure.getChild(bone).storePose());
+		return model;
+	}
+	private final java.util.Map<String, Object> clothes = new java.util.HashMap<>();
+
 	private static ModelPart root(Object model) {
 		return ((net.minecraft.client.model.Model<?>) model).root();
 	}
@@ -170,6 +179,11 @@ public final class SkinPreview {
 		if (wing != null) draw(g, wingsModel(time), dev.slash3rss.slashclient.hud.Cosmetics.textureId("wings", wing), scale, x - w / 2, y, w * 2, h);
 		else if (capeId != null) draw(g, capeModel(), dev.slash3rss.slashclient.hud.Cosmetics.capeTexture(capeId), scale, x, y, w, h);
 		g.skin(model, s.body().texturePath(), scale, -5, bodyYaw, PIVOT_Y, x, y, x + w, y + h);
+		// clothing over it: a wider box, taller upwards for what stands above the head (the figure stands on its bottom)
+		for (String slot : dev.slash3rss.slashclient.hud.Clothing.SLOTS) {
+			String item = dev.slash3rss.slashclient.hud.Cosmetics.worn(self, slot);
+			if (item != null) draw(g, clothingModel(item, s.model() == PlayerModelType.SLIM, model.root()), dev.slash3rss.slashclient.hud.Clothing.texture(item), scale, x - w / 2, y - h / 2, w * 2, h * 3 / 2);
+		}
 		String pet = dev.slash3rss.slashclient.hud.Cosmetics.worn(self, "pet");
 		Object petModel = pet == null ? null : petModel(pet, time);
 		if (petModel != null) draw(g, petModel, dev.slash3rss.slashclient.hud.CosmeticLayer.petTexture(pet), scale, x - w / 2, y, w * 2, h);
