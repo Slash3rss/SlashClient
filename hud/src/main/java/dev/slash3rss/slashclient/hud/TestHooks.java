@@ -841,13 +841,17 @@ public final class TestHooks {
 		SlashHud.config.placement("skytasks").enabled = true;
 		// the iron ingot as the game names it in the language the test plays in
 		String iron = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_INGOT).getHoverName().getString();
+		// and the stone, torch and chest, so the counters match them in either language
+		String stone = net.minecraft.world.level.block.Blocks.STONE.getName().getString();
+		String torch = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.TORCH).getHoverName().getString();
+		String chestName = net.minecraft.world.level.block.Blocks.CHEST.getName().getString();
 		var chest = new net.minecraft.world.SimpleContainer(27);
 		chest.setItem(0, task(net.minecraft.world.item.Items.LAVA_BUCKET, "Od czego zacząć?", "Opis » Żeby wygenerować kamień musimy", "  znaleźć lawę. Powinna być w tej", "  jaskini koło domku!", "",
 			"Posiadaj w ekwipunku:", "» Wiadro lawy: 1", "", "Za ukończenie otrzymasz:", "» 1 x Generator kamienia", "» 100.0 SC", "» 30 xp", "", "LPM » Ukończ"));
 		chest.setItem(1, task(net.minecraft.world.item.Items.STONE, "Podstawowy kamieniołom", "Zalecane ukończenie wyzwania Od czego", "  zacząć?", "", "Opis » Postaw generator i zobacz jak", "  działa!", "",
-			"Zbierz:", "» Kamień: 28/128", "", "Za ukończenie otrzymasz:", "» Przedmioty na kolejny generator", "  kamienia /recipe Generator:", "» 4 x Sproszkowany redstone", "» 100.0 SC", "", "LPM » Ukończ"));
+			"Zbierz:", "» " + stone + ": 28/128", "", "Za ukończenie otrzymasz:", "» Przedmioty na kolejny generator", "  kamienia /recipe Generator:", "» 4 x Sproszkowany redstone", "» 100.0 SC", "", "LPM » Ukończ"));
 		chest.setItem(2, task(net.minecraft.world.item.Items.TORCH, "A co tutaj tak ciemno?", "Opis » Rozświetl wyspę pochodniami, bo", "  zjedzą Cię potwory!", "",
-			"Stwórz:", "» Pochodnia: 0/64", "Postaw", "» Pochodnia: 0/64", "", "Za ukończenie otrzymasz:", "» 2 x Latarnia", "» 100.0 SC", "» 30 xp", "", "LPM » Ukończ"));
+			"Stwórz:", "» " + torch + ": 0/64", "Postaw", "» " + torch + ": 0/64", "", "Za ukończenie otrzymasz:", "» 2 x Latarnia", "» 100.0 SC", "» 30 xp", "", "LPM » Ukończ"));
 		if (!withoutHuta) chest.setItem(3, task(net.minecraft.world.item.Items.IRON_INGOT, "Huta", "Opis » Przepal surowe żelazo. Od", "  czegoś trzeba zacząć, co nie?", "",
 			"Posiadaj w ekwipunku:", "» " + iron + ": 16", "", "Za ukończenie otrzymasz:", "» 10 x Węgiel", "» 150.0 SC", "» 50 xp", "", "LPM » Ukończ"));
 		chest.setItem(4, task(net.minecraft.world.item.Items.BELL, "Dobra praca się opłaca", "Opis » Zacznij piąć się w swojej", "  karierze. Awansuj w wybranej pracy!", "",
@@ -855,6 +859,8 @@ public final class TestHooks {
 		chest.setItem(5, task(net.minecraft.world.item.Items.BARRIER, "Stacja inkubacja", "Opis » Kaktusiarki to pieśń", "  przeszłości!", "",
 			"Posiadaj w ekwipunku:", "» Kaktus: 16", "Posiadaj na wyspie co najmniej:", "» kaktus: 1 poz.", "", "Za ukończenie otrzymasz:", "» Redstone na rozwój inkubatora:",
 			"» 24 x Sproszkowany redstone", "", "Uwaga » Przedmioty zostaną zabrane!", "LPM » Ukończ"));
+		chest.setItem(6, task(net.minecraft.world.item.Items.CRAFTING_TABLE, "Składzik", "Opis » Zbuduj swój pierwszy składzik!", "", "Stój obok:", "» " + chestName + ": 8", "",
+			"Za ukończenie otrzymasz:", "» 2 x Skrzynia", "", "LPM » Ukończ"));
 		// the info item and the way back: no tasks
 		chest.setItem(13, task(net.minecraft.world.item.Items.OAK_SIGN, "Informacje", "Wyzwania to kluczowy element", "  gry na Skyblocku!"));
 		chest.setItem(22, task(net.minecraft.world.item.Items.PLAYER_HEAD, "Wróć", "LPM » Wróć"));
@@ -873,6 +879,17 @@ public final class TestHooks {
 		chest.setItem(14, task(net.minecraft.world.item.Items.DIAMOND, "Wirtuoz", "Pozostałe zadania » 16", "", "Za ukończenie poziomu otrzymasz:", "» 500 SP", "", "LPM » Sprawdź wyzwania"));
 		var menu = net.minecraft.world.inventory.ChestMenu.threeRows(1001, mc.player.getInventory(), chest);
 		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, mc.player.getInventory(), net.minecraft.network.chat.Component.literal("Wyzwania")));
+	}
+
+	/** As if the player broke three stone blocks and crafted four torches (what the game's hooks report). */
+	public static void skyEvents() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		for (int i = 0; i < 3; i++) SkyCounters.broken(mc.player, net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+		SkyCounters.crafted(mc.player, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.TORCH, 4), 4);
+	}
+
+	public static String skyProgress() {
+		return SkyTasks.debugProgress(net.minecraft.client.Minecraft.getInstance());
 	}
 
 	public static String skyCategories() {

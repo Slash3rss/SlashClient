@@ -96,6 +96,7 @@ public final class SkyTasks {
 
 	static void save() {
 		dirty = false;
+		savedAt = System.currentTimeMillis();
 		try {
 			Files.createDirectories(FILE.getParent());
 			Files.writeString(FILE, GSON.toJson(data()));
@@ -112,9 +113,18 @@ public final class SkyTasks {
 		if (screen instanceof AbstractContainerScreen<?> c && !(screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen)
 			&& !(screen instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen)) {
 			if (++tick % 5 == 0) read(c);
-		} else if (dirty) {
+		} else if (dirty && System.currentTimeMillis() - savedAt > 30_000) {
+			// what the counters add is saved now and then, not at every block
 			save();
 		}
+		SkyCounters.tick(mc);
+	}
+
+	private static long savedAt;
+
+	/** The counters added something: saved before long. */
+	static void changed() {
+		dirty = true;
 	}
 
 	/** Each stack read once (the GUI draws them every frame; the server sends new stacks when they change). */
@@ -309,7 +319,14 @@ public final class SkyTasks {
 			long have = carried(mc, r.thing);
 			if (have >= 0) return have;
 		}
-		return r.current;
+		// "Stój obok": what is around now
+		if (r.current < 0 && SkyCounters.kind(s) == SkyCounters.Kind.NEAR) return SkyCounters.around(mc, r.thing);
+		return r.current < 0 ? r.current : r.current + r.extra;
+	}
+
+	/** The number shown is the client's own count, not the server's (shown with "~"). */
+	static boolean estimated(SkyTaskParser.Section s, SkyTaskParser.Req r) {
+		return !s.inventory() && (r.extra > 0 || (r.current < 0 && SkyCounters.kind(s) == SkyCounters.Kind.NEAR));
 	}
 
 	static boolean met(Minecraft mc, SkyTaskParser.Section s, SkyTaskParser.Req r) {
@@ -390,7 +407,7 @@ public final class SkyTasks {
 					long c = current(mc, s, r);
 					boolean met = met(mc, s, r);
 					String progress = r.required < 0 ? r.unit
-						: (c >= 0 ? c + "/" : "") + r.required + (r.unit.isEmpty() ? "" : " " + r.unit);
+						: (c >= 0 ? (estimated(s, r) ? "~" : "") + c + "/" : "") + r.required + (r.unit.isEmpty() ? "" : " " + r.unit);
 					String thing = r.thing.equals(s.header) || r.thing.isEmpty() ? s.header : r.thing;
 					float bar = cfg.skyTasksCompact || c < 0 || r.required <= 0 ? -1 : Math.min(1f, (float) c / r.required);
 					out.add(new Row((met ? "✔ " : "• ") + thing, met ? 0xFF6B7280 : WHITE, progress, met ? GREEN : WHITE, bar, 6));
@@ -494,6 +511,17 @@ public final class SkyTasks {
 				for (SkyTaskParser.Req r : s.items) out.append("[").append(r.thing).append(" ").append(r.current).append("/").append(r.required).append(r.unit.isEmpty() ? "" : " " + r.unit).append("]");
 			}
 			out.append(" rewards=").append(t.rewards.size()).append(t.takesItems ? " takes" : "").append('\n');
+		}
+		return out.toString();
+	}
+
+	/** Every requirement's progress as the HUD would show it: "task: thing ~c/r", one per line. */
+	static String debugProgress(Minecraft mc) {
+		StringBuilder out = new StringBuilder();
+		for (SkyTaskParser.Task t : data().tasks.values()) {
+			for (SkyTaskParser.Section s : t.sections) for (SkyTaskParser.Req r : s.items) {
+				out.append(t.name).append(": ").append(r.thing).append(' ').append(estimated(s, r) ? "~" : "").append(current(mc, s, r)).append('/').append(r.required).append('\n');
+			}
 		}
 		return out.toString();
 	}

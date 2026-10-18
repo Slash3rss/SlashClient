@@ -136,6 +136,10 @@ public class SlashHud implements ClientModInitializer {
 			}).bounds(4, 4, 110, 20).build());
 		});
 
+		//#if MC >= 26.3
+		// SkyUp's tasks: blocks the player broke ("Zbierz")
+		net.fabricmc.fabric.api.event.client.player.ClientPlayerBlockBreakEvents.AFTER.register((world, player, pos, state) -> SkyCounters.broken(player, state));
+		//#endif
 		// before the game reads the keys of this tick: the drop key's presses on a valuable item
 		ClientTickEvents.START_CLIENT_TICK.register(DropGuard::tick);
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
@@ -183,6 +187,9 @@ public class SlashHud implements ClientModInitializer {
 			Minecraft mc = Minecraft.getInstance();
 			if (level.isClientSide() && player == mc.player) {
 				MoreModules.Combat.hit(Math.sqrt(entity.getBoundingBox().distanceToSqr(player.getEyePosition())));
+				//#if MC >= 26.3
+				SkyCounters.attacked(player, entity);
+				//#endif
 				ExtraModules.Stats.attack(player, entity);
 			}
 			return InteractionResult.PASS;

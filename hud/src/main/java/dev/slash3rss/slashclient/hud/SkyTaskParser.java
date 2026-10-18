@@ -89,6 +89,8 @@ public final class SkyTaskParser {
 		public long current = -1, required = -1;
 		/** What goes with the numbers ("poz.", "g"), or the whole value when there is no number. */
 		public String unit = "";
+		/** Counted by the client since the GUI was last read (SkyCounters): an estimate on top of `current`. */
+		public long extra;
 
 		public boolean known() {
 			return current >= 0 && required >= 0;
