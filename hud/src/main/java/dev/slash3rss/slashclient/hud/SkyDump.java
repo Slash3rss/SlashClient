@@ -76,11 +76,28 @@ public final class SkyDump {
 		for (String line : SkyCounters.sidebar(mc)) out.append("#   | ").append(line).append('\n');
 		out.append('\n');
 		// the player's own inventory: its items too (fish with their weight and size in the lore)
-		boolean own = screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen;
-		for (Slot slot : screen.getMenu().slots) {
-			if ((slot.container instanceof Inventory && !own) || !slot.hasItem()) continue;
-			ItemStack stack = slot.getItem();
-			out.append("## Slot ").append(slot.index).append(" · ").append(BuiltInRegistries.ITEM.getKey(stack.getItem())).append(" ×").append(stack.getCount()).append('\n');
+		// (read from the player, not the screen: the creative inventory's slots are its tabs')
+		boolean own = screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen
+			|| screen instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
+		List<String> labels = new ArrayList<>();
+		List<ItemStack> stacks = new ArrayList<>();
+		if (own && mc.player != null) {
+			Inventory inv = mc.player.getInventory();
+			for (int i = 0; i < inv.getContainerSize(); i++) {
+				labels.add("Ekwipunek " + i);
+				stacks.add(inv.getItem(i));
+			}
+		} else {
+			for (Slot slot : screen.getMenu().slots) {
+				if (slot.container instanceof Inventory) continue;
+				labels.add("Slot " + slot.index);
+				stacks.add(slot.getItem());
+			}
+		}
+		for (int n = 0; n < stacks.size(); n++) {
+			ItemStack stack = stacks.get(n);
+			if (stack.isEmpty()) continue;
+			out.append("## ").append(labels.get(n)).append(" · ").append(BuiltInRegistries.ITEM.getKey(stack.getItem())).append(" ×").append(stack.getCount()).append('\n');
 			out.append("Nazwa: ").append(stack.getHoverName().getString()).append('\n');
 			out.append("Nazwa (kolory): ").append(colored(stack.getHoverName())).append('\n');
 			List<Component> lore = lore(stack);
