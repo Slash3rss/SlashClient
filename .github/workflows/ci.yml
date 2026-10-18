@@ -12,9 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-    # Linux on our own runner (LXC on Proxmox), but only for pushes to main: pull requests from
-    # anyone stay on GitHub's machines, so no stranger's code runs on our server
-    runs-on: ${{ matrix.os == 'ubuntu-latest' && github.event_name == 'push' && fromJSON('["self-hosted", "linux", "proxmox"]') || matrix.os }}
+    runs-on: ${{ matrix.os }}
     env:
       # tests don't start Electron, so skip downloading its binary
       ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
