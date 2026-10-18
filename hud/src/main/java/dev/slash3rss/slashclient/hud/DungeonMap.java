@@ -488,7 +488,14 @@ public final class DungeonMap implements HudModule {
 			if (e == mc.player || !e.isAlive()) continue;
 			int sx = Math.round((float) (e.getX() - originX - viewX) * viewScale), sz = Math.round((float) (e.getZ() - originZ - viewZ) * viewScale);
 			if (!clip.test(sx, sz)) continue;
-			if (e instanceof ArmorStand stand) {
+			if (DungeonRooms.spawnerLabel(e)) {
+				// SkyUp's spawner: its hologram ("Spawner", its level, the mobs left) over a floating spawner
+				if (cfg.dungeonSpawners) {
+					g.fill(ox + sx - 5, oy + sz - 5, ox + sx + 5, oy + sz + 5, 0xFFF59E0B);
+					g.fill(ox + sx - 4, oy + sz - 4, ox + sx + 4, oy + sz + 4, 0xFF1F2937);
+					item(g, new ItemStack(Items.SPAWNER), ox + sx, oy + sz, 8);
+				}
+			} else if (e instanceof ArmorStand stand) {
 				ItemStack head = stand.getItemBySlot(EquipmentSlot.HEAD);
 				if (cfg.dungeonSpawners && head.is(Items.SPAWNER)) {
 					// the cage alone is hard to see: on an orange square
@@ -529,18 +536,26 @@ public final class DungeonMap implements HudModule {
 	 */
 	static int kind(Entity mob) {
 		if (!mob.hasCustomName()) return 0;
-		Component name = mob.getCustomName();
-		// the codes written in the text, or the colour of its first piece
-		String raw = name.getString();
-		java.util.regex.Matcher code = java.util.regex.Pattern.compile("§([0-9a-fA-F])").matcher(raw);
-		if (code.find()) return kindOf(Character.toLowerCase(code.group(1).charAt(0)));
-		int[] rgb = { -1 };
-		name.visit((style, text) -> {
-			if (text.isBlank()) return java.util.Optional.empty();
-			if (style.getColor() != null) rgb[0] = style.getColor().getValue();
-			return java.util.Optional.of(Boolean.TRUE);
+		// the colour of the name itself: the first piece with letters in it, so the health before it
+		// ("20.0 ❤" in &c), the heart, "|" and such do not count; colour codes written in the text count too
+		int[] found = { -1 };
+		mob.getCustomName().visit((style, text) -> {
+			int color = style.getColor() != null ? style.getColor().getValue() : -1;
+			for (int i = 0; i < text.length(); i++) {
+				char c = text.charAt(i);
+				if (c == '§' && i + 1 < text.length()) {
+					int legacy = legacyColor(Character.toLowerCase(text.charAt(++i)));
+					if (legacy != -2) color = legacy;
+					continue;
+				}
+				if (Character.isLetter(c)) {
+					found[0] = color;
+					return java.util.Optional.of(Boolean.TRUE);
+				}
+			}
+			return java.util.Optional.empty();
 		}, net.minecraft.network.chat.Style.EMPTY);
-		return switch (rgb[0]) {
+		return switch (found[0]) {
 			case 0xFFFF55 -> 1;
 			case 0xFFAA00 -> 2;
 			case 0xAA0000 -> 3;
@@ -548,14 +563,15 @@ public final class DungeonMap implements HudModule {
 		};
 	}
 
-	private static int kindOf(char code) {
-		return switch (code) {
-			case 'e' -> 1;
-			case '6' -> 2;
-			case '4' -> 3;
-			default -> 0;
-		};
+	/** A colour code's colour (§e → yellow…), -1 for a reset, -2 for a style code (bold…) that keeps the colour. */
+	private static int legacyColor(char code) {
+		int i = "0123456789abcdef".indexOf(code);
+		if (i >= 0) return LEGACY[i];
+		return code == 'r' ? -1 : -2;
 	}
+
+	private static final int[] LEGACY = { 0x000000, 0x0000AA, 0x00AA00, 0x00AAAA, 0xAA0000, 0xAA00AA, 0xFFAA00, 0xAAAAAA,
+		0x555555, 0x5555FF, 0x55FF55, 0x55FFFF, 0xFF5555, 0xFF55FF, 0xFFFF55, 0xFFFFFF };
 
 	/** An item `size` pixels large, centred on the point. */
 	static void item(GuiGraphicsExtractor g, ItemStack stack, int x, int y, int size) {

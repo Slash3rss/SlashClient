@@ -435,6 +435,19 @@ public final class TestHooks {
 		return ((dev.slash3rss.slashclient.hud.mixin.MinecraftAccessor) mc).slashclient$createTitle() + "|" + net.minecraft.client.ClientBrandRetriever.getClientModName();
 	}
 
+	/** The dungeon classes of the named mobs about (1 normal, 2 elite, 3 mini boss), and how many spawner holograms there are. */
+	public static String dungeonKinds() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		java.util.List<Integer> kinds = new java.util.ArrayList<>();
+		int spawners = 0;
+		for (var e : mc.level.entitiesForRendering()) {
+			if (e instanceof net.minecraft.world.entity.Mob && e.hasCustomName()) kinds.add(DungeonMap.kind(e));
+			if (DungeonRooms.spawnerLabel(e)) spawners++;
+		}
+		java.util.Collections.sort(kinds);
+		return kinds + " spawners " + spawners;
+	}
+
 	/** What the dungeon map knows of a column: 0 nothing, 1 wall, 2 floor. */
 	public static int dungeonCell(int x, int z) {
 		return DungeonMap.cellAt(x, z);

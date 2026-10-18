@@ -105,7 +105,12 @@ public class GameDungeon implements FabricClientGameTest {
 			// mob classes by their name's colour: an elite (gold) and a mini boss (dark red)
 			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b,CustomName:{text:\"Elita\",color:\"gold\"}}", x0 - 3, y, z0 + 9));
 			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b,CustomName:{text:\"Mini boss\",color:\"dark_red\"}}", x0 + 3, y, z0 + 9));
+			// as on SkyUp: the health first in red, then the name in its class's colour; a spawner's hologram
+			server.runCommand(String.format("summon husk %d %d %d {NoAI:1b,PersistenceRequired:1b,CustomName:[{text:\"20.0 ❤ | \",color:\"red\"},{text:\"Giermek \",color:\"gold\"},{text:\"poz. 1\",color:\"gray\"}]}", x0 + 12, y, z0 - 9));
+			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,CustomNameVisible:1b,CustomName:{text:\"Spawner\",color:\"gold\"}}", x0 + 12, y + 2, z0 - 12));
 			context.waitTicks(30);
+			String kinds = context.computeOnClient(mc -> TestHooks.dungeonKinds());
+			if (!kinds.equals("[2, 2, 3] spawners 1")) throw new AssertionError("Mob classes and spawners: " + kinds);
 			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
 			if (!rooms.contains("cleared 2")) throw new AssertionError("Hologram not read: " + rooms);
 			context.takeScreenshot("dungeon-holograms");

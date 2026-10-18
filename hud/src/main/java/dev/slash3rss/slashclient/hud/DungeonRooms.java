@@ -262,10 +262,10 @@ public final class DungeonRooms {
 		for (Entity e : mc.level.entitiesForRendering()) {
 			if (!e.isAlive()) continue;
 			int ex = e.getBlockX() - originX, ez = e.getBlockZ() - originZ;
-			String text = e instanceof net.minecraft.world.entity.Display.TextDisplay display && display.textRenderState() != null ? display.textRenderState().text().getString()
-				: e.hasCustomName() ? e.getCustomName().getString() : null;
-			if (text != null) hologram(text.replaceAll("§.", ""), ex, ez);
-			if (e instanceof ArmorStand stand) {
+			String text = label(e);
+			if (text != null) hologram(text, ex, ez);
+			if (spawnerLabel(e)) seenSpawners.put(key(ex, ez), new int[] { ex, ez });
+			else if (e instanceof ArmorStand stand) {
 				if (stand.getItemBySlot(EquipmentSlot.HEAD).is(Items.SPAWNER)) seenSpawners.put(key(ex, ez), new int[] { ex, ez });
 			} else if (e instanceof Mob) {
 				int r = roomAt(ex, ez);
@@ -320,6 +320,21 @@ public final class DungeonRooms {
 			if (rooms.get(r).respawnAt == 0) rooms.get(r).respawnAt = c[2];
 		}
 	}
+
+	/** A hologram's text: an armour stand's name or a text display's text, without colour codes; null for neither. */
+	static String label(Entity e) {
+		String text = e instanceof net.minecraft.world.entity.Display.TextDisplay display && display.textRenderState() != null ? display.textRenderState().text().getString()
+			: e instanceof Mob || e instanceof net.minecraft.world.entity.player.Player || !e.hasCustomName() ? null : e.getCustomName().getString();
+		return text == null ? null : text.replaceAll("§.", "");
+	}
+
+	/** The "Spawner" line of a spawner's hologram (the first line of a text display, or a name of its own). */
+	static boolean spawnerLabel(Entity e) {
+		String text = label(e);
+		return text != null && SPAWNER_LINE.matcher(text).find();
+	}
+
+	private static final java.util.regex.Pattern SPAWNER_LINE = java.util.regex.Pattern.compile("^[^\\p{L}\\d]*Spawner[^\\p{L}\\d]*$", java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.MULTILINE);
 
 	/** One hologram line (or a few, in a text display): mobs left, or when they come back. */
 	private static void hologram(String text, int x, int z) {
