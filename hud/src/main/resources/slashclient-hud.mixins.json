@@ -5,6 +5,7 @@
 	"client": [
 		"AuthServiceMixin",
 		"BossHealthOverlayAccessor",
+		"BrandingMixin",
 		"CameraMixin",
 		"CapeMixin",
 		"ClipFrameMixin",
@@ -18,6 +19,7 @@
 		"FreelookMixin",
 		"GpuTimerMixin",
 		"ContainerScreenAccessor",
+		"DebugVersionMixin",
 		"EditServerScreenMixin",
 		"GuiMixin",
 		"HeartsMixin",
@@ -28,6 +30,7 @@
 		"LightmapMixin",
 		"MinecraftAccessor",
 		"MouseHandlerMixin",
+		"WindowTitleMixin",
 		"OverlayMessageAccessor",
 		"NametagMixin",
 		"OnlineServerEntryMixin",

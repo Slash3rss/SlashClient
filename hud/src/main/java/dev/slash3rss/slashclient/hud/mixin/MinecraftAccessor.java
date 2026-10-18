@@ -15,6 +15,10 @@ import java.util.concurrent.CompletableFuture;
 /** What switching accounts in the menu replaces: the session and everything made from it. */
 @Mixin(Minecraft.class)
 public interface MinecraftAccessor {
+	/** The window's title as the game makes it (for the test). */
+	@org.spongepowered.asm.mixin.gen.Invoker("createTitle")
+	String slashclient$createTitle();
+
 	@Mutable
 	@Accessor("user")
 	void slashclient$setUser(User user);

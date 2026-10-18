@@ -15,6 +15,9 @@ public class GameDungeon implements FabricClientGameTest {
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			var server = world.getServer();
+			// the window says SlashClient and its version, and servers are told "slashclient"
+			String branding = context.computeOnClient(mc -> TestHooks.branding());
+			if (!branding.matches("SlashClient \\d[\\w.\\-]*\\|slashclient")) throw new AssertionError("Title and brand: " + branding);
 			server.runCommand("time set 6000");
 			// flying, so waiting above the place before the dungeon is built is safe
 			server.runCommand("gamemode creative @a");

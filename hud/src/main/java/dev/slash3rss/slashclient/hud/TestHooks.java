@@ -429,6 +429,12 @@ public final class TestHooks {
 		return DungeonRooms.summary();
 	}
 
+	/** The window's title and the brand the server is told. */
+	public static String branding() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		return ((dev.slash3rss.slashclient.hud.mixin.MinecraftAccessor) mc).slashclient$createTitle() + "|" + net.minecraft.client.ClientBrandRetriever.getClientModName();
+	}
+
 	/** The dungeon map over the whole screen, or closed. */
 	public static void dungeonFull(boolean open) {
 		var mc = net.minecraft.client.Minecraft.getInstance();

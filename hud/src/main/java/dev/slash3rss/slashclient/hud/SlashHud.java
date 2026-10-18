@@ -236,4 +236,9 @@ public class SlashHud implements ClientModInitializer {
 			pose.popMatrix();
 		}
 	}
+
+	/** F3's version line with SlashClient's name in place of the game's ("Minecraft 1.21.4 …"). */
+	public static String brandedVersion(String line) {
+		return line.startsWith("Minecraft ") ? "SlashClient " + line.substring("Minecraft ".length()) : line;
+	}
 }
