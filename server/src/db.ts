@@ -348,19 +348,21 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
     this.db.prepare('DELETE FROM cape_grants WHERE uuid = ? AND cape = ?').run(uuid, cape);
   }
 
-  /** Takes a cape off everyone wearing it who may not any more. */
-  clearCape(cape: string, exceptGranted: boolean) {
-    this.db.prepare(`UPDATE users SET cape = '' WHERE cape = ?${exceptGranted ? ' AND uuid NOT IN (SELECT uuid FROM cape_grants WHERE cape = ?)' : ''}`)
-      .run(...(exceptGranted ? [cape, cape] : [cape]));
-    this.clearFromCharacters(cape, exceptGranted);
+  /** Takes a cape off everyone wearing it who may not any more (those `spare` says so keep it: admins). */
+  clearCape(cape: string, exceptGranted: boolean, spare: (uuid: string) => boolean = () => false) {
+    const granted = new Set(exceptGranted ? this.grantees(cape).map((g) => g.id) : []);
+    for (const r of this.db.prepare('SELECT uuid FROM users WHERE cape = ?').all(cape) as { uuid: string }[]) {
+      if (!granted.has(r.uuid) && !spare(r.uuid)) this.setCape(r.uuid, '');
+    }
+    this.clearFromCharacters(cape, exceptGranted, spare);
   }
 
   /** The same for the characters' own sets. */
-  private clearFromCharacters(id: string, exceptGranted: boolean) {
+  private clearFromCharacters(id: string, exceptGranted: boolean, spare: (uuid: string) => boolean) {
     const granted = new Set(exceptGranted ? this.grantees(id).map((g) => g.id) : []);
     const rows = this.db.prepare("SELECT uuid, subject, loadout FROM identities WHERE provider = 'minecraft' AND loadout LIKE ?").all(`%"${id}"%`) as { uuid: string; subject: string; loadout: string }[];
     for (const r of rows) {
-      if (granted.has(r.uuid)) continue;
+      if (granted.has(r.uuid) || spare(r.uuid)) continue;
       const l = parseLoadout(r.loadout);
       for (const [slot, v] of Object.entries(l)) if (v === id) delete l[slot];
       this.setCharacterLoadout(r.uuid, r.subject, l);
@@ -372,16 +374,16 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
   }
 
   /** Takes an item (wings, elytra, trail, aura, pet) off everyone wearing it who may not any more. */
-  clearItem(id: string, exceptGranted: boolean) {
+  clearItem(id: string, exceptGranted: boolean, spare: (uuid: string) => boolean = () => false) {
     const granted = new Set(exceptGranted ? this.grantees(id).map((g) => g.id) : []);
     const rows = this.db.prepare('SELECT uuid, loadout FROM users WHERE loadout LIKE ?').all(`%"${id}"%`) as { uuid: string; loadout: string }[];
     for (const r of rows) {
-      if (granted.has(r.uuid)) continue;
+      if (granted.has(r.uuid) || spare(r.uuid)) continue;
       const l = parseLoadout(r.loadout);
       for (const [slot, v] of Object.entries(l)) if (v === id) delete l[slot];
       this.setLoadout(r.uuid, l);
     }
-    this.clearFromCharacters(id, exceptGranted);
+    this.clearFromCharacters(id, exceptGranted, spare);
   }
 
   /** How many players wear each item (cape and the other slots). */

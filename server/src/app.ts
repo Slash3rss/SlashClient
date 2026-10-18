@@ -325,7 +325,7 @@ export function createApp(cfg: Config) {
       const badge = user ? badgeOf(user) : '';
       const known = knownTo(req.headers);
       const frames = framesFor(req.headers);
-      const items = ITEMS.filter((i) => capeSetting(settings, i.id).enabled && known(i)).map((i) => ({
+      const items = ITEMS.filter((i) => (capeSetting(settings, i.id).enabled || badge === 'admin') && known(i)).map((i) => ({
         id: i.id, slot: i.slot, name: i.name, rank: i.rank, frames: frames(i),
         exclusive: capeSetting(settings, i.id).exclusive, available: mayWear(settings, granted, i.id, i.slot, badge),
       }));

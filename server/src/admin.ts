@@ -118,7 +118,12 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
       const next = { enabled: typeof enabled === 'boolean' ? enabled : now.enabled, exclusive: typeof exclusive === 'boolean' ? exclusive : now.exclusive };
       db.setCosmetic(id, next.enabled, next.exclusive);
       // who may not wear it any more takes it off
-      const clear = (exceptGranted: boolean) => (it!.slot === 'cape' ? db.clearCape(id, exceptGranted) : db.clearItem(id, exceptGranted));
+      // admins keep it: they may wear everything
+      const isAdmin = (uuid: string) => {
+        const u = db.user(uuid);
+        return !!u && (u.role === 'admin' || ctx.configAdmins.has(u.handle.toLowerCase()));
+      };
+      const clear = (exceptGranted: boolean) => (it!.slot === 'cape' ? db.clearCape(id, exceptGranted, isAdmin) : db.clearItem(id, exceptGranted, isAdmin));
       if (!next.enabled) clear(false);
       else if (next.exclusive) clear(true);
       db.log(me, 'cape_settings', id, `${next.enabled ? 'włączona' : 'wyłączona'}${next.exclusive ? ', ekskluzywna' : ''}`);
@@ -140,7 +145,9 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
       db.revoke(userId, id);
       // what was granted alone (exclusive, or another rank's) comes off with the grant
       const it = item(id);
-      if (it && (capeSetting(db.cosmeticSettings(), id).exclusive || it.rank)) {
+      // (an admin keeps it: admins may wear everything)
+      const admin = user.role === 'admin' || ctx.configAdmins.has(user.handle.toLowerCase());
+      if (it && !admin && (capeSetting(db.cosmeticSettings(), id).exclusive || it.rank)) {
         if (user.cape === id) db.setCape(userId, '');
         if (Object.values(user.loadout).includes(id)) db.setLoadout(userId, Object.fromEntries(Object.entries(user.loadout).filter(([, v]) => v !== id)));
         for (const m of db.minecraftAccounts(userId)) {

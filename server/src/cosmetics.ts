@@ -179,10 +179,12 @@ export function capeSetting(settings: Map<string, CosmeticSetting>, id: string):
 /**
  * Whether a player may wear an item now: it exists (in `slot`, when given), is on, is not exclusive
  * to others, and is not for a rank the player does not have. `badge` is the player's rank colour.
+ * Admins may wear everything, also what is switched off or exclusive.
  */
 export function mayWear(settings: Map<string, CosmeticSetting>, granted: string[], id: string, slot: Slot = 'cape', badge = ''): boolean {
   const it = item(id);
   if (!it || it.slot !== slot) return false;
+  if (badge === 'admin') return true;
   const s = capeSetting(settings, id);
   if (!s.enabled || (s.exclusive && !granted.includes(id))) return false;
   return !it.rank || badge === 'admin' || badge === it.rank || granted.includes(id);

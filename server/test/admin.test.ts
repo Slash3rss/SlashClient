@@ -180,6 +180,30 @@ describe('admin panel', () => {
     await call('POST', '/v1/admin/cosmetics/dragon', boss.token, { exclusive: false });
   });
 
+  it('lets admins wear every cosmetic: exclusive, switched off, any rank, and keeps theirs on', async () => {
+    const boss = await login('Szef');
+    await call('POST', '/v1/me', boss.token, { cape: 'mono', loadout: { pet: 'bee' } });
+    // made exclusive or switched off: the admin keeps them, and may still pick them
+    await call('POST', '/v1/admin/cosmetics/mono', boss.token, { exclusive: true });
+    await call('POST', '/v1/admin/cosmetics/bee', boss.token, { enabled: false });
+    const me = (await call('GET', '/v1/me', boss.token)).body;
+    assert.equal(me.cape, 'mono');
+    assert.equal(me.loadout.pet, 'bee');
+    assert.equal((await call('POST', '/v1/me', boss.token, { cape: 'staff_friend' })).body.cape, 'staff_friend');
+    assert.equal((await call('POST', '/v1/me', boss.token, { loadout: { pet: 'bee', wings: 'phoenix' } })).body.loadout.wings, 'phoenix');
+    // the catalog shows the admin everything, and all of it available
+    const items = (await call('GET', '/v1/cosmetics', boss.token)).body.items;
+    assert.ok(items.some((i: any) => i.id === 'bee'));
+    assert.ok(items.every((i: any) => i.available));
+    // others: the switched-off one is gone, the exclusive one locked
+    const ola = await login('Ola2');
+    const theirs = (await call('GET', '/v1/cosmetics', ola.token)).body.items;
+    assert.ok(!theirs.some((i: any) => i.id === 'bee'));
+    assert.equal(theirs.find((i: any) => i.id === 'mono').available, false);
+    await call('POST', '/v1/admin/cosmetics/mono', boss.token, { exclusive: false });
+    await call('POST', '/v1/admin/cosmetics/bee', boss.token, { enabled: true });
+  });
+
   it('deletes an account with its friends and messages', async () => {
     const boss = await login('Szef');
     const x = await login('Usuwany');
