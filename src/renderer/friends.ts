@@ -687,6 +687,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
           if (m.invite) {
             const inv = m.invite;
             deps.toast(t('{0} zaprasza Cię na {1}', f.name, inv.server), false, { label: t('Dołącz'), run: () => deps.join(inv.server, inv.version) });
+            if (!document.hasFocus()) systemNotify(f.name, t('{0} zaprasza Cię na {1}', f.name, inv.server), f.id);
           } else notify(f, m.text);
         }
         renderList();
@@ -712,7 +713,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       }
       case 'friends': {
         await refreshList();
-        if (e.request) deps.toast(t('{0} zaprasza Cię do znajomych.', e.request.name));
+        if (e.request) {
+          const text = t('{0} zaprasza Cię do znajomych.', e.request.name);
+          deps.toast(text);
+          if (!document.hasFocus()) systemNotify('SlashClient', text);
+        }
         if (e.accepted) deps.toast(t('{0} przyjmuje zaproszenie.', e.accepted.name));
         if (selected && !friend(selected)) selected = undefined;
         renderList();
@@ -725,15 +730,21 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   /** New message while the chat is not in front: a toast, and a system notification when the window is in the background. */
   function notify(f: Friend, text: string) {
     const short = text.length > 120 ? `${text.slice(0, 117)}…` : text;
-    if (!document.hasFocus() && 'Notification' in window) {
-      const n = new Notification(f.name, { body: short, silent: false });
-      n.onclick = () => {
-        window.focus();
-        document.querySelector<HTMLButtonElement>('.nav[data-view="friends"]')?.click();
-        select(f.id);
-      };
-    } else deps.toast(t('{0}: {1}', f.name, short));
+    if (!document.hasFocus()) systemNotify(f.name, text, f.id);
+    else deps.toast(t('{0}: {1}', f.name, short));
   }
+
+  /** A system notification (made in the main process); clicking it opens Friends, and that friend's chat. */
+  function systemNotify(title: string, body: string, friendId?: string) {
+    void deps.api.notify(title, body, { view: 'friends', friendId }).catch(() => undefined);
+  }
+
+  // the player clicked one of those notifications: the launcher is in front again
+  deps.api.on('notify:open', (target: { view?: string; friendId?: string }) => {
+    if (target?.view !== 'friends') return;
+    document.querySelector<HTMLButtonElement>('.nav[data-view="friends"]')?.click();
+    if (target.friendId && friend(target.friendId)) void select(target.friendId);
+  });
 
   // marking a chat read when the player comes back to it
   addEventListener('focus', () => selected && isVisible() && markRead(selected));
