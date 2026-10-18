@@ -73,7 +73,7 @@ public class GameDungeon implements FabricClientGameTest {
 			context.takeScreenshot("dungeon-map");
 			// what is about: a mob, a spawner (an armour stand with one on its head), round and zoomed in
 			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b}", x0 + 6, y, z0 + 6));
-			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,equipment:{head:{id:\"minecraft:spawner\",count:1}}}", x0 - 6, y, z0 + 6));
+			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b," + head("minecraft:spawner") + "}", x0 - 6, y, z0 + 6));
 			context.runOnClient(mc -> TestHooks.dungeonRound(true));
 			context.waitTicks(30);
 			context.takeScreenshot("dungeon-map-round");
@@ -100,14 +100,14 @@ public class GameDungeon implements FabricClientGameTest {
 			if (Integer.parseInt(rooms.split(" ")[0]) != 9) throw new AssertionError("Rooms from the map above: " + rooms);
 			context.takeScreenshot("dungeon-rooms");
 			// spawner holograms (armour stand names): the respawn time counts as cleared
-			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,CustomNameVisible:1b,CustomName:\"Posiłki za: 30s\"}", x0 - 12, y + 1, z0 - 12));
-			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,CustomNameVisible:1b,CustomName:\"Pozostałe moby: 4\"}", x0 + 12, y + 1, z0 - 12));
+			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,CustomNameVisible:1b," + name("\"Posiłki za: 30s\"") + "}", x0 - 12, y + 1, z0 - 12));
+			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,CustomNameVisible:1b," + name("\"Pozostałe moby: 4\"") + "}", x0 + 12, y + 1, z0 - 12));
 			// mob classes by their name's colour: an elite (gold) and a mini boss (dark red)
-			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b,CustomName:{text:\"Elita\",color:\"gold\"}}", x0 - 3, y, z0 + 9));
-			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b,CustomName:{text:\"Mini boss\",color:\"dark_red\"}}", x0 + 3, y, z0 + 9));
+			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b," + name("{\"text\":\"Elita\",\"color\":\"gold\"}") + "}", x0 - 3, y, z0 + 9));
+			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b," + name("{\"text\":\"Mini boss\",\"color\":\"dark_red\"}") + "}", x0 + 3, y, z0 + 9));
 			// as on SkyUp: the health first in red, then the name in its class's colour; a spawner's hologram
-			server.runCommand(String.format("summon husk %d %d %d {NoAI:1b,PersistenceRequired:1b,CustomName:[{text:\"20.0 ❤ | \",color:\"red\"},{text:\"Giermek \",color:\"gold\"},{text:\"poz. 1\",color:\"gray\"}]}", x0 + 12, y, z0 - 9));
-			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,CustomNameVisible:1b,CustomName:{text:\"Spawner\",color:\"gold\"}}", x0 + 12, y + 2, z0 - 12));
+			server.runCommand(String.format("summon husk %d %d %d {NoAI:1b,PersistenceRequired:1b," + name("[{\"text\":\"20.0 ❤ | \",\"color\":\"red\"},{\"text\":\"Giermek \",\"color\":\"gold\"},{\"text\":\"poz. 1\",\"color\":\"gray\"}]") + "}", x0 + 12, y, z0 - 9));
+			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,CustomNameVisible:1b," + name("{\"text\":\"Spawner\",\"color\":\"gold\"}") + "}", x0 + 12, y + 2, z0 - 12));
 			context.waitTicks(30);
 			String target = context.computeOnClient(mc -> TestHooks.targetName());
 			if (!target.equals("☺ Żniwiarz poz. 100|Steve")) throw new AssertionError("Target's name: " + target);
@@ -135,5 +135,27 @@ public class GameDungeon implements FabricClientGameTest {
 			map = context.computeOnClient(mc -> TestHooks.dungeonMap());
 			if (!map.split(",")[1].equals("false")) throw new AssertionError("The map stayed on after leaving: " + map);
 		}
+	}
+
+	/** A custom name in a summon's NBT (JSON text): a component from 1.21.5, a JSON string before. */
+	private static String name(String json) {
+		//#if MC >= 1.21.5
+		return "CustomName:" + json;
+		//#else
+		//$ return "CustomName:'" + json + "'";
+		//#endif
+	}
+
+	/** An armour stand's head item in NBT: "equipment" from 1.21.5, "ArmorItems" (feet first) before. */
+	private static String head(String item) {
+		//#if MC >= 1.21.5
+		return "equipment:{head:{id:\"" + item + "\",count:1}}";
+		//#endif
+		//#if MC >= 1.20.5 && MC < 1.21.5
+		//$ return "ArmorItems:[{},{},{},{id:\"" + item + "\",count:1}]";
+		//#endif
+		//#if MC < 1.20.5
+		//$ return "ArmorItems:[{},{},{},{id:\"" + item + "\",Count:1b}]";
+		//#endif
 	}
 }
