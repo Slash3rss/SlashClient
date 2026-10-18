@@ -1,57 +1,78 @@
 package dev.slash3rss.slashclient.hud;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Reads one of SkyUp.pl's island tasks from an item's tooltip (its name and lore, as plain text).
- * The tasks GUI (a chest titled after the tier, e.g. "NOWICJUSZ") shows each task as an item:
+ * Reads SkyUp.pl's challenges ("Wyzwania") from an item's tooltip: its name and lore, as plain text.
+ * The challenges menu ("Wyzwania") holds the categories and the daily task; each category's GUI
+ * ("Wyzwania » Nowicjusz") holds its tasks, one item each, a completed one gone from it:
  *
  * <pre>
- * » Huta «
- * ▪ Zalecane ukończenie wyzwania Mała farma        (sometimes)
- * ▪ Opis » Przepal surowe żelazo. Od czegoś          (wraps over lines)
- *   trzeba zacząć, co nie?
- *
- * ▪ Posiadaj w ekwipunku:                            (one or more sections: a header…)
- *   » Sztabka żelaza: 16                             (…and "» thing: progress" lines)
- * ▪ Zbierz:
- *   » Kamień: 28/128
- *
+ * » Kryptomaniak «
+ * ▪ Wymaga ukończenia wyzwania Zmory           (or "Zalecane ukończenie wyzwania …"; sometimes)
+ *   podziemi
+ * ▪ Opis » Zawalcz w Dungeonach! Uważaj na
+ *   siebie!
+ * ▪ Dotrzyj do poziomu w dungeonach: 10        (a requirement written on its header…)
+ *   poz.
+ * ▪ Stwórz:                                    (…or a header and its "»" lines)
+ *   » Sashimi: 0/3
  * ▪ Za ukończenie otrzymasz:
- *   » 10 x Węgiel
- * ▪ Uwaga » Przedmioty zostaną zabrane!              (sometimes)
+ *   » 1 x Żelazny miecz (Ostrość V)
+ * ▪ Uwaga » Przedmioty zostaną zabrane!        (sometimes)
  * ▪ LPM » Ukończ
  * </pre>
+ *
+ * A line opens a block when it is not indented ("▪ …"); an indented "» …" line is one of the block's
+ * entries; any other indented line goes on with the line above it (the server wraps long lines).
+ * Headers are not listed anywhere: new kinds of requirements are read the same way. A category in
+ * the menu has "Pozostałe zadania » 16" and "Za ukończenie poziomu otrzymasz"; the daily task has
+ * "Kategoria » …".
  *
  * Plain Java only (no game classes), so it reads the same in every version and in tests.
  */
 public final class SkyTaskParser {
 	private SkyTaskParser() {}
 
-	/** One task as read from its item. Kept as it is in the saved file. */
+	/** One task (or a category of the menu) as read from its item. Kept as it is in the saved file. */
 	public static final class Task {
-		public String tier = "", name = "", recommended = "", description = "";
+		/** The category ("Nowicjusz"), or the menu's title for the daily task. */
+		public String tier = "", name = "", description = "";
+		/** "Zalecane ukończenie wyzwania …" (advised first) and "Wymaga ukończenia wyzwania …" (locked until). */
+		public String recommended = "", requires = "";
 		public List<Section> sections = new ArrayList<>();
 		public List<String> rewards = new ArrayList<>();
+		/** "Key » value" lines: "Pozostałe zadania » 16", "Kategoria » Wirtuoz", … */
+		public Map<String, String> info = new LinkedHashMap<>();
 		/** "Uwaga » Przedmioty zostaną zabrane!": the items are taken on completing. */
 		public boolean takesItems;
+		/** A category of the menu (it has "Pozostałe zadania"), not a task. */
+		public boolean category;
 		/** The item showing it (e.g. "minecraft:iron_ingot"), for its icon. */
 		public String icon = "";
 		/** When it was last read from the GUI (ms). */
 		public long seen;
-		/** Gone from its GUI at the last look: completed. */
-		public boolean done;
 
 		public String key() {
 			return tier + "|" + name;
 		}
+
+		/** A category's tasks left ("Pozostałe zadania"), or -1. */
+		public int remaining() {
+			String v = info.get("Pozostałe zadania");
+			if (v == null) return -1;
+			long n = number(v);
+			return n < 0 ? -1 : (int) n;
+		}
 	}
 
-	/** A header ("Zbierz:", "Posiadaj w ekwipunku:", …) and its lines. */
+	/** A header ("Zbierz", "Posiadaj w ekwipunku", …) and its lines. */
 	public static final class Section {
 		public String header = "";
 		public List<Req> items = new ArrayList<>();
@@ -62,11 +83,11 @@ public final class SkyTaskParser {
 		}
 	}
 
-	/** One requirement: "Kamień: 28/128" (current 28 of 128) or "Sztabka żelaza: 16" (16 needed, current unknown). */
+	/** One requirement: "Kamień: 28/128" (28 of 128), "Sztabka żelaza: 16" (16 needed), "Wyłów: 0g/200 000g", "74x74". */
 	public static final class Req {
 		public String thing = "";
 		public long current = -1, required = -1;
-		/** What follows the number ("poz."), or the whole text when there is no number. */
+		/** What goes with the numbers ("poz.", "g"), or the whole value when there is no number. */
 		public String unit = "";
 
 		public boolean known() {
@@ -76,26 +97,62 @@ public final class SkyTaskParser {
 
 	private static final Pattern TITLE = Pattern.compile("^(?:»|>>)\\s*(.+?)\\s*(?:«|<<)$");
 	private static final Pattern ARROW = Pattern.compile("^(?:»|>>)\\s*");
-	/** "28/128", "1 024 / 2 048" at the end of a line. */
-	private static final Pattern FRACTION = Pattern.compile("(\\d[\\d  ]*)\\s*/\\s*(\\d[\\d  ]*)\\s*$");
-	/** "16", "1 poz.", "5 poz." at the end of a line. */
-	private static final Pattern AMOUNT = Pattern.compile("(\\d[\\d  ]*)\\s*([^\\d\\s][^\\d]*)?$");
+	/** "Key » value" on a block's line. */
+	private static final Pattern INFO = Pattern.compile("^(.+?)\\s*(?:»|>>)\\s*(.+)$");
+	/** "28/128", "1 024 / 2 048", "0g/200 000g". */
+	private static final String NUMBER = "(\\d+(?:[  ]\\d{3})*)";
+	private static final Pattern FRACTION = Pattern.compile("^" + NUMBER + "\\s*([^\\d/\\s]*)\\s*/\\s*" + NUMBER + "\\s*(\\S.*)?$");
+	/** "16", "20 poz.", but not "74x74". */
+	private static final Pattern AMOUNT = Pattern.compile("^" + NUMBER + "\\s*([^\\d\\s].*)?$");
+	/** Where one requirement ends and the next starts on a shared entry: after a number, at a comma. */
+	private static final Pattern LIST = Pattern.compile("(?<=\\d)\\s*,\\s+(?=\\D)");
+	/** "1 x Generator kamienia z 10 zużytymi punktami ulepszeń": how many of what. */
+	private static final Pattern TIMES = Pattern.compile("^" + "(\\d+)" + "\\s*x\\s+(.+)$");
+	private static final Pattern SIZE = Pattern.compile("^\\d+\\s*x\\s*\\d+$");
 	/** Bullets and other marks before a line's text. */
-	private static final Pattern BULLET = Pattern.compile("^[\\s▪■•●◆◇▸►\\-*·]+");
-
-	/** The headers seen so far ("Stwórz:", "Postaw", "Posiadaj w ekwipunku:", …); others are read as headers too, after an empty line. */
-	private static final Pattern HEADER = Pattern.compile("^(stwórz|postaw|zbierz|zjedz|wyłów|posiadaj|stój|zabij|wydobądź|zdobądź|ulepsz|odwiedź)\\b.*(:|[^.!?…]$)");
-
-	private enum Mode { NONE, RECOMMENDED, DESCRIPTION, REQUIREMENTS, REWARDS }
+	private static final Pattern BULLET = Pattern.compile("^[\\s▪■•●◆◇▸►*·]+");
 
 	/** Colour codes (§x) and outer spaces off. */
 	public static String plain(String s) {
 		return s == null ? "" : s.replaceAll("§.", "").replace(' ', ' ').strip();
 	}
 
+	/** A line of the tooltip: a block's own text and its "»" entries, each joined with the lines that go on from it. */
+	private static final class Block {
+		String text;
+		final List<String> entries = new ArrayList<>();
+
+		Block(String text) {
+			this.text = text;
+		}
+	}
+
+	/** The lore cut into blocks, by indentation (see the class comment). */
+	static List<Block> blocks(List<String> lore) {
+		List<Block> out = new ArrayList<>();
+		for (String raw : lore) {
+			String s = raw == null ? "" : raw.replaceAll("§.", "").replace(' ', ' ');
+			String line = BULLET.matcher(s).replaceFirst("").strip();
+			if (line.isEmpty()) continue;
+			boolean indented = Character.isWhitespace(s.charAt(0)) && !s.strip().startsWith("▪");
+			Matcher arrow = ARROW.matcher(line);
+			Block last = out.isEmpty() ? null : out.get(out.size() - 1);
+			if (arrow.find() && last != null && indented) {
+				last.entries.add(line.substring(arrow.end()).strip());
+			} else if (indented && last != null) {
+				// a wrapped line: it goes on with the entry (or block) above
+				if (last.entries.isEmpty()) last.text += " " + line;
+				else last.entries.set(last.entries.size() - 1, last.entries.get(last.entries.size() - 1) + " " + line);
+			} else {
+				out.add(new Block(line));
+			}
+		}
+		return out;
+	}
+
 	/**
 	 * The task in an item's name and lore, or null when it is not one: a title "» … «" and at least
-	 * one requirement or the rewards line.
+	 * one requirement, the rewards line, or (a category of the menu) "Pozostałe zadania".
 	 */
 	public static Task parse(String tier, String name, List<String> lore) {
 		Matcher title = TITLE.matcher(plain(name));
@@ -104,98 +161,95 @@ public final class SkyTaskParser {
 		task.tier = plain(tier);
 		task.name = title.group(1).strip();
 		boolean rewards = false;
-		Mode mode = Mode.NONE;
-		Section section = null;
-		for (String raw : lore) {
-			String line = BULLET.matcher(plain(raw)).replaceFirst("").strip();
-			if (line.isEmpty()) {
-				if (mode == Mode.RECOMMENDED || mode == Mode.DESCRIPTION) mode = Mode.NONE;
-				continue;
-			}
-			String lower = line.toLowerCase(Locale.ROOT);
-			// a section's header right after the description, with no empty line between
-			if ((mode == Mode.RECOMMENDED || mode == Mode.DESCRIPTION) && HEADER.matcher(lower).find()) mode = Mode.NONE;
-			if (lower.startsWith("zalecane ukończenie")) {
-				task.recommended = line.replaceFirst("(?i)^zalecane ukończenie( wyzwania)?\\s*", "");
-				mode = Mode.RECOMMENDED;
-			} else if (lower.matches("^opis\\s*(»|>>|:).*")) {
-				task.description = line.replaceFirst("^(?i)opis\\s*(»|>>|:)\\s*", "");
-				mode = Mode.DESCRIPTION;
+		for (Block b : blocks(lore)) {
+			String text = b.text, lower = text.toLowerCase(Locale.ROOT);
+			if (lower.matches("^opis\\s*(»|>>|:).*")) {
+				task.description = text.replaceFirst("^(?i)opis\\s*(»|>>|:)\\s*", "");
+			} else if (lower.startsWith("zalecane ukończenie")) {
+				task.recommended = text.replaceFirst("(?i)^zalecane ukończenie( wyzwania| wyzwań)?\\s*", "");
+			} else if (lower.startsWith("wymaga ukończenia")) {
+				task.requires = text.replaceFirst("(?i)^wymaga ukończenia( wyzwania| wyzwań)?\\s*", "");
+			} else if (lower.startsWith("za ukończenie poziomu")) {
+				task.category = true;
+				task.rewards.addAll(b.entries);
 			} else if (lower.startsWith("za ukończenie")) {
 				rewards = true;
-				mode = Mode.REWARDS;
+				task.rewards.addAll(b.entries);
+			} else if (lower.startsWith("nagrody")) {
+				// rewards under a note of their own ("Nagrody » Pieniądze na pierwszy spawner!")
+				rewards = true;
+				task.rewards.addAll(b.entries);
+			} else if (lower.startsWith("na tym poziomie otrzymasz")) {
+				task.category = true;
 			} else if (lower.startsWith("uwaga")) {
 				if (lower.contains("zabrane")) task.takesItems = true;
-				mode = Mode.NONE;
-			} else if (lower.startsWith("lpm") || lower.startsWith("ppm")) {
-				mode = Mode.NONE;
-			} else if (mode == Mode.RECOMMENDED) {
-				task.recommended += " " + line;
-			} else if (mode == Mode.DESCRIPTION) {
-				task.description += " " + line;
-			} else if (mode == Mode.REWARDS) {
-				Matcher arrow = ARROW.matcher(line);
-				if (arrow.find()) task.rewards.add(line.substring(arrow.end()).strip());
-				// a wrapped reward line goes on with the one before
-				else if (!task.rewards.isEmpty()) task.rewards.set(task.rewards.size() - 1, task.rewards.get(task.rewards.size() - 1) + " " + line);
+			} else if (lower.startsWith("lpm") || lower.startsWith("ppm") || lower.startsWith("śpm")) {
+				// what a click does
+			} else if (b.entries.isEmpty() && INFO.matcher(text).matches()) {
+				Matcher m = INFO.matcher(text);
+				m.matches();
+				task.info.put(m.group(1).strip(), m.group(2).strip());
 			} else {
-				Matcher arrow = ARROW.matcher(line);
-				if (arrow.find() && section != null) {
-					section.items.add(req(line.substring(arrow.end()).strip()));
-					mode = Mode.REQUIREMENTS;
-					continue;
+				Section section = new Section();
+				int colon = text.indexOf(':');
+				String value = colon >= 0 ? text.substring(colon + 1).strip() : "";
+				section.header = colon >= 0 ? text.substring(0, colon).strip() : text;
+				if (!value.isEmpty()) {
+					// the requirement on the header itself: "Posiadaj poziom wyspy: 20 poz."
+					Req r = value(value);
+					r.thing = section.header;
+					section.items.add(r);
 				}
-				// a line wrapped from the requirement before (that had no number yet)
-				if (mode == Mode.REQUIREMENTS && section != null && !section.items.isEmpty() && !line.endsWith(":")
-					&& section.items.get(section.items.size() - 1).required < 0) {
-					Req last = section.items.get(section.items.size() - 1);
-					section.items.set(section.items.size() - 1, req(last.thing + (last.unit.isEmpty() ? "" : ": " + last.unit) + " " + line));
-					continue;
-				}
-				// a header: "Zbierz:", "Postaw", or one with its value ("Posiadaj poziom dowolnej pracy: 5 poz.")
-				section = new Section();
-				task.sections.add(section);
-				mode = Mode.REQUIREMENTS;
-				int colon = line.lastIndexOf(':');
-				if (colon >= 0 && colon < line.length() - 1) {
-					section.header = line.substring(0, colon).strip();
-					section.items.add(req(line));
-				} else {
-					section.header = colon >= 0 ? line.substring(0, colon).strip() : line;
-				}
+				// several on one entry, wrapped over lines: "Kostka magmy: 0/1, Muł (dorosły): 0/1, …"
+				for (String e : b.entries) for (String one : LIST.split(e)) section.items.add(req(one.strip()));
+				// a sentence of its own (no requirement in it) is no section
+				if (!section.items.isEmpty()) task.sections.add(section);
 			}
 		}
-		if (task.sections.isEmpty() && !rewards) return null;
-		task.description = task.description.strip();
-		task.recommended = task.recommended.strip();
+		if (task.info.containsKey("Pozostałe zadania")) task.category = true;
+		if (!task.category && task.sections.isEmpty() && !rewards) return null;
 		return task;
 	}
 
 	/** "Kamień: 28/128", "Sztabka żelaza: 16", "kaktus: 1 poz.", or text with no number. */
 	static Req req(String text) {
-		Req r = new Req();
+		Matcher times = TIMES.matcher(text);
+		if (text.indexOf(':') < 0 && times.matches()) {
+			Req r = new Req();
+			r.required = number(times.group(1));
+			r.thing = times.group(2).strip();
+			return r;
+		}
 		int colon = text.lastIndexOf(':');
-		String value = colon >= 0 ? text.substring(colon + 1).strip() : text;
-		r.thing = colon >= 0 ? text.substring(0, colon).strip() : "";
+		Req r = value(colon >= 0 ? text.substring(colon + 1).strip() : "");
+		r.thing = colon >= 0 ? text.substring(0, colon).strip() : text.strip();
+		return r;
+	}
+
+	/** The value of a requirement: "28/128", "0g/200 000g", "16", "20 poz.", "74x74". */
+	static Req value(String value) {
+		Req r = new Req();
 		Matcher f = FRACTION.matcher(value);
 		Matcher a = AMOUNT.matcher(value);
-		if (f.find() && f.start() == 0) {
+		if (SIZE.matcher(value).matches()) {
+			r.unit = value;
+		} else if (f.matches()) {
 			r.current = number(f.group(1));
-			r.required = number(f.group(2));
-		} else if (a.find() && a.start() == 0) {
+			r.required = number(f.group(3));
+			r.unit = f.group(4) != null ? f.group(4).strip() : f.group(2);
+		} else if (a.matches()) {
 			r.required = number(a.group(1));
 			r.unit = a.group(2) == null ? "" : a.group(2).strip();
-		} else if (colon >= 0) {
-			r.unit = value;
 		} else {
-			r.thing = text.strip();
+			r.unit = value;
 		}
 		return r;
 	}
 
-	private static long number(String digits) {
+	static long number(String digits) {
 		try {
-			return Long.parseLong(digits.replaceAll("[^\\d]", ""));
+			String d = digits.replaceAll("[^\\d]", "");
+			return d.isEmpty() ? -1 : Long.parseLong(d);
 		} catch (NumberFormatException e) {
 			return -1;
 		}

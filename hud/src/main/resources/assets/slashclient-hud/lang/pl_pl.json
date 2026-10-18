@@ -480,12 +480,13 @@
 	"slashclient-hud.skyTasks.now": "przed chwilą",
 	"slashclient-hud.skyTasks.ago": "%s min temu",
 	"slashclient-hud.skyTasks.reward": "Nagroda: %s",
-	"slashclient-hud.skyTasks.joinHint": "Zadania SkyUp: otwórz GUI zadań i wybierz kategorię (np. Nowicjusz), żeby wczytać obecny postęp.",
+	"slashclient-hud.skyTasks.joinHint": "Zadania SkyUp: otwórz Wyzwania i wejdź w kategorię (np. Nowicjusz), żeby wczytać obecny postęp.",
 	"slashclient-hud.skyTasks.max": "Najwięcej zadań na ekranie",
 	"slashclient-hud.skyTasks.compact": "Tryb zwarty",
 	"slashclient-hud.skyTasks.hideDone": "Ukryj gotowe do ukończenia",
 	"slashclient-hud.skyTasks.rewards": "Pokaż nagrody",
 	"slashclient-hud.skyTasks.trackAll": "Śledź wszystkie nieukończone",
 	"slashclient-hud.skyTasks.tierCount": "Ile zadań zostało w kategorii",
-	"slashclient-hud.skyTasks.joinHintSetting": "Przypomnienie po wejściu na serwer"
+	"slashclient-hud.skyTasks.joinHintSetting": "Przypomnienie po wejściu na serwer",
+	"slashclient-hud.skyTasks.requires": "Wymaga: %s"
 }

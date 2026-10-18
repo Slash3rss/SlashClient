@@ -480,12 +480,13 @@
 	"slashclient-hud.skyTasks.now": "just now",
 	"slashclient-hud.skyTasks.ago": "%s min ago",
 	"slashclient-hud.skyTasks.reward": "Reward: %s",
-	"slashclient-hud.skyTasks.joinHint": "SkyUp tasks: open the tasks GUI and pick a category (e.g. Nowicjusz) to load your current progress.",
+	"slashclient-hud.skyTasks.joinHint": "SkyUp tasks: open Wyzwania (challenges) and a category (e.g. Nowicjusz) to load your current progress.",
 	"slashclient-hud.skyTasks.max": "Most tasks on screen",
 	"slashclient-hud.skyTasks.compact": "Compact mode",
 	"slashclient-hud.skyTasks.hideDone": "Hide ready to complete",
 	"slashclient-hud.skyTasks.rewards": "Show rewards",
 	"slashclient-hud.skyTasks.trackAll": "Track all unfinished",
 	"slashclient-hud.skyTasks.tierCount": "Tasks left in the category",
-	"slashclient-hud.skyTasks.joinHintSetting": "Reminder on joining the server"
+	"slashclient-hud.skyTasks.joinHintSetting": "Reminder on joining the server",
+	"slashclient-hud.skyTasks.requires": "Needs: %s"
 }

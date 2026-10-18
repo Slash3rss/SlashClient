@@ -24,16 +24,16 @@ public class GameSkyTasks implements FabricClientGameTest {
 			world.getServer().runCommand("time set 6000");
 			world.getServer().runCommand("give @a iron_ingot 5");
 			context.waitTicks(10);
-			context.runOnClient(mc -> TestHooks.skyTasksScreen(false));
+			context.runOnClient(mc -> TestHooks.skyTasksScreen(false, true));
 			context.waitTicks(15);
 			// read from the GUI: six tasks (the sign is none), their sections and numbers
 			String tasks = context.computeOnClient(mc -> TestHooks.skyTasks());
 			String[] lines = tasks.strip().split("\n");
 			check(lines.length == 6, "six tasks", tasks);
-			check(tasks.contains("NOWICJUSZ|Podstawowy kamieniołom: Zbierz[Kamień 28/128] rewards=3"), "the quarry", tasks);
-			check(tasks.contains("NOWICJUSZ|A co tutaj tak ciemno?: Stwórz[Pochodnia 0/64] Postaw[Pochodnia 0/64]"), "the torches", tasks);
-			check(tasks.contains("NOWICJUSZ|Huta: Posiadaj w ekwipunku(inv)[") && tasks.contains(" -1/16] rewards=3"), "the furnace", tasks);
-			check(tasks.contains("NOWICJUSZ|Dobra praca się opłaca: Posiadaj poziom dowolnej pracy[Posiadaj poziom dowolnej pracy -1/5 poz.]"), "the job level", tasks);
+			check(tasks.contains("Nowicjusz|Podstawowy kamieniołom: Zbierz[Kamień 28/128] rewards=3"), "the quarry", tasks);
+			check(tasks.contains("Nowicjusz|A co tutaj tak ciemno?: Stwórz[Pochodnia 0/64] Postaw[Pochodnia 0/64]"), "the torches", tasks);
+			check(tasks.contains("Nowicjusz|Huta: Posiadaj w ekwipunku(inv)[") && tasks.contains(" -1/16] rewards=3"), "the furnace", tasks);
+			check(tasks.contains("Nowicjusz|Dobra praca się opłaca: Posiadaj poziom dowolnej pracy[Posiadaj poziom dowolnej pracy -1/5 poz.]"), "the job level", tasks);
 			check(tasks.contains("Stacja inkubacja: Posiadaj w ekwipunku(inv)[Kaktus -1/16] Posiadaj na wyspie co najmniej[kaktus -1/1 poz.] rewards=2 takes"), "the cactus", tasks);
 			// the furnace tracked with the key, the quarry with the middle button, the cursor on each
 			double[] huta = context.computeOnClient(mc -> TestHooks.slotPoint(3));
@@ -47,7 +47,15 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_MIDDLE);
 			context.waitTicks(3);
 			String tracked = context.computeOnClient(mc -> TestHooks.skyTracked());
-			check(tracked.equals("NOWICJUSZ|Podstawowy kamieniołom,NOWICJUSZ|Huta"), "tracked", tracked);
+			check(tracked.equals("Nowicjusz|Podstawowy kamieniołom,Nowicjusz|Huta"), "tracked", tracked);
+			// the menu: each category's tasks left, and the daily task (a task like the others)
+			context.runOnClient(mc -> TestHooks.skyMenuScreen(5));
+			context.waitTicks(10);
+			String categories = context.computeOnClient(mc -> TestHooks.skyCategories());
+			check(categories.equals("{Nowicjusz=5, Wirtuoz=16}"), "categories", categories);
+			tasks = context.computeOnClient(mc -> TestHooks.skyTasks());
+			check(tasks.contains("Wyzwania|Zadanie codzienne: Zbierz[Buraki 0/3888]") && tasks.strip().split("\n").length == 7, "daily task", tasks);
+			context.runOnClient(mc -> TestHooks.skyTasksScreen(false, false));
 			// the GUI with the gold marks and the hint for the task under the mouse
 			context.getInput().setCursorPos(huta[0], huta[1]);
 			context.waitTicks(5);
@@ -57,15 +65,15 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.skyTasksOptions(true, false));
 			context.waitTicks(10);
 			String rows = context.computeOnClient(mc -> TestHooks.skyRows());
-			check(rows.contains("NOWICJUSZ | ") && rows.contains("Podstawowy kamieniołom") && rows.contains("Kamień | 28/128") && rows.contains("Huta") && rows.contains(" | 5/16"), "HUD rows", rows);
+			check(rows.contains("Nowicjusz | ") && rows.contains("Podstawowy kamieniołom") && rows.contains("Kamień | 28/128") && rows.contains("Huta") && rows.contains(" | 5/16"), "HUD rows", rows);
 			context.takeScreenshot("skytasks-hud");
 			// the furnace completed: the GUI without it, and the HUD without it
-			context.runOnClient(mc -> TestHooks.skyTasksScreen(true));
+			context.runOnClient(mc -> TestHooks.skyTasksScreen(true, false));
 			context.waitTicks(15);
 			context.setScreen(() -> null);
 			context.waitTicks(5);
 			tasks = context.computeOnClient(mc -> TestHooks.skyTasks());
-			check(!tasks.contains("|Huta:") && tasks.strip().split("\n").length == 5, "completed task gone", tasks);
+			check(!tasks.contains("|Huta:") && tasks.strip().split("\n").length == 6, "completed task gone", tasks);
 			rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			check(!rows.contains("Huta") && rows.contains("Podstawowy kamieniołom"), "HUD after completing", rows);
 			context.runOnClient(mc -> TestHooks.skyTasksOptions(false, false));

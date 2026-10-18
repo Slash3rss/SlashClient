@@ -49,6 +49,9 @@ public final class SkyTasks {
 		Set<String> tracked = new LinkedHashSet<>();
 		Set<String> untracked = new LinkedHashSet<>();
 		Map<String, Long> tierSeen = new LinkedHashMap<>();
+		/** The menu's categories: tasks left in each ("Pozostałe zadania"), and when the menu was read. */
+		Map<String, Integer> categories = new LinkedHashMap<>();
+		long categoriesSeen;
 	}
 
 	static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("slashclient-skyup").resolve("zadania.json");
@@ -61,10 +64,12 @@ public final class SkyTasks {
 	private static String lastTier = "";
 	/** Tiers whose GUI was open since joining: the others show what was saved before. */
 	private static final Set<String> readNow = new java.util.HashSet<>();
+	private static boolean menuReadNow;
 
 	/** Joining a server: nothing read yet; on SkyUp, a line saying how to load the progress. */
 	static void joined(Minecraft mc) {
 		readNow.clear();
+		menuReadNow = false;
 		var server = mc.getCurrentServer();
 		HudConfig cfg = SlashHud.config;
 		if (server == null || !server.ip.toLowerCase(Locale.ROOT).contains("skyup") || !cfg.skyTasksJoinHint || !cfg.placement("skytasks").enabled) return;
@@ -83,6 +88,7 @@ public final class SkyTasks {
 			if (data.tracked == null) data.tracked = new LinkedHashSet<>();
 			if (data.untracked == null) data.untracked = new LinkedHashSet<>();
 			if (data.tierSeen == null) data.tierSeen = new LinkedHashMap<>();
+			if (data.categories == null) data.categories = new LinkedHashMap<>();
 			for (var e : data.tierSeen.entrySet()) if (lastTier.isEmpty() || e.getValue() >= data.tierSeen.getOrDefault(lastTier, 0L)) lastTier = e.getKey();
 		}
 		return data;
@@ -126,9 +132,16 @@ public final class SkyTasks {
 		}).orElse(null);
 	}
 
+	/** The category of a challenges GUI: "Wyzwania » Nowicjusz" is Nowicjusz; the menu ("Wyzwania") is itself. */
+	static String tier(AbstractContainerScreen<?> screen) {
+		String title = SkyTaskParser.plain(screen.getTitle().getString());
+		int arrow = title.lastIndexOf('»');
+		return arrow >= 0 && arrow < title.length() - 1 ? title.substring(arrow + 1).strip() : title;
+	}
+
 	/** One look at the open GUI: its tasks stored, and those of its tier it no longer shows gone. */
 	static void read(AbstractContainerScreen<?> screen) {
-		String tier = SkyTaskParser.plain(screen.getTitle().getString());
+		String tier = tier(screen);
 		Map<String, SkyTaskParser.Task> found = new LinkedHashMap<>();
 		for (Slot slot : screen.getMenu().slots) {
 			if (slot.container instanceof Inventory) continue;
@@ -138,6 +151,19 @@ public final class SkyTasks {
 		if (found.isEmpty()) return;
 		Data d = data();
 		long now = System.currentTimeMillis();
+		// the menu: each category's count (the daily task in it is a task like the others)
+		boolean menu = false;
+		for (SkyTaskParser.Task t : List.copyOf(found.values())) {
+			if (!t.category) continue;
+			menu = true;
+			found.remove(t.key());
+			Integer old = d.categories.put(t.name, t.remaining());
+			if (old == null || old != t.remaining()) dirty = true;
+		}
+		if (menu) {
+			d.categoriesSeen = now;
+			menuReadNow = true;
+		}
 		for (SkyTaskParser.Task t : found.values()) {
 			SkyTaskParser.Task old = d.tasks.get(t.key());
 			if (old == null || !same(old, t)) dirty = true;
@@ -155,8 +181,9 @@ public final class SkyTasks {
 			return gone;
 		});
 		d.tierSeen.put(tier, now);
-		lastTier = tier;
 		readNow.add(tier);
+		// the menu is no category: the one last open stays on the HUD
+		if (!menu) lastTier = tier;
 	}
 
 	/** The same task, as far as the HUD shows it. */
@@ -188,7 +215,7 @@ public final class SkyTasks {
 	static SkyTaskParser.Task hovered(AbstractContainerScreen<?> screen) {
 		Slot slot = ((ContainerScreenAccessor) screen).slashclient$hoveredSlot();
 		if (slot == null || slot.container instanceof Inventory) return null;
-		return task(SkyTaskParser.plain(screen.getTitle().getString()), slot.getItem());
+		return task(tier(screen), slot.getItem());
 	}
 
 	/** The middle button on a task: tracks it (and the server never sees the click). */
@@ -214,7 +241,7 @@ public final class SkyTasks {
 		if (SlashHud.config == null || !SlashHud.config.placement("skytasks").enabled) return;
 		Minecraft mc = Minecraft.getInstance();
 		ContainerScreenAccessor at = (ContainerScreenAccessor) screen;
-		String tier = SkyTaskParser.plain(screen.getTitle().getString());
+		String tier = tier(screen);
 		boolean any = false;
 		for (Slot slot : screen.getMenu().slots) {
 			if (slot.container instanceof Inventory) continue;
@@ -310,13 +337,22 @@ public final class SkyTasks {
 
 	/** The tier last open: how many of its tasks are left, and how many are ready to complete. */
 	static int[] tierCount(Minecraft mc) {
+		Data d = data();
 		int left = 0, ready = 0;
-		for (SkyTaskParser.Task t : data().tasks.values()) {
+		for (SkyTaskParser.Task t : d.tasks.values()) {
 			if (!t.tier.equals(lastTier)) continue;
 			left++;
 			if (ready(mc, t)) ready++;
 		}
+		// the menu read after the category: its count is the newer one
+		Integer menu = d.categories.get(lastTier);
+		if (menu != null && menu >= 0 && d.categoriesSeen > d.tierSeen.getOrDefault(lastTier, 0L)) left = menu;
 		return new int[] { left, ready };
+	}
+
+	/** The count shown is from this session (the category's GUI, or the menu, open since joining). */
+	private static boolean fresh() {
+		return readNow.contains(lastTier) || (menuReadNow && data().categories.containsKey(lastTier));
 	}
 
 	// ---------- on the HUD ----------
@@ -331,7 +367,7 @@ public final class SkyTasks {
 		List<Row> out = new ArrayList<>();
 		if (cfg.skyTasksTierCount && !lastTier.isEmpty()) {
 			int[] c = tierCount(mc);
-			boolean fresh = readNow.contains(lastTier);
+			boolean fresh = fresh();
 			out.add(new Row(lastTier, 0xFFA855F7, fresh ? Component.translatable("slashclient-hud.skyTasks.left", c[0], c[1]).getString()
 				: Component.translatable("slashclient-hud.skyTasks.notLoaded").getString(), fresh ? GREY : 0xFFF59E0B, -1, 0));
 		}
@@ -346,6 +382,8 @@ public final class SkyTasks {
 				age = min < 1 ? Component.translatable("slashclient-hud.skyTasks.now").getString() : Component.translatable("slashclient-hud.skyTasks.ago", min).getString();
 			}
 			out.add(new Row((ready ? "✔ " : "") + t.name, ready ? GREEN : GOLD, age, 0xFF6B7280, -1, 0));
+			// locked until another challenge is done
+			if (!cfg.skyTasksCompact && !t.requires.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyTasks.requires", t.requires).getString(), 0xFFF87171, "", 0, -1, 4));
 			for (SkyTaskParser.Section s : t.sections) {
 				if (!cfg.skyTasksCompact && t.sections.size() > 1) out.add(new Row(s.header, GREY, "", 0, -1, 4));
 				for (SkyTaskParser.Req r : s.items) {
@@ -435,6 +473,7 @@ public final class SkyTasks {
 	static void resetForTest() {
 		data = new Data();
 		readNow.clear();
+		menuReadNow = false;
 		lastTier = "";
 	}
 
@@ -457,6 +496,10 @@ public final class SkyTasks {
 			out.append(" rewards=").append(t.rewards.size()).append(t.takesItems ? " takes" : "").append('\n');
 		}
 		return out.toString();
+	}
+
+	static String debugCategories() {
+		return data().categories.toString();
 	}
 
 	static String debugTracked() {

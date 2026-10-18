@@ -833,11 +833,11 @@ public final class TestHooks {
 
 	/**
 	 * SkyUp's tasks GUI ("NOWICJUSZ"), made on the client with tasks as in the owner's screenshots
-	 * (one of them, Huta, left out when `withoutHuta`, as after completing it).
+	 * (one of them, Huta, left out when `withoutHuta`, as after completing it; `reset`: nothing known before).
 	 */
-	public static void skyTasksScreen(boolean withoutHuta) {
+	public static void skyTasksScreen(boolean withoutHuta, boolean reset) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
-		if (!withoutHuta) SkyTasks.resetForTest();
+		if (reset) SkyTasks.resetForTest();
 		SlashHud.config.placement("skytasks").enabled = true;
 		// the iron ingot as the game names it in the language the test plays in
 		String iron = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_INGOT).getHoverName().getString();
@@ -855,10 +855,28 @@ public final class TestHooks {
 		chest.setItem(5, task(net.minecraft.world.item.Items.BARRIER, "Stacja inkubacja", "Opis » Kaktusiarki to pieśń", "  przeszłości!", "",
 			"Posiadaj w ekwipunku:", "» Kaktus: 16", "Posiadaj na wyspie co najmniej:", "» kaktus: 1 poz.", "", "Za ukończenie otrzymasz:", "» Redstone na rozwój inkubatora:",
 			"» 24 x Sproszkowany redstone", "", "Uwaga » Przedmioty zostaną zabrane!", "LPM » Ukończ"));
-		// the "i" item and a plain one: no tasks
-		chest.setItem(13, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.OAK_SIGN));
+		// the info item and the way back: no tasks
+		chest.setItem(13, task(net.minecraft.world.item.Items.OAK_SIGN, "Informacje", "Wyzwania to kluczowy element", "  gry na Skyblocku!"));
+		chest.setItem(22, task(net.minecraft.world.item.Items.PLAYER_HEAD, "Wróć", "LPM » Wróć"));
 		var menu = net.minecraft.world.inventory.ChestMenu.threeRows(1000, mc.player.getInventory(), chest);
-		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, mc.player.getInventory(), net.minecraft.network.chat.Component.literal("NOWICJUSZ")));
+		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, mc.player.getInventory(), net.minecraft.network.chat.Component.literal("Wyzwania » Nowicjusz")));
+	}
+
+	/** SkyUp's challenges menu ("Wyzwania"): the Nowicjusz category with `left` tasks left, and the daily task. */
+	public static void skyMenuScreen(int left) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		var chest = new net.minecraft.world.SimpleContainer(27);
+		chest.setItem(10, task(net.minecraft.world.item.Items.BEETROOT, "Zadanie codzienne", "Ukończone zadania dzienne » 0", "Kategoria » Wirtuoz", "",
+			"Zbierz:", "» Buraki: 0/3 888", "", "Za ukończenie otrzymasz:", "» 20000.0 SC", "", "LPM » Ukończ wyzwanie"));
+		chest.setItem(12, task(net.minecraft.world.item.Items.EMERALD, "Nowicjusz", "Pozostałe zadania » " + left, "", "Na tym poziomie » 969", "Ukończyli » 458", "",
+			"Na tym poziomie otrzymasz m.in:", "» grzybnię", "", "LPM » Sprawdź wyzwania"));
+		chest.setItem(14, task(net.minecraft.world.item.Items.DIAMOND, "Wirtuoz", "Pozostałe zadania » 16", "", "Za ukończenie poziomu otrzymasz:", "» 500 SP", "", "LPM » Sprawdź wyzwania"));
+		var menu = net.minecraft.world.inventory.ChestMenu.threeRows(1001, mc.player.getInventory(), chest);
+		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, mc.player.getInventory(), net.minecraft.network.chat.Component.literal("Wyzwania")));
+	}
+
+	public static String skyCategories() {
+		return SkyTasks.debugCategories();
 	}
 
 	/** The middle of a slot of the open GUI, in window pixels (where the test's cursor goes). */
