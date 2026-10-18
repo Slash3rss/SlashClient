@@ -347,8 +347,55 @@ public final class SkyTasks {
 	}
 
 	/** How many of `thing` the player carries (by the name shown, or the game's item of that name); -1 when nothing tells. */
+	/** "Piec przynajmniej Szczęście I": an item with an enchantment of at least that level. */
+	private static final java.util.regex.Pattern AT_LEAST = java.util.regex.Pattern.compile("^(.+?)\\s+(?:przynajmniej|co najmniej|conajmniej)\\s+(.+?)\\s+([IVXL]+|\\d+)$");
+
+	static int roman(String s) {
+		if (s.matches("\\d+")) return Integer.parseInt(s);
+		int n = 0, last = 0;
+		for (int i = s.length() - 1; i >= 0; i--) {
+			int v = switch (s.charAt(i)) { case 'I' -> 1; case 'V' -> 5; case 'X' -> 10; case 'L' -> 50; default -> 0; };
+			n += v < last ? -v : v;
+			last = Math.max(last, v);
+		}
+		return n;
+	}
+
+	/** The level of an enchantment named `name` (in the game's language or Polish) on a stack: a real one, or one written in its lore ("Szczęście II"); 0 when none. */
+	static int enchantLevel(ItemStack stack, String name) {
+		String want = name.toLowerCase(Locale.ROOT);
+		int best = 0;
+		for (var e : stack.getEnchantments().entrySet()) {
+			var key = e.getKey().unwrapKey();
+			String pl = key.isPresent() ? SkyCounters.pl("enchantment." + key.get().identifier().toLanguageKey()) : "";
+			String own = net.minecraft.world.item.enchantment.Enchantment.getFullname(e.getKey(), 1).getString().replaceAll("\\s+[IVXL]+$", "");
+			if (pl.equalsIgnoreCase(want) || own.equalsIgnoreCase(want)) best = Math.max(best, e.getIntValue());
+		}
+		java.util.regex.Pattern written = java.util.regex.Pattern.compile("(?i)" + java.util.regex.Pattern.quote(name) + "\\s+([IVXL]+|\\d+)\\b");
+		for (Component line : SkyDump.lore(stack)) {
+			java.util.regex.Matcher m = written.matcher(SkyTaskParser.plain(line.getString()));
+			while (m.find()) best = Math.max(best, roman(m.group(1).toUpperCase(Locale.ROOT)));
+		}
+		return best;
+	}
+
 	static long carried(Minecraft mc, String thing) {
 		if (mc.player == null || thing.isEmpty()) return -1;
+		java.util.regex.Matcher least = AT_LEAST.matcher(thing.strip());
+		if (least.matches()) {
+			// "Piec przynajmniej Szczęście I": furnaces with Fortune I or better
+			Item item = itemNamed(mc, least.group(1));
+			if (item == null) return -1;
+			int level = roman(least.group(3));
+			Inventory inv = mc.player.getInventory();
+			long n = 0;
+			for (int i = 0; i < inv.getContainerSize(); i++) {
+				if (i >= Inventory.INVENTORY_SIZE && i != Inventory.SLOT_OFFHAND) continue;
+				ItemStack s = inv.getItem(i);
+				if (s.is(item) && enchantLevel(s, least.group(2)) >= level) n += s.getCount();
+			}
+			return n;
+		}
 		Item item = itemNamed(mc, thing);
 		Inventory inv = mc.player.getInventory();
 		long n = 0;

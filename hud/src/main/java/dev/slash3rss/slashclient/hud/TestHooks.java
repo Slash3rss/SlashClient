@@ -868,6 +868,8 @@ public final class TestHooks {
 		chest.setItem(8, task(net.minecraft.world.item.Items.PUFFERFISH, "Moczykij", "Opis » Wyłów 24 ryby.", "", "Wyłów:", "» Dowolna ryba: 0/24", "", "Za ukończenie otrzymasz:", "» 1 x Wędka", "", "LPM \ue510 » Ukończ"));
 		chest.setItem(9, task(net.minecraft.world.item.Items.SALMON, "Rybak", "Opis » Dziś rozliczamy się od wagi!", "", "Wyłów: 0g/200 000g", "", "Za ukończenie otrzymasz:", "» 250.0 SC", "", "LPM \ue510 » Ukończ"));
 		chest.setItem(10, task(net.minecraft.world.item.Items.TROPICAL_FISH, "Mamut morski", "Opis » Ostatecznie mogą być też ogromne.", "", "Wyłów conajmniej ogromne: 0/45", "", "Za ukończenie otrzymasz:", "» 500.0 SC", "", "LPM \ue510 » Ukończ"));
+		chest.setItem(11, task(net.minecraft.world.item.Items.FURNACE, "Piecoznawstwo", "Opis » Ulepsz piec na fortunę!", "", "Posiadaj w ekwipunku:", "» Piec przynajmniej Szczęście I: 1", "",
+			"Za ukończenie otrzymasz:", "» 250.0 SC", "", "LPM \ue510 » Ukończ"));
 		// the info item and the way back: no tasks
 		chest.setItem(13, task(net.minecraft.world.item.Items.OAK_SIGN, "Informacje", "Wyzwania to kluczowy element", "  gry na Skyblocku!"));
 		chest.setItem(22, task(net.minecraft.world.item.Items.PLAYER_HEAD, "Wróć", "LPM » Wróć"));

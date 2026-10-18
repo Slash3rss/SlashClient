@@ -310,9 +310,9 @@ public final class SkyCounters {
 			}
 			if (now - reeledAt > 2000) before = null;
 		}
-		// what is around, and the sidebar: read again each second
+		readNear(mc);
+		// the sidebar: read again each second
 		if (++tick % 20 == 0) {
-			near.clear();
 			readSidebar(mc);
 		}
 	}
@@ -404,24 +404,57 @@ public final class SkyCounters {
 		if (any) SkyTasks.changed();
 	}
 
-	/** How far around the player "Stój obok" looks (the server's own reach is not known). */
-	static final int NEAR_RADIUS = 6;
-	/** Each thing's count around the player, read at most once a second. */
+	/** How far around the player "Stój obok" looks: SkyUp's own reach, 30 blocks each way. */
+	static final int NEAR_RADIUS = 30;
+	/** The cube is read a few slices (x) a tick, all of it in about a second, so no tick takes long. */
+	private static final int SLICES_PER_TICK = 4;
+	/** Each kind of block in the last full read, and how many of it. */
+	private static Map<Block, Long> nearCounts = Map.of();
+	private static Map<Block, Long> reading = new HashMap<>();
+	private static BlockPos readAt;
+	private static int readX = Integer.MIN_VALUE;
+	private static boolean nearRead;
+	/** Each thing's count from the last full read. */
 	private static final Map<String, Long> near = new HashMap<>();
 
-	/** How many blocks named `thing` are around the player now (an estimate of "Stój obok"). */
+	/** Whether any known task asks for blocks around the player (only then is the world read). */
+	private static boolean wantNear() {
+		for (SkyTaskParser.Task t : SkyTasks.data().tasks.values()) for (SkyTaskParser.Section s : t.sections) if (kind(s) == Kind.NEAR) return true;
+		return false;
+	}
+
+	/** A few slices more of the cube around the player; a full one replaces the counts. */
+	private static void readNear(Minecraft mc) {
+		if (!wantNear()) return;
+		if (readX == Integer.MIN_VALUE) {
+			readAt = mc.player.blockPosition();
+			readX = -NEAR_RADIUS;
+			reading = new HashMap<>();
+		}
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		for (int i = 0; i < SLICES_PER_TICK && readX <= NEAR_RADIUS; i++, readX++) {
+			for (int dy = -NEAR_RADIUS; dy <= NEAR_RADIUS; dy++) for (int dz = -NEAR_RADIUS; dz <= NEAR_RADIUS; dz++) {
+				BlockState state = mc.level.getBlockState(pos.set(readAt.getX() + readX, readAt.getY() + dy, readAt.getZ() + dz));
+				if (!state.isAir()) reading.merge(state.getBlock(), 1L, Long::sum);
+			}
+		}
+		if (readX > NEAR_RADIUS) {
+			nearCounts = reading;
+			readX = Integer.MIN_VALUE;
+			nearRead = true;
+			near.clear();
+		}
+	}
+
+	/** How many blocks named `thing` are around the player (an estimate of "Stój obok"), or -1 before the first read. */
 	static long around(Minecraft mc, String thing) {
-		if (mc.player == null || mc.level == null) return -1;
+		if (!nearRead) return -1;
 		return near.computeIfAbsent(thing, k -> {
 			long n = 0;
-			BlockPos at = mc.player.blockPosition();
-			BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-			Map<Block, Boolean> seen = new HashMap<>();
-			for (int dx = -NEAR_RADIUS; dx <= NEAR_RADIUS; dx++) for (int dy = -NEAR_RADIUS; dy <= NEAR_RADIUS; dy++) for (int dz = -NEAR_RADIUS; dz <= NEAR_RADIUS; dz++) {
-				BlockState state = mc.level.getBlockState(pos.set(at.getX() + dx, at.getY() + dy, at.getZ() + dz));
-				if (state.isAir()) continue;
-				Block block = state.getBlock();
-				if (seen.computeIfAbsent(block, b -> matches(k, Thing.of(false, state.is(BlockTags.LOGS), state.is(BlockTags.SAPLINGS), false, b.getName().getString(), plBlock(b))))) n++;
+			for (var e : nearCounts.entrySet()) {
+				Block b = e.getKey();
+				BlockState state = b.defaultBlockState();
+				if (matches(k, Thing.of(false, state.is(BlockTags.LOGS), state.is(BlockTags.SAPLINGS), false, b.getName().getString(), plBlock(b)))) n += e.getValue();
 			}
 			return n;
 		});
