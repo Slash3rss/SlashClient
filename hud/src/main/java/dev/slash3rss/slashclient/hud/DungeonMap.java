@@ -60,6 +60,7 @@ public final class DungeonMap implements HudModule {
 	private static int planRow;
 	/** The dungeon's ground (y), and how far its rooms reach below and above it. */
 	private static int groundY;
+	private static boolean grounded;
 	private static final int BELOW = 21, ABOVE = 14;
 	/** The floor is read over this many ticks, a slice each. */
 	private static final int SCAN_TICKS = 10;
@@ -109,8 +110,9 @@ public final class DungeonMap implements HudModule {
 		level = mc.level;
 		originX = mc.player.getBlockX() - SIZE / 2;
 		originZ = mc.player.getBlockZ() - SIZE / 2;
-		// entering, the player stands on the dungeon's ground
+		// entering, the player stands on the dungeon's ground; sure only once the boss bar is there
 		groundY = mc.player.getBlockY();
+		grounded = bossBar;
 		minX = minZ = Integer.MAX_VALUE;
 		maxX = maxZ = Integer.MIN_VALUE;
 		if (image == null) {
@@ -157,6 +159,13 @@ public final class DungeonMap implements HudModule {
 			bossBar = readLevel(mc);
 			// the boss bar: in a dungeon (a map starts, or goes on); gone: out, unless the hint just came
 			if (bossBar && !active) start();
+			// the boss bar shows once the player is in the start room: its floor is the ground the
+			// rooms' heights count from (a map started by the hint was still in the lobby)
+			if (bossBar && active && !grounded) {
+				groundY = mc.player.getBlockY();
+				grounded = true;
+				clear();
+			}
 			boolean hinted = hintedAt > 0 && System.currentTimeMillis() - hintedAt < 20_000;
 			if (!bossBar && active && !hinted) {
 				stop();
@@ -343,12 +352,9 @@ public final class DungeonMap implements HudModule {
 			clear();
 		}
 		int cx = mc.player.getBlockX(), py = mc.player.getBlockY(), cz = mc.player.getBlockZ();
-		// a room reaches 21 blocks below the start room's floor and 14 above it, and is one room all
-		// that way; at a height that was set, only close to it. Above the band (and its ceilings) the
-		// roofs are not floor: a place to stand needs something over it.
-		int low = at == Integer.MIN_VALUE ? groundY - BELOW : at - 2, high = at == Integer.MIN_VALUE ? groundY + ABOVE : at + 2;
-		int top = high + 2, near = at == Integer.MIN_VALUE ? py : at;
-		boolean[] solid = new boolean[top - low + 3];
+		// loot is counted in all of a room: from 21 blocks below the start room's floor to 14 above it
+		int low = groundY - BELOW, high = groundY + ABOVE;
+		int near = at == Integer.MIN_VALUE ? py : at;
 		// a slice of the rows each tick, all of them every SCAN_TICKS ticks
 		int rows = (RADIUS * 2 + 1 + SCAN_TICKS - 1) / SCAN_TICKS;
 		int from = cx - RADIUS + scanRow * rows;
@@ -359,23 +365,17 @@ public final class DungeonMap implements HudModule {
 				if (ix < 0 || iz < 0 || ix >= SIZE || iz >= SIZE) continue;
 				if (!world.hasChunk(x >> 4, z >> 4)) continue;
 				DungeonRooms.scanColumn(world, pos, x, low - 1, high + 3, z);
-				boolean any = false;
-				for (int y = low - 1; y <= top; y++) {
-					solid[y - low + 1] = solid(world, pos.set(x, y, z));
-					if (y <= high) any |= solid[y - low + 1];
+				// drawn as seen near the player's height: a place to stand a couple of blocks up or down
+				int color = WALL;
+				for (int dy = -2; dy <= 2; dy++) {
+					int y = near + dy;
+					if (solid(world, pos.set(x, y - 1, z)) && !solid(world, pos.set(x, y, z)) && !solid(world, pos.set(x, y + 1, z))) {
+						color = floorColor(world.getBlockState(pos.set(x, y - 1, z)).getMapColor(world, pos).col);
+						break;
+					}
 				}
 				// columns of nothing at all (outside the dungeon, open sky below) stay unknown
-				if (!any) continue;
-				// the place to stand nearest to the player's height, on any of the room's levels
-				int best = Integer.MIN_VALUE;
-				boolean roof = false;
-				for (int y = top - 1; y >= low; y--) {
-					int k = y - low + 1;
-					if (solid[k + 1]) roof = true;
-					if (roof && solid[k - 1] && !solid[k] && !solid[k + 1] && (best == Integer.MIN_VALUE || Math.abs(y - near) < Math.abs(best - near))) best = y;
-				}
-				int color = WALL;
-				if (best != Integer.MIN_VALUE) color = floorColor(world.getBlockState(pos.set(x, best - 1, z)).getMapColor(world, pos).col);
+				if (color == WALL && !anySolid(world, pos, x, near, z)) continue;
 				if (image.getPixel(ix, iz) != color) {
 					image.setPixel(ix, iz, color);
 				}
@@ -386,6 +386,11 @@ public final class DungeonMap implements HudModule {
 				maxZ = Math.max(maxZ, iz);
 			}
 		}
+	}
+
+	private static boolean anySolid(ClientLevel world, BlockPos.MutableBlockPos pos, int x, int cy, int z) {
+		for (int y = cy - 3; y <= cy + 3; y++) if (solid(world, pos.set(x, y, z))) return true;
+		return false;
 	}
 
 	private static boolean solid(ClientLevel world, BlockPos pos) {
