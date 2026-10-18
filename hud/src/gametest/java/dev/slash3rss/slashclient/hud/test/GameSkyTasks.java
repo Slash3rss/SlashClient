@@ -36,6 +36,14 @@ public class GameSkyTasks implements FabricClientGameTest {
 			check(tasks.contains("Nowicjusz|Huta: Posiadaj w ekwipunku(inv)[") && tasks.contains(" -1/16] rewards=3"), "the furnace", tasks);
 			check(tasks.contains("Nowicjusz|Dobra praca się opłaca: Posiadaj poziom dowolnej pracy[Posiadaj poziom dowolnej pracy -1/5 poz.]"), "the job level", tasks);
 			check(tasks.contains("Stacja inkubacja: Posiadaj w ekwipunku(inv)[Kaktus -1/16] Posiadaj na wyspie co najmniej[kaktus -1/1 poz.] rewards=2 takes"), "the cactus", tasks);
+			// the same items in a chest of another name are no challenges: Huta missing there leaves it known
+			context.setScreen(() -> null);
+			context.runOnClient(mc -> TestHooks.skyOtherChest());
+			context.waitTicks(15);
+			String other = context.computeOnClient(mc -> TestHooks.skyTasks());
+			check(other.equals(tasks), "another chest left alone", other);
+			context.runOnClient(mc -> TestHooks.skyTasksScreen(false, false));
+			context.waitTicks(15);
 			// the furnace tracked with the key, the quarry with the middle button, the cursor on each
 			double[] huta = context.computeOnClient(mc -> TestHooks.slotPoint(3));
 			context.getInput().setCursorPos(huta[0], huta[1]);

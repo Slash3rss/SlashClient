@@ -907,6 +907,14 @@ public final class TestHooks {
 			.withStyle(s -> s.withHoverEvent(hover))));
 	}
 
+	/** The same tasks (Huta gone) in a chest of another name: not SkyUp's challenges, so not read. */
+	public static void skyOtherChest() {
+		skyTasksScreen(true, false);
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		var open = (net.minecraft.client.gui.screens.inventory.ContainerScreen) screen();
+		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.ContainerScreen(open.getMenu(), mc.player.getInventory(), net.minecraft.network.chat.Component.literal("Skrzynia")));
+	}
+
 	public static String skyFish() {
 		return SkyFish.debug();
 	}

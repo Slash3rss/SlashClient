@@ -131,8 +131,7 @@ public final class SkyTasks {
 			if (dirty) save();
 			return;
 		}
-		if (screen instanceof AbstractContainerScreen<?> c && !(screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen)
-			&& !(screen instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen)) {
+		if (screen instanceof AbstractContainerScreen<?> c && challengesGui(c)) {
 			if (++tick % 5 == 0) read(c);
 		} else if (dirty && System.currentTimeMillis() - savedAt > 30_000) {
 			// what the counters add is saved now and then, not at every block
@@ -168,6 +167,33 @@ public final class SkyTasks {
 		String title = SkyTaskParser.plain(screen.getTitle().getString());
 		int arrow = title.lastIndexOf('»');
 		return arrow >= 0 && arrow < title.length() - 1 ? title.substring(arrow + 1).strip() : title;
+	}
+
+	private static final java.util.regex.Pattern CHALLENGES_TITLE = java.util.regex.Pattern.compile("(?i)^wyzwania(\\s*(»|>>)\\s*\\S.*)?$");
+	/** What only the challenges GUIs hold: a task's "LPM » Ukończ", a category's "Sprawdź wyzwania", the info item. */
+	private static final java.util.regex.Pattern CHALLENGES_ITEM = java.util.regex.Pattern.compile("(?i)(»|>>)\\s*ukończ( wyzwanie)?$|(»|>>)\\s*sprawdź wyzwania$|^wyzwania to kluczowy element");
+	/** The screen last looked at, and whether it was one of them (its items come a moment after it opens). */
+	private static AbstractContainerScreen<?> checked;
+	private static boolean checkedChallenges;
+
+	/**
+	 * SkyUp's challenges: the menu "Wyzwania" or a category "Wyzwania » Nowicjusz", a chest (6 rows), with
+	 * at least one item only they have. Other GUIs are never read, whatever their items look like.
+	 */
+	static boolean challengesGui(AbstractContainerScreen<?> screen) {
+		if (screen == checked && checkedChallenges) return true;
+		checked = screen;
+		checkedChallenges = false;
+		if (!(screen instanceof net.minecraft.client.gui.screens.inventory.ContainerScreen)) return false;
+		if (!CHALLENGES_TITLE.matcher(SkyTaskParser.plain(screen.getTitle().getString())).matches()) return false;
+		for (Slot slot : screen.getMenu().slots) {
+			if (slot.container instanceof Inventory || !slot.hasItem()) continue;
+			for (Component line : SkyDump.lore(slot.getItem())) {
+				String text = SkyTaskParser.plain(line.getString()).replaceFirst("^[▪■•\\s]+", "");
+				if (CHALLENGES_ITEM.matcher(text).find()) return checkedChallenges = true;
+			}
+		}
+		return false;
 	}
 
 	/** One look at the open GUI: its tasks stored, and those of its tier it no longer shows gone. */
@@ -244,6 +270,7 @@ public final class SkyTasks {
 
 	/** The task under the mouse in an open GUI, or null. */
 	static SkyTaskParser.Task hovered(AbstractContainerScreen<?> screen) {
+		if (!challengesGui(screen)) return null;
 		Slot slot = ((ContainerScreenAccessor) screen).slashclient$hoveredSlot();
 		if (slot == null || slot.container instanceof Inventory) return null;
 		return task(tier(screen), slot.getItem());
@@ -270,7 +297,7 @@ public final class SkyTasks {
 	/** Over the GUI: a mark on tracked tasks, and under it what the key does for the one under the mouse. */
 	static void drawOver(AbstractContainerScreen<?> screen, GuiGraphicsExtractor g) {
 		Minecraft mc = Minecraft.getInstance();
-		if (!on(mc)) return;
+		if (!on(mc) || !challengesGui(screen)) return;
 		ContainerScreenAccessor at = (ContainerScreenAccessor) screen;
 		String tier = tier(screen);
 		boolean any = false;
