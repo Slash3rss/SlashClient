@@ -19,6 +19,7 @@ abstract class ChatComponentMixin {
 	//$ @ModifyVariable(method = "addMessage(Lnet/minecraft/network/chat/Component;Lnet/minecraft/network/chat/MessageSignature;Lnet/minecraft/client/GuiMessageTag;)V", at = @At("HEAD"), argsOnly = true, ordinal = 0)
 	//#endif
 	private Component slashclient$incoming(Component message) {
+		ChatExtras.arrived();
 		message = dev.slash3rss.slashclient.hud.NickHider.apply(message);
 		ChatTabs.onMessage(message.getString());
 		dev.slash3rss.slashclient.hud.DungeonMap.onChat(message.getString());

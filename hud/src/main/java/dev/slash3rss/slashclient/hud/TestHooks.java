@@ -191,6 +191,65 @@ public final class TestHooks {
 		return ChatExtras.messageAt(10, y);
 	}
 
+	/** A line in the chat with a click event, as servers send their [Kliknij] buttons. */
+	public static void clickableLine(String text, String command) {
+		//#if MC >= 1.21.5
+		var click = new net.minecraft.network.chat.ClickEvent.SuggestCommand(command);
+		//#else
+		//$ var click = new net.minecraft.network.chat.ClickEvent(net.minecraft.network.chat.ClickEvent.Action.SUGGEST_COMMAND, command);
+		//#endif
+		var line = net.minecraft.network.chat.Component.literal(text).withStyle(st -> st.withClickEvent(click));
+		//#if MC >= 26.1
+		net.minecraft.client.Minecraft.getInstance().player.sendSystemMessage(line);
+		//#else
+		//$ net.minecraft.client.Minecraft.getInstance().player.displayClientMessage(line, false);
+		//#endif
+	}
+
+	/** A player's line with a red word: "<Gracz> czerwony". */
+	public static void coloredLine() {
+		var line = net.minecraft.network.chat.Component.literal("<Gracz> ").append(net.minecraft.network.chat.Component.literal("czerwony").withStyle(net.minecraft.ChatFormatting.RED));
+		//#if MC >= 26.1
+		net.minecraft.client.Minecraft.getInstance().player.sendSystemMessage(line);
+		//#else
+		//$ net.minecraft.client.Minecraft.getInstance().player.displayClientMessage(line, false);
+		//#endif
+	}
+
+	/** The copy settings: format, time in front, without the sender. */
+	public static void copySettings(String format, String time, boolean noSender) {
+		SlashHud.config.chatCopyFormat = format;
+		SlashHud.config.chatCopyTime = time;
+		SlashHud.config.chatCopyNoSender = noSender;
+	}
+
+	/**
+	 * A click near the end of the n-th line from the bottom of the open chat, through the chat screen
+	 * itself: what it copied ("-" for nothing) and what is typed in the chat.
+	 */
+	public static String clickChat(int fromBottom, boolean right) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		double scale = mc.options.chatScale().get();
+		int lineHeight = (int) (9.0 * (mc.options.chatLineSpacing().get() + 1.0));
+		double y = ((mc.getWindow().getGuiScaledHeight() - 40) / scale - lineHeight * (fromBottom + 0.5)) * scale;
+		// near the end of the line, past a time stamp in front
+		var chat = (dev.slash3rss.slashclient.hud.mixin.ChatComponentAccessor) Compat.chat(mc);
+		var line = (net.minecraft.client.multiplayer.chat.GuiMessage.Line) chat.slashclient$lines().get(chat.slashclient$scroll() + fromBottom);
+		double x = mc.font.width(line.content()) * scale;
+		ChatExtras.lastCopied = null;
+		String before = mc.keyboardHandler.getClipboard();
+		var e = new net.minecraft.client.input.MouseButtonEvent(x, y, new net.minecraft.client.input.MouseButtonInfo(right ? com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT : com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0));
+		//#if MC >= 1.21.9
+		screen().mouseClicked(e, false);
+		//#else
+		//$ screen().mouseClicked(e.x(), e.y(), e.button());
+		//#endif
+		String copied = ChatExtras.lastCopied;
+		// the player's own clipboard comes back after a copy
+		if (copied != null) mc.keyboardHandler.setClipboard(before);
+		return (copied == null ? "-" : copied) + "|" + chatInput();
+	}
+
 	public static void chatSearch(String text) {
 		ChatTabs.searchFor(text);
 	}

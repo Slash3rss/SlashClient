@@ -28,6 +28,26 @@ public class GameExtras implements FabricClientGameTest {
 			context.waitTicks(5);
 			String copied = context.computeOnClient(mc -> TestHooks.copyLine(1));
 			if (copied == null || !copied.contains("Ta sama wiadomość")) throw new AssertionError("Copied the wrong line: " + copied);
+			// through the screen: a right click copies a plain line, but not one with a click event,
+			// and a left click runs that event (26.3 numbers the mouse buttons anew)
+			String plain = context.computeOnClient(mc -> TestHooks.clickChat(0, true));
+			if (!plain.split("\\|")[0].contains("Inna wiadomość")) throw new AssertionError("A right click did not copy the line: " + plain);
+			context.runOnClient(mc -> TestHooks.clickableLine("[Kliknij]", "/slashtest"));
+			context.waitTicks(2);
+			String right = context.computeOnClient(mc -> TestHooks.clickChat(0, true));
+			if (!right.startsWith("-|")) throw new AssertionError("A right click copied a clickable line: " + right);
+			String left = context.computeOnClient(mc -> TestHooks.clickChat(0, false));
+			if (!left.equals("-|/slashtest")) throw new AssertionError("A left click did not run the click event: " + left);
+			// the copy settings: § codes, the time it came in, without the sender; then as JSON
+			context.runOnClient(mc -> TestHooks.coloredLine());
+			context.waitTicks(2);
+			context.runOnClient(mc -> TestHooks.copySettings("section", "hm", true));
+			String coded = context.computeOnClient(mc -> TestHooks.clickChat(0, true)).split("\\|")[0];
+			if (!coded.matches("\\[\\d{2}:\\d{2}] \u00a7cczerwony")) throw new AssertionError("Copied with the wrong settings: " + coded);
+			context.runOnClient(mc -> TestHooks.copySettings("json", "off", false));
+			String json = context.computeOnClient(mc -> TestHooks.clickChat(0, true)).split("\\|")[0];
+			if (!json.contains("<Gracz> ") || !json.contains("\"color\":\"red\"")) throw new AssertionError("Copied the wrong JSON: " + json);
+			context.runOnClient(mc -> TestHooks.copySettings("plain", "off", false));
 			context.runOnClient(mc -> TestHooks.chatSearch("inna"));
 			context.waitTicks(5);
 			context.takeScreenshot("extras-chat-search");
