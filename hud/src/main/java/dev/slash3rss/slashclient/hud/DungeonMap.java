@@ -286,7 +286,15 @@ public final class DungeonMap implements HudModule {
 		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, viewId, ox, oy, 0, 0, W, H, W, H, W, H, 0xFFFFFFFF);
 		markers(g, mc, ox, oy);
 		int sx = Math.round((float) (mc.player.getX() - originX - viewX) * viewScale), sz = Math.round((float) (mc.player.getZ() - originZ - viewZ) * viewScale);
-		if (shown(sx, sz)) arrow(g, ox + sx, oy + sz, mc.player.getYRot());
+		if (shown(sx, sz)) {
+			if (SlashHud.config.dungeonSelfHead) {
+				// the face, and a dot just past its edge the way they look
+				double a = Math.toRadians(mc.player.getYRot());
+				int lx = ox + sx + (int) Math.round(-Math.sin(a) * 7), lz = oy + sz + (int) Math.round(Math.cos(a) * 7);
+				g.fill(lx - 1, lz - 1, lx + 1, lz + 1, 0xFFFDE047);
+				face(g, mc.player, ox + sx, oy + sz, 0xFFFDE047);
+			} else arrow(g, ox + sx, oy + sz, mc.player.getYRot());
+		}
 	}
 
 	/**

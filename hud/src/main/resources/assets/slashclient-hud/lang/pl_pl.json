@@ -393,6 +393,7 @@
 	"slashclient-hud.dungeon.shape.circle": "Koło",
 	"slashclient-hud.dungeon.zoom": "Przybliżenie",
 	"slashclient-hud.dungeon.follow": "Śledź gracza (ty na środku)",
+	"slashclient-hud.dungeon.selfHead": "Twoja główka zamiast strzałki",
 	"slashclient-hud.dungeon.players": "Pokazuj innych graczy",
 	"slashclient-hud.dungeon.mobs": "Pokazuj moby i NPC",
 	"slashclient-hud.dungeon.spawners": "Pokazuj spawnery",

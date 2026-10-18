@@ -429,6 +429,7 @@ public final class TestHooks {
 		SlashHud.config.dungeonShape = round ? "circle" : "square";
 		SlashHud.config.dungeonZoom = round ? 1.5f : 1f;
 		SlashHud.config.dungeonFollow = round;
+		SlashHud.config.dungeonSelfHead = round;
 	}
 
 	/** The keys window, and how many SlashClient keys it lists. */

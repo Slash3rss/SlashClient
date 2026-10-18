@@ -127,6 +127,8 @@ public final class HudConfig {
 	public float dungeonZoom = 1f;
 	/** Other players on the dungeon map. */
 	public boolean dungeonPlayers = true;
+	/** You on the dungeon map as your head instead of an arrow. */
+	public boolean dungeonSelfHead = false;
 	/** Mobs and NPCs (players with a skin who are not on the tab list) on the dungeon map. */
 	public boolean dungeonMobs = true;
 	/** Spawners on the dungeon map: armour stands with a spawner on the head. */
@@ -344,6 +346,7 @@ public final class HudConfig {
 		tntTimer = other.tntTimer;
 		dungeonZoom = other.dungeonZoom;
 		dungeonPlayers = other.dungeonPlayers;
+		dungeonSelfHead = other.dungeonSelfHead;
 		dungeonMobs = other.dungeonMobs;
 		dungeonSpawners = other.dungeonSpawners;
 		dungeonFollow = other.dungeonFollow;
