@@ -273,7 +273,7 @@ public class HudScreenshots implements FabricClientGameTest {
 		// the logo on the tab list needs multiplayer: a real dedicated server
 		context.runOnClient(mc -> TestHooks.badgeServer("http://localhost:8787"));
 		context.runOnClient(mc -> TestHooks.defaults());
-		try (var server = context.worldBuilder().createServer(); var connection = server.connect()) {
+		try (var server = context.worldBuilder().createServer(freePort()); var connection = server.connect()) {
 			//#if MC >= 26.2
 			connection.waitForChunksRender();
 			//#else
@@ -296,5 +296,19 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.logBadge());
 			context.runOnClient(mc -> TestHooks.endOnVanillaMenu());
 		}
+	}
+
+	/**
+	 * The test server on a port nothing else uses (not 25565): several game test runs, in
+	 * different worktrees, can then go at the same time.
+	 */
+	private static java.util.Properties freePort() {
+		java.util.Properties properties = new java.util.Properties();
+		try (java.net.ServerSocket socket = new java.net.ServerSocket(0)) {
+			properties.setProperty("server-port", String.valueOf(socket.getLocalPort()));
+		} catch (java.io.IOException e) {
+			// no free port to be found: the server's default
+		}
+		return properties;
 	}
 }
