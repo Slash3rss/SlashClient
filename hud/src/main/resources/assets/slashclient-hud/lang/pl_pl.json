@@ -385,6 +385,7 @@
 	"slashclient-hud.rank.support": "Support",
 	"slashclient-hud.rank.partner": "Partner",
 	"slashclient-hud.rank.friend": "Przyjaciel",
+	"slashclient-hud.rank.friend_pink": "Różowy Przyjaciel",
 	"slashclient-hud.zoomToggle": "Przełączanie (naciśnij zamiast trzymać)",
 	"slashclient-hud.zoomCinematic": "Płynna kamera przy przybliżeniu",
 	"slashclient-hud.zoomRemember": "Zapamiętaj przybliżenie z kółka",

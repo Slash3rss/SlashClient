@@ -368,6 +368,7 @@ public class CosmeticsScreen extends Screen {
 			case "admin" -> 0xFFEF4444;
 			case "support" -> 0xFF38BDF8;
 			case "friend" -> 0xFF22C55E;
+			case "friend_pink" -> 0xFFEC4899;
 			default -> 0xFFFACC15;
 		});
 		if (over) {

@@ -492,7 +492,7 @@ def mix_hex(a, b, t):
 # ---------- capes for the ranks: the logo in the rank's colour ----------
 
 RANK_CAPES = {'staff_admin': ('#450a0a', '#dc2626', '#fca5a5'), 'staff_support': ('#082f49', '#0284c7', '#7dd3fc'), 'staff_partner': ('#422006', '#ca8a04', '#fde68a'),
-             'staff_friend': ('#052e16', '#16a34a', '#bbf7d0')}
+             'staff_friend': ('#052e16', '#16a34a', '#bbf7d0'), 'staff_friend_pink': ('#500724', '#db2777', '#fbcfe8')}
 
 
 def rank_cape(cape):

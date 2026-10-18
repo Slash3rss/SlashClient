@@ -95,7 +95,7 @@ describe('admin panel', () => {
     assert.equal((await call('GET', '/v1/admin/stats', ola.token)).body.error, 'not_admin');
   });
 
-  it('gives ranks: support, partner and friend, admins are red anyway; only admins can', async () => {
+  it('gives ranks: support, partner and friend (green or pink), admins are red anyway; only admins can', async () => {
     const boss = await login('Szef');
     const kuba = await login('Kuba');
     assert.equal((await call('GET', '/v1/me', boss.token)).body.badge, 'admin');
@@ -113,6 +113,14 @@ describe('admin panel', () => {
     assert.equal((await call('GET', '/v1/me', ola.token)).body.badge, 'friend');
     assert.equal((await call('POST', '/v1/me', ola.token, { cape: 'staff_friend' })).body.cape, 'staff_friend');
     assert.equal((await call('POST', '/v1/me', kuba.token, { cape: 'staff_friend' })).body.error, 'bad_cape');
+    // the pink friend: a pink logo and the pink cape, not the green one
+    const zosia = await login('Zosia');
+    assert.equal((await call('POST', '/v1/me', zosia.token, { cape: 'staff_friend_pink' })).body.error, 'bad_cape');
+    assert.equal((await call('POST', `/v1/admin/users/${zosia.user.id}`, boss.token, { rank: 'friend_pink' })).body.rank, 'friend_pink');
+    assert.equal((await call('GET', '/v1/me', zosia.token)).body.badge, 'friend_pink');
+    assert.equal((await call('POST', '/v1/me', zosia.token, { cape: 'staff_friend_pink' })).body.cape, 'staff_friend_pink');
+    assert.equal((await call('POST', '/v1/me', zosia.token, { cape: 'staff_friend' })).body.error, 'bad_cape');
+    assert.equal((await call('POST', '/v1/me', ola.token, { cape: 'staff_friend_pink' })).body.error, 'bad_cape');
     const log = (await call('GET', '/v1/admin/log', boss.token)).body;
     assert.ok(JSON.stringify(log).includes('set_rank'));
   });

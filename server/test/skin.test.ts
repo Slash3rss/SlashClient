@@ -93,5 +93,8 @@ describe('cosmetics for older launchers', () => {
     // the friends' rank and its cape are new in 0.9.4
     assert.ok(!(await ids({ 'X-SlashClient': 'launcher/0.9.3' })).includes('staff_friend'));
     assert.ok((await ids({ 'X-SlashClient': 'launcher/0.9.4' })).includes('staff_friend'));
+    // the pink friend's cape is new in 0.9.12
+    assert.ok(!(await ids({ 'X-SlashClient': 'launcher/0.9.11' })).includes('staff_friend_pink'));
+    assert.ok((await ids({ 'X-SlashClient': 'launcher/0.9.12' })).includes('staff_friend_pink'));
   });
 });

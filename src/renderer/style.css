@@ -914,6 +914,7 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .cape-lock.rank-support { color: #38bdf8; }
 .cape-lock.rank-partner { color: #facc15; }
 .cape-lock.rank-friend { color: #22c55e; }
+.cape-lock.rank-friend_pink { color: #ec4899; }
 .cosmetic-owner-row { justify-content: space-between; gap: 8px; min-height: 18px; }
 .skin-info button.link-button { height: auto; padding: 0; border: 0; background: none; box-shadow: none; color: var(--accent-light); font-size: 12px; cursor: pointer; }
 .slot-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
