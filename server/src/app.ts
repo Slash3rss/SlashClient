@@ -1,3 +1,4 @@
+import { decodePng, encodePng, faceOf } from './png.ts';
 import { createHash, randomBytes } from 'node:crypto';
 import http from 'node:http';
 import path from 'node:path';
@@ -281,7 +282,12 @@ export function createApp(cfg: Config) {
 
   function meWithProviders(me: string) {
     const { banned: _banned, ...user } = db.user(me)!;
-    return { ...user, providers: db.providers(me), minecraft: db.minecraftAccounts(me), admin: isAdmin(me), badge: badgeOf(user), grants: db.grants(me) };
+    const minecraft = db.minecraftAccounts(me);
+    const choice = db.avatarChoice(me);
+    return { ...user, providers: db.providers(me), minecraft, admin: isAdmin(me), badge: badgeOf(user), grants: db.grants(me),
+      // the two avatars to pick from on the account page: the Minecraft face and the sign-in provider's picture
+      avatarSource: choice.source === 'provider' ? 'provider' : 'minecraft',
+      avatars: { minecraft: minecraft[0] ? `/v1/head/${minecraft[0].uuid}` : '', provider: choice.provider } };
   }
 
   function friendOrThrow(me: string, other: string) {
@@ -433,7 +439,12 @@ export function createApp(cfg: Config) {
     }],
     ['POST', /^\/v1\/me$/, async (req) => {
       const me = authed(req);
-      const { showServer, cape, loadout, character, own } = await body(req);
+      const { showServer, cape, loadout, character, own, avatarSource } = await body(req);
+      // the avatar: the Minecraft face (the default) or the sign-in provider's picture
+      if (avatarSource !== undefined) {
+        if (avatarSource !== 'minecraft' && avatarSource !== 'provider') throw new HttpError(400, 'bad_request');
+        db.setAvatarSource(me, avatarSource === 'provider' ? 'provider' : '');
+      }
       if (typeof showServer === 'boolean') {
         db.setShowServer(me, showServer);
         broadcastPresence(me);
@@ -707,6 +718,19 @@ export function createApp(cfg: Config) {
     return found;
   }
 
+  /** The face cut out of a player's skin, kept with the skin (an hour). */
+  const heads = new Map<string, Buffer>();
+  async function headOf(uuid: string): Promise<Buffer | undefined> {
+    const skin = await skinOf(uuid);
+    if (!skin) return undefined;
+    const kept = heads.get(uuid + skin.data.length);
+    if (kept) return kept;
+    const face = encodePng(faceOf(decodePng(skin.data)));
+    if (heads.size > 2000) heads.clear();
+    heads.set(uuid + skin.data.length, face);
+    return face;
+  }
+
   async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
     const url = new URL(req.url ?? '/', 'http://localhost');
     res.setHeader('Cache-Control', 'no-store');
@@ -722,6 +746,20 @@ export function createApp(cfg: Config) {
       }
       res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=3600', 'X-Skin-Model': found.slim ? 'slim' : 'default', 'X-Content-Type-Options': 'nosniff' });
       res.end(found.data);
+      return;
+    }
+
+    // a Minecraft player's face (with the hat), 64×64: the default avatar of SlashClient accounts
+    const head = /^\/v1\/head\/([0-9a-fA-F-]{32,36})$/.exec(url.pathname);
+    if (req.method === 'GET' && head) {
+      const face = await headOf(head[1].replace(/-/g, '').toLowerCase()).catch(() => undefined);
+      if (!face) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'not_found' }));
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=3600', 'X-Content-Type-Options': 'nosniff', 'Access-Control-Allow-Origin': '*' });
+      res.end(face);
       return;
     }
 

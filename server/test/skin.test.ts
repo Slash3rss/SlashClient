@@ -5,10 +5,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import { createApp } from '../src/app.ts';
+import { decodePng } from '../src/png.ts';
+import { testSkin } from './png.test.ts';
 
 const dir = mkdtempSync(path.join(os.tmpdir(), 'slash-skin-'));
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
 const UUID = '0123456789abcdef0123456789abcdef';
+const FACE = 'fedcba9876543210fedcba9876543210';
 let base = '';
 let asked = 0;
 let app: ReturnType<typeof createApp>;
@@ -21,6 +24,11 @@ const fake = (async (url: string | URL) => {
     return new Response(JSON.stringify({ id: UUID, properties: [{ name: 'textures', value }] }));
   }
   if (u === 'https://textures.minecraft.net/texture/abc') return new Response(PNG);
+  if (u === `https://sessionserver.mojang.com/session/minecraft/profile/${FACE}`) {
+    const value = Buffer.from(JSON.stringify({ textures: { SKIN: { url: 'https://textures.minecraft.net/texture/face' } } })).toString('base64');
+    return new Response(JSON.stringify({ id: FACE, properties: [{ name: 'textures', value }] }));
+  }
+  if (u === 'https://textures.minecraft.net/texture/face') return new Response(new Uint8Array(testSkin()));
   return new Response('', { status: 404 });
 }) as typeof fetch;
 
@@ -44,6 +52,20 @@ describe('skins for the site', () => {
     assert.equal((await fetch(`${base}/v1/skin/${UUID}`)).status, 200);
     assert.equal(asked, before);
     assert.equal((await fetch(`${base}/v1/skin/ffffffffffffffffffffffffffffffff`)).status, 404);
+  });
+});
+
+describe('avatars from Minecraft skins', () => {
+  it('cuts the face out of the player\'s skin, 64×64', async () => {
+    const res = await fetch(`${base}/v1/head/${FACE}`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get('content-type'), 'image/png');
+    const face = decodePng(Buffer.from(await res.arrayBuffer()));
+    assert.equal(face.width, 64);
+    assert.deepEqual([...face.rgba.subarray(0, 4)], [20, 40, 220, 255]);
+    // a skin that is no picture, or no player: nothing
+    assert.equal((await fetch(`${base}/v1/head/${UUID}`)).status, 404);
+    assert.equal((await fetch(`${base}/v1/head/ffffffffffffffffffffffffffffffff`)).status, 404);
   });
 });
 

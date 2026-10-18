@@ -92,15 +92,17 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   const isVisible = () => root.closest('.view')?.classList.contains('active') && document.hasFocus();
   const friend = (id: string | undefined) => list.friends.find((f) => f.id === id);
 
-  // ---------- avatars: the picture from Discord, Google or GitHub, or a letter ----------
+  // ---------- avatars: the face from the Minecraft skin (from the SlashClient server), Discord's, Google's or GitHub's picture, or a letter ----------
 
   function avatar(p: Person, presence?: Presence) {
     const box = el('div', { className: 'fr-avatar' });
     const dot = presence ? el('span', { className: `fr-dot ${presenceClass(presence)}` }) : undefined;
     const letter = el('span', { textContent: (p.name || p.handle).slice(0, 1).toUpperCase() });
     box.append(letter);
-    if (/^https:\/\/(cdn\.discordapp\.com|lh3\.googleusercontent\.com|avatars\.githubusercontent\.com)\//.test(p.avatar)) {
-      const img = el('img', { alt: '', src: p.avatar });
+    const src = /^\/v1\/head\/[0-9a-f]{32}$/.test(p.avatar) && state?.url ? `${state.url.replace(/\/$/, '')}${p.avatar}`
+      : /^https:\/\/(cdn\.discordapp\.com|lh3\.googleusercontent\.com|avatars\.githubusercontent\.com)\//.test(p.avatar) ? p.avatar : '';
+    if (src) {
+      const img = el('img', { alt: '', src, className: p.avatar.startsWith('/v1/head/') ? 'pixel' : '' });
       img.onerror = () => img.replaceWith(letter);
       box.replaceChildren(img);
     }

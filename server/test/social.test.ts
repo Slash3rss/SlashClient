@@ -100,6 +100,20 @@ describe('social server', () => {
   }
   const mcId = (n: number) => String(n).repeat(32).slice(0, 32);
 
+  it('gives accounts their Minecraft face as avatar, or the sign-in picture when picked', async () => {
+    const ala = await login('AlaAvatar');
+    // no Minecraft account and no picture: none (the pages show a letter)
+    assert.equal((await call('GET', '/v1/me', ala.token)).body.avatar, '');
+    await minecraftLogin('AlaMC', mcId(9), ala.token);
+    const me = (await call('GET', '/v1/me', ala.token)).body;
+    assert.equal(me.avatar, `/v1/head/${mcId(9)}`);
+    assert.equal(me.avatarSource, 'minecraft');
+    assert.deepEqual(me.avatars, { minecraft: `/v1/head/${mcId(9)}`, provider: '' });
+    // the provider's picture picked, but there is none: still the face
+    assert.equal((await call('POST', '/v1/me', ala.token, { avatarSource: 'provider' })).body.avatar, `/v1/head/${mcId(9)}`);
+    assert.equal((await call('POST', '/v1/me', ala.token, { avatarSource: 'gravatar' })).body.error, 'bad_request');
+  });
+
   it('starts accounts with Minecraft, proven at Mojang, and links more Minecraft accounts', async () => {
     // not joined at Mojang: no account
     assert.equal((await minecraftLogin('Kasia', mcId(1), undefined, false)).body.error, 'not_verified');
@@ -147,9 +161,12 @@ describe('social server', () => {
     const again = await discordLogin();
     assert.equal(again.page, 200);
     assert.equal(again.done.body.user.id, owner.user.id);
-    // the name stays the account's own; the picture follows Discord
+    // the name stays the account's own; Discord's picture is kept, but the avatar is the Minecraft face until picked
     assert.equal(again.done.body.user.name, 'Discordowy');
-    assert.match(again.done.body.user.avatar, /cdn\.discordapp\.com/);
+    assert.match(again.done.body.user.avatar, /^\/v1\/head\//);
+    const token = again.done.body.token;
+    assert.match((await call('GET', '/v1/me', token)).body.avatars.provider, /cdn\.discordapp\.com/);
+    assert.match((await call('POST', '/v1/me', token, { avatarSource: 'provider' })).body.avatar, /cdn\.discordapp\.com/);
     // the result is handed out once
     assert.equal(again.done.status, 200);
   });
@@ -198,8 +215,10 @@ describe('social server', () => {
         if (token) assert.equal(done.linked, true);
         else {
           assert.equal(done.user.id, zosia.user.id);
-          // pictures only from the provider's own host (Google's fake one is left out)
-          if (avatar) assert.equal(done.user.avatar, avatar);
+          // pictures only from the provider's own host (Google's fake one is left out); the avatar stays the Minecraft face
+          const me = (await call('GET', '/v1/me', done.token)).body;
+          assert.equal(me.avatars.provider, avatar || me.avatars.provider);
+          if (avatar) assert.equal(me.avatar, me.avatars.minecraft || avatar);
         }
       }
     }

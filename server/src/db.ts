@@ -81,6 +81,14 @@ function parseLoadout(json: string): Record<string, string> {
     return {};
   }
 }
+/**
+ * The avatar shown for an account (table alias `t`): the face from its first Minecraft account's skin
+ * (the server cuts it, /v1/head/<uuid>), or the sign-in provider's picture when the player picked that
+ * or has no Minecraft account; '' when there is neither (the pages then show a letter).
+ */
+const AVATAR = (t: string) => `CASE WHEN ${t}.avatar_source = 'provider' AND ${t}.avatar != '' THEN ${t}.avatar
+  ELSE COALESCE((SELECT '/v1/head/' || i.subject FROM identities i WHERE i.uuid = ${t}.uuid AND i.provider = 'minecraft' ORDER BY i.label LIMIT 1), NULLIF(${t}.avatar, ''), '') END`;
+
 const toUser = (r: UserRow): User => ({ id: r.uuid, handle: r.handle, name: r.name, avatar: r.avatar, showServer: !!r.show_server, cape: r.cape, role: r.role, rank: r.rank, banned: !!r.banned, loadout: parseLoadout(r.loadout) });
 
 /** A bug report as the tracker lists it; `authorHandle` is null once the account is gone. */
@@ -114,6 +122,8 @@ export class Db {
     if (!userColumns.some((c) => c.name === 'banned')) this.db.exec('ALTER TABLE users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0');
     if (!userColumns.some((c) => c.name === 'rank')) this.db.exec("ALTER TABLE users ADD COLUMN rank TEXT NOT NULL DEFAULT ''");
     if (!userColumns.some((c) => c.name === 'loadout')) this.db.exec("ALTER TABLE users ADD COLUMN loadout TEXT NOT NULL DEFAULT '{}'");
+    // which picture is the avatar: '' (the Minecraft face, the default) or 'provider' (Discord's, Google's…)
+    if (!userColumns.some((c) => c.name === 'avatar_source')) this.db.exec("ALTER TABLE users ADD COLUMN avatar_source TEXT NOT NULL DEFAULT ''");
     // the Minecraft name of a linked Minecraft account (other providers leave it empty)
     const identityColumns = this.db.prepare('PRAGMA table_info(identities)').all() as { name: string }[];
     if (!identityColumns.some((c) => c.name === 'label')) this.db.exec("ALTER TABLE identities ADD COLUMN label TEXT NOT NULL DEFAULT ''");
@@ -223,13 +233,23 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
   }
 
   user(uuid: string): User | undefined {
-    const row = this.db.prepare('SELECT uuid, handle, name, avatar, show_server, cape, role, rank, banned, loadout FROM users WHERE uuid = ?').get(uuid) as UserRow | undefined;
+    const row = this.db.prepare(`SELECT uuid, handle, name, ${AVATAR('users')} AS avatar, show_server, cape, role, rank, banned, loadout FROM users WHERE uuid = ?`).get(uuid) as UserRow | undefined;
     return row && toUser(row);
   }
 
   userByHandle(handle: string): User | undefined {
     const row = this.db.prepare('SELECT uuid FROM users WHERE handle_lower = ?').get(handle.toLowerCase()) as { uuid: string } | undefined;
     return row && this.user(row.uuid);
+  }
+
+  /** The avatar the player picked ('' = the Minecraft face, 'provider' = the sign-in provider's picture), and that picture. */
+  avatarChoice(uuid: string): { source: string; provider: string } {
+    const row = this.db.prepare('SELECT avatar_source, avatar FROM users WHERE uuid = ?').get(uuid) as { avatar_source: string; avatar: string } | undefined;
+    return { source: row?.avatar_source ?? '', provider: row?.avatar ?? '' };
+  }
+
+  setAvatarSource(uuid: string, source: '' | 'provider') {
+    this.db.prepare('UPDATE users SET avatar_source = ? WHERE uuid = ?').run(source, uuid);
   }
 
   setCape(uuid: string, cape: string) {
@@ -284,7 +304,7 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
   }
 
   adminUser(uuid: string): AdminUser | undefined {
-    const row = this.db.prepare('SELECT uuid, handle, name, avatar, show_server, cape, role, rank, banned, loadout, created_at, last_seen FROM users WHERE uuid = ?').get(uuid) as
+    const row = this.db.prepare(`SELECT uuid, handle, name, ${AVATAR('users')} AS avatar, show_server, cape, role, rank, banned, loadout, created_at, last_seen FROM users WHERE uuid = ?`).get(uuid) as
       (UserRow & { created_at: number; last_seen: number }) | undefined;
     if (!row) return undefined;
     const count = (sql: string, ...args: string[]) => (this.db.prepare(sql).get(...args) as { n: number }).n;
@@ -449,7 +469,7 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
   }
 
   friends(uuid: string): (Person & { since: number })[] {
-    return this.db.prepare(`SELECT u.uuid AS id, u.handle, u.name, u.avatar, f.created_at AS since FROM friendships f
+    return this.db.prepare(`SELECT u.uuid AS id, u.handle, u.name, ${AVATAR('u')} AS avatar, f.created_at AS since FROM friendships f
       JOIN users u ON u.uuid = CASE WHEN f.a = ? THEN f.b ELSE f.a END
       WHERE f.a = ? OR f.b = ? ORDER BY u.handle_lower`).all(uuid, uuid, uuid) as unknown as (Person & { since: number })[];
   }
@@ -478,12 +498,12 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
   }
 
   incoming(uuid: string): Request[] {
-    return this.db.prepare(`SELECT u.uuid AS id, u.handle, u.name, u.avatar, r.created_at AS at FROM requests r JOIN users u ON u.uuid = r.from_uuid
+    return this.db.prepare(`SELECT u.uuid AS id, u.handle, u.name, ${AVATAR('u')} AS avatar, r.created_at AS at FROM requests r JOIN users u ON u.uuid = r.from_uuid
       WHERE r.to_uuid = ? ORDER BY r.created_at DESC`).all(uuid) as unknown as Request[];
   }
 
   outgoing(uuid: string): Request[] {
-    return this.db.prepare(`SELECT u.uuid AS id, u.handle, u.name, u.avatar, r.created_at AS at FROM requests r JOIN users u ON u.uuid = r.to_uuid
+    return this.db.prepare(`SELECT u.uuid AS id, u.handle, u.name, ${AVATAR('u')} AS avatar, r.created_at AS at FROM requests r JOIN users u ON u.uuid = r.to_uuid
       WHERE r.from_uuid = ? ORDER BY r.created_at DESC`).all(uuid) as unknown as Request[];
   }
 
