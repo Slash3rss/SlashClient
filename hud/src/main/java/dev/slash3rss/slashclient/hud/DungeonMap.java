@@ -19,8 +19,12 @@ import java.util.regex.Pattern;
  * A map of a dungeon (SkyUp.pl's dungeon sector, where every dungeon is laid out at random): from
  * above, what has been seen of the floor at the player's height, walkable floor in its own block's
  * colour (the start room's green shows green), walls dark, the player as an arrow and others as
- * dots. It starts with the chat line the server sends on entering ("Dungeon » Czy wiesz że…") and
- * ends when the player is in another world; the boss bar ("Dungeon poz. 2") gives its level.
+ * dots.
+ *
+ * In a dungeon the server shows a boss bar ("Dungeon poz. 2"): the map is on while it is there.
+ * The hint on entering ("Dungeon » Czy wiesz że…") comes still in the lobby, just before the
+ * teleport: it starts the map too, and a jump far from where it started begins it anew there.
+ * Leaving ("Dungeon » Opuszczono Dungeon…", the boss bar gone) ends it.
  */
 public final class DungeonMap implements HudModule {
 	/** The blocks the map can hold, around where the dungeon was entered. */
@@ -41,6 +45,10 @@ public final class DungeonMap implements HudModule {
 	private static boolean dirty;
 	private static int tick;
 	private static String dungeonLevel = "";
+	/** The dungeon's boss bar was on screen at the last look. */
+	private static boolean bossBar;
+	/** Started by the entering hint (no boss bar seen yet): it may still be the lobby. */
+	private static long hintedAt;
 
 	public String id() {
 		return "dungeonmap";
@@ -48,10 +56,18 @@ public final class DungeonMap implements HudModule {
 
 	// ---------- in and out of a dungeon ----------
 
-	/** Every chat line: the server's line on entering a dungeon starts a new map. */
+	/** The server's lines: the hint on entering starts a map, leaving ends it. */
 	public static void onChat(String line) {
 		String plain = line.replaceAll("§.", "").trim();
-		if (plain.startsWith("Dungeon »") || plain.startsWith("Dungeon >>")) start();
+		if (!plain.startsWith("Dungeon")) return;
+		String rest = plain.replaceFirst("^Dungeon\\s*(»|>>)\\s*", "");
+		if (rest.startsWith("Opuszczono Dungeon") || rest.startsWith("Opuściłeś")) {
+			stop();
+			hintedAt = 0;
+		} else if (rest.startsWith("Czy wiesz")) {
+			hintedAt = System.currentTimeMillis();
+			start();
+		}
 	}
 
 	/** A new dungeon: an empty map around where the player is now. */
@@ -78,6 +94,7 @@ public final class DungeonMap implements HudModule {
 		active = false;
 		level = null;
 		dungeonLevel = "";
+		hintedAt = 0;
 	}
 
 	/** True while there is a dungeon to show. */
@@ -86,38 +103,43 @@ public final class DungeonMap implements HudModule {
 	}
 
 	static void tick(Minecraft mc) {
-		if (!active) return;
-		// out of the dungeon: another world (the server sends players to a lobby or another sector)
-		if (mc.level == null || mc.level != level || mc.player == null) {
-			stop();
-			return;
-		}
-		int px = mc.player.getBlockX() - originX, pz = mc.player.getBlockZ() - originZ;
-		if (px < -64 || pz < -64 || px > SIZE + 64 || pz > SIZE + 64) {
-			stop();
+		if (mc.level == null || mc.player == null) {
+			if (active) stop();
 			return;
 		}
 		if (++tick % 10 == 0) {
-			readLevel(mc);
-			scan(mc);
+			bossBar = readLevel(mc);
+			// the boss bar: in a dungeon (a map starts, or goes on); gone: out, unless the hint just came
+			if (bossBar && !active) start();
+			boolean hinted = hintedAt > 0 && System.currentTimeMillis() - hintedAt < 20_000;
+			if (!bossBar && active && !hinted) {
+				stop();
+				return;
+			}
 		}
+		if (!active) return;
+		// another world, or a jump far away (the teleport into the dungeon): the map begins there
+		int px = mc.player.getBlockX() - originX, pz = mc.player.getBlockZ() - originZ;
+		if (mc.level != level || px < -64 || pz < -64 || px > SIZE + 64 || pz > SIZE + 64) start();
+		if (tick % 10 == 0) scan(mc);
 		if (dirty) {
 			texture.upload();
 			dirty = false;
 		}
 	}
 
-	/** "Dungeon poz. 2" on the boss bar: the dungeon's level, for the map's title. */
-	private static void readLevel(Minecraft mc) {
+	/** "Dungeon poz. 2" on the boss bar: whether it is there, and the dungeon's level for the map's title. */
+	private static boolean readLevel(Minecraft mc) {
 		var overlay = Compat.bossOverlay(mc);
-		if (overlay == null) return;
+		if (overlay == null) return false;
 		for (var event : ((dev.slash3rss.slashclient.hud.mixin.BossHealthOverlayAccessor) overlay).slashclient$events().values()) {
 			Matcher m = LEVEL.matcher(event.getName().getString());
 			if (m.find()) {
 				dungeonLevel = m.group(1);
-				return;
+				return true;
 			}
 		}
+		return false;
 	}
 
 	/**

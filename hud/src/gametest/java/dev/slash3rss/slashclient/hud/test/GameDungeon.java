@@ -37,16 +37,28 @@ public class GameDungeon implements FabricClientGameTest {
 			}
 			// the start room's floor is green
 			server.runCommand(String.format("fill %d %d %d %d %d %d lime_concrete", x0 - 5, y - 1, z0 + 7, x0 + 5, y - 1, z0 + 17));
+			// as on SkyUp: the hint while still in the lobby, far away, then the teleport, then the boss bar
+			server.runCommand(String.format("tp @a %d %d %d 180 30", x0 - 600, y + 20, z0));
+			context.waitTicks(20);
+			server.runCommand("tellraw @a \"Dungeon » Czy wiesz że... test\"");
+			context.waitTicks(20);
 			server.runCommand(String.format("tp @a %d %d %d 180 30", x0, y, z0 + 12));
-			context.waitTicks(60);
+			context.waitTicks(40);
 			server.runCommand("bossbar add dungeon \"Dungeon poz. 3\"");
 			server.runCommand("bossbar set dungeon players @a");
-			server.runCommand("tellraw @a \"Dungeon » Czy wiesz że... test\"");
-			context.waitTicks(30);
+			context.waitTicks(40);
 			String map = context.computeOnClient(mc -> TestHooks.dungeonMap());
 			String[] parts = map.split(",");
 			if (Integer.parseInt(parts[0]) < 500 || !parts[1].equals("true") || !parts[2].equals("true")) throw new AssertionError("The dungeon map saw nothing: " + map);
 			context.takeScreenshot("dungeon-map");
+			// leaving: the server's line and the boss bar gone end the map; the lobby is not mapped
+			server.runCommand("tellraw @a \"Dungeon » Opuszczono drużynę.\"");
+			server.runCommand("tellraw @a \"Dungeon » Opuszczono Dungeon poz. 3\"");
+			server.runCommand("bossbar remove dungeon");
+			server.runCommand(String.format("tp @a %d %d %d 180 30", x0 - 600, y + 20, z0));
+			context.waitTicks(40);
+			map = context.computeOnClient(mc -> TestHooks.dungeonMap());
+			if (!map.split(",")[1].equals("false")) throw new AssertionError("The map stayed on after leaving: " + map);
 		}
 	}
 }
