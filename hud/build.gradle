@@ -178,6 +178,15 @@ afterEvaluate {
 	if (sourceSets.findByName('gametest')) sourceSets.gametest.java.srcDirs = [new File(generated, 'gametest/java')]
 }
 
+// the test game's memory: without a limit Java takes a quarter of the computer's RAM, and a test
+// world needs far less, so several runs fit side by side (gradlew runClientGameTest -PtestMemory=2G)
+if (gametests) {
+	def testMemory = project.findProperty('testMemory') ?: '1536M'
+	loom.runs.matching { it.name == 'clientGameTest' }.configureEach {
+		vmArg "-Xmx${testMemory}"
+	}
+}
+
 // on 1.21.x the test framework's network sync trips over the server list's pings (the
 // pinned SkyUp.pl is pinged in the tests); the game itself has no such sync
 if (obfuscated) {
