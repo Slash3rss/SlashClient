@@ -13,7 +13,11 @@ import { DatabaseSync } from 'node:sqlite';
  */
 export interface User { id: string; handle: string; name: string; avatar: string; showServer: boolean; cape: string; role: string; rank: string; banned: boolean; loadout: Record<string, string> }
 /** An account as the admin panel lists it. */
-export interface AdminUser extends User { createdAt: number; lastSeen: number; providers: string[]; friends: number; sessions: number }
+export interface AdminUser extends User {
+  createdAt: number; lastSeen: number; providers: string[]; friends: number; sessions: number;
+  /** the cape each linked Minecraft account wears in game: its own set's, or else the account's ('' for none) */
+  worn: { name: string; cape: string }[];
+}
 export interface CosmeticSetting { id: string; enabled: boolean; exclusive: boolean }
 export interface LogEntry { id: number; at: number; admin: string; action: string; target: string; detail: string }
 export type Provider = 'discord' | 'microsoft' | 'google' | 'github' | 'dev' | 'minecraft';
@@ -319,6 +323,7 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
       ...toUser(row), createdAt: row.created_at, lastSeen: row.last_seen, providers: this.providers(uuid),
       friends: count('SELECT COUNT(*) AS n FROM friendships WHERE a = ? OR b = ?', uuid, uuid),
       sessions: count('SELECT COUNT(*) AS n FROM sessions WHERE uuid = ?', uuid),
+      worn: this.minecraftAccounts(uuid).map((a) => ({ name: a.name, cape: a.loadout ? a.loadout.cape ?? '' : row.cape })),
     };
   }
 

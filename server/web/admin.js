@@ -137,7 +137,7 @@ async function loadUsers() {
   const rows = res.users.map((u) => el('tr', { onclick: () => openUser(u.id) },
     el('td', {}, el('div', { class: 'who' }, avatarEl(u), el('div', {}, el('b', { textContent: u.name }), el('small', { textContent: `@${u.handle}` })))),
     el('td', { class: 'hide-sm' }, ...u.providers.map((p) => el('span', { class: 'chip', title: p }, icon((PROVIDERS[p] ?? ['', 'fa-solid fa-flask'])[1])))),
-    el('td', {}, u.cape ? el('div', { class: 'row' }, capeEl(u.cape, true), capeNames[u.cape] ?? u.cape) : el('span', { class: 'muted', textContent: '—' })),
+    el('td', {}, capeCell(u)),
     el('td', { class: 'hide-sm', textContent: ago(u.lastSeen) }),
     el('td', {}, badges(u))));
   const pages = el('div', { class: 'pager' },
@@ -145,6 +145,17 @@ async function loadUsers() {
     el('button', { class: 'icon-btn', disabled: users.offset === 0, onclick: () => { users.offset = Math.max(0, users.offset - users.limit); loadUsers(); } }, icon('fa-solid fa-chevron-left')),
     el('button', { class: 'icon-btn', disabled: users.offset + users.limit >= res.total, onclick: () => { users.offset += users.limit; loadUsers(); } }, icon('fa-solid fa-chevron-right')));
   box.replaceChildren(el('table', {}, el('thead', {}, el('tr', {}, el('th', { textContent: 'Gracz' }), el('th', { class: 'hide-sm', textContent: 'Logowanie' }), el('th', { textContent: 'Peleryna' }), el('th', { class: 'hide-sm', textContent: 'Ostatnio' }), el('th', { textContent: 'Status' }))), el('tbody', {}, ...rows)), pages);
+}
+
+/** The cape worn in game: set in the client per Minecraft account, else the account's own. */
+function capeCell(u) {
+  const worn = (u.worn ?? []).filter((w) => w.cape);
+  const capes = [...new Set(worn.map((w) => w.cape))];
+  if (!worn.length && u.cape) capes.push(u.cape);
+  if (!capes.length) return el('span', { class: 'muted', textContent: '—' });
+  const one = (cape, who) => el('div', { class: 'row' }, capeEl(cape, true), el('span', {}, capeNames[cape] ?? cape, who ? el('span', { class: 'muted', textContent: ` (${who})` }) : ''));
+  if (capes.length === 1) return one(capes[0]);
+  return el('div', { class: 'worn' }, ...worn.map((w) => one(w.cape, w.name)));
 }
 
 const badges = (u) => el('div', { class: 'row' },
