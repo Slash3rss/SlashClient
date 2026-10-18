@@ -62,15 +62,19 @@ public class GameDungeon implements FabricClientGameTest {
 			server.runCommand(String.format("setblock %d %d %d chest", x0 - 12, y, z0));
 			server.runCommand(String.format("setblock %d %d %d barrel", x0 + 12, y, z0));
 			server.runCommand(String.format("setblock %d %d %d decorated_pot", x0, y, z0 + 2));
+			server.runCommand(String.format("setblock %d %d %d potted_dandelion", x0 - 3, y, z0 + 15));
+			// an ore in the start room's wall, mined later
+			server.runCommand(String.format("setblock %d %d %d deepslate_diamond_ore", x0 - 6, y + 1, z0 + 15));
 			server.runCommand(String.format("summon husk %d %d %d {NoAI:1b,PersistenceRequired:1b}", x0 + 12, y, z0 + 12));
 			context.waitTicks(30);
 			String rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
-			if (!rooms.contains("containers 0/3")) throw new AssertionError("Containers not found: " + rooms);
+			if (!rooms.contains("containers 0/4") || !rooms.contains("ores 0/1")) throw new AssertionError("Containers not found: " + rooms);
 			server.runCommand(String.format("setblock %d %d %d air", x0, y, z0 + 2));
+			server.runCommand(String.format("setblock %d %d %d deepslate_bricks", x0 - 6, y + 1, z0 + 15));
 			server.runCommand("kill @e[type=husk]");
 			context.waitTicks(30);
 			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
-			if (!rooms.contains("containers 1/3") || rooms.contains("cleared 0") || rooms.contains("without spawner 0")) throw new AssertionError("Rooms: " + rooms);
+			if (!rooms.contains("containers 1/4") || !rooms.contains("ores 1/1") || rooms.contains("cleared 0") || rooms.contains("without spawner 0")) throw new AssertionError("Rooms: " + rooms);
 			if (Integer.parseInt(rooms.split(" ")[0]) < 7) throw new AssertionError("Too few rooms: " + rooms);
 			context.takeScreenshot("dungeon-rooms");
 			// spawner holograms (armour stand names): the respawn time counts as cleared

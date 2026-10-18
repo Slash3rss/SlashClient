@@ -30,14 +30,15 @@ import java.util.Map;
  *
  * Rooms come from the floor alone: where the floor is at least five blocks across is the inside of
  * a room, and narrower places (doors, corridors) go to the room nearest along the floor. Each room
- * then counts its chests, barrels and pots (opened or broken ones as taken, until they come back),
+ * then counts its chests, barrels, pots and flower pots (opened or broken ones as taken, until they
+ * come back) and the deepslate ores in its walls (mined ones as taken),
  * remembers being cleared of mobs (they come back two minutes later) and whether it has a spawner
  * (an armour stand with one on its head).
  *
  * A spawner's hologram (armour stand names, or text displays) tells more, and is believed first:
  * "Pozostałe moby: 4" (mobs left) and "Posiłki za: 68s" (when they come back).
  */
-final class DungeonRooms {
+public final class DungeonRooms {
 	private DungeonRooms() {}
 
 	/** After the last mob of a room dies, how long until they come back. */
@@ -45,15 +46,22 @@ final class DungeonRooms {
 	/** How close the player must be to a room to see all of its mobs (the server sends them that far). */
 	private static final int NEAR = 28;
 
-	/** A chest, barrel or pot: where it is (in the world), and whether it was taken. */
+	/** A chest, barrel, pot or ore: where it is (in the world), and whether it was taken. */
 	private static final class Container {
 		final int x, y, z;
+		/** Which of LOOT it is. */
+		final int cat;
+		final boolean ore;
+		/** For an ore: which ("diamond", "iron"…), else null. */
+		String oreType;
 		boolean present = true, opened, broken;
 
-		Container(int x, int y, int z) {
+		Container(int x, int y, int z, int cat) {
 			this.x = x;
 			this.y = y;
 			this.z = z;
+			this.cat = cat;
+			this.ore = cat == ORE;
 		}
 
 		boolean taken() {
@@ -63,7 +71,7 @@ final class DungeonRooms {
 
 	private static final class Room {
 		long sumX, sumZ;
-		int pixels, containers, taken, mobs, spawners;
+		int pixels, containers, taken, ores, oresTaken, mobs, spawners;
 		boolean visited;
 		/** When its mobs come back (0: not cleared), and how many are left (-1: not known). */
 		long respawnAt;
@@ -115,18 +123,75 @@ final class DungeonRooms {
 		holograms.clear();
 	}
 
-	private static boolean container(Block block) {
-		return block instanceof ChestBlock || block instanceof BarrelBlock || block instanceof DecoratedPotBlock;
+	/** The kinds of loot, each counted on its own: their names (for the settings) and icons. */
+	static final String[] LOOT = { "chest", "barrel", "pot", "flowerPot", "ore" };
+	static final net.minecraft.world.item.Item[] LOOT_ICONS = { Items.CHEST, Items.BARREL, Items.DECORATED_POT, Items.FLOWER_POT, Items.DEEPSLATE_IRON_ORE };
+	static final int ORE = 4;
+
+	/** Whether a kind of loot is shown (switched on in the map's settings). */
+	static boolean shown(int cat) {
+		HudConfig cfg = SlashHud.config;
+		return switch (cat) {
+			case 0 -> cfg.dungeonChests;
+			case 1 -> cfg.dungeonBarrels;
+			case 2 -> cfg.dungeonPots;
+			case 3 -> cfg.dungeonFlowerPots;
+			default -> cfg.dungeonOres;
+		};
+	}
+
+	/** The deepslate ores there are, to pick which are counted. */
+	public static final String[] ORES = { "coal", "iron", "copper", "gold", "redstone", "lapis", "emerald", "diamond" };
+
+	/** "deepslate_diamond_ore" → "diamond". */
+	private static String oreType(Block block) {
+		String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).getPath();
+		return id.substring("deepslate_".length(), id.length() - "_ore".length());
+	}
+
+	/** Whether this one is counted: its kind switched on and, for an ore, that ore too. */
+	private static boolean shown(Container c) {
+		return shown(c.cat) && (!c.ore || oreCounted(c.oreType));
+	}
+
+	public static boolean oreCounted(String type) {
+		return !(("," + SlashHud.config.dungeonOresOff + ",").contains("," + type + ","));
+	}
+
+	/** Switches one ore on or off for counting. */
+	public static void countOre(String type, boolean on) {
+		java.util.Set<String> off = new java.util.LinkedHashSet<>(java.util.Arrays.asList(SlashHud.config.dungeonOresOff.split(",")));
+		off.remove("");
+		if (on) off.remove(type);
+		else off.add(type);
+		SlashHud.config.dungeonOresOff = String.join(",", off);
+	}
+
+	/** Which kind of loot a block is (an index of LOOT), or -1. */
+	private static int kind(Block block) {
+		if (block instanceof ChestBlock) return 0;
+		if (block instanceof BarrelBlock) return 1;
+		if (block instanceof DecoratedPotBlock) return 2;
+		if (block instanceof net.minecraft.world.level.block.FlowerPotBlock) return 3;
+		String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).getPath();
+		return id.startsWith("deepslate_") && id.endsWith("_ore") ? ORE : -1;
 	}
 
 	/** The containers in one column: found ones are new or back, missing ones were broken. */
 	static void scanColumn(ClientLevel world, BlockPos.MutableBlockPos pos, int x, int cy, int z) {
-		for (int y = cy - 2; y <= cy + 3; y++) {
-			boolean is = container(world.getBlockState(pos.set(x, y, z)).getBlock());
+		// up to the top of a usual room's walls, for the ores in them
+		for (int y = cy - 2; y <= cy + 5; y++) {
+			Block block = world.getBlockState(pos.set(x, y, z)).getBlock();
+			int kind = kind(block);
+			boolean is = kind >= 0;
 			long key = BlockPos.asLong(x, y, z);
 			Container c = containers.get(key);
 			if (is) {
-				if (c == null) containers.put(key, new Container(x, y, z));
+				if (c == null || c.cat != kind) {
+					c = new Container(x, y, z, kind);
+					if (kind == ORE) c.oreType = oreType(block);
+					containers.put(key, c);
+				}
 				else if (!c.present) {
 					// it grew back: full again
 					c.present = true;
@@ -167,8 +232,15 @@ final class DungeonRooms {
 		for (Container c : containers.values()) {
 			int r = roomAt(c.x - originX, c.z - originZ);
 			if (r < 0) continue;
-			rooms.get(r).containers++;
-			if (c.taken()) rooms.get(r).taken++;
+			Room room = rooms.get(r);
+			if (!shown(c)) continue;
+			if (c.ore) {
+				room.ores++;
+				if (c.taken()) room.oresTaken++;
+			} else {
+				room.containers++;
+				if (c.taken()) room.taken++;
+			}
 		}
 
 		// spawners and mobs about now
@@ -394,8 +466,12 @@ final class DungeonRooms {
 		HudConfig cfg = SlashHud.config;
 		if (cfg.dungeonContainers) {
 			for (Container c : containers.values()) {
+				if (!shown(c)) continue;
 				int sx = Math.round((c.x - originX + 0.5f - viewX) * scale), sz = Math.round((c.z - originZ + 0.5f - viewZ) * scale);
-				if (shown.test(sx, sz)) g.fill(ox + sx - 1, oy + sz - 1, ox + sx + 1, oy + sz + 1, c.taken() ? 0xFF4B5563 : 0xFFFACC15);
+				if (!shown.test(sx, sz)) continue;
+				// a dot with a dark rim, so it shows on any floor
+				g.fill(ox + sx - 2, oy + sz - 2, ox + sx + 2, oy + sz + 2, 0xFF000000);
+				g.fill(ox + sx - 1, oy + sz - 1, ox + sx + 1, oy + sz + 1, c.taken() ? 0xFF6B7280 : c.ore ? 0xFF22D3EE : 0xFFFACC15);
 			}
 		}
 		long now = System.currentTimeMillis();
@@ -406,6 +482,10 @@ final class DungeonRooms {
 			if (cfg.dungeonContainers && room.containers > 0) {
 				lines.add(room.taken + "/" + room.containers);
 				colors.add(room.taken == room.containers ? 0xFF86EFAC : 0xFFFDE047);
+			}
+			if (cfg.dungeonContainers && room.ores > 0) {
+				lines.add("⛏" + room.oresTaken + "/" + room.ores);
+				colors.add(room.oresTaken == room.ores ? 0xFF86EFAC : 0xFF67E8F9);
 			}
 			if (cfg.dungeonCleared && room.respawnAt > now) {
 				long left = (room.respawnAt - now + 999) / 1000;
@@ -419,23 +499,37 @@ final class DungeonRooms {
 			if (lines.isEmpty()) continue;
 			int sx = Math.round((room.centerX() + 0.5f - viewX) * scale), sz = Math.round((room.centerZ() + 0.5f - viewZ) * scale);
 			if (!shown.test(sx, sz)) continue;
-			// small: half the font's size
+			// three quarters of the font's size, each line on a dark plate so it reads on any floor
 			var pose = g.pose();
 			pose.pushMatrix();
-			pose.translate(ox + sx, oy + sz - lines.size() * 2.5f);
-			pose.scale(0.5f, 0.5f);
+			pose.translate(ox + sx, oy + sz - lines.size() * 3.75f);
+			pose.scale(0.75f, 0.75f);
 			for (int i = 0; i < lines.size(); i++) {
 				String s = lines.get(i);
-				g.text(mc.font, s, -mc.font.width(s) / 2, i * 10, colors.get(i), true);
+				int w = mc.font.width(s);
+				g.fill(-w / 2 - 2, i * 10 - 1, w - w / 2 + 1, i * 10 + 9, 0xD0000000);
+				g.text(mc.font, s, -w / 2, i * 10, colors.get(i), false);
 			}
 			pose.popMatrix();
 		}
 	}
 
-	/** All containers taken of all found ("4/12"), or empty when none were found. */
-	static String containerCount() {
+	/** One kind of loot over the whole dungeon: taken, and all found. */
+	static int[] count(int cat) {
+		int[] n = new int[2];
+		for (Container c : containers.values()) {
+			if (c.cat != cat || !shown(c)) continue;
+			n[1]++;
+			if (c.taken()) n[0]++;
+		}
+		return n;
+	}
+
+	/** All containers (or ores) taken of all found ("4/12"), or empty when none were found. */
+	static String containerCount(boolean ores) {
 		int all = 0, taken = 0;
 		for (Container c : containers.values()) {
+			if (c.ore != ores) continue;
 			all++;
 			if (c.taken()) taken++;
 		}
@@ -449,6 +543,6 @@ final class DungeonRooms {
 			if (r.respawnAt > 0) clearedRooms++;
 			if (r.visited && r.spawners == 0) noSpawner++;
 		}
-		return rooms.size() + " rooms, containers " + containerCount() + ", cleared " + clearedRooms + ", without spawner " + noSpawner;
+		return rooms.size() + " rooms, containers " + containerCount(false) + ", ores " + containerCount(true) + ", cleared " + clearedRooms + ", without spawner " + noSpawner;
 	}
 }

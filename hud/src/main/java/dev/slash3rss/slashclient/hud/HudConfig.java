@@ -137,6 +137,14 @@ public final class HudConfig {
 	public boolean dungeonSpawners = true;
 	/** Chests, barrels and pots on the dungeon map, counted per room (taken of all). */
 	public boolean dungeonContainers = true;
+	/** The dungeon map's floor in its blocks' colours instead of one plain grey. */
+	public boolean dungeonBlockColors = false;
+	/** The kinds of loot counted on the dungeon map (in rooms and under it): chests, barrels, pots, flower pots, deepslate ores. */
+	public boolean dungeonChests = true, dungeonBarrels = true, dungeonPots = true, dungeonFlowerPots = true, dungeonOres = true;
+	/** Counters under the dungeon map, one per kind of loot. */
+	public boolean dungeonCounters = true;
+	/** Deepslate ores not counted ("coal,copper"), the rest are. */
+	public String dungeonOresOff = "";
 	/** Rooms cleared of mobs in green, with the time until they come back. */
 	public boolean dungeonCleared = true;
 	/** Rooms without a spawner edged in blue. */
@@ -359,6 +367,14 @@ public final class HudConfig {
 		dungeonMobs = other.dungeonMobs;
 		dungeonSpawners = other.dungeonSpawners;
 		dungeonContainers = other.dungeonContainers;
+		dungeonBlockColors = other.dungeonBlockColors;
+		dungeonChests = other.dungeonChests;
+		dungeonBarrels = other.dungeonBarrels;
+		dungeonPots = other.dungeonPots;
+		dungeonFlowerPots = other.dungeonFlowerPots;
+		dungeonOres = other.dungeonOres;
+		dungeonCounters = other.dungeonCounters;
+		dungeonOresOff = other.dungeonOresOff;
 		dungeonCleared = other.dungeonCleared;
 		dungeonNoSpawner = other.dungeonNoSpawner;
 		dungeonFollow = other.dungeonFollow;

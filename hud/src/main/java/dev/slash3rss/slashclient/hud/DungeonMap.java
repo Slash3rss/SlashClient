@@ -198,7 +198,10 @@ public final class DungeonMap implements HudModule {
 					int ix = (int) Math.floor(viewX + (px + 0.5f) / viewScale), iz = (int) Math.floor(viewZ + (py + 0.5f) / viewScale);
 					if (ix >= 0 && iz >= 0 && ix < SIZE && iz < SIZE) {
 						color = image.getPixel(ix, iz);
-						if (cell[iz * SIZE + ix] == 2) color = DungeonRooms.tint(ix, iz, color);
+						byte c = cell[iz * SIZE + ix];
+						// plain: one grey for the floor (green where the start room's is green), walls near black
+						if (c == 2) color = DungeonRooms.tint(ix, iz, cfg.dungeonBlockColors ? color : plain(color));
+						else if (c == 1 && !cfg.dungeonBlockColors) color = 0xFF0B0F17;
 					}
 					// a round map shows its whole disc, also where nothing was seen yet
 					if (circle && color == UNKNOWN) color = 0x90101828;
@@ -207,6 +210,12 @@ public final class DungeonMap implements HudModule {
 			}
 		}
 		viewTexture.upload();
+	}
+
+	/** A floor colour made plain: green stays green (the start room), anything else one grey. */
+	private static int plain(int argb) {
+		int r = argb >> 16 & 0xFF, g = argb >> 8 & 0xFF, b = argb & 0xFF;
+		return g > r + 30 && g > b + 30 ? 0xFF3E8E52 : 0xFF4B5563;
 	}
 
 	/** "Dungeon poz. 2" on the boss bar: whether it is there, and the dungeon's level for the map's title. */
@@ -302,7 +311,8 @@ public final class DungeonMap implements HudModule {
 
 	@Override
 	public int height(Minecraft mc) {
-		return H + title();
+		java.util.List<int[]> counters = counters();
+		return H + title() + (counters.isEmpty() ? 0 : counterRows(mc, counters) * ROW + 2);
 	}
 
 	@Override
@@ -312,6 +322,7 @@ public final class DungeonMap implements HudModule {
 		if (title() > 0) title(g, mc, x, y);
 		int ox = x, oy = y + title();
 		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, viewId, ox, oy, 0, 0, W, H, W, H, W, H, 0xFFFFFFFF);
+		drawCounters(g, mc, ox, oy + H, counters());
 		DungeonRooms.draw(g, mc, ox, oy, viewX, viewZ, viewScale, originX, originZ, DungeonMap::shown);
 		markers(g, mc, ox, oy);
 		int sx = Math.round((float) (mc.player.getX() - originX - viewX) * viewScale), sz = Math.round((float) (mc.player.getZ() - originZ - viewZ) * viewScale);
@@ -434,9 +445,55 @@ public final class DungeonMap implements HudModule {
 		String text = dungeonLevel.isEmpty() ? Component.translatable("slashclient-hud.dungeon").getString()
 			: Component.translatable("slashclient-hud.dungeon.level", dungeonLevel).getString();
 		Modules.text(g, mc, text, x + 3, y + 2, 0xFFFFFFFF);
-		// containers taken of all found, on the right
-		String count = SlashHud.config.dungeonContainers ? DungeonRooms.containerCount() : "";
-		if (!count.isEmpty()) Modules.text(g, mc, count, x + W - 3 - mc.font.width(count), y + 2, 0xFFFDE047);
+	}
+
+	/** The counters under the map: each kind of loot shown and found, its icon and taken of all. */
+	private static java.util.List<int[]> counters() {
+		java.util.List<int[]> out = new java.util.ArrayList<>();
+		if (!SlashHud.config.dungeonCounters || !active) return out;
+		for (int cat = 0; cat < DungeonRooms.LOOT.length; cat++) {
+			if (!DungeonRooms.shown(cat)) continue;
+			int[] n = DungeonRooms.count(cat);
+			if (n[1] > 0) out.add(new int[] { cat, n[0], n[1] });
+		}
+		return out;
+	}
+
+	private static final int ROW = 11;
+
+	/** How many rows the counters take, laid out left to right and wrapped at the map's width. */
+	private static int counterRows(Minecraft mc, java.util.List<int[]> counters) {
+		int rows = counters.isEmpty() ? 0 : 1, at = 0;
+		for (int[] c : counters) {
+			int w = counterWidth(mc, c);
+			if (at > 0 && at + w > W) {
+				rows++;
+				at = 0;
+			}
+			at += w + 6;
+		}
+		return rows;
+	}
+
+	private static int counterWidth(Minecraft mc, int[] c) {
+		return 10 + mc.font.width(c[1] + "/" + c[2]);
+	}
+
+	private static void drawCounters(GuiGraphicsExtractor g, Minecraft mc, int x, int y, java.util.List<int[]> counters) {
+		int at = 0, row = 0;
+		for (int[] c : counters) {
+			int w = counterWidth(mc, c);
+			if (at > 0 && at + w > W) {
+				row++;
+				at = 0;
+			}
+			int cx = x + 2 + at, cy = y + 2 + row * ROW;
+			ItemStack icon = Ui.stack(DungeonRooms.LOOT_ICONS[c[0]]);
+			if (icon != null) item(g, icon, cx + 4, cy + 4, 8);
+			// all of a kind taken: green
+			Modules.text(g, mc, c[1] + "/" + c[2], cx + 10, cy, c[1] == c[2] ? 0xFF86EFAC : 0xFFFFFFFF);
+			at += w + 6;
+		}
 	}
 
 	/** The player: a white dot with a short line the way they look. */

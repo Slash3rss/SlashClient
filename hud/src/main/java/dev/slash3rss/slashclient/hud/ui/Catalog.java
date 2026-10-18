@@ -83,6 +83,7 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.set.coordsFacing", () -> cfg.coordsFacing, v -> cfg.coordsFacing = v));
 				}
 				case "dungeonmap" -> {
+					settings.add(new Toggle("slashclient-hud.dungeon.blockColors", () -> cfg.dungeonBlockColors, v -> cfg.dungeonBlockColors = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.title", () -> cfg.dungeonTitle, v -> cfg.dungeonTitle = v));
 					settings.add(new Choice("slashclient-hud.set.shape", new String[] { "square", "circle" }, "slashclient-hud.dungeon.shape.",
 						() -> cfg.dungeonShape, v -> cfg.dungeonShape = v));
@@ -93,6 +94,17 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.dungeon.mobs", () -> cfg.dungeonMobs, v -> cfg.dungeonMobs = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.spawners", () -> cfg.dungeonSpawners, v -> cfg.dungeonSpawners = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.containers", () -> cfg.dungeonContainers, v -> cfg.dungeonContainers = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.counters", () -> cfg.dungeonCounters, v -> cfg.dungeonCounters = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.loot.chest", () -> cfg.dungeonChests, v -> cfg.dungeonChests = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.loot.barrel", () -> cfg.dungeonBarrels, v -> cfg.dungeonBarrels = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.loot.pot", () -> cfg.dungeonPots, v -> cfg.dungeonPots = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.loot.flowerPot", () -> cfg.dungeonFlowerPots, v -> cfg.dungeonFlowerPots = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.loot.ore", () -> cfg.dungeonOres, v -> cfg.dungeonOres = v));
+					// which ores, one by one
+					for (String ore : dev.slash3rss.slashclient.hud.DungeonRooms.ORES) {
+						settings.add(new Toggle("slashclient-hud.dungeon.ore." + ore, () -> dev.slash3rss.slashclient.hud.DungeonRooms.oreCounted(ore),
+							v -> dev.slash3rss.slashclient.hud.DungeonRooms.countOre(ore, v)));
+					}
 					settings.add(new Toggle("slashclient-hud.dungeon.cleared", () -> cfg.dungeonCleared, v -> cfg.dungeonCleared = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.noSpawner", () -> cfg.dungeonNoSpawner, v -> cfg.dungeonNoSpawner = v));
 					// switched on, it holds the height the player stands at now; the slider moves it
