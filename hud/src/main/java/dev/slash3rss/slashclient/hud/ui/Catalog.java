@@ -83,6 +83,7 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.set.coordsFacing", () -> cfg.coordsFacing, v -> cfg.coordsFacing = v));
 				}
 				case "dungeonmap" -> {
+					settings.add(new Toggle("slashclient-hud.dungeon.title", () -> cfg.dungeonTitle, v -> cfg.dungeonTitle = v));
 					settings.add(new Choice("slashclient-hud.set.shape", new String[] { "square", "circle" }, "slashclient-hud.dungeon.shape.",
 						() -> cfg.dungeonShape, v -> cfg.dungeonShape = v));
 					settings.add(new Slider("slashclient-hud.dungeon.zoom", 1f, 4f, 0.25f, "%.2f×", () -> cfg.dungeonZoom, v -> cfg.dungeonZoom = v));
@@ -91,6 +92,9 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.dungeon.players", () -> cfg.dungeonPlayers, v -> cfg.dungeonPlayers = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.mobs", () -> cfg.dungeonMobs, v -> cfg.dungeonMobs = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.spawners", () -> cfg.dungeonSpawners, v -> cfg.dungeonSpawners = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.containers", () -> cfg.dungeonContainers, v -> cfg.dungeonContainers = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.cleared", () -> cfg.dungeonCleared, v -> cfg.dungeonCleared = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.noSpawner", () -> cfg.dungeonNoSpawner, v -> cfg.dungeonNoSpawner = v));
 					// switched on, it holds the height the player stands at now; the slider moves it
 					settings.add(new Toggle("slashclient-hud.dungeon.fixedY", () -> cfg.dungeonFixedY, v -> {
 						var player = net.minecraft.client.Minecraft.getInstance().player;

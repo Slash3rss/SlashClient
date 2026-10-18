@@ -58,6 +58,31 @@ public class GameDungeon implements FabricClientGameTest {
 			context.waitTicks(30);
 			context.takeScreenshot("dungeon-map-round");
 			context.runOnClient(mc -> TestHooks.dungeonRound(false));
+			// rooms: three containers in three rooms, one broken; a mob killed in the room next door
+			server.runCommand(String.format("setblock %d %d %d chest", x0 - 12, y, z0));
+			server.runCommand(String.format("setblock %d %d %d barrel", x0 + 12, y, z0));
+			server.runCommand(String.format("setblock %d %d %d decorated_pot", x0, y, z0 + 2));
+			server.runCommand(String.format("summon husk %d %d %d {NoAI:1b,PersistenceRequired:1b}", x0 + 12, y, z0 + 12));
+			context.waitTicks(30);
+			String rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
+			if (!rooms.contains("containers 0/3")) throw new AssertionError("Containers not found: " + rooms);
+			server.runCommand(String.format("setblock %d %d %d air", x0, y, z0 + 2));
+			server.runCommand("kill @e[type=husk]");
+			context.waitTicks(30);
+			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
+			if (!rooms.contains("containers 1/3") || rooms.contains("cleared 0") || rooms.contains("without spawner 0")) throw new AssertionError("Rooms: " + rooms);
+			if (Integer.parseInt(rooms.split(" ")[0]) < 7) throw new AssertionError("Too few rooms: " + rooms);
+			context.takeScreenshot("dungeon-rooms");
+			// spawner holograms (armour stand names): the respawn time counts as cleared
+			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,CustomNameVisible:1b,CustomName:\"Posiłki za: 30s\"}", x0 - 12, y + 1, z0 - 12));
+			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,CustomNameVisible:1b,CustomName:\"Pozostałe moby: 4\"}", x0 + 12, y + 1, z0 - 12));
+			// mob classes by their name's colour: an elite (gold) and a mini boss (dark red)
+			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b,CustomName:{text:\"Elita\",color:\"gold\"}}", x0 - 3, y, z0 + 9));
+			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b,CustomName:{text:\"Mini boss\",color:\"dark_red\"}}", x0 + 3, y, z0 + 9));
+			context.waitTicks(30);
+			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
+			if (!rooms.contains("cleared 2")) throw new AssertionError("Hologram not read: " + rooms);
+			context.takeScreenshot("dungeon-holograms");
 			// leaving: the server's line and the boss bar gone end the map; the lobby is not mapped
 			server.runCommand("tellraw @a \"Dungeon » Opuszczono drużynę.\"");
 			server.runCommand("tellraw @a \"Dungeon » Opuszczono Dungeon poz. 3\"");

@@ -424,6 +424,11 @@ public final class TestHooks {
 		return DungeonMap.known() + "," + DungeonMap.active() + "," + new DungeonMap().visible(mc);
 	}
 
+	/** The dungeon map's rooms: how many, containers taken, rooms cleared and without a spawner. */
+	public static String dungeonRooms() {
+		return DungeonRooms.summary();
+	}
+
 	/** The dungeon map round, zoomed in and following the player, or back as it was. */
 	public static void dungeonRound(boolean round) {
 		SlashHud.config.dungeonShape = round ? "circle" : "square";

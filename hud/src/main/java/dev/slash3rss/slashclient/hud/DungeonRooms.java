@@ -1,0 +1,454 @@
+package dev.slash3rss.slashclient.hud;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.BarrelBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.DecoratedPotBlock;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * The dungeon map's rooms, and what is known about each.
+ *
+ * Rooms come from the floor alone: where the floor is at least five blocks across is the inside of
+ * a room, and narrower places (doors, corridors) go to the room nearest along the floor. Each room
+ * then counts its chests, barrels and pots (opened or broken ones as taken, until they come back),
+ * remembers being cleared of mobs (they come back two minutes later) and whether it has a spawner
+ * (an armour stand with one on its head).
+ *
+ * A spawner's hologram (armour stand names, or text displays) tells more, and is believed first:
+ * "Pozostałe moby: 4" (mobs left) and "Posiłki za: 68s" (when they come back).
+ */
+final class DungeonRooms {
+	private DungeonRooms() {}
+
+	/** After the last mob of a room dies, how long until they come back. */
+	static final long RESPAWN_MS = 120_000;
+	/** How close the player must be to a room to see all of its mobs (the server sends them that far). */
+	private static final int NEAR = 28;
+
+	/** A chest, barrel or pot: where it is (in the world), and whether it was taken. */
+	private static final class Container {
+		final int x, y, z;
+		boolean present = true, opened, broken;
+
+		Container(int x, int y, int z) {
+			this.x = x;
+			this.y = y;
+			this.z = z;
+		}
+
+		boolean taken() {
+			return opened || broken;
+		}
+	}
+
+	private static final class Room {
+		long sumX, sumZ;
+		int pixels, containers, taken, mobs, spawners;
+		boolean visited;
+		/** When its mobs come back (0: not cleared), and how many are left (-1: not known). */
+		long respawnAt;
+		int left = -1;
+
+		int centerX() {
+			return (int) (sumX / pixels);
+		}
+
+		int centerZ() {
+			return (int) (sumZ / pixels);
+		}
+	}
+
+	private static int size;
+	/** Each map pixel's room (-1: none), and whether it is on a room's edge. */
+	private static int[] roomOf = new int[0];
+	private static boolean[] edge = new boolean[0];
+	private static int[] dist = new int[0];
+	private static boolean[] visited = new boolean[0];
+	private static final List<Room> rooms = new ArrayList<>();
+	private static final Map<Long, Container> containers = new HashMap<>();
+	/** Spawners seen, by their place on the map (x, z). */
+	private static final Map<Long, int[]> spawners = new HashMap<>();
+	/** Rooms that had mobs (a point in each), and rooms cleared (a point and when). */
+	private static final List<int[]> infested = new ArrayList<>();
+	private static final List<long[]> cleared = new ArrayList<>();
+	/** What spawner holograms said, by their place: x, z, mobs left (-1), respawn time (0), when read. */
+	private static final Map<Long, long[]> holograms = new HashMap<>();
+	private static final java.util.regex.Pattern LEFT = java.util.regex.Pattern.compile("Pozosta\\S*\\s+moby:?\\s*(\\d+)", java.util.regex.Pattern.CASE_INSENSITIVE);
+	private static final java.util.regex.Pattern BACK = java.util.regex.Pattern.compile("Posi\\S*\\s+za:?\\s*(\\d+)\\s*s", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+	static void reset(int mapSize) {
+		size = mapSize;
+		if (roomOf.length != size * size) {
+			roomOf = new int[size * size];
+			edge = new boolean[size * size];
+			dist = new int[size * size];
+			visited = new boolean[size * size];
+		}
+		Arrays.fill(roomOf, -1);
+		Arrays.fill(edge, false);
+		Arrays.fill(visited, false);
+		rooms.clear();
+		containers.clear();
+		spawners.clear();
+		infested.clear();
+		cleared.clear();
+		holograms.clear();
+	}
+
+	private static boolean container(Block block) {
+		return block instanceof ChestBlock || block instanceof BarrelBlock || block instanceof DecoratedPotBlock;
+	}
+
+	/** The containers in one column: found ones are new or back, missing ones were broken. */
+	static void scanColumn(ClientLevel world, BlockPos.MutableBlockPos pos, int x, int cy, int z) {
+		for (int y = cy - 2; y <= cy + 3; y++) {
+			boolean is = container(world.getBlockState(pos.set(x, y, z)).getBlock());
+			long key = BlockPos.asLong(x, y, z);
+			Container c = containers.get(key);
+			if (is) {
+				if (c == null) containers.put(key, new Container(x, y, z));
+				else if (!c.present) {
+					// it grew back: full again
+					c.present = true;
+					c.opened = c.broken = false;
+				}
+			} else if (c != null && c.present) {
+				c.present = false;
+				c.broken = true;
+			}
+		}
+	}
+
+	/** Each tick: a container's screen open on a container block means it was opened. */
+	static void watchOpening(Minecraft mc) {
+		if (!(Compat.screen(mc) instanceof AbstractContainerScreen<?>) || !(mc.hitResult instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) return;
+		BlockPos p = hit.getBlockPos();
+		Container c = containers.get(p.asLong());
+		if (c == null || c.opened) return;
+		c.opened = true;
+		// the other half of a double chest
+		for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+			Container n = containers.get(BlockPos.asLong(p.getX() + d[0], p.getY(), p.getZ() + d[1]));
+			if (n != null && n.present) n.opened = true;
+		}
+	}
+
+	/**
+	 * After a scan: the rooms anew from the floor (cells: 0 unknown, 1 wall, 2 floor, within the
+	 * box seen), then what is in each.
+	 */
+	static void update(Minecraft mc, byte[] cell, int x0, int z0, int x1, int z1, int originX, int originZ) {
+		if (x0 > x1) return;
+		split(cell, x0, z0, x1, z1);
+		int px = mc.player.getBlockX() - originX, pz = mc.player.getBlockZ() - originZ;
+		if (px >= 0 && pz >= 0 && px < size && pz < size) visited[pz * size + px] = true;
+		for (int i = 0; i < roomOf.length; i++) if (visited[i] && roomOf[i] >= 0) rooms.get(roomOf[i]).visited = true;
+
+		for (Container c : containers.values()) {
+			int r = roomAt(c.x - originX, c.z - originZ);
+			if (r < 0) continue;
+			rooms.get(r).containers++;
+			if (c.taken()) rooms.get(r).taken++;
+		}
+
+		// spawners and mobs about now
+		Map<Long, int[]> seenSpawners = new HashMap<>();
+		for (Entity e : mc.level.entitiesForRendering()) {
+			if (!e.isAlive()) continue;
+			int ex = e.getBlockX() - originX, ez = e.getBlockZ() - originZ;
+			String text = e instanceof net.minecraft.world.entity.Display.TextDisplay display && display.textRenderState() != null ? display.textRenderState().text().getString()
+				: e.hasCustomName() ? e.getCustomName().getString() : null;
+			if (text != null) hologram(text.replaceAll("§.", ""), ex, ez);
+			if (e instanceof ArmorStand stand) {
+				if (stand.getItemBySlot(EquipmentSlot.HEAD).is(Items.SPAWNER)) seenSpawners.put(key(ex, ez), new int[] { ex, ez });
+			} else if (e instanceof Mob) {
+				int r = roomAt(ex, ez);
+				if (r >= 0) rooms.get(r).mobs++;
+			}
+		}
+		// spawners near the player that are gone now were destroyed
+		spawners.values().removeIf(s -> Math.abs(s[0] - px) < NEAR && Math.abs(s[1] - pz) < NEAR && !seenSpawners.containsKey(key(s[0], s[1])));
+		spawners.putAll(seenSpawners);
+		for (int[] s : spawners.values()) {
+			int r = roomAt(s[0], s[1]);
+			if (r >= 0) rooms.get(r).spawners++;
+		}
+
+		// rooms that had mobs and have none now, seen from close: cleared
+		long now = System.currentTimeMillis();
+		// the holograms first: what the server says; one read half a minute ago is old for the count
+		holograms.values().removeIf(h -> h[3] > 0 ? h[3] < now : now - h[4] > 30_000);
+		for (long[] h : holograms.values()) {
+			int r = roomAt((int) h[0], (int) h[1]);
+			if (r < 0) continue;
+			Room room = rooms.get(r);
+			if (h[3] > now) room.respawnAt = Math.max(room.respawnAt, h[3]);
+			else if (h[2] >= 0) room.left = room.left < 0 ? (int) h[2] : room.left + (int) h[2];
+		}
+		boolean[] hadMobs = new boolean[rooms.size()];
+		List<int[]> stillInfested = new ArrayList<>();
+		for (int[] p : infested) {
+			int r = roomAt(p[0], p[1]);
+			if (r < 0 || hadMobs[r]) continue;
+			hadMobs[r] = true;
+			Room room = rooms.get(r);
+			boolean near = Math.abs(room.centerX() - px) < NEAR && Math.abs(room.centerZ() - pz) < NEAR;
+			if (room.mobs == 0 && near) cleared.add(new long[] { room.centerX(), room.centerZ(), now + RESPAWN_MS });
+			else if (room.mobs == 0) stillInfested.add(p);
+		}
+		infested.clear();
+		infested.addAll(stillInfested);
+		for (int r = 0; r < rooms.size(); r++) {
+			Room room = rooms.get(r);
+			if (room.mobs > 0) infested.add(new int[] { room.centerX(), room.centerZ() });
+		}
+		for (Iterator<long[]> it = cleared.iterator(); it.hasNext();) {
+			long[] c = it.next();
+			int r = roomAt((int) c[0], (int) c[1]);
+			// over, or the mobs are back
+			if (now > c[2] || r < 0 || rooms.get(r).mobs > 0) {
+				it.remove();
+				continue;
+			}
+			// a hologram's time, when there is one, stands
+			if (rooms.get(r).respawnAt == 0) rooms.get(r).respawnAt = c[2];
+		}
+	}
+
+	/** One hologram line (or a few, in a text display): mobs left, or when they come back. */
+	private static void hologram(String text, int x, int z) {
+		java.util.regex.Matcher left = LEFT.matcher(text), back = BACK.matcher(text);
+		boolean isLeft = left.find(), isBack = back.find();
+		if (!isLeft && !isBack) return;
+		long now = System.currentTimeMillis();
+		long[] h = holograms.computeIfAbsent(key(x, z), k -> new long[] { x, z, -1, 0, now });
+		h[4] = now;
+		if (isLeft) {
+			h[2] = Integer.parseInt(left.group(1));
+			h[3] = 0;
+		}
+		if (isBack) {
+			h[3] = now + Integer.parseInt(back.group(1)) * 1000L;
+			h[2] = -1;
+		}
+	}
+
+	private static long key(int x, int z) {
+		return (long) x << 32 | (z & 0xFFFFFFFFL);
+	}
+
+	/** The room at a map pixel, or the nearest one within two pixels (a chest's column may be no floor). */
+	private static int roomAt(int x, int z) {
+		for (int d = 0; d <= 2; d++) {
+			for (int dz = -d; dz <= d; dz++) {
+				for (int dx = -d; dx <= d; dx++) {
+					int ix = x + dx, iz = z + dz;
+					if (ix < 0 || iz < 0 || ix >= size || iz >= size) continue;
+					int r = roomOf[iz * size + ix];
+					if (r >= 0) return r;
+				}
+			}
+		}
+		return -1;
+	}
+
+	/** Floor at least five across: room cores; the rest of the floor joins the nearest core. */
+	private static void split(byte[] cell, int x0, int z0, int x1, int z1) {
+		rooms.clear();
+		Arrays.fill(roomOf, -1);
+		Arrays.fill(edge, false);
+		// how far each floor pixel is from anything not floor (8 ways round), in two passes
+		for (int z = z0; z <= z1; z++) {
+			for (int x = x0; x <= x1; x++) {
+				int i = z * size + x;
+				if (cell[i] != 2) {
+					dist[i] = 0;
+					continue;
+				}
+				int d = Math.min(at(x - 1, z, x0, z0, x1, z1), Math.min(at(x, z - 1, x0, z0, x1, z1), Math.min(at(x - 1, z - 1, x0, z0, x1, z1), at(x + 1, z - 1, x0, z0, x1, z1))));
+				dist[i] = d + 1;
+			}
+		}
+		for (int z = z1; z >= z0; z--) {
+			for (int x = x1; x >= x0; x--) {
+				int i = z * size + x;
+				if (cell[i] != 2) continue;
+				int d = Math.min(at(x + 1, z, x0, z0, x1, z1), Math.min(at(x, z + 1, x0, z0, x1, z1), Math.min(at(x + 1, z + 1, x0, z0, x1, z1), at(x - 1, z + 1, x0, z0, x1, z1))));
+				dist[i] = Math.min(dist[i], d + 1);
+			}
+		}
+		// the cores, each one room (tiny ones are nooks, not rooms)
+		ArrayDeque<Integer> queue = new ArrayDeque<>();
+		List<Integer> part = new ArrayList<>();
+		for (int z = z0; z <= z1; z++) {
+			for (int x = x0; x <= x1; x++) {
+				int start = z * size + x;
+				if (dist[start] < 3 || roomOf[start] != -1) continue;
+				part.clear();
+				roomOf[start] = -2;
+				queue.add(start);
+				while (!queue.isEmpty()) {
+					int i = queue.poll();
+					part.add(i);
+					int ix = i % size, iz = i / size;
+					for (int[] d : STEPS) {
+						int nx = ix + d[0], nz = iz + d[1];
+						if (nx < x0 || nz < z0 || nx > x1 || nz > z1) continue;
+						int n = nz * size + nx;
+						if (dist[n] >= 3 && roomOf[n] == -1) {
+							roomOf[n] = -2;
+							queue.add(n);
+						}
+					}
+				}
+				int id = part.size() >= 6 ? rooms.size() : -3;
+				if (id >= 0) rooms.add(new Room());
+				for (int i : part) roomOf[i] = id;
+			}
+		}
+		// the rest of the floor: to the nearest room along it
+		for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++) if (roomOf[z * size + x] >= 0) queue.add(z * size + x);
+		for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++) if (roomOf[z * size + x] == -3) roomOf[z * size + x] = -1;
+		while (!queue.isEmpty()) {
+			int i = queue.poll();
+			int ix = i % size, iz = i / size;
+			for (int[] d : STEPS) {
+				int nx = ix + d[0], nz = iz + d[1];
+				if (nx < x0 || nz < z0 || nx > x1 || nz > z1) continue;
+				int n = nz * size + nx;
+				if (cell[n] == 2 && roomOf[n] == -1) {
+					roomOf[n] = roomOf[i];
+					queue.add(n);
+				}
+			}
+		}
+		for (int z = z0; z <= z1; z++) {
+			for (int x = x0; x <= x1; x++) {
+				int i = z * size + x, r = roomOf[i];
+				if (r < 0) continue;
+				Room room = rooms.get(r);
+				room.sumX += x;
+				room.sumZ += z;
+				room.pixels++;
+				for (int[] d : STEPS) {
+					int nx = x + d[0], nz = z + d[1];
+					if (nx < 0 || nz < 0 || nx >= size || nz >= size || roomOf[nz * size + nx] != r) {
+						edge[i] = true;
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	private static final int[][] STEPS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
+
+	private static int at(int x, int z, int x0, int z0, int x1, int z1) {
+		if (x < x0 || z < z0 || x > x1 || z > z1) return 0;
+		return dist[z * size + x];
+	}
+
+	// ---------- on the map ----------
+
+	/** A floor pixel's colour with its room's marks: green while cleared, a blue edge when it has no spawner. */
+	static int tint(int x, int z, int color) {
+		int r = roomOf[z * size + x];
+		if (r < 0 || r >= rooms.size()) return color;
+		Room room = rooms.get(r);
+		HudConfig cfg = SlashHud.config;
+		if (cfg.dungeonNoSpawner && edge[z * size + x] && room.visited && room.spawners == 0) return 0xFF60A5FA;
+		if (cfg.dungeonCleared && room.respawnAt > System.currentTimeMillis()) return mix(color, 0x22C55E, 0.45f);
+		return color;
+	}
+
+	private static int mix(int argb, int rgb, float t) {
+		int r = Math.round((argb >> 16 & 0xFF) * (1 - t) + (rgb >> 16 & 0xFF) * t);
+		int g = Math.round((argb >> 8 & 0xFF) * (1 - t) + (rgb >> 8 & 0xFF) * t);
+		int b = Math.round((argb & 0xFF) * (1 - t) + (rgb & 0xFF) * t);
+		return argb & 0xFF000000 | r << 16 | g << 8 | b;
+	}
+
+	/** Containers as dots, and over each room its count of taken containers and the time until its mobs come back. */
+	static void draw(GuiGraphicsExtractor g, Minecraft mc, int ox, int oy, float viewX, float viewZ, float scale, int originX, int originZ,
+			java.util.function.BiPredicate<Integer, Integer> shown) {
+		HudConfig cfg = SlashHud.config;
+		if (cfg.dungeonContainers) {
+			for (Container c : containers.values()) {
+				int sx = Math.round((c.x - originX + 0.5f - viewX) * scale), sz = Math.round((c.z - originZ + 0.5f - viewZ) * scale);
+				if (shown.test(sx, sz)) g.fill(ox + sx - 1, oy + sz - 1, ox + sx + 1, oy + sz + 1, c.taken() ? 0xFF4B5563 : 0xFFFACC15);
+			}
+		}
+		long now = System.currentTimeMillis();
+		for (Room room : rooms) {
+			if (room.pixels == 0) continue;
+			List<String> lines = new ArrayList<>();
+			List<Integer> colors = new ArrayList<>();
+			if (cfg.dungeonContainers && room.containers > 0) {
+				lines.add(room.taken + "/" + room.containers);
+				colors.add(room.taken == room.containers ? 0xFF86EFAC : 0xFFFDE047);
+			}
+			if (cfg.dungeonCleared && room.respawnAt > now) {
+				long left = (room.respawnAt - now + 999) / 1000;
+				lines.add(left / 60 + ":" + String.format("%02d", left % 60));
+				colors.add(0xFF4ADE80);
+			} else if (cfg.dungeonCleared && room.left > 0) {
+				// mobs left, as the spawner's hologram says
+				lines.add("☠" + room.left);
+				colors.add(0xFFF87171);
+			}
+			if (lines.isEmpty()) continue;
+			int sx = Math.round((room.centerX() + 0.5f - viewX) * scale), sz = Math.round((room.centerZ() + 0.5f - viewZ) * scale);
+			if (!shown.test(sx, sz)) continue;
+			// small: half the font's size
+			var pose = g.pose();
+			pose.pushMatrix();
+			pose.translate(ox + sx, oy + sz - lines.size() * 2.5f);
+			pose.scale(0.5f, 0.5f);
+			for (int i = 0; i < lines.size(); i++) {
+				String s = lines.get(i);
+				g.text(mc.font, s, -mc.font.width(s) / 2, i * 10, colors.get(i), true);
+			}
+			pose.popMatrix();
+		}
+	}
+
+	/** All containers taken of all found ("4/12"), or empty when none were found. */
+	static String containerCount() {
+		int all = 0, taken = 0;
+		for (Container c : containers.values()) {
+			all++;
+			if (c.taken()) taken++;
+		}
+		return all == 0 ? "" : taken + "/" + all;
+	}
+
+	/** For the test. */
+	static String summary() {
+		int clearedRooms = 0, noSpawner = 0;
+		for (Room r : rooms) {
+			if (r.respawnAt > 0) clearedRooms++;
+			if (r.visited && r.spawners == 0) noSpawner++;
+		}
+		return rooms.size() + " rooms, containers " + containerCount() + ", cleared " + clearedRooms + ", without spawner " + noSpawner;
+	}
+}

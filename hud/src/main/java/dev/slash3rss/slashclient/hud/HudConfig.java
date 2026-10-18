@@ -127,12 +127,20 @@ public final class HudConfig {
 	public float dungeonZoom = 1f;
 	/** Other players on the dungeon map. */
 	public boolean dungeonPlayers = true;
+	/** The dungeon map's title ("Dungeon · poziom 3" and the containers taken). */
+	public boolean dungeonTitle = true;
 	/** You on the dungeon map as your head instead of an arrow. */
 	public boolean dungeonSelfHead = false;
 	/** Mobs and NPCs (players with a skin who are not on the tab list) on the dungeon map. */
 	public boolean dungeonMobs = true;
 	/** Spawners on the dungeon map: armour stands with a spawner on the head. */
 	public boolean dungeonSpawners = true;
+	/** Chests, barrels and pots on the dungeon map, counted per room (taken of all). */
+	public boolean dungeonContainers = true;
+	/** Rooms cleared of mobs in green, with the time until they come back. */
+	public boolean dungeonCleared = true;
+	/** Rooms without a spawner edged in blue. */
+	public boolean dungeonNoSpawner = true;
 	/** The dungeon map keeps the player in its middle. */
 	public boolean dungeonFollow = false;
 	/** The dungeon map is read at one height (dungeonY) instead of at the player's feet. */
@@ -346,9 +354,13 @@ public final class HudConfig {
 		tntTimer = other.tntTimer;
 		dungeonZoom = other.dungeonZoom;
 		dungeonPlayers = other.dungeonPlayers;
+		dungeonTitle = other.dungeonTitle;
 		dungeonSelfHead = other.dungeonSelfHead;
 		dungeonMobs = other.dungeonMobs;
 		dungeonSpawners = other.dungeonSpawners;
+		dungeonContainers = other.dungeonContainers;
+		dungeonCleared = other.dungeonCleared;
+		dungeonNoSpawner = other.dungeonNoSpawner;
 		dungeonFollow = other.dungeonFollow;
 		dungeonFixedY = other.dungeonFixedY;
 		dungeonY = other.dungeonY;

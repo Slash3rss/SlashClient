@@ -64,8 +64,8 @@ final class MobHeads {
 	private static final Map<String, Identifier> FOUND = new HashMap<>();
 	private static final Identifier NONE = Identifier.fromNamespaceAndPath("slashclient-hud", "none");
 
-	/** Draws the mob's face, 8 pixels round the point; false when there is none to draw. */
-	static boolean draw(GuiGraphicsExtractor g, EntityType<?> type, int x, int y) {
+	/** Draws the mob's face, `size` pixels round the point, in a frame; false when there is none to draw. */
+	static boolean draw(GuiGraphicsExtractor g, EntityType<?> type, int x, int y, int size, int frame) {
 		String id = EntityType.getKey(type).getPath();
 		Face f = FACES.get(id);
 		if (f == null) return false;
@@ -79,9 +79,9 @@ final class MobHeads {
 		});
 		if (tex == NONE) return false;
 		// as wide as tall at most 8: a taller face (the illagers' long heads) keeps its shape
-		int w = f.w() >= f.h() ? 8 : Math.round(8f * f.w() / f.h()), h = f.h() >= f.w() ? 8 : Math.round(8f * f.h() / f.w());
+		int w = f.w() >= f.h() ? size : Math.round((float) size * f.w() / f.h()), h = f.h() >= f.w() ? size : Math.round((float) size * f.h() / f.w());
 		int x0 = x - w / 2, y0 = y - h / 2;
-		g.fill(x0 - 1, y0 - 1, x0 + w + 1, y0 + h + 1, 0xFF7F1D1D);
+		g.fill(x0 - 1, y0 - 1, x0 + w + 1, y0 + h + 1, frame);
 		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, tex, x0, y0, f.u(), f.v(), w, h, f.w(), f.h(), f.texW(), f.texH(), 0xFFFFFFFF);
 		if (f.hatU() >= 0) g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, tex, x0, y0, f.hatU(), f.hatV(), w, h, f.w(), f.h(), f.texW(), f.texH(), 0xFFFFFFFF);
 		return true;

@@ -271,6 +271,8 @@
 	"slashclient-hud.invite.here": "Invite here",
 	"slashclient-hud.invite.leaving": "Joining a friend…",
 	"key.slashclient-hud.emote": "Emotes",
+	"key.slashclient-hud.dungeonZoomIn": "Dungeon map: zoom in",
+	"key.slashclient-hud.dungeonZoomOut": "Dungeon map: zoom out",
 	"slashclient-hud.emote": "Emotes",
 	"slashclient-hud.emote.pick": "Pick an emote",
 	"slashclient-hud.emote.sent": "Emote:",
@@ -393,10 +395,14 @@
 	"slashclient-hud.dungeon.shape.circle": "Circle",
 	"slashclient-hud.dungeon.zoom": "Zoom",
 	"slashclient-hud.dungeon.follow": "Follow the player (you in the middle)",
+	"slashclient-hud.dungeon.title": "\"Dungeon · level\" title",
 	"slashclient-hud.dungeon.selfHead": "Your head instead of the arrow",
 	"slashclient-hud.dungeon.players": "Show other players",
 	"slashclient-hud.dungeon.mobs": "Show mobs and NPCs",
 	"slashclient-hud.dungeon.spawners": "Show spawners",
+	"slashclient-hud.dungeon.containers": "Chests, barrels and pots (taken/all)",
+	"slashclient-hud.dungeon.cleared": "Cleared rooms (green, time until respawn)",
+	"slashclient-hud.dungeon.noSpawner": "Rooms without a spawner (blue edge)",
 	"slashclient-hud.dungeon.fixedY": "Fixed map height",
 	"slashclient-hud.dungeon.y": "Height"
 }

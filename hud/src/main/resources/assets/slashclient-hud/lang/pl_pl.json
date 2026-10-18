@@ -271,6 +271,8 @@
 	"slashclient-hud.invite.here": "Zaproś tutaj",
 	"slashclient-hud.invite.leaving": "Dołączanie do znajomego…",
 	"key.slashclient-hud.emote": "Emotki",
+	"key.slashclient-hud.dungeonZoomIn": "Mapa dungeonu: przybliż",
+	"key.slashclient-hud.dungeonZoomOut": "Mapa dungeonu: oddal",
 	"slashclient-hud.emote": "Emotki",
 	"slashclient-hud.emote.pick": "Wybierz emotkę",
 	"slashclient-hud.emote.sent": "Emotka:",
@@ -393,10 +395,14 @@
 	"slashclient-hud.dungeon.shape.circle": "Koło",
 	"slashclient-hud.dungeon.zoom": "Przybliżenie",
 	"slashclient-hud.dungeon.follow": "Śledź gracza (ty na środku)",
+	"slashclient-hud.dungeon.title": "Napis „Dungeon · poziom”",
 	"slashclient-hud.dungeon.selfHead": "Twoja główka zamiast strzałki",
 	"slashclient-hud.dungeon.players": "Pokazuj innych graczy",
 	"slashclient-hud.dungeon.mobs": "Pokazuj moby i NPC",
 	"slashclient-hud.dungeon.spawners": "Pokazuj spawnery",
+	"slashclient-hud.dungeon.containers": "Skrzynki, beczki i dzbanki (zebrane/wszystkie)",
+	"slashclient-hud.dungeon.cleared": "Wyczyszczone pokoje (zielone, czas do respawnu)",
+	"slashclient-hud.dungeon.noSpawner": "Pokoje bez spawnera (niebieska ramka)",
 	"slashclient-hud.dungeon.fixedY": "Stała wysokość mapy",
 	"slashclient-hud.dungeon.y": "Wysokość"
 }
