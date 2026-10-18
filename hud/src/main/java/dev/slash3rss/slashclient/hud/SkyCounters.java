@@ -243,7 +243,7 @@ public final class SkyCounters {
 	/** The fishing hook was out last tick; the inventory as it was when it came back. */
 	private static boolean fishing;
 	private static long reeledAt;
-	private static Map<net.minecraft.world.item.Item, Integer> before;
+	private static List<ItemStack> before;
 
 	private static int tick;
 
@@ -270,13 +270,14 @@ public final class SkyCounters {
 		}
 		fishing = out;
 		if (before != null && now - reeledAt > 300) {
-			Map<net.minecraft.world.item.Item, Integer> after = counts(mc);
-			for (var e : after.entrySet()) {
-				int more = e.getValue() - before.getOrDefault(e.getKey(), 0);
-				if (more <= 0) continue;
-				ItemStack stack = new ItemStack(e.getKey());
-				if (stack.is(ItemTags.FISHES)) add(Kind.FISH, item(stack), more);
-				before.put(e.getKey(), e.getValue());
+			var inv = mc.player.getInventory();
+			for (int i = 0; i < before.size() && i < inv.getContainerSize(); i++) {
+				ItemStack was = before.get(i), is = inv.getItem(i);
+				if (is.isEmpty() || ItemStack.matches(was, is)) continue;
+				int more = ItemStack.isSameItemSameComponents(was, is) ? is.getCount() - was.getCount() : is.getCount();
+				// SkyUp says each catch in the chat (counted from there): the inventory only for other fish
+				if (more > 0 && !chatCatches) fished(is, more);
+				before.set(i, is.copy());
 			}
 			if (now - reeledAt > 2000) before = null;
 		}
@@ -287,14 +288,90 @@ public final class SkyCounters {
 		}
 	}
 
-	private static Map<net.minecraft.world.item.Item, Integer> counts(Minecraft mc) {
-		Map<net.minecraft.world.item.Item, Integer> out = new HashMap<>();
+	/** Each inventory slot as it is now (copies). */
+	private static List<ItemStack> counts(Minecraft mc) {
+		List<ItemStack> out = new ArrayList<>();
 		var inv = mc.player.getInventory();
-		for (int i = 0; i < inv.getContainerSize(); i++) {
-			ItemStack s = inv.getItem(i);
-			if (!s.isEmpty()) out.merge(s.getItem(), s.getCount(), Integer::sum);
-		}
+		for (int i = 0; i < inv.getContainerSize(); i++) out.add(inv.getItem(i).copy());
 		return out;
+	}
+
+	/** A catch was seen in the chat: from then on the chat counts the fish, not the inventory. */
+	private static boolean chatCatches;
+
+	/**
+	 * SkyUp's line on each catch, "Wędkarstwo » Wyłowiono: Przeciętny, niezjadliwy Tuńczyk pospolity
+	 * (22 013,82g, 9%)!", carries the fish itself (to show on hover): counted from it, so a catch
+	 * counts wherever the fish goes (a full inventory, a fishing bag).
+	 */
+	public static void onChat(net.minecraft.network.chat.Component message) {
+		String plain = SkyTaskParser.plain(message.getString());
+		if (!plain.contains("Wyłowiono")) return;
+		var fish = message.visit((net.minecraft.network.chat.Style style, String text) ->
+			style.getHoverEvent() instanceof net.minecraft.network.chat.HoverEvent.ShowItem show ? java.util.Optional.of(show.item().create()) : java.util.Optional.<ItemStack>empty(),
+			net.minecraft.network.chat.Style.EMPTY);
+		if (fish.isEmpty()) return;
+		// someone else's catch, should the server ever say those
+		Minecraft mc = Minecraft.getInstance();
+		for (var line : SkyDump.lore(fish.get())) {
+			String text = SkyTaskParser.plain(line.getString());
+			if (text.startsWith("Wyłowił") && mc.player != null && !text.endsWith(mc.player.getName().getString())) return;
+		}
+		chatCatches = true;
+		fished(fish.get(), 1);
+	}
+
+	/** SkyUp's fish (cod with a name of their own): "Wyłowił » nick", "Waga » 8 090,31g (niewielki)". */
+	private static final java.util.regex.Pattern WEIGHT = java.util.regex.Pattern.compile("Waga\\s*(?:»|>>|:)\\s*([\\d  ]+(?:[.,]\\d+)?)\\s*g\\b\\s*(?:\\(([^)]+)\\))?");
+	/** The sizes from the smallest; a word's start is enough ("ogromne" is "ogromny"). */
+	static final String[] SIZES = { "mał", "niewiel", "przeciętn", "duż", "wielk", "ogromn", "mamu" };
+
+	static int size(String word) {
+		String w = word.toLowerCase(Locale.ROOT).strip();
+		for (int i = SIZES.length - 1; i >= 0; i--) if (w.startsWith(SIZES[i])) return i;
+		return -1;
+	}
+
+	/** `count` of a caught item: the fish's kind ("Dowolna ryba"), its weight ("Wyłów: 0g/200 000g") and its size ("Wyłów conajmniej ogromne"). */
+	static void fished(ItemStack stack, int count) {
+		double grams = -1;
+		int size = -1;
+		boolean caught = false;
+		for (var line : SkyDump.lore(stack)) {
+			String text = SkyTaskParser.plain(line.getString());
+			if (text.contains("Wyłowił")) caught = true;
+			java.util.regex.Matcher m = WEIGHT.matcher(text);
+			if (m.find()) {
+				grams = Double.parseDouble(m.group(1).replaceAll("[  ]", "").replace(',', '.'));
+				if (m.group(2) != null) size = size(m.group(2));
+			}
+		}
+		boolean fish = caught || stack.is(ItemTags.FISHES);
+		if (!fish) return;
+		add(Kind.FISH, Thing.of(false, false, false, true, name(stack), stack.getItem().getName(stack).getString()), count);
+		boolean any = false;
+		for (SkyTaskParser.Task t : SkyTasks.data().tasks.values()) {
+			for (SkyTaskParser.Section s : t.sections) {
+				if (kind(s) != Kind.FISH) continue;
+				String h = s.header.toLowerCase(Locale.ROOT);
+				for (SkyTaskParser.Req r : s.items) {
+					if (r.current < 0 || r.required < 0 || !r.thing.equals(s.header)) continue;
+					if (r.unit.equals("g") && grams >= 0) {
+						// the weight caught, in grams
+						r.extra += Math.round(grams) * count;
+						any = true;
+					} else if (h.contains("conajmniej") || h.contains("co najmniej")) {
+						// "Wyłów conajmniej ogromne": fish of that size or bigger
+						int least = size(h.replaceFirst("^.*(conajmniej|co najmniej)\\s*", ""));
+						if (least >= 0 && size >= least) {
+							r.extra += count;
+							any = true;
+						}
+					}
+				}
+			}
+		}
+		if (any) SkyTasks.changed();
 	}
 
 	/** How far around the player "Stój obok" looks (the server's own reach is not known). */

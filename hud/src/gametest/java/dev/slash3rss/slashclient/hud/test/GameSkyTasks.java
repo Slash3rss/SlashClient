@@ -27,10 +27,10 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.waitTicks(10);
 			context.runOnClient(mc -> TestHooks.skyTasksScreen(false, true));
 			context.waitTicks(15);
-			// read from the GUI: eight tasks (the sign is none), their sections and numbers
+			// read from the GUI: eleven tasks (the sign is none), their sections and numbers
 			String tasks = context.computeOnClient(mc -> TestHooks.skyTasks());
 			String[] lines = tasks.strip().split("\n");
-			check(lines.length == 8, "eight tasks", tasks);
+			check(lines.length == 11, "eleven tasks", tasks);
 			check(tasks.contains("Nowicjusz|Podstawowy kamieniołom: Zbierz[") && tasks.contains(" 28/128] rewards=3"), "the quarry", tasks);
 			check(tasks.contains("Nowicjusz|A co tutaj tak ciemno?: Stwórz[") && tasks.contains(" 0/64] Postaw["), "the torches", tasks);
 			check(tasks.contains("Nowicjusz|Huta: Posiadaj w ekwipunku(inv)[") && tasks.contains(" -1/16] rewards=3"), "the furnace", tasks);
@@ -55,7 +55,7 @@ public class GameSkyTasks implements FabricClientGameTest {
 			String categories = context.computeOnClient(mc -> TestHooks.skyCategories());
 			check(categories.equals("{Nowicjusz=5, Wirtuoz=16}"), "categories", categories);
 			tasks = context.computeOnClient(mc -> TestHooks.skyTasks());
-			check(tasks.contains("Wyzwania|Zadanie codzienne: Zbierz[Buraki 0/3888]") && tasks.strip().split("\n").length == 9, "daily task", tasks);
+			check(tasks.contains("Wyzwania|Zadanie codzienne: Zbierz[Buraki 0/3888]") && tasks.strip().split("\n").length == 12, "daily task", tasks);
 			context.runOnClient(mc -> TestHooks.skyTasksScreen(false, false));
 			// the GUI with the gold marks and the hint for the task under the mouse
 			context.getInput().setCursorPos(huta[0], huta[1]);
@@ -84,7 +84,8 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.waitTicks(30);
 			String progress = context.computeOnClient(mc -> TestHooks.skyProgress());
 			check(progress.contains(" ~31/128") && progress.contains("A co tutaj tak ciemno?: ") && progress.contains(" ~4/64") && progress.contains("Składzik: ") && progress.contains(" ~2/8")
-				&& progress.contains("Ciasno, ale własno: Posiadaj poziom wyspy 20/20") && progress.contains("Dobra praca się opłaca: Posiadaj poziom dowolnej pracy ~7/5"), "counted", progress);
+				&& progress.contains("Ciasno, ale własno: Posiadaj poziom wyspy 20/20") && progress.contains("Dobra praca się opłaca: Posiadaj poziom dowolnej pracy ~7/5")
+				&& progress.contains("Moczykij: Dowolna ryba ~1/24") && progress.contains("Rybak: Wyłów ~8090/200000") && progress.contains("Mamut morski: Wyłów conajmniej ogromne ~1/45"), "counted", progress);
 			rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			check(rows.contains(" | ~31/128"), "HUD estimate", rows);
 			context.takeScreenshot("skytasks-estimate");
@@ -94,7 +95,7 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.setScreen(() -> null);
 			context.waitTicks(5);
 			tasks = context.computeOnClient(mc -> TestHooks.skyTasks());
-			check(!tasks.contains("|Huta:") && tasks.strip().split("\n").length == 8, "completed task gone", tasks);
+			check(!tasks.contains("|Huta:") && tasks.strip().split("\n").length == 11, "completed task gone", tasks);
 			rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			check(!rows.contains("Huta") && rows.contains("Podstawowy kamieniołom") && rows.contains(" | 28/128"), "HUD after completing (the server's number again)", rows);
 			context.runOnClient(mc -> TestHooks.skyTasksOptions(false, false));

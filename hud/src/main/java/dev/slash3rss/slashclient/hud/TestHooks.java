@@ -863,6 +863,9 @@ public final class TestHooks {
 			"Za ukończenie otrzymasz:", "» 2 x Skrzynia", "", "LPM » Ukończ"));
 		chest.setItem(7, task(net.minecraft.world.item.Items.GRASS_BLOCK, "Ciasno, ale własno", "Opis » Zwiększ poziom wyspy.", "", "Posiadaj poziom wyspy: 20 poz.", "",
 			"Za ukończenie otrzymasz:", "» 200.0 SC", "", "LPM » Ukończ"));
+		chest.setItem(8, task(net.minecraft.world.item.Items.PUFFERFISH, "Moczykij", "Opis » Wyłów 24 ryby.", "", "Wyłów:", "» Dowolna ryba: 0/24", "", "Za ukończenie otrzymasz:", "» 1 x Wędka", "", "LPM » Ukończ"));
+		chest.setItem(9, task(net.minecraft.world.item.Items.SALMON, "Rybak", "Opis » Dziś rozliczamy się od wagi!", "", "Wyłów: 0g/200 000g", "", "Za ukończenie otrzymasz:", "» 250.0 SC", "", "LPM » Ukończ"));
+		chest.setItem(10, task(net.minecraft.world.item.Items.TROPICAL_FISH, "Mamut morski", "Opis » Ostatecznie mogą być też ogromne.", "", "Wyłów conajmniej ogromne: 0/45", "", "Za ukończenie otrzymasz:", "» 500.0 SC", "", "LPM » Ukończ"));
 		// the info item and the way back: no tasks
 		chest.setItem(13, task(net.minecraft.world.item.Items.OAK_SIGN, "Informacje", "Wyzwania to kluczowy element", "  gry na Skyblocku!"));
 		chest.setItem(22, task(net.minecraft.world.item.Items.PLAYER_HEAD, "Wróć", "LPM » Wróć"));
@@ -888,6 +891,15 @@ public final class TestHooks {
 		var mc = net.minecraft.client.Minecraft.getInstance();
 		for (int i = 0; i < 3; i++) SkyCounters.broken(mc.player, net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
 		SkyCounters.crafted(mc.player, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.TORCH, 4), 4);
+		// a fish as SkyUp gives them: a cod with its own name, the weight and size in the lore
+		var fish = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COD);
+		fish.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal("Ogromny, niezjadliwy Halibut atlantycki"));
+		fish.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(net.minecraft.network.chat.Component.literal(""),
+			line("Wyłowił » " + mc.player.getName().getString(), net.minecraft.ChatFormatting.AQUA), line("Waga » 8 090,31g (ogromny)", net.minecraft.ChatFormatting.AQUA), line("Jakość » 8% (niezjadliwy)", net.minecraft.ChatFormatting.AQUA))));
+		// as SkyUp says it in the chat: the fish on hover
+		var hover = new net.minecraft.network.chat.HoverEvent.ShowItem(net.minecraft.world.item.ItemStackTemplate.fromNonEmptyStack(fish));
+		Compat.chat(mc).addClientSystemMessage(net.minecraft.network.chat.Component.literal("Wędkarstwo » ").append(net.minecraft.network.chat.Component.literal("Wyłowiono: Ogromny Halibut (8 090,31g, 8%)!")
+			.withStyle(s -> s.withHoverEvent(hover))));
 	}
 
 	public static String skyProgress() {
