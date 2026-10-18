@@ -297,8 +297,9 @@ public final class HudConfig {
 		// left column, one text line (14 px) apart
 		// the dungeon map on the left, under the usual modules; it shows only in a dungeon
 		c.modules.put("dungeonmap", new Placement(true, 0f, 0.55f, 2, 0));
-		// SkyUp's tasks on the right, under the effects; shown only with tasks to show
-		c.modules.put("skytasks", new Placement(true, 1f, 0.3f, -2, 0));
+		// SkyUp's tasks on the left, under the usual top-left modules and above the dungeon map (the right side has
+		// the effects, CPU/GPU and the scoreboard); shown only with tasks to show
+		c.modules.put("skytasks", new Placement(true, 0f, 0.3f, 2, 0));
 		// the fish counter lower on the right; shown once a fish was caught on SkyUp
 		c.modules.put("skyfish", new Placement(true, 1f, 0.75f, -2, 0));
 		GameParts.defaults(c);
