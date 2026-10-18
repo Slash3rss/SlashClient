@@ -317,7 +317,7 @@ async function bulk<T>(endpoint: '/mods' | '/mods/files', key: 'modIds' | 'fileI
 
 export type CurseModpackInfo = ModpackInfo & { manual: ManualFile[] };
 
-function readPack(zipFile: string): { zip: AdmZip; manifest: CurseManifest } {
+export function readCursePack(zipFile: string): { zip: AdmZip; manifest: CurseManifest } {
   const zip = new AdmZip(zipFile);
   const entry = zip.getEntry('manifest.json');
   if (!entry) throw new Error(t('To nie jest modpack CurseForge (.zip z manifest.json).'));
@@ -339,7 +339,7 @@ export function isCurseForgePack(zipFile: string): boolean {
  * to put them in); everything else is installed.
  */
 export async function installCurseForgePack(zipFile: string, gameDir: string, onStage?: StageProgress): Promise<CurseModpackInfo> {
-  const { zip, manifest } = readPack(zipFile);
+  const { zip, manifest } = readCursePack(zipFile);
   const wanted = manifest.files.filter((f) => f.required);
   await fs.mkdir(gameDir, { recursive: true });
 
@@ -380,7 +380,7 @@ export async function installCurseForgePack(zipFile: string, gameDir: string, on
 
 /** Moves a CurseForge modpack profile to another version, like updateMrpack does for Modrinth. */
 export async function updateCurseForgePack(zipFile: string, gameDir: string, onStage?: StageProgress): Promise<CurseModpackInfo> {
-  const { manifest } = readPack(zipFile);
+  const { manifest } = readCursePack(zipFile);
   const wanted = manifest.files.filter((f) => f.required);
   const files = wanted.length ? await bulk<CfFile>('/mods/files', 'fileIds', wanted.map((f) => f.fileID)) : [];
   const keep = new Set(files.map((f) => path.basename(f.fileName)));
@@ -412,4 +412,32 @@ export async function latestCurseForgePack(projectId: string): Promise<VersionIn
   const files = await listFiles(projectId);
   const best = files.find((f) => f.releaseType === 1) ?? files[0];
   return best && toInfo(best, mod);
+}
+
+// ---------- exporting a profile ----------
+
+/**
+ * Links of files installed from CurseForge (by the launcher's manifest), for a profile export.
+ * A file counts only if the SHA1 on disk matches CurseForge's; files whose authors keep them on
+ * the site come back in `manual`, so the export lists them instead of packing them.
+ */
+export async function curseForgeLinks(gameDir: string, sha1s: Set<string>): Promise<{ links: Map<string, string>; manual: Map<string, ManualFile> }> {
+  const links = new Map<string, string>();
+  const manual = new Map<string, ManualFile>();
+  const tracked = (await readManifest(gameDir)).filter((m) => m.source === 'curseforge' && Number.isSafeInteger(Number(m.versionId)));
+  if (!tracked.length) return { links, manual };
+  const files = await bulk<CfFile>('/mods/files', 'fileIds', tracked.map((m) => Number(m.versionId)));
+  const byHand = files.filter((f) => !f.downloadUrl && sha1s.has(sha1Of(f) ?? ''));
+  const mods = byHand.length ? await bulk<CfMod>('/mods', 'modIds', [...new Set(byHand.map((f) => f.modId))]) : [];
+  for (const f of files) {
+    const sha1 = sha1Of(f);
+    const entry = tracked.find((m) => m.versionId === String(f.id));
+    if (!sha1 || !entry || !sha1s.has(sha1)) continue;
+    if (f.downloadUrl?.startsWith('https://')) links.set(sha1, f.downloadUrl);
+    else if (!f.downloadUrl) {
+      const mod = mods.find((m) => m.id === f.modId) ?? { id: f.modId, name: entry.title };
+      manual.set(sha1, { title: mod.name, fileName: path.basename(f.fileName), url: filePage(mod, f.id), folder: FOLDERS[entry.type] });
+    }
+  }
+  return { links, manual };
 }
