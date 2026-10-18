@@ -40,6 +40,9 @@
 		"ScreenshotMixin",
 		"ScreenEffectRendererMixin",
 		"ServerListMixin",
+		"SkyCraftMixin",
+		"SkyEatMixin",
+		"SkyPlaceMixin",
 		"TimeMixin",
 		"TimePacketMixin"
 	],

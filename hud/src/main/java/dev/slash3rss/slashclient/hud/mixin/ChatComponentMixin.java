@@ -23,6 +23,9 @@ abstract class ChatComponentMixin {
 		message = dev.slash3rss.slashclient.hud.NickHider.apply(message);
 		ChatTabs.onMessage(message.getString());
 		dev.slash3rss.slashclient.hud.DungeonMap.onChat(message.getString());
+		//#if MC >= 26.3
+		dev.slash3rss.slashclient.hud.SkyCounters.onChat(message);
+		//#endif
 		Component shown = ChatExtras.stack((ChatComponent) (Object) this, message.getString(), Extras.timestamp(message));
 		dev.slash3rss.slashclient.hud.ChatWindows.onLine(message.getString(), shown);
 		return shown;

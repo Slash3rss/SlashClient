@@ -33,6 +33,12 @@ public final class Modules {
 		out.addAll(ExtraModules.all());
 		// SkyUp.pl's dungeons: shown only inside one
 		out.add(new DungeonMap());
+		//#if MC >= 26.3
+		// SkyUp's island tasks being tracked
+		out.add(new SkyTasks.Module());
+		// and SkyUp's fish, this session and for good
+		out.add(new SkyFish.Module());
+		//#endif
 		// the game's own parts, moved in the editor like the modules
 		out.addAll(GameParts.ALL);
 		return List.copyOf(out);
