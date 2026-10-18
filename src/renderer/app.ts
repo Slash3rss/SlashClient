@@ -1,5 +1,6 @@
 import { SkinViewer, WalkingAnimation, IdleAnimation } from 'skinview3d';
 import { CosmeticPreview, cosmeticIcon } from './cosmeticPreview';
+import { OUR_PET_MODELS } from './ourPetModels';
 import { gameIcon } from './gameIcon';
 import { createFriends, socialErrorText } from './friends';
 import { openSkinEditor } from './skinEditor';
@@ -2936,6 +2937,8 @@ function cosmeticPicture(slot: Slot, id: string): Node {
   if (slot === 'wings' || slot === 'elytra') return wingsThumbnail(`img/${slot}/${id}.png`);
   // clothing: a view of it from the front, a little from above (made with its pictures)
   if (slot === 'hat' || slot === 'top') return el('img', { className: 'clothing-icon', src: `img/clothing/icon/${id}.png`, alt: '' });
+  // our own pets (not the game's mobs) have a picture of their own
+  if (slot === 'pet' && OUR_PET_MODELS[id]) return el('img', { className: 'clothing-icon', src: `img/pets/icon/${id}.png`, alt: '' });
   const icon = gamePictures && cosmeticIcon(gamePictures, id);
   if (icon) return gameIcon(icon.srcs, icon.tint);
   return el('i', { className: `fa-solid ${ITEM_ICONS[id] ?? 'fa-star'} cosmetic-icon` });

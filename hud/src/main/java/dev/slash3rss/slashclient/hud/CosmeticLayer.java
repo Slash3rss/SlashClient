@@ -89,7 +89,7 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 	CosmeticLayer(RenderLayerParent<AvatarRenderState, PlayerModel> parent, EntityRendererProvider.Context context) {
 		super(parent);
 		wings = new ElytraModel(context.bakeLayer(ModelLayers.ELYTRA));
-		pets = Map.of(
+		Map<String, Pet> all = new HashMap<>(Map.of(
 			"allay", new Pet(new AllayModel(context.bakeLayer(ModelLayers.ALLAY)), AllayRenderState::new, vanilla("allay/allay"), 0.7f),
 			"vex", new Pet(new VexModel(context.bakeLayer(ModelLayers.VEX)), VexRenderState::new, vanilla("illager/vex"), 0.7f),
 			//#if MC >= 26.1
@@ -110,7 +110,20 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			//$ "axolotl", new Pet(new net.minecraft.client.model.animal.axolotl.AxolotlModel(context.bakeLayer(ModelLayers.AXOLOTL)), net.minecraft.client.renderer.entity.state.AxolotlRenderState::new, petTexture("axolotl"), 0.7f),
 			//$ "fox", new Pet(new net.minecraft.client.model.animal.fox.FoxModel(context.bakeLayer(ModelLayers.FOX)), net.minecraft.client.renderer.entity.state.FoxRenderState::new, petTexture("fox"), 0.55f),
 			//#endif
-			"frog", new Pet(new net.minecraft.client.model.animal.frog.FrogModel(context.bakeLayer(ModelLayers.FROG)), net.minecraft.client.renderer.entity.state.FrogRenderState::new, petTexture("frog"), 0.8f));
+			"frog", new Pet(new net.minecraft.client.model.animal.frog.FrogModel(context.bakeLayer(ModelLayers.FROG)), net.minecraft.client.renderer.entity.state.FrogRenderState::new, petTexture("frog"), 0.8f)));
+		// ours, from Blockbench models (Map.of takes ten at most)
+		for (String id : OurPets.IDS) {
+			ModelPart root = OurPets.bake(id);
+			if (root != null) all.put(id, new Pet(new OurPetModel(root), LivingEntityRenderState::new, petTexture(id), 0.75f));
+		}
+		pets = Map.copyOf(all);
+	}
+
+	/** A pet of ours: its boxes as they are, see-through parts blended (drawn last, so what is inside them shows). */
+	private static final class OurPetModel extends EntityModel<LivingEntityRenderState> {
+		OurPetModel(ModelPart root) {
+			super(root, RenderTypes::entityTranslucent);
+		}
 	}
 
 	/** A pet's model layer and picture, for drawing it elsewhere too (the menu's skin preview). */
@@ -157,7 +170,7 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			//#else
 			//$ case "frog" -> vanilla("frog/temperate_frog");
 			//#endif
-			default -> null;
+			default -> OurPets.IDS.contains(id) ? OurPets.texture(id) : null;
 		};
 	}
 
@@ -186,7 +199,7 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		// a real elytra is worn instead: it already has its own place on the back
 		if (wing != null && !state.chestEquipment.is(Items.ELYTRA)) submitWings(pose, out, light, state, wing);
 		String pet = Cosmetics.worn(id, "pet");
-		if (pet != null && pets.containsKey(pet)) submitPet(pose, out, light, state, pets.get(pet));
+		if (pet != null && pets.containsKey(pet)) submitPet(pose, out, light, state, pets.get(pet), petTexture(pet));
 		ClothingModel.Poses poses = null;
 		for (String slot : Clothing.SLOTS) {
 			String item = Cosmetics.worn(id, slot);
@@ -231,7 +244,7 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
-	private void submitPet(PoseStack pose, SubmitNodeCollector out, int light, AvatarRenderState state, Pet pet) {
+	private void submitPet(PoseStack pose, SubmitNodeCollector out, int light, AvatarRenderState state, Pet pet, Identifier texture) {
 		LivingEntityRenderState s = pet.state().get();
 		float age = state.ageInTicks;
 		s.ageInTicks = age;
@@ -259,7 +272,8 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			//#endif
 		}
 		EntityModel model = pet.model();
-		Compat.submitModel(out, model, s, pose, model.renderType(pet.texture()), light, OverlayTexture.NO_OVERLAY, state.outlineColor);
+		// the picture now: our pets' change every second
+		Compat.submitModel(out, model, s, pose, model.renderType(texture), light, OverlayTexture.NO_OVERLAY, state.outlineColor);
 		pose.popPose();
 	}
 }

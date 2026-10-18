@@ -56,7 +56,7 @@ export class Preview {
     this.viewer.autoRotate = true;
     this.viewer.autoRotateSpeed = 0.6;
     this.viewer.controls.enableZoom = false;
-    this.cosmetics = new lib.CosmeticPreview(this.viewer, pictures, '/vendor/clothing/');
+    this.cosmetics = new lib.CosmeticPreview(this.viewer, pictures, '/vendor/clothing/', '/vendor/pets/');
   }
 
   async skin(uuid) {
