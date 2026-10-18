@@ -83,6 +83,7 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.set.coordsFacing", () -> cfg.coordsFacing, v -> cfg.coordsFacing = v));
 				}
 				case "dungeonmap" -> {
+					settings.add(new Toggle("slashclient-hud.dungeon.plan", () -> cfg.dungeonPlan, v -> cfg.dungeonPlan = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.blockColors", () -> cfg.dungeonBlockColors, v -> cfg.dungeonBlockColors = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.title", () -> cfg.dungeonTitle, v -> cfg.dungeonTitle = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.progress", () -> cfg.dungeonProgress, v -> cfg.dungeonProgress = v));

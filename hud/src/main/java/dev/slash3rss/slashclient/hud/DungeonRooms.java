@@ -28,8 +28,11 @@ import java.util.Map;
 /**
  * The dungeon map's rooms, and what is known about each.
  *
- * Rooms come from the floor alone: where the floor is at least five blocks across is the inside of
- * a room, and narrower places (doors, corridors) go to the room nearest along the floor. Each room
+ * Rooms come from the map SkyUp builds of each dungeon above it (terracotta at y 37–39, one to one
+ * over the rooms): black is a room's walls, the rest its inside, yellow the ways through it; where
+ * yellow crosses a wall, that is a door, and rooms do not run together through it. Where there is no
+ * such map, from the floor alone: where it is at least five blocks across is the inside of a room,
+ * and narrower places (doors, corridors) go to the room nearest along the floor. Each room
  * then counts its chests, barrels, pots and flower pots (opened or broken ones as taken, until they
  * come back) and the deepslate ores in its walls (mined ones as taken),
  * remembers being cleared of mobs (they come back two minutes later) and whether it has a spawner
@@ -225,9 +228,10 @@ public final class DungeonRooms {
 	 * After a scan: the rooms anew from the floor (cells: 0 unknown, 1 wall, 2 floor, within the
 	 * box seen), then what is in each.
 	 */
-	static void update(Minecraft mc, byte[] cell, int x0, int z0, int x1, int z1, int originX, int originZ) {
+	static void update(Minecraft mc, byte[] cell, byte[] plan, int x0, int z0, int x1, int z1, int originX, int originZ) {
 		if (x0 > x1) return;
-		split(cell, x0, z0, x1, z1);
+		if (hasPlan(plan, x0, z0, x1, z1)) splitPlan(plan, x0, z0, x1, z1);
+		else split(cell, x0, z0, x1, z1);
 		int px = mc.player.getBlockX() - originX, pz = mc.player.getBlockZ() - originZ;
 		DungeonRooms.originX = originX;
 		DungeonRooms.originZ = originZ;
@@ -354,6 +358,82 @@ public final class DungeonRooms {
 		return -1;
 	}
 
+	// the map above: 0 nothing, 1 wall (black), 2 inside, 3 a way (yellow), 4 the start room's mark (green)
+	static final byte PLAN_WALL = 1, PLAN_INSIDE = 2, PLAN_WAY = 3, PLAN_START = 4;
+
+	private static boolean hasPlan(byte[] plan, int x0, int z0, int x1, int z1) {
+		int n = 0;
+		for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++) if (plan[z * size + x] >= PLAN_INSIDE && ++n > 50) return true;
+		return false;
+	}
+
+	private static boolean planWall(byte[] plan, int x, int z) {
+		return x >= 0 && z >= 0 && x < size && z < size && plan[z * size + x] == PLAN_WALL;
+	}
+
+	/** Inside a room on the map, not a wall nor nothing. */
+	private static boolean planOpen(byte[] plan, int x, int z) {
+		return x >= 0 && z >= 0 && x < size && z < size && plan[z * size + x] >= PLAN_INSIDE;
+	}
+
+	/** A way through a wall: an open block with wall on both sides along it. */
+	private static boolean planDoor(byte[] plan, int x, int z) {
+		return planOpen(plan, x, z) && (planWall(plan, x - 1, z) && planWall(plan, x + 1, z) || planWall(plan, x, z - 1) && planWall(plan, x, z + 1));
+	}
+
+	/** Rooms from the map above: the insides between black walls, doors left out; doors then join a room next to them. */
+	private static void splitPlan(byte[] plan, int x0, int z0, int x1, int z1) {
+		rooms.clear();
+		Arrays.fill(roomOf, -1);
+		Arrays.fill(edge, false);
+		ArrayDeque<Integer> queue = new ArrayDeque<>();
+		List<Integer> part = new ArrayList<>();
+		for (int z = z0; z <= z1; z++) {
+			for (int x = x0; x <= x1; x++) {
+				int start = z * size + x;
+				if (roomOf[start] != -1 || !planOpen(plan, x, z) || planDoor(plan, x, z)) continue;
+				part.clear();
+				roomOf[start] = -2;
+				queue.add(start);
+				while (!queue.isEmpty()) {
+					int i = queue.poll();
+					part.add(i);
+					int ix = i % size, iz = i / size;
+					for (int[] d : STEPS) {
+						int nx = ix + d[0], nz = iz + d[1];
+						if (nx < x0 || nz < z0 || nx > x1 || nz > z1) continue;
+						int n = nz * size + nx;
+						if (roomOf[n] == -1 && planOpen(plan, nx, nz) && !planDoor(plan, nx, nz)) {
+							roomOf[n] = -2;
+							queue.add(n);
+						}
+					}
+				}
+				// a few blocks alone are bits of a way, not a room
+				int id = part.size() >= 9 ? rooms.size() : -3;
+				if (id >= 0) rooms.add(new Room());
+				for (int i : part) roomOf[i] = id;
+			}
+		}
+		for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++) if (roomOf[z * size + x] == -3) roomOf[z * size + x] = -1;
+		// doors and stray bits: to the room next to them
+		for (int z = z0; z <= z1; z++) for (int x = x0; x <= x1; x++) if (roomOf[z * size + x] >= 0) queue.add(z * size + x);
+		while (!queue.isEmpty()) {
+			int i = queue.poll();
+			int ix = i % size, iz = i / size;
+			for (int[] d : STEPS) {
+				int nx = ix + d[0], nz = iz + d[1];
+				if (nx < x0 || nz < z0 || nx > x1 || nz > z1) continue;
+				int n = nz * size + nx;
+				if (roomOf[n] == -1 && planOpen(plan, nx, nz)) {
+					roomOf[n] = roomOf[i];
+					queue.add(n);
+				}
+			}
+		}
+		finish(x0, z0, x1, z1);
+	}
+
 	/** Floor at least five across: room cores; the rest of the floor joins the nearest core. */
 	private static void split(byte[] cell, int x0, int z0, int x1, int z1) {
 		rooms.clear();
@@ -424,6 +504,11 @@ public final class DungeonRooms {
 				}
 			}
 		}
+		finish(x0, z0, x1, z1);
+	}
+
+	/** Each room's middle and size, and its edge pixels. */
+	private static void finish(int x0, int z0, int x1, int z1) {
 		for (int z = z0; z <= z1; z++) {
 			for (int x = x0; x <= x1; x++) {
 				int i = z * size + x, r = roomOf[i];

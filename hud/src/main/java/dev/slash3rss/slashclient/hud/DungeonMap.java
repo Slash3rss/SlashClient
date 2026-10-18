@@ -51,6 +51,13 @@ public final class DungeonMap implements HudModule {
 	private static NativeImage image;
 	/** Each map pixel: 0 not seen, 1 wall, 2 floor (for the rooms). */
 	private static final byte[] cell = new byte[SIZE * SIZE];
+	/** The map SkyUp builds above each dungeon, read block for block (see DungeonRooms.PLAN_*). */
+	private static final byte[] plan = new byte[SIZE * SIZE];
+	/** Where that map is (y), and how far around the player it is read. */
+	private static final int PLAN_LOW = 35, PLAN_HIGH = 41, PLAN_RADIUS = 96;
+	/** The map above is read over this many ticks, a slice each, so no tick takes long. */
+	private static final int PLAN_TICKS = 20;
+	private static int planRow;
 	private static int tick;
 	private static String dungeonLevel = "";
 	/** The boss bar's fill: progress to the next level (0–1), or -1 when not known. */
@@ -102,6 +109,7 @@ public final class DungeonMap implements HudModule {
 			image = new NativeImage(SIZE, SIZE, true);
 		}
 		DungeonRooms.reset(SIZE);
+		java.util.Arrays.fill(plan, (byte) 0);
 		if (view == null) {
 			view = new NativeImage(W, H, true);
 			viewTexture = new DynamicTexture(() -> "SlashClient dungeon map view", view);
@@ -159,9 +167,11 @@ public final class DungeonMap implements HudModule {
 		int px = mc.player.getBlockX() - originX, pz = mc.player.getBlockZ() - originZ;
 		if (mc.level != level || px < -64 || pz < -64 || px > SIZE + 64 || pz > SIZE + 64) start();
 		DungeonRooms.watchOpening(mc);
+		// the map above the dungeon: a few rows each tick, all of it about once a second (no stutter)
+		scanPlan(mc);
 		if (tick % 10 == 0) {
 			scan(mc);
-			DungeonRooms.update(mc, cell, minX, minZ, maxX, maxZ, originX, originZ);
+			DungeonRooms.update(mc, cell, plan, minX, minZ, maxX, maxZ, originX, originZ);
 		}
 		render(mc);
 	}
@@ -218,6 +228,8 @@ public final class DungeonMap implements HudModule {
 						// plain: one grey for the floor (green where the start room's is green), walls near black
 						if (c == 2) color = DungeonRooms.tint(ix, iz, cfg.dungeonBlockColors ? color : plain(color));
 						else if (c == 1 && !cfg.dungeonBlockColors) color = 0xFF0B0F17;
+						// not seen yet: the room as the map above shows it, dimmer
+						else if (c == 0 && cfg.dungeonPlan) color = ghost(plan[iz * SIZE + ix]);
 					}
 					// a round map shows its whole disc, also where nothing was seen yet
 					if (circle && color == UNKNOWN) color = 0x90101828;
@@ -237,6 +249,56 @@ public final class DungeonMap implements HudModule {
 	static String titleText() {
 		return dungeonLevel.isEmpty() ? Component.translatable("slashclient-hud.dungeon").getString()
 			: Component.translatable("slashclient-hud.dungeon.level", dungeonLevel).getString();
+	}
+
+	/** A block of the map above, drawn where the floor below was not seen yet. */
+	private static int ghost(byte p) {
+		return switch (p) {
+			case DungeonRooms.PLAN_WALL -> 0xFF0B0F17;
+			case DungeonRooms.PLAN_INSIDE -> 0xFF262C38;
+			case DungeonRooms.PLAN_WAY -> 0xFF6B5523;
+			case DungeonRooms.PLAN_START -> 0xFF2B5136;
+			default -> UNKNOWN;
+		};
+	}
+
+	/**
+	 * The map above the dungeon (terracotta at y 37–39): what each column has there, the first
+	 * terracotta from the top. It lies one to one over the rooms, so it tells their walls before
+	 * they are seen.
+	 */
+	private static void scanPlan(Minecraft mc) {
+		ClientLevel world = mc.level;
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		int cx = mc.player.getBlockX(), cz = mc.player.getBlockZ();
+		int rows = (PLAN_RADIUS * 2 + 1 + PLAN_TICKS - 1) / PLAN_TICKS;
+		int from = cx - PLAN_RADIUS + planRow * rows;
+		planRow = (planRow + 1) % PLAN_TICKS;
+		for (int x = from; x < from + rows && x <= cx + PLAN_RADIUS; x++) {
+			for (int z = cz - PLAN_RADIUS; z <= cz + PLAN_RADIUS; z++) {
+				int ix = x - originX, iz = z - originZ;
+				if (ix < 0 || iz < 0 || ix >= SIZE || iz >= SIZE || !world.hasChunk(x >> 4, z >> 4)) continue;
+				byte kind = 0;
+				for (int y = PLAN_HIGH; y >= PLAN_LOW && kind == 0; y--) kind = planKind(world.getBlockState(pos.set(x, y, z)));
+				if (kind == 0) continue;
+				plan[iz * SIZE + ix] = kind;
+				minX = Math.min(minX, ix);
+				minZ = Math.min(minZ, iz);
+				maxX = Math.max(maxX, ix);
+				maxZ = Math.max(maxZ, iz);
+			}
+		}
+	}
+
+	/** Black terracotta a wall, yellow (or orange) a way, green the start room's mark, any other terracotta inside a room. */
+	private static byte planKind(BlockState state) {
+		if (state.isAir()) return 0;
+		String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
+		if (!id.contains("terracotta")) return 0;
+		if (id.startsWith("black_")) return DungeonRooms.PLAN_WALL;
+		if (id.startsWith("yellow_") || id.startsWith("orange_")) return DungeonRooms.PLAN_WAY;
+		if (id.startsWith("lime_") || id.startsWith("green_")) return DungeonRooms.PLAN_START;
+		return DungeonRooms.PLAN_INSIDE;
 	}
 
 	/** A floor colour made plain: green stays green (the start room), anything else one grey. */

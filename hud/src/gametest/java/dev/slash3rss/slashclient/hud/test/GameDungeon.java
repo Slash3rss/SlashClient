@@ -38,6 +38,18 @@ public class GameDungeon implements FabricClientGameTest {
 					server.runCommand(String.format("fill %d %d %d %d %d %d air", x0 + b, y, z0 + a - 1, x0 + b, y + 2, z0 + a + 1));
 				}
 			}
+			// SkyUp's map above it (y 38, one to one): rooms inside, black walls, a yellow way through each door
+			server.runCommand(String.format("fill %d 38 %d %d 38 %d gray_terracotta", x0 - 18, z0 - 18, x0 + 18, z0 + 18));
+			for (int i = -18; i <= 18; i += 12) {
+				server.runCommand(String.format("fill %d 38 %d %d 38 %d black_terracotta", x0 - 18, z0 + i, x0 + 18, z0 + i));
+				server.runCommand(String.format("fill %d 38 %d %d 38 %d black_terracotta", x0 + i, z0 - 18, x0 + i, z0 + 18));
+			}
+			for (int a = -12; a <= 12; a += 12) {
+				for (int b = -6; b <= 6; b += 12) {
+					server.runCommand(String.format("setblock %d 38 %d yellow_terracotta", x0 + a, z0 + b));
+					server.runCommand(String.format("setblock %d 38 %d yellow_terracotta", x0 + b, z0 + a));
+				}
+			}
 			// the start room's floor is green
 			server.runCommand(String.format("fill %d %d %d %d %d %d lime_concrete", x0 - 5, y - 1, z0 + 7, x0 + 5, y - 1, z0 + 17));
 			// as on SkyUp: the hint while still in the lobby, far away, then the teleport, then the boss bar
@@ -78,7 +90,8 @@ public class GameDungeon implements FabricClientGameTest {
 			context.waitTicks(30);
 			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
 			if (!rooms.contains("containers 1/4") || !rooms.contains("ores 1/1") || rooms.contains("cleared 0") || rooms.contains("without spawner 0")) throw new AssertionError("Rooms: " + rooms);
-			if (Integer.parseInt(rooms.split(" ")[0]) < 7) throw new AssertionError("Too few rooms: " + rooms);
+			// from the map above: exactly the nine rooms, none run together through a door
+			if (Integer.parseInt(rooms.split(" ")[0]) != 9) throw new AssertionError("Rooms from the map above: " + rooms);
 			context.takeScreenshot("dungeon-rooms");
 			// spawner holograms (armour stand names): the respawn time counts as cleared
 			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,CustomNameVisible:1b,CustomName:\"Posiłki za: 30s\"}", x0 - 12, y + 1, z0 - 12));

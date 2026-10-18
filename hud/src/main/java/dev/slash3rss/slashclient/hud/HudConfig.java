@@ -129,6 +129,8 @@ public final class HudConfig {
 	public boolean dungeonPlayers = true;
 	/** The dungeon map's title ("Dungeon · poziom 3" and the containers taken). */
 	public boolean dungeonTitle = true;
+	/** Rooms not seen yet drawn from the map SkyUp builds above the dungeon. */
+	public boolean dungeonPlan = true;
 	/** Progress to the next level (the boss bar's fill) on the dungeon map. */
 	public boolean dungeonProgress = true;
 	/** You on the dungeon map as your head instead of an arrow. */
@@ -365,6 +367,7 @@ public final class HudConfig {
 		dungeonZoom = other.dungeonZoom;
 		dungeonPlayers = other.dungeonPlayers;
 		dungeonTitle = other.dungeonTitle;
+		dungeonPlan = other.dungeonPlan;
 		dungeonProgress = other.dungeonProgress;
 		dungeonSelfHead = other.dungeonSelfHead;
 		dungeonMobs = other.dungeonMobs;
