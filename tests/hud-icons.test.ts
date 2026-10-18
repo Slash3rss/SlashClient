@@ -21,4 +21,18 @@ describe('HUD icons', () => {
     const missing = [...new Set([...modules, ...named])].filter((n) => !fs.existsSync(path.join(icons, n + '.png')));
     assert.deepEqual(missing, []);
   });
+
+  it('has a name in every language for every module, the game parts too', () => {
+    const code = javaSources(path.join(hud, 'java')).map((f) => fs.readFileSync(f, 'utf8')).join('\n');
+    const ids = [
+      ...[...code.matchAll(/String id\(\)\s*\{\s*return "([A-Za-z]+)";/g)].map((m) => m[1]),
+      ...[...code.matchAll(/new Part\("([A-Za-z]+)"/g)].map((m) => m[1]),
+    ];
+    assert.ok(ids.includes('scoreboard') && ids.includes('fps'), 'modules found');
+    for (const lang of ['pl_pl', 'en_us']) {
+      const names = JSON.parse(fs.readFileSync(path.join(hud, 'resources', 'assets', 'slashclient-hud', 'lang', `${lang}.json`), 'utf8'));
+      const missing = [...new Set(ids)].filter((id) => !names[`slashclient-hud.module.${id}`]);
+      assert.deepEqual(missing, [], lang);
+    }
+  });
 });

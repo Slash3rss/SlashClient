@@ -380,5 +380,9 @@
 	"slashclient-hud.part.bossbar": "Boss bar",
 	"slashclient-hud.part.tablist": "Player list (Tab)",
 	"slashclient-hud.part.actionbar": "Action bar",
-	"slashclient-hud.game.actionbar": "Action bar"
+	"slashclient-hud.game.actionbar": "Action bar",
+	"slashclient-hud.module.scoreboard": "Scoreboard",
+	"slashclient-hud.module.bossbar": "Boss bar",
+	"slashclient-hud.module.tablist": "Player list (Tab)",
+	"slashclient-hud.module.actionbar": "Action bar"
 }
