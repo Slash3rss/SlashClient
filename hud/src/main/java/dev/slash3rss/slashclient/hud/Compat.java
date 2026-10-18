@@ -57,6 +57,15 @@ public final class Compat {
 		//#endif
 	}
 
+	/** The HUD's tick count, which chat lines are stamped with. */
+	public static int guiTicks(Minecraft mc) {
+		//#if MC >= 26.2
+		return mc.gui.hud.getGuiTicks();
+		//#else
+		//$ return mc.gui.getGuiTicks();
+		//#endif
+	}
+
 	/** The line above the hotbar ("Fullbright on"). */
 	public static void overlay(Minecraft mc, Component text) {
 		//#if MC >= 26.2

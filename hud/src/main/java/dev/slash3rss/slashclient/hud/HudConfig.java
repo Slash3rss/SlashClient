@@ -252,6 +252,14 @@ public final class HudConfig {
 	public boolean chatStack = true;
 	/** Right click on a chat line copies it. */
 	public boolean chatCopy = true;
+	/** How a copied message comes out: "plain", "section" (§ codes), "ampersand" (& codes) or "json". */
+	public String chatCopyFormat = "plain";
+	/** The time the message came in, in front: "off", "hm" ([HH:mm]) or "hms" ([HH:mm:ss]). */
+	public String chatCopyTime = "off";
+	/** Only the message: "<nick> ", "nick » ", "nick: " in front is left out. */
+	public boolean chatCopyNoSender = false;
+	/** What the line above the hotbar says after a copy: "off", "short" or "preview" (the copied text). */
+	public String chatCopyNotice = "short";
 	/** A search box over the open chat. */
 	public boolean chatSearch = true;
 
@@ -348,6 +356,9 @@ public final class HudConfig {
 		if (read.crosshair == null) read.crosshair = defaults.crosshair;
 		if (read.crosshairLast == null) read.crosshairLast = defaults.crosshairLast;
 		if (read.nickAlias == null) read.nickAlias = defaults.nickAlias;
+		read.chatCopyFormat = oneOf(read.chatCopyFormat, ChatExtras.COPY_FORMATS);
+		read.chatCopyTime = oneOf(read.chatCopyTime, ChatExtras.COPY_TIMES);
+		read.chatCopyNotice = oneOf(read.chatCopyNotice, ChatExtras.COPY_NOTICES);
 		return read;
 	}
 
@@ -451,6 +462,10 @@ public final class HudConfig {
 		effectIcons = other.effectIcons;
 		chatStack = other.chatStack;
 		chatCopy = other.chatCopy;
+		chatCopyFormat = oneOf(other.chatCopyFormat, ChatExtras.COPY_FORMATS);
+		chatCopyTime = oneOf(other.chatCopyTime, ChatExtras.COPY_TIMES);
+		chatCopyNoSender = other.chatCopyNoSender;
+		chatCopyNotice = oneOf(other.chatCopyNotice, ChatExtras.COPY_NOTICES);
 		chatSearch = other.chatSearch;
 		timeChanger = other.timeChanger;
 		fixedTime = other.fixedTime;
@@ -458,6 +473,12 @@ public final class HudConfig {
 		waypoints = other.waypoints;
 		screenshotClipboard = other.screenshotClipboard;
 		save();
+	}
+
+	/** The value when it is one of `allowed`, else the first (the default). */
+	private static String oneOf(String value, String[] allowed) {
+		for (String a : allowed) if (a.equals(value)) return value;
+		return allowed[0];
 	}
 
 	public void save() {

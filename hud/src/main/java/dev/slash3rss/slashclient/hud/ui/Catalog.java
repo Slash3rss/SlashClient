@@ -182,7 +182,11 @@ public final class Catalog {
 		out.add(new Entry("waypoints", "slashclient-hud.extra.waypoints", "world", "m-waypoints", () -> cfg.waypoints, v -> cfg.waypoints = v, List.of(), null));
 		out.add(new Entry("screenshot", "slashclient-hud.extra.screenshot", "extras", "m-screenshot", () -> cfg.screenshotClipboard, v -> cfg.screenshotClipboard = v, List.of(), null));
 		out.add(new Entry("chatStack", "slashclient-hud.chat.stack", "chat", "m-chatstack", () -> cfg.chatStack, v -> cfg.chatStack = v, List.of(), null));
-		out.add(new Entry("chatCopy", "slashclient-hud.chat.copy", "chat", "m-chatcopy", () -> cfg.chatCopy, v -> cfg.chatCopy = v, List.of(), null));
+		out.add(new Entry("chatCopy", "slashclient-hud.chat.copy", "chat", "m-chatcopy", () -> cfg.chatCopy, v -> cfg.chatCopy = v, List.of(
+			new Choice("slashclient-hud.chat.copy.format", dev.slash3rss.slashclient.hud.ChatExtras.COPY_FORMATS, "slashclient-hud.chat.copy.format.", () -> cfg.chatCopyFormat, v -> cfg.chatCopyFormat = v),
+			new Choice("slashclient-hud.chat.copy.time", dev.slash3rss.slashclient.hud.ChatExtras.COPY_TIMES, "slashclient-hud.chat.copy.time.", () -> cfg.chatCopyTime, v -> cfg.chatCopyTime = v),
+			new Toggle("slashclient-hud.chat.copy.noSender", () -> cfg.chatCopyNoSender, v -> cfg.chatCopyNoSender = v),
+			new Choice("slashclient-hud.chat.copy.notice", dev.slash3rss.slashclient.hud.ChatExtras.COPY_NOTICES, "slashclient-hud.chat.copy.notice.", () -> cfg.chatCopyNotice, v -> cfg.chatCopyNotice = v)), null));
 		out.add(new Entry("chatSearch", "slashclient-hud.chat.searchBox", "chat", "m-chatsearch", () -> cfg.chatSearch, v -> cfg.chatSearch = v, List.of(), null));
 		// the game's own HUD parts
 		// the game's own parts: moved in the editor (drag their boxes), shown, scaled

@@ -41,11 +41,15 @@ abstract class ChatScreenMixin {
 		// by the constant: 26.3 numbers the buttons anew (left 1, right 3), and a plain 1 there took over the left click
 		if (e.button() != InputConstants.MOUSE_BUTTON_RIGHT || SlashHud.config == null || !SlashHud.config.chatCopy) return;
 		if (slashclient$clickable(e.x(), e.y())) return;
-		String text = ChatExtras.messageAt(e.x(), e.y());
+		String text = ChatExtras.copyAt(e.x(), e.y());
 		if (text == null || text.isEmpty()) return;
 		Minecraft mc = Minecraft.getInstance();
 		mc.keyboardHandler.setClipboard(text);
-		Compat.overlay(mc, Component.translatable("slashclient-hud.chat.copied"));
+		switch (SlashHud.config.chatCopyNotice) {
+			case "off" -> {}
+			case "preview" -> Compat.overlay(mc, Component.translatable("slashclient-hud.chat.copiedText", text.length() > 60 ? text.substring(0, 57) + "…" : text));
+			default -> Compat.overlay(mc, Component.translatable("slashclient-hud.chat.copied"));
+		}
 		cir.setReturnValue(true);
 	}
 

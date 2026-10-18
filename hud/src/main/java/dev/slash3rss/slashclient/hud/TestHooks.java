@@ -206,6 +206,23 @@ public final class TestHooks {
 		//#endif
 	}
 
+	/** A player's line with a red word: "<Gracz> czerwony". */
+	public static void coloredLine() {
+		var line = net.minecraft.network.chat.Component.literal("<Gracz> ").append(net.minecraft.network.chat.Component.literal("czerwony").withStyle(net.minecraft.ChatFormatting.RED));
+		//#if MC >= 26.1
+		net.minecraft.client.Minecraft.getInstance().player.sendSystemMessage(line);
+		//#else
+		//$ net.minecraft.client.Minecraft.getInstance().player.displayClientMessage(line, false);
+		//#endif
+	}
+
+	/** The copy settings: format, time in front, without the sender. */
+	public static void copySettings(String format, String time, boolean noSender) {
+		SlashHud.config.chatCopyFormat = format;
+		SlashHud.config.chatCopyTime = time;
+		SlashHud.config.chatCopyNoSender = noSender;
+	}
+
 	/**
 	 * A click near the end of the n-th line from the bottom of the open chat, through the chat screen
 	 * itself: what is on the clipboard after it ("-" before the click) and what is typed in the chat.
