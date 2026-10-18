@@ -418,6 +418,12 @@ public final class TestHooks {
 		return NickHider.apply(net.minecraft.network.chat.Component.literal("<" + name + "> hej")).getString();
 	}
 
+	/** How many columns of the dungeon the map knows, and whether it is showing. */
+	public static String dungeonMap() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		return DungeonMap.known() + "," + DungeonMap.active() + "," + new DungeonMap().visible(mc);
+	}
+
 	/** The keys window, and how many SlashClient keys it lists. */
 	public static int openKeybinds() {
 		var mc = net.minecraft.client.Minecraft.getInstance();

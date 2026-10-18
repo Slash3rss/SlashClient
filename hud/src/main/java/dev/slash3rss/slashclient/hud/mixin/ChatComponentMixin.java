@@ -21,6 +21,7 @@ abstract class ChatComponentMixin {
 	private Component slashclient$incoming(Component message) {
 		message = dev.slash3rss.slashclient.hud.NickHider.apply(message);
 		ChatTabs.onMessage(message.getString());
+		dev.slash3rss.slashclient.hud.DungeonMap.onChat(message.getString());
 		Component shown = ChatExtras.stack((ChatComponent) (Object) this, message.getString(), Extras.timestamp(message));
 		dev.slash3rss.slashclient.hud.ChatWindows.onLine(message.getString(), shown);
 		return shown;

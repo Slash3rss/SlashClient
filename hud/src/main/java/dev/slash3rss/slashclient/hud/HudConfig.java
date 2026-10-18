@@ -232,6 +232,8 @@ public final class HudConfig {
 	static HudConfig defaults() {
 		HudConfig c = new HudConfig();
 		// left column, one text line (14 px) apart
+		// the dungeon map on the left, under the usual modules; it shows only in a dungeon
+		c.modules.put("dungeonmap", new Placement(true, 0f, 0.55f, 2, 0));
 		GameParts.defaults(c);
 		c.modules.put("fps", new Placement(true, 0, 0, 2, 2));
 		c.modules.put("ping", new Placement(true, 0, 0, 2, 17));

@@ -384,5 +384,8 @@
 	"slashclient-hud.module.scoreboard": "Scoreboard",
 	"slashclient-hud.module.bossbar": "Boss bar",
 	"slashclient-hud.module.tablist": "Player list (Tab)",
-	"slashclient-hud.module.actionbar": "Action bar"
+	"slashclient-hud.module.actionbar": "Action bar",
+	"slashclient-hud.module.dungeonmap": "Dungeon map",
+	"slashclient-hud.dungeon": "Dungeon",
+	"slashclient-hud.dungeon.level": "Dungeon · level %s"
 }

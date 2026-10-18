@@ -83,6 +83,7 @@ public class SlashHud implements ClientModInitializer {
 			CosmeticEffects.reset();
 			NetCounter.attach(handler.getConnection());
 			Reconnect.joined(mc);
+			DungeonMap.stop();
 		});
 		// the game's own menu gets a way back to ours
 		ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
@@ -116,6 +117,7 @@ public class SlashHud implements ClientModInitializer {
 		ClientTickEvents.START_CLIENT_TICK.register(DropGuard::tick);
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
 			TntTimer.tick(mc);
+			DungeonMap.tick(mc);
 			DamageNumbers.tick(mc);
 			Extras.tick(mc);
 			Assist.tick(mc);

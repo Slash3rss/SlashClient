@@ -274,4 +274,13 @@ public final class Compat {
 	//$ 	pose.popPose();
 	//$ }
 	//#endif
+
+	/** The boss bars on screen. */
+	public static net.minecraft.client.gui.components.BossHealthOverlay bossOverlay(Minecraft mc) {
+		//#if MC >= 26.2
+		return mc.gui.hud.getBossOverlay();
+		//#else
+		//$ return mc.gui.getBossOverlay();
+		//#endif
+	}
 }

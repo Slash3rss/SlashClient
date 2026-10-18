@@ -31,6 +31,8 @@ public final class Modules {
 			new MoreModules.Combo(), new MoreModules.Reach(), new MoreModules.Movement(), new MoreModules.Saturation(), new MoreModules.ItemCounter(), new MoreModules.Target(),
 			new Armor(), new Effects(), new Keystrokes(), new Sprint()));
 		out.addAll(ExtraModules.all());
+		// SkyUp.pl's dungeons: shown only inside one
+		out.add(new DungeonMap());
 		// the game's own parts, moved in the editor like the modules
 		out.addAll(GameParts.ALL);
 		return List.copyOf(out);
