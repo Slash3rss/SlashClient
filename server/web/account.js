@@ -6,6 +6,7 @@ let me;
 let health = { providers: [], dev: false };
 let cosmetics = { capes: [] };
 /** Which slot is shown, and whose set is changed: '' = the whole account, else a Minecraft account's uuid. */
+const RANK_NAMES = { admin: 'Admin', support: 'Support', partner: 'Partner', friend: 'Przyjaciel' };
 let slot = 'cape';
 let forCharacter = '';
 /** The 3D figure: made once, moved into each new render of the page. */
@@ -68,7 +69,8 @@ function renderAccount() {
     el('div', { class: 'row' }, ...me.providers.filter((p) => p !== 'minecraft').map((p) => el('span', { class: 'chip' }, icon((PROVIDERS[p] ?? ['', 'fa-solid fa-flask'])[1]), (PROVIDERS[p] ?? ['Test'])[0])),
       me.admin ? el('span', { class: 'chip red' }, icon('fa-solid fa-shield-halved'), 'Admin') : '',
       me.badge === 'support' ? el('span', { class: 'chip sky' }, icon('fa-solid fa-certificate'), 'Support') : '',
-      me.badge === 'partner' ? el('span', { class: 'chip gold' }, icon('fa-solid fa-certificate'), 'Partner') : ''));
+      me.badge === 'partner' ? el('span', { class: 'chip gold' }, icon('fa-solid fa-certificate'), 'Partner') : '',
+      me.badge === 'friend' ? el('span', { class: 'chip green' }, el('img', { class: 'chip-logo', src: '/vendor/logo.png', alt: '' }), 'Przyjaciel') : ''));
   const share = el('input', { type: 'checkbox', checked: me.showServer });
   share.addEventListener('change', async () => {
     const u = await guard(() => api('POST', '/v1/me', { showServer: share.checked }));
@@ -115,7 +117,7 @@ function renderAccount() {
     const id = item?.id ?? '';
     const name = item?.name ?? 'Nic';
     const locked = item && !item.available;
-    const why = item?.rank ? `${name}: tylko dla rangi ${item.rank}` : `${name}: ekskluzywne, przyznaje admin`;
+    const why = item?.rank ? `${name}: tylko dla rangi ${RANK_NAMES[item.rank] ?? item.rank}` : `${name}: ekskluzywne, przyznaje admin`;
     const b = el('button', { class: `cape-choice${(worn[slot] || '') === id ? ' selected' : ''}${id ? '' : ' none'}`, disabled: !!locked, title: locked ? why : name },
       item ? cosmeticEl(item.id, item.slot) : el('div', { class: 'cape' }, icon('fa-solid fa-ban')), el('span', { textContent: name }), locked ? el('i', { class: 'fa-solid fa-lock lock' }) : '');
     // under the mouse the figure tries it on; leaving puts back what is worn

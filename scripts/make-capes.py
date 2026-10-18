@@ -491,13 +491,37 @@ def mix_hex(a, b, t):
 
 # ---------- capes for the ranks: the logo in the rank's colour ----------
 
-RANK_CAPES = {'staff_admin': ('#450a0a', '#dc2626', '#fca5a5'), 'staff_support': ('#082f49', '#0284c7', '#7dd3fc'), 'staff_partner': ('#422006', '#ca8a04', '#fde68a')}
+RANK_CAPES = {'staff_admin': ('#450a0a', '#dc2626', '#fca5a5'), 'staff_support': ('#082f49', '#0284c7', '#7dd3fc'), 'staff_partner': ('#422006', '#ca8a04', '#fde68a'),
+             'staff_friend': ('#052e16', '#16a34a', '#bbf7d0')}
 
 
 def rank_cape(cape):
     top, bottom, light = RANK_CAPES[cape]
     img = border(gradient(top, bottom), light)
     return logo(img, '#ffffff', top)
+
+
+RANK_FRAMES = 16
+
+
+def rank_cape_frame(cape, f):
+    """The rank cape with a band of light sweeping across it (the first frames), then a rest:
+    frame 0 is the plain cape, the launcher's and the website's picture of it."""
+    img = rank_cape(cape)
+    _, _, light = RANK_CAPES[cape]
+    t = f / RANK_FRAMES
+    sweep = t / 0.6
+    if f == 0 or sweep >= 1:
+        return img
+    band = Image.new('RGBA', img.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(band)
+    # a slanted bright band, from above the top left corner to below the bottom right
+    # from just left of the cape until its lower end has left on the right
+    x = -8 + sweep * (W + H * 0.6 + 16)
+    for k, alpha in ((7, 60), (4, 110), (2, 170)):
+        d.polygon([(x - k, 0), (x + k, 0), (x + k - H * 0.6, H), (x - k - H * 0.6, H)], fill=hexrgb(light) + (alpha,))
+    band = Image.composite(band, Image.new('RGBA', img.size, (0, 0, 0, 0)), img.getchannel('A'))
+    return Image.alpha_composite(img, band)
 
 
 def rank_wing(cape):
@@ -709,7 +733,11 @@ for cape in CAPES:
     texture(cape).save(os.path.join(OUT, f'{cape}.png'))
     count += 1
 for cape in RANK_CAPES:
-    texture(cape, rank_cape(cape), lambda: rank_wing(cape)).save(os.path.join(OUT, f'{cape}.png'))
+    for f in range(RANK_FRAMES):
+        tex = texture(cape, rank_cape_frame(cape, f), lambda: rank_wing(cape))
+        tex.save(os.path.join(OUT, f'{cape}_{f}.png'))
+        if f == 0:
+            tex.save(os.path.join(OUT, f'{cape}.png'))
     count += 1
 for cape in ANIMATED:
     for f in range(FRAMES):

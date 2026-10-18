@@ -61,5 +61,15 @@ describe('cosmetics for older launchers', () => {
     assert.ok(!(await ids({ 'X-SlashClient': 'launcher/0.9.1', 'User-Agent': 'Mozilla/5.0' })).includes('fox'));
     const page = await ids({ 'User-Agent': 'Mozilla/5.0' });
     assert.ok(page.includes('phantom') && page.includes('fox'));
+
+    // the ranks' capes move from 0.9.4; older launchers have the still picture only
+    const frames = async (headers: Record<string, string>) => ((await (await fetch(`${base}/v1/cosmetics`, { headers })).json()) as { items: { id: string; frames?: number }[] }).items
+      .find((i) => i.id === 'staff_admin')?.frames;
+    assert.equal(await frames({ 'X-SlashClient': 'launcher/0.9.3' }), undefined);
+    assert.equal(await frames({ 'X-SlashClient': 'launcher/0.9.4' }), 16);
+    assert.equal(await frames({ 'User-Agent': 'Mozilla/5.0' }), 16);
+    // the friends' rank and its cape are new in 0.9.4
+    assert.ok(!(await ids({ 'X-SlashClient': 'launcher/0.9.3' })).includes('staff_friend'));
+    assert.ok((await ids({ 'X-SlashClient': 'launcher/0.9.4' })).includes('staff_friend'));
   });
 });

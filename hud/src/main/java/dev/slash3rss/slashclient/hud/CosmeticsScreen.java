@@ -334,11 +334,12 @@ public class CosmeticsScreen extends Screen {
 		else if (e != null && !e.rank().isEmpty()) g.fill(x + TILE_W - 7, y + 3, x + TILE_W - 3, y + 7, switch (e.rank()) {
 			case "admin" -> 0xFFEF4444;
 			case "support" -> 0xFF38BDF8;
+			case "friend" -> 0xFF22C55E;
 			default -> 0xFFFACC15;
 		});
 		if (over) {
 			tooltip = e == null ? Ui.tr("slashclient-hud.cosmetics.nothing")
-				: locked ? Ui.tr(e.rank().isEmpty() ? "slashclient-hud.cosmetics.exclusive" : "slashclient-hud.cosmetics.rankOnly", e.name(), e.rank())
+				: locked ? Ui.tr(e.rank().isEmpty() ? "slashclient-hud.cosmetics.exclusive" : "slashclient-hud.cosmetics.rankOnly", e.name(), Ui.tr("slashclient-hud.rank." + e.rank()))
 				: Ui.text(e.name());
 			tipX = x + TILE_W / 2;
 			tipY = y - 2;

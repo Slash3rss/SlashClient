@@ -352,5 +352,9 @@
 	"slashclient-hud.set.clock12h": "Format 12-godzinny",
 	"slashclient-hud.set.coordsDecimals": "Miejsca po przecinku",
 	"slashclient-hud.set.coordsFacing": "Pokazuj kierunek",
-	"slashclient-hud.set.fpsColored": "Kolor zależny od FPS"
+	"slashclient-hud.set.fpsColored": "Kolor zależny od FPS",
+	"slashclient-hud.rank.admin": "Admin",
+	"slashclient-hud.rank.support": "Support",
+	"slashclient-hud.rank.partner": "Partner",
+	"slashclient-hud.rank.friend": "Przyjaciel"
 }

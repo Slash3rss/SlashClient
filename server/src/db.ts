@@ -9,7 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 /** A SlashClient account; `handle` is the unique name friends search for. */
 /**
  * `cape`: one of the SlashClient capes (cosmetics.ts), '' for none. `role`: 'admin' or ''.
- * `rank`: the colour of the logo next to the name in game: 'support', 'partner' or '' (admins are red anyway).
+ * `rank`: the colour of the logo next to the name in game: 'support', 'partner', 'friend' or '' (admins are red anyway).
  */
 export interface User { id: string; handle: string; name: string; avatar: string; showServer: boolean; cape: string; role: string; rank: string; banned: boolean; loadout: Record<string, string> }
 /** An account as the admin panel lists it. */

@@ -5,7 +5,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import { Db, type User } from './db.ts';
 import { PROVIDERS, type DeviceStart, type Identity, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, type Presence } from './presence.ts';
-import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, knownTo, mayWear, type Slot } from './cosmetics.ts';
+import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, framesFor, knownTo, mayWear, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
 import { partnerRoutes } from './partners.ts';
 import { trackerRoutes } from './tracker.ts';
@@ -238,7 +238,7 @@ export function createApp(cfg: Config) {
   const configAdmins = new Set((cfg.adminHandles ?? []).map((h) => h.trim().toLowerCase()).filter(Boolean));
   /** The logo colour in game: admins red, then the rank the admin panel gave (support, partner). */
   const badgeOf = (u: { role: string; handle: string; rank: string }) =>
-    u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()) ? 'admin' : u.rank === 'support' || u.rank === 'partner' ? u.rank : '';
+    u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()) ? 'admin' : ['support', 'partner', 'friend'].includes(u.rank) ? u.rank : '';
   const isAdmin = (userId: string) => {
     const u = db.user(userId);
     return !!u && (u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()));
@@ -324,8 +324,9 @@ export function createApp(cfg: Config) {
       const user = me ? db.user(me) : undefined;
       const badge = user ? badgeOf(user) : '';
       const known = knownTo(req.headers);
+      const frames = framesFor(req.headers);
       const items = ITEMS.filter((i) => capeSetting(settings, i.id).enabled && known(i)).map((i) => ({
-        id: i.id, slot: i.slot, name: i.name, rank: i.rank, frames: i.frames,
+        id: i.id, slot: i.slot, name: i.name, rank: i.rank, frames: frames(i),
         exclusive: capeSetting(settings, i.id).exclusive, available: mayWear(settings, granted, i.id, i.slot, badge),
       }));
       return {

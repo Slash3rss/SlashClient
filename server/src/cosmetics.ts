@@ -10,7 +10,7 @@ import type { CosmeticSetting } from './db.ts';
  */
 export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet';
 export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet'];
-export type Rank = 'admin' | 'support' | 'partner';
+export type Rank = 'admin' | 'support' | 'partner' | 'friend';
 
 export interface Item {
   id: string;
@@ -25,6 +25,8 @@ export interface Item {
    * cosmetics, 0.9.0): older ones leave it out of their menu (see `knownTo`).
    */
   since?: string;
+  /** When the cape's frames came later than the cape: older launchers get it still. */
+  framesSince?: string;
 }
 
 export const ITEMS: Item[] = [
@@ -56,9 +58,10 @@ export const ITEMS: Item[] = [
   { id: 'mint', slot: 'cape', name: 'Mięta', since: '0.9.2' },
   { id: 'vortex', slot: 'cape', name: 'Wir', frames: 8, since: '0.9.2' },
   { id: 'starfall', slot: 'cape', name: 'Gwiezdny deszcz', frames: 8, since: '0.9.2' },
-  { id: 'staff_admin', slot: 'cape', name: 'Admin', rank: 'admin' },
-  { id: 'staff_support', slot: 'cape', name: 'Support', rank: 'support' },
-  { id: 'staff_partner', slot: 'cape', name: 'Partner', rank: 'partner' },
+  { id: 'staff_admin', slot: 'cape', name: 'Admin', rank: 'admin', frames: 16, framesSince: '0.9.4' },
+  { id: 'staff_support', slot: 'cape', name: 'Support', rank: 'support', frames: 16, framesSince: '0.9.4' },
+  { id: 'staff_partner', slot: 'cape', name: 'Partner', rank: 'partner', frames: 16, framesSince: '0.9.4' },
+  { id: 'staff_friend', slot: 'cape', name: 'Przyjaciel', rank: 'friend', since: '0.9.4', frames: 16 },
   // wings: drawn with the game's elytra model, folded and opened like it
   { id: 'angel', slot: 'wings', name: 'Anielskie' },
   { id: 'demon', slot: 'wings', name: 'Demona' },
@@ -142,10 +145,22 @@ export function compareVersions(a: string, b: string): number {
  * to it; the page shows everything; without the header it is a launcher from before (0.9.0).
  */
 export function knownTo(headers: Record<string, string | string[] | undefined>): (i: Item) => boolean {
+  const has = hasVersion(headers);
+  return (i) => !i.since || has(i.since);
+}
+
+/** How many frames of a cape the asking launcher can show (none: the still picture). */
+export function framesFor(headers: Record<string, string | string[] | undefined>): (i: Item) => number | undefined {
+  const has = hasVersion(headers);
+  return (i) => (i.frames && (!i.framesSince || has(i.framesSince)) ? i.frames : undefined);
+}
+
+/** Whether the asking launcher or mod is at least `version` (the website always is, it comes with the server). */
+function hasVersion(headers: Record<string, string | string[] | undefined>): (version: string) => boolean {
   const named = /^(?:launcher|mod)\/([\w.+-]{1,32})$/.exec(String(headers['x-slashclient'] ?? ''));
   const browser = /Mozilla\//.test(String(headers['user-agent'] ?? ''));
-  const version = named ? named[1] : '0.9.0';
-  return (i) => !i.since || (!named && browser) || compareVersions(version, i.since) >= 0;
+  const mine = named ? named[1] : '0.9.0';
+  return (version) => (!named && browser) || compareVersions(mine, version) >= 0;
 }
 
 const BY_ID = new Map(ITEMS.map((i) => [i.id, i]));

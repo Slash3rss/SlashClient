@@ -4,8 +4,11 @@
 // pictures are in /vendor/mc (listed in index.json).
 
 /** Capes drawn as a loop of frames (vendor/capes/<id>_<n>.png), as in the game. */
-const ANIMATED = new Set(['aurora', 'inferno', 'waves', 'pulse', 'matrix', 'storm', 'vortex', 'starfall']);
-const FRAMES = 8;
+const ANIMATED = new Map([
+  ...['aurora', 'inferno', 'waves', 'pulse', 'matrix', 'storm', 'vortex', 'starfall'].map((id) => [id, 8]),
+  // the ranks' capes: a light sweeping across the logo
+  ...['staff_admin', 'staff_support', 'staff_partner', 'staff_friend'].map((id) => [id, 16]),
+]);
 
 let loading;
 /** The launcher's preview code and the game's pictures (path → address). */
@@ -84,8 +87,9 @@ export class Preview {
       if (ANIMATED.has(worn.cape)) {
         let f = 0;
         const id = worn.cape;
+        const frames = ANIMATED.get(id);
         this.capeTimer = setInterval(() => {
-          if (!document.hidden) this.viewer.loadCape(`/vendor/capes/${id}_${f = (f + 1) % FRAMES}.png`, { backEquipment: 'cape' });
+          if (!document.hidden) this.viewer.loadCape(`/vendor/capes/${id}_${f = (f + 1) % frames}.png`, { backEquipment: 'cape' });
         }, 150);
       }
     } else this.viewer.loadCape(null);

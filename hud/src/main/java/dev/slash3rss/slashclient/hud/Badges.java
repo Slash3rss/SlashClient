@@ -36,11 +36,12 @@ public final class Badges {
 	private static final String GLYPH = "\uE000";
 	private static final Style BADGE_STYLE = Style.EMPTY.withFont(Compat.font(Identifier.fromNamespaceAndPath(SlashHud.ID, "badge"))).withoutShadow();
 	private static final MutableComponent BADGE = badge(0xFFFFFF);
-	/** The logo's colour by rank: SlashClient's admins red, support light blue, partners gold. */
+	/** The logo's colour by rank: SlashClient's admins red, support light blue, partners gold, friends green. */
 	private static final Map<String, MutableComponent> RANK_BADGES = Map.of(
 		"admin", badge(0xEF4444),
 		"support", badge(0x38BDF8),
-		"partner", badge(0xFACC15));
+		"partner", badge(0xFACC15),
+		"friend", badge(0x22C55E));
 	/** uuid → rank, from the server (only Minecraft accounts proven to belong to that SlashClient account). */
 	private static final Map<UUID, String> ranks = new ConcurrentHashMap<>();
 

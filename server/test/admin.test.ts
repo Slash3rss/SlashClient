@@ -95,7 +95,7 @@ describe('admin panel', () => {
     assert.equal((await call('GET', '/v1/admin/stats', ola.token)).body.error, 'not_admin');
   });
 
-  it('gives ranks: support and partner, admins are red anyway; only admins can', async () => {
+  it('gives ranks: support, partner and friend, admins are red anyway; only admins can', async () => {
     const boss = await login('Szef');
     const kuba = await login('Kuba');
     assert.equal((await call('GET', '/v1/me', boss.token)).body.badge, 'admin');
@@ -106,6 +106,13 @@ describe('admin panel', () => {
     // a player cannot give themselves a rank
     assert.equal((await call('POST', `/v1/admin/users/${kuba.user.id}`, kuba.token, { rank: 'support' })).body.error, 'not_admin');
     assert.equal((await call('POST', '/v1/me', kuba.token, { rank: 'support' })).body.rank, 'partner');
+    // friends of SlashClient: a green logo, and their own cape (others may not wear it)
+    const ola = await login('Ola');
+    assert.equal((await call('POST', '/v1/me', ola.token, { cape: 'staff_friend' })).body.error, 'bad_cape');
+    assert.equal((await call('POST', `/v1/admin/users/${ola.user.id}`, boss.token, { rank: 'friend' })).body.rank, 'friend');
+    assert.equal((await call('GET', '/v1/me', ola.token)).body.badge, 'friend');
+    assert.equal((await call('POST', '/v1/me', ola.token, { cape: 'staff_friend' })).body.cape, 'staff_friend');
+    assert.equal((await call('POST', '/v1/me', kuba.token, { cape: 'staff_friend' })).body.error, 'bad_cape');
     const log = (await call('GET', '/v1/admin/log', boss.token)).body;
     assert.ok(JSON.stringify(log).includes('set_rank'));
   });

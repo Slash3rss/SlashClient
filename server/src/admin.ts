@@ -69,7 +69,7 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
       }
       // the colour of the logo in game: support (light blue) or partner (gold); admins are red without it
       if (typeof rank === 'string' && rank !== user.rank) {
-        if (!['', 'support', 'partner'].includes(rank)) ctx.fail(400, 'bad_rank');
+        if (!['', 'support', 'partner', 'friend'].includes(rank)) ctx.fail(400, 'bad_rank');
         db.setRank(id, rank);
         db.log(me, 'set_rank', user.handle, rank || '—');
       }
