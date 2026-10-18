@@ -489,7 +489,8 @@ public final class Social {
 
 	/** Asks the launcher to put a picture file on the clipboard; false without a launcher. */
 	public static boolean copyImage(String path) {
-		if (!available()) return false;
+		// only a real launcher can (the screenshot tests' made-up friends have no address to ask)
+		if (!bridged()) return false;
 		try {
 			JsonObject body = new JsonObject();
 			body.addProperty("path", path);
