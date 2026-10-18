@@ -70,6 +70,8 @@ export interface Settings {
   selectedProfileId?: string;
   selectedAccountId?: string;
   closeOnLaunch: boolean;
+  /** How much memory new profiles start with (MB); each profile can change its own. */
+  defaultMemoryMb?: number;
   /** Show the game status on Discord (Rich Presence). */
   discordEnabled: boolean;
   /** UI language ('pl' | 'en'); empty = follow the system. */

@@ -83,6 +83,7 @@ const EN: Record<string, string> = {
   'Peleryna SlashClient zdjęta.': 'SlashClient cape taken off.',
   'Peleryna SlashClient': 'SlashClient cape',
   'Kosmetyki': 'Cosmetics',
+  'Pamięć RAM dla nowych profili': 'Memory for new profiles',
   'Zestaw postaci {0}': 'Set of {0}',
   ' (jak całe konto)': ' (same as the account)',
   'Zestaw całego konta': 'The whole account’s set',

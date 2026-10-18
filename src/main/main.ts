@@ -183,7 +183,9 @@ handle('profile:save', async (profile: Profile) => {
   await persist();
   return clean.id;
 });
-handle('profile:new', () => newProfile({ versionId: 'latest-release' }));
+/** New profiles (made, imported, from a modpack) start with the memory set in Settings. */
+const newMemory = () => ({ memoryMb: store.settings.defaultMemoryMb ?? 4096 });
+handle('profile:new', () => newProfile({ versionId: 'latest-release', ...newMemory() }));
 handle('profile:delete', async (id: string) => {
   if (store.profiles.length <= 1) throw new Error('Musi zostać przynajmniej jeden profil.');
   store.profiles = store.profiles.filter((p) => p.id !== id);
@@ -367,7 +369,7 @@ handle('import:run', async (keys: string[]) => {
     const task = shared ?? startTask(t('Import: {0}', inst.name));
     const prefix = many ? `${inst.name} (${n + 1}/${chosen.length}) · ` : '';
     try {
-      const profile = newProfile({ name: inst.name, versionId: inst.versionId, loader: inst.loader, loaderVersion: inst.loaderVersion });
+      const profile = newProfile({ name: inst.name, versionId: inst.versionId, loader: inst.loader, loaderVersion: inst.loaderVersion, ...newMemory() });
       const dest = profileGameDir(profile);
       await copyInstance(inst, dest, (done, total, item) => task.progress(prefix + (item ? t('Kopiowanie: {0}', item) : t('Gotowe')), done, total));
       if (inst.icon) await iconFromFile(dest, inst.icon).then(() => { profile.icon = 'custom'; profile.iconVersion = Date.now(); }, () => {});
@@ -485,7 +487,7 @@ async function installModpackTask(title: string, iconUrl: string | undefined, ge
   const task = startTask(t('Instalowanie modpacka: {0}', title), iconUrl);
   try {
     const { file, version } = await getPack(task);
-    const profile = newProfile();
+    const profile = newProfile(newMemory());
     const gameDir = profileGameDir(profile);
     const info = await installMrpack(file, gameDir, task.progress);
     profile.name = info.name;

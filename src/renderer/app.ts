@@ -45,7 +45,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; defaultMemoryMb?: number; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -981,6 +981,11 @@ function renderSettings() {
   const form = $<HTMLFormElement>('#settings-form');
   fillSelect($<HTMLSelectElement>('#language-select'), LANGUAGES.map((l) => ({ value: l.code, label: l.name })), getLang());
   (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked = store.settings.closeOnLaunch;
+  const memory = form.elements.namedItem('defaultMemoryMb') as HTMLInputElement;
+  memory.max = String(Math.max(4096, Math.floor((store.systemMemoryMb - 2048) / 512) * 512));
+  // (the same limit as each profile's own slider: some memory is left to the system)
+  memory.value = String(store.settings.defaultMemoryMb ?? 4096);
+  $('#default-memory-value').textContent = `${memory.value} MB`;
   (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked = store.settings.discordEnabled ?? true;
   $('#data-dir').textContent = store.dataDir;
   api.appVersion().then((v: string) => ($('#app-version').textContent = v));
@@ -1273,12 +1278,17 @@ api.on('login:code', ({ userCode, url, copied }: { userCode: string; url: string
 
 // ---------- settings ----------
 
+$('#settings-form').addEventListener('input', (e) => {
+  const target = e.target as HTMLInputElement;
+  if (target.name === 'defaultMemoryMb') $('#default-memory-value').textContent = `${target.value} MB`;
+});
 $('#settings-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const form = e.target as HTMLFormElement;
   await guard(() =>
     api.saveSettings({
       closeOnLaunch: (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked,
+      defaultMemoryMb: Number((form.elements.namedItem('defaultMemoryMb') as HTMLInputElement).value),
       discordEnabled: (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked,
       language: $<HTMLSelectElement>('#language-select').value,
     }),
