@@ -94,6 +94,19 @@ export function applySettings(profile: Profile, raw: unknown): void {
   const jvmArgs = str(s.jvmArgs);
   if (jvmArgs !== undefined) profile.jvmArgs = jvmArgs;
   if (PRESETS.includes(s.jvmPreset as Profile['jvmPreset'])) profile.jvmPreset = s.jvmPreset as Profile['jvmPreset'];
+  // the source profile followed the newest stable loader: the index pins one version for other launchers, the profile keeps following
+  if (s.loaderVersion === '' && s.loader === profile.loader) profile.loaderVersion = '';
+}
+
+/** `name`, or "name (2)", "name (3)"… when a profile is already called that. */
+export function uniqueName(name: string, taken: string[]): string {
+  const used = new Set(taken.map((n) => n.trim().toLowerCase()));
+  if (!used.has(name.trim().toLowerCase())) return name;
+  for (let i = 2; ; i++) {
+    const suffix = ` (${i})`;
+    const next = `${name.slice(0, 40 - suffix.length).trimEnd()}${suffix}`;
+    if (!used.has(next.toLowerCase())) return next;
+  }
 }
 
 /** CurseForge files to fetch by hand, from a pack's settings (only https links to curseforge.com, safe file names and folders). */

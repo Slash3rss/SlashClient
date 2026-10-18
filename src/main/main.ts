@@ -31,7 +31,7 @@ import {
 } from './curseforge';
 import { listServers, pingServer } from './servers';
 import {
-  applySettings, countParts, DEFAULT_PARTS, includePath, manualFilesOf, PACK_PARTS, readPackSummary, settingsOf, writeProfilePack,
+  applySettings, countParts, DEFAULT_PARTS, includePath, manualFilesOf, PACK_PARTS, readPackSummary, settingsOf, uniqueName, writeProfilePack,
   type LinkResolver, type PackPart, type PackSummary,
 } from './profilePack';
 import { getManifest } from './versions';
@@ -802,8 +802,8 @@ handle('profile:export', async (id: string, parts?: PackPart[]) => {
       loaderVersion = (all.find((v) => v.stable) ?? all[0])?.version ?? '';
     }
     const gameDir = profileGameDir(profile);
-    // the settings say "this game version" exactly, like the pack's index
-    const settings = { ...settingsOf(profile), versionId: gameVersion, loaderVersion };
+    // the settings say "this game version" exactly, like the pack's index; an empty loader version (newest stable) stays empty
+    const settings = { ...settingsOf(profile), versionId: gameVersion };
     const res = await writeProfilePack({
       gameDir, out: filePath, name: profile.name, gameVersion, loader: profile.loader, loaderVersion, parts: chosen, settings, resolve: packLinks(gameDir), onStage: task.progress,
     });
@@ -849,7 +849,7 @@ handle('profile:importPack', async (key: string, opts: { name?: string; parts?: 
   }
   const parts = validParts(opts?.parts);
   const summary = readPackSummary(file);
-  const name = (opts?.name ?? '').trim().slice(0, 40) || summary.name;
+  const name = uniqueName((opts?.name ?? '').trim().slice(0, 40) || summary.name, store.profiles.map((p) => p.name));
   const task = startTask(t('Importowanie profilu: {0}', name));
   try {
     const profile = newProfile(newMemory());
