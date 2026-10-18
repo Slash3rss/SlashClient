@@ -163,6 +163,74 @@ public final class SkyCounters {
 		if (!food.isEmpty()) add(Kind.EAT, item(food), 1);
 	}
 
+	// ---------- the scoreboard: the island's level, the jobs' levels ----------
+
+	/** The sidebar's lines, top to bottom, as plain text. */
+	static List<String> sidebar(Minecraft mc) {
+		List<String> out = new ArrayList<>();
+		var objective = Compat.displayed(mc, true);
+		if (objective == null) return out;
+		var board = mc.level.getScoreboard();
+		List<net.minecraft.world.scores.PlayerScoreEntry> entries = new ArrayList<>(board.listPlayerScores(objective));
+		entries.removeIf(net.minecraft.world.scores.PlayerScoreEntry::isHidden);
+		// the game's own order: the highest score on top
+		entries.sort((a, b) -> a.value() != b.value() ? Integer.compare(b.value(), a.value()) : a.owner().compareToIgnoreCase(b.owner()));
+		for (var e : entries) {
+			var text = e.display() != null ? e.display() : net.minecraft.world.scores.PlayerTeam.formatNameForTeam(board.getPlayersTeam(e.owner()), e.ownerName());
+			out.add(SkyTaskParser.plain(text.getString()));
+		}
+		return out;
+	}
+
+	private static final java.util.regex.Pattern LEVEL = java.util.regex.Pattern.compile("^(.+?):\\s*(\\d+)\\s*(poz\\.?)?.*$");
+
+	/**
+	 * SkyUp's sidebar, which shows by turns "» Wyspa" with "Poziom: 3" or the island's bank, and "» Prace"
+	 * with one job at a time ("Rybak: 1 poz.", all seven in turn): the island's level and each job's
+	 * level, kept as they come by (the level stays while the bank shows).
+	 */
+	static void readSidebar(Minecraft mc) {
+		String part = "";
+		SkyTasks.Data d = SkyTasks.data();
+		for (String line : sidebar(mc)) {
+			if (line.startsWith("»") || line.startsWith(">>")) {
+				part = line.replaceFirst("^(»|>>)\\s*", "").toLowerCase(Locale.ROOT);
+				continue;
+			}
+			java.util.regex.Matcher m = LEVEL.matcher(line);
+			if (!m.matches()) continue;
+			String key = m.group(1).strip();
+			long value = SkyTaskParser.number(m.group(2));
+			if (part.startsWith("wysp") && key.equalsIgnoreCase("Poziom")) {
+				if (d.islandLevel != value) SkyTasks.changed();
+				d.islandLevel = value;
+			} else if (part.startsWith("prac") && m.group(3) != null) {
+				Long old = d.jobs.put(key, value);
+				if (old == null || old != value) SkyTasks.changed();
+			}
+		}
+	}
+
+	/** A requirement the sidebar answers ("Posiadaj poziom wyspy", "… dowolnej pracy", "… sumę poziomów prac"), or -1. */
+	static long fromSidebar(SkyTaskParser.Section s) {
+		String h = s.header.toLowerCase(Locale.ROOT);
+		SkyTasks.Data d = SkyTasks.data();
+		if (h.startsWith("posiadaj poziom wyspy")) return d.islandLevel;
+		if (d.jobs.isEmpty()) return -1;
+		if (h.startsWith("posiadaj poziom dowolnej pracy")) return d.jobs.values().stream().mapToLong(Long::longValue).max().orElse(-1);
+		if (h.startsWith("posiadaj sumę poziomów prac")) return d.jobs.values().stream().mapToLong(Long::longValue).sum();
+		return -1;
+	}
+
+	/** SkyUp's jobs: the sidebar shows them one after another, so all are known once this many came by. */
+	static final int JOBS = 7;
+
+	/** Not all of it is known from the sidebar yet: jobs not shown since joining SkyUp the first time are missing. */
+	static boolean sidebarEstimate(SkyTaskParser.Section s) {
+		String h = s.header.toLowerCase(Locale.ROOT);
+		return (h.startsWith("posiadaj poziom dowolnej pracy") || h.startsWith("posiadaj sumę poziomów prac")) && SkyTasks.data().jobs.size() < JOBS;
+	}
+
 	// ---------- watched each tick: kills, fish, what is around ----------
 
 	/** Mobs the player hit, and when: one of them dying within a few seconds is the player's kill. */
@@ -212,8 +280,11 @@ public final class SkyCounters {
 			}
 			if (now - reeledAt > 2000) before = null;
 		}
-		// what is around: read again each second
-		if (++tick % 20 == 0) near.clear();
+		// what is around, and the sidebar: read again each second
+		if (++tick % 20 == 0) {
+			near.clear();
+			readSidebar(mc);
+		}
 	}
 
 	private static Map<net.minecraft.world.item.Item, Integer> counts(Minecraft mc) {

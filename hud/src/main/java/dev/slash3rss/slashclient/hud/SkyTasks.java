@@ -52,6 +52,9 @@ public final class SkyTasks {
 		/** The menu's categories: tasks left in each ("Pozostałe zadania"), and when the menu was read. */
 		Map<String, Integer> categories = new LinkedHashMap<>();
 		long categoriesSeen;
+		/** From SkyUp's sidebar: the island's level (-1: not seen), each job's level. */
+		long islandLevel = -1;
+		Map<String, Long> jobs = new LinkedHashMap<>();
 	}
 
 	static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("slashclient-skyup").resolve("zadania.json");
@@ -89,6 +92,7 @@ public final class SkyTasks {
 			if (data.untracked == null) data.untracked = new LinkedHashSet<>();
 			if (data.tierSeen == null) data.tierSeen = new LinkedHashMap<>();
 			if (data.categories == null) data.categories = new LinkedHashMap<>();
+			if (data.jobs == null) data.jobs = new LinkedHashMap<>();
 			for (var e : data.tierSeen.entrySet()) if (lastTier.isEmpty() || e.getValue() >= data.tierSeen.getOrDefault(lastTier, 0L)) lastTier = e.getKey();
 		}
 		return data;
@@ -321,12 +325,18 @@ public final class SkyTasks {
 		}
 		// "Stój obok": what is around now
 		if (r.current < 0 && SkyCounters.kind(s) == SkyCounters.Kind.NEAR) return SkyCounters.around(mc, r.thing);
+		// the island's and the jobs' levels: from the sidebar
+		if (r.current < 0) {
+			long level = SkyCounters.fromSidebar(s);
+			if (level >= 0) return level;
+		}
 		return r.current < 0 ? r.current : r.current + r.extra;
 	}
 
 	/** The number shown is the client's own count, not the server's (shown with "~"). */
 	static boolean estimated(SkyTaskParser.Section s, SkyTaskParser.Req r) {
-		return !s.inventory() && (r.extra > 0 || (r.current < 0 && SkyCounters.kind(s) == SkyCounters.Kind.NEAR));
+		return !s.inventory() && (r.extra > 0 || (r.current < 0 && SkyCounters.kind(s) == SkyCounters.Kind.NEAR)
+			|| (r.current < 0 && SkyCounters.sidebarEstimate(s) && SkyCounters.fromSidebar(s) >= 0));
 	}
 
 	static boolean met(Minecraft mc, SkyTaskParser.Section s, SkyTaskParser.Req r) {

@@ -861,6 +861,8 @@ public final class TestHooks {
 			"» 24 x Sproszkowany redstone", "", "Uwaga » Przedmioty zostaną zabrane!", "LPM » Ukończ"));
 		chest.setItem(6, task(net.minecraft.world.item.Items.CRAFTING_TABLE, "Składzik", "Opis » Zbuduj swój pierwszy składzik!", "", "Stój obok:", "» " + chestName + ": 8", "",
 			"Za ukończenie otrzymasz:", "» 2 x Skrzynia", "", "LPM » Ukończ"));
+		chest.setItem(7, task(net.minecraft.world.item.Items.GRASS_BLOCK, "Ciasno, ale własno", "Opis » Zwiększ poziom wyspy.", "", "Posiadaj poziom wyspy: 20 poz.", "",
+			"Za ukończenie otrzymasz:", "» 200.0 SC", "", "LPM » Ukończ"));
 		// the info item and the way back: no tasks
 		chest.setItem(13, task(net.minecraft.world.item.Items.OAK_SIGN, "Informacje", "Wyzwania to kluczowy element", "  gry na Skyblocku!"));
 		chest.setItem(22, task(net.minecraft.world.item.Items.PLAYER_HEAD, "Wróć", "LPM » Wróć"));

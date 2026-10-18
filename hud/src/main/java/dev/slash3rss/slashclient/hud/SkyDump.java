@@ -71,9 +71,14 @@ public final class SkyDump {
 		out.append("# Tytuł (kolory): ").append(colored(screen.getTitle())).append('\n');
 		out.append("# Serwer: ").append(mc.getCurrentServer() == null ? "-" : mc.getCurrentServer().ip).append('\n');
 		out.append("# Czas: ").append(LocalDateTime.now()).append('\n');
-		out.append("# Okno: ").append(screen.getClass().getSimpleName()).append(", sloty: ").append(screen.getMenu().slots.size()).append("\n\n");
+		out.append("# Okno: ").append(screen.getClass().getSimpleName()).append(", sloty: ").append(screen.getMenu().slots.size()).append('\n');
+		out.append("# Tablica (scoreboard):\n");
+		for (String line : SkyCounters.sidebar(mc)) out.append("#   | ").append(line).append('\n');
+		out.append('\n');
+		// the player's own inventory: its items too (fish with their weight and size in the lore)
+		boolean own = screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen;
 		for (Slot slot : screen.getMenu().slots) {
-			if (slot.container instanceof Inventory || !slot.hasItem()) continue;
+			if ((slot.container instanceof Inventory && !own) || !slot.hasItem()) continue;
 			ItemStack stack = slot.getItem();
 			out.append("## Slot ").append(slot.index).append(" · ").append(BuiltInRegistries.ITEM.getKey(stack.getItem())).append(" ×").append(stack.getCount()).append('\n');
 			out.append("Nazwa: ").append(stack.getHoverName().getString()).append('\n');
