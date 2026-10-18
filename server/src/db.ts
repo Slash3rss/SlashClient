@@ -89,7 +89,7 @@ function parseLoadout(json: string): Record<string, string> {
 const AVATAR = (t: string) => `CASE WHEN ${t}.avatar_source = 'provider' AND ${t}.avatar != '' THEN ${t}.avatar
   ELSE COALESCE(
     (SELECT '/v1/head/' || i.subject FROM identities i WHERE i.uuid = ${t}.uuid AND i.provider = 'minecraft' AND ${t}.avatar_source = 'mc:' || i.subject),
-    (SELECT '/v1/head/' || i.subject FROM identities i WHERE i.uuid = ${t}.uuid AND i.provider = 'minecraft' ORDER BY i.label LIMIT 1),
+    (SELECT '/v1/head/' || i.subject FROM identities i WHERE i.uuid = ${t}.uuid AND i.provider = 'minecraft' ORDER BY i.rowid LIMIT 1),
     NULLIF(${t}.avatar, ''), '') END`;
 
 const toUser = (r: UserRow): User => ({ id: r.uuid, handle: r.handle, name: r.name, avatar: r.avatar, showServer: !!r.show_server, cape: r.cape, role: r.role, rank: r.rank, banned: !!r.banned, loadout: parseLoadout(r.loadout) });
@@ -183,7 +183,8 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
    * character wears when it has its own set (cape among the slots), else null: the account's default.
    */
   minecraftAccounts(uuid: string): { uuid: string; name: string; loadout: Record<string, string> | null }[] {
-    return (this.db.prepare("SELECT subject, label, loadout FROM identities WHERE uuid = ? AND provider = 'minecraft' ORDER BY label").all(uuid) as { subject: string; label: string; loadout: string }[])
+    // in the order they were linked (the table's own row numbers grow with each link)
+    return (this.db.prepare("SELECT subject, label, loadout FROM identities WHERE uuid = ? AND provider = 'minecraft' ORDER BY rowid").all(uuid) as { subject: string; label: string; loadout: string }[])
       .map((r) => ({ uuid: r.subject, name: r.label, loadout: r.loadout ? parseLoadout(r.loadout) : null }));
   }
 

@@ -114,6 +114,10 @@ describe('social server', () => {
     assert.equal((await call('POST', '/v1/me', ala.token, { avatarSource: 'gravatar' })).body.error, 'bad_request');
     // a second Minecraft account: its face can be the avatar instead (not someone else's)
     await minecraftLogin('AlaAlt', mcId(8), ala.token);
+    // listed in the order they were linked (AlaAlt would come first by name), the avatar still the first one's
+    const two = (await call('GET', '/v1/me', ala.token)).body;
+    assert.deepEqual(two.avatars.minecraft.map((m: any) => m.name), ['AlaMC', 'AlaAlt']);
+    assert.equal(two.avatar, `/v1/head/${mcId(9)}`);
     const picked = (await call('POST', '/v1/me', ala.token, { avatarSource: mcId(8) })).body;
     assert.equal(picked.avatar, `/v1/head/${mcId(8)}`);
     assert.equal(picked.avatarSource, mcId(8));
