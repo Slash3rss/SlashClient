@@ -115,10 +115,37 @@ public final class SkyCounters {
 		return stack.getHoverName().getString();
 	}
 
+	/** The game's Polish names (SkyUp writes its tasks in Polish), whatever language the game is played in. */
+	private static net.minecraft.client.resources.language.ClientLanguage polish;
+
+	static String pl(String key) {
+		if (polish == null) {
+			try {
+				polish = net.minecraft.client.resources.language.ClientLanguage.loadFrom(Minecraft.getInstance().getResourceManager(), List.of("pl_pl"), false);
+			} catch (Exception e) {
+				SlashHud.LOG.warn("SlashClient: Polish names: {}", e.toString());
+				return "";
+			}
+		}
+		return polish.getOrDefault(key, "");
+	}
+
+	static String plItem(net.minecraft.world.item.Item item) {
+		return pl(item.getDescriptionId());
+	}
+
+	static String plBlock(Block block) {
+		return pl(block.getDescriptionId());
+	}
+
+	static String plEntity(net.minecraft.world.entity.EntityType<?> type) {
+		return pl("entity." + net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(type).toLanguageKey());
+	}
+
 	private static Thing item(ItemStack stack) {
 		// the item's own name too, when the server renamed it
 		return Thing.of(false, stack.is(ItemTags.LOGS), stack.is(ItemTags.SAPLINGS), stack.is(ItemTags.FISHES),
-			name(stack), stack.getItem().getName(stack).getString());
+			name(stack), stack.getItem().getName(stack).getString(), plItem(stack.getItem()));
 	}
 
 	// ---------- the events ----------
@@ -131,7 +158,8 @@ public final class SkyCounters {
 		ItemStack own = new ItemStack(block.asItem());
 		ItemStack crop = new ItemStack(CROPS.getOrDefault(block, Items.AIR));
 		add(Kind.BREAK, Thing.of(false, state.is(BlockTags.LOGS), state.is(BlockTags.SAPLINGS), false,
-			block.getName().getString(), own.isEmpty() ? null : name(own), crop.isEmpty() ? null : name(crop)), 1);
+			block.getName().getString(), plBlock(block), own.isEmpty() ? null : name(own), own.isEmpty() ? null : plItem(own.getItem()),
+			crop.isEmpty() ? null : name(crop), crop.isEmpty() ? null : plItem(crop.getItem())), 1);
 	}
 
 	/** What a crop gives, by its name in the tasks ("Pszenica" is the wheat crop's grain, not its seeds). */
@@ -258,7 +286,7 @@ public final class SkyCounters {
 		hit.entrySet().removeIf(e -> {
 			Entity entity = mc.level.getEntity(e.getKey());
 			if (entity instanceof LivingEntity living && living.isDeadOrDying()) {
-				add(Kind.KILL, Thing.of(living.isBaby(), false, false, false, living.getType().getDescription().getString(), living.getName().getString()), 1);
+				add(Kind.KILL, Thing.of(living.isBaby(), false, false, false, living.getType().getDescription().getString(), plEntity(living.getType()), living.getName().getString()), 1);
 				return true;
 			}
 			return entity == null || now - e.getValue() > 5000;
@@ -282,9 +310,9 @@ public final class SkyCounters {
 			}
 			if (now - reeledAt > 2000) before = null;
 		}
-		// what is around, and the sidebar: read again each second
+		readNear(mc);
+		// the sidebar: read again each second
 		if (++tick % 20 == 0) {
-			near.clear();
 			readSidebar(mc);
 		}
 	}
@@ -376,24 +404,57 @@ public final class SkyCounters {
 		if (any) SkyTasks.changed();
 	}
 
-	/** How far around the player "Stój obok" looks (the server's own reach is not known). */
-	static final int NEAR_RADIUS = 6;
-	/** Each thing's count around the player, read at most once a second. */
+	/** How far around the player "Stój obok" looks: SkyUp's own reach, 30 blocks each way. */
+	static final int NEAR_RADIUS = 30;
+	/** The cube is read a few slices (x) a tick, all of it in about a second, so no tick takes long. */
+	private static final int SLICES_PER_TICK = 4;
+	/** Each kind of block in the last full read, and how many of it. */
+	private static Map<Block, Long> nearCounts = Map.of();
+	private static Map<Block, Long> reading = new HashMap<>();
+	private static BlockPos readAt;
+	private static int readX = Integer.MIN_VALUE;
+	private static boolean nearRead;
+	/** Each thing's count from the last full read. */
 	private static final Map<String, Long> near = new HashMap<>();
 
-	/** How many blocks named `thing` are around the player now (an estimate of "Stój obok"). */
+	/** Whether any known task asks for blocks around the player (only then is the world read). */
+	private static boolean wantNear() {
+		for (SkyTaskParser.Task t : SkyTasks.data().tasks.values()) for (SkyTaskParser.Section s : t.sections) if (kind(s) == Kind.NEAR) return true;
+		return false;
+	}
+
+	/** A few slices more of the cube around the player; a full one replaces the counts. */
+	private static void readNear(Minecraft mc) {
+		if (!wantNear()) return;
+		if (readX == Integer.MIN_VALUE) {
+			readAt = mc.player.blockPosition();
+			readX = -NEAR_RADIUS;
+			reading = new HashMap<>();
+		}
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		for (int i = 0; i < SLICES_PER_TICK && readX <= NEAR_RADIUS; i++, readX++) {
+			for (int dy = -NEAR_RADIUS; dy <= NEAR_RADIUS; dy++) for (int dz = -NEAR_RADIUS; dz <= NEAR_RADIUS; dz++) {
+				BlockState state = mc.level.getBlockState(pos.set(readAt.getX() + readX, readAt.getY() + dy, readAt.getZ() + dz));
+				if (!state.isAir()) reading.merge(state.getBlock(), 1L, Long::sum);
+			}
+		}
+		if (readX > NEAR_RADIUS) {
+			nearCounts = reading;
+			readX = Integer.MIN_VALUE;
+			nearRead = true;
+			near.clear();
+		}
+	}
+
+	/** How many blocks named `thing` are around the player (an estimate of "Stój obok"), or -1 before the first read. */
 	static long around(Minecraft mc, String thing) {
-		if (mc.player == null || mc.level == null) return -1;
+		if (!nearRead) return -1;
 		return near.computeIfAbsent(thing, k -> {
 			long n = 0;
-			BlockPos at = mc.player.blockPosition();
-			BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-			Map<Block, Boolean> seen = new HashMap<>();
-			for (int dx = -NEAR_RADIUS; dx <= NEAR_RADIUS; dx++) for (int dy = -NEAR_RADIUS; dy <= NEAR_RADIUS; dy++) for (int dz = -NEAR_RADIUS; dz <= NEAR_RADIUS; dz++) {
-				BlockState state = mc.level.getBlockState(pos.set(at.getX() + dx, at.getY() + dy, at.getZ() + dz));
-				if (state.isAir()) continue;
-				Block block = state.getBlock();
-				if (seen.computeIfAbsent(block, b -> matches(k, Thing.of(false, state.is(BlockTags.LOGS), state.is(BlockTags.SAPLINGS), false, b.getName().getString())))) n++;
+			for (var e : nearCounts.entrySet()) {
+				Block b = e.getKey();
+				BlockState state = b.defaultBlockState();
+				if (matches(k, Thing.of(false, state.is(BlockTags.LOGS), state.is(BlockTags.SAPLINGS), false, b.getName().getString(), plBlock(b)))) n += e.getValue();
 			}
 			return n;
 		});

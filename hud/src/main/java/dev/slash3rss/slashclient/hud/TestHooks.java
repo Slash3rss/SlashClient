@@ -869,11 +869,8 @@ public final class TestHooks {
 		}
 		SlashHud.config.placement("skytasks").enabled = true;
 		// the iron ingot as the game names it in the language the test plays in
-		String iron = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_INGOT).getHoverName().getString();
-		// and the stone, torch and chest, so the counters match them in either language
-		String stone = net.minecraft.world.level.block.Blocks.STONE.getName().getString();
-		String torch = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.TORCH).getHoverName().getString();
-		String chestName = net.minecraft.world.level.block.Blocks.CHEST.getName().getString();
+		// SkyUp's Polish names (the test game plays in English: matched all the same)
+		String iron = "Sztabka żelaza", stone = "Kamień", torch = "Pochodnia", chestName = "Skrzynia";
 		var chest = new net.minecraft.world.SimpleContainer(27);
 		chest.setItem(0, task(net.minecraft.world.item.Items.LAVA_BUCKET, "Od czego zacząć?", "Opis » Żeby wygenerować kamień musimy", "  znaleźć lawę. Powinna być w tej", "  jaskini koło domku!", "",
 			"Posiadaj w ekwipunku:", "» Wiadro lawy: 1", "", "Za ukończenie otrzymasz:", "» 1 x Generator kamienia", "» 100.0 SC", "» 30 xp", "", "LPM \ue510 » Ukończ"));
@@ -895,6 +892,8 @@ public final class TestHooks {
 		chest.setItem(8, task(net.minecraft.world.item.Items.PUFFERFISH, "Moczykij", "Opis » Wyłów 24 ryby.", "", "Wyłów:", "» Dowolna ryba: 0/24", "", "Za ukończenie otrzymasz:", "» 1 x Wędka", "", "LPM \ue510 » Ukończ"));
 		chest.setItem(9, task(net.minecraft.world.item.Items.SALMON, "Rybak", "Opis » Dziś rozliczamy się od wagi!", "", "Wyłów: 0g/200 000g", "", "Za ukończenie otrzymasz:", "» 250.0 SC", "", "LPM \ue510 » Ukończ"));
 		chest.setItem(10, task(net.minecraft.world.item.Items.TROPICAL_FISH, "Mamut morski", "Opis » Ostatecznie mogą być też ogromne.", "", "Wyłów conajmniej ogromne: 0/45", "", "Za ukończenie otrzymasz:", "» 500.0 SC", "", "LPM \ue510 » Ukończ"));
+		chest.setItem(11, task(net.minecraft.world.item.Items.FURNACE, "Piecoznawstwo", "Opis » Ulepsz piec na fortunę!", "", "Posiadaj w ekwipunku:", "» Piec przynajmniej Szczęście I: 1", "",
+			"Za ukończenie otrzymasz:", "» 250.0 SC", "", "LPM \ue510 » Ukończ"));
 		// the info item and the way back: no tasks
 		chest.setItem(13, task(net.minecraft.world.item.Items.OAK_SIGN, "Informacje", "Wyzwania to kluczowy element", "  gry na Skyblocku!"));
 		chest.setItem(22, task(net.minecraft.world.item.Items.PLAYER_HEAD, "Wróć", "LPM » Wróć"));
