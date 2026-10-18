@@ -340,6 +340,11 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .shot .icon-btn { width: 30px; height: 30px; padding: 0; font-size: 12px; }
 
 /* ---------- news ---------- */
+.play-tabs { align-self: flex-start; }
+.play-tabs .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #4ade80; margin-left: 4px; box-shadow: 0 0 6px #4ade80; }
+.play-tabs .live-dot.hidden { display: none; }
+#log-session { height: 32px; width: 170px; flex-shrink: 0; padding: 0 8px; font-size: 12.5px; }
+.log-empty { padding: 18px 4px; }
 .news-wrap { flex: 1; min-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 12px; }
 .news-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .news-head h3 { font-size: 16px; }

@@ -1024,14 +1024,73 @@ function logTo(profileId: string, line: string) {
   lines.push(line);
   if (lines.length > 2000) lines.splice(0, lines.length - 2000);
   logs.set(profileId, lines);
-  if (profileId === pickedProfile()) appendLog(line);
+  if (profileId === pickedProfile() && consoleView === 'live') {
+    appendLog(line);
+    $('#log-empty').classList.add('hidden');
+  }
 }
-/** The console with the picked profile's log, or the news when that profile has none yet. */
-function showProfileLog() {
-  const lines = logs.get(pickedProfile());
+
+/** What the console shows: the picked profile's game as it runs ('live'), or one of its saved sessions (its id). */
+let consoleView = 'live';
+type ConsoleSession = { id: string; start: number; end: number; code: number | null; crashed: boolean };
+
+/** The session picker: "now" while the game runs, then the saved sessions, newest first. */
+async function renderSessions() {
+  const profileId = pickedProfile();
+  const sessions: ConsoleSession[] = await api.consoleSessions(profileId).catch(() => []);
+  if (profileId !== pickedProfile()) return;
+  const live = selectedRunning() || launching;
+  if (!live && consoleView === 'live') consoleView = sessions[0]?.id ?? 'live';
+  if (consoleView !== 'live' && !sessions.some((s) => s.id === consoleView)) consoleView = live ? 'live' : sessions[0]?.id ?? 'live';
+  const when = (s: ConsoleSession) => {
+    const date = new Date(s.start).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    return `${date}${s.crashed ? ` · ${t('błąd')}` : ''}`;
+  };
+  const length = (s: ConsoleSession) => t('{0} min', String(Math.max(1, Math.round((s.end - s.start) / 60000))));
+  const sel = $<HTMLSelectElement>('#log-session');
+  sel.replaceChildren(
+    ...(live ? [el('option', { value: 'live', textContent: t('Teraz') })] : []),
+    ...sessions.map((s) => el('option', { value: s.id, textContent: when(s), title: length(s) })));
+  sel.value = consoleView;
+  sel.classList.toggle('hidden', !sel.options.length);
+}
+
+/** The lines of what the console shows now. */
+async function renderConsole() {
+  const profileId = pickedProfile();
   log.replaceChildren();
-  for (const line of lines ?? []) appendLog(line);
-  showLog(!!lines);
+  if (consoleView === 'live') {
+    for (const line of logs.get(profileId) ?? []) appendLog(line);
+  } else {
+    const text: string = await api.consoleRead(profileId, consoleView).catch(() => '');
+    if (profileId !== pickedProfile()) return;
+    for (const line of text.split('\n')) if (line) appendLog(line);
+    log.scrollTop = log.scrollHeight;
+  }
+  $('#log-empty').classList.toggle('hidden', log.childElementCount > 0 || consoleView === 'live');
+}
+
+/** News or console; the console is always there, with the running game or the saved sessions. */
+async function setPlayTab(tab: 'news' | 'console') {
+  $('#news-wrap').classList.toggle('hidden', tab !== 'news');
+  $('#log-wrap').classList.toggle('hidden', tab !== 'console');
+  document.querySelectorAll<HTMLButtonElement>('#play-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+  if (tab === 'console') {
+    await renderSessions();
+    await renderConsole();
+  }
+}
+document.querySelectorAll<HTMLButtonElement>('#play-tabs button').forEach((b) => b.addEventListener('click', () => void setPlayTab(b.dataset.tab as 'news' | 'console')));
+$('#log-session').addEventListener('change', () => {
+  consoleView = $<HTMLSelectElement>('#log-session').value;
+  void renderConsole();
+});
+
+/** After picking a profile: its running game's console, else the news. */
+function showProfileLog() {
+  $('#console-live').classList.toggle('hidden', !selectedRunning());
+  consoleView = 'live';
+  void setPlayTab(selectedRunning() ? 'console' : 'news');
 }
 
 $('#log-search').addEventListener('input', () => {
@@ -1107,7 +1166,9 @@ async function startGame(server?: string, world?: string, benchmark = false) {
     return;
   }
   logs.set(pickedProfile(), []);
-  showProfileLog();
+  consoleView = 'live';
+  void setPlayTab('console');
+  $('#console-live').classList.remove('hidden');
   $('#crash').classList.add('hidden');
   showView('play');
   renderPlay();
@@ -1158,6 +1219,21 @@ api.on('game:log', ({ profileId, line }: { profileId: string; line: string }) =>
 // the first game download brings the textures for the 3D profile icons
 api.on('game:exit', () => {
   if (!Object.keys(blockIcons).length) loadBlockIcons();
+});
+api.on('game:exit', ({ code, byUser, profileId }: { code: number | null; byUser: boolean; profileId: string }) => {
+  if (profileId !== pickedProfile()) return;
+  $('#console-live').classList.add('hidden');
+  // a game that closed normally: back to the news (its console stays in the Console tab's history);
+  // after a crash the console stays, under the crash's explanation
+  if ((code === 0 || byUser) && !$('#log-wrap').classList.contains('hidden') && consoleView === 'live') {
+    setTimeout(() => {
+      if (!selectedRunning() && profileId === pickedProfile()) void setPlayTab('news');
+    }, 1500);
+  }
+});
+// the session just ended is saved: the picker lists it (and shows it in place of "now")
+api.on('console:saved', ({ profileId }: { profileId: string }) => {
+  if (profileId === pickedProfile() && !$('#log-wrap').classList.contains('hidden')) void renderSessions();
 });
 api.on('game:exit', ({ code, signal, byUser, profileId }: { code: number | null; signal: string | null; byUser: boolean; profileId: string }) => {
   if (code === 0 || byUser) return;
@@ -2463,8 +2539,7 @@ document.addEventListener('keydown', (e) => {
 
 /** News while idle, the game log once a launch starts. */
 function showLog(show: boolean) {
-  $('#news-wrap').classList.toggle('hidden', show);
-  $('#log-wrap').classList.toggle('hidden', !show);
+  void setPlayTab(show ? 'console' : 'news');
 }
 
 // ---------- skin preview ----------

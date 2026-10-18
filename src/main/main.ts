@@ -31,6 +31,10 @@ import { newsArticle, newsPage, type NewsFilter } from './news';
 import { ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin } from './skins';
 import { GameBridge } from './bridge';
 import { BLOCK_FACES, blockTextures, cosmeticTextures } from './blockTextures';
+import { ConsoleHistory } from './consoleHistory';
+
+/** Every game session's console, kept for the Play screen (the last ones of each profile). */
+const consoleHistory = new ConsoleHistory(path.join(paths.root, 'console'));
 import { checkModsFolder, installedModIds } from './modcheck';
 import { addModsArgs, hudVersions, prepareHud } from './hud';
 import { exportHud, importHud } from './hudShare';
@@ -186,9 +190,12 @@ handle('profile:save', async (profile: Profile) => {
 /** New profiles (made, imported, from a modpack) start with the memory set in Settings. */
 const newMemory = () => ({ memoryMb: store.settings.defaultMemoryMb ?? 4096 });
 handle('profile:new', () => newProfile({ versionId: 'latest-release', ...newMemory() }));
+handle('console:sessions', (profileId: string) => consoleHistory.list(profileId));
+handle('console:read', (profileId: string, id: string) => consoleHistory.read(profileId, id));
 handle('profile:delete', async (id: string) => {
   if (store.profiles.length <= 1) throw new Error('Musi zostać przynajmniej jeden profil.');
   store.profiles = store.profiles.filter((p) => p.id !== id);
+  void consoleHistory.forget(id).catch(() => {});
   // the Play bar and Profiles must not point at a profile that is gone
   if (store.settings.selectedProfileId === id) store.settings.selectedProfileId = store.profiles[0].id;
   await persist();
@@ -823,6 +830,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
   let lastServer: { address: string; at: number } | undefined = server ? { address: server, at: Date.now() } : undefined;
   const joins: { address: string; at: number }[] = lastServer ? [lastServer] : [];
   const startedAt = Date.now();
+  const consoleLog = await consoleHistory.start(profile.id, startedAt).catch(() => undefined);
   const loaderName = profile.loader === 'vanilla' ? '' : ` · ${LOADER_NAMES[profile.loader]}`;
   const presence: Presence = {
     details: `Minecraft ${await resolveVersionId(profile.versionId)}${loaderName}`,
@@ -853,6 +861,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     onLog: (line) => {
       recentLog.push(line);
       if (recentLog.length > 3000) recentLog.shift();
+      consoleLog?.line(line);
       send('game:log', { profileId: profile.id, line });
       const joined = serverFromLog(line);
       if (joined) {
@@ -886,6 +895,8 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
   child.on('exit', (code, signal) => {
     games.delete(profile.id);
     const killRequested = running.killRequested;
+    // the console goes into the history; the Play screen lists it once it is written
+    consoleLog?.end(code, code !== 0 && !killRequested).then(() => send('console:saved', { profileId: profile.id })).catch(() => {});
     clearInterval(linkTimer);
     // a finished benchmark run: tell the page, which shows the result
     if (benchmark) readBenchmarks(profileGameDir(profile)).then((runs) => {

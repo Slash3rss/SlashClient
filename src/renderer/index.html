@@ -69,6 +69,10 @@
           <button id="crash-bug" class="primary"><i class="fa-solid fa-bug"></i> Zgłoś błąd</button>
         </div>
       </div>
+      <div class="segmented play-tabs" id="play-tabs">
+        <button type="button" class="active" data-tab="news"><i class="fa-regular fa-newspaper"></i> Nowości</button>
+        <button type="button" data-tab="console"><i class="fa-solid fa-terminal"></i> Konsola <span class="live-dot hidden" id="console-live"></span></button>
+      </div>
       <div class="news-wrap" id="news-wrap">
         <div class="news-head">
           <h3><i class="fa-regular fa-newspaper"></i> Nowości <small class="hint" id="news-lang-hint"></small></h3>
@@ -82,6 +86,7 @@
       </div>
       <div class="log-wrap hidden" id="log-wrap">
         <div class="log-tools">
+          <select id="log-session" title="Sesja gry"></select>
           <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="log-search" placeholder="Szukaj w logu…"></div>
           <div class="segmented" id="log-level">
             <button class="active" data-level="all">Wszystko</button>
@@ -92,6 +97,7 @@
           <button id="log-share"><i class="fa-solid fa-share-nodes"></i> Udostępnij</button>
         </div>
         <div class="log" id="log" data-level="all"></div>
+        <p class="muted log-empty hidden" id="log-empty">Ten profil nie ma jeszcze zapisanych logów. Konsola pojawi się tu, gdy uruchomisz grę.</p>
       </div>
       <footer class="play-bar glass-panel">
         <label class="field">Profil<select id="play-profile"></select></label>
