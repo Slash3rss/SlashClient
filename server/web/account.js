@@ -6,7 +6,7 @@ let me;
 let health = { providers: [], dev: false };
 let cosmetics = { capes: [] };
 /** Which slot is shown, and whose set is changed: '' = the whole account, else a Minecraft account's uuid. */
-const RANK_NAMES = { admin: 'Admin', support: 'Support', partner: 'Partner', friend: 'Przyjaciel', friend_pink: 'Różowy Przyjaciel' };
+const RANK_NAMES = { admin: 'Admin', support: 'Support', partner: 'Partner', friend: 'Przyjaciel', friend_pink: 'Przyjaciel' };
 let slot = 'cape';
 let forCharacter = '';
 /** The 3D figure: made once, moved into each new render of the page. */

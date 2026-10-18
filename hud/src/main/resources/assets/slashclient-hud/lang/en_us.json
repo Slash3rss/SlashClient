@@ -385,7 +385,7 @@
 	"slashclient-hud.rank.support": "Support",
 	"slashclient-hud.rank.partner": "Partner",
 	"slashclient-hud.rank.friend": "Friend",
-	"slashclient-hud.rank.friend_pink": "Pink Friend",
+	"slashclient-hud.rank.friend_pink": "Friend",
 	"slashclient-hud.zoomToggle": "Toggle (press instead of hold)",
 	"slashclient-hud.zoomCinematic": "Smooth camera while zoomed",
 	"slashclient-hud.zoomRemember": "Remember the scroll zoom",

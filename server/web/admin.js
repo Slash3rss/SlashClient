@@ -19,7 +19,7 @@ const ACTIONS = {
   partner_background: 'zmienił(a) tło serwera', set_rank: 'zmienił(a) rangę',
 };
 /** Ranks: the colour of the SlashClient logo next to the name in game (admins are red without one). */
-const RANKS = { support: ['Support', 'sky'], partner: ['Partner', 'gold'], friend: ['Przyjaciel', 'green'], friend_pink: ['Różowy Przyjaciel', 'pink'] };
+const RANKS = { support: ['Support', 'sky'], partner: ['Partner', 'gold'], friend: ['Przyjaciel', 'green'], friend_pink: ['Przyjaciel (różowy)', 'pink'] };
 
 let me;
 let tab = location.hash.slice(1) || 'dashboard';
