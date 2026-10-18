@@ -163,6 +163,8 @@ export function createApp(cfg: Config) {
     login.error = 'login_expired';
   }
   const sockets = new Map<string, Set<WebSocket>>();
+  /** Who has a world open to LAN for friends (their launcher said so). */
+  const lanHosts = new Set<string>();
   const presences = new Map<string, Presence>();
   const limitMessages = rateLimiter(40);
   const limitRequests = rateLimiter(15);
@@ -200,7 +202,9 @@ export function createApp(cfg: Config) {
 
   function presenceOf(userId: string) {
     const user = db.user(userId);
-    return publicPresence(sockets.get(userId)?.size ? presences.get(userId) : undefined, user?.showServer ?? false, db.lastSeen(userId));
+    const presence = publicPresence(sockets.get(userId)?.size ? presences.get(userId) : undefined, user?.showServer ?? false, db.lastSeen(userId));
+    // a world opened to LAN: friends can join it through the relay below
+    return lanHosts.has(userId) && presence.status !== 'offline' ? { ...presence, lan: true } : presence;
   }
 
   function broadcastPresence(userId: string) {
@@ -883,7 +887,15 @@ export function createApp(cfg: Config) {
 
   // ---- WebSocket: /v1/ws, the first message must be { type: 'auth', token } ----
 
-  const wss = new WebSocketServer({ server, path: '/v1/ws', maxPayload: 8192 });
+  // two WebSocket endpoints on one server: each upgrade goes to its own
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 8192 });
+  const lanWss = new WebSocketServer({ noServer: true, maxPayload: 1 << 20 });
+  server.on('upgrade', (req, socket, head) => {
+    const at = new URL(req.url ?? '/', 'http://x').pathname;
+    const to = at === '/v1/ws' ? wss : at === '/v1/lan' ? lanWss : undefined;
+    if (!to) return socket.destroy();
+    to.handleUpgrade(req, socket, head, (ws) => to.emit('connection', ws, req));
+  });
   const alive = new WeakSet<WebSocket>();
   wss.on('connection', (ws) => {
     let me: string | undefined;
@@ -919,6 +931,11 @@ export function createApp(cfg: Config) {
         if (!presence) return;
         presences.set(me, presence);
         broadcastPresence(me);
+      } else if (msg.type === 'lan' && typeof msg.open === 'boolean') {
+        const was = lanHosts.has(me);
+        if (msg.open) lanHosts.add(me);
+        else lanHosts.delete(me);
+        if (was !== msg.open) broadcastPresence(me);
       } else if (msg.type === 'typing' && typeof msg.to === 'string' && db.areFriends(me, msg.to)) {
         push(msg.to, { type: 'typing', from: me });
       }
@@ -931,11 +948,80 @@ export function createApp(cfg: Config) {
       if (!set?.size) {
         sockets.delete(me);
         presences.delete(me);
+        lanHosts.delete(me);
         db.touch(me);
         broadcastPresence(me);
       }
     });
   });
+  // ---- WebSocket: /v1/lan, a friend joining a world opened to LAN ----
+  //
+  // The joining launcher connects with { type: 'join', token, host }; the host's launcher is told
+  // over /v1/ws ('lan-connect') and connects with { type: 'accept', token, id }. Then each side's
+  // binary messages go to the other: one Minecraft connection, carried through here, so nobody has
+  // to open a port. Only friends, and only to a world that is open.
+
+  const pendingLan = new Map<string, { joiner: WebSocket; host: string; timer: ReturnType<typeof setTimeout> }>();
+  const tunnels = new Map<string, number>();
+  const LAN_TUNNELS = 16;
+  const tunnelCount = (user: string, by: number) => {
+    const n = (tunnels.get(user) ?? 0) + by;
+    if (n > 0) tunnels.set(user, n);
+    else tunnels.delete(user);
+  };
+  function pair(a: WebSocket, b: WebSocket, users: string[]) {
+    for (const u of users) tunnelCount(u, 1);
+    let open = true;
+    const end = () => {
+      if (!open) return;
+      open = false;
+      for (const u of users) tunnelCount(u, -1);
+      a.close();
+      b.close();
+    };
+    for (const [from, to] of [[a, b], [b, a]] as const) {
+      from.on('message', (data, binary) => {
+        if (binary && to.readyState === to.OPEN) to.send(data, { binary: true });
+      });
+      from.on('close', end);
+      from.on('error', end);
+    }
+    a.send(JSON.stringify({ type: 'ok' }));
+    b.send(JSON.stringify({ type: 'ok' }));
+  }
+  lanWss.on('connection', (ws) => {
+    const timer = setTimeout(() => ws.close(4001, 'auth timeout'), 10_000);
+    ws.once('message', (raw) => {
+      clearTimeout(timer);
+      let msg: Record<string, unknown>;
+      try {
+        msg = JSON.parse(String(raw));
+      } catch {
+        return ws.close(4000, 'bad');
+      }
+      const me = typeof msg.token === 'string' ? db.sessionUser(hashToken(msg.token), SESSION_IDLE_MS) : undefined;
+      if (!me || db.user(me)?.banned) return ws.close(4001, 'unauthorized');
+      if (msg.type === 'join' && typeof msg.host === 'string') {
+        const host = msg.host;
+        if (!db.areFriends(me, host) || !lanHosts.has(host)) return ws.close(4003, 'not_open');
+        if ((tunnels.get(me) ?? 0) >= LAN_TUNNELS || (tunnels.get(host) ?? 0) >= LAN_TUNNELS) return ws.close(4029, 'too_many');
+        const id = randomBytes(12).toString('base64url');
+        pendingLan.set(id, { joiner: ws, host, timer: setTimeout(() => {
+          pendingLan.delete(id);
+          ws.close(4004, 'no_answer');
+        }, 15_000) });
+        ws.once('close', () => pendingLan.delete(id));
+        push(host, { type: 'lan-connect', id, from: me });
+      } else if (msg.type === 'accept' && typeof msg.id === 'string') {
+        const p = pendingLan.get(msg.id);
+        if (!p || p.host !== me || p.joiner.readyState !== p.joiner.OPEN) return ws.close(4004, 'gone');
+        pendingLan.delete(msg.id);
+        clearTimeout(p.timer);
+        pair(p.joiner, ws, [me]);
+      } else ws.close(4000, 'bad');
+    });
+  });
+
   // drops launchers that vanished without closing (sleep, lost Wi-Fi)
   const heartbeat = setInterval(() => {
     for (const ws of wss.clients) {
@@ -959,7 +1045,9 @@ export function createApp(cfg: Config) {
       clearInterval(heartbeat);
       clearInterval(logCleanup);
       for (const ws of wss.clients) ws.terminate();
+      for (const ws of lanWss.clients) ws.terminate();
       wss.close();
+      lanWss.close();
       server.close(() => {
         db.close();
         resolve();

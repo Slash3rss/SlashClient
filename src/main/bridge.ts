@@ -20,6 +20,10 @@ export interface BridgeOptions {
   copyImage?: (file: string) => Promise<void>;
   /** The launcher's accounts, without tokens; `current` is the one the game plays as. */
   accounts?: () => { id: string; name: string; type: string; current: boolean }[];
+  /** The game opened its world to LAN on this port, or closed it (undefined): friends may join. */
+  lanHost?: (port: number | undefined) => void;
+  /** A port on this computer that leads into a friend's LAN world. */
+  lanJoin?: (host: string) => Promise<number>;
   /** The session for one account, picked in the game's menu (a fresh token for Microsoft). */
   useAccount?: (id: string) => Promise<{ name: string; uuid: string; accessToken: string; xuid: string; type: string }>;
 }
@@ -122,6 +126,20 @@ export class GameBridge {
       } catch (err) {
         return this.send(res, 502, { error: (err as Error).message });
       }
+    }
+
+    // a world opened to LAN, for friends: the game says its port; joining one gets a local port
+    if (method === 'POST' && url === '/lan/host') {
+      const { port } = ((await this.body(req)) ?? {}) as { port?: unknown };
+      const valid = typeof port === 'number' && Number.isInteger(port) && port > 0 && port < 65536;
+      if (!this.opts.lanHost || (port !== null && !valid)) return this.send(res, 400, { error: 'bad_request' });
+      this.opts.lanHost(valid ? port : undefined);
+      return this.send(res, 200, { ok: true });
+    }
+    if (method === 'POST' && url === '/lan/join') {
+      const { host } = ((await this.body(req)) ?? {}) as { host?: unknown };
+      if (typeof host !== 'string' || !/^[\w-]{1,64}$/.test(host) || !this.opts.lanJoin) return this.send(res, 400, { error: 'bad_request' });
+      return this.send(res, 200, { port: await this.opts.lanJoin(host) });
     }
 
     if (method === 'POST' && url === '/clipboard/image') {

@@ -6,6 +6,8 @@ import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import WebSocket from 'ws';
 import { createApp, offlineUuid } from '../src/app.ts';
+import net from 'node:net';
+import { LanTunnels } from '../../src/main/lan.ts';
 
 const dir = mkdtempSync(path.join(os.tmpdir(), 'slash-social-'));
 let base = '';
@@ -428,5 +430,120 @@ describe('social server', () => {
     await call('POST', `/v1/friends/requests/${p.user.id}/accept`, q.token);
     assert.equal((await call('POST', `/v1/messages/${q.user.id}`, p.token, { text: '   ' })).body.error, 'empty');
     assert.equal((await call('POST', `/v1/messages/${q.user.id}`, p.token, { text: 'x'.repeat(2001) })).body.error, 'too_long');
+  });
+});
+
+describe('LAN worlds through the relay', () => {
+  /** A /v1/lan connection: its first message, then the frames it gets. */
+  async function lan(first: unknown) {
+    const ws = new WebSocket(base.replace('http', 'ws') + '/v1/lan');
+    const got: Buffer[] = [];
+    let ok = false;
+    let closed: number | undefined;
+    ws.on('message', (d, binary) => {
+      if (binary) got.push(d as Buffer);
+      else if (JSON.parse(String(d)).type === 'ok') ok = true;
+    });
+    ws.on('close', (code) => (closed = code));
+    await new Promise((r) => ws.once('open', r));
+    ws.send(JSON.stringify(first));
+    const until = async (pred: () => boolean) => {
+      for (let i = 0; i < 100 && !pred(); i++) await new Promise((r) => setTimeout(r, 20));
+      assert.ok(pred(), 'did not happen');
+    };
+    return { ws, got, isOk: () => ok, closed: () => closed, until };
+  }
+
+  it('carries a friend to a world opened to LAN, and nobody else', async () => {
+    const host = await login('Lanka');
+    const friend = await login('Gosc');
+    const stranger = await login('Obcy');
+    await call('POST', '/v1/friends/requests', host.token, { handle: 'Gosc' });
+    await call('POST', `/v1/friends/requests/${host.user.id}/accept`, friend.token);
+    const hostWs = await connect(host.token, { status: 'online', activity: { kind: 'singleplayer' } });
+    const friendWs = await connect(friend.token, { status: 'online' });
+
+    // not open yet: no way in
+    const early = await lan({ type: 'join', token: friend.token, host: host.user.id });
+    await early.until(() => early.closed() === 4003);
+
+    hostWs.ws.send(JSON.stringify({ type: 'lan', open: true }));
+    await friendWs.waitFor((e) => e.type === 'presence' && e.id === host.user.id && e.presence.lan === true);
+
+    // a stranger is turned away even now
+    const other = await lan({ type: 'join', token: stranger.token, host: host.user.id });
+    await other.until(() => other.closed() === 4003);
+
+    const joiner = await lan({ type: 'join', token: friend.token, host: host.user.id });
+    const ask = await hostWs.waitFor((e) => e.type === 'lan-connect' && e.from === friend.user.id);
+    // only the host may answer
+    const wrong = await lan({ type: 'accept', token: friend.token, id: ask.id });
+    await wrong.until(() => wrong.closed() === 4004);
+    const hostSide = await lan({ type: 'accept', token: host.token, id: ask.id });
+    const joiner2 = joiner;
+    await joiner2.until(() => joiner2.isOk());
+    await hostSide.until(() => hostSide.isOk());
+    joiner2.ws.send(Buffer.from([1, 2, 3]));
+    hostSide.ws.send(Buffer.from('pong'));
+    await hostSide.until(() => hostSide.got.length > 0);
+    await joiner2.until(() => joiner2.got.length > 0);
+    assert.deepEqual([...hostSide.got[0]], [1, 2, 3]);
+    assert.equal(String(joiner2.got[0]), 'pong');
+
+    // one side closes: so does the other
+    joiner2.ws.close();
+    await hostSide.until(() => hostSide.closed() !== undefined);
+
+    // closed to LAN: friends see it, and no new way in
+    hostWs.ws.send(JSON.stringify({ type: 'lan', open: false }));
+    await friendWs.waitFor((e) => e.type === 'presence' && e.id === host.user.id && !e.presence.lan);
+    for (const c of [hostWs, friendWs]) c.ws.close();
+    // the server sees them go before the test ends
+    await new Promise((r) => setTimeout(r, 100));
+  });
+});
+
+describe('LAN worlds between two launchers', () => {
+  it('lets a friend game talk to the host LAN world through both launchers', async () => {
+    const host = await login('Gospodarz');
+    const friend = await login('Kumpel');
+    await call('POST', '/v1/friends/requests', host.token, { handle: 'Kumpel' });
+    await call('POST', `/v1/friends/requests/${host.user.id}/accept`, friend.token);
+    // the host's "LAN world": answers each line in capitals
+    const world = net.createServer((s) => s.on('data', (d) => s.write(String(d).toUpperCase())));
+    await new Promise<void>((r) => world.listen(0, '127.0.0.1', r));
+    const worldPort = (world.address() as AddressInfo).port;
+
+    const hostWs = await connect(host.token, { status: 'online' });
+    const hostLan = new LanTunnels({ url: () => base, token: () => host.token, send: (m) => hostWs.ws.send(JSON.stringify(m)) });
+    hostWs.ws.on('message', (d) => {
+      const e = JSON.parse(String(d));
+      if (e.type === 'lan-connect') hostLan.accept(e.id);
+    });
+    const friendWs = await connect(friend.token, { status: 'online' });
+    hostLan.setHost(worldPort);
+    await friendWs.waitFor((e) => e.type === 'presence' && e.id === host.user.id && e.presence.lan === true);
+
+    const friendLan = new LanTunnels({ url: () => base, token: () => friend.token, send: () => {} });
+    const port = await friendLan.join(host.user.id);
+    const game = net.connect(port, '127.0.0.1');
+    let got = '';
+    game.on('data', (d) => (got += String(d)));
+    // the game speaks at once, before the relay is ready: nothing is lost
+    game.write('hello');
+    const heard = async (want: string) => {
+      for (let i = 0; i < 100 && got !== want; i++) await new Promise((r) => setTimeout(r, 20));
+      assert.equal(got, want);
+    };
+    await heard('HELLO');
+    game.write(' again');
+    await heard('HELLO AGAIN');
+
+    game.destroy();
+    friendLan.stop();
+    hostLan.stop();
+    world.close();
+    for (const c of [hostWs, friendWs]) c.ws.close();
+    await new Promise((r) => setTimeout(r, 100));
   });
 });

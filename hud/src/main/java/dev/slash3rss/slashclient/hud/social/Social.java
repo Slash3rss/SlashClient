@@ -192,6 +192,7 @@ public final class Social {
 
 	private static Friend friendFrom(JsonObject o) {
 		JsonObject p = o.has("presence") && o.get("presence").isJsonObject() ? o.getAsJsonObject("presence") : new JsonObject();
+		lanFrom(str(o, "id"), p);
 		JsonObject a = p.has("activity") && p.get("activity").isJsonObject() ? p.getAsJsonObject("activity") : null;
 		return new Friend(str(o, "id"), str(o, "name"), str(o, "handle"), p.has("status") ? str(p, "status") : "offline",
 			a != null ? str(a, "kind") : "", a != null ? str(a, "server") : "",
@@ -228,6 +229,7 @@ public final class Social {
 			case "presence" -> {
 				String id = str(e, "id");
 				JsonObject p = e.getAsJsonObject("presence");
+				lanFrom(id, p);
 				JsonObject a = p.has("activity") && p.get("activity").isJsonObject() ? p.getAsJsonObject("activity") : null;
 				List<Friend> list = new ArrayList<>();
 				for (Friend f : friends) {
@@ -321,6 +323,61 @@ public final class Social {
 				bump(friendId, 0, m.at());
 			} catch (Exception e) {
 				toast(Component.translatable("slashclient-hud.friends.notSent").getString(), e.getMessage() == null ? "" : e.getMessage());
+			}
+		});
+	}
+
+	// ---------- worlds opened to LAN, for friends anywhere ----------
+
+	/** Friends whose world is open to LAN (their presence says "lan"). */
+	private static final java.util.Set<String> lanOpen = ConcurrentHashMap.newKeySet();
+	/** The LAN port this game told the launcher, or -1. */
+	private static int lanPort = -1;
+
+	private static void lanFrom(String id, JsonObject presence) {
+		if (presence.has("lan") && presence.get("lan").getAsBoolean()) lanOpen.add(id);
+		else lanOpen.remove(id);
+	}
+
+	/** The friend's world is open: they can be joined from the friends list. */
+	public static boolean lanOpen(String friendId) {
+		return lanOpen.contains(friendId);
+	}
+
+	/**
+	 * Each second: is this game's world open to LAN ("Open to LAN" in the pause menu)? The
+	 * launcher is told the port, and friends can join through SlashClient from anywhere.
+	 */
+	public static void watchLan(Minecraft mc) {
+		if (!bridged()) return;
+		var server = mc.getSingleplayerServer();
+		int port = server != null && server.isPublished() ? server.getPort() : -1;
+		if (port == lanPort) return;
+		boolean opened = port > 0 && lanPort <= 0;
+		lanPort = port;
+		JsonObject body = new JsonObject();
+		if (port > 0) body.addProperty("port", port);
+		else body.add("port", com.google.gson.JsonNull.INSTANCE);
+		Thread.ofVirtual().start(() -> {
+			try {
+				request("POST", "/lan/host", body, 5);
+				if (opened && signedIn) toast(Component.translatable("slashclient-hud.lan.open").getString(), Component.translatable("slashclient-hud.lan.openHint").getString());
+			} catch (Exception e) {
+				SlashHud.LOG.info("SlashClient: LAN for friends: {}", e.toString());
+			}
+		});
+	}
+
+	/** Joins a friend's LAN world: the launcher opens a way there on this computer. */
+	public static void joinLan(String friendId) {
+		JsonObject body = new JsonObject();
+		body.addProperty("host", friendId);
+		Thread.ofVirtual().start(() -> {
+			try {
+				JsonObject res = request("POST", "/lan/join", body, 10);
+				join("127.0.0.1:" + res.get("port").getAsInt());
+			} catch (Exception e) {
+				toast(Component.translatable("slashclient-hud.lan.failed").getString(), e.getMessage() == null ? "" : e.getMessage());
 			}
 		});
 	}
@@ -431,6 +488,7 @@ public final class Social {
 	/** The friend's activity in a few words: "on mc.example.com", "in singleplayer"… */
 	public static Component activity(Friend f) {
 		if ("offline".equals(f.status())) return Component.translatable("slashclient-hud.friends.offline");
+		if (lanOpen(f.id())) return Component.translatable("slashclient-hud.lan.friend");
 		return switch (f.activity()) {
 			case "server" -> f.server().isEmpty() ? Component.translatable("slashclient-hud.friends.onServer") : Component.translatable("slashclient-hud.friends.onServerName", f.server());
 			case "singleplayer" -> Component.translatable("slashclient-hud.friends.singleplayer");

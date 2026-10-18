@@ -122,6 +122,7 @@ public class SlashHud implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
 			TntTimer.tick(mc);
 			DungeonMap.tick(mc);
+			if (mc.level != null && mc.level.getGameTime() % 20 == 0) dev.slash3rss.slashclient.hud.social.Social.watchLan(mc);
 			DamageNumbers.tick(mc);
 			Extras.tick(mc);
 			Assist.tick(mc);

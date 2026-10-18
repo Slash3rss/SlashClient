@@ -183,6 +183,16 @@ public class FriendsScreen extends Screen {
 			hits.add(new Hit(ix, py + 8, iw, 18, () -> Social.invite(id)));
 			headW -= iw + 4;
 		}
+		// their world is open to LAN: one click joins it, through SlashClient
+		if (Social.lanOpen(f.id())) {
+			Component joinWorld = Ui.tr("slashclient-hud.lan.join");
+			int jw = Ui.buttonWidth(joinWorld, "play", 18, 2);
+			int jx = cx + cw - 36 - jw - (Social.currentServer() != null ? cw - 46 - headW + 4 : 0);
+			Ui.button(g, "friends:lan", jx, py + 8, jw, 18, "play", joinWorld, true, mx, my);
+			String id = f.id();
+			hits.add(new Hit(jx, py + 8, jw, 18, () -> Social.joinLan(id)));
+			headW -= jw + 4;
+		}
 		Ui.draw(g, Ui.fit(Ui.bold(f.name()), headW), cx + 10, py + 10, Ui.TEXT);
 		Component sub = Social.typing(f.id()) ? Ui.tr("slashclient-hud.friends.typing") : Social.activity(f).copy().withStyle(Ui.text("").getStyle());
 		Ui.draw(g, Ui.fit(sub, headW), cx + 10, py + 21, Social.typing(f.id()) ? Ui.ACCENT_LIGHT : Ui.MUTED);

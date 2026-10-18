@@ -30,6 +30,7 @@ import { getManifest } from './versions';
 import { newsArticle, newsPage, type NewsFilter } from './news';
 import { ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin } from './skins';
 import { GameBridge } from './bridge';
+import { LanTunnels } from './lan';
 import { BLOCK_FACES, blockTextures, cosmeticTextures } from './blockTextures';
 import { ConsoleHistory } from './consoleHistory';
 
@@ -894,6 +895,8 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
   if (store.settings.closeOnLaunch) win?.hide();
   child.on('exit', (code, signal) => {
     games.delete(profile.id);
+    // the game is gone: its LAN world too, and the ports into friends' worlds
+    if (!games.size) lan.stop();
     const killRequested = running.killRequested;
     // the console goes into the history; the Play screen lists it once it is written
     consoleLog?.end(code, code !== 0 && !killRequested).then(() => send('console:saved', { profileId: profile.id })).catch(() => {});
@@ -996,12 +999,22 @@ const social = new SocialClient({
     if (event.type === 'keys' && typeof event.user === 'string') chatKeys.delete(event.user);
     send('social:event', event);
     bridge.push(event as { type: string });
+    // a friend joins the world this game opened to LAN
+    if (event.type === 'lan-connect' && typeof event.id === 'string') lan.accept(event.id);
   },
   onReady: () => {
     void registerChatKey();
+    lan.resend();
     // connected again (the server restarted, or the network was away): the running games say who plays, right away
     for (const g of games.values()) g.link();
   },
+});
+
+/** Friends joining worlds opened to LAN, through the server's relay. */
+const lan = new LanTunnels({
+  url: () => store.settings.socialUrl,
+  token: () => (store.settings.socialToken ? secrets.decrypt(store.settings.socialToken) : undefined),
+  send: (message) => social.send(message),
 });
 
 /** The account the running game plays as (it can change from the game's menu). */
@@ -1015,6 +1028,8 @@ const bridge = new GameBridge({
     return { signedIn: !!s.user, user: s.user, connected: s.connected };
   },
   accounts: () => store.accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, current: a.id === gameAccountId })),
+  lanHost: (port) => lan.setHost(port),
+  lanJoin: (host) => lan.join(host),
   // switching accounts in the game's menu: the game gets this one account's session, nothing else
   useAccount: async (id) => {
     const account = store.accounts.find((a) => a.id === id);

@@ -228,6 +228,11 @@ export class SocialClient {
     this.sendPresence();
   }
 
+  /** Any other message on the live connection (a world opened to LAN); dropped while offline, sent again on ready by its owner. */
+  send(message: Record<string, unknown>) {
+    if (this.ws?.readyState === WebSocket.OPEN && this.connected) this.ws.send(JSON.stringify(message));
+  }
+
   typing(to: string) {
     if (this.ws?.readyState === WebSocket.OPEN && this.connected) this.ws.send(JSON.stringify({ type: 'typing', to }));
   }
