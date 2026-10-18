@@ -45,6 +45,7 @@ abstract class ChatScreenMixin {
 		if (text == null || text.isEmpty()) return;
 		Minecraft mc = Minecraft.getInstance();
 		mc.keyboardHandler.setClipboard(text);
+		ChatExtras.lastCopied = text;
 		switch (SlashHud.config.chatCopyNotice) {
 			case "off" -> {}
 			case "preview" -> Compat.overlay(mc, Component.translatable("slashclient-hud.chat.copiedText", text.length() > 60 ? text.substring(0, 57) + "…" : text));

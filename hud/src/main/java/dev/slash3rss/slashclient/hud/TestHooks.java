@@ -225,7 +225,7 @@ public final class TestHooks {
 
 	/**
 	 * A click near the end of the n-th line from the bottom of the open chat, through the chat screen
-	 * itself: what is on the clipboard after it ("-" before the click) and what is typed in the chat.
+	 * itself: what it copied ("-" for nothing) and what is typed in the chat.
 	 */
 	public static String clickChat(int fromBottom, boolean right) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
@@ -236,18 +236,18 @@ public final class TestHooks {
 		var chat = (dev.slash3rss.slashclient.hud.mixin.ChatComponentAccessor) Compat.chat(mc);
 		var line = (net.minecraft.client.multiplayer.chat.GuiMessage.Line) chat.slashclient$lines().get(chat.slashclient$scroll() + fromBottom);
 		double x = mc.font.width(line.content()) * scale;
-		// the player's own clipboard comes back after the click
+		ChatExtras.lastCopied = null;
 		String before = mc.keyboardHandler.getClipboard();
-		mc.keyboardHandler.setClipboard("-");
 		var e = new net.minecraft.client.input.MouseButtonEvent(x, y, new net.minecraft.client.input.MouseButtonInfo(right ? com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT : com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT, 0));
 		//#if MC >= 1.21.9
 		screen().mouseClicked(e, false);
 		//#else
 		//$ screen().mouseClicked(e.x(), e.y(), e.button());
 		//#endif
-		String copied = mc.keyboardHandler.getClipboard();
-		mc.keyboardHandler.setClipboard(before);
-		return copied + "|" + chatInput();
+		String copied = ChatExtras.lastCopied;
+		// the player's own clipboard comes back after a copy
+		if (copied != null) mc.keyboardHandler.setClipboard(before);
+		return (copied == null ? "-" : copied) + "|" + chatInput();
 	}
 
 	public static void chatSearch(String text) {

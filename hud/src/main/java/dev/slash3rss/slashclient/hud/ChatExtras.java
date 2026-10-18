@@ -72,6 +72,9 @@ public final class ChatExtras {
 		ARRIVED.putIfAbsent(Compat.guiTicks(Minecraft.getInstance()), System.currentTimeMillis());
 	}
 
+	/** What the last right click on the chat put on the clipboard (the tests read it here: a system clipboard can lag). */
+	public static String lastCopied;
+
 	public static final String[] COPY_FORMATS = { "plain", "section", "ampersand", "json" };
 	public static final String[] COPY_TIMES = { "off", "hm", "hms" };
 	public static final String[] COPY_NOTICES = { "off", "short", "preview" };
