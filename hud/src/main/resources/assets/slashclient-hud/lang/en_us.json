@@ -466,5 +466,8 @@
 	"slashclient-hud.dungeon.cleared": "Cleared rooms (green, time until respawn)",
 	"slashclient-hud.dungeon.noSpawner": "Rooms without a spawner (blue edge)",
 	"slashclient-hud.dungeon.fixedY": "Fixed map height",
-	"slashclient-hud.dungeon.y": "Height"
+	"slashclient-hud.dungeon.y": "Height",
+	"key.slashclient-hud.skyDump": "SkyUp: dump the open GUI (for reports)",
+	"slashclient-hud.skyDump.saved": "GUI dump saved: %s (click to open the folder)",
+	"slashclient-hud.skyDump.failed": "Could not save the GUI dump: %s"
 }

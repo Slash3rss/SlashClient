@@ -69,6 +69,10 @@ public class SlashHud implements ClientModInitializer {
 		DungeonMap.zoomInKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonZoomIn", InputConstants.KEY_EQUALS, category));
 		DungeonMap.zoomOutKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonZoomOut", InputConstants.KEY_MINUS, category));
 		DungeonMap.fullKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonMap", InputConstants.KEY_M, category));
+		//#if MC >= 26.3
+		// SkyUp's GUIs (the island tasks): F7 on an open one saves what it holds
+		SkyDump.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyDump", InputConstants.KEY_F7, category));
+		//#endif
 		ChatTabs.register();
 		Assist.register(category);
 		// wings, pets and clothing: a layer more on every player's model (drawn from render states, which 1.21.1 does not have)
@@ -100,6 +104,9 @@ public class SlashHud implements ClientModInitializer {
 			if (screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> container) {
 				ScreenEvents.afterExtract(screen).register((s, g, mx, my, delta) -> MouseTweaks.frame(container));
 				net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseScroll(screen).register((s, mx, my, h2, v) -> !MouseTweaks.scroll(container, v));
+				//#if MC >= 26.3
+				net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents.allowKeyPress(screen).register((s, e) -> !SkyDump.key(container, e));
+				//#endif
 			}
 			// dropped by a server: a way straight back to it
 			if (screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen) Reconnect.addButton(mc, screen);

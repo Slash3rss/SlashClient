@@ -466,5 +466,8 @@
 	"slashclient-hud.dungeon.cleared": "Wyczyszczone pokoje (zielone, czas do respawnu)",
 	"slashclient-hud.dungeon.noSpawner": "Pokoje bez spawnera (niebieska ramka)",
 	"slashclient-hud.dungeon.fixedY": "Stała wysokość mapy",
-	"slashclient-hud.dungeon.y": "Wysokość"
+	"slashclient-hud.dungeon.y": "Wysokość",
+	"key.slashclient-hud.skyDump": "SkyUp: zrzut otwartego GUI (do zgłoszeń)",
+	"slashclient-hud.skyDump.saved": "Zapisano zrzut GUI: %s (kliknij, by otworzyć folder)",
+	"slashclient-hud.skyDump.failed": "Nie udało się zapisać zrzutu GUI: %s"
 }
