@@ -213,6 +213,14 @@ public final class Social {
 		switch (str(e, "type")) {
 			case "message" -> {
 				Message m = messageFrom(e.getAsJsonObject("message"));
+				// who we are not known yet (the game just started): ask first, or our own message would look like someone else's
+				if (myId.isEmpty()) {
+					try {
+						refreshState();
+					} catch (Exception ex) {
+						SlashHud.LOG.debug("SlashClient: friends: {}", ex.toString());
+					}
+				}
 				String other = m.from().equals(myId) ? m.to() : m.from();
 				List<Message> chat = chats.get(other);
 				if (chat != null && chat.stream().noneMatch(x -> x.id() == m.id())) chat.add(m);
@@ -220,6 +228,14 @@ public final class Social {
 				typingUntil.remove(other);
 				if (other.equals(viewing)) markRead(other);
 				else {
+					// a friend this game does not know yet (the list is from before they were added, or not loaded): the list anew
+					if (friend(other) == null) {
+						try {
+							refreshFriends();
+						} catch (Exception ex) {
+							SlashHud.LOG.debug("SlashClient: friends: {}", ex.toString());
+						}
+					}
 					bump(other, 1, m.at());
 					Friend f = friend(other);
 					if (!m.invite().isEmpty()) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.invite.toast", m.invite()).getString());
