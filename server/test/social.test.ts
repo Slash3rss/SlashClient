@@ -347,6 +347,11 @@ describe('social server', () => {
     assert.deepEqual(seen.capes, { [ewaMc]: 'galaxy' });
     // the logo's colour: Tomek is an admin
     assert.deepEqual(seen.ranks, { [tomMc]: 'admin' });
+    // the pink friend: only HUDs that say they know it see it pink, older ones get the green friend
+    await call('POST', `/v1/admin/users/${ewa.user.id}`, tom.token, { rank: 'friend_pink' });
+    assert.equal((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc] })).body.ranks[ewaMc], 'friend');
+    assert.equal((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc], knownRanks: ['friend_pink'] })).body.ranks[ewaMc], 'friend_pink');
+    await call('POST', `/v1/admin/users/${ewa.user.id}`, tom.token, { rank: '' });
     // the other slots: wings, a trail and a pet go with the cape; rank items only for that rank
     assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { wings: 'angel', trail: 'hearts', pet: 'allay' } })).body.loadout.wings, 'angel');
     assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { wings: 'phoenix' } })).body.error, 'bad_item');

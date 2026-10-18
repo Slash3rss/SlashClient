@@ -6,7 +6,7 @@ let me;
 let health = { providers: [], dev: false };
 let cosmetics = { capes: [] };
 /** Which slot is shown, and whose set is changed: '' = the whole account, else a Minecraft account's uuid. */
-const RANK_NAMES = { admin: 'Admin', support: 'Support', partner: 'Partner', friend: 'Przyjaciel' };
+const RANK_NAMES = { admin: 'Admin', support: 'Support', partner: 'Partner', friend: 'Przyjaciel', friend_pink: 'Różowy Przyjaciel' };
 let slot = 'cape';
 let forCharacter = '';
 /** The 3D figure: made once, moved into each new render of the page. */
@@ -70,7 +70,8 @@ function renderAccount() {
       me.admin ? el('span', { class: 'chip red' }, icon('fa-solid fa-shield-halved'), 'Admin') : '',
       me.badge === 'support' ? el('span', { class: 'chip sky' }, icon('fa-solid fa-certificate'), 'Support') : '',
       me.badge === 'partner' ? el('span', { class: 'chip gold' }, icon('fa-solid fa-certificate'), 'Partner') : '',
-      me.badge === 'friend' ? el('span', { class: 'chip green' }, el('img', { class: 'chip-logo', src: '/vendor/logo.png', alt: '' }), 'Przyjaciel') : ''));
+      me.badge === 'friend' ? el('span', { class: 'chip green' }, el('img', { class: 'chip-logo', src: '/vendor/logo.png', alt: '' }), 'Przyjaciel') : '',
+      me.badge === 'friend_pink' ? el('span', { class: 'chip pink' }, el('img', { class: 'chip-logo', src: '/vendor/logo.png', alt: '' }), 'Przyjaciel') : ''));
   // the avatar: the face from one of the Minecraft accounts' skins, or the sign-in provider's picture
   const faces = me.avatars?.minecraft ?? [];
   if (faces.length + (me.avatars?.provider ? 1 : 0) > 1) {

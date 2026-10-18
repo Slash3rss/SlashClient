@@ -92,6 +92,16 @@ public class GameCosmetics implements FabricClientGameTest {
 			String vortex = context.computeOnClient(mc -> TestHooks.capeTexture());
 			if (!vortex.matches("slashclient-hud:textures/cape/vortex_[0-7][.]png")) throw new AssertionError("Not a frame of the vortex cape: " + vortex);
 			context.takeScreenshot("cosmetics-new-cape-vortex");
+			// the pink friend: the pink logo by the name and the rank's pink cape, its light sweeping across
+			context.runOnClient(mc -> TestHooks.wear("aura", null));
+			context.runOnClient(mc -> TestHooks.ownRank("friend_pink"));
+			context.runOnClient(mc -> TestHooks.cosmeticsSelf("staff_friend_pink", false));
+			context.waitTicks(4);
+			String pink = context.computeOnClient(mc -> TestHooks.capeTexture());
+			if (!pink.matches("slashclient-hud:textures/cape/staff_friend_pink_([0-9]|1[0-5])[.]png")) throw new AssertionError("Not a frame of the pink friend's cape: " + pink);
+			context.takeScreenshot("cosmetics-rank-friend-pink");
+			context.runOnClient(mc -> TestHooks.ownRank(null));
+			context.runOnClient(mc -> TestHooks.wear("aura", "fireflies"));
 			context.runOnClient(mc -> TestHooks.wear("aura", "souls"));
 			// the main menu's figure wears them too: the cape or the wings behind it, the pet by it
 			context.runOnClient(mc -> { TestHooks.wearOwn("cape", "aurora"); TestHooks.wearOwn("pet", "parrot"); });

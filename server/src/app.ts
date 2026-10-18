@@ -248,7 +248,7 @@ export function createApp(cfg: Config) {
   const configAdmins = new Set((cfg.adminHandles ?? []).map((h) => h.trim().toLowerCase()).filter(Boolean));
   /** The logo colour in game: admins red, then the rank the admin panel gave (support, partner). */
   const badgeOf = (u: { role: string; handle: string; rank: string }) =>
-    u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()) ? 'admin' : ['support', 'partner', 'friend'].includes(u.rank) ? u.rank : '';
+    u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()) ? 'admin' : ['support', 'partner', 'friend', 'friend_pink'].includes(u.rank) ? u.rank : '';
   const isAdmin = (userId: string) => {
     const u = db.user(userId);
     return !!u && (u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()));
@@ -565,7 +565,9 @@ export function createApp(cfg: Config) {
     }],
     ['POST', /^\/v1\/mc\/lookup$/, async (req) => {
       limitGame(clientIp(req));
-      const { uuids } = await body(req);
+      const { uuids, knownRanks } = await body(req);
+      // the pink friend came in 0.9.12: HUDs that do not say they know it get the green one
+      const pink = Array.isArray(knownRanks) && knownRanks.includes('friend_pink');
       if (!Array.isArray(uuids) || uuids.length > 250) throw new HttpError(400, 'bad_request');
       const now = Date.now();
       const active = uuids.filter((u): u is string => typeof u === 'string' && now - (inGame.get(u.toLowerCase()) ?? 0) < IN_GAME_TTL_MS);
@@ -581,7 +583,7 @@ export function createApp(cfg: Config) {
         const owner = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user) : undefined;
         if (!owner || owner.banned) continue;
         const badge = badgeOf(owner);
-        if (badge) ranks[u] = badge;
+        if (badge) ranks[u] = badge === 'friend_pink' && !pink ? 'friend' : badge;
         // only what the player may still wear: the admin may have switched it off, or the rank may be gone
         const granted = db.grants(owner.id);
         const worn: Record<string, string> = {};

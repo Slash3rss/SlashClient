@@ -19,7 +19,7 @@ const ACTIONS = {
   partner_background: 'zmienił(a) tło serwera', set_rank: 'zmienił(a) rangę',
 };
 /** Ranks: the colour of the SlashClient logo next to the name in game (admins are red without one). */
-const RANKS = { support: ['Support', 'sky'], partner: ['Partner', 'gold'], friend: ['Przyjaciel', 'green'] };
+const RANKS = { support: ['Support', 'sky'], partner: ['Partner', 'gold'], friend: ['Przyjaciel', 'green'], friend_pink: ['Różowy Przyjaciel', 'pink'] };
 
 let me;
 let tab = location.hash.slice(1) || 'dashboard';
@@ -189,7 +189,7 @@ async function openUser(id) {
       el('dt', { textContent: 'Przyznane' }), el('dd', { textContent: u.grants.map((g) => capeNames[g] ?? g).join(', ') || '—' })),
     el('div', {}, el('h4', { textContent: 'Peleryna' }), el('div', { class: 'row' }, u.cape ? capeEl(u.cape, true) : '', capeSel)),
     el('div', {}, el('h4', { textContent: 'Ranga' }),
-      el('p', { class: 'muted small', textContent: 'Kolor logo SlashClient przy nicku w grze: admin czerwony, support błękitny, partner złoty.' }),
+      el('p', { class: 'muted small', textContent: 'Kolor logo SlashClient przy nicku w grze: admin czerwony, support błękitny, partner złoty, przyjaciel zielony albo różowy.' }),
       el('div', { class: 'row' }, rankSel)),
     el('div', { class: 'actions' },
       el('button', { disabled: self, onclick: () => update({ banned: !u.banned }, u.banned ? 'Konto odblokowane.' : 'Konto zablokowane i wylogowane.'), class: u.banned ? '' : 'danger' },
@@ -229,7 +229,7 @@ async function cosmeticsPage() {
     } }, handle, el('button', { type: 'submit', class: 'icon-btn', title: 'Przyznaj' }, icon('fa-solid fa-plus')));
     return el('div', { class: 'glass cos' }, cosmeticEl(c.id, c.slot ?? 'cape'),
       el('div', { class: 'opts' },
-        el('div', { class: 'row' }, el('h3', { class: 'grow', textContent: c.name }), c.rank ? el('span', { class: `chip ${{ admin: 'red', support: 'sky', partner: 'gold', friend: 'green' }[c.rank] ?? ''}`, textContent: c.rank }) : '', el('span', { class: 'chip', textContent: `${c.wearing} nosi` })),
+        el('div', { class: 'row' }, el('h3', { class: 'grow', textContent: c.name }), c.rank ? el('span', { class: `chip ${{ admin: 'red', support: 'sky', partner: 'gold', friend: 'green', friend_pink: 'pink' }[c.rank] ?? ''}`, textContent: c.rank }) : '', el('span', { class: 'chip', textContent: `${c.wearing} nosi` })),
         toggle('Włączona', 'enabled', 'Wyłączonej nie można wybrać i nikt jej nie widzi'),
         toggle('Ekskluzywna', 'exclusive', 'Tylko dla graczy, którym ją przyznasz'),
         c.exclusive ? el('div', {}, el('small', { class: 'muted', textContent: 'Przyznana:' }),

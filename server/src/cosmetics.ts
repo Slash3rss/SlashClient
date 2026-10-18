@@ -11,7 +11,7 @@ import type { CosmeticSetting } from './db.ts';
  */
 export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top';
 export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top'];
-export type Rank = 'admin' | 'support' | 'partner' | 'friend';
+export type Rank = 'admin' | 'support' | 'partner' | 'friend' | 'friend_pink';
 
 export interface Item {
   id: string;
@@ -63,6 +63,7 @@ export const ITEMS: Item[] = [
   { id: 'staff_support', slot: 'cape', name: 'Support', rank: 'support', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_partner', slot: 'cape', name: 'Partner', rank: 'partner', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_friend', slot: 'cape', name: 'Przyjaciel', rank: 'friend', since: '0.9.4', frames: 16 },
+  { id: 'staff_friend_pink', slot: 'cape', name: 'Różowy Przyjaciel', rank: 'friend_pink', since: '0.9.12', frames: 16 },
   // wings: drawn with the game's elytra model, folded and opened like it
   { id: 'angel', slot: 'wings', name: 'Anielskie' },
   { id: 'demon', slot: 'wings', name: 'Demona' },

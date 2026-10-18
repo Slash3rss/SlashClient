@@ -2895,7 +2895,7 @@ const ITEM_ICONS: Record<string, string> = {
   spores: 'fa-seedling', nautilus: 'fa-water', tears: 'fa-face-sad-tear', fireflies: 'fa-lightbulb',
   axolotl: 'fa-fish', frog: 'fa-frog', fox: 'fa-paw',
 };
-const RANK_NAMES: Record<string, string> = { admin: 'Admin', support: 'Support', partner: 'Partner', friend: 'Przyjaciel' };
+const RANK_NAMES: Record<string, string> = { admin: 'Admin', support: 'Support', partner: 'Partner', friend: 'Przyjaciel', friend_pink: 'Różowy Przyjaciel' };
 let cosmeticSlot: Slot = 'cape';
 /** The Minecraft account (uuid without dashes) shown in the Accounts tab: it may have a set of its own. */
 let cosmeticCharacter = '';
