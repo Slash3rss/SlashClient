@@ -636,13 +636,15 @@ public final class DungeonMap implements HudModule {
 	}
 
 	private static void title(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
+		String share = SlashHud.config.dungeonProgress && dungeonProgress >= 0 ? Math.round(dungeonProgress * 100) + "%" : "";
+		int room = W - 6 - (share.isEmpty() ? 0 : mc.font.width(share) + 6);
+		// the title shorter when it would run into the share: "Dungeon · poziom 100", "Dungeon 100", "poz. 100"
 		String text = dungeonLevel.isEmpty() ? Component.translatable("slashclient-hud.dungeon").getString()
 			: Component.translatable("slashclient-hud.dungeon.level", dungeonLevel).getString();
+		if (!dungeonLevel.isEmpty() && mc.font.width(text) > room) text = Component.translatable("slashclient-hud.dungeon").getString() + " " + dungeonLevel;
+		if (!dungeonLevel.isEmpty() && mc.font.width(text) > room) text = "poz. " + dungeonLevel;
 		Modules.text(g, mc, text, x + 3, y + 2, 0xFFFFFFFF);
-		if (SlashHud.config.dungeonProgress && dungeonProgress >= 0) {
-			String share = Math.round(dungeonProgress * 100) + "%";
-			Modules.text(g, mc, share, x + W - 3 - mc.font.width(share), y + 2, 0xFFD8B4FE);
-		}
+		if (!share.isEmpty()) Modules.text(g, mc, share, x + W - 3 - mc.font.width(share), y + 2, 0xFFD8B4FE);
 	}
 
 	/** The counters under the map: each kind of loot shown and found, its icon and taken of all. */
