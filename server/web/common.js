@@ -43,11 +43,22 @@ export async function uploadPicture(path, file) {
 }
 
 /** A partner server's card: its background as it shows behind the server in the game's list. */
+/**
+ * A partner server as the game's server list shows it with SlashClient: one row of the list
+ * (300×32 in the game, drawn here twice as large), the picture filling it dimmed by half, the
+ * server's icon, name with the gold "Partner" badge, its description, players and ping, in a gold frame.
+ */
 export function partnerBanner(p, extra = []) {
-  const banner = el('div', { class: `partner-banner${p.background ? '' : ' empty'}` },
-    el('div', { class: 'partner-text' }, el('b', { textContent: p.name || p.address }), el('small', { textContent: p.address })), ...extra);
-  if (p.background) banner.style.backgroundImage = `linear-gradient(90deg, rgba(0,0,0,.65), rgba(0,0,0,.15)), url("${p.background}")`;
-  return banner;
+  const bars = el('span', { class: 'mc-bars' }, ...[1, 2, 3, 4, 5].map((n) => el('i', { style: `height:${n * 2 + 2}px` })));
+  const row = el('div', { class: `partner-banner${p.background ? '' : ' empty'}` },
+    el('div', { class: 'mc-icon' }, el('img', { src: '/vendor/logo.png', alt: '' })),
+    el('div', { class: 'mc-text' },
+      el('div', { class: 'mc-name' }, el('span', { textContent: p.name || p.address }), el('span', { class: 'mc-badge' }, icon('fa-solid fa-handshake'), 'Partner')),
+      el('div', { class: 'mc-motd', textContent: p.address })),
+    el('div', { class: 'mc-status' }, el('span', { textContent: '123/500' }), bars),
+    ...extra);
+  if (p.background) row.style.backgroundImage = `linear-gradient(rgba(0,0,0,.5), rgba(0,0,0,.5)), url("${p.background}")`;
+  return el('div', { class: 'partner-row-wrap' }, row);
 }
 
 const ERRORS = {
