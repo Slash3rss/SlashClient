@@ -421,11 +421,11 @@ final class MoreModules {
 
 		private void drawFor(GuiGraphicsExtractor g, Minecraft mc, int x, int y, Component name, float health, float max, float absorb, double distance) {
 			int width = widthFor(mc, name);
-			// a name longer than the widest box is made smaller to fit, down to two thirds; only past that cut with "…"
+			// a name longer than the widest box is made smaller to fit, down to half; only past that cut with "…"
 			int room = width - PAD * 2, full = mc.font.width(name);
 			if (full <= room) text(g, mc, name, x + PAD, y + PAD, cfg.textColor);
 			else {
-				float s = Math.max(0.66f, (float) room / full);
+				float s = Math.max(0.5f, (float) room / full);
 				var pose = g.pose();
 				pose.pushMatrix();
 				pose.translate(x + PAD, y + PAD + mc.font.lineHeight * (1 - s) / 2f);
