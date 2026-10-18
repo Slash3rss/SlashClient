@@ -36,6 +36,18 @@ Serwer szuka instalatora w najnowszym wydaniu na GitHubie i przekierowuje przegl
 - `RELEASES_TOKEN`: potrzebny, gdy repozytorium jest prywatne. Użyj tokena *fine-grained* z dostępem tylko do tego repozytorium i uprawnieniem **Contents: Read-only**.
   GitHub daje wtedy jednorazowy link do pliku ważny kilka minut, a token zostaje na serwerze.
 
+### CurseForge w launcherze
+
+Launcher szuka i instaluje mody, paczki zasobów, shadery i modpacki z CurseForge przez ten serwer (`/v1/curseforge/...`),
+bo API CurseForge wymaga klucza, którego nie wolno wbudować w launcher. Serwer przepuszcza tylko odczyt potrzebny launcherowi
+(wyszukiwanie, projekt, lista plików, jeden plik, kilka projektów lub plików naraz), tylko Minecraft (gra 432), i trzyma odpowiedzi 10 minut.
+
+- `CURSEFORGE_API_KEY`: klucz z https://console.curseforge.com (zakładka *API Keys*). Wpisz go w `/etc/slashclient/env`
+  jako `CURSEFORGE_API_KEY=...` i zrestartuj usługę. Bez klucza (albo z odrzuconym kluczem) serwer odpowiada
+  `503 { "error": "curseforge_unavailable" }`, a launcher pokazuje, że CurseForge jest niedostępny; Modrinth działa dalej.
+- Pliki, których autor nie pozwala rozpowszechniać poza CurseForge, nie mają linku do pobrania. Launcher pokazuje je
+  jako „pobierz ręcznie” z linkiem do strony pliku i niczego nie obchodzi.
+
 Pierwszego admina ustawia zmienna `ADMIN_HANDLES` (nicki oddzielone przecinkami, np. `ADMIN_HANDLES=Slash3rss`).
 Taki admin zawsze nim zostaje; kolejnych można mianować w panelu.
 
@@ -112,7 +124,7 @@ npm test
 Strona, API i panel działają pod **https://client.slash3rss.dev** (VPS z Ubuntu 24.04, Node 24, Caddy z automatycznym HTTPS).
 
 - **Wdrożenie:** `./server/deploy/deploy.sh` wysyła `server/` przez SSH (rsync), instaluje zależności i restartuje usługę. VPS nie ma dostępu do GitHuba.
-- **Ustawienia:** `/etc/slashclient/env` na serwerze (token wydań, klucze logowania, admini). Po zmianie: `systemctl restart slashclient`.
+- **Ustawienia:** `/etc/slashclient/env` na serwerze (token wydań, klucze logowania, klucz CurseForge, admini). Po zmianie: `systemctl restart slashclient`.
 - **Baza:** `/var/lib/slashclient/social.db`.
 - **Logi:** `journalctl -u slashclient -f` (serwer) i `/var/log/caddy/slashclient.log` (ruch).
 - **Pliki usługi:** `server/deploy/slashclient.service` i `server/deploy/Caddyfile`; `deploy.sh` instaluje je przy każdym wdrożeniu.

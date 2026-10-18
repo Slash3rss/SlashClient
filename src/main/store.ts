@@ -48,8 +48,10 @@ export interface Profile {
   lastPlayedAt?: number;
   /** Where the player was at the end of the last session, for "Back to the game". */
   lastTarget?: { kind: 'server'; address: string } | { kind: 'world'; folder: string; name: string };
-  /** The Modrinth modpack this profile was created from, for updates and version changes. */
-  modpack?: { projectId: string; versionId: string; versionNumber: string; title: string };
+  /** The modpack (Modrinth, or CurseForge with source set) this profile was created from, for updates and version changes. */
+  modpack?: { projectId: string; versionId: string; versionNumber: string; title: string; source?: 'curseforge' };
+  /** CurseForge files the authors keep on their site: the player downloads them by hand into `folder`. */
+  manualFiles?: { title: string; fileName: string; url: string; folder: string }[];
   /** The Minecraft account this profile always plays as; none = the one picked on the Play tab. */
   accountId?: string;
   /** Game directory; empty means instances/<id>. */

@@ -25,6 +25,10 @@ import {
   exportMrpack, findFitting, installedProjectIds, listInstalled, removeContent, search, setEnabled, updateMrpack,
   type ContentType, type ModpackInfo, type ProjectType, type UpdateInfo, type VersionInfo,
 } from './modrinth';
+import {
+  checkCurseForgeUpdates, CurseForgeUnavailable, downloadCurseForgePack, installCurseForgePack, installCurseForgeProject, isCurseForgePack,
+  latestCurseForgePack, listCurseForgeVersions, searchCurseForge, setCurseForgeServer, updateCurseForgePack, type ManualFile,
+} from './curseforge';
 import { listServers, pingServer } from './servers';
 import { getManifest } from './versions';
 import { newsArticle, newsPage, type NewsFilter } from './news';
@@ -245,6 +249,14 @@ handle('account:loginMicrosoft', async () => {
 handle('account:cancelLogin', () => loginAbort?.abort());
 
 handle('loaders:versions', async (loader: Loader, versionId: string) => loaderVersions(loader, await resolveVersionId(versionId)));
+/** One of the profile's content folders, e.g. to drop in files downloaded by hand from CurseForge. */
+handle('profile:openFolder', async (id: string, folder: string) => {
+  const profile = store.profiles.find((p) => p.id === id);
+  if (!profile || !['mods', 'resourcepacks', 'shaderpacks', 'datapacks'].includes(folder)) return;
+  const dir = path.join(profileGameDir(profile), folder);
+  await import('node:fs/promises').then((fs) => fs.mkdir(dir, { recursive: true }));
+  await shell.openPath(dir);
+});
 handle('profile:openMods', async (id: string) => {
   const profile = store.profiles.find((p) => p.id === id);
   if (!profile) return;
@@ -295,7 +307,12 @@ handle('profile:chooseIcon', async (id: string) => {
   return true;
 });
 
-// ---------- Modrinth content ----------
+// ---------- Modrinth and CurseForge content ----------
+
+/** Where content comes from; the page switches between the two. */
+type Source = 'modrinth' | 'curseforge';
+/** CurseForge goes through the SlashClient server set in Settings (it holds the API key). */
+const curseforge = () => setCurseForgeServer(store.settings.socialUrl);
 
 function profileById(id: string): Profile {
   const profile = store.profiles.find((p) => p.id === id);
@@ -308,29 +325,50 @@ async function profileTarget(id: string) {
   return { profile, gameDir: profileGameDir(profile), gameVersion: await resolveVersionId(profile.versionId) };
 }
 
-handle('content:search', async (profileId: string, query: string, type: ProjectType, offset?: number) => {
-  if (type === 'modpack') return search({ query, type, offset });
-  const { profile, gameVersion } = await profileTarget(profileId);
-  return search({ query, type, gameVersion, loader: profile.loader === 'vanilla' ? undefined : profile.loader, offset });
+handle('content:search', async (profileId: string, query: string, type: ProjectType, offset?: number, source: Source = 'modrinth') => {
+  const find = source === 'curseforge' ? (curseforge(), searchCurseForge) : search;
+  try {
+    if (type === 'modpack') return await find({ query, type, offset });
+    const { profile, gameVersion } = await profileTarget(profileId);
+    return await find({ query, type, gameVersion, loader: profile.loader === 'vanilla' ? undefined : profile.loader, offset });
+  } catch (err) {
+    // the page shows CurseForge as unavailable instead of an error
+    if (err instanceof CurseForgeUnavailable) return { hits: [], total: 0, unavailable: true };
+    throw err;
+  }
 });
 handle('content:list', async (profileId: string) => listInstalled((await profileTarget(profileId)).gameDir));
-handle('content:versions', async (profileId: string, projectId: string, type: ProjectType, onlyCompatible: boolean) => {
-  if (!onlyCompatible || type === 'modpack') return listContentVersions(projectId, 'modpack');
+handle('content:versions', async (profileId: string, projectId: string, type: ProjectType, onlyCompatible: boolean, source: Source = 'modrinth') => {
+  const list = source === 'curseforge' ? (curseforge(), listCurseForgeVersions) : listContentVersions;
+  if (!onlyCompatible || type === 'modpack') return list(projectId, 'modpack');
   const { profile, gameVersion } = await profileTarget(profileId);
-  return listContentVersions(projectId, type, gameVersion, profile.loader === 'vanilla' ? undefined : profile.loader);
+  return list(projectId, type, gameVersion, profile.loader === 'vanilla' ? undefined : profile.loader);
 });
 handle('content:checkUpdates', async (profileId: string) => {
   const { profile, gameDir, gameVersion } = await profileTarget(profileId);
-  return checkUpdates(gameDir, gameVersion, profile.loader === 'vanilla' ? undefined : profile.loader);
+  const loader = profile.loader === 'vanilla' ? undefined : profile.loader;
+  curseforge();
+  // CurseForge being off only hides updates of what came from there
+  const [modrinth, cf] = await Promise.all([
+    checkUpdates(gameDir, gameVersion, loader),
+    checkCurseForgeUpdates(gameDir, gameVersion, loader).catch((err) => {
+      if (err instanceof CurseForgeUnavailable) return [];
+      throw err;
+    }),
+  ]);
+  return [...modrinth, ...cf];
 });
 /** Updates (or changes the version of) installed items, one task for the whole batch. */
-handle('content:update', async (profileId: string, items: Pick<UpdateInfo, 'type' | 'projectId' | 'latestVersionId' | 'title'>[]) => {
+handle('content:update', async (profileId: string, items: Pick<UpdateInfo, 'type' | 'projectId' | 'latestVersionId' | 'title' | 'source'>[]) => {
   const { profile, gameDir, gameVersion } = await profileTarget(profileId);
   const task = startTask(items.length === 1 ? t('Aktualizowanie: {0}', items[0].title) : t('Aktualizowanie {0} elementów', items.length));
   try {
     for (const [i, item] of items.entries()) {
       task.progress(t('{0} ({1}/{2})', item.title, i + 1, items.length), i, items.length);
-      await installProject(gameDir, item.projectId, item.type, gameVersion, profile.loader, undefined, item.latestVersionId);
+      if (item.source === 'curseforge') {
+        curseforge();
+        await installCurseForgeProject(gameDir, item.projectId, item.type, gameVersion, profile.loader, undefined, item.latestVersionId);
+      } else await installProject(gameDir, item.projectId, item.type, gameVersion, profile.loader, undefined, item.latestVersionId);
     }
     task.finish(true, items.length === 1 ? t('Zaktualizowano {0}.', items[0].title) : t('Zaktualizowano {0} elementów.', items.length));
   } catch (err) {
@@ -459,19 +497,55 @@ handle('mods:fixMissing', async (profileId: string, ids: string[]) => {
   return { installed: found.map((f) => f.title), notFound };
 });
 
-handle('content:install', async (profileId: string, projectId: string, type: ContentType, title?: string, icon?: string, versionId?: string) => {
+handle('content:install', async (profileId: string, projectId: string, type: ContentType, title?: string, icon?: string, versionId?: string, source: Source = 'modrinth') => {
   const { profile, gameDir, gameVersion } = await profileTarget(profileId);
   if (type === 'mod' && profile.loader === 'vanilla') throw new Error('Ten profil nie ma mod loadera. Ustaw Fabric w ustawieniach profilu.');
   const task = startTask(t('Instalowanie: {0}', title ?? ''), icon);
   try {
-    const titles = await installProject(gameDir, projectId, type, gameVersion, profile.loader, (done, total, stats) =>
-      task.progress(t('Pobieranie'), done, total, stats), versionId);
-    task.finish(true, titles.length > 1 ? t('Zainstalowano {0} i zależności: {1}', titles[0], titles.slice(1).join(', ')) : t('Zainstalowano {0}', titles[0]));
-    return titles;
+    const progress = (done: number, total: number, stats: { bytes: number; totalBytes: number; speed: number }) => task.progress(t('Pobieranie'), done, total, stats);
+    let titles: string[];
+    let manual: ManualFile[] = [];
+    if (source === 'curseforge') {
+      curseforge();
+      ({ installed: titles, manual } = await installCurseForgeProject(gameDir, projectId, type, gameVersion, profile.loader, progress, versionId));
+      if (manual.length) await rememberManual(profile, manual);
+    } else titles = await installProject(gameDir, projectId, type, gameVersion, profile.loader, progress, versionId);
+    const done = titles.length > 1 ? t('Zainstalowano {0} i zależności: {1}', titles[0], titles.slice(1).join(', ')) : titles.length ? t('Zainstalowano {0}', titles[0]) : '';
+    const byHand = manual.length ? t('Do pobrania ręcznie ze strony CurseForge: {0}', manual.map((m) => m.title).join(', ')) : '';
+    task.finish(true, [done, byHand].filter(Boolean).join(' · '));
+    return { titles, manual };
   } catch (err) {
     task.finish(false, (err as Error).message);
     throw err;
   }
+});
+/** Adds files to download by hand to the profile's list (shown on the Mods page until they are in place). */
+async function rememberManual(profile: Profile, files: ManualFile[]) {
+  const key = (f: ManualFile) => `${f.folder}/${f.fileName}`;
+  const known = new Map((profile.manualFiles ?? []).map((f) => [key(f), f]));
+  for (const f of files) known.set(key(f), f);
+  profile.manualFiles = [...known.values()];
+  await persist();
+}
+/** The files still to be downloaded by hand: those the player has put in place drop off the list. */
+handle('content:manual', async (profileId: string) => {
+  const profile = profileById(profileId);
+  if (!profile.manualFiles?.length) return [];
+  const gameDir = profileGameDir(profile);
+  const exists = (f: ManualFile) => fsp.access(path.join(gameDir, f.folder, path.basename(f.fileName))).then(() => true, () => false);
+  const left = [];
+  for (const f of profile.manualFiles) if (!(await exists(f))) left.push(f);
+  if (left.length !== profile.manualFiles.length) {
+    profile.manualFiles = left.length ? left : undefined;
+    await persist();
+  }
+  return left;
+});
+/** The player says they do not want these files (or got them elsewhere): forget the list. */
+handle('content:manualDismiss', async (profileId: string) => {
+  const profile = profileById(profileId);
+  profile.manualFiles = undefined;
+  await persist();
 });
 handle('content:toggle', async (profileId: string, type: ContentType, filename: string, enabled: boolean) =>
   setEnabled((await profileTarget(profileId)).gameDir, type, filename, enabled));
@@ -483,23 +557,39 @@ handle('content:remove', async (profileId: string, type: ContentType, filename: 
  * Creates a profile from a .mrpack with a visible progress panel, a completion
  * message and (for Modrinth packs) the pack's own icon.
  */
-type Pack = { file: string; version?: VersionInfo };
+type Pack = { file: string; version?: VersionInfo; source?: Source };
 
 /** Applies a modpack's game version and loader to a profile and remembers which pack/version it is. */
-function applyPack(profile: Profile, info: ModpackInfo, version: VersionInfo | undefined, title: string) {
+function applyPack(profile: Profile, info: ModpackInfo, version: VersionInfo | undefined, title: string, source?: Source) {
   Object.assign(profile, { versionId: info.gameVersion, loader: info.loader, loaderVersion: info.loaderVersion });
-  if (version) profile.modpack = { projectId: version.projectId, versionId: version.id, versionNumber: version.versionNumber, title };
+  if (version) profile.modpack = { projectId: version.projectId, versionId: version.id, versionNumber: version.versionNumber, title, ...(source === 'curseforge' ? { source } : {}) };
 }
+
+/** Installs (or, with `update`, moves to) a pack file of either kind; CurseForge files kept on their site are remembered. */
+async function installPackFile(profile: Profile, file: string, update: boolean, onStage: Parameters<typeof installMrpack>[2]): Promise<{ info: ModpackInfo; manual: ManualFile[] }> {
+  const gameDir = profileGameDir(profile);
+  if (!isCurseForgePack(file)) return { info: await (update ? updateMrpack : installMrpack)(file, gameDir, onStage), manual: [] };
+  curseforge();
+  const info = await (update ? updateCurseForgePack : installCurseForgePack)(file, gameDir, onStage);
+  // a new version of the pack has its own list
+  profile.manualFiles = undefined;
+  if (info.manual.length) await rememberManual(profile, info.manual);
+  return { info, manual: info.manual };
+}
+
+const manualNote = (manual: ManualFile[]) => manual.length
+  ? ` ${t('Autorzy {0} plików pozwalają je pobrać tylko ze strony CurseForge: lista jest w zakładce Mody tego profilu.', manual.length)}`
+  : '';
 
 async function installModpackTask(title: string, iconUrl: string | undefined, getPack: (task: ReturnType<typeof startTask>) => Promise<Pack>): Promise<string> {
   const task = startTask(t('Instalowanie modpacka: {0}', title), iconUrl);
   try {
-    const { file, version } = await getPack(task);
+    const { file, version, source } = await getPack(task);
     const profile = newProfile(newMemory());
     const gameDir = profileGameDir(profile);
-    const info = await installMrpack(file, gameDir, task.progress);
+    const { info, manual } = await installPackFile(profile, file, false, task.progress);
     profile.name = info.name;
-    applyPack(profile, info, version, info.name);
+    applyPack(profile, info, version, info.name, source);
     if (iconUrl) {
       task.progress(t('Pobieranie ikony'), 0, 1);
       // a missing icon is not worth failing the install
@@ -508,7 +598,7 @@ async function installModpackTask(title: string, iconUrl: string | undefined, ge
     store.profiles.push(profile);
     store.settings.selectedProfileId = profile.id;
     await persist();
-    task.finish(true, t('Zainstalowano modpack {0}. Profil jest gotowy do gry.', info.name), profile.id);
+    task.finish(true, t('Zainstalowano modpack {0}. Profil jest gotowy do gry.', info.name) + manualNote(manual), profile.id);
     return profile.id;
   } catch (err) {
     task.finish(false, t('Nie udało się zainstalować modpacka: {0}', (err as Error).message));
@@ -516,21 +606,37 @@ async function installModpackTask(title: string, iconUrl: string | undefined, ge
   }
 }
 
-handle('modpack:install', (projectId: string, title: string, iconUrl?: string, versionId?: string) =>
-  installModpackTask(title, iconUrl, (task) => downloadModpack(projectId, (d, n, s) => task.progress(t('Pobieranie modpacka'), d, n, s), versionId)));
+/** Downloads a pack from either site. */
+function downloadPack(source: Source, projectId: string, task: ReturnType<typeof startTask>, versionId?: string): Promise<Pack> {
+  const progress = (d: number, n: number, s: { bytes: number; totalBytes: number; speed: number }) => task.progress(t('Pobieranie modpacka'), d, n, s);
+  if (source === 'curseforge') {
+    curseforge();
+    return downloadCurseForgePack(projectId, progress, versionId).then((p) => ({ ...p, source }));
+  }
+  return downloadModpack(projectId, progress, versionId);
+}
+
+handle('modpack:install', (projectId: string, title: string, iconUrl?: string, versionId?: string, source: Source = 'modrinth') =>
+  installModpackTask(title, iconUrl, (task) => downloadPack(source, projectId, task, versionId)));
 handle('modpack:import', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
-    title: t('Importuj modpack'), filters: [{ name: 'Modpack Modrinth', extensions: ['mrpack'] }], properties: ['openFile'],
+    title: t('Importuj modpack'), filters: [{ name: t('Modpack Modrinth lub CurseForge'), extensions: ['mrpack', 'zip'] }], properties: ['openFile'],
   });
   if (canceled || !filePaths[0]) return undefined;
-  // a file downloaded from Modrinth is recognised, so the profile can be updated later
-  return installModpackTask(path.basename(filePaths[0], '.mrpack'), undefined, async () => ({ file: filePaths[0], version: await identifyModpack(filePaths[0]) }));
+  const file = filePaths[0];
+  // a file downloaded from Modrinth is recognised, so the profile can be updated later (a CurseForge zip cannot be)
+  return installModpackTask(path.basename(file).replace(/\.(mrpack|zip)$/i, ''), undefined, async () =>
+    ({ file, version: isCurseForgePack(file) ? undefined : await identifyModpack(file) }));
 });
 
 /** The modpack a profile came from, and the newest version available. */
 handle('modpack:check', async (profileId: string) => {
   const profile = profileById(profileId);
   if (!profile.modpack) return undefined;
+  if (profile.modpack.source === 'curseforge') {
+    curseforge();
+    return { current: profile.modpack, latest: await latestCurseForgePack(profile.modpack.projectId) };
+  }
   return { current: profile.modpack, latest: await latestModpackVersion(profile.modpack.projectId) };
 });
 
@@ -538,15 +644,16 @@ handle('modpack:check', async (profileId: string) => {
 handle('modpack:update', async (profileId: string, versionId?: string) => {
   const profile = profileById(profileId);
   const pack = profile.modpack;
-  if (!pack) throw new Error(t('Ten profil nie pochodzi z modpacka Modrinth.'));
+  if (!pack) throw new Error(t('Ten profil nie pochodzi z modpacka Modrinth ani CurseForge.'));
   if (games.has(profile.id)) throw new Error(t('Zamknij grę przed aktualizacją modpacka.'));
   const task = startTask(t('Aktualizowanie modpacka: {0}', pack.title), undefined);
   try {
-    const { file, version } = await downloadModpack(pack.projectId, (d, n, s) => task.progress(t('Pobieranie modpacka'), d, n, s), versionId);
-    const info = await updateMrpack(file, profileGameDir(profile), task.progress);
-    applyPack(profile, info, version, pack.title);
+    const source: Source = pack.source ?? 'modrinth';
+    const { file, version } = await downloadPack(source, pack.projectId, task, versionId);
+    const { info, manual } = await installPackFile(profile, file, true, task.progress);
+    applyPack(profile, info, version, pack.title, source);
     await persist();
-    task.finish(true, t('Modpack {0} ma teraz wersję {1}.', pack.title, version.versionNumber), profile.id);
+    task.finish(true, t('Modpack {0} ma teraz wersję {1}.', pack.title, version!.versionNumber) + manualNote(manual), profile.id);
   } catch (err) {
     task.finish(false, t('Nie udało się zaktualizować modpacka: {0}', (err as Error).message));
     throw err;

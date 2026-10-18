@@ -20,7 +20,7 @@ interface Profile {
   id: string; name: string; versionId: string; loader: 'vanilla' | 'fabric' | 'quilt' | 'forge' | 'neoforge'; loaderVersion: string; gameDir: string; memoryMb: number;
   jvmArgs: string; javaPath: string; width: number; height: number;
   icon: string; iconVersion: number; syncOptions: boolean; hud?: boolean; iconFile?: string;
-  modpack?: { projectId: string; versionId: string; versionNumber: string; title: string };
+  modpack?: { projectId: string; versionId: string; versionNumber: string; title: string; source?: 'curseforge' };
   playTimeMs?: number; lastPlayedAt?: number; jvmPreset?: 'default' | 'g1' | 'zgc';
   lastTarget?: { kind: 'server'; address: string } | { kind: 'world'; folder: string; name: string };
 }
@@ -481,7 +481,7 @@ $('#modpack-update').addEventListener('click', () => {
 $('#modpack-versions').addEventListener('click', async () => {
   const profile = store.profiles.find((p) => p.id === editingId);
   if (!profile?.modpack) return;
-  const v = await chooseVersion({ title: profile.modpack.title, projectId: profile.modpack.projectId, type: 'modpack', currentVersionId: profile.modpack.versionId, profileId: profile.id });
+  const v = await chooseVersion({ title: profile.modpack.title, projectId: profile.modpack.projectId, type: 'modpack', currentVersionId: profile.modpack.versionId, profileId: profile.id, source: profile.modpack.source ?? 'modrinth' });
   if (v) guard(() => api.updateModpack(profile.id, v.id));
 });
 
@@ -1704,17 +1704,24 @@ document.querySelector('.nav[data-view="servers"]')?.addEventListener('click', (
   if (!servers.length) loadServers();
 }, { once: true });
 
-// ---------- mods, resource packs, shaders, modpacks (Modrinth) ----------
+// ---------- mods, resource packs, shaders, modpacks (Modrinth, CurseForge) ----------
 
-interface ProjectHit { id: string; slug: string; title: string; description: string; author: string; iconUrl?: string; downloads: number; categories: string[] }
-interface InstalledItem { type: string; filename: string; enabled: boolean; title: string; projectId?: string; versionId?: string; versionNumber?: string; iconUrl?: string }
-interface ProjectVersion { id: string; projectId: string; name: string; versionNumber: string; type: 'release' | 'beta' | 'alpha'; date: string; gameVersions: string[]; loaders: string[]; downloads: number }
-interface UpdateInfo { type: string; filename: string; projectId: string; title: string; currentVersion: string; latestVersionId: string; latestVersion: string }
+type Source = 'modrinth' | 'curseforge';
+interface ProjectHit { id: string; slug: string; title: string; description: string; author: string; iconUrl?: string; downloads: number; categories: string[]; pageUrl?: string; manualOnly?: boolean }
+interface InstalledItem { type: string; filename: string; enabled: boolean; title: string; projectId?: string; versionId?: string; versionNumber?: string; iconUrl?: string; source?: 'curseforge' }
+interface ProjectVersion { id: string; projectId: string; name: string; versionNumber: string; type: 'release' | 'beta' | 'alpha'; date: string; gameVersions: string[]; loaders: string[]; downloads: number; manualUrl?: string }
+interface UpdateInfo { type: string; filename: string; projectId: string; title: string; currentVersion: string; latestVersionId: string; latestVersion: string; source?: 'curseforge' }
+interface ManualFile { title: string; fileName: string; url: string; folder: string }
+
+/** Modrinth or CurseForge: the same page searches either. */
+let contentSource: Source = 'modrinth';
+/** The SlashClient server has no CurseForge key: CurseForge is shown as unavailable. */
+let curseforgeUnavailable = false;
 
 // ---------- version picker ----------
 
 let resolvePicker: ((v: ProjectVersion | undefined) => void) | undefined;
-let pickerArgs: { projectId: string; type: string; currentVersionId?: string; profileId: string } | undefined;
+let pickerArgs: { projectId: string; type: string; currentVersionId?: string; profileId: string; source?: Source } | undefined;
 
 const TYPE_NAMES: Record<string, string> = { release: 'Wydanie', beta: 'Beta', alpha: 'Alfa' };
 
@@ -1728,11 +1735,18 @@ async function renderVersionList() {
   const box = $('#versions-list');
   box.replaceChildren(...skeletons('project', 4));
   const onlyCompatible = $<HTMLInputElement>('#versions-compat').checked;
-  const versions: ProjectVersion[] = (await guard(() => api.contentVersions(pickerArgs!.profileId, pickerArgs!.projectId, pickerArgs!.type, onlyCompatible))) ?? [];
+  const versions: ProjectVersion[] = (await guard(() => api.contentVersions(pickerArgs!.profileId, pickerArgs!.projectId, pickerArgs!.type, onlyCompatible, pickerArgs!.source))) ?? [];
   box.replaceChildren(...appear(versions.slice(0, 60).map((v) => {
     const current = v.id === pickerArgs?.currentVersionId;
-    const choose = el('button', { type: 'button', className: current ? '' : 'primary', disabled: current, textContent: current ? t('Zainstalowana') : t('Wybierz') });
-    choose.addEventListener('click', () => closePicker(v));
+    let choose: HTMLElement;
+    if (v.manualUrl && !current) {
+      // the author keeps this file on CurseForge: the player downloads it from the file's page
+      choose = el('a', { className: 'button-link', href: v.manualUrl, target: '_blank', title: t('Autor pozwala pobrać ten plik tylko ze strony CurseForge') },
+        el('i', { className: 'fa-solid fa-arrow-up-right-from-square' }), t('Pobierz ręcznie'));
+    } else {
+      choose = el('button', { type: 'button', className: current ? '' : 'primary', disabled: current, textContent: current ? t('Zainstalowana') : t('Wybierz') });
+      choose.addEventListener('click', () => closePicker(v));
+    }
     return el('div', { className: `version-row${current ? ' current' : ''}` },
       el('div', {},
         el('b', {}, v.versionNumber, el('span', { className: `tag ${v.type}`, textContent: t(TYPE_NAMES[v.type] ?? v.type) })),
@@ -1748,7 +1762,7 @@ async function renderVersionList() {
 }
 
 /** Opens the version list for a project and resolves with the chosen version (or nothing). */
-function chooseVersion(args: { title: string; projectId: string; type: string; currentVersionId?: string; profileId: string }): Promise<ProjectVersion | undefined> {
+function chooseVersion(args: { title: string; projectId: string; type: string; currentVersionId?: string; profileId: string; source?: Source }): Promise<ProjectVersion | undefined> {
   closePicker(undefined);
   pickerArgs = args;
   $('#versions-title').textContent = t('Wersje: {0}', args.title);
@@ -1777,7 +1791,7 @@ let updatesFor = '';
 let updatesAt = 0;
 let checkingUpdates = false;
 
-/** Asks Modrinth about newer versions of everything in the profile (cached for 10 minutes). */
+/** Asks Modrinth (and CurseForge, for what came from there) about newer versions of everything in the profile (cached for 10 minutes). */
 async function checkContentUpdates(force = false) {
   const profileId = contentProfileId();
   if (!profileId || checkingUpdates || (!force && updatesFor === profileId && Date.now() - updatesAt < 10 * 60_000)) return;
@@ -1796,14 +1810,14 @@ async function checkContentUpdates(force = false) {
   }
 }
 
-async function applyUpdates(items: { type: string; projectId: string; latestVersionId: string; title: string }[]) {
+async function applyUpdates(items: { type: string; projectId: string; latestVersionId: string; title: string; source?: 'curseforge' }[]) {
   if (!items.length) return;
   try {
     await api.updateContent(contentProfileId(), items);
   } catch {
     // reported in the task panel
   }
-  updates = updates.filter((u) => !items.some((i) => i.projectId === u.projectId));
+  updates = updates.filter((u) => !items.some((i) => i.projectId === u.projectId && i.source === u.source));
   await refreshInstalled(true);
 }
 
@@ -2097,23 +2111,31 @@ function contentNotice() {
   box.classList.toggle('hidden', !text);
 }
 
+/** Pictures the page may show (see the Content-Security-Policy in index.html). */
+const isProjectIcon = (url: string) => url.startsWith('https://cdn.modrinth.com/') || url.startsWith('https://media.forgecdn.net/');
+
 function projectIcon(url?: string) {
   const img = el('img', { alt: '', loading: 'lazy' });
-  img.src = url?.startsWith('https://cdn.modrinth.com/') ? url : 'logo.png';
+  img.src = url && isProjectIcon(url) ? url : 'logo.png';
   return img;
 }
 
+/** Whether an installed item is this search hit (the same project on the same site). */
+const sameProject = (i: InstalledItem, hit: ProjectHit) => i.projectId === hit.id && (i.source ?? 'modrinth') === contentSource;
+
 function hitCard(hit: ProjectHit): HTMLElement {
-  const isInstalled = installed.some((i) => i.projectId === hit.id);
+  const isInstalled = installed.some((i) => sameProject(i, hit));
   const btn = el('button', { className: isInstalled ? '' : 'primary', disabled: installing.has(hit.id) },
     installing.has(hit.id) ? el('span', { className: 'spinner' }) : el('i', { className: isInstalled ? 'fa-solid fa-check' : 'fa-solid fa-download' }),
     installing.has(hit.id) ? 'Instaluję…' : isInstalled ? 'Zainstalowany' : contentType === 'modpack' ? 'Utwórz profil' : 'Instaluj');
   btn.addEventListener('click', () => installHit(hit));
   const pick = el('button', { type: 'button', className: 'icon-btn', title: t('Wybierz wersję') }, el('i', { className: 'fa-solid fa-code-branch' }));
   pick.addEventListener('click', async () => {
-    const v = await chooseVersion({ title: hit.title, projectId: hit.id, type: contentType, profileId: contentProfileId() });
+    const v = await chooseVersion({ title: hit.title, projectId: hit.id, type: contentType, profileId: contentProfileId(), source: contentSource });
     if (v) installHit(hit, v.id);
   });
+  const extra: HTMLElement[] = [];
+  if (hit.manualOnly) extra.push(el('span', { className: 'tag beta', textContent: t('Pobieranie tylko ze strony CurseForge'), title: t('Autor nie pozwala pobierać plików poza CurseForge: launcher pokaże link do strony pliku') }));
   return el('div', { className: 'project' },
     projectIcon(hit.iconUrl),
     el('div', { className: 'project-main' },
@@ -2121,7 +2143,7 @@ function hitCard(hit: ProjectHit): HTMLElement {
       el('p', { textContent: hit.description, title: hit.description }),
       el('div', { className: 'project-meta' },
         el('span', {}, el('i', { className: 'fa-solid fa-download' }), ` ${fmtCount(hit.downloads)}`),
-        el('span', { textContent: hit.categories.slice(0, 4).join(' · ') }))),
+        el('span', { textContent: hit.categories.slice(0, 4).join(' · ') }), ...extra)),
     el('div', { className: 'project-actions' }, btn, pick));
 }
 
@@ -2156,8 +2178,8 @@ function installedCard(item: InstalledItem): HTMLElement {
   if (item.projectId) {
     const versions = el('button', { type: 'button', className: 'icon-btn', title: t('Zmień wersję') }, el('i', { className: 'fa-solid fa-code-branch' }));
     versions.addEventListener('click', async () => {
-      const v = await chooseVersion({ title: item.title, projectId: item.projectId!, type: item.type, currentVersionId: item.versionId, profileId: contentProfileId() });
-      if (v) applyUpdates([{ type: item.type, projectId: item.projectId!, latestVersionId: v.id, title: item.title }]);
+      const v = await chooseVersion({ title: item.title, projectId: item.projectId!, type: item.type, currentVersionId: item.versionId, profileId: contentProfileId(), source: item.source ?? 'modrinth' });
+      if (v) applyUpdates([{ type: item.type, projectId: item.projectId!, latestVersionId: v.id, title: item.title, source: item.source }]);
     });
     actions.push(versions);
   }
@@ -2191,6 +2213,13 @@ function renderContent() {
     $('#content-more').classList.add('hidden');
     return;
   }
+  if (contentSource === 'curseforge' && curseforgeUnavailable && !contentLoading) {
+    list.replaceChildren(el('div', { className: 'notice content-unavailable appear' },
+      el('i', { className: 'fa-solid fa-plug-circle-xmark' }), ' ',
+      t('CurseForge jest teraz niedostępny w SlashClient (serwer nie ma klucza API CurseForge). Modrinth działa normalnie.')));
+    $('#content-more').classList.add('hidden');
+    return;
+  }
   const cards = contentHits.map(hitCard);
   if (from !== undefined) appear(cards.slice(from));
   list.replaceChildren(...cards);
@@ -2204,6 +2233,7 @@ async function refreshInstalled(animate = false) {
   installed = (await guard(() => api.listContent(contentProfileId()))) ?? [];
   if (animate) animateFrom = 0;
   renderContent();
+  refreshManual();
   if (contentType === 'mod' && contentTab === 'installed') runModCheck();
 }
 
@@ -2213,9 +2243,12 @@ async function searchContent(append = false) {
   contentLoading = true;
   if (!append) contentHits = [];
   renderContent();
-  const res = await guard(() => api.searchContent(contentProfileId(), $<HTMLInputElement>('#content-search').value.trim(), contentType, append ? contentHits.length : 0));
+  const source = contentSource;
+  const res: { hits: ProjectHit[]; total: number; unavailable?: boolean } | undefined =
+    await guard(() => api.searchContent(contentProfileId(), $<HTMLInputElement>('#content-search').value.trim(), contentType, append ? contentHits.length : 0, source));
   if (request !== searchRequest) return;
   contentLoading = false;
+  if (source === 'curseforge') curseforgeUnavailable = !!res?.unavailable;
   if (!res) return renderContent();
   animateFrom = append ? contentHits.length : 0;
   contentHits = append ? [...contentHits, ...res.hits] : res.hits;
@@ -2228,10 +2261,11 @@ async function installHit(hit: ProjectHit, versionId?: string) {
   renderContent();
   try {
     // progress and the result are shown in the task panel (see the task section)
-    if (contentType === 'modpack') await api.installModpack(hit.id, hit.title, hit.iconUrl, versionId);
+    if (contentType === 'modpack') await api.installModpack(hit.id, hit.title, hit.iconUrl, versionId, contentSource);
     else {
-      await api.installContent(contentProfileId(), hit.id, contentType, hit.title, hit.iconUrl, versionId);
+      const res: { manual: ManualFile[] } = await api.installContent(contentProfileId(), hit.id, contentType, hit.title, hit.iconUrl, versionId, contentSource);
       await refreshInstalled();
+      if (res.manual.length) showManual(res.manual);
     }
   } catch {
     // already reported in the task panel
@@ -2248,6 +2282,70 @@ function renderContentProfiles() {
     fillSelect(sel, store.profiles.map((p) => ({ value: p.id, label: p.name })), editingId ?? store.settings.selectedProfileId ?? '');
   }
 }
+
+/** Switches between Modrinth and CurseForge (the page's texts and the search follow). */
+function setContentSource(source: Source) {
+  contentSource = source;
+  document.querySelectorAll<HTMLButtonElement>('#content-source button').forEach((x) => x.classList.toggle('active', x.dataset.source === source));
+  const site = $<HTMLAnchorElement>('#content-site');
+  site.href = source === 'curseforge' ? 'https://www.curseforge.com/minecraft' : 'https://modrinth.com';
+  site.textContent = source === 'curseforge' ? 'CurseForge' : 'Modrinth';
+  $<HTMLInputElement>('#content-search').placeholder = source === 'curseforge' ? t('Szukaj na CurseForge…') : t('Szukaj na Modrinth…');
+  contentHits = [];
+  renderContent();
+  searchContent();
+}
+document.querySelectorAll<HTMLButtonElement>('#content-source button').forEach((b) =>
+  b.addEventListener('click', () => b.dataset.source !== contentSource && setContentSource(b.dataset.source as Source)));
+
+// ---------- files to download by hand (CurseForge authors who keep them on their site) ----------
+
+let manualFiles: ManualFile[] = [];
+
+async function refreshManual() {
+  const profileId = contentProfileId();
+  if (!profileId) return;
+  manualFiles = (await api.manualFiles(profileId).catch(() => [])) ?? [];
+  const bar = $('#manual-bar');
+  bar.classList.toggle('hidden', !manualFiles.length);
+  $('#manual-text').replaceChildren(el('i', { className: 'fa-solid fa-hand-pointer' }),
+    t('Plików do pobrania ręcznie ze strony CurseForge: {0}', manualFiles.length));
+  if (!$('#manual-modal').classList.contains('hidden')) renderManual();
+}
+
+function renderManual() {
+  const profileId = contentProfileId();
+  $('#manual-list').replaceChildren(...manualFiles.map((f) => {
+    const open = el('a', { className: 'button-link', href: f.url, target: '_blank' }, el('i', { className: 'fa-solid fa-arrow-up-right-from-square' }), t('Strona pliku'));
+    const folder = el('button', { type: 'button' }, el('i', { className: 'fa-regular fa-folder-open' }), f.folder);
+    folder.title = t('Otwórz folder {0} tego profilu', f.folder);
+    folder.addEventListener('click', () => guard(() => api.openProfileFolder(profileId, f.folder)));
+    return el('div', { className: 'version-row' },
+      el('div', {}, el('b', { textContent: f.title }), el('div', { className: 'version-meta' }, el('span', { textContent: f.fileName }), el('span', { textContent: `→ ${f.folder}/` }))),
+      el('div', { className: 'actions' }, open, folder));
+  }));
+  if (!manualFiles.length) $('#manual-list').replaceChildren(el('p', { className: 'muted', textContent: t('Wszystkie pliki są na miejscu.') }));
+}
+
+function showManual(files?: ManualFile[]) {
+  if (files) manualFiles = [...manualFiles, ...files.filter((f) => !manualFiles.some((m) => m.folder === f.folder && m.fileName === f.fileName))];
+  renderManual();
+  $('#manual-modal').classList.remove('hidden');
+}
+
+$('#manual-show').addEventListener('click', () => showManual());
+$('#manual-close').addEventListener('click', () => {
+  $('#manual-modal').classList.add('hidden');
+  refreshManual();
+});
+$('#manual-modal').addEventListener('click', (e) => e.target === e.currentTarget && $('#manual-close').click());
+$('#manual-dismiss').addEventListener('click', () => guard(async () => {
+  await api.dismissManualFiles(contentProfileId());
+  $('#manual-modal').classList.add('hidden');
+  refreshManual();
+}));
+// the player comes back from the browser with the file in place: the list shrinks
+window.addEventListener('focus', () => manualFiles.length && refreshManual());
 
 document.querySelectorAll<HTMLButtonElement>('#content-type button').forEach((b) =>
   b.addEventListener('click', () => {
@@ -3250,7 +3348,7 @@ interface TaskDone { id: string; ok: boolean; message: string; profileId?: strin
 
 const taskCards = new Map<string, HTMLElement>();
 
-api.on('task:start', ({ id, title, icon }: TaskStart) => startTaskCard(id, title, icon?.startsWith('https://cdn.modrinth.com/') ? icon : 'logo.png'));
+api.on('task:start', ({ id, title, icon }: TaskStart) => startTaskCard(id, title, icon && isProjectIcon(icon) ? icon : 'logo.png'));
 api.on('task:progress', (p: TaskProgress) => progressTaskCard(p));
 api.on('task:done', (d: TaskDone) => finishTaskCard(d));
 

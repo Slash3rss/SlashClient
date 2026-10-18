@@ -28,6 +28,10 @@ export interface ProjectHit {
   iconUrl?: string;
   downloads: number;
   categories: string[];
+  /** The project's page, for CurseForge projects (Modrinth's is built from the slug). */
+  pageUrl?: string;
+  /** CurseForge only: the author allows downloads only from CurseForge's site. */
+  manualOnly?: boolean;
 }
 
 export interface SearchOptions {
@@ -92,6 +96,8 @@ export interface VersionInfo {
   gameVersions: string[];
   loaders: string[];
   downloads: number;
+  /** CurseForge only: the author does not allow downloads outside CurseForge, so this file is fetched by hand from this page. */
+  manualUrl?: string;
 }
 
 const toInfo = (v: ModrinthVersion): VersionInfo => ({
@@ -184,13 +190,15 @@ export interface InstalledItem {
   versionId?: string;
   versionNumber?: string;
   iconUrl?: string;
+  /** Where projectId/versionId come from; Modrinth when unset. */
+  source?: 'curseforge';
 }
 
-interface ManifestEntry { type: ContentType; filename: string; projectId: string; versionId: string; versionNumber: string; title: string; iconUrl?: string }
+export interface ManifestEntry { type: ContentType; filename: string; projectId: string; versionId: string; versionNumber: string; title: string; iconUrl?: string; source?: 'curseforge' }
 
 const manifestPath = (gameDir: string) => path.join(gameDir, '.slashclient', 'content.json');
 
-async function readManifest(gameDir: string): Promise<ManifestEntry[]> {
+export async function readManifest(gameDir: string): Promise<ManifestEntry[]> {
   try {
     return JSON.parse(await fs.readFile(manifestPath(gameDir), 'utf8'));
   } catch {
@@ -198,7 +206,7 @@ async function readManifest(gameDir: string): Promise<ManifestEntry[]> {
   }
 }
 
-async function writeManifest(gameDir: string, entries: ManifestEntry[]): Promise<void> {
+export async function writeManifest(gameDir: string, entries: ManifestEntry[]): Promise<void> {
   await fs.mkdir(path.dirname(manifestPath(gameDir)), { recursive: true });
   await fs.writeFile(manifestPath(gameDir), JSON.stringify(entries, null, 2));
 }
@@ -214,14 +222,14 @@ export async function listInstalled(gameDir: string): Promise<InstalledItem[]> {
       const enabled = !file.endsWith('.disabled');
       const filename = file.replace(/\.disabled$/, '');
       const entry = manifest.find((m) => m.type === type && m.filename === filename);
-      out.push({ type, filename, enabled, title: entry?.title ?? filename.replace(/\.(jar|zip)$/, ''), projectId: entry?.projectId, versionId: entry?.versionId, versionNumber: entry?.versionNumber, iconUrl: entry?.iconUrl });
+      out.push({ type, filename, enabled, title: entry?.title ?? filename.replace(/\.(jar|zip)$/, ''), projectId: entry?.projectId, versionId: entry?.versionId, versionNumber: entry?.versionNumber, iconUrl: entry?.iconUrl, source: entry?.source });
     }
   }
   return out.sort((a, b) => a.title.localeCompare(b.title, 'pl'));
 }
 
 /** Only bare file names inside the content folders are accepted, never paths. */
-function contentFile(gameDir: string, type: ContentType, filename: string): string {
+export function contentFile(gameDir: string, type: ContentType, filename: string): string {
   if (!FOLDERS[type] || filename !== path.basename(filename) || filename.startsWith('.')) throw new Error('Nieprawidłowa nazwa pliku');
   return path.join(gameDir, FOLDERS[type], filename);
 }
@@ -295,7 +303,7 @@ export async function installProject(
   return installed;
 }
 
-function mergeManifest(current: ManifestEntry[], updated: ManifestEntry[]): ManifestEntry[] {
+export function mergeManifest(current: ManifestEntry[], updated: ManifestEntry[]): ManifestEntry[] {
   const byKey = new Map(current.map((m) => [`${m.type}:${m.filename}`, m]));
   for (const m of updated) byKey.set(`${m.type}:${m.filename}`, m);
   return [...byKey.values()];
@@ -311,6 +319,7 @@ export interface UpdateInfo {
   currentVersion: string;
   latestVersionId: string;
   latestVersion: string;
+  source?: 'curseforge';
 }
 
 interface ProjectSummary { id: string; title: string; icon_url?: string }
@@ -352,12 +361,14 @@ export async function checkUpdates(gameDir: string, gameVersion: string, loader:
     await writeManifest(gameDir, manifest);
   }
 
+  // files installed from CurseForge are checked there (curseforge.ts), not here
+  const fromCurseForge = new Set(manifest.filter((m) => m.source === 'curseforge').map((m) => `${m.type}:${m.filename}`));
   // never "update" a stable release to a beta or alpha: each file only gets versions at least as stable as it is
   const CHANNELS: Record<string, string[]> = { release: ['release'], beta: ['release', 'beta'], alpha: ['release', 'beta', 'alpha'] };
   const updates: UpdateInfo[] = [];
   for (const type of Object.keys(FOLDERS) as ContentType[]) {
     for (const [channel, versionTypes] of Object.entries(CHANNELS)) {
-      const ofType = files.filter((f) => f.type === type && current[f.sha1] && (current[f.sha1].version_type ?? 'release') === channel);
+      const ofType = files.filter((f) => f.type === type && current[f.sha1] && !fromCurseForge.has(`${f.type}:${f.filename}`) && (current[f.sha1].version_type ?? 'release') === channel);
       if (!ofType.length) continue;
       const latest = await post<Record<string, ModrinthVersion>>(`${API}/version_files/update`, {
         hashes: ofType.map((f) => f.sha1), algorithm: 'sha1', loaders: loadersFor(type, loader), game_versions: [gameVersion], version_types: versionTypes,
@@ -393,7 +404,7 @@ interface MrpackIndex {
 }
 
 /** Joins `rel` onto `root`, refusing anything that would escape it ("../", absolute paths). */
-function safeJoin(root: string, rel: string): string {
+export function safeJoin(root: string, rel: string): string {
   const full = path.resolve(root, rel);
   if (!full.startsWith(path.resolve(root) + path.sep)) throw new Error(t('Niebezpieczna ścieżka w modpacku: {0}', rel));
   return full;
@@ -442,7 +453,7 @@ export async function installMrpack(mrpack: string, gameDir: string, onStage?: S
   };
 }
 
-const packSnapshot = (gameDir: string) => path.join(gameDir, '.slashclient', 'modpack-files.json');
+export const packSnapshot = (gameDir: string) => path.join(gameDir, '.slashclient', 'modpack-files.json');
 
 /**
  * Updates (or changes the version of) a modpack in place: files the old version
