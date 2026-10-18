@@ -336,7 +336,12 @@ public final class SkyTasks {
 		if (names == null || !lang.equals(namesLang)) {
 			names = new HashMap<>();
 			namesLang = lang;
-			for (Item item : BuiltInRegistries.ITEM) names.putIfAbsent(new ItemStack(item).getHoverName().getString().toLowerCase(Locale.ROOT), item);
+			for (Item item : BuiltInRegistries.ITEM) {
+				names.putIfAbsent(new ItemStack(item).getHoverName().getString().toLowerCase(Locale.ROOT), item);
+				// and in Polish, as SkyUp writes its tasks, whatever language the game is in
+				String pl = SkyCounters.plItem(item);
+				if (!pl.isEmpty()) names.putIfAbsent(pl.toLowerCase(Locale.ROOT), item);
+			}
 		}
 		return names.get(name.toLowerCase(Locale.ROOT));
 	}
