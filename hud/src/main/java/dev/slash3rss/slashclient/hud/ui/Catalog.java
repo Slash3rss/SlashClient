@@ -94,6 +94,12 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.dungeon.selfHead", () -> cfg.dungeonSelfHead, v -> cfg.dungeonSelfHead = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.players", () -> cfg.dungeonPlayers, v -> cfg.dungeonPlayers = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.mobs", () -> cfg.dungeonMobs, v -> cfg.dungeonMobs = v));
+					// each mob class its own look
+					String[] styles = dev.slash3rss.slashclient.hud.DungeonMap.MOB_STYLES;
+					settings.add(new Choice("slashclient-hud.dungeon.mobNormal", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobNormal, v -> cfg.dungeonMobNormal = v));
+					settings.add(new Choice("slashclient-hud.dungeon.mobElite", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobElite, v -> cfg.dungeonMobElite = v));
+					settings.add(new Choice("slashclient-hud.dungeon.mobBoss", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobBoss, v -> cfg.dungeonMobBoss = v));
+					settings.add(new Choice("slashclient-hud.dungeon.mobOther", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobOther, v -> cfg.dungeonMobOther = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.spawners", () -> cfg.dungeonSpawners, v -> cfg.dungeonSpawners = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.containers", () -> cfg.dungeonContainers, v -> cfg.dungeonContainers = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.counters", () -> cfg.dungeonCounters, v -> cfg.dungeonCounters = v));

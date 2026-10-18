@@ -137,6 +137,8 @@ public final class HudConfig {
 	public boolean dungeonSelfHead = false;
 	/** Mobs and NPCs (players with a skin who are not on the tab list) on the dungeon map. */
 	public boolean dungeonMobs = true;
+	/** How each mob class shows on the dungeon map: "head", "dot", "skull" or "hidden". */
+	public String dungeonMobNormal = "head", dungeonMobElite = "head", dungeonMobBoss = "head", dungeonMobOther = "head";
 	/** Spawners on the dungeon map: armour stands with a spawner on the head. */
 	public boolean dungeonSpawners = true;
 	/** Chests, barrels and pots on the dungeon map, counted per room (taken of all). */
@@ -371,6 +373,10 @@ public final class HudConfig {
 		dungeonProgress = other.dungeonProgress;
 		dungeonSelfHead = other.dungeonSelfHead;
 		dungeonMobs = other.dungeonMobs;
+		dungeonMobNormal = other.dungeonMobNormal;
+		dungeonMobElite = other.dungeonMobElite;
+		dungeonMobBoss = other.dungeonMobBoss;
+		dungeonMobOther = other.dungeonMobOther;
 		dungeonSpawners = other.dungeonSpawners;
 		dungeonContainers = other.dungeonContainers;
 		dungeonBlockColors = other.dungeonBlockColors;

@@ -75,6 +75,8 @@ public final class DungeonRooms {
 	private static final class Room {
 		long sumX, sumZ;
 		int pixels, containers, taken, ores, oresTaken, mobs, spawners;
+		/** Its extent on the map, wall to wall. */
+		int minX = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
 		boolean visited;
 		/** When its mobs come back (0: not cleared), and how many are left (-1: not known). */
 		long respawnAt;
@@ -189,13 +191,16 @@ public final class DungeonRooms {
 		// all of a room's levels, up to the top of its walls for the ores in them
 		boolean spawner = false;
 		for (int y = low; y <= high; y++) {
-			Block block = world.getBlockState(pos.set(x, y, z)).getBlock();
+			net.minecraft.world.level.block.state.BlockState state = world.getBlockState(pos.set(x, y, z));
+			Block block = state.getBlock();
 			// a spawner block anywhere in the column, on a ledge or in a pit too
 			if (block instanceof net.minecraft.world.level.block.SpawnerBlock) spawner = true;
 			int kind = kind(block);
-			boolean is = kind >= 0;
+			// a double chest is one chest: its right half is not counted
+			if (block instanceof ChestBlock && state.hasProperty(ChestBlock.TYPE) && state.getValue(ChestBlock.TYPE) == net.minecraft.world.level.block.state.properties.ChestType.RIGHT) kind = -1;
 			long key = BlockPos.asLong(x, y, z);
 			Container c = containers.get(key);
+			boolean is = kind >= 0;
 			if (is) {
 				if (c == null || c.cat != kind) {
 					c = new Container(x, y, z, kind);
@@ -208,6 +213,7 @@ public final class DungeonRooms {
 					c.opened = c.broken = false;
 				}
 			} else if (c != null && c.present) {
+				// gone (broken, or a mined ore the server turned into stone): taken until it comes back
 				c.present = false;
 				c.broken = true;
 			}
@@ -224,6 +230,11 @@ public final class DungeonRooms {
 		if (!(Compat.screen(mc) instanceof AbstractContainerScreen<?>) || !(mc.hitResult instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK) return;
 		BlockPos p = hit.getBlockPos();
 		Container c = containers.get(p.asLong());
+		// the right half of a double chest is not counted: its left half is
+		for (int[] d : new int[][] { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) {
+			if (c != null) break;
+			c = containers.get(BlockPos.asLong(p.getX() + d[0], p.getY(), p.getZ() + d[1]));
+		}
 		if (c == null || c.opened) return;
 		c.opened = true;
 		// the other half of a double chest
@@ -277,7 +288,8 @@ public final class DungeonRooms {
 			else if (e instanceof ArmorStand stand) {
 				if (stand.getItemBySlot(EquipmentSlot.HEAD).is(Items.SPAWNER)) seenSpawners.put(key(ex, ez), new int[] { ex, ez });
 			} else if (e instanceof Mob) {
-				int r = roomAt(ex, ez);
+				// on a ledge or in a pit its column may be no floor where the map was read: a room a few blocks off
+				int r = roomAt(ex, ez, 8);
 				if (r >= 0) rooms.get(r).mobs++;
 			}
 		}
@@ -294,7 +306,8 @@ public final class DungeonRooms {
 		// the holograms first: what the server says; one read half a minute ago is old for the count
 		holograms.values().removeIf(h -> h[3] > 0 ? h[3] < now : now - h[4] > 30_000);
 		for (long[] h : holograms.values()) {
-			int r = roomAt((int) h[0], (int) h[1]);
+			// a spawner's hologram floats over it, maybe up on a ledge: its room may be a few blocks off
+			int r = roomAt((int) h[0], (int) h[1], 12);
 			if (r < 0) continue;
 			Room room = rooms.get(r);
 			if (h[3] > now) room.respawnAt = Math.max(room.respawnAt, h[3]);
@@ -371,7 +384,7 @@ public final class DungeonRooms {
 	/** A spawner at a map pixel: its room counts one more (several things at one spot are one spawner). */
 	private static void countSpawner(int x, int z, java.util.Set<Long> counted) {
 		// a spawner stands on a ledge or by a wall: its room may be a few blocks off
-		int r = roomAt(x, z, 5);
+		int r = roomAt(x, z, 12);
 		if (r >= 0 && counted.add(key(x >> 1, z >> 1))) rooms.get(r).spawners++;
 	}
 
@@ -379,14 +392,22 @@ public final class DungeonRooms {
 		return roomAt(x, z, 2);
 	}
 
+	/**
+	 * The room at a map pixel, or the nearest within `reach` whose extent (wall to wall) holds the
+	 * point: a ledge or a pit inside a room is found, the room behind a wall is not.
+	 */
 	private static int roomAt(int x, int z, int reach) {
-		for (int d = 0; d <= reach; d++) {
+		if (x >= 0 && z >= 0 && x < size && z < size && roomOf[z * size + x] >= 0) return roomOf[z * size + x];
+		for (int d = 1; d <= reach; d++) {
 			for (int dz = -d; dz <= d; dz++) {
 				for (int dx = -d; dx <= d; dx++) {
 					int ix = x + dx, iz = z + dz;
 					if (ix < 0 || iz < 0 || ix >= size || iz >= size) continue;
 					int r = roomOf[iz * size + ix];
-					if (r >= 0) return r;
+					if (r < 0 || r >= rooms.size()) continue;
+					Room room = rooms.get(r);
+					// close by (ores in a wall): the nearest room; further: only one whose extent holds the point
+					if (reach <= 2 || x >= room.minX - 1 && x <= room.maxX + 1 && z >= room.minZ - 1 && z <= room.maxZ + 1) return r;
 				}
 			}
 		}
@@ -552,6 +573,10 @@ public final class DungeonRooms {
 				room.sumX += x;
 				room.sumZ += z;
 				room.pixels++;
+				room.minX = Math.min(room.minX, x);
+				room.minZ = Math.min(room.minZ, z);
+				room.maxX = Math.max(room.maxX, x);
+				room.maxZ = Math.max(room.maxZ, z);
 				for (int[] d : STEPS) {
 					int nx = x + d[0], nz = z + d[1];
 					if (nx < 0 || nz < 0 || nx >= size || nz >= size || roomOf[nz * size + nx] != r) {

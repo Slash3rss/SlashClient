@@ -503,18 +503,50 @@ public final class DungeonMap implements HudModule {
 					g.fill(ox + sx - 4, oy + sz - 4, ox + sx + 4, oy + sz + 4, 0xFF1F2937);
 					item(g, head, ox + sx, oy + sz, 8);
 				}
-			} else if (e instanceof AbstractClientPlayer p) {
-				boolean real = connection != null && connection.getPlayerInfo(p.getUUID()) != null;
-				if (real ? cfg.dungeonPlayers : cfg.dungeonMobs) face(g, p, ox + sx, oy + sz, real ? 0xFF60A5FA : 0xFFEF4444);
-			} else if (e instanceof Mob mob && cfg.dungeonMobs && !mob.isInvisible()) {
-				// a head it wears (servers dress their mobs in player heads), else its own face, else a dot
-				ItemStack worn = mob.getItemBySlot(EquipmentSlot.HEAD);
-				// its class, from the colour of its name: a mini boss larger, each class its own frame
-				int kind = kind(mob), size = kind == 3 ? 12 : 8, frame = FRAMES[kind];
-				if (!worn.isEmpty() && worn.getItem() instanceof net.minecraft.world.item.BlockItem block && block.getBlock() instanceof net.minecraft.world.level.block.AbstractSkullBlock) {
-					g.fill(ox + sx - size / 2 - 1, oy + sz - size / 2 - 1, ox + sx + size / 2 + 1, oy + sz + size / 2 + 1, frame);
-					item(g, worn, ox + sx, oy + sz, size);
-				} else if (!MobHeads.draw(g, mob.getType(), ox + sx, oy + sz, size, frame)) g.fill(ox + sx - 1, oy + sz - 1, ox + sx + 2, oy + sz + 2, frame);
+			} else if (e instanceof AbstractClientPlayer p && connection != null && connection.getPlayerInfo(p.getUUID()) != null) {
+				if (cfg.dungeonPlayers) face(g, p, ox + sx, oy + sz, 0xFF60A5FA);
+			} else if ((e instanceof Mob || e instanceof AbstractClientPlayer) && cfg.dungeonMobs && !e.isInvisible()) {
+				// a mob, or an NPC (a player with a skin who is not on the tab list): drawn as its class is set to be
+				int kind = kind(e), size = kind == 3 ? 12 : 8, frame = FRAMES[kind];
+				mob(g, (net.minecraft.world.entity.LivingEntity) e, ox + sx, oy + sz, size, frame, mobStyle(kind));
+			}
+		}
+	}
+
+	/** How a mob class is drawn: "head", "dot", "skull" or "hidden" (0 other mobs, 1 normal, 2 elite, 3 mini boss). */
+	private static String mobStyle(int kind) {
+		HudConfig cfg = SlashHud.config;
+		return switch (kind) {
+			case 1 -> cfg.dungeonMobNormal;
+			case 2 -> cfg.dungeonMobElite;
+			case 3 -> cfg.dungeonMobBoss;
+			default -> cfg.dungeonMobOther;
+		};
+	}
+
+	public static final String[] MOB_STYLES = { "head", "dot", "skull", "hidden" };
+
+	/** One mob on the map in its style, framed in its class's colour. */
+	private static void mob(GuiGraphicsExtractor g, net.minecraft.world.entity.LivingEntity e, int x, int y, int size, int frame, String style) {
+		switch (style) {
+			case "hidden" -> {}
+			case "dot" -> {
+				int r = size >= 12 ? 3 : 2;
+				g.fill(x - r - 1, y - r - 1, x + r + 1, y + r + 1, 0xFF000000);
+				g.fill(x - r, y - r, x + r, y + r, frame | 0xFF000000);
+			}
+			case "skull" -> {
+				g.fill(x - size / 2 - 1, y - size / 2 - 1, x + size / 2 + 1, y + size / 2 + 1, frame);
+				item(g, new ItemStack(size >= 12 ? Items.WITHER_SKELETON_SKULL : Items.SKELETON_SKULL), x, y, size);
+			}
+			default -> {
+				// its face: a head it wears (servers dress mobs in player heads), an NPC's skin, its own face, else a dot
+				ItemStack worn = e.getItemBySlot(EquipmentSlot.HEAD);
+				if (e instanceof AbstractClientPlayer p) face(g, p, x, y, frame);
+				else if (!worn.isEmpty() && worn.getItem() instanceof net.minecraft.world.item.BlockItem block && block.getBlock() instanceof net.minecraft.world.level.block.AbstractSkullBlock) {
+					g.fill(x - size / 2 - 1, y - size / 2 - 1, x + size / 2 + 1, y + size / 2 + 1, frame);
+					item(g, worn, x, y, size);
+				} else if (!MobHeads.draw(g, e.getType(), x, y, size, frame)) g.fill(x - 1, y - 1, x + 2, y + 2, frame);
 			}
 		}
 	}

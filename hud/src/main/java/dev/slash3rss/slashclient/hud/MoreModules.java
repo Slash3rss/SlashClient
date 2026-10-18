@@ -352,7 +352,7 @@ final class MoreModules {
 
 	static final class Target implements HudModule {
 		/** As wide as the name needs (servers put ranks and icons in it), within these bounds. */
-		private static final int MIN_WIDTH = 120, MAX_WIDTH = 240;
+		private static final int MIN_WIDTH = 120, MAX_WIDTH = 260;
 
 		public String id() {
 			return "target";
@@ -368,7 +368,31 @@ final class MoreModules {
 		}
 
 		private static Component nameOf(LivingEntity e) {
-			return e == null ? Component.literal("Steve") : e.getDisplayName();
+			return e == null ? Component.literal("Steve") : withoutHealth(e.getDisplayName());
+		}
+
+		/**
+		 * The name without the health servers put in front of it ("84.36 ❤ | Żniwiarz poz. 100" on
+		 * SkyUp): the box shows the health under it anyway. Only when a heart comes before a "|".
+		 */
+		static Component withoutHealth(Component name) {
+			String plain = name.getString();
+			int bar = plain.indexOf('|');
+			if (bar < 0 || plain.lastIndexOf('❤', bar) < 0) return name;
+			int[] skip = { bar + 1 };
+			var out = Component.empty();
+			name.visit((style, part) -> {
+				String kept = part;
+				if (skip[0] > 0) {
+					int drop = Math.min(skip[0], part.length());
+					skip[0] -= drop;
+					kept = part.substring(drop);
+					if (out.getSiblings().isEmpty()) kept = kept.stripLeading();
+				}
+				if (!kept.isEmpty()) out.append(Component.literal(kept).withStyle(style));
+				return java.util.Optional.empty();
+			}, net.minecraft.network.chat.Style.EMPTY);
+			return out;
 		}
 
 		/** The name cut to fit, keeping its colours and the server's icons, with "…" at the end. */
@@ -397,8 +421,18 @@ final class MoreModules {
 
 		private void drawFor(GuiGraphicsExtractor g, Minecraft mc, int x, int y, Component name, float health, float max, float absorb, double distance) {
 			int width = widthFor(mc, name);
-			// a name longer than the widest box is cut with "…"
-			text(g, mc, cut(mc, name, width - PAD * 2), x + PAD, y + PAD, cfg.textColor);
+			// a name longer than the widest box is made smaller to fit, down to two thirds; only past that cut with "…"
+			int room = width - PAD * 2, full = mc.font.width(name);
+			if (full <= room) text(g, mc, name, x + PAD, y + PAD, cfg.textColor);
+			else {
+				float s = Math.max(0.66f, (float) room / full);
+				var pose = g.pose();
+				pose.pushMatrix();
+				pose.translate(x + PAD, y + PAD + mc.font.lineHeight * (1 - s) / 2f);
+				pose.scale(s, s);
+				text(g, mc, cut(mc, name, (int) (room / s)), 0, 0, cfg.textColor);
+				pose.popMatrix();
+			}
 			String hp = String.format("❤ %.1f", health) + (absorb > 0 ? String.format(" +%.0f", absorb) : "");
 			int barY = y + PAD + mc.font.lineHeight + 2;
 			int barW = width - PAD * 2;
@@ -412,7 +446,7 @@ final class MoreModules {
 		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
 			LivingEntity e = target(mc);
 			if (e == null || mc.player == null) return;
-			drawFor(g, mc, x, y, e.getDisplayName(), e.getHealth(), e.getMaxHealth(), e.getAbsorptionAmount(), Math.sqrt(mc.player.getEyePosition().distanceToSqr(e.getBoundingBox().getCenter())));
+			drawFor(g, mc, x, y, nameOf(e), e.getHealth(), e.getMaxHealth(), e.getAbsorptionAmount(), Math.sqrt(mc.player.getEyePosition().distanceToSqr(e.getBoundingBox().getCenter())));
 		}
 
 		@Override

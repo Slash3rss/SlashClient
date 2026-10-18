@@ -448,6 +448,15 @@ public final class TestHooks {
 		return kinds + " spawners " + spawners;
 	}
 
+	/** A SkyUp mob's name as the Target module shows it (without the health in front). */
+	public static String targetName() {
+		var name = net.minecraft.network.chat.Component.literal("84.36 ❤ ").withStyle(net.minecraft.ChatFormatting.RED)
+			.append(net.minecraft.network.chat.Component.literal("| ").withStyle(net.minecraft.ChatFormatting.DARK_GRAY))
+			.append(net.minecraft.network.chat.Component.literal("☺ Żniwiarz ").withStyle(net.minecraft.ChatFormatting.GOLD))
+			.append(net.minecraft.network.chat.Component.literal("poz. 100").withStyle(net.minecraft.ChatFormatting.GRAY));
+		return MoreModules.Target.withoutHealth(name).getString() + "|" + MoreModules.Target.withoutHealth(net.minecraft.network.chat.Component.literal("Steve")).getString();
+	}
+
 	/** What the dungeon map knows of a column: 0 nothing, 1 wall, 2 floor. */
 	public static int dungeonCell(int x, int z) {
 		return DungeonMap.cellAt(x, z);
