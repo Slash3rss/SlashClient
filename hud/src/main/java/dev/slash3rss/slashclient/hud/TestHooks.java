@@ -435,6 +435,11 @@ public final class TestHooks {
 		return ((dev.slash3rss.slashclient.hud.mixin.MinecraftAccessor) mc).slashclient$createTitle() + "|" + net.minecraft.client.ClientBrandRetriever.getClientModName();
 	}
 
+	/** What the dungeon map knows of a column: 0 nothing, 1 wall, 2 floor. */
+	public static int dungeonCell(int x, int z) {
+		return DungeonMap.cellAt(x, z);
+	}
+
 	/** The dungeon map over the whole screen, or closed. */
 	public static void dungeonFull(boolean open) {
 		var mc = net.minecraft.client.Minecraft.getInstance();

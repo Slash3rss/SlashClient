@@ -50,6 +50,9 @@ public class GameDungeon implements FabricClientGameTest {
 					server.runCommand(String.format("setblock %d 38 %d yellow_terracotta", x0 + b, z0 + a));
 				}
 			}
+			// a pit four blocks deep in the room west of the start: the same room, its floor on the map
+			server.runCommand(String.format("fill %d %d %d %d %d %d air", x0 - 15, y - 4, z0 + 9, x0 - 9, y - 1, z0 + 15));
+			server.runCommand(String.format("fill %d %d %d %d %d %d polished_deepslate", x0 - 15, y - 5, z0 + 9, x0 - 9, y - 5, z0 + 15));
 			// the start room's floor is green
 			server.runCommand(String.format("fill %d %d %d %d %d %d lime_concrete", x0 - 5, y - 1, z0 + 7, x0 + 5, y - 1, z0 + 17));
 			// as on SkyUp: the hint while still in the lobby, far away, then the teleport, then the boss bar
@@ -91,6 +94,8 @@ public class GameDungeon implements FabricClientGameTest {
 			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
 			if (!rooms.contains("containers 1/4") || !rooms.contains("ores 1/1") || rooms.contains("cleared 0") || rooms.contains("without spawner 0")) throw new AssertionError("Rooms: " + rooms);
 			// from the map above: exactly the nine rooms, none run together through a door
+			int pit = context.computeOnClient(mc -> TestHooks.dungeonCell(x0 - 12, z0 + 12));
+			if (pit != 2) throw new AssertionError("The pit's floor, 4 blocks down, is not floor on the map: " + pit);
 			if (Integer.parseInt(rooms.split(" ")[0]) != 9) throw new AssertionError("Rooms from the map above: " + rooms);
 			context.takeScreenshot("dungeon-rooms");
 			// spawner holograms (armour stand names): the respawn time counts as cleared

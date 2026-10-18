@@ -184,9 +184,9 @@ public final class DungeonRooms {
 	}
 
 	/** The containers in one column: found ones are new or back, missing ones were broken. */
-	static void scanColumn(ClientLevel world, BlockPos.MutableBlockPos pos, int x, int cy, int z) {
-		// up to the top of a usual room's walls, for the ores in them
-		for (int y = cy - 2; y <= cy + 5; y++) {
+	static void scanColumn(ClientLevel world, BlockPos.MutableBlockPos pos, int x, int low, int high, int z) {
+		// all of a room's levels, up to the top of its walls for the ores in them
+		for (int y = low; y <= high; y++) {
 			Block block = world.getBlockState(pos.set(x, y, z)).getBlock();
 			int kind = kind(block);
 			boolean is = kind >= 0;
