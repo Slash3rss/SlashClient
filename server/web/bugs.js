@@ -1,5 +1,6 @@
 // The bug tracker: the list (/zgloszenia), one report (/zgloszenia/<n>) and a new one (?nowe=1).
 // Anyone can read; signed-in players write; admins change the status.
+import { go } from '/router.js';
 import { $, api, ago, el, fmtDate, guard, icon, toast, token } from './common.js';
 
 const STATUS = {
@@ -86,7 +87,7 @@ function renderNew() {
     send.disabled = true;
     const res = await guard(() => api('POST', '/v1/bugs', { title: title.value, body: body.value, logId, version: version.value, os: navigator.platform }));
     send.disabled = false;
-    if (res) location.href = `/zgloszenia/${res.bug.id}`;
+    if (res) go(`/zgloszenia/${res.bug.id}`);
   } }, el('h3', { textContent: 'Nowe zgłoszenie' }), title, body, el('div', { class: 'row' }, log, version), el('div', { class: 'row' }, send));
   box.replaceChildren(back, el('br'), el('br'), form);
   title.focus();
@@ -123,7 +124,7 @@ async function renderBug() {
     });
     const remove = el('button', { class: 'danger', onclick: async () => {
       if (!confirm('Usunąć to zgłoszenie razem z komentarzami?')) return;
-      if (await guard(() => api('DELETE', `/v1/bugs/${bug.id}`))) location.href = '/zgloszenia';
+      if (await guard(() => api('DELETE', `/v1/bugs/${bug.id}`))) go('/zgloszenia');
     } }, icon('fa-solid fa-trash'), 'Usuń');
     card.append(el('div', { class: 'row', style: 'margin-top:14px' }, el('span', { class: 'muted small', textContent: 'Status:' }), pick, remove));
   }
