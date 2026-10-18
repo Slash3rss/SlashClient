@@ -361,7 +361,31 @@ public final class TestHooks {
 		check("skyup.pl".equals(list.get(2).ip) && "SkyUp.pl".equals(list.get(2).name)
 			&& list.get(2).getResourcePackStatus() == net.minecraft.client.multiplayer.ServerData.ServerPackStatus.DISABLED, "only the resource pack setting of a pinned server changes");
 		list.save();
+		// names: the panel's, else the address; the game's default name is replaced, the player's own stays
+		list.get(2).name = "Minecraft Server";
+		list.add(new net.minecraft.client.multiplayer.ServerData("Moje ulubione", "own.example", net.minecraft.client.multiplayer.ServerData.Type.OTHER), false);
+		list.save();
+		PinnedServer.sampleForTest(java.util.List.of(new PinnedServer.Pin("skyup.pl", "SkyUp.pl", false),
+			new PinnedServer.Pin("a.example", "Rotujący A", true), new PinnedServer.Pin("b.example", "Rotujący B", true),
+			new PinnedServer.Pin("own.example", "Z panelu", false), new PinnedServer.Pin("bare.example", "", false)));
+		list.load();
+		check("SkyUp.pl".equals(byIp(list, "skyup.pl").name), "a pinned server under the default name gets the panel's name");
+		check("bare.example".equals(byIp(list, "bare.example").name), "a pinned server without a name in the panel is called by its address");
+		check("Moje ulubione".equals(byIp(list, "own.example").name), "a name the player chose stays");
+		// back to the three pinned ones for the screenshots
+		var own = byIp(list, "own.example");
+		var bare = byIp(list, "bare.example");
+		PinnedServer.sampleForTest(java.util.List.of(new PinnedServer.Pin("skyup.pl", "SkyUp.pl", false),
+			new PinnedServer.Pin("a.example", "Rotujący A", true), new PinnedServer.Pin("b.example", "Rotujący B", true)));
+		list.remove(own);
+		list.remove(bare);
+		list.save();
 		SlashHud.LOG.info("Pinned server test: OK ({} servers, first {})", list.size(), list.get(0).ip);
+	}
+
+	private static net.minecraft.client.multiplayer.ServerData byIp(net.minecraft.client.multiplayer.ServerList list, String ip) {
+		for (int i = 0; i < list.size(); i++) if (ip.equals(list.get(i).ip)) return list.get(i);
+		throw new AssertionError("no server " + ip);
 	}
 
 	private static void check(boolean ok, String what) {
