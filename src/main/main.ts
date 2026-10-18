@@ -197,8 +197,40 @@ const newMemory = () => ({ memoryMb: store.settings.defaultMemoryMb ?? 4096 });
 handle('profile:new', () => newProfile({ versionId: 'latest-release', ...newMemory() }));
 handle('console:sessions', (profileId: string) => consoleHistory.list(profileId));
 handle('console:read', (profileId: string, id: string) => consoleHistory.read(profileId, id));
-handle('profile:delete', async (id: string) => {
+/** A profile's game folder is the launcher's own (instances/<id>), not one from another launcher. */
+function ownsGameDir(profile: Profile): boolean {
+  const own = path.join(paths.instances, profile.id);
+  return !profile.gameDir || path.resolve(profile.gameDir) === path.resolve(own);
+}
+
+/** Bytes in a folder, all the way down (links are not followed). */
+async function folderSize(dir: string): Promise<number> {
+  let total = 0;
+  for (const entry of await fsp.readdir(dir, { withFileTypes: true }).catch(() => [])) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) total += await folderSize(full);
+    else if (entry.isFile()) total += (await fsp.stat(full).catch(() => undefined))?.size ?? 0;
+  }
+  return total;
+}
+
+handle('profile:folderInfo', async (id: string) => {
+  const profile = store.profiles.find((p) => p.id === id);
+  if (!profile) return { own: false, exists: false, sizeBytes: 0 };
+  const dir = profileGameDir(profile);
+  const exists = await fsp.stat(dir).then((s) => s.isDirectory(), () => false);
+  return { own: ownsGameDir(profile), exists, sizeBytes: exists ? await folderSize(dir) : 0 };
+});
+
+handle('profile:delete', async (id: string, trashFiles = false) => {
   if (store.profiles.length <= 1) throw new Error('Musi zostać przynajmniej jeden profil.');
+  const profile = store.profiles.find((p) => p.id === id);
+  // the folder only when it is the launcher's own, to the system trash (it can be brought back), never while the game runs in it
+  if (trashFiles && profile && ownsGameDir(profile)) {
+    if (games.has(id)) throw new Error('Najpierw zamknij grę tego profilu.');
+    const dir = profileGameDir(profile);
+    if (await fsp.stat(dir).then(() => true, () => false)) await shell.trashItem(dir);
+  }
   store.profiles = store.profiles.filter((p) => p.id !== id);
   void consoleHistory.forget(id).catch(() => {});
   // the Play bar and Profiles must not point at a profile that is gone

@@ -1290,10 +1290,39 @@ $('#profile-form').addEventListener('submit', async (e) => {
   if ((await guard(() => api.saveProfile(updated))) !== undefined) toast('Zapisano profil');
 });
 
-$('#profile-delete').addEventListener('click', () => {
-  if (!editingId || !confirm(t('Usunąć ten profil? Pliki gry zostaną na dysku.'))) return;
+// deleting a profile: its own game folder (instances/<id>) may go to the system trash too; an imported one never
+let deleting: string | undefined;
+$('#profile-delete').addEventListener('click', async () => {
+  if (!editingId) return;
+  deleting = editingId;
+  const profile = store.profiles.find((p) => p.id === deleting);
+  $('#delete-name').textContent = profile ? `„${profile.name}”` : '';
+  $<HTMLInputElement>('#delete-files').checked = false;
+  $('#delete-files-row').classList.add('hidden');
+  $('#delete-foreign').classList.add('hidden');
+  $('#delete-size').textContent = '';
+  $('#delete-modal').classList.remove('hidden');
+  const info: { own: boolean; exists: boolean; sizeBytes: number } | undefined = await guard(() => api.profileFolderInfo(deleting!));
+  if (!info || deleting !== profile?.id) return;
+  $('#delete-files-row').classList.toggle('hidden', !info.own || !info.exists);
+  $('#delete-foreign').classList.toggle('hidden', info.own || !info.exists);
+  if (info.exists) $('#delete-size').textContent = fmtSize(info.sizeBytes);
+});
+const closeDelete = () => {
+  deleting = undefined;
+  $('#delete-modal').classList.add('hidden');
+};
+$('#delete-close').addEventListener('click', closeDelete);
+$('#delete-cancel').addEventListener('click', closeDelete);
+$('#delete-modal').addEventListener('click', (e) => e.target === e.currentTarget && closeDelete());
+$('#delete-go').addEventListener('click', () => {
+  const id = deleting;
+  if (!id) return;
+  const trash = $<HTMLInputElement>('#delete-files').checked;
+  closeDelete();
   guard(async () => {
-    await api.deleteProfile(editingId!);
+    await api.deleteProfile(id, trash);
+    if (trash) toast(t('Folder gry jest w koszu'));
     // the form now shows another profile: start from the top of the list
     $('#view-profiles').scrollTo({ top: 0, behavior: 'smooth' });
   });

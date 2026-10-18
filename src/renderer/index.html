@@ -527,6 +527,23 @@
       </div>
     </div>
   </div>
+  <div class="modal hidden" id="delete-modal">
+    <div class="modal-box glass-panel join-box">
+      <button class="icon-btn modal-close" id="delete-close" title="Zamknij"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-body">
+        <h2>Usunąć profil <span id="delete-name"></span>?</h2>
+        <p class="muted">Profil zniknie z launchera.</p>
+        <label class="check hidden" id="delete-files-row"><input type="checkbox" id="delete-files">
+          <span>Przenieś też folder gry do kosza <span class="hint" id="delete-size"></span></span>
+        </label>
+        <p class="muted hidden" id="delete-foreign">Ten profil gra w folderze spoza launchera (np. zaimportowanym z innego), więc jego pliki zostaną na dysku.</p>
+        <div class="row join-actions">
+          <button id="delete-cancel">Anuluj</button>
+          <button class="danger" id="delete-go"><i class="fa-regular fa-trash-can"></i> Usuń profil</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="modal hidden" id="import-modal">
     <div class="modal-box glass-panel join-box import-box">
       <button class="icon-btn modal-close" id="import-close" title="Zamknij"><i class="fa-solid fa-xmark"></i></button>
