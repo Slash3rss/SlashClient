@@ -7,18 +7,22 @@ import dev.slash3rss.slashclient.hud.WaypointsScreen;
 import dev.slash3rss.slashclient.hud.social.FriendsScreen;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.PauseScreen;
+//#if MC >= 26.3
+import net.minecraft.client.gui.screens.WorldOptionsScreen;
+//#endif
 import net.minecraft.client.gui.screens.achievement.StatsScreen;
 import net.minecraft.client.gui.screens.advancements.AdvancementsScreen;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * The SlashClient pause menu, the same look as our main menu: back to the game, friends, the
- * HUD, options and leaving named; advancements, statistics, waypoints and the game's own
- * pause menu as icons. Leaving goes the game's way (a draft report is offered first).
+ * HUD, options (on 26.3 also the world options) and leaving named; advancements, statistics,
+ * waypoints and the game's own pause menu as icons. Leaving goes the game's way (a draft report is offered first).
  */
 public class SlashPauseScreen extends MenuScreen {
 	public SlashPauseScreen() {
@@ -26,13 +30,18 @@ public class SlashPauseScreen extends MenuScreen {
 	}
 
 	private List<Nav> nav() {
-		return List.of(
+		List<Nav> items = new ArrayList<>(List.of(
 			new Nav(Ui.tr("menu.returnToGame"), "play", this::onClose),
 			new Nav(Ui.tr("slashclient-hud.friends"), "user", () -> minecraft.setScreenAndShow(new FriendsScreen(this))),
 			new Nav(Ui.tr("slashclient-hud.cosmetics"), "m-appearance", () -> minecraft.setScreenAndShow(new dev.slash3rss.slashclient.hud.CosmeticsScreen(this))),
 			new Nav(Ui.tr("slashclient-hud.editor"), "sliders", () -> minecraft.setScreenAndShow(HudEditScreen.settingsWindow())),
-			new Nav(Ui.tr("menu.options"), "gear", () -> minecraft.setScreenAndShow(Compat.options(minecraft, this))),
-			new Nav(CommonComponents.disconnectButtonLabel(minecraft.isLocalServer()), "power", this::leave, true));
+			new Nav(Ui.tr("menu.options"), "gear", () -> minecraft.setScreenAndShow(Compat.options(minecraft, this)))));
+		//#if MC >= 26.3
+		// world options (difficulty, game rules, LAN...) next to the options, shown whenever the game's own menu shows them
+		if (minecraft.level != null) items.add(new Nav(Ui.tr("options.worldOptions.button"), "world", () -> minecraft.setScreenAndShow(new WorldOptionsScreen(this, minecraft.level))));
+		//#endif
+		items.add(new Nav(CommonComponents.disconnectButtonLabel(minecraft.isLocalServer()), "power", this::leave, true));
+		return items;
 	}
 
 	private List<Nav> tools() {
