@@ -852,30 +852,30 @@ public final class TestHooks {
 		String chestName = net.minecraft.world.level.block.Blocks.CHEST.getName().getString();
 		var chest = new net.minecraft.world.SimpleContainer(27);
 		chest.setItem(0, task(net.minecraft.world.item.Items.LAVA_BUCKET, "Od czego zacząć?", "Opis » Żeby wygenerować kamień musimy", "  znaleźć lawę. Powinna być w tej", "  jaskini koło domku!", "",
-			"Posiadaj w ekwipunku:", "» Wiadro lawy: 1", "", "Za ukończenie otrzymasz:", "» 1 x Generator kamienia", "» 100.0 SC", "» 30 xp", "", "LPM » Ukończ"));
+			"Posiadaj w ekwipunku:", "» Wiadro lawy: 1", "", "Za ukończenie otrzymasz:", "» 1 x Generator kamienia", "» 100.0 SC", "» 30 xp", "", "LPM \ue510 » Ukończ"));
 		chest.setItem(1, task(net.minecraft.world.item.Items.STONE, "Podstawowy kamieniołom", "Zalecane ukończenie wyzwania Od czego", "  zacząć?", "", "Opis » Postaw generator i zobacz jak", "  działa!", "",
-			"Zbierz:", "» " + stone + ": 28/128", "", "Za ukończenie otrzymasz:", "» Przedmioty na kolejny generator", "  kamienia /recipe Generator:", "» 4 x Sproszkowany redstone", "» 100.0 SC", "", "LPM » Ukończ"));
+			"Zbierz:", "» " + stone + ": 28/128", "", "Za ukończenie otrzymasz:", "» Przedmioty na kolejny generator", "  kamienia /recipe Generator:", "» 4 x Sproszkowany redstone", "» 100.0 SC", "", "LPM \ue510 » Ukończ"));
 		chest.setItem(2, task(net.minecraft.world.item.Items.TORCH, "A co tutaj tak ciemno?", "Opis » Rozświetl wyspę pochodniami, bo", "  zjedzą Cię potwory!", "",
-			"Stwórz:", "» " + torch + ": 0/64", "Postaw", "» " + torch + ": 0/64", "", "Za ukończenie otrzymasz:", "» 2 x Latarnia", "» 100.0 SC", "» 30 xp", "", "LPM » Ukończ"));
+			"Stwórz:", "» " + torch + ": 0/64", "Postaw", "» " + torch + ": 0/64", "", "Za ukończenie otrzymasz:", "» 2 x Latarnia", "» 100.0 SC", "» 30 xp", "", "LPM \ue510 » Ukończ"));
 		if (!withoutHuta) chest.setItem(3, task(net.minecraft.world.item.Items.IRON_INGOT, "Huta", "Opis » Przepal surowe żelazo. Od", "  czegoś trzeba zacząć, co nie?", "",
-			"Posiadaj w ekwipunku:", "» " + iron + ": 16", "", "Za ukończenie otrzymasz:", "» 10 x Węgiel", "» 150.0 SC", "» 50 xp", "", "LPM » Ukończ"));
+			"Posiadaj w ekwipunku:", "» " + iron + ": 16", "", "Za ukończenie otrzymasz:", "» 10 x Węgiel", "» 150.0 SC", "» 50 xp", "", "LPM \ue510 » Ukończ"));
 		chest.setItem(4, task(net.minecraft.world.item.Items.BELL, "Dobra praca się opłaca", "Opis » Zacznij piąć się w swojej", "  karierze. Awansuj w wybranej pracy!", "",
-			"Posiadaj poziom dowolnej pracy: 5 poz.", "", "Za ukończenie otrzymasz:", "» 16 x Zaklęta butelka", "» 150.0 SC", "» 50 xp", "", "LPM » Ukończ"));
+			"Posiadaj poziom dowolnej pracy: 5 poz.", "", "Za ukończenie otrzymasz:", "» 16 x Zaklęta butelka", "» 150.0 SC", "» 50 xp", "", "LPM \ue510 » Ukończ"));
 		chest.setItem(5, task(net.minecraft.world.item.Items.BARRIER, "Stacja inkubacja", "Opis » Kaktusiarki to pieśń", "  przeszłości!", "",
 			"Posiadaj w ekwipunku:", "» Kaktus: 16", "Posiadaj na wyspie co najmniej:", "» kaktus: 1 poz.", "", "Za ukończenie otrzymasz:", "» Redstone na rozwój inkubatora:",
-			"» 24 x Sproszkowany redstone", "", "Uwaga » Przedmioty zostaną zabrane!", "LPM » Ukończ"));
+			"» 24 x Sproszkowany redstone", "", "Uwaga » Przedmioty zostaną zabrane!", "LPM \ue510 » Ukończ"));
 		chest.setItem(6, task(net.minecraft.world.item.Items.CRAFTING_TABLE, "Składzik", "Opis » Zbuduj swój pierwszy składzik!", "", "Stój obok:", "» " + chestName + ": 8", "",
-			"Za ukończenie otrzymasz:", "» 2 x Skrzynia", "", "LPM » Ukończ"));
+			"Za ukończenie otrzymasz:", "» 2 x Skrzynia", "", "LPM \ue510 » Ukończ"));
 		chest.setItem(7, task(net.minecraft.world.item.Items.GRASS_BLOCK, "Ciasno, ale własno", "Opis » Zwiększ poziom wyspy.", "", "Posiadaj poziom wyspy: 20 poz.", "",
-			"Za ukończenie otrzymasz:", "» 200.0 SC", "", "LPM » Ukończ"));
-		chest.setItem(8, task(net.minecraft.world.item.Items.PUFFERFISH, "Moczykij", "Opis » Wyłów 24 ryby.", "", "Wyłów:", "» Dowolna ryba: 0/24", "", "Za ukończenie otrzymasz:", "» 1 x Wędka", "", "LPM » Ukończ"));
-		chest.setItem(9, task(net.minecraft.world.item.Items.SALMON, "Rybak", "Opis » Dziś rozliczamy się od wagi!", "", "Wyłów: 0g/200 000g", "", "Za ukończenie otrzymasz:", "» 250.0 SC", "", "LPM » Ukończ"));
-		chest.setItem(10, task(net.minecraft.world.item.Items.TROPICAL_FISH, "Mamut morski", "Opis » Ostatecznie mogą być też ogromne.", "", "Wyłów conajmniej ogromne: 0/45", "", "Za ukończenie otrzymasz:", "» 500.0 SC", "", "LPM » Ukończ"));
+			"Za ukończenie otrzymasz:", "» 200.0 SC", "", "LPM \ue510 » Ukończ"));
+		chest.setItem(8, task(net.minecraft.world.item.Items.PUFFERFISH, "Moczykij", "Opis » Wyłów 24 ryby.", "", "Wyłów:", "» Dowolna ryba: 0/24", "", "Za ukończenie otrzymasz:", "» 1 x Wędka", "", "LPM \ue510 » Ukończ"));
+		chest.setItem(9, task(net.minecraft.world.item.Items.SALMON, "Rybak", "Opis » Dziś rozliczamy się od wagi!", "", "Wyłów: 0g/200 000g", "", "Za ukończenie otrzymasz:", "» 250.0 SC", "", "LPM \ue510 » Ukończ"));
+		chest.setItem(10, task(net.minecraft.world.item.Items.TROPICAL_FISH, "Mamut morski", "Opis » Ostatecznie mogą być też ogromne.", "", "Wyłów conajmniej ogromne: 0/45", "", "Za ukończenie otrzymasz:", "» 500.0 SC", "", "LPM \ue510 » Ukończ"));
 		// the info item and the way back: no tasks
 		chest.setItem(13, task(net.minecraft.world.item.Items.OAK_SIGN, "Informacje", "Wyzwania to kluczowy element", "  gry na Skyblocku!"));
 		chest.setItem(22, task(net.minecraft.world.item.Items.PLAYER_HEAD, "Wróć", "LPM » Wróć"));
 		var menu = net.minecraft.world.inventory.ChestMenu.threeRows(1000, mc.player.getInventory(), chest);
-		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, mc.player.getInventory(), net.minecraft.network.chat.Component.literal("Wyzwania » Nowicjusz")));
+		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, mc.player.getInventory(), net.minecraft.network.chat.Component.literal("\ue001\ue151\ue002Wyzwania » Nowicjusz")));
 	}
 
 	/** SkyUp's challenges menu ("Wyzwania"): the Nowicjusz category with `left` tasks left, and the daily task. */
@@ -883,12 +883,12 @@ public final class TestHooks {
 		var mc = net.minecraft.client.Minecraft.getInstance();
 		var chest = new net.minecraft.world.SimpleContainer(27);
 		chest.setItem(10, task(net.minecraft.world.item.Items.BEETROOT, "Zadanie codzienne", "Ukończone zadania dzienne » 0", "Kategoria » Wirtuoz", "",
-			"Zbierz:", "» Buraki: 0/3 888", "", "Za ukończenie otrzymasz:", "» 20000.0 SC", "", "LPM » Ukończ wyzwanie"));
+			"Zbierz:", "» Buraki: 0/3 888", "", "Za ukończenie otrzymasz:", "» 20000.0 SC", "", "LPM \ue510 » Ukończ wyzwanie"));
 		chest.setItem(12, task(net.minecraft.world.item.Items.EMERALD, "Nowicjusz", "Pozostałe zadania » " + left, "", "Na tym poziomie » 969", "Ukończyli » 458", "",
-			"Na tym poziomie otrzymasz m.in:", "» grzybnię", "", "LPM » Sprawdź wyzwania"));
-		chest.setItem(14, task(net.minecraft.world.item.Items.DIAMOND, "Wirtuoz", "Pozostałe zadania » 16", "", "Za ukończenie poziomu otrzymasz:", "» 500 SP", "", "LPM » Sprawdź wyzwania"));
+			"Na tym poziomie otrzymasz m.in:", "» grzybnię", "", "LPM \ue510 » Sprawdź wyzwania"));
+		chest.setItem(14, task(net.minecraft.world.item.Items.DIAMOND, "Wirtuoz", "Pozostałe zadania » 16", "", "Za ukończenie poziomu otrzymasz:", "» 500 SP", "", "LPM \ue510 » Sprawdź wyzwania"));
 		var menu = net.minecraft.world.inventory.ChestMenu.threeRows(1001, mc.player.getInventory(), chest);
-		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, mc.player.getInventory(), net.minecraft.network.chat.Component.literal("Wyzwania")));
+		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, mc.player.getInventory(), net.minecraft.network.chat.Component.literal("\ue003\ue150\ue002Wyzwania")));
 	}
 
 	/** As if the player broke three stone blocks and crafted four torches (what the game's hooks report). */

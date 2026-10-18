@@ -114,9 +114,27 @@ public final class SkyTaskParser {
 	/** Bullets and other marks before a line's text. */
 	private static final Pattern BULLET = Pattern.compile("^[\\s▪■•●◆◇▸►*·]+");
 
-	/** Colour codes (§x) and outer spaces off. */
+	/**
+	 * Colour codes (§x), the resource pack's private characters and outer spaces off. SkyUp starts its
+	 * GUI titles with such characters (they draw the GUI's picture: "\ue001\ue151\ue002Wyzwania » Nowicjusz")
+	 * and puts a mouse icon in "LPM \ue510 » Ukończ".
+	 */
 	public static String plain(String s) {
-		return s == null ? "" : s.replaceAll("§.", "").replace(' ', ' ').strip();
+		return s == null ? "" : s.replaceAll("§.", "").replaceAll("[\\uE000-\\uF8FF]", "").replace(' ', ' ').strip();
+	}
+
+	private static final Pattern CHALLENGES_TITLE = Pattern.compile("(?i)^wyzwania(\\s*(»|>>)\\s*\\S.*)?$");
+	/** What only the challenges GUIs hold: a task's "LPM » Ukończ", a category's "Sprawdź wyzwania", the info item. */
+	private static final Pattern CHALLENGES_LINE = Pattern.compile("(?i)(»|>>)\\s*ukończ( wyzwanie)?$|(»|>>)\\s*sprawdź wyzwania$|^wyzwania to kluczowy element");
+
+	/** A title of SkyUp's challenges: the menu "Wyzwania" or a category "Wyzwania » Nowicjusz" (the picture's characters aside). */
+	public static boolean challengesTitle(String title) {
+		return CHALLENGES_TITLE.matcher(plain(title)).matches();
+	}
+
+	/** A lore line only the challenges GUIs have. */
+	public static boolean challengesLine(String line) {
+		return CHALLENGES_LINE.matcher(BULLET.matcher(plain(line)).replaceFirst("")).find();
 	}
 
 	/** A line of the tooltip: a block's own text and its "»" entries, each joined with the lines that go on from it. */

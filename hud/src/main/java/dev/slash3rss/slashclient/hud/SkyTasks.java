@@ -106,6 +106,13 @@ public final class SkyTasks {
 			if (data.tierSeen == null) data.tierSeen = new LinkedHashMap<>();
 			if (data.categories == null) data.categories = new LinkedHashMap<>();
 			if (data.jobs == null) data.jobs = new LinkedHashMap<>();
+			// saved before the titles' private characters were taken off: under the plain name
+			Map<String, SkyTaskParser.Task> tasks = new LinkedHashMap<>();
+			for (SkyTaskParser.Task t : data.tasks.values()) {
+				t.tier = SkyTaskParser.plain(t.tier);
+				tasks.put(t.key(), t);
+			}
+			data.tasks = tasks;
 			for (var e : data.tierSeen.entrySet()) if (lastTier.isEmpty() || e.getValue() >= data.tierSeen.getOrDefault(lastTier, 0L)) lastTier = e.getKey();
 		}
 		return data;
@@ -169,9 +176,6 @@ public final class SkyTasks {
 		return arrow >= 0 && arrow < title.length() - 1 ? title.substring(arrow + 1).strip() : title;
 	}
 
-	private static final java.util.regex.Pattern CHALLENGES_TITLE = java.util.regex.Pattern.compile("(?i)^wyzwania(\\s*(»|>>)\\s*\\S.*)?$");
-	/** What only the challenges GUIs hold: a task's "LPM » Ukończ", a category's "Sprawdź wyzwania", the info item. */
-	private static final java.util.regex.Pattern CHALLENGES_ITEM = java.util.regex.Pattern.compile("(?i)(»|>>)\\s*ukończ( wyzwanie)?$|(»|>>)\\s*sprawdź wyzwania$|^wyzwania to kluczowy element");
 	/** The screen last looked at, and whether it was one of them (its items come a moment after it opens). */
 	private static AbstractContainerScreen<?> checked;
 	private static boolean checkedChallenges;
@@ -185,13 +189,10 @@ public final class SkyTasks {
 		checked = screen;
 		checkedChallenges = false;
 		if (!(screen instanceof net.minecraft.client.gui.screens.inventory.ContainerScreen)) return false;
-		if (!CHALLENGES_TITLE.matcher(SkyTaskParser.plain(screen.getTitle().getString())).matches()) return false;
+		if (!SkyTaskParser.challengesTitle(screen.getTitle().getString())) return false;
 		for (Slot slot : screen.getMenu().slots) {
 			if (slot.container instanceof Inventory || !slot.hasItem()) continue;
-			for (Component line : SkyDump.lore(slot.getItem())) {
-				String text = SkyTaskParser.plain(line.getString()).replaceFirst("^[▪■•\\s]+", "");
-				if (CHALLENGES_ITEM.matcher(text).find()) return checkedChallenges = true;
-			}
+			for (Component line : SkyDump.lore(slot.getItem())) if (SkyTaskParser.challengesLine(line.getString())) return checkedChallenges = true;
 		}
 		return false;
 	}
