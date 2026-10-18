@@ -399,6 +399,8 @@ describe('social server', () => {
     // the admin panel shows what each Minecraft account wears, not only the account's own cape
     const listed = (await call('GET', `/v1/admin/users/${ewa.user.id}`, tom.token)).body;
     assert.deepEqual(listed.worn, [{ name: 'Ewa', cape: 'galaxy' }, { name: 'EwaPvP', cape: 'ember' }]);
+    const capes = (await call('GET', '/v1/admin/stats', tom.token)).body.capes;
+    assert.ok(capes.galaxy >= 1 && capes.ember >= 1);
     // back to the account's set
     await call('POST', '/v1/me', ewa.token, { character: ewaAlt, own: false });
     assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaAlt] })).body.cosmetics[ewaAlt], { cape: 'galaxy', wings: 'angel', trail: 'hearts' });

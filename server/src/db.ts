@@ -329,7 +329,17 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
 
   stats(since: number) {
     const n = (sql: string, ...args: (string | number)[]) => (this.db.prepare(sql).get(...args) as { n: number }).n;
-    const capes = this.db.prepare("SELECT cape, COUNT(*) AS n FROM users WHERE cape != '' GROUP BY cape").all() as { cape: string; n: number }[];
+    // what players wear in game: each Minecraft account's own cape (set in the client), or else the account's; a player counts once per cape
+    const capes: Record<string, number> = {};
+    const own = new Map<string, string[]>();
+    for (const r of this.db.prepare("SELECT uuid, loadout FROM identities WHERE provider = 'minecraft'").all() as { uuid: string; loadout: string }[]) {
+      own.set(r.uuid, [...(own.get(r.uuid) ?? []), r.loadout]);
+    }
+    for (const u of this.db.prepare('SELECT uuid, cape FROM users').all() as { uuid: string; cape: string }[]) {
+      const accounts = own.get(u.uuid);
+      const worn = new Set(accounts ? accounts.map((l) => (l ? parseLoadout(l).cape ?? '' : u.cape)) : [u.cape]);
+      for (const id of worn) if (id) capes[id] = (capes[id] ?? 0) + 1;
+    }
     return {
       users: n('SELECT COUNT(*) AS n FROM users'),
       newUsers: n('SELECT COUNT(*) AS n FROM users WHERE created_at >= ?', since),
@@ -338,7 +348,7 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
       friendships: n('SELECT COUNT(*) AS n FROM friendships'),
       messages: n('SELECT COUNT(*) AS n FROM messages'),
       newMessages: n('SELECT COUNT(*) AS n FROM messages WHERE created_at >= ?', since),
-      capes: Object.fromEntries(capes.map((c) => [c.cape, c.n])),
+      capes,
     };
   }
 
