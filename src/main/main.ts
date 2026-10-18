@@ -51,6 +51,7 @@ import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePres
 import fsp from 'node:fs/promises';
 import { backupWorld, deleteFile, listBackups, listClips, listScreenshots, listWorlds, restoreBackup } from './worlds';
 import { t } from '../shared/i18n';
+import { APP_USER_MODEL_ID, cleanTarget, Notifier } from './notifications';
 
 let win: BrowserWindow | undefined;
 let store: StoreData;
@@ -163,6 +164,28 @@ function createWindow() {
     if (url.startsWith('https://')) shell.openExternal(url);
   });
 }
+
+/** Brings the launcher to the front: restored when minimized, shown when hidden, a new one when closed (macOS). */
+function focusWindow() {
+  if (!win || win.isDestroyed()) createWindow();
+  if (!win) return;
+  if (win.isMinimized()) win.restore();
+  if (!win.isVisible()) win.show();
+  win.focus();
+  if (process.platform === 'darwin') app.focus({ steal: true });
+}
+
+/** System notifications: a click brings the launcher back and opens where the notification points. */
+const notifier = new Notifier({
+  supported: () => Notification.isSupported(),
+  create: (title, body) => new Notification({ title, body, icon: ICON }),
+  focus: focusWindow,
+  open: (target) => {
+    // a window made just now gets it once its page has loaded
+    if (win?.webContents.isLoading()) win.webContents.once('did-finish-load', () => send('notify:open', target));
+    else send('notify:open', target);
+  },
+});
 
 function handle<T extends unknown[], R>(channel: string, fn: (...args: T) => Promise<R> | R) {
   ipcMain.handle(channel, async (_event, ...args) => fn(...(args as T)));
@@ -308,7 +331,7 @@ function startTask(title: string, icon?: string) {
     finish: (ok: boolean, message: string, profileId?: string) => {
       send('task:done', { id, ok, message, profileId });
       // tell the player even when the launcher is in the background
-      if (!win?.isFocused() && Notification.isSupported()) new Notification({ title: 'SlashClient', body: message, icon: ICON }).show();
+      if (!win?.isFocused()) notifier.show({ title: 'SlashClient', body: message });
     },
   };
 }
@@ -1366,6 +1389,15 @@ handle('social:setStatus', async (status: Status) => {
   social.statusChanged();
 });
 handle('social:typing', (friendId: string) => social.typing(friendId));
+/** A friend's message, invite or request while the launcher is in the background. */
+handle('notify:show', (title: unknown, body: unknown, target: unknown) => {
+  if (win?.isFocused() || typeof title !== 'string' || typeof body !== 'string') return false;
+  return notifier.show({ title: title.slice(0, 100), body, target: cleanTarget(target) });
+});
+
+// Windows sends a toast's click back to the app with this id: the installer's shortcut carries the
+// same one (build.appId); in development there's no shortcut, so Electron's own executable stands in
+if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? APP_USER_MODEL_ID : process.execPath);
 
 // Lets the page show screenshots and world icons (only images inside profile folders).
 protocol.registerSchemesAsPrivileged([{ scheme: 'slash-media', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);

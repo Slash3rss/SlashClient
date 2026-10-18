@@ -110,6 +110,8 @@ const api = {
   socialTyping: (friendId: string) => invoke('social:typing', friendId),
   socialActivity: () => invoke('social:activity'),
   joinInGame: (address: string) => invoke('game:join', address),
+  /** A system notification; clicking it brings the launcher back and sends `notify:open` with the target. */
+  notify: (title: string, body: string, target?: { view: 'friends'; friendId?: string }) => invoke('notify:show', title, body, target),
   on,
 };
 
