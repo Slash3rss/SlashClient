@@ -29,6 +29,7 @@
     <nav>
       <button class="nav active" data-view="play"><i class="fa-solid fa-play"></i>Graj</button>
       <button class="nav" data-view="servers"><i class="fa-solid fa-server"></i>Serwery</button>
+      <button class="nav" data-view="discover"><i class="fa-solid fa-compass"></i>Odkrywaj</button>
       <button class="nav" data-view="friends"><i class="fa-solid fa-user-group"></i>Znajomi<span class="nav-badge hidden" id="friends-badge"></span></button>
       <button class="nav" data-view="profiles"><i class="fa-solid fa-layer-group"></i>Profile</button>
       <button class="nav" data-view="accounts"><i class="fa-solid fa-user"></i>Konta</button>
@@ -128,8 +129,14 @@
       <button class="more hidden" id="servers-more">Pokaż więcej</button>
     </section>
 
-    <!-- Mods, resource packs, shaders, modpacks (Modrinth, CurseForge) -->
-
+    <!-- Odkrywaj: mods, resource packs, shaders and modpacks (Modrinth, CurseForge) for any profile;
+         the browser itself is the one from a profile's "Mody i zasoby", moved here while this page is open -->
+    <section class="view" id="view-discover">
+      <header class="view-head"><h2 class="gradient-title">Odkrywaj</h2>
+        <label class="row head-actions discover-target" id="discover-target"><span class="muted">Instaluj do</span><select id="discover-profile"></select></label>
+      </header>
+      <div id="discover-body"></div>
+    </section>
 
 
     <!-- Profiles -->

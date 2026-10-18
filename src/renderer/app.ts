@@ -1847,7 +1847,9 @@ let animateFrom: number | undefined;
 let installed: InstalledItem[] = [];
 const installing = new Set<string>();
 
-const contentProfileId = () => $<HTMLSelectElement>('#content-profile').value;
+/** The browser is on Odkrywaj (else in a profile's "Mody i zasoby"). */
+let discovering = false;
+const contentProfileId = () => $<HTMLSelectElement>(discovering ? '#discover-profile' : '#content-profile').value;
 const fmtCount = (n: number) => (n >= 1e6 ? t('{0} mln', (n / 1e6).toLocaleString(locale(), { maximumFractionDigits: 1 })) : n >= 1e3 ? t('{0} tys.', Math.round(n / 1e3)) : String(n));
 
 // ---------- mod checks: missing dependencies, wrong loader or game version, conflicts ----------
@@ -2195,6 +2197,8 @@ function installedCard(item: InstalledItem): HTMLElement {
 function renderContent() {
   contentNotice();
   const isPack = contentType === 'modpack';
+  // a modpack makes a profile of its own: on Odkrywaj there is no profile to pick for it
+  $('#discover-target').classList.toggle('hidden', isPack);
   $('#modpack-import').classList.toggle('hidden', !isPack);
   $('#perf-open').classList.toggle('hidden', contentType !== 'mod');
   renderModCheck();
@@ -2383,6 +2387,36 @@ function openContentPane(profileChanged: boolean) {
   refreshInstalled(true);
   if (profileChanged || !contentHits.length) searchContent();
 }
+
+// ---------- Odkrywaj: the same browser on a page of its own, for any profile ----------
+
+const contentPane = document.querySelector<HTMLElement>('.profile-pane[data-pane="content"]')!;
+const contentHome = contentPane.parentElement!;
+const contentAfter = contentPane.nextSibling;
+
+function openDiscover() {
+  const sel = $<HTMLSelectElement>('#discover-profile');
+  fillSelect(sel, store.profiles.map((p) => ({ value: p.id, label: p.name })), sel.value || store.settings.selectedProfileId || store.profiles[0]?.id || '');
+  if (!discovering) {
+    discovering = true;
+    $('#discover-body').append(contentPane);
+    contentPane.classList.remove('hidden');
+  }
+  openContentPane(true);
+}
+
+/** Back in Profiles: the browser goes home, shown only when its pane is the open one. */
+function closeDiscover() {
+  if (!discovering) return;
+  discovering = false;
+  contentHome.insertBefore(contentPane, contentAfter);
+  contentPane.classList.toggle('hidden', profilePane !== 'content');
+  if (profilePane === 'content') openContentPane(true);
+}
+
+document.querySelectorAll<HTMLButtonElement>('.nav').forEach((b) =>
+  b.addEventListener('click', () => (b.dataset.view === 'discover' ? openDiscover() : closeDiscover())));
+$('#discover-profile').addEventListener('change', () => openContentPane(true));
 
 // ---------- worlds, backups, screenshots ----------
 

@@ -17,6 +17,8 @@ const EN: Record<string, string> = {
   'GRAJ': 'PLAY',
   'ZATRZYMAJ': 'STOP',
   'Serwery': 'Servers',
+  'Odkrywaj': 'Discover',
+  'Instaluj do': 'Install to',
   'Mody': 'Mods',
   'Światy': 'Worlds',
   'Profile': 'Profiles',

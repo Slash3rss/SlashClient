@@ -939,3 +939,6 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 /* the cape tabs keep the look of a switch, not of the buttons around them */
 .skin-info .capes-box .segmented button { height: 28px; padding: 0 10px; background: transparent; border: 0; box-shadow: none; color: var(--text-secondary); }
 .skin-info .capes-box .segmented button.active { background: var(--glass-bg-hover); color: var(--text-primary); }
+
+/* Odkrywaj: "Instaluj do [profile]" on one line, next to the title */
+.discover-target { align-items: center; gap: 10px; white-space: nowrap; }
