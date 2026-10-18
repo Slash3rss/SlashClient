@@ -105,6 +105,23 @@ public final class Waypoints {
 		if (SlashHud.config == null || !SlashHud.config.waypoints || mc.player == null || mc.level == null) return;
 		List<Point> list = all().get(worldKey(mc));
 		if (list == null || list.isEmpty()) return;
+		int w = g.guiWidth(), h = g.guiHeight();
+		String dim = dimension(mc);
+		for (Point p : list) {
+			if (!p.visible || !dim.equals(p.dimension)) continue;
+			int[] at = project(mc, p.x + 0.5, p.y + 1.0, p.z + 0.5, w, h);
+			if (at == null) continue;
+			int sx = at[0], sy = at[1];
+			if (sx < -50 || sx > w + 50 || sy < -20 || sy > h + 20) continue;
+			drawMarker(g, mc, p, sx, sy);
+		}
+	}
+
+	/**
+	 * Where a point of the world is on the screen (GUI pixels): the direction to it turned into the
+	 * camera's view and projected with the current field of view; null when it is behind the camera.
+	 */
+	public static int[] project(Minecraft mc, double x, double y, double z, int w, int h) {
 		var camera = Compat.camera(mc);
 		Vec3 eye = camera.position();
 		double yaw = Math.toRadians(camera.yRot()), pitch = Math.toRadians(camera.xRot());
@@ -113,19 +130,12 @@ public final class Waypoints {
 		double rx = -Math.cos(yaw), rz = -Math.sin(yaw);
 		// up = right × forward (right has no height)
 		double ux = -rz * fy, uy = rz * fx - rx * fz, uz = rx * fy;
-		int w = g.guiWidth(), h = g.guiHeight();
 		double f = (h / 2.0) / Math.tan(Math.toRadians(Extras.lastFov) / 2);
-		String dim = dimension(mc);
-		for (Point p : list) {
-			if (!p.visible || !dim.equals(p.dimension)) continue;
-			double dx = p.x + 0.5 - eye.x, dy = p.y + 1.0 - eye.y, dz = p.z + 0.5 - eye.z;
-			double cz = dx * fx + dy * fy + dz * fz;
-			if (cz < 0.5) continue; // behind the camera
-			double cx = dx * rx + dz * rz, cy = dx * ux + dy * uy + dz * uz;
-			int sx = (int) Math.round(w / 2.0 + cx / cz * f), sy = (int) Math.round(h / 2.0 - cy / cz * f);
-			if (sx < -50 || sx > w + 50 || sy < -20 || sy > h + 20) continue;
-			drawMarker(g, mc, p, sx, sy);
-		}
+		double dx = x - eye.x, dy = y - eye.y, dz = z - eye.z;
+		double cz = dx * fx + dy * fy + dz * fz;
+		if (cz < 0.5) return null;
+		double cx = dx * rx + dz * rz, cy = dx * ux + dy * uy + dz * uz;
+		return new int[] { (int) Math.round(w / 2.0 + cx / cz * f), (int) Math.round(h / 2.0 - cy / cz * f) };
 	}
 
 	private static void drawMarker(GuiGraphicsExtractor g, Minecraft mc, Point p, int sx, int sy) {

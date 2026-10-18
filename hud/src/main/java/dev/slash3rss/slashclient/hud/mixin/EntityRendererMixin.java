@@ -24,6 +24,6 @@ abstract class EntityRendererMixin {
 	//$ private Component slashclient$badge(Component name, Entity entity, Component same, com.mojang.blaze3d.vertex.PoseStack pose, net.minecraft.client.renderer.MultiBufferSource buffers, int light) {
 	//#endif
 	//#endif
-		return entity instanceof Player ? dev.slash3rss.slashclient.hud.Cosmetics.decorate(entity.getUUID(), Badges.decorate(entity.getUUID(), name)) : name;
+		return entity instanceof Player ? dev.slash3rss.slashclient.hud.Cosmetics.decorate(entity.getUUID(), Badges.decorate(entity.getUUID(), dev.slash3rss.slashclient.hud.NickHider.apply(name))) : name;
 	}
 }

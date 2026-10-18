@@ -89,7 +89,21 @@ public final class Catalog {
 		}
 		out.add(new Entry("zoom", "slashclient-hud.zoom", "extras", "m-zoom", () -> cfg.zoom, v -> cfg.zoom = v, List.of(
 			new Slider("slashclient-hud.set.zoomFactor", 2f, 12f, 0.5f, "%.1f×", () -> cfg.zoomFactor, v -> cfg.zoomFactor = v),
-			new Toggle("slashclient-hud.zoomSmooth", () -> cfg.zoomSmooth, v -> cfg.zoomSmooth = v)), null));
+			new Toggle("slashclient-hud.zoomSmooth", () -> cfg.zoomSmooth, v -> cfg.zoomSmooth = v),
+			new Toggle("slashclient-hud.zoomToggle", () -> cfg.zoomToggle, v -> cfg.zoomToggle = v),
+			new Toggle("slashclient-hud.zoomCinematic", () -> cfg.zoomCinematic, v -> cfg.zoomCinematic = v),
+			new Toggle("slashclient-hud.zoomRemember", () -> cfg.zoomRemember, v -> cfg.zoomRemember = v)), null));
+		out.add(new Entry("dropGuard", "slashclient-hud.dropGuard", "combat", "m-dropguard", () -> cfg.dropGuard, v -> cfg.dropGuard = v, List.of(), null));
+		out.add(new Entry("damageNumbers", "slashclient-hud.damageNumbers", "combat", "m-damage", () -> cfg.damageNumbers, v -> cfg.damageNumbers = v, List.of(), null));
+		out.add(new Entry("tntTimer", "slashclient-hud.tntTimer", "world", "m-tnt", () -> cfg.tntTimer, v -> cfg.tntTimer = v, List.of(), null));
+		out.add(new Entry("nickHider", "slashclient-hud.nickHider", "extras", "m-nickhider", () -> cfg.nickHider, v -> cfg.nickHider = v, List.of(
+			new Choice("slashclient-hud.nickHider.as", new String[] { "you", "player", "hidden", "stars" }, "slashclient-hud.nickHider.alias.",
+				() -> cfg.nickAlias, v -> cfg.nickAlias = v)), null));
+		out.add(new Entry("keybinds", "slashclient-hud.keybinds", "extras", "m-keybinds", null, null, List.of(), () -> {
+			var mc = net.minecraft.client.Minecraft.getInstance();
+			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.KeybindsScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+		}));
+		out.add(new Entry("reconnect", "slashclient-hud.reconnectButton", "extras", "m-reconnect", () -> cfg.reconnect, v -> cfg.reconnect = v, List.of(), null));
 		out.add(new Entry("fullbright", "slashclient-hud.fullbright", "extras", "m-fullbright", () -> cfg.fullbright, v -> cfg.fullbright = v, List.of(), null));
 		out.add(new Entry("lowFire", "slashclient-hud.lowFire", "extras", "m-lowfire", () -> cfg.lowFire, v -> cfg.lowFire = v, List.of(), null));
 		out.add(new Entry("crosshair", "slashclient-hud.crosshair", "extras", "m-crosshair", () -> !"vanilla".equals(cfg.crosshair),

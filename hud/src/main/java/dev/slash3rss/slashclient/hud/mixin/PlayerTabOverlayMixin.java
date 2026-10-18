@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 abstract class PlayerTabOverlayMixin {
 	@ModifyReturnValue(method = "getNameForDisplay", at = @At("RETURN"))
 	private Component slashclient$badge(Component name, PlayerInfo info) {
-		return Badges.decorate(info.getProfile().id(), name);
+		return Badges.decorate(info.getProfile().id(), dev.slash3rss.slashclient.hud.NickHider.apply(name));
 	}
 
 	/** Milliseconds in the ping's colour instead of the signal bars (a little smaller, to fit their space). */

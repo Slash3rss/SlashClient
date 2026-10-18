@@ -113,6 +113,24 @@ public final class HudConfig {
 	public boolean zoom = true;
 	public float zoomFactor = 4f;
 	public boolean zoomSmooth = true;
+	/** The zoom key switches the zoom on and off instead of being held. */
+	public boolean zoomToggle = false;
+	/** The camera glides while zoomed (the game's cinematic camera). */
+	public boolean zoomCinematic = false;
+	/** The wheel's zoom is kept for the next time, instead of the zoom factor. */
+	public boolean zoomRemember = false;
+	/** Q drops a valuable item (a tool, weapon or armour, enchanted or rare, a shulker box) only when pressed twice. */
+	public boolean dropGuard = true;
+	/** Seconds left above lit TNT. */
+	public boolean tntTimer = true;
+	/** How much health a mob or player just lost, rising from it. */
+	public boolean damageNumbers = true;
+	/** Your nick written differently in chat, the tab list and above your head (for recordings and streams). */
+	public boolean nickHider = false;
+	/** What it is written as: "you", "player", "hidden" or "stars". */
+	public String nickAlias = "you";
+	/** A button on the "disconnected" screen that joins the same server again. */
+	public boolean reconnect = true;
 	public boolean fullbright = false;
 	/** The fire overlay sits lower, so it covers less of the screen. */
 	public boolean lowFire = false;
@@ -282,6 +300,7 @@ public final class HudConfig {
 		if (read.chatTabs == null) read.chatTabs = defaults.chatTabs;
 		if (read.crosshair == null) read.crosshair = defaults.crosshair;
 		if (read.crosshairLast == null) read.crosshairLast = defaults.crosshairLast;
+		if (read.nickAlias == null) read.nickAlias = defaults.nickAlias;
 		return read;
 	}
 
@@ -295,6 +314,15 @@ public final class HudConfig {
 		zoom = other.zoom;
 		zoomFactor = other.zoomFactor;
 		zoomSmooth = other.zoomSmooth;
+		zoomToggle = other.zoomToggle;
+		zoomCinematic = other.zoomCinematic;
+		zoomRemember = other.zoomRemember;
+		dropGuard = other.dropGuard;
+		tntTimer = other.tntTimer;
+		damageNumbers = other.damageNumbers;
+		nickHider = other.nickHider;
+		nickAlias = other.nickAlias;
+		reconnect = other.reconnect;
 		fullbright = other.fullbright;
 		lowFire = other.lowFire;
 		chatTimestamps = other.chatTimestamps;

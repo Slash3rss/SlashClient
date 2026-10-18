@@ -177,10 +177,9 @@ public final class PartnerServers {
 	 * a brighter strip along the top where the light falls.
 	 */
 	private static void drawFrame(GuiGraphicsExtractor g, int x, int y, int w, int h) {
-		dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, x - 2, y - 2, w + 4, h + 4, 3, 0x66B45309);
+		// a thin gold line, lit a little from inside
 		dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, x - 1, y - 1, w + 2, h + 2, 3, 0xFFF59E0B);
-		dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, x, y, w, h, 2, 0x80FDE68A);
-		g.fill(x + 3, y - 1, x + w - 3, y, 0xFFFEF3C7);
+		dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, x, y, w, h, 2, 0x50FDE68A);
 	}
 
 	/** For the test: a partner with a made-up picture, without the network. */

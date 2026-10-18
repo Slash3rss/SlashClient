@@ -26,8 +26,14 @@ public final class Extras {
 		return SlashHud.config;
 	}
 
+	/** In toggle mode: switched on by a press of the zoom key, off by the next. */
+	private static boolean toggled;
+	/** The cinematic camera was switched on for the zoom (and goes off with it). */
+	private static boolean cinematicOn;
+
 	public static boolean zooming() {
-		return cfg().zoom && zoomKey != null && zoomKey.isDown() && Compat.screen(Minecraft.getInstance()) == null;
+		if (!cfg().zoom || zoomKey == null || Compat.screen(Minecraft.getInstance()) != null) return false;
+		return cfg().zoomToggle ? toggled : zoomKey.isDown();
 	}
 
 	/** Field of view with the zoom applied; called every frame. */
@@ -43,7 +49,14 @@ public final class Extras {
 	public static float zoomFov(float fov) {
 		boolean on = zooming();
 		if (on && held < 0) held = cfg().zoomFactor;
-		if (!on) held = -1f;
+		if (!on && held >= 0) {
+			// the wheel's zoom kept for the next time
+			if (cfg().zoomRemember && Math.abs(held - cfg().zoomFactor) > 0.01f) {
+				cfg().zoomFactor = Math.max(2f, Math.min(12f, held));
+				cfg().save();
+			}
+			held = -1f;
+		}
 		float target = on ? held : 1f;
 		long now = System.nanoTime();
 		float dt = lastFrame == 0 ? 0.016f : Math.min(0.1f, (now - lastFrame) / 1e9f);
@@ -87,6 +100,18 @@ public final class Extras {
 	}
 
 	static void tick(Minecraft mc) {
+		if (zoomKey != null && cfg().zoomToggle) {
+			while (zoomKey.consumeClick()) if (Compat.screen(mc) == null) toggled = !toggled;
+		} else toggled = false;
+		// the camera glides while zoomed in, as Zoomify does; what the player had set comes back after
+		boolean glide = zooming() && cfg().zoomCinematic;
+		if (glide && !cinematicOn && !mc.options.smoothCamera) {
+			mc.options.smoothCamera = true;
+			cinematicOn = true;
+		} else if (!glide && cinematicOn) {
+			mc.options.smoothCamera = false;
+			cinematicOn = false;
+		}
 		while (fullbrightKey != null && fullbrightKey.consumeClick()) {
 			cfg().fullbright = !cfg().fullbright;
 			cfg().save();

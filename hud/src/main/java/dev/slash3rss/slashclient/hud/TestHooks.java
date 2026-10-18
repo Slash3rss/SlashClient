@@ -376,6 +376,40 @@ public final class TestHooks {
 		if (Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c) c.scrollBy(10_000);
 	}
 
+	/** The name shown above the TNT nearest to us ("none" without one). */
+	public static String tntLabel() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		for (var e : mc.level.entitiesForRendering()) {
+			if (e instanceof net.minecraft.world.entity.item.PrimedTnt tnt) return tnt.getCustomName() == null ? "none" : tnt.getCustomName().getString();
+		}
+		return "none";
+	}
+
+	/** How many damage numbers are rising now. */
+	public static int damagePops() {
+		return DamageNumbers.count();
+	}
+
+	/** A chat line with our nick, as the nick hider shows it. */
+	public static String hiddenNick(boolean on) {
+		SlashHud.config.nickHider = on;
+		String name = net.minecraft.client.Minecraft.getInstance().getUser().getName();
+		return NickHider.apply(net.minecraft.network.chat.Component.literal("<" + name + "> hej")).getString();
+	}
+
+	/** The keys window, and how many SlashClient keys it lists. */
+	public static int openKeybinds() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		mc.setScreenAndShow(new KeybindsScreen(null));
+		return (int) java.util.Arrays.stream(mc.options.keyMappings).filter(k -> SlashHud.keyCategory.equals(k.getCategory())).count();
+	}
+
+	/** Whether Q would need a second press for a sword, and for dirt. */
+	public static String dropGuarded() {
+		return DropGuard.valuable(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD)) + ","
+			+ DropGuard.valuable(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIRT));
+	}
+
 	public static void firstPerson() {
 		net.minecraft.client.Minecraft.getInstance().options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
 	}

@@ -39,6 +39,8 @@ public class SlashHud implements ClientModInitializer {
 		return MODULES;
 	}
 	private static Vec3 lastPos;
+	/** SlashClient's own group of keys (a category in 1.21.9+, a name before): the keys window lists it. */
+	static Object keyCategory;
 
 	@Override
 	public void onInitializeClient() {
@@ -50,6 +52,7 @@ public class SlashHud implements ClientModInitializer {
 		//#else
 		//$ String category = "key.category.slashclient-hud.main";
 		//#endif
+		keyCategory = category;
 		KeyMapping edit = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.edit", InputConstants.KEY_RSHIFT, category));
 
 		Extras.zoomKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.zoom", InputConstants.KEY_C, category));
@@ -79,6 +82,7 @@ public class SlashHud implements ClientModInitializer {
 			Cosmetics.reset();
 			CosmeticEffects.reset();
 			NetCounter.attach(handler.getConnection());
+			Reconnect.joined(mc);
 		});
 		// the game's own menu gets a way back to ours
 		ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
@@ -87,6 +91,8 @@ public class SlashHud implements ClientModInitializer {
 				ScreenEvents.afterExtract(screen).register((s, g, mx, my, delta) -> MouseTweaks.frame(container));
 				net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseScroll(screen).register((s, mx, my, h2, v) -> !MouseTweaks.scroll(container, v));
 			}
+			// dropped by a server: a way straight back to it
+			if (screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen) Reconnect.addButton(mc, screen);
 			// the server list: partner servers' pictures, fresh enough
 			if (screen instanceof net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen) PartnerServers.refresh();
 			// the game's own pause menu gets a way back to ours too
@@ -106,7 +112,11 @@ public class SlashHud implements ClientModInitializer {
 			}).bounds(4, 4, 110, 20).build());
 		});
 
+		// before the game reads the keys of this tick: the drop key's presses on a valuable item
+		ClientTickEvents.START_CLIENT_TICK.register(DropGuard::tick);
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
+			TntTimer.tick(mc);
+			DamageNumbers.tick(mc);
 			Extras.tick(mc);
 			Assist.tick(mc);
 			Latency.tick(mc);
@@ -167,6 +177,7 @@ public class SlashHud implements ClientModInitializer {
 			if (mc.getDebugOverlay().showDebugScreen() || Compat.screen(mc) instanceof HudEditScreen) return;
 			drawAll(g, mc, false);
 			Waypoints.draw(g, mc);
+			DamageNumbers.draw(g, mc);
 			ChatTabs.drawMentionBadge(g, mc);
 			ChatWindows.draw(g, mc);
 			Shots.draw(g);
