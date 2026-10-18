@@ -14,6 +14,17 @@ const TYPES: Record<string, string> = {
 };
 const PAGES: Record<string, string> = { '/': 'index.html', '/konto': 'konto.html', '/account': 'konto.html', '/admin': 'admin.html', '/admin/': 'admin.html' };
 
+/**
+ * Cloudflare keeps .css and .js in browsers for hours whatever we answer, so the site's own
+ * links to them carry the server's start (every deploy restarts it): a new version is a new address.
+ */
+const STARTED = Math.floor(Date.now() / 1000) * 1000;
+const VERSION = STARTED.toString(36);
+const versioned = (text: string, type: string): string =>
+  type.startsWith('text/html')
+    ? text.replace(/((?:href|src)=")((?!\w+:|\/\/)[^"?#]+\.(?:css|js))"/g, `$1$2?v=${VERSION}"`)
+    : text.replace(/((?:\bfrom\s*|\bimport\s*\(\s*)')(\.{0,2}\/[^'?#]+\.js)'/g, `$1$2?v=${VERSION}'`);
+
 /** Pages with an id in the address: a shared log, one bug report. */
 function pageOf(pathname: string): string | undefined {
   // each under its Polish and its English name
@@ -40,13 +51,16 @@ export async function serveWeb(webDir: string, pathname: string, res: http.Serve
     const info = await stat(file);
     if (!info.isFile()) return false;
     // every file is checked on each visit (a cheap 304 when unchanged), so an update reaches everyone at once
-    const modified = new Date(Math.floor(info.mtimeMs / 1000) * 1000);
+    const rewritten = type.startsWith('text/html') || type.startsWith('text/javascript');
+    // a rewritten file changes with the version too, so never older than the server's start
+    const modified = new Date(Math.max(Math.floor(info.mtimeMs / 1000) * 1000, rewritten ? STARTED : 0));
     if (ifModifiedSince && !Number.isNaN(Date.parse(ifModifiedSince)) && Date.parse(ifModifiedSince) >= modified.getTime()) {
       res.writeHead(304, { 'Cache-Control': 'no-cache', 'Last-Modified': modified.toUTCString() });
       res.end();
       return true;
     }
-    const data = await readFile(file);
+    let data: Buffer | string = await readFile(file);
+    if (rewritten) data = versioned(data.toString('utf8'), type);
     const headers: Record<string, string> = {
       'Content-Type': type,
       'X-Content-Type-Options': 'nosniff',
