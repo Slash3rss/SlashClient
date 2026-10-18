@@ -40,6 +40,14 @@ public class SlashPauseScreen extends MenuScreen {
 		// world options (difficulty, game rules, LAN...) next to the options, shown whenever the game's own menu shows them
 		if (minecraft.level != null) items.add(new Nav(Ui.tr("options.worldOptions.button"), "world", () -> minecraft.setScreenAndShow(new WorldOptionsScreen(this, minecraft.level))));
 		//#endif
+		//#if MC >= 26.2 && MC < 26.3
+		//$ if (minecraft.level != null) items.add(new Nav(Ui.tr("options.worldOptions.button"), "world", () -> minecraft.setScreenAndShow(new net.minecraft.client.gui.screens.options.WorldOptionsScreen(this, minecraft.level))));
+		//#endif
+		//#if MC < 26.2
+		//$ // before world options: "Open to LAN" as the game's own menu has it, in singleplayer until the world is open
+		//$ if (minecraft.hasSingleplayerServer() && !minecraft.getSingleplayerServer().isPublished())
+		//$ 	items.add(new Nav(Ui.tr("menu.shareToLan"), "world", () -> minecraft.setScreenAndShow(new net.minecraft.client.gui.screens.ShareToLanScreen(this))));
+		//#endif
 		items.add(new Nav(CommonComponents.disconnectButtonLabel(minecraft.isLocalServer()), "power", this::leave, true));
 		return items;
 	}
