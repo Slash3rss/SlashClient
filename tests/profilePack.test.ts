@@ -9,7 +9,7 @@ import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import { installMrpack } from '../src/main/modrinth';
 import {
-  applySettings, countParts, DEFAULT_PARTS, includePath, manualFilesOf, partOf, PROFILE_FILE, readPackSummary, settingsOf, writeProfilePack,
+  applySettings, countParts, DEFAULT_PARTS, includePath, manualFilesOf, partOf, PROFILE_FILE, readPackSummary, settingsOf, uniqueName, writeProfilePack,
   type LinkResolver,
 } from '../src/main/profilePack';
 import { newProfile } from '../src/main/store';
@@ -162,6 +162,33 @@ describe('profile pack', () => {
     assert.equal(profile.loader, newProfile().loader);
     applySettings(profile, { icon: 'block:grass-block' });
     assert.equal(profile.icon, 'block:grass-block');
+  });
+
+  it('keeps "newest stable loader" while the index pins a version', async () => {
+    const file = await exportTo(await gameFolder());
+    const zip = new AdmZip(file);
+    assert.equal(JSON.parse(zip.readAsText('modrinth.index.json')).dependencies['fabric-loader'], '0.16.5');
+    assert.equal(JSON.parse(zip.readAsText(PROFILE_FILE)).loaderVersion, '');
+    // what the import does: the index's loader first, then the settings
+    const profile = newProfile({ loader: 'fabric', loaderVersion: '0.16.5' });
+    applySettings(profile, readPackSummary(file).settings);
+    assert.equal(profile.loaderVersion, '');
+    // a profile pinned to a version stays pinned
+    const pinned = newProfile({ loader: 'fabric', loaderVersion: '0.16.5' });
+    applySettings(pinned, { ...settingsOf(newProfile({ loader: 'fabric', loaderVersion: '0.16.5' })) });
+    assert.equal(pinned.loaderVersion, '0.16.5');
+    // settings for another loader don't touch it
+    const forge = newProfile({ loader: 'forge', loaderVersion: '47.3.0' });
+    applySettings(forge, { loader: 'fabric', loaderVersion: '' });
+    assert.equal(forge.loaderVersion, '47.3.0');
+  });
+
+  it('gives an imported profile a name no other profile has', () => {
+    assert.equal(uniqueName('Test eksport', ['Inny']), 'Test eksport');
+    assert.equal(uniqueName('Test eksport', ['Test eksport']), 'Test eksport (2)');
+    assert.equal(uniqueName('Test eksport', ['test eksport', 'Test eksport (2)']), 'Test eksport (3)');
+    const long = 'x'.repeat(40);
+    assert.equal(uniqueName(long, [long]), `${'x'.repeat(36)} (2)`);
   });
 
   it('keeps only safe hand-download entries', () => {
