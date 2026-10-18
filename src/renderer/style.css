@@ -343,7 +343,7 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .play-tabs { align-self: flex-start; }
 .play-tabs .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #4ade80; margin-left: 4px; box-shadow: 0 0 6px #4ade80; }
 .play-tabs .live-dot.hidden { display: none; }
-#log-session { height: 32px; width: 170px; flex-shrink: 0; padding: 0 8px; font-size: 12.5px; }
+#log-session { height: 34px; width: 160px; padding: 0 8px; font-size: 12.5px; }
 .log-empty { padding: 18px 4px; }
 .news-wrap { flex: 1; min-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 12px; }
 .news-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -701,12 +701,21 @@ body.entering main { animation: rise-in .55s cubic-bezier(.2, .7, .3, 1) .12s bo
 
 /* ---------- log tools ---------- */
 .log-wrap { flex: 1; min-height: 140px; display: flex; flex-direction: column; gap: 8px; }
-.log-tools { display: flex; align-items: center; gap: 8px; }
-.log-tools .search { min-width: 160px; }
+.log-tools { display: flex; align-items: center; gap: 8px; min-width: 0; }
+/* the search gives way first; buttons keep their size */
+.log-tools .search { flex: 1 1 120px; min-width: 110px; }
 .log-tools .search input { height: 34px; padding-top: 6px !important; padding-bottom: 6px !important; font-size: 13px; }
-.log-tools button { height: 34px; padding: 0 12px; font-size: 13px; }
-.log-tools .icon-btn { width: 34px; padding: 0; }
-.log-tools .segmented button { height: auto; }
+.log-tools > button, .log-tools > select, .log-tools > .segmented { flex-shrink: 0; }
+.log-tools > button { height: 34px; padding: 0 12px; font-size: 13px; }
+.log-tools > .icon-btn { width: 34px; min-width: 34px; padding: 0; display: grid; place-items: center; }
+.log-tools .segmented { height: 34px; box-sizing: border-box; padding: 3px; align-items: stretch; }
+.log-tools .segmented button { height: auto; padding: 0 10px; }
+/* a narrow window: Share as an icon, like Copy next to it */
+@media (max-width: 1150px) {
+  #log-share { width: 34px; padding: 0; display: grid; place-items: center; }
+  #log-share .label { display: none; }
+  .log-tools .segmented button { padding: 0 8px; }
+}
 .log .line { white-space: pre-wrap; }
 .log .lvl-warn { color: #fde68a; }
 .log .lvl-error { color: #fca5a5; }
