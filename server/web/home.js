@@ -65,6 +65,8 @@ const SETS = [
   [{ elytra: 'nebula', aura: 'sculk', pet: 'phantom' }, 'Elytra Mgławica, aura Sculk, pupil Fantom'],
   [{ cape: 'sakura', aura: 'cherry', pet: 'parrot' }, 'Peleryna Sakura, aura Wiśnia, pupil Papuga'],
 ];
+/** Whose skin wears the showcase: Slash3rss, SlashClient's author (Mojang uuid; ours if it cannot be had). */
+const SHOWCASE_PLAYER = '5018a794ee17437ea5da36e64bd1e59c';
 const stage = $('#cosmetic-3d');
 if (stage) {
   const seen = new IntersectionObserver(async ([e]) => {
@@ -72,7 +74,7 @@ if (stage) {
     seen.disconnect();
     try {
       const { Preview } = await import('./preview.js');
-      const p = await Preview.create(stage, { width: 300, height: 380 });
+      const p = await Preview.create(stage, { width: 300, height: 380, uuid: SHOWCASE_PLAYER });
       let i = 0;
       const next = () => {
         const [set, label] = SETS[i++ % SETS.length];
