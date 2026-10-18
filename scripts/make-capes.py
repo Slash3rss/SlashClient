@@ -492,13 +492,15 @@ def mix_hex(a, b, t):
 # ---------- capes for the ranks: the logo in the rank's colour ----------
 
 RANK_CAPES = {'staff_admin': ('#450a0a', '#dc2626', '#fca5a5'), 'staff_support': ('#082f49', '#0284c7', '#7dd3fc'), 'staff_partner': ('#422006', '#ca8a04', '#fde68a'),
-             'staff_friend': ('#052e16', '#16a34a', '#bbf7d0'), 'staff_friend_pink': ('#500724', '#db2777', '#fbcfe8')}
+             'staff_friend': ('#052e16', '#16a34a', '#bbf7d0'), 'staff_friend_pink': ('#500724', '#db2777', '#f9a8d4')}
+# the logo's colour and its shadow, when not white: the pale pink frame and white logo read as lavender in the game's light
+RANK_LOGOS = {'staff_friend_pink': ('#f9a8d4', '#9d174d')}
 
 
 def rank_cape(cape):
     top, bottom, light = RANK_CAPES[cape]
     img = border(gradient(top, bottom), light)
-    return logo(img, '#ffffff', top)
+    return logo(img, *RANK_LOGOS.get(cape, ('#ffffff', top)))
 
 
 RANK_FRAMES = 16
@@ -527,7 +529,7 @@ def rank_cape_frame(cape, f):
 def rank_wing(cape):
     top, bottom, light = RANK_CAPES[cape]
     img = gradient(top, bottom)
-    stripe(img, '#ffffff', light)
+    stripe(img, RANK_LOGOS.get(cape, ('#ffffff',))[0], light)
     return border(img, light)
 
 
