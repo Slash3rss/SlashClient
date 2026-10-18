@@ -1,0 +1,13 @@
+# SlashClient: the site is open to search engines; accounts, logs, the admin panel and the API are not
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /konto
+Disallow: /account
+Disallow: /logi/
+Disallow: /logs/
+Disallow: /v1/
+Disallow: /aktualizacje/
+Disallow: /pobierz/
+
+Sitemap: https://client.slash3rss.dev/sitemap.xml

@@ -91,6 +91,10 @@ export async function go(href, { push = true } = {}) {
   if (push) history.pushState(null, '', url.href);
   shown = url.pathname + url.search;
   document.title = next.title;
+  // what the page says about itself (description, canonical address, link previews) goes with it
+  const META = 'meta[name="description"], meta[name="robots"], meta[name="keywords"], link[rel="canonical"], meta[property^="og:"], meta[name^="twitter:"]';
+  document.head.querySelectorAll(META).forEach((m) => m.remove());
+  for (const m of next.head.querySelectorAll(META)) document.head.append(document.importNode(m, true));
   document.body.className = next.body.className;
   document.body.replaceChildren(...[...next.body.childNodes].map((n) => document.importNode(n, true)));
   // the page's script runs again for the new content (a fresh copy of it; the shared modules stay)
