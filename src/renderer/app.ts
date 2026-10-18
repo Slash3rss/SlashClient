@@ -2872,10 +2872,11 @@ function renderCapeGrid() {
 
 // ---------- SlashClient cosmetics (seen by other players with the launcher) ----------
 
-type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet';
+type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top';
 const SLOTS: [Slot, string, string][] = [
   ['cape', 'Peleryna', 'fa-flag'], ['wings', 'Skrzydła', 'fa-dove'], ['elytra', 'Elytra', 'fa-feather'],
   ['trail', 'Ślad', 'fa-shoe-prints'], ['aura', 'Aura', 'fa-wand-sparkles'], ['pet', 'Pupil', 'fa-paw'],
+  ['hat', 'Na głowę', 'fa-hat-cowboy'], ['top', 'Ubranie', 'fa-shirt'],
 ];
 /** Without the server (or before 0.8) only the first eight capes are known. */
 const SLASH_CAPES: [string, string][] = [
@@ -2933,6 +2934,8 @@ let cosmeticPreview: CosmeticPreview | undefined;
 function cosmeticPicture(slot: Slot, id: string): Node {
   if (slot === 'cape') return animatedCapeThumbnail(id);
   if (slot === 'wings' || slot === 'elytra') return wingsThumbnail(`img/${slot}/${id}.png`);
+  // clothing: a view of it from the front, a little from above (made with its pictures)
+  if (slot === 'hat' || slot === 'top') return el('img', { className: 'clothing-icon', src: `img/clothing/icon/${id}.png`, alt: '' });
   const icon = gamePictures && cosmeticIcon(gamePictures, id);
   if (icon) return gameIcon(icon.srcs, icon.tint);
   return el('i', { className: `fa-solid ${ITEM_ICONS[id] ?? 'fa-star'} cosmetic-icon` });
@@ -2974,6 +2977,8 @@ async function renderSlashCapes() {
     : cosmeticSlot === 'elytra' ? t('Wygląd elytry, gdy ją założysz (bez tego elytra ma wzór peleryny).')
     : cosmeticSlot === 'trail' ? t('Cząsteczki za Tobą, kiedy chodzisz.')
     : cosmeticSlot === 'aura' ? t('Cząsteczki wokół Ciebie, kiedy stoisz.')
+    : cosmeticSlot === 'hat' ? t('Coś na głowę. Chowa się pod prawdziwym hełmem.')
+    : cosmeticSlot === 'top' ? t('Ubranie na skinie. Chowa się pod prawdziwym napierśnikiem.')
     : t('Mały towarzysz lata przy Twoim ramieniu.');
   const current = worn[cosmeticSlot] ?? '';
   const tile = (item: CatalogItem | undefined, content: Node) => {

@@ -71,11 +71,16 @@ public class SlashHud implements ClientModInitializer {
 		DungeonMap.fullKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonMap", InputConstants.KEY_M, category));
 		ChatTabs.register();
 		Assist.register(category);
-		// wings and pets: a layer more on every player's model (drawn from render states, which 1.21.1 does not have)
+		// wings, pets and clothing: a layer more on every player's model (drawn from render states, which 1.21.1 does not have)
 		//#if MC >= 1.21.2
 		net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback.EVENT.register((type, renderer, helper, context) -> {
 			if (renderer instanceof net.minecraft.client.renderer.entity.player.AvatarRenderer<?> avatar) helper.register(new CosmeticLayer(avatar, context));
 		});
+		//#else
+		//$ // there only the clothing, drawn straight from the player
+		//$ net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback.EVENT.register((type, renderer, helper, context) -> {
+		//$ 	if (renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer player) helper.register(new ClothingLayer(player));
+		//$ });
 		//#endif
 		Badges.load();
 		// the partners (and which are pinned on top of the server list) before the list is first opened

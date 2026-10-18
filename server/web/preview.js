@@ -1,5 +1,6 @@
 // The 3D figure of the site's cosmetics, the launcher's own: the player's skin (or ours) with the
-// cape, wings or elytra on its back, the trail, aura and pet from the game's pictures and models.
+// cape, wings or elytra on its back, the trail, aura and pet from the game's pictures and models,
+// and the clothing (/vendor/clothing).
 // The code is the launcher's, bundled as /vendor/preview3d.js (window.SlashPreview); the game's
 // pictures are in /vendor/mc (listed in index.json).
 
@@ -55,7 +56,7 @@ export class Preview {
     this.viewer.autoRotate = true;
     this.viewer.autoRotateSpeed = 0.6;
     this.viewer.controls.enableZoom = false;
-    this.cosmetics = new lib.CosmeticPreview(this.viewer, pictures);
+    this.cosmetics = new lib.CosmeticPreview(this.viewer, pictures, '/vendor/clothing/');
   }
 
   async skin(uuid) {
@@ -75,10 +76,12 @@ export class Preview {
     await this.viewer.loadSkin('/vendor/skin-default.png', { model: 'default' });
   }
 
-  /** What the figure wears: { cape, wings, elytra, trail, aura, pet } (ids or empty). */
+  /** What the figure wears: { cape, wings, elytra, trail, aura, pet, hat, top } (ids or empty). */
   async show(worn) {
     clearInterval(this.capeTimer);
-    this.cosmetics.show({ trail: worn.trail || undefined, aura: worn.aura || undefined, pet: worn.pet || undefined });
+    this.cosmetics.show({ trail: worn.trail || undefined, aura: worn.aura || undefined, pet: worn.pet || undefined, hat: worn.hat || undefined, top: worn.top || undefined });
+    // a tall hat stands above the head: the figure a little smaller, so it stays in view
+    this.viewer.zoom = worn.hat ? 0.72 : 0.85;
     // wings take the back first (as in the game), then an elytra, then the cape
     if (worn.wings) await this.viewer.loadCape(`/vendor/wings/${worn.wings}.png`, { backEquipment: 'elytra' });
     else if (worn.elytra) await this.viewer.loadCape(`/vendor/elytra/${worn.elytra}.png`, { backEquipment: 'elytra' });

@@ -21,12 +21,12 @@ import java.util.UUID;
 
 /**
  * Picking SlashClient cosmetics in the game: one slot at a time (cape, wings, elytra, trail,
- * aura, pet), the player seen from behind while the menu is open. Choices go to the SlashClient
+ * aura, pet, hat, top), the player seen from behind while the menu is open. Choices go to the SlashClient
  * server through the launcher, for the Minecraft account being played when it is linked to the
  * SlashClient account (each can have a set of its own), else for the whole account.
  */
 public class CosmeticsScreen extends Screen {
-	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet"};
+	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top"};
 	/** Particles and pets have no picture of ours: an item that looks like them stands in. */
 	private static final Map<String, Item> ITEMS = Map.ofEntries(
 		Map.entry("hearts", Items.POPPY), Map.entry("sparks", Items.GLOWSTONE_DUST), Map.entry("snow", Items.SNOWBALL),
@@ -89,8 +89,10 @@ public class CosmeticsScreen extends Screen {
 		for (String id : Cosmetics.TRAILS) list.add(new Entry(id, "trail", id, "", true));
 		for (String id : Cosmetics.AURAS) list.add(new Entry(id, "aura", id, id.equals("royal") ? "admin" : "", true));
 		for (String id : Cosmetics.PETS) list.add(new Entry(id, "pet", id, "", true));
+		for (String id : Clothing.HATS) list.add(new Entry(id, "hat", id, "", true));
+		for (String id : Clothing.TOPS) list.add(new Entry(id, "top", id, "", true));
 		screen.items = List.copyOf(list);
-		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay"));
+		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf"));
 		screen.character = "test";
 		screen.characterName = "Slash3rss";
 		screen.ownSet = true;
@@ -353,6 +355,9 @@ public class CosmeticsScreen extends Screen {
 			case "wings", "elytra" ->
 				// the back of one wing
 				g.blit(RenderPipelines.GUI_TEXTURED, Cosmetics.textureId(e.slot(), e.id()), x + (TILE_W - 18) / 2, y + (TILE_H - 30) / 2, 136, 8, 18, 30, 48, 80, 256, 128, alpha);
+			case "hat", "top" ->
+				// a view of it from the front, a little from above
+				g.blit(RenderPipelines.GUI_TEXTURED, Clothing.icon(e.id()), x + (TILE_W - 26) / 2, y + (TILE_H - 26) / 2, 0, 0, 26, 26, 64, 64, 64, 64, alpha);
 			default -> {
 				Item item = ITEMS.get(e.id());
 				if (item != null) Ui.icon(g, item, "m-appearance", x + (TILE_W - 16) / 2, y + (TILE_H - 16) / 2);

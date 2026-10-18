@@ -919,6 +919,7 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .cape-choice.square canvas { width: 56px; height: 47px; }
 .cape-choice.square canvas.game-icon { width: 40px; height: 40px; }
 .cosmetic-icon { font-size: 22px; color: var(--accent-light); width: 30px; text-align: center; }
+.clothing-icon { width: 48px; height: 48px; image-rendering: pixelated; }
 
 /* a small window: a smaller preview and tighter buttons, so the column beside it is not one button per line */
 @media (max-width: 1000px) {
