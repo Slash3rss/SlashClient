@@ -61,6 +61,8 @@ public final class Catalog {
 		HudConfig cfg = SlashHud.config;
 		List<Entry> out = new ArrayList<>();
 		for (var m : SlashHud.modules()) {
+			// the game's parts have their own cards (below)
+			if (m instanceof dev.slash3rss.slashclient.hud.GameParts.Part) continue;
 			HudConfig.Placement p = cfg.placement(m.id());
 			List<Setting> settings = new ArrayList<>(List.of(
 				new Slider("slashclient-hud.set.scale", 0.5f, 2f, 0.05f, "%.2f×", p::scale, v -> p.scale = v),
@@ -142,16 +144,20 @@ public final class Catalog {
 		out.add(new Entry("chatCopy", "slashclient-hud.chat.copy", "chat", "m-chatcopy", () -> cfg.chatCopy, v -> cfg.chatCopy = v, List.of(), null));
 		out.add(new Entry("chatSearch", "slashclient-hud.chat.searchBox", "chat", "m-chatsearch", () -> cfg.chatSearch, v -> cfg.chatSearch = v, List.of(), null));
 		// the game's own HUD parts
-		out.add(new Entry("scoreboard", "slashclient-hud.game.scoreboard", "game", "m-scoreboard", () -> cfg.scoreboard, v -> cfg.scoreboard = v, List.of(
+		// the game's own parts: moved in the editor (drag their boxes), shown, scaled
+		HudConfig.Placement scoreboard = cfg.placement("scoreboard"), bossbar = cfg.placement("bossbar"), tablist = cfg.placement("tablist"), actionbar = cfg.placement("actionbar");
+		out.add(new Entry("scoreboard", "slashclient-hud.game.scoreboard", "game", "m-scoreboard", () -> cfg.scoreboard && scoreboard.enabled, v -> cfg.scoreboard = scoreboard.enabled = v, List.of(
 			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.scoreboardScale, v -> cfg.scoreboardScale = v),
-			new Slider("slashclient-hud.set.offset", -120f, 120f, 2f, "%.0f", () -> (float) cfg.scoreboardOffset, v -> cfg.scoreboardOffset = Math.round(v)),
 			new Toggle("slashclient-hud.game.numbers", () -> cfg.scoreboardNumbers, v -> cfg.scoreboardNumbers = v)), null));
-		out.add(new Entry("bossbar", "slashclient-hud.game.bossbar", "game", "m-bossbar", () -> cfg.bossBar, v -> cfg.bossBar = v, List.of(
-			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.bossBarScale, v -> cfg.bossBarScale = v),
-			new Slider("slashclient-hud.set.offset", 0f, 120f, 2f, "%.0f", () -> (float) cfg.bossBarOffset, v -> cfg.bossBarOffset = Math.round(v))), null));
-		out.add(new Entry("tablist", "slashclient-hud.game.tablist", "game", "m-tablist", null, null, List.of(
+		out.add(new Entry("bossbar", "slashclient-hud.game.bossbar", "game", "m-bossbar", () -> cfg.bossBar && bossbar.enabled, v -> cfg.bossBar = bossbar.enabled = v, List.of(
+			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.bossBarScale, v -> cfg.bossBarScale = v)), null));
+		out.add(new Entry("tablist", "slashclient-hud.game.tablist", "game", "m-tablist", () -> tablist.enabled, v -> tablist.enabled = v, List.of(
 			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.tabScale, v -> cfg.tabScale = v),
 			new Toggle("slashclient-hud.game.numericPing", () -> cfg.tabNumericPing, v -> cfg.tabNumericPing = v)), null));
+		//#if MC >= 1.20.2
+		out.add(new Entry("actionbar", "slashclient-hud.game.actionbar", "game", "m-actionbar", () -> cfg.actionBar && actionbar.enabled, v -> cfg.actionBar = actionbar.enabled = v, List.of(
+			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.actionBarScale, v -> cfg.actionBarScale = v)), null));
+		//#endif
 		out.add(new Entry("titles", "slashclient-hud.game.titles", "game", "m-titles", () -> cfg.titles, v -> cfg.titles = v, List.of(
 			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.titleScale, v -> cfg.titleScale = v)), null));
 		out.add(new Entry("nametag", "slashclient-hud.game.nametag", "game", "m-nametag", () -> cfg.ownNametag, v -> cfg.ownNametag = v, List.of(), null));

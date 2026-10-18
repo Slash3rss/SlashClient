@@ -14,6 +14,7 @@
 //$ 	public static final ResourceLocation TITLE_AND_SUBTITLE = ResourceLocation.withDefaultNamespace("title_and_subtitle");
 //$ 	public static final ResourceLocation CHAT = ResourceLocation.withDefaultNamespace("chat");
 //$ 	public static final ResourceLocation PLAYER_LIST = ResourceLocation.withDefaultNamespace("player_list");
+//$ 	public static final ResourceLocation OVERLAY_MESSAGE = ResourceLocation.withDefaultNamespace("overlay_message");
 //$ }
 //#elif MC < 1.21.6
 //$ package dev.slash3rss.slashclient.hud.compat;
@@ -32,5 +33,6 @@
 //$ 	public static final ResourceLocation TITLE_AND_SUBTITLE = IdentifiedLayer.TITLE_AND_SUBTITLE;
 //$ 	public static final ResourceLocation CHAT = IdentifiedLayer.CHAT;
 //$ 	public static final ResourceLocation PLAYER_LIST = IdentifiedLayer.PLAYER_LIST;
+//$ 	public static final ResourceLocation OVERLAY_MESSAGE = IdentifiedLayer.OVERLAY_MESSAGE;
 //$ }
 //#endif

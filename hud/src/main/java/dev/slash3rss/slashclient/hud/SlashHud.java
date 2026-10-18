@@ -214,8 +214,8 @@ public class SlashHud implements ClientModInitializer {
 			pose.scale(p.scale(), p.scale());
 			// keystrokes draw their own boxes
 			int w = m.width(mc), h = m.height(mc);
-			if (p.background(config) && !(m instanceof Modules.Keystrokes)) g.fill(0, 0, w, h, Math.round(p.opacity() * 2.55f) << 24);
-			if (p.outline) {
+			if (p.background(config) && !(m instanceof Modules.Keystrokes) && !(m instanceof GameParts.Part)) g.fill(0, 0, w, h, Math.round(p.opacity() * 2.55f) << 24);
+			if (p.outline && !(m instanceof GameParts.Part)) {
 				int c = 0xCC60A5FA;
 				g.fill(-1, -1, w + 1, 0, c);
 				g.fill(-1, h, w + 1, h + 1, c);

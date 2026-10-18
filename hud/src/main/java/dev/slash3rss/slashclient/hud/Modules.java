@@ -31,6 +31,8 @@ public final class Modules {
 			new MoreModules.Combo(), new MoreModules.Reach(), new MoreModules.Movement(), new MoreModules.Saturation(), new MoreModules.ItemCounter(), new MoreModules.Target(),
 			new Armor(), new Effects(), new Keystrokes(), new Sprint()));
 		out.addAll(ExtraModules.all());
+		// the game's own parts, moved in the editor like the modules
+		out.addAll(GameParts.ALL);
 		return List.copyOf(out);
 	}
 
@@ -283,14 +285,24 @@ public final class Modules {
 			return out;
 		}
 
-		/** Example armour for the editor; empty in the main menu, where items can't be made yet. */
+		/**
+		 * The biggest the module gets, for the editor: a whole netherite set and a sword, all new
+		 * (the longest numbers); empty in the main menu, where items can't be made yet.
+		 */
 		private static List<ItemStack> sample() {
 			List<ItemStack> out = new ArrayList<>();
-			for (var item : List.of(Items.DIAMOND_HELMET, Items.DIAMOND_CHESTPLATE, Items.IRON_LEGGINGS, Items.DIAMOND_BOOTS)) {
+			for (var item : List.of(Items.NETHERITE_HELMET, Items.NETHERITE_CHESTPLATE, Items.NETHERITE_LEGGINGS, Items.NETHERITE_BOOTS, Items.NETHERITE_SWORD)) {
 				ItemStack s = Ui.stack(item);
 				if (s != null) out.add(s);
 			}
 			return out;
+		}
+
+		/** What it shows: in the editor always the full example (so its box is as big as it gets), else what is worn. */
+		private List<ItemStack> shown(Minecraft mc) {
+			if (Compat.screen(mc) instanceof HudEditScreen) return sample();
+			List<ItemStack> list = items(mc);
+			return list.isEmpty() ? sample() : list;
 		}
 
 		private static String label(ItemStack s) {
@@ -310,13 +322,11 @@ public final class Modules {
 		}
 
 		public int width(Minecraft mc) {
-			List<ItemStack> list = items(mc);
-			return width(mc, list.isEmpty() ? sample() : list);
+			return width(mc, shown(mc));
 		}
 
 		public int height(Minecraft mc) {
-			int n = Math.max(1, items(mc).isEmpty() ? sample().size() : items(mc).size());
-			return n * 17 - 1 + PAD * 2;
+			return Math.max(1, shown(mc).size()) * 17 - 1 + PAD * 2;
 		}
 
 		private void drawList(GuiGraphicsExtractor g, Minecraft mc, int x, int y, List<ItemStack> list) {
@@ -335,8 +345,7 @@ public final class Modules {
 
 		@Override
 		public void drawPreview(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
-			List<ItemStack> list = items(mc);
-			drawList(g, mc, x, y, list.isEmpty() ? sample() : list);
+			drawList(g, mc, x, y, shown(mc));
 		}
 	}
 

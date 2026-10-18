@@ -375,5 +375,10 @@
 	"slashclient-hud.keybinds": "Klawisze",
 	"slashclient-hud.keybinds.hint": "Kliknij klawisz i naciśnij nowy. Esc go odpina.",
 	"slashclient-hud.keybinds.press": "Naciśnij klawisz albo przycisk myszy (Esc: brak)",
-	"slashclient-hud.keybinds.none": "Brak"
+	"slashclient-hud.keybinds.none": "Brak",
+	"slashclient-hud.part.scoreboard": "Scoreboard",
+	"slashclient-hud.part.bossbar": "Pasek bossa",
+	"slashclient-hud.part.tablist": "Lista graczy (Tab)",
+	"slashclient-hud.part.actionbar": "Pasek akcji",
+	"slashclient-hud.game.actionbar": "Pasek akcji"
 }

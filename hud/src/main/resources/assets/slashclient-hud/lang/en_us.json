@@ -375,5 +375,10 @@
 	"slashclient-hud.keybinds": "Keys",
 	"slashclient-hud.keybinds.hint": "Click a key, then press the new one. Esc unbinds it.",
 	"slashclient-hud.keybinds.press": "Press a key or mouse button (Esc: none)",
-	"slashclient-hud.keybinds.none": "None"
+	"slashclient-hud.keybinds.none": "None",
+	"slashclient-hud.part.scoreboard": "Scoreboard",
+	"slashclient-hud.part.bossbar": "Boss bar",
+	"slashclient-hud.part.tablist": "Player list (Tab)",
+	"slashclient-hud.part.actionbar": "Action bar",
+	"slashclient-hud.game.actionbar": "Action bar"
 }

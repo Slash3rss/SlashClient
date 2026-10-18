@@ -168,6 +168,9 @@ public final class HudConfig {
 	public boolean tabNumericPing = false;
 	public boolean titles = true;
 	public float titleScale = 1f;
+	/** The action bar above the hotbar (a server's short messages). */
+	public boolean actionBar = true;
+	public float actionBarScale = 1f;
 	/** Your own name above your head in third person (F5). */
 	public boolean ownNametag = false;
 	/** Clips: the last seconds of the screen in memory, saved with a key (off: it costs memory and a little CPU). */
@@ -229,6 +232,7 @@ public final class HudConfig {
 	static HudConfig defaults() {
 		HudConfig c = new HudConfig();
 		// left column, one text line (14 px) apart
+		GameParts.defaults(c);
 		c.modules.put("fps", new Placement(true, 0, 0, 2, 2));
 		c.modules.put("ping", new Placement(true, 0, 0, 2, 17));
 		c.modules.put("cps", new Placement(true, 0, 0, 2, 32));
@@ -296,6 +300,8 @@ public final class HudConfig {
 		HudConfig defaults = defaults();
 		if (read.modules == null) read.modules = new LinkedHashMap<>();
 		// modules added in newer versions get their default place
+		// the game's parts start where they were (the old offset sliders), not at the defaults' places
+		GameParts.defaults(read);
 		for (var e : defaults.modules.entrySet()) read.modules.putIfAbsent(e.getKey(), e.getValue());
 		if (read.chatTabs == null) read.chatTabs = defaults.chatTabs;
 		if (read.crosshair == null) read.crosshair = defaults.crosshair;
@@ -348,6 +354,8 @@ public final class HudConfig {
 		tabNumericPing = other.tabNumericPing;
 		titles = other.titles;
 		titleScale = other.titleScale;
+		actionBar = other.actionBar;
+		actionBarScale = other.actionBarScale;
 		ownNametag = other.ownNametag;
 		clips = other.clips;
 		clipSeconds = Math.max(10, Math.min(60, other.clipSeconds));

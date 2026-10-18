@@ -23,6 +23,7 @@ public class GameHudParts implements FabricClientGameTest {
 				"bossbar set slash players @a",
 				"title @a times 0 200 20",
 				"title @a title \"Witaj\"",
+				"title @a actionbar \"Pasek akcji SlashClient\"",
 			}) world.getServer().runCommand(cmd);
 			context.waitTicks(40);
 			context.runOnClient(mc -> TestHooks.thirdPerson(true));
@@ -31,6 +32,18 @@ public class GameHudParts implements FabricClientGameTest {
 			context.takeScreenshot("game-hud-parts");
 			context.getInput().releaseKey(o -> o.keyPlayerList);
 			context.runOnClient(mc -> TestHooks.thirdPerson(false));
+			// dragged in the editor: the scoreboard on the left edge, the action bar in the middle
+			context.runOnClient(mc -> TestHooks.moveGameParts());
+			world.getServer().runCommand("title @a actionbar \"Pasek akcji SlashClient\"");
+			int[] board = context.computeOnClient(mc -> TestHooks.gamePartBox("scoreboard"));
+			if (board[0] != 4) throw new AssertionError("The scoreboard's box is not on the left: x=" + board[0]);
+			context.waitTicks(5);
+			context.takeScreenshot("game-hud-parts-moved");
+			// the editor: the parts as boxes, and the armour at its biggest
+			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::new);
+			context.waitTicks(5);
+			context.takeScreenshot("game-hud-parts-editor");
+			context.setScreen(() -> null);
 		}
 		context.runOnClient(mc -> TestHooks.vanillaMenu());
 	}

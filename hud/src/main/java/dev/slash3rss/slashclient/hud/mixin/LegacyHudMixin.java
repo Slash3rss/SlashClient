@@ -60,6 +60,11 @@ abstract class LegacyHudMixin {
 	//$ private void slashclient$tabList(GuiGraphics g, DeltaTracker delta, Operation<Void> original) {
 	//$ 	HudElementRegistry.render(VanillaHudElements.PLAYER_LIST, g, delta, (gg, d) -> original.call(gg, d));
 	//$ }
+	//$
+	//$ @WrapMethod(method = "renderOverlayMessage")
+	//$ private void slashclient$actionBar(GuiGraphics g, DeltaTracker delta, Operation<Void> original) {
+	//$ 	HudElementRegistry.render(VanillaHudElements.OVERLAY_MESSAGE, g, delta, (gg, d) -> original.call(gg, d));
+	//$ }
 	//#elif MC < 1.20.2
 	//$ // 1.20.1 draws most of the HUD in Gui.render itself: the parts are wrapped where it calls them
 	//$ @WrapMethod(method = "renderCrosshair")
@@ -86,6 +91,6 @@ abstract class LegacyHudMixin {
 	//$ private void slashclient$tabList(PlayerTabOverlay tab, GuiGraphics g, int width, Scoreboard scoreboard, Objective objective, Operation<Void> original) {
 	//$ 	HudElementRegistry.render(VanillaHudElements.PLAYER_LIST, g, null, (gg, d) -> original.call(tab, gg, width, scoreboard, objective));
 	//$ }
-	//$ // titles are drawn inline in Gui.render: not adjustable on 1.20.1
+	//$ // titles and the action bar are drawn inline in Gui.render: not adjustable on 1.20.1
 	//#endif
 }

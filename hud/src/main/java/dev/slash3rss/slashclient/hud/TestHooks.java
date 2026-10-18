@@ -119,14 +119,35 @@ public final class TestHooks {
 		net.minecraft.client.Minecraft.getInstance().setScreenAndShow(new net.minecraft.client.gui.screens.TitleScreen());
 	}
 
+	/** The game's parts dragged elsewhere: the scoreboard to the left edge, the action bar up to the middle. */
+	public static void moveGameParts() {
+		HudConfig c = SlashHud.config;
+		HudConfig.Placement board = c.placement("scoreboard");
+		board.ax = 0;
+		board.dx = 4;
+		HudConfig.Placement action = c.placement("actionbar");
+		action.ay = 0.5f;
+		action.dy = 30;
+	}
+
+	/** Where a game part's box is (x, y, w, h), in GUI pixels. */
+	public static int[] gamePartBox(String id) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		HudModule part = GameParts.ALL.stream().filter(p -> p.id().equals(id)).findFirst().orElseThrow();
+		HudConfig.Placement p = SlashHud.config.placement(id);
+		int[] size = SlashHud.size(part, mc, p);
+		int[] at = SlashHud.position(p, size[0], size[1], mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+		return new int[] { at[0], at[1], size[0], size[1] };
+	}
+
 	/** The game HUD parts changed so the screenshot shows every setting at work. */
 	public static void gameParts() {
 		HudConfig c = SlashHud.config;
 		c.scoreboardScale = 0.8f;
-		c.scoreboardOffset = -40;
+		c.placement("scoreboard").dy = -40;
 		c.scoreboardNumbers = false;
 		c.bossBarScale = 0.8f;
-		c.bossBarOffset = 6;
+		c.placement("bossbar").dy = 6;
 		c.tabNumericPing = true;
 		c.titleScale = 0.6f;
 		c.ownNametag = true;

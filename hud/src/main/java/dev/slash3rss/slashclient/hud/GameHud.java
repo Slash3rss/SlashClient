@@ -34,19 +34,46 @@ public final class GameHud {
 		pose.popMatrix();
 	}
 
+	/**
+	 * Draws a part where its box was put in the editor: the point the game draws it around moved
+	 * to the same point of the box, and scaled there.
+	 */
+	private static void placed(GuiGraphicsExtractor g, GameParts.Part part, Runnable draw) {
+		Minecraft mc = Minecraft.getInstance();
+		HudConfig.Placement p = cfg().placement(part.id());
+		int sw = g.guiWidth(), sh = g.guiHeight();
+		int[] size = SlashHud.size(part, mc, p);
+		int[] at = SlashHud.position(p, size[0], size[1], sw, sh);
+		float[] box = part.boxAnchor(size[0], size[1]), screen = part.screenAnchor(sw, sh);
+		float scale = part.scale() * p.scale();
+		float tx = at[0] + box[0], ty = at[1] + box[1];
+		if (scale == 1f && Math.abs(tx - screen[0]) < 0.5f && Math.abs(ty - screen[1]) < 0.5f) {
+			draw.run();
+			return;
+		}
+		var pose = g.pose();
+		pose.pushMatrix();
+		pose.translate(tx, ty);
+		pose.scale(scale, scale);
+		pose.translate(-screen[0], -screen[1]);
+		draw.run();
+		pose.popMatrix();
+	}
+
 	static void register() {
-		// the scoreboard sits in the middle of the right edge
+		// the scoreboard, the boss bar, the tab list and the action bar: where their boxes are in the editor
 		HudElementRegistry.replaceElement(VanillaHudElements.SCOREBOARD, vanilla -> (HudElement) (g, delta) -> {
-			if (!cfg().scoreboard) return;
-			framed(g, cfg().scoreboardScale, g.guiWidth(), g.guiHeight() / 2f, cfg().scoreboardOffset, () -> vanilla.extractRenderState(g, delta));
+			if (GameParts.SCOREBOARD.on()) placed(g, GameParts.SCOREBOARD, () -> vanilla.extractRenderState(g, delta));
 		});
-		// the boss bar and the tab list hang from the top middle
 		HudElementRegistry.replaceElement(VanillaHudElements.BOSS_BAR, vanilla -> (HudElement) (g, delta) -> {
-			if (!cfg().bossBar) return;
-			framed(g, cfg().bossBarScale, g.guiWidth() / 2f, 0, cfg().bossBarOffset, () -> vanilla.extractRenderState(g, delta));
+			if (GameParts.BOSS_BAR.on()) placed(g, GameParts.BOSS_BAR, () -> vanilla.extractRenderState(g, delta));
 		});
-		HudElementRegistry.replaceElement(VanillaHudElements.PLAYER_LIST, vanilla -> (HudElement) (g, delta) ->
-			framed(g, cfg().tabScale, g.guiWidth() / 2f, 0, 0, () -> vanilla.extractRenderState(g, delta)));
+		HudElementRegistry.replaceElement(VanillaHudElements.PLAYER_LIST, vanilla -> (HudElement) (g, delta) -> {
+			if (GameParts.TAB_LIST.on()) placed(g, GameParts.TAB_LIST, () -> vanilla.extractRenderState(g, delta));
+		});
+		HudElementRegistry.replaceElement(VanillaHudElements.OVERLAY_MESSAGE, vanilla -> (HudElement) (g, delta) -> {
+			if (GameParts.ACTION_BAR.on()) placed(g, GameParts.ACTION_BAR, () -> vanilla.extractRenderState(g, delta));
+		});
 		// titles in the middle of the screen
 		HudElementRegistry.replaceElement(VanillaHudElements.TITLE_AND_SUBTITLE, vanilla -> (HudElement) (g, delta) -> {
 			if (!cfg().titles) return;
