@@ -18,6 +18,7 @@ import { createApp } from './app.ts';
  *   ALLOW_DEV_LOGIN=1       sign-in with just a name; local testing only
  *   ADMIN_HANDLES           comma-separated handles that are admins (the panel at /admin)
  *   WEB_DIR                 the website's files, default ./web
+ *   CURSEFORGE_API_KEY      key from console.curseforge.com: enables CurseForge in the launcher
  */
 const port = Number(process.env.PORT) || 8787;
 const dbFile = process.env.DB_FILE ?? path.resolve('data/social.db');
@@ -45,6 +46,7 @@ const { server } = createApp({
   trustProxy: process.env.TRUST_PROXY === '1',
   releasesRepo: process.env.RELEASES_REPO,
   releasesToken: process.env.RELEASES_TOKEN || undefined,
+  curseforgeKey: process.env.CURSEFORGE_API_KEY || undefined,
 });
 
 server.listen(port, () => {

@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: slash-media: https://launchercontent.mojang.com https://client.slash3rss.dev https://api.slash3rss.dev https://cdn.modrinth.com https://cdn.discordapp.com https://lh3.googleusercontent.com https://avatars.githubusercontent.com; style-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: slash-media: https://launchercontent.mojang.com https://client.slash3rss.dev https://api.slash3rss.dev https://cdn.modrinth.com https://media.forgecdn.net https://cdn.discordapp.com https://lh3.googleusercontent.com https://avatars.githubusercontent.com; style-src 'self'">
   <title>SlashClient</title>
   <link rel="stylesheet" href="fa/css/all.min.css">
   <link rel="stylesheet" href="style.css">
@@ -128,7 +128,7 @@
       <button class="more hidden" id="servers-more">Pokaż więcej</button>
     </section>
 
-    <!-- Mods, resource packs, shaders, modpacks (Modrinth) -->
+    <!-- Mods, resource packs, shaders, modpacks (Modrinth, CurseForge) -->
 
 
 
@@ -241,7 +241,7 @@
             </div>
           </div>
           <div class="profile-pane hidden" data-pane="content">
-            <p class="muted sub">Z <a href="https://modrinth.com" target="_blank">Modrinth</a>, instalowane do tego profilu</p>
+            <p class="muted sub">Z <a href="https://modrinth.com" target="_blank" id="content-site">Modrinth</a>, instalowane do tego profilu</p>
             <div class="filters glass-panel">
               <div class="segmented" id="content-type">
                 <button class="active" data-type="mod"><i class="fa-solid fa-puzzle-piece"></i> Mody</button>
@@ -255,9 +255,17 @@
               </div>
             </div>
             <div class="notice hidden" id="content-notice"></div>
+            <div class="updates-bar glass-panel hidden" id="manual-bar">
+              <span id="manual-text"></span>
+              <button type="button" id="manual-show"><i class="fa-solid fa-hand-pointer"></i> Pokaż pliki</button>
+            </div>
             <div class="filters glass-panel" id="content-search-bar">
+              <div class="segmented" id="content-source" title="Skąd pobierać">
+                <button class="active" data-source="modrinth">Modrinth</button>
+                <button data-source="curseforge">CurseForge</button>
+              </div>
               <div class="search"><i class="fa-solid fa-magnifying-glass"></i><input id="content-search" placeholder="Szukaj na Modrinth…"></div>
-              <button id="modpack-import" class="hidden"><i class="fa-solid fa-file-import"></i> Importuj .mrpack</button>
+              <button id="modpack-import" class="hidden"><i class="fa-solid fa-file-import"></i> Importuj modpack</button>
               <button id="perf-open" class="hidden"><i class="fa-solid fa-bolt"></i> Mody wydajności</button>
             </div>
             <div class="updates-bar glass-panel hidden" id="updates-bar">
@@ -478,6 +486,17 @@
         <h2 id="versions-title"></h2>
         <label class="check" id="versions-compat-wrap"><input type="checkbox" id="versions-compat" checked> Tylko wersje zgodne z tym profilem</label>
         <div class="version-list" id="versions-list"></div>
+      </div>
+    </div>
+  </div>
+  <div class="modal hidden" id="manual-modal">
+    <div class="modal-box glass-panel versions-box">
+      <button class="icon-btn modal-close" id="manual-close" title="Zamknij"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-body">
+        <h2>Pliki do pobrania ręcznie</h2>
+        <p class="muted">Autorzy tych plików pozwalają je pobrać tylko ze strony CurseForge. Otwórz stronę pliku, pobierz go i wrzuć do wskazanego folderu profilu. Gdy plik będzie na miejscu, zniknie z tej listy.</p>
+        <div class="version-list" id="manual-list"></div>
+        <div class="row manual-actions"><button type="button" id="manual-dismiss">Nie pokazuj więcej</button></div>
       </div>
     </div>
   </div>

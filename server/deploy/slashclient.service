@@ -7,6 +7,7 @@ Wants=network-online.target
 User=slashclient
 Group=slashclient
 WorkingDirectory=/opt/slashclient/app
+# settings and keys, filled in on the server only, e.g. CURSEFORGE_API_KEY=... (see server/README.md)
 EnvironmentFile=/etc/slashclient/env
 ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning src/index.ts
 Restart=always

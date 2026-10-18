@@ -13,6 +13,7 @@ import { trackerRoutes } from './tracker.ts';
 import { RequestLog, clientOf, maskIp, routeOf } from './requests.ts';
 import { serveWeb } from './web.ts';
 import { createDownloads, isDownloadOs } from './downloads.ts';
+import { createCurseForge } from './curseforge.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -43,6 +44,8 @@ export interface Config {
   releasesRepo?: string;
   /** Read access to that repository when it is private. */
   releasesToken?: string;
+  /** CurseForge API key (CURSEFORGE_API_KEY) for the launcher's CurseForge searches; without it CurseForge is off. */
+  curseforgeKey?: string;
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -169,6 +172,8 @@ export function createApp(cfg: Config) {
   const limitMessages = rateLimiter(40);
   const limitRequests = rateLimiter(15);
   const limitLogins = rateLimiter(cfg.loginsPerMinute ?? 10);
+  /** Searching and installing a modpack asks a lot at once, but one address should not drain the key's quota. */
+  const limitCurseForge = rateLimiter(240);
   /** Who is asking, for the rate limits: behind Caddy every request comes from 127.0.0.1. */
   const requests = new RequestLog();
   const clientIp = (req: http.IncomingMessage): string => {
@@ -808,6 +813,24 @@ export function createApp(cfg: Config) {
       return;
     }
 
+    // CurseForge for the launcher, with the server's key (see curseforge.ts)
+    const cf = /^\/v1\/curseforge(\/[\w/]*)$/.exec(url.pathname);
+    if (cf) {
+      let answer;
+      try {
+        limitCurseForge(clientIp(req));
+        answer = await curseforge.request(req.method ?? 'GET', cf[1], url.searchParams, req.method === 'POST' ? await body(req) : undefined);
+      } catch (err) {
+        const known = err instanceof HttpError;
+        if (!known) console.error(err);
+        answer = { status: known ? err.status : 500, body: JSON.stringify({ error: known ? err.code : 'server_error' }) };
+      }
+      if (answer.status !== 200) (req as SeenRequest).slashError = JSON.parse(answer.body).error ?? String(answer.status);
+      res.writeHead(answer.status, { 'Content-Type': 'application/json' });
+      res.end(answer.body);
+      return;
+    }
+
     for (const [method, pattern, fn] of routes) {
       const m = pattern.exec(url.pathname);
       if (!m || method !== req.method) continue;
@@ -866,6 +889,7 @@ export function createApp(cfg: Config) {
     res.end(JSON.stringify({ error: 'not_found' }));
   }
 
+  const curseforge = createCurseForge({ apiKey: cfg.curseforgeKey, fetchImpl: cfg.fetchImpl ?? fetch });
   const downloads = createDownloads({ repo: cfg.releasesRepo ?? 'Slash3rss/SlashClient', token: cfg.releasesToken, fetchImpl: cfg.fetchImpl ?? fetch });
 
   // every API request (not the site's files) goes into the request log for the admin panel

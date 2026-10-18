@@ -29,19 +29,22 @@ const api = {
   launch: (profileId: string, accountId: string, server?: string, world?: string, benchmark?: boolean) => invoke('game:launch', profileId, accountId, server, world, benchmark),
   listBenchmarks: (profileId: string) => invoke('benchmark:list', profileId),
   listServers: (force?: boolean) => invoke('servers:list', force),
-  searchContent: (profileId: string, query: string, type: string, offset?: number) => invoke('content:search', profileId, query, type, offset),
+  searchContent: (profileId: string, query: string, type: string, offset?: number, source?: string) => invoke('content:search', profileId, query, type, offset, source),
   listContent: (profileId: string) => invoke('content:list', profileId),
-  installContent: (profileId: string, projectId: string, type: string, title?: string, icon?: string, versionId?: string) =>
-    invoke('content:install', profileId, projectId, type, title, icon, versionId),
-  contentVersions: (profileId: string, projectId: string, type: string, onlyCompatible: boolean) =>
-    invoke('content:versions', profileId, projectId, type, onlyCompatible),
+  installContent: (profileId: string, projectId: string, type: string, title?: string, icon?: string, versionId?: string, source?: string) =>
+    invoke('content:install', profileId, projectId, type, title, icon, versionId, source),
+  contentVersions: (profileId: string, projectId: string, type: string, onlyCompatible: boolean, source?: string) =>
+    invoke('content:versions', profileId, projectId, type, onlyCompatible, source),
+  manualFiles: (profileId: string) => invoke('content:manual', profileId),
+  dismissManualFiles: (profileId: string) => invoke('content:manualDismiss', profileId),
+  openProfileFolder: (profileId: string, folder: string) => invoke('profile:openFolder', profileId, folder),
   checkUpdates: (profileId: string) => invoke('content:checkUpdates', profileId),
   updateContent: (profileId: string, items: unknown[]) => invoke('content:update', profileId, items),
   checkModpack: (profileId: string) => invoke('modpack:check', profileId),
   updateModpack: (profileId: string, versionId?: string) => invoke('modpack:update', profileId, versionId),
   toggleContent: (profileId: string, type: string, filename: string, enabled: boolean) => invoke('content:toggle', profileId, type, filename, enabled),
   removeContent: (profileId: string, type: string, filename: string) => invoke('content:remove', profileId, type, filename),
-  installModpack: (projectId: string, title: string, iconUrl?: string, versionId?: string) => invoke('modpack:install', projectId, title, iconUrl, versionId),
+  installModpack: (projectId: string, title: string, iconUrl?: string, versionId?: string, source?: string) => invoke('modpack:install', projectId, title, iconUrl, versionId, source),
   importModpack: () => invoke('modpack:import'),
   pingServer: (address: string) => invoke('servers:ping', address),
   kill: (profileId?: string) => invoke('game:kill', profileId),
