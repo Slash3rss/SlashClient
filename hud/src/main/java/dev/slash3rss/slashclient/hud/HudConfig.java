@@ -129,6 +129,8 @@ public final class HudConfig {
 	public boolean dungeonPlayers = true;
 	/** The dungeon map's title ("Dungeon · poziom 3" and the containers taken). */
 	public boolean dungeonTitle = true;
+	/** The dungeon map's size on screen, in pixels (80–240): more map, the text and icons as they are. */
+	public int dungeonSize = 120;
 	/** Rooms not seen yet drawn from the map SkyUp builds above the dungeon. */
 	public boolean dungeonPlan = false;
 	/** Progress to the next level (the boss bar's fill) on the dungeon map. */
@@ -138,9 +140,11 @@ public final class HudConfig {
 	/** Mobs and NPCs (players with a skin who are not on the tab list) on the dungeon map. */
 	public boolean dungeonMobs = true;
 	/** How each mob class shows on the dungeon map: "head", "dot", "skull" or "hidden". */
-	public String dungeonMobNormal = "head", dungeonMobElite = "head", dungeonMobBoss = "head", dungeonMobOther = "head";
+	public String dungeonMobNormal = "head", dungeonMobElite = "head", dungeonMobBoss = "head", dungeonMobMinion = "head", dungeonMobOther = "head";
 	/** Spawners on the dungeon map: armour stands with a spawner on the head. */
 	public boolean dungeonSpawners = true;
+	/** How a spawner shows on the dungeon map: "icon", "dot" or "hidden". */
+	public String dungeonSpawnerStyle = "icon";
 	/** Chests, barrels and pots on the dungeon map, counted per room (taken of all). */
 	public boolean dungeonContainers = true;
 	/** The dungeon map's floor in its blocks' colours instead of one plain grey. */
@@ -380,6 +384,7 @@ public final class HudConfig {
 		dungeonZoom = other.dungeonZoom;
 		dungeonPlayers = other.dungeonPlayers;
 		dungeonTitle = other.dungeonTitle;
+		dungeonSize = other.dungeonSize;
 		dungeonPlan = other.dungeonPlan;
 		dungeonProgress = other.dungeonProgress;
 		dungeonSelfHead = other.dungeonSelfHead;
@@ -387,8 +392,10 @@ public final class HudConfig {
 		dungeonMobNormal = other.dungeonMobNormal;
 		dungeonMobElite = other.dungeonMobElite;
 		dungeonMobBoss = other.dungeonMobBoss;
+		dungeonMobMinion = other.dungeonMobMinion;
 		dungeonMobOther = other.dungeonMobOther;
 		dungeonSpawners = other.dungeonSpawners;
+		dungeonSpawnerStyle = other.dungeonSpawnerStyle;
 		dungeonContainers = other.dungeonContainers;
 		dungeonBlockColors = other.dungeonBlockColors;
 		dungeonChests = other.dungeonChests;

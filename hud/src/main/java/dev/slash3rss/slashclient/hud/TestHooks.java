@@ -548,6 +548,8 @@ public final class TestHooks {
 	/** The dungeon map round, zoomed in and following the player, or back as it was. */
 	public static void dungeonRound(boolean round) {
 		SlashHud.config.dungeonShape = round ? "circle" : "square";
+		// and bigger, so the map's picture is made anew at another size
+		SlashHud.config.dungeonSize = round ? 180 : 120;
 		SlashHud.config.dungeonZoom = round ? 1.5f : 1f;
 		SlashHud.config.dungeonFollow = round;
 		SlashHud.config.dungeonSelfHead = round;

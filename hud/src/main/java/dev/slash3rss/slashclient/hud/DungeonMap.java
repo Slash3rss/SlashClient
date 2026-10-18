@@ -208,6 +208,7 @@ public final class DungeonMap implements HudModule {
 
 	/** The picture on screen: the part of the map shown, in its shape. */
 	private static void render(Minecraft mc) {
+		resize();
 		if (minX > maxX) return;
 		HudConfig cfg = SlashHud.config;
 		boolean circle = "circle".equals(cfg.dungeonShape);
@@ -411,7 +412,21 @@ public final class DungeonMap implements HudModule {
 
 	// ---------- the module ----------
 
-	private static final int W = 120, H = 120, TITLE = 11;
+	/** The map's size on screen (set in its settings), and its title line. */
+	private static int W = 120, H = 120;
+	private static final int TITLE = 11;
+
+	/** The size from the settings; the picture is made anew when it changes. */
+	private static void resize() {
+		int size = Math.max(80, Math.min(240, SlashHud.config.dungeonSize));
+		if (size == W) return;
+		W = H = size;
+		if (view == null) return;
+		Minecraft mc = Minecraft.getInstance();
+		view = new NativeImage(W, H, true);
+		viewTexture = new DynamicTexture(() -> "SlashClient dungeon map view", view);
+		mc.getTextureManager().register(viewId, viewTexture);
+	}
 
 	@Override
 	public boolean visible(Minecraft mc) {
@@ -420,6 +435,7 @@ public final class DungeonMap implements HudModule {
 
 	@Override
 	public int width(Minecraft mc) {
+		resize();
 		return W;
 	}
 
@@ -490,19 +506,10 @@ public final class DungeonMap implements HudModule {
 			if (!clip.test(sx, sz)) continue;
 			if (DungeonRooms.spawnerLabel(e)) {
 				// SkyUp's spawner: its hologram ("Spawner", its level, the mobs left) over a floating spawner
-				if (cfg.dungeonSpawners) {
-					g.fill(ox + sx - 5, oy + sz - 5, ox + sx + 5, oy + sz + 5, 0xFFF59E0B);
-					g.fill(ox + sx - 4, oy + sz - 4, ox + sx + 4, oy + sz + 4, 0xFF1F2937);
-					item(g, new ItemStack(Items.SPAWNER), ox + sx, oy + sz, 8);
-				}
+				if (cfg.dungeonSpawners) spawner(g, ox + sx, oy + sz);
 			} else if (e instanceof ArmorStand stand) {
 				ItemStack head = stand.getItemBySlot(EquipmentSlot.HEAD);
-				if (cfg.dungeonSpawners && head.is(Items.SPAWNER)) {
-					// the cage alone is hard to see: on an orange square
-					g.fill(ox + sx - 5, oy + sz - 5, ox + sx + 5, oy + sz + 5, 0xFFF59E0B);
-					g.fill(ox + sx - 4, oy + sz - 4, ox + sx + 4, oy + sz + 4, 0xFF1F2937);
-					item(g, head, ox + sx, oy + sz, 8);
-				}
+				if (cfg.dungeonSpawners && head.is(Items.SPAWNER)) spawner(g, ox + sx, oy + sz);
 			} else if (e instanceof AbstractClientPlayer p && connection != null && connection.getPlayerInfo(p.getUUID()) != null) {
 				if (cfg.dungeonPlayers) face(g, p, ox + sx, oy + sz, 0xFF60A5FA);
 			} else if ((e instanceof Mob || e instanceof AbstractClientPlayer) && cfg.dungeonMobs && !e.isInvisible()) {
@@ -513,13 +520,32 @@ public final class DungeonMap implements HudModule {
 		}
 	}
 
-	/** How a mob class is drawn: "head", "dot", "skull" or "hidden" (0 other mobs, 1 normal, 2 elite, 3 mini boss). */
+	public static final String[] SPAWNER_STYLES = { "icon", "dot", "hidden" };
+
+	/** A spawner as set: the cage on an orange square (alone it is hard to see), an orange dot, or nothing. */
+	private static void spawner(GuiGraphicsExtractor g, int x, int y) {
+		switch (SlashHud.config.dungeonSpawnerStyle) {
+			case "hidden" -> {}
+			case "dot" -> {
+				g.fill(x - 3, y - 3, x + 3, y + 3, 0xFF000000);
+				g.fill(x - 2, y - 2, x + 2, y + 2, 0xFFF59E0B);
+			}
+			default -> {
+				g.fill(x - 5, y - 5, x + 5, y + 5, 0xFFF59E0B);
+				g.fill(x - 4, y - 4, x + 4, y + 4, 0xFF1F2937);
+				item(g, new ItemStack(Items.SPAWNER), x, y, 8);
+			}
+		}
+	}
+
+	/** How a mob class is drawn: "head", "dot", "skull" or "hidden" (0 other mobs, 1 normal, 2 elite, 3 mini boss, 4 minion). */
 	private static String mobStyle(int kind) {
 		HudConfig cfg = SlashHud.config;
 		return switch (kind) {
 			case 1 -> cfg.dungeonMobNormal;
 			case 2 -> cfg.dungeonMobElite;
 			case 3 -> cfg.dungeonMobBoss;
+			case 4 -> cfg.dungeonMobMinion;
 			default -> cfg.dungeonMobOther;
 		};
 	}
@@ -559,12 +585,12 @@ public final class DungeonMap implements HudModule {
 		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, skin, x - 3, y - 3, 40, 8, 6, 6, 8, 8, 64, 64, 0xFFFFFFFF);
 	}
 
-	/** Frames of the mob classes: unknown, normal (&e), elite (&6), mini boss (&4). */
-	private static final int[] FRAMES = { 0xFF7F1D1D, 0xFFFDE047, 0xFFF97316, 0xFFDC2626 };
+	/** Frames of the mob classes: unknown, normal (&e), elite (&6), mini boss (&4), minion (&5). */
+	private static final int[] FRAMES = { 0xFF7F1D1D, 0xFFFDE047, 0xFFF97316, 0xFFDC2626, 0xFFA855F7 };
 
 	/**
-	 * A dungeon mob's class from its name's colour (&e normal, &6 elite, &4 mini boss): 1, 2, 3, or
-	 * 0 for a mob with no such name.
+	 * A dungeon mob's class from its name's colour (&e normal, &6 elite, &4 mini boss, &5 minion):
+	 * 1, 2, 3, 4, or 0 for a mob with no such name.
 	 */
 	static int kind(Entity mob) {
 		if (!mob.hasCustomName()) return 0;
@@ -591,6 +617,7 @@ public final class DungeonMap implements HudModule {
 			case 0xFFFF55 -> 1;
 			case 0xFFAA00 -> 2;
 			case 0xAA0000 -> 3;
+			case 0xAA00AA -> 4;
 			default -> 0;
 		};
 	}

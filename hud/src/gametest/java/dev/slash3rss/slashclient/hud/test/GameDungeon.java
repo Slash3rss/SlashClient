@@ -109,10 +109,13 @@ public class GameDungeon implements FabricClientGameTest {
 			server.runCommand(String.format("summon husk %d %d %d {NoAI:1b,PersistenceRequired:1b," + name("[{\"text\":\"20.0 ❤ | \",\"color\":\"red\"},{\"text\":\"Giermek \",\"color\":\"gold\"},{\"text\":\"poz. 1\",\"color\":\"gray\"}]") + "}", x0 + 12, y, z0 - 9));
 			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,CustomNameVisible:1b," + name("{\"text\":\"Spawner\",\"color\":\"gold\"}") + "}", x0 + 12, y + 2, z0 - 12));
 			context.waitTicks(30);
+			// a minion: its name in dark purple
+			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b," + name("{\"text\":\"Minion\",\"color\":\"dark_purple\"}") + "}", x0 + 6, y, z0 - 3));
+			context.waitTicks(5);
 			String target = context.computeOnClient(mc -> TestHooks.targetName());
 			if (!target.equals("☺ Żniwiarz poz. 100|Steve")) throw new AssertionError("Target's name: " + target);
 			String kinds = context.computeOnClient(mc -> TestHooks.dungeonKinds());
-			if (!kinds.equals("[2, 2, 3] spawners 1")) throw new AssertionError("Mob classes and spawners: " + kinds);
+			if (!kinds.equals("[2, 2, 3, 4] spawners 1")) throw new AssertionError("Mob classes and spawners: " + kinds);
 			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
 			if (!rooms.contains("cleared 2")) throw new AssertionError("Hologram not read: " + rooms);
 			context.takeScreenshot("dungeon-holograms");
