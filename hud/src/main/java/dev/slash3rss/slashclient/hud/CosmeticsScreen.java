@@ -66,6 +66,7 @@ public class CosmeticsScreen extends Screen {
 	private String slot = "cape";
 	/** The item grid scrolls when a slot has more items than fit (in pixels), and where it is on screen. */
 	private int scroll, maxScroll, gridTop, gridBottom;
+	private final dev.slash3rss.slashclient.hud.ui.Scrollbar bar = new dev.slash3rss.slashclient.hud.ui.Scrollbar();
 	/** Opened from the main menu: the player's figure on the left. */
 	private dev.slash3rss.slashclient.hud.ui.SkinPreview figure;
 	private CameraType camera;
@@ -242,6 +243,7 @@ public class CosmeticsScreen extends Screen {
 		super.extractRenderState(g, mx, my, delta);
 		hits.clear();
 		tooltip = null;
+		bar.hide();
 		// out of a world there is no player to look at: your figure, wearing what you pick
 		if (minecraft.level == null && px - 12 >= 64) {
 			if (figure == null) figure = new dev.slash3rss.slashclient.hud.ui.SkinPreview(minecraft);
@@ -322,14 +324,8 @@ public class CosmeticsScreen extends Screen {
 		}
 		Ui.end();
 		g.disableScissor();
-		if (maxScroll > 0) {
-			// where in the list we are
-			int trackX = px + pw - 7, trackH = gridBottom - gridTop;
-			int thumbH = Math.max(16, trackH * trackH / (trackH + maxScroll));
-			int thumbY = gridTop + (trackH - thumbH) * scroll / maxScroll;
-			g.fill(trackX, gridTop, trackX + 2, gridBottom, 0x30FFFFFF);
-			g.fill(trackX, thumbY, trackX + 2, thumbY + thumbH, 0xB060A5FA);
-		}
+		// where in the list we are; taken with the mouse it scrolls too
+		bar.draw(g, px + pw - 8, gridTop, gridBottom - gridTop, scroll, maxScroll, mx, my);
 		Ui.end();
 		if (tooltip != null) {
 			int w = Ui.width(tooltip) + 12;
@@ -410,6 +406,10 @@ public class CosmeticsScreen extends Screen {
 		//#else
 		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
 		//#endif
+		if (e.button() == 0 && bar.press(e.x(), e.y())) {
+			scroll = Math.round(bar.drag(e.y()));
+			return true;
+		}
 		for (int i = hits.size() - 1; i >= 0; i--) {
 			Hit h = hits.get(i);
 			if (Ui.inside(e.x(), e.y(), h.x(), h.y(), h.w(), h.h())) {
@@ -419,6 +419,39 @@ public class CosmeticsScreen extends Screen {
 		}
 		return false;
 	}
+	@Override
+	//#if MC >= 1.21.9
+	public boolean mouseDragged(MouseButtonEvent e, double dx, double dy) {
+	//#else
+	//$ public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//#endif
+		if (bar.dragging()) {
+			scroll = Math.round(bar.drag(e.y()));
+			return true;
+		}
+		//#if MC >= 1.21.9
+		return super.mouseDragged(e, dx, dy);
+		//#else
+		//$ return super.mouseDragged(e.x(), e.y(), e.button(), dx, dy);
+		//#endif
+	}
+
+	@Override
+	//#if MC >= 1.21.9
+	public boolean mouseReleased(MouseButtonEvent e) {
+	//#else
+	//$ public boolean mouseReleased(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//#endif
+		bar.release();
+		//#if MC >= 1.21.9
+		return super.mouseReleased(e);
+		//#else
+		//$ return super.mouseReleased(e.x(), e.y(), e.button());
+		//#endif
+	}
+
 
 	//#if MC >= 1.20.2
 	@Override

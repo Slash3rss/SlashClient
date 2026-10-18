@@ -40,6 +40,8 @@ public class HudEditScreen extends Screen {
 	/** The entry whose settings are open, or null for the cards. */
 	private Catalog.Entry settingsOf;
 	private float scroll;
+	/** The bar of whichever list the window shows now. */
+	private final dev.slash3rss.slashclient.hud.ui.Scrollbar bar = new dev.slash3rss.slashclient.hud.ui.Scrollbar();
 	private float maxScroll;
 	private Component status = Component.empty();
 	private EditBox search;
@@ -430,6 +432,7 @@ public class HudEditScreen extends Screen {
 		//$ extractBackground(g, mx, my, delta);
 		//#endif
 		hits.clear();
+		bar.hide();
 		g.fill(0, 0, width, height, window ? 0xB0050710 : 0x30000000);
 		if (dragging != null) {
 			g.fill(width / 2, 0, width / 2 + 1, height, snappedX ? 0xAA60A5FA : 0x30FFFFFF);
@@ -604,10 +607,8 @@ public class HudEditScreen extends Screen {
 		Ui.end();
 		g.disableScissor();
 		if (maxScroll > 0) {
-			int barH = Math.max(20, h * h / (h + Math.round(maxScroll)));
-			int barY = y + Math.round((h - barH) * scroll / maxScroll);
 			Ui.end();
-			Ui.round(g, x + w + 4, barY, 3, barH, 1, 0x40FFFFFF);
+			bar.draw(g, x + w + 4, y, h, scroll, maxScroll, mx, my);
 			Ui.begin("content", x, y, w, h);
 		}
 	}
@@ -782,6 +783,11 @@ public class HudEditScreen extends Screen {
 		}
 		Ui.end();
 		g.disableScissor();
+		if (maxScroll > 0) {
+			Ui.end();
+			bar.draw(g, x + w + 4, listTop, listH, scroll, maxScroll, mx, my);
+			Ui.begin("content", x, y, w, h);
+		}
 	}
 
 
@@ -850,6 +856,10 @@ public class HudEditScreen extends Screen {
 			}
 		}
 		if (e.button() != InputConstants.MOUSE_BUTTON_LEFT) return false;
+		if (window && bar.press(e.x(), e.y())) {
+			scroll = bar.drag(e.y());
+			return true;
+		}
 		int span = gridCell * Crosshair.N;
 		if (crosshairPage() && Ui.inside(e.x(), e.y(), gridX, gridY, span, span)) {
 			// the first pixel decides: drag from an empty one to draw, from a full one to erase
@@ -910,6 +920,10 @@ public class HudEditScreen extends Screen {
 			dragSlider(e.x());
 			return true;
 		}
+		if (bar.dragging()) {
+			scroll = bar.drag(e.y());
+			return true;
+		}
 		//#if MC >= 1.21.9
 		if (dragging == null) return super.mouseDragged(e, dx, dy);
 		//#else
@@ -941,6 +955,7 @@ public class HudEditScreen extends Screen {
 	//#endif
 		dragging = null;
 		draggingSlider = null;
+		bar.release();
 		painting = null;
 		lastCellX = lastCellY = -1;
 		snappedX = snappedY = false;

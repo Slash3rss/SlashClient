@@ -404,6 +404,20 @@ public final class TestHooks {
 		return (int) java.util.Arrays.stream(mc.options.keyMappings).filter(k -> SlashHud.keyCategory.equals(k.getCategory())).count();
 	}
 
+	/** A scrollbar taken by its thumb and dragged, then clicked at the bottom of its track: the scrolls it gave. */
+	public static String scrollbarDrag() {
+		var bar = new dev.slash3rss.slashclient.hud.ui.Scrollbar();
+		bar.layout(100, 50, 200, 0, 400);
+		boolean took = bar.press(101, 55);
+		float dragged = bar.drag(55 + 70);
+		bar.release();
+		bar.layout(100, 50, 200, dragged, 400);
+		bar.press(101, 249);
+		float jumped = bar.drag(249);
+		bar.release();
+		return took + "," + Math.round(dragged) + "," + Math.round(jumped);
+	}
+
 	/** Whether Q would need a second press for a sword, and for dirt. */
 	public static String dropGuarded() {
 		return DropGuard.valuable(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_SWORD)) + ","

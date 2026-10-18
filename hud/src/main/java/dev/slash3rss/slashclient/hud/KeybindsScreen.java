@@ -28,6 +28,7 @@ public class KeybindsScreen extends Screen {
 	/** The binding waiting for a key, or null. */
 	private KeyMapping waiting;
 	private int scroll, maxScroll;
+	private final dev.slash3rss.slashclient.hud.ui.Scrollbar bar = new dev.slash3rss.slashclient.hud.ui.Scrollbar();
 	private int px, py, pw, ph;
 
 	public KeybindsScreen(Screen parent) {
@@ -61,6 +62,7 @@ public class KeybindsScreen extends Screen {
 		//#endif
 		super.extractRenderState(g, mx, my, delta);
 		hits.clear();
+		bar.hide();
 		Ui.panel(g, px, py, pw, ph);
 		Ui.begin("keybinds", px, py, pw, ph);
 		int x = px + 12, y = py + 10;
@@ -95,6 +97,7 @@ public class KeybindsScreen extends Screen {
 		}
 		Ui.end();
 		g.disableScissor();
+		bar.draw(g, px + pw - 7, listTop, listBottom - listTop, scroll, maxScroll, mx, my);
 		Ui.end();
 	}
 
@@ -147,6 +150,10 @@ public class KeybindsScreen extends Screen {
 			bind(waiting, InputConstants.Type.MOUSE.getOrCreate(e.button()));
 			return true;
 		}
+		if (e.button() == 0 && bar.press(e.x(), e.y())) {
+			scroll = Math.round(bar.drag(e.y()));
+			return true;
+		}
 		for (int i = hits.size() - 1; i >= 0; i--) {
 			Hit h = hits.get(i);
 			if (Ui.inside(e.x(), e.y(), h.x(), h.y(), h.w(), h.h())) {
@@ -157,6 +164,39 @@ public class KeybindsScreen extends Screen {
 		waiting = null;
 		return false;
 	}
+	@Override
+	//#if MC >= 1.21.9
+	public boolean mouseDragged(MouseButtonEvent e, double dx, double dy) {
+	//#else
+	//$ public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//#endif
+		if (bar.dragging()) {
+			scroll = Math.round(bar.drag(e.y()));
+			return true;
+		}
+		//#if MC >= 1.21.9
+		return super.mouseDragged(e, dx, dy);
+		//#else
+		//$ return super.mouseDragged(e.x(), e.y(), e.button(), dx, dy);
+		//#endif
+	}
+
+	@Override
+	//#if MC >= 1.21.9
+	public boolean mouseReleased(MouseButtonEvent e) {
+	//#else
+	//$ public boolean mouseReleased(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//#endif
+		bar.release();
+		//#if MC >= 1.21.9
+		return super.mouseReleased(e);
+		//#else
+		//$ return super.mouseReleased(e.x(), e.y(), e.button());
+		//#endif
+	}
+
 
 	@Override
 	//#if MC >= 1.20.2

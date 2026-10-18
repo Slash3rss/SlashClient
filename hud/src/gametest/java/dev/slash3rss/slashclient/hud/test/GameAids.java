@@ -34,6 +34,10 @@ public class GameAids implements FabricClientGameTest {
 			// a sword needs a second Q, dirt does not
 			String guarded = context.computeOnClient(mc -> TestHooks.dropGuarded());
 			if (!guarded.equals("true,false")) throw new AssertionError("Drop protection picked wrong items: " + guarded);
+			// a scrollbar follows the mouse: dragged 70 of 133 px of track, then clicked at its very end
+			String bar = context.computeOnClient(mc -> TestHooks.scrollbarDrag());
+			String[] parts = bar.split(",");
+			if (!parts[0].equals("true") || Integer.parseInt(parts[1]) < 150 || Integer.parseInt(parts[2]) < 390) throw new AssertionError("The scrollbar does not follow the mouse: " + bar);
 			// SlashClient's keys in its own window
 			context.runOnClient(mc -> TestHooks.audit(true));
 			int keys = context.computeOnClient(mc -> TestHooks.openKeybinds());
