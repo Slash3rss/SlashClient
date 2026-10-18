@@ -8,10 +8,11 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 
 /**
- * The game's own HUD parts as boxes in the editor: the scoreboard, the boss bar, the tab list and
- * the action bar are dragged like modules. The game still draws them; GameHud only shifts its
- * drawing from where the game puts it to where the box is, and scales it. Out of the editor the
- * boxes draw nothing.
+ * The game's own HUD parts as boxes in the editor: the scoreboard, the boss bar, the tab list,
+ * the action bar and the titles are dragged like modules. The game still draws them; GameHud only
+ * shifts its drawing from where the game puts it to where the box is, and scales it. Out of the
+ * editor the boxes draw nothing. In it, a part the game has something for shows that (the tab
+ * list as if Tab were held); one it has nothing for shows a made-up sample.
  */
 public final class GameParts {
 	private GameParts() {}
@@ -38,6 +39,11 @@ public final class GameParts {
 		/** Shown: switched on in its card and not hidden in the editor. */
 		abstract boolean on();
 
+		/** The game has something to show in it now (then the editor shows that, not a sample). */
+		boolean real(Minecraft mc) {
+			return false;
+		}
+
 		@Override
 		public boolean visible(Minecraft mc) {
 			// never drawn in the game: the game draws the part itself
@@ -61,11 +67,17 @@ public final class GameParts {
 		@Override
 		public void drawPreview(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
 			int w = width(mc), h = height(mc);
-			g.fill(x, y, x + w, y + h, 0x50101828);
+			boolean real = real(mc);
+			if (!real) {
+				g.fill(x, y, x + w, y + h, 0x50101828);
+				sample(g, mc, x, y, w, h);
+			}
 			Ui.roundOutline(g, x, y, w, h, 2, 0x8060A5FA);
-			Component name = Ui.tr("slashclient-hud.part." + id);
-			sample(g, mc, x, y, w, h);
-			Ui.draw(g, Ui.fit(name, w - 6), x + (w - Math.min(Ui.width(name), w - 6)) / 2, y + 3, Ui.TEXT);
+			Component name = Ui.fit(Ui.tr("slashclient-hud.part." + id), w - 6);
+			int nw = Ui.width(name), nx = x + (w - nw) / 2;
+			// over the real thing, the name on a plate of its own
+			if (real) g.fill(nx - 2, y + 1, nx + nw + 2, y + 12, 0xC0101828);
+			Ui.draw(g, name, nx, y + 3, Ui.TEXT);
 		}
 
 		/** What it looks like, roughly. */
@@ -84,8 +96,14 @@ public final class GameParts {
 		@Override boolean on() { return SlashHud.config.scoreboard && SlashHud.config.placement(id()).enabled; }
 		@Override float[] boxAnchor(int w, int h) { return new float[] { w, h / 2f }; }
 		@Override float[] screenAnchor(int sw, int sh) { return new float[] { sw, sh / 2f }; }
+		@Override boolean real(Minecraft mc) { return Compat.displayed(mc, true) != null; }
 		@Override void sample(GuiGraphicsExtractor g, Minecraft mc, int x, int y, int w, int h) {
-			for (int i = 0; i < 5 && 16 + i * 12 < h; i++) g.fill(x + 6, y + 16 + i * 12, x + w - 6 - (i % 3) * 14, y + 20 + i * 12, 0x40FFFFFF);
+			// lines with their scores, as a server's sidebar looks
+			for (int i = 0; i < 6 && 16 + i * 11 + 8 < h; i++) {
+				Ui.draw(g, Component.literal(Ui.tr("slashclient-hud.part.sample.line").getString() + " " + (i + 1)), x + 5, y + 16 + i * 11, 0xFFAAAAAA);
+				String score = String.valueOf(6 - i);
+				Ui.draw(g, Component.literal(score), x + w - 5 - Ui.width(Component.literal(score)), y + 16 + i * 11, 0xFFFF5555);
+			}
 		}
 	};
 
@@ -106,10 +124,16 @@ public final class GameParts {
 		@Override boolean on() { return SlashHud.config.placement(id()).enabled; }
 		@Override float[] boxAnchor(int w, int h) { return new float[] { w / 2f, 0 }; }
 		@Override float[] screenAnchor(int sw, int sh) { return new float[] { sw / 2f, 0 }; }
+		@Override boolean real(Minecraft mc) { return mc.getConnection() != null && mc.level != null && !mc.getConnection().getOnlinePlayers().isEmpty(); }
 		@Override void sample(GuiGraphicsExtractor g, Minecraft mc, int x, int y, int w, int h) {
-			for (int i = 0; i < 4 && 16 + i * 12 < h; i++) {
-				g.fill(x + 6, y + 16 + i * 12, x + w / 2 - 6, y + 24 + i * 12, 0x30FFFFFF);
-				g.fill(x + w / 2 + 6, y + 16 + i * 12, x + w - 6, y + 24 + i * 12, 0x30FFFFFF);
+			// two columns of players, each with a face and the ping
+			String player = Ui.tr("slashclient-hud.part.sample.player").getString();
+			for (int i = 0; i < 8 && 16 + (i / 2) * 11 + 9 < h; i++) {
+				int cx = x + 6 + (i % 2) * (w / 2), cy = y + 16 + (i / 2) * 11;
+				g.fill(cx - 1, cy - 1, cx + w / 2 - 11, cy + 9, 0x30FFFFFF);
+				g.fill(cx, cy, cx + 8, cy + 8, 0xFF6B7280);
+				Ui.draw(g, Component.literal(player + " " + (i + 1)), cx + 10, cy, 0xFFFFFFFF);
+				g.fill(cx + w / 2 - 20, cy + 2, cx + w / 2 - 13, cy + 6, 0xFF55FF55);
 			}
 		}
 	};
@@ -120,13 +144,34 @@ public final class GameParts {
 		@Override boolean on() { return SlashHud.config.actionBar && SlashHud.config.placement(id()).enabled; }
 		@Override float[] boxAnchor(int w, int h) { return new float[] { w / 2f, h / 2f }; }
 		@Override float[] screenAnchor(int sw, int sh) { return new float[] { sw / 2f, sh - 68 }; }
+		@Override boolean real(Minecraft mc) { return Compat.actionBarShown(mc); }
+	};
+
+	/** In the middle of the screen: a title and its subtitle. */
+	static final Part TITLES = new Part("titles", 200, 56) {
+		@Override float scale() { return SlashHud.config.titleScale; }
+		@Override boolean on() { return SlashHud.config.titles && SlashHud.config.placement(id()).enabled; }
+		@Override float[] boxAnchor(int w, int h) { return new float[] { w / 2f, h / 2f }; }
+		@Override float[] screenAnchor(int sw, int sh) { return new float[] { sw / 2f, sh / 2f }; }
+		@Override boolean real(Minecraft mc) { return Compat.titleShown(mc); }
+		@Override void sample(GuiGraphicsExtractor g, Minecraft mc, int x, int y, int w, int h) {
+			// the title twice the size, the subtitle under it
+			Component title = Ui.tr("slashclient-hud.part.sample.title"), subtitle = Ui.tr("slashclient-hud.part.sample.subtitle");
+			var pose = g.pose();
+			pose.pushMatrix();
+			pose.translate(x + w / 2f, y + 16);
+			pose.scale(2f, 2f);
+			Ui.draw(g, title, -Ui.width(title) / 2, 0, 0xFFFFFFFF);
+			pose.popMatrix();
+			Ui.draw(g, subtitle, x + (w - Ui.width(subtitle)) / 2, y + 38, 0xFFAAAAAA);
+		}
 	};
 
 	//#if MC >= 1.20.2
-	static final List<Part> ALL = List.of(SCOREBOARD, BOSS_BAR, TAB_LIST, ACTION_BAR);
+	static final List<Part> ALL = List.of(SCOREBOARD, BOSS_BAR, TAB_LIST, ACTION_BAR, TITLES);
 	//#else
 	//$ // 1.20.1 draws the action bar inline in Gui.render: it cannot be moved there
-	//$ static final List<Part> ALL = List.of(SCOREBOARD, BOSS_BAR, TAB_LIST);
+	//$ static final List<Part> ALL = List.of(SCOREBOARD, BOSS_BAR, TAB_LIST, TITLES);
 	//#endif
 
 	/**
@@ -138,6 +183,7 @@ public final class GameParts {
 		cfg.modules.putIfAbsent("scoreboard", new HudConfig.Placement(true, 1f, 0.5f, 0, cfg.scoreboardOffset));
 		cfg.modules.putIfAbsent("bossbar", new HudConfig.Placement(true, 0.5f, 0f, 0, cfg.bossBarOffset));
 		cfg.modules.putIfAbsent("tablist", new HudConfig.Placement(true, 0.5f, 0f, 0, 0));
+		cfg.modules.putIfAbsent("titles", new HudConfig.Placement(true, 0.5f, 0.5f, 0, 0));
 		// the box's middle on the line the game centres the message on (68 above the bottom)
 		cfg.modules.putIfAbsent("actionbar", new HudConfig.Placement(true, 0.5f, 1f, 0, -68 + 7));
 	}

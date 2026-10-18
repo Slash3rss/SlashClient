@@ -87,6 +87,10 @@ public class GameDungeon implements FabricClientGameTest {
 			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
 			if (!rooms.contains("cleared 2")) throw new AssertionError("Hologram not read: " + rooms);
 			context.takeScreenshot("dungeon-holograms");
+			context.runOnClient(mc -> TestHooks.dungeonFull(true));
+			context.waitTicks(10);
+			context.takeScreenshot("dungeon-full");
+			context.runOnClient(mc -> TestHooks.dungeonFull(false));
 			// leaving: the server's line and the boss bar gone end the map; the lobby is not mapped
 			server.runCommand("tellraw @a \"Dungeon » Opuszczono drużynę.\"");
 			server.runCommand("tellraw @a \"Dungeon » Opuszczono Dungeon poz. 3\"");

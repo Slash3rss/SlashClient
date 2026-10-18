@@ -429,6 +429,12 @@ public final class TestHooks {
 		return DungeonRooms.summary();
 	}
 
+	/** The dungeon map over the whole screen, or closed. */
+	public static void dungeonFull(boolean open) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		mc.setScreenAndShow(open ? new DungeonMapScreen(DungeonMap.fullKey) : null);
+	}
+
 	/** The dungeon map round, zoomed in and following the player, or back as it was. */
 	public static void dungeonRound(boolean round) {
 		SlashHud.config.dungeonShape = round ? "circle" : "square";

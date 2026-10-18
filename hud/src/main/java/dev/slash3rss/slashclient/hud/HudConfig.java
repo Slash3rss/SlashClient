@@ -129,6 +129,8 @@ public final class HudConfig {
 	public boolean dungeonPlayers = true;
 	/** The dungeon map's title ("Dungeon · poziom 3" and the containers taken). */
 	public boolean dungeonTitle = true;
+	/** Progress to the next level (the boss bar's fill) on the dungeon map. */
+	public boolean dungeonProgress = true;
 	/** You on the dungeon map as your head instead of an arrow. */
 	public boolean dungeonSelfHead = false;
 	/** Mobs and NPCs (players with a skin who are not on the tab list) on the dungeon map. */
@@ -363,6 +365,7 @@ public final class HudConfig {
 		dungeonZoom = other.dungeonZoom;
 		dungeonPlayers = other.dungeonPlayers;
 		dungeonTitle = other.dungeonTitle;
+		dungeonProgress = other.dungeonProgress;
 		dungeonSelfHead = other.dungeonSelfHead;
 		dungeonMobs = other.dungeonMobs;
 		dungeonSpawners = other.dungeonSpawners;

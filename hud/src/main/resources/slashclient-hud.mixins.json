@@ -28,6 +28,7 @@
 		"LightmapMixin",
 		"MinecraftAccessor",
 		"MouseHandlerMixin",
+		"OverlayMessageAccessor",
 		"NametagMixin",
 		"OnlineServerEntryMixin",
 		"PauseScreenAccessor",

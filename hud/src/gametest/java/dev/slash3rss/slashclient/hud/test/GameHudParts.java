@@ -43,6 +43,11 @@ public class GameHudParts implements FabricClientGameTest {
 			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::new);
 			context.waitTicks(5);
 			context.takeScreenshot("game-hud-parts-editor");
+			// nothing on the scoreboard and no action bar: samples in their boxes
+			world.getServer().runCommand("scoreboard objectives remove test");
+			world.getServer().runCommand("title @a clear");
+			context.waitTicks(80);
+			context.takeScreenshot("game-hud-parts-editor-samples");
 			context.setScreen(() -> null);
 		}
 		context.runOnClient(mc -> TestHooks.vanillaMenu());

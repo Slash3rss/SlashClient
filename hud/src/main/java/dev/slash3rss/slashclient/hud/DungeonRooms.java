@@ -93,6 +93,8 @@ public final class DungeonRooms {
 	private static int[] dist = new int[0];
 	private static boolean[] visited = new boolean[0];
 	private static final List<Room> rooms = new ArrayList<>();
+	/** The map's corner in the world, and where the player last stood in a room. */
+	private static int originX, originZ, lastX = -1, lastZ = -1;
 	private static final Map<Long, Container> containers = new HashMap<>();
 	/** Spawners seen, by their place on the map (x, z). */
 	private static final Map<Long, int[]> spawners = new HashMap<>();
@@ -115,6 +117,7 @@ public final class DungeonRooms {
 		Arrays.fill(roomOf, -1);
 		Arrays.fill(edge, false);
 		Arrays.fill(visited, false);
+		lastX = lastZ = -1;
 		rooms.clear();
 		containers.clear();
 		spawners.clear();
@@ -226,6 +229,13 @@ public final class DungeonRooms {
 		if (x0 > x1) return;
 		split(cell, x0, z0, x1, z1);
 		int px = mc.player.getBlockX() - originX, pz = mc.player.getBlockZ() - originZ;
+		DungeonRooms.originX = originX;
+		DungeonRooms.originZ = originZ;
+		// the room the player is in; in a doorway, still the one they came from
+		if (roomAt(px, pz) >= 0) {
+			lastX = px;
+			lastZ = pz;
+		}
 		if (px >= 0 && pz >= 0 && px < size && pz < size) visited[pz * size + px] = true;
 		for (int i = 0; i < roomOf.length; i++) if (visited[i] && roomOf[i] >= 0) rooms.get(roomOf[i]).visited = true;
 
@@ -479,14 +489,6 @@ public final class DungeonRooms {
 			if (room.pixels == 0) continue;
 			List<String> lines = new ArrayList<>();
 			List<Integer> colors = new ArrayList<>();
-			if (cfg.dungeonContainers && room.containers > 0) {
-				lines.add(room.taken + "/" + room.containers);
-				colors.add(room.taken == room.containers ? 0xFF86EFAC : 0xFFFDE047);
-			}
-			if (cfg.dungeonContainers && room.ores > 0) {
-				lines.add("⛏" + room.oresTaken + "/" + room.ores);
-				colors.add(room.oresTaken == room.ores ? 0xFF86EFAC : 0xFF67E8F9);
-			}
 			if (cfg.dungeonCleared && room.respawnAt > now) {
 				long left = (room.respawnAt - now + 999) / 1000;
 				lines.add(left / 60 + ":" + String.format("%02d", left % 60));
@@ -499,23 +501,33 @@ public final class DungeonRooms {
 			if (lines.isEmpty()) continue;
 			int sx = Math.round((room.centerX() + 0.5f - viewX) * scale), sz = Math.round((room.centerZ() + 0.5f - viewZ) * scale);
 			if (!shown.test(sx, sz)) continue;
-			// three quarters of the font's size, each line on a dark plate so it reads on any floor
-			var pose = g.pose();
-			pose.pushMatrix();
-			pose.translate(ox + sx, oy + sz - lines.size() * 3.75f);
-			pose.scale(0.75f, 0.75f);
+			// the font's own size, on a dark plate with a rim, so it reads on any floor
+			int top = oy + sz - lines.size() * 5;
 			for (int i = 0; i < lines.size(); i++) {
 				String s = lines.get(i);
-				int w = mc.font.width(s);
-				g.fill(-w / 2 - 2, i * 10 - 1, w - w / 2 + 1, i * 10 + 9, 0xD0000000);
-				g.text(mc.font, s, -w / 2, i * 10, colors.get(i), false);
+				int w = mc.font.width(s), lx = ox + sx - w / 2, ly = top + i * 10;
+				g.fill(lx - 3, ly - 2, lx + w + 2, ly + 9, 0xFF000000);
+				g.fill(lx - 2, ly - 1, lx + w + 1, ly + 8, 0xFF1F2937);
+				g.text(mc.font, s, lx, ly, colors.get(i), true);
 			}
-			pose.popMatrix();
 		}
 	}
 
-	/** One kind of loot over the whole dungeon: taken, and all found. */
+	/** One kind of loot in the room the player is in (or was in last): taken, and all found. */
 	static int[] count(int cat) {
+		int[] n = new int[2];
+		int room = roomAt(lastX, lastZ);
+		if (room < 0) return n;
+		for (Container c : containers.values()) {
+			if (c.cat != cat || !shown(c) || roomAt(c.x - originX, c.z - originZ) != room) continue;
+			n[1]++;
+			if (c.taken()) n[0]++;
+		}
+		return n;
+	}
+
+	/** One kind of loot over the whole dungeon: taken, and all found. */
+	static int[] countAll(int cat) {
 		int[] n = new int[2];
 		for (Container c : containers.values()) {
 			if (c.cat != cat || !shown(c)) continue;

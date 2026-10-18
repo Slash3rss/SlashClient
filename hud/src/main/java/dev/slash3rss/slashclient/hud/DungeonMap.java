@@ -53,6 +53,8 @@ public final class DungeonMap implements HudModule {
 	private static final byte[] cell = new byte[SIZE * SIZE];
 	private static int tick;
 	private static String dungeonLevel = "";
+	/** The boss bar's fill: progress to the next level (0–1), or -1 when not known. */
+	private static float dungeonProgress = -1;
 	/** The dungeon's boss bar was on screen at the last look. */
 	private static boolean bossBar;
 	/** Started by the entering hint (no boss bar seen yet): it may still be the lobby. */
@@ -64,7 +66,7 @@ public final class DungeonMap implements HudModule {
 	private static DynamicTexture viewTexture;
 	private static Identifier viewId;
 	private static float viewX, viewZ, viewScale = 1f;
-	static net.minecraft.client.KeyMapping zoomInKey, zoomOutKey;
+	static net.minecraft.client.KeyMapping zoomInKey, zoomOutKey, fullKey;
 
 	public String id() {
 		return "dungeonmap";
@@ -119,6 +121,7 @@ public final class DungeonMap implements HudModule {
 
 	static void stop() {
 		active = false;
+		dungeonProgress = -1;
 		level = null;
 		dungeonLevel = "";
 		hintedAt = 0;
@@ -142,6 +145,12 @@ public final class DungeonMap implements HudModule {
 			if (!bossBar && active && !hinted) {
 				stop();
 				return;
+			}
+		}
+		// M: the whole map on the screen
+		if (fullKey != null) {
+			while (fullKey.consumeClick()) {
+				if (active && minX <= maxX && Compat.screen(mc) == null) mc.setScreenAndShow(new DungeonMapScreen(fullKey));
 			}
 		}
 		if (!active) return;
@@ -189,13 +198,20 @@ public final class DungeonMap implements HudModule {
 			viewX = (float) (mc.player.getX() - originX) - span / 2f;
 			viewZ = (float) (mc.player.getZ() - originZ) - span / 2f;
 		}
-		float r = W / 2f;
-		for (int py = 0; py < H; py++) {
-			for (int px = 0; px < W; px++) {
+		paint(view, W, H, viewX, viewZ, viewScale, circle);
+		viewTexture.upload();
+	}
+
+	/** The map into a picture: `w`×`h` pixels from (vx, vz) on the map, `scale` pixels per block. */
+	static void paint(NativeImage view, int w, int h, float vx, float vz, float scale, boolean circle) {
+		HudConfig cfg = SlashHud.config;
+		float r = w / 2f;
+		for (int py = 0; py < h; py++) {
+			for (int px = 0; px < w; px++) {
 				int color = UNKNOWN;
 				float dx = px + 0.5f - r, dz = py + 0.5f - r;
 				if (!circle || dx * dx + dz * dz <= r * r) {
-					int ix = (int) Math.floor(viewX + (px + 0.5f) / viewScale), iz = (int) Math.floor(viewZ + (py + 0.5f) / viewScale);
+					int ix = (int) Math.floor(vx + (px + 0.5f) / scale), iz = (int) Math.floor(vz + (py + 0.5f) / scale);
 					if (ix >= 0 && iz >= 0 && ix < SIZE && iz < SIZE) {
 						color = image.getPixel(ix, iz);
 						byte c = cell[iz * SIZE + ix];
@@ -209,7 +225,18 @@ public final class DungeonMap implements HudModule {
 				view.setPixel(px, py, color);
 			}
 		}
-		viewTexture.upload();
+	}
+
+	/** The part of the map seen (x, z, width, height), with a margin, or null before anything was seen. */
+	static int[] seen() {
+		if (!active || minX > maxX) return null;
+		int mx0 = Math.max(0, minX - 2), mz0 = Math.max(0, minZ - 2);
+		return new int[] { mx0, mz0, Math.min(SIZE, maxX + 3) - mx0, Math.min(SIZE, maxZ + 3) - mz0 };
+	}
+
+	static String titleText() {
+		return dungeonLevel.isEmpty() ? Component.translatable("slashclient-hud.dungeon").getString()
+			: Component.translatable("slashclient-hud.dungeon.level", dungeonLevel).getString();
 	}
 
 	/** A floor colour made plain: green stays green (the start room), anything else one grey. */
@@ -226,6 +253,7 @@ public final class DungeonMap implements HudModule {
 			Matcher m = LEVEL.matcher(event.getName().getString());
 			if (m.find()) {
 				dungeonLevel = m.group(1);
+				dungeonProgress = event.getProgress();
 				return true;
 			}
 		}
@@ -319,14 +347,39 @@ public final class DungeonMap implements HudModule {
 	public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
 		if (!visible(mc)) return;
 		if (viewTexture == null) render(mc);
-		if (title() > 0) title(g, mc, x, y);
+		if (SlashHud.config.dungeonTitle) title(g, mc, x, y);
+		progress(g, x, y + (SlashHud.config.dungeonTitle ? TITLE : 0));
 		int ox = x, oy = y + title();
 		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, viewId, ox, oy, 0, 0, W, H, W, H, W, H, 0xFFFFFFFF);
 		drawCounters(g, mc, ox, oy + H, counters());
-		DungeonRooms.draw(g, mc, ox, oy, viewX, viewZ, viewScale, originX, originZ, DungeonMap::shown);
+		drawOver(g, mc, ox, oy, viewX, viewZ, viewScale, DungeonMap::shown);
+	}
+
+	/** What goes over the map's picture: room marks, loot, mobs, players and you. */
+	static void drawOver(GuiGraphicsExtractor g, Minecraft mc, int ox, int oy, float vx, float vz, float scale, java.util.function.BiPredicate<Integer, Integer> inside) {
+		float keepX = viewX, keepZ = viewZ, keepScale = viewScale;
+		var keepClip = clip;
+		viewX = vx;
+		viewZ = vz;
+		viewScale = scale;
+		clip = inside;
+		try {
+			drawOverView(g, mc, ox, oy);
+		} finally {
+			viewX = keepX;
+			viewZ = keepZ;
+			viewScale = keepScale;
+			clip = keepClip;
+		}
+	}
+
+	private static java.util.function.BiPredicate<Integer, Integer> clip = DungeonMap::shown;
+
+	private static void drawOverView(GuiGraphicsExtractor g, Minecraft mc, int ox, int oy) {
+		DungeonRooms.draw(g, mc, ox, oy, viewX, viewZ, viewScale, originX, originZ, clip);
 		markers(g, mc, ox, oy);
 		int sx = Math.round((float) (mc.player.getX() - originX - viewX) * viewScale), sz = Math.round((float) (mc.player.getZ() - originZ - viewZ) * viewScale);
-		if (shown(sx, sz)) {
+		if (clip.test(sx, sz)) {
 			if (SlashHud.config.dungeonSelfHead) {
 				// the face, and a dot just past its edge the way they look
 				double a = Math.toRadians(mc.player.getYRot());
@@ -348,7 +401,7 @@ public final class DungeonMap implements HudModule {
 		for (Entity e : mc.level.entitiesForRendering()) {
 			if (e == mc.player || !e.isAlive()) continue;
 			int sx = Math.round((float) (e.getX() - originX - viewX) * viewScale), sz = Math.round((float) (e.getZ() - originZ - viewZ) * viewScale);
-			if (!shown(sx, sz)) continue;
+			if (!clip.test(sx, sz)) continue;
 			if (e instanceof ArmorStand stand) {
 				ItemStack head = stand.getItemBySlot(EquipmentSlot.HEAD);
 				if (cfg.dungeonSpawners && head.is(Items.SPAWNER)) {
@@ -419,7 +472,7 @@ public final class DungeonMap implements HudModule {
 	}
 
 	/** An item `size` pixels large, centred on the point. */
-	private static void item(GuiGraphicsExtractor g, ItemStack stack, int x, int y, int size) {
+	static void item(GuiGraphicsExtractor g, ItemStack stack, int x, int y, int size) {
 		var pose = g.pose();
 		pose.pushMatrix();
 		pose.translate(x - size / 2f, y - size / 2f);
@@ -438,13 +491,24 @@ public final class DungeonMap implements HudModule {
 
 	/** The title line's height, or 0 when it is hidden. */
 	private static int title() {
-		return SlashHud.config.dungeonTitle ? TITLE : 0;
+		return (SlashHud.config.dungeonTitle ? TITLE : 0) + (SlashHud.config.dungeonProgress ? 4 : 0);
+	}
+
+	/** The boss bar's progress to the next level as a thin bar across the map, the share on it in the title. */
+	private static void progress(GuiGraphicsExtractor g, int x, int y) {
+		if (!SlashHud.config.dungeonProgress) return;
+		g.fill(x + 1, y, x + W - 1, y + 3, 0xFF111827);
+		if (dungeonProgress >= 0) g.fill(x + 1, y, x + 1 + Math.round((W - 2) * Math.min(1f, dungeonProgress)), y + 3, 0xFFA855F7);
 	}
 
 	private static void title(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
 		String text = dungeonLevel.isEmpty() ? Component.translatable("slashclient-hud.dungeon").getString()
 			: Component.translatable("slashclient-hud.dungeon.level", dungeonLevel).getString();
 		Modules.text(g, mc, text, x + 3, y + 2, 0xFFFFFFFF);
+		if (SlashHud.config.dungeonProgress && dungeonProgress >= 0) {
+			String share = Math.round(dungeonProgress * 100) + "%";
+			Modules.text(g, mc, share, x + W - 3 - mc.font.width(share), y + 2, 0xFFD8B4FE);
+		}
 	}
 
 	/** The counters under the map: each kind of loot shown and found, its icon and taken of all. */
@@ -515,7 +579,7 @@ public final class DungeonMap implements HudModule {
 			draw(g, mc, x, y);
 			return;
 		}
-		if (title() > 0) Modules.text(g, mc, Component.translatable("slashclient-hud.dungeon").getString(), x + 3, y + 2, 0xFFFFFFFF);
+		if (SlashHud.config.dungeonTitle) Modules.text(g, mc, Component.translatable("slashclient-hud.dungeon").getString(), x + 3, y + 2, 0xFFFFFFFF);
 		int top = y + title();
 		int[][] rooms = { { 10, 10, 30, 26 }, { 46, 10, 30, 26 }, { 82, 14, 28, 22 }, { 10, 48, 30, 30 }, { 46, 48, 30, 30 }, { 82, 52, 28, 26 }, { 46, 88, 30, 24 } };
 		for (int[] r : rooms) g.fill(x + r[0], top + r[1], x + r[0] + r[2], top + r[1] + r[3], 0xFF5B6475);

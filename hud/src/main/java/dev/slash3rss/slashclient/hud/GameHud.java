@@ -19,21 +19,6 @@ public final class GameHud {
 		return SlashHud.config;
 	}
 
-	/** Draws `part` scaled by `scale` around the point (ax, ay) and moved down by `dy`. */
-	private static void framed(GuiGraphicsExtractor g, float scale, float ax, float ay, float dy, Runnable part) {
-		if (scale == 1f && dy == 0f) {
-			part.run();
-			return;
-		}
-		var pose = g.pose();
-		pose.pushMatrix();
-		pose.translate(ax, ay + dy);
-		pose.scale(scale, scale);
-		pose.translate(-ax, -ay);
-		part.run();
-		pose.popMatrix();
-	}
-
 	/**
 	 * Draws a part where its box was put in the editor: the point the game draws it around moved
 	 * to the same point of the box, and scaled there.
@@ -69,15 +54,18 @@ public final class GameHud {
 			if (GameParts.BOSS_BAR.on()) placed(g, GameParts.BOSS_BAR, () -> vanilla.extractRenderState(g, delta));
 		});
 		HudElementRegistry.replaceElement(VanillaHudElements.PLAYER_LIST, vanilla -> (HudElement) (g, delta) -> {
-			if (GameParts.TAB_LIST.on()) placed(g, GameParts.TAB_LIST, () -> vanilla.extractRenderState(g, delta));
+			if (!GameParts.TAB_LIST.on()) return;
+			Minecraft mc = Minecraft.getInstance();
+			// in the editor: the real list, as if Tab were held
+			if (Compat.screen(mc) instanceof HudEditScreen && GameParts.TAB_LIST.real(mc)) placed(g, GameParts.TAB_LIST, () -> Compat.drawTabList(g, mc));
+			else placed(g, GameParts.TAB_LIST, () -> vanilla.extractRenderState(g, delta));
 		});
 		HudElementRegistry.replaceElement(VanillaHudElements.OVERLAY_MESSAGE, vanilla -> (HudElement) (g, delta) -> {
 			if (GameParts.ACTION_BAR.on()) placed(g, GameParts.ACTION_BAR, () -> vanilla.extractRenderState(g, delta));
 		});
 		// titles in the middle of the screen
 		HudElementRegistry.replaceElement(VanillaHudElements.TITLE_AND_SUBTITLE, vanilla -> (HudElement) (g, delta) -> {
-			if (!cfg().titles) return;
-			framed(g, cfg().titleScale, g.guiWidth() / 2f, g.guiHeight() / 2f, 0, () -> vanilla.extractRenderState(g, delta));
+			if (GameParts.TITLES.on()) placed(g, GameParts.TITLES, () -> vanilla.extractRenderState(g, delta));
 		});
 	}
 

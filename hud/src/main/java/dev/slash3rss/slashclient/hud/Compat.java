@@ -288,6 +288,53 @@ public final class Compat {
 		//#endif
 	}
 
+	/** The tab list's drawer. */
+	public static net.minecraft.client.gui.components.PlayerTabOverlay tabList(Minecraft mc) {
+		//#if MC >= 26.2
+		return mc.gui.hud.getTabList();
+		//#else
+		//$ return mc.gui.getTabList();
+		//#endif
+	}
+
+	/** An action bar message is on screen. */
+	public static boolean actionBarShown(Minecraft mc) {
+		//#if MC >= 26.2
+		Object gui = mc.gui.hud;
+		//#else
+		//$ Object gui = mc.gui;
+		//#endif
+		return ((dev.slash3rss.slashclient.hud.mixin.OverlayMessageAccessor) gui).slashclient$overlayMessageTime() > 0;
+	}
+
+	/** A title is on screen. */
+	public static boolean titleShown(Minecraft mc) {
+		//#if MC >= 26.2
+		Object gui = mc.gui.hud;
+		//#else
+		//$ Object gui = mc.gui;
+		//#endif
+		return ((dev.slash3rss.slashclient.hud.mixin.OverlayMessageAccessor) gui).slashclient$titleTime() > 0;
+	}
+
+	/** The objective shown in the sidebar (the scoreboard) or in the tab list, or null. */
+	public static net.minecraft.world.scores.Objective displayed(Minecraft mc, boolean sidebar) {
+		if (mc.level == null) return null;
+		var board = mc.level.getScoreboard();
+		//#if MC >= 1.20.2
+		return board.getDisplayObjective(sidebar ? net.minecraft.world.scores.DisplaySlot.SIDEBAR : net.minecraft.world.scores.DisplaySlot.LIST);
+		//#else
+		//$ return board.getDisplayObjective(sidebar ? 1 : 0);
+		//#endif
+	}
+
+	/** The tab list drawn now, as if Tab were held (in the HUD editor). */
+	public static void drawTabList(net.minecraft.client.gui.GuiGraphicsExtractor g, Minecraft mc) {
+		var tab = tabList(mc);
+		tab.setVisible(true);
+		tab.extractRenderState(g, g.guiWidth(), mc.level.getScoreboard(), displayed(mc, false));
+	}
+
 	/** The boss bars on screen. */
 	public static net.minecraft.client.gui.components.BossHealthOverlay bossOverlay(Minecraft mc) {
 		//#if MC >= 26.2
