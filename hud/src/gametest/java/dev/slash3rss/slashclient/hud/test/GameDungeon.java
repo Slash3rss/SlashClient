@@ -114,6 +114,12 @@ public class GameDungeon implements FabricClientGameTest {
 			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
 			if (!rooms.contains("cleared 2")) throw new AssertionError("Hologram not read: " + rooms);
 			context.takeScreenshot("dungeon-holograms");
+			// a spawner block up on a ledge in the start room: the room has a spawner now
+			server.runCommand(String.format("fill %d %d %d %d %d %d stone", x0 + 3, y, z0 + 15, x0 + 4, y + 2, z0 + 16));
+			server.runCommand(String.format("setblock %d %d %d spawner", x0 + 3, y + 3, z0 + 15));
+			context.waitTicks(30);
+			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
+			if (!rooms.contains("without spawner 0")) throw new AssertionError("The spawner on the ledge was not counted: " + rooms);
 			context.runOnClient(mc -> TestHooks.dungeonFull(true));
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-full");

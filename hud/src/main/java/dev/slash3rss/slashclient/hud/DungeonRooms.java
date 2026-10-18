@@ -124,6 +124,7 @@ public final class DungeonRooms {
 		rooms.clear();
 		containers.clear();
 		spawners.clear();
+		spawnerBlocks.clear();
 		infested.clear();
 		cleared.clear();
 		holograms.clear();
@@ -186,8 +187,11 @@ public final class DungeonRooms {
 	/** The containers in one column: found ones are new or back, missing ones were broken. */
 	static void scanColumn(ClientLevel world, BlockPos.MutableBlockPos pos, int x, int low, int high, int z) {
 		// all of a room's levels, up to the top of its walls for the ores in them
+		boolean spawner = false;
 		for (int y = low; y <= high; y++) {
 			Block block = world.getBlockState(pos.set(x, y, z)).getBlock();
+			// a spawner block anywhere in the column, on a ledge or in a pit too
+			if (block instanceof net.minecraft.world.level.block.SpawnerBlock) spawner = true;
 			int kind = kind(block);
 			boolean is = kind >= 0;
 			long key = BlockPos.asLong(x, y, z);
@@ -208,7 +212,12 @@ public final class DungeonRooms {
 				c.broken = true;
 			}
 		}
+		if (spawner) spawnerBlocks.add(key(x, z));
+		else spawnerBlocks.remove(key(x, z));
 	}
+
+	/** Columns with a spawner block in them (world x, z). */
+	private static final java.util.Set<Long> spawnerBlocks = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
 	/** Each tick: a container's screen open on a container block means it was opened. */
 	static void watchOpening(Minecraft mc) {
@@ -275,10 +284,10 @@ public final class DungeonRooms {
 		// spawners near the player that are gone now were destroyed
 		spawners.values().removeIf(s -> Math.abs(s[0] - px) < NEAR && Math.abs(s[1] - pz) < NEAR && !seenSpawners.containsKey(key(s[0], s[1])));
 		spawners.putAll(seenSpawners);
-		for (int[] s : spawners.values()) {
-			int r = roomAt(s[0], s[1]);
-			if (r >= 0) rooms.get(r).spawners++;
-		}
+		// spawners as entities (an armour stand's head, a hologram) and as blocks; one room counts each place once
+		java.util.Set<Long> counted = new java.util.HashSet<>();
+		for (int[] s : spawners.values()) countSpawner(s[0], s[1], counted);
+		for (long k : spawnerBlocks) countSpawner((int) (k >> 32) - originX, (int) k - originZ, counted);
 
 		// rooms that had mobs and have none now, seen from close: cleared
 		long now = System.currentTimeMillis();
@@ -359,8 +368,19 @@ public final class DungeonRooms {
 	}
 
 	/** The room at a map pixel, or the nearest one within two pixels (a chest's column may be no floor). */
+	/** A spawner at a map pixel: its room counts one more (several things at one spot are one spawner). */
+	private static void countSpawner(int x, int z, java.util.Set<Long> counted) {
+		// a spawner stands on a ledge or by a wall: its room may be a few blocks off
+		int r = roomAt(x, z, 5);
+		if (r >= 0 && counted.add(key(x >> 1, z >> 1))) rooms.get(r).spawners++;
+	}
+
 	private static int roomAt(int x, int z) {
-		for (int d = 0; d <= 2; d++) {
+		return roomAt(x, z, 2);
+	}
+
+	private static int roomAt(int x, int z, int reach) {
+		for (int d = 0; d <= reach; d++) {
 			for (int dz = -d; dz <= d; dz++) {
 				for (int dx = -d; dx <= d; dx++) {
 					int ix = x + dx, iz = z + dz;

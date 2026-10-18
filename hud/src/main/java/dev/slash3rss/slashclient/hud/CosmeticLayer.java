@@ -44,7 +44,11 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 	private final Map<String, Pet> pets;
 
 	/** A pet: its model, a fresh state for each frame (the model reads it later), its picture and size. */
-	private record Pet(EntityModel<?> model, Supplier<LivingEntityRenderState> state, Identifier texture, float scale) {}
+	private record Pet(EntityModel<?> model, Supplier<LivingEntityRenderState> state, Identifier texture, float scale, float out) {
+		Pet(EntityModel<?> model, Supplier<LivingEntityRenderState> state, Identifier texture, float scale) {
+			this(model, state, texture, scale, 0f);
+		}
+	}
 
 	CosmeticLayer(RenderLayerParent<AvatarRenderState, PlayerModel> parent, EntityRendererProvider.Context context) {
 		super(parent);
@@ -60,7 +64,7 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			//$ "bee", new Pet(new net.minecraft.client.model.animal.bee.BeeModel(context.bakeLayer(ModelLayers.BEE)), BeeRenderState::new, vanilla("bee/bee"), 0.6f),
 			//#endif
 			"parrot", new Pet(new ParrotModel(context.bakeLayer(ModelLayers.PARROT)), ParrotRenderState::new, vanilla("parrot/parrot_red_blue"), 0.65f),
-			"blaze", new Pet(new net.minecraft.client.model.monster.blaze.BlazeModel(context.bakeLayer(ModelLayers.BLAZE)), LivingEntityRenderState::new, petTexture("blaze"), 0.4f),
+			"blaze", new Pet(new net.minecraft.client.model.monster.blaze.BlazeModel(context.bakeLayer(ModelLayers.BLAZE)), LivingEntityRenderState::new, petTexture("blaze"), 0.34f, 0.3f),
 			"phantom", new Pet(new net.minecraft.client.model.monster.phantom.PhantomModel(context.bakeLayer(ModelLayers.PHANTOM)), net.minecraft.client.renderer.entity.state.PhantomRenderState::new, petTexture("phantom"), 0.55f),
 			// the axolotl's and the fox's models got baby twins in 26.1: the adult one is ours
 			//#if MC >= 26.1
@@ -186,7 +190,8 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		float bob = (float) Math.sin(age * 0.12f) * 0.06f;
 		float scale = pet.scale();
 		pose.pushPose();
-		pose.translate(0.62f, (state.isCrouching ? 0.05f : -0.25f) + bob - 1.501f * scale, 0.2f);
+		// wide pets (the blaze's rods go round it) further out, so they stay off the head
+		pose.translate(0.62f + pet.out(), (state.isCrouching ? 0.05f : -0.25f) + bob - 1.501f * scale, 0.2f);
 		pose.scale(scale, scale, scale);
 		// the phantom flies lying flat: tipped towards the viewer, or it is only a line
 		if (s instanceof net.minecraft.client.renderer.entity.state.PhantomRenderState) {
