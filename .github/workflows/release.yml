@@ -14,7 +14,8 @@ jobs:
   # (left to themselves they raced and each made its own release with the same tag).
   release:
     name: Wydanie na GitHubie
-    runs-on: ubuntu-latest
+    # our own runner (LXC on Proxmox): releases come only from our tags
+    runs-on: [self-hosted, linux, proxmox]
     steps:
       - uses: actions/checkout@v7
       - name: Create the release
@@ -45,7 +46,8 @@ jobs:
             target: --win
           - os: ubuntu-latest
             target: --linux
-    runs-on: ${{ matrix.os }}
+    # Linux on our own runner, the Mac and Windows on GitHub's
+    runs-on: ${{ matrix.os == 'ubuntu-latest' && fromJSON('["self-hosted", "linux", "proxmox"]') || matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
