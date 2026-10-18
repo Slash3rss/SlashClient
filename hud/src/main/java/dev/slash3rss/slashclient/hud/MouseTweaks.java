@@ -30,10 +30,18 @@ public final class MouseTweaks {
 		return SlashHud.config != null && SlashHud.config.mouseTweaks;
 	}
 
+	/**
+	 * The creative inventory is left to the game: its tabs are an endless source and its clicks
+	 * work apart from the server's, so moving "to the other side" there threw items away.
+	 */
+	private static boolean creative(AbstractContainerScreen<?> screen) {
+		return screen instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
+	}
+
 	/** Every frame of an inventory screen: the Shift-drag. */
 	public static void frame(AbstractContainerScreen<?> screen) {
 		Minecraft mc = Minecraft.getInstance();
-		if (!on() || mc.player == null || mc.gameMode == null) return;
+		if (!on() || mc.player == null || mc.gameMode == null || creative(screen)) return;
 		boolean held = mc.mouseHandler.isLeftPressed() && shiftDown(mc) && screen.getMenu().getCarried().isEmpty();
 		if (!held) {
 			dragging = false;
@@ -54,7 +62,7 @@ public final class MouseTweaks {
 	/** The wheel over an inventory screen; true when it moved something (the game should not scroll then). */
 	public static boolean scroll(AbstractContainerScreen<?> screen, double amount) {
 		Minecraft mc = Minecraft.getInstance();
-		if (!on() || amount == 0 || mc.player == null || mc.gameMode == null) return false;
+		if (!on() || amount == 0 || mc.player == null || mc.gameMode == null || creative(screen)) return false;
 		AbstractContainerMenu menu = screen.getMenu();
 		Slot slot = ((ContainerScreenAccessor) screen).slashclient$hoveredSlot();
 		if (slot == null || !menu.getCarried().isEmpty() || !slot.hasItem()) return false;
