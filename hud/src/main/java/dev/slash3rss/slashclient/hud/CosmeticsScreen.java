@@ -64,6 +64,10 @@ public class CosmeticsScreen extends Screen {
 	private volatile String status;
 	private volatile boolean busy;
 	private String slot = "cape";
+	/** The item grid scrolls when a slot has more items than fit (in pixels), and where it is on screen. */
+	private int scroll, maxScroll, gridTop, gridBottom;
+	/** Opened from the main menu: the player's figure on the left. */
+	private dev.slash3rss.slashclient.hud.ui.SkinPreview figure;
 	private CameraType camera;
 	private Component tooltip;
 	private int tipX, tipY;
@@ -238,6 +242,13 @@ public class CosmeticsScreen extends Screen {
 		super.extractRenderState(g, mx, my, delta);
 		hits.clear();
 		tooltip = null;
+		// out of a world there is no player to look at: your figure, wearing what you pick
+		if (minecraft.level == null && px - 12 >= 64) {
+			if (figure == null) figure = new dev.slash3rss.slashclient.hud.ui.SkinPreview(minecraft);
+			int fh = Math.min(height - 40, Math.min(240, (px - 24) * 2));
+			int fw = fh / 2;
+			figure.draw(g, (px - 12 - fw) / 2, (height - fh) / 2, fw, fh, mx, my);
+		}
 		Ui.panel(g, px, py, pw, ph);
 		Ui.begin("cosmetics", px, py, pw, ph);
 		int x = px + 12, y = py + 10;
@@ -282,7 +293,10 @@ public class CosmeticsScreen extends Screen {
 			boolean on = s.equals(slot);
 			Ui.button(g, "cos:slot:" + s, tx, y, w, 15, null, label, on, mx, my);
 			if (worn.containsKey(s)) g.fill(tx + w - 4, y + 2, tx + w - 2, y + 4, 0xFF4ADE80);
-			hits.add(new Hit(tx, y, w, 15, () -> slot = s));
+			hits.add(new Hit(tx, y, w, 15, () -> {
+				slot = s;
+				scroll = 0;
+			}));
 			tx += w + 4;
 		}
 		y += 23;
@@ -292,11 +306,29 @@ public class CosmeticsScreen extends Screen {
 		for (Entry e : items) if (e.slot().equals(slot)) shown.add(e);
 		int perRow = Math.max(1, (pw - 24 + GAP) / (TILE_W + GAP));
 		String current = worn.getOrDefault(slot, "");
+		// all of them, scrolled with the mouse wheel when they do not fit
+		gridTop = y;
+		gridBottom = py + ph - 8;
+		int rows = (shown.size() + perRow - 1) / perRow;
+		maxScroll = Math.max(0, rows * (TILE_H + GAP) - GAP - (gridBottom - gridTop));
+		scroll = Math.max(0, Math.min(maxScroll, scroll));
+		g.enableScissor(px, gridTop - 3, px + pw, gridBottom);
+		Ui.beginClip("cosmetics grid", px, gridTop - 3, pw, gridBottom - gridTop + 3);
 		for (int i = 0; i < shown.size(); i++) {
 			Entry e = shown.get(i);
-			int ix = x + (i % perRow) * (TILE_W + GAP), iy = y + (i / perRow) * (TILE_H + GAP);
-			if (iy + TILE_H > py + ph - 8) break;
+			int ix = x + (i % perRow) * (TILE_W + GAP), iy = y + (i / perRow) * (TILE_H + GAP) - scroll;
+			if (iy + TILE_H < gridTop || iy > gridBottom) continue;
 			tile(g, mx, my, ix, iy, e, (e == null ? "" : e.id()).equals(current));
+		}
+		Ui.end();
+		g.disableScissor();
+		if (maxScroll > 0) {
+			// where in the list we are
+			int trackX = px + pw - 7, trackH = gridBottom - gridTop;
+			int thumbH = Math.max(16, trackH * trackH / (trackH + maxScroll));
+			int thumbY = gridTop + (trackH - thumbH) * scroll / maxScroll;
+			g.fill(trackX, gridTop, trackX + 2, gridBottom, 0x30FFFFFF);
+			g.fill(trackX, thumbY, trackX + 2, thumbY + thumbH, 0xB060A5FA);
 		}
 		Ui.end();
 		if (tooltip != null) {
@@ -309,7 +341,7 @@ public class CosmeticsScreen extends Screen {
 	}
 
 	private void tile(GuiGraphicsExtractor g, int mx, int my, int x, int y, Entry e, boolean selected) {
-		boolean over = Ui.inside(mx, my, x, y, TILE_W, TILE_H);
+		boolean over = Ui.inside(mx, my, x, y, TILE_W, TILE_H) && my >= gridTop && my < gridBottom;
 		boolean locked = e != null && !e.available();
 		float t = Ui.hover("cos:" + slot + ":" + (e == null ? "" : e.id()), over && !locked);
 		Ui.round(g, x, y, TILE_W, TILE_H, 5, Ui.blend(Ui.CARD, Ui.CARD_HOVER, t));
@@ -344,7 +376,25 @@ public class CosmeticsScreen extends Screen {
 			tipX = x + TILE_W / 2;
 			tipY = y - 2;
 		}
-		if (!locked) hits.add(new Hit(x, y, TILE_W, TILE_H, () -> wear(e)));
+		// only the part of it that shows takes clicks (the grid scrolls under the slot tabs)
+		int top = Math.max(y, gridTop), bottom = Math.min(y + TILE_H, gridBottom);
+		if (!locked && bottom > top) hits.add(new Hit(x, top, TILE_W, bottom - top, () -> wear(e)));
+	}
+
+	/** For the test: as if the wheel moved the grid by this many pixels (the next frame keeps it in range). */
+	void scrollBy(int pixels) {
+		scroll += pixels;
+	}
+
+	@Override
+	//#if MC >= 1.20.2
+	public boolean mouseScrolled(double x, double y, double h, double v) {
+	//#else
+	//$ public boolean mouseScrolled(double x, double y, double v) {
+	//#endif
+		if (maxScroll <= 0) return false;
+		scroll = Math.max(0, Math.min(maxScroll, scroll - (int) Math.round(v * (TILE_H + GAP) / 2.0)));
+		return true;
 	}
 
 	@Override
@@ -374,6 +424,12 @@ public class CosmeticsScreen extends Screen {
 	@Override
 	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
+		if (minecraft.level == null) {
+			// opened from the main menu: its panorama, darkened the same way (the figure stands on the left)
+			extractPanorama(g, delta);
+			g.fill(0, 0, width, height, 0x800A0D14);
+			return;
+		}
 		// the player stays in full view: only the panel's side is darkened
 		g.fill(px - 12, 0, width, height, 0x70000000);
 	}

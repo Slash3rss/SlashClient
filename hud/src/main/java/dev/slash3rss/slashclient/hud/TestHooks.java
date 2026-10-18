@@ -371,6 +371,11 @@ public final class TestHooks {
 		mc.setScreenAndShow(CosmeticsScreen.sample(slot));
 	}
 
+	/** Scrolls the open cosmetics menu's grid to its end. */
+	public static void scrollCosmetics() {
+		if (Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c) c.scrollBy(10_000);
+	}
+
 	public static void firstPerson() {
 		net.minecraft.client.Minecraft.getInstance().options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
 	}

@@ -108,6 +108,10 @@ public class GameCosmetics implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.cosmeticsMenu("cape"));
 			context.waitTicks(5);
 			context.takeScreenshot("cosmetics-menu-capes");
+			// more capes than fit: the grid scrolls to the last ones
+			context.runOnClient(mc -> TestHooks.scrollCosmetics());
+			context.waitTicks(3);
+			context.takeScreenshot("cosmetics-menu-capes-end");
 			context.runOnClient(mc -> TestHooks.cosmeticsMenu("pet"));
 			context.waitTicks(5);
 			context.takeScreenshot("cosmetics-menu-pets");

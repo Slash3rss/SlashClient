@@ -103,15 +103,24 @@ public class SlashTitleScreen extends MenuScreen {
 		int px = (width - pw) / 2, py = y;
 		drawMenu(g, mx, my, px, py, pw, items, tools);
 
-		// your skin beside the buttons, looking at the mouse, when there is room for it
+		// your skin beside the buttons, looking at the mouse, and under it the way to your cosmetics,
+		// when there is room for them
 		int free = width - (px + pw) - 12;
 		if (free >= 64) {
 			if (skin == null) skin = new SkinPreview(minecraft);
-			// a little shorter than the panel, so the figure stays beside the buttons, not over them
-			int fh = Math.min(Math.min(160, panelH - 20), (free - 12) * 2);
+			int bh = 18, gap = 6;
+			// level with the top of the panel; the figure and the button together no taller than it
+			int fh = Math.min(Math.min(160, panelH - bh - gap), (free - 12) * 2);
 			int fw = fh / 2;
-			int fx = px + pw + Math.max(12, (Math.min(free, 180) - fw) / 2);
-			skin.draw(g, fx, py + panelH - fh, fw, fh, mx, my);
+			int area = Math.min(free, 180);
+			int fx = px + pw + Math.max(12, (area - fw) / 2);
+			skin.draw(g, fx, py, fw, fh, mx, my);
+			Component label = Ui.tr("slashclient-hud.cosmetics");
+			int bw = Math.min(free - 8, Math.max(fw + 16, Ui.buttonWidth(label, "m-appearance", bh, 6)));
+			int bx = Math.max(px + pw + 8, Math.min(width - bw - 4, fx + fw / 2 - bw / 2));
+			int by = py + fh + gap;
+			Ui.button(g, "menu:cosmetics", bx, by, bw, bh, "m-appearance", label, false, mx, my);
+			hits.add(new Hit(bx, by, bw, bh, () -> minecraft.setScreenAndShow(new dev.slash3rss.slashclient.hud.CosmeticsScreen(this))));
 		}
 		drawTooltip(g);
 	}
