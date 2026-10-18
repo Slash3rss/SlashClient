@@ -669,6 +669,11 @@ a.button-link { display: inline-flex; align-items: center; gap: 6px; height: 32p
 .import-box .join-list { max-height: 360px; }
 .import-src { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(255, 255, 255, .06); border: 1px solid var(--glass-border); color: var(--text-secondary); white-space: nowrap; }
 .join-actions #import-folder { margin-right: auto; }
+.pack-note { font-size: 13px; }
+#export-parts, #pack-import-parts { max-height: none; }
+.pack-part-icon { width: 18px; text-align: center; color: var(--text-muted); }
+.pack-note:empty { display: none; }
+#pack-import-modal .field { margin: 6px 0 4px; }
 
 /* ---------- skin library ---------- */
 .lib-head h3 { margin: 0; flex: 1; }

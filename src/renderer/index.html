@@ -144,6 +144,7 @@
       <header class="view-head"><h2 class="gradient-title">Profile</h2>
         <div class="row head-actions">
           <button id="import-open"><i class="fa-solid fa-file-import"></i> Importuj z innego launchera</button>
+          <button id="profile-import"><i class="fa-solid fa-box-open"></i> Importuj profil</button>
           <button class="primary" id="profile-add"><i class="fa-solid fa-plus"></i> Nowy profil</button>
         </div>
       </header>
@@ -233,7 +234,7 @@
                 <button type="button" id="profile-folder"><i class="fa-regular fa-folder-open"></i> Otwórz folder</button>
                 <button type="button" id="profile-mods"><i class="fa-solid fa-puzzle-piece"></i> Folder modów</button>
                 <button type="button" id="profile-duplicate"><i class="fa-regular fa-clone"></i> Kopiuj profil</button>
-                <button type="button" id="profile-export"><i class="fa-solid fa-file-export"></i> Eksportuj .mrpack</button>
+                <button type="button" id="profile-export"><i class="fa-solid fa-file-export"></i> Eksportuj profil</button>
                 <button type="button" class="danger" id="profile-delete"><i class="fa-regular fa-trash-can"></i> Usuń</button>
                 <button type="submit" class="primary">Zapisz</button>
               </div>
@@ -567,6 +568,37 @@
         <div class="join-list" id="perf-list"></div>
         <div class="row join-actions">
           <button class="primary" id="perf-go"><i class="fa-solid fa-download"></i> Zainstaluj zaznaczone</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal hidden" id="export-modal">
+    <div class="modal-box glass-panel join-box import-box">
+      <button class="icon-btn modal-close" id="export-close" title="Zamknij"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-body">
+        <h2><i class="fa-solid fa-file-export"></i> Eksportuj profil</h2>
+        <p class="muted">Jeden plik .mrpack, który otworzy SlashClient i inne launchery. Mody z Modrinth i CurseForge są w nim zapisane jako linki, więc plik jest mały; pozostałe pliki są w środku.</p>
+        <div class="join-list" id="export-parts"></div>
+        <p class="muted pack-note"><i class="fa-solid fa-shield-halved"></i> Konta i logowanie nigdy nie trafiają do pliku.</p>
+        <div class="row join-actions">
+          <button id="export-cancel">Anuluj</button>
+          <button class="primary" id="export-go"><i class="fa-solid fa-floppy-disk"></i> Zapisz plik…</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal hidden" id="pack-import-modal">
+    <div class="modal-box glass-panel join-box import-box">
+      <button class="icon-btn modal-close" id="pack-import-close" title="Zamknij"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-body">
+        <h2><i class="fa-solid fa-box-open"></i> Importuj profil</h2>
+        <p class="muted" id="pack-import-meta"></p>
+        <label class="field">Nazwa nowego profilu<input id="pack-import-name" maxlength="40"></label>
+        <div class="join-list" id="pack-import-parts"></div>
+        <p class="muted pack-note" id="pack-import-note"></p>
+        <div class="row join-actions">
+          <button id="pack-import-cancel">Anuluj</button>
+          <button class="primary" id="pack-import-go"><i class="fa-solid fa-download"></i> Importuj</button>
         </div>
       </div>
     </div>

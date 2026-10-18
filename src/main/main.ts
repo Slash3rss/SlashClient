@@ -22,14 +22,18 @@ import { loadStore, newProfile, profileGameDir, saveStore, secrets, setSecretCod
 import { LOADER_NAMES, loaderVersions, type Loader } from './loaders';
 import {
   checkUpdates, downloadModpack, identifyModpack, installMrpack, installProject, latestModpackVersion, listContentVersions,
-  exportMrpack, findFitting, installedProjectIds, listInstalled, removeContent, search, setEnabled, updateMrpack,
+  findFitting, modrinthLinks, installedProjectIds, listInstalled, removeContent, search, setEnabled, updateMrpack,
   type ContentType, type ModpackInfo, type ProjectType, type UpdateInfo, type VersionInfo,
 } from './modrinth';
 import {
-  checkCurseForgeUpdates, CurseForgeUnavailable, downloadCurseForgePack, installCurseForgePack, installCurseForgeProject, isCurseForgePack,
+  checkCurseForgeUpdates, curseForgeLinks, CurseForgeUnavailable, downloadCurseForgePack, installCurseForgePack, installCurseForgeProject, isCurseForgePack, readCursePack,
   latestCurseForgePack, listCurseForgeVersions, searchCurseForge, setCurseForgeServer, updateCurseForgePack, type ManualFile,
 } from './curseforge';
 import { listServers, pingServer } from './servers';
+import {
+  applySettings, countParts, DEFAULT_PARTS, includePath, manualFilesOf, PACK_PARTS, readPackSummary, settingsOf, writeProfilePack,
+  type LinkResolver, type PackPart, type PackSummary,
+} from './profilePack';
 import { getManifest } from './versions';
 import { newsArticle, newsPage, type NewsFilter } from './news';
 import { ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin } from './skins';
@@ -763,10 +767,27 @@ handle('profile:duplicate', async (id: string) => {
   }
 });
 
-handle('profile:export', async (id: string) => {
+/** What each part of a profile holds, for the export dialog. */
+handle('profile:exportPreview', async (id: string) => countParts(profileGameDir(profileById(id))));
+
+/** Links for mods and packs: Modrinth by hash, then CurseForge for what the launcher installed from there. Offline, files are just packed. */
+const packLinks = (gameDir: string): LinkResolver => async (files) => {
+  const links = await modrinthLinks(files.map((f) => f.sha1)).catch(() => new Map<string, string>());
+  const rest = new Set(files.map((f) => f.sha1).filter((sha1) => !links.has(sha1)));
+  curseforge();
+  const cf = rest.size ? await curseForgeLinks(gameDir, rest).catch(() => undefined) : undefined;
+  for (const [sha1, url] of cf?.links ?? []) links.set(sha1, url);
+  return { links, manual: cf?.manual ?? new Map() };
+};
+
+const validParts = (parts: unknown): PackPart[] =>
+  Array.isArray(parts) ? PACK_PARTS.filter((p) => parts.includes(p)) : DEFAULT_PARTS;
+
+handle('profile:export', async (id: string, parts?: PackPart[]) => {
   const profile = profileById(id);
+  const chosen = validParts(parts);
   const { canceled, filePath } = await dialog.showSaveDialog(win!, {
-    title: t('Eksportuj profil jako modpack'),
+    title: t('Eksportuj profil'),
     defaultPath: `${profile.name.replace(/[\\/:*?"<>|]/g, '_')}.mrpack`,
     filters: [{ name: 'Modpack Modrinth', extensions: ['mrpack'] }],
   });
@@ -780,14 +801,81 @@ handle('profile:export', async (id: string) => {
       const all = await loaderVersions(profile.loader, gameVersion);
       loaderVersion = (all.find((v) => v.stable) ?? all[0])?.version ?? '';
     }
-    const res = await exportMrpack({
-      gameDir: profileGameDir(profile), out: filePath, name: profile.name, gameVersion, loader: profile.loader, loaderVersion, onStage: task.progress,
+    const gameDir = profileGameDir(profile);
+    // the settings say "this game version" exactly, like the pack's index
+    const settings = { ...settingsOf(profile), versionId: gameVersion, loaderVersion };
+    const res = await writeProfilePack({
+      gameDir, out: filePath, name: profile.name, gameVersion, loader: profile.loader, loaderVersion, parts: chosen, settings, resolve: packLinks(gameDir), onStage: task.progress,
     });
-    task.finish(true, t('Zapisano {0}: {1} plików z linkami, {2} w paczce.', path.basename(filePath), res.linked, res.bundled));
+    const manual = res.manual ? ` ${t('Do pobrania ręcznie z CurseForge: {0} (lista jest w paczce).', res.manual)}` : '';
+    task.finish(true, t('Zapisano {0}: {1} plików z linkami, {2} w paczce.', path.basename(filePath), res.linked, res.bundled) + manual);
     shell.showItemInFolder(filePath);
     return filePath;
   } catch (err) {
     task.finish(false, (err as Error).message);
+    throw err;
+  }
+});
+
+/** Pack files picked in the import dialog: the page only gets a key, never sends a path back. */
+const pickedPacks = new Map<string, string>();
+
+handle('profile:importPick', async (): Promise<{ key: string; summary: PackSummary } | undefined> => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
+    title: t('Importuj profil'), filters: [{ name: t('Profil lub modpack (.mrpack, .zip)'), extensions: ['mrpack', 'zip'] }], properties: ['openFile'],
+  });
+  if (canceled || !filePaths[0]) return undefined;
+  const file = filePaths[0];
+  let summary: PackSummary;
+  if (isCurseForgePack(file)) {
+    const { manifest } = readCursePack(file);
+    summary = {
+      kind: 'curseforge', name: manifest.name, gameVersion: manifest.gameVersion, loader: manifest.loader, loaderVersion: manifest.loaderVersion,
+      parts: {}, linked: manifest.files.length, bundled: 0, manual: 0,
+    };
+  } else summary = readPackSummary(file);
+  const key = randomUUID();
+  pickedPacks.set(key, file);
+  return { key, summary };
+});
+
+/** Makes a new profile from a picked pack, with the parts the player kept ticked. */
+handle('profile:importPack', async (key: string, opts: { name?: string; parts?: PackPart[] }) => {
+  const file = pickedPacks.get(key);
+  if (!file) throw new Error(t('Wybierz plik jeszcze raz.'));
+  pickedPacks.delete(key);
+  if (isCurseForgePack(file)) {
+    return installModpackTask(path.basename(file).replace(/\.zip$/i, ''), undefined, async () => ({ file }));
+  }
+  const parts = validParts(opts?.parts);
+  const summary = readPackSummary(file);
+  const name = (opts?.name ?? '').trim().slice(0, 40) || summary.name;
+  const task = startTask(t('Importowanie profilu: {0}', name));
+  try {
+    const profile = newProfile(newMemory());
+    const gameDir = profileGameDir(profile);
+    const info = await installMrpack(file, gameDir, task.progress, includePath(parts));
+    // a pack exported by SlashClient is not a Modrinth modpack; one downloaded from Modrinth is, and can be updated later
+    const version = summary.settings ? undefined : await identifyModpack(file).catch(() => undefined);
+    applyPack(profile, info, version, summary.name);
+    if (summary.settings && parts.includes('settings')) {
+      applySettings(profile, summary.settings);
+      if (profile.icon === 'custom') profile.iconVersion = Date.now();
+    }
+    // a custom icon whose picture was not in the pack falls back to the default one
+    if (profile.icon === 'custom' && !iconFile(gameDir)) profile.icon = '';
+    // the pack's own game settings would be replaced by the shared ones at launch
+    if ((parts.includes('options') && summary.parts.options) || (parts.includes('servers') && summary.parts.servers)) profile.syncOptions = false;
+    profile.name = name;
+    const manual = parts.includes('mods') || parts.includes('resourcepacks') || parts.includes('shaderpacks') ? manualFilesOf(summary.settings) : [];
+    store.profiles.push(profile);
+    store.settings.selectedProfileId = profile.id;
+    if (manual.length) await rememberManual(profile, manual);
+    await persist();
+    task.finish(true, t('Zaimportowano profil {0}.', name) + manualNote(manual), profile.id);
+    return profile.id;
+  } catch (err) {
+    task.finish(false, t('Nie udało się zaimportować profilu: {0}', (err as Error).message));
     throw err;
   }
 });

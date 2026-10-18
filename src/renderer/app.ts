@@ -1337,7 +1337,132 @@ $('#profile-duplicate').addEventListener('click', async () => {
     renderProfiles();
   }
 });
-$('#profile-export').addEventListener('click', () => editingId && busy($<HTMLButtonElement>('#profile-export'), () => guard(() => api.exportProfile(editingId!))));
+
+// ---------- exporting and importing a profile as one file (.mrpack) ----------
+
+type PackPart = 'mods' | 'resourcepacks' | 'shaderpacks' | 'config' | 'options' | 'servers' | 'worlds' | 'settings';
+const PACK_PARTS: { part: PackPart; icon: string; title: string; hint: string }[] = [
+  { part: 'mods', icon: 'fa-puzzle-piece', title: 'Mody', hint: 'z Modrinth i CurseForge jako linki, pozostałe w pliku' },
+  { part: 'resourcepacks', icon: 'fa-palette', title: 'Paczki zasobów', hint: 'tekstury i dźwięki' },
+  { part: 'shaderpacks', icon: 'fa-sun', title: 'Shadery', hint: 'paczki shaderów' },
+  { part: 'config', icon: 'fa-sliders', title: 'Konfiguracja modów', hint: 'folder config i skrypty' },
+  { part: 'options', icon: 'fa-gamepad', title: 'Ustawienia gry', hint: 'grafika, dźwięk, sterowanie (options.txt)' },
+  { part: 'servers', icon: 'fa-server', title: 'Lista serwerów', hint: 'servers.dat' },
+  { part: 'worlds', icon: 'fa-earth-europe', title: 'Światy', hint: 'mogą zajmować dużo miejsca' },
+  { part: 'settings', icon: 'fa-user-gear', title: 'Ustawienia profilu', hint: 'nazwa, ikona, pamięć RAM, flagi JVM, rozmiar okna' },
+];
+
+/** Checkbox rows for the parts of a pack; `counts` hides parts that have nothing and shows how many files each has. */
+function packPartRows(list: HTMLElement, counts: Partial<Record<PackPart, number>>, chosen: Set<PackPart>, onChange: () => void) {
+  const rows = PACK_PARTS.filter((p) => counts[p.part]).map((p): HTMLElement => {
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = chosen.has(p.part);
+    const row = document.createElement('label');
+    row.className = `join-choice perf-choice${box.checked ? ' selected' : ''}`;
+    box.addEventListener('change', () => {
+      if (box.checked) chosen.add(p.part);
+      else chosen.delete(p.part);
+      row.classList.toggle('selected', box.checked);
+      onChange();
+    });
+    row.append(box, el('i', { className: `fa-solid ${p.icon} pack-part-icon` }), el('div', { className: 'grow' }, t(p.title), el('small', { textContent: t(p.hint) })));
+    if (p.part !== 'settings') row.append(el('span', { className: 'import-src', textContent: String(counts[p.part]) }));
+    return row;
+  });
+  list.replaceChildren(...(rows.length ? rows : [el('p', { className: 'muted', textContent: t('Ten profil jest pusty: w pliku będzie tylko wersja gry i loader.') })]));
+}
+
+let exportingId: string | undefined;
+const exportChosen = new Set<PackPart>();
+
+$('#profile-export').addEventListener('click', async () => {
+  if (!editingId) return;
+  exportingId = editingId;
+  $('#export-parts').replaceChildren(...skeletons('project', 3));
+  $('#export-modal').classList.remove('hidden');
+  const counts: Record<PackPart, number> | undefined = await guard(() => api.exportPreview(exportingId!));
+  if (!counts) return closeExport();
+  // everything there is, but never the worlds unless the player asks
+  exportChosen.clear();
+  for (const p of PACK_PARTS) if (counts[p.part] && p.part !== 'worlds') exportChosen.add(p.part);
+  const sync = () => ($<HTMLButtonElement>('#export-go').disabled = !exportChosen.size && Object.values(counts).some(Boolean));
+  packPartRows($('#export-parts'), counts, exportChosen, sync);
+  sync();
+});
+function closeExport() {
+  $('#export-modal').classList.add('hidden');
+}
+$('#export-go').addEventListener('click', () => {
+  const id = exportingId;
+  closeExport();
+  if (id) guard(() => api.exportProfile(id, [...exportChosen]));
+});
+$('#export-cancel').addEventListener('click', closeExport);
+$('#export-close').addEventListener('click', closeExport);
+$('#export-modal').addEventListener('click', (e) => e.target === e.currentTarget && closeExport());
+
+interface PackSummary {
+  kind: 'mrpack' | 'curseforge';
+  name: string;
+  gameVersion: string;
+  loader: Profile['loader'];
+  loaderVersion: string;
+  parts: Partial<Record<PackPart, number>>;
+  linked: number;
+  bundled: number;
+  settings?: unknown;
+  manual: number;
+}
+let pickedPack: { key: string; summary: PackSummary } | undefined;
+const importParts = new Set<PackPart>();
+
+$('#profile-import').addEventListener('click', async () => {
+  const picked: typeof pickedPack = await guard(() => api.pickProfilePack());
+  if (!picked) return;
+  pickedPack = picked;
+  const s = picked.summary;
+  const loader = LOADER_NAMES[s.loader];
+  $('#pack-import-meta').textContent = [
+    `Minecraft ${s.gameVersion}`, loader ? `${loader} ${s.loaderVersion}`.trim() : '',
+    s.kind === 'curseforge' ? t('modpack CurseForge') : s.settings ? t('profil SlashClient') : t('modpack Modrinth'),
+  ].filter(Boolean).join(' · ');
+  $<HTMLInputElement>('#pack-import-name').value = s.name;
+  importParts.clear();
+  for (const p of PACK_PARTS) if (s.parts[p.part]) importParts.add(p.part);
+  const notes = [
+    s.linked ? t('Do pobrania z Modrinth i CurseForge: {0}.', s.linked) : '',
+    s.manual ? t('Do pobrania ręcznie z CurseForge: {0} (lista pojawi się w zakładce Mody).', s.manual) : '',
+  ];
+  if (s.kind === 'curseforge') {
+    // a CurseForge zip installs whole, the way its author made it
+    $('#pack-import-parts').replaceChildren();
+    notes.push(t('Modpack CurseForge instaluje się w całości.'));
+  } else packPartRows($('#pack-import-parts'), s.parts, importParts, () => {});
+  $('#pack-import-note').textContent = notes.filter(Boolean).join(' ');
+  $('#pack-import-modal').classList.remove('hidden');
+  $<HTMLInputElement>('#pack-import-name').focus();
+});
+function closePackImport() {
+  $('#pack-import-modal').classList.add('hidden');
+  pickedPack = undefined;
+}
+$('#pack-import-go').addEventListener('click', async () => {
+  const picked = pickedPack;
+  if (!picked) return;
+  const name = $<HTMLInputElement>('#pack-import-name').value.trim();
+  const parts = [...importParts];
+  closePackImport();
+  const id: string | undefined = await guard(() => api.importProfilePack(picked.key, { name, parts }));
+  if (id) {
+    editingId = id;
+    renderProfiles();
+  }
+});
+$('#pack-import-cancel').addEventListener('click', closePackImport);
+$('#pack-import-close').addEventListener('click', closePackImport);
+$('#pack-import-modal').addEventListener('click', (e) => e.target === e.currentTarget && closePackImport());
+
 $('#loader-select').addEventListener('change', () => renderLoaderVersions(''));
 $('#version-select').addEventListener('change', () => renderLoaderVersions(''));
 
