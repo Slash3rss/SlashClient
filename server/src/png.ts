@@ -105,12 +105,19 @@ export function faceOf(skin: Picture, scale = 8): Picture {
     const i = (sy * skin.width + sx) * 4;
     return skin.rgba.subarray(i, i + 4);
   };
+  // old 64×32 skins: a hat area with no see-through pixel is no hat at all (the game ignores it too,
+  // or many old skins would wear a black or white box on their heads)
+  let hatShown = true;
+  if (skin.height * 2 === skin.width) {
+    hatShown = false;
+    for (let y = 0; y < 16 && !hatShown; y++) for (let x = 32; x < 64; x++) if (pixel(x, y)[3] < 128) { hatShown = true; break; }
+  }
   for (let y = 0; y < 8; y++) {
     for (let x = 0; x < 8; x++) {
       const face = pixel(8 + x, 8 + y);
       const hat = pixel(40 + x, 8 + y);
       // the hat over the face; a face without its own alpha is opaque
-      const a = hat[3] / 255;
+      const a = hatShown ? hat[3] / 255 : 0;
       const rgb = [0, 1, 2].map((c) => Math.round(hat[c] * a + face[c] * (1 - a)));
       for (let dy = 0; dy < scale; dy++) {
         for (let dx = 0; dx < scale; dx++) {

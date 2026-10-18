@@ -25,5 +25,11 @@ describe('avatar pictures', () => {
     // what it writes reads back the same
     assert.deepEqual(decodePng(encodePng(face)).rgba, face.rgba);
     assert.throws(() => decodePng(Buffer.from('not a png')), /not_png/);
+    // an old 64×32 skin with a fully opaque (black) hat area: the face shows, as in the game
+    const old = Buffer.alloc(64 * 32 * 4);
+    for (let i = 0; i < 64 * 32; i++) old.set([0, 0, 0, 255], i * 4);
+    for (let y = 8; y < 16; y++) for (let x = 8; x < 16; x++) old.set([238, 180, 159, 255], (y * 64 + x) * 4);
+    const notch = faceOf(decodePng(encodePng({ width: 64, height: 32, rgba: old })));
+    assert.deepEqual([...notch.rgba.subarray(0, 4)], [238, 180, 159, 255]);
   });
 });

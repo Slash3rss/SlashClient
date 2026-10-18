@@ -71,8 +71,9 @@ function renderAccount() {
       me.badge === 'support' ? el('span', { class: 'chip sky' }, icon('fa-solid fa-certificate'), 'Support') : '',
       me.badge === 'partner' ? el('span', { class: 'chip gold' }, icon('fa-solid fa-certificate'), 'Partner') : '',
       me.badge === 'friend' ? el('span', { class: 'chip green' }, el('img', { class: 'chip-logo', src: '/vendor/logo.png', alt: '' }), 'Przyjaciel') : ''));
-  // the avatar: the face from the Minecraft skin, or the sign-in provider's picture (when there is one)
-  if (me.avatars?.minecraft && me.avatars?.provider) {
+  // the avatar: the face from one of the Minecraft accounts' skins, or the sign-in provider's picture
+  const faces = me.avatars?.minecraft ?? [];
+  if (faces.length + (me.avatars?.provider ? 1 : 0) > 1) {
     const pick = (source, src, label) => el('button', {
       class: `avatar-pick${me.avatarSource === source ? ' selected' : ''}`, title: label,
       onclick: async () => {
@@ -86,7 +87,8 @@ function renderAccount() {
     }, el('img', { src, alt: '' }), el('span', { textContent: label }));
     const provider = PROVIDERS[me.providers.find((p) => p !== 'minecraft' && p !== 'dev') ?? '']?.[0] ?? 'Logowanie';
     profile.append(el('div', { class: 'row small avatar-choice' }, el('span', { class: 'muted', textContent: 'Avatar:' }),
-      pick('minecraft', me.avatars.minecraft, 'Minecraft'), pick('provider', me.avatars.provider, provider)));
+      ...faces.map((f) => pick(f.uuid, f.url, f.name)),
+      me.avatars.provider ? pick('provider', me.avatars.provider, provider) : ''));
   }
   const share = el('input', { type: 'checkbox', checked: me.showServer });
   share.addEventListener('change', async () => {

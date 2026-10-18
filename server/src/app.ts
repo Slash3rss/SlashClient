@@ -286,8 +286,10 @@ export function createApp(cfg: Config) {
     const choice = db.avatarChoice(me);
     return { ...user, providers: db.providers(me), minecraft, admin: isAdmin(me), badge: badgeOf(user), grants: db.grants(me),
       // the two avatars to pick from on the account page: the Minecraft face and the sign-in provider's picture
-      avatarSource: choice.source === 'provider' ? 'provider' : 'minecraft',
-      avatars: { minecraft: minecraft[0] ? `/v1/head/${minecraft[0].uuid}` : '', provider: choice.provider } };
+      // what is picked: 'provider', or the Minecraft account whose face it is (the first one unless another was picked)
+      avatarSource: choice.source === 'provider' && choice.provider ? 'provider'
+        : minecraft.some((m) => `mc:${m.uuid}` === choice.source) ? choice.source.slice(3) : minecraft[0]?.uuid ?? '',
+      avatars: { minecraft: minecraft.map((m) => ({ uuid: m.uuid, name: m.name, url: `/v1/head/${m.uuid}` })), provider: choice.provider } };
   }
 
   function friendOrThrow(me: string, other: string) {
@@ -441,9 +443,13 @@ export function createApp(cfg: Config) {
       const me = authed(req);
       const { showServer, cape, loadout, character, own, avatarSource } = await body(req);
       // the avatar: the Minecraft face (the default) or the sign-in provider's picture
+      // avatarSource: 'provider', or the uuid of one of the account's Minecraft accounts ('minecraft' = the first)
       if (avatarSource !== undefined) {
-        if (avatarSource !== 'minecraft' && avatarSource !== 'provider') throw new HttpError(400, 'bad_request');
-        db.setAvatarSource(me, avatarSource === 'provider' ? 'provider' : '');
+        const mc = typeof avatarSource === 'string' ? avatarSource.toLowerCase().replace(/-/g, '') : '';
+        if (avatarSource === 'provider') db.setAvatarSource(me, 'provider');
+        else if (avatarSource === 'minecraft') db.setAvatarSource(me, '');
+        else if (db.minecraftAccounts(me).some((m) => m.uuid === mc)) db.setAvatarSource(me, `mc:${mc}`);
+        else throw new HttpError(400, 'bad_request');
       }
       if (typeof showServer === 'boolean') {
         db.setShowServer(me, showServer);

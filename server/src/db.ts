@@ -87,7 +87,10 @@ function parseLoadout(json: string): Record<string, string> {
  * or has no Minecraft account; '' when there is neither (the pages then show a letter).
  */
 const AVATAR = (t: string) => `CASE WHEN ${t}.avatar_source = 'provider' AND ${t}.avatar != '' THEN ${t}.avatar
-  ELSE COALESCE((SELECT '/v1/head/' || i.subject FROM identities i WHERE i.uuid = ${t}.uuid AND i.provider = 'minecraft' ORDER BY i.label LIMIT 1), NULLIF(${t}.avatar, ''), '') END`;
+  ELSE COALESCE(
+    (SELECT '/v1/head/' || i.subject FROM identities i WHERE i.uuid = ${t}.uuid AND i.provider = 'minecraft' AND ${t}.avatar_source = 'mc:' || i.subject),
+    (SELECT '/v1/head/' || i.subject FROM identities i WHERE i.uuid = ${t}.uuid AND i.provider = 'minecraft' ORDER BY i.label LIMIT 1),
+    NULLIF(${t}.avatar, ''), '') END`;
 
 const toUser = (r: UserRow): User => ({ id: r.uuid, handle: r.handle, name: r.name, avatar: r.avatar, showServer: !!r.show_server, cape: r.cape, role: r.role, rank: r.rank, banned: !!r.banned, loadout: parseLoadout(r.loadout) });
 
@@ -242,13 +245,16 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
     return row && this.user(row.uuid);
   }
 
-  /** The avatar the player picked ('' = the Minecraft face, 'provider' = the sign-in provider's picture), and that picture. */
+  /**
+   * The avatar the player picked ('' = the first Minecraft account's face, 'mc:<uuid>' = that account's,
+   * 'provider' = the sign-in provider's picture), and that picture.
+   */
   avatarChoice(uuid: string): { source: string; provider: string } {
     const row = this.db.prepare('SELECT avatar_source, avatar FROM users WHERE uuid = ?').get(uuid) as { avatar_source: string; avatar: string } | undefined;
     return { source: row?.avatar_source ?? '', provider: row?.avatar ?? '' };
   }
 
-  setAvatarSource(uuid: string, source: '' | 'provider') {
+  setAvatarSource(uuid: string, source: string) {
     this.db.prepare('UPDATE users SET avatar_source = ? WHERE uuid = ?').run(source, uuid);
   }
 

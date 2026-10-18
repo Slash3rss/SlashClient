@@ -107,11 +107,17 @@ describe('social server', () => {
     await minecraftLogin('AlaMC', mcId(9), ala.token);
     const me = (await call('GET', '/v1/me', ala.token)).body;
     assert.equal(me.avatar, `/v1/head/${mcId(9)}`);
-    assert.equal(me.avatarSource, 'minecraft');
-    assert.deepEqual(me.avatars, { minecraft: `/v1/head/${mcId(9)}`, provider: '' });
+    assert.equal(me.avatarSource, mcId(9));
+    assert.deepEqual(me.avatars, { minecraft: [{ uuid: mcId(9), name: 'AlaMC', url: `/v1/head/${mcId(9)}` }], provider: '' });
     // the provider's picture picked, but there is none: still the face
     assert.equal((await call('POST', '/v1/me', ala.token, { avatarSource: 'provider' })).body.avatar, `/v1/head/${mcId(9)}`);
     assert.equal((await call('POST', '/v1/me', ala.token, { avatarSource: 'gravatar' })).body.error, 'bad_request');
+    // a second Minecraft account: its face can be the avatar instead (not someone else's)
+    await minecraftLogin('AlaAlt', mcId(8), ala.token);
+    const picked = (await call('POST', '/v1/me', ala.token, { avatarSource: mcId(8) })).body;
+    assert.equal(picked.avatar, `/v1/head/${mcId(8)}`);
+    assert.equal(picked.avatarSource, mcId(8));
+    assert.equal((await call('POST', '/v1/me', ala.token, { avatarSource: mcId(1) })).body.error, 'bad_request');
   });
 
   it('starts accounts with Minecraft, proven at Mojang, and links more Minecraft accounts', async () => {
@@ -218,7 +224,7 @@ describe('social server', () => {
           // pictures only from the provider's own host (Google's fake one is left out); the avatar stays the Minecraft face
           const me = (await call('GET', '/v1/me', done.token)).body;
           assert.equal(me.avatars.provider, avatar || me.avatars.provider);
-          if (avatar) assert.equal(me.avatar, me.avatars.minecraft || avatar);
+          if (avatar) assert.equal(me.avatar, me.avatars.minecraft[0]?.url || avatar);
         }
       }
     }
