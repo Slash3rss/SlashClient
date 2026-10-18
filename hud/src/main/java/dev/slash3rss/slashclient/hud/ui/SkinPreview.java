@@ -119,9 +119,11 @@ public final class SkinPreview {
 
 	private Object petModel(String id, float time) {
 		var layer = dev.slash3rss.slashclient.hud.CosmeticLayer.petLayer(id);
-		if (layer == null) return null;
+		// the game's mobs by their layer, ours from their boxes
+		if (layer == null && !dev.slash3rss.slashclient.hud.OurPets.IDS.contains(id)) return null;
 		Object model = pets.computeIfAbsent(id, k -> {
-			ModelPart holder = new ModelPart(java.util.List.of(), java.util.Map.of("pet", Minecraft.getInstance().getEntityModels().bakeLayer(layer)));
+			ModelPart pet = layer != null ? Minecraft.getInstance().getEntityModels().bakeLayer(layer) : dev.slash3rss.slashclient.hud.OurPets.bake(id);
+			ModelPart holder = new ModelPart(java.util.List.of(), java.util.Map.of("pet", pet));
 			holder.xScale = holder.yScale = holder.zScale = 0.55f;
 			return wrap(holder);
 		});

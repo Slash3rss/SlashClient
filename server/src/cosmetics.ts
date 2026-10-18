@@ -128,6 +128,8 @@ export const ITEMS: Item[] = [
   { id: 'axolotl', slot: 'pet', name: 'Aksolotl', since: '0.9.2' },
   { id: 'frog', slot: 'pet', name: 'Żaba', since: '0.9.2' },
   { id: 'fox', slot: 'pet', name: 'Lis', since: '0.9.2' },
+  // ours, made from a Blockbench model (scripts/make-model-pet.mjs)
+  { id: 'duszek_haze', slot: 'pet', name: 'Duszek Haze', since: '0.9.12' },
   // clothing: hats on the head and tops over the body (and arms), made of boxes over the skin
   { id: 'tophat', slot: 'hat', name: 'Cylinder', since: '0.9.11' },
   { id: 'crown', slot: 'hat', name: 'Korona', since: '0.9.11' },

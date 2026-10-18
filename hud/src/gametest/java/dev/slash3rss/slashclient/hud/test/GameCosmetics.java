@@ -84,7 +84,16 @@ public class GameCosmetics implements FabricClientGameTest {
 				context.waitTicks(30);
 				context.takeScreenshot("cosmetics-pet-" + pet);
 			}
+			// ours, from a Blockbench model: from behind and from the front, and its picture changes every second
 			context.runOnClient(mc -> TestHooks.wear("wings", null));
+			context.runOnClient(mc -> TestHooks.wear("aura", null));
+			context.runOnClient(mc -> TestHooks.wear("pet", "duszek_haze"));
+			context.waitTicks(10);
+			context.takeScreenshot("cosmetics-pet-duszek_haze");
+			context.runOnClient(mc -> TestHooks.cosmeticsSelf(null, true));
+			context.waitTicks(20);
+			context.takeScreenshot("cosmetics-pet-duszek_haze-front");
+			context.runOnClient(mc -> TestHooks.cosmeticsSelf("aurora", false));
 			context.runOnClient(mc -> TestHooks.wear("pet", null));
 			context.runOnClient(mc -> TestHooks.wear("aura", "fireflies"));
 			context.runOnClient(mc -> TestHooks.cosmeticsSelf("vortex", false));
@@ -111,6 +120,9 @@ public class GameCosmetics implements FabricClientGameTest {
 			context.runOnClient(mc -> { TestHooks.wearOwn("wings", "dragon"); TestHooks.wearOwn("pet", "bee"); });
 			context.waitTicks(5);
 			context.takeScreenshot("cosmetics-menu-figure-wings");
+			context.runOnClient(mc -> TestHooks.wearOwn("pet", "duszek_haze"));
+			context.waitTicks(5);
+			context.takeScreenshot("cosmetics-menu-figure-duszek_haze");
 			context.runOnClient(mc -> { TestHooks.wearOwn("wings", null); TestHooks.wearOwn("pet", null); TestHooks.wearOwn("cape", null); });
 			context.setScreen(() -> null);
 			// the menu in the game, on two slots

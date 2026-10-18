@@ -359,6 +359,8 @@ public class CosmeticsScreen extends Screen {
 				// a view of it from the front, a little from above
 				g.blit(RenderPipelines.GUI_TEXTURED, Clothing.icon(e.id()), x + (TILE_W - 26) / 2, y + (TILE_H - 26) / 2, 0, 0, 26, 26, 64, 64, 64, 64, alpha);
 			default -> {
+				// our own pets have a picture of their own
+				if (OurPets.IDS.contains(e.id())) g.blit(RenderPipelines.GUI_TEXTURED, OurPets.icon(e.id()), x + (TILE_W - 24) / 2, y + (TILE_H - 24) / 2, 0, 0, 24, 24, 64, 64, 64, 64, alpha);
 				Item item = ITEMS.get(e.id());
 				if (item != null) Ui.icon(g, item, "m-appearance", x + (TILE_W - 16) / 2, y + (TILE_H - 16) / 2);
 			}

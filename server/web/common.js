@@ -150,12 +150,16 @@ const ITEM_ICONS = {
   axolotl: 'fa-fish', frog: 'fa-frog', fox: 'fa-paw',
 };
 
+/** Pets of our own (not the game's mobs). */
+const OUR_PETS = ['duszek_haze'];
+
 /** A picture of any cosmetic: the cape's front, a wing's back, a view of the clothing, or an icon. */
 export function cosmeticEl(id, slot = 'cape', small = false) {
   if (slot === 'cape') return capeEl(id, small);
-  if (slot === 'hat' || slot === 'top') {
+  // our own pets have a picture of their own (vendor/pets/icon), like the clothing
+  if (slot === 'hat' || slot === 'top' || OUR_PETS.includes(id)) {
     const c = el('div', { class: `cape clothing${small ? ' sm' : ''}`, title: id });
-    c.style.backgroundImage = `url(vendor/clothing/icon/${id}.png)`;
+    c.style.backgroundImage = `url(vendor/${slot === 'pet' ? 'pets' : 'clothing'}/icon/${id}.png)`;
     return c;
   }
   if (slot === 'wings' || slot === 'elytra') {

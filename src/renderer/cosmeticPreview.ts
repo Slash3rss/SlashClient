@@ -1,5 +1,6 @@
-import { BufferGeometry, DoubleSide, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, NearestFilter, Object3D, SRGBColorSpace, Sprite, SpriteMaterial, Texture } from 'three';
+import { BufferGeometry, DoubleSide, Float32BufferAttribute, FrontSide, Group, Mesh, MeshStandardMaterial, NearestFilter, Object3D, SRGBColorSpace, Sprite, SpriteMaterial, Texture } from 'three';
 import { PET_MODELS, type PetPart } from './petModels';
+import { OUR_PET_FRAMES, OUR_PET_MODELS } from './ourPetModels';
 import { boxQuads, clothingItem, layout, slimBox, type Bone, type ClothingBox } from '../shared/clothing';
 import type { SkinViewer } from 'skinview3d';
 
@@ -102,8 +103,11 @@ export class CosmeticPreview {
   private dressed = '';
   private wearing: { hat?: string; top?: string } = {};
 
-  /** `clothing` is where the clothing's pictures are (<id>.png). */
-  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/') {
+  /** Our own pet's material, whose picture changes every second (its frames). */
+  private ourPet?: { id: string; material: MeshStandardMaterial; frame: number };
+
+  /** `clothing` is where the clothing's pictures are (<id>.png), `pets` our own pets' (<id>_<frame>.png). */
+  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/', private pets = 'img/pets/') {
     const tick = (now: number) => {
       this.update(Math.min(0.1, (now - this.last) / 1000), now / 1000);
       this.last = now;
@@ -153,10 +157,17 @@ export class CosmeticPreview {
 
   /** The mob, built from the game's model: one group per part, posed like the game poses it. */
   private petModel(id: string): Object3D | undefined {
-    const shape = PET_MODELS[id];
-    const map = this.texture(PET_TEXTURES[id]?.find((p) => this.pictures[p]) ?? '');
+    const ours = OUR_PET_MODELS[id];
+    const shape = PET_MODELS[id] ?? ours;
+    const map = ours ? this.ourTexture(`${this.pets}${id}_0.png`) : this.texture(PET_TEXTURES[id]?.find((p) => this.pictures[p]) ?? '');
+    this.ourPet = undefined;
     if (!shape || !map) return undefined;
-    const material = new MeshStandardMaterial({ map, transparent: true, alphaTest: 0.1, side: DoubleSide });
+    // ours have see-through parts (drawn last, in order) and leaves without thickness (one side each)
+    const material = ours
+      ? new MeshStandardMaterial({ map, transparent: true, alphaTest: 0.02, side: FrontSide })
+      : new MeshStandardMaterial({ map, transparent: true, alphaTest: 0.1, side: DoubleSide });
+    if (ours) this.ourPet = { id, material, frame: 0 };
+    let order = 0;
     const build = (part: PetPart): Group => {
       const g = new Group();
       const [x, y, z, rx, ry, rz] = part.pose;
@@ -177,7 +188,9 @@ export class CosmeticPreview {
         geometry.setAttribute('uv', new Float32BufferAttribute(uv, 2));
         geometry.setIndex(index);
         geometry.computeVertexNormals();
-        g.add(new Mesh(geometry, material));
+        const mesh = new Mesh(geometry, material);
+        mesh.renderOrder = order++;
+        g.add(mesh);
       }
       if (/^(left|right)_wing(_base)?$/.test(part.name)) {
         // bees, bats, parrots and phantoms beat their wings up and down, the others back and forth
@@ -193,7 +206,7 @@ export class CosmeticPreview {
     const holder = new Group();
     model.scale.set(1, -1, -1);
     holder.add(model);
-    holder.scale.setScalar(PET_SCALE[id] ?? 0.6);
+    holder.scale.setScalar(PET_SCALE[id] ?? (ours ? 0.7 : 0.6));
     return holder;
   }
 
@@ -247,14 +260,19 @@ export class CosmeticPreview {
   }
 
   private clothingTexture(id: string): Texture {
-    const key = `clothing/${id}`;
+    return this.ourTexture(`${this.clothing}${id}.png`);
+  }
+
+  /** One of our own pictures, by its address. */
+  private ourTexture(src: string): Texture {
+    const key = `ours:${src}`;
     let t = this.textures.get(key);
     if (!t) {
       const img = new Image();
       t = new Texture(img);
       const tex = t;
       img.onload = () => { tex.needsUpdate = true; };
-      img.src = `${this.clothing}${id}.png`;
+      img.src = src;
       t.magFilter = NearestFilter;
       t.minFilter = NearestFilter;
       t.colorSpace = SRGBColorSpace;
@@ -306,6 +324,14 @@ export class CosmeticPreview {
       const scale = this.pet instanceof Sprite ? 0 : this.pet.scale.x;
       this.pet.position.set(10, 6 + 24 * scale + Math.sin(time * 2.2) * 1.2, -3);
       for (const w of this.wings) w.part.rotation[w.axis] = w.base + w.side * Math.sin(time * w.speed) * 0.35;
+      // our pet's picture: the next frame every second
+      const p = this.ourPet;
+      const frame = p ? Math.floor(time) % (OUR_PET_FRAMES[p.id] ?? 1) : 0;
+      if (p && frame !== p.frame) {
+        p.frame = frame;
+        p.material.map = this.ourTexture(`${this.pets}${p.id}_${frame}.png`);
+        p.material.needsUpdate = true;
+      }
     }
     if (this.trail && (this.spawnTrail += dt) > 0.09) {
       this.spawnTrail = 0;
