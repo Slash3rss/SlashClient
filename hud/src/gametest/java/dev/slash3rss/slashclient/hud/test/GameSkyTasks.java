@@ -88,6 +88,15 @@ public class GameSkyTasks implements FabricClientGameTest {
 				&& progress.contains("Moczykij: Dowolna ryba ~1/24") && progress.contains("Rybak: Wyłów ~8090/200000") && progress.contains("Mamut morski: Wyłów conajmniej ogromne ~1/45"), "counted", progress);
 			rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			check(rows.contains(" | ~31/128"), "HUD estimate", rows);
+			// the fish counter: the catch from the chat, its weight, size, species and quality
+			String fish = context.computeOnClient(mc -> TestHooks.skyFish());
+			check(fish.startsWith("session 1/8090g/") && fish.contains("lifetime 1/8090g/") && fish.contains("sizes {ogromny=1}")
+				&& fish.contains("species {Halibut atlantycki=1}") && fish.contains("qualities {niezjadliwy=1}"), "fish counter", fish);
+			// on another server neither shows
+			String elsewhere = context.computeOnClient(mc -> TestHooks.skyElsewhere(true));
+			check(elsewhere.equals("tasks false fish false"), "off SkyUp", elsewhere);
+			elsewhere = context.computeOnClient(mc -> TestHooks.skyElsewhere(false));
+			check(elsewhere.equals("tasks true fish true"), "back on SkyUp", elsewhere);
 			context.takeScreenshot("skytasks-estimate");
 			// the furnace completed: the GUI without it, and the HUD without it
 			context.runOnClient(mc -> TestHooks.skyTasksScreen(true, false));

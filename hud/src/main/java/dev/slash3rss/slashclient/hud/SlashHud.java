@@ -101,6 +101,7 @@ public class SlashHud implements ClientModInitializer {
 			DungeonMap.stop();
 			//#if MC >= 26.3
 			SkyTasks.joined(mc);
+			SkyFish.joined();
 			//#endif
 		});
 		// the game's own menu gets a way back to ours

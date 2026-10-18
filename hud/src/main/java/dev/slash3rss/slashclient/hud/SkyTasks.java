@@ -69,13 +69,26 @@ public final class SkyTasks {
 	private static final Set<String> readNow = new java.util.HashSet<>();
 	private static boolean menuReadNow;
 
+	/** The in-game tests play in a world of their own: SkyUp there too. */
+	static boolean testWorld;
+
+	/** The tracker and the fish counter work on SkyUp.pl only (its address, or a subdomain of it). */
+	static boolean onSkyUp(Minecraft mc) {
+		if (testWorld) return true;
+		var server = mc.getCurrentServer();
+		return server != null && server.ip.toLowerCase(Locale.ROOT).contains("skyup.pl");
+	}
+
+	/** On SkyUp with the tracker switched on. */
+	private static boolean on(Minecraft mc) {
+		return SlashHud.config != null && SlashHud.config.placement("skytasks").enabled && onSkyUp(mc);
+	}
+
 	/** Joining a server: nothing read yet; on SkyUp, a line saying how to load the progress. */
 	static void joined(Minecraft mc) {
 		readNow.clear();
 		menuReadNow = false;
-		var server = mc.getCurrentServer();
-		HudConfig cfg = SlashHud.config;
-		if (server == null || !server.ip.toLowerCase(Locale.ROOT).contains("skyup") || !cfg.skyTasksJoinHint || !cfg.placement("skytasks").enabled) return;
+		if (!on(mc) || !SlashHud.config.skyTasksJoinHint) return;
 		Compat.chat(mc).addClientSystemMessage(Component.translatable("slashclient-hud.skyTasks.joinHint").withStyle(net.minecraft.ChatFormatting.GOLD));
 	}
 
@@ -114,6 +127,10 @@ public final class SkyTasks {
 	/** Every few ticks while a chest-like screen is open: its tasks; saved once it closes. */
 	static void tick(Minecraft mc) {
 		var screen = Compat.screen(mc);
+		if (!onSkyUp(mc)) {
+			if (dirty) save();
+			return;
+		}
 		if (screen instanceof AbstractContainerScreen<?> c && !(screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen)
 			&& !(screen instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen)) {
 			if (++tick % 5 == 0) read(c);
@@ -234,7 +251,7 @@ public final class SkyTasks {
 
 	/** The middle button on a task: tracks it (and the server never sees the click). */
 	static boolean click(AbstractContainerScreen<?> screen, net.minecraft.client.input.MouseButtonEvent e) {
-		if (e.button() != InputConstants.MOUSE_BUTTON_MIDDLE) return false;
+		if (e.button() != InputConstants.MOUSE_BUTTON_MIDDLE || !on(Minecraft.getInstance())) return false;
 		SkyTaskParser.Task t = hovered(screen);
 		if (t == null) return false;
 		toggle(t.key());
@@ -243,7 +260,7 @@ public final class SkyTasks {
 
 	/** The track key on a task. */
 	static boolean key(AbstractContainerScreen<?> screen, net.minecraft.client.input.KeyEvent e) {
-		if (trackKey == null || !trackKey.matches(e)) return false;
+		if (trackKey == null || !trackKey.matches(e) || !on(Minecraft.getInstance())) return false;
 		SkyTaskParser.Task t = hovered(screen);
 		if (t == null) return false;
 		toggle(t.key());
@@ -252,8 +269,8 @@ public final class SkyTasks {
 
 	/** Over the GUI: a mark on tracked tasks, and under it what the key does for the one under the mouse. */
 	static void drawOver(AbstractContainerScreen<?> screen, GuiGraphicsExtractor g) {
-		if (SlashHud.config == null || !SlashHud.config.placement("skytasks").enabled) return;
 		Minecraft mc = Minecraft.getInstance();
+		if (!on(mc)) return;
 		ContainerScreenAccessor at = (ContainerScreenAccessor) screen;
 		String tier = tier(screen);
 		boolean any = false;
@@ -474,6 +491,7 @@ public final class SkyTasks {
 
 		@Override
 		public boolean visible(Minecraft mc) {
+			if (!onSkyUp(mc)) return false;
 			return !shown(mc).isEmpty() || (SlashHud.config.skyTasksTierCount && !lastTier.isEmpty() && tierCount(mc)[0] > 0);
 		}
 

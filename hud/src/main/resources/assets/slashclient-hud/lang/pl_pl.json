@@ -488,5 +488,16 @@
 	"slashclient-hud.skyTasks.trackAll": "Śledź wszystkie nieukończone",
 	"slashclient-hud.skyTasks.tierCount": "Ile zadań zostało w kategorii",
 	"slashclient-hud.skyTasks.joinHintSetting": "Przypomnienie po wejściu na serwer",
-	"slashclient-hud.skyTasks.requires": "Wymaga: %s"
+	"slashclient-hud.skyTasks.requires": "Wymaga: %s",
+	"slashclient-hud.module.skyfish": "Licznik ryb SkyUp",
+	"slashclient-hud.skyFish.title": "Ryby",
+	"slashclient-hud.skyFish.session": "Sesja",
+	"slashclient-hud.skyFish.lifetime": "Łącznie",
+	"slashclient-hud.skyFish.split": "Podział na kategorie",
+	"slashclient-hud.skyFish.split.none": "Bez podziału",
+	"slashclient-hud.skyFish.split.size": "Rozmiar",
+	"slashclient-hud.skyFish.split.species": "Gatunek",
+	"slashclient-hud.skyFish.split.quality": "Jakość",
+	"slashclient-hud.skyFish.weight": "Pokaż wagę",
+	"slashclient-hud.skyFish.value": "Pokaż wartość (SC)"
 }

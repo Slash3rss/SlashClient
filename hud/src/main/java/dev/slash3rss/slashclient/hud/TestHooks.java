@@ -837,7 +837,12 @@ public final class TestHooks {
 	 */
 	public static void skyTasksScreen(boolean withoutHuta, boolean reset) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
-		if (reset) SkyTasks.resetForTest();
+		SkyTasks.testWorld = true;
+		if (reset) {
+			SkyTasks.resetForTest();
+			SkyFish.resetForTest();
+			SlashHud.config.placement("skyfish").enabled = true;
+		}
 		SlashHud.config.placement("skytasks").enabled = true;
 		// the iron ingot as the game names it in the language the test plays in
 		String iron = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_INGOT).getHoverName().getString();
@@ -900,6 +905,17 @@ public final class TestHooks {
 		var hover = new net.minecraft.network.chat.HoverEvent.ShowItem(net.minecraft.world.item.ItemStackTemplate.fromNonEmptyStack(fish));
 		Compat.chat(mc).addClientSystemMessage(net.minecraft.network.chat.Component.literal("Wędkarstwo » ").append(net.minecraft.network.chat.Component.literal("Wyłowiono: Ogromny Halibut (8 090,31g, 8%)!")
 			.withStyle(s -> s.withHoverEvent(hover))));
+	}
+
+	public static String skyFish() {
+		return SkyFish.debug();
+	}
+
+	/** Off SkyUp (another server): the tracker and the fish counter show nothing. */
+	public static String skyElsewhere(boolean elsewhere) {
+		SkyTasks.testWorld = !elsewhere;
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		return "tasks " + new SkyTasks.Module().visible(mc) + " fish " + new SkyFish.Module().visible(mc);
 	}
 
 	public static String skyProgress() {

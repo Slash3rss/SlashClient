@@ -90,7 +90,7 @@ public final class SkyCounters {
 
 	/** `amount` more of `what` for every known task's requirements of this kind. */
 	static void add(Kind kind, Thing what, long amount) {
-		if (amount <= 0 || SlashHud.config == null) return;
+		if (amount <= 0 || SlashHud.config == null || !SkyTasks.onSkyUp(Minecraft.getInstance())) return;
 		boolean any = false;
 		for (SkyTaskParser.Task t : SkyTasks.data().tasks.values()) {
 			for (SkyTaskParser.Section s : t.sections) {
@@ -248,8 +248,9 @@ public final class SkyCounters {
 	private static int tick;
 
 	static void tick(Minecraft mc) {
-		if (mc.player == null || mc.level == null) {
+		if (mc.player == null || mc.level == null || !SkyTasks.onSkyUp(mc)) {
 			hit.clear();
+			before = null;
 			return;
 		}
 		long now = System.currentTimeMillis();
@@ -306,7 +307,7 @@ public final class SkyCounters {
 	 */
 	public static void onChat(net.minecraft.network.chat.Component message) {
 		String plain = SkyTaskParser.plain(message.getString());
-		if (!plain.contains("Wyłowiono")) return;
+		if (!plain.contains("Wyłowiono") || !SkyTasks.onSkyUp(Minecraft.getInstance())) return;
 		var fish = message.visit((net.minecraft.network.chat.Style style, String text) ->
 			style.getHoverEvent() instanceof net.minecraft.network.chat.HoverEvent.ShowItem show ? java.util.Optional.of(show.item().create()) : java.util.Optional.<ItemStack>empty(),
 			net.minecraft.network.chat.Style.EMPTY);
@@ -319,6 +320,7 @@ public final class SkyCounters {
 		}
 		chatCatches = true;
 		fished(fish.get(), 1);
+		SkyFish.caught(fish.get());
 	}
 
 	/** SkyUp's fish (cod with a name of their own): "Wyłowił » nick", "Waga » 8 090,31g (niewielki)". */

@@ -36,6 +36,8 @@ public final class Modules {
 		//#if MC >= 26.3
 		// SkyUp's island tasks being tracked
 		out.add(new SkyTasks.Module());
+		// and SkyUp's fish, this session and for good
+		out.add(new SkyFish.Module());
 		//#endif
 		// the game's own parts, moved in the editor like the modules
 		out.addAll(GameParts.ALL);

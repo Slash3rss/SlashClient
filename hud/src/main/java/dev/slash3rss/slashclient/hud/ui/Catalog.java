@@ -47,7 +47,7 @@ public final class Catalog {
 		Map.entry("block", "world"), Map.entry("durability", "combat"), Map.entry("ammo", "combat"), Map.entry("kd", "combat"), Map.entry("hits", "combat"), Map.entry("session", "hud"), Map.entry("biome", "world"), Map.entry("daytime", "world"),
 		Map.entry("light", "world"), Map.entry("saturation", "world"), Map.entry("movement", "world"), Map.entry("combo", "combat"),
 		Map.entry("reach", "combat"), Map.entry("target", "combat"), Map.entry("armor", "combat"), Map.entry("effects", "combat"),
-		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("skytasks", "skyup"));
+		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"));
 
 	static final int[] COLORS = { 0xFFFFFFFF, 0xFF60A5FA, 0xFF4ADE80, 0xFF55FFFF, 0xFFFACC15, 0xFFF87171, 0xFFA855F7, 0xFFFF55FF };
 
@@ -135,6 +135,12 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.skyTasks.trackAll", () -> cfg.skyTasksTrackAll, v -> cfg.skyTasksTrackAll = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.tierCount", () -> cfg.skyTasksTierCount, v -> cfg.skyTasksTierCount = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.joinHintSetting", () -> cfg.skyTasksJoinHint, v -> cfg.skyTasksJoinHint = v));
+				}
+				case "skyfish" -> {
+					settings.add(new Choice("slashclient-hud.skyFish.split", new String[] { "none", "size", "species", "quality" }, "slashclient-hud.skyFish.split.",
+						() -> cfg.skyFishSplit, v -> cfg.skyFishSplit = v));
+					settings.add(new Toggle("slashclient-hud.skyFish.weight", () -> cfg.skyFishWeight, v -> cfg.skyFishWeight = v));
+					settings.add(new Toggle("slashclient-hud.skyFish.value", () -> cfg.skyFishValue, v -> cfg.skyFishValue = v));
 				}
 				case "fps" -> settings.add(new Toggle("slashclient-hud.set.fpsColored", () -> cfg.fpsColored, v -> cfg.fpsColored = v));
 				default -> {}
