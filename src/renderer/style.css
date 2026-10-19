@@ -1097,3 +1097,13 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .fr-party-pick label { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
 .fr-party-pick label.is-offline { color: var(--text-muted); }
 .fr-waypoint .grow small.muted { opacity: .7; }
+
+/* profile on the account, moving to another Minecraft version (cloudProfiles.ts, versionMove.ts) */
+.cloud-status { font-size: 13px; margin: 0 0 10px; }
+.cloud-actions { flex-wrap: wrap; }
+.move-pick { align-items: flex-end; }
+.move-pick button { height: 38px; }
+.move-result, .move-pending { margin-top: 12px; }
+.move-list { max-height: 320px; margin-bottom: 8px; }
+.move-item img { width: 28px; height: 28px; }
+.move-item.off .grow { opacity: .65; }

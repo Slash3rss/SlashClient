@@ -62,6 +62,8 @@ import { exportWorld, importWorldZip, installDatapack, listDatapacks, readWorldZ
 import { t } from '../shared/i18n';
 import { APP_USER_MODEL_ID, cleanTarget, Notifier } from './notifications';
 import { registerMaintenance } from './maintenance';
+import { registerCloudProfiles } from './cloudProfiles';
+import { registerVersionMove } from './versionMove';
 
 let win: BrowserWindow | undefined;
 let store: StoreData;
@@ -1142,6 +1144,28 @@ handle('snapshots:restore', async (profileId: string, id: string) => {
 });
 handle('snapshots:delete', (profileId: string, id: string) => deleteSnapshot(snapshotsDirOf(profileById(profileId)), id));
 
+// ---------- profiles on the account (cloudProfiles.ts) and moving to another Minecraft version (versionMove.ts) ----------
+
+const snapshotBefore = (profile: Profile, label: string) =>
+  withSnapshotLock(profile, () => createSnapshot({ dir: snapshotsDirOf(profile), gameDir: profileGameDir(profile), profile, reason: 'manual', label }));
+const cloudProfiles = registerCloudProfiles({
+  handle, profiles: () => store.profiles, gameDir: profileGameDir, running: (id) => games.has(id), persist,
+  startTask: (title) => startTask(title), session: shareSession, signedIn: () => !!store.settings.socialToken,
+  pack: (profile, out, parts, onStage) => packProfile(profile, out, parts, onStage),
+  snapshot: snapshotBefore, defaults: newMemory,
+  add: (profile) => {
+    store.profiles.push(profile);
+    store.settings.selectedProfileId = profile.id;
+  },
+  linksFile: path.join(paths.root, 'cloud-profiles.json'), tempDir: path.join(app.getPath('temp'), 'slashclient-cloud'),
+});
+registerVersionMove({
+  handle, profiles: () => store.profiles, gameDir: profileGameDir, running: (id) => games.has(id), persist,
+  startTask: (title) => startTask(title), resolveVersion: resolveVersionId, snapshot: snapshotBefore,
+  loaderSupports: async (loader, gameVersion) => loader === 'vanilla' || (await loaderVersions(loader, gameVersion).catch(() => [])).length > 0,
+  installMod: (gameDir, projectId, gameVersion, loader) => installProject(gameDir, projectId, 'mod', gameVersion, loader),
+});
+
 /** True for files inside one of the profiles' game folders. */
 function isInsideInstances(file: string): boolean {
   const full = path.resolve(file);
@@ -1372,6 +1396,8 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
       if (runs[0] && runs[0].at > benchmarksBefore) send('benchmark:done', { profileId: profile.id, result: runs[0], before: runs[1] });
     }).catch(() => {});
     if (profile.syncOptions) pushShared(profileGameDir(profile)).catch(() => {});
+    // profiles synced with the account go there after the game
+    cloudProfiles.afterGame(profile.id).catch((err) => console.error('chmura:', (err as Error).message));
     recordSession(profile, startedAt, lastServer).catch(() => {});
     resolveVersionId(profile.versionId).then((versionId) => appendSession({
       start: startedAt, end: Date.now(), profileId: profile.id, profileName: profile.name, versionId, loader: profile.loader, servers: joins,
