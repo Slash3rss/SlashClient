@@ -13,7 +13,8 @@ import { partnerRoutes } from './partners.ts';
 import { trackerRoutes } from './tracker.ts';
 import { sharingRoutes } from './sharing.ts';
 import { RequestLog, clientOf, maskIp, routeOf } from './requests.ts';
-import { serveWeb } from './web.ts';
+import { serveWeb, versioned } from './web.ts';
+import { mediaRoutes, type MediaLimits } from './media.ts';
 import { createDownloads, isDownloadOs } from './downloads.ts';
 import { createCurseForge } from './curseforge.ts';
 import { profileShareRoutes, type ShareLimits } from './profileShares.ts';
@@ -54,6 +55,10 @@ export interface Config {
   sharesDir?: string;
   /** Size, time and quota of shared profiles (tests lower them). */
   shareLimits?: Partial<ShareLimits>;
+  /** Folder for screenshots and clips shared by link (MEDIA_DIR); default "media" next to the database. */
+  mediaDir?: string;
+  /** Size, time and quota of shared screenshots and clips (tests lower them). */
+  mediaLimits?: Partial<MediaLimits>;
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -416,6 +421,17 @@ export function createApp(cfg: Config) {
   const shares = profileShareRoutes({
     db, authed, clientIp, dir: cfg.sharesDir ?? path.join(path.dirname(cfg.dbFile), 'profiles'), limits: cfg.shareLimits,
     limitUploads: rateLimiter(6), limitDownloads: rateLimiter(30),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  // screenshots and clips shared by link, /media/<id> (media.ts)
+  const media = mediaRoutes({
+    sql: db.sql, dir: cfg.mediaDir ?? path.join(path.dirname(cfg.dbFile), 'media'), webDir: cfg.webDir, publicUrl: cfg.publicUrl, limits: cfg.mediaLimits,
+    authed, isAdmin, clientIp, limitUploads: rateLimiter(6), limitViews: rateLimiter(60),
+    audit: (who, action, target, detail) => db.log(who, action, target, detail),
+    versioned: (html) => versioned(html, 'text/html'),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -826,6 +842,7 @@ export function createApp(cfg: Config) {
     ...achievements.routes,
     ...tracker.routes,
     ...shares.routes,
+    ...media.routes,
     ...sharing.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged,
@@ -969,6 +986,15 @@ export function createApp(cfg: Config) {
       if (await shares.serve(req, res, url)) return;
     } catch (err) {
       console.error('profil:', (err as Error).message);
+      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
+      return;
+    }
+
+    // a shared screenshot or clip: its file, and its page with the preview
+    try {
+      if (await media.serve(req, res, url)) return;
+    } catch (err) {
+      console.error('media:', (err as Error).message);
       if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
       return;
     }
@@ -1209,6 +1235,7 @@ export function createApp(cfg: Config) {
   const logCleanup = setInterval(() => {
     void tracker.cleanup().catch((err) => console.error('logi:', (err as Error).message));
     void shares.cleanup().catch((err) => console.error('profile:', (err as Error).message));
+    void media.cleanup().catch((err) => console.error('media:', (err as Error).message));
   }, 3_600_000);
 
   return {

@@ -29,7 +29,7 @@ export const BLOCK_FACES: Record<string, { top: string; side: string; front?: st
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
 /** Downloaded game jars, newest folder first (any version has these blocks). */
-async function clientJars(versionsDir: string): Promise<string[]> {
+export async function clientJars(versionsDir: string): Promise<string[]> {
   const dirs = await fs.readdir(versionsDir, { withFileTypes: true }).catch(() => []);
   const jars: { file: string; at: number }[] = [];
   for (const d of dirs) {

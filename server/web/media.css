@@ -1,0 +1,13 @@
+/* A shared screenshot or clip (/media/<id>). */
+.media-tools { padding: 10px; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.media-view { padding: 10px; }
+.media-image { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: 10px; image-rendering: auto; }
+.media-stage { position: relative; }
+.media-canvas { display: block; width: 100%; height: auto; border-radius: 10px; background: #000; cursor: pointer; }
+.media-loading { position: absolute; inset: 0; display: grid; place-items: center; grid-auto-flow: column; gap: 8px; justify-content: center; }
+.media-controls { gap: 10px; margin-top: 10px; align-items: center; }
+.media-controls input[type=range] { flex: 1; min-width: 0; accent-color: var(--accent); height: auto; padding: 0; background: none; border: 0; box-shadow: none; }
+.media-time { white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .media-tools .label { display: none; }
+}

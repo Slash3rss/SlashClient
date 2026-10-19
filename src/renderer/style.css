@@ -1199,3 +1199,46 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
   .wiki-split { grid-template-columns: minmax(0, 1fr); }
   .wiki-content .w-infobox { float: none; width: auto; margin: 0 0 12px; }
 }
+/* ---------- clip trimming and shared links (mediaTools.ts) ---------- */
+.media-links-open { margin-bottom: 12px; }
+.trim-box { width: min(920px, 100%); }
+.trim-box .modal-body { gap: 12px; padding-top: 24px; }
+.trim-box .modal-body > p { margin: 0; }
+.trim-stage { border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--glass-border); }
+.trim-canvas { display: block; width: 100%; height: auto; max-height: 46vh; object-fit: contain; cursor: pointer; }
+.trim-controls { display: flex; align-items: center; gap: 12px; }
+.trim-time { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.trim-track { position: relative; flex: 1; height: 34px; border-radius: 8px; background: rgba(0, 0, 0, .35); border: 1px solid var(--glass-border); cursor: pointer; touch-action: none; }
+.trim-selection { position: absolute; top: 0; bottom: 0; background: rgba(59, 130, 246, .28); border-top: 2px solid var(--accent); border-bottom: 2px solid var(--accent); pointer-events: none; }
+.trim-head { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 6px rgba(0, 0, 0, .6); pointer-events: none; }
+.trim-handle { position: absolute; top: -3px; bottom: -3px; width: 14px; height: auto; margin-left: -7px; padding: 0; border-radius: 5px; background: var(--accent); border: 2px solid #fff; cursor: ew-resize; box-shadow: 0 2px 8px rgba(0, 0, 0, .5); }
+.trim-handle:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.trim-facts { gap: 18px; font-size: 13px; color: var(--text-muted); flex-wrap: wrap; }
+.trim-facts b { color: var(--text-primary); font-weight: 600; }
+.trim-actions { gap: 8px; flex-wrap: wrap; }
+.trim-actions .push { flex: 1; }
+.trim-actions button.active { border-color: var(--accent); color: var(--accent-light); }
+.media-links-box { width: min(640px, 100%); }
+.media-links-box .modal-body > p { margin: 0; }
+.media-links { max-height: 55vh; overflow-y: auto; }
+
+/* ---------- resource pack preview (packPreview.ts) ---------- */
+.pp-box { width: min(900px, 100%); }
+.pp-box .modal-body { gap: 12px; padding-top: 24px; }
+.pp-head { display: flex; gap: 14px; align-items: center; padding-right: 40px; }
+.pp-head h2 { font-size: 22px; }
+.pp-icon { width: 56px; height: 56px; border-radius: 10px; image-rendering: pixelated; object-fit: cover; flex-shrink: 0; background: rgba(0, 0, 0, .3); }
+.pp-meta { margin: 2px 0 0; font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pp-loading { display: flex; gap: 10px; align-items: center; justify-content: center; padding: 48px 0; }
+.pp-error { color: #fca5a5; margin: 0; padding: 24px 0; }
+.pp-summary { margin: 0; font-weight: 600; }
+.pp-content > p { margin: 0 0 4px; }
+.pp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; max-height: 56vh; overflow-y: auto; padding: 2px; }
+.pp-pair { padding: 10px; border-radius: 10px; border: 1px solid var(--glass-border); background: rgba(255, 255, 255, .02); display: flex; flex-direction: column; gap: 8px; }
+.pp-pair b { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-sides { display: flex; align-items: center; justify-content: space-between; gap: 6px; color: var(--text-muted); font-size: 11px; }
+.pp-tile { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.pp-tile figcaption { font-size: 11px; color: var(--text-muted); }
+.pp-tex { width: 64px; height: 64px; object-fit: cover; object-position: top; image-rendering: pixelated; border-radius: 4px; background: repeating-conic-gradient(rgba(255, 255, 255, .06) 0 25%, transparent 0 50%) 0 0 / 16px 16px; }
+.pp-tex.tinted { filter: sepia(1) saturate(2.2) hue-rotate(52deg) brightness(.8); }
+.pp-actions { justify-content: flex-end; }

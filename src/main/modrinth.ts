@@ -263,6 +263,14 @@ export async function datapackFile(projectId: string, gameVersion: string, versi
   };
 }
 
+/** The file a resource pack install would take (the given version, or the newest for this game version), for its preview. */
+export async function resourcePackFile(projectId: string, gameVersion: string, versionId?: string) {
+  const version = versionId ? await get<ModrinthVersion>(`${API}/version/${versionId}`) : await pickVersion(projectId, gameVersion);
+  if (version.project_id !== projectId) throw new Error(t('Ta wersja nie należy do tego projektu.'));
+  const file = version.files.find((f) => f.primary) ?? version.files[0];
+  return { url: file.url, filename: path.basename(file.filename), sha1: file.hashes.sha1, size: file.size, versionNumber: version.version_number };
+}
+
 /**
  * Installs a project and, for mods, its required dependencies. Replaces older
  * files of the same project. Returns the titles that were installed.

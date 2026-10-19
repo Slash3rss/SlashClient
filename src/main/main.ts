@@ -11,6 +11,8 @@ import { iconFile, iconFromFile, iconFromUrl } from './profileIcon';
 import { pullShared, pushShared } from './sync';
 import { recommendedMemoryMb } from './jvm';
 import { shareLog } from './logshare';
+import { clipFrameResponse, registerMediaSharing } from './mediaShare';
+import { previewPack } from './packPreview';
 import { lastTarget, serverFromLog, worldPlayedSince } from './sessions';
 import { checkForUpdates, installUpdate, startUpdateChecks, updateStatus } from './updates';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
@@ -424,6 +426,12 @@ handle('content:search', async (profileId: string, query: string, type: ProjectT
   }
 });
 handle('content:list', async (profileId: string) => listInstalled((await profileTarget(profileId)).gameDir));
+/** A resource pack's textures next to the game's, before installing it (packPreview.ts). */
+handle('content:packPreview', async (profileId: string, projectId: string, source: Source = 'modrinth', versionId?: string) => {
+  const { gameVersion } = await profileTarget(profileId);
+  if (source === 'curseforge') curseforge();
+  return previewPack({ projectId: String(projectId), source: source === 'curseforge' ? 'curseforge' : 'modrinth', gameVersion, versionId, temp: app.getPath('temp') });
+});
 handle('content:versions', async (profileId: string, projectId: string, type: ProjectType, onlyCompatible: boolean, source: Source = 'modrinth') => {
   const list = source === 'curseforge' && type !== 'datapack' ? (curseforge(), listCurseForgeVersions) : listContentVersions;
   if (!onlyCompatible || type === 'modpack') return list(projectId, 'modpack');
@@ -1031,6 +1039,8 @@ handle('screenshots:list', (profileId: string) => listScreenshots(gameDirOf(prof
 handle('clips:list', (profileId: string) => listClips(gameDirOf(profileId)));
 handle('clips:delete', (profileId: string, name: string) => deleteFile(gameDirOf(profileId), 'clips', name));
 handle('screenshots:delete', (profileId: string, name: string) => deleteFile(gameDirOf(profileId), 'screenshots', name));
+// trimming clips and sharing screenshots and clips by link (mediaShare.ts)
+registerMediaSharing({ handle, gameDirOf, session: () => shareSession(), copy: (text) => clipboard.writeText(text) });
 // ---------- config editor and disk cleanup (maintenance.ts) ----------
 
 registerMaintenance({
@@ -1719,7 +1729,10 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'slash-media', privileges: { sta
 
 app.whenReady().then(async () => {
   protocol.handle('slash-media', (request) => {
-    const file = new URL(request.url).searchParams.get('path') ?? '';
+    const url = new URL(request.url);
+    const file = url.searchParams.get('path') ?? '';
+    // a clip's single frame, for the trim window
+    if (url.host === 'clip') return isInsideInstances(file) ? clipFrameResponse(file, Number(url.searchParams.get('frame')) || 0) : new Response('Not found', { status: 404 });
     if (!/\.(png|jpe?g|webp|gif)$/i.test(file) || !isInsideInstances(file)) return new Response('Not found', { status: 404 });
     return net.fetch(pathToFileURL(file).toString());
   });
