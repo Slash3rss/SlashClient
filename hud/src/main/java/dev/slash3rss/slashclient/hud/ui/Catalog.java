@@ -178,6 +178,10 @@ public final class Catalog {
 			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.KeybindsScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
 		}));
 		out.add(new Entry("reconnect", "slashclient-hud.reconnectButton", "extras", "m-reconnect", () -> cfg.reconnect, v -> cfg.reconnect = v, List.of(), null));
+		// each server in the list has its own mode (its edit screen); this one is for the rest
+		out.add(new Entry("serverPacks", "slashclient-hud.serverPacks", "extras", "m-server", null, null, List.of(
+			new Choice("slashclient-hud.serverPacks.default", dev.slash3rss.slashclient.hud.ServerPacks.MODES, "slashclient-hud.serverPacks.choice.",
+				() -> cfg.serverPackDefault, v -> cfg.serverPackDefault = v)), null));
 		out.add(new Entry("fullbright", "slashclient-hud.fullbright", "extras", "m-fullbright", () -> cfg.fullbright, v -> cfg.fullbright = v, List.of(), null));
 		out.add(new Entry("lowFire", "slashclient-hud.lowFire", "extras", "m-lowfire", () -> cfg.lowFire, v -> cfg.lowFire = v, List.of(), null));
 		out.add(new Entry("blockOutline", "slashclient-hud.blockOutline", "extras", "m-block", () -> cfg.blockOutline, v -> cfg.blockOutline = v, List.of(

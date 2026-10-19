@@ -82,17 +82,19 @@ abstract class OnlineServerEntryMixin {
 	//$ }
 	//#endif
 
-	/** The "Partner" badge on top of the row. */
+	/** The "Partner" badge on top of the row, and the resource pack mode when it does not just ask. */
 	//#if MC >= 1.21.9
 	@Inject(method = "extractContent", at = @At("TAIL"))
 	private void slashclient$partnerBadge(GuiGraphicsExtractor g, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
 		var entry = (ServerSelectionList.Entry) (Object) this;
 		dev.slash3rss.slashclient.hud.PartnerServers.drawBadge(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
+		dev.slash3rss.slashclient.hud.ServerPacks.drawTag(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
 	}
 	//#else
 	//$ @Inject(method = "render", at = @At("TAIL"))
 	//$ private void slashclient$partnerBadge(GuiGraphicsExtractor g, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
 	//$ 	dev.slash3rss.slashclient.hud.PartnerServers.drawBadge(g, serverData, left, top, width, height);
+	//$ 	dev.slash3rss.slashclient.hud.ServerPacks.drawTag(g, serverData, left, top, width, height);
 	//$ }
 	//#endif
 
