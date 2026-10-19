@@ -234,6 +234,16 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.waitTicks(5);
 			if (context.computeOnClient(mc -> TestHooks.chatWindowLines("PM")) < 2) throw new AssertionError("The PM window got no lines");
 			context.takeScreenshot("chat-window-open");
+			// with the GUI hidden (F1) the window goes away whole: no × left floating on its own
+			context.runOnClient(mc -> TestHooks.hideGui(true));
+			context.setScreen(() -> null);
+			context.setScreen(() -> dev.slash3rss.slashclient.hud.Compat.chatScreen());
+			context.waitTicks(2);
+			context.takeScreenshot("chat-window-hidden-gui");
+			context.runOnClient(mc -> TestHooks.hideGui(false));
+			context.setScreen(() -> null);
+			context.setScreen(() -> dev.slash3rss.slashclient.hud.Compat.chatScreen());
+			context.waitTicks(2);
 			// its corner grip: dragged right and down, the window gets wider and shows more lines
 			double[] grip = context.computeOnClient(mc -> TestHooks.chatWindowGrip("PM"));
 			if (grip == null) throw new AssertionError("The PM window has no corner grip");

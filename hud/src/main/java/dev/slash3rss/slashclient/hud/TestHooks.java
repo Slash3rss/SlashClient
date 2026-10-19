@@ -286,6 +286,16 @@ public final class TestHooks {
 		return sb.toString();
 	}
 
+	/** Hides or shows the whole GUI, as F1 does. */
+	public static void hideGui(boolean hidden) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		//#if MC >= 26.2
+		if (mc.gui.hud.isHidden() != hidden) mc.gui.hud.toggle();
+		//#else
+		//$ mc.options.hideGui = hidden;
+		//#endif
+	}
+
 	/** A pulled-out chat window's width x lines ("none" when the tab is not out). */
 	public static String chatWindowSize(String tab) {
 		return ChatWindows.sizeOf(tab);

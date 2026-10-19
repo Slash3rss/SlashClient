@@ -104,9 +104,22 @@ public final class ChatWindows {
 		tab.window.dy = 0;
 	}
 
-	/** Every window, from the HUD: faded lines in the game, the whole window with the chat open. */
+	/** Every window, from the HUD: faded lines in the game (the open chat draws them itself). */
 	public static void draw(GuiGraphicsExtractor g, Minecraft mc) {
-		boolean open = Compat.screen(mc) instanceof ChatScreen;
+		if (Compat.screen(mc) instanceof ChatScreen) return;
+		draw(g, mc, false);
+	}
+
+	/**
+	 * Every whole window, from the open chat screen: there they show with the debug screen (F3) too,
+	 * which hides the HUD's layer. With the whole GUI hidden (F1) they stay hidden, × buttons included.
+	 */
+	static void drawOpen(GuiGraphicsExtractor g, Minecraft mc) {
+		if (Compat.hudHidden(mc)) return;
+		draw(g, mc, true);
+	}
+
+	private static void draw(GuiGraphicsExtractor g, Minecraft mc, boolean open) {
 		long now = System.currentTimeMillis();
 		for (HudConfig.ChatTab tab : SlashHud.config.chatTabs) {
 			if (tab.window == null) continue;
@@ -174,6 +187,7 @@ public final class ChatWindows {
 
 	/** The open chat: a handle over each window's title to drag it, and a button to dock it back. */
 	static void addHandles(net.minecraft.client.gui.screens.Screen screen, int sw, int sh, Runnable docked) {
+		if (Compat.hudHidden(Minecraft.getInstance())) return;
 		for (HudConfig.ChatTab tab : SlashHud.config.chatTabs) {
 			if (tab.window == null) continue;
 			int[] p = at(tab, sw, sh);

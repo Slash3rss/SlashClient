@@ -63,7 +63,8 @@ public final class ChatTabs {
 				dragging = -1;
 				SlashHud.config.save();
 			});
-			// pulled-out tabs: drag them by their title, dock them back with the ×
+			// pulled-out tabs: drawn under their handles, dragged by their title, docked back with the ×
+			ScreenEvents.beforeExtract(screen).register((s, g, mouseX, mouseY, delta) -> ChatWindows.drawOpen(g, mc));
 			ChatWindows.addHandles(screen, width, height, () -> mc.execute(() -> Compat.relayout(screen)));
 			// a tab being dragged out shows where its window will go
 			ScreenEvents.afterExtract(screen).register((s, g, mouseX, mouseY, delta) -> drawDrag(g, mouseX, mouseY));
