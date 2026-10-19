@@ -1198,6 +1198,19 @@ const EN: Record<string, string> = {
   'Nieprawidłowy zakres.': 'Invalid range.',
   'Przycięty klip musi mieć co najmniej dwie klatki.': 'A trimmed clip needs at least two frames.',
   'Nie udało się przyciąć klipu: {0}': 'Could not trim the clip: {0}',
+  // resource pack preview
+  'Pobieram paczkę i porównuję tekstury…': 'Downloading the pack and comparing textures…',
+  'Wersja {0}': 'Version {0}',
+  'Zmienia {0} z {1} tekstur bloków i {2} z {3} tekstur przedmiotów.': 'Changes {0} of {1} block textures and {2} of {3} item textures.',
+  'Ta paczka nie zmienia wyglądu bloków ani przedmiotów. Zmienia: {0}.': 'This pack does not change how blocks or items look. It changes: {0}.',
+  'Ta paczka nie zmienia wyglądu bloków ani przedmiotów.': 'This pack does not change how blocks or items look.',
+  'Paczka': 'Pack',
+  'Po lewej tekstury z gry (Minecraft {0}), po prawej z paczki. Pokazane są tylko te, które paczka zmienia.': 'Left: the game’s textures (Minecraft {0}), right: the pack’s. Only the ones the pack changes are shown.',
+  'Do podglądu potrzebna jest pobrana gra: uruchom raz dowolny profil.': 'The preview needs a downloaded game: start any profile once.',
+  'Autor tej paczki pozwala ją pobrać tylko ze strony CurseForge, więc launcher nie pokaże podglądu.': 'The author allows downloading this pack only from the CurseForge site, so the launcher cannot preview it.',
+  'Paczka jest za duża na podgląd ({0} MB).': 'The pack is too large to preview ({0} MB).',
+  'To nie jest paczka zasobów (.zip).': 'This is not a resource pack (.zip).',
+  'Podgląd tekstur': 'Texture preview',
 };
 
 const DICTS: Record<Lang, Record<string, string>> = { pl: {}, en: EN };

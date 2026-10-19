@@ -7,6 +7,7 @@ import { createFriends, socialErrorText } from './friends';
 import { createProfileFiles } from './profileFiles';
 import { initProfileSharing } from './profileShare';
 import { createMediaTools } from './mediaTools';
+import { openPackPreview } from './packPreview';
 import { createAchievements } from './achievements';
 import { openSkinEditor } from './skinEditor';
 import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
@@ -2318,6 +2319,13 @@ function hitCard(hit: ProjectHit): HTMLElement {
     if (v) installHit(hit, v.id);
   });
   const extra: HTMLElement[] = [];
+  const preview: HTMLElement[] = [];
+  // a resource pack's textures next to the game's, before installing it (packPreview.ts)
+  if (contentType === 'resourcepack' && !hit.manualOnly) {
+    const eye = el('button', { type: 'button', className: 'icon-btn', title: t('Podgląd tekstur') }, el('i', { className: 'fa-solid fa-eye' }));
+    eye.addEventListener('click', () => openPackPreview({ api, profileId: contentProfileId, source: () => contentSource, install: () => installHit(hit) }, hit));
+    preview.push(eye);
+  }
   if (hit.manualOnly) extra.push(el('span', { className: 'tag beta', textContent: t('Pobieranie tylko ze strony CurseForge'), title: t('Autor nie pozwala pobierać plików poza CurseForge: launcher pokaże link do strony pliku') }));
   return el('div', { className: 'project' },
     projectIcon(hit.iconUrl),
@@ -2327,7 +2335,7 @@ function hitCard(hit: ProjectHit): HTMLElement {
       el('div', { className: 'project-meta' },
         el('span', {}, el('i', { className: 'fa-solid fa-download' }), ` ${fmtCount(hit.downloads)}`),
         el('span', { textContent: hit.categories.slice(0, 4).join(' · ') }), ...extra)),
-    el('div', { className: 'project-actions' }, btn, pick));
+    el('div', { className: 'project-actions' }, btn, ...preview, pick));
 }
 
 function installedCard(item: InstalledItem): HTMLElement {

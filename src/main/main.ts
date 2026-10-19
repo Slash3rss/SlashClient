@@ -12,6 +12,7 @@ import { pullShared, pushShared } from './sync';
 import { recommendedMemoryMb } from './jvm';
 import { shareLog } from './logshare';
 import { clipFrameResponse, registerMediaSharing } from './mediaShare';
+import { previewPack } from './packPreview';
 import { lastTarget, serverFromLog, worldPlayedSince } from './sessions';
 import { checkForUpdates, installUpdate, startUpdateChecks, updateStatus } from './updates';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
@@ -422,6 +423,12 @@ handle('content:search', async (profileId: string, query: string, type: ProjectT
   }
 });
 handle('content:list', async (profileId: string) => listInstalled((await profileTarget(profileId)).gameDir));
+/** A resource pack's textures next to the game's, before installing it (packPreview.ts). */
+handle('content:packPreview', async (profileId: string, projectId: string, source: Source = 'modrinth', versionId?: string) => {
+  const { gameVersion } = await profileTarget(profileId);
+  if (source === 'curseforge') curseforge();
+  return previewPack({ projectId: String(projectId), source: source === 'curseforge' ? 'curseforge' : 'modrinth', gameVersion, versionId, temp: app.getPath('temp') });
+});
 handle('content:versions', async (profileId: string, projectId: string, type: ProjectType, onlyCompatible: boolean, source: Source = 'modrinth') => {
   const list = source === 'curseforge' && type !== 'datapack' ? (curseforge(), listCurseForgeVersions) : listContentVersions;
   if (!onlyCompatible || type === 'modpack') return list(projectId, 'modpack');

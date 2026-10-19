@@ -174,6 +174,12 @@ async function pickFile(projectId: string | number, gameVersion: string, loader?
 
 // ---------- mods, resource packs, shaders into a profile ----------
 
+/** The file a resource pack install would take, for its preview; no `url` when the author keeps it on CurseForge's site. */
+export async function curseForgePackFile(projectId: string, gameVersion: string, fileId?: string) {
+  const file = fileId ? await call<CfFile>(`/mods/${Number(projectId)}/files/${Number(fileId)}`) : await pickFile(projectId, gameVersion);
+  return { url: file.downloadUrl ?? undefined, filename: path.basename(file.fileName), sha1: sha1Of(file), size: file.fileLength, versionNumber: file.displayName || file.fileName };
+}
+
 /** A file the player has to download from CurseForge's page and put into the folder. */
 export interface ManualFile { title: string; fileName: string; url: string; folder: string }
 
