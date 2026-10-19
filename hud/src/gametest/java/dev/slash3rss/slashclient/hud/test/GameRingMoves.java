@@ -34,7 +34,6 @@ public class GameRingMoves implements FabricClientGameTest {
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			world.getServer().runCommand("time set 6000");
-			world.getServer().runCommand("gamerule doDaylightCycle false");
 			context.runOnClient(mc -> { TestHooks.ringMoveEffects(true, true, true); TestHooks.lookSouth(); TestHooks.cosmeticsSelf(null, true); });
 			// every ring, from the front
 			for (String ring : new String[] {"ring_runes", "ring_flame", "ring_frost", "ring_rainbow", "ring_mushroom", "ring_galaxy", "ring_halo", "ring_toxic"}) {
