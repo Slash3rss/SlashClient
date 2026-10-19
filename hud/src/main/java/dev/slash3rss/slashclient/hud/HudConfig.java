@@ -191,6 +191,16 @@ public final class HudConfig {
 	public boolean fullbright = false;
 	/** The fire overlay sits lower, so it covers less of the screen. */
 	public boolean lowFire = false;
+	/** The outline of the block looked at in its own colour (opacity in %) and thickness (× the game's). */
+	public boolean blockOutline = false;
+	public int blockOutlineColor = 0xFFFFFFFF, blockOutlineOpacity = 60;
+	public float blockOutlineWidth = 2f;
+	/** A held shield sits lower in first person, by this many hundredths of a block. */
+	public boolean lowShield = false;
+	public float lowShieldAmount = 20f;
+	/** Held items in first person smaller (scale) and moved (in hundredths of a block). */
+	public boolean heldItems = false;
+	public float heldItemScale = 0.75f, heldItemX = 0f, heldItemY = 0f, heldItemZ = 0f;
 	public boolean chatTimestamps = false;
 	/** A chime when someone writes your nick, and the "@" badge over the closed chat. */
 	public boolean chatMentions = true;
@@ -450,6 +460,17 @@ public final class HudConfig {
 		reconnect = other.reconnect;
 		fullbright = other.fullbright;
 		lowFire = other.lowFire;
+		blockOutline = other.blockOutline;
+		blockOutlineColor = other.blockOutlineColor;
+		blockOutlineOpacity = other.blockOutlineOpacity;
+		blockOutlineWidth = other.blockOutlineWidth;
+		lowShield = other.lowShield;
+		lowShieldAmount = other.lowShieldAmount;
+		heldItems = other.heldItems;
+		heldItemScale = other.heldItemScale;
+		heldItemX = other.heldItemX;
+		heldItemY = other.heldItemY;
+		heldItemZ = other.heldItemZ;
 		chatTimestamps = other.chatTimestamps;
 		chatMentions = other.chatMentions;
 		crosshair = other.crosshair;
