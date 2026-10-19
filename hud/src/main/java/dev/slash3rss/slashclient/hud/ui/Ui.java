@@ -246,8 +246,24 @@ public final class Ui {
 
 	/** The accent gradient of the launcher's primary buttons, top to bottom. */
 	public static void accent(GuiGraphicsExtractor g, int x, int y, int w, int h, int r, float strength) {
-		round(g, x, y, w, h, r, blend(ACCENT_DARK, ACCENT, 0.5f));
-		g.fillGradient(x + r, y + 1, x + w - r, y + h - 1, blend(ACCENT_DARK, ACCENT_LIGHT, 0.55f + strength * 0.2f), ACCENT_DARK);
+		// the gradient fills the whole rounded shape (a square one on top showed a stepped darker ring
+		// in the corners), with a one-pixel rim along the same curve
+		roundGradient(g, x, y, w, h, r, blend(ACCENT_DARK, ACCENT_LIGHT, 0.55f + strength * 0.2f), ACCENT_DARK);
+		roundOutline(g, x, y, w, h, r, blend(ACCENT_DARK, ACCENT, 0.5f));
+	}
+
+	/** Like `round`, filled with a gradient from `top` to `bottom`: each corner column gets its own part of it. */
+	public static void roundGradient(GuiGraphicsExtractor g, int x, int y, int w, int h, int r, int top, int bottom) {
+		if (w <= 0 || h <= 0) return;
+		check(g, "shape " + w + "x" + h, x, y, w, h);
+		r = Math.min(r, Math.min(w, h) / 2);
+		g.fillGradient(x + r, y, x + w - r, y + h, top, bottom);
+		for (int i = 0; i < r; i++) {
+			int cut = inset(i, r);
+			int from = blend(top, bottom, cut / (float) h), to = blend(top, bottom, (h - cut) / (float) h);
+			g.fillGradient(x + i, y + cut, x + i + 1, y + h - cut, from, to);
+			g.fillGradient(x + w - i - 1, y + cut, x + w - i, y + h - cut, from, to);
+		}
 	}
 
 	// ---------- controls ----------
