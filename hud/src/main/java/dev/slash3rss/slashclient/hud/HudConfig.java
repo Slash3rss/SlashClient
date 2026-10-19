@@ -166,6 +166,13 @@ public final class HudConfig {
 	public int dungeonY = 64;
 	/** "square" or "circle". */
 	public String dungeonShape = "square";
+	/** The minimap (terrain and waypoints only): its size in pixels, pixels per block, shape, turning with the player, the line under it, waypoints on it. */
+	public int minimapSize = 100;
+	public float minimapZoom = 1f;
+	public String minimapShape = "square";
+	public boolean minimapRotate = false;
+	public boolean minimapCoords = true;
+	public boolean minimapWaypoints = true;
 	/** SkyUp's tasks on the HUD: how many at most, one line each, those ready to complete hidden, rewards shown. */
 	public int skyTasksMax = 5;
 	/** The module's widest, in pixels: longer names are cut with "…". */
@@ -316,6 +323,10 @@ public final class HudConfig {
 		c.modules.put("skytasks", new Placement(true, 0f, 0.3f, 2, 0));
 		// the fish counter lower on the right; shown once a fish was caught on SkyUp
 		c.modules.put("skyfish", new Placement(true, 1f, 0.75f, -2, 0));
+		// the minimap in the top right corner, off until switched on; its own picture needs no background
+		Placement minimap = new Placement(false, 1f, 0f, -2, 2);
+		minimap.background = false;
+		c.modules.put("minimap", minimap);
 		GameParts.defaults(c);
 		c.modules.put("fps", new Placement(true, 0, 0, 2, 2));
 		c.modules.put("ping", new Placement(true, 0, 0, 2, 17));
@@ -443,6 +454,12 @@ public final class HudConfig {
 		dungeonFixedY = other.dungeonFixedY;
 		dungeonY = other.dungeonY;
 		dungeonShape = other.dungeonShape;
+		minimapSize = other.minimapSize;
+		minimapZoom = other.minimapZoom;
+		minimapShape = other.minimapShape;
+		minimapRotate = other.minimapRotate;
+		minimapCoords = other.minimapCoords;
+		minimapWaypoints = other.minimapWaypoints;
 		skyTasksMax = Math.max(1, Math.min(10, other.skyTasksMax));
 		skyTasksWidth = Math.max(100, Math.min(320, other.skyTasksWidth));
 		skyTasksCompact = other.skyTasksCompact;

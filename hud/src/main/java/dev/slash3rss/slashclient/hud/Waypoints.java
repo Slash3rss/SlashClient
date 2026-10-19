@@ -85,6 +85,12 @@ public final class Waypoints {
 		return all().computeIfAbsent(worldKey(mc), k -> new ArrayList<>());
 	}
 
+	/** The points of the current world, without making an entry for it (the minimap reads them every frame). */
+	public static List<Point> points(Minecraft mc) {
+		List<Point> list = all().get(worldKey(mc));
+		return list == null ? List.of() : list;
+	}
+
 	public static Point add(Minecraft mc, String name) {
 		var pos = mc.player.blockPosition();
 		List<Point> list = here(mc);

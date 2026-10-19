@@ -47,7 +47,7 @@ public final class Catalog {
 		Map.entry("block", "world"), Map.entry("durability", "combat"), Map.entry("ammo", "combat"), Map.entry("kd", "combat"), Map.entry("hits", "combat"), Map.entry("session", "hud"), Map.entry("biome", "world"), Map.entry("daytime", "world"),
 		Map.entry("light", "world"), Map.entry("saturation", "world"), Map.entry("movement", "world"), Map.entry("combo", "combat"),
 		Map.entry("reach", "combat"), Map.entry("target", "combat"), Map.entry("armor", "combat"), Map.entry("effects", "combat"),
-		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"));
+		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"));
 
 	static final int[] COLORS = { 0xFFFFFFFF, 0xFF60A5FA, 0xFF4ADE80, 0xFF55FFFF, 0xFFFACC15, 0xFFF87171, 0xFFA855F7, 0xFFFF55FF };
 	/** The block outline's colours: the game's black first. */
@@ -128,6 +128,15 @@ public final class Catalog {
 						cfg.dungeonFixedY = v;
 					}));
 					settings.add(new Slider("slashclient-hud.dungeon.y", -64f, 320f, 1f, "Y %.0f", () -> (float) cfg.dungeonY, v -> cfg.dungeonY = Math.round(v)));
+				}
+				case "minimap" -> {
+					settings.add(new Slider("slashclient-hud.minimap.size", 64f, 200f, 8f, "%.0f px", () -> (float) cfg.minimapSize, v -> cfg.minimapSize = Math.round(v)));
+					settings.add(new Slider("slashclient-hud.minimap.zoom", 0.5f, 4f, 0.5f, "%.1f×", () -> cfg.minimapZoom, v -> cfg.minimapZoom = v));
+					settings.add(new Choice("slashclient-hud.set.shape", dev.slash3rss.slashclient.hud.Minimap.SHAPES, "slashclient-hud.dungeon.shape.",
+						() -> cfg.minimapShape, v -> cfg.minimapShape = v));
+					settings.add(new Toggle("slashclient-hud.minimap.rotate", () -> cfg.minimapRotate, v -> cfg.minimapRotate = v));
+					settings.add(new Toggle("slashclient-hud.minimap.coords", () -> cfg.minimapCoords, v -> cfg.minimapCoords = v));
+					settings.add(new Toggle("slashclient-hud.minimap.waypoints", () -> cfg.minimapWaypoints, v -> cfg.minimapWaypoints = v));
 				}
 				case "skytasks" -> {
 					settings.add(new Slider("slashclient-hud.skyTasks.max", 1f, 10f, 1f, "%.0f", () -> (float) cfg.skyTasksMax, v -> cfg.skyTasksMax = Math.round(v)));

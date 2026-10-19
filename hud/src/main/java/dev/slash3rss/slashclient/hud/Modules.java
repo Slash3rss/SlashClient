@@ -33,6 +33,8 @@ public final class Modules {
 		out.addAll(ExtraModules.all());
 		// SkyUp.pl's dungeons: shown only inside one
 		out.add(new DungeonMap());
+		// the ground around, from above (no entities)
+		out.add(new Minimap());
 		//#if MC >= 26.3
 		// SkyUp's island tasks being tracked
 		out.add(new SkyTasks.Module());
