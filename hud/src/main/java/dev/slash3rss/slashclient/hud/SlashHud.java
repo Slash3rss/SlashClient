@@ -96,6 +96,7 @@ public class SlashHud implements ClientModInitializer {
 			Badges.reset();
 			Cosmetics.reset();
 			CosmeticEffects.reset();
+			KillEffects.reset();
 			NetCounter.attach(handler.getConnection());
 			Reconnect.joined(mc);
 			DungeonMap.stop();
@@ -158,6 +159,7 @@ public class SlashHud implements ClientModInitializer {
 			Benchmark.tick(mc);
 			Cosmetics.tick(mc);
 			CosmeticEffects.tick(mc);
+			KillEffects.tick(mc);
 			Clips.tick(mc);
 			Badges.tick(mc);
 			while (edit.consumeClick()) {
@@ -193,6 +195,7 @@ public class SlashHud implements ClientModInitializer {
 				SkyCounters.attacked(player, entity);
 				//#endif
 				ExtraModules.Stats.attack(player, entity);
+				KillEffects.attacked(entity);
 			}
 			return InteractionResult.PASS;
 		});

@@ -21,12 +21,12 @@ import java.util.UUID;
 
 /**
  * Picking SlashClient cosmetics in the game: one slot at a time (cape, wings, elytra, trail,
- * aura, pet, hat, top), the player seen from behind while the menu is open. Choices go to the SlashClient
+ * aura, pet, hat, top, kill effect), the player seen from behind while the menu is open. Choices go to the SlashClient
  * server through the launcher, for the Minecraft account being played when it is linked to the
  * SlashClient account (each can have a set of its own), else for the whole account.
  */
 public class CosmeticsScreen extends Screen {
-	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top"};
+	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill"};
 	/** Particles and pets have no picture of ours: an item that looks like them stands in. */
 	private static final Map<String, Item> ITEMS = Map.ofEntries(
 		Map.entry("hearts", Items.POPPY), Map.entry("sparks", Items.GLOWSTONE_DUST), Map.entry("snow", Items.SNOWBALL),
@@ -46,7 +46,12 @@ public class CosmeticsScreen extends Screen {
 		//#if MC >= 1.21.5
 		Map.entry("fireflies", Items.FIREFLY_BUSH),
 		//#endif
-		Map.entry("axolotl", Items.AXOLOTL_SPAWN_EGG), Map.entry("frog", Items.FROG_SPAWN_EGG), Map.entry("fox", Items.FOX_SPAWN_EGG));
+		Map.entry("axolotl", Items.AXOLOTL_SPAWN_EGG), Map.entry("frog", Items.FROG_SPAWN_EGG), Map.entry("fox", Items.FOX_SPAWN_EGG),
+		// kill effects
+		Map.entry("lightning", Items.TRIDENT), Map.entry("blood", Items.REDSTONE), Map.entry("heartburst", Items.ROSE_BUSH),
+		Map.entry("firework", Items.FIREWORK_STAR), Map.entry("soulrise", Items.SOUL_CAMPFIRE), Map.entry("enderpoof", Items.ENDER_EYE),
+		Map.entry("confetti", Items.PAPER), Map.entry("blast", Items.TNT), Map.entry("shatter", Items.BLUE_ICE),
+		Map.entry("coins", Items.GOLD_NUGGET), Map.entry("ghost", Items.GHAST_TEAR), Map.entry("flamering", Items.FIRE_CHARGE));
 	private static final int TILE_W = 32, TILE_H = 40, GAP = 4;
 
 	/** `hint`: how to earn an item that only an achievement gives ("" for the rest). */
@@ -97,8 +102,9 @@ public class CosmeticsScreen extends Screen {
 		for (String id : Cosmetics.PETS) list.add(new Entry(id, "pet", id, "", true));
 		for (String id : Clothing.HATS) list.add(new Entry(id, "hat", id, "", true));
 		for (String id : Clothing.TOPS) list.add(new Entry(id, "top", id, "", true));
+		for (String id : KillEffects.IDS) list.add(new Entry(id, "kill", id, "", true));
 		screen.items = List.copyOf(list);
-		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf"));
+		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf", "kill", "firework"));
 		screen.character = "test";
 		screen.characterName = "Slash3rss";
 		screen.ownSet = true;
@@ -222,6 +228,8 @@ public class CosmeticsScreen extends Screen {
 	private void wear(Entry item) {
 		if (busy || status == null || !status.isEmpty()) return;
 		String id = item == null ? "" : item.id();
+		// a kill effect shows what it looks like at once
+		if (slot.equals("kill") && !id.isEmpty()) KillEffects.preview(minecraft, id);
 		JsonObject body = new JsonObject();
 		if (character != null) body.addProperty("character", character);
 		if (slot.equals("cape")) body.addProperty("cape", id);
@@ -313,6 +321,17 @@ public class CosmeticsScreen extends Screen {
 			tx += w + 4;
 		}
 		y += 23;
+		// kill effects: a button that plays the one worn, beside the player (in a world only: they are the game's particles)
+		if (slot.equals("kill")) {
+			String kill = worn.get("kill");
+			boolean world = minecraft.level != null;
+			Component label = Ui.tr("slashclient-hud.cosmetics.preview");
+			int bw = Ui.width(label) + 24;
+			Ui.button(g, "cos:preview", x, y - 4, bw, 15, "play", label, false, mx, my);
+			if (world && kill != null) hits.add(new Hit(x, y - 4, bw, 15, () -> KillEffects.preview(minecraft, kill)));
+			Ui.draw(g, Ui.fit(Ui.tr(world ? "slashclient-hud.cosmetics.killHint" : "slashclient-hud.cosmetics.killWorld"), pw - 36 - bw), x + bw + 6, y, Ui.MUTED);
+			y += 17;
+		}
 		// the items of this slot, "nothing" first
 		List<Entry> shown = new ArrayList<>();
 		shown.add(null);

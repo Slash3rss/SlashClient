@@ -563,6 +563,27 @@ public final class TestHooks {
 		Cosmetics.set(mc.player.getUUID(), slot, item);
 	}
 
+	/** Kill effects on or off, ours and other players'. */
+	public static void killEffects(boolean on, boolean others) {
+		SlashHud.config.killEffects = on;
+		SlashHud.config.killEffectsOthers = others;
+	}
+
+	/** The last kill effect that started ("kind:self", "kind:<player>", "" for none) and how many play now. */
+	public static String killEffectState() {
+		return KillEffects.lastStarted + "|" + KillEffects.playingCount();
+	}
+
+	/** Forgets the last kill effect (the next check sees only a new one). */
+	public static void killEffectForget() {
+		KillEffects.lastStarted = "";
+	}
+
+	/** The cosmetics menu's preview of a kill effect, beside our own player. */
+	public static void killPreview(String kind) {
+		KillEffects.preview(net.minecraft.client.Minecraft.getInstance(), kind);
+	}
+
 	/** Holds (or lets go of) the sneak key, as the player would. */
 	public static void sneak(boolean on) {
 		net.minecraft.client.Minecraft.getInstance().options.keyShift.setDown(on);
