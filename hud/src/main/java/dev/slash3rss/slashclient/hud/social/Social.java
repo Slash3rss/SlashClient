@@ -46,6 +46,8 @@ public final class Social {
 	private static final Gson GSON = new Gson();
 
 	private static volatile boolean signedIn;
+	/** The launcher passes on the server's 'cosmetics' events and is connected to the server. */
+	private static volatile boolean cosmeticsEvents;
 	private static volatile boolean reachable;
 	private static volatile String myId = "";
 	private static volatile String myName = "";
@@ -78,6 +80,14 @@ public final class Social {
 
 	public static boolean signedIn() {
 		return signedIn;
+	}
+
+	/**
+	 * Whether changes of what other players wear come live (through the launcher): then the HUD asks the
+	 * server about players in sight only now and then; otherwise more often.
+	 */
+	public static boolean liveCosmetics() {
+		return bridged() && reachable && signedIn && cosmeticsEvents;
 	}
 
 	public static boolean reachable() {
@@ -175,6 +185,14 @@ public final class Social {
 	private static void refreshState() throws Exception {
 		JsonObject s = request("GET", "/state", null, 5);
 		signedIn = s.has("signedIn") && s.get("signedIn").getAsBoolean();
+		// older launchers do not say which events they pass on, and do not pass these on
+		boolean connected = !s.has("connected") || s.get("connected").isJsonNull() || s.get("connected").getAsBoolean();
+		boolean passes = false;
+		if (s.has("events") && s.get("events").isJsonArray()) for (JsonElement e : s.getAsJsonArray("events")) passes |= "cosmetics".equals(e.getAsString());
+		boolean was = cosmeticsEvents && reachable;
+		cosmeticsEvents = connected && passes;
+		// connected again (launcher or server): changes made meanwhile did not come, so everyone in sight is asked about anew
+		if (cosmeticsEvents && !was) dev.slash3rss.slashclient.hud.Cosmetics.missedChanges();
 		JsonObject user = s.has("user") && s.get("user").isJsonObject() ? s.getAsJsonObject("user") : null;
 		myId = user != null ? str(user, "id") : "";
 		myName = user != null ? str(user, "name") : "";
@@ -276,6 +294,8 @@ public final class Social {
 			case "typing" -> typingUntil.put(str(e, "from"), System.currentTimeMillis() + 6_000);
 			// "Join" on a friend's invite in the launcher while this game runs
 			case "join" -> join(str(e, "server"));
+			// someone in sight changed what they wear (in the launcher, on the website or in their game's menu)
+			case "cosmetics" -> dev.slash3rss.slashclient.hud.Cosmetics.live(e);
 			case "emote" -> {
 				try {
 					dev.slash3rss.slashclient.hud.Cosmetics.show(java.util.UUID.fromString(str(e, "uuid")), str(e, "emote"));
@@ -297,6 +317,11 @@ public final class Social {
 			}
 			default -> {}
 		}
+	}
+
+	/** For the in-game test: an event as if it came from the launcher. */
+	public static void eventForTest(JsonObject e) throws Exception {
+		handle(e);
 	}
 
 	private static void bump(String friendId, int unread, long at) {

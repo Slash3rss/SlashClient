@@ -53,7 +53,9 @@ const ALLOWED: [string, RegExp][] = [
 const ME_KEYS = new Set(['cape', 'loadout', 'character', 'own']);
 
 /** Events the game cares about; the rest (login flow, account state) stays in the launcher. */
-const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', 'state', 'join', 'emote', 'achievement', 'party']);
+const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', 'state', 'join', 'emote', 'achievement', 'party',
+  // someone in sight changed what they wear: the HUD shows it at once instead of at its next lookup
+  'cosmetics']);
 const KEEP = 200;
 const LONG_POLL_MS = 25_000;
 
@@ -123,7 +125,11 @@ export class GameBridge {
     const url = req.url ?? '/';
     const method = req.method ?? 'GET';
 
-    if (method === 'GET' && url === '/state') return this.send(res, 200, this.opts.state());
+    // `events`: what this launcher passes on, so the HUD knows whether to wait for news or keep asking (cosmetics)
+    if (method === 'GET' && url === '/state') {
+      const state = this.opts.state();
+      return this.send(res, 200, { ...(state && typeof state === 'object' ? state : {}), events: [...FORWARDED] });
+    }
 
     if (method === 'GET' && url === '/accounts') return this.send(res, 200, { accounts: this.opts.accounts?.() ?? [] });
     if (method === 'POST' && url === '/accounts/use') {

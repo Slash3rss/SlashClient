@@ -39,7 +39,10 @@ describe('game bridge', () => {
     assert.deepEqual(calls, ['GET /v1/friends', 'POST /v1/messages/abc {"text":"hej"}', 'GET /v1/me', 'copy /x/screenshots/a.png',
       'POST /v1/invites/abc {"server":"skyup.pl"}', 'POST /v1/mc/emote {"emote":"wave"}',
       'POST /v1/me {"character":"abc","cape":"gold","loadout":{"pet":"bee"}}', 'GET /v1/cosmetics', 'GET /v1/achievements']);
-    assert.deepEqual(await (await req('/state')).json(), { signedIn: true, user: { name: 'Slash3rss' } });
+    // the state says which events this launcher passes on (the HUD asks less often when cosmetics come live)
+    const state = await (await req('/state')).json();
+    assert.deepEqual({ ...state, events: undefined }, { signedIn: true, user: { name: 'Slash3rss' }, events: undefined });
+    assert.ok(state.events.includes('cosmetics') && !state.events.includes('login'));
 
     // a waiting poll wakes up on the next event; launcher-only events are not passed on
     const poll = req('/events?after=0').then((r) => r.json());
@@ -49,11 +52,16 @@ describe('game bridge', () => {
     bridge.push({ type: 'join', server: 'skyup.pl' });
     bridge.push({ type: 'emote', uuid: 'u', emote: 'gg' });
     bridge.push({ type: 'achievement', achievement: { id: 'hours_100' } });
+    const cosmetics = { type: 'cosmetics', uuids: ['abcdef01-2222-3333-4444-555555555555'], cosmetics: { 'abcdef01-2222-3333-4444-555555555555': { cape: 'ember', pet: 'allay' } } };
+    bridge.push(cosmetics);
     const got = await poll;
     const types = got.events.map((e: { type: string }) => e.type);
     assert.equal(types[0], 'message');
     assert.ok(!types.includes('login'));
     assert.ok(types.includes('achievement'));
+    // a change of cosmetics reaches the game whole, with the new set
+    const { seq: _seq, ...passed } = got.events.find((e: { type: string }) => e.type === 'cosmetics');
+    assert.deepEqual(passed, cosmetics);
     assert.deepEqual(bridge.jvmArgs(), [`-Dslashclient.bridge=${url}`, `-Dslashclient.bridgeKey=${key}`]);
     bridge.stop();
   });
