@@ -55,9 +55,13 @@ export interface LaunchOptions {
   world?: string;
   /** More JVM arguments from the launcher itself (e.g. -Dfabric.addMods for SlashClient HUD). */
   extraJvmArgs?: string[];
+  /** More environment variables for the game (e.g. PRIME offload for the dedicated GPU on Linux). */
+  extraEnv?: Record<string, string>;
+  /** Runs with the Java path right before the game starts (e.g. the Windows GPU preference for it). */
+  prepareJava?: (java: string) => Promise<unknown>;
 }
 
-export async function launch({ profile, account, onStage, onLog, server, world, extraJvmArgs = [] }: LaunchOptions): Promise<ChildProcess> {
+export async function launch({ profile, account, onStage, onLog, server, world, extraJvmArgs = [], extraEnv, prepareJava }: LaunchOptions): Promise<ChildProcess> {
   const gameVersion = await resolveVersionId(profile.versionId);
   const gameDir = profileGameDir(profile);
   await fs.mkdir(gameDir, { recursive: true });
@@ -141,7 +145,10 @@ export async function launch({ profile, account, onStage, onLog, server, world, 
 
   onStage(t('Uruchamianie gry'), 1, 1);
   onLog(`> ${java} (wersja ${versionId}, ${profile.memoryMb} MB RAM${server ? `, serwer ${server}` : ''})`);
-  const child = spawn(java, args, { cwd: gameDir, stdio: ['ignore', 'pipe', 'pipe'] });
+  // a failed preparation (e.g. the registry) never stops the game
+  await prepareJava?.(java).catch((err) => onLog(`> ${String((err as Error)?.message ?? err)}`));
+  const env = extraEnv && Object.keys(extraEnv).length ? { ...process.env, ...extraEnv } : undefined;
+  const child = spawn(java, args, { cwd: gameDir, stdio: ['ignore', 'pipe', 'pipe'], env });
   child.stdout?.setEncoding('utf8').on('data', createLogParser(onLog));
   child.stderr?.setEncoding('utf8').on('data', createLogParser(onLog));
   return child;

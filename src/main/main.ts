@@ -62,6 +62,7 @@ import { exportWorld, importWorldZip, installDatapack, listDatapacks, readWorldZ
 import { t } from '../shared/i18n';
 import { APP_USER_MODEL_ID, cleanTarget, Notifier } from './notifications';
 import { registerMaintenance } from './maintenance';
+import { applyToolSettings, gpuLaunchOptions, registerLauncherTools } from './launcherTools';
 
 let win: BrowserWindow | undefined;
 let store: StoreData;
@@ -220,7 +221,9 @@ handle('settings:save', async (settings: Partial<Settings>) => {
   const { socialToken: _ignored, chatKey: _key, ...allowed } = settings;
   const urlChanged = allowed.socialUrl !== undefined && allowed.socialUrl !== store.settings.socialUrl;
   const accountChanged = allowed.selectedAccountId !== undefined && allowed.selectedAccountId !== store.settings.selectedAccountId;
+  const previous = store.settings;
   store.settings = { ...store.settings, ...allowed };
+  await applyToolSettings(store.settings, previous);
   if (accountChanged) void signInWithMinecraft();
   if (urlChanged) await social.logout();
   setLang(store.settings.language);
@@ -1034,6 +1037,7 @@ registerMaintenance({
   handle, profiles: () => store.profiles, running: (id) => games.has(id), anyRunning: () => games.size > 0,
   trash: (file) => shell.trashItem(file), openPath: (dir) => shell.openPath(dir),
 });
+registerLauncherTools({ handle, profiles: () => store.profiles, running: (id) => games.has(id) });
 
 handle('file:open', (file: string) => {
   if (isInsideInstances(file)) return shell.openPath(file);
@@ -1347,6 +1351,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     server,
     world,
     extraJvmArgs: hud.jvmArgs,
+    ...(await gpuLaunchOptions(store.settings)),
   });
   // capes and emotes: the SlashClient account says which Minecraft player it is, while the game runs
   const linkPlayer = () => {
@@ -1732,6 +1737,7 @@ app.whenReady().then(async () => {
   // first start: follow the system language
   if (!store.settings.language) store.settings.language = app.getLocale().toLowerCase().startsWith('pl') ? 'pl' : 'en';
   setLang(store.settings.language);
+  void applyToolSettings(store.settings);
   createWindow();
   startUpdateChecks({ serverUrl: () => store.settings.socialUrl, send: (status) => send('update:status', status), onLog: (m) => console.error(m) });
   showPresence(idlePresence());

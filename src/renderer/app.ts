@@ -13,6 +13,9 @@ import type { SlashApi } from '../main/preload';
 import { benchTips, type BenchTip } from '../shared/benchTips';
 import { createConfigEditor } from './configEditor';
 import { createDiskCleanup } from './diskCleanup';
+import { createKeyConflicts } from './keyConflicts';
+import { createToolSettings } from './toolSettings';
+import { createWiki } from './wiki';
 
 declare global {
   interface Window {
@@ -737,6 +740,10 @@ type ProfilePane = 'settings' | 'content' | 'worlds' | 'configs' | 'stats';
 let profilePane: ProfilePane = 'settings';
 const configEditor = createConfigEditor($('#config-pane'), { api, toast, errorText });
 createDiskCleanup($('#disk-card'), { api, toast, errorText });
+const keyConflicts = createKeyConflicts($('#keys-card'), { api, toast, errorText });
+createToolSettings($('#tools-card'), { api, toast, errorText });
+const wiki = createWiki($('#wiki-root'), { api, toast, errorText });
+document.querySelector('.nav[data-view="wiki"]')?.addEventListener('click', () => wiki.focus());
 
 function showPane(pane: ProfilePane) {
   profilePane = pane;
@@ -906,6 +913,7 @@ api.on('benchmark:done', ({ profileId, result, before }: { profileId: string; re
 function loadProfileForm(profile: Profile) {
   renderBenchmarks(profile.id);
   profileFiles.renderSnapshots(profile.id, $('#snapshot-list'));
+  keyConflicts.open(profile.id, (store.runningProfiles ?? []).length > 0);
   const form = $<HTMLFormElement>('#profile-form');
   for (const key of ['name', 'gameDir', 'jvmArgs', 'javaPath', 'memoryMb', 'width', 'height'] as const) {
     (form.elements.namedItem(key) as HTMLInputElement).value = String(profile[key]);

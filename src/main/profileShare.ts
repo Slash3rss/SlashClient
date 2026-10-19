@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { netFetch } from './download';
+import { throttled } from './rateLimit';
 import { CONFIG_ITEMS, OPTION_FILES, partOf, type PackPart } from './profilePack';
 import { APP_VERSION } from '../shared/version';
 import { t } from '../shared/i18n';
@@ -171,7 +172,7 @@ export async function downloadShare(server: string, code: string, dest: string):
   if (Number(res.headers.get('content-length')) > SHARE_MAX_BYTES) throw new Error(shareErrorText('too_large', 413));
   const chunks: Uint8Array[] = [];
   let size = 0;
-  for await (const chunk of res.body as unknown as AsyncIterable<Uint8Array>) {
+  for await (const chunk of throttled(res.body as unknown as AsyncIterable<Uint8Array>)) {
     size += chunk.length;
     if (size > SHARE_MAX_BYTES) throw new Error(shareErrorText('too_large', 413));
     chunks.push(chunk);
