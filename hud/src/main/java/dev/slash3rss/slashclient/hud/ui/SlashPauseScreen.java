@@ -32,17 +32,18 @@ public class SlashPauseScreen extends MenuScreen {
 	private List<Nav> nav() {
 		List<Nav> items = new ArrayList<>(List.of(
 			new Nav(Ui.tr("menu.returnToGame"), "play", this::onClose),
-			new Nav(Ui.tr("slashclient-hud.friends"), "user", () -> minecraft.setScreenAndShow(new FriendsScreen(this))),
-			new Nav(Ui.tr("slashclient-hud.cosmetics"), "m-appearance", () -> minecraft.setScreenAndShow(new dev.slash3rss.slashclient.hud.CosmeticsScreen(this))),
-			new Nav(Ui.tr("slashclient-hud.editor"), "sliders", () -> minecraft.setScreenAndShow(HudEditScreen.settingsWindow())),
-			new Nav(Ui.tr("menu.options"), "gear", () -> minecraft.setScreenAndShow(Compat.options(minecraft, this)))));
+			new Nav(Ui.tr("slashclient-hud.friends"), "user", () -> minecraft.setScreenAndShow(new FriendsScreen(this)))
+				.with(new Nav(Ui.tr("slashclient-hud.cosmetics"), "m-appearance", () -> minecraft.setScreenAndShow(new dev.slash3rss.slashclient.hud.CosmeticsScreen(this)))),
+			new Nav(Ui.tr("slashclient-hud.editor"), "sliders", () -> minecraft.setScreenAndShow(HudEditScreen.settingsWindow()))));
+		Nav options = new Nav(Ui.tr("menu.options"), "gear", () -> minecraft.setScreenAndShow(Compat.options(minecraft, this)));
 		//#if MC >= 26.3
-		// world options (difficulty, game rules, LAN...) next to the options, shown whenever the game's own menu shows them
-		if (minecraft.level != null) items.add(new Nav(Ui.tr("options.worldOptions.button"), "world", () -> minecraft.setScreenAndShow(new WorldOptionsScreen(this, minecraft.level))));
+		// world options (difficulty, game rules, LAN...) beside the options in one row, shown whenever the game's own menu shows them
+		if (minecraft.level != null) options = options.with(new Nav(Ui.tr("options.worldOptions.button"), "world", () -> minecraft.setScreenAndShow(new WorldOptionsScreen(this, minecraft.level))));
 		//#endif
 		//#if MC >= 26.2 && MC < 26.3
-		//$ if (minecraft.level != null) items.add(new Nav(Ui.tr("options.worldOptions.button"), "world", () -> minecraft.setScreenAndShow(new net.minecraft.client.gui.screens.options.WorldOptionsScreen(this, minecraft.level))));
+		//$ if (minecraft.level != null) options = options.with(new Nav(Ui.tr("options.worldOptions.button"), "world", () -> minecraft.setScreenAndShow(new net.minecraft.client.gui.screens.options.WorldOptionsScreen(this, minecraft.level))));
 		//#endif
+		items.add(options);
 		//#if MC < 26.2
 		//$ // before world options: "Open to LAN" as the game's own menu has it, in singleplayer until the world is open
 		//$ if (minecraft.hasSingleplayerServer() && !minecraft.getSingleplayerServer().isPublished())

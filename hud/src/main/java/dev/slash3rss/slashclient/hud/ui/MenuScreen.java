@@ -16,9 +16,18 @@ public abstract class MenuScreen extends Screen {
 	protected record Hit(int x, int y, int w, int h, Runnable action) {}
 
 	/** A button: its name, one of the launcher's icons, what it does; `danger` draws it red. */
-	public record Nav(Component label, String icon, Runnable action, boolean danger) {
+	/** A named button; `beside` shares its row, half each (Options and World Options). */
+	public record Nav(Component label, String icon, Runnable action, boolean danger, Nav beside) {
+		public Nav(Component label, String icon, Runnable action, boolean danger) {
+			this(label, icon, action, danger, null);
+		}
+
 		public Nav(Component label, String icon, Runnable action) {
-			this(label, icon, action, false);
+			this(label, icon, action, false, null);
+		}
+
+		public Nav with(Nav other) {
+			return new Nav(label, icon, action, danger, other);
 		}
 	}
 
@@ -60,7 +69,13 @@ public abstract class MenuScreen extends Screen {
 		int ny = py + 10;
 		boolean first = true;
 		for (Nav n : items) {
-			navRow(g, mx, my, px + 10, ny, pw - 20, nh, n.icon(), n.label(), first, n.danger(), n.action());
+			if (n.beside() == null) navRow(g, mx, my, px + 10, ny, pw - 20, nh, n.icon(), n.label(), first, n.danger(), n.action());
+			else {
+				int half = (pw - 20 - gap) / 2;
+				Nav b = n.beside();
+				navRow(g, mx, my, px + 10, ny, half, nh, n.icon(), n.label(), first, n.danger(), n.action());
+				navRow(g, mx, my, px + pw - 10 - half, ny, half, nh, b.icon(), b.label(), false, b.danger(), b.action());
+			}
 			first = false;
 			ny += nh + gap;
 		}
