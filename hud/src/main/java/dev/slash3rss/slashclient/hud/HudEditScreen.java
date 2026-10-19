@@ -49,6 +49,8 @@ public class HudEditScreen extends Screen {
 	private int sliderX;
 	private int sliderW;
 	private List<Catalog.Entry> entries;
+	/** The text fields of the open settings page (Catalog.Text rows), placed on their rows as they are drawn. */
+	private final java.util.Map<Catalog.Text, EditBox> textFields = new java.util.LinkedHashMap<>();
 
 	/** Clickable places of the last frame, checked from the top down. */
 	private record Hit(int x, int y, int w, int h, Runnable action) {}
@@ -405,7 +407,9 @@ public class HudEditScreen extends Screen {
 		entries();
 		search = null;
 		tabFields.clear();
+		textFields.clear();
 		if (chatTabsPage()) initChatTabs();
+		else if (window && settingsOf != null && !crosshairPage()) initTextFields();
 		if (window && settingsOf == null && !category.equals("share")) {
 			search = new EditBox(font, winX() + winW() - 176, winY() + 12, 132, 12, Ui.tr("slashclient-hud.ui.search"));
 			search.setBordered(false);
@@ -413,6 +417,23 @@ public class HudEditScreen extends Screen {
 			search.setHint(Ui.tr("slashclient-hud.ui.search"));
 			search.setResponder(v -> scroll = 0);
 			addRenderableWidget(search);
+		}
+	}
+
+	private void initTextFields() {
+		for (Catalog.Setting s : settingsOf.settings()) {
+			if (!(s instanceof Catalog.Text t)) continue;
+			EditBox box = new EditBox(font, 0, 0, 100, 12, Ui.tr(t.labelKey()));
+			box.setBordered(false);
+			box.setTextColor(Ui.TEXT);
+			box.setMaxLength(t.maxLength());
+			box.setValue(t.get().get());
+			box.setHint(Ui.tr(t.hintKey()));
+			box.setResponder(v -> t.set().accept(v));
+			// shown once drawSettings has put it on its row
+			box.visible = false;
+			addRenderableWidget(box);
+			textFields.put(t, box);
 		}
 	}
 
@@ -671,6 +692,7 @@ public class HudEditScreen extends Screen {
 	private static int controlsWidth(Catalog.Setting s) {
 		if (s instanceof Catalog.Toggle) return 20;
 		if (s instanceof Catalog.Slider) return 150;
+		if (s instanceof Catalog.Text) return 150;
 		if (s instanceof Catalog.Choice ch) {
 			int total = 0;
 			for (String v : ch.values()) total += Ui.width(Ui.tr(ch.valueKeyPrefix() + v)) + 16;
@@ -713,6 +735,7 @@ public class HudEditScreen extends Screen {
 		Ui.beginClip("settings list", x, listTop, w, listH);
 		int ry = listTop + 2 - Math.round(scroll);
 		boolean inList = my >= listTop && my < listTop + listH;
+		for (EditBox box : textFields.values()) box.visible = false;
 		for (int i = 0; i < rows.size(); i++) {
 			Catalog.Setting s = rows.get(i);
 			int rh = heights[i];
@@ -770,6 +793,17 @@ public class HudEditScreen extends Screen {
 					Ui.button(g, "choice:" + s.labelKey(), left, cy, right - left, 16, option, true, mx, my);
 					hits.add(new Hit(left, cy, right - left, 16, () -> ch.set().accept(values.get((values.indexOf(current) + 1) % values.size()))));
 				}
+			} else if (s instanceof Catalog.Text tx && textFields.containsKey(tx)) {
+				// a text field: the box is drawn here, the field (a widget) over it after the window
+				EditBox box = textFields.get(tx);
+				int fx = twoLines ? left : Math.max(left, right - 200);
+				Ui.round(g, fx, cy, right - fx, 16, 4, 0xFF202839);
+				Ui.roundOutline(g, fx, cy, right - fx, 16, 4, box.isFocused() ? 0x993B82F6 : Ui.BORDER);
+				box.setX(fx + 5);
+				box.setY(cy + 4);
+				box.setWidth(right - fx - 10);
+				// only while its whole row is in the list's box: the widget is not clipped by the scissor
+				box.visible = ry >= listTop && ry + rh <= listTop + listH;
 			} else if (s instanceof Catalog.Colors co) {
 				int bx = twoLines ? left : right - co.colors().length * 16 + 4;
 				for (int c : co.colors()) {
@@ -888,6 +922,7 @@ public class HudEditScreen extends Screen {
 		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
 		//#endif
 		if (search != null) search.setFocused(false);
+		for (EditBox box : textFields.values()) box.setFocused(false);
 		if (e.button() == InputConstants.MOUSE_BUTTON_RIGHT && !window) {
 			HudModule m = moduleAt(e.x(), e.y());
 			if (m != null) {

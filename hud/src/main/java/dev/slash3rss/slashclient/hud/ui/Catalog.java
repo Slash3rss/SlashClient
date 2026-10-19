@@ -16,7 +16,7 @@ public final class Catalog {
 	public static final String[] CATEGORIES = { "all", "hud", "combat", "world", "game", "extras", "skyup", "chat", "share" };
 
 	/** One row in an entry's settings. */
-	public sealed interface Setting permits Toggle, Slider, Choice, Colors {
+	public sealed interface Setting permits Toggle, Slider, Choice, Colors, Text {
 		String labelKey();
 	}
 
@@ -28,6 +28,9 @@ public final class Catalog {
 	public record Choice(String labelKey, String[] values, String valueKeyPrefix, Supplier<String> get, Consumer<String> set) implements Setting {}
 
 	public record Colors(String labelKey, int[] colors, Supplier<Integer> get, Consumer<Integer> set) implements Setting {}
+
+	/** A line of text typed in (a channel's name, …); `hintKey` is shown while it is empty. */
+	public record Text(String labelKey, String hintKey, int maxLength, Supplier<String> get, Consumer<String> set) implements Setting {}
 
 	/**
 	 * A card: `get`/`set` are null when the card has no on/off switch (it only opens something).
@@ -47,7 +50,8 @@ public final class Catalog {
 		Map.entry("block", "world"), Map.entry("durability", "combat"), Map.entry("ammo", "combat"), Map.entry("kd", "combat"), Map.entry("hits", "combat"), Map.entry("session", "hud"), Map.entry("biome", "world"), Map.entry("daytime", "world"),
 		Map.entry("light", "world"), Map.entry("saturation", "world"), Map.entry("movement", "world"), Map.entry("combo", "combat"),
 		Map.entry("reach", "combat"), Map.entry("target", "combat"), Map.entry("armor", "combat"), Map.entry("effects", "combat"),
-		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"));
+		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"),
+		Map.entry("twitchchat", "chat"), Map.entry("kickchat", "chat"));
 
 	static final int[] COLORS = { 0xFFFFFFFF, 0xFF60A5FA, 0xFF4ADE80, 0xFF55FFFF, 0xFFFACC15, 0xFFF87171, 0xFFA855F7, 0xFFFF55FF };
 	/** The block outline's colours: the game's black first. */
@@ -57,6 +61,20 @@ public final class Catalog {
 	private static void risky(boolean on, Runnable apply) {
 		if (on) dev.slash3rss.slashclient.hud.Assist.enableRisky(apply);
 		else apply.run();
+	}
+
+	/** A stream chat's channel first (it is what the module needs), its own options after the usual ones. */
+	private static void streamChat(List<Setting> settings, Supplier<dev.slash3rss.slashclient.hud.streams.StreamChatSettings> s, boolean kick) {
+		// read through `s` each time: pasting a share code or a server's layout puts new settings in place
+		settings.add(0, new Text("slashclient-hud.streams.channel", "slashclient-hud.streams.channelHint", 64, () -> s.get().channel, v -> s.get().channel = v));
+		// Kick sometimes refuses the lookup of a channel's chat: its number can be typed here instead
+		if (kick) settings.add(1, new Text("slashclient-hud.streams.chatroomId", "slashclient-hud.streams.chatroomHint", 12, () -> s.get().chatroomId,
+			v -> s.get().chatroomId = v.replaceAll("[^0-9]", "")));
+		settings.add(new Slider("slashclient-hud.streams.lines", 3f, 20f, 1f, "%.0f", () -> (float) s.get().lines, v -> s.get().lines = Math.round(v)));
+		settings.add(new Slider("slashclient-hud.streams.width", 120f, 400f, 10f, "%.0f px", () -> (float) s.get().width, v -> s.get().width = Math.round(v)));
+		settings.add(new Toggle("slashclient-hud.streams.badges", () -> s.get().badges, v -> s.get().badges = v));
+		settings.add(new Toggle("slashclient-hud.streams.nameColors", () -> s.get().nameColors, v -> s.get().nameColors = v));
+		settings.add(new Toggle("slashclient-hud.streams.fade", () -> s.get().fade, v -> s.get().fade = v));
 	}
 
 	public static List<Entry> entries(Runnable openChatTabs) {
@@ -155,6 +173,7 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.skyFish.value", () -> cfg.skyFishValue, v -> cfg.skyFishValue = v));
 				}
 				case "fps" -> settings.add(new Toggle("slashclient-hud.set.fpsColored", () -> cfg.fpsColored, v -> cfg.fpsColored = v));
+				case "twitchchat", "kickchat" -> streamChat(settings, m.id().equals("kickchat") ? () -> cfg.kickChat : () -> cfg.twitchChat, m.id().equals("kickchat"));
 				default -> {}
 			}
 			if (m.id().equals("effects")) settings.add(new Toggle("slashclient-hud.effectIcons", () -> cfg.effectIcons, v -> cfg.effectIcons = v));

@@ -328,6 +328,9 @@ public final class HudConfig {
 	public boolean waypoints = true;
 	/** F2 also puts the picture on the clipboard (through the launcher) and shows it in the corner. */
 	public boolean screenshotClipboard = true;
+	/** The live chats of a Twitch and a Kick channel on the HUD (see StreamChatModule). */
+	public dev.slash3rss.slashclient.hud.streams.StreamChatSettings twitchChat = new dev.slash3rss.slashclient.hud.streams.StreamChatSettings();
+	public dev.slash3rss.slashclient.hud.streams.StreamChatSettings kickChat = new dev.slash3rss.slashclient.hud.streams.StreamChatSettings();
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("slashclient-hud.json");
@@ -388,6 +391,9 @@ public final class HudConfig {
 		c.modules.put("sprint", new Placement(false, 0, 1, 2, -2));
 		c.modules.put("keystrokes", new Placement(true, 0, 0.5f, 2, 20));
 		c.modules.put("movement", new Placement(false, 0, 0.5f, 2, -2));
+		// a stream's chat low on the left, above the game's chat; off until a channel is set
+		c.modules.put("twitchchat", new Placement(false, 0, 0.62f, 2, 0));
+		c.modules.put("kickchat", new Placement(false, 1, 0.62f, -2, 0));
 		c.chatTabs.add(new ChatTab("@", false, "{nick}"));
 		// private messages look different on every server; these catch the common ones
 		c.chatTabs.add(new ChatTab("PM", true, "(?i)(whispers to you|szepcze|\\[msg\\]|-> ?(me|ja)\\b|\\bfrom \\w+:)"));
@@ -426,6 +432,8 @@ public final class HudConfig {
 		read.chatCopyTime = oneOf(read.chatCopyTime, ChatExtras.COPY_TIMES);
 		read.chatCopyNotice = oneOf(read.chatCopyNotice, ChatExtras.COPY_NOTICES);
 		read.serverPackDefault = oneOf(read.serverPackDefault, ServerPacks.MODES);
+		read.twitchChat = read.twitchChat == null ? defaults.twitchChat : read.twitchChat.checked();
+		read.kickChat = read.kickChat == null ? defaults.kickChat : read.kickChat.checked();
 		return read;
 	}
 
@@ -582,6 +590,8 @@ public final class HudConfig {
 		freelook = other.freelook;
 		waypoints = other.waypoints;
 		screenshotClipboard = other.screenshotClipboard;
+		twitchChat = other.twitchChat == null ? new dev.slash3rss.slashclient.hud.streams.StreamChatSettings() : other.twitchChat.copy();
+		kickChat = other.kickChat == null ? new dev.slash3rss.slashclient.hud.streams.StreamChatSettings() : other.kickChat.copy();
 		save();
 	}
 
