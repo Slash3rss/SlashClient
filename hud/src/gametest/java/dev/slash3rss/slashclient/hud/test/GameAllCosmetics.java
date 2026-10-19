@@ -38,6 +38,8 @@ public class GameAllCosmetics implements FabricClientGameTest {
 			context.getInput().setCursorPos(2, 2);
 			String size = s[0] + "x" + s[1] + "-" + s[2];
 			context.runOnClient(mc -> TestHooks.cosmeticsMenu("cape"));
+			context.waitTicks(2);
+			context.getInput().setCursorPos(3, 3);
 			context.waitTicks(10);
 			context.takeScreenshot("all-tabs-" + size + "-cape");
 			context.runOnClient(mc -> TestHooks.cosmeticsSlot("prop"));
