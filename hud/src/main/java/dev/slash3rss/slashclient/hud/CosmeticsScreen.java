@@ -21,14 +21,14 @@ import java.util.UUID;
 
 /**
  * Picking SlashClient cosmetics in the game: one slot at a time (cape, wings, elytra, trail,
- * aura, pet, hat, top, kill effect, suit), the player's figure beside the panel trying on the item under
+ * aura, pet, hat, top, kill effect, suit, shield, weapon, shoes, hands, face, ears), the player's figure beside the panel trying on the item under
  * the mouse (turned to show its back for what is worn there, running for a trail, turned by
  * dragging it; for kill effects in a world the real player, from behind). Choices go to the SlashClient
  * server through the launcher, for the Minecraft account being played when it is linked to the
  * SlashClient account (each can have a set of its own), else for the whole account.
  */
 public class CosmeticsScreen extends Screen {
-	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit", "shield", "weapon", "shoes", "hands"};
+	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit", "shield", "weapon", "shoes", "hands", "face", "ears"};
 	/** Particles and pets have no picture of ours: an item that looks like them stands in. */
 	private static final Map<String, Item> ITEMS = Map.ofEntries(
 		Map.entry("hearts", Items.POPPY), Map.entry("sparks", Items.GLOWSTONE_DUST), Map.entry("snow", Items.SNOWBALL),
@@ -119,6 +119,8 @@ public class CosmeticsScreen extends Screen {
 		for (String id : HeldSkins.WEAPONS) list.add(new Entry(id, "weapon", id, "", true));
 		for (String id : Clothing.SHOES) list.add(new Entry(id, "shoes", id, "", true));
 		for (String id : Clothing.HANDS) list.add(new Entry(id, "hands", id, "", true));
+		for (String id : Clothing.FACE) list.add(new Entry(id, "face", id, "", true));
+		for (String id : Clothing.EARS) list.add(new Entry(id, "ears", id, "", true));
 		screen.items = List.copyOf(list);
 		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf", "kill", "firework", "shield", "shield_dragon", "weapon", "sword_katana",
 			"shoes", "sneakers_red", "hands", "wristwatch"));
@@ -493,7 +495,7 @@ public class CosmeticsScreen extends Screen {
 			case "weapon" ->
 				// the sword's or bow's own picture, larger
 				g.blit(RenderPipelines.GUI_TEXTURED, Cosmetics.textureId("item/held", e.id()), x + (TILE_W - 24) / 2, y + (TILE_H - 24) / 2, 0, 0, 24, 24, 16, 16, 16, 16, alpha);
-			case "hat", "top", "shoes", "hands" ->
+			case "hat", "top", "shoes", "hands", "face", "ears" ->
 				// a view of it from the front, a little from above
 				g.blit(RenderPipelines.GUI_TEXTURED, Clothing.icon(e.id()), x + (TILE_W - 26) / 2, y + (TILE_H - 26) / 2, 0, 0, 26, 26, 64, 64, 64, 64, alpha);
 			default -> {

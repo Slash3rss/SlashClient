@@ -30,9 +30,13 @@
 //$ 			float partialTick, float ageInTicks, float netHeadYaw, float headPitch) {
 //$ 		if (player.isInvisible() || player.isSpectator() || !Badges.enabled()) return;
 //$ 		PlayerModel<AbstractClientPlayer> parent = getParentModel();
+//$ 		// the hat that shows (face and ears things it would go through hide), and the clock for twitching ears
+//$ 		String hat = Cosmetics.worn(player.getUUID(), "hat");
+//$ 		if (hat != null && Clothing.covered("hat", player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST))) hat = null;
+//$ 		float seconds = (player.tickCount + partialTick) / 20f + Headwear.offset(player.getUUID());
 //$ 		for (String slot : Clothing.SLOTS) {
 //$ 			String item = Cosmetics.worn(player.getUUID(), slot);
-//$ 			if (item == null || Clothing.covered(slot, player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST), player.getItemBySlot(EquipmentSlot.FEET)) || Suits.hides(player.getUUID(), slot)) continue;
+//$ 			if (item == null || Clothing.covered(slot, item, player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST), player.getItemBySlot(EquipmentSlot.FEET)) || Suits.hides(player.getUUID(), slot)) continue;
 			//#if MC >= 1.20.2
 			//$ boolean slim = player.getSkin().model() == net.minecraft.client.resources.PlayerSkin.Model.SLIM;
 			//#else
@@ -45,6 +49,7 @@
 //$ 			root.getChild("left_arm").copyFrom(parent.leftArm);
 //$ 			root.getChild("right_leg").copyFrom(parent.rightLeg);
 //$ 			root.getChild("left_leg").copyFrom(parent.leftLeg);
+//$ 			Clothing.animate(root, item, hat, seconds);
 //$ 			root.render(pose, buffers.getBuffer(RenderType.entityCutoutNoCull(Clothing.texture(item))), light, OverlayTexture.NO_OVERLAY);
 //$ 		}
 //$ 	}

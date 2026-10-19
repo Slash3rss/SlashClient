@@ -153,11 +153,12 @@ public final class SkinPreview {
 		return model;
 	}
 
-	/** A clothing item on the figure, its head, body, arms and legs posed as the figure's. */
-	private Object clothingModel(String id, boolean slimArms, ModelPart figure) {
+	/** A clothing item on the figure, its head, body, arms and legs posed as the figure's (with `hat` on; ears twitch by `time`). */
+	private Object clothingModel(String id, boolean slimArms, ModelPart figure, String hat, float time) {
 		Object model = clothes.computeIfAbsent(slimArms ? id + "/slim" : id, k -> wrap(dev.slash3rss.slashclient.hud.Clothing.bake(id, slimArms)));
 		ModelPart parts = root(model).getChild("slashclient");
 		for (String bone : dev.slash3rss.slashclient.hud.Clothing.BONES) parts.getChild(bone).loadPose(figure.getChild(bone).storePose());
+		dev.slash3rss.slashclient.hud.Clothing.animate(parts, id, hat, time);
 		return model;
 	}
 	private final java.util.Map<String, Object> clothes = new java.util.HashMap<>();
@@ -249,9 +250,11 @@ public final class SkinPreview {
 		// a suit over all of it hides the clothing (and gives its back to what is worn there)
 		String suit = look.worn(self, "suit");
 		if (suit != null) layer(layers, suitModel(suit, slimArms, root, elytraId != null || wing != null || capeId != null), dev.slash3rss.slashclient.hud.Suits.texture(suit));
+		// the hat that shows (face and ears things it would go through hide)
+		String hat = suit != null && dev.slash3rss.slashclient.hud.Suits.HIDDEN.contains("hat") ? null : look.worn(self, "hat");
 		for (String slot : dev.slash3rss.slashclient.hud.Clothing.SLOTS) {
 			String item = suit != null && dev.slash3rss.slashclient.hud.Suits.HIDDEN.contains(slot) ? null : look.worn(self, slot);
-			if (item != null) layer(layers, clothingModel(item, slimArms, root), dev.slash3rss.slashclient.hud.Clothing.texture(item));
+			if (item != null) layer(layers, clothingModel(item, slimArms, root, hat, time), dev.slash3rss.slashclient.hud.Clothing.texture(item));
 		}
 		if (elytraId != null) layer(layers, elytraModel(), dev.slash3rss.slashclient.hud.Cosmetics.textureId("elytra", elytraId));
 		else if (wing != null) layer(layers, wingsModel(time), dev.slash3rss.slashclient.hud.Cosmetics.textureId("wings", wing));

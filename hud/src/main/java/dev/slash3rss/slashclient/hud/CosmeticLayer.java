@@ -59,12 +59,18 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 	private static final class ClothingModel extends EntityModel<ClothingModel.Poses> {
 		static final class Poses extends EntityRenderState {
 			PartPose head, body, rightArm, leftArm, rightLeg, leftLeg;
+			/** The hat that shows (face and ears things it would go through hide), and the clock for twitching ears. */
+			String hat;
+			float seconds;
 		}
 
-		private final ModelPart head, body, rightArm, leftArm, rightLeg, leftLeg;
+		private final String id;
+		private final ModelPart all, head, body, rightArm, leftArm, rightLeg, leftLeg;
 
-		ClothingModel(ModelPart root) {
+		ClothingModel(String id, ModelPart root) {
 			super(root);
+			this.id = id;
+			all = root;
 			head = root.getChild("head");
 			body = root.getChild("body");
 			rightArm = root.getChild("right_arm");
@@ -82,6 +88,7 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			leftArm.loadPose(p.leftArm);
 			rightLeg.loadPose(p.rightLeg);
 			leftLeg.loadPose(p.leftLeg);
+			Clothing.animate(all, id, p.hat, p.seconds);
 		}
 	}
 
@@ -210,10 +217,15 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		ClothingModel.Poses poses = null;
 		for (String slot : Clothing.SLOTS) {
 			String item = Cosmetics.worn(id, slot);
-			if (item == null || Clothing.covered(slot, state.headEquipment, state.chestEquipment, state.feetEquipment) || Suits.hides(id, slot)) continue;
-			if (poses == null) poses = poses(state);
+			if (item == null || Clothing.covered(slot, item, state.headEquipment, state.chestEquipment, state.feetEquipment) || Suits.hides(id, slot)) continue;
+			if (poses == null) {
+				poses = poses(state);
+				String hat = Cosmetics.worn(id, "hat");
+				poses.hat = hat != null && !Clothing.covered("hat", state.headEquipment, state.chestEquipment) ? hat : null;
+				poses.seconds = state.ageInTicks / 20f + Headwear.offset(id);
+			}
 			boolean slim = state.skin.model() == PlayerModelType.SLIM;
-			ClothingModel model = clothes.computeIfAbsent(slim ? item + "/slim" : item, k -> new ClothingModel(Clothing.bake(item, slim)));
+			ClothingModel model = clothes.computeIfAbsent(slim ? item + "/slim" : item, k -> new ClothingModel(item, Clothing.bake(item, slim)));
 			Compat.submitModel(out, model, poses, pose, model.renderType(Clothing.texture(item)), light, OverlayTexture.NO_OVERLAY, state.outlineColor);
 		}
 	}

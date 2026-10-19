@@ -674,6 +674,19 @@ public final class TestHooks {
 		Cosmetics.testSkinSlim = slim;
 	}
 
+	/** The face and ears things this mod can draw: "face|ears". */
+	public static String headwear() {
+		return String.join(",", Clothing.FACE) + "|" + String.join(",", Clothing.EARS);
+	}
+
+	/** An item's first box posed at this moment with this hat on (null: none): "its turn about z|whether it shows". */
+	public static String headwearPose(String id, String hat, float seconds) {
+		net.minecraft.client.model.geom.ModelPart root = Clothing.bake(id, false);
+		Clothing.animate(root, id, hat, seconds);
+		net.minecraft.client.model.geom.ModelPart box = root.getChild("head").getChild("box0");
+		return box.zRot + "|" + box.visible;
+	}
+
 	/** Turns our own player by this many degrees (a view from the side). */
 	public static void turn(float degrees) {
 		var p = net.minecraft.client.Minecraft.getInstance().player;
@@ -1009,7 +1022,7 @@ public final class TestHooks {
 	/** Everything a player shows, slot=item sorted ("" for nothing), for the test to compare. */
 	public static String wornAll(java.util.UUID id) {
 		var out = new java.util.TreeMap<String, String>();
-		for (String slot : java.util.List.of("cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit", "shield", "weapon", "shoes", "hands")) {
+		for (String slot : java.util.List.of("cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit", "shield", "weapon", "shoes", "hands", "face", "ears")) {
 			String item = Cosmetics.worn(id, slot);
 			if (item != null) out.put(slot, item);
 		}

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { CLOTHING, CLOTHING_TEXTURE, boxQuads, layout, slimBox } from '../src/shared/clothing';
+import { TWITCH_EVERY, TWITCH_LENGTH, shownWith, twitchAngle } from '../src/shared/headwear';
 import { ITEMS } from '../server/src/cosmetics';
 
 const assets = 'hud/src/main/resources/assets/slashclient-hud';
@@ -62,7 +63,26 @@ describe('clothing', () => {
   });
 
   it('is in the server catalog, in the same slots and with the same names', () => {
-    const server = ITEMS.filter((i) => i.slot === 'hat' || i.slot === 'top' || i.slot === 'shoes' || i.slot === 'hands');
+    const server = ITEMS.filter((i) => i.slot === 'hat' || i.slot === 'top' || i.slot === 'shoes' || i.slot === 'hands' || i.slot === 'face' || i.slot === 'ears');
     assert.deepEqual(server.map((i) => [i.id, i.slot, i.name]), CLOTHING.map((i) => [i.id, i.slot, i.name]));
+  });
+
+  it('keeps face and ears things where a hat would not go through them, and twitches ears now and then', () => {
+    const hats = CLOTHING.filter((i) => i.slot === 'hat').map((i) => i.id);
+    for (const item of CLOTHING.filter((i) => i.slot === 'face' || i.slot === 'ears')) {
+      for (const b of item.boxes) for (const h of b.hats ?? []) assert.ok(hats.includes(h), `${item.id}: no hat ${h}`);
+      // only things on the head, and a pivot for everything that turns
+      assert.ok(item.boxes.every((b) => b.bone === 'head' && (!b.twitch && !b.rotate || b.pivot)), item.id);
+    }
+    const ear = CLOTHING.find((i) => i.id === 'catears')!.boxes[0];
+    assert.ok(shownWith(ear, undefined) && shownWith(ear, 'cap') && !shownWith(ear, 'tophat'));
+    assert.ok(shownWith(CLOTHING.find((i) => i.id === 'sunglasses')!.boxes[0], 'tophat'));
+    // still most of the time, a small wiggle for a moment every few seconds
+    const twitch = ear.twitch!;
+    assert.equal(twitchAngle(TWITCH_LENGTH + 1, twitch), 0);
+    const during = Array.from({ length: 20 }, (_, i) => twitchAngle(TWITCH_EVERY * 3 + (i * TWITCH_LENGTH) / 20, twitch));
+    assert.ok(during.some((a) => Math.abs(a) > 0.02) && during.every((a) => Math.abs(a) <= (twitch.amp * Math.PI) / 180));
+    // glasses and the mustache stay on under a helmet
+    assert.deepEqual(CLOTHING.filter((i) => i.underHelmet).map((i) => i.id), ['sunglasses', 'aviators', 'glasses3d', 'monocle', 'mustache']);
   });
 });

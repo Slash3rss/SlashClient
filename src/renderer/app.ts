@@ -3071,7 +3071,7 @@ function renderCapeGrid() {
 
 // ---------- SlashClient cosmetics (seen by other players with the launcher) ----------
 
-type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands';
+type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands' | 'face' | 'ears';
 const SLOTS: [Slot, string, string][] = [
   ['cape', 'Peleryna', 'fa-flag'], ['wings', 'Skrzydła', 'fa-dove'], ['elytra', 'Elytra', 'fa-feather'],
   ['trail', 'Ślad', 'fa-shoe-prints'], ['aura', 'Aura', 'fa-wand-sparkles'], ['pet', 'Pupil', 'fa-paw'],
@@ -3079,6 +3079,7 @@ const SLOTS: [Slot, string, string][] = [
   ['suit', 'Strój', 'fa-user-astronaut'],
   ['shield', 'Tarcza', 'fa-shield'], ['weapon', 'Skórka broni', 'fa-crosshairs'],
   ['shoes', 'Buty', 'fa-socks'], ['hands', 'Dłonie', 'fa-mitten'],
+  ['face', 'Twarz', 'fa-glasses'], ['ears', 'Uszy i rogi', 'fa-cat'],
 ];
 /** Without the server (or before 0.8) only the first eight capes are known. */
 const SLASH_CAPES: [string, string][] = [
@@ -3161,7 +3162,7 @@ function cosmeticPicture(slot: Slot, id: string): Node {
   if (slot === 'cape') return animatedCapeThumbnail(id);
   if (slot === 'wings' || slot === 'elytra') return wingsThumbnail(`img/${slot}/${id}.png`);
   // clothing: a view of it from the front, a little from above (made with its pictures)
-  if (slot === 'hat' || slot === 'top' || slot === 'shoes' || slot === 'hands') return el('img', { className: 'clothing-icon', src: `img/clothing/icon/${id}.png`, alt: '' });
+  if (slot === 'hat' || slot === 'top' || slot === 'shoes' || slot === 'hands' || slot === 'face' || slot === 'ears') return el('img', { className: 'clothing-icon', src: `img/clothing/icon/${id}.png`, alt: '' });
   if (slot === 'suit') return el('img', { className: 'clothing-icon', src: `img/suits/icon/${id}.png`, alt: '' });
   // our own pets (not the game's mobs) have a picture of their own
   if (slot === 'pet' && OUR_PET_MODELS[id]) return el('img', { className: 'clothing-icon', src: `img/pets/icon/${id}.png`, alt: '' });
@@ -3219,6 +3220,8 @@ async function renderSlashCapes() {
     : cosmeticSlot === 'suit' ? t('Strój na całe ciało. Chowa czapkę i ubranie, a prawdziwa zbroja chowa część, którą zakrywa.')
     : cosmeticSlot === 'shoes' ? t('Buty na obu stopach. Chowają się pod prawdziwymi butami.')
     : cosmeticSlot === 'hands' ? t('Coś na dłonie lub nadgarstek, widać to też w pierwszej osobie.')
+    : cosmeticSlot === 'face' ? t('Okulary, maska albo wąsy. Okulary zostają pod hełmem, maski i gogle się chowają.')
+    : cosmeticSlot === 'ears' ? t('Uszy albo rogi na głowie; uszy co chwilę drgają. Chowają się pod hełmem i tam, gdzie przeszłyby przez czapkę.')
     : cosmeticSlot === 'kill' ? t('Krótki pokaz cząsteczek tam, gdzie pada pokonany przez Ciebie mob lub gracz. Widzą go gracze z SlashClient.')
     : cosmeticSlot === 'shield' ? t('Wygląd tarczy w Twojej ręce (ekwipunek i działanie bez zmian). Inni gracze widzą go tylko, jeśli włączą skórki innych graczy w ustawieniach gry – domyślnie nie, dla uczciwego PvP.')
     : cosmeticSlot === 'weapon' ? t('Wygląd wszystkich mieczy (skórki mieczy) albo łuku (skórki łuków) w Twojej ręce; ekwipunek, nazwa i działanie bez zmian. Inni gracze widzą go tylko, jeśli włączą skórki innych graczy w ustawieniach gry – domyślnie nie, dla uczciwego PvP.')

@@ -139,6 +139,7 @@ export const SLOTS = [
   ['suit', 'Strój', 'fa-solid fa-user-astronaut'],
   ['shield', 'Tarcza', 'fa-solid fa-shield'], ['weapon', 'Skórka broni', 'fa-solid fa-crosshairs'],
   ['shoes', 'Buty', 'fa-solid fa-socks'], ['hands', 'Dłonie', 'fa-solid fa-mitten'],
+  ['face', 'Twarz', 'fa-solid fa-glasses'], ['ears', 'Uszy i rogi', 'fa-solid fa-cat'],
 ];
 /** Particles and pets are the game's own: on the site they get an icon. */
 const ITEM_ICONS = {
@@ -169,7 +170,7 @@ const OUR_PETS = ['duszek_haze'];
 export function cosmeticEl(id, slot = 'cape', small = false) {
   if (slot === 'cape') return capeEl(id, small);
   // our own pets have a picture of their own (vendor/pets/icon), like the clothing
-  if (slot === 'hat' || slot === 'top' || slot === 'shoes' || slot === 'hands' || OUR_PETS.includes(id)) {
+  if (slot === 'hat' || slot === 'top' || slot === 'shoes' || slot === 'hands' || slot === 'face' || slot === 'ears' || OUR_PETS.includes(id)) {
     const c = el('div', { class: `cape clothing${small ? ' sm' : ''}`, title: id });
     c.style.backgroundImage = `url(vendor/${slot === 'pet' ? 'pets' : 'clothing'}/icon/${id}.png)`;
     return c;

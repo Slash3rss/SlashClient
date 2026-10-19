@@ -2,7 +2,7 @@ import type { CosmeticSetting } from './db.ts';
 
 /**
  * The SlashClient cosmetics. Their pictures live in the HUD mod (textures/cape, textures/elytra,
- * textures/wings, textures/clothing with the clothing's, shoes' and hand items' boxes in src/shared/clothing.ts, textures/suit with the
+ * textures/wings, textures/clothing with the clothing's, shoes', hand, face and ears items' boxes in src/shared/clothing.ts, textures/suit with the
  * suits' in src/shared/suits.ts, textures/item/held; trails,
  * auras, kill effects and pets are drawn from the game's own particles and mobs) and on the website (web/vendor);
  * the server checks choices against these and the admin's settings.
@@ -10,8 +10,8 @@ import type { CosmeticSetting } from './db.ts';
  * A player wears one item per slot. `rank` items are for that rank only (admins may wear all);
  * any item can also be made exclusive in the admin panel and granted to chosen players.
  */
-export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands';
-export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill', 'suit', 'shield', 'weapon', 'shoes', 'hands'];
+export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands' | 'face' | 'ears';
+export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill', 'suit', 'shield', 'weapon', 'shoes', 'hands', 'face', 'ears'];
 export type Rank = 'admin' | 'support' | 'partner' | 'friend' | 'friend_pink';
 
 export interface Item {
@@ -202,6 +202,24 @@ export const ITEMS: Item[] = [
   { id: 'mittens', slot: 'hands', name: 'Rękawiczki zimowe', since: '0.9.20' },
   { id: 'goldring', slot: 'hands', name: 'Złoty pierścień', since: '0.9.20' },
   { id: 'smartband', slot: 'hands', name: 'Opaska sportowa', since: '0.9.20' },
+  // on the face (glasses stay on under a helmet, masks hide) and on top of the head (ears twitch): boxes like the clothing's
+  { id: 'sunglasses', slot: 'face', name: 'Okulary przeciwsłoneczne', since: '0.9.20' },
+  { id: 'aviators', slot: 'face', name: 'Pilotki', since: '0.9.20' },
+  { id: 'glasses3d', slot: 'face', name: 'Okulary 3D', since: '0.9.20' },
+  { id: 'monocle', slot: 'face', name: 'Monokl', since: '0.9.20' },
+  { id: 'mustache', slot: 'face', name: 'Wąsy', since: '0.9.20' },
+  { id: 'gasmask', slot: 'face', name: 'Maska gazowa', since: '0.9.20' },
+  { id: 'kitsune', slot: 'face', name: 'Maska kitsune', since: '0.9.20' },
+  { id: 'oni', slot: 'face', name: 'Maska oni', since: '0.9.20' },
+  { id: 'skigoggles', slot: 'face', name: 'Gogle narciarskie', since: '0.9.20' },
+  { id: 'catears', slot: 'ears', name: 'Kocie uszy', since: '0.9.20' },
+  { id: 'foxears', slot: 'ears', name: 'Lisie uszy', since: '0.9.20' },
+  { id: 'bunnyears', slot: 'ears', name: 'Królicze uszy', since: '0.9.20' },
+  { id: 'elfears', slot: 'ears', name: 'Uszy elfa', since: '0.9.20' },
+  { id: 'devilhorns', slot: 'ears', name: 'Rogi diabła', since: '0.9.20' },
+  { id: 'ramhorns', slot: 'ears', name: 'Rogi barana', since: '0.9.20' },
+  { id: 'antlers', slot: 'ears', name: 'Poroże', since: '0.9.20' },
+  { id: 'unicorn', slot: 'ears', name: 'Róg jednorożca', since: '0.9.20' },
 ];
 
 /** Compares two versions like 0.9.1 number by number: below 0, 0 or above 0. */

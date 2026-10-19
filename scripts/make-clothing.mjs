@@ -7,6 +7,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { deflateSync } from 'node:zlib';
 import { CLOTHING, CLOTHING_SCALE as K, CLOTHING_TEXTURE, boxQuads, layout, slimBox } from '../src/shared/clothing.ts';
+import { headwearPaint } from './paint-headwear.mjs';
 
 const assets = 'hud/src/main/resources/assets/slashclient-hud';
 const [TW, TH] = CLOTHING_TEXTURE;
@@ -195,6 +196,8 @@ const PAINT = {
   },
 };
 const isSide = (face) => face === 'north' || face === 'south' || face === 'east' || face === 'west';
+// the face and ears slots
+Object.assign(PAINT, headwearPaint({ hex, shade, grain, isSide, K }));
 
 // ---------- shoes and things on the hands (the same boxes on both legs or arms: `box % n` is the part) ----------
 
@@ -453,8 +456,10 @@ for (const item of CLOTHING) {
     slot: item.slot,
     boxes: item.boxes.map((b, i) => {
       const slim = slimBox(b);
-      return { bone: b.bone, from: b.from, size: b.size, inflate: b.inflate ?? 0, uv: uvs[i], ...(slim !== b ? { slimFrom: slim.from, slimSize: slim.size } : {}) };
+      return { bone: b.bone, from: b.from, size: b.size, inflate: b.inflate ?? 0, uv: uvs[i], ...(slim !== b ? { slimFrom: slim.from, slimSize: slim.size } : {}),
+        ...(b.pivot ? { pivot: b.pivot, rotate: b.rotate ?? [0, 0, 0] } : {}), ...(b.twitch ? { twitch: b.twitch } : {}), ...(b.hats ? { hats: b.hats } : {}) };
     }),
+    ...(item.underHelmet ? { underHelmet: true } : {}),
   });
 }
 // one line per item, for readable diffs
@@ -463,15 +468,27 @@ console.log(`${items.length} clothing items -> ${out}`);
 
 // ---------- the icons: the item seen from the front, a little from above and the side ----------
 
+/** A corner of a box that turns on a pivot (`rotate`, degrees), turned as the game turns a part: x first, then y, then z. */
+function turned(box, c) {
+  if (!box.pivot) return c;
+  const [rx, ry, rz] = (box.rotate ?? [0, 0, 0]).map((d) => (d * Math.PI) / 180);
+  let [x, y, z] = [c[0] - box.pivot[0], c[1] - box.pivot[1], c[2] - box.pivot[2]];
+  [y, z] = [y * Math.cos(rx) - z * Math.sin(rx), y * Math.sin(rx) + z * Math.cos(rx)];
+  [x, z] = [x * Math.cos(ry) + z * Math.sin(ry), -x * Math.sin(ry) + z * Math.cos(ry)];
+  [x, y] = [x * Math.cos(rz) - y * Math.sin(rz), x * Math.sin(rz) + y * Math.cos(rz)];
+  return [x + box.pivot[0], y + box.pivot[1], z + box.pivot[2], c[3], c[4]];
+}
+
 function icon(item, uvs, tex, W, H) {
   // oblique view: the further back, the higher and more to the right
   const A = 0.45;
   const project = ([x, y, z]) => [x + A * z, y - A * z, z];
   // a pair (shoes, gloves) shows one of the two, bigger: side by side they would read as one block
   const pair = (item.slot === 'shoes' || item.slot === 'hands') && item.boxes.some((b) => b.bone.startsWith('right_')) && item.boxes.some((b) => b.bone.startsWith('left_'));
-  const quads = item.boxes.flatMap((b, i) => (pair && b.bone.startsWith('left_') ? [] : boxQuads(b, uvs[i])).map((q) => ({
+  // (without the straps round the head of masks and goggles: they would hide the face)
+  const quads = item.boxes.flatMap((b, i) => ((pair && b.bone.startsWith('left_')) || (item.slot === 'face' && b.inflate) ? [] : boxQuads(b, uvs[i])).map((q) => ({
     face: q.face,
-    corners: q.corners.map((c) => [...project([c[0] + BONES[b.bone][0], c[1] + BONES[b.bone][1], c[2] + BONES[b.bone][2]]), c[3], c[4]]),
+    corners: q.corners.map((c) => turned(b, c)).map((c) => [...project([c[0] + BONES[b.bone][0], c[1] + BONES[b.bone][1], c[2] + BONES[b.bone][2]]), c[3], c[4]]),
   })));
   const xs = quads.flatMap((q) => q.corners.map((c) => c[0])), ys = quads.flatMap((q) => q.corners.map((c) => c[1]));
   const minX = Math.min(...xs), minY = Math.min(...ys);

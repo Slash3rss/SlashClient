@@ -76,12 +76,12 @@ export class Preview {
     await this.viewer.loadSkin('/vendor/skin-default.png', { model: 'default' });
   }
 
-  /** What the figure wears: { cape, wings, elytra, trail, aura, pet, hat, top, kill, suit, shield, weapon, shoes, hands } (ids or empty; a kill effect plays every few seconds; a suit hides the hat, the top, the shoes and the hands; the shield and weapon are held). */
+  /** What the figure wears: { cape, wings, elytra, trail, aura, pet, hat, top, kill, suit, shield, weapon, shoes, hands, face, ears } (ids or empty; a kill effect plays every few seconds; a suit hides the hat, the top, the shoes, the hands, the face and the ears; the shield and weapon are held). */
   async show(worn) {
     clearInterval(this.capeTimer);
     this.cosmetics.show(Object.fromEntries(Object.entries(worn).map(([slot, id]) => [slot, id || undefined])));
-    // a tall hat (or a suit's crest or plume) stands above the head: the figure a little smaller, so it stays in view
-    this.viewer.zoom = worn.hat || worn.suit ? 0.72 : 0.85;
+    // a tall hat (or ears, horns, a suit's crest or plume) stands above the head: the figure a little smaller, so it stays in view
+    this.viewer.zoom = worn.hat || worn.ears || worn.suit ? 0.72 : 0.85;
     // wings take the back first (as in the game), then an elytra, then the cape
     if (worn.wings) await this.viewer.loadCape(`/vendor/wings/${worn.wings}.png`, { backEquipment: 'elytra' });
     else if (worn.elytra) await this.viewer.loadCape(`/vendor/elytra/${worn.elytra}.png`, { backEquipment: 'elytra' });
