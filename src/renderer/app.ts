@@ -3055,11 +3055,11 @@ function renderCapeGrid() {
 
 // ---------- SlashClient cosmetics (seen by other players with the launcher) ----------
 
-type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top';
+type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill';
 const SLOTS: [Slot, string, string][] = [
   ['cape', 'Peleryna', 'fa-flag'], ['wings', 'Skrzydła', 'fa-dove'], ['elytra', 'Elytra', 'fa-feather'],
   ['trail', 'Ślad', 'fa-shoe-prints'], ['aura', 'Aura', 'fa-wand-sparkles'], ['pet', 'Pupil', 'fa-paw'],
-  ['hat', 'Na głowę', 'fa-hat-cowboy'], ['top', 'Ubranie', 'fa-shirt'],
+  ['hat', 'Na głowę', 'fa-hat-cowboy'], ['top', 'Ubranie', 'fa-shirt'], ['kill', 'Efekt zabójstwa', 'fa-skull-crossbones'],
 ];
 /** Without the server (or before 0.8) only the first eight capes are known. */
 const SLASH_CAPES: [string, string][] = [
@@ -3077,6 +3077,15 @@ const ITEM_ICONS: Record<string, string> = {
   crits: 'fa-burst', witch: 'fa-flask', ink: 'fa-droplet', ash: 'fa-smog',
   spores: 'fa-seedling', nautilus: 'fa-water', tears: 'fa-face-sad-tear', fireflies: 'fa-lightbulb',
   axolotl: 'fa-fish', frog: 'fa-frog', fox: 'fa-paw',
+  // kill effects
+  lightning: 'fa-bolt-lightning', blood: 'fa-droplet', heartburst: 'fa-heart-crack', firework: 'fa-wand-magic-sparkles',
+  soulrise: 'fa-fire-flame-curved', enderpoof: 'fa-eye', confetti: 'fa-champagne-glasses', blast: 'fa-explosion',
+  shatter: 'fa-icicles', coins: 'fa-coins', ghost: 'fa-ghost', flamering: 'fa-ring',
+};
+/** The kill effects' icons in their own colours (the other icons are the accent's). */
+const KILL_ICON_COLORS: Record<string, string> = {
+  lightning: '#bfe6ff', blood: '#d32f2f', heartburst: '#ff5c7a', firework: '#ffd93b', soulrise: '#5fe3f0', enderpoof: '#c070ff',
+  confetti: '#ff7ad9', blast: '#ffa21f', shatter: '#9fd8ff', coins: '#ffd23f', ghost: '#f4f6ff', flamering: '#ff6a1f',
 };
 const RANK_NAMES: Record<string, string> = { admin: 'Admin', support: 'Support', partner: 'Partner', friend: 'Przyjaciel', friend_pink: 'Przyjaciel' };
 let cosmeticSlot: Slot = 'cape';
@@ -3121,6 +3130,11 @@ function cosmeticPicture(slot: Slot, id: string): Node {
   if (slot === 'hat' || slot === 'top') return el('img', { className: 'clothing-icon', src: `img/clothing/icon/${id}.png`, alt: '' });
   // our own pets (not the game's mobs) have a picture of their own
   if (slot === 'pet' && OUR_PET_MODELS[id]) return el('img', { className: 'clothing-icon', src: `img/pets/icon/${id}.png`, alt: '' });
+  if (slot === 'kill') {
+    const i = el('i', { className: `fa-solid ${ITEM_ICONS[id] ?? 'fa-skull-crossbones'} cosmetic-icon` });
+    i.style.color = KILL_ICON_COLORS[id] ?? '';
+    return i;
+  }
   const icon = gamePictures && cosmeticIcon(gamePictures, id);
   if (icon) return gameIcon(icon.srcs, icon.tint);
   return el('i', { className: `fa-solid ${ITEM_ICONS[id] ?? 'fa-star'} cosmetic-icon` });
@@ -3164,6 +3178,7 @@ async function renderSlashCapes() {
     : cosmeticSlot === 'aura' ? t('Cząsteczki wokół Ciebie, kiedy stoisz.')
     : cosmeticSlot === 'hat' ? t('Coś na głowę. Chowa się pod prawdziwym hełmem.')
     : cosmeticSlot === 'top' ? t('Ubranie na skinie. Chowa się pod prawdziwym napierśnikiem.')
+    : cosmeticSlot === 'kill' ? t('Krótki pokaz cząsteczek tam, gdzie pada pokonany przez Ciebie mob lub gracz. Widzą go gracze z SlashClient.')
     : t('Mały towarzysz lata przy Twoim ramieniu.');
   const current = worn[cosmeticSlot] ?? '';
   const tile = (item: CatalogItem | undefined, content: Node) => {
@@ -3208,7 +3223,8 @@ async function renderSlashCapes() {
   // the preview wears all of it: wings in the cape's place, the pet, trail and aura around
   cosmeticPreview ??= new CosmeticPreview(skinViewer, pictures);
   cosmeticPreview.pictures = pictures;
-  cosmeticPreview.show(worn);
+  // the kill effect plays on the figure only while its tab is open (every few seconds it would distract)
+  cosmeticPreview.show({ ...worn, kill: cosmeticSlot === 'kill' ? worn.kill : undefined });
   stopCapeAnimation();
   if (worn.wings) await skinViewer.loadCape(`img/wings/${worn.wings}.png`, { backEquipment: 'elytra' });
   else if (cosmeticSlot === 'elytra' && worn.elytra) await skinViewer.loadCape(`img/elytra/${worn.elytra}.png`, { backEquipment: 'elytra' });
