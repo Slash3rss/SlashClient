@@ -261,6 +261,45 @@
               <div class="version-list snapshot-list" id="snapshot-list"></div>
             </div>
             <div class="card glass-panel bench-card keys-card" id="keys-card"></div>
+            <div class="card glass-panel bench-card" id="cloud-card">
+              <div class="row bench-head">
+                <h3><i class="fa-solid fa-cloud"></i> Profil na koncie</h3>
+                <label class="check"><input type="checkbox" id="cloud-auto"><span>Synchronizuj z kontem</span></label>
+              </div>
+              <p class="muted">Mody, ustawienia, configi i układ HUD na Twoim koncie SlashClient, żeby ten sam profil działał na drugim komputerze. Bez światów; widzisz je tylko Ty. Z włączoną synchronizacją profil trafia na konto po każdej grze.</p>
+              <p class="cloud-status" id="cloud-status"></p>
+              <div class="row cloud-actions">
+                <button type="button" class="primary" id="cloud-sync"><i class="fa-solid fa-rotate"></i> Synchronizuj teraz</button>
+                <button type="button" id="cloud-upload"><i class="fa-solid fa-cloud-arrow-up"></i> Wyślij na konto</button>
+                <button type="button" id="cloud-download"><i class="fa-solid fa-cloud-arrow-down"></i> Pobierz z konta</button>
+              </div>
+            </div>
+            <div class="card glass-panel bench-card" id="move-card">
+              <div class="row bench-head">
+                <h3><i class="fa-solid fa-right-left"></i> Przenieś na inną wersję Minecrafta</h3>
+              </div>
+              <p class="muted" id="move-intro">SlashClient sprawdzi na Modrinth, które mody mają wersję dla wybranego Minecrafta, i przeniesie profil jednym kliknięciem (najpierw zrobi migawkę). Mody, które nie są jeszcze gotowe, zostaną wyłączone i będą widoczne na liście.</p>
+              <div class="row move-pick">
+                <label class="field grow">Docelowa wersja<select id="move-target"></select></label>
+                <button type="button" id="move-check"><i class="fa-solid fa-magnifying-glass"></i> Sprawdź mody</button>
+              </div>
+              <div class="move-result hidden" id="move-result">
+                <p class="muted" id="move-summary"></p>
+                <div class="join-list move-list" id="move-list"></div>
+                <label class="check" id="move-unknown-row"><input type="checkbox" id="move-disable-unknown" checked><span>Wyłącz mody spoza Modrinth <span class="hint">nie da się sprawdzić, czy zadziałają</span></span></label>
+                <div class="row join-actions">
+                  <button type="button" class="primary" id="move-go"><i class="fa-solid fa-right-left"></i> Przenieś profil</button>
+                </div>
+              </div>
+              <div class="move-pending hidden" id="move-pending">
+                <p class="share-warn" id="move-pending-title"></p>
+                <div class="join-list move-list" id="move-pending-list"></div>
+                <div class="row join-actions">
+                  <button type="button" id="move-dismiss">Ukryj listę</button>
+                  <button type="button" class="primary" id="move-recheck"><i class="fa-solid fa-rotate"></i> Sprawdź ponownie</button>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="profile-pane hidden" data-pane="content">
             <p class="muted sub">Z <a href="https://modrinth.com" target="_blank" id="content-site">Modrinth</a>, instalowane do tego profilu</p>
@@ -658,6 +697,8 @@
           <label class="field grow">Z kodu<input id="pack-source-code" maxlength="40" placeholder="ABCD-EFGH" autocomplete="off" spellcheck="false"></label>
           <button type="submit" class="primary" id="pack-source-code-go"><i class="fa-solid fa-download"></i> Pobierz</button>
         </form>
+        <h3 class="share-mine-title"><i class="fa-solid fa-cloud"></i> Z konta SlashClient</h3>
+        <div class="join-list" id="cloud-list"></div>
       </div>
     </div>
   </div>

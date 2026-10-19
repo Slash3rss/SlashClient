@@ -18,6 +18,7 @@ import { mediaRoutes, type MediaLimits } from './media.ts';
 import { createDownloads, isDownloadOs } from './downloads.ts';
 import { createCurseForge } from './curseforge.ts';
 import { profileShareRoutes, type ShareLimits } from './profileShares.ts';
+import { profileCloudRoutes, type CloudLimits } from './profileCloud.ts';
 import { createAchievements, hintFor, TICK_MS } from './achievements.ts';
 
 /**
@@ -59,6 +60,10 @@ export interface Config {
   mediaDir?: string;
   /** Size, time and quota of shared screenshots and clips (tests lower them). */
   mediaLimits?: Partial<MediaLimits>;
+  /** Folder for profiles kept on accounts (CLOUD_DIR); default "cloud-profiles" next to the database. */
+  cloudDir?: string;
+  /** Size and quota of profiles kept on accounts (tests lower them). */
+  cloudLimits?: Partial<CloudLimits>;
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -432,6 +437,15 @@ export function createApp(cfg: Config) {
     authed, isAdmin, clientIp, limitUploads: rateLimiter(6), limitViews: rateLimiter(60),
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
     versioned: (html) => versioned(html, 'text/html'),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  // profiles kept on the player's account, for their other computers (profileCloud.ts)
+  const cloud = profileCloudRoutes({
+    sql: db.sql, authed, dir: cfg.cloudDir ?? path.join(path.dirname(cfg.dbFile), 'cloud-profiles'), limits: cfg.cloudLimits,
+    limitUploads: rateLimiter(10), limitDownloads: rateLimiter(30),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -843,6 +857,7 @@ export function createApp(cfg: Config) {
     ...tracker.routes,
     ...shares.routes,
     ...media.routes,
+    ...cloud.routes,
     ...sharing.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged,
@@ -984,6 +999,7 @@ export function createApp(cfg: Config) {
     // a shared profile's file: not JSON, so not one of the routes
     try {
       if (await shares.serve(req, res, url)) return;
+      if (await cloud.serve(req, res, url)) return;
     } catch (err) {
       console.error('profil:', (err as Error).message);
       if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
@@ -1236,6 +1252,7 @@ export function createApp(cfg: Config) {
     void tracker.cleanup().catch((err) => console.error('logi:', (err as Error).message));
     void shares.cleanup().catch((err) => console.error('profile:', (err as Error).message));
     void media.cleanup().catch((err) => console.error('media:', (err as Error).message));
+    void cloud.cleanup().catch((err) => console.error('chmura:', (err as Error).message));
   }, 3_600_000);
 
   return {

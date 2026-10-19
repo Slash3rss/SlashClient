@@ -21,6 +21,7 @@ import { createApp } from './app.ts';
  *   CURSEFORGE_API_KEY      key from console.curseforge.com: enables CurseForge in the launcher
  *   SHARES_DIR              profiles shared by code, default ./profiles next to DB_FILE
  *   MEDIA_DIR               screenshots and clips shared by link, default ./media next to DB_FILE
+ *   CLOUD_DIR               profiles kept on accounts, default ./cloud-profiles next to DB_FILE
  */
 const port = Number(process.env.PORT) || 8787;
 const dbFile = process.env.DB_FILE ?? path.resolve('data/social.db');
@@ -51,6 +52,7 @@ const { server } = createApp({
   curseforgeKey: process.env.CURSEFORGE_API_KEY || undefined,
   sharesDir: process.env.SHARES_DIR || undefined,
   mediaDir: process.env.MEDIA_DIR || undefined,
+  cloudDir: process.env.CLOUD_DIR || undefined,
 });
 
 server.listen(port, () => {

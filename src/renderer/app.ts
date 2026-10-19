@@ -8,6 +8,8 @@ import { createProfileFiles } from './profileFiles';
 import { initProfileSharing } from './profileShare';
 import { createMediaTools } from './mediaTools';
 import { openPackPreview } from './packPreview';
+import { initCloudProfiles } from './cloudProfiles';
+import { initVersionMove } from './versionMove';
 import { createAchievements } from './achievements';
 import { openSkinEditor } from './skinEditor';
 import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
@@ -916,6 +918,8 @@ function loadProfileForm(profile: Profile) {
   renderBenchmarks(profile.id);
   profileFiles.renderSnapshots(profile.id, $('#snapshot-list'));
   keyConflicts.open(profile.id, (store.runningProfiles ?? []).length > 0);
+  void cloudCard.render(profile.id);
+  void moveCard.render(profile);
   const form = $<HTMLFormElement>('#profile-form');
   for (const key of ['name', 'gameDir', 'jvmArgs', 'javaPath', 'memoryMb', 'width', 'height'] as const) {
     (form.elements.namedItem(key) as HTMLInputElement).value = String(profile[key]);
@@ -1491,6 +1495,16 @@ $('#pack-import-close').addEventListener('click', closePackImport);
 $('#pack-import-modal').addEventListener('click', (e) => e.target === e.currentTarget && closePackImport());
 
 initProfileSharing({ api, $, el, guard, toast, skeletons, packPartRows, showPackImport, editing: () => editingId });
+// profiles on the account and moving to another Minecraft version: see cloudProfiles.ts and versionMove.ts
+const cloudCard = initCloudProfiles({
+  api, $, guard, toast, busy, editing: () => editingId,
+  profileName: (id) => store.profiles.find((p) => p.id === id)?.name,
+  openProfile: (id) => {
+    openProfilePane('settings', id);
+    renderProfiles();
+  },
+});
+const moveCard = initVersionMove({ api, $, guard, toast, busy, editing: () => editingId, versions: () => versions, resolve: resolvedVersion, projectIcon });
 
 $('#loader-select').addEventListener('change', () => renderLoaderVersions(''));
 $('#version-select').addEventListener('change', () => renderLoaderVersions(''));
