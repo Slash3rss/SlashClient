@@ -1576,7 +1576,7 @@ handle('lan:join', (friendId: string) => {
 });
 
 handle('social:api', (method: string, apiPath: string, body?: unknown) => {
-  if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages|invites|cosmetics|waypoints|parties)(\/[\w-]+)*(\?[\w=&-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
+  if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages|invites|cosmetics|waypoints|parties|achievements)(\/[\w-]+)*(\?[\w=&-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
   return socialCall(() => chatCall(method, apiPath, body));
 });
 
