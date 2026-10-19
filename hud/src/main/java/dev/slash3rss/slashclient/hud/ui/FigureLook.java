@@ -22,7 +22,11 @@ public final class FigureLook {
 	/** Holding the worn shield (left hand) and weapon (right hand), on their slots' tabs. */
 	public boolean held;
 
+	/** Its movement effect played as a short loop (the cosmetics menu's tab for them): see FigureMoves. */
+	public boolean moveDemo;
+
 	final FigureParticles particles = new FigureParticles();
+	final FigureMoves moves = new FigureMoves();
 	/** The turn so far, eased towards `turn`. */
 	float turned;
 
@@ -55,5 +59,6 @@ public final class FigureLook {
 	void tickParticles(UUID self) {
 		particles.tick(worn(self, "aura"), worn(self, "trail"), running);
 		particles.rocket("rocketboots".equals(worn(self, "shoes")));
+		moves.tick(moveDemo ? worn(self, "move") : null);
 	}
 }

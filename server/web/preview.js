@@ -1,7 +1,7 @@
 // The 3D figure of the site's cosmetics, the launcher's own: the player's skin (or ours) with the
 // cape, wings or elytra on its back, the trail, aura and pet from the game's pictures and models,
 // the clothing, shoes and things on the hands, face and ears (/vendor/clothing), the suits (/vendor/suits), the held
-// shield and weapon (/vendor/held), and the back item and tail (/vendor/gear).
+// shield and weapon (/vendor/held), the back item and tail (/vendor/gear) and the ring (/vendor/rings).
 // The code is the launcher's, bundled as /vendor/preview3d.js (window.SlashPreview); the game's
 // pictures are in /vendor/mc (listed in index.json).
 
@@ -57,7 +57,7 @@ export class Preview {
     this.viewer.autoRotate = true;
     this.viewer.autoRotateSpeed = 0.6;
     this.viewer.controls.enableZoom = false;
-    this.cosmetics = new lib.CosmeticPreview(this.viewer, pictures, '/vendor/clothing/', '/vendor/pets/', '/vendor/suits/', '/vendor/held/', '/vendor/gear/');
+    this.cosmetics = new lib.CosmeticPreview(this.viewer, pictures, '/vendor/clothing/', '/vendor/pets/', '/vendor/suits/', '/vendor/held/', '/vendor/gear/', '/vendor/rings/');
   }
 
   async skin(uuid) {
@@ -77,7 +77,7 @@ export class Preview {
     await this.viewer.loadSkin('/vendor/skin-default.png', { model: 'default' });
   }
 
-  /** What the figure wears: { cape, wings, elytra, trail, aura, pet, hat, top, kill, suit, shield, weapon, shoes, hands, face, ears, back, tail } (ids or empty; a kill effect plays every few seconds; a suit hides the hat, the top, the shoes, the hands, the face and the ears; the shield and weapon are held). */
+  /** What the figure wears: { cape, wings, elytra, trail, aura, pet, hat, top, kill, suit, shield, weapon, shoes, hands, face, ears, back, tail, ring, move } (ids or empty; a kill effect plays every few seconds, a movement effect in a loop; a suit hides the hat, the top, the shoes, the hands, the face and the ears; the shield and weapon are held). */
   async show(worn) {
     clearInterval(this.capeTimer);
     this.cosmetics.show(Object.fromEntries(Object.entries(worn).map(([slot, id]) => [slot, id || undefined])));

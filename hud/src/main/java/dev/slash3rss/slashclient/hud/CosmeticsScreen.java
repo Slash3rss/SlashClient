@@ -21,14 +21,14 @@ import java.util.UUID;
 
 /**
  * Picking SlashClient cosmetics in the game: one slot at a time (cape, wings, elytra, trail,
- * aura, pet, hat, top, kill effect, suit, shield, weapon, shoes, hands, face, ears, back item, tail), the player's figure beside the panel trying on the item under
+ * aura, pet, hat, top, kill effect, suit, shield, weapon, shoes, hands, face, ears, back item, tail, ring, movement effect), the player's figure beside the panel trying on the item under
  * the mouse (turned to show its back for what is worn there, running for a trail, turned by
  * dragging it; for kill effects in a world the real player, from behind). Choices go to the SlashClient
  * server through the launcher, for the Minecraft account being played when it is linked to the
  * SlashClient account (each can have a set of its own), else for the whole account.
  */
 public class CosmeticsScreen extends Screen {
-	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit", "shield", "weapon", "shoes", "hands", "face", "ears", "back", "tail"};
+	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit", "shield", "weapon", "shoes", "hands", "face", "ears", "back", "tail", "ring", "move"};
 	/** Particles and pets have no picture of ours: an item that looks like them stands in. */
 	private static final Map<String, Item> ITEMS = Map.ofEntries(
 		Map.entry("hearts", Items.POPPY), Map.entry("sparks", Items.GLOWSTONE_DUST), Map.entry("snow", Items.SNOWBALL),
@@ -53,7 +53,11 @@ public class CosmeticsScreen extends Screen {
 		Map.entry("lightning", Items.TRIDENT), Map.entry("blood", Items.REDSTONE), Map.entry("heartburst", Items.ROSE_BUSH),
 		Map.entry("firework", Items.FIREWORK_STAR), Map.entry("soulrise", Items.SOUL_CAMPFIRE), Map.entry("enderpoof", Items.ENDER_EYE),
 		Map.entry("confetti", Items.PAPER), Map.entry("blast", Items.TNT), Map.entry("shatter", Items.BLUE_ICE),
-		Map.entry("coins", Items.GOLD_NUGGET), Map.entry("ghost", Items.GHAST_TEAR), Map.entry("flamering", Items.FIRE_CHARGE));
+		Map.entry("coins", Items.GOLD_NUGGET), Map.entry("ghost", Items.GHAST_TEAR), Map.entry("flamering", Items.FIRE_CHARGE),
+		// movement effects (rings have pictures of their own)
+		Map.entry("move_steps", Items.LEATHER_BOOTS), Map.entry("move_jump", Items.SLIME_BALL), Map.entry("move_landing", Items.ANVIL),
+		Map.entry("move_arrows", Items.SPECTRAL_ARROW), Map.entry("move_sprint", Items.SUGAR), Map.entry("move_bubbles", Items.PUFFERFISH),
+		Map.entry("move_petals", Items.PINK_PETALS));
 	private static final int TILE_W = 32, TILE_H = 40, GAP = 4;
 
 	/** `hint`: how to earn an item that only an achievement gives ("" for the rest). */
@@ -123,10 +127,13 @@ public class CosmeticsScreen extends Screen {
 		for (String id : Clothing.EARS) list.add(new Entry(id, "ears", id, "", true));
 		for (String id : Gear.BACKS) list.add(new Entry(id, "back", id, "", true));
 		for (String id : Gear.TAILS) list.add(new Entry(id, "tail", id, "", true));
+		for (String id : RingEffects.IDS) list.add(new Entry(id, "ring", id, "", true));
+		for (String id : MoveEffects.IDS) list.add(new Entry(id, "move", id, "", true));
 		screen.items = List.copyOf(list);
 		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf", "kill", "firework", "shield", "shield_dragon", "weapon", "sword_katana",
 			"shoes", "sneakers_red", "hands", "wristwatch"));
 		if (slot.equals("back") || slot.equals("tail")) screen.worn.putAll(Map.of("back", "backpack", "tail", "foxtail"));
+		screen.worn.putAll(Map.of("ring", "ring_runes", "move", "move_landing"));
 		screen.character = "test";
 		screen.characterName = "Slash3rss";
 		screen.ownSet = true;
@@ -158,6 +165,8 @@ public class CosmeticsScreen extends Screen {
 			case "shield" -> -35;
 			case "weapon" -> 35;
 			case "tail" -> 130;
+			// a movement effect from the side and a little in front (footprints and streaks stay in view)
+			case "move" -> -60;
 			default -> 0;
 		};
 	}
@@ -367,7 +376,8 @@ public class CosmeticsScreen extends Screen {
 			spinAt = now;
 			look.turn = turnFor(slot) + dragTurn + spin;
 			// a tail swings with the steps: the figure runs on its tab too
-			look.running = slot.equals("trail") || slot.equals("tail");
+			look.running = slot.equals("trail") || slot.equals("tail") || slot.equals("move") && dev.slash3rss.slashclient.hud.ui.FigureMoves.runs(set.get("move"));
+			look.moveDemo = slot.equals("move");
 			look.elytra = slot.equals("elytra");
 			look.held = HeldSkins.SLOTS.contains(slot);
 			// while it is turned by hand the head does not chase the mouse
@@ -449,6 +459,11 @@ public class CosmeticsScreen extends Screen {
 		if (note != null) {
 			y = Ui.wrapped(g, Ui.tr(note), x, y - 4, pw - 24, Ui.MUTED) + 4;
 		}
+		// movement effects: when they play
+		if (slot.equals("move")) {
+			Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.cosmetics.moveHint"), pw - 24), x, y - 2, Ui.MUTED);
+			y += 13;
+		}
 		// the items of this slot, "nothing" first
 		List<Entry> shown = new ArrayList<>();
 		shown.add(null);
@@ -509,6 +524,9 @@ public class CosmeticsScreen extends Screen {
 			case "weapon" ->
 				// the sword's or bow's own picture, larger
 				g.blit(RenderPipelines.GUI_TEXTURED, Cosmetics.textureId("item/held", e.id()), x + (TILE_W - 24) / 2, y + (TILE_H - 24) / 2, 0, 0, 24, 24, 16, 16, 16, 16, alpha);
+			case "ring" ->
+				// the ring itself (the left square of its picture)
+				g.blit(RenderPipelines.GUI_TEXTURED, RingEffects.texture(e.id()), x + (TILE_W - 26) / 2, y + (TILE_H - 26) / 2, 0, 0, 26, 26, 64, 64, 128, 64, alpha);
 			case "hat", "top", "shoes", "hands", "face", "ears" ->
 				// a view of it from the front, a little from above
 				g.blit(RenderPipelines.GUI_TEXTURED, Clothing.icon(e.id()), x + (TILE_W - 26) / 2, y + (TILE_H - 26) / 2, 0, 0, 26, 26, 64, 64, 64, 64, alpha);

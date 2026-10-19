@@ -620,6 +620,49 @@ public final class TestHooks {
 		KillEffects.preview(net.minecraft.client.Minecraft.getInstance(), kind);
 	}
 
+	/** Rings and movement effects on or off, ours and other players'. */
+	public static void ringMoveEffects(boolean rings, boolean moves, boolean others) {
+		SlashHud.config.ringEffects = rings;
+		SlashHud.config.ringEffectsOthers = others;
+		SlashHud.config.moveEffects = moves;
+		SlashHud.config.moveEffectsOthers = others;
+	}
+
+	/** The last movement effect that played ("kind:player", "" for none) and how many have played. */
+	public static String moveEffectState() {
+		return MoveEffects.lastPlayed + "|" + MoveEffects.played;
+	}
+
+	/** Forgets the last movement effect (the next check sees only a new one). */
+	public static void moveEffectForget() {
+		MoveEffects.lastPlayed = "";
+	}
+
+	/** Holds (or lets go of) the forward and sprint keys, as the player would. */
+	public static void walk(boolean forward, boolean sprint) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		mc.options.keyUp.setDown(forward);
+		mc.options.keySprint.setDown(sprint);
+		if (!forward) mc.player.setSprinting(false);
+	}
+
+	/** Our own player jumps (when on the ground). */
+	public static void jump() {
+		var p = net.minecraft.client.Minecraft.getInstance().player;
+		if (p.onGround()) p.setDeltaMovement(p.getDeltaMovement().x, 0.42, p.getDeltaMovement().z);
+	}
+
+	/** Uses the item in the main hand, as a right click would (a snowball is thrown). */
+	public static void useItem() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		mc.gameMode.useItem(mc.player, net.minecraft.world.InteractionHand.MAIN_HAND);
+	}
+
+	/** The rings and movement effects this mod can draw: "rings|moves". */
+	public static String ringsAndMoves() {
+		return String.join(",", RingEffects.IDS) + "|" + String.join(",", MoveEffects.IDS);
+	}
+
 	/** Holds (or lets go of) the sneak key, as the player would. */
 	public static void sneak(boolean on) {
 		net.minecraft.client.Minecraft.getInstance().options.keyShift.setDown(on);

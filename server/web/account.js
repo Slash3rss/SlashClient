@@ -163,11 +163,11 @@ function renderAccount() {
       character?.loadout ? el('button', { onclick: () => send({ own: false }, `${character.name} nosi teraz zestaw całego konta.`) }, icon('fa-solid fa-rotate-left'), 'Jak całe konto') : '') : '',
     el('div', { class: 'cosmetic-stage' }, previewBox ??= el('div', { class: 'figure' }), el('div', { class: 'grow' }, tabs, note, pick)));
   $('#account').replaceChildren(el('div', { class: 'account' }, profile, capes));
-  // the kill effect plays on the figure only while its tab is open (every few seconds it would distract)
+  // the kill and movement effects play on the figure only while their tab is open (they would distract)
   // the shield and the weapon are held only while their tabs are open
   const holding = slot === 'shield' || slot === 'weapon';
   // (on the cape's, wings' and elytra's tabs the back item steps aside, so they can be seen)
-  figure(character?.uuid ?? characters[0]?.uuid, { ...worn, kill: slot === 'kill' ? worn.kill : '', shield: holding ? worn.shield : '', weapon: holding ? worn.weapon : '',
+  figure(character?.uuid ?? characters[0]?.uuid, { ...worn, kill: slot === 'kill' ? worn.kill : '', move: slot === 'move' ? worn.move : '', shield: holding ? worn.shield : '', weapon: holding ? worn.weapon : '',
     ...(slot === 'cape' || slot === 'wings' || slot === 'elytra' ? { back: '' } : {}) });
   renderPartners();
 }

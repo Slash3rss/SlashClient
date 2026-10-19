@@ -83,15 +83,18 @@ public class SlashHud implements ClientModInitializer {
 			if (renderer instanceof net.minecraft.client.renderer.entity.player.AvatarRenderer<?> avatar) {
 				helper.register(new CosmeticLayer(avatar, context));
 				helper.register(new GearLayer(avatar));
+				// a ring under the feet
+				helper.register(new RingLayer(avatar));
 			}
 		});
 		//#else
-		//$ // there only the clothing, back items and tails, drawn straight from the player
+		//$ // there only the clothing, suits, back items, tails and rings, drawn straight from the player
 		//$ net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback.EVENT.register((type, renderer, helper, context) -> {
 		//$ 	if (renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer player) {
 		//$ 		helper.register(new ClothingLayer(player));
 		//$ 		helper.register(new SuitLayer(player));
 		//$ 		helper.register(new GearLayer(player));
+		//$ 		helper.register(new RingLayer(player));
 		//$ 	}
 		//$ });
 		//#endif
@@ -112,6 +115,7 @@ public class SlashHud implements ClientModInitializer {
 			Cosmetics.reset();
 			CosmeticEffects.reset();
 			KillEffects.reset();
+			MoveEffects.reset();
 			NetCounter.attach(handler.getConnection());
 			Reconnect.joined(mc);
 			DungeonMap.stop();
@@ -176,6 +180,7 @@ public class SlashHud implements ClientModInitializer {
 			CosmeticEffects.tick(mc);
 			LimbWear.tick(mc);
 			KillEffects.tick(mc);
+			MoveEffects.tick(mc);
 			Clips.tick(mc);
 			Badges.tick(mc);
 			while (edit.consumeClick()) {

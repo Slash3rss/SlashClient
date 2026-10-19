@@ -216,6 +216,10 @@ public final class Catalog {
 		// your own shield and weapon skins always show; other players' only when asked for (fair PvP)
 		out.add(new Entry("heldSkins", "slashclient-hud.set.heldSkins", "extras", "m-armor", null, null, List.of(
 			new Toggle("slashclient-hud.set.heldSkins.others", () -> cfg.heldSkinsOthers, v -> cfg.heldSkinsOthers = v)), null));
+		out.add(new Entry("ringEffects", "slashclient-hud.set.ringEffects", "extras", "m-light", () -> cfg.ringEffects, v -> cfg.ringEffects = v, List.of(
+			new Toggle("slashclient-hud.set.ringEffects.others", () -> cfg.ringEffectsOthers, v -> cfg.ringEffectsOthers = v)), null));
+		out.add(new Entry("moveEffects", "slashclient-hud.set.moveEffects", "extras", "m-movement", () -> cfg.moveEffects, v -> cfg.moveEffects = v, List.of(
+			new Toggle("slashclient-hud.set.moveEffects.others", () -> cfg.moveEffectsOthers, v -> cfg.moveEffectsOthers = v)), null));
 		out.add(new Entry("menu", "slashclient-hud.set.menu", "extras", "m-menu", () -> cfg.customMenu, v -> cfg.customMenu = v, List.of(), null));
 		out.add(new Entry("pause", "slashclient-hud.set.pause", "extras", "m-pause", () -> cfg.customPause, v -> cfg.customPause = v, List.of(), null));
 		var options = net.minecraft.client.Minecraft.getInstance().options;

@@ -1,5 +1,6 @@
 import { SkinViewer, WalkingAnimation, IdleAnimation } from 'skinview3d';
 import { CosmeticPreview, cosmeticIcon } from './cosmeticPreview';
+import { MOVE_ICONS, ringThumbnail } from './ringMovePreview';
 import { OUR_PET_MODELS } from './ourPetModels';
 import { gameIcon } from './gameIcon';
 import { createFriends, socialErrorText } from './friends';
@@ -3071,7 +3072,7 @@ function renderCapeGrid() {
 
 // ---------- SlashClient cosmetics (seen by other players with the launcher) ----------
 
-type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands' | 'face' | 'ears' | 'back' | 'tail';
+type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands' | 'face' | 'ears' | 'back' | 'tail' | 'ring' | 'move';
 const SLOTS: [Slot, string, string][] = [
   ['cape', 'Peleryna', 'fa-flag'], ['wings', 'Skrzydła', 'fa-dove'], ['elytra', 'Elytra', 'fa-feather'],
   ['trail', 'Ślad', 'fa-shoe-prints'], ['aura', 'Aura', 'fa-wand-sparkles'], ['pet', 'Pupil', 'fa-paw'],
@@ -3081,6 +3082,7 @@ const SLOTS: [Slot, string, string][] = [
   ['shoes', 'Buty', 'fa-socks'], ['hands', 'Dłonie', 'fa-mitten'],
   ['face', 'Twarz', 'fa-glasses'], ['ears', 'Uszy i rogi', 'fa-cat'],
   ['back', 'Na plecy', 'fa-person-hiking'], ['tail', 'Ogon', 'fa-cat'],
+  ['ring', 'Krąg pod stopami', 'fa-circle-dot'], ['move', 'Efekt ruchu', 'fa-person-running'],
 ];
 /** Without the server (or before 0.8) only the first eight capes are known. */
 const SLASH_CAPES: [string, string][] = [
@@ -3102,6 +3104,9 @@ const ITEM_ICONS: Record<string, string> = {
   lightning: 'fa-bolt-lightning', blood: 'fa-droplet', heartburst: 'fa-heart-crack', firework: 'fa-wand-magic-sparkles',
   soulrise: 'fa-fire-flame-curved', enderpoof: 'fa-eye', confetti: 'fa-champagne-glasses', blast: 'fa-explosion',
   shatter: 'fa-icicles', coins: 'fa-coins', ghost: 'fa-ghost', flamering: 'fa-ring',
+  // movement effects (ringMovePreview.ts has their colours)
+  move_steps: 'fa-shoe-prints', move_jump: 'fa-cloud', move_landing: 'fa-burst', move_arrows: 'fa-location-arrow',
+  move_sprint: 'fa-bolt', move_bubbles: 'fa-circle-dot', move_petals: 'fa-spa',
 };
 /** The kill effects' icons in their own colours (the other icons are the accent's). */
 const KILL_ICON_COLORS: Record<string, string> = {
@@ -3179,6 +3184,13 @@ function cosmeticPicture(slot: Slot, id: string): Node {
     i.style.color = KILL_ICON_COLORS[id] ?? '';
     return i;
   }
+  // a ring is our own picture; a movement effect gets its icon in its colour
+  if (slot === 'ring') return ringThumbnail('img/rings/', id);
+  if (slot === 'move') {
+    const i = el('i', { className: `fa-solid ${ITEM_ICONS[id] ?? 'fa-person-running'} cosmetic-icon` });
+    i.style.color = MOVE_ICONS[id]?.[1] ?? '';
+    return i;
+  }
   const icon = gamePictures && cosmeticIcon(gamePictures, id);
   if (icon) return gameIcon(icon.srcs, icon.tint);
   return el('i', { className: `fa-solid ${ITEM_ICONS[id] ?? 'fa-star'} cosmetic-icon` });
@@ -3232,6 +3244,8 @@ async function renderSlashCapes() {
     : cosmeticSlot === 'weapon' ? t('Wygląd wszystkich mieczy (skórki mieczy) albo łuku (skórki łuków) w Twojej ręce; ekwipunek, nazwa i działanie bez zmian. Inni gracze widzą go tylko, jeśli włączą skórki innych graczy w ustawieniach gry – domyślnie nie, dla uczciwego PvP.')
     : cosmeticSlot === 'back' ? t('Coś na plecy. Zajmuje miejsce peleryny i skrzydeł (nie widać ich wtedy) i chowa się pod prawdziwą elytrą.')
     : cosmeticSlot === 'tail' ? t('Ogon kołysze się, kiedy chodzisz. Pod peleryną zwisa niżej.')
+    : cosmeticSlot === 'ring' ? t('Świecący krąg na ziemi pod Twoimi stopami, powoli się obraca. Widzą go gracze z SlashClient.')
+    : cosmeticSlot === 'move' ? t('Cząsteczki, gdy chodzisz, skaczesz, lądujesz, biegasz, pływasz lub strzelasz. Widzą je gracze z SlashClient.')
     : t('Mały towarzysz lata przy Twoim ramieniu.');
   if (signedIn && worn.back && (cosmeticSlot === 'cape' || cosmeticSlot === 'wings')) $('#slash-cape-note').textContent += t(' Nosisz coś na plecach: w grze widać to zamiast peleryny i skrzydeł.');
   const current = worn[cosmeticSlot] ?? '';
@@ -3279,9 +3293,9 @@ async function renderSlashCapes() {
   cosmeticPreview.pictures = pictures;
   // a back item takes the place of the cape and the wings (on their own tabs they show; on the elytra's, the elytra)
   const back = cosmeticSlot === 'cape' || cosmeticSlot === 'wings' || cosmeticSlot === 'elytra' ? undefined : worn.back;
-  // the kill effect plays on the figure only while its tab is open (every few seconds it would distract)
+  // the kill and movement effects play on the figure only while their tab is open (they would distract)
   const holding = cosmeticSlot === 'shield' || cosmeticSlot === 'weapon';
-  cosmeticPreview.show({ ...worn, back, kill: cosmeticSlot === 'kill' ? worn.kill : undefined, shield: holding ? worn.shield : undefined, weapon: holding ? worn.weapon : undefined });
+  cosmeticPreview.show({ ...worn, back, kill: cosmeticSlot === 'kill' ? worn.kill : undefined, move: cosmeticSlot === 'move' ? worn.move : undefined, shield: holding ? worn.shield : undefined, weapon: holding ? worn.weapon : undefined });
   // the figure shows its back for a back item, its back and side for a tail, walking so the tail swings
   skinViewer.playerWrapper.rotation.y = cosmeticSlot === 'back' ? Math.PI : cosmeticSlot === 'tail' ? Math.PI * 0.7 : 0;
   const walking = skinViewer.animation instanceof WalkingAnimation;

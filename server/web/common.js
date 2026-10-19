@@ -141,6 +141,7 @@ export const SLOTS = [
   ['shoes', 'Buty', 'fa-solid fa-socks'], ['hands', 'Dłonie', 'fa-solid fa-mitten'],
   ['face', 'Twarz', 'fa-solid fa-glasses'], ['ears', 'Uszy i rogi', 'fa-solid fa-cat'],
   ['back', 'Na plecy', 'fa-solid fa-person-hiking'], ['tail', 'Ogon', 'fa-solid fa-cat'],
+  ['ring', 'Krąg pod stopami', 'fa-solid fa-circle-dot'], ['move', 'Efekt ruchu', 'fa-solid fa-person-running'],
 ];
 /** Particles and pets are the game's own: on the site they get an icon. */
 const ITEM_ICONS = {
@@ -157,7 +158,17 @@ const ITEM_ICONS = {
   lightning: 'fa-bolt-lightning', blood: 'fa-droplet', heartburst: 'fa-heart-crack', firework: 'fa-wand-magic-sparkles',
   soulrise: 'fa-fire-flame-curved', enderpoof: 'fa-eye', confetti: 'fa-champagne-glasses', blast: 'fa-explosion',
   shatter: 'fa-icicles', coins: 'fa-coins', ghost: 'fa-ghost', flamering: 'fa-ring',
+  // movement effects
+  move_steps: 'fa-shoe-prints', move_jump: 'fa-cloud', move_landing: 'fa-burst', move_arrows: 'fa-location-arrow',
+  move_sprint: 'fa-bolt', move_bubbles: 'fa-circle-dot', move_petals: 'fa-spa',
 };
+/** The movement effects' icons in their own colours (as in the launcher). */
+const MOVE_ICON_COLORS = {
+  move_steps: '#9fe4ff', move_jump: '#f4f4f4', move_landing: '#fff1a0', move_arrows: '#ffd84a', move_sprint: '#fff6b0',
+  move_bubbles: '#7fd4ff', move_petals: '#ffb7d5',
+};
+/** The animated rings and how many frames each has (vendor/rings/<id>_<n>.png; the others <id>.png). */
+const RING_FRAMES = { ring_runes: 8, ring_flame: 8, ring_rainbow: 8, ring_galaxy: 8, ring_toxic: 8 };
 /** The kill effects' icons in their own colours (as in the launcher). */
 const KILL_ICON_COLORS = {
   lightning: '#bfe6ff', blood: '#d32f2f', heartburst: '#ff5c7a', firework: '#ffd93b', soulrise: '#5fe3f0', enderpoof: '#c070ff',
@@ -202,6 +213,18 @@ export function cosmeticEl(id, slot = 'cape', small = false) {
     const c = el('div', { class: `cape wing${small ? ' sm' : ''}`, title: id });
     c.style.backgroundImage = `url(vendor/${slot}/${id}.png)`;
     return c;
+  }
+  // a ring: the left half of its picture (the right one is see-through)
+  if (slot === 'ring') {
+    const c = el('div', { class: `cape ring${small ? ' sm' : ''}`, title: id });
+    c.style.backgroundImage = `url(vendor/rings/${RING_FRAMES[id] ? `${id}_0` : id}.png)`;
+    return c;
+  }
+  // movement effects are the game's particles: their icon, in its colour
+  if (slot === 'move') {
+    const box = el('div', { class: `cape icon-item${small ? ' sm' : ''}`, title: id }, icon(`fa-solid ${ITEM_ICONS[id] ?? 'fa-person-running'}`));
+    box.style.color = MOVE_ICON_COLORS[id] ?? '';
+    return box;
   }
   // kill effects are bursts of particles: their icon, in its colour
   if (slot === 'kill') {
