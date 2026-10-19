@@ -385,6 +385,26 @@ describe('social server', () => {
     assert.ok(kills.every((i) => (i as { available?: boolean }).available));
     assert.ok(!(await askAs('launcher/0.9.13')).items.some((i) => i.slot === 'kill'));
     assert.ok(!(await askAs('mod/0.9.13')).items.some((i) => i.slot === 'kill'));
+    // held item skins: a shield and a weapon together, each only in its own slot, for launchers and mods from 0.9.20 on
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { shield: 'shield_dragon', weapon: 'sword_katana' } })).body.loadout.shield, 'shield_dragon');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { weapon: 'bow_crystal' } })).body.loadout.weapon, 'bow_crystal');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { shield: 'sword_beam' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { weapon: 'shield_ice' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { hat: 'shield_heart' } })).body.error, 'bad_item');
+    const held = (await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc] })).body.cosmetics[ewaMc];
+    assert.equal(held.shield, 'shield_dragon');
+    assert.equal(held.weapon, 'bow_crystal');
+    await call('POST', '/v1/me', ewa.token, { loadout: { shield: '', weapon: '' } });
+    assert.equal((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc] })).body.cosmetics[ewaMc]?.shield, undefined);
+    const newer = (await askAs('launcher/0.9.20')).items;
+    assert.equal(newer.filter((i) => i.slot === 'shield').length, 7);
+    assert.equal(newer.filter((i) => i.slot === 'weapon').length, 6);
+    assert.ok(newer.filter((i) => i.slot === 'weapon').every((i) => /^(sword|bow)_/.test(i.id)));
+    assert.ok(!(await askAs('launcher/0.9.19')).items.some((i) => i.slot === 'shield' || i.slot === 'weapon'));
+    assert.ok(!(await askAs('mod/0.9.19')).items.some((i) => i.slot === 'shield' || i.slot === 'weapon'));
+    // ids are unique across all slots
+    const { ITEMS } = await import('../src/cosmetics.ts');
+    assert.equal(new Set(ITEMS.map((i) => i.id)).size, ITEMS.length);
     const catalog = (await call('GET', '/v1/cosmetics', ewa.token)).body;
     assert.ok(catalog.items.some((i: any) => i.id === 'phoenix' && i.rank === 'partner' && !i.available));
     assert.ok(catalog.items.some((i: any) => i.id === 'angel' && i.slot === 'wings' && i.available));
