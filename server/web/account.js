@@ -155,8 +155,8 @@ function renderAccount() {
       character?.loadout ? el('button', { onclick: () => send({ own: false }, `${character.name} nosi teraz zestaw całego konta.`) }, icon('fa-solid fa-rotate-left'), 'Jak całe konto') : '') : '',
     el('div', { class: 'cosmetic-stage' }, previewBox ??= el('div', { class: 'figure' }), el('div', { class: 'grow' }, tabs, pick)));
   $('#account').replaceChildren(el('div', { class: 'account' }, profile, capes));
-  // the kill effect plays on the figure only while its tab is open (every few seconds it would distract)
-  figure(character?.uuid ?? characters[0]?.uuid, slot === 'kill' ? worn : { ...worn, kill: '' });
+  // the kill and movement effects play on the figure only while their tab is open (they would distract)
+  figure(character?.uuid ?? characters[0]?.uuid, { ...worn, kill: slot === 'kill' ? worn.kill : '', move: slot === 'move' ? worn.move : '' });
   renderPartners();
 }
 

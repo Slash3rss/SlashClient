@@ -130,6 +130,8 @@ button.chip:hover { background: rgba(255, 255, 255, .12); color: var(--text); }
 .cape.icon-item.sm { font-size: 14px; }
 .cape.clothing { background-color: rgba(255, 255, 255, .04); background-size: 54px 54px; background-position: center; }
 .cape.clothing.sm { background-size: 27px 27px; }
+.cape.ring { background-color: rgba(255, 255, 255, .04); background-size: 108px 54px; background-position: 3px center; }
+.cape.ring.sm { background-size: 54px 27px; background-position: 1.5px center; }
 .slot-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 .slot-tabs button { height: 32px; padding: 0 12px; font-size: 13px; position: relative; }
 .slot-tabs button.active { border-color: var(--accent); background: rgba(59, 130, 246, .12); }

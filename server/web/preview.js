@@ -56,7 +56,7 @@ export class Preview {
     this.viewer.autoRotate = true;
     this.viewer.autoRotateSpeed = 0.6;
     this.viewer.controls.enableZoom = false;
-    this.cosmetics = new lib.CosmeticPreview(this.viewer, pictures, '/vendor/clothing/', '/vendor/pets/');
+    this.cosmetics = new lib.CosmeticPreview(this.viewer, pictures, '/vendor/clothing/', '/vendor/pets/', '/vendor/rings/');
   }
 
   async skin(uuid) {
@@ -76,10 +76,10 @@ export class Preview {
     await this.viewer.loadSkin('/vendor/skin-default.png', { model: 'default' });
   }
 
-  /** What the figure wears: { cape, wings, elytra, trail, aura, pet, hat, top, kill } (ids or empty; a kill effect plays every few seconds). */
+  /** What the figure wears: { cape, wings, elytra, trail, aura, pet, hat, top, kill, ring, move } (ids or empty; a kill effect plays every few seconds, a movement effect in a loop). */
   async show(worn) {
     clearInterval(this.capeTimer);
-    this.cosmetics.show({ trail: worn.trail || undefined, aura: worn.aura || undefined, pet: worn.pet || undefined, hat: worn.hat || undefined, top: worn.top || undefined, kill: worn.kill || undefined });
+    this.cosmetics.show({ trail: worn.trail || undefined, aura: worn.aura || undefined, pet: worn.pet || undefined, hat: worn.hat || undefined, top: worn.top || undefined, kill: worn.kill || undefined, ring: worn.ring || undefined, move: worn.move || undefined });
     // a tall hat stands above the head: the figure a little smaller, so it stays in view
     this.viewer.zoom = worn.hat ? 0.72 : 0.85;
     // wings take the back first (as in the game), then an elytra, then the cape
