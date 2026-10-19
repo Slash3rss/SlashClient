@@ -41,6 +41,8 @@ public final class Modules {
 		// and SkyUp's fish, this session and for good
 		out.add(new SkyFish.Module());
 		//#endif
+		// a Twitch and a Kick channel's live chat
+		out.addAll(StreamChatModule.all());
 		// the game's own parts, moved in the editor like the modules
 		out.addAll(GameParts.ALL);
 		// the chat first: under every module, which stay draggable over its big box

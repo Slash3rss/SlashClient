@@ -9,7 +9,7 @@ const root = path.join(__dirname, '..');
 const out = path.join(root, 'hud/src/main/resources/assets/slashclient-hud/textures/icon');
 const fa = path.join(root, 'node_modules/@fortawesome/fontawesome-free/svgs');
 
-/** HUD icon name → Font Awesome icon (solid unless "regular/…"). */
+/** HUD icon name → Font Awesome icon (solid unless "regular/…" or "brands/…"; m-kickchat is a hand-drawn blocky K, not from Font Awesome). */
 const ICONS = {
   // modules
   'm-fps': 'gauge-high', 'm-ping': 'wifi', 'm-cps': 'computer-mouse', 'm-coords': 'location-crosshairs',
@@ -29,6 +29,7 @@ const ICONS = {
   'm-advancements': 'trophy', 'm-stats': 'chart-simple', 'm-pause': 'pause', 'm-accounts': 'user-gear',
   'm-scoreboard': 'list-ol', 'm-bossbar': 'skull', 'm-tablist': 'table-list', 'm-titles': 'heading', 'm-toasts': 'bell', 'm-actionbar': 'message', 'm-nametag': 'tag',
   'm-benchmark': 'chart-column', 'm-sprint': 'person-running', 'm-emotes': 'face-smile', 'm-clips': 'film', 'partner': 'handshake', 'm-mentions': 'at',
+  'm-twitchchat': 'brands/twitch',
   'm-autoclicker': 'computer-mouse', 'm-autotool': 'screwdriver-wrench', 'm-autorefill': 'arrows-rotate', 'm-holdkeys': 'hand-pointer', 'm-toolwarning': 'triangle-exclamation', 'm-hearts': 'heart', 'm-mousetweaks': 'arrow-pointer',
   'lock': 'lock', 'm-dropguard': 'hand-holding', 'm-damage': 'heart-crack', 'm-tnt': 'bomb', 'm-nickhider': 'user-secret', 'm-reconnect': 'plug-circle-bolt', 'm-keybinds': 'keyboard', 'm-dungeonmap': 'map', 'm-skytasks': 'list-check', 'm-skyfish': 'fish', 'skyup': 'dungeon',
 };

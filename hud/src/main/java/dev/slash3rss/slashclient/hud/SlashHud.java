@@ -153,6 +153,7 @@ public class SlashHud implements ClientModInitializer {
 			TntTimer.tick(mc);
 			DungeonMap.tick(mc);
 			Minimap.tick(mc);
+			StreamChatModule.tick(mc);
 			//#if MC >= 26.3
 			SkyTasks.tick(mc);
 			//#endif
