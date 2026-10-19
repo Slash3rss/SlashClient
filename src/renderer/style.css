@@ -1104,7 +1104,7 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .trim-box .modal-body { gap: 12px; padding-top: 24px; }
 .trim-box .modal-body > p { margin: 0; }
 .trim-stage { border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--glass-border); }
-.trim-canvas { display: block; width: 100%; height: auto; max-height: 52vh; object-fit: contain; cursor: pointer; }
+.trim-canvas { display: block; width: 100%; height: auto; max-height: 46vh; object-fit: contain; cursor: pointer; }
 .trim-controls { display: flex; align-items: center; gap: 12px; }
 .trim-time { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .trim-track { position: relative; flex: 1; height: 34px; border-radius: 8px; background: rgba(0, 0, 0, .35); border: 1px solid var(--glass-border); cursor: pointer; touch-action: none; }
@@ -1118,6 +1118,7 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .trim-actions .push { flex: 1; }
 .trim-actions button.active { border-color: var(--accent); color: var(--accent-light); }
 .media-links-box { width: min(640px, 100%); }
+.media-links-box .modal-body > p { margin: 0; }
 .media-links { max-height: 55vh; overflow-y: auto; }
 
 /* ---------- resource pack preview (packPreview.ts) ---------- */
@@ -1138,4 +1139,5 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .pp-tile { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .pp-tile figcaption { font-size: 11px; color: var(--text-muted); }
 .pp-tex { width: 64px; height: 64px; object-fit: cover; object-position: top; image-rendering: pixelated; border-radius: 4px; background: repeating-conic-gradient(rgba(255, 255, 255, .06) 0 25%, transparent 0 50%) 0 0 / 16px 16px; }
+.pp-tex.tinted { filter: sepia(1) saturate(2.2) hue-rotate(52deg) brightness(.8); }
 .pp-actions { justify-content: flex-end; }

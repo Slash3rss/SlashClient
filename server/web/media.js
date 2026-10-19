@@ -125,8 +125,8 @@ async function load() {
     $('#media-meta').textContent = [
       m.ownerHandle ? `od @${m.ownerHandle}` : '',
       `${m.width}×${m.height}`,
-      clip ? clock(m.durationMs / 1000) : '',
-      `${(m.size / 1024 / 1024).toFixed(1)} MB`,
+      clip ? clock(Math.round(m.durationMs / 1000)) : '',
+      m.size < 1024 * 1024 ? `${Math.max(1, Math.round(m.size / 1024))} KB` : `${(m.size / 1024 / 1024).toFixed(1)} MB`,
       `wysłany ${fmtDate(m.createdAt)}`,
       `zniknie ${fmtDate(m.expiresAt)}`,
     ].filter(Boolean).join(' · ');

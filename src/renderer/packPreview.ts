@@ -34,9 +34,12 @@ export const textureLabel = (name: string) => (name.charAt(0).toUpperCase() + na
 
 const errorOf = (err: unknown) => String((err as Error)?.message ?? err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
 
+/** Grey textures the game colours by biome: shown green, roughly as in a plains biome. */
+const TINTED = new Set(['grass_block_top', 'oak_leaves', 'short_grass', 'fern', 'vine', 'lily_pad']);
+
 /** A texture as the game shows it: pixels kept sharp, an animated strip cut to its first frame. */
-function tile(src: string, label: string) {
-  const img = el('img', { className: 'pp-tex', alt: label, draggable: false });
+function tile(src: string, label: string, tinted = false) {
+  const img = el('img', { className: `pp-tex${tinted ? ' tinted' : ''}`, alt: label, draggable: false });
   img.src = src;
   return el('figure', { className: 'pp-tile' }, img, el('figcaption', { textContent: label }));
 }
@@ -94,7 +97,7 @@ export function openPackPreview(d: PackPreviewDeps, hit: Hit) {
     const grid = el('div', { className: 'pp-grid' }, ...p.pairs.map((pair) =>
       el('div', { className: 'pp-pair', title: `${pair.kind}/${pair.name}` },
         el('b', { textContent: textureLabel(pair.name) }),
-        el('div', { className: 'pp-sides' }, tile(pair.vanilla, 'Minecraft'), icon('fa-arrow-right'), tile(pair.pack, t('Paczka'))))));
+        el('div', { className: 'pp-sides' }, tile(pair.vanilla, 'Minecraft', TINTED.has(pair.name)), icon('fa-arrow-right'), tile(pair.pack, t('Paczka'), TINTED.has(pair.name))))));
     content.replaceChildren(summary,
       el('p', { className: 'muted small', textContent: t('Po lewej tekstury z gry (Minecraft {0}), po prawej z paczki. Pokazane są tylko te, które paczka zmienia.', p.vanillaFrom ?? '') }),
       grid);
