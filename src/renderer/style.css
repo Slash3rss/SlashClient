@@ -1097,3 +1097,22 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .fr-party-pick label { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
 .fr-party-pick label.is-offline { color: var(--text-muted); }
 .fr-waypoint .grow small.muted { opacity: .7; }
+/* group chats and clans (groups.ts) */
+.fr-section-row { display: flex; align-items: center; justify-content: space-between; }
+.fr-section-row .fr-section-btn { width: 24px; height: 24px; padding: 0; font-size: 11px; border-radius: 7px; }
+.fr-group-avatar { background: linear-gradient(135deg, #4c1d95, #7c3aed); font-size: 15px; }
+.fr-group-avatar.clan { background: linear-gradient(135deg, #92400e, #f59e0b); }
+.fr-clan-mark { font-size: 10px; font-weight: 800; letter-spacing: .02em; max-width: 34px; overflow: hidden; }
+.fr-clan-tag { color: #fbbf24; font-weight: 800; }
+.fr-event { align-self: center; margin: 6px 0; padding: 3px 10px; border-radius: 99px; font-size: 12px; color: var(--text-muted); background: rgba(255, 255, 255, .04); text-align: center; }
+.fr-group-modal { width: min(520px, 100%); }
+.fr-group-modal h2 { margin: 0; }
+.fr-group-modal h3 { font-size: 14px; margin: 10px 0 0; }
+.fr-group-modal .row input { flex: 1; min-width: 0; }
+.fr-group-pick { max-height: 240px; }
+.fr-group-modal .fr-clan-fields .fr-tag-input { flex: 0 0 110px; font-weight: 700; }
+.fr-clan-members { display: flex; flex-direction: column; gap: 2px; max-height: 300px; overflow-y: auto; margin: 0 -8px; }
+.fr-clan-members .icon-btn { width: 30px; height: 30px; padding: 0; flex-shrink: 0; }
+.fr-role-owner { color: #fbbf24 !important; }
+.fr-role-officer { color: #93c5fd !important; }
+.fr-clan-leave { justify-content: flex-end; margin-top: 8px; }

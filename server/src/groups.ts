@@ -147,7 +147,7 @@ CREATE INDEX IF NOT EXISTS chat_group_messages_group ON chat_group_messages(grou
 
   unread(group: string, uuid: string): number {
     return (this.sql.prepare(`SELECT COUNT(*) AS n FROM chat_group_messages x JOIN chat_group_members m ON m.group_id = x.group_id AND m.uuid = ?
-      WHERE x.group_id = ? AND x.id > m.read_id AND x.from_uuid != ?`).get(uuid, group, uuid) as { n: number }).n;
+      WHERE x.group_id = ? AND x.id > m.read_id AND x.from_uuid != ? AND x.event IS NULL`).get(uuid, group, uuid) as { n: number }).n;
   }
 
   lastMessageAt(group: string): number {
@@ -274,7 +274,7 @@ export function createGroups(deps: Deps) {
       const me = authed(req);
       const raw = await body(req);
       const name = cleanGroupName(raw.name);
-      if (!name) fail(400, 'bad_name');
+      if (!name) fail(400, 'bad_group_name');
       const members = friendIds(me, raw.members);
       if (!members.length) fail(400, 'bad_request');
       if (members.length + 1 > GROUP_SIZE) fail(400, 'too_many');
@@ -361,7 +361,7 @@ export function createGroups(deps: Deps) {
       const me = authed(req);
       const g = plainGroup(me, id);
       const name = cleanGroupName((await body(req)).name);
-      if (!name) fail(400, 'bad_name');
+      if (!name) fail(400, 'bad_group_name');
       if (name === g.name) return { group: view(id, me) };
       deps.limitChanges(me);
       store.rename(id, name!);

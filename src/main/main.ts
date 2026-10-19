@@ -16,6 +16,7 @@ import { checkForUpdates, installUpdate, startUpdateChecks, updateStatus } from 
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { activityFromLog, SocialClient, SocialError, type SocialUser, type Status } from './social';
 import { decrypt, encrypt, isEncrypted, newDeviceKey, type DeviceKey, type PublicDevice } from './chatCrypto';
+import { openGroupMessage, sealGroupText, type GroupChatMessage, type GroupKey } from './groupChat';
 import { launch, resolveVersionId } from './launch';
 import { paths } from './paths';
 import { loadStore, newProfile, profileGameDir, saveStore, secrets, setSecretCodec, type MicrosoftAccount, type Profile, type Settings, type StoreData } from './store';
@@ -1463,6 +1464,9 @@ const social = new SocialClient({
     // the page and the game get messages already decrypted; a launcher's new key drops the cached ones
     if (event.type === 'message' && event.message) event = { ...event, message: openMessage(event.message as ChatMessage) };
     if (event.type === 'keys' && typeof event.user === 'string') chatKeys.delete(event.user);
+    // group chats: the same, with the group's members' keys (who is in it may have changed)
+    if (event.type === 'group-message' && event.message) event = { ...event, message: openGroup(event.message as GroupChatMessage) };
+    if (event.type === 'groups' || event.type === 'keys') groupKeys.clear();
     send('social:event', event);
     bridge.push(event as { type: string });
     // a friend joins the world this game opened to LAN
@@ -1582,7 +1586,7 @@ handle('lan:join', (friendId: string) => {
 });
 
 handle('social:api', (method: string, apiPath: string, body?: unknown) => {
-  if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages|invites|cosmetics|waypoints|parties|achievements)(\/[\w-]+)*(\?[\w=&-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
+  if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages|invites|cosmetics|waypoints|parties|achievements|groups|clans)(\/[\w-]+)*(\?[\w=&-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
   return socialCall(() => chatCall(method, apiPath, body));
 });
 
@@ -1638,11 +1642,35 @@ function openMessage(m: ChatMessage): ChatMessage {
     : { ...m, text, encrypted: true };
 }
 
+/** Group chats: the members' launcher keys, kept a little (dropped when the group or someone's keys change). */
+const groupKeys = new Map<string, { at: number; keys: GroupKey[] }>();
+async function sealGroup(group: string, text: string): Promise<string> {
+  const me = social.state().user?.id;
+  if (!me) return text;
+  let hit = groupKeys.get(group);
+  if (!hit || Date.now() - hit.at > 60_000) {
+    hit = { at: Date.now(), keys: (await social.call<{ keys: GroupKey[] }>('GET', `/v1/groups/${group}/keys`)).keys };
+    groupKeys.set(group, hit);
+  }
+  return sealGroupText(text, chatKey(), hit.keys, group, me);
+}
+const openGroup = <T extends GroupChatMessage>(m: T): T => openGroupMessage(m, chatKey(), t('Wiadomość zaszyfrowana dla innego urządzenia.'));
+
 /** A call to the social server with the chat encrypted on the way out and decrypted on the way in. */
 async function chatCall(method: string, apiPath: string, body?: unknown) {
   const send = /^\/v1\/messages\/([\w-]+)$/.exec(apiPath);
   if (method === 'POST' && send && body && typeof (body as { text?: unknown }).text === 'string') {
     body = { ...(body as object), text: await sealText(send[1], (body as { text: string }).text) };
+  }
+  const group = /^\/v1\/groups\/([\w-]+)\/messages(\?.*)?$/.exec(apiPath);
+  if (group) {
+    if (method === 'POST' && body && typeof (body as { text?: unknown }).text === 'string') {
+      body = { ...(body as object), text: await sealGroup(group[1], (body as { text: string }).text) };
+    }
+    const res = await social.call<{ messages?: GroupChatMessage[]; message?: GroupChatMessage }>(method, apiPath, body);
+    if (Array.isArray(res?.messages)) return { ...res, messages: res.messages.map(openGroup) };
+    if (res?.message) return { ...res, message: openGroup(res.message) };
+    return res;
   }
   const res = await social.call<Record<string, unknown>>(method, apiPath, body);
   if (res && Array.isArray(res.messages)) return { ...res, messages: (res.messages as ChatMessage[]).map(openMessage) };

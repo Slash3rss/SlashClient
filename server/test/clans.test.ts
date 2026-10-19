@@ -112,7 +112,7 @@ describe('clan permissions', () => {
     const ala = await login('TagAla');
     const bob = await login('TagBob');
     assert.equal((await call('POST', '/v1/clans', ala.token, { tag: 'KURWA', name: 'Klan' })).body.error, 'offensive_tag');
-    assert.equal((await call('POST', '/v1/clans', ala.token, { tag: 'OK', name: 'x' })).body.error, 'bad_name');
+    assert.equal((await call('POST', '/v1/clans', ala.token, { tag: 'OK', name: 'x' })).body.error, 'bad_clan_name');
     assert.equal((await call('POST', '/v1/clans', ala.token, { tag: 'OK', name: 'Klan chujów' })).body.error, 'offensive_name');
     const made = await call('POST', '/v1/clans', ala.token, { tag: 'Wolf', name: 'Wilki' });
     assert.equal(made.body.clan.tag, 'Wolf');

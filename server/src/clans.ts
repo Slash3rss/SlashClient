@@ -293,7 +293,7 @@ export function createClans(deps: Deps) {
       const problem = tagProblem(tag);
       if (problem) fail(400, problem);
       const clean = cleanClanName(name);
-      if (!clean) fail(400, 'bad_name');
+      if (!clean) fail(400, 'bad_clan_name');
       if (offensive(clean!)) fail(400, 'offensive_name');
       if (store.membership(me)) fail(409, 'already_in_clan');
       if (store.tagTaken(tag as string)) fail(409, 'tag_taken');
@@ -411,7 +411,7 @@ export function createClans(deps: Deps) {
       const problem = tagProblem(tag);
       if (problem) fail(400, problem);
       const name = raw.name === undefined ? clan.name : cleanClanName(raw.name);
-      if (!name) fail(400, 'bad_name');
+      if (!name) fail(400, 'bad_clan_name');
       if (offensive(name!)) fail(400, 'offensive_name');
       if (store.tagTaken(tag as string, clan.id)) fail(409, 'tag_taken');
       deps.limitChanges(me);

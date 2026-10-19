@@ -1,4 +1,5 @@
 import { locale, t } from '../shared/i18n';
+import { createGroups } from './groups';
 import { createParty, type Party } from './party';
 import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
 
@@ -11,7 +12,7 @@ type Status = 'online' | 'away' | 'busy' | 'invisible';
 interface Activity { kind: 'launcher' | 'menu' | 'singleplayer' | 'server'; version?: string; server?: string; since?: number }
 interface Presence { status: 'online' | 'away' | 'busy' | 'offline'; activity?: Activity; lastSeen?: number; /** their world is open to LAN: joinable through SlashClient */ lan?: boolean }
 interface Person { id: string; handle: string; name: string; avatar: string }
-interface Friend extends Person { presence: Presence; unread: number; lastMessageAt: number; since: number }
+interface Friend extends Person { presence: Presence; unread: number; lastMessageAt: number; since: number; /** their clan's tag */ clan?: string }
 interface Request extends Person { at: number }
 interface Me extends Person { showServer: boolean; providers: string[]; minecraft?: { uuid: string; name: string }[] }
 interface Invite { server: string; version?: string; party?: string }
@@ -74,6 +75,22 @@ export function socialErrorText(code: string): string {
     too_many: t('Za dużo osób naraz (maks. 7 znajomych).'),
     bad_server: t('To nie wygląda na adres serwera.'),
     not_leader: t('Tylko lider może rozwiązać drużynę.'),
+    // group chats and clans
+    bad_group_name: t('Nazwa grupy: 1–32 znaki.'),
+    too_many_groups: t('Jesteś już w zbyt wielu grupach.'),
+    not_owner: t('Tylko założyciel grupy może usuwać innych.'),
+    clan_chat: t('Członków czatu klanu zmienia się w klanie.'),
+    bad_tag: t('Tag: 2–5 liter lub cyfr, bez spacji.'),
+    offensive_tag: t('Ten tag jest niedozwolony. Wybierz inny.'),
+    offensive_name: t('Ta nazwa jest niedozwolona. Wybierz inną.'),
+    bad_clan_name: t('Nazwa klanu: 3–32 znaki.'),
+    tag_taken: t('Ten tag jest już zajęty.'),
+    already_in_clan: t('Jesteś już w klanie. Najpierw go opuść.'),
+    already_member: t('Ten gracz już jest w klanie.'),
+    clan_full: t('Klan jest pełny.'),
+    no_clan: t('Nie jesteś w klanie.'),
+    not_allowed: t('Nie masz do tego uprawnień w klanie.'),
+    owner_must_transfer: t('Założyciel nie może odejść: przekaż klan komuś albo go usuń.'),
   };
   return texts[code] ?? t('Błąd serwera znajomych ({0}).', code);
 }
@@ -107,7 +124,21 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     deps.join(inv.server, inv.version);
   };
 
-  const isVisible = () => root.closest('.view')?.classList.contains('active') && document.hasFocus();
+  const isVisible = () => !!root.closest('.view')?.classList.contains('active') && document.hasFocus();
+  /** Group chats and the clan (groups.ts): their rows in the list, and their conversation in the chat panel. */
+  const groups = createGroups({
+    api, toast: deps.toast, errorText: deps.errorText, avatar: (p, presence) => avatar(p, presence as Presence | undefined), visible: isVisible,
+    me: () => state?.user?.id,
+    friends: () => list.friends.map((f) => ({ id: f.id, name: f.name, online: f.presence.status !== 'offline' })),
+    changed: () => {
+      renderList();
+      renderChat();
+    },
+    opened: () => {
+      selected = undefined;
+      if (input) input.value = '';
+    },
+  });
   const friend = (id: string | undefined) => list.friends.find((f) => f.id === id);
 
   // ---------- avatars: the face from the Minecraft skin (from the SlashClient server), Discord's, Google's or GitHub's picture, or a letter ----------
@@ -166,6 +197,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     if (state?.user) await refreshList();
     render();
     if (state?.user) void party.refresh();
+    if (state?.user) void groups.refresh();
   }
 
   async function refreshList() {
@@ -178,7 +210,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   }
 
   function updateBadge() {
-    const n = list.friends.reduce((sum, f) => sum + f.unread, 0) + list.incoming.length;
+    const n = list.friends.reduce((sum, f) => sum + f.unread, 0) + list.incoming.length + groups.unread();
     badge.textContent = n > 99 ? '99+' : String(n);
     badge.classList.toggle('hidden', !n || !state?.user);
   }
@@ -276,6 +308,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     try {
       state = await fn();
       await refreshList();
+      void groups.refresh();
       deps.toast(t('Zalogowano jako {0}', state.user?.name ?? ''));
       deps.accountChanged?.();
     } catch (err) {
@@ -320,7 +353,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     chatHead = el('div', { className: 'fr-chat-head' });
     messagesBox = el('div', { className: 'fr-messages' });
     messagesBox.addEventListener('scroll', () => {
-      if (messagesBox.scrollTop < 60 && selected) loadOlder(selected);
+      if (messagesBox.scrollTop < 60 && groups.active()) void groups.loadOlder();
+      else if (messagesBox.scrollTop < 60 && selected) loadOlder(selected);
     });
     typingBox = el('div', { className: 'fr-typing' });
     input = control<HTMLTextAreaElement>('textarea', { rows: 1, placeholder: t('Napisz wiadomość…'), maxLength: MAX_MESSAGE });
@@ -338,7 +372,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       input.style.height = `${Math.min(140, input.scrollHeight)}px`;
       const left = MAX_MESSAGE - input.value.length;
       counter.textContent = left < 200 ? String(left) : '';
-      if (selected && input.value && Date.now() - lastTypingSent > 3000) {
+      if (selected && !groups.active() && input.value && Date.now() - lastTypingSent > 3000) {
         lastTypingSent = Date.now();
         api.socialTyping(selected);
       }
@@ -421,7 +455,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     }
     meBox.replaceChildren(
       el('div', { className: 'fr-me-row' }, avatar(me, self),
-        el('div', { className: 'grow fr-names' }, el('b', { textContent: me.name }), el('small', { className: 'muted', textContent: `@${me.handle}` })),
+        el('div', { className: 'grow fr-names' }, el('b', {}, ...clanTag(groups.myTag()), me.name), el('small', { className: 'muted', textContent: `@${me.handle}` })),
         logout),
       el('div', { className: 'row' }, status, state!.connected ? '' : el('small', { className: 'fr-error', textContent: t('Łączenie…') })),
       el('label', { className: 'check fr-share' }, share, t(' Pokazuj znajomym, na jakim serwerze gram')),
@@ -442,6 +476,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         sections.push(el('div', { className: 'fr-row' }, avatar(r), el('div', { className: 'grow fr-names' }, el('b', { textContent: r.name }), el('small', { className: 'muted', textContent: `@${r.handle}` })), accept, decline));
       }
     }
+    sections.push(...groups.sections());
     const sorted = [...list.friends].sort((a, b) => rank(a) - rank(b) || b.lastMessageAt - a.lastMessageAt || a.name.localeCompare(b.name));
     const online = sorted.filter((f) => f.presence.status !== 'offline').length;
     sections.push(el('div', { className: 'fr-section', textContent: t('Znajomi · {0} online', online) }));
@@ -449,7 +484,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     for (const f of sorted) {
       const row = el('button', { type: 'button', className: `fr-row fr-friend${f.id === selected ? ' selected' : ''}${f.presence.status === 'offline' ? ' is-offline' : ''}` },
         avatar(f, f.presence),
-        el('div', { className: 'grow fr-names' }, el('b', { textContent: f.name }), el('small', { className: 'muted', textContent: typing.has(f.id) ? t('pisze…') : statusLine(f.presence) })),
+        el('div', { className: 'grow fr-names' }, el('b', {}, ...clanTag(f.clan), f.name), el('small', { className: 'muted', textContent: typing.has(f.id) ? t('pisze…') : statusLine(f.presence) })),
         f.unread ? el('span', { className: 'fr-unread', textContent: String(f.unread) }) : '');
       row.addEventListener('click', () => select(f.id));
       sections.push(row);
@@ -464,6 +499,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     }
     listBox.replaceChildren(...sections);
     updateBadge();
+  }
+
+  /** A clan's tag in front of a name, as in game: [TAG]. */
+  function clanTag(tag: string | undefined): (Node | string)[] {
+    return tag ? [el('span', { className: 'fr-clan-tag', textContent: `[${tag}]` }), ' '] : [];
   }
 
   async function act(fn: () => Promise<FriendList>, done?: string) {
@@ -481,6 +521,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   // ---------- conversation ----------
 
   async function select(id: string) {
+    groups.deselect();
     selected = id;
     input.value = '';
     renderList();
@@ -523,6 +564,18 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   }
 
   async function send() {
+    if (groups.active()) {
+      const text = input.value.trim();
+      if (!text) return;
+      sendBtn.disabled = true;
+      if (await groups.send(text)) {
+        input.value = '';
+        input.dispatchEvent(new Event('input'));
+      }
+      sendBtn.disabled = false;
+      input.focus();
+      return;
+    }
     const id = selected;
     const text = input.value.trim();
     if (!id || !text) return;
@@ -555,6 +608,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   function renderChat() {
     if (!chatBox) return;
+    if (groups.active()) {
+      chatBox.classList.remove('empty');
+      inviteBar.classList.add('hidden');
+      return groups.renderChat(chatHead, messagesBox, typingBox);
+    }
     const f = friend(selected);
     chatBox.classList.toggle('empty', !f);
     if (!f) {
@@ -689,6 +747,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   // ---------- live events ----------
 
   api.on('social:event', async (e: any) => {
+    if (groups.onEvent(e)) return updateBadge();
     switch (e.type) {
       case 'state': {
         const was = state?.user?.id;
@@ -697,11 +756,13 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
           // another SlashClient account (a Minecraft account of someone else was picked): nothing of the old one stays
           selected = undefined;
           chats.clear();
+          groups.clear();
           if (was && state?.user) root.replaceChildren();
           deps.accountChanged?.();
         }
         if (state?.user && state.user.id !== was) await refreshList();
         if (state?.user) void party.refresh();
+        if (state?.user && state.user.id !== was) void groups.refresh();
         if (!state?.user) {
           root.replaceChildren();
           return refreshState();
@@ -795,7 +856,10 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   });
 
   // marking a chat read when the player comes back to it
-  addEventListener('focus', () => selected && isVisible() && markRead(selected));
+  addEventListener('focus', () => {
+    if (groups.active() && isVisible()) groups.markRead();
+    else if (selected && isVisible()) markRead(selected);
+  });
 
   return {
     /** Called when the view opens. */
@@ -803,7 +867,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       if (!state) return refreshState();
       if (!state.user) return refreshState();
       render();
-      if (selected) markRead(selected);
+      if (groups.active()) groups.markRead();
+      else if (selected) markRead(selected);
     },
     init: refreshState,
   };

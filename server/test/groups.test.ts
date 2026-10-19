@@ -73,7 +73,7 @@ describe('group chats', () => {
     await befriend(ala, cyr);
     // a stranger cannot be put in
     assert.equal((await call('POST', '/v1/groups', ala.token, { name: 'Ekipa', members: [bob.user.id, obcy.user.id] })).body.error, 'not_friends');
-    assert.equal((await call('POST', '/v1/groups', ala.token, { name: '', members: [bob.user.id] })).body.error, 'bad_name');
+    assert.equal((await call('POST', '/v1/groups', ala.token, { name: '', members: [bob.user.id] })).body.error, 'bad_group_name');
     assert.equal((await call('POST', '/v1/groups', ala.token, { name: 'Sama', members: [] })).status, 400);
     const bobLive = await connect(bob.token);
     const cyrLive = await connect(cyr.token);
@@ -95,7 +95,8 @@ describe('group chats', () => {
     await cyrLive.waitFor((e) => e.type === 'group-message' && e.message.text === 'Siema ekipa');
     // unread for the others, not the sender
     const bobGroups = (await call('GET', '/v1/groups', bob.token)).body.groups;
-    assert.equal(bobGroups.find((g: any) => g.id === group.id).unread, 2);
+    // the message, not the "created" line
+    assert.equal(bobGroups.find((g: any) => g.id === group.id).unread, 1);
     assert.equal((await call('GET', '/v1/groups', ala.token)).body.groups[0].unread, 0);
     await call('POST', `/v1/groups/${group.id}/read`, bob.token);
     assert.equal((await call('GET', '/v1/groups', bob.token)).body.groups[0].unread, 0);
@@ -143,8 +144,8 @@ describe('group chats', () => {
     assert.equal(added.body.group.members.length, 3);
     // only friends of the one adding
     assert.equal((await call('POST', `/v1/groups/${group.id}/members`, cyr.token, { members: [dan.user.id] })).body.error, 'not_friends');
-    // cyr does not get what came before he joined (his launcher's key was not in it anyway), only "added"
-    assert.equal((await call('GET', '/v1/groups', cyr.token)).body.groups[0].unread, 1);
+    // cyr does not get what came before he joined (his launcher's key was not in it anyway), only "added" (not counted unread)
+    assert.equal((await call('GET', '/v1/groups', cyr.token)).body.groups[0].unread, 0);
     assert.deepEqual((await call('GET', `/v1/groups/${group.id}/messages`, cyr.token)).body.messages.map((m: any) => m.event?.kind), ['added']);
     // only the owner removes others
     assert.equal((await call('DELETE', `/v1/groups/${group.id}/members/${bob.user.id}`, cyr.token)).body.error, 'not_owner');
