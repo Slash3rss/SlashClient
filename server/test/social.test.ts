@@ -441,6 +441,23 @@ describe('social server', () => {
     // ids are unique across all slots (a loadout is looked up by id alone)
     const every = (await askAs('launcher/0.9.20')).items.map((i) => i.id);
     assert.equal(new Set(every).size, every.length);
+    // on the back and tails: one of each, each only in its own slot, and only for launchers and mods from 0.9.20 on
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { back: 'backpack', tail: 'foxtail' } })).body.loadout.back, 'backpack');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { back: 'kitsune' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { tail: 'katana' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { hat: 'cattail' } })).body.error, 'bad_item');
+    const gear = (await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc] })).body.cosmetics[ewaMc];
+    assert.equal(gear.back, 'backpack');
+    assert.equal(gear.tail, 'foxtail');
+    // a back item and a cape may both be picked: the game draws the back item in the cape's place
+    assert.equal(gear.cape, 'galaxy');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { back: '', tail: '' } })).body.loadout.back, undefined);
+    const backs = (await askAs('launcher/0.9.20')).items.filter((i) => i.slot === 'back');
+    const tails = (await askAs('mod/0.9.20')).items.filter((i) => i.slot === 'tail');
+    assert.equal(backs.length, 8);
+    assert.equal(tails.length, 7);
+    assert.ok(!(await askAs('launcher/0.9.19')).items.some((i) => i.slot === 'back' || i.slot === 'tail'));
+    assert.ok(!(await askAs('mod/0.9.19')).items.some((i) => i.slot === 'back' || i.slot === 'tail'));
     const catalog = (await call('GET', '/v1/cosmetics', ewa.token)).body;
     assert.ok(catalog.items.some((i: any) => i.id === 'phoenix' && i.rank === 'partner' && !i.available));
     assert.ok(catalog.items.some((i: any) => i.id === 'angel' && i.slot === 'wings' && i.available));

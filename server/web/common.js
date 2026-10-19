@@ -140,6 +140,7 @@ export const SLOTS = [
   ['shield', 'Tarcza', 'fa-solid fa-shield'], ['weapon', 'Skórka broni', 'fa-solid fa-crosshairs'],
   ['shoes', 'Buty', 'fa-solid fa-socks'], ['hands', 'Dłonie', 'fa-solid fa-mitten'],
   ['face', 'Twarz', 'fa-solid fa-glasses'], ['ears', 'Uszy i rogi', 'fa-solid fa-cat'],
+  ['back', 'Na plecy', 'fa-solid fa-person-hiking'], ['tail', 'Ogon', 'fa-solid fa-cat'],
 ];
 /** Particles and pets are the game's own: on the site they get an icon. */
 const ITEM_ICONS = {
@@ -166,13 +167,14 @@ const KILL_ICON_COLORS = {
 /** Pets of our own (not the game's mobs). */
 const OUR_PETS = ['duszek_haze'];
 
-/** A picture of any cosmetic: the cape's front, a wing's back, a view of the clothing, or an icon. */
+/** A picture of any cosmetic: the cape's front, a wing's back, a view of the clothing (or a back item or tail), or an icon. */
 export function cosmeticEl(id, slot = 'cape', small = false) {
   if (slot === 'cape') return capeEl(id, small);
   // our own pets have a picture of their own (vendor/pets/icon), like the clothing
-  if (slot === 'hat' || slot === 'top' || slot === 'shoes' || slot === 'hands' || slot === 'face' || slot === 'ears' || OUR_PETS.includes(id)) {
+  // back items and tails too (vendor/gear/icon), seen from behind
+  if (slot === 'hat' || slot === 'top' || slot === 'shoes' || slot === 'hands' || slot === 'face' || slot === 'ears' || slot === 'back' || slot === 'tail' || OUR_PETS.includes(id)) {
     const c = el('div', { class: `cape clothing${small ? ' sm' : ''}`, title: id });
-    c.style.backgroundImage = `url(vendor/${slot === 'pet' ? 'pets' : 'clothing'}/icon/${id}.png)`;
+    c.style.backgroundImage = `url(vendor/${slot === 'pet' ? 'pets' : slot === 'back' || slot === 'tail' ? 'gear' : 'clothing'}/icon/${id}.png)`;
     return c;
   }
   // a suit: the whole of it from the front (vendor/suits/icon)

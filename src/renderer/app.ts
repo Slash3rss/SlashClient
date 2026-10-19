@@ -3071,7 +3071,7 @@ function renderCapeGrid() {
 
 // ---------- SlashClient cosmetics (seen by other players with the launcher) ----------
 
-type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands' | 'face' | 'ears';
+type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands' | 'face' | 'ears' | 'back' | 'tail';
 const SLOTS: [Slot, string, string][] = [
   ['cape', 'Peleryna', 'fa-flag'], ['wings', 'Skrzydła', 'fa-dove'], ['elytra', 'Elytra', 'fa-feather'],
   ['trail', 'Ślad', 'fa-shoe-prints'], ['aura', 'Aura', 'fa-wand-sparkles'], ['pet', 'Pupil', 'fa-paw'],
@@ -3080,6 +3080,7 @@ const SLOTS: [Slot, string, string][] = [
   ['shield', 'Tarcza', 'fa-shield'], ['weapon', 'Skórka broni', 'fa-crosshairs'],
   ['shoes', 'Buty', 'fa-socks'], ['hands', 'Dłonie', 'fa-mitten'],
   ['face', 'Twarz', 'fa-glasses'], ['ears', 'Uszy i rogi', 'fa-cat'],
+  ['back', 'Na plecy', 'fa-person-hiking'], ['tail', 'Ogon', 'fa-cat'],
 ];
 /** Without the server (or before 0.8) only the first eight capes are known. */
 const SLASH_CAPES: [string, string][] = [
@@ -3156,6 +3157,8 @@ async function loadGamePictures(): Promise<Record<string, string>> {
   return found;
 }
 let cosmeticPreview: CosmeticPreview | undefined;
+/** The figure was set walking for the tail's tab (and stands again after it). */
+let walkingForTail = false;
 
 
 function cosmeticPicture(slot: Slot, id: string): Node {
@@ -3164,6 +3167,8 @@ function cosmeticPicture(slot: Slot, id: string): Node {
   // clothing: a view of it from the front, a little from above (made with its pictures)
   if (slot === 'hat' || slot === 'top' || slot === 'shoes' || slot === 'hands' || slot === 'face' || slot === 'ears') return el('img', { className: 'clothing-icon', src: `img/clothing/icon/${id}.png`, alt: '' });
   if (slot === 'suit') return el('img', { className: 'clothing-icon', src: `img/suits/icon/${id}.png`, alt: '' });
+  // back items and tails: a view from behind (made with their pictures)
+  if (slot === 'back' || slot === 'tail') return el('img', { className: 'clothing-icon', src: `img/gear/icon/${id}.png`, alt: '' });
   // our own pets (not the game's mobs) have a picture of their own
   if (slot === 'pet' && OUR_PET_MODELS[id]) return el('img', { className: 'clothing-icon', src: `img/pets/icon/${id}.png`, alt: '' });
   // shields: the face of the shield (12×22 at 1,1 of the game's 64×64 layout, ours are 4×); weapons: their own picture
@@ -3225,7 +3230,10 @@ async function renderSlashCapes() {
     : cosmeticSlot === 'kill' ? t('Krótki pokaz cząsteczek tam, gdzie pada pokonany przez Ciebie mob lub gracz. Widzą go gracze z SlashClient.')
     : cosmeticSlot === 'shield' ? t('Wygląd tarczy w Twojej ręce (ekwipunek i działanie bez zmian). Inni gracze widzą go tylko, jeśli włączą skórki innych graczy w ustawieniach gry – domyślnie nie, dla uczciwego PvP.')
     : cosmeticSlot === 'weapon' ? t('Wygląd wszystkich mieczy (skórki mieczy) albo łuku (skórki łuków) w Twojej ręce; ekwipunek, nazwa i działanie bez zmian. Inni gracze widzą go tylko, jeśli włączą skórki innych graczy w ustawieniach gry – domyślnie nie, dla uczciwego PvP.')
+    : cosmeticSlot === 'back' ? t('Coś na plecy. Zajmuje miejsce peleryny i skrzydeł (nie widać ich wtedy) i chowa się pod prawdziwą elytrą.')
+    : cosmeticSlot === 'tail' ? t('Ogon kołysze się, kiedy chodzisz. Pod peleryną zwisa niżej.')
     : t('Mały towarzysz lata przy Twoim ramieniu.');
+  if (signedIn && worn.back && (cosmeticSlot === 'cape' || cosmeticSlot === 'wings')) $('#slash-cape-note').textContent += t(' Nosisz coś na plecach: w grze widać to zamiast peleryny i skrzydeł.');
   const current = worn[cosmeticSlot] ?? '';
   const tile = (item: CatalogItem | undefined, content: Node) => {
     const id = item?.id ?? '';
@@ -3269,11 +3277,24 @@ async function renderSlashCapes() {
   // the preview wears all of it: wings in the cape's place, the pet, trail and aura around
   cosmeticPreview ??= new CosmeticPreview(skinViewer, pictures);
   cosmeticPreview.pictures = pictures;
+  // a back item takes the place of the cape and the wings (on their own tabs they show; on the elytra's, the elytra)
+  const back = cosmeticSlot === 'cape' || cosmeticSlot === 'wings' || cosmeticSlot === 'elytra' ? undefined : worn.back;
   // the kill effect plays on the figure only while its tab is open (every few seconds it would distract)
   const holding = cosmeticSlot === 'shield' || cosmeticSlot === 'weapon';
-  cosmeticPreview.show({ ...worn, kill: cosmeticSlot === 'kill' ? worn.kill : undefined, shield: holding ? worn.shield : undefined, weapon: holding ? worn.weapon : undefined });
+  cosmeticPreview.show({ ...worn, back, kill: cosmeticSlot === 'kill' ? worn.kill : undefined, shield: holding ? worn.shield : undefined, weapon: holding ? worn.weapon : undefined });
+  // the figure shows its back for a back item, its back and side for a tail, walking so the tail swings
+  skinViewer.playerWrapper.rotation.y = cosmeticSlot === 'back' ? Math.PI : cosmeticSlot === 'tail' ? Math.PI * 0.7 : 0;
+  const walking = skinViewer.animation instanceof WalkingAnimation;
+  if (cosmeticSlot === 'tail' && !walking) {
+    $('#skin-anim').click();
+    walkingForTail = true;
+  } else if (cosmeticSlot !== 'tail' && walkingForTail) {
+    if (walking) $('#skin-anim').click();
+    walkingForTail = false;
+  }
   stopCapeAnimation();
-  if (worn.wings) await skinViewer.loadCape(`img/wings/${worn.wings}.png`, { backEquipment: 'elytra' });
+  if (back) skinViewer.loadCape(null);
+  else if (worn.wings) await skinViewer.loadCape(`img/wings/${worn.wings}.png`, { backEquipment: 'elytra' });
   else if (cosmeticSlot === 'elytra' && worn.elytra) await skinViewer.loadCape(`img/elytra/${worn.elytra}.png`, { backEquipment: 'elytra' });
   else if (capeId) await wearCape(capeId);
 }

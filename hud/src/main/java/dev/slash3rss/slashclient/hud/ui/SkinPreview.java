@@ -181,6 +181,19 @@ public final class SkinPreview {
 	}
 	private final java.util.Map<String, Object> held = new java.util.HashMap<>();
 
+	/** A back item or a tail on the figure (model and rig, made when first worn), its body posed as the figure's, the tail moving. */
+	private Object gearModel(String id, ModelPart figure, float time, float walk, float phase, boolean caped) {
+		Object[] made = gear.computeIfAbsent(id, k -> {
+			var rig = dev.slash3rss.slashclient.hud.Gear.bake(k);
+			return new Object[] {wrap(rig.root), rig};
+		});
+		var rig = (dev.slash3rss.slashclient.hud.Gear.Rig) made[1];
+		rig.body.loadPose(figure.getChild("body").storePose());
+		dev.slash3rss.slashclient.hud.Gear.animate(rig, time, walk, phase, caped, 0);
+		return made[0];
+	}
+	private final java.util.Map<String, Object[]> gear = new java.util.HashMap<>();
+
 	private static ModelPart root(Object model) {
 		return ((net.minecraft.client.model.Model<?>) model).root();
 	}
@@ -245,23 +258,31 @@ public final class SkinPreview {
 		java.util.List<FigureRender.Layer> layers = new java.util.ArrayList<>();
 		layers.add(new FigureRender.Layer(model, s.body().texturePath()));
 		boolean slimArms = s.model() == PlayerModelType.SLIM;
-		// on the back: the elytra (on its slot's tab), else the wings, else the cape
+		// on the back: the elytra (on its slot's tab), else a back item, else the wings, else the cape
 		String elytraId = look.elytra ? look.worn(self, "elytra") : null, wing = look.worn(self, "wings"), capeId = look.worn(self, "cape");
 		// a suit over all of it hides the clothing (and gives its back to what is worn there)
 		String suit = look.worn(self, "suit");
-		if (suit != null) layer(layers, suitModel(suit, slimArms, root, elytraId != null || wing != null || capeId != null), dev.slash3rss.slashclient.hud.Suits.texture(suit));
+		String backId = look.worn(self, "back"), tailId = look.worn(self, "tail");
+		if (suit != null) layer(layers, suitModel(suit, slimArms, root, elytraId != null || backId != null || wing != null || capeId != null), dev.slash3rss.slashclient.hud.Suits.texture(suit));
 		// the hat that shows (face and ears things it would go through hide)
 		String hat = suit != null && dev.slash3rss.slashclient.hud.Suits.HIDDEN.contains("hat") ? null : look.worn(self, "hat");
 		for (String slot : dev.slash3rss.slashclient.hud.Clothing.SLOTS) {
 			String item = suit != null && dev.slash3rss.slashclient.hud.Suits.HIDDEN.contains(slot) ? null : look.worn(self, slot);
 			if (item != null) layer(layers, clothingModel(item, slimArms, root, hat, time), dev.slash3rss.slashclient.hud.Clothing.texture(item));
 		}
+		boolean caped = false;
 		if (elytraId != null) layer(layers, elytraModel(), dev.slash3rss.slashclient.hud.Cosmetics.textureId("elytra", elytraId));
+		else if (backId != null) layer(layers, gearModel(backId, root, time, 0, 0, false), dev.slash3rss.slashclient.hud.Gear.texture(backId));
 		else if (wing != null) layer(layers, wingsModel(time), dev.slash3rss.slashclient.hud.Cosmetics.textureId("wings", wing));
-		else if (capeId != null) layer(layers, capeModel(swing), dev.slash3rss.slashclient.hud.Cosmetics.capeTexture(capeId));
+		else if (capeId != null) {
+			layer(layers, capeModel(swing), dev.slash3rss.slashclient.hud.Cosmetics.capeTexture(capeId));
+			caped = true;
+		}
 		for (String item : holding) {
 			if (item != null && dev.slash3rss.slashclient.hud.HeldSkins.kind(item) != null) layer(layers, heldModel(item, slimArms, root), HeldFigure.texture(item));
 		}
+		// a tail swings with the running steps (the legs swing with sin(time · 11))
+		if (tailId != null) layer(layers, gearModel(tailId, root, time, look.running ? 1 : 0, time * 11f + (float) Math.PI / 2, caped), dev.slash3rss.slashclient.hud.Gear.texture(tailId));
 		String pet = look.worn(self, "pet");
 		Object petModel = pet == null ? null : petModel(pet, time);
 		if (petModel != null) layer(layers, petModel, dev.slash3rss.slashclient.hud.CosmeticLayer.petTexture(pet));
@@ -477,7 +498,8 @@ public final class SkinPreview {
 //$ 		Lighting.setupForEntityInInventory();
 //$ 		var buffers = g.bufferSource();
 //$ 		String cape = look.worn(self, "cape");
-//$ 		if (cape != null) {
+//$ 		// a back item takes the cape's place (it is not drawn here)
+//$ 		if (cape != null && look.worn(self, "back") == null) {
 //$ 			pose.pushPose();
 //$ 			pose.translate(0, 0, 0.125f);
 //$ 			pose.mulPose(Axis.XP.rotationDegrees(6));

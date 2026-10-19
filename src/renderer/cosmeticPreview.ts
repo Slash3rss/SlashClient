@@ -7,6 +7,7 @@ import { KillEffectPreview } from './killEffects';
 import { SuitPreview } from './suitPreview';
 import { HeldPreview } from './heldPreview';
 import { RocketFlames } from './limbsPreview';
+import { GearPreview } from './gearPreview';
 import type { SkinViewer } from 'skinview3d';
 
 /**
@@ -14,8 +15,8 @@ import type { SkinViewer } from 'skinview3d';
  * (the mob's own model and picture), the particles of trails and auras, made of the game's own
  * particle pictures (read from a downloaded game; without one, the preview shows neither), and the
  * clothing, our own boxes and pictures (src/shared/clothing.ts) fixed to the figure's head, body, arms and legs
- * (the rocket boots' flames: limbsPreview.ts),
- * and a kill effect's burst every few seconds (killEffects.ts).
+ * (the rocket boots' flames: limbsPreview.ts), a suit over all of it (suitPreview.ts), the held shield and weapon (heldPreview.ts),
+ * a kill effect's burst every few seconds (killEffects.ts), and the back item and tail (gearPreview.ts).
  * Units are the model's pixels: feet at y -16, shoulders at 8, the face towards +z.
  */
 
@@ -121,13 +122,15 @@ export class CosmeticPreview {
 
   private kills: KillEffectPreview;
   private held: HeldPreview;
+  private gear: GearPreview;
 
-  /** `clothing` is where the clothing's pictures are (<id>.png), `pets` our own pets' (<id>_<frame>.png), `suits` the suits', `held` the shields' and weapons'. */
-  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/', private pets = 'img/pets/', suits = 'img/suits/', held = 'img/held/') {
+  /** `clothing` is where the clothing's pictures are (<id>.png), `pets` our own pets' (<id>_<frame>.png), `suits` the suits', `held` the shields' and weapons', `gear` the back items' and tails'. */
+  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/', private pets = 'img/pets/', suits = 'img/suits/', held = 'img/held/', gear = 'img/gear/') {
     this.kills = new KillEffectPreview(viewer.playerWrapper);
     this.suit = new SuitPreview(viewer, (src) => this.ourTexture(src), suits);
     this.held = new HeldPreview(viewer, held);
     this.rocket = new RocketFlames(viewer.playerWrapper, () => this.texture('particle/flame'));
+    this.gear = new GearPreview(viewer, gear);
     const tick = (now: number) => {
       this.update(Math.min(0.1, (now - this.last) / 1000), now / 1000);
       this.last = now;
@@ -161,11 +164,13 @@ export class CosmeticPreview {
 
   /**
    * Shows what a set wears (the cape, wings and elytra are the viewer's own back equipment);
-   * `kill` plays its burst every few seconds (shown only while its tab is open: it would distract).
+   * `kill` plays its burst every few seconds (shown only while its tab is open: it would distract);
+   * `back` is given only when it shows (it takes the place of the cape and the wings: the caller leaves those off).
    */
-  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string; suit?: string; shield?: string; weapon?: string; shoes?: string; hands?: string; face?: string; ears?: string }) {
+  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string; suit?: string; shield?: string; weapon?: string; shoes?: string; hands?: string; face?: string; ears?: string; back?: string; tail?: string }) {
     this.kills.set(set.kill);
     this.held.show(set);
+    this.gear.show(set.back, set.tail);
     // a suit hides the hat, the top, the shoes, the hands, the face and the ears, as in the game
     this.suitId = set.suit || undefined;
     this.wearing = this.suitId ? {} : { hat: set.hat || undefined, top: set.top || undefined, shoes: set.shoes || undefined, hands: set.hands || undefined,
@@ -374,6 +379,7 @@ export class CosmeticPreview {
     this.kills.update(dt);
     const skin = this.viewer.playerObject.skin;
     this.rocket.update(dt, this.wearing.shoes === 'rocketboots' ? [skin.rightLeg, skin.leftLeg] : undefined);
+    this.gear.update(dt, time);
     if (this.pet) {
       // by the shoulder: the model's feet (24 px under its origin) a little above it, bobbing
       const scale = this.pet instanceof Sprite ? 0 : this.pet.scale.x;
@@ -428,6 +434,7 @@ export class CosmeticPreview {
     this.suit.dispose();
     this.held.dispose();
     this.rocket.dispose();
+    this.gear.dispose();
     for (const t of this.textures.values()) t.dispose();
   }
 }

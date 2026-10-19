@@ -21,14 +21,14 @@ import java.util.UUID;
 
 /**
  * Picking SlashClient cosmetics in the game: one slot at a time (cape, wings, elytra, trail,
- * aura, pet, hat, top, kill effect, suit, shield, weapon, shoes, hands, face, ears), the player's figure beside the panel trying on the item under
+ * aura, pet, hat, top, kill effect, suit, shield, weapon, shoes, hands, face, ears, back item, tail), the player's figure beside the panel trying on the item under
  * the mouse (turned to show its back for what is worn there, running for a trail, turned by
  * dragging it; for kill effects in a world the real player, from behind). Choices go to the SlashClient
  * server through the launcher, for the Minecraft account being played when it is linked to the
  * SlashClient account (each can have a set of its own), else for the whole account.
  */
 public class CosmeticsScreen extends Screen {
-	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit", "shield", "weapon", "shoes", "hands", "face", "ears"};
+	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit", "shield", "weapon", "shoes", "hands", "face", "ears", "back", "tail"};
 	/** Particles and pets have no picture of ours: an item that looks like them stands in. */
 	private static final Map<String, Item> ITEMS = Map.ofEntries(
 		Map.entry("hearts", Items.POPPY), Map.entry("sparks", Items.GLOWSTONE_DUST), Map.entry("snow", Items.SNOWBALL),
@@ -121,9 +121,12 @@ public class CosmeticsScreen extends Screen {
 		for (String id : Clothing.HANDS) list.add(new Entry(id, "hands", id, "", true));
 		for (String id : Clothing.FACE) list.add(new Entry(id, "face", id, "", true));
 		for (String id : Clothing.EARS) list.add(new Entry(id, "ears", id, "", true));
+		for (String id : Gear.BACKS) list.add(new Entry(id, "back", id, "", true));
+		for (String id : Gear.TAILS) list.add(new Entry(id, "tail", id, "", true));
 		screen.items = List.copyOf(list);
 		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf", "kill", "firework", "shield", "shield_dragon", "weapon", "sword_katana",
 			"shoes", "sneakers_red", "hands", "wristwatch"));
+		if (slot.equals("back") || slot.equals("tail")) screen.worn.putAll(Map.of("back", "backpack", "tail", "foxtail"));
 		screen.character = "test";
 		screen.characterName = "Slash3rss";
 		screen.ownSet = true;
@@ -146,14 +149,15 @@ public class CosmeticsScreen extends Screen {
 		}
 	}
 
-	/** How the figure stands for a slot: its back for what is worn there, its side for a trail (degrees). */
+	/** How the figure stands for a slot: its back for what is worn there, its side for a trail, half way for a tail (degrees). */
 	private static float turnFor(String slot) {
 		return switch (slot) {
-			case "cape", "wings", "elytra" -> 180;
+			case "cape", "wings", "elytra", "back" -> 180;
 			case "trail" -> -90;
 			// the shield on the left arm and the weapon in the right hand, each turned a little towards the viewer
 			case "shield" -> -35;
 			case "weapon" -> 35;
+			case "tail" -> 130;
 			default -> 0;
 		};
 	}
@@ -351,8 +355,10 @@ public class CosmeticsScreen extends Screen {
 				set = new HashMap<>(worn);
 			}
 			if (tried != null) set.put(slot, tried);
-			// wings take the cape's place: on the cape's tab the cape shows; running, they would hide the trail
+			// wings take the cape's place: on the cape's tab the cape shows; running, they would hide the trail;
+			// a back item takes the place of both: on their tabs they show
 			if (slot.equals("cape") || slot.equals("trail")) set.remove("wings");
+			if (slot.equals("cape") || slot.equals("wings")) set.remove("back");
 			var look = figure.look;
 			look.wearing = set;
 			// a suit turns round slowly while nobody drags it (about 12 seconds a round)
@@ -360,7 +366,8 @@ public class CosmeticsScreen extends Screen {
 			if (slot.equals("suit") && !turning && spinAt != 0) spin += Math.min(0.1f, (now - spinAt) / 1e9f) * 30;
 			spinAt = now;
 			look.turn = turnFor(slot) + dragTurn + spin;
-			look.running = slot.equals("trail");
+			// a tail swings with the steps: the figure runs on its tab too
+			look.running = slot.equals("trail") || slot.equals("tail");
 			look.elytra = slot.equals("elytra");
 			look.held = HeldSkins.SLOTS.contains(slot);
 			// while it is turned by hand the head does not chase the mouse
@@ -435,6 +442,13 @@ public class CosmeticsScreen extends Screen {
 			}));
 			y = Ui.wrapped(g, Ui.tr("slashclient-hud.cosmetics.heldHint"), x, y + 12, pw - 24, Ui.MUTED) + 4;
 		}
+		// what goes with what on the back: a back item takes the place of the cape and the wings
+		String note = slot.equals("back") ? "slashclient-hud.cosmetics.backHint"
+			: slot.equals("tail") ? "slashclient-hud.cosmetics.tailHint"
+			: (slot.equals("cape") || slot.equals("wings")) && worn.containsKey("back") ? "slashclient-hud.cosmetics.backTaken" : null;
+		if (note != null) {
+			y = Ui.wrapped(g, Ui.tr(note), x, y - 4, pw - 24, Ui.MUTED) + 4;
+		}
 		// the items of this slot, "nothing" first
 		List<Entry> shown = new ArrayList<>();
 		shown.add(null);
@@ -498,6 +512,9 @@ public class CosmeticsScreen extends Screen {
 			case "hat", "top", "shoes", "hands", "face", "ears" ->
 				// a view of it from the front, a little from above
 				g.blit(RenderPipelines.GUI_TEXTURED, Clothing.icon(e.id()), x + (TILE_W - 26) / 2, y + (TILE_H - 26) / 2, 0, 0, 26, 26, 64, 64, 64, 64, alpha);
+			case "back", "tail" ->
+				// a view of it from behind, a little from above
+				g.blit(RenderPipelines.GUI_TEXTURED, Gear.icon(e.id()), x + (TILE_W - 26) / 2, y + (TILE_H - 26) / 2, 0, 0, 26, 26, 64, 64, 64, 64, alpha);
 			default -> {
 				// our own pets have a picture of their own
 				if (OurPets.IDS.contains(e.id())) g.blit(RenderPipelines.GUI_TEXTURED, OurPets.icon(e.id()), x + (TILE_W - 24) / 2, y + (TILE_H - 24) / 2, 0, 0, 24, 24, 64, 64, 64, 64, alpha);

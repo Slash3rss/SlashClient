@@ -80,13 +80,19 @@ public class SlashHud implements ClientModInitializer {
 		// wings, pets and clothing: a layer more on every player's model (drawn from render states, which 1.21.1 does not have)
 		//#if MC >= 1.21.2
 		net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback.EVENT.register((type, renderer, helper, context) -> {
-			if (renderer instanceof net.minecraft.client.renderer.entity.player.AvatarRenderer<?> avatar) helper.register(new CosmeticLayer(avatar, context));
+			if (renderer instanceof net.minecraft.client.renderer.entity.player.AvatarRenderer<?> avatar) {
+				helper.register(new CosmeticLayer(avatar, context));
+				helper.register(new GearLayer(avatar));
+			}
 		});
 		//#else
-		//$ // there only the clothing, drawn straight from the player
+		//$ // there only the clothing, back items and tails, drawn straight from the player
 		//$ net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback.EVENT.register((type, renderer, helper, context) -> {
-		//$ 	if (renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer player) helper.register(new ClothingLayer(player));
-		//$ 	if (renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer player) helper.register(new SuitLayer(player));
+		//$ 	if (renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer player) {
+		//$ 		helper.register(new ClothingLayer(player));
+		//$ 		helper.register(new SuitLayer(player));
+		//$ 		helper.register(new GearLayer(player));
+		//$ 	}
 		//$ });
 		//#endif
 		// held item skins before item models: their models are loaded with the game's (HeldSkins)

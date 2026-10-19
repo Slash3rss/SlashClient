@@ -687,6 +687,21 @@ public final class TestHooks {
 		return box.zRot + "|" + box.visible;
 	}
 
+	/** The back items and tails this mod can draw: "backs|tails". */
+	public static String gear() {
+		return String.join(",", Gear.BACKS) + "|" + String.join(",", Gear.TAILS);
+	}
+
+	/** The third-person camera turned round our own player by this many degrees (90: from its side), 0 back to normal. */
+	public static void cameraTurn(float degrees) {
+		Freelook.testTurn = degrees;
+	}
+
+	/** Our own player walking forward (true) or standing (false), as the forward key would. */
+	public static void walk(boolean on) {
+		net.minecraft.client.Minecraft.getInstance().options.keyUp.setDown(on);
+	}
+
 	/** Turns our own player by this many degrees (a view from the side). */
 	public static void turn(float degrees) {
 		var p = net.minecraft.client.Minecraft.getInstance().player;
