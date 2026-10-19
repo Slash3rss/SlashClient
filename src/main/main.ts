@@ -116,7 +116,8 @@ const HUD_DIR = path.join(__dirname, 'hud');
 let hudSupported: string[] = [];
 
 function send(channel: string, payload: unknown) {
-  win?.webContents.send(channel, payload);
+  // the window may be closed (the app keeps running): a friend's message then has nowhere to go
+  if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
 }
 
 async function persist() {
@@ -161,6 +162,11 @@ function createWindow() {
   });
   win.removeMenu();
   win.once('ready-to-show', () => win?.show());
+  // closed: nothing may reach it any more (sending to a destroyed window throws in the main process)
+  const opened = win;
+  opened.on('closed', () => {
+    if (win === opened) win = undefined;
+  });
   // development: surface page errors in the terminal
   if (!app.isPackaged) {
     win.webContents.on('console-message', (e) => {
