@@ -65,6 +65,9 @@ public class SlashHud implements ClientModInitializer {
 		KeyMapping waypointsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.waypoints", InputConstants.KEY_B, category));
 		Clips.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.clip", InputConstants.KEY_F8, category));
 		Cosmetics.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.emote", InputConstants.KEY_N, category));
+		// sprays: no key by default (set in SlashClient's keys window or the game's Controls)
+		Sprays.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.spray", InputConstants.UNKNOWN.getValue(), category));
+		SprayRender.register();
 		// the dungeon map's zoom: = and - (free in the game)
 		DungeonMap.zoomInKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonZoomIn", InputConstants.KEY_EQUALS, category));
 		DungeonMap.zoomOutKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonZoomOut", InputConstants.KEY_MINUS, category));
@@ -101,6 +104,7 @@ public class SlashHud implements ClientModInitializer {
 			Cosmetics.reset();
 			CosmeticEffects.reset();
 			KillEffects.reset();
+			Sprays.reset();
 			NetCounter.attach(handler.getConnection());
 			Reconnect.joined(mc);
 			DungeonMap.stop();
@@ -164,6 +168,7 @@ public class SlashHud implements ClientModInitializer {
 			Cosmetics.tick(mc);
 			CosmeticEffects.tick(mc);
 			KillEffects.tick(mc);
+			Sprays.tick(mc);
 			Clips.tick(mc);
 			Badges.tick(mc);
 			while (edit.consumeClick()) {
@@ -226,6 +231,7 @@ public class SlashHud implements ClientModInitializer {
 			drawAll(g, mc, false);
 			Waypoints.draw(g, mc);
 			DamageNumbers.draw(g, mc);
+			Sprays.drawCooldown(g, mc);
 			ChatTabs.drawMentionBadge(g, mc);
 			ChatWindows.draw(g, mc);
 			Shots.draw(g);

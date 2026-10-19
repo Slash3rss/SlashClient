@@ -21,14 +21,14 @@ import java.util.UUID;
 
 /**
  * Picking SlashClient cosmetics in the game: one slot at a time (cape, wings, elytra, trail,
- * aura, pet, hat, top, kill effect), the player's figure beside the panel trying on the item under
+ * aura, pet, hat, top, kill effect, spray), the player's figure (for a spray its picture on a block) beside the panel trying on the item under
  * the mouse (turned to show its back for what is worn there, running for a trail, turned by
  * dragging it; for kill effects in a world the real player, from behind). Choices go to the SlashClient
  * server through the launcher, for the Minecraft account being played when it is linked to the
  * SlashClient account (each can have a set of its own), else for the whole account.
  */
 public class CosmeticsScreen extends Screen {
-	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill"};
+	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "spray"};
 	/** Particles and pets have no picture of ours: an item that looks like them stands in. */
 	private static final Map<String, Item> ITEMS = Map.ofEntries(
 		Map.entry("hearts", Items.POPPY), Map.entry("sparks", Items.GLOWSTONE_DUST), Map.entry("snow", Items.SNOWBALL),
@@ -111,8 +111,9 @@ public class CosmeticsScreen extends Screen {
 		for (String id : Clothing.HATS) list.add(new Entry(id, "hat", id, "", true));
 		for (String id : Clothing.TOPS) list.add(new Entry(id, "top", id, "", true));
 		for (String id : KillEffects.IDS) list.add(new Entry(id, "kill", id, "", true));
+		for (String id : Sprays.IDS) list.add(new Entry(id, "spray", id, "", true));
 		screen.items = List.copyOf(list);
-		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf", "kill", "firework"));
+		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf", "kill", "firework", "spray", "spray_heart"));
 		screen.character = "test";
 		screen.characterName = "Slash3rss";
 		screen.ownSet = true;
@@ -321,7 +322,9 @@ public class CosmeticsScreen extends Screen {
 		}
 		// your figure, wearing what you pick and trying on what is under the mouse
 		fw = 0;
-		if (px - 12 >= 64 && !(world && slot.equals("kill"))) {
+		// a spray: its picture on a block, big, instead of the figure
+		if (slot.equals("spray") && px - 12 >= 64) SprayPreview.draw(g, 0, 0, px - 12, height, tried != null ? tried : worn.get("spray"));
+		else if (px - 12 >= 64 && !(world && slot.equals("kill"))) {
 			if (figure == null) {
 				figure = new dev.slash3rss.slashclient.hud.ui.SkinPreview(minecraft);
 				figure.look.turnTo(turnFor(slot));
@@ -404,6 +407,15 @@ public class CosmeticsScreen extends Screen {
 			Ui.draw(g, Ui.fit(Ui.tr(world ? "slashclient-hud.cosmetics.killHint" : "slashclient-hud.cosmetics.killWorld"), pw - 36 - bw), x + bw + 6, y, Ui.MUTED);
 			y += 17;
 		}
+		// sprays: which key sprays, and a way to set it
+		if (slot.equals("spray")) {
+			Component label = Ui.tr("slashclient-hud.cosmetics.sprayKey");
+			int bw = Ui.width(label) + 24;
+			Ui.button(g, "cos:sprayKey", x, y - 4, bw, 15, "gear", label, false, mx, my);
+			hits.add(new Hit(x, y - 4, bw, 15, () -> minecraft.setScreenAndShow(new KeybindsScreen(this))));
+			Ui.draw(g, Ui.fit(SprayPreview.keyHint(), pw - 36 - bw), x + bw + 6, y, Ui.MUTED);
+			y += 17;
+		}
 		// the items of this slot, "nothing" first
 		List<Entry> shown = new ArrayList<>();
 		shown.add(null);
@@ -458,6 +470,9 @@ public class CosmeticsScreen extends Screen {
 			case "hat", "top" ->
 				// a view of it from the front, a little from above
 				g.blit(RenderPipelines.GUI_TEXTURED, Clothing.icon(e.id()), x + (TILE_W - 26) / 2, y + (TILE_H - 26) / 2, 0, 0, 26, 26, 64, 64, 64, 64, alpha);
+			case "spray" ->
+				// the picture itself
+				g.blit(RenderPipelines.GUI_TEXTURED, Sprays.texture(e.id()), x + (TILE_W - 28) / 2, y + (TILE_H - 28) / 2, 0, 0, 28, 28, 64, 64, 64, 64, alpha);
 			default -> {
 				// our own pets have a picture of their own
 				if (OurPets.IDS.contains(e.id())) g.blit(RenderPipelines.GUI_TEXTURED, OurPets.icon(e.id()), x + (TILE_W - 24) / 2, y + (TILE_H - 24) / 2, 0, 0, 24, 24, 64, 64, 64, 64, alpha);
