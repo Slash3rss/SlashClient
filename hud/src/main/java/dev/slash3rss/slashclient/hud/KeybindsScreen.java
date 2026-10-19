@@ -146,11 +146,11 @@ public class KeybindsScreen extends Screen {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
 	//#endif
 		// waiting: any mouse button but a plain click on the list binds to it
-		if (waiting != null && e.button() != 0) {
+		if (waiting != null && e.button() != InputConstants.MOUSE_BUTTON_LEFT) {
 			bind(waiting, InputConstants.Type.MOUSE.getOrCreate(e.button()));
 			return true;
 		}
-		if (e.button() == 0 && bar.press(e.x(), e.y())) {
+		if (e.button() == InputConstants.MOUSE_BUTTON_LEFT && bar.press(e.x(), e.y())) {
 			scroll = Math.round(bar.drag(e.y()));
 			return true;
 		}

@@ -518,7 +518,7 @@ public class CosmeticsScreen extends Screen {
 		//#else
 		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
 		//#endif
-		if (e.button() == 0 && bar.press(e.x(), e.y())) {
+		if (e.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && bar.press(e.x(), e.y())) {
 			scroll = Math.round(bar.drag(e.y()));
 			return true;
 		}
@@ -530,7 +530,8 @@ public class CosmeticsScreen extends Screen {
 			}
 		}
 		// the figure turns when dragged with the left button anywhere beside the panel (the figure has that side to itself)
-		if (e.button() == 0 && fw > 0 && e.x() < px - 6) {
+		// by the constant: 26.3 numbers the buttons anew (left 1); the game tests' bare 0 never comes from a real mouse
+		if (e.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && fw > 0 && e.x() < px - 6) {
 			turning = true;
 			return true;
 		}

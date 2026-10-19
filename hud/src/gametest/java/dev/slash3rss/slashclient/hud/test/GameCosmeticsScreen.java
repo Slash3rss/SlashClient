@@ -79,13 +79,13 @@ public class GameCosmeticsScreen implements FabricClientGameTest {
 		double x = (f[0] + f[2] / 2) * scale, y = (f[1] + f[3] / 2) * scale;
 		context.getInput().setCursorPos(x, y);
 		context.waitTick();
-		context.getInput().holdMouse(0);
+		context.getInput().holdMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
 		context.waitTick();
 		for (int i = 0; i < 10; i++) {
 			context.getInput().moveCursor(6 * scale, 0);
 			context.waitTick();
 		}
-		context.getInput().releaseMouse(0);
+		context.getInput().releaseMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
 		context.waitTicks(15);
 		float turned = context.computeOnClient(mc -> TestHooks.cosmeticsFigure())[4];
 		context.takeScreenshot("cosscreen-menu-dragged-real");
@@ -94,11 +94,11 @@ public class GameCosmeticsScreen implements FabricClientGameTest {
 		context.runOnClient(mc -> TestHooks.cosmeticsSlot("cape"));
 		context.getInput().setCursorPos(4 * scale, 4 * scale);
 		context.waitTick();
-		context.getInput().holdMouse(0);
+		context.getInput().holdMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
 		context.waitTick();
 		context.getInput().moveCursor(20 * scale, 0);
 		context.waitTick();
-		context.getInput().releaseMouse(0);
+		context.getInput().releaseMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
 		float beside = context.computeOnClient(mc -> TestHooks.cosmeticsFigure())[4];
 		if (Math.abs(beside) < 10) throw new AssertionError("A drag beside the figure turned it by " + beside + "°");
 		// one that starts right of the panel, off everything, does not
@@ -106,11 +106,11 @@ public class GameCosmeticsScreen implements FabricClientGameTest {
 		int width = context.computeOnClient(mc -> mc.getWindow().getScreenWidth());
 		context.getInput().setCursorPos(width - 2, 4 * scale);
 		context.waitTick();
-		context.getInput().holdMouse(0);
+		context.getInput().holdMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
 		context.waitTick();
 		context.getInput().moveCursor(-60, 0);
 		context.waitTick();
-		context.getInput().releaseMouse(0);
+		context.getInput().releaseMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
 		float still = context.computeOnClient(mc -> TestHooks.cosmeticsFigure())[4];
 		if (still != 0) throw new AssertionError("A drag off the figure turned it by " + still + "°");
 		context.getInput().setCursorPos(10, 10);
