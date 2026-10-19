@@ -2,15 +2,16 @@ import type { CosmeticSetting } from './db.ts';
 
 /**
  * The SlashClient cosmetics. Their pictures live in the HUD mod (textures/cape, textures/elytra,
- * textures/wings, textures/clothing with the clothing's boxes in src/shared/clothing.ts; trails,
+ * textures/wings, textures/clothing with the clothing's boxes in src/shared/clothing.ts, textures/gear with the back
+ * items' and tails' in src/shared/gear.ts; trails,
  * auras, kill effects and pets are drawn from the game's own particles and mobs) and on the website (web/vendor);
  * the server checks choices against these and the admin's settings.
  *
  * A player wears one item per slot. `rank` items are for that rank only (admins may wear all);
  * any item can also be made exclusive in the admin panel and granted to chosen players.
  */
-export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill';
-export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill'];
+export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'back' | 'tail';
+export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill', 'back', 'tail'];
 export type Rank = 'admin' | 'support' | 'partner' | 'friend' | 'friend_pink';
 
 export interface Item {
@@ -161,6 +162,22 @@ export const ITEMS: Item[] = [
   { id: 'coins', slot: 'kill', name: 'Złote monety', since: '0.9.14' },
   { id: 'ghost', slot: 'kill', name: 'Duch', since: '0.9.14' },
   { id: 'flamering', slot: 'kill', name: 'Krąg ognia', since: '0.9.14' },
+  // on the back (in the cape's and the wings' place) and tails, boxes like the clothing (src/shared/gear.ts)
+  { id: 'backpack', slot: 'back', name: 'Plecak', since: '0.9.20' },
+  { id: 'quiver', slot: 'back', name: 'Kołczan', since: '0.9.20' },
+  { id: 'katana', slot: 'back', name: 'Katana', since: '0.9.20' },
+  { id: 'guitar', slot: 'back', name: 'Gitara', since: '0.9.20' },
+  { id: 'jetpack', slot: 'back', name: 'Plecak odrzutowy', since: '0.9.20' },
+  { id: 'angelpack', slot: 'back', name: 'Anielskie piórka', since: '0.9.20' },
+  { id: 'minichest', slot: 'back', name: 'Mała skrzynia', since: '0.9.20' },
+  { id: 'backshield', slot: 'back', name: 'Tarcza', since: '0.9.20' },
+  { id: 'cattail', slot: 'tail', name: 'Koci ogon', since: '0.9.20' },
+  { id: 'foxtail', slot: 'tail', name: 'Lisi ogon', since: '0.9.20' },
+  { id: 'kitsune', slot: 'tail', name: 'Kitsune', since: '0.9.20' },
+  { id: 'deviltail', slot: 'tail', name: 'Diabelski ogon', since: '0.9.20' },
+  { id: 'dragontail', slot: 'tail', name: 'Smoczy ogon', since: '0.9.20' },
+  { id: 'wolftail', slot: 'tail', name: 'Wilczy ogon', since: '0.9.20' },
+  { id: 'squirreltail', slot: 'tail', name: 'Wiewiórczy ogon', since: '0.9.20' },
 ];
 
 /** Compares two versions like 0.9.1 number by number: below 0, 0 or above 0. */
