@@ -115,10 +115,11 @@ public class GameProps implements FabricClientGameTest {
 
 			// the cosmetics menu in a world (the mouse away from the tiles: nothing tried on)
 			context.runOnClient(mc -> TestHooks.firstPerson());
-			context.getInput().setCursorPos(10, 10);
 			context.runOnClient(mc -> TestHooks.cosmeticsMenu("prop"));
 			context.runOnClient(mc -> TestHooks.cosmeticsWorn("prop", "wheelbarrow_gold"));
-			context.waitTicks(20);
+			context.waitTicks(2);
+			context.getInput().setCursorPos(10, 10);
+			context.waitTicks(18);
 			context.takeScreenshot("props-world-menu");
 			context.setScreen(() -> null);
 			context.runOnClient(mc -> TestHooks.wear("prop", null));
