@@ -7,7 +7,8 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 
 /**
  * The game's own HUD parts made adjustable: a scoreboard (smaller, higher, no red numbers),
- * a boss bar, a title, the tab list with the ping in milliseconds and your own name in F5.
+ * a boss bar, a title, the tab list with the ping in milliseconds (and a header and a footer) and
+ * your own name in F5. In the editor the scoreboard's and the tab list's boxes are their real size.
  */
 public class GameHudParts implements FabricClientGameTest {
 	@Override
@@ -25,6 +26,7 @@ public class GameHudParts implements FabricClientGameTest {
 				"title @a title \"Witaj\"",
 				"title @a actionbar \"Pasek akcji SlashClient\"",
 			}) world.getServer().runCommand(cmd);
+			context.runOnClient(mc -> TestHooks.tabHeader());
 			context.waitTicks(40);
 			context.runOnClient(mc -> TestHooks.thirdPerson(true));
 			context.getInput().holdKey(o -> o.keyPlayerList);
@@ -37,6 +39,8 @@ public class GameHudParts implements FabricClientGameTest {
 			world.getServer().runCommand("title @a actionbar \"Pasek akcji SlashClient\"");
 			int[] board = context.computeOnClient(mc -> TestHooks.gamePartBox("scoreboard"));
 			if (board[0] != 4) throw new AssertionError("The scoreboard's box is not on the left: x=" + board[0]);
+			// as tall as the game draws it: the title and two lines, 9 pixels each and 1 more, at 0.8
+			if (board[3] != Math.round(28 * 0.8f)) throw new AssertionError("The scoreboard's box is not its real height: h=" + board[3]);
 			context.waitTicks(5);
 			context.takeScreenshot("game-hud-parts-moved");
 			// the editor: the parts as boxes, and the armour at its biggest

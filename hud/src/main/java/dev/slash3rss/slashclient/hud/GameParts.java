@@ -2,8 +2,14 @@ package dev.slash3rss.slashclient.hud;
 
 import dev.slash3rss.slashclient.hud.ui.Ui;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.scores.Objective;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 
 import java.util.List;
 
@@ -52,12 +58,27 @@ public final class GameParts {
 
 		@Override
 		public int width(Minecraft mc) {
-			return Math.round(baseW * scale());
+			int[] r = drawn(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+			return Math.round((r != null ? r[2] - r[0] : baseW) * scale());
 		}
 
 		@Override
 		public int height(Minecraft mc) {
-			return Math.round(baseH * scale());
+			int[] r = drawn(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+			return Math.round((r != null ? r[3] - r[1] : baseH) * scale());
+		}
+
+		/**
+		 * Where the game draws the part now on a screen of that size (left, top, right, bottom), or
+		 * null when it has nothing for it or the part has no measure (then the box is the base size).
+		 */
+		final int[] drawn(Minecraft mc, int screenW, int screenH) {
+			return real(mc) ? measure(mc, screenW, screenH) : null;
+		}
+
+		/** The game's own measure of what it draws, as `drawn`; only asked while `real`. */
+		int[] measure(Minecraft mc, int screenW, int screenH) {
+			return null;
 		}
 
 		@Override
@@ -90,13 +111,14 @@ public final class GameParts {
 		abstract float[] screenAnchor(int screenW, int screenH);
 	}
 
-	/** In the middle of the right edge. */
+	/** In the middle of the right edge (a little below it: the game puts a third of the lines' height under the middle). */
 	static final Part SCOREBOARD = new Part("scoreboard", 100, 90) {
 		@Override float scale() { return SlashHud.config.scoreboardScale; }
 		@Override boolean on() { return SlashHud.config.scoreboard && SlashHud.config.placement(id()).enabled; }
 		@Override float[] boxAnchor(int w, int h) { return new float[] { w, h / 2f }; }
 		@Override float[] screenAnchor(int sw, int sh) { return new float[] { sw, sh / 2f }; }
 		@Override boolean real(Minecraft mc) { return Compat.displayed(mc, true) != null; }
+		@Override int[] measure(Minecraft mc, int sw, int sh) { return scoreboardDrawn(mc, Compat.displayed(mc, true), sw, sh); }
 		@Override void sample(GuiGraphicsExtractor g, Minecraft mc, int x, int y, int w, int h) {
 			// lines with their scores, as a server's sidebar looks
 			for (int i = 0; i < 6 && 16 + i * 11 + 8 < h; i++) {
@@ -124,7 +146,8 @@ public final class GameParts {
 		@Override boolean on() { return SlashHud.config.placement(id()).enabled; }
 		@Override float[] boxAnchor(int w, int h) { return new float[] { w / 2f, 0 }; }
 		@Override float[] screenAnchor(int sw, int sh) { return new float[] { sw / 2f, 0 }; }
-		@Override boolean real(Minecraft mc) { return mc.getConnection() != null && mc.level != null && !mc.getConnection().getOnlinePlayers().isEmpty(); }
+		@Override boolean real(Minecraft mc) { return mc.getConnection() != null && mc.level != null && mc.player != null && !mc.getConnection().getListedOnlinePlayers().isEmpty(); }
+		@Override int[] measure(Minecraft mc, int sw, int sh) { return tabListDrawn(mc, sw); }
 		@Override void sample(GuiGraphicsExtractor g, Minecraft mc, int x, int y, int w, int h) {
 			// two columns of players, each with a face and the ping
 			String player = Ui.tr("slashclient-hud.part.sample.player").getString();
@@ -166,6 +189,102 @@ public final class GameParts {
 			Ui.draw(g, subtitle, x + (w - Ui.width(subtitle)) / 2, y + 38, 0xFFAAAAAA);
 		}
 	};
+
+	/**
+	 * The scoreboard as the game lays it out (Gui.displayScoreboardSidebar): as wide as the title
+	 * or the widest "name: score" line, 9 pixels a line for at most 15 lines and the title, the
+	 * bottom a third of the lines' height under the middle, 1 pixel off the right edge.
+	 */
+	static int[] scoreboardDrawn(Minecraft mc, Objective objective, int sw, int sh) {
+		Font font = mc.font;
+		Scoreboard board = objective.getScoreboard();
+		int wide = font.width(objective.getDisplayName()), colon = font.width(": "), lines;
+		//#if MC >= 1.20.2
+		// the hidden lines left out, the numbers in the objective's format (blank when switched off in the card)
+		net.minecraft.network.chat.numbers.NumberFormat format = SlashHud.config != null && !SlashHud.config.scoreboardNumbers
+			? net.minecraft.network.chat.numbers.BlankFormat.INSTANCE
+			: objective.numberFormatOrDefault(net.minecraft.network.chat.numbers.StyledFormat.SIDEBAR_DEFAULT);
+		List<net.minecraft.world.scores.PlayerScoreEntry> entries = board.listPlayerScores(objective).stream()
+			.filter(e -> !e.isHidden())
+			.sorted(java.util.Comparator.comparing(net.minecraft.world.scores.PlayerScoreEntry::value).reversed()
+				.thenComparing(net.minecraft.world.scores.PlayerScoreEntry::owner, String.CASE_INSENSITIVE_ORDER))
+			.limit(15).toList();
+		for (var e : entries) {
+			int name = font.width(PlayerTeam.formatNameForTeam(board.getPlayersTeam(e.owner()), e.ownerName()));
+			int score = font.width(e.formatValue(format));
+			wide = Math.max(wide, name + (score > 0 ? colon + score : 0));
+		}
+		lines = entries.size();
+		//#else
+		//$ // the names starting with # left out, the last 15 of the game's order, the red number always there
+		//$ List<net.minecraft.world.scores.Score> scores = board.getPlayerScores(objective).stream()
+		//$ 	.filter(s -> s.getOwner() != null && !s.getOwner().startsWith("#")).toList();
+		//$ if (scores.size() > 15) scores = scores.subList(scores.size() - 15, scores.size());
+		//$ for (var s : scores) {
+		//$ 	int name = font.width(PlayerTeam.formatNameForTeam(board.getPlayersTeam(s.getOwner()), Component.literal(s.getOwner())));
+		//$ 	wide = Math.max(wide, name + colon + font.width(Integer.toString(s.getScore())));
+		//$ }
+		//$ lines = scores.size();
+		//#endif
+		int bottom = sh / 2 + lines * 9 / 3;
+		return new int[] { sw - wide - 5, bottom - lines * 9 - 10, sw - 1, bottom };
+	}
+
+	/**
+	 * The tab list as the game lays it out (PlayerTabOverlay's drawing): up to 20 rows a column,
+	 * each column a face, the widest name and the widest score wide (at most the screen less 50
+	 * in all), with the header and the footer over and under it, wrapped to the same width,
+	 * centred and 9 pixels from the top.
+	 */
+	static int[] tabListDrawn(Minecraft mc, int sw) {
+		Font font = mc.font;
+		var tab = Compat.tabList(mc);
+		var parts = (dev.slash3rss.slashclient.hud.mixin.PlayerTabOverlayAccessor) tab;
+		Scoreboard board = mc.level.getScoreboard();
+		Objective objective = Compat.displayed(mc, false);
+		boolean hearts = objective != null && objective.getRenderType() == ObjectiveCriteria.RenderType.HEARTS;
+		List<PlayerInfo> players = parts.slashclient$playerInfos();
+		int names = 0, scores = 0, space = font.width(" ");
+		for (PlayerInfo info : players) {
+			names = Math.max(names, font.width(tab.getNameForDisplay(info)));
+			if (objective == null || hearts) continue;
+			//#if MC >= 1.20.2
+			var score = board.getPlayerScoreInfo(net.minecraft.world.scores.ScoreHolder.fromGameProfile(info.getProfile()), objective);
+			var format = objective.numberFormatOrDefault(net.minecraft.network.chat.numbers.StyledFormat.PLAYER_LIST_DEFAULT);
+			//#if MC >= 26.2
+			int w = score != null ? font.width(score.formatValue(format)) : 0;
+			//#else
+			//$ int w = font.width(net.minecraft.world.scores.ReadOnlyScoreInfo.safeFormatValue(score, format));
+			//#endif
+			scores = Math.max(scores, w > 0 ? space + w : 0);
+			//#else
+			//$ String name = info.getProfile().getName();
+			//$ int value = board.hasPlayerScore(name, objective) ? board.getOrCreatePlayerScore(name, objective).getScore() : 0;
+			//$ scores = Math.max(scores, font.width(" " + value));
+			//#endif
+		}
+		int n = players.size(), rows = n, columns = 1;
+		while (rows > 20) rows = (n + ++columns - 1) / columns;
+		//#if MC >= 26.2
+		boolean faces = mc.getConnection().onlineMode();
+		//#else
+		//$ boolean faces = mc.isLocalServer() || mc.getConnection().getConnection().isEncrypted();
+		//#endif
+		int scoreW = objective == null ? 0 : hearts ? 90 : scores;
+		int column = Math.min(columns * ((faces ? 9 : 0) + names + scoreW + 13), sw - 50) / columns;
+		int wide = column * columns + (columns - 1) * 5;
+		List<net.minecraft.util.FormattedCharSequence> header = null, footer = null;
+		if (parts.slashclient$header() != null) {
+			header = font.split(parts.slashclient$header(), sw - 50);
+			for (var line : header) wide = Math.max(wide, font.width(line));
+		}
+		if (parts.slashclient$footer() != null) {
+			footer = font.split(parts.slashclient$footer(), sw - 50);
+			for (var line : footer) wide = Math.max(wide, font.width(line));
+		}
+		int bottom = 10 + (header != null ? header.size() * 9 + 1 : 0) + rows * 9 + (footer != null ? 1 + footer.size() * 9 : 0);
+		return new int[] { sw / 2 - wide / 2 - 1, 9, sw / 2 + wide / 2 + 1, bottom };
+	}
 
 	//#if MC >= 1.20.2
 	static final List<Part> ALL = List.of(SCOREBOARD, BOSS_BAR, TAB_LIST, ACTION_BAR, TITLES);
