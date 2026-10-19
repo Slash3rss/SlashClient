@@ -387,6 +387,8 @@ const EN: Record<string, string> = {
   'Przeglądaj': 'Browse',
   'Zainstalowane': 'Installed',
   'Szukaj na Modrinth…': 'Search Modrinth…',
+  'Szukaj w zainstalowanych…': 'Search installed…',
+  'Nic nie pasuje do „{0}”.': 'Nothing matches “{0}”.',
   'Importuj .mrpack': 'Import .mrpack',
   'Szukaj na CurseForge…': 'Search CurseForge…',
   'Skąd pobierać': 'Where to download from',

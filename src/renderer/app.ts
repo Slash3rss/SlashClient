@@ -2393,9 +2393,12 @@ function renderContent() {
   animateFrom = undefined;
   renderUpdatesBar(contentTab === 'installed' && !browseOnly ? forType : []);
   if (contentTab === 'installed' && !browseOnly) {
-    const cards = forType.map(installedCard);
+    const query = $<HTMLInputElement>('#installed-search').value;
+    const shown = forType.filter((i) => matchesInstalled(i, query));
+    const cards = shown.map(installedCard);
     list.replaceChildren(...(from !== undefined ? appear(cards) : cards));
     if (!forType.length) list.append(el('p', { className: 'muted appear', textContent: 'Nic tu jeszcze nie ma.' }));
+    else if (!shown.length) list.append(el('p', { className: 'muted appear', textContent: t('Nic nie pasuje do „{0}”.', query.trim()) }));
     $('#content-more').classList.add('hidden');
     return;
   }
@@ -2412,6 +2415,17 @@ function renderContent() {
   if (contentLoading) list.append(...skeletons('project', contentHits.length ? 3 : 6));
   else if (!contentHits.length) list.append(el('p', { className: 'muted appear', textContent: 'Brak wyników.' }));
   $('#content-more').classList.toggle('hidden', contentLoading || contentHits.length >= contentTotal);
+}
+
+/** Folds case and Polish letters, so "zrodla" finds "Źródła". */
+function folded(text: string): string {
+  return text.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l');
+}
+
+/** The installed-tab search: every word must be in the name, the file name or the version. */
+function matchesInstalled(item: { title: string; filename: string; versionNumber?: string }, query: string): boolean {
+  const hay = folded(`${item.title} ${item.filename} ${item.versionNumber ?? ''}`);
+  return folded(query).split(/\s+/).filter(Boolean).every((word) => hay.includes(word));
 }
 
 async function refreshInstalled(animate = false) {
@@ -2541,6 +2555,7 @@ document.querySelectorAll<HTMLButtonElement>('#content-type button').forEach((b)
   b.addEventListener('click', () => {
     contentType = b.dataset.type!;
     document.querySelectorAll('#content-type button').forEach((x) => x.classList.toggle('active', x === b));
+    $<HTMLInputElement>('#installed-search').value = '';
     contentHits = [];
     renderContent();
     searchContent();
@@ -2561,6 +2576,7 @@ $('#content-search').addEventListener('input', () => {
   clearTimeout(searchTimer);
   searchTimer = window.setTimeout(() => searchContent(), 300);
 });
+$('#installed-search').addEventListener('input', () => renderContent());
 $('#content-more').addEventListener('click', () => searchContent(true));
 $('#content-profile').addEventListener('change', () => {
   refreshInstalled(true);
