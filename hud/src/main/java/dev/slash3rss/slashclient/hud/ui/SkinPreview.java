@@ -162,6 +162,16 @@ public final class SkinPreview {
 	}
 	private final java.util.Map<String, Object> clothes = new java.util.HashMap<>();
 
+	/** A suit on the figure, its six parts posed as the figure's; its back gives way to a cape, wings or an elytra there. */
+	private Object suitModel(String id, boolean slimArms, ModelPart figure, boolean backTaken) {
+		Object model = suits.computeIfAbsent(slimArms ? id + "/slim" : id, k -> wrap(dev.slash3rss.slashclient.hud.Suits.bake(id, slimArms)));
+		ModelPart parts = root(model).getChild("slashclient");
+		for (String bone : java.util.List.of("head", "body", "right_arm", "left_arm", "right_leg", "left_leg")) parts.getChild(bone).loadPose(figure.getChild(bone).storePose());
+		dev.slash3rss.slashclient.hud.Suits.showParts(parts, id, backTaken ? dev.slash3rss.slashclient.hud.Suits.BACK : 0);
+		return model;
+	}
+	private final java.util.Map<String, Object> suits = new java.util.HashMap<>();
+
 	private static ModelPart root(Object model) {
 		return ((net.minecraft.client.model.Model<?>) model).root();
 	}
@@ -218,12 +228,15 @@ public final class SkinPreview {
 		java.util.List<FigureRender.Layer> layers = new java.util.ArrayList<>();
 		layers.add(new FigureRender.Layer(model, s.body().texturePath()));
 		boolean slimArms = s.model() == PlayerModelType.SLIM;
-		for (String slot : dev.slash3rss.slashclient.hud.Clothing.SLOTS) {
-			String item = look.worn(self, slot);
-			if (item != null) layer(layers, clothingModel(item, slimArms, root), dev.slash3rss.slashclient.hud.Clothing.texture(item));
-		}
 		// on the back: the elytra (on its slot's tab), else the wings, else the cape
 		String elytraId = look.elytra ? look.worn(self, "elytra") : null, wing = look.worn(self, "wings"), capeId = look.worn(self, "cape");
+		// a suit over all of it hides the clothing (and gives its back to what is worn there)
+		String suit = look.worn(self, "suit");
+		if (suit != null) layer(layers, suitModel(suit, slimArms, root, elytraId != null || wing != null || capeId != null), dev.slash3rss.slashclient.hud.Suits.texture(suit));
+		for (String slot : dev.slash3rss.slashclient.hud.Clothing.SLOTS) {
+			String item = suit != null && dev.slash3rss.slashclient.hud.Suits.HIDDEN.contains(slot) ? null : look.worn(self, slot);
+			if (item != null) layer(layers, clothingModel(item, slimArms, root), dev.slash3rss.slashclient.hud.Clothing.texture(item));
+		}
 		if (elytraId != null) layer(layers, elytraModel(), dev.slash3rss.slashclient.hud.Cosmetics.textureId("elytra", elytraId));
 		else if (wing != null) layer(layers, wingsModel(time), dev.slash3rss.slashclient.hud.Cosmetics.textureId("wings", wing));
 		else if (capeId != null) layer(layers, capeModel(swing), dev.slash3rss.slashclient.hud.Cosmetics.capeTexture(capeId));

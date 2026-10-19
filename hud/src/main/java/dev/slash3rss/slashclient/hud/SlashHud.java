@@ -86,6 +86,7 @@ public class SlashHud implements ClientModInitializer {
 		//$ // there only the clothing, drawn straight from the player
 		//$ net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback.EVENT.register((type, renderer, helper, context) -> {
 		//$ 	if (renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer player) helper.register(new ClothingLayer(player));
+		//$ 	if (renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer player) helper.register(new SuitLayer(player));
 		//$ });
 		//#endif
 		// the menu figure with everything on it, drawn as one picture with depth

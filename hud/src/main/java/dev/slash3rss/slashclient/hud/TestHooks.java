@@ -630,6 +630,30 @@ public final class TestHooks {
 		return String.join(",", Clothing.HATS) + "|" + String.join(",", Clothing.TOPS);
 	}
 
+	/** Freelook held (on) or let go: the camera can then be turned round the player, who keeps facing the same way (freelookTurn). */
+	public static void freelookHeld(boolean on) {
+		SlashHud.config.freelook = on;
+		Freelook.key.setDown(on);
+	}
+
+	/** The suits this mod can draw. */
+	public static String suits() {
+		return String.join(",", Suits.IDS);
+	}
+
+	/** Our own player in the game's Steve (wide arms) or Alex (slim arms) skin, for screenshots of both arm widths. */
+	public static void defaultSkin(boolean slim) {
+		String path = "entity/player/" + (slim ? "slim/alex" : "wide/steve");
+		//#if MC >= 1.21.9
+		Cosmetics.testSkin = new net.minecraft.core.ClientAsset.ResourceTexture(net.minecraft.resources.Identifier.withDefaultNamespace(path),
+			net.minecraft.resources.Identifier.withDefaultNamespace("textures/" + path + ".png"));
+		//#else
+		//$ Cosmetics.testSkin = net.minecraft.resources.Identifier.withDefaultNamespace("textures/" + path + ".png");
+		//#endif
+		Cosmetics.testSkinFor = net.minecraft.client.Minecraft.getInstance().getGameProfile().id();
+		Cosmetics.testSkinSlim = slim;
+	}
+
 	/** Turns our own player by this many degrees (a view from the side). */
 	public static void turn(float degrees) {
 		var p = net.minecraft.client.Minecraft.getInstance().player;
@@ -669,6 +693,7 @@ public final class TestHooks {
 
 	/** Our own player in their own skin again (after testSkin). */
 	public static void noTestSkin() {
+		Cosmetics.testSkinSlim = false;
 		Cosmetics.testSkin = null;
 		Cosmetics.testSkinFor = null;
 	}
@@ -918,7 +943,7 @@ public final class TestHooks {
 	/** Everything a player shows, slot=item sorted ("" for nothing), for the test to compare. */
 	public static String wornAll(java.util.UUID id) {
 		var out = new java.util.TreeMap<String, String>();
-		for (String slot : java.util.List.of("cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill")) {
+		for (String slot : java.util.List.of("cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit")) {
 			String item = Cosmetics.worn(id, slot);
 			if (item != null) out.put(slot, item);
 		}

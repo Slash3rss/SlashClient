@@ -49,6 +49,8 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 	private final Map<String, Pet> pets;
 	/** Each clothing item as a model, for wide and slim arms ("id" and "id/slim"), made when first worn. */
 	private final Map<String, ClothingModel> clothes = new HashMap<>();
+	/** Suits: over the whole body, instead of the clothing. */
+	private final SuitLayer suits = new SuitLayer();
 
 	/**
 	 * A clothing item: its boxes on the head, the body and the arms, posed like the player's own
@@ -200,10 +202,11 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		if (wing != null && !state.chestEquipment.is(Items.ELYTRA)) submitWings(pose, out, light, state, wing);
 		String pet = Cosmetics.worn(id, "pet");
 		if (pet != null && pets.containsKey(pet)) submitPet(pose, out, light, state, pets.get(pet), petTexture(pet));
+		suits.submit(pose, out, light, state, getParentModel(), id);
 		ClothingModel.Poses poses = null;
 		for (String slot : Clothing.SLOTS) {
 			String item = Cosmetics.worn(id, slot);
-			if (item == null || Clothing.covered(slot, state.headEquipment, state.chestEquipment)) continue;
+			if (item == null || Clothing.covered(slot, state.headEquipment, state.chestEquipment) || Suits.hides(id, slot)) continue;
 			if (poses == null) poses = poses(state);
 			boolean slim = state.skin.model() == PlayerModelType.SLIM;
 			ClothingModel model = clothes.computeIfAbsent(slim ? item + "/slim" : item, k -> new ClothingModel(Clothing.bake(item, slim)));

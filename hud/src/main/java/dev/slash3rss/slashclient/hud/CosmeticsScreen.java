@@ -21,14 +21,14 @@ import java.util.UUID;
 
 /**
  * Picking SlashClient cosmetics in the game: one slot at a time (cape, wings, elytra, trail,
- * aura, pet, hat, top, kill effect), the player's figure beside the panel trying on the item under
+ * aura, pet, hat, top, kill effect, suit), the player's figure beside the panel trying on the item under
  * the mouse (turned to show its back for what is worn there, running for a trail, turned by
  * dragging it; for kill effects in a world the real player, from behind). Choices go to the SlashClient
  * server through the launcher, for the Minecraft account being played when it is linked to the
  * SlashClient account (each can have a set of its own), else for the whole account.
  */
 public class CosmeticsScreen extends Screen {
-	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill"};
+	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit"};
 	/** Particles and pets have no picture of ours: an item that looks like them stands in. */
 	private static final Map<String, Item> ITEMS = Map.ofEntries(
 		Map.entry("hearts", Items.POPPY), Map.entry("sparks", Items.GLOWSTONE_DUST), Map.entry("snow", Items.SNOWBALL),
@@ -85,6 +85,9 @@ public class CosmeticsScreen extends Screen {
 	/** The figure's turn by dragging it (degrees), and whether it is being dragged now. */
 	private float dragTurn;
 	private boolean turning;
+	/** On the suits' tab the figure slowly turns round by itself (degrees so far), so all of the suit shows; and when it last moved. */
+	private float spin;
+	private long spinAt;
 	/** The item under the mouse in this slot, tried on by the figure ("" the "nothing" tile, null none); `hoverNow` is this frame's. */
 	private String tried, hoverNow;
 	private CameraType camera;
@@ -111,6 +114,7 @@ public class CosmeticsScreen extends Screen {
 		for (String id : Clothing.HATS) list.add(new Entry(id, "hat", id, "", true));
 		for (String id : Clothing.TOPS) list.add(new Entry(id, "top", id, "", true));
 		for (String id : KillEffects.IDS) list.add(new Entry(id, "kill", id, "", true));
+		for (String id : Suits.IDS) list.add(new Entry(id, "suit", id, "", true));
 		screen.items = List.copyOf(list);
 		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf", "kill", "firework"));
 		screen.character = "test";
@@ -149,6 +153,7 @@ public class CosmeticsScreen extends Screen {
 		slot = s;
 		scroll = 0;
 		dragTurn = 0;
+		spin = 0;
 		tried = null;
 		if (figure != null) figure.look.turnTo(turnFor(s));
 	}
@@ -340,7 +345,11 @@ public class CosmeticsScreen extends Screen {
 			if (slot.equals("cape") || slot.equals("trail")) set.remove("wings");
 			var look = figure.look;
 			look.wearing = set;
-			look.turn = turnFor(slot) + dragTurn;
+			// a suit turns round slowly while nobody drags it (about 12 seconds a round)
+			long now = System.nanoTime();
+			if (slot.equals("suit") && !turning && spinAt != 0) spin += Math.min(0.1f, (now - spinAt) / 1e9f) * 30;
+			spinAt = now;
+			look.turn = turnFor(slot) + dragTurn + spin;
 			look.running = slot.equals("trail");
 			look.elytra = slot.equals("elytra");
 			// while it is turned by hand the head does not chase the mouse
@@ -455,6 +464,9 @@ public class CosmeticsScreen extends Screen {
 			case "wings", "elytra" ->
 				// the back of one wing
 				g.blit(RenderPipelines.GUI_TEXTURED, Cosmetics.textureId(e.slot(), e.id()), x + (TILE_W - 18) / 2, y + (TILE_H - 30) / 2, 136, 8, 18, 30, 48, 80, 256, 128, alpha);
+			case "suit" ->
+				// the whole suit from the front, a little from above
+				g.blit(RenderPipelines.GUI_TEXTURED, Suits.icon(e.id()), x + (TILE_W - 30) / 2, y + (TILE_H - 30) / 2, 0, 0, 30, 30, 64, 64, 64, 64, alpha);
 			case "hat", "top" ->
 				// a view of it from the front, a little from above
 				g.blit(RenderPipelines.GUI_TEXTURED, Clothing.icon(e.id()), x + (TILE_W - 26) / 2, y + (TILE_H - 26) / 2, 0, 0, 26, 26, 64, 64, 64, 64, alpha);

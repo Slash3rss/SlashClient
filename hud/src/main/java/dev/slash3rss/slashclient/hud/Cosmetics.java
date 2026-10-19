@@ -56,7 +56,7 @@ public final class Cosmetics {
 	//#endif
 	static final List<String> PETS = List.of("allay", "vex", "bat", "parrot", "bee", "blaze", "phantom", "axolotl", "frog", "fox", "duszek_haze");
 	private static final Map<String, List<String>> SLOTS = Map.of("cape", CAPES, "wings", WINGS, "elytra", ELYTRAS,
-		"trail", TRAILS, "aura", AURAS, "pet", PETS, "hat", Clothing.HATS, "top", Clothing.TOPS, "kill", KillEffects.IDS);
+		"trail", TRAILS, "aura", AURAS, "pet", PETS, "hat", Clothing.HATS, "top", Clothing.TOPS, "kill", KillEffects.IDS, "suit", Suits.IDS);
 	private static final long EMOTE_MS = 3500;
 	private static final FontDescription EMOTE_FONT = Compat.font(Identifier.fromNamespaceAndPath(SlashHud.ID, "emote"));
 
@@ -169,14 +169,16 @@ public final class Cosmetics {
 	//$ static Identifier testSkin;
 	//#endif
 	static UUID testSkinFor;
+	/** The test skin has slim arms. */
+	static boolean testSkinSlim;
 
 	//#if MC >= 1.20.2
 	public static PlayerSkin withTestSkin(UUID id, PlayerSkin skin) {
 		if (testSkin == null || !id.equals(testSkinFor)) return skin;
 		//#if MC >= 1.21.9
-		return new PlayerSkin(testSkin, skin.cape(), skin.elytra(), net.minecraft.world.entity.player.PlayerModelType.WIDE, skin.secure());
+		return new PlayerSkin(testSkin, skin.cape(), skin.elytra(), testSkinSlim ? net.minecraft.world.entity.player.PlayerModelType.SLIM : net.minecraft.world.entity.player.PlayerModelType.WIDE, skin.secure());
 		//#else
-		//$ return new PlayerSkin(testSkin, null, skin.capeTexture(), skin.elytraTexture(), PlayerSkin.Model.WIDE, skin.secure());
+		//$ return new PlayerSkin(testSkin, null, skin.capeTexture(), skin.elytraTexture(), testSkinSlim ? PlayerSkin.Model.SLIM : PlayerSkin.Model.WIDE, skin.secure());
 		//#endif
 	}
 

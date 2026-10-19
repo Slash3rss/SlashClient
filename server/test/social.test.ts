@@ -385,6 +385,23 @@ describe('social server', () => {
     assert.ok(kills.every((i) => (i as { available?: boolean }).available));
     assert.ok(!(await askAs('launcher/0.9.13')).items.some((i) => i.slot === 'kill'));
     assert.ok(!(await askAs('mod/0.9.13')).items.some((i) => i.slot === 'kill'));
+    // suits: one at a time, free for everyone, only in their own slot, worn beside the clothing, and only for launchers and mods from 0.9.20 on
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { suit: 'astronaut', hat: 'crown' } })).body.loadout.suit, 'astronaut');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { suit: 'pirate' } })).body.loadout.suit, 'pirate');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { suit: 'tophat' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { top: 'knight' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { suit: 'ghost' } })).body.error, 'bad_item');
+    const ewaSuit = (await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc] })).body.cosmetics[ewaMc];
+    assert.equal(ewaSuit.suit, 'pirate');
+    assert.equal(ewaSuit.hat, 'crown');
+    await call('POST', '/v1/me', ewa.token, { loadout: { suit: '', hat: '' } });
+    assert.equal((await call('GET', '/v1/me', ewa.token)).body.loadout.suit, undefined);
+    const suits = (await askAs('launcher/0.9.20')).items.filter((i) => i.slot === 'suit');
+    assert.deepEqual(suits.map((i) => i.id), ['astronaut', 'samurai', 'pandasuit', 'dinosuit', 'knight', 'ghostsheet', 'mech', 'pirate']);
+    assert.ok(suits.every((i) => (i as { available?: boolean }).available));
+    assert.ok((await askAs('mod/0.9.20')).items.some((i) => i.slot === 'suit'));
+    assert.ok(!(await askAs('launcher/0.9.19')).items.some((i) => i.slot === 'suit'));
+    assert.ok(!(await askAs('mod/0.9.19')).items.some((i) => i.slot === 'suit'));
     const catalog = (await call('GET', '/v1/cosmetics', ewa.token)).body;
     assert.ok(catalog.items.some((i: any) => i.id === 'phoenix' && i.rank === 'partner' && !i.available));
     assert.ok(catalog.items.some((i: any) => i.id === 'angel' && i.slot === 'wings' && i.available));

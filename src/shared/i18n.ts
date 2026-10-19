@@ -150,6 +150,8 @@ const EN: Record<string, string> = {
   'Ubranie na skinie. Chowa się pod prawdziwym napierśnikiem.': 'Clothes over your skin. They hide under a real chestplate.',
   'Efekt zabójstwa': 'Kill effect',
   'Krótki pokaz cząsteczek tam, gdzie pada pokonany przez Ciebie mob lub gracz. Widzą go gracze z SlashClient.': 'A short burst of particles where a mob or player you defeat falls. Players with SlashClient see it.',
+  'Strój': 'Suit',
+  'Strój na całe ciało. Chowa czapkę i ubranie, a prawdziwa zbroja chowa część, którą zakrywa.': 'A costume for the whole body. It hides your hat and outfit, and real armour hides the part it covers.',
   ' Odtwórz': ' Play',
   'Usunąć ten klip?': 'Delete this clip?',
   'Brak klipów. Włącz „Klipy” w ustawieniach HUD w grze (Prawy Shift), a F8 zapisze ostatnie sekundy gry.': 'No clips. Turn on “Clips” in the HUD settings in the game (Right Shift), and F8 saves the last seconds of play.',
