@@ -952,3 +952,15 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 
 /* Odkrywaj: "Instaluj do [profile]" on one line, next to the title */
 .discover-target { align-items: center; gap: 10px; white-space: nowrap; }
+
+/* sharing a profile by code */
+.share-secrets { margin-top: 12px; }
+.share-warn { color: #fbbf24; font-size: 13px; margin: 0 0 8px; }
+.share-result { margin: 4px 0 8px; }
+.share-code-row { gap: 10px; align-items: center; }
+.share-code { color: var(--text-primary); font-size: 26px; font-weight: 700; letter-spacing: .12em; padding: 6px 14px; border-radius: 10px; background: rgba(255, 255, 255, .06); border: 1px solid var(--glass-border); user-select: all; }
+.share-mine-title { margin: 18px 0 8px; font-size: 14px; }
+.share-mine .share-code-small { font-family: monospace; font-weight: 700; letter-spacing: .06em; }
+.share-code-form { gap: 10px; align-items: flex-end; margin-top: 14px; }
+.share-code-form .grow { flex: 1; }
+#pack-source-code { text-transform: uppercase; letter-spacing: .1em; }
