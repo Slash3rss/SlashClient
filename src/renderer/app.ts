@@ -1,5 +1,6 @@
 import { SkinViewer, WalkingAnimation, IdleAnimation } from 'skinview3d';
 import { CosmeticPreview, cosmeticIcon } from './cosmeticPreview';
+import { MOVE_ICONS, ringThumbnail } from './ringMovePreview';
 import { OUR_PET_MODELS } from './ourPetModels';
 import { gameIcon } from './gameIcon';
 import { createFriends, socialErrorText } from './friends';
@@ -3071,11 +3072,12 @@ function renderCapeGrid() {
 
 // ---------- SlashClient cosmetics (seen by other players with the launcher) ----------
 
-type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill';
+type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'ring' | 'move';
 const SLOTS: [Slot, string, string][] = [
   ['cape', 'Peleryna', 'fa-flag'], ['wings', 'Skrzydła', 'fa-dove'], ['elytra', 'Elytra', 'fa-feather'],
   ['trail', 'Ślad', 'fa-shoe-prints'], ['aura', 'Aura', 'fa-wand-sparkles'], ['pet', 'Pupil', 'fa-paw'],
   ['hat', 'Na głowę', 'fa-hat-cowboy'], ['top', 'Ubranie', 'fa-shirt'], ['kill', 'Efekt zabójstwa', 'fa-skull-crossbones'],
+  ['ring', 'Krąg pod stopami', 'fa-circle-dot'], ['move', 'Efekt ruchu', 'fa-person-running'],
 ];
 /** Without the server (or before 0.8) only the first eight capes are known. */
 const SLASH_CAPES: [string, string][] = [
@@ -3097,6 +3099,9 @@ const ITEM_ICONS: Record<string, string> = {
   lightning: 'fa-bolt-lightning', blood: 'fa-droplet', heartburst: 'fa-heart-crack', firework: 'fa-wand-magic-sparkles',
   soulrise: 'fa-fire-flame-curved', enderpoof: 'fa-eye', confetti: 'fa-champagne-glasses', blast: 'fa-explosion',
   shatter: 'fa-icicles', coins: 'fa-coins', ghost: 'fa-ghost', flamering: 'fa-ring',
+  // movement effects (ringMovePreview.ts has their colours)
+  move_steps: 'fa-shoe-prints', move_jump: 'fa-cloud', move_landing: 'fa-burst', move_arrows: 'fa-location-arrow',
+  move_sprint: 'fa-bolt', move_bubbles: 'fa-circle-dot', move_petals: 'fa-spa',
 };
 /** The kill effects' icons in their own colours (the other icons are the accent's). */
 const KILL_ICON_COLORS: Record<string, string> = {
@@ -3151,6 +3156,13 @@ function cosmeticPicture(slot: Slot, id: string): Node {
     i.style.color = KILL_ICON_COLORS[id] ?? '';
     return i;
   }
+  // a ring is our own picture; a movement effect gets its icon in its colour
+  if (slot === 'ring') return ringThumbnail('img/rings/', id);
+  if (slot === 'move') {
+    const i = el('i', { className: `fa-solid ${ITEM_ICONS[id] ?? 'fa-person-running'} cosmetic-icon` });
+    i.style.color = MOVE_ICONS[id]?.[1] ?? '';
+    return i;
+  }
   const icon = gamePictures && cosmeticIcon(gamePictures, id);
   if (icon) return gameIcon(icon.srcs, icon.tint);
   return el('i', { className: `fa-solid ${ITEM_ICONS[id] ?? 'fa-star'} cosmetic-icon` });
@@ -3195,6 +3207,8 @@ async function renderSlashCapes() {
     : cosmeticSlot === 'hat' ? t('Coś na głowę. Chowa się pod prawdziwym hełmem.')
     : cosmeticSlot === 'top' ? t('Ubranie na skinie. Chowa się pod prawdziwym napierśnikiem.')
     : cosmeticSlot === 'kill' ? t('Krótki pokaz cząsteczek tam, gdzie pada pokonany przez Ciebie mob lub gracz. Widzą go gracze z SlashClient.')
+    : cosmeticSlot === 'ring' ? t('Świecący krąg na ziemi pod Twoimi stopami, powoli się obraca. Widzą go gracze z SlashClient.')
+    : cosmeticSlot === 'move' ? t('Cząsteczki, gdy chodzisz, skaczesz, lądujesz, biegasz, pływasz lub strzelasz. Widzą je gracze z SlashClient.')
     : t('Mały towarzysz lata przy Twoim ramieniu.');
   const current = worn[cosmeticSlot] ?? '';
   const tile = (item: CatalogItem | undefined, content: Node) => {
@@ -3239,8 +3253,8 @@ async function renderSlashCapes() {
   // the preview wears all of it: wings in the cape's place, the pet, trail and aura around
   cosmeticPreview ??= new CosmeticPreview(skinViewer, pictures);
   cosmeticPreview.pictures = pictures;
-  // the kill effect plays on the figure only while its tab is open (every few seconds it would distract)
-  cosmeticPreview.show({ ...worn, kill: cosmeticSlot === 'kill' ? worn.kill : undefined });
+  // the kill and movement effects play on the figure only while their tab is open (they would distract)
+  cosmeticPreview.show({ ...worn, kill: cosmeticSlot === 'kill' ? worn.kill : undefined, move: cosmeticSlot === 'move' ? worn.move : undefined });
   stopCapeAnimation();
   if (worn.wings) await skinViewer.loadCape(`img/wings/${worn.wings}.png`, { backEquipment: 'elytra' });
   else if (cosmeticSlot === 'elytra' && worn.elytra) await skinViewer.loadCape(`img/elytra/${worn.elytra}.png`, { backEquipment: 'elytra' });

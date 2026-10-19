@@ -3,6 +3,7 @@ import { PET_MODELS, type PetPart } from './petModels';
 import { OUR_PET_FRAMES, OUR_PET_MODELS } from './ourPetModels';
 import { boxQuads, clothingItem, layout, slimBox, type Bone, type ClothingBox } from '../shared/clothing';
 import { KillEffectPreview } from './killEffects';
+import { MoveEffectPreview, RingPreview } from './ringMovePreview';
 import type { SkinViewer } from 'skinview3d';
 
 /**
@@ -10,7 +11,8 @@ import type { SkinViewer } from 'skinview3d';
  * (the mob's own model and picture), the particles of trails and auras, made of the game's own
  * particle pictures (read from a downloaded game; without one, the preview shows neither), and the
  * clothing, our own boxes and pictures (src/shared/clothing.ts) fixed to the figure's head, body and arms,
- * and a kill effect's burst every few seconds (killEffects.ts).
+ * a kill effect's burst every few seconds (killEffects.ts), the ring under the feet and a movement effect's
+ * loop (ringMovePreview.ts).
  * Units are the model's pixels: feet at y -16, shoulders at 8, the face towards +z.
  */
 
@@ -109,10 +111,14 @@ export class CosmeticPreview {
   private ourPet?: { id: string; material: MeshStandardMaterial; frame: number };
 
   private kills: KillEffectPreview;
+  private ring: RingPreview;
+  private moves: MoveEffectPreview;
 
-  /** `clothing` is where the clothing's pictures are (<id>.png), `pets` our own pets' (<id>_<frame>.png). */
-  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/', private pets = 'img/pets/') {
+  /** `clothing` is where the clothing's pictures are (<id>.png), `pets` our own pets' (<id>_<frame>.png), `rings` the rings'. */
+  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/', private pets = 'img/pets/', rings = 'img/rings/') {
     this.kills = new KillEffectPreview(viewer.playerWrapper);
+    this.ring = new RingPreview(viewer.playerWrapper, rings);
+    this.moves = new MoveEffectPreview(viewer.playerWrapper, viewer.playerObject);
     const tick = (now: number) => {
       this.update(Math.min(0.1, (now - this.last) / 1000), now / 1000);
       this.last = now;
@@ -146,10 +152,12 @@ export class CosmeticPreview {
 
   /**
    * Shows what a set wears (the cape, wings and elytra are the viewer's own back equipment);
-   * `kill` plays its burst every few seconds (shown only while its tab is open: it would distract).
+   * `kill` plays its burst every few seconds and `move` its loop (shown only while their tab is open: they would distract).
    */
-  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string }) {
+  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string; ring?: string; move?: string }) {
     this.kills.set(set.kill);
+    this.ring.set(set.ring);
+    this.moves.set(set.move);
     this.wearing = { hat: set.hat || undefined, top: set.top || undefined };
     this.dress();
     this.trail = set.trail ? EFFECTS[set.trail] : undefined;
@@ -329,6 +337,8 @@ export class CosmeticPreview {
     // a skin with the other arms' width came: the sleeves follow
     this.dress();
     this.kills.update(dt);
+    this.ring.update(time * 1000);
+    this.moves.update(dt);
     if (this.pet) {
       // by the shoulder: the model's feet (24 px under its origin) a little above it, bobbing
       const scale = this.pet instanceof Sprite ? 0 : this.pet.scale.x;
@@ -380,6 +390,8 @@ export class CosmeticPreview {
     for (const p of this.particles) this.viewer.playerWrapper.remove(p.sprite);
     this.particles = [];
     this.kills.dispose();
+    this.ring.dispose();
+    this.moves.dispose();
     for (const t of this.textures.values()) t.dispose();
   }
 }
