@@ -490,9 +490,6 @@ export function createApp(cfg: Config) {
   const groups = createGroups({
     db, authed, push, limitMessages, limitChanges: limitGroupChanges,
     clanTag: (clanId) => clans.tagOfClan(clanId),
-  // muted friends (mutes.ts) and pictures in the chat (chatImages.ts)
-  const mutes = muteRoutes({
-    sql: db.sql, authed, body, push, friendList, areFriends: (a, b) => db.areFriends(a, b),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -500,6 +497,19 @@ export function createApp(cfg: Config) {
   const clans = createClans({
     db, authed, admin, body, push, groups, limitChanges: limitGroupChanges,
     status: (userId) => presenceOf(userId).status,
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+  clanTag = clans.tagOf;
+
+  // muted friends (mutes.ts) and pictures in the chat (chatImages.ts)
+  const mutes = muteRoutes({
+    sql: db.sql, authed, body, push, friendList, areFriends: (a, b) => db.areFriends(a, b),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
   const images = chatImageRoutes({
     sql: db.sql, authed, areFriends: (a, b) => db.areFriends(a, b), dir: cfg.imagesDir ?? path.join(path.dirname(cfg.dbFile), 'chat-images'),
     limits: cfg.imageLimits, limitUploads: rateLimiter(10), limitDownloads: rateLimiter(120),
@@ -507,7 +517,6 @@ export function createApp(cfg: Config) {
       throw new HttpError(status, code);
     },
   });
-  clanTag = clans.tagOf;
 
   const routes: [string, RegExp, Handler][] = [
     // the request log: newest first, with who asked (handles looked up once per request)

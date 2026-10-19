@@ -1295,7 +1295,6 @@ const EN: Record<string, string> = {
   'Usuń link': 'Delete link',
   'Usunąć ten link? Nikt już go nie otworzy.': 'Delete this link? Nobody will be able to open it any more.',
   'Klip': 'Clip',
-  'Zrzut ekranu': 'Screenshot',
   'Wyświetlenia: {0}': 'Views: {0}',
   'Wygasa {0}': 'Expires {0}',
   'Przytnij': 'Trim',
