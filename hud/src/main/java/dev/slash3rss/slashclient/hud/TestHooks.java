@@ -586,6 +586,39 @@ public final class TestHooks {
 		SlashHud.config.dungeonSelfHead = round;
 	}
 
+	/** The minimap on or off, and how it looks. */
+	public static void minimap(boolean on, String shape, boolean rotate, float zoom, int size) {
+		SlashHud.config.placement("minimap").enabled = on;
+		SlashHud.config.minimapShape = shape;
+		SlashHud.config.minimapRotate = rotate;
+		SlashHud.config.minimapZoom = zoom;
+		SlashHud.config.minimapSize = size;
+	}
+
+	/** What the minimap knows: chunks, paints and their average time. */
+	public static String minimapSummary() {
+		return Minimap.summary();
+	}
+
+	/** The minimap's colour (0xFFRRGGBB, 0 unknown) and height of a column. */
+	public static int[] minimapColumn(int x, int z) {
+		return new int[] { MinimapTerrain.sample(x, z), MinimapTerrain.heightAt(x, z) };
+	}
+
+	/** A waypoint for the minimap at a place, or all of the test's ones ("Mini…") removed. */
+	public static void minimapWaypoint(String name, int x, int y, int z) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		if (name == null) {
+			Waypoints.here(mc).removeIf(p -> p.name.startsWith("Mini"));
+		} else {
+			var p = Waypoints.add(mc, name);
+			p.x = x;
+			p.y = y;
+			p.z = z;
+		}
+		Waypoints.save();
+	}
+
 	/** The keys window, and how many SlashClient keys it lists. */
 	public static int openKeybinds() {
 		var mc = net.minecraft.client.Minecraft.getInstance();
