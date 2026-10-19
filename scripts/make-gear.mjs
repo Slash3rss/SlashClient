@@ -209,7 +209,7 @@ const PAINT = {
     if (t > 0.78 - grain(72, px, py) * 0.06) return fur(hex('#f6f2ea'), 73, px, py, t);
     return fur(face === 'down' ? hex('#ef9a54') : hex('#e07a2e'), 74, px, py, t);
   },
-  kitsune({ face, px, py, t }) {
+  kitsunetail({ face, px, py, t }) {
     if (t > 0.72 - grain(75, px, py) * 0.08) return fur(hex('#fbfaf6'), 76, px, py, t);
     // a red flame mark half way along, on top
     if (face === 'up' && Math.abs(t - 0.45) < 0.08) return hex('#d8433a');

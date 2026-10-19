@@ -13,7 +13,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
  */
 public class GameGear implements FabricClientGameTest {
 	private static final String BACKS = "backpack,quiver,katana,guitar,jetpack,angelpack,minichest,backshield";
-	private static final String TAILS = "cattail,foxtail,kitsune,deviltail,dragontail,wolftail,squirreltail";
+	private static final String TAILS = "cattail,foxtail,kitsunetail,deviltail,dragontail,wolftail,squirreltail";
 
 	@Override
 	public void runTest(ClientGameTestContext context) {

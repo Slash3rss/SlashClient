@@ -628,7 +628,7 @@ describe('social server', () => {
 
   it('wears something on the face and on top of the head, each in its own slot', async () => {
     const ola = await login('OlaFace');
-    const mc = '12121212-3434-5656-7878-909090909090';
+    const mc = '13131313-4545-6767-8989-a0a0a0a0a0a0';
     await minecraftLogin('OlaFace', mc.replace(/-/g, ''), ola.token);
     await call('POST', '/v1/mc/link', ola.token, { uuid: mc });
     // with a hat at once: they go with it (the clients hide what the hat would go through)

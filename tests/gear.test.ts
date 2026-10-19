@@ -55,7 +55,7 @@ describe('back items and tails', () => {
     // running raises it
     assert.ok(tailAngles(fox, 0, 0, 0, 1, 0, false)[0] > tailAngles(fox, 0, 0, 0, 0, 0, false)[0]);
     // the kitsune's tails fan out
-    const kitsune = TAILS.find((t) => t.id === 'kitsune')!;
+    const kitsune = TAILS.find((t) => t.id === 'kitsunetail')!;
     assert.ok(tailAngles(kitsune, 0, 0, 0, 0, 0, false)[1] < -0.5 && tailAngles(kitsune, 4, 0, 0, 0, 0, false)[1] > 0.5);
     for (let t = 0; t < 2; t += 0.1) assert.ok(flameScale(t, 0) > 0.4 && flameScale(t, 1) < 1.1);
   });

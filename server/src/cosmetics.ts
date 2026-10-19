@@ -232,7 +232,7 @@ export const ITEMS: Item[] = [
   { id: 'backshield', slot: 'back', name: 'Tarcza', since: '0.9.20' },
   { id: 'cattail', slot: 'tail', name: 'Koci ogon', since: '0.9.20' },
   { id: 'foxtail', slot: 'tail', name: 'Lisi ogon', since: '0.9.20' },
-  { id: 'kitsune', slot: 'tail', name: 'Kitsune', since: '0.9.20' },
+  { id: 'kitsunetail', slot: 'tail', name: 'Kitsune', since: '0.9.20' },
   { id: 'deviltail', slot: 'tail', name: 'Diabelski ogon', since: '0.9.20' },
   { id: 'dragontail', slot: 'tail', name: 'Smoczy ogon', since: '0.9.20' },
   { id: 'wolftail', slot: 'tail', name: 'Wilczy ogon', since: '0.9.20' },

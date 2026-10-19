@@ -168,7 +168,7 @@ export const TAILS: TailItem[] = [
   { id: 'cattail', slot: 'tail', name: 'Koci ogon', droop: -0.8, curl: 0.3, chains: [{ segments: even(6, 1.5, 2.6) }] },
   { id: 'foxtail', slot: 'tail', name: 'Lisi ogon', droop: -0.85, curl: 0.12, chains: [{ segments: ([[2.2, 2.6], [3, 3], [3.8, 3.2], [3.8, 3.2], [3, 2.8], [2, 2.2]] as [number, number][]).map(([w, len]) => ({ size: [w, w * 0.95, len] as [number, number, number] })) }] },
   // a fan of five rising behind
-  { id: 'kitsune', slot: 'tail', name: 'Kitsune', droop: -0.1, curl: 0.25, chains: [
+  { id: 'kitsunetail', slot: 'tail', name: 'Kitsune', droop: -0.1, curl: 0.25, chains: [
     { segments: kitsune, spread: -0.9, lift: 0.05 },
     { segments: kitsune, spread: -0.45, lift: 0.3 },
     { segments: kitsune, spread: 0, lift: 0.5 },
