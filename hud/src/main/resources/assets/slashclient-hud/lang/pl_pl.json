@@ -155,6 +155,7 @@
 	"slashclient-hud.toggled": "(przełączony)",
 	"slashclient-hud.chat.all": "Wszystko",
 	"slashclient-hud.chat.tabs": "Zakładki czatu",
+	"slashclient-hud.chat.windowsOnly": "Wyciągnięte zakładki tylko w swoich oknach (bez „Wszystko”)",
 	"slashclient-hud.chat.name": "Nazwa",
 	"slashclient-hud.chat.patterns": "Co wyłapywać",
 	"slashclient-hud.chat.hint.text": "słowa po przecinku; {nick} = Twój nick",

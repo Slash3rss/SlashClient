@@ -272,6 +272,26 @@ public final class TestHooks {
 		Waypoints.save();
 	}
 
+	/** What the chat shows now (its wrapped lines, after the open tab's filter), newest first. */
+	public static String visibleChat() {
+		var chat = Compat.chat(net.minecraft.client.Minecraft.getInstance());
+		StringBuilder sb = new StringBuilder();
+		for (Object o : ((dev.slash3rss.slashclient.hud.mixin.ChatComponentAccessor) chat).slashclient$lines()) {
+			((net.minecraft.client.multiplayer.chat.GuiMessage.Line) o).content().accept((i, style, cp) -> {
+				sb.appendCodePoint(cp);
+				return true;
+			});
+			sb.append(" | ");
+		}
+		return sb.toString();
+	}
+
+	/** The setting that keeps pulled-out tabs' lines out of "All". */
+	public static void chatWindowsOnly(boolean on) {
+		SlashHud.config.chatWindowsOnly = on;
+		ChatTabs.reapply();
+	}
+
 	/** The chat's messages, newest first, as plain text. */
 	public static String chatLines() {
 		var chat = Compat.chat(net.minecraft.client.Minecraft.getInstance());

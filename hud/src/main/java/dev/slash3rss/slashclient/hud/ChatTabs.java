@@ -136,11 +136,18 @@ public final class ChatTabs {
 		tab.window = HudConfig.Placement.at(0, 0);
 		int w = ChatWindows.width(1f), h = ChatWindows.height(1f);
 		ChatWindows.moveTo(tab, mx - w / 2, my - 6, screen.width, screen.height);
+		// the window starts with what the tab already caught, not empty
+		ChatWindows.backfill(tab);
 		unread.remove(index);
 		if (active == index) active = -1;
 		SlashHud.config.save();
 		apply();
 		mc.execute(() -> Compat.relayout(screen));
+	}
+
+	/** The settings changed what "All" shows: the chat's filter again. */
+	public static void reapply() {
+		apply();
 	}
 
 	/** Sets the game's chat filter for the open tab. */
@@ -149,8 +156,10 @@ public final class ChatTabs {
 		if (active >= SlashHud.config.chatTabs.size()) active = -1;
 		HudConfig.ChatTab tab = active < 0 ? null : SlashHud.config.chatTabs.get(active);
 		String query = search;
-		// "All" leaves out what pulled-out tabs show in their own windows
-		List<HudConfig.ChatTab> out = SlashHud.config.chatTabs.stream().filter(t -> t.window != null).toList();
+		// "All" shows everything, unless the player wants what pulled-out tabs catch only in their windows
+		List<HudConfig.ChatTab> out = SlashHud.config.chatWindowsOnly
+			? SlashHud.config.chatTabs.stream().filter(t -> t.window != null).toList()
+			: List.of();
 		Compat.setChatFilter(chat, m -> {
 			String text = m.content().getString();
 			boolean inTab = tab == null ? out.stream().noneMatch(t -> matches(t, text)) : matches(tab, text);

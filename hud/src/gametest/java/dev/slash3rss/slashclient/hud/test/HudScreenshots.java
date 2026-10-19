@@ -195,6 +195,9 @@ public class HudScreenshots implements FabricClientGameTest {
 				if (got != Boolean.parseBoolean(c[1])) throw new AssertionError("Mention of \"" + c[0] + "\": " + got);
 			}
 
+			// a private message before the tab comes out: the window must start with it, not empty
+			world.getServer().runCommand("tellraw @a \"[MSG] Steve -> me: written before the window\"");
+			context.waitTicks(3);
 			// pulling the "PM" tab out of the row with the mouse: it becomes a window of its own
 			double[] pm = context.computeOnClient(mc -> TestHooks.chatTabCenter("PM"));
 			if (pm == null) throw new AssertionError("No PM tab in the chat");
@@ -206,6 +209,14 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.mouse("release", new double[] { 330, 90 }));
 			context.waitTicks(5);
 			if (!"pulled-out".equals(context.computeOnClient(mc -> TestHooks.chatTabState("PM")))) throw new AssertionError("The PM tab did not come out of the chat");
+			if (context.computeOnClient(mc -> TestHooks.chatWindowLines("PM")) < 1) throw new AssertionError("The pulled-out PM window did not start with the earlier message");
+			// "All" still shows everything, unless the setting keeps a window's lines to the window
+			if (!context.computeOnClient(mc -> TestHooks.visibleChat()).contains("written before the window")) throw new AssertionError("\"All\" lost the pulled-out tab's line: " + context.computeOnClient(mc -> TestHooks.visibleChat()));
+			context.runOnClient(mc -> TestHooks.chatWindowsOnly(true));
+			context.waitTicks(2);
+			if (context.computeOnClient(mc -> TestHooks.visibleChat()).contains("written before the window")) throw new AssertionError("With the setting on, \"All\" still shows the window's line");
+			context.runOnClient(mc -> TestHooks.chatWindowsOnly(false));
+			context.waitTicks(2);
 			world.getServer().runCommand("tellraw @a \"[MSG] Steve -> me: are you coming?\"");
 			world.getServer().runCommand("tellraw @a \"[MSG] Alex -> me: ok, see you\"");
 			world.getServer().runCommand("tellraw @a \"Hello again everyone\"");

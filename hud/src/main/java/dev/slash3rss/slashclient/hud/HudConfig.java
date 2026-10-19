@@ -213,6 +213,8 @@ public final class HudConfig {
 	public boolean chatTimestamps = false;
 	/** A chime when someone writes your nick, and the "@" badge over the closed chat. */
 	public boolean chatMentions = true;
+	/** What a pulled-out chat tab catches shows only in its window, not also in "All". */
+	public boolean chatWindowsOnly = false;
 	/** "vanilla", one of Crosshair.PRESETS, or "custom" for the painted crosshairPattern. */
 	public String crosshair = "vanilla";
 	public String crosshairPattern;
@@ -497,6 +499,7 @@ public final class HudConfig {
 		heldItemZ = other.heldItemZ;
 		chatTimestamps = other.chatTimestamps;
 		chatMentions = other.chatMentions;
+		chatWindowsOnly = other.chatWindowsOnly;
 		crosshair = other.crosshair;
 		crosshairColor = other.crosshairColor;
 		crosshairSize = other.crosshairSize;

@@ -43,6 +43,25 @@ public final class ChatWindows {
 		}
 	}
 
+	/**
+	 * Fills a window with the tab's lines from the chat's history (oldest first), as if it had been
+	 * out all along: a freshly pulled-out tab, or after a restart. They count as old, so in the game
+	 * they don't flash up; with the chat open they are there.
+	 */
+	static void backfill(HudConfig.ChatTab tab) {
+		var chat = Compat.chat(Minecraft.getInstance());
+		List<Object> all = ((dev.slash3rss.slashclient.hud.mixin.ChatComponentAccessor) chat).slashclient$allMessages();
+		ArrayDeque<Line> list = new ArrayDeque<>();
+		// the history is newest first, with our time stamp in front of the text the tab matches
+		for (Object o : all) {
+			if (list.size() >= KEEP) break;
+			Component shown = ((net.minecraft.client.multiplayer.chat.GuiMessage) o).content();
+			String plain = shown.getString().replaceFirst("^\\[[0-9:]{4,8}\\] ", "");
+			if (ChatTabs.matches(tab, plain)) list.addFirst(new Line(shown, 0L));
+		}
+		lines.put(tab.name, list);
+	}
+
 	static int height(float scale) {
 		return Math.round((TITLE + LINES * LINE_H + 5) * scale);
 	}
@@ -90,6 +109,8 @@ public final class ChatWindows {
 		// the newest lines that fit, broken to the window's width, oldest first
 		List<FormattedCharSequence> shown = new ArrayList<>();
 		List<Float> alpha = new ArrayList<>();
+		// first sight of a window (the game just started): what the chat already holds for it
+		if (!lines.containsKey(tab.name)) backfill(tab);
 		ArrayDeque<Line> list = lines.getOrDefault(tab.name, new ArrayDeque<>());
 		var it = list.descendingIterator();
 		while (it.hasNext() && shown.size() < LINES) {
