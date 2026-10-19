@@ -1,4 +1,5 @@
 import { locale, t } from '../shared/i18n';
+import { PlayingWatch, type PlayingNews } from './friendActivity';
 import { createParty, type Party } from './party';
 import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
 
@@ -11,11 +12,14 @@ type Status = 'online' | 'away' | 'busy' | 'invisible';
 interface Activity { kind: 'launcher' | 'menu' | 'singleplayer' | 'server'; version?: string; server?: string; since?: number }
 interface Presence { status: 'online' | 'away' | 'busy' | 'offline'; activity?: Activity; lastSeen?: number; /** their world is open to LAN: joinable through SlashClient */ lan?: boolean }
 interface Person { id: string; handle: string; name: string; avatar: string }
-interface Friend extends Person { presence: Presence; unread: number; lastMessageAt: number; since: number }
+/** `muted`: on the account; their messages come, but no toast or notification (server 0.9.21+). */
+interface Friend extends Person { presence: Presence; unread: number; lastMessageAt: number; since: number; muted?: boolean }
 interface Request extends Person { at: number }
 interface Me extends Person { showServer: boolean; providers: string[]; minecraft?: { uuid: string; name: string }[] }
 interface Invite { server: string; version?: string; party?: string }
-interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite; waypoint?: SharedWaypoint; encrypted?: boolean; unreadable?: boolean }
+/** A picture in the chat (the launcher decrypts it); `unreadable`: its key was for another launcher. */
+interface ChatImage { id: string; w?: number; h?: number; unreadable?: boolean }
+interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite; waypoint?: SharedWaypoint; image?: ChatImage; encrypted?: boolean; unreadable?: boolean }
 interface SocialState { url: string; user?: Me; connected: boolean; status: Status }
 interface FriendList { friends: Friend[]; incoming: Request[]; outgoing: Request[] }
 
@@ -33,6 +37,8 @@ export interface FriendsDeps {
   hasMinecraft?: () => boolean;
   /** Opens a friend's achievements. */
   showAchievements?: (id: string, name: string) => void;
+  /** A game is running: "started playing" stays in the game's own toast instead of a system notification. */
+  gameRunning?: () => boolean;
 }
 
 const MAX_MESSAGE = 2000;
@@ -74,6 +80,11 @@ export function socialErrorText(code: string): string {
     too_many: t('Za dużo osób naraz (maks. 7 znajomych).'),
     bad_server: t('To nie wygląda na adres serwera.'),
     not_leader: t('Tylko lider może rozwiązać drużynę.'),
+    no_keys: t('Znajomy ma starszy launcher bez szyfrowania: obraz nie został wysłany.'),
+    too_large: t('Obraz jest za duży.'),
+    image_quota: t('Wysłano dziś za dużo obrazów. Spróbuj jutro.'),
+    not_an_image: t('To nie jest obraz.'),
+    bad_image: t('Nie udało się wysłać obrazu. Spróbuj ponownie.'),
   };
   return texts[code] ?? t('Błąd serwera znajomych ({0}).', code);
 }
@@ -89,6 +100,12 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   const typing = new Map<string, ReturnType<typeof setTimeout>>();
   let lastTypingSent = 0;
   let signingIn = false;
+  /** Who started playing: toasts only for news, not for reconnects (friendActivity.ts). */
+  const watch = new PlayingWatch();
+  /** Launcher setting: a toast when a friend comes online or starts playing. */
+  let notifyPlaying = true;
+  /** Pictures already decrypted, as data: addresses. */
+  const pictures = new Map<string, Promise<string>>();
   /** The code of a "type this code" sign-in (Microsoft) while it waits. */
   let loginCode: { code: string; url: string } | undefined;
   api.on('social:loginCode', (c: { code: string; url: string }) => {
@@ -160,6 +177,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   // ---------- loading ----------
 
   async function refreshState() {
+    notifyPlaying = (await api.getStore().catch(() => undefined))?.settings?.notifyFriendsPlaying !== false;
     state = await api.socialState();
     health = await api.socialHealth().catch(() => undefined);
     healthError = !health;
@@ -171,6 +189,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   async function refreshList() {
     try {
       list = await api.socialApi('GET', '/v1/friends');
+      // whoever is online or playing now is not news
+      for (const f of list.friends) watch.know(f.id, f.presence);
     } catch (err) {
       if (!String((err as Error).message).includes('social:offline')) deps.toast(deps.errorText(err), true);
     }
@@ -326,7 +346,9 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     input = control<HTMLTextAreaElement>('textarea', { rows: 1, placeholder: t('Napisz wiadomość…'), maxLength: MAX_MESSAGE });
     counter = el('small', { className: 'fr-counter' });
     sendBtn = el('button', { type: 'submit', className: 'primary', title: t('Wyślij') }, icon('fa-paper-plane'));
-    composer = el('form', { className: 'fr-composer' }, input, counter, sendBtn);
+    const pictureBtn = el('button', { type: 'button', className: 'icon-btn', title: t('Wyślij obraz (zaszyfrowany)') }, icon('fa-image'));
+    pictureBtn.addEventListener('click', () => sendPicture(pictureBtn));
+    composer = el('form', { className: 'fr-composer' }, pictureBtn, input, counter, sendBtn);
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
         e.preventDefault();
@@ -425,8 +447,19 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         logout),
       el('div', { className: 'row' }, status, state!.connected ? '' : el('small', { className: 'fr-error', textContent: t('Łączenie…') })),
       el('label', { className: 'check fr-share' }, share, t(' Pokazuj znajomym, na jakim serwerze gram')),
+      el('label', { className: 'check fr-share' }, playingBox(), t(' Powiadamiaj, gdy znajomi zaczynają grać')),
       el('div', { className: 'fr-linked-row' }, el('small', { className: 'muted', textContent: t('Logowanie:') }), linked),
       minecraftRow(me));
+  }
+
+  /** The launcher's own setting (not the account's): toasts about friends coming online and starting a game. */
+  function playingBox() {
+    const box = control<HTMLInputElement>('input', { type: 'checkbox', checked: notifyPlaying });
+    box.addEventListener('change', async () => {
+      notifyPlaying = box.checked;
+      await api.saveSettings({ notifyFriendsPlaying: box.checked }).catch(() => undefined);
+    });
+    return box;
   }
 
   function renderList() {
@@ -450,7 +483,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       const row = el('button', { type: 'button', className: `fr-row fr-friend${f.id === selected ? ' selected' : ''}${f.presence.status === 'offline' ? ' is-offline' : ''}` },
         avatar(f, f.presence),
         el('div', { className: 'grow fr-names' }, el('b', { textContent: f.name }), el('small', { className: 'muted', textContent: typing.has(f.id) ? t('pisze…') : statusLine(f.presence) })),
-        f.unread ? el('span', { className: 'fr-unread', textContent: String(f.unread) }) : '');
+        f.muted ? el('i', { className: 'fa-solid fa-bell-slash fr-muted', title: t('Wyciszony') }) : '',
+        f.unread ? el('span', { className: `fr-unread${f.muted ? ' muted' : ''}`, textContent: String(f.unread) }) : '');
       row.addEventListener('click', () => select(f.id));
       sections.push(row);
     }
@@ -540,6 +574,21 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     }
   }
 
+  /** A picture file to the open chat: the launcher scales it, encrypts it and sends it. */
+  async function sendPicture(btn: HTMLButtonElement) {
+    const id = selected;
+    if (!id) return;
+    btn.disabled = true;
+    try {
+      const res: { message: Message } | undefined = await api.socialSendImage(id);
+      if (res) addMessage(res.message);
+    } catch (err) {
+      deps.toast(deps.errorText(err), true);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   function addMessage(m: Message) {
     const other = m.from === state?.user?.id ? m.to : m.from;
     const chat = chats.get(other);
@@ -594,6 +643,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     const invite = el('button', { type: 'button', className: 'icon-btn', title: t('Zaproś do gry') }, icon('fa-gamepad'));
     invite.addEventListener('click', () => openInvite(f));
     actions.push(invite);
+    // muted: still a friend, messages still come, but no toasts or notifications (on the account, so everywhere)
+    const mute = el('button', { type: 'button', className: `icon-btn${f.muted ? ' on' : ''}`, title: f.muted ? t('Wyłącz wyciszenie') : t('Wycisz powiadomienia') }, icon(f.muted ? 'fa-bell-slash' : 'fa-bell'));
+    mute.addEventListener('click', () => act(() => api.socialApi('POST', `/v1/friends/${f.id}/mute`, { muted: !f.muted }),
+      f.muted ? t('{0} znowu może Cię powiadamiać.', f.name) : t('Wyciszono {0}: wiadomości przyjdą bez powiadomień.', f.name)));
+    actions.push(mute);
     const remove = el('button', { type: 'button', className: 'icon-btn danger', title: t('Usuń ze znajomych') }, icon('fa-user-minus'));
     remove.addEventListener('click', () => {
       if (confirm(t('Usunąć {0} ze znajomych?', f.name))) act(() => api.socialApi('DELETE', `/v1/friends/${f.id}`), t('Usunięto {0} ze znajomych.', f.name));
@@ -633,6 +687,50 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         go.disabled = false;
       }
     };
+  }
+
+  /** A picture: decrypted by the launcher on first sight, bigger on click. */
+  function imageCard(m: Message, mine: boolean): HTMLElement {
+    const image = m.image!;
+    const card = el('div', { className: `fr-bubble fr-image${mine ? ' mine' : ''}` });
+    if (image.unreadable) {
+      card.append(icon('fa-image'), el('span', { textContent: t('Obraz zaszyfrowany dla innego urządzenia.') }));
+      card.classList.add('unreadable');
+      return card;
+    }
+    // the box keeps the picture's shape while it loads, so the chat does not jump
+    const w = image.w && image.h ? Math.min(260, image.w) : 260;
+    const h = image.w && image.h ? Math.round((w * image.h) / image.w) : 146;
+    const img = el('img', { alt: t('Zrzut ekranu'), width: w, height: h });
+    card.append(img, el('i', { className: 'fa-solid fa-lock fr-lock', title: t('Zaszyfrowana od nadawcy do odbiorcy') }));
+    let url = pictures.get(image.id);
+    if (!url) {
+      url = api.socialImage(image.id) as Promise<string>;
+      pictures.set(image.id, url);
+      // a failed one is asked for again next time
+      url.catch(() => pictures.delete(image.id));
+    }
+    url.then((src) => {
+      img.src = src;
+      img.addEventListener('click', () => showPicture(src));
+    }, () => {
+      card.replaceChildren(icon('fa-image'), el('span', { textContent: t('Obrazu już nie ma na serwerze.') }));
+      card.classList.add('unreadable');
+    });
+    return card;
+  }
+
+  /** The picture over the whole window; a click or Esc closes it. */
+  function showPicture(src: string) {
+    const close = () => {
+      box.remove();
+      removeEventListener('keydown', onKey);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    const box = el('div', { className: 'fr-lightbox' }, el('img', { src, alt: '' }));
+    box.addEventListener('click', close);
+    addEventListener('keydown', onKey);
+    document.body.append(box);
   }
 
   /** A message; encrypted ones carry a small lock, ones for another launcher say so. */
@@ -676,7 +774,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       // messages sent close together stick to each other
       const grouped = m.from === lastFrom && m.at - lastAt < 5 * 60_000;
       nodes.push(el('div', { className: `fr-msg${m.from === me ? ' mine' : ''}${grouped ? ' grouped' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
-        m.invite ? inviteCard(m, m.from === me) : m.waypoint ? waypointCard(m.waypoint, m.from === me, deps.toast) : bubble(m),
+        m.invite ? inviteCard(m, m.from === me) : m.waypoint ? waypointCard(m.waypoint, m.from === me, deps.toast) : m.image ? imageCard(m, m.from === me) : bubble(m),
         grouped ? '' : el('small', { className: 'fr-time', textContent: time.format(m.at) })));
       if (m === lastMineRead) nodes.push(el('small', { className: 'fr-read', textContent: t('Przeczytano') }));
       lastDay = d;
@@ -697,6 +795,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
           // another SlashClient account (a Minecraft account of someone else was picked): nothing of the old one stays
           selected = undefined;
           chats.clear();
+          watch.clear();
           if (was && state?.user) root.replaceChildren();
           deps.accountChanged?.();
         }
@@ -714,6 +813,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         const f = friend(e.id);
         if (!f) return;
         f.presence = e.presence;
+        const news = watch.update(f.id, f.presence);
+        if (news && notifyPlaying && !f.muted) playingNotice(f, news);
         renderList();
         if (e.id === selected) renderChat();
         return;
@@ -726,6 +827,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         typing.delete(m.from);
         const f = friend(m.from);
         if (m.from === selected && isVisible()) markRead(m.from, true);
+        else if (f?.muted) f.unread++;
         else if (f) {
           f.unread++;
           if (m.invite) {
@@ -733,6 +835,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
             deps.toast(t('{0} zaprasza Cię na {1}', f.name, inv.server), false, { label: t('Dołącz'), run: () => joinInvite(inv) });
             if (!document.hasFocus()) systemNotify(f.name, t('{0} zaprasza Cię na {1}', f.name, inv.server), f.id);
           } else if (m.waypoint) notify(f, t('udostępnia punkt {0} ({1}, {2}, {3})', m.waypoint.name, m.waypoint.x, m.waypoint.y, m.waypoint.z));
+          else if (m.image) notify(f, t('wysyła zrzut ekranu'));
           else notify(f, m.text);
         }
         renderList();
@@ -780,6 +883,22 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     const short = text.length > 120 ? `${text.slice(0, 117)}…` : text;
     if (!document.hasFocus()) systemNotify(f.name, text, f.id);
     else deps.toast(t('{0}: {1}', f.name, short));
+  }
+
+  /**
+   * A friend came online or started a game: a toast in the launcher, or a system notification when
+   * it is in the background, unless a game runs (the game shows its own toast then).
+   */
+  function playingNotice(f: Friend, news: PlayingNews) {
+    const text = news.kind === 'online' ? t('{0} jest teraz online', f.name)
+      : news.server ? t('{0} gra na {1}', f.name, news.server) : t('{0} zaczyna grać w Minecraft', f.name);
+    if (document.hasFocus()) deps.toast(text, false, { label: t('Napisz'), run: () => openChat(f.id) });
+    else if (!deps.gameRunning?.()) systemNotify(f.name, text, f.id);
+  }
+
+  function openChat(id: string) {
+    document.querySelector<HTMLButtonElement>('.nav[data-view="friends"]')?.click();
+    if (friend(id)) void select(id);
   }
 
   /** A system notification (made in the main process); clicking it opens Friends, and that friend's chat. */

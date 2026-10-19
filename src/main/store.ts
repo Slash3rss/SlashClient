@@ -88,6 +88,8 @@ export interface Settings {
   chatKey?: { device: string; publicKey: string; privateKey: string };
   /** The status the player picked for friends. */
   socialStatus: 'online' | 'away' | 'busy' | 'invisible';
+  /** A toast when a friend comes online or starts playing (off: only messages, invites and requests). */
+  notifyFriendsPlaying?: boolean;
 }
 
 export interface StoreData {

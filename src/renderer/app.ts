@@ -1557,6 +1557,7 @@ const friends = createFriends($('#friends-root'), $('#friends-badge'), {
   accountChanged: () => void renderSlashCapes(),
   hasMinecraft: () => store.accounts.some((a) => a.type === 'msa'),
   showAchievements: (id, name) => achievements.showFriend(id, name),
+  gameRunning: () => (store.runningProfiles ?? []).length > 0,
   // a friend's server is not on the list: the join window gets what we know about it
   inviteTarget: async () => {
     // on a server now: that one; otherwise the server the chosen profile played last

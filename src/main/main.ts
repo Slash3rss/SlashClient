@@ -16,6 +16,7 @@ import { checkForUpdates, installUpdate, startUpdateChecks, updateStatus } from 
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { activityFromLog, SocialClient, SocialError, type SocialUser, type Status } from './social';
 import { decrypt, encrypt, isEncrypted, newDeviceKey, type DeviceKey, type PublicDevice } from './chatCrypto';
+import { fitSize, ImageCache, keyText, MAX_BYTES, openImage, parseKey, sealImage, type ChatImageView, type ImageKey } from './chatImages';
 import { launch, resolveVersionId } from './launch';
 import { paths } from './paths';
 import { loadStore, newProfile, profileGameDir, saveStore, secrets, setSecretCodec, type MicrosoftAccount, type Profile, type Settings, type StoreData } from './store';
@@ -1511,14 +1512,28 @@ const bridge = new GameBridge({
   },
   // F2 in game: only a PNG in the screenshots folder of one of the profiles
   copyImage: async (file) => {
-    const real = await fsp.realpath(file);
-    const dirs = await Promise.all(store.profiles.map((p) => fsp.realpath(path.join(profileGameDir(p), 'screenshots')).catch(() => '')));
-    if (!real.endsWith('.png') || !dirs.some((d) => d && path.dirname(real) === d)) throw new Error('not_a_screenshot');
-    const png = await fsp.readFile(real);
+    const png = await fsp.readFile(await screenshotFile(file));
     if (nativeImage.createFromBuffer(png).isEmpty()) throw new Error('not_an_image');
     await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(png)], { type: 'image/png' }) })]);
   },
+  // a screenshot sent to a friend from the game's chat: the same check, then encrypted here and sent
+  sendImage: async (friendId, file) => ({ message: await sendChatImage(friendId, await screenshotFile(file)) }),
+  // a picture from the chat for the game: PNG (the game reads only that), small enough for its window
+  chatImage: async (id) => {
+    const img = nativeImage.createFromBuffer(await chatImageData(id));
+    const { width, height } = img.getSize();
+    const size = fitSize(width, height, 960);
+    return (size.w < width ? img.resize({ width: size.w, height: size.h, quality: 'good' }) : img).toPNG();
+  },
 });
+
+/** A PNG in the screenshots folder of one of the profiles (what the game may send or copy); its real path. */
+async function screenshotFile(file: string): Promise<string> {
+  const real = await fsp.realpath(file);
+  const dirs = await Promise.all(store.profiles.map((p) => fsp.realpath(path.join(profileGameDir(p), 'screenshots')).catch(() => '')));
+  if (!real.endsWith('.png') || !dirs.some((d) => d && path.dirname(real) === d)) throw new Error('not_a_screenshot');
+  return real;
+}
 
 /**
  * The SlashClient account follows the Minecraft account: a Microsoft account signs in (or, when
@@ -1588,7 +1603,7 @@ handle('social:api', (method: string, apiPath: string, body?: unknown) => {
 
 // ---------- end-to-end encrypted chat (chatCrypto.ts) ----------
 
-interface ChatMessage { from: string; to: string; text: string; invite?: unknown; encrypted?: boolean; unreadable?: boolean }
+interface ChatMessage { from: string; to: string; text: string; invite?: unknown; encrypted?: boolean; unreadable?: boolean; image?: unknown }
 
 /** This launcher's key, made on first use and kept in the config (the private half encrypted). */
 function chatKey(): DeviceKey {
@@ -1631,12 +1646,90 @@ async function sealText(to: string, text: string): Promise<string> {
 }
 
 function openMessage(m: ChatMessage): ChatMessage {
+  if (m.image) m = { ...m, image: openImageKey(m) };
   if (!isEncrypted(m.text)) return m;
   const text = decrypt(m.text, chatKey(), `${m.from}|${m.to}`);
   return text === undefined
     ? { ...m, text: t('Wiadomość zaszyfrowana dla innego urządzenia.'), encrypted: true, unreadable: true }
     : { ...m, text, encrypted: true };
 }
+
+// ---------- pictures in the chat (chatImages.ts): encrypted here, the key inside the message ----------
+
+/** Keys of the pictures in messages this launcher could read; the page and the game get only the id. */
+const imageKeys = new Map<string, ImageKey>();
+const imageCache = new ImageCache();
+
+function openImageKey(m: ChatMessage): ChatImageView | undefined {
+  const i = m.image as { id?: unknown; key?: unknown; size?: unknown };
+  if (!i || typeof i.id !== 'string' || !/^[\w-]{22}$/.test(i.id)) return undefined;
+  const text = typeof i.key === 'string' && isEncrypted(i.key) ? decrypt(i.key, chatKey(), `${m.from}|${m.to}`) : undefined;
+  const key = text === undefined ? undefined : parseKey(text);
+  if (!key) return { id: i.id, unreadable: true };
+  imageKeys.set(i.id, key);
+  return { id: i.id, w: key.w, h: key.h, size: typeof i.size === 'number' ? i.size : undefined };
+}
+
+/** A picture from a message, downloaded and decrypted (kept for a while). */
+async function chatImageData(id: string): Promise<Buffer> {
+  const key = imageKeys.get(id);
+  if (!key) throw new SocialError('not_found');
+  const kept = imageCache.get(id);
+  if (kept) return kept;
+  const data = openImage(await social.download(`/v1/images/${id}`), key);
+  imageCache.set(id, data);
+  return data;
+}
+
+/**
+ * Sends a picture file to a friend: scaled to at most 1920 px and made a JPEG, encrypted with a new
+ * key, uploaded; then a message carrying that key, encrypted for the friend's launchers and ours.
+ * A friend whose launcher has no chat key (an older version) cannot get one: it would not be private.
+ */
+async function sendChatImage(to: string, file: string): Promise<ChatMessage> {
+  const me = social.state().user?.id;
+  if (!me) throw new SocialError('unauthorized');
+  let img = nativeImage.createFromPath(file);
+  if (img.isEmpty()) throw new SocialError('not_an_image');
+  const { width, height } = img.getSize();
+  const size = fitSize(width, height);
+  if (size.w < width) img = img.resize({ width: size.w, height: size.h, quality: 'best' });
+  let jpeg = img.toJPEG(88);
+  if (jpeg.length > MAX_BYTES) jpeg = img.toJPEG(70);
+  if (jpeg.length > MAX_BYTES) throw new SocialError('too_large');
+  const own = chatKey();
+  const [theirs, mine] = await Promise.all([keysOf(to), keysOf(me)]);
+  if (!theirs.length) throw new SocialError('no_keys');
+  const devices = [...theirs, ...mine.filter((d) => d.device !== own.device), { device: own.device, pub: own.publicKey }];
+  const sealed = sealImage(jpeg, 'image/jpeg', size.w, size.h);
+  const { id } = await social.upload<{ id: string }>(`/v1/images/${to}`, sealed.blob);
+  // what an older launcher shows instead of the picture
+  const caption = encrypt(t('[Zrzut ekranu]'), own, devices, `${me}|${to}`);
+  const res = await social.call<{ message: ChatMessage }>('POST', `/v1/messages/${to}`, { text: caption, image: { id, key: encrypt(keyText(sealed.key), own, devices, `${me}|${to}`) } });
+  imageCache.set(id, jpeg);
+  return openMessage(res.message);
+}
+
+/** "Send a picture" in the page: the player picks a file (the profile's screenshots first). */
+handle('social:sendImage', (friendId: string) => socialCall(async () => {
+  if (typeof friendId !== 'string' || !/^[\w-]{1,64}$/.test(friendId)) throw new SocialError('bad_request');
+  const profile = store.profiles.find((p) => p.id === store.settings.selectedProfileId);
+  const shots = profile ? path.join(profileGameDir(profile), 'screenshots') : undefined;
+  const picked = await dialog.showOpenDialog(win!, {
+    title: t('Wyślij obraz'),
+    defaultPath: shots && (await fsp.stat(shots).then(() => true, () => false)) ? shots : undefined,
+    filters: [{ name: t('Obrazy'), extensions: ['png', 'jpg', 'jpeg', 'webp'] }],
+    properties: ['openFile'],
+  });
+  if (picked.canceled || !picked.filePaths[0]) return undefined;
+  return { message: await sendChatImage(friendId, picked.filePaths[0]) };
+}));
+/** A picture from the chat for the page, as a data: address. */
+handle('social:image', (id: string) => socialCall(async () => {
+  if (typeof id !== 'string' || !/^[\w-]{22}$/.test(id)) throw new SocialError('bad_request');
+  const data = await chatImageData(id);
+  return `data:${imageKeys.get(id)?.type ?? 'image/jpeg'};base64,${data.toString('base64')}`;
+}));
 
 /** A call to the social server with the chat encrypted on the way out and decrypted on the way in. */
 async function chatCall(method: string, apiPath: string, body?: unknown) {
