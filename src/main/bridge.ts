@@ -42,6 +42,8 @@ const ALLOWED: [string, RegExp][] = [
   ['POST', /^\/v1\/parties\/[\w-]{1,32}\/(accept|decline|leave)$/],
   ['DELETE', /^\/v1\/parties\/[\w-]{1,32}$/],
   ['POST', /^\/v1\/mc\/emote$/],
+  // a spray on a block, for players there with SlashClient
+  ['POST', /^\/v1\/mc\/spray$/],
   // the cosmetics menu in the game: what there is, what is worn, and changing it
   ['GET', /^\/v1\/cosmetics$/],
   ['GET', /^\/v1\/me$/],
@@ -55,7 +57,9 @@ const ME_KEYS = new Set(['cape', 'loadout', 'character', 'own']);
 /** Events the game cares about; the rest (login flow, account state) stays in the launcher. */
 const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', 'state', 'join', 'emote', 'achievement', 'party',
   // someone in sight changed what they wear: the HUD shows it at once instead of at its next lookup
-  'cosmetics']);
+  'cosmetics',
+  // someone there sprayed on a block: the HUD draws it
+  'spray']);
 const KEEP = 200;
 const LONG_POLL_MS = 25_000;
 

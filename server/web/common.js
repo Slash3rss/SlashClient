@@ -136,6 +136,7 @@ export const SLOTS = [
   ['cape', 'Peleryna', 'fa-solid fa-flag'], ['wings', 'Skrzydła', 'fa-solid fa-dove'], ['elytra', 'Elytra', 'fa-solid fa-feather'],
   ['trail', 'Ślad', 'fa-solid fa-shoe-prints'], ['aura', 'Aura', 'fa-solid fa-wand-sparkles'], ['pet', 'Pupil', 'fa-solid fa-paw'],
   ['hat', 'Na głowę', 'fa-solid fa-hat-cowboy'], ['top', 'Ubranie', 'fa-solid fa-shirt'], ['kill', 'Efekt zabójstwa', 'fa-solid fa-skull-crossbones'],
+  ['spray', 'Spray', 'fa-solid fa-spray-can'],
 ];
 /** Particles and pets are the game's own: on the site they get an icon. */
 const ITEM_ICONS = {
@@ -169,6 +170,12 @@ export function cosmeticEl(id, slot = 'cape', small = false) {
   if (slot === 'hat' || slot === 'top' || OUR_PETS.includes(id)) {
     const c = el('div', { class: `cape clothing${small ? ' sm' : ''}`, title: id });
     c.style.backgroundImage = `url(vendor/${slot === 'pet' ? 'pets' : 'clothing'}/icon/${id}.png)`;
+    return c;
+  }
+  // a spray is its picture (pixel art: kept sharp)
+  if (slot === 'spray') {
+    const c = el('div', { class: `cape clothing spray${small ? ' sm' : ''}`, title: id });
+    c.style.backgroundImage = `url(vendor/spray/${id}.png)`;
     return c;
   }
   if (slot === 'wings' || slot === 'elytra') {

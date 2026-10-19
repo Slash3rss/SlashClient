@@ -3071,11 +3071,12 @@ function renderCapeGrid() {
 
 // ---------- SlashClient cosmetics (seen by other players with the launcher) ----------
 
-type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill';
+type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'spray';
 const SLOTS: [Slot, string, string][] = [
   ['cape', 'Peleryna', 'fa-flag'], ['wings', 'Skrzydła', 'fa-dove'], ['elytra', 'Elytra', 'fa-feather'],
   ['trail', 'Ślad', 'fa-shoe-prints'], ['aura', 'Aura', 'fa-wand-sparkles'], ['pet', 'Pupil', 'fa-paw'],
   ['hat', 'Na głowę', 'fa-hat-cowboy'], ['top', 'Ubranie', 'fa-shirt'], ['kill', 'Efekt zabójstwa', 'fa-skull-crossbones'],
+  ['spray', 'Spray', 'fa-spray-can'],
 ];
 /** Without the server (or before 0.8) only the first eight capes are known. */
 const SLASH_CAPES: [string, string][] = [
@@ -3146,6 +3147,8 @@ function cosmeticPicture(slot: Slot, id: string): Node {
   if (slot === 'hat' || slot === 'top') return el('img', { className: 'clothing-icon', src: `img/clothing/icon/${id}.png`, alt: '' });
   // our own pets (not the game's mobs) have a picture of their own
   if (slot === 'pet' && OUR_PET_MODELS[id]) return el('img', { className: 'clothing-icon', src: `img/pets/icon/${id}.png`, alt: '' });
+  // a spray is its picture
+  if (slot === 'spray') return el('img', { className: 'clothing-icon', src: `img/spray/${id}.png`, alt: '' });
   if (slot === 'kill') {
     const i = el('i', { className: `fa-solid ${ITEM_ICONS[id] ?? 'fa-skull-crossbones'} cosmetic-icon` });
     i.style.color = KILL_ICON_COLORS[id] ?? '';
@@ -3195,6 +3198,7 @@ async function renderSlashCapes() {
     : cosmeticSlot === 'hat' ? t('Coś na głowę. Chowa się pod prawdziwym hełmem.')
     : cosmeticSlot === 'top' ? t('Ubranie na skinie. Chowa się pod prawdziwym napierśnikiem.')
     : cosmeticSlot === 'kill' ? t('Krótki pokaz cząsteczek tam, gdzie pada pokonany przez Ciebie mob lub gracz. Widzą go gracze z SlashClient.')
+    : cosmeticSlot === 'spray' ? t('Obrazek, który klawiszem malujesz na bloku przed sobą (w grze: Klawisze SlashClient). Znika po minucie; widzą go gracze z SlashClient na tym samym serwerze.')
     : t('Mały towarzysz lata przy Twoim ramieniu.');
   const current = worn[cosmeticSlot] ?? '';
   const tile = (item: CatalogItem | undefined, content: Node) => {

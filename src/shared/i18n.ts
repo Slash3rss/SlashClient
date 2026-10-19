@@ -149,6 +149,8 @@ const EN: Record<string, string> = {
   'Coś na głowę. Chowa się pod prawdziwym hełmem.': 'Something to wear on your head. It hides under a real helmet.',
   'Ubranie na skinie. Chowa się pod prawdziwym napierśnikiem.': 'Clothes over your skin. They hide under a real chestplate.',
   'Efekt zabójstwa': 'Kill effect',
+  'Spray': 'Spray',
+  'Obrazek, który klawiszem malujesz na bloku przed sobą (w grze: Klawisze SlashClient). Znika po minucie; widzą go gracze z SlashClient na tym samym serwerze.': 'A picture you paint with a key on the block in front of you (in the game: SlashClient keys). It goes after a minute; players with SlashClient on the same server see it.',
   'Krótki pokaz cząsteczek tam, gdzie pada pokonany przez Ciebie mob lub gracz. Widzą go gracze z SlashClient.': 'A short burst of particles where a mob or player you defeat falls. Players with SlashClient see it.',
   ' Odtwórz': ' Play',
   'Usunąć ten klip?': 'Delete this clip?',
