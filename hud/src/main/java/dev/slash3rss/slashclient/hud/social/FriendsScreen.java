@@ -29,10 +29,16 @@ public class FriendsScreen extends Screen {
 	private final Screen parent;
 	private EditBox input;
 	private String selected;
+	/** A group chat (or the clan's) open instead of a friend's conversation. */
+	private String selectedGroup;
+	/** The clan's members instead of its chat. */
+	private boolean showMembers;
 	/** Messages scrolled up from the newest, in pixels. */
 	private int scroll;
 	private int maxScroll;
 	private record Hit(int x, int y, int w, int h, Runnable action) {}
+	/** A button in a chat's header. */
+	private record Action(String id, String icon, Component label, Runnable run) {}
 	private final List<Hit> hits = new ArrayList<>();
 
 	// the panel, recomputed on every resize
@@ -42,6 +48,7 @@ public class FriendsScreen extends Screen {
 		super(Component.translatable("slashclient-hud.friends"));
 		this.parent = parent;
 		selected = Social.viewing;
+		selectedGroup = selected == null ? Groups.viewing : null;
 		Party.refresh();
 	}
 
@@ -58,13 +65,15 @@ public class FriendsScreen extends Screen {
 		input.setTextColor(Ui.TEXT);
 		input.setMaxLength(2000);
 		input.setHint(Component.translatable("slashclient-hud.friends.write"));
-		input.visible = selected != null;
+		input.visible = selected != null || selectedGroup != null;
 		addRenderableWidget(input);
-		if (selected != null) setInitialFocus(input);
+		if (input.visible) setInitialFocus(input);
 	}
 
 	private void select(String id) {
 		selected = id;
+		selectedGroup = null;
+		Groups.viewing = null;
 		scroll = 0;
 		Social.open(id);
 		input.visible = true;
@@ -72,7 +81,31 @@ public class FriendsScreen extends Screen {
 		input.setFocused(true);
 	}
 
+	/** Opens a group chat (or the clan's) in place of a friend's conversation. */
+	public void selectGroup(String id) {
+		selectedGroup = id;
+		selected = null;
+		Social.viewing = null;
+		showMembers = false;
+		scroll = 0;
+		Groups.open(id);
+		input.visible = true;
+		setFocused(input);
+		input.setFocused(true);
+	}
+
+	/** The clan's members instead of its chat, or back (the header's button; the test uses it too). */
+	public void toggleMembers() {
+		showMembers = !showMembers;
+	}
+
 	private void send() {
+		if (selectedGroup != null && !input.getValue().isBlank()) {
+			Groups.send(selectedGroup, input.getValue());
+			input.setValue("");
+			scroll = 0;
+			return;
+		}
 		if (selected == null || input.getValue().isBlank()) return;
 		Social.send(selected, input.getValue());
 		input.setValue("");
@@ -123,14 +156,25 @@ public class FriendsScreen extends Screen {
 
 	private void drawList(GuiGraphicsExtractor g, int mx, int my) {
 		List<Social.Friend> friends = Social.friends();
-		Ui.draw(g, Ui.trBold("slashclient-hud.friends.title", Social.onlineCount()), px + 10, py + 10, Ui.TEXT);
+		int titleW = LIST_W - 20;
 		// a party: several friends invited here at once (or the one the player is in)
+		int bx = px + LIST_W - 26;
 		if (!friends.isEmpty() && (Social.currentServer() != null || Party.current() != null)) {
-			Ui.button(g, "friends:party", px + LIST_W - 26, py + 6, 20, 16, "m-friends", Component.empty(), Party.current() != null, mx, my);
-			hits.add(new Hit(px + LIST_W - 26, py + 6, 20, 16, () -> minecraft.setScreenAndShow(PickFriendsScreen.party(this))));
+			Ui.button(g, "friends:party", bx, py + 6, 20, 16, "m-friends", Component.empty(), Party.current() != null, mx, my);
+			hits.add(new Hit(bx, py + 6, 20, 16, () -> minecraft.setScreenAndShow(PickFriendsScreen.party(this))));
+			bx -= 22;
+			titleW -= 22;
 		}
+		// a new group chat with some friends
+		if (!friends.isEmpty() && Social.bridged() || !Groups.groups().isEmpty()) {
+			Ui.button(g, "friends:group", bx, py + 6, 20, 16, "m-players", Component.empty(), false, mx, my);
+			hits.add(new Hit(bx, py + 6, 20, 16, () -> minecraft.setScreenAndShow(PickFriendsScreen.newGroup(this))));
+			titleW -= 22;
+		}
+		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.friends.title", Social.onlineCount()), titleW), px + 10, py + 10, Ui.TEXT);
 		int y = py + 26;
-		if (friends.isEmpty()) {
+		y = drawGroups(g, y, mx, my);
+		if (friends.isEmpty() && Groups.groups().isEmpty()) {
 			int ty = y + 4;
 			for (FormattedCharSequence line : font.split(Ui.tr("slashclient-hud.friends.none"), LIST_W - 20)) {
 				g.text(font, line, px + 10, ty, Ui.MUTED, false);
@@ -167,8 +211,60 @@ public class FriendsScreen extends Screen {
 		}
 	}
 
+	/** The clan's chat and the group chats, above the friends; returns where the friends start. */
+	private int drawGroups(GuiGraphicsExtractor g, int y, int mx, int my) {
+		int bottom = py + ph - 8;
+		for (Groups.Group gr : Groups.groups()) {
+			if (y + ROW_H > bottom) break;
+			int rx = px + 5, rw = LIST_W - 10;
+			boolean over = Ui.inside(mx, my, rx, y, rw, ROW_H);
+			float t = Ui.hover("group:" + gr.id(), over);
+			if (gr.id().equals(selectedGroup)) Ui.round(g, rx, y, rw, ROW_H, 4, 0xFF1C2B4A);
+			else if (t > 0) Ui.round(g, rx, y, rw, ROW_H, 4, Ui.blend(0x00161C2A, Ui.CARD_HOVER, t));
+			// a clan: a shield on gold (its tag is in the name); a group: people on violet
+			if (gr.clan()) {
+				Ui.round(g, rx + 4, y + 4, 18, 18, 5, 0xFFB45309);
+				Ui.icon(g, "m-armor", rx + 8, y + 8, 10, 0xFFFFFFFF);
+			} else {
+				Ui.round(g, rx + 4, y + 4, 18, 18, 5, 0xFF6D28D9);
+				Ui.icon(g, "m-players", rx + 8, y + 8, 10, 0xFFFFFFFF);
+			}
+			int textW = rw - 30 - (gr.unread() > 0 ? 16 : 0);
+			Ui.draw(g, Ui.fit(Ui.bold(Groups.title(gr)), textW), rx + 27, y + 4, Ui.TEXT);
+			Ui.draw(g, Ui.fit(groupLine(gr), textW), rx + 27, y + 15, Ui.MUTED);
+			if (gr.unread() > 0) {
+				Component n = Ui.bold(gr.unread() > 9 ? "9+" : String.valueOf(gr.unread()));
+				int bw = Math.max(12, Ui.width(n) + 6);
+				Ui.round(g, rx + rw - bw - 3, y + 8, bw, 11, 5, Ui.ACCENT);
+				Ui.draw(g, n, rx + rw - bw - 3 + (bw - Ui.width(n)) / 2, y + 10, 0xFFFFFFFF);
+			}
+			String id = gr.id();
+			hits.add(new Hit(rx, y, rw, ROW_H, () -> selectGroup(id)));
+			y += ROW_H + 2;
+		}
+		if (!Groups.groups().isEmpty()) {
+			g.fill(px + 10, y + 1, px + LIST_W - 10, y + 2, Ui.BORDER);
+			y += 6;
+		}
+		return y;
+	}
+
+	/** Under a group's name: the clan's members online, or who else is in the group. */
+	private static Component groupLine(Groups.Group gr) {
+		Groups.Clan c = Groups.clan();
+		if (gr.clan() && c != null && c.chat().equals(gr.id())) return Ui.tr("slashclient-hud.clan.online", c.online(), c.members().size());
+		List<String> names = new ArrayList<>();
+		for (Groups.Member m : gr.members()) if (!m.id().equals(Social.myId())) names.add(m.name());
+		return Ui.text(String.join(", ", names));
+	}
+
 	private void drawChat(GuiGraphicsExtractor g, int mx, int my) {
 		int cx = px + LIST_W + 1, cw = pw - LIST_W - 1;
+		Groups.Group open = selectedGroup == null ? null : Groups.group(selectedGroup);
+		if (open != null) {
+			drawGroupChat(g, open, cx, cw, mx, my);
+			return;
+		}
 		Social.Friend f = selected == null ? null : Social.friend(selected);
 		if (f == null) {
 			Component hint = Ui.tr("slashclient-hud.friends.pick");
@@ -255,6 +351,128 @@ public class FriendsScreen extends Screen {
 		int sx = cx + cw - 10 - 24;
 		Ui.button(g, "friends:send", sx, fy, 24, INPUT_H, "arrow", Component.empty(), true, mx, my);
 		hits.add(new Hit(sx, fy, 24, INPUT_H, this::send));
+	}
+
+	/** A group's (or the clan's) conversation: who wrote each message above it, and what happened in the group as lines. */
+	private void drawGroupChat(GuiGraphicsExtractor g, Groups.Group gr, int cx, int cw, int mx, int my) {
+		input.visible = !showMembers;
+		Groups.Clan clan = Groups.clan();
+		boolean ourClan = gr.clan() && clan != null && clan.chat().equals(gr.id());
+		// on the right: the clan's members, or adding friends and leaving a group
+		int bx = cx + cw - 36;
+		List<Action> buttons = new ArrayList<>();
+		if (ourClan) buttons.add(new Action("friends:members", "m-players", Ui.tr(showMembers ? "slashclient-hud.clan.chat" : "slashclient-hud.clan.members"), () -> {
+			showMembers = !showMembers;
+			if (!showMembers) setFocused(input);
+		}));
+		else if (!gr.clan()) {
+			String id = gr.id();
+			buttons.add(new Action("friends:leaveGroup", "close", Ui.tr("slashclient-hud.groups.leave"), () -> {
+				Groups.leave(id);
+				selectedGroup = null;
+			}));
+			if (gr.members().size() < Groups.SIZE) buttons.add(new Action("friends:addToGroup", "user", Ui.tr("slashclient-hud.groups.add"), () -> minecraft.setScreenAndShow(PickFriendsScreen.addToGroup(this, gr))));
+		}
+		int headW = cw - 46;
+		for (Action b : buttons) {
+			int w = Ui.buttonWidth(b.label(), b.icon(), 18, 2);
+			bx -= w;
+			Ui.button(g, b.id(), bx, py + 8, w, 18, b.icon(), b.label(), ourClan && showMembers, mx, my);
+			hits.add(new Hit(bx, py + 8, w, 18, b.run()));
+			bx -= 4;
+			headW -= w + 4;
+		}
+		Ui.draw(g, Ui.fit(Ui.bold(Groups.title(gr)), headW), cx + 10, py + 10, Ui.TEXT);
+		Ui.draw(g, Ui.fit(groupLine(gr), headW), cx + 10, py + 21, Ui.MUTED);
+		g.fill(cx + 8, py + 33, cx + cw - 8, py + 34, Ui.BORDER);
+		if (ourClan && showMembers) {
+			drawMembers(g, clan, cx, cw);
+			return;
+		}
+
+		int top = py + 38, bottom = py + ph - INPUT_H - 14;
+		int maxBubble = (int) (cw * 0.72);
+		List<Groups.Message> messages = Groups.chat(gr.id());
+		g.enableScissor(cx + 2, top, cx + cw - 2, bottom);
+		Ui.beginClip("group chat", cx + 2, top, cw - 4, bottom - top);
+		int y = bottom + scroll;
+		int total = 0;
+		for (int i = messages.size() - 1; i >= 0; i--) {
+			Groups.Message m = messages.get(i);
+			if (!m.event().isEmpty()) {
+				Component line = Ui.fit(Ui.text(m.event()), cw - 40);
+				int lw = Ui.width(line) + 12;
+				y -= 16;
+				total += 16;
+				if (y > bottom || y + 12 < top) continue;
+				Ui.round(g, cx + (cw - lw) / 2, y, lw, 12, 5, 0x14FFFFFF);
+				Ui.centered(g, line, cx + cw / 2, y + 2, Ui.MUTED);
+				continue;
+			}
+			boolean mine = m.from().equals(Social.myId());
+			// the name above the first of someone's messages in a row
+			boolean named = !mine && (i == 0 || !messages.get(i - 1).from().equals(m.from()) || !messages.get(i - 1).event().isEmpty());
+			List<FormattedCharSequence> lines = font.split(Ui.text(m.text()), maxBubble - 12);
+			int textW = 0;
+			for (FormattedCharSequence l : lines) textW = Math.max(textW, font.width(l));
+			Component time = Ui.text(TIME.format(Instant.ofEpochMilli(m.at())));
+			int bw = Math.max(textW, Ui.width(time)) + 12;
+			int bh = lines.size() * 10 + 15;
+			int nameH = named ? 11 : 0;
+			y -= bh + 4 + nameH;
+			total += bh + 4 + nameH;
+			if (y > bottom || y + bh + nameH < top) continue;
+			int bx2 = mine ? cx + cw - 10 - bw : cx + 10;
+			if (named) Ui.draw(g, Ui.fit(Ui.bold(gr.nameOf(m.from())), maxBubble), bx2 + 2, y, Ui.ACCENT_LIGHT);
+			int by = y + nameH;
+			Ui.round(g, bx2, by, bw, bh, 5, mine ? Ui.ACCENT_DARK : Ui.CARD);
+			int ly = by + 5;
+			for (FormattedCharSequence l : lines) {
+				g.text(font, l, bx2 + 6, ly, Ui.TEXT, false);
+				ly += 10;
+			}
+			Ui.draw(g, time, bx2 + bw - 6 - Ui.width(time), ly, mine ? 0xB3FFFFFF : Ui.MUTED);
+		}
+		Ui.end();
+		g.disableScissor();
+		maxScroll = Math.max(0, total - (bottom - top));
+		if (messages.isEmpty()) Ui.centered(g, Ui.fit(Ui.tr("slashclient-hud.groups.empty"), cw - 20), cx + cw / 2, (top + bottom) / 2, Ui.MUTED);
+
+		int fy = input.getY() - 6;
+		Ui.round(g, cx + 10, fy, input.getWidth() + 12, INPUT_H, 4, Ui.CARD);
+		Ui.roundOutline(g, cx + 10, fy, input.getWidth() + 12, INPUT_H, 4, input.isFocused() ? 0x993B82F6 : Ui.BORDER);
+		int sx = cx + cw - 10 - 24;
+		Ui.button(g, "friends:send", sx, fy, 24, INPUT_H, "arrow", Component.empty(), true, mx, my);
+		hits.add(new Hit(sx, fy, 24, INPUT_H, this::send));
+	}
+
+	/** The clan's members: online first within each role, with the role (managing them is in the launcher). */
+	private void drawMembers(GuiGraphicsExtractor g, Groups.Clan clan, int cx, int cw) {
+		int y = py + 40;
+		y = Ui.wrapped(g, Ui.tr("slashclient-hud.clan.manage"), cx + 10, y, cw - 20, Ui.MUTED) + 3;
+		List<Groups.ClanMember> sorted = new ArrayList<>(clan.members());
+		List<String> order = List.of("owner", "officer", "member");
+		sorted.sort(java.util.Comparator.comparing((Groups.ClanMember m) -> order.indexOf(m.role())).thenComparing(m -> !m.online()).thenComparing(m -> m.name().toLowerCase()));
+		int bottom = py + ph - 8;
+		int col = 0, colW = (cw - 20) / 2;
+		int startY = y;
+		for (Groups.ClanMember m : sorted) {
+			if (y + 18 > bottom) {
+				if (col == 1) break;
+				col = 1;
+				y = startY;
+			}
+			int rx = cx + 10 + col * colW;
+			Ui.round(g, rx, y, colW - 6, 16, 4, Ui.CARD);
+			Ui.round(g, rx + 5, y + 5, 6, 6, 3, m.online() ? Ui.GREEN : Ui.MUTED);
+			if ("owner".equals(m.role())) Ui.icon(g, "m-armor", rx + colW - 20, y + 4, 8, 0xFFFBBF24);
+			Component role = Ui.tr("slashclient-hud.clan.role." + m.role());
+			int roleW = Ui.width(role);
+			int nameW = colW - 6 - 16 - roleW - 8 - ("owner".equals(m.role()) ? 12 : 0);
+			Ui.draw(g, Ui.fit(Ui.bold(m.name()), nameW), rx + 15, y + 4, m.online() ? Ui.TEXT : Ui.MUTED);
+			Ui.draw(g, role, rx + colW - 6 - roleW - 6 - ("owner".equals(m.role()) ? 12 : 0), y + 4, "officer".equals(m.role()) ? 0xFF93C5FD : "owner".equals(m.role()) ? 0xFFFBBF24 : Ui.MUTED);
+			y += 18;
+		}
 	}
 
 	/** A "join me" invite as a card with a Join button (for the one invited); returns the new y and the height used. */
@@ -366,6 +584,7 @@ public class FriendsScreen extends Screen {
 	@Override
 	public void onClose() {
 		Social.viewing = null;
+		Groups.viewing = null;
 		minecraft.setScreenAndShow(parent);
 	}
 

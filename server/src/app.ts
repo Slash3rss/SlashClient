@@ -20,6 +20,8 @@ import { createCurseForge } from './curseforge.ts';
 import { profileShareRoutes, type ShareLimits } from './profileShares.ts';
 import { profileCloudRoutes, type CloudLimits } from './profileCloud.ts';
 import { createAchievements, hintFor, TICK_MS } from './achievements.ts';
+import { createGroups } from './groups.ts';
+import { createClans } from './clans.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -368,7 +370,10 @@ export function createApp(cfg: Config) {
     const unread = db.unreadCounts(me);
     const last = db.lastMessageTimes(me);
     return {
-      friends: db.friends(me).map((f) => ({ ...f, presence: presenceOf(f.id), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0 })),
+      friends: db.friends(me).map((f) => {
+        const clan = clanTag(f.id);
+        return { ...f, presence: presenceOf(f.id), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0, ...(clan ? { clan } : {}) };
+      }),
       incoming: db.incoming(me),
       outgoing: db.outgoing(me),
     };
@@ -458,6 +463,25 @@ export function createApp(cfg: Config) {
       throw new HttpError(status, code);
     },
   });
+
+  // group chats and clans (groups.ts, clans.ts); a clan's chat is one of the groups
+  const limitGroupChanges = rateLimiter(20);
+  let clanTag: (uuid: string) => string | undefined = () => undefined;
+  const groups = createGroups({
+    db, authed, push, limitMessages, limitChanges: limitGroupChanges,
+    clanTag: (clanId) => clans.tagOfClan(clanId),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+  const clans = createClans({
+    db, authed, admin, body, push, groups, limitChanges: limitGroupChanges,
+    status: (userId) => presenceOf(userId).status,
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+  clanTag = clans.tagOf;
 
   const routes: [string, RegExp, Handler][] = [
     // the request log: newest first, with who asked (handles looked up once per request)
@@ -725,6 +749,8 @@ export function createApp(cfg: Config) {
       const ranks: Record<string, string> = {};
       // everything the player wears; HUDs before 0.8 read only `capes`
       const cosmetics: Record<string, Record<string, string>> = {};
+      // the clan tag next to the name ([ABC]); HUDs before clans ignore it
+      const clanTags: Record<string, string> = {};
       for (const u of active) {
         const link = linked.get(u.toLowerCase());
         const owner = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user) : undefined;
@@ -735,8 +761,10 @@ export function createApp(cfg: Config) {
         const worn = wornBy(owner, link?.character);
         if (worn.cape) capes[u] = worn.cape;
         if (Object.keys(worn).length) cosmetics[u] = worn;
+        const tag = clanTag(owner.id);
+        if (tag) clanTags[u] = tag;
       }
-      return { active, capes, ranks, cosmetics };
+      return { active, capes, ranks, cosmetics, ...(Object.keys(clanTags).length ? { clans: clanTags } : {}) };
     }],
     // the launcher says which Minecraft player its SlashClient account plays as, while the game runs
     ['POST', /^\/v1\/mc\/link$/, async (req) => {
@@ -859,6 +887,8 @@ export function createApp(cfg: Config) {
     ...media.routes,
     ...cloud.routes,
     ...sharing.routes,
+    ...groups.routes,
+    ...clans.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged,
       fail: (status, code) => {

@@ -50,6 +50,13 @@ const ALLOWED: [string, RegExp][] = [
   ['POST', /^\/v1\/me$/],
   // the player's achievements (the cosmetics menu says how to earn the locked rewards)
   ['GET', /^\/v1\/achievements$/],
+  // group chats (clan chats too): reading, writing, a new group, adding friends, leaving
+  ['GET', /^\/v1\/groups$/],
+  ['POST', /^\/v1\/groups$/],
+  ['GET', /^\/v1\/groups\/[\w-]{1,32}\/messages(\?(before=\d+&?|limit=\d+&?)*)?$/],
+  ['POST', /^\/v1\/groups\/[\w-]{1,32}\/(messages|read|members|leave)$/],
+  // the clan: who is in it and online (managing it stays in the launcher)
+  ['GET', /^\/v1\/clans\/mine$/],
 ];
 /** From the game, /v1/me changes only cosmetics (not, say, whether friends see the server). */
 const ME_KEYS = new Set(['cape', 'loadout', 'character', 'own']);
@@ -59,7 +66,9 @@ const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', '
   // someone in sight changed what they wear: the HUD shows it at once instead of at its next lookup
   'cosmetics',
   // someone there sprayed on a block: the HUD draws it
-  'spray']);
+  'spray',
+  // group and clan chats
+  'groups', 'group-message', 'clan']);
 const KEEP = 200;
 const LONG_POLL_MS = 25_000;
 

@@ -157,6 +157,8 @@ public final class Social {
 				if (!reachable) {
 					refreshState();
 					if (signedIn) refreshFriends();
+					// group chats and the clan (an older launcher has neither: nothing happens)
+					if (signedIn) Groups.refresh();
 					reachable = true;
 				}
 				JsonObject res = request("GET", "/events?after=" + seq, null, 35);
@@ -291,6 +293,8 @@ public final class Social {
 			case "party" -> {
 				if (e.has("party") && e.get("party").isJsonObject()) Party.onEvent(e.getAsJsonObject("party"));
 			}
+			// group chats and the clan
+			case "groups", "group-message", "clan" -> Groups.onEvent(e);
 			case "typing" -> typingUntil.put(str(e, "from"), System.currentTimeMillis() + 6_000);
 			// "Join" on a friend's invite in the launcher while this game runs
 			case "join" -> join(str(e, "server"));
@@ -316,6 +320,7 @@ public final class Social {
 			case "state" -> {
 				refreshState();
 				if (signedIn) refreshFriends();
+				if (signedIn) Groups.refresh();
 			}
 			default -> {}
 		}
