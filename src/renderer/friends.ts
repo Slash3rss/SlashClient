@@ -503,6 +503,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   async function act(fn: () => Promise<FriendList>, done?: string) {
     try {
       list = await fn();
+      for (const f of list.friends) watch.know(f.id, f.presence);
       if (done) deps.toast(done);
       if (selected && !friend(selected)) selected = undefined;
       renderList();
