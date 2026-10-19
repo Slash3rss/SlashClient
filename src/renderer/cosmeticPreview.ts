@@ -3,6 +3,7 @@ import { PET_MODELS, type PetPart } from './petModels';
 import { OUR_PET_FRAMES, OUR_PET_MODELS } from './ourPetModels';
 import { boxQuads, clothingItem, layout, slimBox, type Bone, type ClothingBox } from '../shared/clothing';
 import { KillEffectPreview } from './killEffects';
+import { HeldPreview } from './heldPreview';
 import type { SkinViewer } from 'skinview3d';
 
 /**
@@ -109,10 +110,12 @@ export class CosmeticPreview {
   private ourPet?: { id: string; material: MeshStandardMaterial; frame: number };
 
   private kills: KillEffectPreview;
+  private held: HeldPreview;
 
-  /** `clothing` is where the clothing's pictures are (<id>.png), `pets` our own pets' (<id>_<frame>.png). */
-  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/', private pets = 'img/pets/') {
+  /** `clothing` is where the clothing's pictures are (<id>.png), `pets` our own pets' (<id>_<frame>.png), `held` the shields' and weapons'. */
+  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/', private pets = 'img/pets/', held = 'img/held/') {
     this.kills = new KillEffectPreview(viewer.playerWrapper);
+    this.held = new HeldPreview(viewer, held);
     const tick = (now: number) => {
       this.update(Math.min(0.1, (now - this.last) / 1000), now / 1000);
       this.last = now;
@@ -148,8 +151,9 @@ export class CosmeticPreview {
    * Shows what a set wears (the cape, wings and elytra are the viewer's own back equipment);
    * `kill` plays its burst every few seconds (shown only while its tab is open: it would distract).
    */
-  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string }) {
+  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string; shield?: string; weapon?: string }) {
     this.kills.set(set.kill);
+    this.held.show(set);
     this.wearing = { hat: set.hat || undefined, top: set.top || undefined };
     this.dress();
     this.trail = set.trail ? EFFECTS[set.trail] : undefined;
@@ -380,6 +384,7 @@ export class CosmeticPreview {
     for (const p of this.particles) this.viewer.playerWrapper.remove(p.sprite);
     this.particles = [];
     this.kills.dispose();
+    this.held.dispose();
     for (const t of this.textures.values()) t.dispose();
   }
 }
