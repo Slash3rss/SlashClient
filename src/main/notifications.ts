@@ -7,8 +7,8 @@
 /** Must match build.appId in package.json: Windows sends toast clicks back to the app with this id. */
 export const APP_USER_MODEL_ID = 'dev.slash3rss.slashclient';
 
-/** Where a click on the notification takes the player: Friends, and that friend's chat when there is one. */
-export interface NoticeTarget { view: 'friends'; friendId?: string }
+/** Where a click on the notification takes the player: Friends, and that friend's chat when there is one; or Achievements. */
+export type NoticeTarget = { view: 'friends'; friendId?: string } | { view: 'achievements' };
 
 export interface Notice { title: string; body: string; target?: NoticeTarget }
 
@@ -38,8 +38,9 @@ export function shortBody(text: string, max = 120): string {
 
 /** A friend id the page may be sent to; anything else only opens Friends. */
 export function cleanTarget(target: unknown): NoticeTarget | undefined {
+  if (target && typeof target === 'object' && (target as NoticeTarget).view === 'achievements') return { view: 'achievements' };
   if (!target || typeof target !== 'object' || (target as NoticeTarget).view !== 'friends') return undefined;
-  const id = (target as NoticeTarget).friendId;
+  const id = (target as { friendId?: unknown }).friendId;
   return typeof id === 'string' && /^[\w-]{1,64}$/.test(id) ? { view: 'friends', friendId: id } : { view: 'friends' };
 }
 

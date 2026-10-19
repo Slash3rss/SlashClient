@@ -29,6 +29,8 @@ export interface FriendsDeps {
   accountChanged?: () => void;
   /** Whether the launcher has a Microsoft (Minecraft) account to sign in with. */
   hasMinecraft?: () => boolean;
+  /** Opens a friend's achievements. */
+  showAchievements?: (id: string, name: string) => void;
 }
 
 const MAX_MESSAGE = 2000;
@@ -564,6 +566,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         }
       });
       actions.push(join);
+    }
+    if (deps.showAchievements) {
+      const trophies = el('button', { type: 'button', className: 'icon-btn', title: t('Osiągnięcia') }, icon('fa-trophy'));
+      trophies.addEventListener('click', () => deps.showAchievements!(f.id, f.name));
+      actions.push(trophies);
     }
     const invite = el('button', { type: 'button', className: 'icon-btn', title: t('Zaproś do gry') }, icon('fa-gamepad'));
     invite.addEventListener('click', () => openInvite(f));

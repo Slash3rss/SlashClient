@@ -952,3 +952,27 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 
 /* Odkrywaj: "Instaluj do [profile]" on one line, next to the title */
 .discover-target { align-items: center; gap: 10px; white-space: nowrap; }
+
+/* Osiągnięcia: stats on top, then a card per achievement with its progress and reward */
+.ach-root { display: flex; flex-direction: column; gap: 14px; }
+.ach-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.ach-stat { padding: 12px 14px; display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; }
+.ach-stat i { grid-row: span 2; font-size: 18px; color: var(--accent-light); }
+.ach-stat b { font-size: 20px; }
+.ach-rules { margin: 0; font-size: 12px; }
+.ach-head { display: flex; align-items: center; gap: 12px; }
+.ach-head h3 { margin: 0; flex: 1; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.ach-card { padding: 12px 14px; display: flex; gap: 12px; align-items: center; }
+.ach-card.done { border-color: rgba(250, 204, 21, .35); }
+.ach-icon { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; flex: none; background: rgba(255, 255, 255, .05); color: var(--text-muted); font-size: 16px; }
+.ach-card.done .ach-icon { background: linear-gradient(135deg, #facc15, #f97316); color: #1c1917; }
+.ach-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ach-bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .08); overflow: hidden; margin-top: 3px; }
+.ach-bar span { display: block; height: 100%; background: var(--accent-gradient); }
+.ach-count { font: 11px var(--font-mono); }
+.ach-date { color: #facc15; font-weight: 600; }
+.ach-reward { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: none; font-size: 11px; color: var(--text-secondary); }
+.ach-card:not(.done) .ach-reward .ach-cape { filter: grayscale(.85) brightness(.6); }
+/* the cape's front (10x16 at 1,1 of the 64x32 layout, our textures are 4x) at 1:1 */
+.ach-cape { width: 40px; height: 64px; background-size: 256px 128px; background-position: -4px -4px; background-repeat: no-repeat; image-rendering: pixelated; border-radius: 3px; }
