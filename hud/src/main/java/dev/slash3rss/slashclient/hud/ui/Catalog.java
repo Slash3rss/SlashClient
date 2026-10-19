@@ -213,6 +213,9 @@ public final class Catalog {
 		out.add(new Entry("badges", "slashclient-hud.set.badges", "extras", "m-badges", () -> cfg.badges, v -> cfg.badges = v, List.of(), null));
 		out.add(new Entry("killEffects", "slashclient-hud.set.killEffects", "extras", "m-kd", () -> cfg.killEffects, v -> cfg.killEffects = v, List.of(
 			new Toggle("slashclient-hud.set.killEffects.others", () -> cfg.killEffectsOthers, v -> cfg.killEffectsOthers = v)), null));
+		// your own shield and weapon skins always show; other players' only when asked for (fair PvP)
+		out.add(new Entry("heldSkins", "slashclient-hud.set.heldSkins", "extras", "m-armor", null, null, List.of(
+			new Toggle("slashclient-hud.set.heldSkins.others", () -> cfg.heldSkinsOthers, v -> cfg.heldSkinsOthers = v)), null));
 		out.add(new Entry("menu", "slashclient-hud.set.menu", "extras", "m-menu", () -> cfg.customMenu, v -> cfg.customMenu = v, List.of(), null));
 		out.add(new Entry("pause", "slashclient-hud.set.pause", "extras", "m-pause", () -> cfg.customPause, v -> cfg.customPause = v, List.of(), null));
 		var options = net.minecraft.client.Minecraft.getInstance().options;

@@ -19,6 +19,8 @@ public final class FigureLook {
 	public Map<String, String> wearing;
 	/** The elytra slot shown on the back instead of the cape and the wings. */
 	public boolean elytra;
+	/** Holding the worn shield (left hand) and weapon (right hand), on their slots' tabs. */
+	public boolean held;
 
 	final FigureParticles particles = new FigureParticles();
 	/** The turn so far, eased towards `turn`. */

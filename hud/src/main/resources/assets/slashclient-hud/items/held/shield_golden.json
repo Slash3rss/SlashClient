@@ -1,0 +1,14 @@
+{
+	"model": {
+		"type": "minecraft:condition",
+		"property": "minecraft:using_item",
+		"on_false": {
+			"type": "minecraft:model",
+			"model": "slashclient-hud:item/held/shield_golden"
+		},
+		"on_true": {
+			"type": "minecraft:model",
+			"model": "slashclient-hud:item/held/shield_golden_blocking"
+		}
+	}
+}

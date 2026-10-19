@@ -55,8 +55,9 @@ public final class Cosmetics {
 	//$ 	"spores", "nautilus", "tears");
 	//#endif
 	static final List<String> PETS = List.of("allay", "vex", "bat", "parrot", "bee", "blaze", "phantom", "axolotl", "frog", "fox", "duszek_haze");
-	private static final Map<String, List<String>> SLOTS = Map.of("cape", CAPES, "wings", WINGS, "elytra", ELYTRAS,
-		"trail", TRAILS, "aura", AURAS, "pet", PETS, "hat", Clothing.HATS, "top", Clothing.TOPS, "kill", KillEffects.IDS);
+	private static final Map<String, List<String>> SLOTS = Map.ofEntries(Map.entry("cape", CAPES), Map.entry("wings", WINGS), Map.entry("elytra", ELYTRAS),
+		Map.entry("trail", TRAILS), Map.entry("aura", AURAS), Map.entry("pet", PETS), Map.entry("hat", Clothing.HATS), Map.entry("top", Clothing.TOPS),
+		Map.entry("kill", KillEffects.IDS), Map.entry("shield", HeldSkins.SHIELDS), Map.entry("weapon", HeldSkins.WEAPONS));
 	private static final long EMOTE_MS = 3500;
 	private static final FontDescription EMOTE_FONT = Compat.font(Identifier.fromNamespaceAndPath(SlashHud.ID, "emote"));
 
