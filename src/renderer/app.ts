@@ -6,6 +6,7 @@ import { gameIcon } from './gameIcon';
 import { createFriends, socialErrorText } from './friends';
 import { createProfileFiles } from './profileFiles';
 import { initProfileSharing } from './profileShare';
+import { createMediaTools } from './mediaTools';
 import { createAchievements } from './achievements';
 import { openSkinEditor } from './skinEditor';
 import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
@@ -2663,6 +2664,14 @@ $('#world-import').addEventListener('click', async () => {
   if (await profileFiles.importWorld(worldsProfileId(), $<HTMLButtonElement>('#world-import'))) renderWorlds();
 });
 
+// trimming clips and sharing screenshots and clips by link (mediaTools.ts)
+const mediaTools = createMediaTools({ api, guard, toast, refresh: () => renderWorlds() });
+const myLinksButton = () => {
+  const b = el('button', { type: 'button', className: 'media-links-open' }, el('i', { className: 'fa-solid fa-link' }), t(' Moje linki'));
+  b.addEventListener('click', () => mediaTools.openMine());
+  return b;
+};
+
 async function renderWorlds() {
   const box = $('#worlds-content');
   const profileId = worldsProfileId();
@@ -2737,12 +2746,18 @@ async function renderWorlds() {
           el('b', { textContent: c.name.replace(/\.(avi|mp4)$/i, '') }),
           el('div', { className: 'project-meta' }, el('span', { textContent: fmtDate(c.createdAt) }), el('span', { textContent: fmtSize(c.sizeBytes) }))),
         el('div', { className: 'project-actions' }, play,
+          // only the game's own clips (MJPEG .avi) can be cut and shared
+          ...(/\.avi$/i.test(c.name) ? [
+            iconButton('fa-solid fa-scissors', t('Przytnij'), () => mediaTools.openTrim(profileId, c)),
+            iconButton('fa-solid fa-share-nodes', t('Udostępnij linkiem'), () => mediaTools.shareFile(profileId, 'clips', c.name)),
+          ] : []),
           iconButton('fa-regular fa-folder-open', t('Pokaż w folderze'), () => api.revealFile(c.file)),
           iconButton('fa-regular fa-trash-can', t('Usuń'), () => {
             if (confirm(t('Usunąć ten klip?'))) guard(() => api.deleteClip(profileId, c.name)).then(renderWorlds);
           }, 'danger')));
     })));
     if (!clips.length) box.replaceChildren(el('p', { className: 'muted', textContent: t('Brak klipów. Włącz „Klipy” w ustawieniach HUD w grze (Prawy Shift), a F8 zapisze ostatnie sekundy gry.') }));
+    box.prepend(myLinksButton());
   } else {
     const shots: Screenshot[] = (await guard(() => api.listScreenshots(profileId))) ?? [];
     box.replaceChildren(el('div', { className: 'shots' }, ...shots.map((sh) => {
@@ -2751,14 +2766,17 @@ async function renderWorlds() {
       img.addEventListener('click', () => api.openFile(sh.file));
       return el('div', { className: 'shot' }, img,
         el('div', {}, el('span', { textContent: fmtDate(sh.createdAt) }),
+          iconButton('fa-solid fa-share-nodes', t('Udostępnij linkiem'), () => mediaTools.shareFile(profileId, 'screenshots', sh.name)),
           iconButton('fa-regular fa-folder-open', 'Pokaż w folderze', () => api.revealFile(sh.file)),
           iconButton('fa-regular fa-trash-can', 'Usuń', () => {
             if (confirm(t('Usunąć ten zrzut ekranu?'))) guard(() => api.deleteScreenshot(profileId, sh.name)).then(renderWorlds);
           }, 'danger')));
     })));
     if (!shots.length) box.replaceChildren(el('p', { className: 'muted', textContent: 'Brak zrzutów. W grze zrobisz je klawiszem F2.' }));
+    box.prepend(myLinksButton());
   }
-  const listEl = box.firstElementChild;
+  // the last child: the gallery tabs put the "My links" button before the list
+  const listEl = box.lastElementChild;
   if (listEl) appear(listEl.children.length ? [...listEl.children] : [listEl]);
 }
 
