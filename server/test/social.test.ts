@@ -514,6 +514,31 @@ describe('social server', () => {
     assert.equal((await call('POST', `/v1/messages/${q.user.id}`, p.token, { text: '   ' })).body.error, 'empty');
     assert.equal((await call('POST', `/v1/messages/${q.user.id}`, p.token, { text: 'x'.repeat(2001) })).body.error, 'too_long');
   });
+
+  it('wears something on the face and on top of the head, each in its own slot', async () => {
+    const ola = await login('OlaFace');
+    const mc = '12121212-3434-5656-7878-909090909090';
+    await minecraftLogin('OlaFace', mc.replace(/-/g, ''), ola.token);
+    await call('POST', '/v1/mc/link', ola.token, { uuid: mc });
+    // with a hat at once: they go with it (the clients hide what the hat would go through)
+    const me = (await call('POST', '/v1/me', ola.token, { loadout: { face: 'sunglasses', ears: 'catears', hat: 'cap' } })).body;
+    assert.deepEqual([me.loadout.face, me.loadout.ears, me.loadout.hat], ['sunglasses', 'catears', 'cap']);
+    assert.equal((await call('POST', '/v1/me', ola.token, { loadout: { face: 'kitsune', ears: 'unicorn' } })).body.loadout.face, 'kitsune');
+    // each only in its own slot
+    assert.equal((await call('POST', '/v1/me', ola.token, { loadout: { face: 'catears' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ola.token, { loadout: { ears: 'monocle' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ola.token, { loadout: { hat: 'antlers' } })).body.error, 'bad_item');
+    assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [mc] })).body.cosmetics[mc], { face: 'kitsune', ears: 'unicorn', hat: 'cap' });
+    assert.equal((await call('POST', '/v1/me', ola.token, { loadout: { face: '', ears: '' } })).body.loadout.face, undefined);
+    // free for everyone, only for launchers and mods from 0.9.20 on
+    const askAs = async (client: string) => (await (await fetch(`${base}/v1/cosmetics`, { headers: { Authorization: `Bearer ${ola.token}`, 'X-SlashClient': client } })).json()) as { items: { id: string; slot: string; available: boolean }[] };
+    const items = (await askAs('launcher/0.9.20')).items;
+    assert.equal(items.filter((i) => i.slot === 'face').length, 9);
+    assert.equal(items.filter((i) => i.slot === 'ears').length, 8);
+    assert.ok(items.filter((i) => i.slot === 'face' || i.slot === 'ears').every((i) => i.available));
+    assert.ok(!(await askAs('launcher/0.9.19')).items.some((i) => i.slot === 'face' || i.slot === 'ears'));
+    assert.ok(!(await askAs('mod/0.9.19')).items.some((i) => i.slot === 'face' || i.slot === 'ears'));
+  });
 });
 
 describe('LAN worlds through the relay', () => {
