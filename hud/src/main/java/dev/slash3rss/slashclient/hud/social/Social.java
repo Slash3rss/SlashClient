@@ -29,8 +29,15 @@ public final class Social {
 	private Social() {}
 
 	public record Friend(String id, String name, String handle, String status, String activity, String server, int unread, long lastMessageAt) {}
-	/** `invite` is a server address when the message is a "join me" invite, else empty. */
-	public record Message(long id, String from, String to, String text, long at, boolean read, String invite, String inviteVersion) {}
+	/**
+	 * `invite` is a server address when the message is a "join me" invite, else empty; `party` the
+	 * party it belongs to (several friends invited at once), else empty. `waypoint`: a shared point, or null.
+	 */
+	public record Message(long id, String from, String to, String text, long at, boolean read, String invite, String inviteVersion, String party, SharedWaypoints.Shared waypoint) {
+		public Message(long id, String from, String to, String text, long at, boolean read, String invite, String inviteVersion) {
+			this(id, from, to, text, at, read, invite, inviteVersion, "", null);
+		}
+	}
 
 	private static final String URL = System.getProperty("slashclient.bridge", "");
 	private static final String KEY = System.getProperty("slashclient.bridgeKey", "");
@@ -200,11 +207,13 @@ public final class Social {
 
 	private static Message messageFrom(JsonObject o) {
 		JsonObject inv = o.has("invite") && o.get("invite").isJsonObject() ? o.getAsJsonObject("invite") : null;
+		JsonObject wp = o.has("waypoint") && o.get("waypoint").isJsonObject() ? o.getAsJsonObject("waypoint") : null;
 		return new Message(o.get("id").getAsLong(), str(o, "from"), str(o, "to"), str(o, "text"), o.get("at").getAsLong(),
-			o.has("readAt") && !o.get("readAt").isJsonNull(), inv == null ? "" : str(inv, "server"), inv == null ? "" : str(inv, "version"));
+			o.has("readAt") && !o.get("readAt").isJsonNull(), inv == null ? "" : str(inv, "server"), inv == null ? "" : str(inv, "version"),
+			inv == null ? "" : str(inv, "party"), wp == null ? null : SharedWaypoints.Shared.from(wp));
 	}
 
-	private static String str(JsonObject o, String key) {
+	static String str(JsonObject o, String key) {
 		return o.has(key) && !o.get(key).isJsonNull() ? o.get(key).getAsString() : "";
 	}
 
@@ -225,6 +234,11 @@ public final class Social {
 				if (chat != null && chat.stream().noneMatch(x -> x.id() == m.id())) chat.add(m);
 				if (m.from().equals(myId)) return;
 				typingUntil.remove(other);
+				// a shared waypoint goes into the waypoints (or waits) even with the chat open
+				if (m.waypoint() != null && other.equals(viewing)) {
+					Friend f = friend(other);
+					SharedWaypoints.received(m, f != null ? f.name() : "?");
+				}
 				if (other.equals(viewing)) markRead(other);
 				else {
 					// a friend this game does not know yet (the list is from before they were added, or not loaded): the list anew
@@ -237,7 +251,9 @@ public final class Social {
 					}
 					bump(other, 1, m.at());
 					Friend f = friend(other);
-					if (!m.invite().isEmpty()) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.invite.toast", m.invite()).getString(), null);
+					if (m.waypoint() != null) SharedWaypoints.received(m, f != null ? f.name() : "?");
+					else if (!m.party().isEmpty()) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.party.toast", m.invite()).getString(), null);
+					else if (!m.invite().isEmpty()) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.invite.toast", m.invite()).getString(), null);
 					else toast(f != null ? f.name() : "?", m.text(), null);
 				}
 			}
@@ -253,6 +269,9 @@ public final class Social {
 				}
 				sort(list);
 				friends = List.copyOf(list);
+			}
+			case "party" -> {
+				if (e.has("party") && e.get("party").isJsonObject()) Party.onEvent(e.getAsJsonObject("party"));
 			}
 			case "typing" -> typingUntil.put(str(e, "from"), System.currentTimeMillis() + 6_000);
 			// "Join" on a friend's invite in the launcher while this game runs
@@ -300,7 +319,7 @@ public final class Social {
 	}
 
 	/** In SlashClient's own look; `icon` instead of the initial when it is not from a person. */
-	private static void toast(String title, String text, String icon) {
+	static void toast(String title, String text, String icon) {
 		Minecraft mc = Minecraft.getInstance();
 		mc.execute(() -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).addToast(new FriendToast(title, text, icon)));
 	}

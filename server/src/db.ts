@@ -22,8 +22,11 @@ export interface CosmeticSetting { id: string; enabled: boolean; exclusive: bool
 export interface LogEntry { id: number; at: number; admin: string; action: string; target: string; detail: string }
 export type Provider = 'discord' | 'microsoft' | 'google' | 'github' | 'dev' | 'minecraft';
 /** "Join me": a server to play on together, sent as a message so it stays in the chat. */
-export interface Invite { server: string; version?: string }
-export interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite }
+/** `party`: the invite is one of a party's (sharing.ts), so Join also says "I'm in". */
+export interface Invite { server: string; version?: string; party?: string }
+/** A waypoint a friend shared: where it is and in which world (`server:<address>` or `world:<name>`, as the HUD keys them). */
+export interface SharedWaypoint { name: string; x: number; y: number; z: number; dimension: string; world: string }
+export interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite; waypoint?: SharedWaypoint }
 /** Another player as friends lists show them. */
 export interface Person { id: string; handle: string; name: string; avatar: string }
 export interface Request extends Person { at: number }
@@ -119,6 +122,8 @@ export class Db {
     // added after the first release: older files get the column on start
     const columns = this.db.prepare('PRAGMA table_info(messages)').all() as { name: string }[];
     if (!columns.some((c) => c.name === 'invite')) this.db.exec('ALTER TABLE messages ADD COLUMN invite TEXT');
+    // shared waypoints ride along with a message too (JSON), so they stay in the chat
+    if (!columns.some((c) => c.name === 'waypoint')) this.db.exec('ALTER TABLE messages ADD COLUMN waypoint TEXT');
     // partners pinned on top of the game's server list, some of them taking turns at the very top
     const partnerColumns = this.db.prepare('PRAGMA table_info(partners)').all() as { name: string }[];
     if (partnerColumns.length && !partnerColumns.some((c) => c.name === 'pinned')) {
@@ -542,19 +547,21 @@ CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created
 
   // ---- messages ----
 
-  addMessage(from: string, to: string, text: string, invite?: Invite): Message {
+  addMessage(from: string, to: string, text: string, invite?: Invite, waypoint?: SharedWaypoint): Message {
     const at = Date.now();
-    const { lastInsertRowid } = this.db.prepare('INSERT INTO messages (from_uuid, to_uuid, text, created_at, invite) VALUES (?, ?, ?, ?, ?)')
-      .run(from, to, text, at, invite ? JSON.stringify(invite) : null);
-    return { id: Number(lastInsertRowid), from, to, text, at, readAt: null, ...(invite ? { invite } : {}) };
+    const { lastInsertRowid } = this.db.prepare('INSERT INTO messages (from_uuid, to_uuid, text, created_at, invite, waypoint) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(from, to, text, at, invite ? JSON.stringify(invite) : null, waypoint ? JSON.stringify(waypoint) : null);
+    return { id: Number(lastInsertRowid), from, to, text, at, readAt: null, ...(invite ? { invite } : {}), ...(waypoint ? { waypoint } : {}) };
   }
 
   /** The conversation between two players, newest last; `before` pages back by message id. */
   conversation(x: string, y: string, limit: number, before?: number): Message[] {
-    const rows = this.db.prepare(`SELECT id, from_uuid AS "from", to_uuid AS "to", text, created_at AS at, read_at AS readAt, invite FROM messages
+    const rows = this.db.prepare(`SELECT id, from_uuid AS "from", to_uuid AS "to", text, created_at AS at, read_at AS readAt, invite, waypoint FROM messages
       WHERE ((from_uuid = ? AND to_uuid = ?) OR (from_uuid = ? AND to_uuid = ?)) AND id < ?
-      ORDER BY id DESC LIMIT ?`).all(x, y, y, x, before ?? Number.MAX_SAFE_INTEGER, limit) as unknown as (Omit<Message, 'invite'> & { invite: string | null })[];
-    return rows.reverse().map(({ invite, ...m }) => (invite ? { ...m, invite: JSON.parse(invite) as Invite } : m));
+      ORDER BY id DESC LIMIT ?`).all(x, y, y, x, before ?? Number.MAX_SAFE_INTEGER, limit) as unknown as (Omit<Message, 'invite' | 'waypoint'> & { invite: string | null; waypoint: string | null })[];
+    return rows.reverse().map(({ invite, waypoint, ...m }) => ({
+      ...m, ...(invite ? { invite: JSON.parse(invite) as Invite } : {}), ...(waypoint ? { waypoint: JSON.parse(waypoint) as SharedWaypoint } : {}),
+    }));
   }
 
   /** Marks what `from` sent to `reader` as read; returns the time used, or undefined when nothing was unread. */

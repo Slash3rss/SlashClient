@@ -42,6 +42,7 @@ public class FriendsScreen extends Screen {
 		super(Component.translatable("slashclient-hud.friends"));
 		this.parent = parent;
 		selected = Social.viewing;
+		Party.refresh();
 	}
 
 	@Override
@@ -123,6 +124,11 @@ public class FriendsScreen extends Screen {
 	private void drawList(GuiGraphicsExtractor g, int mx, int my) {
 		List<Social.Friend> friends = Social.friends();
 		Ui.draw(g, Ui.trBold("slashclient-hud.friends.title", Social.onlineCount()), px + 10, py + 10, Ui.TEXT);
+		// a party: several friends invited here at once (or the one the player is in)
+		if (!friends.isEmpty() && (Social.currentServer() != null || Party.current() != null)) {
+			Ui.button(g, "friends:party", px + LIST_W - 26, py + 6, 20, 16, "m-friends", Component.empty(), Party.current() != null, mx, my);
+			hits.add(new Hit(px + LIST_W - 26, py + 6, 20, 16, () -> minecraft.setScreenAndShow(PickFriendsScreen.party(this))));
+		}
 		int y = py + 26;
 		if (friends.isEmpty()) {
 			int ty = y + 4;
@@ -208,6 +214,12 @@ public class FriendsScreen extends Screen {
 		for (int i = messages.size() - 1; i >= 0; i--) {
 			Social.Message m = messages.get(i);
 			boolean mine = m.from().equals(Social.myId());
+			if (m.waypoint() != null) {
+				int[] used = drawWaypoint(g, m, f.name(), mine, cx, cw, maxBubble, y, top, bottom, mx, my);
+				y = used[0];
+				total += used[1];
+				continue;
+			}
 			if (!m.invite().isEmpty()) {
 				int[] used = drawInvite(g, m, mine, cx, cw, maxBubble, y, top, bottom, mx, my);
 				y = used[0];
@@ -264,7 +276,35 @@ public class FriendsScreen extends Screen {
 			int jw = bw - 12;
 			// only clickable where it is not cut off by the scroll area
 			Ui.button(g, "friends:join:" + m.id(), bx + 6, y + 29, jw, 16, "play", join, true, mx, my);
-			if (y + 29 >= top && y + 45 <= bottom) hits.add(new Hit(bx + 6, y + 29, jw, 16, () -> Social.join(m.invite())));
+			if (y + 29 >= top && y + 45 <= bottom) hits.add(new Hit(bx + 6, y + 29, jw, 16, () -> {
+				// a party's invite: "I'm in" first, so the leader sees it
+				Party.accept(m.party());
+				Social.join(m.invite());
+			}));
+		}
+		return new int[] { y, bh + 4 };
+	}
+
+	/** A shared waypoint as a card: its name, where it is, and Add (for the one it was sent to). */
+	private int[] drawWaypoint(GuiGraphicsExtractor g, Social.Message m, String friendName, boolean mine, int cx, int cw, int maxBubble, int y, int top, int bottom, int mx, int my) {
+		SharedWaypoints.Shared w = m.waypoint();
+		Component title = Ui.trBold(mine ? "slashclient-hud.share.sentCard" : "slashclient-hud.share.card", w.name());
+		Component where = Ui.text(w.x() + " " + w.y() + " " + w.z() + " · " + SharedWaypoints.worldName(w.world()));
+		Component add = Ui.tr("slashclient-hud.share.add");
+		int bw = Math.min(maxBubble, Math.max(Math.max(Ui.width(title), Ui.width(where)) + 18, mine ? 0 : Ui.buttonWidth(add, "check", 16, 2)) + 12);
+		int bh = mine ? 30 : 50;
+		y -= bh + 4;
+		if (y > bottom || y + bh < top) return new int[] { y, bh + 4 };
+		int bx = mine ? cx + cw - 10 - bw : cx + 10;
+		Ui.round(g, bx, y, bw, bh, 5, mine ? Ui.ACCENT_DARK : Ui.CARD);
+		Ui.roundOutline(g, bx, y, bw, bh, 5, mine ? 0x40FFFFFF : 0x663B82F6);
+		Ui.icon(g, "m-waypoints", bx + 6, y + 6, 8, mine ? Ui.TEXT : Ui.ACCENT_LIGHT);
+		Ui.draw(g, Ui.fit(title, bw - 24), bx + 18, y + 6, Ui.TEXT);
+		Ui.draw(g, Ui.fit(where, bw - 12), bx + 6, y + 17, mine ? 0xCCFFFFFF : Ui.TEXT_2);
+		if (!mine) {
+			int jw = bw - 12;
+			Ui.button(g, "friends:wp:" + m.id(), bx + 6, y + 29, jw, 16, "check", add, true, mx, my);
+			if (y + 29 >= top && y + 45 <= bottom) hits.add(new Hit(bx + 6, y + 29, jw, 16, () -> SharedWaypoints.acceptMessage(m, friendName)));
 		}
 		return new int[] { y, bh + 4 };
 	}

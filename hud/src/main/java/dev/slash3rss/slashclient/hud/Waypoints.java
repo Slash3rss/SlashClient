@@ -30,6 +30,8 @@ public final class Waypoints {
 		public String dimension;
 		public int color;
 		public boolean visible = true;
+		/** The friend who shared it (SlashClient), or null for the player's own. */
+		public String from;
 
 		public Point(String name, int x, int y, int z, String dimension, int color) {
 			this.name = name;
@@ -91,6 +93,28 @@ public final class Waypoints {
 		list.add(p);
 		save();
 		return p;
+	}
+
+	/** A point a friend shared, put into the list of `worldKey` (not necessarily the world the player is in). */
+	public static Point addShared(String worldKey, String name, int x, int y, int z, String dimension, String from) {
+		List<Point> list = all().computeIfAbsent(worldKey, k -> new ArrayList<>());
+		for (Point p : list) if (p.x == x && p.y == y && p.z == z && p.name.equals(name) && dimension.equals(p.dimension)) return p;
+		Point p = new Point(name, x, y, z, dimension, COLORS[list.size() % COLORS.length]);
+		p.from = from;
+		list.add(p);
+		save();
+		return p;
+	}
+
+	/** "minecraft:overworld" from the key this file keeps ("ResourceKey[minecraft:dimension / minecraft:overworld]"). */
+	public static String dimensionId(String key) {
+		var m = java.util.regex.Pattern.compile("^ResourceKey\\[.* / (.+)]$").matcher(key == null ? "" : key);
+		return m.matches() ? m.group(1) : key == null ? "" : key;
+	}
+
+	/** The other way: the key this file keeps for a dimension id. */
+	public static String dimensionKey(String id) {
+		return "ResourceKey[minecraft:dimension / " + id + "]";
 	}
 
 	public static double distance(Minecraft mc, Point p) {
