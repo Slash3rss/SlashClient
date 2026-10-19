@@ -34,6 +34,8 @@ public class GameAllCosmetics implements FabricClientGameTest {
 		for (int[] s : SIZES) {
 			context.getInput().resizeWindow(s[0], s[1]);
 			context.runOnClient(mc -> TestHooks.guiScale(s[2]));
+			// the mouse over the figure's side (no tile under it: no tooltip over the tabs)
+			context.getInput().setCursorPos(2, 2);
 			String size = s[0] + "x" + s[1] + "-" + s[2];
 			context.runOnClient(mc -> TestHooks.cosmeticsMenu("cape"));
 			context.waitTicks(10);
@@ -47,6 +49,7 @@ public class GameAllCosmetics implements FabricClientGameTest {
 		}
 		context.getInput().resizeWindow(854, 480);
 		context.runOnClient(mc -> TestHooks.guiScale(2));
+		context.getInput().setCursorPos(2, 2);
 		// the menu's figure in all of it, then under suits
 		context.runOnClient(mc -> TestHooks.cosmeticsMenu("hat"));
 		for (String[] o : OUTFIT) context.runOnClient(mc -> TestHooks.cosmeticsWorn(o[0], o[1]));
