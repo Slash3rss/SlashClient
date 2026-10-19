@@ -44,3 +44,12 @@ export function publicPresence(p: Presence | undefined, showServer: boolean, las
   if (activity && !showServer) delete activity.server;
   return { status: p.status, activity };
 }
+
+/**
+ * One server however players typed it: "Mc.Example.com.:25565" and "mc.example.com" are the
+ * same place. Empty for no address.
+ */
+export function serverKeyOf(address: string | undefined): string {
+  if (!address) return '';
+  return address.trim().toLowerCase().replace(/:25565$/, '').replace(/\.+(?=:\d+$|$)/, '');
+}

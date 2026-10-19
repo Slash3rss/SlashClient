@@ -5,7 +5,7 @@ import path from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { Db, type User } from './db.ts';
 import { PROVIDERS, type DeviceStart, type Identity, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
-import { cleanPresence, publicPresence, type Presence } from './presence.ts';
+import { cleanPresence, publicPresence, serverKeyOf, type Presence } from './presence.ts';
 import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, framesFor, knownTo, mayWear, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
 import { partnerRoutes } from './partners.ts';
@@ -222,6 +222,71 @@ export function createApp(cfg: Config) {
   function broadcastPresence(userId: string) {
     const presence = presenceOf(userId);
     for (const f of db.friends(userId)) push(f.id, { type: 'presence', id: userId, presence });
+  }
+
+  /** What a player in a game shows: the character's own set or the account's, only what they may still wear. */
+  function wornBy(owner: User, character: string | undefined): Record<string, string> {
+    const settings = db.cosmeticSettings();
+    const granted = db.grants(owner.id);
+    const badge = badgeOf(owner);
+    const own = character ? db.characterLoadout(owner.id, character) : null;
+    const all = own ?? { ...owner.loadout, ...(owner.cape ? { cape: owner.cape } : {}) };
+    const worn: Record<string, string> = {};
+    for (const [slot, id] of Object.entries(all)) if (mayWear(settings, granted, id, slot as Slot, badge)) worn[slot] = id;
+    return worn;
+  }
+
+  // ---- cosmetics changed: everyone who may see that player in a game hears it at once ----
+  // (HUDs ask /v1/mc/lookup only every few minutes, so without this a new cape showed late)
+
+  /** Changes in a burst (several slots clicked through) go out as one event. */
+  const COSMETICS_COALESCE_MS = 300;
+  const cosmeticsTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  function cosmeticsChanged(userId: string) {
+    if (cosmeticsTimers.has(userId)) return;
+    const timer = setTimeout(() => {
+      cosmeticsTimers.delete(userId);
+      pushCosmetics(userId);
+    }, COSMETICS_COALESCE_MS);
+    timer.unref?.();
+    cosmeticsTimers.set(userId, timer);
+  }
+
+  /** Launchers that may have this player in sight: their own, and those in a game on the same server. */
+  function cosmeticsAudience(userId: string): Set<string> {
+    const out = new Set([userId]);
+    const where = presences.get(userId)?.activity;
+    const server = where?.kind === 'server' ? serverKeyOf(where.server) : '';
+    if (server) {
+      for (const [other, p] of presences) {
+        if (p.activity?.kind === 'server' && serverKeyOf(p.activity.server) === server) out.add(other);
+      }
+    } else {
+      // a world opened to LAN, or a server whose address the launcher did not see: only friends in a game can be there
+      for (const f of db.friends(userId)) {
+        const kind = presences.get(f.id)?.activity?.kind;
+        if (kind === 'server' || kind === 'singleplayer') out.add(f.id);
+      }
+    }
+    return out;
+  }
+
+  function pushCosmetics(userId: string) {
+    const owner = db.user(userId);
+    if (!owner) return;
+    const now = Date.now();
+    // every Minecraft uuid this account plays as now (the online one and the offline-mode one), dashed as games write it
+    const cosmetics: Record<string, Record<string, string>> = {};
+    for (const [uuid, l] of linked) {
+      if (l.user !== userId || now - l.at >= IN_GAME_TTL_MS) continue;
+      const hex = uuid.replace(/-/g, '');
+      cosmetics[`${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`] = owner.banned ? {} : wornBy(owner, l.character);
+    }
+    const uuids = Object.keys(cosmetics);
+    if (!uuids.length) return;
+    const event = { type: 'cosmetics', uuids, cosmetics };
+    for (const other of cosmeticsAudience(userId)) push(other, event);
   }
 
   // ---- HTTP ----
@@ -513,6 +578,7 @@ export function createApp(cfg: Config) {
         if (!db.minecraftAccounts(me).some((m) => m.uuid === subject)) throw new HttpError(403, 'not_linked');
         if (own === false) {
           db.setCharacterLoadout(me, subject, null);
+          cosmeticsChanged(me);
           return meWithProviders(me);
         }
         const user = db.user(me)!;
@@ -528,11 +594,13 @@ export function createApp(cfg: Config) {
           else throw new HttpError(400, slot === 'cape' ? 'bad_cape' : 'bad_item');
         }
         db.setCharacterLoadout(me, subject, next);
+        cosmeticsChanged(me);
         return meWithProviders(me);
       }
       if (cape !== undefined) {
         if (cape !== '' && !mayWear(db.cosmeticSettings(), db.grants(me), cape as string, 'cape', badge)) throw new HttpError(400, 'bad_cape');
         db.setCape(me, cape as string);
+        cosmeticsChanged(me);
       }
       // the other slots: { wings: 'angel', trail: '' … }, '' takes the item off
       if (loadout !== undefined) {
@@ -547,6 +615,7 @@ export function createApp(cfg: Config) {
           else throw new HttpError(400, 'bad_item');
         }
         db.setLoadout(me, next);
+        cosmeticsChanged(me);
       }
       return meWithProviders(me);
     }],
@@ -623,7 +692,6 @@ export function createApp(cfg: Config) {
       const ranks: Record<string, string> = {};
       // everything the player wears; HUDs before 0.8 read only `capes`
       const cosmetics: Record<string, Record<string, string>> = {};
-      const settings = db.cosmeticSettings();
       for (const u of active) {
         const link = linked.get(u.toLowerCase());
         const owner = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user) : undefined;
@@ -631,12 +699,7 @@ export function createApp(cfg: Config) {
         const badge = badgeOf(owner);
         if (badge) ranks[u] = badge === 'friend_pink' && !pink ? 'friend' : badge;
         // only what the player may still wear: the admin may have switched it off, or the rank may be gone
-        const granted = db.grants(owner.id);
-        const worn: Record<string, string> = {};
-        // the character's own set, or the account's
-        const own = link?.character ? db.characterLoadout(owner.id, link.character) : null;
-        const all = own ?? { ...owner.loadout, ...(owner.cape ? { cape: owner.cape } : {}) };
-        for (const [slot, id] of Object.entries(all)) if (mayWear(settings, granted, id, slot as Slot, badge)) worn[slot] = id;
+        const worn = wornBy(owner, link?.character);
         if (worn.cape) capes[u] = worn.cape;
         if (Object.keys(worn).length) cosmetics[u] = worn;
       }
@@ -672,9 +735,9 @@ export function createApp(cfg: Config) {
       const event = { type: 'emote', uuid: uuid.toLowerCase(), emote, at: Date.now() };
       push(me, event);
       if (where?.kind === 'server' && where.server) {
-        const server = where.server.toLowerCase();
+        const server = serverKeyOf(where.server);
         for (const [other, p] of presences) {
-          if (other !== me && p.activity?.kind === 'server' && p.activity.server?.toLowerCase() === server) push(other, event);
+          if (other !== me && p.activity?.kind === 'server' && serverKeyOf(p.activity.server) === server) push(other, event);
         }
       }
       return { ok: true };
@@ -747,7 +810,7 @@ export function createApp(cfg: Config) {
     ...shares.routes,
     ...sharing.routes,
     ...adminRoutes({
-      db, admin, body, kick, configAdmins,
+      db, admin, body, kick, configAdmins, cosmeticsChanged,
       fail: (status, code) => {
         throw new HttpError(status, code);
       },
@@ -1138,6 +1201,8 @@ export function createApp(cfg: Config) {
       clearInterval(heartbeat);
       clearInterval(playTick);
       clearInterval(logCleanup);
+      for (const timer of cosmeticsTimers.values()) clearTimeout(timer);
+      cosmeticsTimers.clear();
       for (const ws of wss.clients) ws.terminate();
       for (const ws of lanWss.clients) ws.terminate();
       wss.close();

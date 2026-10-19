@@ -19,6 +19,8 @@ export interface AdminContext {
   kick: (userId: string) => void;
   /** Players connected now and Minecraft players in a game with the launcher. */
   live: () => { online: number; inGame: number };
+  /** What a player wears changed: players who see them in game are told (coalesced). */
+  cosmeticsChanged?: (userId: string) => void;
 }
 
 type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
@@ -79,6 +81,8 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
         db.setCape(id, cape);
         db.log(me, 'set_cape', user.handle, cape || '—');
       }
+      // the role, rank, a ban or the cape change what the player shows in game
+      ctx.cosmeticsChanged?.(id);
       return { ...withConfig(userOr404(id)), grants: db.grants(id) };
     }],
     ['POST', /^\/v1\/admin\/users\/([\w-]+)\/logout$/, (req, [id]) => {
@@ -154,6 +158,7 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
           if (m.loadout && Object.values(m.loadout).includes(id)) db.setCharacterLoadout(userId, m.uuid, Object.fromEntries(Object.entries(m.loadout).filter(([, v]) => v !== id)));
         }
       }
+      ctx.cosmeticsChanged?.(userId);
       db.log(me, 'revoke', user.handle, id);
       return { grantees: db.grantees(id) };
     }],

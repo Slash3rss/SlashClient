@@ -433,6 +433,58 @@ describe('social server', () => {
     for (const l of [ewaLive, tomLive, olaLive]) l.ws.close();
   });
 
+  it('tells players on the same server at once when someone changes cosmetics', async () => {
+    const kasia = await login('KasiaLive');
+    const bartek = await login('BartekLive');
+    const obcy = await login('ObcyLive');
+    const kasiaMc = 'abcdef01-2222-3333-4444-555555555555';
+    await minecraftLogin('KasiaLive', kasiaMc.replace(/-/g, ''), kasia.token);
+    // nobody hears anything while Kasia's game is not running
+    const kasiaLive = await connect(kasia.token, { status: 'online', activity: { kind: 'server', server: 'SkyUp.pl:25565' } });
+    const bartekLive = await connect(bartek.token, { status: 'online', activity: { kind: 'server', server: 'skyup.pl' } });
+    const obcyLive = await connect(obcy.token, { status: 'online', activity: { kind: 'server', server: 'other.pl' } });
+    await call('POST', '/v1/me', kasia.token, { cape: 'galaxy' });
+    await new Promise((r) => setTimeout(r, 450));
+    assert.ok(!bartekLive.events.some((e) => e.type === 'cosmetics'));
+
+    await call('POST', '/v1/mc/link', kasia.token, { uuid: kasiaMc });
+    // a burst of changes (slots clicked through) goes out as one event, with the last state
+    const before = Date.now();
+    await call('POST', '/v1/me', kasia.token, { cape: 'ember' });
+    await call('POST', '/v1/me', kasia.token, { loadout: { wings: 'angel', pet: 'allay' } });
+    await call('POST', '/v1/me', kasia.token, { loadout: { trail: 'hearts' } });
+    const got = await bartekLive.waitFor((e) => e.type === 'cosmetics');
+    assert.ok(Date.now() - before < 1500);
+    // the same server however it was typed; the uuids dashed (also the one an offline-mode server gives), with the whole new set
+    assert.deepEqual(got.uuids, [kasiaMc, offlineUuid('KasiaLive')]);
+    assert.deepEqual(got.cosmetics[offlineUuid('KasiaLive')], got.cosmetics[kasiaMc]);
+    assert.deepEqual(got.cosmetics[kasiaMc], { cape: 'ember', wings: 'angel', pet: 'allay', trail: 'hearts' });
+    // her own launcher too (her game shows a change made on the website at once)
+    await kasiaLive.waitFor((e) => e.type === 'cosmetics' && e.cosmetics[kasiaMc].cape === 'ember');
+    await new Promise((r) => setTimeout(r, 450));
+    assert.equal(bartekLive.events.filter((e) => e.type === 'cosmetics').length, 1);
+    // a player on another server does not hear it
+    assert.ok(!obcyLive.events.some((e) => e.type === 'cosmetics'));
+
+    // taking everything off: an empty set
+    await call('POST', '/v1/me', kasia.token, { cape: '', loadout: { wings: '', pet: '', trail: '' } });
+    await bartekLive.waitFor((e) => e.type === 'cosmetics' && Object.keys(e.cosmetics[kasiaMc]).length === 0);
+
+    // a world opened to LAN (no server address): only friends in a game hear it
+    for (const l of [kasiaLive, bartekLive, obcyLive]) l.ws.close();
+    await call('POST', '/v1/friends/requests', kasia.token, { handle: 'BartekLive' });
+    await call('POST', `/v1/friends/requests/${kasia.user.id}/accept`, bartek.token);
+    const inWorld = { status: 'online', activity: { kind: 'singleplayer' } };
+    const kasiaLan = await connect(kasia.token, inWorld);
+    const bartekLan = await connect(bartek.token, inWorld);
+    const obcyLan = await connect(obcy.token, inWorld);
+    await call('POST', '/v1/me', kasia.token, { loadout: { aura: 'souls' } });
+    await bartekLan.waitFor((e) => e.type === 'cosmetics' && e.cosmetics[kasiaMc].aura === 'souls');
+    await new Promise((r) => setTimeout(r, 450));
+    assert.ok(!obcyLan.events.some((e) => e.type === 'cosmetics'));
+    for (const l of [kasiaLan, bartekLan, obcyLan]) l.ws.close();
+  });
+
   it('accepts at once when both sides asked', async () => {
     const x = await login('Xavier');
     const y = await login('Yvonne');
