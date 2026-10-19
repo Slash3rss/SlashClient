@@ -617,6 +617,46 @@ public final class TestHooks {
 		net.minecraft.client.Minecraft.getInstance().options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON);
 	}
 
+	/** The block outline (red, opaque, thick) and the held items (low shield, smaller items) on or off. */
+	public static void handView(boolean outline, boolean items) {
+		HudConfig c = SlashHud.config;
+		c.blockOutline = outline;
+		c.blockOutlineColor = 0xFFF87171;
+		c.blockOutlineOpacity = 100;
+		c.blockOutlineWidth = 4f;
+		c.lowShield = items;
+		c.lowShieldAmount = 15f;
+		// daylight (an earlier test leaves our own night on), so the hands are easy to see
+		c.timeChanger = false;
+		c.heldItems = items;
+		c.heldItemScale = 0.6f;
+		c.heldItemX = 0f;
+		c.heldItemY = 0f;
+		c.heldItemZ = 0f;
+	}
+
+	/** "outlines,items": how often each was drawn changed so far. */
+	public static String handViewCounts() {
+		return BlockOutline.drawn + "," + HeldItems.changed;
+	}
+
+	/** The player looks straight south (+z), level. */
+	public static void lookSouth() {
+		var p = net.minecraft.client.Minecraft.getInstance().player;
+		p.setYRot(0f);
+		p.setXRot(0f);
+		p.setYHeadRot(0f);
+		p.setYBodyRot(0f);
+	}
+
+	/** What the crosshair is on: "block", "entity" or "miss". */
+	public static String hitKind() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		var hit = mc.hitResult;
+		String kind = hit == null ? "none" : hit.getType().name().toLowerCase(java.util.Locale.ROOT);
+		return kind.equals("block") ? kind : kind + " at " + mc.player.position() + " " + mc.player.getYRot() + "/" + mc.player.getXRot();
+	}
+
 	/** Where the player's cape texture comes from now. */
 	public static String capeTexture() {
 		var cape = net.minecraft.client.Minecraft.getInstance().player.getSkin().cape();

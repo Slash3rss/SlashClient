@@ -50,6 +50,8 @@ public final class Catalog {
 		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"));
 
 	static final int[] COLORS = { 0xFFFFFFFF, 0xFF60A5FA, 0xFF4ADE80, 0xFF55FFFF, 0xFFFACC15, 0xFFF87171, 0xFFA855F7, 0xFFFF55FF };
+	/** The block outline's colours: the game's black first. */
+	static final int[] OUTLINE_COLORS = { 0xFF000000, 0xFFFFFFFF, 0xFF60A5FA, 0xFF4ADE80, 0xFF55FFFF, 0xFFFACC15, 0xFFF87171, 0xFFA855F7, 0xFFFF55FF };
 
 	/** Switching on asks first (once); switching off is at once. */
 	private static void risky(boolean on, Runnable apply) {
@@ -169,6 +171,17 @@ public final class Catalog {
 		out.add(new Entry("reconnect", "slashclient-hud.reconnectButton", "extras", "m-reconnect", () -> cfg.reconnect, v -> cfg.reconnect = v, List.of(), null));
 		out.add(new Entry("fullbright", "slashclient-hud.fullbright", "extras", "m-fullbright", () -> cfg.fullbright, v -> cfg.fullbright = v, List.of(), null));
 		out.add(new Entry("lowFire", "slashclient-hud.lowFire", "extras", "m-lowfire", () -> cfg.lowFire, v -> cfg.lowFire = v, List.of(), null));
+		out.add(new Entry("blockOutline", "slashclient-hud.blockOutline", "extras", "m-block", () -> cfg.blockOutline, v -> cfg.blockOutline = v, List.of(
+			new Colors("slashclient-hud.blockOutline.color", OUTLINE_COLORS, () -> cfg.blockOutlineColor, v -> cfg.blockOutlineColor = v),
+			new Slider("slashclient-hud.blockOutline.opacity", 10f, 100f, 5f, "%.0f%%", () -> (float) cfg.blockOutlineOpacity, v -> cfg.blockOutlineOpacity = Math.round(v)),
+			new Slider("slashclient-hud.blockOutline.width", 0.5f, 5f, 0.25f, "%.2f×", () -> cfg.blockOutlineWidth, v -> cfg.blockOutlineWidth = v)), null));
+		out.add(new Entry("lowShield", "slashclient-hud.lowShield", "extras", "m-armor", () -> cfg.lowShield, v -> cfg.lowShield = v, List.of(
+			new Slider("slashclient-hud.lowShield.amount", 5f, 50f, 5f, "%.0f", () -> cfg.lowShieldAmount, v -> cfg.lowShieldAmount = v)), null));
+		out.add(new Entry("heldItems", "slashclient-hud.heldItems", "extras", "m-items", () -> cfg.heldItems, v -> cfg.heldItems = v, List.of(
+			new Slider("slashclient-hud.set.scale", 50f, 100f, 5f, "%.0f%%", () -> cfg.heldItemScale * 100f, v -> cfg.heldItemScale = v / 100f),
+			new Slider("slashclient-hud.heldItems.x", -30f, 30f, 2f, "%.0f", () -> cfg.heldItemX, v -> cfg.heldItemX = v),
+			new Slider("slashclient-hud.heldItems.y", -30f, 30f, 2f, "%.0f", () -> cfg.heldItemY, v -> cfg.heldItemY = v),
+			new Slider("slashclient-hud.heldItems.z", -30f, 30f, 2f, "%.0f", () -> cfg.heldItemZ, v -> cfg.heldItemZ = v)), null));
 		out.add(new Entry("crosshair", "slashclient-hud.crosshair", "extras", "m-crosshair", () -> !"vanilla".equals(cfg.crosshair),
 			v -> {
 				// switched back on, it is the crosshair it was before
