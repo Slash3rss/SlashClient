@@ -136,6 +136,7 @@ export const SLOTS = [
   ['cape', 'Peleryna', 'fa-solid fa-flag'], ['wings', 'Skrzydła', 'fa-solid fa-dove'], ['elytra', 'Elytra', 'fa-solid fa-feather'],
   ['trail', 'Ślad', 'fa-solid fa-shoe-prints'], ['aura', 'Aura', 'fa-solid fa-wand-sparkles'], ['pet', 'Pupil', 'fa-solid fa-paw'],
   ['hat', 'Na głowę', 'fa-solid fa-hat-cowboy'], ['top', 'Ubranie', 'fa-solid fa-shirt'], ['kill', 'Efekt zabójstwa', 'fa-solid fa-skull-crossbones'],
+  ['back', 'Na plecy', 'fa-solid fa-person-hiking'], ['tail', 'Ogon', 'fa-solid fa-cat'],
 ];
 /** Particles and pets are the game's own: on the site they get an icon. */
 const ITEM_ICONS = {
@@ -162,13 +163,14 @@ const KILL_ICON_COLORS = {
 /** Pets of our own (not the game's mobs). */
 const OUR_PETS = ['duszek_haze'];
 
-/** A picture of any cosmetic: the cape's front, a wing's back, a view of the clothing, or an icon. */
+/** A picture of any cosmetic: the cape's front, a wing's back, a view of the clothing (or a back item or tail), or an icon. */
 export function cosmeticEl(id, slot = 'cape', small = false) {
   if (slot === 'cape') return capeEl(id, small);
   // our own pets have a picture of their own (vendor/pets/icon), like the clothing
-  if (slot === 'hat' || slot === 'top' || OUR_PETS.includes(id)) {
+  // back items and tails too (vendor/gear/icon), seen from behind
+  if (slot === 'hat' || slot === 'top' || slot === 'back' || slot === 'tail' || OUR_PETS.includes(id)) {
     const c = el('div', { class: `cape clothing${small ? ' sm' : ''}`, title: id });
-    c.style.backgroundImage = `url(vendor/${slot === 'pet' ? 'pets' : 'clothing'}/icon/${id}.png)`;
+    c.style.backgroundImage = `url(vendor/${slot === 'pet' ? 'pets' : slot === 'back' || slot === 'tail' ? 'gear' : 'clothing'}/icon/${id}.png)`;
     return c;
   }
   if (slot === 'wings' || slot === 'elytra') {

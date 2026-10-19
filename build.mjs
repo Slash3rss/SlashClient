@@ -15,7 +15,7 @@ cpSync('src/renderer/index.html', 'dist/renderer/index.html');
 cpSync('src/renderer/style.css', 'dist/renderer/style.css');
 cpSync('build/icons/256x256.png', 'dist/renderer/logo.png');
 cpSync('src/renderer/img', 'dist/renderer/img', { recursive: true });
-for (const [from, to] of [['cape', 'capes'], ['wings', 'wings'], ['elytra', 'elytra'], ['clothing', 'clothing'], ['pet', 'pets']]) {
+for (const [from, to] of [['cape', 'capes'], ['wings', 'wings'], ['elytra', 'elytra'], ['clothing', 'clothing'], ['pet', 'pets'], ['gear', 'gear']]) {
   cpSync(`hud/src/main/resources/assets/slashclient-hud/textures/${from}`, `dist/renderer/img/${to}`, { recursive: true });
 }
 
@@ -45,7 +45,7 @@ for (const name of ['outfit-latin.woff2', 'outfit-latin-ext.woff2']) cpSync(`nod
 cpSync('node_modules/@fortawesome/fontawesome-free/css/all.min.css', `${web}/fa/css/all.min.css`);
 cpSync('node_modules/@fortawesome/fontawesome-free/webfonts', `${web}/fa/webfonts`, { recursive: true });
 cpSync('build/icons/256x256.png', `${web}/logo.png`);
-for (const [from, to] of [['cape', 'capes'], ['wings', 'wings'], ['elytra', 'elytra'], ['clothing', 'clothing'], ['pet', 'pets']]) {
+for (const [from, to] of [['cape', 'capes'], ['wings', 'wings'], ['elytra', 'elytra'], ['clothing', 'clothing'], ['pet', 'pets'], ['gear', 'gear']]) {
   cpSync(`hud/src/main/resources/assets/slashclient-hud/textures/${from}`, `${web}/${to}`, { recursive: true });
 }
 

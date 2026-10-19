@@ -27,7 +27,13 @@ async function figure(uuid, worn) {
     previewBox.classList.add('hidden');
   }
 }
-const tryOn = (slot, id) => preview?.show({ ...previewWorn, ...(slot === 'cape' || slot === 'wings' || slot === 'elytra' ? { cape: '', wings: '', elytra: '' } : {}), [slot]: id });
+// a back item takes the place of the cape and the wings: on their tabs it is left off
+const tryOn = (slot, id) => preview?.show({ ...previewWorn, ...(slot === 'cape' || slot === 'wings' || slot === 'elytra' ? { cape: '', wings: '', elytra: '', back: '' } : {}), [slot]: id });
+/** What goes with what on the back, said under the slot's tabs. */
+const SLOT_NOTES = {
+  back: 'Zajmuje miejsce peleryny i skrzydeł (nie widać ich wtedy) i chowa się pod prawdziwą elytrą.',
+  tail: 'Kołysze się, kiedy chodzisz. Pod peleryną zwisa niżej.',
+};
 
 function renderNav() {
   $('#nav-account .label').textContent = me ? me.name : 'Zaloguj się';
@@ -133,6 +139,8 @@ function renderAccount() {
   const tabs = el('div', { class: 'slot-tabs' }, ...SLOTS.filter(([s]) => items.some((i) => i.slot === s)).map(([s, name, ic]) =>
     el('button', { class: `${s === slot ? 'active' : ''}${worn[s] ? ' worn' : ''}`, onclick: () => { slot = s; renderAccount(); } }, icon(ic), name)));
   const pick = el('div', { class: 'cape-picker' });
+  const noteText = SLOT_NOTES[slot] ?? ((slot === 'cape' || slot === 'wings') && worn.back ? 'Nosisz coś na plecach: w grze widać to zamiast peleryny i skrzydeł.' : '');
+  const note = noteText ? el('p', { class: 'muted small', textContent: noteText }) : '';
   const choice = (item) => {
     const id = item?.id ?? '';
     const name = item?.name ?? 'Nic';
@@ -153,10 +161,10 @@ function renderAccount() {
     el('p', { class: 'muted small', textContent: 'Widzą je gracze z SlashClient na każdym serwerze. Każde konto Minecraft może mieć własny zestaw.' }),
     characters.length ? el('div', { class: 'cosmetic-for' }, el('span', { class: 'small', textContent: 'Zestaw dla:' }), whose,
       character?.loadout ? el('button', { onclick: () => send({ own: false }, `${character.name} nosi teraz zestaw całego konta.`) }, icon('fa-solid fa-rotate-left'), 'Jak całe konto') : '') : '',
-    el('div', { class: 'cosmetic-stage' }, previewBox ??= el('div', { class: 'figure' }), el('div', { class: 'grow' }, tabs, pick)));
+    el('div', { class: 'cosmetic-stage' }, previewBox ??= el('div', { class: 'figure' }), el('div', { class: 'grow' }, tabs, note, pick)));
   $('#account').replaceChildren(el('div', { class: 'account' }, profile, capes));
   // the kill effect plays on the figure only while its tab is open (every few seconds it would distract)
-  figure(character?.uuid ?? characters[0]?.uuid, slot === 'kill' ? worn : { ...worn, kill: '' });
+  figure(character?.uuid ?? characters[0]?.uuid, { ...worn, ...(slot === 'kill' ? {} : { kill: '' }), ...(slot === 'cape' || slot === 'wings' || slot === 'elytra' ? { back: '' } : {}) });
   renderPartners();
 }
 
