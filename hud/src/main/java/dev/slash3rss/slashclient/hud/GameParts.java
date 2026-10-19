@@ -208,6 +208,38 @@ public final class GameParts {
 	};
 
 	/**
+	 * The chat, bottom left: not moved (its lines are clicked where the game draws them), only
+	 * sized and made more or less see-through from its card (ChatLook). Its box is the full closed
+	 * chat at that size; its × hides the chat until it is opened.
+	 */
+	static final Part CHAT = new Part("chat", 320, 90) {
+		@Override float scale() { return 1f; }
+		@Override boolean on() { return SlashHud.config.placement(id()).enabled; }
+		@Override boolean real(Minecraft mc) { return true; }
+		@Override float[] boxAnchor(int w, int h) { return new float[] { 0, h }; }
+		@Override float[] screenAnchor(int sw, int sh) { return new float[] { 0, sh - 40 }; }
+		@Override public int width(Minecraft mc) {
+			int[] b = ChatLook.box(mc, mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
+			return b[2] - b[0];
+		}
+		@Override public int height(Minecraft mc) {
+			// from the top of its highest line down to where the placement puts the bottom (40 above the screen's)
+			int sh = mc.getWindow().getGuiScaledHeight();
+			return sh - 40 - ChatLook.box(mc, mc.getWindow().getGuiScaledWidth(), sh)[1];
+		}
+		@Override public void drawPreview(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
+			int[] at = SlashHud.position(SlashHud.config.placement(id()), width(mc), height(mc), g.guiWidth(), g.guiHeight());
+			ChatLook.preview(g, mc, at[0], at[1]);
+			super.drawPreview(g, mc, x, y);
+		}
+	};
+
+	/** Parts that stay where the game draws them: the editor does not drag them. */
+	static boolean fixed(HudModule m) {
+		return m == CHAT;
+	}
+
+	/**
 	 * The scoreboard as the game lays it out (Gui.displayScoreboardSidebar): as wide as the title
 	 * or the widest "name: score" line, 9 pixels a line for at most 15 lines and the title, the
 	 * bottom a third of the lines' height under the middle, 1 pixel off the right edge.
@@ -324,5 +356,12 @@ public final class GameParts {
 		cfg.modules.putIfAbsent("toasts", new HudConfig.Placement(true, 1f, 0f, 0, 0));
 		// the box's middle on the line the game centres the message on (68 above the bottom)
 		cfg.modules.putIfAbsent("actionbar", new HudConfig.Placement(true, 0.5f, 1f, 0, -68 + 7));
+		// the chat is never moved: its box always sits where the game draws it
+		HudConfig.Placement chat = cfg.modules.computeIfAbsent("chat", k -> new HudConfig.Placement(true, 0f, 1f, 0, -40));
+		chat.ax = 0f;
+		chat.ay = 1f;
+		chat.dx = 0;
+		chat.dy = -40;
+		chat.scale = 1f;
 	}
 }

@@ -123,7 +123,7 @@ public final class ChatExtras {
 		Minecraft mc = Minecraft.getInstance();
 		ChatComponent chat = Compat.chat(mc);
 		ChatComponentAccessor access = (ChatComponentAccessor) chat;
-		double scale = mc.options.chatScale().get();
+		double scale = ChatLook.scale(mc);
 		int lineHeight = (int) (9.0 * (mc.options.chatLineSpacing().get() + 1.0));
 		// the chat is drawn upwards from 40 pixels above the bottom, scaled
 		double bottom = Math.floor((mc.getWindow().getGuiScaledHeight() - 40) / scale);

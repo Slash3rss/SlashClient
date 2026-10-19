@@ -226,6 +226,10 @@ public final class Catalog {
 		out.add(new Entry("titles", "slashclient-hud.game.titles", "game", "m-titles", () -> cfg.titles, v -> cfg.titles = v, List.of(
 			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.titleScale, v -> cfg.titleScale = v)), null));
 		out.add(new Entry("toasts", "slashclient-hud.game.toasts", "game", "m-toasts", () -> cfg.placement("toasts").enabled, v -> cfg.placement("toasts").enabled = v, List.of(), null));
+		// the chat: the game's own background opacity and scale (above 1 with ours), the same as in its Chat Settings
+		out.add(new Entry("chat", "slashclient-hud.game.chat", "game", "chat", () -> cfg.placement("chat").enabled, v -> cfg.placement("chat").enabled = v, List.of(
+			new Slider("slashclient-hud.set.opacity", 0f, 100f, 5f, "%.0f%%", dev.slash3rss.slashclient.hud.ChatLook::opacity, dev.slash3rss.slashclient.hud.ChatLook::setOpacity),
+			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", dev.slash3rss.slashclient.hud.ChatLook::shownScale, dev.slash3rss.slashclient.hud.ChatLook::setScale)), null));
 		out.add(new Entry("nametag", "slashclient-hud.game.nametag", "game", "m-nametag", () -> cfg.ownNametag, v -> cfg.ownNametag = v, List.of(), null));
 		out.add(new Entry("chatMentions", "slashclient-hud.chat.mentions", "chat", "m-mentions", () -> cfg.chatMentions, v -> cfg.chatMentions = v, List.of(), null));
 		out.add(new Entry("chatTimestamps", "slashclient-hud.chatTimestamps", "chat", "m-chattimestamps", () -> cfg.chatTimestamps, v -> cfg.chatTimestamps = v, List.of(), null));

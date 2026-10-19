@@ -133,11 +133,104 @@ public final class TestHooks {
 	/** Where a game part's box is (x, y, w, h), in GUI pixels. */
 	public static int[] gamePartBox(String id) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
-		HudModule part = GameParts.ALL.stream().filter(p -> p.id().equals(id)).findFirst().orElseThrow();
+		HudModule part = SlashHud.MODULES.stream().filter(p -> p.id().equals(id)).findFirst().orElseThrow();
 		HudConfig.Placement p = SlashHud.config.placement(id);
 		int[] size = SlashHud.size(part, mc, p);
 		int[] at = SlashHud.position(p, size[0], size[1], mc.getWindow().getGuiScaledWidth(), mc.getWindow().getGuiScaledHeight());
 		return new int[] { at[0], at[1], size[0], size[1] };
+	}
+
+	// ---------- layouts per server, the chat's size and opacity ----------
+
+	/** No layouts saved, the chat at the game's defaults (scale 1, background 50%). */
+	public static void serverLayoutsReset() {
+		ServerLayouts.testAddress = null;
+		ServerLayouts.clearForTest();
+		chatLook(1f, 50f);
+	}
+
+	/** As joining a server (or, with null, leaving it): its layout comes on, or the player's own comes back. */
+	public static void joinServer(String address) {
+		ServerLayouts.testAddress = address;
+		ServerLayouts.switchTo(address);
+	}
+
+	public static String activeLayout() {
+		return String.valueOf(ServerLayouts.active());
+	}
+
+	/** The middle of the editor's "layout for this server" switch, and of the first saved server's ×. */
+	public static double[] serverSwitchPoint() {
+		return ServerLayoutsPanel.switchCenter;
+	}
+
+	public static double[] serverDeletePoint() {
+		return ServerLayoutsPanel.firstDelete;
+	}
+
+	/** The editor's page scrolled to its end, as with the mouse wheel. */
+	public static void scrollDown() {
+		//#if MC >= 1.20.2
+		screen().mouseScrolled(0, 0, 0, -100);
+		//#else
+		//$ screen().mouseScrolled(0, 0, -100);
+		//#endif
+	}
+
+	/** The chat's size and background as the editor's sliders set them. */
+	public static void chatLook(float scale, float opacity) {
+		ChatLook.setScale(scale);
+		ChatLook.setOpacity(opacity);
+	}
+
+	/** A module's place, the chat's scale and opacity: "ax,ay,dx,dy scale opacity". */
+	public static String layoutState(String id) {
+		HudConfig.Placement p = SlashHud.config.placement(id);
+		return String.format(java.util.Locale.ROOT, "%.2f,%.2f,%d,%d %.2f %.0f", p.ax, p.ay, p.dx, p.dy, ChatLook.shownScale(), ChatLook.opacity());
+	}
+
+	public static void place(String id, float ax, float ay, int dx, int dy) {
+		HudConfig.Placement p = SlashHud.config.placement(id);
+		p.enabled = true;
+		p.ax = ax;
+		p.ay = ay;
+		p.dx = dx;
+		p.dy = dy;
+	}
+
+	/** The open screen closed as Esc closes it (the editor keeps its changes then). */
+	public static void closeScreen() {
+		screen().onClose();
+	}
+
+	/** A share code made now and read back: the same module place and chat size, or what differs. */
+	public static String shareRoundTrip(String id) {
+		HudConfig read = ShareCode.decode(ShareCode.encode(SlashHud.config));
+		if (read == null) return "unreadable";
+		HudConfig.Placement a = SlashHud.config.placement(id), b = read.placement(id);
+		if (a.ax != b.ax || a.ay != b.ay || a.dx != b.dx || a.dy != b.dy) return "place differs";
+		if (read.chatScaleExtra != SlashHud.config.chatScaleExtra) return "chat size differs";
+		return "ok";
+	}
+
+	/** The chat's box in the editor against where the game draws it: "" when they agree. */
+	public static String chatBoxCheck() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		int sw = mc.getWindow().getGuiScaledWidth(), sh = mc.getWindow().getGuiScaledHeight();
+		int[] box = gamePartBox("chat");
+		// the game's layout, worked out on its own here: lines upwards from 40 above the bottom, scaled
+		double s = ChatLook.scale(mc);
+		int lh = (int) (9.0 * (mc.options.chatLineSpacing().get() + 1.0));
+		int lines = net.minecraft.client.gui.components.ChatComponent.getHeight(mc.options.chatHeightUnfocused().get()) / lh;
+		int width = (int) Math.round((Math.ceil(net.minecraft.client.gui.components.ChatComponent.getWidth(mc.options.chatWidth().get()) / s) + 12) * s);
+		double bottom = Math.floor((sh - 40) / s) * s;
+		double top = bottom - lines * lh * s;
+		String problem = "";
+		if (box[0] != 0) problem += " x=" + box[0];
+		if (Math.abs(box[2] - width) > 1) problem += " w=" + box[2] + " (game " + width + ")";
+		if (Math.abs(box[1] - top) > 1) problem += " top=" + box[1] + " (game " + top + ")";
+		if (Math.abs(box[1] + box[3] - bottom) > 1.5) problem += " bottom=" + (box[1] + box[3]) + " (game " + bottom + ")";
+		return problem.trim();
 	}
 
 	/** A server's text over and under the tab list, the header in two lines (its box grows with them). */
@@ -192,7 +285,7 @@ public final class TestHooks {
 	/** What a right click on the n-th line from the bottom of the open chat copies. */
 	public static String copyLine(int fromBottom) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
-		double scale = mc.options.chatScale().get();
+		double scale = ChatLook.scale(mc);
 		int lineHeight = (int) (9.0 * (mc.options.chatLineSpacing().get() + 1.0));
 		double y = ((mc.getWindow().getGuiScaledHeight() - 40) / scale - lineHeight * (fromBottom + 0.5)) * scale;
 		return ChatExtras.messageAt(10, y);
@@ -236,7 +329,7 @@ public final class TestHooks {
 	 */
 	public static String clickChat(int fromBottom, boolean right) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
-		double scale = mc.options.chatScale().get();
+		double scale = ChatLook.scale(mc);
 		int lineHeight = (int) (9.0 * (mc.options.chatLineSpacing().get() + 1.0));
 		double y = ((mc.getWindow().getGuiScaledHeight() - 40) / scale - lineHeight * (fromBottom + 0.5)) * scale;
 		// near the end of the line, past a time stamp in front
