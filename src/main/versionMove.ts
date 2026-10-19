@@ -173,7 +173,7 @@ export interface MoveReport {
   at: number;
   moved: number;
   /** Mods disabled because they have no version for `to` yet (or could not be checked). */
-  pending: { filename: string; title: string; status: 'missing' | 'unknown'; projectId?: string }[];
+  pending: { filename: string; title: string; status: 'missing' | 'unknown'; projectId?: string; iconUrl?: string }[];
   /** Required dependencies of the new versions that could not be installed. */
   failedDeps?: string[];
 }
@@ -263,7 +263,7 @@ export async function applyMove(opts: ApplyOptions): Promise<MoveReport> {
     if (await exists(file)) await fs.rename(file, `${file}.disabled`);
     // only what was on (or waited from an earlier move) is waiting: a mod the player had off stays theirs
     if (byName.get(item.filename)?.enabled || opts.enable?.has(item.filename)) {
-      pending.push({ filename: item.filename, title: item.title, status: item.status, ...(item.projectId ? { projectId: item.projectId } : {}) });
+      pending.push({ filename: item.filename, title: item.title, status: item.status, ...(item.projectId ? { projectId: item.projectId } : {}), ...(item.iconUrl ? { iconUrl: item.iconUrl } : {}) });
     }
   }
 

@@ -10,7 +10,7 @@ import { t } from '../shared/i18n';
 type MoveStatus = 'ready' | 'same' | 'missing' | 'unknown';
 interface MoveItem { filename: string; enabled: boolean; title: string; status: MoveStatus; iconUrl?: string; currentVersion?: string; targetVersion?: string; prerelease?: boolean }
 interface MovePlan { from: string; to: string; loader: string; items: MoveItem[] }
-interface MoveReport { from: string; to: string; at: number; moved: number; pending: { filename: string; title: string; status: 'missing' | 'unknown' }[]; failedDeps?: string[] }
+interface MoveReport { from: string; to: string; at: number; moved: number; pending: { filename: string; title: string; status: 'missing' | 'unknown'; iconUrl?: string }[]; failedDeps?: string[] }
 
 interface MoveProfile { id: string; versionId: string; loader: string; modpack?: unknown }
 
@@ -44,19 +44,19 @@ export function initVersionMove(d: MoveDeps) {
     }
   }
 
-  function row(title: string, iconUrl: string | undefined, sub: string, side: string, fit: boolean, off = false) {
+  function row(title: string, iconUrl: string | undefined, sub: string, side: string, fit: boolean, off = false, waiting = false) {
     return el('div', { className: `join-choice move-item${off ? ' off' : ''}` },
       d.projectIcon(iconUrl),
       el('div', { className: 'grow' }, title, el('small', { textContent: sub })),
-      el('span', { className: fit ? 'fit' : 'unfit', textContent: side }));
+      el('span', { className: fit ? 'fit' : waiting ? 'unfit waiting' : 'unfit', textContent: side }));
   }
 
   function renderPlan(p: MovePlan) {
     const counts = { ready: 0, same: 0, missing: 0, unknown: 0 };
     for (const i of p.items) counts[i.status]++;
     const parts = [
-      t('do przeniesienia: {0}', counts.ready), t('już pasują: {0}', counts.same),
-      t('czekają na nową wersję: {0}', counts.missing), counts.unknown ? t('spoza Modrinth: {0}', counts.unknown) : '',
+      counts.ready ? t('do przeniesienia: {0}', counts.ready) : '', counts.same ? t('już pasują: {0}', counts.same) : '',
+      counts.missing ? t('czekają na nową wersję: {0}', counts.missing) : '', counts.unknown ? t('spoza Modrinth: {0}', counts.unknown) : '',
     ];
     $('#move-summary').textContent = p.items.length
       ? `Minecraft ${p.from} → ${p.to}: ${parts.filter(Boolean).join(' · ')}`
@@ -64,7 +64,7 @@ export function initVersionMove(d: MoveDeps) {
     $('#move-list').replaceChildren(...p.items.map((i) => {
       const s = statusOf(i, p.to);
       const label = i.status === 'ready' ? t('gotowy') : i.status === 'same' ? t('pasuje') : i.status === 'missing' ? t('niegotowy') : t('nieznany');
-      return row(i.title, i.iconUrl, s.text + (i.enabled ? '' : ` · ${t('wyłączony')}`), label, s.fit, !i.enabled);
+      return row(i.title, i.iconUrl, s.text + (i.enabled ? '' : ` · ${t('wyłączony')}`), label, s.fit, !i.enabled, i.status === 'missing');
     }));
     $('#move-unknown-row').classList.toggle('hidden', !counts.unknown);
     $('#move-go').replaceChildren(el('i', { className: 'fa-solid fa-right-left' }), ' ', t('Przenieś na {0}', p.to));
@@ -78,8 +78,8 @@ export function initVersionMove(d: MoveDeps) {
     const deps = report.failedDeps?.length ? ` ${t('Nie udało się doinstalować wymaganych bibliotek: {0}.', report.failedDeps.length)}` : '';
     $('#move-pending-title').replaceChildren(el('i', { className: 'fa-solid fa-hourglass-half' }), ' ',
       t('Po przeniesieniu na {0} czekają (wyłączone): {1}.', report.to, report.pending.length) + deps);
-    $('#move-pending-list').replaceChildren(...report.pending.map((p) => row(p.title, undefined, p.filename,
-      p.status === 'missing' ? t('brak wersji') : t('spoza Modrinth'), false, true)));
+    $('#move-pending-list').replaceChildren(...report.pending.map((p) => row(p.title, p.iconUrl, p.filename,
+      p.status === 'missing' ? t('brak wersji') : t('spoza Modrinth'), false, true, p.status === 'missing')));
   }
 
   /** Fills the card; the same profile on the same version again only when `force` (the store is redrawn often). */

@@ -82,7 +82,7 @@ export function initCloudProfiles(d: CloudDeps) {
 
   /** Fills the card; the same profile again only when `force` (the store is redrawn often, the check reads files and asks the server). */
   async function render(profileId: string, force = false) {
-    if (!force && shown === profileId) return;
+    if (!force && shown === profileId && last?.signedIn) return;
     shown = profileId;
     const status = $('#cloud-status');
     status.textContent = t('Sprawdzam…');
@@ -103,7 +103,8 @@ export function initCloudProfiles(d: CloudDeps) {
     status.classList.toggle('share-warn', !!warn);
     $<HTMLInputElement>('#cloud-auto').checked = !!s.link?.auto;
     $<HTMLInputElement>('#cloud-auto').disabled = !s.signedIn;
-    $<HTMLButtonElement>('#cloud-sync').disabled = !s.signedIn || !s.link || s.action === 'none';
+    // files may change after this check (the game, the config editor): syncing stays possible
+    $<HTMLButtonElement>('#cloud-sync').disabled = !s.signedIn || !s.link;
     $<HTMLButtonElement>('#cloud-upload').disabled = !s.signedIn;
     $<HTMLButtonElement>('#cloud-download').disabled = !s.signedIn || !s.remote;
   }

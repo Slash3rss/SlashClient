@@ -1107,3 +1107,4 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .move-list { max-height: 320px; margin-bottom: 8px; }
 .move-item img { width: 28px; height: 28px; }
 .move-item.off .grow { opacity: .65; }
+.move-item .waiting { color: #fbbf24; }
