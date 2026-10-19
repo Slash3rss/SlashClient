@@ -275,7 +275,7 @@
 	"slashclient-hud.waypoints.add": "Dodaj tutaj",
 	"slashclient-hud.waypoints.none": "Nie masz jeszcze waypointów w tym świecie. Dodaj pierwszy w miejscu, w którym stoisz.",
 	"slashclient-hud.waypoints.point": "Punkt %s",
-	"slashclient-hud.share.title": "Udostępnij %s",
+	"slashclient-hud.share.pointTitle": "Udostępnij %s",
 	"slashclient-hud.share.subtitle": "%s · znajomym, których wybierzesz (SlashClient)",
 	"slashclient-hud.share.send": "Wyślij",
 	"slashclient-hud.share.sent": "Wysłano: %s",
