@@ -21,7 +21,7 @@ import { paths } from './paths';
 import { loadStore, newProfile, profileGameDir, saveStore, secrets, setSecretCodec, type MicrosoftAccount, type Profile, type Settings, type StoreData } from './store';
 import { LOADER_NAMES, loaderVersions, type Loader } from './loaders';
 import {
-  checkUpdates, downloadModpack, identifyModpack, installMrpack, installProject, latestModpackVersion, listContentVersions,
+  checkUpdates, datapackFile, downloadModpack, identifyModpack, installMrpack, installProject, latestModpackVersion, listContentVersions,
   findFitting, modrinthLinks, installedProjectIds, listInstalled, removeContent, search, setEnabled, updateMrpack,
   type ContentType, type ModpackInfo, type ProjectType, type UpdateInfo, type VersionInfo,
 } from './modrinth';
@@ -54,6 +54,8 @@ import { perfModsFor } from './perfmods';
 import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePreset, type SkinPreset } from './skinLibrary';
 import fsp from 'node:fs/promises';
 import { backupWorld, deleteFile, listBackups, listClips, listScreenshots, listWorlds, restoreBackup } from './worlds';
+import { applySnapshot, createSnapshot, deleteSnapshot, listSnapshots, restoreSnapshot } from './snapshots';
+import { exportWorld, importWorldZip, installDatapack, listDatapacks, readWorldZip, removeDatapack, type WorldZipSummary } from './worldFiles';
 import { t } from '../shared/i18n';
 import { APP_USER_MODEL_ID, cleanTarget, Notifier } from './notifications';
 
@@ -266,6 +268,11 @@ handle('profile:delete', async (id: string, trashFiles = false) => {
   }
   store.profiles = store.profiles.filter((p) => p.id !== id);
   void consoleHistory.forget(id).catch(() => {});
+  // snapshots cannot be restored without their profile: they go to the trash
+  if (profile && /^[\w-]+$/.test(id)) {
+    const dir = snapshotsDirOf(profile);
+    void fsp.stat(dir).then(() => shell.trashItem(dir), () => {}).catch(() => {});
+  }
   // the Play bar and Profiles must not point at a profile that is gone
   if (store.settings.selectedProfileId === id) store.settings.selectedProfileId = store.profiles[0].id;
   await persist();
@@ -391,7 +398,8 @@ async function profileTarget(id: string) {
 }
 
 handle('content:search', async (profileId: string, query: string, type: ProjectType, offset?: number, source: Source = 'modrinth') => {
-  const find = source === 'curseforge' ? (curseforge(), searchCurseForge) : search;
+  // datapacks come from Modrinth only
+  const find = source === 'curseforge' && type !== 'datapack' ? (curseforge(), searchCurseForge) : search;
   try {
     if (type === 'modpack') return await find({ query, type, offset });
     const { profile, gameVersion } = await profileTarget(profileId);
@@ -404,7 +412,7 @@ handle('content:search', async (profileId: string, query: string, type: ProjectT
 });
 handle('content:list', async (profileId: string) => listInstalled((await profileTarget(profileId)).gameDir));
 handle('content:versions', async (profileId: string, projectId: string, type: ProjectType, onlyCompatible: boolean, source: Source = 'modrinth') => {
-  const list = source === 'curseforge' ? (curseforge(), listCurseForgeVersions) : listContentVersions;
+  const list = source === 'curseforge' && type !== 'datapack' ? (curseforge(), listCurseForgeVersions) : listContentVersions;
   if (!onlyCompatible || type === 'modpack') return list(projectId, 'modpack');
   const { profile, gameVersion } = await profileTarget(profileId);
   return list(projectId, type, gameVersion, profile.loader === 'vanilla' ? undefined : profile.loader);
@@ -711,10 +719,16 @@ handle('modpack:update', async (profileId: string, versionId?: string) => {
   const pack = profile.modpack;
   if (!pack) throw new Error(t('Ten profil nie pochodzi z modpacka Modrinth ani CurseForge.'));
   if (games.has(profile.id)) throw new Error(t('Zamknij grę przed aktualizacją modpacka.'));
+  if (snapshotBusy.has(profile.id)) throw new Error(t('Poczekaj, aż skończy się zapisywanie lub przywracanie migawki.'));
   const task = startTask(t('Aktualizowanie modpacka: {0}', pack.title), undefined);
   try {
     const source: Source = pack.source ?? 'modrinth';
     const { file, version } = await downloadPack(source, pack.projectId, task, versionId);
+    // mods and config as they are now, so a broken update is one click from undone
+    task.progress(t('Zapisywanie migawki profilu'), 0, 1);
+    await withSnapshotLock(profile, () => createSnapshot({
+      dir: snapshotsDirOf(profile), gameDir: profileGameDir(profile), profile, reason: 'update', label: `${pack.versionNumber} → ${version?.versionNumber ?? '?'}`,
+    }));
     const { info, manual } = await installPackFile(profile, file, true, task.progress);
     applyPack(profile, info, version, pack.title, source);
     await persist();
@@ -933,6 +947,109 @@ handle('file:open', (file: string) => {
   if (isInsideInstances(file)) return shell.openPath(file);
 });
 
+// ---------- world export and import (.zip), datapacks in a world ----------
+
+handle('worlds:export', async (profileId: string, folder: string) => {
+  const gameDir = gameDirOf(profileId);
+  const { canceled, filePath } = await dialog.showSaveDialog(win!, {
+    title: t('Eksportuj świat'), defaultPath: `${folder.replace(/[\\/:*?"<>|]/g, '_')}.zip`, filters: [{ name: t('Świat Minecrafta (.zip)'), extensions: ['zip'] }],
+  });
+  if (canceled || !filePath) return undefined;
+  const task = startTask(t('Eksport świata: {0}', folder));
+  try {
+    task.progress(t('Pakowanie świata'), 0, 1);
+    const size = await exportWorld(gameDir, folder, filePath);
+    task.finish(true, t('Zapisano {0} ({1} MB).', path.basename(filePath), (size / 1024 / 1024).toFixed(1)));
+    shell.showItemInFolder(filePath);
+    return filePath;
+  } catch (err) {
+    task.finish(false, (err as Error).message);
+    throw err;
+  }
+});
+
+/** World zips picked in the import dialog: the page only gets a key, never sends a path back. */
+const pickedWorlds = new Map<string, string>();
+
+handle('worlds:importPick', async (): Promise<{ key: string; summary: WorldZipSummary } | undefined> => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(win!, {
+    title: t('Importuj świat'), filters: [{ name: t('Świat Minecrafta (.zip)'), extensions: ['zip'] }], properties: ['openFile'],
+  });
+  if (canceled || !filePaths[0]) return undefined;
+  const { summary } = await readWorldZip(filePaths[0]);
+  const key = randomUUID();
+  pickedWorlds.set(key, filePaths[0]);
+  return { key, summary };
+});
+
+handle('worlds:import', async (profileId: string, key: string) => {
+  const file = pickedWorlds.get(key);
+  if (!file) throw new Error(t('Wybierz plik jeszcze raz.'));
+  pickedWorlds.delete(key);
+  const gameDir = gameDirOf(profileId);
+  const task = startTask(t('Import świata: {0}', path.basename(file)));
+  try {
+    const folder = await importWorldZip(gameDir, file, (done, total) => task.progress(t('Rozpakowywanie'), done, total));
+    task.finish(true, t('Zaimportowano świat „{0}”.', folder));
+    return folder;
+  } catch (err) {
+    task.finish(false, t('Nie udało się zaimportować świata: {0}', (err as Error).message));
+    throw err;
+  }
+});
+
+handle('datapacks:list', (profileId: string, world: string) => listDatapacks(gameDirOf(profileId), world));
+handle('datapacks:remove', (profileId: string, world: string, filename: string) => removeDatapack(gameDirOf(profileId), world, filename));
+/** Datapacks come from Modrinth only and go into one world of the profile. */
+handle('datapacks:install', async (profileId: string, world: string, projectId: string, title?: string, icon?: string, versionId?: string) => {
+  const { gameDir, gameVersion } = await profileTarget(profileId);
+  const task = startTask(t('Instalowanie: {0}', title ?? ''), icon);
+  try {
+    const file = await datapackFile(projectId, gameVersion, versionId);
+    await installDatapack(gameDir, world, file, (done, total, stats) => task.progress(t('Pobieranie'), done, total, stats));
+    task.finish(true, t('Zainstalowano {0} w świecie „{1}”.', file.title, world));
+    return file.title;
+  } catch (err) {
+    task.finish(false, (err as Error).message);
+    throw err;
+  }
+});
+
+// ---------- profile snapshots (mods and config before a modpack update) ----------
+
+/** A profile's snapshots live in the launcher's data folder, not in its game folder. */
+function snapshotsDirOf(profile: Profile): string {
+  if (!/^[\w-]+$/.test(profile.id)) throw new Error(t('Nieprawidłowy profil.'));
+  return path.join(paths.root, 'snapshots', profile.id);
+}
+/** Profiles with a snapshot being taken or restored: the game, an update or another snapshot waits for it. */
+const snapshotBusy = new Set<string>();
+async function withSnapshotLock<T>(profile: Profile, work: () => Promise<T>): Promise<T> {
+  if (snapshotBusy.has(profile.id)) throw new Error(t('Poczekaj, aż skończy się zapisywanie lub przywracanie migawki.'));
+  snapshotBusy.add(profile.id);
+  try {
+    return await work();
+  } finally {
+    snapshotBusy.delete(profile.id);
+  }
+}
+
+handle('snapshots:list', (profileId: string) => listSnapshots(snapshotsDirOf(profileById(profileId))));
+handle('snapshots:create', async (profileId: string) => {
+  const profile = profileById(profileId);
+  if (games.has(profile.id)) throw new Error(t('Zamknij grę przed zrobieniem migawki.'));
+  return withSnapshotLock(profile, () => createSnapshot({ dir: snapshotsDirOf(profile), gameDir: profileGameDir(profile), profile, reason: 'manual' }));
+});
+handle('snapshots:restore', async (profileId: string, id: string) => {
+  const profile = profileById(profileId);
+  if (games.has(profile.id)) throw new Error(t('Zamknij grę przed przywróceniem migawki.'));
+  const info = await withSnapshotLock(profile, () => restoreSnapshot(snapshotsDirOf(profile), id, profileGameDir(profile)));
+  applySnapshot(profile, info);
+  await persist();
+  return info;
+});
+handle('snapshots:delete', (profileId: string, id: string) => deleteSnapshot(snapshotsDirOf(profileById(profileId)), id));
+
 /** True for files inside one of the profiles' game folders. */
 function isInsideInstances(file: string): boolean {
   const full = path.resolve(file);
@@ -1063,6 +1180,7 @@ handle('news:article', (id: string) => newsArticle(id));
 
 handle('game:launch', async (profileId: string, accountId: string, server?: string, world?: string, benchmark = false) => {
   if (games.has(profileId)) throw new Error(t('Ten profil już działa.'));
+  if (snapshotBusy.has(profileId)) throw new Error(t('Poczekaj, aż skończy się zapisywanie lub przywracanie migawki.'));
   const profile = store.profiles.find((p) => p.id === profileId);
   // a profile with its own account always plays as it
   let account = store.accounts.find((a) => a.id === (profile?.accountId && store.accounts.some((x) => x.id === profile.accountId) ? profile.accountId : accountId));

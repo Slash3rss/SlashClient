@@ -3,6 +3,7 @@ import { CosmeticPreview, cosmeticIcon } from './cosmeticPreview';
 import { OUR_PET_MODELS } from './ourPetModels';
 import { gameIcon } from './gameIcon';
 import { createFriends, socialErrorText } from './friends';
+import { createProfileFiles } from './profileFiles';
 import { openSkinEditor } from './skinEditor';
 import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
 import type { SlashApi } from '../main/preload';
@@ -896,6 +897,7 @@ api.on('benchmark:done', ({ profileId, result, before }: { profileId: string; re
 
 function loadProfileForm(profile: Profile) {
   renderBenchmarks(profile.id);
+  profileFiles.renderSnapshots(profile.id, $('#snapshot-list'));
   const form = $<HTMLFormElement>('#profile-form');
   for (const key of ['name', 'gameDir', 'jvmArgs', 'javaPath', 'memoryMb', 'width', 'height'] as const) {
     (form.elements.namedItem(key) as HTMLInputElement).value = String(profile[key]);
@@ -2264,6 +2266,7 @@ function contentNotice() {
     ? 'Shadery wymagają moda Iris. Znajdziesz go wyżej, w „Mody”.'
     : 'Shadery wymagają moda Iris (Fabric) albo Oculus (Forge/NeoForge).';
   else if (contentType === 'modpack') text = 'Modpack tworzy nowy profil z własnym folderem gry.';
+  else if (contentType === 'datapack') text = 'Datapack instaluje się do wybranego świata. Zainstalowane datapacki znajdziesz w „Światy i zrzuty”, przy świecie.';
   box.textContent = text;
   box.classList.toggle('hidden', !text);
 }
@@ -2352,27 +2355,30 @@ function installedCard(item: InstalledItem): HTMLElement {
 function renderContent() {
   contentNotice();
   const isPack = contentType === 'modpack';
+  // datapacks live in worlds (listed in Worlds), so like modpacks they only have the browser; they come from Modrinth only
+  const browseOnly = isPack || contentType === 'datapack';
+  $('#content-source').classList.toggle('hidden', contentType === 'datapack');
   // a modpack makes a profile of its own: on Odkrywaj there is no profile to pick for it
   $('#discover-target').classList.toggle('hidden', isPack);
   $('#modpack-import').classList.toggle('hidden', !isPack);
   $('#perf-open').classList.toggle('hidden', contentType !== 'mod');
   renderModCheck();
-  $('#content-tab').classList.toggle('hidden', isPack);
-  $('#content-search-bar').classList.toggle('hidden', contentTab === 'installed' && !isPack);
+  $('#content-tab').classList.toggle('hidden', browseOnly);
+  $('#content-search-bar').classList.toggle('hidden', contentTab === 'installed' && !browseOnly);
   const forType = installed.filter((i) => i.type === contentType);
   $('#installed-count').textContent = forType.length ? `(${forType.length})` : '';
   const list = $('#content-list');
   const from = animateFrom;
   animateFrom = undefined;
-  renderUpdatesBar(contentTab === 'installed' && !isPack ? forType : []);
-  if (contentTab === 'installed' && !isPack) {
+  renderUpdatesBar(contentTab === 'installed' && !browseOnly ? forType : []);
+  if (contentTab === 'installed' && !browseOnly) {
     const cards = forType.map(installedCard);
     list.replaceChildren(...(from !== undefined ? appear(cards) : cards));
     if (!forType.length) list.append(el('p', { className: 'muted appear', textContent: 'Nic tu jeszcze nie ma.' }));
     $('#content-more').classList.add('hidden');
     return;
   }
-  if (contentSource === 'curseforge' && curseforgeUnavailable && !contentLoading) {
+  if (contentSource === 'curseforge' && contentType !== 'datapack' && curseforgeUnavailable && !contentLoading) {
     list.replaceChildren(el('div', { className: 'notice content-unavailable appear' },
       el('i', { className: 'fa-solid fa-plug-circle-xmark' }), ' ',
       t('CurseForge jest teraz niedostępny w SlashClient (serwer nie ma klucza API CurseForge). Modrinth działa normalnie.')));
@@ -2402,7 +2408,7 @@ async function searchContent(append = false) {
   contentLoading = true;
   if (!append) contentHits = [];
   renderContent();
-  const source = contentSource;
+  const source = contentType === 'datapack' ? 'modrinth' : contentSource;
   const res: { hits: ProjectHit[]; total: number; unavailable?: boolean } | undefined =
     await guard(() => api.searchContent(contentProfileId(), $<HTMLInputElement>('#content-search').value.trim(), contentType, append ? contentHits.length : 0, source));
   if (request !== searchRequest) return;
@@ -2416,11 +2422,15 @@ async function searchContent(append = false) {
 }
 
 async function installHit(hit: ProjectHit, versionId?: string) {
+  // a datapack goes into one world: ask which before anything starts
+  const world = contentType === 'datapack' ? await profileFiles.pickWorld(contentProfileId(), hit.title) : undefined;
+  if (contentType === 'datapack' && !world) return;
   installing.add(hit.id);
   renderContent();
   try {
     // progress and the result are shown in the task panel (see the task section)
     if (contentType === 'modpack') await api.installModpack(hit.id, hit.title, hit.iconUrl, versionId, contentSource);
+    else if (world) await api.installDatapack(contentProfileId(), world, hit.id, hit.title, hit.iconUrl, versionId);
     else {
       const res: { manual: ManualFile[] } = await api.installContent(contentProfileId(), hit.id, contentType, hit.title, hit.iconUrl, versionId, contentSource);
       await refreshInstalled();
@@ -2592,10 +2602,34 @@ function iconButton(icon: string, title: string, onClick: () => void, extra = ''
   return b;
 }
 
+const profileFiles = createProfileFiles({
+  api, toast, guard, busy, fmtSize, fmtDate, projectIcon,
+  worldIcon: (w) => {
+    const img = el('img', { className: 'world-icon', alt: '' });
+    img.src = w.icon ? media(w.icon) : 'logo.png';
+    return img;
+  },
+  profileChanged: async () => {
+    store = await api.getStore();
+    render();
+  },
+  browseDatapacks: (profileId) => {
+    openProfilePane('content', profileId);
+    document.querySelector<HTMLButtonElement>('#content-type button[data-type="datapack"]')?.click();
+  },
+});
+$('#snapshot-make').addEventListener('click', () => editingId && profileFiles.makeSnapshot(editingId, $<HTMLButtonElement>('#snapshot-make'), $('#snapshot-list')));
+// a modpack update takes a snapshot: the list shows it once the update is done
+api.on('task:done', (d: TaskDone) => d.profileId && d.profileId === editingId && profileFiles.renderSnapshots(d.profileId, $('#snapshot-list')));
+$('#world-import').addEventListener('click', async () => {
+  if (await profileFiles.importWorld(worldsProfileId(), $<HTMLButtonElement>('#world-import'))) renderWorlds();
+});
+
 async function renderWorlds() {
   const box = $('#worlds-content');
   const profileId = worldsProfileId();
   if (!profileId) return;
+  $('#world-import').classList.toggle('hidden', worldsTab !== 'worlds');
   box.replaceChildren(worldsTab === 'screenshots' ? el('div', { className: 'shots' }, ...skeletons('shot', 6)) : el('div', { className: 'project-list' }, ...skeletons('project', 3)));
 
   if (worldsTab === 'worlds') {
@@ -2621,7 +2655,7 @@ async function renderWorlds() {
         const b = await busy(backup, () => guard(() => api.backupWorld(profileId, w.folder)), 'Zapisuję…');
         if (b) toast(t('Zapisano kopię „{0}” ({1})', w.name, fmtSize(b.sizeBytes)));
       });
-      return el('div', { className: 'project' }, icon,
+      const card = el('div', { className: 'project' }, icon,
         el('div', { className: 'project-main' },
           el('b', {}, w.name, el('small', { textContent: w.folder !== w.name ? w.folder : '' })),
           el('div', { className: 'project-meta' },
@@ -2630,6 +2664,8 @@ async function renderWorlds() {
             el('span', { textContent: fmtSize(w.sizeBytes) }),
             el('span', { textContent: t('Grano: {0}', fmtDate(w.lastPlayed)) }))),
         el('div', { className: 'project-actions' }, play, bench, backup));
+      card.lastElementChild!.append(...profileFiles.worldButtons(profileId, w, card));
+      return card;
     })));
     if (!worlds.length) box.replaceChildren(el('p', { className: 'muted', textContent: 'Ten profil nie ma jeszcze żadnych światów.' }));
   } else if (worldsTab === 'backups') {
