@@ -623,6 +623,20 @@ public final class TestHooks {
 		if (Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c) c.dragFigure(degrees);
 	}
 
+	/** The open cosmetics menu's figure: its box (GUI pixels: x, y, width, height), its turn by hand, and the GUI scale. */
+	public static float[] cosmeticsFigure() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		if (!(Compat.screen(mc) instanceof CosmeticsScreen c)) return null;
+		float[] f = c.figureForTest();
+		return new float[] {f[0], f[1], f[2], f[3], f[4], (float) mc.getWindow().getGuiScale()};
+	}
+
+	/** Our own player in their own skin again (after testSkin). */
+	public static void noTestSkin() {
+		Cosmetics.testSkin = null;
+		Cosmetics.testSkinFor = null;
+	}
+
 	/** The open cosmetics menu's figure wearing this in a slot (as if the server said so), and what it shows from now. */
 	public static void cosmeticsWorn(String slot, String id) {
 		if (Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c) c.wornForTest(slot, id);
@@ -928,14 +942,15 @@ public final class TestHooks {
 		}
 	}
 
-	/** Our own player wears this skin (a texture of the test mod), for the website's screenshots. */
+	/** Our own player wears this skin (a texture of the test mod: textures/skin/<name>, or textures/<path> for a path), for screenshots. */
 	public static void testSkin(String texture) {
-		var id = net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "skin/" + texture);
+		String path = texture.contains("/") ? texture : "skin/" + texture;
+		var id = net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", path);
 		//#if MC >= 1.21.9
 		Cosmetics.testSkin = new net.minecraft.core.ClientAsset.ResourceTexture(id,
-			net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "textures/skin/" + texture + ".png"));
+			net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "textures/" + path + ".png"));
 		//#else
-		//$ Cosmetics.testSkin = net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "textures/skin/" + texture + ".png");
+		//$ Cosmetics.testSkin = net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud-test", "textures/" + path + ".png");
 		//#endif
 		Cosmetics.testSkinFor = net.minecraft.client.Minecraft.getInstance().getGameProfile().id();
 	}

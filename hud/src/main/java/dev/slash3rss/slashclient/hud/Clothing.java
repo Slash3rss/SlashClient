@@ -99,22 +99,6 @@ public final class Clothing {
 		return LayerDefinition.create(mesh, texWidth, texHeight).bakeRoot();
 	}
 
-	/** A box of an item: the part it hangs on, its name in the baked model, its middle (pixels, from the part's pivot). */
-	public record Piece(String bone, String name, float x, float y, float z) {}
-
-	/** The boxes of an item, in the order bake() names them. */
-	public static List<Piece> pieces(String id, boolean slim) {
-		Item item = ITEMS.get(id);
-		if (item == null) return List.of();
-		List<Box> boxes = slim ? item.slim() : item.wide();
-		List<Piece> out = new ArrayList<>();
-		for (int i = 0; i < boxes.size(); i++) {
-			Box b = boxes.get(i);
-			out.add(new Piece(b.bone(), "box" + i, b.from()[0] + b.size()[0] / 2, b.from()[1] + b.size()[1] / 2, b.from()[2] + b.size()[2] / 2));
-		}
-		return out;
-	}
-
 	public static Identifier texture(String id) {
 		return Cosmetics.textureId("clothing", id);
 	}

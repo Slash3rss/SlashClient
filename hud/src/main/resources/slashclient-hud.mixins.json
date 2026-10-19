@@ -23,6 +23,7 @@
 		"ContainerScreenAccessor",
 		"DebugVersionMixin",
 		"EditServerScreenMixin",
+		"GuiGraphicsAccessor",
 		"GuiMixin",
 		"HeartsMixin",
 		"HeldItemsMixin",
