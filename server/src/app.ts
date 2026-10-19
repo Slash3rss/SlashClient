@@ -18,6 +18,8 @@ import { createDownloads, isDownloadOs } from './downloads.ts';
 import { createCurseForge } from './curseforge.ts';
 import { profileShareRoutes, type ShareLimits } from './profileShares.ts';
 import { createAchievements, hintFor, TICK_MS } from './achievements.ts';
+import { muteRoutes } from './mutes.ts';
+import { chatImageRoutes, type ImageLimits } from './chatImages.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -54,6 +56,10 @@ export interface Config {
   sharesDir?: string;
   /** Size, time and quota of shared profiles (tests lower them). */
   shareLimits?: Partial<ShareLimits>;
+  /** Folder for pictures sent in the chat (CHAT_IMAGES_DIR); default "chat-images" next to the database. */
+  imagesDir?: string;
+  /** Size, quota and time of chat pictures (tests lower them). */
+  imageLimits?: Partial<ImageLimits>;
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -357,8 +363,9 @@ export function createApp(cfg: Config) {
   function friendList(me: string) {
     const unread = db.unreadCounts(me);
     const last = db.lastMessageTimes(me);
+    const muted = mutes.store.muted(me);
     return {
-      friends: db.friends(me).map((f) => ({ ...f, presence: presenceOf(f.id), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0 })),
+      friends: db.friends(me).map((f) => ({ ...f, presence: presenceOf(f.id), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0, muted: muted.has(f.id) })),
       incoming: db.incoming(me),
       outgoing: db.outgoing(me),
     };
@@ -424,6 +431,21 @@ export function createApp(cfg: Config) {
   // waypoints and parties shared with friends (sharing.ts)
   const sharing = sharingRoutes({
     db, authed, body, push, limitWaypoints: rateLimiter(20), limitParties: rateLimiter(6),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  // muted friends (mutes.ts) and pictures in the chat (chatImages.ts)
+  const mutes = muteRoutes({
+    sql: db.sql, authed, body, push, friendList, areFriends: (a, b) => db.areFriends(a, b),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+  const images = chatImageRoutes({
+    sql: db.sql, authed, areFriends: (a, b) => db.areFriends(a, b), dir: cfg.imagesDir ?? path.join(path.dirname(cfg.dbFile), 'chat-images'),
+    limits: cfg.imageLimits, limitUploads: rateLimiter(10), limitDownloads: rateLimiter(120),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -669,6 +691,7 @@ export function createApp(cfg: Config) {
     ['DELETE', /^\/v1\/friends\/([\w-]+)$/, (req, [other]) => {
       const me = authed(req);
       if (!db.removeFriendship(me, other)) throw new HttpError(404, 'not_found');
+      mutes.store.forget(me, other);
       push(other, { type: 'friends' });
       return friendList(me);
     }],
@@ -784,19 +807,24 @@ export function createApp(cfg: Config) {
       friendOrThrow(me, other);
       const before = Number(url.searchParams.get('before')) || undefined;
       const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 50));
-      return { messages: db.conversation(me, other, limit, before) };
+      return { messages: images.decorate(db.conversation(me, other, limit, before)) };
     }],
     ['POST', /^\/v1\/messages\/([\w-]+)$/, async (req, [other]) => {
       const me = authed(req);
       friendOrThrow(me, other);
       limitMessages(me);
-      const { text } = await body(req);
+      const { text, image } = await body(req);
       if (typeof text !== 'string' || !text.trim()) throw new HttpError(400, 'empty');
       // an encrypted message is longer than its text (the launcher keeps the text itself to MAX_MESSAGE)
       const encrypted = text.startsWith('e2e1:');
       if (text.length > (encrypted ? MAX_ENCRYPTED : MAX_MESSAGE)) throw new HttpError(400, 'too_long');
       if (encrypted && !/^e2e1:[A-Za-z0-9+/=]+$/.test(text)) throw new HttpError(400, 'bad_request');
-      const message = db.addMessage(me, other, text.trim());
+      // a picture uploaded just before (POST /v1/images/<friend>), with its key encrypted like the text
+      const picture = images.forMessage(me, other, image);
+      if (picture && !encrypted) throw new HttpError(400, 'bad_image');
+      const plain = db.addMessage(me, other, text.trim());
+      if (picture) images.attach(picture, plain.id);
+      const message = picture ? { ...plain, image: picture } : plain;
       push(other, { type: 'message', message });
       push(me, { type: 'message', message }); // the player's other launchers
       achievements.check(me);
@@ -827,6 +855,8 @@ export function createApp(cfg: Config) {
     ...tracker.routes,
     ...shares.routes,
     ...sharing.routes,
+    ...mutes.routes,
+    ...images.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged,
       fail: (status, code) => {
@@ -967,6 +997,7 @@ export function createApp(cfg: Config) {
     // a shared profile's file: not JSON, so not one of the routes
     try {
       if (await shares.serve(req, res, url)) return;
+      if (await images.serve(req, res, url)) return;
     } catch (err) {
       console.error('profil:', (err as Error).message);
       if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
@@ -1209,12 +1240,15 @@ export function createApp(cfg: Config) {
   const logCleanup = setInterval(() => {
     void tracker.cleanup().catch((err) => console.error('logi:', (err as Error).message));
     void shares.cleanup().catch((err) => console.error('profile:', (err as Error).message));
+    void images.cleanup().catch((err) => console.error('obrazy czatu:', (err as Error).message));
   }, 3_600_000);
 
   return {
     server,
     /** For tests: play-time ticks with a chosen clock. */
     achievements,
+    /** For tests: dropping old chat pictures with a chosen clock. */
+    chatImages: images,
     close: () => new Promise<void>((resolve) => {
       clearInterval(heartbeat);
       clearInterval(playTick);
