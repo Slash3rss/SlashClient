@@ -61,6 +61,7 @@ import { applySnapshot, createSnapshot, deleteSnapshot, listSnapshots, restoreSn
 import { exportWorld, importWorldZip, installDatapack, listDatapacks, readWorldZip, removeDatapack, type WorldZipSummary } from './worldFiles';
 import { t } from '../shared/i18n';
 import { APP_USER_MODEL_ID, cleanTarget, Notifier } from './notifications';
+import { registerMaintenance } from './maintenance';
 
 let win: BrowserWindow | undefined;
 let store: StoreData;
@@ -1021,6 +1022,13 @@ handle('screenshots:list', (profileId: string) => listScreenshots(gameDirOf(prof
 handle('clips:list', (profileId: string) => listClips(gameDirOf(profileId)));
 handle('clips:delete', (profileId: string, name: string) => deleteFile(gameDirOf(profileId), 'clips', name));
 handle('screenshots:delete', (profileId: string, name: string) => deleteFile(gameDirOf(profileId), 'screenshots', name));
+// ---------- config editor and disk cleanup (maintenance.ts) ----------
+
+registerMaintenance({
+  handle, profiles: () => store.profiles, running: (id) => games.has(id), anyRunning: () => games.size > 0,
+  trash: (file) => shell.trashItem(file), openPath: (dir) => shell.openPath(dir),
+});
+
 handle('file:open', (file: string) => {
   if (isInsideInstances(file)) return shell.openPath(file);
 });

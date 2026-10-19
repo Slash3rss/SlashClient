@@ -9,6 +9,8 @@ import { openSkinEditor } from './skinEditor';
 import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
 import type { SlashApi } from '../main/preload';
 import { benchTips, type BenchTip } from '../shared/benchTips';
+import { createConfigEditor } from './configEditor';
+import { createDiskCleanup } from './diskCleanup';
 
 declare global {
   interface Window {
@@ -729,8 +731,10 @@ function renderProfiles() {
 
 // ---------- profile panes: settings, mods, worlds, and the statistics of all profiles ----------
 
-type ProfilePane = 'settings' | 'content' | 'worlds' | 'stats';
+type ProfilePane = 'settings' | 'content' | 'worlds' | 'configs' | 'stats';
 let profilePane: ProfilePane = 'settings';
+const configEditor = createConfigEditor($('#config-pane'), { api, toast, errorText });
+createDiskCleanup($('#disk-card'), { api, toast, errorText });
 
 function showPane(pane: ProfilePane) {
   profilePane = pane;
@@ -750,7 +754,8 @@ function refreshPane() {
   else if (profilePane === 'worlds') {
     renderContentProfiles();
     renderWorlds();
-  } else if (profilePane === 'stats') renderStats();
+  } else if (profilePane === 'configs') configEditor.open(editingId);
+  else if (profilePane === 'stats') renderStats();
 }
 
 document.querySelectorAll<HTMLButtonElement>('#profile-tabs button').forEach((b) =>
