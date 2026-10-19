@@ -129,9 +129,11 @@ export type Face = 'down' | 'up' | 'west' | 'north' | 'east' | 'south';
 /** A face as the game draws it: four corners, each [x, y, z, u, v] (u, v from 0 to 1). */
 export interface Quad { face: Face; corners: number[][] }
 
-/** The six faces of a box whose picture starts at (u, v), exactly as the game's ModelPart.Cube builds them. */
-export function boxQuads(box: ClothingBox, [u, v]: [number, number]): Quad[] {
-  const [tw, th] = CLOTHING_TEXTURE;
+/**
+ * The six faces of a box whose picture starts at (u, v), exactly as the game's ModelPart.Cube builds them
+ * (in a picture of the clothing's size, or of `[tw, th]`: the suits', suits.ts).
+ */
+export function boxQuads<B extends Pick<ClothingBox, 'from' | 'size' | 'inflate'>>(box: B, [u, v]: [number, number], [tw, th] = CLOTHING_TEXTURE): Quad[] {
   const [sx, sy, sz] = box.size;
   const g = box.inflate ?? 0;
   const x0 = box.from[0] - g, y0 = box.from[1] - g, z0 = box.from[2] - g;

@@ -32,7 +32,7 @@
 //$ 		PlayerModel<AbstractClientPlayer> parent = getParentModel();
 //$ 		for (String slot : Clothing.SLOTS) {
 //$ 			String item = Cosmetics.worn(player.getUUID(), slot);
-//$ 			if (item == null || Clothing.covered(slot, player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST))) continue;
+//$ 			if (item == null || Clothing.covered(slot, player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST)) || Suits.hides(player.getUUID(), slot)) continue;
 			//#if MC >= 1.20.2
 			//$ boolean slim = player.getSkin().model() == net.minecraft.client.resources.PlayerSkin.Model.SLIM;
 			//#else
