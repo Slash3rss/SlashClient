@@ -663,6 +663,64 @@ public final class TestHooks {
 		return String.join(",", RingEffects.IDS) + "|" + String.join(",", MoveEffects.IDS);
 	}
 
+	/** Sprays as the key does (`wait`: keeping the wait between sprays), and what is sprayed then (Sprays.summary). */
+	public static String spray(boolean wait) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		if (wait) Sprays.spray(mc);
+		else Sprays.sprayNow(mc);
+		return Sprays.summary();
+	}
+
+	/** The sprays now: "id@x,y,z/face;…", oldest first. */
+	public static String sprays() {
+		return Sprays.summary();
+	}
+
+	/** Takes every spray away. */
+	public static void spraysClear() {
+		Sprays.reset();
+	}
+
+	/**
+	 * A spray of someone's (`owner` 0 ourselves, else a made-up player of that number) on the face of
+	 * the block at our feet plus (dx, dy, dz), `ageMs` old already.
+	 */
+	public static void sprayAt(int owner, String id, int dx, int dy, int dz, String face, int rot, long ageMs) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		java.util.UUID who = owner == 0 ? mc.player.getUUID() : new java.util.UUID(0x5ba7, owner);
+		Sprays.place(who, id, mc.player.blockPosition().offset(dx, dy, dz), Sprays.face(face), rot, ageMs);
+	}
+
+	/** The server's 'spray' event from our own player (`self`) or a player not in this game, as the launcher passes it on. */
+	public static void sprayReceived(boolean self, int dz) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		var p = mc.player.blockPosition();
+		var e = new com.google.gson.JsonObject();
+		e.addProperty("type", "spray");
+		e.addProperty("uuid", (self ? mc.player.getUUID() : new java.util.UUID(0x5ba7, 99)).toString());
+		e.addProperty("spray", "spray_gg");
+		e.addProperty("dimension", "minecraft:overworld");
+		e.addProperty("x", p.getX());
+		e.addProperty("y", p.getY() + 1);
+		e.addProperty("z", p.getZ() + dz);
+		e.addProperty("face", "north");
+		Sprays.received(e);
+	}
+
+	/** The player looks this way (yaw: 0 south, 90 west; pitch: positive is down). */
+	public static void look(float yaw, float pitch) {
+		var p = net.minecraft.client.Minecraft.getInstance().player;
+		p.setYRot(yaw);
+		p.setXRot(pitch);
+		p.setYHeadRot(yaw);
+		p.setYBodyRot(yaw);
+	}
+
+	/** Other players' sprays shown or not. */
+	public static void spraysOthers(boolean on) {
+		SlashHud.config.spraysOthers = on;
+	}
+
 	/** Holds (or lets go of) the sneak key, as the player would. */
 	public static void sneak(boolean on) {
 		net.minecraft.client.Minecraft.getInstance().options.keyShift.setDown(on);

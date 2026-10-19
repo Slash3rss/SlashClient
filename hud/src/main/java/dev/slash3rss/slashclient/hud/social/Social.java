@@ -303,6 +303,8 @@ public final class Social {
 					// not a uuid: nothing to show it on
 				}
 			}
+			// someone with SlashClient sprayed on a block where we may see it
+			case "spray" -> dev.slash3rss.slashclient.hud.Sprays.received(e);
 			// a SlashClient achievement unlocked (play streak, hours…): "Achievement unlocked" and its name, with the reward
 			case "achievement" -> {
 				if (e.has("achievement") && e.get("achievement").isJsonObject()) achievement(e.getAsJsonObject("achievement"));
@@ -493,6 +495,27 @@ public final class Social {
 				request("POST", "/v1/mc/emote", body, 5);
 			} catch (Exception e) {
 				SlashHud.LOG.debug("SlashClient: emote: {}", e.toString());
+			}
+		});
+	}
+
+	/** A spray on a block, to launcher players around (through the launcher, which knows the account). */
+	public static void spray(java.util.UUID player, String spray, String server, String dimension, int x, int y, int z, String face, int rot) {
+		JsonObject body = new JsonObject();
+		body.addProperty("uuid", player.toString());
+		body.addProperty("spray", spray);
+		body.addProperty("server", server);
+		body.addProperty("dimension", dimension);
+		body.addProperty("x", x);
+		body.addProperty("y", y);
+		body.addProperty("z", z);
+		body.addProperty("face", face);
+		body.addProperty("rot", rot);
+		Thread.ofVirtual().start(() -> {
+			try {
+				request("POST", "/v1/mc/spray", body, 5);
+			} catch (Exception e) {
+				SlashHud.LOG.debug("SlashClient: spray: {}", e.toString());
 			}
 		});
 	}

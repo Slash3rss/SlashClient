@@ -3072,7 +3072,7 @@ function renderCapeGrid() {
 
 // ---------- SlashClient cosmetics (seen by other players with the launcher) ----------
 
-type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands' | 'face' | 'ears' | 'back' | 'tail' | 'ring' | 'move';
+type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands' | 'face' | 'ears' | 'back' | 'tail' | 'ring' | 'move' | 'spray';
 const SLOTS: [Slot, string, string][] = [
   ['cape', 'Peleryna', 'fa-flag'], ['wings', 'Skrzydła', 'fa-dove'], ['elytra', 'Elytra', 'fa-feather'],
   ['trail', 'Ślad', 'fa-shoe-prints'], ['aura', 'Aura', 'fa-wand-sparkles'], ['pet', 'Pupil', 'fa-paw'],
@@ -3083,6 +3083,7 @@ const SLOTS: [Slot, string, string][] = [
   ['face', 'Twarz', 'fa-glasses'], ['ears', 'Uszy i rogi', 'fa-cat'],
   ['back', 'Na plecy', 'fa-person-hiking'], ['tail', 'Ogon', 'fa-cat'],
   ['ring', 'Krąg pod stopami', 'fa-circle-dot'], ['move', 'Efekt ruchu', 'fa-person-running'],
+  ['spray', 'Spray', 'fa-spray-can'],
 ];
 /** Without the server (or before 0.8) only the first eight capes are known. */
 const SLASH_CAPES: [string, string][] = [
@@ -3179,6 +3180,8 @@ function cosmeticPicture(slot: Slot, id: string): Node {
   // shields: the face of the shield (12×22 at 1,1 of the game's 64×64 layout, ours are 4×); weapons: their own picture
   if (slot === 'shield') return heldShieldThumbnail(`img/held/${id}.png`);
   if (slot === 'weapon') return el('img', { className: 'clothing-icon', src: `img/held/${id}.png`, alt: '' });
+  // a spray is its picture
+  if (slot === 'spray') return el('img', { className: 'clothing-icon', src: `img/spray/${id}.png`, alt: '' });
   if (slot === 'kill') {
     const i = el('i', { className: `fa-solid ${ITEM_ICONS[id] ?? 'fa-skull-crossbones'} cosmetic-icon` });
     i.style.color = KILL_ICON_COLORS[id] ?? '';
@@ -3246,6 +3249,7 @@ async function renderSlashCapes() {
     : cosmeticSlot === 'tail' ? t('Ogon kołysze się, kiedy chodzisz. Pod peleryną zwisa niżej.')
     : cosmeticSlot === 'ring' ? t('Świecący krąg na ziemi pod Twoimi stopami, powoli się obraca. Widzą go gracze z SlashClient.')
     : cosmeticSlot === 'move' ? t('Cząsteczki, gdy chodzisz, skaczesz, lądujesz, biegasz, pływasz lub strzelasz. Widzą je gracze z SlashClient.')
+    : cosmeticSlot === 'spray' ? t('Obrazek, który klawiszem malujesz na bloku przed sobą (w grze: Klawisze SlashClient). Znika po minucie; widzą go gracze z SlashClient na tym samym serwerze.')
     : t('Mały towarzysz lata przy Twoim ramieniu.');
   if (signedIn && worn.back && (cosmeticSlot === 'cape' || cosmeticSlot === 'wings')) $('#slash-cape-note').textContent += t(' Nosisz coś na plecach: w grze widać to zamiast peleryny i skrzydeł.');
   const current = worn[cosmeticSlot] ?? '';

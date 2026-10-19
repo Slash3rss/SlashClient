@@ -4,15 +4,15 @@ import type { CosmeticSetting } from './db.ts';
  * The SlashClient cosmetics. Their pictures live in the HUD mod (textures/cape, textures/elytra,
  * textures/wings, textures/clothing with the clothing's, shoes', hand, face and ears items' boxes in src/shared/clothing.ts, textures/suit with the
  * suits' in src/shared/suits.ts, textures/item/held, textures/gear with the back items' and tails' in src/shared/gear.ts,
- * textures/ring; trails,
+ * textures/ring, textures/spray; trails,
  * auras, kill effects, movement effects and pets are drawn from the game's own particles and mobs) and on the website (web/vendor);
  * the server checks choices against these and the admin's settings.
  *
  * A player wears one item per slot. `rank` items are for that rank only (admins may wear all);
  * any item can also be made exclusive in the admin panel and granted to chosen players.
  */
-export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands' | 'face' | 'ears' | 'back' | 'tail' | 'ring' | 'move';
-export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill', 'suit', 'shield', 'weapon', 'shoes', 'hands', 'face', 'ears', 'back', 'tail', 'ring', 'move'];
+export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands' | 'face' | 'ears' | 'back' | 'tail' | 'ring' | 'move' | 'spray';
+export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill', 'suit', 'shield', 'weapon', 'shoes', 'hands', 'face', 'ears', 'back', 'tail', 'ring', 'move', 'spray'];
 export type Rank = 'admin' | 'support' | 'partner' | 'friend' | 'friend_pink';
 
 export interface Item {
@@ -254,6 +254,15 @@ export const ITEMS: Item[] = [
   { id: 'move_sprint', slot: 'move', name: 'Iskry sprintu', since: '0.9.20' },
   { id: 'move_bubbles', slot: 'move', name: 'Wybuch bąbelków', since: '0.9.20' },
   { id: 'move_petals', slot: 'move', name: 'Płatki', since: '0.9.20' },
+  // sprays: a picture the player sprays on a block with a key, seen for a minute by SlashClient players there (sprays.ts)
+  { id: 'spray_logo', slot: 'spray', name: 'SlashClient', since: '0.9.20' },
+  { id: 'spray_gg', slot: 'spray', name: 'GG', since: '0.9.20' },
+  { id: 'spray_heart', slot: 'spray', name: 'Serce', since: '0.9.20' },
+  { id: 'spray_skull', slot: 'spray', name: 'Czaszka', since: '0.9.20' },
+  { id: 'spray_lol', slot: 'spray', name: 'Śmiech', since: '0.9.20' },
+  { id: 'spray_crown', slot: 'spray', name: 'Korona', since: '0.9.20' },
+  { id: 'spray_emblem', slot: 'spray', name: 'Emblemat', since: '0.9.20' },
+  { id: 'spray_pumpkin', slot: 'spray', name: 'Dynia', since: '0.9.20' },
 ];
 
 /** Compares two versions like 0.9.1 number by number: below 0, 0 or above 0. */

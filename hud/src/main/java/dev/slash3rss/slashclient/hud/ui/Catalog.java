@@ -220,6 +220,8 @@ public final class Catalog {
 			new Toggle("slashclient-hud.set.ringEffects.others", () -> cfg.ringEffectsOthers, v -> cfg.ringEffectsOthers = v)), null));
 		out.add(new Entry("moveEffects", "slashclient-hud.set.moveEffects", "extras", "m-movement", () -> cfg.moveEffects, v -> cfg.moveEffects = v, List.of(
 			new Toggle("slashclient-hud.set.moveEffects.others", () -> cfg.moveEffectsOthers, v -> cfg.moveEffectsOthers = v)), null));
+		out.add(new Entry("sprays", "slashclient-hud.set.sprays", "extras", "m-appearance", () -> cfg.sprays, v -> cfg.sprays = v, List.of(
+			new Toggle("slashclient-hud.set.sprays.others", () -> cfg.spraysOthers, v -> cfg.spraysOthers = v)), null));
 		out.add(new Entry("menu", "slashclient-hud.set.menu", "extras", "m-menu", () -> cfg.customMenu, v -> cfg.customMenu = v, List.of(), null));
 		out.add(new Entry("pause", "slashclient-hud.set.pause", "extras", "m-pause", () -> cfg.customPause, v -> cfg.customPause = v, List.of(), null));
 		var options = net.minecraft.client.Minecraft.getInstance().options;

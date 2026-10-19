@@ -6,6 +6,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import { Db, type User } from './db.ts';
 import { PROVIDERS, type DeviceStart, type Identity, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, serverKeyOf, type Presence } from './presence.ts';
+import { SprayLimit, cleanSpray } from './sprays.ts';
 import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, framesFor, knownTo, mayWear, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
 import { partnerRoutes } from './partners.ts';
@@ -197,6 +198,8 @@ export function createApp(cfg: Config) {
   const linked = new Map<string, { user: string; at: number; character?: string }>();
   const limitGame = rateLimiter(30);
   const limitEmotes = rateLimiter(20);
+  /** Sprays: one every 3 seconds, 20 a minute, per account. */
+  const sprayLimit = new SprayLimit();
 
   function newSession(user: User) {
     if (user.banned) throw new HttpError(403, 'banned');
@@ -740,6 +743,21 @@ export function createApp(cfg: Config) {
           if (other !== me && p.activity?.kind === 'server' && serverKeyOf(p.activity.server) === server) push(other, event);
         }
       }
+      return { ok: true };
+    }],
+
+    // a spray on a block: passed on to the launchers of players who may be there to see it (sprays.ts)
+    ['POST', /^\/v1\/mc\/spray$/, async (req) => {
+      const me = authed(req);
+      const spray = cleanSpray(await body(req));
+      if (!spray) throw new HttpError(400, 'bad_request');
+      const link = linked.get(spray.uuid);
+      if (link?.user !== me || Date.now() - link.at >= IN_GAME_TTL_MS) throw new HttpError(403, 'not_linked');
+      // only the spray that player wears now (an admin may have switched it off since)
+      if (wornBy(db.user(me)!, link.character).spray !== spray.spray) throw new HttpError(403, 'not_worn');
+      if (!sprayLimit.allow(me)) throw new HttpError(429, 'rate_limited');
+      const event = { type: 'spray', ...spray, at: Date.now() };
+      for (const other of cosmeticsAudience(me)) if (other !== me) push(other, event);
       return { ok: true };
     }],
 

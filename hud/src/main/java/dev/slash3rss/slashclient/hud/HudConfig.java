@@ -238,6 +238,9 @@ public final class HudConfig {
 	public boolean ringEffectsOthers = true;
 	public boolean moveEffects = true;
 	public boolean moveEffectsOthers = true;
+	/** Sprays (a SlashClient cosmetic) on blocks: shown at all, and other players' too. */
+	public boolean sprays = true;
+	public boolean spraysOthers = true;
 	/** The SlashClient main menu instead of Minecraft's own. */
 	public boolean customMenu = true;
 	/** The SlashClient pause menu instead of Minecraft's own. */
@@ -526,6 +529,8 @@ public final class HudConfig {
 		ringEffectsOthers = other.ringEffectsOthers;
 		moveEffects = other.moveEffects;
 		moveEffectsOthers = other.moveEffectsOthers;
+		sprays = other.sprays;
+		spraysOthers = other.spraysOthers;
 		scoreboard = other.scoreboard;
 		scoreboardScale = other.scoreboardScale;
 		scoreboardOffset = other.scoreboardOffset;
