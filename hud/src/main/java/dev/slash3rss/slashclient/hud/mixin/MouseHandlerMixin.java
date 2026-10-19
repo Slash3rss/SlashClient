@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 abstract class MouseHandlerMixin {
 	@Inject(method = "onScroll", at = @At("HEAD"), cancellable = true)
 	private void slashclient$zoomScroll(long window, double x, double y, CallbackInfo ci) {
-		if (Extras.scroll(y)) ci.cancel();
+		if (Extras.scroll(y) || dev.slash3rss.slashclient.hud.CameraDistance.scroll(y)) ci.cancel();
 	}
 
 	@ModifyExpressionValue(method = "turnPlayer", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/OptionInstance;get()Ljava/lang/Object;", ordinal = 0))

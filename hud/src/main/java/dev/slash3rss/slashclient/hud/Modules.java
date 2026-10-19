@@ -31,6 +31,8 @@ public final class Modules {
 			new MoreModules.Combo(), new MoreModules.Reach(), new MoreModules.Movement(), new MoreModules.Saturation(), new MoreModules.ItemCounter(), new MoreModules.Target(),
 			new Armor(), new Effects(), new Keystrokes(), new Sprint()));
 		out.addAll(ExtraModules.all());
+		// where the player would be in the other dimension (Overworld / Nether)
+		out.add(new NetherCoords());
 		// SkyUp.pl's dungeons: shown only inside one
 		out.add(new DungeonMap());
 		// the ground around, from above (no entities)

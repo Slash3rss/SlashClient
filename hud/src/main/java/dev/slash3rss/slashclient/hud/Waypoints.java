@@ -32,6 +32,8 @@ public final class Waypoints {
 		public boolean visible = true;
 		/** The friend who shared it (SlashClient), or null for the player's own. */
 		public String from;
+		/** Placed by itself where the player last died (DeathPoint): the next death replaces it. */
+		public boolean death;
 
 		public Point(String name, int x, int y, int z, String dimension, int color) {
 			this.name = name;

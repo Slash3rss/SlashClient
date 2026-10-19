@@ -326,6 +326,18 @@ public final class HudConfig {
 	/** Hold the key to look around without turning (off by default: some servers forbid it). */
 	public boolean freelook = false;
 	public boolean waypoints = true;
+	/** A waypoint put by itself where you last died (one per world and dimension, see DeathPoint). */
+	public boolean deathWaypoint = true;
+	/** Crosses where monsters can spawn, switched with a key (F9), this many blocks around (LightOverlay). */
+	public boolean lightOverlay = false;
+	public int lightOverlayRadius = 16;
+	/** No rain, snow or thunder, only for you (the server's weather stays). */
+	public boolean weatherOff = false;
+	/** The third person camera's distance with the mouse wheel: held key or the wheel alone, starting distance, back to it after F5. */
+	public boolean cameraDistance = false;
+	public boolean cameraDistanceKey = true;
+	public float cameraDistanceDefault = 4f;
+	public boolean cameraDistanceReset = false;
 	/** F2 also puts the picture on the clipboard (through the launcher) and shows it in the corner. */
 	public boolean screenshotClipboard = true;
 	/** The live chats of a Twitch and a Kick channel on the HUD (see StreamChatModule). */
@@ -355,6 +367,8 @@ public final class HudConfig {
 		c.modules.put("cps", new Placement(true, 0, 0, 2, 32));
 		c.modules.put("coords", new Placement(true, 0, 0, 2, 47));
 		c.modules.put("speed", new Placement(false, 0, 0, 2, 74));
+		// under the coordinates (where speed is, also off by default), switched on when wanted
+		c.modules.put("nethercoords", new Placement(false, 0, 0, 2, 74));
 		// top middle, under the boss bar area only when switched on
 		c.modules.put("server", new Placement(false, 0.5f, 0, 0, 2));
 		c.modules.put("players", new Placement(false, 0.5f, 0, 0, 17));
@@ -589,6 +603,14 @@ public final class HudConfig {
 		fixedTime = other.fixedTime;
 		freelook = other.freelook;
 		waypoints = other.waypoints;
+		deathWaypoint = other.deathWaypoint;
+		lightOverlay = other.lightOverlay;
+		lightOverlayRadius = Math.max(4, Math.min(32, other.lightOverlayRadius));
+		weatherOff = other.weatherOff;
+		cameraDistance = other.cameraDistance;
+		cameraDistanceKey = other.cameraDistanceKey;
+		cameraDistanceDefault = CameraDistance.clamp(other.cameraDistanceDefault);
+		cameraDistanceReset = other.cameraDistanceReset;
 		screenshotClipboard = other.screenshotClipboard;
 		twitchChat = other.twitchChat == null ? new dev.slash3rss.slashclient.hud.streams.StreamChatSettings() : other.twitchChat.copy();
 		kickChat = other.kickChat == null ? new dev.slash3rss.slashclient.hud.streams.StreamChatSettings() : other.kickChat.copy();

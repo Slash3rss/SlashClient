@@ -68,6 +68,10 @@ public class SlashHud implements ClientModInitializer {
 		// sprays: no key by default (set in SlashClient's keys window or the game's Controls)
 		Sprays.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.spray", InputConstants.UNKNOWN.getValue(), category));
 		SprayRender.register();
+		// the light level overlay (F9) and the third person camera's distance (V + the wheel in F5)
+		LightOverlay.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.lightOverlay", InputConstants.KEY_F9, category));
+		LightOverlay.register();
+		CameraDistance.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.cameraDistance", InputConstants.KEY_V, category));
 		// the dungeon map's zoom: = and - (free in the game)
 		DungeonMap.zoomInKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonZoomIn", InputConstants.KEY_EQUALS, category));
 		DungeonMap.zoomOutKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonZoomOut", InputConstants.KEY_MINUS, category));
@@ -196,6 +200,9 @@ public class SlashHud implements ClientModInitializer {
 				if (Compat.screen(mc) == null) mc.setScreenAndShow(new HudEditScreen());
 			}
 			Freelook.tick(mc);
+			DeathPoint.tick(mc);
+			LightOverlay.tick(mc);
+			CameraDistance.tick(mc);
 			while (waypointsKey.consumeClick()) {
 				if (Compat.screen(mc) == null && config.waypoints) mc.setScreenAndShow(new WaypointsScreen());
 			}
