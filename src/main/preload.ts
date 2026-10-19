@@ -148,6 +148,10 @@ const api = {
   socialSetStatus: (status: string) => invoke('social:setStatus', status),
   socialTyping: (friendId: string) => invoke('social:typing', friendId),
   socialActivity: () => invoke('social:activity'),
+  /** Picks a picture and sends it to the friend, encrypted; undefined when the player cancelled. */
+  socialSendImage: (friendId: string) => invoke('social:sendImage', friendId),
+  /** A picture from the chat as a data: address. */
+  socialImage: (id: string) => invoke('social:image', id),
   joinInGame: (address: string) => invoke('game:join', address),
   listConfigs: (profileId: string) => invoke('configs:list', profileId),
   readConfig: (profileId: string, rel: string) => invoke('configs:read', profileId, rel),

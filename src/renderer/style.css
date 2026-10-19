@@ -953,6 +953,19 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .fr-lock { margin-left: 6px; font-size: 9px; opacity: .45; vertical-align: 1px; }
 .fr-bubble.unreadable { font-style: italic; opacity: .6; }
 
+/* muted friends, and pictures in the chat */
+.fr-muted { font-size: 12px; color: var(--text-muted); margin-right: 2px; }
+.fr-unread.muted { background: rgba(255, 255, 255, .18); }
+.fr-chat-head .icon-btn.on { color: #fbbf24; }
+.fr-bubble.fr-image { padding: 4px; position: relative; line-height: 0; }
+.fr-msg.mine .fr-bubble.fr-image { background: rgba(59, 130, 246, .35); }
+.fr-bubble.fr-image img { display: block; max-width: 100%; height: auto; border-radius: 10px; cursor: zoom-in; background: rgba(0, 0, 0, .25); }
+.fr-bubble.fr-image .fr-lock { position: absolute; right: 10px; bottom: 9px; margin: 0; color: #fff; opacity: .8; text-shadow: 0 1px 2px #000; }
+.fr-bubble.fr-image.unreadable { padding: 8px 12px; line-height: 1.45; display: flex; gap: 8px; align-items: center; }
+.fr-composer > .icon-btn { width: 40px; }
+.fr-lightbox { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 32px; background: rgba(0, 0, 0, .82); cursor: zoom-out; }
+.fr-lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 10px 40px rgba(0, 0, 0, .6); }
+
 /* the cape tabs keep the look of a switch, not of the buttons around them */
 .skin-info .capes-box .segmented button { height: 28px; padding: 0 10px; background: transparent; border: 0; box-shadow: none; color: var(--text-secondary); }
 .skin-info .capes-box .segmented button.active { background: var(--glass-bg-hover); color: var(--text-primary); }

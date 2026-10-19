@@ -26,6 +26,10 @@ export interface BridgeOptions {
   lanJoin?: (host: string) => Promise<number>;
   /** The session for one account, picked in the game's menu (a fresh token for Microsoft). */
   useAccount?: (id: string) => Promise<{ name: string; uuid: string; accessToken: string; xuid: string; type: string }>;
+  /** Sends a screenshot to a friend (encrypted by the launcher); rejects paths that are not a profile's screenshot. */
+  sendImage?: (friendId: string, file: string) => Promise<unknown>;
+  /** A picture from the chat, decrypted, as PNG. */
+  chatImage?: (id: string) => Promise<Buffer>;
 }
 
 /** What the game may ask for: its friends and the messages with them. */
@@ -35,6 +39,8 @@ const ALLOWED: [string, RegExp][] = [
   ['POST', /^\/v1\/messages\/[\w-]{1,64}$/],
   ['POST', /^\/v1\/messages\/[\w-]{1,64}\/read$/],
   ['POST', /^\/v1\/invites\/[\w-]{1,64}$/],
+  // muting a friend from the game's friends list (on the account, so the launcher follows)
+  ['POST', /^\/v1\/friends\/[\w-]{1,64}\/mute$/],
   // waypoints shared with friends, and parties (several friends invited at once)
   ['POST', /^\/v1\/waypoints$/],
   ['GET', /^\/v1\/parties$/],
@@ -177,6 +183,28 @@ export class GameBridge {
         return this.send(res, 200, { ok: true });
       } catch (err) {
         return this.send(res, 403, { error: (err as Error).message });
+      }
+    }
+
+    // pictures in the chat: a screenshot to send, and one to show (PNG bytes, not JSON)
+    if (method === 'POST' && url === '/chat/image') {
+      const { friend, path } = ((await this.body(req)) ?? {}) as { friend?: unknown; path?: unknown };
+      if (typeof friend !== 'string' || !/^[\w-]{1,64}$/.test(friend) || typeof path !== 'string' || !this.opts.sendImage) return this.send(res, 400, { error: 'bad_request' });
+      try {
+        return this.send(res, 200, await this.opts.sendImage(friend, path));
+      } catch (err) {
+        return this.send(res, 502, { error: (err as { code?: string }).code ?? (err as Error).message });
+      }
+    }
+    const image = /^\/chat\/image\/([\w-]{22})$/.exec(url);
+    if (method === 'GET' && image) {
+      if (!this.opts.chatImage) return this.send(res, 404, { error: 'not_found' });
+      try {
+        const png = await this.opts.chatImage(image[1]);
+        res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-store' });
+        return res.end(png);
+      } catch (err) {
+        return this.send(res, 404, { error: (err as { code?: string }).code ?? (err as Error).message });
       }
     }
 

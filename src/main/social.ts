@@ -96,6 +96,38 @@ export class SocialClient {
     return data as T;
   }
 
+  /** Raw bytes to the server (an encrypted chat picture); the answer is JSON as with `call`. */
+  async upload<T = unknown>(path: string, data: Uint8Array): Promise<T> {
+    return this.raw(path, { method: 'POST', body: data, type: 'application/octet-stream' }).then((res) => res.json() as Promise<T>);
+  }
+
+  /** Raw bytes from the server (an encrypted chat picture). */
+  async download(path: string): Promise<Buffer> {
+    return this.raw(path, { method: 'GET' }).then(async (res) => Buffer.from(await res.arrayBuffer()));
+  }
+
+  private async raw(path: string, opts: { method: string; body?: Uint8Array; type?: string }): Promise<Response> {
+    const token = this.opts.token();
+    if (!token) throw new SocialError('unauthorized', 401);
+    let res: Response;
+    try {
+      res = await (this.opts.fetchImpl ?? fetch)(this.opts.url().replace(/\/$/, '') + path, {
+        method: opts.method,
+        headers: { 'X-SlashClient': `launcher/${APP_VERSION}`, Authorization: `Bearer ${token}`, ...(opts.type ? { 'Content-Type': opts.type } : {}) },
+        body: opts.body as unknown as BodyInit | undefined,
+        signal: AbortSignal.timeout(60_000),
+      });
+    } catch {
+      throw new SocialError('offline');
+    }
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (res.status === 401) await this.dropSession();
+      throw new SocialError(data.error ?? `http_${res.status}`, res.status);
+    }
+    return res;
+  }
+
   /** Keeps the session from a sign-in and goes online. */
   async signedIn(result: { token: string; user: SocialUser }) {
     await this.opts.saveToken(result.token);

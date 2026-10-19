@@ -95,13 +95,18 @@ public final class SharedWaypoints {
 
 	/** A friend's point arrived (a message with `waypoint`): into this world's list, or waiting for another. */
 	static void received(Social.Message m, String fromName) {
+		received(m, fromName, false);
+	}
+
+	/** `quiet`: from a muted friend, so no toast. */
+	static void received(Social.Message m, String fromName, boolean quiet) {
 		Shared w = m.waypoint();
 		Minecraft mc = Minecraft.getInstance();
 		mc.execute(() -> {
 			boolean here = mc.level != null && normalize(Waypoints.worldKey(mc)).equals(normalize(w.world()));
 			if (here) {
 				Waypoints.addShared(Waypoints.worldKey(mc), w.name(), w.x(), w.y(), w.z(), Waypoints.dimensionKey(w.dimension()), fromName);
-				Social.toast(fromName, Component.translatable("slashclient-hud.share.added", w.name()).getString(), null);
+				if (!quiet) Social.toast(fromName, Component.translatable("slashclient-hud.share.added", w.name()).getString(), null);
 				return;
 			}
 			if (pending().stream().anyMatch(r -> r.id == m.id())) return;
@@ -118,7 +123,7 @@ public final class SharedWaypoints {
 			pending().add(0, r);
 			while (pending().size() > MAX_PENDING) pending().remove(pending().size() - 1);
 			save();
-			Social.toast(fromName, Component.translatable("slashclient-hud.share.pending", w.name(), worldName(w.world())).getString(), null);
+			if (!quiet) Social.toast(fromName, Component.translatable("slashclient-hud.share.pending", w.name(), worldName(w.world())).getString(), null);
 		});
 	}
 

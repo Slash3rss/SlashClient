@@ -24,6 +24,7 @@ import { createApp } from './app.ts';
  *   CLOUD_DIR               profiles kept on accounts, default ./cloud-profiles next to DB_FILE
  *   STORAGE_SECRET_KEY      32 bytes, base64 (openssl rand -base64 32): seals the keys of the buckets added in the panel
  *   STORAGE_MIN_FREE_MB     the server's disk takes no new files below this much free space, default 2048
+ *   CHAT_IMAGES_DIR         pictures sent in the chat (encrypted), default ./chat-images next to DB_FILE
  */
 const port = Number(process.env.PORT) || 8787;
 const dbFile = process.env.DB_FILE ?? path.resolve('data/social.db');
@@ -59,6 +60,7 @@ const { server } = createApp({
     secretKey: process.env.STORAGE_SECRET_KEY || undefined,
     minFreeBytes: Number(process.env.STORAGE_MIN_FREE_MB) > 0 ? Number(process.env.STORAGE_MIN_FREE_MB) * 1024 * 1024 : undefined,
   },
+  imagesDir: process.env.CHAT_IMAGES_DIR || undefined,
 });
 
 server.listen(port, () => {

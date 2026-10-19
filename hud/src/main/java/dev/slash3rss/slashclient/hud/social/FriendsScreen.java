@@ -7,6 +7,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 
@@ -40,6 +41,8 @@ public class FriendsScreen extends Screen {
 	/** A button in a chat's header. */
 	private record Action(String id, String icon, Component label, Runnable run) {}
 	private final List<Hit> hits = new ArrayList<>();
+	/** What the button under the mouse does, drawn last. */
+	private Component tooltip;
 
 	// the panel, recomputed on every resize
 	private int px, py, pw, ph;
@@ -60,7 +63,7 @@ public class FriendsScreen extends Screen {
 		py = (height - ph) / 2;
 		int chatX = px + LIST_W + 1;
 		// borderless text on our own rounded field (drawn in drawChat), like the editor's search
-		input = new EditBox(font, chatX + 16, py + ph - INPUT_H - 8 + 6, pw - LIST_W - 1 - 32 - 30, 12, Component.translatable("slashclient-hud.friends.write"));
+		input = new EditBox(font, chatX + 16, py + ph - INPUT_H - 8 + 6, pw - LIST_W - 1 - 32 - 30 - 24, 12, Component.translatable("slashclient-hud.friends.write"));
 		input.setBordered(false);
 		input.setTextColor(Ui.TEXT);
 		input.setMaxLength(2000);
@@ -197,12 +200,15 @@ public class FriendsScreen extends Screen {
 			Ui.round(g, rx + 16, y + 16, 7, 7, 3, Ui.PANEL);
 			Ui.round(g, rx + 17, y + 17, 5, 5, 2, statusColor(f.status()));
 			int textW = rw - 30 - (f.unread() > 0 ? 16 : 0);
-			Ui.draw(g, Ui.fit(Ui.bold(f.name()), textW), rx + 27, y + 4, Ui.TEXT);
+			// muted: a small crossed bell after the name
+			Component name = Ui.fit(Ui.bold(f.name()), textW - (f.muted() ? 10 : 0));
+			Ui.draw(g, name, rx + 27, y + 4, Ui.TEXT);
+			if (f.muted()) Ui.icon(g, "bell-slash", rx + 29 + Ui.width(name), y + 4, 7, Ui.MUTED);
 			Ui.draw(g, Ui.fit(Social.activity(f).copy().withStyle(Ui.text("").getStyle()), textW), rx + 27, y + 15, Ui.MUTED);
 			if (f.unread() > 0) {
 				Component n = Ui.bold(f.unread() > 9 ? "9+" : String.valueOf(f.unread()));
 				int bw = Math.max(12, Ui.width(n) + 6);
-				Ui.round(g, rx + rw - bw - 3, y + 8, bw, 11, 5, Ui.ACCENT);
+				Ui.round(g, rx + rw - bw - 3, y + 8, bw, 11, 5, f.muted() ? 0xFF3A4252 : Ui.ACCENT);
 				Ui.draw(g, n, rx + rw - bw - 3 + (bw - Ui.width(n)) / 2, y + 10, 0xFFFFFFFF);
 			}
 			String id = f.id();
@@ -274,27 +280,34 @@ public class FriendsScreen extends Screen {
 			return;
 		}
 		input.visible = true;
+		// the header's buttons from the right, left of the window's close button
+		int right = cx + cw - 36;
+		String fid = f.id();
+		// muted: still a friend, messages still come, but no toasts (on the account, the launcher follows)
+		boolean muted = f.muted();
+		Ui.button(g, "friends:mute", right - 18, py + 8, 18, 18, muted ? "bell-slash" : "bell", Component.empty(), false, mx, my);
+		if (Ui.inside(mx, my, right - 18, py + 8, 18, 18)) tooltip = Ui.tr(muted ? "slashclient-hud.mute.off" : "slashclient-hud.mute.on");
+		hits.add(new Hit(right - 18, py + 8, 18, 18, () -> Social.mute(fid, !muted)));
+		right -= 22;
 		// on a server: one click invites this friend there
-		int headW = cw - 46;
 		if (Social.currentServer() != null) {
 			Component here = Ui.tr("slashclient-hud.invite.here");
 			int iw = Ui.buttonWidth(here, "play", 18, 2);
-			int ix = cx + cw - 36 - iw;
-			Ui.button(g, "friends:invite", ix, py + 8, iw, 18, "play", here, false, mx, my);
-			String id = f.id();
-			hits.add(new Hit(ix, py + 8, iw, 18, () -> Social.invite(id)));
-			headW -= iw + 4;
+			right -= iw;
+			Ui.button(g, "friends:invite", right, py + 8, iw, 18, "play", here, false, mx, my);
+			hits.add(new Hit(right, py + 8, iw, 18, () -> Social.invite(fid)));
+			right -= 4;
 		}
 		// their world is open to LAN: one click joins it, through SlashClient
 		if (Social.lanOpen(f.id())) {
 			Component joinWorld = Ui.tr("slashclient-hud.lan.join");
 			int jw = Ui.buttonWidth(joinWorld, "play", 18, 2);
-			int jx = cx + cw - 36 - jw - (Social.currentServer() != null ? cw - 46 - headW + 4 : 0);
-			Ui.button(g, "friends:lan", jx, py + 8, jw, 18, "play", joinWorld, true, mx, my);
-			String id = f.id();
-			hits.add(new Hit(jx, py + 8, jw, 18, () -> Social.joinLan(id)));
-			headW -= jw + 4;
+			right -= jw;
+			Ui.button(g, "friends:lan", right, py + 8, jw, 18, "play", joinWorld, true, mx, my);
+			hits.add(new Hit(right, py + 8, jw, 18, () -> Social.joinLan(fid)));
+			right -= 4;
 		}
+		int headW = right - (cx + 10);
 		Ui.draw(g, Ui.fit(Ui.bold(f.name()), headW), cx + 10, py + 10, Ui.TEXT);
 		Component sub = Social.typing(f.id()) ? Ui.tr("slashclient-hud.friends.typing") : Social.activity(f).copy().withStyle(Ui.text("").getStyle());
 		Ui.draw(g, Ui.fit(sub, headW), cx + 10, py + 21, Social.typing(f.id()) ? Ui.ACCENT_LIGHT : Ui.MUTED);
@@ -316,13 +329,20 @@ public class FriendsScreen extends Screen {
 				total += used[1];
 				continue;
 			}
+			if (m.image() != null && !m.image().unreadable()) {
+				int[] used = drawPicture(g, m, f.name(), mine, cx, cw, maxBubble, y, top, bottom, mx, my);
+				y = used[0];
+				total += used[1];
+				continue;
+			}
 			if (!m.invite().isEmpty()) {
 				int[] used = drawInvite(g, m, mine, cx, cw, maxBubble, y, top, bottom, mx, my);
 				y = used[0];
 				total += used[1];
 				continue;
 			}
-			List<FormattedCharSequence> lines = font.split(Ui.text(m.text()), maxBubble - 12);
+			String text = m.image() != null ? Ui.tr("slashclient-hud.picture.unreadable").getString() : m.text();
+			List<FormattedCharSequence> lines = font.split(Ui.text(text), maxBubble - 12);
 			int textW = 0;
 			for (FormattedCharSequence l : lines) textW = Math.max(textW, font.width(l));
 			Component time = Ui.text(TIME.format(Instant.ofEpochMilli(m.at())));
@@ -351,6 +371,80 @@ public class FriendsScreen extends Screen {
 		int sx = cx + cw - 10 - 24;
 		Ui.button(g, "friends:send", sx, fy, 24, INPUT_H, "arrow", Component.empty(), true, mx, my);
 		hits.add(new Hit(sx, fy, 24, INPUT_H, this::send));
+		// a screenshot to the friend: picked from the newest ones, encrypted by the launcher
+		int ix = sx - 24;
+		Ui.button(g, "friends:picture", ix, fy, 20, INPUT_H, "image", Component.empty(), false, mx, my);
+		if (Ui.inside(mx, my, ix, fy, 20, INPUT_H)) tooltip = Ui.tr("slashclient-hud.picture.button");
+		String fid2 = f.id(), fname = f.name();
+		hits.add(new Hit(ix, fy, 20, INPUT_H, () -> minecraft.setScreenAndShow(new ShotPickerScreen(this, fid2, fname))));
+		drawRecentShot(g, f, cx, cw, fy, mx, my);
+		if (tooltip != null) {
+			int tw = Ui.width(tooltip) + 10;
+			int tx = Math.min(mx + 8, px + pw - tw - 4), ty = Math.max(py + 4, my - 16);
+			Ui.round(g, tx, ty, tw, 13, 3, 0xF0000000);
+			Ui.draw(g, tooltip, tx + 5, ty + 3, Ui.TEXT);
+			tooltip = null;
+		}
+	}
+
+	/** The screenshot taken a moment ago (F2): one click sends it to this friend. */
+	private void drawRecentShot(GuiGraphicsExtractor g, Social.Friend f, int cx, int cw, int fy, int mx, int my) {
+		java.io.File shot = dev.slash3rss.slashclient.hud.Shots.recent();
+		if (shot == null) return;
+		ChatImages.Texture tex = ChatImages.file(shot);
+		int h = 30, w = Math.min(cw - 20, 190), x = cx + cw - 10 - w, y = fy - h - 6;
+		boolean over = Ui.inside(mx, my, x, y, w, h);
+		float t = Ui.hover("friends:recent", over);
+		Ui.round(g, x, y, w, h, 5, Ui.blend(0xF01C2B4A, 0xF0264070, t));
+		Ui.roundOutline(g, x, y, w, h, 5, 0x993B82F6);
+		int tw = 0;
+		if (tex.ready()) {
+			int[] size = ChatImages.fit(tex.w(), tex.h(), 40, h - 6);
+			tw = size[0];
+			g.blit(RenderPipelines.GUI_TEXTURED, tex.id(), x + 3, y + 3 + (h - 6 - size[1]) / 2, 0, 0, size[0], size[1], tex.w(), tex.h(), tex.w(), tex.h(), 0xFFFFFFFF);
+		}
+		int tx = x + 3 + Math.max(tw, 0) + 5;
+		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.picture.recent"), x + w - tx - 18), tx, y + 6, Ui.TEXT);
+		Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.picture.recentHint", f.name()), x + w - tx - 18), tx, y + 17, Ui.TEXT_2);
+		// not now: the card goes
+		Ui.icon(g, "close", x + w - 12, y + 4, 8, Ui.MUTED);
+		hits.add(new Hit(x + w - 14, y + 2, 12, 12, dev.slash3rss.slashclient.hud.Shots::forgetRecent));
+		String fid = f.id(), fname = f.name();
+		hits.add(new Hit(x, y, w, h, () -> {
+			Social.sendImage(fid, shot, null);
+			dev.slash3rss.slashclient.hud.Shots.forgetRecent();
+			Social.toast(fname, Component.translatable("slashclient-hud.picture.sending").getString(), "m-screenshot");
+		}));
+	}
+
+	/** A picture as a thumbnail (it loads through the launcher); a click shows it big. Returns the new y and the height used. */
+	private int[] drawPicture(GuiGraphicsExtractor g, Social.Message m, String friendName, boolean mine, int cx, int cw, int maxBubble, int y, int top, int bottom, int mx, int my) {
+		Social.Image img = m.image();
+		ChatImages.Texture tex = ChatImages.chat(img.id());
+		int w0 = tex.ready() ? tex.w() : img.w(), h0 = tex.ready() ? tex.h() : img.h();
+		int[] size = ChatImages.fit(w0, h0, Math.min(maxBubble - 8, 150), 96);
+		int bw = size[0] + 8, bh = size[1] + 8 + 11;
+		y -= bh + 4;
+		if (y > bottom || y + bh < top) return new int[] { y, bh + 4 };
+		int bx = mine ? cx + cw - 10 - bw : cx + 10;
+		Ui.round(g, bx, y, bw, bh, 5, mine ? Ui.ACCENT_DARK : Ui.CARD);
+		if (tex.ready()) {
+			g.blit(RenderPipelines.GUI_TEXTURED, tex.id(), bx + 4, y + 4, 0, 0, size[0], size[1], tex.w(), tex.h(), tex.w(), tex.h(), 0xFFFFFFFF);
+			if (Ui.inside(mx, my, bx + 4, y + 4, size[0], size[1])) Ui.roundOutline(g, bx + 3, y + 3, size[0] + 2, size[1] + 2, 3, 0x993B82F6);
+		} else {
+			Ui.round(g, bx + 4, y + 4, size[0], size[1], 3, 0x40000000);
+			Component state = Ui.tr(tex.failed() ? "slashclient-hud.picture.gone" : "slashclient-hud.picture.loading");
+			Ui.icon(g, "image", bx + 4 + size[0] / 2 - 6, y + 4 + size[1] / 2 - 12, 12, Ui.MUTED);
+			Ui.centered(g, Ui.fit(state, size[0] - 6), bx + 4 + size[0] / 2, y + 4 + size[1] / 2 + 4, Ui.MUTED);
+		}
+		Ui.icon(g, "lock", bx + 4, y + bh - 11, 7, mine ? 0xB3FFFFFF : Ui.MUTED);
+		Component time = Ui.text(TIME.format(Instant.ofEpochMilli(m.at())));
+		Ui.draw(g, time, bx + bw - 4 - Ui.width(time), y + bh - 11, mine ? 0xB3FFFFFF : Ui.MUTED);
+		if (tex.ready() && y + 4 >= top && y + 4 + size[1] <= bottom) {
+			String from = mine ? Social.myName() : friendName;
+			hits.add(new Hit(bx + 4, y + 4, size[0], size[1], () -> minecraft.setScreenAndShow(new PictureScreen(this, img.id(), from))));
+		}
+		return new int[] { y, bh + 4 };
 	}
 
 	/** A group's (or the clan's) conversation: who wrote each message above it, and what happened in the group as lines. */
@@ -543,7 +637,10 @@ public class FriendsScreen extends Screen {
 		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
 		//#endif
 		if (e.button() != InputConstants.MOUSE_BUTTON_LEFT) return false;
-		for (Hit h : List.copyOf(hits)) {
+		// what was drawn last is on top (the card of a fresh screenshot over the newest messages)
+		List<Hit> all = List.copyOf(hits);
+		for (int i = all.size() - 1; i >= 0; i--) {
+			Hit h = all.get(i);
 			if (Ui.inside(e.x(), e.y(), h.x(), h.y(), h.w(), h.h())) {
 				h.action().run();
 				return true;

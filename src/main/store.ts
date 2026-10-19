@@ -92,6 +92,8 @@ export interface Settings {
   downloadLimitMBps?: number;
   /** Start games on the dedicated GPU (Windows: registry preference for our Java, Linux: PRIME offload). */
   dedicatedGpu?: boolean;
+  /** A toast when a friend comes online or starts playing (off: only messages, invites and requests). */
+  notifyFriendsPlaying?: boolean;
 }
 
 export interface StoreData {
