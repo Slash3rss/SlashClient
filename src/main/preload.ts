@@ -138,7 +138,7 @@ const api = {
   scanDisk: (olderThanDays: number) => invoke('disk:scan', olderThanDays),
   cleanDisk: (ids: string[]) => invoke('disk:clean', ids),
   /** A system notification; clicking it brings the launcher back and sends `notify:open` with the target. */
-  notify: (title: string, body: string, target?: { view: 'friends'; friendId?: string }) => invoke('notify:show', title, body, target),
+  notify: (title: string, body: string, target?: { view: 'friends'; friendId?: string } | { view: 'achievements' }) => invoke('notify:show', title, body, target),
   on,
 };
 

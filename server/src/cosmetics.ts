@@ -28,6 +28,8 @@ export interface Item {
   since?: string;
   /** When the cape's frames came later than the cape: older launchers get it still. */
   framesSince?: string;
+  /** Only earned with this achievement (achievements.ts), which grants it; it cannot be picked otherwise. */
+  achievement?: string;
 }
 
 export const ITEMS: Item[] = [
@@ -59,6 +61,9 @@ export const ITEMS: Item[] = [
   { id: 'mint', slot: 'cape', name: 'Mięta', since: '0.9.2' },
   { id: 'vortex', slot: 'cape', name: 'Wir', frames: 8, since: '0.9.2' },
   { id: 'starfall', slot: 'cape', name: 'Gwiezdny deszcz', frames: 8, since: '0.9.2' },
+  // earned with achievements only
+  { id: 'veteran', slot: 'cape', name: 'Weteran', since: '0.9.14', achievement: 'hours_100' },
+  { id: 'streak30', slot: 'cape', name: 'Seria 30 dni', since: '0.9.14', achievement: 'streak_30' },
   { id: 'staff_admin', slot: 'cape', name: 'Admin', rank: 'admin', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_support', slot: 'cape', name: 'Support', rank: 'support', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_partner', slot: 'cape', name: 'Partner', rank: 'partner', frames: 16, framesSince: '0.9.4' },
@@ -202,6 +207,7 @@ export function mayWear(settings: Map<string, CosmeticSetting>, granted: string[
   const it = item(id);
   if (!it || it.slot !== slot) return false;
   if (badge === 'admin') return true;
+  if (it.achievement && !granted.includes(id)) return false;
   const s = capeSetting(settings, id);
   if (!s.enabled || (s.exclusive && !granted.includes(id))) return false;
   return !it.rank || badge === 'admin' || badge === it.rank || granted.includes(id);

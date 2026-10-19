@@ -40,12 +40,14 @@ const ALLOWED: [string, RegExp][] = [
   ['GET', /^\/v1\/cosmetics$/],
   ['GET', /^\/v1\/me$/],
   ['POST', /^\/v1\/me$/],
+  // the player's achievements (the cosmetics menu says how to earn the locked rewards)
+  ['GET', /^\/v1\/achievements$/],
 ];
 /** From the game, /v1/me changes only cosmetics (not, say, whether friends see the server). */
 const ME_KEYS = new Set(['cape', 'loadout', 'character', 'own']);
 
 /** Events the game cares about; the rest (login flow, account state) stays in the launcher. */
-const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', 'state', 'join', 'emote']);
+const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', 'state', 'join', 'emote', 'achievement']);
 const KEEP = 200;
 const LONG_POLL_MS = 25_000;
 

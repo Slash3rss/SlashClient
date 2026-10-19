@@ -1066,6 +1066,27 @@ const EN: Record<string, string> = {
   'Nie udało się ustalić wersji gry każdego profilu (brak internetu?), więc wersje, biblioteki i Java zostają bez zmian.': 'Could not find out every profile\'s game version (no internet?), so versions, libraries and Java are left as they are.',
   'Któraś wersja ma uszkodzony plik JSON, więc biblioteki zostają bez zmian.': 'A version has a damaged JSON file, so libraries are left as they are.',
   'Nie udało się ustalić, której Javy potrzebuje każdy profil, więc pobrane Javy zostają.': 'Could not find out which Java every profile needs, so the downloaded Java runtimes stay.',
+  // achievements
+  'Osiągnięcia': 'Achievements',
+  'Osiągnięcie odblokowane: {0}': 'Achievement unlocked: {0}',
+  'Nagroda: peleryna {0}. Załóż ją w menu kosmetyków.': 'Reward: the {0} cape. Put it on in the cosmetics menu.',
+  'Zobacz swoje osiągnięcia w SlashClient.': 'See your achievements in SlashClient.',
+  'Odblokowano {0}': 'Unlocked {0}',
+  'Nagroda odblokowana: {0}': 'Reward unlocked: {0}',
+  'Nagroda: {0}': 'Reward: {0}',
+  ' Wczytywanie…': ' Loading…',
+  ' Przejdź do Znajomych': ' Go to Friends',
+  ' Osiągnięcia SlashClient': ' SlashClient achievements',
+  'Zaloguj się na konto SlashClient w zakładce Znajomi, żeby zbierać osiągnięcia: serie dni gry, godziny, znajomych i serwery. Niektóre dają wyjątkowe peleryny.': 'Sign in to your SlashClient account on the Friends tab to collect achievements: play streaks, hours, friends and servers. Some give exclusive capes.',
+  ' Moje osiągnięcia': ' My achievements',
+  ' Osiągnięcia: {0}': ' Achievements: {0}',
+  '{0} z {1} odblokowanych': '{0} of {1} unlocked',
+  'dni z rzędu (rekord {0})': 'days in a row (best {0})',
+  'godzin gry': 'hours played',
+  'minut dzisiaj': 'minutes today',
+  'serwerów': 'servers',
+  'odblokowanych': 'unlocked',
+  'Liczy się czas w świecie lub na serwerze, gdy launcher jest połączony z SlashClient. Dzień do serii: co najmniej {0} min gry; dni zaczynają się o północy UTC; najwyżej {1} h dziennie.': 'Time in a world or on a server counts while the launcher is connected to SlashClient. A streak day needs at least {0} min of play; days start at midnight UTC; at most {1} h a day count.',
 };
 
 const DICTS: Record<Lang, Record<string, string>> = { pl: {}, en: EN };

@@ -101,6 +101,19 @@ public class GameCosmetics implements FabricClientGameTest {
 			String vortex = context.computeOnClient(mc -> TestHooks.capeTexture());
 			if (!vortex.matches("slashclient-hud:textures/cape/vortex_[0-7][.]png")) throw new AssertionError("Not a frame of the vortex cape: " + vortex);
 			context.takeScreenshot("cosmetics-new-cape-vortex");
+			// the capes earned with achievements, and the toast of an unlock
+			context.runOnClient(mc -> TestHooks.wear("aura", null));
+			for (String cape : new String[] {"veteran", "streak30"}) {
+				context.runOnClient(mc -> TestHooks.cosmeticsSelf(cape, false));
+				context.waitTicks(5);
+				String worn = context.computeOnClient(mc -> TestHooks.capeTexture());
+				if (!worn.equals("slashclient-hud:textures/cape/" + cape + ".png")) throw new AssertionError("Not the achievement cape: " + worn);
+				context.takeScreenshot("cosmetics-achievement-" + cape);
+			}
+			context.runOnClient(mc -> TestHooks.achievementToast());
+			context.waitTicks(20);
+			context.takeScreenshot("achievement-toast");
+			context.runOnClient(mc -> TestHooks.cleanScreen());
 			// the pink friend: the pink logo by the name and the rank's pink cape, its light sweeping across
 			context.runOnClient(mc -> TestHooks.wear("aura", null));
 			context.runOnClient(mc -> TestHooks.ownRank("friend_pink"));

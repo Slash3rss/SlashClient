@@ -159,6 +159,11 @@ CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created
     this.db.close();
   }
 
+  /** The connection itself, for stores kept in files of their own (achievements.ts). */
+  get sql(): DatabaseSync {
+    return this.db;
+  }
+
   // ---- players and sessions ----
 
   /**

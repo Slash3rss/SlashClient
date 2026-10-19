@@ -5,6 +5,7 @@ import { gameIcon } from './gameIcon';
 import { createFriends, socialErrorText } from './friends';
 import { createProfileFiles } from './profileFiles';
 import { initProfileSharing } from './profileShare';
+import { createAchievements } from './achievements';
 import { openSkinEditor } from './skinEditor';
 import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
 import type { SlashApi } from '../main/preload';
@@ -1554,6 +1555,7 @@ const friends = createFriends($('#friends-root'), $('#friends-badge'), {
   // the cape choice in Accounts unlocks (or locks) with the SlashClient account
   accountChanged: () => void renderSlashCapes(),
   hasMinecraft: () => store.accounts.some((a) => a.type === 'msa'),
+  showAchievements: (id, name) => achievements.showFriend(id, name),
   // a friend's server is not on the list: the join window gets what we know about it
   inviteTarget: async () => {
     // on a server now: that one; otherwise the server the chosen profile played last
@@ -1569,6 +1571,11 @@ const friends = createFriends($('#friends-root'), $('#friends-badge'), {
   }),
 });
 document.querySelector('.nav[data-view="friends"]')?.addEventListener('click', () => friends.show());
+
+// ---------- achievements ----------
+
+const achievements = createAchievements($('#achievements-root'), { api, toast, errorText });
+document.querySelector('.nav[data-view="achievements"]')?.addEventListener('click', () => achievements.show());
 
 // ---------- servers (lista.slash3rss.dev) ----------
 

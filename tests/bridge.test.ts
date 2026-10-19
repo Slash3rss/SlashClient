@@ -34,9 +34,11 @@ describe('game bridge', () => {
     assert.equal((await req('/v1/me', { method: 'POST', body: JSON.stringify({ character: 'abc', cape: 'gold', loadout: { pet: 'bee' } }) })).status, 200);
     assert.equal((await req('/v1/me', { method: 'POST', body: JSON.stringify({ showServer: false }) })).status, 403);
     assert.equal((await req('/v1/cosmetics')).status, 200);
+    assert.equal((await req('/v1/achievements')).status, 200);
+    assert.equal((await req('/v1/achievements/someone')).status, 403);
     assert.deepEqual(calls, ['GET /v1/friends', 'POST /v1/messages/abc {"text":"hej"}', 'GET /v1/me', 'copy /x/screenshots/a.png',
       'POST /v1/invites/abc {"server":"skyup.pl"}', 'POST /v1/mc/emote {"emote":"wave"}',
-      'POST /v1/me {"character":"abc","cape":"gold","loadout":{"pet":"bee"}}', 'GET /v1/cosmetics']);
+      'POST /v1/me {"character":"abc","cape":"gold","loadout":{"pet":"bee"}}', 'GET /v1/cosmetics', 'GET /v1/achievements']);
     assert.deepEqual(await (await req('/state')).json(), { signedIn: true, user: { name: 'Slash3rss' } });
 
     // a waiting poll wakes up on the next event; launcher-only events are not passed on
@@ -46,10 +48,12 @@ describe('game bridge', () => {
     bridge.push({ type: 'message', message: { text: 'cześć' } });
     bridge.push({ type: 'join', server: 'skyup.pl' });
     bridge.push({ type: 'emote', uuid: 'u', emote: 'gg' });
+    bridge.push({ type: 'achievement', achievement: { id: 'hours_100' } });
     const got = await poll;
     const types = got.events.map((e: { type: string }) => e.type);
     assert.equal(types[0], 'message');
     assert.ok(!types.includes('login'));
+    assert.ok(types.includes('achievement'));
     assert.deepEqual(bridge.jvmArgs(), [`-Dslashclient.bridge=${url}`, `-Dslashclient.bridgeKey=${key}`]);
     bridge.stop();
   });

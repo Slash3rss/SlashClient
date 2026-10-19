@@ -80,6 +80,7 @@ describe('system notifications', () => {
     assert.deepEqual(cleanTarget({ view: 'friends', friendId: 'abc-123' }), { view: 'friends', friendId: 'abc-123' });
     assert.deepEqual(cleanTarget({ view: 'friends', friendId: '../x"' }), { view: 'friends' });
     assert.equal(cleanTarget({ view: 'settings' }), undefined);
+    assert.deepEqual(cleanTarget({ view: 'achievements', friendId: 'x' }), { view: 'achievements' });
     assert.equal(cleanTarget(null), undefined);
   });
 
