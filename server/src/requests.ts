@@ -41,7 +41,7 @@ export function routeOf(path: string): string {
     .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, ':id')
     .replace(/\/[0-9a-f]{32}(?=\/|$)/gi, '/:id')
     .replace(/\/\d+(?=\/|$)/g, '/:n')
-    .replace(/^(\/(?:v1\/logs|logi)\/)[A-Za-z0-9]{10}/, '$1:id');
+    .replace(/^(\/(?:v1\/logs|logi|v1\/media)\/)[A-Za-z0-9]{10}/, '$1:id');
 }
 
 /** 203.0.113.57 → 203.0.113.x, and IPv6 cut to its network part. */

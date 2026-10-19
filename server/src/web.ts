@@ -20,7 +20,7 @@ const PAGES: Record<string, string> = { '/': 'index.html', '/konto': 'konto.html
  */
 const STARTED = Math.floor(Date.now() / 1000) * 1000;
 const VERSION = STARTED.toString(36);
-const versioned = (text: string, type: string): string =>
+export const versioned = (text: string, type: string): string =>
   type.startsWith('text/html')
     ? text.replace(/((?:href|src)=")((?!\w+:|\/\/)[^"?#]+\.(?:css|js))"/g, `$1$2?v=${VERSION}"`)
     : text.replace(/((?:\bfrom\s*|\bimport\s*\(\s*)')(\.{0,2}\/[^'?#]+\.js)'/g, `$1$2?v=${VERSION}'`);
