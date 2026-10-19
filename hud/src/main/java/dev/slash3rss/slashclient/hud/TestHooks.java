@@ -610,8 +610,22 @@ public final class TestHooks {
 	/** The cosmetics menu with a made-up catalog, open on a slot. */
 	public static void cosmeticsMenu(String slot) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
-		mc.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK);
 		mc.setScreenAndShow(CosmeticsScreen.sample(slot));
+	}
+
+	/** The open cosmetics menu on another slot, as a click on its tab would. */
+	public static void cosmeticsSlot(String slot) {
+		if (Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c) c.select(slot);
+	}
+
+	/** The open cosmetics menu's figure, as if dragged round by this many degrees. */
+	public static void cosmeticsDrag(float degrees) {
+		if (Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c) c.dragFigure(degrees);
+	}
+
+	/** The open cosmetics menu's figure wearing this in a slot (as if the server said so), and what it shows from now. */
+	public static void cosmeticsWorn(String slot, String id) {
+		if (Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c) c.wornForTest(slot, id);
 	}
 
 	/** The toast of an unlocked achievement with a cape for a reward, as the server's event brings it. */

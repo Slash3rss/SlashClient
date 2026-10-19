@@ -363,8 +363,9 @@ public final class Ui {
 	}
 
 	/**
-	 * An item as an icon. Before the game has finished loading (main menu at start) items
-	 * cannot be made yet, so a symbol on an accent badge stands in for them.
+	 * An item as an icon. Out of a world (the main menu) items cannot be made yet, so the item's
+	 * own picture stands in when the game has one (a block's side for a block), else `fallback`
+	 * on an accent badge: one of our icons by its name, or a short symbol.
 	 */
 	public static void icon(GuiGraphicsExtractor g, net.minecraft.world.item.Item item, String fallback, int x, int y) {
 		net.minecraft.world.item.ItemStack stack = stack(item);
@@ -372,9 +373,77 @@ public final class Ui {
 			g.item(stack, x, y);
 			return;
 		}
+		//#if MC < 1.21.5
+		//$ if (spawnEgg(g, item, x, y)) return;
+		//#endif
+		Identifier picture = PICTURES.computeIfAbsent(item, Ui::picture).orElse(null);
+		if (picture != null) {
+			g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, picture, x, y, 0, 0, 16, 16, 16, 16);
+			return;
+		}
 		round(g, x, y, 16, 16, 4, 0x332563EB);
+		if (fallback.length() > 2) {
+			// a name, not a symbol: never drawn as text (it would spill out of the badge)
+			icon(g, fallback, x + 2, y + 2, 12, ACCENT_LIGHT);
+			return;
+		}
 		Component c = Component.literal(fallback);
 		draw(g, c, x + 8 - width(c) / 2, y + 4, ACCENT_LIGHT);
+	}
+
+	private static final Map<net.minecraft.world.item.Item, java.util.Optional<Identifier>> PICTURES = new HashMap<>();
+
+	/** The game's picture of an item, without making one: its item texture, else its block's (the side first). */
+	private static java.util.Optional<Identifier> picture(net.minecraft.world.item.Item item) {
+		Identifier key = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item);
+		var resources = Minecraft.getInstance().getResourceManager();
+		for (String path : new String[] {"item/" + key.getPath(), "block/" + key.getPath(), "block/" + key.getPath() + "_side", "block/" + key.getPath() + "_front", "block/" + key.getPath() + "_top"}) {
+			Identifier id = Identifier.fromNamespaceAndPath(key.getNamespace(), "textures/" + path + ".png");
+			if (resources.getResource(id).isPresent() && !animated(resources, Identifier.fromNamespaceAndPath(key.getNamespace(), "textures/" + path + ".png.mcmeta"))) return java.util.Optional.of(id);
+		}
+		return java.util.Optional.empty();
+	}
+
+	//#if MC < 1.21.5
+	//$ private static final Map<net.minecraft.world.item.Item, int[]> EGGS = new HashMap<>();
+	//$
+	//$ /** Before 1.21.5 a spawn egg is one picture in two colours of its own: its two layers, tinted. */
+	//$ private static boolean spawnEgg(GuiGraphicsExtractor g, net.minecraft.world.item.Item item, int x, int y) {
+	//$ 	if (!(item instanceof net.minecraft.world.item.SpawnEggItem egg)) return false;
+	//$ 	int[] colors = EGGS.computeIfAbsent(item, k -> eggColors(egg));
+	//$ 	if (colors == null) return false;
+	//$ 	g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, Identifier.fromNamespaceAndPath("minecraft", "textures/item/spawn_egg.png"), x, y, 0, 0, 16, 16, 16, 16, 0xFF000000 | colors[0]);
+	//$ 	g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, Identifier.fromNamespaceAndPath("minecraft", "textures/item/spawn_egg_overlay.png"), x, y, 0, 0, 16, 16, 16, 16, 0xFF000000 | colors[1]);
+	//$ 	return true;
+	//$ }
+	//$
+	//$ private static int[] eggColors(net.minecraft.world.item.SpawnEggItem egg) {
+	//#if MC >= 1.21.4
+	//$ 	// the colours are in the item's model definition (items/<id>.json), as two constant tints
+	//$ 	Identifier key = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(egg);
+	//$ 	var found = Minecraft.getInstance().getResourceManager().getResource(Identifier.fromNamespaceAndPath(key.getNamespace(), "items/" + key.getPath() + ".json"));
+	//$ 	if (found.isEmpty()) return null;
+	//$ 	try (var in = new java.io.InputStreamReader(found.get().open(), java.nio.charset.StandardCharsets.UTF_8)) {
+	//$ 		var tints = com.google.gson.JsonParser.parseReader(in).getAsJsonObject().getAsJsonObject("model").getAsJsonArray("tints");
+	//$ 		return new int[] {tints.get(0).getAsJsonObject().get("value").getAsInt(), tints.get(1).getAsJsonObject().get("value").getAsInt()};
+	//$ 	} catch (Exception e) {
+	//$ 		return null;
+	//$ 	}
+	//#else
+	//$ 	return new int[] {egg.getColor(0), egg.getColor(1)};
+	//#endif
+	//$ }
+	//#endif
+
+	/** Whether a picture is animated (a strip of frames, not one square), by its .mcmeta. */
+	private static boolean animated(net.minecraft.server.packs.resources.ResourceManager resources, Identifier meta) {
+		var found = resources.getResource(meta);
+		if (found.isEmpty()) return false;
+		try (var in = found.get().open()) {
+			return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8).contains("\"animation\"");
+		} catch (java.io.IOException e) {
+			return true;
+		}
 	}
 
 	/** "Slash" in white and "Client" in the accent, as in the launcher's sidebar. */
