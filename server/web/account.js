@@ -156,7 +156,8 @@ function renderAccount() {
     el('div', { class: 'cosmetic-stage' }, previewBox ??= el('div', { class: 'figure' }), el('div', { class: 'grow' }, tabs, pick)));
   $('#account').replaceChildren(el('div', { class: 'account' }, profile, capes));
   // the kill effect plays on the figure only while its tab is open (every few seconds it would distract)
-  figure(character?.uuid ?? characters[0]?.uuid, slot === 'kill' ? worn : { ...worn, kill: '' });
+  // the kill effect plays only on its own tab; on the prop's the figure walks with it, seen from the side
+  figure(character?.uuid ?? characters[0]?.uuid, { ...worn, ...(slot === 'kill' ? {} : { kill: '' }), walk: slot === 'prop' });
   renderPartners();
 }
 
