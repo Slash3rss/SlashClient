@@ -841,6 +841,55 @@ public final class TestHooks {
 		//#endif
 	}
 
+	/**
+	 * The server's 'cosmetics' event, as the launcher passes it on: `set` is what the player wears now
+	 * (null: the event without a set, so the HUD asks the server again).
+	 */
+	public static void liveCosmetics(java.util.UUID id, java.util.Map<String, String> set) {
+		var e = new com.google.gson.JsonObject();
+		e.addProperty("type", "cosmetics");
+		var uuids = new com.google.gson.JsonArray();
+		uuids.add(id.toString());
+		e.add("uuids", uuids);
+		if (set != null) {
+			var sets = new com.google.gson.JsonObject();
+			var items = new com.google.gson.JsonObject();
+			set.forEach(items::addProperty);
+			sets.add(id.toString(), items);
+			e.add("cosmetics", sets);
+		}
+		try {
+			dev.slash3rss.slashclient.hud.social.Social.eventForTest(e);
+		} catch (Exception ex) {
+			throw new IllegalStateException(ex);
+		}
+	}
+
+	/** Everything a player shows, slot=item sorted ("" for nothing), for the test to compare. */
+	public static String wornAll(java.util.UUID id) {
+		var out = new java.util.TreeMap<String, String>();
+		for (String slot : java.util.List.of("cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill")) {
+			String item = Cosmetics.worn(id, slot);
+			if (item != null) out.put(slot, item);
+		}
+		return out.toString();
+	}
+
+	/** The first hat and top this mod knows (they come from the clothing models). */
+	public static String firstClothing(String slot) {
+		return ("hat".equals(slot) ? Clothing.HATS : Clothing.TOPS).get(0);
+	}
+
+	/** As if the server had just been asked about a player (so only a recheck asks again soon). */
+	public static void markLookedUp(java.util.UUID id) {
+		Badges.markChecked(id);
+	}
+
+	/** Whether the next lookup asks about this player again. */
+	public static boolean lookupDue(java.util.UUID id) {
+		return !Badges.checked(id);
+	}
+
 	public static void emoteSelf(String emote) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
 		Cosmetics.show(mc.player.getUUID(), emote);

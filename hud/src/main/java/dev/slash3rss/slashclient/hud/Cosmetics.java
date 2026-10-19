@@ -100,6 +100,48 @@ public final class Cosmetics {
 		for (String slot : SLOTS.keySet()) set(id, slot, items.get(slot));
 	}
 
+	/** uuid → when the server last told us live what that player wears (the 'cosmetics' event). */
+	private static final Map<UUID, Long> liveAt = new ConcurrentHashMap<>();
+
+	/** Whether a live change came after `since`: an older lookup's answer must not undo it. */
+	static boolean changedSince(UUID id, long since) {
+		return liveAt.getOrDefault(id, 0L) >= since;
+	}
+
+	/** Live changes may have been missed (the launcher reconnected): the next lookups ask about everyone again. */
+	public static void missedChanges() {
+		Badges.recheckAll();
+	}
+
+	/**
+	 * Someone in sight changed what they wear (the server's 'cosmetics' event, through the launcher):
+	 * `{uuids: [...], cosmetics: {uuid: {slot: item}}}`. Their new set shows at once; a uuid without a set
+	 * is asked of the server again at the next lookup (within a second).
+	 */
+	public static void live(com.google.gson.JsonObject e) {
+		if (!e.has("uuids") || !e.get("uuids").isJsonArray()) return;
+		var sets = e.has("cosmetics") && e.get("cosmetics").isJsonObject() ? e.getAsJsonObject("cosmetics") : null;
+		long now = System.currentTimeMillis();
+		for (var el : e.getAsJsonArray("uuids")) {
+			if (!el.isJsonPrimitive()) continue;
+			UUID id;
+			try {
+				id = UUID.fromString(el.getAsString());
+			} catch (IllegalArgumentException ignored) {
+				continue;
+			}
+			var set = sets == null ? null : sets.get(el.getAsString());
+			if (set == null || !set.isJsonObject()) {
+				Badges.recheck(id);
+				continue;
+			}
+			Map<String, String> all = new java.util.HashMap<>();
+			set.getAsJsonObject().entrySet().forEach(x -> { if (x.getValue().isJsonPrimitive()) all.put(x.getKey(), x.getValue().getAsString()); });
+			liveAt.put(id, now);
+			setAll(id, all);
+		}
+	}
+
 	/** The item a player wears in a slot, or null. */
 	/** The cape's picture now (an animated cape's current frame). */
 	public static Identifier capeTexture(String cape) {
@@ -115,6 +157,7 @@ public final class Cosmetics {
 
 	static void reset() {
 		worn.clear();
+		liveAt.clear();
 		CosmeticsScreen.forgetOwn();
 		emotes.clear();
 	}

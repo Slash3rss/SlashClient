@@ -64,6 +64,11 @@ public final class Badges {
 	private static final long HEARTBEAT_MS = 4 * 60_000;
 	/** How long an answer about a player is trusted before asking again. */
 	private static final long RECHECK_MS = 2 * 60_000;
+	/**
+	 * SlashClient players in sight, when changes of what they wear do not come live (no launcher, an older
+	 * one, or it is not connected to the server): asked again this often, so a new cape shows soon anyway.
+	 */
+	private static final long IN_VIEW_RECHECK_MS = 30_000;
 
 	/** uuid → when it was last checked, and whether it uses SlashClient. */
 	private static final Map<UUID, Long> checkedAt = new ConcurrentHashMap<>();
@@ -126,9 +131,13 @@ public final class Badges {
 		seen.add(mc.player.getUUID());
 		if (mc.level != null) for (var p : mc.level.players()) seen.add(p.getUUID());
 		for (PlayerInfo p : mc.getConnection().getOnlinePlayers()) seen.add(p.getProfile().id());
+		java.util.Set<UUID> inView = new java.util.HashSet<>();
+		if (mc.level != null && !dev.slash3rss.slashclient.hud.social.Social.liveCosmetics()) {
+			for (var p : mc.level.players()) if (slash.contains(p.getUUID())) inView.add(p.getUUID());
+		}
 		List<UUID> ask = new ArrayList<>();
 		for (UUID id : seen) {
-			if (id != null && now - checkedAt.getOrDefault(id, 0L) > RECHECK_MS) ask.add(id);
+			if (id != null && now - checkedAt.getOrDefault(id, 0L) > (inView.contains(id) ? IN_VIEW_RECHECK_MS : RECHECK_MS)) ask.add(id);
 			if (ask.size() >= 200) break;
 		}
 		if (ask.isEmpty()) return;
@@ -154,7 +163,10 @@ public final class Badges {
 				else slash.remove(id);
 				// the server answers with the uuid as it was asked
 				var items = wornBy.get(id.toString());
-				if (items != null && items.isJsonObject()) {
+				// a live change that came while this answer was on its way is newer: it stays
+				boolean newer = Cosmetics.changedSince(id, now);
+				if (newer) SlashHud.LOG.debug("SlashClient: kept the live cosmetics of {}", id);
+				else if (items != null && items.isJsonObject()) {
 					Map<String, String> all = new java.util.HashMap<>();
 					items.getAsJsonObject().entrySet().forEach(e -> { if (e.getValue().isJsonPrimitive()) all.put(e.getKey(), e.getValue().getAsString()); });
 					Cosmetics.setAll(id, all);
@@ -188,6 +200,25 @@ public final class Badges {
 				if (onOk != null) busy = false;
 			}
 		});
+	}
+
+	/** Asked of the server again at the next lookup (within a second): a live change without the new set. */
+	static void recheck(UUID id) {
+		checkedAt.remove(id);
+	}
+
+	/** For the in-game test: as if the server had just answered about a player, and whether it did. */
+	static void markChecked(UUID id) {
+		checkedAt.put(id, System.currentTimeMillis());
+	}
+
+	static boolean checked(UUID id) {
+		return checkedAt.containsKey(id);
+	}
+
+	/** Everyone asked about again at the next lookups (their logos stay meanwhile). */
+	static void recheckAll() {
+		checkedAt.clear();
 	}
 
 	/** A new server or world: what we knew about its players does not count any more. */
