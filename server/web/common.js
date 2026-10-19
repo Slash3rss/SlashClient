@@ -135,7 +135,7 @@ export function capeEl(id, small = false) {
 export const SLOTS = [
   ['cape', 'Peleryna', 'fa-solid fa-flag'], ['wings', 'Skrzydła', 'fa-solid fa-dove'], ['elytra', 'Elytra', 'fa-solid fa-feather'],
   ['trail', 'Ślad', 'fa-solid fa-shoe-prints'], ['aura', 'Aura', 'fa-solid fa-wand-sparkles'], ['pet', 'Pupil', 'fa-solid fa-paw'],
-  ['hat', 'Na głowę', 'fa-solid fa-hat-cowboy'], ['top', 'Ubranie', 'fa-solid fa-shirt'],
+  ['hat', 'Na głowę', 'fa-solid fa-hat-cowboy'], ['top', 'Ubranie', 'fa-solid fa-shirt'], ['kill', 'Efekt zabójstwa', 'fa-solid fa-skull-crossbones'],
 ];
 /** Particles and pets are the game's own: on the site they get an icon. */
 const ITEM_ICONS = {
@@ -148,6 +148,15 @@ const ITEM_ICONS = {
   crits: 'fa-burst', witch: 'fa-flask', ink: 'fa-droplet', ash: 'fa-smog',
   spores: 'fa-seedling', nautilus: 'fa-water', tears: 'fa-face-sad-tear', fireflies: 'fa-lightbulb',
   axolotl: 'fa-fish', frog: 'fa-frog', fox: 'fa-paw',
+  // kill effects
+  lightning: 'fa-bolt-lightning', blood: 'fa-droplet', heartburst: 'fa-heart-crack', firework: 'fa-wand-magic-sparkles',
+  soulrise: 'fa-fire-flame-curved', enderpoof: 'fa-eye', confetti: 'fa-champagne-glasses', blast: 'fa-explosion',
+  shatter: 'fa-icicles', coins: 'fa-coins', ghost: 'fa-ghost', flamering: 'fa-ring',
+};
+/** The kill effects' icons in their own colours (as in the launcher). */
+const KILL_ICON_COLORS = {
+  lightning: '#bfe6ff', blood: '#d32f2f', heartburst: '#ff5c7a', firework: '#ffd93b', soulrise: '#5fe3f0', enderpoof: '#c070ff',
+  confetti: '#ff7ad9', blast: '#ffa21f', shatter: '#9fd8ff', coins: '#ffd23f', ghost: '#f4f6ff', flamering: '#ff6a1f',
 };
 
 /** Pets of our own (not the game's mobs). */
@@ -166,6 +175,12 @@ export function cosmeticEl(id, slot = 'cape', small = false) {
     const c = el('div', { class: `cape wing${small ? ' sm' : ''}`, title: id });
     c.style.backgroundImage = `url(vendor/${slot}/${id}.png)`;
     return c;
+  }
+  // kill effects are bursts of particles: their icon, in its colour
+  if (slot === 'kill') {
+    const box = el('div', { class: `cape icon-item${small ? ' sm' : ''}`, title: id }, icon(`fa-solid ${ITEM_ICONS[id] ?? 'fa-skull-crossbones'}`));
+    box.style.color = KILL_ICON_COLORS[id] ?? '';
+    return box;
   }
   // the game's own pictures (the launcher's icons) replace the Font Awesome one once loaded
   const box = el('div', { class: `cape icon-item${small ? ' sm' : ''}`, title: id }, icon(`fa-solid ${ITEM_ICONS[id] ?? 'fa-star'}`));

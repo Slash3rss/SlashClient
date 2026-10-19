@@ -3,14 +3,14 @@ import type { CosmeticSetting } from './db.ts';
 /**
  * The SlashClient cosmetics. Their pictures live in the HUD mod (textures/cape, textures/elytra,
  * textures/wings, textures/clothing with the clothing's boxes in src/shared/clothing.ts; trails,
- * auras and pets are drawn from the game's own particles and mobs) and on the website (web/vendor);
+ * auras, kill effects and pets are drawn from the game's own particles and mobs) and on the website (web/vendor);
  * the server checks choices against these and the admin's settings.
  *
  * A player wears one item per slot. `rank` items are for that rank only (admins may wear all);
  * any item can also be made exclusive in the admin panel and granted to chosen players.
  */
-export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top';
-export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top'];
+export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill';
+export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill'];
 export type Rank = 'admin' | 'support' | 'partner' | 'friend' | 'friend_pink';
 
 export interface Item {
@@ -148,6 +148,19 @@ export const ITEMS: Item[] = [
   { id: 'tie', slot: 'top', name: 'Krawat', since: '0.9.11' },
   { id: 'medal', slot: 'top', name: 'Medal', since: '0.9.11' },
   { id: 'jacket', slot: 'top', name: 'Kurtka', since: '0.9.11' },
+  // kill effects: a short burst of particles where a mob or player the wearer killed falls (seen only by SlashClient players)
+  { id: 'lightning', slot: 'kill', name: 'Piorun', since: '0.9.14' },
+  { id: 'blood', slot: 'kill', name: 'Krew', since: '0.9.14' },
+  { id: 'heartburst', slot: 'kill', name: 'Wybuch serc', since: '0.9.14' },
+  { id: 'firework', slot: 'kill', name: 'Fajerwerk', since: '0.9.14' },
+  { id: 'soulrise', slot: 'kill', name: 'Ulatujące dusze', since: '0.9.14' },
+  { id: 'enderpoof', slot: 'kill', name: 'Teleport Endu', since: '0.9.14' },
+  { id: 'confetti', slot: 'kill', name: 'Konfetti', since: '0.9.14' },
+  { id: 'blast', slot: 'kill', name: 'Wybuch', since: '0.9.14' },
+  { id: 'shatter', slot: 'kill', name: 'Lodowy rozprysk', since: '0.9.14' },
+  { id: 'coins', slot: 'kill', name: 'Złote monety', since: '0.9.14' },
+  { id: 'ghost', slot: 'kill', name: 'Duch', since: '0.9.14' },
+  { id: 'flamering', slot: 'kill', name: 'Krąg ognia', since: '0.9.14' },
 ];
 
 /** Compares two versions like 0.9.1 number by number: below 0, 0 or above 0. */

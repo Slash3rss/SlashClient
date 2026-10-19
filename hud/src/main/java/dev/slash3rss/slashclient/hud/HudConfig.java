@@ -224,6 +224,9 @@ public final class HudConfig {
 	public int crosshairGap = 2;
 	/** The logo next to SlashClient players (and telling the server that you are one). */
 	public boolean badges = true;
+	/** Kill effects (a SlashClient cosmetic): ours when we kill something, and those of other players with SlashClient. */
+	public boolean killEffects = true;
+	public boolean killEffectsOthers = true;
 	/** The SlashClient main menu instead of Minecraft's own. */
 	public boolean customMenu = true;
 	/** The SlashClient pause menu instead of Minecraft's own. */
@@ -504,6 +507,8 @@ public final class HudConfig {
 		customMenu = other.customMenu;
 		customPause = other.customPause;
 		badges = other.badges;
+		killEffects = other.killEffects;
+		killEffectsOthers = other.killEffectsOthers;
 		scoreboard = other.scoreboard;
 		scoreboardScale = other.scoreboardScale;
 		scoreboardOffset = other.scoreboardOffset;
