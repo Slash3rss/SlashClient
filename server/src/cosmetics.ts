@@ -4,15 +4,15 @@ import type { CosmeticSetting } from './db.ts';
  * The SlashClient cosmetics. Their pictures live in the HUD mod (textures/cape, textures/elytra,
  * textures/wings, textures/clothing with the clothing's, shoes', hand, face and ears items' boxes in src/shared/clothing.ts, textures/suit with the
  * suits' in src/shared/suits.ts, textures/item/held, textures/gear with the back items' and tails' in src/shared/gear.ts,
- * textures/ring, textures/spray; trails,
+ * textures/ring, textures/spray, textures/prop with the props' boxes in src/shared/props.ts; trails,
  * auras, kill effects, movement effects and pets are drawn from the game's own particles and mobs) and on the website (web/vendor);
  * the server checks choices against these and the admin's settings.
  *
  * A player wears one item per slot. `rank` items are for that rank only (admins may wear all);
  * any item can also be made exclusive in the admin panel and granted to chosen players.
  */
-export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands' | 'face' | 'ears' | 'back' | 'tail' | 'ring' | 'move' | 'spray';
-export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill', 'suit', 'shield', 'weapon', 'shoes', 'hands', 'face', 'ears', 'back', 'tail', 'ring', 'move', 'spray'];
+export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands' | 'face' | 'ears' | 'back' | 'tail' | 'ring' | 'move' | 'spray' | 'prop';
+export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill', 'suit', 'shield', 'weapon', 'shoes', 'hands', 'face', 'ears', 'back', 'tail', 'ring', 'move', 'spray', 'prop'];
 export type Rank = 'admin' | 'support' | 'partner' | 'friend' | 'friend_pink';
 
 export interface Item {
@@ -263,6 +263,10 @@ export const ITEMS: Item[] = [
   { id: 'spray_crown', slot: 'spray', name: 'Korona', since: '0.9.20' },
   { id: 'spray_emblem', slot: 'spray', name: 'Emblemat', since: '0.9.20' },
   { id: 'spray_pumpkin', slot: 'spray', name: 'Dynia', since: '0.9.20' },
+  // props: something the player pushes in front of them with both hands (src/shared/props.ts), hidden while the hands are busy
+  { id: 'wheelbarrow', slot: 'prop', name: 'Taczka', since: '0.9.20' },
+  { id: 'wheelbarrow_gold', slot: 'prop', name: 'Taczka złota', since: '0.9.20' },
+  { id: 'wheelbarrow_flowers', slot: 'prop', name: 'Taczka z kwiatami', since: '0.9.20' },
 ];
 
 /** Compares two versions like 0.9.1 number by number: below 0, 0 or above 0. */

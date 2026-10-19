@@ -9,6 +9,7 @@ import { HeldPreview } from './heldPreview';
 import { RocketFlames } from './limbsPreview';
 import { GearPreview } from './gearPreview';
 import { MoveEffectPreview, RingPreview } from './ringMovePreview';
+import { PropPreview } from './propPreview';
 import type { SkinViewer } from 'skinview3d';
 
 /**
@@ -127,9 +128,10 @@ export class CosmeticPreview {
   private gear: GearPreview;
   private ring: RingPreview;
   private moves: MoveEffectPreview;
+  private props: PropPreview;
 
-  /** `clothing` is where the clothing's pictures are (<id>.png), `pets` our own pets' (<id>_<frame>.png), `suits` the suits', `held` the shields' and weapons', `gear` the back items' and tails', `rings` the rings'. */
-  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/', private pets = 'img/pets/', suits = 'img/suits/', held = 'img/held/', gear = 'img/gear/', rings = 'img/rings/') {
+  /** `clothing` is where the clothing's pictures are (<id>.png), `pets` our own pets' (<id>_<frame>.png), `suits` the suits', `held` the shields' and weapons', `gear` the back items' and tails', `rings` the rings', `props` the props' (<id>.png). */
+  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/', private pets = 'img/pets/', suits = 'img/suits/', held = 'img/held/', gear = 'img/gear/', rings = 'img/rings/', props = 'img/props/') {
     this.kills = new KillEffectPreview(viewer.playerWrapper);
     this.suit = new SuitPreview(viewer, (src) => this.ourTexture(src), suits);
     this.held = new HeldPreview(viewer, held);
@@ -137,6 +139,7 @@ export class CosmeticPreview {
     this.gear = new GearPreview(viewer, gear);
     this.ring = new RingPreview(viewer.playerWrapper, rings);
     this.moves = new MoveEffectPreview(viewer.playerWrapper, viewer.playerObject);
+    this.props = new PropPreview(viewer, props);
     const tick = (now: number) => {
       this.update(Math.min(0.1, (now - this.last) / 1000), now / 1000);
       this.last = now;
@@ -171,14 +174,17 @@ export class CosmeticPreview {
   /**
    * Shows what a set wears (the cape, wings and elytra are the viewer's own back equipment);
    * `kill` plays its burst every few seconds and `move` its loop (shown only while their tab is open: they would distract);
-   * `back` is given only when it shows (it takes the place of the cape and the wings: the caller leaves those off).
+   * `back` is given only when it shows (it takes the place of the cape and the wings: the caller leaves those off);
+   * `prop` is pushed in front, walking on the spot when `walk` (on its own tab).
    */
-  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string; suit?: string; shield?: string; weapon?: string; shoes?: string; hands?: string; face?: string; ears?: string; back?: string; tail?: string; ring?: string; move?: string }) {
+  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string; suit?: string; shield?: string; weapon?: string; shoes?: string; hands?: string; face?: string; ears?: string; back?: string; tail?: string; ring?: string; move?: string; prop?: string; walk?: boolean }) {
     this.kills.set(set.kill);
     this.held.show(set);
     this.gear.show(set.back, set.tail);
     this.ring.set(set.ring);
     this.moves.set(set.move);
+    this.props.show(set.prop);
+    this.props.walking = !!set.walk;
     // a suit hides the hat, the top, the shoes, the hands, the face and the ears, as in the game
     this.suitId = set.suit || undefined;
     this.wearing = this.suitId ? {} : { hat: set.hat || undefined, top: set.top || undefined, shoes: set.shoes || undefined, hands: set.hands || undefined,
@@ -447,6 +453,7 @@ export class CosmeticPreview {
     this.gear.dispose();
     this.ring.dispose();
     this.moves.dispose();
+    this.props.dispose();
     for (const t of this.textures.values()) t.dispose();
   }
 }

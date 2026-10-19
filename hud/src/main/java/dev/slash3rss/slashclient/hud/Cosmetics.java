@@ -60,7 +60,7 @@ public final class Cosmetics {
 		Map.entry("kill", KillEffects.IDS), Map.entry("suit", Suits.IDS), Map.entry("shield", HeldSkins.SHIELDS), Map.entry("weapon", HeldSkins.WEAPONS),
 		Map.entry("shoes", Clothing.SHOES), Map.entry("hands", Clothing.HANDS), Map.entry("face", Clothing.FACE), Map.entry("ears", Clothing.EARS),
 		Map.entry("back", Gear.BACKS), Map.entry("tail", Gear.TAILS), Map.entry("ring", RingEffects.IDS), Map.entry("move", MoveEffects.IDS),
-		Map.entry("spray", Sprays.IDS));
+		Map.entry("spray", Sprays.IDS), Map.entry("prop", Props.IDS));
 	private static final long EMOTE_MS = 3500;
 	private static final FontDescription EMOTE_FONT = Compat.font(Identifier.fromNamespaceAndPath(SlashHud.ID, "emote"));
 

@@ -163,6 +163,8 @@ const EN: Record<string, string> = {
   'Cząsteczki, gdy chodzisz, skaczesz, lądujesz, biegasz, pływasz lub strzelasz. Widzą je gracze z SlashClient.': 'Particles as you walk, jump, land, sprint, swim or shoot. Players with SlashClient see them.',
   'Spray': 'Spray',
   'Obrazek, który klawiszem malujesz na bloku przed sobą (w grze: Klawisze SlashClient). Znika po minucie; widzą go gracze z SlashClient na tym samym serwerze.': 'A picture you paint with a key on the block in front of you (in the game: SlashClient keys). It goes after a minute; players with SlashClient on the same server see it.',
+  'Rekwizyt': 'Prop',
+  'Pchasz go przed sobą, gdy masz wolne ręce. Z przedmiotem w ręce, przy jedzeniu, pływaniu czy lataniu się chowa.': 'You push it in front of you while your hands are free. It hides when you hold an item, eat, swim or fly.',
   'Krótki pokaz cząsteczek tam, gdzie pada pokonany przez Ciebie mob lub gracz. Widzą go gracze z SlashClient.': 'A short burst of particles where a mob or player you defeat falls. Players with SlashClient see it.',
   'Strój': 'Suit',
   'Strój na całe ciało. Chowa czapkę i ubranie, a prawdziwa zbroja chowa część, którą zakrywa.': 'A costume for the whole body. It hides your hat and outfit, and real armour hides the part it covers.',

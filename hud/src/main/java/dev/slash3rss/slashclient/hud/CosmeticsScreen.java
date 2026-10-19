@@ -22,14 +22,14 @@ import java.util.UUID;
 /**
  * Picking SlashClient cosmetics in the game: one slot at a time (cape, wings, elytra, trail,
  * aura, pet, hat, top, kill effect, suit, shield, weapon, shoes, hands, face, ears, back item, tail, ring, movement effect,
- * spray), the player's figure (for a spray its picture on a block) beside the panel trying on the item under
+ * spray, prop), the player's figure (for a spray its picture on a block) beside the panel trying on the item under
  * the mouse (turned to show its back for what is worn there, running for a trail, turned by
  * dragging it; for kill effects in a world the real player, from behind). Choices go to the SlashClient
  * server through the launcher, for the Minecraft account being played when it is linked to the
  * SlashClient account (each can have a set of its own), else for the whole account.
  */
 public class CosmeticsScreen extends Screen {
-	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit", "shield", "weapon", "shoes", "hands", "face", "ears", "back", "tail", "ring", "move", "spray"};
+	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit", "shield", "weapon", "shoes", "hands", "face", "ears", "back", "tail", "ring", "move", "spray", "prop"};
 	/** Particles and pets have no picture of ours: an item that looks like them stands in. */
 	private static final Map<String, Item> ITEMS = Map.ofEntries(
 		Map.entry("hearts", Items.POPPY), Map.entry("sparks", Items.GLOWSTONE_DUST), Map.entry("snow", Items.SNOWBALL),
@@ -131,6 +131,7 @@ public class CosmeticsScreen extends Screen {
 		for (String id : RingEffects.IDS) list.add(new Entry(id, "ring", id, "", true));
 		for (String id : MoveEffects.IDS) list.add(new Entry(id, "move", id, "", true));
 		for (String id : Sprays.IDS) list.add(new Entry(id, "spray", id, "", true));
+		for (String id : Props.IDS) list.add(new Entry(id, "prop", id, "", true));
 		screen.items = List.copyOf(list);
 		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf", "kill", "firework", "shield", "shield_dragon", "weapon", "sword_katana",
 			"shoes", "sneakers_red", "hands", "wristwatch"));
@@ -169,6 +170,8 @@ public class CosmeticsScreen extends Screen {
 			case "tail" -> 130;
 			// a movement effect from the side and a little in front (footprints and streaks stay in view)
 			case "move" -> -60;
+			// a prop from its side, a little from the front: the wheel ahead, the grips in the hands
+			case "prop" -> 55;
 			default -> 0;
 		};
 	}
@@ -363,6 +366,13 @@ public class CosmeticsScreen extends Screen {
 			fw = fh / 2;
 			fx = (px - 12 - fw) / 2;
 			fy = (height - fh) / 2;
+			if (slot.equals("prop")) {
+				// the prop reaches out to the figure's side: a smaller figure, moved over so both fit beside the panel
+				fh = fh * 3 / 4;
+				fw = fh / 2;
+				fx = Math.max(8, (px - 12 - fw) / 2 - Math.round(0.35f * fh / 2.125f));
+				fy = (height - fh) / 2;
+			}
 			Map<String, String> set;
 			synchronized (worn) {
 				set = new HashMap<>(worn);
@@ -384,6 +394,7 @@ public class CosmeticsScreen extends Screen {
 			look.moveDemo = slot.equals("move");
 			look.elytra = slot.equals("elytra");
 			look.held = HeldSkins.SLOTS.contains(slot);
+			look.pushing = slot.equals("prop");
 			// while it is turned by hand the head does not chase the mouse
 			figure.draw(g, fx, fy, fw, fh, turning ? fx + fw / 2 : mx, turning ? fy : my);
 		}
@@ -540,6 +551,9 @@ public class CosmeticsScreen extends Screen {
 			case "ring" ->
 				// the ring itself (the left square of its picture)
 				g.blit(RenderPipelines.GUI_TEXTURED, RingEffects.texture(e.id()), x + (TILE_W - 26) / 2, y + (TILE_H - 26) / 2, 0, 0, 26, 26, 64, 64, 128, 64, alpha);
+			case "prop" ->
+				// the prop seen from its side
+				g.blit(RenderPipelines.GUI_TEXTURED, Props.icon(e.id()), x + (TILE_W - 28) / 2, y + (TILE_H - 28) / 2, 0, 0, 28, 28, 64, 64, 64, 64, alpha);
 			case "hat", "top", "shoes", "hands", "face", "ears" ->
 				// a view of it from the front, a little from above
 				g.blit(RenderPipelines.GUI_TEXTURED, Clothing.icon(e.id()), x + (TILE_W - 26) / 2, y + (TILE_H - 26) / 2, 0, 0, 26, 26, 64, 64, 64, 64, alpha);

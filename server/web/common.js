@@ -143,6 +143,7 @@ export const SLOTS = [
   ['back', 'Na plecy', 'fa-solid fa-person-hiking'], ['tail', 'Ogon', 'fa-solid fa-cat'],
   ['ring', 'Krąg pod stopami', 'fa-solid fa-circle-dot'], ['move', 'Efekt ruchu', 'fa-solid fa-person-running'],
   ['spray', 'Spray', 'fa-solid fa-spray-can'],
+  ['prop', 'Rekwizyt', 'fa-solid fa-dolly'],
 ];
 /** Particles and pets are the game's own: on the site they get an icon. */
 const ITEM_ICONS = {
@@ -214,6 +215,12 @@ export function cosmeticEl(id, slot = 'cape', small = false) {
   if (slot === 'spray') {
     const c = el('div', { class: `cape clothing spray${small ? ' sm' : ''}`, title: id });
     c.style.backgroundImage = `url(vendor/spray/${id}.png)`;
+    return c;
+  }
+  // props: a view of it from its side
+  if (slot === 'prop') {
+    const c = el('div', { class: `cape clothing${small ? ' sm' : ''}`, title: id });
+    c.style.backgroundImage = `url(vendor/props/icon/${id}.png)`;
     return c;
   }
   if (slot === 'wings' || slot === 'elytra') {

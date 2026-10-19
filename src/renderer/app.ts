@@ -3072,7 +3072,7 @@ function renderCapeGrid() {
 
 // ---------- SlashClient cosmetics (seen by other players with the launcher) ----------
 
-type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands' | 'face' | 'ears' | 'back' | 'tail' | 'ring' | 'move' | 'spray';
+type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands' | 'face' | 'ears' | 'back' | 'tail' | 'ring' | 'move' | 'spray' | 'prop';
 const SLOTS: [Slot, string, string][] = [
   ['cape', 'Peleryna', 'fa-flag'], ['wings', 'Skrzydła', 'fa-dove'], ['elytra', 'Elytra', 'fa-feather'],
   ['trail', 'Ślad', 'fa-shoe-prints'], ['aura', 'Aura', 'fa-wand-sparkles'], ['pet', 'Pupil', 'fa-paw'],
@@ -3084,6 +3084,7 @@ const SLOTS: [Slot, string, string][] = [
   ['back', 'Na plecy', 'fa-person-hiking'], ['tail', 'Ogon', 'fa-cat'],
   ['ring', 'Krąg pod stopami', 'fa-circle-dot'], ['move', 'Efekt ruchu', 'fa-person-running'],
   ['spray', 'Spray', 'fa-spray-can'],
+  ['prop', 'Rekwizyt', 'fa-dolly'],
 ];
 /** Without the server (or before 0.8) only the first eight capes are known. */
 const SLASH_CAPES: [string, string][] = [
@@ -3182,6 +3183,8 @@ function cosmeticPicture(slot: Slot, id: string): Node {
   if (slot === 'weapon') return el('img', { className: 'clothing-icon', src: `img/held/${id}.png`, alt: '' });
   // a spray is its picture
   if (slot === 'spray') return el('img', { className: 'clothing-icon', src: `img/spray/${id}.png`, alt: '' });
+  // props: a view of it from its side
+  if (slot === 'prop') return el('img', { className: 'clothing-icon', src: `img/props/icon/${id}.png`, alt: '' });
   if (slot === 'kill') {
     const i = el('i', { className: `fa-solid ${ITEM_ICONS[id] ?? 'fa-skull-crossbones'} cosmetic-icon` });
     i.style.color = KILL_ICON_COLORS[id] ?? '';
@@ -3250,6 +3253,7 @@ async function renderSlashCapes() {
     : cosmeticSlot === 'ring' ? t('Świecący krąg na ziemi pod Twoimi stopami, powoli się obraca. Widzą go gracze z SlashClient.')
     : cosmeticSlot === 'move' ? t('Cząsteczki, gdy chodzisz, skaczesz, lądujesz, biegasz, pływasz lub strzelasz. Widzą je gracze z SlashClient.')
     : cosmeticSlot === 'spray' ? t('Obrazek, który klawiszem malujesz na bloku przed sobą (w grze: Klawisze SlashClient). Znika po minucie; widzą go gracze z SlashClient na tym samym serwerze.')
+    : cosmeticSlot === 'prop' ? t('Pchasz go przed sobą, gdy masz wolne ręce. Z przedmiotem w ręce, przy jedzeniu, pływaniu czy lataniu się chowa.')
     : t('Mały towarzysz lata przy Twoim ramieniu.');
   if (signedIn && worn.back && (cosmeticSlot === 'cape' || cosmeticSlot === 'wings')) $('#slash-cape-note').textContent += t(' Nosisz coś na plecach: w grze widać to zamiast peleryny i skrzydeł.');
   const current = worn[cosmeticSlot] ?? '';
@@ -3299,7 +3303,9 @@ async function renderSlashCapes() {
   const back = cosmeticSlot === 'cape' || cosmeticSlot === 'wings' || cosmeticSlot === 'elytra' ? undefined : worn.back;
   // the kill and movement effects play on the figure only while their tab is open (they would distract)
   const holding = cosmeticSlot === 'shield' || cosmeticSlot === 'weapon';
-  cosmeticPreview.show({ ...worn, back, kill: cosmeticSlot === 'kill' ? worn.kill : undefined, move: cosmeticSlot === 'move' ? worn.move : undefined, shield: holding ? worn.shield : undefined, weapon: holding ? worn.weapon : undefined });
+  // on its own tab the prop is seen from the side, the figure walking with it
+  cosmeticPreview.show({ ...worn, back, kill: cosmeticSlot === 'kill' ? worn.kill : undefined, move: cosmeticSlot === 'move' ? worn.move : undefined,
+    shield: holding ? worn.shield : undefined, weapon: holding ? worn.weapon : undefined, walk: cosmeticSlot === 'prop' });
   // the figure shows its back for a back item, its back and side for a tail, walking so the tail swings
   skinViewer.playerWrapper.rotation.y = cosmeticSlot === 'back' ? Math.PI : cosmeticSlot === 'tail' ? Math.PI * 0.7 : 0;
   const walking = skinViewer.animation instanceof WalkingAnimation;

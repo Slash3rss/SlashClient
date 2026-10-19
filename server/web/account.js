@@ -168,7 +168,9 @@ function renderAccount() {
   const holding = slot === 'shield' || slot === 'weapon';
   // (on the cape's, wings' and elytra's tabs the back item steps aside, so they can be seen)
   figure(character?.uuid ?? characters[0]?.uuid, { ...worn, kill: slot === 'kill' ? worn.kill : '', move: slot === 'move' ? worn.move : '', shield: holding ? worn.shield : '', weapon: holding ? worn.weapon : '',
-    ...(slot === 'cape' || slot === 'wings' || slot === 'elytra' ? { back: '' } : {}) });
+    ...(slot === 'cape' || slot === 'wings' || slot === 'elytra' ? { back: '' } : {}),
+    // on the prop's tab the figure walks with it, seen from the side
+    walk: slot === 'prop' });
   renderPartners();
 }
 
