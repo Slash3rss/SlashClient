@@ -27,7 +27,7 @@ const ICONS = {
   'm-togglesprint': 'forward-fast', 'm-time': 'cloud-sun', 'm-freelook': 'eye', 'm-waypoints': 'location-dot',
   'm-screenshot': 'camera', 'm-chatstack': 'layer-group', 'm-chatcopy': 'copy', 'm-chatsearch': 'magnifying-glass',
   'm-advancements': 'trophy', 'm-stats': 'chart-simple', 'm-pause': 'pause', 'm-accounts': 'user-gear',
-  'm-scoreboard': 'list-ol', 'm-bossbar': 'skull', 'm-tablist': 'table-list', 'm-titles': 'heading', 'm-actionbar': 'message', 'm-nametag': 'tag',
+  'm-scoreboard': 'list-ol', 'm-bossbar': 'skull', 'm-tablist': 'table-list', 'm-titles': 'heading', 'm-toasts': 'bell', 'm-actionbar': 'message', 'm-nametag': 'tag',
   'm-benchmark': 'chart-column', 'm-sprint': 'person-running', 'm-emotes': 'face-smile', 'm-clips': 'film', 'partner': 'handshake', 'm-mentions': 'at',
   'm-autoclicker': 'computer-mouse', 'm-autotool': 'screwdriver-wrench', 'm-autorefill': 'arrows-rotate', 'm-holdkeys': 'hand-pointer', 'm-toolwarning': 'triangle-exclamation', 'm-hearts': 'heart', 'm-mousetweaks': 'arrow-pointer',
   'm-dropguard': 'hand-holding', 'm-damage': 'heart-crack', 'm-tnt': 'bomb', 'm-nickhider': 'user-secret', 'm-reconnect': 'plug-circle-bolt', 'm-keybinds': 'keyboard', 'm-dungeonmap': 'map', 'm-skytasks': 'list-check', 'm-skyfish': 'fish', 'skyup': 'dungeon',

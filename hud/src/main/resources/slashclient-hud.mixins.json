@@ -23,6 +23,7 @@
 		"EditServerScreenMixin",
 		"GuiMixin",
 		"HeartsMixin",
+		"ToastsMixin",
 		"PongMixin",
 		"JoinMultiplayerScreenMixin",
 		"LegacyBossBarMixin",

@@ -48,8 +48,28 @@ public class SlashPauseScreen extends MenuScreen {
 		//$ if (minecraft.hasSingleplayerServer() && !minecraft.getSingleplayerServer().isPublished())
 		//$ 	items.add(new Nav(Ui.tr("menu.shareToLan"), "world", () -> minecraft.setScreenAndShow(new net.minecraft.client.gui.screens.ShareToLanScreen(this))));
 		//#endif
+		serverExtras(items);
 		items.add(new Nav(CommonComponents.disconnectButtonLabel(minecraft.isLocalServer()), "power", this::leave, true));
 		return items;
+	}
+
+	/** What the server adds to the game's pause menu: its links (and on 1.21.6+ its own dialogs), as the game shows them. */
+	private void serverExtras(List<Nav> items) {
+		if (minecraft.player == null) return;
+		var connection = minecraft.player.connection;
+		//#if MC >= 1.21.6
+		var dialogs = connection.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.DIALOG);
+		var added = dialogs.get(net.minecraft.tags.DialogTags.PAUSE_SCREEN_ADDITIONS);
+		java.util.Optional<? extends net.minecraft.core.Holder<net.minecraft.server.dialog.Dialog>> extra = java.util.Optional.empty();
+		if (added.isPresent() && added.get().size() > 0)
+			extra = added.get().size() == 1 ? java.util.Optional.of(added.get().get(0)) : dialogs.get(net.minecraft.server.dialog.Dialogs.CUSTOM_OPTIONS);
+		else if (!connection.serverLinks().isEmpty()) extra = dialogs.get(net.minecraft.server.dialog.Dialogs.SERVER_LINKS);
+		extra.ifPresent(dialog -> items.add(new Nav(dialog.value().common().computeExternalTitle(), "server", () -> connection.showDialog(dialog, this))));
+		//#endif
+		//#if MC >= 1.21 && MC < 1.21.6
+		//$ if (!connection.serverLinks().isEmpty())
+		//$ 	items.add(new Nav(Ui.tr("menu.server_links"), "server", () -> minecraft.setScreenAndShow(new net.minecraft.client.gui.screens.multiplayer.ServerLinksScreen(this, connection.serverLinks()))));
+		//#endif
 	}
 
 	private List<Nav> tools() {

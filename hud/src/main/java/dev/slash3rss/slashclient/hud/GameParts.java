@@ -167,11 +167,28 @@ public final class GameParts {
 		}
 	};
 
+	/** In the top right corner: the toasts (advancements, recipes, friends' messages…), one under another. */
+	static final Part TOASTS = new Part("toasts", 160, 64) {
+		@Override float scale() { return 1f; }
+		@Override boolean on() { return SlashHud.config.placement(id()).enabled; }
+		@Override float[] boxAnchor(int w, int h) { return new float[] { w, 0 }; }
+		@Override float[] screenAnchor(int sw, int sh) { return new float[] { sw, 0 }; }
+		@Override void sample(GuiGraphicsExtractor g, Minecraft mc, int x, int y, int w, int h) {
+			// two toasts, as the game stacks them
+			for (int i = 0; i < 2; i++) {
+				int ty = y + i * 32;
+				g.fill(x + 2, ty + 2, x + w - 2, ty + 30, 0x40FFFFFF);
+				g.fill(x + 8, ty + 8, x + 24, ty + 24, 0xFF6B7280);
+				Ui.draw(g, Ui.tr("slashclient-hud.part.sample.toast"), x + 30, ty + 12 + (i == 0 ? 2 : 0), 0xFFFFFF55);
+			}
+		}
+	};
+
 	//#if MC >= 1.20.2
-	static final List<Part> ALL = List.of(SCOREBOARD, BOSS_BAR, TAB_LIST, ACTION_BAR, TITLES);
+	static final List<Part> ALL = List.of(SCOREBOARD, BOSS_BAR, TAB_LIST, ACTION_BAR, TITLES, TOASTS);
 	//#else
 	//$ // 1.20.1 draws the action bar inline in Gui.render: it cannot be moved there
-	//$ static final List<Part> ALL = List.of(SCOREBOARD, BOSS_BAR, TAB_LIST, TITLES);
+	//$ static final List<Part> ALL = List.of(SCOREBOARD, BOSS_BAR, TAB_LIST, TITLES, TOASTS);
 	//#endif
 
 	/**
@@ -184,6 +201,7 @@ public final class GameParts {
 		cfg.modules.putIfAbsent("bossbar", new HudConfig.Placement(true, 0.5f, 0f, 0, cfg.bossBarOffset));
 		cfg.modules.putIfAbsent("tablist", new HudConfig.Placement(true, 0.5f, 0f, 0, 0));
 		cfg.modules.putIfAbsent("titles", new HudConfig.Placement(true, 0.5f, 0.5f, 0, 0));
+		cfg.modules.putIfAbsent("toasts", new HudConfig.Placement(true, 1f, 0f, 0, 0));
 		// the box's middle on the line the game centres the message on (68 above the bottom)
 		cfg.modules.putIfAbsent("actionbar", new HudConfig.Placement(true, 0.5f, 1f, 0, -68 + 7));
 	}

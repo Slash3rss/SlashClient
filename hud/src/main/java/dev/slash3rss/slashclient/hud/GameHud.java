@@ -45,6 +45,29 @@ public final class GameHud {
 		pose.popMatrix();
 	}
 
+	/** The toasts where their box is: called around the game drawing them; false when they are hidden. */
+	public static boolean toastsBegin(GuiGraphicsExtractor g) {
+		if (cfg() == null) return true;
+		if (!GameParts.TOASTS.on()) return false;
+		Minecraft mc = Minecraft.getInstance();
+		HudConfig.Placement p = cfg().placement(GameParts.TOASTS.id());
+		int sw = g.guiWidth(), sh = g.guiHeight();
+		int[] size = SlashHud.size(GameParts.TOASTS, mc, p);
+		int[] at = SlashHud.position(p, size[0], size[1], sw, sh);
+		float[] box = GameParts.TOASTS.boxAnchor(size[0], size[1]), screen = GameParts.TOASTS.screenAnchor(sw, sh);
+		float scale = p.scale();
+		var pose = g.pose();
+		pose.pushMatrix();
+		pose.translate(at[0] + box[0], at[1] + box[1]);
+		pose.scale(scale, scale);
+		pose.translate(-screen[0], -screen[1]);
+		return true;
+	}
+
+	public static void toastsEnd(GuiGraphicsExtractor g) {
+		g.pose().popMatrix();
+	}
+
 	static void register() {
 		// the scoreboard, the boss bar, the tab list and the action bar: where their boxes are in the editor
 		HudElementRegistry.replaceElement(VanillaHudElements.SCOREBOARD, vanilla -> (HudElement) (g, delta) -> {
