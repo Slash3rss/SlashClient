@@ -31,6 +31,8 @@ public class PickFriendsScreen extends Screen {
 	private final Consumer<List<String>> onConfirm;
 	private final boolean party;
 	private final Set<String> picked = new LinkedHashSet<>();
+	/** Friends not offered (already in the group they are added to). */
+	private Set<String> skip = Set.of();
 	private final List<Hit> hits = new ArrayList<>();
 	private int px, py, pw, ph, scroll;
 
@@ -59,6 +61,26 @@ public class PickFriendsScreen extends Screen {
 		return new PickFriendsScreen(parent, Component.translatable("slashclient-hud.party"), "m-friends",
 			server == null ? Component.translatable("slashclient-hud.party.noServer") : Component.translatable("slashclient-hud.party.subtitle", server),
 			Component.translatable("slashclient-hud.party.invite"), Party.SIZE - 1, true, Party::create);
+	}
+
+	/** A new group chat with the friends picked; it opens in the friends window when the server made it. */
+	public static PickFriendsScreen newGroup(Screen parent) {
+		return new PickFriendsScreen(parent, Component.translatable("slashclient-hud.groups.new"), "m-players",
+			Component.translatable("slashclient-hud.groups.subtitle"), Component.translatable("slashclient-hud.groups.create"), Groups.SIZE - 1, false,
+			ids -> Groups.create(ids, id -> net.minecraft.client.Minecraft.getInstance().execute(() -> {
+				if (dev.slash3rss.slashclient.hud.Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof FriendsScreen f) f.selectGroup(id);
+			})));
+	}
+
+	/** More friends into a group chat (those already in it are not listed). */
+	public static PickFriendsScreen addToGroup(Screen parent, Groups.Group group) {
+		PickFriendsScreen s = new PickFriendsScreen(parent, Component.translatable("slashclient-hud.groups.addTitle", group.name()), "m-players",
+			Component.translatable("slashclient-hud.groups.subtitle"), Component.translatable("slashclient-hud.groups.add"), Groups.SIZE - group.members().size(), false,
+			ids -> Groups.add(group.id(), ids));
+		Set<String> in = new java.util.HashSet<>();
+		for (Groups.Member m : group.members()) in.add(m.id());
+		s.skip = in;
+		return s;
 	}
 
 	@Override
@@ -91,7 +113,7 @@ public class PickFriendsScreen extends Screen {
 		int top = py + 46;
 		if (party) top = drawParty(g, top, mx, my);
 
-		List<Social.Friend> friends = Social.friends();
+		List<Social.Friend> friends = Social.friends().stream().filter(f -> !skip.contains(f.id())).toList();
 		int bottom = py + ph - 34;
 		if (friends.isEmpty()) Ui.centered(g, Ui.fit(Ui.tr("slashclient-hud.friends.none"), pw - 30), px + pw / 2, top + 20, Ui.MUTED);
 		int fit = Math.max(1, (bottom - top) / ROW);

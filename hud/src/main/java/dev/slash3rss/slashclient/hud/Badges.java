@@ -45,6 +45,15 @@ public final class Badges {
 		"friend_pink", badge(0xEC4899));
 	/** uuid → rank, from the server (only Minecraft accounts proven to belong to that SlashClient account). */
 	private static final Map<UUID, String> ranks = new ConcurrentHashMap<>();
+	/** uuid → the tag of that player's SlashClient clan, shown as [TAG] after the logo. */
+	private static final Map<UUID, String> clans = new ConcurrentHashMap<>();
+	private static final int CLAN_COLOR = 0xFBBF24;
+
+	/** For the in-game test: as if the server had said this player is in a clan with this tag (null: in none). */
+	static void setClan(UUID id, String tag) {
+		if (tag == null) clans.remove(id);
+		else clans.put(id, tag);
+	}
 
 	private static MutableComponent badge(int color) {
 		return Component.literal(GLYPH).withStyle(BADGE_STYLE.withColor(color));
@@ -109,10 +118,13 @@ public final class Badges {
 		return slash.contains(id);
 	}
 
-	/** `name` with the logo in front, when that player plays with SlashClient. */
+	/** `name` with the logo in front, when that player plays with SlashClient, and their clan's [TAG]. */
 	public static Component decorate(UUID id, Component name) {
 		if (name == null || !usesSlash(id)) return name;
-		return Component.empty().append(RANK_BADGES.getOrDefault(ranks.getOrDefault(id, ""), BADGE)).append(" ").append(name);
+		MutableComponent out = Component.empty().append(RANK_BADGES.getOrDefault(ranks.getOrDefault(id, ""), BADGE)).append(" ");
+		String tag = clans.get(id);
+		if (tag != null) out.append(Component.literal("[" + tag + "] ").withStyle(Style.EMPTY.withColor(CLAN_COLOR).withBold(true)));
+		return out.append(name);
 	}
 
 	/** Once a second: report ourselves now and then, and ask about players we know nothing recent of. */
@@ -158,6 +170,8 @@ public final class Badges {
 			JsonObject capes = o.has("capes") && o.get("capes").isJsonObject() ? o.getAsJsonObject("capes") : new JsonObject();
 			JsonObject wornBy = o.has("cosmetics") && o.get("cosmetics").isJsonObject() ? o.getAsJsonObject("cosmetics") : new JsonObject();
 			JsonObject rankOf = o.has("ranks") && o.get("ranks").isJsonObject() ? o.getAsJsonObject("ranks") : new JsonObject();
+			// clan tags (servers before clans send none)
+			JsonObject clanOf = o.has("clans") && o.get("clans").isJsonObject() ? o.getAsJsonObject("clans") : new JsonObject();
 			for (UUID id : ask) {
 				if (active.contains(id)) slash.add(id);
 				else slash.remove(id);
@@ -178,6 +192,9 @@ public final class Badges {
 				var rank = rankOf.get(id.toString());
 				if (rank != null && rank.isJsonPrimitive() && RANK_BADGES.containsKey(rank.getAsString())) ranks.put(id, rank.getAsString());
 				else ranks.remove(id);
+				var tag = clanOf.get(id.toString());
+				if (tag != null && tag.isJsonPrimitive() && tag.getAsString().matches("[A-Za-z0-9]{2,5}")) clans.put(id, tag.getAsString());
+				else clans.remove(id);
 			}
 		});
 	}
