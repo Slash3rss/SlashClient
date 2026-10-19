@@ -328,6 +328,8 @@ public final class HudConfig {
 	public boolean waypoints = true;
 	/** F2 also puts the picture on the clipboard (through the launcher) and shows it in the corner. */
 	public boolean screenshotClipboard = true;
+	/** A toast when a friend comes online or starts playing (muted friends never make one). */
+	public boolean friendPlayingToasts = true;
 	/** The live chats of a Twitch and a Kick channel on the HUD (see StreamChatModule). */
 	public dev.slash3rss.slashclient.hud.streams.StreamChatSettings twitchChat = new dev.slash3rss.slashclient.hud.streams.StreamChatSettings();
 	public dev.slash3rss.slashclient.hud.streams.StreamChatSettings kickChat = new dev.slash3rss.slashclient.hud.streams.StreamChatSettings();
@@ -590,6 +592,7 @@ public final class HudConfig {
 		freelook = other.freelook;
 		waypoints = other.waypoints;
 		screenshotClipboard = other.screenshotClipboard;
+		friendPlayingToasts = other.friendPlayingToasts;
 		twitchChat = other.twitchChat == null ? new dev.slash3rss.slashclient.hud.streams.StreamChatSettings() : other.twitchChat.copy();
 		kickChat = other.kickChat == null ? new dev.slash3rss.slashclient.hud.streams.StreamChatSettings() : other.kickChat.copy();
 		save();

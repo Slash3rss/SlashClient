@@ -33,6 +33,8 @@ public class SlashHud implements ClientModInitializer {
 	public static final Logger LOG = LoggerFactory.getLogger(ID);
 
 	public static HudConfig config;
+	/** The key that opens friends (O): named in hints, e.g. under a screenshot's preview. */
+	public static KeyMapping friendsKey;
 	static final List<HudModule> MODULES = Modules.all();
 
 	public static List<HudModule> modules() {
@@ -58,7 +60,7 @@ public class SlashHud implements ClientModInitializer {
 		Extras.zoomKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.zoom", InputConstants.KEY_C, category));
 		// no key by default: G and the like are taken by other mods too often
 		Extras.fullbrightKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.fullbright", InputConstants.UNKNOWN.getValue(), category));
-		KeyMapping friends = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.friends", InputConstants.KEY_O, category));
+		KeyMapping friends = friendsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.friends", InputConstants.KEY_O, category));
 		dev.slash3rss.slashclient.hud.social.Social.start();
 		// Left Alt holds freelook (only once it is switched on in the HUD window); B opens the waypoints
 		Freelook.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.freelook", InputConstants.KEY_LALT, category));

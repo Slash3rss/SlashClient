@@ -28,14 +28,30 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public final class Social {
 	private Social() {}
 
-	public record Friend(String id, String name, String handle, String status, String activity, String server, int unread, long lastMessageAt) {}
+	/** `muted`: kept on the account; their messages come, but no toast (servers before 0.9.21 do not say). */
+	public record Friend(String id, String name, String handle, String status, String activity, String server, int unread, long lastMessageAt, boolean muted) {
+		public Friend(String id, String name, String handle, String status, String activity, String server, int unread, long lastMessageAt) {
+			this(id, name, handle, status, activity, server, unread, lastMessageAt, false);
+		}
+
+		Friend with(String status, String activity, String server, int unread, long lastMessageAt) {
+			return new Friend(id, name, handle, status, activity, server, unread, lastMessageAt, muted);
+		}
+	}
+	/** A picture in the chat (the launcher decrypts it); `unreadable`: its key was for another launcher. */
+	public record Image(String id, int w, int h, boolean unreadable) {}
 	/**
 	 * `invite` is a server address when the message is a "join me" invite, else empty; `party` the
 	 * party it belongs to (several friends invited at once), else empty. `waypoint`: a shared point, or null.
+	 * `image`: a picture (a screenshot), or null.
 	 */
-	public record Message(long id, String from, String to, String text, long at, boolean read, String invite, String inviteVersion, String party, SharedWaypoints.Shared waypoint) {
+	public record Message(long id, String from, String to, String text, long at, boolean read, String invite, String inviteVersion, String party, SharedWaypoints.Shared waypoint, Image image) {
+		public Message(long id, String from, String to, String text, long at, boolean read, String invite, String inviteVersion, String party, SharedWaypoints.Shared waypoint) {
+			this(id, from, to, text, at, read, invite, inviteVersion, party, waypoint, null);
+		}
+
 		public Message(long id, String from, String to, String text, long at, boolean read, String invite, String inviteVersion) {
-			this(id, from, to, text, at, read, invite, inviteVersion, "", null);
+			this(id, from, to, text, at, read, invite, inviteVersion, "", null, null);
 		}
 	}
 
@@ -96,6 +112,10 @@ public final class Social {
 
 	public static String myId() {
 		return myId;
+	}
+
+	public static String myName() {
+		return myName;
 	}
 
 	public static List<Friend> friends() {
@@ -196,7 +216,10 @@ public final class Social {
 		JsonObject user = s.has("user") && s.get("user").isJsonObject() ? s.getAsJsonObject("user") : null;
 		myId = user != null ? str(user, "id") : "";
 		myName = user != null ? str(user, "name") : "";
-		if (!signedIn) friends = List.of();
+		if (!signedIn) {
+			friends = List.of();
+			playing.clear();
+		}
 	}
 
 	private static void refreshFriends() throws Exception {
@@ -205,6 +228,9 @@ public final class Social {
 		for (JsonElement el : res.getAsJsonArray("friends")) list.add(friendFrom(el.getAsJsonObject()));
 		sort(list);
 		friends = List.copyOf(list);
+		// whoever is online or playing now is not news
+		long now = System.currentTimeMillis();
+		for (Friend f : list) playing.know(f.id(), f.status(), f.activity(), now);
 	}
 
 	/** Online first, then whoever wrote last, then by name. */
@@ -220,15 +246,22 @@ public final class Social {
 		JsonObject a = p.has("activity") && p.get("activity").isJsonObject() ? p.getAsJsonObject("activity") : null;
 		return new Friend(str(o, "id"), str(o, "name"), str(o, "handle"), p.has("status") ? str(p, "status") : "offline",
 			a != null ? str(a, "kind") : "", a != null ? str(a, "server") : "",
-			o.has("unread") ? o.get("unread").getAsInt() : 0, o.has("lastMessageAt") ? o.get("lastMessageAt").getAsLong() : 0);
+			o.has("unread") ? o.get("unread").getAsInt() : 0, o.has("lastMessageAt") ? o.get("lastMessageAt").getAsLong() : 0,
+			o.has("muted") && o.get("muted").isJsonPrimitive() && o.get("muted").getAsBoolean());
 	}
 
 	private static Message messageFrom(JsonObject o) {
 		JsonObject inv = o.has("invite") && o.get("invite").isJsonObject() ? o.getAsJsonObject("invite") : null;
 		JsonObject wp = o.has("waypoint") && o.get("waypoint").isJsonObject() ? o.getAsJsonObject("waypoint") : null;
+		JsonObject img = o.has("image") && o.get("image").isJsonObject() ? o.getAsJsonObject("image") : null;
+		Image image = img == null || str(img, "id").isEmpty() ? null : new Image(str(img, "id"), num(img, "w"), num(img, "h"), img.has("unreadable") && img.get("unreadable").getAsBoolean());
 		return new Message(o.get("id").getAsLong(), str(o, "from"), str(o, "to"), str(o, "text"), o.get("at").getAsLong(),
 			o.has("readAt") && !o.get("readAt").isJsonNull(), inv == null ? "" : str(inv, "server"), inv == null ? "" : str(inv, "version"),
-			inv == null ? "" : str(inv, "party"), wp == null ? null : SharedWaypoints.Shared.from(wp));
+			inv == null ? "" : str(inv, "party"), wp == null ? null : SharedWaypoints.Shared.from(wp), image);
+	}
+
+	private static int num(JsonObject o, String key) {
+		return o.has(key) && o.get(key).isJsonPrimitive() ? o.get(key).getAsInt() : 0;
 	}
 
 	static String str(JsonObject o, String key) {
@@ -269,7 +302,10 @@ public final class Social {
 					}
 					bump(other, 1, m.at());
 					Friend f = friend(other);
-					if (m.waypoint() != null) SharedWaypoints.received(m, f != null ? f.name() : "?");
+					// muted: the message waits on the list (a waypoint among the received ones), without a toast
+					if (m.waypoint() != null) SharedWaypoints.received(m, f != null ? f.name() : "?", f != null && f.muted());
+					else if (f != null && f.muted()) return;
+					else if (m.image() != null) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.picture.toast").getString(), null);
 					else if (!m.party().isEmpty()) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.party.toast", m.invite()).getString(), null);
 					else if (!m.invite().isEmpty()) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.invite.toast", m.invite()).getString(), null);
 					else toast(f != null ? f.name() : "?", m.text(), null);
@@ -280,13 +316,14 @@ public final class Social {
 				JsonObject p = e.getAsJsonObject("presence");
 				lanFrom(id, p);
 				JsonObject a = p.has("activity") && p.get("activity").isJsonObject() ? p.getAsJsonObject("activity") : null;
+				String status = str(p, "status"), kind = a != null ? str(a, "kind") : "", server = a != null ? str(a, "server") : "";
 				List<Friend> list = new ArrayList<>();
-				for (Friend f : friends) {
-					list.add(f.id().equals(id) ? new Friend(f.id(), f.name(), f.handle(), str(p, "status"),
-						a != null ? str(a, "kind") : "", a != null ? str(a, "server") : "", f.unread(), f.lastMessageAt()) : f);
-				}
+				for (Friend f : friends) list.add(f.id().equals(id) ? f.with(status, kind, server, f.unread(), f.lastMessageAt()) : f);
 				sort(list);
 				friends = List.copyOf(list);
+				Friend f = friend(id);
+				FriendActivity.News news = playing.update(id, status, kind, server, System.currentTimeMillis());
+				if (news != null && f != null && !f.muted() && dev.slash3rss.slashclient.hud.SlashHud.config != null && dev.slash3rss.slashclient.hud.SlashHud.config.friendPlayingToasts) playingToast(f, news);
 			}
 			case "party" -> {
 				if (e.has("party") && e.get("party").isJsonObject()) Party.onEvent(e.getAsJsonObject("party"));
@@ -329,8 +366,7 @@ public final class Social {
 	private static void bump(String friendId, int unread, long at) {
 		List<Friend> list = new ArrayList<>();
 		for (Friend f : friends) {
-			list.add(f.id().equals(friendId) ? new Friend(f.id(), f.name(), f.handle(), f.status(), f.activity(), f.server(),
-				unread == 0 ? 0 : f.unread() + unread, Math.max(f.lastMessageAt(), at)) : f);
+			list.add(f.id().equals(friendId) ? f.with(f.status(), f.activity(), f.server(), unread == 0 ? 0 : f.unread() + unread, Math.max(f.lastMessageAt(), at)) : f);
 		}
 		sort(list);
 		friends = List.copyOf(list);
@@ -345,8 +381,114 @@ public final class Social {
 		toast(Component.translatable("slashclient-hud.achievement.unlocked").getString(), text, "m-advancements");
 	}
 
+	// ---------- friends starting to play, muted friends ----------
+
+	/** Who started playing: toasts only for news, not for reconnects. */
+	private static final FriendActivity playing = new FriendActivity();
+
+	/** "Ala is playing on skyup.pl" / "Ala is online now". */
+	private static void playingToast(Friend f, FriendActivity.News news) {
+		String text = !news.playing() ? Component.translatable("slashclient-hud.playing.online").getString()
+			: news.server().isEmpty() ? Component.translatable("slashclient-hud.playing.world").getString()
+			: Component.translatable("slashclient-hud.playing.server", news.server()).getString();
+		toast(f.name(), text, null);
+	}
+
+	/** For the in-game test: a status as if it came from the launcher, with the toast it makes. */
+	public static FriendActivity.News presenceForTest(String id, String status, String kind, String server, long now) {
+		List<Friend> list = new ArrayList<>();
+		for (Friend f : friends) list.add(f.id().equals(id) ? f.with(status, kind, server, f.unread(), f.lastMessageAt()) : f);
+		friends = List.copyOf(list);
+		Friend f = friend(id);
+		FriendActivity.News news = playing.update(id, status, kind, server, now);
+		if (news != null && f != null && !f.muted() && dev.slash3rss.slashclient.hud.SlashHud.config.friendPlayingToasts) playingToast(f, news);
+		return news;
+	}
+
+	/** For the in-game test: the friends list as just loaded. */
+	public static void knowForTest(long now) {
+		for (Friend f : friends) playing.know(f.id(), f.status(), f.activity(), now);
+	}
+
+	/** Mutes (or unmutes) a friend, on the account: the launcher and other games follow. */
+	public static void mute(String friendId, boolean muted) {
+		// at once on screen; the server's answer (and its 'friends' event) confirms it
+		setMuted(friendId, muted);
+		if (!bridged()) return;
+		JsonObject body = new JsonObject();
+		body.addProperty("muted", muted);
+		Thread.ofVirtual().start(() -> {
+			try {
+				request("POST", "/v1/friends/" + friendId + "/mute", body, 8);
+				refreshFriends();
+			} catch (Exception e) {
+				setMuted(friendId, !muted);
+				toast(Component.translatable("slashclient-hud.mute.failed").getString(), e.getMessage() == null ? "" : e.getMessage(), "info");
+			}
+		});
+	}
+
+	private static void setMuted(String friendId, boolean muted) {
+		List<Friend> list = new ArrayList<>();
+		for (Friend f : friends) list.add(f.id().equals(friendId) ? new Friend(f.id(), f.name(), f.handle(), f.status(), f.activity(), f.server(), f.unread(), f.lastMessageAt(), muted) : f);
+		friends = List.copyOf(list);
+	}
+
+	// ---------- pictures in the chat ----------
+
+	/**
+	 * Sends a screenshot to a friend. The launcher checks it is one of a profile's screenshots,
+	 * encrypts it and sends it; the message shows when the server confirms it.
+	 */
+	public static void sendImage(String friendId, java.io.File png, Runnable sent) {
+		JsonObject body = new JsonObject();
+		body.addProperty("friend", friendId);
+		body.addProperty("path", png.getAbsolutePath());
+		Thread.ofVirtual().start(() -> {
+			try {
+				if (!bridged()) throw new IllegalStateException("no launcher");
+				JsonObject res = request("POST", "/chat/image", body, 60);
+				Message m = messageFrom(res.getAsJsonObject("message"));
+				List<Message> chat = chats.computeIfAbsent(friendId, k -> new CopyOnWriteArrayList<>());
+				if (chat.stream().noneMatch(x -> x.id() == m.id())) chat.add(m);
+				bump(friendId, 0, m.at());
+				if (sent != null) Minecraft.getInstance().execute(sent);
+			} catch (Exception e) {
+				String msg = e.getMessage() == null ? "" : e.getMessage();
+				String key = msg.contains("no_keys") ? "slashclient-hud.picture.noKeys" : msg.contains("image_quota") ? "slashclient-hud.picture.quota"
+					: msg.contains("too_large") ? "slashclient-hud.picture.tooLarge" : "slashclient-hud.picture.failed";
+				toast(Component.translatable("slashclient-hud.picture.notSent").getString(), Component.translatable(key).getString(), "info");
+			}
+		});
+	}
+
+	/** A picture from the chat as PNG bytes (the launcher downloads and decrypts it); blocks. */
+	static byte[] imageBytes(String imageId) {
+		if (!bridged()) throw new IllegalStateException("no launcher");
+		try {
+			HttpRequest req = HttpRequest.newBuilder(URI.create(URL + "/chat/image/" + imageId))
+				.timeout(Duration.ofSeconds(30)).header("Authorization", "Bearer " + KEY).GET().build();
+			HttpResponse<byte[]> res = HTTP.send(req, HttpResponse.BodyHandlers.ofByteArray());
+			if (res.statusCode() != 200) throw new IllegalStateException("HTTP " + res.statusCode());
+			return res.body();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException(e);
+		} catch (java.io.IOException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	/** How many toasts were shown (for the in-game test). */
+	private static volatile int toasts;
+
+	public static int toastsForTest() {
+		return toasts;
+	}
+
 	/** In SlashClient's own look; `icon` instead of the initial when it is not from a person. */
 	static void toast(String title, String text, String icon) {
+		toasts++;
 		Minecraft mc = Minecraft.getInstance();
 		mc.execute(() -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).addToast(new FriendToast(title, text, icon)));
 	}
