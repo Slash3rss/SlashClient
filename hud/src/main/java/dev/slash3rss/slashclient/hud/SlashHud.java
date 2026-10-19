@@ -202,6 +202,9 @@ public class SlashHud implements ClientModInitializer {
 		});
 
 		GameHud.register();
+		// the chat's size and opacity from the editor, and a layout of its own for each server
+		ChatLook.register();
+		ServerLayouts.register();
 
 		HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, vanilla -> (g, delta) -> {
 			if (!Extras.drawCrosshair(g, Minecraft.getInstance())) vanilla.extractRenderState(g, delta);

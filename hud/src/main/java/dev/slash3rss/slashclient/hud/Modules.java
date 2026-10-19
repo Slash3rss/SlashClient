@@ -41,6 +41,8 @@ public final class Modules {
 		//#endif
 		// the game's own parts, moved in the editor like the modules
 		out.addAll(GameParts.ALL);
+		// the chat first: under every module, which stay draggable over its big box
+		out.add(0, GameParts.CHAT);
 		return List.copyOf(out);
 	}
 

@@ -13,6 +13,7 @@
 		"ChatComponentMixin",
 		"ChatFilterMixin",
 		"ChatScreenMixin",
+		"ChatScaleMixin",
 		"ConnectionAccessor",
 		"EntityRendererMixin",
 		"FreelookCameraMixin",

@@ -583,7 +583,7 @@ public class HudEditScreen extends Screen {
 		if (chatTabsPage()) drawChatTabs(g, mx, my, cx, cy, cw, ch);
 		else if (crosshairPage()) drawCrosshairPage(g, mx, my, cx, cy, cw, ch);
 		else if (settingsOf != null) drawSettings(g, mx, my, cx, cy, cw, ch);
-		else if (category.equals("share")) drawShare(g, mx, my, cx, cy, cw);
+		else if (category.equals("share")) drawShare(g, mx, my, cx, cy, cw, ch);
 		else drawCards(g, mx, my, cx, cy, cw, ch);
 		Ui.end();
 		Ui.end();
@@ -807,7 +807,13 @@ public class HudEditScreen extends Screen {
 	}
 
 
-	private void drawShare(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w) {
+	private void drawShare(GuiGraphicsExtractor g, int mx, int my, int x, int top, int w, int h) {
+		// scrolled when the window is too low for the codes and the servers' layouts together
+		scroll = Math.max(0, Math.min(maxScroll, scroll));
+		int y = top - Math.round(scroll);
+		int hitsBefore = hits.size();
+		g.enableScissor(x, top, x + w, top + h);
+		Ui.beginClip("share page", x, top, w, h);
 		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.share.title"), w), x, y + 2, Ui.TEXT);
 		int ty = Ui.wrapped(g, Ui.tr("slashclient-hud.share.help"), x, y + 16, w, Ui.TEXT_2) + 8;
 		HudConfig cfg = SlashHud.config;
@@ -842,7 +848,27 @@ public class HudEditScreen extends Screen {
 			entries();
 			status = Ui.tr("slashclient-hud.share.reset");
 		}));
-		Ui.wrapped(g, status, x, at[2][1] + 30, w, Ui.GREEN);
+		int below = Math.max(at[2][1] + 30, Ui.wrapped(g, status, x, at[2][1] + 30, w, Ui.GREEN)) + 4;
+		// a layout of its own for the server the game is on
+		int end = ServerLayoutsPanel.draw(g, mx, my, x, below, w, (hx, hy, hw, hh, action) -> hits.add(new Hit(hx, hy, hw, hh, action)), () -> {
+			entries = null;
+			entries();
+		});
+		Ui.end();
+		g.disableScissor();
+		maxScroll = Math.max(0, end + Math.round(scroll) - top - h);
+		// what is scrolled out of the box cannot be clicked
+		for (int i = hits.size() - 1; i >= hitsBefore; i--) {
+			Hit hit = hits.get(i);
+			int y1 = Math.max(hit.y(), top), y2 = Math.min(hit.y() + hit.h(), top + h);
+			if (y2 <= y1) hits.remove(i);
+			else hits.set(i, new Hit(hit.x(), y1, hit.w(), y2 - y1, hit.action()));
+		}
+		if (maxScroll > 0) {
+			Ui.end();
+			bar.draw(g, x + w + 4, top, h, scroll, maxScroll, mx, my);
+			Ui.begin("content", x, top, w, h);
+		}
 	}
 
 
@@ -903,7 +929,8 @@ public class HudEditScreen extends Screen {
 			return true;
 		}
 		HudModule m = moduleAt(e.x(), e.y());
-		if (m != null) {
+		// the chat stays where the game draws it
+		if (m != null && !GameParts.fixed(m)) {
 			int[] b = box(m);
 			dragging = m;
 			grabX = e.x() - b[0];
@@ -1159,6 +1186,9 @@ public class HudEditScreen extends Screen {
 		// a tab left without a name would be an empty button above the chat
 		if (SlashHud.config.chatTabs.removeIf(t -> t.name.isBlank())) ChatTabs.changed();
 		SlashHud.config.save();
+		// on a server with its own layout, the changes are that layout's
+		ServerLayouts.remember();
+		ChatLook.saveOptions(minecraft);
 		super.onClose();
 	}
 

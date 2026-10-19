@@ -280,6 +280,8 @@ public final class HudConfig {
 	public String chatCopyNotice = "short";
 	/** A search box over the open chat. */
 	public boolean chatSearch = true;
+	/** The chat bigger than the game's largest chat scale: the game's scale times this, 1 to 1.5 (see ChatLook). */
+	public float chatScaleExtra = 1f;
 
 	// ---- more extras ----
 	/** Your own time of day, only for you; the server's time stays as it is. */
@@ -505,6 +507,7 @@ public final class HudConfig {
 		chatCopyNoSender = other.chatCopyNoSender;
 		chatCopyNotice = oneOf(other.chatCopyNotice, ChatExtras.COPY_NOTICES);
 		chatSearch = other.chatSearch;
+		chatScaleExtra = Math.max(1f, Math.min(ChatLook.MAX, other.chatScaleExtra));
 		timeChanger = other.timeChanger;
 		fixedTime = other.fixedTime;
 		freelook = other.freelook;
