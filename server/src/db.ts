@@ -102,6 +102,10 @@ const toUser = (r: UserRow): User => ({ id: r.uuid, handle: r.handle, name: r.na
 export interface Bug { id: number; author: string; authorHandle: string | null; title: string; body: string; logId: string; version: string; os: string; status: string; createdAt: number; updatedAt: number; comments: number }
 export interface BugComment { id: number; author: string; authorHandle: string | null; authorRole: string | null; body: string; createdAt: number }
 
+/** A profile pack shared by code: what the lists show, the file itself is on disk. */
+export interface ProfileShare { code: string; owner: string; ownerHandle: string | null; name: string; gameVersion: string; loader: string; size: number; downloads: number; createdAt: number; expiresAt: number }
+const SHARE_COLUMNS = 's.code, s.owner, s.name, s.game_version AS gameVersion, s.loader, s.size, s.downloads, s.created_at AS createdAt, s.expires_at AS expiresAt';
+
 /** Friendships are stored once, with the smaller uuid first. */
 const pair = (x: string, y: string) => (x < y ? [x, y] : [y, x]);
 
@@ -146,6 +150,8 @@ CREATE TABLE IF NOT EXISTS bug_comments (id INTEGER PRIMARY KEY AUTOINCREMENT, b
 CREATE INDEX IF NOT EXISTS bug_comments_bug ON bug_comments(bug_id, id);
 CREATE TABLE IF NOT EXISTS partners (id TEXT PRIMARY KEY, address TEXT NOT NULL UNIQUE, name TEXT NOT NULL DEFAULT '', owner TEXT NOT NULL DEFAULT '', background TEXT NOT NULL DEFAULT '', pinned INTEGER NOT NULL DEFAULT 0, rotate INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, admin TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '');
+CREATE TABLE IF NOT EXISTS profile_shares (code TEXT PRIMARY KEY, owner TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', game_version TEXT NOT NULL DEFAULT '', loader TEXT NOT NULL DEFAULT '', size INTEGER NOT NULL, downloads INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created_at);
 `);
   }
 
@@ -681,5 +687,37 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
 
   removeBugComment(id: number) {
     this.db.prepare('DELETE FROM bug_comments WHERE id = ?').run(id);
+  }
+
+  // ---- profiles shared by code (the files are next to the database, see profileShares.ts) ----
+
+  addProfileShare(s: { code: string; owner: string; name: string; gameVersion: string; loader: string; size: number; expiresAt: number }) {
+    this.db.prepare('INSERT INTO profile_shares (code, owner, name, game_version, loader, size, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(s.code, s.owner, s.name, s.gameVersion, s.loader, s.size, Date.now(), s.expiresAt);
+  }
+
+  /** A share that has not expired yet, with its owner's handle (null once the account is gone). */
+  profileShare(code: string): ProfileShare | undefined {
+    return this.db.prepare(`SELECT ${SHARE_COLUMNS}, u.handle AS ownerHandle FROM profile_shares s LEFT JOIN users u ON u.uuid = s.owner
+      WHERE s.code = ? AND s.expires_at > ?`).get(code, Date.now()) as ProfileShare | undefined;
+  }
+
+  /** One player's shares that still work, newest first. */
+  profileShares(owner: string): ProfileShare[] {
+    return this.db.prepare(`SELECT ${SHARE_COLUMNS}, NULL AS ownerHandle FROM profile_shares s WHERE s.owner = ? AND s.expires_at > ? ORDER BY s.created_at DESC`)
+      .all(owner, Date.now()) as unknown as ProfileShare[];
+  }
+
+  countShareDownload(code: string) {
+    this.db.prepare('UPDATE profile_shares SET downloads = downloads + 1 WHERE code = ?').run(code);
+  }
+
+  /** Codes past their time, to remove with their files. */
+  expiredProfileShares(now: number): string[] {
+    return (this.db.prepare('SELECT code FROM profile_shares WHERE expires_at <= ?').all(now) as { code: string }[]).map((r) => r.code);
+  }
+
+  removeProfileShare(code: string) {
+    this.db.prepare('DELETE FROM profile_shares WHERE code = ?').run(code);
   }
 }

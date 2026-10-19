@@ -4,6 +4,7 @@ import { OUR_PET_MODELS } from './ourPetModels';
 import { gameIcon } from './gameIcon';
 import { createFriends, socialErrorText } from './friends';
 import { createProfileFiles } from './profileFiles';
+import { initProfileSharing } from './profileShare';
 import { openSkinEditor } from './skinEditor';
 import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
 import type { SlashApi } from '../main/preload';
@@ -1420,9 +1421,8 @@ interface PackSummary {
 let pickedPack: { key: string; summary: PackSummary } | undefined;
 const importParts = new Set<PackPart>();
 
-$('#profile-import').addEventListener('click', async () => {
-  const picked: typeof pickedPack = await guard(() => api.pickProfilePack());
-  if (!picked) return;
+/** What a pack holds and which parts to take, before importing it (from a file or from a code). */
+function showPackImport(picked: NonNullable<typeof pickedPack>, from?: string) {
   pickedPack = picked;
   const s = picked.summary;
   const loader = LOADER_NAMES[s.loader];
@@ -1436,6 +1436,7 @@ $('#profile-import').addEventListener('click', async () => {
   const notes = [
     s.linked ? t('Do pobrania z Modrinth i CurseForge: {0}.', s.linked) : '',
     s.manual ? t('Do pobrania ręcznie z CurseForge: {0} (lista pojawi się w zakładce Mody).', s.manual) : '',
+    from ?? '',
   ];
   if (s.kind === 'curseforge') {
     // a CurseForge zip installs whole, the way its author made it
@@ -1445,6 +1446,12 @@ $('#profile-import').addEventListener('click', async () => {
   $('#pack-import-note').textContent = notes.filter(Boolean).join(' ');
   $('#pack-import-modal').classList.remove('hidden');
   $<HTMLInputElement>('#pack-import-name').focus();
+}
+// a file or a code: see profileShare.ts
+$('#profile-import').addEventListener('click', () => {
+  $<HTMLInputElement>('#pack-source-code').value = '';
+  $('#pack-source-modal').classList.remove('hidden');
+  $<HTMLInputElement>('#pack-source-code').focus();
 });
 function closePackImport() {
   $('#pack-import-modal').classList.add('hidden');
@@ -1465,6 +1472,8 @@ $('#pack-import-go').addEventListener('click', async () => {
 $('#pack-import-cancel').addEventListener('click', closePackImport);
 $('#pack-import-close').addEventListener('click', closePackImport);
 $('#pack-import-modal').addEventListener('click', (e) => e.target === e.currentTarget && closePackImport());
+
+initProfileSharing({ api, $, el, guard, toast, skeletons, packPartRows, showPackImport, editing: () => editingId });
 
 $('#loader-select').addEventListener('change', () => renderLoaderVersions(''));
 $('#version-select').addEventListener('change', () => renderLoaderVersions(''));

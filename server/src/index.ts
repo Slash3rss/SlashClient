@@ -19,6 +19,7 @@ import { createApp } from './app.ts';
  *   ADMIN_HANDLES           comma-separated handles that are admins (the panel at /admin)
  *   WEB_DIR                 the website's files, default ./web
  *   CURSEFORGE_API_KEY      key from console.curseforge.com: enables CurseForge in the launcher
+ *   SHARES_DIR              profiles shared by code, default ./profiles next to DB_FILE
  */
 const port = Number(process.env.PORT) || 8787;
 const dbFile = process.env.DB_FILE ?? path.resolve('data/social.db');
@@ -47,6 +48,7 @@ const { server } = createApp({
   releasesRepo: process.env.RELEASES_REPO,
   releasesToken: process.env.RELEASES_TOKEN || undefined,
   curseforgeKey: process.env.CURSEFORGE_API_KEY || undefined,
+  sharesDir: process.env.SHARES_DIR || undefined,
 });
 
 server.listen(port, () => {

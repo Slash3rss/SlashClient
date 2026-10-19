@@ -14,6 +14,7 @@ import { RequestLog, clientOf, maskIp, routeOf } from './requests.ts';
 import { serveWeb } from './web.ts';
 import { createDownloads, isDownloadOs } from './downloads.ts';
 import { createCurseForge } from './curseforge.ts';
+import { profileShareRoutes, type ShareLimits } from './profileShares.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -46,6 +47,10 @@ export interface Config {
   releasesToken?: string;
   /** CurseForge API key (CURSEFORGE_API_KEY) for the launcher's CurseForge searches; without it CurseForge is off. */
   curseforgeKey?: string;
+  /** Folder for profiles shared by code (SHARES_DIR); default "profiles" next to the database. */
+  sharesDir?: string;
+  /** Size, time and quota of shared profiles (tests lower them). */
+  shareLimits?: Partial<ShareLimits>;
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -316,6 +321,14 @@ export function createApp(cfg: Config) {
   const limitReports = rateLimiter(6);
   const tracker = trackerRoutes({
     db, authed, isAdmin, body, clientIp, limit: limitReports, dir: path.join(path.dirname(cfg.dbFile), 'logs'),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  const shares = profileShareRoutes({
+    db, authed, clientIp, dir: cfg.sharesDir ?? path.join(path.dirname(cfg.dbFile), 'profiles'), limits: cfg.shareLimits,
+    limitUploads: rateLimiter(6), limitDownloads: rateLimiter(30),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -696,6 +709,7 @@ export function createApp(cfg: Config) {
     }],
     ...partners.routes,
     ...tracker.routes,
+    ...shares.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins,
       fail: (status, code) => {
@@ -830,6 +844,15 @@ export function createApp(cfg: Config) {
       if (answer.status !== 200) (req as SeenRequest).slashError = JSON.parse(answer.body).error ?? String(answer.status);
       res.writeHead(answer.status, { 'Content-Type': 'application/json' });
       res.end(answer.body);
+      return;
+    }
+
+    // a shared profile's file: not JSON, so not one of the routes
+    try {
+      if (await shares.serve(req, res, url)) return;
+    } catch (err) {
+      console.error('profil:', (err as Error).message);
+      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
       return;
     }
 
@@ -1063,7 +1086,10 @@ export function createApp(cfg: Config) {
     for (const [uuid, l] of linked) if (Date.now() - l.at > IN_GAME_TTL_MS) linked.delete(uuid);
   }, 30_000);
   // shared logs past their time, once an hour
-  const logCleanup = setInterval(() => void tracker.cleanup().catch((err) => console.error('logi:', (err as Error).message)), 3_600_000);
+  const logCleanup = setInterval(() => {
+    void tracker.cleanup().catch((err) => console.error('logi:', (err as Error).message));
+    void shares.cleanup().catch((err) => console.error('profile:', (err as Error).message));
+  }, 3_600_000);
 
   return {
     server,

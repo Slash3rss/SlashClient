@@ -27,8 +27,8 @@ export const PROFILE_FILE = 'slashclient.profile.json';
 const ICONS = ['png', 'webp', 'gif'].map((ext) => `.slashclient/icon.${ext}`);
 
 /** Folders exported with "config" (mods' settings and scripts). */
-const CONFIG_ITEMS = ['config', 'defaultconfigs', 'kubejs', 'scripts'];
-const OPTION_FILES = ['options.txt', 'optionsof.txt', 'optionsshaders.txt'];
+export const CONFIG_ITEMS = ['config', 'defaultconfigs', 'kubejs', 'scripts'];
+export const OPTION_FILES = ['options.txt', 'optionsof.txt', 'optionsshaders.txt'];
 /** Folders with mods and packs that are matched against Modrinth/CurseForge, by part. */
 const CONTENT: Partial<Record<PackPart, string>> = { mods: 'mods', resourcepacks: 'resourcepacks', shaderpacks: 'shaderpacks' };
 
@@ -150,8 +150,9 @@ async function hashes(file: string): Promise<{ sha1: string; sha512: string; siz
 
 const exists = (p: string) => fs.stat(p).then((s) => s, () => undefined);
 
-/** Adds a file or a whole folder to the zip under overrides/; returns how many files went in. */
-async function addOverride(zip: AdmZip, gameDir: string, rel: string): Promise<number> {
+/** Adds a file or a whole folder to the zip under overrides/; returns how many files went in. `skip`: paths the player unticked. */
+async function addOverride(zip: AdmZip, gameDir: string, rel: string, skip?: Set<string>): Promise<number> {
+  if (skip?.has(rel)) return 0;
   const full = path.join(gameDir, rel);
   const stat = await exists(full);
   if (!stat) return 0;
@@ -164,7 +165,7 @@ async function addOverride(zip: AdmZip, gameDir: string, rel: string): Promise<n
   for (const name of await fs.readdir(full)) {
     // .disabled mods, the OS's .DS_Store and the like stay home
     if (name.startsWith('.') || name.endsWith('.disabled')) continue;
-    n += await addOverride(zip, gameDir, `${rel}/${name}`);
+    n += await addOverride(zip, gameDir, `${rel}/${name}`, skip);
   }
   return n;
 }
@@ -201,8 +202,11 @@ export async function writeProfilePack(opts: {
   settings?: ProfileSettings;
   resolve: LinkResolver;
   onStage?: StageProgress;
+  /** Files left out although their part is ticked (paths with "/", e.g. a config with a password in it). */
+  skip?: string[];
 }): Promise<WriteResult> {
   const { gameDir, parts } = opts;
+  const skip = new Set(opts.skip ?? []);
   const zip = new AdmZip();
   const result: WriteResult = { linked: 0, bundled: 0, manual: 0 };
 
@@ -216,6 +220,7 @@ export async function writeProfilePack(opts: {
     for (const name of await fs.readdir(path.join(gameDir, dir)).catch(() => [] as string[])) {
       if (name.startsWith('.') || name.endsWith('.disabled')) continue;
       const rel = `${dir}/${name}`;
+      if (skip.has(rel)) continue;
       const stat = await exists(path.join(gameDir, rel));
       if (stat?.isDirectory()) folders.push(rel); // an unpacked resource pack
       else if (stat?.isFile()) files.push({ rel, filename: name, ...(await hashes(path.join(gameDir, rel))) });
@@ -241,13 +246,13 @@ export async function writeProfilePack(opts: {
       result.bundled++;
     }
   }
-  for (const rel of folders) result.bundled += await addOverride(zip, gameDir, rel);
+  for (const rel of folders) result.bundled += await addOverride(zip, gameDir, rel, skip);
 
   opts.onStage?.(t('Kopiowanie konfiguracji'), 0, 1);
-  if (parts.includes('config')) for (const item of CONFIG_ITEMS) await addOverride(zip, gameDir, item);
-  if (parts.includes('options')) for (const file of OPTION_FILES) await addOverride(zip, gameDir, file);
-  if (parts.includes('servers')) await addOverride(zip, gameDir, 'servers.dat');
-  if (parts.includes('worlds')) await addOverride(zip, gameDir, 'saves');
+  if (parts.includes('config')) for (const item of CONFIG_ITEMS) await addOverride(zip, gameDir, item, skip);
+  if (parts.includes('options')) for (const file of OPTION_FILES) await addOverride(zip, gameDir, file, skip);
+  if (parts.includes('servers')) await addOverride(zip, gameDir, 'servers.dat', skip);
+  if (parts.includes('worlds')) await addOverride(zip, gameDir, 'saves', skip);
   if (parts.includes('settings') && opts.settings) {
     if (opts.settings.icon === 'custom') for (const icon of ICONS) await addOverride(zip, gameDir, icon);
     const settings: ProfileSettings = { ...opts.settings, ...(manualFiles.length ? { manualFiles } : {}) };

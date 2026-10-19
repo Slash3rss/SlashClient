@@ -34,6 +34,9 @@ import {
   applySettings, countParts, DEFAULT_PARTS, includePath, manualFilesOf, PACK_PARTS, readPackSummary, settingsOf, uniqueName, writeProfilePack,
   type LinkResolver, type PackPart, type PackSummary,
 } from './profilePack';
+import {
+  cleanShareTemp, deleteShare, downloadShare, formatCode, listShares, normalizeCode, scanSecrets, shareErrorText, shareInfo, uploadShare, type SharedProfile,
+} from './profileShare';
 import { getManifest } from './versions';
 import { newsArticle, newsPage, type NewsFilter } from './news';
 import { ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin } from './skins';
@@ -803,6 +806,24 @@ const packLinks = (gameDir: string): LinkResolver => async (files) => {
 const validParts = (parts: unknown): PackPart[] =>
   Array.isArray(parts) ? PACK_PARTS.filter((p) => parts.includes(p)) : DEFAULT_PARTS;
 
+/** Writes a profile as a .mrpack with the chosen parts (export to a file, and sharing by code). */
+async function packProfile(profile: Profile, out: string, parts: PackPart[], onStage: Parameters<typeof installMrpack>[2], skip?: string[]) {
+  const gameVersion = await resolveVersionId(profile.versionId);
+  // a pack needs an exact loader version; "newest stable" is resolved now
+  let loaderVersion = profile.loaderVersion;
+  if (profile.loader !== 'vanilla' && !loaderVersion) {
+    const all = await loaderVersions(profile.loader, gameVersion);
+    loaderVersion = (all.find((v) => v.stable) ?? all[0])?.version ?? '';
+  }
+  const gameDir = profileGameDir(profile);
+  // the settings say "this game version" exactly, like the pack's index; an empty loader version (newest stable) stays empty
+  const settings = { ...settingsOf(profile), versionId: gameVersion };
+  const res = await writeProfilePack({
+    gameDir, out, name: profile.name, gameVersion, loader: profile.loader, loaderVersion, parts, settings, resolve: packLinks(gameDir), onStage, skip,
+  });
+  return { ...res, gameVersion };
+}
+
 handle('profile:export', async (id: string, parts?: PackPart[]) => {
   const profile = profileById(id);
   const chosen = validParts(parts);
@@ -814,19 +835,7 @@ handle('profile:export', async (id: string, parts?: PackPart[]) => {
   if (canceled || !filePath) return undefined;
   const task = startTask(t('Eksport: {0}', profile.name));
   try {
-    const gameVersion = await resolveVersionId(profile.versionId);
-    // a pack needs an exact loader version; "newest stable" is resolved now
-    let loaderVersion = profile.loaderVersion;
-    if (profile.loader !== 'vanilla' && !loaderVersion) {
-      const all = await loaderVersions(profile.loader, gameVersion);
-      loaderVersion = (all.find((v) => v.stable) ?? all[0])?.version ?? '';
-    }
-    const gameDir = profileGameDir(profile);
-    // the settings say "this game version" exactly, like the pack's index; an empty loader version (newest stable) stays empty
-    const settings = { ...settingsOf(profile), versionId: gameVersion };
-    const res = await writeProfilePack({
-      gameDir, out: filePath, name: profile.name, gameVersion, loader: profile.loader, loaderVersion, parts: chosen, settings, resolve: packLinks(gameDir), onStage: task.progress,
-    });
+    const res = await packProfile(profile, filePath, chosen, task.progress);
     const manual = res.manual ? ` ${t('Do pobrania ręcznie z CurseForge: {0} (lista jest w paczce).', res.manual)}` : '';
     task.finish(true, t('Zapisano {0}: {1} plików z linkami, {2} w paczce.', path.basename(filePath), res.linked, res.bundled) + manual);
     shell.showItemInFolder(filePath);
@@ -896,6 +905,75 @@ handle('profile:importPack', async (key: string, opts: { name?: string; parts?: 
     return profile.id;
   } catch (err) {
     task.finish(false, t('Nie udało się zaimportować profilu: {0}', (err as Error).message));
+    throw err;
+  }
+});
+
+// ---------- sharing a profile by code ----------
+
+const shareTemp = () => path.join(app.getPath('temp'), 'slashclient-shares');
+function shareSession(): { server: string; token: string } {
+  const token = store.settings.socialToken ? secrets.decrypt(store.settings.socialToken) : undefined;
+  if (!token) throw new Error(shareErrorText('unauthorized', 401));
+  return { server: store.settings.socialUrl, token };
+}
+const validSkip = (skip: unknown): string[] =>
+  Array.isArray(skip) ? skip.filter((s): s is string => typeof s === 'string' && s.length < 500 && !s.includes('..')).slice(0, 5000) : [];
+
+/** Files of the chosen parts that look like they hold a password or token, for the share dialog. */
+handle('profile:shareScan', async (id: string, parts?: PackPart[]) => scanSecrets(profileGameDir(profileById(id)), validParts(parts)));
+
+/** Packs the profile without the files the player unticked, uploads it and answers with the code. */
+handle('profile:share', async (id: string, parts?: PackPart[], skip?: string[]) => {
+  const profile = profileById(id);
+  const session = shareSession();
+  const task = startTask(t('Udostępnianie: {0}', profile.name));
+  const dir = shareTemp();
+  await fsp.mkdir(dir, { recursive: true });
+  await cleanShareTemp(dir);
+  const file = path.join(dir, `${randomUUID()}.mrpack`);
+  try {
+    const res = await packProfile(profile, file, validParts(parts), task.progress, validSkip(skip));
+    task.progress(t('Wysyłanie na serwer'), 0, 1);
+    const share = await uploadShare({ ...session, file, name: profile.name, gameVersion: res.gameVersion, loader: profile.loader });
+    task.finish(true, t('Profil {0} udostępniony kodem {1}.', profile.name, formatCode(share.code)));
+    return share;
+  } catch (err) {
+    task.finish(false, t('Nie udało się udostępnić profilu: {0}', (err as Error).message));
+    throw err;
+  } finally {
+    await fsp.rm(file, { force: true }).catch(() => {});
+  }
+});
+handle('profile:shares', async () => {
+  const { server, token } = shareSession();
+  return listShares(server, token);
+});
+handle('profile:shareDelete', async (code: string) => {
+  const { server, token } = shareSession();
+  const valid = normalizeCode(code);
+  if (valid) await deleteShare(server, token, valid);
+});
+
+/** Downloads the pack behind a code; then it is imported like a picked file (profile:importPack). */
+handle('profile:importCode', async (raw: string): Promise<{ key: string; summary: PackSummary; share: SharedProfile }> => {
+  const code = normalizeCode(raw);
+  if (!code) throw new Error(t('Kod ma 8 znaków, np. ABCD-EFGH.'));
+  const server = store.settings.socialUrl;
+  const share = await shareInfo(server, code);
+  const dir = shareTemp();
+  await cleanShareTemp(dir);
+  const file = path.join(dir, `${randomUUID()}.mrpack`);
+  await downloadShare(server, code, file);
+  try {
+    // a shared profile is always a SlashClient .mrpack; a CurseForge zip under a code is refused
+    if (isCurseForgePack(file)) throw new Error(t('To nie jest modpack Modrinth (.mrpack).'));
+    const summary = readPackSummary(file);
+    const key = randomUUID();
+    pickedPacks.set(key, file);
+    return { key, summary, share };
+  } catch (err) {
+    await fsp.rm(file, { force: true }).catch(() => {});
     throw err;
   }
 });

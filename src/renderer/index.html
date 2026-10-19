@@ -236,6 +236,7 @@
                 <button type="button" id="profile-mods"><i class="fa-solid fa-puzzle-piece"></i> Folder modów</button>
                 <button type="button" id="profile-duplicate"><i class="fa-regular fa-clone"></i> Kopiuj profil</button>
                 <button type="button" id="profile-export"><i class="fa-solid fa-file-export"></i> Eksportuj profil</button>
+                <button type="button" id="profile-share"><i class="fa-solid fa-share-nodes"></i> Udostępnij kodem</button>
                 <button type="button" class="danger" id="profile-delete"><i class="fa-regular fa-trash-can"></i> Usuń</button>
                 <button type="submit" class="primary">Zapisz</button>
               </div>
@@ -595,6 +596,50 @@
           <button id="export-cancel">Anuluj</button>
           <button class="primary" id="export-go"><i class="fa-solid fa-floppy-disk"></i> Zapisz plik…</button>
         </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal hidden" id="share-modal">
+    <div class="modal-box glass-panel join-box import-box">
+      <button class="icon-btn modal-close" id="share-close" title="Zamknij"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-body">
+        <h2><i class="fa-solid fa-share-nodes"></i> Udostępnij kodem</h2>
+        <div id="share-form">
+          <p class="muted">Profil trafi na serwer SlashClient na 30 dni. Znajomy wpisze kod w „Importuj profil” i dostanie taki sam profil. Mody z Modrinth i CurseForge są w nim jako linki.</p>
+          <div class="join-list" id="share-parts"></div>
+          <div class="share-secrets hidden" id="share-secrets">
+            <p class="share-warn"><i class="fa-solid fa-triangle-exclamation"></i> Te pliki wyglądają, jakby miały hasła lub tokeny. Odznaczone nie zostaną wysłane.</p>
+            <div class="join-list" id="share-secret-list"></div>
+          </div>
+          <p class="muted pack-note"><i class="fa-solid fa-shield-halved"></i> Konta i logowanie nigdy nie trafiają do paczki. Każdy, kto zna kod, może pobrać profil.</p>
+          <div class="row join-actions">
+            <button id="share-cancel">Anuluj</button>
+            <button class="primary" id="share-go"><i class="fa-solid fa-cloud-arrow-up"></i> Udostępnij</button>
+          </div>
+        </div>
+        <div class="share-result hidden" id="share-result">
+          <p class="muted">Kod profilu (ważny 30 dni):</p>
+          <div class="row share-code-row">
+            <code class="share-code" id="share-code"></code>
+            <button id="share-copy"><i class="fa-regular fa-copy"></i> Kopiuj</button>
+          </div>
+        </div>
+        <h3 class="share-mine-title">Moje udostępnione profile</h3>
+        <div class="join-list" id="share-list"></div>
+      </div>
+    </div>
+  </div>
+  <div class="modal hidden" id="pack-source-modal">
+    <div class="modal-box glass-panel join-box import-box">
+      <button class="icon-btn modal-close" id="pack-source-close" title="Zamknij"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-body">
+        <h2><i class="fa-solid fa-box-open"></i> Importuj profil</h2>
+        <p class="muted">Z pliku .mrpack lub .zip (CurseForge), albo z kodu, który dał Ci znajomy.</p>
+        <button id="pack-source-file"><i class="fa-solid fa-folder-open"></i> Z pliku…</button>
+        <form class="row share-code-form" id="pack-source-code-form">
+          <label class="field grow">Z kodu<input id="pack-source-code" maxlength="40" placeholder="ABCD-EFGH" autocomplete="off" spellcheck="false"></label>
+          <button type="submit" class="primary" id="pack-source-code-go"><i class="fa-solid fa-download"></i> Pobierz</button>
+        </form>
       </div>
     </div>
   </div>
