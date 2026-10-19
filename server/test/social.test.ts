@@ -373,6 +373,18 @@ describe('social server', () => {
     const askAs = async (client?: string) => (await (await fetch(`${base}/v1/cosmetics`, { headers: { Authorization: `Bearer ${ewa.token}`, ...(client ? { 'X-SlashClient': client } : {}) } })).json()) as { items: { id: string; slot: string }[] };
     assert.ok((await askAs('launcher/0.9.11')).items.some((i) => i.id === 'tophat' && i.slot === 'hat'));
     assert.ok(!(await askAs('launcher/0.9.10')).items.some((i) => i.slot === 'hat' || i.slot === 'top'));
+    // kill effects: one at a time, free for everyone, only in their own slot, and only for launchers from 0.9.14 on
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { kill: 'lightning' } })).body.loadout.kill, 'lightning');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { kill: 'confetti' } })).body.loadout.kill, 'confetti');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { kill: 'hearts' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { trail: 'ghost' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc] })).body.cosmetics[ewaMc].kill, 'confetti');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { kill: '' } })).body.loadout.kill, undefined);
+    const kills = (await askAs('launcher/0.9.14')).items.filter((i) => i.slot === 'kill');
+    assert.equal(kills.length, 12);
+    assert.ok(kills.every((i) => (i as { available?: boolean }).available));
+    assert.ok(!(await askAs('launcher/0.9.13')).items.some((i) => i.slot === 'kill'));
+    assert.ok(!(await askAs('mod/0.9.13')).items.some((i) => i.slot === 'kill'));
     const catalog = (await call('GET', '/v1/cosmetics', ewa.token)).body;
     assert.ok(catalog.items.some((i: any) => i.id === 'phoenix' && i.rank === 'partner' && !i.available));
     assert.ok(catalog.items.some((i: any) => i.id === 'angel' && i.slot === 'wings' && i.available));

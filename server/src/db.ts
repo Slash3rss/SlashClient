@@ -79,7 +79,7 @@ CREATE INDEX IF NOT EXISTS messages_unread ON messages(to_uuid, read_at);
 `;
 
 interface UserRow { uuid: string; handle: string; name: string; avatar: string; show_server: number; cape: string; role: string; rank: string; banned: number; loadout: string }
-/** Wings, elytra, trail, aura and pet (the cape has its own column); broken JSON counts as nothing. */
+/** Wings, elytra, trail, aura, pet, clothing and kill effect (the cape has its own column); broken JSON counts as nothing. */
 function parseLoadout(json: string): Record<string, string> {
   try {
     const v = JSON.parse(json || '{}');
