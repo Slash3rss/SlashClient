@@ -9,8 +9,8 @@ import type { CosmeticSetting } from './db.ts';
  * A player wears one item per slot. `rank` items are for that rank only (admins may wear all);
  * any item can also be made exclusive in the admin panel and granted to chosen players.
  */
-export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill';
-export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill'];
+export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'prop';
+export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill', 'prop'];
 export type Rank = 'admin' | 'support' | 'partner' | 'friend' | 'friend_pink';
 
 export interface Item {
@@ -161,6 +161,10 @@ export const ITEMS: Item[] = [
   { id: 'coins', slot: 'kill', name: 'Złote monety', since: '0.9.14' },
   { id: 'ghost', slot: 'kill', name: 'Duch', since: '0.9.14' },
   { id: 'flamering', slot: 'kill', name: 'Krąg ognia', since: '0.9.14' },
+  // props: something the player pushes in front of them with both hands (src/shared/props.ts), hidden while the hands are busy
+  { id: 'wheelbarrow', slot: 'prop', name: 'Taczka', since: '0.9.20' },
+  { id: 'wheelbarrow_gold', slot: 'prop', name: 'Taczka złota', since: '0.9.20' },
+  { id: 'wheelbarrow_flowers', slot: 'prop', name: 'Taczka z kwiatami', since: '0.9.20' },
 ];
 
 /** Compares two versions like 0.9.1 number by number: below 0, 0 or above 0. */

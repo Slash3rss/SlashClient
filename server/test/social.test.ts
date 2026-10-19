@@ -433,6 +433,27 @@ describe('social server', () => {
     for (const l of [ewaLive, tomLive, olaLive]) l.ws.close();
   });
 
+  it('lets players push a wheelbarrow (the prop slot), seen only by launchers from 0.9.20 on', async () => {
+    const ola = await login('OlaTaczka');
+    const olaMc = '12121212-3434-5656-7878-909090909090';
+    await minecraftLogin('OlaTaczka', olaMc.replace(/-/g, ''), ola.token);
+    await call('POST', '/v1/mc/link', ola.token, { uuid: olaMc });
+    assert.equal((await call('POST', '/v1/me', ola.token, { loadout: { prop: 'wheelbarrow' } })).body.loadout.prop, 'wheelbarrow');
+    assert.equal((await call('POST', '/v1/me', ola.token, { loadout: { prop: 'wheelbarrow_flowers', hat: 'tophat' } })).body.loadout.prop, 'wheelbarrow_flowers');
+    // only in its own slot, and nothing else in it
+    assert.equal((await call('POST', '/v1/me', ola.token, { loadout: { prop: 'tophat' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ola.token, { loadout: { hat: 'wheelbarrow_gold' } })).body.error, 'bad_item');
+    assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [olaMc] })).body.cosmetics[olaMc], { hat: 'tophat', prop: 'wheelbarrow_flowers' });
+    assert.equal((await call('POST', '/v1/me', ola.token, { loadout: { prop: '' } })).body.loadout.prop, undefined);
+    const askAs = async (client: string) => (await (await fetch(`${base}/v1/cosmetics`, { headers: { Authorization: `Bearer ${ola.token}`, 'X-SlashClient': client } })).json()) as { items: { id: string; slot: string; available: boolean }[] };
+    const props = (await askAs('launcher/0.9.20')).items.filter((i) => i.slot === 'prop');
+    assert.deepEqual(props.map((i) => i.id), ['wheelbarrow', 'wheelbarrow_gold', 'wheelbarrow_flowers']);
+    assert.ok(props.every((i) => i.available));
+    assert.ok((await askAs('mod/0.9.20')).items.some((i) => i.slot === 'prop'));
+    assert.ok(!(await askAs('launcher/0.9.19')).items.some((i) => i.slot === 'prop'));
+    assert.ok(!(await askAs('mod/0.9.19')).items.some((i) => i.slot === 'prop'));
+  });
+
   it('tells players on the same server at once when someone changes cosmetics', async () => {
     const kasia = await login('KasiaLive');
     const bartek = await login('BartekLive');
