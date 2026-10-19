@@ -40,6 +40,8 @@ Adresy są po polsku i po angielsku (`/konto` i `/account`, `/zgloszenia` i `/bu
     z plakietką „Partner”; właściciel (konto partnera) zmienia tło sam na /konto. Obrazki leżą w `data/partners` obok bazy;
   - zapytania: ostatnie zapytania do API (ścieżka, status, czas, konto, klient), z filtrem błędów;
   - logi graczy: udostępnione logi z możliwością usunięcia;
+  - miejsce na pliki: gdzie leżą zrzuty, klipy i profile w chmurze (dysk serwera, Cloudflare R2, Backblaze B2, inne S3),
+    zajętość, limity, test połączenia i przenoszenie plików; instrukcja w [docs/przechowywanie.md](docs/przechowywanie.md);
   - dziennik wszystkich zmian zrobionych w panelu.
 
 Rangi to kolor logo SlashClient przy nicku w grze: admin czerwone, Support błękitne, Partner złote, Przyjaciel zielone;
@@ -106,6 +108,8 @@ Launcher otwiera przeglądarkę, a po zalogowaniu sam odbiera wynik (odpytuje `/
 | `RELEASES_REPO`, `RELEASES_TOKEN` | `Slash3rss/SlashClient`, – | wydania do pobierania i aktualizacji (wyżej) |
 | `TRUST_PROXY` | – | `1` = prawdziwe IP z nagłówka proxy (za Caddy) |
 | `ALLOW_DEV_LOGIN` | – | `1` = logowanie samym nickiem (tylko testy) |
+| `STORAGE_SECRET_KEY` | – | 32 bajty base64 (`openssl rand -base64 32`): szyfruje klucze bucketów R2/B2 dodanych w panelu ([docs/przechowywanie.md](docs/przechowywanie.md)) |
+| `STORAGE_MIN_FREE_MB` | `2048` | poniżej tylu MB wolnego dysk serwera nie przyjmuje nowych zrzutów, klipów i profili |
 
 ## API (`/v1`)
 

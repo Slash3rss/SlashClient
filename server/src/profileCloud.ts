@@ -1,10 +1,8 @@
 import { randomBytes } from 'node:crypto';
-import { createReadStream, mkdirSync } from 'node:fs';
-import { readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import type http from 'node:http';
-import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { zipEntryNames } from './profileShares.ts';
+import { addColumn, sendObject, type Storage } from './storage.ts';
 
 /**
  * Profiles kept on the player's account, so the same profile works on a second computer. The
@@ -12,7 +10,8 @@ import { zipEntryNames } from './profileShares.ts';
  * under its own id; only the owner lists, downloads or deletes it. Every upload bumps the
  * profile's revision: a launcher sends the revision it last saw, and when another computer
  * uploaded in between the server answers "cloud_conflict" instead of overwriting, so the player
- * decides which copy wins. The table lives here (not in db.ts) and the files in their own folder.
+ * decides which copy wins. The table lives here (not in db.ts); the files on the server's disk or
+ * in a bucket (storage.ts), the row's `store` says which.
  */
 
 export interface CloudLimits {
@@ -53,36 +52,55 @@ class CloudStore {
     sql.exec(`
 CREATE TABLE IF NOT EXISTS cloud_profiles (owner TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, id TEXT NOT NULL, file TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', game_version TEXT NOT NULL DEFAULT '', loader TEXT NOT NULL DEFAULT '', device TEXT NOT NULL DEFAULT '', size INTEGER NOT NULL, revision INTEGER NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, PRIMARY KEY (owner, id));
 `);
+    // where the file is: rows from before storage backends are on the server's disk
+    addColumn(sql, 'cloud_profiles', 'store', "TEXT NOT NULL DEFAULT 'local'");
   }
 
   list(owner: string): CloudProfile[] {
     return this.sql.prepare(`SELECT ${COLUMNS} FROM cloud_profiles WHERE owner = ? ORDER BY updated_at DESC`).all(owner) as unknown as CloudProfile[];
   }
 
-  get(owner: string, id: string): (CloudProfile & { file: string }) | undefined {
-    return this.sql.prepare(`SELECT ${COLUMNS}, file FROM cloud_profiles WHERE owner = ? AND id = ?`).get(owner, id) as (CloudProfile & { file: string }) | undefined;
+  get(owner: string, id: string): (CloudProfile & { file: string; store: string }) | undefined {
+    return this.sql.prepare(`SELECT ${COLUMNS}, file, store FROM cloud_profiles WHERE owner = ? AND id = ?`).get(owner, id) as (CloudProfile & { file: string; store: string }) | undefined;
   }
 
-  put(owner: string, p: Omit<CloudProfile, 'createdAt'> & { file: string }) {
-    this.sql.prepare(`INSERT INTO cloud_profiles (owner, id, file, name, game_version, loader, device, size, revision, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  put(owner: string, p: Omit<CloudProfile, 'createdAt'> & { file: string; store: string }) {
+    this.sql.prepare(`INSERT INTO cloud_profiles (owner, id, file, name, game_version, loader, device, size, revision, created_at, updated_at, store) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT (owner, id) DO UPDATE SET file = excluded.file, name = excluded.name, game_version = excluded.game_version, loader = excluded.loader,
-      device = excluded.device, size = excluded.size, revision = excluded.revision, updated_at = excluded.updated_at`)
-      .run(owner, p.id, p.file, p.name, p.gameVersion, p.loader, p.device, p.size, p.revision, p.updatedAt, p.updatedAt);
+      device = excluded.device, size = excluded.size, revision = excluded.revision, updated_at = excluded.updated_at, store = excluded.store`)
+      .run(owner, p.id, p.file, p.name, p.gameVersion, p.loader, p.device, p.size, p.revision, p.updatedAt, p.updatedAt, p.store);
   }
 
   remove(owner: string, id: string) {
     this.sql.prepare('DELETE FROM cloud_profiles WHERE owner = ? AND id = ?').run(owner, id);
   }
 
-  /** Every file a row points at (the rest of the folder is left over from deleted accounts). */
+  /** "<store>:<file>" of every row (the rest is left over from deleted accounts). */
   files(): Set<string> {
-    return new Set((this.sql.prepare('SELECT file FROM cloud_profiles').all() as { file: string }[]).map((r) => r.file));
+    return new Set((this.sql.prepare('SELECT store, file FROM cloud_profiles').all() as { store: string; file: string }[]).map((r) => `${r.store}:${r.file}`));
+  }
+
+  // what the storage needs to know (storage.ts)
+  usage() {
+    return this.sql.prepare("SELECT store, 'profile' AS kind, COUNT(*) AS files, SUM(size) AS bytes FROM cloud_profiles GROUP BY store").all() as { store: string; kind: string; files: number; bytes: number }[];
+  }
+  owners() {
+    return this.sql.prepare('SELECT owner, COUNT(*) AS files, SUM(size) AS bytes FROM cloud_profiles GROUP BY owner').all() as { owner: string; files: number; bytes: number }[];
+  }
+  held(store: string) {
+    return this.sql.prepare('SELECT file, size FROM cloud_profiles WHERE store = ?').all(store) as { file: string; size: number }[];
+  }
+  relocate(file: string, from: string, to: string): boolean {
+    return Number(this.sql.prepare('UPDATE cloud_profiles SET store = ? WHERE file = ? AND store = ?').run(to, file, from).changes) > 0;
   }
 }
 
+const keyOf = (file: string) => `cloud/${file}.mrpack`;
+
 export interface CloudContext {
   sql: DatabaseSync;
-  dir: string;
+  /** Where the packs go (storage.ts). */
+  storage: Storage;
   limits?: Partial<CloudLimits>;
   authed: (req: http.IncomingMessage) => string;
   /** Throw (429) when this caller did it too often lately. */
@@ -98,9 +116,14 @@ const text = (v: string | null, max: number) => (v ?? '').trim().slice(0, max);
 export function profileCloudRoutes(ctx: CloudContext) {
   const store = new CloudStore(ctx.sql);
   const limits = { ...CLOUD_LIMITS, ...ctx.limits };
-  mkdirSync(ctx.dir, { recursive: true });
-  const fileOf = (name: string) => path.join(ctx.dir, `${name}.mrpack`);
-  const view = ({ file: _file, ...p }: CloudProfile & { file?: string }): CloudProfile => p;
+  const { storage } = ctx;
+  storage.register({
+    usage: () => store.usage(),
+    owners: () => store.owners(),
+    held: (from) => store.held(from).map((p) => ({ ref: p.file, keys: [keyOf(p.file)], bytes: p.size })),
+    relocate: (file, from, to) => store.relocate(file, from, to),
+  });
+  const view = ({ file: _file, store: _store, ...p }: CloudProfile & { file?: string; store?: string }): CloudProfile => p;
   const idOf = (raw: string) => validCloudId(raw) ?? ctx.fail(404, 'not_found');
 
   /** The upload, up to the limit; the rest of a too big one is read and dropped so the launcher gets the answer. */
@@ -161,16 +184,14 @@ export function profileCloudRoutes(ctx: CloudContext) {
       if (!zipEntryNames(data)?.includes('modrinth.index.json')) ctx.fail(400, 'not_a_pack');
       const used = all.reduce((sum, p) => sum + p.size, 0) - (current?.size ?? 0);
       if (used + data.length > limits.quotaBytes) ctx.fail(409, 'cloud_quota');
-      // a new file each time, written aside and moved in: a download running now keeps reading the old one
+      // a new file each time, on a backend with room (storage.ts): a download running now keeps reading the old one
       const file = randomBytes(16).toString('hex');
-      await writeFile(`${fileOf(file)}.part`, data);
-      await rename(`${fileOf(file)}.part`, fileOf(file));
-      store.put(me, {
+      await storage.place([{ key: keyOf(file), data, type: 'application/x-modrinth-modpack+zip' }], (where) => store.put(me, {
         id, file, size: data.length, revision: (current?.revision ?? 0) + 1, updatedAt: Date.now(),
         name: text(url.searchParams.get('name'), 60), gameVersion: text(url.searchParams.get('game'), 40),
-        loader: text(url.searchParams.get('loader'), 20), device: text(url.searchParams.get('device'), 60),
-      });
-      if (current) await rm(fileOf(current.file), { force: true });
+        loader: text(url.searchParams.get('loader'), 20), device: text(url.searchParams.get('device'), 60), store: where,
+      }));
+      if (current) await storage.remove(current.store, [keyOf(current.file)]);
       return { profile: view(store.get(me, id)!) };
     }],
     ['DELETE', /^\/v1\/cloud-profiles\/([\w-]+)$/, async (req, [raw]) => {
@@ -178,7 +199,7 @@ export function profileCloudRoutes(ctx: CloudContext) {
       const p = store.get(me, idOf(raw));
       if (!p) ctx.fail(404, 'not_found');
       store.remove(me, p.id);
-      await rm(fileOf(p.file), { force: true });
+      await storage.remove(p.store, [keyOf(p.file)]);
       return { ok: true };
     }],
   ];
@@ -206,28 +227,21 @@ export function profileCloudRoutes(ctx: CloudContext) {
     }
     const id = validCloudId(m[1]);
     const p = id ? store.get(me, id) : undefined;
-    const size = p && (await stat(fileOf(p.file)).then((s) => s.size, () => undefined));
-    if (!p || size === undefined) return answer(404, 'not_found');
-    res.writeHead(200, {
+    if (!p) return answer(404, 'not_found');
+    // through this server from wherever the row says
+    const sent = await sendObject(req, res, storage.backend(p.store), keyOf(p.file), {
       'Content-Type': 'application/x-modrinth-modpack+zip',
-      'Content-Length': size,
       'Content-Disposition': `attachment; filename="${p.id}.mrpack"`,
       'X-Content-Type-Options': 'nosniff',
       'X-Cloud-Revision': String(p.revision),
     });
-    createReadStream(fileOf(p.file)).on('error', () => res.destroy()).pipe(res);
-    return true;
+    return sent || answer(404, 'not_found');
   }
 
-  /** Drops files no row points at any more (their account was deleted), once they are an hour old. */
-  async function cleanup() {
+  /** Drops files no row points at any more (their account was deleted), once they are an hour old, on every backend. */
+  async function cleanup(now = Date.now()) {
     const used = store.files();
-    for (const name of await readdir(ctx.dir).catch(() => [] as string[])) {
-      const file = name.replace(/\.mrpack(\.part)?$/, '');
-      if (used.has(file)) continue;
-      const at = await stat(path.join(ctx.dir, name)).then((s) => s.mtimeMs, () => Date.now());
-      if (Date.now() - at > 3_600_000) await rm(path.join(ctx.dir, name), { force: true });
-    }
+    await storage.sweep('cloud', (where, name) => used.has(`${where}:${name.replace(/\.mrpack(\.part)?$/, '')}`), now);
   }
 
   return { routes, serve, cleanup };

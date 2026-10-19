@@ -22,6 +22,8 @@ import { profileCloudRoutes, type CloudLimits } from './profileCloud.ts';
 import { createAchievements, hintFor, TICK_MS } from './achievements.ts';
 import { createGroups } from './groups.ts';
 import { createClans } from './clans.ts';
+import { Storage, type DiskSpace } from './storage.ts';
+import { storageAdminRoutes } from './storageAdmin.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -66,6 +68,8 @@ export interface Config {
   cloudDir?: string;
   /** Size and quota of profiles kept on accounts (tests lower them). */
   cloudLimits?: Partial<CloudLimits>;
+  /** Where players' files are kept (storage.ts): the key that seals the buckets' keys, the disk's floor; tests swap the disk's numbers. */
+  storage?: { secretKey?: string; minFreeBytes?: number; diskSpace?: DiskSpace; localHttp?: boolean };
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -436,9 +440,18 @@ export function createApp(cfg: Config) {
     },
   });
 
+  // the server's disk and the buckets the admin added, for screenshots, clips and profiles (storage.ts)
+  const storage = new Storage({
+    sql: db.sql, secretKey: cfg.storage?.secretKey, minFreeBytes: cfg.storage?.minFreeBytes, diskSpace: cfg.storage?.diskSpace, localHttp: cfg.storage?.localHttp,
+    localDirs: { media: cfg.mediaDir ?? path.join(path.dirname(cfg.dbFile), 'media'), cloud: cfg.cloudDir ?? path.join(path.dirname(cfg.dbFile), 'cloud-profiles') },
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
   // screenshots and clips shared by link, /media/<id> (media.ts)
   const media = mediaRoutes({
-    sql: db.sql, dir: cfg.mediaDir ?? path.join(path.dirname(cfg.dbFile), 'media'), webDir: cfg.webDir, publicUrl: cfg.publicUrl, limits: cfg.mediaLimits,
+    sql: db.sql, storage, webDir: cfg.webDir, publicUrl: cfg.publicUrl, limits: cfg.mediaLimits,
     authed, isAdmin, clientIp, limitUploads: rateLimiter(6), limitViews: rateLimiter(60),
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
     versioned: (html) => versioned(html, 'text/html'),
@@ -449,7 +462,7 @@ export function createApp(cfg: Config) {
 
   // profiles kept on the player's account, for their other computers (profileCloud.ts)
   const cloud = profileCloudRoutes({
-    sql: db.sql, authed, dir: cfg.cloudDir ?? path.join(path.dirname(cfg.dbFile), 'cloud-profiles'), limits: cfg.cloudLimits,
+    sql: db.sql, authed, storage, limits: cfg.cloudLimits,
     limitUploads: rateLimiter(10), limitDownloads: rateLimiter(30),
     fail: (status, code) => {
       throw new HttpError(status, code);
@@ -889,6 +902,13 @@ export function createApp(cfg: Config) {
     ...sharing.routes,
     ...groups.routes,
     ...clans.routes,
+    ...storageAdminRoutes({
+      storage, admin, body, dataDir: path.dirname(cfg.dbFile),
+      audit: (who, action, target, detail) => db.log(who, action, target, detail),
+      fail: (status, code) => {
+        throw new HttpError(status, code);
+      },
+    }),
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged,
       fail: (status, code) => {
@@ -1289,6 +1309,12 @@ export function createApp(cfg: Config) {
     server,
     /** For tests: play-time ticks with a chosen clock. */
     achievements,
+    /** For tests: the storage backends, and the hourly cleanup of screenshots, clips and profiles run now. */
+    storage,
+    cleanupFiles: async (now = Date.now()) => {
+      await media.cleanup(now);
+      await cloud.cleanup(now);
+    },
     close: () => new Promise<void>((resolve) => {
       clearInterval(heartbeat);
       clearInterval(playTick);

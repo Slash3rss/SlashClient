@@ -1,17 +1,17 @@
 import { randomBytes } from 'node:crypto';
-import { createReadStream, mkdirSync } from 'node:fs';
-import { readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import type http from 'node:http';
 import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
+import { addColumn, sendObject, type Storage } from './storage.ts';
 
 /**
  * Screenshots and clips shared by link, like logs: a signed-in player uploads a picture (PNG or
  * JPEG) or a clip (the game's Motion-JPEG AVI) from the launcher's gallery and gets /media/<id>.
  * Anyone with the link sees it without signing in; the page carries an OpenGraph preview (the
- * picture, or a clip's first frame) for Discord and the like. Files live in their own folder next
- * to the database, never in it, and go away after `days`; the owner (or an admin) may take one
- * down sooner.
+ * picture, or a clip's first frame) for Discord and the like. Files live outside the database, on
+ * the server's disk or in a bucket (storage.ts; the row's `store` says where), and go away after
+ * `days`; the owner (or an admin) may take one down sooner.
  */
 
 export interface MediaLimits {
@@ -146,6 +146,10 @@ export interface SharedMedia {
   views: number;
   createdAt: number;
   expiresAt: number;
+  /** The storage backend holding the files (storage.ts). */
+  store: string;
+  /** Bytes of a clip's first frame, kept next to it. */
+  posterSize: number;
 }
 
 class MediaStore {
@@ -160,13 +164,16 @@ CREATE TABLE IF NOT EXISTS shared_media (
   title TEXT NOT NULL DEFAULT '', views INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS shared_media_owner ON shared_media(owner);
 CREATE INDEX IF NOT EXISTS shared_media_expires ON shared_media(expires_at);`);
+    // where the files are: rows from before storage backends are on the server's disk
+    addColumn(sql, 'shared_media', 'store', "TEXT NOT NULL DEFAULT 'local'");
+    addColumn(sql, 'shared_media', 'poster_size', 'INTEGER NOT NULL DEFAULT 0');
   }
 
-  private static readonly COLUMNS = 'id, owner, kind, type, size, width, height, frames, duration_ms AS durationMs, title, views, created_at AS createdAt, expires_at AS expiresAt';
+  private static readonly COLUMNS = 'id, owner, kind, type, size, width, height, frames, duration_ms AS durationMs, title, views, created_at AS createdAt, expires_at AS expiresAt, store, poster_size AS posterSize';
 
   add(m: Omit<SharedMedia, 'views'>) {
-    this.sql.prepare('INSERT INTO shared_media (id, owner, kind, type, size, width, height, frames, duration_ms, title, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(m.id, m.owner, m.kind, m.type, m.size, m.width, m.height, m.frames, m.durationMs, m.title, m.createdAt, m.expiresAt);
+    this.sql.prepare('INSERT INTO shared_media (id, owner, kind, type, size, width, height, frames, duration_ms, title, created_at, expires_at, store, poster_size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(m.id, m.owner, m.kind, m.type, m.size, m.width, m.height, m.frames, m.durationMs, m.title, m.createdAt, m.expiresAt, m.store, m.posterSize);
   }
   /** One link, while it works. */
   get(id: string, now = Date.now()): SharedMedia | undefined {
@@ -187,19 +194,38 @@ CREATE INDEX IF NOT EXISTS shared_media_expires ON shared_media(expires_at);`);
   remove(id: string) {
     this.sql.prepare('DELETE FROM shared_media WHERE id = ?').run(id);
   }
-  expired(now: number): string[] {
-    return (this.sql.prepare('SELECT id FROM shared_media WHERE expires_at <= ?').all(now) as { id: string }[]).map((r) => r.id);
+  expired(now: number): { id: string; kind: MediaKind; store: string }[] {
+    return this.sql.prepare('SELECT id, kind, store FROM shared_media WHERE expires_at <= ?').all(now) as { id: string; kind: MediaKind; store: string }[];
   }
-  allIds(): Set<string> {
-    return new Set((this.sql.prepare('SELECT id FROM shared_media').all() as { id: string }[]).map((r) => r.id));
+  /** "<store>:<id>" of every row, for the cleanup of files no row points at. */
+  allKeys(): Set<string> {
+    return new Set((this.sql.prepare('SELECT store, id FROM shared_media').all() as { store: string; id: string }[]).map((r) => `${r.store}:${r.id}`));
+  }
+
+  // what the storage needs to know (storage.ts)
+  usage() {
+    return this.sql.prepare('SELECT store, kind, COUNT(*) AS files, SUM(size + poster_size) AS bytes FROM shared_media GROUP BY store, kind').all() as { store: string; kind: string; files: number; bytes: number }[];
+  }
+  owners() {
+    return this.sql.prepare('SELECT owner, COUNT(*) AS files, SUM(size + poster_size) AS bytes FROM shared_media GROUP BY owner').all() as { owner: string; files: number; bytes: number }[];
+  }
+  held(store: string) {
+    return this.sql.prepare('SELECT id, kind, size + poster_size AS bytes FROM shared_media WHERE store = ?').all(store) as { id: string; kind: MediaKind; bytes: number }[];
+  }
+  relocate(id: string, from: string, to: string): boolean {
+    return Number(this.sql.prepare('UPDATE shared_media SET store = ? WHERE id = ? AND store = ?').run(to, id, from).changes) > 0;
   }
 }
+
+/** The objects of one link: the file, and a clip's first frame. */
+const keysOf = (id: string, kind: MediaKind) => (kind === 'clip' ? [`media/${id}`, `media/${id}.poster.jpg`] : [`media/${id}`]);
 
 // ---------- routes ----------
 
 export interface MediaContext {
   sql: DatabaseSync;
-  dir: string;
+  /** Where the files go (storage.ts). */
+  storage: Storage;
   /** The site's files (web/), for the page with the preview; without it there is no page. */
   webDir?: string;
   /** The server's public address, for the absolute links a preview needs. */
@@ -232,11 +258,15 @@ const clock = (ms: number) => {
 export function mediaRoutes(ctx: MediaContext) {
   const store = new MediaStore(ctx.sql);
   const limits = { ...MEDIA_LIMITS, ...ctx.limits };
-  mkdirSync(ctx.dir, { recursive: true });
-  const fileOf = (id: string) => path.join(ctx.dir, id);
-  const posterOf = (id: string) => path.join(ctx.dir, `${id}.poster.jpg`);
-  /** What the page and the launcher see: the owner's id stays here, their handle is shown. */
-  const view = ({ owner, ...m }: SharedMedia) => ({ ...m, ownerHandle: store.handleOf(owner), url: `/media/${m.id}` });
+  const { storage } = ctx;
+  storage.register({
+    usage: () => store.usage(),
+    owners: () => store.owners(),
+    held: (from) => store.held(from).map((m) => ({ ref: m.id, keys: keysOf(m.id, m.kind), bytes: m.bytes })),
+    relocate: (id, from, to) => store.relocate(id, from, to),
+  });
+  /** What the page and the launcher see: the owner's id stays here, their handle is shown; where the files are is not theirs to know. */
+  const view = ({ owner, store: _store, posterSize: _poster, ...m }: SharedMedia) => ({ ...m, ownerHandle: store.handleOf(owner), url: `/media/${m.id}` });
   const optionalUser = (req: http.IncomingMessage) => {
     if (!req.headers.authorization) return '';
     try {
@@ -262,10 +292,7 @@ export function mediaRoutes(ctx: MediaContext) {
     return Buffer.concat(chunks);
   }
 
-  async function removeFiles(id: string) {
-    await rm(fileOf(id), { force: true });
-    await rm(posterOf(id), { force: true });
-  }
+  const removeFiles = (m: { id: string; kind: MediaKind; store: string }) => storage.remove(m.store, keysOf(m.id, m.kind));
 
   const routes: [string, RegExp, Handler][] = [
     ['POST', /^\/v1\/media$/, async (req, _p, url) => {
@@ -285,15 +312,15 @@ export function mediaRoutes(ctx: MediaContext) {
       let id: string;
       do id = randomBytes(8).toString('base64url').replace(/[-_]/g, '').padEnd(10, 'x').slice(0, 10);
       while (store.exists(id));
-      // written aside and moved in, so a half-written file is never served
-      await writeFile(`${fileOf(id)}.part`, data);
-      await rename(`${fileOf(id)}.part`, fileOf(id));
-      if (info.poster) await writeFile(posterOf(id), info.poster);
       const now = Date.now();
-      store.add({
+      // on a backend with room (storage.ts); the row is saved before that room is let go
+      const objects = [{ key: `media/${id}`, data, type: info.type }];
+      if (info.poster) objects.push({ key: `media/${id}.poster.jpg`, data: info.poster, type: 'image/jpeg' });
+      await storage.place(objects, (where) => store.add({
         id, owner: me, kind: info.kind, type: info.type, size: data.length, width: info.width, height: info.height, frames: info.frames,
         durationMs: info.durationMs, title: cleanTitle(url.searchParams.get('title')), createdAt: now, expiresAt: now + limits.days * 86_400_000,
-      });
+        store: where, posterSize: info.poster?.length ?? 0,
+      }));
       return { media: view(store.get(id)!) };
     }],
     // the player's own links, with what is left of the quota
@@ -316,7 +343,7 @@ export function mediaRoutes(ctx: MediaContext) {
       const admin = ctx.isAdmin(me);
       if (!m || (m.owner !== me && !admin)) ctx.fail(404, 'not_found');
       store.remove(m.id);
-      await removeFiles(m.id);
+      await removeFiles(m);
       if (m.owner !== me) ctx.audit(me, 'media_remove', m.id, m.title);
       return { ok: true };
     }],
@@ -386,14 +413,13 @@ export function mediaRoutes(ctx: MediaContext) {
     }
 
     const poster = file![2] === 'poster';
+    if (!m) return answer(404, 'not_found');
     // a picture is its own poster
-    const source = m && (poster && m.kind === 'clip' ? posterOf(m.id) : fileOf(m.id));
-    const size = source && (await stat(source).then((s) => s.size, () => undefined));
-    if (!m || !source || size === undefined) return answer(404, 'not_found');
+    const key = poster && m.kind === 'clip' ? `media/${m.id}.poster.jpg` : `media/${m.id}`;
     const ext = m.kind === 'clip' ? 'avi' : m.type === 'image/png' ? 'png' : 'jpg';
-    res.writeHead(200, {
+    // from wherever the row says, through this server (never a link to a bucket); a clip can be read in parts
+    const sent = await sendObject(req, res, storage.backend(m.store), key, {
       'Content-Type': poster && m.kind === 'clip' ? 'image/jpeg' : m.type,
-      'Content-Length': size,
       // the content of a link never changes; a deleted one may linger in caches for this long
       'Cache-Control': 'public, max-age=3600',
       'Content-Disposition': `${url.searchParams.has('download') ? 'attachment' : 'inline'}; filename="slashclient-${m.id}.${poster && m.kind === 'clip' ? 'jpg' : ext}"`,
@@ -401,26 +427,19 @@ export function mediaRoutes(ctx: MediaContext) {
       // a player's upload is never a page that runs anything
       'Content-Security-Policy': "default-src 'none'; sandbox",
       'Access-Control-Allow-Origin': '*',
-    });
-    if (req.method === 'HEAD') res.end();
-    else createReadStream(source).on('error', () => res.destroy()).pipe(res);
-    return true;
+    }, { ranges: true });
+    return sent || answer(404, 'not_found');
   }
 
   /** Drops links past their time, with their files, and files left by deleted accounts (their rows went with them). */
   async function cleanup(now = Date.now()) {
-    for (const id of store.expired(now)) {
-      store.remove(id);
-      await removeFiles(id);
+    for (const m of store.expired(now)) {
+      store.remove(m.id);
+      await removeFiles(m);
     }
-    const known = store.allIds();
-    for (const name of await readdir(ctx.dir).catch(() => [] as string[])) {
-      const id = name.slice(0, 10);
-      if (known.has(id)) continue;
-      // an upload being written right now has no row yet
-      const at = await stat(path.join(ctx.dir, name)).then((s) => s.mtimeMs, () => now);
-      if (now - at > 3_600_000) await rm(path.join(ctx.dir, name), { force: true });
-    }
+    // on every backend; a file counts as known only where its row says it is (a move may leave a copy behind)
+    const known = store.allKeys();
+    await storage.sweep('media', (where, name) => known.has(`${where}:${name.slice(0, 10)}`), now);
   }
 
   return { routes, serve, cleanup, limits };

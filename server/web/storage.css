@@ -1,0 +1,27 @@
+/* The admin panel's "Miejsce na pliki" (adminStorage.js). */
+.st-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; margin-bottom: 16px; }
+.st-card { display: flex; flex-direction: column; gap: 10px; }
+.st-card.off { opacity: .7; }
+.st-card h3 { font-size: 17px; }
+.st-where { overflow-wrap: anywhere; }
+.st-problem { color: #fca5a5; margin: 0; }
+.st-actions select { height: 40px; }
+.st-meter { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+.st-meter div { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #1d4ed8, #60a5fa); }
+.st-meter.gold div { background: linear-gradient(90deg, #ca8a04, var(--gold)); }
+.st-meter.red div { background: linear-gradient(90deg, #b91c1c, var(--danger)); }
+.stat .st-meter { margin: 8px 0 4px; }
+.stat em.muted { color: var(--text-2); }
+.st-move { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.st-warn { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; border-color: rgba(250, 204, 21, .35); }
+.st-warn i { color: var(--gold); margin-top: 3px; }
+.st-form, .st-fields { display: flex; flex-direction: column; gap: 14px; }
+.st-field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.st-field > span { color: var(--text-2); }
+.st-field input[type=number], .st-field input[type=password] {
+  height: 40px; padding: 0 12px; color: var(--text); background: rgba(0, 0, 0, .25); border: 1px solid var(--border);
+  border-radius: var(--btn-radius); font: 14px "Outfit", sans-serif; outline: none; min-width: 0;
+}
+@media (max-width: 720px) {
+  .st-list { grid-template-columns: 1fr; }
+}
