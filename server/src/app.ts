@@ -14,6 +14,7 @@ import { RequestLog, clientOf, maskIp, routeOf } from './requests.ts';
 import { serveWeb } from './web.ts';
 import { createDownloads, isDownloadOs } from './downloads.ts';
 import { createCurseForge } from './curseforge.ts';
+import { createAchievements, hintFor, TICK_MS } from './achievements.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -313,6 +314,23 @@ export function createApp(cfg: Config) {
     },
   });
 
+  // achievements: play time from what this server sees (a launcher connected, its game reporting, in a world)
+  const achievements = createAchievements({
+    sql: db.sql, push, authed, areFriends: (a, b) => db.areFriends(a, b),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+    playing: (now) => {
+      const out = new Map<string, string | undefined>();
+      for (const l of linked.values()) {
+        const a = presences.get(l.user)?.activity;
+        if (now - l.at >= IN_GAME_TTL_MS || !sockets.get(l.user)?.size || (a?.kind !== 'singleplayer' && a?.kind !== 'server')) continue;
+        out.set(l.user, a.kind === 'server' ? a.server : undefined);
+      }
+      return out;
+    },
+  });
+
   const limitReports = rateLimiter(6);
   const tracker = trackerRoutes({
     db, authed, isAdmin, body, clientIp, limit: limitReports, dir: path.join(path.dirname(cfg.dbFile), 'logs'),
@@ -345,6 +363,8 @@ export function createApp(cfg: Config) {
       const items = ITEMS.filter((i) => (capeSetting(settings, i.id).enabled || badge === 'admin') && known(i)).map((i) => ({
         id: i.id, slot: i.slot, name: i.name, rank: i.rank, frames: frames(i),
         exclusive: capeSetting(settings, i.id).exclusive, available: mayWear(settings, granted, i.id, i.slot, badge),
+        // earned with an achievement: which one, and how to get it
+        ...(i.achievement ? { achievement: i.achievement, ...hintFor(i.achievement) } : {}),
       }));
       return {
         // the launcher before 0.8 knows capes only
@@ -523,6 +543,8 @@ export function createApp(cfg: Config) {
       // they already asked us: that is a yes from both sides
       if (db.hasRequest(other.id, me)) {
         db.addFriendship(me, other.id);
+        achievements.check(me);
+        achievements.check(other.id);
         push(other.id, { type: 'friends' });
         broadcastPresence(me);
         broadcastPresence(other.id);
@@ -536,6 +558,8 @@ export function createApp(cfg: Config) {
       const me = authed(req);
       if (!db.hasRequest(from, me)) throw new HttpError(404, 'not_found');
       db.addFriendship(me, from);
+      achievements.check(me);
+      achievements.check(from);
       push(from, { type: 'friends', accepted: db.user(me) });
       broadcastPresence(me);
       broadcastPresence(from);
@@ -672,6 +696,7 @@ export function createApp(cfg: Config) {
       const message = db.addMessage(me, other, text.trim());
       push(other, { type: 'message', message });
       push(me, { type: 'message', message }); // the player's other launchers
+      achievements.check(me);
       return { message };
     }],
     // "join me": a server address (and the game version) as a message with a Join button
@@ -695,6 +720,7 @@ export function createApp(cfg: Config) {
       return { ok: true };
     }],
     ...partners.routes,
+    ...achievements.routes,
     ...tracker.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins,
@@ -948,6 +974,8 @@ export function createApp(cfg: Config) {
         if (presence) presences.set(me, presence);
         ws.send(JSON.stringify({ type: 'ready', me: meWithProviders(me) }));
         if (first || presence) broadcastPresence(me);
+        // achievements reached before they existed (friends, messages) come with the first connection
+        achievements.check(me);
         return;
       }
       // a connection that floods (presence or typing many times a second) is only ignored, friends are not spammed
@@ -1062,13 +1090,17 @@ export function createApp(cfg: Config) {
     for (const [uuid, at] of inGame) if (Date.now() - at > IN_GAME_TTL_MS) inGame.delete(uuid);
     for (const [uuid, l] of linked) if (Date.now() - l.at > IN_GAME_TTL_MS) linked.delete(uuid);
   }, 30_000);
+  const playTick = setInterval(() => achievements.tick(), TICK_MS);
   // shared logs past their time, once an hour
   const logCleanup = setInterval(() => void tracker.cleanup().catch((err) => console.error('logi:', (err as Error).message)), 3_600_000);
 
   return {
     server,
+    /** For tests: play-time ticks with a chosen clock. */
+    achievements,
     close: () => new Promise<void>((resolve) => {
       clearInterval(heartbeat);
+      clearInterval(playTick);
       clearInterval(logCleanup);
       for (const ws of wss.clients) ws.terminate();
       for (const ws of lanWss.clients) ws.terminate();

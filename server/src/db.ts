@@ -153,6 +153,11 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
     this.db.close();
   }
 
+  /** The connection itself, for stores kept in files of their own (achievements.ts). */
+  get sql(): DatabaseSync {
+    return this.db;
+  }
+
   // ---- players and sessions ----
 
   /**

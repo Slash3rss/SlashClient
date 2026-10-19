@@ -285,11 +285,43 @@ def design(cape):
             d.ellipse([cx - 4, cy - 2, cx + 4, cy + 2], fill=(16, 185, 129, 255))
             d.line([(cx - 4, cy), (cx + 4, cy)], fill=(6, 95, 70, 255))
         return border(img, '#059669')
+    if cape == 'veteran':
+        # earned with 100 hours played (the "Weteran" achievement): gold rank chevrons under a star
+        img = gradient('#1f2937', '#030712')
+        d = ImageDraw.Draw(img)
+        gold, shade = hexrgb('#fbbf24') + (255,), hexrgb('#92400e') + (255,)
+        cx = W / 2
+        star = [(cx + math.cos(math.pi / 2 + i * math.pi / 5) * (7 if i % 2 == 0 else 3), H * 0.2 - math.sin(math.pi / 2 + i * math.pi / 5) * (7 if i % 2 == 0 else 3)) for i in range(10)]
+        d.polygon(star, fill=gold, outline=shade)
+        for i in range(3):
+            y = H * 0.42 + i * 9
+            d.polygon([(4, y), (cx, y + 8), (W - 4, y), (W - 4, y + 5), (cx, y + 13), (4, y + 5)], fill=gold)
+            d.line([(4, y + 5), (cx, y + 13), (W - 4, y + 5)], fill=shade, width=1)
+        return border(img, '#fbbf24')
+    if cape == 'streak30':
+        # earned with a 30-day play streak ("Seria 30 dni"): a flame with 30 in it
+        img = gradient('#450a0a', '#0c0a09')
+        d = ImageDraw.Draw(img)
+        cx = W / 2
+        outer = [(cx, H * 0.08), (cx + 9, H * 0.3), (cx + 15, H * 0.52), (cx + 13, H * 0.7), (cx, H * 0.84), (cx - 13, H * 0.7), (cx - 15, H * 0.52), (cx - 9, H * 0.3)]
+        inner = [(cx, H * 0.3), (cx + 6, H * 0.46), (cx + 9, H * 0.6), (cx + 7, H * 0.72), (cx, H * 0.79), (cx - 7, H * 0.72), (cx - 9, H * 0.6), (cx - 6, H * 0.46)]
+        d.polygon(outer, fill=(249, 115, 22, 255))
+        d.polygon(inner, fill=(253, 224, 71, 255))
+        # "30" in a 3x5 pixel font, 2 px per dot
+        digits = {'3': ['###', '..#', '.##', '..#', '###'], '0': ['###', '#.#', '#.#', '#.#', '###']}
+        x0, y0 = cx - 7, H * 0.55
+        for n, ch in enumerate('30'):
+            for r, row in enumerate(digits[ch]):
+                for c, dot in enumerate(row):
+                    if dot == '#':
+                        x, y = x0 + n * 8 + c * 2, y0 + r * 2
+                        d.rectangle([x, y, x + 1, y + 1], fill=(124, 45, 18, 255))
+        return border(img, '#f97316')
     raise ValueError(cape)
 
 
 CAPES = ['slash', 'ocean', 'ember', 'forest', 'galaxy', 'rose', 'gold', 'mono', 'sakura', 'night', 'rainbow', 'ice', 'toxic', 'checker',
-         'lava', 'desert', 'cyber', 'honey', 'mint']
+         'lava', 'desert', 'cyber', 'honey', 'mint', 'veteran', 'streak30']
 
 
 def vanilla_wing():
