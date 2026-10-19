@@ -10,6 +10,7 @@ import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, framesFor, knownT
 import { adminRoutes } from './admin.ts';
 import { partnerRoutes } from './partners.ts';
 import { trackerRoutes } from './tracker.ts';
+import { sharingRoutes } from './sharing.ts';
 import { RequestLog, clientOf, maskIp, routeOf } from './requests.ts';
 import { serveWeb } from './web.ts';
 import { createDownloads, isDownloadOs } from './downloads.ts';
@@ -316,6 +317,14 @@ export function createApp(cfg: Config) {
   const limitReports = rateLimiter(6);
   const tracker = trackerRoutes({
     db, authed, isAdmin, body, clientIp, limit: limitReports, dir: path.join(path.dirname(cfg.dbFile), 'logs'),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  // waypoints and parties shared with friends (sharing.ts)
+  const sharing = sharingRoutes({
+    db, authed, body, push, limitWaypoints: rateLimiter(20), limitParties: rateLimiter(6),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -696,6 +705,7 @@ export function createApp(cfg: Config) {
     }],
     ...partners.routes,
     ...tracker.routes,
+    ...sharing.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins,
       fail: (status, code) => {
