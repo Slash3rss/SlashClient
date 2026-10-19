@@ -155,6 +155,7 @@
 	"slashclient-hud.toggled": "(toggled)",
 	"slashclient-hud.chat.all": "All",
 	"slashclient-hud.chat.tabs": "Chat tabs",
+	"slashclient-hud.chat.window.resize": "Drag to resize the window",
 	"slashclient-hud.chat.windowsOnly": "Pulled-out tabs only in their windows (not in \"All\")",
 	"slashclient-hud.chat.name": "Name",
 	"slashclient-hud.chat.patterns": "What to catch",

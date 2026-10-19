@@ -24,6 +24,8 @@ public final class ChatWindows {
 	private ChatWindows() {}
 
 	static final int WIDTH = 210, LINES = 8, TITLE = 13, LINE_H = 9;
+	/** How small and how large a window can be dragged by its corner. */
+	static final int MIN_WIDTH = 120, MAX_WIDTH = 420, MIN_LINES = 3, MAX_LINES = 20, GRIP = 7;
 	private static final long SHOW_MS = 10_000;
 	private static final int KEEP = 100;
 
@@ -70,16 +72,32 @@ public final class ChatWindows {
 		return Math.round(WIDTH * scale);
 	}
 
+	/** The window's width before its scale (the usual one until it is resized). */
+	static int cols(HudConfig.ChatTab tab) {
+		return tab.windowWidth > 0 ? Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, tab.windowWidth)) : WIDTH;
+	}
+
+	/** How many lines the window shows. */
+	static int rows(HudConfig.ChatTab tab) {
+		return tab.windowLines > 0 ? Math.max(MIN_LINES, Math.min(MAX_LINES, tab.windowLines)) : LINES;
+	}
+
+	static int width(HudConfig.ChatTab tab) {
+		return Math.round(cols(tab) * tab.window.scale());
+	}
+
+	static int height(HudConfig.ChatTab tab) {
+		return Math.round((TITLE + rows(tab) * LINE_H + 5) * tab.window.scale());
+	}
+
 	/** Where a window is on a screen of this size: its anchor plus offset, kept inside. */
 	static int[] at(HudConfig.ChatTab tab, int sw, int sh) {
-		float s = tab.window.scale();
-		return SlashHud.position(tab.window, width(s), height(s), sw, sh);
+		return SlashHud.position(tab.window, width(tab), height(tab), sw, sh);
 	}
 
 	/** Sets the window's place from where its top left corner should go (kept relative to the screen size). */
 	static void moveTo(HudConfig.ChatTab tab, int x, int y, int sw, int sh) {
-		float s = tab.window.scale();
-		int w = width(s), h = height(s);
+		int w = width(tab), h = height(tab);
 		tab.window.ax = sw > w ? Math.max(0, Math.min(1, x / (float) (sw - w))) : 0;
 		tab.window.ay = sh > h ? Math.max(0, Math.min(1, y / (float) (sh - h))) : 0;
 		tab.window.dx = 0;
@@ -105,7 +123,7 @@ public final class ChatWindows {
 
 	private static void drawWindow(GuiGraphicsExtractor g, Minecraft mc, HudConfig.ChatTab tab, boolean open, long now) {
 		var font = mc.font;
-		int w = WIDTH, h = TITLE + LINES * LINE_H + 5;
+		int w = cols(tab), rows = rows(tab), h = TITLE + rows * LINE_H + 5;
 		// the newest lines that fit, broken to the window's width, oldest first
 		List<FormattedCharSequence> shown = new ArrayList<>();
 		List<Float> alpha = new ArrayList<>();
@@ -113,13 +131,13 @@ public final class ChatWindows {
 		if (!lines.containsKey(tab.name)) backfill(tab);
 		ArrayDeque<Line> list = lines.getOrDefault(tab.name, new ArrayDeque<>());
 		var it = list.descendingIterator();
-		while (it.hasNext() && shown.size() < LINES) {
+		while (it.hasNext() && shown.size() < rows) {
 			Line line = it.next();
 			long age = now - line.at();
 			if (!open && age > SHOW_MS) break;
 			float a = open ? 1f : Math.min(1f, (SHOW_MS - age) / 1000f);
 			List<FormattedCharSequence> parts = font.split(line.text(), w - 10);
-			for (int i = parts.size() - 1; i >= 0 && shown.size() < LINES; i--) {
+			for (int i = parts.size() - 1; i >= 0 && shown.size() < rows; i--) {
 				shown.add(0, parts.get(i));
 				alpha.add(0, a);
 			}
@@ -127,7 +145,7 @@ public final class ChatWindows {
 		if (!open && shown.isEmpty()) return;
 
 		int n = shown.size();
-		int y = open ? TITLE + 2 + (LINES - n) * LINE_H : h - 3 - n * LINE_H;
+		int y = open ? TITLE + 2 + (rows - n) * LINE_H : h - 3 - n * LINE_H;
 		if (open) {
 			Ui.round(g, 0, 0, w, h, 6, 0xC00B0F18);
 			Ui.roundOutline(g, 0, 0, w, h, 6, Ui.BORDER);
@@ -147,6 +165,11 @@ public final class ChatWindows {
 			Component empty = Ui.tr("slashclient-hud.chat.window.empty");
 			Ui.centered(g, Ui.fit(empty, w - 12), w / 2, TITLE + (h - TITLE) / 2 - 4, Ui.MUTED);
 		}
+		if (open) {
+			// the corner to drag for another size: three short diagonal steps
+			int c = 0x99FFFFFF;
+			for (int i = 0; i < 3; i++) g.fill(w - 3 - i * 2, h - 3, w - 2, h - 2 - i * 2, c);
+		}
 	}
 
 	/** The open chat: a handle over each window's title to drag it, and a button to dock it back. */
@@ -154,7 +177,7 @@ public final class ChatWindows {
 		for (HudConfig.ChatTab tab : SlashHud.config.chatTabs) {
 			if (tab.window == null) continue;
 			int[] p = at(tab, sw, sh);
-			int w = width(tab.window.scale()), th = Math.round(TITLE * tab.window.scale());
+			int w = width(tab), th = Math.round(TITLE * tab.window.scale());
 			Button dock = new ChatTabButton(p[0] + w - 15, p[1] + 1, 14, Math.max(9, th - 2), () -> Component.empty(), () -> 0, () -> false, "close", b -> {
 				tab.window = null;
 				lines.remove(tab.name);
@@ -164,8 +187,12 @@ public final class ChatWindows {
 			});
 			dock.setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.translatable("slashclient-hud.chat.window.dock")));
 			Handle handle = new Handle(tab, p[0], p[1], w - 16, th, dock, sw, sh);
+			int grip = Math.max(6, Math.round(GRIP * tab.window.scale()));
+			Resize resize = new Resize(tab, p[0] + w - grip, p[1] + height(tab) - grip, grip, handle, dock, sw, sh);
+			handle.resize = resize;
 			net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(screen).add(handle);
 			net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(screen).add(dock);
+			net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(screen).add(resize);
 		}
 	}
 
@@ -175,6 +202,8 @@ public final class ChatWindows {
 		private final Button dock;
 		private final int sw, sh;
 		private double grabX, grabY;
+		/** The corner grip, moved along with the window. */
+		Resize resize;
 
 		Handle(HudConfig.ChatTab tab, int x, int y, int w, int h, Button dock, int sw, int sh) {
 			super(x, y, w, h, Component.literal(tab.name), b -> {}, DEFAULT_NARRATION);
@@ -213,8 +242,9 @@ public final class ChatWindows {
 			int[] p = at(tab, sw, sh);
 			setX(p[0]);
 			setY(p[1]);
-			dock.setX(p[0] + width(tab.window.scale()) - 15);
+			dock.setX(p[0] + width(tab) - 15);
 			dock.setY(p[1] + 1);
+			if (resize != null) resize.follow(p);
 		}
 
 		@Override
@@ -232,6 +262,109 @@ public final class ChatWindows {
 			// the window draws itself (from the HUD); this only shows the hand cursor's place
 			if (isHovered()) Ui.round(g, getX(), getY(), getWidth(), getHeight(), 5, 0x10FFFFFF);
 		}
+	}
+
+	/** The window's bottom right corner: dragging it changes the width and how many lines it shows. */
+	static final class Resize extends Button {
+		private final HudConfig.ChatTab tab;
+		private final Handle handle;
+		private final Button dock;
+		private final int sw, sh, size;
+		private double startX, startY;
+		private int startCols, startRows, left, top;
+
+		Resize(HudConfig.ChatTab tab, int x, int y, int size, Handle handle, Button dock, int sw, int sh) {
+			super(x, y, size, size, Component.translatable("slashclient-hud.chat.window.resize"), b -> {}, DEFAULT_NARRATION);
+			this.tab = tab;
+			this.handle = handle;
+			this.dock = dock;
+			this.sw = sw;
+			this.sh = sh;
+			this.size = size;
+			setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.translatable("slashclient-hud.chat.window.resize")));
+		}
+
+		@Override
+		public net.minecraft.client.gui.ComponentPath nextFocusPath(net.minecraft.client.gui.navigation.FocusNavigationEvent event) {
+			return null;
+		}
+
+		@Override
+		//#if MC >= 1.21.9
+		public void onClick(MouseButtonEvent e, boolean doubleClick) {
+		//#else
+		//$ public void onClick(double mouseX, double mouseY) {
+		//$ 	var e = new net.minecraft.client.input.MouseButtonEvent(mouseX, mouseY, 0);
+		//$ 	boolean doubleClick = false;
+		//#endif
+			startX = e.x();
+			startY = e.y();
+			startCols = cols(tab);
+			startRows = rows(tab);
+			int[] p = at(tab, sw, sh);
+			left = p[0];
+			top = p[1];
+		}
+
+		@Override
+		//#if MC >= 1.21.9
+		protected void onDrag(MouseButtonEvent e, double dx, double dy) {
+		//#else
+		//$ protected void onDrag(double mouseX, double mouseY, double dx, double dy) {
+		//$ 	var e = new net.minecraft.client.input.MouseButtonEvent(mouseX, mouseY, 0);
+		//#endif
+			float s = tab.window.scale();
+			tab.windowWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, (int) Math.round(startCols + (e.x() - startX) / s)));
+			tab.windowLines = Math.max(MIN_LINES, Math.min(MAX_LINES, startRows + (int) Math.round((e.y() - startY) / s / LINE_H)));
+			// the top left corner stays where it was; the window grows to the right and down
+			moveTo(tab, left, top, sw, sh);
+			int[] p = at(tab, sw, sh);
+			handle.setX(p[0]);
+			handle.setY(p[1]);
+			handle.setWidth(width(tab) - 16);
+			dock.setX(p[0] + width(tab) - 15);
+			dock.setY(p[1] + 1);
+			follow(p);
+		}
+
+		/** Back to the window's corner (after it moved or changed size). */
+		void follow(int[] p) {
+			setX(p[0] + width(tab) - size);
+			setY(p[1] + height(tab) - size);
+		}
+
+		@Override
+		//#if MC >= 1.21.9
+		public void onRelease(MouseButtonEvent e) {
+		//#else
+		//$ public void onRelease(double mouseX, double mouseY) {
+		//$ 	var e = new net.minecraft.client.input.MouseButtonEvent(mouseX, mouseY, 0);
+		//#endif
+			SlashHud.config.save();
+		}
+
+		@Override
+		protected void extractContents(GuiGraphicsExtractor g, int mx, int my, float delta) {
+			// the window draws the grip itself; this only lights it up under the mouse
+			if (isHovered()) Ui.round(g, getX(), getY(), getWidth(), getHeight(), 2, 0x30FFFFFF);
+		}
+	}
+
+	/** For the test: the window's width and lines. */
+	public static String sizeOf(String name) {
+		for (HudConfig.ChatTab tab : SlashHud.config.chatTabs) if (tab.name.equals(name) && tab.window != null) return cols(tab) + "x" + rows(tab);
+		return "none";
+	}
+
+	/** For the test: the middle of a window's corner grip. */
+	public static double[] gripOf(String name, int sw, int sh) {
+		for (HudConfig.ChatTab tab : SlashHud.config.chatTabs) {
+			if (!tab.name.equals(name) || tab.window == null) continue;
+			int[] p = at(tab, sw, sh);
+			int grip = Math.max(6, Math.round(GRIP * tab.window.scale()));
+			return new double[] { p[0] + width(tab) - grip / 2.0, p[1] + height(tab) - grip / 2.0 };
+		}
+		return null;
 	}
 
 	/** For the test. */

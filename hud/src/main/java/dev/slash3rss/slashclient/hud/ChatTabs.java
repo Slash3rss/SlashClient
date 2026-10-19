@@ -56,6 +56,13 @@ public final class ChatTabs {
 			edit.setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.translatable("slashclient-hud.chat.tabs")));
 			buttons.add(edit);
 			Screens.getWidgets(screen).addAll(buttons);
+			// Esc in the middle of a drag never lets the button go: no tab stays stuck to the cursor
+			// next time, and a window moved before Esc keeps where it got to
+			dragging = -1;
+			ScreenEvents.remove(screen).register(s -> {
+				dragging = -1;
+				SlashHud.config.save();
+			});
 			// pulled-out tabs: drag them by their title, dock them back with the ×
 			ChatWindows.addHandles(screen, width, height, () -> mc.execute(() -> Compat.relayout(screen)));
 			// a tab being dragged out shows where its window will go

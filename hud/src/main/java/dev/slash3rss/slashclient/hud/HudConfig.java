@@ -84,6 +84,8 @@ public final class HudConfig {
 		public List<String> patterns = new ArrayList<>();
 		/** Pulled out of the chat: its own window there (null = a tab in the chat's row). */
 		public Placement window;
+		/** The pulled-out window's own size: its width and how many lines it shows (0 = the usual). */
+		public int windowWidth, windowLines;
 		/** Lines that match one of these stay out of the tab, even when `patterns` catch them. */
 		public List<String> excludes = new ArrayList<>();
 		public boolean regex;

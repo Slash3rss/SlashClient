@@ -286,6 +286,22 @@ public final class TestHooks {
 		return sb.toString();
 	}
 
+	/** A pulled-out chat window's width x lines ("none" when the tab is not out). */
+	public static String chatWindowSize(String tab) {
+		return ChatWindows.sizeOf(tab);
+	}
+
+	/** The middle of a pulled-out chat window's corner grip, in GUI coordinates. */
+	public static double[] chatWindowGrip(String tab) {
+		var w = net.minecraft.client.Minecraft.getInstance().getWindow();
+		return ChatWindows.gripOf(tab, w.getGuiScaledWidth(), w.getGuiScaledHeight());
+	}
+
+	/** The chat tab being dragged out of the row (-1: none). */
+	public static int chatTabDragging() {
+		return ChatTabs.dragging;
+	}
+
 	/** The setting that keeps pulled-out tabs' lines out of "All". */
 	public static void chatWindowsOnly(boolean on) {
 		SlashHud.config.chatWindowsOnly = on;

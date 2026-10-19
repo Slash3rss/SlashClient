@@ -201,6 +201,17 @@ public class HudScreenshots implements FabricClientGameTest {
 			// pulling the "PM" tab out of the row with the mouse: it becomes a window of its own
 			double[] pm = context.computeOnClient(mc -> TestHooks.chatTabCenter("PM"));
 			if (pm == null) throw new AssertionError("No PM tab in the chat");
+			// Esc in the middle of the drag: back in the chat, nothing follows the cursor and the tab is still in the row
+			context.runOnClient(mc -> TestHooks.mouse("press", pm));
+			context.runOnClient(mc -> TestHooks.mouse("drag", new double[] { pm[0] + 20, pm[1] - 40 }));
+			context.runOnClient(mc -> TestHooks.mouse("drag", new double[] { 330, 90 }));
+			if (context.computeOnClient(mc -> TestHooks.chatTabDragging()) < 0) throw new AssertionError("The PM tab was not being dragged out");
+			context.setScreen(() -> null);
+			context.waitTicks(2);
+			context.setScreen(() -> dev.slash3rss.slashclient.hud.Compat.chatScreen());
+			context.waitTicks(3);
+			if (context.computeOnClient(mc -> TestHooks.chatTabDragging()) >= 0) throw new AssertionError("After Esc mid-drag the tab is still stuck to the cursor");
+			if (!"docked".equals(context.computeOnClient(mc -> TestHooks.chatTabState("PM")))) throw new AssertionError("Esc mid-drag pulled the PM tab out");
 			context.runOnClient(mc -> TestHooks.mouse("press", pm));
 			context.runOnClient(mc -> TestHooks.mouse("drag", new double[] { pm[0] + 20, pm[1] - 40 }));
 			context.runOnClient(mc -> TestHooks.mouse("drag", new double[] { 330, 90 }));
@@ -223,6 +234,17 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.waitTicks(5);
 			if (context.computeOnClient(mc -> TestHooks.chatWindowLines("PM")) < 2) throw new AssertionError("The PM window got no lines");
 			context.takeScreenshot("chat-window-open");
+			// its corner grip: dragged right and down, the window gets wider and shows more lines
+			double[] grip = context.computeOnClient(mc -> TestHooks.chatWindowGrip("PM"));
+			if (grip == null) throw new AssertionError("The PM window has no corner grip");
+			String before = context.computeOnClient(mc -> TestHooks.chatWindowSize("PM"));
+			context.runOnClient(mc -> TestHooks.mouse("press", grip));
+			context.runOnClient(mc -> TestHooks.mouse("drag", new double[] { grip[0] + 80, grip[1] + 36 }));
+			context.runOnClient(mc -> TestHooks.mouse("release", new double[] { grip[0] + 80, grip[1] + 36 }));
+			context.waitTicks(2);
+			String after = context.computeOnClient(mc -> TestHooks.chatWindowSize("PM"));
+			if (!"210x8".equals(before) || !"290x12".equals(after)) throw new AssertionError("Resizing the PM window: " + before + " -> " + after);
+			context.takeScreenshot("chat-window-resized");
 			// in the game: the window's lines fade like the chat's; a mention shows the "@" badge
 			context.setScreen(() -> null);
 			world.getServer().runCommand("tellraw @a \"Player0 look over here!\"");
