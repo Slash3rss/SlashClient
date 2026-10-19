@@ -23,24 +23,25 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * SlashClient clothing: hats ("hat") and tops ("top") worn over the skin, made of boxes fixed to
- * the head, the body and the arms, so they turn, swing and crouch with them. The boxes and their
+ * SlashClient clothing: hats ("hat"), tops ("top"), shoes ("shoes") and things on the hands
+ * ("hands") worn over the skin, made of boxes fixed to the head, the body, the arms and the legs,
+ * so they turn, swing and crouch with them. The boxes and their
  * pictures come from scripts/make-clothing.mjs (clothing.json, textures/clothing), the same the
  * launcher's and the website's previews show.
  */
 public final class Clothing {
 	private Clothing() {}
 
-	public static final List<String> SLOTS = List.of("hat", "top");
+	public static final List<String> SLOTS = List.of("hat", "top", "shoes", "hands");
 	/** The parts of the player model a box can be fixed to, named as in the game's player model. */
-	private static final List<String> BONES = List.of("head", "body", "right_arm", "left_arm");
+	public static final List<String> BONES = List.of("head", "body", "right_arm", "left_arm", "right_leg", "left_leg");
 
 	private record Box(String bone, float[] from, float[] size, float inflate, int u, int v) {}
 	private record Item(String slot, List<Box> wide, List<Box> slim) {}
 
 	private static final Map<String, Item> ITEMS = new LinkedHashMap<>();
 	private static int texWidth = 64, texHeight = 64;
-	static final List<String> HATS, TOPS;
+	static final List<String> HATS, TOPS, SHOES, HANDS;
 
 	static {
 		try (InputStream in = Clothing.class.getResourceAsStream("/assets/" + SlashHud.ID + "/clothing.json")) {
@@ -67,6 +68,8 @@ public final class Clothing {
 		}
 		HATS = ids("hat");
 		TOPS = ids("top");
+		SHOES = ids("shoes");
+		HANDS = ids("hands");
 	}
 
 	private static List<String> ids(String slot) {
@@ -110,9 +113,14 @@ public final class Clothing {
 
 	/**
 	 * Whether real gear hides it: a hat under anything worn on the head (a helmet, a pumpkin, a
-	 * skull), a top under a chestplate (an elytra leaves it).
+	 * skull), a top under a chestplate (an elytra leaves it), shoes under boots; nothing hides the hands' items.
 	 */
-	public static boolean covered(String slot, ItemStack head, ItemStack chest) {
-		return slot.equals("hat") ? !head.isEmpty() : !chest.isEmpty() && !chest.is(Items.ELYTRA);
+	public static boolean covered(String slot, ItemStack head, ItemStack chest, ItemStack feet) {
+		return switch (slot) {
+			case "hat" -> !head.isEmpty();
+			case "top" -> !chest.isEmpty() && !chest.is(Items.ELYTRA);
+			case "shoes" -> !feet.isEmpty();
+			default -> false;
+		};
 	}
 }

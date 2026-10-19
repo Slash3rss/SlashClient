@@ -33,7 +33,7 @@ public final class FigureParticles {
 
 	private final List<P> live = new ArrayList<>();
 	private final Random random = new Random();
-	private float auraDue, trailDue, time;
+	private float auraDue, trailDue, rocketDue, time, dt;
 	private long last;
 
 	private static String[] frames(String name, int from, int to) {
@@ -53,6 +53,7 @@ public final class FigureParticles {
 		long now = System.nanoTime();
 		float dt = last == 0 ? 0 : Math.min(0.1f, (now - last) / 1e9f);
 		last = now;
+		this.dt = dt;
 		time += dt;
 		for (int i = live.size() - 1; i >= 0; i--) {
 			P p = live.get(i);
@@ -80,6 +81,22 @@ public final class FigureParticles {
 				trail(trail);
 			}
 		} else trailDue = 0;
+	}
+
+	private static final Style ROCKET_FLAME = style("flame", 0xFFFFFFFF, 0.07f);
+
+	/** The rocket boots' little flames, puffed down from under both heels (once a frame, after `tick`). */
+	public void rocket(boolean on) {
+		if (!on) {
+			rocketDue = 0;
+			return;
+		}
+		rocketDue += dt * 30;
+		while (rocketDue >= 1) {
+			rocketDue--;
+			float side = random.nextBoolean() ? 0.12f : -0.12f;
+			add(ROCKET_FLAME, side + spread(0.06f), 0.08f, -0.17f + spread(0.04f), spread(0.1f), -0.45f, -0.1f, 0.3f);
+		}
 	}
 
 	public void clear() {

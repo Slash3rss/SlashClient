@@ -625,6 +625,26 @@ public final class TestHooks {
 		net.minecraft.client.Minecraft.getInstance().options.keyShift.setDown(on);
 	}
 
+	/** The shoes and the hands' items this mod can draw: "shoes|hands". */
+	public static String limbWear() {
+		return String.join(",", Clothing.SHOES) + "|" + String.join(",", Clothing.HANDS);
+	}
+
+	/** Freelook allowed (on) or not, as in the HUD settings. */
+	public static void freelookAllowed(boolean on) {
+		SlashHud.config.freelook = on;
+	}
+
+	/** While freelook is held: the camera turned round the player by this many degrees (a view from the side). */
+	public static void freelookYaw(float degrees) {
+		net.minecraft.client.Minecraft.getInstance().player.turn(degrees / 0.15, 0);
+	}
+
+	/** Our own player looks this many degrees down (positive) or up. */
+	public static void pitch(float degrees) {
+		net.minecraft.client.Minecraft.getInstance().player.setXRot(degrees);
+	}
+
 	/** The clothing this mod can draw: "hats|tops". */
 	public static String clothing() {
 		return String.join(",", Clothing.HATS) + "|" + String.join(",", Clothing.TOPS);
@@ -671,6 +691,20 @@ public final class TestHooks {
 	public static void noTestSkin() {
 		Cosmetics.testSkin = null;
 		Cosmetics.testSkinFor = null;
+		Cosmetics.testSkinSlim = false;
+	}
+
+	/** Our own player in the game's own Alex skin, with slim or wide arms (textures/entity/player/<slim|wide>/alex). */
+	public static void alexSkin(boolean slim) {
+		String path = "entity/player/" + (slim ? "slim" : "wide") + "/alex";
+		//#if MC >= 1.21.9
+		Cosmetics.testSkin = new net.minecraft.core.ClientAsset.ResourceTexture(net.minecraft.resources.Identifier.withDefaultNamespace(path),
+			net.minecraft.resources.Identifier.withDefaultNamespace("textures/" + path + ".png"));
+		//#else
+		//$ Cosmetics.testSkin = net.minecraft.resources.Identifier.withDefaultNamespace("textures/" + path + ".png");
+		//#endif
+		Cosmetics.testSkinSlim = slim;
+		Cosmetics.testSkinFor = net.minecraft.client.Minecraft.getInstance().getGameProfile().id();
 	}
 
 	/** The open cosmetics menu's figure wearing this in a slot (as if the server said so), and what it shows from now. */
@@ -918,7 +952,7 @@ public final class TestHooks {
 	/** Everything a player shows, slot=item sorted ("" for nothing), for the test to compare. */
 	public static String wornAll(java.util.UUID id) {
 		var out = new java.util.TreeMap<String, String>();
-		for (String slot : java.util.List.of("cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill")) {
+		for (String slot : java.util.List.of("cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "shoes", "hands")) {
 			String item = Cosmetics.worn(id, slot);
 			if (item != null) out.put(slot, item);
 		}

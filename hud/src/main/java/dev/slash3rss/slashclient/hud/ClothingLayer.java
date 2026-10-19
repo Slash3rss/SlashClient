@@ -32,7 +32,7 @@
 //$ 		PlayerModel<AbstractClientPlayer> parent = getParentModel();
 //$ 		for (String slot : Clothing.SLOTS) {
 //$ 			String item = Cosmetics.worn(player.getUUID(), slot);
-//$ 			if (item == null || Clothing.covered(slot, player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST))) continue;
+//$ 			if (item == null || Clothing.covered(slot, player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST), player.getItemBySlot(EquipmentSlot.FEET))) continue;
 			//#if MC >= 1.20.2
 			//$ boolean slim = player.getSkin().model() == net.minecraft.client.resources.PlayerSkin.Model.SLIM;
 			//#else
@@ -43,6 +43,8 @@
 //$ 			root.getChild("body").copyFrom(parent.body);
 //$ 			root.getChild("right_arm").copyFrom(parent.rightArm);
 //$ 			root.getChild("left_arm").copyFrom(parent.leftArm);
+//$ 			root.getChild("right_leg").copyFrom(parent.rightLeg);
+//$ 			root.getChild("left_leg").copyFrom(parent.leftLeg);
 //$ 			root.render(pose, buffers.getBuffer(RenderType.entityCutoutNoCull(Clothing.texture(item))), light, OverlayTexture.NO_OVERLAY);
 //$ 		}
 //$ 	}
