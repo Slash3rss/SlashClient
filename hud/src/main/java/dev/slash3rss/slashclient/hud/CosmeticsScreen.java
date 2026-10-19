@@ -158,6 +158,11 @@ public class CosmeticsScreen extends Screen {
 		dragTurn = degrees;
 	}
 
+	/** For the test: the figure's box on screen (GUI pixels: x, y, width, height; width 0 when not shown) and its turn by hand so far. */
+	float[] figureForTest() {
+		return new float[] {fx, fy, fw, fh, dragTurn};
+	}
+
 	/** For the test: another slot, as a click on its tab. */
 	void select(String s) {
 		pick(s);
@@ -321,7 +326,8 @@ public class CosmeticsScreen extends Screen {
 				figure = new dev.slash3rss.slashclient.hud.ui.SkinPreview(minecraft);
 				figure.look.turnTo(turnFor(slot));
 			}
-			fh = Math.min(height - 40, Math.min(240, (px - 24) * 2));
+			// as tall as fits, but narrow enough that open wings (about a box width to each side) stay between the screen's edge and the panel
+			fh = Math.min(height - 40, Math.min(240, px - 24));
 			fw = fh / 2;
 			fx = (px - 12 - fw) / 2;
 			fy = (height - fh) / 2;
@@ -339,8 +345,6 @@ public class CosmeticsScreen extends Screen {
 			look.elytra = slot.equals("elytra");
 			// while it is turned by hand the head does not chase the mouse
 			figure.draw(g, fx, fy, fw, fh, turning ? fx + fw / 2 : mx, turning ? fy : my);
-			Component hint = Ui.tr("slashclient-hud.cosmetics.rotate");
-			Ui.drawOnWorld(g, hint, fx + fw / 2 - Ui.width(hint) / 2, Math.min(height - 12, fy + fh + 4), Ui.MUTED);
 		}
 		Ui.panel(g, px, py, pw, ph);
 		Ui.begin("cosmetics", px, py, pw, ph);
@@ -525,8 +529,8 @@ public class CosmeticsScreen extends Screen {
 				return true;
 			}
 		}
-		// the figure (and a little round it) turns when dragged
-		if (e.button() == 0 && fw > 0 && Ui.inside(e.x(), e.y(), fx - fw / 2, fy, fw * 2, fh)) {
+		// the figure turns when dragged with the left button anywhere beside the panel (the figure has that side to itself)
+		if (e.button() == 0 && fw > 0 && e.x() < px - 6) {
 			turning = true;
 			return true;
 		}

@@ -88,6 +88,10 @@ public class SlashHud implements ClientModInitializer {
 		//$ 	if (renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer player) helper.register(new ClothingLayer(player));
 		//$ });
 		//#endif
+		// the menu figure with everything on it, drawn as one picture with depth
+		//#if MC >= 1.21.6
+		dev.slash3rss.slashclient.hud.ui.FigureRender.register();
+		//#endif
 		Badges.load();
 		// the partners (and which are pinned on top of the server list) before the list is first opened
 		PartnerServers.refresh();
