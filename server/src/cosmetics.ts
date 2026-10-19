@@ -9,8 +9,8 @@ import type { CosmeticSetting } from './db.ts';
  * A player wears one item per slot. `rank` items are for that rank only (admins may wear all);
  * any item can also be made exclusive in the admin panel and granted to chosen players.
  */
-export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill';
-export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill'];
+export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'spray';
+export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill', 'spray'];
 export type Rank = 'admin' | 'support' | 'partner' | 'friend' | 'friend_pink';
 
 export interface Item {
@@ -161,6 +161,15 @@ export const ITEMS: Item[] = [
   { id: 'coins', slot: 'kill', name: 'Złote monety', since: '0.9.14' },
   { id: 'ghost', slot: 'kill', name: 'Duch', since: '0.9.14' },
   { id: 'flamering', slot: 'kill', name: 'Krąg ognia', since: '0.9.14' },
+  // sprays: a picture the player sprays on a block with a key, seen for a minute by SlashClient players there (sprays.ts)
+  { id: 'spray_logo', slot: 'spray', name: 'SlashClient', since: '0.9.20' },
+  { id: 'spray_gg', slot: 'spray', name: 'GG', since: '0.9.20' },
+  { id: 'spray_heart', slot: 'spray', name: 'Serce', since: '0.9.20' },
+  { id: 'spray_skull', slot: 'spray', name: 'Czaszka', since: '0.9.20' },
+  { id: 'spray_lol', slot: 'spray', name: 'Śmiech', since: '0.9.20' },
+  { id: 'spray_crown', slot: 'spray', name: 'Korona', since: '0.9.20' },
+  { id: 'spray_emblem', slot: 'spray', name: 'Emblemat', since: '0.9.20' },
+  { id: 'spray_pumpkin', slot: 'spray', name: 'Dynia', since: '0.9.20' },
 ];
 
 /** Compares two versions like 0.9.1 number by number: below 0, 0 or above 0. */
