@@ -19,6 +19,8 @@ public final class FigureLook {
 	public Map<String, String> wearing;
 	/** The elytra slot shown on the back instead of the cape and the wings. */
 	public boolean elytra;
+	/** Walking on the spot pushing a prop (the prop tab): the legs swing at a walk, the wheel rolls. */
+	public boolean pushing;
 
 	final FigureParticles particles = new FigureParticles();
 	/** The turn so far, eased towards `turn`. */
@@ -46,7 +48,12 @@ public final class FigureLook {
 
 	/** The running swing now (−1…1), 0 when standing. */
 	float swing(float time) {
-		return running ? (float) Math.sin(time * 11f) : 0f;
+		return running ? (float) Math.sin(time * 11f) : pushing ? (float) Math.sin(walked(time) * 0.6662f) * 0.7f : 0f;
+	}
+
+	/** How far it has walked by now, as the game's walk animation counts it (four a block; a walk is about 17 a second). */
+	float walked(float time) {
+		return pushing ? time * 12f : 0f;
 	}
 
 	/** Moves the particles of what is worn on (aura standing, trail running); once a frame. */

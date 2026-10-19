@@ -28,7 +28,7 @@ import java.util.UUID;
  * SlashClient account (each can have a set of its own), else for the whole account.
  */
 public class CosmeticsScreen extends Screen {
-	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill"};
+	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "prop"};
 	/** Particles and pets have no picture of ours: an item that looks like them stands in. */
 	private static final Map<String, Item> ITEMS = Map.ofEntries(
 		Map.entry("hearts", Items.POPPY), Map.entry("sparks", Items.GLOWSTONE_DUST), Map.entry("snow", Items.SNOWBALL),
@@ -111,6 +111,7 @@ public class CosmeticsScreen extends Screen {
 		for (String id : Clothing.HATS) list.add(new Entry(id, "hat", id, "", true));
 		for (String id : Clothing.TOPS) list.add(new Entry(id, "top", id, "", true));
 		for (String id : KillEffects.IDS) list.add(new Entry(id, "kill", id, "", true));
+		for (String id : Props.IDS) list.add(new Entry(id, "prop", id, "", true));
 		screen.items = List.copyOf(list);
 		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf", "kill", "firework"));
 		screen.character = "test";
@@ -140,6 +141,8 @@ public class CosmeticsScreen extends Screen {
 		return switch (slot) {
 			case "cape", "wings", "elytra" -> 180;
 			case "trail" -> -90;
+			// a prop from its side, a little from the front: the wheel ahead, the grips in the hands
+			case "prop" -> 55;
 			default -> 0;
 		};
 	}
@@ -331,6 +334,13 @@ public class CosmeticsScreen extends Screen {
 			fw = fh / 2;
 			fx = (px - 12 - fw) / 2;
 			fy = (height - fh) / 2;
+			if (slot.equals("prop")) {
+				// the prop reaches out to the figure's side: a smaller figure, moved over so both fit beside the panel
+				fh = fh * 3 / 4;
+				fw = fh / 2;
+				fx = Math.max(8, (px - 12 - fw) / 2 - Math.round(0.35f * fh / 2.125f));
+				fy = (height - fh) / 2;
+			}
 			Map<String, String> set;
 			synchronized (worn) {
 				set = new HashMap<>(worn);
@@ -343,6 +353,7 @@ public class CosmeticsScreen extends Screen {
 			look.turn = turnFor(slot) + dragTurn;
 			look.running = slot.equals("trail");
 			look.elytra = slot.equals("elytra");
+			look.pushing = slot.equals("prop");
 			// while it is turned by hand the head does not chase the mouse
 			figure.draw(g, fx, fy, fw, fh, turning ? fx + fw / 2 : mx, turning ? fy : my);
 		}
@@ -455,6 +466,9 @@ public class CosmeticsScreen extends Screen {
 			case "wings", "elytra" ->
 				// the back of one wing
 				g.blit(RenderPipelines.GUI_TEXTURED, Cosmetics.textureId(e.slot(), e.id()), x + (TILE_W - 18) / 2, y + (TILE_H - 30) / 2, 136, 8, 18, 30, 48, 80, 256, 128, alpha);
+			case "prop" ->
+				// the prop seen from its side
+				g.blit(RenderPipelines.GUI_TEXTURED, Props.icon(e.id()), x + (TILE_W - 28) / 2, y + (TILE_H - 28) / 2, 0, 0, 28, 28, 64, 64, 64, 64, alpha);
 			case "hat", "top" ->
 				// a view of it from the front, a little from above
 				g.blit(RenderPipelines.GUI_TEXTURED, Clothing.icon(e.id()), x + (TILE_W - 26) / 2, y + (TILE_H - 26) / 2, 0, 0, 26, 26, 64, 64, 64, 64, alpha);

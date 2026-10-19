@@ -29,6 +29,7 @@
 		"HeldItemsMixin",
 		"ToastsMixin",
 		"PongMixin",
+		"PropArmsMixin",
 		"JoinMultiplayerScreenMixin",
 		"LegacyBossBarMixin",
 		"LegacyHudMixin",

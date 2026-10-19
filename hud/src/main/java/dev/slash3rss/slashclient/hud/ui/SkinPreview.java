@@ -162,6 +162,17 @@ public final class SkinPreview {
 	}
 	private final java.util.Map<String, Object> clothes = new java.util.HashMap<>();
 
+	/** A prop in front of the figure, its grips in the figure's hands (the arms turned to hold them), the wheel turned by `walked`. */
+	private Object propModel(String id, ModelPart figure, float walked) {
+		if (!dev.slash3rss.slashclient.hud.Props.IDS.contains(id)) return null;
+		Object model = props.computeIfAbsent(id, k -> wrap(dev.slash3rss.slashclient.hud.Props.bake(k)));
+		ModelPart right = figure.getChild("right_arm"), left = figure.getChild("left_arm");
+		right.xRot = left.xRot = dev.slash3rss.slashclient.hud.Props.hold(false);
+		dev.slash3rss.slashclient.hud.Props.place(root(model).getChild("slashclient"), (right.y + left.y) / 2, (right.z + left.z) / 2, right.xRot, 24, walked);
+		return model;
+	}
+	private final java.util.Map<String, Object> props = new java.util.HashMap<>();
+
 	private static ModelPart root(Object model) {
 		return ((net.minecraft.client.model.Model<?>) model).root();
 	}
@@ -209,6 +220,9 @@ public final class SkinPreview {
 		root.getChild("left_leg").xRot = swing;
 		if (look.running) y -= Math.round(Math.abs(swing) * h * 0.012f);
 		var self = Minecraft.getInstance().getGameProfile().id();
+		// a prop pushed in front: both hands on its grips (before the clothing copies the arms)
+		String prop = look.worn(self, "prop");
+		Object propModel = prop == null ? null : propModel(prop, root, look.walked(time));
 		dev.slash3rss.slashclient.hud.CosmeticsScreen.loadOwn(Minecraft.getInstance());
 		// the aura and the trail: the game's particle pictures, those behind the figure first
 		look.tickParticles(self);
@@ -230,8 +244,10 @@ public final class SkinPreview {
 		String pet = look.worn(self, "pet");
 		Object petModel = pet == null ? null : petModel(pet, time);
 		if (petModel != null) layer(layers, petModel, dev.slash3rss.slashclient.hud.CosmeticLayer.petTexture(pet));
+		if (propModel != null) layer(layers, propModel, dev.slash3rss.slashclient.hud.Props.texture(prop));
 		// a box round the figure's own with the same bottom middle (where its feet stand), wide and tall enough for all of it
-		int side = Math.round(w * REACH_SIDE), up = Math.round(h * REACH_UP);
+		// (a prop pushed in front reaches further)
+		int side = Math.round(w * (propModel != null ? 2.2f : REACH_SIDE)), up = Math.round(h * REACH_UP);
 		FigureRender.draw(g, layers, scale, -5, yaw, PIVOT_Y, x - side, y - up, x + w + side, y + h);
 		look.particles.draw(g, feetX, feetY, scale, yaw, true);
 	}
@@ -271,6 +287,7 @@ public final class SkinPreview {
 //$ 	private float headYaw, headPitch, bodyYaw = BODY_YAW;
 //$ 	/** Turned, running, the aura and the trail around it: see FigureLook. */
 //$ 	public final FigureLook look = new FigureLook();
+//$ 	private final java.util.Map<String, net.minecraft.client.model.geom.ModelPart> props = new java.util.HashMap<>();
 //$
 //$ 	public SkinPreview(Minecraft mc) {
 //$ 		var models = mc.getEntityModels();
@@ -302,6 +319,13 @@ public final class SkinPreview {
 //$ 		model.leftArm.xRot = -swing * 0.9f;
 //$ 		model.rightLeg.xRot = -swing;
 //$ 		model.leftLeg.xRot = swing;
+//$ 		// a prop pushed in front: both hands on its grips
+//$ 		String prop = look.worn(Minecraft.getInstance().getGameProfile().getId(), "prop");
+//$ 		net.minecraft.client.model.geom.ModelPart propRoot = prop == null || !dev.slash3rss.slashclient.hud.Props.IDS.contains(prop) ? null : props.computeIfAbsent(prop, dev.slash3rss.slashclient.hud.Props::bake);
+//$ 		if (propRoot != null) {
+//$ 			model.rightArm.xRot = model.leftArm.xRot = dev.slash3rss.slashclient.hud.Props.hold(false);
+//$ 			dev.slash3rss.slashclient.hud.Props.place(propRoot, model.rightArm.y, model.rightArm.z, model.rightArm.xRot, 24, look.walked((System.currentTimeMillis() % 3_600_000) / 1000f));
+//$ 		}
 //$ 		model.rightSleeve.copyFrom(model.rightArm);
 //$ 		model.leftSleeve.copyFrom(model.leftArm);
 //$ 		model.rightPants.copyFrom(model.rightLeg);
@@ -324,6 +348,7 @@ public final class SkinPreview {
 //$ 		pose.scale(1f, 1f, -1f);
 //$ 		pose.translate(0f, -1.5f, 0f);
 //$ 		model.renderToBuffer(pose, graphics.bufferSource().getBuffer(model.renderType(s.texture())), 15728880, OverlayTexture.NO_OVERLAY);
+//$ 		if (propRoot != null) propRoot.render(pose, graphics.bufferSource().getBuffer(net.minecraft.client.renderer.RenderType.entityCutoutNoCull(dev.slash3rss.slashclient.hud.Props.texture(prop))), 15728880, OverlayTexture.NO_OVERLAY);
 //$ 		pose.popPose();
 //$ 		graphics.flush();
 //$ 		Lighting.setupFor3DItems();
@@ -367,6 +392,7 @@ public final class SkinPreview {
 //$ 	private float headYaw, headPitch, bodyYaw = BODY_YAW;
 //$ 	/** Turned, running, the aura and the trail around it: see FigureLook. */
 //$ 	public final FigureLook look = new FigureLook();
+//$ 	private final java.util.Map<String, ModelPart> props = new java.util.HashMap<>();
 //$
 //$ 	public SkinPreview(Minecraft mc) {
 //$ 		var models = mc.getEntityModels();
@@ -421,6 +447,14 @@ public final class SkinPreview {
 //$ 		model.leftArm.xRot = -swing * 0.9f;
 //$ 		model.rightLeg.xRot = -swing;
 //$ 		model.leftLeg.xRot = swing;
+//$ 		var self = Minecraft.getInstance().getUser().getProfileId();
+//$ 		// a prop pushed in front: both hands on its grips
+//$ 		String prop = look.worn(self, "prop");
+//$ 		ModelPart propRoot = prop == null || !dev.slash3rss.slashclient.hud.Props.IDS.contains(prop) ? null : props.computeIfAbsent(prop, dev.slash3rss.slashclient.hud.Props::bake);
+//$ 		if (propRoot != null) {
+//$ 			model.rightArm.xRot = model.leftArm.xRot = dev.slash3rss.slashclient.hud.Props.hold(false);
+//$ 			dev.slash3rss.slashclient.hud.Props.place(propRoot, model.rightArm.y, model.rightArm.z, model.rightArm.xRot, 24, look.walked((System.currentTimeMillis() % 3_600_000) / 1000f));
+//$ 		}
 //$ 		model.head.yRot = (float) Math.toRadians(headYaw - bodyYaw);
 //$ 		model.head.xRot = (float) Math.toRadians(headPitch);
 //$ 		model.hat.copyFrom(model.head);
@@ -430,7 +464,6 @@ public final class SkinPreview {
 //$ 		model.leftPants.copyFrom(model.leftLeg);
 //$ 		model.rightPants.copyFrom(model.rightLeg);
 //$
-//$ 		var self = Minecraft.getInstance().getUser().getProfileId();
 //$ 		look.tickParticles(self);
 //$ 		look.particles.draw(g, x + w / 2f, y + h / 2f + scale, scale, yaw, false);
 //$ 		PoseStack pose = ((GuiGraphics) g).pose();
@@ -451,6 +484,7 @@ public final class SkinPreview {
 //$ 			pose.popPose();
 //$ 		}
 //$ 		model.renderToBuffer(pose, buffers.getBuffer(RenderType.entityTranslucent(skin)), 0xF000F0, OverlayTexture.NO_OVERLAY, 1, 1, 1, 1);
+//$ 		if (propRoot != null) propRoot.render(pose, buffers.getBuffer(RenderType.entityCutoutNoCull(dev.slash3rss.slashclient.hud.Props.texture(prop))), 0xF000F0, OverlayTexture.NO_OVERLAY);
 //$ 		g.flush();
 //$ 		Lighting.setupFor3DItems();
 //$ 		pose.popPose();
