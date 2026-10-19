@@ -21,7 +21,8 @@ public final class GameHud {
 
 	/**
 	 * Draws a part where its box was put in the editor: the point the game draws it around moved
-	 * to the same point of the box, and scaled there.
+	 * to the same point of the box, and scaled there. A part whose size is measured from what the
+	 * game shows (the scoreboard, the tab list) covers its box exactly.
 	 */
 	private static void placed(GuiGraphicsExtractor g, GameParts.Part part, Runnable draw) {
 		Minecraft mc = Minecraft.getInstance();
@@ -30,6 +31,12 @@ public final class GameHud {
 		int[] size = SlashHud.size(part, mc, p);
 		int[] at = SlashHud.position(p, size[0], size[1], sw, sh);
 		float[] box = part.boxAnchor(size[0], size[1]), screen = part.screenAnchor(sw, sh);
+		// what the game has measured fills its box: its top left corner on the box's
+		int[] drawn = part.drawn(mc, sw, sh);
+		if (drawn != null) {
+			box = new float[] { 0, 0 };
+			screen = new float[] { drawn[0], drawn[1] };
+		}
 		float scale = part.scale() * p.scale();
 		float tx = at[0] + box[0], ty = at[1] + box[1];
 		if (scale == 1f && Math.abs(tx - screen[0]) < 0.5f && Math.abs(ty - screen[1]) < 0.5f) {

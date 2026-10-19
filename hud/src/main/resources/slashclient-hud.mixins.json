@@ -36,6 +36,7 @@
 		"NametagMixin",
 		"OnlineServerEntryMixin",
 		"PauseScreenAccessor",
+		"PlayerTabOverlayAccessor",
 		"PlayerTabOverlayMixin",
 		"ScoreboardNumbersMixin",
 		"ScreenshotMixin",

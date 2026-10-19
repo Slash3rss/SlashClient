@@ -140,6 +140,13 @@ public final class TestHooks {
 		return new int[] { at[0], at[1], size[0], size[1] };
 	}
 
+	/** A server's text over and under the tab list, the header in two lines (its box grows with them). */
+	public static void tabHeader() {
+		var tab = Compat.tabList(net.minecraft.client.Minecraft.getInstance());
+		tab.setHeader(net.minecraft.network.chat.Component.literal("SlashClient\nNagłówek listy graczy, dość długi"));
+		tab.setFooter(net.minecraft.network.chat.Component.literal("Stopka"));
+	}
+
 	/** The game HUD parts changed so the screenshot shows every setting at work. */
 	public static void gameParts() {
 		HudConfig c = SlashHud.config;
