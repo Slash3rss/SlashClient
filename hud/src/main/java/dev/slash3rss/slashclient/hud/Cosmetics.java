@@ -55,8 +55,11 @@ public final class Cosmetics {
 	//$ 	"spores", "nautilus", "tears");
 	//#endif
 	static final List<String> PETS = List.of("allay", "vex", "bat", "parrot", "bee", "blaze", "phantom", "axolotl", "frog", "fox", "duszek_haze");
-	private static final Map<String, List<String>> SLOTS = Map.of("cape", CAPES, "wings", WINGS, "elytra", ELYTRAS,
-		"trail", TRAILS, "aura", AURAS, "pet", PETS, "hat", Clothing.HATS, "top", Clothing.TOPS, "kill", KillEffects.IDS);
+	// (Map.of takes ten at most)
+	private static final Map<String, List<String>> SLOTS = Map.ofEntries(Map.entry("cape", CAPES), Map.entry("wings", WINGS), Map.entry("elytra", ELYTRAS),
+		Map.entry("trail", TRAILS), Map.entry("aura", AURAS), Map.entry("pet", PETS), Map.entry("hat", Clothing.HATS), Map.entry("top", Clothing.TOPS),
+		Map.entry("kill", KillEffects.IDS),
+		Map.entry("back", Gear.BACKS), Map.entry("tail", Gear.TAILS));
 	private static final long EMOTE_MS = 3500;
 	private static final FontDescription EMOTE_FONT = Compat.font(Identifier.fromNamespaceAndPath(SlashHud.ID, "emote"));
 
@@ -185,11 +188,14 @@ public final class Cosmetics {
 		skin = withTestSkin(id, skin);
 		if (!SlashHud.config.badges) return skin;
 		String cape = worn(id, "cape");
-		// wings take the cape's place on the back (an elytra, when worn, takes theirs)
+		// wings and back items take the cape's place on the back (an elytra, when worn, takes theirs)
 		//#if MC >= 1.21.9
-		if (!wearsElytra && worn(id, "wings") != null) return new PlayerSkin(skin.body(), null, skin.elytra(), skin.model(), skin.secure());
+		if (!wearsElytra && (worn(id, "wings") != null || worn(id, "back") != null)) return new PlayerSkin(skin.body(), null, skin.elytra(), skin.model(), skin.secure());
 		//#elif MC >= 1.21.2
-		//$ if (!wearsElytra && worn(id, "wings") != null) return new PlayerSkin(skin.body(), skin.textureUrl(), null, skin.elytra(), skin.model(), skin.secure());
+		//$ if (!wearsElytra && (worn(id, "wings") != null || worn(id, "back") != null)) return new PlayerSkin(skin.body(), skin.textureUrl(), null, skin.elytra(), skin.model(), skin.secure());
+		//#else
+		//$ // (no wings drawn here: only a back item)
+		//$ if (!wearsElytra && worn(id, "back") != null) return new PlayerSkin(skin.texture(), skin.textureUrl(), null, skin.elytraTexture(), skin.model(), skin.secure());
 		//#endif
 		String elytra = worn(id, "elytra");
 		if (cape == null && elytra == null) return skin;
@@ -214,6 +220,8 @@ public final class Cosmetics {
 	//$ /** The cape picture to wear, or `own` (the player's own, maybe null). */
 	//$ public static Identifier capeFor(UUID id, Identifier own) {
 	//$ 	if (SlashHud.config == null || !SlashHud.config.badges) return own;
+	//$ 	// a back item takes the cape's place (not with a real elytra on: the elytra is drawn from the cape)
+	//$ 	if (worn(id, "back") != null && !Gear.wearsElytra(id)) return null;
 	//$ 	String cape = worn(id, "cape");
 	//$ 	return cape == null ? own : capeTexture(cape);
 	//$ }

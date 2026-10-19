@@ -44,8 +44,11 @@ public final class Freelook {
 		return true;
 	}
 
+	/** For the game tests' side views: the camera turned this much round the player (degrees). */
+	static float testTurn;
+
 	public static float yaw(float original) {
-		return active ? yaw : original;
+		return active ? yaw : original + testTurn;
 	}
 
 	public static float pitch(float original) {

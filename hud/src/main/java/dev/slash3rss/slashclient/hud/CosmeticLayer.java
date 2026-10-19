@@ -196,8 +196,8 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		UUID id = playerOf(state);
 		if (id == null) return;
 		String wing = Cosmetics.worn(id, "wings");
-		// a real elytra is worn instead: it already has its own place on the back
-		if (wing != null && !state.chestEquipment.is(Items.ELYTRA)) submitWings(pose, out, light, state, wing);
+		// a real elytra is worn instead: it already has its own place on the back; so has a back item (GearLayer)
+		if (wing != null && !state.chestEquipment.is(Items.ELYTRA) && Cosmetics.worn(id, "back") == null) submitWings(pose, out, light, state, wing);
 		String pet = Cosmetics.worn(id, "pet");
 		if (pet != null && pets.containsKey(pet)) submitPet(pose, out, light, state, pets.get(pet), petTexture(pet));
 		ClothingModel.Poses poses = null;
