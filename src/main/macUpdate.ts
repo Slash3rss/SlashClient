@@ -6,6 +6,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
 import { netFetch } from './download';
+import { throttled } from './rateLimit';
 
 /**
  * Updates on macOS without Apple's signature: macOS lets only signed apps replace themselves
@@ -54,7 +55,7 @@ export async function downloadMacUpdate(feed: string, version: string, file: Mac
   const out = createWriteStream(zip);
   let got = 0;
   let shown = -1;
-  for await (const chunk of res.body as unknown as AsyncIterable<Uint8Array>) {
+  for await (const chunk of throttled(res.body as unknown as AsyncIterable<Uint8Array>)) {
     hash.update(chunk);
     if (!out.write(chunk)) await new Promise((r) => out.once('drain', r));
     got += chunk.length;

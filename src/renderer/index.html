@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: slash-media: https://launchercontent.mojang.com https://client.slash3rss.dev https://api.slash3rss.dev https://cdn.modrinth.com https://media.forgecdn.net https://cdn.discordapp.com https://lh3.googleusercontent.com https://avatars.githubusercontent.com; style-src 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: blob: slash-media: https://minecraft.wiki https://launchercontent.mojang.com https://client.slash3rss.dev https://api.slash3rss.dev https://cdn.modrinth.com https://media.forgecdn.net https://cdn.discordapp.com https://lh3.googleusercontent.com https://avatars.githubusercontent.com; style-src 'self'">
   <title>SlashClient</title>
   <link rel="stylesheet" href="fa/css/all.min.css">
   <link rel="stylesheet" href="style.css">
@@ -35,6 +35,7 @@
       <button class="nav" data-view="achievements"><i class="fa-solid fa-trophy"></i>Osiągnięcia</button>
       <button class="nav" data-view="profiles"><i class="fa-solid fa-layer-group"></i>Profile</button>
       <button class="nav" data-view="accounts"><i class="fa-solid fa-user"></i>Konta</button>
+      <button class="nav" data-view="wiki"><i class="fa-solid fa-book-open"></i>Wiki</button>
       <button class="nav" data-view="settings"><i class="fa-solid fa-gear"></i>Ustawienia</button>
     </nav>
   </aside>
@@ -259,6 +260,7 @@
               <p class="muted">Kopia folderów mods i config z ustawieniami modpacka. SlashClient robi ją sam przed każdą aktualizacją modpacka i trzyma 5 ostatnich.</p>
               <div class="version-list snapshot-list" id="snapshot-list"></div>
             </div>
+            <div class="card glass-panel bench-card keys-card" id="keys-card"></div>
           </div>
           <div class="profile-pane hidden" data-pane="content">
             <p class="muted sub">Z <a href="https://modrinth.com" target="_blank" id="content-site">Modrinth</a>, instalowane do tego profilu</p>
@@ -486,7 +488,13 @@
         </div>
         <div class="row actions"><button class="primary" type="submit">Zapisz</button></div>
       </form>
+      <div class="card glass-panel tools-card" id="tools-card"></div>
       <div class="card glass-panel disk-card" id="disk-card"></div>
+    </section>
+
+    <section class="view" id="view-wiki">
+      <header class="view-head"><h2 class="gradient-title">Wiki Minecrafta</h2></header>
+      <div class="wiki-root" id="wiki-root"></div>
     </section>
   </main>
 

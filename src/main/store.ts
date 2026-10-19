@@ -88,6 +88,10 @@ export interface Settings {
   chatKey?: { device: string; publicKey: string; privateKey: string };
   /** The status the player picked for friends. */
   socialStatus: 'online' | 'away' | 'busy' | 'invisible';
+  /** Download speed limit in MB/s for all of the launcher's downloads; 0 or missing = no limit. */
+  downloadLimitMBps?: number;
+  /** Start games on the dedicated GPU (Windows: registry preference for our Java, Linux: PRIME offload). */
+  dedicatedGpu?: boolean;
 }
 
 export interface StoreData {

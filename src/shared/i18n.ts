@@ -4,6 +4,8 @@
  * page are also translated automatically by the renderer (see translateDom).
  */
 
+import { TOOLS_EN } from './i18nTools';
+
 export type Lang = 'pl' | 'en';
 
 export const LANGUAGES: { code: Lang; name: string; locale: string }[] = [
@@ -12,6 +14,8 @@ export const LANGUAGES: { code: Lang; name: string; locale: string }[] = [
 ];
 
 const EN: Record<string, string> = {
+  // key conflicts, minecraft.wiki, download limit, dedicated GPU (own file; the entries below win)
+  ...TOOLS_EN,
   // navigation and common
   'Graj': 'Play',
   'GRAJ': 'PLAY',

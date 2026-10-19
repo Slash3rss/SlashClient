@@ -137,6 +137,12 @@ const api = {
   openConfigDir: (profileId: string) => invoke('configs:openDir', profileId),
   scanDisk: (olderThanDays: number) => invoke('disk:scan', olderThanDays),
   cleanDisk: (ids: string[]) => invoke('disk:clean', ids),
+  keyConflicts: (profileId: string) => invoke('keys:conflicts', profileId),
+  applyKeyChanges: (profileId: string, changes: { action: string; to: string }[]) => invoke('keys:apply', profileId, changes),
+  wikiSearch: (query: string) => invoke('wiki:search', query),
+  wikiArticle: (title: string) => invoke('wiki:article', title),
+  wikiSection: (title: string, index: string) => invoke('wiki:section', title, index),
+  gpuSupported: () => invoke('gpu:supported'),
   /** A system notification; clicking it brings the launcher back and sends `notify:open` with the target. */
   notify: (title: string, body: string, target?: { view: 'friends'; friendId?: string } | { view: 'achievements' }) => invoke('notify:show', title, body, target),
   on,

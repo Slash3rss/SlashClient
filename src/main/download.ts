@@ -6,6 +6,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { t } from '../shared/i18n';
 import { USER_AGENT } from '../shared/version';
+import { throttleStream } from './rateLimit';
 
 export interface DownloadTask {
   url: string;
@@ -124,7 +125,8 @@ async function downloadOne(task: DownloadTask, onBytes: (n: number) => void): Pr
         received += chunk.length;
         onBytes(chunk.length);
       });
-      await pipeline(body, createWriteStream(tmp));
+      // the speed limit from Settings holds chunks back, which pauses the response too
+      await pipeline(body, throttleStream(), createWriteStream(tmp));
       const digest = hash.digest('hex');
       if (task.sha1 && digest !== task.sha1) throw new Error(t('zła suma SHA1 ({0} ≠ {1})', digest, task.sha1));
       await fs.rename(tmp, task.dest);
