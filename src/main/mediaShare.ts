@@ -43,6 +43,8 @@ export function mediaErrorText(code: string | undefined, status: number): string
     bad_media: t('Serwer nie przyjął tego pliku (zrzut PNG/JPG albo klip z gry).'),
     not_found: t('Nie ma takiego linku albo już wygasł.'),
     rate_limited: t('Za szybko. Odczekaj chwilę.'),
+    storage_full: t('Serwerowi SlashClient skończyło się miejsce na pliki. Spróbuj później.'),
+    storage_unavailable: t('Miejsce na pliki na serwerze SlashClient jest chwilowo niedostępne. Spróbuj za chwilę.'),
   };
   // a server from before media sharing has no such address at all
   if (!code && status === 404) return t('Serwer SlashClient nie obsługuje jeszcze udostępniania zrzutów i klipów.');

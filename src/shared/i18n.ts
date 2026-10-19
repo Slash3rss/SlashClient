@@ -1314,6 +1314,8 @@ const EN: Record<string, string> = {
   'Profile na koncie zajmują już cały limit miejsca. Usuń któryś i spróbuj ponownie.': 'The profiles on your account already use all the space. Delete one and try again.',
   'Kopia na koncie zmieniła się na innym komputerze.': 'The copy on your account was changed on another computer.',
   'Tego profilu nie ma już na koncie.': 'This profile is no longer on your account.',
+  'Serwerowi SlashClient skończyło się miejsce na pliki. Spróbuj później.': 'The SlashClient server has run out of space for files. Try again later.',
+  'Miejsce na pliki na serwerze SlashClient jest chwilowo niedostępne. Spróbuj za chwilę.': 'File storage on the SlashClient server is unavailable right now. Try again in a moment.',
   'Ten profil właśnie się synchronizuje.': 'This profile is syncing right now.',
   'Zamknij grę tego profilu przed synchronizacją.': 'Close this profile\'s game before syncing.',
   'Zapisywanie na koncie: {0}': 'Saving to account: {0}',

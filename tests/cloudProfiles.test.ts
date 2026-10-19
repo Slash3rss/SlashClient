@@ -36,6 +36,12 @@ describe('profiles on the account: what to do', () => {
     setLang('pl');
     assert.match(cloudErrorText('cloud_quota', 409), /limit/);
     assert.match(cloudErrorText('rate_limited', 429), /Za szybko/);
+    // the server's file storage full or down (storage backends)
+    assert.match(cloudErrorText('storage_full', 507), /skończyło się miejsce/);
+    assert.match(cloudErrorText('storage_unavailable', 503), /niedostępne/);
+    setLang('en');
+    assert.match(cloudErrorText('storage_full', 507), /out of space/);
+    setLang('pl');
   });
 });
 

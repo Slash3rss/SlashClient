@@ -157,6 +157,8 @@ export function cloudErrorText(code: string | undefined, status: number): string
     cloud_quota: t('Profile na koncie zajmują już cały limit miejsca. Usuń któryś i spróbuj ponownie.'),
     cloud_conflict: t('Kopia na koncie zmieniła się na innym komputerze.'),
     not_found: t('Tego profilu nie ma już na koncie.'),
+    storage_full: t('Serwerowi SlashClient skończyło się miejsce na pliki. Spróbuj później.'),
+    storage_unavailable: t('Miejsce na pliki na serwerze SlashClient jest chwilowo niedostępne. Spróbuj za chwilę.'),
   };
   return (code && texts[code]) || shareErrorText(code, status);
 }
