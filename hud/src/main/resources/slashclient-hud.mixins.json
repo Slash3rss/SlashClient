@@ -36,6 +36,8 @@
 		"NametagMixin",
 		"OnlineServerEntryMixin",
 		"PauseScreenAccessor",
+		"ResourcePackAnswerMixin",
+		"ResourcePackPushMixin",
 		"PlayerTabOverlayAccessor",
 		"PlayerTabOverlayMixin",
 		"ScoreboardNumbersMixin",

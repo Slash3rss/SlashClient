@@ -188,6 +188,8 @@ public final class HudConfig {
 	public String nickAlias = "you";
 	/** A button on the "disconnected" screen that joins the same server again. */
 	public boolean reconnect = true;
+	/** Server resource packs on servers not in the list: one of ServerPacks.MODES. */
+	public String serverPackDefault = "prompt";
 	public boolean fullbright = false;
 	/** The fire overlay sits lower, so it covers less of the screen. */
 	public boolean lowFire = false;
@@ -383,6 +385,7 @@ public final class HudConfig {
 		read.chatCopyFormat = oneOf(read.chatCopyFormat, ChatExtras.COPY_FORMATS);
 		read.chatCopyTime = oneOf(read.chatCopyTime, ChatExtras.COPY_TIMES);
 		read.chatCopyNotice = oneOf(read.chatCopyNotice, ChatExtras.COPY_NOTICES);
+		read.serverPackDefault = oneOf(read.serverPackDefault, ServerPacks.MODES);
 		return read;
 	}
 
@@ -446,6 +449,7 @@ public final class HudConfig {
 		nickHider = other.nickHider;
 		nickAlias = other.nickAlias;
 		reconnect = other.reconnect;
+		serverPackDefault = oneOf(other.serverPackDefault, ServerPacks.MODES);
 		fullbright = other.fullbright;
 		lowFire = other.lowFire;
 		chatTimestamps = other.chatTimestamps;
