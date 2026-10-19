@@ -31,16 +31,21 @@ import java.util.Map;
 public final class Clothing {
 	private Clothing() {}
 
-	public static final List<String> SLOTS = List.of("hat", "top");
+	public static final List<String> SLOTS = List.of("hat", "top", "face", "ears");
 	/** The parts of the player model a box can be fixed to, named as in the game's player model. */
 	private static final List<String> BONES = List.of("head", "body", "right_arm", "left_arm");
 
-	private record Box(String bone, float[] from, float[] size, float inflate, int u, int v) {}
-	private record Item(String slot, List<Box> wide, List<Box> slim) {}
+	/**
+	 * `pivot`: a box that turns on a point of its own (`rotate`, radians), wiggled now and then by
+	 * `twitch` (ears); `hats`: the only hats it shows with (null: all), see {@link Headwear}.
+	 */
+	private record Box(String bone, float[] from, float[] size, float inflate, int u, int v,
+		float[] pivot, float[] rotate, Headwear.Twitch twitch, List<String> hats) {}
+	private record Item(String slot, List<Box> wide, List<Box> slim, boolean underHelmet) {}
 
 	private static final Map<String, Item> ITEMS = new LinkedHashMap<>();
 	private static int texWidth = 64, texHeight = 64;
-	static final List<String> HATS, TOPS;
+	static final List<String> HATS, TOPS, FACE, EARS;
 
 	static {
 		try (InputStream in = Clothing.class.getResourceAsStream("/assets/" + SlashHud.ID + "/clothing.json")) {
@@ -55,18 +60,29 @@ public final class Clothing {
 					String bone = b.get("bone").getAsString();
 					float inflate = b.get("inflate").getAsFloat();
 					int u = b.getAsJsonArray("uv").get(0).getAsInt(), v = b.getAsJsonArray("uv").get(1).getAsInt();
-					Box box = new Box(bone, floats(b.getAsJsonArray("from")), floats(b.getAsJsonArray("size")), inflate, u, v);
+					float[] pivot = b.has("pivot") ? floats(b.getAsJsonArray("pivot")) : null;
+					float[] rotate = b.has("rotate") ? floats(b.getAsJsonArray("rotate")) : new float[3];
+					for (int i = 0; i < 3; i++) rotate[i] = (float) Math.toRadians(rotate[i]);
+					Headwear.Twitch twitch = b.has("twitch") ? Headwear.Twitch.of(b.getAsJsonObject("twitch")) : null;
+					List<String> hats = null;
+					if (b.has("hats")) {
+						hats = new ArrayList<>();
+						for (JsonElement h : b.getAsJsonArray("hats")) hats.add(h.getAsString());
+					}
+					Box box = new Box(bone, floats(b.getAsJsonArray("from")), floats(b.getAsJsonArray("size")), inflate, u, v, pivot, rotate, twitch, hats);
 					wide.add(box);
 					// on slim arms the sleeves are a pixel narrower
-					slim.add(b.has("slimFrom") ? new Box(bone, floats(b.getAsJsonArray("slimFrom")), floats(b.getAsJsonArray("slimSize")), inflate, u, v) : box);
+					slim.add(b.has("slimFrom") ? new Box(bone, floats(b.getAsJsonArray("slimFrom")), floats(b.getAsJsonArray("slimSize")), inflate, u, v, pivot, rotate, twitch, hats) : box);
 				}
-				ITEMS.put(o.get("id").getAsString(), new Item(o.get("slot").getAsString(), wide, slim));
+				ITEMS.put(o.get("id").getAsString(), new Item(o.get("slot").getAsString(), wide, slim, o.has("underHelmet") && o.get("underHelmet").getAsBoolean()));
 			}
 		} catch (Exception e) {
 			SlashHud.LOG.warn("SlashClient clothing could not be read", e);
 		}
 		HATS = ids("hat");
 		TOPS = ids("top");
+		FACE = ids("face");
+		EARS = ids("ears");
 	}
 
 	private static List<String> ids(String slot) {
@@ -92,8 +108,11 @@ public final class Clothing {
 			for (int i = 0; i < boxes.size(); i++) {
 				Box b = boxes.get(i);
 				if (!b.bone().equals(bone)) continue;
+				// a box with a pivot of its own: the part stands there, turned, the box drawn from it
+				float[] p = b.pivot() != null ? b.pivot() : new float[3];
+				PartPose pose = b.pivot() != null ? PartPose.offsetAndRotation(p[0], p[1], p[2], b.rotate()[0], b.rotate()[1], b.rotate()[2]) : PartPose.ZERO;
 				part.addOrReplaceChild("box" + i, CubeListBuilder.create().texOffs(b.u(), b.v())
-					.addBox(b.from()[0], b.from()[1], b.from()[2], b.size()[0], b.size()[1], b.size()[2], new CubeDeformation(b.inflate())), PartPose.ZERO);
+					.addBox(b.from()[0] - p[0], b.from()[1] - p[1], b.from()[2] - p[2], b.size()[0], b.size()[1], b.size()[2], new CubeDeformation(b.inflate())), pose);
 			}
 		}
 		return LayerDefinition.create(mesh, texWidth, texHeight).bakeRoot();
@@ -114,5 +133,33 @@ public final class Clothing {
 	 */
 	public static boolean covered(String slot, ItemStack head, ItemStack chest) {
 		return slot.equals("hat") ? !head.isEmpty() : !chest.isEmpty() && !chest.is(Items.ELYTRA);
+	}
+
+	/** As {@link #covered(String, ItemStack, ItemStack)}, for this item: the face's glasses stay on under a helmet, masks and ears hide. */
+	public static boolean covered(String slot, String id, ItemStack head, ItemStack chest) {
+		if (slot.equals("face") || slot.equals("ears")) {
+			Item item = ITEMS.get(id);
+			return !head.isEmpty() && (item == null || !item.underHelmet());
+		}
+		return covered(slot, head, chest);
+	}
+
+	/**
+	 * Poses an item's own boxes in a model from {@link #bake} (after its head, body and arms are
+	 * posed): boxes that a worn `hat` would go through hide, ears twitch (`seconds`: any clock).
+	 */
+	public static void animate(ModelPart root, String id, String hat, float seconds) {
+		Item item = ITEMS.get(id);
+		if (item == null || (item.slot().equals("hat") || item.slot().equals("top"))) return;
+		List<Box> boxes = item.wide();
+		for (int i = 0; i < boxes.size(); i++) {
+			Box b = boxes.get(i);
+			ModelPart part = root.getChild(b.bone()).getChild("box" + i);
+			part.visible = Headwear.shownWith(b.hats(), hat);
+			if (b.twitch() == null) continue;
+			float a = b.twitch().angle(seconds);
+			part.xRot = b.rotate()[0] + (b.twitch().axisX() ? a : 0);
+			part.zRot = b.rotate()[2] + (b.twitch().axisX() ? 0 : a);
+		}
 	}
 }

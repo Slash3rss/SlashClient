@@ -153,11 +153,12 @@ public final class SkinPreview {
 		return model;
 	}
 
-	/** A clothing item on the figure, its head, body and arms posed as the figure's. */
-	private Object clothingModel(String id, boolean slimArms, ModelPart figure) {
+	/** A clothing item on the figure, its head, body and arms posed as the figure's (with `hat` on; ears twitch by `time`). */
+	private Object clothingModel(String id, boolean slimArms, ModelPart figure, String hat, float time) {
 		Object model = clothes.computeIfAbsent(slimArms ? id + "/slim" : id, k -> wrap(dev.slash3rss.slashclient.hud.Clothing.bake(id, slimArms)));
 		ModelPart parts = root(model).getChild("slashclient");
 		for (String bone : java.util.List.of("head", "body", "right_arm", "left_arm")) parts.getChild(bone).loadPose(figure.getChild(bone).storePose());
+		dev.slash3rss.slashclient.hud.Clothing.animate(parts, id, hat, time);
 		return model;
 	}
 	private final java.util.Map<String, Object> clothes = new java.util.HashMap<>();
@@ -220,7 +221,7 @@ public final class SkinPreview {
 		boolean slimArms = s.model() == PlayerModelType.SLIM;
 		for (String slot : dev.slash3rss.slashclient.hud.Clothing.SLOTS) {
 			String item = look.worn(self, slot);
-			if (item != null) layer(layers, clothingModel(item, slimArms, root), dev.slash3rss.slashclient.hud.Clothing.texture(item));
+			if (item != null) layer(layers, clothingModel(item, slimArms, root, look.worn(self, "hat"), time), dev.slash3rss.slashclient.hud.Clothing.texture(item));
 		}
 		// on the back: the elytra (on its slot's tab), else the wings, else the cape
 		String elytraId = look.elytra ? look.worn(self, "elytra") : null, wing = look.worn(self, "wings"), capeId = look.worn(self, "cape");

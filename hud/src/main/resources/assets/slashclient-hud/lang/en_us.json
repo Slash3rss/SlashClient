@@ -398,6 +398,8 @@
 	"slashclient-hud.cosmetics.slot.hat": "Hat",
 	"slashclient-hud.cosmetics.slot.top": "Outfit",
 	"slashclient-hud.cosmetics.slot.kill": "Kill effect",
+	"slashclient-hud.cosmetics.slot.face": "Face",
+	"slashclient-hud.cosmetics.slot.ears": "Ears & horns",
 	"slashclient-hud.cosmetics.preview": "Preview",
 	"slashclient-hud.cosmetics.killHint": "Plays where your foes fall.",
 	"slashclient-hud.cosmetics.killWorld": "You can preview it in a world.",

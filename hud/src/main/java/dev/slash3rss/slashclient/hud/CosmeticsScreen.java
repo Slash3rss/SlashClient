@@ -21,14 +21,14 @@ import java.util.UUID;
 
 /**
  * Picking SlashClient cosmetics in the game: one slot at a time (cape, wings, elytra, trail,
- * aura, pet, hat, top, kill effect), the player's figure beside the panel trying on the item under
+ * aura, pet, hat, top, kill effect, face, ears), the player's figure beside the panel trying on the item under
  * the mouse (turned to show its back for what is worn there, running for a trail, turned by
  * dragging it; for kill effects in a world the real player, from behind). Choices go to the SlashClient
  * server through the launcher, for the Minecraft account being played when it is linked to the
  * SlashClient account (each can have a set of its own), else for the whole account.
  */
 public class CosmeticsScreen extends Screen {
-	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill"};
+	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "face", "ears"};
 	/** Particles and pets have no picture of ours: an item that looks like them stands in. */
 	private static final Map<String, Item> ITEMS = Map.ofEntries(
 		Map.entry("hearts", Items.POPPY), Map.entry("sparks", Items.GLOWSTONE_DUST), Map.entry("snow", Items.SNOWBALL),
@@ -111,6 +111,8 @@ public class CosmeticsScreen extends Screen {
 		for (String id : Clothing.HATS) list.add(new Entry(id, "hat", id, "", true));
 		for (String id : Clothing.TOPS) list.add(new Entry(id, "top", id, "", true));
 		for (String id : KillEffects.IDS) list.add(new Entry(id, "kill", id, "", true));
+		for (String id : Clothing.FACE) list.add(new Entry(id, "face", id, "", true));
+		for (String id : Clothing.EARS) list.add(new Entry(id, "ears", id, "", true));
 		screen.items = List.copyOf(list);
 		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf", "kill", "firework"));
 		screen.character = "test";
@@ -455,7 +457,7 @@ public class CosmeticsScreen extends Screen {
 			case "wings", "elytra" ->
 				// the back of one wing
 				g.blit(RenderPipelines.GUI_TEXTURED, Cosmetics.textureId(e.slot(), e.id()), x + (TILE_W - 18) / 2, y + (TILE_H - 30) / 2, 136, 8, 18, 30, 48, 80, 256, 128, alpha);
-			case "hat", "top" ->
+			case "hat", "top", "face", "ears" ->
 				// a view of it from the front, a little from above
 				g.blit(RenderPipelines.GUI_TEXTURED, Clothing.icon(e.id()), x + (TILE_W - 26) / 2, y + (TILE_H - 26) / 2, 0, 0, 26, 26, 64, 64, 64, 64, alpha);
 			default -> {

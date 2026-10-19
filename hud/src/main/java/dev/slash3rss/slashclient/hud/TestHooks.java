@@ -630,6 +630,19 @@ public final class TestHooks {
 		return String.join(",", Clothing.HATS) + "|" + String.join(",", Clothing.TOPS);
 	}
 
+	/** The face and ears things this mod can draw: "face|ears". */
+	public static String headwear() {
+		return String.join(",", Clothing.FACE) + "|" + String.join(",", Clothing.EARS);
+	}
+
+	/** An item's first box posed at this moment with this hat on (null: none): "its turn about z|whether it shows". */
+	public static String headwearPose(String id, String hat, float seconds) {
+		net.minecraft.client.model.geom.ModelPart root = Clothing.bake(id, false);
+		Clothing.animate(root, id, hat, seconds);
+		net.minecraft.client.model.geom.ModelPart box = root.getChild("head").getChild("box0");
+		return box.zRot + "|" + box.visible;
+	}
+
 	/** Turns our own player by this many degrees (a view from the side). */
 	public static void turn(float degrees) {
 		var p = net.minecraft.client.Minecraft.getInstance().player;
