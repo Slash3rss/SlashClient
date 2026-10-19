@@ -49,7 +49,12 @@ public class CosmeticsScreen extends Screen {
 		Map.entry("axolotl", Items.AXOLOTL_SPAWN_EGG), Map.entry("frog", Items.FROG_SPAWN_EGG), Map.entry("fox", Items.FOX_SPAWN_EGG));
 	private static final int TILE_W = 32, TILE_H = 40, GAP = 4;
 
-	private record Entry(String id, String slot, String name, String rank, boolean available) {}
+	/** `hint`: how to earn an item that only an achievement gives ("" for the rest). */
+	private record Entry(String id, String slot, String name, String rank, boolean available, String hint) {
+		Entry(String id, String slot, String name, String rank, boolean available) {
+			this(id, slot, name, rank, available, "");
+		}
+	}
 	private record Hit(int x, int y, int w, int h, Runnable action) {}
 
 	private final Screen parent;
@@ -83,7 +88,8 @@ public class CosmeticsScreen extends Screen {
 	static CosmeticsScreen sample(String slot) {
 		CosmeticsScreen screen = new CosmeticsScreen(null);
 		List<Entry> list = new ArrayList<>();
-		for (String id : Cosmetics.CAPES) list.add(new Entry(id, "cape", id, id.startsWith("staff_") ? id.substring(6) : "", !id.equals("staff_partner")));
+		for (String id : Cosmetics.CAPES) list.add(new Entry(id, "cape", id, id.startsWith("staff_") ? id.substring(6) : "", !id.equals("staff_partner") && !id.equals("streak30"),
+			id.equals("streak30") ? "Osiągnięcie „Seria 30 dni”: Graj co najmniej 10 minut dziennie przez 30 dni z rzędu." : ""));
 		for (String id : Cosmetics.WINGS) list.add(new Entry(id, "wings", id, "", !id.equals("phoenix")));
 		for (String id : Cosmetics.ELYTRAS) list.add(new Entry(id, "elytra", id, "", true));
 		for (String id : Cosmetics.TRAILS) list.add(new Entry(id, "trail", id, "", true));
@@ -132,12 +138,15 @@ public class CosmeticsScreen extends Screen {
 				JsonObject catalog = Social.api("GET", "/v1/cosmetics", null);
 				JsonObject me = Social.api("GET", "/v1/me", null);
 				List<Entry> list = new ArrayList<>();
+				boolean polish = minecraft.options.languageCode.startsWith("pl");
 				for (JsonElement e : catalog.getAsJsonArray("items")) {
 					JsonObject o = e.getAsJsonObject();
 					// newer cosmetics than this version has pictures for stay out of the menu
 					if (!Cosmetics.knows(o.get("slot").getAsString(), o.get("id").getAsString())) continue;
+					String hint = polish ? "hint" : "hintEn";
 					list.add(new Entry(o.get("id").getAsString(), o.get("slot").getAsString(), o.get("name").getAsString(),
-						o.has("rank") && !o.get("rank").isJsonNull() ? o.get("rank").getAsString() : "", o.get("available").getAsBoolean()));
+						o.has("rank") && !o.get("rank").isJsonNull() ? o.get("rank").getAsString() : "", o.get("available").getAsBoolean(),
+						o.has(hint) && !o.get(hint).isJsonNull() ? o.get(hint).getAsString() : ""));
 				}
 				items = List.copyOf(list);
 				applyMe(me);
@@ -365,7 +374,8 @@ public class CosmeticsScreen extends Screen {
 				if (item != null) Ui.icon(g, item, "m-appearance", x + (TILE_W - 16) / 2, y + (TILE_H - 16) / 2);
 			}
 		}
-		if (locked) Ui.icon(g, "close", x + TILE_W - 10, y + 3, 7, 0xFFFACC15);
+		// earned with an achievement: a lock (the tooltip says how); given by an admin or a rank: a cross
+		if (locked) Ui.icon(g, e.hint().isEmpty() ? "close" : "lock", x + TILE_W - 10, y + 3, 7, 0xFFFACC15);
 		else if (e != null && !e.rank().isEmpty()) g.fill(x + TILE_W - 7, y + 3, x + TILE_W - 3, y + 7, switch (e.rank()) {
 			case "admin" -> 0xFFEF4444;
 			case "support" -> 0xFF38BDF8;
@@ -375,6 +385,7 @@ public class CosmeticsScreen extends Screen {
 		});
 		if (over) {
 			tooltip = e == null ? Ui.tr("slashclient-hud.cosmetics.nothing")
+				: locked && !e.hint().isEmpty() ? Ui.fit(Ui.text(e.hint()), width - 20)
 				: locked ? Ui.tr(e.rank().isEmpty() ? "slashclient-hud.cosmetics.exclusive" : "slashclient-hud.cosmetics.rankOnly", e.name(), Ui.tr("slashclient-hud.rank." + e.rank()))
 				: Ui.text(e.name());
 			tipX = x + TILE_W / 2;

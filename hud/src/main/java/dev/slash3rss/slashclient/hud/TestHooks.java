@@ -500,6 +500,19 @@ public final class TestHooks {
 		mc.setScreenAndShow(CosmeticsScreen.sample(slot));
 	}
 
+	/** The toast of an unlocked achievement with a cape for a reward, as the server's event brings it. */
+	public static void achievementToast() {
+		com.google.gson.JsonObject a = new com.google.gson.JsonObject();
+		a.addProperty("name", "Weteran");
+		a.addProperty("nameEn", "Veteran");
+		com.google.gson.JsonObject reward = new com.google.gson.JsonObject();
+		reward.addProperty("id", "veteran");
+		reward.addProperty("slot", "cape");
+		reward.addProperty("name", "Weteran");
+		a.add("reward", reward);
+		dev.slash3rss.slashclient.hud.social.Social.achievement(a);
+	}
+
 	/** Scrolls the open cosmetics menu's grid to its end. */
 	public static void scrollCosmetics() {
 		if (Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c) c.scrollBy(10_000);

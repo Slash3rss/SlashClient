@@ -327,6 +327,8 @@
 	"slashclient-hud.cosmetics.account": "Zestaw całego konta",
 	"slashclient-hud.cosmetics.useAccount": "Jak całe konto",
 	"slashclient-hud.cosmetics.nothing": "Nic",
+	"slashclient-hud.achievement.unlocked": "Osiągnięcie odblokowane",
+	"slashclient-hud.achievement.reward": "%s · nowa peleryna",
 	"slashclient-hud.cosmetics.exclusive": "%s: ekskluzywne, przyznaje admin",
 	"slashclient-hud.cosmetics.rankOnly": "%s: tylko dla rangi %s",
 	"slashclient-hud.cosmetics.slot.cape": "Peleryna",

@@ -264,6 +264,10 @@ public final class Social {
 					// not a uuid: nothing to show it on
 				}
 			}
+			// a SlashClient achievement unlocked (play streak, hours…): "Achievement unlocked" and its name, with the reward
+			case "achievement" -> {
+				if (e.has("achievement") && e.get("achievement").isJsonObject()) achievement(e.getAsJsonObject("achievement"));
+			}
 			case "friends" -> {
 				refreshFriends();
 				if (e.has("request") && e.get("request").isJsonObject()) toast(str(e.getAsJsonObject("request"), "name"), Component.translatable("slashclient-hud.friends.invite").getString(), null);
@@ -284,6 +288,15 @@ public final class Social {
 		}
 		sort(list);
 		friends = List.copyOf(list);
+	}
+
+	/** "Achievement unlocked" with its name in the game's language, and the cosmetic it gives (the server's 'achievement' event). */
+	public static void achievement(JsonObject a) {
+		boolean polish = Minecraft.getInstance().options.languageCode.startsWith("pl");
+		String name = str(a, polish ? "name" : "nameEn");
+		JsonObject reward = a.has("reward") && a.get("reward").isJsonObject() ? a.getAsJsonObject("reward") : null;
+		String text = reward == null ? name : Component.translatable("slashclient-hud.achievement.reward", name).getString();
+		toast(Component.translatable("slashclient-hud.achievement.unlocked").getString(), text, "m-advancements");
 	}
 
 	/** In SlashClient's own look; `icon` instead of the initial when it is not from a person. */

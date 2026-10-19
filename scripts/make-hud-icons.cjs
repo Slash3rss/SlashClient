@@ -30,7 +30,7 @@ const ICONS = {
   'm-scoreboard': 'list-ol', 'm-bossbar': 'skull', 'm-tablist': 'table-list', 'm-titles': 'heading', 'm-toasts': 'bell', 'm-actionbar': 'message', 'm-nametag': 'tag',
   'm-benchmark': 'chart-column', 'm-sprint': 'person-running', 'm-emotes': 'face-smile', 'm-clips': 'film', 'partner': 'handshake', 'm-mentions': 'at',
   'm-autoclicker': 'computer-mouse', 'm-autotool': 'screwdriver-wrench', 'm-autorefill': 'arrows-rotate', 'm-holdkeys': 'hand-pointer', 'm-toolwarning': 'triangle-exclamation', 'm-hearts': 'heart', 'm-mousetweaks': 'arrow-pointer',
-  'm-dropguard': 'hand-holding', 'm-damage': 'heart-crack', 'm-tnt': 'bomb', 'm-nickhider': 'user-secret', 'm-reconnect': 'plug-circle-bolt', 'm-keybinds': 'keyboard', 'm-dungeonmap': 'map', 'm-skytasks': 'list-check', 'm-skyfish': 'fish', 'skyup': 'dungeon',
+  'lock': 'lock', 'm-dropguard': 'hand-holding', 'm-damage': 'heart-crack', 'm-tnt': 'bomb', 'm-nickhider': 'user-secret', 'm-reconnect': 'plug-circle-bolt', 'm-keybinds': 'keyboard', 'm-dungeonmap': 'map', 'm-skytasks': 'list-check', 'm-skyfish': 'fish', 'skyup': 'dungeon',
 };
 
 /** Size of the glyph inside the 64×64 square, matching the icons already there. */
