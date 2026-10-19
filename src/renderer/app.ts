@@ -3311,7 +3311,8 @@ async function renderSlashCapes() {
   cosmeticPreview.show({ ...worn, back, kill: cosmeticSlot === 'kill' ? worn.kill : undefined, move: cosmeticSlot === 'move' ? worn.move : undefined,
     shield: holding ? worn.shield : undefined, weapon: holding ? worn.weapon : undefined, walk: cosmeticSlot === 'prop' });
   // the figure shows its back for a back item, its back and side for a tail, walking so the tail swings
-  skinViewer.playerWrapper.rotation.y = cosmeticSlot === 'back' ? Math.PI : cosmeticSlot === 'tail' ? Math.PI * 0.7 : 0;
+  // (on the prop's tab the prop's own view turns it: propPreview.ts)
+  if (cosmeticSlot !== 'prop') skinViewer.playerWrapper.rotation.y = cosmeticSlot === 'back' ? Math.PI : cosmeticSlot === 'tail' ? Math.PI * 0.7 : 0;
   const walking = skinViewer.animation instanceof WalkingAnimation;
   if (cosmeticSlot === 'tail' && !walking) {
     $('#skin-anim').click();
