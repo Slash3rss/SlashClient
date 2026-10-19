@@ -1,4 +1,6 @@
 import { locale, t } from '../shared/i18n';
+import { createParty, type Party } from './party';
+import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
 
 /**
  * The "Friends" view: signing in to the social server, the friends list with live
@@ -12,8 +14,8 @@ interface Person { id: string; handle: string; name: string; avatar: string }
 interface Friend extends Person { presence: Presence; unread: number; lastMessageAt: number; since: number }
 interface Request extends Person { at: number }
 interface Me extends Person { showServer: boolean; providers: string[]; minecraft?: { uuid: string; name: string }[] }
-interface Invite { server: string; version?: string }
-interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite; encrypted?: boolean; unreadable?: boolean }
+interface Invite { server: string; version?: string; party?: string }
+interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite; waypoint?: SharedWaypoint; encrypted?: boolean; unreadable?: boolean }
 interface SocialState { url: string; user?: Me; connected: boolean; status: Status }
 interface FriendList { friends: Friend[]; incoming: Request[]; outgoing: Request[] }
 
@@ -67,6 +69,9 @@ export function socialErrorText(code: string): string {
     cancelled: t('Logowanie anulowane.'),
     not_linked: t('To konto nie jest podpięte do żadnego konta SlashClient. Zaloguj się kontem Minecraft i podepnij je w zakładce Znajomi.'),
     not_verified: t('Mojang nie potwierdził konta Minecraft. Spróbuj ponownie.'),
+    too_many: t('Za dużo osób naraz (maks. 7 znajomych).'),
+    bad_server: t('To nie wygląda na adres serwera.'),
+    not_leader: t('Tylko lider może rozwiązać drużynę.'),
   };
   return texts[code] ?? t('Błąd serwera znajomych ({0}).', code);
 }
@@ -88,6 +93,17 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     loginCode = c;
     if (signingIn) render();
   });
+
+  const party = createParty({
+    api, toast: deps.toast, errorText: deps.errorText, inviteTarget: deps.inviteTarget, join: deps.join,
+    me: () => state?.user?.id,
+    friends: () => list.friends.map((f) => ({ id: f.id, name: f.name, online: f.presence.status !== 'offline' })),
+  });
+  /** Join on an invite: a party's says "I'm in" first, so the leader sees it. */
+  const joinInvite = (inv: Invite) => {
+    if (inv.party) void party.accept(inv.party);
+    deps.join(inv.server, inv.version);
+  };
 
   const isVisible = () => root.closest('.view')?.classList.contains('active') && document.hasFocus();
   const friend = (id: string | undefined) => list.friends.find((f) => f.id === id);
@@ -147,6 +163,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     healthError = !health;
     if (state?.user) await refreshList();
     render();
+    if (state?.user) void party.refresh();
   }
 
   async function refreshList() {
@@ -277,7 +294,9 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     meBox = el('div', { className: 'fr-me' });
     const addInput = control<HTMLInputElement>('input', { placeholder: t('Nick znajomego'), maxLength: 32 });
     const addBtn = el('button', { type: 'submit', className: 'primary', title: t('Zaproś') }, icon('fa-user-plus'));
-    const addForm = el('form', { className: 'row fr-add' }, addInput, addBtn);
+    const partyBtn = el('button', { type: 'button', title: t('Zaproś drużynę: kilku znajomych naraz') }, icon('fa-people-group'));
+    partyBtn.addEventListener('click', () => party.open());
+    const addForm = el('form', { className: 'row fr-add' }, addInput, addBtn, partyBtn);
     addForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       const handle = addInput.value.trim();
@@ -329,7 +348,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     inviteBar = el('form', { className: 'fr-invite-bar hidden' });
     chatBox = el('div', { className: 'fr-chat glass-panel' }, chatHead, messagesBox, typingBox, inviteBar, composer);
     root.replaceChildren(el('div', { className: 'fr-layout' },
-      el('div', { className: 'fr-side glass-panel' }, meBox, addForm, listBox),
+      el('div', { className: 'fr-side glass-panel' }, meBox, addForm, party.element, listBox),
       chatBox));
   }
 
@@ -623,7 +642,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         el('small', { textContent: [inv.server, inv.version].filter(Boolean).join(' · ') })));
     if (!mine) {
       const join = el('button', { type: 'button', className: 'primary' }, icon('fa-right-to-bracket'), t(' Dołącz'));
-      join.addEventListener('click', () => deps.join(inv.server, inv.version));
+      join.addEventListener('click', () => joinInvite(inv));
       card.append(join);
     }
     return card;
@@ -650,7 +669,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       // messages sent close together stick to each other
       const grouped = m.from === lastFrom && m.at - lastAt < 5 * 60_000;
       nodes.push(el('div', { className: `fr-msg${m.from === me ? ' mine' : ''}${grouped ? ' grouped' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
-        m.invite ? inviteCard(m, m.from === me) : bubble(m),
+        m.invite ? inviteCard(m, m.from === me) : m.waypoint ? waypointCard(m.waypoint, m.from === me, deps.toast) : bubble(m),
         grouped ? '' : el('small', { className: 'fr-time', textContent: time.format(m.at) })));
       if (m === lastMineRead) nodes.push(el('small', { className: 'fr-read', textContent: t('Przeczytano') }));
       lastDay = d;
@@ -675,6 +694,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
           deps.accountChanged?.();
         }
         if (state?.user && state.user.id !== was) await refreshList();
+        if (state?.user) void party.refresh();
         if (!state?.user) {
           root.replaceChildren();
           return refreshState();
@@ -703,14 +723,18 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
           f.unread++;
           if (m.invite) {
             const inv = m.invite;
-            deps.toast(t('{0} zaprasza Cię na {1}', f.name, inv.server), false, { label: t('Dołącz'), run: () => deps.join(inv.server, inv.version) });
+            deps.toast(t('{0} zaprasza Cię na {1}', f.name, inv.server), false, { label: t('Dołącz'), run: () => joinInvite(inv) });
             if (!document.hasFocus()) systemNotify(f.name, t('{0} zaprasza Cię na {1}', f.name, inv.server), f.id);
-          } else notify(f, m.text);
+          } else if (m.waypoint) notify(f, t('udostępnia punkt {0} ({1}, {2}, {3})', m.waypoint.name, m.waypoint.x, m.waypoint.y, m.waypoint.z));
+          else notify(f, m.text);
         }
         renderList();
         if (m.from === selected) renderChat();
         return;
       }
+      case 'party':
+        if (e.party) party.onEvent(e.party as Party);
+        return;
       case 'read': {
         const chat = chats.get(e.by);
         chat?.messages.forEach((m) => m.from === state?.user?.id && !m.readAt && (m.readAt = e.at));
