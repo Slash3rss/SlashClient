@@ -162,6 +162,7 @@
             <button type="button" class="active" data-pane="settings"><i class="fa-solid fa-sliders"></i> Ustawienia</button>
             <button type="button" data-pane="content"><i class="fa-solid fa-puzzle-piece"></i> Mody i zasoby</button>
             <button type="button" data-pane="worlds"><i class="fa-solid fa-earth-europe"></i> Światy i zrzuty</button>
+            <button type="button" data-pane="configs"><i class="fa-solid fa-file-pen"></i> Configi</button>
           </div>
           <div class="profile-pane" data-pane="settings">
             <form class="card glass-panel form" id="profile-form">
@@ -303,6 +304,7 @@
             </div>
             <div id="worlds-content"></div>
           </div>
+          <div class="profile-pane hidden" data-pane="configs" id="config-pane"></div>
           <div class="profile-pane hidden" data-pane="stats">
             <div class="row stats-head"><h3><i class="fa-solid fa-chart-simple"></i> Statystyki</h3>
               <div class="segmented" id="stats-range">
@@ -466,6 +468,7 @@
         </div>
         <div class="row actions"><button class="primary" type="submit">Zapisz</button></div>
       </form>
+      <div class="card glass-panel disk-card" id="disk-card"></div>
     </section>
   </main>
 

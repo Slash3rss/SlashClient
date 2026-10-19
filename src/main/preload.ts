@@ -114,6 +114,13 @@ const api = {
   socialTyping: (friendId: string) => invoke('social:typing', friendId),
   socialActivity: () => invoke('social:activity'),
   joinInGame: (address: string) => invoke('game:join', address),
+  listConfigs: (profileId: string) => invoke('configs:list', profileId),
+  readConfig: (profileId: string, rel: string) => invoke('configs:read', profileId, rel),
+  saveConfig: (profileId: string, rel: string, text: string, opts?: unknown) => invoke('configs:save', profileId, rel, text, opts),
+  restoreConfig: (profileId: string, rel: string) => invoke('configs:restore', profileId, rel),
+  openConfigDir: (profileId: string) => invoke('configs:openDir', profileId),
+  scanDisk: (olderThanDays: number) => invoke('disk:scan', olderThanDays),
+  cleanDisk: (ids: string[]) => invoke('disk:clean', ids),
   /** A system notification; clicking it brings the launcher back and sends `notify:open` with the target. */
   notify: (title: string, body: string, target?: { view: 'friends'; friendId?: string }) => invoke('notify:show', title, body, target),
   on,
