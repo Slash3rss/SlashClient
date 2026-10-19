@@ -399,6 +399,7 @@
 	"slashclient-hud.cosmetics.preview": "Podgląd",
 	"slashclient-hud.cosmetics.killHint": "Gra tam, gdzie padają Twoi przeciwnicy.",
 	"slashclient-hud.cosmetics.killWorld": "Podgląd zobaczysz w świecie gry.",
+	"slashclient-hud.cosmetics.rotate": "Przeciągnij, aby obrócić",
 	"slashclient-hud.partner": "Partner",
 	"slashclient-hud.chat.excludes": "Bez",
 	"slashclient-hud.chat.hint.excludes": "bez…",

@@ -37,6 +37,8 @@ public final class SkinPreview {
 	private final Supplier<PlayerSkin> skin;
 	// smoothed so the head eases after the mouse instead of snapping
 	private float headYaw, headPitch, bodyYaw = BODY_YAW;
+	/** Turned, running, wearing a set of the screen's: see FigureLook. */
+	public final FigureLook look = new FigureLook();
 
 	public SkinPreview(Minecraft mc) {
 		var models = mc.getEntityModels();
@@ -58,7 +60,7 @@ public final class SkinPreview {
 	// ---------- SlashClient cosmetics beside the figure: cape, wings, pet, clothing ----------
 
 	/** The cape, the wings and pets, each as a model the preview can draw (made when first worn). */
-	private Object cape, wings;
+	private Object cape, wings, elytra;
 	private final java.util.Map<String, Object> pets = new java.util.HashMap<>();
 	private ModelPart capePart, leftWing, rightWing;
 
@@ -87,15 +89,30 @@ public final class SkinPreview {
 	//$ }
 	//#endif
 
-	private Object capeModel() {
+	private Object capeModel(float swing) {
 		if (cape == null) {
 			ModelPart body = Minecraft.getInstance().getEntityModels().bakeLayer(ModelLayers.PLAYER_CAPE).getChild("body");
 			capePart = body.getChild("cape");
 			cape = wrap(body);
 		}
-		// hanging a little away from the back, as when standing in the game
-		capePart.xRot = 0.12f;
+		// hanging a little away from the back, as when standing in the game; blown back when running
+		capePart.xRot = look.running ? 0.75f + Math.abs(swing) * 0.12f : 0.12f;
 		return cape;
+	}
+
+	/** The elytra folded on the back, as the game draws a worn one when not flying. */
+	private Object elytraModel() {
+		if (elytra == null) {
+			ModelPart root = Minecraft.getInstance().getEntityModels().bakeLayer(ModelLayers.ELYTRA);
+			ModelPart left = root.getChild("left_wing"), right = root.getChild("right_wing");
+			root.z = 2;
+			left.xRot = right.xRot = 0.2618f;
+			left.zRot = -0.2618f;
+			right.zRot = 0.2618f;
+			left.yRot = right.yRot = 0;
+			elytra = wrap(root);
+		}
+		return elytra;
 	}
 
 	private Object wingsModel(float time) {
@@ -135,12 +152,34 @@ public final class SkinPreview {
 		return model;
 	}
 
-	/** A clothing item on the figure, its head, body and arms where the figure's are. */
-	private Object clothingModel(String id, boolean slimArms, ModelPart figure) {
-		Object model = clothes.computeIfAbsent(slimArms ? id + "/slim" : id, k -> wrap(dev.slash3rss.slashclient.hud.Clothing.bake(id, slimArms)));
+	/**
+	 * A clothing item on the figure, its head, body and arms where the figure's are. Each picture
+	 * is laid over the last with no depth between them, so an item is drawn in two: the boxes on
+	 * the far side of their part (`near` false: under the figure, which hides them) and the rest
+	 * (over it). Else the far ear cup of the headphones showed over the face.
+	 */
+	private Object clothingModel(String id, boolean slimArms, ModelPart figure, boolean near, float yaw) {
+		String key = (slimArms ? id + "/slim" : id) + (near ? "#near" : "#far");
+		Object model = clothes.computeIfAbsent(key, k -> wrap(dev.slash3rss.slashclient.hud.Clothing.bake(id, slimArms)));
 		ModelPart parts = root(model).getChild("slashclient");
 		for (String bone : java.util.List.of("head", "body", "right_arm", "left_arm")) parts.getChild(bone).loadPose(figure.getChild(bone).storePose());
+		for (var piece : dev.slash3rss.slashclient.hud.Clothing.pieces(id, slimArms)) {
+			// the head turns on its own: the face points `yaw` less the head's own turn
+			float turn = piece.bone().equals("head") ? yaw - (float) Math.toDegrees(figure.getChild("head").yRot) : yaw;
+			parts.getChild(piece.bone()).getChild(piece.name()).visible = far(piece.x(), piece.z(), turn) != near;
+		}
 		return model;
+	}
+
+	/**
+	 * Whether a point (model pixels from its part's pivot: +x the figure's left, −z its front) is on
+	 * the far side of that part, the figure turned by `yaw` degrees (0: facing the viewer).
+	 */
+	private static boolean far(float x, float z, float yaw) {
+		double a = Math.toRadians(yaw);
+		// towards the viewer, as FigureParticles turns its particles
+		double depth = -x * Math.sin(a) - z * Math.cos(a);
+		return depth < -1.5;
 	}
 	private final java.util.Map<String, Object> clothes = new java.util.HashMap<>();
 
@@ -157,45 +196,80 @@ public final class SkinPreview {
 		float eyesX = x + w / 2f;
 		float eyesY = y + h * 0.12f;
 		float dx = mx - eyesX, dy = my - eyesY;
+		// turned away (its side or back shown) the head no longer follows the mouse
+		float follow = look.step();
 		// angles towards the mouse (positive = to the right / down), limited like a real neck
-		float wantYaw = Mth.clamp((float) Math.toDegrees(Math.atan(dx / 100f)), -45, 45);
-		float wantPitch = Mth.clamp((float) Math.toDegrees(Math.atan(dy / 120f)), -25, 30);
+		float wantYaw = Mth.clamp((float) Math.toDegrees(Math.atan(dx / 100f)), -45, 45) * follow;
+		float wantPitch = Mth.clamp((float) Math.toDegrees(Math.atan(dy / 120f)), -25, 30) * follow;
 		headYaw += (wantYaw - headYaw) * 0.25f;
 		headPitch += (wantPitch - headPitch) * 0.25f;
 		// the body turns a third of the way, from a slight three-quarter view
 		bodyYaw += (BODY_YAW + wantYaw * 0.35f - bodyYaw) * 0.15f;
+		float yaw = bodyYaw + look.turned;
 
-		ModelPart head = model.root().getChild("head");
+		var root = model.root();
+		ModelPart head = root.getChild("head");
 		// the whole figure (rotY) and the head (yRot, relative to the body) turn in opposite senses:
 		// the head's own turn adds back the body's, so the face ends up pointing at the mouse
 		head.yRot = (float) Math.toRadians(bodyYaw - headYaw);
 		head.xRot = (float) Math.toRadians(headPitch);
 		head.zRot = 0;
+		float time = (System.currentTimeMillis() % 3_600_000) / 1000f;
+		// running on the spot: arms and legs swing, the body bobs a little
+		float swing = look.swing(time);
+		root.getChild("right_arm").xRot = swing * 0.9f;
+		root.getChild("left_arm").xRot = -swing * 0.9f;
+		root.getChild("right_leg").xRot = -swing;
+		root.getChild("left_leg").xRot = swing;
+		if (look.running) y -= Math.round(Math.abs(swing) * h * 0.012f);
 		var self = Minecraft.getInstance().getGameProfile().id();
 		dev.slash3rss.slashclient.hud.CosmeticsScreen.loadOwn(Minecraft.getInstance());
-		float time = (System.currentTimeMillis() % 3_600_000) / 1000f;
-		String wing = dev.slash3rss.slashclient.hud.Cosmetics.worn(self, "wings");
-		String capeId = dev.slash3rss.slashclient.hud.Cosmetics.worn(self, "cape");
-		// what is on the back first, the figure over it (each is a picture of its own, laid in order)
-		// wings and the pet reach past the figure's narrow box: a wider one around the same middle
-		if (wing != null) draw(g, wingsModel(time), dev.slash3rss.slashclient.hud.Cosmetics.textureId("wings", wing), scale, x - w / 2, y, w * 2, h);
-		else if (capeId != null) draw(g, capeModel(), dev.slash3rss.slashclient.hud.Cosmetics.capeTexture(capeId), scale, x, y, w, h);
-		g.skin(model, s.body().texturePath(), scale, -5, bodyYaw, PIVOT_Y, x, y, x + w, y + h);
-		// clothing over it: a wider box, taller upwards for what stands above the head (the figure stands on its bottom)
-		for (String slot : dev.slash3rss.slashclient.hud.Clothing.SLOTS) {
-			String item = dev.slash3rss.slashclient.hud.Cosmetics.worn(self, slot);
-			if (item != null) draw(g, clothingModel(item, s.model() == PlayerModelType.SLIM, model.root()), dev.slash3rss.slashclient.hud.Clothing.texture(item), scale, x - w / 2, y - h / 2, w * 2, h * 3 / 2);
-		}
-		String pet = dev.slash3rss.slashclient.hud.Cosmetics.worn(self, "pet");
+		String wing = look.worn(self, "wings");
+		String capeId = look.worn(self, "cape");
+		String elytraId = look.elytra ? look.worn(self, "elytra") : null;
+		// the aura and the trail: the game's particle pictures, those behind the figure first
+		look.tickParticles(self);
+		float feetX = x + w / 2f, feetY = y + h / 2f + (MODEL_HEIGHT / 2 - 0.0625f) * scale;
+		look.particles.draw(g, feetX, feetY, scale, yaw, false);
+		// each part is a picture of its own, laid in order with no depth between them: what is
+		// further from the viewer first, the figure, then what is nearer
+		// (wings and the pet reach past the figure's narrow box: a wider one around the same middle)
+		boolean showsBack = Math.cos(Math.toRadians(yaw)) < 0;
+		String pet = look.worn(self, "pet");
 		Object petModel = pet == null ? null : petModel(pet, time);
-		if (petModel != null) draw(g, petModel, dev.slash3rss.slashclient.hud.CosmeticLayer.petTexture(pet), scale, x - w / 2, y, w * 2, h);
+		// the pet by the left shoulder (9 pixels to the side, 1 behind)
+		boolean petBehind = far(9, 1, yaw);
+		boolean slimArms = s.model() == PlayerModelType.SLIM;
+		if (!showsBack) back(g, elytraId, wing, capeId, time, swing, scale, yaw, x, y, w, h);
+		if (petModel != null && petBehind) draw(g, petModel, dev.slash3rss.slashclient.hud.CosmeticLayer.petTexture(pet), scale, yaw, x - w / 2, y, w * 2, h);
+		// clothing: a wider box, taller upwards for what stands above the head (the figure stands on its bottom)
+		for (String slot : dev.slash3rss.slashclient.hud.Clothing.SLOTS) {
+			String item = look.worn(self, slot);
+			if (item != null) draw(g, clothingModel(item, slimArms, root, false, yaw), dev.slash3rss.slashclient.hud.Clothing.texture(item), scale, yaw, x - w / 2, y - h / 2, w * 2, h * 3 / 2);
+		}
+		g.skin(model, s.body().texturePath(), scale, -5, yaw, PIVOT_Y, x, y, x + w, y + h);
+		for (String slot : dev.slash3rss.slashclient.hud.Clothing.SLOTS) {
+			String item = look.worn(self, slot);
+			if (item != null) draw(g, clothingModel(item, slimArms, root, true, yaw), dev.slash3rss.slashclient.hud.Clothing.texture(item), scale, yaw, x - w / 2, y - h / 2, w * 2, h * 3 / 2);
+		}
+		// seen from behind, the cape (or the wings, or the elytra) over the figure and its clothing
+		if (showsBack) back(g, elytraId, wing, capeId, time, swing, scale, yaw, x, y, w, h);
+		if (petModel != null && !petBehind) draw(g, petModel, dev.slash3rss.slashclient.hud.CosmeticLayer.petTexture(pet), scale, yaw, x - w / 2, y, w * 2, h);
+		look.particles.draw(g, feetX, feetY, scale, yaw, true);
 	}
 
-	private void draw(GuiGraphicsExtractor g, Object model, net.minecraft.resources.Identifier texture, float scale, int x, int y, int w, int h) {
+	/** What is worn on the back: the elytra (on its slot's tab), else the wings, else the cape. */
+	private void back(GuiGraphicsExtractor g, String elytraId, String wing, String capeId, float time, float swing, float scale, float yaw, int x, int y, int w, int h) {
+		if (elytraId != null) draw(g, elytraModel(), dev.slash3rss.slashclient.hud.Cosmetics.textureId("elytra", elytraId), scale, yaw, x - w / 2, y, w * 2, h);
+		else if (wing != null) draw(g, wingsModel(time), dev.slash3rss.slashclient.hud.Cosmetics.textureId("wings", wing), scale, yaw, x - w / 2, y, w * 2, h);
+		else if (capeId != null) draw(g, capeModel(swing), dev.slash3rss.slashclient.hud.Cosmetics.capeTexture(capeId), scale, yaw, x, y, w, h);
+	}
+
+	private void draw(GuiGraphicsExtractor g, Object model, net.minecraft.resources.Identifier texture, float scale, float yaw, int x, int y, int w, int h) {
 		//#if MC >= 26.2
-		g.skin((Model.Simple) model, texture, scale, -5, bodyYaw, PIVOT_Y, x, y, x + w, y + h);
+		g.skin((Model.Simple) model, texture, scale, -5, yaw, PIVOT_Y, x, y, x + w, y + h);
 		//#else
-		//$ g.skin((net.minecraft.client.model.player.PlayerModel) model, texture, scale, -5, bodyYaw, PIVOT_Y, x, y, x + w, y + h);
+		//$ g.skin((net.minecraft.client.model.player.PlayerModel) model, texture, scale, -5, yaw, PIVOT_Y, x, y, x + w, y + h);
 		//#endif
 	}
 }
@@ -228,6 +302,8 @@ public final class SkinPreview {
 //$ 	private final PlayerModel<?> slim;
 //$ 	private final Supplier<PlayerSkin> skin;
 //$ 	private float headYaw, headPitch, bodyYaw = BODY_YAW;
+//$ 	/** Turned, running, the aura and the trail around it: see FigureLook. */
+//$ 	public final FigureLook look = new FigureLook();
 //$
 //$ 	public SkinPreview(Minecraft mc) {
 //$ 		var models = mc.getEntityModels();
@@ -244,23 +320,37 @@ public final class SkinPreview {
 //$ 		float eyesX = x + w / 2f;
 //$ 		float eyesY = y + h * 0.12f;
 //$ 		float dx = mx - eyesX, dy = my - eyesY;
-//$ 		float wantYaw = Mth.clamp((float) Math.toDegrees(Math.atan(dx / 100f)), -45, 45);
-//$ 		float wantPitch = Mth.clamp((float) Math.toDegrees(Math.atan(dy / 120f)), -25, 30);
+//$ 		float follow = look.step();
+//$ 		float wantYaw = Mth.clamp((float) Math.toDegrees(Math.atan(dx / 100f)), -45, 45) * follow;
+//$ 		float wantPitch = Mth.clamp((float) Math.toDegrees(Math.atan(dy / 120f)), -25, 30) * follow;
 //$ 		headYaw += (wantYaw - headYaw) * 0.25f;
 //$ 		headPitch += (wantPitch - headPitch) * 0.25f;
 //$ 		bodyYaw += (BODY_YAW + wantYaw * 0.35f - bodyYaw) * 0.15f;
+//$ 		float yaw = bodyYaw + look.turned;
 //$ 		model.head.yRot = (float) Math.toRadians(bodyYaw - headYaw);
 //$ 		model.head.xRot = (float) Math.toRadians(headPitch);
 //$ 		model.hat.copyFrom(model.head);
+//$ 		float swing = look.swing((System.currentTimeMillis() % 3_600_000) / 1000f);
+//$ 		model.rightArm.xRot = swing * 0.9f;
+//$ 		model.leftArm.xRot = -swing * 0.9f;
+//$ 		model.rightLeg.xRot = -swing;
+//$ 		model.leftLeg.xRot = swing;
+//$ 		model.rightSleeve.copyFrom(model.rightArm);
+//$ 		model.leftSleeve.copyFrom(model.leftArm);
+//$ 		model.rightPants.copyFrom(model.rightLeg);
+//$ 		model.leftPants.copyFrom(model.leftLeg);
+//$ 		if (look.running) y -= Math.round(Math.abs(swing) * h * 0.012f);
+//$ 		float scale = 0.97f * h / MODEL_HEIGHT;
+//$ 		look.tickParticles(Minecraft.getInstance().getGameProfile().getId());
+//$ 		look.particles.draw(graphics, x + w / 2f, y + h - 0.0625f * scale, scale, yaw, false);
 //$
 //$ 		PoseStack pose = graphics.pose();
 //$ 		pose.pushPose();
 //$ 		pose.translate(x + w / 2f, y + h, 100f);
-//$ 		float scale = 0.97f * h / MODEL_HEIGHT;
 //$ 		pose.scale(scale, scale, scale);
 //$ 		pose.translate(0f, -0.0625f, 0f);
 //$ 		pose.rotateAround(Axis.XP.rotationDegrees(-5), 0f, -1.0625f, 0f);
-//$ 		pose.mulPose(Axis.YP.rotationDegrees(bodyYaw));
+//$ 		pose.mulPose(Axis.YP.rotationDegrees(yaw));
 //$ 		graphics.flush();
 //$ 		Lighting.setupForEntityInInventory(Axis.XP.rotationDegrees(-5));
 //$ 		pose.pushPose();
@@ -270,6 +360,11 @@ public final class SkinPreview {
 //$ 		pose.popPose();
 //$ 		graphics.flush();
 //$ 		Lighting.setupFor3DItems();
+//$ 		pose.popPose();
+//$ 		// the particles in front, over the figure's depth
+//$ 		pose.pushPose();
+//$ 		pose.translate(0f, 0f, 300f);
+//$ 		look.particles.draw(graphics, x + w / 2f, y + h - 0.0625f * scale, scale, yaw, true);
 //$ 		pose.popPose();
 //$ 	}
 //$ }
@@ -303,6 +398,8 @@ public final class SkinPreview {
 //$ 	private volatile ResourceLocation skin;
 //$ 	private volatile boolean slimSkin;
 //$ 	private float headYaw, headPitch, bodyYaw = BODY_YAW;
+//$ 	/** Turned, running, the aura and the trail around it: see FigureLook. */
+//$ 	public final FigureLook look = new FigureLook();
 //$
 //$ 	public SkinPreview(Minecraft mc) {
 //$ 		var models = mc.getEntityModels();
@@ -336,11 +433,15 @@ public final class SkinPreview {
 //$ 		float eyesX = x + w / 2f;
 //$ 		float eyesY = y + h * 0.12f;
 //$ 		float dx = mx - eyesX, dy = my - eyesY;
-//$ 		float wantYaw = Mth.clamp((float) Math.toDegrees(Math.atan(dx / 100f)), -45, 45);
-//$ 		float wantPitch = Mth.clamp((float) Math.toDegrees(Math.atan(dy / 120f)), -25, 30);
+//$ 		float follow = look.step();
+//$ 		float wantYaw = Mth.clamp((float) Math.toDegrees(Math.atan(dx / 100f)), -45, 45) * follow;
+//$ 		float wantPitch = Mth.clamp((float) Math.toDegrees(Math.atan(dy / 120f)), -25, 30) * follow;
 //$ 		headYaw += (wantYaw - headYaw) * 0.25f;
 //$ 		headPitch += (wantPitch - headPitch) * 0.25f;
 //$ 		bodyYaw += (BODY_YAW + wantYaw * 0.35f - bodyYaw) * 0.15f;
+//$ 		float yaw = bodyYaw + look.turned;
+//$ 		float swing = look.swing((System.currentTimeMillis() % 3_600_000) / 1000f);
+//$ 		if (look.running) y -= Math.round(Math.abs(swing) * h * 0.012f);
 //$
 //$ 		model.young = false;
 //$ 		model.crouching = false;
@@ -349,6 +450,10 @@ public final class SkinPreview {
 //$ 		model.setAllVisible(true);
 //$ 		for (ModelPart p : new ModelPart[] { model.body, model.leftArm, model.rightArm, model.leftLeg, model.rightLeg }) p.resetPose();
 //$ 		model.head.resetPose();
+//$ 		model.rightArm.xRot = swing * 0.9f;
+//$ 		model.leftArm.xRot = -swing * 0.9f;
+//$ 		model.rightLeg.xRot = -swing;
+//$ 		model.leftLeg.xRot = swing;
 //$ 		model.head.yRot = (float) Math.toRadians(headYaw - bodyYaw);
 //$ 		model.head.xRot = (float) Math.toRadians(headPitch);
 //$ 		model.hat.copyFrom(model.head);
@@ -358,16 +463,18 @@ public final class SkinPreview {
 //$ 		model.leftPants.copyFrom(model.leftLeg);
 //$ 		model.rightPants.copyFrom(model.rightLeg);
 //$
+//$ 		var self = Minecraft.getInstance().getUser().getProfileId();
+//$ 		look.tickParticles(self);
+//$ 		look.particles.draw(g, x + w / 2f, y + h / 2f + scale, scale, yaw, false);
 //$ 		PoseStack pose = ((GuiGraphics) g).pose();
 //$ 		pose.pushPose();
 //$ 		// the model's origin is at the neck: the head 0.5 blocks above it, the feet 1.5 below
 //$ 		pose.translate(x + w / 2f, y + h / 2f - 0.5f * scale, 100);
 //$ 		pose.scale(scale, scale, -scale);
-//$ 		pose.mulPose(Axis.YP.rotationDegrees(bodyYaw));
+//$ 		pose.mulPose(Axis.YP.rotationDegrees(yaw));
 //$ 		Lighting.setupForEntityInInventory();
 //$ 		var buffers = g.bufferSource();
-//$ 		var self = Minecraft.getInstance().getUser().getProfileId();
-//$ 		String cape = dev.slash3rss.slashclient.hud.Cosmetics.worn(self, "cape");
+//$ 		String cape = look.worn(self, "cape");
 //$ 		if (cape != null) {
 //$ 			pose.pushPose();
 //$ 			pose.translate(0, 0, 0.125f);
@@ -379,6 +486,11 @@ public final class SkinPreview {
 //$ 		model.renderToBuffer(pose, buffers.getBuffer(RenderType.entityTranslucent(skin)), 0xF000F0, OverlayTexture.NO_OVERLAY, 1, 1, 1, 1);
 //$ 		g.flush();
 //$ 		Lighting.setupFor3DItems();
+//$ 		pose.popPose();
+//$ 		// the particles in front, over the figure's depth
+//$ 		pose.pushPose();
+//$ 		pose.translate(0f, 0f, 300f);
+//$ 		look.particles.draw(g, x + w / 2f, y + h / 2f + scale, scale, yaw, true);
 //$ 		pose.popPose();
 //$ 	}
 //$ }

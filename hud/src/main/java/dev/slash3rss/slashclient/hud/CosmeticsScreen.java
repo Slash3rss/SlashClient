@@ -21,7 +21,9 @@ import java.util.UUID;
 
 /**
  * Picking SlashClient cosmetics in the game: one slot at a time (cape, wings, elytra, trail,
- * aura, pet, hat, top, kill effect), the player seen from behind while the menu is open. Choices go to the SlashClient
+ * aura, pet, hat, top, kill effect), the player's figure beside the panel trying on the item under
+ * the mouse (turned to show its back for what is worn there, running for a trail, turned by
+ * dragging it; for kill effects in a world the real player, from behind). Choices go to the SlashClient
  * server through the launcher, for the Minecraft account being played when it is linked to the
  * SlashClient account (each can have a set of its own), else for the whole account.
  */
@@ -77,8 +79,14 @@ public class CosmeticsScreen extends Screen {
 	/** The item grid scrolls when a slot has more items than fit (in pixels), and where it is on screen. */
 	private int scroll, maxScroll, gridTop, gridBottom;
 	private final dev.slash3rss.slashclient.hud.ui.Scrollbar bar = new dev.slash3rss.slashclient.hud.ui.Scrollbar();
-	/** Opened from the main menu: the player's figure on the left. */
+	/** The player's figure on the left, and where it is on screen. */
 	private dev.slash3rss.slashclient.hud.ui.SkinPreview figure;
+	private int fx, fy, fw, fh;
+	/** The figure's turn by dragging it (degrees), and whether it is being dragged now. */
+	private float dragTurn;
+	private boolean turning;
+	/** The item under the mouse in this slot, tried on by the figure ("" the "nothing" tile, null none); `hoverNow` is this frame's. */
+	private String tried, hoverNow;
 	private CameraType camera;
 	private Component tooltip;
 	private int tipX, tipY;
@@ -123,8 +131,43 @@ public class CosmeticsScreen extends Screen {
 		py = (height - ph) / 2;
 		if (camera == null) {
 			camera = minecraft.options.getCameraType();
-			if (minecraft.player != null) minecraft.options.setCameraType(CameraType.THIRD_PERSON_BACK);
 			load();
+		}
+	}
+
+	/** How the figure stands for a slot: its back for what is worn there, its side for a trail (degrees). */
+	private static float turnFor(String slot) {
+		return switch (slot) {
+			case "cape", "wings", "elytra" -> 180;
+			case "trail" -> -90;
+			default -> 0;
+		};
+	}
+
+	private void pick(String s) {
+		if (s.equals(slot)) return;
+		slot = s;
+		scroll = 0;
+		dragTurn = 0;
+		tried = null;
+		if (figure != null) figure.look.turnTo(turnFor(s));
+	}
+
+	/** For the test: the figure dragged to this turn (degrees from how the slot shows it). */
+	void dragFigure(float degrees) {
+		dragTurn = degrees;
+	}
+
+	/** For the test: another slot, as a click on its tab. */
+	void select(String s) {
+		pick(s);
+	}
+
+	/** For the test: as if the server said this is worn in a slot (null takes it off). */
+	void wornForTest(String s, String id) {
+		synchronized (worn) {
+			if (id == null) worn.remove(s);
+			else worn.put(s, id);
 		}
 	}
 
@@ -263,12 +306,41 @@ public class CosmeticsScreen extends Screen {
 		hits.clear();
 		tooltip = null;
 		bar.hide();
-		// out of a world there is no player to look at: your figure, wearing what you pick
-		if (minecraft.level == null && px - 12 >= 64) {
-			if (figure == null) figure = new dev.slash3rss.slashclient.hud.ui.SkinPreview(minecraft);
-			int fh = Math.min(height - 40, Math.min(240, (px - 24) * 2));
-			int fw = fh / 2;
-			figure.draw(g, (px - 12 - fw) / 2, (height - fh) / 2, fw, fh, mx, my);
+		tried = hoverNow;
+		hoverNow = null;
+		boolean world = minecraft.level != null;
+		// kill effects play in the world, around the real player seen from behind; else the camera stays as it was
+		if (world && camera != null) {
+			CameraType want = slot.equals("kill") ? CameraType.THIRD_PERSON_BACK : camera;
+			if (minecraft.options.getCameraType() != want) minecraft.options.setCameraType(want);
+		}
+		// your figure, wearing what you pick and trying on what is under the mouse
+		fw = 0;
+		if (px - 12 >= 64 && !(world && slot.equals("kill"))) {
+			if (figure == null) {
+				figure = new dev.slash3rss.slashclient.hud.ui.SkinPreview(minecraft);
+				figure.look.turnTo(turnFor(slot));
+			}
+			fh = Math.min(height - 40, Math.min(240, (px - 24) * 2));
+			fw = fh / 2;
+			fx = (px - 12 - fw) / 2;
+			fy = (height - fh) / 2;
+			Map<String, String> set;
+			synchronized (worn) {
+				set = new HashMap<>(worn);
+			}
+			if (tried != null) set.put(slot, tried);
+			// wings take the cape's place: on the cape's tab the cape shows; running, they would hide the trail
+			if (slot.equals("cape") || slot.equals("trail")) set.remove("wings");
+			var look = figure.look;
+			look.wearing = set;
+			look.turn = turnFor(slot) + dragTurn;
+			look.running = slot.equals("trail");
+			look.elytra = slot.equals("elytra");
+			// while it is turned by hand the head does not chase the mouse
+			figure.draw(g, fx, fy, fw, fh, turning ? fx + fw / 2 : mx, turning ? fy : my);
+			Component hint = Ui.tr("slashclient-hud.cosmetics.rotate");
+			Ui.drawOnWorld(g, hint, fx + fw / 2 - Ui.width(hint) / 2, Math.min(height - 12, fy + fh + 4), Ui.MUTED);
 		}
 		Ui.panel(g, px, py, pw, ph);
 		Ui.begin("cosmetics", px, py, pw, ph);
@@ -314,17 +386,13 @@ public class CosmeticsScreen extends Screen {
 			boolean on = s.equals(slot);
 			Ui.button(g, "cos:slot:" + s, tx, y, w, 15, null, label, on, mx, my);
 			if (worn.containsKey(s)) g.fill(tx + w - 4, y + 2, tx + w - 2, y + 4, 0xFF4ADE80);
-			hits.add(new Hit(tx, y, w, 15, () -> {
-				slot = s;
-				scroll = 0;
-			}));
+			hits.add(new Hit(tx, y, w, 15, () -> pick(s)));
 			tx += w + 4;
 		}
 		y += 23;
 		// kill effects: a button that plays the one worn, beside the player (in a world only: they are the game's particles)
 		if (slot.equals("kill")) {
 			String kill = worn.get("kill");
-			boolean world = minecraft.level != null;
 			Component label = Ui.tr("slashclient-hud.cosmetics.preview");
 			int bw = Ui.width(label) + 24;
 			Ui.button(g, "cos:preview", x, y - 4, bw, 15, "play", label, false, mx, my);
@@ -402,6 +470,8 @@ public class CosmeticsScreen extends Screen {
 			case "friend_pink" -> 0xFFEC4899;
 			default -> 0xFFFACC15;
 		});
+		// tried on by the figure (kill effects are not worn)
+		if (over && !locked && !slot.equals("kill")) hoverNow = e == null ? "" : e.id();
 		if (over) {
 			tooltip = e == null ? Ui.tr("slashclient-hud.cosmetics.nothing")
 				: locked && !e.hint().isEmpty() ? Ui.fit(Ui.text(e.hint()), width - 20)
@@ -455,6 +525,11 @@ public class CosmeticsScreen extends Screen {
 				return true;
 			}
 		}
+		// the figure (and a little round it) turns when dragged
+		if (e.button() == 0 && fw > 0 && Ui.inside(e.x(), e.y(), fx - fw / 2, fy, fw * 2, fh)) {
+			turning = true;
+			return true;
+		}
 		return false;
 	}
 	@Override
@@ -466,6 +541,10 @@ public class CosmeticsScreen extends Screen {
 	//#endif
 		if (bar.dragging()) {
 			scroll = Math.round(bar.drag(e.y()));
+			return true;
+		}
+		if (turning) {
+			dragTurn += (float) dx * 1.6f;
 			return true;
 		}
 		//#if MC >= 1.21.9
@@ -483,6 +562,7 @@ public class CosmeticsScreen extends Screen {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
 	//#endif
 		bar.release();
+		turning = false;
 		//#if MC >= 1.21.9
 		return super.mouseReleased(e);
 		//#else
@@ -501,8 +581,8 @@ public class CosmeticsScreen extends Screen {
 			g.fill(0, 0, width, height, 0x800A0D14);
 			return;
 		}
-		// the player stays in full view: only the panel's side is darkened
-		g.fill(px - 12, 0, width, height, 0x70000000);
+		// the figure stands on the darkened game; for kill effects the real player stays in full view
+		g.fill(slot.equals("kill") ? px - 12 : 0, 0, width, height, 0x70000000);
 	}
 
 	@Override
