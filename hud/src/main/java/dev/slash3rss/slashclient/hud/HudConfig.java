@@ -231,6 +231,11 @@ public final class HudConfig {
 	/** Kill effects (a SlashClient cosmetic): ours when we kill something, and those of other players with SlashClient. */
 	public boolean killEffects = true;
 	public boolean killEffectsOthers = true;
+	/** Rings under the feet and movement effects (SlashClient cosmetics): ours, and those of other players with SlashClient. */
+	public boolean ringEffects = true;
+	public boolean ringEffectsOthers = true;
+	public boolean moveEffects = true;
+	public boolean moveEffectsOthers = true;
 	/** The SlashClient main menu instead of Minecraft's own. */
 	public boolean customMenu = true;
 	/** The SlashClient pause menu instead of Minecraft's own. */
@@ -514,6 +519,10 @@ public final class HudConfig {
 		badges = other.badges;
 		killEffects = other.killEffects;
 		killEffectsOthers = other.killEffectsOthers;
+		ringEffects = other.ringEffects;
+		ringEffectsOthers = other.ringEffectsOthers;
+		moveEffects = other.moveEffects;
+		moveEffectsOthers = other.moveEffectsOthers;
 		scoreboard = other.scoreboard;
 		scoreboardScale = other.scoreboardScale;
 		scoreboardOffset = other.scoreboardOffset;

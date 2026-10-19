@@ -20,7 +20,11 @@ public final class FigureLook {
 	/** The elytra slot shown on the back instead of the cape and the wings. */
 	public boolean elytra;
 
+	/** Its movement effect played as a short loop (the cosmetics menu's tab for them): see FigureMoves. */
+	public boolean moveDemo;
+
 	final FigureParticles particles = new FigureParticles();
+	final FigureMoves moves = new FigureMoves();
 	/** The turn so far, eased towards `turn`. */
 	float turned;
 
@@ -52,5 +56,6 @@ public final class FigureLook {
 	/** Moves the particles of what is worn on (aura standing, trail running); once a frame. */
 	void tickParticles(UUID self) {
 		particles.tick(worn(self, "aura"), worn(self, "trail"), running);
+		moves.tick(moveDemo ? worn(self, "move") : null);
 	}
 }

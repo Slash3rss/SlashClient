@@ -213,6 +213,10 @@ public final class SkinPreview {
 		// the aura and the trail: the game's particle pictures, those behind the figure first
 		look.tickParticles(self);
 		float feetX = x + w / 2f, feetY = y + h / 2f + (MODEL_HEIGHT / 2 - 0.0625f) * scale;
+		// the ring on the ground under it, and the movement effect's show (the figure hops for some)
+		FigureMoves.drawRing(g, look.worn(self, "ring"), feetX, feetY, scale, yaw);
+		look.moves.draw(g, feetX, feetY, scale, yaw, false);
+		y -= Math.round(look.moves.lift() * scale);
 		look.particles.draw(g, feetX, feetY, scale, yaw, false);
 		// the figure and all it wears, one picture with depth: whatever is nearer covers the rest
 		java.util.List<FigureRender.Layer> layers = new java.util.ArrayList<>();
@@ -234,6 +238,7 @@ public final class SkinPreview {
 		int side = Math.round(w * REACH_SIDE), up = Math.round(h * REACH_UP);
 		FigureRender.draw(g, layers, scale, -5, yaw, PIVOT_Y, x - side, y - up, x + w + side, y + h);
 		look.particles.draw(g, feetX, feetY, scale, yaw, true);
+		look.moves.draw(g, feetX, feetY, scale, yaw, true);
 	}
 
 	private static void layer(java.util.List<FigureRender.Layer> layers, Object model, net.minecraft.resources.Identifier texture) {
@@ -308,8 +313,14 @@ public final class SkinPreview {
 //$ 		model.leftPants.copyFrom(model.leftLeg);
 //$ 		if (look.running) y -= Math.round(Math.abs(swing) * h * 0.012f);
 //$ 		float scale = 0.97f * h / MODEL_HEIGHT;
-//$ 		look.tickParticles(Minecraft.getInstance().getGameProfile().getId());
-//$ 		look.particles.draw(graphics, x + w / 2f, y + h - 0.0625f * scale, scale, yaw, false);
+//$ 		var self = Minecraft.getInstance().getGameProfile().getId();
+//$ 		look.tickParticles(self);
+//$ 		float feetY = y + h - 0.0625f * scale;
+//$ 		var g = graphics;
+//$ 		FigureMoves.drawRing(g, look.worn(self, "ring"), x + w / 2f, feetY, scale, yaw);
+//$ 		look.moves.draw(g, x + w / 2f, feetY, scale, yaw, false);
+//$ 		y -= Math.round(look.moves.lift() * scale);
+//$ 		look.particles.draw(graphics, x + w / 2f, feetY, scale, yaw, false);
 //$
 //$ 		PoseStack pose = graphics.pose();
 //$ 		pose.pushPose();
@@ -331,7 +342,8 @@ public final class SkinPreview {
 //$ 		// the particles in front, over the figure's depth
 //$ 		pose.pushPose();
 //$ 		pose.translate(0f, 0f, 300f);
-//$ 		look.particles.draw(graphics, x + w / 2f, y + h - 0.0625f * scale, scale, yaw, true);
+//$ 		look.particles.draw(graphics, x + w / 2f, feetY, scale, yaw, true);
+//$ 		look.moves.draw(g, x + w / 2f, feetY, scale, yaw, true);
 //$ 		pose.popPose();
 //$ 	}
 //$ }
@@ -432,7 +444,11 @@ public final class SkinPreview {
 //$
 //$ 		var self = Minecraft.getInstance().getUser().getProfileId();
 //$ 		look.tickParticles(self);
-//$ 		look.particles.draw(g, x + w / 2f, y + h / 2f + scale, scale, yaw, false);
+//$ 		float feetY = y + h / 2f + scale;
+//$ 		FigureMoves.drawRing(g, look.worn(self, "ring"), x + w / 2f, feetY, scale, yaw);
+//$ 		look.moves.draw(g, x + w / 2f, feetY, scale, yaw, false);
+//$ 		y -= Math.round(look.moves.lift() * scale);
+//$ 		look.particles.draw(g, x + w / 2f, feetY, scale, yaw, false);
 //$ 		PoseStack pose = ((GuiGraphics) g).pose();
 //$ 		pose.pushPose();
 //$ 		// the model's origin is at the neck: the head 0.5 blocks above it, the feet 1.5 below
@@ -457,7 +473,8 @@ public final class SkinPreview {
 //$ 		// the particles in front, over the figure's depth
 //$ 		pose.pushPose();
 //$ 		pose.translate(0f, 0f, 300f);
-//$ 		look.particles.draw(g, x + w / 2f, y + h / 2f + scale, scale, yaw, true);
+//$ 		look.particles.draw(g, x + w / 2f, feetY, scale, yaw, true);
+//$ 		look.moves.draw(g, x + w / 2f, feetY, scale, yaw, true);
 //$ 		pose.popPose();
 //$ 	}
 //$ }

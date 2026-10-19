@@ -81,11 +81,14 @@ public class SlashHud implements ClientModInitializer {
 		//#if MC >= 1.21.2
 		net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback.EVENT.register((type, renderer, helper, context) -> {
 			if (renderer instanceof net.minecraft.client.renderer.entity.player.AvatarRenderer<?> avatar) helper.register(new CosmeticLayer(avatar, context));
+			// a ring under the feet
+			if (renderer instanceof net.minecraft.client.renderer.entity.player.AvatarRenderer<?> avatar) helper.register(new RingLayer(avatar));
 		});
 		//#else
 		//$ // there only the clothing, drawn straight from the player
 		//$ net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback.EVENT.register((type, renderer, helper, context) -> {
 		//$ 	if (renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer player) helper.register(new ClothingLayer(player));
+		//$ 	if (renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer player) helper.register(new RingLayer(player));
 		//$ });
 		//#endif
 		// the menu figure with everything on it, drawn as one picture with depth
@@ -101,6 +104,7 @@ public class SlashHud implements ClientModInitializer {
 			Cosmetics.reset();
 			CosmeticEffects.reset();
 			KillEffects.reset();
+			MoveEffects.reset();
 			NetCounter.attach(handler.getConnection());
 			Reconnect.joined(mc);
 			DungeonMap.stop();
@@ -164,6 +168,7 @@ public class SlashHud implements ClientModInitializer {
 			Cosmetics.tick(mc);
 			CosmeticEffects.tick(mc);
 			KillEffects.tick(mc);
+			MoveEffects.tick(mc);
 			Clips.tick(mc);
 			Badges.tick(mc);
 			while (edit.consumeClick()) {

@@ -213,6 +213,10 @@ public final class Catalog {
 		out.add(new Entry("badges", "slashclient-hud.set.badges", "extras", "m-badges", () -> cfg.badges, v -> cfg.badges = v, List.of(), null));
 		out.add(new Entry("killEffects", "slashclient-hud.set.killEffects", "extras", "m-kd", () -> cfg.killEffects, v -> cfg.killEffects = v, List.of(
 			new Toggle("slashclient-hud.set.killEffects.others", () -> cfg.killEffectsOthers, v -> cfg.killEffectsOthers = v)), null));
+		out.add(new Entry("ringEffects", "slashclient-hud.set.ringEffects", "extras", "m-light", () -> cfg.ringEffects, v -> cfg.ringEffects = v, List.of(
+			new Toggle("slashclient-hud.set.ringEffects.others", () -> cfg.ringEffectsOthers, v -> cfg.ringEffectsOthers = v)), null));
+		out.add(new Entry("moveEffects", "slashclient-hud.set.moveEffects", "extras", "m-movement", () -> cfg.moveEffects, v -> cfg.moveEffects = v, List.of(
+			new Toggle("slashclient-hud.set.moveEffects.others", () -> cfg.moveEffectsOthers, v -> cfg.moveEffectsOthers = v)), null));
 		out.add(new Entry("menu", "slashclient-hud.set.menu", "extras", "m-menu", () -> cfg.customMenu, v -> cfg.customMenu = v, List.of(), null));
 		out.add(new Entry("pause", "slashclient-hud.set.pause", "extras", "m-pause", () -> cfg.customPause, v -> cfg.customPause = v, List.of(), null));
 		var options = net.minecraft.client.Minecraft.getInstance().options;
