@@ -385,6 +385,25 @@ describe('social server', () => {
     assert.ok(kills.every((i) => (i as { available?: boolean }).available));
     assert.ok(!(await askAs('launcher/0.9.13')).items.some((i) => i.slot === 'kill'));
     assert.ok(!(await askAs('mod/0.9.13')).items.some((i) => i.slot === 'kill'));
+    // shoes and things on the hands: each only in its own slot, worn with the rest, only for launchers and mods from 0.9.20 on
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { shoes: 'rocketboots', hands: 'boxinggloves' } })).body.loadout.shoes, 'rocketboots');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { shoes: 'wristwatch' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { hands: 'flippers' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { hat: 'mittens' } })).body.error, 'bad_item');
+    assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc] })).body.cosmetics[ewaMc], { cape: 'galaxy', wings: 'angel', trail: 'hearts', shoes: 'rocketboots', hands: 'boxinggloves' });
+    await call('POST', '/v1/me', ewa.token, { loadout: { shoes: '', hands: '' } });
+    assert.equal((await call('GET', '/v1/me', ewa.token)).body.loadout.shoes, undefined);
+    const limbs = (await askAs('launcher/0.9.20')).items.filter((i) => i.slot === 'shoes' || i.slot === 'hands');
+    assert.deepEqual(limbs.filter((i) => i.slot === 'shoes').map((i) => i.id),
+      ['sneakers_red', 'sneakers_blue', 'hikingboots', 'slippers', 'bunnyslippers', 'rocketboots', 'rollerskates', 'flippers']);
+    assert.deepEqual(limbs.filter((i) => i.slot === 'hands').map((i) => i.id),
+      ['boxinggloves', 'wristwatch', 'bracelet', 'spikedgauntlets', 'mittens', 'goldring', 'smartband']);
+    assert.ok(limbs.every((i) => (i as { available?: boolean }).available));
+    assert.ok(!(await askAs('launcher/0.9.19')).items.some((i) => i.slot === 'shoes' || i.slot === 'hands'));
+    assert.ok(!(await askAs('mod/0.9.19')).items.some((i) => i.slot === 'shoes' || i.slot === 'hands'));
+    // ids are unique across all slots (a loadout is looked up by id alone)
+    const every = (await askAs('launcher/0.9.20')).items.map((i) => i.id);
+    assert.equal(new Set(every).size, every.length);
     const catalog = (await call('GET', '/v1/cosmetics', ewa.token)).body;
     assert.ok(catalog.items.some((i: any) => i.id === 'phoenix' && i.rank === 'partner' && !i.available));
     assert.ok(catalog.items.some((i: any) => i.id === 'angel' && i.slot === 'wings' && i.available));
