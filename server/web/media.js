@@ -18,11 +18,12 @@ export function aviFrames(buf) {
       const id = tag(at);
       const size = view.getUint32(at + 4, true);
       const data = at + 8;
-      if (data + size > end) return;
+      const cut = data + size > end;
       if (id === 'LIST') {
         const type = tag(data);
-        if (type === 'hdrl' || type === 'strl' || type === 'movi' || type === 'rec ') walk(data + 4, data + size, inMovi || type === 'movi');
-      } else if (id === 'avih') usPerFrame = view.getUint32(data, true);
+        if (type === 'hdrl' || type === 'strl' || type === 'movi' || type === 'rec ') walk(data + 4, Math.min(data + size, end), inMovi || type === 'movi');
+      } else if (cut) return;
+      else if (id === 'avih') usPerFrame = view.getUint32(data, true);
       else if (inMovi && (id === '00dc' || id === '00db') && size > 0) frames.push([data, size]);
       at = data + size + (size & 1);
     }

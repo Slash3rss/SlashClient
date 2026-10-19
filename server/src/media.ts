@@ -87,15 +87,13 @@ export function parseAvi(buf: Buffer): AviClip | undefined {
       const id = buf.toString('latin1', at, at + 4);
       const size = buf.readUInt32LE(at + 4);
       const data = at + 8;
-      if (data + size > end) {
-        // a clip cut short: keep the frames before the broken one
-        if (!inMovi) ok = false;
-        return;
-      }
+      // a clip cut short: the frames before the broken one stay
+      const cut = data + size > end;
       if (id === 'LIST' && size >= 4) {
         const type = buf.toString('latin1', data, data + 4);
-        if (type === 'hdrl' || type === 'strl' || type === 'movi' || type === 'rec ') walk(data + 4, data + size, inMovi || type === 'movi');
-      } else if (id === 'avih' && size >= 40) {
+        if (type === 'hdrl' || type === 'strl' || type === 'movi' || type === 'rec ') walk(data + 4, Math.min(data + size, end), inMovi || type === 'movi');
+      } else if (cut) return;
+      else if (id === 'avih' && size >= 40) {
         clip.usPerFrame = buf.readUInt32LE(data);
         clip.width = buf.readUInt32LE(data + 32);
         clip.height = buf.readUInt32LE(data + 36);
