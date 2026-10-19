@@ -149,6 +149,8 @@ const EN: Record<string, string> = {
   'Coś na głowę. Chowa się pod prawdziwym hełmem.': 'Something to wear on your head. It hides under a real helmet.',
   'Ubranie na skinie. Chowa się pod prawdziwym napierśnikiem.': 'Clothes over your skin. They hide under a real chestplate.',
   'Efekt zabójstwa': 'Kill effect',
+  'Rekwizyt': 'Prop',
+  'Pchasz go przed sobą, gdy masz wolne ręce. Z przedmiotem w ręce, przy jedzeniu, pływaniu czy lataniu się chowa.': 'You push it in front of you while your hands are free. It hides when you hold an item, eat, swim or fly.',
   'Krótki pokaz cząsteczek tam, gdzie pada pokonany przez Ciebie mob lub gracz. Widzą go gracze z SlashClient.': 'A short burst of particles where a mob or player you defeat falls. Players with SlashClient see it.',
   ' Odtwórz': ' Play',
   'Usunąć ten klip?': 'Delete this clip?',
