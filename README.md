@@ -56,6 +56,8 @@ Strona: <https://client.slash3rss.dev>. Poradniki dla graczy: [wiki](https://git
     niski ogień, godzina w czacie, własny celownik, stackowanie serc, mouse tweaks;
   - zakładki czatu wyłapujące wiadomości po tekście albo regexie (też jako osobne okna), ochrona przed wyrzuceniem (Q),
     wskaźniki obrażeń, licznik TNT, ukrywanie nicku, przycisk **Połącz ponownie** na ekranie rozłączenia;
+  - podgląd zawartości shulkerów w podpowiedzi, wyszukiwarka w ekwipunku i skrzyniach, blokada slotów paska (K),
+    moduł „Ekwipunek” i podpis na zrzutach F2 (współrzędne, wymiar, data, serwer);
   - klawisze SlashClient ustawiane w oknie moda, klipy (F8), koło emotek (N), menu kosmetyków, benchmark, znajomi i czat (O);
   - autoclicker, auto tool i uzupełnianie ręki (domyślnie wyłączone, z ostrzeżeniem przed pierwszym włączeniem);
   - zakładka **SkyUp** z **mapą dungeonu** (SkyUp.pl): pokoje z mapki z terakoty nad dungeonem, moby z ramką w kolorze klasy,
