@@ -58,10 +58,10 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 	 */
 	private static final class ClothingModel extends EntityModel<ClothingModel.Poses> {
 		static final class Poses extends EntityRenderState {
-			PartPose head, body, rightArm, leftArm;
+			PartPose head, body, rightArm, leftArm, rightLeg, leftLeg;
 		}
 
-		private final ModelPart head, body, rightArm, leftArm;
+		private final ModelPart head, body, rightArm, leftArm, rightLeg, leftLeg;
 
 		ClothingModel(ModelPart root) {
 			super(root);
@@ -69,6 +69,8 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			body = root.getChild("body");
 			rightArm = root.getChild("right_arm");
 			leftArm = root.getChild("left_arm");
+			rightLeg = root.getChild("right_leg");
+			leftLeg = root.getChild("left_leg");
 		}
 
 		@Override
@@ -78,6 +80,8 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			body.loadPose(p.body);
 			rightArm.loadPose(p.rightArm);
 			leftArm.loadPose(p.leftArm);
+			rightLeg.loadPose(p.rightLeg);
+			leftLeg.loadPose(p.leftLeg);
 		}
 	}
 
@@ -206,7 +210,7 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		ClothingModel.Poses poses = null;
 		for (String slot : Clothing.SLOTS) {
 			String item = Cosmetics.worn(id, slot);
-			if (item == null || Clothing.covered(slot, state.headEquipment, state.chestEquipment) || Suits.hides(id, slot)) continue;
+			if (item == null || Clothing.covered(slot, state.headEquipment, state.chestEquipment, state.feetEquipment) || Suits.hides(id, slot)) continue;
 			if (poses == null) poses = poses(state);
 			boolean slim = state.skin.model() == PlayerModelType.SLIM;
 			ClothingModel model = clothes.computeIfAbsent(slim ? item + "/slim" : item, k -> new ClothingModel(Clothing.bake(item, slim)));
@@ -214,7 +218,7 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		}
 	}
 
-	/** Where the player's head, body and arms are in this frame (the player model posed for this player first). */
+	/** Where the player's head, body, arms and legs are in this frame (the player model posed for this player first). */
 	private ClothingModel.Poses poses(AvatarRenderState state) {
 		PlayerModel model = getParentModel();
 		model.setupAnim(state);
@@ -223,6 +227,8 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		p.body = model.body.storePose();
 		p.rightArm = model.rightArm.storePose();
 		p.leftArm = model.leftArm.storePose();
+		p.rightLeg = model.rightLeg.storePose();
+		p.leftLeg = model.leftLeg.storePose();
 		return p;
 	}
 

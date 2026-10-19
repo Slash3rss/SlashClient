@@ -405,6 +405,8 @@
 	"slashclient-hud.cosmetics.slot.weapon": "Skórka broni",
 	"slashclient-hud.cosmetics.heldOthers": "Skórki innych graczy",
 	"slashclient-hud.cosmetics.heldHint": "Wyłączone: tarcze i bronie innych graczy wyglądają zwyczajnie (uczciwie w PvP). Twoja skórka zmienia tylko przedmiot w ręce.",
+	"slashclient-hud.cosmetics.slot.shoes": "Buty",
+	"slashclient-hud.cosmetics.slot.hands": "Dłonie",
 	"slashclient-hud.cosmetics.preview": "Podgląd",
 	"slashclient-hud.cosmetics.killHint": "Gra tam, gdzie padają Twoi przeciwnicy.",
 	"slashclient-hud.cosmetics.killWorld": "Podgląd zobaczysz w świecie gry.",

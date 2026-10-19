@@ -5,13 +5,15 @@ import { boxQuads, clothingItem, layout, slimBox, type Bone, type ClothingBox } 
 import { KillEffectPreview } from './killEffects';
 import { SuitPreview } from './suitPreview';
 import { HeldPreview } from './heldPreview';
+import { RocketFlames } from './limbsPreview';
 import type { SkinViewer } from 'skinview3d';
 
 /**
  * What the game shows around a player, in the skin preview: the pet floating by the shoulder
  * (the mob's own model and picture), the particles of trails and auras, made of the game's own
  * particle pictures (read from a downloaded game; without one, the preview shows neither), and the
- * clothing, our own boxes and pictures (src/shared/clothing.ts) fixed to the figure's head, body and arms,
+ * clothing, our own boxes and pictures (src/shared/clothing.ts) fixed to the figure's head, body, arms and legs
+ * (the rocket boots' flames: limbsPreview.ts),
  * and a kill effect's burst every few seconds (killEffects.ts).
  * Units are the model's pixels: feet at y -16, shoulders at 8, the face towards +z.
  */
@@ -105,7 +107,8 @@ export class CosmeticPreview {
   private clothes: { mesh: Mesh; holder: Object3D }[] = [];
   /** What the clothing was made for: the items and the arms' width (a new skin may change it). */
   private dressed = '';
-  private wearing: { hat?: string; top?: string } = {};
+  private wearing: { hat?: string; top?: string; shoes?: string; hands?: string } = {};
+  private rocket: RocketFlames;
   /** A suit over all of it (it hides the hat and the top), see suitPreview.ts. */
   private suit: SuitPreview;
   private suitId?: string;
@@ -121,6 +124,7 @@ export class CosmeticPreview {
     this.kills = new KillEffectPreview(viewer.playerWrapper);
     this.suit = new SuitPreview(viewer, (src) => this.ourTexture(src), suits);
     this.held = new HeldPreview(viewer, held);
+    this.rocket = new RocketFlames(viewer.playerWrapper, () => this.texture('particle/flame'));
     const tick = (now: number) => {
       this.update(Math.min(0.1, (now - this.last) / 1000), now / 1000);
       this.last = now;
@@ -156,12 +160,12 @@ export class CosmeticPreview {
    * Shows what a set wears (the cape, wings and elytra are the viewer's own back equipment);
    * `kill` plays its burst every few seconds (shown only while its tab is open: it would distract).
    */
-  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string; suit?: string; shield?: string; weapon?: string }) {
+  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string; suit?: string; shield?: string; weapon?: string; shoes?: string; hands?: string }) {
     this.kills.set(set.kill);
     this.held.show(set);
-    // a suit hides the hat and the top, as in the game
+    // a suit hides the hat, the top, the shoes and the hands, as in the game
     this.suitId = set.suit || undefined;
-    this.wearing = this.suitId ? {} : { hat: set.hat || undefined, top: set.top || undefined };
+    this.wearing = this.suitId ? {} : { hat: set.hat || undefined, top: set.top || undefined, shoes: set.shoes || undefined, hands: set.hands || undefined };
     this.dress();
     this.trail = set.trail ? EFFECTS[set.trail] : undefined;
     this.aura = set.aura ? EFFECTS[set.aura] : undefined;
@@ -234,7 +238,7 @@ export class CosmeticPreview {
   private dress() {
     const skin = this.viewer.playerObject.skin;
     const slim = skin.modelType === 'slim';
-    const key = `${this.wearing.hat ?? ''}|${this.wearing.top ?? ''}|${slim}`;
+    const key = `${this.wearing.hat ?? ''}|${this.wearing.top ?? ''}|${this.wearing.shoes ?? ''}|${this.wearing.hands ?? ''}|${slim}`;
     if (key === this.dressed) return;
     this.dressed = key;
     for (const c of this.clothes) {
@@ -244,8 +248,9 @@ export class CosmeticPreview {
     }
     this.clothes = [];
     // the figure's parts, and where the game's own pivot of each is in it (the body's group sits at its middle)
-    const bones: Record<Bone, [Object3D, number]> = { head: [skin.head, 0], body: [skin.body, 6], right_arm: [skin.rightArm, 0], left_arm: [skin.leftArm, 0] };
-    for (const id of [this.wearing.hat, this.wearing.top]) {
+    const bones: Record<Bone, [Object3D, number]> = { head: [skin.head, 0], body: [skin.body, 6], right_arm: [skin.rightArm, 0], left_arm: [skin.leftArm, 0],
+      right_leg: [skin.rightLeg, 0], left_leg: [skin.leftLeg, 0] };
+    for (const id of [this.wearing.hat, this.wearing.top, this.wearing.shoes, this.wearing.hands]) {
       const item = id ? clothingItem(id) : undefined;
       if (!item) continue;
       const material = new MeshStandardMaterial({ map: this.clothingTexture(item.id), transparent: true, alphaTest: 0.1, side: DoubleSide });
@@ -341,6 +346,8 @@ export class CosmeticPreview {
     this.dress();
     this.suit.wear(this.suitId);
     this.kills.update(dt);
+    const skin = this.viewer.playerObject.skin;
+    this.rocket.update(dt, this.wearing.shoes === 'rocketboots' ? [skin.rightLeg, skin.leftLeg] : undefined);
     if (this.pet) {
       // by the shoulder: the model's feet (24 px under its origin) a little above it, bobbing
       const scale = this.pet instanceof Sprite ? 0 : this.pet.scale.x;
@@ -394,6 +401,7 @@ export class CosmeticPreview {
     this.kills.dispose();
     this.suit.dispose();
     this.held.dispose();
+    this.rocket.dispose();
     for (const t of this.textures.values()) t.dispose();
   }
 }

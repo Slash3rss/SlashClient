@@ -405,6 +405,8 @@
 	"slashclient-hud.cosmetics.slot.weapon": "Weapon skin",
 	"slashclient-hud.cosmetics.heldOthers": "Other players' skins",
 	"slashclient-hud.cosmetics.heldHint": "Off: other players' shields and weapons look as usual (fair in PvP). Your skin changes only the item in your hand.",
+	"slashclient-hud.cosmetics.slot.shoes": "Shoes",
+	"slashclient-hud.cosmetics.slot.hands": "Hands",
 	"slashclient-hud.cosmetics.preview": "Preview",
 	"slashclient-hud.cosmetics.killHint": "Plays where your foes fall.",
 	"slashclient-hud.cosmetics.killWorld": "You can preview it in a world.",

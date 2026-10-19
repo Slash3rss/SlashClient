@@ -153,11 +153,11 @@ public final class SkinPreview {
 		return model;
 	}
 
-	/** A clothing item on the figure, its head, body and arms posed as the figure's. */
+	/** A clothing item on the figure, its head, body, arms and legs posed as the figure's. */
 	private Object clothingModel(String id, boolean slimArms, ModelPart figure) {
 		Object model = clothes.computeIfAbsent(slimArms ? id + "/slim" : id, k -> wrap(dev.slash3rss.slashclient.hud.Clothing.bake(id, slimArms)));
 		ModelPart parts = root(model).getChild("slashclient");
-		for (String bone : java.util.List.of("head", "body", "right_arm", "left_arm")) parts.getChild(bone).loadPose(figure.getChild(bone).storePose());
+		for (String bone : dev.slash3rss.slashclient.hud.Clothing.BONES) parts.getChild(bone).loadPose(figure.getChild(bone).storePose());
 		return model;
 	}
 	private final java.util.Map<String, Object> clothes = new java.util.HashMap<>();

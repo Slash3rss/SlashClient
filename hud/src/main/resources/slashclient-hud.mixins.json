@@ -28,6 +28,7 @@
 		"HeartsMixin",
 		"HeldItemsMixin",
 		"HeldSkinsMixin",
+		"HandWearMixin",
 		"ToastsMixin",
 		"PongMixin",
 		"JoinMultiplayerScreenMixin",

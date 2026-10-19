@@ -28,7 +28,7 @@ import java.util.UUID;
  * SlashClient account (each can have a set of its own), else for the whole account.
  */
 public class CosmeticsScreen extends Screen {
-	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit", "shield", "weapon"};
+	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit", "shield", "weapon", "shoes", "hands"};
 	/** Particles and pets have no picture of ours: an item that looks like them stands in. */
 	private static final Map<String, Item> ITEMS = Map.ofEntries(
 		Map.entry("hearts", Items.POPPY), Map.entry("sparks", Items.GLOWSTONE_DUST), Map.entry("snow", Items.SNOWBALL),
@@ -117,8 +117,11 @@ public class CosmeticsScreen extends Screen {
 		for (String id : Suits.IDS) list.add(new Entry(id, "suit", id, "", true));
 		for (String id : HeldSkins.SHIELDS) list.add(new Entry(id, "shield", id, "", true));
 		for (String id : HeldSkins.WEAPONS) list.add(new Entry(id, "weapon", id, "", true));
+		for (String id : Clothing.SHOES) list.add(new Entry(id, "shoes", id, "", true));
+		for (String id : Clothing.HANDS) list.add(new Entry(id, "hands", id, "", true));
 		screen.items = List.copyOf(list);
-		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf", "kill", "firework", "shield", "shield_dragon", "weapon", "sword_katana"));
+		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf", "kill", "firework", "shield", "shield_dragon", "weapon", "sword_katana",
+			"shoes", "sneakers_red", "hands", "wristwatch"));
 		screen.character = "test";
 		screen.characterName = "Slash3rss";
 		screen.ownSet = true;
@@ -490,7 +493,7 @@ public class CosmeticsScreen extends Screen {
 			case "weapon" ->
 				// the sword's or bow's own picture, larger
 				g.blit(RenderPipelines.GUI_TEXTURED, Cosmetics.textureId("item/held", e.id()), x + (TILE_W - 24) / 2, y + (TILE_H - 24) / 2, 0, 0, 24, 24, 16, 16, 16, 16, alpha);
-			case "hat", "top" ->
+			case "hat", "top", "shoes", "hands" ->
 				// a view of it from the front, a little from above
 				g.blit(RenderPipelines.GUI_TEXTURED, Clothing.icon(e.id()), x + (TILE_W - 26) / 2, y + (TILE_H - 26) / 2, 0, 0, 26, 26, 64, 64, 64, 64, alpha);
 			default -> {

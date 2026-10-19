@@ -2,7 +2,7 @@ import type { CosmeticSetting } from './db.ts';
 
 /**
  * The SlashClient cosmetics. Their pictures live in the HUD mod (textures/cape, textures/elytra,
- * textures/wings, textures/clothing with the clothing's boxes in src/shared/clothing.ts, textures/suit with the
+ * textures/wings, textures/clothing with the clothing's, shoes' and hand items' boxes in src/shared/clothing.ts, textures/suit with the
  * suits' in src/shared/suits.ts, textures/item/held; trails,
  * auras, kill effects and pets are drawn from the game's own particles and mobs) and on the website (web/vendor);
  * the server checks choices against these and the admin's settings.
@@ -10,8 +10,8 @@ import type { CosmeticSetting } from './db.ts';
  * A player wears one item per slot. `rank` items are for that rank only (admins may wear all);
  * any item can also be made exclusive in the admin panel and granted to chosen players.
  */
-export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon';
-export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill', 'suit', 'shield', 'weapon'];
+export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon' | 'shoes' | 'hands';
+export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill', 'suit', 'shield', 'weapon', 'shoes', 'hands'];
 export type Rank = 'admin' | 'support' | 'partner' | 'friend' | 'friend_pink';
 
 export interface Item {
@@ -186,6 +186,22 @@ export const ITEMS: Item[] = [
   { id: 'sword_ice', slot: 'weapon', name: 'Lodowy miecz', since: '0.9.20' },
   { id: 'bow_dragon', slot: 'weapon', name: 'Smoczy łuk', since: '0.9.20' },
   { id: 'bow_crystal', slot: 'weapon', name: 'Kryształowy łuk', since: '0.9.20' },
+  // shoes on both feet (hidden under real boots) and things on the hands, boxes over the skin like the clothing
+  { id: 'sneakers_red', slot: 'shoes', name: 'Trampki czerwone', since: '0.9.20' },
+  { id: 'sneakers_blue', slot: 'shoes', name: 'Trampki niebieskie', since: '0.9.20' },
+  { id: 'hikingboots', slot: 'shoes', name: 'Traperki', since: '0.9.20' },
+  { id: 'slippers', slot: 'shoes', name: 'Kapcie', since: '0.9.20' },
+  { id: 'bunnyslippers', slot: 'shoes', name: 'Kapcie króliczki', since: '0.9.20' },
+  { id: 'rocketboots', slot: 'shoes', name: 'Buty rakietowe', since: '0.9.20' },
+  { id: 'rollerskates', slot: 'shoes', name: 'Wrotki', since: '0.9.20' },
+  { id: 'flippers', slot: 'shoes', name: 'Płetwy', since: '0.9.20' },
+  { id: 'boxinggloves', slot: 'hands', name: 'Rękawice bokserskie', since: '0.9.20' },
+  { id: 'wristwatch', slot: 'hands', name: 'Zegarek', since: '0.9.20' },
+  { id: 'bracelet', slot: 'hands', name: 'Bransoletka', since: '0.9.20' },
+  { id: 'spikedgauntlets', slot: 'hands', name: 'Kolczaste rękawice', since: '0.9.20' },
+  { id: 'mittens', slot: 'hands', name: 'Rękawiczki zimowe', since: '0.9.20' },
+  { id: 'goldring', slot: 'hands', name: 'Złoty pierścień', since: '0.9.20' },
+  { id: 'smartband', slot: 'hands', name: 'Opaska sportowa', since: '0.9.20' },
 ];
 
 /** Compares two versions like 0.9.1 number by number: below 0, 0 or above 0. */
