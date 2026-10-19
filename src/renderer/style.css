@@ -441,7 +441,7 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 img.fade { opacity: 0; transition: opacity .35s ease; }
 img.fade.loaded { opacity: 1; }
 
-.spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .25); border-top-color: currentColor; animation: spin .7s linear infinite; display: inline-block; flex-shrink: 0; }
+.spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .25); border-top-color: currentColor; animation: spin .7s linear infinite; display: inline-block; flex: none; }
 .spinner.big { width: 28px; height: 28px; border-width: 3px; color: var(--accent-light); }
 button.busy { pointer-events: none; }
 .spin-icon { animation: spin .8s linear infinite; }
@@ -558,8 +558,9 @@ body.entering main { animation: rise-in .55s cubic-bezier(.2, .7, .3, 1) .12s bo
 
 /* ---------- updates & versions ---------- */
 .updates-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; font-size: 14px; }
-.updates-bar span { flex: 1; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
-.updates-bar span b { color: var(--text-primary); }
+/* only the bar's own text grows: the spinner inside it is a span too and stretched into a long spinning line */
+.updates-bar > span { flex: 1; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+.updates-bar > span b { color: var(--text-primary); }
 .updates-bar button { height: 34px; padding: 0 12px; font-size: 13px; }
 .tag.update { background: rgba(59, 130, 246, .18); color: #93c5fd; text-transform: none; letter-spacing: 0; font-weight: 600; }
 .project-main b .tag { margin-left: 8px; vertical-align: middle; }
