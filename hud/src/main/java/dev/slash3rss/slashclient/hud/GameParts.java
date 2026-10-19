@@ -299,7 +299,8 @@ public final class GameParts {
 			footer = font.split(parts.slashclient$footer(), sw - 50);
 			for (var line : footer) wide = Math.max(wide, font.width(line));
 		}
-		int bottom = 10 + (header != null ? header.size() * 9 + 1 : 0) + rows * 9 + (footer != null ? 1 + footer.size() * 9 : 0);
+		// the footer's background reaches a pixel lower than its lines (measured in game on 26.3 and 1.21.4)
+		int bottom = 10 + (header != null ? header.size() * 9 + 1 : 0) + rows * 9 + (footer != null ? 2 + footer.size() * 9 : 0);
 		return new int[] { sw / 2 - wide / 2 - 1, 9, sw / 2 + wide / 2 + 1, bottom };
 	}
 

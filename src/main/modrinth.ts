@@ -11,7 +11,8 @@ const API = 'https://api.modrinth.com/v2';
 const HEADERS = { 'User-Agent': USER_AGENT };
 
 export type ContentType = 'mod' | 'resourcepack' | 'shader';
-export type ProjectType = ContentType | 'modpack';
+/** Datapacks go into one world's datapacks/ folder (see worldFiles.ts), not into the profile's content folders. */
+export type ProjectType = ContentType | 'modpack' | 'datapack';
 
 export const FOLDERS: Record<ContentType, string> = { mod: 'mods', resourcepack: 'resourcepacks', shader: 'shaderpacks' };
 
@@ -123,6 +124,7 @@ export async function listVersions(projectId: string, filter: { gameVersion?: st
 
 export async function listContentVersions(projectId: string, type: ProjectType, gameVersion?: string, loader?: string): Promise<VersionInfo[]> {
   if (type === 'modpack') return listVersions(projectId);
+  if (type === 'datapack') return listVersions(projectId, { gameVersion, loaders: ['datapack'] });
   return listVersions(projectId, { gameVersion, loaders: loadersFor(type, loader) });
 }
 
@@ -245,6 +247,20 @@ export async function removeContent(gameDir: string, type: ContentType, filename
   await fs.rm(file, { force: true });
   await fs.rm(`${file}.disabled`, { force: true });
   await writeManifest(gameDir, (await readManifest(gameDir)).filter((m) => !(m.type === type && m.filename === filename)));
+}
+
+/** The file of a datapack to download: the given version, or the newest one for this game version. */
+export async function datapackFile(projectId: string, gameVersion: string, versionId?: string) {
+  const version = versionId ? await get<ModrinthVersion>(`${API}/version/${versionId}`) : await pickVersion(projectId, gameVersion, 'datapack');
+  if (version.project_id !== projectId) throw new Error(t('Ta wersja nie należy do tego projektu.'));
+  const project = await get<{ title: string; icon_url?: string }>(`${API}/project/${projectId}`);
+  // datapacks are zip files; a version may also carry a mod jar of the same content
+  const file = version.files.find((f) => f.primary && /\.zip$/i.test(f.filename)) ?? version.files.find((f) => /\.zip$/i.test(f.filename));
+  if (!file) throw new Error(t('Ta wersja nie ma pliku datapacka (.zip).'));
+  return {
+    url: file.url, filename: path.basename(file.filename), sha1: file.hashes.sha1, size: file.size,
+    projectId, versionId: version.id, versionNumber: version.version_number, title: project.title, iconUrl: project.icon_url,
+  };
 }
 
 /**

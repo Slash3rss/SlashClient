@@ -79,8 +79,8 @@ export interface CfFile {
 }
 
 /** CurseForge's "classes" (sections of the site). */
-const CLASS: Record<ProjectType, number> = { mod: 6, resourcepack: 12, shader: 6552, modpack: 4471 };
 const DATAPACKS = 6945;
+const CLASS: Record<ProjectType, number> = { mod: 6, resourcepack: 12, shader: 6552, modpack: 4471, datapack: DATAPACKS };
 const LOADER_TYPE: Record<string, number> = { forge: 1, fabric: 4, quilt: 5, neoforge: 6 };
 const LOADERS = ['forge', 'fabric', 'quilt', 'neoforge'];
 const RELEASE: Record<number, VersionInfo['type']> = { 1: 'release', 2: 'beta', 3: 'alpha' };
