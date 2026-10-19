@@ -76,10 +76,10 @@ export class Preview {
     await this.viewer.loadSkin('/vendor/skin-default.png', { model: 'default' });
   }
 
-  /** What the figure wears: { cape, wings, elytra, trail, aura, pet, hat, top } (ids or empty). */
+  /** What the figure wears: { cape, wings, elytra, trail, aura, pet, hat, top, kill } (ids or empty; a kill effect plays every few seconds). */
   async show(worn) {
     clearInterval(this.capeTimer);
-    this.cosmetics.show({ trail: worn.trail || undefined, aura: worn.aura || undefined, pet: worn.pet || undefined, hat: worn.hat || undefined, top: worn.top || undefined });
+    this.cosmetics.show({ trail: worn.trail || undefined, aura: worn.aura || undefined, pet: worn.pet || undefined, hat: worn.hat || undefined, top: worn.top || undefined, kill: worn.kill || undefined });
     // a tall hat stands above the head: the figure a little smaller, so it stays in view
     this.viewer.zoom = worn.hat ? 0.72 : 0.85;
     // wings take the back first (as in the game), then an elytra, then the cape
