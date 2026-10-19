@@ -1,0 +1,6 @@
+{
+	"parent": "minecraft:item/handheld",
+	"textures": {
+		"layer0": "slashclient-hud:item/held/sword_katana"
+	}
+}

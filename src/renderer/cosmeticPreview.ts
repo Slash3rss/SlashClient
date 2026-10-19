@@ -4,6 +4,7 @@ import { OUR_PET_FRAMES, OUR_PET_MODELS } from './ourPetModels';
 import { boxQuads, clothingItem, layout, slimBox, type Bone, type ClothingBox } from '../shared/clothing';
 import { KillEffectPreview } from './killEffects';
 import { SuitPreview } from './suitPreview';
+import { HeldPreview } from './heldPreview';
 import type { SkinViewer } from 'skinview3d';
 
 /**
@@ -113,11 +114,13 @@ export class CosmeticPreview {
   private ourPet?: { id: string; material: MeshStandardMaterial; frame: number };
 
   private kills: KillEffectPreview;
+  private held: HeldPreview;
 
-  /** `clothing` is where the clothing's pictures are (<id>.png), `pets` our own pets' (<id>_<frame>.png), `suits` the suits'. */
-  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/', private pets = 'img/pets/', suits = 'img/suits/') {
+  /** `clothing` is where the clothing's pictures are (<id>.png), `pets` our own pets' (<id>_<frame>.png), `suits` the suits', `held` the shields' and weapons'. */
+  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/', private pets = 'img/pets/', suits = 'img/suits/', held = 'img/held/') {
     this.kills = new KillEffectPreview(viewer.playerWrapper);
     this.suit = new SuitPreview(viewer, (src) => this.ourTexture(src), suits);
+    this.held = new HeldPreview(viewer, held);
     const tick = (now: number) => {
       this.update(Math.min(0.1, (now - this.last) / 1000), now / 1000);
       this.last = now;
@@ -153,8 +156,9 @@ export class CosmeticPreview {
    * Shows what a set wears (the cape, wings and elytra are the viewer's own back equipment);
    * `kill` plays its burst every few seconds (shown only while its tab is open: it would distract).
    */
-  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string; suit?: string }) {
+  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string; suit?: string; shield?: string; weapon?: string }) {
     this.kills.set(set.kill);
+    this.held.show(set);
     // a suit hides the hat and the top, as in the game
     this.suitId = set.suit || undefined;
     this.wearing = this.suitId ? {} : { hat: set.hat || undefined, top: set.top || undefined };
@@ -389,6 +393,7 @@ export class CosmeticPreview {
     this.particles = [];
     this.kills.dispose();
     this.suit.dispose();
+    this.held.dispose();
     for (const t of this.textures.values()) t.dispose();
   }
 }

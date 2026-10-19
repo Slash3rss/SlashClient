@@ -1,0 +1,6 @@
+{
+	"model": {
+		"type": "minecraft:model",
+		"model": "slashclient-hud:item/held/sword_katana"
+	}
+}

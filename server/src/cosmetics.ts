@@ -3,15 +3,15 @@ import type { CosmeticSetting } from './db.ts';
 /**
  * The SlashClient cosmetics. Their pictures live in the HUD mod (textures/cape, textures/elytra,
  * textures/wings, textures/clothing with the clothing's boxes in src/shared/clothing.ts, textures/suit with the
- * suits' in src/shared/suits.ts; trails,
+ * suits' in src/shared/suits.ts, textures/item/held; trails,
  * auras, kill effects and pets are drawn from the game's own particles and mobs) and on the website (web/vendor);
  * the server checks choices against these and the admin's settings.
  *
  * A player wears one item per slot. `rank` items are for that rank only (admins may wear all);
  * any item can also be made exclusive in the admin panel and granted to chosen players.
  */
-export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit';
-export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill', 'suit'];
+export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon';
+export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill', 'suit', 'shield', 'weapon'];
 export type Rank = 'admin' | 'support' | 'partner' | 'friend' | 'friend_pink';
 
 export interface Item {
@@ -171,6 +171,21 @@ export const ITEMS: Item[] = [
   { id: 'ghostsheet', slot: 'suit', name: 'Duch z prześcieradła', since: '0.9.20' },
   { id: 'mech', slot: 'suit', name: 'Mech', since: '0.9.20' },
   { id: 'pirate', slot: 'suit', name: 'Pirat', since: '0.9.20' },
+  // held item skins (textures/item/held, scripts/make-held.mjs): the look of a held shield, and of every
+  // sword (sword_…) or the bow (bow_…); only in the hand, and other players see them only if they switch it on
+  { id: 'shield_dragon', slot: 'shield', name: 'Smocza', since: '0.9.20' },
+  { id: 'shield_demon', slot: 'shield', name: 'Demoniczna', since: '0.9.20' },
+  { id: 'shield_cardboard', slot: 'shield', name: 'Kartonowa', since: '0.9.20' },
+  { id: 'shield_golden', slot: 'shield', name: 'Złota', since: '0.9.20' },
+  { id: 'shield_ice', slot: 'shield', name: 'Lodowa', since: '0.9.20' },
+  { id: 'shield_slash', slot: 'shield', name: 'SlashClient', since: '0.9.20' },
+  { id: 'shield_heart', slot: 'shield', name: 'Pikselowe serce', since: '0.9.20' },
+  { id: 'sword_beam', slot: 'weapon', name: 'Miecz świetlny', since: '0.9.20' },
+  { id: 'sword_katana', slot: 'weapon', name: 'Katana', since: '0.9.20' },
+  { id: 'sword_flame', slot: 'weapon', name: 'Płonący miecz', since: '0.9.20' },
+  { id: 'sword_ice', slot: 'weapon', name: 'Lodowy miecz', since: '0.9.20' },
+  { id: 'bow_dragon', slot: 'weapon', name: 'Smoczy łuk', since: '0.9.20' },
+  { id: 'bow_crystal', slot: 'weapon', name: 'Kryształowy łuk', since: '0.9.20' },
 ];
 
 /** Compares two versions like 0.9.1 number by number: below 0, 0 or above 0. */

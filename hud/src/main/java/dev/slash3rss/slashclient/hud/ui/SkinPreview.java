@@ -172,6 +172,14 @@ public final class SkinPreview {
 	}
 	private final java.util.Map<String, Object> suits = new java.util.HashMap<>();
 
+	/** A held skin in its hand (HeldFigure), following the figure's arm. */
+	private Object heldModel(String id, boolean slimArms, ModelPart figure) {
+		Object model = held.computeIfAbsent(id, k -> wrap(HeldFigure.bake(id)));
+		HeldFigure.pose(root(model).getChild("slashclient"), id, figure, slimArms);
+		return model;
+	}
+	private final java.util.Map<String, Object> held = new java.util.HashMap<>();
+
 	private static ModelPart root(Object model) {
 		return ((net.minecraft.client.model.Model<?>) model).root();
 	}
@@ -219,6 +227,14 @@ public final class SkinPreview {
 		root.getChild("left_leg").xRot = swing;
 		if (look.running) y -= Math.round(Math.abs(swing) * h * 0.012f);
 		var self = Minecraft.getInstance().getGameProfile().id();
+		// on the shield's and weapon's tabs it holds them, its arms raised a little as the game's players holding an item
+		String[] holding = look.held ? new String[] {look.worn(self, "shield"), look.worn(self, "weapon")} : new String[0];
+		for (String item : holding) {
+			if (item == null || dev.slash3rss.slashclient.hud.HeldSkins.kind(item) == null) continue;
+			ModelPart arm = root.getChild(HeldFigure.leftHand(item) ? "left_arm" : "right_arm");
+			arm.xRot = -(float) Math.PI / 10f;
+			arm.yRot = 0;
+		}
 		dev.slash3rss.slashclient.hud.CosmeticsScreen.loadOwn(Minecraft.getInstance());
 		// the aura and the trail: the game's particle pictures, those behind the figure first
 		look.tickParticles(self);
@@ -240,6 +256,9 @@ public final class SkinPreview {
 		if (elytraId != null) layer(layers, elytraModel(), dev.slash3rss.slashclient.hud.Cosmetics.textureId("elytra", elytraId));
 		else if (wing != null) layer(layers, wingsModel(time), dev.slash3rss.slashclient.hud.Cosmetics.textureId("wings", wing));
 		else if (capeId != null) layer(layers, capeModel(swing), dev.slash3rss.slashclient.hud.Cosmetics.capeTexture(capeId));
+		for (String item : holding) {
+			if (item != null && dev.slash3rss.slashclient.hud.HeldSkins.kind(item) != null) layer(layers, heldModel(item, slimArms, root), HeldFigure.texture(item));
+		}
 		String pet = look.worn(self, "pet");
 		Object petModel = pet == null ? null : petModel(pet, time);
 		if (petModel != null) layer(layers, petModel, dev.slash3rss.slashclient.hud.CosmeticLayer.petTexture(pet));

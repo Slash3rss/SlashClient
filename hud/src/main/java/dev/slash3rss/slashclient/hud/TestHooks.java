@@ -889,6 +889,38 @@ public final class TestHooks {
 		return BlockOutline.drawn + "," + HeldItems.changed;
 	}
 
+	/** The held item skins this mod can draw: "shields|weapons". */
+	public static String heldSkins() {
+		return String.join(",", HeldSkins.SHIELDS) + "|" + String.join(",", HeldSkins.WEAPONS);
+	}
+
+	/** Other players' shield and weapon skins shown or not. */
+	public static void heldOthers(boolean on) {
+		SlashHud.config.heldSkinsOthers = on;
+	}
+
+	/**
+	 * The skin our own player's main hand and off hand items show ("main,off", "-" for none), for
+	 * ourselves or as if another player wearing the same held them.
+	 */
+	public static String heldPick(boolean self) {
+		var p = net.minecraft.client.Minecraft.getInstance().player;
+		java.util.UUID id = self ? p.getUUID() : java.util.UUID.fromString("00000000-0000-4000-8000-0000000000aa");
+		if (!self) for (String slot : HeldSkins.SLOTS) Cosmetics.set(id, slot, Cosmetics.worn(p.getUUID(), slot));
+		String main = HeldSkins.pick(id, self, p.getMainHandItem()), off = HeldSkins.pick(id, self, p.getOffhandItem());
+		return (main == null ? "-" : main) + "," + (off == null ? "-" : off);
+	}
+
+	/** How many held items were drawn with a skin so far. */
+	public static int heldSwapped() {
+		return HeldSkins.swapped;
+	}
+
+	/** Holds (or lets go of) the use key: a bow draws, a shield blocks. */
+	public static void useKey(boolean on) {
+		net.minecraft.client.Minecraft.getInstance().options.keyUse.setDown(on);
+	}
+
 	/** The player looks straight south (+z), level. */
 	public static void lookSouth() {
 		var p = net.minecraft.client.Minecraft.getInstance().player;

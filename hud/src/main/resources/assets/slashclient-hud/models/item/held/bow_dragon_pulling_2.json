@@ -1,0 +1,6 @@
+{
+	"parent": "minecraft:item/bow",
+	"textures": {
+		"layer0": "slashclient-hud:item/held/bow_dragon_pulling_2"
+	}
+}

@@ -28,7 +28,7 @@ import java.util.UUID;
  * SlashClient account (each can have a set of its own), else for the whole account.
  */
 public class CosmeticsScreen extends Screen {
-	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit"};
+	private static final String[] SLOTS = {"cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit", "shield", "weapon"};
 	/** Particles and pets have no picture of ours: an item that looks like them stands in. */
 	private static final Map<String, Item> ITEMS = Map.ofEntries(
 		Map.entry("hearts", Items.POPPY), Map.entry("sparks", Items.GLOWSTONE_DUST), Map.entry("snow", Items.SNOWBALL),
@@ -115,8 +115,10 @@ public class CosmeticsScreen extends Screen {
 		for (String id : Clothing.TOPS) list.add(new Entry(id, "top", id, "", true));
 		for (String id : KillEffects.IDS) list.add(new Entry(id, "kill", id, "", true));
 		for (String id : Suits.IDS) list.add(new Entry(id, "suit", id, "", true));
+		for (String id : HeldSkins.SHIELDS) list.add(new Entry(id, "shield", id, "", true));
+		for (String id : HeldSkins.WEAPONS) list.add(new Entry(id, "weapon", id, "", true));
 		screen.items = List.copyOf(list);
-		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf", "kill", "firework"));
+		screen.worn.putAll(Map.of("cape", "aurora", "wings", "angel", "pet", "allay", "hat", "tophat", "top", "scarf", "kill", "firework", "shield", "shield_dragon", "weapon", "sword_katana"));
 		screen.character = "test";
 		screen.characterName = "Slash3rss";
 		screen.ownSet = true;
@@ -144,6 +146,9 @@ public class CosmeticsScreen extends Screen {
 		return switch (slot) {
 			case "cape", "wings", "elytra" -> 180;
 			case "trail" -> -90;
+			// the shield on the left arm and the weapon in the right hand, each turned a little towards the viewer
+			case "shield" -> -35;
+			case "weapon" -> 35;
 			default -> 0;
 		};
 	}
@@ -352,6 +357,7 @@ public class CosmeticsScreen extends Screen {
 			look.turn = turnFor(slot) + dragTurn + spin;
 			look.running = slot.equals("trail");
 			look.elytra = slot.equals("elytra");
+			look.held = HeldSkins.SLOTS.contains(slot);
 			// while it is turned by hand the head does not chase the mouse
 			figure.draw(g, fx, fy, fw, fh, turning ? fx + fw / 2 : mx, turning ? fy : my);
 		}
@@ -413,6 +419,17 @@ public class CosmeticsScreen extends Screen {
 			Ui.draw(g, Ui.fit(Ui.tr(world ? "slashclient-hud.cosmetics.killHint" : "slashclient-hud.cosmetics.killWorld"), pw - 36 - bw), x + bw + 6, y, Ui.MUTED);
 			y += 17;
 		}
+		// shields and weapons: whether other players' skins show too (off by default, for fair PvP), and what that means
+		if (HeldSkins.SLOTS.contains(slot)) {
+			boolean on = SlashHud.config.heldSkinsOthers;
+			Ui.toggle(g, "cos:heldOthers", x, y - 3, on);
+			Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.cosmetics.heldOthers"), pw - 54), x + 26, y - 2, Ui.TEXT_2);
+			hits.add(new Hit(x, y - 5, pw - 24, 14, () -> {
+				SlashHud.config.heldSkinsOthers = !SlashHud.config.heldSkinsOthers;
+				SlashHud.config.save();
+			}));
+			y = Ui.wrapped(g, Ui.tr("slashclient-hud.cosmetics.heldHint"), x, y + 12, pw - 24, Ui.MUTED) + 4;
+		}
 		// the items of this slot, "nothing" first
 		List<Entry> shown = new ArrayList<>();
 		shown.add(null);
@@ -467,6 +484,12 @@ public class CosmeticsScreen extends Screen {
 			case "suit" ->
 				// the whole suit from the front, a little from above
 				g.blit(RenderPipelines.GUI_TEXTURED, Suits.icon(e.id()), x + (TILE_W - 30) / 2, y + (TILE_H - 30) / 2, 0, 0, 30, 30, 64, 64, 64, 64, alpha);
+			case "shield" ->
+				// the shield's face (12x22 at 1,1 of the game's 64x64 shield layout, ours are 4x)
+				g.blit(RenderPipelines.GUI_TEXTURED, Cosmetics.textureId("item/held", e.id()), x + (TILE_W - 18) / 2, y + (TILE_H - 33) / 2, 4, 4, 18, 33, 48, 88, 256, 256, alpha);
+			case "weapon" ->
+				// the sword's or bow's own picture, larger
+				g.blit(RenderPipelines.GUI_TEXTURED, Cosmetics.textureId("item/held", e.id()), x + (TILE_W - 24) / 2, y + (TILE_H - 24) / 2, 0, 0, 24, 24, 16, 16, 16, 16, alpha);
 			case "hat", "top" ->
 				// a view of it from the front, a little from above
 				g.blit(RenderPipelines.GUI_TEXTURED, Clothing.icon(e.id()), x + (TILE_W - 26) / 2, y + (TILE_H - 26) / 2, 0, 0, 26, 26, 64, 64, 64, 64, alpha);

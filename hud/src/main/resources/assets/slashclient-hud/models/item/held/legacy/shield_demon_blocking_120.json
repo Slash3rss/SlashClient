@@ -1,0 +1,6 @@
+{
+	"parent": "slashclient-hud:item/held/legacy/shield_shape_blocking_120",
+	"textures": {
+		"shield": "slashclient-hud:item/held/shield_demon"
+	}
+}

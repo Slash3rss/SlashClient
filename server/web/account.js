@@ -156,7 +156,9 @@ function renderAccount() {
     el('div', { class: 'cosmetic-stage' }, previewBox ??= el('div', { class: 'figure' }), el('div', { class: 'grow' }, tabs, pick)));
   $('#account').replaceChildren(el('div', { class: 'account' }, profile, capes));
   // the kill effect plays on the figure only while its tab is open (every few seconds it would distract)
-  figure(character?.uuid ?? characters[0]?.uuid, slot === 'kill' ? worn : { ...worn, kill: '' });
+  // the shield and the weapon are held only while their tabs are open
+  const holding = slot === 'shield' || slot === 'weapon';
+  figure(character?.uuid ?? characters[0]?.uuid, { ...worn, kill: slot === 'kill' ? worn.kill : '', shield: holding ? worn.shield : '', weapon: holding ? worn.weapon : '' });
   renderPartners();
 }
 

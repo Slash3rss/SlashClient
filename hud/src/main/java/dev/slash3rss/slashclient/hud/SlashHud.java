@@ -89,6 +89,10 @@ public class SlashHud implements ClientModInitializer {
 		//$ 	if (renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer player) helper.register(new SuitLayer(player));
 		//$ });
 		//#endif
+		// held item skins before item models: their models are loaded with the game's (HeldSkins)
+		//#if MC < 1.21.4
+		//$ net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin.register(ctx -> ctx.addModels(HeldSkins.legacyModels()));
+		//#endif
 		// the menu figure with everything on it, drawn as one picture with depth
 		//#if MC >= 1.21.6
 		dev.slash3rss.slashclient.hud.ui.FigureRender.register();

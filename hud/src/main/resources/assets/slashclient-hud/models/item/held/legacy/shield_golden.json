@@ -1,0 +1,6 @@
+{
+	"parent": "slashclient-hud:item/held/legacy/shield_shape",
+	"textures": {
+		"shield": "slashclient-hud:item/held/shield_golden"
+	}
+}

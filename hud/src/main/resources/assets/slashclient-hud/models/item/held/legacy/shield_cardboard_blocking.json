@@ -1,0 +1,6 @@
+{
+	"parent": "slashclient-hud:item/held/legacy/shield_shape_blocking",
+	"textures": {
+		"shield": "slashclient-hud:item/held/shield_cardboard"
+	}
+}

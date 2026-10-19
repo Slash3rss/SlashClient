@@ -231,6 +231,8 @@ public final class HudConfig {
 	/** Kill effects (a SlashClient cosmetic): ours when we kill something, and those of other players with SlashClient. */
 	public boolean killEffects = true;
 	public boolean killEffectsOthers = true;
+	/** Other players' SlashClient shield and weapon skins (ours always show): off, so in PvP every weapon looks as the game's. */
+	public boolean heldSkinsOthers = false;
 	/** The SlashClient main menu instead of Minecraft's own. */
 	public boolean customMenu = true;
 	/** The SlashClient pause menu instead of Minecraft's own. */
@@ -514,6 +516,7 @@ public final class HudConfig {
 		badges = other.badges;
 		killEffects = other.killEffects;
 		killEffectsOthers = other.killEffectsOthers;
+		heldSkinsOthers = other.heldSkinsOthers;
 		scoreboard = other.scoreboard;
 		scoreboardScale = other.scoreboardScale;
 		scoreboardOffset = other.scoreboardOffset;

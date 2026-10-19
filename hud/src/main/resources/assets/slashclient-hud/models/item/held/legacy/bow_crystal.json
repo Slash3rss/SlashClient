@@ -1,0 +1,25 @@
+{
+	"parent": "slashclient-hud:item/held/bow_crystal",
+	"overrides": [
+		{
+			"predicate": {
+				"pulling": 1
+			},
+			"model": "slashclient-hud:item/held/bow_crystal_pulling_0"
+		},
+		{
+			"predicate": {
+				"pulling": 1,
+				"pull": 0.65
+			},
+			"model": "slashclient-hud:item/held/bow_crystal_pulling_1"
+		},
+		{
+			"predicate": {
+				"pulling": 1,
+				"pull": 0.9
+			},
+			"model": "slashclient-hud:item/held/bow_crystal_pulling_2"
+		}
+	]
+}

@@ -137,6 +137,7 @@ export const SLOTS = [
   ['trail', 'Ślad', 'fa-solid fa-shoe-prints'], ['aura', 'Aura', 'fa-solid fa-wand-sparkles'], ['pet', 'Pupil', 'fa-solid fa-paw'],
   ['hat', 'Na głowę', 'fa-solid fa-hat-cowboy'], ['top', 'Ubranie', 'fa-solid fa-shirt'], ['kill', 'Efekt zabójstwa', 'fa-solid fa-skull-crossbones'],
   ['suit', 'Strój', 'fa-solid fa-user-astronaut'],
+  ['shield', 'Tarcza', 'fa-solid fa-shield'], ['weapon', 'Skórka broni', 'fa-solid fa-crosshairs'],
 ];
 /** Particles and pets are the game's own: on the site they get an icon. */
 const ITEM_ICONS = {
@@ -176,6 +177,21 @@ export function cosmeticEl(id, slot = 'cape', small = false) {
   if (slot === 'suit') {
     const c = el('div', { class: `cape clothing${small ? ' sm' : ''}`, title: id });
     c.style.backgroundImage = `url(vendor/suits/icon/${id}.png)`;
+    return c;
+  }
+  // a shield's face (12×22 at 1,1 of the game's 64×64 layout, ours 4×), a weapon's own picture
+  if (slot === 'shield') {
+    const c = el('div', { class: `cape held${small ? ' sm' : ''}`, title: id });
+    const h = small ? 48 : 96, w = small ? 30 : 60, s = h / 88;
+    c.style.backgroundImage = `url(vendor/held/${id}.png)`;
+    c.style.backgroundSize = `${256 * s}px ${256 * s}px`;
+    c.style.backgroundPosition = `${(w - 48 * s) / 2 - 4 * s}px ${-4 * s}px`;
+    return c;
+  }
+  if (slot === 'weapon') {
+    const c = el('div', { class: `cape clothing${small ? ' sm' : ''}`, title: id });
+    c.style.backgroundImage = `url(vendor/held/${id}.png)`;
+    c.style.backgroundSize = small ? '24px 24px' : '48px 48px';
     return c;
   }
   if (slot === 'wings' || slot === 'elytra') {

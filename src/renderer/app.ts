@@ -3071,12 +3071,13 @@ function renderCapeGrid() {
 
 // ---------- SlashClient cosmetics (seen by other players with the launcher) ----------
 
-type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit';
+type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'suit' | 'shield' | 'weapon';
 const SLOTS: [Slot, string, string][] = [
   ['cape', 'Peleryna', 'fa-flag'], ['wings', 'Skrzydła', 'fa-dove'], ['elytra', 'Elytra', 'fa-feather'],
   ['trail', 'Ślad', 'fa-shoe-prints'], ['aura', 'Aura', 'fa-wand-sparkles'], ['pet', 'Pupil', 'fa-paw'],
   ['hat', 'Na głowę', 'fa-hat-cowboy'], ['top', 'Ubranie', 'fa-shirt'], ['kill', 'Efekt zabójstwa', 'fa-skull-crossbones'],
   ['suit', 'Strój', 'fa-user-astronaut'],
+  ['shield', 'Tarcza', 'fa-shield'], ['weapon', 'Skórka broni', 'fa-crosshairs'],
 ];
 /** Without the server (or before 0.8) only the first eight capes are known. */
 const SLASH_CAPES: [string, string][] = [
@@ -3129,6 +3130,21 @@ function wingsThumbnail(texture: string): HTMLCanvasElement {
   return canvas;
 }
 
+/** A shield's face, cut from its picture (the game's shield layout at 4×). */
+function heldShieldThumbnail(texture: string): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = 48;
+  canvas.height = 88;
+  const img = new Image();
+  img.onload = () => {
+    const ctx = canvas.getContext('2d')!;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, 4, 4, 48, 88, 0, 0, 48, 88);
+  };
+  img.src = texture;
+  return canvas;
+}
+
 /** The game's own pictures (spawn eggs, particles), from a downloaded game; {} until one is. */
 let gamePictures: Record<string, string> | undefined;
 async function loadGamePictures(): Promise<Record<string, string>> {
@@ -3148,6 +3164,9 @@ function cosmeticPicture(slot: Slot, id: string): Node {
   if (slot === 'suit') return el('img', { className: 'clothing-icon', src: `img/suits/icon/${id}.png`, alt: '' });
   // our own pets (not the game's mobs) have a picture of their own
   if (slot === 'pet' && OUR_PET_MODELS[id]) return el('img', { className: 'clothing-icon', src: `img/pets/icon/${id}.png`, alt: '' });
+  // shields: the face of the shield (12×22 at 1,1 of the game's 64×64 layout, ours are 4×); weapons: their own picture
+  if (slot === 'shield') return heldShieldThumbnail(`img/held/${id}.png`);
+  if (slot === 'weapon') return el('img', { className: 'clothing-icon', src: `img/held/${id}.png`, alt: '' });
   if (slot === 'kill') {
     const i = el('i', { className: `fa-solid ${ITEM_ICONS[id] ?? 'fa-skull-crossbones'} cosmetic-icon` });
     i.style.color = KILL_ICON_COLORS[id] ?? '';
@@ -3198,6 +3217,8 @@ async function renderSlashCapes() {
     : cosmeticSlot === 'top' ? t('Ubranie na skinie. Chowa się pod prawdziwym napierśnikiem.')
     : cosmeticSlot === 'suit' ? t('Strój na całe ciało. Chowa czapkę i ubranie, a prawdziwa zbroja chowa część, którą zakrywa.')
     : cosmeticSlot === 'kill' ? t('Krótki pokaz cząsteczek tam, gdzie pada pokonany przez Ciebie mob lub gracz. Widzą go gracze z SlashClient.')
+    : cosmeticSlot === 'shield' ? t('Wygląd tarczy w Twojej ręce (ekwipunek i działanie bez zmian). Inni gracze widzą go tylko, jeśli włączą skórki innych graczy w ustawieniach gry – domyślnie nie, dla uczciwego PvP.')
+    : cosmeticSlot === 'weapon' ? t('Wygląd wszystkich mieczy (skórki mieczy) albo łuku (skórki łuków) w Twojej ręce; ekwipunek, nazwa i działanie bez zmian. Inni gracze widzą go tylko, jeśli włączą skórki innych graczy w ustawieniach gry – domyślnie nie, dla uczciwego PvP.')
     : t('Mały towarzysz lata przy Twoim ramieniu.');
   const current = worn[cosmeticSlot] ?? '';
   const tile = (item: CatalogItem | undefined, content: Node) => {
@@ -3243,7 +3264,8 @@ async function renderSlashCapes() {
   cosmeticPreview ??= new CosmeticPreview(skinViewer, pictures);
   cosmeticPreview.pictures = pictures;
   // the kill effect plays on the figure only while its tab is open (every few seconds it would distract)
-  cosmeticPreview.show({ ...worn, kill: cosmeticSlot === 'kill' ? worn.kill : undefined });
+  const holding = cosmeticSlot === 'shield' || cosmeticSlot === 'weapon';
+  cosmeticPreview.show({ ...worn, kill: cosmeticSlot === 'kill' ? worn.kill : undefined, shield: holding ? worn.shield : undefined, weapon: holding ? worn.weapon : undefined });
   stopCapeAnimation();
   if (worn.wings) await skinViewer.loadCape(`img/wings/${worn.wings}.png`, { backEquipment: 'elytra' });
   else if (cosmeticSlot === 'elytra' && worn.elytra) await skinViewer.loadCape(`img/elytra/${worn.elytra}.png`, { backEquipment: 'elytra' });
