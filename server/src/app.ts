@@ -17,6 +17,7 @@ import { serveWeb } from './web.ts';
 import { createDownloads, isDownloadOs } from './downloads.ts';
 import { createCurseForge } from './curseforge.ts';
 import { profileShareRoutes, type ShareLimits } from './profileShares.ts';
+import { profileCloudRoutes, type CloudLimits } from './profileCloud.ts';
 import { createAchievements, hintFor, TICK_MS } from './achievements.ts';
 
 /**
@@ -54,6 +55,10 @@ export interface Config {
   sharesDir?: string;
   /** Size, time and quota of shared profiles (tests lower them). */
   shareLimits?: Partial<ShareLimits>;
+  /** Folder for profiles kept on accounts (CLOUD_DIR); default "cloud-profiles" next to the database. */
+  cloudDir?: string;
+  /** Size and quota of profiles kept on accounts (tests lower them). */
+  cloudLimits?: Partial<CloudLimits>;
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -416,6 +421,15 @@ export function createApp(cfg: Config) {
   const shares = profileShareRoutes({
     db, authed, clientIp, dir: cfg.sharesDir ?? path.join(path.dirname(cfg.dbFile), 'profiles'), limits: cfg.shareLimits,
     limitUploads: rateLimiter(6), limitDownloads: rateLimiter(30),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  // profiles kept on the player's account, for their other computers (profileCloud.ts)
+  const cloud = profileCloudRoutes({
+    sql: db.sql, authed, dir: cfg.cloudDir ?? path.join(path.dirname(cfg.dbFile), 'cloud-profiles'), limits: cfg.cloudLimits,
+    limitUploads: rateLimiter(10), limitDownloads: rateLimiter(30),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -826,6 +840,7 @@ export function createApp(cfg: Config) {
     ...achievements.routes,
     ...tracker.routes,
     ...shares.routes,
+    ...cloud.routes,
     ...sharing.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged,
@@ -967,6 +982,7 @@ export function createApp(cfg: Config) {
     // a shared profile's file: not JSON, so not one of the routes
     try {
       if (await shares.serve(req, res, url)) return;
+      if (await cloud.serve(req, res, url)) return;
     } catch (err) {
       console.error('profil:', (err as Error).message);
       if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
@@ -1209,6 +1225,7 @@ export function createApp(cfg: Config) {
   const logCleanup = setInterval(() => {
     void tracker.cleanup().catch((err) => console.error('logi:', (err as Error).message));
     void shares.cleanup().catch((err) => console.error('profile:', (err as Error).message));
+    void cloud.cleanup().catch((err) => console.error('chmura:', (err as Error).message));
   }, 3_600_000);
 
   return {
