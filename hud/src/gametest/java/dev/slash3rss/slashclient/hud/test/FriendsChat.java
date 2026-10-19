@@ -66,6 +66,32 @@ public class FriendsChat implements FabricClientGameTest {
 			});
 			context.waitTicks(10);
 			context.takeScreenshot("friends-invites");
+			// a shared waypoint in the chat, with Add on the one received
+			context.runOnClient(mc -> {
+				long now = System.currentTimeMillis();
+				var point = new dev.slash3rss.slashclient.hud.social.SharedWaypoints.Shared("Baza w górach", 412, 88, -1290, "minecraft:overworld", "server:skyup.pl");
+				Social.sampleForTest(Social.friend(friend), java.util.List.of(
+					new Social.Message(4, "kumpel", "me", "📍 Baza", now - 30_000, true, "", "", "", point),
+					new Social.Message(5, "me", "kumpel", "📍 Baza", now, false, "", "", "", point)), "me");
+			});
+			context.setScreen(() -> {
+				Social.viewing = friend;
+				return new FriendsScreen(null);
+			});
+			context.waitTicks(10);
+			context.takeScreenshot("friends-waypoint");
+			// a party: who accepted, and the friends to pick
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.social.Party.sampleForTest("me"));
+			context.setScreen(() -> dev.slash3rss.slashclient.hud.social.PickFriendsScreen.party(null));
+			context.waitTicks(10);
+			context.takeScreenshot("friends-party");
+			// points friends shared for other worlds: accepting one takes it off the list
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.social.SharedWaypoints.sampleForTest());
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.WaypointsScreen(true));
+			context.waitTicks(10);
+			context.takeScreenshot("waypoints-received");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.social.SharedWaypoints.accept(dev.slash3rss.slashclient.hud.social.SharedWaypoints.pending().get(0)));
+			if (context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.social.SharedWaypoints.pending().size()) != 1) throw new AssertionError("An accepted waypoint must leave the received list");
 			context.runOnClient(mc -> TestHooks.vanillaMenu());
 			return;
 		}
