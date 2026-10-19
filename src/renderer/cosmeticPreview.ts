@@ -3,6 +3,7 @@ import { PET_MODELS, type PetPart } from './petModels';
 import { OUR_PET_FRAMES, OUR_PET_MODELS } from './ourPetModels';
 import { boxQuads, clothingItem, layout, slimBox, type Bone, type ClothingBox } from '../shared/clothing';
 import { KillEffectPreview } from './killEffects';
+import { SuitPreview } from './suitPreview';
 import type { SkinViewer } from 'skinview3d';
 
 /**
@@ -104,15 +105,19 @@ export class CosmeticPreview {
   /** What the clothing was made for: the items and the arms' width (a new skin may change it). */
   private dressed = '';
   private wearing: { hat?: string; top?: string } = {};
+  /** A suit over all of it (it hides the hat and the top), see suitPreview.ts. */
+  private suit: SuitPreview;
+  private suitId?: string;
 
   /** Our own pet's material, whose picture changes every second (its frames). */
   private ourPet?: { id: string; material: MeshStandardMaterial; frame: number };
 
   private kills: KillEffectPreview;
 
-  /** `clothing` is where the clothing's pictures are (<id>.png), `pets` our own pets' (<id>_<frame>.png). */
-  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/', private pets = 'img/pets/') {
+  /** `clothing` is where the clothing's pictures are (<id>.png), `pets` our own pets' (<id>_<frame>.png), `suits` the suits'. */
+  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/', private pets = 'img/pets/', suits = 'img/suits/') {
     this.kills = new KillEffectPreview(viewer.playerWrapper);
+    this.suit = new SuitPreview(viewer, (src) => this.ourTexture(src), suits);
     const tick = (now: number) => {
       this.update(Math.min(0.1, (now - this.last) / 1000), now / 1000);
       this.last = now;
@@ -148,9 +153,11 @@ export class CosmeticPreview {
    * Shows what a set wears (the cape, wings and elytra are the viewer's own back equipment);
    * `kill` plays its burst every few seconds (shown only while its tab is open: it would distract).
    */
-  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string }) {
+  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string; suit?: string }) {
     this.kills.set(set.kill);
-    this.wearing = { hat: set.hat || undefined, top: set.top || undefined };
+    // a suit hides the hat and the top, as in the game
+    this.suitId = set.suit || undefined;
+    this.wearing = this.suitId ? {} : { hat: set.hat || undefined, top: set.top || undefined };
     this.dress();
     this.trail = set.trail ? EFFECTS[set.trail] : undefined;
     this.aura = set.aura ? EFFECTS[set.aura] : undefined;
@@ -326,8 +333,9 @@ export class CosmeticPreview {
   }
 
   private update(dt: number, time: number) {
-    // a skin with the other arms' width came: the sleeves follow
+    // a skin with the other arms' width came: the sleeves follow (and a cape on the back takes the suit's)
     this.dress();
+    this.suit.wear(this.suitId);
     this.kills.update(dt);
     if (this.pet) {
       // by the shoulder: the model's feet (24 px under its origin) a little above it, bobbing
@@ -380,6 +388,7 @@ export class CosmeticPreview {
     for (const p of this.particles) this.viewer.playerWrapper.remove(p.sprite);
     this.particles = [];
     this.kills.dispose();
+    this.suit.dispose();
     for (const t of this.textures.values()) t.dispose();
   }
 }
