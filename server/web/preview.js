@@ -1,6 +1,6 @@
 // The 3D figure of the site's cosmetics, the launcher's own: the player's skin (or ours) with the
 // cape, wings or elytra on its back, the trail, aura and pet from the game's pictures and models,
-// and the clothing (/vendor/clothing).
+// and the clothing, shoes and things on the hands (/vendor/clothing).
 // The code is the launcher's, bundled as /vendor/preview3d.js (window.SlashPreview); the game's
 // pictures are in /vendor/mc (listed in index.json).
 
@@ -76,10 +76,10 @@ export class Preview {
     await this.viewer.loadSkin('/vendor/skin-default.png', { model: 'default' });
   }
 
-  /** What the figure wears: { cape, wings, elytra, trail, aura, pet, hat, top, kill } (ids or empty; a kill effect plays every few seconds). */
+  /** What the figure wears: { cape, wings, elytra, trail, aura, pet, hat, top, kill, shoes, hands } (ids or empty; a kill effect plays every few seconds). */
   async show(worn) {
     clearInterval(this.capeTimer);
-    this.cosmetics.show({ trail: worn.trail || undefined, aura: worn.aura || undefined, pet: worn.pet || undefined, hat: worn.hat || undefined, top: worn.top || undefined, kill: worn.kill || undefined });
+    this.cosmetics.show({ trail: worn.trail || undefined, aura: worn.aura || undefined, pet: worn.pet || undefined, hat: worn.hat || undefined, top: worn.top || undefined, kill: worn.kill || undefined, shoes: worn.shoes || undefined, hands: worn.hands || undefined });
     // a tall hat stands above the head: the figure a little smaller, so it stays in view
     this.viewer.zoom = worn.hat ? 0.72 : 0.85;
     // wings take the back first (as in the game), then an elytra, then the cape

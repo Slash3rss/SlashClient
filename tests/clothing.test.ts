@@ -31,6 +31,23 @@ describe('clothing', () => {
   it('gives slim arms narrower sleeves', () => {
     assert.deepEqual(slimBox({ bone: 'right_arm', from: [-3, -2, -2], size: [4, 10, 4] }).from, [-2, -2, -2]);
     assert.deepEqual(slimBox({ bone: 'left_arm', from: [-1, -2, -2], size: [4, 10, 4] }).size, [3, 10, 4]);
+    // a small box (a spike, a watch's face) keeps its size and moves with the narrower arm's outer side
+    const spike = slimBox({ bone: 'right_arm', from: [-4.4, 5, -0.5], size: [1, 1, 1] });
+    assert.deepEqual(spike.size, [1, 1, 1]);
+    assert.ok(spike.from[0] > -4.4 && spike.from[0] < -2, `${spike.from}`);
+    const face = slimBox({ bone: 'left_arm', from: [3.15, 6.25, -1], size: [0.5, 1.5, 2] });
+    assert.deepEqual(face.size, [0.5, 1.5, 2]);
+    assert.ok(face.from[0] < 3.15 && face.from[0] + 0.5 > 2, `${face.from}`);
+  });
+
+  it("puts shoes on both feet, none below the ground, and the hands' items on the arms", () => {
+    for (const item of CLOTHING.filter((i) => i.slot === 'shoes')) {
+      assert.ok(item.boxes.every((b) => b.bone === 'right_leg' || b.bone === 'left_leg'), item.id);
+      assert.equal(item.boxes.filter((b) => b.bone === 'right_leg').length, item.boxes.filter((b) => b.bone === 'left_leg').length, item.id);
+      // a leg is 12 long: its sole is on the ground
+      for (const b of item.boxes) assert.ok(b.from[1] + b.size[1] + (b.inflate ?? 0) <= 12, `${item.id} goes into the ground`);
+    }
+    for (const item of CLOTHING.filter((i) => i.slot === 'hands')) assert.ok(item.boxes.every((b) => b.bone === 'right_arm' || b.bone === 'left_arm'), item.id);
   });
 
   it('is what the mod reads, with a picture and an icon for each item (node scripts/make-clothing.mjs)', () => {
@@ -45,7 +62,7 @@ describe('clothing', () => {
   });
 
   it('is in the server catalog, in the same slots and with the same names', () => {
-    const server = ITEMS.filter((i) => i.slot === 'hat' || i.slot === 'top');
+    const server = ITEMS.filter((i) => i.slot === 'hat' || i.slot === 'top' || i.slot === 'shoes' || i.slot === 'hands');
     assert.deepEqual(server.map((i) => [i.id, i.slot, i.name]), CLOTHING.map((i) => [i.id, i.slot, i.name]));
   });
 });
