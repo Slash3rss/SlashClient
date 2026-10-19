@@ -32,6 +32,7 @@ const ICONS = {
   'm-twitchchat': 'brands/twitch',
   'm-autoclicker': 'computer-mouse', 'm-autotool': 'screwdriver-wrench', 'm-autorefill': 'arrows-rotate', 'm-holdkeys': 'hand-pointer', 'm-toolwarning': 'triangle-exclamation', 'm-hearts': 'heart', 'm-mousetweaks': 'arrow-pointer',
   'lock': 'lock', 'm-dropguard': 'hand-holding', 'm-damage': 'heart-crack', 'm-tnt': 'bomb', 'm-nickhider': 'user-secret', 'm-reconnect': 'plug-circle-bolt', 'm-keybinds': 'keyboard', 'm-dungeonmap': 'map', 'm-skytasks': 'list-check', 'm-skyfish': 'fish', 'skyup': 'dungeon',
+  'm-inventory': 'table-cells', 'm-shulker': 'box-open', 'm-invsearch': 'magnifying-glass-arrow-right', 'm-slotlock': 'lock', 'm-shotcaption': 'image',
 };
 
 /** Size of the glyph inside the 64×64 square, matching the icons already there. */

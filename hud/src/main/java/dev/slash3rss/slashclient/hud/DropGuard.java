@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.ShulkerBoxBlock;
  * Drop prevention: Q does not throw away a valuable item in your hand (a tool, weapon or armour,
  * anything enchanted or rare, a shulker box) at the first press; a second press within a moment
  * drops it. The drop key's presses are taken before the game handles them, the same in every version.
+ * Locked hotbar slots (SlotLock) go further: nothing drops from them at all.
  */
 final class DropGuard {
 	private DropGuard() {}
@@ -21,6 +22,8 @@ final class DropGuard {
 
 	/** At the start of each tick, before the game reads the drop key. */
 	static void tick(Minecraft mc) {
+		// a locked hotbar slot (SlotLock) never drops at all
+		if (SlotLock.tick(mc)) return;
 		if (SlashHud.config == null || !SlashHud.config.dropGuard || mc.player == null || Compat.screen(mc) != null) return;
 		ItemStack held = mc.player.getMainHandItem();
 		if (!valuable(held)) return;
