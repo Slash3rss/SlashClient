@@ -5,7 +5,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.network.chat.Component;
 
 import java.net.URI;
@@ -238,8 +237,8 @@ public final class Social {
 					}
 					bump(other, 1, m.at());
 					Friend f = friend(other);
-					if (!m.invite().isEmpty()) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.invite.toast", m.invite()).getString());
-					else toast(f != null ? f.name() : "?", m.text());
+					if (!m.invite().isEmpty()) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.invite.toast", m.invite()).getString(), null);
+					else toast(f != null ? f.name() : "?", m.text(), null);
 				}
 			}
 			case "presence" -> {
@@ -267,7 +266,7 @@ public final class Social {
 			}
 			case "friends" -> {
 				refreshFriends();
-				if (e.has("request") && e.get("request").isJsonObject()) toast(str(e.getAsJsonObject("request"), "name"), Component.translatable("slashclient-hud.friends.invite").getString());
+				if (e.has("request") && e.get("request").isJsonObject()) toast(str(e.getAsJsonObject("request"), "name"), Component.translatable("slashclient-hud.friends.invite").getString(), null);
 			}
 			case "state" -> {
 				refreshState();
@@ -287,10 +286,10 @@ public final class Social {
 		friends = List.copyOf(list);
 	}
 
-	private static void toast(String title, String text) {
+	/** In SlashClient's own look; `icon` instead of the initial when it is not from a person. */
+	private static void toast(String title, String text, String icon) {
 		Minecraft mc = Minecraft.getInstance();
-		String shortText = text.length() > 60 ? text.substring(0, 59) + "…" : text;
-		mc.execute(() -> SystemToast.add(dev.slash3rss.slashclient.hud.Compat.toasts(mc), dev.slash3rss.slashclient.hud.Compat.friendToast(), Component.literal(title), Component.literal(shortText)));
+		mc.execute(() -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).addToast(new FriendToast(title, text, icon)));
 	}
 
 	// ---------- actions from the screens (off the render thread) ----------
@@ -338,7 +337,7 @@ public final class Social {
 				if (chat.stream().noneMatch(x -> x.id() == m.id())) chat.add(m);
 				bump(friendId, 0, m.at());
 			} catch (Exception e) {
-				toast(Component.translatable("slashclient-hud.friends.notSent").getString(), e.getMessage() == null ? "" : e.getMessage());
+				toast(Component.translatable("slashclient-hud.friends.notSent").getString(), e.getMessage() == null ? "" : e.getMessage(), "info");
 			}
 		});
 	}
@@ -377,7 +376,7 @@ public final class Social {
 		Thread.ofVirtual().start(() -> {
 			try {
 				request("POST", "/lan/host", body, 5);
-				if (opened && signedIn) toast(Component.translatable("slashclient-hud.lan.open").getString(), Component.translatable("slashclient-hud.lan.openHint").getString());
+				if (opened && signedIn) toast(Component.translatable("slashclient-hud.lan.open").getString(), Component.translatable("slashclient-hud.lan.openHint").getString(), "world");
 			} catch (Exception e) {
 				SlashHud.LOG.info("SlashClient: LAN for friends: {}", e.toString());
 			}
@@ -393,7 +392,7 @@ public final class Social {
 				JsonObject res = request("POST", "/lan/join", body, 10);
 				join("127.0.0.1:" + res.get("port").getAsInt());
 			} catch (Exception e) {
-				toast(Component.translatable("slashclient-hud.lan.failed").getString(), e.getMessage() == null ? "" : e.getMessage());
+				toast(Component.translatable("slashclient-hud.lan.failed").getString(), e.getMessage() == null ? "" : e.getMessage(), "info");
 			}
 		});
 	}
@@ -422,7 +421,7 @@ public final class Social {
 				if (chat.stream().noneMatch(x -> x.id() == m.id())) chat.add(m);
 				bump(friendId, 0, m.at());
 			} catch (Exception e) {
-				toast(Component.translatable("slashclient-hud.friends.notSent").getString(), e.getMessage() == null ? "" : e.getMessage());
+				toast(Component.translatable("slashclient-hud.friends.notSent").getString(), e.getMessage() == null ? "" : e.getMessage(), "info");
 			}
 		});
 	}
@@ -482,7 +481,7 @@ public final class Social {
 			try {
 				dev.slash3rss.slashclient.hud.AccountSwitch.apply(mc, str(s, "name"), uuid, str(s, "accessToken"), str(s, "xuid"), "offline".equals(str(s, "type")));
 			} catch (Exception e) {
-				toast(Component.translatable("slashclient-hud.accounts.failed").getString(), String.valueOf(e.getMessage()));
+				toast(Component.translatable("slashclient-hud.accounts.failed").getString(), String.valueOf(e.getMessage()), "info");
 			}
 		});
 	}

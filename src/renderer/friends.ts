@@ -7,7 +7,7 @@ import { locale, t } from '../shared/i18n';
 
 type Status = 'online' | 'away' | 'busy' | 'invisible';
 interface Activity { kind: 'launcher' | 'menu' | 'singleplayer' | 'server'; version?: string; server?: string; since?: number }
-interface Presence { status: 'online' | 'away' | 'busy' | 'offline'; activity?: Activity; lastSeen?: number }
+interface Presence { status: 'online' | 'away' | 'busy' | 'offline'; activity?: Activity; lastSeen?: number; /** their world is open to LAN: joinable through SlashClient */ lan?: boolean }
 interface Person { id: string; handle: string; name: string; avatar: string }
 interface Friend extends Person { presence: Presence; unread: number; lastMessageAt: number; since: number }
 interface Request extends Person { at: number }
@@ -128,7 +128,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     const a = p.activity;
     const version = a?.version ? `Minecraft ${a.version}` : 'Minecraft';
     if (a?.kind === 'server') return a.server ? t('{0} · na {1}', version, a.server) : t('{0} · na serwerze', version);
-    if (a?.kind === 'singleplayer') return t('{0} · gra jednoosobowa', version);
+    if (a?.kind === 'singleplayer') return p.lan ? t('{0} · świat otwarty w LAN', version) : t('{0} · gra jednoosobowa', version);
     if (a?.kind === 'menu') return t('{0} · w menu', version);
     return { online: t('Dostępny w launcherze'), away: t('Zaraz wracam'), busy: t('Nie przeszkadzać') }[p.status];
   }
@@ -492,9 +492,10 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     }
   }
 
-  async function markRead(id: string) {
+  /** `fresh`: a message just came into the open chat; it never counted as unread here, but the server has it so. */
+  async function markRead(id: string, fresh = false) {
     const f = friend(id);
-    if (!f?.unread) return;
+    if (!f || (!f.unread && !fresh)) return;
     f.unread = 0;
     renderList();
     await api.socialApi('POST', `/v1/messages/${id}/read`).catch(() => {});
@@ -546,6 +547,22 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     if (f.presence.status !== 'offline' && a?.kind === 'server' && a.server) {
       const join = el('button', { type: 'button', className: 'primary' }, icon('fa-right-to-bracket'), t(' Dołącz'));
       join.addEventListener('click', () => deps.join(a.server!, a.version?.split(' · ')[0]));
+      actions.push(join);
+    }
+    // their world is open to LAN: the same relay the game uses, then the game started on it
+    if (f.presence.status !== 'offline' && f.presence.lan) {
+      const join = el('button', { type: 'button', className: 'primary' }, icon('fa-right-to-bracket'), t(' Dołącz do świata'));
+      join.addEventListener('click', async () => {
+        join.disabled = true;
+        try {
+          const port = await api.lanJoin(f.id);
+          deps.join(`127.0.0.1:${port}`, a?.version?.split(' · ')[0]);
+        } catch (err) {
+          deps.toast(t('Nie udało się dołączyć do świata: {0}', deps.errorText(err)), true);
+        } finally {
+          join.disabled = false;
+        }
+      });
       actions.push(join);
     }
     const invite = el('button', { type: 'button', className: 'icon-btn', title: t('Zaproś do gry') }, icon('fa-gamepad'));
@@ -681,7 +698,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         clearTimeout(typing.get(m.from));
         typing.delete(m.from);
         const f = friend(m.from);
-        if (m.from === selected && isVisible()) markRead(m.from);
+        if (m.from === selected && isVisible()) markRead(m.from, true);
         else if (f) {
           f.unread++;
           if (m.invite) {

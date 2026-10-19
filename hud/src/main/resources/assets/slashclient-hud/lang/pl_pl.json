@@ -422,6 +422,7 @@
 	"slashclient-hud.module.scoreboard": "Scoreboard",
 	"slashclient-hud.module.bossbar": "Pasek bossa",
 	"slashclient-hud.module.tablist": "Lista graczy (Tab)",
+	"slashclient-hud.module.toasts": "Powiadomienia",
 	"slashclient-hud.module.actionbar": "Pasek akcji",
 	"slashclient-hud.module.dungeonmap": "Mapa dungeonu",
 	"slashclient-hud.dungeon": "Dungeon",

@@ -1365,6 +1365,12 @@ async function socialCall<T>(fn: () => Promise<T>): Promise<T> {
 handle('social:state', () => social.state());
 handle('social:health', () => socialCall(() => social.call('GET', '/v1/health', undefined, false)));
 /** The page's requests; only the parts of the API that work on the player's own data. */
+// joining a friend's world open to LAN from the launcher: a local port through the relay, as the game's friends list does
+handle('lan:join', (friendId: string) => {
+  if (typeof friendId !== 'string' || !/^[\w-]{1,64}$/.test(friendId)) throw new Error('social:bad_request');
+  return lan.join(friendId);
+});
+
 handle('social:api', (method: string, apiPath: string, body?: unknown) => {
   if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages|invites|cosmetics)(\/[\w-]+)*(\?[\w=&-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
   return socialCall(() => chatCall(method, apiPath, body));
