@@ -51,7 +51,7 @@ public final class Catalog {
 		Map.entry("light", "world"), Map.entry("saturation", "world"), Map.entry("movement", "world"), Map.entry("combo", "combat"),
 		Map.entry("reach", "combat"), Map.entry("target", "combat"), Map.entry("armor", "combat"), Map.entry("effects", "combat"),
 		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"),
-		Map.entry("twitchchat", "chat"), Map.entry("kickchat", "chat"));
+		Map.entry("twitchchat", "chat"), Map.entry("kickchat", "chat"), Map.entry("nethercoords", "world"));
 
 	static final int[] COLORS = { 0xFFFFFFFF, 0xFF60A5FA, 0xFF4ADE80, 0xFF55FFFF, 0xFFFACC15, 0xFFF87171, 0xFFA855F7, 0xFFFF55FF };
 	/** The block outline's colours: the game's black first. */
@@ -256,6 +256,16 @@ public final class Catalog {
 				() -> String.valueOf(cfg.fixedTime), v -> cfg.fixedTime = Integer.parseInt(v))), null));
 		out.add(new Entry("freelook", "slashclient-hud.extra.freelook", "extras", "m-freelook", () -> cfg.freelook, v -> cfg.freelook = v, List.of(), null));
 		out.add(new Entry("waypoints", "slashclient-hud.extra.waypoints", "world", "m-waypoints", () -> cfg.waypoints, v -> cfg.waypoints = v, List.of(), null));
+		// the death point, the light level overlay, no weather and the F5 camera's distance (one file each in the HUD's package)
+		out.add(new Entry("deathWaypoint", "slashclient-hud.deathPoint", "world", "m-deathpoint", () -> cfg.deathWaypoint, v -> cfg.deathWaypoint = v, List.of(), null));
+		out.add(new Entry("lightOverlay", "slashclient-hud.lightOverlay", "world", "m-lightoverlay", () -> cfg.lightOverlay, v -> cfg.lightOverlay = v, List.of(
+			new Slider("slashclient-hud.lightOverlay.radius", 4f, 32f, 2f, "%.0f", () -> (float) cfg.lightOverlayRadius, v -> cfg.lightOverlayRadius = Math.round(v))), null));
+		out.add(new Entry("weatherOff", "slashclient-hud.weatherOff", "world", "m-weather", () -> cfg.weatherOff, v -> cfg.weatherOff = v, List.of(), null));
+		out.add(new Entry("cameraDistance", "slashclient-hud.cameraDistance", "extras", "m-cameradistance", () -> cfg.cameraDistance, v -> cfg.cameraDistance = v, List.of(
+			new Slider("slashclient-hud.cameraDistance.default", dev.slash3rss.slashclient.hud.CameraDistance.MIN, dev.slash3rss.slashclient.hud.CameraDistance.MAX, 0.5f, "%.1f",
+				() -> cfg.cameraDistanceDefault, v -> cfg.cameraDistanceDefault = v),
+			new Toggle("slashclient-hud.cameraDistance.key", () -> cfg.cameraDistanceKey, v -> cfg.cameraDistanceKey = v),
+			new Toggle("slashclient-hud.cameraDistance.reset", () -> cfg.cameraDistanceReset, v -> cfg.cameraDistanceReset = v)), null));
 		out.add(new Entry("screenshot", "slashclient-hud.extra.screenshot", "extras", "m-screenshot", () -> cfg.screenshotClipboard, v -> cfg.screenshotClipboard = v, List.of(), null));
 		out.add(new Entry("chatStack", "slashclient-hud.chat.stack", "chat", "m-chatstack", () -> cfg.chatStack, v -> cfg.chatStack = v, List.of(), null));
 		out.add(new Entry("chatCopy", "slashclient-hud.chat.copy", "chat", "m-chatcopy", () -> cfg.chatCopy, v -> cfg.chatCopy = v, List.of(
