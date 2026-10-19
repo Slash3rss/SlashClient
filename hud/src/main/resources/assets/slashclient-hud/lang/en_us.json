@@ -483,6 +483,7 @@
 	"slashclient-hud.skyTasks.reward": "Reward: %s",
 	"slashclient-hud.skyTasks.joinHint": "SkyUp tasks: open Wyzwania (challenges) and a category (e.g. Nowicjusz) to load your current progress.",
 	"slashclient-hud.skyTasks.max": "Most tasks on screen",
+	"slashclient-hud.skyTasks.width": "Width (longer names shortened)",
 	"slashclient-hud.skyTasks.compact": "Compact mode",
 	"slashclient-hud.skyTasks.hideDone": "Hide ready to complete",
 	"slashclient-hud.skyTasks.rewards": "Show rewards",

@@ -483,6 +483,7 @@
 	"slashclient-hud.skyTasks.reward": "Nagroda: %s",
 	"slashclient-hud.skyTasks.joinHint": "Zadania SkyUp: otwórz Wyzwania i wejdź w kategorię (np. Nowicjusz), żeby wczytać obecny postęp.",
 	"slashclient-hud.skyTasks.max": "Najwięcej zadań na ekranie",
+	"slashclient-hud.skyTasks.width": "Szerokość (dłuższe nazwy skracane)",
 	"slashclient-hud.skyTasks.compact": "Tryb zwarty",
 	"slashclient-hud.skyTasks.hideDone": "Ukryj gotowe do ukończenia",
 	"slashclient-hud.skyTasks.rewards": "Pokaż nagrody",

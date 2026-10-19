@@ -40,7 +40,8 @@ html, body { margin: 0; height: 100%; }
 body {
   display: flex;
   gap: 16px;
-  padding: 16px;
+  /* the top strip is the window's title bar: the system buttons sit on it */
+  padding: 36px 16px 16px;
   background: var(--bg-primary);
   color: var(--text-primary);
   font: 15px/1.5 var(--font-sans);
@@ -48,6 +49,8 @@ body {
   overflow: hidden;
 }
 input, select, button { font: inherit; color: inherit; }
+/* drags the window; under the system buttons, which take their own clicks */
+.titlebar { position: fixed; top: 0; left: 0; right: 0; height: 36px; -webkit-app-region: drag; z-index: 1; }
 a { color: var(--accent-light); text-decoration: none; }
 a:hover { text-decoration: underline; }
 code {
@@ -394,7 +397,7 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 
 /* ---------- article modal ---------- */
 .news-card { cursor: pointer; }
-.modal { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 28px; background: rgba(5, 7, 11, .7); backdrop-filter: blur(6px); animation: fade-in .2s ease; }
+.modal { position: fixed; inset: 0; z-index: 30; -webkit-app-region: no-drag; display: grid; place-items: center; padding: 28px; background: rgba(5, 7, 11, .7); backdrop-filter: blur(6px); animation: fade-in .2s ease; }
 .modal-box { position: relative; width: min(760px, 100%); max-height: 100%; overflow-y: auto; padding: 0; background: rgba(17, 22, 34, .97); user-select: text; }
 .modal-box > img { width: 100%; height: 220px; object-fit: cover; display: block; }
 .modal-body { padding: 20px 28px 28px; display: flex; flex-direction: column; gap: 6px; }
@@ -465,7 +468,7 @@ button.busy { pointer-events: none; }
 
 /* ---------- update bar ---------- */
 .update-bar {
-  position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 25; display: flex; align-items: center; gap: 12px;
+  position: fixed; left: 50%; top: 44px; transform: translateX(-50%); z-index: 25; -webkit-app-region: no-drag; display: flex; align-items: center; gap: 12px;
   padding: 8px 8px 8px 16px; border-radius: 12px; background: rgba(17, 22, 34, .95); border: 1px solid rgba(59, 130, 246, .4);
   box-shadow: 0 8px 28px rgba(0, 0, 0, .45), 0 0 18px rgba(59, 130, 246, .2); font-size: 14px; animation: appear .3s ease;
 }
@@ -515,7 +518,7 @@ body.entering main { animation: rise-in .55s cubic-bezier(.2, .7, .3, 1) .12s bo
 .check .hint { display: block; font-size: 12px; color: var(--text-muted); }
 
 /* ---------- task panel (installs) ---------- */
-.tasks { position: fixed; right: 20px; top: 20px; z-index: 26; display: flex; flex-direction: column; gap: 10px; width: 340px; max-height: calc(100vh - 40px); overflow: hidden; pointer-events: none; }
+.tasks { position: fixed; right: 20px; top: 44px; z-index: 26; display: flex; flex-direction: column; gap: 10px; width: 340px; max-height: calc(100vh - 64px); overflow: hidden; pointer-events: none; }
 .task {
   pointer-events: auto; display: grid; grid-template-columns: 44px 1fr; gap: 12px; padding: 14px; border-radius: 14px;
   background: rgba(17, 22, 34, .97); border: 1px solid var(--glass-border); box-shadow: 0 12px 32px rgba(0, 0, 0, .5);

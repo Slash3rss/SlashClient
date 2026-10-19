@@ -525,7 +525,10 @@ public final class SkyTasks {
 		return out;
 	}
 
-	private static final int MAX_W = 220;
+	/** The module's widest (setting, 220 by default): longer task names and lines end with "…". */
+	private static int maxWidth() {
+		return Math.max(100, Math.min(320, SlashHud.config.skyTasksWidth));
+	}
 
 	private static int rowHeight(Minecraft mc, Row r) {
 		return mc.font.lineHeight + 1 + (r.bar >= 0 ? 3 : 0);
@@ -534,7 +537,7 @@ public final class SkyTasks {
 	private static int width(Minecraft mc, List<Row> rows) {
 		int w = 80;
 		for (Row r : rows) w = Math.max(w, r.indent + mc.font.width(r.left) + (r.right.isEmpty() ? 0 : 8 + mc.font.width(r.right)));
-		return Math.min(MAX_W, w) + Modules.PAD * 2;
+		return Math.min(maxWidth(), w) + Modules.PAD * 2;
 	}
 
 	private static int height(Minecraft mc, List<Row> rows) {

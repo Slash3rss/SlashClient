@@ -168,6 +168,8 @@ public final class HudConfig {
 	public String dungeonShape = "square";
 	/** SkyUp's tasks on the HUD: how many at most, one line each, those ready to complete hidden, rewards shown. */
 	public int skyTasksMax = 5;
+	/** The module's widest, in pixels: longer names are cut with "…". */
+	public int skyTasksWidth = 220;
 	public boolean skyTasksCompact = false, skyTasksHideDone = false, skyTasksRewards = false;
 	/** Every unfinished task tracked (those switched off one by one aside). */
 	public boolean skyTasksTrackAll = false;
@@ -430,6 +432,7 @@ public final class HudConfig {
 		dungeonY = other.dungeonY;
 		dungeonShape = other.dungeonShape;
 		skyTasksMax = Math.max(1, Math.min(10, other.skyTasksMax));
+		skyTasksWidth = Math.max(100, Math.min(320, other.skyTasksWidth));
 		skyTasksCompact = other.skyTasksCompact;
 		skyTasksHideDone = other.skyTasksHideDone;
 		skyTasksRewards = other.skyTasksRewards;

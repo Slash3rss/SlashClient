@@ -454,10 +454,11 @@ public class HudEditScreen extends Screen {
 	 */
 	private void drawLayout(GuiGraphicsExtractor g, int mx, int my) {
 		HudModule hovered = dragging != null ? dragging : moduleAt(mx, my);
-		// the mouse on a module's × still counts as on the module, though the × sticks out of it
+		// the mouse on a module's × or gear still counts as on the module, though they stick out of it
 		if (hovered == null) for (HudModule m : SlashHud.MODULES) {
-			int[] c = closeBox(m);
-			if (SlashHud.config.placement(m.id()).enabled && Ui.inside(mx, my, c[0], c[1], c[2], c[2])) hovered = m;
+			int[] c = closeBox(m), s = gearBox(m);
+			if (SlashHud.config.placement(m.id()).enabled && (Ui.inside(mx, my, c[0], c[1], c[2], c[2])
+				|| settingsEntry(m) != null && Ui.inside(mx, my, s[0], s[1], s[2], s[2]))) hovered = m;
 		}
 		for (HudModule m : SlashHud.MODULES) {
 			HudConfig.Placement p = SlashHud.config.placement(m.id());
@@ -482,6 +483,20 @@ public class HudEditScreen extends Screen {
 						p.enabled = false;
 						SlashHud.config.save();
 					}));
+					// a gear beside it opens the module's settings, when it has any
+					Catalog.Entry entry = settingsEntry(m);
+					if (entry != null) {
+						int[] s = gearBox(m);
+						boolean onGear = Ui.inside(mx, my, s[0], s[1], s[2], s[2]);
+						Ui.round(g, s[0], s[1], s[2], s[2], 3, onGear ? Ui.ACCENT_DARK : 0xE0161C2A);
+						Ui.roundOutline(g, s[0], s[1], s[2], s[2], 3, onGear ? Ui.ACCENT_LIGHT : 0x66FFFFFF);
+						Ui.icon(g, "gear", s[0] + 2, s[1] + 2, s[2] - 4, 0xFFFFFFFF);
+						hits.add(new Hit(s[0], s[1], s[2], s[2], () -> {
+							window = true;
+							settingsOf = entry;
+							reopen();
+						}));
+					}
 				}
 			}
 		}
@@ -1050,6 +1065,25 @@ public class HudEditScreen extends Screen {
 		int x = Math.max(0, Math.min(width - size, b[0] + b[2] - size + 5));
 		int y = Math.max(0, Math.min(height - size, b[1] - 6));
 		return new int[] { x, y, size };
+	}
+
+	/** The gear that opens a module's settings: left of its ×. */
+	private int[] gearBox(HudModule m) {
+		int[] c = closeBox(m);
+		return new int[] { Math.max(0, c[0] - c[2] - 2), c[1], c[2] };
+	}
+
+	/** The module's card in the settings, when it has settings of its own. */
+	private Catalog.Entry settingsEntry(HudModule m) {
+		for (Catalog.Entry e : entries()) if (e.id().equals(m.id())) return e.settings().isEmpty() ? null : e;
+		return null;
+	}
+
+	/** For the in-game test: the middle of a module's gear. */
+	double[] gearCenter(String id) {
+		HudModule m = SlashHud.MODULES.stream().filter(x -> x.id().equals(id)).findFirst().orElseThrow();
+		int[] c = gearBox(m);
+		return new double[] { c[0] + c[2] / 2.0, c[1] + c[2] / 2.0 };
 	}
 
 	/** A module's box on this screen, for the test. */

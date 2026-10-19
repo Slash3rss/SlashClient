@@ -10,7 +10,7 @@ import net.minecraft.world.entity.player.Player;
 /**
  * Compact hearts: however much health, one row. The first 20 health are the game's red hearts;
  * each further 20 fill the row again in the next colour, over the full row of the one before,
- * and a small "×3" says how many rows that is. Absorption shows as a golden "+4" on the left.
+ * and a small "×3" on the left says how many rows that is. Absorption shows as a golden "+4" left of it.
  */
 public final class Hearts {
 	private Hearts() {}
@@ -42,12 +42,19 @@ public final class Hearts {
 			if (value >= 2) heart(g, layer, true, hx, hy);
 			else if (value == 1) heart(g, layer, false, hx, hy);
 		}
+		// both on the left of the row: right of it is the middle of the screen, where the game draws the
+		// experience level over them, and further on the food bar
 		var font = Minecraft.getInstance().font;
-		if (layer > 0) g.text(font, Component.literal("×" + (layer + 1)), x + 82, y + 1, layerColor(layer), true);
-		// absorption on the left of the row: on the right the food bar is close
+		int left = x - 3;
+		if (layer > 0) {
+			Component rows = Component.literal("×" + (layer + 1));
+			left -= font.width(rows);
+			g.text(font, rows, left, y + 1, layerColor(layer), true);
+			left -= 3;
+		}
 		if (absorption > 0) {
 			Component extra = Component.literal("+" + (absorption + 1) / 2);
-			g.text(font, extra, x - 3 - font.width(extra), y + 1, 0xFFFFD84A, true);
+			g.text(font, extra, left - font.width(extra), y + 1, 0xFFFFD84A, true);
 		}
 	}
 

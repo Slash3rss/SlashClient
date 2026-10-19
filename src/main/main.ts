@@ -145,6 +145,12 @@ function createWindow() {
     icon: ICON,
     // shown once the first frame is ready, so there's no flash of an empty window
     show: false,
+    // no system title bar: the page runs to the top and the window's buttons sit on it (traffic lights
+    // on macOS, an overlay on Windows and Linux), so they are one with the launcher
+    titleBarStyle: 'hidden',
+    ...(process.platform === 'darwin'
+      ? { trafficLightPosition: { x: 16, y: 13 } }
+      : { titleBarOverlay: { color: '#00000000', symbolColor: '#c7cbe0', height: 36 } }),
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true },
   });
   win.removeMenu();
