@@ -95,7 +95,7 @@ public final class GearLayer extends RenderLayer<AvatarRenderState, PlayerModel>
 			// the legs swing with cos(pos · 0.6662)
 			p.phase = state.walkAnimationPos * 0.6662f;
 			p.caped = slot.equals("tail") && caped(state);
-			p.fit = Gear.fit(slot, state.chestEquipment, state.legsEquipment);
+			p.fit = Gear.fit(slot, state.chestEquipment, state.legsEquipment, Cosmetics.worn(id, "suit") != null);
 			GearModel model = models.computeIfAbsent(item, k -> new GearModel(Gear.bake(k)));
 			Compat.submitModel(out, model, p, pose, model.renderType(Gear.texture(item)), light, OverlayTexture.NO_OVERLAY, state.outlineColor);
 		}
@@ -150,7 +150,7 @@ public final class GearLayer extends RenderLayer<AvatarRenderState, PlayerModel>
 //$ 			Gear.Rig rig = rigs.computeIfAbsent(item, Gear::bake);
 //$ 			rig.body.copyFrom(getParentModel().body);
 //$ 			// the legs swing with cos(limbSwing · 0.6662)
-//$ 			Gear.animate(rig, ageInTicks / 20f, limbSwingAmount, limbSwing * 0.6662f, slot.equals("tail") && caped(player, chest), Gear.fit(slot, chest, legs));
+//$ 			Gear.animate(rig, ageInTicks / 20f, limbSwingAmount, limbSwing * 0.6662f, slot.equals("tail") && caped(player, chest), Gear.fit(slot, chest, legs, Cosmetics.worn(player.getUUID(), "suit") != null));
 //$ 			rig.root.render(pose, buffers.getBuffer(RenderType.entityCutoutNoCull(Gear.texture(item))), light, OverlayTexture.NO_OVERLAY);
 //$ 		}
 //$ 	}

@@ -30,24 +30,26 @@ import java.util.UUID;
  * the launcher's and the website's previews show (src/shared/suits.ts).
  *
  * What clashes with a suit:
- * - it hides the other cosmetics worn on the head or the body ({@link #hides}): the hat and the
- *   top, and any slot named in HIDDEN (face, ears and the like, which would stick through the hood);
- *   the cape, wings, elytra, pet and particles stay;
+ * - it hides the other cosmetics worn on the head, the body and the limbs ({@link #hides}): the hat,
+ *   the top, the face's and the ears' things (they would stick through the hood), the shoes and what
+ *   is worn on the hands (under the suit's boots and sleeves); the cape, wings, elytra, held skins,
+ *   pet, ring, particles and prop stay;
  * - real armour hides the part of the suit it covers ({@link #hiddenParts}): anything on the head
  *   the head's boxes, a chestplate the body's and the arms', leggings the legs', boots the boots;
- * - what the suit carries on its back (a backpack, a tail) gives way to a cape, wings, an elytra
- *   or a chestplate, which would go through it.
+ * - what the suit carries on its back (a backpack, spikes, its tail) gives way to a cape, wings, an
+ *   elytra, a back item (Gear) or a chestplate, which would go through it; a worn tail (Gear) takes
+ *   the place of the suit's own tail only (TAIL), the rest of its back stays.
  */
 public final class Suits {
 	private Suits() {}
 
 	/** Slots a worn suit hides: the clothing, and what other slots wear on the head or over the body. */
-	public static final List<String> HIDDEN = List.of("hat", "top", "face", "ears", "mask", "glasses", "hair", "horns", "head", "neck");
+	public static final List<String> HIDDEN = List.of("hat", "top", "face", "ears", "shoes", "hands");
 
 	/** The parts of the player model a box can hang on, named as in the game's player model. */
 	static final List<String> BONES = List.of("head", "body", "right_arm", "left_arm", "right_leg", "left_leg");
 	/** What hides a box (bits of {@link #hiddenParts}). */
-	public static final int HEAD = 1, CHEST = 2, LEGS = 4, FEET = 8, BACK = 16;
+	public static final int HEAD = 1, CHEST = 2, LEGS = 4, FEET = 8, BACK = 16, TAIL = 32;
 
 	private record Box(String bone, int part, float[] from, float[] size, float inflate, int u, int v) {}
 	private record Item(List<Box> wide, List<Box> slim) {}
@@ -72,6 +74,7 @@ public final class Suits {
 						case "legs" -> LEGS;
 						case "feet" -> FEET;
 						case "back" -> BACK;
+						case "tail" -> TAIL;
 						default -> CHEST;
 					};
 					float inflate = b.get("inflate").getAsFloat();
@@ -139,18 +142,22 @@ public final class Suits {
 
 	/**
 	 * Which parts of a suit are hidden (bits): those the real gear covers (anything on the head,
-	 * a chestplate, leggings, boots), and its back when something else is worn there (`backTaken`: a
-	 * cape or wings showing; an elytra or a chestplate count by themselves).
+	 * a chestplate, leggings, boots), its back and its tail when something else is worn there
+	 * (`backTaken`: a cape, wings or a back item showing; an elytra or a chestplate count by
+	 * themselves), and its own tail alone under a worn tail (`tailTaken`).
 	 */
-	public static int hiddenParts(ItemStack head, ItemStack chest, ItemStack legs, ItemStack feet, boolean backTaken) {
-		int hidden = 0;
+	public static int hiddenParts(ItemStack head, ItemStack chest, ItemStack legs, ItemStack feet, boolean backTaken, boolean tailTaken) {
+		int hidden = backParts(backTaken || chest.is(Items.ELYTRA), tailTaken);
 		if (!head.isEmpty()) hidden |= HEAD;
-		if (chest.is(Items.ELYTRA)) hidden |= BACK;
-		else if (!chest.isEmpty()) hidden |= CHEST | BACK;
+		if (!chest.isEmpty() && !chest.is(Items.ELYTRA)) hidden |= CHEST | BACK | TAIL;
 		if (!legs.isEmpty()) hidden |= LEGS;
 		if (!feet.isEmpty()) hidden |= FEET;
-		if (backTaken) hidden |= BACK;
 		return hidden;
+	}
+
+	/** The parts of a suit that give way to what is worn on the back (BACK and TAIL) or to a worn tail (TAIL only). */
+	public static int backParts(boolean backTaken, boolean tailTaken) {
+		return (backTaken ? BACK | TAIL : 0) | (tailTaken ? TAIL : 0);
 	}
 
 	/** Whether a player's suit hides what they wear in another slot (see HIDDEN). */

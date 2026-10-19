@@ -10,18 +10,21 @@
  * part a box hangs on; a leg's box is from (-2,0,-2), 4×12×4 below the hip.
  *
  * Rules (the mod, the launcher and the website keep them alike):
- * - a suit hides the hat and the top (and any other cosmetic worn on the head or the body, see
- *   Suits.hides in the mod), since all of them would stick through it;
+ * - a suit hides the hat and the top, the face's and the ears' things, the shoes and what is worn
+ *   on the hands (Suits.HIDDEN in the mod), since all of them would stick through it or lie under it;
+ *   the cape, wings, elytra, held skins, pet, ring, particles and prop stay;
  * - real armour hides the part of the suit it covers: a helmet (or anything worn on the head) the
  *   head's boxes, a chestplate the body's and the arms', leggings the legs' upper boxes, boots the
  *   boots; an elytra or a chestplate also hides what the suit carries on the back;
- * - a cape, wings or an elytra on the back hide the suit's back boxes (a backpack, a tail), which
- *   would go through them.
+ * - a cape, wings, an elytra or a back item (gear.ts) on the back hide the suit's back boxes (a
+ *   backpack, spikes, thrusters) and its own tail, which would go through them;
+ * - a worn tail (gear.ts) hides only the suit's own tail ('tail' boxes: the panda's, the dinosaur's),
+ *   the two would grow from the same place; the rest of the suit's back stays.
  */
 
 export type SuitBone = 'head' | 'body' | 'right_arm' | 'left_arm' | 'right_leg' | 'left_leg';
-/** What hides a box: the armour piece over it, or something worn on the back. */
-export type SuitPart = 'head' | 'chest' | 'legs' | 'feet' | 'back';
+/** What hides a box: the armour piece over it, or something worn on the back (a suit's own tail: 'tail', which a worn tail hides too). */
+export type SuitPart = 'head' | 'chest' | 'legs' | 'feet' | 'back' | 'tail';
 
 export interface SuitBox {
   /** What it is, for painting it (several boxes may share a name). */
@@ -93,7 +96,7 @@ export const SUITS: SuitItem[] = [
     { name: 'ear', bone: 'head', from: [-5, -10.5, -1], size: [3, 3, 2] },
     { name: 'ear', bone: 'head', from: [2, -10.5, -1], size: [3, 3, 2] },
     { name: 'snout', bone: 'head', from: [-2, -4, -5.75], size: [4, 3, 1] },
-    { name: 'tail', bone: 'body', from: [-1, 9, 2.6], size: [2, 2, 1], part: 'back' },
+    { name: 'tail', bone: 'body', from: [-1, 9, 2.6], size: [2, 2, 1], part: 'tail' },
   ] },
   // a green hood with a toothy snout, spikes down the back and a tail
   { id: 'dinosuit', name: 'Dinozaur', boxes: [
@@ -103,8 +106,8 @@ export const SUITS: SuitItem[] = [
     { name: 'spike', bone: 'head', from: [-0.5, -9, 3], size: [1, 2, 3] },
     { name: 'spike', bone: 'body', from: [-0.5, 1, 2.6], size: [1, 2, 2], part: 'back' },
     { name: 'spike', bone: 'body', from: [-0.5, 4.5, 2.6], size: [1, 2, 2], part: 'back' },
-    { name: 'tail', bone: 'body', from: [-2, 8, 2.6], size: [4, 3, 4], part: 'back' },
-    { name: 'tailtip', bone: 'body', from: [-1, 9, 6.6], size: [2, 2, 3], part: 'back' },
+    { name: 'tail', bone: 'body', from: [-2, 8, 2.6], size: [4, 3, 4], part: 'tail' },
+    { name: 'tailtip', bone: 'body', from: [-1, 9, 6.6], size: [2, 2, 3], part: 'tail' },
   ] },
   // steel plates with rivets, a great helm with a plume, pauldrons and a blue tabard
   { id: 'knight', name: 'Rycerz', boxes: [

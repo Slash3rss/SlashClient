@@ -925,6 +925,8 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .cosmetic-owner-row { justify-content: space-between; gap: 8px; min-height: 18px; }
 .skin-info button.link-button { height: auto; padding: 0; border: 0; background: none; box-shadow: none; color: var(--accent-light); font-size: 12px; cursor: pointer; }
 .slot-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+/* with many slots the tabs scroll after three rows (the picked one is kept in view), so the items stay in sight */
+.skin-info .slot-tabs { max-height: 90px; overflow-y: auto; scrollbar-width: thin; }
 .skin-info .slot-tabs button.slot-tab { height: 26px; padding: 0 9px; font-size: 12px; border-radius: 13px; background: transparent; color: var(--text-secondary); position: relative; }
 .skin-info .slot-tabs button.slot-tab.active { background: var(--glass-bg-hover); color: var(--text-primary); border-color: var(--accent); }
 .slot-tab.worn::after { content: ""; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: #4ade80; }

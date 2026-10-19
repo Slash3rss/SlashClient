@@ -116,9 +116,11 @@ export class CosmeticPreview {
   /** Boxes that turn on a pivot of their own, and how ears twitch (headwear.ts). */
   private twitches: { part: Object3D; base: [number, number, number]; twitch: NonNullable<ClothingBox['twitch']> }[] = [];
   private rocket: RocketFlames;
-  /** A suit over all of it (it hides the hat and the top), see suitPreview.ts. */
+  /** A suit over all of it (it hides the hat, the top, the shoes, the hands, the face and the ears), see suitPreview.ts. */
   private suit: SuitPreview;
   private suitId?: string;
+  private suitBack = false;
+  private suitTail = false;
 
   /** Our own pet's material, whose picture changes every second (its frames). */
   private ourPet?: { id: string; material: MeshStandardMaterial; frame: number };
@@ -180,13 +182,18 @@ export class CosmeticPreview {
   show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string; suit?: string; shield?: string; weapon?: string; shoes?: string; hands?: string; face?: string; ears?: string; back?: string; tail?: string; ring?: string; move?: string; prop?: string; walk?: boolean }) {
     this.kills.set(set.kill);
     this.held.show(set);
-    this.gear.show(set.back, set.tail);
+    // back items and tails stand off a suit as in the game (Gear.fit)
+    this.gear.show(set.back, set.tail, set.suit ? 0.6 : 0);
     this.ring.set(set.ring);
     this.moves.set(set.move);
-    this.props.show(set.prop);
+    // hands holding a shield or a weapon have no room for the prop, as in the game
+    this.props.show(set.shield || set.weapon ? undefined : set.prop);
     this.props.walking = !!set.walk;
-    // a suit hides the hat, the top, the shoes, the hands, the face and the ears, as in the game
+    // a suit hides the hat, the top, the shoes, the hands, the face and the ears, as in the game;
+    // a back item takes its back, a tail its own tail
     this.suitId = set.suit || undefined;
+    this.suitBack = !!set.back;
+    this.suitTail = !!set.tail;
     this.wearing = this.suitId ? {} : { hat: set.hat || undefined, top: set.top || undefined, shoes: set.shoes || undefined, hands: set.hands || undefined,
       face: set.face || undefined, ears: set.ears || undefined };
     this.dress();
@@ -384,7 +391,7 @@ export class CosmeticPreview {
   private update(dt: number, time: number) {
     // a skin with the other arms' width came: the sleeves follow (and a cape on the back takes the suit's)
     this.dress();
-    this.suit.wear(this.suitId);
+    this.suit.wear(this.suitId, this.suitBack, this.suitTail);
     for (const t of this.twitches) {
       const a = twitchAngle(time, t.twitch);
       t.part.rotation.x = t.base[0] + (t.twitch.axis === 'x' ? a : 0);

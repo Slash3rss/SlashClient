@@ -232,6 +232,12 @@ public final class Gear {
 		return plate ? 1f : legs.isEmpty() ? 0f : 0.6f;
 	}
 
+	/** As {@link #fit(String, ItemStack, ItemStack)}, over a suit (Suits) too: its body and legs stand about 0.6 off the skin. */
+	public static float fit(String slot, ItemStack chest, ItemStack legs, boolean suited) {
+		float fit = fit(slot, chest, legs);
+		return suited ? Math.max(fit, 0.6f) : fit;
+	}
+
 	/** Whether a player we see wears a real elytra (for the versions that ask for the cape by player id). */
 	static boolean wearsElytra(UUID id) {
 		var level = Minecraft.getInstance().level;

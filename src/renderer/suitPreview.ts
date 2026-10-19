@@ -5,8 +5,8 @@ import { SUIT_TEXTURE, slimSuitBox, suitItem, suitLayout, suitPart, type SuitBon
 
 /**
  * A suit (src/shared/suits.ts) on the preview's figure: its boxes fixed to the head, body, arms
- * and legs, as the mod draws it. Its back (a backpack, a tail) gives way to a cape, wings or an
- * elytra on the figure, as in the game.
+ * and legs, as the mod draws it. Its back (a backpack, a tail) gives way to a cape, wings, a back item or an
+ * elytra on the figure, its own tail alone to a worn tail, as in the game.
  */
 export class SuitPreview {
   private meshes: { mesh: Mesh; holder: Object3D }[] = [];
@@ -15,12 +15,15 @@ export class SuitPreview {
 
   constructor(private viewer: SkinViewer, private texture: (src: string) => Texture, private pictures = 'img/suits/') {}
 
-  /** Puts the suit on (again when the suit, the arms' width or the back changed); '' takes it off. */
-  wear(id: string | undefined) {
+  /**
+   * Puts the suit on (again when the suit, the arms' width or the back changed); '' takes it off.
+   * `backItem`: a back item worn (it takes the whole back, as a cape does), `tail`: a tail worn (it takes the suit's own tail's place).
+   */
+  wear(id: string | undefined, backItem = false, tail = false) {
     const skin = this.viewer.playerObject.skin;
     const slim = skin.modelType === 'slim';
-    const back = this.viewer.playerObject.backEquipment !== null;
-    const key = `${id ?? ''}|${slim}|${back}`;
+    const back = backItem || this.viewer.playerObject.backEquipment !== null;
+    const key = `${id ?? ''}|${slim}|${back}|${tail}`;
     if (key === this.made) return;
     this.made = key;
     this.clear();
@@ -34,7 +37,7 @@ export class SuitPreview {
     const { uv, slimUv } = suitLayout(suit);
     const byBone = new Map<SuitBone, [SuitBox, [number, number]][]>();
     suit.boxes.forEach((b, i) => {
-      if (back && suitPart(b) === 'back') return;
+      if ((back && (suitPart(b) === 'back' || suitPart(b) === 'tail')) || (tail && suitPart(b) === 'tail')) return;
       const box: [SuitBox, [number, number]] = slim && slimUv[i] ? [slimSuitBox(b), slimUv[i]!] : [b, uv[i]];
       byBone.set(b.bone, [...(byBone.get(b.bone) ?? []), box]);
     });

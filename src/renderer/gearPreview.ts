@@ -17,6 +17,7 @@ export class GearPreview {
   private flames: Group[] = [];
   private textures = new Map<string, Texture>();
   private key = '';
+  private fit = 0;
   /** The legs' swing over the last second (time, angle), to swing the tail with the steps. */
   private legs: [number, number][] = [];
   private amp = 0;
@@ -24,9 +25,11 @@ export class GearPreview {
   /** `dir` is where the pictures are (<id>.png). */
   constructor(private viewer: SkinViewer, private dir = 'img/gear/') {}
 
-  show(back?: string, tail?: string) {
+  /** `fit`: how far they stand off the back (0.6 over a suit, as in the game). */
+  show(back?: string, tail?: string, fit = 0) {
+    this.fit = fit;
     this.worn = { back: back || undefined, tail: tail || undefined };
-    const key = `${this.worn.back ?? ''}|${this.worn.tail ?? ''}`;
+    const key = `${this.worn.back ?? ''}|${this.worn.tail ?? ''}|${fit}`;
     if (key === this.key) return;
     this.key = key;
     this.clear();
@@ -70,6 +73,7 @@ export class GearPreview {
     const holder = new Group();
     holder.scale.set(1, -1, -1);
     holder.position.y = 6;
+    holder.position.z = -this.fit;
     if (item.slot === 'back') {
       item.boxes.forEach((b, i) => {
         const g = part(b.pivot ?? [0, 0, 0], b.rot);

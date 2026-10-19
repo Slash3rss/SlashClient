@@ -3231,6 +3231,10 @@ async function renderSlashCapes() {
     return b;
   }));
   $('#slot-tabs').classList.toggle('hidden', slots.length < 2);
+  // the tabs scroll after a few rows (style.css): the picked one stays in view
+  const activeTab = $('#slot-tabs').querySelector<HTMLElement>('.slot-tab.active');
+  if (activeTab) $('#slot-tabs').scrollTop = Math.max(0, Math.min($('#slot-tabs').scrollTop, activeTab.offsetTop - $('#slot-tabs').offsetTop),
+    activeTab.offsetTop - $('#slot-tabs').offsetTop + activeTab.offsetHeight - $('#slot-tabs').clientHeight);
   $('#slash-cape-note').textContent = !signedIn
     ? t('Zaloguj się w zakładce Znajomi (konto SlashClient), żeby nosić pelerynę SlashClient.')
     : cosmeticSlot === 'cape' ? t('Widzą ją inni gracze z SlashClient, na każdym serwerze. Zastępuje pelerynę Minecraft.')

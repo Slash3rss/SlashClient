@@ -1138,7 +1138,7 @@ public final class TestHooks {
 	/** Everything a player shows, slot=item sorted ("" for nothing), for the test to compare. */
 	public static String wornAll(java.util.UUID id) {
 		var out = new java.util.TreeMap<String, String>();
-		for (String slot : java.util.List.of("cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit", "shield", "weapon", "shoes", "hands", "face", "ears")) {
+		for (String slot : java.util.List.of("cape", "wings", "elytra", "trail", "aura", "pet", "hat", "top", "kill", "suit", "shield", "weapon", "shoes", "hands", "face", "ears", "back", "tail", "ring", "move", "spray", "prop")) {
 			String item = Cosmetics.worn(id, slot);
 			if (item != null) out.put(slot, item);
 		}

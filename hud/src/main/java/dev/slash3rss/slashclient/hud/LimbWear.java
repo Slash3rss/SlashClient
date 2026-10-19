@@ -46,7 +46,8 @@ public final class LimbWear {
 	//#endif
 		if (player == null || player.isInvisible() || !Badges.enabled()) return;
 		String item = Cosmetics.worn(player.getUUID(), "hands");
-		if (item == null) return;
+		// a suit's sleeves cover the hands (Suits.hides): not in first person either
+		if (item == null || Suits.hides(player.getUUID(), "hands")) return;
 		//#if MC >= 1.21.9
 		boolean slim = player.getSkin().model() == net.minecraft.world.entity.player.PlayerModelType.SLIM;
 		//#elif MC >= 1.20.2
@@ -77,7 +78,7 @@ public final class LimbWear {
 		tick++;
 		for (Player p : mc.level.players()) {
 			if (p.isInvisible() || p.isSpectator() || p.distanceToSqr(mc.player) > RANGE_SQ) continue;
-			if (!"rocketboots".equals(Cosmetics.worn(p.getUUID(), "shoes")) || !p.getItemBySlot(EquipmentSlot.FEET).isEmpty()) continue;
+			if (!"rocketboots".equals(Cosmetics.worn(p.getUUID(), "shoes")) || !p.getItemBySlot(EquipmentSlot.FEET).isEmpty() || Suits.hides(p.getUUID(), "shoes")) continue;
 			// in the air they fire harder
 			if (p.onGround() && tick % 2 != 0) continue;
 			double yaw = Math.toRadians(p.yBodyRot);

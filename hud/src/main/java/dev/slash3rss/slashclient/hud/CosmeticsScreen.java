@@ -84,6 +84,15 @@ public class CosmeticsScreen extends Screen {
 	/** The item grid scrolls when a slot has more items than fit (in pixels), and where it is on screen. */
 	private int scroll, maxScroll, gridTop, gridBottom;
 	private final dev.slash3rss.slashclient.hud.ui.Scrollbar bar = new dev.slash3rss.slashclient.hud.ui.Scrollbar();
+	/**
+	 * The slot tabs wrap to rows; when there are more rows than leave room for the items, only some
+	 * show and they scroll (by rows, with the wheel over them or their bar): which row is first, how
+	 * many there are, how many show, where they are on screen, and the slot last kept in view.
+	 */
+	private int tabScroll, tabRows, tabShown, tabTop, tabBottom;
+	private String tabFor;
+	private final dev.slash3rss.slashclient.hud.ui.Scrollbar tabBar = new dev.slash3rss.slashclient.hud.ui.Scrollbar();
+	private static final int TAB_ROW = 19;
 	/** The player's figure on the left, and where it is on screen. */
 	private dev.slash3rss.slashclient.hud.ui.SkinPreview figure;
 	private int fx, fy, fw, fh;
@@ -344,6 +353,7 @@ public class CosmeticsScreen extends Screen {
 		hits.clear();
 		tooltip = null;
 		bar.hide();
+		tabBar.hide();
 		tried = hoverNow;
 		hoverNow = null;
 		boolean world = minecraft.level != null;
@@ -430,22 +440,52 @@ public class CosmeticsScreen extends Screen {
 			Ui.end();
 			return;
 		}
-		// the slots, as small tabs
-		int tx = x;
-		for (String s : SLOTS) {
-			Component label = Ui.tr("slashclient-hud.cosmetics.slot." + s);
-			int w = Ui.width(label) + 14;
-			if (tx + w > px + pw - 12) {
-				tx = x;
-				y += 19;
+		// the slots, as small tabs wrapped to rows; when they would leave less than two rows of items,
+		// as many rows show as fit and the rest scroll to (the picked slot's row always in view)
+		int[] tabRow = new int[SLOTS.length], tabX = new int[SLOTS.length], tabW = new int[SLOTS.length];
+		int right = px + pw - 12;
+		for (int pass = 0; pass < 2; pass++) {
+			int tx = x, row = 0;
+			for (int i = 0; i < SLOTS.length; i++) {
+				int w = Ui.width(Ui.tr("slashclient-hud.cosmetics.slot." + SLOTS[i])) + 14;
+				if (tx + w > right && tx > x) {
+					tx = x;
+					row++;
+				}
+				tabRow[i] = row;
+				tabX[i] = tx;
+				tabW[i] = w;
+				tx += w + 4;
 			}
-			boolean on = s.equals(slot);
-			Ui.button(g, "cos:slot:" + s, tx, y, w, 15, null, label, on, mx, my);
-			if (worn.containsKey(s)) g.fill(tx + w - 4, y + 2, tx + w - 2, y + 4, 0xFF4ADE80);
-			hits.add(new Hit(tx, y, w, 15, () -> pick(s)));
-			tx += w + 4;
+			tabRows = row + 1;
+			int room = py + ph - 8 - y - 2 * (TILE_H + GAP) - 23;
+			tabShown = Math.max(1, Math.min(tabRows, (room + 4) / TAB_ROW));
+			// rows that scroll leave room on the right for their bar
+			if (tabShown >= tabRows || right < px + pw - 12) break;
+			right = px + pw - 20;
 		}
-		y += 23;
+		int maxTabScroll = tabRows - tabShown;
+		if (!slot.equals(tabFor)) {
+			// a newly picked slot (also by the test, or when the screen opens): its row in view
+			tabFor = slot;
+			int at = tabRow[Math.max(0, java.util.Arrays.asList(SLOTS).indexOf(slot))];
+			if (at < tabScroll) tabScroll = at;
+			else if (at >= tabScroll + tabShown) tabScroll = at - tabShown + 1;
+		}
+		tabScroll = Math.max(0, Math.min(maxTabScroll, tabScroll));
+		tabTop = y;
+		tabBottom = y + tabShown * TAB_ROW - 4;
+		for (int i = 0; i < SLOTS.length; i++) {
+			int row = tabRow[i] - tabScroll;
+			if (row < 0 || row >= tabShown) continue;
+			String s = SLOTS[i];
+			int tx = tabX[i], ty = y + row * TAB_ROW, w = tabW[i];
+			Ui.button(g, "cos:slot:" + s, tx, ty, w, 15, null, Ui.tr("slashclient-hud.cosmetics.slot." + s), s.equals(slot), mx, my);
+			if (worn.containsKey(s)) g.fill(tx + w - 4, ty + 2, tx + w - 2, ty + 4, 0xFF4ADE80);
+			hits.add(new Hit(tx, ty, w, 15, () -> pick(s)));
+		}
+		tabBar.draw(g, px + pw - 10, tabTop, tabBottom - tabTop, tabScroll * TAB_ROW, maxTabScroll * TAB_ROW, mx, my);
+		y += tabShown * TAB_ROW + 4;
 		// kill effects: a button that plays the one worn, beside the player (in a world only: they are the game's particles)
 		if (slot.equals("kill")) {
 			String kill = worn.get("kill");
@@ -605,6 +645,11 @@ public class CosmeticsScreen extends Screen {
 	//#else
 	//$ public boolean mouseScrolled(double x, double y, double v) {
 	//#endif
+		// over the slot tabs (when not all their rows show): a row at a time
+		if (tabRows > tabShown && x >= px && x < px + pw && y >= tabTop - 2 && y < tabBottom + 2) {
+			tabScroll = Math.max(0, Math.min(tabRows - tabShown, tabScroll - (int) Math.signum(v)));
+			return true;
+		}
 		if (maxScroll <= 0) return false;
 		scroll = Math.max(0, Math.min(maxScroll, scroll - (int) Math.round(v * (TILE_H + GAP) / 2.0)));
 		return true;
@@ -625,6 +670,10 @@ public class CosmeticsScreen extends Screen {
 		//#endif
 		if (e.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && bar.press(e.x(), e.y())) {
 			scroll = Math.round(bar.drag(e.y()));
+			return true;
+		}
+		if (e.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && tabBar.press(e.x(), e.y())) {
+			tabScroll = Math.round(tabBar.drag(e.y()) / TAB_ROW);
 			return true;
 		}
 		for (int i = hits.size() - 1; i >= 0; i--) {
@@ -653,6 +702,10 @@ public class CosmeticsScreen extends Screen {
 			scroll = Math.round(bar.drag(e.y()));
 			return true;
 		}
+		if (tabBar.dragging()) {
+			tabScroll = Math.round(tabBar.drag(e.y()) / TAB_ROW);
+			return true;
+		}
 		if (turning) {
 			dragTurn += (float) dx * 1.6f;
 			return true;
@@ -672,6 +725,7 @@ public class CosmeticsScreen extends Screen {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
 	//#endif
 		bar.release();
+		tabBar.release();
 		turning = false;
 		//#if MC >= 1.21.9
 		return super.mouseReleased(e);

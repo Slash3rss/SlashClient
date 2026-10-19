@@ -65,7 +65,10 @@ final class SuitLayer {
 		//$ boolean cape = state.showCape && state.skin.capeTexture() != null;
 		//#endif
 		boolean wings = Cosmetics.worn(id, "wings") != null && !state.chestEquipment.is(net.minecraft.world.item.Items.ELYTRA);
-		p.hidden = Suits.hiddenParts(state.headEquipment, state.chestEquipment, state.legsEquipment, state.feetEquipment, cape || wings);
+		// a back item (Gear) takes the whole back, a worn tail the suit's own tail
+		boolean back = Cosmetics.worn(id, "back") != null;
+		p.hidden = Suits.hiddenParts(state.headEquipment, state.chestEquipment, state.legsEquipment, state.feetEquipment, cape || wings || back,
+			Cosmetics.worn(id, "tail") != null);
 		Compat.submitModel(out, model, p, pose, model.renderType(Suits.texture(suit)), light, OverlayTexture.NO_OVERLAY, state.outlineColor);
 	}
 }
@@ -118,7 +121,8 @@ final class SuitLayer {
 //$ 		root.getChild("right_leg").copyFrom(parent.rightLeg);
 //$ 		root.getChild("left_leg").copyFrom(parent.leftLeg);
 //$ 		Suits.showParts(root, suit, Suits.hiddenParts(player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST),
-//$ 			player.getItemBySlot(EquipmentSlot.LEGS), player.getItemBySlot(EquipmentSlot.FEET), cape));
+//$ 			player.getItemBySlot(EquipmentSlot.LEGS), player.getItemBySlot(EquipmentSlot.FEET),
+//$ 			cape || Cosmetics.worn(player.getUUID(), "back") != null, Cosmetics.worn(player.getUUID(), "tail") != null));
 //$ 		root.render(pose, buffers.getBuffer(RenderType.entityCutoutNoCull(Suits.texture(suit))), light, OverlayTexture.NO_OVERLAY);
 //$ 	}
 //$ }

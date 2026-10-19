@@ -65,7 +65,8 @@ public final class FigureLook {
 	/** Moves the particles of what is worn on (aura standing, trail running); once a frame. */
 	void tickParticles(UUID self) {
 		particles.tick(worn(self, "aura"), worn(self, "trail"), running);
-		particles.rocket("rocketboots".equals(worn(self, "shoes")));
+		// (not under a suit, which hides the shoes)
+		particles.rocket("rocketboots".equals(worn(self, "shoes")) && worn(self, "suit") == null);
 		moves.tick(moveDemo ? worn(self, "move") : null);
 	}
 }
