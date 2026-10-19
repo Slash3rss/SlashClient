@@ -124,7 +124,7 @@ public class DungeonMapScreen extends Screen {
 			return true;
 		}
 		// right click: back to the whole map
-		if (e.button() == 1) {
+		if (e.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT) {
 			zoom = 1f;
 			centerX = centerZ = Float.NaN;
 			return true;

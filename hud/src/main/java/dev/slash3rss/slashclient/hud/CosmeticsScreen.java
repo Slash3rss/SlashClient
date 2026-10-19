@@ -514,7 +514,7 @@ public class CosmeticsScreen extends Screen {
 		//#else
 		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
 		//#endif
-		if (e.button() == 0 && bar.press(e.x(), e.y())) {
+		if (e.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && bar.press(e.x(), e.y())) {
 			scroll = Math.round(bar.drag(e.y()));
 			return true;
 		}
@@ -526,7 +526,7 @@ public class CosmeticsScreen extends Screen {
 			}
 		}
 		// the figure (and a little round it) turns when dragged
-		if (e.button() == 0 && fw > 0 && Ui.inside(e.x(), e.y(), fx - fw / 2, fy, fw * 2, fh)) {
+		if (e.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && fw > 0 && Ui.inside(e.x(), e.y(), fx - fw / 2, fy, fw * 2, fh)) {
 			turning = true;
 			return true;
 		}
