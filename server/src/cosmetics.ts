@@ -3,14 +3,14 @@ import type { CosmeticSetting } from './db.ts';
 /**
  * The SlashClient cosmetics. Their pictures live in the HUD mod (textures/cape, textures/elytra,
  * textures/wings, textures/clothing with the clothing's boxes in src/shared/clothing.ts; trails,
- * auras, kill effects and pets are drawn from the game's own particles and mobs) and on the website (web/vendor);
+ * auras, kill effects, movement effects and pets are drawn from the game's own particles and mobs) and on the website (web/vendor);
  * the server checks choices against these and the admin's settings.
  *
  * A player wears one item per slot. `rank` items are for that rank only (admins may wear all);
  * any item can also be made exclusive in the admin panel and granted to chosen players.
  */
-export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill';
-export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill'];
+export type Slot = 'cape' | 'wings' | 'elytra' | 'trail' | 'aura' | 'pet' | 'hat' | 'top' | 'kill' | 'ring' | 'move';
+export const SLOTS: Slot[] = ['cape', 'wings', 'elytra', 'trail', 'aura', 'pet', 'hat', 'top', 'kill', 'ring', 'move'];
 export type Rank = 'admin' | 'support' | 'partner' | 'friend' | 'friend_pink';
 
 export interface Item {
@@ -161,6 +161,23 @@ export const ITEMS: Item[] = [
   { id: 'coins', slot: 'kill', name: 'Złote monety', since: '0.9.14' },
   { id: 'ghost', slot: 'kill', name: 'Duch', since: '0.9.14' },
   { id: 'flamering', slot: 'kill', name: 'Krąg ognia', since: '0.9.14' },
+  // rings: a flat, slowly turning picture on the ground under the feet (textures/ring, some animated)
+  { id: 'ring_runes', slot: 'ring', name: 'Krąg run', since: '0.9.20' },
+  { id: 'ring_flame', slot: 'ring', name: 'Ognisty krąg', since: '0.9.20' },
+  { id: 'ring_frost', slot: 'ring', name: 'Mroźny krąg', since: '0.9.20' },
+  { id: 'ring_rainbow', slot: 'ring', name: 'Tęczowy krąg', since: '0.9.20' },
+  { id: 'ring_mushroom', slot: 'ring', name: 'Grzybowy krąg', since: '0.9.20' },
+  { id: 'ring_galaxy', slot: 'ring', name: 'Galaktyka', since: '0.9.20' },
+  { id: 'ring_halo', slot: 'ring', name: 'Korona światła', since: '0.9.20' },
+  { id: 'ring_toxic', slot: 'ring', name: 'Toksyczny krąg', since: '0.9.20' },
+  // movement effects: the game's particles when the wearer walks, jumps, lands, sprints, swims or shoots (seen only by SlashClient players)
+  { id: 'move_steps', slot: 'move', name: 'Ślady stóp', since: '0.9.20' },
+  { id: 'move_jump', slot: 'move', name: 'Obłoczek przy skoku', since: '0.9.20' },
+  { id: 'move_landing', slot: 'move', name: 'Fala lądowania', since: '0.9.20' },
+  { id: 'move_arrows', slot: 'move', name: 'Smuga pocisków', since: '0.9.20' },
+  { id: 'move_sprint', slot: 'move', name: 'Iskry sprintu', since: '0.9.20' },
+  { id: 'move_bubbles', slot: 'move', name: 'Wybuch bąbelków', since: '0.9.20' },
+  { id: 'move_petals', slot: 'move', name: 'Płatki', since: '0.9.20' },
 ];
 
 /** Compares two versions like 0.9.1 number by number: below 0, 0 or above 0. */

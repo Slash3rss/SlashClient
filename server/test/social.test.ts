@@ -385,6 +385,23 @@ describe('social server', () => {
     assert.ok(kills.every((i) => (i as { available?: boolean }).available));
     assert.ok(!(await askAs('launcher/0.9.13')).items.some((i) => i.slot === 'kill'));
     assert.ok(!(await askAs('mod/0.9.13')).items.some((i) => i.slot === 'kill'));
+    // rings and movement effects: free, each only in its own slot, and only for launchers and mods from 0.9.20 on
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { ring: 'ring_runes', move: 'move_steps' } })).body.loadout.ring, 'ring_runes');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { ring: 'move_jump' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { move: 'ring_galaxy' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { move: 'move_landing' } })).body.loadout.move, 'move_landing');
+    const ringMove = (await call('POST', '/v1/mc/lookup', undefined, { uuids: [ewaMc] })).body.cosmetics[ewaMc];
+    assert.equal(ringMove.ring, 'ring_runes');
+    assert.equal(ringMove.move, 'move_landing');
+    assert.equal((await call('POST', '/v1/me', ewa.token, { loadout: { ring: '', move: '' } })).body.loadout.ring, undefined);
+    for (const slot of ['ring', 'move']) {
+      const got = (await askAs('launcher/0.9.20')).items.filter((i) => i.slot === slot);
+      assert.equal(got.length, slot === 'ring' ? 8 : 7, slot);
+      assert.ok(got.every((i) => (i as { available?: boolean }).available), slot);
+      assert.ok(!(await askAs('launcher/0.9.19')).items.some((i) => i.slot === slot), slot);
+      assert.ok(!(await askAs('mod/0.9.19')).items.some((i) => i.slot === slot), slot);
+      assert.ok((await askAs('mod/0.9.20')).items.some((i) => i.slot === slot), slot);
+    }
     const catalog = (await call('GET', '/v1/cosmetics', ewa.token)).body;
     assert.ok(catalog.items.some((i: any) => i.id === 'phoenix' && i.rank === 'partner' && !i.available));
     assert.ok(catalog.items.some((i: any) => i.id === 'angel' && i.slot === 'wings' && i.available));
