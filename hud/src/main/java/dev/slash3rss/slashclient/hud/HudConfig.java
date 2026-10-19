@@ -340,6 +340,19 @@ public final class HudConfig {
 	public boolean cameraDistanceReset = false;
 	/** F2 also puts the picture on the clipboard (through the launcher) and shows it in the corner. */
 	public boolean screenshotClipboard = true;
+	/** F2's screenshots get a caption in a corner: coordinates and dimension, date and time, server (ShotCaption). */
+	public boolean screenshotCaption = false;
+	/** Which corner: one of ShotCaption.CORNERS. */
+	public String screenshotCaptionCorner = "bottomLeft";
+	public boolean screenshotCaptionCoords = true;
+	public boolean screenshotCaptionServer = true;
+	/** A shulker box's tooltip shows what is inside as a grid (ShulkerPreview). */
+	public boolean shulkerPreview = true;
+	/** A search box over inventories and chests (InventorySearch). */
+	public boolean inventorySearch = true;
+	/** Locked hotbar slots keep their items (SlotLock); which ones, a bit for each slot. */
+	public boolean slotLock = true;
+	public int lockedSlots = 0;
 	/** The live chats of a Twitch and a Kick channel on the HUD (see StreamChatModule). */
 	public dev.slash3rss.slashclient.hud.streams.StreamChatSettings twitchChat = new dev.slash3rss.slashclient.hud.streams.StreamChatSettings();
 	public dev.slash3rss.slashclient.hud.streams.StreamChatSettings kickChat = new dev.slash3rss.slashclient.hud.streams.StreamChatSettings();
@@ -408,6 +421,8 @@ public final class HudConfig {
 		// a stream's chat low on the left, above the game's chat; off until a channel is set
 		c.modules.put("twitchchat", new Placement(false, 0, 0.62f, 2, 0));
 		c.modules.put("kickchat", new Placement(false, 1, 0.62f, -2, 0));
+		// the backpack's slots low on the right, above the item counter; off until switched on
+		c.modules.put("inventory", new Placement(false, 1, 0.8f, -2, 0));
 		c.chatTabs.add(new ChatTab("@", false, "{nick}"));
 		// private messages look different on every server; these catch the common ones
 		c.chatTabs.add(new ChatTab("PM", true, "(?i)(whispers to you|szepcze|\\[msg\\]|-> ?(me|ja)\\b|\\bfrom \\w+:)"));
@@ -446,6 +461,7 @@ public final class HudConfig {
 		read.chatCopyTime = oneOf(read.chatCopyTime, ChatExtras.COPY_TIMES);
 		read.chatCopyNotice = oneOf(read.chatCopyNotice, ChatExtras.COPY_NOTICES);
 		read.serverPackDefault = oneOf(read.serverPackDefault, ServerPacks.MODES);
+		read.screenshotCaptionCorner = oneOf(read.screenshotCaptionCorner, ShotCaption.CORNERS);
 		read.twitchChat = read.twitchChat == null ? defaults.twitchChat : read.twitchChat.checked();
 		read.kickChat = read.kickChat == null ? defaults.kickChat : read.kickChat.checked();
 		return read;
@@ -612,6 +628,13 @@ public final class HudConfig {
 		cameraDistanceDefault = CameraDistance.clamp(other.cameraDistanceDefault);
 		cameraDistanceReset = other.cameraDistanceReset;
 		screenshotClipboard = other.screenshotClipboard;
+		screenshotCaption = other.screenshotCaption;
+		screenshotCaptionCorner = oneOf(other.screenshotCaptionCorner, ShotCaption.CORNERS);
+		screenshotCaptionCoords = other.screenshotCaptionCoords;
+		screenshotCaptionServer = other.screenshotCaptionServer;
+		shulkerPreview = other.shulkerPreview;
+		inventorySearch = other.inventorySearch;
+		slotLock = other.slotLock;
 		twitchChat = other.twitchChat == null ? new dev.slash3rss.slashclient.hud.streams.StreamChatSettings() : other.twitchChat.copy();
 		kickChat = other.kickChat == null ? new dev.slash3rss.slashclient.hud.streams.StreamChatSettings() : other.kickChat.copy();
 		save();

@@ -45,6 +45,8 @@ public final class Modules {
 		//#endif
 		// a Twitch and a Kick channel's live chat
 		out.addAll(StreamChatModule.all());
+		// the backpack's 27 slots
+		out.add(new InventoryModule());
 		// the game's own parts, moved in the editor like the modules
 		out.addAll(GameParts.ALL);
 		// the chat first: under every module, which stay draggable over its big box

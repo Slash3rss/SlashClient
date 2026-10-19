@@ -53,9 +53,11 @@
 		"ScreenshotMixin",
 		"ScreenEffectRendererMixin",
 		"ServerListMixin",
+		"ShulkerTooltipMixin",
 		"SkyCraftMixin",
 		"SkyEatMixin",
 		"SkyPlaceMixin",
+		"SlotLockMixin",
 		"TimeMixin",
 		"TimePacketMixin",
 		"WeatherMixin"

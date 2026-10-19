@@ -84,6 +84,10 @@ public class SlashHud implements ClientModInitializer {
 		//#endif
 		ChatTabs.register();
 		Assist.register(category);
+		// K locks the hotbar slot in hand (or the one under the mouse in an inventory)
+		SlotLock.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.slotLock", InputConstants.KEY_K, category));
+		// shulker boxes show what is inside in their tooltips
+		ShulkerPreview.register();
 		// wings, pets and clothing: a layer more on every player's model (drawn from render states, which 1.21.1 does not have)
 		//#if MC >= 1.21.2
 		net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback.EVENT.register((type, renderer, helper, context) -> {
@@ -141,6 +145,9 @@ public class SlashHud implements ClientModInitializer {
 			if (screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> container) {
 				ScreenEvents.afterExtract(screen).register((s, g, mx, my, delta) -> MouseTweaks.frame(container));
 				net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseScroll(screen).register((s, mx, my, h2, v) -> !MouseTweaks.scroll(container, v));
+				// a search box over the slots, and the locks of hotbar slots
+				InventorySearch.attach(mc, container);
+				SlotLock.attach(container);
 				//#if MC >= 26.3
 				net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents.allowKeyPress(screen).register((s, e) -> !SkyDump.key(container, e) && !SkyTasks.key(container, e));
 				net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(screen).register((s, e) -> !SkyTasks.click(container, e));
@@ -203,6 +210,7 @@ public class SlashHud implements ClientModInitializer {
 			DeathPoint.tick(mc);
 			LightOverlay.tick(mc);
 			CameraDistance.tick(mc);
+			SlotLock.keyTick(mc);
 			while (waypointsKey.consumeClick()) {
 				if (Compat.screen(mc) == null && config.waypoints) mc.setScreenAndShow(new WaypointsScreen());
 			}
@@ -263,6 +271,7 @@ public class SlashHud implements ClientModInitializer {
 			ChatTabs.drawMentionBadge(g, mc);
 			ChatWindows.draw(g, mc);
 			Shots.draw(g);
+			SlotLock.drawHotbar(g, mc);
 		});
 	}
 

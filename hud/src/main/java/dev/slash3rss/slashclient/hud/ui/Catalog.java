@@ -267,6 +267,11 @@ public final class Catalog {
 			new Toggle("slashclient-hud.cameraDistance.key", () -> cfg.cameraDistanceKey, v -> cfg.cameraDistanceKey = v),
 			new Toggle("slashclient-hud.cameraDistance.reset", () -> cfg.cameraDistanceReset, v -> cfg.cameraDistanceReset = v)), null));
 		out.add(new Entry("screenshot", "slashclient-hud.extra.screenshot", "extras", "m-screenshot", () -> cfg.screenshotClipboard, v -> cfg.screenshotClipboard = v, List.of(), null));
+		out.add(new Entry("screenshotCaption", "slashclient-hud.caption", "extras", "m-shotcaption", () -> cfg.screenshotCaption, v -> cfg.screenshotCaption = v, List.of(
+			new Choice("slashclient-hud.caption.corner", dev.slash3rss.slashclient.hud.ShotCaption.CORNERS, "slashclient-hud.caption.corner.",
+				() -> cfg.screenshotCaptionCorner, v -> cfg.screenshotCaptionCorner = v),
+			new Toggle("slashclient-hud.caption.coords", () -> cfg.screenshotCaptionCoords, v -> cfg.screenshotCaptionCoords = v),
+			new Toggle("slashclient-hud.caption.server", () -> cfg.screenshotCaptionServer, v -> cfg.screenshotCaptionServer = v)), null));
 		out.add(new Entry("chatStack", "slashclient-hud.chat.stack", "chat", "m-chatstack", () -> cfg.chatStack, v -> cfg.chatStack = v, List.of(), null));
 		out.add(new Entry("chatCopy", "slashclient-hud.chat.copy", "chat", "m-chatcopy", () -> cfg.chatCopy, v -> cfg.chatCopy = v, List.of(
 			new Choice("slashclient-hud.chat.copy.format", dev.slash3rss.slashclient.hud.ChatExtras.COPY_FORMATS, "slashclient-hud.chat.copy.format.", () -> cfg.chatCopyFormat, v -> cfg.chatCopyFormat = v),
@@ -336,6 +341,9 @@ public final class Catalog {
 		out.add(new Entry("toolWarning", "slashclient-hud.assist.toolWarning", "combat", "m-toolwarning", () -> cfg.toolWarning, v -> cfg.toolWarning = v, List.of(
 			new Slider("slashclient-hud.assist.toolWarningAt", 1f, 30f, 1f, "%.0f%%", () -> (float) cfg.toolWarningPercent, v -> cfg.toolWarningPercent = Math.round(v))), null));
 		out.add(new Entry("mouseTweaks", "slashclient-hud.extra.mouseTweaks", "extras", "m-mousetweaks", () -> cfg.mouseTweaks, v -> cfg.mouseTweaks = v, List.of(), null));
+		out.add(new Entry("shulkerPreview", "slashclient-hud.shulkerPreview", "extras", "m-shulker", () -> cfg.shulkerPreview, v -> cfg.shulkerPreview = v, List.of(), null));
+		out.add(new Entry("inventorySearch", "slashclient-hud.invSearch", "extras", "m-invsearch", () -> cfg.inventorySearch, v -> cfg.inventorySearch = v, List.of(), null));
+		out.add(new Entry("slotLock", "slashclient-hud.slotLock", "combat", "m-slotlock", () -> cfg.slotLock, v -> cfg.slotLock = v, List.of(), null));
 		out.add(new Entry("compactHearts", "slashclient-hud.game.compactHearts", "game", "m-hearts", () -> cfg.compactHearts, v -> cfg.compactHearts = v, List.of(), null));
 		out.add(new Entry("chatTabs", "slashclient-hud.chat.tabs", "chat", "m-chattabs", null, null, List.of(), openChatTabs));
 		out.add(new Entry("chatWindowsOnly", "slashclient-hud.chat.windowsOnly", "chat", "m-chattabs", () -> cfg.chatWindowsOnly, v -> {
