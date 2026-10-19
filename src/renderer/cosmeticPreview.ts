@@ -2,6 +2,7 @@ import { BufferGeometry, DoubleSide, Float32BufferAttribute, FrontSide, Group, M
 import { PET_MODELS, type PetPart } from './petModels';
 import { OUR_PET_FRAMES, OUR_PET_MODELS } from './ourPetModels';
 import { boxQuads, clothingItem, layout, slimBox, type Bone, type ClothingBox } from '../shared/clothing';
+import { shownWith, twitchAngle } from '../shared/headwear';
 import { KillEffectPreview } from './killEffects';
 import type { SkinViewer } from 'skinview3d';
 
@@ -103,7 +104,9 @@ export class CosmeticPreview {
   private clothes: { mesh: Mesh; holder: Object3D }[] = [];
   /** What the clothing was made for: the items and the arms' width (a new skin may change it). */
   private dressed = '';
-  private wearing: { hat?: string; top?: string } = {};
+  private wearing: { hat?: string; top?: string; face?: string; ears?: string } = {};
+  /** Boxes that turn on a pivot of their own, and how ears twitch (headwear.ts). */
+  private twitches: { part: Object3D; base: [number, number, number]; twitch: NonNullable<ClothingBox['twitch']> }[] = [];
 
   /** Our own pet's material, whose picture changes every second (its frames). */
   private ourPet?: { id: string; material: MeshStandardMaterial; frame: number };
@@ -148,9 +151,9 @@ export class CosmeticPreview {
    * Shows what a set wears (the cape, wings and elytra are the viewer's own back equipment);
    * `kill` plays its burst every few seconds (shown only while its tab is open: it would distract).
    */
-  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; kill?: string }) {
+  show(set: { trail?: string; aura?: string; pet?: string; hat?: string; top?: string; face?: string; ears?: string; kill?: string }) {
     this.kills.set(set.kill);
-    this.wearing = { hat: set.hat || undefined, top: set.top || undefined };
+    this.wearing = { hat: set.hat || undefined, top: set.top || undefined, face: set.face || undefined, ears: set.ears || undefined };
     this.dress();
     this.trail = set.trail ? EFFECTS[set.trail] : undefined;
     this.aura = set.aura ? EFFECTS[set.aura] : undefined;
@@ -223,7 +226,8 @@ export class CosmeticPreview {
   private dress() {
     const skin = this.viewer.playerObject.skin;
     const slim = skin.modelType === 'slim';
-    const key = `${this.wearing.hat ?? ''}|${this.wearing.top ?? ''}|${slim}`;
+    const { hat, top, face, ears } = this.wearing;
+    const key = `${hat ?? ''}|${top ?? ''}|${face ?? ''}|${ears ?? ''}|${slim}`;
     if (key === this.dressed) return;
     this.dressed = key;
     for (const c of this.clothes) {
@@ -232,21 +236,30 @@ export class CosmeticPreview {
       (c.mesh.material as MeshStandardMaterial).dispose();
     }
     this.clothes = [];
+    this.twitches = [];
     // the figure's parts, and where the game's own pivot of each is in it (the body's group sits at its middle)
     const bones: Record<Bone, [Object3D, number]> = { head: [skin.head, 0], body: [skin.body, 6], right_arm: [skin.rightArm, 0], left_arm: [skin.leftArm, 0] };
-    for (const id of [this.wearing.hat, this.wearing.top]) {
+    for (const id of [hat, top, face, ears]) {
       const item = id ? clothingItem(id) : undefined;
       if (!item) continue;
       const material = new MeshStandardMaterial({ map: this.clothingTexture(item.id), transparent: true, alphaTest: 0.1, side: DoubleSide });
       const uvs = layout(item);
-      const byBone = new Map<Bone, [ClothingBox, [number, number]][]>();
-      item.boxes.forEach((b, i) => byBone.set(b.bone, [...(byBone.get(b.bone) ?? []), [slim ? slimBox(b) : b, uvs[i]]]));
-      for (const [bone, boxes] of byBone) {
+      // one mesh per part, and one per pivot of its own (ears that twitch, a tipped horn); what the hat would go through stays off
+      const groups = new Map<string, { bone: Bone; box: ClothingBox; boxes: [ClothingBox, [number, number]][] }>();
+      item.boxes.forEach((b, i) => {
+        if (!shownWith(b, hat)) return;
+        const k = b.pivot ? `${b.bone}@${b.pivot}` : b.bone;
+        const g = groups.get(k) ?? { bone: b.bone, box: b, boxes: [] };
+        g.boxes.push([slim ? slimBox(b) : b, uvs[i]]);
+        groups.set(k, g);
+      });
+      for (const { bone, box: first, boxes } of groups.values()) {
+        const pivot = first.pivot ?? [0, 0, 0];
         const pos: number[] = [], uv: number[] = [], index: number[] = [];
         for (const [box, at] of boxes) for (const q of boxQuads(box, at)) {
           const base = pos.length / 3;
           for (const c of q.corners) {
-            pos.push(c[0], c[1], c[2]);
+            pos.push(c[0] - pivot[0], c[1] - pivot[1], c[2] - pivot[2]);
             uv.push(c[3], 1 - c[4]);
           }
           index.push(base, base + 1, base + 2, base, base + 2, base + 3);
@@ -261,7 +274,14 @@ export class CosmeticPreview {
         const holder = new Group();
         holder.scale.set(1, -1, -1);
         holder.position.y = bones[bone][1];
-        holder.add(mesh);
+        // turned on its pivot as the game turns a part (x first, then y, then z)
+        const turn = new Group();
+        const base = (first.rotate ?? [0, 0, 0]).map((d) => (d * Math.PI) / 180) as [number, number, number];
+        turn.position.set(pivot[0], pivot[1], pivot[2]);
+        turn.rotation.set(base[0], base[1], base[2], 'ZYX');
+        turn.add(mesh);
+        holder.add(turn);
+        if (first.twitch) this.twitches.push({ part: turn, base, twitch: first.twitch });
         bones[bone][0].add(holder);
         this.clothes.push({ mesh, holder });
       }
@@ -328,6 +348,11 @@ export class CosmeticPreview {
   private update(dt: number, time: number) {
     // a skin with the other arms' width came: the sleeves follow
     this.dress();
+    for (const t of this.twitches) {
+      const a = twitchAngle(time, t.twitch);
+      t.part.rotation.x = t.base[0] + (t.twitch.axis === 'x' ? a : 0);
+      t.part.rotation.z = t.base[2] + (t.twitch.axis === 'z' ? a : 0);
+    }
     this.kills.update(dt);
     if (this.pet) {
       // by the shoulder: the model's feet (24 px under its origin) a little above it, bobbing
