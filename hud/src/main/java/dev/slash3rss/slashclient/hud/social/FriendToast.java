@@ -13,7 +13,8 @@ import net.minecraft.network.chat.Component;
  */
 public final class FriendToast implements Toast {
 	private static final long SHOW_MS = 5000;
-	private static final int W = 180, H = 32;
+	// as wide as the game's own toasts, so it fits their box in the HUD editor
+	private static final int W = 160, H = 32;
 
 	private final String title;
 	private final String text;

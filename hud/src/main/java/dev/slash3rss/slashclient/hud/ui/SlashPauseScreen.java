@@ -111,11 +111,15 @@ public class SlashPauseScreen extends MenuScreen {
 		List<Nav> items = nav();
 		int pw = Math.min(220, width - 24);
 		int ph = panelHeight(items.size());
-		int top = Math.max(6, (height - 34 - ph) / 2);
-		Ui.brand(g, (width - Ui.brandWidth(1.3f)) / 2, top, 1.3f);
-		Component paused = Ui.tr("menu.paused");
-		Ui.drawOnWorld(g, paused, (width - Ui.width(paused)) / 2, top + 18, Ui.TEXT_2);
-		drawMenu(g, mx, my, (width - pw) / 2, top + 34, pw, items, tools());
+		// the brand and "Game Paused" above the panel, when there is room for them
+		boolean header = ph + 34 + 12 <= height;
+		int top = Math.max(6, (height - (header ? 34 : 0) - ph) / 2);
+		if (header) {
+			Ui.brand(g, (width - Ui.brandWidth(1.3f)) / 2, top, 1.3f);
+			Component paused = Ui.tr("menu.paused");
+			Ui.drawOnWorld(g, paused, (width - Ui.width(paused)) / 2, top + 18, Ui.TEXT_2);
+		}
+		drawMenu(g, mx, my, (width - pw) / 2, top + (header ? 34 : 0), pw, items, tools());
 		drawTooltip(g);
 	}
 

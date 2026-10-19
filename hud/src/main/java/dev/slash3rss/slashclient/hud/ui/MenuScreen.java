@@ -31,12 +31,13 @@ public abstract class MenuScreen extends Screen {
 		super(title);
 	}
 
+	// lower on small screens (854×480 at GUI scale 2 is 240 high), so the icon row stays on screen
 	protected int rowHeight() {
-		return height >= 300 ? 22 : 18;
+		return height >= 300 ? 22 : height >= 260 ? 18 : 16;
 	}
 
 	protected int rowGap() {
-		return height >= 300 ? 5 : 3;
+		return height >= 300 ? 5 : height >= 260 ? 3 : 2;
 	}
 
 	/** Height of a panel with `items` named buttons and the icon row. */
