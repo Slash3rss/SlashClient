@@ -1,0 +1,27 @@
+/** English texts of the public profile's links and privacy window (profilePrivacy.ts, friends.ts). */
+export const PROFILES_EN: Record<string, string> = {
+  'Pokaż profil': 'Show profile',
+  ' Mój profil': ' My profile',
+  'Kopiuj link do profilu': 'Copy profile link',
+  ' Prywatność profilu': ' Profile privacy',
+  'Skopiowano link do profilu.': 'Profile link copied.',
+  'Wszyscy': 'Everyone',
+  'Tylko ja': 'Only me',
+  'Każdy z linkiem, także bez logowania.': 'Anyone with the link, signed in or not.',
+  'Tylko Twoi znajomi z SlashClient.': 'Only your SlashClient friends.',
+  'Nikt poza Tobą.': 'Nobody but you.',
+  'Statystyki (godziny gry, serie, dni gry)': 'Stats (hours played, streaks, days played)',
+  'Noszone kosmetyki': 'Cosmetics worn',
+  'Konta Minecraft (nicki)': 'Minecraft accounts (names)',
+  'Liczba znajomych': 'Number of friends',
+  'Serwery, na których grasz': 'Servers you play on',
+  'Kiedy ostatnio byłeś online': 'When you were last online',
+  ' Zobacz swój profil': ' See your profile',
+  ' Kopiuj link': ' Copy link',
+  'Twój profil na stronie pokazuje statystyki, osiągnięcia i kosmetyki. Wybierz, kto go widzi i co na nim jest. Ty zawsze widzisz całość.':
+    'Your profile on the website shows your stats, achievements and cosmetics. Choose who sees it and what is on it. You always see all of it.',
+  'Moderacja ukryła Twój profil: inni go nie widzą.': 'Moderators hid your profile: others cannot see it.',
+  'Kto widzi profil': 'Who sees the profile',
+  'Co jest na profilu': 'What is on the profile',
+  ' Pozwól wyszukiwarkom (Google itp.) pokazywać mój profil': ' Let search engines (Google etc.) show my profile',
+};

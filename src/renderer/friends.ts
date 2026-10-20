@@ -3,6 +3,7 @@ import { createGroups } from './groups';
 import { PlayingWatch, type PlayingNews } from './friendActivity';
 import { createParty, type Party } from './party';
 import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
+import { openProfilePrivacy, profileLink } from './profilePrivacy';
 
 /**
  * The "Friends" view: signing in to the social server, the friends list with live
@@ -484,7 +485,19 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       el('label', { className: 'check fr-share' }, share, t(' Pokazuj znajomym, na jakim serwerze gram')),
       el('label', { className: 'check fr-share' }, playingBox(), t(' Powiadamiaj, gdy znajomi zaczynają grać')),
       el('div', { className: 'fr-linked-row' }, el('small', { className: 'muted', textContent: t('Logowanie:') }), linked),
-      minecraftRow(me));
+      minecraftRow(me),
+      profileRow(me));
+  }
+
+  /** The player's public profile on the site: open it, copy its link, choose who sees what. */
+  function profileRow(me: Me) {
+    const own = el('button', { type: 'button', className: 'fr-chip-btn' }, icon('fa-id-card'), t(' Mój profil'));
+    own.addEventListener('click', () => profileLink(deps, me.handle, 'open'));
+    const copy = el('button', { type: 'button', className: 'icon-btn', title: t('Kopiuj link do profilu') }, icon('fa-copy'));
+    copy.addEventListener('click', () => profileLink(deps, me.handle, 'copy'));
+    const privacy = el('button', { type: 'button', className: 'fr-chip-btn' }, icon('fa-user-lock'), t(' Prywatność profilu'));
+    privacy.addEventListener('click', () => openProfilePrivacy(deps, me.handle));
+    return el('div', { className: 'row fr-profile-row' }, own, copy, privacy);
   }
 
   /** The launcher's own setting (not the account's): toasts about friends coming online and starting a game. */
@@ -701,6 +714,10 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       });
       actions.push(join);
     }
+    // their public profile on the site (server 0.9.22+; an older one answers 404 there)
+    const profile = el('button', { type: 'button', className: 'icon-btn', title: t('Pokaż profil') }, icon('fa-id-card'));
+    profile.addEventListener('click', () => profileLink(deps, f.handle, 'open'));
+    actions.push(profile);
     if (deps.showAchievements) {
       const trophies = el('button', { type: 'button', className: 'icon-btn', title: t('Osiągnięcia') }, icon('fa-trophy'));
       trophies.addEventListener('click', () => deps.showAchievements!(f.id, f.name));

@@ -140,6 +140,7 @@ const api = {
   socialHealth: () => invoke('social:health'),
   socialApi: (method: string, path: string, body?: unknown) => invoke('social:api', method, path, body),
   lanJoin: (friendId: string) => invoke('lan:join', friendId),
+  socialProfileUrl: (handle: string, open = false) => invoke('social:profileUrl', handle, open),
   socialLoginDev: (name: string) => invoke('social:loginDev', name),
   socialLoginOAuth: (provider: string, link = false) => invoke('social:loginOAuth', provider, link),
   socialLoginMinecraft: () => invoke('social:loginMinecraft'),

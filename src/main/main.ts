@@ -1649,6 +1649,14 @@ handle('social:api', (method: string, apiPath: string, body?: unknown) => {
   return socialCall(() => chatCall(method, apiPath, body));
 });
 
+/** A player's public profile on the site (/u/<handle>): its address, opened in the browser when asked. */
+handle('social:profileUrl', async (profileHandle: string, open?: boolean) => {
+  if (typeof profileHandle !== 'string' || !/^[\w.]{1,40}$/.test(profileHandle)) throw new Error('social:bad_request');
+  const url = `${store.settings.socialUrl.replace(/\/$/, '')}/u/${encodeURIComponent(profileHandle)}`;
+  if (open && /^https?:\/\//.test(url)) await shell.openExternal(url);
+  return url;
+});
+
 // ---------- end-to-end encrypted chat (chatCrypto.ts) ----------
 
 interface ChatMessage { from: string; to: string; text: string; invite?: unknown; encrypted?: boolean; unreadable?: boolean; image?: unknown }

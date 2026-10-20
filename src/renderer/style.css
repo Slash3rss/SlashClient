@@ -1290,3 +1290,19 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .fr-role-owner { color: #fbbf24 !important; }
 .fr-role-officer { color: #93c5fd !important; }
 .fr-clan-leave { justify-content: flex-end; margin-top: 8px; }
+
+/* public profile: the row in Friends and the privacy window (profilePrivacy.ts) */
+.fr-profile-row { gap: 6px; flex-wrap: wrap; }
+.fr-chip-btn { height: auto; padding: 4px 10px; font-size: 12px; border-radius: 99px; gap: 5px; }
+.pp-box { width: min(520px, 100%); }
+.pp-body { padding: 22px 24px; display: flex; flex-direction: column; gap: 10px; }
+.pp-body h2 { margin: 0; font-size: 20px; display: flex; gap: 8px; align-items: center; }
+.pp-body h3 { margin: 8px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); }
+.pp-body p { margin: 0; }
+.pp-links { gap: 8px; flex-wrap: wrap; }
+.pp-visibility { display: flex; flex-direction: column; gap: 6px; }
+.pp-visibility button { justify-content: flex-start; height: auto; padding: 8px 12px; gap: 12px; text-align: left; }
+.pp-visibility button span { display: flex; flex-direction: column; line-height: 1.3; }
+.pp-visibility button.selected { border-color: var(--accent); background: rgba(59, 130, 246, .14); }
+.pp-elements { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
+.pp-hidden { padding: 8px 12px; border-radius: 10px; background: rgba(239, 68, 68, .12); color: #fca5a5; }

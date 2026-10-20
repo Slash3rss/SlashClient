@@ -5,6 +5,7 @@
  */
 
 import { TOOLS_EN } from './i18nTools';
+import { PROFILES_EN } from './i18nProfiles';
 
 export type Lang = 'pl' | 'en';
 
@@ -16,6 +17,8 @@ export const LANGUAGES: { code: Lang; name: string; locale: string }[] = [
 const EN: Record<string, string> = {
   // key conflicts, minecraft.wiki, download limit, dedicated GPU (own file; the entries below win)
   ...TOOLS_EN,
+  // public profiles (own file)
+  ...PROFILES_EN,
   // navigation and common
   'Graj': 'Play',
   'GRAJ': 'PLAY',
