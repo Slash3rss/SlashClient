@@ -169,9 +169,9 @@ export function supportRoutes(ctx: SupportContext) {
   const limitFactor = (userId: string) => Math.max(1, active(userId)?.tier.limitFactor ?? 1);
 
   /** The badge colour for the game and the pages (null: not a supporter now). */
-  const rank = (userId: string): { color: string; tier: string } | undefined => {
+  const rank = (userId: string): { color: string; tier: string; name: string; nameEn: string } | undefined => {
     const a = active(userId);
-    return a ? { color: a.tier.color, tier: a.tier.id } : undefined;
+    return a ? { color: a.tier.color, tier: a.tier.id, name: a.tier.name, nameEn: a.tier.nameEn } : undefined;
   };
 
   /**

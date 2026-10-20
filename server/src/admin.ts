@@ -21,6 +21,10 @@ export interface AdminContext {
   live: () => { online: number; inGame: number };
   /** What a player wears changed: players who see them in game are told (coalesced). */
   cosmeticsChanged?: (userId: string) => void;
+  /** The old one-rank API: the player keeps only this given rank ('' = none); false for a rank that cannot be given (ranks.ts). */
+  setRank?: (userId: string, rank: string, by: string) => boolean;
+  /** Every rank a player holds now, for the list (ranks.ts). */
+  ranksOf?: (userId: string) => string[];
 }
 
 type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
@@ -28,7 +32,7 @@ type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promis
 export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
   const { db } = ctx;
   const userOr404 = (id: string) => db.adminUser(id) ?? ctx.fail(404, 'not_found');
-  const withConfig = <T extends { handle: string; role: string }>(u: T) => ({ ...u, configAdmin: ctx.configAdmins.has(u.handle.toLowerCase()) });
+  const withConfig = <T extends { id: string; handle: string; role: string }>(u: T) => ({ ...u, configAdmin: ctx.configAdmins.has(u.handle.toLowerCase()), ...(ctx.ranksOf ? { ranks: ctx.ranksOf(u.id) } : {}) });
 
   return [
     ['GET', /^\/v1\/admin\/stats$/, (req) => {
@@ -69,10 +73,14 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
           db.log(me, role ? 'make_admin' : 'remove_admin', user.handle);
         }
       }
-      // the colour of the logo in game: support (light blue) or partner (gold); admins are red without it
+      // one given rank for the player (the panel gives several through ranks.ts; this stays for the old API)
       if (typeof rank === 'string' && rank !== user.rank) {
-        if (!['', 'support', 'partner', 'friend', 'friend_pink'].includes(rank)) ctx.fail(400, 'bad_rank');
-        db.setRank(id, rank);
+        if (ctx.setRank) {
+          if (!ctx.setRank(id, rank, me)) ctx.fail(400, 'bad_rank');
+        } else {
+          if (!['', 'support', 'partner', 'friend', 'friend_pink'].includes(rank)) ctx.fail(400, 'bad_rank');
+          db.setRank(id, rank);
+        }
         db.log(me, 'set_rank', user.handle, rank || '—');
       }
       // the admin may give any cape, also an exclusive one without a grant

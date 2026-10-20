@@ -34,6 +34,7 @@ import { BurstLimiter, EDIT_WINDOW_MS, SlowDown, editRefusal, type BurstLimits }
 import { supportRoutes } from './payments/support.ts';
 import { createCommunities } from './communities.ts';
 import type { CommunityLimits } from './communityStore.ts';
+import { createRanks, gameBadge, type RankUser } from './ranks.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -299,7 +300,7 @@ export function createApp(cfg: Config) {
   function wornBy(owner: User, character: string | undefined): Record<string, string> {
     const settings = db.cosmeticSettings();
     const granted = db.grants(owner.id);
-    const badge = badgeOf(owner);
+    const badge = wearOf(owner);
     const own = character ? db.characterLoadout(owner.id, character) : null;
     const all = own ?? { ...owner.loadout, ...(owner.cape ? { cape: owner.cape } : {}) };
     const worn: Record<string, string> = {};
@@ -390,11 +391,21 @@ export function createApp(cfg: Config) {
   }
 
   const configAdmins = new Set((cfg.adminHandles ?? []).map((h) => h.trim().toLowerCase()).filter(Boolean));
-  /** The logo colour in game: admins red, then the rank the admin panel gave (support, partner). */
-  const badgeOf = (u: { id?: string; role: string; handle: string; rank: string }) =>
-    u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()) ? 'admin' : ['support', 'partner', 'friend', 'friend_pink'].includes(u.rank) ? u.rank
-      // a supporter of the project (payments/support.ts), when no other rank is given
-      : u.id && support.rank(u.id) ? 'supporter' : '';
+  // the ranks: given in the admin panel, the admin role's and the supporters' (ranks.ts)
+  const ranks = createRanks({
+    sql: db.sql, authed, admin, body, user: (uuid) => db.user(uuid),
+    isAdmin: (u) => u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()),
+    supporter: (uuid) => support.rank(uuid),
+    changed: (uuid) => cosmeticsChanged(uuid),
+    audit: (who, action, target, detail) => db.log(who, action, target, detail),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+  /** The rank whose badge goes next to the nick ('' for none): the one the player picked, else the most important. */
+  const badgeOf = (u: RankUser) => ranks.shown(u)?.id ?? '';
+  /** Every rank the player holds: rank cosmetics are for any of them (admins may wear everything). */
+  const wearOf = (u: RankUser) => ranks.wear(u);
   const isAdmin = (userId: string) => {
     const u = db.user(userId);
     return !!u && (u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()));
@@ -434,7 +445,11 @@ export function createApp(cfg: Config) {
         const clan = clanTag(f.id);
         // the clan's logo (its id and version) next to the tag, when it has one
         const clanLogo = clan ? clans.logoOf(f.id) : undefined;
-        return { ...f, presence: presenceOf(f.id), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0, muted: muted.has(f.id), ...(clan ? { clan } : {}), ...(clanLogo ? { clanLogo } : {}) };
+        // the rank badge they show next to their nick (ranks.ts); launchers before 0.9.23 ignore it
+        const u = db.user(f.id);
+        const shown = u ? ranks.shown(u) : undefined;
+        const badgeRank = shown ? { id: shown.id, name: shown.name, nameEn: shown.nameEn, color: shown.color, ...(shown.icon ? { icon: shown.icon } : {}) } : undefined;
+        return { ...f, presence: presenceOf(f.id), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0, muted: muted.has(f.id), ...(clan ? { clan } : {}), ...(clanLogo ? { clanLogo } : {}), ...(badgeRank ? { badgeRank } : {}) };
       }),
       incoming: db.incoming(me),
       outgoing: db.outgoing(me),
@@ -446,6 +461,8 @@ export function createApp(cfg: Config) {
     const minecraft = db.minecraftAccounts(me);
     const choice = db.avatarChoice(me);
     return { ...user, providers: db.providers(me), minecraft, admin: isAdmin(me), badge: badgeOf(user), grants: db.grants(me), supporter: support.summary(me),
+      // every rank held, the pick of the badge and the rank shown (ranks.ts)
+      ...ranks.forMe(user),
       // the two avatars to pick from on the account page: the Minecraft face and the sign-in provider's picture
       // what is picked: 'provider', or the Minecraft account whose face it is (the first one unless another was picked)
       avatarSource: choice.source === 'provider' && choice.provider ? 'provider'
@@ -612,6 +629,7 @@ export function createApp(cfg: Config) {
     sparks: (uuid) => wallet.balance(uuid),
     worn: (user) => wornBy(user, undefined),
     badge: badgeOf,
+    ranks: (user) => ranks.held(user),
     supporter: (uuid) => support.profileDecor(uuid),
     communities: (uuid) => communities.onProfile(uuid),
     status: (uuid) => presenceOf(uuid).status,
@@ -652,10 +670,10 @@ export function createApp(cfg: Config) {
       const settings = db.cosmeticSettings();
       const granted = me ? db.grants(me) : [];
       const user = me ? db.user(me) : undefined;
-      const badge = user ? badgeOf(user) : '';
+      const badge = user ? wearOf(user) : [];
       const known = knownTo(req.headers);
       const frames = framesFor(req.headers);
-      const items = ITEMS.filter((i) => (capeSetting(settings, i.id).enabled || badge === 'admin') && known(i)).map((i) => ({
+      const items = ITEMS.filter((i) => (capeSetting(settings, i.id).enabled || badge.includes('admin')) && known(i)).map((i) => ({
         id: i.id, slot: i.slot, name: i.name, rank: i.rank, frames: frames(i),
         exclusive: capeSetting(settings, i.id).exclusive, available: mayWear(settings, granted, i.id, i.slot, badge, me ? support.cosmeticsLevel(me) : 0),
         ...(i.supporter ? { supporter: i.supporter } : {}),
@@ -783,7 +801,7 @@ export function createApp(cfg: Config) {
         db.setShowServer(me, showServer);
         broadcastPresence(me);
       }
-      const badge = badgeOf(db.user(me)!);
+      const badge = wearOf(db.user(me)!);
       const level = support.cosmeticsLevel(me);
       // one Minecraft account's own set: { character, cape?, loadout? }; { character, own: false } goes back to the account's
       if (character !== undefined) {
@@ -895,15 +913,15 @@ export function createApp(cfg: Config) {
     ['POST', /^\/v1\/mc\/lookup$/, async (req) => {
       limitGame(clientIp(req));
       const { uuids, knownRanks } = await body(req);
-      // the pink friend came in 0.9.12: HUDs that do not say they know it get the green one
-      const pink = Array.isArray(knownRanks) && knownRanks.includes('friend_pink');
+      // the pink friend came in 0.9.12, the supporter and any rank in its colour ('colors') in 0.9.23: older HUDs get what they know (ranks.ts)
+      const known = Array.isArray(knownRanks) ? knownRanks.filter((k): k is string => typeof k === 'string') : [];
       if (!Array.isArray(uuids) || uuids.length > 250) throw new HttpError(400, 'bad_request');
       const now = Date.now();
       const active = uuids.filter((u): u is string => typeof u === 'string' && now - (inGame.get(u.toLowerCase()) ?? 0) < IN_GAME_TTL_MS);
       // the capes of players whose launcher said which account they play as
       const capes: Record<string, string> = {};
       // the logo's colour: only for a Minecraft account proven to be that SlashClient account's own
-      const ranks: Record<string, string> = {};
+      const rankOf: Record<string, string> = {};
       // everything the player wears; HUDs before 0.8 read only `capes`
       const cosmetics: Record<string, Record<string, string>> = {};
       // the clan tag next to the name ([ABC]); HUDs before clans ignore it
@@ -912,13 +930,17 @@ export function createApp(cfg: Config) {
       const clanLogos: Record<string, { id: string; v: number }> = {};
       // a supporter's logo in their tier's colour; HUDs before 0.9.23 show the white one
       const supporterColors: Record<string, string> = {};
+      // the shown rank's colour, for HUDs from 0.9.23 (any rank, also ones made in the admin panel)
+      const badgeColors: Record<string, string> = {};
       for (const u of active) {
         const link = linked.get(u.toLowerCase());
         const owner = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user) : undefined;
         if (!owner || owner.banned) continue;
-        const badge = badgeOf(owner);
-        if (badge) ranks[u] = badge === 'friend_pink' && !pink ? 'friend' : badge;
-        if (badge === 'supporter') supporterColors[u] = support.rank(owner.id)?.color ?? '';
+        const held = ranks.held(owner);
+        const badge = gameBadge(ranks.shown(owner, held), held, known);
+        if (badge) rankOf[u] = badge.rank;
+        if (badge?.color) badgeColors[u] = badge.color;
+        if (badge?.supporterColor) supporterColors[u] = badge.supporterColor;
         // only what the player may still wear: the admin may have switched it off, or the rank may be gone
         const worn = wornBy(owner, link?.character);
         if (worn.cape) capes[u] = worn.cape;
@@ -928,7 +950,8 @@ export function createApp(cfg: Config) {
         const logo = tag ? clans.logoOf(owner.id) : undefined;
         if (logo) clanLogos[u] = logo;
       }
-      return { active, capes, ranks, cosmetics, ...(Object.keys(clanTags).length ? { clans: clanTags } : {}), ...(Object.keys(clanLogos).length ? { clanLogos } : {}), ...(Object.keys(supporterColors).length ? { supporterColors } : {}) };
+      return { active, capes, ranks: rankOf, cosmetics, ...(Object.keys(clanTags).length ? { clans: clanTags } : {}), ...(Object.keys(clanLogos).length ? { clanLogos } : {}), ...(Object.keys(supporterColors).length ? { supporterColors } : {}),
+        ...(Object.keys(badgeColors).length ? { badgeColors } : {}) };
     }],
     // the launcher says which Minecraft player its SlashClient account plays as, while the game runs
     ['POST', /^\/v1\/mc\/link$/, async (req) => {
@@ -1135,10 +1158,16 @@ export function createApp(cfg: Config) {
       },
     }),
     ...profiles.routes,
+    ...ranks.routes,
     ...support.routes,
     ...legal.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged,
+      setRank: (id, rank, by) => ranks.setOnly(id, rank, by),
+      ranksOf: (id) => {
+        const u = db.user(id);
+        return u ? ranks.held(u).map((h) => h.id) : [];
+      },
       fail: (status, code) => {
         throw new HttpError(status, code);
       },
@@ -1281,6 +1310,7 @@ export function createApp(cfg: Config) {
       if (await images.serve(req, res, url)) return;
       if (clans.serveLogo(req, res, url)) return;
       if (communities.serveLogo(req, res, url)) return;
+      if (ranks.serveIcon(req, res, url)) return;
     } catch (err) {
       console.error('profil:', (err as Error).message);
       if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));

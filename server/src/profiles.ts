@@ -188,6 +188,8 @@ export interface ProfileDeps {
   worn: (user: User) => Record<string, string>;
   /** The logo colour: admin, support, partner, friend… */
   badge: (user: User) => string;
+  /** Every rank the player holds, most important first (ranks.ts): all of them show on the profile. */
+  ranks?: (user: User) => { id: string; name: string; nameEn: string; color: string; icon?: string }[];
   /**
    * The supporter's badge and avatar frame (payments/support.ts), unless the player switched it off;
    * shown only to those who may see the profile at all.
@@ -264,6 +266,9 @@ export function profileRoutes(deps: ProfileDeps) {
       handle: user.handle, name: user.name, avatar, skin, badge: deps.badge(user), memberSince: store.createdAt(user.id),
       url: `/u/${handle}`, viewer: effective, visibility: privacy.visibility,
     };
+    // ranks are not private: whoever may see the profile sees them all
+    const ranks = user.banned ? [] : deps.ranks?.(user) ?? [];
+    if (ranks.length) out.ranks = ranks.map((r) => ({ id: r.id, name: r.name, nameEn: r.nameEn, color: r.color, ...(r.icon ? { icon: r.icon } : {}) }));
     const supporter = user.banned ? undefined : deps.supporter?.(user.id);
     if (supporter) out.supporter = supporter;
     if (a.full && !opts.asPublic) {

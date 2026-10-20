@@ -364,21 +364,22 @@ export function priceOf(settings: Map<string, CosmeticSetting>, id: string): num
 
 /**
  * Whether a player may wear an item now: it exists (in `slot`, when given), is on, is not exclusive
- * to others, and is not for a rank the player does not have. `badge` is the player's rank colour,
- * `supporter` the level of their supporter tier (0: none).
+ * to others, and is not for a rank the player does not have. `badge` is the player's rank, or every
+ * rank they hold (ranks.ts), `supporter` the level of their supporter tier (0: none).
  * Admins may wear everything, also what is switched off or exclusive.
  */
-export function mayWear(settings: Map<string, CosmeticSetting>, granted: string[], id: string, slot: Slot = 'cape', badge = '', supporter = 0): boolean {
+export function mayWear(settings: Map<string, CosmeticSetting>, granted: string[], id: string, slot: Slot = 'cape', badge: string | readonly string[] = '', supporter = 0): boolean {
   const it = item(id);
   if (!it || it.slot !== slot) return false;
-  if (badge === 'admin') return true;
+  const held = typeof badge === 'string' ? [badge] : badge;
+  if (held.includes('admin')) return true;
   // the supporters' items: with a tier of that level (or an admin's grant of the item)
   if (it.supporter && supporter < it.supporter && !granted.includes(id)) return false;
   // earned (an achievement) or bought (the shop): only with the grant
   if ((it.achievement || priceOf(settings, id)) && !granted.includes(id)) return false;
   const s = capeSetting(settings, id);
   if (!s.enabled || (s.exclusive && !granted.includes(id))) return false;
-  return !it.rank || badge === 'admin' || badge === it.rank || granted.includes(id);
+  return !it.rank || held.includes(it.rank) || granted.includes(id);
 }
 
 /** What a player wears in every slot ('' or missing = nothing). */
