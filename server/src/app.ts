@@ -86,7 +86,7 @@ export interface Config {
   /** Messages in a row per conversation (chatLimits.ts; tests change it). */
   chatBurst?: Partial<BurstLimits>;
   /** Supporting the project with money (payments/support.ts): tests point the providers at fakes and set the clock. */
-  payments?: { stripeApi?: string; paypalApi?: string; now?: () => number; checkoutsPerMinute?: number };
+  payments?: { stripeApi?: string; paypalApi?: string; now?: () => number; checkoutsPerMinute?: number; refundsPerMinute?: number };
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -561,6 +561,7 @@ export function createApp(cfg: Config) {
     sql: db.sql, box: storage.box, keyError: storage.keyError, publicUrl: cfg.publicUrl,
     user: (id) => db.user(id), userByHandle: (h) => db.userByHandle(h),
     authed, admin, body, clientIp, limitCheckout: rateLimiter(cfg.payments?.checkoutsPerMinute ?? 6), limitWebhooks: rateLimiter(600),
+    limitRefunds: rateLimiter(cfg.payments?.refundsPerMinute ?? 4), notify: (userId, event) => push(userId, event), isAdmin: (userId) => isAdmin(userId),
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
     changed: (userId) => cosmeticsChanged(userId),
     fetchImpl: cfg.fetchImpl, apiBase: { stripe: cfg.payments?.stripeApi, paypal: cfg.payments?.paypalApi }, now: cfg.payments?.now,

@@ -3,6 +3,8 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { User } from '../db.ts';
 import type { SecretBox } from '../storage.ts';
 import { PAYPAL_API, capturePayPalOrder, createPayPalOrder, minorUnits, paypalClient, verifyPayPalWebhook } from './paypal.ts';
+import { PaymentInfoStore, historyRoutes } from './history.ts';
+import { REFUND_WINDOW_DAYS, refundRoutes } from './refunds.ts';
 import { CURRENCIES, SupportStore, type Currency, type Grant, type Kind, type Payment, type Subscription, type Tier } from './store.ts';
 import { STRIPE_API, ProviderError, createStripeCheckout, scrub, stripeClient, stripePortal, testStripe, verifyStripeSignature } from './stripe.ts';
 
@@ -57,6 +59,10 @@ export interface SupportContext {
   /** A player's tier changed: their rank and cosmetics are sent again (app.ts's cosmeticsChanged). */
   changed: (userId: string) => void;
   fetchImpl?: typeof fetch;
+  /** Refund requests (refunds.ts): asking and cancelling per account; a live event to the player; who is an admin. */
+  limitRefunds?: (key: string) => void;
+  notify?: (userId: string, event: Record<string, unknown>) => void;
+  isAdmin?: (userId: string) => boolean;
   /** Tests: the fake providers' addresses and the clock. */
   apiBase?: { stripe?: string; paypal?: string };
   now?: () => number;
@@ -73,6 +79,8 @@ const cleanText = (v: unknown, max: number) => (typeof v === 'string' ? v.replac
 export function supportRoutes(ctx: SupportContext) {
   const now = ctx.now ?? Date.now;
   const store = new SupportStore(ctx.sql, now);
+  /** The method, the receipt, the amount refunded, a month's end: for the payment history (history.ts). */
+  const info = new PaymentInfoStore(ctx.sql, now);
   const fail: (status: number, code: string) => never = ctx.fail;
   const base = ctx.publicUrl.replace(/\/$/, '');
 
@@ -220,6 +228,7 @@ export function supportRoutes(ctx: SupportContext) {
   function takeBack(p: Payment, status: 'refunded' | 'disputed') {
     if (p.status !== 'paid' && p.status !== 'mismatch') return false;
     store.updatePayment(p.id, { status, refundedAt: now() });
+    if (status === 'refunded') refunds.refunded(p);
     const reason = status === 'refunded' ? 'zwrot płatności' : 'płatność zakwestionowana';
     if (p.kind === 'one_time') for (const g of store.grantsByRef('payment', p.id)) store.revokeGrant(g.id, reason);
     else if (p.subscription) for (const g of store.grantsByRef('subscription', p.subscription)) store.revokeGrant(g.id, reason);
@@ -289,6 +298,7 @@ export function supportRoutes(ctx: SupportContext) {
         const intent = String(o.payment_intent?.id ?? o.payment_intent ?? o.payments?.data?.[0]?.payment?.payment_intent ?? '');
         const row = store.newPayment({ provider: 'stripe', ref: String(o.id), user: sub.user, tier: sub.tier, kind: 'monthly', quantity: 1, days: 0, amount: paid, currency: currency as Currency, mode, customer: String(o.customer ?? ''), status: ok ? 'paid' : 'mismatch' });
         store.updatePayment(row.id, { paidAt: now(), intent, subscription: subId, ...(ok ? {} : { note: `zapłacono ${paid} ${currency}, oczekiwano ${sub.amount} ${sub.currency}` }) });
+        info.note(row.id, { receiptUrl: String(o.hosted_invoice_url ?? ''), periodEnd });
         store.saveSubscription({ ...sub, status: 'active', periodEnd: Math.max(sub.periodEnd, periodEnd), updatedAt: now() });
         if (ok && periodEnd > now()) extendSubscription(sub, periodEnd + graceDays() * DAY);
         return { outcome: 'done', user: sub.user };
@@ -316,6 +326,7 @@ export function supportRoutes(ctx: SupportContext) {
           console.error(`wsparcie: ${event.type} bez znanej płatności (${intent || 'brak payment_intent'})`);
           return { outcome: 'ignored' };
         }
+        if (event.type === 'charge.refunded') info.note(p.id, { refundedAmount: Number(o.amount_refunded), receiptUrl: String(o.receipt_url ?? ''), method: String(o.payment_method_details?.type ?? '') });
         return { outcome: takeBack(p, event.type === 'charge.refunded' ? 'refunded' : 'disputed') ? 'done' : 'ignored', user: p.user };
       }
       default:
@@ -349,6 +360,7 @@ export function supportRoutes(ctx: SupportContext) {
         const capture = /\/captures\/([A-Z0-9]+)/i.exec(up)?.[1] ?? String(r.id ?? '');
         const p = store.paymentByIntent('paypal', capture) ?? (r.custom_id ? store.payment(String(r.custom_id)) : undefined);
         if (!p || p.provider !== 'paypal') return { outcome: 'ignored' };
+        if (event.event_type === 'PAYMENT.CAPTURE.REFUNDED') info.note(p.id, { refundedAmount: (p.status === 'refunded' ? info.get(p.id).refundedAmount : 0) + (minorUnits(r.amount?.value) || 0) });
         return { outcome: takeBack(p, event.event_type === 'PAYMENT.CAPTURE.REFUNDED' ? 'refunded' : 'disputed') ? 'done' : 'ignored', user: p.user };
       }
       default:
@@ -600,7 +612,10 @@ export function supportRoutes(ctx: SupportContext) {
       const me = ctx.authed(req);
       const stripe = ready('stripe');
       return {
-        supporter: summary(me), grants: store.grantsOf(me).map(grantView), payments: store.paymentsOf(me).map(userView),
+        supporter: summary(me), grants: store.grantsOf(me).map(grantView),
+        // which payments can be asked back on the account page, and until when (refunds.ts)
+        payments: store.paymentsOf(me).map((p) => ({ ...userView(p), refundable: refunds.refundable(p), refundUntil: refunds.until(p) || null })),
+        refunds: refunds.refunds.of(me).map(refunds.mine), refundWindowDays: REFUND_WINDOW_DAYS,
         subscriptions: store.subscriptionsOf(me).map((s) => ({ id: s.id, provider: s.provider, tier: s.tier, status: s.status, amount: s.amount, currency: s.currency, periodEnd: s.periodEnd || null, cancelAtPeriodEnd: s.cancelAtPeriodEnd, test: s.mode === 'test' })),
         prefs: store.prefs(me), portal: !!stripe && !!store.customer(me, 'stripe', stripe.mode),
       };
@@ -698,7 +713,7 @@ export function supportRoutes(ctx: SupportContext) {
       const subs = (ctx.sql.prepare("SELECT COUNT(*) AS n FROM support_subscriptions WHERE status IN ('active', 'trialing', 'past_due') AND mode = 'live'").get() as { n: number }).n;
       return {
         providers: PROVIDER_IDS.map(providerView), tiers: store.tiers(), graceDays: graceDays(),
-        keyReady: !!ctx.box, keyError: ctx.keyError ?? null, revenue: store.revenue(), activeSupporters, activeSubscriptions: subs,
+        keyReady: !!ctx.box, keyError: ctx.keyError ?? null, revenue: store.revenue(), activeSupporters, activeSubscriptions: subs, pendingRefunds: refunds.refunds.pendingCount(),
       };
     }],
     // a provider's settings; keys are write-only: '' or missing keeps one, null removes it
@@ -860,6 +875,21 @@ export function supportRoutes(ctx: SupportContext) {
       return { grant: grantView(store.grant(g.id)!) };
     }],
   ];
+
+  // refund requests: the player's own on the account page, the admin's queue (refunds.ts)
+  const providerClient = <T,>(id: ProviderId, mode: 'test' | 'live', make: () => T) => (ctx.box && provider(id).has(mode) ? make() : undefined);
+  const refunds = refundRoutes({
+    sql: ctx.sql, store, now, authed: ctx.authed, admin: ctx.admin, isAdmin: ctx.isAdmin ?? (() => false), body: ctx.body,
+    limit: ctx.limitRefunds ?? ctx.limitCheckout, audit: ctx.audit, notify: ctx.notify ?? (() => {}), handleOf, changed: ctx.changed, fail,
+    stripe: (mode) => providerClient('stripe', mode, () => stripeOf(mode)), paypal: (mode) => providerClient('paypal', mode, () => paypalOf(mode)),
+    takeBack: (p) => takeBack(p, 'refunded'),
+  });
+  routes.push(...refunds.routes);
+  // the player's payment history (history.ts)
+  routes.push(...historyRoutes({
+    sql: ctx.sql, store, refunds: refunds.refunds, info, now, authed: ctx.authed, isAdmin: ctx.isAdmin ?? (() => false), limit: ctx.limitRefunds ?? ctx.limitCheckout,
+    refundable: refunds.refundable, until: refunds.until, stripe: (mode) => providerClient('stripe', mode, () => stripeOf(mode)), fail,
+  }).routes);
 
   return { routes, serve, store, active, summary, cosmeticsLevel, limitFactor, rank, profileDecor };
 }
