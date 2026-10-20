@@ -596,7 +596,7 @@ a.button-link { display: inline-flex; align-items: center; gap: 6px; height: 32p
 .skin-edit button { height: 36px; padding: 0 14px; font-size: 13px; }
 .skin-edit .segmented button { height: auto; }
 /* capes as pictures: the front of each cape texture, pixel-sharp */
-.cape-grid { display: flex; flex-wrap: wrap; gap: 8px; max-width: 460px; }
+.cape-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .cape-choice {
   width: 52px; height: 72px; padding: 5px; border-radius: 10px; background: rgba(0, 0, 0, .25); border: 1px solid var(--glass-border);
   display: grid; place-items: center; position: relative;
