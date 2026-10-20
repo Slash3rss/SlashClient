@@ -27,7 +27,7 @@ export type Visibility = 'public' | 'friends' | 'private';
 export const VISIBILITIES: Visibility[] = ['public', 'friends', 'private'];
 
 /** The parts of a profile the owner can show or hide one by one. */
-export const ELEMENTS = ['stats', 'achievements', 'cosmetics', 'clan', 'minecraft', 'servers', 'lastOnline', 'friends', 'communities'] as const;
+export const ELEMENTS = ['stats', 'achievements', 'cosmetics', 'clan', 'minecraft', 'servers', 'lastOnline', 'friends', 'communities', 'streams'] as const;
 export type Element = (typeof ELEMENTS)[number];
 
 /**
@@ -40,6 +40,8 @@ export const DEFAULT_ELEMENTS: Record<Element, boolean> = {
   stats: true, achievements: true, cosmetics: true, clan: true, minecraft: true, servers: false, lastOnline: false, friends: true,
   // public communities the player is in (each can be left off on its own; private ones never show)
   communities: true,
+  // linked Twitch and Kick channels and the stream when live: the player linked them to show them
+  streams: true,
 };
 export interface Privacy { visibility: Visibility; elements: Record<Element, boolean>; indexable: boolean }
 export const DEFAULT_PRIVACY: Privacy = { visibility: 'public', elements: { ...DEFAULT_ELEMENTS }, indexable: false };
@@ -202,6 +204,10 @@ export interface ProfileDeps {
   supporter?: (uuid: string) => Record<string, unknown> | undefined;
   /** Public communities the player shows on their profile (communities.ts; never private ones). */
   communities?: (uuid: string) => Record<string, unknown>[];
+  /** Linked Twitch and Kick channels and the live stream with its player (streams/streams.ts); undefined with none or the feature off. */
+  streams?: (uuid: string) => Record<string, unknown> | undefined;
+  /** Whether the page may embed the platforms' players (the "Streamy" switch): frame-src in its CSP. */
+  embeds?: () => boolean;
   /** 'offline' for players not connected or invisible. */
   status: (uuid: string) => string;
   /** A Minecraft account's skin and face (app.ts, from Mojang). */
@@ -218,6 +224,9 @@ export interface ProfileDeps {
 }
 
 type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
+
+/** The players a profile's "Streamy" section embeds (streams/providers.ts embedUrl). */
+export const EMBED_HOSTS = ['https://player.twitch.tv', 'https://embed.twitch.tv', 'https://player.kick.com'];
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const DAY = 86_400_000;
@@ -317,6 +326,8 @@ export function profileRoutes(deps: ProfileDeps) {
       }
     }
     if (show('communities')) out.communities = deps.communities?.(user.id) ?? [];
+    // none linked (or the feature off): empty lists, the page shows nothing
+    if (show('streams')) out.streams = (user.banned ? undefined : deps.streams?.(user.id)) ?? { channels: [], live: [] };
     if (show('minecraft')) out.minecraft = db.minecraftAccounts(user.id).map((x) => x.name).filter(Boolean);
     if (show('servers')) out.servers = store.servers(user.id, 20);
     if (show('lastOnline')) {
@@ -478,7 +489,8 @@ export function profileRoutes(deps: ProfileDeps) {
       'X-Content-Type-Options': 'nosniff',
       'Cache-Control': 'no-cache',
       'X-Robots-Tag': preview.index ? 'index, follow' : 'noindex',
-      'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+      // only profile pages may frame anything, and only the Twitch and Kick players
+      'Content-Security-Policy': `default-src 'self'; img-src 'self' data: blob: https:; style-src 'self'; script-src 'self'; connect-src 'self'; ${deps.embeds?.() ? `frame-src ${EMBED_HOSTS.join(' ')}; ` : ''}frame-ancestors 'none'; base-uri 'none'; form-action 'none'`,
       'Referrer-Policy': 'no-referrer',
     });
     res.end(req.method === 'HEAD' ? undefined : deps.versioned(html.replace('<!--preview-->', preview.tags)));

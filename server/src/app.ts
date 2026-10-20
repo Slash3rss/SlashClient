@@ -41,6 +41,8 @@ import { disabledPage, featureKey, featuresFor } from './features.ts';
 import { useBlocklist } from './clans.ts';
 import { useLogoLimit } from './clanLogos.ts';
 import { createRanks, gameBadge, type RankUser } from './ranks.ts';
+import { createStreams } from './streams/streams.ts';
+import type { KICK, TWITCH } from './streams/providers.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -101,6 +103,8 @@ export interface Config {
   payments?: { stripeApi?: string; paypalApi?: string; now?: () => number; checkoutsPerMinute?: number; refundsPerMinute?: number };
   /** Communities' limits (communityStore.ts; tests lower the members per community). */
   communityLimits?: Partial<CommunityLimits>;
+  /** "Streamy" (streams/streams.ts): tests point Twitch and Kick at fakes, set the clock and stop the timer. */
+  streams?: { twitch?: Partial<typeof TWITCH>; kick?: Partial<typeof KICK>; now?: () => number; timers?: boolean };
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -496,7 +500,9 @@ export function createApp(cfg: Config) {
         const u = db.user(f.id);
         const shown = u ? ranks.shown(u) : undefined;
         const badgeRank = shown ? { id: shown.id, name: shown.name, nameEn: shown.nameEn, color: shown.color, ...(shown.icon ? { icon: shown.icon } : {}) } : undefined;
-        return { ...f, presence: presenceOf(f.id), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0, muted: muted.has(f.id), ...(clan ? { clan } : {}), ...(clanLogo ? { clanLogo } : {}), ...(badgeRank ? { badgeRank } : {}) };
+        // live on Twitch or Kick (streams.ts), unless they hide it; launchers before 0.9.24 ignore it
+        const stream = streams.friendView(f.id);
+        return { ...f, ...(stream ? { stream } : {}), presence: presenceOf(f.id), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0, muted: muted.has(f.id), ...(clan ? { clan } : {}), ...(clanLogo ? { clanLogo } : {}), ...(badgeRank ? { badgeRank } : {}) };
       }),
       incoming: db.incoming(me),
       outgoing: db.outgoing(me),
@@ -692,10 +698,25 @@ export function createApp(cfg: Config) {
     ranks: (user) => ranks.held(user).slice(0, settings.num('ranks.profileMax')),
     supporter: (uuid) => support.profileDecor(uuid),
     communities: (uuid) => communities.onProfile(uuid),
+    streams: (uuid) => streams.profileView(uuid),
+    embeds: () => settings.bool(featureKey('streams')),
     status: (uuid) => presenceOf(uuid).status,
     skinOf, headOf,
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
     versioned: (html) => versioned(html, 'text/html'),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  // linked Twitch and Kick channels: live badges, notifications, the profile's stream (streams/streams.ts)
+  const streams = createStreams({
+    sql: db.sql, box: storage.box, keyError: storage.keyError, publicUrl: cfg.publicUrl, settings,
+    enabled: () => settings.bool(featureKey('streams')),
+    user: (uuid) => db.user(uuid), friends: (uuid) => db.friends(uuid).map((f) => f.id), mutedBy: (uuid) => mutes.store.muted(uuid), push: (uuid, event) => push(uuid, event),
+    authed, admin, body, clientIp, limitLinks: limiter('streams.linksPerMinute'), limitWebhooks: limiter('streams.webhooksPerMinute'),
+    audit: (who, action, target, detail) => db.log(who, action, target, detail),
+    fetchImpl: cfg.fetchImpl, base: { twitch: cfg.streams?.twitch, kick: cfg.streams?.kick }, now: cfg.streams?.now, timers: cfg.streams?.timers,
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -1224,6 +1245,7 @@ export function createApp(cfg: Config) {
     ...ranks.routes,
     ...support.routes,
     ...legal.routes,
+    ...streams.routes,
     // the admin panel's settings, the feature switches and the banner (settingsAdmin.ts)
     ...settingsAdminRoutes({
       settings, admin, body, handleOf: (id) => db.user(id)?.handle ?? '',
@@ -1423,6 +1445,15 @@ export function createApp(cfg: Config) {
 
     // the legal documents' pages, from the database
     if (legal.serve(req, res, url)) return;
+
+    // Twitch and Kick: the browser back from linking a channel, and the platforms' webhooks (raw bodies, for their signatures)
+    try {
+      if (await streams.serve(req, res, url)) return;
+    } catch (err) {
+      console.error('streamy:', (err as Error).message);
+      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
+      return;
+    }
 
     // a shared screenshot or clip: its file, and its page with the preview
     try {
@@ -1707,10 +1738,13 @@ export function createApp(cfg: Config) {
     communities,
     /** For tests: the admin panel's settings. */
     settings,
+    /** For tests: linked channels, the live state and the reconcile. */
+    streams,
     close: () => new Promise<void>((resolve) => {
       clearInterval(heartbeat);
       clearInterval(playTick);
       clearInterval(logCleanup);
+      streams.close();
       for (const timer of cosmeticsTimers.values()) clearTimeout(timer);
       cosmeticsTimers.clear();
       for (const ws of wss.clients) ws.terminate();

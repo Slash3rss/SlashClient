@@ -15,7 +15,7 @@ import type { DatabaseSync } from 'node:sqlite';
 export type SettingType = 'int' | 'float' | 'bool' | 'string' | 'enum' | 'duration' | 'bytes' | 'list' | 'datetime' | 'url';
 export type SettingValue = number | boolean | string | string[];
 export type SettingCategory =
-  | 'features' | 'banner' | 'chat' | 'media' | 'cloud' | 'clans' | 'groups' | 'communities' | 'sparks' | 'support' | 'profiles' | 'security' | 'storage' | 'moderation';
+  | 'features' | 'banner' | 'chat' | 'media' | 'cloud' | 'clans' | 'groups' | 'communities' | 'sparks' | 'support' | 'profiles' | 'security' | 'storage' | 'moderation' | 'streams';
 
 export interface SettingDef {
   key: string;
