@@ -75,6 +75,9 @@ describe('sparks', () => {
     assert.equal(iconFor({ group: 'hours' }), 'fa-clock');
     assert.equal(iconFor({ group: 'manual' }), 'fa-award');
     assert.equal(iconFor({ group: 'something_new' }), 'fa-trophy');
+    // the achievements of one server (SkyUp.pl's)
+    assert.equal(iconFor({ group: 'server_hours' }), 'fa-cloud-sun');
+    assert.equal(iconFor({ group: 'server_visit' }), 'fa-plane-arrival');
     // not a Font Awesome name: never put into the class
     assert.equal(iconFor({ icon: 'fa-x" onclick="', group: 'hours' }), 'fa-clock');
   });

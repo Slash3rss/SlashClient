@@ -49,13 +49,14 @@ const GROUP_ICONS: Record<string, string> = {
   community_joined: 'fa-people-group', community_founded: 'fa-crown', community_size: 'fa-users',
   waypoints: 'fa-location-dot', parties_created: 'fa-bullhorn', parties_joined: 'fa-handshake', media: 'fa-camera', shares: 'fa-share-nodes', cloud: 'fa-cloud',
   sprays: 'fa-spray-can', worn: 'fa-shirt', bought: 'fa-bag-shopping', spent: 'fa-gem', manual: 'fa-award',
+  server_hours: 'fa-cloud-sun', server_days: 'fa-calendar-days', server_visit: 'fa-plane-arrival',
 };
 /** An achievement's icon: the server's (a Font Awesome name), else its group's, else a trophy (exported for the tests). */
 export const iconFor = (a: Pick<Achievement, 'icon' | 'group'>) => (a.icon && /^fa-[a-z0-9-]{1,40}$/.test(a.icon) ? a.icon : GROUP_ICONS[a.group] ?? 'fa-trophy');
 /** The categories in the server's order, with names and icons; unknown ones fall back to "other". */
 const CATEGORY: Record<string, [string, string]> = {
   play: ['Gra', 'fa-gamepad'], streak: ['Serie', 'fa-fire'], social: ['Znajomi', 'fa-user-group'], community: ['Grupy i klany', 'fa-people-group'],
-  explore: ['Serwery', 'fa-compass'], sharing: ['Udostępnianie', 'fa-share-nodes'], style: ['Styl', 'fa-wand-magic-sparkles'], secret: ['Ukryte', 'fa-mask'],
+  explore: ['Serwery', 'fa-compass'], skyup: ['SkyUp.pl', 'fa-cloud-sun'], sharing: ['Udostępnianie', 'fa-share-nodes'], style: ['Styl', 'fa-wand-magic-sparkles'], secret: ['Ukryte', 'fa-mask'],
 };
 const categoryName = (c: string) => t(CATEGORY[c]?.[0] ?? 'Inne');
 

@@ -10,6 +10,7 @@ export const SPARKS_EN: Record<string, string> = {
   'Udostępnianie': 'Sharing',
   'Styl': 'Style',
   'Ukryte': 'Hidden',
+  'SkyUp.pl': 'SkyUp.pl',
   'Inne': 'Other',
   'Wszystkie': 'All',
   'Sklep': 'Shop',
