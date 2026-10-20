@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { sitePage } from '../sitePages.ts';
 import type http from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import type { User } from '../db.ts';
@@ -671,12 +672,10 @@ export function createStreams(ctx: StreamsContext) {
 }
 
 function linkPage(ok: boolean, name: string, error?: string): string {
-  const text = ok
-    ? [`Połączono ${name}`, 'Możesz zamknąć tę kartę i wrócić do SlashClient.', `${name} linked, you can close this tab.`]
+  const [icon, tone, title, text] = ok
+    ? ['fa-solid fa-circle-check', 'ok', `Połączono ${name}`, 'Możesz zamknąć tę kartę i wrócić do SlashClient.']
     : error === 'already_linked'
-      ? ['Ten kanał jest już połączony', 'Jest podpięty do innego konta SlashClient.', 'This channel is linked to another SlashClient account.']
-      : ['Nie udało się połączyć', 'Wróć do SlashClient i spróbuj ponownie.', 'Linking failed, go back to SlashClient and try again.'];
-  return `<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>SlashClient</title>
-<body style="margin:0;display:grid;place-items:center;height:100vh;background:#0b0e14;color:#e5e7eb;font:16px system-ui">
-<div style="text-align:center;padding:16px"><h1 style="color:${ok ? '#60a5fa' : '#f87171'}">${text[0]}</h1><p>${text[1]}</p><p style="color:#6b7280">${text[2]}</p></div>`;
+      ? ['fa-solid fa-link-slash', 'warning', 'Ten kanał jest już połączony', 'Jest podpięty do innego konta SlashClient.']
+      : ['fa-solid fa-circle-xmark', 'error', 'Nie udało się połączyć', 'Wróć do SlashClient i spróbuj ponownie.'];
+  return sitePage({ lang: 'pl', icon, tone: tone as 'ok' | 'warning' | 'error', title, text });
 }

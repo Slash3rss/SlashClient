@@ -284,6 +284,22 @@ describe('home page escaping', () => {
     assert.equal((await call('GET', '/zgloszenia')).status, 200);
   });
 
+  it("answers a browser's unknown address with the site's own page, the API with JSON", async () => {
+    const html = { Accept: 'text/html,application/xhtml+xml' };
+    const pl = await call('GET', '/nie-ma-takiej-strony', undefined, undefined, { ...html, 'Accept-Language': 'pl-PL,pl;q=0.9' });
+    assert.equal(pl.status, 404);
+    assert.match(pl.headers.get('content-type') ?? '', /text\/html/);
+    assert.match(pl.text, /Nie ma takiej strony/);
+    assert.match(pl.text, /href="\/sitePage.css"/);
+    const en = await call('GET', '/en/nothing-here', undefined, undefined, html);
+    assert.match(en.text, /Page not found/);
+    assert.match(en.text, /href="\/en"/);
+    const api = await call('GET', '/v1/nie-ma-takiego', undefined, undefined, html);
+    assert.deepEqual(api.body, { error: 'not_found' });
+    const file = await call('GET', '/nie-ma.png', undefined, undefined, html);
+    assert.deepEqual(file.body, { error: 'not_found' });
+  });
+
   it('inline markup never lets HTML through', () => {
     assert.equal(inline('a <i>b</i> **c<d>** [e](/f"g)'), 'a &lt;i&gt;b&lt;/i&gt; <strong>c&lt;d&gt;</strong> [e](/f&quot;g)');
     assert.equal(inline('[x](#faq) [y](mailto:a@b.pl)'), '<a href="#faq">x</a> <a href="mailto:a@b.pl">y</a>');

@@ -94,17 +94,3 @@ export function featuresFor(method: string, path: string, groupClan: (id: string
   if (method === 'POST' && (/^\/v1\/images\/[\w-]+$/.test(path) || /^\/v1\/groups\/[\w-]+\/images$/.test(path))) out.push('chatImages');
   return out;
 }
-
-/** The page a browser gets for a switched-off page (a public profile). */
-/** A page that is not there (also one the admin hid). */
-export function notFoundPage(): string {
-  return `<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>SlashClient</title>
-<body style="margin:0;display:grid;place-items:center;height:100vh;background:#0b0e14;color:#e5e7eb;font:16px system-ui">
-<div style="text-align:center;padding:16px"><h1>404</h1><p>Nie ma takiej strony.</p><p style="color:#6b7280">This page does not exist.</p><p><a style="color:#60a5fa" href="/">SlashClient</a></p></div>`;
-}
-
-export function disabledPage(): string {
-  return `<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>SlashClient</title>
-<body style="margin:0;display:grid;place-items:center;height:100vh;background:#0b0e14;color:#e5e7eb;font:16px system-ui">
-<div style="text-align:center;padding:16px"><h1 style="color:#fbbf24">Chwilowo niedostępne</h1><p>Ta funkcja SlashClient jest teraz wyłączona. Spróbuj później.</p><p style="color:#6b7280">This SlashClient feature is switched off for now. Try again later.</p><p><a style="color:#60a5fa" href="/">SlashClient</a></p></div>`;
-}

@@ -1,0 +1,16 @@
+/* The site's small pages: not found, switched off, a server error, the end of a sign-in (src/sitePages.ts). */
+.site-page { min-height: 100vh; display: flex; flex-direction: column; }
+.sp-main { flex: 1; display: grid; place-items: center; padding: 96px 16px 48px; }
+.landing .sp-card { width: min(480px, 100%); padding: 36px 28px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.sp-card h1 { margin: 0; font-size: 26px; }
+.sp-card p { margin: 0; line-height: 1.55; }
+.sp-icon {
+  width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; font-size: 30px;
+  color: var(--accent-light); background: rgba(59, 130, 246, .12); border: 1px solid rgba(59, 130, 246, .3);
+}
+.sp-card.error .sp-icon { color: #f87171; background: rgba(239, 68, 68, .12); border-color: rgba(239, 68, 68, .3); }
+.sp-card.warning .sp-icon { color: #fbbf24; background: rgba(251, 191, 36, .12); border-color: rgba(251, 191, 36, .3); }
+.sp-card.ok .sp-icon { color: #4ade80; background: rgba(74, 222, 128, .12); border-color: rgba(74, 222, 128, .3); }
+.sp-code { font-size: 64px; font-weight: 800; line-height: 1; letter-spacing: .02em; }
+.sp-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 6px; }
+.sp-note { color: var(--muted); font-size: 13px; }

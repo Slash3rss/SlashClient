@@ -40,7 +40,8 @@ import { COMMUNITY_LIMITS, type CommunityLimits } from './communityStore.ts';
 import { Settings, liveSettings, type SettingValue } from './settings.ts';
 import { SETTING_DEFS } from './settingsDefs.ts';
 import { settingsAdminRoutes } from './settingsAdmin.ts';
-import { disabledPage, featureKey, featuresFor, notFoundPage } from './features.ts';
+import { featureKey, featuresFor } from './features.ts';
+import { disabledPage, errorPage, notFoundPage, sitePage, siteLang } from './sitePages.ts';
 import { useBlocklist } from './clans.ts';
 import { useLogoLimit } from './clanLogos.ts';
 import { createRanks, gameBadge, type RankUser } from './ranks.ts';
@@ -1395,7 +1396,7 @@ export function createApp(cfg: Config) {
         res.end(JSON.stringify({ error: 'feature_disabled', feature }));
       } else {
         res.writeHead(503, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(disabledPage());
+        res.end(disabledPage(siteLang(req, url.pathname)));
       }
       req.resume();
       return;
@@ -1405,7 +1406,7 @@ export function createApp(cfg: Config) {
     if ((req.method === 'GET' || req.method === 'HEAD') && !url.pathname.startsWith('/v1/') && home.isHidden(url.pathname)) {
       (req as SeenRequest).slashError = 'hidden';
       res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(notFoundPage());
+      res.end(notFoundPage(siteLang(req, url.pathname)));
       req.resume();
       return;
     }
@@ -1469,7 +1470,7 @@ export function createApp(cfg: Config) {
         }
       } else if (login) login.error = 'provider_denied';
       res.writeHead(ok ? 200 : 400, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(callbackPage(ok));
+      res.end(callbackPage(ok, siteLang(req, url.pathname)));
       return;
     }
 
@@ -1501,7 +1502,7 @@ export function createApp(cfg: Config) {
       if (ranks.serveIcon(req, res, url)) return;
     } catch (err) {
       console.error('profil:', (err as Error).message);
-      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
+      if (!res.headersSent) serverError(req, res, url);
       return;
     }
 
@@ -1510,7 +1511,7 @@ export function createApp(cfg: Config) {
       if (await profiles.serve(req, res, url)) return;
     } catch (err) {
       console.error('profil gracza:', (err as Error).message);
-      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
+      if (!res.headersSent) serverError(req, res, url);
       return;
     }
 
@@ -1519,7 +1520,7 @@ export function createApp(cfg: Config) {
       if (await support.serve(req, res, url)) return;
     } catch (err) {
       console.error('wsparcie:', (err as Error).message);
-      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
+      if (!res.headersSent) serverError(req, res, url);
       return;
     }
 
@@ -1528,7 +1529,7 @@ export function createApp(cfg: Config) {
       if (await home.serve(req, res, url)) return;
     } catch (err) {
       console.error('strona główna:', (err as Error).message);
-      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
+      if (!res.headersSent) serverError(req, res, url);
       return;
     }
     // the legal documents' pages, from the database
@@ -1541,7 +1542,7 @@ export function createApp(cfg: Config) {
       if (await streams.serve(req, res, url)) return;
     } catch (err) {
       console.error('streamy:', (err as Error).message);
-      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
+      if (!res.headersSent) serverError(req, res, url);
       return;
     }
 
@@ -1550,7 +1551,7 @@ export function createApp(cfg: Config) {
       if (await media.serve(req, res, url)) return;
     } catch (err) {
       console.error('media:', (err as Error).message);
-      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
+      if (!res.headersSent) serverError(req, res, url);
       return;
     }
 
@@ -1615,6 +1616,12 @@ export function createApp(cfg: Config) {
     }
     // everything that is not the API is the website
     if (cfg.webDir && req.method === 'GET' && !url.pathname.startsWith('/v1/') && await serveWeb(cfg.webDir, url.pathname, res, req.headers['if-modified-since'])) return;
+    // a browser asking for a page that is not there gets the site's own page, the API its JSON
+    if (wantsPage(req, url.pathname)) {
+      res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(notFoundPage(siteLang(req, url.pathname)));
+      return;
+    }
     res.writeHead(404, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'not_found' }));
   }
@@ -1856,11 +1863,21 @@ export function createApp(cfg: Config) {
   };
 }
 
-function callbackPage(ok: boolean): string {
-  const text = ok
-    ? ['Zalogowano', 'Możesz zamknąć tę kartę i wrócić do SlashClient.', 'Signed in, you can close this tab.']
-    : ['Nie udało się zalogować', 'Wróć do SlashClient i spróbuj ponownie.', 'Sign-in failed, go back to SlashClient and try again.'];
-  return `<!doctype html><meta charset="utf-8"><title>SlashClient</title>
-<body style="margin:0;display:grid;place-items:center;height:100vh;background:#0b0e14;color:#e5e7eb;font:16px system-ui">
-<div style="text-align:center"><h1 style="color:${ok ? '#60a5fa' : '#f87171'}">${text[0]}</h1><p>${text[1]}</p><p style="color:#6b7280">${text[2]}</p></div>`;
+/** A failure while making a page: the site's error page for a browser, JSON for the API. */
+function serverError(req: http.IncomingMessage, res: http.ServerResponse, url: URL) {
+  if (wantsPage(req, url.pathname)) res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' }).end(errorPage(siteLang(req, url.pathname)));
+  else res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
+}
+
+/** A page (not the API, not a file) that a browser asked for. */
+function wantsPage(req: http.IncomingMessage, pathname: string): boolean {
+  return (req.method === 'GET' || req.method === 'HEAD') && !pathname.startsWith('/v1/') && !/\.[a-z0-9]{1,5}$/i.test(pathname)
+    && /text\/html/.test(String(req.headers.accept ?? ''));
+}
+
+function callbackPage(ok: boolean, lang: 'pl' | 'en' = 'pl'): string {
+  const en = lang === 'en';
+  return ok
+    ? sitePage({ lang, icon: 'fa-solid fa-circle-check', tone: 'ok', title: en ? 'Signed in' : 'Zalogowano', text: en ? 'You can close this tab and go back to SlashClient.' : 'Możesz zamknąć tę kartę i wrócić do SlashClient.' })
+    : sitePage({ lang, icon: 'fa-solid fa-circle-xmark', tone: 'error', title: en ? 'Sign-in failed' : 'Nie udało się zalogować', text: en ? 'Go back to SlashClient and try again.' : 'Wróć do SlashClient i spróbuj ponownie.' });
 }
