@@ -107,8 +107,9 @@ export function historyRoutes(d: HistoryDeps) {
   function row(p: Payment) {
     const info = d.info.get(p.id);
     const r = d.refunds.latest(p.id);
+    const tier = d.store.tier(p.tier);
     return {
-      id: p.id, at: p.paidAt || p.createdAt, amount: p.amount, currency: p.currency, tier: p.tier, kind: p.kind, days: p.days, renewal: renewal(p),
+      id: p.id, at: p.paidAt || p.createdAt, amount: p.amount, currency: p.currency, tier: p.tier, tierName: tier?.name ?? p.tier, tierNameEn: tier?.nameEn || tier?.name || p.tier, kind: p.kind, days: p.days, renewal: renewal(p),
       provider: p.provider, method: info.method || (p.provider === 'paypal' ? 'paypal' : ''), status: state(p, info), refundedAmount: info.refundedAmount || (p.status === 'refunded' ? p.amount : 0),
       period: period(p, info), test: p.mode === 'test',
       refund: r ? { id: r.id, status: r.status, answer: r.answer, createdAt: r.createdAt } : null,

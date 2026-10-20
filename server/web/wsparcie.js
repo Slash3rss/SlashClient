@@ -71,7 +71,7 @@ function promises() {
       li('fa-scale-balanced', L('Żadnych przewag w grze: tylko wygląd (ranga, kosmetyki, profil) i więcej miejsca na pliki.', 'No advantages in game: only looks (rank, cosmetics, profile) and more room for files.')),
       li('fa-ban', L('Żadnych skrzynek ani losowych nagród. Iskier nie da się kupić za pieniądze.', 'No loot boxes or random rewards. Sparks (Iskry) cannot be bought with money.')),
       li('fa-lock-open', L('Darmowym graczom nic nie zabieramy i nie zabierzemy.', 'Nothing is or will be taken away from free players.')),
-      li('fa-rotate-left', L('Zwrot? Napisz przez Zgłoszenia w ciągu 14 dni, oddamy pieniądze, a ranga wygaśnie.', 'Refund? Write through Reports within 14 days: we return the money and the rank ends.'))),
+      li('fa-rotate-left', L('Zwrot: konto → Wsparcie projektu → Poproś o zwrot (w ciągu 14 dni). Oddamy pieniądze, a ranga wygaśnie.', 'Refund: account → Supporting the project → Ask for a refund (within 14 days). We return the money and the rank ends.'))),
     el('p', { class: 'minor-note' }, icon('fa-solid fa-child-reaching'), el('span', { textContent: L(
       'Masz mniej niż 18 lat? Poproś rodzica lub opiekuna o zgodę, zanim cokolwiek zapłacisz. Najlepiej, żeby to on dokończył płatność.',
       'Under 18? Ask a parent or guardian for permission before paying anything. Best let them complete the payment.') })));

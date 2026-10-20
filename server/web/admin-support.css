@@ -22,3 +22,12 @@
 @media (max-width: 900px) {
   .sup-grid, .sup-grid.two { grid-template-columns: 1fr; }
 }
+
+/* "Zwroty": the refund requests (adminRefunds.js) */
+.sup-h .chip { margin-left: 10px; vertical-align: middle; }
+.sup-refunds { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.sup-refund { display: flex; flex-direction: column; gap: 6px; }
+.sup-refund .row { gap: 8px; flex-wrap: wrap; }
+.sup-refund.pending { border-left: 3px solid var(--gold); }
+.sup-refund p { margin: 0; }
+.sup-reason { white-space: pre-wrap; }

@@ -87,3 +87,20 @@
   .months select { min-width: 0; width: 100%; }
   .checkout-go button { width: 100%; }
 }
+
+/* the account page's payment history and refund requests (paymentHistory.js) */
+.pay-history { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.pay-history h4 { margin: 4px 0 0; font-size: 14px; }
+.pay-row { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid var(--border); font-size: 13px; }
+.pay-row .row { gap: 8px; flex-wrap: wrap; }
+.pay-actions { margin-top: 2px; }
+.pay-refund { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: rgba(255, 255, 255, .04); font-size: 12px; }
+.pay-refund.pending i { color: var(--gold); }
+.pay-refund.approved i, .pay-refund.refunded i { color: var(--green); }
+.pay-refund.rejected i { color: #fca5a5; }
+.pay-form { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; padding: 10px; border-radius: 10px; background: rgba(255, 255, 255, .04); }
+.pay-form p { margin: 0; }
+.pay-form textarea { width: 100%; min-height: 64px; }
+.pay-form .check { align-items: flex-start; flex-wrap: nowrap; }
+.pay-form .check input { margin-top: 2px; flex-shrink: 0; }
+.pay-pager { gap: 8px; }

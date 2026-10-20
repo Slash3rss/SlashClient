@@ -2,6 +2,7 @@
 // with STORAGE_SECRET_KEY, and are never shown again), the supporter tiers, every payment, the
 // supporters with granting, extending and taking back by hand, and the money per month. Every
 // change goes to the log (Dziennik); refunds and chargebacks take back what they gave by themselves.
+import { refundsSection } from './adminRefunds.js';
 import { $, api, el, errorText, fmtDate, guard, icon, toast } from './common.js';
 
 const ERRORS = {
@@ -58,6 +59,9 @@ export async function supportPage() {
       stat('fa-solid fa-heart', 'Wspierający teraz', data.activeSupporters),
       stat('fa-solid fa-rotate', 'Subskrypcje (live)', data.activeSubscriptions),
       stat('fa-solid fa-coins', 'Ten miesiąc (live)', thisMonth.length ? thisMonth.map((r) => money(r.paid - r.refunded, r.currency)).join(' + ') : money(0), 'po zwrotach')),
+    // the players' refund requests (adminRefunds.js), waiting ones first
+    el('h2', { class: 'sup-h' }, 'Zwroty', data.pendingRefunds ? el('span', { class: 'chip gold', textContent: `${data.pendingRefunds} czeka` }) : ''),
+    el('div', { id: 'sup-refunds' }),
     el('h2', { class: 'sup-h', textContent: 'Operatorzy płatności' }),
     el('div', { class: 'st-list' }, ...data.providers.map(providerCard)),
     el('h2', { class: 'sup-h', textContent: 'Poziomy' }),
@@ -68,6 +72,7 @@ export async function supportPage() {
     el('div', { id: 'sup-payments' }),
     el('h2', { class: 'sup-h', textContent: 'Wpływy w miesiącach (live)' }),
     revenueTable());
+  refundsSection($('#sup-refunds'), Object.fromEntries(data.tiers.map((t) => [t.id, t.name])), () => { supportersSection(); paymentsSection(); });
   supportersSection();
   paymentsSection();
 }
