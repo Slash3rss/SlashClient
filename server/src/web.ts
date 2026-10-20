@@ -12,7 +12,10 @@ const TYPES: Record<string, string> = {
   '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.json': 'application/json',
   '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml; charset=utf-8',
 };
-const PAGES: Record<string, string> = { '/': 'index.html', '/konto': 'konto.html', '/account': 'konto.html', '/admin': 'admin.html', '/admin/': 'admin.html' };
+const PAGES: Record<string, string> = { '/': 'index.html', '/konto': 'konto.html', '/account': 'konto.html', '/admin': 'admin.html', '/admin/': 'admin.html',
+  // supporting the project (payments/support.ts): the page, where the payment providers send players back, the terms
+  '/wsparcie': 'wsparcie.html', '/support': 'wsparcie.html', '/wsparcie/dziekujemy': 'wsparcie.html', '/wsparcie/anulowano': 'wsparcie.html',
+  '/wsparcie/regulamin': 'wsparcie-regulamin.html', '/support/terms': 'wsparcie-regulamin.html' };
 
 /**
  * Cloudflare keeps .css and .js in browsers for hours whatever we answer, so the site's own

@@ -103,11 +103,27 @@ function toolsBar(p) {
   return el('div', { class: 'glass profile-tools row' }, ...items);
 }
 
+/** A supporter's avatar in a frame of their tier's colour (when the tier gives it). */
+function framed(avatar, sup) {
+  if (!sup?.active || !sup.frame) return avatar;
+  const box = el('span', { class: 'avatar-frame', title: L(sup.name, sup.nameEn || sup.name) }, avatar);
+  box.style.setProperty('--tier', sup.color);
+  return box;
+}
+
 function render(p) {
   document.title = `${p.name} (@${p.handle}) – SlashClient`;
   const rank = RANKS[p.badge];
   const chips = [];
   if (rank) chips.push(el('span', { class: `chip ${rank[1]}` }, rank[2] ? icon(rank[2]) : el('img', { class: 'chip-logo', src: '/vendor/logo.png', alt: '' }), rank[0]));
+  // a supporter of the project: the tier in its colour, or "supported" for one who did (payments/support.ts)
+  const sup = p.supporter;
+  if (sup) {
+    const c = el('span', { class: 'chip supporter', title: L(`Wspiera SlashClient od ${day(sup.since)}`, `Supporting SlashClient since ${day(sup.since)}`) },
+      icon('fa-solid fa-heart'), sup.active ? L(sup.name, sup.nameEn || sup.name) : L('Wspierał(a)', 'Supported'));
+    if (sup.active) c.style.setProperty('--tier', sup.color);
+    chips.push(c);
+  }
   if (p.clan) {
     const logo = p.clan.logo ? el('img', { class: 'profile-clan-logo', src: p.clan.logo, alt: '' }) : icon('fa-solid fa-people-group');
     if (p.clan.logo) logo.addEventListener('error', () => logo.replaceWith(icon('fa-solid fa-people-group')));
@@ -116,6 +132,7 @@ function render(p) {
   for (const name of p.minecraft ?? []) chips.push(el('span', { class: 'chip', title: L('Konto Minecraft', 'Minecraft account') }, icon('fa-solid fa-cube'), name));
 
   const facts = [el('span', {}, icon('fa-regular fa-calendar'), ' ', L(`W SlashClient od ${day(p.memberSince)}`, `On SlashClient since ${day(p.memberSince)}`))];
+  if (sup?.active) facts.push(el('span', { class: 'profile-supporting' }, icon('fa-solid fa-heart'), ' ', L(`Wspiera od ${day(sup.since)}`, `Supporting since ${day(sup.since)}`)));
   if (p.lastOnline) {
     facts.push(p.lastOnline.online
       ? el('span', { class: 'profile-online' }, icon('fa-solid fa-circle'), ' ', L('Teraz online', 'Online now'))
@@ -125,7 +142,7 @@ function render(p) {
   const figureBox = el('div', { class: 'figure profile-figure' });
   const head = el('div', { class: 'glass card profile-head' }, figureBox,
     el('div', { class: 'profile-who' },
-      el('div', { class: 'row profile-name' }, p.avatar ? el('img', { class: 'avatar big', src: p.avatar, alt: '', referrerPolicy: 'no-referrer' }) : el('div', { class: 'avatar big', textContent: p.name.slice(0, 1).toUpperCase() }),
+      el('div', { class: 'row profile-name' }, framed(p.avatar ? el('img', { class: 'avatar big', src: p.avatar, alt: '', referrerPolicy: 'no-referrer' }) : el('div', { class: 'avatar big', textContent: p.name.slice(0, 1).toUpperCase() }), sup),
         el('div', { class: 'grow' }, el('h1', { textContent: p.name }), el('span', { class: 'muted', textContent: `@${p.handle}` }))),
       chips.length ? el('div', { class: 'row profile-chips' }, ...chips) : '',
       el('div', { class: 'profile-facts muted small' }, ...facts),

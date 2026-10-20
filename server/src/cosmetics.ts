@@ -37,6 +37,11 @@ export interface Item {
    * purchase grants it, like an achievement does. Free items never get a price.
    */
   price?: number;
+  /**
+   * Only for supporters (payments/support.ts) whose tier is at least this level and gives
+   * cosmetics; never sold for sparks. The tier, not the item, is what was paid for.
+   */
+  supporter?: number;
 }
 
 export const ITEMS: Item[] = [
@@ -78,6 +83,9 @@ export const ITEMS: Item[] = [
   { id: 'thunder', slot: 'cape', name: 'Grom', since: '0.9.22', price: 700 },
   { id: 'regal', slot: 'cape', name: 'Purpura', since: '0.9.22', price: 800 },
   { id: 'cosmos', slot: 'cape', name: 'Kosmos', since: '0.9.22', price: 1000 },
+  // for supporters of the project (a tier of at least this level, payments/support.ts)
+  { id: 'supporter_heart', slot: 'cape', name: 'Serce SlashClient', since: '0.9.23', supporter: 1 },
+  { id: 'supporter_patron', slot: 'cape', name: 'Mecenas', since: '0.9.23', supporter: 3 },
   { id: 'staff_admin', slot: 'cape', name: 'Admin', rank: 'admin', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_support', slot: 'cape', name: 'Support', rank: 'support', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_partner', slot: 'cape', name: 'Partner', rank: 'partner', frames: 16, framesSince: '0.9.4' },
@@ -114,6 +122,7 @@ export const ITEMS: Item[] = [
   { id: 'aurum', slot: 'elytra', name: 'Złoty blask', since: '0.9.22', price: 800 },
   { id: 'glacier', slot: 'elytra', name: 'Lodowiec', since: '0.9.22', price: 700 },
   { id: 'acid', slot: 'elytra', name: 'Kwas', since: '0.9.22', price: 700 },
+  { id: 'supporter_wings', slot: 'elytra', name: 'Skrzydła mecenasa', since: '0.9.23', supporter: 2 },
   // trails (while moving) and auras (around a player standing still): the game's particles
   { id: 'hearts', slot: 'trail', name: 'Serca' },
   { id: 'sparks', slot: 'trail', name: 'Iskry' },
@@ -339,8 +348,8 @@ export function capeSetting(settings: Map<string, CosmeticSetting>, id: string):
   return settings.get(id) ?? { id, enabled: true, exclusive: false };
 }
 
-/** Whether the shop may sell an item at all: not a rank's, not one only an achievement of cosmetics.ts gives. */
-export const sellable = (it: Item) => !it.rank && !it.achievement;
+/** Whether the shop may sell an item at all: not a rank's or the supporters', not one only an achievement of cosmetics.ts gives. */
+export const sellable = (it: Item) => !it.rank && !it.achievement && !it.supporter;
 
 /**
  * What an item costs in the shop now: the admin's price (economy.ts; null there = taken off sale),
@@ -355,13 +364,16 @@ export function priceOf(settings: Map<string, CosmeticSetting>, id: string): num
 
 /**
  * Whether a player may wear an item now: it exists (in `slot`, when given), is on, is not exclusive
- * to others, and is not for a rank the player does not have. `badge` is the player's rank colour.
+ * to others, and is not for a rank the player does not have. `badge` is the player's rank colour,
+ * `supporter` the level of their supporter tier (0: none).
  * Admins may wear everything, also what is switched off or exclusive.
  */
-export function mayWear(settings: Map<string, CosmeticSetting>, granted: string[], id: string, slot: Slot = 'cape', badge = ''): boolean {
+export function mayWear(settings: Map<string, CosmeticSetting>, granted: string[], id: string, slot: Slot = 'cape', badge = '', supporter = 0): boolean {
   const it = item(id);
   if (!it || it.slot !== slot) return false;
   if (badge === 'admin') return true;
+  // the supporters' items: with a tier of that level (or an admin's grant of the item)
+  if (it.supporter && supporter < it.supporter && !granted.includes(id)) return false;
   // earned (an achievement) or bought (the shop): only with the grant
   if ((it.achievement || priceOf(settings, id)) && !granted.includes(id)) return false;
   const s = capeSetting(settings, id);

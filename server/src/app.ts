@@ -30,6 +30,7 @@ import { muteRoutes } from './mutes.ts';
 import { chatImageRoutes, type ImageLimits } from './chatImages.ts';
 import { profileRoutes } from './profiles.ts';
 import { BurstLimiter, EDIT_WINDOW_MS, SlowDown, editRefusal, type BurstLimits } from './chatLimits.ts';
+import { supportRoutes } from './payments/support.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -84,6 +85,8 @@ export interface Config {
   imageLimits?: Partial<ImageLimits>;
   /** Messages in a row per conversation (chatLimits.ts; tests change it). */
   chatBurst?: Partial<BurstLimits>;
+  /** Supporting the project with money (payments/support.ts): tests point the providers at fakes and set the clock. */
+  payments?: { stripeApi?: string; paypalApi?: string; now?: () => number; checkoutsPerMinute?: number };
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -280,7 +283,8 @@ export function createApp(cfg: Config) {
     const own = character ? db.characterLoadout(owner.id, character) : null;
     const all = own ?? { ...owner.loadout, ...(owner.cape ? { cape: owner.cape } : {}) };
     const worn: Record<string, string> = {};
-    for (const [slot, id] of Object.entries(all)) if (mayWear(settings, granted, id, slot as Slot, badge)) worn[slot] = id;
+    const level = support.cosmeticsLevel(owner.id);
+    for (const [slot, id] of Object.entries(all)) if (mayWear(settings, granted, id, slot as Slot, badge, level)) worn[slot] = id;
     return worn;
   }
 
@@ -367,8 +371,10 @@ export function createApp(cfg: Config) {
 
   const configAdmins = new Set((cfg.adminHandles ?? []).map((h) => h.trim().toLowerCase()).filter(Boolean));
   /** The logo colour in game: admins red, then the rank the admin panel gave (support, partner). */
-  const badgeOf = (u: { role: string; handle: string; rank: string }) =>
-    u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()) ? 'admin' : ['support', 'partner', 'friend', 'friend_pink'].includes(u.rank) ? u.rank : '';
+  const badgeOf = (u: { id?: string; role: string; handle: string; rank: string }) =>
+    u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()) ? 'admin' : ['support', 'partner', 'friend', 'friend_pink'].includes(u.rank) ? u.rank
+      // a supporter of the project (payments/support.ts), when no other rank is given
+      : u.id && support.rank(u.id) ? 'supporter' : '';
   const isAdmin = (userId: string) => {
     const u = db.user(userId);
     return !!u && (u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()));
@@ -419,7 +425,7 @@ export function createApp(cfg: Config) {
     const { banned: _banned, ...user } = db.user(me)!;
     const minecraft = db.minecraftAccounts(me);
     const choice = db.avatarChoice(me);
-    return { ...user, providers: db.providers(me), minecraft, admin: isAdmin(me), badge: badgeOf(user), grants: db.grants(me),
+    return { ...user, providers: db.providers(me), minecraft, admin: isAdmin(me), badge: badgeOf(user), grants: db.grants(me), supporter: support.summary(me),
       // the two avatars to pick from on the account page: the Minecraft face and the sign-in provider's picture
       // what is picked: 'provider', or the Minecraft account whose face it is (the first one unless another was picked)
       avatarSource: choice.source === 'provider' && choice.provider ? 'provider'
@@ -485,7 +491,7 @@ export function createApp(cfg: Config) {
 
   // screenshots and clips shared by link, /media/<id> (media.ts)
   const media = mediaRoutes({
-    sql: db.sql, storage, webDir: cfg.webDir, publicUrl: cfg.publicUrl, limits: cfg.mediaLimits,
+    sql: db.sql, storage, webDir: cfg.webDir, publicUrl: cfg.publicUrl, limits: cfg.mediaLimits, limitFactor: (u) => support.limitFactor(u),
     authed, isAdmin, clientIp, limitUploads: rateLimiter(6), limitViews: rateLimiter(60),
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
     versioned: (html) => versioned(html, 'text/html'),
@@ -496,7 +502,7 @@ export function createApp(cfg: Config) {
 
   // profiles kept on the player's account, for their other computers (profileCloud.ts)
   const cloud = profileCloudRoutes({
-    sql: db.sql, authed, storage, limits: cfg.cloudLimits,
+    sql: db.sql, authed, storage, limits: cfg.cloudLimits, limitFactor: (u) => support.limitFactor(u),
     limitUploads: rateLimiter(10), limitDownloads: rateLimiter(30),
     fail: (status, code) => {
       throw new HttpError(status, code);
@@ -550,6 +556,19 @@ export function createApp(cfg: Config) {
     },
   });
 
+  // supporting the project: tiers, checkouts at Stripe and PayPal, their webhooks (payments/support.ts)
+  const support = supportRoutes({
+    sql: db.sql, box: storage.box, keyError: storage.keyError, publicUrl: cfg.publicUrl,
+    user: (id) => db.user(id), userByHandle: (h) => db.userByHandle(h),
+    authed, admin, body, clientIp, limitCheckout: rateLimiter(cfg.payments?.checkoutsPerMinute ?? 6), limitWebhooks: rateLimiter(600),
+    audit: (who, action, target, detail) => db.log(who, action, target, detail),
+    changed: (userId) => cosmeticsChanged(userId),
+    fetchImpl: cfg.fetchImpl, apiBase: { stripe: cfg.payments?.stripeApi, paypal: cfg.payments?.paypalApi }, now: cfg.payments?.now,
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
   // public player profiles, /u/<handle>, with what the owner lets others see (profiles.ts)
   const profiles = profileRoutes({
     db, webDir: cfg.webDir, publicUrl: cfg.publicUrl, authed, admin, isAdmin, body, clientIp, limitViews: rateLimiter(cfg.profileViewsPerMinute ?? 120),
@@ -558,6 +577,7 @@ export function createApp(cfg: Config) {
     sparks: (uuid) => wallet.balance(uuid),
     worn: (user) => wornBy(user, undefined),
     badge: badgeOf,
+    supporter: (uuid) => support.profileDecor(uuid),
     status: (uuid) => presenceOf(uuid).status,
     skinOf, headOf,
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
@@ -590,7 +610,8 @@ export function createApp(cfg: Config) {
       const frames = framesFor(req.headers);
       const items = ITEMS.filter((i) => (capeSetting(settings, i.id).enabled || badge === 'admin') && known(i)).map((i) => ({
         id: i.id, slot: i.slot, name: i.name, rank: i.rank, frames: frames(i),
-        exclusive: capeSetting(settings, i.id).exclusive, available: mayWear(settings, granted, i.id, i.slot, badge),
+        exclusive: capeSetting(settings, i.id).exclusive, available: mayWear(settings, granted, i.id, i.slot, badge, me ? support.cosmeticsLevel(me) : 0),
+        ...(i.supporter ? { supporter: i.supporter } : {}),
         // given by an achievement (as the admin set them now): which one, and how to get it
         ...achievements.rewardHint(i.id),
         // sold in the shop for sparks (items only the shop has come only to launchers that know it: `since`)
@@ -716,6 +737,7 @@ export function createApp(cfg: Config) {
         broadcastPresence(me);
       }
       const badge = badgeOf(db.user(me)!);
+      const level = support.cosmeticsLevel(me);
       // one Minecraft account's own set: { character, cape?, loadout? }; { character, own: false } goes back to the account's
       if (character !== undefined) {
         const subject = typeof character === 'string' ? character.toLowerCase().replace(/-/g, '') : '';
@@ -734,7 +756,7 @@ export function createApp(cfg: Config) {
         for (const [slot, id] of changes) {
           if (!SLOTS.includes(slot as Slot) || typeof id !== 'string') throw new HttpError(400, 'bad_item');
           if (id === '') delete next[slot];
-          else if (mayWear(settings, granted, id, slot as Slot, badge)) next[slot] = id;
+          else if (mayWear(settings, granted, id, slot as Slot, badge, level)) next[slot] = id;
           else throw new HttpError(400, slot === 'cape' ? 'bad_cape' : 'bad_item');
         }
         db.setCharacterLoadout(me, subject, next);
@@ -742,7 +764,7 @@ export function createApp(cfg: Config) {
         return meWithProviders(me);
       }
       if (cape !== undefined) {
-        if (cape !== '' && !mayWear(db.cosmeticSettings(), db.grants(me), cape as string, 'cape', badge)) throw new HttpError(400, 'bad_cape');
+        if (cape !== '' && !mayWear(db.cosmeticSettings(), db.grants(me), cape as string, 'cape', badge, level)) throw new HttpError(400, 'bad_cape');
         db.setCape(me, cape as string);
         cosmeticsChanged(me);
       }
@@ -755,7 +777,7 @@ export function createApp(cfg: Config) {
         for (const [slot, id] of Object.entries(loadout as Record<string, unknown>)) {
           if (slot === 'cape' || !SLOTS.includes(slot as Slot) || typeof id !== 'string') throw new HttpError(400, 'bad_item');
           if (id === '') delete next[slot];
-          else if (mayWear(settings, granted, id, slot as Slot, badge)) next[slot] = id;
+          else if (mayWear(settings, granted, id, slot as Slot, badge, level)) next[slot] = id;
           else throw new HttpError(400, 'bad_item');
         }
         db.setLoadout(me, next);
@@ -841,12 +863,15 @@ export function createApp(cfg: Config) {
       const clanTags: Record<string, string> = {};
       // and its logo, when it has one (clan id and version, for /v1/clans/<id>/logo.png?v=)
       const clanLogos: Record<string, { id: string; v: number }> = {};
+      // a supporter's logo in their tier's colour; HUDs before 0.9.23 show the white one
+      const supporterColors: Record<string, string> = {};
       for (const u of active) {
         const link = linked.get(u.toLowerCase());
         const owner = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user) : undefined;
         if (!owner || owner.banned) continue;
         const badge = badgeOf(owner);
         if (badge) ranks[u] = badge === 'friend_pink' && !pink ? 'friend' : badge;
+        if (badge === 'supporter') supporterColors[u] = support.rank(owner.id)?.color ?? '';
         // only what the player may still wear: the admin may have switched it off, or the rank may be gone
         const worn = wornBy(owner, link?.character);
         if (worn.cape) capes[u] = worn.cape;
@@ -856,7 +881,7 @@ export function createApp(cfg: Config) {
         const logo = tag ? clans.logoOf(owner.id) : undefined;
         if (logo) clanLogos[u] = logo;
       }
-      return { active, capes, ranks, cosmetics, ...(Object.keys(clanTags).length ? { clans: clanTags } : {}), ...(Object.keys(clanLogos).length ? { clanLogos } : {}) };
+      return { active, capes, ranks, cosmetics, ...(Object.keys(clanTags).length ? { clans: clanTags } : {}), ...(Object.keys(clanLogos).length ? { clanLogos } : {}), ...(Object.keys(supporterColors).length ? { supporterColors } : {}) };
     }],
     // the launcher says which Minecraft player its SlashClient account plays as, while the game runs
     ['POST', /^\/v1\/mc\/link$/, async (req) => {
@@ -1062,6 +1087,7 @@ export function createApp(cfg: Config) {
       },
     }),
     ...profiles.routes,
+    ...support.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged,
       fail: (status, code) => {
@@ -1216,6 +1242,15 @@ export function createApp(cfg: Config) {
       if (await profiles.serve(req, res, url)) return;
     } catch (err) {
       console.error('profil gracza:', (err as Error).message);
+      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
+      return;
+    }
+
+    // the payment providers' webhooks (raw bodies, for their signatures) and PayPal's way back
+    try {
+      if (await support.serve(req, res, url)) return;
+    } catch (err) {
+      console.error('wsparcie:', (err as Error).message);
       if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
       return;
     }
@@ -1497,6 +1532,8 @@ export function createApp(cfg: Config) {
     chatImages: images,
     /** For tests: the profiles' settings. */
     profiles,
+    /** For tests: the supporters' tiers and payments. */
+    support,
     close: () => new Promise<void>((resolve) => {
       clearInterval(heartbeat);
       clearInterval(playTick);

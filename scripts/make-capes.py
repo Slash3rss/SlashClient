@@ -390,13 +390,46 @@ def design(cape):
         d.arc([cx - r - 7, cy - 3, cx + r + 7, cy + 4], 0, 180, fill=(251, 191, 36, 255), width=2)
         d.ellipse([W * 0.2 - 2, H * 0.75 - 2, W * 0.2 + 2, H * 0.75 + 2], fill=(226, 232, 240, 255))
         return border(img, '#38bdf8')
+    # ---- for supporters of the project (payments/support.ts tiers) ----
+    if cape == 'supporter_heart':
+        # "Serce SlashClient": a big pixel heart with a shine, on deep rose with soft sparkles
+        img = gradient('#4c0519', '#1f0710')
+        d = ImageDraw.Draw(img)
+        for _ in range(16):
+            d.point((rnd.randrange(W), rnd.randrange(H)), fill=(251, 113, 133, rnd.choice([90, 160])))
+        heart = ['.XX...XX.', 'XXXX.XXXX', 'XXXXXXXXX', 'XXXXXXXXX', '.XXXXXXX.', '..XXXXX..', '...XXX...', '....X....']
+        cell = 3
+        x0, y0 = (W - 9 * cell) // 2, int(H * 0.3)
+        for y, row in enumerate(heart):
+            for x, ch in enumerate(row):
+                if ch == 'X':
+                    shade = (244, 114, 182, 255) if y < 4 else (219, 39, 119, 255)
+                    d.rectangle([x0 + x * cell, y0 + y * cell, x0 + (x + 1) * cell - 1, y0 + (y + 1) * cell - 1], fill=shade)
+        # the shine on the upper left lobe
+        d.rectangle([x0 + cell, y0 + cell, x0 + 2 * cell - 1, y0 + 2 * cell - 1], fill=(253, 242, 248, 255))
+        return border(img, '#f472b6')
+    if cape == 'supporter_patron':
+        # "Mecenas": the logo in gold on black under a small crown, with a gold hem
+        img = logo(gradient('#1c1917', '#0c0a09'), '#fbbf24', '#78350f')
+        d = ImageDraw.Draw(img)
+        gold, light = (251, 191, 36, 255), (254, 243, 199, 255)
+        cx, top = W / 2, H * 0.08
+        d.polygon([(cx - 8, top + 7), (cx - 8, top), (cx - 4, top + 4), (cx, top - 1), (cx + 4, top + 4), (cx + 8, top), (cx + 8, top + 7)], fill=gold)
+        d.line([(cx - 8, top + 7), (cx + 8, top + 7)], fill=light, width=1)
+        d.rectangle([0, H - 6, W, H], fill=gold)
+        d.line([(0, H - 7), (W, H - 7)], fill=light, width=1)
+        for x in range(3, W, 6):
+            d.point((x, H - 3), fill=(120, 53, 15, 255))
+        return border(img, '#fbbf24')
     raise ValueError(cape)
 
 
 CAPES = ['slash', 'ocean', 'ember', 'forest', 'galaxy', 'rose', 'gold', 'mono', 'sakura', 'night', 'rainbow', 'ice', 'toxic', 'checker',
          'lava', 'desert', 'cyber', 'honey', 'mint', 'veteran', 'streak30',
          # sold in the shop for Iskry
-         'emberstar', 'obsidian', 'coral', 'thunder', 'regal', 'cosmos']
+         'emberstar', 'obsidian', 'coral', 'thunder', 'regal', 'cosmos',
+         # for supporters
+         'supporter_heart', 'supporter_patron']
 
 
 def vanilla_wing():
@@ -868,12 +901,15 @@ def wing_design(kind):
             x, y, r = rnd.uniform(0, W), rnd.uniform(0, H), rnd.uniform(1.5, 3.5)
             d.ellipse([x - r, y - r, x + r, y + r], fill=(190, 242, 100, 255))
         return border(img, '#a3e635')
+    if kind == 'supporter_wings':
+        # "Skrzydła mecenasa": violet feathers edged in light lilac, for supporters
+        return border(feathers_over(gradient('#a78bfa', '#4c1d95'), '#ede9fe'), '#c4b5fd')
     raise ValueError(kind)
 
 
 WINGS = ['angel', 'demon', 'butterfly', 'dragon', 'phoenix', 'crystal', 'batwing', 'frost', 'prism', 'shadow', 'fairy', 'bone', 'gilded',
          'emberwings', 'sapphire', 'obsidianwings']
-ELYTRAS = ['feather', 'neon', 'void', 'sunset', 'nebula', 'venom', 'tide', 'magma', 'circuit', 'autumn', 'aurum', 'glacier', 'acid']
+ELYTRAS = ['feather', 'neon', 'void', 'sunset', 'nebula', 'venom', 'tide', 'magma', 'circuit', 'autumn', 'aurum', 'glacier', 'acid', 'supporter_wings']
 ANIMATED = ['aurora', 'inferno', 'waves', 'pulse', 'matrix', 'storm', 'vortex', 'starfall']
 
 os.makedirs(OUT, exist_ok=True)

@@ -21,6 +21,7 @@ import { createConfigEditor } from './configEditor';
 import { createDiskCleanup } from './diskCleanup';
 import { createKeyConflicts } from './keyConflicts';
 import { createToolSettings } from './toolSettings';
+import { createSupportCard } from './support';
 import { createWiki } from './wiki';
 
 declare global {
@@ -750,6 +751,9 @@ const keyConflicts = createKeyConflicts($('#keys-card'), { api, toast, errorText
 createToolSettings($('#tools-card'), { api, toast, errorText });
 const wiki = createWiki($('#wiki-root'), { api, toast, errorText });
 document.querySelector('.nav[data-view="wiki"]')?.addEventListener('click', () => wiki.focus());
+// "Wesprzyj projekt": opens the website's support page; the tier shown is asked again on each visit to Settings
+const supportCard = createSupportCard($('#support-card'), { api, socialUrl: () => store?.settings.socialUrl ?? '' });
+document.querySelector('.nav[data-view="settings"]')?.addEventListener('click', () => void supportCard.refresh());
 
 function showPane(pane: ProfilePane) {
   profilePane = pane;
@@ -3273,7 +3277,7 @@ async function renderSlashCapes() {
   $('#cosmetic-shared').classList.toggle('hidden', !character?.loadout);
   const signedIn = !!me;
   // what the server offers now: switched-off items are left out, exclusive and rank ones say if they are ours
-  type CatalogItem = { id: string; slot: Slot; name: string; rank?: string; exclusive: boolean; available: boolean; frames?: number; price?: number; owned?: boolean; hint?: string; hintEn?: string };
+  type CatalogItem = { id: string; slot: Slot; name: string; rank?: string; exclusive: boolean; available: boolean; frames?: number; price?: number; owned?: boolean; hint?: string; hintEn?: string; supporter?: number };
   let walletBalance: number | undefined;
   const catalog: CatalogItem[] = (await api.socialApi('GET', '/v1/cosmetics').then((r: { capes: CatalogItem[]; items?: CatalogItem[]; wallet?: { balance: number } }) => {
     walletBalance = r.wallet?.balance;
@@ -3336,6 +3340,7 @@ async function renderSlashCapes() {
     const forSale = locked && !!item?.price && !item.owned;
     const why = forSale ? t('{0}: w sklepie za {1}', title, sparks(item!.price!))
       : item?.rank ? t('{0}: tylko dla rangi {1}', title, RANK_NAMES[item.rank] ?? item.rank)
+      : item?.supporter ? t('{0}: dla wspierających projekt (Ustawienia → Wesprzyj projekt)', title)
       : item?.hint ? `${title}: ${getLang() === 'en' ? item.hintEn ?? item.hint : item.hint}`
       : t('{0}: ekskluzywna, przyznaje ją admin', title);
     const b = el('button', { type: 'button', className: `cape-choice${cosmeticSlot === 'cape' ? '' : ' square'}${id === current ? ' selected active' : ''}${id ? '' : ' none'}${forSale ? ' for-sale' : ''}`, title: locked ? why : title }, content);
