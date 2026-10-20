@@ -230,6 +230,7 @@
 	"slashclient-hud.friends.offline": "Offline",
 	"slashclient-hud.friends.onServer": "On a server",
 	"slashclient-hud.friends.onServerName": "On %s",
+	"slashclient-hud.friends.onServerDetail": "Playing on %s · %s",
 	"slashclient-hud.friends.singleplayer": "In singleplayer",
 	"slashclient-hud.friends.menu": "In the game menu",
 	"slashclient-hud.friends.launcher": "In the launcher",

@@ -10,6 +10,7 @@ import { legalPage } from './adminLegal.js';
 import { rankChips, ranksPage, ranksReady, userRanksSection } from './adminRanks.js';
 import { settingsPage, supporterEditor } from './adminSettings.js';
 import { streamsPage } from './adminStreams.js';
+import { statusRulesSection } from './adminStatusRules.js';
 
 const TABS = [
   ['dashboard', 'Pulpit', 'fa-solid fa-chart-line'],
@@ -54,6 +55,7 @@ const ACTIONS = {
   support_grant: 'przyznał(a) wsparcie', support_extend: 'przedłużył(a) wsparcie', support_revoke: 'odebrał(a) wsparcie',
   streams_provider: 'zmienił(a) aplikację streamów', streams_test: 'sprawdził(a) połączenie z', streams_reconcile: 'sprawdził(a) teraz kanały:',
   streams_unlink: 'odłączył(a) kanał streamu gracza',
+  partner_status_add: 'dodał(a) regułę statusów z listy graczy dla', partner_status_edit: 'zmienił(a) regułę statusów z listy graczy dla', partner_status_remove: 'usunął(ęła) regułę statusów z listy graczy dla', partner_status_defaults: 'zmienił(a) domyślny wygląd',
   setting: 'zmienił(a) ustawienie', setting_reset: 'przywrócił(a) domyślne ustawienie', cosmetic_supporter: 'zmienił(a) poziom wsparcia dla',
 };
 
@@ -409,7 +411,8 @@ async function partnersPage() {
   $('#main').replaceChildren(head('Serwery partnerskie'),
     el('p', { class: 'muted', textContent: 'Tło pojawia się za tym serwerem na liście serwerów w grze, u graczy z modem SlashClient. Najlepiej obrazek 1200×120 albo podobnie szeroki (PNG lub JPG, do 3 MB).' }),
     add,
-    el('div', { class: 'partner-list' }, ...(cards.length ? cards : [el('p', { class: 'muted', textContent: 'Nie ma jeszcze serwerów partnerskich.' })])));
+    el('div', { class: 'partner-list' }, ...(cards.length ? cards : [el('p', { class: 'muted', textContent: 'Nie ma jeszcze serwerów partnerskich.' })])),
+    statusRulesSection());
 }
 
 // ---------- requests from launchers, games and pages ----------

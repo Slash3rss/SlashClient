@@ -18,6 +18,9 @@ export interface Presence {
   startTimestamp?: number;
   largeImageKey?: string;
   largeImageText?: string;
+  /** A second, small picture in the corner (a server's rule, serverStatus.ts). */
+  smallImageKey?: string;
+  smallImageText?: string;
 }
 
 function socketPaths(): string[] {
@@ -116,7 +119,10 @@ export class DiscordPresence {
       details: p.details,
       state: p.state,
       timestamps: p.startTimestamp ? { start: Math.floor(p.startTimestamp / 1000) } : undefined,
-      assets: p.largeImageKey ? { large_image: p.largeImageKey, large_text: p.largeImageText } : undefined,
+      assets: p.largeImageKey || p.smallImageKey ? {
+        ...(p.largeImageKey ? { large_image: p.largeImageKey, large_text: p.largeImageText } : {}),
+        ...(p.smallImageKey ? { small_image: p.smallImageKey, small_text: p.smallImageText } : {}),
+      } : undefined,
       instance: false,
     };
     this.socket.write(encode(OP_FRAME, { cmd: 'SET_ACTIVITY', args: { pid: process.pid, activity }, nonce: randomUUID() }));

@@ -27,3 +27,19 @@
   .set-row, .set-row.wide { grid-template-columns: 1fr; gap: 8px; }
   .set-input { justify-content: flex-start; }
 }
+
+/* the Partnerzy tab's status rules (adminStatusRules.js) */
+.status-rules { margin-top: 28px; display: flex; flex-direction: column; gap: 14px; }
+.sr-list { display: flex; flex-direction: column; gap: 14px; }
+.sr-card { display: flex; flex-direction: column; gap: 12px; }
+.sr-card.off { opacity: .7; }
+.sr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.sr-grid input, .sr-card textarea { width: 100%; box-sizing: border-box; }
+.sr-extractors { display: flex; flex-direction: column; gap: 6px; }
+.sr-extractor select { width: auto; }
+.sr-extractor .sr-line { width: 64px; }
+.sr-pattern { font-family: ui-monospace, Consolas, monospace; min-width: 0; }
+.sr-add { align-self: flex-start; }
+.sr-preview { display: flex; flex-direction: column; gap: 8px; }
+.sr-preview[open] > * + * { margin-top: 8px; }
+.sr-result b { color: var(--green); }

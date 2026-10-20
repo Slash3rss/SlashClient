@@ -269,6 +269,7 @@ public final class Social {
 		// live on Twitch or Kick (servers 0.9.24+): the LIVE badge
 		FriendStreams.fromFriend(str(o, "id"), o);
 		JsonObject a = p.has("activity") && p.get("activity").isJsonObject() ? p.getAsJsonObject("activity") : null;
+		detailFrom(str(o, "id"), a);
 		return new Friend(str(o, "id"), str(o, "name"), str(o, "handle"), p.has("status") ? str(p, "status") : "offline",
 			a != null ? str(a, "kind") : "", a != null ? str(a, "server") : "",
 			o.has("unread") ? o.get("unread").getAsInt() : 0, o.has("lastMessageAt") ? o.get("lastMessageAt").getAsLong() : 0,
@@ -355,6 +356,7 @@ public final class Social {
 				lanFrom(id, p);
 				JsonObject a = p.has("activity") && p.get("activity").isJsonObject() ? p.getAsJsonObject("activity") : null;
 				String status = str(p, "status"), kind = a != null ? str(a, "kind") : "", server = a != null ? str(a, "server") : "";
+				detailFrom(id, "offline".equals(status) ? null : a);
 				List<Friend> list = new ArrayList<>();
 				for (Friend f : friends) list.add(f.id().equals(id) ? f.with(status, kind, server, f.unread(), f.lastMessageAt()) : f);
 				sort(list);
@@ -917,10 +919,37 @@ public final class Social {
 		}
 	}
 
+	// ---------- statuses from servers' tab lists (TabStatus) ----------
+
+	/** Friend id → {server's name or address, status} ("SkyUp.pl", "S3 (Wyspy)"), from servers 0.9.25+. */
+	private static final Map<String, String[]> details = new ConcurrentHashMap<>();
+
+	private static void detailFrom(String id, JsonObject activity) {
+		String detail = activity == null ? "" : str(activity, "detail"), server = activity == null ? "" : str(activity, "server");
+		if (detail.isEmpty() || server.isEmpty() || !"server".equals(str(activity, "kind"))) details.remove(id);
+		else {
+			String name = str(activity, "serverName");
+			details.put(id, new String[] {name.isEmpty() ? server : name, detail});
+		}
+	}
+
+	/** The tab list's status on this server, to the launcher (for friends and Discord); blocks. */
+	public static void sendStatus(JsonObject body) throws Exception {
+		if (!bridged()) return;
+		request("POST", "/status", body, 5);
+	}
+
+	/** For the in-game test: a friend on a server with a status from its tab list. */
+	public static void detailForTest(String friendId, String serverName, String detail) {
+		details.put(friendId, new String[] {serverName, detail});
+	}
+
 	/** The friend's activity in a few words: "on mc.example.com", "in singleplayer"… */
 	public static Component activity(Friend f) {
 		if ("offline".equals(f.status())) return Component.translatable("slashclient-hud.friends.offline");
 		if (lanOpen(f.id())) return Component.translatable("slashclient-hud.lan.friend");
+		String[] detail = "server".equals(f.activity()) ? details.get(f.id()) : null;
+		if (detail != null) return Component.translatable("slashclient-hud.friends.onServerDetail", detail[0], detail[1]);
 		return switch (f.activity()) {
 			case "server" -> f.server().isEmpty() ? Component.translatable("slashclient-hud.friends.onServer") : Component.translatable("slashclient-hud.friends.onServerName", f.server());
 			case "singleplayer" -> Component.translatable("slashclient-hud.friends.singleplayer");

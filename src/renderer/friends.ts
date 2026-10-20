@@ -18,7 +18,8 @@ import { canDelete, canEdit, editHint, editedLabel, replaceMessage, slowDownSeco
  */
 
 type Status = 'online' | 'away' | 'busy' | 'invisible';
-interface Activity { kind: 'launcher' | 'menu' | 'singleplayer' | 'server'; version?: string; server?: string; since?: number }
+/** `detail`: what the server's tab list says ("S3 (Wyspy)"), `serverName` its name from the admin's rule (server 0.9.25+). */
+interface Activity { kind: 'launcher' | 'menu' | 'singleplayer' | 'server'; version?: string; server?: string; detail?: string; serverName?: string; since?: number }
 interface Presence { status: 'online' | 'away' | 'busy' | 'offline'; activity?: Activity; lastSeen?: number; /** their world is open to LAN: joinable through SlashClient */ lan?: boolean }
 interface Person { id: string; handle: string; name: string; avatar: string }
 /** `clan`: their clan's tag; `muted`: on the account, their messages come, but no toast or notification (server 0.9.21+). */
@@ -269,6 +270,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     if (p.status === 'offline') return p.lastSeen ? t('Offline · {0}', ago(p.lastSeen)) : t('Offline');
     const a = p.activity;
     const version = a?.version ? `Minecraft ${a.version}` : 'Minecraft';
+    // "Gra na SkyUp.pl · S3 (Wyspy)": the sector says more than the game's version
+    if (a?.kind === 'server' && a.server && a.detail) return t('Gra na {0} · {1}', a.serverName || a.server, a.detail);
     if (a?.kind === 'server') return a.server ? t('{0} · na {1}', version, a.server) : t('{0} · na serwerze', version);
     if (a?.kind === 'singleplayer') return p.lan ? t('{0} · świat otwarty w LAN', version) : t('{0} · gra jednoosobowa', version);
     if (a?.kind === 'menu') return t('{0} · w menu', version);

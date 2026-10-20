@@ -192,6 +192,8 @@ public class SlashHud implements ClientModInitializer {
 			SkyTasks.tick(mc);
 			//#endif
 			if (mc.level != null && mc.level.getGameTime() % 20 == 0) dev.slash3rss.slashclient.hud.social.Social.watchLan(mc);
+			// what the server's tab list says ("S3 (Wyspy)"), for friends and Discord
+			TabStatus.tick(mc);
 			DamageNumbers.tick(mc);
 			Extras.tick(mc);
 			Assist.tick(mc);

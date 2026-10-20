@@ -10,6 +10,7 @@ import { SprayLimit, cleanSpray } from './sprays.ts';
 import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, framesFor, knownTo, mayWear, priceOf, supporterLevel, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
 import { partnerRoutes } from './partners.ts';
+import { createStatusRules } from './statusRules.ts';
 import { trackerRoutes } from './tracker.ts';
 import { sharingRoutes } from './sharing.ts';
 import { RequestLog, clientOf, maskIp, routeOf } from './requests.ts';
@@ -336,7 +337,7 @@ export function createApp(cfg: Config) {
 
   function presenceOf(userId: string) {
     const user = db.user(userId);
-    const presence = publicPresence(sockets.get(userId)?.size ? presences.get(userId) : undefined, user?.showServer ?? false, db.lastSeen(userId));
+    const presence = publicPresence(sockets.get(userId)?.size ? presences.get(userId) : undefined, user?.showServer ?? false, db.lastSeen(userId), statusRules.nameFor);
     // a world opened to LAN: friends can join it through the relay below
     return lanHosts.has(userId) && presence.status !== 'offline' ? { ...presence, lan: true } : presence;
   }
@@ -530,6 +531,14 @@ export function createApp(cfg: Config) {
   type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
   const partners = partnerRoutes({
     db, authed, admin, body, dir: path.join(path.dirname(cfg.dbFile), 'partners'),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  // what a server's tab list says ("S3 (Wyspy)"), read by the game per the admin's rules, shown to friends with the server
+  const statusRules = createStatusRules({
+    sql: db.sql, admin, body, audit: (who, action, target, detail) => db.log(who, action, target, detail),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -1204,6 +1213,8 @@ export function createApp(cfg: Config) {
       return { ok: true };
     }],
     ...partners.routes,
+    // statuses from the tab list (statusRules.ts): the rules in the admin panel
+    ...statusRules.routes,
     ...achievements.routes,
     ...economyRoutes({
       db, wallet, authed, admin, body, push,
@@ -1450,6 +1461,8 @@ export function createApp(cfg: Config) {
 
     // the legal documents' pages, from the database
     if (legal.serve(req, res, url)) return;
+    // the tab list's status rules for games and launchers, with an ETag (statusRules.ts)
+    if (statusRules.serve(req, res, url)) return;
 
     // Twitch and Kick: the browser back from linking a channel, and the platforms' webhooks (raw bodies, for their signatures)
     try {
