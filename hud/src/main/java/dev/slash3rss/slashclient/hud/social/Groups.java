@@ -26,8 +26,8 @@ public final class Groups {
 	public static final int SIZE = 16;
 
 	public record Member(String id, String name) {}
-	/** `clanTag`: the clan's chat (its members follow the clan), else empty. */
-	public record Group(String id, String name, String owner, String clanTag, List<Member> members, int unread, long lastMessageAt) {
+	/** `clanTag`: the clan's chat (its members follow the clan), else empty; `clanLogo`: its logo's version (0: none). */
+	public record Group(String id, String name, String owner, String clanTag, String clanId, long clanLogo, List<Member> members, int unread, long lastMessageAt) {
 		public boolean clan() {
 			return !clanTag.isEmpty();
 		}
@@ -41,7 +41,8 @@ public final class Groups {
 	/** `image`: a picture sent to the group (null for text and events). */
 	public record Message(long id, String group, String from, String text, long at, String event, Social.Image image) {}
 	public record ClanMember(String id, String name, String role, boolean online) {}
-	public record Clan(String id, String tag, String name, String role, String chat, List<ClanMember> members) {
+	/** `logo`: the logo's version (0: none). */
+	public record Clan(String id, String tag, String name, String role, String chat, long logo, List<ClanMember> members) {
 		public long online() {
 			return members.stream().filter(ClanMember::online).count();
 		}
@@ -71,6 +72,13 @@ public final class Groups {
 		return chats.getOrDefault(groupId, List.of());
 	}
 
+	/** A clan chat's logo, when it has one and it is here (the clan's own view knows a new one first); else null. */
+	public static ChatImages.Texture logo(Group g) {
+		if (!g.clan()) return null;
+		Clan c = clan;
+		return c != null && c.chat().equals(g.id()) ? ClanLogos.of(c.id(), c.logo()) : ClanLogos.of(g.clanId(), g.clanLogo());
+	}
+
 	public static int unreadTotal() {
 		return groups.stream().mapToInt(Group::unread).sum();
 	}
@@ -83,7 +91,8 @@ public final class Groups {
 			for (JsonElement el : o.getAsJsonArray("members")) members.add(new Member(Social.str(el.getAsJsonObject(), "id"), Social.str(el.getAsJsonObject(), "name")));
 		}
 		JsonObject c = o.has("clan") && o.get("clan").isJsonObject() ? o.getAsJsonObject("clan") : null;
-		return new Group(Social.str(o, "id"), Social.str(o, "name"), Social.str(o, "owner"), c == null ? "" : Social.str(c, "tag"), List.copyOf(members),
+		long logo = c != null && c.has("logo") && c.get("logo").isJsonPrimitive() ? c.get("logo").getAsLong() : 0;
+		return new Group(Social.str(o, "id"), Social.str(o, "name"), Social.str(o, "owner"), c == null ? "" : Social.str(c, "tag"), c == null ? "" : Social.str(c, "id"), logo, List.copyOf(members),
 			o.has("unread") ? o.get("unread").getAsInt() : 0, o.has("lastMessageAt") ? o.get("lastMessageAt").getAsLong() : 0);
 	}
 
@@ -99,6 +108,7 @@ public final class Groups {
 		String kind = Social.str(e, "kind");
 		String key = switch (kind) {
 			case "created", "added", "removed", "left", "joined", "renamed", "promoted", "demoted", "owner", "heir" -> "slashclient-hud.groups.event." + kind;
+			case "logo" -> e.has("removed") && e.get("removed").getAsBoolean() ? "slashclient-hud.groups.event.logoRemoved" : "slashclient-hud.groups.event.logo";
 			default -> "slashclient-hud.groups.event.other";
 		};
 		String detail = "renamed".equals(kind) || "created".equals(kind) ? Social.str(e, "name") : String.join(", ", users);
@@ -113,7 +123,8 @@ public final class Groups {
 				members.add(new ClanMember(Social.str(m, "id"), Social.str(m, "name"), Social.str(m, "role"), m.has("online") && m.get("online").getAsBoolean()));
 			}
 		}
-		return new Clan(Social.str(o, "id"), Social.str(o, "tag"), Social.str(o, "name"), Social.str(o, "role"), Social.str(o, "chat"), List.copyOf(members));
+		long logo = o.has("logo") && o.get("logo").isJsonPrimitive() ? o.get("logo").getAsLong() : 0;
+		return new Clan(Social.str(o, "id"), Social.str(o, "tag"), Social.str(o, "name"), Social.str(o, "role"), Social.str(o, "chat"), logo, List.copyOf(members));
 	}
 
 	/** The groups and the clan from the server (when the bridge connects and when something changed). */
@@ -199,7 +210,7 @@ public final class Groups {
 	private static void bump(String id, int unread, long at) {
 		List<Group> list = new ArrayList<>();
 		for (Group g : groups) {
-			list.add(g.id().equals(id) ? new Group(g.id(), g.name(), g.owner(), g.clanTag(), g.members(), unread == 0 && at == 0 ? 0 : g.unread() + unread, Math.max(g.lastMessageAt(), at)) : g);
+			list.add(g.id().equals(id) ? new Group(g.id(), g.name(), g.owner(), g.clanTag(), g.clanId(), g.clanLogo(), g.members(), unread == 0 && at == 0 ? 0 : g.unread() + unread, Math.max(g.lastMessageAt(), at)) : g);
 		}
 		sort(list);
 		groups = List.copyOf(list);
@@ -317,14 +328,29 @@ public final class Groups {
 		});
 	}
 
+	/** For the screenshot test: the made-up clan gets a logo of this version (its texture is registered apart). */
+	public static void sampleLogoForTest(long version) {
+		Clan c = clan;
+		if (c != null) clan = new Clan(c.id(), c.tag(), c.name(), c.role(), c.chat(), version, c.members());
+		groups = groups.stream().map(g -> g.clan() ? new Group(g.id(), g.name(), g.owner(), g.clanTag(), g.clanId(), version, g.members(), g.unread(), g.lastMessageAt()) : g).toList();
+		// and the clan's chat says who changed it
+		if (version > 0 && c != null) {
+			JsonObject logo = new JsonObject();
+			logo.addProperty("kind", "logo");
+			logo.addProperty("by", "Ty");
+			List<Message> list = chats.computeIfAbsent(c.chat(), k -> new CopyOnWriteArrayList<>());
+			list.add(new Message(list.size() + 100, c.chat(), "", "", System.currentTimeMillis(), eventText(logo), null));
+		}
+	}
+
 	/** Made-up groups and a clan for the screenshot test. */
 	public static void sampleForTest(String me) {
 		long now = System.currentTimeMillis();
 		List<Member> clanMembers = List.of(new Member(me, "Ty"), new Member("kasia", "Kasia"), new Member("bartek", "Bartek"), new Member("ola", "Ola"));
-		Group clanChat = new Group("clanchat", "[WOLF] Wilki Północy", me, "WOLF", clanMembers, 2, now - 60_000);
-		Group ekipa = new Group("ekipa", "Ekipa na SkyUp", me, "", List.of(new Member(me, "Ty"), new Member("kumpel", "Kumpel"), new Member("ola", "Ola"), new Member("piotrek", "Piotrek")), 0, now - 30_000);
+		Group clanChat = new Group("clanchat", "[WOLF] Wilki Północy", me, "WOLF", "wolf", 0, clanMembers, 2, now - 60_000);
+		Group ekipa = new Group("ekipa", "Ekipa na SkyUp", me, "", "", 0, List.of(new Member(me, "Ty"), new Member("kumpel", "Kumpel"), new Member("ola", "Ola"), new Member("piotrek", "Piotrek")), 0, now - 30_000);
 		groups = List.of(clanChat, ekipa);
-		clan = new Clan("wolf", "WOLF", "Wilki Północy", "owner", "clanchat", List.of(
+		clan = new Clan("wolf", "WOLF", "Wilki Północy", "owner", "clanchat", 0, List.of(
 			new ClanMember(me, "Ty", "owner", true), new ClanMember("bartek", "Bartek", "officer", true),
 			new ClanMember("kasia", "Kasia", "member", true), new ClanMember("ola", "Ola", "member", false)));
 		JsonObject created = new JsonObject();

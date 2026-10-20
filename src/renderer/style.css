@@ -1272,6 +1272,11 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .fr-group-avatar { background: linear-gradient(135deg, #4c1d95, #7c3aed); font-size: 15px; }
 .fr-group-avatar.clan { background: linear-gradient(135deg, #92400e, #f59e0b); }
 .fr-clan-mark { font-size: 10px; font-weight: 800; letter-spacing: .02em; max-width: 34px; overflow: hidden; }
+.fr-group-avatar.clan.has-logo { background: rgba(255,255,255,.06); }
+.fr-avatar img.fr-clan-logo { object-fit: contain; image-rendering: auto; }
+.fr-clan-logo-preview { width: 64px; height: 64px; border-radius: 12px; }
+.fr-clan-logo-preview .fr-clan-mark { font-size: 14px; max-width: 60px; }
+.fr-clan-logo-row { align-items: center; gap: 10px; }
 .fr-clan-tag { color: #fbbf24; font-weight: 800; }
 .fr-event { align-self: center; margin: 6px 0; padding: 3px 10px; border-radius: 99px; font-size: 12px; color: var(--text-muted); background: rgba(255, 255, 255, .04); text-align: center; }
 .fr-group-modal { width: min(520px, 100%); }
@@ -1343,3 +1348,18 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .ledger-after { font: 11px var(--font-mono); min-width: 52px; text-align: right; }
 .cosmetic-shop { margin-left: auto; }
 .cosmetic-shop b { color: var(--text, #fff); }
+/* public profile: the row in Friends and the privacy window (profilePrivacy.ts) */
+.fr-profile-row { gap: 6px; flex-wrap: wrap; }
+.fr-chip-btn { height: auto; padding: 4px 10px; font-size: 12px; border-radius: 99px; gap: 5px; }
+.pp-box { width: min(520px, 100%); }
+.pp-body { padding: 22px 24px; display: flex; flex-direction: column; gap: 10px; }
+.pp-body h2 { margin: 0; font-size: 20px; display: flex; gap: 8px; align-items: center; }
+.pp-body h3 { margin: 8px 0 0; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); }
+.pp-body p { margin: 0; }
+.pp-links { gap: 8px; flex-wrap: wrap; }
+.pp-visibility { display: flex; flex-direction: column; gap: 6px; }
+.pp-visibility button { justify-content: flex-start; height: auto; padding: 8px 12px; gap: 12px; text-align: left; }
+.pp-visibility button span { display: flex; flex-direction: column; line-height: 1.3; }
+.pp-visibility button.selected { border-color: var(--accent); background: rgba(59, 130, 246, .14); }
+.pp-elements { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
+.pp-hidden { padding: 8px 12px; border-radius: 10px; background: rgba(239, 68, 68, .12); color: #fca5a5; }

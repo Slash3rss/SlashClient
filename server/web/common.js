@@ -154,7 +154,7 @@ export async function guard(fn) {
 /** A cape's front, cut from its texture. */
 export function capeEl(id, small = false) {
   const c = el('div', { class: `cape${small ? ' sm' : ''}`, title: id });
-  c.style.backgroundImage = `url(vendor/capes/${id}.png)`;
+  c.style.backgroundImage = `url(/vendor/capes/${id}.png)`;
   return c;
 }
 
@@ -214,51 +214,51 @@ export function cosmeticEl(id, slot = 'cape', small = false) {
   // back items and tails too (vendor/gear/icon), seen from behind
   if (slot === 'hat' || slot === 'top' || slot === 'shoes' || slot === 'hands' || slot === 'face' || slot === 'ears' || slot === 'back' || slot === 'tail' || OUR_PETS.includes(id)) {
     const c = el('div', { class: `cape clothing${small ? ' sm' : ''}`, title: id });
-    c.style.backgroundImage = `url(vendor/${slot === 'pet' ? 'pets' : slot === 'back' || slot === 'tail' ? 'gear' : 'clothing'}/icon/${id}.png)`;
+    c.style.backgroundImage = `url(/vendor/${slot === 'pet' ? 'pets' : slot === 'back' || slot === 'tail' ? 'gear' : 'clothing'}/icon/${id}.png)`;
     return c;
   }
   // a suit: the whole of it from the front (vendor/suits/icon)
   if (slot === 'suit') {
     const c = el('div', { class: `cape clothing${small ? ' sm' : ''}`, title: id });
-    c.style.backgroundImage = `url(vendor/suits/icon/${id}.png)`;
+    c.style.backgroundImage = `url(/vendor/suits/icon/${id}.png)`;
     return c;
   }
   // a shield's face (12×22 at 1,1 of the game's 64×64 layout, ours 4×), a weapon's own picture
   if (slot === 'shield') {
     const c = el('div', { class: `cape held${small ? ' sm' : ''}`, title: id });
     const h = small ? 48 : 96, w = small ? 30 : 60, s = h / 88;
-    c.style.backgroundImage = `url(vendor/held/${id}.png)`;
+    c.style.backgroundImage = `url(/vendor/held/${id}.png)`;
     c.style.backgroundSize = `${256 * s}px ${256 * s}px`;
     c.style.backgroundPosition = `${(w - 48 * s) / 2 - 4 * s}px ${-4 * s}px`;
     return c;
   }
   if (slot === 'weapon') {
     const c = el('div', { class: `cape clothing${small ? ' sm' : ''}`, title: id });
-    c.style.backgroundImage = `url(vendor/held/${id}.png)`;
+    c.style.backgroundImage = `url(/vendor/held/${id}.png)`;
     c.style.backgroundSize = small ? '24px 24px' : '48px 48px';
     return c;
   }
   // a spray is its picture (pixel art: kept sharp)
   if (slot === 'spray') {
     const c = el('div', { class: `cape clothing spray${small ? ' sm' : ''}`, title: id });
-    c.style.backgroundImage = `url(vendor/spray/${id}.png)`;
+    c.style.backgroundImage = `url(/vendor/spray/${id}.png)`;
     return c;
   }
   // props: a view of it from its side
   if (slot === 'prop') {
     const c = el('div', { class: `cape clothing${small ? ' sm' : ''}`, title: id });
-    c.style.backgroundImage = `url(vendor/props/icon/${id}.png)`;
+    c.style.backgroundImage = `url(/vendor/props/icon/${id}.png)`;
     return c;
   }
   if (slot === 'wings' || slot === 'elytra') {
     const c = el('div', { class: `cape wing${small ? ' sm' : ''}`, title: id });
-    c.style.backgroundImage = `url(vendor/${slot}/${id}.png)`;
+    c.style.backgroundImage = `url(/vendor/${slot}/${id}.png)`;
     return c;
   }
   // a ring: the left half of its picture (the right one is see-through)
   if (slot === 'ring') {
     const c = el('div', { class: `cape ring${small ? ' sm' : ''}`, title: id });
-    c.style.backgroundImage = `url(vendor/rings/${RING_FRAMES[id] ? `${id}_0` : id}.png)`;
+    c.style.backgroundImage = `url(/vendor/rings/${RING_FRAMES[id] ? `${id}_0` : id}.png)`;
     return c;
   }
   // movement effects are the game's particles: their icon, in its colour

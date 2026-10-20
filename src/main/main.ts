@@ -19,6 +19,7 @@ import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { activityFromLog, SocialClient, SocialError, type SocialUser, type Status } from './social';
 import { decrypt, encrypt, isEncrypted, newDeviceKey, type DeviceKey, type PublicDevice } from './chatCrypto';
 import { groupAad, openGroupMessage, sealGroupText, type GroupChatMessage, type GroupKey } from './groupChat';
+import { ClanLogoCache, isLogoPng } from './clanLogo';
 import { fitSize, ImageCache, keyText, MAX_BYTES, openImage, parseKey, sealImage, type ChatImageView, type ImageKey } from './chatImages';
 import { launch, resolveVersionId } from './launch';
 import { paths } from './paths';
@@ -1571,6 +1572,7 @@ const bridge = new GameBridge({
     const size = fitSize(width, height, 960);
     return (size.w < width ? img.resize({ width: size.w, height: size.h, quality: 'good' }) : img).toPNG();
   },
+  clanLogo: (id, version) => clanLogos.get(id, version),
 });
 
 /** A PNG in the screenshots folder of one of the profiles (what the game may send or copy); its real path. */
@@ -1645,6 +1647,14 @@ handle('lan:join', (friendId: string) => {
 handle('social:api', (method: string, apiPath: string, body?: unknown) => {
   if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages|invites|cosmetics|waypoints|parties|achievements|groups|clans|wallet|shop)(\/[\w-]+)*(\?[\w=&-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
   return socialCall(() => chatCall(method, apiPath, body));
+});
+
+/** A player's public profile on the site (/u/<handle>): its address, opened in the browser when asked. */
+handle('social:profileUrl', async (profileHandle: string, open?: boolean) => {
+  if (typeof profileHandle !== 'string' || !/^[\w.]{1,40}$/.test(profileHandle)) throw new Error('social:bad_request');
+  const url = `${store.settings.socialUrl.replace(/\/$/, '')}/u/${encodeURIComponent(profileHandle)}`;
+  if (open && /^https?:\/\//.test(url)) await shell.openExternal(url);
+  return url;
 });
 
 // ---------- end-to-end encrypted chat (chatCrypto.ts) ----------
@@ -1823,6 +1833,15 @@ handle('social:image', (id: string) => socialCall(async () => {
   const data = await chatImageData(id);
   return `data:${imageKeys.get(id)?.type ?? 'image/jpeg'};base64,${data.toString('base64')}`;
 }));
+
+// ---------- a clan's logo (clanLogo.ts): the page makes the 64×64 PNG, this sends it and fetches logos ----------
+const clanLogos = new ClanLogoCache((apiPath) => social.download(apiPath));
+handle('social:setClanLogo', (png: Uint8Array) => socialCall(async () => {
+  if (!(png instanceof Uint8Array) || !isLogoPng(png)) throw new SocialError('not_png');
+  return social.upload('/v1/clans/mine/logo', png);
+}));
+/** A clan's logo for the page, as a data: address. */
+handle('social:clanLogo', (id: string, version: number) => socialCall(async () => `data:image/png;base64,${(await clanLogos.get(id, version)).toString('base64')}`));
 
 /** A call to the social server with the chat encrypted on the way out and decrypted on the way in. */
 async function chatCall(method: string, apiPath: string, body?: unknown) {

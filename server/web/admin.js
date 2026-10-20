@@ -3,6 +3,7 @@ import { $, PROVIDERS, partnerBanner, uploadPicture, SLOTS, ago, api, avatarEl, 
 import { storagePage } from './adminStorage.js';
 import { shopSection, walletSection } from './adminSparks.js';
 import { achievementsPage, foreignHash, obtainLine } from './adminAchievements.js';
+import { clansPage } from './adminClans.js';
 
 const TABS = [
   ['dashboard', 'Pulpit', 'fa-solid fa-chart-line'],
@@ -10,6 +11,7 @@ const TABS = [
   ['cosmetics', 'Kosmetyki', 'fa-solid fa-wand-magic-sparkles'],
   ['achievements', 'Osiągnięcia', 'fa-solid fa-trophy'],
   ['partners', 'Partnerzy', 'fa-solid fa-handshake'],
+  ['clans', 'Klany', 'fa-solid fa-shield-halved'],
   ['requests', 'Zapytania', 'fa-solid fa-satellite-dish'],
   ['logs', 'Logi graczy', 'fa-solid fa-file-lines'],
   ['storage', 'Miejsce na pliki', 'fa-solid fa-hard-drive'],
@@ -27,6 +29,8 @@ const ACTIONS = {
   sparks_give: 'dodał(a) Iskry', sparks_take: 'odebrał(a) Iskry', shop_price: 'zmienił(a) cenę w sklepie',
   ach_create: 'utworzył(a) osiągnięcie', ach_edit: 'zmienił(a) osiągnięcie', ach_reset: 'przywrócił(a) domyślne osiągnięcie', ach_delete: 'usunął(ęła) osiągnięcie',
   ach_grant: 'przyznał(a) osiągnięcie', ach_revoke: 'odebrał(a) osiągnięcie',
+  profile_hide: 'ukrył(a) profil', profile_show: 'przywrócił(a) profil',
+  'clan.delete': 'usunął(ęła) klan', 'clan.logo_remove': 'usunął(ęła) logo klanu',
 };
 /** Ranks: the colour of the SlashClient logo next to the name in game (admins are red without one). */
 const RANKS = { support: ['Support', 'sky'], partner: ['Partner', 'gold'], friend: ['Przyjaciel', 'green'], friend_pink: ['Przyjaciel (różowy)', 'pink'] };
@@ -87,7 +91,7 @@ function layout() {
     el('button', { class: 'icon-btn', title: 'Wyloguj', onclick: async () => { await signOut(); me = undefined; gate(); } }, icon('fa-solid fa-right-from-bracket'))));
   const main = el('main', { class: 'main', id: 'main' });
   $('#root').replaceChildren(el('div', { class: 'admin' }, side, main));
-  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, achievements: achievementsPage, partners: partnersPage, requests: requestsPage, logs: logsPage, storage: storagePage, log: logPage })[tab]?.();
+  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, achievements: achievementsPage, partners: partnersPage, clans: clansPage, requests: requestsPage, logs: logsPage, storage: storagePage, log: logPage })[tab]?.();
 }
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);
@@ -218,6 +222,8 @@ async function openUser(id) {
     el('div', { class: 'actions' },
       el('button', { disabled: self, onclick: () => update({ banned: !u.banned }, u.banned ? 'Konto odblokowane.' : 'Konto zablokowane i wylogowane.'), class: u.banned ? '' : 'danger' },
         icon(u.banned ? 'fa-solid fa-unlock' : 'fa-solid fa-ban'), u.banned ? 'Odblokuj' : 'Zablokuj'),
+      el('a', { class: 'btn', href: `/u/${encodeURIComponent(u.handle)}`, target: '_blank', rel: 'noopener' }, icon('fa-solid fa-id-card'), 'Profil publiczny'),
+      profileHideButton(u),
       el('button', { onclick: async () => { if (await guard(() => api('POST', `/v1/admin/users/${id}/logout`))) { toast('Wylogowano ze wszystkich urządzeń.'); openUser(id); } } },
         icon('fa-solid fa-right-from-bracket'), 'Wyloguj wszędzie'),
       el('button', { disabled: self || u.configAdmin, title: u.configAdmin ? 'Admin z konfiguracji serwera (ADMIN_HANDLES)' : '', onclick: () => update({ role: u.role === 'admin' ? '' : 'admin' }, u.role === 'admin' ? 'Odebrano uprawnienia admina.' : 'Nadano uprawnienia admina.') },
@@ -227,6 +233,28 @@ async function openUser(id) {
         if (await guard(() => api('DELETE', `/v1/admin/users/${id}`))) { toast('Konto usunięte.'); closeDrawer(); loadUsers(); }
       } }, icon('fa-solid fa-trash-can'), 'Usuń konto')));
   document.body.append(el('div', { class: 'shade', onclick: closeDrawer }), drawer);
+}
+
+/** Hiding a public profile (moderation): it is then "not found" for everyone but its owner and admins. */
+function profileHideButton(u) {
+  const b = el('button', { disabled: true }, icon('fa-solid fa-eye-slash'), 'Ukryj profil');
+  const path = `/v1/profiles/${encodeURIComponent(u.handle)}`;
+  api('GET', path).then(({ profile }) => {
+    const hidden = !!profile.moderation?.hidden;
+    b.disabled = false;
+    b.className = hidden ? '' : 'danger';
+    b.replaceChildren(icon(hidden ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash'), hidden ? 'Przywróć profil' : 'Ukryj profil');
+    if (hidden && profile.moderation.reason) b.title = `Ukryty: ${profile.moderation.reason}`;
+    b.onclick = async () => {
+      const reason = hidden ? '' : prompt(`Dlaczego ukryć profil @${u.handle}? (zapisze się w dzienniku)`, '');
+      if (reason === null) return;
+      if (await guard(() => api('POST', `/v1/admin/profiles/${encodeURIComponent(u.handle)}`, { hidden: !hidden, reason }))) {
+        toast(hidden ? 'Profil znowu widoczny.' : 'Profil ukryty.');
+        openUser(u.id);
+      }
+    };
+  }).catch(() => {});
+  return b;
 }
 
 // ---------- cosmetics ----------
@@ -482,7 +510,7 @@ async function logPage() {
   const rows = await Promise.all(res.entries.map(async (e) => el('tr', {},
     el('td', { textContent: fmtDate(e.at) }),
     el('td', { textContent: `@${await nameOf(e.admin)}` }),
-    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' || e.action === 'shop_price' ? capeNames[e.target] ?? e.target : /^(partner|log_|bug_|storage_|ach_(create|edit|reset|delete))/.test(e.action) ? e.target : `@${e.target}` })),
+    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' || e.action === 'shop_price' ? capeNames[e.target] ?? e.target : /^(partner|log_|bug_|storage_|clan\.|ach_(create|edit|reset|delete))/.test(e.action) ? e.target : `@${e.target}` })),
     el('td', { class: 'log-detail', textContent: ['grant', 'revoke', 'set_cape'].includes(e.action) ? capeNames[e.detail] ?? e.detail : e.detail }))));
   $('#main').replaceChildren(head('Dziennik'),
     el('div', { class: 'glass card' }, res.entries.length

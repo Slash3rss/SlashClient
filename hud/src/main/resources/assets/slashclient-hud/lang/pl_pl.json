@@ -346,6 +346,8 @@
 	"slashclient-hud.groups.event.demoted": "%s degraduje %s do członka",
 	"slashclient-hud.groups.event.owner": "%s przekazuje klan: %s jest teraz założycielem",
 	"slashclient-hud.groups.event.heir": "%s zostaje założycielem klanu",
+	"slashclient-hud.groups.event.logo": "%s zmienia logo klanu",
+	"slashclient-hud.groups.event.logoRemoved": "%s usuwa logo klanu",
 	"slashclient-hud.groups.event.other": "%s",
 	"slashclient-hud.groups.new": "Nowa grupa",
 	"slashclient-hud.groups.subtitle": "Wybierz znajomych do wspólnej rozmowy",

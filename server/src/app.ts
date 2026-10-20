@@ -28,6 +28,7 @@ import { Storage, type DiskSpace } from './storage.ts';
 import { storageAdminRoutes } from './storageAdmin.ts';
 import { muteRoutes } from './mutes.ts';
 import { chatImageRoutes, type ImageLimits } from './chatImages.ts';
+import { profileRoutes } from './profiles.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -54,6 +55,8 @@ export interface Config {
   trustProxy?: boolean;
   /** Sign-ins allowed per address per minute (tests raise it). */
   loginsPerMinute?: number;
+  /** Profile pages and their pictures per address per minute (tests raise it). */
+  profileViewsPerMinute?: number;
   /** GitHub repository with the launcher's releases, for /pobierz/<system> (owner/name). */
   releasesRepo?: string;
   /** Read access to that repository when it is private. */
@@ -385,7 +388,9 @@ export function createApp(cfg: Config) {
     return {
       friends: db.friends(me).map((f) => {
         const clan = clanTag(f.id);
-        return { ...f, presence: presenceOf(f.id), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0, muted: muted.has(f.id), ...(clan ? { clan } : {}) };
+        // the clan's logo (its id and version) next to the tag, when it has one
+        const clanLogo = clan ? clans.logoOf(f.id) : undefined;
+        return { ...f, presence: presenceOf(f.id), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0, muted: muted.has(f.id), ...(clan ? { clan } : {}), ...(clanLogo ? { clanLogo } : {}) };
       }),
       incoming: db.incoming(me),
       outgoing: db.outgoing(me),
@@ -494,13 +499,14 @@ export function createApp(cfg: Config) {
   const groups = createGroups({
     db, authed, push, limitMessages, limitChanges: limitGroupChanges,
     clanTag: (clanId) => clans.tagOfClan(clanId),
+    clanLogo: (clanId) => clans.logoOfClan(clanId),
     images: () => images,
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
   });
   const clans = createClans({
-    db, authed, admin, body, push, groups, limitChanges: limitGroupChanges,
+    db, authed, admin, body, push, groups, limitChanges: limitGroupChanges, limitLogos: rateLimiter(6),
     status: (userId) => presenceOf(userId).status,
     fail: (status, code) => {
       throw new HttpError(status, code);
@@ -518,6 +524,23 @@ export function createApp(cfg: Config) {
   const images = chatImageRoutes({
     sql: db.sql, authed, areFriends: (a, b) => db.areFriends(a, b), isGroupMember: (group, uuid) => groups.store.isMember(group, uuid), dir: cfg.imagesDir ?? path.join(path.dirname(cfg.dbFile), 'chat-images'),
     limits: cfg.imageLimits, limitUploads: rateLimiter(10), limitDownloads: rateLimiter(120),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  // public player profiles, /u/<handle>, with what the owner lets others see (profiles.ts)
+  const profiles = profileRoutes({
+    db, webDir: cfg.webDir, publicUrl: cfg.publicUrl, authed, admin, isAdmin, body, clientIp, limitViews: rateLimiter(cfg.profileViewsPerMinute ?? 120),
+    achievements: (uuid) => achievements.list(uuid),
+    // the Iskry balance as a stats tile
+    sparks: (uuid) => wallet.balance(uuid),
+    worn: (user) => wornBy(user, undefined),
+    badge: badgeOf,
+    status: (uuid) => presenceOf(uuid).status,
+    skinOf, headOf,
+    audit: (who, action, target, detail) => db.log(who, action, target, detail),
+    versioned: (html) => versioned(html, 'text/html'),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -795,6 +818,8 @@ export function createApp(cfg: Config) {
       const cosmetics: Record<string, Record<string, string>> = {};
       // the clan tag next to the name ([ABC]); HUDs before clans ignore it
       const clanTags: Record<string, string> = {};
+      // and its logo, when it has one (clan id and version, for /v1/clans/<id>/logo.png?v=)
+      const clanLogos: Record<string, { id: string; v: number }> = {};
       for (const u of active) {
         const link = linked.get(u.toLowerCase());
         const owner = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user) : undefined;
@@ -807,8 +832,10 @@ export function createApp(cfg: Config) {
         if (Object.keys(worn).length) cosmetics[u] = worn;
         const tag = clanTag(owner.id);
         if (tag) clanTags[u] = tag;
+        const logo = tag ? clans.logoOf(owner.id) : undefined;
+        if (logo) clanLogos[u] = logo;
       }
-      return { active, capes, ranks, cosmetics, ...(Object.keys(clanTags).length ? { clans: clanTags } : {}) };
+      return { active, capes, ranks, cosmetics, ...(Object.keys(clanTags).length ? { clans: clanTags } : {}), ...(Object.keys(clanLogos).length ? { clanLogos } : {}) };
     }],
     // the launcher says which Minecraft player its SlashClient account plays as, while the game runs
     ['POST', /^\/v1\/mc\/link$/, async (req) => {
@@ -971,6 +998,7 @@ export function createApp(cfg: Config) {
         throw new HttpError(status, code);
       },
     }),
+    ...profiles.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged,
       fail: (status, code) => {
@@ -1113,8 +1141,18 @@ export function createApp(cfg: Config) {
       if (await shares.serve(req, res, url)) return;
       if (await cloud.serve(req, res, url)) return;
       if (await images.serve(req, res, url)) return;
+      if (clans.serveLogo(req, res, url)) return;
     } catch (err) {
       console.error('profil:', (err as Error).message);
+      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
+      return;
+    }
+
+    // a player's profile page, its pictures and the sitemap of profiles (profiles.ts)
+    try {
+      if (await profiles.serve(req, res, url)) return;
+    } catch (err) {
+      console.error('profil gracza:', (err as Error).message);
       if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
       return;
     }
@@ -1393,6 +1431,8 @@ export function createApp(cfg: Config) {
     },
     /** For tests: dropping old chat pictures with a chosen clock. */
     chatImages: images,
+    /** For tests: the profiles' settings. */
+    profiles,
     close: () => new Promise<void>((resolve) => {
       clearInterval(heartbeat);
       clearInterval(playTick);

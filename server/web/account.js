@@ -1,6 +1,7 @@
 // The account page (/konto): sign in, pick a cape, privacy, sign out.
 import { Preview } from './preview.js';
 import { achievementsCard, buy, priceTag, sparks } from './sparks.js';
+import { privacyCard } from './profilePrivacy.js';
 import { $, partnerBanner, uploadPicture, PROVIDERS, SLOTS, api, avatarEl, capeEl, cosmeticEl, el, errorText, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 
 let me;
@@ -17,6 +18,7 @@ let previewSkin;
 let previewWorn = {};
 /** Which render of the page the achievements card (loaded after it) belongs to. */
 let renders = 0;
+let scrolledToPrivacy = false;
 
 async function figure(uuid, worn) {
   previewBox ??= el('div', { class: 'figure' });
@@ -169,7 +171,17 @@ function renderAccount() {
     characters.length ? el('div', { class: 'cosmetic-for' }, el('span', { class: 'small', textContent: 'Zestaw dla:' }), whose,
       character?.loadout ? el('button', { onclick: () => send({ own: false }, `${character.name} nosi teraz zestaw całego konta.`) }, icon('fa-solid fa-rotate-left'), 'Jak całe konto') : '') : '',
     el('div', { class: 'cosmetic-stage' }, previewBox ??= el('div', { class: 'figure' }), el('div', { class: 'grow' }, tabs, note, pick)));
-  $('#account').replaceChildren(el('div', { class: 'account' }, profile, capes));
+  // the public profile's privacy (profilePrivacy.js), filled in when the settings are here
+  const privacy = el('div', { class: 'privacy-slot' });
+  $('#account').replaceChildren(el('div', { class: 'account' }, el('div', { class: 'account-side' }, profile, privacy), capes));
+  privacyCard().then((card) => {
+    if (!card) return;
+    privacy.replaceWith(card);
+    if (location.hash === '#prywatnosc' && !scrolledToPrivacy) {
+      scrolledToPrivacy = true;
+      card.scrollIntoView({ block: 'start' });
+    }
+  });
   // the achievements and the sparks under it, once loaded (only into this render of the page)
   const render = ++renders;
   achievementsCard().then((card) => card && render === renders && $('#account .account')?.append(card)).catch(() => {});

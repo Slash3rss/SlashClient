@@ -32,6 +32,8 @@ export interface BridgeOptions {
   sendGroupImage?: (groupId: string, file: string) => Promise<unknown>;
   /** A picture from the chat, decrypted, as PNG. */
   chatImage?: (id: string) => Promise<Buffer>;
+  /** A clan's logo (PNG, 64×64) by the clan's id and the logo's version. */
+  clanLogo?: (id: string, version: number) => Promise<Buffer>;
 }
 
 /** What the game may ask for: its friends and the messages with them. */
@@ -209,6 +211,19 @@ export class GameBridge {
       if (!this.opts.chatImage) return this.send(res, 404, { error: 'not_found' });
       try {
         const png = await this.opts.chatImage(image[1]);
+        res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-store' });
+        return res.end(png);
+      } catch (err) {
+        return this.send(res, 404, { error: (err as { code?: string }).code ?? (err as Error).message });
+      }
+    }
+
+    // a clan's logo for the friends window (kept by version, so the game may keep it too)
+    const logo = /^\/clan\/logo\/([\w-]{1,32})\?v=(\d{1,16})$/.exec(url);
+    if (method === 'GET' && logo) {
+      if (!this.opts.clanLogo) return this.send(res, 404, { error: 'not_found' });
+      try {
+        const png = await this.opts.clanLogo(logo[1], Number(logo[2]));
         res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-store' });
         return res.end(png);
       } catch (err) {

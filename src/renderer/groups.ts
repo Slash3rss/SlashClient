@@ -1,4 +1,5 @@
 import { locale, t } from '../shared/i18n';
+import { logoFromFile, logoUrl } from './clanLogo';
 import { confirmDialog, control, el, icon } from './dialog';
 
 /**
@@ -10,21 +11,23 @@ import { confirmDialog, control, el, icon } from './dialog';
  */
 
 interface Person { id: string; handle: string; name: string; avatar: string }
-export interface GroupEvent { kind: 'created' | 'added' | 'removed' | 'left' | 'renamed' | 'joined' | 'promoted' | 'demoted' | 'owner' | 'heir'; by: string; users?: string[]; name?: string }
+export interface GroupEvent { kind: 'created' | 'added' | 'removed' | 'left' | 'renamed' | 'joined' | 'promoted' | 'demoted' | 'owner' | 'heir' | 'logo'; by: string; users?: string[]; name?: string; removed?: boolean }
 /** A picture in a message, as the main process opened it (no key here: the page gets it by id). */
 export interface GroupImage { id: string; w?: number; h?: number; size?: number; unreadable?: boolean }
 export interface GroupMessage { id: number; group: string; from: string; text: string; at: number; event?: GroupEvent; encrypted?: boolean; unreadable?: boolean; image?: GroupImage }
 export interface Group {
-  id: string; name: string; owner: string; createdAt: number; clan?: { id: string; tag: string };
+  id: string; name: string; owner: string; createdAt: number; clan?: { id: string; tag: string; logo?: number };
   members: (Person & { joinedAt: number })[]; unread: number; lastMessageAt: number;
 }
 export type ClanRole = 'owner' | 'officer' | 'member';
 export interface ClanMember extends Person { role: ClanRole; joinedAt: number; status: string; online: boolean }
 export interface Clan {
   id: string; tag: string; name: string; createdAt: number; chat: string; role: ClanRole;
+  /** the logo's version, when the clan has one */
+  logo?: number;
   members: ClanMember[]; invites?: (Person & { at: number })[];
 }
-export interface ClanInvite { clan: { id: string; tag: string; name: string; members: number }; by: Person; at: number }
+export interface ClanInvite { clan: { id: string; tag: string; name: string; members: number; logo?: number }; by: Person; at: number }
 
 export const GROUP_SIZE = 16;
 const MAX_MESSAGE = 2000;
@@ -44,12 +47,13 @@ export function eventText(e: GroupEvent): string {
     case 'demoted': return t('{0} degraduje {1} do członka', e.by, users);
     case 'owner': return t('{0} przekazuje klan: {1} jest teraz założycielem', e.by, users);
     case 'heir': return t('{0} zostaje założycielem klanu', e.by);
+    case 'logo': return e.removed ? t('{0} usuwa logo klanu', e.by) : t('{0} zmienia logo klanu', e.by);
     default: return e.by;
   }
 }
 
 /** Who may do what in a clan (the server checks it again): the same rules as clans.ts. */
-export function clanMay(role: ClanRole | undefined, action: 'invite' | 'kick' | 'setRole' | 'rename' | 'delete' | 'transfer', target?: ClanRole): boolean {
+export function clanMay(role: ClanRole | undefined, action: 'invite' | 'kick' | 'setRole' | 'rename' | 'delete' | 'transfer' | 'logo', target?: ClanRole): boolean {
   if (!role) return false;
   if (action === 'invite') return role !== 'member';
   if (action === 'kick') return target !== undefined && target !== 'owner' && (role === 'owner' || (role === 'officer' && target === 'member'));
@@ -71,7 +75,11 @@ export function applyGroupMessage(groups: Group[], m: GroupMessage, me: string |
 export const roleText = (r: ClanRole) => ({ owner: t('Założyciel'), officer: t('Oficer'), member: t('Członek') })[r];
 
 interface Deps {
-  api: { socialApi: (method: string, path: string, body?: unknown) => Promise<any>; socialSendGroupImage?: (groupId: string) => Promise<any>; notify?: (title: string, body: string, target?: unknown) => Promise<unknown> };
+  api: {
+    socialApi: (method: string, path: string, body?: unknown) => Promise<any>; socialSendGroupImage?: (groupId: string) => Promise<any>; notify?: (title: string, body: string, target?: unknown) => Promise<unknown>;
+    /** A clan's logo (clanLogo.ts): the owner's new one, and one to show (a data: address). */
+    socialSetClanLogo?: (png: Uint8Array) => Promise<any>; socialClanLogo?: (id: string, version: number) => Promise<string>;
+  };
   /** A picture's card, the same as in direct messages. */
   imageCard: (image: GroupImage, mine: boolean) => HTMLElement;
   toast: (message: string, isError?: boolean) => void;
@@ -136,11 +144,18 @@ export function createGroups(deps: Deps) {
 
   // ---------- the rows in the friends list ----------
 
-  function groupAvatar(g: Group) {
-    const box = el('div', { className: `fr-avatar fr-group-avatar${g.clan ? ' clan' : ''}` });
-    if (g.clan) box.append(el('span', { className: 'fr-clan-mark', textContent: g.clan.tag }));
-    else box.append(icon('fa-users'));
+  /** A clan's square: its logo when it has one (and it is here), else its tag on gold. */
+  function clanAvatar(c: { id: string; tag: string; logo?: number }, ready: () => void = deps.changed) {
+    const url = c.logo ? logoUrl(api.socialClanLogo, c.id, c.logo, ready) : undefined;
+    const box = el('div', { className: `fr-avatar fr-group-avatar clan${url ? ' has-logo' : ''}` });
+    box.append(url ? el('img', { src: url, alt: '', className: 'fr-clan-logo' }) : el('span', { className: 'fr-clan-mark', textContent: c.tag }));
     return box;
+  }
+
+  function groupAvatar(g: Group) {
+    // the clan's own view knows a new logo first (the list follows a moment later)
+    if (g.clan) return clanAvatar(clan && clan.chat === g.id ? { id: clan.id, tag: clan.tag, logo: clan.logo } : g.clan);
+    return el('div', { className: 'fr-avatar fr-group-avatar' }, icon('fa-users'));
   }
 
   function groupRow(g: Group) {
@@ -169,7 +184,7 @@ export function createGroups(deps: Deps) {
       });
       decline.addEventListener('click', async () => takeClan(await act(() => api.socialApi('POST', `/v1/clans/${inv.clan.id}/decline`))));
       out.push(el('div', { className: 'fr-row' },
-        el('div', { className: 'fr-avatar fr-group-avatar clan' }, el('span', { className: 'fr-clan-mark', textContent: inv.clan.tag })),
+        clanAvatar(inv.clan),
         el('div', { className: 'grow fr-names' }, el('b', { textContent: inv.clan.name }), el('small', { className: 'muted', textContent: t('{0} zaprasza do klanu', inv.by.name) })),
         accept, decline));
     }
@@ -519,6 +534,7 @@ export function createGroups(deps: Deps) {
         body.push(el('div', { className: 'fr-row is-offline' }, deps.avatar(inv), el('div', { className: 'grow fr-names' }, el('b', { textContent: inv.name }), el('small', { className: 'muted', textContent: t('czeka na odpowiedź') })), cancel));
       }
     }
+    if (clanMay(c.role, 'logo')) body.push(...logoSection(c, call, redraw));
     if (clanMay(c.role, 'rename')) {
       const f = clanFields(c.tag, c.name);
       const save = el('button', { type: 'button' }, t('Zapisz'));
@@ -542,6 +558,54 @@ export function createGroups(deps: Deps) {
     body.push(el('div', { className: 'row fr-clan-leave' }, leave));
     const closeWindow = modal(`[${c.tag}] ${c.name}`, body, []);
     return closeWindow;
+  }
+
+  /** "Logo klanu": the logo (or the tag where it would be), and changing or removing it. */
+  function logoSection(c: Clan, call: (method: string, path: string, body?: unknown, ok?: string) => Promise<void>, redraw: () => void): Node[] {
+    const big = (ready?: () => void) => {
+      const box = clanAvatar(c, ready);
+      box.classList.add('fr-clan-logo-preview');
+      return box;
+    };
+    // a logo still loading takes its place in the window when it comes
+    const preview = big(() => {
+      deps.changed();
+      preview.replaceWith(big());
+    });
+    const file = control<HTMLInputElement>('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp,image/gif', className: 'hidden' });
+    const change = el('button', { type: 'button' }, icon('fa-image'), c.logo ? t(' Zmień logo') : t(' Dodaj logo'));
+    change.addEventListener('click', () => file.click());
+    file.addEventListener('change', async () => {
+      const picked = file.files?.[0];
+      file.value = '';
+      if (!picked || !api.socialSetClanLogo) return;
+      change.disabled = true;
+      const png = await logoFromFile(picked).catch(() => undefined);
+      if (!png) {
+        change.disabled = false;
+        return deps.toast(t('Nie udało się odczytać obrazka.'), true);
+      }
+      const res = await act(() => api.socialSetClanLogo!(png), t('Zapisano logo klanu.'));
+      change.disabled = false;
+      if (res) {
+        takeClan(res);
+        redraw();
+      }
+    });
+    const parts: Node[] = [change, file];
+    if (c.logo) {
+      const remove = el('button', { type: 'button', className: 'danger' }, icon('fa-trash'), t(' Usuń logo'));
+      remove.addEventListener('click', async () => {
+        if (await confirmDialog({ title: t('Usunąć logo klanu?'), body: [el('p', { className: 'muted', textContent: t('Zamiast logo znów będzie widać tag klanu.') })], ok: t('Usuń'), danger: true })) await call('DELETE', '/v1/clans/mine/logo');
+      });
+      parts.push(remove);
+    }
+    return [
+      el('h3', { textContent: t('Logo klanu') }),
+      el('div', { className: 'row fr-clan-logo-row' }, preview,
+        el('small', { className: 'muted grow', textContent: t('Kwadratowy obrazek (PNG, JPG, WebP lub GIF), zmniejszany do 64×64. Widać go w launcherze i w grze zamiast tagu.') }),
+        ...parts),
+    ];
   }
 
   // ---------- live events ----------

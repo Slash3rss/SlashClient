@@ -7,7 +7,10 @@ Disallow: /account
 Disallow: /logi/
 Disallow: /logs/
 Disallow: /v1/
+# the face on a public profile (its preview picture); profiles say themselves whether they may be listed (meta robots)
+Allow: /v1/profiles/*/head
 Disallow: /aktualizacje/
 Disallow: /pobierz/
 
 Sitemap: https://client.slash3rss.dev/sitemap.xml
+Sitemap: https://client.slash3rss.dev/sitemap-profiles.xml

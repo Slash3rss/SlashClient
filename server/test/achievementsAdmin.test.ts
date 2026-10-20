@@ -199,6 +199,25 @@ describe('the achievement creator', () => {
     assert.deepEqual(holders.map((h: any) => h.handle), [p.user.handle]);
   });
 
+  it('shows panel-made ones on public profiles with their icon and the balance, never a hidden one before it unlocks', async () => {
+    await call('POST', '/v1/admin/achievements', boss.token, { id: 'secret_handshake', metric: 'manual', sparks: 40, category: 'secret', hidden: true, icon: 'fa-key', name: 'Tajny uścisk', description: 'Sekret.' });
+    await call('POST', '/v1/admin/achievements', boss.token, { id: 'open_one', metric: 'manual', sparks: 15, category: 'play', icon: 'fa-gift', name: 'Jawne', description: 'Widać je.' });
+    const p = await login('ProfilowyGracz');
+    await call('POST', '/v1/admin/achievements/open_one/grant', boss.token, { players: [p.user.handle] });
+    const viewer = await login('Ogladajacy');
+    const prof = (await call('GET', `/v1/profiles/${p.user.handle}`, viewer.token)).body.profile;
+    const list = prof.achievements.list;
+    assert.ok(!list.some((a: any) => a.id === 'secret_handshake'));
+    const open = list.find((a: any) => a.id === 'open_one');
+    assert.equal(open.icon, 'fa-gift');
+    assert.ok(open.unlockedAt);
+    assert.equal(prof.stats.sparks, app.wallet.balance(p.user.id));
+    // unlocked: now it is there
+    await call('POST', '/v1/admin/achievements/secret_handshake/grant', boss.token, { players: [p.user.handle] });
+    const after = (await call('GET', `/v1/profiles/${p.user.handle}`, viewer.token)).body.profile.achievements.list;
+    assert.equal(after.find((a: any) => a.id === 'secret_handshake').icon, 'fa-key');
+  });
+
   it('deletes only a panel-made one nobody has', async () => {
     assert.equal((await call('DELETE', '/v1/admin/achievements/hours_1', boss.token)).body.error, 'built_in');
     assert.equal((await call('DELETE', '/v1/admin/achievements/helper', boss.token)).status, 409);
