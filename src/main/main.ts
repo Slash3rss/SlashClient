@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, nativeImage, net, Notification, powerMonitor, protocol, safeStorage, shell } from 'electron';
+import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, nativeImage, net, Notification, powerMonitor, protocol, safeStorage, screen, shell } from 'electron';
 import { randomBytes, randomUUID } from 'node:crypto';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
@@ -173,10 +173,23 @@ function publicStore() {
   };
 }
 
+/** The size the window opens with, from the setting (Settings → Okno launchera). */
+function windowSize(choice: string | undefined, saved: Settings['launcherBounds']): { width: number; height: number; x?: number; y?: number } {
+  const m = /^(\d{3,4})x(\d{3,4})$/.exec(choice ?? '');
+  if (m) return { width: Math.max(820, Number(m[1])), height: Math.max(540, Number(m[2])) };
+  if (choice === 'remember' && saved && saved.width >= 820 && saved.height >= 540) {
+    // a place on a screen that is still there (a monitor may have been unplugged)
+    const visible = screen.getAllDisplays().some((d) => saved.x >= d.workArea.x - 50 && saved.y >= d.workArea.y - 50
+      && saved.x < d.workArea.x + d.workArea.width - 100 && saved.y < d.workArea.y + d.workArea.height - 100);
+    return visible ? { width: saved.width, height: saved.height, x: saved.x, y: saved.y } : { width: saved.width, height: saved.height };
+  }
+  return { width: 1000, height: 640 };
+}
+
 function createWindow() {
+  const choice = store.settings.launcherWindow;
   win = new BrowserWindow({
-    width: 1000,
-    height: 640,
+    ...windowSize(choice, store.settings.launcherBounds),
     minWidth: 820,
     minHeight: 540,
     title: 'SlashClient',
@@ -193,7 +206,19 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true },
   });
   win.removeMenu();
-  win.once('ready-to-show', () => win?.show());
+  win.once('ready-to-show', () => {
+    if (choice === 'maximized' || (choice === 'remember' && store.settings.launcherBounds?.maximized)) win?.maximize();
+    if (choice === 'fullscreen') win?.setFullScreen(true);
+    win?.show();
+  });
+  // 'remember': the size and place as the window closes
+  win.on('close', () => {
+    if (!win || store.settings.launcherWindow !== 'remember') return;
+    const maximized = win.isMaximized();
+    const b = maximized || win.isFullScreen() ? win.getNormalBounds() : win.getBounds();
+    store.settings.launcherBounds = { ...b, maximized };
+    void saveStore(store);
+  });
   // closed: nothing may reach it any more (sending to a destroyed window throws in the main process)
   const opened = win;
   opened.on('closed', () => {

@@ -97,6 +97,10 @@ export interface Settings {
   notifyFriendsPlaying?: boolean;
   /** Folders checked for CurseForge files downloaded by hand (top level only); missing = the system's Downloads folder. */
   manualWatchFolders?: string[];
+  /** How the launcher's window opens: 'WxH', 'remember' (as last closed), 'maximized' or 'fullscreen'; missing = 1000x640. */
+  launcherWindow?: string;
+  /** The window's last size and place, for 'remember'. */
+  launcherBounds?: { x: number; y: number; width: number; height: number; maximized?: boolean };
 }
 
 export interface StoreData {

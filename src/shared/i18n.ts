@@ -1118,6 +1118,11 @@ const EN: Record<string, string> = {
 
   // settings
   'Chowaj launcher podczas gry': 'Hide the launcher while playing',
+  'Okno launchera przy uruchomieniu': 'Launcher window on start',
+  '1000 × 640 (domyślne)': '1000 × 640 (default)',
+  'Zapamiętaj ostatni rozmiar i miejsce': 'Remember the last size and place',
+  'Zmaksymalizowane': 'Maximized',
+  'Pełny ekran': 'Full screen',
   'Pokazuj na Discordzie, w co grasz': 'Show on Discord what you are playing',
   'Folder danych:': 'Data folder:',
   'Wersja launchera:': 'Launcher version:',

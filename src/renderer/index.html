@@ -521,6 +521,18 @@
           <select name="language" id="language-select"></select>
         </label>
         <label class="field"><span class="label">Pamięć RAM dla nowych profili <b id="default-memory-value"></b></span><input type="range" name="defaultMemoryMb" min="1024" max="16384" step="512"></label>
+        <label class="field">Okno launchera przy uruchomieniu
+          <select name="launcherWindow">
+            <option value="">1000 × 640 (domyślne)</option>
+            <option value="1280x800">1280 × 800</option>
+            <option value="1440x900">1440 × 900</option>
+            <option value="1600x1000">1600 × 1000</option>
+            <option value="1920x1080">1920 × 1080</option>
+            <option value="remember">Zapamiętaj ostatni rozmiar i miejsce</option>
+            <option value="maximized">Zmaksymalizowane</option>
+            <option value="fullscreen">Pełny ekran</option>
+          </select>
+        </label>
         <label class="check"><input type="checkbox" name="closeOnLaunch"> Chowaj launcher podczas gry</label>
         <label class="check"><input type="checkbox" name="discordEnabled"> Pokazuj na Discordzie, w co grasz</label>
         <p class="muted">Folder danych: <code id="data-dir"></code></p>

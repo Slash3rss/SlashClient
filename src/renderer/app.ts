@@ -65,7 +65,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; defaultMemoryMb?: number; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; launcherWindow?: string; defaultMemoryMb?: number; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -1022,6 +1022,7 @@ function renderSettings() {
   const form = $<HTMLFormElement>('#settings-form');
   fillSelect($<HTMLSelectElement>('#language-select'), LANGUAGES.map((l) => ({ value: l.code, label: l.name })), getLang());
   (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked = store.settings.closeOnLaunch;
+  (form.elements.namedItem('launcherWindow') as HTMLSelectElement).value = store.settings.launcherWindow ?? '';
   const memory = form.elements.namedItem('defaultMemoryMb') as HTMLInputElement;
   memory.max = String(Math.max(4096, Math.floor((store.systemMemoryMb - 2048) / 512) * 512));
   // (the same limit as each profile's own slider: some memory is left to the system)
@@ -1587,6 +1588,7 @@ $('#settings-form').addEventListener('submit', async (e) => {
   await guard(() =>
     api.saveSettings({
       closeOnLaunch: (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked,
+      launcherWindow: (form.elements.namedItem('launcherWindow') as HTMLSelectElement).value,
       defaultMemoryMb: Number((form.elements.namedItem('defaultMemoryMb') as HTMLInputElement).value),
       discordEnabled: (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked,
       language: $<HTMLSelectElement>('#language-select').value,
