@@ -52,7 +52,8 @@ Podstawy prawne (art. 6 ust. 1 RODO): **(b)** wykonanie umowy — świadczenie U
 
 ## 5. Dane techniczne, logi i limity {#techniczne}
 
-- **Dziennik zapytań API** — dla panelu administratora serwer trzyma w pamięci ostatnie 5000 zapytań: czas, metodę, ścieżkę (bez parametrów i treści), kod odpowiedzi, czas obsługi, identyfikator konta, **adres IP z ukrytą końcówką** (np. 203.0.113.x), rodzaj i wersję klienta, kod błędu. Dziennik znika przy każdym restarcie serwera.
+- **Dziennik zapytań API** — dla panelu administratora serwer zapisuje zapytania: czas, metodę, ścieżkę (bez parametrów i treści), kod odpowiedzi, czas obsługi, identyfikator konta, **adres IP z ukrytą końcówką** (np. 203.0.113.x), rodzaj i wersję klienta, kod błędu. Wpisy są usuwane po 7 dniach (najwyżej 50 000 ostatnich).
+- **Statystyki dla administratora** — dni, w których konto korzystało z usług (sama data), ostatnia wersja launchera na koncie i dzienny szczyt liczby graczy online; służą tylko zbiorczym statystykom w panelu administratora.
 - **Logi serwera WWW** — serwer pośredniczący (Caddy) zapisuje dostęp do strony i API (pełny adres IP, czas, adres URL, przeglądarka). Pliki są rotowane po 10 MB, przechowywanych jest 5 ostatnich. [UZUPEŁNIJ: rzeczywisty okres przechowywania; ewentualne ograniczenie logów]
 - **Logi systemowe** — komunikaty błędów serwera. [UZUPEŁNIJ: okres przechowywania logów systemowych na serwerze]
 - **Limity zapytań** — liczniki per adres IP lub konto (np. logowania, udostępnianie logów) trzymane tylko w pamięci, przez kilka minut.
@@ -121,7 +122,8 @@ Niektórzy odbiorcy (np. Cloudflare, Stripe, PayPal, Backblaze, Discord, Google,
 | Sesje | do wylogowania; sesja nieużywana przez 90 dni wygasa |
 | Klucze publiczne urządzeń | 10 ostatnio używanych urządzeń, do usunięcia konta |
 | Status, aktywność, party, emotki, spraye, limity zapytań | tylko w pamięci serwera — od minut do kilku godzin |
-| Dziennik zapytań API (zamaskowany IP) | w pamięci, ostatnie 5000 zapytań, do restartu serwera |
+| Dziennik zapytań API (zamaskowany IP) | 7 dni (najwyżej 50 000 wpisów) |
+| Dni aktywności konta, wersja launchera (statystyki) | do usunięcia konta |
 | Logi serwera WWW (pełny IP) | rotacja 5 × 10 MB [UZUPEŁNIJ: okres] |
 | Płatności | [UZUPEŁNIJ: np. 5 lat od końca roku, w którym nastąpiła płatność (ustawa o rachunkowości, Ordynacja podatkowa)] |
 | Prośby o zwrot | jak dane płatności [UZUPEŁNIJ: rozważcie usuwanie treści powodu kilka miesięcy po zamknięciu prośby] |

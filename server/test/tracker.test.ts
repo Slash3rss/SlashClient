@@ -102,6 +102,24 @@ describe('request log', () => {
     assert.equal(maskIp('::ffff:127.0.0.1'), '127.0.0.x');
     assert.equal(maskIp('2001:db8:85a3:1:2:3:4:5'), '2001:db8:85a3::x');
   });
+
+  it('keeps the list over a restart, a week at most', async () => {
+    const { RequestLog } = await import('../src/requests.ts');
+    const { DatabaseSync } = await import('node:sqlite');
+    const sql = new DatabaseSync(':memory:');
+    const entry = (at: number, path: string) => ({ at, method: 'GET', path, route: path, status: 200, ms: 3, user: '', ip: '203.0.113.x', client: 'launcher', version: '0.9.25', error: '' });
+    const first = new RequestLog(sql);
+    first.add(entry(Date.now() - 8 * 86_400_000, '/v1/stare'));
+    first.add(entry(Date.now() - 60_000, '/v1/friends'));
+    first.add(entry(Date.now(), '/v1/messages'));
+    first.flush();
+    // as after a restart: read back from the database, the week-old one gone
+    const again = new RequestLog(sql);
+    const paths = again.query({}).entries.map((e) => e.path);
+    assert.deepEqual(paths, ['/v1/messages', '/v1/friends']);
+    assert.equal(again.query({}).summary.lastHour, 2);
+    sql.close();
+  });
 });
 
 describe('bug tracker', () => {

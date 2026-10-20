@@ -1,9 +1,11 @@
 import type http from 'node:http';
+import type { DatabaseSync } from 'node:sqlite';
 
 /**
  * The last requests to the API, for the admin panel: what launchers, games and pages asked for,
- * how it went and how long it took. Kept in memory only (a restart starts it again), without
- * bodies, tokens or query strings, and with the last part of the address hidden.
+ * how it went and how long it took. Without bodies, tokens or query strings, and with the last
+ * part of the address hidden. Kept in memory and, with a database, written to it every few
+ * seconds and read back at start, so a restart does not empty the list (a week at most).
  */
 
 export interface RequestEntry {
@@ -22,6 +24,18 @@ export interface RequestEntry {
 }
 
 const KEEP = 5000;
+/** How long requests stay in the database, and at most how many. */
+const KEEP_DAYS = 7;
+const KEEP_ROWS = 50_000;
+const FLUSH_MS = 2000;
+
+const SCHEMA = `
+CREATE TABLE IF NOT EXISTS request_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, method TEXT NOT NULL, path TEXT NOT NULL, route TEXT NOT NULL,
+  status INTEGER NOT NULL, ms INTEGER NOT NULL, user TEXT NOT NULL, ip TEXT NOT NULL, client TEXT NOT NULL, version TEXT NOT NULL, error TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS request_log_at ON request_log (at);
+`;
 
 /** "launcher", "mod", "strona" or "inne", with a version when the client says it. */
 export function clientOf(req: http.IncomingMessage): { client: string; version: string } {
@@ -54,10 +68,58 @@ export function maskIp(ip: string): string {
 
 export class RequestLog {
   private entries: RequestEntry[] = [];
+  private readonly sql?: DatabaseSync;
+  /** Not written yet: they go in one transaction every FLUSH_MS. */
+  private pending: RequestEntry[] = [];
+  private timer?: ReturnType<typeof setTimeout>;
+  private prunedAt = 0;
+
+  constructor(sql?: DatabaseSync) {
+    this.sql = sql;
+    if (!sql) return;
+    sql.exec(SCHEMA);
+    this.prune(Date.now());
+    const rows = sql.prepare('SELECT at, method, path, route, status, ms, user, ip, client, version, error FROM request_log ORDER BY id DESC LIMIT ?').all(KEEP) as unknown as RequestEntry[];
+    this.entries = rows.reverse().map((r) => ({ ...r }));
+  }
 
   add(e: RequestEntry) {
     this.entries.push(e);
     if (this.entries.length > KEEP) this.entries.splice(0, this.entries.length - KEEP);
+    if (!this.sql) return;
+    this.pending.push(e);
+    if (!this.timer) {
+      this.timer = setTimeout(() => this.flush(), FLUSH_MS);
+      this.timer.unref?.();
+    }
+  }
+
+  /** Writes what is waiting (also called by the tests); a failed write only loses those entries. */
+  flush() {
+    clearTimeout(this.timer);
+    this.timer = undefined;
+    const batch = this.pending;
+    this.pending = [];
+    if (!this.sql || !batch.length) return;
+    try {
+      const insert = this.sql.prepare('INSERT INTO request_log (at, method, path, route, status, ms, user, ip, client, version, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+      this.sql.exec('BEGIN');
+      for (const e of batch) insert.run(e.at, e.method, e.path, e.route, e.status, e.ms, e.user, e.ip, e.client, e.version, e.error);
+      this.sql.exec('COMMIT');
+    } catch {
+      try { this.sql.exec('ROLLBACK'); } catch { /* not in a transaction */ }
+    }
+    const now = Date.now();
+    if (now - this.prunedAt > 3_600_000) this.prune(now);
+  }
+
+  /** Older than a week, or beyond the newest KEEP_ROWS, goes. */
+  private prune(now: number) {
+    this.prunedAt = now;
+    try {
+      this.sql!.prepare('DELETE FROM request_log WHERE at < ?').run(now - KEEP_DAYS * 86_400_000);
+      this.sql!.prepare('DELETE FROM request_log WHERE id <= (SELECT id FROM request_log ORDER BY id DESC LIMIT 1 OFFSET ?)').run(KEEP_ROWS);
+    } catch { /* the next hour tries again */ }
   }
 
   /** Newest first, filtered; with a summary of the last hour. */

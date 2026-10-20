@@ -54,7 +54,8 @@ Legal bases (Art. 6(1) GDPR): **(b)** performance of a contract — providing th
 
 ## 5. Technical data, logs and limits {#technical}
 
-- **API request log** — for the admin panel the server keeps the last 5000 requests in memory: time, method, path (without parameters or body), response code, duration, account id, **IP address with the last part hidden** (e.g. 203.0.113.x), client type and version, error code. It is cleared whenever the server restarts.
+- **API request log** — for the admin panel the server records requests: time, method, path (without parameters or body), response code, duration, account id, **IP address with the last part hidden** (e.g. 203.0.113.x), client type and version, error code. Entries are deleted after 7 days (at most the last 50,000 are kept).
+- **Statistics for the administrator** — the days on which an account used the services (the date only), the account's latest launcher version and the daily peak of players online; used only for aggregate statistics in the admin panel.
 - **Web server logs** — the reverse proxy (Caddy) logs access to the website and API (full IP address, time, URL, browser). Files rotate at 10 MB and the last 5 are kept. [UZUPEŁNIJ: actual retention period; possible reduction of logging]
 - **System logs** — server error messages. [UZUPEŁNIJ: retention of system logs on the server]
 - **Rate limits** — counters per IP address or account (e.g. sign-ins, log sharing) kept in memory only, for a few minutes.
@@ -123,7 +124,8 @@ Some recipients (e.g. Cloudflare, Stripe, PayPal, Backblaze, Discord, Google, Gi
 | Sessions | until sign-out; a session unused for 90 days expires |
 | Device public keys | the 10 most recently used devices, until the account is deleted |
 | Status, activity, parties, emotes, sprays, rate limits | server memory only — minutes to a few hours |
-| API request log (masked IP) | in memory, last 5000 requests, until the server restarts |
+| API request log (masked IP) | 7 days (at most 50,000 entries) |
+| Account activity days, launcher version (statistics) | until the account is deleted |
 | Web server logs (full IP) | rotation 5 × 10 MB [UZUPEŁNIJ: period] |
 | Payments | [UZUPEŁNIJ: e.g. 5 years from the end of the year of payment (Polish Accounting Act, Tax Ordinance)] |
 | Refund requests | as payment records [UZUPEŁNIJ: consider deleting the reason text a few months after the request is closed] |

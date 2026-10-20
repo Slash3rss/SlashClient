@@ -329,6 +329,10 @@ CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created
   /** Removes an account with everything that hangs on it (sign-ins, sessions, friends, messages, grants). */
   deleteUser(uuid: string) {
     this.db.prepare('DELETE FROM messages WHERE from_uuid = ? OR to_uuid = ?').run(uuid, uuid);
+    // the admin statistics' rows of the account (adminStats.ts), where they exist
+    for (const table of ['stats_active_days', 'stats_clients']) {
+      if (this.db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table)) this.db.prepare(`DELETE FROM ${table} WHERE uuid = ?`).run(uuid);
+    }
     this.db.prepare('DELETE FROM users WHERE uuid = ?').run(uuid);
   }
 
