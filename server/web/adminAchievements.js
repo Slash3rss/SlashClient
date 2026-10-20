@@ -35,7 +35,7 @@ export function obtainLine(obtain, open, skip) {
   const parts = obtain.ways.map((w) => {
     if (w.kind === 'free') return el('span', { class: 'chip green', textContent: 'za darmo' });
     if (w.kind === 'shop') return el('span', { class: 'chip gold' }, el('span', { class: 'spark-sign', textContent: '✦' }), ` sklep: ${w.price}`);
-    if (w.kind === 'rank') return el('span', { class: 'chip sky', textContent: `ranga ${w.rank}` });
+    if (w.kind === 'rank') return el('span', { class: 'chip sky', textContent: w.level ? `wspierający od poz. ${w.level}` : `ranga ${w.rank}` });
     if (w.kind === 'grant') return el('span', { class: 'chip', textContent: 'tylko przyznanie' });
     const label = `${w.custom ? 'własne' : 'osiągnięcie'}: ${w.name}${w.manual ? ' (ręczne)' : ''}${w.enabled ? '' : ' (wyłączone)'}`;
     if (w.id === skip || !open) return el('span', { class: `chip purple${w.enabled ? '' : ' off'}`, textContent: label });

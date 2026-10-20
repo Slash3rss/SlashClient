@@ -1,0 +1,25 @@
+/* The admin panel's "Ustawienia" (adminSettings.js). */
+.set-nav { gap: 6px; flex: 1; }
+.set-nav .chip { cursor: pointer; }
+.set-group { margin-top: 16px; display: flex; flex-direction: column; gap: 0; scroll-margin-top: 16px; }
+.set-head { gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+.set-head h2 { font-size: 19px; }
+.set-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 16px; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); }
+.set-row.wide { grid-template-columns: minmax(0, 1fr) minmax(220px, 360px); align-items: start; }
+.set-row.dirty { box-shadow: inset 3px 0 0 var(--accent); padding-left: 10px; }
+.set-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.set-text .row { gap: 8px; }
+.set-meta { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.set-meta code { font-size: 11px; }
+.set-input { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.set-input input[type=number], .set-input input[type=text], .set-input input[type=datetime-local], .set-input select { width: 100%; min-width: 0; }
+.set-input textarea { width: 100%; min-height: 110px; padding: 8px 10px; color: var(--text); background: rgba(0, 0, 0, .25); border: 1px solid var(--border); border-radius: var(--btn-radius); font: 13px ui-monospace, Consolas, monospace; resize: vertical; }
+.set-input .bad { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, .15); }
+#main [hidden] { display: none !important; }
+.set-preview { margin: 6px 0 12px; display: flex; flex-direction: column; gap: 6px; }
+.set-preview .site-banner { border-radius: 10px; border: 1px solid rgba(96, 165, 250, .35); }
+.set-preview .site-banner.warning { border-color: rgba(251, 191, 36, .4); }
+@media (max-width: 760px) {
+  .set-row, .set-row.wide { grid-template-columns: 1fr; gap: 8px; }
+  .set-input { justify-content: flex-start; }
+}

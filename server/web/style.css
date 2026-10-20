@@ -394,3 +394,11 @@ button.chip.active { background: var(--accent); color: #fff; }
 .legal-notice { margin-bottom: 14px; border-color: rgba(96, 165, 250, .35); }
 .legal-notice .fa-scale-balanced { color: var(--accent-light); }
 .legal-notice p { margin: 6px 0 10px; }
+
+/* The admin's announcement on top of the pages (siteBanner.js; its preview in the panel's Ustawienia) */
+.site-banner { display: flex; align-items: center; gap: 10px; padding: 10px 16px; font-size: 14px; color: #dbeafe; background: rgba(37, 99, 235, .22); border-bottom: 1px solid rgba(96, 165, 250, .35); }
+.site-banner.warning { color: #fef3c7; background: rgba(217, 119, 6, .24); border-bottom-color: rgba(251, 191, 36, .4); }
+.site-banner > i { flex-shrink: 0; }
+.site-banner-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.site-banner a { color: inherit; font-weight: 700; text-decoration: underline; white-space: nowrap; }
+.site-banner .site-banner-close { width: 28px; height: 28px; flex-shrink: 0; background: transparent; border-color: transparent; color: inherit; }

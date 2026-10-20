@@ -116,6 +116,9 @@ const ERRORS = {
   no_player: 'Nie ma takiego gracza.',
   bad_players: 'Podaj od 1 do 100 graczy.',
   disabled: 'Osiągnięcie jest wyłączone.',
+  bad_level: 'Poziom wsparcia: liczba od 0 do 100.',
+  not_for_supporters: 'Ten przedmiot daje ranga albo osiągnięcie, nie wsparcie.',
+  feature_disabled: 'Ta funkcja jest chwilowo wyłączona.',
 };
 export const errorText = (err) => ERRORS[err?.code] ?? (err?.message || 'Coś poszło nie tak.');
 

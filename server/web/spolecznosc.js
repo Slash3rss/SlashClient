@@ -11,7 +11,17 @@ const day = (ms) => new Date(ms).toLocaleDateString(LOCALE, { day: 'numeric', mo
 
 async function main() {
   const box = $('#community');
-  const res = await api('GET', `/v1/public/communities/${encodeURIComponent(slug)}`).catch(() => undefined);
+  let off = false;
+  const res = await api('GET', `/v1/public/communities/${encodeURIComponent(slug)}`).catch((err) => {
+    // communities switched off in the admin panel for a while
+    off = err?.code === 'feature_disabled';
+    return undefined;
+  });
+  if (off) {
+    box.replaceChildren(el('div', { class: 'glass card' }, el('h1', { textContent: L('Społeczności są chwilowo wyłączone', 'Communities are switched off for now') }),
+      el('p', { class: 'muted', textContent: L('Spróbuj później.', 'Try again later.') })));
+    return;
+  }
   if (!res?.community) {
     document.title = L('Nie znaleziono – SlashClient', 'Not found – SlashClient');
     box.replaceChildren(el('div', { class: 'glass card' }, el('h1', { textContent: L('Nie ma takiej społeczności', 'No such community') }),
