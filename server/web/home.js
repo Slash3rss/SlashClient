@@ -48,10 +48,14 @@ if (token.get()) {
 
 // ---------- capes ----------
 for (const c of document.querySelectorAll('[data-cape]')) c.style.backgroundImage = `url(vendor/capes/${c.dataset.cape}.png)`;
-api('GET', '/v1/cosmetics').then(({ capes }) => {
+api('GET', '/v1/cosmetics').then(({ capes, items }) => {
+  // the shop's capes carry their price in sparks (from achievements)
+  const prices = Object.fromEntries((items ?? []).filter((i) => i.price).map((i) => [i.id, i.price]));
   $('#cape-strip').replaceChildren(...capes.map((c) => {
-    const d = el('div', { class: 'cape', title: c.exclusive ? `${c.name} (ekskluzywna)` : c.name });
+    const price = prices[c.id];
+    const d = el('div', { class: `cape${price ? ' priced' : ''}`, title: price ? `${c.name}: w sklepie za ${price} Iskier z osiągnięć` : c.exclusive ? `${c.name} (ekskluzywna)` : c.name });
     d.style.backgroundImage = `url(vendor/capes/${c.id}.png)`;
+    if (price) d.append(el('span', { class: 'spark-price', textContent: `✦ ${price}` }));
     return d;
   }));
 }).catch(() => {});

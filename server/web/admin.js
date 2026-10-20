@@ -1,6 +1,7 @@
 // The admin panel: numbers, accounts (ban, sign out, role, cape, delete), cosmetics and the log.
 import { $, PROVIDERS, partnerBanner, uploadPicture, SLOTS, ago, api, avatarEl, capeEl, cosmeticEl, el, errorText, fmtDate, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 import { storagePage } from './adminStorage.js';
+import { shopSection, walletSection } from './adminSparks.js';
 
 const TABS = [
   ['dashboard', 'Pulpit', 'fa-solid fa-chart-line'],
@@ -21,6 +22,7 @@ const ACTIONS = {
   partner_background: 'zmienił(a) tło serwera', set_rank: 'zmienił(a) rangę',
   storage_add: 'dodał(a) miejsce na pliki', storage_edit: 'zmienił(a) miejsce na pliki', storage_remove: 'usunął(ęła) miejsce na pliki',
   storage_move: 'przenosi pliki z', storage_move_stop: 'zatrzymał(a) przenoszenie plików z',
+  sparks_give: 'dodał(a) Iskry', sparks_take: 'odebrał(a) Iskry', shop_price: 'zmienił(a) cenę w sklepie',
 };
 /** Ranks: the colour of the SlashClient logo next to the name in game (admins are red without one). */
 const RANKS = { support: ['Support', 'sky'], partner: ['Partner', 'gold'], friend: ['Przyjaciel', 'green'], friend_pink: ['Przyjaciel (różowy)', 'pink'] };
@@ -203,6 +205,8 @@ async function openUser(id) {
       el('dt', { textContent: 'Serwer' }), el('dd', { textContent: u.showServer ? 'widoczny dla znajomych' : 'ukryty' }),
       el('dt', { textContent: 'Przyznane' }), el('dd', { textContent: u.grants.map((g) => capeNames[g] ?? g).join(', ') || '—' })),
     el('div', {}, el('h4', { textContent: 'Peleryna' }), el('div', { class: 'row' }, u.cape ? capeEl(u.cape, true) : '', capeSel)),
+    // sparks from achievements: the balance, giving and taking with a reason (adminSparks.js)
+    walletSection(id),
     el('div', {}, el('h4', { textContent: 'Ranga' }),
       el('p', { class: 'muted small', textContent: 'Kolor logo SlashClient przy nicku w grze: admin czerwony, support błękitny, partner złoty, przyjaciel zielony albo różowy.' }),
       el('div', { class: 'row' }, rankSel)),
@@ -254,6 +258,7 @@ async function cosmeticsPage() {
   });
   $('#main').replaceChildren(head('Kosmetyki'),
     el('p', { class: 'muted', textContent: 'Kosmetyki są wbudowane w mod SlashClient; tutaj decydujesz, które są dostępne i dla kogo. Przedmioty rang noszą tylko gracze z tą rangą (admini wszystkie) albo ci, którym je przyznasz. Emotki są dostępne dla wszystkich.' }),
+    shopSection(),
     el('div', { class: 'cosmetics' }, ...SLOTS.flatMap(([slot, name, ic]) => {
       const mine = cards.filter((_, i) => (all[i].slot ?? 'cape') === slot);
       return mine.length ? [el('h3', { class: 'slot-head' }, icon(ic), name), ...mine] : [];
@@ -441,7 +446,7 @@ async function logPage() {
   const rows = await Promise.all(res.entries.map(async (e) => el('tr', {},
     el('td', { textContent: fmtDate(e.at) }),
     el('td', { textContent: `@${await nameOf(e.admin)}` }),
-    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' ? capeNames[e.target] ?? e.target : /^(partner|log_|bug_|storage_)/.test(e.action) ? e.target : `@${e.target}` })),
+    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' || e.action === 'shop_price' ? capeNames[e.target] ?? e.target : /^(partner|log_|bug_|storage_)/.test(e.action) ? e.target : `@${e.target}` })),
     el('td', { class: 'log-detail', textContent: ['grant', 'revoke', 'set_cape'].includes(e.action) ? capeNames[e.detail] ?? e.detail : e.detail }))));
   $('#main').replaceChildren(head('Dziennik'),
     el('div', { class: 'glass card' }, res.entries.length

@@ -277,3 +277,41 @@ label.btn input.hidden { display: none; }
   .cosmetic-stage { flex-direction: column; align-items: center; }
 }
 .partner-pins { gap: 18px; }
+
+/* ---------- sparks (the achievements' currency): prices, the balance, achievements on the account page ---------- */
+.spark-sign { color: #fbbf24; }
+.spark-price { display: inline-flex; align-items: center; gap: 3px; padding: 0 6px; border-radius: 8px; background: rgba(15, 15, 20, .85); color: #fde68a; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.cape-choice.for-sale > :first-child { filter: saturate(.75) brightness(.85); }
+.cape-strip .cape.priced { position: relative; }
+.cape-strip .cape .spark-price { position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); font-size: 10px; }
+.sparks-card { display: flex; flex-direction: column; gap: 10px; grid-column: 1 / -1; }
+.spark-balance { font-size: 14px; gap: 6px; }
+.ach-cat h4 { margin: 6px 0 8px; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.ach-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.ach-item { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .06); }
+.ach-item > i { width: 18px; text-align: center; color: var(--muted); }
+.ach-item.done { border-color: rgba(250, 204, 21, .3); }
+.ach-item.done > i { color: var(--gold); }
+.ach-item .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ach-item b { font-size: 13px; }
+.ach-bar { height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .08); overflow: hidden; margin-top: 2px; }
+.ach-progress { display: block; height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+.ach-reward { font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.ach-reward.got { color: #fde68a; }
+.ledger { display: flex; flex-direction: column; }
+.ledger-row { display: flex; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(255, 255, 255, .05); font-size: 13px; }
+.ledger-row:last-child { border-bottom: none; }
+.ledger-row .plus { color: #fbbf24; min-width: 60px; text-align: right; }
+.ledger-row .minus { color: #f87171; min-width: 60px; text-align: right; }
+.wallet-admin form input[type=number] { width: 120px; }
+.wallet-admin form input[type=text] { flex: 1; min-width: 160px; }
+.ledger-table { width: 100%; font-size: 12px; margin-top: 8px; }
+.ledger-table td { padding: 3px 6px; }
+.ledger-table .plus { color: #fbbf24; text-align: right; }
+.ledger-table .minus { color: #f87171; text-align: right; }
+.shop-admin { margin-bottom: 14px; }
+.shop-admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+.shop-admin-item { display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 10px; background: rgba(255, 255, 255, .03); }
+.shop-admin-item .grow { display: flex; flex-direction: column; min-width: 0; }
+.shop-admin-item input { width: 80px; }
+.ledger-table td.nowrap { white-space: nowrap; }

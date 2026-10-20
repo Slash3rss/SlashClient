@@ -89,6 +89,12 @@ const ERRORS = {
   empty: 'Nic nie wpisano.',
   forbidden: 'Nie możesz tego zrobić.',
   last_provider: 'To jedyny sposób logowania. Najpierw podepnij inny.',
+  not_enough_sparks: 'Za mało Iskier.',
+  owned: 'Masz już ten przedmiot.',
+  not_for_sale: 'Tego nie ma w sklepie.',
+  bad_amount: 'Podaj liczbę Iskier różną od zera (najwyżej 100 000).',
+  bad_reason: 'Podaj powód (3–200 znaków).',
+  bad_price: 'Cena: liczba od 1 do 100 000.',
 };
 export const errorText = (err) => ERRORS[err?.code] ?? (err?.message || 'Coś poszło nie tak.');
 

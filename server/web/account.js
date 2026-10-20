@@ -1,5 +1,6 @@
 // The account page (/konto): sign in, pick a cape, privacy, sign out.
 import { Preview } from './preview.js';
+import { achievementsCard, buy, priceTag, sparks } from './sparks.js';
 import { $, partnerBanner, uploadPicture, PROVIDERS, SLOTS, api, avatarEl, capeEl, cosmeticEl, el, errorText, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 
 let me;
@@ -14,6 +15,8 @@ let preview;
 let previewBox;
 let previewSkin;
 let previewWorn = {};
+/** Which render of the page the achievements card (loaded after it) belongs to. */
+let renders = 0;
 
 async function figure(uuid, worn) {
   previewBox ??= el('div', { class: 'figure' });
@@ -74,6 +77,8 @@ function renderAccount() {
       el('div', { class: 'grow' }, el('h3', { textContent: me.name }), el('span', { class: 'muted', textContent: `@${me.handle}` }))),
     el('div', { class: 'row' }, ...me.providers.filter((p) => p !== 'minecraft').map((p) => el('span', { class: 'chip' }, icon((PROVIDERS[p] ?? ['', 'fa-solid fa-flask'])[1]), (PROVIDERS[p] ?? ['Test'])[0])),
       me.admin ? el('span', { class: 'chip red' }, icon('fa-solid fa-shield-halved'), 'Admin') : '',
+      // sparks from achievements, spent on cosmetics in the shop (sparks.js)
+      cosmetics.wallet ? el('span', { class: 'chip gold', title: 'Iskry z osiągnięć' }, el('span', { class: 'spark-sign', textContent: '✦' }), sparks(cosmetics.wallet.balance)) : '',
       me.badge === 'support' ? el('span', { class: 'chip sky' }, icon('fa-solid fa-certificate'), 'Support') : '',
       me.badge === 'partner' ? el('span', { class: 'chip gold' }, icon('fa-solid fa-certificate'), 'Partner') : '',
       me.badge === 'friend' ? el('span', { class: 'chip green' }, el('img', { class: 'chip-logo', src: '/vendor/logo.png', alt: '' }), 'Przyjaciel') : '',
@@ -145,13 +150,15 @@ function renderAccount() {
     const id = item?.id ?? '';
     const name = item?.name ?? 'Nic';
     const locked = item && !item.available;
-    const why = item?.rank ? `${name}: tylko dla rangi ${RANK_NAMES[item.rank] ?? item.rank}` : `${name}: ekskluzywne, przyznaje admin`;
-    const b = el('button', { class: `cape-choice${(worn[slot] || '') === id ? ' selected' : ''}${id ? '' : ' none'}`, disabled: !!locked, title: locked ? why : name },
-      item ? cosmeticEl(item.id, item.slot) : el('div', { class: 'cape' }, icon('fa-solid fa-ban')), el('span', { textContent: name }), locked ? el('i', { class: 'fa-solid fa-lock lock' }) : '');
+    // sold in the shop for sparks: the price on it, a click asks to buy (sparks.js)
+    const forSale = locked && item.price && !item.owned;
+    const why = forSale ? `${name}: w sklepie za ${sparks(item.price)}` : item?.rank ? `${name}: tylko dla rangi ${RANK_NAMES[item.rank] ?? item.rank}` : item?.hint ?? `${name}: ekskluzywne, przyznaje admin`;
+    const b = el('button', { class: `cape-choice${(worn[slot] || '') === id ? ' selected' : ''}${id ? '' : ' none'}${forSale ? ' for-sale' : ''}`, disabled: !!locked && !forSale, title: locked ? why : name },
+      item ? cosmeticEl(item.id, item.slot) : el('div', { class: 'cape' }, icon('fa-solid fa-ban')), el('span', { textContent: name }), forSale ? priceTag(item.price) : '', locked ? el('i', { class: 'fa-solid fa-lock lock' }) : '');
     // under the mouse the figure tries it on; leaving puts back what is worn
     b.addEventListener('mouseenter', () => tryOn(slot, id));
     b.addEventListener('mouseleave', () => preview?.show(previewWorn));
-    b.addEventListener('click', () => send(slot === 'cape' ? { cape: id } : { loadout: { [slot]: id } },
+    b.addEventListener('click', async () => forSale ? (await buy(item, cosmetics.wallet?.balance ?? 0)) && refresh() : send(slot === 'cape' ? { cape: id } : { loadout: { [slot]: id } },
       id ? `${name}: założone. Widać po następnym wejściu do gry.` : 'Zdjęte.'));
     return b;
   };
@@ -163,6 +170,9 @@ function renderAccount() {
       character?.loadout ? el('button', { onclick: () => send({ own: false }, `${character.name} nosi teraz zestaw całego konta.`) }, icon('fa-solid fa-rotate-left'), 'Jak całe konto') : '') : '',
     el('div', { class: 'cosmetic-stage' }, previewBox ??= el('div', { class: 'figure' }), el('div', { class: 'grow' }, tabs, note, pick)));
   $('#account').replaceChildren(el('div', { class: 'account' }, profile, capes));
+  // the achievements and the sparks under it, once loaded (only into this render of the page)
+  const render = ++renders;
+  achievementsCard().then((card) => card && render === renders && $('#account .account')?.append(card)).catch(() => {});
   // the kill and movement effects play on the figure only while their tab is open (they would distract)
   // the shield and the weapon are held only while their tabs are open
   const holding = slot === 'shield' || slot === 'weapon';
