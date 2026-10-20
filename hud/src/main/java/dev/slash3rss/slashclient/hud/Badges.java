@@ -47,6 +47,11 @@ public final class Badges {
 		"supporter", badge(0xF472B6));
 	/** uuid → the colour of a supporter's tier (servers from 0.9.23 send it with the rank). */
 	private static final Map<UUID, MutableComponent> tierBadges = new ConcurrentHashMap<>();
+	/**
+	 * uuid → the logo in the colour of the rank the player picked to show (servers from 0.9.23: any rank,
+	 * also ones made in the admin panel, and the first ones in the colours the admins set).
+	 */
+	private static final Map<UUID, MutableComponent> colorBadges = new ConcurrentHashMap<>();
 	/** uuid → rank, from the server (only Minecraft accounts proven to belong to that SlashClient account). */
 	private static final Map<UUID, String> ranks = new ConcurrentHashMap<>();
 	/** uuid → the tag of that player's SlashClient clan, shown as [TAG] after the logo. */
@@ -72,6 +77,12 @@ public final class Badges {
 	static void setRank(UUID id, String rank) {
 		if (rank == null) ranks.remove(id);
 		else ranks.put(id, rank);
+	}
+
+	/** For the in-game test: as if the server had sent this rank colour (0xRRGGBB, or -1 for none). */
+	static void setBadgeColor(UUID id, int color) {
+		if (color < 0) colorBadges.remove(id);
+		else colorBadges.put(id, badge(color));
 	}
 
 	/** For the in-game test: as if the server had sent this supporter tier colour (0xRRGGBB, or -1 for none). */
@@ -132,7 +143,8 @@ public final class Badges {
 	public static Component decorate(UUID id, Component name) {
 		if (name == null || !usesSlash(id)) return name;
 		String rank = ranks.getOrDefault(id, "");
-		MutableComponent logo = "supporter".equals(rank) && tierBadges.containsKey(id) ? tierBadges.get(id) : RANK_BADGES.getOrDefault(rank, BADGE);
+		MutableComponent logo = colorBadges.containsKey(id) ? colorBadges.get(id)
+			: "supporter".equals(rank) && tierBadges.containsKey(id) ? tierBadges.get(id) : RANK_BADGES.getOrDefault(rank, BADGE);
 		MutableComponent out = Component.empty().append(logo).append(" ");
 		String tag = clans.get(id);
 		if (tag != null) out.append(Component.literal("[" + tag + "] ").withStyle(Style.EMPTY.withColor(CLAN_COLOR).withBold(true)));
@@ -174,6 +186,8 @@ public final class Badges {
 		var known = new com.google.gson.JsonArray();
 		known.add("friend_pink");
 		known.add("supporter");
+		// any rank, with its colour (badgeColors)
+		known.add("colors");
 		body.add("knownRanks", known);
 		busy = true;
 		post("/v1/mc/lookup", GSON.toJson(body), response -> {
@@ -187,6 +201,8 @@ public final class Badges {
 			JsonObject clanOf = o.has("clans") && o.get("clans").isJsonObject() ? o.getAsJsonObject("clans") : new JsonObject();
 			// supporters' tier colours (servers before 0.9.23 send none)
 			JsonObject tierColorOf = o.has("supporterColors") && o.get("supporterColors").isJsonObject() ? o.getAsJsonObject("supporterColors") : new JsonObject();
+			// the shown rank's colour (servers before 0.9.23 send none)
+			JsonObject badgeColorOf = o.has("badgeColors") && o.get("badgeColors").isJsonObject() ? o.getAsJsonObject("badgeColors") : new JsonObject();
 			for (UUID id : ask) {
 				if (active.contains(id)) slash.add(id);
 				else slash.remove(id);
@@ -205,7 +221,12 @@ public final class Badges {
 					Cosmetics.setAll(id, cape != null && cape.isJsonPrimitive() ? Map.of("cape", cape.getAsString()) : Map.of());
 				}
 				var rank = rankOf.get(id.toString());
-				if (rank != null && rank.isJsonPrimitive() && RANK_BADGES.containsKey(rank.getAsString())) ranks.put(id, rank.getAsString());
+				var badgeColor = badgeColorOf.get(id.toString());
+				boolean colored = badgeColor != null && badgeColor.isJsonPrimitive() && badgeColor.getAsString().matches("#[0-9a-fA-F]{6}");
+				if (colored) colorBadges.put(id, badge(Integer.parseInt(badgeColor.getAsString().substring(1), 16)));
+				else colorBadges.remove(id);
+				// a rank with its colour may be any (one made in the admin panel); without one, only those drawn here
+				if (rank != null && rank.isJsonPrimitive() && (colored || RANK_BADGES.containsKey(rank.getAsString()))) ranks.put(id, rank.getAsString());
 				else ranks.remove(id);
 				var tierColor = tierColorOf.get(id.toString());
 				if (tierColor != null && tierColor.isJsonPrimitive() && tierColor.getAsString().matches("#[0-9a-fA-F]{6}")) tierBadges.put(id, badge(Integer.parseInt(tierColor.getAsString().substring(1), 16)));

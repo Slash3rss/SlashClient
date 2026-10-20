@@ -149,6 +149,8 @@ public final class Cosmetics {
 			set.getAsJsonObject().entrySet().forEach(x -> { if (x.getValue().isJsonPrimitive()) all.put(x.getKey(), x.getValue().getAsString()); });
 			liveAt.put(id, now);
 			setAll(id, all);
+			// a change of ranks comes the same way: the logo's colour is asked again at the next lookup
+			Badges.recheck(id);
 		}
 	}
 

@@ -102,6 +102,19 @@ public final class TestHooks {
 			.append(Badges.decorate(mc.player.getUUID(), mc.player.getName())));
 	}
 
+	/**
+	 * As if the server had said the rank we show is this one in this colour (servers from 0.9.23; -1: none,
+	 * the HUD's own colours), written to the chat like ownRank; our own nametag shows in F5.
+	 */
+	public static void chosenRank(String label, String rank, int color) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		SlashHud.config.ownNametag = true;
+		Badges.setRank(mc.player.getUUID(), rank);
+		Badges.setBadgeColor(mc.player.getUUID(), color);
+		Compat.chat(mc).addClientSystemMessage(net.minecraft.network.chat.Component.literal(label + ": ")
+			.append(Badges.decorate(mc.player.getUUID(), mc.player.getName())));
+	}
+
 	/** As if the server had said we support the project with a tier of this colour (-1: the default pink), written to the chat like ownRank. */
 	public static void supporterRank(String label, int color) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
