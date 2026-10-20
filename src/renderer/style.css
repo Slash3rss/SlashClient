@@ -355,6 +355,7 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .news-head .hint { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-left: 6px; }
 .news { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); grid-auto-rows: max-content; gap: 12px; align-content: start; }
 .news .more { grid-column: 1 / -1; }
+.news-failed { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px 0; }
 .news-card { border-radius: 12px; overflow: hidden; border: 1px solid var(--glass-border); background: rgba(255, 255, 255, .02); display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 0; padding: 0; text-align: left; font-weight: 400; transition: var(--transition); }
 .news-card:hover:not(:disabled) { background: rgba(255, 255, 255, .04); }
 .news-card:hover { border-color: rgba(59, 130, 246, .35); transform: translateY(-2px); }

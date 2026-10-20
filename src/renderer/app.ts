@@ -2873,6 +2873,7 @@ async function loadNews(more = false) {
   const placeholders = skeletons('news', more ? 3 : 6);
   if (more) {
     grid.querySelector('.more')?.remove();
+    grid.querySelector('.news-failed')?.remove();
     grid.append(...placeholders);
   } else {
     grid.replaceChildren(...placeholders);
@@ -2890,7 +2891,12 @@ async function loadNews(more = false) {
     }
   } catch {
     placeholders.forEach((p) => p.remove());
-    if (!more) grid.replaceChildren(el('p', { className: 'muted', textContent: 'Nie udało się pobrać nowości.' }));
+    // what failed can be tried again: the first page, or the next one under those already shown
+    const retry = el('button', { type: 'button' }, el('i', { className: 'fa-solid fa-rotate-right' }), ` ${t('Spróbuj ponownie')}`);
+    retry.addEventListener('click', () => loadNews(more));
+    const failed = el('div', { className: 'news-failed' }, el('p', { className: 'muted', textContent: t('Nie udało się pobrać nowości.') }), retry);
+    if (more) grid.append(failed);
+    else grid.replaceChildren(failed);
   } finally {
     newsLoading = false;
   }
