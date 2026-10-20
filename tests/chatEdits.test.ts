@@ -53,6 +53,10 @@ describe('editing and deleting chat messages', () => {
     assert.equal(errorCode({ error: 'slow_down', retryAfter: 7 }, 429), 'slow_down:7');
     assert.equal(errorCode({ error: 'slow_down' }, 429), 'slow_down');
     assert.equal(errorCode({ error: 'rate_limited', retryAfter: 7 }, 429), 'rate_limited');
+    // a community channel's slow mode (server 0.9.27+): up to an hour
+    assert.equal(errorCode({ error: 'slow_mode', retryAfter: 3600 }, 429), 'slow_mode:3600');
+    assert.equal(errorCode({ error: 'slow_mode' }, 429), 'slow_mode');
+
     assert.equal(errorCode({}, 502), 'http_502');
     assert.equal(slowDownSeconds('slow_down:7'), 7);
     assert.equal(slowDownSeconds('slow_down'), 5);

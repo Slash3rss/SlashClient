@@ -73,10 +73,11 @@ describe('game bridge', () => {
     const req = (path: string, method = 'GET') => fetch(url + path, { method, headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, body: method === 'POST' ? '{}' : undefined });
     const ok = ['/v1/communities/mine', '/v1/communities/c1/channels/g1/messages?limit=50', '/v1/communities/c1/members?limit=50'];
     for (const p of ok) assert.equal((await req(p)).status, 200, p);
-    for (const p of ['/v1/communities/c1/channels/g1/messages', '/v1/communities/c1/channels/g1/read', '/v1/communities/c1/channels/g1/messages/5/edit', '/v1/communities/c1/channels/g1/messages/5/report', '/v1/communities/c1/notify']) assert.equal((await req(p, 'POST')).status, 200, p);
+    for (const p of ['/v1/communities/c1/channels/g1/messages', '/v1/communities/c1/channels/g1/read', '/v1/communities/c1/channels/g1/messages/5/edit', '/v1/communities/c1/channels/g1/messages/5/report', '/v1/communities/c1/channels/g1/messages/5/reactions', '/v1/communities/c1/notify']) assert.equal((await req(p, 'POST')).status, 200, p);
     assert.equal((await req('/v1/communities/c1/channels/g1/messages/5', 'DELETE')).status, 200);
     // managing stays in the launcher
-    for (const p of ['/v1/communities', '/v1/communities/c1/settings', '/v1/communities/c1/bans', '/v1/communities/c1/members/u/role', '/v1/communities/c1/join']) assert.equal((await req(p, 'POST')).status, 403, p);
+    for (const p of ['/v1/communities', '/v1/communities/c1/settings', '/v1/communities/c1/channels/g1/messages/5/pin', '/v1/communities/c1/channels/g1/slowmode',
+ '/v1/communities/c1/bans', '/v1/communities/c1/members/u/role', '/v1/communities/c1/join']) assert.equal((await req(p, 'POST')).status, 403, p);
     assert.equal((await req('/v1/communities/c1', 'DELETE')).status, 403);
     assert.equal((await req('/v1/communities/discover')).status, 403);
     bridge.push({ type: 'community-message', message: { text: 'hej' } });

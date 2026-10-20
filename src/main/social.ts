@@ -33,14 +33,16 @@ export interface SocialState {
 }
 
 /**
- * The error code of a failed answer; too many messages in a row (server 0.9.23+) carries the seconds
- * to wait in it, "slow_down:5", so the page and the game can say how long without another field.
+ * The error code of a failed answer; too many messages in a row (server 0.9.23+) and a community
+ * channel's slow mode (0.9.27+) carry the seconds to wait in it, "slow_down:5", "slow_mode:30", so
+ * the page and the game can say how long without another field.
  */
 export function errorCode(data: { error?: string; retryAfter?: unknown }, status: number): string {
   const code = data.error ?? `http_${status}`;
   const wait = Number(data.retryAfter);
-  return code === 'slow_down' && Number.isInteger(wait) && wait > 0 && wait < 3600 ? `slow_down:${wait}` : code;
+  return (code === 'slow_down' || code === 'slow_mode') && Number.isInteger(wait) && wait > 0 && wait <= 3600 ? `${code}:${wait}` : code;
 }
+
 
 export class SocialError extends Error {
   constructor(readonly code: string, readonly httpStatus = 0) {
