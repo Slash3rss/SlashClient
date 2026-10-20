@@ -1471,5 +1471,6 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .rank-logo { display: inline-block; width: .8em; height: .95em; vertical-align: -0.1em; background: var(--rank, #fff); -webkit-mask: url(img/badge.svg) center / contain no-repeat; mask: url(img/badge.svg) center / contain no-repeat; }
 .rank-icon { display: inline-block; width: 1em; height: 1em; vertical-align: -0.15em; image-rendering: pixelated; }
 .fr-rank-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.fr-rank-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; background: rgba(255, 255, 255, .06); }
-.fr-badge-row { gap: 12px; align-items: center; }
+.fr-rank-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; background: color-mix(in srgb, var(--rank, #9ca3af) 16%, transparent); color: color-mix(in srgb, var(--rank, #d1d5db) 70%, #fff); }
+.fr-badge-row { display: flex; gap: 12px; align-items: center; }
+.fr-badge-row .fr-badge-pick { flex: 1; min-width: 0; width: auto; }

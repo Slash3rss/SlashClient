@@ -7,7 +7,7 @@ import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
 import { openProfilePrivacy, profileLink } from './profilePrivacy';
 import { confirmDialog } from './dialog';
 import { legalNote } from './legal';
-import { badgeChoices, rankBadge, rankName, type RankView } from './rankBadge';
+import { badgeChoices, rankBadge, rankName, safeColor, type RankView } from './rankBadge';
 import { canDelete, canEdit, editHint, editedLabel, replaceMessage, slowDownSeconds, slowDownText, tombstone, withMenu, type MenuItem } from './chatEdits';
 
 /**
@@ -662,7 +662,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         renderMe();
       }
     });
-    const ranks = (me.ranks ?? []).map((r) => el('span', { className: 'fr-rank-chip' }, rankBadge(r, api.socialRankIcon, renderMe), rankName(r, getLang() === 'en')));
+    const ranks = (me.ranks ?? []).map((r) => {
+      const chip = el('span', { className: 'fr-rank-chip' }, rankBadge(r, api.socialRankIcon, renderMe), rankName(r, getLang() === 'en'));
+      chip.style.setProperty('--rank', safeColor(r.color));
+      return chip;
+    });
     return [
       el('div', { className: 'fr-account-section', textContent: t('Ranga przy nicku') }),
       el('div', { className: 'fr-rank-chips' }, ...ranks),
