@@ -2,7 +2,7 @@ import AdmZip from 'adm-zip';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { ManualFile } from './curseforge';
+import { downloadLink, type ManualFile } from './manualFiles';
 import type { StageProgress } from './modrinth';
 import type { Profile } from './store';
 import { t } from '../shared/i18n';
@@ -120,7 +120,9 @@ export function manualFilesOf(raw: unknown): ManualFile[] {
     const folder = str(f?.folder, 40);
     if (!title || !fileName || !url || !folder) return [];
     if (path.basename(fileName) !== fileName || !/^[a-z]+$/.test(folder) || !/^https:\/\/(www\.)?curseforge\.com\//.test(url)) return [];
-    return [{ title, fileName, url, folder }];
+    const sha1 = typeof f?.sha1 === 'string' && /^[0-9a-f]{40}$/i.test(f.sha1) ? f.sha1.toLowerCase() : undefined;
+    const size = num(f?.size, 1, 2 ** 40);
+    return [{ title, fileName, url: downloadLink(url), folder, ...(sha1 ? { sha1 } : {}), ...(size ? { size } : {}) }];
   });
 }
 

@@ -580,7 +580,22 @@ body.entering main { animation: rise-in .55s cubic-bezier(.2, .7, .3, 1) .12s bo
 .version-row button { height: 32px; padding: 0 12px; font-size: 13px; }
 .version-row .actions { display: flex; gap: 6px; }
 a.button-link { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; font-size: 13px; border-radius: var(--btn-radius); border: 1px solid var(--glass-border); color: var(--text-primary); text-decoration: none; background: var(--glass-bg-hover); }
-.manual-actions { justify-content: flex-end; margin-top: 12px; }
+.manual-actions { justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
+.manual-actions .spacer { flex: 1; }
+.manual-box { width: min(760px, 100%); }
+.manual-tabs { margin: 10px 0 12px; width: max-content; }
+.manual-row { grid-template-columns: 1fr auto; }
+.manual-row .manual-link { font-size: 12px; word-break: break-all; }
+.manual-row .manual-hash { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); word-break: break-all; }
+.manual-row .manual-state { font-size: 12px; margin-top: 4px; color: var(--text-muted); word-break: break-all; }
+.manual-row.found { border-color: rgba(74, 222, 128, .4); }
+.manual-row.found .manual-state { color: #4ade80; }
+.manual-summary { margin-top: 10px; font-size: 13px; color: var(--text-muted); }
+.manual-summary.done { color: #4ade80; font-weight: 600; }
+.manual-summary i, .manual-row .manual-state i { margin-right: 6px; }
+.manual-folder { font-size: 13px; word-break: break-all; }
+.manual-drop { position: absolute; inset: 16px; display: flex; align-items: center; justify-content: center; border: 2px dashed rgba(59, 130, 246, .7); border-radius: 12px; background: rgba(17, 22, 34, .92); font-size: 16px; font-weight: 600; pointer-events: none; z-index: 2; }
+.manual-drop i { margin-right: 8px; }
 .content-unavailable { padding: 16px; text-align: center; }
 .tag.beta { background: rgba(250, 204, 21, .15); color: #fde68a; }
 .tag.alpha { background: rgba(239, 68, 68, .15); color: #fca5a5; }

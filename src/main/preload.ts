@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 const invoke = (channel: string, ...args: unknown[]) => ipcRenderer.invoke(channel, ...args);
 const on = (channel: string, fn: (payload: any) => void) => {
@@ -47,6 +47,15 @@ const api = {
     invoke('content:versions', profileId, projectId, type, onlyCompatible, source),
   manualFiles: (profileId: string) => invoke('content:manual', profileId),
   dismissManualFiles: (profileId: string) => invoke('content:manualDismiss', profileId),
+  /** The "blocked files" dialog: watching the folders while it is open, `manual:status` events when files are found. */
+  manualOpen: (profileId: string) => invoke('manual:open', profileId),
+  manualClose: () => invoke('manual:close'),
+  manualDrop: (files: File[]) => invoke('manual:drop', files.map((f) => webUtils.getPathForFile(f)).filter(Boolean)),
+  manualAccept: () => invoke('manual:accept'),
+  manualOpenMissing: () => invoke('manual:openMissing'),
+  manualFolders: () => invoke('manual:folders'),
+  manualAddFolder: () => invoke('manual:addFolder'),
+  manualRemoveFolder: (dir: string) => invoke('manual:removeFolder', dir),
   openProfileFolder: (profileId: string, folder: string) => invoke('profile:openFolder', profileId, folder),
   checkUpdates: (profileId: string) => invoke('content:checkUpdates', profileId),
   updateContent: (profileId: string, items: unknown[]) => invoke('content:update', profileId, items),
