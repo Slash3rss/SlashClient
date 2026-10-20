@@ -1,7 +1,7 @@
 import { app } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import path from 'node:path';
-import { appBundle, downloadMacUpdate, installMacUpdate, pickMacZip, type MacFile } from './macUpdate';
+import { bundleState, downloadMacUpdate, installMacUpdate, pickMacZip, type BundleProblem, type MacFile } from './macUpdate';
 import { netFetch } from './download';
 import { appendUpdateLog, cleanupWinUpdate, downloadWinUpdate, manifestName, parseManifest, startSwap, winInstall, type WinInstall } from './winUpdate';
 
@@ -12,6 +12,8 @@ export interface UpdateStatus {
   percent?: number;
   /** macOS: the new version is downloaded by hand from the website (see below). */
   manual?: boolean;
+  /** macOS, with `manual`: why the launcher could not update itself ('failed': the download or unpacking went wrong). */
+  reason?: BundleProblem | 'no-file' | 'failed';
   error?: string;
 }
 
@@ -149,10 +151,15 @@ function winSwap(relaunch: string[] | null, onLog?: (message: string) => void) {
 /** macOS: downloads the new version in the background, or falls back to the download button. */
 async function macDownload(feed: string, version: string, files: MacFile[], onLog?: (message: string) => void) {
   if (macDownloading || (macReady && status.version === version)) return;
-  const manual = () => set({ state: 'available', version, manual: true });
-  const current = await appBundle();
+  const manual = (reason: NonNullable<UpdateStatus['reason']>) => {
+    onLog?.(`Aktualizacja (macOS): bez samodzielnej podmiany (${reason}).`);
+    set({ state: 'available', version, manual: true, reason });
+  };
+  const state = await bundleState();
   const file = pickMacZip(files ?? []);
-  if (!current || !file) return manual();
+  if (!('bundle' in state)) return manual(state.problem);
+  if (!file) return manual('no-file');
+  const current = state.bundle;
   macDownloading = true;
   try {
     set({ state: 'downloading', version, percent: 0 });
@@ -161,7 +168,7 @@ async function macDownload(feed: string, version: string, files: MacFile[], onLo
     set({ state: 'ready', version });
   } catch (err) {
     onLog?.(`Aktualizacja (macOS): ${(err as Error).message}`);
-    manual();
+    manual('failed');
   } finally {
     macDownloading = false;
   }
@@ -176,6 +183,20 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
 
 export function updateStatus(): UpdateStatus {
   return status;
+}
+
+/** macOS: tries the download again (after a failed one). */
+export async function retryMacUpdate(): Promise<void> {
+  if (process.platform !== 'darwin' || !app.isPackaged) return;
+  status = { ...status, manual: false };
+  await autoUpdater.checkForUpdates().catch(() => {});
+}
+
+/** macOS: moves SlashClient into Applications (Electron asks for the password if needed) and starts it from there, where it can update itself. */
+export function moveToApplications(): boolean {
+  if (process.platform !== 'darwin' || app.isInApplicationsFolder()) return false;
+  // an older copy already in Applications is replaced by this newer one
+  return app.moveToApplicationsFolder({ conflictHandler: () => true });
 }
 
 export function installUpdate(): void {

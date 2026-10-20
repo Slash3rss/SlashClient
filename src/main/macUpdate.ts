@@ -25,19 +25,30 @@ export function pickMacZip(files: MacFile[], arch = process.arch): MacFile | und
   return arch === 'arm64' ? zips.find((f) => /arm64/.test(f.url)) : zips.find((f) => !/arm64/.test(f.url));
 }
 
-/** The running SlashClient.app, or undefined when it cannot replace itself (not packaged, or run from a read-only place). */
-export async function appBundle(execPath = process.execPath): Promise<string | undefined> {
+/** Why the running app cannot replace itself: opened from the download or the disk image (moving it to Applications helps), or no right to write there. */
+export type BundleProblem = 'not-packaged' | 'translocated' | 'disk-image' | 'read-only';
+
+/** The running SlashClient.app, or why it cannot replace itself. */
+export async function bundleState(execPath = process.execPath): Promise<{ bundle: string } | { problem: BundleProblem }> {
   const bundle = path.resolve(execPath, '..', '..', '..');
-  if (!bundle.endsWith('.app')) return undefined;
+  if (!bundle.endsWith('.app')) return { problem: 'not-packaged' };
   // opened straight from the download (macOS runs it from a random read-only copy) or from the disk image
-  if (bundle.includes('/AppTranslocation/') || bundle.startsWith('/Volumes/')) return undefined;
+  const where = bundle.replace(/\\/g, '/');
+  if (where.includes('/AppTranslocation/')) return { problem: 'translocated' };
+  if (/^([A-Za-z]:)?\/Volumes\//.test(where)) return { problem: 'disk-image' };
   try {
     await fs.access(path.dirname(bundle), fs.constants.W_OK);
     await fs.access(bundle, fs.constants.W_OK);
-    return bundle;
+    return { bundle };
   } catch {
-    return undefined;
+    return { problem: 'read-only' };
   }
+}
+
+/** The running SlashClient.app, or undefined when it cannot replace itself (not packaged, or run from a read-only place). */
+export async function appBundle(execPath = process.execPath): Promise<string | undefined> {
+  const state = await bundleState(execPath);
+  return 'bundle' in state ? state.bundle : undefined;
 }
 
 const workDir = () => path.join(app.getPath('userData'), 'update');

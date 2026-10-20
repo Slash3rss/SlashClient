@@ -14,7 +14,7 @@ import { shareLog } from './logshare';
 import { clipFrameResponse, registerMediaSharing } from './mediaShare';
 import { previewPack } from './packPreview';
 import { lastTarget, serverFromLog, worldPlayedSince } from './sessions';
-import { checkForUpdates, installUpdate, startUpdateChecks, updateStatus } from './updates';
+import { checkForUpdates, installUpdate, startUpdateChecks, updateStatus, moveToApplications, retryMacUpdate } from './updates';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { activityFromLog, SocialClient, SocialError, type SocialUser, type Status } from './social';
 import { decrypt, encrypt, isEncrypted, newDeviceKey, type DeviceKey, type PublicDevice } from './chatCrypto';
@@ -1224,6 +1224,8 @@ handle('update:install', () => installUpdate());
 handle('update:status', () => updateStatus());
 handle('update:check', () => checkForUpdates());
 // macOS: the new version from the website (Apple Silicon or Intel, like this build)
+handle('update:retry', () => retryMacUpdate());
+handle('update:moveToApplications', () => moveToApplications());
 handle('update:download', () => shell.openExternal(`${store.settings.socialUrl}/pobierz/${process.arch === 'arm64' ? 'mac' : 'mac-intel'}`));
 handle('app:version', () => app.getVersion());
 /** A Microsoft account with a valid Minecraft token (refreshed and saved if needed). */

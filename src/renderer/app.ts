@@ -3876,7 +3876,7 @@ function finishTaskCard({ id, ok, message, profileId }: TaskDone, stayMs?: numbe
 
 // ---------- updates ----------
 
-type UpdateStatus = { state: string; version?: string; percent?: number; manual?: boolean; error?: string };
+type UpdateStatus = { state: string; version?: string; percent?: number; manual?: boolean; reason?: string; error?: string };
 let updateClosed = '';
 /** The bar at the top (a new version: downloading, ready, or to download on macOS) and the line in Settings. */
 function showUpdate(u: UpdateStatus) {
@@ -3886,11 +3886,26 @@ function showUpdate(u: UpdateStatus) {
     downloading: t('Pobieram nową wersję SlashClient {0}… {1}%', u.version ?? '', u.percent ?? 0),
     ready: t('Nowa wersja SlashClient jest gotowa: {0}', u.version ?? ''),
   };
+  // macOS when it could not update itself: why, and the way out (moving to Applications, trying again)
+  const outside = u.reason === 'translocated' || u.reason === 'disk-image';
+  if (u.state === 'available' && u.manual) {
+    text.available = outside
+      ? t('Nowa wersja {0}. SlashClient działa spoza folderu Aplikacje, więc nie może zaktualizować się sam — przenieś go tam.', u.version ?? '')
+      : u.reason === 'read-only'
+        ? t('Nowa wersja {0}. SlashClient nie ma prawa zapisu w swoim folderze — pobierz nową wersję ręcznie.', u.version ?? '')
+        : u.reason === 'failed'
+          ? t('Nowa wersja {0}. Nie udało się jej pobrać — spróbuj ponownie.', u.version ?? '')
+          : text.available;
+  }
   const key = `${u.state}:${u.version}`;
   bar.classList.toggle('hidden', !text[u.state] || updateClosed === key);
   $('#update-text').textContent = text[u.state] ?? '';
   $('#update-install').classList.toggle('hidden', u.state !== 'ready');
-  $('#update-download').classList.toggle('hidden', !(u.state === 'available' && u.manual));
+  const manual = u.state === 'available' && !!u.manual;
+  $('#update-move').classList.toggle('hidden', !(manual && outside));
+  $('#update-retry').classList.toggle('hidden', !(manual && u.reason === 'failed'));
+  // the website's download: only when nothing else can help
+  $('#update-download').classList.toggle('hidden', !(manual && !outside && u.reason !== 'failed'));
   const settings: Record<string, string> = {
     dev: t('(wersja deweloperska, bez aktualizacji)'),
     checking: t('· sprawdzam…'),
@@ -3907,6 +3922,10 @@ api.on('update:status', showUpdate);
 api.updateStatus().then(showUpdate);
 $('#update-install').addEventListener('click', () => api.installUpdate());
 $('#update-download').addEventListener('click', () => api.downloadUpdate());
+$('#update-retry').addEventListener('click', () => api.retryUpdate());
+$('#update-move').addEventListener('click', async () => {
+  if (!(await api.moveToApplications())) toast(t('Nie udało się przenieść SlashClient do Aplikacji. Przeciągnij go tam w Finderze i uruchom ponownie.'), true);
+});
 $('#update-close').addEventListener('click', async () => {
   const u: UpdateStatus = await api.updateStatus();
   updateClosed = `${u.state}:${u.version}`;

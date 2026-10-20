@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
-import { appBundle, pickMacZip, swapScript, unpackApp } from '../src/main/macUpdate';
+import { appBundle, bundleState, pickMacZip, swapScript, unpackApp } from '../src/main/macUpdate';
 
 const FILES = [
   { url: 'SlashClient-0.9.2-mac.zip', sha512: 'intel' },
@@ -28,6 +28,10 @@ describe('macOS updates', () => {
     // opened from the disk image, or from the read-only copy macOS makes of a fresh download
     assert.equal(await appBundle('/Volumes/SlashClient/SlashClient.app/Contents/MacOS/SlashClient'), undefined);
     assert.equal(await appBundle('/private/var/folders/x/AppTranslocation/1/d/SlashClient.app/Contents/MacOS/SlashClient'), undefined);
+    // the reason, so the launcher can offer moving it to Applications
+    assert.deepEqual(await bundleState('/private/var/folders/x/AppTranslocation/1/d/SlashClient.app/Contents/MacOS/SlashClient'), { problem: 'translocated' });
+    assert.deepEqual(await bundleState('/Volumes/SlashClient/SlashClient.app/Contents/MacOS/SlashClient'), { problem: 'disk-image' });
+    assert.deepEqual(await bundleState('/usr/bin/node'), { problem: 'not-packaged' });
     assert.equal(await appBundle('/usr/local/bin/node'), undefined);
     await fs.rm(root, { recursive: true });
   });
