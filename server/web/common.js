@@ -167,11 +167,46 @@ export async function guard(fn) {
   }
 }
 
-/** A cape's front, cut from its texture. */
+/** A cape's front, cut from its texture; an animated one turns its frames like in the game. */
 export function capeEl(id, small = false) {
   const c = el('div', { class: `cape${small ? ' sm' : ''}`, title: id });
   c.style.backgroundImage = `url(/vendor/capes/${id}.png)`;
+  animateCape(c, id);
   return c;
+}
+
+/** Animated capes and how many frames each has (vendor/capes/<id>_<n>.png), from the catalog, asked once. */
+let capeFrames;
+const CAPE_FRAME_MS = 150;
+let capeTick = 0;
+let capeTimer;
+const framesOfCapes = () => capeFrames ??= fetch('/v1/cosmetics')
+  .then((r) => (r.ok ? r.json() : {}))
+  .then(({ items }) => new Map((items ?? []).filter((i) => i.slot === 'cape' && i.frames > 1).map((i) => [i.id, i.frames])))
+  .catch(() => new Map());
+
+/** Makes a cape's picture (an element with the cape as its background) play its frames while it is on the page. */
+export function animateCape(node, id) {
+  node.dataset.capeAnim = id;
+  void framesOfCapes().then((frames) => {
+    const n = frames.get(id);
+    if (!n) return;
+    // the frames loaded ahead, so turning them does not flicker
+    for (let f = 0; f < n; f++) new Image().src = `/vendor/capes/${id}_${f}.png`;
+    capeTimer ??= setInterval(() => {
+      if (document.hidden) return;
+      capeTick++;
+      const all = document.querySelectorAll('[data-cape-anim]');
+      for (const c of all) {
+        const count = frames.get(c.dataset.capeAnim);
+        if (count) c.style.backgroundImage = `url(/vendor/capes/${c.dataset.capeAnim}_${capeTick % count}.png)`;
+      }
+      if (!all.length) {
+        clearInterval(capeTimer);
+        capeTimer = undefined;
+      }
+    }, CAPE_FRAME_MS);
+  });
 }
 
 /** The cosmetics' slots: name and icon, in the order they are shown. */

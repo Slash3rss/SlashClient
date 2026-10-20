@@ -1,7 +1,7 @@
 // The landing page: download button for the visitor's system, the screenshot that straightens
 // as you scroll, sections that fade in and the capes. The words, the modules, the features and
 // the FAQ come in the page from the server (edited in the admin panel's "Strona główna").
-import { $, api, el, icon, token } from './common.js';
+import { $, animateCape, api, el, icon, token } from './common.js';
 
 const EN = document.documentElement.lang === 'en';
 
@@ -53,7 +53,10 @@ if (token.get()) {
 }
 
 // ---------- capes ----------
-for (const c of document.querySelectorAll('[data-cape]')) c.style.backgroundImage = `url(/vendor/capes/${c.dataset.cape}.png)`;
+for (const c of document.querySelectorAll('[data-cape]')) {
+  c.style.backgroundImage = `url(/vendor/capes/${c.dataset.cape}.png)`;
+  animateCape(c, c.dataset.cape);
+}
 const strip = $('#cape-strip');
 if (strip) {
   api('GET', '/v1/cosmetics').then(({ capes, items }) => {
@@ -65,6 +68,7 @@ if (strip) {
         : c.exclusive ? `${c.name} (${EN ? 'exclusive' : 'ekskluzywna'})` : c.name;
       const d = el('div', { class: `cape${price ? ' priced' : ''}`, title });
       d.style.backgroundImage = `url(/vendor/capes/${c.id}.png)`;
+      animateCape(d, c.id);
       if (price) d.append(el('span', { class: 'spark-price', textContent: `✦ ${price}` }));
       return d;
     }));
