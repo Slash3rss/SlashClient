@@ -81,7 +81,7 @@ after(async () => {
 
 describe('community rules', () => {
   it('decides every action × role × target', () => {
-    const actions: CommunityAction[] = ['invite', 'requests', 'reports', 'kick', 'mute', 'deleteMessage', 'ban', 'edit', 'announce', 'log', 'setRole', 'transfer', 'delete'];
+    const actions: CommunityAction[] = ['invite', 'requests', 'reports', 'pin', 'kick', 'mute', 'deleteMessage', 'ban', 'edit', 'announce', 'log', 'slowMode', 'setRole', 'transfer', 'delete'];
     for (const role of ROLES) {
       for (const action of actions) {
         for (const target of [undefined, ...ROLES]) {
@@ -90,7 +90,7 @@ describe('community rules', () => {
             const r = RANK[role];
             const below = target !== undefined && RANK[target] < r;
             const want = {
-              invite: r >= 1, requests: r >= 1, reports: r >= 1,
+              invite: r >= 1, requests: r >= 1, reports: r >= 1, pin: r >= 1, slowMode: r >= 2,
               kick: r >= 1 && below, mute: r >= 1 && below, deleteMessage: r >= 1 && below,
               ban: r >= 2 && below, edit: r >= 2, announce: r >= 2, log: r >= 2,
               setRole: r >= 2 && below && next !== undefined && next !== 'owner' && RANK[next!] < r,
@@ -104,7 +104,8 @@ describe('community rules', () => {
       assert.equal(may(undefined, 'invite'), false);
     }
     // the table the clients get matches
-    assert.deepEqual(permissions('moderator'), { invite: true, requests: true, reports: true, kick: true, mute: true, deleteMessage: true, ban: false, edit: false, announce: false, log: false, setRole: false, transfer: false, delete: false });
+    assert.deepEqual(permissions('moderator'), { invite: true, requests: true, reports: true, pin: true, slowMode: false, kick: true,
+ mute: true, deleteMessage: true, ban: false, edit: false, announce: false, log: false, setRole: false, transfer: false, delete: false });
     assert.equal(permissions('member').invite, false);
     assert.equal(permissions('owner').delete, true);
   });

@@ -10,7 +10,9 @@ const ACTIONS = {
   ban: 'zbanował(a)', unban: 'odbanował(a)', mute: 'wyciszył(a)', unmute: 'zdjął(ęła) wyciszenie', role: 'zmienił(a) rolę', transfer: 'przekazał(a) społeczność',
   invite: 'zaprosił(a)', edit: 'zmienił(a) ustawienia', logo: 'zmienił(a) logo', logo_remove: 'usunął(ęła) logo', delete: 'usunął(ęła) społeczność', heir: 'przejął(ęła) społeczność',
   message_delete: 'usunął(ęła) wiadomość', report_delete: 'usunął(ęła) zgłoszoną wiadomość', report_dismiss: 'odrzucił(a) zgłoszenie',
-  admin_delete: '(admin) usunął(ęła) społeczność', admin_logo_remove: '(admin) usunął(ęła) logo', admin_description_remove: '(admin) usunął(ęła) opis',
+  pin: 'przypiął(ęła) wiadomość od', unpin: 'odpiął(ęła) wiadomość od', slowmode: 'zmienił(a) tryb powolny',
+  admin_delete:
+ '(admin) usunął(ęła) społeczność', admin_logo_remove: '(admin) usunął(ęła) logo', admin_description_remove: '(admin) usunął(ęła) opis',
   admin_transfer: '(admin) przekazał(a) społeczność', admin_report_delete: '(admin) usunął(ęła) zgłoszoną wiadomość', admin_report_dismiss: '(admin) odrzucił(a) zgłoszenie',
 };
 
