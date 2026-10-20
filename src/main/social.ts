@@ -30,6 +30,16 @@ export interface SocialState {
   status: Status;
 }
 
+/**
+ * The error code of a failed answer; too many messages in a row (server 0.9.23+) carries the seconds
+ * to wait in it, "slow_down:5", so the page and the game can say how long without another field.
+ */
+export function errorCode(data: { error?: string; retryAfter?: unknown }, status: number): string {
+  const code = data.error ?? `http_${status}`;
+  const wait = Number(data.retryAfter);
+  return code === 'slow_down' && Number.isInteger(wait) && wait > 0 && wait < 3600 ? `slow_down:${wait}` : code;
+}
+
 export class SocialError extends Error {
   constructor(readonly code: string, readonly httpStatus = 0) {
     super(code);
@@ -88,10 +98,10 @@ export class SocialClient {
     } catch {
       throw new SocialError('offline');
     }
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    const data = (await res.json().catch(() => ({}))) as { error?: string; retryAfter?: unknown };
     if (!res.ok) {
       if (res.status === 401 && auth) await this.dropSession();
-      throw new SocialError(data.error ?? `http_${res.status}`, res.status);
+      throw new SocialError(errorCode(data, res.status), res.status);
     }
     return data as T;
   }
@@ -121,9 +131,9 @@ export class SocialClient {
       throw new SocialError('offline');
     }
     if (!res.ok) {
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data = (await res.json().catch(() => ({}))) as { error?: string; retryAfter?: unknown };
       if (res.status === 401) await this.dropSession();
-      throw new SocialError(data.error ?? `http_${res.status}`, res.status);
+      throw new SocialError(errorCode(data, res.status), res.status);
     }
     return res;
   }

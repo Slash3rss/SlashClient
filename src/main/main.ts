@@ -1505,10 +1505,11 @@ const social = new SocialClient({
   status: () => store.settings.socialStatus,
   emit: (event) => {
     // the page and the game get messages already decrypted; a launcher's new key drops the cached ones
-    if (event.type === 'message' && event.message) event = { ...event, message: openMessage(event.message as ChatMessage) };
+    // an edited message comes as a new one would; a deleted one has no text left to open (server 0.9.23+)
+    if ((event.type === 'message' || event.type === 'message-edit' || event.type === 'message-delete') && event.message) event = { ...event, message: openMessage(event.message as ChatMessage) };
     if (event.type === 'keys' && typeof event.user === 'string') chatKeys.delete(event.user);
     // group chats: the same, with the group's members' keys (who is in it may have changed)
-    if (event.type === 'group-message' && event.message) event = { ...event, message: openGroup(event.message as GroupChatMessage) };
+    if ((event.type === 'group-message' || event.type === 'group-message-edit' || event.type === 'group-message-delete') && event.message) event = { ...event, message: openGroup(event.message as GroupChatMessage) };
     if (event.type === 'groups' || event.type === 'keys') groupKeys.clear();
     send('social:event', event);
     bridge.push(event as { type: string });
@@ -1845,11 +1846,13 @@ handle('social:clanLogo', (id: string, version: number) => socialCall(async () =
 
 /** A call to the social server with the chat encrypted on the way out and decrypted on the way in. */
 async function chatCall(method: string, apiPath: string, body?: unknown) {
-  const send = /^\/v1\/messages\/([\w-]+)$/.exec(apiPath);
+  // a new message, or an edited one (server 0.9.23+): the new text is sealed exactly like a new message
+  const send = /^\/v1\/messages\/([\w-]+)(\/\d+\/edit)?$/.exec(apiPath);
   if (method === 'POST' && send && body && typeof (body as { text?: unknown }).text === 'string') {
     body = { ...(body as object), text: await sealText(send[1], (body as { text: string }).text) };
   }
-  const group = /^\/v1\/groups\/([\w-]+)\/messages(\?.*)?$/.exec(apiPath);
+  // the group's messages, one of them edited (sealed for the members of now) or deleted
+  const group = /^\/v1\/groups\/([\w-]+)\/messages(\/\d+(\/edit)?)?(\?.*)?$/.exec(apiPath);
   if (group) {
     if (method === 'POST' && body && typeof (body as { text?: unknown }).text === 'string') {
       body = { ...(body as object), text: await sealGroup(group[1], (body as { text: string }).text) };

@@ -68,6 +68,11 @@ const ALLOWED: [string, RegExp][] = [
   ['POST', /^\/v1\/groups$/],
   ['GET', /^\/v1\/groups\/[\w-]{1,32}\/messages(\?(before=\d+&?|limit=\d+&?)*)?$/],
   ['POST', /^\/v1\/groups\/[\w-]{1,32}\/(messages|read|members|leave)$/],
+  // editing one's message for a while, and deleting it (in a group also others', for its moderators) (server 0.9.23+)
+  ['POST', /^\/v1\/messages\/[\w-]{1,64}\/\d{1,15}\/edit$/],
+  ['DELETE', /^\/v1\/messages\/[\w-]{1,64}\/\d{1,15}$/],
+  ['POST', /^\/v1\/groups\/[\w-]{1,32}\/messages\/\d{1,15}\/edit$/],
+  ['DELETE', /^\/v1\/groups\/[\w-]{1,32}\/messages\/\d{1,15}$/],
   // the clan: who is in it and online (managing it stays in the launcher)
   ['GET', /^\/v1\/clans\/mine$/],
 ];
@@ -82,6 +87,8 @@ const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', '
   'spray',
   // group and clan chats
   'groups', 'group-message', 'clan',
+  // a message edited or deleted, direct or in a group
+  'message-edit', 'message-delete', 'group-message-edit', 'group-message-delete',
   // sparks: the balance changed, and many achievements unlocked at once (one toast)
   'wallet', 'achievements-summary']);
 const KEEP = 200;

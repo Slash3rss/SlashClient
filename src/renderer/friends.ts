@@ -4,6 +4,8 @@ import { PlayingWatch, type PlayingNews } from './friendActivity';
 import { createParty, type Party } from './party';
 import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
 import { openProfilePrivacy, profileLink } from './profilePrivacy';
+import { confirmDialog } from './dialog';
+import { canDelete, canEdit, editHint, editedLabel, replaceMessage, slowDownSeconds, slowDownText, tombstone, withMenu, type MenuItem } from './chatEdits';
 
 /**
  * The "Friends" view: signing in to the social server, the friends list with live
@@ -21,7 +23,8 @@ interface Me extends Person { showServer: boolean; providers: string[]; minecraf
 interface Invite { server: string; version?: string; party?: string }
 /** A picture in the chat (the launcher decrypts it); `unreadable`: its key was for another launcher. */
 interface ChatImage { id: string; w?: number; h?: number; unreadable?: boolean }
-interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite; waypoint?: SharedWaypoint; image?: ChatImage; encrypted?: boolean; unreadable?: boolean }
+/** `editedAt`, `deleted`: changed or taken back by the author (server 0.9.23+). */
+interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite; waypoint?: SharedWaypoint; image?: ChatImage; encrypted?: boolean; unreadable?: boolean; editedAt?: number; deleted?: boolean }
 interface SocialState { url: string; user?: Me; connected: boolean; status: Status }
 interface FriendList { friends: Friend[]; incoming: Request[]; outgoing: Request[] }
 
@@ -59,6 +62,9 @@ const icon = (name: string) => el('i', { className: `fa-solid ${name}` });
 
 /** Error codes of the social server in the player's language. */
 export function socialErrorText(code: string): string {
+  // too many messages in a row (server 0.9.23+): how long to wait
+  const wait = slowDownSeconds(code);
+  if (wait) return slowDownText(wait);
   const texts: Record<string, string> = {
     offline: t('Nie można połączyć się z serwerem znajomych.'),
     unauthorized: t('Sesja wygasła. Zaloguj się ponownie.'),
@@ -103,6 +109,10 @@ export function socialErrorText(code: string): string {
     image_quota: t('Wysłano dziś za dużo obrazów. Spróbuj jutro.'),
     not_an_image: t('To nie jest obraz.'),
     bad_image: t('Nie udało się wysłać obrazu. Spróbuj ponownie.'),
+    // editing and deleting messages
+    not_author: t('Możesz zmieniać tylko swoje wiadomości.'),
+    not_editable: t('Tej wiadomości nie można edytować.'),
+    edit_expired: t('Minął czas na edycję tej wiadomości.'),
     // the shop (sparks from achievements)
     not_enough_sparks: t('Za mało Iskier.'),
     owned: t('Masz już ten przedmiot.'),
@@ -118,7 +128,10 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   let healthError = false;
   let list: FriendList = { friends: [], incoming: [], outgoing: [] };
   let selected: string | undefined;
-  const chats = new Map<string, { messages: Message[]; more: boolean; loading: boolean }>();
+  /** `editWindowMs`: how long one's messages may be edited, from the server (none: an older one, no editing). */
+  const chats = new Map<string, { messages: Message[]; more: boolean; loading: boolean; editWindowMs?: number }>();
+  /** A message being edited in the composer instead of a new one. */
+  let editing: { id: number; group?: string; friend?: string } | undefined;
   const typing = new Map<string, ReturnType<typeof setTimeout>>();
   let lastTypingSent = 0;
   let signingIn = false;
@@ -159,8 +172,12 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     },
     opened: () => {
       selected = undefined;
+      stopEditing();
       if (input) input.value = '';
     },
+    // editing a group message happens in the same composer
+    edit: (m) => startEditing({ id: m.id, group: m.group }, m.text),
+    editGone: () => stopEditing(),
   });
   const friend = (id: string | undefined) => list.friends.find((f) => f.id === id);
 
@@ -350,7 +367,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   // the layout is built once, so the message box keeps its text and focus
   let meBox: HTMLElement, listBox: HTMLElement, chatBox: HTMLElement, messagesBox: HTMLElement, chatHead: HTMLElement, typingBox: HTMLElement;
   let inviteBar: HTMLFormElement;
-  let input: HTMLTextAreaElement, counter: HTMLElement, sendBtn: HTMLButtonElement, composer: HTMLFormElement;
+  let input: HTMLTextAreaElement, counter: HTMLElement, sendBtn: HTMLButtonElement, composer: HTMLFormElement, editBar: HTMLElement;
 
   function buildLayout() {
     meBox = el('div', { className: 'fr-me' });
@@ -394,6 +411,10 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
         e.preventDefault();
         composer.requestSubmit();
+      } else if (e.key === 'Escape' && editing) {
+        e.preventDefault();
+        e.stopPropagation();
+        stopEditing();
       }
     });
     input.addEventListener('input', () => {
@@ -411,7 +432,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       send();
     });
     inviteBar = el('form', { className: 'fr-invite-bar hidden' });
-    chatBox = el('div', { className: 'fr-chat glass-panel' }, chatHead, messagesBox, typingBox, inviteBar, composer);
+    // editing a message: the composer holds its text, Enter saves, Esc (or ×) cancels
+    const cancelEdit = el('button', { type: 'button', className: 'icon-btn', title: t('Anuluj edycję (Esc)') }, icon('fa-xmark'));
+    cancelEdit.addEventListener('click', () => stopEditing());
+    editBar = el('div', { className: 'fr-edit-bar hidden' }, icon('fa-pen'), el('span', { className: 'grow', textContent: t('Edytujesz wiadomość · Enter zapisuje, Esc anuluje') }), cancelEdit);
+    chatBox = el('div', { className: 'fr-chat glass-panel' }, chatHead, messagesBox, typingBox, inviteBar, editBar, composer);
     root.replaceChildren(el('div', { className: 'fr-layout' },
       el('div', { className: 'fr-side glass-panel' }, meBox, addForm, party.element, listBox),
       chatBox));
@@ -648,6 +673,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   async function select(id: string) {
     groups.deselect();
     selected = id;
+    stopEditing();
     input.value = '';
     renderList();
     renderChat();
@@ -663,8 +689,9 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     chat.loading = true;
     try {
       const before = chat.messages[0]?.id;
-      const { messages }: { messages: Message[] } = await api.socialApi('GET', `/v1/messages/${id}?limit=${PAGE}${before ? `&before=${before}` : ''}`);
+      const { messages, editWindowMs }: { messages: Message[]; editWindowMs?: number } = await api.socialApi('GET', `/v1/messages/${id}?limit=${PAGE}${before ? `&before=${before}` : ''}`);
       chat.messages = [...messages, ...chat.messages];
+      chat.editWindowMs = editWindowMs;
       chat.more = messages.length === PAGE;
       // keep the view where it was when older messages come in on top
       const fromBottom = messagesBox.scrollHeight - messagesBox.scrollTop;
@@ -688,7 +715,88 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     await api.socialApi('POST', `/v1/messages/${id}/read`).catch(() => {});
   }
 
+  // ---------- editing and deleting messages (server 0.9.23+, chatEdits.ts) ----------
+
+  function startEditing(target: { id: number; group?: string; friend?: string }, text: string) {
+    if (!input) return;
+    editing = target;
+    input.value = text;
+    input.dispatchEvent(new Event('input'));
+    editBar.classList.remove('hidden');
+    composer.classList.add('editing');
+    sendBtn.replaceChildren(icon('fa-check'));
+    sendBtn.title = t('Zapisz zmiany');
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+
+  function stopEditing() {
+    if (!editing) return;
+    const wasGroup = !!editing.group;
+    editing = undefined;
+    if (wasGroup) groups.stopEditing();
+    if (!input) return;
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    editBar.classList.add('hidden');
+    composer.classList.remove('editing');
+    sendBtn.replaceChildren(icon('fa-paper-plane'));
+    sendBtn.title = t('Wyślij');
+  }
+
+  async function saveEdit() {
+    const target = editing!;
+    const text = input.value.trim();
+    if (!text) return deps.toast(t('Wiadomość jest pusta.'), true);
+    sendBtn.disabled = true;
+    try {
+      if (target.group) {
+        if (await groups.saveEdit(target.group, target.id, text)) stopEditing();
+        return;
+      }
+      const { message }: { message: Message } = await api.socialApi('POST', `/v1/messages/${target.friend}/${target.id}/edit`, { text });
+      replaced(message);
+      stopEditing();
+    } catch (err) {
+      deps.toast(deps.errorText(err), true);
+    } finally {
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  async function deleteMessage(m: Message) {
+    const other = m.from === state?.user?.id ? m.to : m.from;
+    if (!(await confirmDialog({ title: t('Usunąć wiadomość?'), body: [el('p', { className: 'muted', textContent: t('Zniknie u Ciebie i u znajomego. Tego nie da się cofnąć.') })], ok: t('Usuń'), danger: true }))) return;
+    try {
+      const { message }: { message: Message } = await api.socialApi('DELETE', `/v1/messages/${other}/${m.id}`);
+      replaced(message);
+    } catch (err) {
+      deps.toast(deps.errorText(err), true);
+    }
+  }
+
+  /** A message changed (edited or deleted, here or elsewhere): its new version in its conversation. */
+  function replaced(m: Message) {
+    const other = m.from === state?.user?.id ? m.to : m.from;
+    const chat = chats.get(other);
+    if (chat) chat.messages = replaceMessage(chat.messages, m);
+    if (m.deleted && editing?.id === m.id && !editing.group) stopEditing();
+    if (other === selected && !groups.active()) renderMessages();
+  }
+
+  /** What the "…" by a direct message offers: editing for a while and deleting, both one's own only. */
+  function messageMenu(m: Message, windowMs: number | undefined): MenuItem[] {
+    const me = state?.user?.id;
+    const other = m.from === me ? m.to : m.from;
+    const items: MenuItem[] = [];
+    if (canEdit(m, me, windowMs)) items.push({ label: t('Edytuj'), icon: 'fa-pen', hint: editHint(m, windowMs!), run: () => startEditing({ id: m.id, friend: other }, m.text) });
+    if (canDelete(m, me, windowMs)) items.push({ label: t('Usuń'), icon: 'fa-trash', danger: true, run: () => void deleteMessage(m) });
+    return items;
+  }
+
   async function send() {
+    if (editing) return saveEdit();
     if (groups.active()) {
       const text = input.value.trim();
       if (!text) return;
@@ -891,9 +999,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     document.body.append(box);
   }
 
-  /** A message; encrypted ones carry a small lock, ones for another launcher say so. */
+  /** A message; encrypted ones carry a small lock, ones for another launcher say so, edited ones "(edytowano)". */
   function bubble(m: Message) {
+    if (m.deleted) return tombstone();
     const b = el('div', { className: `fr-bubble${m.unreadable ? ' unreadable' : ''}`, textContent: m.text });
+    if (m.editedAt) b.append(editedLabel(m.editedAt));
     if (m.encrypted) b.append(el('i', { className: 'fa-solid fa-lock fr-lock', title: t('Zaszyfrowana od nadawcy do odbiorcy') }));
     return b;
   }
@@ -931,8 +1041,9 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       }
       // messages sent close together stick to each other
       const grouped = m.from === lastFrom && m.at - lastAt < 5 * 60_000;
-      nodes.push(el('div', { className: `fr-msg${m.from === me ? ' mine' : ''}${grouped ? ' grouped' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
-        m.invite ? inviteCard(m, m.from === me) : m.waypoint ? waypointCard(m.waypoint, m.from === me, deps.toast) : m.image ? imageCard(m.image, m.from === me) : bubble(m),
+      const content = m.deleted ? bubble(m) : m.invite ? inviteCard(m, m.from === me) : m.waypoint ? waypointCard(m.waypoint, m.from === me, deps.toast) : m.image ? imageCard(m.image, m.from === me) : bubble(m);
+      nodes.push(el('div', { className: `fr-msg${m.from === me ? ' mine' : ''}${grouped ? ' grouped' : ''}${editing?.id === m.id && !editing.group ? ' editing' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
+        withMenu(content, messageMenu(m, chat.editWindowMs)),
         grouped ? '' : el('small', { className: 'fr-time', textContent: time.format(m.at) })));
       if (m === lastMineRead) nodes.push(el('small', { className: 'fr-read', textContent: t('Przeczytano') }));
       lastDay = d;
@@ -1003,6 +1114,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         if (m.from === selected) renderChat();
         return;
       }
+      // edited or deleted, by the author here or on another launcher or in the game: no toast, only the new version
+      case 'message-edit':
+      case 'message-delete':
+        if (e.message) replaced(e.message as Message);
+        return;
       case 'party':
         if (e.party) party.onEvent(e.party as Party);
         return;

@@ -1,6 +1,7 @@
 import { locale, t } from '../shared/i18n';
 import { logoFromFile, logoUrl } from './clanLogo';
 import { confirmDialog, control, el, icon } from './dialog';
+import { canDelete, canEdit, editHint, editedLabel, replaceMessage, tombstone, withMenu, type MenuItem, type Moderator } from './chatEdits';
 
 /**
  * Group chats and clans in the Friends view. Groups are conversations with several friends
@@ -14,7 +15,8 @@ interface Person { id: string; handle: string; name: string; avatar: string }
 export interface GroupEvent { kind: 'created' | 'added' | 'removed' | 'left' | 'renamed' | 'joined' | 'promoted' | 'demoted' | 'owner' | 'heir' | 'logo'; by: string; users?: string[]; name?: string; removed?: boolean }
 /** A picture in a message, as the main process opened it (no key here: the page gets it by id). */
 export interface GroupImage { id: string; w?: number; h?: number; size?: number; unreadable?: boolean }
-export interface GroupMessage { id: number; group: string; from: string; text: string; at: number; event?: GroupEvent; encrypted?: boolean; unreadable?: boolean; image?: GroupImage }
+/** `editedAt`, `deleted`: changed by the author, or taken back by them or a moderator (server 0.9.23+). */
+export interface GroupMessage { id: number; group: string; from: string; text: string; at: number; event?: GroupEvent; encrypted?: boolean; unreadable?: boolean; image?: GroupImage; editedAt?: number; deleted?: boolean }
 export interface Group {
   id: string; name: string; owner: string; createdAt: number; clan?: { id: string; tag: string; logo?: number };
   members: (Person & { joinedAt: number })[]; unread: number; lastMessageAt: number;
@@ -94,6 +96,10 @@ interface Deps {
   opened: () => void;
   /** Whether the Friends view is in front (new messages are read at once). */
   visible: () => boolean;
+  /** Edit one's message in the Friends view's composer (it calls saveEdit with the new text). */
+  edit?: (m: GroupMessage) => void;
+  /** The message being edited was deleted meanwhile. */
+  editGone?: () => void;
 }
 
 export function createGroups(deps: Deps) {
@@ -102,7 +108,8 @@ export function createGroups(deps: Deps) {
   let clan: Clan | null = null;
   let invites: ClanInvite[] = [];
   let open: string | undefined;
-  const chats = new Map<string, { messages: GroupMessage[]; more: boolean; loading: boolean }>();
+  /** `editWindowMs`, `moderator`: from the server with the history (an older one says neither: no editing or deleting). */
+  const chats = new Map<string, { messages: GroupMessage[]; more: boolean; loading: boolean; editWindowMs?: number; moderator?: Moderator }>();
   let parts: { head: HTMLElement; messages: HTMLElement; typing: HTMLElement } | undefined;
 
   const group = (id: string | undefined) => groups.find((g) => g.id === id);
@@ -219,8 +226,10 @@ export function createGroups(deps: Deps) {
     chat.loading = true;
     try {
       const before = chat.messages[0]?.id;
-      const { messages }: { messages: GroupMessage[] } = await api.socialApi('GET', `/v1/groups/${id}/messages?limit=${PAGE}${before ? `&before=${before}` : ''}`);
+      const { messages, editWindowMs, moderator }: { messages: GroupMessage[]; editWindowMs?: number; moderator?: Moderator } = await api.socialApi('GET', `/v1/groups/${id}/messages?limit=${PAGE}${before ? `&before=${before}` : ''}`);
       chat.messages = [...messages, ...chat.messages];
+      chat.editWindowMs = editWindowMs;
+      chat.moderator = moderator;
       chat.more = messages.length === PAGE;
       if (id === open && parts) {
         const box = parts.messages;
@@ -270,6 +279,63 @@ export function createGroups(deps: Deps) {
       renderMessages();
       if (atBottom || m.from === deps.me()) box.scrollTop = box.scrollHeight;
     }
+  }
+
+  // ---------- editing and deleting (server 0.9.23+, chatEdits.ts) ----------
+
+  /** The message being edited in the composer (it is marked in the chat). */
+  let editingId: number | undefined;
+
+  /** What the "…" by a message offers: one's own edited for a while and deleted; others' deleted by the group's moderators. */
+  function messageMenu(g: Group, m: GroupMessage, chat: { editWindowMs?: number; moderator?: Moderator }): MenuItem[] {
+    const me = deps.me();
+    const items: MenuItem[] = [];
+    if (canEdit(m, me, chat.editWindowMs) && deps.edit) {
+      items.push({ label: t('Edytuj'), icon: 'fa-pen', hint: editHint(m, chat.editWindowMs!), run: () => {
+        editingId = m.id;
+        deps.edit!(m);
+        renderMessages();
+      } });
+    }
+    // in our clan's chat an officer may delete plain members' messages (and of those who left)
+    const role = g.clan && clan?.chat === g.id ? clan.members.find((x) => x.id === m.from)?.role : undefined;
+    if (canDelete(m, me, chat.editWindowMs, chat.moderator, role)) {
+      const theirs = m.from !== me;
+      items.push({ label: theirs ? t('Usuń (moderacja)') : t('Usuń'), icon: 'fa-trash', danger: true, run: () => void deleteMessage(m, theirs) });
+    }
+    return items;
+  }
+
+  /** The composer's new text for a message (the main process encrypts it for the members of now); true when saved. */
+  async function saveEdit(groupId: string, id: number, text: string): Promise<boolean> {
+    if (text.length > MAX_MESSAGE) return (deps.toast(t('Wiadomość jest za długa (maks. {0} znaków).', MAX_MESSAGE), true), false);
+    const res = await act(() => api.socialApi('POST', `/v1/groups/${groupId}/messages/${id}/edit`, { text }));
+    if (res?.message) replaced(res.message);
+    return !!res;
+  }
+
+  async function deleteMessage(m: GroupMessage, theirs: boolean) {
+    const who = group(m.group)?.members.find((x) => x.id === m.from)?.name ?? '?';
+    const ok = await confirmDialog({
+      title: t('Usunąć wiadomość?'),
+      body: [el('p', { className: 'muted', textContent: theirs ? t('Wiadomość od {0} zniknie u wszystkich w grupie. Tego nie da się cofnąć.', who) : t('Zniknie u wszystkich w grupie. Tego nie da się cofnąć.') })],
+      ok: t('Usuń'), danger: true,
+    });
+    if (!ok) return;
+    const res = await act(() => api.socialApi('DELETE', `/v1/groups/${m.group}/messages/${m.id}`));
+    if (res?.message) replaced(res.message);
+  }
+
+  /** A message's new version (edited or deleted, here or elsewhere). */
+  function replaced(m: GroupMessage) {
+    const chat = chats.get(m.group);
+    if (chat) chat.messages = replaceMessage(chat.messages, m);
+    if (editingId === m.id) {
+      editingId = undefined;
+      // deleted while being edited: the composer lets go of it
+      if (m.deleted) deps.editGone?.();
+    }
+    if (m.group === open && parts) renderMessages();
   }
 
   function renderChat(head: HTMLElement, messages: HTMLElement, typing: HTMLElement) {
@@ -337,10 +403,11 @@ export function createGroups(deps: Deps) {
       }
       const mine = m.from === me;
       const grouped = m.from === lastFrom && m.at - lastAt < 5 * 60_000;
-      const bubble = m.image ? deps.imageCard(m.image, mine) : el('div', { className: `fr-bubble${m.unreadable ? ' unreadable' : ''}`, textContent: m.text });
-      if (m.encrypted && !m.image) bubble.append(el('i', { className: 'fa-solid fa-lock fr-lock', title: t('Zaszyfrowana od nadawcy do odbiorcy') }));
-      nodes.push(el('div', { className: `fr-msg${mine ? ' mine' : ''}${grouped ? ' grouped' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
-        bubble,
+      const bubble = m.deleted ? tombstone() : m.image ? deps.imageCard(m.image, mine) : el('div', { className: `fr-bubble${m.unreadable ? ' unreadable' : ''}`, textContent: m.text });
+      if (m.editedAt && !m.deleted && !m.image) bubble.append(editedLabel(m.editedAt));
+      if (m.encrypted && !m.image && !m.deleted) bubble.append(el('i', { className: 'fa-solid fa-lock fr-lock', title: t('Zaszyfrowana od nadawcy do odbiorcy') }));
+      nodes.push(el('div', { className: `fr-msg${mine ? ' mine' : ''}${grouped ? ' grouped' : ''}${editingId === m.id ? ' editing' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
+        withMenu(bubble, messageMenu(g, m, chat)),
         grouped ? '' : el('small', { className: 'fr-time', textContent: mine ? time.format(m.at) : `${names.get(m.from) ?? '?'} · ${time.format(m.at)}` })));
       lastFrom = m.from;
       lastAt = m.at;
@@ -639,6 +706,11 @@ export function createGroups(deps: Deps) {
         deps.changed();
         return true;
       }
+      // edited or deleted: only the new version, no toast
+      case 'group-message-edit':
+      case 'group-message-delete':
+        if (e.message) replaced(e.message as GroupMessage);
+        return true;
       case 'clan':
         if (e.invite) deps.toast(t('{0} zaprasza Cię do klanu [{1}] {2}.', e.invite.by?.name ?? '?', e.invite.tag, e.invite.name));
         if (e.kicked) deps.toast(t('Usunięto Cię z klanu [{0}].', e.kicked.tag), true);
@@ -655,6 +727,13 @@ export function createGroups(deps: Deps) {
     renderChat,
     send,
     sendPicture,
+    saveEdit,
+    /** The composer let go of the message it was editing. */
+    stopEditing: () => {
+      if (editingId === undefined) return;
+      editingId = undefined;
+      renderMessages();
+    },
     loadOlder,
     markRead,
     /** The open group, if one is open (instead of a friend). */

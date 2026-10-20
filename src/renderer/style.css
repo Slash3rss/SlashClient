@@ -1378,3 +1378,23 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .fr-status-item.active { background: rgba(59, 130, 246, .15); }
 .fr-dot-inline { width: 10px; height: 10px; border-radius: 50%; background: #6b7280; flex-shrink: 0; }
 .fr-dot-inline.online { background: #22c55e; } .fr-dot-inline.away { background: #eab308; } .fr-dot-inline.busy { background: #ef4444; }
+/* editing and deleting chat messages (chatEdits.ts) */
+.fr-line { display: flex; align-items: center; gap: 4px; max-width: 100%; }
+.fr-msg.mine .fr-line { flex-direction: row-reverse; }
+.fr-line > .fr-bubble { min-width: 0; }
+.fr-msg-menu { width: 26px; height: 26px; padding: 0; flex-shrink: 0; font-size: 12px; opacity: 0; transition: opacity .12s; }
+.fr-msg:hover .fr-msg-menu, .fr-msg-menu:focus-visible { opacity: .75; }
+.fr-msg-menu:hover { opacity: 1; }
+.fr-menu { position: fixed; z-index: 1000; display: flex; flex-direction: column; min-width: 150px; padding: 4px; border-radius: 10px; background: rgba(17, 22, 34, .97); box-shadow: 0 8px 28px rgba(0, 0, 0, .45); }
+.fr-menu-item { display: flex; align-items: center; gap: 9px; width: 100%; height: 32px; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; box-shadow: none; text-align: left; font-size: 13px; font-weight: 500; }
+.fr-menu-item > span { flex: 1; }
+.fr-menu-item > small { font-size: 11px; }
+.fr-menu-item:hover, .fr-menu-item:focus-visible { background: rgba(255, 255, 255, .07); outline: none; }
+.fr-menu-item.danger { color: #f87171; }
+.fr-edited { margin-left: 6px; font-size: 11px; opacity: .6; cursor: default; white-space: nowrap; }
+.fr-bubble.deleted { display: flex; align-items: center; gap: 7px; font-style: italic; font-size: 13px; color: var(--text-muted); background: transparent; border: 1px dashed rgba(255, 255, 255, .14); }
+.fr-msg.mine .fr-bubble.deleted { background: transparent; color: var(--text-muted); }
+.fr-msg.editing .fr-bubble { outline: 2px solid rgba(250, 204, 21, .7); outline-offset: 2px; }
+.fr-edit-bar { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-top: 1px solid var(--glass-border); font-size: 12px; color: #facc15; background: rgba(250, 204, 21, .06); }
+.fr-edit-bar .icon-btn { width: 26px; height: 26px; padding: 0; }
+.fr-composer.editing textarea { border-color: rgba(250, 204, 21, .55); }
