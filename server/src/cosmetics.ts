@@ -96,7 +96,7 @@ export const ITEMS: Item[] = [
   { id: 'skyup_waterblock', slot: 'cape', name: 'SkyUp – Waterblock', since: '0.9.24' },
   { id: 'skyup_waterblock_glebia', slot: 'cape', name: 'SkyUp – Waterblock: Głębia', since: '0.9.24' },
   { id: 'skyup_caveblock', slot: 'cape', name: 'SkyUp – Caveblock', since: '0.9.24' },
-  { id: 'skyup_caveblock_ametyst', slot: 'cape', name: 'SkyUp – Caveblock: Ametyst', since: '0.9.24' },
+  { id: 'skyup_caveblock_domek', slot: 'cape', name: 'SkyUp – Caveblock: Domek', since: '0.9.24' },
   { id: 'staff_admin', slot: 'cape', name: 'Admin', rank: 'admin', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_support', slot: 'cape', name: 'Support', rank: 'support', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_partner', slot: 'cape', name: 'Partner', rank: 'partner', frames: 16, framesSince: '0.9.4' },

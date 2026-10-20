@@ -434,7 +434,7 @@ CAPES = ['slash', 'ocean', 'ember', 'forest', 'galaxy', 'rose', 'gold', 'mono', 
          'supporter_heart', 'supporter_patron',
          # in the look of the partner server SkyUp.pl
          'skyup_niebo', 'skyup_wyspa', 'skyup_zachod', 'skyup_noc', 'skyup_up',
-         'skyup_waterblock', 'skyup_waterblock_glebia', 'skyup_caveblock', 'skyup_caveblock_ametyst']
+         'skyup_waterblock', 'skyup_waterblock_glebia', 'skyup_caveblock', 'skyup_caveblock_domek']
 
 
 # ---------- SkyUp.pl: the partner server's look (sky, clouds, floating islands), drawn our own way ----------
@@ -476,6 +476,13 @@ def glow(img, draw):
     layer = Image.new('RGBA', img.size, (0, 0, 0, 0))
     draw(ImageDraw.Draw(layer))
     return Image.alpha_composite(img, layer)
+
+
+def soft_light(g, cx, cy, r, rgb, strength=60):
+    """A round light fading out from its middle (rings, each adding a little)."""
+    for k in range(5):
+        rr = r * (1 - k * 0.18)
+        g.ellipse([cx - rr, cy - rr, cx + rr, cy + rr], fill=rgb + (strength // 5,))
 
 
 def opaque(img):
@@ -587,42 +594,56 @@ def skyup(cape):
             d.point((x, y), fill=(165, 243, 252, 200))
         return border(img, '#2dd4bf')
     if cape == 'skyup_caveblock':
-        # "SkyUp – Caveblock": a stone wall full of ores, a torch lighting it
+        # "SkyUp – Caveblock": a stone cave wall lit by a torch (Caveblock has only stone)
         img = gradient('#57534e', '#1c1917')
         d = ImageDraw.Draw(img)
         for y in range(0, H, 6):
             off = 3 if (y // 6) % 2 else 0
             for x in range(-off, W, 8):
                 d.rectangle([x, y, x + 7, y + 5], outline=(41, 37, 36, 255))
-        ores = [(250, 204, 21), (34, 211, 238), (74, 222, 128), (239, 68, 68), (148, 163, 184)]
-        for _ in range(9):
-            x, y, col = rnd.uniform(3, W - 6), rnd.uniform(4, H - 6), rnd.choice(ores)
-            for dx, dy in ((0, 0), (2, 1), (1, 3)):
-                d.rectangle([x + dx, y + dy, x + dx + 1, y + dy + 1], fill=col + (255,))
-        tx, ty = W * 0.72, H * 0.22
-        d.rectangle([tx, ty, tx + 1, ty + 8], fill=(146, 64, 14, 255))
-        d.rectangle([tx - 1, ty - 3, tx + 2, ty], fill=(251, 191, 36, 255))
-        img = glow(img, lambda g: g.ellipse([tx - 10, ty - 12, tx + 11, ty + 9], fill=(251, 191, 36, 40)))
-        return border(img, '#a8a29e')
-    if cape == 'skyup_caveblock_ametyst':
-        # "SkyUp – Caveblock: Ametyst": an amethyst geode – smooth basalt rim, calcite, purple crystals
-        img = gradient('#3b0764', '#1e1b2e')
+                if rnd.random() < 0.35:
+                    d.point((x + rnd.randrange(1, 6), y + rnd.randrange(1, 4)), fill=(120, 113, 108, 255))
+        tx, ty = W * 0.5, H * 0.3
+        img = glow(img, lambda g: soft_light(g, tx + 0.5, ty - 1, 15, (251, 191, 36), 70))
         d = ImageDraw.Draw(img)
-        cx, cy = W / 2, H * 0.52
-        d.ellipse([cx - 19, cy - 26, cx + 19, cy + 26], fill=(68, 64, 60, 255))
-        d.ellipse([cx - 16, cy - 23, cx + 16, cy + 23], fill=(231, 229, 228, 255))
-        d.ellipse([cx - 13, cy - 20, cx + 13, cy + 20], fill=(126, 34, 206, 255))
-        d.ellipse([cx - 9, cy - 15, cx + 9, cy + 15], fill=(76, 29, 149, 255))
-        # crystal clusters: tall pointed shards, light on one side, standing on the purple layer
-        for x, y, h in ((cx - 6, cy + 9, 9), (cx + 1, cy + 11, 12), (cx + 6, cy + 8, 8), (cx - 3, cy - 4, 7), (cx + 4, cy - 9, 6)):
-            d.polygon([(x - 2, y), (x + 2, y), (x + 2, y - h + 2), (x, y - h), (x - 2, y - h + 2)], fill=(192, 132, 252, 255))
-            d.polygon([(x - 2, y), (x, y), (x, y - h), (x - 2, y - h + 2)], fill=(233, 213, 255, 255))
-            d.point((x - 1, y - h + 3), fill=(255, 255, 255, 255))
-        for _ in range(10):
-            x, y = rnd.uniform(1, W - 2), rnd.uniform(1, H - 2)
-            if (x - cx) ** 2 / 20 ** 2 + (y - cy) ** 2 / 27 ** 2 > 1:
-                d.point((x, y), fill=(87, 83, 78, 255))
-        return border(img, '#c084fc')
+        d.rectangle([tx, ty, tx + 1, ty + 9], fill=(146, 64, 14, 255))
+        d.rectangle([tx - 1, ty - 3, tx + 2, ty], fill=(251, 191, 36, 255))
+        d.point((tx, ty - 4), fill=(254, 240, 138, 255))
+        return border(img, '#a8a29e')
+    if cape == 'skyup_caveblock_domek':
+        # "SkyUp – Caveblock: Domek": a small wooden house built inside the stone cave, light in the window
+        img = gradient('#44403c', '#0c0a09')
+        d = ImageDraw.Draw(img)
+        for y in range(0, H, 6):
+            off = 3 if (y // 6) % 2 else 0
+            for x in range(-off, W, 8):
+                d.rectangle([x, y, x + 7, y + 5], outline=(28, 25, 23, 255))
+        # the cave's ceiling and floor
+        for x in range(0, W, 5):
+            d.polygon([(x, 0), (x + 5, 0), (x + 2.5, 3 + rnd.uniform(0, 4))], fill=(68, 64, 60, 255))
+        floor = H * 0.8
+        d.rectangle([0, floor, W, H], fill=(87, 83, 78, 255))
+        # the house: plank walls, a log frame, a gabled roof, a door and a lit window
+        hx0, hx1, hy = W * 0.18, W * 0.82, floor - 18
+        d.rectangle([hx0, hy, hx1, floor], fill=(180, 132, 82, 255))
+        for y in range(int(hy) + 3, int(floor), 3):
+            d.line([(hx0, y), (hx1, y)], fill=(146, 104, 62, 255))
+        d.rectangle([hx0, hy, hx0 + 1, floor], fill=(101, 67, 33, 255))
+        d.rectangle([hx1 - 1, hy, hx1, floor], fill=(101, 67, 33, 255))
+        d.polygon([(hx0 - 3, hy), (hx1 + 3, hy), (W / 2, hy - 11)], fill=(120, 53, 15, 255))
+        d.line([(hx0 - 3, hy), (W / 2, hy - 11), (hx1 + 3, hy)], fill=(68, 32, 10, 255))
+        d.rectangle([W / 2 + 2, floor - 9, W / 2 + 7, floor - 1], fill=(101, 67, 33, 255))
+        d.point((W / 2 + 6, floor - 5), fill=(250, 204, 21, 255))
+        wx, wy = W * 0.28, hy + 5
+        img = glow(img, lambda g: soft_light(g, wx + 2.5, wy + 2.5, 9, (251, 191, 36), 70))
+        d = ImageDraw.Draw(img)
+        d.rectangle([wx, wy, wx + 5, wy + 5], fill=(253, 224, 71, 255), outline=(101, 67, 33, 255))
+        d.line([(wx + 2.5, wy), (wx + 2.5, wy + 5)], fill=(101, 67, 33, 255))
+        # a torch on the cave wall
+        tx, ty = W * 0.86, H * 0.22
+        d.rectangle([tx, ty, tx + 1, ty + 6], fill=(146, 64, 14, 255))
+        d.rectangle([tx - 1, ty - 2, tx + 2, ty], fill=(251, 191, 36, 255))
+        return border(img, '#d6a76c')
     raise ValueError(cape)
 
 

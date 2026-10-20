@@ -42,7 +42,7 @@ public final class Cosmetics {
 		"supporter_heart", "supporter_patron",
 		// in the look of the partner server SkyUp.pl
 		"skyup_niebo", "skyup_wyspa", "skyup_zachod", "skyup_noc", "skyup_up", "skyup_chmury",
-		"skyup_waterblock", "skyup_waterblock_glebia", "skyup_caveblock", "skyup_caveblock_ametyst");
+		"skyup_waterblock", "skyup_waterblock_glebia", "skyup_caveblock", "skyup_caveblock_domek");
 	/** Capes drawn as a loop of frames (textures/cape/<id>_<n>.png), and how many. */
 	static final Map<String, Integer> ANIMATED = Map.ofEntries(Map.entry("aurora", 8), Map.entry("inferno", 8), Map.entry("waves", 8),
 		Map.entry("pulse", 8), Map.entry("matrix", 8), Map.entry("storm", 8), Map.entry("vortex", 8), Map.entry("starfall", 8), Map.entry("skyup_chmury", 8),
