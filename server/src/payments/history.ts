@@ -146,7 +146,7 @@ export function historyRoutes(d: HistoryDeps) {
       } catch (err) {
         if (!(err instanceof ProviderError)) throw err;
         console.error(`wsparcie: potwierdzenie ${p!.id}: ${scrub(err.message)}`);
-        return fail(502, 'provider_error');
+        return fail(424, 'provider_error');
       }
       const url = d.info.get(p!.id).receiptUrl;
       return url ? { url } : fail(404, 'no_receipt');

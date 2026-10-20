@@ -278,7 +278,7 @@ export function refundRoutes(d: RefundDeps) {
         const message = scrub((err as Error).message);
         console.error(`wsparcie: zwrot ${r.id}: ${message}`);
         d.audit(me, 'support_refund_error', d.handleOf(r.user), `${r.id} (${p.id}): ${message.slice(0, 200)}`);
-        return fail(502, 'provider_error');
+        return fail(424, 'provider_error');
       }
       // the webhook may have come already (it marks the request as refunded)
       refunds.update(id, ['pending'], { status: 'approved', decidedBy: me, providerRef: ref });

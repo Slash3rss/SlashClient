@@ -10,6 +10,7 @@ const ERRORS = {
   secret_key_missing: 'Serwer nie ma ustawionego STORAGE_SECRET_KEY, więc nie może bezpiecznie zapisać kluczy. Ustaw go i zrestartuj serwer.',
   bad_secretKey: 'Klucz Stripe musi pasować do trybu: sk_test_… (albo rk_test_…) w testowym, sk_live_… w produkcyjnym.',
   bad_webhookSecret: 'Sekret webhooka Stripe zaczyna się od whsec_.',
+  bad_taxCode: 'Kod podatkowy Stripe ma postać txcd_ i 8 cyfr, np. txcd_10000000.',
   bad_clientId: 'Zły Client ID PayPal.', bad_clientSecret: 'Zły Secret PayPal.', bad_webhookId: 'Zły Webhook ID PayPal (wielkie litery i cyfry).',
   bad_methods: 'Nieznana metoda płatności. Dozwolone: card, blik, p24, link, paypal, revolut_pay, klarna, sepa_debit, bancontact, ideal, eps.',
   bad_tier_id: 'Id poziomu: małe litery, cyfry i _, 2–30 znaków.', bad_level: 'Poziom: liczba 1–9.', bad_color: 'Kolor w formacie #rrggbb.',
@@ -93,8 +94,14 @@ function providerCard(p) {
       return el('label', { class: 'st-field' }, el('span', { textContent: label }), el('div', { class: 'row' }, el('div', { class: 'grow' }, input), clear));
     }));
   const methods = p.id === 'stripe' ? el('input', { type: 'text', value: p.settings.paymentMethods ?? '', placeholder: 'puste = metody włączone w Dashboard Stripe' }) : null;
+  // Managed Payments (Stripe sells as the merchant and settles VAT) needs each product's tax code
+  const taxCode = p.id === 'stripe' ? el('input', { type: 'text', value: p.settings.taxCode ?? '', placeholder: 'puste = txcd_10000000 (usługi elektroniczne)' }) : null;
+  const managed = p.id === 'stripe' ? el('select', {},
+    el('option', { value: 'default', textContent: 'Jak w ustawieniach konta Stripe', selected: (p.settings.managedPayments ?? 'default') === 'default' }),
+    el('option', { value: 'off', textContent: 'Wyłączone dla płatności SlashClient', selected: p.settings.managedPayments === 'off' })) : null;
   const save = async (extra, done = 'Zapisano.') => {
-    const body = { mode: mode.value, enabled: enabled.checked, ...(methods ? { paymentMethods: methods.value } : {}), ...extra };
+    const body = { mode: mode.value, enabled: enabled.checked, ...(methods ? { paymentMethods: methods.value } : {}),
+      ...(taxCode ? { taxCode: taxCode.value.trim() } : {}), ...(managed ? { managedPayments: managed.value } : {}), ...extra };
     if (!extra) for (const m of ['test', 'live']) {
       const keys = {};
       for (const [f] of info.fields) if (inputs[`${m}.${f}`].value.trim()) keys[f] = inputs[`${m}.${f}`].value.trim();
@@ -119,6 +126,8 @@ function providerCard(p) {
     el('label', { class: 'st-field' }, el('span', { textContent: 'Tryb' }), mode),
     keyFields('test'), keyFields('live'),
     methods ? el('label', { class: 'st-field' }, el('span', { textContent: 'Metody płatności (po przecinku, np. card,blik,p24)' }), methods) : '',
+    taxCode ? el('label', { class: 'st-field' }, el('span', { textContent: 'Kod podatkowy produktu (tax code)' }), taxCode) : '',
+    managed ? el('label', { class: 'st-field' }, el('span', { textContent: 'Managed Payments (Stripe jako sprzedawca, rozlicza VAT)' }), managed) : '',
     el('div', { class: 'st-field' }, el('span', { textContent: 'Adres webhooka (wklej u operatora)' }), el('div', { class: 'row' }, el('code', { class: 'grow sup-code', textContent: p.webhookUrl }), copy)),
     el('details', { class: 'small' }, el('summary', { textContent: 'Zdarzenia do włączenia' }), el('p', { class: 'muted sup-code', textContent: info.events })),
     el('div', { class: 'row' }, el('button', { type: 'button', class: 'primary', onclick: () => save() }, icon('fa-solid fa-check'), 'Zapisz'), test),

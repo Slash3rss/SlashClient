@@ -6,7 +6,7 @@ import { PAYPAL_API, capturePayPalOrder, createPayPalOrder, minorUnits, paypalCl
 import { PaymentInfoStore, historyRoutes } from './history.ts';
 import { REFUND_WINDOW_DAYS, refundRoutes } from './refunds.ts';
 import { CURRENCIES, SupportStore, type Currency, type Grant, type Kind, type Payment, type Subscription, type Tier } from './store.ts';
-import { STRIPE_API, ProviderError, createStripeCheckout, scrub, stripeClient, stripePortal, testStripe, verifyStripeSignature } from './stripe.ts';
+import { STRIPE_API, ProviderError, TAX_CODE, createStripeCheckout, scrub, stripeClient, stripePortal, testStripe, verifyStripeSignature } from './stripe.ts';
 
 /**
  * Supporting SlashClient with money: the "Wesprzyj" page's checkouts, the providers' webhooks, the
@@ -678,6 +678,7 @@ export function supportRoutes(ctx: SupportContext) {
             paymentId: pay.id, user: me, tier: tier.id, kind, amount, currency, productName,
             successUrl: `${base}/wsparcie/dziekujemy?p=${pay.id}`, cancelUrl: `${base}/wsparcie/anulowano?p=${pay.id}`,
             customer: customer || undefined, paymentMethods: methods, locale: en ? 'en' : 'pl',
+            taxCode: String(p.settings.taxCode ?? '') || undefined, managedPayments: p.settings.managedPayments === 'off' ? false : undefined,
           });
         } else {
           made = await createPayPalOrder(paypalOf(p.mode), {
@@ -690,7 +691,7 @@ export function supportRoutes(ctx: SupportContext) {
       } catch (err) {
         store.updatePayment(pay.id, { status: 'failed', note: 'nie udało się założyć płatności' });
         console.error(`wsparcie: płatność ${pay.id}: ${scrub((err as Error).message)}`);
-        return fail(502, 'provider_error');
+        return fail(424, 'provider_error');
       }
     }],
     // Stripe's customer portal: the subscription, the card, the invoices, cancelling
@@ -703,7 +704,7 @@ export function supportRoutes(ctx: SupportContext) {
         return { url: await stripePortal(stripeOf(p.mode), customer, `${base}/konto#wsparcie`) };
       } catch (err) {
         console.error(`wsparcie: portal: ${scrub((err as Error).message)}`);
-        return fail(502, 'provider_error');
+        return fail(424, 'provider_error');
       }
     }],
 
@@ -737,6 +738,17 @@ export function supportRoutes(ctx: SupportContext) {
         if (list.some((m) => !STRIPE_METHODS.includes(m))) fail(400, 'bad_methods');
         next.settings.paymentMethods = list.join(',');
         changed.push('metody płatności');
+      }
+      if (id === 'stripe' && b.taxCode !== undefined) {
+        const code = String(b.taxCode ?? '').trim();
+        if (code && !TAX_CODE.test(code)) fail(400, 'bad_taxCode');
+        if (code !== (was.settings.taxCode ?? '')) changed.push(`kod podatkowy: ${code || 'domyślny'}`);
+        next.settings.taxCode = code;
+      }
+      if (id === 'stripe' && b.managedPayments !== undefined) {
+        if (b.managedPayments !== 'default' && b.managedPayments !== 'off') fail(400, 'bad_request');
+        if (b.managedPayments !== (was.settings.managedPayments ?? 'default')) changed.push(`Managed Payments: ${b.managedPayments === 'off' ? 'wyłączone' : 'jak na koncie'}`);
+        next.settings.managedPayments = b.managedPayments;
       }
       for (const mode of ['test', 'live'] as const) {
         const given = b[mode];

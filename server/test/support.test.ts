@@ -226,6 +226,15 @@ describe('providers in the admin panel', () => {
 });
 
 describe('checkouts', () => {
+  it("sends the admin's tax code, or Managed Payments off", async () => {
+    assert.equal((await call('POST', '/v1/admin/support/providers/stripe', admin.token, { taxCode: 'zly' })).body.error, 'bad_taxCode');
+    assert.equal((await call('POST', '/v1/admin/support/providers/stripe', admin.token, { taxCode: 'txcd_10103000', managedPayments: 'off' })).status, 200);
+    const c = await stripeCheckout(alice.token, { quantity: 1, currency: 'PLN' });
+    assert.equal(c.params.get('line_items[0][price_data][product_data][tax_code]'), 'txcd_10103000');
+    assert.equal(c.params.get('managed_payments[enabled]'), 'false');
+    assert.equal((await call('POST', '/v1/admin/support/providers/stripe', admin.token, { taxCode: '', managedPayments: 'default' })).status, 200);
+  });
+
   it('asks Stripe for the tier\'s price, whatever the page says', async () => {
     assert.equal((await call('POST', '/v1/support/checkout', undefined, { tier: 'supporter', kind: 'one_time', provider: 'stripe', terms: true, consent: true })).status, 401);
     const c = await stripeCheckout(alice.token, { quantity: 2, amount: 1, price: 1, currency: 'PLN' });
@@ -237,6 +246,9 @@ describe('checkouts', () => {
     assert.equal(c.params.get('client_reference_id'), c.payment);
     assert.equal(c.params.get('success_url'), `https://client.example/wsparcie/dziekujemy?p=${c.payment}`);
     assert.equal(c.params.get('payment_method_types[1]'), 'blik');
+    // a tax code always (Stripe's Managed Payments needs one), Managed Payments as the account has it
+    assert.equal(c.params.get('line_items[0][price_data][product_data][tax_code]'), 'txcd_10000000');
+    assert.equal(c.params.get('managed_payments[enabled]'), null);
     assert.equal(stripeCalls.at(-1)!.idem, `checkout-${c.payment}`);
   });
 

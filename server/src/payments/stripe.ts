@@ -117,7 +117,15 @@ export interface CheckoutInput {
   /** '' or missing: the methods switched on in the Dashboard; else these (e.g. card, blik, p24). */
   paymentMethods?: string[];
   locale?: string;
+  /** Stripe's product tax code (txcd_…): Managed Payments (Stripe as the seller, on by default for new accounts) needs one. */
+  taxCode?: string;
+  /** false: Managed Payments off for this session (the account's default otherwise). */
+  managedPayments?: boolean;
 }
+
+/** "General - Electronically Supplied Services": digital perks delivered to the account. */
+export const DEFAULT_TAX_CODE = 'txcd_10000000';
+export const TAX_CODE = /^txcd_\d{8}$/;
 
 /** Methods that can renew a subscription by themselves (BLIK and Przelewy24 cannot). */
 const RECURRING_METHODS = new Set(['card', 'link', 'paypal', 'sepa_debit', 'bancontact', 'ideal']);
@@ -138,12 +146,13 @@ export async function createStripeCheckout(client: StripeClient, i: CheckoutInpu
       price_data: {
         currency: i.currency.toLowerCase(),
         unit_amount: i.amount,
-        product_data: { name: i.productName },
+        product_data: { name: i.productName, tax_code: i.taxCode && TAX_CODE.test(i.taxCode) ? i.taxCode : DEFAULT_TAX_CODE },
         ...(i.kind === 'monthly' ? { recurring: { interval: 'month' } } : {}),
       },
     }],
     ...(methods.length ? { payment_method_types: methods } : {}),
     ...(i.customer ? { customer: i.customer } : {}),
+    ...(i.managedPayments === false ? { managed_payments: { enabled: false } } : {}),
   };
   if (i.kind === 'monthly') params.subscription_data = { metadata };
   else {
