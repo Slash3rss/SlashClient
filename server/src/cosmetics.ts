@@ -32,6 +32,11 @@ export interface Item {
   framesSince?: string;
   /** Only earned with this achievement (achievements.ts), which grants it; it cannot be picked otherwise. */
   achievement?: string;
+  /**
+   * Sold in the shop for this many sparks (economy.ts; the admin may change the price there): a
+   * purchase grants it, like an achievement does. Free items never get a price.
+   */
+  price?: number;
 }
 
 export const ITEMS: Item[] = [
@@ -66,6 +71,13 @@ export const ITEMS: Item[] = [
   // earned with achievements only
   { id: 'veteran', slot: 'cape', name: 'Weteran', since: '0.9.14', achievement: 'hours_100' },
   { id: 'streak30', slot: 'cape', name: 'Seria 30 dni', since: '0.9.14', achievement: 'streak_30' },
+  // bought in the shop with sparks earned from achievements
+  { id: 'emberstar', slot: 'cape', name: 'Iskra', since: '0.9.22', price: 600 },
+  { id: 'obsidian', slot: 'cape', name: 'Obsydian', since: '0.9.22', price: 500 },
+  { id: 'coral', slot: 'cape', name: 'Rafa koralowa', since: '0.9.22', price: 500 },
+  { id: 'thunder', slot: 'cape', name: 'Grom', since: '0.9.22', price: 700 },
+  { id: 'regal', slot: 'cape', name: 'Purpura', since: '0.9.22', price: 800 },
+  { id: 'cosmos', slot: 'cape', name: 'Kosmos', since: '0.9.22', price: 1000 },
   { id: 'staff_admin', slot: 'cape', name: 'Admin', rank: 'admin', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_support', slot: 'cape', name: 'Support', rank: 'support', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_partner', slot: 'cape', name: 'Partner', rank: 'partner', frames: 16, framesSince: '0.9.4' },
@@ -85,6 +97,9 @@ export const ITEMS: Item[] = [
   { id: 'fairy', slot: 'wings', name: 'Wróżki', since: '0.9.2' },
   { id: 'bone', slot: 'wings', name: 'Kościane', since: '0.9.2' },
   { id: 'gilded', slot: 'wings', name: 'Złote', since: '0.9.2' },
+  { id: 'emberwings', slot: 'wings', name: 'Iskrzące', since: '0.9.22', price: 1200 },
+  { id: 'sapphire', slot: 'wings', name: 'Szafirowe', since: '0.9.22', price: 1000 },
+  { id: 'obsidianwings', slot: 'wings', name: 'Obsydianowe', since: '0.9.22', price: 1000 },
   // elytras: worn instead of the cape's picture on a real elytra
   { id: 'feather', slot: 'elytra', name: 'Pióra' },
   { id: 'neon', slot: 'elytra', name: 'Neon' },
@@ -96,6 +111,9 @@ export const ITEMS: Item[] = [
   { id: 'magma', slot: 'elytra', name: 'Magma', since: '0.9.2' },
   { id: 'circuit', slot: 'elytra', name: 'Obwód', since: '0.9.2' },
   { id: 'autumn', slot: 'elytra', name: 'Jesień', since: '0.9.2' },
+  { id: 'aurum', slot: 'elytra', name: 'Złoty blask', since: '0.9.22', price: 800 },
+  { id: 'glacier', slot: 'elytra', name: 'Lodowiec', since: '0.9.22', price: 700 },
+  { id: 'acid', slot: 'elytra', name: 'Kwas', since: '0.9.22', price: 700 },
   // trails (while moving) and auras (around a player standing still): the game's particles
   { id: 'hearts', slot: 'trail', name: 'Serca' },
   { id: 'sparks', slot: 'trail', name: 'Iskry' },
@@ -246,6 +264,8 @@ export const ITEMS: Item[] = [
   { id: 'ring_galaxy', slot: 'ring', name: 'Galaktyka', since: '0.9.20' },
   { id: 'ring_halo', slot: 'ring', name: 'Korona światła', since: '0.9.20' },
   { id: 'ring_toxic', slot: 'ring', name: 'Toksyczny krąg', since: '0.9.20' },
+  { id: 'ring_sparks', slot: 'ring', name: 'Krąg iskier', since: '0.9.22', price: 900 },
+  { id: 'ring_ocean', slot: 'ring', name: 'Krąg fal', since: '0.9.22', price: 700 },
   // movement effects: the game's particles when the wearer walks, jumps, lands, sprints, swims or shoots (seen only by SlashClient players)
   { id: 'move_steps', slot: 'move', name: 'Ślady stóp', since: '0.9.20' },
   { id: 'move_jump', slot: 'move', name: 'Obłoczek przy skoku', since: '0.9.20' },
@@ -263,6 +283,8 @@ export const ITEMS: Item[] = [
   { id: 'spray_crown', slot: 'spray', name: 'Korona', since: '0.9.20' },
   { id: 'spray_emblem', slot: 'spray', name: 'Emblemat', since: '0.9.20' },
   { id: 'spray_pumpkin', slot: 'spray', name: 'Dynia', since: '0.9.20' },
+  { id: 'spray_spark', slot: 'spray', name: 'Iskra', since: '0.9.22', price: 200 },
+  { id: 'spray_trophy', slot: 'spray', name: 'Puchar', since: '0.9.22', price: 300 },
   // props: something the player pushes in front of them with both hands (src/shared/props.ts), hidden while the hands are busy
   { id: 'wheelbarrow', slot: 'prop', name: 'Taczka', since: '0.9.20' },
   { id: 'wheelbarrow_gold', slot: 'prop', name: 'Taczka złota', since: '0.9.20' },
@@ -326,7 +348,8 @@ export function mayWear(settings: Map<string, CosmeticSetting>, granted: string[
   const it = item(id);
   if (!it || it.slot !== slot) return false;
   if (badge === 'admin') return true;
-  if (it.achievement && !granted.includes(id)) return false;
+  // earned (an achievement) or bought (the shop): only with the grant
+  if ((it.achievement || it.price) && !granted.includes(id)) return false;
   const s = capeSetting(settings, id);
   if (!s.enabled || (s.exclusive && !granted.includes(id))) return false;
   return !it.rank || badge === 'admin' || badge === it.rank || granted.includes(id);

@@ -19,7 +19,8 @@ import { createDownloads, isDownloadOs } from './downloads.ts';
 import { createCurseForge } from './curseforge.ts';
 import { profileShareRoutes, type ShareLimits } from './profileShares.ts';
 import { profileCloudRoutes, type CloudLimits } from './profileCloud.ts';
-import { createAchievements, hintFor, TICK_MS } from './achievements.ts';
+import { achievement, createAchievements, hintFor, TICK_MS } from './achievements.ts';
+import { Wallet, economyRoutes } from './economy.ts';
 import { createGroups } from './groups.ts';
 import { createClans } from './clans.ts';
 import { Storage, type DiskSpace } from './storage.ts';
@@ -414,9 +415,11 @@ export function createApp(cfg: Config) {
     },
   });
 
-  // achievements: play time from what this server sees (a launcher connected, its game reporting, in a world)
+  // achievements: play time from what this server sees (a launcher connected, its game reporting, in a world);
+  // each pays sparks, spent in the shop (economy.ts)
+  const wallet = new Wallet(db.sql);
   const achievements = createAchievements({
-    sql: db.sql, push, authed, areFriends: (a, b) => db.areFriends(a, b),
+    sql: db.sql, wallet, push, authed, areFriends: (a, b) => db.areFriends(a, b),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -544,12 +547,15 @@ export function createApp(cfg: Config) {
         exclusive: capeSetting(settings, i.id).exclusive, available: mayWear(settings, granted, i.id, i.slot, badge),
         // earned with an achievement: which one, and how to get it
         ...(i.achievement ? { achievement: i.achievement, ...hintFor(i.achievement) } : {}),
+        // sold in the shop for sparks (only launchers that know the shop get these items: `since`)
+        ...(i.price ? { price: wallet.price(i.id), owned: granted.includes(i.id) } : {}),
       }));
       return {
         // the launcher before 0.8 knows capes only
         capes: items.filter((i) => i.slot === 'cape').map(({ id, name, exclusive, available }) => ({ id, name, exclusive: exclusive || !!ITEMS.find((x) => x.id === id)?.rank, available })),
         items,
         emotes: EMOTES,
+        ...(me ? { wallet: { balance: wallet.balance(me) } } : {}),
       };
     }],
     ['GET', /^\/v1\/health$/, () => ({ ok: true, providers: Object.keys(providers), dev: cfg.allowDevLogin })],
@@ -923,6 +929,18 @@ export function createApp(cfg: Config) {
     }],
     ...partners.routes,
     ...achievements.routes,
+    ...economyRoutes({
+      db, wallet, authed, admin, body, push,
+      label: (reason, ref) => {
+        const a = reason === 'achievement' ? achievement(ref) : undefined;
+        const name = reason === 'purchase' ? CAPE_NAMES[ref] ?? ref : '';
+        return a ? { label: a.name, labelEn: a.nameEn } : { label: name, labelEn: name };
+      },
+      bought: (userId) => achievements.check(userId),
+      fail: (status, code) => {
+        throw new HttpError(status, code);
+      },
+    }),
     ...tracker.routes,
     ...shares.routes,
     ...media.routes,
@@ -1103,6 +1121,12 @@ export function createApp(cfg: Config) {
         const result = await fn(req, m.slice(1), url);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result ?? null));
+        // what it did may unlock an achievement (a screenshot shared, a party, a group…)
+        try {
+          achievements.after(method, url.pathname, (req as SeenRequest).slashUser);
+        } catch (err) {
+          console.error('osiągnięcia:', (err as Error).message);
+        }
       } catch (err) {
         const known = err instanceof HttpError;
         if (!known) console.error(err);
@@ -1328,6 +1352,9 @@ export function createApp(cfg: Config) {
     for (const [uuid, l] of linked) if (Date.now() - l.at > IN_GAME_TTL_MS) linked.delete(uuid);
   }, 30_000);
   const playTick = setInterval(() => achievements.tick(), TICK_MS);
+  // achievements from before the sparks get paid, and ones already reached in the data unlock (once; safe on every start)
+  const backfilled = achievements.backfill();
+  if (backfilled.paid || backfilled.unlocked) console.log(`osiągnięcia: wypłacono ${backfilled.paid}, odblokowano ${backfilled.unlocked}`);
   // shared logs past their time, once an hour
   const logCleanup = setInterval(() => {
     void tracker.cleanup().catch((err) => console.error('logi:', (err as Error).message));
@@ -1341,6 +1368,9 @@ export function createApp(cfg: Config) {
     server,
     /** For tests: play-time ticks with a chosen clock. */
     achievements,
+    /** For tests: the database (data from before an update) and the sparks. */
+    db,
+    wallet,
     /** For tests: the storage backends, and the hourly cleanup of screenshots, clips and profiles run now. */
     storage,
     cleanupFiles: async (now = Date.now()) => {

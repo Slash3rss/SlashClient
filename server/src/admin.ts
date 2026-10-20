@@ -147,11 +147,11 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
       const me = ctx.admin(req);
       const user = userOr404(userId);
       db.revoke(userId, id);
-      // what was granted alone (exclusive, or another rank's) comes off with the grant
+      // what was granted alone (exclusive, another rank's, earned or bought) comes off with the grant
       const it = item(id);
       // (an admin keeps it: admins may wear everything)
       const admin = user.role === 'admin' || ctx.configAdmins.has(user.handle.toLowerCase());
-      if (it && !admin && (capeSetting(db.cosmeticSettings(), id).exclusive || it.rank)) {
+      if (it && !admin && (capeSetting(db.cosmeticSettings(), id).exclusive || it.rank || it.achievement || it.price)) {
         if (user.cape === id) db.setCape(userId, '');
         if (Object.values(user.loadout).includes(id)) db.setLoadout(userId, Object.fromEntries(Object.entries(user.loadout).filter(([, v]) => v !== id)));
         for (const m of db.minecraftAccounts(userId)) {

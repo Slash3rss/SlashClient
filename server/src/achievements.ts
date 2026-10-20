@@ -1,55 +1,151 @@
 import type http from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import { item, type Slot } from './cosmetics.ts';
+import { inTransaction, type Wallet } from './economy.ts';
 
 /**
- * SlashClient achievements ("Osiągnięcia"): a daily play streak, hours played, the first friend and
- * message, and how many servers one has played on. Some of them give a cosmetic that can only be
- * earned (a cape); it is stored as a grant, like the ones the admin gives, so wearing it goes through
- * the usual checks (cosmetics.ts: items with `achievement` need the grant).
+ * SlashClient achievements ("Osiągnięcia"): play time and streaks, friends and messages, servers,
+ * group chats and clans, things shared, cosmetics worn and bought, and a few hidden ones. Each pays
+ * sparks once, when it unlocks (economy.ts); some also give a cosmetic that can only be earned (a
+ * cape), stored as a grant like the ones the admin gives, so wearing it goes through the usual
+ * checks (cosmetics.ts: items with `achievement` need the grant).
  *
- * Play time comes only from what the server sees itself, never from a number a client sends: every
- * minute (`tick`) each account whose launcher is connected (WebSocket answering pings), whose game
- * reported in the last minutes (/v1/mc/link, which the launcher sends every 4 minutes while the game
- * runs) and which is in a world (singleplayer or on a server, not the menu) gets the time since the
- * previous tick, at most two ticks' worth, and once per account however many launchers it has open.
- * A day counts for the streak with at least 10 minutes; at most 12 hours a day count at all.
+ * Everything counted is what this server sees or checks itself, never a number a client sends (the
+ * sparks would make cheating worth it): play time from its own ticks, friends and messages from its
+ * tables, shared screenshots, profiles, waypoints, parties and sprays from requests it accepted.
+ *
+ * Play time: every minute (`tick`) each account whose launcher is connected (WebSocket answering
+ * pings), whose game reported in the last minutes (/v1/mc/link, which the launcher sends every 4
+ * minutes while the game runs) and which is in a world (singleplayer or on a server, not the menu)
+ * gets the time since the previous tick, at most two ticks' worth, and once per account however many
+ * launchers it has open. A day counts (for the streak, days played, weekends) with at least 10
+ * minutes; at most 12 hours a day count at all.
  *
  * Days are UTC days (00:00 UTC, 1–2 a.m. in Poland): the same for every player and every server
  * restart, with no time zone a client could pick to stretch a day.
+ *
+ * Counts that can shrink (screenshots and profiles expire, parties live in memory) are kept as
+ * counters that only grow; where the data was there before the counters (screenshots, profiles,
+ * the cloud), the counter starts from it, so players who did it before get the achievement too.
  */
 
-export type Group = 'streak' | 'hours' | 'friends' | 'messages' | 'servers';
+/** What an achievement's number measures. */
+export type Group = 'streak' | 'hours' | 'friends' | 'messages' | 'servers'
+  | 'days' | 'longday' | 'weekends' | 'anniversary' | 'night' | 'newyear' | 'halloween' | 'friday13'
+  | 'groups_joined' | 'groups_created' | 'group_size' | 'clan_joined' | 'clan_founded' | 'clan_size'
+  | 'waypoints' | 'parties_created' | 'parties_joined' | 'media' | 'shares' | 'cloud'
+  | 'sprays' | 'worn' | 'bought' | 'spent';
+
+/** Where the pages put it. */
+export type Category = 'play' | 'streak' | 'social' | 'community' | 'explore' | 'sharing' | 'style' | 'secret';
+export const CATEGORIES: Category[] = ['play', 'streak', 'social', 'community', 'explore', 'sharing', 'style', 'secret'];
 
 export interface Achievement {
   id: string;
   group: Group;
-  /** What the group's number must reach: days, hours, friends, messages or servers. */
+  category: Category;
+  /** What the group's number must reach: days, hours, friends, messages, servers… */
   goal: number;
+  /** Sparks paid once, when it unlocks (by how hard it is). */
+  sparks: number;
   name: string;
   nameEn: string;
   description: string;
   descriptionEn: string;
+  /** Shown as "???" until it unlocks. */
+  hidden?: boolean;
   /** The cosmetic it unlocks (cosmetics.ts item with `achievement` set to this id). */
   reward?: string;
 }
 
+type Def = Omit<Achievement, 'category'>;
+const of = (category: Category, list: Def[]): Achievement[] => list.map((a) => ({ ...a, category }));
+
 export const ACHIEVEMENTS: Achievement[] = [
-  { id: 'streak_3', group: 'streak', goal: 3, name: 'Trzy dni z rzędu', nameEn: 'Three in a row', description: 'Graj co najmniej 10 minut dziennie przez 3 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 3 days in a row.' },
-  { id: 'streak_7', group: 'streak', goal: 7, name: 'Tydzień z rzędu', nameEn: 'A week in a row', description: 'Graj co najmniej 10 minut dziennie przez 7 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 7 days in a row.' },
-  { id: 'streak_30', group: 'streak', goal: 30, name: 'Seria 30 dni', nameEn: '30-day streak', description: 'Graj co najmniej 10 minut dziennie przez 30 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 30 days in a row.', reward: 'streak30' },
-  { id: 'hours_10', group: 'hours', goal: 10, name: 'Rozgrzewka', nameEn: 'Warming up', description: 'Zagraj 10 godzin ze SlashClient.', descriptionEn: 'Play 10 hours with SlashClient.' },
-  { id: 'hours_50', group: 'hours', goal: 50, name: 'Stały bywalec', nameEn: 'Regular', description: 'Zagraj 50 godzin ze SlashClient.', descriptionEn: 'Play 50 hours with SlashClient.' },
-  { id: 'hours_100', group: 'hours', goal: 100, name: 'Weteran', nameEn: 'Veteran', description: 'Zagraj 100 godzin ze SlashClient.', descriptionEn: 'Play 100 hours with SlashClient.', reward: 'veteran' },
-  { id: 'hours_500', group: 'hours', goal: 500, name: 'Legenda', nameEn: 'Legend', description: 'Zagraj 500 godzin ze SlashClient.', descriptionEn: 'Play 500 hours with SlashClient.' },
-  { id: 'friend_1', group: 'friends', goal: 1, name: 'Pierwszy znajomy', nameEn: 'First friend', description: 'Dodaj pierwszego znajomego.', descriptionEn: 'Add your first friend.' },
-  { id: 'friends_10', group: 'friends', goal: 10, name: 'Paczka znajomych', nameEn: 'The squad', description: 'Miej 10 znajomych.', descriptionEn: 'Have 10 friends.' },
-  { id: 'message_1', group: 'messages', goal: 1, name: 'Pierwsza wiadomość', nameEn: 'First message', description: 'Napisz do znajomego.', descriptionEn: 'Send a message to a friend.' },
-  { id: 'servers_5', group: 'servers', goal: 5, name: 'Podróżnik', nameEn: 'Traveller', description: 'Zagraj na 5 różnych serwerach.', descriptionEn: 'Play on 5 different servers.' },
-  { id: 'servers_20', group: 'servers', goal: 20, name: 'Obieżyświat', nameEn: 'Globetrotter', description: 'Zagraj na 20 różnych serwerach.', descriptionEn: 'Play on 20 different servers.' },
+  ...of('play', [
+    { id: 'hours_1', group: 'hours', goal: 1, sparks: 10, name: 'Pierwsza godzina', nameEn: 'First hour', description: 'Zagraj godzinę ze SlashClient.', descriptionEn: 'Play one hour with SlashClient.' },
+    { id: 'hours_10', group: 'hours', goal: 10, sparks: 40, name: 'Rozgrzewka', nameEn: 'Warming up', description: 'Zagraj 10 godzin ze SlashClient.', descriptionEn: 'Play 10 hours with SlashClient.' },
+    { id: 'hours_50', group: 'hours', goal: 50, sparks: 100, name: 'Stały bywalec', nameEn: 'Regular', description: 'Zagraj 50 godzin ze SlashClient.', descriptionEn: 'Play 50 hours with SlashClient.' },
+    { id: 'hours_100', group: 'hours', goal: 100, sparks: 200, name: 'Weteran', nameEn: 'Veteran', description: 'Zagraj 100 godzin ze SlashClient.', descriptionEn: 'Play 100 hours with SlashClient.', reward: 'veteran' },
+    { id: 'hours_250', group: 'hours', goal: 250, sparks: 300, name: 'Zaprawiony w boju', nameEn: 'Battle-hardened', description: 'Zagraj 250 godzin ze SlashClient.', descriptionEn: 'Play 250 hours with SlashClient.' },
+    { id: 'hours_500', group: 'hours', goal: 500, sparks: 500, name: 'Legenda', nameEn: 'Legend', description: 'Zagraj 500 godzin ze SlashClient.', descriptionEn: 'Play 500 hours with SlashClient.' },
+    { id: 'hours_1000', group: 'hours', goal: 1000, sparks: 1000, name: 'Tysiąc godzin', nameEn: 'A thousand hours', description: 'Zagraj 1000 godzin ze SlashClient.', descriptionEn: 'Play 1000 hours with SlashClient.' },
+    { id: 'days_30', group: 'days', goal: 30, sparks: 100, name: 'Miesiąc gry', nameEn: 'A month of play', description: 'Graj co najmniej 10 minut w 30 różnych dniach (nie muszą być pod rząd).', descriptionEn: 'Play at least 10 minutes on 30 different days (not necessarily in a row).' },
+    { id: 'days_100', group: 'days', goal: 100, sparks: 250, name: 'Sto dni', nameEn: 'A hundred days', description: 'Graj co najmniej 10 minut w 100 różnych dniach.', descriptionEn: 'Play at least 10 minutes on 100 different days.' },
+    { id: 'days_365', group: 'days', goal: 365, sparks: 600, name: 'Rok w grze', nameEn: 'A year in the game', description: 'Graj co najmniej 10 minut w 365 różnych dniach.', descriptionEn: 'Play at least 10 minutes on 365 different days.' },
+    { id: 'longday_4', group: 'longday', goal: 4, sparks: 40, name: 'Długi dzień', nameEn: 'A long day', description: 'Zagraj 4 godziny w ciągu jednego dnia.', descriptionEn: 'Play 4 hours in one day.' },
+    { id: 'weekend_1', group: 'weekends', goal: 1, sparks: 15, name: 'Weekendowy gracz', nameEn: 'Weekend player', description: 'Zagraj co najmniej 10 minut w sobotę lub niedzielę.', descriptionEn: 'Play at least 10 minutes on a Saturday or Sunday.' },
+    { id: 'weekends_10', group: 'weekends', goal: 10, sparks: 120, name: 'Weekendowy wojownik', nameEn: 'Weekend warrior', description: 'Graj w 10 różnych weekendów.', descriptionEn: 'Play on 10 different weekends.' },
+    { id: 'anniversary_1', group: 'anniversary', goal: 1, sparks: 300, name: 'Rocznica', nameEn: 'Anniversary', description: 'Zagraj, gdy Twoje konto SlashClient ma co najmniej rok.', descriptionEn: 'Play when your SlashClient account is at least a year old.' },
+    { id: 'anniversary_2', group: 'anniversary', goal: 2, sparks: 500, name: 'Druga rocznica', nameEn: 'Second anniversary', description: 'Zagraj, gdy Twoje konto SlashClient ma co najmniej dwa lata.', descriptionEn: 'Play when your SlashClient account is at least two years old.' },
+  ]),
+  ...of('streak', [
+    { id: 'streak_3', group: 'streak', goal: 3, sparks: 25, name: 'Trzy dni z rzędu', nameEn: 'Three in a row', description: 'Graj co najmniej 10 minut dziennie przez 3 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 3 days in a row.' },
+    { id: 'streak_7', group: 'streak', goal: 7, sparks: 50, name: 'Tydzień z rzędu', nameEn: 'A week in a row', description: 'Graj co najmniej 10 minut dziennie przez 7 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 7 days in a row.' },
+    { id: 'streak_14', group: 'streak', goal: 14, sparks: 100, name: 'Dwa tygodnie z rzędu', nameEn: 'Two weeks in a row', description: 'Graj co najmniej 10 minut dziennie przez 14 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 14 days in a row.' },
+    { id: 'streak_30', group: 'streak', goal: 30, sparks: 200, name: 'Seria 30 dni', nameEn: '30-day streak', description: 'Graj co najmniej 10 minut dziennie przez 30 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 30 days in a row.', reward: 'streak30' },
+    { id: 'streak_60', group: 'streak', goal: 60, sparks: 300, name: 'Seria 60 dni', nameEn: '60-day streak', description: 'Graj co najmniej 10 minut dziennie przez 60 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 60 days in a row.' },
+    { id: 'streak_100', group: 'streak', goal: 100, sparks: 500, name: 'Seria 100 dni', nameEn: '100-day streak', description: 'Graj co najmniej 10 minut dziennie przez 100 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 100 days in a row.' },
+    { id: 'streak_365', group: 'streak', goal: 365, sparks: 1000, name: 'Cały rok z rzędu', nameEn: 'A whole year in a row', description: 'Graj co najmniej 10 minut dziennie przez 365 dni z rzędu.', descriptionEn: 'Play at least 10 minutes a day for 365 days in a row.' },
+  ]),
+  ...of('social', [
+    { id: 'friend_1', group: 'friends', goal: 1, sparks: 10, name: 'Pierwszy znajomy', nameEn: 'First friend', description: 'Dodaj pierwszego znajomego.', descriptionEn: 'Add your first friend.' },
+    { id: 'friends_5', group: 'friends', goal: 5, sparks: 25, name: 'Piątka', nameEn: 'High five', description: 'Miej 5 znajomych.', descriptionEn: 'Have 5 friends.' },
+    { id: 'friends_10', group: 'friends', goal: 10, sparks: 50, name: 'Paczka znajomych', nameEn: 'The squad', description: 'Miej 10 znajomych.', descriptionEn: 'Have 10 friends.' },
+    { id: 'friends_25', group: 'friends', goal: 25, sparks: 100, name: 'Dusza towarzystwa', nameEn: 'Life of the party', description: 'Miej 25 znajomych.', descriptionEn: 'Have 25 friends.' },
+    { id: 'friends_50', group: 'friends', goal: 50, sparks: 200, name: 'Wszyscy mnie znają', nameEn: 'Everyone knows me', description: 'Miej 50 znajomych.', descriptionEn: 'Have 50 friends.' },
+    { id: 'message_1', group: 'messages', goal: 1, sparks: 5, name: 'Pierwsza wiadomość', nameEn: 'First message', description: 'Napisz do znajomego.', descriptionEn: 'Send a message to a friend.' },
+    { id: 'messages_10', group: 'messages', goal: 10, sparks: 10, name: 'Pogaduszki', nameEn: 'Small talk', description: 'Wyślij 10 wiadomości (do znajomych lub w grupach).', descriptionEn: 'Send 10 messages (to friends or in groups).' },
+    { id: 'messages_100', group: 'messages', goal: 100, sparks: 40, name: 'Gaduła', nameEn: 'Chatterbox', description: 'Wyślij 100 wiadomości.', descriptionEn: 'Send 100 messages.' },
+    { id: 'messages_1000', group: 'messages', goal: 1000, sparks: 120, name: 'Nie da się mnie zatrzymać', nameEn: 'Unstoppable', description: 'Wyślij 1000 wiadomości.', descriptionEn: 'Send 1000 messages.' },
+    { id: 'waypoint_1', group: 'waypoints', goal: 1, sparks: 10, name: 'Tu jestem!', nameEn: 'Over here!', description: 'Wyślij znajomemu punkt nawigacyjny.', descriptionEn: 'Send a waypoint to a friend.' },
+    { id: 'waypoints_25', group: 'waypoints', goal: 25, sparks: 40, name: 'Kartograf', nameEn: 'Cartographer', description: 'Wyślij znajomym 25 punktów nawigacyjnych.', descriptionEn: 'Send 25 waypoints to friends.' },
+    { id: 'party_create', group: 'parties_created', goal: 1, sparks: 15, name: 'Zbiórka!', nameEn: 'Assemble!', description: 'Zaproś znajomych do drużyny.', descriptionEn: 'Invite friends to a party.' },
+    { id: 'party_join', group: 'parties_joined', goal: 1, sparks: 15, name: 'Dołączam', nameEn: 'Count me in', description: 'Przyjmij zaproszenie do drużyny.', descriptionEn: 'Accept a party invite.' },
+  ]),
+  ...of('community', [
+    { id: 'group_join', group: 'groups_joined', goal: 1, sparks: 10, name: 'W grupie raźniej', nameEn: 'Better together', description: 'Bądź w czacie grupowym kogoś innego.', descriptionEn: 'Be in someone else\'s group chat.' },
+    { id: 'group_create', group: 'groups_created', goal: 1, sparks: 15, name: 'Założyciel czatu', nameEn: 'Chat founder', description: 'Załóż czat grupowy.', descriptionEn: 'Start a group chat.' },
+    { id: 'group_big', group: 'group_size', goal: 5, sparks: 40, name: 'Ekipa', nameEn: 'The crew', description: 'Bądź w czacie grupowym z co najmniej 5 osobami.', descriptionEn: 'Be in a group chat with at least 5 people.' },
+    { id: 'clan_join', group: 'clan_joined', goal: 1, sparks: 20, name: 'Członek klanu', nameEn: 'Clan member', description: 'Dołącz do klanu.', descriptionEn: 'Join a clan.' },
+    { id: 'clan_found', group: 'clan_founded', goal: 1, sparks: 30, name: 'Wódz', nameEn: 'Chieftain', description: 'Załóż klan.', descriptionEn: 'Found a clan.' },
+    { id: 'clan_10', group: 'clan_size', goal: 10, sparks: 150, name: 'Potęga klanu', nameEn: 'Clan power', description: 'Bądź w klanie, który ma co najmniej 10 członków.', descriptionEn: 'Be in a clan with at least 10 members.' },
+  ]),
+  ...of('explore', [
+    { id: 'servers_5', group: 'servers', goal: 5, sparks: 30, name: 'Podróżnik', nameEn: 'Traveller', description: 'Zagraj na 5 różnych serwerach.', descriptionEn: 'Play on 5 different servers.' },
+    { id: 'servers_10', group: 'servers', goal: 10, sparks: 50, name: 'Turysta', nameEn: 'Tourist', description: 'Zagraj na 10 różnych serwerach.', descriptionEn: 'Play on 10 different servers.' },
+    { id: 'servers_20', group: 'servers', goal: 20, sparks: 80, name: 'Obieżyświat', nameEn: 'Globetrotter', description: 'Zagraj na 20 różnych serwerach.', descriptionEn: 'Play on 20 different servers.' },
+    { id: 'servers_50', group: 'servers', goal: 50, sparks: 200, name: 'Odkrywca', nameEn: 'Explorer', description: 'Zagraj na 50 różnych serwerach.', descriptionEn: 'Play on 50 different servers.' },
+  ]),
+  ...of('sharing', [
+    { id: 'media_1', group: 'media', goal: 1, sparks: 10, name: 'Fotograf', nameEn: 'Photographer', description: 'Udostępnij zrzut ekranu lub klip linkiem.', descriptionEn: 'Share a screenshot or a clip by link.' },
+    { id: 'media_10', group: 'media', goal: 10, sparks: 50, name: 'Galeria', nameEn: 'Gallery', description: 'Udostępnij linkiem 10 zrzutów ekranu lub klipów.', descriptionEn: 'Share 10 screenshots or clips by link.' },
+    { id: 'share_1', group: 'shares', goal: 1, sparks: 15, name: 'Podziel się', nameEn: 'Sharing is caring', description: 'Udostępnij profil kodem.', descriptionEn: 'Share a profile by code.' },
+    { id: 'cloud_1', group: 'cloud', goal: 1, sparks: 15, name: 'W chmurach', nameEn: 'Head in the clouds', description: 'Zapisz profil na koncie SlashClient (w chmurze).', descriptionEn: 'Save a profile on your SlashClient account (in the cloud).' },
+  ]),
+  ...of('style', [
+    { id: 'spray_1', group: 'sprays', goal: 1, sparks: 10, name: 'Artysta uliczny', nameEn: 'Street artist', description: 'Namaluj spray w grze.', descriptionEn: 'Paint a spray in the game.' },
+    { id: 'sprays_100', group: 'sprays', goal: 100, sparks: 50, name: 'Graficiarz', nameEn: 'Graffiti master', description: 'Namaluj 100 sprayów (liczy się najwyżej jeden na 30 sekund).', descriptionEn: 'Paint 100 sprays (at most one every 30 seconds counts).' },
+    { id: 'wear_5', group: 'worn', goal: 5, sparks: 20, name: 'Elegant', nameEn: 'Dapper', description: 'Noś kosmetyki SlashClient w 5 miejscach naraz.', descriptionEn: 'Wear SlashClient cosmetics in 5 slots at once.' },
+    { id: 'wear_10', group: 'worn', goal: 10, sparks: 60, name: 'Ikona stylu', nameEn: 'Style icon', description: 'Noś kosmetyki SlashClient w 10 miejscach naraz.', descriptionEn: 'Wear SlashClient cosmetics in 10 slots at once.' },
+    { id: 'shop_1', group: 'bought', goal: 1, sparks: 20, name: 'Pierwszy zakup', nameEn: 'First purchase', description: 'Kup coś w sklepie za Iskry.', descriptionEn: 'Buy something in the shop with Sparks.' },
+    { id: 'shop_5', group: 'bought', goal: 5, sparks: 75, name: 'Kolekcjoner', nameEn: 'Collector', description: 'Kup 5 rzeczy w sklepie.', descriptionEn: 'Buy 5 things in the shop.' },
+  ]),
+  ...of('secret', [
+    { id: 'night_owl', group: 'night', goal: 1, sparks: 50, hidden: true, name: 'Nocny marek', nameEn: 'Night owl', description: 'Graj między północą a 4:00 UTC.', descriptionEn: 'Play between midnight and 4:00 UTC.' },
+    { id: 'full_day', group: 'longday', goal: 12, sparks: 150, hidden: true, name: 'Maraton', nameEn: 'Marathon', description: 'Zagraj 12 godzin w ciągu jednego dnia.', descriptionEn: 'Play 12 hours in one day.' },
+    { id: 'new_year', group: 'newyear', goal: 1, sparks: 100, hidden: true, name: 'Szczęśliwego Nowego Roku', nameEn: 'Happy New Year', description: 'Zagraj 1 stycznia.', descriptionEn: 'Play on the 1st of January.' },
+    { id: 'halloween', group: 'halloween', goal: 1, sparks: 100, hidden: true, name: 'Cukierek albo psikus', nameEn: 'Trick or treat', description: 'Zagraj 31 października.', descriptionEn: 'Play on the 31st of October.' },
+    { id: 'friday13', group: 'friday13', goal: 1, sparks: 100, hidden: true, name: 'Piątek trzynastego', nameEn: 'Friday the 13th', description: 'Zagraj w piątek trzynastego.', descriptionEn: 'Play on a Friday the 13th.' },
+    { id: 'big_spender', group: 'spent', goal: 1000, sparks: 100, hidden: true, name: 'Rozrzutny', nameEn: 'Big spender', description: 'Wydaj w sklepie 1000 Iskier.', descriptionEn: 'Spend 1000 Sparks in the shop.' },
+  ]),
 ];
 
 const BY_ID = new Map(ACHIEVEMENTS.map((a) => [a.id, a]));
+export const achievement = (id: string): Achievement | undefined => BY_ID.get(id);
+
+/** All the sparks every achievement together pays. */
+export const TOTAL_SPARKS = ACHIEVEMENTS.reduce((s, a) => s + a.sparks, 0);
 
 export const TICK_MS = 60_000;
 /** A tick late by more than this (the server was busy or asleep) credits only this much. */
@@ -60,10 +156,18 @@ export const DAY_MIN_SECONDS = 10 * 60;
 export const DAY_CAP_SECONDS = 12 * 3600;
 /** Counted for hours only after this long in one place, so a quick look at a server is not a visit. */
 const SERVER_MIN_TICKS = 2;
+/** Only one spray in this long counts (the game allows one every few seconds). */
+export const SPRAY_COUNT_GAP_MS = 30_000;
+/** Message counts stop here: more is not needed and a long chat history is not counted through. */
+const MESSAGES_CAP = 1000;
+/** Night play counts from midnight to this hour, UTC. */
+const NIGHT_UNTIL_HOUR = 4;
+const DAY_MS = 86_400_000;
+const YEAR_MS = 365 * DAY_MS;
 
 /** The UTC day of a moment, as YYYY-MM-DD. */
 export const dayOf = (at: number) => new Date(at).toISOString().slice(0, 10);
-const prevDay = (day: string) => dayOf(Date.parse(`${day}T00:00:00Z`) - 86_400_000);
+const prevDay = (day: string) => dayOf(Date.parse(`${day}T00:00:00Z`) - DAY_MS);
 
 /**
  * The streak still going (ending today or yesterday: today may not have its 10 minutes yet) and the
@@ -83,6 +187,37 @@ export function streaks(days: string[], today: string): { current: number; best:
   return { current: alive ? run : 0, best };
 }
 
+/** Different weekends among the days (a Saturday and the Sunday after it are one weekend). */
+export function weekends(days: string[]): number {
+  const seen = new Set<string>();
+  for (const d of days) {
+    const at = Date.parse(`${d}T00:00:00Z`);
+    const wd = new Date(at).getUTCDay();
+    if (wd === 6) seen.add(d);
+    else if (wd === 0) seen.add(dayOf(at - DAY_MS));
+  }
+  return seen.size;
+}
+
+/** The special days among the days played: New Year's Day, Halloween, a Friday the 13th. */
+export function specialDays(days: string[]): { newyear: number; halloween: number; friday13: number } {
+  let newyear = 0, halloween = 0, friday13 = 0;
+  for (const d of days) {
+    if (d.endsWith('-01-01')) newyear = 1;
+    if (d.endsWith('-10-31')) halloween = 1;
+    if (d.endsWith('-13') && new Date(`${d}T00:00:00Z`).getUTCDay() === 5) friday13 = 1;
+  }
+  return { newyear, halloween, friday13 };
+}
+
+/** How many whole years old the account was on the latest day played. */
+export function anniversaryYears(days: string[], createdAt: number): number {
+  let best = 0;
+  // the end of the day: playing any time on the anniversary's day counts
+  for (const d of days) best = Math.max(best, Math.floor((Date.parse(`${d}T00:00:00Z`) + DAY_MS - 1 - createdAt) / YEAR_MS));
+  return best;
+}
+
 /** Addresses that are not a server one can "visit": this computer, a home network, a friend's LAN world through the relay. */
 const LOCAL = /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|0\.|\[?::1)/i;
 export function serverKey(address: string | undefined): string | undefined {
@@ -91,7 +226,16 @@ export function serverKey(address: string | undefined): string | undefined {
   return a && !LOCAL.test(a) && /[a-z0-9]\.[a-z0-9]/.test(a) ? a.slice(0, 260) : undefined;
 }
 
-export interface Stats { totalSeconds: number; todaySeconds: number; streak: number; bestStreak: number; servers: number; friends: number; messages: number }
+export interface Stats {
+  totalSeconds: number; todaySeconds: number; streak: number; bestStreak: number; servers: number; friends: number; messages: number;
+  daysPlayed: number; longestDaySeconds: number; weekends: number; anniversary: number; night: number; newyear: number; halloween: number; friday13: number;
+  groupsJoined: number; groupsCreated: number; groupSize: number; clanJoined: number; clanFounded: number; clanSize: number;
+  waypoints: number; partiesCreated: number; partiesJoined: number; media: number; shares: number; cloud: number;
+  sprays: number; worn: number; bought: number; spent: number;
+}
+
+/** Counters kept by events (they only grow). */
+export type Counter = 'media' | 'shares' | 'cloud' | 'parties_created' | 'parties_joined' | 'sprays' | 'night';
 
 /** The tables (added on start, nothing else changes) and their queries. */
 export class AchievementStore {
@@ -103,6 +247,7 @@ export class AchievementStore {
 CREATE TABLE IF NOT EXISTS play_days (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, day TEXT NOT NULL, seconds INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (uuid, day));
 CREATE TABLE IF NOT EXISTS play_servers (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, server TEXT NOT NULL, first_at INTEGER NOT NULL, PRIMARY KEY (uuid, server));
 CREATE TABLE IF NOT EXISTS achievements (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, id TEXT NOT NULL, unlocked_at INTEGER NOT NULL, PRIMARY KEY (uuid, id));
+CREATE TABLE IF NOT EXISTS achievement_counters (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, key TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (uuid, key));
 `);
   }
 
@@ -118,13 +263,64 @@ CREATE TABLE IF NOT EXISTS achievements (uuid TEXT NOT NULL REFERENCES users(uui
     this.sql.prepare('INSERT OR IGNORE INTO play_servers (uuid, server, first_at) VALUES (?, ?, ?)').run(uuid, server, at);
   }
 
-  stats(uuid: string, now: number): Stats {
+  /** One more of something; `since` is how many the tables showed before the counter existed (it starts from there). */
+  bump(uuid: string, key: Counter, since = 0) {
+    this.sql.prepare('INSERT INTO achievement_counters (uuid, key, n) VALUES (?, ?, ?) ON CONFLICT (uuid, key) DO UPDATE SET n = MAX(n + 1, excluded.n)')
+      .run(uuid, key, Math.max(1, since));
+  }
+
+  counter(uuid: string, key: Counter): number {
+    return (this.sql.prepare('SELECT n FROM achievement_counters WHERE uuid = ? AND key = ?').get(uuid, key) as { n: number } | undefined)?.n ?? 0;
+  }
+
+  /** A count from another feature's table; 0 while that table is not there (an older database, a test without it). */
+  private count(q: string, ...args: (string | number)[]): number {
+    try {
+      return Number((this.sql.prepare(q).get(...args) as { n: number | null } | undefined)?.n ?? 0);
+    } catch {
+      return 0;
+    }
+  }
+
+  /** What the tables show now of the things the counters also count (screenshots, profiles, the cloud). */
+  live(uuid: string, key: Counter): number {
+    switch (key) {
+      case 'media': return this.count('SELECT COUNT(*) AS n FROM shared_media WHERE owner = ?', uuid);
+      case 'shares': return this.count('SELECT COUNT(*) AS n FROM profile_shares WHERE owner = ?', uuid);
+      case 'cloud': return this.count('SELECT COUNT(*) AS n FROM cloud_profiles WHERE owner = ?', uuid);
+      default: return 0;
+    }
+  }
+
+  /** How many cosmetics the player wears at once: the account's set or one character's, the fuller. */
+  private worn(uuid: string): number {
+    const filled = (json: string, extra = 0) => {
+      try {
+        return Object.values(JSON.parse(json || '{}') as Record<string, unknown>).filter((v) => typeof v === 'string' && v).length + extra;
+      } catch {
+        return extra;
+      }
+    };
+    const user = this.sql.prepare('SELECT cape, loadout FROM users WHERE uuid = ?').get(uuid) as { cape: string; loadout: string } | undefined;
+    // the account's cape is kept apart from its other slots; a character's set has the cape inside
+    let best = user ? filled(user.loadout, user.cape ? 1 : 0) : 0;
+    for (const r of this.sql.prepare("SELECT loadout FROM identities WHERE uuid = ? AND provider = 'minecraft' AND loadout != ''").all(uuid) as { loadout: string }[]) best = Math.max(best, filled(r.loadout));
+    return best;
+  }
+
+  stats(uuid: string, now: number, wallet?: Wallet): Stats {
     const today = dayOf(now);
-    const total = this.sql.prepare('SELECT COALESCE(SUM(seconds), 0) AS s FROM play_days WHERE uuid = ?').get(uuid) as { s: number };
+    const total = this.sql.prepare('SELECT COALESCE(SUM(seconds), 0) AS s, COALESCE(MAX(seconds), 0) AS m FROM play_days WHERE uuid = ?').get(uuid) as { s: number; m: number };
     const todayRow = this.sql.prepare('SELECT seconds FROM play_days WHERE uuid = ? AND day = ?').get(uuid, today) as { seconds: number } | undefined;
     const days = (this.sql.prepare('SELECT day FROM play_days WHERE uuid = ? AND seconds >= ?').all(uuid, DAY_MIN_SECONDS) as { day: string }[]).map((r) => r.day);
     const { current, best } = streaks(days, today);
-    const count = (q: string, ...args: string[]) => (this.sql.prepare(q).get(...args) as { n: number }).n;
+    const created = (this.sql.prepare('SELECT created_at FROM users WHERE uuid = ?').get(uuid) as { created_at: number } | undefined)?.created_at ?? now;
+    const count = (q: string, ...args: (string | number)[]) => this.count(q, ...args);
+    const counted = (key: Counter) => Math.max(this.counter(uuid, key), this.live(uuid, key));
+    // direct messages and group chat messages (not the groups' "joined"/"renamed" lines), up to the cap
+    const direct = count(`SELECT COUNT(*) AS n FROM (SELECT 1 FROM messages WHERE from_uuid = ? LIMIT ${MESSAGES_CAP})`, uuid);
+    const grouped = direct >= MESSAGES_CAP ? 0 : count(`SELECT COUNT(*) AS n FROM (SELECT 1 FROM chat_group_messages WHERE from_uuid = ? AND event IS NULL LIMIT ${MESSAGES_CAP})`, uuid);
+    const shop = wallet?.purchases(uuid) ?? { count: 0, spent: 0 };
     return {
       totalSeconds: total.s,
       todaySeconds: todayRow?.seconds ?? 0,
@@ -132,8 +328,29 @@ CREATE TABLE IF NOT EXISTS achievements (uuid TEXT NOT NULL REFERENCES users(uui
       bestStreak: best,
       servers: count('SELECT COUNT(*) AS n FROM play_servers WHERE uuid = ?', uuid),
       friends: count('SELECT COUNT(*) AS n FROM friendships WHERE a = ? OR b = ?', uuid, uuid),
-      // only "has written at all" and the like matter: no need to count a long chat history
-      messages: count('SELECT COUNT(*) AS n FROM (SELECT 1 FROM messages WHERE from_uuid = ? LIMIT 100)', uuid),
+      messages: Math.min(MESSAGES_CAP, direct + grouped),
+      daysPlayed: days.length,
+      longestDaySeconds: total.m,
+      weekends: weekends(days),
+      anniversary: anniversaryYears(days, created),
+      night: this.counter(uuid, 'night'),
+      ...specialDays(days),
+      groupsJoined: count("SELECT COUNT(*) AS n FROM chat_group_members m JOIN chat_groups g ON g.id = m.group_id WHERE m.uuid = ? AND g.owner != ? AND g.clan = ''", uuid, uuid),
+      groupsCreated: count("SELECT COUNT(*) AS n FROM chat_groups WHERE owner = ? AND clan = ''", uuid),
+      groupSize: count("SELECT MAX(c) AS n FROM (SELECT COUNT(*) AS c FROM chat_group_members m JOIN chat_groups g ON g.id = m.group_id WHERE g.clan = '' AND m.group_id IN (SELECT group_id FROM chat_group_members WHERE uuid = ?) GROUP BY m.group_id)", uuid),
+      clanJoined: count("SELECT COUNT(*) AS n FROM clan_members WHERE uuid = ? AND role != 'owner'", uuid),
+      clanFounded: count('SELECT COUNT(*) AS n FROM clans WHERE owner = ?', uuid),
+      clanSize: count('SELECT COUNT(*) AS n FROM clan_members WHERE clan_id = (SELECT clan_id FROM clan_members WHERE uuid = ?)', uuid),
+      waypoints: count('SELECT COUNT(*) AS n FROM (SELECT 1 FROM messages WHERE from_uuid = ? AND waypoint IS NOT NULL LIMIT 100)', uuid),
+      partiesCreated: this.counter(uuid, 'parties_created'),
+      partiesJoined: this.counter(uuid, 'parties_joined'),
+      media: counted('media'),
+      shares: counted('shares'),
+      cloud: counted('cloud'),
+      sprays: this.counter(uuid, 'sprays'),
+      worn: this.worn(uuid),
+      bought: shop.count,
+      spent: shop.spent,
     };
   }
 
@@ -147,6 +364,16 @@ CREATE TABLE IF NOT EXISTS achievements (uuid TEXT NOT NULL REFERENCES users(uui
     if (a.reward) this.sql.prepare('INSERT OR IGNORE INTO cape_grants (uuid, cape) VALUES (?, ?)').run(uuid, a.reward);
     return added;
   }
+
+  /** Every account, for the pass over all of them on start. */
+  users(): string[] {
+    return (this.sql.prepare('SELECT uuid FROM users').all() as { uuid: string }[]).map((r) => r.uuid);
+  }
+
+  /** Unlocked achievements not paid yet (from before the sparks, or a payout that failed): [uuid, id]. */
+  unpaid(): { uuid: string; id: string; unlocked_at: number }[] {
+    return this.sql.prepare("SELECT a.uuid, a.id, a.unlocked_at FROM achievements a WHERE NOT EXISTS (SELECT 1 FROM sparks_ledger l WHERE l.uuid = a.uuid AND l.reason = 'achievement' AND l.ref = a.id)").all() as { uuid: string; id: string; unlocked_at: number }[];
+  }
 }
 
 /** How far a player is in an achievement's group. */
@@ -157,6 +384,30 @@ function value(a: Achievement, s: Stats): number {
     case 'friends': return s.friends;
     case 'messages': return s.messages;
     case 'servers': return s.servers;
+    case 'days': return s.daysPlayed;
+    case 'longday': return Math.floor(s.longestDaySeconds / 360) / 10;
+    case 'weekends': return s.weekends;
+    case 'anniversary': return s.anniversary;
+    case 'night': return Math.min(1, s.night);
+    case 'newyear': return s.newyear;
+    case 'halloween': return s.halloween;
+    case 'friday13': return s.friday13;
+    case 'groups_joined': return s.groupsJoined;
+    case 'groups_created': return s.groupsCreated;
+    case 'group_size': return s.groupSize;
+    case 'clan_joined': return s.clanJoined;
+    case 'clan_founded': return s.clanFounded;
+    case 'clan_size': return s.clanSize;
+    case 'waypoints': return s.waypoints;
+    case 'parties_created': return s.partiesCreated;
+    case 'parties_joined': return s.partiesJoined;
+    case 'media': return s.media;
+    case 'shares': return s.shares;
+    case 'cloud': return s.cloud;
+    case 'sprays': return s.sprays;
+    case 'worn': return s.worn;
+    case 'bought': return s.bought;
+    case 'spent': return s.spent;
   }
 }
 
@@ -166,12 +417,18 @@ function rewardOf(a: Achievement): { id: string; slot: Slot; name: string } | un
   return it ? { id: it.id, slot: it.slot, name: it.name } : undefined;
 }
 
-/** One achievement as the launcher, the game and the website get it. */
+/** Its place among the achievements of its group, by goal (1 = the easiest). */
+const tierOf = (a: Achievement) => ACHIEVEMENTS.filter((x) => x.group === a.group && x.goal < a.goal).length + 1;
+
+/** One achievement as the launcher, the game and the website get it; a hidden one stays "???" until it unlocks. */
 export function view(a: Achievement, unlockedAt: number | undefined, s?: Stats) {
-  const v = s ? value(a, s) : undefined;
+  const secret = a.hidden && unlockedAt === undefined;
+  const v = s && !secret ? value(a, s) : undefined;
   return {
-    id: a.id, group: a.group, tier: ACHIEVEMENTS.filter((x) => x.group === a.group).indexOf(a) + 1, goal: a.goal,
-    name: a.name, nameEn: a.nameEn, description: a.description, descriptionEn: a.descriptionEn,
+    id: a.id, group: a.group, category: a.category, tier: tierOf(a), goal: secret ? 1 : a.goal, sparks: a.sparks,
+    ...(a.hidden ? { hidden: true } : {}),
+    name: secret ? '???' : a.name, nameEn: secret ? '???' : a.nameEn,
+    description: secret ? 'Ukryte osiągnięcie. Odkryj je sam!' : a.description, descriptionEn: secret ? 'A hidden achievement. Find it yourself!' : a.descriptionEn,
     ...(v === undefined ? {} : { value: v, progress: Math.min(1, v / a.goal) }),
     unlockedAt: unlockedAt ?? null, reward: rewardOf(a),
   };
@@ -183,8 +440,26 @@ export function hintFor(achievementId: string): { hint: string; hintEn: string }
   return a && { hint: `Osiągnięcie „${a.name}”: ${a.description}`, hintEn: `Achievement "${a.nameEn}": ${a.descriptionEn}` };
 }
 
+/** Requests that count for an achievement once they succeed: what they count, or null to only look again. */
+const EVENTS: [string, RegExp, Counter | null][] = [
+  ['POST', /^\/v1\/media$/, 'media'],
+  ['POST', /^\/v1\/profile-shares$/, 'shares'],
+  ['PUT', /^\/v1\/cloud-profiles\/[\w-]+$/, 'cloud'],
+  ['POST', /^\/v1\/parties$/, 'parties_created'],
+  ['POST', /^\/v1\/parties\/[\w-]+\/accept$/, 'parties_joined'],
+  ['POST', /^\/v1\/mc\/spray$/, 'sprays'],
+  ['POST', /^\/v1\/waypoints$/, null],
+  ['POST', /^\/v1\/me$/, null],
+  ['POST', /^\/v1\/groups(\/[\w-]+\/(members|messages))?$/, null],
+  ['POST', /^\/v1\/clans(\/[\w-]+\/accept|\/invites|\/leave)?$/, null],
+];
+
+/** At most this many single notices for one check; more come as one summary (old players after the update). */
+const SINGLE_NOTICES = 2;
+
 interface Deps {
   sql: DatabaseSync;
+  wallet: Wallet;
   /** Who plays right now: account → the server address (undefined in singleplayer). */
   playing: (now: number) => Map<string, string | undefined>;
   /** Sends an event to the account's connected launchers (and from there to its game). */
@@ -195,23 +470,60 @@ interface Deps {
 }
 
 export function createAchievements(deps: Deps) {
+  const { wallet } = deps;
   const store = new AchievementStore(deps.sql);
   /** When each player was last credited, and where, for how many ticks in a row. */
   const last = new Map<string, { at: number; server?: string; ticks: number }>();
+  /** When each player's last counted spray was. */
+  const lastSpray = new Map<string, number>();
 
-  /** Unlocks what the player has reached and tells their launchers; returns the new ones. */
+  /** Unlocks one achievement and pays it, together; false when it was there already. */
+  function unlock(userId: string, a: Achievement, at: number): boolean {
+    return inTransaction(deps.sql, () => {
+      if (!store.unlock(userId, a, at)) return false;
+      wallet.change(userId, a.sparks, 'achievement', a.id, '', '', at);
+      return true;
+    });
+  }
+
+  /**
+   * Unlocks what the player has reached and tells their launchers; returns the new ones. Several at
+   * once (old players after an update) also come as one summary, which new launchers show instead.
+   */
   function check(userId: string, now = Date.now()) {
-    const s = store.stats(userId, now);
+    const s = store.stats(userId, now, wallet);
     const have = store.unlocked(userId);
     const fresh = [];
     for (const a of ACHIEVEMENTS) {
       if (have.has(a.id) || value(a, s) < a.goal) continue;
-      if (!store.unlock(userId, a, now)) continue;
-      const v = view(a, now, s);
-      fresh.push(v);
-      deps.push(userId, { type: 'achievement', achievement: v });
+      if (!unlock(userId, a, now)) continue;
+      fresh.push(view(a, now, s));
     }
+    if (!fresh.length) return fresh;
+    const many = fresh.length > SINGLE_NOTICES;
+    // older launchers know only single events; new ones skip the quiet ones and show the summary
+    for (const v of fresh) deps.push(userId, { type: 'achievement', achievement: v, ...(many ? { quiet: true } : {}) });
+    const sparks = fresh.reduce((n, v) => n + v.sparks, 0);
+    if (many) deps.push(userId, { type: 'achievements-summary', count: fresh.length, sparks });
+    deps.push(userId, { type: 'wallet', balance: wallet.balance(userId), change: sparks, reason: 'achievement', ref: '' });
     return fresh;
+  }
+
+  /**
+   * On start: pays every unlocked achievement not paid yet (all of them, the first time after the
+   * sparks came), then looks at every account once, so achievements already reached in the data
+   * (friends, servers, days played…) unlock without the player having to play first. Safe to run
+   * on every start: payouts are once per achievement, unlocks once per player.
+   */
+  function backfill(now = Date.now()) {
+    let paid = 0;
+    for (const r of store.unpaid()) {
+      const a = BY_ID.get(r.id);
+      if (a && wallet.change(r.uuid, a.sparks, 'achievement', a.id, '', '', r.unlocked_at) !== undefined) paid++;
+    }
+    let unlocked = 0;
+    for (const uuid of store.users()) unlocked += check(uuid, now).length;
+    return { paid, unlocked };
   }
 
   /** Once a minute: play time for everyone in a game (see the top of this file). */
@@ -227,21 +539,62 @@ export function createAchievements(deps: Deps) {
       if (!before) continue;
       store.addPlay(userId, dayOf(now), Math.min(MAX_CREDIT_MS, Math.max(0, now - before.at)) / 1000);
       if (server && ticks >= SERVER_MIN_TICKS) store.addServer(userId, server, now);
+      if (new Date(now).getUTCHours() < NIGHT_UNTIL_HOUR && !store.counter(userId, 'night')) store.bump(userId, 'night');
       check(userId, now);
     }
   }
 
+  /**
+   * After a request succeeded: counts what it did (a screenshot shared, a party…) and looks at the
+   * achievements of everyone it may have moved (the members of a group or a clan too).
+   */
+  function after(method: string, path: string, userId: string | undefined, now = Date.now()) {
+    if (!userId) return;
+    const hit = EVENTS.find(([m, re]) => m === method && re.test(path));
+    if (!hit) return;
+    const key = hit[2];
+    if (key === 'sprays') {
+      if (now - (lastSpray.get(userId) ?? 0) < SPRAY_COUNT_GAP_MS) return;
+      lastSpray.set(userId, now);
+    }
+    if (key) store.bump(userId, key, store.live(userId, key));
+    check(userId, now);
+    const others = new Set<string>();
+    const group = /^\/v1\/groups\/([\w-]+)\//.exec(path)?.[1];
+    try {
+      if (path === '/v1/groups' || group) {
+        const rows = group
+          ? deps.sql.prepare('SELECT uuid FROM chat_group_members WHERE group_id = ?').all(group)
+          : deps.sql.prepare('SELECT m.uuid FROM chat_group_members m JOIN chat_groups g ON g.id = m.group_id WHERE g.owner = ?').all(userId);
+        for (const r of rows as { uuid: string }[]) others.add(r.uuid);
+      } else if (path.startsWith('/v1/clans')) {
+        for (const r of deps.sql.prepare('SELECT uuid FROM clan_members WHERE clan_id = (SELECT clan_id FROM clan_members WHERE uuid = ?)').all(userId) as { uuid: string }[]) others.add(r.uuid);
+      }
+    } catch {
+      // the groups' or clans' tables are not there (a test without them)
+    }
+    others.delete(userId);
+    for (const other of others) check(other, now);
+  }
+
   function list(userId: string, now = Date.now()) {
     check(userId, now);
-    const s = store.stats(userId, now);
+    const s = store.stats(userId, now, wallet);
     const have = store.unlocked(userId);
+    const views = ACHIEVEMENTS.map((a) => view(a, have.get(a.id), s));
     return {
-      achievements: ACHIEVEMENTS.map((a) => view(a, have.get(a.id), s)),
+      achievements: views,
       stats: {
         hours: Math.floor(s.totalSeconds / 360) / 10, todayMinutes: Math.floor(s.todaySeconds / 60), streak: s.streak, bestStreak: s.bestStreak,
-        servers: s.servers, friends: s.friends, messages: s.messages,
+        servers: s.servers, friends: s.friends, messages: s.messages, daysPlayed: s.daysPlayed,
       },
       rules: { dayStartsAt: '00:00 UTC', minMinutesPerDay: DAY_MIN_SECONDS / 60, maxHoursPerDay: DAY_CAP_SECONDS / 3600 },
+      categories: CATEGORIES,
+      sparks: {
+        balance: wallet.balance(userId),
+        earned: views.filter((v) => v.unlockedAt !== null).reduce((n, v) => n + v.sparks, 0),
+        total: TOTAL_SPARKS,
+      },
     };
   }
 
@@ -256,5 +609,5 @@ export function createAchievements(deps: Deps) {
     }],
   ];
 
-  return { routes, tick, check, list, store };
+  return { routes, tick, check, list, after, backfill, store };
 }

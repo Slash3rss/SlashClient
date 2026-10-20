@@ -150,7 +150,7 @@ describe('achievements', () => {
     const now = Date.now();
     for (let d = 0; d < 10; d++) app.achievements.store.addPlay(jan.user.id, dayOf(now - d * 86_400_000), 10 * 3600);
     const fresh = app.achievements.check(jan.user.id, now);
-    assert.deepEqual(fresh.map((a) => a.id).sort(), ['hours_10', 'hours_100', 'hours_50', 'streak_3', 'streak_7']);
+    assert.deepEqual(fresh.map((a) => a.id).sort(), ['hours_1', 'hours_10', 'hours_100', 'hours_50', 'longday_4', 'streak_3', 'streak_7', 'weekend_1']);
     const event = await live.waitFor((e) => e.type === 'achievement' && e.achievement.id === 'hours_100');
     assert.equal(event.achievement.name, 'Weteran');
     assert.deepEqual(event.achievement.reward, { id: 'veteran', slot: 'cape', name: 'Weteran' });
@@ -166,7 +166,7 @@ describe('achievements', () => {
     const h500 = list.achievements.find((a: any) => a.id === 'hours_500');
     assert.equal(h500.unlockedAt, null);
     assert.equal(h500.progress, 0.2);
-    assert.equal(h500.tier, 4);
+    assert.equal(h500.tier, 6);
     live.ws.close();
   });
 
