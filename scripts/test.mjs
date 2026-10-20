@@ -9,7 +9,7 @@ const entryPoints = readdirSync('tests').filter((f) => f.endsWith('.test.ts')).m
 const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
 await build({
   entryPoints, outdir: out, bundle: true, platform: 'node', format: 'cjs', target: 'node20', sourcemap: 'inline', logLevel: 'warning',
-  external: ['electron'], define: { __APP_VERSION__: JSON.stringify(version) },
+  external: ['electron', 'original-fs'], define: { __APP_VERSION__: JSON.stringify(version) },
 });
 const files = readdirSync(out).filter((f) => f.endsWith('.js')).map((f) => `${out}/${f}`);
 const { status } = spawnSync(process.execPath, ['--enable-source-maps', '--test', ...files], { stdio: 'inherit' });

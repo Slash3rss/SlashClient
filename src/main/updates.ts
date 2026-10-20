@@ -3,7 +3,7 @@ import { autoUpdater } from 'electron-updater';
 import path from 'node:path';
 import { appBundle, downloadMacUpdate, installMacUpdate, pickMacZip, type MacFile } from './macUpdate';
 import { netFetch } from './download';
-import { cleanupWinUpdate, downloadWinUpdate, manifestName, parseManifest, startSwap, winInstall, type WinInstall } from './winUpdate';
+import { appendUpdateLog, cleanupWinUpdate, downloadWinUpdate, manifestName, parseManifest, startSwap, winInstall, type WinInstall } from './winUpdate';
 
 /** What the update bar and Settings show. */
 export interface UpdateStatus {
@@ -84,10 +84,18 @@ export function startUpdateChecks({ serverUrl, send: sendStatus, onLog }: Update
   setInterval(() => void checkForUpdates(), 6 * 60 * 60 * 1000);
 }
 
+const updateLog = () => path.join(app.getPath('logs'), 'update.log');
+
+/** Windows: what the in-place update does goes to logs/update.log too (next to what the swap script writes). */
+function winLog(message: string, onLog?: (message: string) => void) {
+  onLog?.(`Aktualizacja (Windows): ${message}`);
+  appendUpdateLog(updateLog(), message);
+}
+
 /** Windows: whether this installation updates itself in place (it then downloads by itself, not the installer). */
 async function winSetup(onLog?: (message: string) => void) {
   const found = await winInstall().catch((err: Error) => err.message);
-  if (typeof found === 'string') return onLog?.(`Aktualizacja (Windows): instalatorem (${found})`);
+  if (typeof found === 'string') return winLog(`instalatorem (${found})`, onLog);
   await cleanupWinUpdate(found.dir);
   winInstalled = found;
   autoUpdater.autoDownload = false;
@@ -110,11 +118,12 @@ async function winDownload(feed: string, version: string, onLog?: (message: stri
     const res = await netFetch(`${feed}/${manifestName(version)}`);
     const manifest = res.ok ? parseManifest(await res.json().catch(() => undefined), version) : undefined;
     if (!manifest) throw new Error(`brak ${manifestName(version)} (HTTP ${res.status})`);
-    const next = await downloadWinUpdate(feed, install, manifest, (percent) => set({ state: 'downloading', version, percent }), onLog);
+    const next = await downloadWinUpdate(feed, install, manifest, (percent) => set({ state: 'downloading', version, percent }), (m) => winLog(m, onLog));
     winReady = { next, version };
+    winLog(`${version} gotowa w ${next}`, onLog);
     set({ state: 'ready', version });
   } catch (err) {
-    onLog?.(`Aktualizacja (Windows): ${(err as Error).message}; pobieranie instalatora`);
+    winLog(`${(err as Error).message}; pobieranie instalatora`, onLog);
     await cleanupWinUpdate(install.dir);
     // the installer, as before this existed
     winInstalled = undefined;
@@ -131,9 +140,9 @@ function winSwap(relaunch: string[] | null, onLog?: (message: string) => void) {
   if (!winInstalled || !winReady) return;
   winSwapped = true;
   try {
-    startSwap({ pid: process.pid, install: winInstalled, next: winReady.next, version: winReady.version, log: path.join(app.getPath('logs'), 'update.log'), relaunch });
+    startSwap({ pid: process.pid, install: winInstalled, next: winReady.next, version: winReady.version, log: updateLog(), relaunch });
   } catch (err) {
-    onLog?.(`Aktualizacja (Windows): ${(err as Error).message}`);
+    winLog((err as Error).message, onLog);
   }
 }
 

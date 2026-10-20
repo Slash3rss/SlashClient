@@ -1,11 +1,15 @@
 import { spawn, execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createWriteStream, mkdirSync, writeFileSync } from 'node:fs';
-import fs from 'node:fs/promises';
+import { appendFileSync, createWriteStream, mkdirSync, writeFileSync } from 'node:fs';
+import nodeFs from 'node:fs/promises';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
 import { netFetch } from './download';
 import { throttled } from './rateLimit';
+
+// Electron's own fs looks into app.asar as if it were a folder (copying, unpacking and deleting the
+// new version's app.asar then fails); original-fs handles it as the plain file it is
+const fs: typeof nodeFs = process.versions.electron ? require('original-fs').promises : nodeFs;
 
 /**
  * Updates on Windows without the installer, the way macOS does it (macUpdate.ts): instead of
@@ -195,7 +199,7 @@ export async function downloadWinUpdate(feed: string, install: WinInstall, manif
   await fs.rm(download, { recursive: true, force: true });
   await fs.mkdir(download, { recursive: true });
   const { file, appOnly } = pickWinArtifact(manifest);
-  log?.(`Aktualizacja (Windows): pobieranie ${file.url} (${appOnly ? 'tylko aplikacja' : 'całość'}, ${file.size ?? '?'} B)`);
+  log?.(`pobieranie ${file.url} (${appOnly ? 'tylko aplikacja' : 'całość'}, ${file.size ?? '?'} B)`);
   const zip = path.join(download, 'update.zip');
   await downloadVerified(`${feed.replace(/\/$/, '')}/${encodeURIComponent(file.url)}`, file, zip, progress);
   try {
@@ -279,6 +283,17 @@ export function swapScript(o: SwapOptions): string {
     o.relaunch ? `try { Start-Process -FilePath $exe -WorkingDirectory $dir${args} } catch { Log ('uruchamianie: ' + $_.Exception.Message) }` : '',
     `if ($ok) { try { Retry { Remove-Item -LiteralPath $old -Recurse -Force } 'usuwanie starej wersji' } catch { Log $_.Exception.Message } }`,
   ].filter(Boolean).join('\r\n');
+}
+
+/** Appends a line to the update log (the swap script writes to the same file). */
+export function appendUpdateLog(file: string, message: string): void {
+  try {
+    mkdirSync(path.dirname(file), { recursive: true });
+    appendFileSync(file, `${new Date().toISOString().replace('T', ' ').slice(0, 19)} [launcher] ${message}
+`, 'utf8');
+  } catch {
+    // only a log
+  }
 }
 
 /**
