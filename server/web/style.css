@@ -388,3 +388,9 @@ button.chip.active { background: var(--accent); color: #fff; }
 .privacy-index { margin-top: 14px; }
 .privacy-card label.row { flex-wrap: nowrap; }
 .privacy-hidden { padding: 8px 12px; border-radius: 10px; background: rgba(239, 68, 68, .12); color: #fca5a5; }
+/* the account page's legal bits (legalNotice.js) */
+.signin .legal-note { margin: 14px 0 0; }
+.signin .legal-note a, .legal-notice a:not(.btn) { color: var(--accent-light); }
+.legal-notice { margin-bottom: 14px; border-color: rgba(96, 165, 250, .35); }
+.legal-notice .fa-scale-balanced { color: var(--accent-light); }
+.legal-notice p { margin: 6px 0 10px; }

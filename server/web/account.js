@@ -2,6 +2,7 @@
 import { Preview } from './preview.js';
 import { achievementsCard, buy, priceTag, sparks } from './sparks.js';
 import { privacyCard } from './profilePrivacy.js';
+import { legalNotices, signInNote } from './legalNotice.js';
 import { chip as supporterChip, supportCard } from './supportCard.js';
 import { $, partnerBanner, uploadPicture, PROVIDERS, SLOTS, api, avatarEl, capeEl, cosmeticEl, el, errorText, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 
@@ -62,7 +63,7 @@ function renderSignIn() {
     list.append(form);
   }
   if (!health.providers.length && !health.dev) list.append(el('p', { class: 'muted', textContent: 'Logowanie nie jest jeszcze skonfigurowane na tym serwerze.' }));
-  box.append(list);
+  box.append(list, signInNote());
   $('#account').replaceChildren(box);
 }
 
@@ -204,6 +205,8 @@ function renderAccount() {
     // on the prop's tab the figure walks with it, seen from the side
     walk: slot === 'prop' });
   renderPartners();
+  // "Zaktualizowaliśmy regulamin": important changes not seen yet, above everything else
+  legalNotices().then((cards) => render === renders && $('#account').prepend(...cards)).catch(() => {});
 }
 
 /** A partner account's own servers: the background shown behind them in the game's server list. */

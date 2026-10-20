@@ -5,6 +5,7 @@ import { shopSection, walletSection } from './adminSparks.js';
 import { achievementsPage, foreignHash, obtainLine } from './adminAchievements.js';
 import { clansPage } from './adminClans.js';
 import { supportPage } from './adminSupport.js';
+import { legalPage } from './adminLegal.js';
 
 const TABS = [
   ['dashboard', 'Pulpit', 'fa-solid fa-chart-line'],
@@ -17,6 +18,7 @@ const TABS = [
   ['logs', 'Logi graczy', 'fa-solid fa-file-lines'],
   ['storage', 'Miejsce na pliki', 'fa-solid fa-hard-drive'],
   ['support', 'Wsparcie', 'fa-solid fa-heart'],
+  ['legal', 'Dokumenty', 'fa-solid fa-scale-balanced'],
   ['log', 'Dziennik', 'fa-solid fa-clock-rotate-left'],
 ];
 const ACTIONS = {
@@ -35,6 +37,8 @@ const ACTIONS = {
   'clan.delete': 'usunął(ęła) klan', 'clan.logo_remove': 'usunął(ęła) logo klanu',
   support_provider: 'zmienił(a) operatora płatności', support_test: 'sprawdził(a) połączenie z', support_settings: 'zmienił(a) ustawienia wsparcia',
   support_tier: 'zapisał(a) poziom wsparcia', support_tier_delete: 'usunął(ęła) poziom wsparcia',
+  legal_draft: 'zapisał(a) szkic dokumentu', legal_publish: 'opublikował(a) dokument', legal_restore: 'przywrócił(a) wersję dokumentu',
+  legal_banner: 'zmienił(a) baner wersji roboczej', legal_vars: 'zmienił(a) dane administratora w dokumentach',
   support_grant: 'przyznał(a) wsparcie', support_extend: 'przedłużył(a) wsparcie', support_revoke: 'odebrał(a) wsparcie',
 };
 /** Ranks: the colour of the SlashClient logo next to the name in game (admins are red without one). */
@@ -96,7 +100,7 @@ function layout() {
     el('button', { class: 'icon-btn', title: 'Wyloguj', onclick: async () => { await signOut(); me = undefined; gate(); } }, icon('fa-solid fa-right-from-bracket'))));
   const main = el('main', { class: 'main', id: 'main' });
   $('#root').replaceChildren(el('div', { class: 'admin' }, side, main));
-  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, achievements: achievementsPage, partners: partnersPage, clans: clansPage, requests: requestsPage, logs: logsPage, storage: storagePage, support: supportPage, log: logPage })[tab]?.();
+  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, achievements: achievementsPage, partners: partnersPage, clans: clansPage, requests: requestsPage, logs: logsPage, storage: storagePage, support: supportPage, legal: legalPage, log: logPage })[tab]?.();
 }
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);

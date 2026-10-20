@@ -29,6 +29,7 @@ import { storageAdminRoutes } from './storageAdmin.ts';
 import { muteRoutes } from './mutes.ts';
 import { chatImageRoutes, type ImageLimits } from './chatImages.ts';
 import { profileRoutes } from './profiles.ts';
+import { legalRoutes } from './legal/routes.ts';
 import { BurstLimiter, EDIT_WINDOW_MS, SlowDown, editRefusal, type BurstLimits } from './chatLimits.ts';
 import { supportRoutes } from './payments/support.ts';
 
@@ -83,6 +84,8 @@ export interface Config {
   imagesDir?: string;
   /** Size, quota and time of chat pictures (tests lower them). */
   imageLimits?: Partial<ImageLimits>;
+  /** The "draft" banner on the legal documents when an admin has not chosen one in the panel (LEGAL_DRAFT, on unless "0"). */
+  legalDraft?: boolean;
   /** Messages in a row per conversation (chatLimits.ts; tests change it). */
   chatBurst?: Partial<BurstLimits>;
   /** Supporting the project with money (payments/support.ts): tests point the providers at fakes and set the clock. */
@@ -581,6 +584,17 @@ export function createApp(cfg: Config) {
     supporter: (uuid) => support.profileDecor(uuid),
     status: (uuid) => presenceOf(uuid).status,
     skinOf, headOf,
+    audit: (who, action, target, detail) => db.log(who, action, target, detail),
+    versioned: (html) => versioned(html, 'text/html'),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  // the terms, the privacy policy and the support terms, edited in the admin panel (legal/routes.ts)
+  const legal = legalRoutes({
+    sql: db.sql, publicUrl: cfg.publicUrl, bannerDefault: cfg.legalDraft ?? true, authed, admin,
+    createdAt: (uuid) => db.adminUser(uuid)?.createdAt ?? 0,
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
     versioned: (html) => versioned(html, 'text/html'),
     fail: (status, code) => {
@@ -1089,6 +1103,7 @@ export function createApp(cfg: Config) {
     }),
     ...profiles.routes,
     ...support.routes,
+    ...legal.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged,
       fail: (status, code) => {
@@ -1255,6 +1270,9 @@ export function createApp(cfg: Config) {
       if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
       return;
     }
+
+    // the legal documents' pages, from the database
+    if (legal.serve(req, res, url)) return;
 
     // a shared screenshot or clip: its file, and its page with the preview
     try {
