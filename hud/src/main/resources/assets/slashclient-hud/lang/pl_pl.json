@@ -381,7 +381,6 @@
 	"slashclient-hud.communities.announcements": "Ogłoszenia",
 	"slashclient-hud.communities.members": "Członkowie",
 	"slashclient-hud.communities.chat": "Czat",
-	"slashclient-hud.communities.plain": "Bez szyfrowania od nadawcy do odbiorcy — widzą go moderatorzy.",
 	"slashclient-hud.communities.readOnly": "Tu piszą tylko administratorzy społeczności.",
 	"slashclient-hud.communities.muted": "Wyciszono Cię tu do %s.",
 	"slashclient-hud.communities.manage": "Członkowie, prośby, bany i ustawienia społeczności są w launcherze: Znajomi → Społeczności.",

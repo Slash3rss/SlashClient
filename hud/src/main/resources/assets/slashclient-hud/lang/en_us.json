@@ -381,7 +381,6 @@
 	"slashclient-hud.communities.announcements": "Announcements",
 	"slashclient-hud.communities.members": "Members",
 	"slashclient-hud.communities.chat": "Chat",
-	"slashclient-hud.communities.plain": "Not end-to-end encrypted — moderators can read it.",
 	"slashclient-hud.communities.readOnly": "Only the community's admins write here.",
 	"slashclient-hud.communities.muted": "You are muted here until %s.",
 	"slashclient-hud.communities.manage": "Members, requests, bans and settings are in the launcher: Friends → Communities.",

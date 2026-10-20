@@ -649,8 +649,7 @@ public class FriendsScreen extends Screen {
 			return;
 		}
 
-		// room above the field for the note that this chat is not end-to-end encrypted
-		int top = py + 38, bottom = py + ph - INPUT_H - 14 - 12 - (editingId >= 0 ? 16 : 0);
+		int top = py + 38, bottom = py + ph - INPUT_H - 14 - (editingId >= 0 ? 16 : 0);
 		int maxBubble = (int) (cw * 0.72);
 		List<Communities.Message> messages = Communities.chat(ch.id());
 		g.enableScissor(cx + 2, top, cx + cw - 2, bottom);
@@ -716,11 +715,6 @@ public class FriendsScreen extends Screen {
 
 		int fy = input.getY() - 6;
 		if (editingId >= 0) drawEditBar(g, cx, fy);
-		else {
-			// not end-to-end encrypted: moderators can read it (said where one writes)
-			Ui.icon(g, "info", cx + 12, fy - 12, 7, 0xFFFBBF24);
-			Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.communities.plain"), cw - 34), cx + 22, fy - 12, 0xFFFBBF24);
-		}
 		if (!canWrite) {
 			// announcements (only admins write) or muted: the reason where the field would be
 			Ui.round(g, cx + 10, fy, cw - 20, INPUT_H, 4, 0x80111622);

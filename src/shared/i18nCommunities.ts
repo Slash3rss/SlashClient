@@ -34,7 +34,6 @@ export const COMMUNITIES_EN: Record<string, string> = {
   'Opuścić „{0}”?': 'Leave “{0}”?',
   'To prywatna społeczność: wrócić można tylko na zaproszenie.': 'This is a private community: you can only come back with an invite.',
   'Możesz wrócić później przez „Odkrywaj”.': 'You can come back later through “Discover”.',
-  'Czat społeczności nie jest szyfrowany od nadawcy do odbiorcy — widzą go moderatorzy.': 'Community chat is not end-to-end encrypted — moderators can see it.',
   'Tu administratorzy piszą ogłoszenia dla wszystkich.': 'The admins post announcements for everyone here.',
   'Napisz pierwszą wiadomość w społeczności.': 'Write the first message in the community.',
   'Usunięta przez moderację': 'Removed by a moderator',

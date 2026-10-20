@@ -13,7 +13,7 @@ import { disabledText, featureOn } from './features';
  *
  * The community chat is NOT end-to-end encrypted (a key for every member's launcher on every
  * message does not scale to a thousand people): it is kept on the server like a forum's posts, and
- * moderators can read and remove it. The chat says so above the composer.
+ * moderators can read and remove it.
  *
  * Big rooms: no toast for every message, only per the member's choice (all / mentions / none,
  * mentions by default); members come in pages; messages say who wrote them (no member list here).
@@ -410,8 +410,7 @@ export function createCommunities(deps: Deps) {
       el('div', { className: 'grow fr-names' }, el('b', { textContent: c.name }),
         el('small', { className: 'muted', textContent: `${subline(c)} · ${communityRoleText(c.role)}` }), tabs),
       ...actions);
-    // where one writes: this chat is not end-to-end encrypted (moderators see it)
-    typing.replaceChildren(el('span', { className: 'fr-plain-note' }, icon('fa-lock-open'), ` ${t('Czat społeczności nie jest szyfrowany od nadawcy do odbiorcy — widzą go moderatorzy.')}`));
+    typing.replaceChildren();
     renderMessages();
   }
 
@@ -495,7 +494,6 @@ export function createCommunities(deps: Deps) {
     const done = modalWindow(t('Nowa społeczność'), [
       el('p', { className: 'muted', textContent: t('Społeczność to duża grupa (do {0} osób) z czatem. Możesz być w kilku naraz, niezależnie od klanu. Jej tag nie pojawia się przy nicku.', limits.members) }),
       ...f.nodes,
-      el('p', { className: 'muted fr-plain-note' }, icon('fa-lock-open'), ` ${t('Czat społeczności nie jest szyfrowany od nadawcy do odbiorcy — widzą go moderatorzy.')}`),
     ], [cancel, go], undefined, 'fr-group-modal fr-com-modal');
     cancel.addEventListener('click', done);
     go.addEventListener('click', async () => {
