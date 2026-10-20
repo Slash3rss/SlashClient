@@ -79,16 +79,9 @@ public final class Assist {
 
 	static void tick(Minecraft mc) {
 		Player player = mc.player;
-		while (holdAttackKey.consumeClick()) holdAttack = toggle(mc, holdAttack, "slashclient-hud.assist.holdAttack", mc.options.keyAttack);
-		while (holdUseKey.consumeClick()) holdUse = toggle(mc, holdUse, "slashclient-hud.assist.holdUse", mc.options.keyUse);
-		while (autoClickKey.consumeClick()) {
-			if (!cfg().autoClicker) {
-				Compat.overlay(mc, Component.translatable("slashclient-hud.assist.autoClick.disabled"));
-				continue;
-			}
-			armed = !armed;
-			Compat.overlay(mc, Component.translatable(armed ? "slashclient-hud.assist.autoClick.on" : "slashclient-hud.assist.autoClick.off"));
-		}
+		while (holdAttackKey.consumeClick()) pressed(mc, holdAttackKey);
+		while (holdUseKey.consumeClick()) pressed(mc, holdUseKey);
+		while (autoClickKey.consumeClick()) pressed(mc, autoClickKey);
 		if (player == null || mc.level == null) {
 			holdAttack = holdUse = armed = false;
 			lastHand = ItemStack.EMPTY;
@@ -104,6 +97,65 @@ public final class Assist {
 		if (cfg().autoTool && inGame) autoTool(mc, player);
 		if (cfg().autoRefill) refill(mc, player);
 		if (cfg().toolWarning) warn(mc, player);
+	}
+
+	/** One of the helpers' keys pressed, in the game or over a window (see `attach`). */
+	private static void pressed(Minecraft mc, KeyMapping key) {
+		if (key == holdAttackKey) holdAttack = toggle(mc, holdAttack, "slashclient-hud.assist.holdAttack", mc.options.keyAttack);
+		else if (key == holdUseKey) holdUse = toggle(mc, holdUse, "slashclient-hud.assist.holdUse", mc.options.keyUse);
+		else if (key == autoClickKey) {
+			if (!cfg().autoClicker) {
+				Compat.overlay(mc, Component.translatable("slashclient-hud.assist.autoClick.disabled"));
+				return;
+			}
+			armed = !armed;
+			Compat.overlay(mc, Component.translatable(armed ? "slashclient-hud.assist.autoClick.on" : "slashclient-hud.assist.autoClick.off"));
+		}
+	}
+
+	/**
+	 * The keys work over inventories and server windows too (game keys do not reach the game while
+	 * one is open): a button held to open a case can be let go with its key in the case's window.
+	 * The key is taken (the window does not see it).
+	 */
+	static void attach(Minecraft mc, net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> screen) {
+		KeyMapping[] keys = { holdAttackKey, holdUseKey, autoClickKey };
+		//#if MC >= 1.21.9
+		net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents.allowKeyPress(screen).register((s, e) -> {
+			for (KeyMapping k : keys) if (!k.isUnbound() && k.matches(e)) {
+				pressed(mc, k);
+				return false;
+			}
+			return true;
+		});
+		net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(screen).register((s, e) -> {
+			for (KeyMapping k : keys) if (!k.isUnbound() && k.matchesMouse(e)) {
+				pressed(mc, k);
+				return false;
+			}
+			return true;
+		});
+		//#else
+		//$ net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents.allowKeyPress(screen).register((s, key, scancode, mods) -> {
+		//$ 	for (KeyMapping k : keys) if (!k.isUnbound() && k.matches(key, scancode)) {
+		//$ 		pressed(mc, k);
+		//$ 		return false;
+		//$ 	}
+		//$ 	return true;
+		//$ });
+		//$ net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(screen).register((s, x, y, button) -> {
+		//$ 	for (KeyMapping k : keys) if (!k.isUnbound() && k.matchesMouse(button)) {
+		//$ 		pressed(mc, k);
+		//$ 		return false;
+		//$ 	}
+		//$ 	return true;
+		//$ });
+		//#endif
+	}
+
+	/** Whether a key's toggle is on (for the tests). */
+	static boolean holding(boolean attack) {
+		return attack ? holdAttack : holdUse;
 	}
 
 	private static boolean toggle(Minecraft mc, boolean on, String key, KeyMapping button) {

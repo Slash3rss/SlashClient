@@ -8,7 +8,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 /**
  * The autoclicker clicks on its own, no button held: switched on with no key bound it is armed at
  * once, the left button hits a husk in front of us (also only with it under the crosshair), the
- * right one clicks too; switched off, nothing.
+ * right one clicks too; switched off, nothing. The key holding a button lets go of it over a window too.
  */
 public class GameAutoClicker implements FabricClientGameTest {
 	@Override
@@ -47,6 +47,20 @@ public class GameAutoClicker implements FabricClientGameTest {
 			context.waitTicks(20);
 			String off = context.computeOnClient(mc -> TestHooks.autoClicks());
 			if (!off.equals("0/0")) throw new AssertionError("Clicked while switched off: " + off);
+
+			// holding the right button by its key, let go with the same key over a window (the inventory)
+			context.runOnClient(mc -> TestHooks.bindHoldUse("key.keyboard.h"));
+			context.getInput().pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_H);
+			context.waitTicks(3);
+			if (!context.computeOnClient(mc -> TestHooks.holdingUse())) throw new AssertionError("The key did not start holding");
+			context.setScreen(() -> new net.minecraft.client.gui.screens.inventory.InventoryScreen(net.minecraft.client.Minecraft.getInstance().player));
+			context.waitTicks(3);
+			context.getInput().pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_H);
+			context.waitTicks(3);
+			if (context.computeOnClient(mc -> TestHooks.holdingUse())) throw new AssertionError("The key did not let go over the inventory");
+			if (context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.Compat.screen(mc) == null)) throw new AssertionError("The key reached the window (closed it)");
+			context.setScreen(() -> null);
+			context.runOnClient(mc -> TestHooks.bindHoldUse(null));
 		}
 	}
 }

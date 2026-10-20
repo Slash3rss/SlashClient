@@ -84,6 +84,17 @@ public final class TestHooks {
 		Assist.leftClicks = Assist.rightClicks = 0;
 	}
 
+	/** "Hold the right button" on a key ("key.keyboard.h"; null: none), for the test that lets go of it over a window. */
+	public static void bindHoldUse(String key) {
+		Assist.holdUseKey.setKey(key == null ? com.mojang.blaze3d.platform.InputConstants.UNKNOWN : com.mojang.blaze3d.platform.InputConstants.getKey(key));
+		net.minecraft.client.KeyMapping.resetMapping();
+	}
+
+	/** Whether the right button is being held by its key. */
+	public static boolean holdingUse() {
+		return Assist.holding(false);
+	}
+
 	/** The autoclicker's clicks since it was set: "left/right". */
 	public static String autoClicks() {
 		return Assist.leftClicks + "/" + Assist.rightClicks;
