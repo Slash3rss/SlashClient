@@ -227,8 +227,10 @@ public class FriendsScreen extends Screen {
 			float t = Ui.hover("group:" + gr.id(), over);
 			if (gr.id().equals(selectedGroup)) Ui.round(g, rx, y, rw, ROW_H, 4, 0xFF1C2B4A);
 			else if (t > 0) Ui.round(g, rx, y, rw, ROW_H, 4, Ui.blend(0x00161C2A, Ui.CARD_HOVER, t));
-			// a clan: a shield on gold (its tag is in the name); a group: people on violet
-			if (gr.clan()) {
+			// a clan: its logo, or a shield on gold (its tag is in the name); a group: people on violet
+			ChatImages.Texture logo = Groups.logo(gr);
+			if (logo != null) drawLogo(g, logo, rx + 4, y + 4, 18);
+			else if (gr.clan()) {
 				Ui.round(g, rx + 4, y + 4, 18, 18, 5, 0xFFB45309);
 				Ui.icon(g, "m-armor", rx + 8, y + 8, 10, 0xFFFFFFFF);
 			} else {
@@ -475,8 +477,16 @@ public class FriendsScreen extends Screen {
 			bx -= 4;
 			headW -= w + 4;
 		}
-		Ui.draw(g, Ui.fit(Ui.bold(Groups.title(gr)), headW), cx + 10, py + 10, Ui.TEXT);
-		Ui.draw(g, Ui.fit(groupLine(gr), headW), cx + 10, py + 21, Ui.MUTED);
+		// the clan's logo before its name, when it has one
+		ChatImages.Texture logo = Groups.logo(gr);
+		int titleX = cx + 10;
+		if (logo != null) {
+			drawLogo(g, logo, titleX, py + 8, 22);
+			titleX += 27;
+			headW -= 27;
+		}
+		Ui.draw(g, Ui.fit(Ui.bold(Groups.title(gr)), headW), titleX, py + 10, Ui.TEXT);
+		Ui.draw(g, Ui.fit(groupLine(gr), headW), titleX, py + 21, Ui.MUTED);
 		g.fill(cx + 8, py + 33, cx + cw - 8, py + 34, Ui.BORDER);
 		if (ourClan && showMembers) {
 			drawMembers(g, clan, cx, cw);
@@ -562,10 +572,20 @@ public class FriendsScreen extends Screen {
 		}
 	}
 
+	/** A clan's logo, size × size (the 64×64 picture scaled). */
+	private static void drawLogo(GuiGraphicsExtractor g, ChatImages.Texture tex, int x, int y, int size) {
+		g.blit(RenderPipelines.GUI_TEXTURED, tex.id(), x, y, 0, 0, size, size, tex.w(), tex.h(), tex.w(), tex.h(), 0xFFFFFFFF);
+	}
+
 	/** The clan's members: online first within each role, with the role (managing them is in the launcher). */
 	private void drawMembers(GuiGraphicsExtractor g, Groups.Clan clan, int cx, int cw) {
 		int y = py + 40;
-		y = Ui.wrapped(g, Ui.tr("slashclient-hud.clan.manage"), cx + 10, y, cw - 20, Ui.MUTED) + 3;
+		// the clan's logo bigger, by the note that it is managed in the launcher
+		ChatImages.Texture logo = ClanLogos.of(clan.id(), clan.logo());
+		if (logo != null) {
+			drawLogo(g, logo, cx + 10, y, 32);
+			y = Math.max(Ui.wrapped(g, Ui.tr("slashclient-hud.clan.manage"), cx + 48, y + 2, cw - 58, Ui.MUTED), y + 32) + 4;
+		} else y = Ui.wrapped(g, Ui.tr("slashclient-hud.clan.manage"), cx + 10, y, cw - 20, Ui.MUTED) + 3;
 		List<Groups.ClanMember> sorted = new ArrayList<>(clan.members());
 		List<String> order = List.of("owner", "officer", "member");
 		sorted.sort(java.util.Comparator.comparing((Groups.ClanMember m) -> order.indexOf(m.role())).thenComparing(m -> !m.online()).thenComparing(m -> m.name().toLowerCase()));

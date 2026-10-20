@@ -503,6 +503,23 @@ public final class Social {
 		}
 	}
 
+	/** A clan's logo as PNG bytes (the launcher fetches and keeps it by version); blocks. */
+	static byte[] clanLogoBytes(String clanId, long version) {
+		if (!bridged() || !clanId.matches("[\\w-]{1,32}")) throw new IllegalStateException("no launcher");
+		try {
+			HttpRequest req = HttpRequest.newBuilder(URI.create(URL + "/clan/logo/" + clanId + "?v=" + version))
+				.timeout(Duration.ofSeconds(15)).header("Authorization", "Bearer " + KEY).GET().build();
+			HttpResponse<byte[]> res = HTTP.send(req, HttpResponse.BodyHandlers.ofByteArray());
+			if (res.statusCode() != 200) throw new IllegalStateException("HTTP " + res.statusCode());
+			return res.body();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException(e);
+		} catch (java.io.IOException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
 	/** How many toasts were shown (for the in-game test). */
 	private static volatile int toasts;
 

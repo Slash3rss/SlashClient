@@ -2,17 +2,29 @@ package dev.slash3rss.slashclient.hud.test;
 
 import dev.slash3rss.slashclient.hud.SocialTestHooks;
 import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.social.ClanLogos;
 import dev.slash3rss.slashclient.hud.social.FriendsScreen;
 import dev.slash3rss.slashclient.hud.social.Groups;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
+import javax.imageio.ImageIO;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.GradientPaint;
+import java.awt.Graphics2D;
+import java.awt.Polygon;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+
 /**
  * Group chats and clans in the game (made-up data, no launcher): the friends window with the
  * clan's chat and a group above the friends, a group's conversation with who wrote what and the
  * lines about the group, the clan's members (online first, with roles), the window for a new
- * group, and the clan's [TAG] by the name above the head and on the tab list.
+ * group, the clan's logo (made up) in its row, its chat's header and its members, and the clan's
+ * [TAG] by the name above the head and on the tab list.
  */
 public class GameGroupsClans implements FabricClientGameTest {
 	@Override
@@ -50,6 +62,29 @@ public class GameGroupsClans implements FabricClientGameTest {
 			context.takeScreenshot("groups-clan-members");
 			if (context.computeOnClient(mc -> Groups.clan().online()) != 3) throw new AssertionError("Clan members online: " + context.computeOnClient(mc -> Groups.clan().online()));
 
+			// the clan with a logo: in its row, before its name in the chat, and by its members
+			context.runOnClient(mc -> {
+				try {
+					ClanLogos.sampleForTest("wolf", 7, logo());
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+				Groups.sampleLogoForTest(7);
+				SocialTestHooks.viewGroup("clanchat");
+			});
+			if (!context.computeOnClient(mc -> Groups.logo(Groups.group("clanchat")) != null)) throw new AssertionError("The clan's logo is not there");
+			// the line about the new logo is the game's own text, not the bare name
+			String logoLine = context.computeOnClient(mc -> { var l = Groups.chat("clanchat"); return l.get(l.size() - 1).event(); });
+			if (!logoLine.startsWith("Ty ") || !logoLine.contains("logo")) throw new AssertionError("The logo's line: " + logoLine);
+			FriendsScreen[] logoScreen = new FriendsScreen[1];
+			context.setScreen(() -> logoScreen[0] = new FriendsScreen(null));
+			context.waitTicks(10);
+			context.takeScreenshot("groups-clan-logo-chat");
+			context.runOnClient(mc -> logoScreen[0].toggleMembers());
+			context.waitTicks(5);
+			context.takeScreenshot("groups-clan-logo-members");
+			context.runOnClient(mc -> Groups.sampleLogoForTest(0));
+
 			// a new group: the friends to pick
 			context.setScreen(() -> dev.slash3rss.slashclient.hud.social.PickFriendsScreen.newGroup(null));
 			context.waitTicks(5);
@@ -70,5 +105,31 @@ public class GameGroupsClans implements FabricClientGameTest {
 			context.runOnClient(mc -> SocialTestHooks.ownClan(null));
 		}
 		context.runOnClient(mc -> TestHooks.vanillaMenu());
+	}
+
+	/** A made-up logo: a wolf's head in a blue shield on a see-through background, 64×64. */
+	private static byte[] logo() throws java.io.IOException {
+		BufferedImage img = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = img.createGraphics();
+		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		Polygon shield = new Polygon(new int[] { 6, 58, 58, 32, 6 }, new int[] { 4, 4, 34, 60, 34 }, 5);
+		g.setPaint(new GradientPaint(0, 0, new Color(0x1E40AF), 0, 64, new Color(0x0EA5E9)));
+		g.fillPolygon(shield);
+		g.setColor(new Color(0xE2E8F0));
+		g.setStroke(new BasicStroke(3));
+		g.drawPolygon(shield);
+		// the head: ears, face and a snout
+		g.setColor(new Color(0xF8FAFC));
+		g.fillPolygon(new int[] { 18, 24, 28 }, new int[] { 14, 28, 22 }, 3);
+		g.fillPolygon(new int[] { 46, 40, 36 }, new int[] { 14, 28, 22 }, 3);
+		g.fillPolygon(new int[] { 20, 44, 32 }, new int[] { 22, 22, 50 }, 3);
+		g.setColor(new Color(0x0F172A));
+		g.fillOval(25, 28, 4, 4);
+		g.fillOval(35, 28, 4, 4);
+		g.fillOval(30, 42, 5, 4);
+		g.dispose();
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		ImageIO.write(img, "png", out);
+		return out.toByteArray();
 	}
 }

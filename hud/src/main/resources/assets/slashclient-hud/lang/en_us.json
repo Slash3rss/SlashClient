@@ -346,6 +346,8 @@
 	"slashclient-hud.groups.event.demoted": "%s made %s a member again",
 	"slashclient-hud.groups.event.owner": "%s handed the clan over: %s is the owner now",
 	"slashclient-hud.groups.event.heir": "%s is now the clan’s owner",
+	"slashclient-hud.groups.event.logo": "%s changed the clan’s logo",
+	"slashclient-hud.groups.event.logoRemoved": "%s removed the clan’s logo",
 	"slashclient-hud.groups.event.other": "%s",
 	"slashclient-hud.groups.new": "New group",
 	"slashclient-hud.groups.subtitle": "Pick friends to chat with all at once",
