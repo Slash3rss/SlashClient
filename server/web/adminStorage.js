@@ -109,7 +109,7 @@ export async function storagePage() {
       b.disk ? el('div', { class: 'small muted' }, `Dysk: wolne ${bytes(b.disk.free)} z ${bytes(b.disk.total)}`, b.disk.free < s.disk.minFree ? el('span', { class: 'chip red', textContent: ` poniżej progu ${bytes(s.disk.minFree)}` }) : '') : '',
       el('div', { class: 'row' }, ...kinds),
       b.type === 'local' ? '' : el('div', { class: 'small muted', textContent: `Klucz: ${b.keyIdSet ? `ustawiony (…${b.keyIdHint})` : 'brak'} · sekret: ${b.secretSet ? 'ustawiony' : 'brak'}` }),
-      el('div', { class: 'row wrap st-actions' },
+      el('div', { class: 'row st-actions' },
         el('button', { onclick: () => openForm(s, b) }, icon('fa-solid fa-pen'), 'Edytuj'),
         testBtn,
         el('button', { onclick: toggle }, icon(b.enabled ? 'fa-solid fa-pause' : 'fa-solid fa-play'), b.enabled ? 'Wyłącz' : 'Włącz'),

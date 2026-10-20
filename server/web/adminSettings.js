@@ -103,7 +103,7 @@ export async function settingsPage() {
 
   const search = el('input', { type: 'search', placeholder: 'Szukaj ustawienia…', value: state.q });
   const onlyChanged = el('input', { type: 'checkbox', checked: state.changedOnly });
-  const nav = el('div', { class: 'row wrap set-nav' });
+  const nav = el('div', { class: 'row set-nav' });
   const groups = [];
 
   for (const cat of res.categories) {
@@ -152,7 +152,7 @@ export async function settingsPage() {
       const who = def.overridden ? `Zmienione ${fmtDate(def.updatedAt)}${def.updatedByHandle ? ` przez @${def.updatedByHandle}` : ''}.` : '';
       const row = el('div', { class: `set-row${def.type === 'list' ? ' wide' : ''}`, dataset: { key: def.key } },
         el('div', { class: 'set-text' },
-          el('div', { class: 'row wrap' }, el('b', { textContent: def.label }), changedChip, def.risky && cat.id !== 'features' ? el('span', { class: 'chip gold', title: 'Panel zapyta jeszcze raz przed zapisem' }, icon('fa-solid fa-triangle-exclamation'), 'ważne') : '',
+          el('div', { class: 'row' }, el('b', { textContent: def.label }), changedChip, def.risky && cat.id !== 'features' ? el('span', { class: 'chip gold', title: 'Panel zapyta jeszcze raz przed zapisem' }, icon('fa-solid fa-triangle-exclamation'), 'ważne') : '',
             def.restart ? el('span', { class: 'chip', textContent: 'po restarcie' }) : ''),
           el('small', { class: 'muted', textContent: def.description }),
           el('small', { class: 'set-meta' }, el('code', { textContent: def.key }), ` · domyślnie ${show(def, def.default)}`,
@@ -216,7 +216,7 @@ export async function settingsPage() {
   $('#main').replaceChildren(
     el('div', { class: 'page-head' }, el('h1', { textContent: 'Ustawienia' }), el('div', { class: 'grow' }), search),
     el('p', { class: 'muted', textContent: `Limity i przełączniki serwera. Działają od razu po zapisaniu, bez restartu. Domyślne wartości są takie, jak w kodzie; zmienionych: ${overridden}. Każda zmiana trafia do Dziennika.` }),
-    el('div', { class: 'row wrap' }, nav, el('label', { class: 'row small' }, el('span', { class: 'switch' }, onlyChanged, el('span')), 'Tylko zmienione')),
+    el('div', { class: 'row' }, nav, el('label', { class: 'row small' }, el('span', { class: 'switch' }, onlyChanged, el('span')), 'Tylko zmienione')),
     ...groups.map((g) => g.card), nothing);
   filter();
 }

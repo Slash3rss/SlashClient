@@ -394,7 +394,7 @@ async function partnersPage() {
     pin.addEventListener('change', () => pinning({ pinned: pin.checked }, pin.checked ? 'Przypięty na górze listy serwerów.' : 'Już nie jest przypięty.'));
     const rot = el('input', { type: 'checkbox', checked: !!p.rotate, disabled: !p.pinned });
     rot.addEventListener('change', () => pinning({ rotate: rot.checked }, rot.checked ? 'Rotuje na pierwszym miejscu.' : 'Stałe miejsce.'));
-    const toggles = el('div', { class: 'row wrap partner-pins' },
+    const toggles = el('div', { class: 'row partner-pins' },
       el('label', { class: 'row small', title: 'Mod sam dodaje ten serwer na górę listy serwerów; gracz nie może go usunąć ani zmienić nazwy i adresu (tylko paczkę zasobów).' },
         el('span', { class: 'switch' }, pin, el('span')), 'Przypinaj na górze listy'),
       el('label', { class: `row small${p.pinned ? '' : ' muted'}`, title: 'Przypięte serwery z tą opcją zmieniają się na pierwszym miejscu przy każdym otwarciu listy.' },
@@ -444,7 +444,7 @@ async function requestsPage() {
   live.addEventListener('change', () => { reqState.live = live.checked; });
   const toggle = (input, text) => el('label', { class: 'row small' }, el('span', { class: 'switch' }, input, el('span')), text);
   $('#main').replaceChildren(head('Zapytania', el('span', { class: 'muted small', textContent: 'Na żywo z serwera, bez treści i tokenów. Po restarcie serwera lista zaczyna się od nowa.' })),
-    el('div', { class: 'row wrap req-bar' }, q, client, toggle(errors, 'Tylko błędy'), toggle(live, 'Odświeżaj co 5 s'), who), stats, routesBox, list);
+    el('div', { class: 'row req-bar' }, q, client, toggle(errors, 'Tylko błędy'), toggle(live, 'Odświeżaj co 5 s'), who), stats, routesBox, list);
 
   async function load() {
     if (!document.body.contains(list)) return clearInterval(reqTimer);
