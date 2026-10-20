@@ -396,8 +396,11 @@ button.chip.active { background: var(--accent); color: #fff; }
 .legal-notice p { margin: 6px 0 10px; }
 
 /* The admin's announcement on top of the pages (siteBanner.js; its preview in the panel's Ustawienia) */
-.site-banner { display: flex; align-items: center; gap: 10px; padding: 10px 16px; font-size: 14px; color: #dbeafe; background: rgba(37, 99, 235, .22); border-bottom: 1px solid rgba(96, 165, 250, .35); }
-.site-banner.warning { color: #fef3c7; background: rgba(217, 119, 6, .24); border-bottom-color: rgba(251, 191, 36, .4); }
+/* floating at the bottom: the pages' headers are fixed at the top */
+.site-banner { position: fixed; z-index: 1000; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(920px, calc(100% - 32px)); box-sizing: border-box;
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; font-size: 14px; border-radius: 12px;
+  color: #dbeafe; background: rgba(23, 37, 84, .95); border: 1px solid rgba(96, 165, 250, .45); box-shadow: 0 12px 32px rgba(0, 0, 0, .45); }
+.site-banner.warning { color: #fef3c7; background: rgba(69, 39, 6, .95); border-color: rgba(251, 191, 36, .5); }
 .site-banner > i { flex-shrink: 0; }
 .site-banner-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .site-banner a { color: inherit; font-weight: 700; text-decoration: underline; white-space: nowrap; }

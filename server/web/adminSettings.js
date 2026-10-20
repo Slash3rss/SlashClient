@@ -230,7 +230,7 @@ export function supporterEditor(c, o, done) {
   if (c.rank) return '';
   const level = o.supporter ?? 0;
   const def = o.supporterDefault ?? 0;
-  const input = el('input', { type: 'number', min: 0, max: 100, step: 1, value: level || '', placeholder: 'dla wszystkich',
+  const input = el('input', { type: 'number', min: 0, max: 100, step: 1, value: level || '', placeholder: 'wszyscy',
     title: `Pusta albo 0: dla wszystkich. Domyślnie ${def ? `od poziomu ${def}` : 'dla wszystkich'}.` });
   const send = async (value) => {
     const r = await guard(() => api('POST', `/v1/admin/cosmetics/${c.id}/supporter`, { level: value }));

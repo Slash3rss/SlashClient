@@ -1469,9 +1469,11 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .fr-composer textarea:disabled { opacity: .55; cursor: not-allowed; }
 
 /* the admin's announcement on top of the views, and parts switched off in the server's panel (features.ts) */
-.feature-banner { display: flex; align-items: center; gap: 10px; margin: 12px 24px 0; padding: 8px 10px 8px 14px; border-radius: 12px; font-size: 13px;
-  color: #dbeafe; background: rgba(37, 99, 235, .2); border: 1px solid rgba(96, 165, 250, .35); position: relative; z-index: 5; }
-.feature-banner.warning { color: #fef3c7; background: rgba(217, 119, 6, .22); border-color: rgba(251, 191, 36, .4); }
+.feature-banner { display: flex; align-items: center; gap: 10px; position: absolute; top: 8px; left: 4px; right: 6px; z-index: 5; padding: 8px 10px 8px 14px; border-radius: 12px; font-size: 13px;
+  color: #dbeafe; background: rgba(23, 37, 84, .92); border: 1px solid rgba(96, 165, 250, .4); backdrop-filter: blur(8px); }
+.feature-banner.warning { color: #fef3c7; background: rgba(69, 39, 6, .92); border-color: rgba(251, 191, 36, .45); }
+/* the views start under the banner (its height is set by features.ts) */
+main.with-banner .view { top: var(--banner-h, 52px); }
 .feature-banner.hidden { display: none; }
 .feature-banner-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .feature-banner .feature-banner-link { color: inherit; font-weight: 700; text-decoration: underline; }

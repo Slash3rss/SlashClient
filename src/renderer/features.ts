@@ -64,9 +64,22 @@ const CLOSED = 'slashclient.bannerClosed';
 export function initFeatures(deps: FeatureDeps) {
   const bar = el('div', { className: 'feature-banner hidden', id: 'feature-banner' });
   bar.setAttribute('role', 'status');
-  document.querySelector('main')?.prepend(bar);
+  const main = document.querySelector('main');
+  main?.prepend(bar);
+  /** The views move down by the banner's height while it shows. */
+  const fit = () => {
+    const shown = !bar.classList.contains('hidden');
+    main?.classList.toggle('with-banner', shown);
+    if (shown) main?.style.setProperty('--banner-h', `${bar.offsetHeight + 16}px`);
+  };
+  new ResizeObserver(fit).observe(bar);
 
   function drawBanner() {
+    drawBannerContent();
+    fit();
+  }
+
+  function drawBannerContent() {
     const b = state.banner;
     let closed = '';
     try {
@@ -82,9 +95,12 @@ export function initFeatures(deps: FeatureDeps) {
     }
     bar.className = `feature-banner ${b.level}`;
     const text = getLang() === 'en' ? b.textEn || b.text : b.text;
-    const link = b.link ? bannerLink(b.link, deps.socialUrl()) : undefined;
-    const more = link ? el('button', { type: 'button', className: 'link-button feature-banner-link', textContent: t('Więcej') }) : '';
-    if (more) more.addEventListener('click', () => deps.openUrl(link!));
+    // the server's address may not be known yet when this is drawn: the link is made on the click
+    const more = b.link && bannerLink(b.link, 'https://x') ? el('button', { type: 'button', className: 'link-button feature-banner-link', textContent: t('Więcej') }) : '';
+    if (more) more.addEventListener('click', () => {
+      const link = bannerLink(b.link, deps.socialUrl());
+      if (link) deps.openUrl(link);
+    });
     const close = el('button', { type: 'button', className: 'icon-btn feature-banner-close', title: t('Zamknij') }, el('i', { className: 'fa-solid fa-xmark' }));
     close.addEventListener('click', () => {
       try {
