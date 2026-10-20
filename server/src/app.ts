@@ -31,6 +31,7 @@ import { muteRoutes } from './mutes.ts';
 import { chatImageRoutes, type ImageLimits } from './chatImages.ts';
 import { DEFAULT_ELEMENTS, profileRoutes, type Visibility } from './profiles.ts';
 import { legalRoutes } from './legal/routes.ts';
+import { homeRoutes } from './home/routes.ts';
 import { BurstLimiter, SlowDown, editRefusal, type BurstLimits } from './chatLimits.ts';
 import { supportRoutes } from './payments/support.ts';
 import { createCommunities } from './communities.ts';
@@ -748,6 +749,16 @@ export function createApp(cfg: Config) {
     },
   });
 
+  // the home page (/ and /en) from the content edited in the admin panel's "Strona główna" (home/routes.ts)
+  const home = homeRoutes({
+    sql: db.sql, webDir: cfg.webDir, publicUrl: cfg.publicUrl, imageDir: path.join(path.dirname(cfg.dbFile), 'home-images'), admin,
+    audit: (who, action, target, detail) => db.log(who, action, target, detail),
+    versioned: (html) => versioned(html, 'text/html'),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
   const routes: [string, RegExp, Handler][] = [
     // the request log: newest first, with who asked (handles looked up once per request)
     ['GET', /^\/v1\/admin\/requests$/, (req, _p, url) => {
@@ -1270,6 +1281,7 @@ export function createApp(cfg: Config) {
     ...ranks.routes,
     ...support.routes,
     ...legal.routes,
+    ...home.routes,
     ...streams.routes,
     // the admin panel's settings, the feature switches and the banner (settingsAdmin.ts)
     ...settingsAdminRoutes({
@@ -1468,6 +1480,14 @@ export function createApp(cfg: Config) {
       return;
     }
 
+    // the home page in both languages and its pictures (home/routes.ts)
+    try {
+      if (await home.serve(req, res, url)) return;
+    } catch (err) {
+      console.error('strona główna:', (err as Error).message);
+      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
+      return;
+    }
     // the legal documents' pages, from the database
     if (legal.serve(req, res, url)) return;
     // the tab list's status rules for games and launchers, with an ETag (statusRules.ts)
