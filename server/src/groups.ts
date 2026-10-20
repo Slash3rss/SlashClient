@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type http from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Db, Person } from './db.ts';
+import { EDIT_WINDOW_MS, editRefusal } from './chatLimits.ts';
 
 /**
  * Group chats: one conversation with several friends at once, and a clan's own chat (clans.ts
@@ -15,6 +16,10 @@ import type { Db, Person } from './db.ts';
  * What happened in the group (created, added, left, renamed) is a message too, with `event` and
  * no text, so every launcher and HUD shows the same history. Changes are pushed as `groups`
  * (fetch the list again), new messages as `group-message`.
+ *
+ * The author may edit a text message for a while (encrypted again for the members of now) and delete
+ * their messages; the group's owner (in a clan's chat its owner and officers) may delete others'.
+ * Pushed as `group-message-edit` / `group-message-delete` to those who see the message (0.9.23+).
  */
 
 /** Members of a group chat, the creator included. */
@@ -35,7 +40,12 @@ const MAX_BODY = 80_000;
 /** A clan chat also says who was made an officer (promoted), a member again (demoted), who got the clan (owner) or took it over when the owner's account went (heir). */
 /** And who changed the clan's logo (logo; `removed` when it was taken off). */
 export interface GroupEvent { kind: 'created' | 'added' | 'removed' | 'left' | 'renamed' | 'joined' | 'promoted' | 'demoted' | 'owner' | 'heir' | 'logo'; by: string; users?: string[]; name?: string; removed?: boolean }
-export interface GroupMessage { id: number; group: string; from: string; text: string; at: number; event?: GroupEvent }
+/** `editedAt`: when the author last changed the text; `deleted`: taken back by the author or a moderator, no text left (server 0.9.23+). */
+export interface GroupMessage { id: number; group: string; from: string; text: string; at: number; event?: GroupEvent; editedAt?: number; deleted?: true }
+type GroupMessageRow = Omit<GroupMessage, 'event' | 'editedAt' | 'deleted'> & { event: string | null; editedAt: number | null; deletedAt: number | null };
+const GROUP_MESSAGE_COLUMNS = 'id, group_id AS "group", from_uuid AS "from", text, event, created_at AS at, edited_at AS editedAt, deleted_at AS deletedAt';
+const toGroupMessage = ({ event, editedAt, deletedAt, ...m }: GroupMessageRow): GroupMessage => (deletedAt ? { ...m, text: '', deleted: true }
+  : { ...m, ...(event ? { event: JSON.parse(event) as GroupEvent } : {}), ...(editedAt ? { editedAt } : {}) });
 export interface GroupMember extends Person { joinedAt: number }
 export interface GroupView {
   id: string; name: string; owner: string; createdAt: number;
@@ -65,6 +75,10 @@ CREATE INDEX IF NOT EXISTS chat_group_messages_group ON chat_group_messages(grou
     // where a member's history starts: what was written before they came is not theirs
     const columns = sql.prepare('PRAGMA table_info(chat_group_members)').all() as { name: string }[];
     if (!columns.some((c) => c.name === 'since_id')) sql.exec('ALTER TABLE chat_group_members ADD COLUMN since_id INTEGER NOT NULL DEFAULT 0');
+    // edited and deleted messages (chatLimits.ts): only the latest text is kept, a deleted one keeps none
+    const messageColumns = sql.prepare('PRAGMA table_info(chat_group_messages)').all() as { name: string }[];
+    if (!messageColumns.some((c) => c.name === 'edited_at')) sql.exec('ALTER TABLE chat_group_messages ADD COLUMN edited_at INTEGER');
+    if (!messageColumns.some((c) => c.name === 'deleted_at')) sql.exec('ALTER TABLE chat_group_messages ADD COLUMN deleted_at INTEGER');
   }
 
   create(name: string, owner: string, members: string[], clan = ''): string {
@@ -138,9 +152,30 @@ CREATE INDEX IF NOT EXISTS chat_group_messages_group ON chat_group_messages(grou
   /** What `reader` may see since they came, newest last; `before` pages back by message id. */
   messages(group: string, reader: string, limit: number, before?: number): GroupMessage[] {
     const since = (this.sql.prepare('SELECT since_id AS n FROM chat_group_members WHERE group_id = ? AND uuid = ?').get(group, reader) as { n: number } | undefined)?.n ?? 0;
-    const rows = this.sql.prepare(`SELECT id, group_id AS "group", from_uuid AS "from", text, event, created_at AS at FROM chat_group_messages
-      WHERE group_id = ? AND id < ? AND id > ? ORDER BY id DESC LIMIT ?`).all(group, before ?? Number.MAX_SAFE_INTEGER, since, limit) as unknown as (Omit<GroupMessage, 'event'> & { event: string | null })[];
-    return rows.reverse().map(({ event, ...m }) => ({ ...m, ...(event ? { event: JSON.parse(event) as GroupEvent } : {}) }));
+    const rows = this.sql.prepare(`SELECT ${GROUP_MESSAGE_COLUMNS} FROM chat_group_messages
+      WHERE group_id = ? AND id < ? AND id > ? ORDER BY id DESC LIMIT ?`).all(group, before ?? Number.MAX_SAFE_INTEGER, since, limit) as unknown as GroupMessageRow[];
+    return rows.reverse().map(toGroupMessage);
+  }
+
+  /** One message of the group, or undefined. */
+  message(group: string, id: number): GroupMessage | undefined {
+    const row = this.sql.prepare(`SELECT ${GROUP_MESSAGE_COLUMNS} FROM chat_group_messages WHERE group_id = ? AND id = ?`).get(group, id) as unknown as GroupMessageRow | undefined;
+    return row && toGroupMessage(row);
+  }
+
+  /** The author's new text; the old one is not kept. */
+  editMessage(id: number, text: string, at = Date.now()) {
+    this.sql.prepare('UPDATE chat_group_messages SET text = ?, edited_at = ? WHERE id = ? AND deleted_at IS NULL').run(text, at, id);
+  }
+
+  /** Takes a message back: only that there was one stays. */
+  deleteMessage(id: number, at = Date.now()) {
+    this.sql.prepare("UPDATE chat_group_messages SET text = '', edited_at = NULL, deleted_at = ? WHERE id = ?").run(at, id);
+  }
+
+  /** Members who see a message (they were there when it came). */
+  readersOf(group: string, id: number): string[] {
+    return (this.sql.prepare('SELECT uuid FROM chat_group_members WHERE group_id = ? AND since_id < ?').all(group, id) as { uuid: string }[]).map((r) => r.uuid);
   }
 
   markRead(group: string, uuid: string) {
@@ -149,7 +184,7 @@ CREATE INDEX IF NOT EXISTS chat_group_messages_group ON chat_group_messages(grou
 
   unread(group: string, uuid: string): number {
     return (this.sql.prepare(`SELECT COUNT(*) AS n FROM chat_group_messages x JOIN chat_group_members m ON m.group_id = x.group_id AND m.uuid = ?
-      WHERE x.group_id = ? AND x.id > m.read_id AND x.from_uuid != ? AND x.event IS NULL`).get(uuid, group, uuid) as { n: number }).n;
+      WHERE x.group_id = ? AND x.id > m.read_id AND x.from_uuid != ? AND x.event IS NULL AND x.deleted_at IS NULL`).get(uuid, group, uuid) as { n: number }).n;
   }
 
   lastMessageAt(group: string): number {
@@ -175,7 +210,17 @@ interface Deps {
     forMessage: (from: string, to: string, image: unknown) => { id: string; key: string; size: number } | undefined;
     attach: (image: { id: string; key: string; size: number }, messageId: number) => void;
     decorate: <M extends { id: number }>(messages: M[], group?: string) => M[];
+    has: (messageId: number, group?: string) => boolean;
+    remove: (messageId: number, group?: string) => Promise<void>;
   };
+  /** Too many messages in a row in one conversation ("g:<id>"): throws (chatLimits.ts). */
+  limitBurst?: (user: string, conversation: string) => void;
+  /** A message to a real conversation, for the achievements (chatLimits.ts MessageCounter). */
+  countMessage?: (user: string) => void;
+  /** Someone's role in a clan (clans.ts), for who may delete others' messages in its chat. */
+  clanRole?: (clanId: string, uuid: string) => 'owner' | 'officer' | 'member' | undefined;
+  /** Edits and deletions (the per-minute limit). */
+  limitEdits?: (key: string) => void;
 }
 
 export function createGroups(deps: Deps) {
@@ -246,6 +291,29 @@ export function createGroups(deps: Deps) {
     for (const m of new Set([...store.memberIds(id), ...also])) push(m, { type: 'groups', id });
   }
 
+  /**
+   * Whose messages `me` may delete besides their own (moderation), by the rules that already say who
+   * may take people out: in a group its owner everyone's ('all'); in a clan's chat the owner
+   * everyone's, officers those of plain members and of people who left ('members').
+   */
+  function moderation(id: string, me: string): 'all' | 'members' | undefined {
+    const g = store.group(id);
+    if (!g) return undefined;
+    if (!g.clan) return ownerOf(id) === me ? 'all' : undefined;
+    const role = deps.clanRole?.(g.clan, me);
+    return role === 'owner' ? 'all' : role === 'officer' ? 'members' : undefined;
+  }
+
+  /** An edited text as the send route takes it; an encrypted message stays encrypted. */
+  function cleanText(raw: unknown, encryptedBefore: boolean): string {
+    if (typeof raw !== 'string' || !raw.trim()) fail(400, 'empty');
+    const t = raw as string;
+    const encrypted = t.startsWith('e2e1:');
+    if (t.length > (encrypted ? MAX_ENCRYPTED : MAX_MESSAGE)) fail(400, 'too_long');
+    if ((encrypted && !/^e2e1:[A-Za-z0-9+/=]+$/.test(t)) || (encryptedBefore && !encrypted)) fail(400, 'bad_request');
+    return t.trim();
+  }
+
   function post(id: string, message: GroupMessage) {
     for (const m of store.memberIds(id)) push(m, { type: 'group-message', message });
   }
@@ -302,13 +370,17 @@ export function createGroups(deps: Deps) {
       const before = Number(url.searchParams.get('before')) || undefined;
       const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 50));
       const messages = store.messages(id, me, limit, before);
-      return { messages: deps.images ? deps.images().decorate(messages, id) : messages };
+      // how long one's own messages may be edited, and whose others' this member may delete (server 0.9.23+)
+      const moderator = moderation(id, me);
+      return { messages: deps.images ? deps.images().decorate(messages, id) : messages, editWindowMs: EDIT_WINDOW_MS, ...(moderator ? { moderator } : {}) };
     }],
     ['POST', /^\/v1\/groups\/([\w-]{1,32})\/messages$/, async (req, [id]) => {
       const me = authed(req);
       groupOf(me, id);
       deps.limitMessages(me);
       const { text, image } = await body(req);
+      // a picture's message was counted with its upload
+      if (image === undefined) deps.limitBurst?.(me, `g:${id}`);
       if (typeof text !== 'string' || !text.trim()) fail(400, 'empty');
       const t = text as string;
       const encrypted = t.startsWith('e2e1:');
@@ -320,6 +392,43 @@ export function createGroups(deps: Deps) {
       if (picture) deps.images!().attach(picture, added.id);
       const message = picture ? { ...added, image: picture } : added;
       post(id, message);
+      // for the achievements only a real conversation counts: at least two others in it
+      if (store.memberIds(id).length >= 3) deps.countMessage?.(me);
+      return { message };
+    }],
+    // the author changes their text within EDIT_WINDOW_MS, encrypted again for the members now (not pictures or the group's lines)
+    ['POST', /^\/v1\/groups\/([\w-]{1,32})\/messages\/(\d{1,15})\/edit$/, async (req, [id, raw]) => {
+      const me = authed(req);
+      groupOf(me, id);
+      (deps.limitEdits ?? deps.limitMessages)(me);
+      const old = store.message(id, Number(raw));
+      if (!old || !store.readersOf(id, old.id).includes(me)) fail(404, 'not_found');
+      const refusal = editRefusal(old!, me, !!deps.images?.().has(old!.id, id));
+      if (refusal) fail(...refusal);
+      const t = cleanText((await body(req)).text, old!.text.startsWith('e2e1:'));
+      store.editMessage(old!.id, t);
+      const message = store.message(id, old!.id)!;
+      for (const m of store.readersOf(id, message.id)) push(m, { type: 'group-message-edit', message });
+      return { message };
+    }],
+    // the author takes it back, or a moderator (moderation): no text stays, its picture goes too
+    ['DELETE', /^\/v1\/groups\/([\w-]{1,32})\/messages\/(\d{1,15})$/, async (req, [id, raw]) => {
+      const me = authed(req);
+      const g = groupOf(me, id);
+      (deps.limitEdits ?? deps.limitMessages)(me);
+      const old = store.message(id, Number(raw));
+      if (!old || !store.readersOf(id, old.id).includes(me)) fail(404, 'not_found');
+      if (old!.event) fail(400, 'not_editable');
+      if (old!.from !== me) {
+        const mod = moderation(id, me);
+        const authorRole = g.clan ? deps.clanRole?.(g.clan, old!.from) : undefined;
+        if (!mod || (mod === 'members' && authorRole !== undefined && authorRole !== 'member')) fail(403, 'not_allowed');
+      }
+      if (old!.deleted) return { message: old };
+      store.deleteMessage(old!.id);
+      await deps.images?.().remove(old!.id, id);
+      const message = store.message(id, old!.id)!;
+      for (const m of store.readersOf(id, message.id)) push(m, { type: 'group-message-delete', message, by: me });
       return { message };
     }],
     ['POST', /^\/v1\/groups\/([\w-]{1,32})\/read$/, (req, [id]) => {

@@ -29,6 +29,7 @@ import { storageAdminRoutes } from './storageAdmin.ts';
 import { muteRoutes } from './mutes.ts';
 import { chatImageRoutes, type ImageLimits } from './chatImages.ts';
 import { profileRoutes } from './profiles.ts';
+import { BurstLimiter, EDIT_WINDOW_MS, SlowDown, editRefusal, type BurstLimits } from './chatLimits.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -81,6 +82,8 @@ export interface Config {
   imagesDir?: string;
   /** Size, quota and time of chat pictures (tests lower them). */
   imageLimits?: Partial<ImageLimits>;
+  /** Messages in a row per conversation (chatLimits.ts; tests change it). */
+  chatBurst?: Partial<BurstLimits>;
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -109,10 +112,13 @@ const UUID = /^[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}$
 class HttpError extends Error {
   readonly status: number;
   readonly code: string;
-  constructor(status: number, code: string) {
+  /** Seconds to wait (a 429 'slow_down'): sent as Retry-After and in the body. */
+  readonly retryAfter?: number;
+  constructor(status: number, code: string, retryAfter?: number) {
     super(code);
     this.status = status;
     this.code = code;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -205,6 +211,18 @@ export function createApp(cfg: Config) {
   const lanHosts = new Set<string>();
   const presences = new Map<string, Presence>();
   const limitMessages = rateLimiter(40);
+  /** On top of that, a few in a row per conversation (chatLimits.ts): throws 429 'slow_down' with the seconds to wait. */
+  const bursts = new BurstLimiter(cfg.chatBurst);
+  const limitBurst = (user: string, conversation: string) => {
+    try {
+      bursts.hit(user, conversation);
+    } catch (err) {
+      if (err instanceof SlowDown) throw new HttpError(429, 'slow_down', err.retryAfter);
+      throw err;
+    }
+  };
+  /** Edits and deletions of one's messages. */
+  const limitEdits = rateLimiter(30);
   const limitRequests = rateLimiter(15);
   const limitLogins = rateLimiter(cfg.loginsPerMinute ?? 10);
   /** Searching and installing a modpack asks a lot at once, but one address should not drain the key's quota. */
@@ -501,6 +519,9 @@ export function createApp(cfg: Config) {
     clanTag: (clanId) => clans.tagOfClan(clanId),
     clanLogo: (clanId) => clans.logoOfClan(clanId),
     images: () => images,
+    limitBurst, limitEdits,
+    countMessage: (user) => achievements.store.messages.count(user),
+    clanRole: (clanId, uuid) => clans.roleIn(clanId, uuid),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -523,7 +544,7 @@ export function createApp(cfg: Config) {
   });
   const images = chatImageRoutes({
     sql: db.sql, authed, areFriends: (a, b) => db.areFriends(a, b), isGroupMember: (group, uuid) => groups.store.isMember(group, uuid), dir: cfg.imagesDir ?? path.join(path.dirname(cfg.dbFile), 'chat-images'),
-    limits: cfg.imageLimits, limitUploads: rateLimiter(10), limitDownloads: rateLimiter(120),
+    limits: cfg.imageLimits, limitUploads: rateLimiter(10), limitDownloads: rateLimiter(120), limitBurst,
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -913,13 +934,16 @@ export function createApp(cfg: Config) {
       friendOrThrow(me, other);
       const before = Number(url.searchParams.get('before')) || undefined;
       const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 50));
-      return { messages: images.decorate(db.conversation(me, other, limit, before)) };
+      // how long one's own messages may be edited (server 0.9.23+; without it the clients offer no editing)
+      return { messages: images.decorate(db.conversation(me, other, limit, before)), editWindowMs: EDIT_WINDOW_MS };
     }],
     ['POST', /^\/v1\/messages\/([\w-]+)$/, async (req, [other]) => {
       const me = authed(req);
       friendOrThrow(me, other);
       limitMessages(me);
       const { text, image } = await body(req);
+      // a picture's message was counted with its upload
+      if (image === undefined) limitBurst(me, `d:${other}`);
       if (typeof text !== 'string' || !text.trim()) throw new HttpError(400, 'empty');
       // an encrypted message is longer than its text (the launcher keeps the text itself to MAX_MESSAGE)
       const encrypted = text.startsWith('e2e1:');
@@ -933,7 +957,45 @@ export function createApp(cfg: Config) {
       const message = picture ? { ...plain, image: picture } : plain;
       push(other, { type: 'message', message });
       push(me, { type: 'message', message }); // the player's other launchers
+      achievements.store.messages.count(me);
       achievements.check(me);
+      return { message };
+    }],
+    // the author changes their text within EDIT_WINDOW_MS, encrypted again like a new one (not pictures, invites or waypoints)
+    ['POST', /^\/v1\/messages\/([\w-]+)\/(\d{1,15})\/edit$/, async (req, [other, raw]) => {
+      const me = authed(req);
+      friendOrThrow(me, other);
+      limitEdits(me);
+      const old = db.messageBetween(me, other, Number(raw));
+      if (!old) throw new HttpError(404, 'not_found');
+      const refusal = editRefusal(old, me, !!old.invite || !!old.waypoint || images.has(old.id));
+      if (refusal) throw new HttpError(...refusal);
+      const { text } = await body(req);
+      if (typeof text !== 'string' || !text.trim()) throw new HttpError(400, 'empty');
+      const encrypted = text.startsWith('e2e1:');
+      if (text.length > (encrypted ? MAX_ENCRYPTED : MAX_MESSAGE)) throw new HttpError(400, 'too_long');
+      // an encrypted message stays encrypted
+      if ((encrypted && !/^e2e1:[A-Za-z0-9+/=]+$/.test(text)) || (old.text.startsWith('e2e1:') && !encrypted)) throw new HttpError(400, 'bad_request');
+      db.editMessage(old.id, text.trim());
+      const message = db.messageBetween(me, other, old.id)!;
+      push(other, { type: 'message-edit', message });
+      push(me, { type: 'message-edit', message });
+      return { message };
+    }],
+    // the author takes a message back, for both: no text stays, its picture goes too
+    ['DELETE', /^\/v1\/messages\/([\w-]+)\/(\d{1,15})$/, async (req, [other, raw]) => {
+      const me = authed(req);
+      friendOrThrow(me, other);
+      limitEdits(me);
+      const old = db.messageBetween(me, other, Number(raw));
+      if (!old) throw new HttpError(404, 'not_found');
+      if (old.from !== me) throw new HttpError(403, 'not_author');
+      if (old.deleted) return { message: old };
+      db.deleteMessage(old.id);
+      await images.remove(old.id);
+      const message = db.messageBetween(me, other, old.id)!;
+      push(other, { type: 'message-delete', message });
+      push(me, { type: 'message-delete', message });
       return { message };
     }],
     // "join me": a server address (and the game version) as a message with a Join button
@@ -943,6 +1005,7 @@ export function createApp(cfg: Config) {
       limitMessages(me);
       const { server, version } = await body(req);
       if (typeof server !== 'string' || !SERVER_ADDRESS.test(server)) throw new HttpError(400, 'bad_server');
+      limitBurst(me, `d:${other}`);
       const invite = { server: server.toLowerCase(), ...(typeof version === 'string' && /^[\w.+ -]{1,32}$/.test(version) ? { version } : {}) };
       const message = db.addMessage(me, other, invite.server, invite);
       push(other, { type: 'message', message });
@@ -1183,8 +1246,9 @@ export function createApp(cfg: Config) {
         const known = err instanceof HttpError;
         if (!known) console.error(err);
         (req as SeenRequest).slashError = known ? err.code : 'server_error';
-        res.writeHead(known ? err.status : 500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: known ? err.code : 'server_error' }));
+        const wait = known && err.retryAfter ? err.retryAfter : undefined;
+        res.writeHead(known ? err.status : 500, { 'Content-Type': 'application/json', ...(wait ? { 'Retry-After': String(wait) } : {}) });
+        res.end(JSON.stringify({ error: known ? err.code : 'server_error', ...(wait ? { retryAfter: wait } : {}) }));
       }
       return;
     }

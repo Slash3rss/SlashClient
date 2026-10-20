@@ -30,7 +30,8 @@ export type Provider = 'discord' | 'microsoft' | 'google' | 'github' | 'dev' | '
 export interface Invite { server: string; version?: string; party?: string }
 /** A waypoint a friend shared: where it is and in which world (`server:<address>` or `world:<name>`, as the HUD keys them). */
 export interface SharedWaypoint { name: string; x: number; y: number; z: number; dimension: string; world: string }
-export interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite; waypoint?: SharedWaypoint }
+/** `editedAt`: when the author last changed the text; `deleted`: taken back (no text, invite or waypoint left) (server 0.9.23+). */
+export interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite; waypoint?: SharedWaypoint; editedAt?: number; deleted?: true }
 /** Another player as friends lists show them. */
 export interface Person { id: string; handle: string; name: string; avatar: string }
 export interface Request extends Person { at: number }
@@ -111,7 +112,13 @@ export interface BugComment { id: number; author: string; authorHandle: string |
 
 /** A profile pack shared by code: what the lists show, the file itself is on disk. */
 export interface ProfileShare { code: string; owner: string; ownerHandle: string | null; name: string; gameVersion: string; loader: string; size: number; downloads: number; createdAt: number; expiresAt: number }
-const SHARE_COLUMNS = 's.code, s.owner, s.name, s.game_version AS gameVersion, s.loader, s.size, s.downloads, s.created_at AS createdAt, s.expires_at AS expiresAt';
+/** A direct message's columns, and the row as the API gives it. */
+const MESSAGE_COLUMNS = 'id, from_uuid AS "from", to_uuid AS "to", text, created_at AS at, read_at AS readAt, invite, waypoint, edited_at AS editedAt, deleted_at AS deletedAt';
+type MessageRow = Omit<Message, 'invite' | 'waypoint' | 'editedAt' | 'deleted'> & { invite: string | null; waypoint: string | null; editedAt: number | null; deletedAt: number | null };
+const toMessage = ({ invite, waypoint, editedAt, deletedAt, ...m }: MessageRow): Message => (deletedAt ? { ...m, text: '', deleted: true } : {
+  ...m, ...(invite ? { invite: JSON.parse(invite) as Invite } : {}), ...(waypoint ? { waypoint: JSON.parse(waypoint) as SharedWaypoint } : {}), ...(editedAt ? { editedAt } : {}),
+});
+const SHARE_COLUMNS ='s.code, s.owner, s.name, s.game_version AS gameVersion, s.loader, s.size, s.downloads, s.created_at AS createdAt, s.expires_at AS expiresAt';
 
 /** Friendships are stored once, with the smaller uuid first. */
 const pair = (x: string, y: string) => (x < y ? [x, y] : [y, x]);
@@ -128,6 +135,9 @@ export class Db {
     if (!columns.some((c) => c.name === 'invite')) this.db.exec('ALTER TABLE messages ADD COLUMN invite TEXT');
     // shared waypoints ride along with a message too (JSON), so they stay in the chat
     if (!columns.some((c) => c.name === 'waypoint')) this.db.exec('ALTER TABLE messages ADD COLUMN waypoint TEXT');
+    // edited and deleted messages (chatLimits.ts): only the latest text is kept, a deleted one keeps none
+    if (!columns.some((c) => c.name === 'edited_at')) this.db.exec('ALTER TABLE messages ADD COLUMN edited_at INTEGER');
+    if (!columns.some((c) => c.name === 'deleted_at')) this.db.exec('ALTER TABLE messages ADD COLUMN deleted_at INTEGER');
     // partners pinned on top of the game's server list, some of them taking turns at the very top
     const partnerColumns = this.db.prepare('PRAGMA table_info(partners)').all() as { name: string }[];
     if (partnerColumns.length && !partnerColumns.some((c) => c.name === 'pinned')) {
@@ -581,12 +591,27 @@ CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created
 
   /** The conversation between two players, newest last; `before` pages back by message id. */
   conversation(x: string, y: string, limit: number, before?: number): Message[] {
-    const rows = this.db.prepare(`SELECT id, from_uuid AS "from", to_uuid AS "to", text, created_at AS at, read_at AS readAt, invite, waypoint FROM messages
+    const rows = this.db.prepare(`SELECT ${MESSAGE_COLUMNS} FROM messages
       WHERE ((from_uuid = ? AND to_uuid = ?) OR (from_uuid = ? AND to_uuid = ?)) AND id < ?
-      ORDER BY id DESC LIMIT ?`).all(x, y, y, x, before ?? Number.MAX_SAFE_INTEGER, limit) as unknown as (Omit<Message, 'invite' | 'waypoint'> & { invite: string | null; waypoint: string | null })[];
-    return rows.reverse().map(({ invite, waypoint, ...m }) => ({
-      ...m, ...(invite ? { invite: JSON.parse(invite) as Invite } : {}), ...(waypoint ? { waypoint: JSON.parse(waypoint) as SharedWaypoint } : {}),
-    }));
+      ORDER BY id DESC LIMIT ?`).all(x, y, y, x, before ?? Number.MAX_SAFE_INTEGER, limit) as unknown as MessageRow[];
+    return rows.reverse().map(toMessage);
+  }
+
+  /** One message between the two (either way), or undefined. */
+  messageBetween(x: string, y: string, id: number): Message | undefined {
+    const row = this.db.prepare(`SELECT ${MESSAGE_COLUMNS} FROM messages WHERE id = ? AND ((from_uuid = ? AND to_uuid = ?) OR (from_uuid = ? AND to_uuid = ?))`)
+      .get(id, x, y, y, x) as unknown as MessageRow | undefined;
+    return row && toMessage(row);
+  }
+
+  /** The author's new text; the old one is not kept. */
+  editMessage(id: number, text: string, at = Date.now()) {
+    this.db.prepare('UPDATE messages SET text = ?, edited_at = ? WHERE id = ? AND deleted_at IS NULL').run(text, at, id);
+  }
+
+  /** Takes a message back: what stays is that there was one (no text, invite or waypoint); it does not count as unread. */
+  deleteMessage(id: number, at = Date.now()) {
+    this.db.prepare("UPDATE messages SET text = '', invite = NULL, waypoint = NULL, edited_at = NULL, deleted_at = ? WHERE id = ?").run(at, id);
   }
 
   /** Marks what `from` sent to `reader` as read; returns the time used, or undefined when nothing was unread. */
@@ -597,7 +622,7 @@ CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created
   }
 
   unreadCounts(uuid: string): Record<string, number> {
-    const rows = this.db.prepare('SELECT from_uuid AS "from", COUNT(*) AS n FROM messages WHERE to_uuid = ? AND read_at IS NULL GROUP BY from_uuid').all(uuid) as { from: string; n: number }[];
+    const rows = this.db.prepare('SELECT from_uuid AS "from", COUNT(*) AS n FROM messages WHERE to_uuid = ? AND read_at IS NULL AND deleted_at IS NULL GROUP BY from_uuid').all(uuid) as { from: string; n: number }[];
     return Object.fromEntries(rows.map((r) => [r.from, Number(r.n)]));
   }
 

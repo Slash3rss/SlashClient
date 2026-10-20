@@ -519,6 +519,11 @@ export function createClans(deps: Deps) {
 
   return {
     routes, tagOf, tagOfClan: (id: string) => store.clan(id)?.tag, logoOf,
+    /** Someone's role in this clan, or undefined when they are not in it (any more). */
+    roleIn: (clanId: string, uuid: string): ClanRole | undefined => {
+      const m = store.membership(uuid);
+      return m?.clan === clanId ? m.role : undefined;
+    },
     logoOfClan: (id: string) => logos.version(id),
     serveLogo: (req: http.IncomingMessage, res: http.ServerResponse, url: URL) => serveLogo(logos, req, res, url),
   };

@@ -154,24 +154,60 @@ describe('sparks and achievements', () => {
     assert.ok(!unlockedIds(lark).includes('night_owl'));
   });
 
-  it('counts friends and messages (direct and in groups) from the tables, also from before', () => {
-    const sql = app.db.sql;
+  it('counts friends from the tables, and messages from before the counter once, capped per day like new ones', async () => {
+    // a server from before the message counter, with messages written on many days
+    const file = path.join(dir, 'counted.db');
+    const first = createApp({ dbFile: file, publicUrl: 'http://localhost', allowDevLogin: true, oauth: {} });
+    let sql = first.db.sql;
     const u = fakeUser(sql, 'Lubiany');
-    for (let i = 0; i < 50; i++) app.db.addFriendship(u, fakeUser(sql, `Kumpel${i}`));
+    for (let i = 0; i < 50; i++) first.db.addFriendship(u, fakeUser(sql, `Kumpel${i}`));
     const friend = fakeUser(sql, 'Rozmowca');
-    for (let i = 0; i < 1000; i++) sql.prepare('INSERT INTO messages (from_uuid, to_uuid, text, created_at) VALUES (?, ?, ?, ?)').run(u, friend, 'hej', Date.now());
-    const ids = app.achievements.check(u).map((a) => a.id);
-    for (const id of ['friend_1', 'friends_5', 'friends_10', 'friends_25', 'friends_50', 'message_1', 'messages_10', 'messages_100', 'messages_1000']) assert.ok(ids.includes(id), id);
-    // group messages count too (not the groups' own lines)
+    const t0 = Date.UTC(2026, 0, 1, 12);
+    // 40 days × 40 messages: 30 of each day count
+    for (let d = 0; d < 40; d++) for (let i = 0; i < 40; i++) sql.prepare('INSERT INTO messages (from_uuid, to_uuid, text, created_at) VALUES (?, ?, ?, ?)').run(u, friend, 'hej', t0 + d * DAY + i);
+    // invites and waypoints were never counted as messages here
+    sql.prepare('INSERT INTO messages (from_uuid, to_uuid, text, created_at, invite) VALUES (?, ?, ?, ?, ?)').run(friend, u, 'skyup.pl', t0, '{"server":"skyup.pl"}');
+    // group messages count too (not the groups' own lines), and a whole day of them is capped
     const v = fakeUser(sql, 'Grupowy');
     sql.prepare("INSERT INTO chat_groups (id, name, owner, clan, created_at) VALUES ('g_test1', 'G', ?, '', 0)").run(v);
     sql.prepare('INSERT INTO chat_group_members (group_id, uuid, joined_at) VALUES (?, ?, 0)').run('g_test1', v);
-    for (let i = 0; i < 9; i++) sql.prepare("INSERT INTO chat_group_messages (group_id, from_uuid, text, created_at) VALUES ('g_test1', ?, 'x', 0)").run(v);
+    for (let i = 0; i < 9; i++) sql.prepare("INSERT INTO chat_group_messages (group_id, from_uuid, text, created_at) VALUES ('g_test1', ?, 'x', ?)").run(v, t0 + i);
+    for (let i = 0; i < 100; i++) sql.prepare("INSERT INTO chat_group_messages (group_id, from_uuid, text, created_at) VALUES ('g_test1', ?, 'x', ?)").run(v, t0 + DAY + i);
     sql.prepare("INSERT INTO chat_group_messages (group_id, from_uuid, text, event, created_at) VALUES ('g_test1', ?, '', '{}', 0)").run(v);
-    sql.prepare('INSERT INTO messages (from_uuid, to_uuid, text, created_at) VALUES (?, ?, ?, ?)').run(v, friend, 'hej', Date.now());
-    const vIds = app.achievements.check(v).map((a) => a.id);
+    sql.prepare('INSERT INTO messages (from_uuid, to_uuid, text, created_at) VALUES (?, ?, ?, ?)').run(v, friend, 'hej', t0 + 2 * DAY);
+    // someone who already has the big one keeps it
+    sql.prepare("INSERT INTO achievements (uuid, id, unlocked_at) VALUES (?, 'messages_1000', ?)").run(friend, t0);
+    await first.close();
+    const raw = new DatabaseSync(file);
+    raw.exec('DROP TABLE message_counts');
+    raw.close();
+
+    const second = createApp({ dbFile: file, publicUrl: 'http://localhost', allowDevLogin: true, oauth: {} });
+    sql = second.db.sql;
+    const counter = second.achievements.store.messages;
+    assert.equal(counter.total(u), 40 * 30);
+    assert.equal(counter.total(friend), 0);
+    assert.equal(counter.total(v), 9 + 30 + 1);
+    // the start's pass over everyone unlocks what the counts show
+    second.achievements.checkAll();
+    const ids = [...second.achievements.store.unlocked(u).keys()];
+    for (const id of ['friend_1', 'friends_5', 'friends_10', 'friends_25', 'friends_50', 'message_1', 'messages_10', 'messages_100', 'messages_1000']) assert.ok(ids.includes(id), id);
+    const vIds = [...second.achievements.store.unlocked(v).keys()];
     assert.ok(vIds.includes('messages_10'));
     assert.ok(vIds.includes('group_create'));
+    assert.ok(second.achievements.store.unlocked(friend).has('messages_1000'));
+
+    // after that, only what is counted when sent: rows put in the table by hand do not count
+    for (let i = 0; i < 50; i++) sql.prepare('INSERT INTO messages (from_uuid, to_uuid, text, created_at) VALUES (?, ?, ?, ?)').run(friend, u, 'hej', Date.now());
+    assert.equal(counter.total(friend), 0);
+    // a day holds 30, and the table is not filled again on the next start
+    for (let i = 0; i < 35; i++) counter.count(friend);
+    assert.equal(counter.day(friend), 30);
+    await second.close();
+    const third = createApp({ dbFile: file, publicUrl: 'http://localhost', allowDevLogin: true, oauth: {} });
+    assert.equal(third.achievements.store.messages.total(friend), 30);
+    assert.equal(third.achievements.store.messages.total(u), 40 * 30);
+    await third.close();
   });
 
   it('unlocks the group ones for the founder and the members, and the waypoint and party ones', async () => {

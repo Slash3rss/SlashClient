@@ -2,6 +2,7 @@ import type http from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import { item, type Slot } from './cosmetics.ts';
 import { inTransaction, type Wallet } from './economy.ts';
+import { MessageCounter } from './chatLimits.ts';
 
 /**
  * SlashClient achievements ("Osiągnięcia"): play time and streaks, friends and messages, servers,
@@ -11,8 +12,9 @@ import { inTransaction, type Wallet } from './economy.ts';
  * checks (cosmetics.ts: items with `achievement` need the grant).
  *
  * Everything counted is what this server sees or checks itself, never a number a client sends (the
- * sparks would make cheating worth it): play time from its own ticks, friends and messages from its
- * tables, shared screenshots, profiles, waypoints, parties and sprays from requests it accepted.
+ * sparks would make cheating worth it): play time from its own ticks, friends from its tables,
+ * messages as they are sent (chatLimits.ts: real conversations only, 30 a day at most), shared
+ * screenshots, profiles, waypoints, parties and sprays from requests it accepted.
  *
  * Play time: every minute (`tick`) each account whose launcher is connected (WebSocket answering
  * pings), whose game reported in the last minutes (/v1/mc/link, which the launcher sends every 4
@@ -104,8 +106,8 @@ export const ACHIEVEMENTS: Achievement[] = [
     { id: 'friends_50', group: 'friends', goal: 50, sparks: 200, name: 'Wszyscy mnie znają', nameEn: 'Everyone knows me', description: 'Miej 50 znajomych.', descriptionEn: 'Have 50 friends.' },
     { id: 'message_1', group: 'messages', goal: 1, sparks: 5, name: 'Pierwsza wiadomość', nameEn: 'First message', description: 'Napisz do znajomego.', descriptionEn: 'Send a message to a friend.' },
     { id: 'messages_10', group: 'messages', goal: 10, sparks: 10, name: 'Pogaduszki', nameEn: 'Small talk', description: 'Wyślij 10 wiadomości (do znajomych lub w grupach).', descriptionEn: 'Send 10 messages (to friends or in groups).' },
-    { id: 'messages_100', group: 'messages', goal: 100, sparks: 40, name: 'Gaduła', nameEn: 'Chatterbox', description: 'Wyślij 100 wiadomości.', descriptionEn: 'Send 100 messages.' },
-    { id: 'messages_1000', group: 'messages', goal: 1000, sparks: 120, name: 'Nie da się mnie zatrzymać', nameEn: 'Unstoppable', description: 'Wyślij 1000 wiadomości.', descriptionEn: 'Send 1000 messages.' },
+    { id: 'messages_100', group: 'messages', goal: 100, sparks: 40, name: 'Gaduła', nameEn: 'Chatterbox', description: 'Wyślij 100 wiadomości (liczy się do 30 dziennie).', descriptionEn: 'Send 100 messages (up to 30 a day count).' },
+    { id: 'messages_1000', group: 'messages', goal: 1000, sparks: 120, name: 'Nie da się mnie zatrzymać', nameEn: 'Unstoppable', description: 'Wyślij 1000 wiadomości (liczy się do 30 dziennie).', descriptionEn: 'Send 1000 messages (up to 30 a day count).' },
     { id: 'waypoint_1', group: 'waypoints', goal: 1, sparks: 10, name: 'Tu jestem!', nameEn: 'Over here!', description: 'Wyślij znajomemu punkt nawigacyjny.', descriptionEn: 'Send a waypoint to a friend.' },
     { id: 'waypoints_25', group: 'waypoints', goal: 25, sparks: 40, name: 'Kartograf', nameEn: 'Cartographer', description: 'Wyślij znajomym 25 punktów nawigacyjnych.', descriptionEn: 'Send 25 waypoints to friends.' },
     { id: 'party_create', group: 'parties_created', goal: 1, sparks: 15, name: 'Zbiórka!', nameEn: 'Assemble!', description: 'Zaproś znajomych do drużyny.', descriptionEn: 'Invite friends to a party.' },
@@ -192,7 +194,7 @@ export const METRICS: Record<Exclude<Group, 'manual'>, { name: string; nameEn: s
   friday13: { name: 'Gra w piątek 13.', nameEn: 'Played on a Friday the 13th', max: 1 },
   servers: { name: 'Różne serwery', nameEn: 'Different servers', max: 1000 },
   friends: { name: 'Znajomi', nameEn: 'Friends', max: 1000 },
-  messages: { name: 'Wysłane wiadomości', nameEn: 'Messages sent', max: 1000 },
+  messages: { name: 'Wysłane wiadomości (do 30 dziennie)', nameEn: 'Messages sent (up to 30 a day)', max: 1000 },
   waypoints: { name: 'Punkty wysłane znajomym', nameEn: 'Waypoints sent to friends', max: 100 },
   parties_created: { name: 'Założone drużyny', nameEn: 'Parties started', max: 10_000 },
   parties_joined: { name: 'Przyjęte zaproszenia do drużyn', nameEn: 'Party invites accepted', max: 10_000 },
@@ -408,6 +410,8 @@ export type Counter = 'media' | 'shares' | 'cloud' | 'parties_created' | 'partie
 /** The tables (added on start, nothing else changes) and their queries. */
 export class AchievementStore {
   private readonly sql: DatabaseSync;
+  /** Messages that count (to friends and real groups, capped per day). */
+  readonly messages: MessageCounter;
 
   constructor(sql: DatabaseSync) {
     this.sql = sql;
@@ -417,6 +421,7 @@ CREATE TABLE IF NOT EXISTS play_servers (uuid TEXT NOT NULL REFERENCES users(uui
 CREATE TABLE IF NOT EXISTS achievements (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, id TEXT NOT NULL, unlocked_at INTEGER NOT NULL, PRIMARY KEY (uuid, id));
 CREATE TABLE IF NOT EXISTS achievement_counters (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, key TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (uuid, key));
 `);
+    this.messages = new MessageCounter(sql);
   }
 
   /** Adds play time to a day, never past the day's cap. */
@@ -485,9 +490,6 @@ CREATE TABLE IF NOT EXISTS achievement_counters (uuid TEXT NOT NULL REFERENCES u
     const created = (this.sql.prepare('SELECT created_at FROM users WHERE uuid = ?').get(uuid) as { created_at: number } | undefined)?.created_at ?? now;
     const count = (q: string, ...args: (string | number)[]) => this.count(q, ...args);
     const counted = (key: Counter) => Math.max(this.counter(uuid, key), this.live(uuid, key));
-    // direct messages and group chat messages (not the groups' "joined"/"renamed" lines), up to the cap
-    const direct = count(`SELECT COUNT(*) AS n FROM (SELECT 1 FROM messages WHERE from_uuid = ? LIMIT ${MESSAGES_CAP})`, uuid);
-    const grouped = direct >= MESSAGES_CAP ? 0 : count(`SELECT COUNT(*) AS n FROM (SELECT 1 FROM chat_group_messages WHERE from_uuid = ? AND event IS NULL LIMIT ${MESSAGES_CAP})`, uuid);
     const shop = wallet?.purchases(uuid) ?? { count: 0, spent: 0 };
     return {
       totalSeconds: total.s,
@@ -496,7 +498,8 @@ CREATE TABLE IF NOT EXISTS achievement_counters (uuid TEXT NOT NULL REFERENCES u
       bestStreak: best,
       servers: count('SELECT COUNT(*) AS n FROM play_servers WHERE uuid = ?', uuid),
       friends: count('SELECT COUNT(*) AS n FROM friendships WHERE a = ? OR b = ?', uuid, uuid),
-      messages: Math.min(MESSAGES_CAP, direct + grouped),
+      // counted when sent, a few a day (chatLimits.ts): not every line of a spammed chat
+      messages: Math.min(MESSAGES_CAP, this.messages.total(uuid)),
       daysPlayed: days.length,
       longestDaySeconds: total.m,
       weekends: weekends(days),

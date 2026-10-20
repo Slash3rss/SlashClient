@@ -47,6 +47,8 @@ export interface ImageContext {
   /** Throw (429) when this caller did it too often lately. */
   limitUploads: (key: string) => void;
   limitDownloads: (key: string) => void;
+  /** The burst limit of the conversation ("d:<friend>" or "g:<group>"): a picture counts as a message there. */
+  limitBurst?: (user: string, conversation: string) => void;
   fail: (status: number, code: string) => never;
 }
 
@@ -82,6 +84,7 @@ CREATE INDEX IF NOT EXISTS chat_images_message ON chat_images (message_id);`);
   async function upload(req: http.IncomingMessage, me: string, recipient: string) {
     try {
       ctx.limitUploads(`image:${me}`);
+      ctx.limitBurst?.(me, recipient.startsWith('g:') ? recipient : `d:${recipient}`);
     } catch (err) {
       req.resume();
       throw err;
@@ -160,6 +163,24 @@ CREATE INDEX IF NOT EXISTS chat_images_message ON chat_images (message_id);`);
     });
   }
 
+  /** Rows of a message's picture: direct and group message ids count apart (`group` says which). */
+  const ofMessage = (messageId: number, group?: string) => group
+    ? sql.prepare('SELECT id FROM chat_images WHERE message_id = ? AND recipient = ?').all(messageId, `g:${group}`) as { id: string }[]
+    : sql.prepare("SELECT id FROM chat_images WHERE message_id = ? AND recipient NOT LIKE 'g:%'").all(messageId) as { id: string }[];
+
+  /** Whether a message carries a picture (those are not edited). */
+  function has(messageId: number, group?: string): boolean {
+    return ofMessage(messageId, group).length > 0;
+  }
+
+  /** A deleted message's picture goes with it, file and all. */
+  async function remove(messageId: number, group?: string) {
+    for (const { id } of ofMessage(messageId, group)) {
+      sql.prepare('DELETE FROM chat_images WHERE id = ?').run(id);
+      await rm(fileOf(id), { force: true });
+    }
+  }
+
   /** GET /v1/images/<id>: the encrypted bytes, only to the sender and the friend (or the group's members). True when the request was this. */
   async function serve(req: http.IncomingMessage, res: http.ServerResponse, url: URL): Promise<boolean> {
     const m = /^\/v1\/images\/([\w-]+)$/.exec(url.pathname);
@@ -202,5 +223,5 @@ CREATE INDEX IF NOT EXISTS chat_images_message ON chat_images (message_id);`);
     }
   }
 
-  return { routes, serve, forMessage, attach, decorate, cleanup };
+  return { routes, serve, forMessage, attach, decorate, cleanup, has, remove };
 }
