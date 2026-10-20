@@ -1,0 +1,21 @@
+/** English texts of "Streamy": friends live on Twitch or Kick, linking one's channels (streams.ts, friends.ts). */
+export const STREAMS_EN: Record<string, string> = {
+  'LIVE na {0} · {1}': 'LIVE on {0} · {1}',
+  'LIVE na {0}': 'LIVE on {0}',
+  '{0} nadaje na żywo na {1}: {2}': '{0} is live on {1}: {2}',
+  '{0} nadaje na żywo na {1}': '{0} is live on {1}',
+  '{0} widzów': '{0} viewers',
+  'Oglądaj': 'Watch',
+  ' Oglądaj': ' Watch',
+  'Streamy': 'Streams',
+  'Streamy:': 'Streams:',
+  'Połączono kanał {0}.': '{0} channel linked.',
+  'Odłączyć kanał {0} {1}? Znajomi przestaną widzieć, że nadajesz.': 'Unlink the {0} channel {1}? Friends will no longer see when you are live.',
+  'Połączone: {0} ({1}). Kliknij, żeby odłączyć.': 'Linked: {0} ({1}). Click to unlink.',
+  'Połącz kanał {0}': 'Link a {0} channel',
+  ' Połącz {0}': ' Link {0}',
+  'Łączenie kanałów nie jest jeszcze włączone na serwerze.': 'Linking channels is not set up on the server yet.',
+  ' Powiadamiaj, gdy znajomi zaczynają streamować': ' Notify me when friends start streaming',
+  ' Ukryj przed znajomymi, że streamuję': ' Hide from friends that I am streaming',
+  'Streamy (połączone kanały Twitch i Kick, transmisja na żywo)': 'Streams (linked Twitch and Kick channels, the live stream)',
+};

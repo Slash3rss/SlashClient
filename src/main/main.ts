@@ -1926,6 +1926,26 @@ handle('social:loginOAuth', (provider: string, link: boolean) => socialCall(asyn
   }
   throw new SocialError('login_expired');
 }));
+/**
+ * Links the player's Twitch or Kick channel (server 0.9.24+, streams): the platform's page in the
+ * browser, then the server asked (up to 10 minutes) until the player is back. Not a sign-in: the
+ * answer is only the account's linked channels.
+ */
+handle('social:linkStream', (platform: string) => socialCall(async () => {
+  if (platform !== 'twitch' && platform !== 'kick') throw new SocialError('provider_disabled');
+  const attempt = ++browserLogin;
+  const { state, url } = await social.call<{ state: string; url: string }>('POST', `/v1/me/streams/${platform}/start`);
+  if (!/^https:\/\//.test(url)) throw new SocialError('provider_failed');
+  await shell.openExternal(url);
+  const until = Date.now() + 10 * 60_000;
+  while (Date.now() < until) {
+    await new Promise((r) => setTimeout(r, 2000));
+    if (attempt !== browserLogin) throw new SocialError('cancelled');
+    const res = await social.call<{ pending?: boolean; streams?: unknown }>('GET', `/v1/me/streams/poll?state=${encodeURIComponent(state)}`);
+    if (!res.pending) return res.streams;
+  }
+  throw new SocialError('login_expired');
+}));
 handle('social:cancelLogin', () => {
   browserLogin++;
 });

@@ -27,6 +27,7 @@ export const PROFILE_ELEMENTS: [string, string][] = [
   ['friends', 'Liczba znajomych'],
   ['servers', 'Serwery, na których grasz'],
   ['lastOnline', 'Kiedy ostatnio byłeś online'],
+  ['streams', 'Streamy (połączone kanały Twitch i Kick, transmisja na żywo)'],
 ];
 
 /** Opens the player's own profile in the browser, or copies its address. */
