@@ -348,8 +348,19 @@ export function capeSetting(settings: Map<string, CosmeticSetting>, id: string):
   return settings.get(id) ?? { id, enabled: true, exclusive: false };
 }
 
-/** Whether the shop may sell an item at all: not a rank's or the supporters', not one only an achievement of cosmetics.ts gives. */
-export const sellable = (it: Item) => !it.rank && !it.achievement && !it.supporter;
+/**
+ * The supporter tier level an item asks for now: the admin panel's choice (supporterItems.ts; 0 =
+ * for everyone) or else cosmetics.ts's `supporter`; 0 = not a supporters' item.
+ */
+export function supporterLevel(settings: Map<string, CosmeticSetting> | undefined, it: Item): number {
+  return settings?.get(it.id)?.supporter ?? it.supporter ?? 0;
+}
+
+/**
+ * Whether the shop may sell an item at all: not a rank's or the supporters' (at `supporter`, the
+ * level it asks for now), not one only an achievement of cosmetics.ts gives.
+ */
+export const sellable = (it: Item, supporter = it.supporter ?? 0) => !it.rank && !it.achievement && !supporter;
 
 /**
  * What an item costs in the shop now: the admin's price (economy.ts; null there = taken off sale),
@@ -357,7 +368,7 @@ export const sellable = (it: Item) => !it.rank && !it.achievement && !it.support
  */
 export function priceOf(settings: Map<string, CosmeticSetting>, id: string): number | undefined {
   const it = item(id);
-  if (!it || !sellable(it)) return undefined;
+  if (!it || !sellable(it, supporterLevel(settings, it))) return undefined;
   const set = settings.get(id)?.price;
   return set === undefined ? it.price : set ?? undefined;
 }
@@ -373,7 +384,8 @@ export function mayWear(settings: Map<string, CosmeticSetting>, granted: string[
   if (!it || it.slot !== slot) return false;
   if (badge === 'admin') return true;
   // the supporters' items: with a tier of that level (or an admin's grant of the item)
-  if (it.supporter && supporter < it.supporter && !granted.includes(id)) return false;
+  const need = supporterLevel(settings, it);
+  if (need && supporter < need && !granted.includes(id)) return false;
   // earned (an achievement) or bought (the shop): only with the grant
   if ((it.achievement || priceOf(settings, id)) && !granted.includes(id)) return false;
   const s = capeSetting(settings, id);

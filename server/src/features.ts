@@ -65,28 +65,31 @@ export const featuresOf = (settings: Settings): Record<FeatureId, boolean> =>
   Object.fromEntries(FEATURE_IDS.map((id) => [id, settings.bool(featureKey(id))])) as Record<FeatureId, boolean>;
 
 /**
- * Which switch a request needs, or undefined when none does. `groupClan`: the clan of a group chat
- * ('' for a plain group, undefined when there is no such group), so a clan's chat follows "Klany".
+ * The switches a request needs (none for most). `groupClan`: the clan of a group chat ('' for a
+ * plain group, undefined when there is no such group), so a clan's chat follows "Klany".
  */
-export function featureOf(method: string, path: string, groupClan: (id: string) => string | undefined): FeatureId | undefined {
+export function featuresFor(method: string, path: string, groupClan: (id: string) => string | undefined): FeatureId[] {
   // the admin panel is never switched off; logos stay (they show next to names in game)
-  if (path.startsWith('/v1/admin/') || /\/logo\.png$/.test(path)) return undefined;
-  if (method === 'POST' && /^\/v1\/shop\/\w+$/.test(path)) return 'shop';
-  if (method === 'POST' && path === '/v1/support/checkout') return 'support';
-  if (/^\/v1\/(public\/)?communities(\/|$)/.test(path)) return 'communities';
-  if (/^\/v1\/clans(\/|$)/.test(path)) return 'clans';
-  if (method === 'POST' && path === '/v1/groups') return 'groups';
+  if (path.startsWith('/v1/admin/') || /\/logo\.png$/.test(path)) return [];
+  const out: FeatureId[] = [];
+  if (method === 'POST' && /^\/v1\/shop\/\w+\/buy$/.test(path)) out.push('shop');
+  if (method === 'POST' && path === '/v1/support/checkout') out.push('support');
+  if (/^\/v1\/(public\/)?communities(\/|$)/.test(path)) out.push('communities');
+  if (/^\/v1\/clans(\/|$)/.test(path)) out.push('clans');
+  if (method === 'POST' && path === '/v1/groups') out.push('groups');
   const group = /^\/v1\/groups\/([\w-]{1,64})(\/|$)/.exec(path);
   if (group) {
     const clan = groupClan(group[1]);
-    return clan ? 'clans' : clan === '' ? 'groups' : undefined;
+    if (clan) out.push('clans');
+    else if (clan === '') out.push('groups');
   }
-  if (method === 'POST' && path === '/v1/media') return 'media';
-  if (method === 'PUT' && /^\/v1\/cloud-profiles\/[\w-]+$/.test(path)) return 'cloud';
-  if (method === 'GET' && (/^\/(u|gracz|profil|player)\/[^/]+\/?$/.test(path) || /^\/v1\/profiles\/[^/]+(\/(head|skin))?$/.test(path) || path === '/sitemap-profiles.xml')) return 'profiles';
-  if (method === 'POST' && path === '/v1/mc/spray') return 'sprays';
-  if (method === 'POST' && /^\/v1\/images\/[\w-]+$/.test(path)) return 'chatImages';
-  return undefined;
+  if (method === 'POST' && path === '/v1/media') out.push('media');
+  if (method === 'PUT' && /^\/v1\/cloud-profiles\/[\w-]+$/.test(path)) out.push('cloud');
+  if (method === 'GET' && (/^\/(u|gracz|profil|player)\/[^/]+\/?$/.test(path) || /^\/v1\/profiles\/[^/]+(\/(head|skin))?$/.test(path) || path === '/sitemap-profiles.xml')) out.push('profiles');
+  if (method === 'POST' && path === '/v1/mc/spray') out.push('sprays');
+  // a picture to a friend or to a group
+  if (method === 'POST' && (/^\/v1\/images\/[\w-]+$/.test(path) || /^\/v1\/groups\/[\w-]+\/images$/.test(path))) out.push('chatImages');
+  return out;
 }
 
 /** The page a browser gets for a switched-off page (a public profile). */

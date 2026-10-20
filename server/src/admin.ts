@@ -1,6 +1,7 @@
 import type http from 'node:http';
 import type { Db } from './db.ts';
-import { CAPES, ITEMS, capeSetting, item, priceOf } from './cosmetics.ts';
+import { CAPES, ITEMS, capeSetting, item, mayWear, priceOf, supporterLevel } from './cosmetics.ts';
+import { MAX_SUPPORTER_LEVEL, SUPPORTER_SCHEMA, setSupporterLevel } from './supporterItems.ts';
 
 /**
  * The admin panel's API, under /v1/admin. Only accounts with the admin role (or listed in
@@ -21,6 +22,9 @@ export interface AdminContext {
   live: () => { online: number; inGame: number };
   /** What a player wears changed: players who see them in game are told (coalesced). */
   cosmeticsChanged?: (userId: string) => void;
+  /** A player's supporter level for cosmetics (payments/support.ts) and their rank colour, for who may keep an item. */
+  supporterLevel?: (userId: string) => number;
+  badge?: (u: { id?: string; role: string; handle: string; rank: string }) => string;
 }
 
 type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
@@ -29,6 +33,17 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
   const { db } = ctx;
   const userOr404 = (id: string) => db.adminUser(id) ?? ctx.fail(404, 'not_found');
   const withConfig = <T extends { handle: string; role: string }>(u: T) => ({ ...u, configAdmin: ctx.configAdmins.has(u.handle.toLowerCase()) });
+  db.sql.exec(SUPPORTER_SCHEMA);
+  /** An item comes off a player: the account's cape or slot, and every Minecraft account's own set. */
+  const takeOff = (userId: string, id: string) => {
+    const user = db.user(userId);
+    if (!user) return;
+    if (user.cape === id) db.setCape(userId, '');
+    if (Object.values(user.loadout).includes(id)) db.setLoadout(userId, Object.fromEntries(Object.entries(user.loadout).filter(([, v]) => v !== id)));
+    for (const m of db.minecraftAccounts(userId)) {
+      if (m.loadout && Object.values(m.loadout).includes(id)) db.setCharacterLoadout(userId, m.uuid, Object.fromEntries(Object.entries(m.loadout).filter(([, v]) => v !== id)));
+    }
+  };
 
   return [
     ['GET', /^\/v1\/admin\/stats$/, (req) => {
@@ -109,7 +124,9 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
       ctx.admin(req);
       const settings = db.cosmeticSettings();
       const worn = db.wornCounts();
-      const all = ITEMS.map((i) => ({ ...capeSetting(settings, i.id), name: i.name, slot: i.slot, rank: i.rank, frames: i.frames, wearing: worn[i.id] ?? 0, grantees: db.grantees(i.id) }));
+      const all = ITEMS.map((i) => ({ ...capeSetting(settings, i.id), name: i.name, slot: i.slot, rank: i.rank, frames: i.frames, wearing: worn[i.id] ?? 0, grantees: db.grantees(i.id),
+        // supporters only from this tier level now, and cosmetics.ts's (supporterItems.ts)
+        supporter: supporterLevel(settings, i), supporterDefault: i.supporter ?? 0 }));
       // `capes` for the panel before 0.8
       return { capes: all.filter((i) => i.slot === 'cape'), items: all };
     }],
@@ -132,6 +149,32 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
       else if (next.exclusive) clear(true);
       db.log(me, 'cape_settings', id, `${next.enabled ? 'włączona' : 'wyłączona'}${next.exclusive ? ', ekskluzywna' : ''}`);
       return { ...next, id };
+    }],
+    // "tylko dla wspierających od poziomu N": { level: 0..100 } (0 = for everyone), null = as cosmetics.ts has it
+    ['POST', /^\/v1\/admin\/cosmetics\/(\w+)\/supporter$/, async (req, [id]) => {
+      const me = ctx.admin(req);
+      const it = item(id) ?? ctx.fail(404, 'not_found');
+      const { level } = await ctx.body(req);
+      if (level !== null && (typeof level !== 'number' || !Number.isInteger(level) || level < 0 || level > MAX_SUPPORTER_LEVEL)) ctx.fail(400, 'bad_level');
+      // a rank's item and one only an achievement gives have their own lock
+      if (level && (it.rank || it.achievement)) ctx.fail(400, 'not_for_supporters');
+      const before = supporterLevel(db.cosmeticSettings(), it);
+      setSupporterLevel(db.sql, id, level === null || level === (it.supporter ?? 0) ? undefined : (level as number));
+      const settings = db.cosmeticSettings();
+      const now = supporterLevel(settings, it);
+      // who may not wear it any more takes it off (a grant of the item, admins and supporters of that level keep it)
+      let removed = 0;
+      if (now > before) {
+        for (const uuid of db.wearers(id)) {
+          const u = db.user(uuid);
+          if (!u || mayWear(settings, db.grants(uuid), id, it.slot, ctx.badge?.(u) ?? (u.role === 'admin' ? 'admin' : ''), ctx.supporterLevel?.(uuid) ?? 0)) continue;
+          takeOff(uuid, id);
+          removed++;
+          ctx.cosmeticsChanged?.(uuid);
+        }
+      }
+      db.log(me, 'cosmetic_supporter', id, `${before ? `od poziomu ${before}` : 'dla wszystkich'} → ${now ? `od poziomu ${now}` : 'dla wszystkich'}${removed ? `, zdjęto u ${removed}` : ''}`);
+      return { id, supporter: now, supporterDefault: it.supporter ?? 0, removed };
     }],
     ['POST', /^\/v1\/admin\/cosmetics\/(\w+)\/grants$/, async (req, [id]) => {
       const me = ctx.admin(req);

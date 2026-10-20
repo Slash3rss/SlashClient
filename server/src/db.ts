@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
+import { supporterLevels } from './supporterItems.ts';
 
 /**
  * Storage for players, friendships and messages. One SQLite file; every query lives
@@ -22,6 +23,8 @@ export interface CosmeticSetting {
   id: string; enabled: boolean; exclusive: boolean;
   /** The shop's price set in the admin panel (economy.ts): a number, null = not sold, missing = as cosmetics.ts has it. */
   price?: number | null;
+  /** The supporter level set in the admin panel (supporterItems.ts): 0 = for everyone, missing = as cosmetics.ts has it. */
+  supporter?: number;
 }
 export interface LogEntry { id: number; at: number; admin: string; action: string; target: string; detail: string }
 export type Provider = 'discord' | 'microsoft' | 'google' | 'github' | 'dev' | 'minecraft';
@@ -404,6 +407,8 @@ CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created
     } catch {
       // no shop table yet
     }
+    // supporter-only levels the admin set (supporterItems.ts)
+    for (const [id, level] of supporterLevels(this.db)) out.set(id, { ...(out.get(id) ?? { id, enabled: true, exclusive: false }), supporter: level });
     return out;
   }
 

@@ -4,7 +4,7 @@ import {
   ACHIEVEMENTS, CATEGORIES, ICONS, METRICS, OVERRIDE_KEYS, iconOf,
   type Achievement, type Category, type createAchievements, type Group, type Override,
 } from './achievements.ts';
-import { ITEMS, item } from './cosmetics.ts';
+import { ITEMS, item, supporterLevel } from './cosmetics.ts';
 import { inTransaction, type Wallet } from './economy.ts';
 import { howToGet } from './obtain.ts';
 
@@ -264,7 +264,9 @@ export function achievementsAdminRoutes(deps: Deps): [string, RegExp, Handler][]
       const settings = db.cosmeticSettings();
       const all = registry.all();
       return {
-        items: Object.fromEntries(ITEMS.map((i) => [i.id, { ...howToGet(i, settings, all), price: wallet.price(i.id) ?? null, defaultPrice: i.price ?? null }])),
+        items: Object.fromEntries(ITEMS.map((i) => [i.id, { ...howToGet(i, settings, all), price: wallet.price(i.id) ?? null, defaultPrice: i.price ?? null,
+          // supporters only from a tier level: now (the admin's or cosmetics.ts's) and cosmetics.ts's
+          supporter: supporterLevel(settings, i), supporterDefault: i.supporter ?? 0 }])),
       };
     }],
   ];

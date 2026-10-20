@@ -1,6 +1,6 @@
 import type { Achievement } from './achievements.ts';
 import type { CosmeticSetting } from './db.ts';
-import { capeSetting, priceOf, sellable, type Item } from './cosmetics.ts';
+import { capeSetting, priceOf, sellable, supporterLevel, type Item } from './cosmetics.ts';
 
 /**
  * How a cosmetic can be got, worked out from the catalog (cosmetics.ts), the admin's settings
@@ -12,7 +12,8 @@ export type Way =
   | { kind: 'free' }
   | { kind: 'shop'; price: number }
   | { kind: 'achievement'; id: string; name: string; custom: boolean; manual: boolean; enabled: boolean }
-  | { kind: 'rank'; rank: string }
+  /** `level`: for the supporters, the tier level it asks for now (supporterItems.ts). */
+  | { kind: 'rank'; rank: string; level?: number }
   /** Nothing else: only an admin's grant gives it. */
   | { kind: 'grant' };
 
@@ -32,25 +33,26 @@ const RANKS: Record<string, string> = { admin: 'Admin', support: 'Support', part
 export function howToGet(it: Item, settings: Map<string, CosmeticSetting>, achievements: Achievement[]): Obtain {
   const s = capeSetting(settings, it.id);
   const price = priceOf(settings, it.id);
+  const supporter = supporterLevel(settings, it);
   const ways: Way[] = [];
   // free when nothing locks it: no achievement of its own, no price, not exclusive, not a rank's
-  if (!it.achievement && price === undefined && !s.exclusive && !it.rank && !it.supporter) ways.push({ kind: 'free' });
+  if (!it.achievement && price === undefined && !s.exclusive && !it.rank && !supporter) ways.push({ kind: 'free' });
   if (price !== undefined) ways.push({ kind: 'shop', price });
   for (const a of achievements.filter((x) => x.reward === it.id)) {
     ways.push({ kind: 'achievement', id: a.id, name: a.name, custom: !!a.custom, manual: a.group === 'manual', enabled: a.enabled !== false });
   }
   if (it.rank) ways.push({ kind: 'rank', rank: it.rank });
-  if (it.supporter) ways.push({ kind: 'rank', rank: 'supporter' });
+  if (supporter) ways.push({ kind: 'rank', rank: 'supporter', level: supporter });
   if (!ways.some((w) => w.kind !== 'achievement' || w.enabled)) ways.push({ kind: 'grant' });
   const words = ways.map((w) => {
     switch (w.kind) {
       case 'free': return 'za darmo';
       case 'shop': return `sklep: ${w.price} ✦`;
       case 'achievement': return `osiągnięcie „${w.name}”${w.manual ? ' (przyznawane ręcznie)' : ''}${w.enabled ? '' : ' (wyłączone)'}`;
-      case 'rank': return `ranga ${RANKS[w.rank] ?? w.rank}`;
+      case 'rank': return w.level ? `wspierający od poziomu ${w.level}` : `ranga ${RANKS[w.rank] ?? w.rank}`;
       case 'grant': return 'tylko przyznanie przez admina';
     }
   });
   const text = (s.enabled ? '' : 'wyłączony · ') + words.join(' · ');
-  return { ways, disabled: !s.enabled, exclusive: s.exclusive, sellable: sellable(it), text: text.charAt(0).toUpperCase() + text.slice(1) };
+  return { ways, disabled: !s.enabled, exclusive: s.exclusive, sellable: sellable(it, supporter), text: text.charAt(0).toUpperCase() + text.slice(1) };
 }

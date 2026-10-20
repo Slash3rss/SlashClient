@@ -7,7 +7,7 @@ import { Db, type User } from './db.ts';
 import { PROVIDERS, type DeviceStart, type Identity, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, serverKeyOf, type Presence } from './presence.ts';
 import { SprayLimit, cleanSpray } from './sprays.ts';
-import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, framesFor, knownTo, mayWear, priceOf, type Slot } from './cosmetics.ts';
+import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, framesFor, knownTo, mayWear, priceOf, supporterLevel, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
 import { partnerRoutes } from './partners.ts';
 import { trackerRoutes } from './tracker.ts';
@@ -37,7 +37,7 @@ import { COMMUNITY_LIMITS, type CommunityLimits } from './communityStore.ts';
 import { Settings, liveSettings, type SettingValue } from './settings.ts';
 import { SETTING_DEFS } from './settingsDefs.ts';
 import { settingsAdminRoutes } from './settingsAdmin.ts';
-import { disabledPage, featureKey, featureOf } from './features.ts';
+import { disabledPage, featureKey, featuresFor } from './features.ts';
 import { useBlocklist } from './clans.ts';
 import { useLogoLimit } from './clanLogos.ts';
 
@@ -717,7 +717,8 @@ export function createApp(cfg: Config) {
       const items = ITEMS.filter((i) => (capeSetting(settings, i.id).enabled || badge === 'admin') && known(i)).map((i) => ({
         id: i.id, slot: i.slot, name: i.name, rank: i.rank, frames: frames(i),
         exclusive: capeSetting(settings, i.id).exclusive, available: mayWear(settings, granted, i.id, i.slot, badge, me ? support.cosmeticsLevel(me) : 0),
-        ...(i.supporter ? { supporter: i.supporter } : {}),
+        // supporters only, from this tier level (cosmetics.ts, or the admin panel's: supporterItems.ts)
+        ...(supporterLevel(settings, i) ? { supporter: supporterLevel(settings, i) } : {}),
         // given by an achievement (as the admin set them now): which one, and how to get it
         ...achievements.rewardHint(i.id),
         // sold in the shop for sparks (items only the shop has come only to launchers that know it: `since`)
@@ -1207,7 +1208,7 @@ export function createApp(cfg: Config) {
       },
     }),
     ...adminRoutes({
-      db, admin, body, kick, configAdmins, cosmeticsChanged,
+      db, admin, body, kick, configAdmins, cosmeticsChanged, supporterLevel: (id) => support.cosmeticsLevel(id), badge: badgeOf,
       fail: (status, code) => {
         throw new HttpError(status, code);
       },
@@ -1263,8 +1264,8 @@ export function createApp(cfg: Config) {
     res.setHeader('Cache-Control', 'no-store');
 
     // a feature the admin switched off (features.ts): its endpoints say so, its pages too
-    const feature = featureOf(req.method ?? 'GET', url.pathname, (id) => groups.store.group(id)?.clan);
-    if (feature && !settings.bool(featureKey(feature))) {
+    const feature = featuresFor(req.method ?? 'GET', url.pathname, (id) => groups.store.group(id)?.clan).find((f) => !settings.bool(featureKey(f)));
+    if (feature) {
       (req as SeenRequest).slashError = 'feature_disabled';
       if (url.pathname.startsWith('/v1/')) {
         res.writeHead(503, { 'Content-Type': 'application/json' });
