@@ -2,6 +2,7 @@
 import { Preview } from './preview.js';
 import { achievementsCard, buy, priceTag, sparks } from './sparks.js';
 import { privacyCard } from './profilePrivacy.js';
+import { chip as supporterChip, supportCard } from './supportCard.js';
 import { $, partnerBanner, uploadPicture, PROVIDERS, SLOTS, api, avatarEl, capeEl, cosmeticEl, el, errorText, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 
 let me;
@@ -84,7 +85,9 @@ function renderAccount() {
       me.badge === 'support' ? el('span', { class: 'chip sky' }, icon('fa-solid fa-certificate'), 'Support') : '',
       me.badge === 'partner' ? el('span', { class: 'chip gold' }, icon('fa-solid fa-certificate'), 'Partner') : '',
       me.badge === 'friend' ? el('span', { class: 'chip green' }, el('img', { class: 'chip-logo', src: '/vendor/logo.png', alt: '' }), 'Przyjaciel') : '',
-      me.badge === 'friend_pink' ? el('span', { class: 'chip pink' }, el('img', { class: 'chip-logo', src: '/vendor/logo.png', alt: '' }), 'Przyjaciel') : ''));
+      me.badge === 'friend_pink' ? el('span', { class: 'chip pink' }, el('img', { class: 'chip-logo', src: '/vendor/logo.png', alt: '' }), 'Przyjaciel') : '',
+      // supporting the project (supportCard.js): the tier in its colour
+      me.supporter && !me.supporter.past ? supporterChip(me.supporter.name, me.supporter.color) : ''));
   // the avatar: the face from one of the Minecraft accounts' skins, or the sign-in provider's picture
   const faces = me.avatars?.minecraft ?? [];
   if (faces.length + (me.avatars?.provider ? 1 : 0) > 1) {
@@ -154,7 +157,7 @@ function renderAccount() {
     const locked = item && !item.available;
     // sold in the shop for sparks: the price on it, a click asks to buy (sparks.js)
     const forSale = locked && item.price && !item.owned;
-    const why = forSale ? `${name}: w sklepie za ${sparks(item.price)}` : item?.rank ? `${name}: tylko dla rangi ${RANK_NAMES[item.rank] ?? item.rank}` : item?.hint ?? `${name}: ekskluzywne, przyznaje admin`;
+    const why = forSale ? `${name}: w sklepie za ${sparks(item.price)}` : item?.rank ? `${name}: tylko dla rangi ${RANK_NAMES[item.rank] ?? item.rank}` : item?.supporter ? `${name}: dla wspierających projekt (strona Wesprzyj)` : item?.hint ?? `${name}: ekskluzywne, przyznaje admin`;
     const b = el('button', { class: `cape-choice${(worn[slot] || '') === id ? ' selected' : ''}${id ? '' : ' none'}${forSale ? ' for-sale' : ''}`, disabled: !!locked && !forSale, title: locked ? why : name },
       item ? cosmeticEl(item.id, item.slot) : el('div', { class: 'cape' }, icon('fa-solid fa-ban')), el('span', { textContent: name }), forSale ? priceTag(item.price) : '', locked ? el('i', { class: 'fa-solid fa-lock lock' }) : '');
     // under the mouse the figure tries it on; leaving puts back what is worn
@@ -173,7 +176,14 @@ function renderAccount() {
     el('div', { class: 'cosmetic-stage' }, previewBox ??= el('div', { class: 'figure' }), el('div', { class: 'grow' }, tabs, note, pick)));
   // the public profile's privacy (profilePrivacy.js), filled in when the settings are here
   const privacy = el('div', { class: 'privacy-slot' });
-  $('#account').replaceChildren(el('div', { class: 'account' }, el('div', { class: 'account-side' }, profile, privacy), capes));
+  // supporting the project: the tier, the subscription, the history (supportCard.js)
+  const support = el('div', { class: 'support-slot' });
+  $('#account').replaceChildren(el('div', { class: 'account' }, el('div', { class: 'account-side' }, profile, privacy, support), capes));
+  supportCard().then((card) => {
+    if (!card) return;
+    support.replaceWith(card);
+    if (location.hash === '#wsparcie') card.scrollIntoView({ block: 'start' });
+  });
   privacyCard().then((card) => {
     if (!card) return;
     privacy.replaceWith(card);

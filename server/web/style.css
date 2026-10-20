@@ -116,6 +116,7 @@ button.chip:hover { background: rgba(255, 255, 255, .12); color: var(--text); }
 .nav-links { display: flex; gap: 18px; margin-left: 8px; }
 .nav-links a { color: var(--text-2); font-weight: 500; }
 .nav-links a:hover { color: var(--text); text-decoration: none; }
+.nav-links a.nav-support { color: #f9a8d4; }
 .nav .push { margin-left: auto; }
 
 /* account */

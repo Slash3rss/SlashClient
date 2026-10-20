@@ -1,0 +1,24 @@
+/* The admin panel's "Wsparcie" (adminSupport.js); the cards and fields come from storage.css. */
+.sup-h { font-size: 19px; margin: 26px 0 12px; }
+.sup-code { font-family: ui-monospace, Consolas, monospace; font-size: 12px; overflow-wrap: anywhere; }
+.sup-tiers { display: flex; flex-direction: column; gap: 10px; }
+.sup-tier { --tier: #60a5fa; border-left: 4px solid var(--tier); }
+.sup-tier summary { cursor: pointer; list-style: none; }
+.sup-tier[open] summary { margin-bottom: 14px; }
+.sup-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--tier); flex-shrink: 0; }
+.sup-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px; }
+.sup-grid.two { grid-template-columns: 1fr 1fr; }
+.sup-grid input[type=color] { height: 40px; width: 100%; padding: 2px; background: rgba(0, 0, 0, .25); border: 1px solid var(--border); border-radius: var(--btn-radius); }
+.sup-grid textarea { width: 100%; padding: 10px 12px; color: var(--text); background: rgba(0, 0, 0, .25); border: 1px solid var(--border); border-radius: var(--btn-radius); font: 14px "Outfit", sans-serif; resize: vertical; }
+.sup-grant { margin-bottom: 12px; }
+.sup-grant .st-field input { width: 90px; }
+.sup-person { border-top: 1px solid var(--border); padding: 8px 0; }
+.sup-person:first-child { border-top: 0; }
+.sup-person summary { cursor: pointer; }
+.sup-grantline { padding: 6px 0 0 18px; }
+.sup-grantline.off { opacity: .6; }
+.sup-scroll { overflow-x: auto; }
+.st-field .grow input { width: 100%; }
+@media (max-width: 900px) {
+  .sup-grid, .sup-grid.two { grid-template-columns: 1fr; }
+}
