@@ -1,6 +1,6 @@
 {
   "name": "slashclient",
-  "version": "0.9.24",
+  "version": "0.9.25",
   "description": "SlashClient – launcher Minecrafta",
   "main": "dist/main.js",
   "private": true,
