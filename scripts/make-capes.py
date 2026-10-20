@@ -317,11 +317,86 @@ def design(cape):
                         x, y = x0 + n * 8 + c * 2, y0 + r * 2
                         d.rectangle([x, y, x + 1, y + 1], fill=(124, 45, 18, 255))
         return border(img, '#f97316')
+    # ---- bought in the shop with Iskry (sparks, earned with achievements) ----
+    if cape == 'emberstar':
+        # "Iskra": the currency's own cape, golden sparks rising from a glowing ember
+        img = gradient('#1c1917', '#431407')
+        d = ImageDraw.Draw(img)
+        for _ in range(26):
+            x, y = rnd.uniform(2, W - 2), rnd.uniform(2, H * 0.8)
+            r = rnd.uniform(0.6, 1.6)
+            d.ellipse([x - r, y - r, x + r, y + r], fill=rnd.choice([(253, 224, 71, 255), (251, 146, 60, 255), (254, 243, 199, 255)]))
+        cx, cy = W / 2, H * 0.62
+        spark = [(cx + math.cos(math.pi / 2 + i * math.pi / 4) * (10 if i % 2 == 0 else 3), cy - math.sin(math.pi / 2 + i * math.pi / 4) * (13 if i % 2 == 0 else 3)) for i in range(8)]
+        d.polygon(spark, fill=(253, 224, 71, 255), outline=(234, 88, 12, 255))
+        d.ellipse([cx - 2, cy - 2, cx + 2, cy + 2], fill=(255, 251, 235, 255))
+        return border(img, '#f59e0b')
+    if cape == 'obsidian':
+        img = gradient('#1e1b2e', '#0a0612')
+        d = ImageDraw.Draw(img)
+        # sharp facets of volcanic glass with violet glints
+        for _ in range(9):
+            x, y = rnd.uniform(0, W), rnd.uniform(0, H)
+            d.polygon([(x, y - 7), (x + 5, y), (x, y + 7), (x - 5, y)], fill=rnd.choice([(46, 16, 101, 255), (30, 27, 75, 255), (59, 7, 100, 255)]))
+            d.line([(x, y - 7), (x + 5, y)], fill=(192, 132, 252, 255))
+        return border(img, '#7e22ce')
+    if cape == 'coral':
+        img = gradient('#22d3ee', '#0e7490')
+        d = ImageDraw.Draw(img)
+        # branching corals from the sea floor and a few bubbles
+        for i in range(4):
+            x = 5 + i * (W - 10) / 3
+            col = [(251, 113, 133, 255), (253, 186, 116, 255), (244, 114, 182, 255), (250, 204, 21, 255)][i]
+            d.line([(x, H), (x, H * 0.6)], fill=col, width=3)
+            d.line([(x, H * 0.75), (x - 5, H * 0.55)], fill=col, width=2)
+            d.line([(x, H * 0.7), (x + 5, H * 0.5)], fill=col, width=2)
+        for _ in range(7):
+            x, y, r = rnd.uniform(3, W - 3), rnd.uniform(4, H * 0.5), rnd.uniform(1, 2)
+            d.ellipse([x - r, y - r, x + r, y + r], outline=(236, 254, 255, 255))
+        d.rectangle([0, H * 0.94, W, H], fill=(253, 230, 138, 255))
+        return border(img, '#fb7185')
+    if cape == 'thunder':
+        img = gradient('#312e81', '#0f172a')
+        d = ImageDraw.Draw(img)
+        # a big lightning bolt down the middle
+        pts = [(W * 0.62, 3), (W * 0.3, H * 0.52), (W * 0.52, H * 0.52), (W * 0.36, H - 3), (W * 0.74, H * 0.42), (W * 0.52, H * 0.42), (W * 0.7, 3)]
+        d.polygon(pts, fill=(250, 204, 21, 255), outline=(254, 249, 195, 255))
+        for _ in range(12):
+            d.point((rnd.randrange(W), rnd.randrange(H)), fill=(165, 180, 252, 255))
+        return border(img, '#facc15')
+    if cape == 'regal':
+        # "Purpura": royal purple with a golden crown and trim
+        img = gradient('#581c87', '#2e1065')
+        d = ImageDraw.Draw(img)
+        gold = (251, 191, 36, 255)
+        cx, cy = W / 2, H * 0.4
+        d.polygon([(cx - 11, cy + 6), (cx - 11, cy - 6), (cx - 5, cy), (cx, cy - 9), (cx + 5, cy), (cx + 11, cy - 6), (cx + 11, cy + 6)], fill=gold)
+        for x in (cx - 11, cx, cx + 11):
+            top = cy - 11 if x == cx else cy - 8
+            d.ellipse([x - 1.5, top, x + 1.5, top + 3], fill=(254, 243, 199, 255))
+        for y in range(int(H * 0.62), H, 6):
+            d.line([(4, y), (W - 4, y)], fill=(192, 132, 252, 120))
+        d.rectangle([0, H - 5, W, H], fill=gold)
+        return border(img, '#fbbf24')
+    if cape == 'cosmos':
+        img = gradient('#0c0a2a', '#020617')
+        d = ImageDraw.Draw(img)
+        for _ in range(45):
+            d.point((rnd.randrange(W), rnd.randrange(H)), fill=(255, 255, 255, rnd.choice([140, 220, 255])))
+        # a ringed planet and a small moon
+        cx, cy, r = W * 0.5, H * 0.42, 9
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(56, 189, 248, 255))
+        d.ellipse([cx - r + 3, cy - r + 2, cx + r - 6, cy - 1], fill=(125, 211, 252, 255))
+        d.arc([cx - r - 7, cy - 3, cx + r + 7, cy + 4], 0, 180, fill=(251, 191, 36, 255), width=2)
+        d.ellipse([W * 0.2 - 2, H * 0.75 - 2, W * 0.2 + 2, H * 0.75 + 2], fill=(226, 232, 240, 255))
+        return border(img, '#38bdf8')
     raise ValueError(cape)
 
 
 CAPES = ['slash', 'ocean', 'ember', 'forest', 'galaxy', 'rose', 'gold', 'mono', 'sakura', 'night', 'rainbow', 'ice', 'toxic', 'checker',
-         'lava', 'desert', 'cyber', 'honey', 'mint', 'veteran', 'streak30']
+         'lava', 'desert', 'cyber', 'honey', 'mint', 'veteran', 'streak30',
+         # sold in the shop for Iskry
+         'emberstar', 'obsidian', 'coral', 'thunder', 'regal', 'cosmos']
 
 
 def vanilla_wing():
@@ -752,11 +827,53 @@ def wing_design(kind):
         for i in range(4):
             d.line([(0, H * (0.25 + i * 0.18)), (W, H * (0.25 + i * 0.18))], fill=(254, 215, 170, 160), width=1)
         return border(img, '#fdba74')
+    # ---- bought in the shop with Iskry ----
+    if kind == 'emberwings':
+        img = feathers('#fde68a', '#9a3412', '#ea580c')
+        d = ImageDraw.Draw(img)
+        for _ in range(16):
+            x, y = rnd.uniform(0, W), rnd.uniform(0, H)
+            d.point((x, y), fill=rnd.choice([(255, 251, 235, 255), (253, 224, 71, 255)]))
+        return border(img, '#f59e0b')
+    if kind == 'sapphire':
+        img = gradient('#1d4ed8', '#172554')
+        d = ImageDraw.Draw(img)
+        for _ in range(8):
+            x, y = rnd.uniform(0, W), rnd.uniform(0, H)
+            d.polygon([(x, y - 5), (x + 4, y), (x, y + 5), (x - 4, y)], fill=(96, 165, 250, 255), outline=(219, 234, 254, 255))
+        return border(feathers_over(img, '#3b82f6'), '#93c5fd')
+    if kind == 'obsidianwings':
+        img = gradient('#1e1b2e', '#000000')
+        d = ImageDraw.Draw(img)
+        for i in range(5):
+            d.line([(W * 0.1, 0), (W * (0.1 + i * 0.22), H)], fill=(126, 34, 206, 255), width=1)
+        return border(feathers_over(img, '#3b0764'), '#a855f7')
+    if kind == 'aurum':
+        img = gradient('#fef9c3', '#a16207')
+        d = ImageDraw.Draw(img)
+        for i in range(6):
+            d.line([(0, H * (0.05 + i * 0.17)), (W, H * (0.15 + i * 0.17))], fill=(255, 255, 255, 170), width=1)
+        return border(img, '#facc15')
+    if kind == 'glacier':
+        img = gradient('#ecfeff', '#67e8f9')
+        d = ImageDraw.Draw(img)
+        for _ in range(7):
+            x = rnd.uniform(0, W)
+            d.polygon([(x - 4, 0), (x + 4, 0), (x, rnd.uniform(H * 0.2, H * 0.5))], fill=(255, 255, 255, 230))
+        return border(img, '#0891b2')
+    if kind == 'acid':
+        img = gradient('#365314', '#1a2e05')
+        d = ImageDraw.Draw(img)
+        for _ in range(10):
+            x, y, r = rnd.uniform(0, W), rnd.uniform(0, H), rnd.uniform(1.5, 3.5)
+            d.ellipse([x - r, y - r, x + r, y + r], fill=(190, 242, 100, 255))
+        return border(img, '#a3e635')
     raise ValueError(kind)
 
 
-WINGS = ['angel', 'demon', 'butterfly', 'dragon', 'phoenix', 'crystal', 'batwing', 'frost', 'prism', 'shadow', 'fairy', 'bone', 'gilded']
-ELYTRAS = ['feather', 'neon', 'void', 'sunset', 'nebula', 'venom', 'tide', 'magma', 'circuit', 'autumn']
+WINGS = ['angel', 'demon', 'butterfly', 'dragon', 'phoenix', 'crystal', 'batwing', 'frost', 'prism', 'shadow', 'fairy', 'bone', 'gilded',
+         'emberwings', 'sapphire', 'obsidianwings']
+ELYTRAS = ['feather', 'neon', 'void', 'sunset', 'nebula', 'venom', 'tide', 'magma', 'circuit', 'autumn', 'aurum', 'glacier', 'acid']
 ANIMATED = ['aurora', 'inferno', 'waves', 'pulse', 'matrix', 'storm', 'vortex', 'starfall']
 
 os.makedirs(OUT, exist_ok=True)

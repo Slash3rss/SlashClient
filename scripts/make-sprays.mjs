@@ -249,6 +249,36 @@ const SPRAYS = {
     c.poly([[15, 19], [16, 17.5], [17, 19]], glow);
     c.poly([[7, 21], [25, 21], [23, 25], [20, 23], [16, 26], [12, 23], [9, 25]], glow);
   },
+
+  // ---- sold in the shop for Iskry ----
+  // a spark: the currency's sign, a four-pointed star with small ones around
+  spray_spark(c) {
+    const star = (cx, cy, r, w) => {
+      const pts = [];
+      for (let i = 0; i < 8; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / 4;
+        const rr = i % 2 ? w : r;
+        pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]);
+      }
+      return pts;
+    };
+    c.poly(star(15, 17, 13, 3.4), vertical('#fef08a', '#f97316', 4, 30));
+    c.circle(15, 17, 2.6, hex('#fffbeb'));
+    c.poly(star(26, 6, 4.5, 1.3), hex('#fde047'));
+    c.poly(star(6, 6, 3, 1), hex('#fdba74'));
+  },
+
+  // a trophy: a golden cup on a stand
+  spray_trophy(c) {
+    const gold = vertical('#fef08a', '#ca8a04', 4, 24);
+    c.poly([[7, 4], [25, 4], [24, 12], [20, 18], [12, 18], [8, 12]], gold);
+    // the handles: rings on both sides
+    for (const hx of [6, 26]) c.shape((x, y) => { const d = ((x - hx) / 3.5) ** 2 + ((y - 9) / 4) ** 2; return d <= 1 && d >= 0.3; }, hex('#eab308'));
+    c.rect(14, 18, 4, 5, hex('#ca8a04'));
+    c.rect(10, 23, 12, 3, hex('#a16207'));
+    c.rect(8, 26, 16, 3, hex('#78350f'));
+    c.rect(12, 7, 2, 7, hex('#fffbeb'));
+  },
 };
 
 mkdirSync(out, { recursive: true });

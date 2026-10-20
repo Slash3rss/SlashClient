@@ -13,7 +13,9 @@ import { deflateSync } from 'node:zlib';
 const S = 64;
 /** The animated rings and how many frames each has (the same in RingEffects.java and src/renderer/ringPreview.ts). */
 export const RING_FRAMES = { ring_runes: 8, ring_flame: 8, ring_rainbow: 8, ring_galaxy: 8, ring_toxic: 8 };
-const IDS = ['ring_runes', 'ring_flame', 'ring_frost', 'ring_rainbow', 'ring_mushroom', 'ring_galaxy', 'ring_halo', 'ring_toxic'];
+const IDS = ['ring_runes', 'ring_flame', 'ring_frost', 'ring_rainbow', 'ring_mushroom', 'ring_galaxy', 'ring_halo', 'ring_toxic',
+  // sold in the shop for Iskry (still pictures)
+  'ring_sparks', 'ring_ocean'];
 
 // ---------- PNG ----------
 
@@ -181,6 +183,30 @@ const PAINT = {
       }
     }
     return [...c, a];
+  },
+  // ---- sold in the shop for Iskry ----
+  ring_sparks(r, theta, x, y) {
+    // a thin golden circle with four-pointed sparks scattered on it
+    const gold = hex('#ffc93c'), white = hex('#fff8dc');
+    const rim = band(r, 0.74, 0.77, 0.03);
+    const glow = band(r, 0.62, 0.9, 0.12) * 0.25;
+    let spark = 0;
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 + hash(i, 8) * 0.3, rr = S * (0.33 + hash(i, 9) * 0.12);
+      const dx = Math.abs(x + 0.5 - (S / 2 + Math.cos(a) * rr)), dy = Math.abs(y + 0.5 - (S / 2 + Math.sin(a) * rr));
+      const size = 2 + (i % 3);
+      if ((dx < 0.8 && dy < size) || (dy < 0.8 && dx < size) || (dx + dy < 1.6)) spark = Math.max(spark, 1 - (dx + dy) / (size * 1.5));
+    }
+    const lit = clamp(rim + spark);
+    return [...mix(gold, white, clamp(spark * 1.2)), clamp(glow + lit * 0.95)];
+  },
+  ring_ocean(r, theta, x, y) {
+    // foamy waves running round the ring, deep blue to turquoise
+    const crest = 0.82 + wave(theta, 12, 0, 11) * 0.08;
+    const water = band(r, 0.6, crest, 0.03);
+    const foam = band(r, crest - 0.035, crest, 0.02);
+    const c = mix(mix(hex('#0b4f8a'), hex('#25c7d9'), clamp((r - 0.6) / 0.3)), hex('#f0fdff'), foam);
+    return [...c, clamp(water * 0.75 + foam * 0.25)];
   },
 };
 
