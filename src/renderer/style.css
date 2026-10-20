@@ -933,6 +933,7 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .slash-capes .cape-choice.square { width: 72px; height: 72px; }
 .cape-choice.square canvas { width: 56px; height: 47px; }
 .cape-choice.square canvas.game-icon { width: 40px; height: 40px; }
+.cape-choice.square canvas.shield-icon { width: 30px; height: 55px; }
 .cosmetic-icon { font-size: 22px; color: var(--accent-light); width: 30px; text-align: center; }
 .clothing-icon { width: 48px; height: 48px; image-rendering: pixelated; }
 .ring-icon { width: 48px; height: 48px; background-repeat: no-repeat; image-rendering: pixelated; }
