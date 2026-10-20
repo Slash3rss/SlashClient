@@ -30,7 +30,7 @@ public class GameCosmetics implements FabricClientGameTest {
 			context.takeScreenshot("cosmetics-logo-cape");
 			// the capes in the look of the partner server SkyUp.pl (one animated)
 			for (String id : new String[] {"skyup_niebo", "skyup_wyspa", "skyup_zachod", "skyup_noc", "skyup_up", "skyup_chmury",
-				"skyup_waterblock", "skyup_waterblock_glebia", "skyup_caveblock", "skyup_caveblock_lawa"}) {
+				"skyup_waterblock", "skyup_waterblock_glebia", "skyup_caveblock", "skyup_caveblock_ametyst"}) {
 				context.runOnClient(mc -> TestHooks.cosmeticsSelf(id, false));
 				context.waitTicks(6);
 				String worn = context.computeOnClient(mc -> TestHooks.capeTexture());

@@ -434,7 +434,7 @@ CAPES = ['slash', 'ocean', 'ember', 'forest', 'galaxy', 'rose', 'gold', 'mono', 
          'supporter_heart', 'supporter_patron',
          # in the look of the partner server SkyUp.pl
          'skyup_niebo', 'skyup_wyspa', 'skyup_zachod', 'skyup_noc', 'skyup_up',
-         'skyup_waterblock', 'skyup_waterblock_glebia', 'skyup_caveblock', 'skyup_caveblock_lawa']
+         'skyup_waterblock', 'skyup_waterblock_glebia', 'skyup_caveblock', 'skyup_caveblock_ametyst']
 
 
 # ---------- SkyUp.pl: the partner server's look (sky, clouds, floating islands), drawn our own way ----------
@@ -604,23 +604,25 @@ def skyup(cape):
         d.rectangle([tx - 1, ty - 3, tx + 2, ty], fill=(251, 191, 36, 255))
         img = glow(img, lambda g: g.ellipse([tx - 10, ty - 12, tx + 11, ty + 9], fill=(251, 191, 36, 40)))
         return border(img, '#a8a29e')
-    if cape == 'skyup_caveblock_lawa':
-        # "SkyUp – Caveblock: Lawa": a dark cave with a lava lake glowing up at the stone
-        img = gradient('#0c0a09', '#292524')
+    if cape == 'skyup_caveblock_ametyst':
+        # "SkyUp – Caveblock: Ametyst": an amethyst geode – smooth basalt rim, calcite, purple crystals
+        img = gradient('#3b0764', '#1e1b2e')
         d = ImageDraw.Draw(img)
-        for y in range(0, int(H * 0.7), 6):
-            off = 3 if (y // 6) % 2 else 0
-            for x in range(-off, W, 8):
-                d.rectangle([x, y, x + 7, y + 5], outline=(28, 25, 23, 255))
-        img = glow(img, lambda g: [g.line([(0, H * 0.7 - k), (W, H * 0.7 - k)], fill=(234, 88, 12, max(0, 110 - k * 11))) for k in range(10)])
-        d = ImageDraw.Draw(img)
-        d.rectangle([0, H * 0.72, W, H], fill=(234, 88, 12, 255))
-        for _ in range(14):
-            x, y = rnd.uniform(0, W), rnd.uniform(H * 0.72, H)
-            d.rectangle([x, y, x + 2, y + 1], fill=rnd.choice(((253, 186, 116, 255), (250, 204, 21, 255), (194, 65, 12, 255))))
-        for x in (W * 0.2, W * 0.55, W * 0.82):
-            d.polygon([(x - 3, 0), (x + 3, 0), (x, 6 + rnd.uniform(0, 5))], fill=(68, 64, 60, 255))
-        return border(img, '#f97316')
+        cx, cy = W / 2, H * 0.52
+        d.ellipse([cx - 19, cy - 26, cx + 19, cy + 26], fill=(68, 64, 60, 255))
+        d.ellipse([cx - 16, cy - 23, cx + 16, cy + 23], fill=(231, 229, 228, 255))
+        d.ellipse([cx - 13, cy - 20, cx + 13, cy + 20], fill=(126, 34, 206, 255))
+        d.ellipse([cx - 9, cy - 15, cx + 9, cy + 15], fill=(76, 29, 149, 255))
+        # crystal clusters: tall pointed shards, light on one side, standing on the purple layer
+        for x, y, h in ((cx - 6, cy + 9, 9), (cx + 1, cy + 11, 12), (cx + 6, cy + 8, 8), (cx - 3, cy - 4, 7), (cx + 4, cy - 9, 6)):
+            d.polygon([(x - 2, y), (x + 2, y), (x + 2, y - h + 2), (x, y - h), (x - 2, y - h + 2)], fill=(192, 132, 252, 255))
+            d.polygon([(x - 2, y), (x, y), (x, y - h), (x - 2, y - h + 2)], fill=(233, 213, 255, 255))
+            d.point((x - 1, y - h + 3), fill=(255, 255, 255, 255))
+        for _ in range(10):
+            x, y = rnd.uniform(1, W - 2), rnd.uniform(1, H - 2)
+            if (x - cx) ** 2 / 20 ** 2 + (y - cy) ** 2 / 27 ** 2 > 1:
+                d.point((x, y), fill=(87, 83, 78, 255))
+        return border(img, '#c084fc')
     raise ValueError(cape)
 
 
