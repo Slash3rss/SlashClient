@@ -2,6 +2,10 @@ import type http from 'node:http';
 import type { Db } from './db.ts';
 import { CAPES, ITEMS, capeSetting, item, mayWear, priceOf, supporterLevel } from './cosmetics.ts';
 import { MAX_SUPPORTER_LEVEL, SUPPORTER_SCHEMA, setSupporterLevel } from './supporterItems.ts';
+import { STATS_PERIODS, type AdminStats } from './adminStats.ts';
+
+/** How long the dashboard's numbers from the database are kept before they are counted again ("Odśwież" counts them now). */
+export const STATS_CACHE_MS = 45_000;
 
 /**
  * The admin panel's API, under /v1/admin. Only accounts with the admin role (or listed in
@@ -29,6 +33,8 @@ export interface AdminContext {
   /** A player's supporter level for cosmetics (payments/support.ts) and their rank colour, for who may keep an item. */
   supporterLevel?: (userId: string) => number;
   badge?: (u: { id: string; role: string; handle: string }) => string | readonly string[];
+  /** The dashboard's further numbers (adminStats.ts). */
+  stats?: AdminStats;
 }
 
 type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
@@ -38,6 +44,7 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
   const userOr404 = (id: string) => db.adminUser(id) ?? ctx.fail(404, 'not_found');
   const withConfig = <T extends { id: string; handle: string; role: string }>(u: T) => ({ ...u, configAdmin: ctx.configAdmins.has(u.handle.toLowerCase()), ...(ctx.ranksOf ? { ranks: ctx.ranksOf(u.id) } : {}) });
   db.sql.exec(SUPPORTER_SCHEMA);
+  const statsCache = new Map<number, { at: number; value: Record<string, unknown> }>();
   /** An item comes off a player: the account's cape or slot, and every Minecraft account's own set. */
   const takeOff = (userId: string, id: string) => {
     const user = db.user(userId);
@@ -50,10 +57,19 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
   };
 
   return [
-    ['GET', /^\/v1\/admin\/stats$/, (req) => {
+    // the dashboard: `days` (7, 30 or 90, else 30) is the period of the charts and of the period's numbers;
+    // what comes from the database is counted at most every STATS_CACHE_MS, unless `fresh=1`
+    ['GET', /^\/v1\/admin\/stats$/, (req, _p, url) => {
       ctx.admin(req);
-      const week = Date.now() - 7 * 86_400_000;
-      return { ...db.stats(week), ...ctx.live(), signups: db.signupsPerDay(30) };
+      const asked = Number(url.searchParams.get('days'));
+      const days = (STATS_PERIODS as readonly number[]).includes(asked) ? asked : 30;
+      const now = Date.now();
+      let hit = statsCache.get(days);
+      if (!hit || url.searchParams.get('fresh') === '1' || now - hit.at >= STATS_CACHE_MS) {
+        hit = { at: now, value: { ...db.stats(now - 7 * 86_400_000), signups: db.signupsPerDay(days), ...(ctx.stats?.stored(days) ?? {}) } };
+        statsCache.set(days, hit);
+      }
+      return { ...hit.value, ...ctx.live(), ...(ctx.stats ? { now: ctx.stats.live() } : {}), days, countedAt: hit.at };
     }],
     ['GET', /^\/v1\/admin\/users$/, (req, _p, url) => {
       ctx.admin(req);

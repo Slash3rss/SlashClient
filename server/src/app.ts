@@ -20,7 +20,8 @@ import { createDownloads, isDownloadOs } from './downloads.ts';
 import { createCurseForge } from './curseforge.ts';
 import { profileShareRoutes, type ShareLimits } from './profileShares.ts';
 import { profileCloudRoutes, type CloudLimits } from './profileCloud.ts';
-import { createAchievements, TICK_MS } from './achievements.ts';
+import { createAchievements, serverKey, TICK_MS } from './achievements.ts';
+import { ActivityTracker, createAdminStats } from './adminStats.ts';
 import { achievementsAdminRoutes } from './achievementsAdmin.ts';
 import { Wallet, economyRoutes } from './economy.ts';
 import { createGroups } from './groups.ts';
@@ -169,6 +170,8 @@ type SeenRequest = http.IncomingMessage & { slashUser?: string; slashError?: str
 
 export function createApp(cfg: Config) {
   const db = new Db(cfg.dbFile);
+  // who was active which day, with which launcher, and the day's peak online: for the admin dashboard (adminStats.ts)
+  const activity = new ActivityTracker(db.sql);
   // the admin panel's settings (settings.ts): the config's numbers (env, tests) are their defaults here
   const base: Record<string, SettingValue | undefined> = {
     'security.loginsPerMinute': cfg.loginsPerMinute,
@@ -445,6 +448,9 @@ export function createApp(cfg: Config) {
     if (!userId) throw new HttpError(401, 'unauthorized');
     if (db.user(userId)?.banned) throw new HttpError(403, 'banned');
     (req as SeenRequest).slashUser = userId;
+    activity.seen(userId);
+    const client = clientOf(req);
+    if (client.client === 'launcher') activity.client(userId, 'launcher', client.version);
     return userId;
   }
 
@@ -622,11 +628,35 @@ export function createApp(cfg: Config) {
     },
   });
 
+  /** Accounts connected now, and Minecraft players in a game with the mod. */
+  const live = () => ({ online: sockets.size, inGame: [...inGame.values()].filter((at) => Date.now() - at < IN_GAME_TTL_MS).length });
+
   // waypoints and parties shared with friends (sharing.ts)
   const sharing = sharingRoutes({
     db, authed, body, push, limitWaypoints: limiter('security.waypointsPerMinute'), limitParties: limiter('security.partiesPerMinute'),
     fail: (status, code) => {
       throw new HttpError(status, code);
+    },
+  });
+
+  // the admin dashboard's numbers (adminStats.ts): what is stored, and what connected launchers say now (aggregated)
+  const adminStats = createAdminStats({
+    sql: db.sql, serverKey, serverName: (server) => statusRules.nameFor(server),
+    activities: function* () {
+      for (const [userId, p] of presences) if (sockets.get(userId)?.size && p.activity) yield p.activity;
+    },
+    parties: () => sharing.activeParties(),
+    achievements: () => achievements.registry.active(),
+    storage: () => {
+      const usage = storage.usage();
+      let used = 0;
+      let files = 0;
+      for (const u of usage.values()) {
+        used += u.bytes;
+        files += u.files;
+      }
+      const on = storage.rows().filter((r) => r.enabled);
+      return { used, files, capacity: on.reduce((sum, r) => sum + r.capacity, 0), unlimited: on.some((r) => !r.capacity) };
     },
   });
 
@@ -1301,7 +1331,8 @@ export function createApp(cfg: Config) {
       fail: (status, code) => {
         throw new HttpError(status, code);
       },
-      live: () => ({ online: sockets.size, inGame: [...inGame.values()].filter((at) => Date.now() - at < IN_GAME_TTL_MS).length }),
+      live,
+      stats: adminStats,
     }),
   ];
 
@@ -1631,6 +1662,8 @@ export function createApp(cfg: Config) {
         sockets.get(me)!.add(ws);
         const presence = cleanPresence(msg.presence);
         if (presence) presences.set(me, presence);
+        activity.seen(me);
+        if (first) activity.sample(sockets.size, live().inGame);
         ws.send(JSON.stringify({ type: 'ready', me: meWithProviders(me) }));
         if (first || presence) broadcastPresence(me);
         // achievements reached before they existed (friends, messages) come with the first connection
@@ -1748,6 +1781,8 @@ export function createApp(cfg: Config) {
     for (const [state, login] of logins) if (Date.now() - login.at > LOGIN_TTL_MS) logins.delete(state);
     for (const [uuid, at] of inGame) if (Date.now() - at > IN_GAME_TTL_MS) inGame.delete(uuid);
     for (const [uuid, l] of linked) if (Date.now() - l.at > IN_GAME_TTL_MS) linked.delete(uuid);
+    const now = live();
+    activity.sample(now.online, now.inGame);
   }, 30_000);
   const playTick = setInterval(() => achievements.tick(), TICK_MS);
   // achievements from before the sparks get paid, and ones already reached in the data unlock (once; safe on every start)
