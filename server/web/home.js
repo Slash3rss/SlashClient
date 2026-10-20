@@ -47,8 +47,10 @@ if (phone) {
 // ---------- the account button ----------
 if (token.get()) {
   api('GET', '/v1/me').then((me) => {
-    $('#nav-account .label').textContent = me.name;
-    $('#nav-admin').classList.toggle('hidden', !me.admin);
+    // either can be hidden in the admin panel (not on the page then)
+    const label = $('#nav-account .label');
+    if (label) label.textContent = me.name;
+    $('#nav-admin')?.classList.toggle('hidden', !me.admin);
   }).catch(() => {});
 }
 

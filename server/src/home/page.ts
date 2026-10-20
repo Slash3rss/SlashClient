@@ -85,15 +85,19 @@ function head(c: Content, lang: Lang, base: string): string {
 
 function nav(c: Content, lang: Lang): string {
   const n = c.nav;
-  const links = items(n.links).map((l) => `<a ${linkAttrs(str(l.href))}${l.accent ? ' class="nav-support"' : ''}>${withIcon(l.icon, esc(str(l.label)))}</a>`);
+  // hidden ones stay in the editor, the page leaves them out
+  const links = items(n.links).filter((l) => !l.hidden).map((l) => `<a ${linkAttrs(str(l.href))}${l.accent ? ' class="nav-support"' : ''}>${withIcon(l.icon, esc(str(l.label)))}</a>`);
+  const buttons = [
+    n.hideAdmin ? '' : `<a class="btn hidden" id="nav-admin" href="/admin" title="${esc(str(n.admin))}"><i class="fa-solid fa-shield-halved"></i> <span class="label">${esc(str(n.admin))}</span></a>`,
+    n.hideAccount ? '' : `<a class="btn" id="nav-account" href="${UI[lang].account}" title="${esc(str(n.accountTitle) || str(n.account))}"><i class="fa-solid fa-user"></i> <span class="label">${esc(str(n.account))}</span></a>`,
+    n.hideDownload ? '' : `<a class="btn primary" href="#pobierz"><i class="fa-solid fa-download"></i> <span class="label">${esc(str(n.download))}</span></a>`,
+  ].filter(Boolean);
   return `
       <nav class="nav-links">
         ${links.join('\n        ')}
       </nav>
       <div class="push row">
-        <a class="btn hidden" id="nav-admin" href="/admin" title="${esc(str(n.admin))}"><i class="fa-solid fa-shield-halved"></i> <span class="label">${esc(str(n.admin))}</span></a>
-        <a class="btn" id="nav-account" href="${UI[lang].account}" title="${esc(str(n.accountTitle) || str(n.account))}"><i class="fa-solid fa-user"></i> <span class="label">${esc(str(n.account))}</span></a>
-        <a class="btn primary" href="#pobierz"><i class="fa-solid fa-download"></i> <span class="label">${esc(str(n.download))}</span></a>
+        ${buttons.join('\n        ')}
       </div>
       `;
 }
@@ -251,9 +255,9 @@ function footer(c: Content, lang: Lang): string {
   const f = c.footer;
   const other: Lang = lang === 'pl' ? 'en' : 'pl';
   const links = [
-    ...items(f.links).map((l) => [str(l.href), withIcon(l.icon, esc(str(l.label))), '']),
-    [UI[lang].terms, esc(str(f.terms)), ''],
-    [UI[lang].privacy, esc(str(f.privacy)), ''],
+    ...items(f.links).filter((l) => !l.hidden).map((l) => [str(l.href), withIcon(l.icon, esc(str(l.label))), '']),
+    ...(f.hideTerms ? [] : [[UI[lang].terms, esc(str(f.terms)), '']]),
+    ...(f.hidePrivacy ? [] : [[UI[lang].privacy, esc(str(f.privacy)), '']]),
     ...(f.langShow && str(f.langLabel) ? [[UI[other].path, esc(str(f.langLabel)), ` hreflang="${other}" lang="${other}"`]] : []),
   ].map(([href, label, extra], i) => `<a class="${i === 0 ? 'push ' : ''}foot-link" ${linkAttrs(href)}${extra}>${label}</a>`);
   return `

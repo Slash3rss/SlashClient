@@ -243,6 +243,30 @@ describe('home page escaping', () => {
     assert.match(page, /<strong>Free<\/strong> <a href="https:\/\/example.com\/a\?b=1&amp;c=2" target="_blank" rel="noopener noreferrer">docs<\/a> \[bad\]\(javascript:alert\(1\)\) &lt;img src=x onerror=alert\(4\)&gt;<br>new line/);
   });
 
+  it('leaves hidden navigation links, buttons and footer links off the page, kept in the content', async () => {
+    const c = clone(DEFAULTS.pl) as any;
+    c.nav.links.find((l: any) => l.href === '/zgloszenia').hidden = true;
+    c.nav.hideAccount = true;
+    c.nav.hideDownload = true;
+    c.footer.hideTerms = true;
+    c.footer.hidePrivacy = true;
+    assert.equal((await call('POST', '/v1/admin/home/pl/publish', adminToken, { content: c })).status, 200);
+    const page = (await call('GET', '/')).text;
+    const navPart = page.slice(page.indexOf('<nav class="nav-links">'), page.indexOf('</nav>'));
+    assert.doesNotMatch(navPart, /\/zgloszenia/);
+    assert.match(navPart, /#faq/);
+    assert.doesNotMatch(page, /id="nav-account"/);
+    assert.doesNotMatch(page, /class="btn primary" href="#pobierz"/);
+    assert.match(page, /id="nav-admin"/);
+    assert.doesNotMatch(page, /class="[^"]*foot-link" href="\/regulamin"/);
+    assert.doesNotMatch(page, /class="[^"]*foot-link" href="\/polityka-prywatnosci"/);
+    // still there for the editor
+    const saved = (await call('GET', '/v1/admin/home/pl', adminToken)).body;
+    const content = saved.published?.content ?? saved.content ?? saved.current?.content;
+    assert.ok(JSON.stringify(content ?? saved).includes('/zgloszenia'));
+    assert.equal((await call('POST', '/v1/admin/home/pl/publish', adminToken, { content: clone(DEFAULTS.pl) })).status, 200);
+  });
+
   it('inline markup never lets HTML through', () => {
     assert.equal(inline('a <i>b</i> **c<d>** [e](/f"g)'), 'a &lt;i&gt;b&lt;/i&gt; <strong>c&lt;d&gt;</strong> [e](/f&quot;g)');
     assert.equal(inline('[x](#faq) [y](mailto:a@b.pl)'), '<a href="#faq">x</a> <a href="mailto:a@b.pl">y</a>');

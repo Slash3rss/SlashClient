@@ -51,11 +51,15 @@ export const SECTIONS: Section[] = [
         href: { t: 'link', label: 'Adres', req: true, hint: '#sekcja na tej stronie, /adres w serwisie albo https://…' },
         icon: { t: 'icon', label: 'Ikona (opcjonalnie)' },
         accent: { t: 'bool', label: 'Wyróżniony (kolor jak „Wesprzyj”)' },
+        hidden: { t: 'bool', label: 'Ukryty (zostaje na liście, nie widać go na stronie)' },
       } },
       admin: text('Przycisk panelu admina (widzą go tylko admini)', 40, { req: true }),
+      hideAdmin: { t: 'bool', label: 'Ukryj przycisk panelu admina' },
       account: text('Przycisk konta (niezalogowany)', 40, { req: true }),
       accountTitle: text('Podpowiedź przycisku konta', 60),
+      hideAccount: { t: 'bool', label: 'Ukryj przycisk konta' },
       download: text('Przycisk „Pobierz”', 40, { req: true }),
+      hideDownload: { t: 'bool', label: 'Ukryj przycisk „Pobierz”' },
     },
   },
   {
@@ -149,16 +153,19 @@ export const SECTIONS: Section[] = [
   },
   {
     id: 'footer', name: 'Stopka', icon: 'fa-solid fa-shoe-prints',
-    hint: 'Linki do regulaminu i polityki prywatności są zawsze w stopce; tu zmienisz tylko ich nazwy.',
+    hint: 'Regulamin i polityka prywatności muszą być łatwo dostępne (RODO, prawo konsumenckie); ukryj je tu tylko, jeśli prowadzi do nich inny link.',
     fields: {
       note: text('Notka', 200),
       links: { t: 'list', label: 'Linki', max: 10, title: 'label', item: {
         label: text('Tekst', 40, { req: true }),
         href: { t: 'link', label: 'Adres', req: true },
         icon: { t: 'icon', label: 'Ikona (opcjonalnie)' },
+        hidden: { t: 'bool', label: 'Ukryty (zostaje na liście, nie widać go na stronie)' },
       } },
       terms: text('Nazwa linku do regulaminu', 60, { req: true }),
+      hideTerms: { t: 'bool', label: 'Ukryj link do regulaminu' },
       privacy: text('Nazwa linku do polityki prywatności', 60, { req: true }),
+      hidePrivacy: { t: 'bool', label: 'Ukryj link do polityki prywatności' },
       langShow: { t: 'bool', label: 'Link do drugiej wersji językowej' },
       langLabel: text('Tekst linku do drugiej wersji językowej', 40),
     },
@@ -169,7 +176,7 @@ export const sectionOf = (id: string) => SECTIONS.find((s) => s.id === id);
 
 // ---------- the defaults: what the page said before it could be edited ----------
 
-const nav = (label: string, href: string, icon = '', accent = false): Item => ({ label, href, icon, accent });
+const nav = (label: string, href: string, icon = '', accent = false): Item => ({ label, href, icon, accent, hidden: false });
 const link = (label: string, href: string, icon = ''): Item => ({ label, href, icon });
 const block = (b: Partial<Record<string, Value>>): Item => ({
   kind: 'media', anchor: '', icon: 'fa-solid fa-star', tag: '', title: '', text: '', bullets: [], image: '', imageAlt: '', image2: '', image2Alt: '',

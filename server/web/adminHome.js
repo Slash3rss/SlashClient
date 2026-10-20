@@ -238,7 +238,8 @@ async function editor() {
         const title = el('span', { class: 'hm-item-title' });
         const titled = () => {
           const iconField = Object.entries(f.item).find(([, x]) => x.t === 'icon');
-          title.replaceChildren(iconField && item[iconField[0]] ? icon(item[iconField[0]]) : '', ` ${String(item[f.title] ?? '').trim() || '(bez nazwy)'}`);
+          title.replaceChildren(iconField && item[iconField[0]] ? icon(item[iconField[0]]) : '', ` ${String(item[f.title] ?? '').trim() || '(bez nazwy)'}`,
+            item.hidden ? el('span', { class: 'chip', textContent: 'ukryty' }) : '');
         };
         titled();
         const move = (d) => (e) => {
