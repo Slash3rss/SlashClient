@@ -35,6 +35,13 @@ export function downloadLink(url: string): string {
   return /^https:\/\/(www\.)?curseforge\.com\//.test(url) ? url.replace(/\/files\/(\d+)\/?$/, '/download/$1') : url;
 }
 
+/** SHA-1 read from the file now, without the remembered ones. */
+async function freshSha1(file: string): Promise<string> {
+  const hash = createHash('sha1');
+  for await (const chunk of createReadStream(file)) hash.update(chunk as Buffer);
+  return hash.digest('hex');
+}
+
 const hashes = new Map<string, string>();
 /** SHA-1 of a file, remembered by path, size and modification time (a folder is scanned every few seconds). */
 async function sha1Of(file: string, size: number, mtimeMs: number): Promise<string> {
@@ -113,6 +120,11 @@ export async function copyManualFiles(gameDir: string, files: ManualFile[], foun
     await fs.mkdir(path.dirname(dest), { recursive: true });
     const temp = `${dest}.${process.pid}.copying`;
     await fs.copyFile(from, temp);
+    // the copy itself checked against the expected hash (a file changed since the scan may keep its size and time)
+    if (f.sha1 && (await freshSha1(temp)) !== f.sha1.toLowerCase()) {
+      await fs.rm(temp, { force: true });
+      continue;
+    }
     await fs.rename(temp, dest);
     copied.push(manualKey(f));
   }

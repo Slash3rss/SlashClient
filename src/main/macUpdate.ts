@@ -116,6 +116,8 @@ export async function unpackRelease(zip: string, into: string): Promise<string> 
 export async function unpackApp(zip: string, into: string): Promise<string> {
   const archive = new AdmZip(zip);
   let top = '';
+  // links last: one may come before the folder it points to, and a folder made for files under a link's name gives way to it
+  const links: { target: string; to: string }[] = [];
   for (const entry of archive.getEntries()) {
     const [first] = entry.entryName.split('/');
     if (!first.endsWith('.app')) continue;
@@ -127,13 +129,17 @@ export async function unpackApp(zip: string, into: string): Promise<string> {
       await fs.mkdir(target, { recursive: true });
       continue;
     }
-    await fs.mkdir(path.dirname(target), { recursive: true });
     if ((mode & 0o170000) === 0o120000) {
-      // a link where a folder was already made for files under it (Versions/Current in frameworks): the link wins
-      await fs.rm(target, { recursive: true, force: true });
-      await fs.symlink(entry.getData().toString('utf8'), target);
+      links.push({ target, to: entry.getData().toString('utf8') });
+      continue;
     }
-    else await fs.writeFile(target, entry.getData(), { mode: mode & 0o777 || 0o644 });
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, entry.getData(), { mode: mode & 0o777 || 0o644 });
+  }
+  for (const { target, to } of links) {
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.rm(target, { recursive: true, force: true });
+    await fs.symlink(to, target);
   }
   if (!top) throw new Error('W aktualizacji nie ma aplikacji.');
   return top;
