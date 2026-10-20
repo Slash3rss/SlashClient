@@ -4061,7 +4061,7 @@ function showUpdate(u: UpdateStatus) {
       : u.reason === 'read-only'
         ? t('Nowa wersja {0}. SlashClient nie ma prawa zapisu w swoim folderze — pobierz nową wersję ręcznie.', u.version ?? '')
         : u.reason === 'failed'
-          ? t('Nowa wersja {0}. Nie udało się jej pobrać — spróbuj ponownie.', u.version ?? '')
+          ? t('Nowa wersja {0}. Nie udało się jej zainstalować ({1}) — spróbuj ponownie albo pobierz ją ze strony.', u.version ?? '', u.error || t('nieznany błąd'))
           : text.available;
   }
   const key = `${u.state}:${u.version}`;
@@ -4072,7 +4072,7 @@ function showUpdate(u: UpdateStatus) {
   $('#update-move').classList.toggle('hidden', !(manual && outside));
   $('#update-retry').classList.toggle('hidden', !(manual && u.reason === 'failed'));
   // the website's download: only when nothing else can help
-  $('#update-download').classList.toggle('hidden', !(manual && !outside && u.reason !== 'failed'));
+  $('#update-download').classList.toggle('hidden', !(manual && !outside));
   const settings: Record<string, string> = {
     dev: t('(wersja deweloperska, bez aktualizacji)'),
     checking: t('· sprawdzam…'),

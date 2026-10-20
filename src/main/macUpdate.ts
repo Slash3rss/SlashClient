@@ -1,5 +1,5 @@
 import { app } from 'electron';
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
 import fs from 'node:fs/promises';
@@ -78,9 +78,35 @@ export async function downloadMacUpdate(feed: string, version: string, file: Mac
   // macOS 15 lets no unsigned app write into another app's bundle, so the new one is unpacked under
   // a name that is not one yet (SlashClient.app → SlashClient.next); the swap script names it back
   const unpacked = path.join(dir, 'app');
-  const name = await unpackApp(zip, unpacked);
+  const name = await unpackRelease(zip, unpacked);
   await fs.rm(zip, { force: true });
   return path.join(unpacked, name);
+}
+
+/**
+ * Unpacks the release on macOS with the system's own ditto (as Finder does: links, permissions and
+ * attributes exactly as packed), into a staging folder, then names the app <name>.next; anything
+ * ditto cannot do falls back to unpackApp.
+ */
+export async function unpackRelease(zip: string, into: string): Promise<string> {
+  if (process.platform !== 'darwin') return unpackApp(zip, into);
+  const staging = `${into}.ditto`;
+  try {
+    await fs.rm(staging, { recursive: true, force: true });
+    await new Promise<void>((resolve, reject) => execFile('/usr/bin/ditto', ['-x', '-k', zip, staging], (err, _out, stderr) => (err ? reject(new Error(`ditto: ${stderr || err.message}`.trim())) : resolve())));
+    const app = (await fs.readdir(staging)).find((n) => n.endsWith('.app'));
+    if (!app) throw new Error('W aktualizacji nie ma aplikacji.');
+    const name = `${app.slice(0, -4)}.next`;
+    await fs.mkdir(into, { recursive: true });
+    await fs.rename(path.join(staging, app), path.join(into, name));
+    await fs.rm(staging, { recursive: true, force: true });
+    return name;
+  } catch (err) {
+    await fs.rm(staging, { recursive: true, force: true }).catch(() => {});
+    await fs.rm(into, { recursive: true, force: true }).catch(() => {});
+    console.error(`Aktualizacja (macOS): ${(err as Error).message}; rozpakowywanie po swojemu`);
+    return unpackApp(zip, into);
+  }
 }
 
 /**
@@ -102,7 +128,11 @@ export async function unpackApp(zip: string, into: string): Promise<string> {
       continue;
     }
     await fs.mkdir(path.dirname(target), { recursive: true });
-    if ((mode & 0o170000) === 0o120000) await fs.symlink(entry.getData().toString('utf8'), target);
+    if ((mode & 0o170000) === 0o120000) {
+      // a link where a folder was already made for files under it (Versions/Current in frameworks): the link wins
+      await fs.rm(target, { recursive: true, force: true });
+      await fs.symlink(entry.getData().toString('utf8'), target);
+    }
     else await fs.writeFile(target, entry.getData(), { mode: mode & 0o777 || 0o644 });
   }
   if (!top) throw new Error('W aktualizacji nie ma aplikacji.');

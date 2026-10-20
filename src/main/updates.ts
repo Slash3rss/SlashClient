@@ -38,6 +38,8 @@ const MANUAL = process.platform === 'darwin';
 /** macOS: the unpacked new SlashClient.app and the one it replaces, once downloaded. */
 let macReady: { current: string; next: string } | undefined;
 let macDownloading = false;
+/** macOS: the last update found, so "Spróbuj ponownie" downloads it again straight away. */
+let macLast: { feed: string; version: string; files: MacFile[]; onLog?: (message: string) => void } | undefined;
 /** Windows: the installation that updates itself in place (undefined: the installer does it). */
 let winInstalled: WinInstall | undefined;
 /** Windows: the staged new version, once downloaded. */
@@ -150,10 +152,11 @@ function winSwap(relaunch: string[] | null, onLog?: (message: string) => void) {
 
 /** macOS: downloads the new version in the background, or falls back to the download button. */
 async function macDownload(feed: string, version: string, files: MacFile[], onLog?: (message: string) => void) {
+  macLast = { feed, version, files, onLog };
   if (macDownloading || (macReady && status.version === version)) return;
-  const manual = (reason: NonNullable<UpdateStatus['reason']>) => {
-    onLog?.(`Aktualizacja (macOS): bez samodzielnej podmiany (${reason}).`);
-    set({ state: 'available', version, manual: true, reason });
+  const manual = (reason: NonNullable<UpdateStatus['reason']>, error?: string) => {
+    macLog(`bez samodzielnej podmiany (${reason})${error ? `: ${error}` : ''}`, onLog);
+    set({ state: 'available', version, manual: true, reason, ...(error ? { error } : {}) });
   };
   const state = await bundleState();
   const file = pickMacZip(files ?? []);
@@ -167,11 +170,16 @@ async function macDownload(feed: string, version: string, files: MacFile[], onLo
     macReady = { current, next };
     set({ state: 'ready', version });
   } catch (err) {
-    onLog?.(`Aktualizacja (macOS): ${(err as Error).message}`);
-    manual('failed');
+    manual('failed', (err as Error).message);
   } finally {
     macDownloading = false;
   }
+}
+
+/** macOS: what the update does goes to logs/update.log too, so a failed one can be told about. */
+function macLog(message: string, onLog?: (message: string) => void) {
+  onLog?.(`Aktualizacja (macOS): ${message}`);
+  appendUpdateLog(updateLog(), message);
 }
 
 /** Checks now (the button in Settings); the result also arrives as a status event. */
@@ -188,6 +196,8 @@ export function updateStatus(): UpdateStatus {
 /** macOS: tries the download again (after a failed one). */
 export async function retryMacUpdate(): Promise<void> {
   if (process.platform !== 'darwin' || !app.isPackaged) return;
+  // the update already found: downloaded again now (a new check could find nothing new to say)
+  if (macLast && !macDownloading) return macDownload(macLast.feed, macLast.version, macLast.files, macLast.onLog);
   status = { ...status, manual: false };
   await autoUpdater.checkForUpdates().catch(() => {});
 }

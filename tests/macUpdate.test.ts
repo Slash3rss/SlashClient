@@ -4,7 +4,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
-import { appBundle, bundleState, pickMacZip, swapScript, unpackApp } from '../src/main/macUpdate';
+import AdmZip from 'adm-zip';
+import { appBundle, bundleState, pickMacZip, swapScript, unpackApp, unpackRelease } from '../src/main/macUpdate';
 
 const FILES = [
   { url: 'SlashClient-0.9.2-mac.zip', sha512: 'intel' },
@@ -51,6 +52,24 @@ describe('macOS updates', () => {
     assert.equal(await fs.readlink(path.join(out, 'Frameworks', 'X.framework', 'Versions', 'Current')), 'A');
     assert.equal((await fs.stat(path.join(out, 'MacOS', 'SlashClient'))).mode & 0o777, 0o755);
     assert.equal(await fs.readFile(path.join(out, 'Frameworks', 'X.framework', 'Versions', 'Current', 'X'), 'utf8'), 'lib');
+    await fs.rm(root, { recursive: true });
+  });
+
+  it('makes a link where files under it already made a folder (Versions/Current), as some zips have it', { skip: process.platform === 'win32' }, async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'slash-unpack-'));
+    const zip = new AdmZip();
+    const fw = 'SlashClient.app/Contents/Frameworks/X.framework/Versions';
+    zip.addFile(`${fw}/A/X`, Buffer.from('lib'), '', (0o100644 << 16) >>> 0);
+    // the same file once more under Current, then Current itself as a link
+    zip.addFile(`${fw}/Current/X`, Buffer.from('lib'), '', (0o100644 << 16) >>> 0);
+    zip.addFile(`${fw}/Current`, Buffer.from('A'), '', (0o120777 << 16) >>> 0);
+    const file = path.join(root, 'update.zip');
+    zip.writeZip(file);
+    assert.equal(await unpackApp(file, path.join(root, 'out')), 'SlashClient.next');
+    const current = path.join(root, 'out', 'SlashClient.next', 'Contents', 'Frameworks', 'X.framework', 'Versions', 'Current');
+    assert.equal(await fs.readlink(current), 'A');
+    // and the system's ditto (macOS) gives the same app under the same name
+    if (process.platform === 'darwin') assert.equal(await unpackRelease(file, path.join(root, 'out2')), 'SlashClient.next');
     await fs.rm(root, { recursive: true });
   });
 
