@@ -2,6 +2,7 @@
 import { Preview } from './preview.js';
 import { achievementsCard, buy, priceTag, sparks } from './sparks.js';
 import { privacyCard } from './profilePrivacy.js';
+import { streamsCard } from './accountStreams.js';
 import { legalNotices, signInNote } from './legalNotice.js';
 import { chip as supporterChip, supportCard } from './supportCard.js';
 import { rankBadge, rankChip } from './ranks.js';
@@ -198,7 +199,10 @@ function renderAccount() {
   const privacy = el('div', { class: 'privacy-slot' });
   // supporting the project: the tier, the subscription, the history (supportCard.js)
   const support = el('div', { class: 'support-slot' });
-  $('#account').replaceChildren(el('div', { class: 'account' }, el('div', { class: 'account-side' }, profile, privacy, support), capes));
+  // linked Twitch and Kick channels (accountStreams.js), when the server has them
+  const streams = el('div', { class: 'streams-slot' });
+  $('#account').replaceChildren(el('div', { class: 'account' }, el('div', { class: 'account-side' }, profile, privacy, streams, support), capes));
+  streamsCard().then((card) => card && streams.replaceWith(card)).catch(() => {});
   supportCard().then((card) => {
     if (!card) return;
     support.replaceWith(card);

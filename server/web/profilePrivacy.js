@@ -17,6 +17,7 @@ export const PRIVACY_ELEMENTS = [
   ['friends', 'Liczba znajomych'],
   ['servers', 'Serwery, na których grasz'],
   ['lastOnline', 'Kiedy ostatnio byłeś online'],
+  ['streams', 'Streamy (połączone kanały Twitch i Kick, transmisja na żywo)'],
 ];
 
 /** The card, filled once the settings are here; empty (null) when they cannot be read. */

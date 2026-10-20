@@ -4,6 +4,7 @@
 import { Preview } from './preview.js';
 import { $, SLOTS, ApiError, api, cosmeticEl, el, errorText, guard, icon, toast, token } from './common.js';
 import { rankChip } from './ranks.js';
+import { streamSection } from './profileStream.js';
 
 const handle = decodeURIComponent(location.pathname.split('/')[2] ?? '');
 const asPublic = new URLSearchParams(location.search).get('view') === 'public';
@@ -164,6 +165,8 @@ function render(p) {
         p.privacy.visibility === 'private' ? L('Profil prywatny: inni go nie widzą.', 'Private profile: nobody else sees it.') : L('Profil widzą tylko znajomi.', 'Only friends see this profile.')) : ''));
 
   const sections = [head];
+  // live on Twitch or Kick: the player right under the head; else links to the channels
+  sections.push(...streamSection(p.streams, L, LOCALE));
 
   const tiles = [];
   if (p.stats) {

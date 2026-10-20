@@ -9,6 +9,7 @@ import { supportPage } from './adminSupport.js';
 import { legalPage } from './adminLegal.js';
 import { rankChips, ranksPage, ranksReady, userRanksSection } from './adminRanks.js';
 import { settingsPage, supporterEditor } from './adminSettings.js';
+import { streamsPage } from './adminStreams.js';
 
 const TABS = [
   ['dashboard', 'Pulpit', 'fa-solid fa-chart-line'],
@@ -23,6 +24,7 @@ const TABS = [
   ['logs', 'Logi graczy', 'fa-solid fa-file-lines'],
   ['storage', 'Miejsce na pliki', 'fa-solid fa-hard-drive'],
   ['support', 'Wsparcie', 'fa-solid fa-heart'],
+  ['streams', 'Streamy', 'fa-solid fa-video'],
   ['legal', 'Dokumenty', 'fa-solid fa-scale-balanced'],
   ['settings', 'Ustawienia', 'fa-solid fa-sliders'],
   ['log', 'Dziennik', 'fa-solid fa-clock-rotate-left'],
@@ -50,6 +52,8 @@ const ACTIONS = {
   rank_create: 'dodał(a) rangę', rank_update: 'zmienił(a) rangę', rank_delete: 'usunął(ęła) rangę', rank_icon: 'zmienił(a) ikonę rangi',
   rank_grant: 'nadał(a) rangę', rank_revoke: 'odebrał(a) rangę',
   support_grant: 'przyznał(a) wsparcie', support_extend: 'przedłużył(a) wsparcie', support_revoke: 'odebrał(a) wsparcie',
+  streams_provider: 'zmienił(a) aplikację streamów', streams_test: 'sprawdził(a) połączenie z', streams_reconcile: 'sprawdził(a) teraz kanały:',
+  streams_unlink: 'odłączył(a) kanał streamu gracza',
   setting: 'zmienił(a) ustawienie', setting_reset: 'przywrócił(a) domyślne ustawienie', cosmetic_supporter: 'zmienił(a) poziom wsparcia dla',
 };
 
@@ -109,7 +113,7 @@ function layout() {
     el('button', { class: 'icon-btn', title: 'Wyloguj', onclick: async () => { await signOut(); me = undefined; gate(); } }, icon('fa-solid fa-right-from-bracket'))));
   const main = el('main', { class: 'main', id: 'main' });
   $('#root').replaceChildren(el('div', { class: 'admin' }, side, main));
-  ({ dashboard, users: usersPage, ranks: ranksPage, cosmetics: cosmeticsPage, achievements: achievementsPage, partners: partnersPage, clans: clansPage, communities: communitiesPage, requests: requestsPage, logs: logsPage, storage: storagePage, support: supportPage, legal: legalPage, settings: settingsPage, log: logPage })[tab]?.();
+  ({ dashboard, users: usersPage, ranks: ranksPage, cosmetics: cosmeticsPage, achievements: achievementsPage, partners: partnersPage, clans: clansPage, communities: communitiesPage, requests: requestsPage, logs: logsPage, storage: storagePage, support: supportPage, streams: streamsPage, legal: legalPage, settings: settingsPage, log: logPage })[tab]?.();
 }
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);

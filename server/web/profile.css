@@ -75,3 +75,16 @@
 /* a public community's page (spolecznosc.js) */
 .community-description { white-space: pre-wrap; margin: 14px 0 8px; line-height: 1.55; }
 .community-logo { image-rendering: pixelated; border-radius: 12px; }
+/* the "Stream" section (profileStream.js): the live player, or links to the channels */
+.profile-stream-head { align-items: center; gap: 10px; }
+.profile-stream-head h3 { margin: 0; }
+.profile-stream-head h3 i.fa-twitch { color: #a970ff; }
+.live-pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 6px; background: #e11d48; color: #fff; font-size: 12px; font-weight: 800; letter-spacing: .06em; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: live-pulse 1.6s ease-in-out infinite; }
+@keyframes live-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+.stream-frame { position: relative; margin-top: 12px; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: #000; }
+.stream-player { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.profile-stream-info { margin-top: 10px; display: grid; gap: 4px; }
+.profile-stream-info b { overflow-wrap: anywhere; }
+.stream-chip.twitch i { color: #a970ff; }
