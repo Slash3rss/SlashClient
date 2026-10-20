@@ -272,6 +272,7 @@ public final class Catalog {
 				() -> cfg.screenshotCaptionCorner, v -> cfg.screenshotCaptionCorner = v),
 			new Toggle("slashclient-hud.caption.coords", () -> cfg.screenshotCaptionCoords, v -> cfg.screenshotCaptionCoords = v),
 			new Toggle("slashclient-hud.caption.server", () -> cfg.screenshotCaptionServer, v -> cfg.screenshotCaptionServer = v)), null));
+		out.add(new Entry("liveNametags", "slashclient-hud.extra.liveNametags", "extras", "m-badges", () -> cfg.liveNametags, v -> cfg.liveNametags = v, List.of(), null));
 		out.add(new Entry("friendsPlaying", "slashclient-hud.extra.friendsPlaying", "extras", "m-friends", () -> cfg.friendPlayingToasts, v -> cfg.friendPlayingToasts = v, List.of(), null));
 		out.add(new Entry("chatStack", "slashclient-hud.chat.stack", "chat", "m-chatstack", () -> cfg.chatStack, v -> cfg.chatStack = v, List.of(), null));
 		out.add(new Entry("chatCopy", "slashclient-hud.chat.copy", "chat", "m-chatcopy", () -> cfg.chatCopy, v -> cfg.chatCopy = v, List.of(

@@ -452,6 +452,8 @@
 	"slashclient-hud.stream.toastNoTitle": "nadaje na żywo na %s",
 	"slashclient-hud.stream.line": "LIVE na %s · %s",
 	"slashclient-hud.stream.lineNoTitle": "LIVE na %s",
+	"slashclient-hud.stream.nametag": "NA ŻYWO",
+	"slashclient-hud.extra.liveNametags": "Pokazuj „Na żywo” nad graczami",
 	"slashclient-hud.mute.on": "Wycisz powiadomienia",
 	"slashclient-hud.mute.off": "Wyłącz wyciszenie",
 	"slashclient-hud.mute.failed": "Nie udało się zmienić wyciszenia",

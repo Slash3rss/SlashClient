@@ -452,6 +452,8 @@
 	"slashclient-hud.stream.toastNoTitle": "is live on %s",
 	"slashclient-hud.stream.line": "LIVE on %s · %s",
 	"slashclient-hud.stream.lineNoTitle": "LIVE on %s",
+	"slashclient-hud.stream.nametag": "LIVE",
+	"slashclient-hud.extra.liveNametags": "Show \"Live\" above players",
 	"slashclient-hud.mute.on": "Mute notifications",
 	"slashclient-hud.mute.off": "Unmute",
 	"slashclient-hud.mute.failed": "Could not change the mute",
