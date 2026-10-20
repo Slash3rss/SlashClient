@@ -11,6 +11,8 @@ import { openPackPreview } from './packPreview';
 import { initCloudProfiles } from './cloudProfiles';
 import { initVersionMove } from './versionMove';
 import { createAchievements } from './achievements';
+import { buyWithConfirm } from './sparkShop';
+import { sparks } from '../shared/sparks';
 import { openSkinEditor } from './skinEditor';
 import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
 import type { SlashApi } from '../main/preload';
@@ -1600,7 +1602,12 @@ document.querySelector('.nav[data-view="friends"]')?.addEventListener('click', (
 
 // ---------- achievements ----------
 
-const achievements = createAchievements($('#achievements-root'), { api, toast, errorText });
+const achievements = createAchievements($('#achievements-root'), {
+  api, toast, errorText, badge: $('#sparks-badge'),
+  // the shop shows the cosmetics as the cosmetics menu does
+  picture: (slot, id) => cosmeticPicture(slot as Slot, id),
+  slotName: (slot) => t(SLOTS.find(([s]) => s === slot)?.[1] ?? slot),
+});
 document.querySelector('.nav[data-view="achievements"]')?.addEventListener('click', () => achievements.show());
 
 // ---------- servers (lista.slash3rss.dev) ----------
@@ -3264,9 +3271,14 @@ async function renderSlashCapes() {
   $('#cosmetic-shared').classList.toggle('hidden', !character?.loadout);
   const signedIn = !!me;
   // what the server offers now: switched-off items are left out, exclusive and rank ones say if they are ours
-  type CatalogItem = { id: string; slot: Slot; name: string; rank?: string; exclusive: boolean; available: boolean; frames?: number };
-  const catalog: CatalogItem[] = (await api.socialApi('GET', '/v1/cosmetics').then((r: { capes: CatalogItem[]; items?: CatalogItem[] }) => r.items ?? r.capes.map((c) => ({ ...c, slot: 'cape' as Slot }))).catch(() => undefined))
+  type CatalogItem = { id: string; slot: Slot; name: string; rank?: string; exclusive: boolean; available: boolean; frames?: number; price?: number; owned?: boolean; hint?: string; hintEn?: string };
+  let walletBalance: number | undefined;
+  const catalog: CatalogItem[] = (await api.socialApi('GET', '/v1/cosmetics').then((r: { capes: CatalogItem[]; items?: CatalogItem[]; wallet?: { balance: number } }) => {
+    walletBalance = r.wallet?.balance;
+    return r.items ?? r.capes.map((c) => ({ ...c, slot: 'cape' as Slot }));
+  }).catch(() => undefined))
     ?? SLASH_CAPES.map(([id, name]) => ({ id, slot: 'cape' as Slot, name, exclusive: false, available: true }));
+  if (walletBalance !== undefined) achievements.setBalance(walletBalance);
   for (const c of catalog) if (c.frames) capeFrames.set(c.id, c.frames);
   const slots = SLOTS.filter(([slot]) => catalog.some((c) => c.slot === slot));
   if (!slots.some(([slot]) => slot === cosmeticSlot)) cosmeticSlot = 'cape';
@@ -3314,12 +3326,22 @@ async function renderSlashCapes() {
     const id = item?.id ?? '';
     const title = item ? item.name : t('Nic');
     const locked = !!item && !item.available;
-    const why = item?.rank ? t('{0}: tylko dla rangi {1}', title, RANK_NAMES[item.rank] ?? item.rank) : t('{0}: ekskluzywna, przyznaje ją admin', title);
-    const b = el('button', { type: 'button', className: `cape-choice${cosmeticSlot === 'cape' ? '' : ' square'}${id === current ? ' selected active' : ''}${id ? '' : ' none'}`, title: locked ? why : title }, content);
+    // sold in the shop for sparks: the price on it, a click asks to buy (sparkShop.ts)
+    const forSale = locked && !!item?.price && !item.owned;
+    const why = forSale ? t('{0}: w sklepie za {1}', title, sparks(item!.price!))
+      : item?.rank ? t('{0}: tylko dla rangi {1}', title, RANK_NAMES[item.rank] ?? item.rank)
+      : item?.hint ? `${title}: ${getLang() === 'en' ? item.hintEn ?? item.hint : item.hint}`
+      : t('{0}: ekskluzywna, przyznaje ją admin', title);
+    const b = el('button', { type: 'button', className: `cape-choice${cosmeticSlot === 'cape' ? '' : ' square'}${id === current ? ' selected active' : ''}${id ? '' : ' none'}${forSale ? ' for-sale' : ''}`, title: locked ? why : title }, content);
+    if (forSale) b.append(el('span', { className: 'cape-price' }, el('span', { className: 'spark-sign', textContent: '✦' }), ` ${item!.price!.toLocaleString(locale())}`));
     if (locked) b.append(el('i', { className: 'fa-solid fa-lock cape-lock' }));
     else if (item?.rank) b.append(el('i', { className: `fa-solid fa-shield-halved cape-lock rank-${item.rank}` }));
-    b.disabled = !signedIn || locked;
+    b.disabled = !signedIn || (locked && !forSale);
     b.addEventListener('click', async () => {
+      if (forSale) {
+        if ((await buyWithConfirm(item!, walletBalance ?? achievements.balance(), { api, toast, errorText }, cosmeticPicture(item!.slot, item!.id))) !== undefined) renderSlashCapes();
+        return;
+      }
       const slot = cosmeticSlot;
       const change = slot === 'cape' ? { cape: id } : { loadout: { [slot]: id } };
       const me = await guard(() => api.socialApi('POST', '/v1/me', character ? { character: character.uuid, ...change } : change));

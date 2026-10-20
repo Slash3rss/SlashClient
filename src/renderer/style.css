@@ -1284,3 +1284,59 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .fr-role-owner { color: #fbbf24 !important; }
 .fr-role-officer { color: #93c5fd !important; }
 .fr-clan-leave { justify-content: flex-end; margin-top: 8px; }
+
+/* ---------- sparks (the achievements' currency), the shop and the achievements in categories ---------- */
+.spark-sign { color: #fbbf24; text-shadow: 0 0 6px rgba(251, 191, 36, .45); }
+.nav-sparks { margin-left: auto; padding: 0 7px; height: 20px; border-radius: 99px; background: rgba(251, 191, 36, .14); color: #fcd34d; font-size: 11.5px; font-weight: 700; display: grid; place-items: center; white-space: nowrap; }
+.ach-top { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; }
+.ach-top .ach-tabs { margin-left: auto; align-self: flex-end; }
+.spark-card { padding: 12px 16px; display: flex; gap: 14px; align-items: center; min-width: 260px; border-color: rgba(251, 191, 36, .3); }
+.spark-card .grow { display: flex; flex-direction: column; gap: 2px; }
+.spark-card b { font-size: 24px; color: #fde68a; }
+.spark-big { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; font-size: 26px; background: radial-gradient(circle at 40% 35%, rgba(251, 191, 36, .35), rgba(234, 88, 12, .15)); }
+.ach-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.ach-tab { height: 34px; padding: 0 14px; border-radius: 17px; background: transparent; color: var(--text-secondary); }
+.ach-tab.active { background: var(--glass-bg-hover); color: var(--text-primary); border-color: var(--accent); }
+.ach-filter { display: flex; gap: 6px; flex-wrap: wrap; }
+.ach-chip { height: 30px; padding: 0 11px; border-radius: 15px; font-size: 12.5px; background: transparent; color: var(--text-secondary); }
+.ach-chip small { color: var(--text-muted); font: 11px var(--font-mono); }
+.ach-chip.active { background: var(--glass-bg-hover); color: var(--text-primary); border-color: var(--accent); }
+.ach-section { display: flex; flex-direction: column; gap: 8px; }
+.ach-section-head { display: flex; align-items: center; gap: 10px; }
+.ach-section-head > i { color: var(--accent-light); width: 18px; text-align: center; }
+.ach-section-head h3 { margin: 0; font-size: 15px; }
+.ach-section-head .ach-section-bar { width: 140px; margin: 0; }
+.ach-section-head small { font: 11.5px var(--font-mono); }
+.ach-section-sparks { margin-left: auto; color: var(--text-secondary); }
+.ach-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; }
+.ach-sparks { font: 600 12px var(--font-mono); color: var(--text-muted); white-space: nowrap; padding: 2px 7px; border-radius: 10px; background: rgba(255, 255, 255, .04); }
+.ach-sparks .spark-sign { color: var(--text-muted); text-shadow: none; }
+.ach-sparks.earned { color: #fde68a; background: rgba(251, 191, 36, .12); }
+.ach-sparks.earned .spark-sign { color: #fbbf24; }
+.ach-card.secret { border-style: dashed; }
+.ach-card.secret .ach-text b { letter-spacing: 2px; }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.shop-card { padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+.shop-card.owned { border-color: rgba(74, 222, 128, .3); }
+.shop-card b { font-size: 13.5px; }
+.shop-card button { margin-top: 4px; width: 100%; height: 32px; }
+.shop-picture { height: 76px; display: grid; place-items: center; }
+.shop-picture canvas { width: 40px; height: 64px; image-rendering: pixelated; }
+.shop-picture .clothing-icon, .shop-picture canvas.game-icon { width: 64px; height: 64px; }
+.shop-owned { color: #4ade80; }
+.shop-missing { font-size: 11px; min-height: 14px; }
+.shop-confirm-picture { display: grid; place-items: center; height: 84px; margin-bottom: 6px; }
+.shop-confirm-picture canvas { width: 46px; height: 74px; image-rendering: pixelated; }
+.shop-confirm-picture .clothing-icon { width: 72px; height: 72px; }
+.slash-capes .cape-choice.for-sale { cursor: pointer; }
+.slash-capes .cape-choice.for-sale > :first-child { filter: saturate(.75) brightness(.85); }
+.cape-price { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); padding: 0 5px; border-radius: 8px; background: rgba(15, 15, 20, .85); color: #fde68a; font: 600 10px var(--font-mono); white-space: nowrap; }
+.ledger { padding: 6px 14px; display: flex; flex-direction: column; }
+.ledger-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255, 255, 255, .05); }
+.ledger-row:last-child { border-bottom: none; }
+.ledger-row > .grow { flex: 1; min-width: 0; }
+.ledger-row i { color: var(--text-muted); width: 18px; text-align: center; }
+.ledger-amount { font: 700 13px var(--font-mono); min-width: 64px; text-align: right; }
+.ledger-amount.plus { color: #fbbf24; }
+.ledger-amount.minus { color: #f87171; }
+.ledger-after { font: 11px var(--font-mono); min-width: 52px; text-align: right; }

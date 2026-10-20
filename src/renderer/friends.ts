@@ -102,6 +102,10 @@ export function socialErrorText(code: string): string {
     image_quota: t('Wysłano dziś za dużo obrazów. Spróbuj jutro.'),
     not_an_image: t('To nie jest obraz.'),
     bad_image: t('Nie udało się wysłać obrazu. Spróbuj ponownie.'),
+    // the shop (sparks from achievements)
+    not_enough_sparks: t('Za mało Iskier.'),
+    owned: t('Masz już ten przedmiot.'),
+    not_for_sale: t('Tego nie ma w sklepie.'),
   };
   return texts[code] ?? t('Błąd serwera znajomych ({0}).', code);
 }

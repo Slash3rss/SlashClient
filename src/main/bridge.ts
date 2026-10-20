@@ -56,6 +56,9 @@ const ALLOWED: [string, RegExp][] = [
   ['POST', /^\/v1\/me$/],
   // the player's achievements (the cosmetics menu says how to earn the locked rewards)
   ['GET', /^\/v1\/achievements$/],
+  // sparks from achievements: the balance, and buying a cosmetic with them in the game's menu
+  ['GET', /^\/v1\/wallet$/],
+  ['POST', /^\/v1\/shop\/\w{1,64}\/buy$/],
   // group chats (clan chats too): reading, writing, a new group, adding friends, leaving
   ['GET', /^\/v1\/groups$/],
   ['POST', /^\/v1\/groups$/],
@@ -74,7 +77,9 @@ const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', '
   // someone there sprayed on a block: the HUD draws it
   'spray',
   // group and clan chats
-  'groups', 'group-message', 'clan']);
+  'groups', 'group-message', 'clan',
+  // sparks: the balance changed, and many achievements unlocked at once (one toast)
+  'wallet', 'achievements-summary']);
 const KEEP = 200;
 const LONG_POLL_MS = 25_000;
 

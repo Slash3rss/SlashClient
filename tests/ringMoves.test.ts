@@ -33,9 +33,10 @@ describe('rings and movement effects', () => {
     assert.ok(web.includes(`const RING_FRAMES = ${JSON.stringify(RING_FRAMES).replace(/"(\w+)":/g, '$1: ').replace(/,/g, ', ').replace(/\{/, '{ ').replace(/\}$/, ' }')}`));
   });
 
-  it('come with the unreleased launcher, free for everyone, with ids no other slot uses', () => {
+  it('come with the unreleased launcher, free for everyone (except the shop ones), with ids no other slot uses', () => {
     for (const i of ITEMS.filter((x) => x.slot === 'ring' || x.slot === 'move')) {
-      assert.equal(i.since, '0.9.20', i.id);
+      // the shop's rings came later, sold for sparks
+      assert.equal(i.since, i.price ? '0.9.22' : '0.9.20', i.id);
       assert.ok(compareVersions(i.since!, '0.9.19') > 0);
       assert.equal(i.rank, undefined, i.id);
       assert.equal(i.achievement, undefined, i.id);

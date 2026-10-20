@@ -10,7 +10,9 @@ import { CanvasTexture, DoubleSide, Mesh, MeshBasicMaterial, NearestFilter, type
  */
 
 /** In the order of the menus (the same as the server's catalog and the mod's lists). */
-export const RING_IDS = ['ring_runes', 'ring_flame', 'ring_frost', 'ring_rainbow', 'ring_mushroom', 'ring_galaxy', 'ring_halo', 'ring_toxic'] as const;
+export const RING_IDS = ['ring_runes', 'ring_flame', 'ring_frost', 'ring_rainbow', 'ring_mushroom', 'ring_galaxy', 'ring_halo', 'ring_toxic',
+  // sold in the shop for sparks
+  'ring_sparks', 'ring_ocean'] as const;
 /** The animated rings and how many frames each has (<id>_<n>.png); the others are <id>.png. */
 export const RING_FRAMES: Record<string, number> = { ring_runes: 8, ring_flame: 8, ring_rainbow: 8, ring_galaxy: 8, ring_toxic: 8 };
 export const MOVE_IDS = ['move_steps', 'move_jump', 'move_landing', 'move_arrows', 'move_sprint', 'move_bubbles', 'move_petals'] as const;
