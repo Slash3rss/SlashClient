@@ -58,6 +58,7 @@ const EN: Record<string, string> = {
   'Profile': 'Profiles',
   'Konta': 'Accounts',
   'Konto i profil': 'Account and profile',
+  'Zapisz logo': 'Save logo',
   'Nowa wersja {0}. SlashClient działa spoza folderu Aplikacje, więc nie może zaktualizować się sam — przenieś go tam.': 'New version {0}. SlashClient is running outside the Applications folder, so it can’t update itself — move it there.',
   'Nowa wersja {0}. SlashClient nie ma prawa zapisu w swoim folderze — pobierz nową wersję ręcznie.': 'New version {0}. SlashClient can’t write to its folder — download the new version yourself.',
   'Nowa wersja {0}. Nie udało się jej pobrać — spróbuj ponownie.': 'New version {0}. The download failed — try again.',

@@ -1505,3 +1505,6 @@ body.feature-off-streams .feature-streams { display: none !important; }
 .fr-names small.fr-live-line { color: #fda4af; }
 .fr-watch { background: linear-gradient(135deg, #e11d48, #9f1239); border-color: transparent; color: #fff; }
 .fr-streams { display: grid; gap: 6px; }
+/* a picked logo not saved yet: shown as it will look, outlined */
+.fr-clan-logo-preview.pending { outline: 2px dashed var(--accent); outline-offset: 2px; }
+.fr-clan-logo-preview.pending img { width: 100%; height: 100%; image-rendering: pixelated; border-radius: inherit; object-fit: cover; }

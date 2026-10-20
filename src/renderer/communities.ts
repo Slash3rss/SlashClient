@@ -1,5 +1,5 @@
 import { locale, t } from '../shared/i18n';
-import { logoFromFile, logoUrl } from './clanLogo';
+import { logoFromFile, logoUrl, stageLogo } from './clanLogo';
 import { confirmDialog, control, el, icon, modalWindow } from './dialog';
 import { editHint, editedLabel, openMenu, replaceMessage, tombstone, withMenu, type MenuItem } from './chatEdits';
 import { disabledText, featureOn } from './features';
@@ -833,11 +833,16 @@ export function createCommunities(deps: Deps) {
 
   /** The logo: the clans' pipeline (a square scaled to 64×64 here, checked again by the main process and the server). */
   function logoSection(c: Community, redraw: () => void): Node[] {
-    const preview = communityAvatar(c, () => {
+    const big = (ready?: () => void) => {
+      const box = communityAvatar(c, ready);
+      box.classList.add('fr-clan-logo-preview');
+      return box;
+    };
+    // a logo still loading takes its place in the window, at the window's size, when it comes
+    const preview = big(() => {
       deps.changed();
-      preview.replaceWith(communityAvatar(c));
+      preview.replaceWith(big());
     });
-    preview.classList.add('fr-clan-logo-preview');
     const file = control<HTMLInputElement>('input', { type: 'file', accept: 'image/png,image/jpeg,image/webp,image/gif', className: 'hidden' });
     const change = el('button', { type: 'button' }, icon('fa-image'), c.logo ? t(' Zmień logo') : t(' Dodaj logo'));
     change.addEventListener('click', () => file.click());
@@ -847,16 +852,20 @@ export function createCommunities(deps: Deps) {
       if (!picked || !api.socialSetCommunityLogo) return;
       change.disabled = true;
       const png = await logoFromFile(picked).catch(() => undefined);
-      if (!png) {
-        change.disabled = false;
-        return deps.toast(t('Nie udało się odczytać obrazka.'), true);
-      }
-      const res = await act(() => api.socialSetCommunityLogo!(c.id, png), t('Zapisano logo.'));
       change.disabled = false;
-      if (res) {
-        await refresh();
-        redraw();
-      }
+      if (!png) return deps.toast(t('Nie udało się odczytać obrazka.'), true);
+      // shown first as it will look; sent only on "Zapisz logo"
+      stageLogo({
+        preview, tools: tools.filter((n): n is HTMLElement => n instanceof HTMLElement && n !== file), png, el: el as never,
+        labels: { save: t('Zapisz logo'), cancel: t('Anuluj') },
+        save: async (data) => {
+          const res = await act(() => api.socialSetCommunityLogo!(c.id, data), t('Zapisano logo.'));
+          if (!res) return false;
+          await refresh();
+          redraw();
+          return true;
+        },
+      });
     });
     const tools: Node[] = [change, file];
     if (c.logo) {

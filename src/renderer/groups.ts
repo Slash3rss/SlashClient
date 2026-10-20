@@ -1,5 +1,5 @@
 import { locale, t } from '../shared/i18n';
-import { logoFromFile, logoUrl } from './clanLogo';
+import { logoFromFile, logoUrl, stageLogo } from './clanLogo';
 import { confirmDialog, control, el, icon, modalWindow } from './dialog';
 import { canDelete, canEdit, editHint, editedLabel, replaceMessage, tombstone, withMenu, type MenuItem, type Moderator } from './chatEdits';
 import { disabledText, featureOn } from './features';
@@ -634,16 +634,20 @@ export function createGroups(deps: Deps) {
       if (!picked || !api.socialSetClanLogo) return;
       change.disabled = true;
       const png = await logoFromFile(picked).catch(() => undefined);
-      if (!png) {
-        change.disabled = false;
-        return deps.toast(t('Nie udało się odczytać obrazka.'), true);
-      }
-      const res = await act(() => api.socialSetClanLogo!(png), t('Zapisano logo klanu.'));
       change.disabled = false;
-      if (res) {
-        takeClan(res);
-        redraw();
-      }
+      if (!png) return deps.toast(t('Nie udało się odczytać obrazka.'), true);
+      // shown first as it will look; sent only on "Zapisz logo"
+      stageLogo({
+        preview, tools: parts.filter((n): n is HTMLElement => n instanceof HTMLElement && n !== file), png, el: el as never,
+        labels: { save: t('Zapisz logo'), cancel: t('Anuluj') },
+        save: async (data) => {
+          const res = await act(() => api.socialSetClanLogo!(data), t('Zapisano logo klanu.'));
+          if (!res) return false;
+          takeClan(res);
+          redraw();
+          return true;
+        },
+      });
     });
     const parts: Node[] = [change, file];
     if (c.logo) {
