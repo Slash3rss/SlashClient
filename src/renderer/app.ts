@@ -3192,6 +3192,8 @@ function wingsThumbnail(texture: string): HTMLCanvasElement {
 /** A shield's face, cut from its picture (the game's shield layout at 4×). */
 function heldShieldThumbnail(texture: string): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
+  // tall like the shield itself (12×22 pixels), not the square tiles' wide picture size
+  canvas.className = 'shield-icon';
   canvas.width = 48;
   canvas.height = 88;
   const img = new Image();
