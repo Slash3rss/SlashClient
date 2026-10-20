@@ -752,7 +752,7 @@ createToolSettings($('#tools-card'), { api, toast, errorText });
 const wiki = createWiki($('#wiki-root'), { api, toast, errorText });
 document.querySelector('.nav[data-view="wiki"]')?.addEventListener('click', () => wiki.focus());
 // "Wesprzyj projekt": opens the website's support page; the tier shown is asked again on each visit to Settings
-const supportCard = createSupportCard($('#support-card'), { api, socialUrl: () => store?.settings.socialUrl ?? '' });
+const supportCard = createSupportCard($('#support-card'), { api, socialUrl: () => store?.settings.socialUrl ?? '', toast });
 document.querySelector('.nav[data-view="settings"]')?.addEventListener('click', () => void supportCard.refresh());
 
 function showPane(pane: ProfilePane) {
