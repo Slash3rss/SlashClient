@@ -9,6 +9,7 @@ import { SPARKS_EN } from './i18nSparks';
 import { PROFILES_EN } from './i18nProfiles';
 import { SUPPORT_EN } from './i18nSupport';
 import { LEGAL_EN } from './i18nLegal';
+import { COMMUNITIES_EN } from './i18nCommunities';
 
 export type Lang = 'pl' | 'en';
 
@@ -28,6 +29,8 @@ const EN: Record<string, string> = {
   ...SUPPORT_EN,
   // the terms and the privacy policy (own file)
   ...LEGAL_EN,
+  // communities in the Friends view (own file)
+  ...COMMUNITIES_EN,
   // navigation and common
   'Graj': 'Play',
   'GRAJ': 'PLAY',

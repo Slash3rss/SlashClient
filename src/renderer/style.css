@@ -1427,3 +1427,43 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .legal-links { flex-wrap: wrap; gap: 8px; }
 .fr-signin .legal-note { display: block; margin-top: 14px; }
 .legal-note a { color: var(--accent-light); }
+/* ---------- communities (communities.ts) ---------- */
+.fr-section-btns { gap: 4px; }
+.fr-group-avatar.community { background: linear-gradient(135deg, #0f766e, #14b8a6); }
+.fr-group-avatar.community.has-logo { background: rgba(255, 255, 255, .06); }
+.fr-mention-badge { background: #f59e0b; }
+.fr-staff-dot { color: #f59e0b; font-size: 12px; }
+.fr-com-tabs { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+.fr-com-tab { height: 24px; padding: 0 10px; border-radius: 12px; font-size: 12px; background: transparent; color: var(--text-secondary); position: relative; }
+.fr-com-tab.active { background: var(--glass-bg-hover); color: var(--text-primary); border-color: #14b8a6; }
+.fr-tab-dot { position: absolute; top: 3px; right: 3px; width: 7px; height: 7px; border-radius: 50%; background: #ef4444; }
+.fr-tab-dot.mention { background: #f59e0b; }
+.fr-chat-head .icon-btn { position: relative; }
+.fr-btn-count { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #f59e0b; color: #111; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
+.fr-plain-note { font-style: normal; color: #fbbf24; opacity: .85; font-size: 11.5px; }
+.fr-plain-note i { margin-right: 2px; }
+.fr-bubble.fr-mention { box-shadow: inset 3px 0 0 #f59e0b; background: rgba(245, 158, 11, .12); }
+.fr-at { color: #93c5fd; font-weight: 700; }
+.fr-at.me { color: #fbbf24; }
+.fr-msg.mine .fr-at { color: #fff; }
+.fr-com-role { margin-right: 4px; padding: 0 5px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
+.fr-com-role.owner { background: rgba(251, 191, 36, .18); color: #fbbf24; }
+.fr-com-role.admin { background: rgba(239, 68, 68, .18); color: #fca5a5; }
+.fr-com-role.moderator { background: rgba(59, 130, 246, .18); color: #93c5fd; }
+.fr-com-role-line.owner { color: #fbbf24 !important; }
+.fr-com-role-line.admin { color: #fca5a5 !important; }
+.fr-com-role-line.moderator { color: #93c5fd !important; }
+.fr-com-modal { width: min(600px, 100%); }
+.fr-com-modal textarea { width: 100%; resize: vertical; padding: 10px 14px; font: inherit; font-size: 14px; color: var(--text-primary); background: rgba(0, 0, 0, .2); border: 1px solid var(--glass-border); border-radius: var(--btn-radius); }
+.fr-com-modal textarea:focus { outline: none; border-color: var(--glass-border-focus); }
+.fr-com-modal .fr-clan-logo-row button { white-space: nowrap; }
+.fr-com-selects select { flex: 1; min-width: 0; }
+.fr-com-directory { max-height: 380px; }
+.fr-com-dir-row .fr-names { gap: 1px; }
+.fr-com-desc { color: var(--text-secondary); white-space: normal !important; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.fr-role-pick { height: 30px; padding: 0 6px; font-size: 12px; width: 124px !important; flex: none; }
+.fr-quote { margin: 0; padding: 8px 12px; border-left: 3px solid #f59e0b; background: rgba(255, 255, 255, .04); border-radius: 6px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
+.fr-com-report { display: flex; flex-direction: column; gap: 6px; padding: 8px; border-bottom: 1px solid var(--glass-border); }
+.fr-com-log { display: flex; gap: 10px; padding: 4px 8px; font-size: 13px; align-items: baseline; }
+.fr-com-log small { flex: 0 0 110px; }
+.fr-composer textarea:disabled { opacity: .55; cursor: not-allowed; }

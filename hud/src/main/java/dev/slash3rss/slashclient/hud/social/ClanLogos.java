@@ -28,23 +28,37 @@ public final class ClanLogos {
 	private static int next;
 
 	/** The clan's logo of that version, or null when it has none or it is not here (yet). */
-	public static synchronized ChatImages.Texture of(String clanId, long version) {
-		if (clanId == null || clanId.isEmpty() || version <= 0) return null;
-		String key = clanId + ":" + version;
+	public static ChatImages.Texture of(String clanId, long version) {
+		return get("clan", clanId, version);
+	}
+
+	/** A community's logo (the same pipeline as clans'), or null. */
+	public static ChatImages.Texture community(String communityId, long version) {
+		return get("community", communityId, version);
+	}
+
+	private static synchronized ChatImages.Texture get(String kind, String ownerId, long version) {
+		if (ownerId == null || ownerId.isEmpty() || version <= 0) return null;
+		String key = keyOf(kind, ownerId, version);
 		ChatImages.Texture t = textures.get(key);
 		if (t == null) {
 			// without the launcher (yet) there is nothing to ask; it is tried once it is there
 			if (!Social.bridged()) return null;
 			textures.put(key, LOADING);
-			Thread.ofVirtual().start(() -> load(key, clanId, version));
+			Thread.ofVirtual().start(() -> load(key, kind, ownerId, version));
 			return null;
 		}
 		return t.ready() ? t : null;
 	}
 
-	private static void load(String key, String clanId, long version) {
+	/** "clan:WOLF:5", "community:abc:7"; a clan's key stays as before ("WOLF:5"). */
+	private static String keyOf(String kind, String ownerId, long version) {
+		return ("clan".equals(kind) ? "" : kind + "/") + ownerId + ":" + version;
+	}
+
+	private static void load(String key, String kind, String ownerId, long version) {
 		try {
-			byte[] png = Social.clanLogoBytes(clanId, version);
+			byte[] png = Social.logoBytes(kind, ownerId, version);
 			NativeImage img;
 			try (InputStream in = new ByteArrayInputStream(png)) {
 				img = NativeImage.read(in);
@@ -71,6 +85,13 @@ public final class ClanLogos {
 	public static synchronized void sampleForTest(String clanId, long version, byte[] png) throws java.io.IOException {
 		try (InputStream in = new ByteArrayInputStream(png)) {
 			register(clanId + ":" + version, NativeImage.read(in));
+		}
+	}
+
+	/** The same for a community. */
+	public static synchronized void sampleCommunityForTest(String communityId, long version, byte[] png) throws java.io.IOException {
+		try (InputStream in = new ByteArrayInputStream(png)) {
+			register(keyOf("community", communityId, version), NativeImage.read(in));
 		}
 	}
 

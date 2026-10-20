@@ -157,6 +157,8 @@ const api = {
   /** A clan's logo: the owner's new one (a 64×64 PNG the page made), and one to show as a data: address. */
   socialSetClanLogo: (png: Uint8Array) => invoke('social:setClanLogo', png),
   socialClanLogo: (id: string, version: number) => invoke('social:clanLogo', id, version),
+  socialSetCommunityLogo: (id: string, png: Uint8Array) => invoke('social:setCommunityLogo', id, png),
+  socialCommunityLogo: (id: string, version: number) => invoke('social:communityLogo', id, version),
   joinInGame: (address: string) => invoke('game:join', address),
   listConfigs: (profileId: string) => invoke('configs:list', profileId),
   readConfig: (profileId: string, rel: string) => invoke('configs:read', profileId, rel),

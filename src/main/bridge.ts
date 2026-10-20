@@ -34,6 +34,8 @@ export interface BridgeOptions {
   chatImage?: (id: string) => Promise<Buffer>;
   /** A clan's logo (PNG, 64×64) by the clan's id and the logo's version. */
   clanLogo?: (id: string, version: number) => Promise<Buffer>;
+  /** A community's logo, the same way. */
+  communityLogo?: (id: string, version: number) => Promise<Buffer>;
 }
 
 /** What the game may ask for: its friends and the messages with them. */
@@ -75,6 +77,14 @@ const ALLOWED: [string, RegExp][] = [
   ['DELETE', /^\/v1\/groups\/[\w-]{1,32}\/messages\/\d{1,15}$/],
   // the clan: who is in it and online (managing it stays in the launcher)
   ['GET', /^\/v1\/clans\/mine$/],
+  // communities: the list, their chat (read, write, edit and delete one's own or as a moderator, report), members to look at (managing stays in the launcher)
+  ['GET', /^\/v1\/communities\/mine$/],
+  ['GET', /^\/v1\/communities\/[\w-]{1,32}\/channels\/[\w-]{1,32}\/messages(\?(before=\d+&?|limit=\d+&?)*)?$/],
+  ['POST', /^\/v1\/communities\/[\w-]{1,32}\/channels\/[\w-]{1,32}\/(messages|read)$/],
+  ['POST', /^\/v1\/communities\/[\w-]{1,32}\/channels\/[\w-]{1,32}\/messages\/\d{1,15}\/(edit|report)$/],
+  ['DELETE', /^\/v1\/communities\/[\w-]{1,32}\/channels\/[\w-]{1,32}\/messages\/\d{1,15}$/],
+  ['GET', /^\/v1\/communities\/[\w-]{1,32}\/members(\?(offset=\d+&?|limit=\d+&?)*)?$/],
+  ['POST', /^\/v1\/communities\/[\w-]{1,32}\/notify$/],
 ];
 /** From the game, /v1/me changes only cosmetics (not, say, whether friends see the server). */
 const ME_KEYS = new Set(['cape', 'loadout', 'character', 'own']);
@@ -90,7 +100,9 @@ const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', '
   // a message edited or deleted, direct or in a group
   'message-edit', 'message-delete', 'group-message-edit', 'group-message-delete',
   // sparks: the balance changed, and many achievements unlocked at once (one toast)
-  'wallet', 'achievements-summary']);
+  'wallet', 'achievements-summary',
+  // communities: the list changed, their chat, and news for one (invited, accepted, kicked…)
+  'communities', 'community-message', 'community-message-edit', 'community-message-delete', 'community']);
 const KEEP = 200;
 const LONG_POLL_MS = 25_000;
 
@@ -225,12 +237,13 @@ export class GameBridge {
       }
     }
 
-    // a clan's logo for the friends window (kept by version, so the game may keep it too)
-    const logo = /^\/clan\/logo\/([\w-]{1,32})\?v=(\d{1,16})$/.exec(url);
+    // a clan's (or a community's) logo for the friends window (kept by version, so the game may keep it too)
+    const logo = /^\/(clan|community)\/logo\/([\w-]{1,32})\?v=(\d{1,16})$/.exec(url);
     if (method === 'GET' && logo) {
-      if (!this.opts.clanLogo) return this.send(res, 404, { error: 'not_found' });
+      const fetchLogo = logo[1] === 'clan' ? this.opts.clanLogo : this.opts.communityLogo;
+      if (!fetchLogo) return this.send(res, 404, { error: 'not_found' });
       try {
-        const png = await this.opts.clanLogo(logo[1], Number(logo[2]));
+        const png = await fetchLogo(logo[2], Number(logo[3]));
         res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-store' });
         return res.end(png);
       } catch (err) {

@@ -46,6 +46,7 @@ const GROUP_ICONS: Record<string, string> = {
   days: 'fa-calendar-check', longday: 'fa-hourglass-half', weekends: 'fa-umbrella-beach', anniversary: 'fa-cake-candles',
   night: 'fa-moon', newyear: 'fa-champagne-glasses', halloween: 'fa-ghost', friday13: 'fa-cat',
   groups_joined: 'fa-people-group', groups_created: 'fa-comments', group_size: 'fa-users', clan_joined: 'fa-shield-halved', clan_founded: 'fa-chess-rook', clan_size: 'fa-flag',
+  community_joined: 'fa-people-group', community_founded: 'fa-crown', community_size: 'fa-users',
   waypoints: 'fa-location-dot', parties_created: 'fa-bullhorn', parties_joined: 'fa-handshake', media: 'fa-camera', shares: 'fa-share-nodes', cloud: 'fa-cloud',
   sprays: 'fa-spray-can', worn: 'fa-shirt', bought: 'fa-bag-shopping', spent: 'fa-gem', manual: 'fa-award',
 };

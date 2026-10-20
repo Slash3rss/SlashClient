@@ -34,6 +34,10 @@ public class FriendsScreen extends Screen {
 	private String selectedGroup;
 	/** The clan's members instead of its chat. */
 	private boolean showMembers;
+	/** A community's channel open instead (communities are managed in the launcher; here: chat and a look at members). */
+	private String selectedCommunity, selectedChannel;
+	/** The community's first members instead of its chat. */
+	private boolean showCommunityMembers;
 	/** Messages scrolled up from the newest, in pixels. */
 	private int scroll;
 	private int maxScroll;
@@ -43,8 +47,16 @@ public class FriendsScreen extends Screen {
 	private final List<Hit> hits = new ArrayList<>();
 	/** What the button under the mouse does, drawn last. */
 	private Component tooltip;
-	/** Where each message is on screen this frame, for the right-click menu (one of the two is set). */
-	private record Bubble(int x, int y, int w, int h, Social.Message direct, Groups.Message group) {}
+	/** Where each message is on screen this frame, for the right-click menu (one of the three is set). */
+	private record Bubble(int x, int y, int w, int h, Social.Message direct, Groups.Message group, Communities.Message community) {
+		Bubble(int x, int y, int w, int h, Social.Message direct, Groups.Message group) {
+			this(x, y, w, h, direct, group, null);
+		}
+
+		long id() {
+			return direct != null ? direct.id() : group != null ? group.id() : community.id();
+		}
+	}
 	private final List<Bubble> bubbles = new ArrayList<>();
 	/** The rectangle of the card drawPicture/drawInvite/drawWaypoint just drew (null when it was out of sight). */
 	private int[] lastCard;
@@ -56,7 +68,7 @@ public class FriendsScreen extends Screen {
 	private static final int MENU_ROW = 15;
 	/** The message being edited in the field instead of a new one (-1: none), and whose conversation it is. */
 	private long editingId = -1;
-	private String editingFriend, editingGroup;
+	private String editingFriend, editingGroup, editingCommunity, editingChannel;
 
 	// the panel, recomputed on every resize
 	private int px, py, pw, ph;
@@ -66,6 +78,15 @@ public class FriendsScreen extends Screen {
 		this.parent = parent;
 		selected = Social.viewing;
 		selectedGroup = selected == null ? Groups.viewing : null;
+		// a community's channel that was open
+		if (selected == null && selectedGroup == null && Communities.viewing != null) {
+			for (Communities.Community c : Communities.list()) {
+				if (c.channel(Communities.viewing) != null) {
+					selectedCommunity = c.id();
+					selectedChannel = Communities.viewing;
+				}
+			}
+		}
 		Party.refresh();
 	}
 
@@ -82,7 +103,7 @@ public class FriendsScreen extends Screen {
 		input.setTextColor(Ui.TEXT);
 		input.setMaxLength(2000);
 		input.setHint(Component.translatable("slashclient-hud.friends.write"));
-		input.visible = selected != null || selectedGroup != null;
+		input.visible = selected != null || selectedGroup != null || selectedCommunity != null;
 		addRenderableWidget(input);
 		if (input.visible) setInitialFocus(input);
 	}
@@ -93,6 +114,8 @@ public class FriendsScreen extends Screen {
 		selected = id;
 		selectedGroup = null;
 		Groups.viewing = null;
+		selectedCommunity = null;
+		Communities.viewing = null;
 		scroll = 0;
 		Social.open(id);
 		input.visible = true;
@@ -107,12 +130,42 @@ public class FriendsScreen extends Screen {
 		selectedGroup = id;
 		selected = null;
 		Social.viewing = null;
+		selectedCommunity = null;
+		Communities.viewing = null;
 		showMembers = false;
 		scroll = 0;
 		Groups.open(id);
 		input.visible = true;
 		setFocused(input);
 		input.setFocused(true);
+	}
+
+	/** Opens a community's channel (its general one when `channelId` is null) in place of a chat. Public for the in-game test. */
+	public void selectCommunity(String communityId, String channelId) {
+		Communities.Community c = Communities.community(communityId);
+		Communities.Channel ch = c == null ? null : channelId != null ? c.channel(channelId) : c.general();
+		if (ch == null) return;
+		stopEditing();
+		menu = null;
+		selectedCommunity = communityId;
+		selectedChannel = ch.id();
+		selected = null;
+		selectedGroup = null;
+		Social.viewing = null;
+		Groups.viewing = null;
+		showCommunityMembers = false;
+		scroll = 0;
+		Communities.open(communityId, ch.id());
+		input.visible = true;
+		setFocused(input);
+		input.setFocused(true);
+	}
+
+	/** The community's members instead of its chat, or back (the test uses it too). */
+	public void toggleCommunityMembers() {
+		showCommunityMembers = !showCommunityMembers;
+		if (showCommunityMembers && selectedCommunity != null) Communities.loadMembers(selectedCommunity);
+		else setFocused(input);
 	}
 
 	/** The clan's members instead of its chat, or back (the header's button; the test uses it too). */
@@ -124,9 +177,16 @@ public class FriendsScreen extends Screen {
 		// the field holds a message being edited: its new text goes instead of a new message
 		if (editingId >= 0) {
 			if (input.getValue().isBlank()) return;
-			if (editingGroup != null) Groups.edit(editingGroup, editingId, input.getValue());
+			if (editingCommunity != null) Communities.edit(editingCommunity, editingChannel, editingId, input.getValue());
+			else if (editingGroup != null) Groups.edit(editingGroup, editingId, input.getValue());
 			else Social.edit(editingFriend, editingId, input.getValue());
 			stopEditing();
+			return;
+		}
+		if (selectedCommunity != null && !input.getValue().isBlank()) {
+			Communities.send(selectedCommunity, selectedChannel, input.getValue());
+			input.setValue("");
+			scroll = 0;
 			return;
 		}
 		if (selectedGroup != null && !input.getValue().isBlank()) {
@@ -156,10 +216,17 @@ public class FriendsScreen extends Screen {
 		scroll = 0;
 	}
 
+	/** The same for our message in a community's channel. */
+	public void startEditingCommunity(String communityId, String channelId, long id, String text) {
+		startEditing(null, null, id, text);
+		editingCommunity = communityId;
+		editingChannel = channelId;
+	}
+
 	private void stopEditing() {
 		if (editingId < 0) return;
 		editingId = -1;
-		editingFriend = editingGroup = null;
+		editingFriend = editingGroup = editingCommunity = editingChannel = null;
 		if (input != null) input.setValue("");
 	}
 
@@ -172,6 +239,16 @@ public class FriendsScreen extends Screen {
 			if (Social.canEdit(m)) rows.add(new MenuRow("pen", Ui.tr("slashclient-hud.message.edit"), false, () -> startEditing(other, null, m.id(), m.text())));
 			if (m.plainText()) rows.add(new MenuRow("copy", Ui.tr("slashclient-hud.message.copy"), false, () -> minecraft.keyboardHandler.setClipboard(m.text())));
 			if (Social.canDelete(m)) rows.add(new MenuRow("trash", Ui.tr("slashclient-hud.message.delete"), true, () -> confirmDelete(() -> Social.delete(other, m.id()))));
+		} else if (b.community() != null) {
+			// a community's message: edit ours for a while, copy, delete (ours, or below our role), report others'
+			Communities.Message m = b.community();
+			if (Communities.canEdit(m)) rows.add(new MenuRow("pen", Ui.tr("slashclient-hud.message.edit"), false, () -> startEditingCommunity(m.community(), m.channel(), m.id(), m.text())));
+			if (m.plainText()) rows.add(new MenuRow("copy", Ui.tr("slashclient-hud.message.copy"), false, () -> minecraft.keyboardHandler.setClipboard(m.text())));
+			if (Communities.canDelete(m)) {
+				boolean theirs = !m.from().equals(Social.myId());
+				rows.add(new MenuRow("trash", Ui.tr(theirs ? "slashclient-hud.message.deleteModeration" : "slashclient-hud.message.delete"), true, () -> confirmDelete(() -> Communities.delete(m.community(), m.channel(), m.id()))));
+			}
+			if (Communities.canReport(m)) rows.add(new MenuRow("info", Ui.tr("slashclient-hud.message.report"), true, () -> Communities.report(m.community(), m.channel(), m.id())));
 		} else {
 			Groups.Message m = b.group();
 			if (Groups.canEdit(m)) rows.add(new MenuRow("pen", Ui.tr("slashclient-hud.message.edit"), false, () -> startEditing(null, m.group(), m.id(), m.text())));
@@ -209,8 +286,7 @@ public class FriendsScreen extends Screen {
 	/** Where a message is drawn now (the in-game test right-clicks it); null when it is not in sight. */
 	public int[] bubbleOf(long id) {
 		for (Bubble b : List.copyOf(bubbles)) {
-			long bid = b.direct() != null ? b.direct().id() : b.group().id();
-			if (bid == id) return new int[] { b.x(), b.y(), b.w(), b.h() };
+			if (b.id() == id) return new int[] { b.x(), b.y(), b.w(), b.h() };
 		}
 		return null;
 	}
@@ -380,7 +456,8 @@ public class FriendsScreen extends Screen {
 		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.friends.title", Social.onlineCount()), titleW), px + 10, py + 10, Ui.TEXT);
 		int y = py + 26;
 		y = drawGroups(g, y, mx, my);
-		if (friends.isEmpty() && Groups.groups().isEmpty()) {
+		y = drawCommunities(g, y, mx, my);
+		if (friends.isEmpty() && Groups.groups().isEmpty() && Communities.list().isEmpty()) {
 			int ty = y + 4;
 			for (FormattedCharSequence line : font.split(Ui.tr("slashclient-hud.friends.none"), LIST_W - 20)) {
 				g.text(font, line, px + 10, ty, Ui.MUTED, false);
@@ -460,6 +537,228 @@ public class FriendsScreen extends Screen {
 		return y;
 	}
 
+	/** The communities, under the groups: a logo (or people on teal), the name, #TAG and size, unread or mentions. */
+	private int drawCommunities(GuiGraphicsExtractor g, int y, int mx, int my) {
+		int bottom = py + ph - 8;
+		List<Communities.Community> list = Communities.list();
+		for (Communities.Community c : list) {
+			if (y + ROW_H > bottom) break;
+			int rx = px + 5, rw = LIST_W - 10;
+			boolean over = Ui.inside(mx, my, rx, y, rw, ROW_H);
+			float t = Ui.hover("community:" + c.id(), over);
+			if (c.id().equals(selectedCommunity)) Ui.round(g, rx, y, rw, ROW_H, 4, 0xFF1C2B4A);
+			else if (t > 0) Ui.round(g, rx, y, rw, ROW_H, 4, Ui.blend(0x00161C2A, Ui.CARD_HOVER, t));
+			ChatImages.Texture logo = Communities.logo(c);
+			if (logo != null) drawLogo(g, logo, rx + 4, y + 4, 18);
+			else {
+				Ui.round(g, rx + 4, y + 4, 18, 18, 5, 0xFF0F766E);
+				Ui.icon(g, "m-players", rx + 8, y + 8, 10, 0xFFFFFFFF);
+			}
+			// a mention in amber "@2"; else unread, grey when the member does not want to hear of everything
+			int badge = c.mentions() > 0 ? c.mentions() : c.unread();
+			int textW = rw - 30 - (badge > 0 ? 18 : 0);
+			Ui.draw(g, Ui.fit(Ui.bold(c.name()), textW), rx + 27, y + 4, Ui.TEXT);
+			Ui.draw(g, Ui.fit(communityLine(c), textW), rx + 27, y + 15, Ui.MUTED);
+			if (badge > 0) {
+				Component n = Ui.bold((c.mentions() > 0 ? "@" : "") + (badge > 9 ? "9+" : String.valueOf(badge)));
+				int bw = Math.max(12, Ui.width(n) + 6);
+				Ui.round(g, rx + rw - bw - 3, y + 8, bw, 11, 5, c.mentions() > 0 ? 0xFFD97706 : "all".equals(c.notifyMode()) ? Ui.ACCENT : 0xFF3A4252);
+				Ui.draw(g, n, rx + rw - bw - 3 + (bw - Ui.width(n)) / 2, y + 10, 0xFFFFFFFF);
+			}
+			String id = c.id();
+			hits.add(new Hit(rx, y, rw, ROW_H, () -> selectCommunity(id, null)));
+			y += ROW_H + 2;
+		}
+		if (!list.isEmpty()) {
+			g.fill(px + 10, y + 1, px + LIST_W - 10, y + 2, Ui.BORDER);
+			y += 6;
+		}
+		return y;
+	}
+
+	/** "#TAG · 25 członków" */
+	private static Component communityLine(Communities.Community c) {
+		Component size = Ui.tr("slashclient-hud.communities.size", c.members());
+		return c.tag().isEmpty() ? size : Ui.text("#" + c.tag() + " · ").append(size);
+	}
+
+	/** A channel's name: the two every community has in the game's language, else its own. */
+	private static Component channelName(Communities.Channel ch) {
+		return switch (ch.kind()) {
+			case "general" -> Ui.tr("slashclient-hud.communities.general");
+			case "announcements" -> Ui.tr("slashclient-hud.communities.announcements");
+			default -> Ui.text(ch.name());
+		};
+	}
+
+	/** A community's chat: its channels as buttons, who wrote each message (and their role), mentions of us marked. */
+	private void drawCommunityChat(GuiGraphicsExtractor g, Communities.Community c, int cx, int cw, int mx, int my) {
+		Communities.Channel ch = c.channel(selectedChannel);
+		if (ch == null) ch = c.general();
+		if (ch == null) return;
+		selectedChannel = ch.id();
+		boolean muted = c.mutedUntil() > System.currentTimeMillis();
+		boolean canWrite = ch.canPost() && !muted;
+		input.visible = !showCommunityMembers && canWrite;
+		// on the right: the members, then the channels (the open one lit, a dot on one with news)
+		int bx = cx + cw - 36;
+		int headW = cw - 46;
+		List<Action> buttons = new ArrayList<>();
+		buttons.add(new Action("friends:communityMembers", "m-players", Ui.tr(showCommunityMembers ? "slashclient-hud.communities.chat" : "slashclient-hud.communities.members"), this::toggleCommunityMembers));
+		List<Communities.Channel> channels = new ArrayList<>(c.channels());
+		java.util.Collections.reverse(channels);
+		for (Communities.Channel x : channels) {
+			String cid = c.id(), xid = x.id();
+			buttons.add(new Action("friends:channel:" + xid, x.announcements() ? "info" : "chat", channelName(x), () -> selectCommunity(cid, xid)));
+		}
+		// icons only (the name of each in its tooltip): the community's name needs the room
+		for (Action b : buttons) {
+			int w = 20;
+			bx -= w;
+			String chId = b.id().startsWith("friends:channel:") ? b.id().substring("friends:channel:".length()) : null;
+			boolean lit = chId != null ? chId.equals(selectedChannel) && !showCommunityMembers : showCommunityMembers;
+			Ui.button(g, b.id(), bx, py + 8, w, 18, b.icon(), Component.empty(), lit, mx, my);
+			if (Ui.inside(mx, my, bx, py + 8, w, 18)) tooltip = b.label();
+			Communities.Channel other = chId == null ? null : c.channel(chId);
+			if (other != null && !chId.equals(selectedChannel) && (other.unread() > 0 || other.mentions() > 0)) Ui.round(g, bx + w - 6, py + 7, 6, 6, 3, other.mentions() > 0 ? 0xFFF59E0B : 0xFFEF4444);
+			hits.add(new Hit(bx, py + 8, w, 18, b.run()));
+			bx -= 4;
+			headW -= w + 4;
+		}
+		ChatImages.Texture logo = Communities.logo(c);
+		int titleX = cx + 10;
+		if (logo != null) {
+			drawLogo(g, logo, titleX, py + 8, 22);
+			titleX += 27;
+			headW -= 27;
+		}
+		Ui.draw(g, Ui.fit(Ui.bold(c.name()), headW), titleX, py + 10, Ui.TEXT);
+		Ui.draw(g, Ui.fit(communityLine(c), headW), titleX, py + 21, Ui.MUTED);
+		g.fill(cx + 8, py + 33, cx + cw - 8, py + 34, Ui.BORDER);
+		if (showCommunityMembers) {
+			drawCommunityMembers(g, c, cx, cw);
+			return;
+		}
+
+		// room above the field for the note that this chat is not end-to-end encrypted
+		int top = py + 38, bottom = py + ph - INPUT_H - 14 - 12 - (editingId >= 0 ? 16 : 0);
+		int maxBubble = (int) (cw * 0.72);
+		List<Communities.Message> messages = Communities.chat(ch.id());
+		g.enableScissor(cx + 2, top, cx + cw - 2, bottom);
+		Ui.beginClip("community chat", cx + 2, top, cw - 4, bottom - top);
+		int y = bottom + scroll;
+		int total = 0;
+		for (int i = messages.size() - 1; i >= 0; i--) {
+			Communities.Message m = messages.get(i);
+			boolean mine = m.from().equals(Social.myId());
+			boolean named = !mine && (i == 0 || !messages.get(i - 1).from().equals(m.from()));
+			// the author's name, and their role when it is more than a member
+			Component name = Ui.bold(m.author().isEmpty() ? "?" : m.author());
+			if (!m.authorRole().isEmpty() && !"member".equals(m.authorRole())) name = Ui.bold(m.author() + " · ").append(Ui.tr("slashclient-hud.communities.role." + m.authorRole()));
+			int nameColor = switch (m.authorRole()) {
+				case "owner" -> 0xFFFBBF24;
+				case "admin" -> 0xFFFCA5A5;
+				case "moderator" -> 0xFF93C5FD;
+				default -> Ui.ACCENT_LIGHT;
+			};
+			if (m.deleted()) {
+				int bw = tombstoneWidth(), bh = 16, nameH = named ? 11 : 0;
+				y -= bh + 4 + nameH;
+				total += bh + 4 + nameH;
+				if (y > bottom || y + bh + nameH < top) continue;
+				int bx2 = mine ? cx + cw - 10 - bw : cx + 10;
+				if (named) Ui.draw(g, Ui.fit(name, maxBubble), bx2 + 2, y, nameColor);
+				drawTombstone(g, bx2, y + nameH);
+				continue;
+			}
+			List<FormattedCharSequence> lines = font.split(Ui.text(m.text()), maxBubble - 12);
+			int textW = 0;
+			for (FormattedCharSequence l : lines) textW = Math.max(textW, font.width(l));
+			Component time = timeOf(m.at(), m.editedAt());
+			int bw = Math.max(textW, Ui.width(time)) + 12;
+			int bh = lines.size() * 10 + 15;
+			int nameH = named ? 11 : 0;
+			y -= bh + 4 + nameH;
+			total += bh + 4 + nameH;
+			if (y > bottom || y + bh + nameH < top) continue;
+			int bx2 = mine ? cx + cw - 10 - bw : cx + 10;
+			if (named) Ui.draw(g, Ui.fit(name, maxBubble), bx2 + 2, y, nameColor);
+			int by = y + nameH;
+			// a message that mentions us stands out in amber
+			boolean toMe = !mine && m.mentionsMe();
+			Ui.round(g, bx2, by, bw, bh, 5, mine ? Ui.ACCENT_DARK : toMe ? 0xFF3A2E12 : Ui.CARD);
+			if (toMe) g.fill(bx2, by + 2, bx2 + 2, by + bh - 2, 0xFFF59E0B);
+			if (m.id() == editingId && editingCommunity != null) Ui.roundOutline(g, bx2 - 1, by - 1, bw + 2, bh + 2, 5, 0xCCFACC15);
+			int ly = by + 5;
+			for (FormattedCharSequence l : lines) {
+				g.text(font, l, bx2 + 6, ly, Ui.TEXT, false);
+				ly += 10;
+			}
+			Ui.draw(g, time, bx2 + bw - 6 - Ui.width(time), ly, mine ? 0xB3FFFFFF : Ui.MUTED);
+			if (m.editedAt() > 0 && Ui.inside(mx, my, bx2 + bw - 6 - Ui.width(time), ly, Ui.width(time), 9) && my >= top && my <= bottom)
+				tooltip = Ui.tr("slashclient-hud.message.editedAt", TIME.format(Instant.ofEpochMilli(m.editedAt())));
+			int[] seen = visible(bx2, by, bw, bh, top, bottom);
+			if (seen != null) bubbles.add(new Bubble(seen[0], seen[1], seen[2], seen[3], null, null, m));
+		}
+		Ui.end();
+		g.disableScissor();
+		maxScroll = Math.max(0, total - (bottom - top));
+		if (messages.isEmpty()) Ui.centered(g, Ui.fit(Ui.tr(ch.announcements() ? "slashclient-hud.communities.emptyNews" : "slashclient-hud.communities.empty"), cw - 20), cx + cw / 2, (top + bottom) / 2, Ui.MUTED);
+
+		int fy = input.getY() - 6;
+		if (editingId >= 0) drawEditBar(g, cx, fy);
+		else {
+			// not end-to-end encrypted: moderators can read it (said where one writes)
+			Ui.icon(g, "info", cx + 12, fy - 12, 7, 0xFFFBBF24);
+			Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.communities.plain"), cw - 34), cx + 22, fy - 12, 0xFFFBBF24);
+		}
+		if (!canWrite) {
+			// announcements (only admins write) or muted: the reason where the field would be
+			Ui.round(g, cx + 10, fy, cw - 20, INPUT_H, 4, 0x80111622);
+			Component why = muted ? Ui.tr("slashclient-hud.communities.muted", TIME.format(Instant.ofEpochMilli(c.mutedUntil()))) : Ui.tr("slashclient-hud.communities.readOnly");
+			Ui.draw(g, Ui.fit(why, cw - 36), cx + 18, fy + 6, Ui.MUTED);
+			return;
+		}
+		Ui.round(g, cx + 10, fy, input.getWidth() + 12, INPUT_H, 4, Ui.CARD);
+		Ui.roundOutline(g, cx + 10, fy, input.getWidth() + 12, INPUT_H, 4, input.isFocused() ? 0x993B82F6 : Ui.BORDER);
+		int sx = cx + cw - 10 - 24;
+		Ui.button(g, "friends:send", sx, fy, 24, INPUT_H, "arrow", Component.empty(), true, mx, my);
+		hits.add(new Hit(sx, fy, 24, INPUT_H, this::send));
+	}
+
+	/** The first members (online first within each role), with the note that managing is in the launcher. */
+	private void drawCommunityMembers(GuiGraphicsExtractor g, Communities.Community c, int cx, int cw) {
+		int y = py + 40;
+		ChatImages.Texture logo = Communities.logo(c);
+		if (logo != null) {
+			drawLogo(g, logo, cx + 10, y, 32);
+			y = Math.max(Ui.wrapped(g, Ui.tr("slashclient-hud.communities.manage"), cx + 48, y + 2, cw - 58, Ui.MUTED), y + 32) + 4;
+		} else y = Ui.wrapped(g, Ui.tr("slashclient-hud.communities.manage"), cx + 10, y, cw - 20, Ui.MUTED) + 3;
+		List<Communities.Member> list = new ArrayList<>(Communities.members(c.id()));
+		List<String> order = List.of("owner", "admin", "moderator", "member");
+		list.sort(java.util.Comparator.comparing((Communities.Member m) -> order.indexOf(m.role())).thenComparing(m -> !m.online()).thenComparing(m -> m.name().toLowerCase()));
+		Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.communities.shown", list.size(), Communities.memberTotal(c.id())), cw - 20), cx + 10, y, Ui.TEXT_2);
+		y += 12;
+		int bottom = py + ph - 8;
+		int col = 0, colW = (cw - 20) / 2;
+		int startY = y;
+		for (Communities.Member m : list) {
+			if (y + 18 > bottom) {
+				if (col == 1) break;
+				col = 1;
+				y = startY;
+			}
+			int rx = cx + 10 + col * colW;
+			Ui.round(g, rx, y, colW - 6, 16, 4, Ui.CARD);
+			Ui.round(g, rx + 5, y + 5, 6, 6, 3, m.online() ? Ui.GREEN : Ui.MUTED);
+			Component role = "member".equals(m.role()) ? Component.empty() : Ui.tr("slashclient-hud.communities.role." + m.role());
+			int roleW = Ui.width(role);
+			Ui.draw(g, Ui.fit(Ui.bold(m.name()), colW - 6 - 16 - roleW - 8), rx + 15, y + 4, m.online() ? Ui.TEXT : Ui.MUTED);
+			Ui.draw(g, role, rx + colW - 6 - roleW - 6, y + 4, "owner".equals(m.role()) ? 0xFFFBBF24 : "admin".equals(m.role()) ? 0xFFFCA5A5 : 0xFF93C5FD);
+			y += 18;
+		}
+	}
+
 	/** Under a group's name: the clan's members online, or who else is in the group. */
 	private static Component groupLine(Groups.Group gr) {
 		Groups.Clan c = Groups.clan();
@@ -471,6 +770,11 @@ public class FriendsScreen extends Screen {
 
 	private void drawChat(GuiGraphicsExtractor g, int mx, int my) {
 		int cx = px + LIST_W + 1, cw = pw - LIST_W - 1;
+		Communities.Community community = selectedCommunity == null ? null : Communities.community(selectedCommunity);
+		if (community != null) {
+			drawCommunityChat(g, community, cx, cw, mx, my);
+			return;
+		}
 		Groups.Group open = selectedGroup == null ? null : Groups.group(selectedGroup);
 		if (open != null) {
 			drawGroupChat(g, open, cx, cw, mx, my);
@@ -991,6 +1295,7 @@ public class FriendsScreen extends Screen {
 	public void onClose() {
 		Social.viewing = null;
 		Groups.viewing = null;
+		Communities.viewing = null;
 		minecraft.setScreenAndShow(parent);
 	}
 

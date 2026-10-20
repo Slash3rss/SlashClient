@@ -78,7 +78,7 @@ export function withMenu(bubble: HTMLElement, items: MenuItem[]): HTMLElement {
 
 let openOne: (() => void) | undefined;
 
-function openMenu(anchor: HTMLElement, items: MenuItem[]) {
+export function openMenu(anchor: HTMLElement, items: MenuItem[]) {
   openOne?.();
   const menu = el('div', { className: 'fr-menu glass-panel', role: 'menu' });
   for (const item of items) {

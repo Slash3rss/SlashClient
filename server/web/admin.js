@@ -4,6 +4,7 @@ import { storagePage } from './adminStorage.js';
 import { shopSection, walletSection } from './adminSparks.js';
 import { achievementsPage, foreignHash, obtainLine } from './adminAchievements.js';
 import { clansPage } from './adminClans.js';
+import { communitiesPage } from './adminCommunities.js';
 import { supportPage } from './adminSupport.js';
 import { legalPage } from './adminLegal.js';
 
@@ -14,6 +15,7 @@ const TABS = [
   ['achievements', 'Osiągnięcia', 'fa-solid fa-trophy'],
   ['partners', 'Partnerzy', 'fa-solid fa-handshake'],
   ['clans', 'Klany', 'fa-solid fa-shield-halved'],
+  ['communities', 'Społeczności', 'fa-solid fa-users-rectangle'],
   ['requests', 'Zapytania', 'fa-solid fa-satellite-dish'],
   ['logs', 'Logi graczy', 'fa-solid fa-file-lines'],
   ['storage', 'Miejsce na pliki', 'fa-solid fa-hard-drive'],
@@ -35,6 +37,8 @@ const ACTIONS = {
   ach_grant: 'przyznał(a) osiągnięcie', ach_revoke: 'odebrał(a) osiągnięcie',
   profile_hide: 'ukrył(a) profil', profile_show: 'przywrócił(a) profil',
   'clan.delete': 'usunął(ęła) klan', 'clan.logo_remove': 'usunął(ęła) logo klanu',
+  'community.delete': 'usunął(ęła) społeczność', 'community.logo_remove': 'usunął(ęła) logo społeczności', 'community.description_remove': 'usunął(ęła) opis społeczności',
+  'community.transfer': 'przekazał(a) społeczność', 'community.message_delete': 'usunął(ęła) zgłoszoną wiadomość w', 'community.report_dismiss': 'odrzucił(a) zgłoszenie w',
   support_provider: 'zmienił(a) operatora płatności', support_test: 'sprawdził(a) połączenie z', support_settings: 'zmienił(a) ustawienia wsparcia',
   support_tier: 'zapisał(a) poziom wsparcia', support_tier_delete: 'usunął(ęła) poziom wsparcia',
   legal_draft: 'zapisał(a) szkic dokumentu', legal_publish: 'opublikował(a) dokument', legal_restore: 'przywrócił(a) wersję dokumentu',
@@ -100,7 +104,7 @@ function layout() {
     el('button', { class: 'icon-btn', title: 'Wyloguj', onclick: async () => { await signOut(); me = undefined; gate(); } }, icon('fa-solid fa-right-from-bracket'))));
   const main = el('main', { class: 'main', id: 'main' });
   $('#root').replaceChildren(el('div', { class: 'admin' }, side, main));
-  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, achievements: achievementsPage, partners: partnersPage, clans: clansPage, requests: requestsPage, logs: logsPage, storage: storagePage, support: supportPage, legal: legalPage, log: logPage })[tab]?.();
+  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, achievements: achievementsPage, partners: partnersPage, clans: clansPage, communities: communitiesPage, requests: requestsPage, logs: logsPage, storage: storagePage, support: supportPage, legal: legalPage, log: logPage })[tab]?.();
 }
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);
@@ -519,7 +523,7 @@ async function logPage() {
   const rows = await Promise.all(res.entries.map(async (e) => el('tr', {},
     el('td', { textContent: fmtDate(e.at) }),
     el('td', { textContent: `@${await nameOf(e.admin)}` }),
-    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' || e.action === 'shop_price' ? capeNames[e.target] ?? e.target : /^(partner|log_|bug_|storage_|clan\.|ach_(create|edit|reset|delete)|support_(provider|test|settings|tier))/.test(e.action) ? e.target : `@${e.target}` })),
+    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' || e.action === 'shop_price' ? capeNames[e.target] ?? e.target : /^(partner|log_|bug_|storage_|clan\.|community\.|ach_(create|edit|reset|delete)|support_(provider|test|settings|tier))/.test(e.action) ? e.target : `@${e.target}` })),
     el('td', { class: 'log-detail', textContent: ['grant', 'revoke', 'set_cape'].includes(e.action) ? capeNames[e.detail] ?? e.detail : e.detail }))));
   $('#main').replaceChildren(head('Dziennik'),
     el('div', { class: 'glass card' }, res.entries.length

@@ -129,6 +129,12 @@ function render(p) {
     if (p.clan.logo) logo.addEventListener('error', () => logo.replaceWith(icon('fa-solid fa-people-group')));
     chips.push(el('span', { class: 'chip blue', title: `${p.clan.name} · ${ROLES[p.clan.role] ?? ''}` }, logo, `[${p.clan.tag}] ${p.clan.name}`));
   }
+  // public communities the player shows (communities.ts): a link to each one's page
+  for (const c of p.communities ?? []) {
+    const logo = c.logo ? el('img', { class: 'profile-clan-logo', src: c.logo, alt: '' }) : icon('fa-solid fa-users');
+    if (c.logo) logo.addEventListener('error', () => logo.replaceWith(icon('fa-solid fa-users')));
+    chips.push(el('a', { class: 'chip purple link', href: `/s/${encodeURIComponent(c.slug)}`, title: L(`Społeczność · ${c.members} członków`, `Community · ${c.members} members`) }, logo, c.tag ? `#${c.tag} ${c.name}` : c.name));
+  }
   for (const name of p.minecraft ?? []) chips.push(el('span', { class: 'chip', title: L('Konto Minecraft', 'Minecraft account') }, icon('fa-solid fa-cube'), name));
 
   const facts = [el('span', {}, icon('fa-regular fa-calendar'), ' ', L(`W SlashClient od ${day(p.memberSince)}`, `On SlashClient since ${day(p.memberSince)}`))];

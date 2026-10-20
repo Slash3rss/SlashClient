@@ -189,6 +189,8 @@ public final class Social {
 					if (signedIn) refreshFriends();
 					// group chats and the clan (an older launcher has neither: nothing happens)
 					if (signedIn) Groups.refresh();
+					// communities (an older launcher or server has none: nothing happens)
+					if (signedIn) Communities.refresh();
 					reachable = true;
 				}
 				JsonObject res = request("GET", "/events?after=" + seq, null, 35);
@@ -359,6 +361,8 @@ public final class Social {
 			}
 			// group chats and the clan
 			case "groups", "group-message", "clan", "group-message-edit", "group-message-delete" -> Groups.onEvent(e);
+			// communities: the list, their chat, and news (invited, accepted, kicked…)
+			case "communities", "community-message", "community-message-edit", "community-message-delete", "community" -> Communities.onEvent(e);
 			case "typing" -> typingUntil.put(str(e, "from"), System.currentTimeMillis() + 6_000);
 			// "Join" on a friend's invite in the launcher while this game runs
 			case "join" -> join(str(e, "server"));
@@ -391,6 +395,7 @@ public final class Social {
 				refreshState();
 				if (signedIn) refreshFriends();
 				if (signedIn) Groups.refresh();
+				if (signedIn) Communities.refresh();
 			}
 			default -> {}
 		}
@@ -551,9 +556,14 @@ public final class Social {
 
 	/** A clan's logo as PNG bytes (the launcher fetches and keeps it by version); blocks. */
 	static byte[] clanLogoBytes(String clanId, long version) {
-		if (!bridged() || !clanId.matches("[\\w-]{1,32}")) throw new IllegalStateException("no launcher");
+		return logoBytes("clan", clanId, version);
+	}
+
+	/** A clan's ("clan") or a community's ("community") logo as PNG bytes; blocks. */
+	static byte[] logoBytes(String kind, String id, long version) {
+		if (!bridged() || !id.matches("[\\w-]{1,32}")) throw new IllegalStateException("no launcher");
 		try {
-			HttpRequest req = HttpRequest.newBuilder(URI.create(URL + "/clan/logo/" + clanId + "?v=" + version))
+			HttpRequest req = HttpRequest.newBuilder(URI.create(URL + "/" + kind + "/logo/" + id + "?v=" + version))
 				.timeout(Duration.ofSeconds(15)).header("Authorization", "Bearer " + KEY).GET().build();
 			HttpResponse<byte[]> res = HTTP.send(req, HttpResponse.BodyHandlers.ofByteArray());
 			if (res.statusCode() != 200) throw new IllegalStateException("HTTP " + res.statusCode());

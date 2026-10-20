@@ -27,7 +27,7 @@ export type Visibility = 'public' | 'friends' | 'private';
 export const VISIBILITIES: Visibility[] = ['public', 'friends', 'private'];
 
 /** The parts of a profile the owner can show or hide one by one. */
-export const ELEMENTS = ['stats', 'achievements', 'cosmetics', 'clan', 'minecraft', 'servers', 'lastOnline', 'friends'] as const;
+export const ELEMENTS = ['stats', 'achievements', 'cosmetics', 'clan', 'minecraft', 'servers', 'lastOnline', 'friends', 'communities'] as const;
 export type Element = (typeof ELEMENTS)[number];
 
 /**
@@ -38,6 +38,8 @@ export type Element = (typeof ELEMENTS)[number];
  */
 export const DEFAULT_ELEMENTS: Record<Element, boolean> = {
   stats: true, achievements: true, cosmetics: true, clan: true, minecraft: true, servers: false, lastOnline: false, friends: true,
+  // public communities the player is in (each can be left off on its own; private ones never show)
+  communities: true,
 };
 export interface Privacy { visibility: Visibility; elements: Record<Element, boolean>; indexable: boolean }
 export const DEFAULT_PRIVACY: Privacy = { visibility: 'public', elements: { ...DEFAULT_ELEMENTS }, indexable: false };
@@ -191,6 +193,8 @@ export interface ProfileDeps {
    * shown only to those who may see the profile at all.
    */
   supporter?: (uuid: string) => Record<string, unknown> | undefined;
+  /** Public communities the player shows on their profile (communities.ts; never private ones). */
+  communities?: (uuid: string) => Record<string, unknown>[];
   /** 'offline' for players not connected or invisible. */
   status: (uuid: string) => string;
   /** A Minecraft account's skin and face (app.ts, from Mojang). */
@@ -302,6 +306,7 @@ export function profileRoutes(deps: ProfileDeps) {
         out.clan = { tag: c.tag, name: c.name, role: m.role, ...(v === undefined ? {} : { logo: `/v1/clans/${c.id}/logo.png?v=${v}` }) };
       }
     }
+    if (show('communities')) out.communities = deps.communities?.(user.id) ?? [];
     if (show('minecraft')) out.minecraft = db.minecraftAccounts(user.id).map((x) => x.name).filter(Boolean);
     if (show('servers')) out.servers = store.servers(user.id, 20);
     if (show('lastOnline')) {

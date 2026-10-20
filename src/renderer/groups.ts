@@ -1,6 +1,6 @@
 import { locale, t } from '../shared/i18n';
 import { logoFromFile, logoUrl } from './clanLogo';
-import { confirmDialog, control, el, icon } from './dialog';
+import { confirmDialog, control, el, icon, modalWindow } from './dialog';
 import { canDelete, canEdit, editHint, editedLabel, replaceMessage, tombstone, withMenu, type MenuItem, type Moderator } from './chatEdits';
 
 /**
@@ -417,29 +417,8 @@ export function createGroups(deps: Deps) {
 
   // ---------- windows ----------
 
-  /** A small window of our own (the launcher's modal look); resolves when it closes. */
-  function modal(title: string, body: Node[], buttons: HTMLButtonElement[], onClose?: () => void) {
-    const close = el('button', { type: 'button', className: 'icon-btn modal-close', title: t('Zamknij') }, icon('fa-xmark'));
-    const box = el('div', { className: 'modal' },
-      el('div', { className: 'modal-box glass-panel join-box fr-group-modal' }, close,
-        el('div', { className: 'modal-body' }, el('h2', { textContent: title }), ...body, buttons.length ? el('div', { className: 'row join-actions' }, ...buttons) : '')));
-    const done = () => {
-      box.remove();
-      document.removeEventListener('keydown', onKey, true);
-      onClose?.();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation();
-        done();
-      }
-    };
-    close.addEventListener('click', done);
-    box.addEventListener('click', (e) => e.target === box && done());
-    document.addEventListener('keydown', onKey, true);
-    document.body.append(box);
-    return done;
-  }
+  /** A small window of our own (dialog.ts). */
+  const modal = modalWindow;
 
   /** A new group (name and friends), or more friends for `into`. */
   function pickFriends(into?: Group) {
