@@ -602,9 +602,9 @@ handle('mods:check', async (profileId: string) => {
   const { profile, gameDir, gameVersion } = await profileTarget(profileId);
   return checkModsFolder(gameDir, profile.loader, gameVersion);
 });
-/** Looks the missing mod ids up on Modrinth (id = slug for most mods) and installs those found. */
+/** Looks the missing mod ids up on Modrinth (id = slug for most mods), then CurseForge, and installs those found. */
 handle('mods:fixMissing', async (profileId: string, ids: string[]) => {
-  const { profile, gameVersion } = await profileTarget(profileId);
+  const { profile, gameDir, gameVersion } = await profileTarget(profileId);
   const aliases: Record<string, string> = { fabric: 'fabric-api', 'fabric-api-base': 'fabric-api', quilted_fabric_api: 'qsl', cloth_config: 'cloth-config', architectury: 'architectury-api' };
   const found: { projectId: string; title: string }[] = [];
   const notFound: string[] = [];
@@ -616,7 +616,23 @@ handle('mods:fixMissing', async (profileId: string, ids: string[]) => {
     else if (!hit) notFound.push(id);
   }
   if (found.length) await installMany(profileId, found, t('Brakujące mody'));
-  return { installed: found.map((f) => f.title), notFound };
+  // not on Modrinth: CurseForge, a project whose address name is the mod's id
+  const fromCurse: string[] = [];
+  for (const id of [...notFound]) {
+    try {
+      curseforge();
+      const slugs = new Set([aliases[id], id, id.replace(/_/g, '-')].filter(Boolean));
+      const { hits } = await searchCurseForge({ query: id.replace(/[_-]/g, ' '), type: 'mod', gameVersion, loader: profile.loader });
+      const hit = hits.find((h) => slugs.has(h.slug));
+      if (!hit) continue;
+      const { installed } = await installCurseForgeProject(gameDir, hit.id, 'mod', gameVersion, profile.loader, () => {});
+      fromCurse.push(...installed);
+      notFound.splice(notFound.indexOf(id), 1);
+    } catch {
+      // no CurseForge (key, network): stays among the not found
+    }
+  }
+  return { installed: [...found.map((f) => f.title), ...fromCurse], notFound };
 });
 
 handle('content:install', async (profileId: string, projectId: string, type: ContentType, title?: string, icon?: string, versionId?: string, source: Source = 'modrinth') => {
@@ -1454,7 +1470,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     send('game:exit', { code, signal, byUser: killRequested, profileId: profile.id });
     if (code !== 0 && !killRequested) {
       analyzeCrash({ log: recentLog, gameDir: profileGameDir(profile), startedAt, code, signal })
-        .then((analysis) => send('game:crash', analysis))
+        .then((analysis) => send('game:crash', { ...analysis, profileId: profile.id }))
         .catch(() => {});
     }
     send('store', publicStore());

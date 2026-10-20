@@ -25,6 +25,7 @@ import { createSupportCard } from './support';
 import { initFeatures } from './features';
 import { checkLegalNotices, createLegalCard } from './legal';
 import { createWiki } from './wiki';
+import { confirmDialog, modalWindow } from './dialog';
 
 declare global {
   interface Window {
@@ -1225,8 +1226,10 @@ async function startGame(server?: string, world?: string, benchmark = false) {
 
 $('#play-btn').addEventListener('click', () => (selectedRunning() ? void api.kill($<HTMLSelectElement>('#play-profile').value) : startGame()));
 
-interface CrashAnalysis { title: string; details: string[]; fix?: string; crashReport?: string }
+interface CrashAnalysis { title: string; details: string[]; fix?: string; crashReport?: string; missing?: string[]; profileId?: string }
 let crashReport: string | undefined;
+/** The mods the loader said are missing, and in which profile: "Zainstaluj brakujące" gets them. */
+let crashMissing: { profileId: string; ids: string[] } | undefined;
 
 api.on('game:crash', (a: CrashAnalysis) => {
   $('#crash-title').textContent = a.title;
@@ -1234,11 +1237,18 @@ api.on('game:crash', (a: CrashAnalysis) => {
   $('#crash-fix').textContent = a.fix ?? '';
   crashReport = a.crashReport;
   $('#crash-report').classList.toggle('hidden', !a.crashReport);
+  crashMissing = a.missing?.length && a.profileId ? { profileId: a.profileId, ids: a.missing } : undefined;
+  $('#crash-install').classList.toggle('hidden', !crashMissing);
   $('#crash').classList.remove('hidden');
   showView('play');
 });
 $('#crash-close').addEventListener('click', () => $('#crash').classList.add('hidden'));
 $('#crash-report').addEventListener('click', () => crashReport && api.revealFile(crashReport));
+$('#crash-install').addEventListener('click', () => busy($<HTMLButtonElement>('#crash-install'), async () => {
+  if (!crashMissing) return;
+  const ok = await installMissing(crashMissing.profileId, crashMissing.ids);
+  if (ok) $('#crash').classList.add('hidden');
+}));
 $('#crash-bug').addEventListener('click', () => busy($<HTMLButtonElement>('#crash-bug'), async () => {
   try {
     await api.reportBug(logText());
@@ -2109,23 +2119,52 @@ function renderModCheck() {
   $('#mod-fix').classList.toggle('hidden', !modProblems.some((p) => p.kind === 'missing'));
 }
 
+/** Installs the missing mods (Modrinth, then CurseForge); true when none is left missing. */
+async function installMissing(profileId: string, ids: string[]): Promise<boolean> {
+  const res: { installed: string[]; notFound: string[] } | undefined = await guard(() => api.fixMissingMods(profileId, [...new Set(ids)]));
+  if (!res) return false;
+  if (res.installed.length) toast(t('Zainstalowano: {0}', res.installed.join(', ')));
+  if (res.notFound.length) toast(t('Nie znaleziono na Modrinth ani CurseForge: {0}. Poszukaj ich ręcznie.', res.notFound.join(', ')), true);
+  if (contentProfileId() === profileId) await refreshInstalled(true);
+  return !res.notFound.length;
+}
+
 $('#mod-fix').addEventListener('click', () => {
   const profileId = contentProfileId();
-  const ids = [...new Set(modProblems.filter((p) => p.kind === 'missing').map((p) => p.missingId!))];
+  const ids = modProblems.filter((p) => p.kind === 'missing').map((p) => p.missingId!);
   busy($<HTMLButtonElement>('#mod-fix'), async () => {
-    const res: { installed: string[]; notFound: string[] } | undefined = await guard(() => api.fixMissingMods(profileId, ids));
-    if (res?.notFound.length) toast(t('Nie znaleziono na Modrinth: {0}. Poszukaj ich ręcznie.', res.notFound.join(', ')), true);
-    await refreshInstalled(true);
+    await installMissing(profileId, ids);
   });
 });
 
-/** Before starting: real errors get a chance to stop the launch, warnings don't. */
+/**
+ * Before starting: real errors get a chance to stop the launch, warnings don't. Missing mods can
+ * be installed right there, and the game then starts with them.
+ */
 async function confirmModsOk(profileId: string): Promise<boolean> {
-  const problems: ModProblem[] = (await api.checkMods(profileId).catch(() => [])) ?? [];
-  const errors = problems.filter((p) => p.severity === 'error');
+  let problems: ModProblem[] = (await api.checkMods(profileId).catch(() => [])) ?? [];
+  let errors = problems.filter((p) => p.severity === 'error');
   if (!errors.length) return true;
-  const lines = errors.slice(0, 6).map((p) => `• ${p.message}`).join('\n') + (errors.length > 6 ? `\n• ${t('…i {0} więcej', errors.length - 6)}` : '');
-  return confirm(t('Gra prawdopodobnie się nie uruchomi:\n\n{0}\n\nSzczegóły i naprawa: Profile → Mody i zasoby → Zainstalowane. Uruchomić mimo to?', lines));
+  const missing = errors.filter((p) => p.kind === 'missing' && p.missingId).map((p) => p.missingId!);
+  const answer = await new Promise<'fix' | 'run' | 'cancel'>((resolve) => {
+    let picked: 'fix' | 'run' | 'cancel' = 'cancel';
+    const list = el('ul', { className: 'mod-launch-problems' }, ...errors.slice(0, 6).map((p) => el('li', { textContent: p.message })),
+      ...(errors.length > 6 ? [el('li', { textContent: t('…i {0} więcej', errors.length - 6) })] : []));
+    const run = el('button', { type: 'button' }, t('Uruchom mimo to'));
+    const fix = el('button', { type: 'button', className: 'primary' }, el('i', { className: 'fa-solid fa-wand-magic-sparkles' }), ` ${t('Zainstaluj brakujące i uruchom')}`);
+    const close = modalWindow(t('Gra prawdopodobnie się nie uruchomi'), [list, el('p', { className: 'muted', textContent: missing.length ? t('Brakuje wymaganych modów. Launcher może je doinstalować z Modrinth albo CurseForge.') : t('Szczegóły i naprawa: Profile → Mody i zasoby → Zainstalowane.') })],
+      missing.length ? [run, fix] : [run], () => resolve(picked), 'fr-group-modal mod-launch-check');
+    run.addEventListener('click', () => { picked = 'run'; close(); });
+    fix.addEventListener('click', () => { picked = 'fix'; close(); });
+  });
+  if (answer === 'cancel') return false;
+  if (answer === 'run') return true;
+  await installMissing(profileId, missing);
+  // what is still wrong after installing asks once more
+  problems = (await api.checkMods(profileId).catch(() => [])) ?? [];
+  errors = problems.filter((p) => p.severity === 'error');
+  if (!errors.length) return true;
+  return confirmDialog({ title: t('Nadal są problemy z modami'), body: [el('ul', {}, ...errors.slice(0, 6).map((p) => el('li', { textContent: p.message })))], ok: t('Uruchom mimo to') });
 }
 
 // ---------- statistics ----------

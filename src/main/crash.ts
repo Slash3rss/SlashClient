@@ -11,6 +11,10 @@ export interface CrashAnalysis {
   fix?: string;
   /** Crash report written by the game for this run, if any. */
   crashReport?: string;
+  /** Mod ids the loader said are missing: the launcher offers to install them. */
+  missing?: string[];
+  /** The profile that crashed. */
+  profileId?: string;
 }
 
 interface Rule {
@@ -19,7 +23,7 @@ interface Rule {
 }
 
 /** Mod names Fabric/Quilt list as missing dependencies, e.g. "requires any version of fabric-api". */
-function missingDependencies(text: string): string[] {
+export function missingDependencies(text: string): string[] {
   const out = new Set<string>();
   for (const m of text.matchAll(/requires (?:any version|version [^\n]*?) of (?:mod )?'?([\w\- ]+?)'?(?: \(([\w\-]+)\))?(?:,|\n| which is missing)/g)) out.add(m[2] ?? m[1].trim());
   return [...out].slice(0, 8);
@@ -51,8 +55,9 @@ const RULES: Rule[] = [
         details: missing.length
           ? [t('Brakuje wymaganych modów: {0}.', missing.join(', '))]
           : [t('Loader wykrył niezgodne wersje modów albo brakującą zależność. Szczegóły są w logu poniżej.')],
+        missing,
         fix: missing.length
-          ? t('Zainstaluj brakujące mody w Profile → Mody i zasoby (Modrinth dociąga zależności sam przy instalacji).')
+          ? t('Kliknij „Zainstaluj brakujące”: launcher poszuka ich na Modrinth i CurseForge.')
           : t('Zaktualizuj mody do wersji zgodnych z tą wersją gry albo wyłącz ostatnio dodane.'),
       };
     },

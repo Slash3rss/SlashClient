@@ -34,6 +34,8 @@ describe('crash analysis', () => {
     const a = await run(["Incompatible mods found!", " - Mod 'Mod Menu' (modmenu) 21.0.0 requires any version of fabric-api, which is missing!"]);
     assert.equal(a.title, 'Mody nie pasują do siebie');
     assert.match(a.details[0], /fabric-api/);
+    // the ids the launcher offers to install
+    assert.deepEqual(a.missing, ['fabric-api']);
   });
   it('recognises out of memory', async () => {
     assert.equal((await run(['java.lang.OutOfMemoryError: Java heap space'])).title, 'Grze zabrakło pamięci RAM');
