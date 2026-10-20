@@ -480,11 +480,20 @@ public class FriendsScreen extends Screen {
 			Ui.round(g, rx + 16, y + 16, 7, 7, 3, Ui.PANEL);
 			Ui.round(g, rx + 17, y + 17, 5, 5, 2, statusColor(f.status()));
 			int textW = rw - 30 - (f.unread() > 0 ? 16 : 0);
+			// live on Twitch or Kick: the red LIVE badge after the name, the stream's title under it
+			FriendStreams.Live live = FriendStreams.of(f.id());
+			int liveW = live != null ? FriendStreams.badgeWidth() + 3 : 0;
 			// muted: a small crossed bell after the name
-			Component name = Ui.fit(Ui.bold(f.name()), textW - (f.muted() ? 10 : 0));
+			Component name = Ui.fit(Ui.bold(f.name()), textW - (f.muted() ? 10 : 0) - liveW);
 			Ui.draw(g, name, rx + 27, y + 4, Ui.TEXT);
-			if (f.muted()) Ui.icon(g, "bell-slash", rx + 29 + Ui.width(name), y + 4, 7, Ui.MUTED);
-			Ui.draw(g, Ui.fit(Social.activity(f).copy().withStyle(Ui.text("").getStyle()), textW), rx + 27, y + 15, Ui.MUTED);
+			int after = rx + 29 + Ui.width(name);
+			if (f.muted()) {
+				Ui.icon(g, "bell-slash", after, y + 4, 7, Ui.MUTED);
+				after += 10;
+			}
+			if (live != null) FriendStreams.badge(g, after + 1, y + 3);
+			if (live != null) Ui.draw(g, Ui.fit(FriendStreams.line(live), textW), rx + 27, y + 15, FriendStreams.LINE);
+			else Ui.draw(g, Ui.fit(Social.activity(f).copy().withStyle(Ui.text("").getStyle()), textW), rx + 27, y + 15, Ui.MUTED);
 			if (f.unread() > 0) {
 				Component n = Ui.bold(f.unread() > 9 ? "9+" : String.valueOf(f.unread()));
 				int bw = Math.max(12, Ui.width(n) + 6);
@@ -817,9 +826,12 @@ public class FriendsScreen extends Screen {
 			right -= 4;
 		}
 		int headW = right - (cx + 10);
-		Ui.draw(g, Ui.fit(Ui.bold(f.name()), headW), cx + 10, py + 10, Ui.TEXT);
-		Component sub = Social.typing(f.id()) ? Ui.tr("slashclient-hud.friends.typing") : Social.activity(f).copy().withStyle(Ui.text("").getStyle());
-		Ui.draw(g, Ui.fit(sub, headW), cx + 10, py + 21, Social.typing(f.id()) ? Ui.ACCENT_LIGHT : Ui.MUTED);
+		FriendStreams.Live live = FriendStreams.of(f.id());
+		Component headName = Ui.fit(Ui.bold(f.name()), headW - (live != null ? FriendStreams.badgeWidth() + 4 : 0));
+		Ui.draw(g, headName, cx + 10, py + 10, Ui.TEXT);
+		if (live != null) FriendStreams.badge(g, cx + 13 + Ui.width(headName), py + 9);
+		Component sub = Social.typing(f.id()) ? Ui.tr("slashclient-hud.friends.typing") : live != null ? FriendStreams.line(live) : Social.activity(f).copy().withStyle(Ui.text("").getStyle());
+		Ui.draw(g, Ui.fit(sub, headW), cx + 10, py + 21, Social.typing(f.id()) ? Ui.ACCENT_LIGHT : live != null ? FriendStreams.LINE : Ui.MUTED);
 		g.fill(cx + 8, py + 33, cx + cw - 8, py + 34, Ui.BORDER);
 
 		// messages from the bottom up, each a bubble: yours on the right in blue
