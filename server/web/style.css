@@ -279,3 +279,20 @@ label.btn input.hidden { display: none; }
   .cosmetic-stage { flex-direction: column; align-items: center; }
 }
 .partner-pins { gap: 18px; }
+
+/* the account page's profile privacy (profilePrivacy.js) */
+.account-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.privacy-card h3 { margin: 0 0 6px; }
+.privacy-card h4 { margin: 16px 0 8px; font-size: 13px; color: var(--text-2); text-transform: uppercase; letter-spacing: .08em; }
+.privacy-link { gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.privacy-link input { min-width: 0; flex: 1 1 100%; font-size: 13px; }
+.privacy-visibility { display: flex; flex-direction: column; gap: 6px; }
+.privacy-visibility button { justify-content: flex-start; height: auto; padding: 8px 12px; gap: 12px; text-align: left; }
+.privacy-visibility button span { display: flex; flex-direction: column; line-height: 1.3; }
+.privacy-visibility button i { width: 18px; text-align: center; color: var(--text-2); }
+.privacy-visibility button.selected { border-color: var(--accent); background: rgba(59, 130, 246, .12); }
+.privacy-visibility button.selected i { color: var(--accent-light); }
+.privacy-elements { display: flex; flex-direction: column; gap: 8px; }
+.privacy-index { margin-top: 14px; }
+.privacy-card label.row { flex-wrap: nowrap; }
+.privacy-hidden { padding: 8px 12px; border-radius: 10px; background: rgba(239, 68, 68, .12); color: #fca5a5; }

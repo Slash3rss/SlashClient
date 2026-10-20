@@ -1,0 +1,67 @@
+/* A player's profile (/u/<handle>). */
+.profile-page .wrap { display: flex; flex-direction: column; gap: 14px; max-width: 980px; }
+.profile-page h3 { display: flex; align-items: center; gap: 8px; font-size: 17px; margin: 0 0 14px; }
+.profile-page h3 i { color: var(--accent-light); }
+.profile-loading { display: flex; gap: 10px; align-items: center; justify-content: center; padding: 40px; }
+
+.profile-tools { padding: 10px 12px; gap: 8px; flex-wrap: wrap; align-items: center; }
+.profile-tools .grow { min-width: 200px; color: var(--text-2); }
+.profile-tools .grow i { color: var(--accent-light); }
+
+.profile-head { display: flex; gap: 24px; align-items: center; padding: 18px 24px; }
+.profile-figure { width: 240px; height: 320px; }
+.profile-who { display: flex; flex-direction: column; gap: 14px; min-width: 0; flex: 1; }
+.profile-name { gap: 14px; align-items: center; flex-wrap: nowrap; }
+.profile-name h1 { font-size: clamp(26px, 4vw, 38px); font-weight: 800; letter-spacing: -.02em; margin: 0; line-height: 1.1; overflow-wrap: anywhere; }
+.profile-name .avatar.big { image-rendering: pixelated; }
+.profile-chips { gap: 8px; flex-wrap: wrap; }
+.profile-chips .chip { padding: 4px 12px; font-size: 13px; }
+.profile-clan-logo { width: 18px; height: 18px; border-radius: 4px; image-rendering: pixelated; }
+.profile-facts { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.profile-online { color: var(--green); }
+.profile-online i { font-size: 9px; vertical-align: middle; }
+.profile-flag { padding: 8px 12px; border-radius: 10px; background: rgba(239, 68, 68, .12); border: 1px solid rgba(239, 68, 68, .35); color: #fca5a5; font-size: 14px; }
+.profile-note i { color: var(--gold); }
+
+.profile-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.profile-stat { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: var(--radius); background: rgba(17, 22, 34, .72); border: 1px solid var(--border); }
+.profile-stat i { color: var(--accent-light); font-size: 15px; margin-bottom: 4px; }
+.profile-stat b { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+.profile-achievements { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.profile-ach { display: flex; gap: 12px; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, .025); border: 1px solid var(--border); opacity: .62; }
+.profile-ach.done { opacity: 1; background: linear-gradient(135deg, rgba(250, 204, 21, .08), rgba(255, 255, 255, .02)); border-color: rgba(250, 204, 21, .28); }
+.profile-ach b { display: block; font-size: 15px; }
+.profile-ach-icon { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; background: rgba(255, 255, 255, .05); color: var(--muted); font-size: 17px; }
+.profile-ach.done .profile-ach-icon { background: rgba(250, 204, 21, .14); color: var(--gold); }
+.profile-ach-date { color: var(--gold); margin-top: 4px; }
+.profile-progress { height: 5px; border-radius: 99px; background: rgba(255, 255, 255, .08); margin-top: 8px; overflow: hidden; }
+.profile-progress i { display: block; height: 100%; border-radius: inherit; background: var(--accent); }
+
+.profile-cosmetics { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.profile-cosmetic { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; background: rgba(255, 255, 255, .025); border: 1px solid var(--border); min-width: 0; }
+.profile-cosmetic-text { display: flex; flex-direction: column; min-width: 0; }
+.profile-cosmetic-text b { font-size: 14px; overflow-wrap: anywhere; }
+.profile-cosmetic .small { overflow-wrap: anywhere; }
+
+.profile-servers { display: flex; flex-direction: column; gap: 6px; }
+.profile-servers .row { padding: 8px 12px; border-radius: 10px; background: rgba(255, 255, 255, .025); border: 1px solid var(--border); flex-wrap: wrap; }
+.profile-servers b { overflow-wrap: anywhere; }
+.profile-share { justify-content: flex-end; }
+.profile-empty { text-align: center; }
+
+.profile-message { text-align: center; padding: 48px 20px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.profile-message h2 { margin: 0; font-size: 26px; }
+.profile-message p { margin: 0 0 8px; max-width: 460px; }
+.profile-message-icon { width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center; font-size: 26px; background: rgba(59, 130, 246, .12); color: var(--accent-light); }
+
+@media (max-width: 720px) {
+  .profile-head { flex-direction: column; padding: 16px; gap: 10px; }
+  .profile-figure { width: 200px; height: 260px; }
+  .profile-tools .label { display: none; }
+  .profile-achievements { grid-template-columns: 1fr; }
+  .profile-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .profile-stat { padding: 10px 12px; }
+  .profile-stat b { font-size: 20px; }
+  .profile-stat .small { font-size: 12px; line-height: 1.3; }
+}

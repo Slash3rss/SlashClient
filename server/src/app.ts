@@ -26,6 +26,7 @@ import { Storage, type DiskSpace } from './storage.ts';
 import { storageAdminRoutes } from './storageAdmin.ts';
 import { muteRoutes } from './mutes.ts';
 import { chatImageRoutes, type ImageLimits } from './chatImages.ts';
+import { profileRoutes } from './profiles.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -52,6 +53,8 @@ export interface Config {
   trustProxy?: boolean;
   /** Sign-ins allowed per address per minute (tests raise it). */
   loginsPerMinute?: number;
+  /** Profile pages and their pictures per address per minute (tests raise it). */
+  profileViewsPerMinute?: number;
   /** GitHub repository with the launcher's releases, for /pobierz/<system> (owner/name). */
   releasesRepo?: string;
   /** Read access to that repository when it is private. */
@@ -522,6 +525,21 @@ export function createApp(cfg: Config) {
     },
   });
 
+  // public player profiles, /u/<handle>, with what the owner lets others see (profiles.ts)
+  const profiles = profileRoutes({
+    db, webDir: cfg.webDir, publicUrl: cfg.publicUrl, authed, admin, isAdmin, body, clientIp, limitViews: rateLimiter(cfg.profileViewsPerMinute ?? 120),
+    achievements: (uuid) => achievements.list(uuid),
+    worn: (user) => wornBy(user, undefined),
+    badge: badgeOf,
+    status: (uuid) => presenceOf(uuid).status,
+    skinOf, headOf,
+    audit: (who, action, target, detail) => db.log(who, action, target, detail),
+    versioned: (html) => versioned(html, 'text/html'),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
   const routes: [string, RegExp, Handler][] = [
     // the request log: newest first, with who asked (handles looked up once per request)
     ['GET', /^\/v1\/admin\/requests$/, (req, _p, url) => {
@@ -947,6 +965,7 @@ export function createApp(cfg: Config) {
     }),
     ...mutes.routes,
     ...images.routes,
+    ...profiles.routes,
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged,
       fail: (status, code) => {
@@ -1092,6 +1111,15 @@ export function createApp(cfg: Config) {
       if (clans.serveLogo(req, res, url)) return;
     } catch (err) {
       console.error('profil:', (err as Error).message);
+      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
+      return;
+    }
+
+    // a player's profile page, its pictures and the sitemap of profiles (profiles.ts)
+    try {
+      if (await profiles.serve(req, res, url)) return;
+    } catch (err) {
+      console.error('profil gracza:', (err as Error).message);
       if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
       return;
     }
@@ -1358,6 +1386,8 @@ export function createApp(cfg: Config) {
     },
     /** For tests: dropping old chat pictures with a chosen clock. */
     chatImages: images,
+    /** For tests: the profiles' settings. */
+    profiles,
     close: () => new Promise<void>((resolve) => {
       clearInterval(heartbeat);
       clearInterval(playTick);

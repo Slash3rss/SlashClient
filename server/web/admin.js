@@ -23,6 +23,7 @@ const ACTIONS = {
   partner_background: 'zmienił(a) tło serwera', set_rank: 'zmienił(a) rangę',
   storage_add: 'dodał(a) miejsce na pliki', storage_edit: 'zmienił(a) miejsce na pliki', storage_remove: 'usunął(ęła) miejsce na pliki',
   storage_move: 'przenosi pliki z', storage_move_stop: 'zatrzymał(a) przenoszenie plików z',
+  profile_hide: 'ukrył(a) profil', profile_show: 'przywrócił(a) profil',
   'clan.delete': 'usunął(ęła) klan', 'clan.logo_remove': 'usunął(ęła) logo klanu',
 };
 /** Ranks: the colour of the SlashClient logo next to the name in game (admins are red without one). */
@@ -212,6 +213,8 @@ async function openUser(id) {
     el('div', { class: 'actions' },
       el('button', { disabled: self, onclick: () => update({ banned: !u.banned }, u.banned ? 'Konto odblokowane.' : 'Konto zablokowane i wylogowane.'), class: u.banned ? '' : 'danger' },
         icon(u.banned ? 'fa-solid fa-unlock' : 'fa-solid fa-ban'), u.banned ? 'Odblokuj' : 'Zablokuj'),
+      el('a', { class: 'btn', href: `/u/${encodeURIComponent(u.handle)}`, target: '_blank', rel: 'noopener' }, icon('fa-solid fa-id-card'), 'Profil publiczny'),
+      profileHideButton(u),
       el('button', { onclick: async () => { if (await guard(() => api('POST', `/v1/admin/users/${id}/logout`))) { toast('Wylogowano ze wszystkich urządzeń.'); openUser(id); } } },
         icon('fa-solid fa-right-from-bracket'), 'Wyloguj wszędzie'),
       el('button', { disabled: self || u.configAdmin, title: u.configAdmin ? 'Admin z konfiguracji serwera (ADMIN_HANDLES)' : '', onclick: () => update({ role: u.role === 'admin' ? '' : 'admin' }, u.role === 'admin' ? 'Odebrano uprawnienia admina.' : 'Nadano uprawnienia admina.') },
@@ -221,6 +224,28 @@ async function openUser(id) {
         if (await guard(() => api('DELETE', `/v1/admin/users/${id}`))) { toast('Konto usunięte.'); closeDrawer(); loadUsers(); }
       } }, icon('fa-solid fa-trash-can'), 'Usuń konto')));
   document.body.append(el('div', { class: 'shade', onclick: closeDrawer }), drawer);
+}
+
+/** Hiding a public profile (moderation): it is then "not found" for everyone but its owner and admins. */
+function profileHideButton(u) {
+  const b = el('button', { disabled: true }, icon('fa-solid fa-eye-slash'), 'Ukryj profil');
+  const path = `/v1/profiles/${encodeURIComponent(u.handle)}`;
+  api('GET', path).then(({ profile }) => {
+    const hidden = !!profile.moderation?.hidden;
+    b.disabled = false;
+    b.className = hidden ? '' : 'danger';
+    b.replaceChildren(icon(hidden ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash'), hidden ? 'Przywróć profil' : 'Ukryj profil');
+    if (hidden && profile.moderation.reason) b.title = `Ukryty: ${profile.moderation.reason}`;
+    b.onclick = async () => {
+      const reason = hidden ? '' : prompt(`Dlaczego ukryć profil @${u.handle}? (zapisze się w dzienniku)`, '');
+      if (reason === null) return;
+      if (await guard(() => api('POST', `/v1/admin/profiles/${encodeURIComponent(u.handle)}`, { hidden: !hidden, reason }))) {
+        toast(hidden ? 'Profil znowu widoczny.' : 'Profil ukryty.');
+        openUser(u.id);
+      }
+    };
+  }).catch(() => {});
+  return b;
 }
 
 // ---------- cosmetics ----------
