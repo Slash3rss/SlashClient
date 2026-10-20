@@ -82,6 +82,8 @@ def slash(img, color, glow):
 
 def design(cape):
     rnd = random.Random(cape)
+    if cape.startswith('skyup_'):
+        return opaque(skyup(cape))
     if cape == 'slash':
         img = border(gradient('#0b1220', '#1d4ed8'), '#60a5fa')
         return logo(img, '#f3f4f6', '#1e3a8a')
@@ -429,7 +431,197 @@ CAPES = ['slash', 'ocean', 'ember', 'forest', 'galaxy', 'rose', 'gold', 'mono', 
          # sold in the shop for Iskry
          'emberstar', 'obsidian', 'coral', 'thunder', 'regal', 'cosmos',
          # for supporters
-         'supporter_heart', 'supporter_patron']
+         'supporter_heart', 'supporter_patron',
+         # in the look of the partner server SkyUp.pl
+         'skyup_niebo', 'skyup_wyspa', 'skyup_zachod', 'skyup_noc', 'skyup_up',
+         'skyup_waterblock', 'skyup_waterblock_glebia', 'skyup_caveblock', 'skyup_caveblock_lawa']
+
+
+# ---------- SkyUp.pl: the partner server's look (sky, clouds, floating islands), drawn our own way ----------
+
+def cloud(d, x, y, w, color=(255, 255, 255, 255)):
+    """A blocky Minecraft cloud: a long slab with a bump on top."""
+    d.rectangle([x, y, x + w, y + 3], fill=color)
+    d.rectangle([x + w * 0.25, y - 2, x + w * 0.7, y], fill=color)
+
+
+def island(d, cx, top, width, depth, grass='#4ade80', dirt='#9a5b2e', dark='#6b3a1c', snow=False, fall=None):
+    """A floating island: a grass layer, a dirt body narrowing in steps, a few darker blocks and an
+    optional waterfall running off its edge."""
+    g, di, dk = hexrgb(grass), hexrgb(dirt), hexrgb(dark)
+    left, right = cx - width / 2, cx + width / 2
+    d.rectangle([left, top, right, top + 2], fill=g + (255,))
+    rows = int(depth)
+    for i in range(rows):
+        inset = (i + 1) * width / (2.4 * rows)
+        y = top + 3 + i
+        d.line([(left + inset, y), (right - inset, y)], fill=(di if i % 3 else dk) + (255,))
+    for k in range(3):
+        bx = left + width * (0.2 + k * 0.25)
+        d.rectangle([bx, top + 4 + k, bx + 1, top + 5 + k], fill=dk + (255,))
+    if snow:
+        # two little peaks with snow on them
+        for px, ph in ((cx - width * 0.18, 7), (cx + width * 0.12, 9)):
+            d.polygon([(px - 4, top), (px + 4, top), (px, top - ph)], fill=(120, 113, 108, 255))
+            d.polygon([(px - 1.5, top - ph + 3), (px + 1.5, top - ph + 3), (px, top - ph)], fill=(255, 255, 255, 255))
+    if fall is not None:
+        x = right - 2
+        d.rectangle([x, top + 1, x + 1, top + fall], fill=(125, 211, 252, 230))
+        d.point((x - 1, top + fall), fill=(224, 242, 254, 255))
+
+
+def glow(img, draw):
+    """Draws translucent light on a layer of its own and blends it in: the cape's pixels stay opaque
+    (a translucent pixel would let the game see through the cape)."""
+    layer = Image.new('RGBA', img.size, (0, 0, 0, 0))
+    draw(ImageDraw.Draw(layer))
+    return Image.alpha_composite(img, layer)
+
+
+def opaque(img):
+    """Every pixel of the art fully opaque (small translucent dots become their plain colour)."""
+    img.putalpha(255)
+    return img
+
+
+def skyup(cape):
+    rnd = random.Random(cape)
+    if cape == 'skyup_niebo':
+        # "SkyUp – Niebo": a bright sky, blocky clouds and an island with a waterfall
+        img = gradient('#7dd3fc', '#0284c7')
+        d = ImageDraw.Draw(img)
+        for y in (8, 18, 30):
+            cloud(d, rnd.uniform(-4, W - 14), y, rnd.uniform(10, 16))
+        island(d, W / 2, H * 0.66, W * 0.78, 9, fall=14)
+        return border(img, '#e0f2fe')
+    if cape == 'skyup_wyspa':
+        # "SkyUp – Wyspa": the island close up, snowy peaks on top and roots hanging below
+        img = gradient('#bae6fd', '#38bdf8')
+        d = ImageDraw.Draw(img)
+        cloud(d, 3, 8, 12)
+        island(d, W / 2, H * 0.36, W - 4, 18, snow=True, fall=22)
+        for _ in range(5):
+            x = rnd.uniform(W * 0.3, W * 0.7)
+            d.line([(x, H * 0.36 + 14), (x + rnd.uniform(-2, 2), H * 0.36 + 20 + rnd.uniform(0, 6))], fill=(120, 72, 36, 255))
+        return border(img, '#4ade80')
+    if cape == 'skyup_zachod':
+        # "SkyUp – Zachód": a sunset with the sun behind a dark island
+        img = gradient('#fb923c', '#7c3aed')
+        d = ImageDraw.Draw(img)
+        d.ellipse([W / 2 - 9, H * 0.42 - 9, W / 2 + 9, H * 0.42 + 9], fill=(254, 240, 138, 255))
+        for y in (6, 14):
+            cloud(d, rnd.uniform(-2, W - 14), y, rnd.uniform(10, 14), (253, 186, 116, 255))
+        island(d, W / 2, H * 0.55, W * 0.8, 10, grass='#1e1b4b', dirt='#312e81', dark='#1e1b4b')
+        return border(img, '#fdba74')
+    if cape == 'skyup_noc':
+        # "SkyUp – Noc": a night sky with stars and the moon, lanterns glowing on the island
+        img = gradient('#1e3a8a', '#020617')
+        d = ImageDraw.Draw(img)
+        for _ in range(26):
+            d.point((rnd.randrange(W), rnd.randrange(int(H * 0.6))), fill=(226, 232, 240, rnd.choice((150, 220, 255))))
+        d.ellipse([W - 15, 5, W - 6, 14], fill=(254, 249, 195, 255))
+        d.ellipse([W - 13, 4, W - 5, 12], fill=(30, 58, 138, 255))
+        island(d, W / 2, H * 0.68, W * 0.8, 9, grass='#166534', dirt='#57351c', dark='#3b2412', fall=12)
+        for x in (W * 0.32, W * 0.62):
+            d.rectangle([x, H * 0.68 - 3, x + 1, H * 0.68 - 1], fill=(250, 204, 21, 255))
+            d.point((x, H * 0.68 - 4), fill=(254, 240, 138, 255))
+        return border(img, '#93c5fd')
+    if cape == 'skyup_up':
+        # "SkyUp – UP": the word UP in dirt blocks with grass on top, on the sky (our own lettering)
+        img = gradient('#93c5fd', '#2563eb')
+        d = ImageDraw.Draw(img)
+        cloud(d, 2, 6, 12)
+        cloud(d, W - 16, 14, 13)
+        px = 4  # one block of the letters
+        letters = {'U': ['X.X', 'X.X', 'X.X', 'X.X', 'XXX'], 'P': ['XXX', 'X.X', 'XXX', 'X..', 'X..']}
+        x0, y0 = W / 2 - (7 * px) / 2, H * 0.38
+        for li, ch in enumerate('UP'):
+            for r, row in enumerate(letters[ch]):
+                for c, cell in enumerate(row):
+                    if cell != 'X':
+                        continue
+                    x, y = x0 + (li * 4 + c) * px, y0 + r * px
+                    top = r == 0 or letters[ch][r - 1][c] != 'X'
+                    d.rectangle([x, y, x + px - 1, y + px - 1], fill=hexrgb('#9a5b2e') + (255,))
+                    if top:
+                        d.rectangle([x, y, x + px - 1, y], fill=hexrgb('#4ade80') + (255,))
+                    d.point((x + px - 1, y + px - 1), fill=hexrgb('#6b3a1c') + (255,))
+        island(d, W / 2, H * 0.8, W * 0.6, 6)
+        return border(img, '#e0f2fe')
+    if cape == 'skyup_waterblock':
+        # "SkyUp – Waterblock": under water, a single block on the sea floor, kelp, fish and bubbles
+        img = gradient('#22d3ee', '#0c4a6e')
+        d = ImageDraw.Draw(img)
+        img = glow(img, lambda g: [g.line([(0, 6 + i * 3), (W, 7 + i * 3)], fill=(207, 250, 254, 70 - i * 15)) for i in range(4)])
+        d = ImageDraw.Draw(img)
+        floor = H * 0.84
+        d.rectangle([0, floor, W, H], fill=(194, 178, 128, 255))
+        d.rectangle([W / 2 - 6, floor - 12, W / 2 + 5, floor - 1], fill=(120, 113, 108, 255), outline=(68, 64, 60, 255))
+        d.rectangle([W / 2 - 6, floor - 12, W / 2 + 5, floor - 10], fill=(74, 222, 128, 255))
+        for x in (5, 9, W - 8):
+            h = rnd.uniform(14, 24)
+            pts = [(x + math.sin(k / 3) * 1.5, floor - k) for k in range(int(h))]
+            d.line(pts, fill=(22, 163, 74, 255), width=2)
+        for fx, fy, col in ((8, H * 0.35, (251, 146, 60, 255)), (W - 14, H * 0.55, (250, 204, 21, 255))):
+            d.rectangle([fx, fy, fx + 4, fy + 2], fill=col)
+            d.polygon([(fx - 2, fy - 1), (fx, fy + 1), (fx - 2, fy + 3)], fill=col)
+            d.point((fx + 3, fy), fill=(15, 23, 42, 255))
+        for _ in range(9):
+            x, y = rnd.uniform(4, W - 4), rnd.uniform(4, floor - 14)
+            d.ellipse([x, y, x + 2, y + 2], outline=(224, 242, 254, 220))
+        return border(img, '#67e8f9')
+    if cape == 'skyup_waterblock_glebia':
+        # "SkyUp – Waterblock: Głębia": the deep sea at night, prismarine and glowing sea lanterns
+        img = gradient('#0e7490', '#020617')
+        d = ImageDraw.Draw(img)
+        for _ in range(6):
+            x, y = rnd.uniform(3, W - 9), rnd.uniform(H * 0.45, H - 9)
+            d.rectangle([x, y, x + 6, y + 6], fill=(45, 140, 128, 255), outline=(20, 83, 75, 255))
+        for x, y in ((W * 0.25, H * 0.3), (W * 0.65, H * 0.52)):
+            d.rectangle([x - 3, y - 3, x + 3, y + 3], fill=(236, 254, 255, 255))
+            d.rectangle([x - 1, y - 1, x + 1, y + 1], fill=(165, 243, 252, 255))
+            img = glow(img, lambda g, x=x, y=y: g.ellipse([x - 8, y - 8, x + 8, y + 8], outline=(103, 232, 249, 90)))
+            d = ImageDraw.Draw(img)
+        for _ in range(7):
+            x, y = rnd.uniform(4, W - 4), rnd.uniform(4, H * 0.6)
+            d.point((x, y), fill=(165, 243, 252, 200))
+        return border(img, '#2dd4bf')
+    if cape == 'skyup_caveblock':
+        # "SkyUp – Caveblock": a stone wall full of ores, a torch lighting it
+        img = gradient('#57534e', '#1c1917')
+        d = ImageDraw.Draw(img)
+        for y in range(0, H, 6):
+            off = 3 if (y // 6) % 2 else 0
+            for x in range(-off, W, 8):
+                d.rectangle([x, y, x + 7, y + 5], outline=(41, 37, 36, 255))
+        ores = [(250, 204, 21), (34, 211, 238), (74, 222, 128), (239, 68, 68), (148, 163, 184)]
+        for _ in range(9):
+            x, y, col = rnd.uniform(3, W - 6), rnd.uniform(4, H - 6), rnd.choice(ores)
+            for dx, dy in ((0, 0), (2, 1), (1, 3)):
+                d.rectangle([x + dx, y + dy, x + dx + 1, y + dy + 1], fill=col + (255,))
+        tx, ty = W * 0.72, H * 0.22
+        d.rectangle([tx, ty, tx + 1, ty + 8], fill=(146, 64, 14, 255))
+        d.rectangle([tx - 1, ty - 3, tx + 2, ty], fill=(251, 191, 36, 255))
+        img = glow(img, lambda g: g.ellipse([tx - 10, ty - 12, tx + 11, ty + 9], fill=(251, 191, 36, 40)))
+        return border(img, '#a8a29e')
+    if cape == 'skyup_caveblock_lawa':
+        # "SkyUp – Caveblock: Lawa": a dark cave with a lava lake glowing up at the stone
+        img = gradient('#0c0a09', '#292524')
+        d = ImageDraw.Draw(img)
+        for y in range(0, int(H * 0.7), 6):
+            off = 3 if (y // 6) % 2 else 0
+            for x in range(-off, W, 8):
+                d.rectangle([x, y, x + 7, y + 5], outline=(28, 25, 23, 255))
+        img = glow(img, lambda g: [g.line([(0, H * 0.7 - k), (W, H * 0.7 - k)], fill=(234, 88, 12, max(0, 110 - k * 11))) for k in range(10)])
+        d = ImageDraw.Draw(img)
+        d.rectangle([0, H * 0.72, W, H], fill=(234, 88, 12, 255))
+        for _ in range(14):
+            x, y = rnd.uniform(0, W), rnd.uniform(H * 0.72, H)
+            d.rectangle([x, y, x + 2, y + 1], fill=rnd.choice(((253, 186, 116, 255), (250, 204, 21, 255), (194, 65, 12, 255))))
+        for x in (W * 0.2, W * 0.55, W * 0.82):
+            d.polygon([(x - 3, 0), (x + 3, 0), (x, 6 + rnd.uniform(0, 5))], fill=(68, 64, 60, 255))
+        return border(img, '#f97316')
+    raise ValueError(cape)
 
 
 def vanilla_wing():
@@ -527,6 +719,15 @@ FRAMES = 8
 def animated(cape, f):
     t = f / FRAMES
     rnd = random.Random(cape)
+    if cape == 'skyup_chmury':
+        # "SkyUp – Chmury": clouds drifting past a floating island that slowly bobs
+        img = gradient('#7dd3fc', '#0369a1')
+        d = ImageDraw.Draw(img)
+        for i, (y, w) in enumerate(((7, 14), (19, 11), (33, 15), (46, 10))):
+            x = (rnd.uniform(0, W) + t * (W + 20) * (1 if i % 2 else 0.6)) % (W + 20) - 18
+            cloud(d, x, y, w)
+        island(d, W / 2, H * 0.6 + math.sin(t * math.pi * 2) * 1.5, W * 0.72, 9, fall=12)
+        return opaque(border(img, '#e0f2fe'))
     if cape == 'aurora':
         img = gradient('#020617', '#0f172a')
         d = ImageDraw.Draw(img)
@@ -910,7 +1111,7 @@ def wing_design(kind):
 WINGS = ['angel', 'demon', 'butterfly', 'dragon', 'phoenix', 'crystal', 'batwing', 'frost', 'prism', 'shadow', 'fairy', 'bone', 'gilded',
          'emberwings', 'sapphire', 'obsidianwings']
 ELYTRAS = ['feather', 'neon', 'void', 'sunset', 'nebula', 'venom', 'tide', 'magma', 'circuit', 'autumn', 'aurum', 'glacier', 'acid', 'supporter_wings']
-ANIMATED = ['aurora', 'inferno', 'waves', 'pulse', 'matrix', 'storm', 'vortex', 'starfall']
+ANIMATED = ['aurora', 'inferno', 'waves', 'pulse', 'matrix', 'storm', 'vortex', 'starfall', 'skyup_chmury']
 
 os.makedirs(OUT, exist_ok=True)
 count = 0

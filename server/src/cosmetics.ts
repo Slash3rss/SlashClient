@@ -86,6 +86,17 @@ export const ITEMS: Item[] = [
   // for supporters of the project (a tier of at least this level, payments/support.ts)
   { id: 'supporter_heart', slot: 'cape', name: 'Serce SlashClient', since: '0.9.23', supporter: 1 },
   { id: 'supporter_patron', slot: 'cape', name: 'Mecenas', since: '0.9.23', supporter: 3 },
+  // in the look of the partner server SkyUp.pl (sky, clouds, floating islands); free unless the panel says otherwise
+  { id: 'skyup_niebo', slot: 'cape', name: 'SkyUp – Niebo', since: '0.9.24' },
+  { id: 'skyup_wyspa', slot: 'cape', name: 'SkyUp – Wyspa', since: '0.9.24' },
+  { id: 'skyup_zachod', slot: 'cape', name: 'SkyUp – Zachód', since: '0.9.24' },
+  { id: 'skyup_noc', slot: 'cape', name: 'SkyUp – Noc', since: '0.9.24' },
+  { id: 'skyup_up', slot: 'cape', name: 'SkyUp – UP', since: '0.9.24' },
+  { id: 'skyup_chmury', slot: 'cape', name: 'SkyUp – Chmury', since: '0.9.24', frames: 8 },
+  { id: 'skyup_waterblock', slot: 'cape', name: 'SkyUp – Waterblock', since: '0.9.24' },
+  { id: 'skyup_waterblock_glebia', slot: 'cape', name: 'SkyUp – Waterblock: Głębia', since: '0.9.24' },
+  { id: 'skyup_caveblock', slot: 'cape', name: 'SkyUp – Caveblock', since: '0.9.24' },
+  { id: 'skyup_caveblock_lawa', slot: 'cape', name: 'SkyUp – Caveblock: Lawa', since: '0.9.24' },
   { id: 'staff_admin', slot: 'cape', name: 'Admin', rank: 'admin', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_support', slot: 'cape', name: 'Support', rank: 'support', frames: 16, framesSince: '0.9.4' },
   { id: 'staff_partner', slot: 'cape', name: 'Partner', rank: 'partner', frames: 16, framesSince: '0.9.4' },

@@ -28,6 +28,15 @@ public class GameCosmetics implements FabricClientGameTest {
 			world.getServer().runCommand("item replace entity @a armor.chest with air");
 			context.waitTicks(10);
 			context.takeScreenshot("cosmetics-logo-cape");
+			// the capes in the look of the partner server SkyUp.pl (one animated)
+			for (String id : new String[] {"skyup_niebo", "skyup_wyspa", "skyup_zachod", "skyup_noc", "skyup_up", "skyup_chmury",
+				"skyup_waterblock", "skyup_waterblock_glebia", "skyup_caveblock", "skyup_caveblock_lawa"}) {
+				context.runOnClient(mc -> TestHooks.cosmeticsSelf(id, false));
+				context.waitTicks(6);
+				String worn = context.computeOnClient(mc -> TestHooks.capeTexture());
+				if (!worn.startsWith("slashclient-hud:textures/cape/" + id)) throw new AssertionError("Not the " + id + " cape: " + worn);
+				context.takeScreenshot("cosmetics-cape-" + id);
+			}
 			// an animated cape: its frames take turns
 			context.runOnClient(mc -> TestHooks.cosmeticsSelf("aurora", false));
 			context.waitTicks(2);
