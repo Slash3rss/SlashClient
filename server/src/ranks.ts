@@ -311,8 +311,8 @@ export function createRanks(deps: RankDeps) {
     const patch: Parameters<RankStore['save']>[1] = {};
     const name = text(b.name, 32);
     if (name !== undefined) patch.name = name;
-    if (creating && !patch.name) fail(400, 'bad_name');
-    if (name === '') fail(400, 'bad_name');
+    if (creating && !patch.name) fail(400, 'bad_rank_name');
+    if (name === '') fail(400, 'bad_rank_name');
     const nameEn = text(b.nameEn, 32);
     if (nameEn !== undefined) patch.nameEn = nameEn;
     if (b.color !== undefined) {
@@ -377,8 +377,8 @@ export function createRanks(deps: RankDeps) {
       const me = deps.admin(req);
       const b = await deps.body(req);
       const id = typeof b.id === 'string' ? b.id.trim().toLowerCase() : '';
-      if (!RANK_ID.test(id) || id === 'none' || id === 'colors') fail(400, 'bad_id');
-      if (store.def(id)) fail(409, 'exists');
+      if (!RANK_ID.test(id) || id === 'none' || id === 'colors') fail(400, 'bad_rank_id');
+      if (store.def(id)) fail(409, 'rank_exists');
       const d = store.save(id, patchOf(b, true));
       deps.audit(me, 'rank_create', id, `${d.name} ${d.color}`);
       return adminView(d, {});
@@ -399,7 +399,7 @@ export function createRanks(deps: RankDeps) {
       const me = deps.admin(req);
       const d = defOr404(id);
       // the first ones (rank cosmetics and the game rely on them) are only switched off
-      if (d.builtin) fail(400, 'builtin');
+      if (d.builtin) fail(400, 'builtin_rank');
       const who = store.holders(id);
       store.remove(id);
       for (const uuid of who) sync(uuid);

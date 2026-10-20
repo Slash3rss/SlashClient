@@ -213,10 +213,10 @@ describe('ranks', () => {
     assert.deepEqual(before.map((r: any) => [r.id, r.color, r.auto]), [
       ['admin', '#ef4444', 'role'], ['support', '#38bdf8', ''], ['partner', '#facc15', ''], ['friend', '#22c55e', ''], ['friend_pink', '#ec4899', ''], ['supporter', '#f472b6', 'payment'],
     ]);
-    assert.equal((await call('POST', '/v1/admin/ranks', boss.token, { id: 'Bad Id', name: 'X', color: '#ffffff' })).body.error, 'bad_id');
-    assert.equal((await call('POST', '/v1/admin/ranks', boss.token, { id: 'none', name: 'X', color: '#ffffff' })).body.error, 'bad_id');
+    assert.equal((await call('POST', '/v1/admin/ranks', boss.token, { id: 'Bad Id', name: 'X', color: '#ffffff' })).body.error, 'bad_rank_id');
+    assert.equal((await call('POST', '/v1/admin/ranks', boss.token, { id: 'none', name: 'X', color: '#ffffff' })).body.error, 'bad_rank_id');
     assert.equal((await call('POST', '/v1/admin/ranks', boss.token, { id: 'vip', name: 'VIP', color: 'red' })).body.error, 'bad_color');
-    assert.equal((await call('POST', '/v1/admin/ranks', boss.token, { id: 'vip', color: '#ffffff' })).body.error, 'bad_name');
+    assert.equal((await call('POST', '/v1/admin/ranks', boss.token, { id: 'vip', color: '#ffffff' })).body.error, 'bad_rank_name');
     const made = await call('POST', '/v1/admin/ranks', boss.token, { id: 'vip', name: 'VIP', nameEn: 'VIP', color: '#14B8A6', priority: 95, description: 'Dla VIP-ów' });
     assert.equal(made.status, 200);
     assert.equal(made.body.color, '#14b8a6');
@@ -254,7 +254,7 @@ describe('ranks', () => {
     assert.equal((await me(ida.token)).badge, 'partner');
     assert.ok(!(await call('GET', '/v1/ranks')).body.ranks.some((r: any) => r.id === 'vip'));
     // the first ones cannot be deleted, made ones can (with their grants)
-    assert.equal((await call('DELETE', '/v1/admin/ranks/partner', boss.token)).body.error, 'builtin');
+    assert.equal((await call('DELETE', '/v1/admin/ranks/partner', boss.token)).body.error, 'builtin_rank');
     assert.equal((await call('DELETE', '/v1/admin/ranks/vip', boss.token)).status, 200);
     assert.equal((await call('GET', `/v1/admin/users/${ida.user.id}/ranks`, boss.token)).body.grants.length, 1);
     assert.equal((await call('GET', withIcon.body.iconUrl)).status, 404);
