@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { setLang } from '../src/shared/i18n';
-import { applyCommunityMessage, channelName, communityBadge, communityMay, mentionParts, shouldNotify, type Community, type CommunityMessage, type CommunityRole } from '../src/renderer/communities';
+import {
+  QUICK_REACTIONS, REACTIONS, SLOW_MODES, applyCommunityMessage, applyReaction, channelName, communityBadge, communityMay, keepMyReactions, mentionParts, shouldNotify, waitText,
+  type Community, type CommunityMessage, type CommunityRole,
+} from '../src/renderer/communities';
 import { readFileSync } from 'node:fs';
 
 const ROLES: CommunityRole[] = ['owner', 'admin', 'moderator', 'member'];
@@ -10,13 +13,13 @@ describe('communities in the Friends view', () => {
   it('offers what the server allows, for every role, action and target', () => {
     const RANK = { owner: 3, admin: 2, moderator: 1, member: 0 };
     for (const role of ROLES) {
-      for (const action of ['invite', 'requests', 'reports', 'kick', 'mute', 'deleteMessage', 'ban', 'edit', 'announce', 'log', 'setRole', 'transfer', 'delete'] as const) {
+      for (const action of ['invite', 'requests', 'reports', 'pin', 'kick', 'mute', 'deleteMessage', 'ban', 'edit', 'announce', 'log', 'slowMode', 'setRole', 'transfer', 'delete'] as const) {
         for (const target of [undefined, ...ROLES]) {
           for (const next of [undefined, ...ROLES]) {
             const r = RANK[role];
             const below = target !== undefined && RANK[target] < r;
             const want = {
-              invite: r >= 1, requests: r >= 1, reports: r >= 1, kick: r >= 1 && below, mute: r >= 1 && below, deleteMessage: r >= 1 && below,
+              invite: r >= 1, requests: r >= 1, reports: r >= 1, pin: r >= 1, slowMode: r >= 2, kick: r >= 1 && below, mute: r >= 1 && below, deleteMessage: r >= 1 && below,
               ban: r >= 2 && below, edit: r >= 2, announce: r >= 2, log: r >= 2, setRole: r >= 2 && below && next !== undefined && next !== 'owner' && RANK[next] < r,
               transfer: role === 'owner' && target !== undefined && target !== 'owner', delete: role === 'owner',
             }[action];
@@ -77,4 +80,36 @@ describe('communities in the Friends view', () => {
     assert.equal(channelName({ kind: 'general', name: '' }), 'Ogólny');
     assert.equal(channelName({ kind: 'custom', name: 'turnieje' }), 'turnieje');
   });
+
+  it('reacts with the server\'s emoji, and slow mode has the server\'s choices', () => {
+    const server = readFileSync('server/src/communityStore.ts', 'utf8').replace(/\r/g, '');
+    // the emoji in quotes, in order, from the server's two lists
+    const emoji = (src: string) => [...src.matchAll(/'([^']+)'/g)].map((m) => m[1]);
+    assert.deepEqual(emoji(/export const QUICK_REACTIONS = \[([^\]]*)\]/.exec(server)![1]), QUICK_REACTIONS);
+    assert.deepEqual([...QUICK_REACTIONS, ...emoji(/export const REACTIONS = \[\s*\.\.\.QUICK_REACTIONS,([^\]]*)\]/.exec(server)![1])], REACTIONS);
+
+    assert.ok(server.includes(`export const SLOW_MODES = [${SLOW_MODES.join(', ')}];`));
+  });
+
+  it('counts reactions from the pushed changes, mine marked only by my own', () => {
+    let r = applyReaction(undefined, { emoji: '👍', count: 1, user: 'bob', on: true }, 'me');
+    assert.deepEqual(r, [{ emoji: '👍', count: 1 }]);
+    r = applyReaction(r, { emoji: '👍', count: 2, user: 'me', on: true }, 'me');
+    assert.deepEqual(r, [{ emoji: '👍', count: 2, me: true }]);
+    r = applyReaction(r, { emoji: '🔥', count: 1, user: 'ala', on: true }, 'me');
+    // someone else taking theirs off leaves my mark
+    r = applyReaction(r, { emoji: '👍', count: 1, user: 'bob', on: false }, 'me');
+    assert.deepEqual(r, [{ emoji: '👍', count: 1, me: true }, { emoji: '🔥', count: 1 }]);
+    r = applyReaction(r, { emoji: '👍', count: 0, user: 'me', on: false }, 'me');
+    assert.deepEqual(r, [{ emoji: '🔥', count: 1 }]);
+    // an edited message pushed to everyone: my marks stay
+    assert.deepEqual(keepMyReactions([{ emoji: '🔥', count: 1, me: true }], [{ emoji: '🔥', count: 2 }, { emoji: '😂', count: 1 }]), [{ emoji: '🔥', count: 2, me: true }, { emoji: '😂', count: 1 }]);
+    assert.equal(keepMyReactions([{ emoji: '🔥', count: 1, me: true }], undefined), undefined);
+  });
+
+  it('says how long to wait in words', () => {
+    assert.deepEqual([5, 30, 60, 90, 300, 3600, 3660].map(waitText), ['5 s', '30 s', '1 min', '1 min 30 s', '5 min', '1 h', '1 h 1 min']);
+    assert.equal(waitText(4.2), '5 s');
+  });
 });
+

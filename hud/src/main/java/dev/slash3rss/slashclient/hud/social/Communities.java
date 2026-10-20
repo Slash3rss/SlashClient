@@ -22,14 +22,35 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * through as it is. Events come through the bridge as `communities` (fetch the list again),
  * `community-message`, `community-message-edit`/`-delete` and `community` (invites, kicks…). A new
  * message makes a toast only as the member chose: all, mentions (the default) or none.
+ *
+ * Server 0.9.27+ (an older one sends none of it): reactions under a message (counts; the six quick
+ * ones toggled from the message's menu or by clicking a count), the quote of the message a reply
+ * answers, pinned messages marked, a channel's slow mode (a countdown above the field) and the
+ * timeout ("Wyciszony do …"); `community-reaction` and `community-pin` keep them current.
  */
 public final class Communities {
 	private Communities() {}
 
-	public record Channel(String id, String kind, String name, boolean canPost, int unread, int mentions) {
+	/** `slowMode`: seconds between our messages there (0: off; moderators and up are not held back). */
+	public record Channel(String id, String kind, String name, boolean canPost, int unread, int mentions, int slowMode) {
+		public Channel(String id, String kind, String name, boolean canPost, int unread, int mentions) {
+			this(id, kind, name, canPost, unread, mentions, 0);
+		}
+
 		public boolean announcements() {
 			return "announcements".equals(kind);
 		}
+	}
+
+	/** One emoji under a message: how many, and whether we are one of them. */
+	public record Reaction(String emoji, int count, boolean me) {}
+
+	/** The quick reactions (the server's first six); the game offers only these. */
+	public static final List<String> QUICK = List.of("👍", "❤️", "😂", "😮", "😢", "🔥");
+
+	/** An emoji as the game's font can draw it: without the colour-emoji selector (U+FE0F), which it has no glyph for. */
+	public static String glyph(String emoji) {
+		return emoji.replace("️", "");
 	}
 
 	/** `logo`: its version (0: none); `notifyMode`: "all", "mentions" or "none"; `mutedUntil`: when we may write again (0: not muted). */
@@ -46,8 +67,28 @@ public final class Communities {
 		}
 	}
 
-	/** `author`: the name then; `authorRole`: their role now ("" when not a member any more); `moderated`: deleted by a moderator. */
-	public record Message(long id, String community, String channel, String from, String author, String authorRole, String text, long at, long editedAt, boolean deleted, boolean moderated, List<String> mentions) {
+	/**
+	 * `author`: the name then; `authorRole`: their role now ("" when not a member any more); `moderated`: deleted by a moderator;
+	 * `replyId` (0: none), `replyAuthor` and `replyText`: the message this one answers (`replyGone` when it was deleted).
+	 */
+	public record Message(long id, String community, String channel, String from, String author, String authorRole, String text, long at, long editedAt, boolean deleted, boolean moderated, List<String> mentions,
+		long replyId, String replyAuthor, String replyText, boolean replyGone, List<Reaction> reactions, boolean pinned) {
+		public Message(long id, String community, String channel, String from, String author, String authorRole, String text, long at, long editedAt, boolean deleted, boolean moderated, List<String> mentions) {
+			this(id, community, channel, from, author, authorRole, text, at, editedAt, deleted, moderated, mentions, 0, "", "", false, List.of(), false);
+		}
+
+		Message withReactions(List<Reaction> next) {
+			return new Message(id, community, channel, from, author, authorRole, text, at, editedAt, deleted, moderated, mentions, replyId, replyAuthor, replyText, replyGone, List.copyOf(next), pinned);
+		}
+
+		Message withPinned(boolean p) {
+			return new Message(id, community, channel, from, author, authorRole, text, at, editedAt, deleted, moderated, mentions, replyId, replyAuthor, replyText, replyGone, reactions, p);
+		}
+
+		Message withReplyGone() {
+			return new Message(id, community, channel, from, author, authorRole, text, at, editedAt, deleted, moderated, mentions, replyId, "", "", true, reactions, pinned);
+		}
+
 		public boolean plainText() {
 			return !deleted;
 		}
@@ -65,6 +106,8 @@ public final class Communities {
 	private static final Map<String, Boolean> moderators = new ConcurrentHashMap<>();
 	private static final Map<String, List<Member>> members = new ConcurrentHashMap<>();
 	private static final Map<String, Integer> memberTotals = new ConcurrentHashMap<>();
+	/** When slow mode lets us write again in a channel (from the history, a message sent, or a refusal). */
+	private static final Map<String, Long> nextPostAt = new ConcurrentHashMap<>();
 	/** The channel open in the friends window: its new messages are read at once and make no toast. */
 	public static volatile String viewing;
 
@@ -113,7 +156,7 @@ public final class Communities {
 		if (o.has("channels") && o.get("channels").isJsonArray()) {
 			for (JsonElement el : o.getAsJsonArray("channels")) {
 				JsonObject c = el.getAsJsonObject();
-				channels.add(new Channel(Social.str(c, "id"), Social.str(c, "kind"), Social.str(c, "name"), Social.bool(c, "canPost"), (int) Social.longOf(c, "unread"), (int) Social.longOf(c, "mentions")));
+				channels.add(new Channel(Social.str(c, "id"), Social.str(c, "kind"), Social.str(c, "name"), Social.bool(c, "canPost"), (int) Social.longOf(c, "unread"), (int) Social.longOf(c, "mentions"), (int) Social.longOf(c, "slowMode")));
 			}
 		}
 		return new Community(Social.str(o, "id"), Social.str(o, "name"), Social.str(o, "tag"), Social.longOf(o, "logo"), Social.str(o, "role"), Social.str(o, "notify"),
@@ -124,8 +167,35 @@ public final class Communities {
 		JsonObject a = o.has("author") && o.get("author").isJsonObject() ? o.getAsJsonObject("author") : new JsonObject();
 		List<String> mentions = new ArrayList<>();
 		if (o.has("mentions") && o.get("mentions").isJsonArray()) for (JsonElement m : o.getAsJsonArray("mentions")) mentions.add(m.getAsString());
+		// the answered message's quote, reactions and the pin (server 0.9.27+)
+		JsonObject q = o.has("replyTo") && o.get("replyTo").isJsonObject() ? o.getAsJsonObject("replyTo") : null;
+		JsonObject qa = q != null && q.has("author") && q.get("author").isJsonObject() ? q.getAsJsonObject("author") : new JsonObject();
+		List<Reaction> reactions = new ArrayList<>();
+		if (o.has("reactions") && o.get("reactions").isJsonArray()) {
+			for (JsonElement r : o.getAsJsonArray("reactions")) {
+				JsonObject x = r.getAsJsonObject();
+				reactions.add(new Reaction(Social.str(x, "emoji"), (int) Social.longOf(x, "count"), Social.bool(x, "me")));
+			}
+		}
 		return new Message(o.get("id").getAsLong(), Social.str(o, "community"), Social.str(o, "channel"), Social.str(o, "from"), Social.str(a, "name"), Social.str(a, "role"),
-			Social.str(o, "text"), o.get("at").getAsLong(), Social.longOf(o, "editedAt"), Social.bool(o, "deleted"), Social.bool(o, "moderated"), List.copyOf(mentions));
+			Social.str(o, "text"), o.get("at").getAsLong(), Social.longOf(o, "editedAt"), Social.bool(o, "deleted"), Social.bool(o, "moderated"), List.copyOf(mentions),
+			q == null ? 0 : Social.longOf(q, "id"), Social.str(qa, "name"), q == null ? "" : Social.str(q, "text"), q != null && (Social.bool(q, "deleted") || !q.has("author")), List.copyOf(reactions), Social.bool(o, "pinned"));
+	}
+
+	/** Our reactions after someone's change (`count`: that emoji's number now); emoji nobody has any more go. */
+	static List<Reaction> applyReaction(List<Reaction> list, String emoji, int count, boolean mine, boolean on) {
+		List<Reaction> next = new ArrayList<>();
+		boolean found = false;
+		for (Reaction r : list) {
+			if (!r.emoji().equals(emoji)) next.add(r);
+			else {
+				found = true;
+				next.add(new Reaction(emoji, count, mine ? on : r.me()));
+			}
+		}
+		if (!found) next.add(new Reaction(emoji, count, mine && on));
+		next.removeIf(r -> r.count() <= 0);
+		return next;
 	}
 
 	/** The list from the server (when the bridge connects and when something changed); an older launcher or server has none. */
@@ -172,11 +242,32 @@ public final class Communities {
 			case "community-message-edit", "community-message-delete" -> {
 				if (e.has("message") && e.get("message").isJsonObject()) replaced(messageFrom(e.getAsJsonObject("message")));
 			}
+			case "community-reaction" -> {
+				// someone's emoji under a message we have (ours too, from the launcher)
+				String emoji = Social.str(e, "emoji");
+				boolean mine = Social.str(e, "user").equals(Social.myId());
+				update(Social.str(e, "channel"), Social.longOf(e, "message"), m -> m.withReactions(applyReaction(m.reactions(), emoji, (int) Social.longOf(e, "count"), mine, Social.bool(e, "on"))));
+			}
+			case "community-pin" -> {
+				if (!e.has("message") || !e.get("message").isJsonObject()) return;
+				JsonObject m = e.getAsJsonObject("message");
+				boolean pinned = Social.bool(e, "pinned");
+				update(Social.str(m, "channel"), Social.longOf(m, "id"), x -> x.withPinned(pinned));
+			}
 			case "community" -> {
 				String key = e.has("invite") ? "invited" : e.has("kicked") ? "kicked" : e.has("banned") ? "banned" : e.has("accepted") ? "accepted" : "";
 				if (!key.isEmpty()) {
 					JsonObject o = e.getAsJsonObject(e.has("invite") ? "invite" : key);
 					Social.toast(Component.translatable("slashclient-hud.communities.title").getString(), Component.translatable("slashclient-hud.communities." + key, Social.str(o, "name")).getString(), "m-players");
+				}
+				// a timeout (server 0.9.27+): until when, or lifted
+				if (e.has("muted") && e.get("muted").isJsonObject()) {
+					JsonObject o = e.getAsJsonObject("muted");
+					long until = Social.longOf(o, "until");
+					String text = until > 0
+						? Component.translatable("slashclient-hud.communities.timedOut", Social.str(o, "name"), java.time.format.DateTimeFormatter.ofPattern("dd.MM HH:mm").withZone(java.time.ZoneId.systemDefault()).format(java.time.Instant.ofEpochMilli(until))).getString()
+						: Component.translatable("slashclient-hud.communities.timeoutLifted", Social.str(o, "name")).getString();
+					Social.toast(Component.translatable("slashclient-hud.communities.title").getString(), text, "m-players");
 				}
 				refresh();
 			}
@@ -193,7 +284,7 @@ public final class Communities {
 				continue;
 			}
 			int mention = unread && m.mentionsMe() ? 1 : 0;
-			List<Channel> channels = c.channels().stream().map(ch -> ch.id().equals(m.channel()) && unread ? new Channel(ch.id(), ch.kind(), ch.name(), ch.canPost(), ch.unread() + 1, ch.mentions() + mention) : ch).toList();
+			List<Channel> channels = c.channels().stream().map(ch -> ch.id().equals(m.channel()) && unread ? new Channel(ch.id(), ch.kind(), ch.name(), ch.canPost(), ch.unread() + 1, ch.mentions() + mention, ch.slowMode()) : ch).toList();
 			next.add(new Community(c.id(), c.name(), c.tag(), c.logo(), c.role(), c.notifyMode(), c.unread() + (unread ? 1 : 0), c.mentions() + mention, c.members(), c.mutedUntil(), Math.max(c.lastMessageAt(), m.at()), channels));
 		}
 		sort(next);
@@ -203,7 +294,50 @@ public final class Communities {
 	static void replaced(Message m) {
 		List<Message> chat = chats.get(m.channel());
 		if (chat == null) return;
-		for (int i = 0; i < chat.size(); i++) if (chat.get(i).id() == m.id()) chat.set(i, m);
+		for (int i = 0; i < chat.size(); i++) {
+			Message old = chat.get(i);
+			if (old.id() == m.id()) {
+				// a pushed version says nothing of our reactions: our marks kept from the one we had
+				List<Reaction> next = new ArrayList<>();
+				for (Reaction r : m.reactions()) next.add(new Reaction(r.emoji(), r.count(), r.me() || old.reactions().stream().anyMatch(o -> o.emoji().equals(r.emoji()) && o.me())));
+				chat.set(i, m.deleted() ? m : m.withReactions(next));
+			} else if (m.deleted() && old.replyId() == m.id() && !old.replyGone()) chat.set(i, old.withReplyGone());
+		}
+	}
+
+	/** One message of a channel we have, changed in place. */
+	private static void update(String channelId, long id, java.util.function.UnaryOperator<Message> change) {
+		List<Message> chat = chats.get(channelId);
+		if (chat == null) return;
+		for (int i = 0; i < chat.size(); i++) if (chat.get(i).id() == id) chat.set(i, change.apply(chat.get(i)));
+	}
+
+	/** Seconds until slow mode lets us write in this channel again (0: now). */
+	public static long slowWait(String channelId) {
+		long at = nextPostAt.getOrDefault(channelId, 0L);
+		return Math.max(0, (at - System.currentTimeMillis() + 999) / 1000);
+	}
+
+	/** We may react while not timed out (the server checks it again). */
+	public static boolean canReact(Message m) {
+		Community c = community(m.community());
+		return !m.deleted() && c != null && c.mutedUntil() <= System.currentTimeMillis();
+	}
+
+	/** Adds our emoji, or takes it off when it is there. */
+	public static void react(Message m, String emoji) {
+		boolean on = m.reactions().stream().noneMatch(r -> r.emoji().equals(emoji) && r.me());
+		JsonObject body = new JsonObject();
+		body.addProperty("emoji", emoji);
+		body.addProperty("on", on);
+		Thread.ofVirtual().start(() -> {
+			try {
+				Message next = messageFrom(Social.api("POST", "/v1/communities/" + m.community() + "/channels/" + m.channel() + "/messages/" + m.id() + "/reactions", body).getAsJsonObject("message"));
+				update(m.channel(), m.id(), x -> x.withReactions(next.reactions()));
+			} catch (Exception e) {
+				Social.toast(Component.translatable("slashclient-hud.communities.notReacted").getString(), Social.errorText(e), "info");
+			}
+		});
 	}
 
 	// ---------- actions from the screens (off the render thread) ----------
@@ -219,6 +353,7 @@ public final class Communities {
 					for (JsonElement el : res.getAsJsonArray("messages")) l.add(messageFrom(el.getAsJsonObject()));
 					editWindows.put(channelId, Social.longOf(res, "editWindowMs"));
 					moderators.put(channelId, Social.bool(res, "moderator"));
+					if (Social.longOf(res, "nextPostAt") > 0) nextPostAt.put(channelId, Social.longOf(res, "nextPostAt"));
 					chats.put(channelId, l);
 				}
 				markRead(communityId, channelId);
@@ -238,7 +373,8 @@ public final class Communities {
 				next.add(x);
 				continue;
 			}
-			List<Channel> channels = x.channels().stream().map(y -> y.id().equals(channelId) ? new Channel(y.id(), y.kind(), y.name(), y.canPost(), 0, 0) : y).toList();
+			List<Channel> channels = x.channels().stream().map(y -> y.id().equals(channelId) ? new Channel(y.id(), y.kind(), y.name(), y.canPost(), 0, 0, y.slowMode())
+ : y).toList();
 			next.add(new Community(x.id(), x.name(), x.tag(), x.logo(), x.role(), x.notifyMode(), Math.max(0, x.unread() - ch.unread()), Math.max(0, x.mentions() - ch.mentions()), x.members(), x.mutedUntil(), x.lastMessageAt(), channels));
 		}
 		list = List.copyOf(next);
@@ -276,13 +412,19 @@ public final class Communities {
 		body.addProperty("text", t.length() > 2000 ? t.substring(0, 2000) : t);
 		Thread.ofVirtual().start(() -> {
 			try {
-				Message m = messageFrom(Social.api("POST", "/v1/communities/" + communityId + "/channels/" + channelId + "/messages", body).getAsJsonObject("message"));
+				JsonObject res = Social.api("POST", "/v1/communities/" + communityId + "/channels/" + channelId + "/messages", body);
+				Message m = messageFrom(res.getAsJsonObject("message"));
 				List<Message> chat = chats.computeIfAbsent(channelId, k -> new CopyOnWriteArrayList<>());
 				if (chat.stream().noneMatch(x -> x.id() == m.id())) chat.add(m);
+				if (Social.longOf(res, "nextPostAt") > 0) nextPostAt.put(channelId, Social.longOf(res, "nextPostAt"));
 				bump(m, false);
 			} catch (Exception e) {
+				// slow mode ("slow_mode:30"): the countdown from now
+				java.util.regex.Matcher slow = java.util.regex.Pattern.compile("slow_mode:(\\d+)").matcher(String.valueOf(e.getMessage()));
+				if (slow.find()) nextPostAt.put(channelId, System.currentTimeMillis() + Long.parseLong(slow.group(1)) * 1000);
 				Social.toast(Component.translatable("slashclient-hud.friends.notSent").getString(), Social.errorText(e), "info");
 			}
+
 		});
 	}
 

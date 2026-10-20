@@ -695,12 +695,14 @@ export function createApp(cfg: Config) {
     status: (userId) => presenceOf(userId).status,
     limitCreate: limiter('communities.createPerMinute'), limitJoin: limiter('communities.joinPerMinute'), limitChanges: limiter('communities.changesPerMinute'), limitLogos: limiter('communities.logosPerMinute'),
     limitMessages, limitEdits, limitBurst, limitReports: limiter('communities.reportsPerMinute'), limitViews: limiter('profiles.viewsPerMinute'),
+    limitReactions: limiter('communities.reactionsPerMinute'),
     countMessage: (user) => achievements.store.messages.count(user),
     checkAchievements: (user) => achievements.check(user),
     sizeGoals: () => achievements.registry.active().filter((a) => a.group === 'community_size').map((a) => a.goal),
-    fail: (status, code) => {
-      throw new HttpError(status, code);
+    fail: (status, code, retryAfter) => {
+      throw new HttpError(status, code, retryAfter);
     },
+
   });
 
   // muted friends (mutes.ts) and pictures in the chat (chatImages.ts)

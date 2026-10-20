@@ -1,6 +1,6 @@
 import { getLang, locale, t } from '../shared/i18n';
 import { createGroups } from './groups';
-import { createCommunities } from './communities';
+import { createCommunities, waitText } from './communities';
 import { PlayingWatch, type PlayingNews } from './friendActivity';
 import { createParty, type Party } from './party';
 import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
@@ -77,6 +77,9 @@ export function socialErrorText(code: string): string {
   // too many messages in a row (server 0.9.23+): how long to wait
   const wait = slowDownSeconds(code);
   if (wait) return slowDownText(wait);
+  // a community channel's slow mode (server 0.9.27+): "slow_mode:30"
+  const slow = /^slow_mode(?::(\d+))?$/.exec(code);
+  if (slow) return t('Tryb powolny: możesz napisać za {0}.', waitText(Number(slow[1] ?? 0) || 1));
   const texts: Record<string, string> = {
     offline: t('Nie można połączyć się z serwerem znajomych.'),
     unauthorized: t('Sesja wygasła. Zaloguj się ponownie.'),
@@ -143,6 +146,11 @@ export function socialErrorText(code: string): string {
     read_only_channel: t('Tu piszą tylko administratorzy społeczności.'),
     already_reported: t('Ta wiadomość jest już przez Ciebie zgłoszona.'),
     not_member: t('Ten gracz nie jest w społeczności.'),
+    bad_reply: t('Można odpowiedzieć tylko na wiadomość z tego samego kanału.'),
+    reply_deleted: t('Ta wiadomość została usunięta — nie można na nią odpowiedzieć.'),
+    bad_reaction: t('Tej reakcji nie można dodać.'),
+    too_many_reactions: t('Pod tą wiadomością jest już najwięcej różnych reakcji.'),
+    too_many_pins: t('W tym kanale przypięto już najwięcej wiadomości. Najpierw odepnij którąś.'),
     // the shop (sparks from achievements)
     not_enough_sparks: t('Za mało Iskier.'),
     owned: t('Masz już ten przedmiot.'),
@@ -232,6 +240,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     },
     edit: (m) => startEditing({ id: m.id, community: m.community, channel: m.channel }, m.text),
     editGone: () => stopEditing(),
+    focus: () => input?.focus(),
   });
   const friend = (id: string | undefined) => list.friends.find((f) => f.id === id);
   /** A friends list from the server with each stream checked (streams.ts). */
@@ -481,7 +490,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         e.preventDefault();
         e.stopPropagation();
         stopEditing();
+      } else if (e.key === 'Escape' && communities.active() && communities.cancelReply()) {
+        e.preventDefault();
+        e.stopPropagation();
       }
+
     });
     input.addEventListener('input', () => {
       input.style.height = 'auto';

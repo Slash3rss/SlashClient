@@ -13,17 +13,23 @@ import { disabledText, featureOn } from './features';
  *
  * The community chat is NOT end-to-end encrypted (a key for every member's launcher on every
  * message does not scale to a thousand people): it is kept on the server like a forum's posts, and
- * moderators can read and remove it. The chat says so above the composer.
+ * moderators can read and remove it.
  *
  * Big rooms: no toast for every message, only per the member's choice (all / mentions / none,
  * mentions by default); members come in pages; messages say who wrote them (no member list here).
+ *
+ * Server 0.9.27+ (an older one sends none of it, and nothing of it is offered): emoji reactions
+ * under a message (a fixed set, the quick six first), replies with a quote of the message answered
+ * (a click on it scrolls back to it), pinned messages (a list in the header), a channel's slow mode
+ * (a countdown above the composer) and a timeout (the mute: "Wyciszony do …").
  */
 
 interface Person { id: string; handle: string; name: string; avatar: string }
 export type CommunityRole = 'owner' | 'admin' | 'moderator' | 'member';
 export const RANK: Record<CommunityRole, number> = { owner: 3, admin: 2, moderator: 1, member: 0 };
 export type Notify = 'all' | 'mentions' | 'none';
-export interface Channel { id: string; kind: 'general' | 'announcements' | 'custom'; name: string; canPost: boolean; unread: number; mentions: number }
+/** `slowMode`: seconds between one member's messages when it is on (moderators and up are exempt). */
+export interface Channel { id: string; kind: 'general' | 'announcements' | 'custom'; name: string; canPost: boolean; unread: number; mentions: number; slowMode?: number }
 export interface CommunitySummary {
   id: string; name: string; tag: string; slug: string; description: string; visibility: 'public' | 'private'; joinMode: 'open' | 'request';
   members: number; owner: Person; createdAt: number; logo?: number;
@@ -36,13 +42,57 @@ export interface Community extends CommunitySummary {
   /** Waiting requests and open reports, for those who handle them. */
   pending?: number; reports?: number;
 }
+/** One emoji under a message: how many, and whether one of them is mine. */
+export interface Reaction { emoji: string; count: number; me?: boolean }
+/** The message a reply answers: who and its first line, or only `deleted` when it is gone. */
+export interface ReplyQuote { id: number; from?: string; author?: { name: string; handle: string }; text?: string; deleted?: boolean }
 export interface CommunityMessage {
   id: number; community: string; channel: string; from: string; author: { name: string; handle: string; role?: CommunityRole };
   text: string; at: number; editedAt?: number; deleted?: boolean; moderated?: boolean; mentions?: string[];
+  replyTo?: ReplyQuote; reactions?: Reaction[]; pinned?: boolean;
 }
 interface Member extends Person { role: CommunityRole; joinedAt: number; status: string; online: boolean; mutedUntil?: number }
 
 const PAGE = 50;
+
+/** The emoji one may react with (the server's REACTIONS, communityStore.ts): the quick six, then the picker. */
+export const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+export const REACTIONS = [
+  ...QUICK_REACTIONS,
+  '👎', '🎉', '👏', '🙏', '💯', '😀', '😅', '😍', '🤔', '😎', '🙄', '😴', '🤯', '🥳', '😭', '😡', '💀', '👀',
+  '✅', '❌', '⭐', '💎', '🏆', '⚔️', '⛏️', '🧱', '🍰', '🐷', '🤝', '💪',
+];
+/** Slow mode's choices in seconds (the server's SLOW_MODES). */
+export const SLOW_MODES = [0, 5, 10, 30, 60, 300, 900, 3600];
+
+/** "30 s", "5 min", "1 h", "1 min 30 s": a wait or slow mode's length. */
+export function waitText(seconds: number): string {
+  const s = Math.max(0, Math.ceil(seconds));
+  if (s < 60) return t('{0} s', s);
+  if (s < 3600) return s % 60 ? t('{0} min {1} s', Math.floor(s / 60), s % 60) : t('{0} min', s / 60);
+  const m = Math.floor((s % 3600) / 60);
+  return m ? t('{0} h {1} min', Math.floor(s / 3600), m) : t('{0} h', Math.floor(s / 3600));
+}
+
+/**
+ * A message's reactions after a pushed change (`count` is the emoji's number after it); `me`
+ * follows only my own changes. Emoji nobody has any more go away.
+ */
+export function applyReaction(list: Reaction[] | undefined, e: { emoji: string; count: number; user: string; on: boolean }, me: string | undefined): Reaction[] {
+  const mine = !!me && e.user === me;
+  const set = (r: Reaction): Reaction => {
+    const own = mine ? e.on : r.me;
+    return { emoji: r.emoji, count: e.count, ...(own ? { me: true } : {}) };
+  };
+  const has = (list ?? []).some((r) => r.emoji === e.emoji);
+  const next = has ? (list ?? []).map((r) => (r.emoji === e.emoji ? set(r) : r)) : [...(list ?? []), set({ emoji: e.emoji, count: e.count })];
+  return next.filter((r) => r.count > 0);
+}
+
+/** A pushed version of a message (it says nothing of who reacted): my marks kept from the one we had. */
+export function keepMyReactions(old: Reaction[] | undefined, next: Reaction[] | undefined): Reaction[] | undefined {
+  return next?.map((r) => (old?.find((o) => o.emoji === r.emoji)?.me ? { ...r, me: true } : { emoji: r.emoji, count: r.count }));
+}
 
 /** Who may do what to whom (the server checks it again): the same table as communityStore.ts's `may`. */
 export function communityMay(role: CommunityRole | undefined, action: string, target?: CommunityRole, next?: CommunityRole): boolean {
@@ -50,10 +100,10 @@ export function communityMay(role: CommunityRole | undefined, action: string, ta
   const r = RANK[role];
   const below = target !== undefined && RANK[target] < r;
   switch (action) {
-    case 'invite': case 'requests': case 'reports': return r >= 1;
+    case 'invite': case 'requests': case 'reports': case 'pin': return r >= 1;
     case 'kick': case 'mute': case 'deleteMessage': return r >= 1 && below;
     case 'ban': return r >= 2 && below;
-    case 'edit': case 'announce': case 'log': return r >= 2;
+    case 'edit': case 'announce': case 'log': case 'slowMode': return r >= 2;
     case 'setRole': return r >= 2 && below && next !== undefined && next !== 'owner' && RANK[next] < r;
     case 'transfer': return role === 'owner' && target !== undefined && target !== 'owner';
     case 'delete': return role === 'owner';
@@ -124,6 +174,8 @@ interface Deps {
   /** Edit one's message in the Friends view's composer (it calls saveEdit with the new text). */
   edit: (m: CommunityMessage) => void;
   editGone: () => void;
+  /** The composer gets the focus (a reply was started). */
+  focus?: () => void;
 }
 
 export function createCommunities(deps: Deps) {
@@ -134,8 +186,17 @@ export function createCommunities(deps: Deps) {
   let limits = { members: 1000, perPlayer: 10, owned: 3, message: 2000, description: 500 };
   let open: { community: string; channel: string } | undefined;
   let editingId: number | undefined;
-  const chats = new Map<string, { messages: CommunityMessage[]; more: boolean; loading: boolean; editWindowMs?: number; moderator?: boolean; canPost?: boolean; mutedUntil?: number }>();
+  /** `nextPostAt`: when slow mode lets me write again; `pins`: how many are pinned there. */
+  const chats = new Map<string, { messages: CommunityMessage[]; more: boolean; loading: boolean; editWindowMs?: number; moderator?: boolean; canPost?: boolean; mutedUntil?: number; nextPostAt?: number; pins?: number }>();
   let parts: { head: HTMLElement; messages: HTMLElement; typing: HTMLElement } | undefined;
+  /** The message the next one answers (shown above the composer). */
+  let replying: CommunityMessage | undefined;
+  /** A message just jumped to, lit up for a moment. */
+  let flashId: number | undefined;
+  /** Who reacted, per message, fetched when a reaction is hovered (dropped when they change). */
+  const reactors = new Map<number, Promise<{ emoji: string; users: { name: string }[]; count: number }[]>>();
+  /** Ticks the slow mode countdown and ends a timeout on time while a community is open. */
+  let ticker: ReturnType<typeof setInterval> | undefined;
 
   const community = (id: string | undefined) => list.find((c) => c.id === id);
   const me = () => deps.me()?.id;
@@ -242,6 +303,8 @@ export function createCommunities(deps: Deps) {
   async function select(id: string, channel?: string) {
     const c = community(id);
     if (!c) return;
+    // a reply waits in its own channel only
+    if (replying && replying.community !== id) replying = undefined;
     open = { community: id, channel: channel ?? c.channels.find((ch) => ch.kind === 'general')?.id ?? c.channels[0]?.id ?? '' };
     editingId = undefined;
     deps.opened();
@@ -263,6 +326,12 @@ export function createCommunities(deps: Deps) {
       const messages: CommunityMessage[] = res.messages ?? [];
       chat.messages = [...messages, ...chat.messages];
       Object.assign(chat, { editWindowMs: res.editWindowMs, moderator: !!res.moderator, canPost: res.canPost !== false, mutedUntil: res.mutedUntil, more: messages.length === PAGE });
+      if (!before) {
+        // the header's pin count and the slow mode line come with the first page
+        Object.assign(chat, { nextPostAt: res.nextPostAt, pins: res.pins });
+        if (open?.channel === at.channel && parts) deps.changed();
+      }
+
       if (open?.channel === at.channel && parts) {
         const box = parts.messages;
         const fromBottom = box.scrollHeight - box.scrollTop;
@@ -290,9 +359,287 @@ export function createCommunities(deps: Deps) {
     const at = open;
     if (!at || !text.trim()) return false;
     if (text.length > limits.message) return (deps.toast(t('Wiadomość jest za długa (maks. {0} znaków).', limits.message), true), false);
-    const res = await act(() => api.socialApi('POST', `/v1/communities/${at.community}/channels/${at.channel}/messages`, { text }));
-    if (res?.message) addMessage(res.message);
-    return !!res;
+    const chat = chats.get(at.channel);
+    // slow mode: the countdown is above the composer; the text stays in it
+    if (chat?.nextPostAt && chat.nextPostAt > Date.now()) return (deps.toast(t('Tryb powolny: możesz napisać za {0}.', waitText((chat.nextPostAt - Date.now()) / 1000)), true), false);
+    const reply = replying?.channel === at.channel ? replying : undefined;
+    try {
+      const res = await api.socialApi('POST', `/v1/communities/${at.community}/channels/${at.channel}/messages`, { text, ...(reply ? { replyTo: reply.id } : {}) });
+      if (chat) chat.nextPostAt = res.nextPostAt;
+      if (reply && replying === reply) replying = undefined;
+      if (res?.message) addMessage(res.message);
+      renderNote();
+      return true;
+    } catch (err) {
+      // too soon for slow mode (set while this was open): the countdown from now
+      const wait = /slow_mode:(\d+)/.exec(String((err as Error)?.message ?? ''));
+      if (wait && chat) {
+        chat.nextPostAt = Date.now() + Number(wait[1]) * 1000;
+        renderNote();
+      }
+      deps.toast(deps.errorText(err), true);
+      return false;
+    }
+  }
+
+  /** Starts a reply to a message: a bar above the composer says to whom (Esc or × lets go). */
+  function reply(m: CommunityMessage) {
+    replying = m;
+    renderNote();
+    deps.focus?.();
+  }
+
+  /** Lets go of the reply; whether there was one (Esc in the composer). */
+  function cancelReply(): boolean {
+    if (!replying) return false;
+    replying = undefined;
+    renderNote();
+    return true;
+  }
+
+  /** The line above the composer: the reply being written, else slow mode and its countdown. */
+  function renderNote() {
+    if (!parts) return;
+    const c = community(open?.community);
+    const ch = c?.channels.find((x) => x.id === open?.channel);
+    const chat = open ? chats.get(open.channel) : undefined;
+    if (!c || !ch) return parts.typing.replaceChildren();
+    if (replying && replying.channel === ch.id) {
+      const cancel = el('button', { type: 'button', className: 'icon-btn', title: t('Anuluj odpowiedź (Esc)') }, icon('fa-xmark'));
+      cancel.addEventListener('click', () => cancelReply());
+      const line = replying.text.split('\n', 1)[0];
+      return parts.typing.replaceChildren(el('div', { className: 'fr-reply-bar' }, icon('fa-reply'),
+        el('span', { className: 'grow' }, t('Odpowiadasz na: {0} — ', replying.author.name), el('span', { className: 'muted', textContent: line.length > 80 ? `${line.slice(0, 79)}…` : line })), cancel));
+    }
+    // a timeout says so here too (the composer's placeholder is hidden by a text already typed)
+    const until = c.mutedUntil ?? chat?.mutedUntil;
+    if (until && until > Date.now() && ch.canPost) {
+      return parts.typing.replaceChildren(el('span', { className: 'fr-slow-note waiting' }, icon('fa-comment-slash'), ` ${t('Wyciszony do {0}', new Date(until).toLocaleString(locale(), { dateStyle: 'short', timeStyle: 'short' }))}`));
+
+    }
+    const wait = chat?.nextPostAt ? Math.ceil((chat.nextPostAt - Date.now()) / 1000) : 0;
+
+    if (ch.slowMode && ch.canPost) {
+      const exempt = RANK[c.role] >= RANK.moderator;
+      const text = wait > 0 ? t('Tryb powolny ({0}): możesz napisać za {1}.', waitText(ch.slowMode), waitText(wait))
+        : exempt ? t('Tryb powolny: {0} między wiadomościami (moderatorów nie dotyczy).', waitText(ch.slowMode)) : t('Tryb powolny: jedna wiadomość na {0}.', waitText(ch.slowMode));
+      return parts.typing.replaceChildren(el('span', { className: `fr-slow-note${wait > 0 ? ' waiting' : ''}` }, icon('fa-hourglass-half'), ` ${text}`));
+    }
+    parts.typing.replaceChildren();
+  }
+
+  /** Once a second while a community is open: the countdown, and the composer back when a timeout or the wait ends. */
+  function tick() {
+    const c = community(open?.community);
+    if (!c || !parts) {
+      clearInterval(ticker);
+      ticker = undefined;
+      return;
+    }
+    const chat = chats.get(open!.channel);
+    const until = c.mutedUntil ?? chat?.mutedUntil;
+    if (until && until <= Date.now()) {
+      list = list.map((x) => (x.id === c.id ? { ...x, mutedUntil: undefined } : x));
+      if (chat) chat.mutedUntil = undefined;
+      deps.changed();
+      return;
+    }
+    if (chat?.nextPostAt && chat.nextPostAt <= Date.now()) chat.nextPostAt = undefined;
+    if (!replying) renderNote();
+  }
+
+  /** Scrolls to a message (fetching older pages until it is there) and lights it up; says so when it is gone. */
+  async function jumpTo(id: number) {
+    const at = open;
+    if (!at) return;
+    for (let i = 0; i < 40; i++) {
+      const chat = chats.get(at.channel);
+      if (!chat || open?.channel !== at.channel) return;
+      if (chat.messages.some((m) => m.id === id) || (!chat.more && !chat.loading)) break;
+      if (chat.loading) await new Promise((r) => setTimeout(r, 80));
+      else await loadOlder();
+    }
+    const m = chats.get(at.channel)?.messages.find((x) => x.id === id);
+    if (!m || m.deleted) {
+      deps.toast(t('Wiadomość niedostępna.'), true);
+      if (!m) return;
+    }
+    flashId = id;
+    renderMessages();
+    parts?.messages.querySelector(`[data-mid="${id}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    setTimeout(() => {
+      if (flashId !== id) return;
+      flashId = undefined;
+      parts?.messages.querySelector(`[data-mid="${id}"]`)?.classList.remove('flash');
+    }, 1800);
+  }
+
+  /** One message changed here (my reaction, a pin): its new version in place. */
+  function updateMessage(channel: string, id: number, change: (m: CommunityMessage) => CommunityMessage) {
+    const chat = chats.get(channel);
+    if (!chat) return;
+    chat.messages = chat.messages.map((m) => (m.id === id ? change(m) : m));
+    if (channel === open?.channel && parts) renderMessages();
+  }
+
+  async function toggleReaction(m: CommunityMessage, emoji: string) {
+    const on = !m.reactions?.some((r) => r.emoji === emoji && r.me);
+    const res = await act(() => api.socialApi('POST', `/v1/communities/${m.community}/channels/${m.channel}/messages/${m.id}/reactions`, { emoji, on }));
+    if (!res?.message) return;
+    reactors.delete(m.id);
+    updateMessage(m.channel, m.id, (x) => ({ ...x, reactions: res.message.reactions }));
+  }
+
+  /** The emoji to react with: the quick ones big on top, the rest below; one click picks. */
+  function emojiPicker(anchor: HTMLElement, pick: (emoji: string) => void) {
+    document.querySelector('.fr-emoji-picker')?.remove();
+    const box = el('div', { className: 'fr-menu fr-emoji-picker glass-panel' });
+    const button = (e: string, quick: boolean) => {
+      const b = el('button', { type: 'button', className: `fr-emoji-btn${quick ? ' quick' : ''}`, textContent: e });
+      b.addEventListener('click', () => {
+        close();
+        pick(e);
+      });
+      return b;
+    };
+    box.append(el('div', { className: 'fr-emoji-quick' }, ...QUICK_REACTIONS.map((e) => button(e, true))), el('div', { className: 'fr-emoji-grid' }, ...REACTIONS.slice(QUICK_REACTIONS.length).map((e) => button(e, false))));
+    const close = () => {
+      box.remove();
+      removeEventListener('mousedown', outside, true);
+      removeEventListener('keydown', onKey, true);
+    };
+    const outside = (e: MouseEvent) => !box.contains(e.target as Node) && close();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      close();
+    };
+    document.body.append(box);
+    const r = anchor.getBoundingClientRect();
+    const w = box.offsetWidth, h = box.offsetHeight;
+    box.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2))}px`;
+    box.style.top = `${r.top - h - 4 < 8 ? r.bottom + 4 : r.top - h - 4}px`;
+    addEventListener('mousedown', outside, true);
+    addEventListener('keydown', onKey, true);
+  }
+
+  /** Who reacted with this emoji, in a small box by it while it is hovered. */
+  function showReactors(chip: HTMLElement, m: CommunityMessage, emoji: string) {
+    let who = reactors.get(m.id);
+    if (!who) {
+      who = api.socialApi('GET', `/v1/communities/${m.community}/channels/${m.channel}/messages/${m.id}/reactions`).then((res) => res.reactions ?? []).catch(() => []);
+      reactors.set(m.id, who);
+    }
+    const pop = el('div', { className: 'fr-reactors glass-panel' }, el('span', { className: 'spinner' }));
+    document.querySelector('.fr-reactors')?.remove();
+    document.body.append(pop);
+    const place = () => {
+      const r = chip.getBoundingClientRect();
+      pop.style.left = `${Math.max(8, Math.min(innerWidth - pop.offsetWidth - 8, r.left + r.width / 2 - pop.offsetWidth / 2))}px`;
+      pop.style.top = `${Math.max(8, r.top - pop.offsetHeight - 6)}px`;
+    };
+    place();
+    const leave = () => {
+      pop.remove();
+      chip.removeEventListener('mouseleave', leave);
+    };
+    chip.addEventListener('mouseleave', leave);
+    void who.then((all) => {
+      if (!pop.isConnected) return;
+      const r = all.find((x) => x.emoji === emoji);
+      const names = (r?.users ?? []).slice(0, 10).map((u) => u.name);
+      const more = (r?.count ?? 0) - names.length;
+      pop.replaceChildren(el('span', { className: 'fr-reactors-emoji', textContent: emoji }),
+        el('span', { textContent: names.length ? (more > 0 ? t('{0} i {1} innych', names.join(', '), more) : names.join(', ')) : t('Nikt') }));
+      place();
+    });
+  }
+
+  /** The chips under a message: each emoji with its count (mine marked; a click adds or takes mine off), and + for more. */
+  function reactionsRow(c: Community, m: CommunityMessage, canReact: boolean): HTMLElement | '' {
+    if (m.deleted || !m.reactions?.length) return '';
+    const row = el('div', { className: 'fr-reactions' });
+    for (const r of m.reactions) {
+      const chip = el('button', { type: 'button', className: `fr-reaction${r.me ? ' me' : ''}`, disabled: !canReact }, el('span', { className: 'fr-emoji', textContent: r.emoji }), el('b', { textContent: String(r.count) }));
+      chip.addEventListener('click', () => void toggleReaction(m, r.emoji));
+      chip.addEventListener('mouseenter', () => showReactors(chip, m, r.emoji));
+      row.append(chip);
+    }
+    if (canReact && m.reactions.length < 20) {
+      const add = el('button', { type: 'button', className: 'fr-reaction add', title: t('Dodaj reakcję') }, icon('fa-face-smile'), el('b', { textContent: '+' }));
+      add.addEventListener('click', () => emojiPicker(add, (e) => void toggleReaction(m, e)));
+      row.append(add);
+    }
+    return row;
+  }
+
+  /** The small quote above a reply: who and their first line; a click goes to it (or says it is gone). */
+  function quoteBox(q: ReplyQuote): HTMLElement {
+    const gone = q.deleted || !q.author;
+    const b = el('button', { type: 'button', className: `fr-reply-quote${gone ? ' gone' : ''}`, title: gone ? t('Wiadomość niedostępna') : t('Pokaż wiadomość') }, icon('fa-reply'),
+      ...(gone ? [el('i', { textContent: t('Wiadomość niedostępna') })] : [el('b', { textContent: q.author!.name }), el('span', { textContent: q.text ?? '' })]));
+    b.addEventListener('click', () => (gone ? deps.toast(t('Wiadomość niedostępna.'), true) : void jumpTo(q.id)));
+    return b;
+  }
+
+  async function setPinned(m: CommunityMessage, pinned: boolean) {
+    const res = await act(() => api.socialApi('POST', `/v1/communities/${m.community}/channels/${m.channel}/messages/${m.id}/pin`, { pinned }), pinned ? t('Przypięto wiadomość.') : t('Odpięto wiadomość.'));
+    if (!res?.message) return;
+    const chat = chats.get(m.channel);
+    if (chat) chat.pins = res.pins;
+    updateMessage(m.channel, m.id, (x) => ({ ...x, pinned: pinned || undefined }));
+    deps.changed();
+  }
+
+  /** The channel's pinned messages: a click goes to one; moderators unpin here too. */
+  function pinsWindow(c: Community) {
+    const at = open;
+    if (!at) return;
+    const rows = el('div', { className: 'fr-clan-members fr-pins' }, el('div', { className: 'fr-placeholder' }, el('span', { className: 'spinner' })));
+    const time = new Intl.DateTimeFormat(locale(), { dateStyle: 'short', timeStyle: 'short' });
+    const close = modalWindow(t('Przypięte wiadomości'), [rows], [], undefined, 'fr-group-modal fr-com-modal');
+    const load = async () => {
+      const res = await act(() => api.socialApi('GET', `/v1/communities/${c.id}/channels/${at.channel}/pins`));
+      if (!res) return;
+      const chat = chats.get(at.channel);
+      if (chat && chat.pins !== res.pins.length) {
+        chat.pins = res.pins.length;
+        deps.changed();
+      }
+
+      rows.replaceChildren(...(res.pins as { message: CommunityMessage; by: Person; at: number }[]).map((p) => {
+        const go = el('button', { type: 'button', className: 'fr-pin grow' },
+          el('div', { className: 'fr-pin-head' }, el('b', { textContent: p.message.author.name }), el('small', { className: 'muted', textContent: ` · ${time.format(p.message.at)}` })),
+          el('div', { className: 'fr-pin-text', textContent: p.message.text }),
+          el('small', { className: 'muted', textContent: t('Przypiął(-ęła) {0}, {1}', p.by.name, time.format(p.at)) }));
+        go.addEventListener('click', () => {
+          close();
+          void jumpTo(p.message.id);
+        });
+        const row = el('div', { className: 'fr-row fr-pin-row' }, go);
+        if (communityMay(c.role, 'pin')) {
+          const unpin = el('button', { type: 'button', className: 'icon-btn', title: t('Odepnij') }, icon('fa-thumbtack-slash'));
+          unpin.addEventListener('click', async () => {
+            await setPinned(p.message, false);
+            void load();
+          });
+          row.append(unpin);
+        }
+        return row;
+      }));
+      if (!rows.childElementCount) rows.append(el('p', { className: 'muted fr-empty', textContent: communityMay(c.role, 'pin') ? t('Nic tu nie przypięto. Przypnij wiadomość z jej menu „…”.') : t('Nic tu nie przypięto.') }));
+    };
+    void load();
+  }
+
+  /** Slow mode's choices for the open channel (admins and the owner). */
+  function slowModeMenu(c: Community, ch: Channel, anchor: HTMLElement) {
+    openMenu(anchor, SLOW_MODES.map((s) => ({
+      label: s ? waitText(s) : t('Wyłączony'), icon: (ch.slowMode ?? 0) === s ? 'fa-circle-dot' : 'fa-circle',
+      run: async () => {
+        if (await act(() => api.socialApi('POST', `/v1/communities/${c.id}/channels/${ch.id}/slowmode`, { seconds: s }), s ? t('Tryb powolny: {0}.', waitText(s)) : t('Tryb powolny wyłączony.'))) await refresh();
+      },
+    })));
   }
 
   function addMessage(m: CommunityMessage) {
@@ -309,7 +656,20 @@ export function createCommunities(deps: Deps) {
 
   function replaced(m: CommunityMessage) {
     const chat = chats.get(m.channel);
-    if (chat) chat.messages = replaceMessage(chat.messages, m);
+    reactors.delete(m.id);
+    if (chat) {
+      // a pushed version says nothing of my reactions: kept from the one here
+      const old = chat.messages.find((x) => x.id === m.id);
+      const next = m.deleted ? m : { ...m, reactions: keepMyReactions(old?.reactions, m.reactions) };
+      chat.messages = replaceMessage(chat.messages, next);
+      if (m.deleted && m.pinned === undefined && old?.pinned) chat.pins = Math.max(0, (chat.pins ?? 1) - 1);
+      // replies to it show it as gone
+      if (m.deleted) chat.messages = chat.messages.map((x) => (x.replyTo?.id === m.id ? { ...x, replyTo: { id: m.id, deleted: true } } : x));
+    }
+    if (m.deleted && replying?.id === m.id) {
+      replying = undefined;
+      renderNote();
+    }
     if (editingId === m.id) {
       editingId = undefined;
       if (m.deleted) deps.editGone();
@@ -317,11 +677,12 @@ export function createCommunities(deps: Deps) {
     if (m.channel === open?.channel && parts) renderMessages();
   }
 
-  /** The "…" by a message: edit one's own for a while, delete one's own (or below one's role), report others'. */
+  /** The "…" by a message: reply, edit one's own for a while, pin (moderators), delete one's own (or below one's role), report others'. */
   function messageMenu(c: Community, m: CommunityMessage, chat: { editWindowMs?: number }): MenuItem[] {
     const mine = m.from === me();
     const items: MenuItem[] = [];
     if (m.deleted) return items;
+    if (composerState().canPost) items.push({ label: t('Odpowiedz'), icon: 'fa-reply', run: () => reply(m) });
     if (mine && chat.editWindowMs && Date.now() - m.at < chat.editWindowMs) {
       items.push({ label: t('Edytuj'), icon: 'fa-pen', hint: editHint(m, chat.editWindowMs), run: () => {
         editingId = m.id;
@@ -330,6 +691,7 @@ export function createCommunities(deps: Deps) {
       } });
     }
     items.push({ label: t('Kopiuj'), icon: 'fa-copy', run: () => void navigator.clipboard.writeText(m.text).then(() => deps.toast(t('Skopiowano'))) });
+    if (communityMay(c.role, 'pin')) items.push({ label: m.pinned ? t('Odepnij') : t('Przypnij'), icon: m.pinned ? 'fa-thumbtack-slash' : 'fa-thumbtack', run: () => void setPinned(m, !m.pinned) });
     if (mine || communityMay(c.role, 'deleteMessage', m.author.role ?? 'member')) {
       items.push({ label: mine ? t('Usuń') : t('Usuń (moderacja)'), icon: 'fa-trash', danger: true, run: () => void deleteMessage(m, !mine) });
     }
@@ -386,6 +748,13 @@ export function createCommunities(deps: Deps) {
       actions.push(b);
     };
     button('fa-users', t('Członkowie'), () => membersWindow(c));
+    const openChannel = c.channels.find((x) => x.id === open?.channel);
+    const pins = open ? chats.get(open.channel)?.pins ?? 0 : 0;
+    button('fa-thumbtack', t('Przypięte wiadomości'), () => pinsWindow(c), pins, ' fr-pins-btn');
+
+    if (openChannel && communityMay(c.role, 'slowMode')) {
+      button('fa-hourglass-half', openChannel.slowMode ? t('Tryb powolny: {0}', waitText(openChannel.slowMode)) : t('Tryb powolny'), (b) => slowModeMenu(c, openChannel, b), 0, openChannel.slowMode ? ' on' : '');
+    }
     if (communityMay(c.role, 'requests') && c.joinMode === 'request' || (c.pending ?? 0) > 0) button('fa-user-clock', t('Prośby o dołączenie'), () => requestsWindow(c), c.pending ?? 0);
     if (communityMay(c.role, 'reports')) button('fa-flag', t('Zgłoszenia'), () => reportsWindow(c), c.reports ?? 0);
     button(c.notify === 'none' ? 'fa-bell-slash' : 'fa-bell', t('Powiadomienia'), (b) => notifyMenu(c, b), 0, c.notify === 'all' ? ' on' : '');
@@ -410,9 +779,9 @@ export function createCommunities(deps: Deps) {
       el('div', { className: 'grow fr-names' }, el('b', { textContent: c.name }),
         el('small', { className: 'muted', textContent: `${subline(c)} · ${communityRoleText(c.role)}` }), tabs),
       ...actions);
-    // where one writes: this chat is not end-to-end encrypted (moderators see it)
-    typing.replaceChildren(el('span', { className: 'fr-plain-note' }, icon('fa-lock-open'), ` ${t('Czat społeczności nie jest szyfrowany od nadawcy do odbiorcy — widzą go moderatorzy.')}`));
+    renderNote();
     renderMessages();
+    ticker ??= setInterval(tick, 1000);
   }
 
   function renderMessages() {
@@ -424,6 +793,7 @@ export function createCommunities(deps: Deps) {
     const my = deps.me();
     const nodes: Node[] = [];
     const channel = c.channels.find((x) => x.id === open?.channel);
+    const canReact = !(c.mutedUntil && c.mutedUntil > Date.now()) && !(chat.mutedUntil && chat.mutedUntil > Date.now());
     if (!chat.messages.length) {
       nodes.push(el('div', { className: 'fr-placeholder' }, icon(channel?.kind === 'announcements' ? 'fa-bullhorn' : 'fa-users'),
         el('p', { className: 'muted', textContent: channel?.kind === 'announcements' ? t('Tu administratorzy piszą ogłoszenia dla wszystkich.') : t('Napisz pierwszą wiadomość w społeczności.') })));
@@ -450,12 +820,31 @@ export function createCommunities(deps: Deps) {
         const toMe = !!my && !!m.mentions?.includes(my.id);
         bubble = el('div', { className: `fr-bubble${toMe ? ' fr-mention' : ''}` }, ...mentionParts(m.text, my?.handle).map((p) => (p.mention ? el('b', { className: `fr-at${p.me ? ' me' : ''}`, textContent: p.text }) : p.text)));
         if (m.editedAt) bubble.append(editedLabel(m.editedAt));
+        if (m.pinned) bubble.append(el('i', { className: 'fa-solid fa-thumbtack fr-pinned-mark', title: t('Przypięta') }));
       }
       const role = m.author.role && m.author.role !== 'member' ? m.author.role : undefined;
+      // a reply always says who wrote it (the quote sits between the name and the bubble)
+      const showHead = !grouped || !!m.replyTo;
       const who = mine ? time.format(m.at) : `${m.author.name} · ${time.format(m.at)}`;
-      nodes.push(el('div', { className: `fr-msg${mine ? ' mine' : ''}${grouped ? ' grouped' : ''}${editingId === m.id ? ' editing' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
-        withMenu(bubble, messageMenu(c, m, chat)),
-        grouped ? '' : el('small', { className: 'fr-time' }, role && !mine ? el('span', { className: `fr-com-role ${role}`, textContent: communityRoleText(role) }) : '', who)));
+      const line = withMenu(bubble, messageMenu(c, m, chat));
+      if (!m.deleted && line !== bubble) {
+        // reacting and replying at hand, by the "…"
+        if (canReact) {
+          const smile = el('button', { type: 'button', className: 'icon-btn fr-msg-menu', title: t('Dodaj reakcję') }, icon('fa-face-smile'));
+          smile.addEventListener('click', (e) => {
+            e.stopPropagation();
+            emojiPicker(smile, (emoji) => void toggleReaction(m, emoji));
+          });
+          line.append(smile);
+        }
+      }
+      const node = el('div', { className: `fr-msg${mine ? ' mine' : ''}${grouped && !m.replyTo ? ' grouped' : ''}${editingId === m.id ? ' editing' : ''}${flashId === m.id ? ' flash' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
+        showHead ? el('small', { className: 'fr-time' }, role && !mine ? el('span', { className: `fr-com-role ${role}`, textContent: communityRoleText(role) }) : '', who) : '',
+        m.replyTo ? quoteBox(m.replyTo) : '',
+        line,
+        reactionsRow(c, m, canReact));
+      node.dataset.mid = String(m.id);
+      nodes.push(node);
       lastFrom = m.from;
       lastAt = m.at;
     }
@@ -469,7 +858,7 @@ export function createCommunities(deps: Deps) {
     if (!c || !ch) return { canPost: false };
     if (!ch.canPost) return { canPost: false, reason: t('Tu piszą tylko administratorzy społeczności.') };
     const until = c.mutedUntil ?? chats.get(ch.id)?.mutedUntil;
-    if (until && until > Date.now()) return { canPost: false, reason: t('Wyciszono Cię tu do {0}.', new Date(until).toLocaleString(locale(), { dateStyle: 'short', timeStyle: 'short' })) };
+    if (until && until > Date.now()) return { canPost: false, reason: t('Wyciszony do {0} — możesz tylko czytać.', new Date(until).toLocaleString(locale(), { dateStyle: 'short', timeStyle: 'short' })) };
     return { canPost: true };
   }
 
@@ -495,7 +884,6 @@ export function createCommunities(deps: Deps) {
     const done = modalWindow(t('Nowa społeczność'), [
       el('p', { className: 'muted', textContent: t('Społeczność to duża grupa (do {0} osób) z czatem. Możesz być w kilku naraz, niezależnie od klanu. Jej tag nie pojawia się przy nicku.', limits.members) }),
       ...f.nodes,
-      el('p', { className: 'muted fr-plain-note' }, icon('fa-lock-open'), ` ${t('Czat społeczności nie jest szyfrowany od nadawcy do odbiorcy — widzą go moderatorzy.')}`),
     ], [cancel, go], undefined, 'fr-group-modal fr-com-modal');
     cancel.addEventListener('click', done);
     go.addEventListener('click', async () => {
@@ -628,9 +1016,10 @@ export function createCommunities(deps: Deps) {
         }
         if (communityMay(c.role, 'mute', m.role)) {
           const mute = el('button', { type: 'button', className: 'icon-btn', title: m.mutedUntil ? t('Wyciszony do {0}', new Date(m.mutedUntil).toLocaleString(locale())) : t('Wycisz na czacie') }, icon(m.mutedUntil ? 'fa-comment-slash' : 'fa-volume-xmark'));
+          // a timeout: may read, not write or react, until it ends by itself
           mute.addEventListener('click', () => openMenu(mute, [
-            ...([[10, t('10 minut')], [60, t('1 godzina')], [1440, t('1 dzień')], [10080, t('7 dni')]] as [number, string][]).map(([minutes, label]) => ({ label, icon: 'fa-volume-xmark', run: () => void call('POST', `/v1/communities/${c.id}/members/${m.id}/mute`, { minutes }, t('Wyciszono {0}.', m.name)) })),
-            ...(m.mutedUntil ? [{ label: t('Zdejmij wyciszenie'), icon: 'fa-volume-high', run: () => void call('POST', `/v1/communities/${c.id}/members/${m.id}/mute`, { minutes: 0 }) }] : []),
+            ...([[5, t('5 minut')], [60, t('1 godzina')], [1440, t('1 dzień')], [10080, t('1 tydzień')]] as [number, string][]).map(([minutes, label]) => ({ label, icon: 'fa-volume-xmark', run: () => void call('POST', `/v1/communities/${c.id}/members/${m.id}/mute`, { minutes }, t('Wyciszono {0}.', m.name)) })),
+            ...(m.mutedUntil ? [{ label: t('Zdejmij wyciszenie'), icon: 'fa-volume-high', run: () => void call('POST', `/v1/communities/${c.id}/members/${m.id}/mute`, { minutes: 0 }, t('Zdjęto wyciszenie.')) }] : []),
           ]));
           buttons.push(mute);
         }
@@ -658,7 +1047,8 @@ export function createCommunities(deps: Deps) {
       }
       return el('div', { className: `fr-row${m.online ? '' : ' is-offline'}` }, deps.avatar(m, { status: m.status }),
         el('div', { className: 'grow fr-names' }, el('b', { textContent: mine ? t('{0} (Ty)', m.name) : m.name }),
-          el('small', { className: `muted fr-com-role-line ${m.role}`, textContent: `${communityRoleText(m.role)} · ${m.online ? t('online') : t('offline')}${m.mutedUntil ? ` · ${t('wyciszony')}` : ''}` })),
+          el('small', { className: `muted fr-com-role-line ${m.role}`, textContent: `${communityRoleText(m.role)} · ${m.online ? t('online') : t('offline')}` }),
+          m.mutedUntil ? el('small', { className: 'fr-muted-line' }, icon('fa-comment-slash'), ` ${t('Wyciszony do {0}', new Date(m.mutedUntil).toLocaleString(locale(), { dateStyle: 'short', timeStyle: 'short' }))}`) : ''),
         ...buttons);
     };
     const load = async (reset: boolean) => {
@@ -824,6 +1214,7 @@ export function createCommunities(deps: Deps) {
       ban: t('banuje'), unban: t('zdejmuje bana'), mute: t('wycisza'), unmute: t('zdejmuje wyciszenie'), role: t('zmienia rolę'), transfer: t('przekazuje społeczność'),
       invite: t('zaprasza'), edit: t('zmienia ustawienia'), logo: t('zmienia logo'), logo_remove: t('usuwa logo'), heir: t('przejmuje społeczność'),
       message_delete: t('usuwa wiadomość'), report_delete: t('usuwa zgłoszoną wiadomość'), report_dismiss: t('odrzuca zgłoszenie'),
+      pin: t('przypina wiadomość od'), unpin: t('odpina wiadomość od'), slowmode: t('zmienia tryb powolny'),
     };
     const rows = (res.log as { at: number; byName: string; action: string; targetName: string; detail: string }[]).map((e) => el('div', { className: 'fr-com-log' },
       el('small', { className: 'muted', textContent: new Date(e.at).toLocaleString(locale(), { dateStyle: 'short', timeStyle: 'short' }) }),
@@ -912,6 +1303,24 @@ export function createCommunities(deps: Deps) {
       case 'community-message-delete':
         if (e.message) replaced(e.message as CommunityMessage);
         return true;
+      case 'community-reaction':
+        // someone's emoji under a message here (mine too: from another launcher or the game)
+        reactors.delete(e.message);
+        updateMessage(e.channel, e.message, (m) => ({ ...m, reactions: applyReaction(m.reactions, e, me()) }));
+        return true;
+      case 'community-pin': {
+        const m = e.message as CommunityMessage | undefined;
+        if (!m) return true;
+        const chat = chats.get(m.channel);
+        const had = chat?.messages.find((x) => x.id === m.id);
+        // counted once: my own pin already counted from its answer
+        if (chat && (!had || !!had.pinned !== !!e.pinned)) chat.pins = Math.max(0, (chat.pins ?? 0) + (e.pinned ? 1 : -1));
+
+        updateMessage(m.channel, m.id, (x) => ({ ...x, pinned: e.pinned ? true : undefined }));
+        if (m.channel === open?.channel && e.by?.id !== me()) deps.toast(e.pinned ? t('{0} przypiął(-ęła) wiadomość.', e.by?.name ?? '?') : t('{0} odpiął(-ęła) wiadomość.', e.by?.name ?? '?'));
+        if (m.channel === open?.channel) deps.changed();
+        return true;
+      }
       case 'community':
         if (e.invite) deps.toast(t('{0} zaprasza Cię do społeczności {1}.', e.invite.by?.name ?? '?', e.invite.name));
         if (e.accepted) deps.toast(t('Przyjęto Cię do społeczności {0}.', e.accepted.name));
@@ -919,6 +1328,14 @@ export function createCommunities(deps: Deps) {
         if (e.banned) deps.toast(t('Zbanowano Cię w społeczności {0}.', e.banned.name), true);
         if (e.request) deps.toast(t('{0} prosi o dołączenie do {1}.', e.request.name, e.request.community));
         if (e.report) deps.toast(t('Nowe zgłoszenie wiadomości w społeczności.'));
+        if (e.muted) {
+          deps.toast(e.muted.until ? t('Wyciszono Cię w społeczności {0} do {1}.', e.muted.name, new Date(e.muted.until).toLocaleString(locale(), { dateStyle: 'short', timeStyle: 'short' })) : t('Zdjęto Ci wyciszenie w społeczności {0}.', e.muted.name), !!e.muted.until);
+          // the open channel's own copy of it goes too (the list comes again)
+          for (const ch of community(e.id)?.channels ?? []) {
+            const chat = chats.get(ch.id);
+            if (chat) chat.mutedUntil = e.muted.until || undefined;
+          }
+        }
         if ((e.kicked || e.banned) && open?.community === e.id) open = undefined;
         void refresh();
         return true;
@@ -927,7 +1344,7 @@ export function createCommunities(deps: Deps) {
   }
 
   return {
-    refresh, sections, onEvent, renderChat, send, saveEdit, loadOlder, markRead, composerState,
+    refresh, sections, onEvent, renderChat, send, saveEdit, loadOlder, markRead, composerState, cancelReply,
     /** The composer let go of the message it was editing. */
     stopEditing: () => {
       if (editingId === undefined) return;
@@ -945,7 +1362,10 @@ export function createCommunities(deps: Deps) {
       invites = [];
       requests = [];
       open = undefined;
+      replying = undefined;
       chats.clear();
+      reactors.clear();
     },
+
   };
 }

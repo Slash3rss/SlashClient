@@ -75,4 +75,47 @@ public final class CommunitiesTestHooks {
 		e.add("message", m);
 		Communities.eventForTest(e);
 	}
+
+	/** A reply with the quote of the message it answers (server 0.9.27+), as the server pushes it. */
+	public static void reply(String community, String channel, long id, String from, String author, String text, long replyTo, String replyAuthor, String replyText) {
+		JsonObject m = new JsonObject();
+		m.addProperty("id", id);
+		m.addProperty("community", community);
+		m.addProperty("channel", channel);
+		m.addProperty("from", from);
+		JsonObject a = new JsonObject();
+		a.addProperty("name", author);
+		a.addProperty("handle", author.toLowerCase());
+		m.add("author", a);
+		m.addProperty("text", text);
+		m.addProperty("at", System.currentTimeMillis());
+		JsonObject q = new JsonObject();
+		q.addProperty("id", replyTo);
+		q.addProperty("from", replyAuthor.toLowerCase());
+		JsonObject qa = new JsonObject();
+		qa.addProperty("name", replyAuthor);
+		qa.addProperty("handle", replyAuthor.toLowerCase());
+		q.add("author", qa);
+		q.addProperty("text", replyText);
+		m.add("replyTo", q);
+		JsonObject e = new JsonObject();
+		e.addProperty("type", "community-message");
+		e.add("message", m);
+		Communities.eventForTest(e);
+	}
+
+	/** Someone's reaction under a message, as the server pushes it (`count`: that emoji's number after it). */
+	public static void reaction(String community, String channel, long message, String user, String emoji, boolean on, int count) {
+		JsonObject e = new JsonObject();
+		e.addProperty("type", "community-reaction");
+		e.addProperty("community", community);
+		e.addProperty("channel", channel);
+		e.addProperty("message", message);
+		e.addProperty("emoji", emoji);
+		e.addProperty("user", user);
+		e.addProperty("on", on);
+		e.addProperty("count", count);
+		Communities.eventForTest(e);
+	}
 }
+

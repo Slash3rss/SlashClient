@@ -747,6 +747,11 @@ public final class Social {
 		String msg = e.getMessage() == null ? "" : e.getMessage();
 		java.util.regex.Matcher slow = java.util.regex.Pattern.compile("slow_down(?::(\\d+))?").matcher(msg);
 		if (slow.find()) return Component.translatable("slashclient-hud.message.slowDown", slow.group(1) == null ? "5" : slow.group(1)).getString();
+		// a community channel's slow mode (server 0.9.27+): "slow_mode:30"
+		java.util.regex.Matcher slowMode = java.util.regex.Pattern.compile("slow_mode(?::(\\d+))?").matcher(msg);
+		if (slowMode.find()) return Component.translatable("slashclient-hud.communities.slowMode", slowMode.group(1) == null ? "?" : slowMode.group(1)).getString();
+		if (msg.contains("community_muted")) return Component.translatable("slashclient-hud.communities.mutedShort").getString();
+
 		for (String code : List.of("edit_expired", "not_editable", "not_author", "not_allowed")) {
 			if (msg.contains(code)) return Component.translatable("slashclient-hud.message." + code).getString();
 		}

@@ -84,7 +84,7 @@ const ALLOWED: [string, RegExp][] = [
   ['GET', /^\/v1\/communities\/mine$/],
   ['GET', /^\/v1\/communities\/[\w-]{1,32}\/channels\/[\w-]{1,32}\/messages(\?(before=\d+&?|limit=\d+&?)*)?$/],
   ['POST', /^\/v1\/communities\/[\w-]{1,32}\/channels\/[\w-]{1,32}\/(messages|read)$/],
-  ['POST', /^\/v1\/communities\/[\w-]{1,32}\/channels\/[\w-]{1,32}\/messages\/\d{1,15}\/(edit|report)$/],
+  ['POST', /^\/v1\/communities\/[\w-]{1,32}\/channels\/[\w-]{1,32}\/messages\/\d{1,15}\/(edit|report|reactions)$/],
   ['DELETE', /^\/v1\/communities\/[\w-]{1,32}\/channels\/[\w-]{1,32}\/messages\/\d{1,15}$/],
   ['GET', /^\/v1\/communities\/[\w-]{1,32}\/members(\?(offset=\d+&?|limit=\d+&?)*)?$/],
   ['POST', /^\/v1\/communities\/[\w-]{1,32}\/notify$/],
@@ -106,6 +106,9 @@ const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', '
   'wallet', 'achievements-summary',
   // communities: the list changed, their chat, and news for one (invited, accepted, kicked…)
   'communities', 'community-message', 'community-message-edit', 'community-message-delete', 'community',
+  // a reaction under a community message, a message pinned or unpinned (server 0.9.27+)
+  'community-reaction', 'community-pin',
+
   // a friend went live on Twitch or Kick, or ended: the LIVE badge, and a toast when `notify`
   'stream']);
 const KEEP = 200;

@@ -122,11 +122,15 @@ export const SETTING_DEFS: SettingDef[] = [
     { key: 'communities.message', label: 'Najdłuższa wiadomość', labelEn: 'Longest message', description: 'Znaki, w czacie społeczności (nieszyfrowanym).', type: 'int', default: COMMUNITY_LIMITS.message, min: 1, max: 10_000 },
     { key: 'communities.muteMinutes', label: 'Najdłuższe wyciszenie', labelEn: 'Longest mute', description: 'Moderatorzy społeczności nie wyciszą na dłużej.', type: 'duration', default: COMMUNITY_LIMITS.muteMinutes, min: 1, max: 525_600, unit: 'min' },
     { key: 'communities.mentions', label: 'Wzmianek w wiadomości', labelEn: 'Mentions per message', description: 'Ile @nicków z jednej wiadomości dostaje powiadomienie.', type: 'int', default: COMMUNITY_LIMITS.mentions, min: 0, max: 100 },
+    { key: 'communities.reactions', label: 'Różnych reakcji pod wiadomością', labelEn: 'Different reactions per message', description: 'Ile różnych emoji może być pod jedną wiadomością (każdy członek może dodać każde z nich).', type: 'int', default: COMMUNITY_LIMITS.reactions, min: 1, max: 60 },
+    { key: 'communities.pins', label: 'Przypiętych wiadomości w kanale', labelEn: 'Pinned messages per channel', description: 'Moderatorzy nie przypną więcej, dopóki któraś nie zostanie odpięta.', type: 'int', default: COMMUNITY_LIMITS.pins, min: 1, max: 1000 },
     rate('communities.createPerMinute', 'Zakładanie społeczności na minutę', 'Communities created per minute', 3, 'Na konto.'),
     rate('communities.joinPerMinute', 'Dołączanie na minutę', 'Joins per minute', 20, 'Na konto.'),
     rate('communities.changesPerMinute', 'Zmiany w społecznościach na minutę', 'Community changes per minute', 60, 'Na konto (role, zaproszenia, ustawienia).'),
     rate('communities.logosPerMinute', 'Wysyłanie logo społeczności na minutę', 'Community logo uploads per minute', 6, 'Na konto.'),
     rate('communities.reportsPerMinute', 'Zgłoszenia wiadomości na minutę', 'Message reports per minute', 10, 'Na konto.'),
+    rate('communities.reactionsPerMinute', 'Reakcje na minutę', 'Reactions per minute', 60, 'Na konto: dodanie lub zdjęcie reakcji pod wiadomością społeczności.'),
+
   ]),
 
   ...group('sparks', [

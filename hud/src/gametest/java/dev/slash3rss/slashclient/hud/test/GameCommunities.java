@@ -22,11 +22,11 @@ import java.util.List;
 
 /**
  * Communities in the game's friends window (no launcher, made-up data): their rows with a logo,
- * mentions and unread, a community's chat with the authors' roles, a mention of us marked, a
- * deleted message and the note that the chat is not end-to-end encrypted; the channels (the
- * announcements read-only for a plain member); the right-click menu of a moderator (copy, delete,
- * report) and on our own message (edit too); a new message pushed as an event; and the first
- * members, read only. The layout audit runs over all of it.
+ * mentions and unread, a community's chat with the authors' roles, a mention of us marked and a
+ * deleted message; the channels (the announcements read-only for a plain member); the right-click
+ * menu of a moderator (copy, reactions, delete, report) and on our own message (edit too), with the
+ * quick reactions one row away; a new message pushed as an event, a reply with its quote and
+ * reactions under a message; and the first members, read only. The layout audit runs over all of it.
  */
 public class GameCommunities implements FabricClientGameTest {
 	@Override
@@ -58,18 +58,26 @@ public class GameCommunities implements FabricClientGameTest {
 			context.waitTicks(10);
 			context.takeScreenshot("communities-chat");
 
-			// a member's message: copy, delete (moderation), report; an admin's: copy and report only
+			// a member's message: copy, reactions, delete (moderation), report; an admin's: copy, reactions and report only
 			List<String> theirs = rightClick(context, screen[0], 5);
-			if (theirs.size() != 3) throw new AssertionError("A member's message's menu for a moderator: " + theirs);
+			if (theirs.size() != 4) throw new AssertionError("A member's message's menu for a moderator: " + theirs);
 			context.waitTicks(3);
 			context.takeScreenshot("communities-menu-moderator");
+			// "Reakcje…": the six quick ones and cancel in its place
+			context.runOnClient(mc -> {
+				double[] row = screen[0].menuRowForTest(1);
+				ChatEditsTestHooks.click(screen[0], row[0], row[1], false);
+			});
+			context.waitTicks(3);
+			if (context.computeOnClient(mc -> screen[0].menuForTest().size()) != 7) throw new AssertionError("The quick reactions' menu: " + context.computeOnClient(mc -> screen[0].menuForTest()));
+			context.takeScreenshot("communities-menu-reactions");
 			context.runOnClient(mc -> ChatEditsTestHooks.click(screen[0], 1, 1, true));
 			List<String> admins = rightClick(context, screen[0], 4);
-			if (admins.size() != 2) throw new AssertionError("An admin's message's menu for a moderator: " + admins);
+			if (admins.size() != 3) throw new AssertionError("An admin's message's menu for a moderator: " + admins);
 			context.runOnClient(mc -> ChatEditsTestHooks.click(screen[0], 1, 1, true));
-			// our own: edit, copy, delete
+			// our own: edit, copy, reactions, delete
 			List<String> own = rightClick(context, screen[0], 6);
-			if (own.size() != 3) throw new AssertionError("Our message's menu: " + own);
+			if (own.size() != 4) throw new AssertionError("Our message's menu: " + own);
 			context.runOnClient(mc -> {
 				double[] row = screen[0].menuRowForTest(0);
 				ChatEditsTestHooks.click(screen[0], row[0], row[1], false);
@@ -84,6 +92,22 @@ public class GameCommunities implements FabricClientGameTest {
 			if (context.computeOnClient(mc -> Communities.chat(CommunitiesTestHooks.GENERAL).size()) != 7) throw new AssertionError("The pushed message is not in the chat");
 			context.waitTicks(3);
 			context.takeScreenshot("communities-pushed");
+
+			// reactions pushed under a message (one of them ours, lit) and a reply with its quote (server 0.9.27+)
+			context.runOnClient(mc -> {
+				CommunitiesTestHooks.reaction(CommunitiesTestHooks.BIG, CommunitiesTestHooks.GENERAL, 7, "ola", "👍", true, 1);
+				CommunitiesTestHooks.reaction(CommunitiesTestHooks.BIG, CommunitiesTestHooks.GENERAL, 7, "me", "👍", true, 2);
+				CommunitiesTestHooks.reaction(CommunitiesTestHooks.BIG, CommunitiesTestHooks.GENERAL, 7, "kasia", "🔥", true, 1);
+				CommunitiesTestHooks.reply(CommunitiesTestHooks.BIG, CommunitiesTestHooks.GENERAL, 9, "kasia", "Kasia", "Zapisuję się!", 4, "Bartek", "Turniej w sobotę o 18:00, zapisy tutaj.");
+			});
+			Communities.Message reacted = context.computeOnClient(mc -> Communities.chat(CommunitiesTestHooks.GENERAL).stream().filter(m -> m.id() == 7).findFirst().orElseThrow());
+
+			if (reacted.reactions().size() != 2 || reacted.reactions().get(0).count() != 2 || !reacted.reactions().get(0).me()) throw new AssertionError("The reactions: " + reacted.reactions());
+			Communities.Message replied = context.computeOnClient(mc -> Communities.chat(CommunitiesTestHooks.GENERAL).stream().filter(m -> m.id() == 9).findFirst().orElseThrow());
+			if (replied.replyId() != 4 || !"Bartek".equals(replied.replyAuthor())) throw new AssertionError("The reply's quote: " + replied);
+			context.waitTicks(3);
+			context.takeScreenshot("communities-reactions-reply");
+
 
 			// the announcements: we moderate but are not an admin, so read only
 			context.runOnClient(mc -> screen[0].selectCommunity(CommunitiesTestHooks.BIG, CommunitiesTestHooks.NEWS));

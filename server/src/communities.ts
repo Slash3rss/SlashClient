@@ -4,8 +4,8 @@ import { LogoStore, serveLogo, takeLogo } from './clanLogos.ts';
 import { EDIT_WINDOW_MS, editRefusal } from './chatLimits.ts';
 import { withDefaults } from './settings.ts';
 import {
-  COMMUNITY_LIMITS, CommunityStore, NOTIFY, RANK, ROLES, cleanCommunityName, cleanDescription, communityTagProblem, mentionedHandles, may, offensiveText, permissions,
-  type ChannelRow, type CommunityLimits, type CommunityRole, type CommunityRow, type JoinMode, type MemberRow, type MessageRow, type Notify, type Visibility,
+  COMMUNITY_LIMITS, CommunityStore, NOTIFY, RANK, ROLES, SLOW_MODES, cleanCommunityName, cleanDescription, communityTagProblem, isReaction, mentionedHandles, may, offensiveText, permissions,
+  type ChannelRow, type CommunityLimits, type CommunityRole, type CommunityRow, type JoinMode, type MemberRow, type MessageRow, type Notify, type ReactionCount, type Visibility,
 } from './communityStore.ts';
 
 /**
@@ -22,7 +22,15 @@ import {
  * at UNREAD_CAP. Pushed events (server 0.9.24+; older clients ignore them):
  * - `communities` (my list changed: fetch /v1/communities/mine again), with the community's `id`;
  * - `community-message`, `community-message-edit`, `community-message-delete` with `message`;
- * - `community` with `invite`, `kicked`, `banned`, `accepted`, `request` or `report` (a toast).
+ * - `community` with `invite`, `kicked`, `banned`, `accepted`, `request`, `report` or `muted` (a toast).
+ * Since 0.9.27 (all optional, older clients ignore them):
+ * - `community-reaction` with `community`, `channel`, `message` (its id), `emoji`, `user`, `on` and
+ *   the emoji's `count` after it;
+ * - `community-pin` with `community`, `channel`, `message` (the whole message), `pinned` and `by`.
+ * Messages may carry `replyTo` (a short quote of the one answered, `deleted` when it is gone),
+ * `reactions` ([{ emoji, count, me? }]; pushed ones have no `me`) and `pinned`. Channels carry
+ * `slowMode` (seconds) when it is on; a message too soon is a 429 'slow_mode' with `retryAfter`.
+ * A timeout is the mute that was there before: `mutedUntil`, no writing, editing or reacting.
  */
 
 interface Deps {
@@ -35,7 +43,8 @@ interface Deps {
   pushMany: (users: ReadonlySet<string>, event: unknown) => void;
   /** 'offline' for players not connected or invisible. */
   status: (userId: string) => string;
-  fail: (status: number, code: string) => never;
+  /** `retryAfter`: seconds to wait (slow mode), sent as Retry-After and in the body. */
+  fail: (status: number, code: string, retryAfter?: number) => never;
   /** Founding communities; joining and asking to join; other changes (roles, settings, invites). */
   limitCreate: (key: string) => void;
   limitJoin: (key: string) => void;
@@ -44,6 +53,8 @@ interface Deps {
   limitMessages: (key: string) => void;
   limitEdits: (key: string) => void;
   limitReports: (key: string) => void;
+  /** Reactions added or taken off (none: no limit, the tests). */
+  limitReactions?: (key: string) => void;
   /** The public page's API, per address. */
   limitViews: (key: string) => void;
   clientIp: (req: http.IncomingMessage) => string;
@@ -146,7 +157,14 @@ export function createCommunities(deps: Deps) {
   }
 
   function channelView(ch: ChannelRow, me: string, role: CommunityRole) {
-    return { id: ch.id, kind: ch.kind, name: ch.name, canPost: RANK[role] >= RANK[ch.postRole], ...store.unread(ch.id, me) };
+    return { id: ch.id, kind: ch.kind, name: ch.name, canPost: RANK[role] >= RANK[ch.postRole], ...store.unread(ch.id, me), ...(ch.slowMode ? { slowMode: ch.slowMode } : {}) };
+  }
+
+  /** When `me` may write in this channel again (slow mode; moderators and up any time); 0: now. */
+  function nextPostAt(ch: ChannelRow, me: string, role: CommunityRole, now = Date.now()): number {
+    if (!ch.slowMode || RANK[role] >= RANK.moderator) return 0;
+    const at = store.lastMessageAt(ch.id, me) + ch.slowMode * 1000;
+    return at > now ? at : 0;
   }
 
   /** A community as one of its members sees it in their list. */
@@ -192,19 +210,50 @@ export function createCommunities(deps: Deps) {
     return c.joinMode;
   }
 
-  /** A message as the clients get it: who wrote it (name and handle: big rooms have no member list at hand), deleted ones empty. */
-  function messageView(m: MessageRow, authors = new Map<string, { name: string; handle: string; role?: CommunityRole }>()) {
-    let author = authors.get(m.from);
+  type Authors = Map<string, { name: string; handle: string; role?: CommunityRole }>;
+  function authorOf(community: string, from: string, authors: Authors) {
+    let author = authors.get(from);
     if (!author) {
-      const p = person(m.from);
+      const p = person(from);
       // the role now (for who may delete it, and a mark by the name); none for someone who left
-      const role = store.roleOf(m.community, m.from);
+      const role = store.roleOf(community, from);
       author = { name: p.name, handle: p.handle, ...(role ? { role } : {}) };
-      authors.set(m.from, author);
+      authors.set(from, author);
     }
-    const base = { id: m.id, community: m.community, channel: m.channel, from: m.from, author, text: m.text, at: m.at };
+    return author;
+  }
+
+  /** The answered message as a reply shows it: who, and its first line (or that it is gone). */
+  function quoteOf(m: MessageRow, authors: Authors) {
+    const q = m.replyTo ? store.message(m.community, m.replyTo) : undefined;
+    if (!q) return m.replyTo ? { replyTo: { id: m.replyTo, deleted: true as const } } : {};
+    const { name, handle } = authorOf(q.community, q.from, authors);
+    if (q.deletedAt) return { replyTo: { id: q.id, from: q.from, author: { name, handle }, text: '', deleted: true as const } };
+    const line = q.text.split('\n', 1)[0];
+    return { replyTo: { id: q.id, from: q.from, author: { name, handle }, text: line.length > 120 ? `${line.slice(0, 119)}…` : line } };
+  }
+
+  /**
+   * A message as the clients get it: who wrote it (name and handle: big rooms have no member list at
+   * hand), deleted ones empty; the quote it answers, its reactions (`me` only for the reader of a
+   * page) and whether it is pinned.
+   */
+  function messageView(m: MessageRow, authors: Authors = new Map(), reactions?: ReactionCount[]) {
+    const author = authorOf(m.community, m.from, authors);
+    const base = { id: m.id, community: m.community, channel: m.channel, from: m.from, author, text: m.text, at: m.at, ...quoteOf(m, authors) };
     if (m.deletedAt) return { ...base, text: '', deleted: true as const, ...(m.deletedBy && m.deletedBy !== m.from ? { moderated: true } : {}) };
-    return { ...base, ...(m.editedAt ? { editedAt: m.editedAt } : {}), ...(m.mentions.length ? { mentions: m.mentions } : {}) };
+    const r = reactions ?? store.reactionsOf([m.id]).get(m.id);
+    return {
+      ...base, ...(m.editedAt ? { editedAt: m.editedAt } : {}), ...(m.mentions.length ? { mentions: m.mentions } : {}),
+      ...(r?.length ? { reactions: r } : {}), ...(m.pinnedAt ? { pinned: true } : {}),
+    };
+  }
+
+  /** A page of messages as `me` sees them (their own reactions marked), the reactions in one query. */
+  function messageViews(list: MessageRow[], me: string) {
+    const authors: Authors = new Map();
+    const reactions = store.reactionsOf(list.filter((m) => !m.deletedAt).map((m) => m.id), me);
+    return list.map((m) => messageView(m, authors, reactions.get(m.id) ?? []));
   }
 
   /** Every connected member hears it. */
@@ -439,7 +488,8 @@ export function createCommunities(deps: Deps) {
       return {
         members: list.map((x) => {
           const status = deps.status(x.uuid);
-          return { ...person(x.uuid), role: x.role, joinedAt: x.joinedAt, status, online: status !== 'offline', ...(staff && x.mutedUntil > Date.now() ? { mutedUntil: x.mutedUntil } : {}) };
+          // a timeout: the moderators see it, and so does the one timed out
+          return { ...person(x.uuid), role: x.role, joinedAt: x.joinedAt, status, online: status !== 'offline', ...((staff || x.uuid === me) && x.mutedUntil > Date.now() ? { mutedUntil: x.mutedUntil } : {}) };
         }),
         total, offset,
       };
@@ -470,7 +520,7 @@ export function createCommunities(deps: Deps) {
       }
       return { ok: true };
     }],
-    // muted: may read, not write, for `minutes` (0 lifts it)
+    // muted ("timeout"): may read, not write, edit or react, for `minutes` (0 lifts it); ends by itself
     ['POST', route(`/${ID}/members/${USER}/mute`), async (req, [id, user]) => {
       const me = authed(req);
       const { c, m } = membership(id, me);
@@ -483,6 +533,7 @@ export function createCommunities(deps: Deps) {
       store.setMuted(id, user, until);
       store.log(id, me, minutes ? 'mute' : 'unmute', user, minutes ? `${minutes} min` : '');
       push(user, { type: 'communities', id });
+      push(user, { type: 'community', id, muted: { name: c.name, until } });
       return { ok: true, mutedUntil: until };
     }],
     // the owner hands it over and stays on as an admin
@@ -646,30 +697,49 @@ export function createCommunities(deps: Deps) {
       const before = Number(url.searchParams.get('before')) || undefined;
       const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 50));
       const authors = new Map<string, { name: string; handle: string; role?: CommunityRole }>();
+      const next = nextPostAt(channel, me, m.role);
       return {
-        messages: store.messages(ch, limit, before).map((x) => messageView(x, authors)),
+        messages: messageViews(store.messages(ch, limit, before), me),
         editWindowMs: editWindow(), canPost: RANK[m.role] >= RANK[channel.postRole], encrypted: false,
         ...(may(m.role, 'deleteMessage', 'member') ? { moderator: true } : {}),
         ...(m.mutedUntil > Date.now() ? { mutedUntil: m.mutedUntil } : {}),
+        ...(channel.slowMode ? { slowMode: channel.slowMode } : {}), ...(next ? { nextPostAt: next } : {}),
+        pins: store.pinCount(ch),
       };
     }],
+    // `replyTo`: a message of the same channel this one answers (its author hears of it as of a mention)
     ['POST', route(`/${ID}/channels/${ID}/messages`), async (req, [id, ch]) => {
       const me = authed(req);
       const { c, m } = membership(id, me);
       const channel = store.channel(id, ch) ?? fail(404, 'not_found');
       if (RANK[m.role] < RANK[channel.postRole]) fail(403, 'read_only_channel');
       if (m.mutedUntil > Date.now()) fail(403, 'community_muted');
+      const now = Date.now();
+      const next = nextPostAt(channel, me, m.role, now);
+      if (next) fail(429, 'slow_mode', Math.ceil((next - now) / 1000));
+      const raw = await body(req);
+      let replyTo: MessageRow | undefined;
+      if (raw.replyTo !== undefined && raw.replyTo !== null) {
+        if (typeof raw.replyTo !== 'number' || !Number.isSafeInteger(raw.replyTo)) fail(400, 'bad_request');
+        replyTo = store.message(id, raw.replyTo as number);
+        // only in the same channel of the same community, and not to a message that is gone
+        if (!replyTo || replyTo.channel !== ch) fail(400, 'bad_reply');
+        if (replyTo!.deletedAt) fail(404, 'reply_deleted');
+      }
+      const text = cleanText(raw.text);
       deps.limitMessages(me);
       deps.limitBurst?.(me, `c:${ch}`);
-      const text = cleanText((await body(req)).text);
-      const message = messageView(store.addMessage(id, ch, me, text, mentionsIn(id, text)));
+      const mentions = mentionsIn(id, text);
+      if (replyTo && replyTo.from !== me && store.memberSet(id).has(replyTo.from) && !mentions.includes(replyTo.from)) mentions.push(replyTo.from);
+      const message = messageView(store.addMessage(id, ch, me, text, mentions, now, replyTo?.id ?? null), new Map(), []);
       toMembers(id, { type: 'community-message', message });
       if (c.members >= 3) deps.countMessage?.(me);
-      return { message };
+      return { message, ...(channel.slowMode && RANK[m.role] < RANK.moderator ? { nextPostAt: now + channel.slowMode * 1000 } : {}) };
     }],
     ['POST', route(`/${ID}/channels/${ID}/messages/${MID}/edit`), async (req, [id, ch, raw]) => {
       const me = authed(req);
-      membership(id, me);
+      const { m } = membership(id, me);
+      if (m.mutedUntil > Date.now()) fail(403, 'community_muted');
       deps.limitEdits(me);
       const old = store.message(id, Number(raw));
       if (!old || old.channel !== ch) fail(404, 'not_found');
@@ -693,6 +763,89 @@ export function createCommunities(deps: Deps) {
       if (old!.from !== me) store.log(id, me, 'message_delete', old!.from, `#${old!.id}`);
       return { message: deleteMessage(c, old!, me) };
     }],
+    // a reaction: `emoji` one of REACTIONS, `on` to add or take off (left out: the other way round)
+    ['POST', route(`/${ID}/channels/${ID}/messages/${MID}/reactions`), async (req, [id, ch, raw]) => {
+      const me = authed(req);
+      const { m } = membership(id, me);
+      const old = store.message(id, Number(raw));
+      if (!old || old.channel !== ch || old.deletedAt) fail(404, 'not_found');
+      if (m.mutedUntil > Date.now()) fail(403, 'community_muted');
+      const { emoji, on } = await body(req);
+      if (!isReaction(emoji) || (on !== undefined && typeof on !== 'boolean')) fail(400, 'bad_reaction');
+      const add = typeof on === 'boolean' ? on : !store.hasReacted(old!.id, me, emoji as string);
+      // a new kind of emoji only while there is room for one
+      if (add && store.reactionCount(old!.id, emoji as string) === 0 && store.reactionKinds(old!.id) >= L.reactions) fail(400, 'too_many_reactions');
+      deps.limitReactions?.(me);
+      if (store.react(old!.id, me, emoji as string, add)) {
+        toMembers(id, { type: 'community-reaction', community: id, channel: ch, message: old!.id, emoji, user: me, on: add, count: store.reactionCount(old!.id, emoji as string) });
+      }
+      return { message: messageView(old!, new Map(), store.reactionsOf([old!.id], me).get(old!.id) ?? []) };
+    }],
+    // who reacted with what (the first 50 of each emoji)
+    ['GET', route(`/${ID}/channels/${ID}/messages/${MID}/reactions`), (req, [id, ch, raw]) => {
+      const me = authed(req);
+      membership(id, me);
+      const old = store.message(id, Number(raw));
+      if (!old || old.channel !== ch) fail(404, 'not_found');
+      const counts = store.reactionsOf([old!.id], me).get(old!.id) ?? [];
+      const users = store.reactors(old!.id);
+      return {
+        reactions: counts.map((r) => ({
+          ...r, users: users.filter((u) => u.emoji === r.emoji).map((u) => {
+            const p = person(u.uuid);
+            return { id: p.id, name: p.name, handle: p.handle };
+          }),
+        })),
+      };
+    }],
+    // pinned (moderators and up), or taken off; at most L.pins in a channel
+    ['POST', route(`/${ID}/channels/${ID}/messages/${MID}/pin`), async (req, [id, ch, raw]) => {
+      const me = authed(req);
+      const { m } = membership(id, me);
+      if (!may(m.role, 'pin')) fail(403, 'not_allowed');
+      const old = store.message(id, Number(raw));
+      if (!old || old.channel !== ch || old.deletedAt) fail(404, 'not_found');
+      const { pinned } = await body(req);
+      if (typeof pinned !== 'boolean') fail(400, 'bad_request');
+      deps.limitChanges(me);
+      if (pinned && !old!.pinnedAt && store.pinCount(ch) >= L.pins) fail(400, 'too_many_pins');
+      const changed = pinned ? store.pin(old!.id, ch, me) : store.unpin(old!.id);
+      const message = messageView(store.message(id, old!.id)!);
+      if (changed) {
+        store.log(id, me, pinned ? 'pin' : 'unpin', old!.from, `#${old!.id}`);
+        toMembers(id, { type: 'community-pin', community: id, channel: ch, message, pinned, by: { id: me, name: nameOf(me) } });
+      }
+      return { message, pins: store.pinCount(ch) };
+    }],
+    ['GET', route(`/${ID}/channels/${ID}/pins`), (req, [id, ch]) => {
+      const me = authed(req);
+      membership(id, me);
+      if (!store.channel(id, ch)) fail(404, 'not_found');
+      const pins = store.pins(ch);
+      const rows = pins.flatMap((p) => {
+        const msg = store.message(id, p.message);
+        return msg ? [msg] : [];
+      });
+      const views = new Map(messageViews(rows, me).map((v) => [v.id, v]));
+      return { pins: pins.flatMap((p) => (views.has(p.message) ? [{ message: views.get(p.message), by: person(p.by), at: p.at }] : [])), limit: L.pins };
+    }],
+    // slow mode: one message per member per `seconds` (one of SLOW_MODES; 0 off), set by admins and the owner
+    ['POST', route(`/${ID}/channels/${ID}/slowmode`), async (req, [id, ch]) => {
+      const me = authed(req);
+      const { m } = membership(id, me);
+      if (!may(m.role, 'slowMode')) fail(403, 'not_allowed');
+      const channel = store.channel(id, ch) ?? fail(404, 'not_found');
+      const { seconds } = await body(req);
+      if (typeof seconds !== 'number' || !SLOW_MODES.includes(seconds)) fail(400, 'bad_request');
+      deps.limitChanges(me);
+      if (channel.slowMode !== seconds) {
+        store.setSlowMode(ch, seconds as number);
+        store.log(id, me, 'slowmode', '', seconds ? `${seconds} s` : '');
+        listChanged(id);
+      }
+      return { ok: true, slowMode: seconds };
+    }],
+
     // a report: the community's moderators see it, and so does the site's admin panel
     ['POST', route(`/${ID}/channels/${ID}/messages/${MID}/report`), async (req, [id, ch, raw]) => {
       const me = authed(req);

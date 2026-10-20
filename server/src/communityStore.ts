@@ -35,6 +35,10 @@ export const COMMUNITY_LIMITS = {
   muteMinutes: 7 * 24 * 60,
   /** Mentions resolved in one message. */
   mentions: 10,
+  /** Different emoji under one message. */
+  reactions: 20,
+  /** Pinned messages in one channel. */
+  pins: 50,
 };
 export type CommunityLimits = typeof COMMUNITY_LIMITS;
 
@@ -49,13 +53,31 @@ export type JoinMode = 'open' | 'request';
 export type Notify = 'all' | 'mentions' | 'none';
 export const NOTIFY: Notify[] = ['all', 'mentions', 'none'];
 
-export type CommunityAction = 'invite' | 'requests' | 'reports' | 'kick' | 'mute' | 'deleteMessage' | 'ban' | 'edit' | 'announce' | 'log' | 'setRole' | 'transfer' | 'delete';
+/** Slow mode's choices, in seconds (0: off): one message per member per that long, moderators and up exempt. */
+export const SLOW_MODES = [0, 5, 10, 30, 60, 300, 900, 3600];
 
 /**
- * Who may do what to whom. Moderators invite, answer requests, look at reports, and take out, mute
- * and delete the messages of those below them; admins also ban, change the community's info, logo
- * and roles below their own, and post announcements; only the owner hands the community over or
- * deletes it. Someone who is not a member (any more) counts as a 'member' target.
+ * The emoji one may react with: no custom ones. The first six are the quick ones under a message
+ * (the clients show them first, the game offers only those); the rest is the picker.
+ */
+export const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
+export const REACTIONS = [
+  ...QUICK_REACTIONS,
+  '👎', '🎉', '👏', '🙏', '💯', '😀', '😅', '😍', '🤔', '😎', '🙄', '😴', '🤯', '🥳', '😭', '😡', '💀', '👀',
+  '✅', '❌', '⭐', '💎', '🏆', '⚔️', '⛏️', '🧱', '🍰', '🐷', '🤝', '💪',
+];
+const REACTION_SET = new Set(REACTIONS);
+/** Whether this is one of the emoji one may react with. */
+export const isReaction = (e: unknown): e is string => typeof e === 'string' && REACTION_SET.has(e);
+
+export type CommunityAction = 'invite' | 'requests' | 'reports' | 'pin' | 'kick' | 'mute' | 'deleteMessage' | 'ban' | 'edit' | 'announce' | 'log' | 'slowMode' | 'setRole' | 'transfer' | 'delete';
+
+/**
+ * Who may do what to whom. Moderators invite, answer requests, look at reports, pin messages, and
+ * take out, mute (time out) and delete the messages of those below them; admins also ban, change
+ * the community's info, logo, slow mode and roles below their own, and post announcements; only the
+ * owner hands the community over or deletes it. Someone who is not a member (any more) counts as a
+ * 'member' target. Moderators and up are not held back by slow mode.
  */
 export function may(role: CommunityRole | undefined, action: CommunityAction, target?: CommunityRole, next?: CommunityRole): boolean {
   if (!role) return false;
@@ -65,6 +87,7 @@ export function may(role: CommunityRole | undefined, action: CommunityAction, ta
     case 'invite':
     case 'requests':
     case 'reports':
+    case 'pin':
       return r >= RANK.moderator;
     case 'kick':
     case 'mute':
@@ -75,6 +98,7 @@ export function may(role: CommunityRole | undefined, action: CommunityAction, ta
     case 'edit':
     case 'announce':
     case 'log':
+    case 'slowMode':
       return r >= RANK.admin;
     case 'setRole':
       return r >= RANK.admin && below && next !== undefined && next !== 'owner' && RANK[next] < r;
@@ -88,7 +112,7 @@ export function may(role: CommunityRole | undefined, action: CommunityAction, ta
 /** Everything a role may do, for the clients (they still ask the server each time). */
 export function permissions(role: CommunityRole | undefined) {
   return {
-    invite: may(role, 'invite'), requests: may(role, 'requests'), reports: may(role, 'reports'),
+    invite: may(role, 'invite'), requests: may(role, 'requests'), reports: may(role, 'reports'), pin: may(role, 'pin'), slowMode: may(role, 'slowMode'),
     kick: may(role, 'kick', 'member'), mute: may(role, 'mute', 'member'), deleteMessage: may(role, 'deleteMessage', 'member'),
     ban: may(role, 'ban', 'member'), edit: may(role, 'edit'), announce: may(role, 'announce'), log: may(role, 'log'),
     setRole: may(role, 'setRole', 'member', 'moderator'), transfer: role === 'owner', delete: may(role, 'delete'),
@@ -129,14 +153,20 @@ export interface CommunityRow {
   owner: string; members: number; createdAt: number; lastMessageAt: number;
 }
 export interface MemberRow { uuid: string; role: CommunityRole; joinedAt: number; notify: Notify; onProfile: boolean; mutedUntil: number }
-export interface ChannelRow { id: string; community: string; kind: 'general' | 'announcements' | 'custom'; name: string; postRole: CommunityRole; position: number }
+/** `slowMode`: seconds between one member's messages (0: off). */
+export interface ChannelRow { id: string; community: string; kind: 'general' | 'announcements' | 'custom'; name: string; postRole: CommunityRole; position: number; slowMode: number }
+/** `replyTo`: the message this one answers (in the same channel); `pinnedAt`: when it was pinned. */
 export interface MessageRow {
   id: number; community: string; channel: string; from: string; text: string; at: number;
-  mentions: string[]; editedAt: number | null; deletedAt: number | null; deletedBy: string | null;
+  mentions: string[]; editedAt: number | null; deletedAt: number | null; deletedBy: string | null; replyTo: number | null; pinnedAt: number | null;
 }
+/** One emoji under a message: how many, and whether the reader is one of them. */
+export interface ReactionCount { emoji: string; count: number; me?: true }
 
 const COLUMNS = `id, name, tag, description, visibility, join_mode AS joinMode, owner, member_count AS members, created_at AS createdAt, last_message_at AS lastMessageAt`;
-const MESSAGE_COLUMNS = `id, community_id AS community, channel_id AS channel, from_uuid AS "from", text, created_at AS at, mentions, edited_at AS editedAt, deleted_at AS deletedAt, deleted_by AS deletedBy`;
+const MESSAGE_COLUMNS = `id, community_id AS community, channel_id AS channel, from_uuid AS "from", text, created_at AS at, mentions, edited_at AS editedAt, deleted_at AS deletedAt, deleted_by AS deletedBy,
+  reply_to AS replyTo, (SELECT p.at FROM community_pins p WHERE p.message_id = community_messages.id) AS pinnedAt`;
+const CHANNEL_COLUMNS = 'id, community_id AS community, kind, name, post_role AS postRole, position, slow_seconds AS slowMode';
 type RawMessage = Omit<MessageRow, 'mentions'> & { mentions: string | null };
 const toMessage = (r: RawMessage): MessageRow => ({ ...r, mentions: r.mentions ? JSON.parse(r.mentions) as string[] : [] });
 /** LIKE with the user's text taken as it is. */
@@ -187,7 +217,19 @@ CREATE INDEX IF NOT EXISTS community_reports_open ON community_reports(community
 CREATE TABLE IF NOT EXISTS community_log (id INTEGER PRIMARY KEY AUTOINCREMENT, community_id TEXT NOT NULL, at INTEGER NOT NULL, by_uuid TEXT NOT NULL,
   action TEXT NOT NULL, target TEXT NOT NULL DEFAULT '', detail TEXT NOT NULL DEFAULT '');
 CREATE INDEX IF NOT EXISTS community_log_community ON community_log(community_id, id);
+CREATE TABLE IF NOT EXISTS community_reactions (message_id INTEGER NOT NULL REFERENCES community_messages(id) ON DELETE CASCADE, uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+  emoji TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (message_id, emoji, uuid));
+CREATE TABLE IF NOT EXISTS community_pins (message_id INTEGER PRIMARY KEY REFERENCES community_messages(id) ON DELETE CASCADE,
+  channel_id TEXT NOT NULL REFERENCES community_channels(id) ON DELETE CASCADE, by_uuid TEXT NOT NULL, at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS community_pins_channel ON community_pins(channel_id, at);
 `);
+    // added later (0.9.27): replies and slow mode on databases made before
+    const messageColumns = (sql.prepare('PRAGMA table_info(community_messages)').all() as { name: string }[]).map((c) => c.name);
+    if (!messageColumns.includes('reply_to')) sql.exec('ALTER TABLE community_messages ADD COLUMN reply_to INTEGER');
+    const channelColumns = (sql.prepare('PRAGMA table_info(community_channels)').all() as { name: string }[]).map((c) => c.name);
+    if (!channelColumns.includes('slow_seconds')) sql.exec('ALTER TABLE community_channels ADD COLUMN slow_seconds INTEGER NOT NULL DEFAULT 0');
+    // a member's last message in a channel (slow mode)
+    sql.exec('CREATE INDEX IF NOT EXISTS community_messages_author ON community_messages(channel_id, from_uuid, id)');
   }
 
   // ---------- communities ----------
@@ -433,16 +475,25 @@ CREATE INDEX IF NOT EXISTS community_log_community ON community_log(community_id
   }
 
   channels(id: string): ChannelRow[] {
-    return this.sql.prepare('SELECT id, community_id AS community, kind, name, post_role AS postRole, position FROM community_channels WHERE community_id = ? ORDER BY position, created_at').all(id) as never;
+    return this.sql.prepare(`SELECT ${CHANNEL_COLUMNS} FROM community_channels WHERE community_id = ? ORDER BY position, created_at`).all(id) as never;
   }
 
   channel(id: string, ch: string): ChannelRow | undefined {
-    return this.sql.prepare('SELECT id, community_id AS community, kind, name, post_role AS postRole, position FROM community_channels WHERE community_id = ? AND id = ?').get(id, ch) as ChannelRow | undefined;
+    return this.sql.prepare(`SELECT ${CHANNEL_COLUMNS} FROM community_channels WHERE community_id = ? AND id = ?`).get(id, ch) as ChannelRow | undefined;
   }
 
-  addMessage(id: string, ch: string, from: string, text: string, mentions: string[], now = Date.now()): MessageRow {
-    const { lastInsertRowid } = this.sql.prepare('INSERT INTO community_messages (community_id, channel_id, from_uuid, text, mentions, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(id, ch, from, text, mentions.length ? JSON.stringify(mentions) : null, now);
+  setSlowMode(ch: string, seconds: number) {
+    this.sql.prepare('UPDATE community_channels SET slow_seconds = ? WHERE id = ?').run(seconds, ch);
+  }
+
+  /** When a member last wrote in a channel (deleted messages count too: deleting does not skip slow mode); 0 when never. */
+  lastMessageAt(ch: string, uuid: string): number {
+    return (this.sql.prepare('SELECT created_at AS at FROM community_messages WHERE channel_id = ? AND from_uuid = ? ORDER BY id DESC LIMIT 1').get(ch, uuid) as { at: number } | undefined)?.at ?? 0;
+  }
+
+  addMessage(id: string, ch: string, from: string, text: string, mentions: string[], now = Date.now(), replyTo: number | null = null): MessageRow {
+    const { lastInsertRowid } = this.sql.prepare('INSERT INTO community_messages (community_id, channel_id, from_uuid, text, mentions, created_at, reply_to) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(id, ch, from, text, mentions.length ? JSON.stringify(mentions) : null, now, replyTo);
     const mid = Number(lastInsertRowid);
     this.sql.prepare('UPDATE communities SET last_message_at = ? WHERE id = ?').run(now, id);
     // what one writes oneself is read
@@ -466,10 +517,75 @@ CREATE INDEX IF NOT EXISTS community_log_community ON community_log(community_id
     this.sql.prepare('UPDATE community_messages SET text = ?, mentions = ?, edited_at = ? WHERE id = ? AND deleted_at IS NULL').run(text, mentions.length ? JSON.stringify(mentions) : null, at, mid);
   }
 
-  /** Only that there was a message stays; `by` is who took it back (the author or a moderator). */
+  /** Only that there was a message stays; `by` is who took it back (the author or a moderator). Its reactions and pin go with it. */
   deleteMessage(mid: number, by: string, at = Date.now()) {
     this.sql.prepare("UPDATE community_messages SET text = '', mentions = NULL, edited_at = NULL, deleted_at = ?, deleted_by = ? WHERE id = ?").run(at, by, mid);
+    this.sql.prepare('DELETE FROM community_reactions WHERE message_id = ?').run(mid);
+    this.sql.prepare('DELETE FROM community_pins WHERE message_id = ?').run(mid);
   }
+
+  // ---------- reactions ----------
+
+  /** Adds or takes off one's emoji; false when nothing changed. */
+  react(mid: number, uuid: string, emoji: string, on: boolean, now = Date.now()): boolean {
+    const changes = on
+      ? this.sql.prepare('INSERT OR IGNORE INTO community_reactions (message_id, uuid, emoji, created_at) VALUES (?, ?, ?, ?)').run(mid, uuid, emoji, now).changes
+      : this.sql.prepare('DELETE FROM community_reactions WHERE message_id = ? AND uuid = ? AND emoji = ?').run(mid, uuid, emoji).changes;
+    return Number(changes) > 0;
+  }
+
+  hasReacted(mid: number, uuid: string, emoji: string): boolean {
+    return !!this.sql.prepare('SELECT 1 FROM community_reactions WHERE message_id = ? AND uuid = ? AND emoji = ?').get(mid, uuid, emoji);
+  }
+
+  /** The different emoji under a message. */
+  reactionKinds(mid: number): number {
+    return (this.sql.prepare('SELECT COUNT(DISTINCT emoji) AS n FROM community_reactions WHERE message_id = ?').get(mid) as { n: number }).n;
+  }
+
+  reactionCount(mid: number, emoji: string): number {
+    return (this.sql.prepare('SELECT COUNT(*) AS n FROM community_reactions WHERE message_id = ? AND emoji = ?').get(mid, emoji) as { n: number }).n;
+  }
+
+  /** Each message's emoji in the order they first came, with counts and whether `me` is among them (one query for a page). */
+  reactionsOf(mids: number[], me = ''): Map<number, ReactionCount[]> {
+    const out = new Map<number, ReactionCount[]>();
+    if (!mids.length) return out;
+    const rows = this.sql.prepare(`SELECT message_id AS mid, emoji, COUNT(*) AS count, MAX(uuid = ?) AS me, MIN(created_at) AS first FROM community_reactions
+      WHERE message_id IN (${mids.map(() => '?').join(',')}) GROUP BY message_id, emoji ORDER BY first, emoji`).all(me, ...mids) as { mid: number; emoji: string; count: number; me: number }[];
+    for (const r of rows) {
+      const list = out.get(r.mid) ?? [];
+      list.push({ emoji: r.emoji, count: r.count, ...(r.me ? { me: true as const } : {}) });
+      out.set(r.mid, list);
+    }
+    return out;
+  }
+
+  /** Who reacted with what (the first `limit` of each emoji, the earliest first). */
+  reactors(mid: number, limit = 50): { emoji: string; uuid: string }[] {
+    return this.sql.prepare(`SELECT emoji, uuid FROM (SELECT emoji, uuid, created_at, ROW_NUMBER() OVER (PARTITION BY emoji ORDER BY created_at, uuid) AS n
+      FROM community_reactions WHERE message_id = ?) WHERE n <= ? ORDER BY created_at, uuid`).all(mid, limit) as never;
+  }
+
+  // ---------- pins ----------
+
+  pin(mid: number, ch: string, by: string, now = Date.now()): boolean {
+    return Number(this.sql.prepare('INSERT OR IGNORE INTO community_pins (message_id, channel_id, by_uuid, at) VALUES (?, ?, ?, ?)').run(mid, ch, by, now).changes) > 0;
+  }
+
+  unpin(mid: number): boolean {
+    return Number(this.sql.prepare('DELETE FROM community_pins WHERE message_id = ?').run(mid).changes) > 0;
+  }
+
+  pinCount(ch: string): number {
+    return (this.sql.prepare('SELECT COUNT(*) AS n FROM community_pins WHERE channel_id = ?').get(ch) as { n: number }).n;
+  }
+
+  /** A channel's pinned messages, the latest pinned first. */
+  pins(ch: string): { message: number; by: string; at: number }[] {
+    return this.sql.prepare('SELECT message_id AS message, by_uuid AS by, at FROM community_pins WHERE channel_id = ? ORDER BY at DESC, message_id DESC').all(ch) as never;
+  }
+
 
   markRead(ch: string, uuid: string) {
     this.sql.prepare(`UPDATE community_reads SET read_id = (SELECT COALESCE(MAX(id), 0) FROM community_messages WHERE channel_id = ?) WHERE channel_id = ? AND uuid = ?`).run(ch, ch, uuid);
