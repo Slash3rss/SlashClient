@@ -12,7 +12,7 @@ import { initCloudProfiles } from './cloudProfiles';
 import { initVersionMove } from './versionMove';
 import { createAchievements } from './achievements';
 import { buyWithConfirm } from './sparkShop';
-import { sparks } from '../shared/sparks';
+import { currencyName, sparks } from '../shared/sparks';
 import { openSkinEditor } from './skinEditor';
 import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
 import type { SlashApi } from '../main/preload';
@@ -3281,6 +3281,10 @@ async function renderSlashCapes() {
   }).catch(() => undefined))
     ?? SLASH_CAPES.map(([id, name]) => ({ id, slot: 'cape' as Slot, name, exclusive: false, available: true }));
   if (walletBalance !== undefined) achievements.setBalance(walletBalance);
+  // the balance and the way to the shop (in the Achievements view), while signed in to a server that has it
+  $('#cosmetic-shop').classList.toggle('hidden', walletBalance === undefined);
+  $('#cosmetic-sparks').textContent = (walletBalance ?? 0).toLocaleString(locale());
+  $('#cosmetic-shop').title = t('Twoje {0}: {1}', currencyName(), sparks(walletBalance ?? 0));
   for (const c of catalog) if (c.frames) capeFrames.set(c.id, c.frames);
   const slots = SLOTS.filter(([slot]) => catalog.some((c) => c.slot === slot));
   if (!slots.some(([slot]) => slot === cosmeticSlot)) cosmeticSlot = 'cape';
@@ -3401,6 +3405,7 @@ async function renderSlashCapes() {
   else if (capeId) await wearCape(capeId);
 }
 
+$('#cosmetic-shop').addEventListener('click', () => achievements.showShop());
 $('#cosmetic-shared').addEventListener('click', async () => {
   if (!cosmeticCharacter || !(await guard(() => api.socialApi('POST', '/v1/me', { character: cosmeticCharacter, own: false })))) return;
   toast(t('Ta postać nosi teraz zestaw całego konta.'));

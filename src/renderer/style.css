@@ -1341,3 +1341,5 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .ledger-amount.plus { color: #fbbf24; }
 .ledger-amount.minus { color: #f87171; }
 .ledger-after { font: 11px var(--font-mono); min-width: 52px; text-align: right; }
+.cosmetic-shop { margin-left: auto; }
+.cosmetic-shop b { color: var(--text, #fff); }

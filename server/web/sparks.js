@@ -58,7 +58,7 @@ export async function achievementsCard() {
         const bar = el('span', { class: 'ach-progress' });
         bar.style.width = `${Math.round((a.progress ?? 0) * 100)}%`;
         return el('div', { class: `ach-item${done ? ' done' : ''}`, title: a.description },
-          icon(`fa-solid ${done ? 'fa-trophy' : a.hidden ? 'fa-question' : 'fa-lock'}`),
+          icon(`fa-solid ${done ? (/^fa-[a-z0-9-]+$/.test(a.icon ?? '') ? a.icon : 'fa-trophy') : a.hidden ? 'fa-question' : 'fa-lock'}`),
           el('div', { class: 'grow' }, el('b', { textContent: a.name }), el('span', { class: 'muted small', textContent: a.description }),
             !done && a.progress !== undefined ? el('div', { class: 'ach-bar' }, bar) : ''),
           a.sparks ? el('span', { class: `ach-reward${done ? ' got' : ''}`, textContent: `${CURRENCY.sign} ${a.sparks}` }) : '');

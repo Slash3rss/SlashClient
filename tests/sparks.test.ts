@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { setLang } from '../src/shared/i18n';
 import { CURRENCY, polishForm, signedSparks, sparks } from '../src/shared/sparks';
-import { byCategory, summaryText, unlockText, type Achievement } from '../src/renderer/achievements';
+import { byCategory, iconFor, summaryText, unlockText, type Achievement } from '../src/renderer/achievements';
 import { shortBy } from '../src/renderer/sparkShop';
 import { ITEMS } from '../server/src/cosmetics';
 
@@ -68,5 +68,25 @@ describe('sparks', () => {
     assert.equal(shortBy(600, 600), '');
     assert.equal(shortBy(600, 598), 'Brakuje Ci 2 Iskry.');
     assert.ok(ITEMS.some((i) => i.price));
+  });
+
+  it('draws the icon from the server, else the group icon (older servers), else a trophy', () => {
+    assert.equal(iconFor({ icon: 'fa-crown', group: 'hours' }), 'fa-crown');
+    assert.equal(iconFor({ group: 'hours' }), 'fa-clock');
+    assert.equal(iconFor({ group: 'manual' }), 'fa-award');
+    assert.equal(iconFor({ group: 'something_new' }), 'fa-trophy');
+    // not a Font Awesome name: never put into the class
+    assert.equal(iconFor({ icon: 'fa-x" onclick="', group: 'hours' }), 'fa-clock');
+  });
+
+  it('has every icon the admin may pick in the Font Awesome the launcher and the website ship', () => {
+    const server = readFileSync('server/src/achievements.ts', 'utf8');
+    const block = server.slice(server.indexOf('export const DEFAULT_ICONS'), server.indexOf('export const METRICS'));
+    const icons = new Set([...block.matchAll(/'(fa-[a-z0-9-]+)'/g)].map((m) => m[1]));
+    assert.ok(icons.size >= 60, String(icons.size));
+    for (const file of ['node_modules/@fortawesome/fontawesome-free/css/all.min.css', 'server/web/vendor/fa/css/all.min.css']) {
+      const css = readFileSync(file, 'utf8');
+      for (const i of icons) assert.ok(new RegExp(`\\.${i}[,{:]`).test(css), `${i} in ${file}`);
+    }
   });
 });

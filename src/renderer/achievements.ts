@@ -14,6 +14,8 @@ import { buyWithConfirm, shortBy, type ShopItem } from './sparkShop';
 interface Reward { id: string; slot: string; name: string }
 export interface Achievement {
   id: string; group: string; category?: string; tier: number; goal: number; sparks?: number; hidden?: boolean;
+  /** Its icon as the server says (achievements made in the admin panel pick theirs); older servers send none. */
+  icon?: string; custom?: boolean; manual?: boolean;
   name: string; nameEn: string; description: string; descriptionEn: string;
   value?: number; progress?: number; unlockedAt: number | null; reward?: Reward;
 }
@@ -45,8 +47,10 @@ const GROUP_ICONS: Record<string, string> = {
   night: 'fa-moon', newyear: 'fa-champagne-glasses', halloween: 'fa-ghost', friday13: 'fa-cat',
   groups_joined: 'fa-people-group', groups_created: 'fa-comments', group_size: 'fa-users', clan_joined: 'fa-shield-halved', clan_founded: 'fa-chess-rook', clan_size: 'fa-flag',
   waypoints: 'fa-location-dot', parties_created: 'fa-bullhorn', parties_joined: 'fa-handshake', media: 'fa-camera', shares: 'fa-share-nodes', cloud: 'fa-cloud',
-  sprays: 'fa-spray-can', worn: 'fa-shirt', bought: 'fa-bag-shopping', spent: 'fa-gem',
+  sprays: 'fa-spray-can', worn: 'fa-shirt', bought: 'fa-bag-shopping', spent: 'fa-gem', manual: 'fa-award',
 };
+/** An achievement's icon: the server's (a Font Awesome name), else its group's, else a trophy (exported for the tests). */
+export const iconFor = (a: Pick<Achievement, 'icon' | 'group'>) => (a.icon && /^fa-[a-z0-9-]{1,40}$/.test(a.icon) ? a.icon : GROUP_ICONS[a.group] ?? 'fa-trophy');
 /** The categories in the server's order, with names and icons; unknown ones fall back to "other". */
 const CATEGORY: Record<string, [string, string]> = {
   play: ['Gra', 'fa-gamepad'], streak: ['Serie', 'fa-fire'], social: ['Znajomi', 'fa-user-group'], community: ['Grupy i klany', 'fa-people-group'],
@@ -135,7 +139,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     fill.style.width = `${Math.round((a.progress ?? 0) * 100)}%`;
     const value = a.value !== undefined ? `${fmt(a.value)} / ${fmt(a.goal)}` : '';
     const parts: Node[] = [
-      el('div', { className: 'ach-icon' }, icon(done ? GROUP_ICONS[a.group] ?? 'fa-trophy' : secret ? 'fa-question' : 'fa-lock')),
+      el('div', { className: 'ach-icon' }, icon(done ? iconFor(a) : secret ? 'fa-question' : 'fa-lock')),
       el('div', { className: 'grow ach-text' },
         el('b', { textContent: nameOf(a) }),
         el('small', { className: 'muted', textContent: descriptionOf(a) }),
