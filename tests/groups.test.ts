@@ -22,7 +22,10 @@ describe('groups and clans in the Friends view', () => {
     setLang('en');
     assert.equal(eventText({ kind: 'renamed', by: 'Ala', name: 'Ekipa' }), 'Ala renamed it to “Ekipa”');
     assert.equal(eventText({ kind: 'left', by: 'Bob' }), 'Bob left');
+    assert.equal(eventText({ kind: 'logo', by: 'Ala' }), 'Ala changed the clan’s logo');
     setLang('pl');
+    assert.equal(eventText({ kind: 'logo', by: 'Ala' }), 'Ala zmienia logo klanu');
+    assert.equal(eventText({ kind: 'logo', by: 'Ala', removed: true }), 'Ala usuwa logo klanu');
   });
 
   it('offers only what the clan role allows, as the server does', () => {
@@ -30,6 +33,7 @@ describe('groups and clans in the Friends view', () => {
     assert.ok(clanMay('officer', 'kick', 'member') && !clanMay('officer', 'kick', 'officer') && !clanMay('owner', 'kick', 'owner'));
     assert.ok(clanMay('owner', 'setRole', 'member') && !clanMay('officer', 'setRole', 'member'));
     assert.ok(clanMay('owner', 'delete') && !clanMay('officer', 'rename'));
+    assert.ok(clanMay('owner', 'logo') && !clanMay('officer', 'logo') && !clanMay('member', 'logo'));
     assert.ok(validTag('WOLF') && validTag('x9') && !validTag('A') && !validTag('ABCDEF') && !validTag('A B'));
   });
 });

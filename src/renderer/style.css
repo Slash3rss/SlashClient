@@ -1271,6 +1271,11 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .fr-group-avatar { background: linear-gradient(135deg, #4c1d95, #7c3aed); font-size: 15px; }
 .fr-group-avatar.clan { background: linear-gradient(135deg, #92400e, #f59e0b); }
 .fr-clan-mark { font-size: 10px; font-weight: 800; letter-spacing: .02em; max-width: 34px; overflow: hidden; }
+.fr-group-avatar.clan.has-logo { background: rgba(255,255,255,.06); }
+.fr-avatar img.fr-clan-logo { object-fit: contain; image-rendering: auto; }
+.fr-clan-logo-preview { width: 64px; height: 64px; border-radius: 12px; }
+.fr-clan-logo-preview .fr-clan-mark { font-size: 14px; max-width: 60px; }
+.fr-clan-logo-row { align-items: center; gap: 10px; }
 .fr-clan-tag { color: #fbbf24; font-weight: 800; }
 .fr-event { align-self: center; margin: 6px 0; padding: 3px 10px; border-radius: 99px; font-size: 12px; color: var(--text-muted); background: rgba(255, 255, 255, .04); text-align: center; }
 .fr-group-modal { width: min(520px, 100%); }
