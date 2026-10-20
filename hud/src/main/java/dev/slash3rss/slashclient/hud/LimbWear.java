@@ -78,7 +78,7 @@ public final class LimbWear {
 		tick++;
 		for (Player p : mc.level.players()) {
 			if (p.isInvisible() || p.isSpectator() || p.distanceToSqr(mc.player) > RANGE_SQ) continue;
-			if (!"rocketboots".equals(Cosmetics.worn(p.getUUID(), "shoes")) || !p.getItemBySlot(EquipmentSlot.FEET).isEmpty() || Suits.hides(p.getUUID(), "shoes")) continue;
+			if (!"rocketboots".equals(Cosmetics.worn(p.getUUID(), "shoes")) || !OwnArmor.shown(p, EquipmentSlot.FEET).isEmpty() || Suits.hides(p.getUUID(), "shoes")) continue;
 			// in the air they fire harder
 			if (p.onGround() && tick % 2 != 0) continue;
 			double yaw = Math.toRadians(p.yBodyRot);

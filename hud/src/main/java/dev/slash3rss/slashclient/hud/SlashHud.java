@@ -207,6 +207,7 @@ public class SlashHud implements ClientModInitializer {
 			CosmeticEffects.tick(mc);
 			LimbWear.tick(mc);
 			KillEffects.tick(mc);
+			HitMarker.tick(mc);
 			MoveEffects.tick(mc);
 			Sprays.tick(mc);
 			Clips.tick(mc);
@@ -249,6 +250,7 @@ public class SlashHud implements ClientModInitializer {
 				//#endif
 				ExtraModules.Stats.attack(player, entity);
 				KillEffects.attacked(entity);
+				HitMarker.attacked(entity);
 			}
 			return InteractionResult.PASS;
 		});
@@ -265,6 +267,8 @@ public class SlashHud implements ClientModInitializer {
 
 		HudElementRegistry.replaceElement(VanillaHudElements.CROSSHAIR, vanilla -> (g, delta) -> {
 			if (!Extras.drawCrosshair(g, Minecraft.getInstance())) vanilla.extractRenderState(g, delta);
+			// over the crosshair, ours or the game's
+			HitMarker.draw(g, Minecraft.getInstance());
 		});
 
 		// under the chat and the tab list, as in other clients: those stay readable over the HUD

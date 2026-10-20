@@ -34,7 +34,7 @@ final class TestFilter {
 		Map.entry("GameSkyTasks", 11), Map.entry("GameSkyCase", 10), Map.entry("GameAutoClicker", 8), Map.entry("GameHudParts", 10), Map.entry("GameClips", 9),
 		Map.entry("GameSprays", 8), Map.entry("GameGroupsClans", 7), Map.entry("GameModules", 7),
 		Map.entry("GameServerLayouts", 7), Map.entry("GameHandView", 6), Map.entry("GameLiveCosmetics", 6),
-		Map.entry("GameAids", 5));
+		Map.entry("GameAids", 5), Map.entry("GameHideArmor", 9), Map.entry("GameHitMarker", 15));
 	private static final int DEFAULT = 25;
 
 	private static Set<String> mine;

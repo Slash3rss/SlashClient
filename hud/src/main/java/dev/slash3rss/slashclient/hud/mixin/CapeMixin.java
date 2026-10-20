@@ -18,7 +18,7 @@ abstract class CapeMixin {
 	@ModifyReturnValue(method = "getSkin", at = @At("RETURN"))
 	private PlayerSkin slashclient$cape(PlayerSkin skin) {
 		AbstractClientPlayer player = (AbstractClientPlayer) (Object) this;
-		return Cosmetics.withCape(player.getUUID(), skin, player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).is(net.minecraft.world.item.Items.ELYTRA));
+		return Cosmetics.withCape(player.getUUID(), skin, dev.slash3rss.slashclient.hud.OwnArmor.shown(player, net.minecraft.world.entity.EquipmentSlot.CHEST).is(net.minecraft.world.item.Items.ELYTRA));
 	}
 	//#else
 	//$ @ModifyReturnValue(method = "getCloakTextureLocation", at = @At("RETURN"))
