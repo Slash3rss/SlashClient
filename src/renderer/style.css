@@ -1467,3 +1467,17 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .fr-com-log { display: flex; gap: 10px; padding: 4px 8px; font-size: 13px; align-items: baseline; }
 .fr-com-log small { flex: 0 0 110px; }
 .fr-composer textarea:disabled { opacity: .55; cursor: not-allowed; }
+
+/* the admin's announcement on top of the views, and parts switched off in the server's panel (features.ts) */
+.feature-banner { display: flex; align-items: center; gap: 10px; margin: 12px 24px 0; padding: 8px 10px 8px 14px; border-radius: 12px; font-size: 13px;
+  color: #dbeafe; background: rgba(37, 99, 235, .2); border: 1px solid rgba(96, 165, 250, .35); position: relative; z-index: 5; }
+.feature-banner.warning { color: #fef3c7; background: rgba(217, 119, 6, .22); border-color: rgba(251, 191, 36, .4); }
+.feature-banner.hidden { display: none; }
+.feature-banner-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.feature-banner .feature-banner-link { color: inherit; font-weight: 700; text-decoration: underline; }
+.feature-banner .feature-banner-close { width: 26px; height: 26px; background: transparent; border-color: transparent; color: inherit; }
+.feature-shop-off, .feature-support-off, .feature-cloud-off, .feature-media-off, .feature-profiles-off, .feature-chatImages-off { display: none; }
+body.feature-off-shop .feature-shop, body.feature-off-support .feature-support, body.feature-off-cloud .feature-cloud,
+body.feature-off-media .feature-media, body.feature-off-profiles .feature-profiles, body.feature-off-chatImages .feature-chatImages { display: none !important; }
+body.feature-off-shop .feature-shop-off, body.feature-off-support .feature-support-off, body.feature-off-cloud .feature-cloud-off,
+body.feature-off-media .feature-media-off, body.feature-off-profiles .feature-profiles-off, body.feature-off-chatImages .feature-chatImages-off { display: block; }

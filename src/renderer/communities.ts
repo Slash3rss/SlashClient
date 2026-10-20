@@ -2,6 +2,7 @@ import { locale, t } from '../shared/i18n';
 import { logoFromFile, logoUrl } from './clanLogo';
 import { confirmDialog, control, el, icon, modalWindow } from './dialog';
 import { editHint, editedLabel, openMenu, replaceMessage, tombstone, withMenu, type MenuItem } from './chatEdits';
+import { disabledText, featureOn } from './features';
 
 /**
  * Communities ("Społeczności") in the Friends view: like a clan but big (up to a thousand players),
@@ -207,6 +208,10 @@ export function createCommunities(deps: Deps) {
 
   function sections(): Node[] {
     const out: Node[] = [];
+    // switched off in the server's admin panel for a while: only a note
+    if (!featureOn('communities')) {
+      return [el('div', { className: 'fr-section fr-section-row' }, el('span', { textContent: t('Społeczności') })), el('p', { className: 'muted fr-empty', textContent: disabledText() })];
+    }
     const discover = el('button', { type: 'button', className: 'icon-btn fr-section-btn', title: t('Odkrywaj społeczności') }, icon('fa-compass'));
     discover.addEventListener('click', () => discoverWindow());
     const add = el('button', { type: 'button', className: 'icon-btn fr-section-btn', title: t('Załóż społeczność') }, icon('fa-plus'));

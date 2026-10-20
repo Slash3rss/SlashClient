@@ -1639,6 +1639,11 @@ async function socialCall<T>(fn: () => Promise<T>): Promise<T> {
 
 handle('social:state', () => social.state());
 handle('social:health', () => socialCall(() => social.call('GET', '/v1/health', undefined, false)));
+// the admin's feature switches and banner (server 0.9.23+); an older server has none: null, everything on
+handle('social:features', () => socialCall(() => social.call('GET', '/v1/features', undefined, false).catch((err) => {
+  if (err instanceof SocialError && err.httpStatus === 404) return null;
+  throw err;
+})));
 /** The page's requests; only the parts of the API that work on the player's own data. */
 // joining a friend's world open to LAN from the launcher: a local port through the relay, as the game's friends list does
 handle('lan:join', (friendId: string) => {

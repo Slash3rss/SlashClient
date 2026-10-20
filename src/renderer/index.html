@@ -268,9 +268,10 @@
               </div>
               <p class="muted">Mody, ustawienia, configi i układ HUD na Twoim koncie SlashClient, żeby ten sam profil działał na drugim komputerze. Bez światów; widzisz je tylko Ty. Z włączoną synchronizacją profil trafia na konto po każdej grze.</p>
               <p class="cloud-status" id="cloud-status"></p>
+              <p class="muted feature-cloud-off">Zapisywanie profili na koncie jest chwilowo wyłączone przez administratora. Pobieranie działa.</p>
               <div class="row cloud-actions">
-                <button type="button" class="primary" id="cloud-sync"><i class="fa-solid fa-rotate"></i> Synchronizuj teraz</button>
-                <button type="button" id="cloud-upload"><i class="fa-solid fa-cloud-arrow-up"></i> Wyślij na konto</button>
+                <button type="button" class="primary feature-cloud" id="cloud-sync"><i class="fa-solid fa-rotate"></i> Synchronizuj teraz</button>
+                <button type="button" class="feature-cloud" id="cloud-upload"><i class="fa-solid fa-cloud-arrow-up"></i> Wyślij na konto</button>
                 <button type="button" id="cloud-download"><i class="fa-solid fa-cloud-arrow-down"></i> Pobierz z konta</button>
               </div>
             </div>
@@ -442,7 +443,7 @@
               <div class="row cosmetic-owner-row">
                 <small class="muted" id="cosmetic-owner"></small>
                 <button type="button" class="link-button hidden" id="cosmetic-shared"><i class="fa-solid fa-rotate-left"></i> Jak całe konto</button>
-                <button type="button" class="link-button cosmetic-shop hidden" id="cosmetic-shop"><i class="fa-solid fa-store"></i> <span>Sklep</span> <span class="spark-sign">✦</span> <b id="cosmetic-sparks"></b></button>
+                <button type="button" class="link-button cosmetic-shop feature-shop hidden" id="cosmetic-shop"><i class="fa-solid fa-store"></i> <span>Sklep</span> <span class="spark-sign">✦</span> <b id="cosmetic-sparks"></b></button>
               </div>
               <div class="slot-tabs hidden" id="slot-tabs"></div>
               <div class="cape-grid" id="slash-cape-grid"></div>

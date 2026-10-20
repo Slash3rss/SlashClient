@@ -138,6 +138,7 @@ const api = {
   pasteHudCode: (profileId: string) => invoke('hud:pasteCode', profileId),
   socialState: () => invoke('social:state'),
   socialHealth: () => invoke('social:health'),
+  socialFeatures: () => invoke('social:features'),
   socialApi: (method: string, path: string, body?: unknown) => invoke('social:api', method, path, body),
   lanJoin: (friendId: string) => invoke('lan:join', friendId),
   socialProfileUrl: (handle: string, open = false) => invoke('social:profileUrl', handle, open),

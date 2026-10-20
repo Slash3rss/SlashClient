@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
-import { supporterLevels } from './supporterItems.ts';
 
 /**
  * Storage for players, friendships and messages. One SQLite file; every query lives
@@ -408,7 +407,14 @@ CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created
       // no shop table yet
     }
     // supporter-only levels the admin set (supporterItems.ts)
-    for (const [id, level] of supporterLevels(this.db)) out.set(id, { ...(out.get(id) ?? { id, enabled: true, exclusive: false }), supporter: level });
+    // (read here, not through supporterItems.ts: the launcher's type check takes this file in through cosmetics.ts)
+    try {
+      for (const r of this.db.prepare('SELECT id, level FROM cosmetic_supporter').all() as { id: string; level: number }[]) {
+        out.set(r.id, { ...(out.get(r.id) ?? { id: r.id, enabled: true, exclusive: false }), supporter: r.level });
+      }
+    } catch {
+      // no such table yet
+    }
     return out;
   }
 

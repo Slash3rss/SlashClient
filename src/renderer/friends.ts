@@ -6,6 +6,7 @@ import { createParty, type Party } from './party';
 import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
 import { openProfilePrivacy, profileLink } from './profilePrivacy';
 import { confirmDialog } from './dialog';
+import { onFeatures } from './features';
 import { legalNote } from './legal';
 import { canDelete, canEdit, editHint, editedLabel, replaceMessage, slowDownSeconds, slowDownText, tombstone, withMenu, type MenuItem } from './chatEdits';
 
@@ -77,6 +78,8 @@ export function socialErrorText(code: string): string {
     too_long: t('Wiadomość jest za długa (maks. {0} znaków).', MAX_MESSAGE),
     empty: t('Wiadomość jest pusta.'),
     rate_limited: t('Za szybko. Odczekaj chwilę.'),
+    // the admin switched this part off for a while (server 0.9.23+), or new accounts
+    feature_disabled: t('Ta funkcja jest chwilowo wyłączona przez administratora.'),
     bad_name: t('Nick musi mieć 3–16 znaków: litery, cyfry lub _.'),
     provider_disabled: t('Ten sposób logowania jest wyłączony na serwerze.'),
     login_expired: t('Logowanie wygasło. Spróbuj ponownie.'),
@@ -443,7 +446,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     input = control<HTMLTextAreaElement>('textarea', { rows: 1, placeholder: t('Napisz wiadomość…'), maxLength: MAX_MESSAGE });
     counter = el('small', { className: 'fr-counter' });
     sendBtn = el('button', { type: 'submit', className: 'primary', title: t('Wyślij') }, icon('fa-paper-plane'));
-    pictureBtn = el('button', { type: 'button', className: 'icon-btn', title: t('Wyślij obraz (zaszyfrowany)') }, icon('fa-image'));
+    pictureBtn = el('button', { type: 'button', className: 'icon-btn feature-chatImages', title: t('Wyślij obraz (zaszyfrowany)') }, icon('fa-image'));
     pictureBtn.addEventListener('click', () => sendPicture(pictureBtn));
     composer = el('form', { className: 'fr-composer' }, pictureBtn, input, counter, sendBtn);
     input.addEventListener('keydown', (e) => {
@@ -631,9 +634,9 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   /** The player's public profile on the site: open it, copy its link, choose who sees what. */
   function profileRow(me: Me) {
-    const own = el('button', { type: 'button', className: 'fr-chip-btn' }, icon('fa-id-card'), t(' Mój profil'));
+    const own = el('button', { type: 'button', className: 'fr-chip-btn feature-profiles' }, icon('fa-id-card'), t(' Mój profil'));
     own.addEventListener('click', () => profileLink(deps, me.handle, 'open'));
-    const copy = el('button', { type: 'button', className: 'icon-btn', title: t('Kopiuj link do profilu') }, icon('fa-copy'));
+    const copy = el('button', { type: 'button', className: 'icon-btn feature-profiles', title: t('Kopiuj link do profilu') }, icon('fa-copy'));
     copy.addEventListener('click', () => profileLink(deps, me.handle, 'copy'));
     const privacy = el('button', { type: 'button', className: 'fr-chip-btn' }, icon('fa-user-lock'), t(' Prywatność profilu'));
     privacy.addEventListener('click', () => openProfilePrivacy(deps, me.handle));
@@ -961,7 +964,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       actions.push(join);
     }
     // their public profile on the site (server 0.9.22+; an older one answers 404 there)
-    const profile = el('button', { type: 'button', className: 'icon-btn', title: t('Pokaż profil') }, icon('fa-id-card'));
+    const profile = el('button', { type: 'button', className: 'icon-btn feature-profiles', title: t('Pokaż profil') }, icon('fa-id-card'));
     profile.addEventListener('click', () => profileLink(deps, f.handle, 'open'));
     actions.push(profile);
     if (deps.showAchievements) {
@@ -1116,6 +1119,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   }
 
   // ---------- live events ----------
+
+  // a switch in the server's admin panel: the clan, group and community sections are drawn again
+  onFeatures(() => {
+    if (state?.user) renderList();
+  });
 
   api.on('social:event', async (e: any) => {
     if (groups.onEvent(e)) return updateBadge();

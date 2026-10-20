@@ -22,6 +22,7 @@ import { createDiskCleanup } from './diskCleanup';
 import { createKeyConflicts } from './keyConflicts';
 import { createToolSettings } from './toolSettings';
 import { createSupportCard } from './support';
+import { initFeatures } from './features';
 import { checkLegalNotices, createLegalCard } from './legal';
 import { createWiki } from './wiki';
 
@@ -754,6 +755,8 @@ const wiki = createWiki($('#wiki-root'), { api, toast, errorText });
 document.querySelector('.nav[data-view="wiki"]')?.addEventListener('click', () => wiki.focus());
 // "Wesprzyj projekt": opens the website's support page; the tier shown is asked again on each visit to Settings
 const supportCard = createSupportCard($('#support-card'), { api, socialUrl: () => store?.settings.socialUrl ?? '', toast });
+// the admin's feature switches and announcement banner (features.ts)
+initFeatures({ api, socialUrl: () => store?.settings.socialUrl ?? '', openUrl: (url) => window.open(url, '_blank') });
 document.querySelector('.nav[data-view="settings"]')?.addEventListener('click', () => void supportCard.refresh());
 // "O programie / Informacje prawne": the terms and the privacy policy on the website
 createLegalCard($('#legal-card'), { socialUrl: () => store?.settings.socialUrl ?? '' });
@@ -2798,7 +2801,7 @@ async function renderWorlds() {
           // only the game's own clips (MJPEG .avi) can be cut and shared
           ...(/\.avi$/i.test(c.name) ? [
             iconButton('fa-solid fa-scissors', t('Przytnij'), () => mediaTools.openTrim(profileId, c)),
-            iconButton('fa-solid fa-share-nodes', t('Udostępnij linkiem'), () => mediaTools.shareFile(profileId, 'clips', c.name)),
+            iconButton('fa-solid fa-share-nodes', t('Udostępnij linkiem'), () => mediaTools.shareFile(profileId, 'clips', c.name), 'feature-media'),
           ] : []),
           iconButton('fa-regular fa-folder-open', t('Pokaż w folderze'), () => api.revealFile(c.file)),
           iconButton('fa-regular fa-trash-can', t('Usuń'), () => {
@@ -2815,7 +2818,7 @@ async function renderWorlds() {
       img.addEventListener('click', () => api.openFile(sh.file));
       return el('div', { className: 'shot' }, img,
         el('div', {}, el('span', { textContent: fmtDate(sh.createdAt) }),
-          iconButton('fa-solid fa-share-nodes', t('Udostępnij linkiem'), () => mediaTools.shareFile(profileId, 'screenshots', sh.name)),
+          iconButton('fa-solid fa-share-nodes', t('Udostępnij linkiem'), () => mediaTools.shareFile(profileId, 'screenshots', sh.name), 'feature-media'),
           iconButton('fa-regular fa-folder-open', 'Pokaż w folderze', () => api.revealFile(sh.file)),
           iconButton('fa-regular fa-trash-can', 'Usuń', () => {
             if (confirm(t('Usunąć ten zrzut ekranu?'))) guard(() => api.deleteScreenshot(profileId, sh.name)).then(renderWorlds);
