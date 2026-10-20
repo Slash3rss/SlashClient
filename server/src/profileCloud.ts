@@ -102,6 +102,8 @@ export interface CloudContext {
   /** Where the packs go (storage.ts). */
   storage: Storage;
   limits?: Partial<CloudLimits>;
+  /** How many times more profiles and room an account gets (supporters, payments/support.ts); 1 when missing. */
+  limitFactor?: (userId: string) => number;
   authed: (req: http.IncomingMessage) => string;
   /** Throw (429) when this caller did it too often lately. */
   limitUploads: (key: string) => void;
@@ -123,6 +125,11 @@ export function profileCloudRoutes(ctx: CloudContext) {
     held: (from) => store.held(from).map((p) => ({ ref: p.file, keys: [keyOf(p.file)], bytes: p.size })),
     relocate: (file, from, to) => store.relocate(file, from, to),
   });
+  /** The account's own limits: more profiles and room for supporters, the same size of one pack. */
+  const limitsOf = (userId: string): CloudLimits => {
+    const f = Math.max(1, ctx.limitFactor?.(userId) ?? 1);
+    return f === 1 ? limits : { ...limits, maxProfiles: Math.floor(limits.maxProfiles * f), quotaBytes: Math.floor(limits.quotaBytes * f) };
+  };
   const view = ({ file: _file, store: _store, ...p }: CloudProfile & { file?: string; store?: string }): CloudProfile => p;
   const idOf = (raw: string) => validCloudId(raw) ?? ctx.fail(404, 'not_found');
 
@@ -147,7 +154,7 @@ export function profileCloudRoutes(ctx: CloudContext) {
     ['GET', /^\/v1\/cloud-profiles$/, (req) => {
       const me = ctx.authed(req);
       const profiles = store.list(me);
-      return { profiles, limits: { ...limits, used: profiles.reduce((sum, p) => sum + p.size, 0) } };
+      return { profiles, limits: { ...limitsOf(me), used: profiles.reduce((sum, p) => sum + p.size, 0) } };
     }],
     ['GET', /^\/v1\/cloud-profiles\/([\w-]+)$/, (req, [raw]) => {
       const me = ctx.authed(req);
@@ -176,14 +183,14 @@ export function profileCloudRoutes(ctx: CloudContext) {
         req.resume();
         ctx.fail(409, 'cloud_conflict');
       }
-      if (!current && all.length >= limits.maxProfiles) {
+      if (!current && all.length >= limitsOf(me).maxProfiles) {
         req.resume();
         ctx.fail(409, 'cloud_limit');
       }
       const data = await readPack(req);
       if (!zipEntryNames(data)?.includes('modrinth.index.json')) ctx.fail(400, 'not_a_pack');
       const used = all.reduce((sum, p) => sum + p.size, 0) - (current?.size ?? 0);
-      if (used + data.length > limits.quotaBytes) ctx.fail(409, 'cloud_quota');
+      if (used + data.length > limitsOf(me).quotaBytes) ctx.fail(409, 'cloud_quota');
       // a new file each time, on a backend with room (storage.ts): a download running now keeps reading the old one
       const file = randomBytes(16).toString('hex');
       await storage.place([{ key: keyOf(file), data, type: 'application/x-modrinth-modpack+zip' }], (where) => store.put(me, {

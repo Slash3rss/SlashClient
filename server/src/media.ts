@@ -231,6 +231,8 @@ export interface MediaContext {
   /** The server's public address, for the absolute links a preview needs. */
   publicUrl: string;
   limits?: Partial<MediaLimits>;
+  /** How many times more links and room an account gets (supporters, payments/support.ts); 1 when missing. */
+  limitFactor?: (userId: string) => number;
   authed: (req: http.IncomingMessage) => string;
   isAdmin: (userId: string) => boolean;
   clientIp: (req: http.IncomingMessage) => string;
@@ -292,6 +294,12 @@ export function mediaRoutes(ctx: MediaContext) {
     return Buffer.concat(chunks);
   }
 
+  /** The account's own limits: more links and room for supporters, the same size of one file and time. */
+  const limitsOf = (userId: string): MediaLimits => {
+    const f = Math.max(1, ctx.limitFactor?.(userId) ?? 1);
+    return f === 1 ? limits : { ...limits, maxActive: Math.floor(limits.maxActive * f), quotaBytes: Math.floor(limits.quotaBytes * f) };
+  };
+
   const removeFiles = (m: { id: string; kind: MediaKind; store: string }) => storage.remove(m.store, keysOf(m.id, m.kind));
 
   const routes: [string, RegExp, Handler][] = [
@@ -299,7 +307,7 @@ export function mediaRoutes(ctx: MediaContext) {
       const me = ctx.authed(req);
       ctx.limitUploads(`media:${me}`);
       const mine = store.ofOwner(me);
-      if (mine.length >= limits.maxActive) {
+      if (mine.length >= limitsOf(me).maxActive) {
         req.resume();
         ctx.fail(409, 'media_limit');
       }
@@ -308,7 +316,7 @@ export function mediaRoutes(ctx: MediaContext) {
       if (!info) ctx.fail(400, 'bad_media');
       if (data.length > (info.kind === 'image' ? limits.imageBytes : limits.clipBytes)) ctx.fail(413, 'too_large');
       if (!info.width || !info.height || info.width > MAX_SIDE || info.height > MAX_SIDE) ctx.fail(400, 'bad_media');
-      if (mine.reduce((sum, m) => sum + m.size, 0) + data.length > limits.quotaBytes) ctx.fail(409, 'media_quota');
+      if (mine.reduce((sum, m) => sum + m.size, 0) + data.length > limitsOf(me).quotaBytes) ctx.fail(409, 'media_quota');
       let id: string;
       do id = randomBytes(8).toString('base64url').replace(/[-_]/g, '').padEnd(10, 'x').slice(0, 10);
       while (store.exists(id));
@@ -327,7 +335,7 @@ export function mediaRoutes(ctx: MediaContext) {
     ['GET', /^\/v1\/media$/, (req) => {
       const me = ctx.authed(req);
       const mine = store.ofOwner(me);
-      return { media: mine.map(view), limits: { ...limits, used: mine.reduce((sum, m) => sum + m.size, 0) } };
+      return { media: mine.map(view), limits: { ...limitsOf(me), used: mine.reduce((sum, m) => sum + m.size, 0) } };
     }],
     // what a link holds (no sign-in needed); `mine` tells the page to offer deleting
     ['GET', /^\/v1\/media\/(\w+)$/, (req, [id]) => {

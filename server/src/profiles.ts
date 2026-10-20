@@ -186,6 +186,11 @@ export interface ProfileDeps {
   worn: (user: User) => Record<string, string>;
   /** The logo colour: admin, support, partner, friend… */
   badge: (user: User) => string;
+  /**
+   * The supporter's badge and avatar frame (payments/support.ts), unless the player switched it off;
+   * shown only to those who may see the profile at all.
+   */
+  supporter?: (uuid: string) => Record<string, unknown> | undefined;
   /** 'offline' for players not connected or invisible. */
   status: (uuid: string) => string;
   /** A Minecraft account's skin and face (app.ts, from Mojang). */
@@ -255,6 +260,8 @@ export function profileRoutes(deps: ProfileDeps) {
       handle: user.handle, name: user.name, avatar, skin, badge: deps.badge(user), memberSince: store.createdAt(user.id),
       url: `/u/${handle}`, viewer: effective, visibility: privacy.visibility,
     };
+    const supporter = user.banned ? undefined : deps.supporter?.(user.id);
+    if (supporter) out.supporter = supporter;
     if (a.full && !opts.asPublic) {
       out.privacy = privacy;
       out.moderation = moderation.hidden ? { hidden: true, reason: moderation.reason, at: moderation.at, ...(viewer === 'admin' ? { by: db.user(moderation.by)?.handle ?? '' } : {}) } : { hidden: false };

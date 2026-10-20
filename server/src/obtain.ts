@@ -27,19 +27,20 @@ export interface Obtain {
   text: string;
 }
 
-const RANKS: Record<string, string> = { admin: 'Admin', support: 'Support', partner: 'Partner', friend: 'Przyjaciel', friend_pink: 'Przyjaciel (różowy)' };
+const RANKS: Record<string, string> = { admin: 'Admin', support: 'Support', partner: 'Partner', friend: 'Przyjaciel', friend_pink: 'Przyjaciel (różowy)', supporter: 'Wspierający (wsparcie projektu)' };
 
 export function howToGet(it: Item, settings: Map<string, CosmeticSetting>, achievements: Achievement[]): Obtain {
   const s = capeSetting(settings, it.id);
   const price = priceOf(settings, it.id);
   const ways: Way[] = [];
   // free when nothing locks it: no achievement of its own, no price, not exclusive, not a rank's
-  if (!it.achievement && price === undefined && !s.exclusive && !it.rank) ways.push({ kind: 'free' });
+  if (!it.achievement && price === undefined && !s.exclusive && !it.rank && !it.supporter) ways.push({ kind: 'free' });
   if (price !== undefined) ways.push({ kind: 'shop', price });
   for (const a of achievements.filter((x) => x.reward === it.id)) {
     ways.push({ kind: 'achievement', id: a.id, name: a.name, custom: !!a.custom, manual: a.group === 'manual', enabled: a.enabled !== false });
   }
   if (it.rank) ways.push({ kind: 'rank', rank: it.rank });
+  if (it.supporter) ways.push({ kind: 'rank', rank: 'supporter' });
   if (!ways.some((w) => w.kind !== 'achievement' || w.enabled)) ways.push({ kind: 'grant' });
   const words = ways.map((w) => {
     switch (w.kind) {
