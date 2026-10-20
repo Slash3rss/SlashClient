@@ -7,6 +7,7 @@
 import { TOOLS_EN } from './i18nTools';
 import { SPARKS_EN } from './i18nSparks';
 import { PROFILES_EN } from './i18nProfiles';
+import { SUPPORT_EN } from './i18nSupport';
 
 export type Lang = 'pl' | 'en';
 
@@ -22,6 +23,8 @@ const EN: Record<string, string> = {
   ...SPARKS_EN,
   // public profiles (own file)
   ...PROFILES_EN,
+  // supporting the project (own file)
+  ...SUPPORT_EN,
   // navigation and common
   'Graj': 'Play',
   'GRAJ': 'PLAY',
