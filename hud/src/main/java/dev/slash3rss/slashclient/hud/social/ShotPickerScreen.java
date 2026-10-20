@@ -34,12 +34,22 @@ public class ShotPickerScreen extends Screen {
 	private final List<Hit> hits = new ArrayList<>();
 	private int px, py, pw, ph;
 
+	/** Set when the picture goes to a group (or the clan's) chat instead of a friend. */
+	private String groupId;
+
 	public ShotPickerScreen(Screen parent, String friendId, String friendName) {
 		super(Component.translatable("slashclient-hud.picture.pick"));
 		this.parent = parent;
 		this.friendId = friendId;
 		this.friendName = friendName;
 		this.shots = newest(COLS * ROWS);
+	}
+
+	/** The picker for a group's chat (`title`: the group's name, for the toast). */
+	public static ShotPickerScreen forGroup(Screen parent, String groupId, String title) {
+		ShotPickerScreen s = new ShotPickerScreen(parent, null, title);
+		s.groupId = groupId;
+		return s;
 	}
 
 	/** The newest PNGs in this game's screenshots folder. */
@@ -110,7 +120,8 @@ public class ShotPickerScreen extends Screen {
 	}
 
 	private void send(File f) {
-		Social.sendImage(friendId, f, null);
+		if (groupId != null) Social.sendGroupImage(groupId, f);
+		else Social.sendImage(friendId, f, null);
 		if (f.equals(dev.slash3rss.slashclient.hud.Shots.recent())) dev.slash3rss.slashclient.hud.Shots.forgetRecent();
 		Social.toast(friendName, Component.translatable("slashclient-hud.picture.sending").getString(), "m-screenshot");
 		onClose();

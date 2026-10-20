@@ -18,7 +18,7 @@ import { checkForUpdates, installUpdate, startUpdateChecks, updateStatus } from 
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { activityFromLog, SocialClient, SocialError, type SocialUser, type Status } from './social';
 import { decrypt, encrypt, isEncrypted, newDeviceKey, type DeviceKey, type PublicDevice } from './chatCrypto';
-import { openGroupMessage, sealGroupText, type GroupChatMessage, type GroupKey } from './groupChat';
+import { groupAad, openGroupMessage, sealGroupText, type GroupChatMessage, type GroupKey } from './groupChat';
 import { fitSize, ImageCache, keyText, MAX_BYTES, openImage, parseKey, sealImage, type ChatImageView, type ImageKey } from './chatImages';
 import { launch, resolveVersionId } from './launch';
 import { paths } from './paths';
@@ -1563,6 +1563,7 @@ const bridge = new GameBridge({
   },
   // a screenshot sent to a friend from the game's chat: the same check, then encrypted here and sent
   sendImage: async (friendId, file) => ({ message: await sendChatImage(friendId, await screenshotFile(file)) }),
+  sendGroupImage: async (groupId, file) => ({ message: await sendGroupImage(groupId, await screenshotFile(file)) }),
   // a picture from the chat for the game: PNG (the game reads only that), small enough for its window
   chatImage: async (id) => {
     const img = nativeImage.createFromBuffer(await chatImageData(id));
@@ -1691,7 +1692,7 @@ async function sealText(to: string, text: string): Promise<string> {
 }
 
 function openMessage(m: ChatMessage): ChatMessage {
-  if (m.image) m = { ...m, image: openImageKey(m) };
+  if (m.image) m = { ...m, image: openImageKey(m.image, `${m.from}|${m.to}`) };
   if (!isEncrypted(m.text)) return m;
   const text = decrypt(m.text, chatKey(), `${m.from}|${m.to}`);
   return text === undefined
@@ -1711,17 +1712,23 @@ async function sealGroup(group: string, text: string): Promise<string> {
   }
   return sealGroupText(text, chatKey(), hit.keys, group, me);
 }
-const openGroup = <T extends GroupChatMessage>(m: T): T => openGroupMessage(m, chatKey(), t('Wiadomość zaszyfrowana dla innego urządzenia.'));
+/** A group message as the page and the game get it: its text and its picture's key opened, when this launcher can. */
+function openGroup<T extends GroupChatMessage>(m: T): T {
+  const opened = openGroupMessage(m, chatKey(), t('Wiadomość zaszyfrowana dla innego urządzenia.'));
+  const image = (m as { image?: unknown }).image;
+  return image ? { ...opened, image: openImageKey(image, groupAad(m.group, m.from)) } : opened;
+}
 // ---------- pictures in the chat (chatImages.ts): encrypted here, the key inside the message ----------
 
 /** Keys of the pictures in messages this launcher could read; the page and the game get only the id. */
 const imageKeys = new Map<string, ImageKey>();
 const imageCache = new ImageCache();
 
-function openImageKey(m: ChatMessage): ChatImageView | undefined {
-  const i = m.image as { id?: unknown; key?: unknown; size?: unknown };
+/** A message's picture with its key opened (`aad`: what the key's encryption is bound to: the two people, or the group and sender). */
+function openImageKey(image: unknown, aad: string): ChatImageView | undefined {
+  const i = image as { id?: unknown; key?: unknown; size?: unknown };
   if (!i || typeof i.id !== 'string' || !/^[\w-]{22}$/.test(i.id)) return undefined;
-  const text = typeof i.key === 'string' && isEncrypted(i.key) ? decrypt(i.key, chatKey(), `${m.from}|${m.to}`) : undefined;
+  const text = typeof i.key === 'string' && isEncrypted(i.key) ? decrypt(i.key, chatKey(), aad) : undefined;
   const key = text === undefined ? undefined : parseKey(text);
   if (!key) return { id: i.id, unreadable: true };
   imageKeys.set(i.id, key);
@@ -1747,14 +1754,7 @@ async function chatImageData(id: string): Promise<Buffer> {
 async function sendChatImage(to: string, file: string): Promise<ChatMessage> {
   const me = social.state().user?.id;
   if (!me) throw new SocialError('unauthorized');
-  let img = nativeImage.createFromPath(file);
-  if (img.isEmpty()) throw new SocialError('not_an_image');
-  const { width, height } = img.getSize();
-  const size = fitSize(width, height);
-  if (size.w < width) img = img.resize({ width: size.w, height: size.h, quality: 'best' });
-  let jpeg = img.toJPEG(88);
-  if (jpeg.length > MAX_BYTES) jpeg = img.toJPEG(70);
-  if (jpeg.length > MAX_BYTES) throw new SocialError('too_large');
+  const { jpeg, size } = pictureFile(file);
   const own = chatKey();
   const [theirs, mine] = await Promise.all([keysOf(to), keysOf(me)]);
   if (!theirs.length) throw new SocialError('no_keys');
@@ -1768,9 +1768,35 @@ async function sendChatImage(to: string, file: string): Promise<ChatMessage> {
   return openMessage(res.message);
 }
 
+/** A picture file ready to send: scaled to at most 1920 px and made a JPEG small enough for the server. */
+function pictureFile(file: string): { jpeg: Buffer; size: { w: number; h: number } } {
+  let img = nativeImage.createFromPath(file);
+  if (img.isEmpty()) throw new SocialError('not_an_image');
+  const { width, height } = img.getSize();
+  const size = fitSize(width, height);
+  if (size.w < width) img = img.resize({ width: size.w, height: size.h, quality: 'best' });
+  let jpeg = img.toJPEG(88);
+  if (jpeg.length > MAX_BYTES) jpeg = img.toJPEG(70);
+  if (jpeg.length > MAX_BYTES) throw new SocialError('too_large');
+  return { jpeg, size };
+}
+
+/** The same to a group (or clan) chat: the picture's key and the caption encrypted for the members' launchers. */
+async function sendGroupImage(group: string, file: string): Promise<GroupChatMessage> {
+  if (!social.state().user?.id) throw new SocialError('unauthorized');
+  const { jpeg, size } = pictureFile(file);
+  const sealed = sealImage(jpeg, 'image/jpeg', size.w, size.h);
+  const { id } = await social.upload<{ id: string }>(`/v1/groups/${group}/images`, sealed.blob);
+  // what an older launcher shows instead of the picture
+  const caption = await sealGroup(group, t('[Zrzut ekranu]'));
+  const key = await sealGroup(group, keyText(sealed.key));
+  const res = await social.call<{ message: GroupChatMessage }>('POST', `/v1/groups/${group}/messages`, { text: caption, image: { id, key } });
+  imageCache.set(id, jpeg);
+  return openGroup(res.message);
+}
+
 /** "Send a picture" in the page: the player picks a file (the profile's screenshots first). */
-handle('social:sendImage', (friendId: string) => socialCall(async () => {
-  if (typeof friendId !== 'string' || !/^[\w-]{1,64}$/.test(friendId)) throw new SocialError('bad_request');
+async function pickPicture(): Promise<string | undefined> {
   const profile = store.profiles.find((p) => p.id === store.settings.selectedProfileId);
   const shots = profile ? path.join(profileGameDir(profile), 'screenshots') : undefined;
   const picked = await dialog.showOpenDialog(win!, {
@@ -1779,8 +1805,17 @@ handle('social:sendImage', (friendId: string) => socialCall(async () => {
     filters: [{ name: t('Obrazy'), extensions: ['png', 'jpg', 'jpeg', 'webp'] }],
     properties: ['openFile'],
   });
-  if (picked.canceled || !picked.filePaths[0]) return undefined;
-  return { message: await sendChatImage(friendId, picked.filePaths[0]) };
+  return picked.canceled ? undefined : picked.filePaths[0];
+}
+handle('social:sendImage', (friendId: string) => socialCall(async () => {
+  if (typeof friendId !== 'string' || !/^[\w-]{1,64}$/.test(friendId)) throw new SocialError('bad_request');
+  const file = await pickPicture();
+  return file ? { message: await sendChatImage(friendId, file) } : undefined;
+}));
+handle('social:sendGroupImage', (groupId: string) => socialCall(async () => {
+  if (typeof groupId !== 'string' || !/^[\w-]{1,32}$/.test(groupId)) throw new SocialError('bad_request');
+  const file = await pickPicture();
+  return file ? { message: await sendGroupImage(groupId, file) } : undefined;
 }));
 /** A picture from the chat for the page, as a data: address. */
 handle('social:image', (id: string) => socialCall(async () => {

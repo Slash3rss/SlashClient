@@ -330,7 +330,7 @@ public class FriendsScreen extends Screen {
 				continue;
 			}
 			if (m.image() != null && !m.image().unreadable()) {
-				int[] used = drawPicture(g, m, f.name(), mine, cx, cw, maxBubble, y, top, bottom, mx, my);
+				int[] used = drawPicture(g, m.image(), m.at(), f.name(), mine, cx, cw, maxBubble, y, top, bottom, mx, my);
 				y = used[0];
 				total += used[1];
 				continue;
@@ -418,8 +418,7 @@ public class FriendsScreen extends Screen {
 	}
 
 	/** A picture as a thumbnail (it loads through the launcher); a click shows it big. Returns the new y and the height used. */
-	private int[] drawPicture(GuiGraphicsExtractor g, Social.Message m, String friendName, boolean mine, int cx, int cw, int maxBubble, int y, int top, int bottom, int mx, int my) {
-		Social.Image img = m.image();
+	private int[] drawPicture(GuiGraphicsExtractor g, Social.Image img, long at, String fromName, boolean mine, int cx, int cw, int maxBubble, int y, int top, int bottom, int mx, int my) {
 		ChatImages.Texture tex = ChatImages.chat(img.id());
 		int w0 = tex.ready() ? tex.w() : img.w(), h0 = tex.ready() ? tex.h() : img.h();
 		int[] size = ChatImages.fit(w0, h0, Math.min(maxBubble - 8, 150), 96);
@@ -438,10 +437,10 @@ public class FriendsScreen extends Screen {
 			Ui.centered(g, Ui.fit(state, size[0] - 6), bx + 4 + size[0] / 2, y + 4 + size[1] / 2 + 4, Ui.MUTED);
 		}
 		Ui.icon(g, "lock", bx + 4, y + bh - 11, 7, mine ? 0xB3FFFFFF : Ui.MUTED);
-		Component time = Ui.text(TIME.format(Instant.ofEpochMilli(m.at())));
+		Component time = Ui.text(TIME.format(Instant.ofEpochMilli(at)));
 		Ui.draw(g, time, bx + bw - 4 - Ui.width(time), y + bh - 11, mine ? 0xB3FFFFFF : Ui.MUTED);
 		if (tex.ready() && y + 4 >= top && y + 4 + size[1] <= bottom) {
-			String from = mine ? Social.myName() : friendName;
+			String from = mine ? Social.myName() : fromName;
 			hits.add(new Hit(bx + 4, y + 4, size[0], size[1], () -> minecraft.setScreenAndShow(new PictureScreen(this, img.id(), from))));
 		}
 		return new int[] { y, bh + 4 };
@@ -506,6 +505,17 @@ public class FriendsScreen extends Screen {
 			boolean mine = m.from().equals(Social.myId());
 			// the name above the first of someone's messages in a row
 			boolean named = !mine && (i == 0 || !messages.get(i - 1).from().equals(m.from()) || !messages.get(i - 1).event().isEmpty());
+			if (m.image() != null && !m.image().unreadable()) {
+				int[] used = drawPicture(g, m.image(), m.at(), gr.nameOf(m.from()), mine, cx, cw, maxBubble, y, top, bottom, mx, my);
+				y = used[0];
+				total += used[1];
+				if (named) {
+					y -= 11;
+					total += 11;
+					if (y <= bottom && y + 11 >= top) Ui.draw(g, Ui.fit(Ui.bold(gr.nameOf(m.from())), maxBubble), cx + 12, y, Ui.ACCENT_LIGHT);
+				}
+				continue;
+			}
 			List<FormattedCharSequence> lines = font.split(Ui.text(m.text()), maxBubble - 12);
 			int textW = 0;
 			for (FormattedCharSequence l : lines) textW = Math.max(textW, font.width(l));
@@ -538,6 +548,18 @@ public class FriendsScreen extends Screen {
 		int sx = cx + cw - 10 - 24;
 		Ui.button(g, "friends:send", sx, fy, 24, INPUT_H, "arrow", Component.empty(), true, mx, my);
 		hits.add(new Hit(sx, fy, 24, INPUT_H, this::send));
+		// a screenshot to the whole group, encrypted for its members by the launcher
+		int ix = sx - 24;
+		Ui.button(g, "friends:picture", ix, fy, 20, INPUT_H, "image", Component.empty(), false, mx, my);
+		String gid = gr.id(), gname = Groups.title(gr);
+		hits.add(new Hit(ix, fy, 20, INPUT_H, () -> minecraft.setScreenAndShow(ShotPickerScreen.forGroup(this, gid, gname))));
+		if (Ui.inside(mx, my, ix, fy, 20, INPUT_H)) {
+			Component tip = Ui.tr("slashclient-hud.picture.button");
+			int tw = Ui.width(tip) + 10;
+			int tx = Math.min(mx + 8, px + pw - tw - 4), ty = Math.max(py + 4, my - 16);
+			Ui.round(g, tx, ty, tw, 13, 3, 0xF0000000);
+			Ui.draw(g, tip, tx + 5, ty + 3, Ui.TEXT);
+		}
 	}
 
 	/** The clan's members: online first within each role, with the role (managing them is in the launcher). */

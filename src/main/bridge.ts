@@ -28,6 +28,8 @@ export interface BridgeOptions {
   useAccount?: (id: string) => Promise<{ name: string; uuid: string; accessToken: string; xuid: string; type: string }>;
   /** Sends a screenshot to a friend (encrypted by the launcher); rejects paths that are not a profile's screenshot. */
   sendImage?: (friendId: string, file: string) => Promise<unknown>;
+  /** The same to a group (or clan) chat the player is in. */
+  sendGroupImage?: (groupId: string, file: string) => Promise<unknown>;
   /** A picture from the chat, decrypted, as PNG. */
   chatImage?: (id: string) => Promise<Buffer>;
 }
@@ -188,10 +190,11 @@ export class GameBridge {
 
     // pictures in the chat: a screenshot to send, and one to show (PNG bytes, not JSON)
     if (method === 'POST' && url === '/chat/image') {
-      const { friend, path } = ((await this.body(req)) ?? {}) as { friend?: unknown; path?: unknown };
-      if (typeof friend !== 'string' || !/^[\w-]{1,64}$/.test(friend) || typeof path !== 'string' || !this.opts.sendImage) return this.send(res, 400, { error: 'bad_request' });
+      const { friend, group, path } = ((await this.body(req)) ?? {}) as { friend?: unknown; group?: unknown; path?: unknown };
+      const toGroup = typeof group === 'string' && /^[\w-]{1,32}$/.test(group) && !!this.opts.sendGroupImage;
+      if ((!toGroup && (typeof friend !== 'string' || !/^[\w-]{1,64}$/.test(friend) || !this.opts.sendImage)) || typeof path !== 'string') return this.send(res, 400, { error: 'bad_request' });
       try {
-        return this.send(res, 200, await this.opts.sendImage(friend, path));
+        return this.send(res, 200, toGroup ? await this.opts.sendGroupImage!(group as string, path) : await this.opts.sendImage!(friend as string, path));
       } catch (err) {
         return this.send(res, 502, { error: (err as { code?: string }).code ?? (err as Error).message });
       }

@@ -150,6 +150,7 @@ const api = {
   socialActivity: () => invoke('social:activity'),
   /** Picks a picture and sends it to the friend, encrypted; undefined when the player cancelled. */
   socialSendImage: (friendId: string) => invoke('social:sendImage', friendId),
+  socialSendGroupImage: (groupId: string) => invoke('social:sendGroupImage', groupId),
   /** A picture from the chat as a data: address. */
   socialImage: (id: string) => invoke('social:image', id),
   joinInGame: (address: string) => invoke('game:join', address),

@@ -22,6 +22,14 @@ public class GameGroupsClans implements FabricClientGameTest {
 			context.waitTicks(40);
 			world.getServer().runCommand("time set 6000");
 			context.runOnClient(mc -> SocialTestHooks.sample());
+			// the picture Kumpel sent to the group (made up, as the friends test does)
+			context.runOnClient(mc -> {
+				try {
+					dev.slash3rss.slashclient.hud.social.FriendExtrasTestHooks.pictures();
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			});
 			context.runOnClient(mc -> TestHooks.audit(true));
 
 			// a group's conversation, the group and the clan listed above the friends
@@ -29,7 +37,7 @@ public class GameGroupsClans implements FabricClientGameTest {
 			context.setScreen(() -> new FriendsScreen(null));
 			context.waitTicks(10);
 			context.takeScreenshot("groups-chat");
-			if (context.computeOnClient(mc -> Groups.chat("ekipa").size()) != 4) throw new AssertionError("The group's messages are not there");
+			if (context.computeOnClient(mc -> Groups.chat("ekipa").size()) != 5) throw new AssertionError("The group's messages are not there");
 
 			// the clan's chat, then its members
 			context.runOnClient(mc -> SocialTestHooks.viewGroup("clanchat"));

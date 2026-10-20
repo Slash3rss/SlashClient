@@ -200,3 +200,49 @@ describe('pictures in the chat', () => {
     assert.equal(conv.body.messages.at(-1).image, undefined);
   });
 });
+
+describe('pictures in group chats', () => {
+  it('lets members send a picture to the group and only members fetch it', async () => {
+    const ala = await login('GrpImgAla');
+    const bob = await login('GrpImgBob');
+    const cyr = await login('GrpImgCyr');
+    await befriend(ala, bob, 'GrpImgBob');
+    await befriend(ala, cyr, 'GrpImgCyr');
+    const made = await call('POST', '/v1/groups', ala.token, { name: 'Ekipa', members: [bob.user.id] });
+    assert.equal(made.status, 200);
+    const group = made.body.group.id as string;
+    const bobLive = await connect(bob.token);
+
+    // someone outside the group cannot upload for it
+    const blob = Buffer.alloc(800, 3);
+    const outside = await fetch(`${base}/v1/groups/${group}/images`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', Authorization: `Bearer ${cyr.token}` }, body: new Uint8Array(blob) });
+    assert.equal(outside.status, 404);
+
+    const res = await fetch(`${base}/v1/groups/${group}/images`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', Authorization: `Bearer ${ala.token}` }, body: new Uint8Array(blob) });
+    assert.equal(res.status, 200);
+    const up = (await res.json()) as { id: string };
+    // a group's picture does not go into a direct message
+    assert.equal((await call('POST', `/v1/messages/${bob.user.id}`, ala.token, { text: envelope('x'), image: { id: up.id, key: envelope('k') } })).status, 404);
+
+    const key = envelope('{"k":"..."}');
+    const sent = await call('POST', `/v1/groups/${group}/messages`, ala.token, { text: envelope('caption'), image: { id: up.id, key } });
+    assert.equal(sent.status, 200);
+    assert.deepEqual(sent.body.message.image, { id: up.id, key, size: 800 });
+    const live = await bobLive.waitFor((e) => e.type === 'group-message' && e.message.image);
+    assert.equal(live.message.image.id, up.id);
+    const list = await call('GET', `/v1/groups/${group}/messages`, bob.token);
+    assert.equal(list.body.messages.at(-1).image.key, key);
+    // a direct message with the same id as the group one carries no picture
+    const dm = await call('POST', `/v1/messages/${bob.user.id}`, ala.token, { text: envelope('hej') });
+    assert.equal(dm.body.message.image, undefined);
+
+    assert.equal((await download(bob.token, up.id)).status, 200);
+    assert.equal((await download(ala.token, up.id)).status, 200);
+    assert.equal((await download(cyr.token, up.id)).status, 404);
+    // the same picture cannot be attached twice
+    assert.equal((await call('POST', `/v1/groups/${group}/messages`, ala.token, { text: envelope('again'), image: { id: up.id, key } })).status, 404);
+    bobLive.ws.close();
+    // the server notes the closed socket before the database closes
+    await new Promise((r) => setTimeout(r, 200));
+  });
+});

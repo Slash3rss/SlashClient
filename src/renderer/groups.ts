@@ -10,8 +10,10 @@ import { confirmDialog, control, el, icon } from './dialog';
  */
 
 interface Person { id: string; handle: string; name: string; avatar: string }
-export interface GroupEvent { kind: 'created' | 'added' | 'removed' | 'left' | 'renamed' | 'joined'; by: string; users?: string[]; name?: string }
-export interface GroupMessage { id: number; group: string; from: string; text: string; at: number; event?: GroupEvent; encrypted?: boolean; unreadable?: boolean }
+export interface GroupEvent { kind: 'created' | 'added' | 'removed' | 'left' | 'renamed' | 'joined' | 'promoted' | 'demoted' | 'owner' | 'heir'; by: string; users?: string[]; name?: string }
+/** A picture in a message, as the main process opened it (no key here: the page gets it by id). */
+export interface GroupImage { id: string; w?: number; h?: number; size?: number; unreadable?: boolean }
+export interface GroupMessage { id: number; group: string; from: string; text: string; at: number; event?: GroupEvent; encrypted?: boolean; unreadable?: boolean; image?: GroupImage }
 export interface Group {
   id: string; name: string; owner: string; createdAt: number; clan?: { id: string; tag: string };
   members: (Person & { joinedAt: number })[]; unread: number; lastMessageAt: number;
@@ -38,6 +40,11 @@ export function eventText(e: GroupEvent): string {
     case 'left': return t('{0} opuszcza grupę', e.by);
     case 'joined': return t('{0} dołącza do klanu', e.by);
     case 'renamed': return t('{0} zmienia nazwę na „{1}”', e.by, e.name ?? '');
+    case 'promoted': return t('{0} awansuje {1} na oficera', e.by, users);
+    case 'demoted': return t('{0} degraduje {1} do członka', e.by, users);
+    case 'owner': return t('{0} przekazuje klan: {1} jest teraz założycielem', e.by, users);
+    case 'heir': return t('{0} zostaje założycielem klanu', e.by);
+    default: return e.by;
   }
 }
 
@@ -64,7 +71,9 @@ export function applyGroupMessage(groups: Group[], m: GroupMessage, me: string |
 export const roleText = (r: ClanRole) => ({ owner: t('Założyciel'), officer: t('Oficer'), member: t('Członek') })[r];
 
 interface Deps {
-  api: { socialApi: (method: string, path: string, body?: unknown) => Promise<any>; notify?: (title: string, body: string, target?: unknown) => Promise<unknown> };
+  api: { socialApi: (method: string, path: string, body?: unknown) => Promise<any>; socialSendGroupImage?: (groupId: string) => Promise<any>; notify?: (title: string, body: string, target?: unknown) => Promise<unknown> };
+  /** A picture's card, the same as in direct messages. */
+  imageCard: (image: GroupImage, mine: boolean) => HTMLElement;
   toast: (message: string, isError?: boolean) => void;
   errorText: (err: unknown) => string;
   me: () => string | undefined;
@@ -228,6 +237,14 @@ export function createGroups(deps: Deps) {
     return !!res;
   }
 
+  /** A picture to the open group (the main process asks for the file, encrypts and sends it). */
+  async function sendPicture(): Promise<void> {
+    const id = open;
+    if (!id || !api.socialSendGroupImage) return;
+    const res = await act(() => api.socialSendGroupImage!(id));
+    if (res?.message) addMessage(res.message);
+  }
+
   function addMessage(m: GroupMessage) {
     const chat = chats.get(m.group);
     if (chat && !chat.messages.some((x) => x.id === m.id)) chat.messages.push(m);
@@ -305,8 +322,8 @@ export function createGroups(deps: Deps) {
       }
       const mine = m.from === me;
       const grouped = m.from === lastFrom && m.at - lastAt < 5 * 60_000;
-      const bubble = el('div', { className: `fr-bubble${m.unreadable ? ' unreadable' : ''}`, textContent: m.text });
-      if (m.encrypted) bubble.append(el('i', { className: 'fa-solid fa-lock fr-lock', title: t('Zaszyfrowana od nadawcy do odbiorcy') }));
+      const bubble = m.image ? deps.imageCard(m.image, mine) : el('div', { className: `fr-bubble${m.unreadable ? ' unreadable' : ''}`, textContent: m.text });
+      if (m.encrypted && !m.image) bubble.append(el('i', { className: 'fa-solid fa-lock fr-lock', title: t('Zaszyfrowana od nadawcy do odbiorcy') }));
       nodes.push(el('div', { className: `fr-msg${mine ? ' mine' : ''}${grouped ? ' grouped' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
         bubble,
         grouped ? '' : el('small', { className: 'fr-time', textContent: mine ? time.format(m.at) : `${names.get(m.from) ?? '?'} · ${time.format(m.at)}` })));
@@ -573,6 +590,7 @@ export function createGroups(deps: Deps) {
     onEvent,
     renderChat,
     send,
+    sendPicture,
     loadOlder,
     markRead,
     /** The open group, if one is open (instead of a friend). */
