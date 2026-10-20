@@ -13,6 +13,7 @@ import { LEGAL_EN } from './i18nLegal';
 import { COMMUNITIES_EN } from './i18nCommunities';
 import { FEATURES_EN } from './i18nFeatures';
 import { STREAMS_EN } from './i18nStreams';
+import { SERVER_STATUS_EN } from './i18nServerStatus';
 
 export type Lang = 'pl' | 'en';
 
@@ -39,6 +40,8 @@ const EN: Record<string, string> = {
   ...COMMUNITIES_EN,
   // friends live on Twitch and Kick (own file)
   ...STREAMS_EN,
+  // statuses from a server's tab list (own file)
+  ...SERVER_STATUS_EN,
   // navigation and common
   'Graj': 'Play',
   'GRAJ': 'PLAY',

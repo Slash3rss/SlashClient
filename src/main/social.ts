@@ -14,6 +14,8 @@ export interface Activity {
   kind: 'launcher' | 'menu' | 'singleplayer' | 'server';
   version?: string;
   server?: string;
+  /** What the server's tab list says ("S3 (Wyspy)", from the HUD): with the server only (server 0.9.25+). */
+  detail?: string;
   since?: number;
 }
 
@@ -238,11 +240,42 @@ export class SocialClient {
     const chosen = this.opts.status();
     // automatic "away" only replaces a plain "online"
     const status = chosen === 'online' && this.away && this.activity.kind === 'launcher' ? 'away' : chosen;
-    return { status, activity: this.activity };
+    // the tab list's status says where the player is, like the address: it does not leave when that is hidden
+    const detail = this.activity.kind === 'server' && this.activity.server && this.user?.showServer && this.detail ? this.detail : undefined;
+    return { status, activity: detail ? { ...this.activity, detail } : this.activity };
   }
 
   private sendPresence() {
     if (this.ws?.readyState === WebSocket.OPEN && this.connected) this.ws.send(JSON.stringify({ type: 'presence', presence: this.presence() }));
+  }
+
+  private detail?: string;
+  /** A change of the status goes at most every few seconds (a sector switch, then another): the last one wins. */
+  private detailTimer?: ReturnType<typeof setTimeout>;
+  private detailSentAt = 0;
+  static readonly DETAIL_GAP_MS = 3000;
+
+  /** The status from the server's tab list (the HUD found it), or undefined; only while on a server. */
+  setDetail(detail: string | undefined) {
+    if (this.activity.kind !== 'server') detail = undefined;
+    if (detail === this.detail) return;
+    this.detail = detail;
+    // hidden from friends: nothing to tell
+    if (!this.user?.showServer) return;
+    if (this.detailTimer) return;
+    const wait = this.detailSentAt + SocialClient.DETAIL_GAP_MS - Date.now();
+    const send = () => {
+      this.detailTimer = undefined;
+      this.detailSentAt = Date.now();
+      this.sendPresence();
+    };
+    if (wait <= 0) send();
+    else this.detailTimer = setTimeout(send, wait);
+  }
+
+  /** The status as it is sent now (for the tests). */
+  presenceForTest() {
+    return this.presence();
   }
 
   /** What the player is doing now, as friends see it. */
@@ -253,6 +286,8 @@ export class SocialClient {
   setActivity(activity: Activity) {
     const same = activity.kind === this.activity.kind && activity.server === this.activity.server && activity.version === this.activity.version;
     if (same) return;
+    // another server (or none): the status was about the old one
+    if (activity.kind !== this.activity.kind || activity.server !== this.activity.server) this.detail = undefined;
     this.activity = { ...activity, since: activity.since ?? Date.now() };
     this.sendPresence();
   }

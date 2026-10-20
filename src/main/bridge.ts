@@ -1,6 +1,7 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
+import { cleanDetail, cleanValues } from './serverStatus';
 
 /**
  * A small HTTP server on 127.0.0.1 through which SlashClient HUD (in the game) reaches
@@ -36,6 +37,8 @@ export interface BridgeOptions {
   clanLogo?: (id: string, version: number) => Promise<Buffer>;
   /** A community's logo, the same way. */
   communityLogo?: (id: string, version: number) => Promise<Buffer>;
+  /** What the server's tab list says (serverStatus.ts): the server, the short status and its values; or nothing. */
+  gameStatus?: (status: { server: string; detail?: string; values: Record<string, string> } | undefined) => void;
 }
 
 /** What the game may ask for: its friends and the messages with them. */
@@ -203,6 +206,19 @@ export class GameBridge {
       const { host } = ((await this.body(req)) ?? {}) as { host?: unknown };
       if (typeof host !== 'string' || !/^[\w-]{1,64}$/.test(host) || !this.opts.lanJoin) return this.send(res, 400, { error: 'bad_request' });
       return this.send(res, 200, { port: await this.opts.lanJoin(host) });
+    }
+
+    // the tab list's status on a server (HUD 0.9.25+): for friends and Discord; null when there is none
+    if (method === 'POST' && url === '/status') {
+      const { server, detail, values } = ((await this.body(req)) ?? {}) as { server?: unknown; detail?: unknown; values?: unknown };
+      if (!this.opts.gameStatus) return this.send(res, 404, { error: 'not_found' });
+      if (server === null || server === undefined) {
+        this.opts.gameStatus(undefined);
+        return this.send(res, 200, { ok: true });
+      }
+      if (typeof server !== 'string' || !/^[\w.-]{1,253}(:\d{1,5})?$/.test(server)) return this.send(res, 400, { error: 'bad_request' });
+      this.opts.gameStatus({ server, detail: cleanDetail(detail), values: cleanValues(values) });
+      return this.send(res, 200, { ok: true });
     }
 
     if (method === 'POST' && url === '/clipboard/image') {
