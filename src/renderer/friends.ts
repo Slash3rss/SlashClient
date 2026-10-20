@@ -9,6 +9,7 @@ import { confirmDialog } from './dialog';
 import { onFeatures } from './features';
 import { legalNote } from './legal';
 import { badgeChoices, rankBadge, rankName, safeColor, type RankView } from './rankBadge';
+import { cleanStream, createStreamsSection, liveBadge, noticeText, streamLine, type FriendStream } from './streams';
 import { canDelete, canEdit, editHint, editedLabel, replaceMessage, slowDownSeconds, slowDownText, tombstone, withMenu, type MenuItem } from './chatEdits';
 
 /**
@@ -21,7 +22,7 @@ interface Activity { kind: 'launcher' | 'menu' | 'singleplayer' | 'server'; vers
 interface Presence { status: 'online' | 'away' | 'busy' | 'offline'; activity?: Activity; lastSeen?: number; /** their world is open to LAN: joinable through SlashClient */ lan?: boolean }
 interface Person { id: string; handle: string; name: string; avatar: string }
 /** `clan`: their clan's tag; `muted`: on the account, their messages come, but no toast or notification (server 0.9.21+). */
-interface Friend extends Person { presence: Presence; unread: number; lastMessageAt: number; since: number; clan?: string; muted?: boolean; /** the rank badge they show next to the nick (server 0.9.23+) */ badgeRank?: RankView }
+interface Friend extends Person { presence: Presence; unread: number; lastMessageAt: number; since: number; clan?: string; muted?: boolean; /** the rank badge they show next to the nick (server 0.9.23+) */ badgeRank?: RankView; /** live on Twitch or Kick now (server 0.9.24+, streams.ts) */ stream?: FriendStream }
 interface Request extends Person { at: number }
 interface Me extends Person {
   showServer: boolean; providers: string[]; minecraft?: { uuid: string; name: string }[];
@@ -224,6 +225,13 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     editGone: () => stopEditing(),
   });
   const friend = (id: string | undefined) => list.friends.find((f) => f.id === id);
+  /** A friends list from the server with each stream checked (streams.ts). */
+  const withStreams = (l: FriendList): FriendList => {
+    for (const f of l.friends) f.stream = cleanStream(f.stream);
+    return l;
+  };
+  /** The account window's "Streamy" (streams.ts), while the window is open. */
+  let streamsBox: ReturnType<typeof createStreamsSection> | undefined;
 
   // ---------- avatars: the face from the Minecraft skin (from the SlashClient server), Discord's, Google's or GitHub's picture, or a letter ----------
 
@@ -289,7 +297,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   async function refreshList() {
     try {
-      list = await api.socialApi('GET', '/v1/friends');
+      list = withStreams(await api.socialApi('GET', '/v1/friends'));
       // whoever is online or playing now is not news
       for (const f of list.friends) watch.know(f.id, f.presence);
     } catch (err) {
@@ -574,6 +582,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       el('div', { className: 'fr-account-section', textContent: t('Konta') }),
       el('div', { className: 'fr-linked-row' }, el('small', { className: 'muted', textContent: t('Logowanie:') }), linked),
       minecraftRow(me),
+      // linked Twitch and Kick channels and their two choices (streams.ts; servers before 0.9.24 have none)
+      ...(streamsBox ? [el('div', { className: 'fr-account-section feature-streams', textContent: t('Streamy') }), streamsBox.element] : []),
       el('div', { className: 'fr-account-section', textContent: t('Profil na stronie') }),
       profileRow(me),
       ...badgeRow(me));
@@ -623,6 +633,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     const done = () => {
       modal.remove();
       accountBody = undefined;
+      streamsBox = undefined;
       document.removeEventListener('keydown', onKey, true);
     };
     const onKey = (e: KeyboardEvent) => {
@@ -634,6 +645,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     modal.addEventListener('click', (e) => e.target === modal && done());
     document.addEventListener('keydown', onKey, true);
     accountBody = body;
+    streamsBox = createStreamsSection(deps);
+    void streamsBox.load();
     document.body.append(modal);
     renderMe();
   }
@@ -710,7 +723,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     for (const f of sorted) {
       const row = el('button', { type: 'button', className: `fr-row fr-friend${f.id === selected ? ' selected' : ''}${f.presence.status === 'offline' ? ' is-offline' : ''}` },
         avatar(f, f.presence),
-        el('div', { className: 'grow fr-names' }, el('b', {}, ...rankTag(f.badgeRank), ...clanTag(f.clan), f.name), el('small', { className: 'muted', textContent: typing.has(f.id) ? t('pisze…') : statusLine(f.presence) })),
+        el('div', { className: 'grow fr-names' }, el('b', {}, ...rankTag(f.badgeRank), ...clanTag(f.clan), f.name, ...(f.stream ? [' ', liveBadge(f.stream)] : [])),
+          el('small', { className: `muted${f.stream && !typing.has(f.id) ? ' fr-live-line' : ''}`, textContent: typing.has(f.id) ? t('pisze…') : f.stream ? streamLine(f.stream) : statusLine(f.presence) })),
         f.muted ? el('i', { className: 'fa-solid fa-bell-slash fr-muted', title: t('Wyciszony') }) : '',
         f.unread ? el('span', { className: `fr-unread${f.muted ? ' muted' : ''}`, textContent: String(f.unread) }) : '');
       row.addEventListener('click', () => select(f.id));
@@ -740,7 +754,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   async function act(fn: () => Promise<FriendList>, done?: string) {
     try {
-      list = await fn();
+      list = withStreams(await fn());
       for (const f of list.friends) watch.know(f.id, f.presence);
       if (done) deps.toast(done);
       if (selected && !friend(selected)) selected = undefined;
@@ -1003,6 +1017,13 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       });
       actions.push(join);
     }
+    // live on Twitch or Kick: the stream in the browser
+    if (f.stream) {
+      const s = f.stream;
+      const watch = el('button', { type: 'button', className: 'icon-btn fr-watch', title: `${t('Oglądaj')}: ${s.url}` }, icon('fa-play'));
+      watch.addEventListener('click', () => window.open(s.url, '_blank'));
+      actions.push(watch);
+    }
     // their public profile on the site (server 0.9.22+; an older one answers 404 there)
     const profile = el('button', { type: 'button', className: 'icon-btn feature-profiles', title: t('Pokaż profil') }, icon('fa-id-card'));
     profile.addEventListener('click', () => profileLink(deps, f.handle, 'open'));
@@ -1026,7 +1047,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     });
     actions.push(remove);
     chatHead.replaceChildren(avatar(f, f.presence),
-      el('div', { className: 'grow fr-names' }, el('b', {}, ...rankTag(f.badgeRank), f.name), el('small', { className: 'muted', textContent: `@${f.handle} · ${statusLine(f.presence)}` })),
+      el('div', { className: 'grow fr-names' }, el('b', {}, ...rankTag(f.badgeRank), f.name, ...(f.stream ? [' ', liveBadge(f.stream)] : [])),
+        el('small', { className: 'muted', textContent: `@${f.handle} · ${f.stream ? streamLine(f.stream) : statusLine(f.presence)}` })),
       ...actions);
     renderMessages();
     typingBox.textContent = typing.has(f.id) ? t('{0} pisze…', f.name) : '';
@@ -1235,6 +1257,20 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       case 'party':
         if (e.party) party.onEvent(e.party as Party);
         return;
+      // a friend went live, changed the title or ended (streams.ts); `notify`: the server says this one is worth telling
+      case 'stream': {
+        const f = friend(e.id);
+        if (!f) return;
+        f.stream = cleanStream(e.stream);
+        if (e.notify && f.stream && !f.muted) streamNotice(f, f.stream);
+        renderList();
+        if (e.id === selected) renderChat();
+        return;
+      }
+      // one's own channels changed (linked here, on the site, or by an admin)
+      case 'streams':
+        void streamsBox?.refresh();
+        return;
       case 'read': {
         const chat = chats.get(e.by);
         chat?.messages.forEach((m) => m.from === state?.user?.id && !m.readAt && (m.readAt = e.at));
@@ -1283,6 +1319,13 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     const text = news.kind === 'online' ? t('{0} jest teraz online', f.name)
       : news.server ? t('{0} gra na {1}', f.name, news.server) : t('{0} zaczyna grać w Minecraft', f.name);
     if (document.hasFocus()) deps.toast(text, false, { label: t('Napisz'), run: () => openChat(f.id) });
+    else if (!deps.gameRunning?.()) systemNotify(f.name, text, f.id);
+  }
+
+  /** "Ala nadaje na żywo na Twitch: …": a toast with "Oglądaj", or a system notification (the game shows its own). */
+  function streamNotice(f: Friend, s: FriendStream) {
+    const text = noticeText(f.name, s);
+    if (document.hasFocus()) deps.toast(text, false, { label: t('Oglądaj'), run: () => window.open(s.url, '_blank') });
     else if (!deps.gameRunning?.()) systemNotify(f.name, text, f.id);
   }
 

@@ -79,7 +79,7 @@ after(async () => {
 });
 
 const FIELDS: Record<Element, string> = {
-  stats: 'stats', achievements: 'achievements', cosmetics: 'cosmetics', clan: 'clan', minecraft: 'minecraft', servers: 'servers', lastOnline: 'lastOnline', friends: 'friends', communities: 'communities',
+  stats: 'stats', achievements: 'achievements', cosmetics: 'cosmetics', clan: 'clan', minecraft: 'minecraft', servers: 'servers', lastOnline: 'lastOnline', friends: 'friends', communities: 'communities', streams: 'streams',
 };
 const VIEWERS: Viewer[] = ['anonymous', 'stranger', 'friend', 'self', 'admin'];
 const allOn = Object.fromEntries(ELEMENTS.map((e) => [e, true])) as Record<Element, boolean>;

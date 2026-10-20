@@ -23,6 +23,7 @@ export const FEATURES = [
   { id: 'profiles', label: 'Publiczne profile graczy', labelEn: 'Public player profiles', description: 'Strony /u/<nick> i ich obrazki; ustawienia prywatności można dalej zmieniać.' },
   { id: 'sprays', label: 'Spraye', labelEn: 'Sprays', description: 'Wysyłanie sprayów w grze do innych graczy.' },
   { id: 'chatImages', label: 'Zdjęcia w czacie', labelEn: 'Pictures in the chat', description: 'Wysyłanie nowych zdjęć w wiadomościach. Wysłane można dalej oglądać.' },
+  { id: 'streams', label: 'Streamy (Twitch i Kick)', labelEn: 'Streams (Twitch and Kick)', description: 'Łączenie kanałów, znaczek LIVE u znajomych, powiadomienia i transmisja na profilu. Połączone kanały zostają.' },
   { id: 'registration', label: 'Rejestracja nowych kont', labelEn: 'New accounts', description: 'Zakładanie kont przez nowych graczy. Istniejące konta logują się normalnie.' },
 ] as const;
 export type FeatureId = (typeof FEATURES)[number]['id'];
@@ -87,6 +88,8 @@ export function featuresFor(method: string, path: string, groupClan: (id: string
   if (method === 'PUT' && /^\/v1\/cloud-profiles\/[\w-]+$/.test(path)) out.push('cloud');
   if (method === 'GET' && (/^\/(u|gracz|profil|player)\/[^/]+\/?$/.test(path) || /^\/v1\/profiles\/[^/]+(\/(head|skin))?$/.test(path) || path === '/sitemap-profiles.xml')) out.push('profiles');
   if (method === 'POST' && path === '/v1/mc/spray') out.push('sprays');
+  // linking a Twitch or Kick channel (the platforms' webhooks and the admin panel are never switched off)
+  if (/^\/v1\/me\/streams(\/|$)/.test(path) || /^\/v1\/streams\/(twitch|kick)\/callback$/.test(path)) out.push('streams');
   // a picture to a friend or to a group
   if (method === 'POST' && (/^\/v1\/images\/[\w-]+$/.test(path) || /^\/v1\/groups\/[\w-]+\/images$/.test(path))) out.push('chatImages');
   return out;

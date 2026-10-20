@@ -13,6 +13,7 @@ import { DEFAULT_PRIVACY, VISIBILITIES } from './profiles.ts';
 import { SHARE_LIMITS } from './profileShares.ts';
 import type { SettingCategory, SettingDef } from './settings.ts';
 import { DEFAULT_MIN_FREE } from './storage.ts';
+import { STREAM_SETTING_DEFS } from './streams/settings.ts';
 import { LOG_DAYS, MAX_LOG } from './tracker.ts';
 
 /**
@@ -36,6 +37,7 @@ export const CATEGORIES: { id: SettingCategory; label: string; labelEn: string }
   { id: 'security', label: 'Bezpieczeństwo i limity', labelEn: 'Security and limits' },
   { id: 'storage', label: 'Przechowywanie', labelEn: 'Storage' },
   { id: 'moderation', label: 'Moderacja', labelEn: 'Moderation' },
+  { id: 'streams', label: 'Streamy', labelEn: 'Streams' },
 ];
 
 const MB = 1024 * 1024;
@@ -166,4 +168,6 @@ export const SETTING_DEFS: SettingDef[] = [
     { key: 'moderation.blockedWords', label: 'Zakazane słowa', labelEn: 'Blocked words', description: 'Nie mogą wystąpić w tagu ani nazwie klanu i społeczności, ani w opisie społeczności (także z cyframi zamiast liter, bez polskich znaków). Jedno na linię, małymi literami.', type: 'list', default: [...BLOCKED_WORDS], lower: true, maxItems: 1000, maxLength: 40 },
     { key: 'moderation.blockedTags', label: 'Zakazane całe tagi', labelEn: 'Blocked whole tags', description: 'Krótkie, które są w porządku w środku słowa, ale nie jako cały tag. Jedno na linię.', type: 'list', default: [...BLOCKED_TAGS], lower: true, maxItems: 1000, maxLength: 6 },
   ]),
+
+  ...STREAM_SETTING_DEFS,
 ];

@@ -57,6 +57,27 @@ public final class Badges {
 	/** uuid → the tag of that player's SlashClient clan, shown as [TAG] after the logo. */
 	private static final Map<UUID, String> clans = new ConcurrentHashMap<>();
 	private static final int CLAN_COLOR = 0xFBBF24;
+	/** uuid → the platform ("twitch", "kick") of a player live now with Minecraft (servers 0.9.24+): "● NA ŻYWO" above the name. */
+	private static final Map<UUID, String> live = new ConcurrentHashMap<>();
+	private static final int LIVE_DOT = 0xFF3B3B, TWITCH = 0xA970FF, KICK = 0x53FC18;
+
+	/**
+	 * The line above a live player's name, or null: not live, the setting off, or the logos off.
+	 * The server leaves out streams of other games and players who hide being live.
+	 */
+	public static Component liveLabel(UUID id) {
+		if (id == null || SlashHud.config == null || !SlashHud.config.liveNametags || !usesSlash(id)) return null;
+		String platform = live.get(id);
+		if (platform == null) return null;
+		return Component.empty().append(Component.literal("\u25CF ").withStyle(Style.EMPTY.withColor(LIVE_DOT)))
+			.append(Component.translatable("slashclient-hud.stream.nametag").withStyle(Style.EMPTY.withColor("kick".equals(platform) ? KICK : TWITCH).withBold(true)));
+	}
+
+	/** For the in-game test: as if the server had said this player is live on that platform (null: not live). */
+	static void setLive(UUID id, String platform) {
+		if (platform == null) live.remove(id);
+		else live.put(id, platform);
+	}
 
 	/** For the in-game test: as if the server had said this player is in a clan with this tag (null: in none). */
 	static void setClan(UUID id, String tag) {
@@ -188,6 +209,8 @@ public final class Badges {
 		known.add("supporter");
 		// any rank, with its colour (badgeColors)
 		known.add("colors");
+		// who is live on Twitch or Kick (the server's "live" map, 0.9.24+)
+		known.add("live");
 		body.add("knownRanks", known);
 		busy = true;
 		post("/v1/mc/lookup", GSON.toJson(body), response -> {
@@ -203,6 +226,8 @@ public final class Badges {
 			JsonObject tierColorOf = o.has("supporterColors") && o.get("supporterColors").isJsonObject() ? o.getAsJsonObject("supporterColors") : new JsonObject();
 			// the shown rank's colour (servers before 0.9.23 send none)
 			JsonObject badgeColorOf = o.has("badgeColors") && o.get("badgeColors").isJsonObject() ? o.getAsJsonObject("badgeColors") : new JsonObject();
+			// players live now (servers before 0.9.24 send none)
+			JsonObject liveOf = o.has("live") && o.get("live").isJsonObject() ? o.getAsJsonObject("live") : new JsonObject();
 			for (UUID id : ask) {
 				if (active.contains(id)) slash.add(id);
 				else slash.remove(id);
@@ -234,6 +259,10 @@ public final class Badges {
 				var tag = clanOf.get(id.toString());
 				if (tag != null && tag.isJsonPrimitive() && tag.getAsString().matches("[A-Za-z0-9]{2,5}")) clans.put(id, tag.getAsString());
 				else clans.remove(id);
+				var stream = liveOf.get(id.toString());
+				String platform = stream != null && stream.isJsonObject() && stream.getAsJsonObject().has("platform") ? stream.getAsJsonObject().get("platform").getAsString() : "";
+				if ("twitch".equals(platform) || "kick".equals(platform)) live.put(id, platform);
+				else live.remove(id);
 			}
 		});
 	}

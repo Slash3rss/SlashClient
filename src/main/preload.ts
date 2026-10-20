@@ -145,6 +145,8 @@ const api = {
   socialLoginDev: (name: string) => invoke('social:loginDev', name),
   socialLoginOAuth: (provider: string, link = false) => invoke('social:loginOAuth', provider, link),
   socialLoginMinecraft: () => invoke('social:loginMinecraft'),
+  /** Links a Twitch or Kick channel in the browser; the account's channels when done. */
+  socialLinkStream: (platform: string) => invoke('social:linkStream', platform),
   socialCancelLogin: () => invoke('social:cancelLogin'),
   socialLogout: () => invoke('social:logout'),
   socialSetStatus: (status: string) => invoke('social:setStatus', status),

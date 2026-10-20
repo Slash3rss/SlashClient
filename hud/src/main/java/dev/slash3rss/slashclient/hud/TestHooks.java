@@ -115,6 +115,18 @@ public final class TestHooks {
 			.append(Badges.decorate(mc.player.getUUID(), mc.player.getName())));
 	}
 
+	/** As if the server had said we are live on this platform ("twitch", "kick"; null: not live), with our own name shown (F5). */
+	public static void live(String platform) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		SlashHud.config.ownNametag = true;
+		Badges.setLive(mc.player.getUUID(), platform);
+	}
+
+	/** The "● NA ŻYWO" line our own name would have now (null: none). */
+	public static net.minecraft.network.chat.Component liveLabel() {
+		return Badges.liveLabel(net.minecraft.client.Minecraft.getInstance().player.getUUID());
+	}
+
 	/** As if the server had said we support the project with a tier of this colour (-1: the default pink), written to the chat like ownRank. */
 	public static void supporterRank(String label, int color) {
 		var mc = net.minecraft.client.Minecraft.getInstance();

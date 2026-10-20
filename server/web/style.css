@@ -417,3 +417,8 @@ button.chip.active { background: var(--accent); color: #fff; }
 .site-banner-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .site-banner a { color: inherit; font-weight: 700; text-decoration: underline; white-space: nowrap; }
 .site-banner .site-banner-close { width: 28px; height: 28px; flex-shrink: 0; background: transparent; border-color: transparent; color: inherit; }
+/* Twitch and Kick (profileStream.js, accountStreams.js, adminStreams.js): Kick's green "K", Twitch's purple */
+.kick-mark { display: inline-grid; place-items: center; width: 1.15em; height: 1.15em; border-radius: 3px; background: #53fc18; color: #0b0e14; font-weight: 900; font-size: .85em; line-height: 1; font-style: normal; flex-shrink: 0; }
+i.fa-twitch { color: #a970ff; }
+.streams-card .stream-row { align-items: center; gap: 10px; margin: 6px 0; }
+.streams-card .stream-row a { overflow-wrap: anywhere; }

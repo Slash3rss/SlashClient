@@ -11,7 +11,7 @@ import { el } from './dialog';
  * element with data-feature="<id>" gets the body class feature-off-<id> rules (style.css).
  */
 
-export type FeatureId = 'shop' | 'support' | 'communities' | 'clans' | 'groups' | 'media' | 'cloud' | 'profiles' | 'sprays' | 'chatImages' | 'registration';
+export type FeatureId = 'shop' | 'support' | 'communities' | 'clans' | 'groups' | 'media' | 'cloud' | 'profiles' | 'sprays' | 'chatImages' | 'registration' | 'streams';
 export interface Banner { id: string; text: string; textEn: string; level: 'info' | 'warning'; link: string; start: number; end: number }
 export interface FeatureState { features: Partial<Record<FeatureId, boolean>>; banner: Banner | null }
 

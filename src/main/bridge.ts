@@ -102,7 +102,9 @@ const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', '
   // sparks: the balance changed, and many achievements unlocked at once (one toast)
   'wallet', 'achievements-summary',
   // communities: the list changed, their chat, and news for one (invited, accepted, kicked…)
-  'communities', 'community-message', 'community-message-edit', 'community-message-delete', 'community']);
+  'communities', 'community-message', 'community-message-edit', 'community-message-delete', 'community',
+  // a friend went live on Twitch or Kick, or ended: the LIVE badge, and a toast when `notify`
+  'stream']);
 const KEEP = 200;
 const LONG_POLL_MS = 25_000;
 

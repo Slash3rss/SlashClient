@@ -104,6 +104,14 @@ public final class Social {
 		chats.put(friend.id(), new CopyOnWriteArrayList<>(chat));
 	}
 
+	/** For the in-game test: several made-up friends (the first with `chat`), in the list's order. */
+	public static void sampleForTest(List<Friend> list, List<Message> chat, String me) {
+		sampleForTest(list.get(0), chat, me);
+		List<Friend> sorted = new ArrayList<>(list);
+		sort(sorted);
+		friends = List.copyOf(sorted);
+	}
+
 	public static boolean signedIn() {
 		return signedIn;
 	}
@@ -233,6 +241,7 @@ public final class Social {
 		if (!signedIn) {
 			friends = List.of();
 			playing.clear();
+			FriendStreams.clear();
 		}
 	}
 
@@ -257,6 +266,8 @@ public final class Social {
 	private static Friend friendFrom(JsonObject o) {
 		JsonObject p = o.has("presence") && o.get("presence").isJsonObject() ? o.getAsJsonObject("presence") : new JsonObject();
 		lanFrom(str(o, "id"), p);
+		// live on Twitch or Kick (servers 0.9.24+): the LIVE badge
+		FriendStreams.fromFriend(str(o, "id"), o);
 		JsonObject a = p.has("activity") && p.get("activity").isJsonObject() ? p.getAsJsonObject("activity") : null;
 		return new Friend(str(o, "id"), str(o, "name"), str(o, "handle"), p.has("status") ? str(p, "status") : "offline",
 			a != null ? str(a, "kind") : "", a != null ? str(a, "server") : "",
@@ -355,6 +366,8 @@ public final class Social {
 			case "party" -> {
 				if (e.has("party") && e.get("party").isJsonObject()) Party.onEvent(e.getAsJsonObject("party"));
 			}
+			// a friend went live on Twitch or Kick (a toast when the server says it is news), changed the title, or ended
+			case "stream" -> FriendStreams.onEvent(e);
 			// edited or deleted (here, in the launcher or another game): only the new version, no toast
 			case "message-edit", "message-delete" -> {
 				if (e.has("message") && e.get("message").isJsonObject()) replaced(messageFrom(e.getAsJsonObject("message")));
