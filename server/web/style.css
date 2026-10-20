@@ -394,3 +394,15 @@ button.chip.active { background: var(--accent); color: #fff; }
 .legal-notice { margin-bottom: 14px; border-color: rgba(96, 165, 250, .35); }
 .legal-notice .fa-scale-balanced { color: var(--accent-light); }
 .legal-notice p { margin: 6px 0 10px; }
+/* ranks (ranks.js): the Slash logo in the rank's colour, or its own icon, and a chip in its colour */
+.rank-logo { display: inline-block; width: 13px; height: 15px; flex-shrink: 0; background: var(--rank, #fff); -webkit-mask: url(/img/badge.svg) center / contain no-repeat; mask: url(/img/badge.svg) center / contain no-repeat; }
+.rank-icon { width: 16px; height: 16px; flex-shrink: 0; image-rendering: pixelated; }
+.chip.rank-chip { background: color-mix(in srgb, var(--rank, #9ca3af) 16%, transparent); color: color-mix(in srgb, var(--rank, #d1d5db) 70%, #fff); }
+.rank-grants { display: flex; flex-direction: column; gap: 6px; }
+.rank-grant { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.rank-grant.expired { opacity: .5; }
+.rank-swatch { width: 18px; height: 18px; border-radius: 5px; background: var(--rank); flex-shrink: 0; }
+.rank-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; align-items: end; }
+.rank-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.rank-form input[type=color] { height: 40px; width: 100%; padding: 2px; background: rgba(0, 0, 0, .25); border: 1px solid var(--border); border-radius: var(--btn-radius); }
+.rank-list { display: flex; flex-direction: column; gap: 12px; }

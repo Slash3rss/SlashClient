@@ -3,6 +3,7 @@
 // (profiles.ts); the owner and admins get the whole profile and tools for it.
 import { Preview } from './preview.js';
 import { $, SLOTS, ApiError, api, cosmeticEl, el, errorText, guard, icon, toast, token } from './common.js';
+import { rankChip } from './ranks.js';
 
 const handle = decodeURIComponent(location.pathname.split('/')[2] ?? '');
 const asPublic = new URLSearchParams(location.search).get('view') === 'public';
@@ -113,9 +114,13 @@ function framed(avatar, sup) {
 
 function render(p) {
   document.title = `${p.name} (@${p.handle}) – SlashClient`;
-  const rank = RANKS[p.badge];
   const chips = [];
-  if (rank) chips.push(el('span', { class: `chip ${rank[1]}` }, rank[2] ? icon(rank[2]) : el('img', { class: 'chip-logo', src: '/vendor/logo.png', alt: '' }), rank[0]));
+  // every rank the player holds (servers before many ranks send only the badge)
+  if (p.ranks) for (const r of p.ranks) chips.push(rankChip(r, EN, r.id === p.badge ? L('Odznaka przy nicku', 'Badge next to the nick') : ''));
+  else if (RANKS[p.badge]) {
+    const rank = RANKS[p.badge];
+    chips.push(el('span', { class: `chip ${rank[1]}` }, rank[2] ? icon(rank[2]) : el('img', { class: 'chip-logo', src: '/vendor/logo.png', alt: '' }), rank[0]));
+  }
   // a supporter of the project: the tier in its colour, or "supported" for one who did (payments/support.ts)
   const sup = p.supporter;
   if (sup) {

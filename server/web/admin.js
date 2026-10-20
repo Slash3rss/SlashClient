@@ -7,10 +7,12 @@ import { clansPage } from './adminClans.js';
 import { communitiesPage } from './adminCommunities.js';
 import { supportPage } from './adminSupport.js';
 import { legalPage } from './adminLegal.js';
+import { rankChips, ranksPage, ranksReady, userRanksSection } from './adminRanks.js';
 
 const TABS = [
   ['dashboard', 'Pulpit', 'fa-solid fa-chart-line'],
   ['users', 'Konta', 'fa-solid fa-users'],
+  ['ranks', 'Rangi', 'fa-solid fa-certificate'],
   ['cosmetics', 'Kosmetyki', 'fa-solid fa-wand-magic-sparkles'],
   ['achievements', 'Osiągnięcia', 'fa-solid fa-trophy'],
   ['partners', 'Partnerzy', 'fa-solid fa-handshake'],
@@ -43,10 +45,10 @@ const ACTIONS = {
   support_tier: 'zapisał(a) poziom wsparcia', support_tier_delete: 'usunął(ęła) poziom wsparcia',
   legal_draft: 'zapisał(a) szkic dokumentu', legal_publish: 'opublikował(a) dokument', legal_restore: 'przywrócił(a) wersję dokumentu',
   legal_banner: 'zmienił(a) baner wersji roboczej', legal_vars: 'zmienił(a) dane administratora w dokumentach',
+  rank_create: 'dodał(a) rangę', rank_update: 'zmienił(a) rangę', rank_delete: 'usunął(ęła) rangę', rank_icon: 'zmienił(a) ikonę rangi',
+  rank_grant: 'nadał(a) rangę', rank_revoke: 'odebrał(a) rangę',
   support_grant: 'przyznał(a) wsparcie', support_extend: 'przedłużył(a) wsparcie', support_revoke: 'odebrał(a) wsparcie',
 };
-/** Ranks: the colour of the SlashClient logo next to the name in game (admins are red without one). */
-const RANKS = { support: ['Support', 'sky'], partner: ['Partner', 'gold'], friend: ['Przyjaciel', 'green'], friend_pink: ['Przyjaciel (różowy)', 'pink'] };
 
 let me;
 // "#achievements:<id>" opens that achievement in the creator
@@ -104,7 +106,7 @@ function layout() {
     el('button', { class: 'icon-btn', title: 'Wyloguj', onclick: async () => { await signOut(); me = undefined; gate(); } }, icon('fa-solid fa-right-from-bracket'))));
   const main = el('main', { class: 'main', id: 'main' });
   $('#root').replaceChildren(el('div', { class: 'admin' }, side, main));
-  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, achievements: achievementsPage, partners: partnersPage, clans: clansPage, communities: communitiesPage, requests: requestsPage, logs: logsPage, storage: storagePage, support: supportPage, legal: legalPage, log: logPage })[tab]?.();
+  ({ dashboard, users: usersPage, ranks: ranksPage, cosmetics: cosmeticsPage, achievements: achievementsPage, partners: partnersPage, clans: clansPage, communities: communitiesPage, requests: requestsPage, logs: logsPage, storage: storagePage, support: supportPage, legal: legalPage, log: logPage })[tab]?.();
 }
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);
@@ -159,6 +161,8 @@ async function usersPage() {
 
 async function loadUsers() {
   const res = await guard(() => api('GET', `/v1/admin/users?q=${encodeURIComponent(users.q)}&limit=${users.limit}&offset=${users.offset}`));
+  // the ranks' colours for the chips (adminRanks.js)
+  await ranksReady();
   const box = $('#users-box');
   if (!res || !box) return;
   if (!res.users.length) return box.replaceChildren(el('p', { class: 'muted', textContent: 'Brak kont.' }));
@@ -189,7 +193,7 @@ function capeCell(u) {
 const badges = (u) => el('div', { class: 'row' },
   u.banned ? el('span', { class: 'chip red' }, icon('fa-solid fa-ban'), 'Zablokowany') : '',
   u.role === 'admin' || u.configAdmin ? el('span', { class: 'chip red' }, icon('fa-solid fa-shield-halved'), 'Admin') : '',
-  RANKS[u.rank] ? el('span', { class: `chip ${RANKS[u.rank][1]}` }, icon('fa-solid fa-certificate'), RANKS[u.rank][0]) : '',
+  ...rankChips(u.ranks),
   !u.banned && !(u.role === 'admin' || u.configAdmin) ? el('span', { class: 'chip green', textContent: 'Aktywny' }) : '');
 
 function closeDrawer() {
@@ -210,8 +214,6 @@ async function openUser(id) {
   };
   const capeSel = el('select', {}, el('option', { value: '', textContent: 'Bez peleryny' }), ...Object.entries(capeNames).map(([cid, name]) => el('option', { value: cid, textContent: name, selected: u.cape === cid })));
   capeSel.addEventListener('change', () => update({ cape: capeSel.value }, 'Peleryna zmieniona.'));
-  const rankSel = el('select', {}, el('option', { value: '', textContent: 'Bez rangi' }), ...Object.entries(RANKS).map(([rid, [name]]) => el('option', { value: rid, textContent: name, selected: u.rank === rid })));
-  rankSel.addEventListener('change', () => update({ rank: rankSel.value }, 'Ranga zmieniona.'));
   const self = u.id === me.id;
   const drawer = el('aside', { class: 'glass drawer' },
     el('div', { class: 'row' }, avatarEl(u, true), el('div', { class: 'grow' }, el('h2', { textContent: u.name }), el('span', { class: 'muted', textContent: `@${u.handle}` })),
@@ -229,9 +231,8 @@ async function openUser(id) {
     el('div', {}, el('h4', { textContent: 'Peleryna' }), el('div', { class: 'row' }, u.cape ? capeEl(u.cape, true) : '', capeSel)),
     // sparks from achievements: the balance, giving and taking with a reason (adminSparks.js)
     walletSection(id),
-    el('div', {}, el('h4', { textContent: 'Ranga' }),
-      el('p', { class: 'muted small', textContent: 'Kolor logo SlashClient przy nicku w grze: admin czerwony, support błękitny, partner złoty, przyjaciel zielony albo różowy.' }),
-      el('div', { class: 'row' }, rankSel)),
+    // several ranks, each until a day or for good (adminRanks.js)
+    userRanksSection(id, loadUsers),
     el('div', { class: 'actions' },
       el('button', { disabled: self, onclick: () => update({ banned: !u.banned }, u.banned ? 'Konto odblokowane.' : 'Konto zablokowane i wylogowane.'), class: u.banned ? '' : 'danger' },
         icon(u.banned ? 'fa-solid fa-unlock' : 'fa-solid fa-ban'), u.banned ? 'Odblokuj' : 'Zablokuj'),

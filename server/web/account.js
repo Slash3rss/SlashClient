@@ -4,6 +4,7 @@ import { achievementsCard, buy, priceTag, sparks } from './sparks.js';
 import { privacyCard } from './profilePrivacy.js';
 import { legalNotices, signInNote } from './legalNotice.js';
 import { chip as supporterChip, supportCard } from './supportCard.js';
+import { rankBadge, rankChip } from './ranks.js';
 import { $, partnerBanner, uploadPicture, PROVIDERS, SLOTS, api, avatarEl, capeEl, cosmeticEl, el, errorText, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 
 let me;
@@ -67,6 +68,25 @@ function renderSignIn() {
   $('#account').replaceChildren(box);
 }
 
+/** "Odznaka przy nicku": the most important rank (the default), one of the others, or none. */
+function badgePicker() {
+  const sel = el('select', { title: 'Odznaka przy nicku' },
+    el('option', { value: '', textContent: `Najważniejsza ranga (${me.ranks[0].name})`, selected: !me.badgeChoice }),
+    ...me.ranks.map((r) => el('option', { value: r.id, textContent: r.name, selected: me.badgeChoice === r.id })),
+    el('option', { value: 'none', textContent: 'Bez odznaki rangi', selected: me.badgeChoice === 'none' }));
+  const shown = el('span', { class: 'row' });
+  const draw = () => shown.replaceChildren(me.badgeRank ? rankBadge(me.badgeRank) : '', el('b', { textContent: me.name }));
+  draw();
+  sel.addEventListener('change', async () => {
+    const r = await guard(() => api('POST', '/v1/me/badge', { rank: sel.value }));
+    if (!r) return;
+    Object.assign(me, r, { badge: r.badgeRank?.id ?? '' });
+    toast('Odznaka przy nicku zmieniona.');
+    draw();
+  });
+  return el('div', { class: 'row small badge-choice' }, el('span', { class: 'muted', textContent: 'Odznaka przy nicku:' }), sel, el('span', { class: 'muted', textContent: 'wygląda tak:' }), shown);
+}
+
 async function login(fn) {
   const user = await guard(fn);
   if (!user) return;
@@ -80,13 +100,10 @@ function renderAccount() {
     el('div', { class: 'row' }, avatarEl(me, true),
       el('div', { class: 'grow' }, el('h3', { textContent: me.name }), el('span', { class: 'muted', textContent: `@${me.handle}` }))),
     el('div', { class: 'row' }, ...me.providers.filter((p) => p !== 'minecraft').map((p) => el('span', { class: 'chip' }, icon((PROVIDERS[p] ?? ['', 'fa-solid fa-flask'])[1]), (PROVIDERS[p] ?? ['Test'])[0])),
-      me.admin ? el('span', { class: 'chip red' }, icon('fa-solid fa-shield-halved'), 'Admin') : '',
+      // every rank held (ranks.ts); the supporter's is the tier chip below
+      ...(me.ranks ?? []).filter((r) => r.id !== 'supporter').map((r) => rankChip(r)),
       // sparks from achievements, spent on cosmetics in the shop (sparks.js)
       cosmetics.wallet ? el('span', { class: 'chip gold', title: 'Iskry z osiągnięć' }, el('span', { class: 'spark-sign', textContent: '✦' }), sparks(cosmetics.wallet.balance)) : '',
-      me.badge === 'support' ? el('span', { class: 'chip sky' }, icon('fa-solid fa-certificate'), 'Support') : '',
-      me.badge === 'partner' ? el('span', { class: 'chip gold' }, icon('fa-solid fa-certificate'), 'Partner') : '',
-      me.badge === 'friend' ? el('span', { class: 'chip green' }, el('img', { class: 'chip-logo', src: '/vendor/logo.png', alt: '' }), 'Przyjaciel') : '',
-      me.badge === 'friend_pink' ? el('span', { class: 'chip pink' }, el('img', { class: 'chip-logo', src: '/vendor/logo.png', alt: '' }), 'Przyjaciel') : '',
       // supporting the project (supportCard.js): the tier in its colour
       me.supporter && !me.supporter.past ? supporterChip(me.supporter.name, me.supporter.color) : ''));
   // the avatar: the face from one of the Minecraft accounts' skins, or the sign-in provider's picture
@@ -108,6 +125,8 @@ function renderAccount() {
       ...faces.map((f) => pick(f.uuid, f.url, f.name)),
       me.avatars.provider ? pick('provider', me.avatars.provider, provider) : ''));
   }
+  // which rank's badge goes next to the nick in game, in the launcher and on the friends list
+  if (me.ranks?.length) profile.append(badgePicker());
   const share = el('input', { type: 'checkbox', checked: me.showServer });
   share.addEventListener('change', async () => {
     const u = await guard(() => api('POST', '/v1/me', { showServer: share.checked }));

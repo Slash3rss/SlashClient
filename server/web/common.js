@@ -116,6 +116,19 @@ const ERRORS = {
   no_player: 'Nie ma takiego gracza.',
   bad_players: 'Podaj od 1 do 100 graczy.',
   disabled: 'Osiągnięcie jest wyłączone.',
+  // ranks (adminRanks.js, the account page)
+  bad_rank_id: 'Id rangi: małe litery, cyfry i _, 2–24 znaki, zaczyna się od litery.',
+  rank_exists: 'Ranga o takim id już jest.',
+  bad_rank_name: 'Podaj nazwę rangi.',
+  bad_color: 'Kolor w postaci #rrggbb.',
+  bad_priority: 'Kolejność: liczba od 0 do 1000.',
+  builtin_rank: 'Wbudowanej rangi nie da się usunąć, można ją wyłączyć.',
+  bad_rank: 'Nie ma takiej rangi.',
+  auto_rank: 'Ta ranga przychodzi sama (rola admina albo wsparcie), nie nadaje się jej ręcznie.',
+  bad_expiry: 'Data wygaśnięcia musi być w przyszłości.',
+  not_your_rank: 'Nie masz tej rangi.',
+  not_png: 'To nie jest plik PNG.',
+  bad_logo_size: 'Ikona rangi: PNG 16×16 albo 32×32 piksele.',
 };
 export const errorText = (err) => ERRORS[err?.code] ?? (err?.message || 'Coś poszło nie tak.');
 
