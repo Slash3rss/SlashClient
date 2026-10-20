@@ -1,4 +1,4 @@
-import { locale, t } from '../shared/i18n';
+import { getLang, locale, t } from '../shared/i18n';
 import { createGroups } from './groups';
 import { createCommunities } from './communities';
 import { PlayingWatch, type PlayingNews } from './friendActivity';
@@ -7,6 +7,7 @@ import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
 import { openProfilePrivacy, profileLink } from './profilePrivacy';
 import { confirmDialog } from './dialog';
 import { legalNote } from './legal';
+import { badgeChoices, rankBadge, rankName, type RankView } from './rankBadge';
 import { canDelete, canEdit, editHint, editedLabel, replaceMessage, slowDownSeconds, slowDownText, tombstone, withMenu, type MenuItem } from './chatEdits';
 
 /**
@@ -19,9 +20,13 @@ interface Activity { kind: 'launcher' | 'menu' | 'singleplayer' | 'server'; vers
 interface Presence { status: 'online' | 'away' | 'busy' | 'offline'; activity?: Activity; lastSeen?: number; /** their world is open to LAN: joinable through SlashClient */ lan?: boolean }
 interface Person { id: string; handle: string; name: string; avatar: string }
 /** `clan`: their clan's tag; `muted`: on the account, their messages come, but no toast or notification (server 0.9.21+). */
-interface Friend extends Person { presence: Presence; unread: number; lastMessageAt: number; since: number; clan?: string; muted?: boolean }
+interface Friend extends Person { presence: Presence; unread: number; lastMessageAt: number; since: number; clan?: string; muted?: boolean; /** the rank badge they show next to the nick (server 0.9.23+) */ badgeRank?: RankView }
 interface Request extends Person { at: number }
-interface Me extends Person { showServer: boolean; providers: string[]; minecraft?: { uuid: string; name: string }[] }
+interface Me extends Person {
+  showServer: boolean; providers: string[]; minecraft?: { uuid: string; name: string }[];
+  /** every rank held, the pick of the badge ('' = the most important, 'none') and the rank shown (server 0.9.23+) */
+  ranks?: RankView[]; badgeChoice?: string; badgeRank?: RankView | null;
+}
 interface Invite { server: string; version?: string; party?: string }
 /** A picture in the chat (the launcher decrypts it); `unreadable`: its key was for another launcher. */
 interface ChatImage { id: string; w?: number; h?: number; unreadable?: boolean }
@@ -556,7 +561,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     }
     meBox.replaceChildren(
       el('div', { className: 'fr-me-row' }, face,
-        el('div', { className: 'grow fr-names' }, el('b', {}, ...clanTag(groups.myTag()), me.name),
+        el('div', { className: 'grow fr-names' }, el('b', {}, ...rankTag(me.badgeRank ?? undefined), ...clanTag(groups.myTag()), me.name),
           state!.connected ? el('small', { className: 'muted', textContent: `@${me.handle}` }) : el('small', { className: 'fr-error', textContent: t('Łączenie…') })),
         options, logout));
     accountBody?.replaceChildren(
@@ -567,7 +572,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       el('div', { className: 'fr-linked-row' }, el('small', { className: 'muted', textContent: t('Logowanie:') }), linked),
       minecraftRow(me),
       el('div', { className: 'fr-account-section', textContent: t('Profil na stronie') }),
-      profileRow(me));
+      profileRow(me),
+      ...badgeRow(me));
   }
 
   /** The four statuses, under the avatar; one click sets it, a click elsewhere or Esc closes. */
@@ -640,6 +646,31 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     return el('div', { className: 'row fr-profile-row' }, own, copy, privacy);
   }
 
+  /** "Ranga przy nicku": which rank's badge shows next to the nick (in game, here and on the friends list), or none. */
+  function badgeRow(me: Me): Node[] {
+    const choices = badgeChoices(me.ranks ?? [], getLang() === 'en', t);
+    if (!choices.length) return [];
+    const pick = control<HTMLSelectElement>('select', { className: 'fr-badge-pick' });
+    for (const c of choices) pick.append(control<HTMLOptionElement>('option', { value: c.value, textContent: c.label, selected: (me.badgeChoice ?? '') === c.value }));
+    pick.addEventListener('change', async () => {
+      try {
+        const res = await api.socialApi('POST', '/v1/me/badge', { rank: pick.value });
+        Object.assign(state!.user!, res);
+        renderMe();
+      } catch (err) {
+        deps.toast(deps.errorText(err), true);
+        renderMe();
+      }
+    });
+    const ranks = (me.ranks ?? []).map((r) => el('span', { className: 'fr-rank-chip' }, rankBadge(r, api.socialRankIcon, renderMe), rankName(r, getLang() === 'en')));
+    return [
+      el('div', { className: 'fr-account-section', textContent: t('Ranga przy nicku') }),
+      el('div', { className: 'fr-rank-chips' }, ...ranks),
+      el('div', { className: 'row fr-badge-row' }, pick, el('span', { className: 'fr-names' }, el('b', {}, ...rankTag(me.badgeRank ?? undefined), me.name))),
+      el('small', { className: 'muted', textContent: t('Odznaka widoczna w grze, na liście znajomych i na czacie. Profil publiczny pokazuje wszystkie rangi.') }),
+    ];
+  }
+
   /** The launcher's own setting (not the account's): toasts about friends coming online and starting a game. */
   function playingBox() {
     const box = control<HTMLInputElement>('input', { type: 'checkbox', checked: notifyPlaying });
@@ -672,7 +703,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     for (const f of sorted) {
       const row = el('button', { type: 'button', className: `fr-row fr-friend${f.id === selected ? ' selected' : ''}${f.presence.status === 'offline' ? ' is-offline' : ''}` },
         avatar(f, f.presence),
-        el('div', { className: 'grow fr-names' }, el('b', {}, ...clanTag(f.clan), f.name), el('small', { className: 'muted', textContent: typing.has(f.id) ? t('pisze…') : statusLine(f.presence) })),
+        el('div', { className: 'grow fr-names' }, el('b', {}, ...rankTag(f.badgeRank), ...clanTag(f.clan), f.name), el('small', { className: 'muted', textContent: typing.has(f.id) ? t('pisze…') : statusLine(f.presence) })),
         f.muted ? el('i', { className: 'fa-solid fa-bell-slash fr-muted', title: t('Wyciszony') }) : '',
         f.unread ? el('span', { className: `fr-unread${f.muted ? ' muted' : ''}`, textContent: String(f.unread) }) : '');
       row.addEventListener('click', () => select(f.id));
@@ -691,6 +722,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   }
 
   /** A clan's tag in front of a name, as in game: [TAG]. */
+  /** The rank badge before a nick (rankBadge.ts); a custom icon that arrives later draws the list again. */
+  function rankTag(r: RankView | undefined): (Node | string)[] {
+    return r ? [rankBadge(r, api.socialRankIcon, () => { renderList(); if (state?.user) renderMe(); }, rankName(r, getLang() === 'en')), ' '] : [];
+  }
+
   function clanTag(tag: string | undefined): (Node | string)[] {
     return tag ? [el('span', { className: 'fr-clan-tag', textContent: `[${tag}]` }), ' '] : [];
   }
@@ -983,7 +1019,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     });
     actions.push(remove);
     chatHead.replaceChildren(avatar(f, f.presence),
-      el('div', { className: 'grow fr-names' }, el('b', { textContent: f.name }), el('small', { className: 'muted', textContent: `@${f.handle} · ${statusLine(f.presence)}` })),
+      el('div', { className: 'grow fr-names' }, el('b', {}, ...rankTag(f.badgeRank), f.name), el('small', { className: 'muted', textContent: `@${f.handle} · ${statusLine(f.presence)}` })),
       ...actions);
     renderMessages();
     typingBox.textContent = typing.has(f.id) ? t('{0} pisze…', f.name) : '';

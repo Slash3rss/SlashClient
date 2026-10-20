@@ -20,6 +20,7 @@ import { activityFromLog, SocialClient, SocialError, type SocialUser, type Statu
 import { decrypt, encrypt, isEncrypted, newDeviceKey, type DeviceKey, type PublicDevice } from './chatCrypto';
 import { groupAad, openGroupMessage, sealGroupText, type GroupChatMessage, type GroupKey } from './groupChat';
 import { ClanLogoCache, isLogoPng } from './clanLogo';
+import { RankIconCache } from './rankIcons';
 import { fitSize, ImageCache, keyText, MAX_BYTES, openImage, parseKey, sealImage, type ChatImageView, type ImageKey } from './chatImages';
 import { launch, resolveVersionId } from './launch';
 import { paths } from './paths';
@@ -1852,6 +1853,9 @@ handle('social:setCommunityLogo', (id: string, png: Uint8Array) => socialCall(as
   return social.upload(`/v1/communities/${id}/logo`, png);
 }));
 handle('social:communityLogo', (id: string, version: number) => socialCall(async () => `data:image/png;base64,${(await communityLogos.get(id, version)).toString('base64')}`));
+// a rank's own icon (rankIcons.ts), by its address from the server
+const rankIcons = new RankIconCache((apiPath) => social.download(apiPath));
+handle('social:rankIcon', (apiPath: string) => socialCall(() => rankIcons.get(apiPath)));
 
 /** A call to the social server with the chat encrypted on the way out and decrypted on the way in. */
 async function chatCall(method: string, apiPath: string, body?: unknown) {
