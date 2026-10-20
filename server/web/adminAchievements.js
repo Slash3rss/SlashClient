@@ -6,7 +6,7 @@ import { $, cosmeticEl, el, fmtDate, guard, icon, api, toast } from './common.js
 import { sparks } from './sparks.js';
 
 const CATEGORY_NAMES = {
-  play: 'Gra', streak: 'Serie', social: 'Znajomi', community: 'Grupy i klany', explore: 'Serwery', sharing: 'Udostępnianie', style: 'Styl', secret: 'Ukryte',
+  play: 'Gra', streak: 'Serie', social: 'Znajomi', community: 'Grupy i klany', explore: 'Serwery', skyup: 'SkyUp.pl', sharing: 'Udostępnianie', style: 'Styl', secret: 'Ukryte',
 };
 const SLOT_NAMES = {
   cape: 'Peleryna', wings: 'Skrzydła', elytra: 'Elytra', trail: 'Ślad', aura: 'Aura', pet: 'Zwierzak', hat: 'Czapka', top: 'Góra', shoes: 'Buty', hands: 'Rękawice',
@@ -28,7 +28,11 @@ const filter = { q: '', category: '', kind: '' };
 const load = async () => (data = await guard(() => api('GET', '/v1/admin/achievements')));
 const metricOf = (id) => data.metrics.find((m) => m.id === id);
 const itemOf = (id) => data.items.find((i) => i.id === id);
-const goalText = (a) => (a.manual ? 'przyznawane ręcznie' : `${metricOf(a.metric)?.name ?? a.metric}: ${a.goal}`);
+/** " na skyup.pl" for a metric of one server ('' for the rest). */
+const onServer = (a) => (metricOf(a.metric)?.server && a.server ? ` na ${a.server}` : '');
+const goalText = (a) => (a.manual ? 'przyznawane ręcznie' : `${metricOf(a.metric)?.name ?? a.metric}: ${a.goal}${onServer(a)}`);
+/** What the server keeps of an address typed in (as its serverRule does; it checks it again): "SkyUp.pl:25565" → "skyup.pl". */
+const serverOf = (v) => v.trim().toLowerCase().replace(/^[a-z]+:\/\//, '').replace(/\/.*$/, '').replace(/\.$/, '').replace(/:25565$/, '');
 
 /** "How to get" as a line, achievements as links to their editor (`skip`: the one being edited). */
 export function obtainLine(obtain, open, skip) {
@@ -95,7 +99,7 @@ function renderList() {
 function editor(id) {
   const now = id ? data.achievements.find((a) => a.id === id) : undefined;
   const isNew = !now;
-  const a = now ? { ...now } : { id: '', metric: 'hours', goal: 10, sparks: 50, category: 'play', icon: '', ownIcon: '', name: '', nameEn: '', description: '', descriptionEn: '', hidden: false, enabled: true, reward: '', custom: true, manual: false };
+  const a = now ? { ...now, server: now.server ?? '' } : { id: '', server: '', metric: 'hours', goal: 10, sparks: 50, category: 'play', icon: '', ownIcon: '', name: '', nameEn: '', description: '', descriptionEn: '', hidden: false, enabled: true, reward: '', custom: true, manual: false };
   let icon_ = now ? now.ownIcon : '';
   let lang = 'pl';
 
@@ -109,8 +113,12 @@ function editor(id) {
     ...data.metrics.map((m) => el('option', { value: m.id, textContent: `${m.name} (najwyżej ${m.max})`, selected: a.metric === m.id })));
   const goal = el('input', { type: 'number', min: 1, step: 1, value: a.goal, oninput: () => { a.goal = Number(goal.value); preview(); } });
   const goalHint = el('small', { class: 'muted' });
+  // the server of a metric of one server: its address, subdomains count too
+  const serverIn = el('input', { type: 'text', value: a.server, maxLength: 253, placeholder: 'np. skyup.pl', oninput: () => { a.server = serverOf(serverIn.value); preview(); } });
+  const serverField = field('Serwer', serverIn, 'Adres serwera; liczą się też jego subdomeny (skyup.pl obejmuje play.skyup.pl). Czas na serwerze jest zapisywany od wersji 0.9.24, „Zagraj na serwerze” liczy też wcześniejsze wizyty.');
   const syncGoal = () => {
     const m = metricOf(a.metric);
+    serverField.style.display = m?.server ? '' : 'none';
     goal.disabled = !m;
     goal.max = m?.max ?? 1;
     goalHint.textContent = m ? `Od 1 do ${m.max}. Obniżenie odblokuje osiągnięcie od razu wszystkim, którzy już tyle mają (z wypłatą); podwyższenie nikomu go nie zabierze.` : 'Ręczne: gracze dostają je od admina poniżej.';
@@ -178,7 +186,7 @@ function editor(id) {
       a.hidden ? el('div', { class: 'ach-preview-card secret' }, el('div', { class: 'ach-preview-icon' }, icon('fa-solid fa-question')),
         el('div', { class: 'grow' }, el('b', { textContent: '???' }), el('small', { class: 'muted', textContent: lang === 'en' ? 'A hidden achievement. Find it yourself!' : 'Ukryte osiągnięcie. Odkryj je sam!' })),
         el('small', { class: 'muted', textContent: lang === 'en' ? 'before unlocking' : 'przed odblokowaniem' })) : '',
-      el('small', { class: 'muted', textContent: `${CATEGORY_NAMES[a.category] ?? a.category} · ${a.manual || a.metric === 'manual' ? 'przyznawane ręcznie' : `${m?.name ?? ''}: ${a.goal}`}${a.enabled ? '' : ' · wyłączone'}` }));
+      el('small', { class: 'muted', textContent: `${CATEGORY_NAMES[a.category] ?? a.category} · ${a.manual || a.metric === 'manual' ? 'przyznawane ręcznie' : `${m?.name ?? ''}: ${a.goal}${onServer(a)}`}${a.enabled ? '' : ' · wyłączone'}` }));
   }
   preview();
 
@@ -187,6 +195,7 @@ function editor(id) {
     name: a.name, nameEn: a.nameEn, description: a.description, descriptionEn: a.descriptionEn, icon: icon_, category: a.category,
     hidden: !!a.hidden, enabled: !!a.enabled, sparks: a.sparks, reward: a.reward,
     ...(a.metric === 'manual' ? {} : { goal: a.goal }),
+    ...(metricOf(a.metric)?.server ? { server: a.server } : {}),
   });
   const save = async (e) => {
     e.preventDefault();
@@ -228,6 +237,7 @@ function editor(id) {
         el('div', { class: 'row two' }, field('Kategoria', category), field(`Iskry (0–${data.maxSparks})`, sparksIn, 'Wypłacane raz, przy odblokowaniu.')),
         el('div', { class: 'row two' }, field('Warunek', metric, a.custom ? 'Tylko liczby, które serwer sprawdza sam.' : 'Wbudowane liczą zawsze to samo.'), field('Cel', goal)),
         goalHint,
+        serverField,
         el('div', { class: 'row' }, check('enabled', 'Włączone', 'Wyłączone nie jest przyznawane'), check('hidden', 'Ukryte', 'Do odblokowania widać „???”')),
         field('Ikona', icons),
         field('Nagroda: przedmiot', rewardBox, 'Zmiana nagrody nie wypłaca jej ponownie tym, którzy już mają osiągnięcie.')),

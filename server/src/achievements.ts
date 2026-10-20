@@ -21,7 +21,10 @@ import { MessageCounter } from './chatLimits.ts';
  * minutes while the game runs) and which is in a world (singleplayer or on a server, not the menu)
  * gets the time since the previous tick, at most two ticks' worth, and once per account however many
  * launchers it has open. A day counts (for the streak, days played, weekends) with at least 10
- * minutes; at most 12 hours a day count at all.
+ * minutes; at most 12 hours a day count at all. The same time also goes to the server the player
+ * was on for the whole tick (play_server_days, per server key and day, kept since 0.9.24), for the
+ * achievements of one server (`server_*` groups: hours there, days with 10 minutes there); a
+ * server named in them counts with its subdomains.
  *
  * Days are UTC days (00:00 UTC, 1–2 a.m. in Poland): the same for every player and every server
  * restart, with no time zone a client could pick to stretch a day.
@@ -38,12 +41,15 @@ export type Group = 'streak' | 'hours' | 'friends' | 'messages' | 'servers'
   | 'community_joined' | 'community_founded' | 'community_size'
   | 'waypoints' | 'parties_created' | 'parties_joined' | 'media' | 'shares' | 'cloud'
   | 'sprays' | 'worn' | 'bought' | 'spent'
+  /** On one server (`server`: its address and its subdomains): hours, days with 10+ minutes, been there at all. */
+  | 'server_hours' | 'server_days' | 'server_visit'
   /** Given by an admin by hand (achievements made in the admin panel), never counted. */
   | 'manual';
 
 /** Where the pages put it. */
-export type Category = 'play' | 'streak' | 'social' | 'community' | 'explore' | 'sharing' | 'style' | 'secret';
-export const CATEGORIES: Category[] = ['play', 'streak', 'social', 'community', 'explore', 'sharing', 'style', 'secret'];
+export type Category = 'play' | 'streak' | 'social' | 'community' | 'explore' | 'skyup' | 'sharing' | 'style' | 'secret';
+/** In the pages' order ('skyup': the partner server SkyUp.pl; launchers before 0.9.24 show it as "Other"). */
+export const CATEGORIES: Category[] = ['play', 'streak', 'social', 'community', 'explore', 'skyup', 'sharing', 'style', 'secret'];
 
 export interface Achievement {
   id: string;
@@ -67,9 +73,14 @@ export interface Achievement {
   enabled?: boolean;
   /** Made in the admin panel (achievementsAdmin.ts), not in this file. */
   custom?: boolean;
+  /** The server a `server_*` group counts on (a server key, see `serverRule`): that address and its subdomains. */
+  server?: string;
 }
 
 type Def = Omit<Achievement, 'category'>;
+/** Said with the achievements of time on one server: that time was not recorded before them. */
+const SINCE = ' Liczy się czas od wprowadzenia tych osiągnięć.';
+const SINCE_EN = ' Time counts from when these achievements were added.';
 const of = (category: Category, list: Def[]): Achievement[] => list.map((a) => ({ ...a, category }));
 
 export const ACHIEVEMENTS: Achievement[] = [
@@ -133,6 +144,21 @@ export const ACHIEVEMENTS: Achievement[] = [
     { id: 'servers_20', group: 'servers', goal: 20, sparks: 80, name: 'Obieżyświat', nameEn: 'Globetrotter', description: 'Zagraj na 20 różnych serwerach.', descriptionEn: 'Play on 20 different servers.' },
     { id: 'servers_50', group: 'servers', goal: 50, sparks: 200, name: 'Odkrywca', nameEn: 'Explorer', description: 'Zagraj na 50 różnych serwerach.', descriptionEn: 'Play on 50 different servers.' },
   ]),
+  // the partner server SkyUp.pl (and its subdomains); time there is recorded from the version that brought these (0.9.24) on,
+  // the visit also from before (play_servers); the rewards are its capes (cosmetics.ts, earned only here)
+  ...of('skyup', [
+    { id: 'skyup_visit', group: 'server_visit', server: 'skyup.pl', goal: 1, sparks: 10, icon: 'fa-plane-arrival', name: 'Witaj na SkyUp', nameEn: 'Welcome to SkyUp', description: 'Zagraj na serwerze SkyUp.pl.', descriptionEn: 'Play on the SkyUp.pl server.' },
+    { id: 'skyup_1h', group: 'server_hours', server: 'skyup.pl', goal: 1, sparks: 20, icon: 'fa-seedling', reward: 'skyup_niebo', name: 'Pierwsza wyspa', nameEn: 'First island', description: `Spędź godzinę na SkyUp.pl.${SINCE}`, descriptionEn: `Spend an hour on SkyUp.pl.${SINCE_EN}` },
+    { id: 'skyup_days_7', group: 'server_days', server: 'skyup.pl', goal: 7, sparks: 50, icon: 'fa-cloud', reward: 'skyup_wyspa', name: 'Tydzień w chmurach', nameEn: 'A week in the clouds', description: `Graj na SkyUp.pl co najmniej 10 minut w 7 różnych dniach.${SINCE}`, descriptionEn: `Play on SkyUp.pl for at least 10 minutes on 7 different days.${SINCE_EN}` },
+    { id: 'skyup_10h', group: 'server_hours', server: 'skyup.pl', goal: 10, sparks: 60, icon: 'fa-cloud-sun', reward: 'skyup_chmury', name: 'Nad chmurami', nameEn: 'Above the clouds', description: `Spędź 10 godzin na SkyUp.pl.${SINCE}`, descriptionEn: `Spend 10 hours on SkyUp.pl.${SINCE_EN}` },
+    { id: 'skyup_25h', group: 'server_hours', server: 'skyup.pl', goal: 25, sparks: 100, icon: 'fa-sun', reward: 'skyup_zachod', name: 'Zachód nad wyspą', nameEn: 'Sunset over the island', description: `Spędź 25 godzin na SkyUp.pl.${SINCE}`, descriptionEn: `Spend 25 hours on SkyUp.pl.${SINCE_EN}` },
+    { id: 'skyup_50h', group: 'server_hours', server: 'skyup.pl', goal: 50, sparks: 150, icon: 'fa-cloud-moon', reward: 'skyup_noc', name: 'Nocna zmiana', nameEn: 'Night shift', description: `Spędź 50 godzin na SkyUp.pl.${SINCE}`, descriptionEn: `Spend 50 hours on SkyUp.pl.${SINCE_EN}` },
+    { id: 'skyup_days_30', group: 'server_days', server: 'skyup.pl', goal: 30, sparks: 150, icon: 'fa-water', reward: 'skyup_waterblock', name: 'Waterblock', nameEn: 'Waterblock', description: `Graj na SkyUp.pl co najmniej 10 minut w 30 różnych dniach.${SINCE}`, descriptionEn: `Play on SkyUp.pl for at least 10 minutes on 30 different days.${SINCE_EN}` },
+    { id: 'skyup_100h', group: 'server_hours', server: 'skyup.pl', goal: 100, sparks: 250, icon: 'fa-arrow-up', reward: 'skyup_up', name: 'UP!', nameEn: 'UP!', description: `Spędź 100 godzin na SkyUp.pl.${SINCE}`, descriptionEn: `Spend 100 hours on SkyUp.pl.${SINCE_EN}` },
+    { id: 'skyup_250h', group: 'server_hours', server: 'skyup.pl', goal: 250, sparks: 400, icon: 'fa-anchor', reward: 'skyup_waterblock_glebia', name: 'Głębia', nameEn: 'The deep', description: `Spędź 250 godzin na SkyUp.pl.${SINCE}`, descriptionEn: `Spend 250 hours on SkyUp.pl.${SINCE_EN}` },
+    { id: 'skyup_days_100', group: 'server_days', server: 'skyup.pl', goal: 100, sparks: 400, icon: 'fa-dungeon', reward: 'skyup_caveblock', name: 'Caveblock', nameEn: 'Caveblock', description: `Graj na SkyUp.pl co najmniej 10 minut w 100 różnych dniach.${SINCE}`, descriptionEn: `Play on SkyUp.pl for at least 10 minutes on 100 different days.${SINCE_EN}` },
+    { id: 'skyup_500h', group: 'server_hours', server: 'skyup.pl', goal: 500, sparks: 800, icon: 'fa-house-chimney', reward: 'skyup_caveblock_domek', name: 'Domek w jaskini', nameEn: 'A house in the cave', description: `Spędź 500 godzin na SkyUp.pl.${SINCE}`, descriptionEn: `Spend 500 hours on SkyUp.pl.${SINCE_EN}` },
+  ]),
   ...of('sharing', [
     { id: 'media_1', group: 'media', goal: 1, sparks: 10, name: 'Fotograf', nameEn: 'Photographer', description: 'Udostępnij zrzut ekranu lub klip linkiem.', descriptionEn: 'Share a screenshot or a clip by link.' },
     { id: 'media_10', group: 'media', goal: 10, sparks: 50, name: 'Galeria', nameEn: 'Gallery', description: 'Udostępnij linkiem 10 zrzutów ekranu lub klipów.', descriptionEn: 'Share 10 screenshots or clips by link.' },
@@ -169,6 +195,7 @@ export const DEFAULT_ICONS: Record<Group, string> = {
   community_joined: 'fa-people-group', community_founded: 'fa-crown', community_size: 'fa-users',
   waypoints: 'fa-location-dot', parties_created: 'fa-bullhorn', parties_joined: 'fa-handshake', media: 'fa-camera', shares: 'fa-share-nodes', cloud: 'fa-cloud',
   sprays: 'fa-spray-can', worn: 'fa-shirt', bought: 'fa-bag-shopping', spent: 'fa-gem', manual: 'fa-award',
+  server_hours: 'fa-cloud-sun', server_days: 'fa-calendar-days', server_visit: 'fa-plane-arrival',
 };
 
 /**
@@ -181,14 +208,15 @@ export const ICONS: string[] = [...new Set([...Object.values(DEFAULT_ICONS),
   'fa-tree', 'fa-fish', 'fa-dice', 'fa-puzzle-piece', 'fa-code', 'fa-bug', 'fa-certificate', 'fa-snowflake', 'fa-sun', 'fa-leaf',
   'fa-cube', 'fa-gamepad', 'fa-hand-sparkles', 'fa-mask', 'fa-crosshairs', 'fa-dungeon', 'fa-hat-wizard', 'fa-feather', 'fa-palette',
   'fa-infinity', 'fa-seedling', 'fa-anchor', 'fa-bomb', 'fa-binoculars', 'fa-map', 'fa-key', 'fa-lightbulb', 'fa-ribbon', 'fa-coins',
-  'fa-paw', 'fa-dove', 'fa-meteor', 'fa-wand-sparkles', 'fa-guitar', 'fa-headphones', 'fa-video', 'fa-image', 'fa-scroll', 'fa-mug-hot'])];
+  'fa-paw', 'fa-dove', 'fa-meteor', 'fa-wand-sparkles', 'fa-guitar', 'fa-headphones', 'fa-video', 'fa-image', 'fa-scroll', 'fa-mug-hot',
+  'fa-cloud-moon', 'fa-water', 'fa-arrow-up', 'fa-house-chimney'])];
 
 /**
  * What an achievement made in the admin panel may count: only numbers this server sees itself (see
  * the top of this file), with the most a goal may ask (what the counting allows: messages and
  * waypoints stop at their caps, a day at 12 hours, a yes/no at 1).
  */
-export const METRICS: Record<Exclude<Group, 'manual'>, { name: string; nameEn: string; max: number }> = {
+export const METRICS: Record<Exclude<Group, 'manual'>, { name: string; nameEn: string; max: number; server?: true }> = {
   hours: { name: 'Godziny gry', nameEn: 'Hours played', max: 100_000 },
   days: { name: 'Dni gry (po co najmniej 10 min)', nameEn: 'Days played (10+ min)', max: 3650 },
   streak: { name: 'Najdłuższa seria dni gry', nameEn: 'Longest daily streak', max: 3650 },
@@ -200,6 +228,10 @@ export const METRICS: Record<Exclude<Group, 'manual'>, { name: string; nameEn: s
   halloween: { name: 'Gra 31 października', nameEn: 'Played on 31 October', max: 1 },
   friday13: { name: 'Gra w piątek 13.', nameEn: 'Played on a Friday the 13th', max: 1 },
   servers: { name: 'Różne serwery', nameEn: 'Different servers', max: 1000 },
+  // `server: true`: the achievement names the server (its address; subdomains count too)
+  server_hours: { name: 'Czas na serwerze (godziny)', nameEn: 'Time on a server (hours)', max: 100_000, server: true },
+  server_days: { name: 'Dni gry na serwerze (po co najmniej 10 min)', nameEn: 'Days played on a server (10+ min)', max: 3650, server: true },
+  server_visit: { name: 'Zagraj na serwerze', nameEn: 'Play on a server', max: 1, server: true },
   friends: { name: 'Znajomi', nameEn: 'Friends', max: 1000 },
   messages: { name: 'Wysłane wiadomości (do 30 dziennie)', nameEn: 'Messages sent (up to 30 a day)', max: 1000 },
   waypoints: { name: 'Punkty wysłane znajomym', nameEn: 'Waypoints sent to friends', max: 100 },
@@ -226,9 +258,9 @@ export const METRICS: Record<Exclude<Group, 'manual'>, { name: string; nameEn: s
 /** What the admin may change in an achievement of this file (kept apart, so "back to default" is deleting it). */
 export interface Override {
   name?: string; nameEn?: string; description?: string; descriptionEn?: string; icon?: string; category?: Category;
-  hidden?: boolean; goal?: number; sparks?: number; reward?: string; enabled?: boolean;
+  hidden?: boolean; goal?: number; sparks?: number; reward?: string; enabled?: boolean; server?: string;
 }
-export const OVERRIDE_KEYS = ['name', 'nameEn', 'description', 'descriptionEn', 'icon', 'category', 'hidden', 'goal', 'sparks', 'reward', 'enabled'] as const;
+export const OVERRIDE_KEYS = ['name', 'nameEn', 'description', 'descriptionEn', 'icon', 'category', 'hidden', 'goal', 'sparks', 'reward', 'enabled', 'server'] as const;
 
 const parse = <T>(json: string): T | undefined => {
   try {
@@ -406,6 +438,34 @@ export function serverKey(address: string | undefined): string | undefined {
   return a && !LOCAL.test(a) && /[a-z0-9]\.[a-z0-9]/.test(a) ? a.slice(0, 260) : undefined;
 }
 
+/** A server an achievement names: a host name (or a public address), with a port only when not 25565. */
+const RULE = /^(?=.{3,253}(:|$))([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(:\d{1,5})?$/;
+/** What the admin typed as an achievement's server, as `serverKey` keeps it ("SkyUp.pl:25565" → "skyup.pl"); undefined when it is not one. */
+export function serverRule(input: unknown): string | undefined {
+  if (typeof input !== 'string') return undefined;
+  const k = serverKey(input.trim().replace(/^[a-z]+:\/\//i, '').replace(/\/.*$/, ''));
+  return k && RULE.test(k) ? k : undefined;
+}
+
+/**
+ * The SQL that picks a server column's rows of a rule: the server itself and its subdomains ("skyup.pl"
+ * also "play.skyup.pl"), on any port unless the rule has one. A rule has no LIKE wildcards (`RULE`).
+ */
+function ruleSql(column: string, rule: string): [string, string[]] {
+  if (rule.includes(':')) return [`(${column} = ? OR ${column} LIKE ?)`, [rule, `%.${rule}`]];
+  return [`(${column} = ? OR ${column} LIKE ? OR ${column} LIKE ? OR ${column} LIKE ?)`, [rule, `${rule}:%`, `%.${rule}`, `%.${rule}:%`]];
+}
+
+/** What a player did on one server (and its subdomains). */
+export interface ServerStats {
+  /** Time there (counted from when it was first recorded, see `play_server_days`). */
+  seconds: number;
+  /** Days with at least 10 minutes there. */
+  days: number;
+  /** 1 when they ever played there (`play_servers`, kept from before the time was). */
+  visited: number;
+}
+
 export interface Stats {
   totalSeconds: number; todaySeconds: number; streak: number; bestStreak: number; servers: number; friends: number; messages: number;
   daysPlayed: number; longestDaySeconds: number; weekends: number; anniversary: number; night: number; newyear: number; halloween: number; friday13: number;
@@ -413,6 +473,8 @@ export interface Stats {
   communityJoined: number; communityFounded: number; communitySize: number;
   waypoints: number; partiesCreated: number; partiesJoined: number; media: number; shares: number; cloud: number;
   sprays: number; worn: number; bought: number; spent: number;
+  /** One server's numbers (`server_*` groups), asked when needed. */
+  onServer: (rule: string) => ServerStats;
 }
 
 /** Counters kept by events (they only grow). */
@@ -431,16 +493,38 @@ CREATE TABLE IF NOT EXISTS play_days (uuid TEXT NOT NULL REFERENCES users(uuid) 
 CREATE TABLE IF NOT EXISTS play_servers (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, server TEXT NOT NULL, first_at INTEGER NOT NULL, PRIMARY KEY (uuid, server));
 CREATE TABLE IF NOT EXISTS achievements (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, id TEXT NOT NULL, unlocked_at INTEGER NOT NULL, PRIMARY KEY (uuid, id));
 CREATE TABLE IF NOT EXISTS achievement_counters (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, key TEXT NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (uuid, key));
+CREATE TABLE IF NOT EXISTS play_server_days (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, server TEXT NOT NULL, day TEXT NOT NULL, seconds INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (uuid, server, day));
 `);
     this.messages = new MessageCounter(sql);
   }
 
-  /** Adds play time to a day, never past the day's cap. */
-  addPlay(uuid: string, day: string, seconds: number) {
+  /** Adds play time to a day, never past the day's cap; returns how much it added (0 once the day is full). */
+  addPlay(uuid: string, day: string, seconds: number): number {
     const s = Math.max(0, Math.min(DAY_CAP_SECONDS, Math.round(seconds)));
-    if (!s) return;
+    if (!s) return 0;
+    const had = (this.sql.prepare('SELECT seconds FROM play_days WHERE uuid = ? AND day = ?').get(uuid, day) as { seconds: number } | undefined)?.seconds ?? 0;
     this.sql.prepare(`INSERT INTO play_days (uuid, day, seconds) VALUES (?, ?, ?)
       ON CONFLICT (uuid, day) DO UPDATE SET seconds = MIN(${DAY_CAP_SECONDS}, seconds + excluded.seconds)`).run(uuid, day, s);
+    return Math.max(0, Math.min(s, DAY_CAP_SECONDS - had));
+  }
+
+  /** Adds time on one server to a day (what `addPlay` credited, so the day's cap holds here too). */
+  addServerPlay(uuid: string, server: string, day: string, seconds: number) {
+    const s = Math.max(0, Math.min(DAY_CAP_SECONDS, Math.round(seconds)));
+    if (!s) return;
+    this.sql.prepare(`INSERT INTO play_server_days (uuid, server, day, seconds) VALUES (?, ?, ?, ?)
+      ON CONFLICT (uuid, server, day) DO UPDATE SET seconds = MIN(${DAY_CAP_SECONDS}, seconds + excluded.seconds)`).run(uuid, server, day, s);
+  }
+
+  /** A player's numbers on one server and its subdomains (`rule`: see `serverRule`). */
+  serverStats(uuid: string, rule: string): ServerStats {
+    const [where, args] = ruleSql('server', rule);
+    const total = this.sql.prepare(`SELECT COALESCE(SUM(seconds), 0) AS n FROM play_server_days WHERE uuid = ? AND ${where}`).get(uuid, ...args) as { n: number };
+    // subdomains of one server on one day count together towards its 10 minutes
+    const days = this.sql.prepare(`SELECT COUNT(*) AS n FROM (SELECT day FROM play_server_days WHERE uuid = ? AND ${where} GROUP BY day HAVING SUM(seconds) >= ?)`)
+      .get(uuid, ...args, DAY_MIN_SECONDS) as { n: number };
+    const visited = this.sql.prepare(`SELECT 1 AS n FROM play_servers WHERE uuid = ? AND ${where} LIMIT 1`).get(uuid, ...args);
+    return { seconds: total.n, days: days.n, visited: visited ? 1 : 0 };
   }
 
   addServer(uuid: string, server: string, at: number) {
@@ -502,6 +586,7 @@ CREATE TABLE IF NOT EXISTS achievement_counters (uuid TEXT NOT NULL REFERENCES u
     const count = (q: string, ...args: (string | number)[]) => this.count(q, ...args);
     const counted = (key: Counter) => Math.max(this.counter(uuid, key), this.live(uuid, key));
     const shop = wallet?.purchases(uuid) ?? { count: 0, spent: 0 };
+    const perServer = new Map<string, ServerStats>();
     return {
       totalSeconds: total.s,
       todaySeconds: todayRow?.seconds ?? 0,
@@ -536,6 +621,11 @@ CREATE TABLE IF NOT EXISTS achievement_counters (uuid TEXT NOT NULL REFERENCES u
       worn: this.worn(uuid),
       bought: shop.count,
       spent: shop.spent,
+      onServer: (rule) => {
+        let v = perServer.get(rule);
+        if (!v) perServer.set(rule, (v = this.serverStats(uuid, rule)));
+        return v;
+      },
     };
   }
 
@@ -612,6 +702,9 @@ export function value(a: Achievement, s: Stats): number {
     case 'worn': return s.worn;
     case 'bought': return s.bought;
     case 'spent': return s.spent;
+    case 'server_hours': return a.server ? Math.floor(s.onServer(a.server).seconds / 360) / 10 : 0;
+    case 'server_days': return a.server ? s.onServer(a.server).days : 0;
+    case 'server_visit': return a.server ? s.onServer(a.server).visited : 0;
     case 'manual': return 0;
   }
 }
@@ -626,7 +719,7 @@ function rewardOf(a: Achievement): { id: string; slot: Slot; name: string } | un
 }
 
 /** Its place among the achievements of its group, by goal (1 = the easiest). */
-const tierOf = (a: Achievement, list: Achievement[]) => (a.group === 'manual' ? 1 : list.filter((x) => x.group === a.group && x.goal < a.goal).length + 1);
+const tierOf = (a: Achievement, list: Achievement[]) => (a.group === 'manual' ? 1 : list.filter((x) => x.group === a.group && x.server === a.server && x.goal < a.goal).length + 1);
 
 /** An achievement's icon: its own, or its group's. */
 export const iconOf = (a: Achievement) => (a.icon && ICONS.includes(a.icon) ? a.icon : DEFAULT_ICONS[a.group] ?? 'fa-trophy');
@@ -642,6 +735,7 @@ export function view(a: Achievement, unlockedAt: number | undefined, s?: Stats, 
     ...(a.hidden ? { hidden: true } : {}),
     ...(a.custom ? { custom: true } : {}),
     ...(a.group === 'manual' ? { manual: true } : {}),
+    ...(a.server && !secret ? { server: a.server } : {}),
     name: secret ? '???' : a.name, nameEn: secret ? '???' : a.nameEn || a.name,
     description: secret ? 'Ukryte osiągnięcie. Odkryj je sam!' : a.description, descriptionEn: secret ? 'A hidden achievement. Find it yourself!' : a.descriptionEn || a.description,
     ...(v === undefined ? {} : { value: v, progress: Math.min(1, v / a.goal) }),
@@ -775,7 +869,9 @@ export function createAchievements(deps: Deps) {
       last.set(userId, { at: now, server, ticks });
       // the first tick only starts the clock: nothing is known about the time before it
       if (!before) continue;
-      store.addPlay(userId, dayOf(now), Math.min(MAX_CREDIT_MS, Math.max(0, now - before.at)) / 1000);
+      const credited = store.addPlay(userId, dayOf(now), Math.min(MAX_CREDIT_MS, Math.max(0, now - before.at)) / 1000);
+      // the time since the last tick goes to the server only when the player was there then too (not singleplayer, not a LAN world)
+      if (server && before.server === server) store.addServerPlay(userId, server, dayOf(now), credited);
       if (server && ticks >= SERVER_MIN_TICKS) store.addServer(userId, server, now);
       if (new Date(now).getUTCHours() < NIGHT_UNTIL_HOUR && !store.counter(userId, 'night')) store.bump(userId, 'night');
       check(userId, now);

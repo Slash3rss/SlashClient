@@ -18,7 +18,7 @@ export const priceTag = (n) => el('span', { class: 'spark-price' }, el('span', {
 
 const CATEGORIES = {
   play: ['Gra', 'fa-gamepad'], streak: ['Serie', 'fa-fire'], social: ['Znajomi', 'fa-user-group'], community: ['Grupy i klany', 'fa-people-group'],
-  explore: ['Serwery', 'fa-compass'], sharing: ['Udostępnianie', 'fa-share-nodes'], style: ['Styl', 'fa-wand-magic-sparkles'], secret: ['Ukryte', 'fa-mask'],
+  explore: ['Serwery', 'fa-compass'], skyup: ['SkyUp.pl', 'fa-cloud-sun'], sharing: ['Udostępnianie', 'fa-share-nodes'], style: ['Styl', 'fa-wand-magic-sparkles'], secret: ['Ukryte', 'fa-mask'],
 };
 
 /**

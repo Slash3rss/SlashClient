@@ -1,7 +1,7 @@
 import type http from 'node:http';
 import type { Db } from './db.ts';
 import {
-  ACHIEVEMENTS, CATEGORIES, ICONS, METRICS, OVERRIDE_KEYS, iconOf,
+  ACHIEVEMENTS, CATEGORIES, ICONS, METRICS, OVERRIDE_KEYS, iconOf, serverRule,
   type Achievement, type Category, type createAchievements, type Group, type Override,
 } from './achievements.ts';
 import { ITEMS, item, supporterLevel } from './cosmetics.ts';
@@ -91,6 +91,11 @@ export function validate(input: Record<string, unknown>, base: Achievement, fail
     if (typeof g !== 'number' || !Number.isSafeInteger(g) || g < 1 || g > max) fail('bad_goal');
     next.goal = g as number;
   }
+  // a metric of one server names it (built-in ones too may move to another address); the others have none
+  if (next.group !== 'manual' && METRICS[next.group].server) {
+    if (input.server !== undefined) next.server = serverRule(input.server) ?? fail('bad_server');
+    if (!next.server) fail('bad_server');
+  } else delete next.server;
   if (!next.name || !next.description) fail('bad_name');
   return next;
 }
@@ -186,6 +191,7 @@ export function achievementsAdminRoutes(deps: Deps): [string, RegExp, Handler][]
       else registry.setOverride(id, diff(builtIn(id)!, next), me);
       db.log(me, 'ach_edit', id, [
         next.goal !== now.goal ? `cel ${now.goal}→${next.goal}` : '',
+        (next.server ?? '') !== (now.server ?? '') ? `serwer ${now.server || '—'}→${next.server || '—'}` : '',
         next.sparks !== now.sparks ? `Iskry ${now.sparks}→${next.sparks}` : '',
         (next.reward ?? '') !== (now.reward ?? '') ? `nagroda ${now.reward || '—'}→${next.reward || '—'}` : '',
         (next.enabled !== false) !== (now.enabled !== false) ? (next.enabled !== false ? 'włączone' : 'wyłączone') : '',
