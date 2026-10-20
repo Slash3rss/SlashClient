@@ -32,7 +32,8 @@ export const KEYS_PER_MEMBER = 4;
 const MAX_BODY = 80_000;
 
 /** What happened, as a message: who did it and to whom (names as they were then), or the new name. */
-export interface GroupEvent { kind: 'created' | 'added' | 'removed' | 'left' | 'renamed' | 'joined'; by: string; users?: string[]; name?: string }
+/** A clan chat also says who was made an officer (promoted), a member again (demoted), who got the clan (owner) or took it over when the owner's account went (heir). */
+export interface GroupEvent { kind: 'created' | 'added' | 'removed' | 'left' | 'renamed' | 'joined' | 'promoted' | 'demoted' | 'owner' | 'heir'; by: string; users?: string[]; name?: string }
 export interface GroupMessage { id: number; group: string; from: string; text: string; at: number; event?: GroupEvent }
 export interface GroupMember extends Person { joinedAt: number }
 export interface GroupView {
@@ -166,6 +167,12 @@ interface Deps {
   fail: (status: number, code: string) => never;
   /** A clan chat's tag (clans.ts), for the list. */
   clanTag?: (clanId: string) => string | undefined;
+  /** Pictures in the chat (chatImages.ts), checked and attached like in direct messages. */
+  images?: () => {
+    forMessage: (from: string, to: string, image: unknown) => { id: string; key: string; size: number } | undefined;
+    attach: (image: { id: string; key: string; size: number }, messageId: number) => void;
+    decorate: <M extends { id: number }>(messages: M[], group?: string) => M[];
+  };
 }
 
 export function createGroups(deps: Deps) {
@@ -290,19 +297,24 @@ export function createGroups(deps: Deps) {
       groupOf(me, id);
       const before = Number(url.searchParams.get('before')) || undefined;
       const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 50));
-      return { messages: store.messages(id, me, limit, before) };
+      const messages = store.messages(id, me, limit, before);
+      return { messages: deps.images ? deps.images().decorate(messages, id) : messages };
     }],
     ['POST', /^\/v1\/groups\/([\w-]{1,32})\/messages$/, async (req, [id]) => {
       const me = authed(req);
       groupOf(me, id);
       deps.limitMessages(me);
-      const { text } = await body(req);
+      const { text, image } = await body(req);
       if (typeof text !== 'string' || !text.trim()) fail(400, 'empty');
       const t = text as string;
       const encrypted = t.startsWith('e2e1:');
       if (t.length > (encrypted ? MAX_ENCRYPTED : MAX_MESSAGE)) fail(400, 'too_long');
       if (encrypted && !/^e2e1:[A-Za-z0-9+/=]+$/.test(t)) fail(400, 'bad_request');
-      const message = store.addMessage(id, me, t.trim());
+      // a picture uploaded for this group by the sender (its key, encrypted for the members, in the message)
+      const picture = image === undefined ? undefined : deps.images ? deps.images().forMessage(me, `g:${id}`, image) : fail(400, 'bad_image');
+      const added = store.addMessage(id, me, t.trim());
+      if (picture) deps.images!().attach(picture, added.id);
+      const message = picture ? { ...added, image: picture } : added;
       post(id, message);
       return { message };
     }],
@@ -402,6 +414,10 @@ export function createGroups(deps: Deps) {
         changed(id);
       },
       setOwner: (id: string, owner: string) => store.setOwner(id, owner),
+      /** A line from the system in the clan's chat (a role changed). */
+      note: (id: string, by: string, e: Omit<GroupEvent, 'by'>) => {
+        if (store.group(id)) event(id, by, e);
+      },
       remove: (id: string) => {
         const members = store.memberIds(id);
         store.remove(id);

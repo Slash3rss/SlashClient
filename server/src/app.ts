@@ -493,6 +493,7 @@ export function createApp(cfg: Config) {
   const groups = createGroups({
     db, authed, push, limitMessages, limitChanges: limitGroupChanges,
     clanTag: (clanId) => clans.tagOfClan(clanId),
+    images: () => images,
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -514,7 +515,7 @@ export function createApp(cfg: Config) {
     },
   });
   const images = chatImageRoutes({
-    sql: db.sql, authed, areFriends: (a, b) => db.areFriends(a, b), dir: cfg.imagesDir ?? path.join(path.dirname(cfg.dbFile), 'chat-images'),
+    sql: db.sql, authed, areFriends: (a, b) => db.areFriends(a, b), isGroupMember: (group, uuid) => groups.store.isMember(group, uuid), dir: cfg.imagesDir ?? path.join(path.dirname(cfg.dbFile), 'chat-images'),
     limits: cfg.imageLimits, limitUploads: rateLimiter(10), limitDownloads: rateLimiter(120),
     fail: (status, code) => {
       throw new HttpError(status, code);

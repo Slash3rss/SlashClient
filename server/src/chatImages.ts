@@ -6,11 +6,12 @@ import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 
 /**
- * Pictures in the chat with friends (a screenshot sent from the game). The launcher encrypts the
- * picture with a fresh key before it leaves the computer and uploads only that blob; the key
- * travels inside the message, encrypted for the friend's launchers like any text. So this server
- * keeps bytes it cannot read, gives them only to the sender and the friend, and drops them after
- * a while. Files live in their own folder next to the database.
+ * Pictures in the chat with friends and in group (and clan) chats (a screenshot sent from the game).
+ * The launcher encrypts the picture with a fresh key before it leaves the computer and uploads only
+ * that blob; the key travels inside the message, encrypted for the friend's (or the members')
+ * launchers like any text. So this server keeps bytes it cannot read, gives them only to the sender
+ * and the friend (or the group's members), and drops them after a while. A group's picture has the
+ * recipient "g:<group id>". Files live in their own folder next to the database.
  */
 
 export interface ImageLimits {
@@ -41,6 +42,8 @@ export interface ImageContext {
   limits?: Partial<ImageLimits>;
   authed: (req: http.IncomingMessage) => string;
   areFriends: (a: string, b: string) => boolean;
+  /** Whether someone is in a group chat now (groups.ts): they may send it pictures and see its pictures. */
+  isGroupMember?: (group: string, uuid: string) => boolean;
   /** Throw (429) when this caller did it too often lately. */
   limitUploads: (key: string) => void;
   limitDownloads: (key: string) => void;
@@ -75,35 +78,49 @@ CREATE INDEX IF NOT EXISTS chat_images_message ON chat_images (message_id);`);
     return Buffer.concat(chunks);
   }
 
+  /** Stores one encrypted picture for a friend or a group ("g:<id>"); the message that carries its key comes next. */
+  async function upload(req: http.IncomingMessage, me: string, recipient: string) {
+    try {
+      ctx.limitUploads(`image:${me}`);
+    } catch (err) {
+      req.resume();
+      throw err;
+    }
+    const since = Date.now() - 86_400_000;
+    const today = sql.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS bytes FROM chat_images WHERE owner = ? AND created_at > ?').get(me, since) as { n: number; bytes: number };
+    if (today.n >= limits.perDay) {
+      req.resume();
+      ctx.fail(429, 'image_quota');
+    }
+    const data = await readBlob(req);
+    if (data.length < MIN_BYTES) ctx.fail(400, 'bad_request');
+    if (today.bytes + data.length > limits.bytesPerDay) ctx.fail(429, 'image_quota');
+    const id = randomBytes(16).toString('base64url');
+    // written aside and moved in, so a half-written file is never served
+    await writeFile(`${fileOf(id)}.part`, data);
+    await rename(`${fileOf(id)}.part`, fileOf(id));
+    sql.prepare('INSERT INTO chat_images (id, owner, recipient, size, created_at) VALUES (?, ?, ?, ?, ?)').run(id, me, recipient, data.length, Date.now());
+    return { id, size: data.length };
+  }
+
   const routes: [string, RegExp, Handler][] = [
-    // the encrypted picture for one friend (raw bytes); the message that carries its key comes next
+    // the encrypted picture for one friend (raw bytes)
     ['POST', /^\/v1\/images\/([\w-]+)$/, async (req, [other]) => {
       const me = ctx.authed(req);
       if (!ctx.areFriends(me, other)) {
         req.resume();
         ctx.fail(403, 'not_friends');
       }
-      try {
-        ctx.limitUploads(`image:${me}`);
-      } catch (err) {
+      return upload(req, me, other);
+    }],
+    // the same for a group chat, by one of its members
+    ['POST', /^\/v1\/groups\/([\w-]{1,32})\/images$/, async (req, [group]) => {
+      const me = ctx.authed(req);
+      if (!ctx.isGroupMember?.(group, me)) {
         req.resume();
-        throw err;
+        ctx.fail(404, 'not_found');
       }
-      const since = Date.now() - 86_400_000;
-      const today = sql.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS bytes FROM chat_images WHERE owner = ? AND created_at > ?').get(me, since) as { n: number; bytes: number };
-      if (today.n >= limits.perDay) {
-        req.resume();
-        ctx.fail(429, 'image_quota');
-      }
-      const data = await readBlob(req);
-      if (data.length < MIN_BYTES) ctx.fail(400, 'bad_request');
-      if (today.bytes + data.length > limits.bytesPerDay) ctx.fail(429, 'image_quota');
-      const id = randomBytes(16).toString('base64url');
-      // written aside and moved in, so a half-written file is never served
-      await writeFile(`${fileOf(id)}.part`, data);
-      await rename(`${fileOf(id)}.part`, fileOf(id));
-      sql.prepare('INSERT INTO chat_images (id, owner, recipient, size, created_at) VALUES (?, ?, ?, ?, ?)').run(id, me, other, data.length, Date.now());
-      return { id, size: data.length };
+      return upload(req, me, `g:${group}`);
     }],
   ];
 
@@ -126,11 +143,16 @@ CREATE INDEX IF NOT EXISTS chat_images_message ON chat_images (message_id);`);
     sql.prepare('UPDATE chat_images SET message_id = ?, key = ? WHERE id = ?').run(messageId, image.key, image.id);
   }
 
-  /** Messages as the conversation lists them, each with its picture while it is kept (after that only the caption is left). */
-  function decorate<M extends { id: number }>(messages: M[]): (M & { image?: ChatImage })[] {
+  /**
+   * Messages as the conversation lists them, each with its picture while it is kept (after that only
+   * the caption is left). Direct and group messages count their ids apart: `group` says which.
+   */
+  function decorate<M extends { id: number }>(messages: M[], group?: string): (M & { image?: ChatImage })[] {
     if (!messages.length) return messages;
     const ids = messages.map((m) => m.id);
-    const rows = sql.prepare(`SELECT id, size, message_id, key FROM chat_images WHERE message_id IN (${ids.map(() => '?').join(',')})`).all(...ids) as unknown as Row[];
+    const whose = group ? 'recipient = ?' : "recipient NOT LIKE 'g:%'";
+    const rows = sql.prepare(`SELECT id, size, message_id, key FROM chat_images WHERE ${whose} AND message_id IN (${ids.map(() => '?').join(',')})`)
+      .all(...(group ? [`g:${group}`] : []), ...ids) as unknown as Row[];
     const byMessage = new Map(rows.map((r) => [r.message_id, r]));
     return messages.map((m) => {
       const r = byMessage.get(m.id);
@@ -138,7 +160,7 @@ CREATE INDEX IF NOT EXISTS chat_images_message ON chat_images (message_id);`);
     });
   }
 
-  /** GET /v1/images/<id>: the encrypted bytes, only to the sender and the friend. True when the request was this. */
+  /** GET /v1/images/<id>: the encrypted bytes, only to the sender and the friend (or the group's members). True when the request was this. */
   async function serve(req: http.IncomingMessage, res: http.ServerResponse, url: URL): Promise<boolean> {
     const m = /^\/v1\/images\/([\w-]+)$/.exec(url.pathname);
     if (req.method !== 'GET' || !m) return false;
@@ -156,7 +178,8 @@ CREATE INDEX IF NOT EXISTS chat_images_message ON chat_images (message_id);`);
       return answer(e.status ?? 401, e.code ?? 'unauthorized');
     }
     const r = ID.test(m[1]) ? row(m[1]) : undefined;
-    const size = r && (r.owner === me || r.recipient === me) ? await stat(fileOf(r.id)).then((s) => s.size, () => undefined) : undefined;
+    const allowed = r && (r.owner === me || r.recipient === me || (r.recipient.startsWith('g:') && !!ctx.isGroupMember?.(r.recipient.slice(2), me)));
+    const size = r && allowed ? await stat(fileOf(r.id)).then((s) => s.size, () => undefined) : undefined;
     if (!r || size === undefined) return answer(404, 'not_found');
     res.writeHead(200, {
       'Content-Type': 'application/octet-stream',

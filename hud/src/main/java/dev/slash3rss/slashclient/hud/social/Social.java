@@ -255,11 +255,16 @@ public final class Social {
 	private static Message messageFrom(JsonObject o) {
 		JsonObject inv = o.has("invite") && o.get("invite").isJsonObject() ? o.getAsJsonObject("invite") : null;
 		JsonObject wp = o.has("waypoint") && o.get("waypoint").isJsonObject() ? o.getAsJsonObject("waypoint") : null;
-		JsonObject img = o.has("image") && o.get("image").isJsonObject() ? o.getAsJsonObject("image") : null;
-		Image image = img == null || str(img, "id").isEmpty() ? null : new Image(str(img, "id"), num(img, "w"), num(img, "h"), img.has("unreadable") && img.get("unreadable").getAsBoolean());
+		Image image = imageFrom(o);
 		return new Message(o.get("id").getAsLong(), str(o, "from"), str(o, "to"), str(o, "text"), o.get("at").getAsLong(),
 			o.has("readAt") && !o.get("readAt").isJsonNull(), inv == null ? "" : str(inv, "server"), inv == null ? "" : str(inv, "version"),
 			inv == null ? "" : str(inv, "party"), wp == null ? null : SharedWaypoints.Shared.from(wp), image);
+	}
+
+	/** A message's picture (direct or group), as the launcher opened it; null when it has none. */
+	static Image imageFrom(JsonObject o) {
+		JsonObject img = o.has("image") && o.get("image").isJsonObject() ? o.getAsJsonObject("image") : null;
+		return img == null || str(img, "id").isEmpty() ? null : new Image(str(img, "id"), num(img, "w"), num(img, "h"), img.has("unreadable") && img.get("unreadable").getAsBoolean());
 	}
 
 	private static int num(JsonObject o, String key) {
@@ -467,13 +472,27 @@ public final class Social {
 	 * encrypts it and sends it; the message shows when the server confirms it.
 	 */
 	public static void sendImage(String friendId, java.io.File png, Runnable sent) {
+		sendImage(friendId, null, png, sent);
+	}
+
+	/** The same to a group (or the clan's) chat: the launcher encrypts it for the members. */
+	public static void sendGroupImage(String groupId, java.io.File png) {
+		sendImage(null, groupId, png, null);
+	}
+
+	private static void sendImage(String friendId, String groupId, java.io.File png, Runnable sent) {
 		JsonObject body = new JsonObject();
-		body.addProperty("friend", friendId);
+		if (groupId != null) body.addProperty("group", groupId);
+		else body.addProperty("friend", friendId);
 		body.addProperty("path", png.getAbsolutePath());
 		Thread.ofVirtual().start(() -> {
 			try {
 				if (!bridged()) throw new IllegalStateException("no launcher");
 				JsonObject res = request("POST", "/chat/image", body, 60);
+				if (groupId != null) {
+					Groups.added(Groups.messageFrom(res.getAsJsonObject("message")));
+					return;
+				}
 				Message m = messageFrom(res.getAsJsonObject("message"));
 				List<Message> chat = chats.computeIfAbsent(friendId, k -> new CopyOnWriteArrayList<>());
 				if (chat.stream().noneMatch(x -> x.id() == m.id())) chat.add(m);

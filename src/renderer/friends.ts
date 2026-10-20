@@ -149,6 +149,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   /** Group chats and the clan (groups.ts): their rows in the list, and their conversation in the chat panel. */
   const groups = createGroups({
     api, toast: deps.toast, errorText: deps.errorText, avatar: (p, presence) => avatar(p, presence as Presence | undefined), visible: isVisible,
+    imageCard: (image, mine) => imageCard(image, mine),
     me: () => state?.user?.id,
     friends: () => list.friends.map((f) => ({ id: f.id, name: f.name, online: f.presence.status !== 'offline' })),
     changed: () => {
@@ -634,6 +635,12 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   /** A picture file to the open chat: the launcher scales it, encrypts it and sends it. */
   async function sendPicture(btn: HTMLButtonElement) {
+    if (groups.active()) {
+      btn.disabled = true;
+      await groups.sendPicture();
+      btn.disabled = false;
+      return;
+    }
     const id = selected;
     if (!id) return;
     btn.disabled = true;
@@ -753,8 +760,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   }
 
   /** A picture: decrypted by the launcher on first sight, bigger on click. */
-  function imageCard(m: Message, mine: boolean): HTMLElement {
-    const image = m.image!;
+  function imageCard(image: ChatImage, mine: boolean): HTMLElement {
     const card = el('div', { className: `fr-bubble fr-image${mine ? ' mine' : ''}` });
     if (image.unreadable) {
       card.append(icon('fa-image'), el('span', { textContent: t('Obraz zaszyfrowany dla innego urządzenia.') }));
@@ -837,7 +843,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       // messages sent close together stick to each other
       const grouped = m.from === lastFrom && m.at - lastAt < 5 * 60_000;
       nodes.push(el('div', { className: `fr-msg${m.from === me ? ' mine' : ''}${grouped ? ' grouped' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
-        m.invite ? inviteCard(m, m.from === me) : m.waypoint ? waypointCard(m.waypoint, m.from === me, deps.toast) : m.image ? imageCard(m, m.from === me) : bubble(m),
+        m.invite ? inviteCard(m, m.from === me) : m.waypoint ? waypointCard(m.waypoint, m.from === me, deps.toast) : m.image ? imageCard(m.image, m.from === me) : bubble(m),
         grouped ? '' : el('small', { className: 'fr-time', textContent: time.format(m.at) })));
       if (m === lastMineRead) nodes.push(el('small', { className: 'fr-read', textContent: t('Przeczytano') }));
       lastDay = d;

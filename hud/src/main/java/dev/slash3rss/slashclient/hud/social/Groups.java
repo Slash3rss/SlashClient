@@ -38,7 +38,8 @@ public final class Groups {
 		}
 	}
 	/** `event`: a line about the group (someone joined, it was renamed…) instead of a message from someone. */
-	public record Message(long id, String group, String from, String text, long at, String event) {}
+	/** `image`: a picture sent to the group (null for text and events). */
+	public record Message(long id, String group, String from, String text, long at, String event, Social.Image image) {}
 	public record ClanMember(String id, String name, String role, boolean online) {}
 	public record Clan(String id, String tag, String name, String role, String chat, List<ClanMember> members) {
 		public long online() {
@@ -86,9 +87,9 @@ public final class Groups {
 			o.has("unread") ? o.get("unread").getAsInt() : 0, o.has("lastMessageAt") ? o.get("lastMessageAt").getAsLong() : 0);
 	}
 
-	private static Message messageFrom(JsonObject o) {
+	static Message messageFrom(JsonObject o) {
 		JsonObject e = o.has("event") && o.get("event").isJsonObject() ? o.getAsJsonObject("event") : null;
-		return new Message(o.get("id").getAsLong(), Social.str(o, "group"), Social.str(o, "from"), Social.str(o, "text"), o.get("at").getAsLong(), e == null ? "" : eventText(e));
+		return new Message(o.get("id").getAsLong(), Social.str(o, "group"), Social.str(o, "from"), Social.str(o, "text"), o.get("at").getAsLong(), e == null ? "" : eventText(e), Social.imageFrom(o));
 	}
 
 	/** What happened, in the game's language: "Ala added Bob, Cyr". */
@@ -97,7 +98,7 @@ public final class Groups {
 		if (e.has("users") && e.get("users").isJsonArray()) for (JsonElement u : e.getAsJsonArray("users")) users.add(u.getAsString());
 		String kind = Social.str(e, "kind");
 		String key = switch (kind) {
-			case "created", "added", "removed", "left", "joined", "renamed" -> "slashclient-hud.groups.event." + kind;
+			case "created", "added", "removed", "left", "joined", "renamed", "promoted", "demoted", "owner", "heir" -> "slashclient-hud.groups.event." + kind;
 			default -> "slashclient-hud.groups.event.other";
 		};
 		String detail = "renamed".equals(kind) || "created".equals(kind) ? Social.str(e, "name") : String.join(", ", users);
@@ -186,6 +187,13 @@ public final class Groups {
 	public static String title(Group g) {
 		Clan c = clan;
 		return g.clan() ? "[" + g.clanTag() + "] " + (c != null && c.chat().equals(g.id()) ? c.name() : g.name().replaceFirst("^\\[[^]]*] ", "")) : g.name();
+	}
+
+	/** A message of our own the server took (a picture sent through the launcher). */
+	static void added(Message m) {
+		List<Message> chat = chats.computeIfAbsent(m.group(), k -> new CopyOnWriteArrayList<>());
+		if (chat.stream().noneMatch(x -> x.id() == m.id())) chat.add(m);
+		bump(m.group(), 0, m.at());
 	}
 
 	private static void bump(String id, int unread, long at) {
@@ -324,16 +332,17 @@ public final class Groups {
 		created.addProperty("by", "Ty");
 		created.addProperty("name", "Ekipa na SkyUp");
 		chats.put("ekipa", new CopyOnWriteArrayList<>(List.of(
-			new Message(1, "ekipa", me, "", now - 600_000, eventText(created)),
-			new Message(2, "ekipa", "ola", "Siema! Ktoś ma wolny wieczór?", now - 300_000, ""),
-			new Message(3, "ekipa", "kumpel", "Ja wbijam koło 19, robimy wyspę od nowa", now - 200_000, ""),
-			new Message(4, "ekipa", me, "No to jesteśmy umówieni", now - 30_000, ""))));
+			new Message(1, "ekipa", me, "", now - 600_000, eventText(created), null),
+			new Message(2, "ekipa", "ola", "Siema! Ktoś ma wolny wieczór?", now - 300_000, "", null),
+			new Message(3, "ekipa", "kumpel", "Ja wbijam koło 19, robimy wyspę od nowa", now - 200_000, "", null),
+			new Message(5, "ekipa", "kumpel", "[Zrzut ekranu]", now - 150_000, "", new Social.Image("pic-theirs-0000000000", 1920, 1080, false)),
+			new Message(4, "ekipa", me, "No to jesteśmy umówieni", now - 30_000, "", null))));
 		JsonObject joined = new JsonObject();
 		joined.addProperty("kind", "joined");
 		joined.addProperty("by", "Ola");
 		chats.put("clanchat", new CopyOnWriteArrayList<>(List.of(
-			new Message(1, "clanchat", "ola", "", now - 900_000, eventText(joined)),
-			new Message(2, "clanchat", "kasia", "Kto dziś na wojnę klanów o 20?", now - 120_000, ""),
-			new Message(3, "clanchat", "bartek", "Ja będę, biorę łuk", now - 60_000, ""))));
+			new Message(1, "clanchat", "ola", "", now - 900_000, eventText(joined), null),
+			new Message(2, "clanchat", "kasia", "Kto dziś na wojnę klanów o 20?", now - 120_000, "", null),
+			new Message(3, "clanchat", "bartek", "Ja będę, biorę łuk", now - 60_000, "", null))));
 	}
 }

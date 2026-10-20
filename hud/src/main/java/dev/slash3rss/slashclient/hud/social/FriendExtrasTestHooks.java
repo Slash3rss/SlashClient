@@ -29,6 +29,11 @@ public final class FriendExtrasTestHooks {
 			new Social.Message(3, "me", FRIEND, "[Zrzut ekranu]", now - 60_000, true, "", "", "", null, new Social.Image("pic-mine-00000000000a", 1280, 1024, false)),
 			new Social.Message(4, FRIEND, "me", "[Zrzut ekranu]", now - 30_000, true, "", "", "", null, new Social.Image("pic-other-device-0000", 800, 600, true)));
 		Social.sampleForTest(f, chat, "me");
+		pictures();
+	}
+
+	/** The made-up pictures those messages (and the group chat's sample) show. */
+	public static void pictures() throws Exception {
 		ChatImages.sampleForTest("pic-theirs-0000000000", png(480, 270, new Color(0x2563EB), new Color(0x22C55E), "Baza"));
 		ChatImages.sampleForTest("pic-mine-00000000000a", png(320, 256, new Color(0xF97316), new Color(0x7C3AED), "Nether"));
 	}

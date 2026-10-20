@@ -167,6 +167,19 @@ describe('clan permissions', () => {
     assert.equal((await call('POST', `/v1/clans/${id}/accept`, outsider.token)).status, 404);
   });
 
+  it('says in the clan chat who was promoted, demoted and handed the clan', async () => {
+    const { owner, officer, member } = await clanOf('Note', 'NOTE');
+    const chat = (await call('GET', '/v1/clans/mine', owner.token)).body.clan.chat as string;
+    assert.equal((await call('POST', `/v1/clans/members/${member.user.id}/role`, owner.token, { role: 'officer' })).status, 200);
+    assert.equal((await call('POST', `/v1/clans/members/${member.user.id}/role`, owner.token, { role: 'member' })).status, 200);
+    // the same role again is no news
+    assert.equal((await call('POST', `/v1/clans/members/${member.user.id}/role`, owner.token, { role: 'member' })).status, 200);
+    assert.equal((await call('POST', '/v1/clans/owner', owner.token, { user: officer.user.id })).status, 200);
+    const events = (await call('GET', `/v1/groups/${chat}/messages`, member.token)).body.messages.map((m: any) => m.event).filter(Boolean);
+    const roles = events.filter((e: any) => ['promoted', 'demoted', 'owner'].includes(e.kind)).map((e: any) => `${e.kind}:${e.by}:${e.users.join(',')}`);
+    assert.deepEqual(roles, [`promoted:NoteOwn:NoteOff`, `promoted:NoteOwn:NoteMem`, `demoted:NoteOwn:NoteMem`, `owner:NoteOwn:NoteOff`]);
+  });
+
   it('joins only by invite, keeps the clan chat in step and shows who is online', async () => {
     const { id, owner, member } = await clanOf('Chat', 'CHAT');
     const stranger = await login('ChatStr');

@@ -213,7 +213,10 @@ export function createClans(deps: Deps) {
       const next = members.find((m) => m.role === 'officer') ?? members[0];
       store.setRole(next.uuid, 'owner');
       store.setOwner(id, next.uuid);
-      if (c.chat) groups.clanChat.setOwner(c.chat, next.uuid);
+      if (c.chat) {
+        groups.clanChat.setOwner(c.chat, next.uuid);
+        groups.clanChat.note(c.chat, next.uuid, { kind: 'heir' });
+      }
       return store.clan(id);
     }
     return c;
@@ -383,6 +386,8 @@ export function createClans(deps: Deps) {
       if (!target) fail(404, 'not_found');
       if (!may(role, 'setRole', target)) fail(403, 'not_allowed');
       store.setRole(user, wanted as ClanRole);
+      // the clan's chat says so, when it is a change
+      if (clan.chat && target !== wanted) groups.clanChat.note(clan.chat, me, { kind: wanted === 'officer' ? 'promoted' : 'demoted', users: [db.user(user)?.name || '?'] });
       changed(clan);
       return answer(me);
     }],
@@ -397,7 +402,10 @@ export function createClans(deps: Deps) {
       store.setRole(user as string, 'owner');
       store.setRole(me, 'officer');
       store.setOwner(clan.id, user as string);
-      if (clan.chat) groups.clanChat.setOwner(clan.chat, user as string);
+      if (clan.chat) {
+        groups.clanChat.setOwner(clan.chat, user as string);
+        groups.clanChat.note(clan.chat, me, { kind: 'owner', users: [db.user(user as string)?.name || '?'] });
+      }
       changed(clan);
       return answer(me);
     }],
