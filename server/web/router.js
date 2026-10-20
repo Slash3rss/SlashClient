@@ -5,7 +5,7 @@
 // A page's script may have left timers, animation loops and listeners on window or document behind:
 // they belong to the page they were made on and stop when it is left.
 
-const PAGE = /^\/(|konto|account|zgloszenia(\/\d+)?|bugs(\/\d+)?|logi\/[A-Za-z0-9]{10}|logs\/[A-Za-z0-9]{10})\/?$/;
+const PAGE = /^\/(|en|konto|account|zgloszenia(\/\d+)?|bugs(\/\d+)?|logi\/[A-Za-z0-9]{10}|logs\/[A-Za-z0-9]{10})\/?$/;
 const ROUTER = new URL(import.meta.url).pathname;
 
 const native = {
@@ -91,6 +91,8 @@ export async function go(href, { push = true } = {}) {
   if (push) history.pushState(null, '', url.href);
   shown = url.pathname + url.search;
   document.title = next.title;
+  // the home page is Polish at / and English at /en
+  document.documentElement.lang = next.documentElement.lang || 'pl';
   // what the page says about itself (description, canonical address, link previews) goes with it
   const META = 'meta[name="description"], meta[name="robots"], meta[name="keywords"], link[rel="canonical"], meta[property^="og:"], meta[name^="twitter:"]';
   document.head.querySelectorAll(META).forEach((m) => m.remove());

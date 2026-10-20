@@ -11,7 +11,7 @@ const UI = {
     unofficial: 'SlashClient · nie jest powiązany z Mojang ani Microsoft.', locale: 'pl-PL',
   },
   en: {
-    nav: [['/#funkcje', 'Features'], ['/#kosmetyki', 'Cosmetics'], ['/#faq', 'FAQ'], ['/bugs', 'Bug reports'], ['/support', 'Support us']],
+    nav: [['/en#funkcje', 'Features'], ['/en#kosmetyki', 'Cosmetics'], ['/en#faq', 'FAQ'], ['/bugs', 'Bug reports'], ['/support', 'Support us']],
     other: 'Polski', toc: 'Contents', updated: 'Last updated:', print: 'Print', home: 'Home',
     draft: 'Draft — to be reviewed by a lawyer before it is published as binding. Parts marked [UZUPEŁNIJ: …] (to be filled in) are completed by the owner of the service. The Polish version prevails.',
     unofficial: 'SlashClient · not affiliated with Mojang or Microsoft.', locale: 'en-GB',
@@ -89,7 +89,7 @@ ${o.rendered.html}
     <div class="wrap foot-row">
       <span class="muted small">${u.unofficial}</span>
       ${footer}
-      <a class="foot-link" href="/">${u.home}</a>
+      <a class="foot-link" href="${o.lang === 'en' ? '/en' : '/'}">${u.home}</a>
     </div>
   </footer>
 </body>

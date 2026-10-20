@@ -3,9 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!--home:head-->
   <title>SlashClient – Launcher Minecraft z HUD-em i znajomymi</title>
   <meta name="description" content="Darmowy launcher Minecraft z własnym HUD-em, znajomymi, kosmetykami, benchmarkiem FPS i klipami. Windows, macOS i Linux.">
   <link rel="canonical" href="https://client.slash3rss.dev/">
+  <link rel="alternate" hreflang="pl" href="https://client.slash3rss.dev/">
+  <link rel="alternate" hreflang="en" href="https://client.slash3rss.dev/en">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="SlashClient">
   <meta property="og:locale" content="pl_PL">
@@ -38,11 +41,18 @@
     "applicationCategory": "GameApplication",
     "operatingSystem": "Windows, macOS, Linux",
     "inLanguage": "pl",
-    "author": { "@type": "Person", "name": "Slash3rss" },
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "PLN" }
+    "author": {
+      "@type": "Person",
+      "name": "Slash3rss"
+    },
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "PLN"
+    }
   }
   </script>
-  <meta name="theme-color" content="#07090f">
+  <!--/home:head--><meta name="theme-color" content="#07090f">
   <link rel="icon" href="vendor/logo.png">
   <link rel="stylesheet" href="vendor/fa/css/all.min.css">
   <link rel="stylesheet" href="style.css">
@@ -52,11 +62,15 @@
   <script type="module" src="home.js"></script>
 </head>
 <body class="landing">
+  <!-- The parts between the home:… marks are made by the server from the content edited in the admin
+       panel's "Strona główna" (src/home/page.ts makes them, src/home/content.ts has the defaults written
+       here). The look stays in this file; the words, links and pictures come from the panel. -->
   <div class="bg" aria-hidden="true"><div class="bg-grid"></div><div class="bg-glow g1"></div><div class="bg-glow g2"></div></div>
 
   <header class="nav" id="nav">
     <div class="wrap">
       <a class="brand" href="/"><img src="vendor/logo.png" alt=""><span>Slash<b>Client</b></span></a>
+      <!--home:nav-->
       <nav class="nav-links">
         <a href="#funkcje">Funkcje</a>
         <a href="#hud">HUD</a>
@@ -70,18 +84,18 @@
         <a class="btn" id="nav-account" href="/konto" title="Twoje konto"><i class="fa-solid fa-user"></i> <span class="label">Zaloguj się</span></a>
         <a class="btn primary" href="#pobierz"><i class="fa-solid fa-download"></i> <span class="label">Pobierz</span></a>
       </div>
-    </div>
+      <!--/home:nav--></div>
   </header>
 
   <main>
-    <!-- hero -->
+    <!--home:hero-->
     <section class="hero2">
       <div class="wrap center">
         <a class="pill" href="#kosmetyki"><span class="dot"></span> Nowość: peleryny, emotki i klipy <i class="fa-solid fa-arrow-right"></i></a>
         <h1>Minecraft, tylko <span class="grad">lepiej</span>.</h1>
         <p class="lead">Darmowy launcher Minecraft z własnym HUD-em, znajomymi, pelerynami, benchmarkiem FPS i klipami. Bez szukania i instalowania modów.</p>
         <div class="cta">
-          <a class="btn primary huge glow" id="download-main" href="/pobierz/windows"><i class="fa-brands fa-windows" id="os-icon"></i> <span id="os-label">Pobierz dla Windows</span></a>
+          <a class="btn primary huge glow" id="download-main" href="/pobierz/windows" data-label="Pobierz dla {os}" data-other="Inne systemy:" data-phone="SlashClient działa na komputerze" data-phone-note="Otwórz tę stronę na komputerze z Windows, macOS lub Linuksem, żeby pobrać launcher." data-path="/pobierz/"><i class="fa-brands fa-windows" id="os-icon"></i> <span id="os-label">Pobierz dla Windows</span></a>
           <a class="btn huge ghost" href="#funkcje"><i class="fa-solid fa-play"></i> Zobacz, co potrafi</a>
         </div>
         <p class="download-note" id="download-note"></p>
@@ -90,12 +104,11 @@
         <div class="float-cape fc1 cape" data-cape="galaxy" aria-hidden="true"></div>
         <div class="float-cape fc2 cape" data-cape="ember" aria-hidden="true"></div>
         <figure class="hero-shot" id="hero-shot">
-          <img src="img/hero-menu.jpg" alt="Menu główne SlashClient w grze" width="1600" height="900">
+          <img src="/img/hero-menu.jpg" alt="Menu główne SlashClient w grze" width="1600" height="900">
         </figure>
       </div>
     </section>
-
-    <!-- showcase -->
+    <!--/home:hero--><!--home:showcase-->
     <section id="funkcje">
       <div class="wrap">
         <div class="head center reveal">
@@ -114,8 +127,8 @@
             </ul>
           </div>
           <div class="show-media stack">
-            <img class="frame" src="img/hud-game.jpg" alt="HUD SlashClient w grze" loading="lazy">
-            <img class="frame small" src="img/hud-editor.jpg" alt="Edytor HUD" loading="lazy">
+            <img class="frame" src="/img/hud-game.jpg" alt="HUD SlashClient w grze" loading="lazy">
+            <img class="frame small" src="/img/hud-editor.jpg" alt="Edytor HUD" loading="lazy">
           </div>
         </div>
 
@@ -131,8 +144,8 @@
             </ul>
           </div>
           <div class="show-media stack">
-            <img class="frame" src="img/friends-launcher.jpg" alt="Znajomi i zaproszenia w launcherze" loading="lazy">
-            <img class="frame small" src="img/friends-game.jpg" alt="Zaproszenie w grze" loading="lazy">
+            <img class="frame" src="/img/friends-launcher.jpg" alt="Znajomi i zaproszenia w launcherze" loading="lazy">
+            <img class="frame small" src="/img/friends-game.jpg" alt="Zaproszenie w grze" loading="lazy">
           </div>
         </div>
 
@@ -161,8 +174,8 @@
             </ul>
           </div>
           <div class="show-media stack">
-            <img class="frame" src="img/bench-launcher.jpg" alt="Porady po benchmarku w launcherze" loading="lazy">
-            <img class="frame small" src="img/bench-game.jpg" alt="Wynik benchmarku w grze" loading="lazy">
+            <img class="frame" src="/img/bench-launcher.jpg" alt="Porady po benchmarku w launcherze" loading="lazy">
+            <img class="frame small" src="/img/bench-game.jpg" alt="Wynik benchmarku w grze" loading="lazy">
           </div>
         </div>
 
@@ -173,49 +186,63 @@
             <p>F8 zapisuje ostatnie 10–60 sekund gry jako film, bez OBS-a. Klipy są w launcherze, w zakładce profilu.</p>
           </div>
           <div class="show-media">
-            <img class="frame" src="img/clips-launcher.jpg" alt="Klipy w launcherze" loading="lazy">
+            <img class="frame" src="/img/clips-launcher.jpg" alt="Klipy w launcherze" loading="lazy">
           </div>
         </div>
       </div>
     </section>
-
-    <!-- modules marquee -->
+    <!--/home:showcase--><!--home:modules-->
     <section class="modules">
       <div class="wrap head center reveal">
         <span class="eyebrow">Moduły</span>
         <h2>Moduły HUD</h2>
       </div>
-      <div class="marquee" aria-hidden="true"><div class="track" id="mq1"></div></div>
-      <div class="marquee reverse" aria-hidden="true"><div class="track" id="mq2"></div></div>
+      <div class="marquee" aria-hidden="true"><div class="track" id="mq1"><span class="mod"><i class="fa-solid fa-gauge-high"></i>FPS</span><span class="mod"><i class="fa-solid fa-wifi"></i>Ping</span><span class="mod"><i class="fa-solid fa-computer-mouse"></i>CPS</span><span class="mod"><i class="fa-solid fa-keyboard"></i>Keystrokes</span><span class="mod"><i class="fa-solid fa-shield-halved"></i>Zbroja</span><span class="mod"><i class="fa-solid fa-flask"></i>Efekty</span><span class="mod"><i class="fa-solid fa-location-crosshairs"></i>Koordynaty</span><span class="mod"><i class="fa-solid fa-compass"></i>Kompas</span><span class="mod"><i class="fa-solid fa-crosshairs"></i>Celowniki</span><span class="mod"><i class="fa-solid fa-magnifying-glass-plus"></i>Zoom</span><span class="mod"><i class="fa-solid fa-eye"></i>Freelook</span><span class="mod"><i class="fa-solid fa-circle-half-stroke"></i>Fullbright</span><span class="mod"><i class="fa-solid fa-skull"></i>K/D</span><span class="mod"><i class="fa-solid fa-burst"></i>Combo</span><span class="mod"><i class="fa-solid fa-ruler"></i>Reach</span><span class="mod"><i class="fa-solid fa-bullseye"></i>Cel</span><span class="mod"><i class="fa-solid fa-microchip"></i>CPU</span><span class="mod"><i class="fa-solid fa-display"></i>GPU</span><span class="mod"><i class="fa-solid fa-gauge-high"></i>FPS</span><span class="mod"><i class="fa-solid fa-wifi"></i>Ping</span><span class="mod"><i class="fa-solid fa-computer-mouse"></i>CPS</span><span class="mod"><i class="fa-solid fa-keyboard"></i>Keystrokes</span><span class="mod"><i class="fa-solid fa-shield-halved"></i>Zbroja</span><span class="mod"><i class="fa-solid fa-flask"></i>Efekty</span><span class="mod"><i class="fa-solid fa-location-crosshairs"></i>Koordynaty</span><span class="mod"><i class="fa-solid fa-compass"></i>Kompas</span><span class="mod"><i class="fa-solid fa-crosshairs"></i>Celowniki</span><span class="mod"><i class="fa-solid fa-magnifying-glass-plus"></i>Zoom</span><span class="mod"><i class="fa-solid fa-eye"></i>Freelook</span><span class="mod"><i class="fa-solid fa-circle-half-stroke"></i>Fullbright</span><span class="mod"><i class="fa-solid fa-skull"></i>K/D</span><span class="mod"><i class="fa-solid fa-burst"></i>Combo</span><span class="mod"><i class="fa-solid fa-ruler"></i>Reach</span><span class="mod"><i class="fa-solid fa-bullseye"></i>Cel</span><span class="mod"><i class="fa-solid fa-microchip"></i>CPU</span><span class="mod"><i class="fa-solid fa-display"></i>GPU</span></div></div>
+      <div class="marquee reverse" aria-hidden="true"><div class="track" id="mq2"><span class="mod"><i class="fa-solid fa-memory"></i>RAM</span><span class="mod"><i class="fa-solid fa-stopwatch"></i>TPS</span><span class="mod"><i class="fa-solid fa-chart-line"></i>Wykres FPS</span><span class="mod"><i class="fa-solid fa-network-wired"></i>Sieć</span><span class="mod"><i class="fa-solid fa-clock"></i>Zegar</span><span class="mod"><i class="fa-solid fa-hourglass-half"></i>Sesja</span><span class="mod"><i class="fa-solid fa-plane"></i>Elytra</span><span class="mod"><i class="fa-solid fa-feather-pointed"></i>Strzały</span><span class="mod"><i class="fa-solid fa-screwdriver-wrench"></i>Wytrzymałość</span><span class="mod"><i class="fa-solid fa-cube"></i>Blok</span><span class="mod"><i class="fa-solid fa-sun"></i>Pora dnia</span><span class="mod"><i class="fa-solid fa-tree"></i>Biom</span><span class="mod"><i class="fa-solid fa-person-running"></i>Sprint</span><span class="mod"><i class="fa-solid fa-location-dot"></i>Punkty drogi</span><span class="mod"><i class="fa-solid fa-comments"></i>Zakładki czatu</span><span class="mod"><i class="fa-solid fa-camera"></i>Zrzuty do schowka</span><span class="mod"><i class="fa-solid fa-user-group"></i>Znajomi online</span><span class="mod"><i class="fa-solid fa-list-ol"></i>Scoreboard</span><span class="mod"><i class="fa-solid fa-memory"></i>RAM</span><span class="mod"><i class="fa-solid fa-stopwatch"></i>TPS</span><span class="mod"><i class="fa-solid fa-chart-line"></i>Wykres FPS</span><span class="mod"><i class="fa-solid fa-network-wired"></i>Sieć</span><span class="mod"><i class="fa-solid fa-clock"></i>Zegar</span><span class="mod"><i class="fa-solid fa-hourglass-half"></i>Sesja</span><span class="mod"><i class="fa-solid fa-plane"></i>Elytra</span><span class="mod"><i class="fa-solid fa-feather-pointed"></i>Strzały</span><span class="mod"><i class="fa-solid fa-screwdriver-wrench"></i>Wytrzymałość</span><span class="mod"><i class="fa-solid fa-cube"></i>Blok</span><span class="mod"><i class="fa-solid fa-sun"></i>Pora dnia</span><span class="mod"><i class="fa-solid fa-tree"></i>Biom</span><span class="mod"><i class="fa-solid fa-person-running"></i>Sprint</span><span class="mod"><i class="fa-solid fa-location-dot"></i>Punkty drogi</span><span class="mod"><i class="fa-solid fa-comments"></i>Zakładki czatu</span><span class="mod"><i class="fa-solid fa-camera"></i>Zrzuty do schowka</span><span class="mod"><i class="fa-solid fa-user-group"></i>Znajomi online</span><span class="mod"><i class="fa-solid fa-list-ol"></i>Scoreboard</span></div></div>
     </section>
-
-    <!-- more features -->
+    <!--/home:modules--><!--home:features-->
     <section>
       <div class="wrap">
         <div class="head center reveal">
           <span class="eyebrow">Launcher</span>
           <h2>Więcej w launcherze</h2>
         </div>
-        <div class="grid-features" id="features"></div>
+        <div class="grid-features" id="features">
+          <div class="gf reveal"><i class="fa-solid fa-users-gear"></i><h3>Wiele kont</h3><p>Konta Microsoft i offline; przełączasz je także w grze, bez restartu.</p></div>
+          <div class="gf reveal"><i class="fa-solid fa-puzzle-piece"></i><h3>Mody z Modrinth</h3><p>Mody, paczki i zasoby dobrane do wersji profilu.</p></div>
+          <div class="gf reveal"><i class="fa-solid fa-file-import"></i><h3>Import profili</h3><p>Profile z Prism, MultiMC, CurseForge, Modrinth App i oficjalnego launchera.</p></div>
+          <div class="gf reveal"><i class="fa-solid fa-shirt"></i><h3>Skiny</h3><p>Edytor skina, biblioteka skinów i podgląd 3D.</p></div>
+          <div class="gf reveal"><i class="fa-solid fa-server"></i><h3>Serwery</h3><p>Opis, liczba graczy i ping; wejście jednym kliknięciem.</p></div>
+          <div class="gf reveal"><i class="fa-solid fa-earth-europe"></i><h3>Światy</h3><p>Kopie zapasowe światów, zrzuty ekranu i klipy.</p></div>
+          <div class="gf reveal"><i class="fa-solid fa-triangle-exclamation"></i><h3>Crashe</h3><p>Launcher czyta log i mówi, co poszło nie tak.</p></div>
+          <div class="gf reveal"><i class="fa-solid fa-rotate"></i><h3>Aktualizacje</h3><p>Launcher sam sprawdza i instaluje nowe wersje.</p></div>
+        </div>
       </div>
     </section>
-
-    <!-- faq -->
+    <!--/home:features--><!--home:faq-->
     <section id="faq">
       <div class="wrap narrow">
         <div class="head center reveal">
           <span class="eyebrow">FAQ</span>
           <h2>Częste pytania</h2>
         </div>
-        <div class="faq reveal" id="faq-list"></div>
+        <div class="faq reveal" id="faq-list">
+          <details open><summary>Ile kosztuje SlashClient?</summary><p>Nic. Launcher, HUD, znajomi i peleryny są darmowe.</p></details>
+          <details><summary>Czy dostanę bana za SlashClient?</summary><p>HUD pokazuje tylko to, co gra i tak wie, i nie daje przewagi jak cheaty. Serwery mają jednak własne zasady: jeśli serwer zabrania np. freelooka, wyłącz go w ustawieniach HUD.</p></details>
+          <details><summary>Na jakich wersjach działa HUD?</summary><p>Minecraft 1.21.11 oraz 26.1–26.3, z Fabricem albo bez. Starsze wersje launcher też uruchomi, ale bez HUD-u.</p></details>
+          <details><summary>Czy działa z Sodium i innymi modami?</summary><p>Tak. HUD to zwykły mod Fabric i działa razem z modami wydajności.</p></details>
+          <details><summary>Czy moje konto jest bezpieczne?</summary><p>Do Microsoftu logujesz się na jego stronie, launcher nie widzi hasła. Konto SlashClient potwierdza Mojang, tak jak serwery Minecrafta, więc Twój token Minecrafta nie trafia na serwer SlashClient. Wiadomości do znajomych są szyfrowane i serwer nie może ich przeczytać.</p></details>
+          <details><summary>macOS mówi, że nie może sprawdzić aplikacji. Co zrobić?</summary><p>SlashClient nie jest jeszcze podpisany przez Apple. Kliknij aplikację prawym przyciskiem, wybierz Otwórz i potwierdź. Wystarczy raz.</p></details>
+          <details><summary>Jak zaktualizować launcher?</summary><p>Na Windowsie i Linuksie nowa wersja pobiera się sama i instaluje przy ponownym uruchomieniu. Na Macu launcher pokaże przycisk Pobierz.</p></details>
+          <details><summary>Kto widzi moją pelerynę?</summary><p>Gracze z SlashClient, na każdym serwerze. Pozostali widzą Twój zwykły wygląd.</p></details>
+        </div>
       </div>
     </section>
-
-    <!-- final call -->
+    <!--/home:faq--><!--home:final-->
     <section id="pobierz">
       <div class="wrap">
         <div class="final reveal">
-          <img src="vendor/logo.png" alt="" width="72" height="72">
+          <img src="/vendor/logo.png" alt="" width="72" height="72">
           <h2>Pobierz SlashClient</h2>
           <p>Za darmo, na Windows, macOS i Linux.</p>
           <div class="cta">
@@ -224,18 +251,20 @@
         </div>
       </div>
     </section>
-  </main>
+    <!--/home:final--></main>
 
   <footer class="foot">
     <div class="wrap foot-row">
       <a class="brand" href="/"><img src="vendor/logo.png" alt=""><span>Slash<b>Client</b></span></a>
+      <!--home:footer-->
       <span class="muted small">Nie jest powiązany z Mojang ani Microsoft.</span>
       <a class="push foot-link" href="/zgloszenia">Zgłoś błąd</a>
       <a class="foot-link" href="/konto">Twoje konto</a>
       <a class="foot-link" href="/wsparcie"><i class="fa-solid fa-heart"></i> Wesprzyj projekt</a>
       <a class="foot-link" href="/regulamin">Regulamin</a>
       <a class="foot-link" href="/polityka-prywatnosci">Polityka prywatności</a>
-    </div>
+      <a class="foot-link" href="/en" hreflang="en" lang="en">English</a>
+    <!--/home:footer--></div>
   </footer>
 </body>
 </html>
