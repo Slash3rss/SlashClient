@@ -21,7 +21,7 @@ const fakeGitHub = (async (input: string | URL | Request, init?: RequestInit) =>
   if (auth !== 'Bearer sekret') return new Response('{"message":"Not Found"}', { status: 404 });
   if (url.endsWith('/releases/latest')) {
     const asset = (name: string, id: number) => ({ name, url: `https://api.github.com/repos/x/y/releases/assets/${id}`, browser_download_url: `https://github.com/x/y/releases/download/v0.5.0/${name}` });
-    return Response.json({ assets: [asset('SlashClient-Setup-0.5.0.exe', 1), asset('SlashClient-0.5.0-arm64.dmg', 2), asset('SlashClient-0.5.0.dmg', 3), asset('SlashClient-0.5.0-arm64.dmg.blockmap', 4), asset('latest.yml', 5)] });
+    return Response.json({ assets: [asset('SlashClient-Setup-0.5.0.exe', 1), asset('SlashClient-0.5.0-arm64.dmg', 2), asset('SlashClient-0.5.0.dmg', 3), asset('SlashClient-0.5.0-arm64.dmg.blockmap', 4), asset('latest.yml', 5), asset('SlashClient-0.5.0-win-app.zip', 6), asset('win-update-0.5.0.json', 7)] });
   }
   // an older release, which still has a Linux build
   if (url.endsWith('/releases?per_page=10')) {
@@ -64,6 +64,10 @@ describe('downloads', () => {
     const exe = await fetch(`${base}/aktualizacje/SlashClient-Setup-0.5.0.exe`, { redirect: 'manual' });
     assert.equal(exe.headers.get('location'), 'https://objects.githubusercontent.com/signed/1');
     assert.equal((await fetch(`${base}/aktualizacje/latest-mac.yml`)).status, 404);
+    // Windows updates in place: the release's description and its zips come the same way
+    for (const [name, id] of [['win-update-0.5.0.json', 7], ['SlashClient-0.5.0-win-app.zip', 6]] as const) {
+      assert.equal((await fetch(`${base}/aktualizacje/${name}`, { redirect: 'manual' })).headers.get('location'), `https://objects.githubusercontent.com/signed/${id}`);
+    }
     assert.equal((await fetch(`${base}/aktualizacje/..%2Fsecret`, { redirect: 'manual' })).status, 404);
     // the same under English names
     assert.match(await (await fetch(`${base}/updates/latest.yml`)).text(), /version: 0\.6\.0/);

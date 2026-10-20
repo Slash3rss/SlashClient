@@ -89,10 +89,17 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.ico"
     },
+    "afterAllArtifactBuild": "scripts/win-update-artifacts.cjs",
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,

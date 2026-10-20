@@ -1,6 +1,9 @@
 import { app } from 'electron';
 import { autoUpdater } from 'electron-updater';
+import path from 'node:path';
 import { appBundle, downloadMacUpdate, installMacUpdate, pickMacZip, type MacFile } from './macUpdate';
+import { netFetch } from './download';
+import { cleanupWinUpdate, downloadWinUpdate, manifestName, parseManifest, startSwap, winInstall, type WinInstall } from './winUpdate';
 
 /** What the update bar and Settings show. */
 export interface UpdateStatus {
@@ -25,12 +28,20 @@ export interface UpdateOptions {
  * Linux download in the background and install on restart. macOS builds are not signed, and
  * macOS only lets signed apps replace themselves through its updater: there SlashClient downloads
  * and swaps the app itself (macUpdate.ts); only when it cannot (run from the disk image or a
- * folder it may not write to) the player gets a download button.
+ * folder it may not write to) the player gets a download button. Windows swaps the files in
+ * place the same way (winUpdate.ts) when the launcher is installed for the current user; otherwise,
+ * or when that fails, electron-updater runs the installer as before.
  */
 const MANUAL = process.platform === 'darwin';
 /** macOS: the unpacked new SlashClient.app and the one it replaces, once downloaded. */
 let macReady: { current: string; next: string } | undefined;
 let macDownloading = false;
+/** Windows: the installation that updates itself in place (undefined: the installer does it). */
+let winInstalled: WinInstall | undefined;
+/** Windows: the staged new version, once downloaded. */
+let winReady: { next: string; version: string } | undefined;
+let winDownloading = false;
+let winSwapped = false;
 let status: UpdateStatus = { state: app.isPackaged ? 'idle' : 'dev' };
 let send: (status: UpdateStatus) => void = () => {};
 
@@ -39,10 +50,15 @@ function set(next: UpdateStatus) {
   send(status);
 }
 
+/** The update feed: the server's /aktualizacje, or SLASHCLIENT_UPDATE_URL (for testing updates against a local feed). */
+function feedUrl(server: string): string {
+  return (process.env.SLASHCLIENT_UPDATE_URL || `${server.replace(/\/$/, '')}/aktualizacje`).replace(/\/$/, '');
+}
+
 export function startUpdateChecks({ serverUrl, send: sendStatus, onLog }: UpdateOptions): void {
   send = sendStatus;
   if (!app.isPackaged) return;
-  autoUpdater.setFeedURL({ provider: 'generic', url: `${serverUrl().replace(/\/$/, '')}/aktualizacje` });
+  autoUpdater.setFeedURL({ provider: 'generic', url: feedUrl(serverUrl()) });
   autoUpdater.autoDownload = !MANUAL;
   autoUpdater.autoInstallOnAppQuit = !MANUAL;
   autoUpdater.on('checking-for-update', () => {
@@ -51,8 +67,9 @@ export function startUpdateChecks({ serverUrl, send: sendStatus, onLog }: Update
   });
   autoUpdater.on('update-not-available', () => set({ state: 'none' }));
   autoUpdater.on('update-available', (info) => {
+    if (winInstalled) return void winDownload(feedUrl(serverUrl()), info.version, onLog);
     if (!MANUAL) return set({ state: 'downloading', version: info.version, percent: 0 });
-    void macDownload(serverUrl(), info.version, info.files as MacFile[], onLog);
+    void macDownload(feedUrl(serverUrl()), info.version, info.files as MacFile[], onLog);
   });
   autoUpdater.on('download-progress', (p) => set({ ...status, state: 'downloading', percent: Math.round(p.percent) }));
   autoUpdater.on('update-downloaded', (info) => set({ state: 'ready', version: info.version }));
@@ -60,12 +77,68 @@ export function startUpdateChecks({ serverUrl, send: sendStatus, onLog }: Update
     onLog?.(`Aktualizacja: ${err.message}`);
     if (status.state !== 'ready') set({ state: 'error', error: err.message });
   });
-  void checkForUpdates();
+  void (async () => {
+    if (process.platform === 'win32') await winSetup(onLog);
+    await checkForUpdates();
+  })();
   setInterval(() => void checkForUpdates(), 6 * 60 * 60 * 1000);
 }
 
+/** Windows: whether this installation updates itself in place (it then downloads by itself, not the installer). */
+async function winSetup(onLog?: (message: string) => void) {
+  const found = await winInstall().catch((err: Error) => err.message);
+  if (typeof found === 'string') return onLog?.(`Aktualizacja (Windows): instalatorem (${found})`);
+  await cleanupWinUpdate(found.dir);
+  winInstalled = found;
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = false;
+  // quitting with a downloaded update puts it in place too (as the installer would), without reopening
+  app.on('will-quit', () => {
+    if (winReady && !winSwapped) winSwap(null, onLog);
+  });
+}
+
+/** Windows: downloads the new version next to the installed one, or leaves it to the installer. */
+async function winDownload(feed: string, version: string, onLog?: (message: string) => void) {
+  const install = winInstalled;
+  if (!install || winDownloading || winReady?.version === version) return;
+  winDownloading = true;
+  // a newer version than the one already downloaded replaces it
+  winReady = undefined;
+  try {
+    set({ state: 'downloading', version, percent: 0 });
+    const res = await netFetch(`${feed}/${manifestName(version)}`);
+    const manifest = res.ok ? parseManifest(await res.json().catch(() => undefined), version) : undefined;
+    if (!manifest) throw new Error(`brak ${manifestName(version)} (HTTP ${res.status})`);
+    const next = await downloadWinUpdate(feed, install, manifest, (percent) => set({ state: 'downloading', version, percent }), onLog);
+    winReady = { next, version };
+    set({ state: 'ready', version });
+  } catch (err) {
+    onLog?.(`Aktualizacja (Windows): ${(err as Error).message}; pobieranie instalatora`);
+    await cleanupWinUpdate(install.dir);
+    // the installer, as before this existed
+    winInstalled = undefined;
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+    void autoUpdater.downloadUpdate().catch(() => {});
+  } finally {
+    winDownloading = false;
+  }
+}
+
+/** Windows: starts the script that swaps the folders once the launcher has quit. */
+function winSwap(relaunch: string[] | null, onLog?: (message: string) => void) {
+  if (!winInstalled || !winReady) return;
+  winSwapped = true;
+  try {
+    startSwap({ pid: process.pid, install: winInstalled, next: winReady.next, version: winReady.version, log: path.join(app.getPath('logs'), 'update.log'), relaunch });
+  } catch (err) {
+    onLog?.(`Aktualizacja (Windows): ${(err as Error).message}`);
+  }
+}
+
 /** macOS: downloads the new version in the background, or falls back to the download button. */
-async function macDownload(server: string, version: string, files: MacFile[], onLog?: (message: string) => void) {
+async function macDownload(feed: string, version: string, files: MacFile[], onLog?: (message: string) => void) {
   if (macDownloading || (macReady && status.version === version)) return;
   const manual = () => set({ state: 'available', version, manual: true });
   const current = await appBundle();
@@ -74,7 +147,7 @@ async function macDownload(server: string, version: string, files: MacFile[], on
   macDownloading = true;
   try {
     set({ state: 'downloading', version, percent: 0 });
-    const next = await downloadMacUpdate(`${server.replace(/\/$/, '')}/aktualizacje`, version, file, (percent) => set({ state: 'downloading', version, percent }));
+    const next = await downloadMacUpdate(feed, version, file, (percent) => set({ state: 'downloading', version, percent }));
     macReady = { current, next };
     set({ state: 'ready', version });
   } catch (err) {
@@ -99,6 +172,12 @@ export function updateStatus(): UpdateStatus {
 export function installUpdate(): void {
   if (MANUAL) {
     if (macReady) installMacUpdate(macReady.current, macReady.next);
+    return;
+  }
+  if (winInstalled) {
+    if (!winReady) return;
+    winSwap(process.argv.slice(1));
+    app.quit();
     return;
   }
   autoUpdater.quitAndInstall();

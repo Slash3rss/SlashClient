@@ -74,6 +74,8 @@ jobs:
             export CSC_IDENTITY_AUTO_DISCOVERY=false
           fi
           [ -n "$APPLE_ID" ] || unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+          # Windows also uploads what launchers update themselves with in place: SlashClient-<v>-win.zip,
+          # SlashClient-<v>-win-app.zip and win-update-<v>.json (scripts/win-update-artifacts.cjs)
           npx electron-builder ${{ matrix.target }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
