@@ -7,7 +7,7 @@ import { createSkyupWiki } from './skyupWiki';
  * The main process fetches, caches and sanitizes everything (src/shared/wikiHtml.ts), so the HTML
  * put in here has no scripts, styles or handlers; links to articles open in this panel, other links
  * in the browser. Sections load when opened. A switch in the view's header leads to the SkyUp.pl
- * wiki (skyupWiki.ts), unlocked by the first SkyUp.pl achievement.
+ * wiki (skyupWiki.ts).
  */
 
 interface Hit { title: string; snippet: string; thumbnail?: string }
@@ -36,10 +36,7 @@ export function createWiki(root: HTMLElement, deps: WikiDeps) {
 
   // the switch between the two wikis, in the view's header
   const tabMc = el('button', { type: 'button', title: t('Wiki Minecrafta') }, icon('fa-cube'), ' minecraft.wiki');
-  const tabSky = el('button', { type: 'button', title: t('Wiki serwera SkyUp.pl') }, icon('fa-cloud'), ' SkyUp.pl ');
-  const lock = icon('fa-lock');
-  lock.classList.add('wiki-lock');
-  tabSky.append(lock);
+  const tabSky = el('button', { type: 'button', title: t('Wiki serwera SkyUp.pl') }, icon('fa-cloud'), ' SkyUp.pl');
   const tabs = el('div', { className: 'segmented wiki-tabs' }, tabMc, tabSky);
   (root.closest('.view')?.querySelector('.view-head') ?? root).append(tabs);
 
@@ -61,10 +58,6 @@ export function createWiki(root: HTMLElement, deps: WikiDeps) {
   }
   tabMc.addEventListener('click', () => select('mc'));
   tabSky.addEventListener('click', () => select('skyup'));
-  sky.onLockChange((locked) => {
-    lock.classList.toggle('hidden', !locked);
-    tabSky.title = locked ? t('Wiki SkyUp.pl: odblokujesz ją pierwszym osiągnięciem SkyUp.pl') : t('Wiki serwera SkyUp.pl');
-  });
   select(tab, false);
 
   return {

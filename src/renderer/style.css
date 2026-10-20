@@ -1217,19 +1217,6 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .wiki-content .w-nowrap { white-space: nowrap; }
 /* the switch between minecraft.wiki and SkyUp.pl, and the SkyUp.pl wiki (skyupWiki.ts) */
 .wiki-pane { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
-.wiki-tabs .wiki-lock { margin: 0 0 0 2px; font-size: 11px; color: var(--text-muted); }
-.wiki-locked { display: flex; justify-content: center; padding: 40px 12px; }
-.wiki-lock-card { max-width: 520px; padding: 28px; border-radius: var(--card-radius); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.wiki-lock-card h3 { margin: 0; }
-.wiki-lock-card p { margin: 0; line-height: 1.5; }
-.wiki-lock-card .row { justify-content: center; flex-wrap: wrap; }
-.wiki-lock-icon {
-  width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px;
-  color: var(--accent-light); background: rgba(59, 130, 246, .12); border: 1px solid rgba(59, 130, 246, .3);
-}
-.wiki-lock-ach { display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--glass-border); background: rgba(0, 0, 0, .2); }
-.wiki-lock-ach > i { font-size: 20px; color: #fbbf24; }
-.wiki-lock-ach span { display: flex; flex-direction: column; }
 .wiki-cat { margin: 10px 4px 2px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
 .wiki-cat:first-child { margin-top: 2px; }
 .wiki-sky-item { padding: 6px 10px; min-height: 32px; height: auto; flex-shrink: 0; }

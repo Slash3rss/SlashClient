@@ -1,14 +1,10 @@
-import { getLang, t } from '../shared/i18n';
+import { t } from '../shared/i18n';
 import { control, el, icon } from './dialog';
 
 /**
  * The SkyUp.pl wiki tab of the Wiki view: the website's articles in their categories, a filter of
  * their titles and the website's search in their content, and an article with all its sections.
  * The main process fetches, caches and sanitizes it (src/main/skyupWiki.ts, src/shared/skyupWiki.ts).
- *
- * It opens with the player's first SkyUp.pl achievement (category 'skyup' on the SlashClient
- * server, e.g. "Witaj na SkyUp" for playing there); until then the tab shows how to get it. A new
- * achievement unlocks it right away. The lock is only the launcher's: the wiki itself is public.
  */
 
 interface ArticleRef { slug: string; title: string }
@@ -16,7 +12,6 @@ interface Category { name: string; articles: ArticleRef[] }
 interface Section { anchor: string; title: string }
 interface Article { slug: string; title: string; url: string; html: string; sections: Section[] }
 interface Hit { slug?: string; article?: string; anchor: string; title: string; snippet: string }
-interface SkyupAchievement { id: string; category?: string; tier?: number; goal?: number; name: string; nameEn: string; description: string; descriptionEn: string; unlockedAt: number | null }
 
 export interface SkyupWikiDeps {
   api: any;
@@ -24,43 +19,15 @@ export interface SkyupWikiDeps {
   errorText: (err: unknown) => string;
 }
 
-/** Remembered after an unlock, so the wiki stays open while the SlashClient server can't be reached. */
-const UNLOCKED_KEY = 'wiki.skyupUnlocked';
 const MIN_SEARCH = 3;
-
-type Lock =
-  | { state: 'checking' }
-  | { state: 'unlocked' }
-  | { state: 'signed-out' }
-  | { state: 'locked'; first?: SkyupAchievement }
-  | { state: 'error'; message: string };
-
-const remembered = (userId: string) => {
-  try {
-    return !!userId && localStorage.getItem(UNLOCKED_KEY) === userId;
-  } catch {
-    return false;
-  }
-};
-const remember = (userId: string) => {
-  try {
-    localStorage.setItem(UNLOCKED_KEY, userId);
-  } catch { /* storage may be unavailable */ }
-};
-
-/** The achievement to name on the lock screen: "Witaj na SkyUp", or the easiest SkyUp.pl one. */
-function firstOf(list: SkyupAchievement[]): SkyupAchievement | undefined {
-  return list.find((a) => a.id === 'skyup_visit') ?? [...list].sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0) || (a.goal ?? 0) - (b.goal ?? 0))[0];
-}
 
 /** "Polish wiki text" for searching: lower case, without accents (ą → a), so "lejow" finds "Lejów". */
 const fold = (s: string) => s.toLocaleLowerCase('pl').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l');
 
 export function createSkyupWiki(root: HTMLElement, deps: SkyupWikiDeps) {
   const { api, errorText } = deps;
-  const lockScreen = el('div', { className: 'wiki-locked hidden' });
-  const body = el('div', { className: 'wiki-pane hidden' });
-  root.append(lockScreen, body);
+  const body = el('div', { className: 'wiki-pane' });
+  root.append(body);
 
   const input = control<HTMLInputElement>('input', { type: 'search', placeholder: t('Szukaj na wiki SkyUp.pl, np. klejnoty, pety, lej…'), maxLength: 100 });
   const results = el('div', { className: 'wiki-results' });
@@ -75,111 +42,13 @@ export function createSkyupWiki(root: HTMLElement, deps: SkyupWikiDeps) {
     el('div', { className: 'wiki-split' }, results, article),
   );
 
-  let lock: Lock = { state: 'checking' };
-  const lockListeners: ((locked: boolean) => void)[] = [];
   let categories: Category[] | undefined;
   const history: { slug: string; anchor?: string }[] = [];
   let current: string | undefined;
   let searchSeq = 0;
   let articleSeq = 0;
-  let checkSeq = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let started = false;
-
-  // ---------- the lock ----------
-
-  function setLock(next: Lock) {
-    lock = next;
-    const locked = next.state !== 'unlocked';
-    lockListeners.forEach((fn) => fn(locked));
-    renderLock();
-  }
-
-  function renderLock() {
-    const locked = lock.state !== 'unlocked';
-    lockScreen.classList.toggle('hidden', !locked);
-    body.classList.toggle('hidden', locked);
-    if (!locked) {
-      // the website is asked only once the player looks at the tab
-      if (!started && root.offsetParent) {
-        started = true;
-        void loadIndex();
-      }
-      return;
-    }
-    if (lock.state === 'checking') {
-      lockScreen.replaceChildren(el('p', { className: 'muted wiki-hint' }, el('span', { className: 'spinner' }), t(' Sprawdzanie osiągnięć…')));
-      return;
-    }
-    const card = el('div', { className: 'wiki-lock-card glass-panel' }, el('div', { className: 'wiki-lock-icon' }, icon('fa-lock')), el('h3', { textContent: t('Wiki SkyUp.pl jest zablokowana') }));
-    if (lock.state === 'signed-out') {
-      const go = el('button', { type: 'button', className: 'primary' }, icon('fa-user-group'), t(' Przejdź do Znajomych'));
-      go.addEventListener('click', () => document.querySelector<HTMLButtonElement>('.nav[data-view="friends"]')?.click());
-      card.append(
-        el('p', { className: 'muted', textContent: t('Odblokujesz ją pierwszym osiągnięciem SkyUp.pl (np. „Witaj na SkyUp” – zagraj na SkyUp.pl). Najpierw zaloguj się na konto SlashClient w zakładce Znajomi, żeby zbierać osiągnięcia.') }),
-        el('div', { className: 'row' }, go));
-    } else if (lock.state === 'locked') {
-      const a = lock.first;
-      const name = a ? (getLang() === 'en' ? a.nameEn : a.name) : t('Witaj na SkyUp');
-      const description = a ? (getLang() === 'en' ? a.descriptionEn : a.description) : t('Zagraj na serwerze SkyUp.pl.');
-      const show = el('button', { type: 'button', className: 'primary' }, icon('fa-trophy'), t(' Pokaż osiągnięcia'));
-      show.addEventListener('click', () => document.querySelector<HTMLButtonElement>('.nav[data-view="achievements"]')?.click());
-      const copy = el('button', { type: 'button' }, icon('fa-copy'), t(' Kopiuj adres SkyUp.pl'));
-      copy.addEventListener('click', () => {
-        void navigator.clipboard.writeText('SkyUp.pl').then(() => deps.toast(t('Skopiowano adres SkyUp.pl.')), () => undefined);
-      });
-      card.append(
-        el('p', { className: 'muted', textContent: t('Odblokuj, zdobywając pierwsze osiągnięcie SkyUp.pl:') }),
-        el('div', { className: 'wiki-lock-ach' }, icon('fa-plane-arrival'), el('span', {}, el('b', { textContent: name }), el('small', { className: 'muted', textContent: description }))),
-        el('div', { className: 'row' }, show, copy));
-    } else {
-      const retry = el('button', { type: 'button' }, icon('fa-rotate-right'), t(' Spróbuj ponownie'));
-      retry.addEventListener('click', () => void check());
-      card.append(el('p', { className: 'fr-error', textContent: lock.state === 'error' ? lock.message : '' }), el('div', { className: 'row' }, retry));
-    }
-    lockScreen.replaceChildren(card);
-  }
-
-  /** Asks the SlashClient server whether the player has a SkyUp.pl achievement. */
-  async function check() {
-    const mine = ++checkSeq;
-    if (lock.state !== 'unlocked') setLock({ state: 'checking' });
-    const state = await api.socialState().catch(() => undefined);
-    if (mine !== checkSeq) return;
-    const userId: string = state?.user?.id ?? '';
-    checkedUser = userId;
-    if (!state?.user) return setLock({ state: 'signed-out' });
-    try {
-      const { achievements }: { achievements: SkyupAchievement[] } = await api.socialApi('GET', '/v1/achievements');
-      if (mine !== checkSeq) return;
-      const skyup = achievements.filter((a) => a.category === 'skyup');
-      if (skyup.some((a) => a.unlockedAt !== null && a.unlockedAt !== undefined)) {
-        remember(userId);
-        setLock({ state: 'unlocked' });
-      } else setLock({ state: 'locked', first: firstOf(skyup) });
-    } catch (err) {
-      if (mine !== checkSeq) return;
-      // offline: an unlock seen before still counts
-      setLock(remembered(userId) ? { state: 'unlocked' } : { state: 'error', message: errorText(err) });
-    }
-  }
-
-  /** Whose achievements the lock was last checked with. */
-  let checkedUser: string | undefined;
-  api.on('social:event', (e: { type?: string; achievement?: SkyupAchievement; state?: { user?: { id?: string }; connected?: boolean } }) => {
-    if (e?.type === 'achievement' && e.achievement?.category === 'skyup' && lock.state !== 'unlocked') {
-      void check();
-    } else if (e?.type === 'state') {
-      const userId = e.state?.user?.id ?? '';
-      if (!userId) {
-        checkedUser = '';
-        if (lock.state !== 'signed-out') setLock({ state: 'signed-out' });
-      } else if (userId !== checkedUser || (lock.state !== 'unlocked' && e.state?.connected)) {
-        // another account may not have it; a locked one may have got it while away
-        void check();
-      }
-    }
-  });
 
   // ---------- the list ----------
 
@@ -327,18 +196,13 @@ export function createSkyupWiki(root: HTMLElement, deps: SkyupWikiDeps) {
   });
 
   return {
-    /** The tab was opened: checks the lock (again, unless it is open already). */
+    /** The tab was opened: the website is asked only once the player looks at it. */
     show(focus: boolean) {
-      renderLock();
-      if (lock.state !== 'unlocked') void check();
-      else if (focus) input.focus();
+      if (!started) {
+        started = true;
+        void loadIndex();
+      }
+      if (focus) input.focus();
     },
-    /** Called with true while the wiki is locked (the tab shows a padlock). */
-    onLockChange(fn: (locked: boolean) => void) {
-      lockListeners.push(fn);
-      fn(lock.state !== 'unlocked');
-    },
-    /** Checks the lock in the background (at start, so the tab's padlock is right). */
-    check,
   };
 }
