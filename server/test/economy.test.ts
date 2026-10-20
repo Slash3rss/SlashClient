@@ -244,6 +244,8 @@ describe('sparks and achievements', () => {
     const member = await login('CzlonekKl');
     assert.equal((await call('POST', '/v1/clans', boss.token, { tag: 'ISK', name: 'Iskrownicy' })).status, 200);
     assert.ok(unlockedIds(boss.user.id).includes('clan_found'));
+    // one clan per player: the founder is a clan member too
+    assert.ok(unlockedIds(boss.user.id).includes('clan_join'));
     assert.equal((await call('POST', '/v1/clans/invites', boss.token, { handle: member.user.handle })).status, 200);
     const clan = (await call('GET', '/v1/clans/mine', boss.token)).body.clan;
     assert.equal((await call('POST', `/v1/clans/${clan.id}/accept`, member.token)).status, 200);
