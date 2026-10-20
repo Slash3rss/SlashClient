@@ -1404,7 +1404,8 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 
 /* Settings → "Wesprzyj projekt" → "Historia płatności" (paymentHistory.ts) */
 .ph-box { width: min(620px, 100%); }
-.ph-body { display: flex; flex-direction: column; gap: 10px; padding-top: 8px; max-height: 76vh; overflow-y: auto; }
+.ph-body { gap: 10px; }
+.ph-what { flex: 1; min-width: 0; }
 .ph-body h2 { margin: 0; }
 .ph-body p { margin: 0; }
 .ph-list { display: flex; flex-direction: column; }

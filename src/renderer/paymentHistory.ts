@@ -64,7 +64,7 @@ export function describePayment(p: HistoryRow) {
 }
 
 export async function openPaymentHistory(deps: HistoryDeps) {
-  const body = el('div', { className: 'ph-body' });
+  const body = el('div', { className: 'modal-body ph-body' });
   const close = el('button', { type: 'button', className: 'icon-btn modal-close', title: t('Zamknij') }, icon('fa-xmark'));
   const modal = el('div', { className: 'modal' }, el('div', { className: 'modal-box glass-panel ph-box' }, close, body));
   const done = () => {
@@ -91,7 +91,7 @@ export async function openPaymentHistory(deps: HistoryDeps) {
   function row(p: HistoryRow) {
     const d = describePayment(p);
     const item = el('div', { className: 'ph-row' },
-      el('div', { className: 'row' }, el('b', { className: 'grow', textContent: d.what }), el('b', { textContent: money(p.amount, p.currency) })),
+      el('div', { className: 'row' }, el('b', { className: 'ph-what', textContent: d.what }), el('b', { textContent: money(p.amount, p.currency) })),
       el('div', { className: 'row muted small' }, el('span', { textContent: day(p.at) }), el('span', { textContent: d.how }),
         el('span', { className: `ph-status ${p.status}`, textContent: d.status }), p.test ? el('span', { className: 'ph-status test', textContent: 'TEST' }) : ''));
     if (d.period) item.append(el('div', { className: 'muted small' }, icon('fa-calendar'), ' ', t('Korzyści: {0}', d.period)));
@@ -122,7 +122,7 @@ export async function openPaymentHistory(deps: HistoryDeps) {
     }
     const pager = el('div', { className: 'row ph-pager' });
     if (offset) pager.append(button(t('Nowsze'), 'fa-chevron-left', () => { offset = Math.max(0, offset - PAGE); void load(); }));
-    pager.append(el('span', { className: 'grow muted small', textContent: res.total ? `${offset + 1}–${offset + res.payments.length} / ${res.total}` : '' }));
+    pager.append(el('span', { className: 'ph-what muted small', textContent: res.total ? `${offset + 1}–${offset + res.payments.length} / ${res.total}` : '' }));
     if (offset + PAGE < res.total) pager.append(button(t('Starsze'), 'fa-chevron-right', () => { offset += PAGE; void load(); }));
     body.replaceChildren(
       el('h2', {}, icon('fa-receipt'), ' ', t('Historia płatności')),
