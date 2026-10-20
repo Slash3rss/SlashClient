@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { setLang } from '../src/shared/i18n';
-import { canDelete, canEdit, editHint, replaceMessage, slowDownSeconds, slowDownText } from '../src/renderer/chatEdits';
+import { canDelete, canEdit, editHint, replaceMessage, slowDownSeconds, slowDownText, type ChatLine } from '../src/renderer/chatEdits';
 import { errorCode } from '../src/main/social';
 import { GameBridge } from '../src/main/bridge';
 
@@ -38,7 +38,7 @@ describe('editing and deleting chat messages', () => {
   });
 
   it('puts the new version in place, keeping a picture an edit does not repeat', () => {
-    const list = [{ ...mine }, { id: 2, from: 'me', at: now, text: 'b', image: { id: 'p' } }];
+    const list: ChatLine[] = [{ ...mine }, { id: 2, from: 'me', at: now, text: 'b', image: { id: 'p' } }];
     const edited = replaceMessage(list, { id: 1, from: 'me', at: mine.at, text: 'nowy', editedAt: now });
     assert.equal(edited[0].text, 'nowy');
     assert.equal(edited[0].editedAt, now);
