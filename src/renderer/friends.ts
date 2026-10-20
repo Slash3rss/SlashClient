@@ -1020,7 +1020,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     // live on Twitch or Kick: the stream in the browser
     if (f.stream) {
       const s = f.stream;
-      const watch = el('button', { type: 'button', className: 'fr-watch', title: s.url }, icon('fa-play'), t(' Oglądaj'));
+      const watch = el('button', { type: 'button', className: 'icon-btn fr-watch', title: `${t('Oglądaj')}: ${s.url}` }, icon('fa-play'));
       watch.addEventListener('click', () => window.open(s.url, '_blank'));
       actions.push(watch);
     }
