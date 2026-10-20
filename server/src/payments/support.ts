@@ -61,6 +61,9 @@ export interface SupportContext {
   fetchImpl?: typeof fetch;
   /** Refund requests (refunds.ts): asking and cancelling per account; a live event to the player; who is an admin. */
   limitRefunds?: (key: string) => void;
+  /** The admin panel's settings for refunds (refunds.ts), read when used. */
+  refundWindowDays?: () => number;
+  refundsPerDay?: () => number;
   notify?: (userId: string, event: Record<string, unknown>) => void;
   isAdmin?: (userId: string) => boolean;
   /** Tests: the fake providers' addresses and the clock. */
@@ -615,7 +618,7 @@ export function supportRoutes(ctx: SupportContext) {
         supporter: summary(me), grants: store.grantsOf(me).map(grantView),
         // which payments can be asked back on the account page, and until when (refunds.ts)
         payments: store.paymentsOf(me).map((p) => ({ ...userView(p), refundable: refunds.refundable(p), refundUntil: refunds.until(p) || null })),
-        refunds: refunds.refunds.of(me).map(refunds.mine), refundWindowDays: REFUND_WINDOW_DAYS,
+        refunds: refunds.refunds.of(me).map(refunds.mine), refundWindowDays: ctx.refundWindowDays?.() ?? REFUND_WINDOW_DAYS,
         subscriptions: store.subscriptionsOf(me).map((s) => ({ id: s.id, provider: s.provider, tier: s.tier, status: s.status, amount: s.amount, currency: s.currency, periodEnd: s.periodEnd || null, cancelAtPeriodEnd: s.cancelAtPeriodEnd, test: s.mode === 'test' })),
         prefs: store.prefs(me), portal: !!stripe && !!store.customer(me, 'stripe', stripe.mode),
       };
@@ -882,7 +885,7 @@ export function supportRoutes(ctx: SupportContext) {
     sql: ctx.sql, store, now, authed: ctx.authed, admin: ctx.admin, isAdmin: ctx.isAdmin ?? (() => false), body: ctx.body,
     limit: ctx.limitRefunds ?? ctx.limitCheckout, audit: ctx.audit, notify: ctx.notify ?? (() => {}), handleOf, changed: ctx.changed, fail,
     stripe: (mode) => providerClient('stripe', mode, () => stripeOf(mode)), paypal: (mode) => providerClient('paypal', mode, () => paypalOf(mode)),
-    takeBack: (p) => takeBack(p, 'refunded'),
+    takeBack: (p) => takeBack(p, 'refunded'), windowDays: ctx.refundWindowDays, perDay: ctx.refundsPerDay,
   });
   routes.push(...refunds.routes);
   // the player's payment history (history.ts)

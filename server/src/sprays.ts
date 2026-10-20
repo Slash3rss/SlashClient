@@ -58,19 +58,20 @@ export function cleanSpray(input: unknown): Spray | undefined {
  */
 export class SprayLimit {
   private readonly last = new Map<string, number[]>();
-  private readonly gapMs: number;
-  private readonly perMinute: number;
+  private readonly gapMs: () => number;
+  private readonly perMinute: () => number;
 
-  constructor(gapMs = 3000, perMinute = 20) {
-    this.gapMs = gapMs;
-    this.perMinute = perMinute;
+  /** Numbers, or functions read on every spray (the admin panel's settings). */
+  constructor(gapMs: number | (() => number) = 3000, perMinute: number | (() => number) = 20) {
+    this.gapMs = typeof gapMs === 'function' ? gapMs : () => gapMs;
+    this.perMinute = typeof perMinute === 'function' ? perMinute : () => perMinute;
   }
 
   /** Whether `user` may spray now; when yes, it counts. */
   allow(user: string, now = Date.now()): boolean {
     const times = (this.last.get(user) ?? []).filter((t) => now - t < 60_000);
-    if (times.length && now - times[times.length - 1] < this.gapMs) return false;
-    if (times.length >= this.perMinute) return false;
+    if (times.length && now - times[times.length - 1] < this.gapMs()) return false;
+    if (times.length >= this.perMinute()) return false;
     times.push(now);
     this.last.set(user, times);
     if (this.last.size > 1000) this.sweep(now);

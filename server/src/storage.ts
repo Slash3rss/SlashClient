@@ -263,7 +263,7 @@ export interface StorageOptions {
   /** STORAGE_SECRET_KEY, for the buckets' keys. */
   secretKey?: string;
   /** The server's disk is never filled below this (default 2 GB). */
-  minFreeBytes?: number;
+  minFreeBytes?: number | (() => number);
   /** Tests swap the disk's numbers. */
   diskSpace?: DiskSpace;
   /** Tests: buckets at plain http://127.0.0.1 (a fake S3). */
@@ -278,7 +278,11 @@ const ROW_COLUMNS = `id, type, name, endpoint, region, bucket, key_id AS keyId, 
 
 export class Storage {
   readonly sql: DatabaseSync;
-  readonly minFree: number;
+  /** Free space the server's disk keeps (the admin panel's setting, read when used). */
+  get minFree(): number {
+    return this.minFreeOf();
+  }
+  private readonly minFreeOf: () => number;
   readonly box?: SecretBox;
   /** Set when STORAGE_SECRET_KEY is there but unusable. */
   readonly keyError?: string;
@@ -298,7 +302,8 @@ export class Storage {
     this.sql = o.sql;
     this.localDirs = o.localDirs;
     this.localHttp = !!o.localHttp;
-    this.minFree = o.minFreeBytes ?? DEFAULT_MIN_FREE;
+    const floor = o.minFreeBytes;
+    this.minFreeOf = typeof floor === 'function' ? floor : () => floor ?? DEFAULT_MIN_FREE;
     this.disk = o.diskSpace ?? realDiskSpace;
     this.fail = o.fail;
     const key = secretBox(o.secretKey);

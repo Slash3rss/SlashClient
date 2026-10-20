@@ -4,6 +4,7 @@ import { rename, rm, stat, writeFile } from 'node:fs/promises';
 import type http from 'node:http';
 import path from 'node:path';
 import type { Db, ProfileShare } from './db.ts';
+import { withDefaults } from './settings.ts';
 
 /**
  * Profiles shared by code. A signed-in player uploads a profile exported by the launcher (a
@@ -93,7 +94,8 @@ const text = (v: string | null, max: number) => (v ?? '').trim().slice(0, max);
 
 export function profileShareRoutes(ctx: ShareContext) {
   const { db } = ctx;
-  const limits = { ...SHARE_LIMITS, ...ctx.limits };
+  // live: the admin panel's settings are read when used
+  const limits = withDefaults(SHARE_LIMITS, ctx.limits);
   mkdirSync(ctx.dir, { recursive: true });
   const fileOf = (code: string) => path.join(ctx.dir, `${code}.mrpack`);
   /** What the owner's list and the importing player see (the owner's id stays here). */

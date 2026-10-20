@@ -2,6 +2,7 @@ import type http from 'node:http';
 import type { Db, Person } from './db.ts';
 import { LogoStore, serveLogo, takeLogo } from './clanLogos.ts';
 import { EDIT_WINDOW_MS, editRefusal } from './chatLimits.ts';
+import { withDefaults } from './settings.ts';
 import {
   COMMUNITY_LIMITS, CommunityStore, NOTIFY, RANK, ROLES, cleanCommunityName, cleanDescription, communityTagProblem, mentionedHandles, may, offensiveText, permissions,
   type ChannelRow, type CommunityLimits, type CommunityRole, type CommunityRow, type JoinMode, type MemberRow, type MessageRow, type Notify, type Visibility,
@@ -56,6 +57,8 @@ interface Deps {
   sizeGoals?: () => number[];
   /** Lower limits (tests). */
   limits?: Partial<CommunityLimits>;
+  /** How long a message may be edited now (the admin panel's setting; EDIT_WINDOW_MS by default). */
+  editWindowMs?: () => number;
 }
 
 type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
@@ -69,7 +72,9 @@ const route = (path: string) => new RegExp(`^/v1/communities${path}$`);
 
 export function createCommunities(deps: Deps) {
   const { db, authed, body, push, pushMany, fail } = deps;
-  const L: CommunityLimits = { ...COMMUNITY_LIMITS, ...deps.limits };
+  // live: the admin panel's settings are read when used
+  const L: CommunityLimits = withDefaults(COMMUNITY_LIMITS, deps.limits);
+  const editWindow = () => deps.editWindowMs?.() ?? EDIT_WINDOW_MS;
   const store = new CommunityStore(db.sql);
   const logos = new LogoStore(db.sql, 'community_logos', 'communities', '/v1/communities');
 
@@ -643,7 +648,7 @@ export function createCommunities(deps: Deps) {
       const authors = new Map<string, { name: string; handle: string; role?: CommunityRole }>();
       return {
         messages: store.messages(ch, limit, before).map((x) => messageView(x, authors)),
-        editWindowMs: EDIT_WINDOW_MS, canPost: RANK[m.role] >= RANK[channel.postRole], encrypted: false,
+        editWindowMs: editWindow(), canPost: RANK[m.role] >= RANK[channel.postRole], encrypted: false,
         ...(may(m.role, 'deleteMessage', 'member') ? { moderator: true } : {}),
         ...(m.mutedUntil > Date.now() ? { mutedUntil: m.mutedUntil } : {}),
       };
@@ -668,7 +673,7 @@ export function createCommunities(deps: Deps) {
       deps.limitEdits(me);
       const old = store.message(id, Number(raw));
       if (!old || old.channel !== ch) fail(404, 'not_found');
-      const refusal = editRefusal({ ...old!, deleted: !!old!.deletedAt }, me, false);
+      const refusal = editRefusal({ ...old!, deleted: !!old!.deletedAt }, me, false, Date.now(), editWindow());
       if (refusal) fail(...refusal);
       const text = cleanText((await body(req)).text);
       store.editMessage(old!.id, text, mentionsIn(id, text));

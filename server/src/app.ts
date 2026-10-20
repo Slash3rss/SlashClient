@@ -28,12 +28,18 @@ import { Storage, type DiskSpace } from './storage.ts';
 import { storageAdminRoutes } from './storageAdmin.ts';
 import { muteRoutes } from './mutes.ts';
 import { chatImageRoutes, type ImageLimits } from './chatImages.ts';
-import { profileRoutes } from './profiles.ts';
+import { DEFAULT_ELEMENTS, profileRoutes, type Visibility } from './profiles.ts';
 import { legalRoutes } from './legal/routes.ts';
-import { BurstLimiter, EDIT_WINDOW_MS, SlowDown, editRefusal, type BurstLimits } from './chatLimits.ts';
+import { BurstLimiter, SlowDown, editRefusal, type BurstLimits } from './chatLimits.ts';
 import { supportRoutes } from './payments/support.ts';
 import { createCommunities } from './communities.ts';
-import type { CommunityLimits } from './communityStore.ts';
+import { COMMUNITY_LIMITS, type CommunityLimits } from './communityStore.ts';
+import { Settings, liveSettings, type SettingValue } from './settings.ts';
+import { SETTING_DEFS } from './settingsDefs.ts';
+import { settingsAdminRoutes } from './settingsAdmin.ts';
+import { disabledPage, featureKey, featureOf } from './features.ts';
+import { useBlocklist } from './clans.ts';
+import { useLogoLimit } from './clanLogos.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -98,7 +104,6 @@ export interface Config {
 
 /** Names for the test sign-in: like Minecraft nicks. */
 const VALID_NAME = /^\w{3,16}$/;
-const SESSION_IDLE_MS = 90 * 24 * 3_600_000;
 const LOGIN_TTL_MS = 10 * 60_000;
 const MC_CHALLENGE_MS = 2 * 60_000;
 const MAX_MESSAGE = 2000;
@@ -134,10 +139,14 @@ class HttpError extends Error {
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
-/** A small token bucket per player and action, so one client cannot flood others. */
-function rateLimiter(perMinute: number) {
+/**
+ * A small token bucket per player and action, so one client cannot flood others. `rate` may be a
+ * function (an admin panel's setting): read on every request, so a change applies at once.
+ */
+function rateLimiter(rate: number | (() => number)) {
   const buckets = new Map<string, { tokens: number; at: number }>();
   return (key: string) => {
+    const perMinute = typeof rate === 'function' ? rate() : rate;
     const now = Date.now();
     const b = buckets.get(key) ?? { tokens: perMinute, at: now };
     b.tokens = Math.min(perMinute, b.tokens + ((now - b.at) / 60_000) * perMinute);
@@ -153,6 +162,30 @@ type SeenRequest = http.IncomingMessage & { slashUser?: string; slashError?: str
 
 export function createApp(cfg: Config) {
   const db = new Db(cfg.dbFile);
+  // the admin panel's settings (settings.ts): the config's numbers (env, tests) are their defaults here
+  const base: Record<string, SettingValue | undefined> = {
+    'security.loginsPerMinute': cfg.loginsPerMinute,
+    'profiles.viewsPerMinute': cfg.profileViewsPerMinute,
+    'support.checkoutsPerMinute': cfg.payments?.checkoutsPerMinute,
+    'support.refundsPerMinute': cfg.payments?.refundsPerMinute,
+    'storage.minFreeMb': cfg.storage?.minFreeBytes !== undefined ? cfg.storage.minFreeBytes / (1024 * 1024) : undefined,
+  };
+  const take = (prefix: string, o: object | undefined, names: Record<string, string> = {}) => {
+    for (const [k, v] of Object.entries(o ?? {})) if (typeof v === 'number') base[prefix + (names[k] ?? k)] = v;
+  };
+  take('media.', cfg.mediaLimits);
+  take('cloud.', cfg.cloudLimits);
+  take('shares.', cfg.shareLimits);
+  take('chatImages.', cfg.imageLimits);
+  take('communities.', cfg.communityLimits);
+  take('chat.', cfg.chatBurst, { messages: 'burstMessages', seconds: 'burstSeconds', strikes: 'burstStrikes', muteSeconds: 'holdSeconds' });
+  const settings = new Settings(db.sql, SETTING_DEFS, base);
+  /** A rate limiter whose per-minute number is that setting. */
+  const limiter = (key: string) => rateLimiter(() => settings.num(key));
+  const sessionIdleMs = () => settings.num('security.sessionIdleDays') * 86_400_000;
+  // the word lists and the logo's size are module-wide (clans and communities share them)
+  useBlocklist(() => ({ words: settings.list('moderation.blockedWords'), tags: settings.list('moderation.blockedTags') }));
+  useLogoLimit(() => settings.num('clans.logoBytes'));
   const providers: Partial<Record<ProviderId, Provider>> = {};
   for (const id of Object.keys(PROVIDERS) as ProviderId[]) {
     const app = cfg.oauth[id];
@@ -220,9 +253,9 @@ export function createApp(cfg: Config) {
   /** Who has a world open to LAN for friends (their launcher said so). */
   const lanHosts = new Set<string>();
   const presences = new Map<string, Presence>();
-  const limitMessages = rateLimiter(40);
+  const limitMessages = limiter('chat.messagesPerMinute');
   /** On top of that, a few in a row per conversation (chatLimits.ts): throws 429 'slow_down' with the seconds to wait. */
-  const bursts = new BurstLimiter(cfg.chatBurst);
+  const bursts = new BurstLimiter(liveSettings(settings, { messages: 'chat.burstMessages', seconds: 'chat.burstSeconds', strikes: 'chat.burstStrikes', muteSeconds: 'chat.holdSeconds' }));
   const limitBurst = (user: string, conversation: string) => {
     try {
       bursts.hit(user, conversation);
@@ -232,11 +265,12 @@ export function createApp(cfg: Config) {
     }
   };
   /** Edits and deletions of one's messages. */
-  const limitEdits = rateLimiter(30);
-  const limitRequests = rateLimiter(15);
-  const limitLogins = rateLimiter(cfg.loginsPerMinute ?? 10);
+  const limitEdits = limiter('chat.editsPerMinute');
+  const limitRequests = limiter('chat.friendRequestsPerMinute');
+  const limitLogins = limiter('security.loginsPerMinute');
+  const editWindowMs = () => settings.num('chat.editWindowMinutes') * 60_000;
   /** Searching and installing a modpack asks a lot at once, but one address should not drain the key's quota. */
-  const limitCurseForge = rateLimiter(240);
+  const limitCurseForge = limiter('security.curseforgePerMinute');
   /** Who is asking, for the rate limits: behind Caddy every request comes from 127.0.0.1. */
   const requests = new RequestLog();
   const clientIp = (req: http.IncomingMessage): string => {
@@ -251,10 +285,15 @@ export function createApp(cfg: Config) {
   /** Minecraft uuid (lower case) → the SlashClient account playing as it, from the launcher. */
   /** uuid in game → the SlashClient account and which of its Minecraft accounts (no dashes) plays. */
   const linked = new Map<string, { user: string; at: number; character?: string }>();
-  const limitGame = rateLimiter(30);
-  const limitEmotes = rateLimiter(20);
-  /** Sprays: one every 3 seconds, 20 a minute, per account. */
-  const sprayLimit = new SprayLimit();
+  const limitGame = limiter('security.gamePerMinute');
+  const limitEmotes = limiter('security.emotesPerMinute');
+  /** Sprays: one every 3 seconds, 20 a minute, per account (the admin panel's settings). */
+  const sprayLimit = new SprayLimit(() => settings.num('security.sprayGapSeconds') * 1000, () => settings.num('security.spraysPerMinute'));
+
+  /** New accounts may be made (the admin panel's "Rejestracja nowych kont"); throws 503 feature_disabled when not. */
+  function registrationOpen() {
+    if (!settings.bool(featureKey('registration'))) throw new HttpError(503, 'feature_disabled');
+  }
 
   function newSession(user: User) {
     if (user.banned) throw new HttpError(403, 'banned');
@@ -282,6 +321,13 @@ export function createApp(cfg: Config) {
       for (const [id, set] of sockets) if (users.has(id)) send(set);
     } else for (const id of users) send(sockets.get(id));
   }
+
+  // a feature switched or the banner changed: every launcher connected asks /v1/features again
+  settings.onChange((changes) => {
+    if (!changes.some((c) => c.key.startsWith('feature.') || c.key.startsWith('banner.'))) return;
+    const data = JSON.stringify({ type: 'features' });
+    for (const set of sockets.values()) for (const ws of set) ws.send(data);
+  });
 
   function presenceOf(userId: string) {
     const user = db.user(userId);
@@ -382,7 +428,7 @@ export function createApp(cfg: Config) {
 
   function authed(req: http.IncomingMessage): string {
     const token = /^Bearer (.+)$/.exec(req.headers.authorization ?? '')?.[1];
-    const userId = token && db.sessionUser(hashToken(token), SESSION_IDLE_MS);
+    const userId = token && db.sessionUser(hashToken(token), sessionIdleMs());
     if (!userId) throw new HttpError(401, 'unauthorized');
     if (db.user(userId)?.banned) throw new HttpError(403, 'banned');
     (req as SeenRequest).slashUser = userId;
@@ -484,17 +530,22 @@ export function createApp(cfg: Config) {
     },
   });
 
-  const limitReports = rateLimiter(6);
+  // messages counted for achievements a day (the admin panel's setting)
+  achievements.store.messages.capOf = () => settings.num('sparks.messagesPerDay');
+
+  const limitReports = limiter('security.reportsPerMinute');
   const tracker = trackerRoutes({
     db, authed, isAdmin, body, clientIp, limit: limitReports, dir: path.join(path.dirname(cfg.dbFile), 'logs'),
+    logDays: () => settings.num('logs.days'), maxLog: () => settings.num('logs.maxBytes'),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
   });
 
   const shares = profileShareRoutes({
-    db, authed, clientIp, dir: cfg.sharesDir ?? path.join(path.dirname(cfg.dbFile), 'profiles'), limits: cfg.shareLimits,
-    limitUploads: rateLimiter(6), limitDownloads: rateLimiter(30),
+    db, authed, clientIp, dir: cfg.sharesDir ?? path.join(path.dirname(cfg.dbFile), 'profiles'),
+    limits: liveSettings(settings, { maxBytes: 'shares.maxBytes', days: 'shares.days', maxActive: 'shares.maxActive', quotaBytes: 'shares.quotaBytes' }),
+    limitUploads: limiter('shares.uploadsPerMinute'), limitDownloads: limiter('shares.downloadsPerMinute'),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -502,7 +553,7 @@ export function createApp(cfg: Config) {
 
   // the server's disk and the buckets the admin added, for screenshots, clips and profiles (storage.ts)
   const storage = new Storage({
-    sql: db.sql, secretKey: cfg.storage?.secretKey, minFreeBytes: cfg.storage?.minFreeBytes, diskSpace: cfg.storage?.diskSpace, localHttp: cfg.storage?.localHttp,
+    sql: db.sql, secretKey: cfg.storage?.secretKey, minFreeBytes: () => settings.num('storage.minFreeMb') * 1024 * 1024, diskSpace: cfg.storage?.diskSpace, localHttp: cfg.storage?.localHttp,
     localDirs: { media: cfg.mediaDir ?? path.join(path.dirname(cfg.dbFile), 'media'), cloud: cfg.cloudDir ?? path.join(path.dirname(cfg.dbFile), 'cloud-profiles') },
     fail: (status, code) => {
       throw new HttpError(status, code);
@@ -511,8 +562,9 @@ export function createApp(cfg: Config) {
 
   // screenshots and clips shared by link, /media/<id> (media.ts)
   const media = mediaRoutes({
-    sql: db.sql, storage, webDir: cfg.webDir, publicUrl: cfg.publicUrl, limits: cfg.mediaLimits, limitFactor: (u) => support.limitFactor(u),
-    authed, isAdmin, clientIp, limitUploads: rateLimiter(6), limitViews: rateLimiter(60),
+    sql: db.sql, storage, webDir: cfg.webDir, publicUrl: cfg.publicUrl, limitFactor: (u) => support.limitFactor(u),
+    limits: liveSettings(settings, { imageBytes: 'media.imageBytes', clipBytes: 'media.clipBytes', days: 'media.days', maxActive: 'media.maxActive', quotaBytes: 'media.quotaBytes' }),
+    authed, isAdmin, clientIp, limitUploads: limiter('media.uploadsPerMinute'), limitViews: limiter('media.viewsPerMinute'),
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
     versioned: (html) => versioned(html, 'text/html'),
     fail: (status, code) => {
@@ -522,8 +574,9 @@ export function createApp(cfg: Config) {
 
   // profiles kept on the player's account, for their other computers (profileCloud.ts)
   const cloud = profileCloudRoutes({
-    sql: db.sql, authed, storage, limits: cfg.cloudLimits, limitFactor: (u) => support.limitFactor(u),
-    limitUploads: rateLimiter(10), limitDownloads: rateLimiter(30),
+    sql: db.sql, authed, storage, limitFactor: (u) => support.limitFactor(u),
+    limits: liveSettings(settings, { maxBytes: 'cloud.maxBytes', maxProfiles: 'cloud.maxProfiles', quotaBytes: 'cloud.quotaBytes' }),
+    limitUploads: limiter('cloud.uploadsPerMinute'), limitDownloads: limiter('cloud.downloadsPerMinute'),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -531,21 +584,22 @@ export function createApp(cfg: Config) {
 
   // waypoints and parties shared with friends (sharing.ts)
   const sharing = sharingRoutes({
-    db, authed, body, push, limitWaypoints: rateLimiter(20), limitParties: rateLimiter(6),
+    db, authed, body, push, limitWaypoints: limiter('security.waypointsPerMinute'), limitParties: limiter('security.partiesPerMinute'),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
   });
 
   // group chats and clans (groups.ts, clans.ts); a clan's chat is one of the groups
-  const limitGroupChanges = rateLimiter(20);
+  const limitGroupChanges = limiter('groups.changesPerMinute');
   let clanTag: (uuid: string) => string | undefined = () => undefined;
   const groups = createGroups({
     db, authed, push, limitMessages, limitChanges: limitGroupChanges,
     clanTag: (clanId) => clans.tagOfClan(clanId),
     clanLogo: (clanId) => clans.logoOfClan(clanId),
     images: () => images,
-    limitBurst, limitEdits,
+    limitBurst, limitEdits, editWindowMs,
+    limits: liveSettings(settings, { size: 'groups.size', maxGroups: 'groups.maxGroups' }),
     countMessage: (user) => achievements.store.messages.count(user),
     clanRole: (clanId, uuid) => clans.roleIn(clanId, uuid),
     fail: (status, code) => {
@@ -553,7 +607,8 @@ export function createApp(cfg: Config) {
     },
   });
   const clans = createClans({
-    db, authed, admin, body, push, groups, limitChanges: limitGroupChanges, limitLogos: rateLimiter(6),
+    db, authed, admin, body, push, groups, limitChanges: limitGroupChanges, limitLogos: limiter('clans.logosPerMinute'),
+    limits: liveSettings(settings, { members: 'clans.maxMembers', invites: 'clans.maxInvites', nameMax: 'clans.nameMax' }),
     status: (userId) => presenceOf(userId).status,
     fail: (status, code) => {
       throw new HttpError(status, code);
@@ -563,10 +618,11 @@ export function createApp(cfg: Config) {
 
   // communities: big groups with roles, a directory and a chat kept on the server (communities.ts)
   const communities = createCommunities({
-    db, authed, admin, body, push, pushMany, clientIp, limits: cfg.communityLimits,
+    db, authed, admin, body, push, pushMany, clientIp, editWindowMs,
+    limits: liveSettings(settings, Object.fromEntries(Object.keys(COMMUNITY_LIMITS).map((k) => [k, `communities.${k}`])) as Record<keyof CommunityLimits, string>),
     status: (userId) => presenceOf(userId).status,
-    limitCreate: rateLimiter(3), limitJoin: rateLimiter(20), limitChanges: rateLimiter(60), limitLogos: rateLimiter(6),
-    limitMessages, limitEdits, limitBurst, limitReports: rateLimiter(10), limitViews: rateLimiter(cfg.profileViewsPerMinute ?? 120),
+    limitCreate: limiter('communities.createPerMinute'), limitJoin: limiter('communities.joinPerMinute'), limitChanges: limiter('communities.changesPerMinute'), limitLogos: limiter('communities.logosPerMinute'),
+    limitMessages, limitEdits, limitBurst, limitReports: limiter('communities.reportsPerMinute'), limitViews: limiter('profiles.viewsPerMinute'),
     countMessage: (user) => achievements.store.messages.count(user),
     checkAchievements: (user) => achievements.check(user),
     sizeGoals: () => achievements.registry.active().filter((a) => a.group === 'community_size').map((a) => a.goal),
@@ -584,7 +640,9 @@ export function createApp(cfg: Config) {
   });
   const images = chatImageRoutes({
     sql: db.sql, authed, areFriends: (a, b) => db.areFriends(a, b), isGroupMember: (group, uuid) => groups.store.isMember(group, uuid), dir: cfg.imagesDir ?? path.join(path.dirname(cfg.dbFile), 'chat-images'),
-    limits: cfg.imageLimits, limitUploads: rateLimiter(10), limitDownloads: rateLimiter(120), limitBurst,
+    limits: Object.assign(liveSettings(settings, { maxBytes: 'chatImages.maxBytes', perDay: 'chatImages.perDay', bytesPerDay: 'chatImages.bytesPerDay', days: 'chatImages.days' }),
+      cfg.imageLimits?.orphanMs !== undefined ? { orphanMs: cfg.imageLimits.orphanMs } : {}),
+    limitUploads: limiter('chatImages.uploadsPerMinute'), limitDownloads: limiter('chatImages.downloadsPerMinute'), limitBurst,
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -594,8 +652,8 @@ export function createApp(cfg: Config) {
   const support = supportRoutes({
     sql: db.sql, box: storage.box, keyError: storage.keyError, publicUrl: cfg.publicUrl,
     user: (id) => db.user(id), userByHandle: (h) => db.userByHandle(h),
-    authed, admin, body, clientIp, limitCheckout: rateLimiter(cfg.payments?.checkoutsPerMinute ?? 6), limitWebhooks: rateLimiter(600),
-    limitRefunds: rateLimiter(cfg.payments?.refundsPerMinute ?? 4), notify: (userId, event) => push(userId, event), isAdmin: (userId) => isAdmin(userId),
+    authed, admin, body, clientIp, limitCheckout: limiter('support.checkoutsPerMinute'), limitWebhooks: rateLimiter(600),
+    limitRefunds: limiter('support.refundsPerMinute'), refundWindowDays: () => settings.num('support.refundWindowDays'), refundsPerDay: () => settings.num('support.refundsPerDay'), notify: (userId, event) => push(userId, event), isAdmin: (userId) => isAdmin(userId),
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
     changed: (userId) => cosmeticsChanged(userId),
     fetchImpl: cfg.fetchImpl, apiBase: { stripe: cfg.payments?.stripeApi, paypal: cfg.payments?.paypalApi }, now: cfg.payments?.now,
@@ -606,7 +664,8 @@ export function createApp(cfg: Config) {
 
   // public player profiles, /u/<handle>, with what the owner lets others see (profiles.ts)
   const profiles = profileRoutes({
-    db, webDir: cfg.webDir, publicUrl: cfg.publicUrl, authed, admin, isAdmin, body, clientIp, limitViews: rateLimiter(cfg.profileViewsPerMinute ?? 120),
+    db, webDir: cfg.webDir, publicUrl: cfg.publicUrl, authed, admin, isAdmin, body, clientIp, limitViews: limiter('profiles.viewsPerMinute'),
+    defaults: () => ({ visibility: settings.str('profiles.defaultVisibility') as Visibility, elements: { ...DEFAULT_ELEMENTS }, indexable: settings.bool('profiles.defaultIndexable') }),
     achievements: (uuid) => achievements.list(uuid),
     // the Iskry balance as a stats tile
     sparks: (uuid) => wallet.balance(uuid),
@@ -679,6 +738,7 @@ export function createApp(cfg: Config) {
       if (!cfg.allowDevLogin) throw new HttpError(404, 'provider_disabled');
       const { name } = await body(req);
       if (typeof name !== 'string' || !VALID_NAME.test(name)) throw new HttpError(400, 'bad_name');
+      if (!db.owner('dev', name.toLowerCase())) registrationOpen();
       return newSession(db.signIn('dev', name.toLowerCase(), { handle: name, name, avatar: '' }));
     }],
     // Minecraft: the launcher proves it plays as a Minecraft account the way a Minecraft server
@@ -709,6 +769,7 @@ export function createApp(cfg: Config) {
         return { linked: true, user: meWithProviders(me) };
       }
       // a new player, or the account this Minecraft account belongs to (someone else's: the launcher switches to it)
+      if (!owner) registrationOpen();
       const session = newSession(db.signIn('minecraft', profile.id, { handle: profile.name, name: profile.name, avatar: '' }, profile.name));
       return { ...session, user: meWithProviders(session.user.id), switched: !!me };
     }],
@@ -1007,7 +1068,7 @@ export function createApp(cfg: Config) {
       const before = Number(url.searchParams.get('before')) || undefined;
       const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 50));
       // how long one's own messages may be edited (server 0.9.23+; without it the clients offer no editing)
-      return { messages: images.decorate(db.conversation(me, other, limit, before)), editWindowMs: EDIT_WINDOW_MS };
+      return { messages: images.decorate(db.conversation(me, other, limit, before)), editWindowMs: editWindowMs() };
     }],
     ['POST', /^\/v1\/messages\/([\w-]+)$/, async (req, [other]) => {
       const me = authed(req);
@@ -1040,7 +1101,7 @@ export function createApp(cfg: Config) {
       limitEdits(me);
       const old = db.messageBetween(me, other, Number(raw));
       if (!old) throw new HttpError(404, 'not_found');
-      const refusal = editRefusal(old, me, !!old.invite || !!old.waypoint || images.has(old.id));
+      const refusal = editRefusal(old, me, !!old.invite || !!old.waypoint || images.has(old.id), Date.now(), editWindowMs());
       if (refusal) throw new HttpError(...refusal);
       const { text } = await body(req);
       if (typeof text !== 'string' || !text.trim()) throw new HttpError(400, 'empty');
@@ -1137,6 +1198,14 @@ export function createApp(cfg: Config) {
     ...profiles.routes,
     ...support.routes,
     ...legal.routes,
+    // the admin panel's settings, the feature switches and the banner (settingsAdmin.ts)
+    ...settingsAdminRoutes({
+      settings, admin, body, handleOf: (id) => db.user(id)?.handle ?? '',
+      audit: (who, action, target, detail) => db.log(who, action, target, detail),
+      fail: (status, code) => {
+        throw new HttpError(status, code);
+      },
+    }),
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged,
       fail: (status, code) => {
@@ -1192,6 +1261,21 @@ export function createApp(cfg: Config) {
   async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
     const url = new URL(req.url ?? '/', 'http://localhost');
     res.setHeader('Cache-Control', 'no-store');
+
+    // a feature the admin switched off (features.ts): its endpoints say so, its pages too
+    const feature = featureOf(req.method ?? 'GET', url.pathname, (id) => groups.store.group(id)?.clan);
+    if (feature && !settings.bool(featureKey(feature))) {
+      (req as SeenRequest).slashError = 'feature_disabled';
+      if (url.pathname.startsWith('/v1/')) {
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'feature_disabled', feature }));
+      } else {
+        res.writeHead(503, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(disabledPage());
+      }
+      req.resume();
+      return;
+    }
 
     // a Minecraft player's skin for the site's 3D preview, from Mojang through here (the page may only talk to us)
     const skin = /^\/v1\/skin\/([0-9a-fA-F-]{32,36})$/.exec(url.pathname);
@@ -1427,7 +1511,7 @@ export function createApp(cfg: Config) {
         return;
       }
       if (!me) {
-        const userId = msg.type === 'auth' && typeof msg.token === 'string' ? db.sessionUser(hashToken(msg.token), SESSION_IDLE_MS) : undefined;
+        const userId = msg.type === 'auth' && typeof msg.token === 'string' ? db.sessionUser(hashToken(msg.token), sessionIdleMs()) : undefined;
         if (!userId || db.user(userId)?.banned) return ws.close(4001, 'unauthorized');
         clearTimeout(authTimer);
         me = userId;
@@ -1518,7 +1602,7 @@ export function createApp(cfg: Config) {
       } catch {
         return ws.close(4000, 'bad');
       }
-      const me = typeof msg.token === 'string' ? db.sessionUser(hashToken(msg.token), SESSION_IDLE_MS) : undefined;
+      const me = typeof msg.token === 'string' ? db.sessionUser(hashToken(msg.token), sessionIdleMs()) : undefined;
       if (!me || db.user(me)?.banned) return ws.close(4001, 'unauthorized');
       if (msg.type === 'join' && typeof msg.host === 'string') {
         const host = msg.host;
@@ -1589,6 +1673,8 @@ export function createApp(cfg: Config) {
     support,
     /** For tests: the communities' data. */
     communities,
+    /** For tests: the admin panel's settings. */
+    settings,
     close: () => new Promise<void>((resolve) => {
       clearInterval(heartbeat);
       clearInterval(playTick);
@@ -1600,6 +1686,9 @@ export function createApp(cfg: Config) {
       wss.close();
       lanWss.close();
       server.close(() => {
+        // the module-wide lists go back to the code's (another app in the same process starts clean)
+        useBlocklist();
+        useLogoLimit();
         db.close();
         resolve();
       });

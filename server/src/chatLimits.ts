@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import { withDefaults } from './settings.ts';
 
 /**
  * Keeping the chats readable (server 0.9.23+): how long a message may be edited, a burst limit per
@@ -15,10 +16,10 @@ export const EDIT_WINDOW_MS = 15 * 60_000;
  * Why a message may not be edited by `me` now, as [status, code]; undefined when it may. `special`:
  * it carries a picture, an invite or a waypoint (only text is edited).
  */
-export function editRefusal(m: { from: string; at: number; deleted?: boolean; event?: unknown }, me: string, special: boolean, now = Date.now()): [number, string] | undefined {
+export function editRefusal(m: { from: string; at: number; deleted?: boolean; event?: unknown }, me: string, special: boolean, now = Date.now(), windowMs = EDIT_WINDOW_MS): [number, string] | undefined {
   if (m.from !== me) return [403, 'not_author'];
   if (m.deleted || m.event || special) return [400, 'not_editable'];
-  if (now - m.at > EDIT_WINDOW_MS) return [403, 'edit_expired'];
+  if (now - m.at > windowMs) return [403, 'edit_expired'];
   return undefined;
 }
 
@@ -51,8 +52,9 @@ export class BurstLimiter {
   private readonly strikes = new Map<string, number[]>();
   private readonly held = new Map<string, number>();
 
+  /** `limits` may be live (read on every message: the admin panel's settings). */
   constructor(limits: Partial<BurstLimits> = {}) {
-    this.limits = { ...BURST_LIMITS, ...limits };
+    this.limits = withDefaults(BURST_LIMITS, limits);
   }
 
   /** One more message from `user` in `conversation` ("d:<friend>" or "g:<group>"). */
@@ -101,6 +103,8 @@ const utcDay = (at: number) => new Date(at).toISOString().slice(0, 10);
  */
 export class MessageCounter {
   private readonly sql: DatabaseSync;
+  /** The day's cap now (the admin panel's setting; COUNTED_PER_DAY by default). The start from old messages always uses COUNTED_PER_DAY. */
+  capOf: () => number = () => COUNTED_PER_DAY;
 
   constructor(sql: DatabaseSync) {
     this.sql = sql;
@@ -134,8 +138,8 @@ export class MessageCounter {
 
   /** One message sent; false when the day was full already. */
   count(uuid: string, at = Date.now()): boolean {
-    const r = this.sql.prepare(`INSERT INTO message_counts (uuid, day, n) VALUES (?, ?, 1)
-      ON CONFLICT (uuid, day) DO UPDATE SET n = n + 1 WHERE n < ${COUNTED_PER_DAY}`).run(uuid, utcDay(at));
+    const r = this.sql.prepare(`INSERT INTO message_counts (uuid, day, n) SELECT ?, ?, 1 WHERE ? > 0
+      ON CONFLICT (uuid, day) DO UPDATE SET n = n + 1 WHERE n < ?`).run(uuid, utcDay(at), this.capOf(), this.capOf());
     return Number(r.changes) > 0;
   }
 

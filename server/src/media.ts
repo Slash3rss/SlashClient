@@ -4,6 +4,7 @@ import type http from 'node:http';
 import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { addColumn, sendObject, type Storage } from './storage.ts';
+import { withDefaults } from './settings.ts';
 
 /**
  * Screenshots and clips shared by link, like logs: a signed-in player uploads a picture (PNG or
@@ -259,7 +260,8 @@ const clock = (ms: number) => {
 
 export function mediaRoutes(ctx: MediaContext) {
   const store = new MediaStore(ctx.sql);
-  const limits = { ...MEDIA_LIMITS, ...ctx.limits };
+  // live: the admin panel's settings are read when used
+  const limits = withDefaults(MEDIA_LIMITS, ctx.limits);
   const { storage } = ctx;
   storage.register({
     usage: () => store.usage(),

@@ -3,6 +3,7 @@ import type http from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import { zipEntryNames } from './profileShares.ts';
 import { addColumn, sendObject, type Storage } from './storage.ts';
+import { withDefaults } from './settings.ts';
 
 /**
  * Profiles kept on the player's account, so the same profile works on a second computer. The
@@ -117,7 +118,8 @@ const text = (v: string | null, max: number) => (v ?? '').trim().slice(0, max);
 
 export function profileCloudRoutes(ctx: CloudContext) {
   const store = new CloudStore(ctx.sql);
-  const limits = { ...CLOUD_LIMITS, ...ctx.limits };
+  // live: the admin panel's settings are read when used
+  const limits = withDefaults(CLOUD_LIMITS, ctx.limits);
   const { storage } = ctx;
   storage.register({
     usage: () => store.usage(),
