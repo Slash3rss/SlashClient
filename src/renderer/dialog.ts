@@ -53,3 +53,30 @@ export function confirmDialog(opts: ConfirmOptions): Promise<boolean> {
     ok.focus();
   });
 }
+
+/**
+ * A small window of our own (the launcher's modal look) with a title, a body and buttons; returns the
+ * function that closes it (Esc, the close button, or a click beside it close it too, then `onClose` runs).
+ */
+export function modalWindow(title: string, body: Node[], buttons: HTMLButtonElement[], onClose?: () => void, className = 'fr-group-modal') {
+  const close = el('button', { type: 'button', className: 'icon-btn modal-close', title: t('Zamknij') }, icon('fa-xmark'));
+  const box = el('div', { className: 'modal' },
+    el('div', { className: `modal-box glass-panel join-box ${className}` }, close,
+      el('div', { className: 'modal-body' }, el('h2', { textContent: title }), ...body, buttons.length ? el('div', { className: 'row join-actions' }, ...buttons) : '')));
+  const done = () => {
+    box.remove();
+    document.removeEventListener('keydown', onKey, true);
+    onClose?.();
+  };
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.stopPropagation();
+      done();
+    }
+  };
+  close.addEventListener('click', done);
+  box.addEventListener('click', (e) => e.target === box && done());
+  document.addEventListener('keydown', onKey, true);
+  document.body.append(box);
+  return done;
+}

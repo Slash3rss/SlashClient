@@ -17,15 +17,17 @@ export function isLogoPng(data: Uint8Array): boolean {
 
 const ID = /^[\w-]{1,32}$/;
 
-/** Logos by clan and version: the last few kept, one download at a time for each. */
+/** Logos by clan (or community, with its `prefix`) and version: the last few kept, one download at a time for each. */
 export class ClanLogoCache {
   private readonly kept = new Map<string, Promise<Buffer>>();
   private readonly download: (path: string) => Promise<Buffer>;
   private readonly keep: number;
+  private readonly prefix: string;
 
-  constructor(download: (path: string) => Promise<Buffer>, keep = 64) {
+  constructor(download: (path: string) => Promise<Buffer>, keep = 64, prefix = '/v1/clans') {
     this.download = download;
     this.keep = keep;
+    this.prefix = prefix;
   }
 
   get(id: string, version: number): Promise<Buffer> {
@@ -38,7 +40,7 @@ export class ClanLogoCache {
       this.kept.set(key, found);
       return found;
     }
-    found = this.download(`/v1/clans/${id}/logo.png?v=${version}`).then((png) => {
+    found = this.download(`${this.prefix}/${id}/logo.png?v=${version}`).then((png) => {
       if (!isLogoPng(png)) throw new Error('not_png');
       return png;
     });

@@ -22,6 +22,7 @@ export const PROFILE_ELEMENTS: [string, string][] = [
   ['achievements', 'Osiągnięcia'],
   ['cosmetics', 'Noszone kosmetyki'],
   ['clan', 'Klan'],
+  ['communities', 'Społeczności (tylko publiczne, które zostawisz włączone)'],
   ['minecraft', 'Konta Minecraft (nicki)'],
   ['friends', 'Liczba znajomych'],
   ['servers', 'Serwery, na których grasz'],

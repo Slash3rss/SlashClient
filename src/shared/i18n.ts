@@ -8,6 +8,7 @@ import { TOOLS_EN } from './i18nTools';
 import { SPARKS_EN } from './i18nSparks';
 import { PROFILES_EN } from './i18nProfiles';
 import { SUPPORT_EN } from './i18nSupport';
+import { COMMUNITIES_EN } from './i18nCommunities';
 
 export type Lang = 'pl' | 'en';
 
@@ -25,6 +26,8 @@ const EN: Record<string, string> = {
   ...PROFILES_EN,
   // supporting the project (own file)
   ...SUPPORT_EN,
+  // communities in the Friends view (own file)
+  ...COMMUNITIES_EN,
   // navigation and common
   'Graj': 'Play',
   'GRAJ': 'PLAY',

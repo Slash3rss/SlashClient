@@ -285,6 +285,8 @@ export function createCommunities(deps: Deps) {
 
   function deleteMessage(c: CommunityRow, m: MessageRow, by: string) {
     store.deleteMessage(m.id, by);
+    // a deleted message's reports are settled with it
+    if (store.resolveReports(m.id, by, 'deleted')) listChanged(c.id, store.staff(c.id));
     const message = messageView(store.message(c.id, m.id)!);
     toMembers(c.id, { type: 'community-message-delete', message, by });
     return message;

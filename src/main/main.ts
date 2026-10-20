@@ -1574,6 +1574,7 @@ const bridge = new GameBridge({
     return (size.w < width ? img.resize({ width: size.w, height: size.h, quality: 'good' }) : img).toPNG();
   },
   clanLogo: (id, version) => clanLogos.get(id, version),
+  communityLogo: (id, version) => communityLogos.get(id, version),
 });
 
 /** A PNG in the screenshots folder of one of the profiles (what the game may send or copy); its real path. */
@@ -1646,7 +1647,7 @@ handle('lan:join', (friendId: string) => {
 });
 
 handle('social:api', (method: string, apiPath: string, body?: unknown) => {
-  if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages|invites|cosmetics|waypoints|parties|achievements|groups|clans|wallet|shop)(\/[\w-]+)*(\?[\w=&-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
+  if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages|invites|cosmetics|waypoints|parties|achievements|groups|clans|communities|wallet|shop)(\/[\w-]+)*(\?[\w=&%.-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
   return socialCall(() => chatCall(method, apiPath, body));
 });
 
@@ -1843,9 +1844,19 @@ handle('social:setClanLogo', (png: Uint8Array) => socialCall(async () => {
 }));
 /** A clan's logo for the page, as a data: address. */
 handle('social:clanLogo', (id: string, version: number) => socialCall(async () => `data:image/png;base64,${(await clanLogos.get(id, version)).toString('base64')}`));
+// a community's logo: the same pipeline (its admins upload it, anyone fetches it by version)
+const communityLogos = new ClanLogoCache((apiPath) => social.download(apiPath), 64, '/v1/communities');
+handle('social:setCommunityLogo', (id: string, png: Uint8Array) => socialCall(async () => {
+  if (typeof id !== 'string' || !/^[\w-]{1,32}$/.test(id)) throw new SocialError('bad_request');
+  if (!(png instanceof Uint8Array) || !isLogoPng(png)) throw new SocialError('not_png');
+  return social.upload(`/v1/communities/${id}/logo`, png);
+}));
+handle('social:communityLogo', (id: string, version: number) => socialCall(async () => `data:image/png;base64,${(await communityLogos.get(id, version)).toString('base64')}`));
 
 /** A call to the social server with the chat encrypted on the way out and decrypted on the way in. */
 async function chatCall(method: string, apiPath: string, body?: unknown) {
+  // a community's chat is kept on the server as it is (not end-to-end encrypted: see the server's communityStore.ts)
+  if (apiPath.startsWith('/v1/communities')) return social.call(method, apiPath, body);
   // a new message, or an edited one (server 0.9.23+): the new text is sealed exactly like a new message
   const send = /^\/v1\/messages\/([\w-]+)(\/\d+\/edit)?$/.exec(apiPath);
   if (method === 'POST' && send && body && typeof (body as { text?: unknown }).text === 'string') {

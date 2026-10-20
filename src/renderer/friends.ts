@@ -1,5 +1,6 @@
 import { locale, t } from '../shared/i18n';
 import { createGroups } from './groups';
+import { createCommunities } from './communities';
 import { PlayingWatch, type PlayingNews } from './friendActivity';
 import { createParty, type Party } from './party';
 import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
@@ -113,6 +114,22 @@ export function socialErrorText(code: string): string {
     not_author: t('Możesz zmieniać tylko swoje wiadomości.'),
     not_editable: t('Tej wiadomości nie można edytować.'),
     edit_expired: t('Minął czas na edycję tej wiadomości.'),
+    // communities (communities.ts)
+    bad_community_name: t('Nazwa społeczności: 3–40 znaków.'),
+    bad_description: t('Opis jest za długi albo ma niedozwolone znaki.'),
+    offensive_description: t('Ten opis jest niedozwolony.'),
+    too_many_communities: t('Jesteś już w zbyt wielu społecznościach. Opuść którąś.'),
+    too_many_owned: t('Masz już najwięcej społeczności, ile można założyć.'),
+    community_full: t('Społeczność jest pełna.'),
+    community_banned: t('Masz bana w tej społeczności.'),
+    banned_user: t('Ten gracz ma bana w tej społeczności. Najpierw go zdejmij.'),
+    already_requested: t('Prośba już czeka na moderatorów.'),
+    invite_only: t('Do tej społeczności dołącza się tylko na zaproszenie.'),
+    too_many_requests: t('Za dużo osób czeka na przyjęcie. Spróbuj później.'),
+    community_muted: t('Wyciszono Cię w tej społeczności.'),
+    read_only_channel: t('Tu piszą tylko administratorzy społeczności.'),
+    already_reported: t('Ta wiadomość jest już przez Ciebie zgłoszona.'),
+    not_member: t('Ten gracz nie jest w społeczności.'),
     // the shop (sparks from achievements)
     not_enough_sparks: t('Za mało Iskier.'),
     owned: t('Masz już ten przedmiot.'),
@@ -130,8 +147,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   let selected: string | undefined;
   /** `editWindowMs`: how long one's messages may be edited, from the server (none: an older one, no editing). */
   const chats = new Map<string, { messages: Message[]; more: boolean; loading: boolean; editWindowMs?: number }>();
-  /** A message being edited in the composer instead of a new one. */
-  let editing: { id: number; group?: string; friend?: string } | undefined;
+  /** A message being edited in the composer instead of a new one (direct, in a group, or in a community's channel). */
+  let editing: { id: number; group?: string; friend?: string; community?: string; channel?: string } | undefined;
   const typing = new Map<string, ReturnType<typeof setTimeout>>();
   let lastTypingSent = 0;
   let signingIn = false;
@@ -172,11 +189,29 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     },
     opened: () => {
       selected = undefined;
+      communities.deselect();
       stopEditing();
       if (input) input.value = '';
     },
     // editing a group message happens in the same composer
     edit: (m) => startEditing({ id: m.id, group: m.group }, m.text),
+    editGone: () => stopEditing(),
+  });
+  /** Communities (communities.ts): their section in the list, and an open one's chat in the chat panel. */
+  const communities = createCommunities({
+    api, toast: deps.toast, errorText: deps.errorText, avatar: (p, presence) => avatar(p, presence as Presence | undefined), visible: isVisible,
+    me: () => (state?.user ? { id: state.user.id, handle: state.user.handle } : undefined),
+    changed: () => {
+      renderList();
+      renderChat();
+    },
+    opened: () => {
+      selected = undefined;
+      groups.deselect();
+      stopEditing();
+      if (input) input.value = '';
+    },
+    edit: (m) => startEditing({ id: m.id, community: m.community, channel: m.channel }, m.text),
     editGone: () => stopEditing(),
   });
   const friend = (id: string | undefined) => list.friends.find((f) => f.id === id);
@@ -240,6 +275,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     render();
     if (state?.user) void party.refresh();
     if (state?.user) void groups.refresh();
+    if (state?.user) void communities.refresh();
   }
 
   async function refreshList() {
@@ -254,7 +290,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   }
 
   function updateBadge() {
-    const n = list.friends.reduce((sum, f) => sum + f.unread, 0) + list.incoming.length + groups.unread();
+    const n = list.friends.reduce((sum, f) => sum + f.unread, 0) + list.incoming.length + groups.unread() + communities.unread();
     badge.textContent = n > 99 ? '99+' : String(n);
     badge.classList.toggle('hidden', !n || !state?.user);
   }
@@ -353,6 +389,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       state = await fn();
       await refreshList();
       void groups.refresh();
+      void communities.refresh();
       deps.toast(t('Zalogowano jako {0}', state.user?.name ?? ''));
       deps.accountChanged?.();
     } catch (err) {
@@ -367,7 +404,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   // the layout is built once, so the message box keeps its text and focus
   let meBox: HTMLElement, listBox: HTMLElement, chatBox: HTMLElement, messagesBox: HTMLElement, chatHead: HTMLElement, typingBox: HTMLElement;
   let inviteBar: HTMLFormElement;
-  let input: HTMLTextAreaElement, counter: HTMLElement, sendBtn: HTMLButtonElement, composer: HTMLFormElement, editBar: HTMLElement;
+  let input: HTMLTextAreaElement, counter: HTMLElement, sendBtn: HTMLButtonElement, composer: HTMLFormElement, editBar: HTMLElement, pictureBtn: HTMLButtonElement;
 
   function buildLayout() {
     meBox = el('div', { className: 'fr-me' });
@@ -397,14 +434,15 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     chatHead = el('div', { className: 'fr-chat-head' });
     messagesBox = el('div', { className: 'fr-messages' });
     messagesBox.addEventListener('scroll', () => {
-      if (messagesBox.scrollTop < 60 && groups.active()) void groups.loadOlder();
+      if (messagesBox.scrollTop < 60 && communities.active()) void communities.loadOlder();
+      else if (messagesBox.scrollTop < 60 && groups.active()) void groups.loadOlder();
       else if (messagesBox.scrollTop < 60 && selected) loadOlder(selected);
     });
     typingBox = el('div', { className: 'fr-typing' });
     input = control<HTMLTextAreaElement>('textarea', { rows: 1, placeholder: t('Napisz wiadomość…'), maxLength: MAX_MESSAGE });
     counter = el('small', { className: 'fr-counter' });
     sendBtn = el('button', { type: 'submit', className: 'primary', title: t('Wyślij') }, icon('fa-paper-plane'));
-    const pictureBtn = el('button', { type: 'button', className: 'icon-btn', title: t('Wyślij obraz (zaszyfrowany)') }, icon('fa-image'));
+    pictureBtn = el('button', { type: 'button', className: 'icon-btn', title: t('Wyślij obraz (zaszyfrowany)') }, icon('fa-image'));
     pictureBtn.addEventListener('click', () => sendPicture(pictureBtn));
     composer = el('form', { className: 'fr-composer' }, pictureBtn, input, counter, sendBtn);
     input.addEventListener('keydown', (e) => {
@@ -625,6 +663,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       }
     }
     sections.push(...groups.sections());
+    sections.push(...communities.sections());
     const sorted = [...list.friends].sort((a, b) => rank(a) - rank(b) || b.lastMessageAt - a.lastMessageAt || a.name.localeCompare(b.name));
     const online = sorted.filter((f) => f.presence.status !== 'offline').length;
     sections.push(el('div', { className: 'fr-section', textContent: t('Znajomi · {0} online', online) }));
@@ -672,6 +711,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   async function select(id: string) {
     groups.deselect();
+    communities.deselect();
     selected = id;
     stopEditing();
     input.value = '';
@@ -717,7 +757,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   // ---------- editing and deleting messages (server 0.9.23+, chatEdits.ts) ----------
 
-  function startEditing(target: { id: number; group?: string; friend?: string }, text: string) {
+  function startEditing(target: { id: number; group?: string; friend?: string; community?: string; channel?: string }, text: string) {
     if (!input) return;
     editing = target;
     input.value = text;
@@ -729,15 +769,17 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
     // the message is marked in the chat and stays in sight above the editing bar
-    if (!target.group) renderMessages();
+    if (!target.group && !target.community) renderMessages();
     requestAnimationFrame(() => messagesBox.querySelector('.fr-msg.editing')?.scrollIntoView({ block: 'nearest' }));
   }
 
   function stopEditing() {
     if (!editing) return;
     const wasGroup = !!editing.group;
+    const wasCommunity = !!editing.community;
     editing = undefined;
     if (wasGroup) groups.stopEditing();
+    else if (wasCommunity) communities.stopEditing();
     else if (selected) renderMessages();
     if (!input) return;
     input.value = '';
@@ -756,6 +798,10 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     try {
       if (target.group) {
         if (await groups.saveEdit(target.group, target.id, text)) stopEditing();
+        return;
+      }
+      if (target.community) {
+        if (await communities.saveEdit(target.community, target.channel!, target.id, text)) stopEditing();
         return;
       }
       const { message }: { message: Message } = await api.socialApi('POST', `/v1/messages/${target.friend}/${target.id}/edit`, { text });
@@ -785,7 +831,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     const other = m.from === state?.user?.id ? m.to : m.from;
     const chat = chats.get(other);
     if (chat) chat.messages = replaceMessage(chat.messages, m);
-    if (m.deleted && editing?.id === m.id && !editing.group) stopEditing();
+    if (m.deleted && editing?.id === m.id && !editing.group && !editing.community) stopEditing();
     if (other === selected && !groups.active()) renderMessages();
   }
 
@@ -801,11 +847,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   async function send() {
     if (editing) return saveEdit();
-    if (groups.active()) {
+    if (groups.active() || communities.active()) {
       const text = input.value.trim();
       if (!text) return;
       sendBtn.disabled = true;
-      if (await groups.send(text)) {
+      if (await (communities.active() ? communities.send(text) : groups.send(text))) {
         input.value = '';
         input.dispatchEvent(new Event('input'));
       }
@@ -866,6 +912,17 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   function renderChat() {
     if (!chatBox) return;
+    // a community: no pictures there (not end-to-end encrypted), and the composer says when one cannot write
+    const com = communities.active() ? communities.composerState() : undefined;
+    pictureBtn.classList.toggle('hidden', !!com);
+    input.disabled = !!com && !com.canPost;
+    sendBtn.disabled = !!com && !com.canPost;
+    input.placeholder = com?.reason ?? t('Napisz wiadomość…');
+    if (com) {
+      chatBox.classList.remove('empty');
+      inviteBar.classList.add('hidden');
+      return communities.renderChat(chatHead, messagesBox, typingBox);
+    }
     if (groups.active()) {
       chatBox.classList.remove('empty');
       inviteBar.classList.add('hidden');
@@ -1061,6 +1118,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   api.on('social:event', async (e: any) => {
     if (groups.onEvent(e)) return updateBadge();
+    if (communities.onEvent(e)) return updateBadge();
     switch (e.type) {
       case 'state': {
         const was = state?.user?.id;
@@ -1070,6 +1128,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
           selected = undefined;
           chats.clear();
           groups.clear();
+          communities.clear();
           watch.clear();
           if (was && state?.user) root.replaceChildren();
           deps.accountChanged?.();
@@ -1077,6 +1136,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         if (state?.user && state.user.id !== was) await refreshList();
         if (state?.user) void party.refresh();
         if (state?.user && state.user.id !== was) void groups.refresh();
+        if (state?.user && state.user.id !== was) void communities.refresh();
         if (!state?.user) {
           root.replaceChildren();
           return refreshState();
@@ -1196,7 +1256,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   // marking a chat read when the player comes back to it
   addEventListener('focus', () => {
-    if (groups.active() && isVisible()) groups.markRead();
+    if (communities.active() && isVisible()) communities.markRead();
+    else if (groups.active() && isVisible()) groups.markRead();
     else if (selected && isVisible()) markRead(selected);
   });
 
@@ -1206,7 +1267,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       if (!state) return refreshState();
       if (!state.user) return refreshState();
       render();
-      if (groups.active()) groups.markRead();
+      if (communities.active()) communities.markRead();
+      else if (groups.active()) groups.markRead();
       else if (selected) markRead(selected);
     },
     init: refreshState,
