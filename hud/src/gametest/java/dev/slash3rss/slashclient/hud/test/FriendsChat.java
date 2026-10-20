@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 public class FriendsChat implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		context.waitTicks(40);
 		// the HUD window's cards, with the launcher's icons
 		context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::settingsWindow);

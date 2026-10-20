@@ -25,6 +25,7 @@ public class GameAllCosmetics implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		context.getInput().setCursorPos(5, 470);
 		// the menu from the main menu: the slot tabs, the first and the last, at several sizes
 		context.runOnClient(mc -> TestHooks.slashMenu());

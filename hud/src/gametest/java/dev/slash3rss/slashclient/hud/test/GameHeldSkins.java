@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 public class GameHeldSkins implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		String known = context.computeOnClient(mc -> TestHooks.heldSkins());
 		if (!known.equals("shield_dragon,shield_demon,shield_cardboard,shield_golden,shield_ice,shield_slash,shield_heart|sword_beam,sword_katana,sword_flame,sword_ice,bow_dragon,bow_crystal"))
 			throw new AssertionError("Not the held skins we made: " + known);

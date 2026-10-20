@@ -187,6 +187,18 @@ if (gametests) {
 	}
 }
 
+// only some tests: -Ptests=GameProps,HudScreenshots; a share of them in a game of its own, with its
+// own folder: -Pshard=2/4 (gametest.sh runs all the shares side by side)
+if (gametests) {
+	loom.runs.matching { it.name == 'clientGameTest' }.configureEach {
+		if (project.hasProperty('tests')) vmArg "-Dslashclient.test.only=${project.property('tests')}"
+		if (project.hasProperty('shard')) {
+			vmArg "-Dslashclient.test.shard=${project.property('shard')}"
+			runDir "build/run/clientGameTest-${project.property('shard').toString().replace('/', 'of')}"
+		}
+	}
+}
+
 // on 1.21.x the test framework's network sync trips over the server list's pings (the
 // pinned SkyUp.pl is pinged in the tests); the game itself has no such sync
 if (obfuscated) {

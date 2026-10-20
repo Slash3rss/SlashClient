@@ -17,6 +17,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 public class GameWorldAids implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			TestServerContext server = world.getServer();

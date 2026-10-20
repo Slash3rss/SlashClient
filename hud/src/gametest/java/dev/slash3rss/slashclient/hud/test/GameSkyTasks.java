@@ -16,6 +16,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 public class GameSkyTasks implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		//#if MC >= 26.3
 		// the test ends on the game's own title screen
 		context.runOnClient(mc -> TestHooks.vanillaMenu());

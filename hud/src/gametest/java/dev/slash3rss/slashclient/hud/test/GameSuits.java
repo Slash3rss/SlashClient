@@ -16,6 +16,7 @@ public class GameSuits implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		String known = context.computeOnClient(mc -> TestHooks.suits());
 		if (!known.equals(String.join(",", SUITS))) throw new AssertionError("Not the suits we made: " + known);
 		context.getInput().setCursorPos(10, 10);

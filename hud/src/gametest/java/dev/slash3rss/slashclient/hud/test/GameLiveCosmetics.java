@@ -16,6 +16,7 @@ import java.util.UUID;
 public class GameLiveCosmetics implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			world.getServer().runCommand("time set 6000");

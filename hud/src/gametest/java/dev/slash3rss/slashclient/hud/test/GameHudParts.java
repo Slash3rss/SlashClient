@@ -13,6 +13,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 public class GameHudParts implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		context.runOnClient(mc -> TestHooks.gameParts());
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			for (String cmd : new String[] {

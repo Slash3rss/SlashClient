@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 public class GameClothing implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		String known = context.computeOnClient(mc -> TestHooks.clothing());
 		if (!known.equals("tophat,crown,cap,headphones,beanie,wizard,halo|scarf,bowtie,tie,medal,jacket")) throw new AssertionError("Not the clothing we made: " + known);
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {

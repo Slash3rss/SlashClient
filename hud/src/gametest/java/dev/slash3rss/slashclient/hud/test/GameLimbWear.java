@@ -17,6 +17,7 @@ public class GameLimbWear implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		String known = context.computeOnClient(mc -> TestHooks.limbWear());
 		if (!known.equals(String.join(",", SHOES) + "|" + String.join(",", HANDS))) throw new AssertionError("Not the shoes and hand items we made: " + known);
 		mainMenu(context);

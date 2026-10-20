@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 public class GameRingMoves implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		String known = context.computeOnClient(mc -> TestHooks.ringsAndMoves());
 		if (!known.equals("ring_runes,ring_flame,ring_frost,ring_rainbow,ring_mushroom,ring_galaxy,ring_halo,ring_toxic|move_steps,move_jump,move_landing,move_arrows,move_sprint,move_bubbles,move_petals"))
 			throw new AssertionError("Not the rings and movement effects we made: " + known);

@@ -26,6 +26,7 @@ public class GameFriendExtras implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			world.getServer().runCommand("time set 6000");
@@ -87,6 +88,8 @@ public class GameFriendExtras implements FabricClientGameTest {
 				}
 				Social.mute(F, true);
 			});
+			// the toasts above slide in from the edge: not part of the screens the audit looks at
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).clear());
 			context.runOnClient(mc -> TestHooks.audit(true));
 			context.setScreen(() -> {
 				Social.viewing = F;

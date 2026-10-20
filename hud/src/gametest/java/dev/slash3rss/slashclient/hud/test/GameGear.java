@@ -17,6 +17,7 @@ public class GameGear implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		String known = context.computeOnClient(mc -> TestHooks.gear());
 		if (!known.equals(BACKS + "|" + TAILS)) throw new AssertionError("Not the back items and tails we made: " + known);
 		context.getInput().setCursorPos(10, 10);

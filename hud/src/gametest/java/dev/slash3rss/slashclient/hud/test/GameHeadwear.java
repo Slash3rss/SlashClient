@@ -16,6 +16,7 @@ public class GameHeadwear implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		String known = context.computeOnClient(mc -> TestHooks.headwear());
 		if (!known.equals(String.join(",", FACE) + "|" + String.join(",", EARS))) throw new AssertionError("Not the face and ears things we made: " + known);
 		// a cat's ear: still most of the time, wiggling for a moment every few seconds; gone under a top hat, on with a cap

@@ -24,6 +24,7 @@ public class GameInventoryTools implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		// the tests end on the game's own title screen
 		context.runOnClient(mc -> TestHooks.endOnVanillaMenu());
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {

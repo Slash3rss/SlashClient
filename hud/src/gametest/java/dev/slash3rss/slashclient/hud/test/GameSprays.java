@@ -17,6 +17,7 @@ public class GameSprays implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		context.getInput().setCursorPos(10, 10);
 		// the menu's tab without a world: the picture worn on a wall, then the one under the mouse
 		context.runOnClient(mc -> TestHooks.cosmeticsMenu("spray"));

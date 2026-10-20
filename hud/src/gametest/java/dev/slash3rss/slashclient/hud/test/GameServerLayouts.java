@@ -17,6 +17,7 @@ public class GameServerLayouts implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		context.runOnClient(mc -> TestHooks.serverLayoutsReset());
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);

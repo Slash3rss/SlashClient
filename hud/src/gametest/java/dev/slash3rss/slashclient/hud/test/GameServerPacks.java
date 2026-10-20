@@ -71,6 +71,7 @@ public class GameServerPacks implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		if (Boolean.getBoolean("slashclient.test.friendsOnly")) return;
 		context.getInput().resizeWindow(854, 480);
 		context.runOnClient(mc -> TestHooks.guiScale(2));

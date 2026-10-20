@@ -21,6 +21,7 @@ public class GameCosmeticsScreen implements FabricClientGameTest {
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
 		context.getInput().setCursorPos(10, 10);
 		// from the main menu: no world, the figure is all there is
 		context.runOnClient(mc -> TestHooks.slashMenu());
@@ -136,19 +137,23 @@ public class GameCosmeticsScreen implements FabricClientGameTest {
 			context.takeScreenshot("cosscreen-head-" + a);
 		}
 		// the whole figure turned round, the mouse level with its eyes
+		// (a turn by hand shows on the next frame; only the head following the mouse eases in)
 		context.getInput().setCursorPos(eyesX * scale, eyesY * scale);
+		context.waitTicks(25);
 		for (int a : new int[] {0, 30, 45, 60, 90, 135, 180, 225, 270, 315}) {
 			context.runOnClient(mc -> TestHooks.cosmeticsDrag(a));
-			context.waitTicks(25);
+			context.waitTicks(3);
 			context.takeScreenshot("cosscreen-headphones-" + a);
 		}
 		// the other hats and tops, from a few sides
 		for (String[] list : new String[][] {HATS, TOPS}) for (String item : list) {
 			String slot = list == HATS ? "hat" : "top";
 			context.runOnClient(mc -> { TestHooks.cosmeticsWorn("hat", slot.equals("hat") ? item : null); TestHooks.cosmeticsWorn("top", slot.equals("top") ? item : null); TestHooks.cosmeticsSlot(slot); });
+			// a new tab turns the figure smoothly to its side: once, then each turn by hand is at once
+			context.waitTicks(20);
 			for (int a : new int[] {30, 90, 150, 225, 300}) {
 				context.runOnClient(mc -> TestHooks.cosmeticsDrag(a));
-				context.waitTicks(20);
+				context.waitTicks(3);
 				context.takeScreenshot("cosscreen-" + item + "-" + a);
 			}
 		}
