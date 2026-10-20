@@ -293,8 +293,8 @@ export function createGroups(deps: Deps) {
     if (canEdit(m, me, chat.editWindowMs) && deps.edit) {
       items.push({ label: t('Edytuj'), icon: 'fa-pen', hint: editHint(m, chat.editWindowMs!), run: () => {
         editingId = m.id;
-        deps.edit!(m);
         renderMessages();
+        deps.edit!(m);
       } });
     }
     // in our clan's chat an officer may delete plain members' messages (and of those who left)

@@ -728,6 +728,9 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     sendBtn.title = t('Zapisz zmiany');
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
+    // the message is marked in the chat and stays in sight above the editing bar
+    if (!target.group) renderMessages();
+    requestAnimationFrame(() => messagesBox.querySelector('.fr-msg.editing')?.scrollIntoView({ block: 'nearest' }));
   }
 
   function stopEditing() {
@@ -735,6 +738,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     const wasGroup = !!editing.group;
     editing = undefined;
     if (wasGroup) groups.stopEditing();
+    else if (selected) renderMessages();
     if (!input) return;
     input.value = '';
     input.dispatchEvent(new Event('input'));
