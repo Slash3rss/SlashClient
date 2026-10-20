@@ -184,6 +184,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   // ---------- statuses ----------
 
+  const STATUS_NAMES: Record<string, string> = { online: t('Dostępny'), away: t('Zaraz wracam'), busy: t('Nie przeszkadzać'), invisible: t('Niewidoczny') };
   const presenceClass = (p: Presence) => (p.status === 'offline' ? 'offline' : p.activity && p.activity.kind !== 'launcher' ? 'ingame' : p.status);
 
   function ago(at: number): string {
@@ -418,15 +419,6 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   function renderMe() {
     const me = state!.user!;
-    const status = control<HTMLSelectElement>('select', { className: 'fr-status', title: t('Twój status') });
-    for (const [value, label] of [['online', t('Dostępny')], ['away', t('Zaraz wracam')], ['busy', t('Nie przeszkadzać')], ['invisible', t('Niewidoczny')]] as const) {
-      status.append(control<HTMLOptionElement>('option', { value, textContent: label, selected: state!.status === value }));
-    }
-    status.addEventListener('change', async () => {
-      await api.socialSetStatus(status.value);
-      state!.status = status.value as Status;
-      renderMe();
-    });
     const share = control<HTMLInputElement>('input', { type: 'checkbox', checked: me.showServer });
     share.addEventListener('change', async () => {
       try {
@@ -481,16 +473,96 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       });
       linked.append(chip);
     }
+    // the rest of the account in a window of its own: the side panel keeps room for the list
+    const options = el('button', { type: 'button', className: 'icon-btn', title: t('Konto i profil') }, icon('fa-gear'));
+    options.addEventListener('click', () => openAccount());
+    // the status: a click on the dot by the avatar opens the choice
+    const face = avatar(me, self);
+    const dot = face.querySelector<HTMLElement>('.fr-dot');
+    if (dot) {
+      dot.classList.add('fr-dot-btn');
+      dot.title = t('Twój status: {0}. Kliknij, żeby zmienić.', STATUS_NAMES[state!.status] ?? state!.status);
+      dot.tabIndex = 0;
+      dot.setAttribute('role', 'button');
+      dot.addEventListener('click', (e) => {
+        e.stopPropagation();
+        statusMenu(face);
+      });
+      dot.addEventListener('keydown', (e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), statusMenu(face)));
+    }
     meBox.replaceChildren(
-      el('div', { className: 'fr-me-row' }, avatar(me, self),
-        el('div', { className: 'grow fr-names' }, el('b', {}, ...clanTag(groups.myTag()), me.name), el('small', { className: 'muted', textContent: `@${me.handle}` })),
-        logout),
-      el('div', { className: 'row' }, status, state!.connected ? '' : el('small', { className: 'fr-error', textContent: t('Łączenie…') })),
+      el('div', { className: 'fr-me-row' }, face,
+        el('div', { className: 'grow fr-names' }, el('b', {}, ...clanTag(groups.myTag()), me.name),
+          state!.connected ? el('small', { className: 'muted', textContent: `@${me.handle}` }) : el('small', { className: 'fr-error', textContent: t('Łączenie…') })),
+        options, logout));
+    accountBody?.replaceChildren(
+      el('div', { className: 'fr-account-section', textContent: t('Prywatność i powiadomienia') }),
       el('label', { className: 'check fr-share' }, share, t(' Pokazuj znajomym, na jakim serwerze gram')),
       el('label', { className: 'check fr-share' }, playingBox(), t(' Powiadamiaj, gdy znajomi zaczynają grać')),
+      el('div', { className: 'fr-account-section', textContent: t('Konta') }),
       el('div', { className: 'fr-linked-row' }, el('small', { className: 'muted', textContent: t('Logowanie:') }), linked),
       minecraftRow(me),
+      el('div', { className: 'fr-account-section', textContent: t('Profil na stronie') }),
       profileRow(me));
+  }
+
+  /** The four statuses, under the avatar; one click sets it, a click elsewhere or Esc closes. */
+  function statusMenu(anchor: HTMLElement) {
+    meBox.querySelector('.fr-status-menu')?.remove();
+    const menu = el('div', { className: 'fr-status-menu' });
+    const close = () => {
+      menu.remove();
+      document.removeEventListener('click', outside, true);
+      document.removeEventListener('keydown', onKey, true);
+    };
+    const outside = (e: MouseEvent) => !menu.contains(e.target as Node) && close();
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && (e.stopPropagation(), close());
+    for (const value of ['online', 'away', 'busy', 'invisible'] as const) {
+      const item = el('button', { type: 'button', className: `fr-status-item${state!.status === value ? ' active' : ''}` },
+        el('span', { className: `fr-dot-inline ${value === 'invisible' ? 'offline' : value}` }), STATUS_NAMES[value]);
+      item.addEventListener('click', async () => {
+        close();
+        if (state!.status === value) return;
+        await api.socialSetStatus(value);
+        state!.status = value as Status;
+        renderMe();
+      });
+      menu.append(item);
+    }
+    menu.style.top = `${anchor.offsetTop + anchor.offsetHeight + 6}px`;
+    menu.style.left = `${anchor.offsetLeft}px`;
+    meBox.append(menu);
+    (menu.querySelector('.active') as HTMLElement | null ?? menu.firstElementChild as HTMLElement)?.focus();
+    setTimeout(() => {
+      document.addEventListener('click', outside, true);
+      document.addEventListener('keydown', onKey, true);
+    });
+  }
+
+  /** The account's window ("Konto i profil"), drawn again by renderMe while it is open. */
+  let accountBody: HTMLElement | undefined;
+  function openAccount() {
+    if (accountBody) return;
+    const body = el('div', { className: 'fr-account-body' });
+    const close = el('button', { type: 'button', className: 'icon-btn modal-close', title: t('Zamknij') }, icon('fa-xmark'));
+    const modal = el('div', { className: 'modal' }, el('div', { className: 'modal-box glass-panel fr-account-box' }, close,
+      el('h3', { className: 'fr-account-title' }, icon('fa-user-gear'), t(' Konto i profil')), body));
+    const done = () => {
+      modal.remove();
+      accountBody = undefined;
+      document.removeEventListener('keydown', onKey, true);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      done();
+    };
+    close.addEventListener('click', done);
+    modal.addEventListener('click', (e) => e.target === modal && done());
+    document.addEventListener('keydown', onKey, true);
+    accountBody = body;
+    document.body.append(modal);
+    renderMe();
   }
 
   /** The player's public profile on the site: open it, copy its link, choose who sees what. */

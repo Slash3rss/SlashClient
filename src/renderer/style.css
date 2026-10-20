@@ -1363,3 +1363,18 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .pp-visibility button.selected { border-color: var(--accent); background: rgba(59, 130, 246, .14); }
 .pp-elements { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
 .pp-hidden { padding: 8px 12px; border-radius: 10px; background: rgba(239, 68, 68, .12); color: #fca5a5; }
+/* the account's window from the friends panel (Konto i profil) */
+.fr-account-box { width: min(440px, 100%); padding: 24px; display: flex; flex-direction: column; gap: 10px; }
+.fr-account-title { font-size: 18px; display: flex; align-items: center; gap: 8px; padding-right: 40px; }
+.fr-account-body { display: flex; flex-direction: column; gap: 10px; }
+.fr-account-section { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-top: 6px; }
+/* the own status: the dot by the avatar opens the choice */
+.fr-dot.fr-dot-btn { cursor: pointer; width: 15px; height: 15px; transition: transform .12s ease; }
+.fr-dot.fr-dot-btn:hover, .fr-dot.fr-dot-btn:focus-visible { transform: scale(1.25); outline: none; }
+.fr-me { position: relative; }
+.fr-status-menu { position: absolute; z-index: 20; display: flex; flex-direction: column; gap: 2px; padding: 6px; min-width: 190px; border-radius: 12px; background: #131a29; border: 1px solid var(--glass-border); box-shadow: 0 12px 32px rgba(0, 0, 0, .55); }
+.fr-status-item { display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%; height: 34px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; box-shadow: none; text-align: left; font-size: 13px; font-weight: 500; }
+.fr-status-item:hover, .fr-status-item:focus-visible { background: rgba(255, 255, 255, .06); outline: none; }
+.fr-status-item.active { background: rgba(59, 130, 246, .15); }
+.fr-dot-inline { width: 10px; height: 10px; border-radius: 50%; background: #6b7280; flex-shrink: 0; }
+.fr-dot-inline.online { background: #22c55e; } .fr-dot-inline.away { background: #eab308; } .fr-dot-inline.busy { background: #ef4444; }
