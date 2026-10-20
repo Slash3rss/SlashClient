@@ -140,8 +140,10 @@ public class CosmeticsScreen extends Screen {
 	static CosmeticsScreen sample(String slot) {
 		CosmeticsScreen screen = new CosmeticsScreen(null);
 		List<Entry> list = new ArrayList<>();
-		for (String id : Cosmetics.CAPES) list.add(new Entry(id, "cape", id, id.startsWith("staff_") ? id.substring(6) : "", !id.equals("staff_partner") && !id.equals("streak30"),
-			id.equals("streak30") ? "Osiągnięcie „Seria 30 dni”: Graj co najmniej 10 minut dziennie przez 30 dni z rzędu." : ""));
+		for (String id : Cosmetics.CAPES) list.add(new Entry(id, "cape", id, id.startsWith("staff_") ? id.substring(6) : "", !id.equals("staff_partner") && !id.equals("streak30") && !id.equals("skyup_noc"),
+			id.equals("streak30") ? "Osiągnięcie „Seria 30 dni”: Graj co najmniej 10 minut dziennie przez 30 dni z rzędu."
+				// a SkyUp.pl cape: earned with time on that server (the server's words)
+				: id.equals("skyup_noc") ? "Osiągnięcie „Nocna zmiana”: Spędź 50 godzin na SkyUp.pl. Liczy się czas od wprowadzenia tych osiągnięć." : ""));
 		for (String id : Cosmetics.WINGS) list.add(new Entry(id, "wings", id, "", !id.equals("phoenix")));
 		for (String id : Cosmetics.ELYTRAS) list.add(new Entry(id, "elytra", id, "", true));
 		for (String id : Cosmetics.TRAILS) list.add(new Entry(id, "trail", id, "", true));

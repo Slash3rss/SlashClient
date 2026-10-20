@@ -27,6 +27,9 @@ public class GameShop implements FabricClientGameTest {
 		// a price's tooltip: the name, the price and how to buy
 		hover(context, "thunder");
 		context.takeScreenshot("shop-cape-tooltip");
+		// a SkyUp.pl cape earned with an achievement: a lock, and the achievement in its tooltip
+		hover(context, "skyup_noc");
+		context.takeScreenshot("shop-cape-skyup-locked");
 		context.getInput().setCursorPos(4, 4);
 		context.runOnClient(mc -> TestHooks.cosmeticsSlot("wings"));
 		context.runOnClient(mc -> TestHooks.scrollCosmetics());
@@ -173,6 +176,16 @@ public class GameShop implements FabricClientGameTest {
 		context.waitTick();
 		context.runOnClient(mc -> TestHooks.scrollCosmetics());
 		context.waitTicks(3);
+		// more items after it (the SkyUp capes): up a row at a time until its tile is drawn
+		// (then one more, so its row is not half under the tabs)
+		if (context.computeOnClient(mc -> TestHooks.shopTile(id)) == null) {
+			for (int i = 0; i < 20 && context.computeOnClient(mc -> TestHooks.shopTile(id)) == null; i++) {
+				context.runOnClient(mc -> TestHooks.scrollCosmeticsBy(-40));
+				context.waitTicks(2);
+			}
+			context.runOnClient(mc -> TestHooks.scrollCosmeticsBy(-60));
+			context.waitTicks(2);
+		}
 		hover(context, id);
 		context.getInput().holdMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
 		context.waitTick();

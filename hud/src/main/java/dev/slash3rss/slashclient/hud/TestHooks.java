@@ -1018,6 +1018,11 @@ public final class TestHooks {
 		if (Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c) c.scrollBy(10_000);
 	}
 
+	/** The open cosmetics menu's grid scrolled by this many GUI pixels (negative: up). */
+	public static void scrollCosmeticsBy(int pixels) {
+		if (Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c) c.scrollBy(pixels);
+	}
+
 	/** The name shown above the TNT nearest to us ("none" without one). */
 	public static String tntLabel() {
 		var mc = net.minecraft.client.Minecraft.getInstance();
