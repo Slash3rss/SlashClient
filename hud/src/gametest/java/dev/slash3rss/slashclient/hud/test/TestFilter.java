@@ -31,7 +31,7 @@ final class TestFilter {
 		Map.entry("GameExtras", 18), Map.entry("GameStreamChat", 18), Map.entry("GameHeldSkins", 17),
 		Map.entry("FriendsChat", 16), Map.entry("GameProps", 15), Map.entry("GameFriendExtras", 14),
 		Map.entry("GameClothing", 11), Map.entry("GameInventoryTools", 11), Map.entry("GameServerPacks", 11),
-		Map.entry("GameSkyTasks", 11), Map.entry("GameSkyCase", 10), Map.entry("GameHudParts", 10), Map.entry("GameClips", 9),
+		Map.entry("GameSkyTasks", 11), Map.entry("GameSkyCase", 10), Map.entry("GameAutoClicker", 8), Map.entry("GameHudParts", 10), Map.entry("GameClips", 9),
 		Map.entry("GameSprays", 8), Map.entry("GameGroupsClans", 7), Map.entry("GameModules", 7),
 		Map.entry("GameServerLayouts", 7), Map.entry("GameHandView", 6), Map.entry("GameLiveCosmetics", 6),
 		Map.entry("GameAids", 5));

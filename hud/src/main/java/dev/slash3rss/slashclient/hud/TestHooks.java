@@ -71,6 +71,35 @@ public final class TestHooks {
 		return true;
 	}
 
+	/** The autoclicker switched on (no key bound: armed at once), its buttons and speed; its click counts reset. */
+	public static void autoClicker(boolean on, boolean left, boolean right, boolean mobs, boolean cooldown, int cps) {
+		HudConfig c = SlashHud.config;
+		c.assistWarned = true;
+		c.autoClicker = on;
+		c.autoClickLeft = left;
+		c.autoClickRight = right;
+		c.autoClickMobs = mobs;
+		c.autoClickCooldown = cooldown;
+		c.cpsMin = c.cpsMax = cps;
+		Assist.leftClicks = Assist.rightClicks = 0;
+	}
+
+	/** The autoclicker's clicks since it was set: "left/right". */
+	public static String autoClicks() {
+		return Assist.leftClicks + "/" + Assist.rightClicks;
+	}
+
+	/** The health of the living thing nearest to us (not us), or -1. */
+	public static float nearestHealth() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		net.minecraft.world.entity.LivingEntity best = null;
+		for (var e : mc.level.entitiesForRendering()) {
+			if (e == mc.player || !(e instanceof net.minecraft.world.entity.LivingEntity l)) continue;
+			if (best == null || e.distanceTo(mc.player) < best.distanceTo(mc.player)) best = l;
+		}
+		return best == null ? -1 : best.getHealth();
+	}
+
 	/** Kills, deaths and TPS as the modules see them. */
 	public static String moduleStats() {
 		var mc = net.minecraft.client.Minecraft.getInstance();

@@ -30,9 +30,11 @@ public final class Assist {
 	static KeyMapping holdAttackKey, holdUseKey, autoClickKey;
 
 	private static boolean holdAttack, holdUse;
-	/** The autoclicker's key arms it; armed, it clicks (see `tick`). */
+	/** The autoclicker's key arms it; armed, it clicks (see `tick`). With no key bound it is armed while switched on. */
 	private static boolean armed;
 	private static long nextLeft, nextRight;
+	/** Clicks made, for the tests. */
+	static int leftClicks, rightClicks;
 	/** The slot the player had before auto tool picked another (-1 = none). */
 	private static int toolFrom = -1;
 	private static int idleTicks;
@@ -98,7 +100,7 @@ public final class Assist {
 		if (holdAttack && inGame) mc.options.keyAttack.setDown(true);
 		if (holdUse && inGame) mc.options.keyUse.setDown(true);
 
-		if (cfg().autoClicker && armed && inGame) autoClick(mc, player);
+		if (cfg().autoClicker && (armed || autoClickKey.isUnbound()) && inGame) autoClick(mc, player);
 		if (cfg().autoTool && inGame) autoTool(mc, player);
 		if (cfg().autoRefill) refill(mc, player);
 		if (cfg().toolWarning) warn(mc, player);
@@ -122,27 +124,32 @@ public final class Assist {
 
 	private static void autoClick(Minecraft mc, Player player) {
 		long now = System.currentTimeMillis();
+		// both click on their own while armed, no button held
 		if (cfg().autoClickLeft) {
 			HitResult hit = mc.hitResult;
 			boolean onTarget = hit instanceof EntityHitResult e && e.getEntity() instanceof LivingEntity living && living.isAlive()
 				&& (cfg().autoClickPlayers || !(living instanceof Player));
-			// on blocks the button is left alone: clicking would restart the digging
-			boolean want = cfg().autoClickMobs ? onTarget : mc.options.keyAttack.isDown() && (hit == null || hit.getType() != HitResult.Type.BLOCK);
+			// a block being dug with the button held is left alone: clicking would restart the digging
+			boolean digging = mc.options.keyAttack.isDown() && hit != null && hit.getType() == HitResult.Type.BLOCK;
+			boolean want = cfg().autoClickMobs ? onTarget : !digging;
 			if (want) {
 				if (cfg().autoClickCooldown) {
 					// hits as hard as they can: once the weapon is charged again
 					if (player.getAttackStrengthScale(0f) >= 1f && now >= nextLeft) {
 						click(mc.options.keyAttack);
+						leftClicks++;
 						nextLeft = now + 120;
 					}
 				} else if (now >= nextLeft) {
 					click(mc.options.keyAttack);
+					leftClicks++;
 					nextLeft = now + interval();
 				}
 			}
 		}
-		if (cfg().autoClickRight && mc.options.keyUse.isDown() && now >= nextRight) {
+		if (cfg().autoClickRight && now >= nextRight) {
 			click(mc.options.keyUse);
+			rightClicks++;
 			nextRight = now + interval();
 		}
 	}
