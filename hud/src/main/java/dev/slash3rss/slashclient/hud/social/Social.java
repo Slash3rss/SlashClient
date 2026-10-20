@@ -45,9 +45,19 @@ public final class Social {
 	 * party it belongs to (several friends invited at once), else empty. `waypoint`: a shared point, or null.
 	 * `image`: a picture (a screenshot), or null.
 	 */
-	public record Message(long id, String from, String to, String text, long at, boolean read, String invite, String inviteVersion, String party, SharedWaypoints.Shared waypoint, Image image) {
+	/** `editedAt`: when the author changed the text (0: never); `deleted`: taken back, nothing left of it (servers 0.9.23+). */
+	public record Message(long id, String from, String to, String text, long at, boolean read, String invite, String inviteVersion, String party, SharedWaypoints.Shared waypoint, Image image, long editedAt, boolean deleted) {
+		public Message(long id, String from, String to, String text, long at, boolean read, String invite, String inviteVersion, String party, SharedWaypoints.Shared waypoint, Image image) {
+			this(id, from, to, text, at, read, invite, inviteVersion, party, waypoint, image, 0, false);
+		}
+
 		public Message(long id, String from, String to, String text, long at, boolean read, String invite, String inviteVersion, String party, SharedWaypoints.Shared waypoint) {
 			this(id, from, to, text, at, read, invite, inviteVersion, party, waypoint, null);
+		}
+
+		/** Plain text (not a picture, invite or waypoint) that is still there: what may be edited or copied. */
+		public boolean plainText() {
+			return !deleted && image == null && invite.isEmpty() && waypoint == null;
 		}
 
 		public Message(long id, String from, String to, String text, long at, boolean read, String invite, String inviteVersion) {
@@ -258,7 +268,15 @@ public final class Social {
 		Image image = imageFrom(o);
 		return new Message(o.get("id").getAsLong(), str(o, "from"), str(o, "to"), str(o, "text"), o.get("at").getAsLong(),
 			o.has("readAt") && !o.get("readAt").isJsonNull(), inv == null ? "" : str(inv, "server"), inv == null ? "" : str(inv, "version"),
-			inv == null ? "" : str(inv, "party"), wp == null ? null : SharedWaypoints.Shared.from(wp), image);
+			inv == null ? "" : str(inv, "party"), wp == null ? null : SharedWaypoints.Shared.from(wp), image, longOf(o, "editedAt"), bool(o, "deleted"));
+	}
+
+	static long longOf(JsonObject o, String key) {
+		return o.has(key) && o.get(key).isJsonPrimitive() ? o.get(key).getAsLong() : 0;
+	}
+
+	static boolean bool(JsonObject o, String key) {
+		return o.has(key) && o.get(key).isJsonPrimitive() && o.get(key).getAsBoolean();
 	}
 
 	/** A message's picture (direct or group), as the launcher opened it; null when it has none. */
@@ -335,8 +353,12 @@ public final class Social {
 			case "party" -> {
 				if (e.has("party") && e.get("party").isJsonObject()) Party.onEvent(e.getAsJsonObject("party"));
 			}
+			// edited or deleted (here, in the launcher or another game): only the new version, no toast
+			case "message-edit", "message-delete" -> {
+				if (e.has("message") && e.get("message").isJsonObject()) replaced(messageFrom(e.getAsJsonObject("message")));
+			}
 			// group chats and the clan
-			case "groups", "group-message", "clan" -> Groups.onEvent(e);
+			case "groups", "group-message", "clan", "group-message-edit", "group-message-delete" -> Groups.onEvent(e);
 			case "typing" -> typingUntil.put(str(e, "from"), System.currentTimeMillis() + 6_000);
 			// "Join" on a friend's invite in the launcher while this game runs
 			case "join" -> join(str(e, "server"));
@@ -504,7 +526,8 @@ public final class Social {
 				String msg = e.getMessage() == null ? "" : e.getMessage();
 				String key = msg.contains("no_keys") ? "slashclient-hud.picture.noKeys" : msg.contains("image_quota") ? "slashclient-hud.picture.quota"
 					: msg.contains("too_large") ? "slashclient-hud.picture.tooLarge" : "slashclient-hud.picture.failed";
-				toast(Component.translatable("slashclient-hud.picture.notSent").getString(), Component.translatable(key).getString(), "info");
+				// too many in a row: how long to wait
+				toast(Component.translatable("slashclient-hud.picture.notSent").getString(), msg.contains("slow_down") ? errorText(e) : Component.translatable(key).getString(), "info");
 			}
 		});
 	}
@@ -573,6 +596,8 @@ public final class Social {
 					JsonObject res = request("GET", "/v1/messages/" + friendId + "?limit=50", null, 8);
 					List<Message> list = new CopyOnWriteArrayList<>();
 					for (JsonElement el : res.getAsJsonArray("messages")) list.add(messageFrom(el.getAsJsonObject()));
+					// how long our messages may be edited (servers before 0.9.23 say nothing: no editing or deleting)
+					editWindowMs = longOf(res, "editWindowMs");
 					chats.put(friendId, list);
 				}
 				markRead(friendId);
@@ -607,9 +632,86 @@ public final class Social {
 				if (chat.stream().noneMatch(x -> x.id() == m.id())) chat.add(m);
 				bump(friendId, 0, m.at());
 			} catch (Exception e) {
-				toast(Component.translatable("slashclient-hud.friends.notSent").getString(), e.getMessage() == null ? "" : e.getMessage(), "info");
+				toast(Component.translatable("slashclient-hud.friends.notSent").getString(), errorText(e), "info");
 			}
 		});
+	}
+
+	// ---------- editing and deleting messages (servers 0.9.23+) ----------
+
+	/** How long our messages may be edited, from the server with the history (0: an older server, no editing or deleting). */
+	private static volatile long editWindowMs;
+
+	public static long editWindowMs() {
+		return editWindowMs;
+	}
+
+	/** Our own plain text, within the window. */
+	public static boolean canEdit(Message m) {
+		return editWindowMs > 0 && m.from().equals(myId) && m.plainText() && System.currentTimeMillis() - m.at() < editWindowMs;
+	}
+
+	/** Our own, any time (in direct messages nobody else's). */
+	public static boolean canDelete(Message m) {
+		return editWindowMs > 0 && m.from().equals(myId) && !m.deleted();
+	}
+
+	/** A message's new version (edited or deleted) in its conversation. */
+	static void replaced(Message m) {
+		String other = m.from().equals(myId) ? m.to() : m.from();
+		List<Message> chat = chats.get(other);
+		if (chat == null) return;
+		for (int i = 0; i < chat.size(); i++) {
+			Message old = chat.get(i);
+			// the server's edit does not repeat the picture; a deleted message has none any more
+			if (old.id() == m.id()) chat.set(i, !m.deleted() && m.image() == null && old.image() != null
+				? new Message(m.id(), m.from(), m.to(), m.text(), m.at(), m.read(), m.invite(), m.inviteVersion(), m.party(), m.waypoint(), old.image(), m.editedAt(), false) : m);
+		}
+	}
+
+	/** The new text of our message; the launcher encrypts it like a new one. */
+	public static void edit(String friendId, long id, String text) {
+		String t = text.strip();
+		if (t.isEmpty()) return;
+		JsonObject body = new JsonObject();
+		body.addProperty("text", t.length() > 2000 ? t.substring(0, 2000) : t);
+		Thread.ofVirtual().start(() -> {
+			try {
+				replaced(messageFrom(request("POST", "/v1/messages/" + friendId + "/" + id + "/edit", body, 8).getAsJsonObject("message")));
+			} catch (Exception e) {
+				toast(Component.translatable("slashclient-hud.message.notEdited").getString(), errorText(e), "info");
+			}
+		});
+	}
+
+	/** Takes our message back, for both of us. */
+	public static void delete(String friendId, long id) {
+		Thread.ofVirtual().start(() -> {
+			try {
+				replaced(messageFrom(request("DELETE", "/v1/messages/" + friendId + "/" + id, null, 8).getAsJsonObject("message")));
+			} catch (Exception e) {
+				toast(Component.translatable("slashclient-hud.message.notDeleted").getString(), errorText(e), "info");
+			}
+		});
+	}
+
+	/** For the in-game test: how long messages may be edited, as a server would say. */
+	public static void editWindowForTest(long ms) {
+		editWindowMs = ms;
+	}
+
+	/**
+	 * What went wrong, in the game's language where we know the server's code: too many messages in a
+	 * row ("slow_down:5", the seconds to wait), an edit too late or not ours; else the launcher's text.
+	 */
+	public static String errorText(Exception e) {
+		String msg = e.getMessage() == null ? "" : e.getMessage();
+		java.util.regex.Matcher slow = java.util.regex.Pattern.compile("slow_down(?::(\\d+))?").matcher(msg);
+		if (slow.find()) return Component.translatable("slashclient-hud.message.slowDown", slow.group(1) == null ? "5" : slow.group(1)).getString();
+		for (String code : List.of("edit_expired", "not_editable", "not_author", "not_allowed")) {
+			if (msg.contains(code)) return Component.translatable("slashclient-hud.message." + code).getString();
+		}
+		return msg;
 	}
 
 	// ---------- worlds opened to LAN, for friends anywhere ----------
@@ -691,7 +793,7 @@ public final class Social {
 				if (chat.stream().noneMatch(x -> x.id() == m.id())) chat.add(m);
 				bump(friendId, 0, m.at());
 			} catch (Exception e) {
-				toast(Component.translatable("slashclient-hud.friends.notSent").getString(), e.getMessage() == null ? "" : e.getMessage(), "info");
+				toast(Component.translatable("slashclient-hud.friends.notSent").getString(), errorText(e), "info");
 			}
 		});
 	}

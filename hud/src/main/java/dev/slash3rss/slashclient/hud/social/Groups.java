@@ -39,7 +39,17 @@ public final class Groups {
 	}
 	/** `event`: a line about the group (someone joined, it was renamed…) instead of a message from someone. */
 	/** `image`: a picture sent to the group (null for text and events). */
-	public record Message(long id, String group, String from, String text, long at, String event, Social.Image image) {}
+	/** `editedAt`: when the author changed the text (0: never); `deleted`: taken back by them or a moderator (servers 0.9.23+). */
+	public record Message(long id, String group, String from, String text, long at, String event, Social.Image image, long editedAt, boolean deleted) {
+		public Message(long id, String group, String from, String text, long at, String event, Social.Image image) {
+			this(id, group, from, text, at, event, image, 0, false);
+		}
+
+		/** A text message still there (not a picture or the group's own line): what may be edited or copied. */
+		public boolean plainText() {
+			return !deleted && image == null && event.isEmpty();
+		}
+	}
 	public record ClanMember(String id, String name, String role, boolean online) {}
 	/** `logo`: the logo's version (0: none). */
 	public record Clan(String id, String tag, String name, String role, String chat, long logo, List<ClanMember> members) {
@@ -98,7 +108,8 @@ public final class Groups {
 
 	static Message messageFrom(JsonObject o) {
 		JsonObject e = o.has("event") && o.get("event").isJsonObject() ? o.getAsJsonObject("event") : null;
-		return new Message(o.get("id").getAsLong(), Social.str(o, "group"), Social.str(o, "from"), Social.str(o, "text"), o.get("at").getAsLong(), e == null ? "" : eventText(e), Social.imageFrom(o));
+		return new Message(o.get("id").getAsLong(), Social.str(o, "group"), Social.str(o, "from"), Social.str(o, "text"), o.get("at").getAsLong(), e == null ? "" : eventText(e), Social.imageFrom(o),
+			Social.longOf(o, "editedAt"), Social.bool(o, "deleted"));
 	}
 
 	/** What happened, in the game's language: "Ala added Bob, Cyr". */
@@ -182,6 +193,10 @@ public final class Groups {
 				if (open && !mine) markRead(m.group());
 				else if (!mine && m.event().isEmpty()) Social.toast(title(g) + " · " + g.nameOf(m.from()), m.text(), "m-friends");
 			}
+			// edited or deleted: only the new version, no toast
+			case "group-message-edit", "group-message-delete" -> {
+				if (e.has("message") && e.get("message").isJsonObject()) replaced(messageFrom(e.getAsJsonObject("message")));
+			}
 			case "clan" -> {
 				JsonObject inv = e.has("invite") && e.get("invite").isJsonObject() ? e.getAsJsonObject("invite") : null;
 				if (inv != null) {
@@ -227,6 +242,9 @@ public final class Groups {
 					JsonObject res = Social.api("GET", "/v1/groups/" + id + "/messages?limit=50", null);
 					List<Message> list = new CopyOnWriteArrayList<>();
 					for (JsonElement el : res.getAsJsonArray("messages")) list.add(messageFrom(el.getAsJsonObject()));
+					// how long our messages may be edited, and whose others' we may delete (servers 0.9.23+)
+					editWindows.put(id, Social.longOf(res, "editWindowMs"));
+					moderators.put(id, Social.str(res, "moderator"));
 					chats.put(id, list);
 				}
 				markRead(id);
@@ -263,9 +281,85 @@ public final class Groups {
 				if (chat.stream().noneMatch(x -> x.id() == m.id())) chat.add(m);
 				bump(id, 0, m.at());
 			} catch (Exception e) {
-				Social.toast(Component.translatable("slashclient-hud.friends.notSent").getString(), e.getMessage() == null ? "" : e.getMessage(), "info");
+				Social.toast(Component.translatable("slashclient-hud.friends.notSent").getString(), Social.errorText(e), "info");
 			}
 		});
+	}
+
+	// ---------- editing and deleting messages (servers 0.9.23+) ----------
+
+	/** Per group: how long our messages may be edited (0: an older server), and "all"/"members" when we may delete others' too. */
+	private static final Map<String, Long> editWindows = new ConcurrentHashMap<>();
+	private static final Map<String, String> moderators = new ConcurrentHashMap<>();
+
+	/** Our own text, within the window. */
+	public static boolean canEdit(Message m) {
+		long window = editWindows.getOrDefault(m.group(), 0L);
+		return window > 0 && m.from().equals(Social.myId()) && m.plainText() && System.currentTimeMillis() - m.at() < window;
+	}
+
+	/**
+	 * Our own any time; others' when we moderate the group: its owner everyone's, a clan's officer
+	 * those of plain members and of people who left (the server checks it again).
+	 */
+	public static boolean canDelete(Message m) {
+		if (editWindows.getOrDefault(m.group(), 0L) <= 0 || m.deleted() || !m.event().isEmpty()) return false;
+		if (m.from().equals(Social.myId())) return true;
+		String mod = moderators.getOrDefault(m.group(), "");
+		if ("all".equals(mod)) return true;
+		if (!"members".equals(mod)) return false;
+		Clan c = clan;
+		if (c == null || !c.chat().equals(m.group())) return true;
+		for (ClanMember cm : c.members()) if (cm.id().equals(m.from())) return "member".equals(cm.role());
+		return true;
+	}
+
+	/** A message's new version (edited or deleted) in its group's chat. */
+	static void replaced(Message m) {
+		List<Message> chat = chats.get(m.group());
+		if (chat == null) return;
+		for (int i = 0; i < chat.size(); i++) {
+			Message old = chat.get(i);
+			if (old.id() == m.id()) chat.set(i, !m.deleted() && m.image() == null && old.image() != null
+				? new Message(m.id(), m.group(), m.from(), m.text(), m.at(), m.event(), old.image(), m.editedAt(), false) : m);
+		}
+	}
+
+	/** Our message's new text; the launcher encrypts it for the members of now. */
+	public static void edit(String groupId, long id, String text) {
+		String t = text.strip();
+		if (t.isEmpty()) return;
+		JsonObject body = new JsonObject();
+		body.addProperty("text", t.length() > 2000 ? t.substring(0, 2000) : t);
+		Thread.ofVirtual().start(() -> {
+			try {
+				replaced(messageFrom(Social.api("POST", "/v1/groups/" + groupId + "/messages/" + id + "/edit", body).getAsJsonObject("message")));
+			} catch (Exception e) {
+				Social.toast(Component.translatable("slashclient-hud.message.notEdited").getString(), Social.errorText(e), "info");
+			}
+		});
+	}
+
+	/** Takes a message back for everyone in the group (ours, or someone's as its moderator). */
+	public static void delete(String groupId, long id) {
+		Thread.ofVirtual().start(() -> {
+			try {
+				replaced(messageFrom(Social.api("DELETE", "/v1/groups/" + groupId + "/messages/" + id, null).getAsJsonObject("message")));
+			} catch (Exception e) {
+				Social.toast(Component.translatable("slashclient-hud.message.notDeleted").getString(), Social.errorText(e), "info");
+			}
+		});
+	}
+
+	/** For the in-game test: a group's conversation as if just loaded. */
+	public static void sampleChatForTest(String groupId, List<Message> messages) {
+		chats.put(groupId, new CopyOnWriteArrayList<>(messages));
+	}
+
+	/** For the in-game test: what a server would say with a group's history. */
+	public static void editRulesForTest(String groupId, long windowMs, String moderator) {
+		editWindows.put(groupId, windowMs);
+		moderators.put(groupId, moderator);
 	}
 
 	/** A new group with these friends (the name: theirs, joined), opened in the friends window. */

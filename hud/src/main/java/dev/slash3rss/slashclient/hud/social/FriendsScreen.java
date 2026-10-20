@@ -43,6 +43,20 @@ public class FriendsScreen extends Screen {
 	private final List<Hit> hits = new ArrayList<>();
 	/** What the button under the mouse does, drawn last. */
 	private Component tooltip;
+	/** Where each message is on screen this frame, for the right-click menu (one of the two is set). */
+	private record Bubble(int x, int y, int w, int h, Social.Message direct, Groups.Message group) {}
+	private final List<Bubble> bubbles = new ArrayList<>();
+	/** The rectangle of the card drawPicture/drawInvite/drawWaypoint just drew (null when it was out of sight). */
+	private int[] lastCard;
+	/** A row of the right-click menu by a message. */
+	private record MenuRow(String icon, Component label, boolean danger, Runnable run) {}
+	/** The open right-click menu (null: none), where it is. */
+	private List<MenuRow> menu;
+	private int menuX, menuY;
+	private static final int MENU_ROW = 15;
+	/** The message being edited in the field instead of a new one (-1: none), and whose conversation it is. */
+	private long editingId = -1;
+	private String editingFriend, editingGroup;
 
 	// the panel, recomputed on every resize
 	private int px, py, pw, ph;
@@ -74,6 +88,8 @@ public class FriendsScreen extends Screen {
 	}
 
 	private void select(String id) {
+		stopEditing();
+		menu = null;
 		selected = id;
 		selectedGroup = null;
 		Groups.viewing = null;
@@ -86,6 +102,8 @@ public class FriendsScreen extends Screen {
 
 	/** Opens a group chat (or the clan's) in place of a friend's conversation. */
 	public void selectGroup(String id) {
+		stopEditing();
+		menu = null;
 		selectedGroup = id;
 		selected = null;
 		Social.viewing = null;
@@ -103,6 +121,14 @@ public class FriendsScreen extends Screen {
 	}
 
 	private void send() {
+		// the field holds a message being edited: its new text goes instead of a new message
+		if (editingId >= 0) {
+			if (input.getValue().isBlank()) return;
+			if (editingGroup != null) Groups.edit(editingGroup, editingId, input.getValue());
+			else Social.edit(editingFriend, editingId, input.getValue());
+			stopEditing();
+			return;
+		}
 		if (selectedGroup != null && !input.getValue().isBlank()) {
 			Groups.send(selectedGroup, input.getValue());
 			input.setValue("");
@@ -113,6 +139,176 @@ public class FriendsScreen extends Screen {
 		Social.send(selected, input.getValue());
 		input.setValue("");
 		scroll = 0;
+	}
+
+	// ---------- editing and deleting messages (servers 0.9.23+) ----------
+
+	/** Puts our message's text in the field; Enter saves it, Esc lets go. Public for the in-game test. */
+	public void startEditing(String friendId, String groupId, long id, String text) {
+		menu = null;
+		editingId = id;
+		editingFriend = friendId;
+		editingGroup = groupId;
+		input.setValue(text);
+		input.visible = true;
+		setFocused(input);
+		input.setFocused(true);
+		scroll = 0;
+	}
+
+	private void stopEditing() {
+		if (editingId < 0) return;
+		editingId = -1;
+		editingFriend = editingGroup = null;
+		if (input != null) input.setValue("");
+	}
+
+	/** The right-click menu for a message: edit (ours, for a while), copy (text), delete (ours, or as the group's moderator). */
+	private List<MenuRow> menuFor(Bubble b) {
+		List<MenuRow> rows = new ArrayList<>();
+		if (b.direct() != null) {
+			Social.Message m = b.direct();
+			String other = m.from().equals(Social.myId()) ? m.to() : m.from();
+			if (Social.canEdit(m)) rows.add(new MenuRow("pen", Ui.tr("slashclient-hud.message.edit"), false, () -> startEditing(other, null, m.id(), m.text())));
+			if (m.plainText()) rows.add(new MenuRow("copy", Ui.tr("slashclient-hud.message.copy"), false, () -> minecraft.keyboardHandler.setClipboard(m.text())));
+			if (Social.canDelete(m)) rows.add(new MenuRow("trash", Ui.tr("slashclient-hud.message.delete"), true, () -> confirmDelete(() -> Social.delete(other, m.id()))));
+		} else {
+			Groups.Message m = b.group();
+			if (Groups.canEdit(m)) rows.add(new MenuRow("pen", Ui.tr("slashclient-hud.message.edit"), false, () -> startEditing(null, m.group(), m.id(), m.text())));
+			if (m.plainText()) rows.add(new MenuRow("copy", Ui.tr("slashclient-hud.message.copy"), false, () -> minecraft.keyboardHandler.setClipboard(m.text())));
+			if (Groups.canDelete(m)) {
+				boolean theirs = !m.from().equals(Social.myId());
+				rows.add(new MenuRow("trash", Ui.tr(theirs ? "slashclient-hud.message.deleteModeration" : "slashclient-hud.message.delete"), true, () -> confirmDelete(() -> Groups.delete(m.group(), m.id()))));
+			}
+		}
+		return rows;
+	}
+
+	/** Deleting asks once more, in the same menu. */
+	private void confirmDelete(Runnable delete) {
+		menu = List.of(new MenuRow("trash", Ui.tr("slashclient-hud.message.deleteSure"), true, () -> {
+			if (editingId >= 0) stopEditing();
+			delete.run();
+		}), new MenuRow("close", Ui.tr("slashclient-hud.message.cancel"), false, () -> {}));
+	}
+
+	/** Opens the menu of the message at this point, as a right click does; false when there is none (or nothing to do). Public for the in-game test. */
+	public boolean openMenuAt(int x, int y) {
+		for (Bubble b : List.copyOf(bubbles)) {
+			if (!Ui.inside(x, y, b.x(), b.y(), b.w(), b.h())) continue;
+			List<MenuRow> rows = menuFor(b);
+			if (rows.isEmpty()) return false;
+			menu = rows;
+			menuX = x;
+			menuY = y;
+			return true;
+		}
+		return false;
+	}
+
+	/** Where a message is drawn now (the in-game test right-clicks it); null when it is not in sight. */
+	public int[] bubbleOf(long id) {
+		for (Bubble b : List.copyOf(bubbles)) {
+			long bid = b.direct() != null ? b.direct().id() : b.group().id();
+			if (bid == id) return new int[] { b.x(), b.y(), b.w(), b.h() };
+		}
+		return null;
+	}
+
+	/** For the in-game test: the open menu's rows ("" each when closed: an empty list), and where a row's middle is. */
+	public List<String> menuForTest() {
+		return menu == null ? List.of() : menu.stream().map(r -> r.label().getString()).toList();
+	}
+
+	public double[] menuRowForTest(int index) {
+		int[] box = menuBox();
+		return new double[] { box[0] + box[2] / 2.0, box[1] + 3 + index * MENU_ROW + MENU_ROW / 2.0 };
+	}
+
+	/** For the in-game test: the message being edited (-1: none) and the field's text. */
+	public long editingForTest() {
+		return editingId;
+	}
+
+	public String inputForTest() {
+		return input.getValue();
+	}
+
+	/** The menu's rows by the mouse, kept inside the window; returns {x, y, w}. */
+	private int[] menuBox() {
+		int w = 0;
+		for (MenuRow r : menu) w = Math.max(w, Ui.width(r.label()));
+		w += 30;
+		int h = menu.size() * MENU_ROW + 6;
+		int x = Math.max(px + 4, Math.min(menuX, px + pw - w - 4));
+		int y = Math.max(py + 4, Math.min(menuY, py + ph - h - 4));
+		return new int[] { x, y, w, h };
+	}
+
+	private void drawMenu(GuiGraphicsExtractor g, int mx, int my) {
+		if (menu == null) return;
+		// over the bubbles' text too
+		overEverything(g);
+		int[] box = menuBox();
+		int x = box[0], y = box[1], w = box[2], h = box[3];
+		Ui.round(g, x, y, w, h, 5, 0xFF111622);
+		Ui.roundOutline(g, x, y, w, h, 5, 0x40FFFFFF);
+		int ry = y + 3;
+		for (MenuRow r : menu) {
+			boolean over = Ui.inside(mx, my, x + 3, ry, w - 6, MENU_ROW);
+			if (over) Ui.round(g, x + 3, ry, w - 6, MENU_ROW, 3, r.danger() ? 0x33EF4444 : 0x1AFFFFFF);
+			int color = r.danger() ? 0xFFF87171 : Ui.TEXT;
+			Ui.icon(g, r.icon(), x + 8, ry + 4, 8, color);
+			Ui.draw(g, r.label(), x + 21, ry + 4, color);
+			ry += MENU_ROW;
+		}
+	}
+
+	/** What is drawn next covers what came before, text included (1.21.6+ draws in layers, older versions by depth). */
+	private static void overEverything(GuiGraphicsExtractor g) {
+		Ui.layer(g);
+		//#if MC >= 1.21.6
+		g.nextStratum();
+		//#endif
+	}
+
+	/** A click while the menu is open: a row runs, anywhere else closes it. */
+	private void clickMenu(double mx, double my) {
+		int[] box = menuBox();
+		List<MenuRow> rows = menu;
+		menu = null;
+		int ry = box[1] + 3;
+		for (MenuRow r : rows) {
+			if (Ui.inside(mx, my, box[0] + 3, ry, box[2] - 6, MENU_ROW)) {
+				r.run().run();
+				return;
+			}
+			ry += MENU_ROW;
+		}
+	}
+
+	/** The time under a bubble, "(edytowano) 12:30" for an edited one (its time when hovered). */
+	private Component timeOf(long at, long editedAt) {
+		Component time = Ui.text(TIME.format(Instant.ofEpochMilli(at)));
+		return editedAt > 0 ? Ui.tr("slashclient-hud.message.edited").append(" ").append(time) : time;
+	}
+
+	/** The part of a card inside the scroll area, as {x, y, w, h}; null when none of it is. */
+	private static int[] visible(int x, int y, int w, int h, int top, int bottom) {
+		int y0 = Math.max(y, top), y1 = Math.min(y + h, bottom);
+		return y1 > y0 ? new int[] { x, y0, w, y1 - y0 } : null;
+	}
+
+	/** A deleted message: a muted outline with "Message deleted". Returns the bubble's width. */
+	private int tombstoneWidth() {
+		return Ui.width(Ui.tr("slashclient-hud.message.deleted")) + 26;
+	}
+
+	private void drawTombstone(GuiGraphicsExtractor g, int x, int y) {
+		int w = tombstoneWidth();
+		Ui.roundOutline(g, x, y, w, 16, 5, 0x33FFFFFF);
+		Ui.icon(g, "ban", x + 6, y + 4, 8, Ui.MUTED);
+		Ui.draw(g, Ui.tr("slashclient-hud.message.deleted").withStyle(net.minecraft.ChatFormatting.ITALIC), x + 18, y + 4, Ui.MUTED);
 	}
 
 	// ---------- drawing ----------
@@ -132,6 +328,7 @@ public class FriendsScreen extends Screen {
 		//$ extractBackground(g, mx, my, delta);
 		//#endif
 		hits.clear();
+		bubbles.clear();
 		Ui.panel(g, px, py, pw, ph);
 		Ui.begin("friends panel", px, py, pw, ph);
 		// closing without Esc, as in the HUD window
@@ -155,6 +352,12 @@ public class FriendsScreen extends Screen {
 		drawChat(g, mx, my);
 		Ui.end();
 		super.extractRenderState(g, mx, my, delta);
+		// a message's menu and the tooltip over everything, the field too (with the menu open, no tooltip under it)
+		if (menu != null) tooltip = null;
+		Ui.begin("friends panel", px, py, pw, ph);
+		drawTooltip(g, mx, my);
+		drawMenu(g, mx, my);
+		Ui.end();
 	}
 
 	private void drawList(GuiGraphicsExtractor g, int mx, int my) {
@@ -316,7 +519,7 @@ public class FriendsScreen extends Screen {
 		g.fill(cx + 8, py + 33, cx + cw - 8, py + 34, Ui.BORDER);
 
 		// messages from the bottom up, each a bubble: yours on the right in blue
-		int top = py + 38, bottom = py + ph - INPUT_H - 14;
+		int top = py + 38, bottom = py + ph - INPUT_H - 14 - (editingId >= 0 ? 16 : 0);
 		int maxBubble = (int) (cw * 0.72);
 		List<Social.Message> messages = Social.chat(f.id());
 		g.enableScissor(cx + 2, top, cx + cw - 2, bottom);
@@ -325,29 +528,43 @@ public class FriendsScreen extends Screen {
 		for (int i = messages.size() - 1; i >= 0; i--) {
 			Social.Message m = messages.get(i);
 			boolean mine = m.from().equals(Social.myId());
+			// taken back: only that there was a message stays
+			if (m.deleted()) {
+				int bw = tombstoneWidth(), bh = 16;
+				y -= bh + 4;
+				total += bh + 4;
+				if (y > bottom || y + bh < top) continue;
+				int bx = mine ? cx + cw - 10 - bw : cx + 10;
+				drawTombstone(g, bx, y);
+				continue;
+			}
+			lastCard = null;
 			if (m.waypoint() != null) {
 				int[] used = drawWaypoint(g, m, f.name(), mine, cx, cw, maxBubble, y, top, bottom, mx, my);
 				y = used[0];
 				total += used[1];
+				if (lastCard != null) bubbles.add(new Bubble(lastCard[0], lastCard[1], lastCard[2], lastCard[3], m, null));
 				continue;
 			}
 			if (m.image() != null && !m.image().unreadable()) {
 				int[] used = drawPicture(g, m.image(), m.at(), f.name(), mine, cx, cw, maxBubble, y, top, bottom, mx, my);
 				y = used[0];
 				total += used[1];
+				if (lastCard != null) bubbles.add(new Bubble(lastCard[0], lastCard[1], lastCard[2], lastCard[3], m, null));
 				continue;
 			}
 			if (!m.invite().isEmpty()) {
 				int[] used = drawInvite(g, m, mine, cx, cw, maxBubble, y, top, bottom, mx, my);
 				y = used[0];
 				total += used[1];
+				if (lastCard != null) bubbles.add(new Bubble(lastCard[0], lastCard[1], lastCard[2], lastCard[3], m, null));
 				continue;
 			}
 			String text = m.image() != null ? Ui.tr("slashclient-hud.picture.unreadable").getString() : m.text();
 			List<FormattedCharSequence> lines = font.split(Ui.text(text), maxBubble - 12);
 			int textW = 0;
 			for (FormattedCharSequence l : lines) textW = Math.max(textW, font.width(l));
-			Component time = Ui.text(TIME.format(Instant.ofEpochMilli(m.at())));
+			Component time = timeOf(m.at(), m.editedAt());
 			int bw = Math.max(textW, Ui.width(time)) + 12;
 			int bh = lines.size() * 10 + 15;
 			y -= bh + 4;
@@ -355,12 +572,18 @@ public class FriendsScreen extends Screen {
 			if (y > bottom || y + bh < top) continue;
 			int bx = mine ? cx + cw - 10 - bw : cx + 10;
 			Ui.round(g, bx, y, bw, bh, 5, mine ? Ui.ACCENT_DARK : Ui.CARD);
+			// the one being edited in the field
+			if (m.id() == editingId && editingGroup == null) Ui.roundOutline(g, bx - 1, y - 1, bw + 2, bh + 2, 5, 0xCCFACC15);
 			int ly = y + 5;
 			for (FormattedCharSequence l : lines) {
 				g.text(font, l, bx + 6, ly, Ui.TEXT, false);
 				ly += 10;
 			}
 			Ui.draw(g, time, bx + bw - 6 - Ui.width(time), ly, mine ? 0xB3FFFFFF : Ui.MUTED);
+			if (m.editedAt() > 0 && Ui.inside(mx, my, bx + bw - 6 - Ui.width(time), ly, Ui.width(time), 9) && my >= top && my <= bottom)
+				tooltip = Ui.tr("slashclient-hud.message.editedAt", TIME.format(Instant.ofEpochMilli(m.editedAt())));
+			int[] seen = visible(bx, y, bw, bh, top, bottom);
+			if (seen != null) bubbles.add(new Bubble(seen[0], seen[1], seen[2], seen[3], m, null));
 		}
 		g.disableScissor();
 		maxScroll = Math.max(0, total - (bottom - top));
@@ -379,14 +602,27 @@ public class FriendsScreen extends Screen {
 		if (Ui.inside(mx, my, ix, fy, 20, INPUT_H)) tooltip = Ui.tr("slashclient-hud.picture.button");
 		String fid2 = f.id(), fname = f.name();
 		hits.add(new Hit(ix, fy, 20, INPUT_H, () -> minecraft.setScreenAndShow(new ShotPickerScreen(this, fid2, fname))));
-		drawRecentShot(g, f, cx, cw, fy, mx, my);
-		if (tooltip != null) {
-			int tw = Ui.width(tooltip) + 10;
-			int tx = Math.min(mx + 8, px + pw - tw - 4), ty = Math.max(py + 4, my - 16);
-			Ui.round(g, tx, ty, tw, 13, 3, 0xF0000000);
-			Ui.draw(g, tooltip, tx + 5, ty + 3, Ui.TEXT);
-			tooltip = null;
-		}
+		if (editingId >= 0) drawEditBar(g, cx, fy);
+		else drawRecentShot(g, f, cx, cw, fy, mx, my);
+	}
+
+	/** Above the field while a message is edited: what Enter and Esc do. */
+	private void drawEditBar(GuiGraphicsExtractor g, int cx, int fy) {
+		int w = input.getWidth() + 12, y = fy - 15;
+		Ui.round(g, cx + 10, y, w, 13, 4, 0x26FACC15);
+		Ui.icon(g, "pen", cx + 14, y + 3, 7, 0xFFFACC15);
+		Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.message.editing"), w - 20), cx + 25, y + 3, 0xFFFACC15);
+	}
+
+	/** The tooltip of what is under the mouse, over everything else. */
+	private void drawTooltip(GuiGraphicsExtractor g, int mx, int my) {
+		if (tooltip == null) return;
+		overEverything(g);
+		int tw = Ui.width(tooltip) + 10;
+		int tx = Math.min(mx + 8, px + pw - tw - 4), ty = Math.max(py + 4, my - 16);
+		Ui.round(g, tx, ty, tw, 13, 3, 0xF0000000);
+		Ui.draw(g, tooltip, tx + 5, ty + 3, Ui.TEXT);
+		tooltip = null;
 	}
 
 	/** The screenshot taken a moment ago (F2): one click sends it to this friend. */
@@ -428,6 +664,7 @@ public class FriendsScreen extends Screen {
 		y -= bh + 4;
 		if (y > bottom || y + bh < top) return new int[] { y, bh + 4 };
 		int bx = mine ? cx + cw - 10 - bw : cx + 10;
+		lastCard = visible(bx, y, bw, bh, top, bottom);
 		Ui.round(g, bx, y, bw, bh, 5, mine ? Ui.ACCENT_DARK : Ui.CARD);
 		if (tex.ready()) {
 			g.blit(RenderPipelines.GUI_TEXTURED, tex.id(), bx + 4, y + 4, 0, 0, size[0], size[1], tex.w(), tex.h(), tex.w(), tex.h(), 0xFFFFFFFF);
@@ -493,7 +730,7 @@ public class FriendsScreen extends Screen {
 			return;
 		}
 
-		int top = py + 38, bottom = py + ph - INPUT_H - 14;
+		int top = py + 38, bottom = py + ph - INPUT_H - 14 - (editingId >= 0 ? 16 : 0);
 		int maxBubble = (int) (cw * 0.72);
 		List<Groups.Message> messages = Groups.chat(gr.id());
 		g.enableScissor(cx + 2, top, cx + cw - 2, bottom);
@@ -515,10 +752,23 @@ public class FriendsScreen extends Screen {
 			boolean mine = m.from().equals(Social.myId());
 			// the name above the first of someone's messages in a row
 			boolean named = !mine && (i == 0 || !messages.get(i - 1).from().equals(m.from()) || !messages.get(i - 1).event().isEmpty());
+			// taken back (by its author or a moderator): only that there was a message stays
+			if (m.deleted()) {
+				int bw = tombstoneWidth(), bh = 16, nameH = named ? 11 : 0;
+				y -= bh + 4 + nameH;
+				total += bh + 4 + nameH;
+				if (y > bottom || y + bh + nameH < top) continue;
+				int bx2 = mine ? cx + cw - 10 - bw : cx + 10;
+				if (named) Ui.draw(g, Ui.fit(Ui.bold(gr.nameOf(m.from())), maxBubble), bx2 + 2, y, Ui.ACCENT_LIGHT);
+				drawTombstone(g, bx2, y + nameH);
+				continue;
+			}
 			if (m.image() != null && !m.image().unreadable()) {
+				lastCard = null;
 				int[] used = drawPicture(g, m.image(), m.at(), gr.nameOf(m.from()), mine, cx, cw, maxBubble, y, top, bottom, mx, my);
 				y = used[0];
 				total += used[1];
+				if (lastCard != null) bubbles.add(new Bubble(lastCard[0], lastCard[1], lastCard[2], lastCard[3], null, m));
 				if (named) {
 					y -= 11;
 					total += 11;
@@ -529,7 +779,7 @@ public class FriendsScreen extends Screen {
 			List<FormattedCharSequence> lines = font.split(Ui.text(m.text()), maxBubble - 12);
 			int textW = 0;
 			for (FormattedCharSequence l : lines) textW = Math.max(textW, font.width(l));
-			Component time = Ui.text(TIME.format(Instant.ofEpochMilli(m.at())));
+			Component time = timeOf(m.at(), m.editedAt());
 			int bw = Math.max(textW, Ui.width(time)) + 12;
 			int bh = lines.size() * 10 + 15;
 			int nameH = named ? 11 : 0;
@@ -540,12 +790,17 @@ public class FriendsScreen extends Screen {
 			if (named) Ui.draw(g, Ui.fit(Ui.bold(gr.nameOf(m.from())), maxBubble), bx2 + 2, y, Ui.ACCENT_LIGHT);
 			int by = y + nameH;
 			Ui.round(g, bx2, by, bw, bh, 5, mine ? Ui.ACCENT_DARK : Ui.CARD);
+			if (m.id() == editingId && gr.id().equals(editingGroup)) Ui.roundOutline(g, bx2 - 1, by - 1, bw + 2, bh + 2, 5, 0xCCFACC15);
 			int ly = by + 5;
 			for (FormattedCharSequence l : lines) {
 				g.text(font, l, bx2 + 6, ly, Ui.TEXT, false);
 				ly += 10;
 			}
 			Ui.draw(g, time, bx2 + bw - 6 - Ui.width(time), ly, mine ? 0xB3FFFFFF : Ui.MUTED);
+			if (m.editedAt() > 0 && Ui.inside(mx, my, bx2 + bw - 6 - Ui.width(time), ly, Ui.width(time), 9) && my >= top && my <= bottom)
+				tooltip = Ui.tr("slashclient-hud.message.editedAt", TIME.format(Instant.ofEpochMilli(m.editedAt())));
+			int[] seen = visible(bx2, by, bw, bh, top, bottom);
+			if (seen != null) bubbles.add(new Bubble(seen[0], seen[1], seen[2], seen[3], null, m));
 		}
 		Ui.end();
 		g.disableScissor();
@@ -563,13 +818,8 @@ public class FriendsScreen extends Screen {
 		Ui.button(g, "friends:picture", ix, fy, 20, INPUT_H, "image", Component.empty(), false, mx, my);
 		String gid = gr.id(), gname = Groups.title(gr);
 		hits.add(new Hit(ix, fy, 20, INPUT_H, () -> minecraft.setScreenAndShow(ShotPickerScreen.forGroup(this, gid, gname))));
-		if (Ui.inside(mx, my, ix, fy, 20, INPUT_H)) {
-			Component tip = Ui.tr("slashclient-hud.picture.button");
-			int tw = Ui.width(tip) + 10;
-			int tx = Math.min(mx + 8, px + pw - tw - 4), ty = Math.max(py + 4, my - 16);
-			Ui.round(g, tx, ty, tw, 13, 3, 0xF0000000);
-			Ui.draw(g, tip, tx + 5, ty + 3, Ui.TEXT);
-		}
+		if (Ui.inside(mx, my, ix, fy, 20, INPUT_H)) tooltip = Ui.tr("slashclient-hud.picture.button");
+		if (editingId >= 0) drawEditBar(g, cx, fy);
 	}
 
 	/** A clan's logo, size × size (the 64×64 picture scaled). */
@@ -621,6 +871,7 @@ public class FriendsScreen extends Screen {
 		y -= bh + 4;
 		if (y > bottom || y + bh < top) return new int[] { y, bh + 4 };
 		int bx = mine ? cx + cw - 10 - bw : cx + 10;
+		lastCard = visible(bx, y, bw, bh, top, bottom);
 		Ui.round(g, bx, y, bw, bh, 5, mine ? Ui.ACCENT_DARK : Ui.CARD);
 		Ui.roundOutline(g, bx, y, bw, bh, 5, mine ? 0x40FFFFFF : 0x663B82F6);
 		Ui.icon(g, "play", bx + 6, y + 6, 8, mine ? Ui.TEXT : Ui.ACCENT_LIGHT);
@@ -650,6 +901,7 @@ public class FriendsScreen extends Screen {
 		y -= bh + 4;
 		if (y > bottom || y + bh < top) return new int[] { y, bh + 4 };
 		int bx = mine ? cx + cw - 10 - bw : cx + 10;
+		lastCard = visible(bx, y, bw, bh, top, bottom);
 		Ui.round(g, bx, y, bw, bh, 5, mine ? Ui.ACCENT_DARK : Ui.CARD);
 		Ui.roundOutline(g, bx, y, bw, bh, 5, mine ? 0x40FFFFFF : 0x663B82F6);
 		Ui.icon(g, "m-waypoints", bx + 6, y + 6, 8, mine ? Ui.TEXT : Ui.ACCENT_LIGHT);
@@ -673,6 +925,14 @@ public class FriendsScreen extends Screen {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
 	//$ 	boolean doubleClick = false;
 	//#endif
+		// a message's menu is open: a row runs, a click anywhere else closes it
+		if (menu != null) {
+			if (e.button() == InputConstants.MOUSE_BUTTON_LEFT) clickMenu(e.x(), e.y());
+			else menu = null;
+			return true;
+		}
+		// right click on a message: its menu (edit, copy, delete)
+		if (e.button() == InputConstants.MOUSE_BUTTON_RIGHT && openMenuAt((int) e.x(), (int) e.y())) return true;
 		//#if MC >= 1.21.9
 		if (super.mouseClicked(e, doubleClick)) return true;
 		//#else
@@ -699,6 +959,7 @@ public class FriendsScreen extends Screen {
 	//$ 	double h = 0;
 	//#endif
 		scroll = (int) Math.max(0, Math.min(maxScroll, scroll + v * 20));
+		menu = null;
 		return true;
 	}
 
@@ -711,6 +972,12 @@ public class FriendsScreen extends Screen {
 	//#endif
 		if ((e.key() == InputConstants.KEY_RETURN || e.key() == InputConstants.KEY_NUMPADENTER) && input.isFocused()) {
 			send();
+			return true;
+		}
+		// Esc closes a message's menu, then lets go of the message being edited, and only then the window
+		if (e.key() == InputConstants.KEY_ESCAPE && (menu != null || editingId >= 0)) {
+			if (menu != null) menu = null;
+			else stopEditing();
 			return true;
 		}
 		//#if MC >= 1.21.9
