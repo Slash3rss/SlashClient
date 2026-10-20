@@ -471,6 +471,7 @@
 	"slashclient-hud.cosmetics.nothing": "Nothing",
 	"slashclient-hud.achievement.unlocked": "Achievement unlocked",
 	"slashclient-hud.achievement.reward": "%s · new cape",
+	"slashclient-hud.achievement.rewardItem": "%s · new cosmetic",
 	"slashclient-hud.cosmetics.exclusive": "%s: exclusive, given by an admin",
 	"slashclient-hud.cosmetics.rankOnly": "%s: for %s rank only",
 	"slashclient-hud.sparks.one": "%s Spark",

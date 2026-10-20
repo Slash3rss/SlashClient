@@ -393,7 +393,9 @@ public final class Social {
 		boolean polish = Minecraft.getInstance().options.languageCode.startsWith("pl");
 		String name = str(a, polish ? "name" : "nameEn");
 		JsonObject reward = a.has("reward") && a.get("reward").isJsonObject() ? a.getAsJsonObject("reward") : null;
-		String text = reward == null ? name : Component.translatable("slashclient-hud.achievement.reward", name).getString();
+		// a cape says so; another item (the admin may pick any) is "a new cosmetic"
+		String text = reward == null ? name : Component.translatable("cape".equals(str(reward, "slot")) || str(reward, "slot").isEmpty()
+			? "slashclient-hud.achievement.reward" : "slashclient-hud.achievement.rewardItem", name).getString();
 		// the Sparks it paid on a line of their own (servers before 0.9.22 pay none)
 		int sparks = num(a, "sparks");
 		toast(Component.translatable("slashclient-hud.achievement.unlocked").getString(), text, "m-advancements",

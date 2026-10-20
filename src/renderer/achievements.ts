@@ -76,7 +76,10 @@ export function unlockText(a: Pick<Achievement, 'name' | 'nameEn' | 'reward' | '
   const paid = a.sparks ? `${signedSparks(a.sparks)}. ` : '';
   return {
     title: t('Osiągnięcie odblokowane: {0}', nameOf(a)),
-    body: paid + (a.reward ? t('Nagroda: peleryna {0}. Załóż ją w menu kosmetyków.', a.reward.name) : t('Zobacz swoje osiągnięcia w SlashClient.')),
+    body: paid + (!a.reward ? t('Zobacz swoje osiągnięcia w SlashClient.')
+      : a.reward.slot === 'cape' ? t('Nagroda: peleryna {0}. Załóż ją w menu kosmetyków.', a.reward.name)
+      // the admin may give any cosmetic for an achievement
+      : t('Nagroda: {0}. Znajdziesz ją w menu kosmetyków.', a.reward.name)),
   };
 }
 

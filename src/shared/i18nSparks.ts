@@ -24,6 +24,7 @@ export const SPARKS_EN: Record<string, string> = {
   'Zaloguj się na konto SlashClient w zakładce Znajomi, żeby zbierać osiągnięcia: serie dni gry, godziny, znajomych i serwery. Każde daje {0} na kosmetyki w sklepie, a niektóre wyjątkowe peleryny.':
     'Sign in to a SlashClient account in the Friends tab to collect achievements: play streaks, hours, friends and servers. Each one gives {0} for cosmetics in the shop, and some give unique capes.',
   // notices
+  'Nagroda: {0}. Znajdziesz ją w menu kosmetyków.': 'Reward: {0}. Find it in the cosmetics menu.',
   'Odblokowano 1 osiągnięcie': '1 achievement unlocked',
   'Odblokowano osiągnięcia: {0}': '{0} achievements unlocked',
   '{0} za osiągnięcia. Wydaj je w sklepie w zakładce Osiągnięcia.': '{0} for achievements. Spend them in the shop in the Achievements tab.',
