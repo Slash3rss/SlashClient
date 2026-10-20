@@ -18,6 +18,8 @@ export interface LegalContext {
   bannerDefault: boolean;
   authed: (req: http.IncomingMessage) => string;
   admin: (req: http.IncomingMessage) => string;
+  /** Whether a page is hidden in the home page's editor (its link leaves the documents' menu too). */
+  hidden?: (path: string) => boolean;
   /** When the account was made (notices are only for changes after that). */
   createdAt: (uuid: string) => number;
   audit: (admin: string, action: string, target: string, detail?: string) => void;
@@ -195,7 +197,7 @@ export function legalRoutes(ctx: LegalContext) {
     if (!v) return false;
     const html = ctx.versioned(legalPage({
       doc: at.doc, lang: at.lang, rendered: renderMarkdown(v.body, store.vars()), updatedAt: v.publishedAt,
-      banner: store.banner(at.doc, ctx.bannerDefault), publicUrl: ctx.publicUrl,
+      banner: store.banner(at.doc, ctx.bannerDefault), publicUrl: ctx.publicUrl, hidden: ctx.hidden,
     }));
     res.writeHead(200, {
       'Content-Type': 'text/html; charset=utf-8',

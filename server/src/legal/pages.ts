@@ -18,7 +18,7 @@ const UI = {
   },
 } as const;
 
-export function legalPage(o: { doc: string; lang: Lang; rendered: Rendered; updatedAt: number; banner: boolean; publicUrl: string }): string {
+export function legalPage(o: { doc: string; lang: Lang; rendered: Rendered; updatedAt: number; banner: boolean; publicUrl: string; hidden?: (path: string) => boolean }): string {
   const meta = DOCS[o.doc];
   const u = UI[o.lang];
   const other: Lang = o.lang === 'pl' ? 'en' : 'pl';
@@ -51,7 +51,7 @@ export function legalPage(o: { doc: string; lang: Lang; rendered: Rendered; upda
     <div class="wrap">
       <a class="brand" href="/"><img src="/vendor/logo.png" alt=""><span>Slash<b>Client</b></span></a>
       <nav class="nav-links">
-        ${u.nav.map(([h, l]) => `<a href="${h}">${l}</a>`).join('\n        ')}
+        ${u.nav.filter(([h]) => !o.hidden?.(h)).map(([h, l]) => `<a href="${h}">${l}</a>`).join('\n        ')}
       </nav>
       <div class="push row">
         <a class="btn lang-switch" href="${meta[other].path}" hreflang="${other}"><i class="fa-solid fa-language"></i> <span class="label">${u.other}</span></a>

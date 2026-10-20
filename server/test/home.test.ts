@@ -260,11 +260,28 @@ describe('home page escaping', () => {
     assert.match(page, /id="nav-admin"/);
     assert.doesNotMatch(page, /class="[^"]*foot-link" href="\/regulamin"/);
     assert.doesNotMatch(page, /class="[^"]*foot-link" href="\/polityka-prywatnosci"/);
+    // the hidden pages are gone: /zgloszenia is still in the footer, so it stays; the terms and the policy go
+    assert.equal((await call('GET', '/zgloszenia')).status, 200);
+    assert.equal((await call('GET', '/regulamin')).status, 404);
+    assert.equal((await call('GET', '/polityka-prywatnosci')).status, 404);
+    assert.equal((await call('GET', '/terms')).status, 200);
+    assert.deepEqual((await call('GET', '/v1/home/hidden')).body.paths.sort(), ['/polityka-prywatnosci', '/regulamin']);
+    // hidden in the footer too: then the page is gone, with what is under it; the home page and the panel never are
+    c.footer.links.find((l: any) => l.href === '/zgloszenia').hidden = true;
+    c.footer.links.push({ label: 'Start', href: '/', icon: '', hidden: true }, { label: 'Panel', href: '/admin', icon: '', hidden: true });
+    assert.equal((await call('POST', '/v1/admin/home/pl/publish', adminToken, { content: c })).status, 200);
+    assert.equal((await call('GET', '/zgloszenia')).status, 404);
+    assert.equal((await call('GET', '/zgloszenia/12')).status, 404);
+    assert.equal((await call('GET', '/')).status, 200);
+    assert.equal((await call('GET', '/admin')).status, 200);
+    assert.equal((await call('GET', '/terms')).status, 200);
     // still there for the editor
     const saved = (await call('GET', '/v1/admin/home/pl', adminToken)).body;
     const content = saved.published?.content ?? saved.content ?? saved.current?.content;
     assert.ok(JSON.stringify(content ?? saved).includes('/zgloszenia'));
     assert.equal((await call('POST', '/v1/admin/home/pl/publish', adminToken, { content: clone(DEFAULTS.pl) })).status, 200);
+    assert.equal((await call('GET', '/regulamin')).status, 200);
+    assert.equal((await call('GET', '/zgloszenia')).status, 200);
   });
 
   it('inline markup never lets HTML through', () => {

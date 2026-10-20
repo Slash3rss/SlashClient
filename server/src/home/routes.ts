@@ -4,7 +4,7 @@ import { readFile, stat, writeFile } from 'node:fs/promises';
 import type http from 'node:http';
 import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
-import { type Content, ContentError, DEFAULTS, LANGS, type Lang, SECTIONS, checkContent, isLang, storedContent } from './content.ts';
+import { type Content, ContentError, type Item, DEFAULTS, LANGS, type Lang, SECTIONS, checkContent, isLang, storedContent } from './content.ts';
 import { UI, homePage } from './page.ts';
 
 /**
@@ -132,6 +132,39 @@ function iconNames(webDir?: string): Set<string> | undefined {
   }
 }
 
+/** Pages the site never hides, whatever links the admin hides: the home pages, the panel, the account, the API. */
+const NEVER_HIDDEN = /^\/(?:en)?$|^\/(?:admin|konto|account|v1|vendor|img|fonts|pobierz|download|aktualizacje|updates)(?:\/|$)|\.[a-z0-9]+$/i;
+
+/** "/zgloszenia", "/wsparcie/" → the page's path; anchors, other sites and the home page are no page of their own. */
+export function ownPath(href: string): string | undefined {
+  if (!href.startsWith('/') || href.startsWith('//')) return undefined;
+  const p = href.split(/[?#]/)[0].replace(/\/+$/, '');
+  return p && !NEVER_HIDDEN.test(p) ? p.toLowerCase() : undefined;
+}
+
+/**
+ * The pages hidden with their links (home page editor, both languages): a path whose links are all
+ * hidden, in the menu and the footer of either language, plus the terms or the privacy policy when
+ * their footer link is hidden. A path still linked somewhere visible stays reachable.
+ */
+export function hiddenPaths(contents: { lang: Lang; content: Content }[], legal: Record<Lang, { terms: string; privacy: string }>): Set<string> {
+  const hidden = new Set<string>();
+  const shown = new Set<string>();
+  for (const { lang, content } of contents) {
+    for (const section of ['nav', 'footer'] as const) {
+      const links = (content[section]?.links ?? []) as Item[];
+      for (const l of links) {
+        const p = ownPath(String(l.href ?? ''));
+        if (p) (l.hidden ? hidden : shown).add(p);
+      }
+    }
+    if (content.footer?.hideTerms) hidden.add(legal[lang].terms);
+    if (content.footer?.hidePrivacy) hidden.add(legal[lang].privacy);
+  }
+  for (const p of shown) hidden.delete(p);
+  return hidden;
+}
+
 export function homeRoutes(ctx: HomeContext) {
   const store = new HomeStore(ctx.sql, ctx.now);
   const base = ctx.publicUrl.replace(/\/+$/, '');
@@ -177,6 +210,20 @@ export function homeRoutes(ctx: HomeContext) {
     return list.length ? list.join(', ') : 'bez zmian';
   };
   /** What the editor last had: the draft, else the published content, else the defaults. */
+  /** Whether a page is hidden by the published home page (and the pages under it: /wsparcie hides /wsparcie/…). */
+  let hiddenCache: { key: string; set: Set<string> } | undefined;
+  function isHidden(pathname: string): boolean {
+    const pub = LANGS.map((l) => store.published(l));
+    const key = pub.map((v) => v?.id ?? 0).join(',');
+    if (!hiddenCache || hiddenCache.key !== key) {
+      hiddenCache = { key, set: hiddenPaths(LANGS.map((l, i) => ({ lang: l, content: pub[i]?.content ?? DEFAULTS[l] })), UI) };
+    }
+    if (!hiddenCache.set.size) return false;
+    const p = pathname.replace(/\/+$/, '').toLowerCase();
+    for (const h of hiddenCache.set) if (p === h || p.startsWith(`${h}/`)) return true;
+    return false;
+  }
+
   const current = (lang: Lang): Content => (store.draft(lang) ?? store.published(lang))?.content ?? structuredClone(DEFAULTS[lang]);
   const editorView = (lang: Lang) => {
     const published = store.published(lang);
@@ -219,7 +266,15 @@ export function homeRoutes(ctx: HomeContext) {
     return made;
   }
 
+  /** The hidden pages now (for every page's script, which takes their links out). */
+  const hiddenList = (): string[] => {
+    isHidden('/');
+    return [...(hiddenCache?.set ?? [])];
+  };
+
   const routes: [string, RegExp, Handler][] = [
+    // the pages hidden with their links: siteBanner.js takes the links to them off every page
+    ['GET', /^\/v1\/home\/hidden$/, () => ({ paths: hiddenList() })],
     // everything the editor is made from: the sections' fields, the defaults, the icons, each language's state
     ['GET', /^\/v1\/admin\/home$/, (req) => {
       ctx.admin(req);
@@ -321,5 +376,5 @@ export function homeRoutes(ctx: HomeContext) {
     return true;
   }
 
-  return { routes, serve, store };
+  return { routes, serve, store, isHidden, hiddenList };
 }

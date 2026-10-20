@@ -40,7 +40,7 @@ import { COMMUNITY_LIMITS, type CommunityLimits } from './communityStore.ts';
 import { Settings, liveSettings, type SettingValue } from './settings.ts';
 import { SETTING_DEFS } from './settingsDefs.ts';
 import { settingsAdminRoutes } from './settingsAdmin.ts';
-import { disabledPage, featureKey, featuresFor } from './features.ts';
+import { disabledPage, featureKey, featuresFor, notFoundPage } from './features.ts';
 import { useBlocklist } from './clans.ts';
 import { useLogoLimit } from './clanLogos.ts';
 import { createRanks, gameBadge, type RankUser } from './ranks.ts';
@@ -772,6 +772,8 @@ export function createApp(cfg: Config) {
   // the terms, the privacy policy and the support terms, edited in the admin panel (legal/routes.ts)
   const legal = legalRoutes({
     sql: db.sql, publicUrl: cfg.publicUrl, bannerDefault: cfg.legalDraft ?? true, authed, admin,
+    // the home page's editor is made below; asked only when a document is shown
+    hidden: (p) => home.isHidden(p),
     createdAt: (uuid) => db.adminUser(uuid)?.createdAt ?? 0,
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
     versioned: (html) => versioned(html, 'text/html'),
@@ -1395,6 +1397,15 @@ export function createApp(cfg: Config) {
         res.writeHead(503, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end(disabledPage());
       }
+      req.resume();
+      return;
+    }
+
+    // a page the admin hid with its link in the home page's editor: as if it did not exist
+    if ((req.method === 'GET' || req.method === 'HEAD') && !url.pathname.startsWith('/v1/') && home.isHidden(url.pathname)) {
+      (req as SeenRequest).slashError = 'hidden';
+      res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(notFoundPage());
       req.resume();
       return;
     }

@@ -48,6 +48,30 @@ export function bannerElement(b, onClose) {
   return box;
 }
 
+// pages hidden in the admin panel (with their link in the home page's menu or footer): no links to them anywhere
+fetch('/v1/home/hidden')
+  .then((r) => (r.ok ? r.json() : undefined))
+  .then((res) => {
+    const paths = res?.paths ?? [];
+    if (!paths.length) return;
+    const hidden = (href) => {
+      let p;
+      try {
+        const u = new URL(href, location.href);
+        if (u.origin !== location.origin) return false;
+        p = u.pathname.replace(/\/+$/, '').toLowerCase();
+      } catch {
+        return false;
+      }
+      return paths.some((h) => p === h || p.startsWith(`${h}/`));
+    };
+    const sweep = () => document.querySelectorAll('a[href]').forEach((a) => { if (hidden(a.getAttribute('href'))) a.remove(); });
+    sweep();
+    // links drawn later by the page's own scripts too
+    new MutationObserver(sweep).observe(document.body, { childList: true, subtree: true });
+  })
+  .catch(() => {});
+
 siteFeatures.then(({ banner }) => {
   // once per page, however many scripts import this
   if (!banner || document.querySelector('.site-banner[data-banner]')) return;
