@@ -44,7 +44,7 @@ const memory = new Map<string, { at: number; value: unknown }>();
 const CACHE_VERSION = 2;
 const keyFile = (key: string) => path.join(cacheDir(), `${createHash('sha1').update(`${CACHE_VERSION}:${key}`).digest('hex')}.json`);
 
-async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
+export async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
   const now = Date.now();
   const mem = memory.get(key);
   if (mem && now - mem.at < TTL) return mem.value as T;

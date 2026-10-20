@@ -179,6 +179,9 @@ const api = {
   wikiSearch: (query: string) => invoke('wiki:search', query),
   wikiArticle: (title: string) => invoke('wiki:article', title),
   wikiSection: (title: string, index: string) => invoke('wiki:section', title, index),
+  skyupWikiIndex: () => invoke('wiki:skyupIndex'),
+  skyupWikiArticle: (slug: string) => invoke('wiki:skyupArticle', slug),
+  skyupWikiSearch: (query: string) => invoke('wiki:skyupSearch', query),
   gpuSupported: () => invoke('gpu:supported'),
   /** A system notification; clicking it brings the launcher back and sends `notify:open` with the target. */
   notify: (title: string, body: string, target?: { view: 'friends'; friendId?: string } | { view: 'achievements' }) => invoke('notify:show', title, body, target),

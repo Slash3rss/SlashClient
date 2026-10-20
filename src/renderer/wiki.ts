@@ -1,11 +1,13 @@
 import { t } from '../shared/i18n';
 import { control, el, icon } from './dialog';
+import { createSkyupWiki } from './skyupWiki';
 
 /**
  * The "Wiki" view: minecraft.wiki search and articles (recipes, mobs, blocks) without a browser.
  * The main process fetches, caches and sanitizes everything (src/shared/wikiHtml.ts), so the HTML
  * put in here has no scripts, styles or handlers; links to articles open in this panel, other links
- * in the browser. Sections load when opened.
+ * in the browser. Sections load when opened. A switch in the view's header leads to the SkyUp.pl
+ * wiki (skyupWiki.ts), unlocked by the first SkyUp.pl achievement.
  */
 
 interface Hit { title: string; snippet: string; thumbnail?: string }
@@ -23,7 +25,56 @@ const SUGGESTIONS = ['Crafting Table', 'Creeper', 'Diamond', 'Enchanting', 'Brew
 /** Opened by themselves: that's where recipes and drops are. */
 const OPEN_FIRST = /^(obtaining|crafting|recipe|drops|usage)$/i;
 
+const TAB_KEY = 'wiki.tab';
+
 export function createWiki(root: HTMLElement, deps: WikiDeps) {
+  const mc = el('div', { className: 'wiki-pane' });
+  const skyPane = el('div', { className: 'wiki-pane wiki-skyup hidden' });
+  root.append(mc, skyPane);
+  const mcWiki = createMinecraftWiki(mc, deps);
+  const sky = createSkyupWiki(skyPane, deps);
+
+  // the switch between the two wikis, in the view's header
+  const tabMc = el('button', { type: 'button', title: t('Wiki Minecrafta') }, icon('fa-cube'), ' minecraft.wiki');
+  const tabSky = el('button', { type: 'button', title: t('Wiki serwera SkyUp.pl') }, icon('fa-cloud'), ' SkyUp.pl ');
+  const lock = icon('fa-lock');
+  lock.classList.add('wiki-lock');
+  tabSky.append(lock);
+  const tabs = el('div', { className: 'segmented wiki-tabs' }, tabMc, tabSky);
+  (root.closest('.view')?.querySelector('.view-head') ?? root).append(tabs);
+
+  let tab: 'mc' | 'skyup' = 'mc';
+  try {
+    if (localStorage.getItem(TAB_KEY) === 'skyup') tab = 'skyup';
+  } catch { /* storage may be unavailable */ }
+  function select(next: 'mc' | 'skyup', focus = true) {
+    tab = next;
+    try {
+      localStorage.setItem(TAB_KEY, next);
+    } catch { /* storage may be unavailable */ }
+    tabMc.classList.toggle('active', next === 'mc');
+    tabSky.classList.toggle('active', next === 'skyup');
+    mc.classList.toggle('hidden', next !== 'mc');
+    skyPane.classList.toggle('hidden', next !== 'skyup');
+    if (next === 'skyup') sky.show(focus);
+    else if (focus) mcWiki.focus();
+  }
+  tabMc.addEventListener('click', () => select('mc'));
+  tabSky.addEventListener('click', () => select('skyup'));
+  sky.onLockChange((locked) => {
+    lock.classList.toggle('hidden', !locked);
+    tabSky.title = locked ? t('Wiki SkyUp.pl: odblokujesz ją pierwszym osiągnięciem SkyUp.pl') : t('Wiki serwera SkyUp.pl');
+  });
+  select(tab, false);
+
+  return {
+    /** Called when the view opens. */
+    focus: () => select(tab),
+  };
+}
+
+/** The minecraft.wiki tab. */
+function createMinecraftWiki(root: HTMLElement, deps: WikiDeps) {
   const { api, errorText } = deps;
   const input = control<HTMLInputElement>('input', { type: 'search', placeholder: t('Szukaj na minecraft.wiki, np. Crafting Table, Creeper…'), maxLength: 200 });
   const results = el('div', { className: 'wiki-results' });

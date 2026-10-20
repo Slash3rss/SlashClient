@@ -9,6 +9,7 @@ import { paths } from './paths';
 import { setDownloadLimit } from './rateLimit';
 import { profileGameDir, type Profile, type Settings } from './store';
 import { wikiArticle, wikiSearch, wikiSection } from './wiki';
+import { skyupArticle, skyupIndex, skyupSearch } from './skyupWiki';
 
 /**
  * IPC and launch hooks of four smaller launcher tools, kept out of main.ts: key conflicts in a
@@ -96,6 +97,10 @@ export function registerLauncherTools(deps: LauncherToolsDeps): void {
   handle('wiki:search', (query: string) => wikiSearch(query));
   handle('wiki:article', (title: string) => wikiArticle(title));
   handle('wiki:section', (title: string, index: string) => wikiSection(title, index));
+  // the SkyUp.pl wiki (skyup.pl/wiki)
+  handle('wiki:skyupIndex', () => skyupIndex());
+  handle('wiki:skyupArticle', (slug: string) => skyupArticle(slug));
+  handle('wiki:skyupSearch', (query: string) => skyupSearch(query));
   handle('gpu:supported', () => gpuOptionSupported());
 }
 

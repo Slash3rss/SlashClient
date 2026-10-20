@@ -86,10 +86,10 @@ export function articleFromHref(href: string): string | undefined {
 }
 
 /** A link target that is safe to open in the browser: a full https URL, or undefined. */
-export function externalHref(href: string): string | undefined {
+export function externalHref(href: string, base = WIKI_ORIGIN): string | undefined {
   if (href.startsWith('#')) return undefined;
   try {
-    const url = new URL(href, WIKI_ORIGIN);
+    const url = new URL(href, base);
     return url.protocol === 'https:' ? url.toString() : undefined;
   } catch {
     return undefined;
@@ -106,13 +106,64 @@ export function imageSrc(src: string): string | undefined {
   }
 }
 
+/**
+ * What differs between the wikis the panel shows: where links lead, which images may load, and a
+ * few changes to the markup. minecraft.wiki is the default; the SkyUp.pl wiki has its own (skyupWiki.ts).
+ */
+export interface WikiSite {
+  /** Base for relative links. */
+  origin: string;
+  /** The page a link opens in the panel (and the place on it), or undefined for links to the browser. */
+  page: (href: string) => { page: string; anchor?: string } | undefined;
+  /** An image address that may load, made absolute; undefined refuses the image. */
+  image: (src: string) => string | undefined;
+  /** Tags written as another one (e.g. a page's h1 as h2), optionally with a class (already prefixed). */
+  rename?: Record<string, { tag: string; className?: string }>;
+  /** Headings keep their id as `data-anchor`, and "#id" links become `data-anchor` links to scroll to. */
+  anchors?: boolean;
+  /** An image's size in pixels from its inline style, when it has no width/height attributes. */
+  styleSize?: boolean;
+}
+
+export const MINECRAFT_WIKI: WikiSite = {
+  origin: WIKI_ORIGIN,
+  page: (href) => {
+    const page = articleFromHref(href);
+    return page ? { page } : undefined;
+  },
+  image: imageSrc,
+};
+
+/** A heading's id or a "#id" target as kept: printable, without spaces, quotes or markup, not too long. */
+export const safeAnchor = (s: string) => (/^[^\s"'<>&`]{1,120}$/u.test(s) ? s : undefined);
+
+/** "%C4%85" → "ą"; the text as it was when it isn't valid. */
+export function decodeHref(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+
+/** A size in pixels from an inline style ("height:16px; width:auto" → height 16). */
+function sizeFromStyle(style: string, prop: 'width' | 'height'): string | undefined {
+  return new RegExp(`(?:^|;)\\s*${prop}\\s*:\\s*(\\d{1,4})px\\b`, 'i').exec(style)?.[1];
+}
+
 const safeClass = (cls: string) =>
   cls.split(/\s+/).filter((c) => /^[A-Za-z0-9_-]+$/.test(c)).map((c) => `w-${c}`).join(' ');
 
-function sanitizeTag(name: string, attrs: Record<string, string>): string | undefined {
+function sanitizeTag(name: string, attrs: Record<string, string>, site: WikiSite, outName: string, extraClass?: string): string | undefined {
   const out: string[] = [];
-  const cls = attrs.class ? safeClass(attrs.class) : '';
+  const cls = [extraClass, attrs.class ? safeClass(attrs.class) : ''].filter(Boolean).join(' ');
   if (cls) out.push(`class="${escapeHtml(cls)}"`);
+  if (name === 'img' && site.styleSize && attrs.style) {
+    for (const a of ['width', 'height'] as const) {
+      const px = sizeFromStyle(attrs.style, a);
+      if (px && attrs[a] === undefined) attrs[a] = px;
+    }
+  }
   for (const a of KEEP_ATTRS[name] ?? []) {
     const v = attrs[a];
     if (v === undefined) continue;
@@ -121,29 +172,38 @@ function sanitizeTag(name: string, attrs: Record<string, string>): string | unde
   }
   if (attrs.title && name !== 'img') out.push(`title="${escapeHtml(attrs.title)}"`);
   if (name === 'img') {
-    const src = imageSrc(attrs.src ?? '');
+    const src = site.image(attrs.src ?? '');
     if (!src) return undefined;
     out.push(`src="${escapeHtml(src)}"`, 'loading="lazy"');
   }
+  if (site.anchors && /^h[1-6]$/.test(name) && attrs.id) {
+    const anchor = safeAnchor(attrs.id);
+    if (anchor) out.push(`data-anchor="${escapeHtml(anchor)}"`);
+  }
   if (name === 'a') {
     const href = attrs.href ?? '';
-    const article = articleFromHref(href);
-    if (article) out.push('href="#"', `data-wiki="${escapeHtml(article)}"`);
+    const target = site.page(href);
+    const local = site.anchors && href.startsWith('#') ? safeAnchor(decodeHref(href.slice(1))) : undefined;
+    if (target) {
+      out.push('href="#"', `data-wiki="${escapeHtml(target.page)}"`);
+      const anchor = target.anchor && safeAnchor(target.anchor);
+      if (anchor) out.push(`data-anchor="${escapeHtml(anchor)}"`);
+    } else if (local) out.push('href="#"', `data-anchor="${escapeHtml(local)}"`);
     else {
-      const ext = externalHref(href);
+      const ext = externalHref(href, site.origin);
       if (ext) out.push(`href="${escapeHtml(ext)}"`, 'data-external="1"');
     }
   }
   // the infobox's image tabs carry their names here
   if (attrs['data-title'] && name === 'div') out.push(`data-title="${escapeHtml(attrs['data-title'])}"`);
-  return `<${name}${out.length ? ` ${out.join(' ')}` : ''}>`;
+  return `<${outName}${out.length ? ` ${out.join(' ')}` : ''}>`;
 }
 
-/** The safe version of a piece of wiki HTML. */
-export function sanitizeWikiHtml(html: string): string {
+/** The safe version of a piece of wiki HTML (from minecraft.wiki unless another site is given). */
+export function sanitizeWikiHtml(html: string, site: WikiSite = MINECRAFT_WIKI): string {
   const out: string[] = [];
-  /** Open elements: name, and whether they were kept (an unknown tag drops only itself, not its text). */
-  const stack: { name: string; kept: boolean }[] = [];
+  /** Open elements: name, and the tag written for it, if any (an unknown tag drops only itself, not its text). */
+  const stack: { name: string; out?: string }[] = [];
   /** While set, everything is skipped until this element closes (depth counts nested ones of the same name). */
   let skip: { name: string; depth: number } | undefined;
   const re = /<!--[\s\S]*?(?:-->|$)|<!\[CDATA\[[\s\S]*?(?:\]\]>|$)|<!?\/?([A-Za-z][A-Za-z0-9-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>|([^<]+)|</g;
@@ -172,7 +232,7 @@ export function sanitizeWikiHtml(html: string): string {
       if (i < 0) continue;
       while (stack.length > i) {
         const top = stack.pop()!;
-        if (top.kept) out.push(`</${top.name}>`);
+        if (top.out) out.push(`</${top.out}>`);
       }
       continue;
     }
@@ -182,13 +242,15 @@ export function sanitizeWikiHtml(html: string): string {
       if (!selfClosing) skip = { name, depth: 1 };
       continue;
     }
-    const tag = ALLOWED.has(name) ? sanitizeTag(name, attrs) : undefined;
+    const renamed = site.rename?.[name];
+    const outName = renamed?.tag ?? name;
+    const tag = ALLOWED.has(outName) ? sanitizeTag(name, attrs, site, outName, renamed?.className) : undefined;
     if (tag) out.push(tag);
-    if (!selfClosing) stack.push({ name, kept: !!tag });
+    if (!selfClosing) stack.push({ name, out: tag ? outName : undefined });
   }
   while (stack.length) {
     const top = stack.pop()!;
-    if (top.kept) out.push(`</${top.name}>`);
+    if (top.out) out.push(`</${top.out}>`);
   }
   return out.join('');
 }

@@ -15,6 +15,7 @@ import { downloadAll } from '../src/main/download';
 import { clearDedicatedGpu, GPU_KEY, HIGH_PERFORMANCE, isOwnJava, preferDedicatedGpu, primeEnv, type RegRunner } from '../src/main/gpuPreference';
 import { articleFromHref, decodeEntities, imageSrc, sanitizeWikiHtml, snippetText } from '../src/shared/wikiHtml';
 import { hitsFrom, sectionsFrom } from '../src/main/wiki';
+import { isSkyupSlug, parseSkyupSearch, parseSkyupToc, skyupArticleHtml, skyupImage, skyupPage, skyupQueryUrl, skyupSections, stripHighlights } from '../src/shared/skyupWiki';
 import { setLang } from '../src/shared/i18n';
 
 // ---------- key conflicts ----------
@@ -329,6 +330,89 @@ describe('minecraft.wiki content', () => {
       },
     }), [{ index: '1', title: 'Obtaining', level: 2 }, { index: '2', title: 'Breaking', level: 3 }]);
     assert.equal(snippetText('<b>a</b>\n  b'), 'a b');
+  });
+});
+
+// ---------- the SkyUp.pl wiki ----------
+
+describe('SkyUp.pl wiki content', () => {
+  const PAGE = `<section id="wiki" class="wiki-toc"><form><input name="search"></form>
+    <div id="wiki-toc" class="container">
+      <i>Ogólne</i>
+      <ul><li><a href="/wiki/anyblock">AnyBlock</a></li><li><a href="/wiki/plan-tygodnia">Plan tygodnia</a></li></ul>
+      <i>Pusta</i><ul></ul>
+      <i>Dodatki</i>
+      <ul><li><a href="/wiki/inkubatory">Inkubatory</a></li><li><a href="/wiki/ulepszenia-lejow">Ulepszenia lej&#243;w</a></li>
+      <li><a href="https://evil.example/wiki/x">Obcy</a></li><li><a href="/wiki/anyblock">AnyBlock again</a></li></ul>
+    </div><div><a href="/wiki/poza-spisem">Poza</a></div></section>`;
+
+  it('reads the categories and articles from the side menu', () => {
+    assert.deepEqual(parseSkyupToc(PAGE), [
+      { name: 'Ogólne', articles: [{ slug: 'anyblock', title: 'AnyBlock' }, { slug: 'plan-tygodnia', title: 'Plan tygodnia' }] },
+      { name: 'Dodatki', articles: [{ slug: 'inkubatory', title: 'Inkubatory' }, { slug: 'ulepszenia-lejow', title: 'Ulepszenia lejów' }] },
+    ]);
+    assert.deepEqual(parseSkyupToc('<html>no menu</html>'), []);
+  });
+
+  it('turns an article into safe HTML with section anchors, panel links and allowed pictures', () => {
+    const html = skyupArticleHtml(
+      '<div class="container subpage-content wiki-page"><h1 id="czym-są-inkubatory?">Czym są Inkubatory?</h1>' +
+      '<p>Przez <a href="/wiki/ulepszenia-lejow">lej</a>, <a href="/wiki/klejnoty#klejnoty-kupieckie">klejnot</a>, ' +
+      '<a href="#lista-petów">niżej</a>, <a href="https://www.youtube.com/watch?v=x">film</a>, <a href="javascript:alert(1)">zło</a></p>' +
+      '<table class="table table-bordered tableau-table"><tr><th class="a-c">A</th><td class="a-c" colspan="2"><img style="width: 80%; height:80%" src="https://img.ssrv.it/i/krncn.png" onerror="x()"></td></tr></table>' +
+      '<center><img style="height:16px; width:auto;" src="http://skyup.pl/public/tag/a.png" alt="Tag"></center>' +
+      '<img src="https://imgur.com/3Dr5pQS.png"><img src="/static/checked-checkbox-16.png"><img src="https://evil.example/a.png"><img src="http://i.imgur.com/a.png">' +
+      '<iframe src="https://www.youtube.com/embed/x"></iframe><h2 id="x" onclick="y()">Pod</h2></div>',
+    );
+    assert.equal(html,
+      '<div class="w-container w-subpage-content w-wiki-page"><h2 data-anchor="czym-są-inkubatory?">Czym są Inkubatory?</h2>' +
+      '<p>Przez <a href="#" data-wiki="ulepszenia-lejow">lej</a>, <a href="#" data-wiki="klejnoty" data-anchor="klejnoty-kupieckie">klejnot</a>, ' +
+      '<a href="#" data-anchor="lista-petów">niżej</a>, <a href="https://www.youtube.com/watch?v=x" data-external="1">film</a>, <a>zło</a></p>' +
+      '<table class="w-table w-table-bordered w-tableau-table"><tr><th class="w-a-c">A</th><td class="w-a-c" colspan="2"><img src="https://img.ssrv.it/i/krncn.png" loading="lazy"></td></tr></table>' +
+      '<div class="w-center"><img alt="Tag" height="16" src="https://skyup.pl/public/tag/a.png" loading="lazy"></div>' +
+      '<img src="https://i.imgur.com/3Dr5pQS.png" loading="lazy"><img src="https://skyup.pl/static/checked-checkbox-16.png" loading="lazy">' +
+      '<h3 data-anchor="x">Pod</h3></div>');
+  });
+
+  it('keeps minecraft.wiki strict: no SkyUp hosts, no anchors, no sizes from styles', () => {
+    assert.equal(sanitizeWikiHtml('<h2 id="a">A</h2><a href="#a">x</a><img src="https://i.imgur.com/a.png"><img style="width:16px" src="/images/a.png"><h1>t</h1>'),
+      '<h2>A</h2><a>x</a><img src="https://minecraft.wiki/images/a.png" loading="lazy">t');
+  });
+
+  it('reads link targets and pictures strictly', () => {
+    assert.deepEqual(skyupPage('/wiki/pety'), { page: 'pety' });
+    assert.deepEqual(skyupPage('https://wiki.skyup.pl/wiki/Pety/#lista'), { page: 'pety', anchor: 'lista' });
+    assert.equal(skyupPage('/dungeony#drop'), undefined);
+    assert.equal(skyupPage('https://skyup.pl.evil.example/wiki/pety'), undefined);
+    assert.equal(skyupPage('/wiki/../admin'), undefined);
+    assert.equal(skyupPage('/wiki/%3Cspan%3E'), undefined);
+    assert.equal(skyupImage('https://skyup.pl:8443/a.png'), undefined);
+    assert.equal(skyupImage('https://imgur.com/gallery/x'), undefined);
+    assert.equal(skyupImage('data:image/png;base64,AAAA'), undefined);
+    assert.equal(isSkyupSlug('limity-blokow'), true);
+    assert.equal(isSkyupSlug('a"b'), false);
+    assert.equal(skyupQueryUrl({ type: 'open-page', part: 'content', identifier: 'pety' }),
+      'https://skyup.pl/wiki/query/%7B%22type%22%3A%22open-page%22%2C%22part%22%3A%22content%22%2C%22identifier%22%3A%22pety%22%7D');
+  });
+
+  it('strips the search highlight, also from inside links', () => {
+    const raw = '<p>Sprzedaj <a href="/wiki/&lt;span style=&quot;background-color: yellow&quot;&gt;klejnot&lt;/span&gt;y"><span style="background-color: yellow">Klejnot</span>em</a> &lt;/span&gt;</p>';
+    assert.equal(stripHighlights(raw), '<p>Sprzedaj <a href="/wiki/klejnoty">Klejnotem</a> &lt;/span&gt;</p>');
+    assert.equal(skyupArticleHtml(raw), '<p>Sprzedaj <a href="#" data-wiki="klejnoty">Klejnotem</a> &lt;/span&gt;</p>');
+  });
+
+  it('builds search hits with their article and a snippet around the match', () => {
+    const html = '<div class="wiki-page"><h1 id="wyszukiwanie:-klejnot">Wyszukiwanie: klejnot</h1></div>' +
+      '<div class="wiki-page"><h1 id="czym-są-klejnoty?">Czym są klejnoty?</h1><p><span style="background-color: yellow">Klejnot</span>y pozwalają<br>na przyspieszenie &amp; więcej.</p></div>' +
+      '<div class="wiki-page"><h1 id="nieznana">Nieznana</h1><p>' + 'a'.repeat(200) + ' klejnot ' + 'b'.repeat(200) + '</p></div>';
+    const where = (anchor: string) => (anchor === 'czym-są-klejnoty?' ? { slug: 'klejnoty', title: 'Klejnoty' } : undefined);
+    const hits = parseSkyupSearch(html, 'klejnot', where);
+    assert.equal(hits.length, 2);
+    assert.deepEqual(hits[0], { anchor: 'czym-są-klejnoty?', title: 'Czym są klejnoty?', snippet: 'Klejnoty pozwalają na przyspieszenie & więcej.', slug: 'klejnoty', article: 'Klejnoty' });
+    assert.equal(hits[1].slug, undefined);
+    assert.match(hits[1].snippet, /^…a+ klejnot b+…$/);
+    assert.ok(hits[1].snippet.length < 170);
+    assert.deepEqual(skyupSections(html).map((s) => s.anchor), ['wyszukiwanie:-klejnot', 'czym-są-klejnoty?', 'nieznana']);
   });
 });
 
