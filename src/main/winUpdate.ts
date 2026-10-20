@@ -282,6 +282,8 @@ export function swapScript(o: SwapOptions): string {
     `if ($ok) { try { Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $version } catch { Log ('rejestr: ' + $_.Exception.Message) }; Log ('zaktualizowano do ' + $version) }`,
     o.relaunch ? `try { Start-Process -FilePath $exe -WorkingDirectory $dir${args} } catch { Log ('uruchamianie: ' + $_.Exception.Message) }` : '',
     `if ($ok) { try { Retry { Remove-Item -LiteralPath $old -Recurse -Force } 'usuwanie starej wersji' } catch { Log $_.Exception.Message } }`,
+    // this script's own folder (PowerShell has read it already)
+    `try { Remove-Item -LiteralPath ${psQuote(workDirs(dir).download)} -Recurse -Force } catch {}`,
   ].filter(Boolean).join('\r\n');
 }
 

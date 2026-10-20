@@ -225,6 +225,9 @@ describe('Windows update swap script', { skip: !WINDOWS }, () => {
     for (let i = 0; i < 100 && !(await fs.readFile(log, 'utf8').catch(() => '')).includes('zaktualizowano'); i++) await new Promise((r) => setTimeout(r, 200));
     assert.equal(await fs.readFile(install.exe, 'utf8'), 'exe 2');
     await new Promise((r) => setTimeout(r, 1500));
+    // the script cleans up after itself, its own folder too
+    await assert.rejects(fs.access(`${install.dir}.old`));
+    await assert.rejects(fs.access(workDirs(install.dir).download));
     await fs.rm(root, { recursive: true, force: true, maxRetries: 5 });
   });
 
