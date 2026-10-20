@@ -244,6 +244,8 @@ public class FriendsScreen extends Screen {
 			Communities.Message m = b.community();
 			if (Communities.canEdit(m)) rows.add(new MenuRow("pen", Ui.tr("slashclient-hud.message.edit"), false, () -> startEditingCommunity(m.community(), m.channel(), m.id(), m.text())));
 			if (m.plainText()) rows.add(new MenuRow("copy", Ui.tr("slashclient-hud.message.copy"), false, () -> minecraft.keyboardHandler.setClipboard(m.text())));
+			// the quick reactions in the same menu, one row away (server 0.9.27+)
+			if (Communities.canReact(m)) rows.add(new MenuRow("m-emotes", Ui.tr("slashclient-hud.communities.reactions"), false, () -> reactMenu(m)));
 			if (Communities.canDelete(m)) {
 				boolean theirs = !m.from().equals(Social.myId());
 				rows.add(new MenuRow("trash", Ui.tr(theirs ? "slashclient-hud.message.deleteModeration" : "slashclient-hud.message.delete"), true, () -> confirmDelete(() -> Communities.delete(m.community(), m.channel(), m.id()))));
@@ -261,7 +263,19 @@ public class FriendsScreen extends Screen {
 		return rows;
 	}
 
+	/** The quick reactions in place of the menu: ours taken off, the others added. */
+	private void reactMenu(Communities.Message m) {
+		List<MenuRow> rows = new ArrayList<>();
+		for (String emoji : Communities.QUICK) {
+			boolean had = m.reactions().stream().anyMatch(r -> r.emoji().equals(emoji) && r.me());
+			rows.add(new MenuRow("m-emotes", Ui.tr(had ? "slashclient-hud.communities.unreact" : "slashclient-hud.communities.react", Communities.glyph(emoji)), false, () -> Communities.react(m, emoji)));
+		}
+		rows.add(new MenuRow("close", Ui.tr("slashclient-hud.message.cancel"), false, () -> {}));
+		menu = rows;
+	}
+
 	/** Deleting asks once more, in the same menu. */
+
 	private void confirmDelete(Runnable delete) {
 		menu = List.of(new MenuRow("trash", Ui.tr("slashclient-hud.message.deleteSure"), true, () -> {
 			if (editingId >= 0) stopEditing();
@@ -649,7 +663,9 @@ public class FriendsScreen extends Screen {
 			return;
 		}
 
-		int top = py + 38, bottom = py + ph - INPUT_H - 14 - (editingId >= 0 ? 16 : 0);
+		// slow mode: room above the field for the countdown while we wait
+		long slowWait = canWrite ? Communities.slowWait(ch.id()) : 0;
+		int top = py + 38, bottom = py + ph - INPUT_H - 14 - (editingId >= 0 ? 16 : slowWait > 0 ? 12 : 0);
 		int maxBubble = (int) (cw * 0.72);
 		List<Communities.Message> messages = Communities.chat(ch.id());
 		g.enableScissor(cx + 2, top, cx + cw - 2, bottom);
@@ -686,12 +702,26 @@ public class FriendsScreen extends Screen {
 			int bw = Math.max(textW, Ui.width(time)) + 12;
 			int bh = lines.size() * 10 + 15;
 			int nameH = named ? 11 : 0;
-			y -= bh + 4 + nameH;
-			total += bh + 4 + nameH;
-			if (y > bottom || y + bh + nameH < top) continue;
+			// a reply's quote above the bubble, the reactions' counts below it (server 0.9.27+)
+			int quoteH = m.replyId() > 0 ? 11 : 0;
+			int reactH = m.reactions().isEmpty() ? 0 : 14;
+			y -= bh + 4 + nameH + quoteH + reactH;
+			total += bh + 4 + nameH + quoteH + reactH;
+			if (y > bottom || y + bh + nameH + quoteH + reactH < top) continue;
 			int bx2 = mine ? cx + cw - 10 - bw : cx + 10;
 			if (named) Ui.draw(g, Ui.fit(name, maxBubble), bx2 + 2, y, nameColor);
-			int by = y + nameH;
+			if (quoteH > 0) {
+				Component quote = m.replyGone() ? Ui.tr("slashclient-hud.communities.replyGone") : Component.empty().append(Ui.bold(m.replyAuthor())).append(Component.literal(" " + m.replyText()));
+
+				Component fitted = Ui.fit(quote, maxBubble - 8);
+				int qw = Ui.width(fitted) + 6;
+				int qx = mine ? cx + cw - 10 - qw : cx + 10;
+				int qy = y + nameH;
+				g.fill(qx, qy, qx + 2, qy + 9, m.replyGone() ? Ui.BORDER : 0xFF14B8A6);
+				Ui.draw(g, fitted, qx + 5, qy + 1, Ui.MUTED);
+			}
+			int by = y + nameH + quoteH;
+
 			// a message that mentions us stands out in amber
 			boolean toMe = !mine && m.mentionsMe();
 			Ui.round(g, bx2, by, bw, bh, 5, mine ? Ui.ACCENT_DARK : toMe ? 0xFF3A2E12 : Ui.CARD);
@@ -705,6 +735,12 @@ public class FriendsScreen extends Screen {
 			Ui.draw(g, time, bx2 + bw - 6 - Ui.width(time), ly, mine ? 0xB3FFFFFF : Ui.MUTED);
 			if (m.editedAt() > 0 && Ui.inside(mx, my, bx2 + bw - 6 - Ui.width(time), ly, Ui.width(time), 9) && my >= top && my <= bottom)
 				tooltip = Ui.tr("slashclient-hud.message.editedAt", TIME.format(Instant.ofEpochMilli(m.editedAt())));
+			// pinned: an amber corner
+			if (m.pinned()) {
+				g.fill(bx2 + bw - 5, by + 2, bx2 + bw - 2, by + 5, 0xFFFBBF24);
+				if (Ui.inside(mx, my, bx2 + bw - 7, by, 7, 7) && my >= top && my <= bottom) tooltip = Ui.tr("slashclient-hud.communities.pinned");
+			}
+			if (reactH > 0) drawReactions(g, m, mine, bx2, bw, by + bh + 3, cx, cw, top, bottom);
 			int[] seen = visible(bx2, by, bw, bh, top, bottom);
 			if (seen != null) bubbles.add(new Bubble(seen[0], seen[1], seen[2], seen[3], null, null, m));
 		}
@@ -715,10 +751,14 @@ public class FriendsScreen extends Screen {
 
 		int fy = input.getY() - 6;
 		if (editingId >= 0) drawEditBar(g, cx, fy);
+		else if (slowWait > 0) {
+			Ui.icon(g, "m-time", cx + 12, fy - 12, 7, 0xFFFBBF24);
+			Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.communities.slowWait", slowWait), cw - 34), cx + 22, fy - 12, 0xFFFBBF24);
+		}
 		if (!canWrite) {
-			// announcements (only admins write) or muted: the reason where the field would be
+			// announcements (only admins write) or a timeout: the reason where the field would be
 			Ui.round(g, cx + 10, fy, cw - 20, INPUT_H, 4, 0x80111622);
-			Component why = muted ? Ui.tr("slashclient-hud.communities.muted", TIME.format(Instant.ofEpochMilli(c.mutedUntil()))) : Ui.tr("slashclient-hud.communities.readOnly");
+			Component why = muted ? Ui.tr("slashclient-hud.communities.muted", UNTIL.format(Instant.ofEpochMilli(c.mutedUntil()))) : Ui.tr("slashclient-hud.communities.readOnly");
 			Ui.draw(g, Ui.fit(why, cw - 36), cx + 18, fy + 6, Ui.MUTED);
 			return;
 		}
@@ -729,7 +769,37 @@ public class FriendsScreen extends Screen {
 		hits.add(new Hit(sx, fy, 24, INPUT_H, this::send));
 	}
 
+	/** A timeout's end: the day too (it may last a week). */
+	private static final DateTimeFormatter UNTIL = DateTimeFormatter.ofPattern("dd.MM HH:mm").withZone(ZoneId.systemDefault());
+
+	/** The reactions under a community message: each emoji with its count (ours lit); a click toggles ours while we may react. */
+	private void drawReactions(GuiGraphicsExtractor g, Communities.Message m, boolean mine, int bx, int bw, int ry, int cx, int cw, int top, int bottom) {
+		List<Component> labels = new ArrayList<>();
+		int total = 0;
+		for (Communities.Reaction r : m.reactions()) {
+			Component l = Component.literal(Communities.glyph(r.emoji()) + " " + r.count());
+			labels.add(l);
+			total += Ui.width(l) + 10;
+		}
+		int x = mine ? Math.max(cx + 10, bx + bw - total + 2) : bx;
+		boolean react = Communities.canReact(m);
+		for (int i = 0; i < labels.size(); i++) {
+			Communities.Reaction r = m.reactions().get(i);
+			int w = Ui.width(labels.get(i)) + 8;
+			if (x + w > cx + cw - 8) break;
+			Ui.round(g, x, ry, w, 11, 5, r.me() ? 0xFF0F3D3A : Ui.CARD);
+			if (r.me()) Ui.roundOutline(g, x, ry, w, 11, 5, 0xCC14B8A6);
+			Ui.draw(g, labels.get(i), x + 4, ry + 2, r.me() ? 0xFF5EEAD4 : Ui.TEXT_2);
+			if (react && ry >= top && ry + 11 <= bottom) {
+				String emoji = r.emoji();
+				hits.add(new Hit(x, ry, w, 11, () -> Communities.react(m, emoji)));
+			}
+			x += w + 2;
+		}
+	}
+
 	/** The first members (online first within each role), with the note that managing is in the launcher. */
+
 	private void drawCommunityMembers(GuiGraphicsExtractor g, Communities.Community c, int cx, int cw) {
 		int y = py + 40;
 		ChatImages.Texture logo = Communities.logo(c);
