@@ -315,7 +315,8 @@ public class CosmeticsScreen extends Screen {
 			if (!Cosmetics.knows(o.get("slot").getAsString(), o.get("id").getAsString())) continue;
 			String hint = polish ? "hint" : "hintEn";
 			list.add(new Entry(o.get("id").getAsString(), o.get("slot").getAsString(), o.get("name").getAsString(),
-				o.has("rank") && !o.get("rank").isJsonNull() ? o.get("rank").getAsString() : "", o.get("available").getAsBoolean(),
+				// the supporters' items show as a rank's ("only for Supporter")
+				o.has("rank") && !o.get("rank").isJsonNull() ? o.get("rank").getAsString() : o.has("supporter") ? "supporter" : "", o.get("available").getAsBoolean(),
 				o.has(hint) && !o.get(hint).isJsonNull() ? o.get(hint).getAsString() : "",
 				o.has("price") && o.get("price").isJsonPrimitive() ? o.get("price").getAsInt() : 0));
 		}
@@ -837,6 +838,7 @@ public class CosmeticsScreen extends Screen {
 			case "support" -> 0xFF38BDF8;
 			case "friend" -> 0xFF22C55E;
 			case "friend_pink" -> 0xFFEC4899;
+			case "supporter" -> 0xFFF472B6;
 			default -> 0xFFFACC15;
 		});
 		// tried on by the figure (kill effects are not worn)

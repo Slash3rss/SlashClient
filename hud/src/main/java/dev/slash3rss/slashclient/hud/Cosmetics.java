@@ -37,7 +37,9 @@ public final class Cosmetics {
 		// earned with SlashClient achievements only
 		"veteran", "streak30",
 		// bought with Sparks (Iskry) in the shop
-		"emberstar", "obsidian", "coral", "thunder", "regal", "cosmos");
+		"emberstar", "obsidian", "coral", "thunder", "regal", "cosmos",
+		// for supporters of the project
+		"supporter_heart", "supporter_patron");
 	/** Capes drawn as a loop of frames (textures/cape/<id>_<n>.png), and how many. */
 	static final Map<String, Integer> ANIMATED = Map.ofEntries(Map.entry("aurora", 8), Map.entry("inferno", 8), Map.entry("waves", 8),
 		Map.entry("pulse", 8), Map.entry("matrix", 8), Map.entry("storm", 8), Map.entry("vortex", 8), Map.entry("starfall", 8),
@@ -47,7 +49,7 @@ public final class Cosmetics {
 	static final List<String> WINGS = List.of("angel", "demon", "butterfly", "dragon", "phoenix", "crystal", "batwing", "frost", "prism", "shadow", "fairy", "bone", "gilded",
 		"emberwings", "sapphire", "obsidianwings");
 	static final List<String> ELYTRAS = List.of("feather", "neon", "void", "sunset", "nebula", "venom", "tide", "magma", "circuit", "autumn",
-		"aurum", "glacier", "acid");
+		"aurum", "glacier", "acid", "supporter_wings");
 	static final List<String> TRAILS = List.of("hearts", "sparks", "snow", "notes", "flames", "clouds", "stars", "bubbles", "emerald", "soulfire",
 		"crits", "witch", "ink", "ash");
 	// fireflies came with 1.21.5

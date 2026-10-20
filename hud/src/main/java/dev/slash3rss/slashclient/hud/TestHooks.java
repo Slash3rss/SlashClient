@@ -102,6 +102,15 @@ public final class TestHooks {
 			.append(Badges.decorate(mc.player.getUUID(), mc.player.getName())));
 	}
 
+	/** As if the server had said we support the project with a tier of this colour (-1: the default pink), written to the chat like ownRank. */
+	public static void supporterRank(String label, int color) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		Badges.setRank(mc.player.getUUID(), "supporter");
+		Badges.setSupporterColor(mc.player.getUUID(), color);
+		Compat.chat(mc).addClientSystemMessage(net.minecraft.network.chat.Component.literal(label + ": ")
+			.append(Badges.decorate(mc.player.getUUID(), mc.player.getName())));
+	}
+
 	public static boolean moduleOn(String id) {
 		return SlashHud.config.placement(id).enabled;
 	}

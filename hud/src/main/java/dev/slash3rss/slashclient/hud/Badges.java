@@ -42,7 +42,11 @@ public final class Badges {
 		"support", badge(0x38BDF8),
 		"partner", badge(0xFACC15),
 		"friend", badge(0x22C55E),
-		"friend_pink", badge(0xEC4899));
+		"friend_pink", badge(0xEC4899),
+		// supporters of the project: pink unless the server says their tier's colour
+		"supporter", badge(0xF472B6));
+	/** uuid → the colour of a supporter's tier (servers from 0.9.23 send it with the rank). */
+	private static final Map<UUID, MutableComponent> tierBadges = new ConcurrentHashMap<>();
 	/** uuid → rank, from the server (only Minecraft accounts proven to belong to that SlashClient account). */
 	private static final Map<UUID, String> ranks = new ConcurrentHashMap<>();
 	/** uuid → the tag of that player's SlashClient clan, shown as [TAG] after the logo. */
@@ -68,6 +72,12 @@ public final class Badges {
 	static void setRank(UUID id, String rank) {
 		if (rank == null) ranks.remove(id);
 		else ranks.put(id, rank);
+	}
+
+	/** For the in-game test: as if the server had sent this supporter tier colour (0xRRGGBB, or -1 for none). */
+	static void setSupporterColor(UUID id, int color) {
+		if (color < 0) tierBadges.remove(id);
+		else tierBadges.put(id, badge(color));
 	}
 
 	private static final long HEARTBEAT_MS = 4 * 60_000;
@@ -121,7 +131,9 @@ public final class Badges {
 	/** `name` with the logo in front, when that player plays with SlashClient, and their clan's [TAG]. */
 	public static Component decorate(UUID id, Component name) {
 		if (name == null || !usesSlash(id)) return name;
-		MutableComponent out = Component.empty().append(RANK_BADGES.getOrDefault(ranks.getOrDefault(id, ""), BADGE)).append(" ");
+		String rank = ranks.getOrDefault(id, "");
+		MutableComponent logo = "supporter".equals(rank) && tierBadges.containsKey(id) ? tierBadges.get(id) : RANK_BADGES.getOrDefault(rank, BADGE);
+		MutableComponent out = Component.empty().append(logo).append(" ");
 		String tag = clans.get(id);
 		if (tag != null) out.append(Component.literal("[" + tag + "] ").withStyle(Style.EMPTY.withColor(CLAN_COLOR).withBold(true)));
 		return out.append(name);
@@ -161,6 +173,7 @@ public final class Badges {
 		// ranks newer than the server's first ones: without this it sends the pink friend as the green one
 		var known = new com.google.gson.JsonArray();
 		known.add("friend_pink");
+		known.add("supporter");
 		body.add("knownRanks", known);
 		busy = true;
 		post("/v1/mc/lookup", GSON.toJson(body), response -> {
@@ -172,6 +185,8 @@ public final class Badges {
 			JsonObject rankOf = o.has("ranks") && o.get("ranks").isJsonObject() ? o.getAsJsonObject("ranks") : new JsonObject();
 			// clan tags (servers before clans send none)
 			JsonObject clanOf = o.has("clans") && o.get("clans").isJsonObject() ? o.getAsJsonObject("clans") : new JsonObject();
+			// supporters' tier colours (servers before 0.9.23 send none)
+			JsonObject tierColorOf = o.has("supporterColors") && o.get("supporterColors").isJsonObject() ? o.getAsJsonObject("supporterColors") : new JsonObject();
 			for (UUID id : ask) {
 				if (active.contains(id)) slash.add(id);
 				else slash.remove(id);
@@ -192,6 +207,9 @@ public final class Badges {
 				var rank = rankOf.get(id.toString());
 				if (rank != null && rank.isJsonPrimitive() && RANK_BADGES.containsKey(rank.getAsString())) ranks.put(id, rank.getAsString());
 				else ranks.remove(id);
+				var tierColor = tierColorOf.get(id.toString());
+				if (tierColor != null && tierColor.isJsonPrimitive() && tierColor.getAsString().matches("#[0-9a-fA-F]{6}")) tierBadges.put(id, badge(Integer.parseInt(tierColor.getAsString().substring(1), 16)));
+				else tierBadges.remove(id);
 				var tag = clanOf.get(id.toString());
 				if (tag != null && tag.isJsonPrimitive() && tag.getAsString().matches("[A-Za-z0-9]{2,5}")) clans.put(id, tag.getAsString());
 				else clans.remove(id);
