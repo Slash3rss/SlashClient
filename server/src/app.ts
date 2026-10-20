@@ -1016,6 +1016,9 @@ export function createApp(cfg: Config) {
       const supporterColors: Record<string, string> = {};
       // the shown rank's colour, for HUDs from 0.9.23 (any rank, also ones made in the admin panel)
       const badgeColors: Record<string, string> = {};
+      // live on Twitch or Kick with an allowed game, not hidden (streams.ts): "● NA ŻYWO" above the head, for HUDs that know it ('live', 0.9.24+)
+      const live: Record<string, { platform: string }> = {};
+      const wantsLive = known.includes('live');
       for (const u of active) {
         const link = linked.get(u.toLowerCase());
         const owner = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user) : undefined;
@@ -1033,9 +1036,11 @@ export function createApp(cfg: Config) {
         if (tag) clanTags[u] = tag;
         const logo = tag ? clans.logoOf(owner.id) : undefined;
         if (logo) clanLogos[u] = logo;
+        const stream = wantsLive ? streams.friendView(owner.id) : undefined;
+        if (stream) live[u] = { platform: stream.platform };
       }
       return { active, capes, ranks: rankOf, cosmetics, ...(Object.keys(clanTags).length ? { clans: clanTags } : {}), ...(Object.keys(clanLogos).length ? { clanLogos } : {}), ...(Object.keys(supporterColors).length ? { supporterColors } : {}),
-        ...(Object.keys(badgeColors).length ? { badgeColors } : {}) };
+        ...(Object.keys(badgeColors).length ? { badgeColors } : {}), ...(Object.keys(live).length ? { live } : {}) };
     }],
     // the launcher says which Minecraft player its SlashClient account plays as, while the game runs
     ['POST', /^\/v1\/mc\/link$/, async (req) => {

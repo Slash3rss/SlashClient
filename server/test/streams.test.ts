@@ -171,6 +171,16 @@ async function kickHook(body: Record<string, unknown>, o: { id?: string; bad?: b
 }
 
 let admin: Login, ala: Login, bob: Login, cid: Login, dan: Login;
+/** Minecraft accounts Mojang "saw" join (the sign-in with Minecraft), for the lookup's test. */
+const joined = new Map<string, { id: string; name: string }>();
+const fakeFetch: typeof fetch = async (input, init) => {
+  const url = String(input instanceof Request ? input.url : input);
+  if (url.startsWith('https://sessionserver.mojang.com/session/minecraft/hasJoined')) {
+    const p = joined.get(new URL(url).searchParams.get('serverId') ?? '');
+    return new Response(p ? JSON.stringify(p) : '', { status: p ? 200 : 204 });
+  }
+  return fetch(input, init);
+};
 
 before(async () => {
   await new Promise<void>((r) => fakeTwitch.listen(0, '127.0.0.1', r));
@@ -180,7 +190,7 @@ before(async () => {
   app = createApp({
     dbFile: path.join(dir, 'test.db'), publicUrl: 'https://client.example', allowDevLogin: true, oauth: {}, adminHandles: ['StreamAdmin'], loginsPerMinute: 1000,
     profileViewsPerMinute: 10_000, storage: { secretKey: randomBytes(32).toString('base64') }, webDir: path.resolve('web'),
-    streams: { twitch: { id: tw, api: tw }, kick: { id: kk, api: kk }, now: () => clock, timers: false },
+    streams: { twitch: { id: tw, api: tw }, kick: { id: kk, api: kk }, now: () => clock, timers: false }, fetchImpl: fakeFetch,
   });
   await new Promise<void>((r) => app.server.listen(0, r));
   base = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
@@ -583,6 +593,32 @@ describe('the public profile', () => {
     assert.doesNotMatch(home.headers.get('content-security-policy') ?? '', /frame-src/);
     const account = await call('GET', '/konto');
     assert.doesNotMatch(account.headers.get('content-security-policy') ?? '', /frame-src/);
+  });
+});
+
+describe('in game: "● NA ŻYWO" above the head', () => {
+  it('tells HUDs that know it which players are live, only with an allowed game and not hidden', async () => {
+    const mc = 'aaaabbbb-cccc-dddd-eeee-ffff00001111';
+    const { serverId } = (await call('POST', '/v1/auth/minecraft/start')).body;
+    joined.set(serverId, { id: mc.replace(/-/g, ''), name: 'AlaStreamMC' });
+    assert.equal((await call('POST', '/v1/auth/minecraft/finish', ala.token, { serverId, name: 'AlaStreamMC' })).body.linked, true);
+    await call('POST', '/v1/mc/heartbeat', undefined, { uuid: mc });
+    await call('POST', '/v1/mc/link', ala.token, { uuid: mc });
+    const lookup = async (known: string[]) => (await call('POST', '/v1/mc/lookup', undefined, { uuids: [mc], knownRanks: known })).body;
+    // Ala is live with Minecraft (the tests above): HUDs that say 'live' get it, older ones nothing new
+    assert.deepEqual((await lookup(['colors', 'live'])).live, { [mc]: { platform: 'twitch' } });
+    assert.equal((await lookup(['colors'])).live, undefined);
+    // hidden from friends: hidden above the head too
+    await call('POST', '/v1/me/streams/prefs', ala.token, { hide: true });
+    assert.equal((await lookup(['live'])).live, undefined);
+    await call('POST', '/v1/me/streams/prefs', ala.token, { hide: false });
+    // another game: not live for SlashClient
+    twitchLive.set('1001', { user_id: '1001', type: 'live', title: 'Inna gra', game_name: 'Fortnite', viewer_count: 4, started_at: new Date(clock).toISOString() });
+    await app.streams.reconcile('twitch');
+    assert.equal((await lookup(['live'])).live, undefined);
+    twitchLive.set('1001', { user_id: '1001', type: 'live', title: 'Bez powiadomień', game_name: 'Minecraft', viewer_count: 4, started_at: new Date(clock).toISOString() });
+    await app.streams.reconcile('twitch');
+    assert.deepEqual((await lookup(['live'])).live, { [mc]: { platform: 'twitch' } });
   });
 });
 
