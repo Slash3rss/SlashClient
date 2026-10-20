@@ -125,6 +125,8 @@ const EN: Record<string, string> = {
   'To nie wygląda na adres serwera.': 'That does not look like a server address.',
   'Zaproszenie wysłane': 'Invite sent',
   'Zaproszenie do gry': 'Invite to play',
+  'Zaproszenie wygasło': 'Invite expired',
+  'Zaproszenie wygasło.': 'This invite has expired.',
   '{0} zaprasza Cię na {1}': '{0} invites you to {1}',
   // parties and shared waypoints (party.ts, sharedWaypoint.ts)
   'jest w drużynie': 'is in the party',

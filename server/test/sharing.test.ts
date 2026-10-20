@@ -131,7 +131,7 @@ describe('parties', () => {
     assert.deepEqual(party.members.map((m: any) => m.status), ['accepted', 'invited', 'invited']);
     // each member gets the usual invite, with the party's id
     const inv = await live1.waitFor((e) => e.type === 'message' && e.message.invite?.party === party.id);
-    assert.deepEqual(inv.message.invite, { server: 'skyup.pl', version: '26.3', party: party.id });
+    assert.deepEqual(inv.message.invite, { server: 'skyup.pl', version: '26.3', party: party.id, expiresAt: party.expiresAt });
     await live2.waitFor((e) => e.type === 'party' && e.party.id === party.id);
 
     // accepting and declining go to everyone in it

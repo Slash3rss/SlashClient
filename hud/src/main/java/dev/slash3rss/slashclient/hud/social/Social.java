@@ -276,8 +276,22 @@ public final class Social {
 			o.has("muted") && o.get("muted").isJsonPrimitive() && o.get("muted").getAsBoolean());
 	}
 
+	/** When each invite (by its message's id) runs out; none: it does not (a server before 0.9.25). */
+	private static final Map<Long, Long> inviteExpiry = new ConcurrentHashMap<>();
+
+	/** An invite whose time is up: no Join any more. */
+	public static boolean inviteExpired(Message m) {
+		Long at = inviteExpiry.get(m.id());
+		return at != null && System.currentTimeMillis() >= at;
+	}
+
+	public static void inviteExpiresForTest(long id, long at) {
+		inviteExpiry.put(id, at);
+	}
+
 	private static Message messageFrom(JsonObject o) {
 		JsonObject inv = o.has("invite") && o.get("invite").isJsonObject() ? o.getAsJsonObject("invite") : null;
+		if (inv != null && longOf(inv, "expiresAt") > 0) inviteExpiry.put(o.get("id").getAsLong(), longOf(inv, "expiresAt"));
 		JsonObject wp = o.has("waypoint") && o.get("waypoint").isJsonObject() ? o.getAsJsonObject("waypoint") : null;
 		Image image = imageFrom(o);
 		return new Message(o.get("id").getAsLong(), str(o, "from"), str(o, "to"), str(o, "text"), o.get("at").getAsLong(),

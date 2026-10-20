@@ -29,7 +29,8 @@ export interface LogEntry { id: number; at: number; admin: string; action: strin
 export type Provider = 'discord' | 'microsoft' | 'google' | 'github' | 'dev' | 'minecraft';
 /** "Join me": a server to play on together, sent as a message so it stays in the chat. */
 /** `party`: the invite is one of a party's (sharing.ts), so Join also says "I'm in". */
-export interface Invite { server: string; version?: string; party?: string }
+/** `expiresAt`: after it Join is gone ("Zaproszenie wygasło"); none: it does not expire (server 0.9.25+). */
+export interface Invite { server: string; version?: string; party?: string; expiresAt?: number }
 /** A waypoint a friend shared: where it is and in which world (`server:<address>` or `world:<name>`, as the HUD keys them). */
 export interface SharedWaypoint { name: string; x: number; y: number; z: number; dimension: string; world: string }
 /** `editedAt`: when the author last changed the text; `deleted`: taken back (no text, invite or waypoint left) (server 0.9.23+). */

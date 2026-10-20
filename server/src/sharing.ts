@@ -145,7 +145,7 @@ export function sharingRoutes(deps: Deps) {
         createdAt: now, expiresAt: now + PARTY_TTL_MS, members: new Map([[me, 'accepted' as MemberStatus], ...members.map((m) => [m, 'invited'] as [string, MemberStatus])]),
       };
       parties.set(party.id, party);
-      const invite: Invite = { server: party.server, ...(party.version ? { version: party.version } : {}), party: party.id };
+      const invite: Invite = { server: party.server, ...(party.version ? { version: party.version } : {}), party: party.id, expiresAt: party.expiresAt };
       const messages = members.map((other) => {
         const message = db.addMessage(me, other, party.server, invite);
         push(other, { type: 'message', message });

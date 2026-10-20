@@ -437,6 +437,7 @@
 	"slashclient-hud.benchmark.quit": "Quit game",
 	"slashclient-hud.invite.toast": "invites you to %s (O: friends)",
 	"slashclient-hud.invite.title": "Invite to play",
+	"slashclient-hud.invite.expired": "Invite expired",
 	"slashclient-hud.invite.sent": "Invite sent",
 	"slashclient-hud.invite.join": "Join",
 	"slashclient-hud.invite.here": "Invite here",

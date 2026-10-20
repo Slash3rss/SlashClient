@@ -67,6 +67,11 @@ public class FriendsChat implements FabricClientGameTest {
 			});
 			context.waitTicks(10);
 			context.takeScreenshot("friends-invites");
+			// the received one run out: no Join, "Zaproszenie wygasło"
+			context.runOnClient(mc -> Social.inviteExpiresForTest(2, System.currentTimeMillis() - 1000));
+			context.waitTicks(3);
+			context.takeScreenshot("friends-invite-expired");
+			context.runOnClient(mc -> Social.inviteExpiresForTest(2, Long.MAX_VALUE));
 			// a shared waypoint in the chat, with Add on the one received
 			context.runOnClient(mc -> {
 				long now = System.currentTimeMillis();

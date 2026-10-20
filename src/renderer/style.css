@@ -833,6 +833,8 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .fr-typing { min-height: 20px; padding: 0 16px; font-size: 12px; color: var(--text-muted); font-style: italic; }
 .fr-invite { display: flex; align-items: center; gap: 12px; min-width: 280px; }
 .fr-invite > i { font-size: 18px; color: var(--accent-light); }
+.fr-invite.expired { opacity: .6; }
+.fr-invite.expired > i { color: var(--text-muted); }
 .fr-msg.mine .fr-invite > i { color: #fff; }
 .fr-invite .grow { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .fr-invite small { opacity: .8; font-size: 12px; }

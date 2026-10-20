@@ -437,6 +437,7 @@
 	"slashclient-hud.benchmark.quit": "Wyjdź z gry",
 	"slashclient-hud.invite.toast": "zaprasza Cię na %s (O: znajomi)",
 	"slashclient-hud.invite.title": "Zaproszenie do gry",
+	"slashclient-hud.invite.expired": "Zaproszenie wygasło",
 	"slashclient-hud.invite.sent": "Zaproszenie wysłane",
 	"slashclient-hud.invite.join": "Dołącz",
 	"slashclient-hud.invite.here": "Zaproś tutaj",

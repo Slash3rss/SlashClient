@@ -30,7 +30,9 @@ interface Me extends Person {
   /** every rank held, the pick of the badge ('' = the most important, 'none') and the rank shown (server 0.9.23+) */
   ranks?: RankView[]; badgeChoice?: string; badgeRank?: RankView | null;
 }
-interface Invite { server: string; version?: string; party?: string }
+/** `expiresAt`: after it Join is gone (server 0.9.25+; none: it does not expire). */
+interface Invite { server: string; version?: string; party?: string; expiresAt?: number }
+export const inviteExpired = (inv: { expiresAt?: number }, now = Date.now()) => !!inv.expiresAt && now >= inv.expiresAt;
 /** A picture in the chat (the launcher decrypts it); `unreadable`: its key was for another launcher. */
 interface ChatImage { id: string; w?: number; h?: number; unreadable?: boolean }
 /** `editedAt`, `deleted`: changed or taken back by the author (server 0.9.23+). */
@@ -183,6 +185,12 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   });
   /** Join on an invite: a party's says "I'm in" first, so the leader sees it. */
   const joinInvite = (inv: Invite) => {
+    // one that ran out while its card or toast was still up
+    if (inviteExpired(inv)) {
+      deps.toast(t('Zaproszenie wygasło.'), true);
+      renderChat();
+      return;
+    }
     if (inv.party) void party.accept(inv.party);
     deps.join(inv.server, inv.version);
   };
@@ -1140,10 +1148,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   function inviteCard(m: Message, mine: boolean): HTMLElement {
     const inv = m.invite!;
-    const card = el('div', { className: 'fr-bubble fr-invite' }, icon('fa-gamepad'),
-      el('div', { className: 'grow' }, el('b', { textContent: mine ? t('Zaproszenie wysłane') : t('Zaproszenie do gry') }),
+    const expired = inviteExpired(inv);
+    const card = el('div', { className: `fr-bubble fr-invite${expired ? ' expired' : ''}` }, icon(expired ? 'fa-clock' : 'fa-gamepad'),
+      el('div', { className: 'grow' }, el('b', { textContent: expired ? t('Zaproszenie wygasło') : mine ? t('Zaproszenie wysłane') : t('Zaproszenie do gry') }),
         el('small', { textContent: [inv.server, inv.version].filter(Boolean).join(' · ') })));
-    if (!mine) {
+    if (!mine && !expired) {
       const join = el('button', { type: 'button', className: 'primary' }, icon('fa-right-to-bracket'), t(' Dołącz'));
       join.addEventListener('click', () => joinInvite(inv));
       card.append(join);
@@ -1181,7 +1190,12 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       lastAt = m.at;
     }
     messagesBox.replaceChildren(...nodes);
+    // the next invite to run out: drawn again then, without its Join
+    clearTimeout(inviteTimer);
+    const next = Math.min(...chat.messages.map((m) => (m.invite?.expiresAt && !inviteExpired(m.invite) ? m.invite.expiresAt : Infinity)));
+    if (next !== Infinity) inviteTimer = setTimeout(renderChat, Math.min(next - Date.now() + 50, 2 ** 31 - 1));
   }
+  let inviteTimer: ReturnType<typeof setTimeout> | undefined;
 
   // ---------- live events ----------
 

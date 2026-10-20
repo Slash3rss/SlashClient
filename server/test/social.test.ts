@@ -318,10 +318,13 @@ describe('social server', () => {
     const live = await connect(pit.token);
     assert.equal((await call('POST', `/v1/invites/${pit.user.id}`, ola.token, { server: 'not a server!' })).body.error, 'bad_server');
     const sent = await call('POST', `/v1/invites/${pit.user.id}`, ola.token, { server: 'SkyUp.pl:25565', version: '26.1.2', extra: 'x' });
-    assert.deepEqual(sent.body.message.invite, { server: 'skyup.pl:25565', version: '26.1.2' });
+    // it lasts 30 minutes by default (chat.inviteMinutes), then Join is gone
+    const { expiresAt, ...invite } = sent.body.message.invite;
+    assert.deepEqual(invite, { server: 'skyup.pl:25565', version: '26.1.2' });
+    assert.ok(Math.abs(expiresAt - (sent.body.message.at + 30 * 60_000)) < 2000, `expiresAt ${expiresAt}`);
     await live.waitFor((e) => e.type === 'message' && e.message.invite?.server === 'skyup.pl:25565');
     const history = (await call('GET', `/v1/messages/${ola.user.id}`, pit.token)).body.messages;
-    assert.deepEqual(history.at(-1).invite, { server: 'skyup.pl:25565', version: '26.1.2' });
+    assert.deepEqual(history.at(-1).invite, sent.body.message.invite);
     // plain messages have no invite field
     await call('POST', `/v1/messages/${pit.user.id}`, ola.token, { text: 'wchodzisz?' });
     assert.equal((await call('GET', `/v1/messages/${ola.user.id}`, pit.token)).body.messages.at(-1).invite, undefined);

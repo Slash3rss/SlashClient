@@ -1179,21 +1179,24 @@ public class FriendsScreen extends Screen {
 
 	/** A "join me" invite as a card with a Join button (for the one invited); returns the new y and the height used. */
 	private int[] drawInvite(GuiGraphicsExtractor g, Social.Message m, boolean mine, int cx, int cw, int maxBubble, int y, int top, int bottom, int mx, int my) {
-		Component title = Ui.trBold(mine ? "slashclient-hud.invite.sent" : "slashclient-hud.invite.title");
+		// run out: no Join, only that it was
+		boolean expired = Social.inviteExpired(m);
+		Component title = Ui.trBold(expired ? "slashclient-hud.invite.expired" : mine ? "slashclient-hud.invite.sent" : "slashclient-hud.invite.title");
 		Component where = Ui.text(m.inviteVersion().isEmpty() ? m.invite() : m.invite() + " · " + m.inviteVersion());
 		Component join = Ui.tr("slashclient-hud.invite.join");
-		int bw = Math.min(maxBubble, Math.max(Math.max(Ui.width(title), Ui.width(where)) + 18, mine ? 0 : Ui.buttonWidth(join, "play", 16, 2)) + 12);
-		int bh = mine ? 30 : 50;
+		boolean button = !mine && !expired;
+		int bw = Math.min(maxBubble, Math.max(Math.max(Ui.width(title), Ui.width(where)) + 18, button ? Ui.buttonWidth(join, "play", 16, 2) : 0) + 12);
+		int bh = button ? 50 : 30;
 		y -= bh + 4;
 		if (y > bottom || y + bh < top) return new int[] { y, bh + 4 };
 		int bx = mine ? cx + cw - 10 - bw : cx + 10;
 		lastCard = visible(bx, y, bw, bh, top, bottom);
 		Ui.round(g, bx, y, bw, bh, 5, mine ? Ui.ACCENT_DARK : Ui.CARD);
 		Ui.roundOutline(g, bx, y, bw, bh, 5, mine ? 0x40FFFFFF : 0x663B82F6);
-		Ui.icon(g, "play", bx + 6, y + 6, 8, mine ? Ui.TEXT : Ui.ACCENT_LIGHT);
-		Ui.draw(g, Ui.fit(title, bw - 24), bx + 18, y + 6, Ui.TEXT);
-		Ui.draw(g, Ui.fit(where, bw - 12), bx + 6, y + 17, mine ? 0xCCFFFFFF : Ui.TEXT_2);
-		if (!mine) {
+		Ui.icon(g, "play", bx + 6, y + 6, 8, expired ? Ui.MUTED : mine ? Ui.TEXT : Ui.ACCENT_LIGHT);
+		Ui.draw(g, Ui.fit(title, bw - 24), bx + 18, y + 6, expired ? Ui.TEXT_2 : Ui.TEXT);
+		Ui.draw(g, Ui.fit(where, bw - 12), bx + 6, y + 17, expired ? Ui.MUTED : mine ? 0xCCFFFFFF : Ui.TEXT_2);
+		if (button) {
 			int jw = bw - 12;
 			// only clickable where it is not cut off by the scroll area
 			Ui.button(g, "friends:join:" + m.id(), bx + 6, y + 29, jw, 16, "play", join, true, mx, my);

@@ -3,7 +3,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import http from 'node:http';
 import path from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
-import { Db, type User } from './db.ts';
+import { Db, type Message, type User } from './db.ts';
 import { PROVIDERS, type DeviceStart, type Identity, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, serverKeyOf, type Presence } from './presence.ts';
 import { SprayLimit, cleanSpray } from './sprays.ts';
@@ -275,6 +275,12 @@ export function createApp(cfg: Config) {
   const limitRequests = limiter('chat.friendRequestsPerMinute');
   const limitLogins = limiter('security.loginsPerMinute');
   const editWindowMs = () => settings.num('chat.editWindowMinutes') * 60_000;
+  /** How long a game invite lasts (0: for ever); one sent before invites expired gets it from when it was sent. */
+  const inviteMs = () => settings.num('chat.inviteMinutes') * 60_000;
+  const withExpiry = (messages: Message[]): Message[] => {
+    const ms = inviteMs();
+    return ms ? messages.map((m) => (m.invite && !m.invite.expiresAt ? { ...m, invite: { ...m.invite, expiresAt: m.at + ms } } : m)) : messages;
+  };
   /** Searching and installing a modpack asks a lot at once, but one address should not drain the key's quota. */
   const limitCurseForge = limiter('security.curseforgePerMinute');
   /** Who is asking, for the rate limits: behind Caddy every request comes from 127.0.0.1. */
@@ -1128,7 +1134,7 @@ export function createApp(cfg: Config) {
       const before = Number(url.searchParams.get('before')) || undefined;
       const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 50));
       // how long one's own messages may be edited (server 0.9.23+; without it the clients offer no editing)
-      return { messages: images.decorate(db.conversation(me, other, limit, before)), editWindowMs: editWindowMs() };
+      return { messages: images.decorate(withExpiry(db.conversation(me, other, limit, before))), editWindowMs: editWindowMs() };
     }],
     ['POST', /^\/v1\/messages\/([\w-]+)$/, async (req, [other]) => {
       const me = authed(req);
@@ -1199,7 +1205,10 @@ export function createApp(cfg: Config) {
       const { server, version } = await body(req);
       if (typeof server !== 'string' || !SERVER_ADDRESS.test(server)) throw new HttpError(400, 'bad_server');
       limitBurst(me, `d:${other}`);
-      const invite = { server: server.toLowerCase(), ...(typeof version === 'string' && /^[\w.+ -]{1,32}$/.test(version) ? { version } : {}) };
+      const invite = {
+        server: server.toLowerCase(), ...(typeof version === 'string' && /^[\w.+ -]{1,32}$/.test(version) ? { version } : {}),
+        ...(inviteMs() ? { expiresAt: Date.now() + inviteMs() } : {}),
+      };
       const message = db.addMessage(me, other, invite.server, invite);
       push(other, { type: 'message', message });
       push(me, { type: 'message', message });
