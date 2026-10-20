@@ -242,6 +242,6 @@ public final class Gear {
 	static boolean wearsElytra(UUID id) {
 		var level = Minecraft.getInstance().level;
 		var player = level == null ? null : level.getPlayerByUUID(id);
-		return player != null && player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).is(Items.ELYTRA);
+		return player != null && OwnArmor.shown(player, net.minecraft.world.entity.EquipmentSlot.CHEST).is(Items.ELYTRA);
 	}
 }

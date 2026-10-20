@@ -32,11 +32,11 @@
 //$ 		PlayerModel<AbstractClientPlayer> parent = getParentModel();
 //$ 		// the hat that shows (face and ears things it would go through hide), and the clock for twitching ears
 //$ 		String hat = Cosmetics.worn(player.getUUID(), "hat");
-//$ 		if (hat != null && Clothing.covered("hat", player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST))) hat = null;
+//$ 		if (hat != null && Clothing.covered("hat", OwnArmor.shown(player, EquipmentSlot.HEAD), OwnArmor.shown(player, EquipmentSlot.CHEST))) hat = null;
 //$ 		float seconds = (player.tickCount + partialTick) / 20f + Headwear.offset(player.getUUID());
 //$ 		for (String slot : Clothing.SLOTS) {
 //$ 			String item = Cosmetics.worn(player.getUUID(), slot);
-//$ 			if (item == null || Clothing.covered(slot, item, player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST), player.getItemBySlot(EquipmentSlot.FEET)) || Suits.hides(player.getUUID(), slot)) continue;
+//$ 			if (item == null || Clothing.covered(slot, item, OwnArmor.shown(player, EquipmentSlot.HEAD), OwnArmor.shown(player, EquipmentSlot.CHEST), OwnArmor.shown(player, EquipmentSlot.FEET)) || Suits.hides(player.getUUID(), slot)) continue;
 			//#if MC >= 1.20.2
 			//$ boolean slim = player.getSkin().model() == net.minecraft.client.resources.PlayerSkin.Model.SLIM;
 			//#else

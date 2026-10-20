@@ -236,6 +236,25 @@ public final class HudConfig {
 	public int crosshairColor = 0xFFFFFFFF;
 	public int crosshairSize = 5;
 	public int crosshairGap = 2;
+	/**
+	 * A marker at the crosshair when we hit something (HitMarker): its colour, arm length in pixels,
+	 * how long it shows (ms) and its look; a short sound and how loud (%); a colour of its own when
+	 * the hit kills; hits by our arrows and tridents too.
+	 */
+	public boolean hitMarker = false;
+	public int hitMarkerColor = 0xFFFFFFFF, hitMarkerSize = 4, hitMarkerDuration = 300;
+	public String hitMarkerStyle = "x";
+	public boolean hitMarkerSound = false;
+	public String hitMarkerSoundKind = "ding";
+	public int hitMarkerVolume = 50;
+	public boolean hitMarkerKill = true;
+	public int hitMarkerKillColor = 0xFFF87171;
+	public boolean hitMarkerProjectiles = true;
+	/** Our own armour not drawn on our player (F5, the inventory), piece by piece, so the skin and cosmetics show (OwnArmor); others always see it. */
+	public boolean hideOwnArmor = false;
+	public boolean hideOwnHelmet = true, hideOwnChestplate = true, hideOwnLeggings = true, hideOwnBoots = true;
+	/** The elytra too (then the cape or SlashClient wings show in its place): off, so gliding still looks like gliding. */
+	public boolean hideOwnElytra = false;
 	/** The logo next to SlashClient players (and telling the server that you are one). */
 	public boolean badges = true;
 	/** Kill effects (a SlashClient cosmetic): ours when we kill something, and those of other players with SlashClient. */
@@ -479,6 +498,8 @@ public final class HudConfig {
 		read.chatCopyNotice = oneOf(read.chatCopyNotice, ChatExtras.COPY_NOTICES);
 		read.serverPackDefault = oneOf(read.serverPackDefault, ServerPacks.MODES);
 		read.screenshotCaptionCorner = oneOf(read.screenshotCaptionCorner, ShotCaption.CORNERS);
+		read.hitMarkerStyle = oneOf(read.hitMarkerStyle, HitMarker.STYLES);
+		read.hitMarkerSoundKind = oneOf(read.hitMarkerSoundKind, HitMarker.SOUNDS);
 		read.twitchChat = read.twitchChat == null ? defaults.twitchChat : read.twitchChat.checked();
 		read.kickChat = read.kickChat == null ? defaults.kickChat : read.kickChat.checked();
 		return read;
@@ -579,6 +600,23 @@ public final class HudConfig {
 		crosshairPattern = other.crosshairPattern;
 		crosshairLast = other.crosshairLast;
 		crosshairOutline = other.crosshairOutline;
+		hitMarker = other.hitMarker;
+		hitMarkerColor = other.hitMarkerColor;
+		hitMarkerSize = Math.max(HitMarker.MIN_SIZE, Math.min(HitMarker.MAX_SIZE, other.hitMarkerSize));
+		hitMarkerDuration = Math.max(100, Math.min(1000, other.hitMarkerDuration));
+		hitMarkerStyle = oneOf(other.hitMarkerStyle, HitMarker.STYLES);
+		hitMarkerSound = other.hitMarkerSound;
+		hitMarkerSoundKind = oneOf(other.hitMarkerSoundKind, HitMarker.SOUNDS);
+		hitMarkerVolume = Math.max(0, Math.min(100, other.hitMarkerVolume));
+		hitMarkerKill = other.hitMarkerKill;
+		hitMarkerKillColor = other.hitMarkerKillColor;
+		hitMarkerProjectiles = other.hitMarkerProjectiles;
+		hideOwnArmor = other.hideOwnArmor;
+		hideOwnHelmet = other.hideOwnHelmet;
+		hideOwnChestplate = other.hideOwnChestplate;
+		hideOwnLeggings = other.hideOwnLeggings;
+		hideOwnBoots = other.hideOwnBoots;
+		hideOwnElytra = other.hideOwnElytra;
 		customMenu = other.customMenu;
 		customPause = other.customPause;
 		badges = other.badges;

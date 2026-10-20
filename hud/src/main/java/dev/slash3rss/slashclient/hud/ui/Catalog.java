@@ -240,6 +240,26 @@ public final class Catalog {
 			new Slider("slashclient-hud.set.size", 1f, 8f, 1f, "%.0f", () -> (float) cfg.crosshairSize, v -> cfg.crosshairSize = Math.round(v)),
 			new Slider("slashclient-hud.set.gap", 0f, 5f, 1f, "%.0f", () -> (float) cfg.crosshairGap, v -> cfg.crosshairGap = Math.round(v)),
 			new Toggle("slashclient-hud.crosshair.outline", () -> cfg.crosshairOutline, v -> cfg.crosshairOutline = v)), null));
+		// a marker at the crosshair for our own hits (with the game's crosshair too)
+		out.add(new Entry("hitMarker", "slashclient-hud.hitMarker", "combat", "m-hits", () -> cfg.hitMarker, v -> cfg.hitMarker = v, List.of(
+			new Choice("slashclient-hud.set.shape", dev.slash3rss.slashclient.hud.HitMarker.STYLES, "slashclient-hud.hitMarker.style.", () -> cfg.hitMarkerStyle, v -> cfg.hitMarkerStyle = v),
+			new Colors("slashclient-hud.hitMarker.color", COLORS, () -> cfg.hitMarkerColor, v -> cfg.hitMarkerColor = v),
+			new Slider("slashclient-hud.set.size", dev.slash3rss.slashclient.hud.HitMarker.MIN_SIZE, dev.slash3rss.slashclient.hud.HitMarker.MAX_SIZE, 1f, "%.0f",
+				() -> (float) cfg.hitMarkerSize, v -> cfg.hitMarkerSize = Math.round(v)),
+			new Slider("slashclient-hud.hitMarker.duration", 100f, 1000f, 50f, "%.0f ms", () -> (float) cfg.hitMarkerDuration, v -> cfg.hitMarkerDuration = Math.round(v)),
+			new Toggle("slashclient-hud.hitMarker.kill", () -> cfg.hitMarkerKill, v -> cfg.hitMarkerKill = v),
+			new Colors("slashclient-hud.hitMarker.killColor", COLORS, () -> cfg.hitMarkerKillColor, v -> cfg.hitMarkerKillColor = v),
+			new Toggle("slashclient-hud.hitMarker.projectiles", () -> cfg.hitMarkerProjectiles, v -> cfg.hitMarkerProjectiles = v),
+			new Toggle("slashclient-hud.hitMarker.sound", () -> cfg.hitMarkerSound, v -> cfg.hitMarkerSound = v),
+			new Choice("slashclient-hud.hitMarker.soundKind", dev.slash3rss.slashclient.hud.HitMarker.SOUNDS, "slashclient-hud.hitMarker.sound.", () -> cfg.hitMarkerSoundKind, v -> cfg.hitMarkerSoundKind = v),
+			new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.hitMarkerVolume, v -> cfg.hitMarkerVolume = Math.round(v))), null));
+		// our own armour off our own player, piece by piece (the elytra on its own: off, it shows gliding)
+		out.add(new Entry("hideOwnArmor", "slashclient-hud.hideArmor", "extras", "m-armor", () -> cfg.hideOwnArmor, v -> cfg.hideOwnArmor = v, List.of(
+			new Toggle("slashclient-hud.hideArmor.helmet", () -> cfg.hideOwnHelmet, v -> cfg.hideOwnHelmet = v),
+			new Toggle("slashclient-hud.hideArmor.chestplate", () -> cfg.hideOwnChestplate, v -> cfg.hideOwnChestplate = v),
+			new Toggle("slashclient-hud.hideArmor.leggings", () -> cfg.hideOwnLeggings, v -> cfg.hideOwnLeggings = v),
+			new Toggle("slashclient-hud.hideArmor.boots", () -> cfg.hideOwnBoots, v -> cfg.hideOwnBoots = v),
+			new Toggle("slashclient-hud.hideArmor.elytra", () -> cfg.hideOwnElytra, v -> cfg.hideOwnElytra = v)), null));
 		out.add(new Entry("appearance", "slashclient-hud.set.appearance", "extras", "m-appearance", null, null, List.of(
 			new Colors("slashclient-hud.textColor", COLORS, () -> cfg.textColor, v -> cfg.textColor = v),
 			new Toggle("slashclient-hud.shadow", () -> cfg.textShadow, v -> cfg.textShadow = v),

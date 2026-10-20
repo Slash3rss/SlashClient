@@ -143,7 +143,7 @@ public final class GearLayer extends RenderLayer<AvatarRenderState, PlayerModel>
 //$ 	public void render(PoseStack pose, MultiBufferSource buffers, int light, AbstractClientPlayer player, float limbSwing, float limbSwingAmount,
 //$ 			float partialTick, float ageInTicks, float netHeadYaw, float headPitch) {
 //$ 		if (player.isInvisible() || player.isSpectator() || !Badges.enabled()) return;
-//$ 		ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST), legs = player.getItemBySlot(EquipmentSlot.LEGS);
+//$ 		ItemStack chest = OwnArmor.shown(player, EquipmentSlot.CHEST), legs = OwnArmor.shown(player, EquipmentSlot.LEGS);
 //$ 		for (String slot : Gear.SLOTS) {
 //$ 			String item = Cosmetics.worn(player.getUUID(), slot);
 //$ 			if (item == null || slot.equals("back") && !Gear.backShown(chest)) continue;

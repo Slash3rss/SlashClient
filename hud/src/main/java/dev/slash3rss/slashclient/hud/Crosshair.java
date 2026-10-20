@@ -144,8 +144,12 @@ public final class Crosshair {
 	 * of dark pixels around them, so the crosshair stays visible on snow and sky.
 	 */
 	public static void draw(GuiGraphicsExtractor g, int x, int y, boolean[] p, int px, int color, boolean outline) {
-		if (outline) {
-			int dark = 0x90000000;
+		draw(g, x, y, p, px, color, outline ? 0x90000000 : 0);
+	}
+
+	/** As above, the outline in its own colour (one that fades with the pixels, as the hit marker's); 0 for none. */
+	public static void draw(GuiGraphicsExtractor g, int x, int y, boolean[] p, int px, int color, int dark) {
+		if (dark != 0) {
 			for (int cy = -1; cy <= N; cy++) for (int cx = -1; cx <= N; cx++) {
 				if (on(p, cx, cy)) continue;
 				boolean near = false;

@@ -120,8 +120,8 @@ final class SuitLayer {
 //$ 		root.getChild("left_arm").copyFrom(parent.leftArm);
 //$ 		root.getChild("right_leg").copyFrom(parent.rightLeg);
 //$ 		root.getChild("left_leg").copyFrom(parent.leftLeg);
-//$ 		Suits.showParts(root, suit, Suits.hiddenParts(player.getItemBySlot(EquipmentSlot.HEAD), player.getItemBySlot(EquipmentSlot.CHEST),
-//$ 			player.getItemBySlot(EquipmentSlot.LEGS), player.getItemBySlot(EquipmentSlot.FEET),
+//$ 		Suits.showParts(root, suit, Suits.hiddenParts(OwnArmor.shown(player, EquipmentSlot.HEAD), OwnArmor.shown(player, EquipmentSlot.CHEST),
+//$ 			OwnArmor.shown(player, EquipmentSlot.LEGS), OwnArmor.shown(player, EquipmentSlot.FEET),
 //$ 			cape || Cosmetics.worn(player.getUUID(), "back") != null, Cosmetics.worn(player.getUUID(), "tail") != null));
 //$ 		root.render(pose, buffers.getBuffer(RenderType.entityCutoutNoCull(Suits.texture(suit))), light, OverlayTexture.NO_OVERLAY);
 //$ 	}

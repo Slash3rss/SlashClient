@@ -1708,5 +1708,57 @@ public final class TestHooks {
 		SlashHud.config.skyTasksCompact = compact;
 	}
 	//#endif
+
+	/** The hit marker on or off in a look, a second long (long enough for a screenshot), with a kill colour and the sound; what showed is forgotten. */
+	public static void hitMarker(boolean on, String style) {
+		HudConfig c = SlashHud.config;
+		c.hitMarker = on;
+		c.hitMarkerStyle = style;
+		c.hitMarkerSize = 5;
+		c.hitMarkerDuration = 1000;
+		c.hitMarkerColor = 0xFFFFFFFF;
+		c.hitMarkerKill = true;
+		c.hitMarkerKillColor = 0xFFF87171;
+		c.hitMarkerProjectiles = true;
+		c.hitMarkerSound = true;
+		HitMarker.reset();
+	}
+
+	/** What the hit marker shows now: "hit", "kill" or "". */
+	public static String hitMarkerState() {
+		return HitMarker.state();
+	}
+
+	/** Hiding our own armour on or off, and which pieces. */
+	public static void hideOwnArmor(boolean on, boolean helmet, boolean chestplate, boolean leggings, boolean boots, boolean elytra) {
+		HudConfig c = SlashHud.config;
+		c.hideOwnArmor = on;
+		c.hideOwnHelmet = helmet;
+		c.hideOwnChestplate = chestplate;
+		c.hideOwnLeggings = leggings;
+		c.hideOwnBoots = boots;
+		c.hideOwnElytra = elytra;
+	}
+
+	/**
+	 * The armour a render state gets, as it is drawn: "head,chest,legs,feet" (item ids, "-" for
+	 * none), for our own player or the nearest other humanoid (a zombie standing in for other players).
+	 */
+	public static String armorState(boolean own) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		net.minecraft.world.entity.LivingEntity e = own ? mc.player : null;
+		if (!own) for (var other : mc.level.entitiesForRendering()) {
+			if (net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(other.getType()).getPath().equals("zombie") && other instanceof net.minecraft.world.entity.LivingEntity z
+				&& (e == null || z.distanceTo(mc.player) < e.distanceTo(mc.player))) e = z;
+		}
+		if (e == null) return "none";
+		Object state = mc.getEntityRenderDispatcher().getRenderer(e).createRenderState(e, 0f);
+		if (!(state instanceof net.minecraft.client.renderer.entity.state.HumanoidRenderState h)) return "?";
+		return String.join(",", armorName(h.headEquipment), armorName(h.chestEquipment), armorName(h.legsEquipment), armorName(h.feetEquipment));
+	}
+
+	private static String armorName(net.minecraft.world.item.ItemStack s) {
+		return s.isEmpty() ? "-" : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).getPath();
+	}
 }
 //#endif
