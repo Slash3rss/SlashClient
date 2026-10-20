@@ -1,0 +1,4049 @@
+{
+	"♦ Klejnot klucznika ♦": {
+		"text": "",
+		"extra": [
+			{
+				"text": "♦ ",
+				"color": "yellow",
+				"italic": false
+			},
+			{
+				"text": "Klejnot klucznika ",
+				"color": "yellow",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": "♦",
+				"color": "yellow",
+				"bold": false,
+				"italic": false
+			}
+		]
+	},
+	"Kask Górnika": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Kask Górnika",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Sztabka miedzi": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Sztabka miedzi",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"7x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "7x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"9x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "9x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"11x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "11x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"13x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "13x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"64x Bruk": {
+		"text": "",
+		"extra": [
+			{
+				"text": "64x Bruk",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Sztabka żelaza": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Sztabka żelaza",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Sztabka żelaza": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Sztabka żelaza",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Sztabka żelaza": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Sztabka żelaza",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Sztabka żelaza": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Sztabka żelaza",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Sztabka żelaza": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Sztabka żelaza",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Sztabka złota": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Sztabka złota",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Sztabka złota": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Sztabka złota",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Sztabka złota": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Sztabka złota",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Sztabka złota": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Sztabka złota",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Sztabka złota": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Sztabka złota",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Diament": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Diament",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Diament": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Diament",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Diament": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Diament",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Diament": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Diament",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Diament": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Diament",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Szmaragd": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Szmaragd",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Szmaragd": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Szmaragd",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Szmaragd": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Szmaragd",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Szmaragd": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Szmaragd",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Szmaragd": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Szmaragd",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Sproszkowany redstone": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Sproszkowany redstone",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Sproszkowany redstone": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Sproszkowany redstone",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Sproszkowany redstone": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Sproszkowany redstone",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Sproszkowany redstone": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Sproszkowany redstone",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Sproszkowany redstone": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Sproszkowany redstone",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Krzemień": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Krzemień",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"16x Pochodnia": {
+		"text": "",
+		"extra": [
+			{
+				"text": "16x Pochodnia",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Bandana Łowcy": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Bandana Łowcy",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Specjał Awanturnika": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Specjał Awanturnika",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Wywar Topornika": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Wywar Topornika",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Mikstura Knura": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Mikstura Knura",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Dekot Arcylisza": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Dekot Arcylisza",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Wsparcie Komandosa": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Wsparcie Komandosa",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Jad Tarantuli": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Jad Tarantuli",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Butelka miodu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Butelka miodu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Butelka miodu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Butelka miodu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Butelka miodu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Butelka miodu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Pieczona wołowina": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Pieczona wołowina",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Pieczona wołowina": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Pieczona wołowina",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Królicza łapka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Królicza łapka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Królicza łapka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Królicza łapka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Enderperła": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Enderperła",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Enderperła": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Enderperła",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Enderperła": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Enderperła",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Enderperła": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Enderperła",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Enderperła": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Enderperła",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Oko pająka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Oko pająka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Płomienna różdżka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Płomienna różdżka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Tarcza": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Tarcza",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Totem nieśmiertelności": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Totem nieśmiertelności",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"6x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "6x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"10x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "10x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"12x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "12x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Czapka Drwala": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Czapka Drwala",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"6x Sztabka żelaza": {
+		"text": "",
+		"extra": [
+			{
+				"text": "6x Sztabka żelaza",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Jabłko": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Jabłko",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Blok trawy": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Blok trawy",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Blok trawy": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Blok trawy",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Blok trawy": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Blok trawy",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Blok trawy": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Blok trawy",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Ziemia": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Ziemia",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Ziemia": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Ziemia",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Ziemia": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Ziemia",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Ziemia": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Ziemia",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Blok kości": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Blok kości",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Sadzonka dębu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Sadzonka dębu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Sadzonka brzozy": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Sadzonka brzozy",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Sadzonka świerku": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Sadzonka świerku",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Sadzonka tropikalna": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Sadzonka tropikalna",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Sadzonka ciemnego dębu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Sadzonka ciemnego dębu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Sadzonka akacji": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Sadzonka akacji",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Siewka namorzynu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Siewka namorzynu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Sadzonka wiśni": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Sadzonka wiśni",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Spaczony grzyb": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Spaczony grzyb",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Dębowy pień": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Dębowy pień",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Brzozowy pień": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Brzozowy pień",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Świerkowy pień": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Świerkowy pień",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Tropikalny pień": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Tropikalny pień",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Ciemnodębowy pień": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Ciemnodębowy pień",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Akacjowy pień": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Akacjowy pień",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Namorzynowy pień": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Namorzynowy pień",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Wiśniowy pień": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Wiśniowy pień",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Szkarłatny grzyb": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Szkarłatny grzyb",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	":: Karambit ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Karambit ::",
+				"color": "dark_red",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Perun ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Perun ::",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Cymofan ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Cymofan ::",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Młot Thora ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Młot Thora ::",
+				"color": "red",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Urizel ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Urizel ::",
+				"color": "light_purple",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Azada ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Azada ::",
+				"color": "green",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Spinel ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Spinel ::",
+				"color": "yellow",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Karpiołap ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Karpiołap ::",
+				"color": "yellow",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Etherica ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Etherica ::",
+				"color": "#AB57FF",
+				"bold": true,
+				"italic": false,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	":: Łuk Legolasa ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Łuk Legolasa ::",
+				"color": "#57FFAB",
+				"bold": true,
+				"italic": false,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	":: Arbalet ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Arbalet ::",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Powrót Odysa ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Powrót Odysa ::",
+				"color": "green",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Cassis ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Cassis ::",
+				"color": "aqua",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Cuirass ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Cuirass ::",
+				"color": "aqua",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Cuissot ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Cuissot ::",
+				"color": "aqua",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Cosset ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Cosset ::",
+				"color": "aqua",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Kaptur sztormowy ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Kaptur sztormowy ::",
+				"color": "green",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Kamizelka biwakowa ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Kamizelka biwakowa ::",
+				"color": "green",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Nogawice ognioodporne ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Nogawice ognioodporne ::",
+				"color": "green",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Trapery terenowe ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Trapery terenowe ::",
+				"color": "green",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Rivendell ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Rivendell ::",
+				"color": "yellow",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Impet ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Impet ::",
+				"color": "green",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Phlox ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Phlox ::",
+				"color": "red",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Majster ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Majster ::",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Magiczne wiaderko ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Magiczne wiaderko ::",
+				"color": "aqua",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: StatTracker ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: StatTracker ::",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Jajko niespodzianka ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Jajko niespodzianka ::",
+				"color": "red",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Kontroler magazynów ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Kontroler magazynów ::",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Kapelusz pracusia ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Kapelusz pracusia ::",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Tajemnice SkyUPa v.5 ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Tajemnice SkyUPa v.5 ::",
+				"color": "light_purple",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	":: Klejnot kupiecki uniwersalny ::": {
+		"text": "",
+		"extra": [
+			{
+				"text": ":: Klejnot kupiecki ",
+				"color": "yellow",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": "uniwersalny",
+				"color": "blue",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": " ",
+				"color": "yellow",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": "::",
+				"color": "yellow",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Klucz do Elementium SkyCase": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Klucz do ",
+				"color": "dark_aqua",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": "Elementium ",
+				"color": "aqua",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": "Sky",
+				"color": "aqua",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": "Case",
+				"color": "white",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"♦ Wzmocniony klejnot klucznika ♦": {
+		"text": "",
+		"extra": [
+			{
+				"text": "♦ ",
+				"color": "yellow",
+				"italic": false
+			},
+			{
+				"text": "Wzmocniony ",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": "klejnot klucznika ",
+				"color": "yellow",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": "♦",
+				"color": "yellow",
+				"bold": false,
+				"italic": false
+			}
+		]
+	},
+	"15x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "15x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"25x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "25x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"35x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "35x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"45x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "45x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"55x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "55x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"64x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "64x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Blok szmaragdu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Blok szmaragdu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Blok szmaragdu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Blok szmaragdu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Blok szmaragdu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Blok szmaragdu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Blok szmaragdu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Blok szmaragdu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Blok szmaragdu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Blok szmaragdu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Blok złota": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Blok złota",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Blok złota": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Blok złota",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Blok złota": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Blok złota",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Blok złota": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Blok złota",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Blok złota": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Blok złota",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"6x Blok złota": {
+		"text": "",
+		"extra": [
+			{
+				"text": "6x Blok złota",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"7x Blok złota": {
+		"text": "",
+		"extra": [
+			{
+				"text": "7x Blok złota",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Blok żelaza": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Blok żelaza",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Blok żelaza": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Blok żelaza",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Blok żelaza": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Blok żelaza",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Blok żelaza": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Blok żelaza",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Blok żelaza": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Blok żelaza",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"6x Blok żelaza": {
+		"text": "",
+		"extra": [
+			{
+				"text": "6x Blok żelaza",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Blok redstone": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Blok redstone",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Blok redstone": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Blok redstone",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Blok redstone": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Blok redstone",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Blok redstone": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Blok redstone",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Odłamek ametystu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Odłamek ametystu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"10x Odłamek ametystu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "10x Odłamek ametystu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"12x Odłamek ametystu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "12x Odłamek ametystu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"14x Odłamek ametystu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "14x Odłamek ametystu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"16x Odłamek ametystu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "16x Odłamek ametystu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Kapelusz Farmera": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Kapelusz Farmera",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Piasek": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Piasek",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Piasek": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Piasek",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Piasek": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Piasek",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Piasek": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Piasek",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Piasek dusz": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Piasek dusz",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Piasek dusz": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Piasek dusz",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Piasek dusz": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Piasek dusz",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Ziemia": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Ziemia",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Kwiat refrenusu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Kwiat refrenusu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Kwiat refrenusu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Kwiat refrenusu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Kwiat refrenusu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Kwiat refrenusu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Kwiat refrenusu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Kwiat refrenusu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Blok kości": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Blok kości",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Blok kości": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Blok kości",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Złota marchewka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Złota marchewka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Świecące jagody": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Świecące jagody",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Blok mchu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Blok mchu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"64x Nasiona pszenicy": {
+		"text": "",
+		"extra": [
+			{
+				"text": "64x Nasiona pszenicy",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"64x Mak": {
+		"text": "",
+		"extra": [
+			{
+				"text": "64x Mak",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"64x Chaber": {
+		"text": "",
+		"extra": [
+			{
+				"text": "64x Chaber",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Kapelusz Rybaka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Kapelusz Rybaka",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Oceaniczna ruda": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Oceaniczna ruda",
+				"color": "dark_aqua",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"2x Oceaniczna ruda": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x ",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			},
+			{
+				"text": "Oceaniczna ruda",
+				"color": "dark_aqua",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"3x Oceaniczna ruda": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x ",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			},
+			{
+				"text": "Oceaniczna ruda",
+				"color": "dark_aqua",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Dobra przynęta": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Dobra przynęta",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"2x Dobra przynęta": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x ",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			},
+			{
+				"text": "Dobra przynęta",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"3x Dobra przynęta": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x ",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			},
+			{
+				"text": "Dobra przynęta",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Wybitna przynęta": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Wybitna przynęta",
+				"color": "dark_purple",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Mikstura": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Mikstura",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"10x Blok suszonych wodorostów": {
+		"text": "",
+		"extra": [
+			{
+				"text": "10x Blok suszonych wodorostów",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"15x Blok suszonych wodorostów": {
+		"text": "",
+		"extra": [
+			{
+				"text": "15x Blok suszonych wodorostów",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"20x Blok suszonych wodorostów": {
+		"text": "",
+		"extra": [
+			{
+				"text": "20x Blok suszonych wodorostów",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"25x Blok suszonych wodorostów": {
+		"text": "",
+		"extra": [
+			{
+				"text": "25x Blok suszonych wodorostów",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Torbiel ze świecącym atramentem": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Torbiel ze świecącym atramentem",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Torbiel ze świecącym atramentem": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Torbiel ze świecącym atramentem",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Iskrzyłuda": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Iskrzyłuda",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Torbiel z atramentem": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Torbiel z atramentem",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Torbiel z atramentem": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Torbiel z atramentem",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Torbiel z atramentem": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Torbiel z atramentem",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęta książka (Niezniszczalność I)": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęta książka (Niezniszczalność I)",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęta książka (Szczęście I)": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęta książka (Szczęście I)",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęta książka (Wydajność I)": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęta książka (Wydajność I)",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęta książka (Wydajność II)": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęta książka (Wydajność II)",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęta książka (Wydajność III)": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęta książka (Wydajność III)",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Kask Budowniczego": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Kask Budowniczego",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Żeton budowlany": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Żeton ",
+				"color": "aqua",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": "budowlany",
+				"color": "dark_purple",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"3x Żeton budowlany": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x ",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			},
+			{
+				"text": "Żeton ",
+				"color": "aqua",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": "budowlany",
+				"color": "dark_purple",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"5x Żeton budowlany": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x ",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			},
+			{
+				"text": "Żeton ",
+				"color": "aqua",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": "budowlany",
+				"color": "dark_purple",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"7x Żeton budowlany": {
+		"text": "",
+		"extra": [
+			{
+				"text": "7x ",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			},
+			{
+				"text": "Żeton ",
+				"color": "aqua",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": "budowlany",
+				"color": "dark_purple",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"9x Żeton budowlany": {
+		"text": "",
+		"extra": [
+			{
+				"text": "9x ",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			},
+			{
+				"text": "Żeton ",
+				"color": "aqua",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": "budowlany",
+				"color": "dark_purple",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Żeton dekoracyjny": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Żeton ",
+				"color": "aqua",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": "dekoracyjny",
+				"color": "dark_aqua",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Żeton symbol": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Żeton ",
+				"color": "aqua",
+				"bold": true,
+				"italic": false
+			},
+			{
+				"text": "symbol",
+				"color": "white",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"Netherowy kwarc": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Netherowy kwarc",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Netherowy kwarc": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Netherowy kwarc",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Netherowy kwarc": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Netherowy kwarc",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Lód": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Lód",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Lód": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Lód",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Lód": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Lód",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Glina": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Glina",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Glina": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Glina",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Glina": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Glina",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Szkło": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Szkło",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Szkło": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Szkło",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"64x Netherrack": {
+		"text": "",
+		"extra": [
+			{
+				"text": "64x Netherrack",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Kamień": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Kamień",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"16x Kamień": {
+		"text": "",
+		"extra": [
+			{
+				"text": "16x Kamień",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Kamień Endu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Kamień Endu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"16x Kamień Endu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "16x Kamień Endu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Łupek": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Łupek",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"16x Łupek": {
+		"text": "",
+		"extra": [
+			{
+				"text": "16x Łupek",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Jasnopył": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Jasnopył",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Jasnopył": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Jasnopył",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"5x Jasnopył": {
+		"text": "",
+		"extra": [
+			{
+				"text": "5x Jasnopył",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Kapelusz Czarodzieja": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Kapelusz Czarodzieja",
+				"color": "gold",
+				"bold": true,
+				"italic": false
+			}
+		]
+	},
+	"10x Sztabka złota": {
+		"text": "",
+		"extra": [
+			{
+				"text": "10x Sztabka złota",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"14x Sztabka złota": {
+		"text": "",
+		"extra": [
+			{
+				"text": "14x Sztabka złota",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"24x Lazuryt": {
+		"text": "",
+		"extra": [
+			{
+				"text": "24x Lazuryt",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"32x Lazuryt": {
+		"text": "",
+		"extra": [
+			{
+				"text": "32x Lazuryt",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Odłamek netherytu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Odłamek netherytu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Odłamek netherytu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Odłamek netherytu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Odłamek netherytu": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Odłamek netherytu",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Kowadło": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Kowadło",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"16x Sproszkowany redstone": {
+		"text": "",
+		"extra": [
+			{
+				"text": "16x Sproszkowany redstone",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"18x Sproszkowany redstone": {
+		"text": "",
+		"extra": [
+			{
+				"text": "18x Sproszkowany redstone",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"20x Sproszkowany redstone": {
+		"text": "",
+		"extra": [
+			{
+				"text": "20x Sproszkowany redstone",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"22x Sproszkowany redstone": {
+		"text": "",
+		"extra": [
+			{
+				"text": "22x Sproszkowany redstone",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"24x Sproszkowany redstone": {
+		"text": "",
+		"extra": [
+			{
+				"text": "24x Sproszkowany redstone",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Książka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Książka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"10x Książka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "10x Książka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"12x Książka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "12x Książka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęte złote jabłko": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęte złote jabłko",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Zaklęte złote jabłko": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Zaklęte złote jabłko",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"3x Zaklęte złote jabłko": {
+		"text": "",
+		"extra": [
+			{
+				"text": "3x Zaklęte złote jabłko",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"16x Netherowa brodawka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "16x Netherowa brodawka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"32x Netherowa brodawka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "32x Netherowa brodawka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"16x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "16x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"32x Zaklęta butelka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "32x Zaklęta butelka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"2x Płomienna różdżka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "2x Płomienna różdżka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Płomienna różdżka": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Płomienna różdżka",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Łza ghasta": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Łza ghasta",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"8x Magmowy krem": {
+		"text": "",
+		"extra": [
+			{
+				"text": "8x Magmowy krem",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Borowik": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Borowik",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"4x Muchomor": {
+		"text": "",
+		"extra": [
+			{
+				"text": "4x Muchomor",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"10x Ziemia": {
+		"text": "",
+		"extra": [
+			{
+				"text": "10x Ziemia",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"15x Ziemia": {
+		"text": "",
+		"extra": [
+			{
+				"text": "15x Ziemia",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"20x Ziemia": {
+		"text": "",
+		"extra": [
+			{
+				"text": "20x Ziemia",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"25x Ziemia": {
+		"text": "",
+		"extra": [
+			{
+				"text": "25x Ziemia",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"30x Ziemia": {
+		"text": "",
+		"extra": [
+			{
+				"text": "30x Ziemia",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"10x Blok trawy": {
+		"text": "",
+		"extra": [
+			{
+				"text": "10x Blok trawy",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"15x Blok trawy": {
+		"text": "",
+		"extra": [
+			{
+				"text": "15x Blok trawy",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"20x Blok trawy": {
+		"text": "",
+		"extra": [
+			{
+				"text": "20x Blok trawy",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"25x Blok trawy": {
+		"text": "",
+		"extra": [
+			{
+				"text": "25x Blok trawy",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"10x Piasek": {
+		"text": "",
+		"extra": [
+			{
+				"text": "10x Piasek",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"20x Piasek": {
+		"text": "",
+		"extra": [
+			{
+				"text": "20x Piasek",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"30x Piasek": {
+		"text": "",
+		"extra": [
+			{
+				"text": "30x Piasek",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"10x Żwir": {
+		"text": "",
+		"extra": [
+			{
+				"text": "10x Żwir",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"20x Żwir": {
+		"text": "",
+		"extra": [
+			{
+				"text": "20x Żwir",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"30x Żwir": {
+		"text": "",
+		"extra": [
+			{
+				"text": "30x Żwir",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Siodło": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Siodło",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęta książka (Naprawa I)": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęta książka (Naprawa I)",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęta książka (Wydajność IV)": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęta książka (Wydajność IV)",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęta książka (Wydajność V)": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęta książka (Wydajność V)",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęta książka (Niezniszczalność III)": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęta książka (Niezniszczalność III)",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęta książka (Szczęście III)": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęta książka (Szczęście III)",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęta książka (Ochrona IV)": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęta książka (Ochrona IV)",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęta książka (Ostrość IV)": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęta książka (Ostrość IV)",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęta książka (Ostrość V)": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęta książka (Ostrość V)",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęta książka (Zaklęty ogień II)": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęta książka (Zaklęty ogień II)",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	},
+	"Zaklęta książka (Jedwabny dotyk I)": {
+		"text": "",
+		"extra": [
+			{
+				"text": "Zaklęta książka (Jedwabny dotyk I)",
+				"color": "yellow",
+				"bold": false,
+				"italic": true,
+				"underlined": false,
+				"strikethrough": false,
+				"obfuscated": false
+			}
+		]
+	}
+}

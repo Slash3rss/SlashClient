@@ -4,6 +4,10 @@ package dev.slash3rss.slashclient.hud;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.mojang.serialization.JsonOps;
 import dev.slash3rss.slashclient.hud.ui.Ui;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
@@ -11,13 +15,20 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastManager;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -27,6 +38,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -59,6 +71,8 @@ public final class SkyCase {
 		Map<String, String> pool = new LinkedHashMap<>();
 		/** When a preview window last changed the pool; 0 while it is the built-in one (updated with the mod). */
 		long poolSeen;
+		/** Each reward as the preview showed it (its model, coloured name, glint, head), kept also once it leaves the pool. */
+		Map<String, JsonElement> looks = new LinkedHashMap<>();
 
 		void won(String reward, long at) {
 			opened++;
@@ -70,6 +84,7 @@ public final class SkyCase {
 		Stats fixed() {
 			if (drops == null) drops = new LinkedHashMap<>();
 			if (pool == null) pool = new LinkedHashMap<>();
+			if (looks == null) looks = new LinkedHashMap<>();
 			if (last == null) last = "";
 			return this;
 		}
@@ -327,11 +342,16 @@ public final class SkyCase {
 	}
 
 	/** One page of a case's preview: its rewards, and whether pages come before and after it. */
-	record Page(Map<String, String> rewards, boolean previous, boolean next) {}
+	record Page(Map<String, String> rewards, boolean previous, boolean next, Map<String, ItemStack> stacks) {
+		Page(Map<String, String> rewards, boolean previous, boolean next) {
+			this(rewards, previous, next, Map.of());
+		}
+	}
 
 	/** The page an open window shows, or null when it is no preview (the draw itself) or its items are not there yet. */
 	static Page page(List<ItemStack> items) {
 		Map<String, String> rewards = new LinkedHashMap<>();
+		Map<String, ItemStack> stacks = new LinkedHashMap<>();
 		boolean preview = false, previous = false, next = false;
 		for (ItemStack stack : items) {
 			if (stack.isEmpty()) continue;
@@ -346,10 +366,10 @@ public final class SkyCase {
 			String id = itemId(stack);
 			// glass and the like around the rewards: the game's own name
 			if (name.isEmpty() || id.endsWith("glass_pane") && name.equals(plain(stack.getItem().getName(stack).getString()))) continue;
-			rewards.putIfAbsent(canonical(name), id);
+			if (rewards.putIfAbsent(canonical(name), id) == null) stacks.put(canonical(name), stack.copy());
 		}
 		// the preview has its "» SkyCase «" on top: the draw (the same title) is never read
-		return preview && !rewards.isEmpty() ? new Page(rewards, previous, next) : null;
+		return preview && !rewards.isEmpty() ? new Page(rewards, previous, next, stacks) : null;
 	}
 
 	static void readPreview(String type, AbstractContainerScreen<?> screen, long now) {
@@ -380,7 +400,93 @@ public final class SkyCase {
 		b.more.set(index, page.next());
 		b.last = index;
 		update(b);
+		if (keepLooks(lifetime().of(type), page.stacks())) save();
 	}
+
+	/** The rewards' looks a page showed kept (true when one changed). */
+	private static boolean keepLooks(Stats stats, Map<String, ItemStack> stacks) {
+		Minecraft mc = Minecraft.getInstance();
+		if (stacks.isEmpty() || mc.level == null) return false;
+		var ops = mc.level.registryAccess().createSerializationContext(JsonOps.INSTANCE);
+		boolean changed = false;
+		for (var e : stacks.entrySet()) {
+			ItemStack one = e.getValue().copyWithCount(1);
+			JsonElement json = ItemStack.CODEC.encodeStart(ops, one).result().orElse(null);
+			if (json != null && !json.equals(stats.looks.get(e.getKey()))) {
+				stats.looks.put(e.getKey(), json);
+				changed = true;
+			}
+		}
+		if (changed) LOOKS.clear();
+		return changed;
+	}
+
+	/** Decoded looks by their JSON, and the built-in coloured names by key (from the owner's GUI dumps). */
+	private static final Map<String, Optional<ItemStack>> LOOKS = new HashMap<>();
+	private static Map<String, JsonElement> names;
+
+	private static Map<String, JsonElement> names() {
+		if (names == null) {
+			names = new HashMap<>();
+			try (InputStream in = SkyCase.class.getResourceAsStream("/assets/" + SlashHud.ID + "/skyup/skycase-names.json")) {
+				if (in != null) for (var e : JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject().entrySet()) names.putIfAbsent(key(e.getKey()), e.getValue());
+			} catch (Exception e) {
+				SlashHud.LOG.warn("SlashClient: SkyUp case names: {}", e.toString());
+			}
+		}
+		return names;
+	}
+
+	/**
+	 * A reward as its case's preview showed it (any case's, when its own never did): its model and
+	 * coloured name; else its item with the name coloured as the built-in dumps had it; null out of a world.
+	 */
+	static ItemStack look(String type, String reward) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.level == null) return null;
+		String k = key(reward);
+		JsonElement json = null;
+		Data life = lifetime();
+		Stats own = life.get(type);
+		for (var e : own.looks.entrySet()) if (key(e.getKey()).equals(k)) json = e.getValue();
+		if (json == null) for (Stats s : life.cases.values()) for (var e : s.looks.entrySet()) if (json == null && key(e.getKey()).equals(k)) json = e.getValue();
+		if (json != null) {
+			JsonElement j = json;
+			ItemStack stack = LOOKS.computeIfAbsent(j.toString(), s -> ItemStack.CODEC.parse(mc.level.registryAccess().createSerializationContext(JsonOps.INSTANCE), j).result()).orElse(null);
+			if (stack != null) return stack;
+		}
+		String id = own.pool.get(reward);
+		if (id == null) id = itemOf(life, reward);
+		Item item = item(id);
+		if (item == null) return null;
+		String cacheKey = id + "|" + k;
+		return LOOKS.computeIfAbsent(cacheKey, s -> {
+			ItemStack stack = new ItemStack(item);
+			JsonElement name = names().get(k);
+			if (name != null) ComponentSerialization.CODEC.parse(JsonOps.INSTANCE, name).result().ifPresent(c -> stack.set(DataComponents.CUSTOM_NAME, c));
+			return Optional.of(stack);
+		}).orElse(null);
+	}
+
+	/**
+	 * A row's name as the game writes it, coloured: the reward's own, or for a summed item ("Zaklęta
+	 * butelka" of "5x Zaklęta butelka") its text in the style of the item's part of the name.
+	 */
+	static Component styledName(ItemStack look, String row, boolean summed) {
+		if (look == null || !look.has(DataComponents.CUSTOM_NAME)) return Component.literal(row);
+		Component name = look.getHoverName();
+		if (!summed) return name;
+		Style[] last = { Style.EMPTY };
+		name.visit((style, text) -> {
+			if (!text.isBlank() && !COUNT_ONLY.matcher(text).matches()) last[0] = style;
+			return Optional.empty();
+		}, Style.EMPTY);
+		MutableComponent out = Component.literal(row);
+		return out.withStyle(last[0]);
+	}
+
+	/** "5x " alone, the count part of a coloured name. */
+	private static final Pattern COUNT_ONLY = Pattern.compile("(?i)^\\s*\\d{1,5}\\s*[x×]\\s*$");
 
 	/** Every page seen (the first to the one with no next): the pool is what they show; else they only add to it. */
 	private static void update(Browse b) {
@@ -424,9 +530,9 @@ public final class SkyCase {
 	/**
 	 * One row of a case: a reward (or an item, grouped), its item for the icon, wins this session and
 	 * all time, the items they were in this session and all time ("64x" counts 64), the share of the
-	 * case's openings (0..1), and whether the case no longer gives it.
+	 * case's openings (0..1), whether the case no longer gives it, and a reward it stands for (its look).
 	 */
-	record Reward(String name, String item, long session, long lifetime, long sessionAmount, long amount, double share, boolean removed) {}
+	record Reward(String name, String item, long session, long lifetime, long sessionAmount, long amount, double share, boolean removed, String variant) {}
 
 	/** Every case known: the built-in ones, those previewed and those won from ("?" last, when there are any). */
 	static List<String> types() {
@@ -466,12 +572,12 @@ public final class SkyCase {
 			String row = grouped ? base(name) : name;
 			Reward was = out.get(row);
 			long sessionAmount = ls * amount(name), amount = ll * amount(name);
-			if (was == null) out.put(row, new Reward(row, e.getValue(), ls, ll, sessionAmount, amount, 0, removed));
+			if (was == null) out.put(row, new Reward(row, e.getValue(), ls, ll, sessionAmount, amount, 0, removed, name));
 			else out.put(row, new Reward(row, was.item().isEmpty() ? e.getValue() : was.item(), was.session() + ls, was.lifetime() + ll,
-				was.sessionAmount() + sessionAmount, was.amount() + amount, 0, was.removed() && removed));
+				was.sessionAmount() + sessionAmount, was.amount() + amount, 0, was.removed() && removed, was.variant()));
 		}
 		List<Reward> list = new ArrayList<>();
-		for (Reward r : out.values()) list.add(new Reward(r.name(), r.item(), r.session(), r.lifetime(), r.sessionAmount(), r.amount(), l.opened > 0 ? r.lifetime() / (double) l.opened : 0, r.removed()));
+		for (Reward r : out.values()) list.add(new Reward(r.name(), r.item(), r.session(), r.lifetime(), r.sessionAmount(), r.amount(), l.opened > 0 ? r.lifetime() / (double) l.opened : 0, r.removed(), r.variant()));
 		// those it no longer gives at the end
 		list.sort(Comparator.comparing(Reward::removed));
 		return list;
@@ -501,6 +607,7 @@ public final class SkyCase {
 				Stats kept = new Stats();
 				kept.pool = s.pool;
 				kept.poolSeen = s.poolSeen;
+				kept.looks = s.looks;
 				lifetime().cases.put(type, kept);
 			}
 		}

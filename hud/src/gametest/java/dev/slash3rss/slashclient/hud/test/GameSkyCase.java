@@ -124,6 +124,14 @@ public class GameSkyCase implements FabricClientGameTest {
 			check(rows.strip().endsWith("removed"), "the removed one last", rows);
 			// grouped by item: both bottles together, 18 of them
 			String grouped = context.computeOnClient(mc -> SkyCaseTestHooks.rewards("Górniczy", true));
+			// the rewards as the preview showed them: their own model and coloured name, the summed item in its part's colour
+			String kask = context.computeOnClient(mc -> SkyCaseTestHooks.look("Górniczy", "Kask Górnika"));
+			check(kask.equals("minecraft:iron_helmet|Kask Górnika|gold"), "Kask Górnika's look", kask);
+			String bottles = context.computeOnClient(mc -> SkyCaseTestHooks.look("Górniczy", "5x Zaklęta butelka"));
+			check(bottles.equals("minecraft:experience_bottle|5x Zaklęta butelka|aqua"), "the bottles' look", bottles);
+			// a case whose preview was never opened: its item, the name coloured as the dumps had it
+			String jad = context.computeOnClient(mc -> SkyCaseTestHooks.look("Rybacki", "Oceaniczna ruda"));
+			check(jad.equals("minecraft:player_head|Oceaniczna ruda|dark_aqua"), "Oceaniczna ruda from the dumps", jad);
 			check(grouped.contains("Zaklęta butelka 2/2 18/18 40%") && grouped.contains("\nDiament 1/1 1/1 20%"), "grouped", grouped);
 
 			// Platinum: the first page alone only adds (page two's saddle stays, the missing redstone too)

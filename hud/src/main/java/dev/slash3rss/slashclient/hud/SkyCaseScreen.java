@@ -150,10 +150,13 @@ public class SkyCaseScreen extends Screen {
 			int ry = listTop + i * ROW_H - scroll;
 			if (ry + ROW_H < listTop || ry > bottom) continue;
 			if (i % 2 == 1) g.fill(lx, ry, lx + lw, ry + ROW_H, 0x0AFFFFFF);
+			// the reward as the preview shows it: its model and coloured name
+			var look = SkyCase.look(type, r.variant());
 			var item = SkyCase.item(r.item());
-			if (item != null) Ui.icon(g, item, "spark", lx + 1, ry + 1);
+			if (look != null) g.item(look, lx + 1, ry + 1);
+			else if (item != null) Ui.icon(g, item, "spark", lx + 1, ry + 1);
 			boolean won = r.lifetime() > 0;
-			Component name = Ui.text(r.name());
+			Component name = Component.empty().append(SkyCase.styledName(look, r.name(), grouped));
 			// summed: the columns count pieces, how many wins they came in beside the name
 			if (grouped && r.amount() > r.lifetime()) name = name.copy().append(Ui.text(" · ").append(Ui.tr("slashclient-hud.skyCase.wins", r.lifetime())).withStyle(s -> s.withColor(0x9CA3AF)));
 			if (r.removed()) name = name.copy().append(Ui.text(" ").append(Ui.tr("slashclient-hud.skyCase.removed")).withStyle(s -> s.withColor(0xF87171)));

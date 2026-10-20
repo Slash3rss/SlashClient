@@ -10,7 +10,9 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -166,10 +168,29 @@ public final class Ui {
 	/** Text cut with "…" to fit `max` pixels. */
 	public static Component fit(Component c, int max) {
 		if (width(c) <= max) return c;
-		String s = c.getString();
-		Style style = c.getStyle();
-		while (s.length() > 1 && width(Component.literal(s + "…").withStyle(style)) > max) s = s.substring(0, s.length() - 1);
-		return Component.literal(s + "…").withStyle(style);
+		// each part keeps its own style (a coloured name stays coloured up to the "…")
+		List<Map.Entry<Style, String>> parts = new ArrayList<>();
+		c.visit((style, text) -> {
+			if (!text.isEmpty()) parts.add(Map.entry(style, text));
+			return java.util.Optional.empty();
+		}, c.getStyle());
+		int total = 0;
+		for (var p : parts) total += p.getValue().length();
+		for (int keep = total - 1; keep > 1; keep--) {
+			MutableComponent out = Component.empty();
+			int left = keep;
+			Style lastStyle = c.getStyle();
+			for (var p : parts) {
+				if (left <= 0) break;
+				String t = p.getValue().length() > left ? p.getValue().substring(0, left) : p.getValue();
+				out.append(Component.literal(t).withStyle(p.getKey()));
+				left -= t.length();
+				lastStyle = p.getKey();
+			}
+			out.append(Component.literal("…").withStyle(lastStyle));
+			if (width(out) <= max) return out;
+		}
+		return Component.literal("…").withStyle(c.getStyle());
 	}
 
 	// ---------- shapes ----------

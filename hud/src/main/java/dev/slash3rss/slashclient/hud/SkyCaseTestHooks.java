@@ -4,7 +4,9 @@ package dev.slash3rss.slashclient.hud;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.ItemStack;
@@ -55,11 +57,30 @@ public final class SkyCaseTestHooks {
 		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, mc.player.getInventory(), Component.literal(title)));
 	}
 
+	/**
+	 * An item named as SkyUp names it: the count yellow and italic, the rest gold and bold (the window's
+	 * own items plain); "Kask Górnika" with a model of its own, as the server's resource pack gives it.
+	 */
 	private static ItemStack named(String id, String name, int count) {
 		var item = SkyCase.item(id);
 		var stack = new ItemStack(item, Math.max(1, Math.min(99, count)));
-		stack.set(DataComponents.CUSTOM_NAME, Component.literal(name));
+		Component text;
+		var m = java.util.regex.Pattern.compile("^(\\d+x )(.+)$").matcher(name);
+		if (name.startsWith("»")) text = Component.literal(name);
+		else if (m.matches()) text = Component.literal(m.group(1)).withStyle(ChatFormatting.YELLOW, ChatFormatting.ITALIC).append(Component.literal(m.group(2)).withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
+		else text = Component.literal(name).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD);
+		stack.set(DataComponents.CUSTOM_NAME, text);
+		if (name.equals("Kask Górnika")) stack.set(DataComponents.ITEM_MODEL, Identifier.withDefaultNamespace("iron_helmet"));
 		return stack;
+	}
+
+	/** A reward as the detail window shows it: "item model|name|colour of its last part". */
+	public static String look(String type, String reward) {
+		ItemStack stack = SkyCase.look(type, reward);
+		if (stack == null) return "null";
+		Component name = SkyCase.styledName(stack, SkyCase.base(reward), true);
+		var color = name.getStyle().getColor();
+		return stack.get(DataComponents.ITEM_MODEL) + "|" + stack.getHoverName().getString() + "|" + (color == null ? "none" : color.serialize());
 	}
 
 	/** No case looked at lately (as after the time a case stays assigned). */
