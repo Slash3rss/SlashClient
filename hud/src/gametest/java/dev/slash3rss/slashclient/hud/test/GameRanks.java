@@ -17,6 +17,9 @@ public class GameRanks implements FabricClientGameTest {
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			world.getServer().runCommand("time set 6000");
+			// an objective on the list: the tab list shows in singleplayer too
+			world.getServer().runCommand("scoreboard objectives add ranks dummy");
+			world.getServer().runCommand("scoreboard objectives setdisplay list ranks");
 			context.runOnClient(mc -> TestHooks.thirdPerson(true));
 			// the shown rank as the player picks it: a first rank in its own colour, then ones from the panel
 			String[][] picks = {
