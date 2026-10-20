@@ -33,9 +33,10 @@ import {
   type ContentType, type ModpackInfo, type ProjectType, type UpdateInfo, type VersionInfo,
 } from './modrinth';
 import {
-  checkCurseForgeUpdates, curseForgeLinks, CurseForgeUnavailable, downloadCurseForgePack, installCurseForgePack, installCurseForgeProject, isCurseForgePack, readCursePack,
+  checkCurseForgeUpdates, curseForgeLinks, curseForgePackIcon, CurseForgeUnavailable, downloadCurseForgePack, installCurseForgePack, installCurseForgeProject, isCurseForgePack, readCursePack,
   latestCurseForgePack, listCurseForgeVersions, searchCurseForge, setCurseForgeServer, updateCurseForgePack, type ManualFile,
 } from './curseforge';
+import { copyManualFiles, downloadLink, findManualFiles, FolderWatch, manualKey } from './manualFiles';
 import { listServers, pingServer } from './servers';
 import {
   applySettings, countParts, DEFAULT_PARTS, includePath, manualFilesOf, PACK_PARTS, readPackSummary, settingsOf, uniqueName, writeProfilePack,
@@ -659,32 +660,136 @@ handle('content:install', async (profileId: string, projectId: string, type: Con
 });
 /** Adds files to download by hand to the profile's list (shown on the Mods page until they are in place). */
 async function rememberManual(profile: Profile, files: ManualFile[]) {
-  const key = (f: ManualFile) => `${f.folder}/${f.fileName}`;
-  const known = new Map((profile.manualFiles ?? []).map((f) => [key(f), f]));
-  for (const f of files) known.set(key(f), f);
+  const known = new Map((profile.manualFiles ?? []).map((f) => [manualKey(f), f]));
+  for (const f of files) known.set(manualKey(f), f);
   profile.manualFiles = [...known.values()];
   await persist();
 }
 /** The files still to be downloaded by hand: those the player has put in place drop off the list. */
-handle('content:manual', async (profileId: string) => {
-  const profile = profileById(profileId);
+async function missingManual(profile: Profile): Promise<ManualFile[]> {
   if (!profile.manualFiles?.length) return [];
   const gameDir = profileGameDir(profile);
-  const exists = (f: ManualFile) => fsp.access(path.join(gameDir, f.folder, path.basename(f.fileName))).then(() => true, () => false);
+  const there = (file: string) => fsp.access(file).then(() => true, () => false);
+  const exists = async (f: ManualFile) => {
+    const file = path.join(gameDir, f.folder, path.basename(f.fileName));
+    return (await there(file)) || there(`${file}.disabled`);
+  };
   const left = [];
   for (const f of profile.manualFiles) if (!(await exists(f))) left.push(f);
   if (left.length !== profile.manualFiles.length) {
     profile.manualFiles = left.length ? left : undefined;
     await persist();
   }
-  return left;
-});
+  // lists from older versions link to the file's page instead of its download
+  return left.map((f) => ({ ...f, url: downloadLink(f.url) }));
+}
+handle('content:manual', (profileId: string) => missingManual(profileById(profileId)));
 /** The player says they do not want these files (or got them elsewhere): forget the list. */
 handle('content:manualDismiss', async (profileId: string) => {
   const profile = profileById(profileId);
   profile.manualFiles = undefined;
   await persist();
 });
+
+// ---------- finding files downloaded by hand (like Prism Launcher's "Blocked mods") ----------
+
+/** Folders checked for downloaded files: the player's own list, else the system's Downloads folder. */
+const watchedFolders = () => store.settings.manualWatchFolders ?? [app.getPath('downloads')];
+type ManualStatus = { profileId: string; files: (ManualFile & { foundAt?: string })[]; folders: string[] };
+let manualSession: { profileId: string; files: ManualFile[]; extra: string[]; found: Map<string, string>; last: string } | undefined;
+let manualScanning: Promise<ManualStatus | undefined> | undefined;
+let manualRescan = false;
+const manualWatch = new FolderWatch(() => void scanManual());
+
+function manualStatus(): ManualStatus | undefined {
+  const s = manualSession;
+  if (!s) return undefined;
+  return { profileId: s.profileId, files: s.files.map((f) => ({ ...f, foundAt: s.found.get(manualKey(f)) })), folders: watchedFolders() };
+}
+/** Looks for the files again; the page hears about it (`manual:status`) when something was found or lost. */
+async function scanManual(): Promise<ManualStatus | undefined> {
+  if (manualScanning) {
+    manualRescan = true;
+    return manualScanning;
+  }
+  manualScanning = (async () => {
+    do {
+      manualRescan = false;
+      const s = manualSession;
+      if (!s) return undefined;
+      const found = await findManualFiles(s.files, watchedFolders(), s.extra).catch(() => s.found);
+      if (manualSession !== s) return manualStatus();
+      s.found = found;
+      const status = manualStatus()!;
+      const now = JSON.stringify(status);
+      if (now !== s.last) {
+        s.last = now;
+        send('manual:status', status);
+      }
+    } while (manualRescan);
+    return manualStatus();
+  })().finally(() => (manualScanning = undefined));
+  return manualScanning;
+}
+function stopManual() {
+  manualWatch.stop();
+  manualSession = undefined;
+}
+/** The dialog opens: the profile's missing files, the watched folders watched until it closes. */
+handle('manual:open', async (profileId: string) => {
+  stopManual();
+  const files = await missingManual(profileById(profileId));
+  manualSession = { profileId, files, extra: [], found: new Map(), last: '' };
+  manualWatch.start(watchedFolders());
+  return scanManual();
+});
+handle('manual:close', () => stopManual());
+/** Files dropped on the dialog (their paths, from the preload): checked by hash like the folders' files. */
+handle('manual:drop', async (paths: unknown) => {
+  const s = manualSession;
+  if (!s || !Array.isArray(paths)) return manualStatus();
+  for (const p of paths) if (typeof p === 'string' && path.isAbsolute(p) && !s.extra.includes(p)) s.extra.push(p);
+  return scanManual();
+});
+/** OK: the found files are copied into the profile; what is still missing stays on the list. */
+handle('manual:accept', async () => {
+  const s = manualSession;
+  if (!s) return { copied: 0, left: 0 };
+  const profile = profileById(s.profileId);
+  const copied = await copyManualFiles(profileGameDir(profile), s.files, s.found);
+  stopManual();
+  const left = await missingManual(profile);
+  return { copied: copied.length, left: left.length };
+});
+/** "Open missing": every download page not found yet, in the browser. */
+handle('manual:openMissing', async () => {
+  const s = manualSession;
+  if (!s) return;
+  for (const f of s.files) {
+    if (s.found.has(manualKey(f))) continue;
+    const url = downloadLink(f.url);
+    if (/^https:\/\/(www\.)?curseforge\.com\//.test(url)) await shell.openExternal(url);
+  }
+});
+async function setWatchedFolders(folders: string[]) {
+  store.settings.manualWatchFolders = folders;
+  await persist();
+  if (manualSession) {
+    manualWatch.start(folders);
+    await scanManual();
+  }
+  return folders;
+}
+handle('manual:folders', () => watchedFolders());
+handle('manual:addFolder', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog(win!, { title: t('Wybierz folder do obserwowania'), properties: ['openDirectory'] });
+  if (canceled || !filePaths[0]) return watchedFolders();
+  const dir = path.resolve(filePaths[0]);
+  const now = watchedFolders();
+  const norm = (d: string) => (process.platform === 'linux' ? path.resolve(d) : path.resolve(d).toLowerCase());
+  return now.some((d) => norm(d) === norm(dir)) ? now : setWatchedFolders([...now, dir]);
+});
+handle('manual:removeFolder', (dir: string) => setWatchedFolders(watchedFolders().filter((d) => d !== dir)));
 handle('content:toggle', async (profileId: string, type: ContentType, filename: string, enabled: boolean) =>
   setEnabled((await profileTarget(profileId)).gameDir, type, filename, enabled));
 handle('content:remove', async (profileId: string, type: ContentType, filename: string) =>
@@ -695,7 +800,7 @@ handle('content:remove', async (profileId: string, type: ContentType, filename: 
  * Creates a profile from a .mrpack with a visible progress panel, a completion
  * message and (for Modrinth packs) the pack's own icon.
  */
-type Pack = { file: string; version?: VersionInfo; source?: Source };
+type Pack = { file: string; version?: VersionInfo; source?: Source; iconUrl?: string };
 
 /** Applies a modpack's game version and loader to a profile and remembers which pack/version it is. */
 function applyPack(profile: Profile, info: ModpackInfo, version: VersionInfo | undefined, title: string, source?: Source) {
@@ -722,16 +827,26 @@ const manualNote = (manual: ManualFile[]) => manual.length
 async function installModpackTask(title: string, iconUrl: string | undefined, getPack: (task: ReturnType<typeof startTask>) => Promise<Pack>): Promise<string> {
   const task = startTask(t('Instalowanie modpacka: {0}', title), iconUrl);
   try {
-    const { file, version, source } = await getPack(task);
+    const pack = await getPack(task);
+    const { file, version, source } = pack;
     const profile = newProfile(newMemory());
     const gameDir = profileGameDir(profile);
     const { info, manual } = await installPackFile(profile, file, false, task.progress);
     profile.name = info.name;
     applyPack(profile, info, version, info.name, source);
-    if (iconUrl) {
+    // the page's picture, else the one the site gives for the pack (a CurseForge zip: looked up by its manifest)
+    let icon = iconUrl ?? pack.iconUrl;
+    if (!icon && isCurseForgePack(file)) icon = await curseForgePackIcon(readCursePack(file).manifest).catch(() => undefined);
+    if (icon) {
       task.progress(t('Pobieranie ikony'), 0, 1);
-      // a missing icon is not worth failing the install
-      await iconFromUrl(gameDir, iconUrl).then(() => Object.assign(profile, { icon: 'custom', iconVersion: Date.now() }), () => {});
+      // a missing icon is not worth failing the install; a CurseForge thumbnail that fails gets the full logo
+      const tries = [icon, pack.iconUrl].filter((u, i, all): u is string => !!u && all.indexOf(u) === i);
+      for (const url of tries) {
+        if (await iconFromUrl(gameDir, url).then(() => true, (err) => (console.error(`icon ${url}: ${(err as Error).message}`), false))) {
+          Object.assign(profile, { icon: 'custom', iconVersion: Date.now() });
+          break;
+        }
+      }
     }
     store.profiles.push(profile);
     store.settings.selectedProfileId = profile.id;

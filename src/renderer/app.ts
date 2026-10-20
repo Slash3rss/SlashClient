@@ -496,13 +496,16 @@ $('#modpack-check').addEventListener('click', () => {
 });
 $('#modpack-update').addEventListener('click', () => {
   const profile = store.profiles.find((p) => p.id === editingId);
-  if (profile && modpackLatest) guard(() => api.updateModpack(profile.id, modpackLatest!.id)).then(() => ($('#modpack-status').textContent = ''));
+  if (profile && modpackLatest) guard(() => api.updateModpack(profile.id, modpackLatest!.id)).then(() => {
+    $('#modpack-status').textContent = '';
+    offerManual(profile.id);
+  });
 });
 $('#modpack-versions').addEventListener('click', async () => {
   const profile = store.profiles.find((p) => p.id === editingId);
   if (!profile?.modpack) return;
   const v = await chooseVersion({ title: profile.modpack.title, projectId: profile.modpack.projectId, type: 'modpack', currentVersionId: profile.modpack.versionId, profileId: profile.id, source: profile.modpack.source ?? 'modrinth' });
-  if (v) guard(() => api.updateModpack(profile.id, v.id));
+  if (v) guard(() => api.updateModpack(profile.id, v.id)).then(() => offerManual(profile.id));
 });
 
 // ---------- profile icons ----------
@@ -1510,6 +1513,7 @@ $('#pack-import-go').addEventListener('click', async () => {
   if (id) {
     editingId = id;
     renderProfiles();
+    offerManual(id);
   }
 });
 $('#pack-import-cancel').addEventListener('click', closePackImport);
@@ -1946,7 +1950,7 @@ interface ProjectHit { id: string; slug: string; title: string; description: str
 interface InstalledItem { type: string; filename: string; enabled: boolean; title: string; projectId?: string; versionId?: string; versionNumber?: string; iconUrl?: string; source?: 'curseforge' }
 interface ProjectVersion { id: string; projectId: string; name: string; versionNumber: string; type: 'release' | 'beta' | 'alpha'; date: string; gameVersions: string[]; loaders: string[]; downloads: number; manualUrl?: string }
 interface UpdateInfo { type: string; filename: string; projectId: string; title: string; currentVersion: string; latestVersionId: string; latestVersion: string; source?: 'curseforge' }
-interface ManualFile { title: string; fileName: string; url: string; folder: string }
+interface ManualFile { title: string; fileName: string; url: string; folder: string; sha1?: string; size?: number }
 
 /** Modrinth or CurseForge: the same page searches either. */
 let contentSource: Source = 'modrinth';
@@ -2557,12 +2561,12 @@ async function installHit(hit: ProjectHit, versionId?: string) {
   renderContent();
   try {
     // progress and the result are shown in the task panel (see the task section)
-    if (contentType === 'modpack') await api.installModpack(hit.id, hit.title, hit.iconUrl, versionId, contentSource);
+    if (contentType === 'modpack') offerManual(await api.installModpack(hit.id, hit.title, hit.iconUrl, versionId, contentSource));
     else if (world) await api.installDatapack(contentProfileId(), world, hit.id, hit.title, hit.iconUrl, versionId);
     else {
       const res: { manual: ManualFile[] } = await api.installContent(contentProfileId(), hit.id, contentType, hit.title, hit.iconUrl, versionId, contentSource);
       await refreshInstalled();
-      if (res.manual.length) showManual(res.manual);
+      if (res.manual.length) await openManual(contentProfileId());
     }
   } catch {
     // already reported in the task panel
@@ -2607,40 +2611,158 @@ async function refreshManual() {
   bar.classList.toggle('hidden', !manualFiles.length);
   $('#manual-text').replaceChildren(el('i', { className: 'fa-solid fa-hand-pointer' }),
     t('Plików do pobrania ręcznie ze strony CurseForge: {0}', manualFiles.length));
-  if (!$('#manual-modal').classList.contains('hidden')) renderManual();
+}
+
+/**
+ * The "blocked files" dialog, like Prism Launcher's: the files with their download links and
+ * SHA-1, found live in the watched folders (or dropped on the dialog); OK copies them into the profile.
+ */
+type ManualStatus = { profileId: string; files: (ManualFile & { foundAt?: string })[]; folders: string[] };
+let manualState: ManualStatus | undefined;
+/** Shown under the list after a drop that matched nothing. */
+let manualHint = '';
+
+function setManualTab(tab: 'files' | 'folders') {
+  document.querySelectorAll<HTMLButtonElement>('#manual-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+  $('#manual-pane-files').classList.toggle('hidden', tab !== 'files');
+  $('#manual-pane-folders').classList.toggle('hidden', tab !== 'folders');
 }
 
 function renderManual() {
-  const profileId = contentProfileId();
-  $('#manual-list').replaceChildren(...manualFiles.map((f) => {
-    const open = el('a', { className: 'button-link', href: f.url, target: '_blank' }, el('i', { className: 'fa-solid fa-arrow-up-right-from-square' }), t('Strona pliku'));
+  const s = manualState;
+  if (!s) return;
+  $('#manual-list').replaceChildren(...s.files.map((f) => {
+    const link = el('a', { className: 'manual-link', href: f.url, target: '_blank', textContent: f.url });
     const folder = el('button', { type: 'button' }, el('i', { className: 'fa-regular fa-folder-open' }), f.folder);
     folder.title = t('Otwórz folder {0} tego profilu', f.folder);
-    folder.addEventListener('click', () => guard(() => api.openProfileFolder(profileId, f.folder)));
-    return el('div', { className: 'version-row' },
-      el('div', {}, el('b', { textContent: f.title }), el('div', { className: 'version-meta' }, el('span', { textContent: f.fileName }), el('span', { textContent: `→ ${f.folder}/` }))),
-      el('div', { className: 'actions' }, open, folder));
+    folder.addEventListener('click', () => guard(() => api.openProfileFolder(s.profileId, f.folder)));
+    const state = f.foundAt
+      ? el('div', { className: 'manual-state' }, el('i', { className: 'fa-solid fa-circle-check' }), t('Znaleziono w {0}', f.foundAt))
+      : el('div', { className: 'manual-state' }, el('i', { className: 'fa-regular fa-hourglass-half' }), t('Jeszcze nie znaleziono'));
+    return el('div', { className: `version-row manual-row${f.foundAt ? ' found' : ''}` },
+      el('div', {},
+        el('b', { textContent: f.title }),
+        el('div', { className: 'version-meta' }, el('span', { textContent: f.fileName }), el('span', { textContent: `→ ${f.folder}/` })),
+        link,
+        el('div', { className: 'manual-hash', textContent: f.sha1 ? `SHA-1: ${f.sha1}` : t('Bez sumy SHA-1: plik zostanie rozpoznany po nazwie') }),
+        state),
+      el('div', { className: 'actions' }, folder));
   }));
-  if (!manualFiles.length) $('#manual-list').replaceChildren(el('p', { className: 'muted', textContent: t('Wszystkie pliki są na miejscu.') }));
+  const found = s.files.filter((f) => f.foundAt).length;
+  const all = found === s.files.length;
+  const summary = $('#manual-summary');
+  summary.classList.toggle('done', all && s.files.length > 0);
+  if (!s.files.length) summary.replaceChildren(t('Wszystkie pliki są na miejscu.'));
+  else if (all) summary.replaceChildren(el('i', { className: 'fa-solid fa-circle-check' }), t('Wszystkie modyfikacje zostały znalezione'));
+  else summary.replaceChildren(t('Znaleziono {0} z {1}. Brakujące pliki pobierz ze strony CurseForge.', found, s.files.length));
+  if (manualHint) summary.append(el('div', { className: 'muted', textContent: manualHint }));
+  $<HTMLButtonElement>('#manual-open-missing').disabled = all;
+
+  $('#manual-folders').replaceChildren(...s.folders.map((dir) => {
+    const remove = el('button', { type: 'button', className: 'icon-btn', title: t('Przestań obserwować') }, el('i', { className: 'fa-solid fa-trash' }));
+    remove.addEventListener('click', () => guard(async () => {
+      await api.manualRemoveFolder(dir);
+      if (manualState) manualState = { ...manualState, folders: await api.manualFolders() };
+      renderManual();
+    }));
+    return el('div', { className: 'version-row' }, el('div', { className: 'manual-folder' }, el('i', { className: 'fa-regular fa-folder' }), ` ${dir}`), el('div', { className: 'actions' }, remove));
+  }));
+  if (!s.folders.length) $('#manual-folders').replaceChildren(el('p', { className: 'muted', textContent: t('Żaden folder nie jest obserwowany: przeciągnij pobrane pliki na okno albo dodaj folder.') }));
 }
 
-function showManual(files?: ManualFile[]) {
-  if (files) manualFiles = [...manualFiles, ...files.filter((f) => !manualFiles.some((m) => m.folder === f.folder && m.fileName === f.fileName))];
+/** Opens the dialog for a profile's missing files (watching its folders until it closes). */
+async function openManual(profileId: string) {
+  manualHint = '';
+  setManualTab('files');
+  const status: ManualStatus | undefined = await guard(() => api.manualOpen(profileId));
+  if (!status?.files.length) {
+    api.manualClose();
+    return refreshManual();
+  }
+  manualState = status;
   renderManual();
   $('#manual-modal').classList.remove('hidden');
 }
-
-$('#manual-show').addEventListener('click', () => showManual());
-$('#manual-close').addEventListener('click', () => {
+/** After installing a pack or a project: the dialog when its authors keep files on CurseForge. */
+async function offerManual(profileId?: string) {
+  if (!profileId) return;
+  const files: ManualFile[] = (await api.manualFiles(profileId).catch(() => [])) ?? [];
+  if (files.length) await openManual(profileId);
+}
+function closeManual() {
   $('#manual-modal').classList.add('hidden');
+  manualState = undefined;
+  api.manualClose();
   refreshManual();
+}
+
+api.on('manual:status', (s: ManualStatus) => {
+  if (!manualState || s.profileId !== manualState.profileId) return;
+  manualState = s;
+  renderManual();
 });
-$('#manual-modal').addEventListener('click', (e) => e.target === e.currentTarget && $('#manual-close').click());
-$('#manual-dismiss').addEventListener('click', () => guard(async () => {
-  await api.dismissManualFiles(contentProfileId());
+document.querySelectorAll<HTMLButtonElement>('#manual-tabs button').forEach((b) => b.addEventListener('click', () => setManualTab(b.dataset.tab as 'files' | 'folders')));
+$('#manual-show').addEventListener('click', () => openManual(contentProfileId()));
+$('#manual-close').addEventListener('click', closeManual);
+$('#manual-cancel').addEventListener('click', closeManual);
+$('#manual-modal').addEventListener('click', (e) => e.target === e.currentTarget && closeManual());
+$('#manual-open-missing').addEventListener('click', () => guard(() => api.manualOpenMissing()));
+$('#manual-add-folder').addEventListener('click', () => guard(async () => {
+  const folders: string[] = await api.manualAddFolder();
+  if (manualState) manualState = { ...manualState, folders };
+  renderManual();
+}));
+$('#manual-ok').addEventListener('click', () => guard(async () => {
+  const res: { copied: number; left: number } = await api.manualAccept();
   $('#manual-modal').classList.add('hidden');
+  manualState = undefined;
+  if (res.copied) toast(res.left ? t('Skopiowano do profilu: {0}. Brakuje jeszcze: {1}.', res.copied, res.left) : t('Skopiowano do profilu: {0}. Wszystkie pliki są na miejscu.', res.copied));
+  await refreshInstalled();
   refreshManual();
 }));
+$('#manual-dismiss').addEventListener('click', () => guard(async () => {
+  const profileId = manualState?.profileId ?? contentProfileId();
+  closeManual();
+  await api.dismissManualFiles(profileId);
+  refreshManual();
+}));
+// downloaded files dropped anywhere on the dialog
+{
+  const box = $('#manual-modal');
+  let depth = 0;
+  const overlay = (on: boolean) => $('#manual-drop').classList.toggle('hidden', !on);
+  const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
+  box.addEventListener('dragenter', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    depth++;
+    overlay(true);
+  });
+  box.addEventListener('dragover', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = 'copy';
+  });
+  box.addEventListener('dragleave', () => {
+    if (--depth <= 0) (depth = 0), overlay(false);
+  });
+  box.addEventListener('drop', (e) => {
+    e.preventDefault();
+    depth = 0;
+    overlay(false);
+    const files = [...(e.dataTransfer?.files ?? [])];
+    if (!files.length || !manualState) return;
+    const before = manualState.files.filter((f) => f.foundAt).length;
+    guard(async () => {
+      const status: ManualStatus | undefined = await api.manualDrop(files);
+      if (!status) return;
+      manualState = status;
+      const after = status.files.filter((f) => f.foundAt).length;
+      manualHint = after > before ? '' : t('Upuszczone pliki nie pasują do żadnego z brakujących (inna suma SHA-1 lub nazwa).');
+      renderManual();
+    });
+  });
+}
 // the player comes back from the browser with the file in place: the list shrinks
 window.addEventListener('focus', () => manualFiles.length && refreshManual());
 
@@ -2675,7 +2797,7 @@ $('#content-profile').addEventListener('change', () => {
   refreshInstalled(true);
   searchContent();
 });
-$('#modpack-import').addEventListener('click', () => busy($<HTMLButtonElement>('#modpack-import'), () => api.importModpack().catch(() => undefined), 'Importuję…'));
+$('#modpack-import').addEventListener('click', () => busy($<HTMLButtonElement>('#modpack-import'), () => api.importModpack().then(offerManual, () => undefined), 'Importuję…'));
 /** The Mods pane opened, or its profile changed: installed list and search for that profile. */
 function openContentPane(profileChanged: boolean) {
   renderContentProfiles();

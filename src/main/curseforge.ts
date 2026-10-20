@@ -8,6 +8,7 @@ import {
   contentFile, FOLDERS, mergeManifest, packSnapshot, readManifest, removeContent, safeJoin, writeManifest,
   type ContentType, type ManifestEntry, type ModpackInfo, type ProjectHit, type ProjectType, type StageProgress, type UpdateInfo, type VersionInfo,
 } from './modrinth';
+import type { ManualFile } from './manualFiles';
 import { t } from '../shared/i18n';
 
 /**
@@ -90,9 +91,22 @@ const SHA1 = 1;
 const sha1Of = (f: CfFile) => f.hashes.find((h) => h.algo === SHA1)?.value.toLowerCase();
 /** The project's page on curseforge.com (from the API, so no guessing of the section's address). */
 const pageOf = (mod: Pick<CfMod, 'links'>) => mod.links?.websiteUrl?.startsWith('https://') ? mod.links.websiteUrl : undefined;
-/** The page of one file: where the player downloads a file the author keeps on CurseForge. */
-export const filePage = (mod: Pick<CfMod, 'links' | 'id'>, fileId: number) =>
-  `${pageOf(mod) ?? `https://www.curseforge.com/projects/${mod.id}`}/files/${fileId}`;
+/** The site's section of each class, for a project the API gave no page address for. */
+const SECTION: Record<number, string> = { 6: 'mc-mods', 12: 'texture-packs', 6552: 'shaders', 4471: 'modpacks', [DATAPACKS]: 'data-packs' };
+/**
+ * Where the player downloads a file the author keeps on CurseForge: the file's download page
+ * (…/<section>/<slug>/download/<fileId>, like Prism Launcher), which starts the download right away.
+ */
+export const filePage = (mod: Pick<CfMod, 'links' | 'id'> & { slug?: string; classId?: number }, fileId: number) => {
+  const section = mod.classId !== undefined ? SECTION[mod.classId] : undefined;
+  const page = pageOf(mod) ?? (mod.slug && section ? `https://www.curseforge.com/minecraft/${section}/${mod.slug}` : `https://www.curseforge.com/projects/${mod.id}`);
+  return `${page.replace(/\/$/, '')}/download/${fileId}`;
+};
+/** What a file downloaded by hand must be: its SHA-1 and size, so the launcher can recognise it among the player's downloads. */
+const expected = (file: CfFile): Pick<ManualFile, 'sha1' | 'size'> => {
+  const sha1 = sha1Of(file);
+  return { ...(sha1 && /^[0-9a-f]{40}$/.test(sha1) ? { sha1 } : {}), ...(file.fileLength > 0 ? { size: file.fileLength } : {}) };
+};
 
 function toInfo(f: CfFile, mod?: Pick<CfMod, 'links' | 'id'>): VersionInfo {
   return {
@@ -139,7 +153,7 @@ export function toHit(m: CfMod): ProjectHit {
     title: m.name,
     description: m.summary,
     author: m.authors?.[0]?.name ?? '',
-    iconUrl: m.logo?.thumbnailUrl || m.logo?.url || undefined,
+    iconUrl: logoOf(m),
     downloads: m.downloadCount,
     categories: (m.categories ?? []).map((c) => c.name),
     pageUrl: pageOf(m),
@@ -180,8 +194,7 @@ export async function curseForgePackFile(projectId: string, gameVersion: string,
   return { url: file.downloadUrl ?? undefined, filename: path.basename(file.fileName), sha1: sha1Of(file), size: file.fileLength, versionNumber: file.displayName || file.fileName };
 }
 
-/** A file the player has to download from CurseForge's page and put into the folder. */
-export interface ManualFile { title: string; fileName: string; url: string; folder: string }
+export type { ManualFile } from './manualFiles';
 
 const taskOf = (file: CfFile, dest: string): DownloadTask =>
   ({ url: file.downloadUrl!, dest, sha1: sha1Of(file), size: file.fileLength || undefined });
@@ -217,7 +230,7 @@ export async function installCurseForgeProject(
     const dest = contentFile(gameDir, type, filename);
 
     if (!file.downloadUrl) {
-      manual.push({ title: mod.name, fileName: filename, url: filePage(mod, file.id), folder: FOLDERS[type] });
+      manual.push({ title: mod.name, fileName: filename, url: filePage(mod, file.id), folder: FOLDERS[type], ...expected(file) });
     } else if (id !== projectId && (present.has(filename) || present.has(`${filename}.disabled`))) {
       // a dependency that is already there under the same file name (e.g. from Modrinth)
     } else {
@@ -280,12 +293,14 @@ export interface CurseManifest {
   loaderVersion: string;
   files: { projectID: number; fileID: number; required: boolean }[];
   overrides: string;
+  /** The pack's own project, when the exporter wrote it. */
+  projectID?: number;
 }
 
 /** Reads a modpack's manifest.json; throws for anything that is not a CurseForge Minecraft modpack. */
 export function parseCurseManifest(text: string): CurseManifest {
   let json: {
-    manifestType?: string; name?: string; version?: string; overrides?: string;
+    manifestType?: string; name?: string; version?: string; overrides?: string; projectID?: unknown;
     minecraft?: { version?: string; modLoaders?: { id?: string; primary?: boolean }[] };
     files?: { projectID?: unknown; fileID?: unknown; required?: unknown }[];
   };
@@ -303,7 +318,34 @@ export function parseCurseManifest(text: string): CurseManifest {
     .filter((f) => Number.isSafeInteger(f.projectID) && Number.isSafeInteger(f.fileID))
     .map((f) => ({ projectID: f.projectID as number, fileID: f.fileID as number, required: f.required !== false }));
   const overrides = typeof json.overrides === 'string' && json.overrides ? json.overrides.replace(/^\/+|\/+$/g, '') : 'overrides';
-  return { name: json.name || 'Modpack', version: json.version ?? '', gameVersion: info.versionId, loader: info.loader, loaderVersion: info.loaderVersion, files, overrides };
+  const projectID = Number.isSafeInteger(json.projectID) && (json.projectID as number) > 0 ? json.projectID as number : undefined;
+  return {
+    name: json.name || 'Modpack', version: json.version ?? '', gameVersion: info.versionId, loader: info.loader, loaderVersion: info.loaderVersion, files, overrides,
+    ...(projectID ? { projectID } : {}),
+  };
+}
+
+/** A project's picture on CurseForge's image host (the thumbnail, else the full logo), for the page and profile icons. */
+export function logoOf(mod: Pick<CfMod, 'logo'>): string | undefined {
+  const url = mod.logo?.thumbnailUrl || mod.logo?.url;
+  return url && url.startsWith('https://media.forgecdn.net/') ? url : undefined;
+}
+
+/** The pack among search hits that is this zip: the same name, ignoring case, spaces and ™/® signs. */
+export function packByName(hits: ProjectHit[], name: string): ProjectHit | undefined {
+  const norm = (s: string) => s.toLowerCase().replace(/[™®©]/g, '').replace(/\s+/g, ' ').trim();
+  const want = norm(name);
+  return want ? hits.find((h) => norm(h.title) === want) : undefined;
+}
+
+/**
+ * The logo of the modpack a CurseForge zip came from: by the manifest's projectID when it has
+ * one (some exporters write it), else the search hit with exactly the pack's name.
+ */
+export async function curseForgePackIcon(manifest: Pick<CurseManifest, 'name' | 'projectID'>): Promise<string | undefined> {
+  if (manifest.projectID) return logoOf(await getMod(manifest.projectID));
+  const { hits } = await searchCurseForge({ query: manifest.name, type: 'modpack' });
+  return packByName(hits, manifest.name)?.iconUrl;
 }
 
 /** Where a pack's file goes, by its project's class. */
@@ -363,7 +405,7 @@ export async function installCurseForgePack(zipFile: string, gameDir: string, on
     const dest = safeJoin(gameDir, path.join(folder, path.basename(file.fileName)));
     placed.push(path.relative(gameDir, dest));
     if (file.downloadUrl) tasks.push(taskOf(file, dest));
-    else if (!(await fs.access(dest).then(() => true, () => false))) manual.push({ title: mod.name, fileName: path.basename(file.fileName), url: filePage(mod, file.id), folder });
+    else if (!(await fs.access(dest).then(() => true, () => false))) manual.push({ title: mod.name, fileName: path.basename(file.fileName), url: filePage(mod, file.id), folder, ...expected(file) });
   }
   await downloadAll(tasks, (d, n, s) => onStage?.(t('Pobieranie plików'), d, n, s), { verifyHash: true });
 
@@ -401,7 +443,7 @@ export async function updateCurseForgePack(zipFile: string, gameDir: string, onS
 }
 
 /** Downloads a modpack's zip (the given file, or the newest) to a temp file. */
-export async function downloadCurseForgePack(projectId: string, onProgress?: ProgressFn, fileId?: string): Promise<{ file: string; version: VersionInfo }> {
+export async function downloadCurseForgePack(projectId: string, onProgress?: ProgressFn, fileId?: string): Promise<{ file: string; version: VersionInfo; iconUrl?: string }> {
   onProgress?.(0, 1, { bytes: 0, totalBytes: 0, speed: 0 });
   const mod = await getMod(projectId);
   const file = fileId ? await call<CfFile>(`/mods/${Number(projectId)}/files/${Number(fileId)}`) : (await listFiles(projectId))[0];
@@ -409,7 +451,7 @@ export async function downloadCurseForgePack(projectId: string, onProgress?: Pro
   if (!file.downloadUrl) throw new Error(t('Autor tego modpacka pozwala go pobrać tylko ze strony CurseForge: {0}', filePage(mod, file.id)));
   const dest = path.join(os.tmpdir(), `slashclient-cf-${file.id}.zip`);
   await downloadAll([taskOf(file, dest)], onProgress, { verifyHash: true });
-  return { file: dest, version: toInfo(file, mod) };
+  return { file: dest, version: toInfo(file, mod), iconUrl: logoOf(mod) };
 }
 
 /** The newest version of a CurseForge modpack, preferring full releases. */
@@ -442,7 +484,7 @@ export async function curseForgeLinks(gameDir: string, sha1s: Set<string>): Prom
     if (f.downloadUrl?.startsWith('https://')) links.set(sha1, f.downloadUrl);
     else if (!f.downloadUrl) {
       const mod = mods.find((m) => m.id === f.modId) ?? { id: f.modId, name: entry.title };
-      manual.set(sha1, { title: mod.name, fileName: path.basename(f.fileName), url: filePage(mod, f.id), folder: FOLDERS[entry.type] });
+      manual.set(sha1, { title: mod.name, fileName: path.basename(f.fileName), url: filePage(mod, f.id), folder: FOLDERS[entry.type], ...expected(f) });
     }
   }
   return { links, manual };

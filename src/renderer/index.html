@@ -574,15 +574,35 @@
     </div>
   </div>
   <div class="modal hidden" id="manual-modal">
-    <div class="modal-box glass-panel versions-box">
+    <div class="modal-box glass-panel versions-box manual-box" id="manual-box">
       <button class="icon-btn modal-close" id="manual-close" title="Zamknij"><i class="fa-solid fa-xmark"></i></button>
       <div class="modal-body">
-        <h2>Pliki do pobrania ręcznie</h2>
-        <p class="muted">Autorzy tych plików pozwalają je pobrać tylko ze strony CurseForge. Otwórz stronę pliku, pobierz go i wrzuć do wskazanego folderu profilu. Gdy plik będzie na miejscu, zniknie z tej listy.</p>
-        <div class="version-list" id="manual-list"></div>
-        <div class="row manual-actions"><button type="button" id="manual-dismiss">Nie pokazuj więcej</button></div>
+        <h2>Znaleziono zablokowane modyfikacje</h2>
+        <div class="segmented manual-tabs" id="manual-tabs">
+          <button type="button" class="active" data-tab="files"><i class="fa-solid fa-ban"></i>Zablokowane mody</button>
+          <button type="button" data-tab="folders"><i class="fa-regular fa-eye"></i>Obserwowane foldery</button>
+        </div>
+        <div id="manual-pane-files">
+          <p class="muted">Autorzy tych plików nie pozwalają pobierać ich launcherom. Pobierz je ręcznie ze strony CurseForge (linki niżej albo „Otwórz brakujące”).</p>
+          <p class="muted">Obserwowane foldery są sprawdzane automatycznie: znalezione pliki zostaną skopiowane do profilu po kliknięciu OK. Pobrane pliki możesz też przeciągnąć na to okno.</p>
+          <div class="version-list" id="manual-list"></div>
+          <div class="manual-summary" id="manual-summary"></div>
+        </div>
+        <div id="manual-pane-folders" class="hidden">
+          <p class="muted">Tu launcher szuka pobranych plików (tylko w samym folderze, bez podfolderów). Plik musi mieć tę samą sumę SHA-1 co na CurseForge.</p>
+          <div class="version-list" id="manual-folders"></div>
+          <div class="row manual-actions"><button type="button" id="manual-add-folder"><i class="fa-solid fa-folder-plus"></i> Dodaj folder</button></div>
+        </div>
+        <div class="row manual-actions">
+          <button type="button" id="manual-dismiss">Nie pokazuj więcej</button>
+          <span class="spacer"></span>
+          <button type="button" id="manual-open-missing"><i class="fa-solid fa-arrow-up-right-from-square"></i> Otwórz brakujące</button>
+          <button type="button" id="manual-cancel">Anuluj</button>
+          <button type="button" class="primary" id="manual-ok">OK</button>
+        </div>
       </div>
     </div>
+    <div class="manual-drop hidden" id="manual-drop"><i class="fa-solid fa-file-arrow-down"></i> Upuść pobrane pliki</div>
   </div>
   <div class="modal hidden" id="join-modal">
     <div class="modal-box glass-panel join-box">

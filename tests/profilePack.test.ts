@@ -200,6 +200,16 @@ describe('profile pack', () => {
     ] });
     assert.deepEqual(files.map((f) => f.title), ['Ok']);
   });
+
+  it('keeps a hand-download entry\'s SHA-1 and size, and turns an old file page link into the download link', () => {
+    const sha1 = 'A'.repeat(40);
+    const [withHash, bad] = manualFilesOf({ manualFiles: [
+      { title: 'Ok', fileName: 'ok.jar', url: 'https://www.curseforge.com/minecraft/mc-mods/ok/files/12', folder: 'mods', sha1, size: 123 },
+      { title: 'Bad', fileName: 'bad.jar', url: 'https://www.curseforge.com/minecraft/mc-mods/bad/download/3', folder: 'mods', sha1: 'nope', size: -1 },
+    ] });
+    assert.deepEqual(withHash, { title: 'Ok', fileName: 'ok.jar', url: 'https://www.curseforge.com/minecraft/mc-mods/ok/download/12', folder: 'mods', sha1: 'a'.repeat(40), size: 123 });
+    assert.deepEqual(bad, { title: 'Bad', fileName: 'bad.jar', url: 'https://www.curseforge.com/minecraft/mc-mods/bad/download/3', folder: 'mods' });
+  });
 });
 
 describe('profile pack round trip', () => {

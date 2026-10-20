@@ -14,6 +14,7 @@ import { COMMUNITIES_EN } from './i18nCommunities';
 import { FEATURES_EN } from './i18nFeatures';
 import { STREAMS_EN } from './i18nStreams';
 import { SERVER_STATUS_EN } from './i18nServerStatus';
+import { MANUAL_EN } from './i18nManual';
 
 export type Lang = 'pl' | 'en';
 
@@ -42,6 +43,8 @@ const EN: Record<string, string> = {
   ...STREAMS_EN,
   // statuses from a server's tab list (own file)
   ...SERVER_STATUS_EN,
+  // the "blocked files" dialog for CurseForge files downloaded by hand (own file)
+  ...MANUAL_EN,
   // navigation and common
   'Graj': 'Play',
   'GRAJ': 'PLAY',

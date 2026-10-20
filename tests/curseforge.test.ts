@@ -6,7 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, it } from 'node:test';
 import {
-  CurseForgeUnavailable, installCurseForgePack, installCurseForgeProject, parseCurseManifest, searchCurseForge, setCurseForgeServer, updateCurseForgePack,
+  curseForgePackIcon, CurseForgeUnavailable, filePage, installCurseForgePack, installCurseForgeProject, listCurseForgeVersions, logoOf, packByName, parseCurseManifest,
+  searchCurseForge, setCurseForgeServer, updateCurseForgePack,
   type CfFile, type CfMod,
 } from '../src/main/curseforge';
 import { listInstalled } from '../src/main/modrinth';
@@ -132,7 +133,7 @@ describe('curseforge modpack install', () => {
     assert.deepEqual(await fs.readdir(path.join(game, 'mods')), ['jei.jar']);
     assert.deepEqual(await fs.readdir(path.join(game, 'resourcepacks')), ['faithful.zip']);
     assert.equal(await fs.readFile(path.join(game, 'config', 'pack.txt'), 'utf8'), 'v1');
-    assert.deepEqual(info.manual, [{ title: 'Kept Mod', fileName: 'kept.jar', url: 'https://www.curseforge.com/minecraft/mc-mods/kept/files/31', folder: 'mods' }]);
+    assert.deepEqual(info.manual, [{ title: 'Kept Mod', fileName: 'kept.jar', url: 'https://www.curseforge.com/minecraft/mc-mods/kept/download/31', folder: 'mods', sha1: sha1(Buffer.from('')), size: 1 }]);
     // the file without a link is never fetched some other way
     assert.ok(!asked.some((a) => a.includes('kept.jar')));
   });
@@ -189,7 +190,7 @@ describe('curseforge content', () => {
     const game = await tmp();
     const res = await installCurseForgeProject(game, '3', 'mod', '1.20.1', 'fabric');
     assert.deepEqual(res.installed, []);
-    assert.deepEqual(res.manual, [{ title: 'Kept Mod', fileName: 'kept.jar', url: 'https://www.curseforge.com/minecraft/mc-mods/kept/files/31', folder: 'mods' }]);
+    assert.deepEqual(res.manual, [{ title: 'Kept Mod', fileName: 'kept.jar', url: 'https://www.curseforge.com/minecraft/mc-mods/kept/download/31', folder: 'mods', sha1: sha1(Buffer.from('')), size: 1 }]);
     assert.deepEqual(await fs.readdir(path.join(game, 'mods')).catch(() => []), []);
   });
 
@@ -200,5 +201,54 @@ describe('curseforge content', () => {
     const res = await searchCurseForge({ query: 'jei', type: 'mod', gameVersion: '1.20.1', loader: 'fabric' });
     assert.equal(res.hits[0].title, 'JEI');
     assert.equal(res.hits[2].manualOnly, true);
+  });
+});
+
+describe('curseforge download links and pack icons', () => {
+  it('links a file kept on CurseForge to its download page, in the project\'s own section', () => {
+    const page = (section: string, slug: string) => ({ links: { websiteUrl: `https://www.curseforge.com/minecraft/${section}/${slug}` } });
+    assert.equal(filePage({ id: 3, ...page('mc-mods', 'kept') }, 31), 'https://www.curseforge.com/minecraft/mc-mods/kept/download/31');
+    assert.equal(filePage({ id: 4, ...page('texture-packs', 'faithful') }, 41), 'https://www.curseforge.com/minecraft/texture-packs/faithful/download/41');
+    assert.equal(filePage({ id: 7, ...page('shaders', 'bsl') }, 71), 'https://www.curseforge.com/minecraft/shaders/bsl/download/71');
+    assert.equal(filePage({ id: 8, ...page('modpacks', 'atm10') }, 81), 'https://www.curseforge.com/minecraft/modpacks/atm10/download/81');
+    // no page address from the API: built from the slug and class
+    assert.equal(filePage({ id: 9, slug: 'sodium', classId: 6 }, 91), 'https://www.curseforge.com/minecraft/mc-mods/sodium/download/91');
+    assert.equal(filePage({ id: 9, slug: 'x', classId: 6552, links: { websiteUrl: 'https://www.curseforge.com/minecraft/shaders/x/' } }, 1), 'https://www.curseforge.com/minecraft/shaders/x/download/1');
+  });
+
+  it('the version picker links a kept file to its download page too', async () => {
+    const versions = await listCurseForgeVersions('3', 'mod', '1.20.1', 'fabric');
+    assert.equal(versions.find((v) => v.id === '31')?.manualUrl, 'https://www.curseforge.com/minecraft/mc-mods/kept/download/31');
+  });
+
+  it('takes a project logo only from CurseForge\'s image host, thumbnail first', () => {
+    assert.equal(logoOf({ logo: { thumbnailUrl: 'https://media.forgecdn.net/avatars/thumbnails/1/2/256/256/a.png', url: 'https://media.forgecdn.net/avatars/1/2/a.png' } }), 'https://media.forgecdn.net/avatars/thumbnails/1/2/256/256/a.png');
+    assert.equal(logoOf({ logo: { thumbnailUrl: '', url: 'https://media.forgecdn.net/avatars/1/2/a.webp' } }), 'https://media.forgecdn.net/avatars/1/2/a.webp');
+    assert.equal(logoOf({ logo: { url: 'https://evil.example/a.png' } }), undefined);
+    assert.equal(logoOf({ logo: null }), undefined);
+  });
+
+  it('finds a zip\'s pack among search hits by its exact name', () => {
+    const hit = (title: string) => ({ id: title, slug: title, title, description: '', author: '', downloads: 0, categories: [] });
+    const hits = [hit('All the Mods 10 - ATM10 Sky'), hit('All the Mods 10 - ATM10'), hit('Prominence™ II: Hasturian Era')];
+    assert.equal(packByName(hits, 'all the mods 10 - ATM10')?.id, 'All the Mods 10 - ATM10');
+    assert.equal(packByName(hits, 'Prominence II: Hasturian Era')?.id, 'Prominence™ II: Hasturian Era');
+    assert.equal(packByName(hits, 'All the Mods'), undefined);
+    assert.equal(packByName(hits, ''), undefined);
+  });
+
+  it('a modpack zip\'s icon: by the manifest\'s projectID, else by its name', async () => {
+    const logo = 'https://media.forgecdn.net/avatars/thumbnails/6/6/256/256/big.png';
+    mods.push({ id: 6, name: 'Big Pack', slug: 'big', summary: '', downloadCount: 0, classId: 4471, logo: { thumbnailUrl: logo } });
+    try {
+      assert.equal(await curseForgePackIcon({ name: 'whatever', projectID: 6 }), logo);
+      assert.equal(await curseForgePackIcon({ name: 'Big Pack' }), logo);
+      assert.equal(await curseForgePackIcon({ name: 'Unknown Pack' }), undefined);
+    } finally {
+      mods.pop();
+    }
+    const manifest = parseCurseManifest(JSON.stringify({ manifestType: 'minecraftModpack', name: 'P', projectID: 6, minecraft: { version: '1.20.1', modLoaders: [] }, files: [] }));
+    assert.equal(manifest.projectID, 6);
+    assert.equal(parseCurseManifest(JSON.stringify({ manifestType: 'minecraftModpack', name: 'P', projectID: 'x', minecraft: { version: '1.20.1' } })).projectID, undefined);
   });
 });

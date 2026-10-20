@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import type { ManualFile } from './manualFiles';
 import { paths } from './paths';
 
 export interface OfflineAccount {
@@ -51,7 +52,7 @@ export interface Profile {
   /** The modpack (Modrinth, or CurseForge with source set) this profile was created from, for updates and version changes. */
   modpack?: { projectId: string; versionId: string; versionNumber: string; title: string; source?: 'curseforge' };
   /** CurseForge files the authors keep on their site: the player downloads them by hand into `folder`. */
-  manualFiles?: { title: string; fileName: string; url: string; folder: string }[];
+  manualFiles?: ManualFile[];
   /** The Minecraft account this profile always plays as; none = the one picked on the Play tab. */
   accountId?: string;
   /** Game directory; empty means instances/<id>. */
@@ -94,6 +95,8 @@ export interface Settings {
   dedicatedGpu?: boolean;
   /** A toast when a friend comes online or starts playing (off: only messages, invites and requests). */
   notifyFriendsPlaying?: boolean;
+  /** Folders checked for CurseForge files downloaded by hand (top level only); missing = the system's Downloads folder. */
+  manualWatchFolders?: string[];
 }
 
 export interface StoreData {
