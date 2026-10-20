@@ -1,0 +1,675 @@
+// SkyUp's cases are played on 26.3: the case counter is there only
+//#if MC >= 26.3
+package dev.slash3rss.slashclient.hud;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import dev.slash3rss.slashclient.hud.ui.Ui;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.toasts.Toast;
+import net.minecraft.client.gui.components.toasts.ToastManager;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+/**
+ * SkyUp's cases ("SkyCase") counted: what each kind of case gave, this session (since joining the
+ * server) and for good (saved), next to every reward it can give, also those never won.
+ *
+ * A win comes from SkyUp's chat line "SkyCase » Wygrano: 5x Zaklęta butelka!" (sent as "&6&lSkyCase
+ * &8&l» &e&aWygrano: &e<reward>&a!"). Which case it was is not in it, and a key gem ("Klejnot
+ * klucznika") opens many keys with no window at all, so: the one case whose rewards hold that name;
+ * when more do, the case looked at last (its preview, or a win only it gives) if it holds it, within
+ * a minute or so; else "Nieprzypisane".
+ *
+ * What each case can give starts from the owner's GUI dumps (SkyCasePools) and is kept up to date by
+ * the preview window ("Elementium SkyCase"): opened, it replaces the case's rewards with what it
+ * shows. Rewards it no longer shows leave the pool, their wins stay. A preview with more pages
+ * (Platinum) only replaces once each page was seen in one go; before that it only adds.
+ */
+public final class SkyCase {
+	private SkyCase() {}
+
+	/** One kind of case: how many were opened, each reward's wins, the last one, and what it can give. */
+	static final class Stats {
+		long opened;
+		/** Each reward by its name ("5x Zaklęta butelka"): how many times it came out. */
+		Map<String, Long> drops = new LinkedHashMap<>();
+		String last = "";
+		long lastAt;
+		/** What the case can give, in its window's order: name → item id (for the icon). */
+		Map<String, String> pool = new LinkedHashMap<>();
+		/** When a preview window last changed the pool; 0 while it is the built-in one (updated with the mod). */
+		long poolSeen;
+
+		void won(String reward, long at) {
+			opened++;
+			drops.merge(reward, 1L, Long::sum);
+			last = reward;
+			lastAt = at;
+		}
+
+		Stats fixed() {
+			if (drops == null) drops = new LinkedHashMap<>();
+			if (pool == null) pool = new LinkedHashMap<>();
+			if (last == null) last = "";
+			return this;
+		}
+	}
+
+	/** Every kind of case, by name ("Elementium"), and the one won from last (shown on the HUD). */
+	static final class Data {
+		Map<String, Stats> cases = new LinkedHashMap<>();
+		String lastType = "";
+
+		Stats of(String type) {
+			return cases.computeIfAbsent(type, k -> new Stats()).fixed();
+		}
+
+		Stats get(String type) {
+			Stats s = cases.get(type);
+			return s == null ? new Stats() : s.fixed();
+		}
+
+		long opened() {
+			long n = 0;
+			for (Stats s : cases.values()) n += s.opened;
+			return n;
+		}
+	}
+
+	/** A win seen this session: when, from which case, what. */
+	record Drop(String type, String reward, long at) {}
+
+	/** Wins no case could be told for (shown as "Nieprzypisane"). */
+	public static final String UNASSIGNED = "?";
+
+	static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("slashclient-skyup").resolve("skrzynie.json");
+	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+	private static Data lifetime;
+	static Data session = new Data();
+	/** This session's wins, the newest last (the HUD's "recent" list). */
+	static final List<Drop> recent = new ArrayList<>();
+
+	static Data lifetime() {
+		if (lifetime == null) {
+			try {
+				if (Files.exists(FILE)) lifetime = GSON.fromJson(Files.readString(FILE), Data.class);
+			} catch (Exception e) {
+				SlashHud.LOG.warn("SlashClient: SkyUp cases: {}", e.toString());
+			}
+			if (lifetime == null) lifetime = new Data();
+			if (lifetime.cases == null) lifetime.cases = new LinkedHashMap<>();
+			if (lifetime.lastType == null) lifetime.lastType = "";
+			for (Stats s : lifetime.cases.values()) s.fixed();
+			seed(lifetime);
+		}
+		return lifetime;
+	}
+
+	/** The built-in pools for the cases no preview window has shown yet (all of them, the first time). */
+	private static void seed(Data data) {
+		for (var e : SkyCasePools.all().entrySet()) {
+			// named as caseType names the windows (without the resource pack's characters before)
+			Stats s = data.of(plain(e.getKey()));
+			if (s.poolSeen > 0) continue;
+			s.pool = new LinkedHashMap<>();
+			for (var r : e.getValue().entrySet()) s.pool.putIfAbsent(canonical(r.getKey()), r.getValue());
+		}
+	}
+
+	static void save() {
+		try {
+			Files.createDirectories(FILE.getParent());
+			Files.writeString(FILE, GSON.toJson(lifetime()));
+		} catch (Exception e) {
+			SlashHud.LOG.warn("SlashClient: SkyUp cases: {}", e.toString());
+		}
+	}
+
+	/** A new server: a new session. */
+	static void joined() {
+		session = new Data();
+		recent.clear();
+		contextType = null;
+		browse = null;
+	}
+
+	// ---------- names ----------
+
+	/** Colour codes with § or & (also "&#rrggbb" and "§x§r§r…"), as the server may send them in the text itself. */
+	private static final Pattern CODES = Pattern.compile("(?i)[§&]x(?:[§&][0-9a-f]){6}|[§&]#[0-9a-f]{6}|[§&][0-9a-fk-or]");
+	private static final Pattern WIN = Pattern.compile("(?i)SkyCase\\s*(?:»|>>)\\s*Wygrano\\s*:\\s*(.+?)\\s*!*\\s*$");
+	/** ":: Karambit ::", "♦ Klejnot klucznika ♦": the name inside. */
+	private static final Pattern DECORATED = Pattern.compile("^(?::{2,}|♦+)\\s*(.+?)\\s*(?::{2,}|♦+)$");
+	private static final Pattern COUNT_BEFORE = Pattern.compile("(?i)^(\\d{1,5})\\s*[x×]\\s+(.+)$");
+	private static final Pattern COUNT_AFTER = Pattern.compile("(?i)^(.+?)\\s+[x×]\\s*(\\d{1,5})$");
+	/** The windows' own items: "» SkyCase «", "» Wyjdź «", "» Następna strona «". */
+	private static final Pattern WINDOW_ITEM = Pattern.compile("^».*«$");
+
+	/** The text without colour codes, the resource pack's private characters and doubled spaces. */
+	public static String plain(String s) {
+		if (s == null) return "";
+		return CODES.matcher(s).replaceAll("").replaceAll("[\\uE000-\\uF8FF\\u200B-\\u200D\\uFEFF]", "").replace(' ', ' ').replaceAll("\\s+", " ").strip();
+	}
+
+	/** A name without its decoration: ":: Karambit ::" is "Karambit", "♦ Klejnot klucznika ♦" "Klejnot klucznika". */
+	static String clean(String name) {
+		String s = plain(name);
+		Matcher m = DECORATED.matcher(s);
+		return m.matches() ? m.group(1).strip() : s;
+	}
+
+	/**
+	 * A reward as the pools keep it: clean, its count before it as the windows write it ("5x Zaklęta
+	 * butelka"; one alone has none: "Diament"), whichever way the line wrote it ("Diament x5").
+	 */
+	static String canonical(String name) {
+		String s = clean(name);
+		Matcher m;
+		int count;
+		String item;
+		if ((m = COUNT_BEFORE.matcher(s)).matches()) {
+			count = Integer.parseInt(m.group(1));
+			item = m.group(2).strip();
+		} else if ((m = COUNT_AFTER.matcher(s)).matches()) {
+			count = Integer.parseInt(m.group(2));
+			item = m.group(1).strip();
+		} else return s;
+		item = clean(item);
+		return count == 1 ? item : count + "x " + item;
+	}
+
+	/** Names compared without case, the ♦ and doubled spaces. */
+	static String key(String name) {
+		return canonical(name).replace("♦", "").replaceAll("\\s+", " ").strip().toLowerCase(Locale.ROOT);
+	}
+
+	/** "5x Zaklęta butelka" is 5 of "Zaklęta butelka"; "Diament" 1 of itself. */
+	static String base(String reward) {
+		Matcher m = COUNT_BEFORE.matcher(reward);
+		return m.matches() ? m.group(2).strip() : reward;
+	}
+
+	static int amount(String reward) {
+		Matcher m = COUNT_BEFORE.matcher(reward);
+		return m.matches() ? Math.max(1, Integer.parseInt(m.group(1))) : 1;
+	}
+
+	/** SkyUp's win line: the reward ("5x Zaklęta butelka"), or null when the line is something else. */
+	public static String parse(String line) {
+		Matcher m = WIN.matcher(plain(line));
+		if (!m.find()) return null;
+		String reward = canonical(m.group(1));
+		return reward.isEmpty() ? null : reward;
+	}
+
+	/** "Elementium SkyCase" is "Elementium"; null for any other title (and "SkyCase" alone). */
+	public static String caseType(String title) {
+		String t = plain(title);
+		if (!t.toLowerCase(Locale.ROOT).endsWith(" skycase")) return null;
+		String type = t.substring(0, t.length() - " skycase".length()).replaceAll("[\\s»:|-]+$", "").strip();
+		return type.isEmpty() ? null : type;
+	}
+
+	// ---------- a win ----------
+
+	/** Every chat line: SkyUp's win counted. */
+	public static void onChat(String line) {
+		if (line == null || !line.contains("Wygrano") || SlashHud.config == null) return;
+		Minecraft mc = Minecraft.getInstance();
+		if (!SkyTasks.onSkyUp(mc)) return;
+		String reward = parse(line);
+		if (reward != null) won(reward, System.currentTimeMillis());
+	}
+
+	/** A win counted for the case it came from. */
+	static String won(String reward, long now) {
+		Data life = lifetime();
+		String type = attribute(reward, now);
+		Stats stats = life.of(type);
+		// the pool's own spelling, when the line writes it otherwise
+		String k = key(reward);
+		for (String known : stats.pool.keySet()) if (key(known).equals(k)) reward = known;
+		boolean first = true;
+		for (var e : stats.drops.entrySet()) if (key(e.getKey()).equals(k) && e.getValue() > 0) {
+			reward = e.getKey();
+			first = false;
+		}
+		stats.won(reward, now);
+		session.of(type).won(reward, now);
+		life.lastType = type;
+		session.lastType = type;
+		recent.add(new Drop(type, reward, now));
+		if (recent.size() > 50) recent.remove(0);
+		save();
+		if (first && SlashHud.config.skyCaseNewDrop) {
+			Minecraft mc = Minecraft.getInstance();
+			Compat.toasts(mc).addToast(new NewDropToast(type, reward, item(itemOf(life, reward))));
+		}
+		return type;
+	}
+
+	/** The case looked at last (a preview, or a win only that case gives), and when. */
+	private static String contextType;
+	private static long contextAt;
+
+	/** The case a reward came from: the one holding it, else the one looked at last if it holds it, else none. */
+	static String attribute(String reward, long now) {
+		String k = key(reward);
+		List<String> holding = new ArrayList<>();
+		for (var e : lifetime().cases.entrySet()) {
+			if (UNASSIGNED.equals(e.getKey())) continue;
+			for (String known : e.getValue().pool.keySet()) {
+				if (key(known).equals(k)) {
+					holding.add(e.getKey());
+					break;
+				}
+			}
+		}
+		if (holding.size() == 1) {
+			// a run of keys of one case: the wins more cases give are this one's too
+			contextType = holding.get(0);
+			contextAt = now;
+			return holding.get(0);
+		}
+		boolean recent = contextType != null && now - contextAt <= SlashHud.config.skyCaseWindow * 1000L;
+		if (holding.size() > 1 && recent && holding.contains(contextType)) return contextType;
+		return UNASSIGNED;
+	}
+
+	// ---------- the preview window ----------
+
+	/** Pages of one case's preview seen one after another: page by page, until the window is left a while. */
+	private static final class Browse {
+		final String type;
+		final List<Map<String, String>> pages = new ArrayList<>();
+		final List<Boolean> more = new ArrayList<>();
+		int last = -1;
+		long at;
+
+		Browse(String type) {
+			this.type = type;
+		}
+	}
+
+	private static Browse browse;
+	private static int tick;
+	/** How long the pages of one look at the window may lie apart (the server opens each page as a new window). */
+	private static final long BROWSE_MS = 10_000;
+
+	static void tick(Minecraft mc) {
+		if (!SkyTasks.onSkyUp(mc) || !(Compat.screen(mc) instanceof AbstractContainerScreen<?> screen)) return;
+		String type = caseType(screen.getTitle().getString());
+		if (type == null) return;
+		contextType = type;
+		contextAt = System.currentTimeMillis();
+		// what it holds: read a few times a second (the items come after the window)
+		if (++tick % 5 == 0) readPreview(type, screen, contextAt);
+	}
+
+	/** One page of a case's preview: its rewards, and whether pages come before and after it. */
+	record Page(Map<String, String> rewards, boolean previous, boolean next) {}
+
+	/** The page an open window shows, or null when it is no preview (the draw itself) or its items are not there yet. */
+	static Page page(List<ItemStack> items) {
+		Map<String, String> rewards = new LinkedHashMap<>();
+		boolean preview = false, previous = false, next = false;
+		for (ItemStack stack : items) {
+			if (stack.isEmpty()) continue;
+			String name = plain(stack.getHoverName().getString());
+			if (WINDOW_ITEM.matcher(name).matches()) {
+				String lower = name.toLowerCase(Locale.ROOT);
+				if (lower.contains("skycase")) preview = true;
+				if (lower.contains("poprzednia")) previous = true;
+				if (lower.contains("następna")) next = true;
+				continue;
+			}
+			String id = itemId(stack);
+			// glass and the like around the rewards: the game's own name
+			if (name.isEmpty() || id.endsWith("glass_pane") && name.equals(plain(stack.getItem().getName(stack).getString()))) continue;
+			rewards.putIfAbsent(canonical(name), id);
+		}
+		// the preview has its "» SkyCase «" on top: the draw (the same title) is never read
+		return preview && !rewards.isEmpty() ? new Page(rewards, previous, next) : null;
+	}
+
+	static void readPreview(String type, AbstractContainerScreen<?> screen, long now) {
+		List<ItemStack> items = new ArrayList<>();
+		for (Slot slot : screen.getMenu().slots) if (!(slot.container instanceof Inventory)) items.add(slot.getItem());
+		Page page = page(items);
+		if (page != null) seen(type, page, now);
+	}
+
+	/** A preview page seen: kept with the others of this look at the window, and the case's pool updated. */
+	static void seen(String type, Page page, long now) {
+		if (browse == null || !browse.type.equals(type) || now - browse.at > BROWSE_MS) browse = new Browse(type);
+		Browse b = browse;
+		b.at = now;
+		int index;
+		if (!page.previous()) index = 0;
+		else {
+			// a page seen before (back from the next one), or the one after the page seen last
+			index = -1;
+			for (int i = 0; i < b.pages.size(); i++) if (page.rewards().keySet().equals(b.pages.get(i) == null ? null : b.pages.get(i).keySet())) index = i;
+			if (index < 0) index = Math.max(1, b.last + 1);
+		}
+		while (b.pages.size() <= index) {
+			b.pages.add(null);
+			b.more.add(true);
+		}
+		b.pages.set(index, page.rewards());
+		b.more.set(index, page.next());
+		b.last = index;
+		update(b);
+	}
+
+	/** Every page seen (the first to the one with no next): the pool is what they show; else they only add to it. */
+	private static void update(Browse b) {
+		boolean whole = !b.pages.isEmpty() && !b.more.get(b.pages.size() - 1);
+		Map<String, String> shown = new LinkedHashMap<>();
+		for (Map<String, String> p : b.pages) {
+			if (p == null) whole = false;
+			else for (var e : p.entrySet()) shown.putIfAbsent(e.getKey(), e.getValue());
+		}
+		Stats stats = lifetime().of(b.type);
+		Map<String, String> pool;
+		if (whole) pool = shown;
+		else {
+			pool = new LinkedHashMap<>(stats.pool);
+			for (var e : shown.entrySet()) pool.put(e.getKey(), e.getValue());
+		}
+		if (pool.equals(stats.pool) && new ArrayList<>(pool.keySet()).equals(new ArrayList<>(stats.pool.keySet())) && stats.poolSeen > 0) return;
+		stats.pool = pool;
+		stats.poolSeen = System.currentTimeMillis();
+		save();
+	}
+
+	static String itemId(ItemStack stack) {
+		return BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+	}
+
+	private static Map<String, Item> items;
+
+	/** An item by its id ("minecraft:diamond_sword"), or null. */
+	static Item item(String id) {
+		if (id == null || id.isEmpty()) return null;
+		if (items == null) {
+			items = new HashMap<>();
+			for (Item item : BuiltInRegistries.ITEM) items.put(BuiltInRegistries.ITEM.getKey(item).toString(), item);
+		}
+		return items.get(id);
+	}
+
+	// ---------- what is shown ----------
+
+	/**
+	 * One row of a case: a reward (or an item, grouped), its item for the icon, wins this session and
+	 * all time, the items they were in all ("64x" counts 64), the share of the case's openings (0..1),
+	 * and whether the case no longer gives it.
+	 */
+	record Reward(String name, String item, long session, long lifetime, long amount, double share, boolean removed) {}
+
+	/** Every case known: the built-in ones, those previewed and those won from ("?" last, when there are any). */
+	static List<String> types() {
+		List<String> out = new ArrayList<>();
+		for (var e : lifetime().cases.entrySet()) if (!UNASSIGNED.equals(e.getKey())) out.add(e.getKey());
+		if (lifetime().get(UNASSIGNED).opened > 0 || session.get(UNASSIGNED).opened > 0) out.add(UNASSIGNED);
+		return out;
+	}
+
+	/** "Elementium SkyCase", or "Nieprzypisane". */
+	static String title(String type) {
+		return UNASSIGNED.equals(type) ? Component.translatable("slashclient-hud.skyCase.unassigned").getString() : type + " SkyCase";
+	}
+
+	/** The kind shown on the HUD: the one won from last, else the one opened most. */
+	static String shownType() {
+		Data life = lifetime();
+		if (!life.lastType.isEmpty() && life.cases.containsKey(life.lastType)) return life.lastType;
+		return life.cases.entrySet().stream().max(Comparator.comparingLong(e -> e.getValue().opened)).map(Map.Entry::getKey).orElse("");
+	}
+
+	/** Every reward of a case: those it gives (also never won), then those won it no longer gives. */
+	static List<Reward> rewards(String type, boolean grouped) {
+		return rewards(session, lifetime(), type, grouped);
+	}
+
+	static List<Reward> rewards(Data session, Data life, String type, boolean grouped) {
+		Stats l = life.get(type), s = session.get(type);
+		Map<String, String> names = new LinkedHashMap<>(l.pool);
+		for (String n : l.drops.keySet()) names.putIfAbsent(n, itemOf(life, n));
+		for (String n : s.drops.keySet()) names.putIfAbsent(n, itemOf(life, n));
+		Map<String, Reward> out = new LinkedHashMap<>();
+		for (var e : names.entrySet()) {
+			String name = e.getKey();
+			long ls = s.drops.getOrDefault(name, 0L), ll = l.drops.getOrDefault(name, 0L);
+			boolean removed = !UNASSIGNED.equals(type) && !l.pool.containsKey(name);
+			String row = grouped ? base(name) : name;
+			Reward was = out.get(row);
+			long amount = ll * amount(name);
+			if (was == null) out.put(row, new Reward(row, e.getValue(), ls, ll, amount, 0, removed));
+			else out.put(row, new Reward(row, was.item().isEmpty() ? e.getValue() : was.item(), was.session() + ls, was.lifetime() + ll,
+				was.amount() + amount, 0, was.removed() && removed));
+		}
+		List<Reward> list = new ArrayList<>();
+		for (Reward r : out.values()) list.add(new Reward(r.name(), r.item(), r.session(), r.lifetime(), r.amount(), l.opened > 0 ? r.lifetime() / (double) l.opened : 0, r.removed()));
+		// those it no longer gives at the end
+		list.sort(Comparator.comparing(Reward::removed));
+		return list;
+	}
+
+	/** The item a reward is shown with in any case's pool (one gone from its case's, or an unassigned one), or "". */
+	private static String itemOf(Data life, String reward) {
+		String k = key(reward);
+		for (Stats s : life.cases.values()) for (var e : s.pool.entrySet()) if (key(e.getKey()).equals(k)) return e.getValue();
+		return "";
+	}
+
+	static String percent(double share) {
+		double p = share * 100;
+		String s = p >= 10 || p == 0 ? String.format(Locale.ROOT, "%.0f%%", p) : String.format(Locale.ROOT, "%.1f%%", p);
+		return s.replace('.', ',');
+	}
+
+	/** A case's wins forgotten, this session's and the saved ones (what it gives stays). */
+	static void reset(String type) {
+		session.cases.remove(type);
+		recent.removeIf(d -> d.type().equals(type));
+		Stats s = lifetime().cases.get(type);
+		if (s != null) {
+			if (UNASSIGNED.equals(type)) lifetime().cases.remove(type);
+			else {
+				Stats kept = new Stats();
+				kept.pool = s.pool;
+				kept.poolSeen = s.poolSeen;
+				lifetime().cases.put(type, kept);
+			}
+		}
+		save();
+	}
+
+	private record Row(String left, int leftColor, String right, int rightColor) {}
+
+	private static List<Row> rows(Data session, Data life, List<Drop> recent, String type) {
+		HudConfig cfg = SlashHud.config;
+		List<Row> out = new ArrayList<>();
+		Stats l = life.get(type), s = session.get(type);
+		out.add(new Row(title(type), 0xFFFFAA00, "", 0));
+		out.add(new Row(Component.translatable("slashclient-hud.skyCase.opened").getString(), 0xFF9CA3AF, s.opened + " / " + l.opened, 0xFFFFFFFF));
+		String layout = cfg.skyCaseLayout;
+		if ("summary".equals(layout)) {
+			if (!l.last.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyCase.last").getString(), 0xFF9CA3AF, l.last, 0xFFFFFF55));
+		} else if ("top".equals(layout)) {
+			// the rewards won most, this session / all time and their share
+			List<Reward> won = new ArrayList<>();
+			for (Reward r : rewards(session, life, type, false)) if (r.lifetime() > 0) won.add(r);
+			won.sort(Comparator.comparingLong(Reward::lifetime).reversed());
+			for (int i = 0; i < Math.min(cfg.skyCaseRows, won.size()); i++) {
+				Reward r = won.get(i);
+				out.add(new Row("  " + r.name(), 0xFFE5E7EB, r.session() + " / " + r.lifetime() + "  " + percent(r.share()), 0xFFFFFFFF));
+			}
+		} else {
+			// the latest wins, newest first, with their case when it is another one
+			if (!recent.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyCase.recent").getString(), 0xFF9CA3AF, "", 0));
+			for (int i = recent.size() - 1, n = 0; i >= 0 && n < cfg.skyCaseRows; i--, n++) {
+				Drop d = recent.get(i);
+				String from = d.type().equals(type) ? "" : UNASSIGNED.equals(d.type()) ? "?" : d.type();
+				out.add(new Row("  " + d.reward(), 0xFFFFFF55, from, 0xFF9CA3AF));
+			}
+		}
+		return out;
+	}
+
+	public static final class Module implements HudModule {
+		public String id() {
+			return "skycase";
+		}
+
+		@Override
+		public boolean visible(Minecraft mc) {
+			return SkyTasks.onSkyUp(mc) && lifetime().opened() > 0;
+		}
+
+		private List<Row> rowsOrPreview(Minecraft mc) {
+			if (visible(mc)) return rows(session, lifetime(), recent, shownType());
+			// the editor, before the first case: some made up
+			Data s = new Data(), l = new Data();
+			List<Drop> drops = new ArrayList<>();
+			String[] sample = { "5x Zaklęta butelka", "Kask Górnika", "3x Diament", "5x Zaklęta butelka", "Sztabka miedzi", "2x Szmaragd" };
+			for (int i = 0; i < sample.length; i++) {
+				l.of("Górniczy").won(sample[i], 0);
+				if (i < 4) s.of("Górniczy").won(sample[i], 0);
+				drops.add(new Drop("Górniczy", sample[i], 0));
+			}
+			return rows(s, l, drops, "Górniczy");
+		}
+
+		public int width(Minecraft mc) {
+			int w = 70;
+			for (Row r : rowsOrPreview(mc)) w = Math.max(w, mc.font.width(r.left) + (r.right.isEmpty() ? 0 : 10 + mc.font.width(r.right)));
+			return w + Modules.PAD * 2;
+		}
+
+		public int height(Minecraft mc) {
+			return rowsOrPreview(mc).size() * (mc.font.lineHeight + 1) - 1 + Modules.PAD * 2;
+		}
+
+		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
+			int w = width(mc) - Modules.PAD * 2, row = y + Modules.PAD;
+			for (Row r : rowsOrPreview(mc)) {
+				Modules.text(g, mc, r.left, x + Modules.PAD, row, r.leftColor);
+				if (!r.right.isEmpty()) Modules.text(g, mc, r.right, x + Modules.PAD + w - mc.font.width(r.right), row, r.rightColor);
+				row += mc.font.lineHeight + 1;
+			}
+		}
+	}
+
+	/** "Nowy drop!": a reward won for the first time, with its item, in SlashClient's look. */
+	static final class NewDropToast implements Toast {
+		private static final long SHOW_MS = 5000;
+		private static final int W = 160, H = 32;
+		private final String type, reward;
+		private final Item item;
+		private long first = -1, age;
+		private Visibility wanted = Visibility.SHOW;
+
+		NewDropToast(String type, String reward, Item item) {
+			this.type = type;
+			this.reward = reward;
+			this.item = item;
+		}
+
+		@Override
+		public int width() {
+			return W;
+		}
+
+		@Override
+		public int height() {
+			return H;
+		}
+
+		@Override
+		public Visibility getWantedVisibility() {
+			return wanted;
+		}
+
+		@Override
+		public void update(ToastManager manager, long time) {
+			if (first < 0) first = time;
+			age = time - first;
+			wanted = age < SHOW_MS ? Visibility.SHOW : Visibility.HIDE;
+		}
+
+		@Override
+		public void extractRenderState(GuiGraphicsExtractor g, net.minecraft.client.gui.Font font, long time) {
+			Ui.round(g, 0, 0, W, H, 6, Ui.PANEL);
+			Ui.roundOutline(g, 0, 0, W, H, 6, 0x60FFAA00);
+			if (item != null) Ui.icon(g, item, "spark", 8, 8);
+			else Ui.icon(g, "m-skycase", 10, 10, 12, 0xFFFFAA00);
+			int textW = W - 32 - 7;
+			Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.skyCase.newDrop"), textW), 32, 7, 0xFFFFAA00);
+			Ui.draw(g, Ui.fit(Component.literal(reward + " · " + (UNASSIGNED.equals(type) ? "SkyCase" : type)), textW), 32, 18, Ui.TEXT_2);
+			float left = Math.max(0f, 1f - (float) age / SHOW_MS);
+			g.fill(6, H - 3, 6 + Math.round((W - 12) * left), H - 2, 0xFFFFAA00);
+		}
+	}
+
+	// ---------- for the in-game tests ----------
+
+	/** Each case won from: wins this session / all time, its wins by name, its pool's size. */
+	static String debug() {
+		StringBuilder out = new StringBuilder();
+		for (var e : lifetime().cases.entrySet()) {
+			Stats s = e.getValue();
+			if (s.opened == 0) continue;
+			out.append(e.getKey()).append(": ").append(session.get(e.getKey()).opened).append('/').append(s.opened).append(' ').append(s.drops).append('\n');
+		}
+		return out.toString();
+	}
+
+	/** A case's pool, by name, "|" between. */
+	static String debugPool(String type) {
+		return String.join("|", lifetime().get(type).pool.keySet());
+	}
+
+	static void resetForTest() {
+		session = new Data();
+		lifetime = new Data();
+		seed(lifetime);
+		recent.clear();
+		contextType = null;
+		browse = null;
+	}
+
+	/** What was saved read again (as after a restart). */
+	static void reloadForTest() {
+		lifetime = null;
+	}
+
+	/** As if the window was looked at long ago (no case looked at lately). */
+	static void forgetContextForTest() {
+		contextType = null;
+		browse = null;
+	}
+}
+//#endif

@@ -189,6 +189,14 @@ public final class HudConfig {
 	/** SkyUp's fish counter: split by "none", "size", "species" or "quality"; their weight and value shown. */
 	public String skyFishSplit = "none";
 	public boolean skyFishWeight = true, skyFishValue = true;
+	/** SkyUp's case counter: "recent" drops, the "top" rewards of the case shown, or its "summary" only; how many rows. */
+	public String skyCaseLayout = "recent";
+	public static final String[] SKY_CASE_LAYOUTS = { "recent", "top", "summary" };
+	public int skyCaseRows = 5;
+	/** A toast when a case gives a reward never won before. */
+	public boolean skyCaseNewDrop = true;
+	/** Seconds a case's preview (or a win only it gives) counts as the case being opened, for rewards more cases give. */
+	public int skyCaseWindow = 60;
 	/** How much health a mob or player just lost, rising from it. */
 	public boolean damageNumbers = true;
 	/** Your nick written differently in chat, the tab list and above your head (for recordings and streams). */
@@ -374,6 +382,8 @@ public final class HudConfig {
 		c.modules.put("skytasks", new Placement(true, 0f, 0.3f, 2, 0));
 		// the fish counter lower on the right; shown once a fish was caught on SkyUp
 		c.modules.put("skyfish", new Placement(true, 1f, 0.75f, -2, 0));
+		// the case counter above it; shown once a case was opened on SkyUp
+		c.modules.put("skycase", new Placement(true, 1f, 0.55f, -2, 0));
 		// the minimap in the top right corner, off until switched on; its own picture needs no background
 		Placement minimap = new Placement(false, 1f, 0f, -2, 2);
 		minimap.background = false;
@@ -461,6 +471,7 @@ public final class HudConfig {
 		if (read.crosshairLast == null) read.crosshairLast = defaults.crosshairLast;
 		if (read.nickAlias == null) read.nickAlias = defaults.nickAlias;
 		if (read.skyFishSplit == null) read.skyFishSplit = defaults.skyFishSplit;
+		read.skyCaseLayout = oneOf(read.skyCaseLayout, SKY_CASE_LAYOUTS);
 		read.chatCopyFormat = oneOf(read.chatCopyFormat, ChatExtras.COPY_FORMATS);
 		read.chatCopyTime = oneOf(read.chatCopyTime, ChatExtras.COPY_TIMES);
 		read.chatCopyNotice = oneOf(read.chatCopyNotice, ChatExtras.COPY_NOTICES);
@@ -533,6 +544,10 @@ public final class HudConfig {
 		skyFishSplit = other.skyFishSplit == null ? "none" : other.skyFishSplit;
 		skyFishWeight = other.skyFishWeight;
 		skyFishValue = other.skyFishValue;
+		skyCaseLayout = oneOf(other.skyCaseLayout, SKY_CASE_LAYOUTS);
+		skyCaseRows = Math.max(1, Math.min(10, other.skyCaseRows));
+		skyCaseNewDrop = other.skyCaseNewDrop;
+		skyCaseWindow = Math.max(5, Math.min(600, other.skyCaseWindow));
 		damageNumbers = other.damageNumbers;
 		nickHider = other.nickHider;
 		nickAlias = other.nickAlias;

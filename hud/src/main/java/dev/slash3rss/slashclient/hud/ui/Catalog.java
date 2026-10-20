@@ -50,7 +50,7 @@ public final class Catalog {
 		Map.entry("block", "world"), Map.entry("durability", "combat"), Map.entry("ammo", "combat"), Map.entry("kd", "combat"), Map.entry("hits", "combat"), Map.entry("session", "hud"), Map.entry("biome", "world"), Map.entry("daytime", "world"),
 		Map.entry("light", "world"), Map.entry("saturation", "world"), Map.entry("movement", "world"), Map.entry("combo", "combat"),
 		Map.entry("reach", "combat"), Map.entry("target", "combat"), Map.entry("armor", "combat"), Map.entry("effects", "combat"),
-		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"),
+		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"), Map.entry("skycase", "skyup"),
 		Map.entry("twitchchat", "chat"), Map.entry("kickchat", "chat"), Map.entry("nethercoords", "world"));
 
 	static final int[] COLORS = { 0xFFFFFFFF, 0xFF60A5FA, 0xFF4ADE80, 0xFF55FFFF, 0xFFFACC15, 0xFFF87171, 0xFFA855F7, 0xFFFF55FF };
@@ -172,6 +172,13 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.skyFish.weight", () -> cfg.skyFishWeight, v -> cfg.skyFishWeight = v));
 					settings.add(new Toggle("slashclient-hud.skyFish.value", () -> cfg.skyFishValue, v -> cfg.skyFishValue = v));
 				}
+				case "skycase" -> {
+					settings.add(new Choice("slashclient-hud.skyCase.layout", HudConfig.SKY_CASE_LAYOUTS, "slashclient-hud.skyCase.layout.",
+						() -> cfg.skyCaseLayout, v -> cfg.skyCaseLayout = v));
+					settings.add(new Slider("slashclient-hud.skyCase.rows", 1f, 10f, 1f, "%.0f", () -> (float) cfg.skyCaseRows, v -> cfg.skyCaseRows = Math.round(v)));
+					settings.add(new Toggle("slashclient-hud.skyCase.newDropSetting", () -> cfg.skyCaseNewDrop, v -> cfg.skyCaseNewDrop = v));
+					settings.add(new Slider("slashclient-hud.skyCase.window", 10f, 300f, 10f, "%.0f s", () -> (float) cfg.skyCaseWindow, v -> cfg.skyCaseWindow = Math.round(v)));
+				}
 				case "fps" -> settings.add(new Toggle("slashclient-hud.set.fpsColored", () -> cfg.fpsColored, v -> cfg.fpsColored = v));
 				case "twitchchat", "kickchat" -> streamChat(settings, m.id().equals("kickchat") ? () -> cfg.kickChat : () -> cfg.twitchChat, m.id().equals("kickchat"));
 				default -> {}
@@ -196,6 +203,13 @@ public final class Catalog {
 			var mc = net.minecraft.client.Minecraft.getInstance();
 			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.KeybindsScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
 		}));
+		//#if MC >= 26.3
+		// SkyUp's cases in detail: every reward of each case, won or not
+		out.add(new Entry("skyCaseStats", "slashclient-hud.skyCase.screen", "skyup", "m-skycase", null, null, List.of(), () -> {
+			var mc = net.minecraft.client.Minecraft.getInstance();
+			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.SkyCaseScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+		}));
+		//#endif
 		out.add(new Entry("reconnect", "slashclient-hud.reconnectButton", "extras", "m-reconnect", () -> cfg.reconnect, v -> cfg.reconnect = v, List.of(), null));
 		// each server in the list has its own mode (its edit screen); this one is for the rest
 		out.add(new Entry("serverPacks", "slashclient-hud.serverPacks", "extras", "m-server", null, null, List.of(

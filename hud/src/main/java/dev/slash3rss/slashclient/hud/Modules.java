@@ -42,6 +42,8 @@ public final class Modules {
 		out.add(new SkyTasks.Module());
 		// and SkyUp's fish, this session and for good
 		out.add(new SkyFish.Module());
+		// and what SkyUp's cases gave
+		out.add(new SkyCase.Module());
 		//#endif
 		// a Twitch and a Kick channel's live chat
 		out.addAll(StreamChatModule.all());
