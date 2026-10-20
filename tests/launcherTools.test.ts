@@ -282,6 +282,11 @@ describe('minecraft.wiki content', () => {
     assert.equal(html, '<h2>Usage</h2><p>after</p>');
   });
 
+  it("drops the infobox's hidden history JSON", () => {
+    const html = sanitizeWikiHtml('<table><tr><td>Yes</td></tr></table><pre class="history-json noexcerpt navigation-not-searchable">{ "title": "Beacon", "rows": [] }</pre><p>Text</p>');
+    assert.equal(html, '<table><tr><td>Yes</td></tr></table><p>Text</p>');
+  });
+
   it('escapes stray markup and closes what the source left open', () => {
     assert.equal(sanitizeWikiHtml('<p>1 < 2 > 0 & more'), '<p>1 &lt; 2 &gt; 0 &amp; more</p>');
     assert.equal(sanitizeWikiHtml('<table><tr><td colspan="2" rowspan="x">a</td></tr></table></div>'), '<table><tr><td colspan="2">a</td></tr></table>');

@@ -26,6 +26,8 @@ const VOID = new Set(['br', 'hr', 'img', 'wbr', 'col', 'area', 'source', 'track'
 const DROP_CLASSES = new Set([
   'mw-editsection', 'navbox', 'navbox-wrapper', 'reference', 'mw-references-wrap', 'references', 'noprint', 'toc', 'mw-empty-elt',
   'printfooter', 'catlinks', 'mw-cite-backlink', 'hidden-alt-text', 'msgbox',
+  // the infobox's data for the wiki's history tool (a <pre> of JSON the wiki hides with its styles)
+  'history-json',
 ]);
 
 const KEEP_ATTRS: Record<string, string[]> = {

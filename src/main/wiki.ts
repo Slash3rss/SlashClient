@@ -40,7 +40,9 @@ export interface WikiArticle {
 const cacheDir = () => path.join(paths.root, 'cache', 'wiki');
 const memory = new Map<string, { at: number; value: unknown }>();
 
-const keyFile = (key: string) => path.join(cacheDir(), `${createHash('sha1').update(key).digest('hex')}.json`);
+/** Raised when sanitizeWikiHtml changes, so articles kept on disk are cleaned again (2: without the infobox's history JSON). */
+const CACHE_VERSION = 2;
+const keyFile = (key: string) => path.join(cacheDir(), `${createHash('sha1').update(`${CACHE_VERSION}:${key}`).digest('hex')}.json`);
 
 async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
   const now = Date.now();
