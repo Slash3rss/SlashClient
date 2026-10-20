@@ -101,4 +101,28 @@ export const TOOLS_EN: Record<string, string> = {
   'Otwórz w przeglądarce': 'Open in the browser',
   'Na wiki nie ma takiej strony.': 'The wiki has no such page.',
   'Wiki zwróciła błąd: {0}': 'The wiki returned an error: {0}',
+
+  // the SkyUp.pl wiki
+  'Wiki serwera SkyUp.pl': 'The SkyUp.pl server wiki',
+  'Wiki SkyUp.pl: odblokujesz ją pierwszym osiągnięciem SkyUp.pl': 'SkyUp.pl wiki: unlocked by your first SkyUp.pl achievement',
+  'Szukaj na wiki SkyUp.pl, np. klejnoty, pety, lej…': 'Search the SkyUp.pl wiki (in Polish), e.g. klejnoty, pety, lej…',
+  'Treści pochodzą z wiki serwera SkyUp.pl (skyup.pl/wiki) i mogą się zmieniać razem z serwerem.':
+    'Content comes from the SkyUp.pl server wiki (skyup.pl/wiki, in Polish) and changes along with the server.',
+  ' Sprawdzanie osiągnięć…': ' Checking achievements…',
+  'Wiki SkyUp.pl jest zablokowana': 'The SkyUp.pl wiki is locked',
+  'Odblokujesz ją pierwszym osiągnięciem SkyUp.pl (np. „Witaj na SkyUp” – zagraj na SkyUp.pl). Najpierw zaloguj się na konto SlashClient w zakładce Znajomi, żeby zbierać osiągnięcia.':
+    'Your first SkyUp.pl achievement unlocks it (e.g. “Welcome to SkyUp”: play on SkyUp.pl). First sign in to a SlashClient account in the Friends tab to collect achievements.',
+  'Odblokuj, zdobywając pierwsze osiągnięcie SkyUp.pl:': 'Unlock it by earning your first SkyUp.pl achievement:',
+  'Witaj na SkyUp': 'Welcome to SkyUp',
+  'Zagraj na serwerze SkyUp.pl.': 'Play on the SkyUp.pl server.',
+  ' Pokaż osiągnięcia': ' Show achievements',
+  ' Kopiuj adres SkyUp.pl': ' Copy the SkyUp.pl address',
+  'Skopiowano adres SkyUp.pl.': 'Copied the SkyUp.pl address.',
+  'Wybierz artykuł z listy albo wyszukaj, np. klejnoty, inkubatory, pety.': 'Pick an article from the list or search, e.g. klejnoty, inkubatory, pety.',
+  'Artykuły': 'Articles',
+  'W treści': 'In the content',
+  'Wpisz co najmniej {0} litery, żeby szukać w treści.': 'Type at least {0} letters to search the content.',
+  'Nic nie znaleziono.': 'Nothing found.',
+  'Nie udało się odczytać spisu wiki SkyUp.pl.': 'Could not read the SkyUp.pl wiki’s list of articles.',
+  'Nie udało się wczytać wiki SkyUp.pl.': 'Could not load the SkyUp.pl wiki.',
 };

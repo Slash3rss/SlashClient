@@ -1212,6 +1212,46 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .wiki-content .w-invslot-stacksize { position: absolute; right: 1px; bottom: -2px; font: 700 13px var(--font-sans); color: #fff; text-shadow: 2px 2px #3f3f3f; }
 .wiki-content .w-sprite-file img { width: 16px; height: 16px; }
 .wiki-content .w-nowrap { white-space: nowrap; }
+/* the switch between minecraft.wiki and SkyUp.pl, and the SkyUp.pl wiki (skyupWiki.ts) */
+.wiki-pane { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; }
+.wiki-tabs .wiki-lock { margin: 0 0 0 2px; font-size: 11px; color: var(--text-muted); }
+.wiki-locked { display: flex; justify-content: center; padding: 40px 12px; }
+.wiki-lock-card { max-width: 520px; padding: 28px; border-radius: var(--card-radius); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.wiki-lock-card h3 { margin: 0; }
+.wiki-lock-card p { margin: 0; line-height: 1.5; }
+.wiki-lock-card .row { justify-content: center; flex-wrap: wrap; }
+.wiki-lock-icon {
+  width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px;
+  color: var(--accent-light); background: rgba(59, 130, 246, .12); border: 1px solid rgba(59, 130, 246, .3);
+}
+.wiki-lock-ach { display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--glass-border); background: rgba(0, 0, 0, .2); }
+.wiki-lock-ach > i { font-size: 20px; color: #fbbf24; }
+.wiki-lock-ach span { display: flex; flex-direction: column; }
+.wiki-cat { margin: 10px 4px 2px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.wiki-cat:first-child { margin-top: 2px; }
+.wiki-sky-item { padding: 6px 10px; min-height: 32px; height: auto; flex-shrink: 0; }
+.wiki-sky-item .wiki-hit-text b { font-weight: 600; }
+.wiki-sky-hits { display: flex; flex-direction: column; gap: 4px; }
+.wiki-hit:disabled { opacity: .7; cursor: default; }
+.wiki-hit-where { font-size: 11.5px; font-style: normal; color: var(--accent-light); }
+.wiki-sky-jump { margin: 0 0 10px; }
+.wiki-sky-jump .wiki-chip { padding: 3px 10px; font-size: 12px; }
+.wiki-sky-content h2 { font-size: 18px; margin: 18px 0 8px; padding-top: 12px; border-top: 1px solid var(--glass-border); scroll-margin-top: 8px; }
+.wiki-sky-content > h2:first-child, .wiki-sky-content > :first-child > h2:first-child { border-top: 0; padding-top: 0; margin-top: 4px; }
+.wiki-sky-content h3 { font-size: 15.5px; }
+.wiki-sky-content .wiki-flash, .wiki-sky-content h2.wiki-flash { color: var(--accent-light); transition: color .3s; }
+.wiki-sky-content img { image-rendering: auto; }
+.wiki-sky-content td img { max-width: min(100%, 280px); }
+.wiki-sky-content { overflow-x: auto; }
+.wiki-sky-content table { display: table; width: 100%; }
+.wiki-sky-content th, .wiki-sky-content td { vertical-align: middle; overflow-wrap: normal; word-break: normal; }
+.wiki-sky-content th > p:only-child, .wiki-sky-content td > p:only-child { margin: 0; }
+.wiki-sky-content .w-a-c, .wiki-sky-content .w-center { text-align: center; }
+.wiki-sky-content tbody tr:nth-child(even) { background: rgba(255, 255, 255, .02); }
+.wiki-sky-content code { padding: 1px 5px; border-radius: 4px; background: rgba(0, 0, 0, .3); font-size: 12.5px; }
+.wiki-sky-content .w-color-red { color: #f87171; font-weight: 600; }
+.wiki-sky-content .w-color-green { color: #4ade80; font-weight: 600; }
+.wiki-sky-content .w-color-gold { color: #fbbf24; }
 @media (max-width: 900px) {
   .wiki-split { grid-template-columns: minmax(0, 1fr); }
   .wiki-content .w-infobox { float: none; width: auto; margin: 0 0 12px; }
