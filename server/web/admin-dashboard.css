@@ -1,0 +1,51 @@
+/* The admin panel's "Pulpit" (adminDashboard.js): sections of tiles, charts and lists. */
+.dash-section { margin-top: 30px; }
+.dash-h { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+.dash-h i { color: var(--accent-light); font-size: 15px; width: 18px; text-align: center; }
+.dash-period { display: flex; gap: 6px; }
+.dash-period button { min-width: 64px; }
+
+/* a tile that opens a tab */
+.stat.link { position: relative; color: inherit; text-decoration: none; transition: background .15s, border-color .15s; }
+.stat.link:hover, .stat.link:focus-visible { background: var(--card-hover); border-color: rgba(96, 165, 250, .3); text-decoration: none; }
+.stat.link .go { position: absolute; top: 14px; right: 14px; font-size: 11px; color: var(--muted); opacity: 0; transition: opacity .15s; }
+.stat.link:hover .go, .stat.link:focus-visible .go { opacity: 1; }
+.dash .stat b { font-size: 26px; overflow-wrap: anywhere; }
+.dash .stat em { color: var(--text-2); }
+
+.dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 16px; margin-bottom: 16px; }
+.dash-grid .card { min-width: 0; }
+.dash-grid.charts { grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); }
+.dash .stat b.long { font-size: 20px; line-height: 1.25; }
+.dash-name > :first-child:not(span):not(i) { max-height: 28px; max-width: 28px; overflow: hidden; }
+.dash-chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.dash .chart { gap: 3px; }
+.dash .chart div { min-width: 2px; }
+.dash .chart.dense { gap: 1px; }
+.dash .chart.dense div { min-width: 1px; border-radius: 2px 2px 0 0; }
+.dash .chart.green div { background: linear-gradient(180deg, #4ade80, #15803d); }
+.dash .chart.violet div { background: linear-gradient(180deg, #c084fc, #7e22ce); }
+.dash .chart div[data-n="0"] { background: rgba(255, 255, 255, .06); }
+.dash-axis { display: flex; justify-content: space-between; font-size: 12px; margin-top: 6px; }
+.dash-note { margin: 4px 0 12px; }
+
+.dash-bars { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.dash-bar { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(60px, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; }
+.dash-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.dash-name > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-name > i, .dash-name > .kick-mark { width: 16px; text-align: center; color: var(--accent-light); flex: none; }
+.dash-name .cosmetic, .dash-name canvas, .dash-name img { flex: none; }
+.dash-bar .track { height: 8px; border-radius: 99px; background: rgba(255, 255, 255, .06); overflow: hidden; }
+.dash-bar .track div { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #1d4ed8, #60a5fa); }
+.dash-bar b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+@media (max-width: 600px) {
+  .dash .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .dash .stat { padding: 14px; }
+  .dash .stat b { font-size: 21px; }
+  .dash .stat b.long { font-size: 16px; }
+  .dash .page-head .grow { display: none; }
+  .dash-period { width: 100%; }
+  .dash-period button { flex: 1; min-width: 0; }
+  .bars .bar { grid-template-columns: 30px minmax(0, 90px) 1fr 36px; }
+}

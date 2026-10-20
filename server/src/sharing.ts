@@ -175,5 +175,11 @@ export function sharingRoutes(deps: Deps) {
       return { ok: true };
     }],
   ];
-  return { routes };
+  /** Parties going on now (for the admin dashboard). */
+  const activeParties = () => {
+    sweep();
+    return parties.size;
+  };
+
+  return { routes, activeParties };
 }

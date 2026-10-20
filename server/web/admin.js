@@ -12,6 +12,7 @@ import { rankChips, ranksPage, ranksReady, userRanksSection } from './adminRanks
 import { settingsPage, supporterEditor } from './adminSettings.js';
 import { streamsPage } from './adminStreams.js';
 import { statusRulesSection } from './adminStatusRules.js';
+import { dashboardPage } from './adminDashboard.js';
 
 const TABS = [
   ['dashboard', 'Pulpit', 'fa-solid fa-chart-line'],
@@ -124,37 +125,10 @@ function layout() {
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);
 const stat = (cls, label, value, note) => el('div', { class: 'glass stat' }, el('small', {}, icon(cls), label), el('b', { textContent: String(value) }), note ? el('em', { textContent: note }) : '');
 
-// ---------- dashboard ----------
+// ---------- dashboard (adminDashboard.js) ----------
 
-async function dashboard() {
-  const s = await guard(() => api('GET', '/v1/admin/stats'));
-  if (!s) return;
-  const max = Math.max(1, ...s.signups);
-  const chart = el('div', { class: 'chart' }, ...s.signups.map((n, i) => {
-    const bar = el('div', { title: `${new Date(Date.now() - (29 - i) * 86_400_000).toLocaleDateString('pl-PL')}: ${n}`, dataset: { n: String(n) } });
-    bar.style.height = `${Math.max(4, (n / max) * 100)}%`;
-    return bar;
-  }));
-  const worn = Object.entries(s.capes).sort((a, b) => b[1] - a[1]);
-  const top = Math.max(1, ...worn.map(([, n]) => n));
-  const bars = el('div', { class: 'bars' }, ...(worn.length ? worn.map(([id, n]) => {
-    const fill = el('div');
-    fill.style.width = `${(n / top) * 100}%`;
-    return el('div', { class: 'bar' }, cosmeticEl(id, capeSlots[id] ?? 'cape', true), el('span', { textContent: capeNames[id] ?? id }), el('div', { class: 'track' }, fill), el('b', { textContent: String(n) }));
-  }) : [el('p', { class: 'muted', textContent: 'Nikt jeszcze nie nosi peleryny.' })]));
-  $('#main').replaceChildren(
-    head('Pulpit', el('button', { onclick: dashboard }, icon('fa-solid fa-rotate'), 'Odśwież')),
-    el('div', { class: 'stats' },
-      stat('fa-solid fa-users', 'Konta', s.users, s.newUsers ? `+${s.newUsers} w tym tygodniu` : ''),
-      stat('fa-solid fa-signal', 'Online teraz', s.online),
-      stat('fa-solid fa-cube', 'W grze z modem', s.inGame),
-      stat('fa-solid fa-user-clock', 'Aktywni (7 dni)', s.activeUsers),
-      stat('fa-solid fa-comments', 'Wiadomości', s.messages, s.newMessages ? `+${s.newMessages} w tym tygodniu` : ''),
-      stat('fa-solid fa-user-group', 'Znajomości', s.friendships),
-      stat('fa-solid fa-ban', 'Zablokowane', s.banned)),
-    el('div', { class: 'two' },
-      el('div', { class: 'glass card' }, el('h3', { textContent: 'Nowe konta (30 dni)' }), chart),
-      el('div', { class: 'glass card' }, el('h3', { textContent: 'Noszone peleryny' }), bars)));
+function dashboard() {
+  return dashboardPage({ go: (id) => { tab = id; location.hash = id; layout(); }, capeNames, capeSlots });
 }
 
 // ---------- accounts ----------
