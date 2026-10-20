@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import os from 'node:os';
@@ -298,6 +299,31 @@ describe('home page escaping', () => {
     assert.deepEqual(api.body, { error: 'not_found' });
     const file = await call('GET', '/nie-ma.png', undefined, undefined, html);
     assert.deepEqual(file.body, { error: 'not_found' });
+  });
+
+  it("sends a browser in another language to /en, unless the visitor chose Polish", async () => {
+    // node:http, since fetch drops Cookie and adds its own Accept-Language
+    const get = (headers: Record<string, string>, at = '/') => new Promise<{ status: number; headers: { get: (k: string) => string | null } }>((resolve, reject) => {
+      http.get(base + at, { headers }, (res) => {
+        res.resume();
+        resolve({ status: res.statusCode ?? 0, headers: { get: (k) => (res.headers[k] as string | undefined) ?? null } });
+      }).on('error', reject);
+    });
+    const en = await get({ 'Accept-Language': 'en-US,en;q=0.9' });
+    assert.equal(en.status, 302);
+    assert.equal(en.headers.get('location'), '/en');
+    assert.match(en.headers.get('vary') ?? '', /Accept-Language/);
+    assert.equal((await get({ 'Accept-Language': 'de-DE' })).status, 302);
+    assert.equal((await get({ 'Accept-Language': 'pl-PL,pl;q=0.9,en;q=0.8' })).status, 200);
+    // no language at all (search engines): the Polish page
+    assert.equal((await get({})).status, 200);
+    // the choice made with the language link wins, both ways
+    assert.equal((await get({ 'Accept-Language': 'en-US', Cookie: 'slash_lang=pl' })).status, 200);
+    const chose = await get({ 'Accept-Language': 'pl-PL', Cookie: 'other=1; slash_lang=en' });
+    assert.equal(chose.status, 302);
+    assert.equal(chose.headers.get('location'), '/en');
+    // /en itself never moves
+    assert.equal((await get({ 'Accept-Language': 'pl-PL' }, '/en')).status, 200);
   });
 
   it('inline markup never lets HTML through', () => {

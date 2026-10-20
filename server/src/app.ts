@@ -41,7 +41,7 @@ import { Settings, liveSettings, type SettingValue } from './settings.ts';
 import { SETTING_DEFS } from './settingsDefs.ts';
 import { settingsAdminRoutes } from './settingsAdmin.ts';
 import { featureKey, featuresFor } from './features.ts';
-import { disabledPage, errorPage, notFoundPage, sitePage, siteLang } from './sitePages.ts';
+import { disabledPage, errorPage, homeRedirect, notFoundPage, sitePage, siteLang } from './sitePages.ts';
 import { useBlocklist } from './clans.ts';
 import { useLogoLimit } from './clanLogos.ts';
 import { createRanks, gameBadge, type RankUser } from './ranks.ts';
@@ -1522,6 +1522,17 @@ export function createApp(cfg: Config) {
       console.error('wsparcie:', (err as Error).message);
       if (!res.headersSent) serverError(req, res, url);
       return;
+    }
+
+    // "/" in the visitor's language: an English (or any other) browser goes to /en, unless it chose Polish
+    if ((req.method === 'GET' || req.method === 'HEAD') && url.pathname === '/' && !url.search) {
+      const to = homeRedirect(req);
+      if (to) {
+        res.writeHead(302, { Location: to, Vary: 'Accept-Language, Cookie', 'Cache-Control': 'no-store' });
+        res.end();
+        return;
+      }
+      res.setHeader('Vary', 'Accept-Language, Cookie');
     }
 
     // the home page in both languages and its pictures (home/routes.ts)

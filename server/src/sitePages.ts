@@ -16,6 +16,18 @@ export function siteLang(req: http.IncomingMessage, pathname: string): SiteLang 
   return first && first !== '*' && !first.startsWith('pl') ? 'en' : 'pl';
 }
 
+/** The cookie the home page's language link sets: the visitor's own choice beats the browser's language. */
+export const LANG_COOKIE = 'slash_lang';
+
+/** Where "/" sends a visitor: "/en" for a browser in another language than Polish, unless they chose Polish. */
+export function homeRedirect(req: http.IncomingMessage): string | undefined {
+  const chosen = /(?:^|;\s*)slash_lang=(pl|en)(?:;|$)/.exec(String(req.headers.cookie ?? ''))?.[1];
+  if (chosen) return chosen === 'en' ? '/en' : undefined;
+  const first = String(req.headers['accept-language'] ?? '').split(',')[0].trim().toLowerCase();
+  // no language (search engines, scripts): the Polish page
+  return first && first !== '*' && !first.startsWith('pl') ? '/en' : undefined;
+}
+
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 export interface SitePage {

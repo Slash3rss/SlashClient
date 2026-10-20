@@ -44,6 +44,14 @@ if (phone) {
   links.forEach((a, i) => note.append(...(i ? [' · ', a] : [a])));
 }
 
+// ---------- the language ----------
+// the link to the other language remembers the choice, so "/" does not send the visitor back (src/sitePages.ts)
+for (const a of document.querySelectorAll('a[hreflang]')) {
+  a.addEventListener('click', () => {
+    document.cookie = `slash_lang=${a.getAttribute('hreflang') === 'en' ? 'en' : 'pl'}; path=/; max-age=31536000; SameSite=Lax`;
+  });
+}
+
 // ---------- the account button ----------
 if (token.get()) {
   api('GET', '/v1/me').then((me) => {
