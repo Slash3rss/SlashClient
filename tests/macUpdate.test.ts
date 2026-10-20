@@ -4,7 +4,6 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
-import AdmZip from 'adm-zip';
 import { appBundle, bundleState, pickMacZip, swapScript, unpackApp, unpackRelease } from '../src/main/macUpdate';
 
 const FILES = [
@@ -55,21 +54,22 @@ describe('macOS updates', () => {
     await fs.rm(root, { recursive: true });
   });
 
-  it('makes a link where files under it already made a folder (Versions/Current), as some zips have it', { skip: process.platform === 'win32' }, async () => {
+  it('makes the links last: one before the folder it points to, or where files under it made a folder', { skip: process.platform === 'win32' }, async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'slash-unpack-'));
-    const zip = new AdmZip();
-    const fw = 'SlashClient.app/Contents/Frameworks/X.framework/Versions';
-    zip.addFile(`${fw}/A/X`, Buffer.from('lib'), '', (0o100644 << 16) >>> 0);
-    // the same file once more under Current, then Current itself as a link
-    zip.addFile(`${fw}/Current/X`, Buffer.from('lib'), '', (0o100644 << 16) >>> 0);
-    zip.addFile(`${fw}/Current`, Buffer.from('A'), '', (0o120777 << 16) >>> 0);
-    const file = path.join(root, 'update.zip');
-    zip.writeZip(file);
-    assert.equal(await unpackApp(file, path.join(root, 'out')), 'SlashClient.next');
-    const current = path.join(root, 'out', 'SlashClient.next', 'Contents', 'Frameworks', 'X.framework', 'Versions', 'Current');
-    assert.equal(await fs.readlink(current), 'A');
+    const versions = path.join(root, 'src', 'SlashClient.app', 'Contents', 'Frameworks', 'X.framework', 'Versions');
+    await fs.mkdir(path.join(versions, 'A'), { recursive: true });
+    await fs.writeFile(path.join(versions, 'A', 'X'), 'lib');
+    await fs.symlink('A', path.join(versions, 'Current'));
+    // zip keeps the order given: the link first, then a file through it, then the folder it points to
+    const v = 'SlashClient.app/Contents/Frameworks/X.framework/Versions';
+    const zip = path.join(root, 'update.zip');
+    execFileSync('/usr/bin/zip', ['-qy', zip, `${v}/Current`, `${v}/Current/X`, `${v}/A`, `${v}/A/X`], { cwd: path.join(root, 'src') });
+    assert.equal(await unpackApp(zip, path.join(root, 'out')), 'SlashClient.next');
+    const out = path.join(root, 'out', 'SlashClient.next', 'Contents', 'Frameworks', 'X.framework', 'Versions');
+    assert.equal(await fs.readlink(path.join(out, 'Current')), 'A');
+    assert.equal(await fs.readFile(path.join(out, 'Current', 'X'), 'utf8'), 'lib');
     // and the system's ditto (macOS) gives the same app under the same name
-    if (process.platform === 'darwin') assert.equal(await unpackRelease(file, path.join(root, 'out2')), 'SlashClient.next');
+    if (process.platform === 'darwin') assert.equal(await unpackRelease(zip, path.join(root, 'out2')), 'SlashClient.next');
     await fs.rm(root, { recursive: true });
   });
 
