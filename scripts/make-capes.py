@@ -445,6 +445,23 @@ def cloud(d, x, y, w, color=(255, 255, 255, 255)):
     d.rectangle([x + w * 0.25, y - 2, x + w * 0.7, y], fill=color)
 
 
+def house(d, x, ground, w=10, wall='#b4844f', roof='#78350f', frame='#65431f', window='#fde047', dark=False):
+    """A little island house standing on `ground` (its left side at x): plank walls, a gabled roof,
+    a door and a window (lit, or a silhouette when `dark`)."""
+    wl, rf, fr = hexrgb(wall), hexrgb(roof), hexrgb(frame)
+    h = round(w * 0.7)
+    top = ground - h
+    d.rectangle([x, top, x + w, ground - 1], fill=wl + (255,))
+    if not dark:
+        for y in range(int(top) + 2, int(ground), 2):
+            d.line([(x, y), (x + w, y)], fill=tuple(max(0, c - 30) for c in wl) + (255,))
+        d.line([(x, top), (x, ground - 1)], fill=fr + (255,))
+        d.line([(x + w, top), (x + w, ground - 1)], fill=fr + (255,))
+    d.polygon([(x - 2, top), (x + w + 2, top), (x + w / 2, top - w * 0.55)], fill=rf + (255,))
+    d.rectangle([x + w * 0.6, ground - h * 0.6, x + w * 0.8, ground - 1], fill=fr + (255,))
+    d.rectangle([x + w * 0.15, top + h * 0.25, x + w * 0.4, top + h * 0.55], fill=hexrgb(window) + (255,))
+
+
 def island(d, cx, top, width, depth, grass='#4ade80', dirt='#9a5b2e', dark='#6b3a1c', snow=False, fall=None):
     """A floating island: a grass layer, a dirt body narrowing in steps, a few darker blocks and an
     optional waterfall running off its edge."""
@@ -500,6 +517,7 @@ def skyup(cape):
         for y in (8, 18, 30):
             cloud(d, rnd.uniform(-4, W - 14), y, rnd.uniform(10, 16))
         island(d, W / 2, H * 0.66, W * 0.78, 9, fall=14)
+        house(d, W * 0.24, H * 0.66, 11)
         return border(img, '#e0f2fe')
     if cape == 'skyup_wyspa':
         # "SkyUp – Wyspa": the island close up, snowy peaks on top and roots hanging below
@@ -507,6 +525,7 @@ def skyup(cape):
         d = ImageDraw.Draw(img)
         cloud(d, 3, 8, 12)
         island(d, W / 2, H * 0.36, W - 4, 18, snow=True, fall=22)
+        house(d, W * 0.56, H * 0.36, 9)
         for _ in range(5):
             x = rnd.uniform(W * 0.3, W * 0.7)
             d.line([(x, H * 0.36 + 14), (x + rnd.uniform(-2, 2), H * 0.36 + 20 + rnd.uniform(0, 6))], fill=(120, 72, 36, 255))
@@ -519,6 +538,7 @@ def skyup(cape):
         for y in (6, 14):
             cloud(d, rnd.uniform(-2, W - 14), y, rnd.uniform(10, 14), (253, 186, 116, 255))
         island(d, W / 2, H * 0.55, W * 0.8, 10, grass='#1e1b4b', dirt='#312e81', dark='#1e1b4b')
+        house(d, W * 0.3, H * 0.55, 11, wall='#1e1b4b', roof='#1e1b4b', frame='#1e1b4b', window='#fdba74', dark=True)
         return border(img, '#fdba74')
     if cape == 'skyup_noc':
         # "SkyUp – Noc": a night sky with stars and the moon, lanterns glowing on the island
@@ -529,7 +549,8 @@ def skyup(cape):
         d.ellipse([W - 15, 5, W - 6, 14], fill=(254, 249, 195, 255))
         d.ellipse([W - 13, 4, W - 5, 12], fill=(30, 58, 138, 255))
         island(d, W / 2, H * 0.68, W * 0.8, 9, grass='#166534', dirt='#57351c', dark='#3b2412', fall=12)
-        for x in (W * 0.32, W * 0.62):
+        house(d, W * 0.36, H * 0.68, 11, wall='#7c5a3a', roof='#4a2410', frame='#3b2412')
+        for x in (W * 0.22, W * 0.72):
             d.rectangle([x, H * 0.68 - 3, x + 1, H * 0.68 - 1], fill=(250, 204, 21, 255))
             d.point((x, H * 0.68 - 4), fill=(254, 240, 138, 255))
         return border(img, '#93c5fd')
@@ -749,7 +770,9 @@ def animated(cape, f):
         for i, (y, w) in enumerate(((7, 14), (19, 11), (33, 15), (46, 10))):
             x = (rnd.uniform(0, W) + t * (W + 20) * (1 if i % 2 else 0.6)) % (W + 20) - 18
             cloud(d, x, y, w)
-        island(d, W / 2, H * 0.6 + math.sin(t * math.pi * 2) * 1.5, W * 0.72, 9, fall=12)
+        bob = H * 0.6 + math.sin(t * math.pi * 2) * 1.5
+        island(d, W / 2, bob, W * 0.72, 9, fall=12)
+        house(d, W * 0.28, bob, 10)
         return opaque(border(img, '#e0f2fe'))
     if cape == 'aurora':
         img = gradient('#020617', '#0f172a')
