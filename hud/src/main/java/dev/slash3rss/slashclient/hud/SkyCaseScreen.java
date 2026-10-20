@@ -43,6 +43,7 @@ public class SkyCaseScreen extends Screen {
 		String shown = SkyCase.shownType();
 		List<String> types = SkyCase.types();
 		type = types.contains(shown) ? shown : types.isEmpty() ? "" : types.get(0);
+		grouped = SlashHud.config.skyCaseSum;
 	}
 
 	/** The case shown (for the tests). */
@@ -85,12 +86,14 @@ public class SkyCaseScreen extends Screen {
 				resetArmed = 0;
 			} else resetArmed = System.currentTimeMillis() + 3000;
 		}));
-		Component group = Ui.tr("slashclient-hud.skyCase.grouped");
+		Component group = Ui.tr("slashclient-hud.skyCase.sum");
 		int gw = Ui.buttonWidth(group, null, 15, 2);
 		bx -= gw + 4;
 		Ui.button(g, "skycase:grouped", bx, y - 4, gw, 15, group, grouped, mx, my);
 		hits.add(new Hit(bx, y - 4, gw, 15, () -> {
 			grouped = !grouped;
+			SlashHud.config.skyCaseSum = grouped;
+			SlashHud.config.save();
 			scroll = 0;
 		}));
 		y += 16;
@@ -151,12 +154,13 @@ public class SkyCaseScreen extends Screen {
 			if (item != null) Ui.icon(g, item, "spark", lx + 1, ry + 1);
 			boolean won = r.lifetime() > 0;
 			Component name = Ui.text(r.name());
-			if (grouped && r.amount() > r.lifetime()) name = name.copy().append(Ui.text(" · ").append(Ui.tr("slashclient-hud.skyCase.items", r.amount())).withStyle(s -> s.withColor(0x9CA3AF)));
+			// summed: the columns count pieces, how many wins they came in beside the name
+			if (grouped && r.amount() > r.lifetime()) name = name.copy().append(Ui.text(" · ").append(Ui.tr("slashclient-hud.skyCase.wins", r.lifetime())).withStyle(s -> s.withColor(0x9CA3AF)));
 			if (r.removed()) name = name.copy().append(Ui.text(" ").append(Ui.tr("slashclient-hud.skyCase.removed")).withStyle(s -> s.withColor(0xF87171)));
 			Ui.draw(g, Ui.fit(name, nameW), lx + 20, ry + 5, r.removed() ? Ui.MUTED : won ? Ui.TEXT : Ui.TEXT_2);
 			int count = won ? Ui.TEXT : Ui.MUTED;
-			right(g, Ui.text(String.valueOf(r.session())), cNow, ry + 5, r.session() > 0 ? Ui.ACCENT_LIGHT : Ui.MUTED);
-			right(g, Ui.text(String.valueOf(r.lifetime())), cAll, ry + 5, count);
+			right(g, Ui.text(String.valueOf(grouped ? r.sessionAmount() : r.session())), cNow, ry + 5, r.session() > 0 ? Ui.ACCENT_LIGHT : Ui.MUTED);
+			right(g, Ui.text(String.valueOf(grouped ? r.amount() : r.lifetime())), cAll, ry + 5, count);
 			right(g, Ui.text(SkyCase.percent(r.share())), cPct, ry + 5, count);
 		}
 		Ui.end();

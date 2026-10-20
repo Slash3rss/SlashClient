@@ -80,7 +80,7 @@ public final class SkyCaseTestHooks {
 	public static String rewards(String type, boolean grouped) {
 		StringBuilder out = new StringBuilder();
 		for (SkyCase.Reward r : SkyCase.rewards(type, grouped)) {
-			out.append(r.name()).append(' ').append(r.session()).append('/').append(r.lifetime()).append(' ').append(r.amount()).append(' ').append(SkyCase.percent(r.share()));
+			out.append(r.name()).append(' ').append(r.session()).append('/').append(r.lifetime()).append(' ').append(r.sessionAmount()).append('/').append(r.amount()).append(' ').append(SkyCase.percent(r.share()));
 			if (r.removed()) out.append(" removed");
 			out.append('\n');
 		}
@@ -106,6 +106,11 @@ public final class SkyCaseTestHooks {
 	/** The module's layout ("recent", "top", "summary"). */
 	public static void layout(String layout) {
 		SlashHud.config.skyCaseLayout = layout;
+	}
+
+	/** Rewards summed by item, or each on its own. */
+	public static void sum(boolean sum) {
+		SlashHud.config.skyCaseSum = sum;
 	}
 
 	/** The counts and pools read back from the file, as after a restart. */

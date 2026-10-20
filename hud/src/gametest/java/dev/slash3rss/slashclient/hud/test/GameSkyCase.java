@@ -120,11 +120,11 @@ public class GameSkyCase implements FabricClientGameTest {
 			String pool = context.computeOnClient(mc -> SkyCaseTestHooks.pool("Górniczy"));
 			check(!has(pool, "Krzemień") && pool.startsWith("Klejnot klucznika|Kask Górnika|Sztabka miedzi|5x Zaklęta butelka") && pool.split("\\|").length == 35, "Górniczy's pool", pool);
 			String rows = context.computeOnClient(mc -> SkyCaseTestHooks.rewards("Górniczy", false));
-			check(rows.contains("Krzemień 1/1 1 20% removed") && rows.contains("Sztabka miedzi 0/0 0 0%\n") && rows.contains("Kask Górnika 1/1 1 20%\n"), "Górniczy's rows", rows);
+			check(rows.contains("Krzemień 1/1 1/1 20% removed") && rows.contains("Sztabka miedzi 0/0 0/0 0%\n") && rows.contains("Kask Górnika 1/1 1/1 20%\n"), "Górniczy's rows", rows);
 			check(rows.strip().endsWith("removed"), "the removed one last", rows);
 			// grouped by item: both bottles together, 18 of them
 			String grouped = context.computeOnClient(mc -> SkyCaseTestHooks.rewards("Górniczy", true));
-			check(grouped.contains("Zaklęta butelka 2/2 18 40%") && grouped.contains("\nDiament 1/1 1 20%"), "grouped", grouped);
+			check(grouped.contains("Zaklęta butelka 2/2 18/18 40%") && grouped.contains("\nDiament 1/1 1/1 20%"), "grouped", grouped);
 
 			// Platinum: the first page alone only adds (page two's saddle stays, the missing redstone too)
 			context.runOnClient(mc -> SkyCaseTestHooks.preview("\ue001\ue081\ue002Platinum SkyCase", false, true, PLATINUM_1_LESS));
@@ -185,6 +185,10 @@ public class GameSkyCase implements FabricClientGameTest {
 			context.runOnClient(mc -> SkyCaseTestHooks.layout("top"));
 			context.waitTicks(5);
 			context.takeScreenshot("skycase-hud-top");
+			context.runOnClient(mc -> SkyCaseTestHooks.sum(true));
+			context.waitTicks(5);
+			context.takeScreenshot("skycase-hud-top-sum");
+			context.runOnClient(mc -> SkyCaseTestHooks.sum(false));
 			context.runOnClient(mc -> SkyCaseTestHooks.layout("recent"));
 			context.runOnClient(mc -> SkyCaseTestHooks.newDropToast(false));
 		}

@@ -176,6 +176,7 @@ public final class Catalog {
 					settings.add(new Choice("slashclient-hud.skyCase.layout", HudConfig.SKY_CASE_LAYOUTS, "slashclient-hud.skyCase.layout.",
 						() -> cfg.skyCaseLayout, v -> cfg.skyCaseLayout = v));
 					settings.add(new Slider("slashclient-hud.skyCase.rows", 1f, 10f, 1f, "%.0f", () -> (float) cfg.skyCaseRows, v -> cfg.skyCaseRows = Math.round(v)));
+					settings.add(new Toggle("slashclient-hud.skyCase.sum", () -> cfg.skyCaseSum, v -> cfg.skyCaseSum = v));
 					settings.add(new Toggle("slashclient-hud.skyCase.newDropSetting", () -> cfg.skyCaseNewDrop, v -> cfg.skyCaseNewDrop = v));
 					settings.add(new Slider("slashclient-hud.skyCase.window", 10f, 300f, 10f, "%.0f s", () -> (float) cfg.skyCaseWindow, v -> cfg.skyCaseWindow = Math.round(v)));
 				}

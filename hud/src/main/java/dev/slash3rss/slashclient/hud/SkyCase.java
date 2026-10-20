@@ -423,10 +423,10 @@ public final class SkyCase {
 
 	/**
 	 * One row of a case: a reward (or an item, grouped), its item for the icon, wins this session and
-	 * all time, the items they were in all ("64x" counts 64), the share of the case's openings (0..1),
-	 * and whether the case no longer gives it.
+	 * all time, the items they were in this session and all time ("64x" counts 64), the share of the
+	 * case's openings (0..1), and whether the case no longer gives it.
 	 */
-	record Reward(String name, String item, long session, long lifetime, long amount, double share, boolean removed) {}
+	record Reward(String name, String item, long session, long lifetime, long sessionAmount, long amount, double share, boolean removed) {}
 
 	/** Every case known: the built-in ones, those previewed and those won from ("?" last, when there are any). */
 	static List<String> types() {
@@ -465,13 +465,13 @@ public final class SkyCase {
 			boolean removed = !UNASSIGNED.equals(type) && !l.pool.containsKey(name);
 			String row = grouped ? base(name) : name;
 			Reward was = out.get(row);
-			long amount = ll * amount(name);
-			if (was == null) out.put(row, new Reward(row, e.getValue(), ls, ll, amount, 0, removed));
+			long sessionAmount = ls * amount(name), amount = ll * amount(name);
+			if (was == null) out.put(row, new Reward(row, e.getValue(), ls, ll, sessionAmount, amount, 0, removed));
 			else out.put(row, new Reward(row, was.item().isEmpty() ? e.getValue() : was.item(), was.session() + ls, was.lifetime() + ll,
-				was.amount() + amount, 0, was.removed() && removed));
+				was.sessionAmount() + sessionAmount, was.amount() + amount, 0, was.removed() && removed));
 		}
 		List<Reward> list = new ArrayList<>();
-		for (Reward r : out.values()) list.add(new Reward(r.name(), r.item(), r.session(), r.lifetime(), r.amount(), l.opened > 0 ? r.lifetime() / (double) l.opened : 0, r.removed()));
+		for (Reward r : out.values()) list.add(new Reward(r.name(), r.item(), r.session(), r.lifetime(), r.sessionAmount(), r.amount(), l.opened > 0 ? r.lifetime() / (double) l.opened : 0, r.removed()));
 		// those it no longer gives at the end
 		list.sort(Comparator.comparing(Reward::removed));
 		return list;
@@ -519,13 +519,15 @@ public final class SkyCase {
 		if ("summary".equals(layout)) {
 			if (!l.last.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyCase.last").getString(), 0xFF9CA3AF, l.last, 0xFFFFFF55));
 		} else if ("top".equals(layout)) {
-			// the rewards won most, this session / all time and their share
+			// the rewards won most, this session / all time and their share; summed, the items won most in pieces
+			boolean sum = cfg.skyCaseSum;
 			List<Reward> won = new ArrayList<>();
-			for (Reward r : rewards(session, life, type, false)) if (r.lifetime() > 0) won.add(r);
-			won.sort(Comparator.comparingLong(Reward::lifetime).reversed());
+			for (Reward r : rewards(session, life, type, sum)) if (r.lifetime() > 0) won.add(r);
+			won.sort(Comparator.comparingLong(sum ? Reward::amount : Reward::lifetime).reversed());
 			for (int i = 0; i < Math.min(cfg.skyCaseRows, won.size()); i++) {
 				Reward r = won.get(i);
-				out.add(new Row("  " + r.name(), 0xFFE5E7EB, r.session() + " / " + r.lifetime() + "  " + percent(r.share()), 0xFFFFFFFF));
+				String right = sum ? r.sessionAmount() + " / " + r.amount() : r.session() + " / " + r.lifetime() + "  " + percent(r.share());
+				out.add(new Row("  " + r.name(), 0xFFE5E7EB, right, 0xFFFFFFFF));
 			}
 		} else {
 			// the latest wins, newest first, with their case when it is another one
