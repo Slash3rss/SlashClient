@@ -10,7 +10,7 @@ This policy covers the SlashClient launcher, the mod (HUD), the website [client.
 
 - The launcher works without a SlashClient Account; the account is only needed for online features.
 - We have no ads, no analytics and no tracking cookies. The website only stores your sign-in token in the browser.
-- Chat messages and pictures are end-to-end encrypted — we cannot read them.
+- Messages and pictures in chats with friends, in groups and clans are end-to-end encrypted — we cannot read them. Exception: community chat (large groups of up to 1000 people) is not end-to-end encrypted.
 - We never learn your passwords or card details. Microsoft account tokens stay on your computer, encrypted.
 - Shared files are deleted automatically (screenshots, clips, profile codes and chat pictures after 30 days, logs after 90 days).
 
@@ -33,6 +33,7 @@ Legal bases (Art. 6(1) GDPR): **(b)** performance of a contract — providing th
 | Friends and status | friends list, requests, mutes; status (online, away, busy, invisible), activity (launcher, menu, singleplayer, server, game version) and server address — the address only if you enable "Show friends which server I play on"; status and activity are kept in server memory only | friends — (b) |
 | Messages (private, group, clan) | content end-to-end encrypted (we only store ciphertext); metadata: sender, recipient or group, time sent, read, edited and deleted; game invites (server address, version) and shared waypoints (coordinates, dimension, world/server) — not end-to-end encrypted; daily number of messages sent | chat — (b); anti-spam limits — (f) |
 | Chat pictures | encrypted file, sender, recipient, size, time | chat — (b) |
+| Communities | name, tag, description, logo, visibility; members and their roles, join requests, invites, bans and mutes; **community chat messages in plain form** (not end-to-end encrypted), their edits and deletions; message reports (with a copy of the text) and the moderation log | communities — (b); moderation and safety — (f) |
 | Encryption keys | the public key of each launcher (up to the 10 latest devices) and its random identifier | end-to-end encryption — (b) |
 | Achievements and statistics | play time per day (UTC), addresses of servers you play on with the date of the first visit, unlocked achievements, counters (e.g. messages sent, shares) | achievements, Sparks, profile statistics — (b) |
 | Sparks and shop | balance, history of changes (amount, reason, time, administrator for manual adjustments), purchases | Sparks — (b); adjustments on abuse — (f) |
@@ -67,6 +68,7 @@ Each launcher creates its own key pair. The private key never leaves your comput
 Limitations worth knowing:
 
 - we see metadata: who writes to whom and when, when a message was read, edited or deleted;
+- **community chat is not end-to-end encrypted**: encrypting for each of up to 1000 members isn't practical, and moderators must be able to act on reports. The text is encrypted only in transit (HTTPS) and stored on the server; community members, its moderators and SlashClient administrators can see it. The launcher and the game say so above the message box;
 - game invites and shared waypoints (server address, coordinates) are not end-to-end encrypted;
 - if a friend uses a very old launcher without encryption keys, a text message to them is sent without end-to-end encryption (pictures cannot be sent then) [UZUPEŁNIJ: consider disabling this];
 - after signing in on a new computer, older messages may be unreadable because they were encrypted for other devices.

@@ -8,7 +8,7 @@ Polityka dotyczy launchera SlashClient, moda (HUD), strony [client.slash3rss.dev
 
 - Launcher działa bez Konta SlashClient; konto jest potrzebne tylko do funkcji online.
 - Nie mamy reklam, analityki ani śledzących plików cookie. Strona zapisuje w przeglądarce tylko token logowania.
-- Wiadomości i obrazy w czacie są szyfrowane end-to-end — nie możemy ich przeczytać.
+- Wiadomości i obrazy w czatach ze znajomymi, w grupach i klanach są szyfrowane end-to-end — nie możemy ich przeczytać. Wyjątek: czat społeczności (duże grupy do 1000 osób) nie jest szyfrowany end-to-end.
 - Nie znamy Twoich haseł ani danych kart płatniczych. Tokeny konta Microsoft zostają na Twoim komputerze, zaszyfrowane.
 - Udostępniane pliki usuwamy automatycznie (zrzuty i klipy, kody profili i obrazy w czacie po 30 dniach, logi po 90 dniach).
 
@@ -30,6 +30,7 @@ Podstawy prawne (art. 6 ust. 1 RODO): **(b)** wykonanie umowy — świadczenie U
 | Sesje | skrót (SHA-256) tokenu sesji — samego tokenu nie przechowujemy, daty utworzenia i ostatniego użycia | utrzymanie zalogowania, bezpieczeństwo — (b), (f) |
 | Znajomi i status | lista znajomych, zaproszenia, wyciszenia; status (online, zaraz wracam, zajęty, niewidoczny), aktywność (launcher, menu, gra jednoosobowa, serwer, wersja gry) i adres serwera — adres tylko gdy włączysz „Pokazuj znajomym, na jakim serwerze gram”; status i aktywność są tylko w pamięci serwera | znajomi — (b) |
 | Wiadomości (prywatne, grupowe, klanowe) | treść zaszyfrowana end-to-end (przechowujemy tylko szyfrogram); metadane: nadawca, odbiorca lub grupa, czas wysłania, odczytu, edycji i usunięcia; zaproszenia do gry (adres serwera, wersja) i udostępnione punkty trasy (współrzędne, wymiar, świat/serwer) — bez szyfrowania end-to-end; dzienna liczba wysłanych wiadomości | czat — (b); limity antyspamowe — (f) |
+| Społeczności | nazwa, tag, opis, logo, widoczność; członkowie i ich role, prośby o dołączenie, zaproszenia, bany i wyciszenia; **wiadomości czatu społeczności w postaci jawnej** (bez szyfrowania end-to-end), ich edycje i usunięcia; zgłoszenia wiadomości (z kopią treści) i dziennik moderacji | społeczności — (b); moderacja i bezpieczeństwo — (f) |
 | Obrazy w czacie | zaszyfrowany plik, nadawca, odbiorca, rozmiar, czas | czat — (b) |
 | Klucze szyfrowania | klucz publiczny każdego launchera (do 10 ostatnich urządzeń) i jego losowy identyfikator | szyfrowanie end-to-end — (b) |
 | Osiągnięcia i statystyki | czas gry w poszczególnych dniach (UTC), adresy serwerów, na których grasz, z datą pierwszej wizyty, odblokowane osiągnięcia, liczniki (np. wysłane wiadomości, udostępnienia) | osiągnięcia, Iskry, statystyki na profilu — (b) |
@@ -65,6 +66,7 @@ Każdy launcher tworzy własną parę kluczy. Klucz prywatny nie opuszcza Twojeg
 Ograniczenia, o których warto wiedzieć:
 
 - widzimy metadane: kto, do kogo i kiedy pisze, kiedy wiadomość odczytano, edytowano lub usunięto;
+- **czat społeczności nie jest szyfrowany end-to-end**: szyfrowanie dla każdego z nawet 1000 członków nie jest praktyczne, a moderatorzy muszą móc reagować na zgłoszenia. Treść jest szyfrowana tylko w drodze (HTTPS) i przechowywana na serwerze; widzą ją członkowie społeczności, jej moderatorzy i administratorzy SlashClient. Launcher i gra pokazują o tym informację nad polem wiadomości;
 - zaproszenia do gry i udostępnione punkty trasy (adres serwera, współrzędne) nie są szyfrowane end-to-end;
 - jeśli znajomy używa bardzo starej wersji launchera bez kluczy szyfrowania, wiadomość tekstowa do niego jest wysyłana bez szyfrowania end-to-end (obrazów wtedy nie da się wysłać) [UZUPEŁNIJ: rozważcie wyłączenie tej możliwości];
 - po zalogowaniu na nowym komputerze starsze wiadomości mogą być nieczytelne, bo były zaszyfrowane dla innych urządzeń.
