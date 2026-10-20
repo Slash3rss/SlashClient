@@ -61,10 +61,22 @@ public class CosmeticsScreen extends Screen {
 		Map.entry("move_petals", Items.PINK_PETALS));
 	private static final int TILE_W = 32, TILE_H = 40, GAP = 4;
 
-	/** `hint`: how to earn an item that only an achievement gives ("" for the rest). */
-	private record Entry(String id, String slot, String name, String rank, boolean available, String hint) {
+	/**
+	 * `hint`: how to earn an item that only an achievement gives ("" for the rest); `price`: what it
+	 * costs in the shop, in Sparks (0: not sold there; servers before 0.9.22 sell nothing).
+	 */
+	private record Entry(String id, String slot, String name, String rank, boolean available, String hint, int price) {
+		Entry(String id, String slot, String name, String rank, boolean available, String hint) {
+			this(id, slot, name, rank, available, hint, 0);
+		}
+
 		Entry(String id, String slot, String name, String rank, boolean available) {
-			this(id, slot, name, rank, available, "");
+			this(id, slot, name, rank, available, "", 0);
+		}
+
+		/** In the shop and not ours yet: a click offers to buy it. */
+		boolean forSale() {
+			return price > 0 && !available;
 		}
 	}
 	private record Hit(int x, int y, int w, int h, Runnable action) {}
@@ -106,7 +118,17 @@ public class CosmeticsScreen extends Screen {
 	private String tried, hoverNow;
 	private CameraType camera;
 	private Component tooltip;
+	/** A second, dimmer line under the tooltip (a shop item's how to buy it), or null. */
+	private Component tooltip2;
 	private int tipX, tipY;
+	/** The Sparks we have (-1: not known, e.g. signed out or an older server: then no shop shows). */
+	private volatile int balance = -1;
+	/** The shop item whose "buy it?" box is open, or null; the request for it in flight; what went wrong (a translation key, or null). */
+	private Entry buying;
+	private volatile boolean buyBusy;
+	private volatile String buyError;
+	/** For the test (no launcher there): answers a purchase as the server would ({balance, item}), or throws as the bridge does. */
+	static volatile java.util.function.Function<String, JsonObject> shopForTest;
 	private int px, py, pw, ph;
 
 	public CosmeticsScreen(Screen parent) {
@@ -154,6 +176,21 @@ public class CosmeticsScreen extends Screen {
 		screen.camera = CameraType.FIRST_PERSON;
 		return screen;
 	}
+
+	/** For the shop's test: the sample with the shop's items at their prices (`owned` already bought) and this many Sparks. */
+	static CosmeticsScreen sampleShop(String slot, int balance, Map<String, Integer> prices, java.util.Set<String> owned) {
+		CosmeticsScreen screen = sample(slot);
+		List<Entry> list = new ArrayList<>();
+		for (Entry e : screen.items) {
+			Integer price = prices.get(e.id());
+			list.add(price == null ? e : new Entry(e.id(), e.slot(), SAMPLE_NAMES.getOrDefault(e.id(), e.id()), "", owned.contains(e.id()), "", price));
+		}
+		screen.items = List.copyOf(list);
+		screen.balance = balance;
+		return screen;
+	}
+	private static final Map<String, String> SAMPLE_NAMES = Map.of("emberstar", "Iskra", "obsidian", "Obsydian", "coral", "Rafa koralowa", "thunder", "Grom",
+		"regal", "Purpura", "cosmos", "Kosmos", "emberwings", "Iskrzące", "sapphire", "Szafirowe", "obsidianwings", "Obsydianowe");
 
 	@Override
 	protected void init() {
@@ -210,6 +247,32 @@ public class CosmeticsScreen extends Screen {
 		pick(s);
 	}
 
+	/** For the test: the "buy it?" box of a shop item, as a click on its tile (false when it is not for sale). */
+	boolean offerForTest(String id) {
+		for (Entry e : items) if (e.id().equals(id) && e.forSale()) {
+			offer(e);
+			return true;
+		}
+		return false;
+	}
+
+	/** For the test: where an item's tile was last drawn (GUI pixels: x, y), or null. */
+	int[] tileForTest(String id) {
+		return tileAt.get(id);
+	}
+	private final Map<String, int[]> tileAt = new java.util.concurrent.ConcurrentHashMap<>();
+
+	/** For the test: "Buy" in the open box, as a click on it. */
+	void confirmForTest() {
+		if (buying != null) buy(buying);
+	}
+
+	/** For the test: the Sparks shown, whether the box is open, and whether an item is ours now: "balance|open|owned". */
+	String shopForTest(String id) {
+		boolean owned = items.stream().anyMatch(e -> e.id().equals(id) && e.available());
+		return balance + "|" + (buying != null) + "|" + owned + "|" + worn.getOrDefault(slot, "");
+	}
+
 	/** For the test: as if the server said this is worn in a slot (null takes it off). */
 	void wornForTest(String s, String id) {
 		synchronized (worn) {
@@ -233,22 +296,109 @@ public class CosmeticsScreen extends Screen {
 			try {
 				JsonObject catalog = Social.api("GET", "/v1/cosmetics", null);
 				JsonObject me = Social.api("GET", "/v1/me", null);
-				List<Entry> list = new ArrayList<>();
-				boolean polish = minecraft.options.languageCode.startsWith("pl");
-				for (JsonElement e : catalog.getAsJsonArray("items")) {
-					JsonObject o = e.getAsJsonObject();
-					// newer cosmetics than this version has pictures for stay out of the menu
-					if (!Cosmetics.knows(o.get("slot").getAsString(), o.get("id").getAsString())) continue;
-					String hint = polish ? "hint" : "hintEn";
-					list.add(new Entry(o.get("id").getAsString(), o.get("slot").getAsString(), o.get("name").getAsString(),
-						o.has("rank") && !o.get("rank").isJsonNull() ? o.get("rank").getAsString() : "", o.get("available").getAsBoolean(),
-						o.has(hint) && !o.get(hint).isJsonNull() ? o.get(hint).getAsString() : ""));
-				}
-				items = List.copyOf(list);
+				applyCatalog(catalog);
 				applyMe(me);
 				status = "";
 			} catch (Exception e) {
 				status = e.getMessage() != null && e.getMessage().contains("401") ? "slashclient-hud.cosmetics.signIn" : "slashclient-hud.cosmetics.error";
+			}
+		});
+	}
+
+	/** The items (only those this version has pictures for) and the Sparks we have. */
+	private void applyCatalog(JsonObject catalog) {
+		List<Entry> list = new ArrayList<>();
+		boolean polish = minecraft.options.languageCode.startsWith("pl");
+		for (JsonElement e : catalog.getAsJsonArray("items")) {
+			JsonObject o = e.getAsJsonObject();
+			// newer cosmetics than this version has pictures for stay out of the menu
+			if (!Cosmetics.knows(o.get("slot").getAsString(), o.get("id").getAsString())) continue;
+			String hint = polish ? "hint" : "hintEn";
+			list.add(new Entry(o.get("id").getAsString(), o.get("slot").getAsString(), o.get("name").getAsString(),
+				o.has("rank") && !o.get("rank").isJsonNull() ? o.get("rank").getAsString() : "", o.get("available").getAsBoolean(),
+				o.has(hint) && !o.get(hint).isJsonNull() ? o.get(hint).getAsString() : "",
+				o.has("price") && o.get("price").isJsonPrimitive() ? o.get("price").getAsInt() : 0));
+		}
+		items = List.copyOf(list);
+		JsonObject wallet = catalog.has("wallet") && catalog.get("wallet").isJsonObject() ? catalog.getAsJsonObject("wallet") : null;
+		balance = wallet != null && wallet.has("balance") ? wallet.get("balance").getAsInt() : -1;
+	}
+
+	/** The catalog asked again without "Loading…" (an achievement may have given an item meanwhile). */
+	private void refreshCatalog() {
+		if (!Social.bridged() || !"".equals(status)) return;
+		Thread.ofVirtual().start(() -> {
+			try {
+				applyCatalog(Social.api("GET", "/v1/cosmetics", null));
+			} catch (Exception e) {
+				// what shows stays as it was
+			}
+		});
+	}
+
+	/** The Sparks balance changed (the server's 'wallet' event): the open menu shows it, and asks the catalog again. */
+	public static void walletChanged(int balance) {
+		net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+		mc.execute(() -> {
+			if (Compat.screen(mc) instanceof CosmeticsScreen c && c.balance != balance) {
+				c.balance = balance;
+				if (!c.buyBusy) c.refreshCatalog();
+			}
+		});
+	}
+
+	// ---------- the shop ----------
+
+	/** The "buy it?" box for a shop item. */
+	private void offer(Entry e) {
+		if (buyBusy) return;
+		buying = e;
+		buyError = null;
+	}
+
+	/**
+	 * Buys the item for Sparks (off the game's thread), then it is ours: the catalog anew, a toast,
+	 * and it is worn at once, as a click on it would.
+	 */
+	private void buy(Entry e) {
+		if (buyBusy || balance < e.price()) return;
+		buyBusy = true;
+		buyError = null;
+		String wornSlot = slot;
+		Thread.ofVirtual().start(() -> {
+			try {
+				var test = shopForTest;
+				JsonObject res = test != null ? test.apply(e.id()) : Social.api("POST", "/v1/shop/" + e.id() + "/buy", new JsonObject());
+				if (res.has("balance")) balance = res.get("balance").getAsInt();
+				// ours now, at once; the catalog anew says so too
+				List<Entry> list = new ArrayList<>();
+				for (Entry x : items) list.add(x.id().equals(e.id()) && x.slot().equals(e.slot()) ? new Entry(x.id(), x.slot(), x.name(), x.rank(), true, x.hint(), x.price()) : x);
+				items = List.copyOf(list);
+				if (test == null) {
+					try {
+						applyCatalog(Social.api("GET", "/v1/cosmetics", null));
+					} catch (Exception ignored) {
+						// the item is shown as ours already
+					}
+				}
+				Social.toast(Component.translatable("slashclient-hud.cosmetics.buy.done", e.name()).getString(),
+					Component.translatable("slashclient-hud.cosmetics.buy.worn").getString(), "check");
+				minecraft.execute(() -> {
+					buying = null;
+					buyBusy = false;
+					if (test != null) wornForTest(wornSlot, e.id());
+					else wear(e);
+				});
+			} catch (Exception ex) {
+				String msg = ex.getMessage() == null ? "" : ex.getMessage();
+				buyError = msg.contains("not_enough_sparks") ? "slashclient-hud.cosmetics.buy.notEnough"
+					: msg.contains("not_for_sale") || msg.contains("not_found") ? "slashclient-hud.cosmetics.buy.notForSale"
+					: msg.contains("\"owned\"") ? "slashclient-hud.cosmetics.buy.owned"
+					: msg.contains("unauthorized") || msg.contains("401") ? "slashclient-hud.cosmetics.signIn"
+					: "slashclient-hud.cosmetics.buy.failed";
+				buyBusy = false;
+				// someone else's purchase (another game, the website) or a stale price: what the server says now
+				if (shopForTest == null) refreshCatalog();
 			}
 		});
 	}
@@ -352,9 +502,11 @@ public class CosmeticsScreen extends Screen {
 		super.extractRenderState(g, mx, my, delta);
 		hits.clear();
 		tooltip = null;
+		tooltip2 = null;
 		bar.hide();
 		tabBar.hide();
-		tried = hoverNow;
+		// while the "buy it?" box is open the figure wears what is being bought
+		tried = buying != null ? buying.id() : hoverNow;
 		hoverNow = null;
 		boolean world = minecraft.level != null;
 		// kill effects play in the world, around the real player seen from behind; else the camera stays as it was
@@ -415,6 +567,21 @@ public class CosmeticsScreen extends Screen {
 		int cw = 16;
 		Ui.button(g, "cos:close", px + pw - cw - 8, y - 4, cw, 15, "close", Component.empty(), false, mx, my);
 		hits.add(new Hit(px + pw - cw - 8, y - 4, cw, 15, this::onClose));
+		// the Sparks we have, in gold beside the close button (servers before 0.9.22 and signed out: none)
+		int sparks = balance;
+		if (sparks >= 0 && "".equals(status)) {
+			Component amount = Ui.bold(Sparks.format(sparks));
+			int aw = Ui.width(amount), bx = px + pw - cw - 8 - 8 - aw - 11, bw = aw + 11 + 8;
+			Ui.round(g, bx - 4, y - 4, bw, 15, 4, 0x26FACC15);
+			Ui.roundOutline(g, bx - 4, y - 4, bw, 15, 4, 0x40FACC15);
+			Sparks.icon(g, bx, y - 1, 8);
+			Ui.draw(g, amount, bx + 11, y, Sparks.GOLD);
+			if (Ui.inside(mx, my, bx - 4, y - 4, bw, 15)) {
+				tooltip = Ui.tr("slashclient-hud.cosmetics.balance", Sparks.name());
+				tipX = bx - 4 + bw / 2;
+				tipY = y + 30;
+			}
+		}
 		y += 13;
 		Component owner = character != null
 			? Ui.tr(ownSet ? "slashclient-hud.cosmetics.character" : "slashclient-hud.cosmetics.characterShared", characterName)
@@ -542,35 +709,157 @@ public class CosmeticsScreen extends Screen {
 		scroll = Math.max(0, Math.min(maxScroll, scroll));
 		g.enableScissor(px, gridTop - 3, px + pw, gridBottom);
 		Ui.beginClip("cosmetics grid", px, gridTop - 3, pw, gridBottom - gridTop + 3);
+		tileAt.clear();
 		for (int i = 0; i < shown.size(); i++) {
 			Entry e = shown.get(i);
 			int ix = x + (i % perRow) * (TILE_W + GAP), iy = y + (i / perRow) * (TILE_H + GAP) - scroll;
 			if (iy + TILE_H < gridTop || iy > gridBottom) continue;
 			tile(g, mx, my, ix, iy, e, (e == null ? "" : e.id()).equals(current));
+			tileAt.put(e == null ? "" : e.id(), new int[] {ix, iy});
 		}
 		Ui.end();
 		g.disableScissor();
 		// where in the list we are; taken with the mouse it scrolls too
 		bar.draw(g, px + pw - 8, gridTop, gridBottom - gridTop, scroll, maxScroll, mx, my);
 		Ui.end();
-		if (tooltip != null) {
-			int w = Ui.width(tooltip) + 12;
-			int tx2 = Math.max(4, Math.min(width - w - 4, tipX - w / 2));
-			Ui.round(g, tx2, tipY - 15, w, 15, 4, 0xF0111622);
-			Ui.roundOutline(g, tx2, tipY - 15, w, 15, 4, 0x403B82F6);
-			Ui.draw(g, tooltip, tx2 + 6, tipY - 11, Ui.TEXT);
+		if (buying != null) {
+			// the "buy it?" box: everything else waits until it is answered
+			tooltip = null;
+			hits.clear();
+			offerBox(g, mx, my);
 		}
+		if (tooltip != null) {
+			int w = Math.max(Ui.width(tooltip), tooltip2 == null ? 0 : Ui.width(tooltip2)) + 12, h = tooltip2 == null ? 15 : 26;
+			int tx2 = Math.max(4, Math.min(width - w - 4, tipX - w / 2));
+			Ui.round(g, tx2, tipY - h, w, h, 4, 0xF0111622);
+			Ui.roundOutline(g, tx2, tipY - h, w, h, 4, 0x403B82F6);
+			Ui.draw(g, tooltip, tx2 + 6, tipY - h + 4, Ui.TEXT);
+			if (tooltip2 != null) Ui.draw(g, tooltip2, tx2 + 6, tipY - h + 15, Ui.MUTED);
+		}
+	}
+
+	/**
+	 * Over the panel: the item's picture, "Buy {name} for {price}?", what we have and what is left
+	 * (or how many are missing: then Buy cannot be pressed), Buy and Cancel.
+	 */
+	private void offerBox(GuiGraphicsExtractor g, int mx, int my) {
+		Entry e = buying;
+		int have = balance;
+		boolean enough = have >= e.price();
+		g.fill(px, py, px + pw, py + ph, 0x90000000);
+		int bw = Math.min(pw - 16, 200), x = px + (pw - bw) / 2, inner = bw - 24 - TILE_W - 10;
+		Component title = Ui.trBold("slashclient-hud.cosmetics.buy.title", e.name(), Sparks.format(e.price()));
+		List<net.minecraft.util.FormattedCharSequence> lines = minecraft.font.split(title, inner);
+		Component error = buyError == null ? null : Ui.tr(buyError, Sparks.genitive());
+		Component hint = enough ? null : Ui.tr("slashclient-hud.cosmetics.buy.missingHint", Sparks.genitive());
+		int hintLines = hint == null ? 0 : minecraft.font.split(hint, bw - 24).size();
+		int textH = lines.size() * 11 + 4 + 12 + 12;
+		int bh = 12 + Math.max(TILE_H, textH) + 8 + hintLines * 11 + (hint != null ? 4 : 0) + (error != null ? 13 : 0) + 15 + 12;
+		int y = py + Math.max(8, (ph - bh) / 2);
+		Ui.round(g, x, y, bw, bh, 6, Ui.PANEL);
+		Ui.roundOutline(g, x, y, bw, bh, 6, 0x60FACC15);
+		Ui.begin("cosmetics buy", x, y, bw, bh);
+		// the item as on its tile, without the lock and the price
+		int ix = x + 12, iy = y + 12;
+		Ui.round(g, ix, iy, TILE_W, TILE_H, 5, Ui.CARD);
+		Ui.roundOutline(g, ix, iy, TILE_W, TILE_H, 5, 0x60FACC15);
+		picture(g, ix, iy, e, 0xFFFFFFFF);
+		int tx = ix + TILE_W + 10, ty = iy + 1;
+		for (var line : lines) {
+			g.text(minecraft.font, line, tx, ty, Ui.TEXT, false);
+			ty += 11;
+		}
+		ty += 4;
+		amountLine(g, "slashclient-hud.cosmetics.buy.have", have, tx, ty, Ui.TEXT_2);
+		ty += 12;
+		if (enough) amountLine(g, "slashclient-hud.cosmetics.buy.after", have - e.price(), tx, ty, Ui.MUTED);
+		else amountLine(g, "slashclient-hud.cosmetics.buy.missing", e.price() - have, tx, ty, Ui.DANGER);
+		int cy = y + 12 + Math.max(TILE_H, textH) + 8;
+		if (hint != null) cy = Ui.wrapped(g, hint, x + 12, cy, bw - 24, Ui.MUTED) + 4;
+		if (error != null) {
+			Ui.draw(g, Ui.fit(error, bw - 24), x + 12, cy, Ui.DANGER);
+			cy += 13;
+		}
+		// Cancel on the left, Buy (gold-bordered, or greyed out without enough Sparks) on the right
+		int half = (bw - 24 - 6) / 2;
+		Ui.button(g, "cos:buy:cancel", x + 12, cy, half, 15, null, Ui.tr("slashclient-hud.cosmetics.buy.cancel"), false, mx, my);
+		hits.add(new Hit(x + 12, cy, half, 15, () -> {
+			if (!buyBusy) buying = null;
+		}));
+		int bx = x + 12 + half + 6;
+		Component label = Ui.tr(buyBusy ? "slashclient-hud.cosmetics.buy.busy" : "slashclient-hud.cosmetics.buy.confirm");
+		if (enough && !buyBusy) {
+			Ui.button(g, "cos:buy:confirm", bx, cy, half, 15, "spark", label, true, mx, my);
+			hits.add(new Hit(bx, cy, half, 15, () -> buy(e)));
+		} else {
+			Ui.round(g, bx, cy, half, 15, 4, Ui.CARD);
+			Ui.roundOutline(g, bx, cy, half, 15, 4, Ui.BORDER);
+			Ui.centered(g, Ui.fit(label, half - 10), bx + half / 2, cy + 4, Ui.MUTED);
+		}
+		Ui.end();
+		// a click beside the box closes it, as Cancel
+		hits.add(0, new Hit(0, 0, width, height, () -> {
+			if (!buyBusy) buying = null;
+		}));
+	}
+
+	/** "You have: ✦ 1 250 Sparks": the label, the spark and the amount. */
+	private static void amountLine(GuiGraphicsExtractor g, String key, int amount, int x, int y, int color) {
+		Component label = Ui.tr(key, "");
+		Ui.draw(g, label, x, y, color);
+		int ax = x + Ui.width(label) + 1;
+		Sparks.icon(g, ax, y, 8);
+		Ui.draw(g, Ui.bold(Sparks.format(amount)), ax + 10, y, color == Ui.DANGER ? Ui.DANGER : Sparks.GOLD);
 	}
 
 	private void tile(GuiGraphicsExtractor g, int mx, int my, int x, int y, Entry e, boolean selected) {
 		boolean over = Ui.inside(mx, my, x, y, TILE_W, TILE_H) && my >= gridTop && my < gridBottom;
 		boolean locked = e != null && !e.available();
-		float t = Ui.hover("cos:" + slot + ":" + (e == null ? "" : e.id()), over && !locked);
+		// in the shop: it can be had for Sparks (a click offers to buy it), and is tried on like the rest
+		boolean sale = e != null && e.forSale();
+		float t = Ui.hover("cos:" + slot + ":" + (e == null ? "" : e.id()), over && (!locked || sale));
 		Ui.round(g, x, y, TILE_W, TILE_H, 5, Ui.blend(Ui.CARD, Ui.CARD_HOVER, t));
-		Ui.roundOutline(g, x, y, TILE_W, TILE_H, 5, selected ? Ui.ACCENT_LIGHT : Ui.blend(Ui.BORDER, 0x883B82F6, t));
-		int alpha = locked ? 0x60FFFFFF : 0xFFFFFFFF;
+		Ui.roundOutline(g, x, y, TILE_W, TILE_H, 5, selected ? Ui.ACCENT_LIGHT : sale ? Ui.blend(0x40FACC15, 0xA0FACC15, t) : Ui.blend(Ui.BORDER, 0x883B82F6, t));
 		if (e == null) Ui.icon(g, "close", x + (TILE_W - 12) / 2, y + (TILE_H - 12) / 2, 12, Ui.MUTED);
-		else switch (e.slot()) {
+		else picture(g, x, y, e, sale ? Ui.blend(0x90FFFFFF, 0xFFFFFFFF, t) : locked ? 0x60FFFFFF : 0xFFFFFFFF);
+		if (sale) {
+			// the price on a dark strip along the bottom: the spark and the number
+			Component price = Ui.bold(Sparks.compact(e.price()));
+			int w = 8 + 1 + Ui.width(price), sx = x + (TILE_W - w) / 2;
+			Ui.round(g, x + 2, y + TILE_H - 11, TILE_W - 4, 9, 3, 0xE00A0D14);
+			Sparks.icon(g, sx, y + TILE_H - 10, 7);
+			Ui.draw(g, price, sx + 9, y + TILE_H - 10, Sparks.GOLD);
+		}
+		// earned with an achievement: a lock (the tooltip says how); in the shop: a lock too; given by an admin or a rank: a cross
+		if (locked) Ui.icon(g, e.hint().isEmpty() && !sale ? "close" : "lock", x + TILE_W - 10, y + 3, 7, Sparks.GOLD);
+		else if (e != null && !e.rank().isEmpty()) g.fill(x + TILE_W - 7, y + 3, x + TILE_W - 3, y + 7, switch (e.rank()) {
+			case "admin" -> 0xFFEF4444;
+			case "support" -> 0xFF38BDF8;
+			case "friend" -> 0xFF22C55E;
+			case "friend_pink" -> 0xFFEC4899;
+			default -> 0xFFFACC15;
+		});
+		// tried on by the figure (kill effects are not worn)
+		if (over && (!locked || sale) && !slot.equals("kill")) hoverNow = e == null ? "" : e.id();
+		if (over) {
+			tooltip = e == null ? Ui.tr("slashclient-hud.cosmetics.nothing")
+				: sale ? Ui.text(e.name() + " · " + Sparks.format(e.price()))
+				: locked && !e.hint().isEmpty() ? Ui.fit(Ui.text(e.hint()), width - 20)
+				: locked ? Ui.tr(e.rank().isEmpty() ? "slashclient-hud.cosmetics.exclusive" : "slashclient-hud.cosmetics.rankOnly", e.name(), Ui.tr("slashclient-hud.rank." + e.rank()))
+				: Ui.text(e.name());
+			if (sale) tooltip2 = Ui.tr("slashclient-hud.cosmetics.shopHint", Sparks.name());
+			tipX = x + TILE_W / 2;
+			tipY = y - 2;
+		}
+		// only the part of it that shows takes clicks (the grid scrolls under the slot tabs)
+		int top = Math.max(y, gridTop), bottom = Math.min(y + TILE_H, gridBottom);
+		if (sale && bottom > top) hits.add(new Hit(x, top, TILE_W, bottom - top, () -> offer(e)));
+		else if (!locked && bottom > top) hits.add(new Hit(x, top, TILE_W, bottom - top, () -> wear(e)));
+	}
+
+	/** The item's picture on a tile at x, y (TILE_W × TILE_H), tinted with `alpha` (white, see-through for what is locked). */
+	private void picture(GuiGraphicsExtractor g, int x, int y, Entry e, int alpha) {
+		switch (e.slot()) {
 			case "cape" -> {
 				// the cape's front (10×16 at 1,1 of the 64×32 layout, our textures are 4×), an animated one's first frame
 				String tex = Cosmetics.ANIMATED.containsKey(e.id()) ? e.id() + "_" + (System.currentTimeMillis() / 120) % Cosmetics.ANIMATED.get(e.id()) : e.id();
@@ -610,28 +899,6 @@ public class CosmeticsScreen extends Screen {
 				if (item != null) Ui.icon(g, item, "m-appearance", x + (TILE_W - 16) / 2, y + (TILE_H - 16) / 2);
 			}
 		}
-		// earned with an achievement: a lock (the tooltip says how); given by an admin or a rank: a cross
-		if (locked) Ui.icon(g, e.hint().isEmpty() ? "close" : "lock", x + TILE_W - 10, y + 3, 7, 0xFFFACC15);
-		else if (e != null && !e.rank().isEmpty()) g.fill(x + TILE_W - 7, y + 3, x + TILE_W - 3, y + 7, switch (e.rank()) {
-			case "admin" -> 0xFFEF4444;
-			case "support" -> 0xFF38BDF8;
-			case "friend" -> 0xFF22C55E;
-			case "friend_pink" -> 0xFFEC4899;
-			default -> 0xFFFACC15;
-		});
-		// tried on by the figure (kill effects are not worn)
-		if (over && !locked && !slot.equals("kill")) hoverNow = e == null ? "" : e.id();
-		if (over) {
-			tooltip = e == null ? Ui.tr("slashclient-hud.cosmetics.nothing")
-				: locked && !e.hint().isEmpty() ? Ui.fit(Ui.text(e.hint()), width - 20)
-				: locked ? Ui.tr(e.rank().isEmpty() ? "slashclient-hud.cosmetics.exclusive" : "slashclient-hud.cosmetics.rankOnly", e.name(), Ui.tr("slashclient-hud.rank." + e.rank()))
-				: Ui.text(e.name());
-			tipX = x + TILE_W / 2;
-			tipY = y - 2;
-		}
-		// only the part of it that shows takes clicks (the grid scrolls under the slot tabs)
-		int top = Math.max(y, gridTop), bottom = Math.min(y + TILE_H, gridBottom);
-		if (!locked && bottom > top) hits.add(new Hit(x, top, TILE_W, bottom - top, () -> wear(e)));
 	}
 
 	/** For the test: as if the wheel moved the grid by this many pixels (the next frame keeps it in range). */
@@ -645,6 +912,7 @@ public class CosmeticsScreen extends Screen {
 	//#else
 	//$ public boolean mouseScrolled(double x, double y, double v) {
 	//#endif
+		if (buying != null) return true;
 		// over the slot tabs (when not all their rows show): a row at a time
 		if (tabRows > tabShown && x >= px && x < px + pw && y >= tabTop - 2 && y < tabBottom + 2) {
 			tabScroll = Math.max(0, Math.min(tabRows - tabShown, tabScroll - (int) Math.signum(v)));
@@ -668,11 +936,11 @@ public class CosmeticsScreen extends Screen {
 		//#else
 		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
 		//#endif
-		if (e.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && bar.press(e.x(), e.y())) {
+		if (buying == null && e.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && bar.press(e.x(), e.y())) {
 			scroll = Math.round(bar.drag(e.y()));
 			return true;
 		}
-		if (e.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && tabBar.press(e.x(), e.y())) {
+		if (buying == null && e.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT && tabBar.press(e.x(), e.y())) {
 			tabScroll = Math.round(tabBar.drag(e.y()) / TAB_ROW);
 			return true;
 		}
@@ -762,6 +1030,11 @@ public class CosmeticsScreen extends Screen {
 
 	@Override
 	public void onClose() {
+		// Escape on the "buy it?" box closes only the box
+		if (buying != null) {
+			if (!buyBusy) buying = null;
+			return;
+		}
 		minecraft.setScreenAndShow(parent);
 	}
 }

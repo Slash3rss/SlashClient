@@ -16,7 +16,7 @@ public class GameRingMoves implements FabricClientGameTest {
 	public void runTest(ClientGameTestContext context) {
 		if (TestFilter.skip(context, getClass())) return;
 		String known = context.computeOnClient(mc -> TestHooks.ringsAndMoves());
-		if (!known.equals("ring_runes,ring_flame,ring_frost,ring_rainbow,ring_mushroom,ring_galaxy,ring_halo,ring_toxic|move_steps,move_jump,move_landing,move_arrows,move_sprint,move_bubbles,move_petals"))
+		if (!known.equals("ring_runes,ring_flame,ring_frost,ring_rainbow,ring_mushroom,ring_galaxy,ring_halo,ring_toxic,ring_sparks,ring_ocean|move_steps,move_jump,move_landing,move_arrows,move_sprint,move_bubbles,move_petals"))
 			throw new AssertionError("Not the rings and movement effects we made: " + known);
 		// the menu out of a world: the figure with the ring, then the movement effect's show (the mouse off the tiles: nothing tried on)
 		context.runOnClient(mc -> TestHooks.cosmeticsMenu("ring"));
@@ -37,7 +37,7 @@ public class GameRingMoves implements FabricClientGameTest {
 			world.getServer().runCommand("time set 6000");
 			context.runOnClient(mc -> { TestHooks.ringMoveEffects(true, true, true); TestHooks.lookSouth(); TestHooks.cosmeticsSelf(null, true); });
 			// every ring, from the front
-			for (String ring : new String[] {"ring_runes", "ring_flame", "ring_frost", "ring_rainbow", "ring_mushroom", "ring_galaxy", "ring_halo", "ring_toxic"}) {
+			for (String ring : new String[] {"ring_runes", "ring_flame", "ring_frost", "ring_rainbow", "ring_mushroom", "ring_galaxy", "ring_halo", "ring_toxic", "ring_sparks", "ring_ocean"}) {
 				context.runOnClient(mc -> TestHooks.wear("ring", ring));
 				context.waitTicks(4);
 				context.takeScreenshot("ring-" + ring);

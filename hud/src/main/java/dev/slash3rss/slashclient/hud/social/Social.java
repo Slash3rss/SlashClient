@@ -348,8 +348,14 @@ public final class Social {
 			case "spray" -> dev.slash3rss.slashclient.hud.Sprays.received(e);
 			// a SlashClient achievement unlocked (play streak, hours…): "Achievement unlocked" and its name, with the reward
 			case "achievement" -> {
-				if (e.has("achievement") && e.get("achievement").isJsonObject()) achievement(e.getAsJsonObject("achievement"));
+				// "quiet": one of several unlocked at once; the 'achievements-summary' after them makes the toast
+				if (e.has("achievement") && e.get("achievement").isJsonObject() && !quiet(e) && !quiet(e.getAsJsonObject("achievement")))
+					achievement(e.getAsJsonObject("achievement"));
 			}
+			// several at once (e.g. earned before the server counted them): one toast for all, with the Sparks they paid
+			case "achievements-summary" -> achievementsSummary(num(e, "count"), num(e, "sparks"));
+			// the Sparks balance changed (an achievement, a purchase, an admin): the cosmetics menu shows it
+			case "wallet" -> dev.slash3rss.slashclient.hud.CosmeticsScreen.walletChanged(num(e, "balance"));
 			case "friends" -> {
 				refreshFriends();
 				if (e.has("request") && e.get("request").isJsonObject()) toast(str(e.getAsJsonObject("request"), "name"), Component.translatable("slashclient-hud.friends.invite").getString(), null);
@@ -383,7 +389,22 @@ public final class Social {
 		String name = str(a, polish ? "name" : "nameEn");
 		JsonObject reward = a.has("reward") && a.get("reward").isJsonObject() ? a.getAsJsonObject("reward") : null;
 		String text = reward == null ? name : Component.translatable("slashclient-hud.achievement.reward", name).getString();
-		toast(Component.translatable("slashclient-hud.achievement.unlocked").getString(), text, "m-advancements");
+		// the Sparks it paid on a line of their own (servers before 0.9.22 pay none)
+		int sparks = num(a, "sparks");
+		toast(Component.translatable("slashclient-hud.achievement.unlocked").getString(), text, "m-advancements",
+			sparks > 0 ? "+" + dev.slash3rss.slashclient.hud.Sparks.format(sparks) : null);
+	}
+
+	/** Marked "quiet": shown by the summary that follows (on the event or on the achievement in it). */
+	private static boolean quiet(JsonObject o) {
+		return o.has("quiet") && o.get("quiet").isJsonPrimitive() && o.get("quiet").getAsBoolean();
+	}
+
+	/** "5 achievements unlocked", where to spend them, and "+320 Sparks" (the server's 'achievements-summary' event). */
+	public static void achievementsSummary(int count, int sparks) {
+		toast(Component.translatable("slashclient-hud.achievement.summary", count).getString(),
+			Component.translatable("slashclient-hud.achievement.summaryHint", dev.slash3rss.slashclient.hud.Sparks.name()).getString(), "m-advancements",
+			sparks > 0 ? "+" + dev.slash3rss.slashclient.hud.Sparks.format(sparks) : null);
 	}
 
 	// ---------- friends starting to play, muted friends ----------
@@ -492,10 +513,15 @@ public final class Social {
 	}
 
 	/** In SlashClient's own look; `icon` instead of the initial when it is not from a person. */
-	static void toast(String title, String text, String icon) {
+	public static void toast(String title, String text, String icon) {
+		toast(title, text, icon, null);
+	}
+
+	/** With a third line in gold for Sparks paid (null: none). */
+	static void toast(String title, String text, String icon, String sparks) {
 		toasts++;
 		Minecraft mc = Minecraft.getInstance();
-		mc.execute(() -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).addToast(new FriendToast(title, text, icon)));
+		mc.execute(() -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).addToast(new FriendToast(title, text, icon, sparks)));
 	}
 
 	// ---------- actions from the screens (off the render thread) ----------

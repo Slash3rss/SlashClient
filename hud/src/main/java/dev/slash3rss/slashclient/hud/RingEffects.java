@@ -28,7 +28,8 @@ public final class RingEffects {
 
 	/** In the order of the menus (and of the server's catalog). */
 	public static final List<String> IDS = List.of("ring_runes", "ring_flame", "ring_frost", "ring_rainbow", "ring_mushroom",
-		"ring_galaxy", "ring_halo", "ring_toxic");
+		"ring_galaxy", "ring_halo", "ring_toxic",
+		"ring_sparks", "ring_ocean");
 	/** Rings drawn as a loop of frames, and how many. */
 	static final Map<String, Integer> FRAMES = Map.of("ring_runes", 8, "ring_flame", 8, "ring_rainbow", 8, "ring_galaxy", 8, "ring_toxic", 8);
 	private static final long FRAME_MS = 140;

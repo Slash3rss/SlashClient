@@ -889,6 +889,96 @@ public final class TestHooks {
 		dev.slash3rss.slashclient.hud.social.Social.achievement(a);
 	}
 
+	// ---------- the Sparks shop ----------
+
+	private static final java.util.Map<String, Integer> SHOP_PRICES = java.util.Map.ofEntries(java.util.Map.entry("emberstar", 600), java.util.Map.entry("obsidian", 500),
+		java.util.Map.entry("coral", 500), java.util.Map.entry("thunder", 700), java.util.Map.entry("regal", 800), java.util.Map.entry("cosmos", 1000),
+		java.util.Map.entry("emberwings", 1200), java.util.Map.entry("sapphire", 1000), java.util.Map.entry("obsidianwings", 1000));
+
+	/** The cosmetics menu with the shop's capes and wings at their prices (the coral cape and the sapphire wings already bought) and this many Sparks. */
+	public static void shopMenu(String slot, int balance) {
+		net.minecraft.client.Minecraft.getInstance().setScreenAndShow(CosmeticsScreen.sampleShop(slot, balance, SHOP_PRICES, java.util.Set.of("coral", "sapphire")));
+	}
+
+	/** The open menu's "buy it?" box for a shop item, as a click on its tile; false when it is not for sale. */
+	public static boolean shopOffer(String id) {
+		return Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c && c.offerForTest(id);
+	}
+
+	/** "Buy" in the open box; the purchase is answered as the server would (no launcher here). */
+	public static void shopConfirm() {
+		CosmeticsScreen.shopForTest = id -> {
+			if (!(Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c)) throw new IllegalStateException("HTTP 502 {\"error\":\"not_found\"}");
+			int balance = Integer.parseInt(c.shopForTest(id).split("\\|")[0]);
+			com.google.gson.JsonObject res = new com.google.gson.JsonObject();
+			res.addProperty("balance", balance - SHOP_PRICES.get(id));
+			return res;
+		};
+		if (Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c) c.confirmForTest();
+	}
+
+	/** The game's language switched (as in its options), the texts reloaded; the future is done when they are. */
+	public static java.util.concurrent.CompletableFuture<Void> language(String code) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		mc.options.languageCode = code;
+		mc.getLanguageManager().setSelected(code);
+		return mc.reloadResourcePacks();
+	}
+
+	/** The middle of an item's tile in the open menu, in the window's pixels (for the mouse), or null. */
+	public static double[] shopTile(String id) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		int[] at = Compat.screen(mc) instanceof CosmeticsScreen c ? c.tileForTest(id) : null;
+		double s = mc.getWindow().getGuiScale();
+		return at == null ? null : new double[] {(at[0] + 16) * s, (at[1] + 20) * s};
+	}
+
+	/** The open menu's shop: "balance|box open|item owned|worn in this slot". */
+	public static String shopState(String id) {
+		return Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c ? c.shopForTest(id) : "";
+	}
+
+	/** The server's 'wallet' event, as the launcher passes it on. */
+	public static void walletEvent(int balance, int change) throws Exception {
+		com.google.gson.JsonObject e = new com.google.gson.JsonObject();
+		e.addProperty("type", "wallet");
+		e.addProperty("balance", balance);
+		e.addProperty("change", change);
+		e.addProperty("reason", "admin");
+		dev.slash3rss.slashclient.hud.social.Social.eventForTest(e);
+	}
+
+	/** An unlocked achievement that paid Sparks (with a cape too, or not), and one of several at once ("quiet": no toast of its own). */
+	public static void achievementSparksToast(boolean cape, boolean quiet) throws Exception {
+		com.google.gson.JsonObject a = new com.google.gson.JsonObject();
+		a.addProperty("name", cape ? "Weteran" : "Nocny marek");
+		a.addProperty("nameEn", cape ? "Veteran" : "Night owl");
+		a.addProperty("sparks", cape ? 250 : 50);
+		a.addProperty("category", "time");
+		a.addProperty("hidden", false);
+		if (cape) {
+			com.google.gson.JsonObject reward = new com.google.gson.JsonObject();
+			reward.addProperty("id", "veteran");
+			reward.addProperty("slot", "cape");
+			reward.addProperty("name", "Weteran");
+			a.add("reward", reward);
+		}
+		com.google.gson.JsonObject e = new com.google.gson.JsonObject();
+		e.addProperty("type", "achievement");
+		e.add("achievement", a);
+		if (quiet) e.addProperty("quiet", true);
+		dev.slash3rss.slashclient.hud.social.Social.eventForTest(e);
+	}
+
+	/** Several achievements at once: the server's 'achievements-summary' event. */
+	public static void achievementsSummaryToast(int count, int sparks) throws Exception {
+		com.google.gson.JsonObject e = new com.google.gson.JsonObject();
+		e.addProperty("type", "achievements-summary");
+		e.addProperty("count", count);
+		e.addProperty("sparks", sparks);
+		dev.slash3rss.slashclient.hud.social.Social.eventForTest(e);
+	}
+
 	/** Scrolls the open cosmetics menu's grid to its end. */
 	public static void scrollCosmetics() {
 		if (Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c) c.scrollBy(10_000);

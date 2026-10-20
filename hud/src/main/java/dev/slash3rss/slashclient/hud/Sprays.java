@@ -30,7 +30,8 @@ public final class Sprays {
 
 	/** In the order of the menus (and of the server's catalog). */
 	public static final List<String> IDS = List.of("spray_logo", "spray_gg", "spray_heart", "spray_skull", "spray_lol",
-		"spray_crown", "spray_emblem", "spray_pumpkin");
+		"spray_crown", "spray_emblem", "spray_pumpkin",
+		"spray_spark", "spray_trophy");
 	static final double REACH = 5;
 	static final long LIFE_MS = 60_000, FADE_MS = 5_000, COOLDOWN_MS = 3_000;
 	static final int PER_PLAYER = 3;
