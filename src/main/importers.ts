@@ -5,7 +5,7 @@ import type { Profile } from './store';
 
 /** An instance found in another launcher, ready to be copied into a SlashClient profile. */
 export interface ForeignInstance {
-  source: 'prism' | 'multimc' | 'curseforge' | 'modrinth' | 'official';
+  source: 'prism' | 'multimc' | 'curseforge' | 'modrinth' | 'official' | 'dawn' | 'feather';
   name: string;
   versionId: string;
   loader: Profile['loader'];
@@ -16,17 +16,26 @@ export interface ForeignInstance {
   sharedDir: boolean;
   icon?: string;
   mods: number;
+  /** Folders merged in after the instance's own files (they win): Feather's mods of a version, Dawn's synced settings. */
+  extra?: { from: string; to: string }[];
+  /** Top-level items of the folder left out (Feather's shared .minecraft: its mods/ are not Feather's). */
+  skipItems?: string[];
+  /** Files never copied: the launcher's own client mods (Dawn's and Feather's, which only run in their launcher). */
+  skipFiles?: string[];
 }
 
 export const SOURCE_NAMES: Record<ForeignInstance['source'], string> = {
   prism: 'Prism Launcher', multimc: 'MultiMC', curseforge: 'CurseForge', modrinth: 'Modrinth App', official: 'Minecraft Launcher',
+  dawn: 'Dawn', feather: 'Feather Client',
 };
 
 /** What gets copied from a shared .minecraft (never versions/, libraries/ or assets/). */
 export const SHARED_DIR_ITEMS = ['mods', 'config', 'saves', 'resourcepacks', 'shaderpacks', 'screenshots', 'options.txt', 'servers.dat', 'hotbar.nbt', 'optionsof.txt', 'optionsshaders.txt'];
 
 /** Launcher files and caches inside an instance folder that are not worth copying. */
-const SKIP = new Set(['logs', 'crash-reports', '.cache', '.fabric', '.quilt', '.mixin.out', 'natives', 'downloads', 'debug', '.slashclient', 'minecraftinstance.json', 'instance.cfg', 'mmc-pack.json', 'profile.json', 'usercache.json', 'usernamecache.json']);
+const SKIP = new Set(['logs', 'crash-reports', '.cache', '.fabric', '.quilt', '.mixin.out', 'natives', 'downloads', 'debug', '.slashclient', 'minecraftinstance.json', 'instance.cfg', 'mmc-pack.json', 'profile.json', 'usercache.json', 'usernamecache.json',
+  // Dawn's and Feather's own: their client's settings and bookkeeping
+  '.dawn', 'dawn', 'feather', 'content-index.json', 'dawn-managed-client-mods.json', 'auto-sync-pack-selection.txt', 'dawn-log4j2.xml']);
 
 export function shouldCopy(name: string, shared: boolean): boolean {
   return shared ? SHARED_DIR_ITEMS.includes(name) : !SKIP.has(name);
@@ -41,9 +50,12 @@ const appData = (...p: string[]) => {
 
 const exists = (p: string) => fs.access(p).then(() => true, () => false);
 const readText = (p: string) => fs.readFile(p, 'utf8').catch(() => undefined);
-async function countMods(gameDir: string): Promise<number> {
-  return (await fs.readdir(path.join(gameDir, 'mods')).catch(() => [] as string[])).filter((f) => /\.jar$/.test(f)).length;
+async function countMods(gameDir: string, skipFiles: string[] = []): Promise<number> {
+  return (await fs.readdir(path.join(gameDir, 'mods')).catch(() => [] as string[])).filter((f) => /\.jar$/.test(f) && !skipFiles.includes(f)).length;
 }
+
+/** Dawn's and Feather's client mods, which only run in their own launcher. */
+export const isClientMod = (file: string) => /^(dawn|feather)[-_]?client.*\.jar$/i.test(file);
 
 /** key=value files (instance.cfg, prismlauncher.cfg). */
 export function parseCfg(text: string): Record<string, string> {
@@ -191,6 +203,79 @@ async function official(root: string): Promise<ForeignInstance[]> {
   return out;
 }
 
+// ---------- Dawn (Feather's successor) ----------
+
+/** profile.json's loader ("Fabric", "NeoForge", …) → ours. */
+export function fromDawnProfile(json: { profile?: { name?: string; minecraftVersion?: string; loader?: { kind?: string; version?: string }; autoSyncMembership?: { kind?: string; groupId?: string } } }) {
+  const p = json.profile ?? {};
+  const kind = (p.loader?.kind ?? '').toLowerCase();
+  const loader: Profile['loader'] = kind === 'fabric' || kind === 'quilt' || kind === 'forge' || kind === 'neoforge' ? kind : 'vanilla';
+  return { name: p.name ?? '', versionId: p.minecraftVersion ?? '', loader, loaderVersion: loader === 'vanilla' ? '' : p.loader?.version ?? '' };
+}
+
+async function dawnProfile(root: string, dir: string): Promise<ForeignInstance | undefined> {
+  const text = await readText(path.join(dir, 'profile.json'));
+  if (!text) return undefined;
+  const json = JSON.parse(text);
+  const info = fromDawnProfile(json);
+  if (!info.versionId) return undefined;
+  // profiles moved over from Feather keep a .minecraft, new ones their private content
+  const gameDir = (await exists(path.join(dir, '.minecraft'))) ? path.join(dir, '.minecraft') : path.join(dir, 'private-game-content');
+  if (!(await exists(gameDir))) return undefined;
+  const managed = await readText(path.join(dir, 'dawn-managed-client-mods.json'));
+  const listed = managed ? ((JSON.parse(managed).mods ?? []) as { fileName?: string }[]).map((m) => m.fileName ?? '').filter(Boolean) : [];
+  const mods = (await fs.readdir(path.join(gameDir, 'mods')).catch(() => [] as string[])).filter(isClientMod);
+  const skipFiles = [...new Set([...listed, ...mods])];
+  // settings synced between profiles (a group's config/, options…) come with it
+  const group = json.profile?.settings?.autoSyncMembership ?? json.profile?.autoSyncMembership;
+  const synced = group?.kind === 'Member' && group.groupId && /^[\w-]+$/.test(group.groupId) ? path.join(root, 'auto-sync', 'groups', group.groupId) : undefined;
+  const extra = synced && (await exists(synced)) ? [{ from: synced, to: '' }] : undefined;
+  return {
+    source: 'dawn', name: info.name || path.basename(dir), versionId: info.versionId, loader: info.loader, loaderVersion: info.loaderVersion,
+    gameDir, sharedDir: false, mods: await countMods(gameDir, skipFiles), skipFiles, ...(extra ? { extra } : {}),
+  };
+}
+
+async function dawn(root: string): Promise<ForeignInstance[]> {
+  const profiles = path.join(root, 'profiles');
+  const names = await fs.readdir(profiles).catch(() => [] as string[]);
+  return (await Promise.all(names.map((n) => dawnProfile(root, path.join(profiles, n)).catch(() => undefined)))).filter((i): i is ForeignInstance => !!i);
+}
+
+// ---------- Feather Client (before Dawn) ----------
+
+/** "1.21.4-fabric", "1.8.9" → game version and loader. */
+export function fromFeatherVersion(id: string) {
+  const m = /^(.+?)-(fabric|forge)$/.exec(id);
+  return m ? { versionId: m[1], loader: m[2] as Profile['loader'] } : { versionId: id, loader: 'vanilla' as const };
+}
+
+/** One instance per version with the player's own mods (Feather keeps them apart, the rest is the shared .minecraft). */
+async function feather(root: string): Promise<ForeignInstance[]> {
+  const settings = await readText(path.join(root, 'settings.json'));
+  if (!settings) return [];
+  const mcPath = (JSON.parse(settings).mcPath as string | undefined) || appData('.minecraft');
+  if (!(await exists(mcPath))) return [];
+  const userMods = path.join(root, 'user-mods');
+  const versions = new Set(await fs.readdir(userMods).catch(() => [] as string[]));
+  const chosen = await readText(path.join(root, 'mods', 'feather-mods.json'));
+  const selected = chosen ? (JSON.parse(chosen).selectedVersion as string | undefined) : undefined;
+  if (selected) versions.add(selected);
+  const out: ForeignInstance[] = [];
+  for (const id of versions) {
+    const { versionId, loader } = fromFeatherVersion(id);
+    if (!/^\d+\.\d+/.test(versionId)) continue;
+    const modsDir = path.join(userMods, id);
+    const has = await exists(modsDir);
+    const jars = has ? (await fs.readdir(modsDir).catch(() => [] as string[])).filter((f) => /\.jar$/.test(f) && !isClientMod(f)).length : 0;
+    out.push({
+      source: 'feather', name: `Feather ${versionId}`, versionId, loader, loaderVersion: '', gameDir: mcPath, sharedDir: true, mods: jars,
+      skipItems: ['mods'], ...(has ? { extra: [{ from: modsDir, to: 'mods' }] } : {}),
+    });
+  }
+  return out;
+}
+
 // ---------- everything ----------
 
 function defaultRoots() {
@@ -201,6 +286,8 @@ function defaultRoots() {
     curseforge: [path.join(home, 'Documents', 'curseforge', 'minecraft', 'Instances'), path.join(home, 'curseforge', 'minecraft', 'Instances')],
     modrinth: [appData('ModrinthApp'), appData('com.modrinth.theseus')],
     official: [officialRoot],
+    dawn: [appData('.dawn'), path.join(home, '.dawn')],
+    feather: [appData('.feather'), path.join(home, '.feather')],
   };
 }
 
@@ -213,6 +300,8 @@ export async function findInstances(): Promise<ForeignInstance[]> {
     ...roots.curseforge.map(curseForge),
     ...roots.modrinth.map(modrinthApp),
     ...roots.official.map(official),
+    ...roots.dawn.map(dawn),
+    ...roots.feather.map(feather),
   ];
   const all = (await Promise.all(tasks.map((t) => t.catch(() => [] as ForeignInstance[])))).flat();
   // the same folder can be reached twice (e.g. a Prism portable install); keep the first
@@ -229,6 +318,11 @@ export async function findInstances(): Promise<ForeignInstance[]> {
 export async function instanceFromFolder(dir: string): Promise<ForeignInstance[]> {
   const mmc = await mmcInstance(dir, 'prism').catch(() => undefined);
   if (mmc) return [mmc];
+  // a Dawn profile, or Dawn's whole folder
+  const dawnOne = await dawnProfile(path.dirname(path.dirname(dir)), dir).catch(() => undefined);
+  if (dawnOne) return [dawnOne];
+  const dawnAll = await dawn(dir).catch(() => [] as ForeignInstance[]);
+  if (dawnAll.length) return dawnAll;
   const parent = path.dirname(dir);
   const cf = (await curseForge(parent)).filter((i) => i.gameDir === dir);
   if (cf.length) return cf;
@@ -236,17 +330,26 @@ export async function instanceFromFolder(dir: string): Promise<ForeignInstance[]
   const fromApp = mr.filter((i) => i.gameDir === dir);
   if (fromApp.length) return fromApp;
   // a whole launcher folder (Prism root, .minecraft, CurseForge Instances)
-  const lists = await Promise.all([prismLike(dir, 'prism'), curseForge(dir), modrinthApp(dir).catch(() => []), official(dir)]);
+  const lists = await Promise.all([prismLike(dir, 'prism'), curseForge(dir), modrinthApp(dir).catch(() => []), official(dir), feather(dir).catch(() => [])]);
   return lists.flat();
 }
 
 /** Copies an instance's files into a profile folder, reporting progress per top-level item. */
 export async function copyInstance(inst: ForeignInstance, dest: string, onProgress?: (done: number, total: number, item: string) => void): Promise<void> {
-  const items = (await fs.readdir(inst.gameDir)).filter((n) => shouldCopy(n, inst.sharedDir));
+  const items = (await fs.readdir(inst.gameDir)).filter((n) => shouldCopy(n, inst.sharedDir) && !inst.skipItems?.includes(n));
+  const skipFiles = new Set(inst.skipFiles ?? []);
+  const filter = (src: string) => !skipFiles.has(path.basename(src)) && !isClientMod(path.basename(src));
+  const total = items.length + (inst.extra?.length ?? 0);
   await fs.mkdir(dest, { recursive: true });
   for (const [i, item] of items.entries()) {
-    onProgress?.(i, items.length, item);
-    await fs.cp(path.join(inst.gameDir, item), path.join(dest, item), { recursive: true, force: false, errorOnExist: false });
+    onProgress?.(i, total, item);
+    await fs.cp(path.join(inst.gameDir, item), path.join(dest, item), { recursive: true, force: false, errorOnExist: false, filter });
   }
-  onProgress?.(items.length, items.length, '');
+  // the extra folders after: what the instance has itself stays
+  for (const [i, x] of (inst.extra ?? []).entries()) {
+    onProgress?.(items.length + i, total, x.to || path.basename(x.from));
+    const names = (await fs.readdir(x.from).catch(() => [] as string[])).filter((n) => shouldCopy(n, false));
+    for (const n of names) await fs.cp(path.join(x.from, n), path.join(dest, x.to, n), { recursive: true, force: false, errorOnExist: false, filter });
+  }
+  onProgress?.(total, total, '');
 }
