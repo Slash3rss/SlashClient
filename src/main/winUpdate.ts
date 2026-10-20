@@ -289,8 +289,10 @@ export function swapScript(o: SwapOptions): string {
 export function appendUpdateLog(file: string, message: string): void {
   try {
     mkdirSync(path.dirname(file), { recursive: true });
-    appendFileSync(file, `${new Date().toISOString().replace('T', ' ').slice(0, 19)} [launcher] ${message}
-`, 'utf8');
+    // local time, as the script writes it
+    const d = new Date();
+    const stamp = new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().replace('T', ' ').slice(0, 19);
+    appendFileSync(file, `${stamp} [launcher] ${message}\r\n`, 'utf8');
   } catch {
     // only a log
   }
