@@ -71,6 +71,7 @@ const kickCalls: { method: string; path: string; body: string; query: URLSearchP
 /** The PKCE challenge Kick saw for each code (the authorize page "remembers" it). */
 const kickChallenges = new Map<string, string>();
 const kickLive = new Map<string, Record<string, unknown>>();
+let kickCategory = 'Minecraft';
 const fakeKick = http.createServer(async (req, res) => {
   let raw = '';
   for await (const c of req) raw += c;
@@ -93,7 +94,7 @@ const fakeKick = http.createServer(async (req, res) => {
   if (url.pathname === '/public/v1/channels' && auth === 'Bearer user-kick') return send(200, { data: [{ broadcaster_user_id: 2002, slug: 'bobk' }] });
   if (auth !== 'Bearer app-kick') return send(401, {});
   if (url.pathname === '/public/v1/channels') {
-    return send(200, { data: url.searchParams.getAll('broadcaster_user_id').map((id) => ({ broadcaster_user_id: Number(id), slug: 'bobk', stream_title: 'Kick title', category: { name: 'Minecraft' }, stream: kickLive.get(id) ?? { is_live: false, viewer_count: 0 } })) });
+    return send(200, { data: url.searchParams.getAll('broadcaster_user_id').map((id) => ({ broadcaster_user_id: Number(id), slug: 'bobk', stream_title: 'Kick title', category: { id: 1, name: kickCategory }, stream: kickLive.get(id) ?? { is_live: false, viewer_count: 0 } })) });
   }
   if (url.pathname === '/public/v1/events/subscriptions' && req.method === 'POST') return send(200, { data: [{ name: 'livestream.status.updated', version: 1, subscription_id: 'ksub-1' }] });
   if (url.pathname === '/public/v1/events/subscriptions' && req.method === 'DELETE') return send(204);
@@ -156,15 +157,16 @@ async function eventsub(type: string, body: Record<string, unknown>, o: { id?: s
   });
 }
 const online = (subject: string) => ({ subscription: { id: 'sub-x', type: 'stream.online', condition: { broadcaster_user_id: subject } }, event: { broadcaster_user_id: subject, type: 'live', started_at: new Date(clock).toISOString() } });
+const update = (subject: string, category: string) => ({ subscription: { id: 'sub-z', type: 'channel.update', version: '2', condition: { broadcaster_user_id: subject } }, event: { broadcaster_user_id: subject, title: 'x', category_name: category } });
 const offline = (subject: string) => ({ subscription: { id: 'sub-y', type: 'stream.offline', condition: { broadcaster_user_id: subject } }, event: { broadcaster_user_id: subject } });
 let kmsgs = 0;
-async function kickHook(body: Record<string, unknown>, o: { id?: string; bad?: boolean } = {}) {
+async function kickHook(body: Record<string, unknown>, o: { id?: string; bad?: boolean; type?: string } = {}) {
   const raw = JSON.stringify(body);
   const id = o.id ?? `k-${++kmsgs}`;
   const ts = new Date(clock).toISOString();
   const sig = createSign('RSA-SHA256').update(`${id}.${ts}.${raw}`).sign(KICK_PRIV, 'base64');
   return call('POST', '/v1/streams/kick/webhook', undefined, raw, {
-    'Kick-Event-Message-Id': id, 'Kick-Event-Message-Timestamp': ts, 'Kick-Event-Signature': o.bad ? sig.replace(/^./, sig[0] === 'A' ? 'B' : 'A') : sig, 'Kick-Event-Type': 'livestream.status.updated', 'Kick-Event-Version': '1',
+    'Kick-Event-Message-Id': id, 'Kick-Event-Message-Timestamp': ts, 'Kick-Event-Signature': o.bad ? sig.replace(/^./, sig[0] === 'A' ? 'B' : 'A') : sig, 'Kick-Event-Type': o.type ?? 'livestream.status.updated', 'Kick-Event-Version': '1',
   });
 }
 
@@ -314,7 +316,9 @@ describe('linking channels', () => {
     assert.ok(twitchCalls.some((c) => c.path === '/oauth2/revoke' && c.body.includes('token=user-code-ala')));
     // stream.online and stream.offline, to our https address, signed with our secret
     const subs = twitchCalls.filter((c) => c.path === '/helix/eventsub/subscriptions' && c.method === 'POST').map((c) => JSON.parse(c.body));
-    assert.deepEqual(subs.map((s) => s.type).sort(), ['stream.offline', 'stream.online']);
+    // and channel.update (version 2): the game changing mid-stream
+    assert.deepEqual(subs.map((s) => s.type).sort(), ['channel.update', 'stream.offline', 'stream.online']);
+    assert.equal(subs.find((s) => s.type === 'channel.update').version, '2');
     assert.ok(subs.every((s) => s.condition.broadcaster_user_id === '1001' && s.transport.callback === 'https://client.example/v1/streams/twitch/eventsub' && s.transport.secret.length >= 10));
     hookSecret = subs[0].transport.secret;
     // the same Twitch channel cannot go to another account
@@ -411,7 +415,7 @@ describe('live and offline', () => {
     await eventsub('notification', offline('1001'));
     clock += 1000;
     bobWs.events.length = 0;
-    twitchLive.set('1001', { user_id: '1001', type: 'live', title: 'Znowu', viewer_count: 1, started_at: new Date(clock).toISOString() });
+    twitchLive.set('1001', { user_id: '1001', type: 'live', title: 'Znowu', game_name: 'Minecraft', viewer_count: 1, started_at: new Date(clock).toISOString() });
     await eventsub('notification', online('1001'));
     assert.equal((await bobWs.waitFor((x) => x.type === 'stream' && x.stream)).notify, true);
     await call('POST', '/v1/admin/settings', admin.token, { values: { 'streams.renotifyMinutes': null } });
@@ -420,12 +424,12 @@ describe('live and offline', () => {
 
   it('follows the reconcile: titles and viewers refreshed, missed ends caught', async () => {
     const bobWs = await connect(bob.token);
-    twitchLive.set('1001', { user_id: '1001', type: 'live', title: 'Nowy tytuł', game_name: 'Terraria', viewer_count: 77, started_at: new Date(clock).toISOString() });
+    twitchLive.set('1001', { user_id: '1001', type: 'live', title: 'Nowy tytuł', game_name: 'Minecraft', viewer_count: 77, started_at: new Date(clock).toISOString() });
     const r = await app.streams.reconcile('twitch');
     assert.deepEqual(r, { checked: 1, ok: true, message: '' });
     const upd = await bobWs.waitFor((x) => x.type === 'stream' && x.stream?.viewers === 77);
     assert.equal(upd.notify, undefined);
-    assert.equal(upd.stream.category, 'Terraria');
+    assert.equal(upd.stream.category, 'Minecraft');
     // Helix asked in one batch, with the app's token
     const asked = twitchCalls.filter((c) => c.path === '/helix/streams').at(-1)!;
     assert.deepEqual(asked.query.getAll('user_id'), ['1001']);
@@ -456,11 +460,70 @@ describe('live and offline', () => {
     await bobWs.waitFor((x) => x.type === 'stream' && x.id === dan.user.id && x.stream === null);
     bobWs.ws.close();
   });
+
+  it('counts only Minecraft streams (the admin\'s list), also when the game changes mid-stream', async () => {
+    const bobWs = await connect(bob.token);
+    clock += 2 * 60 * 60_000;
+    // another game: nothing at all for friends, the profile shows only the channel
+    twitchLive.set('1001', { user_id: '1001', type: 'live', title: 'Terraria wieczorem', game_id: '31376', game_name: 'Terraria', viewer_count: 20, started_at: new Date(clock).toISOString() });
+    await eventsub('notification', online('1001'));
+    await settle();
+    assert.ok(!bobWs.events.some((x) => x.type === 'stream' && x.id === ala.user.id));
+    assert.equal((await call('GET', '/v1/friends', bob.token)).body.friends.find((f: any) => f.id === ala.user.id).stream, undefined);
+    assert.deepEqual((await call('GET', `/v1/profiles/${ala.user.handle}`)).body.profile.streams.live, []);
+    // channel.update: switched to Minecraft mid-stream: live now, and news
+    twitchLive.set('1001', { user_id: '1001', type: 'live', title: 'Teraz Minecraft', game_id: '27471', game_name: 'Minecraft', viewer_count: 21, started_at: new Date(clock).toISOString() });
+    await eventsub('notification', update('1001', 'Minecraft'));
+    const on = await bobWs.waitFor((x) => x.type === 'stream' && x.id === ala.user.id && x.stream);
+    assert.equal(on.notify, true);
+    assert.equal(on.stream.title, 'Teraz Minecraft');
+    // and away again: offline for SlashClient, though still streaming
+    twitchLive.set('1001', { user_id: '1001', type: 'live', title: 'Just Chatting', game_id: '509658', game_name: 'Just Chatting', viewer_count: 22, started_at: new Date(clock).toISOString() });
+    bobWs.events.length = 0;
+    await eventsub('notification', update('1001', 'Just Chatting'));
+    await bobWs.waitFor((x) => x.type === 'stream' && x.id === ala.user.id && x.stream === null);
+    // back to Minecraft within the window: live again, without a second notification
+    clock += 60_000;
+    twitchLive.set('1001', { user_id: '1001', type: 'live', title: 'Wracam do Minecrafta', game_id: '27471', game_name: 'Minecraft', viewer_count: 23, started_at: new Date(clock).toISOString() });
+    bobWs.events.length = 0;
+    await app.streams.reconcile('twitch');
+    const back = await bobWs.waitFor((x) => x.type === 'stream' && x.id === ala.user.id && x.stream);
+    assert.equal(back.notify, undefined);
+    // the admin adds a game: it counts from the next check
+    twitchLive.set('1001', { user_id: '1001', type: 'live', title: 'Dungeons', game_id: '508124', game_name: 'Minecraft Dungeons', viewer_count: 5, started_at: new Date(clock).toISOString() });
+    await app.streams.reconcile('twitch');
+    await bobWs.waitFor((x) => x.type === 'stream' && x.id === ala.user.id && x.stream === null);
+    assert.equal((await call('POST', '/v1/admin/settings', admin.token, { values: { 'streams.categories': ['Minecraft', 'Minecraft Dungeons'] } })).status, 200);
+    await app.streams.reconcile('twitch');
+    assert.equal((await bobWs.waitFor((x) => x.type === 'stream' && x.id === ala.user.id && x.stream?.title === 'Dungeons')).stream.category, 'Minecraft Dungeons');
+    await call('POST', '/v1/admin/settings', admin.token, { values: { 'streams.categories': null } });
+    twitchLive.delete('1001');
+    await app.streams.reconcile('twitch');
+
+    // Kick: livestream.metadata.updated to another category ends it, back to Minecraft starts it
+    clock += 2 * 60 * 60_000;
+    kickLive.set('2002', { is_live: true, viewer_count: 4, start_time: new Date(clock).toISOString() });
+    kickCategory = 'Minecraft';
+    await kickHook({ broadcaster: { user_id: 2002 }, is_live: true });
+    await bobWs.waitFor((x) => x.type === 'stream' && x.id === dan.user.id && x.stream);
+    kickCategory = 'Fortnite';
+    bobWs.events.length = 0;
+    await kickHook({ broadcaster: { user_id: 2002 }, title: 'x', category: { name: 'Fortnite' } }, { type: 'livestream.metadata.updated' });
+    await bobWs.waitFor((x) => x.type === 'stream' && x.id === dan.user.id && x.stream === null);
+    // polling sees the same
+    kickCategory = 'minecraft';
+    await app.streams.reconcile('kick');
+    await bobWs.waitFor((x) => x.type === 'stream' && x.id === dan.user.id && x.stream);
+    kickCategory = 'Minecraft';
+    kickLive.set('2002', { is_live: false, viewer_count: 0 });
+    await app.streams.reconcile('kick');
+    bobWs.ws.close();
+  });
 });
 
 describe('the player\'s choices', () => {
   it('hides the live status from friends, and turns notifications off', async () => {
-    twitchLive.set('1001', { user_id: '1001', type: 'live', title: 'Ukryty', viewer_count: 4, started_at: new Date(clock).toISOString() });
+    twitchLive.set('1001', { user_id: '1001', type: 'live', title: 'Ukryty', game_name: 'Minecraft', viewer_count: 4, started_at: new Date(clock).toISOString() });
     clock += 60 * 60_000;
     await app.streams.reconcile('twitch');
     const bobWs = await connect(bob.token);
@@ -475,7 +538,7 @@ describe('the player\'s choices', () => {
     twitchLive.delete('1001');
     await app.streams.reconcile('twitch');
     clock += 60 * 60_000;
-    twitchLive.set('1001', { user_id: '1001', type: 'live', title: 'Bez powiadomień', viewer_count: 4, started_at: new Date(clock).toISOString() });
+    twitchLive.set('1001', { user_id: '1001', type: 'live', title: 'Bez powiadomień', game_id: '27471', game_name: 'Minecraft', viewer_count: 4, started_at: new Date(clock).toISOString() });
     bobWs.events.length = 0;
     await app.streams.reconcile('twitch');
     const e = await bobWs.waitFor((x) => x.type === 'stream' && x.stream?.title === 'Bez powiadomień');
@@ -559,7 +622,7 @@ describe('the feature switch and the admin\'s tools', () => {
     assert.equal(gone.status, 200);
     assert.equal(gone.body.accounts.some((a: any) => a.platform === 'twitch'), false);
     // its EventSub subscriptions went too
-    assert.equal(twitchCalls.filter((c) => c.method === 'DELETE').length - before, 2);
+    assert.equal(twitchCalls.filter((c) => c.method === 'DELETE').length - before, 3);
     const log = (await call('GET', '/v1/admin/log', admin.token)).body;
     const entries = JSON.stringify(log);
     assert.match(entries, /streams_unlink/);

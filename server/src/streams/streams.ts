@@ -21,6 +21,12 @@ import { StreamStore, type StreamAccount } from './store.ts';
  * also refreshes the title and viewers and catches what a webhook missed. Every call to the
  * platforms goes through a per-minute budget (the admin panel's settings) and pauses on a 429.
  *
+ * Only a stream of an allowed game counts (the admin panel's streams.categories, Minecraft by
+ * default: Twitch's game, Kick's category): any other is treated as offline everywhere, so
+ * switching to Minecraft mid-stream starts it for friends (notifying as usual) and switching away
+ * ends it. Twitch says so at once with EventSub channel.update, Kick with
+ * livestream.metadata.updated; the reconcile catches it either way.
+ *
  * The apps' keys are typed in the admin panel ("Streamy"), sealed with STORAGE_SECRET_KEY and never
  * sent back; no player's token is kept (they are revoked right after the link). The feature switch
  * "Streamy" stops linking, badges, notifications and the profile's section; webhooks are still
@@ -182,10 +188,17 @@ export function createStreams(ctx: StreamsContext) {
     ctx.push(owner, { type: 'streams' });
   }
 
-  /** A channel's state from a webhook or a reconcile; `info` undefined: offline. */
-  function apply(platform: Platform, subject: string, info: LiveInfo | undefined) {
+  /** Whether a stream's game is one SlashClient shows (by its name or the platform's id, any case). */
+  function allowed(info: LiveInfo): boolean {
+    const list = ctx.settings.list('streams.categories').map((c) => c.toLowerCase());
+    return list.includes(info.category.trim().toLowerCase()) || (!!info.categoryId && list.includes(info.categoryId.toLowerCase()));
+  }
+
+  /** A channel's state from a webhook or a reconcile; `info` undefined (or another game than the allowed ones): offline. */
+  function apply(platform: Platform, subject: string, given: LiveInfo | undefined) {
     const a = store.bySubject(platform, subject);
     if (!a) return;
+    const info = given && allowed(given) ? given : undefined;
     const at = now();
     const prev = store.live(platform, subject);
     if (!info) {
@@ -196,7 +209,7 @@ export function createStreams(ctx: StreamsContext) {
       return;
     }
     const startedAt = info.startedAt || (prev?.live ? prev.startedAt : at);
-    const merged = { ...info, startedAt, title: info.title || (prev?.live ? prev.title : ''), category: info.category || (prev?.live ? prev.category : '') };
+    const merged = { ...info, startedAt, title: info.title || (prev?.live ? prev.title : '') };
     if (prev?.live) {
       store.setLive(platform, merged, at, false);
       // the title, category or viewers changed: the badges show it (no notification)
@@ -219,7 +232,7 @@ export function createStreams(ctx: StreamsContext) {
     const secret = keysOf('twitch').hookSecret;
     if (!secret || !ctx.settings.bool('streams.twitchEventSub') || !webhooksPossible()) return;
     const ids: string[] = [];
-    for (const type of ['stream.online', 'stream.offline'] as const) {
+    for (const type of ['stream.online', 'stream.offline', 'channel.update'] as const) {
       const id = await c.subscribe(type, a.subject, callbackFor('twitch'), secret);
       if (id) ids.push(id);
     }
@@ -229,7 +242,7 @@ export function createStreams(ctx: StreamsContext) {
 
   async function subscribeKick(a: StreamAccount, c: KickClient): Promise<void> {
     if (!ctx.settings.bool('streams.kickWebhooks') || !webhooksPossible()) return;
-    store.setSubs(a.uuid, 'kick', [await c.subscribe(a.subject)]);
+    store.setSubs(a.uuid, 'kick', (await c.subscribe(a.subject)).split(','));
   }
 
   async function unsubscribe(a: StreamAccount) {
@@ -284,6 +297,10 @@ export function createStreams(ctx: StreamsContext) {
   }
 
   const due: Record<Platform, number> = { twitch: 0, kick: 0 };
+  // the allowed games changed: every channel is asked about again at the next tick
+  ctx.settings.onChange((changes) => {
+    if (changes.some((c) => c.key === 'streams.categories')) due.twitch = due.kick = 0;
+  });
   let running = false;
   async function tick() {
     if (running || !ctx.enabled()) return;
@@ -519,15 +536,18 @@ export function createStreams(ctx: StreamsContext) {
     res.end(body);
   };
 
-  async function onTwitchOnline(subject: string, startedAt: number) {
+  /**
+   * stream.online or channel.update: Helix says what is live now, with its game (the events alone
+   * do not say both). When Helix cannot be asked, the reconcile decides later.
+   */
+  async function askTwitch(subject: string) {
     const c = client('twitch');
-    let info: LiveInfo | undefined;
+    if (!c) return;
     try {
-      info = c ? (await c.liveOf([subject]))[0] : undefined;
+      apply('twitch', subject, (await c.liveOf([subject]))[0]);
     } catch {
-      // the title comes with the next reconcile
+      // the next reconcile
     }
-    apply('twitch', subject, info ?? { subject, title: '', category: '', viewers: 0, startedAt: startedAt || now(), thumbnail: '' });
   }
 
   async function serve(req: http.IncomingMessage, res: http.ServerResponse, url: URL): Promise<boolean> {
@@ -599,7 +619,8 @@ export function createStreams(ctx: StreamsContext) {
         return true;
       }
       if (check.type !== 'notification' || !subject) return true;
-      if (msg.subscription?.type === 'stream.online') void onTwitchOnline(subject, Date.parse(msg.event?.started_at ?? '') || 0);
+      // started, or the game or title changed: whether it counts depends on the game, so Helix is asked
+      if (msg.subscription?.type === 'stream.online' || msg.subscription?.type === 'channel.update') void askTwitch(subject);
       else if (msg.subscription?.type === 'stream.offline') apply('twitch', subject, undefined);
       return true;
     }
@@ -627,7 +648,7 @@ export function createStreams(ctx: StreamsContext) {
       return true;
     }
     answer(res, 204);
-    if (check.type !== 'livestream.status.updated') return true;
+    if (check.type !== 'livestream.status.updated' && check.type !== 'livestream.metadata.updated') return true;
     let msg: any;
     try {
       msg = JSON.parse(raw.toString('utf8'));
@@ -635,17 +656,11 @@ export function createStreams(ctx: StreamsContext) {
       return true;
     }
     const subject = String(msg.broadcaster?.user_id ?? '');
-    if (!subject) return true;
-    if (msg.is_live) {
-      const prev = store.live('kick', subject);
-      apply('kick', subject, {
-        subject, title: typeof msg.title === 'string' ? msg.title.slice(0, 140) : '', category: prev?.live ? prev.category : '', viewers: prev?.live ? prev.viewers : 0,
-        startedAt: Date.parse(msg.started_at ?? '') || 0, thumbnail: prev?.live ? prev.thumbnail : '',
-      });
-      // its category and viewers with one call, in the background
-      const a = store.bySubject('kick', subject);
-      if (a) void reconcile('kick', [a]).catch(() => undefined);
-    } else apply('kick', subject, undefined);
+    const a = subject ? store.bySubject('kick', subject) : undefined;
+    if (!a) return true;
+    // ended: at once; started or changed (title, category): the channel asked with one call, as the game decides whether it counts
+    if (check.type === 'livestream.status.updated' && msg.is_live === false) apply('kick', subject, undefined);
+    else void reconcile('kick', [a]).catch(() => undefined);
     return true;
   }
 

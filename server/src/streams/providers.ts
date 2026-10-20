@@ -22,7 +22,8 @@ export interface AppKeys { clientId: string; clientSecret: string }
 export interface ChannelIdentity { subject: string; login: string; name: string }
 
 /** A live stream as both platforms describe it. */
-export interface LiveInfo { subject: string; title: string; category: string; viewers: number; startedAt: number; thumbnail: string }
+/** `categoryId`: the platform's id of the game/category (Twitch's game_id, Kick's category id), '' when not known. */
+export interface LiveInfo { subject: string; title: string; category: string; categoryId?: string; viewers: number; startedAt: number; thumbnail: string }
 
 export class ProviderError extends Error {
   readonly status: number;
@@ -183,14 +184,15 @@ export function twitchClient(keys: AppKeys, opts: { base?: Partial<typeof TWITCH
       if (!res.ok) throw new ProviderError(`Twitch streams: HTTP ${res.status}`, res.status);
       const body = (await res.json()) as { data?: Record<string, unknown>[] };
       return (body.data ?? []).filter((s) => s.type === 'live' || s.type === undefined).map((s) => ({
-        subject: String(s.user_id), title: clip(s.title, 140), category: clip(s.game_name, 80), viewers: Math.max(0, Number(s.viewer_count) || 0),
+        subject: String(s.user_id), title: clip(s.title, 140), category: clip(s.game_name, 80), categoryId: clip(s.game_id, 20), viewers: Math.max(0, Number(s.viewer_count) || 0),
         startedAt: timeOf(s.started_at), thumbnail: thumb(String(s.thumbnail_url ?? '').replace('{width}', '440').replace('{height}', '248'), /^https:\/\/static-cdn\.jtvnw\.net\//),
       }));
     },
 
     /** EventSub over a webhook for one event of one broadcaster; answers the subscription's id. */
-    async subscribe(type: 'stream.online' | 'stream.offline', subject: string, callback: string, secret: string): Promise<string> {
-      const res = await helix('POST', '/eventsub/subscriptions', { type, version: '1', condition: { broadcaster_user_id: subject }, transport: { method: 'webhook', callback, secret } });
+    async subscribe(type: 'stream.online' | 'stream.offline' | 'channel.update', subject: string, callback: string, secret: string): Promise<string> {
+      // channel.update (version 2: category_id, category_name, title) needs no scope; it tells when the game changes mid-stream
+      const res = await helix('POST', '/eventsub/subscriptions', { type, version: type === 'channel.update' ? '2' : '1', condition: { broadcaster_user_id: subject }, transport: { method: 'webhook', callback, secret } });
       const body = (await res.json().catch(() => ({}))) as { data?: { id: string }[]; message?: string };
       // already there (a link made again): fine, the reconcile and the webhooks keep working
       if (res.status === 409) return '';
@@ -253,7 +255,7 @@ export function kickClient(keys: AppKeys, opts: { base?: Partial<typeof KICK>; f
 
   const channelOf = (c: Record<string, any>): LiveInfo & { live: boolean; slug: string } => ({
     subject: String(c.broadcaster_user_id ?? ''), slug: String(c.slug ?? '').toLowerCase(), live: !!c.stream?.is_live,
-    title: clip(c.stream_title, 140), category: clip(c.category?.name, 80), viewers: Math.max(0, Number(c.stream?.viewer_count) || 0),
+    title: clip(c.stream_title, 140), category: clip(c.category?.name, 80), categoryId: clip(String(c.category?.id ?? ''), 20), viewers: Math.max(0, Number(c.stream?.viewer_count) || 0),
     startedAt: timeOf(c.stream?.start_time), thumbnail: thumb(c.stream?.thumbnail, /^https:\/\/([\w-]+\.)*kick\.com\//),
   });
 
@@ -291,11 +293,12 @@ export function kickClient(keys: AppKeys, opts: { base?: Partial<typeof KICK>; f
       return (body.data ?? []).map(channelOf).filter((c) => c.subject);
     },
 
-    /** livestream.status.updated for one broadcaster, to the webhook URL set in the Kick app. */
+    /** livestream.status.updated (started, ended) and livestream.metadata.updated (title, category) for one broadcaster, to the webhook URL set in the Kick app. */
     async subscribe(subject: string): Promise<string> {
-      const res = await call('POST', '/events/subscriptions', { broadcaster_user_id: Number(subject), events: [{ name: 'livestream.status.updated', version: 1 }], method: 'webhook' });
+      const res = await call('POST', '/events/subscriptions', { broadcaster_user_id: Number(subject), events: [{ name: 'livestream.status.updated', version: 1 }, { name: 'livestream.metadata.updated', version: 1 }], method: 'webhook' });
       const body = (await res.json().catch(() => ({}))) as { data?: { subscription_id?: string; error?: string }[]; message?: string };
-      const id = body.data?.find((d) => d.subscription_id)?.subscription_id;
+      const ids = (body.data ?? []).map((d) => d.subscription_id).filter((x): x is string => !!x);
+      const id = ids.join(',');
       if (!res.ok || !id) throw new ProviderError(`Kick subscription: HTTP ${res.status} ${clip(body.message ?? body.data?.[0]?.error, 120)}`, res.status);
       return id;
     },

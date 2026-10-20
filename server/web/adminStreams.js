@@ -18,11 +18,11 @@ const call = (...args) => api(...args).catch((err) => { fail(err); return undefi
 const INFO = {
   twitch: {
     console: 'https://dev.twitch.tv/console/apps', consoleName: 'dev.twitch.tv → Console → Applications',
-    steps: 'Kategoria: Website Integration. OAuth Redirect URL: adres poniżej. Bez zakresów (scope): serwer pyta tylko, kim jest gracz, i od razu oddaje token. Webhooki EventSub serwer zakłada sam (stream.online, stream.offline) na adres poniżej.',
+    steps: 'Kategoria: Website Integration. OAuth Redirect URL: adres poniżej. Bez zakresów (scope): serwer pyta tylko, kim jest gracz, i od razu oddaje token. Webhooki EventSub serwer zakłada sam (stream.online, stream.offline, channel.update) na adres poniżej.',
   },
   kick: {
     console: 'https://kick.com/settings/developer', consoleName: 'kick.com → Settings → Developer',
-    steps: 'Redirect URL: adres poniżej. Zakresy aplikacji: user:read i channel:read (serwer prosi tylko o nie, token oddaje od razu). Włącz webhooki i wpisz adres webhooka poniżej; serwer sam subskrybuje livestream.status.updated dla połączonych kanałów.',
+    steps: 'Redirect URL: adres poniżej. Zakresy aplikacji: user:read i channel:read (serwer prosi tylko o nie, token oddaje od razu). Włącz webhooki i wpisz adres webhooka poniżej; serwer sam subskrybuje livestream.status.updated i livestream.metadata.updated dla połączonych kanałów.',
   },
 };
 
@@ -98,7 +98,7 @@ function draw() {
 
   $('#main').replaceChildren(
     el('div', { class: 'page-head' }, el('h1', { textContent: 'Streamy' }), reconcile),
-    el('p', { class: 'muted', textContent: 'Gracze łączą kanały Twitch i Kick (to nie jest sposób logowania). Znajomi widzą znaczek LIVE i dostają jedno powiadomienie na stream, profil pokazuje transmisję. Częstotliwość sprawdzania, limity i czas bez ponownych powiadomień są w Ustawienia → Streamy, wyłącznik w Ustawienia → Funkcje.' }),
+    el('p', { class: 'muted', textContent: 'Gracze łączą kanały Twitch i Kick (to nie jest sposób logowania). Znajomi widzą znaczek LIVE i dostają jedno powiadomienie na stream, profil pokazuje transmisję. Liczą się tylko streamy z grami z listy (domyślnie Minecraft); lista, częstotliwość sprawdzania, limity i czas bez ponownych powiadomień są w Ustawienia → Streamy, wyłącznik w Ustawienia → Funkcje.' }),
     data.enabled ? '' : el('div', { class: 'glass card st-warn' }, icon('fa-solid fa-power-off'), el('div', {}, el('b', { textContent: 'Funkcja „Streamy” jest wyłączona' }), el('p', { class: 'muted small', textContent: 'Webhooki są dalej przyjmowane, ale nic nie trafia do graczy.' }))),
     data.keyReady ? '' : el('div', { class: 'glass card st-warn' }, icon('fa-solid fa-triangle-exclamation'),
       el('div', {}, el('b', { textContent: 'Brak STORAGE_SECRET_KEY' }), el('p', { class: 'muted small', textContent: data.keyError ?? 'Bez niego serwer nie zapisze sekretów aplikacji. Ustaw go (openssl rand -base64 32) i zrestartuj serwer.' }))),

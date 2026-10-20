@@ -82,7 +82,7 @@ export async function streamsCard() {
     };
     card.replaceChildren(
       el('h3', {}, icon('fa-solid fa-video'), ' Streamy'),
-      el('p', { class: 'muted small', textContent: 'Połącz kanał, a znajomi zobaczą znaczek LIVE, gdy nadajesz, a Twój profil pokaże transmisję. To nie jest sposób logowania; SlashClient nie zachowuje dostępu do konta platformy.' }),
+      el('p', { class: 'muted small', textContent: 'Połącz kanał, a znajomi zobaczą znaczek LIVE, gdy nadajesz Minecrafta, a Twój profil pokaże transmisję. To nie jest sposób logowania; SlashClient nie zachowuje dostępu do konta platformy.' }),
       ...rows,
       state.accounts.length || state.platforms.length ? '' : el('p', { class: 'muted small', textContent: 'Łączenie kanałów nie jest jeszcze skonfigurowane na tym serwerze.' }),
       check('hide', 'Ukryj przed znajomymi, że streamuję', state.prefs.hide),
