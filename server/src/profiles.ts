@@ -90,8 +90,11 @@ export const HANDLE = /^[\w.]{1,40}$/;
 
 class ProfileStore {
   private readonly sql: DatabaseSync;
-  constructor(sql: DatabaseSync) {
+  /** The settings of an account that chose none (the admin panel's defaults, else DEFAULT_PRIVACY). */
+  readonly defaults: () => Privacy;
+  constructor(sql: DatabaseSync, defaults?: () => Privacy) {
     this.sql = sql;
+    this.defaults = defaults ?? (() => DEFAULT_PRIVACY);
     // its own table: an account without a row has the defaults
     sql.exec(`
 CREATE TABLE IF NOT EXISTS profile_privacy (
@@ -113,7 +116,7 @@ CREATE TABLE IF NOT EXISTS profile_privacy (
     } catch {
       // broken JSON: the defaults
     }
-    const privacy = cleanPrivacy({ visibility: r?.visibility, indexable: r ? !!r.indexable : undefined, elements: saved }, DEFAULT_PRIVACY);
+    const privacy = cleanPrivacy({ visibility: r?.visibility, indexable: r ? !!r.indexable : undefined, elements: saved }, this.defaults());
     return { privacy, moderation: { hidden: !!r?.hidden, reason: r?.hidden_reason ?? '', by: r?.hidden_by ?? '', at: r?.hidden_at ?? 0 } };
   }
 
@@ -173,6 +176,8 @@ export interface AchievementView {
 
 export interface ProfileDeps {
   db: Db;
+  /** Privacy of accounts that chose none (the admin panel's settings, read when used). */
+  defaults?: () => Privacy;
   /** The site's files (web/), for the page; without it there is no page. */
   webDir?: string;
   publicUrl: string;
@@ -219,7 +224,7 @@ const DAY = 86_400_000;
 
 export function profileRoutes(deps: ProfileDeps) {
   const { db, fail } = deps;
-  const store = new ProfileStore(db.sql);
+  const store = new ProfileStore(db.sql, deps.defaults);
   const clans = new ClanStore(db.sql);
   const logos = new ClanLogoStore(db.sql);
 
@@ -343,14 +348,14 @@ export function profileRoutes(deps: ProfileDeps) {
     ['GET', /^\/v1\/me\/profile-privacy$/, (req) => {
       const me = deps.authed(req);
       const { privacy, moderation } = store.get(me);
-      return { privacy, hidden: moderation.hidden, url: `/u/${encodeURIComponent(db.user(me)!.handle)}`, defaults: DEFAULT_PRIVACY };
+      return { privacy, hidden: moderation.hidden, url: `/u/${encodeURIComponent(db.user(me)!.handle)}`, defaults: store.defaults() };
     }],
     ['POST', /^\/v1\/me\/profile-privacy$/, async (req) => {
       const me = deps.authed(req);
       const privacy = cleanPrivacy(await deps.body(req), store.get(me).privacy);
       store.setPrivacy(me, privacy);
       const { moderation } = store.get(me);
-      return { privacy, hidden: moderation.hidden, url: `/u/${encodeURIComponent(db.user(me)!.handle)}`, defaults: DEFAULT_PRIVACY };
+      return { privacy, hidden: moderation.hidden, url: `/u/${encodeURIComponent(db.user(me)!.handle)}`, defaults: store.defaults() };
     }],
     // moderation: an admin hides a profile from everyone (the owner still sees it, marked); in the admin log
     ['POST', /^\/v1\/admin\/profiles\/([^/]+)$/, async (req, [raw]) => {

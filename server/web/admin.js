@@ -8,6 +8,7 @@ import { communitiesPage } from './adminCommunities.js';
 import { supportPage } from './adminSupport.js';
 import { legalPage } from './adminLegal.js';
 import { rankChips, ranksPage, ranksReady, userRanksSection } from './adminRanks.js';
+import { settingsPage, supporterEditor } from './adminSettings.js';
 
 const TABS = [
   ['dashboard', 'Pulpit', 'fa-solid fa-chart-line'],
@@ -23,6 +24,7 @@ const TABS = [
   ['storage', 'Miejsce na pliki', 'fa-solid fa-hard-drive'],
   ['support', 'Wsparcie', 'fa-solid fa-heart'],
   ['legal', 'Dokumenty', 'fa-solid fa-scale-balanced'],
+  ['settings', 'Ustawienia', 'fa-solid fa-sliders'],
   ['log', 'Dziennik', 'fa-solid fa-clock-rotate-left'],
 ];
 const ACTIONS = {
@@ -48,6 +50,7 @@ const ACTIONS = {
   rank_create: 'dodał(a) rangę', rank_update: 'zmienił(a) rangę', rank_delete: 'usunął(ęła) rangę', rank_icon: 'zmienił(a) ikonę rangi',
   rank_grant: 'nadał(a) rangę', rank_revoke: 'odebrał(a) rangę',
   support_grant: 'przyznał(a) wsparcie', support_extend: 'przedłużył(a) wsparcie', support_revoke: 'odebrał(a) wsparcie',
+  setting: 'zmienił(a) ustawienie', setting_reset: 'przywrócił(a) domyślne ustawienie', cosmetic_supporter: 'zmienił(a) poziom wsparcia dla',
 };
 
 let me;
@@ -106,7 +109,7 @@ function layout() {
     el('button', { class: 'icon-btn', title: 'Wyloguj', onclick: async () => { await signOut(); me = undefined; gate(); } }, icon('fa-solid fa-right-from-bracket'))));
   const main = el('main', { class: 'main', id: 'main' });
   $('#root').replaceChildren(el('div', { class: 'admin' }, side, main));
-  ({ dashboard, users: usersPage, ranks: ranksPage, cosmetics: cosmeticsPage, achievements: achievementsPage, partners: partnersPage, clans: clansPage, communities: communitiesPage, requests: requestsPage, logs: logsPage, storage: storagePage, support: supportPage, legal: legalPage, log: logPage })[tab]?.();
+  ({ dashboard, users: usersPage, ranks: ranksPage, cosmetics: cosmeticsPage, achievements: achievementsPage, partners: partnersPage, clans: clansPage, communities: communitiesPage, requests: requestsPage, logs: logsPage, storage: storagePage, support: supportPage, legal: legalPage, settings: settingsPage, log: logPage })[tab]?.();
 }
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);
@@ -329,6 +332,8 @@ async function cosmeticsPage() {
         toggle('Włączona', 'enabled', 'Wyłączonej nie można wybrać i nikt jej nie widzi'),
         toggle('Ekskluzywna', 'exclusive', 'Tylko dla graczy, którym ją przyznasz'),
         obtain?.items[c.id] ? priceEditor(c, obtain.items[c.id], cosmeticsPage) : '',
+        // only for supporters from a tier level (adminSettings.js)
+        obtain?.items[c.id] ? supporterEditor(c, obtain.items[c.id], cosmeticsPage) : '',
         c.exclusive ? el('div', {}, el('small', { class: 'muted', textContent: 'Przyznana:' }),
           el('div', { class: 'grantees' }, ...(c.grantees.length ? c.grantees.map((g) => el('span', { class: 'chip blue' }, `@${g.handle}`,
             el('button', { title: 'Odbierz', onclick: async () => { if (await guard(() => api('DELETE', `/v1/admin/cosmetics/${c.id}/grants/${g.id}`))) cosmeticsPage(); } }, icon('fa-solid fa-xmark'))))
@@ -524,7 +529,7 @@ async function logPage() {
   const rows = await Promise.all(res.entries.map(async (e) => el('tr', {},
     el('td', { textContent: fmtDate(e.at) }),
     el('td', { textContent: `@${await nameOf(e.admin)}` }),
-    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' || e.action === 'shop_price' ? capeNames[e.target] ?? e.target : /^(partner|log_|bug_|storage_|clan\.|community\.|ach_(create|edit|reset|delete)|support_(provider|test|settings|tier))/.test(e.action) ? e.target : `@${e.target}` })),
+    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' || e.action === 'shop_price' || e.action === 'cosmetic_supporter' ? capeNames[e.target] ?? e.target : /^(partner|log_|bug_|storage_|clan\.|community\.|ach_(create|edit|reset|delete)|support_(provider|test|settings|tier)|setting)/.test(e.action) ? e.target : `@${e.target}` })),
     el('td', { class: 'log-detail', textContent: ['grant', 'revoke', 'set_cape'].includes(e.action) ? capeNames[e.detail] ?? e.detail : e.detail }))));
   $('#main').replaceChildren(head('Dziennik'),
     el('div', { class: 'glass card' }, res.entries.length

@@ -30,19 +30,22 @@ export interface TrackerContext {
   limit: (key: string) => void;
   clientIp: (req: http.IncomingMessage) => string;
   fail: (status: number, code: string) => never;
+  /** The admin panel's settings, read when used: days a log is kept, the largest log. */
+  logDays?: () => number;
+  maxLog?: () => number;
 }
 
 type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
 
-async function text(req: http.IncomingMessage, fail: TrackerContext['fail']): Promise<string> {
+async function text(req: http.IncomingMessage, fail: TrackerContext['fail'], max = MAX_LOG): Promise<string> {
   const chunks: Buffer[] = [];
   let size = 0;
   // the rest of a too big log is read and dropped, so the launcher gets the answer
   for await (const chunk of req) {
     size += chunk.length;
-    if (size <= MAX_LOG) chunks.push(chunk);
+    if (size <= max) chunks.push(chunk);
   }
-  if (size > MAX_LOG) fail(413, 'too_large');
+  if (size > max) fail(413, 'too_large');
   return Buffer.concat(chunks).toString('utf8');
 }
 
@@ -52,6 +55,7 @@ function str(v: unknown, max: number): string {
 
 export function trackerRoutes(ctx: TrackerContext): { routes: [string, RegExp, Handler][]; cleanup: () => Promise<void> } {
   const { db } = ctx;
+  const logDays = () => ctx.logDays?.() ?? LOG_DAYS;
   mkdirSync(ctx.dir, { recursive: true });
   const fileOf = (id: string) => path.join(ctx.dir, `${id}.log.gz`);
   const optionalUser = (req: http.IncomingMessage) => (req.headers.authorization ? ctx.authed(req) : '');
@@ -64,20 +68,20 @@ export function trackerRoutes(ctx: TrackerContext): { routes: [string, RegExp, H
     ['POST', /^\/v1\/logs$/, async (req) => {
       ctx.limit(`log:${ctx.clientIp(req)}`);
       const owner = optionalUser(req);
-      const log = await text(req, ctx.fail);
+      const log = await text(req, ctx.fail, ctx.maxLog?.() ?? MAX_LOG);
       if (!log.trim()) ctx.fail(400, 'empty');
       let id: string;
       do id = randomBytes(8).toString('base64url').replace(/[-_]/g, '').padEnd(10, 'x').slice(0, 10);
       while (db.sharedLog(id));
       await writeFile(fileOf(id), await pack(log));
       db.addLog(id, owner, Buffer.byteLength(log), log.split('\n').length);
-      return { id, url: `/logi/${id}`, expiresAt: Date.now() + LOG_DAYS * 86_400_000 };
+      return { id, url: `/logi/${id}`, expiresAt: Date.now() + logDays() * 86_400_000 };
     }],
     ['GET', /^\/v1\/logs\/(\w+)$/, async (_req, [id]) => {
       const log = LOG_ID.test(id) ? db.sharedLog(id) : undefined;
       if (!log) ctx.fail(404, 'not_found');
       const data = await readFile(fileOf(id)).catch(() => ctx.fail(404, 'not_found'));
-      return { id, size: log.size, lines: log.lines, createdAt: log.createdAt, expiresAt: log.createdAt + LOG_DAYS * 86_400_000, text: (await unpack(data)).toString('utf8') };
+      return { id, size: log.size, lines: log.lines, createdAt: log.createdAt, expiresAt: log.createdAt + logDays() * 86_400_000, text: (await unpack(data)).toString('utf8') };
     }],
 
     // the admin panel: every log players sent, and taking one down
@@ -85,7 +89,7 @@ export function trackerRoutes(ctx: TrackerContext): { routes: [string, RegExp, H
       const me = ctx.authed(req);
       if (!ctx.isAdmin(me)) ctx.fail(403, 'not_admin');
       const offset = Math.max(0, Number(url.searchParams.get('offset')) || 0);
-      return { ...db.logs(str(url.searchParams.get('q'), 60), 50, offset), offset, limit: 50, days: LOG_DAYS };
+      return { ...db.logs(str(url.searchParams.get('q'), 60), 50, offset), offset, limit: 50, days: logDays() };
     }],
     ['DELETE', /^\/v1\/admin\/logs\/(\w+)$/, async (req, [id]) => {
       const me = ctx.authed(req);
@@ -162,7 +166,7 @@ export function trackerRoutes(ctx: TrackerContext): { routes: [string, RegExp, H
 
   /** Drops logs past their time, with their files. */
   async function cleanup() {
-    for (const id of db.oldLogs(Date.now() - LOG_DAYS * 86_400_000)) {
+    for (const id of db.oldLogs(Date.now() - logDays() * 86_400_000)) {
       await rm(fileOf(id), { force: true });
       db.removeLog(id);
     }

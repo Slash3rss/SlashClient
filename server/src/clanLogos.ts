@@ -22,8 +22,14 @@ const IEND = Buffer.from([0, 0, 0, 0, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 
  * are: a PNG by its signature, its header (IHDR, first) saying 64×64, and its end (IEND) in place.
  * Nothing is decoded here; the clients read it as any PNG.
  */
+/** The largest logo accepted now: the admin panel's setting once the app says so (clans' and communities' alike). */
+let maxLogoBytes = () => MAX_LOGO_BYTES;
+export function useLogoLimit(fn?: () => number) {
+  maxLogoBytes = fn ?? (() => MAX_LOGO_BYTES);
+}
+
 export function logoProblem(data: Buffer): 'not_png' | 'bad_logo_size' | 'too_large' | undefined {
-  if (data.length > MAX_LOGO_BYTES) return 'too_large';
+  if (data.length > maxLogoBytes()) return 'too_large';
   if (data.length < 8 + 25 + 12 || !data.subarray(0, 8).equals(SIGNATURE)) return 'not_png';
   if (data.readUInt32BE(8) !== 13 || data.toString('latin1', 12, 16) !== 'IHDR') return 'not_png';
   if (!data.subarray(data.length - 12).equals(IEND)) return 'not_png';
@@ -82,7 +88,8 @@ export class ClanLogoStore extends LogoStore {
 
 /** The raw body of an upload, up to the logo's limit (413 past it). */
 export async function readLogo(req: http.IncomingMessage, fail: (status: number, code: string) => never): Promise<Buffer> {
-  if (Number(req.headers['content-length']) > MAX_LOGO_BYTES) {
+  const max = maxLogoBytes();
+  if (Number(req.headers['content-length']) > max) {
     req.resume();
     fail(413, 'too_large');
   }
@@ -90,9 +97,9 @@ export async function readLogo(req: http.IncomingMessage, fail: (status: number,
   let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size <= MAX_LOGO_BYTES) chunks.push(chunk);
+    if (size <= max) chunks.push(chunk);
   }
-  if (size > MAX_LOGO_BYTES) fail(413, 'too_large');
+  if (size > max) fail(413, 'too_large');
   return Buffer.concat(chunks);
 }
 

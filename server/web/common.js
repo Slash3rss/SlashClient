@@ -129,6 +129,9 @@ const ERRORS = {
   not_your_rank: 'Nie masz tej rangi.',
   not_png: 'To nie jest plik PNG.',
   bad_logo_size: 'Ikona rangi: PNG 16×16 albo 32×32 piksele.',
+  bad_level: 'Poziom wsparcia: liczba od 0 do 100.',
+  not_for_supporters: 'Ten przedmiot daje ranga albo osiągnięcie, nie wsparcie.',
+  feature_disabled: 'Ta funkcja jest chwilowo wyłączona.',
 };
 export const errorText = (err) => ERRORS[err?.code] ?? (err?.message || 'Coś poszło nie tak.');
 

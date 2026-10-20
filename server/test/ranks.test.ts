@@ -280,6 +280,20 @@ describe('ranks', () => {
     assert.deepEqual(friend.badgeRank, { id: 'friend', name: 'Przyjaciel', nameEn: 'Friend', color: '#22c55e' });
   });
 
+  it('follows the panel settings: no badge without a choice, fewer ranks on the profile', async () => {
+    const lena = await login('Lena');
+    for (const r of ['support', 'partner', 'friend']) await call('POST', `/v1/admin/users/${lena.user.id}/ranks`, boss.token, { rank: r });
+    assert.equal((await me(lena.token)).badge, 'support');
+    assert.equal((await call('POST', '/v1/admin/settings', boss.token, { values: { 'ranks.defaultBadge': 'none', 'ranks.profileMax': 2 } })).status, 200);
+    assert.equal((await me(lena.token)).badge, '');
+    // a choice of her own still counts
+    await call('POST', '/v1/me/badge', lena.token, { rank: 'friend' });
+    assert.equal((await me(lena.token)).badge, 'friend');
+    assert.deepEqual((await call('GET', '/v1/profiles/Lena')).body.profile.ranks.map((r: any) => r.id), ['support', 'partner']);
+    assert.equal((await call('POST', '/v1/admin/settings', boss.token, { values: { 'ranks.defaultBadge': 'everyone' } })).status, 400);
+    await call('POST', '/v1/admin/settings', boss.token, { values: { 'ranks.defaultBadge': 'highest', 'ranks.profileMax': 20 } });
+  });
+
   it('says which badge the game draws for each kind of HUD', () => {
     const r = (id: string, color: string, priority: number): HeldRank => ({ id, name: id, nameEn: id, color, priority, source: 'admin' });
     const vip = r('vip', '#123456', 95);

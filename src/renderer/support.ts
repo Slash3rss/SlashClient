@@ -40,7 +40,7 @@ export function refundNote(status: string, answer = ''): string | undefined {
 
 export function createSupportCard(root: HTMLElement, deps: SupportDeps) {
   const status = el('p', { className: 'muted support-status' });
-  const open = el('button', { type: 'button', className: 'primary' }, icon('fa-heart'), ' ', t('Wesprzyj projekt'));
+  const open = el('button', { type: 'button', className: 'primary feature-support' }, icon('fa-heart'), ' ', t('Wesprzyj projekt'));
   open.addEventListener('click', () => {
     const url = supportPageUrl(deps.socialUrl());
     // the main process opens https pages in the system browser (setWindowOpenHandler)
@@ -65,6 +65,8 @@ export function createSupportCard(root: HTMLElement, deps: SupportDeps) {
     el('h3', {}, icon('fa-heart'), ' ', t('Wesprzyj projekt')),
     el('p', { className: 'muted', textContent: t('SlashClient jest darmowy. Jeśli chcesz pomóc utrzymać serwer i rozwój, możesz go dobrowolnie wesprzeć na stronie: dostaniesz rangę Wspierający, kosmetyki i więcej miejsca w chmurze. Bez przewag w grze. Masz mniej niż 18 lat? Poproś rodzica lub opiekuna o zgodę.') }),
     status,
+    // new payments switched off in the server's admin panel (features.ts sets the body class)
+    el('p', { className: 'muted feature-support-off', textContent: t('Wsparcie jest chwilowo wyłączone przez administratora.') }),
     el('div', { className: 'row' }, open, history, account),
   );
 

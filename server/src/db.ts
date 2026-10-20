@@ -22,6 +22,8 @@ export interface CosmeticSetting {
   id: string; enabled: boolean; exclusive: boolean;
   /** The shop's price set in the admin panel (economy.ts): a number, null = not sold, missing = as cosmetics.ts has it. */
   price?: number | null;
+  /** The supporter level set in the admin panel (supporterItems.ts): 0 = for everyone, missing = as cosmetics.ts has it. */
+  supporter?: number;
 }
 export interface LogEntry { id: number; at: number; admin: string; action: string; target: string; detail: string }
 export type Provider = 'discord' | 'microsoft' | 'google' | 'github' | 'dev' | 'minecraft';
@@ -403,6 +405,15 @@ CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created
       }
     } catch {
       // no shop table yet
+    }
+    // supporter-only levels the admin set (supporterItems.ts)
+    // (read here, not through supporterItems.ts: the launcher's type check takes this file in through cosmetics.ts)
+    try {
+      for (const r of this.db.prepare('SELECT id, level FROM cosmetic_supporter').all() as { id: string; level: number }[]) {
+        out.set(r.id, { ...(out.get(r.id) ?? { id: r.id, enabled: true, exclusive: false }), supporter: r.level });
+      }
+    } catch {
+      // no such table yet
     }
     return out;
   }

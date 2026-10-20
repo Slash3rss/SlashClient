@@ -3,6 +3,7 @@ import type http from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Db, Person } from './db.ts';
 import { EDIT_WINDOW_MS, editRefusal } from './chatLimits.ts';
+import { withDefaults } from './settings.ts';
 
 /**
  * Group chats: one conversation with several friends at once, and a clan's own chat (clans.ts
@@ -26,7 +27,7 @@ import { EDIT_WINDOW_MS, editRefusal } from './chatLimits.ts';
 export const GROUP_SIZE = 16;
 /** A clan's chat holds the whole clan. */
 export const CLAN_CHAT_SIZE = 50;
-const MAX_GROUPS = 30;
+export const MAX_GROUPS = 30;
 const MAX_NAME = 32;
 const MAX_MESSAGE = 2000;
 /** An encrypted message: the text plus the message key wrapped for up to KEYS_PER_MEMBER launchers of every member. */
@@ -221,11 +222,20 @@ interface Deps {
   clanRole?: (clanId: string, uuid: string) => 'owner' | 'officer' | 'member' | undefined;
   /** Edits and deletions (the per-minute limit). */
   limitEdits?: (key: string) => void;
+  /** How long a message may be edited now (the admin panel's setting; EDIT_WINDOW_MS by default). */
+  editWindowMs?: () => number;
+  /** Members of a group and groups a player may make (the admin panel's settings; may be live). */
+  limits?: Partial<GroupLimits>;
 }
+
+export interface GroupLimits { size: number; maxGroups: number }
+export const GROUP_LIMITS: GroupLimits = { size: GROUP_SIZE, maxGroups: MAX_GROUPS };
 
 export function createGroups(deps: Deps) {
   const { db, authed, push, fail } = deps;
   const store = new GroupStore(db.sql);
+  const limits = withDefaults(GROUP_LIMITS, deps.limits);
+  const editWindow = () => deps.editWindowMs?.() ?? EDIT_WINDOW_MS;
 
   /** JSON body with room for an encrypted message for a whole clan. */
   async function body(req: http.IncomingMessage): Promise<Record<string, unknown>> {
@@ -356,8 +366,8 @@ export function createGroups(deps: Deps) {
       if (!name) fail(400, 'bad_group_name');
       const members = friendIds(me, raw.members);
       if (!members.length) fail(400, 'bad_request');
-      if (members.length + 1 > GROUP_SIZE) fail(400, 'too_many');
-      if (store.countOwnGroups(me) >= MAX_GROUPS) fail(400, 'too_many_groups');
+      if (members.length + 1 > limits.size) fail(400, 'too_many');
+      if (store.countOwnGroups(me) >= limits.maxGroups) fail(400, 'too_many_groups');
       deps.limitChanges(me);
       const id = store.create(name!, me, members);
       event(id, me, { kind: 'created', name: name!, users: members.map(nameOf) });
@@ -372,7 +382,7 @@ export function createGroups(deps: Deps) {
       const messages = store.messages(id, me, limit, before);
       // how long one's own messages may be edited, and whose others' this member may delete (server 0.9.23+)
       const moderator = moderation(id, me);
-      return { messages: deps.images ? deps.images().decorate(messages, id) : messages, editWindowMs: EDIT_WINDOW_MS, ...(moderator ? { moderator } : {}) };
+      return { messages: deps.images ? deps.images().decorate(messages, id) : messages, editWindowMs: editWindow(), ...(moderator ? { moderator } : {}) };
     }],
     ['POST', /^\/v1\/groups\/([\w-]{1,32})\/messages$/, async (req, [id]) => {
       const me = authed(req);
@@ -403,7 +413,7 @@ export function createGroups(deps: Deps) {
       (deps.limitEdits ?? deps.limitMessages)(me);
       const old = store.message(id, Number(raw));
       if (!old || !store.readersOf(id, old.id).includes(me)) fail(404, 'not_found');
-      const refusal = editRefusal(old!, me, !!deps.images?.().has(old!.id, id));
+      const refusal = editRefusal(old!, me, !!deps.images?.().has(old!.id, id), Date.now(), editWindow());
       if (refusal) fail(...refusal);
       const t = cleanText((await body(req)).text, old!.text.startsWith('e2e1:'));
       store.editMessage(old!.id, t);
@@ -450,7 +460,7 @@ export function createGroups(deps: Deps) {
       const raw = await body(req);
       const members = friendIds(me, raw.members).filter((m) => !store.isMember(id, m));
       if (!members.length) return { group: view(id, me) };
-      if (store.memberIds(id).length + members.length > GROUP_SIZE) fail(400, 'too_many');
+      if (store.memberIds(id).length + members.length > limits.size) fail(400, 'too_many');
       deps.limitChanges(me);
       for (const m of members) store.addMember(id, m);
       event(id, me, { kind: 'added', users: members.map(nameOf) });

@@ -11,6 +11,7 @@ import { SUPPORT_EN } from './i18nSupport';
 import { RANKS_EN } from './i18nRanks';
 import { LEGAL_EN } from './i18nLegal';
 import { COMMUNITIES_EN } from './i18nCommunities';
+import { FEATURES_EN } from './i18nFeatures';
 
 export type Lang = 'pl' | 'en';
 
@@ -29,6 +30,8 @@ const EN: Record<string, string> = {
   ...RANKS_EN,
   // supporting the project (own file)
   ...SUPPORT_EN,
+  // the admin's feature switches and banner (own file)
+  ...FEATURES_EN,
   // the terms and the privacy policy (own file)
   ...LEGAL_EN,
   // communities in the Friends view (own file)

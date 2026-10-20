@@ -1,6 +1,7 @@
 // Sparks ("Iskry", the achievements' currency) on the website: the balance, the achievements in
 // categories, the history, and buying a cosmetic from the shop (the account page uses these).
 import { api, el, guard, icon, toast } from './common.js';
+import { featureOn, siteFeatures } from './siteBanner.js';
 
 /** The currency's names, in one place here (the server's economy.ts and the launcher's sparks.ts have theirs). */
 export const CURRENCY = { forms: ['Iskra', 'Iskry', 'Iskier'], sign: '✦' };
@@ -25,6 +26,11 @@ const CATEGORIES = {
  * (the server checks it again).
  */
 export async function buy(item, balance) {
+  // the shop may be switched off for a while in the admin panel
+  if (!featureOn((await siteFeatures).features, 'shop')) {
+    toast('Sklep jest chwilowo wyłączony. Spróbuj później.', true);
+    return false;
+  }
   if (balance < item.price) {
     toast(`Za mało Iskier na ${item.name}: brakuje ${sparks(item.price - balance)}.`, true);
     return false;

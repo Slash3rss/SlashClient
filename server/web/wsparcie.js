@@ -3,6 +3,7 @@
 // (/wsparcie/dziekujemy, /wsparcie/anulowano). The server sets every price and grants a tier only
 // when the provider's webhook confirms the payment; this page only asks and shows.
 import { $, PROVIDERS, api, el, errorText, icon, signInDev, signInWith, toast, token } from './common.js';
+import { featureOn, siteFeatures } from './siteBanner.js';
 
 /** The page is Polish; a browser in another language gets the English texts. */
 const EN = !/^pl\b/i.test(navigator.language || 'pl');
@@ -20,7 +21,10 @@ const ERRORS = {
   monthly_unsupported: L('Co miesiąc można wspierać tylko kartą (Stripe).', 'Monthly support works only by card (Stripe).'),
   rate_limited: L('Za dużo prób, odczekaj chwilę.', 'Too many tries, wait a moment.'),
   unauthorized: L('Zaloguj się, żeby wesprzeć projekt.', 'Sign in to support the project.'),
+  feature_disabled: L('Wsparcie jest chwilowo wyłączone. Spróbuj później.', 'Supporting is switched off for now. Try again later.'),
 };
+/** New payments may be switched off in the admin panel (siteBanner.js reads the switches). */
+let paymentsOn = true;
 const fail = (err) => toast(ERRORS[err?.code] ?? errorText(err), true);
 
 const PROVIDER_INFO = {
@@ -195,7 +199,8 @@ function checkout() {
   return el('div', { class: 'glass card checkout' },
     el('h3', { textContent: L('Jak chcesz zapłacić?', 'How do you want to pay?') }),
     providerPick(), months(), consents(), now,
-    me ? el('div', { class: 'row checkout-go' }, el('span', { class: 'grow small muted' }, L('Wspierasz jako ', 'Supporting as '), el('b', { textContent: `@${me.handle}` }), total ? ` · ${total}${choice.kind === 'monthly' ? L(' co miesiąc', ' monthly') : ''}` : ''), sendButton) : signInBox(),
+    !paymentsOn ? el('p', { class: 'test-banner' }, icon('fa-solid fa-circle-pause'), L(' Wsparcie jest chwilowo wyłączone. Spróbuj później.', ' Supporting is switched off for now. Try again later.'))
+      : me ? el('div', { class: 'row checkout-go' }, el('span', { class: 'grow small muted' }, L('Wspierasz jako ', 'Supporting as '), el('b', { textContent: `@${me.handle}` }), total ? ` · ${total}${choice.kind === 'monthly' ? L(' co miesiąc', ' monthly') : ''}` : ''), sendButton) : signInBox(),
     el('p', { class: 'muted small', textContent: L(
       'Płatność obsługuje operator (Stripe albo PayPal) na swojej stronie: nie widzimy danych Twojej karty ani konta. Rangę dostajesz, gdy operator potwierdzi płatność, zwykle po kilku sekundach.',
       'The payment is handled by the provider (Stripe or PayPal) on its own page: we never see your card or account details. The rank comes once the provider confirms the payment, usually within seconds.') }));
@@ -272,5 +277,7 @@ if (/\/dziekujemy\/?$/.test(location.pathname)) thanks();
 else if (/\/anulowano\/?$/.test(location.pathname)) cancelled();
 else {
   [offer, health] = await Promise.all([api('GET', '/v1/support').catch(() => offer), api('GET', '/v1/health').catch(() => health)]);
+  // the admin may have switched new payments off for a while (Ustawienia → Funkcje)
+  paymentsOn = featureOn((await siteFeatures).features, 'support');
   render();
 }

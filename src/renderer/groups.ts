@@ -2,6 +2,7 @@ import { locale, t } from '../shared/i18n';
 import { logoFromFile, logoUrl } from './clanLogo';
 import { confirmDialog, control, el, icon, modalWindow } from './dialog';
 import { canDelete, canEdit, editHint, editedLabel, replaceMessage, tombstone, withMenu, type MenuItem, type Moderator } from './chatEdits';
+import { disabledText, featureOn } from './features';
 
 /**
  * Group chats and clans in the Friends view. Groups are conversations with several friends
@@ -179,25 +180,31 @@ export function createGroups(deps: Deps) {
   /** The clan (or the invites to one, or a button to found one) and the groups, for the friends list. */
   function sections(): Node[] {
     const out: Node[] = [];
-    const clanBtn = el('button', { type: 'button', className: 'icon-btn fr-section-btn', title: clan ? t('Zarządzaj klanem') : t('Załóż klan') }, icon(clan ? 'fa-gear' : 'fa-plus'));
-    clanBtn.addEventListener('click', () => (clan ? openClan() : createClan()));
-    out.push(el('div', { className: 'fr-section fr-section-row' }, el('span', { textContent: t('Klan') }), clanBtn));
-    for (const inv of invites) {
-      const accept = el('button', { type: 'button', className: 'icon-btn primary', title: t('Dołącz') }, icon('fa-check'));
-      const decline = el('button', { type: 'button', className: 'icon-btn', title: t('Odrzuć') }, icon('fa-xmark'));
-      accept.addEventListener('click', async () => {
-        takeClan(await act(() => api.socialApi('POST', `/v1/clans/${inv.clan.id}/accept`), t('Dołączono do klanu [{0}].', inv.clan.tag)));
-        await refresh();
-      });
-      decline.addEventListener('click', async () => takeClan(await act(() => api.socialApi('POST', `/v1/clans/${inv.clan.id}/decline`))));
-      out.push(el('div', { className: 'fr-row' },
-        clanAvatar(inv.clan),
-        el('div', { className: 'grow fr-names' }, el('b', { textContent: inv.clan.name }), el('small', { className: 'muted', textContent: t('{0} zaprasza do klanu', inv.by.name) })),
-        accept, decline));
+    // clans or groups switched off in the server's admin panel for a while: only a note there
+    const off = (title: string) => [el('div', { className: 'fr-section fr-section-row' }, el('span', { textContent: title })), el('p', { className: 'muted fr-empty', textContent: disabledText() })];
+    if (!featureOn('clans')) out.push(...off(t('Klan')));
+    else {
+      const clanBtn = el('button', { type: 'button', className: 'icon-btn fr-section-btn', title: clan ? t('Zarządzaj klanem') : t('Załóż klan') }, icon(clan ? 'fa-gear' : 'fa-plus'));
+      clanBtn.addEventListener('click', () => (clan ? openClan() : createClan()));
+      out.push(el('div', { className: 'fr-section fr-section-row' }, el('span', { textContent: t('Klan') }), clanBtn));
+      for (const inv of invites) {
+        const accept = el('button', { type: 'button', className: 'icon-btn primary', title: t('Dołącz') }, icon('fa-check'));
+        const decline = el('button', { type: 'button', className: 'icon-btn', title: t('Odrzuć') }, icon('fa-xmark'));
+        accept.addEventListener('click', async () => {
+          takeClan(await act(() => api.socialApi('POST', `/v1/clans/${inv.clan.id}/accept`), t('Dołączono do klanu [{0}].', inv.clan.tag)));
+          await refresh();
+        });
+        decline.addEventListener('click', async () => takeClan(await act(() => api.socialApi('POST', `/v1/clans/${inv.clan.id}/decline`))));
+        out.push(el('div', { className: 'fr-row' },
+          clanAvatar(inv.clan),
+          el('div', { className: 'grow fr-names' }, el('b', { textContent: inv.clan.name }), el('small', { className: 'muted', textContent: t('{0} zaprasza do klanu', inv.by.name) })),
+          accept, decline));
+      }
+      const clanChat = clan ? group(clan.chat) : undefined;
+      if (clanChat) out.push(groupRow(clanChat));
+      else if (!invites.length) out.push(el('p', { className: 'muted fr-empty', textContent: t('Nie jesteś w klanie. Załóż własny albo poczekaj na zaproszenie.') }));
     }
-    const clanChat = clan ? group(clan.chat) : undefined;
-    if (clanChat) out.push(groupRow(clanChat));
-    else if (!invites.length) out.push(el('p', { className: 'muted fr-empty', textContent: t('Nie jesteś w klanie. Załóż własny albo poczekaj na zaproszenie.') }));
+    if (!featureOn('groups')) return [...out, ...off(t('Grupy'))];
     const plain = groups.filter((g) => !g.clan);
     const add = el('button', { type: 'button', className: 'icon-btn fr-section-btn', title: t('Nowa grupa') }, icon('fa-plus'));
     add.addEventListener('click', () => pickFriends());

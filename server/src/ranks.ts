@@ -1,6 +1,7 @@
 import type http from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import { LogoStore, logoProblem, readLogo, serveLogo } from './clanLogos.ts';
+import type { SettingDef, SettingValue } from './settings.ts';
 
 /**
  * Ranks: what a player is (Admin, Support, Partner, Friend, Supporter, and whatever the admins add
@@ -57,12 +58,21 @@ const OLD_HUD_RANKS = ['admin', 'support', 'partner', 'friend'];
 /** What users.rank could hold. */
 const LEGACY_RANKS = ['support', 'partner', 'friend', 'friend_pink'];
 
+/** The ranks' settings in the admin panel's "Ustawienia" (settings.ts), next to the public profiles'. */
+export const RANK_SETTING_DEFS: SettingDef[] = [
+  { key: 'ranks.defaultBadge', category: 'profiles', label: 'Odznaka rangi bez wyboru gracza', labelEn: 'Rank badge without a choice',
+    description: 'Co jest przy nicku gracza, który nie wybrał rangi sam: highest — odznaka najważniejszej rangi, none — żadna (tylko białe logo).', type: 'enum', options: ['highest', 'none'], default: 'highest' },
+  { key: 'ranks.profileMax', category: 'profiles', label: 'Rang na profilu', labelEn: 'Ranks on a profile', description: 'Najwięcej rang pokazanych na profilu publicznym (najważniejsze pierwsze).', type: 'int', default: 20, min: 1, max: 100 },
+];
+
 export const RANK_ID = /^[a-z][a-z0-9_]{1,23}$/;
 const COLOR = /^#[0-9a-f]{6}$/i;
 export const ICON_SIZES = [16, 32];
 
 /** Why these bytes are not a rank icon: a PNG 16×16 or 32×32 (checked like clan logos), or undefined. */
 export function iconProblem(data: Buffer): 'not_png' | 'bad_logo_size' | 'too_large' | undefined {
+  // the launcher takes icons up to 32 KB (a 32×32 PNG is far below), whatever the clans' logo limit is
+  if (data.length > 32 * 1024) return 'too_large';
   const problem = logoProblem(data);
   // logoProblem checks the size last and wants 64×64: past that only ours count
   if (problem !== 'bad_logo_size' && problem !== undefined) return problem;
@@ -230,6 +240,8 @@ export interface RankDeps {
   changed: (uuid: string) => void;
   audit: (admin: string, action: string, target: string, detail?: string) => void;
   fail: (status: number, code: string) => never;
+  /** A setting of the registry (RANK_SETTING_DEFS); without it the defaults. */
+  setting?: (key: string) => SettingValue;
   now?: () => number;
 }
 
@@ -271,7 +283,9 @@ export function createRanks(deps: RankDeps) {
     if (user.banned) return undefined;
     const choice = store.choice(user.id);
     if (choice === 'none') return undefined;
-    return list.find((h) => h.id === choice) ?? list[0];
+    const picked = list.find((h) => h.id === choice);
+    // without a choice (or a picked rank gone): the most important, unless the admins set none
+    return picked ?? ((deps.setting?.('ranks.defaultBadge') ?? 'highest') === 'none' ? undefined : list[0]);
   }
 
   /** The ranks that let a player wear rank cosmetics (an admin's role always counts, even with the rank switched off). */

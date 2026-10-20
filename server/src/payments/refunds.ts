@@ -22,7 +22,7 @@ import { ProviderError, scrub, type StripeClient } from './stripe.ts';
 export const REFUND_WINDOW_DAYS = 14;
 const DAY = 86_400_000;
 /** Requests one account may make in a day (on top of the per-minute limit). */
-const MAX_PER_DAY = 6;
+export const MAX_PER_DAY = 6;
 
 export type RefundStatus = 'pending' | 'approved' | 'rejected' | 'refunded' | 'cancelled';
 
@@ -138,6 +138,9 @@ export interface RefundDeps {
   takeBack: (p: Payment) => boolean;
   changed: (userId: string) => void;
   fail: (status: number, code: string) => never;
+  /** The admin panel's settings, read when used: the window in days (never under 14) and requests a day. */
+  windowDays?: () => number;
+  perDay?: () => number;
 }
 
 type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
@@ -147,17 +150,18 @@ const cleanText = (v: unknown, max: number) => (typeof v === 'string' ? v.replac
 export function refundRoutes(d: RefundDeps) {
   const refunds = new RefundStore(d.sql, d.now);
   const fail = d.fail;
-  const windowMs = REFUND_WINDOW_DAYS * DAY;
+  const windowDays = () => d.windowDays?.() ?? REFUND_WINDOW_DAYS;
+  const windowMsOf = () => windowDays() * DAY;
 
   /** Why the player cannot ask for this payment's refund on their own; '' when they can. */
   function blocked(p: Payment): string {
     if (p.mode !== 'live' || p.status !== 'paid' || p.refundedAt || !p.intent || (p.provider !== 'stripe' && p.provider !== 'paypal')) return 'not_refundable';
-    if (!p.paidAt || d.now() - p.paidAt > windowMs) return 'window_passed';
+    if (!p.paidAt || d.now() - p.paidAt > windowMsOf()) return 'window_passed';
     return '';
   }
 
   const refundable = (p: Payment) => !blocked(p) && !refunds.open(p.id);
-  const until = (p: Payment) => (p.paidAt ? p.paidAt + windowMs : 0);
+  const until = (p: Payment) => (p.paidAt ? p.paidAt + windowMsOf() : 0);
 
   /** What the player sees of their request: never who decided it. */
   const mine = (r: RefundRequest) => ({ id: r.id, payment: r.payment, reason: r.reason, guardian: r.guardian, status: r.status, answer: r.answer, createdAt: r.createdAt, updatedAt: r.updatedAt });
@@ -168,7 +172,7 @@ export function refundRoutes(d: RefundDeps) {
       ...mine(r), user: r.user, handle: d.handleOf(r.user), decidedBy: r.decidedBy ? d.handleOf(r.decidedBy) : '', providerRef: r.providerRef,
       payment: p ? {
         id: p.id, provider: p.provider, tier: p.tier, kind: p.kind, days: p.days, amount: p.amount, currency: p.currency, status: p.status, mode: p.mode,
-        paidAt: p.paidAt || null, refundedAt: p.refundedAt || null, intent: p.intent, subscription: p.subscription, inWindow: !!p.paidAt && r.createdAt - p.paidAt <= windowMs,
+        paidAt: p.paidAt || null, refundedAt: p.refundedAt || null, intent: p.intent, subscription: p.subscription, inWindow: !!p.paidAt && r.createdAt - p.paidAt <= windowMsOf(),
       } : null,
     };
   }
@@ -206,7 +210,7 @@ export function refundRoutes(d: RefundDeps) {
     // the player's own requests
     ['GET', /^\/v1\/me\/support\/refunds$/, (req) => {
       const me = d.authed(req);
-      return { refunds: refunds.of(me).map(mine), windowDays: REFUND_WINDOW_DAYS };
+      return { refunds: refunds.of(me).map(mine), windowDays: windowDays() };
     }],
     ['GET', /^\/v1\/me\/support\/refunds\/(r_[\w-]{6,20})$/, (req, [id]) => {
       const me = d.authed(req);
@@ -229,7 +233,7 @@ export function refundRoutes(d: RefundDeps) {
       if (why) fail(400, why);
       if (refunds.open(p!.id)) fail(409, 'already_requested');
       if (b.confirm !== true) fail(400, 'confirm_required');
-      if (refunds.madeSince(me, d.now() - DAY) >= MAX_PER_DAY) fail(429, 'rate_limited');
+      if (refunds.madeSince(me, d.now() - DAY) >= (d.perDay?.() ?? MAX_PER_DAY)) fail(429, 'rate_limited');
       let r: RefundRequest;
       try {
         r = refunds.add({ payment: p!.id, user: me, reason: cleanText(b.reason, 500), guardian: b.guardian === true });
@@ -253,7 +257,7 @@ export function refundRoutes(d: RefundDeps) {
       d.admin(req);
       const status = url.searchParams.get('status') ?? '';
       if (status && !['pending', 'approved', 'rejected', 'refunded', 'cancelled'].includes(status)) fail(400, 'bad_status');
-      return { refunds: refunds.queue(status, 200).map(adminView), pending: refunds.pendingCount(), windowDays: REFUND_WINDOW_DAYS };
+      return { refunds: refunds.queue(status, 200).map(adminView), pending: refunds.pendingCount(), windowDays: windowDays() };
     }],
     // "Zwróć": the refund at the provider; the webhook that follows takes the perks back
     ['POST', /^\/v1\/admin\/support\/refunds\/(r_[\w-]{6,20})\/refund$/, async (req, [id]) => {

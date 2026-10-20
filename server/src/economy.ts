@@ -1,7 +1,8 @@
 import type http from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Db } from './db.ts';
-import { ITEMS, capeSetting, item, sellable } from './cosmetics.ts';
+import { ITEMS, capeSetting, item, sellable, supporterLevel } from './cosmetics.ts';
+import { supporterLevels } from './supporterItems.ts';
 
 /**
  * The SlashClient currency, earned with achievements (achievements.ts pays each one once, when it
@@ -122,7 +123,8 @@ CREATE TABLE IF NOT EXISTS shop_prices (id TEXT PRIMARY KEY, price INTEGER CHECK
    */
   price(id: string): number | undefined {
     const it = item(id);
-    if (!it || !sellable(it)) return undefined;
+    // the supporters' items are never sold (also those the admin made so: supporterItems.ts)
+    if (!it || !sellable(it, supporterLevels(this.sql).get(id) ?? it.supporter ?? 0)) return undefined;
     const row = this.sql.prepare('SELECT price FROM shop_prices WHERE id = ?').get(id) as { price: number | null } | undefined;
     return row ? row.price ?? undefined : it.price;
   }
@@ -234,7 +236,7 @@ export function economyRoutes(deps: Deps): [string, RegExp, Handler][] {
       const it = item(id);
       if (!it) fail(404, 'not_found');
       // a rank's item and one only an achievement gives are never sold
-      if (!sellable(it!)) fail(400, 'not_sellable');
+      if (!sellable(it!, supporterLevel(db.cosmeticSettings(), it!))) fail(400, 'not_sellable');
       const { price, reset } = await deps.body(req);
       if (reset !== true && price !== null && (typeof price !== 'number' || !Number.isSafeInteger(price) || price < 1 || price > MAX_ADMIN_CHANGE)) fail(400, 'bad_price');
       const before = wallet.price(id);

@@ -4,6 +4,7 @@ import { rename, rm, stat, writeFile } from 'node:fs/promises';
 import type http from 'node:http';
 import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
+import { withDefaults } from './settings.ts';
 
 /**
  * Pictures in the chat with friends and in group (and clan) chats (a screenshot sent from the game).
@@ -57,7 +58,8 @@ interface Row { id: string; owner: string; recipient: string; size: number; crea
 
 export function chatImageRoutes(ctx: ImageContext) {
   const { sql } = ctx;
-  const limits = { ...IMAGE_LIMITS, ...ctx.limits };
+  // live: the admin panel's settings are read when used
+  const limits = withDefaults(IMAGE_LIMITS, ctx.limits);
   mkdirSync(ctx.dir, { recursive: true });
   sql.exec(`CREATE TABLE IF NOT EXISTS chat_images (id TEXT PRIMARY KEY, owner TEXT NOT NULL, recipient TEXT NOT NULL, size INTEGER NOT NULL,
     created_at INTEGER NOT NULL, message_id INTEGER, key TEXT NOT NULL DEFAULT '');

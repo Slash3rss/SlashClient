@@ -4,6 +4,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import type { Db, Person } from './db.ts';
 import { ClanLogoStore, serveLogo, takeLogo } from './clanLogos.ts';
 import { CLAN_CHAT_SIZE, type createGroups } from './groups.ts';
+import { withDefaults } from './settings.ts';
 
 /**
  * Clans: a group of players with a short tag ([ABC]) shown next to their nick: in the launcher,
@@ -20,12 +21,15 @@ export type ClanRole = 'owner' | 'officer' | 'member';
 export type ClanAction = 'invite' | 'kick' | 'setRole' | 'rename' | 'delete' | 'transfer' | 'logo';
 
 export const CLAN_SIZE = CLAN_CHAT_SIZE;
-const MAX_INVITES = 20;
+export const MAX_INVITES = 20;
 const TAG = /^[A-Za-z0-9]{2,5}$/;
-const MAX_NAME = 32;
+export const MAX_NAME = 32;
+
+export interface ClanLimits { members: number; invites: number; nameMax: number }
+export const CLAN_LIMITS: ClanLimits = { members: CLAN_SIZE, invites: MAX_INVITES, nameMax: MAX_NAME };
 
 /** Words a tag or a clan's name may not contain (lower case, letters only). */
-const BLOCKED_WORDS = [
+export const BLOCKED_WORDS = [
   // Polish
   'kurw', 'chuj', 'huj', 'pizd', 'jeb', 'cipa', 'cipk', 'fiut', 'kutas', 'dziwk', 'pedal', 'pedał', 'cwel', 'szmat', 'zjeb', 'spierd', 'pierdol', 'debil', 'hwdp', 'jbc', 'ciota',
   // English
@@ -34,7 +38,13 @@ const BLOCKED_WORDS = [
   'nazi', 'hitler', 'hitl', 'kkk', 'nsdap', 'heil', 'isis', 'jihad',
 ];
 /** Short ones that are fine inside other words but not as the whole tag. */
-const BLOCKED_TAGS = new Set(['ss', 'sa', 'hh', '88', '1488', 'jp', 'cp', 'wtf', 'stfu', 'fu', 'kys', 'sex', 'sexy', 'anal', 'rape', 'xxx', 'milf']);
+export const BLOCKED_TAGS = ['ss', 'sa', 'hh', '88', '1488', 'jp', 'cp', 'wtf', 'stfu', 'fu', 'kys', 'sex', 'sexy', 'anal', 'rape', 'xxx', 'milf'];
+
+/** The word lists in use: the admin panel's (Ustawienia → Moderacja) once the app says so, else the ones above. */
+let blocklist: () => { words: readonly string[]; tags: readonly string[] } = () => ({ words: BLOCKED_WORDS, tags: BLOCKED_TAGS });
+export function useBlocklist(lists?: () => { words: readonly string[]; tags: readonly string[] }) {
+  blocklist = lists ?? (() => ({ words: BLOCKED_WORDS, tags: BLOCKED_TAGS }));
+}
 const LEET: Record<string, string> = { '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't', '8': 'b', '@': 'a', '$': 's', '!': 'i' };
 
 /** Whether a text has a blocked word in it, as written or with digits read as letters. */
@@ -43,7 +53,8 @@ export function offensive(text: string): boolean {
   const plain = lower.replace(/[^a-ząćęłńóśźż]/g, '');
   const leet = lower.replace(/[0-9@$!]/g, (c) => LEET[c] ?? c).replace(/[^a-ząćęłńóśźż]/g, '');
   const folded = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l');
-  return [plain, leet, folded(plain), folded(leet)].some((s) => BLOCKED_WORDS.some((w) => s.includes(folded(w)) || s.includes(w)));
+  const words = blocklist().words;
+  return [plain, leet, folded(plain), folded(leet)].some((s) => words.some((w) => s.includes(folded(w)) || s.includes(w)));
 }
 
 /**
@@ -53,12 +64,13 @@ export function offensive(text: string): boolean {
 export function tagProblem(tag: unknown, shape: RegExp = TAG): 'bad_tag' | 'offensive_tag' | undefined {
   if (typeof tag !== 'string' || !shape.test(tag)) return 'bad_tag';
   const lower = tag.toLowerCase();
-  if (BLOCKED_TAGS.has(lower) || BLOCKED_TAGS.has(lower.replace(/[0-9]/g, (c) => LEET[c] ?? c)) || offensive(tag)) return 'offensive_tag';
+  const tags = blocklist().tags;
+  if (tags.includes(lower) || tags.includes(lower.replace(/[0-9]/g, (c) => LEET[c] ?? c)) || offensive(tag)) return 'offensive_tag';
   return undefined;
 }
 
 /** A clan's name from a request, or undefined when it is empty, too long, has control characters. */
-export const cleanClanName = (raw: unknown): string | undefined => cleanName(raw, 3, MAX_NAME);
+export const cleanClanName = (raw: unknown, max = MAX_NAME): string | undefined => cleanName(raw, 3, max);
 
 /** A name from a request (spaces folded), or undefined when shorter than `min`, longer than `max` or with control characters. */
 export function cleanName(raw: unknown, min: number, max: number): string | undefined {
@@ -197,12 +209,15 @@ interface Deps {
   limitLogos?: (key: string) => void;
   groups: ReturnType<typeof createGroups>;
   fail: (status: number, code: string) => never;
+  /** Members, invites and the name's length (the admin panel's settings; may be live). */
+  limits?: Partial<ClanLimits>;
 }
 
 export function createClans(deps: Deps) {
   const { db, authed, body, push, fail, groups } = deps;
   const store = new ClanStore(db.sql);
   const logos = new ClanLogoStore(db.sql);
+  const limits = withDefaults(CLAN_LIMITS, deps.limits);
   /** The logo's version as clients get it: `logo` is there only when the clan has one. */
   const logoField = (id: string) => {
     const v = logos.version(id);
@@ -320,7 +335,7 @@ export function createClans(deps: Deps) {
       const { tag, name } = await body(req);
       const problem = tagProblem(tag);
       if (problem) fail(400, problem);
-      const clean = cleanClanName(name);
+      const clean = cleanClanName(name, limits.nameMax);
       if (!clean) fail(400, 'bad_clan_name');
       if (offensive(clean!)) fail(400, 'offensive_name');
       if (store.membership(me)) fail(409, 'already_in_clan');
@@ -341,8 +356,8 @@ export function createClans(deps: Deps) {
       if (!other) fail(404, 'not_found');
       if (other!.id === me) fail(400, 'self');
       if (store.membership(other!.id)?.clan === clan.id) fail(409, 'already_member');
-      if (store.members(clan.id).length >= CLAN_SIZE) fail(400, 'clan_full');
-      if (store.sentInvites(clan.id).length >= MAX_INVITES) fail(400, 'too_many');
+      if (store.members(clan.id).length >= limits.members) fail(400, 'clan_full');
+      if (store.sentInvites(clan.id).length >= limits.invites) fail(400, 'too_many');
       deps.limitChanges(me);
       store.invite(clan.id, other!.id, me);
       push(other!.id, { type: 'clan', invite: { tag: clan.tag, name: clan.name, by: person(me) } });
@@ -363,7 +378,7 @@ export function createClans(deps: Deps) {
       const c = clanOf(id);
       if (!c) fail(404, 'not_found');
       if (store.membership(me)) fail(409, 'already_in_clan');
-      if (store.members(id).length >= CLAN_SIZE) fail(400, 'clan_full');
+      if (store.members(id).length >= limits.members) fail(400, 'clan_full');
       store.join(id, me);
       if (c!.chat) groups.clanChat.join(c!.chat, me);
       changed(c!);
@@ -443,7 +458,7 @@ export function createClans(deps: Deps) {
       const tag = raw.tag === undefined ? clan.tag : raw.tag;
       const problem = tagProblem(tag);
       if (problem) fail(400, problem);
-      const name = raw.name === undefined ? clan.name : cleanClanName(raw.name);
+      const name = raw.name === undefined ? clan.name : cleanClanName(raw.name, limits.nameMax);
       if (!name) fail(400, 'bad_clan_name');
       if (offensive(name!)) fail(400, 'offensive_name');
       if (store.tagTaken(tag as string, clan.id)) fail(409, 'tag_taken');
