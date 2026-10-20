@@ -95,6 +95,27 @@ const ERRORS = {
   bad_amount: 'Podaj liczbę Iskier różną od zera (najwyżej 100 000).',
   bad_reason: 'Podaj powód (3–200 znaków).',
   bad_price: 'Cena: liczba od 1 do 100 000.',
+  not_sellable: 'Tego przedmiotu nie można sprzedawać (ranga albo nagroda za osiągnięcie).',
+  // the achievement creator
+  bad_id: 'Id: małe litery, cyfry i _, 3–40 znaków, zaczyna się od litery.',
+  id_taken: 'Takie id już jest (także wśród wbudowanych).',
+  bad_metric: 'Wybierz warunek z listy.',
+  bad_goal: 'Cel poza zakresem dla tej metryki.',
+  bad_icon: 'Wybierz ikonę z listy.',
+  bad_reward: 'Nie ma takiego przedmiotu.',
+  bad_sparks: 'Iskry: liczba od 0 do 10 000.',
+  bad_name: 'Podaj nazwę i opis (po polsku).',
+  bad_nameEn: 'Nazwa po angielsku: najwyżej 60 znaków.',
+  bad_description: 'Opis: 1–200 znaków.',
+  bad_descriptionEn: 'Opis po angielsku: najwyżej 200 znaków.',
+  bad_category: 'Wybierz kategorię z listy.',
+  has_holders: 'Ktoś już ma to osiągnięcie: wyłącz je zamiast usuwać.',
+  built_in: 'Wbudowanych osiągnięć nie da się usunąć, można je wyłączyć.',
+  not_manual: 'To osiągnięcie jest liczone automatycznie.',
+  not_held: 'Ten gracz go nie ma.',
+  no_player: 'Nie ma takiego gracza.',
+  bad_players: 'Podaj od 1 do 100 graczy.',
+  disabled: 'Osiągnięcie jest wyłączone.',
 };
 export const errorText = (err) => ERRORS[err?.code] ?? (err?.message || 'Coś poszło nie tak.');
 

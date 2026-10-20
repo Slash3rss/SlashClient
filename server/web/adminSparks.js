@@ -40,17 +40,17 @@ export function shopSection() {
     const res = await guard(() => api('GET', '/v1/admin/shop'));
     if (!res) return;
     box.replaceChildren(el('h3', { textContent: 'Sklep za Iskry' }),
-      el('p', { class: 'muted small', textContent: 'Kosmetyki kupowane za Iskry z osiągnięć. Zmiana ceny działa od razu dla kolejnych zakupów; pusta cena wraca do domyślnej.' }),
+      el('p', { class: 'muted small', textContent: 'Kosmetyki kupowane za Iskry z osiągnięć. Zmiana ceny działa od razu dla kolejnych zakupów; pusta cena wraca do domyślnej. Inne przedmioty wystawisz w sklepie przy ich kartach poniżej.' }),
       el('div', { class: 'shop-admin-grid' }, ...res.items.map((i) => {
-        const price = el('input', { type: 'number', min: 1, step: 1, value: i.price, title: `Domyślnie ${i.defaultPrice}` });
+        const price = el('input', { type: 'number', min: 1, step: 1, value: i.price, title: i.defaultPrice ? `Domyślnie ${i.defaultPrice}` : 'Wystawiony w panelu' });
         const save = async () => {
-          const value = price.value.trim() === '' ? null : Number(price.value);
-          if (value === i.price) return;
-          if (await guard(() => api('POST', `/v1/admin/shop/${i.id}`, { price: value }))) { toast('Cena zapisana.'); load(); }
+          const empty = price.value.trim() === '';
+          if (!empty && Number(price.value) === i.price) return;
+          if (await guard(() => api('POST', `/v1/admin/shop/${i.id}`, empty ? { reset: true } : { price: Number(price.value) }))) { toast('Cena zapisana.'); load(); }
         };
         price.addEventListener('change', save);
         return el('div', { class: 'shop-admin-item' }, cosmeticEl(i.id, i.slot, true),
-          el('div', { class: 'grow' }, el('b', { textContent: i.name }), el('span', { class: 'muted small', textContent: `${i.slot} · kupiło: ${i.sold}${i.price !== i.defaultPrice ? ` · domyślnie ${i.defaultPrice}` : ''}` })),
+          el('div', { class: 'grow' }, el('b', { textContent: i.name }), el('span', { class: 'muted small', textContent: `${i.slot} · kupiło: ${i.sold}${i.price !== i.defaultPrice ? ` · domyślnie ${i.defaultPrice ?? 'poza sklepem'}` : ''}` })),
           el('label', { class: 'row small' }, '✦', price));
       })));
   };

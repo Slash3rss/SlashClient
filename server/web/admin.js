@@ -2,11 +2,13 @@
 import { $, PROVIDERS, partnerBanner, uploadPicture, SLOTS, ago, api, avatarEl, capeEl, cosmeticEl, el, errorText, fmtDate, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 import { storagePage } from './adminStorage.js';
 import { shopSection, walletSection } from './adminSparks.js';
+import { achievementsPage, foreignHash, obtainLine } from './adminAchievements.js';
 
 const TABS = [
   ['dashboard', 'Pulpit', 'fa-solid fa-chart-line'],
   ['users', 'Konta', 'fa-solid fa-users'],
   ['cosmetics', 'Kosmetyki', 'fa-solid fa-wand-magic-sparkles'],
+  ['achievements', 'Osiągnięcia', 'fa-solid fa-trophy'],
   ['partners', 'Partnerzy', 'fa-solid fa-handshake'],
   ['requests', 'Zapytania', 'fa-solid fa-satellite-dish'],
   ['logs', 'Logi graczy', 'fa-solid fa-file-lines'],
@@ -23,12 +25,15 @@ const ACTIONS = {
   storage_add: 'dodał(a) miejsce na pliki', storage_edit: 'zmienił(a) miejsce na pliki', storage_remove: 'usunął(ęła) miejsce na pliki',
   storage_move: 'przenosi pliki z', storage_move_stop: 'zatrzymał(a) przenoszenie plików z',
   sparks_give: 'dodał(a) Iskry', sparks_take: 'odebrał(a) Iskry', shop_price: 'zmienił(a) cenę w sklepie',
+  ach_create: 'utworzył(a) osiągnięcie', ach_edit: 'zmienił(a) osiągnięcie', ach_reset: 'przywrócił(a) domyślne osiągnięcie', ach_delete: 'usunął(ęła) osiągnięcie',
+  ach_grant: 'przyznał(a) osiągnięcie', ach_revoke: 'odebrał(a) osiągnięcie',
 };
 /** Ranks: the colour of the SlashClient logo next to the name in game (admins are red without one). */
 const RANKS = { support: ['Support', 'sky'], partner: ['Partner', 'gold'], friend: ['Przyjaciel', 'green'], friend_pink: ['Przyjaciel (różowy)', 'pink'] };
 
 let me;
-let tab = location.hash.slice(1) || 'dashboard';
+// "#achievements:<id>" opens that achievement in the creator
+let tab = location.hash.slice(1).split(':')[0] || 'dashboard';
 const users = { q: '', offset: 0, limit: 25 };
 let capeNames = {};
 let capeSlots = {};
@@ -82,7 +87,7 @@ function layout() {
     el('button', { class: 'icon-btn', title: 'Wyloguj', onclick: async () => { await signOut(); me = undefined; gate(); } }, icon('fa-solid fa-right-from-bracket'))));
   const main = el('main', { class: 'main', id: 'main' });
   $('#root').replaceChildren(el('div', { class: 'admin' }, side, main));
-  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, partners: partnersPage, requests: requestsPage, logs: logsPage, storage: storagePage, log: logPage })[tab]?.();
+  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, achievements: achievementsPage, partners: partnersPage, requests: requestsPage, logs: logsPage, storage: storagePage, log: logPage })[tab]?.();
 }
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);
@@ -226,8 +231,36 @@ async function openUser(id) {
 
 // ---------- cosmetics ----------
 
+/** From the cosmetics tab: an achievement that gives an item, in the creator. */
+const openAchievement = (id) => {
+  // the hash change switches the tab (below)
+  location.hash = `achievements:${id}`;
+};
+
+/** An item's shop price, editable: a number puts it on sale, empty takes it off, ↺ back to the default. */
+function priceEditor(c, o, done) {
+  if (!o.sellable) return '';
+  const input = el('input', { type: 'number', min: 1, step: 1, value: o.price ?? '', placeholder: 'brak', title: `Pusta: poza sklepem. ${o.defaultPrice ? `Domyślnie ${o.defaultPrice}` : 'Domyślnie poza sklepem'}` });
+  const send = async (body, ask) => {
+    if (ask && !confirm(ask)) return done();
+    const r = await guard(() => api('POST', `/v1/admin/shop/${c.id}`, body));
+    if (r) toast(r.price ? `Cena: ${r.price}.${r.kept ? ` ${r.kept} graczy, którzy go noszą, zachowuje go.` : ''}` : 'Poza sklepem.');
+    done();
+  };
+  input.addEventListener('change', () => {
+    const v = input.value.trim();
+    if (v === '') return o.price === null ? undefined : send({ price: null }, 'Zdjąć ze sprzedaży? Przedmiot stanie się dostępny za darmo (chyba że jest ekskluzywny). Kupione zostają u kupujących.');
+    const n = Number(v);
+    if (n === o.price) return;
+    send({ price: n }, o.price === null ? `Wystawić „${c.name}” w sklepie za ${n} Iskier? Odtąd tylko kupujący (i ci, którzy go teraz noszą) będą mogli go założyć.` : '');
+  });
+  return el('label', { class: 'opt', title: 'Cena w sklepie za Iskry' }, el('span', {}, el('span', { class: 'spark-sign', textContent: '✦' }), ' Sklep'),
+    el('span', { class: 'row' }, input,
+      o.price !== o.defaultPrice ? el('button', { type: 'button', class: 'icon-btn', title: `Przywróć domyślną (${o.defaultPrice ?? 'poza sklepem'})`, onclick: () => send({ reset: true }) }, icon('fa-solid fa-rotate-left')) : ''));
+}
+
 async function cosmeticsPage() {
-  const res = await guard(() => api('GET', '/v1/admin/cosmetics'));
+  const [res, obtain] = await Promise.all([guard(() => api('GET', '/v1/admin/cosmetics')), api('GET', '/v1/admin/cosmetics/obtain').catch(() => undefined)]);
   if (!res) return;
   const all = res.items ?? res.capes;
   const cards = all.map((c) => {
@@ -249,15 +282,18 @@ async function cosmeticsPage() {
     return el('div', { class: 'glass cos' }, cosmeticEl(c.id, c.slot ?? 'cape'),
       el('div', { class: 'opts' },
         el('div', { class: 'row' }, el('h3', { class: 'grow', textContent: c.name }), c.rank ? el('span', { class: `chip ${{ admin: 'red', support: 'sky', partner: 'gold', friend: 'green', friend_pink: 'pink' }[c.rank] ?? ''}`, textContent: c.rank }) : '', el('span', { class: 'chip', textContent: `${c.wearing} nosi` })),
+        // how it can be got now (obtain.ts on the server: free, shop, achievements, rank, grant only)
+        obtain?.items[c.id] ? obtainLine(obtain.items[c.id], openAchievement) : '',
         toggle('Włączona', 'enabled', 'Wyłączonej nie można wybrać i nikt jej nie widzi'),
         toggle('Ekskluzywna', 'exclusive', 'Tylko dla graczy, którym ją przyznasz'),
+        obtain?.items[c.id] ? priceEditor(c, obtain.items[c.id], cosmeticsPage) : '',
         c.exclusive ? el('div', {}, el('small', { class: 'muted', textContent: 'Przyznana:' }),
           el('div', { class: 'grantees' }, ...(c.grantees.length ? c.grantees.map((g) => el('span', { class: 'chip blue' }, `@${g.handle}`,
             el('button', { title: 'Odbierz', onclick: async () => { if (await guard(() => api('DELETE', `/v1/admin/cosmetics/${c.id}/grants/${g.id}`))) cosmeticsPage(); } }, icon('fa-solid fa-xmark'))))
             : [el('span', { class: 'muted small', textContent: 'nikomu' })])), grant) : ''));
   });
   $('#main').replaceChildren(head('Kosmetyki'),
-    el('p', { class: 'muted', textContent: 'Kosmetyki są wbudowane w mod SlashClient; tutaj decydujesz, które są dostępne i dla kogo. Przedmioty rang noszą tylko gracze z tą rangą (admini wszystkie) albo ci, którym je przyznasz. Emotki są dostępne dla wszystkich.' }),
+    el('p', { class: 'muted', textContent: 'Kosmetyki są wbudowane w mod SlashClient; tutaj decydujesz, które są dostępne i dla kogo. Przedmioty rang noszą tylko gracze z tą rangą (admini wszystkie) albo ci, którym je przyznasz. Emotki są dostępne dla wszystkich. Przy każdym przedmiocie widać, jak można go zdobyć; osiągnięcia otwierają się w kreatorze.' }),
     shopSection(),
     el('div', { class: 'cosmetics' }, ...SLOTS.flatMap(([slot, name, ic]) => {
       const mine = cards.filter((_, i) => (all[i].slot ?? 'cape') === slot);
@@ -446,7 +482,7 @@ async function logPage() {
   const rows = await Promise.all(res.entries.map(async (e) => el('tr', {},
     el('td', { textContent: fmtDate(e.at) }),
     el('td', { textContent: `@${await nameOf(e.admin)}` }),
-    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' || e.action === 'shop_price' ? capeNames[e.target] ?? e.target : /^(partner|log_|bug_|storage_)/.test(e.action) ? e.target : `@${e.target}` })),
+    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' || e.action === 'shop_price' ? capeNames[e.target] ?? e.target : /^(partner|log_|bug_|storage_|ach_(create|edit|reset|delete))/.test(e.action) ? e.target : `@${e.target}` })),
     el('td', { class: 'log-detail', textContent: ['grant', 'revoke', 'set_cape'].includes(e.action) ? capeNames[e.detail] ?? e.detail : e.detail }))));
   $('#main').replaceChildren(head('Dziennik'),
     el('div', { class: 'glass card' }, res.entries.length
@@ -455,10 +491,10 @@ async function logPage() {
 }
 
 addEventListener('hashchange', () => {
-  const next = location.hash.slice(1);
+  const next = location.hash.slice(1).split(':')[0];
   if (me?.admin && next && next !== tab && TABS.some(([id]) => id === next)) {
     tab = next;
     layout();
-  }
+  } else if (me?.admin && next === 'achievements' && tab === 'achievements' && foreignHash()) achievementsPage();
 });
 start().catch((err) => toast(errorText(err), true));
