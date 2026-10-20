@@ -339,6 +339,20 @@ export function capeSetting(settings: Map<string, CosmeticSetting>, id: string):
   return settings.get(id) ?? { id, enabled: true, exclusive: false };
 }
 
+/** Whether the shop may sell an item at all: not a rank's, not one only an achievement of cosmetics.ts gives. */
+export const sellable = (it: Item) => !it.rank && !it.achievement;
+
+/**
+ * What an item costs in the shop now: the admin's price (economy.ts; null there = taken off sale),
+ * else the one above; undefined = not sold.
+ */
+export function priceOf(settings: Map<string, CosmeticSetting>, id: string): number | undefined {
+  const it = item(id);
+  if (!it || !sellable(it)) return undefined;
+  const set = settings.get(id)?.price;
+  return set === undefined ? it.price : set ?? undefined;
+}
+
 /**
  * Whether a player may wear an item now: it exists (in `slot`, when given), is on, is not exclusive
  * to others, and is not for a rank the player does not have. `badge` is the player's rank colour.
@@ -349,7 +363,7 @@ export function mayWear(settings: Map<string, CosmeticSetting>, granted: string[
   if (!it || it.slot !== slot) return false;
   if (badge === 'admin') return true;
   // earned (an achievement) or bought (the shop): only with the grant
-  if ((it.achievement || it.price) && !granted.includes(id)) return false;
+  if ((it.achievement || priceOf(settings, id)) && !granted.includes(id)) return false;
   const s = capeSetting(settings, id);
   if (!s.enabled || (s.exclusive && !granted.includes(id))) return false;
   return !it.rank || badge === 'admin' || badge === it.rank || granted.includes(id);

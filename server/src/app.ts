@@ -7,7 +7,7 @@ import { Db, type User } from './db.ts';
 import { PROVIDERS, type DeviceStart, type Identity, type OAuthApp, type Provider, type ProviderId } from './oauth.ts';
 import { cleanPresence, publicPresence, serverKeyOf, type Presence } from './presence.ts';
 import { SprayLimit, cleanSpray } from './sprays.ts';
-import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, framesFor, knownTo, mayWear, type Slot } from './cosmetics.ts';
+import { CAPE_NAMES, CAPES, EMOTES, ITEMS, SLOTS, capeSetting, framesFor, knownTo, mayWear, priceOf, type Slot } from './cosmetics.ts';
 import { adminRoutes } from './admin.ts';
 import { partnerRoutes } from './partners.ts';
 import { trackerRoutes } from './tracker.ts';
@@ -19,7 +19,8 @@ import { createDownloads, isDownloadOs } from './downloads.ts';
 import { createCurseForge } from './curseforge.ts';
 import { profileShareRoutes, type ShareLimits } from './profileShares.ts';
 import { profileCloudRoutes, type CloudLimits } from './profileCloud.ts';
-import { achievement, createAchievements, hintFor, TICK_MS } from './achievements.ts';
+import { createAchievements, TICK_MS } from './achievements.ts';
+import { achievementsAdminRoutes } from './achievementsAdmin.ts';
 import { Wallet, economyRoutes } from './economy.ts';
 import { createGroups } from './groups.ts';
 import { createClans } from './clans.ts';
@@ -546,10 +547,10 @@ export function createApp(cfg: Config) {
       const items = ITEMS.filter((i) => (capeSetting(settings, i.id).enabled || badge === 'admin') && known(i)).map((i) => ({
         id: i.id, slot: i.slot, name: i.name, rank: i.rank, frames: frames(i),
         exclusive: capeSetting(settings, i.id).exclusive, available: mayWear(settings, granted, i.id, i.slot, badge),
-        // earned with an achievement: which one, and how to get it
-        ...(i.achievement ? { achievement: i.achievement, ...hintFor(i.achievement) } : {}),
-        // sold in the shop for sparks (only launchers that know the shop get these items: `since`)
-        ...(i.price ? { price: wallet.price(i.id), owned: granted.includes(i.id) } : {}),
+        // given by an achievement (as the admin set them now): which one, and how to get it
+        ...achievements.rewardHint(i.id),
+        // sold in the shop for sparks (items only the shop has come only to launchers that know it: `since`)
+        ...(priceOf(settings, i.id) ? { price: priceOf(settings, i.id), owned: granted.includes(i.id) } : {}),
       }));
       return {
         // the launcher before 0.8 knows capes only
@@ -933,11 +934,16 @@ export function createApp(cfg: Config) {
     ...economyRoutes({
       db, wallet, authed, admin, body, push,
       label: (reason, ref) => {
-        const a = reason === 'achievement' ? achievement(ref) : undefined;
+        const a = reason === 'achievement' ? achievements.registry.get(ref) : undefined;
         const name = reason === 'purchase' ? CAPE_NAMES[ref] ?? ref : '';
-        return a ? { label: a.name, labelEn: a.nameEn } : { label: name, labelEn: name };
+        return a ? { label: a.name, labelEn: a.nameEn || a.name } : { label: name, labelEn: name };
       },
       bought: (userId) => achievements.check(userId),
+      keepWorn: (id) => {
+        const who = db.wearers(id);
+        for (const uuid of who) db.grant(uuid, id);
+        return who.length;
+      },
       fail: (status, code) => {
         throw new HttpError(status, code);
       },
@@ -958,6 +964,13 @@ export function createApp(cfg: Config) {
     }),
     ...mutes.routes,
     ...images.routes,
+    // the achievement creator and how each cosmetic can be got (achievementsAdmin.ts)
+    ...achievementsAdminRoutes({
+      db, wallet, achievements, admin, body, push,
+      fail: (status, code) => {
+        throw new HttpError(status, code);
+      },
+    }),
     ...adminRoutes({
       db, admin, body, kick, configAdmins, cosmeticsChanged,
       fail: (status, code) => {

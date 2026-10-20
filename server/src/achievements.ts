@@ -34,7 +34,9 @@ export type Group = 'streak' | 'hours' | 'friends' | 'messages' | 'servers'
   | 'days' | 'longday' | 'weekends' | 'anniversary' | 'night' | 'newyear' | 'halloween' | 'friday13'
   | 'groups_joined' | 'groups_created' | 'group_size' | 'clan_joined' | 'clan_founded' | 'clan_size'
   | 'waypoints' | 'parties_created' | 'parties_joined' | 'media' | 'shares' | 'cloud'
-  | 'sprays' | 'worn' | 'bought' | 'spent';
+  | 'sprays' | 'worn' | 'bought' | 'spent'
+  /** Given by an admin by hand (achievements made in the admin panel), never counted. */
+  | 'manual';
 
 /** Where the pages put it. */
 export type Category = 'play' | 'streak' | 'social' | 'community' | 'explore' | 'sharing' | 'style' | 'secret';
@@ -54,8 +56,14 @@ export interface Achievement {
   descriptionEn: string;
   /** Shown as "???" until it unlocks. */
   hidden?: boolean;
-  /** The cosmetic it unlocks (cosmetics.ts item with `achievement` set to this id). */
+  /** The cosmetic it unlocks (cosmetics.ts item with `achievement` set to this id, or any item the admin picked). */
   reward?: string;
+  /** Its icon (Font Awesome, one of ICONS); without it the group's (DEFAULT_ICONS). */
+  icon?: string;
+  /** False: switched off in the admin panel, nobody gets it any more (who has it keeps it). */
+  enabled?: boolean;
+  /** Made in the admin panel (achievementsAdmin.ts), not in this file. */
+  custom?: boolean;
 }
 
 type Def = Omit<Achievement, 'category'>;
@@ -141,11 +149,171 @@ export const ACHIEVEMENTS: Achievement[] = [
   ]),
 ];
 
-const BY_ID = new Map(ACHIEVEMENTS.map((a) => [a.id, a]));
-export const achievement = (id: string): Achievement | undefined => BY_ID.get(id);
-
-/** All the sparks every achievement together pays. */
+/** All the sparks the achievements of this file together pay (the admin may change them: `AchievementRegistry`). */
 export const TOTAL_SPARKS = ACHIEVEMENTS.reduce((s, a) => s + a.sparks, 0);
+
+/** Each group's icon (Font Awesome, solid), when the achievement has none of its own. */
+export const DEFAULT_ICONS: Record<Group, string> = {
+  streak: 'fa-fire', hours: 'fa-clock', friends: 'fa-user-group', messages: 'fa-comment', servers: 'fa-server',
+  days: 'fa-calendar-check', longday: 'fa-hourglass-half', weekends: 'fa-umbrella-beach', anniversary: 'fa-cake-candles',
+  night: 'fa-moon', newyear: 'fa-champagne-glasses', halloween: 'fa-ghost', friday13: 'fa-cat',
+  groups_joined: 'fa-people-group', groups_created: 'fa-comments', group_size: 'fa-users', clan_joined: 'fa-shield-halved', clan_founded: 'fa-chess-rook', clan_size: 'fa-flag',
+  waypoints: 'fa-location-dot', parties_created: 'fa-bullhorn', parties_joined: 'fa-handshake', media: 'fa-camera', shares: 'fa-share-nodes', cloud: 'fa-cloud',
+  sprays: 'fa-spray-can', worn: 'fa-shirt', bought: 'fa-bag-shopping', spent: 'fa-gem', manual: 'fa-award',
+};
+
+/**
+ * The icons an achievement may have: the groups' and some more, all in the Font Awesome the
+ * launcher and the website ship (a test checks), so every client can draw what the admin picks.
+ */
+export const ICONS: string[] = [...new Set([...Object.values(DEFAULT_ICONS),
+  'fa-trophy', 'fa-medal', 'fa-crown', 'fa-star', 'fa-heart', 'fa-bolt', 'fa-rocket', 'fa-dragon', 'fa-gift', 'fa-flag-checkered',
+  'fa-hammer', 'fa-skull', 'fa-shield', 'fa-wand-magic-sparkles', 'fa-music', 'fa-paintbrush', 'fa-book', 'fa-compass', 'fa-mountain',
+  'fa-tree', 'fa-fish', 'fa-dice', 'fa-puzzle-piece', 'fa-code', 'fa-bug', 'fa-certificate', 'fa-snowflake', 'fa-sun', 'fa-leaf',
+  'fa-cube', 'fa-gamepad', 'fa-hand-sparkles', 'fa-mask', 'fa-crosshairs', 'fa-dungeon', 'fa-hat-wizard', 'fa-feather', 'fa-palette',
+  'fa-infinity', 'fa-seedling', 'fa-anchor', 'fa-bomb', 'fa-binoculars', 'fa-map', 'fa-key', 'fa-lightbulb', 'fa-ribbon', 'fa-coins',
+  'fa-paw', 'fa-dove', 'fa-meteor', 'fa-wand-sparkles', 'fa-guitar', 'fa-headphones', 'fa-video', 'fa-image', 'fa-scroll', 'fa-mug-hot'])];
+
+/**
+ * What an achievement made in the admin panel may count: only numbers this server sees itself (see
+ * the top of this file), with the most a goal may ask (what the counting allows: messages and
+ * waypoints stop at their caps, a day at 12 hours, a yes/no at 1).
+ */
+export const METRICS: Record<Exclude<Group, 'manual'>, { name: string; nameEn: string; max: number }> = {
+  hours: { name: 'Godziny gry', nameEn: 'Hours played', max: 100_000 },
+  days: { name: 'Dni gry (po co najmniej 10 min)', nameEn: 'Days played (10+ min)', max: 3650 },
+  streak: { name: 'Najdłuższa seria dni gry', nameEn: 'Longest daily streak', max: 3650 },
+  longday: { name: 'Godziny gry w jednym dniu', nameEn: 'Hours played in one day', max: 12 },
+  weekends: { name: 'Weekendy z grą', nameEn: 'Weekends played', max: 520 },
+  anniversary: { name: 'Lata konta (zagrane w rocznicę lub później)', nameEn: 'Account years (played on or after)', max: 20 },
+  night: { name: 'Gra w nocy (0:00–4:00 UTC)', nameEn: 'Played at night (0–4 UTC)', max: 1 },
+  newyear: { name: 'Gra 1 stycznia', nameEn: 'Played on 1 January', max: 1 },
+  halloween: { name: 'Gra 31 października', nameEn: 'Played on 31 October', max: 1 },
+  friday13: { name: 'Gra w piątek 13.', nameEn: 'Played on a Friday the 13th', max: 1 },
+  servers: { name: 'Różne serwery', nameEn: 'Different servers', max: 1000 },
+  friends: { name: 'Znajomi', nameEn: 'Friends', max: 1000 },
+  messages: { name: 'Wysłane wiadomości', nameEn: 'Messages sent', max: 1000 },
+  waypoints: { name: 'Punkty wysłane znajomym', nameEn: 'Waypoints sent to friends', max: 100 },
+  parties_created: { name: 'Założone drużyny', nameEn: 'Parties started', max: 10_000 },
+  parties_joined: { name: 'Przyjęte zaproszenia do drużyn', nameEn: 'Party invites accepted', max: 10_000 },
+  groups_joined: { name: 'Czaty grupowe innych', nameEn: 'Other people\'s group chats', max: 100 },
+  groups_created: { name: 'Założone czaty grupowe', nameEn: 'Group chats started', max: 100 },
+  group_size: { name: 'Osoby w czacie grupowym', nameEn: 'People in a group chat', max: 100 },
+  clan_joined: { name: 'W cudzym klanie', nameEn: 'In someone else\'s clan', max: 1 },
+  clan_founded: { name: 'Założony klan', nameEn: 'Clan founded', max: 1 },
+  clan_size: { name: 'Członkowie klanu', nameEn: 'Clan members', max: 500 },
+  media: { name: 'Zrzuty i klipy udostępnione linkiem', nameEn: 'Screenshots and clips shared', max: 10_000 },
+  shares: { name: 'Profile udostępnione kodem', nameEn: 'Profiles shared by code', max: 10_000 },
+  cloud: { name: 'Profile zapisane w chmurze', nameEn: 'Profiles saved to the cloud', max: 10_000 },
+  sprays: { name: 'Spraye (najwyżej 1 na 30 s)', nameEn: 'Sprays (at most 1 per 30 s)', max: 100_000 },
+  worn: { name: 'Kosmetyki noszone naraz', nameEn: 'Cosmetics worn at once', max: 20 },
+  bought: { name: 'Przedmioty kupione w sklepie', nameEn: 'Items bought in the shop', max: 1000 },
+  spent: { name: 'Iskry wydane w sklepie', nameEn: 'Sparks spent in the shop', max: 1_000_000 },
+};
+
+/** What the admin may change in an achievement of this file (kept apart, so "back to default" is deleting it). */
+export interface Override {
+  name?: string; nameEn?: string; description?: string; descriptionEn?: string; icon?: string; category?: Category;
+  hidden?: boolean; goal?: number; sparks?: number; reward?: string; enabled?: boolean;
+}
+export const OVERRIDE_KEYS = ['name', 'nameEn', 'description', 'descriptionEn', 'icon', 'category', 'hidden', 'goal', 'sparks', 'reward', 'enabled'] as const;
+
+const parse = <T>(json: string): T | undefined => {
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * The achievements as they are now: the ones of this file with what the admin changed in them, then
+ * the ones the admin made (both in the database, tables of their own). Read once and kept until a
+ * change.
+ */
+export class AchievementRegistry {
+  private readonly sql: DatabaseSync;
+  private cache?: { list: Achievement[]; byId: Map<string, Achievement> };
+
+  constructor(sql: DatabaseSync) {
+    this.sql = sql;
+    sql.exec(`
+CREATE TABLE IF NOT EXISTS achievement_overrides (id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at INTEGER NOT NULL, by_uuid TEXT NOT NULL DEFAULT '');
+CREATE TABLE IF NOT EXISTS achievement_custom (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, by_uuid TEXT NOT NULL DEFAULT '');
+`);
+  }
+
+  private load() {
+    if (this.cache) return this.cache;
+    const overrides = this.overrides();
+    const list: Achievement[] = ACHIEVEMENTS.map((a) => {
+      const o = overrides.get(a.id);
+      if (!o) return a;
+      const next = { ...a };
+      for (const k of OVERRIDE_KEYS) if (o[k] !== undefined) (next as Record<string, unknown>)[k] = o[k];
+      if (next.reward === '') delete next.reward;
+      return next;
+    });
+    for (const r of this.sql.prepare('SELECT id, data FROM achievement_custom ORDER BY created_at, id').all() as { id: string; data: string }[]) {
+      const a = parse<Achievement>(r.data);
+      if (a) list.push({ ...a, id: r.id, custom: true, ...(a.reward ? {} : { reward: undefined }) });
+    }
+    this.cache = { list, byId: new Map(list.map((a) => [a.id, a])) };
+    return this.cache;
+  }
+
+  /** Everything, switched off ones too (`enabled: false`). */
+  all(): Achievement[] {
+    return this.load().list;
+  }
+
+  /** The ones players can get now. */
+  active(): Achievement[] {
+    return this.all().filter((a) => a.enabled !== false);
+  }
+
+  get(id: string): Achievement | undefined {
+    return this.load().byId.get(id);
+  }
+
+  /** The admin's changes to the achievements of this file. */
+  overrides(): Map<string, Override> {
+    const rows = this.sql.prepare('SELECT id, data FROM achievement_overrides').all() as { id: string; data: string }[];
+    return new Map(rows.map((r) => [r.id, parse<Override>(r.data) ?? {}]));
+  }
+
+  /** Saves the changes to an achievement of this file (undefined: back to how this file has it). */
+  setOverride(id: string, o: Override | undefined, by = '', at = Date.now()) {
+    if (o && Object.keys(o).length) {
+      this.sql.prepare('INSERT INTO achievement_overrides (id, data, updated_at, by_uuid) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at, by_uuid = excluded.by_uuid')
+        .run(id, JSON.stringify(o), at, by);
+    } else this.sql.prepare('DELETE FROM achievement_overrides WHERE id = ?').run(id);
+    this.cache = undefined;
+  }
+
+  /** Adds or changes an achievement made in the panel. */
+  saveCustom(a: Achievement, by = '', at = Date.now()) {
+    const { id, custom: _custom, ...data } = a;
+    this.sql.prepare('INSERT INTO achievement_custom (id, data, created_at, updated_at, by_uuid) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at, by_uuid = excluded.by_uuid')
+      .run(id, JSON.stringify(data), at, at, by);
+    this.cache = undefined;
+  }
+
+  deleteCustom(id: string) {
+    this.sql.prepare('DELETE FROM achievement_custom WHERE id = ?').run(id);
+    this.cache = undefined;
+  }
+
+  /** What all the achievements players can get pay together. */
+  totalSparks(): number {
+    return this.active().reduce((s, a) => s + a.sparks, 0);
+  }
+
+  /** The achievements that give an item (switched off ones too; the admin panel says which). */
+  rewarding(itemId: string): Achievement[] {
+    return this.all().filter((a) => a.reward === itemId);
+  }
+}
 
 export const TICK_MS = 60_000;
 /** A tick late by more than this (the server was busy or asleep) credits only this much. */
@@ -365,6 +533,22 @@ CREATE TABLE IF NOT EXISTS achievement_counters (uuid TEXT NOT NULL REFERENCES u
     return added;
   }
 
+  /** Takes an achievement away (an admin's, given by hand); false when the player did not have it. */
+  remove(uuid: string, id: string): boolean {
+    return this.sql.prepare('DELETE FROM achievements WHERE uuid = ? AND id = ?').run(uuid, id).changes > 0;
+  }
+
+  /** Who has an achievement, the latest first. */
+  holders(id: string, limit = 500): { uuid: string; handle: string; name: string; at: number }[] {
+    return this.sql.prepare('SELECT a.uuid, u.handle, u.name, a.unlocked_at AS at FROM achievements a JOIN users u ON u.uuid = a.uuid WHERE a.id = ? ORDER BY a.unlocked_at DESC LIMIT ?').all(id, limit) as { uuid: string; handle: string; name: string; at: number }[];
+  }
+
+  /** How many players have each achievement. */
+  holderCounts(): Record<string, number> {
+    const rows = this.sql.prepare('SELECT id, COUNT(*) AS n FROM achievements GROUP BY id').all() as { id: string; n: number }[];
+    return Object.fromEntries(rows.map((r) => [r.id, r.n]));
+  }
+
   /** Every account, for the pass over all of them on start. */
   users(): string[] {
     return (this.sql.prepare('SELECT uuid FROM users').all() as { uuid: string }[]).map((r) => r.uuid);
@@ -376,8 +560,8 @@ CREATE TABLE IF NOT EXISTS achievement_counters (uuid TEXT NOT NULL REFERENCES u
   }
 }
 
-/** How far a player is in an achievement's group. */
-function value(a: Achievement, s: Stats): number {
+/** How far a player is in an achievement's group (one given by hand: never, the admin gives it). */
+export function value(a: Achievement, s: Stats): number {
   switch (a.group) {
     case 'streak': return s.bestStreak;
     case 'hours': return Math.floor(s.totalSeconds / 360) / 10;
@@ -408,8 +592,12 @@ function value(a: Achievement, s: Stats): number {
     case 'worn': return s.worn;
     case 'bought': return s.bought;
     case 'spent': return s.spent;
+    case 'manual': return 0;
   }
 }
+
+/** Whether the numbers reach an achievement (one given by hand never does by itself). */
+const reached = (a: Achievement, s: Stats) => a.group !== 'manual' && value(a, s) >= a.goal;
 
 /** What an achievement's reward is, for the pages and the game. */
 function rewardOf(a: Achievement): { id: string; slot: Slot; name: string } | undefined {
@@ -418,26 +606,35 @@ function rewardOf(a: Achievement): { id: string; slot: Slot; name: string } | un
 }
 
 /** Its place among the achievements of its group, by goal (1 = the easiest). */
-const tierOf = (a: Achievement) => ACHIEVEMENTS.filter((x) => x.group === a.group && x.goal < a.goal).length + 1;
+const tierOf = (a: Achievement, list: Achievement[]) => (a.group === 'manual' ? 1 : list.filter((x) => x.group === a.group && x.goal < a.goal).length + 1);
+
+/** An achievement's icon: its own, or its group's. */
+export const iconOf = (a: Achievement) => (a.icon && ICONS.includes(a.icon) ? a.icon : DEFAULT_ICONS[a.group] ?? 'fa-trophy');
 
 /** One achievement as the launcher, the game and the website get it; a hidden one stays "???" until it unlocks. */
-export function view(a: Achievement, unlockedAt: number | undefined, s?: Stats) {
+export function view(a: Achievement, unlockedAt: number | undefined, s?: Stats, list: Achievement[] = ACHIEVEMENTS) {
   const secret = a.hidden && unlockedAt === undefined;
-  const v = s && !secret ? value(a, s) : undefined;
+  const v = s && !secret && a.group !== 'manual' ? value(a, s) : undefined;
   return {
-    id: a.id, group: a.group, category: a.category, tier: tierOf(a), goal: secret ? 1 : a.goal, sparks: a.sparks,
+    id: a.id, group: a.group, category: a.category, tier: tierOf(a, list), goal: secret ? 1 : a.goal, sparks: a.sparks,
+    // its own icon only once it can be told (a hidden one's would give it away)
+    icon: secret ? 'fa-question' : iconOf(a),
     ...(a.hidden ? { hidden: true } : {}),
-    name: secret ? '???' : a.name, nameEn: secret ? '???' : a.nameEn,
-    description: secret ? 'Ukryte osiągnięcie. Odkryj je sam!' : a.description, descriptionEn: secret ? 'A hidden achievement. Find it yourself!' : a.descriptionEn,
+    ...(a.custom ? { custom: true } : {}),
+    ...(a.group === 'manual' ? { manual: true } : {}),
+    name: secret ? '???' : a.name, nameEn: secret ? '???' : a.nameEn || a.name,
+    description: secret ? 'Ukryte osiągnięcie. Odkryj je sam!' : a.description, descriptionEn: secret ? 'A hidden achievement. Find it yourself!' : a.descriptionEn || a.description,
     ...(v === undefined ? {} : { value: v, progress: Math.min(1, v / a.goal) }),
     unlockedAt: unlockedAt ?? null, reward: rewardOf(a),
   };
 }
 
-/** How to get a cosmetic that only an achievement gives (the cosmetics menus show it under the lock). */
-export function hintFor(achievementId: string): { hint: string; hintEn: string } | undefined {
-  const a = BY_ID.get(achievementId);
-  return a && { hint: `Osiągnięcie „${a.name}”: ${a.description}`, hintEn: `Achievement "${a.nameEn}": ${a.descriptionEn}` };
+/** How to get a cosmetic that an achievement gives (the cosmetics menus show it under the lock). */
+export function hintOf(a: Achievement): { hint: string; hintEn: string } {
+  if (a.hidden) return { hint: 'Ukryte osiągnięcie. Odkryj je sam!', hintEn: 'A hidden achievement. Find it yourself!' };
+  const how = a.group === 'manual' ? 'przyznaje administracja' : a.description;
+  const howEn = a.group === 'manual' ? 'given by the admins' : a.descriptionEn || a.description;
+  return { hint: `Osiągnięcie „${a.name}”: ${how}`, hintEn: `Achievement "${a.nameEn || a.name}": ${howEn}` };
 }
 
 /** Requests that count for an achievement once they succeed: what they count, or null to only look again. */
@@ -472,6 +669,7 @@ interface Deps {
 export function createAchievements(deps: Deps) {
   const { wallet } = deps;
   const store = new AchievementStore(deps.sql);
+  const registry = new AchievementRegistry(deps.sql);
   /** When each player was last credited, and where, for how many ticks in a row. */
   const last = new Map<string, { at: number; server?: string; ticks: number }>();
   /** When each player's last counted spray was. */
@@ -481,9 +679,21 @@ export function createAchievements(deps: Deps) {
   function unlock(userId: string, a: Achievement, at: number): boolean {
     return inTransaction(deps.sql, () => {
       if (!store.unlock(userId, a, at)) return false;
-      wallet.change(userId, a.sparks, 'achievement', a.id, '', '', at);
+      // paid once per player and achievement, ever (unlocked again after an admin took it away: nothing more)
+      if (a.sparks > 0) wallet.change(userId, a.sparks, 'achievement', a.id, '', '', at);
       return true;
     });
+  }
+
+  /** Tells the player's launchers about new achievements: one by one, or several as one summary. */
+  function announce(userId: string, fresh: ReturnType<typeof view>[]) {
+    if (!fresh.length) return;
+    const many = fresh.length > SINGLE_NOTICES;
+    // older launchers know only single events; new ones skip the quiet ones and show the summary
+    for (const v of fresh) deps.push(userId, { type: 'achievement', achievement: v, ...(many ? { quiet: true } : {}) });
+    const sparks = fresh.reduce((n, v) => n + v.sparks, 0);
+    if (many) deps.push(userId, { type: 'achievements-summary', count: fresh.length, sparks });
+    deps.push(userId, { type: 'wallet', balance: wallet.balance(userId), change: sparks, reason: 'achievement', ref: '' });
   }
 
   /**
@@ -493,20 +703,22 @@ export function createAchievements(deps: Deps) {
   function check(userId: string, now = Date.now()) {
     const s = store.stats(userId, now, wallet);
     const have = store.unlocked(userId);
+    const list = registry.active();
     const fresh = [];
-    for (const a of ACHIEVEMENTS) {
-      if (have.has(a.id) || value(a, s) < a.goal) continue;
+    for (const a of list) {
+      if (have.has(a.id) || !reached(a, s)) continue;
       if (!unlock(userId, a, now)) continue;
-      fresh.push(view(a, now, s));
+      fresh.push(view(a, now, s, list));
     }
-    if (!fresh.length) return fresh;
-    const many = fresh.length > SINGLE_NOTICES;
-    // older launchers know only single events; new ones skip the quiet ones and show the summary
-    for (const v of fresh) deps.push(userId, { type: 'achievement', achievement: v, ...(many ? { quiet: true } : {}) });
-    const sparks = fresh.reduce((n, v) => n + v.sparks, 0);
-    if (many) deps.push(userId, { type: 'achievements-summary', count: fresh.length, sparks });
-    deps.push(userId, { type: 'wallet', balance: wallet.balance(userId), change: sparks, reason: 'achievement', ref: '' });
+    announce(userId, fresh);
     return fresh;
+  }
+
+  /** Looks at every account once (on start, and after the admin made an achievement easier or new). */
+  function checkAll(now = Date.now()) {
+    let unlocked = 0;
+    for (const uuid of store.users()) unlocked += check(uuid, now).length;
+    return unlocked;
   }
 
   /**
@@ -518,12 +730,18 @@ export function createAchievements(deps: Deps) {
   function backfill(now = Date.now()) {
     let paid = 0;
     for (const r of store.unpaid()) {
-      const a = BY_ID.get(r.id);
-      if (a && wallet.change(r.uuid, a.sparks, 'achievement', a.id, '', '', r.unlocked_at) !== undefined) paid++;
+      const a = registry.get(r.id);
+      if (a && a.sparks > 0 && wallet.change(r.uuid, a.sparks, 'achievement', a.id, '', '', r.unlocked_at) !== undefined) paid++;
     }
-    let unlocked = 0;
-    for (const uuid of store.users()) unlocked += check(uuid, now).length;
-    return { paid, unlocked };
+    return { paid, unlocked: checkAll(now) };
+  }
+
+  /** An admin gives an achievement (one made to be given by hand); false when the player had it. */
+  function give(userId: string, id: string, now = Date.now()): boolean {
+    const a = registry.get(id);
+    if (!a || !unlock(userId, a, now)) return false;
+    announce(userId, [view(a, now, undefined, registry.active())]);
+    return true;
   }
 
   /** Once a minute: play time for everyone in a game (see the top of this file). */
@@ -577,11 +795,15 @@ export function createAchievements(deps: Deps) {
     for (const other of others) check(other, now);
   }
 
+  /** What a player sees: the ones that can be got now, and switched off ones only when they have them. */
+  const shown = (have: Map<string, number>) => registry.all().filter((a) => a.enabled !== false || have.has(a.id));
+
   function list(userId: string, now = Date.now()) {
     check(userId, now);
     const s = store.stats(userId, now, wallet);
     const have = store.unlocked(userId);
-    const views = ACHIEVEMENTS.map((a) => view(a, have.get(a.id), s));
+    const active = registry.active();
+    const views = shown(have).map((a) => view(a, have.get(a.id), s, active));
     return {
       achievements: views,
       stats: {
@@ -593,9 +815,15 @@ export function createAchievements(deps: Deps) {
       sparks: {
         balance: wallet.balance(userId),
         earned: views.filter((v) => v.unlockedAt !== null).reduce((n, v) => n + v.sparks, 0),
-        total: TOTAL_SPARKS,
+        total: registry.totalSparks(),
       },
     };
+  }
+
+  /** How to get an item an achievement gives (the first one players can get now), for the cosmetics menus. */
+  function rewardHint(itemId: string): ({ achievement: string } & ReturnType<typeof hintOf>) | undefined {
+    const a = registry.rewarding(itemId).find((x) => x.enabled !== false);
+    return a && { achievement: a.id, ...hintOf(a) };
   }
 
   const routes: [string, RegExp, (req: http.IncomingMessage, params: string[]) => unknown][] = [
@@ -605,9 +833,10 @@ export function createAchievements(deps: Deps) {
       const me = deps.authed(req);
       if (other !== me && !deps.areFriends(me, other)) deps.fail(403, 'not_friends');
       const have = store.unlocked(other);
-      return { achievements: ACHIEVEMENTS.map((a) => view(a, have.get(a.id))) };
+      const active = registry.active();
+      return { achievements: shown(have).map((a) => view(a, have.get(a.id), undefined, active)) };
     }],
   ];
 
-  return { routes, tick, check, list, after, backfill, store };
+  return { routes, tick, check, checkAll, list, after, backfill, give, rewardHint, store, registry };
 }

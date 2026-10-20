@@ -1,6 +1,6 @@
 import type http from 'node:http';
 import type { Db } from './db.ts';
-import { CAPES, ITEMS, capeSetting, item } from './cosmetics.ts';
+import { CAPES, ITEMS, capeSetting, item, priceOf } from './cosmetics.ts';
 
 /**
  * The admin panel's API, under /v1/admin. Only accounts with the admin role (or listed in
@@ -151,7 +151,7 @@ export function adminRoutes(ctx: AdminContext): [string, RegExp, Handler][] {
       const it = item(id);
       // (an admin keeps it: admins may wear everything)
       const admin = user.role === 'admin' || ctx.configAdmins.has(user.handle.toLowerCase());
-      if (it && !admin && (capeSetting(db.cosmeticSettings(), id).exclusive || it.rank || it.achievement || it.price)) {
+      if (it && !admin && (capeSetting(db.cosmeticSettings(), id).exclusive || it.rank || it.achievement || it.price || priceOf(db.cosmeticSettings(), id))) {
         if (user.cape === id) db.setCape(userId, '');
         if (Object.values(user.loadout).includes(id)) db.setLoadout(userId, Object.fromEntries(Object.entries(user.loadout).filter(([, v]) => v !== id)));
         for (const m of db.minecraftAccounts(userId)) {

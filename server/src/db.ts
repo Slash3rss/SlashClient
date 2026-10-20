@@ -18,7 +18,11 @@ export interface AdminUser extends User {
   /** the cape each linked Minecraft account wears in game: its own set's, or else the account's ('' for none) */
   worn: { name: string; cape: string }[];
 }
-export interface CosmeticSetting { id: string; enabled: boolean; exclusive: boolean }
+export interface CosmeticSetting {
+  id: string; enabled: boolean; exclusive: boolean;
+  /** The shop's price set in the admin panel (economy.ts): a number, null = not sold, missing = as cosmetics.ts has it. */
+  price?: number | null;
+}
 export interface LogEntry { id: number; at: number; admin: string; action: string; target: string; detail: string }
 export type Provider = 'discord' | 'microsoft' | 'google' | 'github' | 'dev' | 'minecraft';
 /** "Join me": a server to play on together, sent as a message so it stays in the chat. */
@@ -381,7 +385,16 @@ CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created
 
   cosmeticSettings(): Map<string, CosmeticSetting> {
     const rows = this.db.prepare('SELECT id, enabled, exclusive FROM cosmetics').all() as { id: string; enabled: number; exclusive: number }[];
-    return new Map(rows.map((r) => [r.id, { id: r.id, enabled: !!r.enabled, exclusive: !!r.exclusive }]));
+    const out = new Map<string, CosmeticSetting>(rows.map((r) => [r.id, { id: r.id, enabled: !!r.enabled, exclusive: !!r.exclusive }]));
+    // the shop's prices (economy.ts keeps them; not there in a database without the shop)
+    try {
+      for (const r of this.db.prepare('SELECT id, price FROM shop_prices').all() as { id: string; price: number | null }[]) {
+        out.set(r.id, { ...(out.get(r.id) ?? { id: r.id, enabled: true, exclusive: false }), price: r.price });
+      }
+    } catch {
+      // no shop table yet
+    }
+    return out;
   }
 
   setCosmetic(id: string, enabled: boolean, exclusive: boolean) {
@@ -442,6 +455,18 @@ CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created
       this.setLoadout(r.uuid, l);
     }
     this.clearFromCharacters(id, exceptGranted, spare);
+  }
+
+  /** Who wears an item now (the account's cape or set, or a character's set). */
+  wearers(id: string): string[] {
+    const out = new Set<string>();
+    for (const r of this.db.prepare('SELECT uuid, cape, loadout FROM users WHERE cape = ? OR loadout LIKE ?').all(id, `%"${id}"%`) as { uuid: string; cape: string; loadout: string }[]) {
+      if (r.cape === id || Object.values(parseLoadout(r.loadout)).includes(id)) out.add(r.uuid);
+    }
+    for (const r of this.db.prepare("SELECT uuid, loadout FROM identities WHERE provider = 'minecraft' AND loadout LIKE ?").all(`%"${id}"%`) as { uuid: string; loadout: string }[]) {
+      if (Object.values(parseLoadout(r.loadout)).includes(id)) out.add(r.uuid);
+    }
+    return [...out];
   }
 
   /** How many players wear each item (cape and the other slots). */

@@ -383,11 +383,13 @@ describe('sparks and achievements', () => {
     const shop = (await call('GET', '/v1/admin/shop', boss.token)).body.items;
     assert.ok(shop.some((i: any) => i.id === 'spray_spark' && i.price === 200));
     assert.equal((await call('POST', '/v1/admin/shop/spray_spark', p.token, { price: 1 })).status, 403);
-    assert.equal((await call('POST', '/v1/admin/shop/ocean', boss.token, { price: 10 })).status, 404);
+    assert.equal((await call('POST', '/v1/admin/shop/nothing_here', boss.token, { price: 10 })).status, 404);
+    // only an achievement gives it: never sold
+    assert.equal((await call('POST', '/v1/admin/shop/veteran', boss.token, { price: 10 })).body.error, 'not_sellable');
     assert.equal((await call('POST', '/v1/admin/shop/spray_spark', boss.token, { price: 0 })).body.error, 'bad_price');
     assert.equal((await call('POST', '/v1/admin/shop/spray_spark', boss.token, { price: 150 })).body.price, 150);
     assert.equal((await call('POST', '/v1/shop/spray_spark/buy', p.token)).body.balance, 200 - 150 + 20);
-    assert.equal((await call('POST', '/v1/admin/shop/spray_spark', boss.token, { price: null })).body.price, 200);
+    assert.equal((await call('POST', '/v1/admin/shop/spray_spark', boss.token, { reset: true })).body.price, 200);
   });
 });
 

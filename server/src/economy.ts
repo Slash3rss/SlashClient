@@ -1,7 +1,7 @@
 import type http from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Db } from './db.ts';
-import { ITEMS, capeSetting, item, type Item } from './cosmetics.ts';
+import { ITEMS, capeSetting, item, sellable } from './cosmetics.ts';
 
 /**
  * The SlashClient currency, earned with achievements (achievements.ts pays each one once, when it
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS sparks_ledger (id INTEGER PRIMARY KEY AUTOINCREMENT, 
   reason TEXT NOT NULL, ref TEXT NOT NULL DEFAULT '', note TEXT NOT NULL DEFAULT '', by_uuid TEXT NOT NULL DEFAULT '', balance INTEGER NOT NULL, at INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS sparks_ledger_user ON sparks_ledger(uuid, id);
 CREATE UNIQUE INDEX IF NOT EXISTS sparks_ledger_achievement ON sparks_ledger(uuid, ref) WHERE reason = 'achievement';
-CREATE TABLE IF NOT EXISTS shop_prices (id TEXT PRIMARY KEY, price INTEGER NOT NULL CHECK (price > 0));
+CREATE TABLE IF NOT EXISTS shop_prices (id TEXT PRIMARY KEY, price INTEGER CHECK (price IS NULL OR price > 0));
 `);
   }
 
@@ -116,16 +116,26 @@ CREATE TABLE IF NOT EXISTS shop_prices (id TEXT PRIMARY KEY, price INTEGER NOT N
     return row;
   }
 
-  /** What an item costs now: the admin's price, or the one in cosmetics.ts; undefined when it is not sold. */
+  /**
+   * What an item costs now: the admin's price (null there: taken off sale), or the one in
+   * cosmetics.ts; undefined when it is not sold (the same as cosmetics.ts `priceOf`).
+   */
   price(id: string): number | undefined {
     const it = item(id);
-    if (!it?.price) return undefined;
-    return (this.sql.prepare('SELECT price FROM shop_prices WHERE id = ?').get(id) as { price: number } | undefined)?.price ?? it.price;
+    if (!it || !sellable(it)) return undefined;
+    const row = this.sql.prepare('SELECT price FROM shop_prices WHERE id = ?').get(id) as { price: number | null } | undefined;
+    return row ? row.price ?? undefined : it.price;
   }
 
-  setPrice(id: string, price: number | null) {
-    if (price === null) this.sql.prepare('DELETE FROM shop_prices WHERE id = ?').run(id);
+  /** The admin's price: a number, null = not sold, undefined = back to cosmetics.ts. */
+  setPrice(id: string, price: number | null | undefined) {
+    if (price === undefined) this.sql.prepare('DELETE FROM shop_prices WHERE id = ?').run(id);
     else this.sql.prepare('INSERT INTO shop_prices (id, price) VALUES (?, ?) ON CONFLICT (id) DO UPDATE SET price = excluded.price').run(id, price);
+  }
+
+  /** The items sold now. */
+  shopItems() {
+    return ITEMS.filter((i) => this.price(i.id) !== undefined);
   }
 
   /** How many accounts bought each item. */
@@ -134,9 +144,6 @@ CREATE TABLE IF NOT EXISTS shop_prices (id TEXT PRIMARY KEY, price INTEGER NOT N
     return Object.fromEntries(rows.map((r) => [r.ref, r.n]));
   }
 }
-
-/** The items sold in the shop. */
-export const SHOP_ITEMS: Item[] = ITEMS.filter((i) => i.price);
 
 interface Deps {
   db: Db;
@@ -149,6 +156,8 @@ interface Deps {
   label: (reason: Reason, ref: string) => { label: string; labelEn: string };
   /** After a purchase: the achievements about the shop. */
   bought: (userId: string) => void;
+  /** An item went on sale: who wears it now keeps it (a grant), so nothing is taken from them. */
+  keepWorn: (id: string) => number;
   fail: (status: number, code: string) => never;
 }
 
@@ -217,18 +226,24 @@ export function economyRoutes(deps: Deps): [string, RegExp, Handler][] {
     ['GET', /^\/v1\/admin\/shop$/, (req) => {
       deps.admin(req);
       const sold = wallet.sold();
-      return { items: SHOP_ITEMS.map((i) => ({ id: i.id, slot: i.slot, name: i.name, price: wallet.price(i.id), defaultPrice: i.price, sold: sold[i.id] ?? 0 })) };
+      return { items: wallet.shopItems().map((i) => ({ id: i.id, slot: i.slot, name: i.name, price: wallet.price(i.id), defaultPrice: i.price ?? null, sold: sold[i.id] ?? 0 })) };
     }],
-    // a new price (null: back to the one in cosmetics.ts); only for items that are sold
+    // the price: a number (also puts an item on sale), null = off sale, `reset` = back to cosmetics.ts
     ['POST', /^\/v1\/admin\/shop\/(\w{1,64})$/, async (req, [id]) => {
       const me = deps.admin(req);
       const it = item(id);
-      if (!it?.price) fail(404, 'not_found');
-      const { price } = await deps.body(req);
-      if (price !== null && (typeof price !== 'number' || !Number.isSafeInteger(price) || price < 1 || price > MAX_ADMIN_CHANGE)) fail(400, 'bad_price');
-      wallet.setPrice(id, price as number | null);
-      db.log(me, 'shop_price', id, String(wallet.price(id)));
-      return { id, price: wallet.price(id), defaultPrice: it!.price };
+      if (!it) fail(404, 'not_found');
+      // a rank's item and one only an achievement gives are never sold
+      if (!sellable(it!)) fail(400, 'not_sellable');
+      const { price, reset } = await deps.body(req);
+      if (reset !== true && price !== null && (typeof price !== 'number' || !Number.isSafeInteger(price) || price < 1 || price > MAX_ADMIN_CHANGE)) fail(400, 'bad_price');
+      const before = wallet.price(id);
+      wallet.setPrice(id, reset === true ? undefined : price as number | null);
+      const now = wallet.price(id);
+      // put on sale: who wears it already keeps it
+      const kept = before === undefined && now !== undefined ? deps.keepWorn(id) : 0;
+      db.log(me, 'shop_price', id, now === undefined ? 'poza sklepem' : `${now}${reset === true ? ' (domyślna)' : ''}${kept ? `, zachowało ${kept}` : ''}`);
+      return { id, price: now ?? null, defaultPrice: it!.price ?? null, kept };
     }],
   ];
 }
