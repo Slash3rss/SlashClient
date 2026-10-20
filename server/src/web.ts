@@ -33,6 +33,8 @@ function pageOf(pathname: string): string | undefined {
   // each under its Polish and its English name
   if (/^\/(logi|logs)\/[A-Za-z0-9]{10}$/.test(pathname)) return 'logi.html';
   if (/^\/(zgloszenia|bugs)(\/\d+)?\/?$/.test(pathname)) return 'zgloszenia.html';
+  // a public community's page (communities.ts), by its tag or id
+  if (/^\/(s|spolecznosc|community)\/[\w-]{1,32}\/?$/.test(pathname)) return 'spolecznosc.html';
   return undefined;
 }
 

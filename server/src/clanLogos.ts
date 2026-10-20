@@ -6,6 +6,9 @@ import type { DatabaseSync } from 'node:sqlite';
  * it leaves the computer), shown instead of the tag's mark in the launcher and in the game. Kept
  * in the database (it is small), served to anyone at /v1/clans/<id>/logo.png; its version goes in
  * the address (?v=), so a client may keep it for good and fetch again only when it changes.
+ *
+ * Communities (communities.ts) have logos the same way, in a table of their own (LogoStore with
+ * another table), served at /v1/communities/<id>/logo.png.
  */
 
 export const LOGO_SIZE = 64;
@@ -28,32 +31,52 @@ export function logoProblem(data: Buffer): 'not_png' | 'bad_logo_size' | 'too_la
   return undefined;
 }
 
-export class ClanLogoStore {
+/** Logos of one kind of owner (clans, communities): a table of their own, keyed by the owner's id. */
+export class LogoStore {
   private sql: DatabaseSync;
-  constructor(sql: DatabaseSync) {
+  private table: string;
+  private key: string;
+  /** The part of the address before /<id>/logo.png, e.g. /v1/clans. */
+  readonly prefix: string;
+  constructor(sql: DatabaseSync, table: string, owners: string, prefix: string, key = 'owner_id') {
     this.sql = sql;
-    sql.exec('CREATE TABLE IF NOT EXISTS clan_logos (clan_id TEXT PRIMARY KEY REFERENCES clans(id) ON DELETE CASCADE, png BLOB NOT NULL, version INTEGER NOT NULL, updated_at INTEGER NOT NULL);');
+    this.table = table;
+    this.key = key;
+    this.prefix = prefix;
+    sql.exec(`CREATE TABLE IF NOT EXISTS ${table} (${key} TEXT PRIMARY KEY REFERENCES ${owners}(id) ON DELETE CASCADE, png BLOB NOT NULL, version INTEGER NOT NULL, updated_at INTEGER NOT NULL);`);
   }
 
-  /** The logo's version (what goes in its address), or undefined when the clan has none. */
-  version(clan: string): number | undefined {
-    return (this.sql.prepare('SELECT version FROM clan_logos WHERE clan_id = ?').get(clan) as { version: number } | undefined)?.version;
+  /** The logo's version (what goes in its address), or undefined when the owner has none. */
+  version(owner: string): number | undefined {
+    return (this.sql.prepare(`SELECT version FROM ${this.table} WHERE ${this.key} = ?`).get(owner) as { version: number } | undefined)?.version;
   }
 
-  get(clan: string): { png: Buffer; version: number } | undefined {
-    const row = this.sql.prepare('SELECT png, version FROM clan_logos WHERE clan_id = ?').get(clan) as { png: Uint8Array; version: number } | undefined;
+  get(owner: string): { png: Buffer; version: number } | undefined {
+    const row = this.sql.prepare(`SELECT png, version FROM ${this.table} WHERE ${this.key} = ?`).get(owner) as { png: Uint8Array; version: number } | undefined;
     return row ? { png: Buffer.from(row.png), version: row.version } : undefined;
   }
 
   /** A new logo; its version always grows (also after one was removed), so an old address never shows it. */
-  set(clan: string, png: Buffer, now = Date.now()): number {
-    const version = Math.max(now, (this.version(clan) ?? 0) + 1);
-    this.sql.prepare('INSERT OR REPLACE INTO clan_logos (clan_id, png, version, updated_at) VALUES (?, ?, ?, ?)').run(clan, png, version, now);
+  set(owner: string, png: Buffer, now = Date.now()): number {
+    const version = Math.max(now, (this.version(owner) ?? 0) + 1);
+    this.sql.prepare(`INSERT OR REPLACE INTO ${this.table} (${this.key}, png, version, updated_at) VALUES (?, ?, ?, ?)`).run(owner, png, version, now);
     return version;
   }
 
-  remove(clan: string): boolean {
-    return Number(this.sql.prepare('DELETE FROM clan_logos WHERE clan_id = ?').run(clan).changes) > 0;
+  remove(owner: string): boolean {
+    return Number(this.sql.prepare(`DELETE FROM ${this.table} WHERE ${this.key} = ?`).run(owner).changes) > 0;
+  }
+
+  /** The public address of a logo of this version. */
+  url(owner: string, version: number): string {
+    return `${this.prefix}/${owner}/logo.png?v=${version}`;
+  }
+}
+
+/** Clans' logos (clan_logos), at /v1/clans/<id>/logo.png. */
+export class ClanLogoStore extends LogoStore {
+  constructor(sql: DatabaseSync) {
+    super(sql, 'clan_logos', 'clans', '/v1/clans', 'clan_id');
   }
 }
 
@@ -73,10 +96,28 @@ export async function readLogo(req: http.IncomingMessage, fail: (status: number,
   return Buffer.concat(chunks);
 }
 
-/** GET /v1/clans/<id>/logo.png for anyone; true when the request was this. */
-export function serveLogo(store: ClanLogoStore, req: http.IncomingMessage, res: http.ServerResponse, url: URL): boolean {
-  const m = /^\/v1\/clans\/([\w-]{1,32})\/logo\.png$/.exec(url.pathname);
-  if (req.method !== 'GET' || !m) return false;
+/**
+ * A logo upload: `check` first (who may, the rate limit; the body is drained when it throws), then
+ * the PNG read and checked. Returns the bytes to store.
+ */
+export async function takeLogo(req: http.IncomingMessage, fail: (status: number, code: string) => never, check: () => void): Promise<Buffer> {
+  try {
+    check();
+  } catch (err) {
+    req.resume();
+    throw err;
+  }
+  const png = await readLogo(req, fail);
+  const problem = logoProblem(png);
+  if (problem) fail(problem === 'too_large' ? 413 : 400, problem);
+  return png;
+}
+
+/** GET <prefix>/<id>/logo.png (/v1/clans/…) for anyone; true when the request was this. */
+export function serveLogo(store: LogoStore, req: http.IncomingMessage, res: http.ServerResponse, url: URL): boolean {
+  if (req.method !== 'GET' || !url.pathname.startsWith(`${store.prefix}/`)) return false;
+  const m = /^\/([\w-]{1,32})\/logo\.png$/.exec(url.pathname.slice(store.prefix.length));
+  if (!m) return false;
   const logo = store.get(m[1]);
   if (!logo) {
     res.writeHead(404, { 'Content-Type': 'application/json' });

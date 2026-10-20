@@ -72,3 +72,6 @@
   box-shadow: 0 0 18px color-mix(in srgb, var(--tier) 45%, transparent); flex-shrink: 0; }
 .avatar-frame img.avatar { display: block; }
 .profile-supporting i { color: #f472b6; }
+/* a public community's page (spolecznosc.js) */
+.community-description { white-space: pre-wrap; margin: 14px 0 8px; line-height: 1.55; }
+.community-logo { image-rendering: pixelated; border-radius: 12px; }

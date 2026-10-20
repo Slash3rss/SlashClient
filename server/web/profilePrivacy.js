@@ -12,6 +12,7 @@ export const PRIVACY_ELEMENTS = [
   ['achievements', 'Osiągnięcia'],
   ['cosmetics', 'Noszone kosmetyki'],
   ['clan', 'Klan'],
+  ['communities', 'Społeczności (tylko publiczne, które zostawisz włączone w launcherze)'],
   ['minecraft', 'Konta Minecraft (nicki)'],
   ['friends', 'Liczba znajomych'],
   ['servers', 'Serwery, na których grasz'],

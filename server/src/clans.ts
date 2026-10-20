@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type http from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Db, Person } from './db.ts';
-import { ClanLogoStore, logoProblem, readLogo, serveLogo } from './clanLogos.ts';
+import { ClanLogoStore, serveLogo, takeLogo } from './clanLogos.ts';
 import { CLAN_CHAT_SIZE, type createGroups } from './groups.ts';
 
 /**
@@ -46,19 +46,25 @@ export function offensive(text: string): boolean {
   return [plain, leet, folded(plain), folded(leet)].some((s) => BLOCKED_WORDS.some((w) => s.includes(folded(w)) || s.includes(w)));
 }
 
-/** Why a tag cannot be used ('bad_tag', 'offensive_tag'), or undefined when it can (uniqueness is the database's). */
-export function tagProblem(tag: unknown): 'bad_tag' | 'offensive_tag' | undefined {
-  if (typeof tag !== 'string' || !TAG.test(tag)) return 'bad_tag';
+/**
+ * Why a tag cannot be used ('bad_tag', 'offensive_tag'), or undefined when it can (uniqueness is the
+ * database's). `shape`: what a tag looks like (a clan's by default; communities have their own).
+ */
+export function tagProblem(tag: unknown, shape: RegExp = TAG): 'bad_tag' | 'offensive_tag' | undefined {
+  if (typeof tag !== 'string' || !shape.test(tag)) return 'bad_tag';
   const lower = tag.toLowerCase();
   if (BLOCKED_TAGS.has(lower) || BLOCKED_TAGS.has(lower.replace(/[0-9]/g, (c) => LEET[c] ?? c)) || offensive(tag)) return 'offensive_tag';
   return undefined;
 }
 
 /** A clan's name from a request, or undefined when it is empty, too long, has control characters. */
-export function cleanClanName(raw: unknown): string | undefined {
+export const cleanClanName = (raw: unknown): string | undefined => cleanName(raw, 3, MAX_NAME);
+
+/** A name from a request (spaces folded), or undefined when shorter than `min`, longer than `max` or with control characters. */
+export function cleanName(raw: unknown, min: number, max: number): string | undefined {
   if (typeof raw !== 'string') return undefined;
   const name = raw.trim().replace(/\s+/g, ' ');
-  return name.length >= 3 && name.length <= MAX_NAME && !/[\u0000-\u001f\u007f]/.test(name) ? name : undefined;
+  return name.length >= min && name.length <= max && !/[\u0000-\u001f\u007f]/.test(name) ? name : undefined;
 }
 
 /** Who may do what to whom: the owner everything (not to themselves), officers invite and take out plain members. */
@@ -451,19 +457,13 @@ export function createClans(deps: Deps) {
     // the clan's logo (the owner): a 64×64 PNG as the raw body, or DELETE to take it off
     ...(['POST', 'PUT'] as const).map((method): [string, RegExp, Handler] => [method, /^\/v1\/clans\/mine\/logo$/, async (req) => {
       const me = authed(req);
-      let clan: ClanRow;
-      try {
+      let clan!: ClanRow;
+      const png = await takeLogo(req, fail, () => {
         const m = mine(me);
         if (!may(m.role, 'logo')) fail(403, 'not_allowed');
         (deps.limitLogos ?? deps.limitChanges)(me);
         clan = m.clan;
-      } catch (err) {
-        req.resume();
-        throw err;
-      }
-      const png = await readLogo(req, fail);
-      const problem = logoProblem(png);
-      if (problem) fail(problem === 'too_large' ? 413 : 400, problem);
+      });
       logos.set(clan.id, png);
       if (clan.chat) groups.clanChat.note(clan.chat, me, { kind: 'logo' });
       logoChanged(clan);

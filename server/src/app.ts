@@ -31,6 +31,8 @@ import { chatImageRoutes, type ImageLimits } from './chatImages.ts';
 import { profileRoutes } from './profiles.ts';
 import { BurstLimiter, EDIT_WINDOW_MS, SlowDown, editRefusal, type BurstLimits } from './chatLimits.ts';
 import { supportRoutes } from './payments/support.ts';
+import { createCommunities } from './communities.ts';
+import type { CommunityLimits } from './communityStore.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -87,6 +89,8 @@ export interface Config {
   chatBurst?: Partial<BurstLimits>;
   /** Supporting the project with money (payments/support.ts): tests point the providers at fakes and set the clock. */
   payments?: { stripeApi?: string; paypalApi?: string; now?: () => number; checkoutsPerMinute?: number };
+  /** Communities' limits (communityStore.ts; tests lower the members per community). */
+  communityLimits?: Partial<CommunityLimits>;
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -261,6 +265,19 @@ export function createApp(cfg: Config) {
   function push(userId: string, event: unknown) {
     const data = JSON.stringify(event);
     for (const ws of sockets.get(userId) ?? []) ws.send(data);
+  }
+
+  /** One event to many accounts at once (a community's chat): serialised once, sent only to those connected (whichever set is smaller is walked). */
+  function pushMany(users: ReadonlySet<string>, event: unknown) {
+    let data: string | undefined;
+    const send = (set: Set<WebSocket> | undefined) => {
+      if (!set?.size) return;
+      data ??= JSON.stringify(event);
+      for (const ws of set) ws.send(data);
+    };
+    if (sockets.size < users.size) {
+      for (const [id, set] of sockets) if (users.has(id)) send(set);
+    } else for (const id of users) send(sockets.get(id));
   }
 
   function presenceOf(userId: string) {
@@ -541,6 +558,20 @@ export function createApp(cfg: Config) {
   });
   clanTag = clans.tagOf;
 
+  // communities: big groups with roles, a directory and a chat kept on the server (communities.ts)
+  const communities = createCommunities({
+    db, authed, admin, body, push, pushMany, clientIp, limits: cfg.communityLimits,
+    status: (userId) => presenceOf(userId).status,
+    limitCreate: rateLimiter(3), limitJoin: rateLimiter(20), limitChanges: rateLimiter(60), limitLogos: rateLimiter(6),
+    limitMessages, limitEdits, limitBurst, limitReports: rateLimiter(10), limitViews: rateLimiter(cfg.profileViewsPerMinute ?? 120),
+    countMessage: (user) => achievements.store.messages.count(user),
+    checkAchievements: (user) => achievements.check(user),
+    sizeGoals: () => achievements.registry.active().filter((a) => a.group === 'community_size').map((a) => a.goal),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
   // muted friends (mutes.ts) and pictures in the chat (chatImages.ts)
   const mutes = muteRoutes({
     sql: db.sql, authed, body, push, friendList, areFriends: (a, b) => db.areFriends(a, b),
@@ -578,6 +609,7 @@ export function createApp(cfg: Config) {
     worn: (user) => wornBy(user, undefined),
     badge: badgeOf,
     supporter: (uuid) => support.profileDecor(uuid),
+    communities: (uuid) => communities.onProfile(uuid),
     status: (uuid) => presenceOf(uuid).status,
     skinOf, headOf,
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
@@ -1070,6 +1102,7 @@ export function createApp(cfg: Config) {
     ...sharing.routes,
     ...groups.routes,
     ...clans.routes,
+    ...communities.routes,
     ...storageAdminRoutes({
       storage, admin, body, dataDir: path.dirname(cfg.dbFile),
       audit: (who, action, target, detail) => db.log(who, action, target, detail),
@@ -1231,6 +1264,7 @@ export function createApp(cfg: Config) {
       if (await cloud.serve(req, res, url)) return;
       if (await images.serve(req, res, url)) return;
       if (clans.serveLogo(req, res, url)) return;
+      if (communities.serveLogo(req, res, url)) return;
     } catch (err) {
       console.error('profil:', (err as Error).message);
       if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
@@ -1534,6 +1568,8 @@ export function createApp(cfg: Config) {
     profiles,
     /** For tests: the supporters' tiers and payments. */
     support,
+    /** For tests: the communities' data. */
+    communities,
     close: () => new Promise<void>((resolve) => {
       clearInterval(heartbeat);
       clearInterval(playTick);

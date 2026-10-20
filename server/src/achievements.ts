@@ -35,6 +35,7 @@ import { MessageCounter } from './chatLimits.ts';
 export type Group = 'streak' | 'hours' | 'friends' | 'messages' | 'servers'
   | 'days' | 'longday' | 'weekends' | 'anniversary' | 'night' | 'newyear' | 'halloween' | 'friday13'
   | 'groups_joined' | 'groups_created' | 'group_size' | 'clan_joined' | 'clan_founded' | 'clan_size'
+  | 'community_joined' | 'community_founded' | 'community_size'
   | 'waypoints' | 'parties_created' | 'parties_joined' | 'media' | 'shares' | 'cloud'
   | 'sprays' | 'worn' | 'bought' | 'spent'
   /** Given by an admin by hand (achievements made in the admin panel), never counted. */
@@ -120,6 +121,11 @@ export const ACHIEVEMENTS: Achievement[] = [
     { id: 'clan_join', group: 'clan_joined', goal: 1, sparks: 20, name: 'Członek klanu', nameEn: 'Clan member', description: 'Dołącz do klanu.', descriptionEn: 'Join a clan.' },
     { id: 'clan_found', group: 'clan_founded', goal: 1, sparks: 30, name: 'Wódz', nameEn: 'Chieftain', description: 'Załóż klan.', descriptionEn: 'Found a clan.' },
     { id: 'clan_10', group: 'clan_size', goal: 10, sparks: 150, name: 'Potęga klanu', nameEn: 'Clan power', description: 'Bądź w klanie, który ma co najmniej 10 członków.', descriptionEn: 'Be in a clan with at least 10 members.' },
+    // communities (communities.ts): looked at when one joins, founds, and when a community reaches a size
+    { id: 'community_join', group: 'community_joined', goal: 1, sparks: 10, name: 'Część społeczności', nameEn: 'Part of the community', description: 'Dołącz do społeczności.', descriptionEn: 'Join a community.' },
+    { id: 'community_found', group: 'community_founded', goal: 1, sparks: 25, name: 'Założyciel społeczności', nameEn: 'Community founder', description: 'Załóż społeczność.', descriptionEn: 'Found a community.' },
+    { id: 'community_50', group: 'community_size', goal: 50, sparks: 75, name: 'Rosnąca społeczność', nameEn: 'Growing community', description: 'Bądź w społeczności, która ma co najmniej 50 członków.', descriptionEn: 'Be in a community with at least 50 members.' },
+    { id: 'community_250', group: 'community_size', goal: 250, sparks: 150, name: 'Wielka społeczność', nameEn: 'Big community', description: 'Bądź w społeczności, która ma co najmniej 250 członków.', descriptionEn: 'Be in a community with at least 250 members.' },
   ]),
   ...of('explore', [
     { id: 'servers_5', group: 'servers', goal: 5, sparks: 30, name: 'Podróżnik', nameEn: 'Traveller', description: 'Zagraj na 5 różnych serwerach.', descriptionEn: 'Play on 5 different servers.' },
@@ -160,6 +166,7 @@ export const DEFAULT_ICONS: Record<Group, string> = {
   days: 'fa-calendar-check', longday: 'fa-hourglass-half', weekends: 'fa-umbrella-beach', anniversary: 'fa-cake-candles',
   night: 'fa-moon', newyear: 'fa-champagne-glasses', halloween: 'fa-ghost', friday13: 'fa-cat',
   groups_joined: 'fa-people-group', groups_created: 'fa-comments', group_size: 'fa-users', clan_joined: 'fa-shield-halved', clan_founded: 'fa-chess-rook', clan_size: 'fa-flag',
+  community_joined: 'fa-people-group', community_founded: 'fa-crown', community_size: 'fa-users',
   waypoints: 'fa-location-dot', parties_created: 'fa-bullhorn', parties_joined: 'fa-handshake', media: 'fa-camera', shares: 'fa-share-nodes', cloud: 'fa-cloud',
   sprays: 'fa-spray-can', worn: 'fa-shirt', bought: 'fa-bag-shopping', spent: 'fa-gem', manual: 'fa-award',
 };
@@ -204,6 +211,9 @@ export const METRICS: Record<Exclude<Group, 'manual'>, { name: string; nameEn: s
   clan_joined: { name: 'W cudzym klanie', nameEn: 'In someone else\'s clan', max: 1 },
   clan_founded: { name: 'Założony klan', nameEn: 'Clan founded', max: 1 },
   clan_size: { name: 'Członkowie klanu', nameEn: 'Clan members', max: 500 },
+  community_joined: { name: 'Społeczności innych (członkostwo)', nameEn: 'Communities of others joined', max: 100 },
+  community_founded: { name: 'Założone społeczności', nameEn: 'Communities founded', max: 100 },
+  community_size: { name: 'Członkowie największej społeczności gracza', nameEn: 'Members of the biggest community one is in', max: 100_000 },
   media: { name: 'Zrzuty i klipy udostępnione linkiem', nameEn: 'Screenshots and clips shared', max: 10_000 },
   shares: { name: 'Profile udostępnione kodem', nameEn: 'Profiles shared by code', max: 10_000 },
   cloud: { name: 'Profile zapisane w chmurze', nameEn: 'Profiles saved to the cloud', max: 10_000 },
@@ -400,6 +410,7 @@ export interface Stats {
   totalSeconds: number; todaySeconds: number; streak: number; bestStreak: number; servers: number; friends: number; messages: number;
   daysPlayed: number; longestDaySeconds: number; weekends: number; anniversary: number; night: number; newyear: number; halloween: number; friday13: number;
   groupsJoined: number; groupsCreated: number; groupSize: number; clanJoined: number; clanFounded: number; clanSize: number;
+  communityJoined: number; communityFounded: number; communitySize: number;
   waypoints: number; partiesCreated: number; partiesJoined: number; media: number; shares: number; cloud: number;
   sprays: number; worn: number; bought: number; spent: number;
 }
@@ -512,6 +523,9 @@ CREATE TABLE IF NOT EXISTS achievement_counters (uuid TEXT NOT NULL REFERENCES u
       clanJoined: count("SELECT COUNT(*) AS n FROM clan_members WHERE uuid = ? AND role != 'owner'", uuid),
       clanFounded: count('SELECT COUNT(*) AS n FROM clans WHERE owner = ?', uuid),
       clanSize: count('SELECT COUNT(*) AS n FROM clan_members WHERE clan_id = (SELECT clan_id FROM clan_members WHERE uuid = ?)', uuid),
+      communityJoined: count("SELECT COUNT(*) AS n FROM community_members WHERE uuid = ? AND role != 'owner'", uuid),
+      communityFounded: count('SELECT COUNT(*) AS n FROM communities WHERE owner = ?', uuid),
+      communitySize: count('SELECT MAX(c.member_count) AS n FROM community_members m JOIN communities c ON c.id = m.community_id WHERE m.uuid = ?', uuid),
       waypoints: count('SELECT COUNT(*) AS n FROM (SELECT 1 FROM messages WHERE from_uuid = ? AND waypoint IS NOT NULL LIMIT 100)', uuid),
       partiesCreated: this.counter(uuid, 'parties_created'),
       partiesJoined: this.counter(uuid, 'parties_joined'),
@@ -585,6 +599,9 @@ export function value(a: Achievement, s: Stats): number {
     case 'clan_joined': return s.clanJoined;
     case 'clan_founded': return s.clanFounded;
     case 'clan_size': return s.clanSize;
+    case 'community_joined': return s.communityJoined;
+    case 'community_founded': return s.communityFounded;
+    case 'community_size': return s.communitySize;
     case 'waypoints': return s.waypoints;
     case 'parties_created': return s.partiesCreated;
     case 'parties_joined': return s.partiesJoined;
