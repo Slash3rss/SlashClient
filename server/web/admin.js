@@ -1,12 +1,14 @@
 // The admin panel: numbers, accounts (ban, sign out, role, cape, delete), cosmetics and the log.
 import { $, PROVIDERS, partnerBanner, uploadPicture, SLOTS, ago, api, avatarEl, capeEl, cosmeticEl, el, errorText, fmtDate, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 import { storagePage } from './adminStorage.js';
+import { clansPage } from './adminClans.js';
 
 const TABS = [
   ['dashboard', 'Pulpit', 'fa-solid fa-chart-line'],
   ['users', 'Konta', 'fa-solid fa-users'],
   ['cosmetics', 'Kosmetyki', 'fa-solid fa-wand-magic-sparkles'],
   ['partners', 'Partnerzy', 'fa-solid fa-handshake'],
+  ['clans', 'Klany', 'fa-solid fa-shield-halved'],
   ['requests', 'Zapytania', 'fa-solid fa-satellite-dish'],
   ['logs', 'Logi graczy', 'fa-solid fa-file-lines'],
   ['storage', 'Miejsce na pliki', 'fa-solid fa-hard-drive'],
@@ -21,6 +23,7 @@ const ACTIONS = {
   partner_background: 'zmienił(a) tło serwera', set_rank: 'zmienił(a) rangę',
   storage_add: 'dodał(a) miejsce na pliki', storage_edit: 'zmienił(a) miejsce na pliki', storage_remove: 'usunął(ęła) miejsce na pliki',
   storage_move: 'przenosi pliki z', storage_move_stop: 'zatrzymał(a) przenoszenie plików z',
+  'clan.delete': 'usunął(ęła) klan', 'clan.logo_remove': 'usunął(ęła) logo klanu',
 };
 /** Ranks: the colour of the SlashClient logo next to the name in game (admins are red without one). */
 const RANKS = { support: ['Support', 'sky'], partner: ['Partner', 'gold'], friend: ['Przyjaciel', 'green'], friend_pink: ['Przyjaciel (różowy)', 'pink'] };
@@ -80,7 +83,7 @@ function layout() {
     el('button', { class: 'icon-btn', title: 'Wyloguj', onclick: async () => { await signOut(); me = undefined; gate(); } }, icon('fa-solid fa-right-from-bracket'))));
   const main = el('main', { class: 'main', id: 'main' });
   $('#root').replaceChildren(el('div', { class: 'admin' }, side, main));
-  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, partners: partnersPage, requests: requestsPage, logs: logsPage, storage: storagePage, log: logPage })[tab]?.();
+  ({ dashboard, users: usersPage, cosmetics: cosmeticsPage, partners: partnersPage, clans: clansPage, requests: requestsPage, logs: logsPage, storage: storagePage, log: logPage })[tab]?.();
 }
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);
@@ -441,7 +444,7 @@ async function logPage() {
   const rows = await Promise.all(res.entries.map(async (e) => el('tr', {},
     el('td', { textContent: fmtDate(e.at) }),
     el('td', { textContent: `@${await nameOf(e.admin)}` }),
-    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' ? capeNames[e.target] ?? e.target : /^(partner|log_|bug_|storage_)/.test(e.action) ? e.target : `@${e.target}` })),
+    el('td', {}, ACTIONS[e.action] ?? e.action, ' ', el('b', { textContent: e.action === 'cape_settings' ? capeNames[e.target] ?? e.target : /^(partner|log_|bug_|storage_|clan\.)/.test(e.action) ? e.target : `@${e.target}` })),
     el('td', { class: 'log-detail', textContent: ['grant', 'revoke', 'set_cape'].includes(e.action) ? capeNames[e.detail] ?? e.detail : e.detail }))));
   $('#main').replaceChildren(head('Dziennik'),
     el('div', { class: 'glass card' }, res.entries.length

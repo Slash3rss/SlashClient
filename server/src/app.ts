@@ -383,7 +383,9 @@ export function createApp(cfg: Config) {
     return {
       friends: db.friends(me).map((f) => {
         const clan = clanTag(f.id);
-        return { ...f, presence: presenceOf(f.id), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0, muted: muted.has(f.id), ...(clan ? { clan } : {}) };
+        // the clan's logo (its id and version) next to the tag, when it has one
+        const clanLogo = clan ? clans.logoOf(f.id) : undefined;
+        return { ...f, presence: presenceOf(f.id), unread: unread[f.id] ?? 0, lastMessageAt: last[f.id] ?? 0, muted: muted.has(f.id), ...(clan ? { clan } : {}), ...(clanLogo ? { clanLogo } : {}) };
       }),
       incoming: db.incoming(me),
       outgoing: db.outgoing(me),
@@ -490,13 +492,14 @@ export function createApp(cfg: Config) {
   const groups = createGroups({
     db, authed, push, limitMessages, limitChanges: limitGroupChanges,
     clanTag: (clanId) => clans.tagOfClan(clanId),
+    clanLogo: (clanId) => clans.logoOfClan(clanId),
     images: () => images,
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
   });
   const clans = createClans({
-    db, authed, admin, body, push, groups, limitChanges: limitGroupChanges,
+    db, authed, admin, body, push, groups, limitChanges: limitGroupChanges, limitLogos: rateLimiter(6),
     status: (userId) => presenceOf(userId).status,
     fail: (status, code) => {
       throw new HttpError(status, code);
@@ -788,6 +791,8 @@ export function createApp(cfg: Config) {
       const cosmetics: Record<string, Record<string, string>> = {};
       // the clan tag next to the name ([ABC]); HUDs before clans ignore it
       const clanTags: Record<string, string> = {};
+      // and its logo, when it has one (clan id and version, for /v1/clans/<id>/logo.png?v=)
+      const clanLogos: Record<string, { id: string; v: number }> = {};
       for (const u of active) {
         const link = linked.get(u.toLowerCase());
         const owner = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user) : undefined;
@@ -800,8 +805,10 @@ export function createApp(cfg: Config) {
         if (Object.keys(worn).length) cosmetics[u] = worn;
         const tag = clanTag(owner.id);
         if (tag) clanTags[u] = tag;
+        const logo = tag ? clans.logoOf(owner.id) : undefined;
+        if (logo) clanLogos[u] = logo;
       }
-      return { active, capes, ranks, cosmetics, ...(Object.keys(clanTags).length ? { clans: clanTags } : {}) };
+      return { active, capes, ranks, cosmetics, ...(Object.keys(clanTags).length ? { clans: clanTags } : {}), ...(Object.keys(clanLogos).length ? { clanLogos } : {}) };
     }],
     // the launcher says which Minecraft player its SlashClient account plays as, while the game runs
     ['POST', /^\/v1\/mc\/link$/, async (req) => {
@@ -1082,6 +1089,7 @@ export function createApp(cfg: Config) {
       if (await shares.serve(req, res, url)) return;
       if (await cloud.serve(req, res, url)) return;
       if (await images.serve(req, res, url)) return;
+      if (clans.serveLogo(req, res, url)) return;
     } catch (err) {
       console.error('profil:', (err as Error).message);
       if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));

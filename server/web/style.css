@@ -203,6 +203,8 @@ tbody tr:hover { background: var(--card); }
 .gate { display: grid; place-items: center; min-height: 100vh; padding: 16px; }
 .gate .card { width: min(420px, 100%); text-align: center; display: flex; flex-direction: column; gap: 14px; align-items: center; }
 .log-detail { color: var(--text-2); }
+.clan-logo { width: 32px; height: 32px; border-radius: 6px; display: inline-grid; place-items: center; image-rendering: pixelated; }
+.clan-logo-none { background: #b45309; color: #fff; font-size: 11px; font-weight: 700; }
 
 @media (max-width: 900px) {
   .account, .two { grid-template-columns: 1fr; }

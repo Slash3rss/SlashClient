@@ -33,13 +33,14 @@ const MAX_BODY = 80_000;
 
 /** What happened, as a message: who did it and to whom (names as they were then), or the new name. */
 /** A clan chat also says who was made an officer (promoted), a member again (demoted), who got the clan (owner) or took it over when the owner's account went (heir). */
-export interface GroupEvent { kind: 'created' | 'added' | 'removed' | 'left' | 'renamed' | 'joined' | 'promoted' | 'demoted' | 'owner' | 'heir'; by: string; users?: string[]; name?: string }
+/** And who changed the clan's logo (logo; `removed` when it was taken off). */
+export interface GroupEvent { kind: 'created' | 'added' | 'removed' | 'left' | 'renamed' | 'joined' | 'promoted' | 'demoted' | 'owner' | 'heir' | 'logo'; by: string; users?: string[]; name?: string; removed?: boolean }
 export interface GroupMessage { id: number; group: string; from: string; text: string; at: number; event?: GroupEvent }
 export interface GroupMember extends Person { joinedAt: number }
 export interface GroupView {
   id: string; name: string; owner: string; createdAt: number;
-  /** a clan's chat: its tag (clans.ts manages the members) */
-  clan?: { id: string; tag: string };
+  /** a clan's chat: its tag (clans.ts manages the members), and its logo's version when it has one */
+  clan?: { id: string; tag: string; logo?: number };
   members: GroupMember[]; unread: number; lastMessageAt: number;
 }
 
@@ -167,6 +168,8 @@ interface Deps {
   fail: (status: number, code: string) => never;
   /** A clan chat's tag (clans.ts), for the list. */
   clanTag?: (clanId: string) => string | undefined;
+  /** A clan's logo version (clans.ts), when it has one. */
+  clanLogo?: (clanId: string) => number | undefined;
   /** Pictures in the chat (chatImages.ts), checked and attached like in direct messages. */
   images?: () => {
     forMessage: (from: string, to: string, image: unknown) => { id: string; key: string; size: number } | undefined;
@@ -216,9 +219,10 @@ export function createGroups(deps: Deps) {
   function view(id: string, me: string): GroupView {
     const g = store.group(id)!;
     const tag = g.clan ? deps.clanTag?.(g.clan) : undefined;
+    const logo = g.clan ? deps.clanLogo?.(g.clan) : undefined;
     return {
       id: g.id, name: g.name, owner: ownerOf(id) ?? g.owner, createdAt: g.createdAt,
-      ...(g.clan ? { clan: { id: g.clan, tag: tag ?? '' } } : {}),
+      ...(g.clan ? { clan: { id: g.clan, tag: tag ?? '', ...(logo !== undefined ? { logo } : {}) } } : {}),
       members: store.members(id).map((m) => ({ ...person(m.uuid), joinedAt: m.joinedAt })),
       unread: store.unread(id, me), lastMessageAt: store.lastMessageAt(id),
     };

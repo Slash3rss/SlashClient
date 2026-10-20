@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type http from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import type { Db, Person } from './db.ts';
+import { ClanLogoStore, logoProblem, readLogo, serveLogo } from './clanLogos.ts';
 import { CLAN_CHAT_SIZE, type createGroups } from './groups.ts';
 
 /**
@@ -12,11 +13,11 @@ import { CLAN_CHAT_SIZE, type createGroups } from './groups.ts';
  * members chat and leave. Joining is by invite only (the player accepts). The tag is 2–5 letters
  * or digits, unique whatever the case, and checked against a list of words that have no place
  * in a tag (Polish and English, also written with digits for letters). The clan's chat is a group
- * chat (groups.ts) whose members follow the clan.
+ * chat (groups.ts) whose members follow the clan. The owner may give it a logo (clanLogos.ts).
  */
 
 export type ClanRole = 'owner' | 'officer' | 'member';
-export type ClanAction = 'invite' | 'kick' | 'setRole' | 'rename' | 'delete' | 'transfer';
+export type ClanAction = 'invite' | 'kick' | 'setRole' | 'rename' | 'delete' | 'transfer' | 'logo';
 
 export const CLAN_SIZE = CLAN_CHAT_SIZE;
 const MAX_INVITES = 20;
@@ -72,6 +73,7 @@ export function may(role: ClanRole | undefined, action: ClanAction, target?: Cla
     case 'transfer':
       return role === 'owner' && target !== undefined && target !== 'owner';
     case 'rename':
+    case 'logo':
     case 'delete':
       return role === 'owner';
   }
@@ -170,8 +172,9 @@ CREATE TABLE IF NOT EXISTS clan_invites (clan_id TEXT NOT NULL REFERENCES clans(
   }
 
   /** Every clan, for the admin panel. */
-  all(): (ClanRow & { members: number })[] {
-    return this.sql.prepare('SELECT c.id, c.tag, c.name, c.owner, c.chat, c.created_at AS createdAt, (SELECT COUNT(*) FROM clan_members m WHERE m.clan_id = c.id) AS members FROM clans c ORDER BY c.tag_lower').all() as never;
+  all(): (ClanRow & { members: number; logo: number | null })[] {
+    return this.sql.prepare(`SELECT c.id, c.tag, c.name, c.owner, c.chat, c.created_at AS createdAt, (SELECT COUNT(*) FROM clan_members m WHERE m.clan_id = c.id) AS members,
+      (SELECT version FROM clan_logos l WHERE l.clan_id = c.id) AS logo FROM clans c ORDER BY c.tag_lower`).all() as never;
   }
 }
 
@@ -184,6 +187,8 @@ interface Deps {
   /** Whether a player is online for the others (invisible counts as offline), and their status. */
   status: (userId: string) => string;
   limitChanges: (key: string) => void;
+  /** Uploading a logo (defaults to limitChanges). */
+  limitLogos?: (key: string) => void;
   groups: ReturnType<typeof createGroups>;
   fail: (status: number, code: string) => never;
 }
@@ -191,6 +196,12 @@ interface Deps {
 export function createClans(deps: Deps) {
   const { db, authed, body, push, fail, groups } = deps;
   const store = new ClanStore(db.sql);
+  const logos = new ClanLogoStore(db.sql);
+  /** The logo's version as clients get it: `logo` is there only when the clan has one. */
+  const logoField = (id: string) => {
+    const v = logos.version(id);
+    return v === undefined ? {} : { logo: v };
+  };
 
   const person = (id: string): Person => {
     const u = db.user(id);
@@ -225,6 +236,7 @@ export function createClans(deps: Deps) {
   function removeClan(c: ClanRow) {
     const members = store.members(c.id).map((m) => m.uuid);
     const invited = store.sentInvites(c.id).map((i) => i.uuid);
+    logos.remove(c.id);
     store.remove(c.id);
     if (c.chat) groups.clanChat.remove(c.chat);
     for (const m of [...members, ...invited]) push(m, { type: 'clan' });
@@ -249,7 +261,7 @@ export function createClans(deps: Deps) {
   function view(c: ClanRow, me: string) {
     const role = store.membership(me)?.role;
     return {
-      id: c.id, tag: c.tag, name: c.name, createdAt: c.createdAt, chat: c.chat, role,
+      id: c.id, tag: c.tag, name: c.name, createdAt: c.createdAt, chat: c.chat, role, ...logoField(c.id),
       members: store.members(c.id).map((m) => {
         const status = deps.status(m.uuid);
         return { ...person(m.uuid), role: m.role, joinedAt: m.joinedAt, status, online: status !== 'offline' };
@@ -262,7 +274,7 @@ export function createClans(deps: Deps) {
   function invitesFor(me: string) {
     return store.invitesFor(me).flatMap((i) => {
       const c = store.clan(i.clan);
-      return c ? [{ clan: { id: c.id, tag: c.tag, name: c.name, members: store.members(c.id).length }, by: person(i.by), at: i.at }] : [];
+      return c ? [{ clan: { id: c.id, tag: c.tag, name: c.name, members: store.members(c.id).length, ...logoField(c.id) }, by: person(i.by), at: i.at }] : [];
     });
   }
 
@@ -279,6 +291,13 @@ export function createClans(deps: Deps) {
   /** A player's tag changed: their friends' lists show it. */
   function friendsChanged(uuid: string) {
     for (const f of db.friends(uuid)) push(f.id, { type: 'friends' });
+  }
+
+  /** The logo changed: the clan, its chat's header, and the friends lists that show its members fetch it again. */
+  function logoChanged(c: ClanRow) {
+    changed(c);
+    if (c.chat) groups.clanChat.changed(c.chat);
+    for (const m of store.members(c.id)) friendsChanged(m.uuid);
   }
 
   function roleOf(c: ClanRow, uuid: string): ClanRole | undefined {
@@ -429,6 +448,37 @@ export function createClans(deps: Deps) {
       if (tag !== clan.tag) for (const m of store.members(clan.id)) friendsChanged(m.uuid);
       return answer(me);
     }],
+    // the clan's logo (the owner): a 64×64 PNG as the raw body, or DELETE to take it off
+    ...(['POST', 'PUT'] as const).map((method): [string, RegExp, Handler] => [method, /^\/v1\/clans\/mine\/logo$/, async (req) => {
+      const me = authed(req);
+      let clan: ClanRow;
+      try {
+        const m = mine(me);
+        if (!may(m.role, 'logo')) fail(403, 'not_allowed');
+        (deps.limitLogos ?? deps.limitChanges)(me);
+        clan = m.clan;
+      } catch (err) {
+        req.resume();
+        throw err;
+      }
+      const png = await readLogo(req, fail);
+      const problem = logoProblem(png);
+      if (problem) fail(problem === 'too_large' ? 413 : 400, problem);
+      logos.set(clan.id, png);
+      if (clan.chat) groups.clanChat.note(clan.chat, me, { kind: 'logo' });
+      logoChanged(clan);
+      return answer(me);
+    }]),
+    ['DELETE', /^\/v1\/clans\/mine\/logo$/, (req) => {
+      const me = authed(req);
+      const { clan, role } = mine(me);
+      if (!may(role, 'logo')) fail(403, 'not_allowed');
+      if (logos.remove(clan.id)) {
+        if (clan.chat) groups.clanChat.note(clan.chat, me, { kind: 'logo', removed: true });
+        logoChanged(clan);
+      }
+      return answer(me);
+    }],
     ['DELETE', /^\/v1\/clans\/mine$/, (req) => {
       const me = authed(req);
       const { clan, role } = mine(me);
@@ -449,7 +499,27 @@ export function createClans(deps: Deps) {
       db.log(me, 'clan.delete', id, `[${c!.tag}] ${c!.name}`);
       return { ok: true };
     }],
+    // an offensive logo: the admin takes it off (the clan stays)
+    ['DELETE', /^\/v1\/admin\/clans\/([\w-]{1,32})\/logo$/, (req, [id]) => {
+      const me = deps.admin(req);
+      const c = store.clan(id);
+      if (!c || !logos.remove(id)) fail(404, 'not_found');
+      db.log(me, 'clan.logo_remove', id, `[${c!.tag}] ${c!.name}`);
+      logoChanged(c!);
+      return { ok: true };
+    }],
   ];
 
-  return { routes, tagOf, tagOfClan: (id: string) => store.clan(id)?.tag };
+  /** A player's clan and its logo's version, when it has one (friends lists, the game's lookup). */
+  function logoOf(uuid: string): { id: string; v: number } | undefined {
+    const m = store.membership(uuid);
+    const v = m ? logos.version(m.clan) : undefined;
+    return m && v !== undefined ? { id: m.clan, v } : undefined;
+  }
+
+  return {
+    routes, tagOf, tagOfClan: (id: string) => store.clan(id)?.tag, logoOf,
+    logoOfClan: (id: string) => logos.version(id),
+    serveLogo: (req: http.IncomingMessage, res: http.ServerResponse, url: URL) => serveLogo(logos, req, res, url),
+  };
 }
