@@ -1,4 +1,4 @@
-import { spawn, execFile } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { appendFileSync, createWriteStream, mkdirSync, writeFileSync } from 'node:fs';
 import nodeFs from 'node:fs/promises';
@@ -289,7 +289,7 @@ export function swapScript(o: SwapOptions): string {
 export function appendUpdateLog(file: string, message: string): void {
   try {
     mkdirSync(path.dirname(file), { recursive: true });
-    appendFileSync(file, `${new Date().toISOString().replace('T', ' ').slice(0, 19)} [launcher] ${message}
+    appendFileSync(file, `${new Date().toISOString().replace('T', ' ').slice(0, 19)} [launcher] ${message}
 `, 'utf8');
   } catch {
     // only a log
@@ -297,8 +297,11 @@ export function appendUpdateLog(file: string, message: string): void {
 }
 
 /**
- * Writes the script next to the download and starts it, detached, so it outlives the launcher.
- * Synchronous: it also runs while the launcher quits.
+ * Writes the script next to the download and starts it so it outlives the launcher. PowerShell
+ * started detached (without a console) quits at once, and a child started normally is ended with the
+ * launcher (Node keeps its children in a job object). So a short-lived PowerShell starts the script
+ * with Start-Process: that one leaves the job, gets its own hidden console and keeps running.
+ * Synchronous (about half a second): it also runs while the launcher quits.
  */
 export function startSwap(o: SwapOptions): void {
   const { download } = workDirs(o.install.dir);
@@ -307,8 +310,13 @@ export function startSwap(o: SwapOptions): void {
   const file = path.join(download, 'swap.ps1');
   // with a BOM: Windows PowerShell reads a file without one in the system's code page (Polish paths)
   writeFileSync(file, `\uFEFF${swapScript(o)}\r\n`, 'utf8');
-  const child = spawn(POWERSHELL, ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', file], {
-    detached: true, stdio: 'ignore', windowsHide: true, cwd: path.dirname(o.install.dir),
+  const cwd = path.dirname(o.install.dir);
+  // the paths go through the environment, so no quoting can break the command
+  const start = 'Start-Process -FilePath $env:SLASHCLIENT_SWAP_PS -WindowStyle Hidden -WorkingDirectory $env:SLASHCLIENT_SWAP_CWD'
+    + ` -ArgumentList ('-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $env:SLASHCLIENT_SWAP_FILE + '"')`;
+  const res = spawnSync(POWERSHELL, ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', start], {
+    windowsHide: true, stdio: 'ignore', timeout: 20_000, cwd,
+    env: { ...process.env, SLASHCLIENT_SWAP_PS: POWERSHELL, SLASHCLIENT_SWAP_CWD: cwd, SLASHCLIENT_SWAP_FILE: file },
   });
-  child.unref();
+  if (res.status !== 0) throw new Error(`Nie uda\u0142o si\u0119 uruchomi\u0107 podmiany plik\u00F3w (${res.error?.message ?? `kod ${res.status}`}).`);
 }

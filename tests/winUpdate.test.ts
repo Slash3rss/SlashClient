@@ -10,7 +10,7 @@ import { describe, it } from 'node:test';
 import AdmZip from 'adm-zip';
 import {
   canWrite, cleanupWinUpdate, downloadVerified, findUninstallKey, parseManifest, pickWinArtifact, psQuote, stageWinUpdate,
-  swapScript, unpackZip, winArg, winInstall, workDirs, type WinInstall, type WinManifest,
+  startSwap, swapScript, unpackZip, winArg, winInstall, workDirs, type WinInstall, type WinManifest,
 } from '../src/main/winUpdate';
 
 const WINDOWS = process.platform === 'win32';
@@ -211,6 +211,21 @@ describe('Windows update swap script', { skip: !WINDOWS }, () => {
     assert.match(await fs.readFile(log, 'utf8'), /zaktualizowano do 0\.9\.91/);
     ps(`Remove-Item -LiteralPath '${KEY}' -Recurse -Force`);
     await fs.rm(root, { recursive: true });
+  });
+
+  it('starts the script in the background, in its own console', async () => {
+    const root = await tmp('slash-swapstart-');
+    const install = await fakeInstall(root, '1');
+    const next = `${install.dir}.new`;
+    await fs.mkdir(next, { recursive: true });
+    await fs.writeFile(path.join(next, 'SlashClient.exe'), 'exe 2');
+    const log = path.join(root, 'logi', 'update.log');
+    const launcher = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 500)']);
+    startSwap({ pid: launcher.pid!, install, next, version: '0.9.91', log, relaunch: null, retries: 3 });
+    for (let i = 0; i < 100 && !(await fs.readFile(log, 'utf8').catch(() => '')).includes('zaktualizowano'); i++) await new Promise((r) => setTimeout(r, 200));
+    assert.equal(await fs.readFile(install.exe, 'utf8'), 'exe 2');
+    await new Promise((r) => setTimeout(r, 1500));
+    await fs.rm(root, { recursive: true, force: true, maxRetries: 5 });
   });
 
   it('puts the old version back when the new one cannot be moved in', async () => {
