@@ -22,6 +22,7 @@ import { createDiskCleanup } from './diskCleanup';
 import { createKeyConflicts } from './keyConflicts';
 import { createToolSettings } from './toolSettings';
 import { createSupportCard } from './support';
+import { checkLegalNotices, createLegalCard } from './legal';
 import { createWiki } from './wiki';
 
 declare global {
@@ -754,6 +755,8 @@ document.querySelector('.nav[data-view="wiki"]')?.addEventListener('click', () =
 // "Wesprzyj projekt": opens the website's support page; the tier shown is asked again on each visit to Settings
 const supportCard = createSupportCard($('#support-card'), { api, socialUrl: () => store?.settings.socialUrl ?? '', toast });
 document.querySelector('.nav[data-view="settings"]')?.addEventListener('click', () => void supportCard.refresh());
+// "O programie / Informacje prawne": the terms and the privacy policy on the website
+createLegalCard($('#legal-card'), { socialUrl: () => store?.settings.socialUrl ?? '' });
 
 function showPane(pane: ProfilePane) {
   profilePane = pane;
@@ -1584,7 +1587,11 @@ const friends = createFriends($('#friends-root'), $('#friends-badge'), {
   toast,
   errorText,
   // the cape choice in Accounts unlocks (or locks) with the SlashClient account
-  accountChanged: () => void renderSlashCapes(),
+  accountChanged: () => {
+    void renderSlashCapes();
+    // "Zaktualizowaliśmy regulamin": important changes not seen yet, once
+    void checkLegalNotices(api, toast);
+  },
   hasMinecraft: () => store.accounts.some((a) => a.type === 'msa'),
   showAchievements: (id, name) => achievements.showFriend(id, name),
   gameRunning: () => (store.runningProfiles ?? []).length > 0,

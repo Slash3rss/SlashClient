@@ -1420,3 +1420,10 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .ph-refund.approved i, .ph-refund.refunded i { color: #4ade80; }
 .ph-refund.rejected i { color: #fca5a5; }
 .ph-chip { padding: 3px 10px; min-height: 0; font-size: 12px; }
+
+/* ---------- terms and privacy (legal.ts) ---------- */
+.legal-card { max-width: 680px; }
+.legal-card h3 i { color: var(--accent-light); }
+.legal-links { flex-wrap: wrap; gap: 8px; }
+.fr-signin .legal-note { display: block; margin-top: 14px; }
+.legal-note a { color: var(--accent-light); }

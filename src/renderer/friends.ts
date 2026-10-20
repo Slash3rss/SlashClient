@@ -5,6 +5,7 @@ import { createParty, type Party } from './party';
 import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
 import { openProfilePrivacy, profileLink } from './profilePrivacy';
 import { confirmDialog } from './dialog';
+import { legalNote } from './legal';
 import { canDelete, canEdit, editHint, editedLabel, replaceMessage, slowDownSeconds, slowDownText, tombstone, withMenu, type MenuItem } from './chatEdits';
 
 /**
@@ -342,7 +343,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       }
 
     }
-    card.append(buttons);
+    card.append(buttons, legalNote());
     root.replaceChildren(card);
   }
 
