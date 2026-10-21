@@ -103,8 +103,11 @@ describe('finding files downloaded by hand', () => {
     const watch = new FolderWatch(() => calls++, 20, 60_000);
     watch.start([downloads, path.join(downloads, 'gone')]);
     try {
-      await fs.writeFile(path.join(downloads, 'new.jar'), 'x');
-      for (let i = 0; i < 50 && !calls; i++) await new Promise((r) => setTimeout(r, 20));
+      // macOS starts watching a moment later and drops what came before: a new file now and then until one is seen
+      for (let i = 0; i < 250 && !calls; i++) {
+        if (i % 25 === 0) await fs.writeFile(path.join(downloads, `new${i}.jar`), 'x');
+        await new Promise((r) => setTimeout(r, 20));
+      }
       assert.ok(calls >= 1);
     } finally {
       watch.stop();
