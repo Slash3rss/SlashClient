@@ -1766,8 +1766,7 @@ function serverCard(s: ListedServer): HTMLElement {
     await navigator.clipboard.writeText(s.ip);
     toast(t('Skopiowano {0}', s.ip));
   });
-  const info = el('button', { className: 'icon-btn', title: t('Więcej o serwerze') }, el('i', { className: 'fa-solid fa-circle-info' }));
-  const actions = el('div', { className: 'server-actions' }, s.id ? serverPages.voteButton(s) : '', play, copy, ...(s.id ? [info] : []));
+  const actions = el('div', { className: 'server-actions' }, s.id ? serverPages.voteButton(s) : '', play, copy);
   for (const [url, icon, label] of [[s.website, 'fa-solid fa-globe', 'Strona'], [s.discord, 'fa-brands fa-discord', 'Discord']] as const) {
     if (!url?.startsWith('https://')) continue;
     // a plain button (not <a><button>) so it lines up with the others; the main process opens it in the browser
@@ -1782,8 +1781,20 @@ function serverCard(s: ListedServer): HTMLElement {
     el('div', { className: 'server-side' }, stats, actions));
   card.dataset.ip = s.ip;
   if (s.id) {
-    icon.classList.add('clickable');
-    for (const b of [icon, name, info]) b.addEventListener('click', () => void serverPages.open(s));
+    // the whole card opens the server's page; its own buttons (vote, play, copy, links) do their own thing
+    card.classList.add('clickable');
+    card.tabIndex = 0;
+    card.title = t('Więcej o serwerze');
+    card.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('button, a, input') && !(e.target as HTMLElement).closest('.server-name')) return;
+      void serverPages.open(s);
+    });
+    card.addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target === card) {
+        e.preventDefault();
+        void serverPages.open(s);
+      }
+    });
   }
   return card;
 }
