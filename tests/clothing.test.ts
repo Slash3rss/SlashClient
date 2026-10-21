@@ -77,6 +77,13 @@ describe('clothing', () => {
     const ear = CLOTHING.find((i) => i.id === 'catears')!.boxes[0];
     assert.ok(shownWith(ear, undefined) && shownWith(ear, 'cap') && !shownWith(ear, 'tophat'));
     assert.ok(shownWith(CLOTHING.find((i) => i.id === 'sunglasses')!.boxes[0], 'tophat'));
+    // the earmuffs: under a hat only the band over the head hides, under a brim only its top; the headphones' cups take their place
+    const muffs = CLOTHING.find((i) => i.id === 'earmuffs')!.boxes;
+    const shown = (hat?: string) => muffs.map((b) => shownWith(b, hat));
+    assert.ok(shown().every(Boolean) && shown('halo').every(Boolean));
+    assert.deepEqual(shown('cap').filter(Boolean).length, muffs.length - 3);
+    assert.deepEqual(shown('tophat').filter(Boolean).length, muffs.length - 1);
+    assert.ok(!shown('headphones').some(Boolean));
     // still most of the time, a small wiggle for a moment every few seconds
     const twitch = ear.twitch!;
     assert.equal(twitchAngle(TWITCH_LENGTH + 1, twitch), 0);

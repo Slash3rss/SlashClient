@@ -194,6 +194,33 @@ const PAINT = {
     if (isSide(face) && y >= h - K) return band;
     return blue;
   },
+  autumnscarf({ box, face, x, y, w, h, px, py }) {
+    const f = 0.9 + grain(17, px, py) * 0.12;
+    // knitted: every other row of stitches a little darker
+    const rib = Math.floor(y / 2) % 2 ? 0.9 : 1;
+    if (box >= 2) {
+      // the ends: a fringe of tassels at the bottom, in turn mustard and brown, gaps between them
+      if (isSide(face) && y >= h - K) {
+        if (Math.floor(x / 2) % 2) return null;
+        return shade(Math.floor(x / 4) % 2 ? hex('#6b3a1c') : hex('#d9a02e'), 0.9 + grain(18, x, y) * 0.2);
+      }
+      if (face === 'up') return shade(hex('#d9a02e'), 0.85);
+    }
+    if (face === 'up' && box === 0) return shade(hex('#7a3414'), 0.8);
+    // a burnt orange tartan: wide brown bands, mustard and cream lines, woven (a texel of the
+    // across stripe, a texel of the down one); the knot's folds a shade darker
+    const stripe = (a) => {
+      const m = a % (5 * K);
+      if (m >= 2 * K && m < 3 * K) return hex('#6b3a1c');
+      if (m >= 4 * K && m < 4.5 * K) return hex('#e8b440');
+      if (m === 0) return hex('#f3e2bd');
+      return null;
+    };
+    const across = stripe(y + box * 3), down = stripe(x + (face === 'east' || face === 'west' ? 2 : 0));
+    const c = ((x + y) % 2 ? across ?? down : down ?? across) ?? hex('#d0652a');
+    const fold = box === 1 && isSide(face) && Math.abs(y + 0.5 - h / 2) < 1 ? 0.78 : 1;
+    return shade(c, f * rib * fold);
+  },
 };
 const isSide = (face) => face === 'north' || face === 'south' || face === 'east' || face === 'west';
 // the face and ears slots

@@ -653,6 +653,21 @@ describe('social server', () => {
     assert.ok(!(await askAs('launcher/0.9.19')).items.some((i) => i.slot === 'face' || i.slot === 'ears'));
     assert.ok(!(await askAs('mod/0.9.19')).items.some((i) => i.slot === 'face' || i.slot === 'ears'));
   });
+
+  it('wears the autumn scarf and the earmuffs (with a hat), free from 0.9.29 on', async () => {
+    const ula = await login('UlaAutumn');
+    const me = (await call('POST', '/v1/me', ula.token, { loadout: { top: 'autumnscarf', ears: 'earmuffs', hat: 'beanie' } })).body;
+    assert.deepEqual([me.loadout.top, me.loadout.ears, me.loadout.hat], ['autumnscarf', 'earmuffs', 'beanie']);
+    assert.equal((await call('POST', '/v1/me', ula.token, { loadout: { hat: 'earmuffs' } })).body.error, 'bad_item');
+    assert.equal((await call('POST', '/v1/me', ula.token, { loadout: { ears: 'autumnscarf' } })).body.error, 'bad_item');
+    const askAs = async (client: string) => (await (await fetch(`${base}/v1/cosmetics`, { headers: { Authorization: `Bearer ${ula.token}`, 'X-SlashClient': client } })).json()) as { items: { id: string; available: boolean }[] };
+    const ids = ['autumnscarf', 'earmuffs'];
+    for (const client of ['launcher/0.9.29', 'mod/0.9.29']) {
+      const items = (await askAs(client)).items.filter((i) => ids.includes(i.id));
+      assert.deepEqual(items.map((i) => [i.id, i.available]), [['autumnscarf', true], ['earmuffs', true]], client);
+    }
+    assert.ok(!(await askAs('launcher/0.9.28')).items.some((i) => ids.includes(i.id)));
+  });
 });
 
 describe('LAN worlds through the relay', () => {
