@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
-import { MOVE_ICONS, MOVE_IDS, RING_FRAMES, RING_IDS } from '../src/renderer/ringMovePreview';
+import { MOVE_ICONS, MOVE_IDS, RING_FRAMES, RING_IDS, RING_STILL } from '../src/renderer/ringMovePreview';
 import { ITEMS, compareVersions } from '../server/src/cosmetics';
 
 const MOD = 'hud/src/main/java/dev/slash3rss/slashclient/hud';
@@ -35,14 +35,39 @@ describe('rings and movement effects', () => {
 
   it('come with the unreleased launcher, free for everyone (except the shop ones), with ids no other slot uses', () => {
     for (const i of ITEMS.filter((x) => x.slot === 'ring' || x.slot === 'move')) {
-      // the shop's rings came later, sold for sparks
-      assert.equal(i.since, i.price ? '0.9.22' : '0.9.20', i.id);
+      // the shop's rings came later, sold for sparks, and the leaf rings later still
+      assert.equal(i.since, i.id.startsWith('ring_leaves_') ? '0.9.29' : i.price ? '0.9.22' : '0.9.20', i.id);
       assert.ok(compareVersions(i.since!, '0.9.19') > 0);
       assert.equal(i.rank, undefined, i.id);
       assert.equal(i.achievement, undefined, i.id);
     }
     const ids = ITEMS.map((i) => i.id);
     assert.equal(new Set(ids).size, ids.length, 'ids are unique across all slots');
+  });
+
+  it('have the autumn leaves: two auras and two still rings, with every leaf picture in the mod', () => {
+    const auras = ITEMS.filter((i) => i.id.startsWith('leaves_'));
+    assert.deepEqual(auras.map((i) => [i.id, i.slot, i.since]), [['leaves_gold', 'aura', '0.9.29'], ['leaves_autumn', 'aura', '0.9.29']]);
+    const cosmetics = readFileSync(`${MOD}/Cosmetics.java`, 'utf8');
+    // in the auras' list for every game version (fireflies only from 1.21.5)
+    assert.equal(cosmetics.match(/"tears", (?:"fireflies", )?"leaves_gold", "leaves_autumn"\);/g)?.length, 2);
+    const effects = readFileSync(`${MOD}/CosmeticEffects.java`, 'utf8');
+    assert.ok(effects.includes('case "leaves_gold", "leaves_autumn"'));
+    // the rings with leaves lie still, in the mod and the previews alike
+    assert.deepEqual([...RING_STILL], ['ring_leaves_gold', 'ring_leaves_autumn']);
+    assert.ok(readFileSync(`${MOD}/RingEffects.java`, 'utf8').includes('STILL = Set.of("ring_leaves_gold", "ring_leaves_autumn")'));
+    // what falls: golden leaves, or red, brown and golden ones, five shapes each
+    const leaves = readFileSync(`${MOD}/Leaves.java`, 'utf8');
+    assert.ok(leaves.includes('Map.of("gold", new String[] {"gold"}, "autumn", new String[] {"red", "brown", "gold"})'));
+    for (const colour of ['gold', 'red', 'brown']) {
+      for (let n = 0; n < 5; n++) assert.ok(existsSync(`hud/src/main/resources/assets/slashclient-hud/textures/particle/leaf_${colour}_${n}.png`), `leaf_${colour}_${n}`);
+    }
+    // with an icon in the launcher and on the website, and the leaves in the previews
+    for (const id of ['leaves_gold', 'leaves_autumn']) {
+      assert.ok(new RegExp(`\\b${id}: 'fa-`).test(readFileSync('src/renderer/app.ts', 'utf8')), `launcher icon ${id}`);
+      assert.ok(new RegExp(`\\b${id}: 'fa-`).test(readFileSync('server/web/common.js', 'utf8')), `website icon ${id}`);
+      assert.ok(new RegExp(`\\b${id}: \\{ kind: 'aura', frames: leaves\\(`).test(readFileSync('src/renderer/cosmeticPreview.ts', 'utf8')), `preview ${id}`);
+    }
   });
 
   it('have an icon and a name in the launcher, on the website and in the game', () => {

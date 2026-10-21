@@ -32,10 +32,17 @@ interface Effect {
   /** RGB tint; 'rainbow' changes with each particle (note blocks). */
   tint?: number | 'rainbow';
   size: number;
-  /** How a particle moves: rising, falling, drifting outwards, or flying in towards the body. */
-  motion: 'rise' | 'fall' | 'drift' | 'inward';
+  /** How a particle moves: rising, falling, drifting outwards, flying in towards the body, or falling like a leaf (swaying and turning). */
+  motion: 'rise' | 'fall' | 'drift' | 'inward' | 'leaf';
   life: number;
+  /** Pictures of ours (<particles>/<frame>.png, from the mod's textures/particle) rather than the game's. */
+  ours?: boolean;
+  /** Seconds between two new ones (0.12 when not given). */
+  every?: number;
 }
+
+/** The leaf auras' pictures: each colour's five leaves (scripts/make-leaves.mjs). */
+const leaves = (...colours: string[]) => colours.flatMap((c) => Array.from({ length: 5 }, (_, i) => `leaf_${c}_${i}`));
 
 const range = (prefix: string, n: number) => Array.from({ length: n }, (_, i) => `particle/${prefix}_${i}`);
 const EFFECTS: Record<string, Effect> = {
@@ -66,6 +73,9 @@ const EFFECTS: Record<string, Effect> = {
   nautilus: { kind: 'aura', frames: ['particle/nautilus'], size: 2.4, motion: 'inward', life: 1.2 },
   tears: { kind: 'aura', frames: ['particle/drip_hang'], tint: 0x6a0fd0, size: 2.2, motion: 'fall', life: 1.4 },
   fireflies: { kind: 'aura', frames: ['particle/firefly'], size: 2, motion: 'rise', life: 2 },
+  // autumn leaves of ours: golden only, or red, brown and golden together
+  leaves_gold: { kind: 'aura', frames: leaves('gold'), ours: true, size: 2.8, motion: 'leaf', life: 5.5, every: 0.22 },
+  leaves_autumn: { kind: 'aura', frames: leaves('red', 'brown', 'gold'), ours: true, size: 2.8, motion: 'leaf', life: 5.5, every: 0.22 },
 };
 
 /** The pets' pictures (the bat's moved into a folder in 26.1) and their size next to the player. */
@@ -94,7 +104,7 @@ const ICON_FRAMES: Record<string, string[]> = {
   ink: ['particle/generic_7', 'particle/generic_6', 'particle/generic_5'],
 };
 
-interface Particle { sprite: Sprite; effect: Effect; age: number; vx: number; vy: number; vz: number; frame: number }
+interface Particle { sprite: Sprite; effect: Effect; age: number; vx: number; vy: number; vz: number; frame: number; phase: number; spin: number }
 
 export class CosmeticPreview {
   private textures = new Map<string, Texture>();
@@ -132,8 +142,8 @@ export class CosmeticPreview {
   private moves: MoveEffectPreview;
   private props: PropPreview;
 
-  /** `clothing` is where the clothing's pictures are (<id>.png), `pets` our own pets' (<id>_<frame>.png), `suits` the suits', `held` the shields' and weapons', `gear` the back items' and tails', `rings` the rings', `props` the props' (<id>.png). */
-  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/', private pets = 'img/pets/', suits = 'img/suits/', held = 'img/held/', gear = 'img/gear/', rings = 'img/rings/', props = 'img/props/') {
+  /** `clothing` is where the clothing's pictures are (<id>.png), `pets` our own pets' (<id>_<frame>.png), `suits` the suits', `held` the shields' and weapons', `gear` the back items' and tails', `rings` the rings', `props` the props' (<id>.png), `ourParticles` our own particles' (the leaves). */
+  constructor(private viewer: SkinViewer, public pictures: Record<string, string>, private clothing = 'img/clothing/', private pets = 'img/pets/', suits = 'img/suits/', held = 'img/held/', gear = 'img/gear/', rings = 'img/rings/', props = 'img/props/', private ourParticles = 'img/particles/') {
     this.kills = new KillEffectPreview(viewer.playerWrapper);
     this.suit = new SuitPreview(viewer, (src) => this.ourTexture(src), suits);
     this.held = new HeldPreview(viewer, held);
@@ -364,7 +374,7 @@ export class CosmeticPreview {
 
   private emit(effect: Effect) {
     const pick = effect.animate ? effect.frames[0] : effect.frames[Math.floor(Math.random() * effect.frames.length)];
-    const map = this.texture(pick);
+    const map = effect.ours ? this.ourTexture(`${this.ourParticles}${pick}.png`) : this.texture(pick);
     if (!map) return;
     const material = new SpriteMaterial({ map, transparent: true, alphaTest: 0.05, depthWrite: false });
     const tint = effect.tint === 'rainbow' ? [0xff5a5a, 0xffc04a, 0x7dff6a, 0x4ad8ff, 0xb46aff][Math.floor(Math.random() * 5)] : effect.tint;
@@ -384,8 +394,17 @@ export class CosmeticPreview {
     if (effect.motion === 'fall') vy = -4 - Math.random() * 2;
     if (effect.motion === 'drift') { vx = (Math.random() - 0.5) * 10; vy = 3; }
     if (effect.motion === 'inward') { vx = -sprite.position.x * 0.8; vz = -sprite.position.z * 0.8; vy = (6 - sprite.position.y) * 0.4; }
+    let spin = 0;
+    if (effect.motion === 'leaf') {
+      // from above the head, near the body or a little further off, down to the ground by the end of its life
+      const a = Math.random() * Math.PI * 2, r = 8 + Math.random() * 10;
+      sprite.position.set(Math.cos(a) * r, 17 + Math.random() * 6, Math.sin(a) * r);
+      vy = -(sprite.position.y + 15.5) / effect.life;
+      spin = (Math.random() < 0.5 ? -1 : 1) * (0.6 + Math.random() * 0.8);
+      material.rotation = Math.random() * Math.PI * 2;
+    }
     this.viewer.playerWrapper.add(sprite);
-    this.particles.push({ sprite, effect, age: 0, vx, vy, vz, frame: 0 });
+    this.particles.push({ sprite, effect, age: 0, vx, vy, vz, frame: 0, phase: Math.random() * Math.PI * 2, spin });
   }
 
   private update(dt: number, time: number) {
@@ -421,7 +440,7 @@ export class CosmeticPreview {
       this.spawnTrail = 0;
       this.emit(this.trail);
     }
-    if (this.aura && (this.spawnAura += dt) > 0.12) {
+    if (this.aura && (this.spawnAura += dt) > (this.aura.every ?? 0.12)) {
       this.spawnAura = 0;
       this.emit(this.aura);
     }
@@ -430,8 +449,15 @@ export class CosmeticPreview {
       p.sprite.position.x += p.vx * dt;
       p.sprite.position.y += p.vy * dt;
       p.sprite.position.z += p.vz * dt;
+      if (p.effect.motion === 'leaf') {
+        // swinging to and fro as it falls, turning slowly
+        p.sprite.position.x += Math.cos(p.age * 2.4 + p.phase) * 5 * dt;
+        p.sprite.position.z += Math.sin(p.age * 1.7 + p.phase) * 3 * dt;
+        (p.sprite.material as SpriteMaterial).rotation += p.spin * dt;
+      }
       const left = 1 - p.age / p.effect.life;
-      (p.sprite.material as SpriteMaterial).opacity = Math.min(1, left * 3);
+      // (a leaf only fades as it reaches the ground)
+      (p.sprite.material as SpriteMaterial).opacity = Math.min(1, left * (p.effect.motion === 'leaf' ? 10 : 3));
       if (p.effect.animate) {
         const f = Math.min(p.effect.frames.length - 1, Math.floor((p.age / p.effect.life) * p.effect.frames.length));
         if (f !== p.frame) {
@@ -469,11 +495,13 @@ export class CosmeticPreview {
  * The pictures for an item's icon in the grid: the pet's spawn egg, or three of the effect's
  * particles (a big one and two smaller, the way they look in the game); none without a game.
  */
-export function cosmeticIcon(pictures: Record<string, string>, id: string): { srcs: string[]; tint?: string } | undefined {
+export function cosmeticIcon(pictures: Record<string, string>, id: string, particles = 'img/particles/'): { srcs: string[]; tint?: string } | undefined {
   const egg = pictures[`item/${id}_spawn_egg`];
   if (egg) return { srcs: [egg] };
   const e = EFFECTS[id];
   if (!e) return undefined;
+  // our own leaves (also without a game): three of them, of each colour it has
+  if (e.ours) return { srcs: (e.frames.length > 5 ? [2, 7, 11] : [2, 0, 1]).map((i) => `${particles}${e.frames[i]}.png`) };
   const n = e.frames.length;
   const srcs = (ICON_FRAMES[id] ?? [e.frames[0], e.frames[Math.floor(n / 3)], e.frames[Math.floor((2 * n) / 3)]])
     .map((f) => pictures[f]).filter((x): x is string => !!x);

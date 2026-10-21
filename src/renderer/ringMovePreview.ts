@@ -12,9 +12,13 @@ import { CanvasTexture, DoubleSide, Mesh, MeshBasicMaterial, NearestFilter, type
 /** In the order of the menus (the same as the server's catalog and the mod's lists). */
 export const RING_IDS = ['ring_runes', 'ring_flame', 'ring_frost', 'ring_rainbow', 'ring_mushroom', 'ring_galaxy', 'ring_halo', 'ring_toxic',
   // sold in the shop for sparks
-  'ring_sparks', 'ring_ocean'] as const;
+  'ring_sparks', 'ring_ocean',
+  // autumn leaves lying under the feet (scripts/make-leaves.mjs)
+  'ring_leaves_gold', 'ring_leaves_autumn'] as const;
 /** The animated rings and how many frames each has (<id>_<n>.png); the others are <id>.png. */
 export const RING_FRAMES: Record<string, number> = { ring_runes: 8, ring_flame: 8, ring_rainbow: 8, ring_galaxy: 8, ring_toxic: 8 };
+/** Rings that lie still, neither turning nor breathing (RingEffects.STILL): leaves on the ground. */
+export const RING_STILL: readonly string[] = ['ring_leaves_gold', 'ring_leaves_autumn'];
 export const MOVE_IDS = ['move_steps', 'move_jump', 'move_landing', 'move_arrows', 'move_sprint', 'move_bubbles', 'move_petals'] as const;
 /** The movement effects' icons (Font Awesome) and their colours, for the menus. */
 export const MOVE_ICONS: Record<string, [string, string]> = {
@@ -77,9 +81,10 @@ export class RingPreview {
       material.map = map;
       material.needsUpdate = true;
     }
-    // once round in 14 seconds, breathing in and out a little
-    this.mesh.rotation.z = ((now % 14_000) / 14_000) * Math.PI * 2;
-    this.mesh.scale.setScalar(1 + 0.04 * Math.sin((now / 1000) * 2.2));
+    // once round in 14 seconds, breathing in and out a little (leaves lie still)
+    const still = RING_STILL.includes(this.id);
+    this.mesh.rotation.z = still ? 0 : ((now % 14_000) / 14_000) * Math.PI * 2;
+    this.mesh.scale.setScalar(still ? 1 : 1 + 0.04 * Math.sin((now / 1000) * 2.2));
   }
 
   private texture(src: string): Texture {
