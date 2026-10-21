@@ -165,6 +165,34 @@ public final class Ui {
 		draw(g, c, cx - width(c) / 2, y, color);
 	}
 
+	private static final Map<String, Long> MARQUEE = new java.util.HashMap<>();
+
+	/**
+	 * Text centred in `w` pixels at `cx`: cut with "…" when too long, but while `moving` (the mouse is
+	 * on its card) the whole text slides through instead: a moment at its start, then along to its
+	 * end at an easy reading pace, a moment there, and back to the start.
+	 */
+	public static void marquee(GuiGraphicsExtractor g, String key, Component c, int cx, int y, int w, int color, boolean moving) {
+		int tw = width(c);
+		if (tw <= w || !moving) {
+			MARQUEE.remove(key);
+			centered(g, tw <= w ? c : fit(c, w), cx, y, color);
+			return;
+		}
+		long now = System.currentTimeMillis();
+		long started = MARQUEE.computeIfAbsent(key, k -> now);
+		int over = tw - w;
+		long pause = 700, slide = Math.max(600, over * 1000L / 30);
+		long cycle = pause + slide + pause, at = (now - started) % cycle;
+		int shift = at < pause ? 0 : at < pause + slide ? (int) (over * (at - pause) / slide) : over;
+		int x = cx - w / 2;
+		beginClip("marquee " + key, x, y - 1, w, 11);
+		g.enableScissor(x, y - 1, x + w, y + 10);
+		draw(g, c, x - shift, y, color);
+		g.disableScissor();
+		end();
+	}
+
 	/** Text cut with "…" to fit `max` pixels. */
 	public static Component fit(Component c, int max) {
 		if (width(c) <= max) return c;

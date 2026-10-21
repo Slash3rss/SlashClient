@@ -1531,6 +1531,14 @@ public final class TestHooks {
 	/** The modules that were on before the snapping test (only "fps" and "ping" are on during it). */
 	private static java.util.Map<String, Boolean> snapSaved;
 
+	/** The middle of a settings card as the window's pixels (for TestInput.setCursorPos); null if not drawn. */
+	public static double[] cardCenter(String id) {
+		int[] r = HudEditScreen.CARDS.get(id);
+		if (r == null) return null;
+		double s = net.minecraft.client.Minecraft.getInstance().getWindow().getGuiScale();
+		return new double[] { (r[0] + r[2] / 2.0) * s, (r[1] + r[3] / 2.0) * s };
+	}
+
 	public static String snapDrag(boolean start) {
 		var editor = (HudEditScreen) screen();
 		if (start) {

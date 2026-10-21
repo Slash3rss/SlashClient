@@ -56,6 +56,8 @@ public class HudEditScreen extends Screen {
 	private record Hit(int x, int y, int w, int h, Runnable action) {}
 
 	private final List<Hit> hits = new ArrayList<>();
+	/** Where each card was drawn last (x, y, w, h): for the in-game test that puts the mouse on one. */
+	static final java.util.Map<String, int[]> CARDS = new java.util.HashMap<>();
 
 	public HudEditScreen() {
 		super(Component.translatable("slashclient-hud.editor"));
@@ -632,6 +634,7 @@ public class HudEditScreen extends Screen {
 		if (shown.isEmpty()) Ui.centered(g, Ui.tr("slashclient-hud.ui.nothing"), x + w / 2, y + 30, Ui.MUTED);
 		g.enableScissor(x, y, x + w, y + h);
 		Ui.beginClip("card list", x, y, w, h);
+		CARDS.clear();
 		for (int i = 0; i < shown.size(); i++) {
 			Catalog.Entry e = shown.get(i);
 			int px = x + (i % cols) * (cardW + gap);
@@ -651,6 +654,7 @@ public class HudEditScreen extends Screen {
 	}
 
 	private void drawCard(GuiGraphicsExtractor g, int mx, int my, Catalog.Entry e, int x, int y, int w, int h, boolean clickable) {
+		CARDS.put(e.id(), new int[] { x, y, w, h });
 		boolean on = e.hasSwitch() && e.get().get();
 		float t = Ui.hover("card:" + e.id(), clickable && Ui.inside(mx, my, x, y, w, h));
 		Ui.round(g, x, y, w, h, 5, Ui.blend(Ui.CARD, Ui.CARD_HOVER, t));
@@ -658,7 +662,8 @@ public class HudEditScreen extends Screen {
 		// the icon sits on a small tile, blue when the module is on: the same icons as the launcher and the menu
 		Ui.round(g, x + w / 2 - 13, y + 7, 26, 26, 5, on ? 0xFF1B2B4D : 0xFF202839);
 		Ui.icon(g, e.icon(), x + w / 2 - 8, y + 12, 16, on ? Ui.ACCENT_LIGHT : Ui.blend(Ui.TEXT_2, Ui.TEXT, t));
-		Ui.centered(g, Ui.fit(Ui.trBold(e.nameKey()), w - 10), x + w / 2, y + 38, Ui.TEXT);
+		// a name too long for the card slides through while the mouse is on it
+		Ui.marquee(g, "card:" + e.id(), Ui.trBold(e.nameKey()), x + w / 2, y + 38, w - 10, Ui.TEXT, clickable && Ui.inside(mx, my, x, y, w, h));
 		boolean gear = !e.settings().isEmpty();
 		if (e.hasSwitch()) {
 			Ui.toggle(g, e.id(), x + 8, y + h - 16, on);

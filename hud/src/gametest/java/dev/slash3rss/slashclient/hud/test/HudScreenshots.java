@@ -145,6 +145,19 @@ public class HudScreenshots implements FabricClientGameTest {
 				context.setScreen(() -> dev.slash3rss.slashclient.hud.Compat.chatScreen());
 				context.waitTicks(3);
 				context.takeScreenshot("size-" + name(sz) + "-chat");
+				if (sz[0] == 1920 && sz[2] == 2) {
+					// a card's name too long for it slides through while the mouse is on the card
+					context.setScreen(() -> HudEditScreen.category("chat"));
+					context.waitTicks(5);
+					double[] card = context.computeOnClient(mc -> TestHooks.cardCenter("chatWindowsOnly"));
+					if (card == null) throw new AssertionError("the card of pulled-out tabs is not on the screen");
+					context.getInput().setCursorPos(card[0], card[1]);
+					context.waitTicks(10);
+					context.takeScreenshot("hud-card-name-start");
+					context.waitTicks(50);
+					context.takeScreenshot("hud-card-name-slid");
+					context.getInput().setCursorPos(0, 0);
+				}
 			}
 			size(context, SIZES[1]);
 			context.runOnClient(mc -> TestHooks.reportAudit());
