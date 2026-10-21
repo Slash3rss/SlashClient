@@ -17,7 +17,7 @@ public class GameCosmeticsScreen implements FabricClientGameTest {
 	private static final String[] HATS = {"tophat", "crown", "cap", "beanie", "wizard", "halo"};
 	private static final String[] TOPS = {"scarf", "bowtie", "tie", "medal", "jacket", "autumnscarf"};
 	/** Window width, height and GUI scale. */
-	private static final int[][] SIZES = {{854, 480, 2}, {1280, 720, 2}, {1920, 1080, 3}, {1920, 1080, 4}};
+	private static final int[][] SIZES = {{854, 480, 2}, {640, 480, 2}, {1280, 720, 2}, {1376, 986, 2}, {1920, 1080, 3}, {1920, 1080, 4}, {2560, 1440, 2}};
 
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -33,6 +33,7 @@ public class GameCosmeticsScreen implements FabricClientGameTest {
 			context.getInput().resizeWindow(s[0], s[1]);
 			context.runOnClient(mc -> TestHooks.guiScale(s[2]));
 			shots(context, "menu-" + s[0] + "x" + s[1] + "-" + s[2], false);
+			layout(context, s);
 		}
 		context.getInput().resizeWindow(854, 480);
 		context.runOnClient(mc -> TestHooks.guiScale(2));
@@ -67,6 +68,30 @@ public class GameCosmeticsScreen implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.wear("hat", null));
 			context.runOnClient(mc -> TestHooks.firstPerson());
 			context.runOnClient(mc -> TestHooks.endOnVanillaMenu());
+		}
+	}
+
+	/**
+	 * The panel as big as the screen leaves beside the figure: never over it (with room for open
+	 * wings, half a box to each side), all the slot tabs without scrolling and more tiles in a row
+	 * where there is room; on small screens at least the six tiles a row it always had.
+	 */
+	private static void layout(ClientGameTestContext context, int[] size) {
+		context.runOnClient(mc -> TestHooks.cosmeticsSlot("hat"));
+		context.waitTicks(3);
+		int[] p = context.computeOnClient(mc -> TestHooks.cosmeticsLayout());
+		float[] f = context.computeOnClient(mc -> TestHooks.cosmeticsFigure());
+		// the GUI's size (the game may use a lower scale than asked for on a small window)
+		int w = (int) Math.ceil(size[0] / f[5]), h = (int) Math.ceil(size[1] / f[5]);
+		String at = size[0] + "x" + size[1] + " at " + f[5] + ": panel " + java.util.Arrays.toString(p) + ", figure " + java.util.Arrays.toString(f);
+		if (p[0] < 12 || p[0] + p[2] > w - 12 || p[1] < 12 || p[1] + p[3] > h - 12) throw new AssertionError("The cosmetics panel leaves the screen's margins, " + at);
+		if (p[6] < 6) throw new AssertionError("Fewer than six tiles in a row, " + at);
+		if (f[2] > 0 && f[0] + f[2] * 1.5f > p[0] - 6) throw new AssertionError("The cosmetics panel covers the figure, " + at);
+		if (h >= 400) {
+			if (p[3] < h - 24) throw new AssertionError("The cosmetics panel is not as tall as the screen, " + at);
+			if (p[5] < p[4]) throw new AssertionError("The slot tabs scroll on a big screen, " + at);
+			if (w >= 600 && p[6] < 9) throw new AssertionError("Too few tiles in a row on a big screen, " + at);
+			if (f[3] < 240) throw new AssertionError("The figure shrank on a big screen, " + at);
 		}
 	}
 
