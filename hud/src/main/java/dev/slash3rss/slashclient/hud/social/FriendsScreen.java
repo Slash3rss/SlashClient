@@ -833,7 +833,8 @@ public class FriendsScreen extends Screen {
 			if (custom != null) role = "member".equals(m.role()) ? Ui.text(custom.name()).withStyle(s -> s.withColor(custom.color()))
 				: Component.empty().append(role).append(Ui.text(" · " + custom.name()).withStyle(s -> s.withColor(custom.color())));
 			// the nick keeps at least half the row
-			if (custom != null) role = Ui.fit(role, (colW - 30) / 2);
+			// both too long: the custom role alone (the built-in one shows in the chat)
+			if (custom != null && Ui.width(role) > (colW - 30) / 2) role = Ui.fit(Ui.text(custom.name()).withStyle(s -> s.withColor(custom.color())), (colW - 30) / 2);
 			int roleW = Ui.width(role);
 			Ui.draw(g, Ui.fit(Ui.bold(m.name()), colW - 6 - 16 - roleW - 8), rx + 15, y + 4, m.online() ? Ui.TEXT : Ui.MUTED);
 			Ui.draw(g, role, rx + colW - 6 - roleW - 6, y + 4, "owner".equals(m.role()) ? 0xFFFBBF24 : "admin".equals(m.role()) ? 0xFFFCA5A5 : 0xFF93C5FD);
