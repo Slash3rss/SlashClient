@@ -1,7 +1,7 @@
 // The landing page: download button for the visitor's system, the screenshot that straightens
 // as you scroll, sections that fade in and the capes. The words, the modules, the features and
 // the FAQ come in the page from the server (edited in the admin panel's "Strona główna").
-import { $, animateCape, api, el, icon, token } from './common.js';
+import { $, animateCape, api, el, icon, motionOff, token } from './common.js';
 
 const EN = document.documentElement.lang === 'en';
 
@@ -111,7 +111,8 @@ if (stage) {
         $('#cosmetic-3d-caption').textContent = EN ? en : pl;
       };
       next();
-      setInterval(() => { if (!document.hidden) next(); }, 4500);
+      // the sets change by themselves only with animations on
+      setInterval(() => { if (!document.hidden && !motionOff()) next(); }, 4500);
     } catch {
       stage.classList.add('hidden');
     }

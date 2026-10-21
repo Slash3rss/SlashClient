@@ -185,7 +185,10 @@ const framesOfCapes = () => capeFrames ??= fetch('/v1/cosmetics')
   .then(({ items }) => new Map((items ?? []).filter((i) => i.slot === 'cape' && i.frames > 1).map((i) => [i.id, i.frames])))
   .catch(() => new Map());
 
-/** Makes a cape's picture (an element with the cape as its background) play its frames while it is on the page. */
+/** Whether animations are off: "Animacje: wył." in the footer (siteBanner.js), or the system's reduced motion. */
+export const motionOff = () => document.documentElement.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** Makes a cape's picture (an element with the cape as its background) play its frames while it is on the page (still with animations off). */
 export function animateCape(node, id) {
   node.dataset.capeAnim = id;
   void framesOfCapes().then((frames) => {
@@ -194,7 +197,7 @@ export function animateCape(node, id) {
     // the frames loaded ahead, so turning them does not flicker
     for (let f = 0; f < n; f++) new Image().src = `/vendor/capes/${id}_${f}.png`;
     capeTimer ??= setInterval(() => {
-      if (document.hidden) return;
+      if (document.hidden || motionOff()) return;
       capeTick++;
       const all = document.querySelectorAll('[data-cape-anim]');
       for (const c of all) {

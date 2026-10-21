@@ -6,6 +6,9 @@
 // The code is the launcher's, bundled as /vendor/preview3d.js (window.SlashPreview); the game's
 // pictures are in /vendor/mc (listed in index.json).
 
+/** Whether animations are off: "Animacje: wył." in the footer (siteBanner.js), or the system's reduced motion. */
+const still = () => document.documentElement.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 /** Capes drawn as a loop of frames (vendor/capes/<id>_<n>.png), as in the game. */
 const ANIMATED = new Map([
   ...['aurora', 'inferno', 'waves', 'pulse', 'matrix', 'storm', 'vortex', 'starfall', 'skyup_chmury'].map((id) => [id, 8]),
@@ -55,8 +58,13 @@ export class Preview {
     box.append(canvas);
     this.viewer = new lib.SkinViewer({ canvas, width, height, zoom: 0.85 });
     this.viewer.animation = new lib.IdleAnimation();
-    // no spinning with "Animacje: wył." (siteBanner.js) or the system's reduced motion
-    this.viewer.autoRotate = !(document.documentElement.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches);
+    // "Animacje: wył." (siteBanner.js) or the system's reduced motion: the figure stands still, now and when switched
+    const applyMotion = () => {
+      this.viewer.autoRotate = !still();
+      if (this.viewer.animation) this.viewer.animation.paused = still();
+    };
+    addEventListener('slashclient-motion', applyMotion);
+    applyMotion();
     this.viewer.autoRotateSpeed = 0.6;
     this.viewer.controls.enableZoom = false;
     this.cosmetics = new lib.CosmeticPreview(this.viewer, pictures, '/vendor/clothing/', '/vendor/pets/', '/vendor/suits/', '/vendor/held/', '/vendor/gear/', '/vendor/rings/', '/vendor/props/', '/vendor/particles/');
@@ -97,7 +105,7 @@ export class Preview {
         const id = worn.cape;
         const frames = ANIMATED.get(id);
         this.capeTimer = setInterval(() => {
-          if (!document.hidden) this.viewer.loadCape(`/vendor/capes/${id}_${f = (f + 1) % frames}.png`, { backEquipment: 'cape' });
+          if (!document.hidden && !still()) this.viewer.loadCape(`/vendor/capes/${id}_${f = (f + 1) % frames}.png`, { backEquipment: 'cape' });
         }, 150);
       }
     } else this.viewer.loadCape(null);

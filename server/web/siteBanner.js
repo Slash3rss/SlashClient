@@ -27,6 +27,8 @@ function applyMotion() {
     button.title = english() ? 'Fewer animations, for slower computers' : 'Mniej animacji, dla słabszych komputerów';
     button.setAttribute('aria-pressed', String(off));
   }
+  // the 3D figures (preview.js) stop or start turning
+  dispatchEvent(new Event('slashclient-motion'));
 }
 applyMotion();
 const footRow = document.querySelector('footer.foot .foot-row') ?? document.querySelector('footer.foot');
