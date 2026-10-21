@@ -27,6 +27,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * ones toggled from the message's menu or by clicking a count), the quote of the message a reply
  * answers, pinned messages marked, a channel's slow mode (a countdown above the field) and the
  * timeout ("Wyciszony do …"); `community-reaction` and `community-pin` keep them current.
+ *
+ * Server 0.9.30+: own channels (`kind` "custom", by their name; one we may not read never comes) and
+ * custom roles: an author's or a member's `customRole` { name, color } shows by their nick, in its
+ * colour. Managing channels and roles stays in the launcher.
  */
 public final class Communities {
 	private Communities() {}
@@ -99,6 +103,32 @@ public final class Communities {
 	}
 
 	public record Member(String id, String name, String role, boolean online) {}
+
+	/** A custom role by a nick (server 0.9.30+): its name and colour (0xRRGGBB). */
+	public record RoleTag(String name, int color) {}
+
+	/** The custom role of each member we have seen ("community/user"), from their messages and the members' list. */
+	private static final Map<String, RoleTag> customRoles = new ConcurrentHashMap<>();
+
+	/** Their custom role in that community, or null. */
+	public static RoleTag customRole(String communityId, String userId) {
+		return customRoles.get(communityId + "/" + userId);
+	}
+
+	/** What the server says of someone's custom role now (an author or a member): kept, or gone when it sends none. */
+	static void noteRole(String communityId, String userId, JsonObject holder) {
+		if (communityId.isEmpty() || userId.isEmpty()) return;
+		JsonObject r = holder.has("customRole") && holder.get("customRole").isJsonObject() ? holder.getAsJsonObject("customRole") : null;
+		String key = communityId + "/" + userId;
+		if (r == null || Social.str(r, "name").isEmpty()) {
+			customRoles.remove(key);
+			return;
+		}
+		int color = 0x94A3B8;
+		String hex = Social.str(r, "color");
+		if (hex.matches("#[0-9a-fA-F]{6}")) color = Integer.parseInt(hex.substring(1), 16);
+		customRoles.put(key, new RoleTag(Social.str(r, "name"), color));
+	}
 
 	private static volatile List<Community> list = List.of();
 	private static final Map<String, List<Message>> chats = new ConcurrentHashMap<>();
@@ -177,6 +207,8 @@ public final class Communities {
 				reactions.add(new Reaction(Social.str(x, "emoji"), (int) Social.longOf(x, "count"), Social.bool(x, "me")));
 			}
 		}
+		// the author's custom role now (server 0.9.30+)
+		noteRole(Social.str(o, "community"), Social.str(o, "from"), a);
 		return new Message(o.get("id").getAsLong(), Social.str(o, "community"), Social.str(o, "channel"), Social.str(o, "from"), Social.str(a, "name"), Social.str(a, "role"),
 			Social.str(o, "text"), o.get("at").getAsLong(), Social.longOf(o, "editedAt"), Social.bool(o, "deleted"), Social.bool(o, "moderated"), List.copyOf(mentions),
 			q == null ? 0 : Social.longOf(q, "id"), Social.str(qa, "name"), q == null ? "" : Social.str(q, "text"), q != null && (Social.bool(q, "deleted") || !q.has("author")), List.copyOf(reactions), Social.bool(o, "pinned"));
@@ -396,6 +428,7 @@ public final class Communities {
 				for (JsonElement el : res.getAsJsonArray("members")) {
 					JsonObject m = el.getAsJsonObject();
 					l.add(new Member(Social.str(m, "id"), Social.str(m, "name"), Social.str(m, "role"), Social.bool(m, "online")));
+					noteRole(communityId, Social.str(m, "id"), m);
 				}
 				members.put(communityId, List.copyOf(l));
 				memberTotals.put(communityId, (int) Social.longOf(res, "total"));
@@ -498,6 +531,12 @@ public final class Communities {
 		members.clear();
 		members.putAll(sampleMembers);
 		for (var e : sampleMembers.entrySet()) memberTotals.put(e.getKey(), communities.stream().filter(c -> c.id().equals(e.getKey())).mapToInt(Community::members).findFirst().orElse(e.getValue().size()));
+	}
+
+	/** For the in-game test: custom roles ("community/user" → role) as the server would send them. */
+	public static void sampleRolesForTest(Map<String, RoleTag> roles) {
+		customRoles.clear();
+		customRoles.putAll(roles);
 	}
 
 	/** For the in-game test: an event as the launcher passes it on. */

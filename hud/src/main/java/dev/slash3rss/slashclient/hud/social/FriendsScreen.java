@@ -679,6 +679,9 @@ public class FriendsScreen extends Screen {
 			// the author's name, and their role when it is more than a member
 			Component name = Ui.bold(m.author().isEmpty() ? "?" : m.author());
 			if (!m.authorRole().isEmpty() && !"member".equals(m.authorRole())) name = Ui.bold(m.author() + " · ").append(Ui.tr("slashclient-hud.communities.role." + m.authorRole()));
+			// a custom role (server 0.9.30+): its name in its colour
+			Communities.RoleTag custom = Communities.customRole(m.community(), m.from());
+			if (custom != null) name = Component.empty().append(name).append(Ui.bold(" · " + custom.name()).withStyle(s -> s.withColor(custom.color())));
 			int nameColor = switch (m.authorRole()) {
 				case "owner" -> 0xFFFBBF24;
 				case "admin" -> 0xFFFCA5A5;
@@ -825,6 +828,12 @@ public class FriendsScreen extends Screen {
 			Ui.round(g, rx, y, colW - 6, 16, 4, Ui.CARD);
 			Ui.round(g, rx + 5, y + 5, 6, 6, 3, m.online() ? Ui.GREEN : Ui.MUTED);
 			Component role = "member".equals(m.role()) ? Component.empty() : Ui.tr("slashclient-hud.communities.role." + m.role());
+			// a custom role (server 0.9.30+) in its colour, after the built-in one
+			Communities.RoleTag custom = Communities.customRole(c.id(), m.id());
+			if (custom != null) role = "member".equals(m.role()) ? Ui.text(custom.name()).withStyle(s -> s.withColor(custom.color()))
+				: Component.empty().append(role).append(Ui.text(" · " + custom.name()).withStyle(s -> s.withColor(custom.color())));
+			// the nick keeps at least half the row
+			if (custom != null) role = Ui.fit(role, (colW - 30) / 2);
 			int roleW = Ui.width(role);
 			Ui.draw(g, Ui.fit(Ui.bold(m.name()), colW - 6 - 16 - roleW - 8), rx + 15, y + 4, m.online() ? Ui.TEXT : Ui.MUTED);
 			Ui.draw(g, role, rx + colW - 6 - roleW - 6, y + 4, "owner".equals(m.role()) ? 0xFFFBBF24 : "admin".equals(m.role()) ? 0xFFFCA5A5 : 0xFF93C5FD);
