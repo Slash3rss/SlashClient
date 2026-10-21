@@ -5,7 +5,8 @@ import type { CosmeticSetting } from './db.ts';
  * textures/wings, textures/clothing with the clothing's, shoes', hand, face and ears items' boxes in src/shared/clothing.ts, textures/suit with the
  * suits' in src/shared/suits.ts, textures/item/held, textures/gear with the back items' and tails' in src/shared/gear.ts,
  * textures/ring, textures/spray, textures/prop with the props' boxes in src/shared/props.ts; trails,
- * auras, kill effects, movement effects and pets are drawn from the game's own particles and mobs) and on the website (web/vendor);
+ * auras, kill effects, movement effects and pets are drawn from the game's own particles and mobs, the leaf auras' and leaf
+ * rings' falling leaves with pictures of ours in textures/particle) and on the website (web/vendor);
  * the server checks choices against these and the admin's settings.
  *
  * A player wears one item per slot. `rank` items are for that rank only (admins may wear all);
@@ -162,6 +163,9 @@ export const ITEMS: Item[] = [
   { id: 'nautilus', slot: 'aura', name: 'Głębiny', since: '0.9.2' },
   { id: 'tears', slot: 'aura', name: 'Łzy', since: '0.9.2' },
   { id: 'fireflies', slot: 'aura', name: 'Świetliki', since: '0.9.2' },
+  // autumn leaves of our own falling around the player: golden only, or red, brown and golden together
+  { id: 'leaves_gold', slot: 'aura', name: 'Złote liście', since: '0.9.29' },
+  { id: 'leaves_autumn', slot: 'aura', name: 'Jesienne liście', since: '0.9.29' },
   // pets: a small copy of one of the game's mobs flying at the shoulder
   { id: 'allay', slot: 'pet', name: 'Allay' },
   { id: 'vex', slot: 'pet', name: 'Vex' },
@@ -286,6 +290,9 @@ export const ITEMS: Item[] = [
   { id: 'ring_toxic', slot: 'ring', name: 'Toksyczny krąg', since: '0.9.20' },
   { id: 'ring_sparks', slot: 'ring', name: 'Krąg iskier', since: '0.9.22', price: 900 },
   { id: 'ring_ocean', slot: 'ring', name: 'Krąg fal', since: '0.9.22', price: 700 },
+  // autumn leaves lying under the feet (still, not turning), a few kicked up when walking; the same two colourings as the leaf auras
+  { id: 'ring_leaves_gold', slot: 'ring', name: 'Dywan złotych liści', since: '0.9.29' },
+  { id: 'ring_leaves_autumn', slot: 'ring', name: 'Dywan jesiennych liści', since: '0.9.29' },
   // movement effects: the game's particles when the wearer walks, jumps, lands, sprints, swims or shoots (seen only by SlashClient players)
   { id: 'move_steps', slot: 'move', name: 'Ślady stóp', since: '0.9.20' },
   { id: 'move_jump', slot: 'move', name: 'Obłoczek przy skoku', since: '0.9.20' },
