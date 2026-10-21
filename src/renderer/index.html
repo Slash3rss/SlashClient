@@ -518,6 +518,8 @@
 
     <section class="view" id="view-settings">
       <header class="view-head"><h2 class="gradient-title">Ustawienia</h2></header>
+      <!-- the cards side by side on a wide window, one under another on a narrow one -->
+      <div class="settings-grid">
       <form class="card glass-panel form" id="settings-form">
         <label class="field">Język
           <select name="language" id="language-select"></select>
@@ -536,6 +538,7 @@
           </select>
         </label>
         <label class="check"><input type="checkbox" name="closeOnLaunch"> Chowaj launcher podczas gry</label>
+        <label class="check"><input type="checkbox" name="reduceMotion"> Ogranicz animacje (dla słabszych komputerów)</label>
         <label class="check"><input type="checkbox" name="discordEnabled"> Pokazuj na Discordzie, w co grasz</label>
         <p class="muted">Folder danych: <code id="data-dir"></code></p>
         <div class="row update-row">
@@ -548,6 +551,7 @@
       <div class="card glass-panel disk-card" id="disk-card"></div>
       <div class="card glass-panel support-card" id="support-card"></div>
       <div class="card glass-panel legal-card" id="legal-card"></div>
+      </div>
     </section>
 
     <section class="view" id="view-wiki">

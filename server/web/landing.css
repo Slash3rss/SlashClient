@@ -173,6 +173,12 @@ html:has(body.landing) { overflow-x: clip; }
   .grad, .btn.glow::after, .marquee .track, .float-cape, .pill .dot { animation: none; }
   .hero-shot { transform: none; }
 }
+/* "Animacje: wył." in the footer (siteBanner.js): nothing moves, for slower computers */
+html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+html.reduce-motion .reveal { opacity: 1; transform: none; }
+html.reduce-motion .hero-shot { transform: none !important; }
+.foot-motion { background: none; border: 0; padding: 0; font: inherit; color: var(--text-2); cursor: pointer; }
+.foot-motion:hover { color: var(--text); }
 
 /* ---------- the account page ---------- */
 .account-page { padding-top: 28px !important; padding-bottom: 20px !important; }

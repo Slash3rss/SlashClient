@@ -974,6 +974,7 @@ const EN: Record<string, string> = {
   'Wyślij obraz': 'Send a picture',
   'Wyślij obraz (zaszyfrowany)': 'Send a picture (encrypted)',
   'Wysłać obraz?': 'Send this picture?',
+  'Ogranicz animacje (dla słabszych komputerów)': 'Fewer animations (for slower computers)',
   'Obraz zostanie zaszyfrowany i wysłany do tej rozmowy.': 'The picture will be encrypted and sent to this chat.',
   'Obraz zaszyfrowany dla innego urządzenia.': 'Picture encrypted for another device.',
   'Obrazu już nie ma na serwerze.': 'The picture is no longer on the server.',

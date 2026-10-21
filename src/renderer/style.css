@@ -249,6 +249,8 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+/* the same when the player asks for fewer animations in Settings */
+html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 
 /* ---------- servers ---------- */
 .sub { margin: 4px 0 0; font-size: 14px; }
@@ -1526,6 +1528,9 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 
 /* ---------- terms and privacy (legal.ts) ---------- */
 .legal-card { max-width: 680px; }
+/* Settings: the cards fill the window's width, in as many columns as fit (each at least 480 px), each column packed from the top */
+.settings-grid { columns: 480px; column-gap: 16px; }
+.settings-grid > .card { max-width: none; margin: 0 0 16px; break-inside: avoid; }
 .legal-card h3 i { color: var(--accent-light); }
 .legal-links { flex-wrap: wrap; gap: 8px; }
 .fr-signin .legal-note { display: block; margin-top: 14px; }

@@ -55,7 +55,8 @@ export class Preview {
     box.append(canvas);
     this.viewer = new lib.SkinViewer({ canvas, width, height, zoom: 0.85 });
     this.viewer.animation = new lib.IdleAnimation();
-    this.viewer.autoRotate = true;
+    // no spinning with "Animacje: wył." (siteBanner.js) or the system's reduced motion
+    this.viewer.autoRotate = !(document.documentElement.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches);
     this.viewer.autoRotateSpeed = 0.6;
     this.viewer.controls.enableZoom = false;
     this.cosmetics = new lib.CosmeticPreview(this.viewer, pictures, '/vendor/clothing/', '/vendor/pets/', '/vendor/suits/', '/vendor/held/', '/vendor/gear/', '/vendor/rings/', '/vendor/props/', '/vendor/particles/');

@@ -5,6 +5,49 @@
 const EN = !/^pl\b/i.test(navigator.language || 'pl');
 const CLOSED = 'slashclient.bannerClosed';
 
+// ---------- fewer animations: "Animacje: wł./wył." in every page's footer (remembered here) ----------
+const MOTION = 'slashclient.motion';
+const systemReduced = matchMedia('(prefers-reduced-motion: reduce)');
+const motionChoice = () => {
+  try {
+    return localStorage.getItem(MOTION);
+  } catch {
+    return null;
+  }
+};
+/** Off when the visitor turned animations off, or (not chosen) when the system asks for less motion. */
+const motionOff = () => (motionChoice() ? motionChoice() === 'off' : systemReduced.matches);
+const english = () => (document.documentElement.lang || '').startsWith('en') || (!document.documentElement.lang && EN);
+function applyMotion() {
+  document.documentElement.classList.toggle('reduce-motion', motionOff());
+  const button = document.querySelector('.foot-motion');
+  if (button) {
+    const off = motionOff();
+    button.textContent = english() ? `Animations: ${off ? 'off' : 'on'}` : `Animacje: ${off ? 'wył.' : 'wł.'}`;
+    button.title = english() ? 'Fewer animations, for slower computers' : 'Mniej animacji, dla słabszych komputerów';
+    button.setAttribute('aria-pressed', String(off));
+  }
+}
+applyMotion();
+const footRow = document.querySelector('footer.foot .foot-row') ?? document.querySelector('footer.foot');
+if (footRow) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'foot-motion small';
+  button.addEventListener('click', () => {
+    try {
+      localStorage.setItem(MOTION, motionOff() ? 'on' : 'off');
+    } catch {
+      // storage blocked: only for this page
+      document.documentElement.classList.toggle('reduce-motion');
+    }
+    applyMotion();
+  });
+  footRow.append(button);
+  applyMotion();
+}
+systemReduced.addEventListener('change', applyMotion);
+
 /** { features: { shop: true, … }, banner: … | null }; everything on when the server cannot be asked. */
 export const siteFeatures = fetch('/v1/features')
   .then((r) => (r.ok ? r.json() : undefined))

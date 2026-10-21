@@ -160,8 +160,11 @@ export class CosmeticPreview {
     this.moves = new MoveEffectPreview(viewer.playerWrapper, viewer.playerObject);
     this.props = new PropPreview(viewer, props);
     const tick = (now: number) => {
-      this.update(Math.min(0.1, (now - this.last) / 1000), now / 1000);
-      this.last = now;
+      // fewer animations (Settings): the effects move at 15 frames a second, not the screen's 60+
+      if (!document.documentElement.classList.contains('reduce-motion') || now - this.last >= 66) {
+        this.update(Math.min(0.1, (now - this.last) / 1000), now / 1000);
+        this.last = now;
+      }
       this.frame = requestAnimationFrame(tick);
     };
     this.frame = requestAnimationFrame(tick);

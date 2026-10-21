@@ -66,7 +66,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; launcherWindow?: string; defaultMemoryMb?: number; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; launcherWindow?: string; reduceMotion?: boolean; defaultMemoryMb?: number; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -1023,6 +1023,7 @@ function renderSettings() {
   const form = $<HTMLFormElement>('#settings-form');
   fillSelect($<HTMLSelectElement>('#language-select'), LANGUAGES.map((l) => ({ value: l.code, label: l.name })), getLang());
   (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked = store.settings.closeOnLaunch;
+  (form.elements.namedItem('reduceMotion') as HTMLInputElement).checked = !!store.settings.reduceMotion;
   (form.elements.namedItem('launcherWindow') as HTMLSelectElement).value = store.settings.launcherWindow ?? '';
   const memory = form.elements.namedItem('defaultMemoryMb') as HTMLInputElement;
   memory.max = String(Math.max(4096, Math.floor((store.systemMemoryMb - 2048) / 512) * 512));
@@ -1582,6 +1583,13 @@ api.on('login:code', ({ userCode, url, copied }: { userCode: string; url: string
 $('#settings-form').addEventListener('input', (e) => {
   const target = e.target as HTMLInputElement;
   if (target.name === 'defaultMemoryMb') $('#default-memory-value').textContent = `${target.value} MB`;
+});
+// fewer animations: at once too, without "Zapisz"
+$<HTMLInputElement>('#settings-form input[name="reduceMotion"]').addEventListener('change', async (e) => {
+  const reduceMotion = (e.target as HTMLInputElement).checked;
+  await guard(() => api.saveSettings({ reduceMotion }));
+  store.settings.reduceMotion = reduceMotion;
+  applyMotion();
 });
 // the window's size takes effect (and is kept) as soon as it is picked, without "Zapisz"
 $<HTMLSelectElement>('#settings-form select[name="launcherWindow"]').addEventListener('change', async (e) => {
@@ -3229,7 +3237,7 @@ async function renderSkin() {
     skinViewer.controls.enableZoom = false;
     updateSkinRendering();
   }
-  skinViewer.autoRotate = true;
+  skinViewer.autoRotate = !motionReduced();
   skinViewer.autoRotateSpeed = 0.6;
   skinViewer.animation ??= new IdleAnimation();
   const skin = await guard(() => api.getSkin(account.id));
@@ -3976,13 +3984,29 @@ document.querySelector('.nav[data-view="accounts"]')?.addEventListener('click', 
   loadLibrary();
 });
 
+// ---------- fewer animations (Settings, or the system's own setting) ----------
+
+const systemReduced = matchMedia('(prefers-reduced-motion: reduce)');
+/** Whether animations are kept to a minimum: the player's choice, or the system asks for it. */
+function motionReduced(): boolean {
+  return !!store?.settings?.reduceMotion || systemReduced.matches;
+}
+/** Starts or stops what moves: the page's transitions (CSS), the sky, the skin preview's spin. */
+function applyMotion() {
+  document.documentElement.classList.toggle('reduce-motion', motionReduced());
+  if (skinViewer) skinViewer.autoRotate = !motionReduced();
+  wakeStars();
+}
+systemReduced.addEventListener('change', applyMotion);
+let wakeStars = () => {};
+
 // ---------- starfield (as on lista.slash3rss.dev) ----------
 
 function startStars() {
   const canvas = $<HTMLCanvasElement>('#stars');
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let still = motionReduced();
   let stars: { x: number; y: number; r: number; phase: number; speed: number }[] = [];
 
   const resize = () => {
@@ -4018,8 +4042,15 @@ function startStars() {
   // the page is not woken up 60 times a second just to skip most frames.
   let timer: ReturnType<typeof setTimeout> | undefined;
   const tick = () => {
+    still = motionReduced();
     draw(performance.now());
     timer = document.hidden || still ? undefined : setTimeout(tick, document.hasFocus() ? 66 : 250);
+  };
+  // the setting changed: the sky starts twinkling again, or is drawn once, still
+  wakeStars = () => {
+    clearTimeout(timer);
+    timer = undefined;
+    tick();
   };
   const wake = () => {
     if (timer === undefined && !still) tick();
@@ -4211,6 +4242,7 @@ function finishBoot() {
   try {
     startStars();
     store = await api.getStore();
+    applyMotion();
     applyLanguage(store.settings.language);
     loadNews();
     render();

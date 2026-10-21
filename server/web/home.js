@@ -122,10 +122,10 @@ if (stage) {
 // ---------- scroll effects ----------
 const nav = $('#nav');
 const shot = $('#hero-shot');
-const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('reduce-motion');
 function onScroll() {
   nav.classList.toggle('scrolled', scrollY > 10);
-  if (reduced || !shot) return;
+  if (reduced() || !shot) return;
   // the screenshot lies back at first and stands up as the page moves
   const t = Math.min(1, scrollY / 420);
   shot.style.setProperty('--tilt', `${(14 * (1 - t)).toFixed(2)}deg`);
