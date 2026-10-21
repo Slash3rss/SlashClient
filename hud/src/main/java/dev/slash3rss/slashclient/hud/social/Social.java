@@ -224,13 +224,26 @@ public final class Social {
 		}
 	}
 
+	/** The launcher sends screenshots to communities and shows their pictures (0.9.30+). */
+	private static volatile boolean communityMedia;
+
+	static boolean communityMedia() {
+		return communityMedia;
+	}
+
 	private static void refreshState() throws Exception {
 		JsonObject s = request("GET", "/state", null, 5);
 		signedIn = s.has("signedIn") && s.get("signedIn").getAsBoolean();
 		// older launchers do not say which events they pass on, and do not pass these on
 		boolean connected = !s.has("connected") || s.get("connected").isJsonNull() || s.get("connected").getAsBoolean();
 		boolean passes = false;
-		if (s.has("events") && s.get("events").isJsonArray()) for (JsonElement e : s.getAsJsonArray("events")) passes |= "cosmetics".equals(e.getAsString());
+		boolean media = false;
+		if (s.has("events") && s.get("events").isJsonArray()) for (JsonElement e : s.getAsJsonArray("events")) {
+			passes |= "cosmetics".equals(e.getAsString());
+			// a launcher that passes on poll results also sends screenshots to communities (0.9.30+)
+			media |= "community-poll".equals(e.getAsString());
+		}
+		communityMedia = media;
 		boolean was = cosmeticsEvents && reachable;
 		cosmeticsEvents = connected && passes;
 		// connected again (launcher or server): changes made meanwhile did not come, so everyone in sight is asked about anew
@@ -391,7 +404,7 @@ public final class Social {
 			// group chats and the clan
 			case "groups", "group-message", "clan", "group-message-edit", "group-message-delete" -> Groups.onEvent(e);
 			// communities: the list, their chat, and news (invited, accepted, kicked…)
-			case "communities", "community-message", "community-message-edit", "community-message-delete", "community" -> Communities.onEvent(e);
+			case "communities", "community-message", "community-message-edit", "community-message-delete", "community", "community-reaction", "community-pin", "community-poll" -> Communities.onEvent(e);
 			case "typing" -> typingUntil.put(str(e, "from"), System.currentTimeMillis() + 6_000);
 			// "Join" on a friend's invite in the launcher while this game runs
 			case "join" -> join(str(e, "server"));
@@ -571,6 +584,28 @@ public final class Social {
 		if (!bridged()) throw new IllegalStateException("no launcher");
 		try {
 			HttpRequest req = HttpRequest.newBuilder(URI.create(URL + "/chat/image/" + imageId))
+				.timeout(Duration.ofSeconds(30)).header("Authorization", "Bearer " + KEY).GET().build();
+			HttpResponse<byte[]> res = HTTP.send(req, HttpResponse.BodyHandlers.ofByteArray());
+			if (res.statusCode() != 200) throw new IllegalStateException("HTTP " + res.statusCode());
+			return res.body();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException(e);
+		} catch (java.io.IOException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	/** A call to the launcher's own bridge (not the server's API), for the other social classes; blocks. */
+	static JsonObject call(String method, String path, JsonObject body, int timeoutSec) throws Exception {
+		return request(method, path, body, timeoutSec);
+	}
+
+	/** A picture from a community's chat as PNG bytes (the launcher fetches it; not encrypted); blocks. */
+	static byte[] communityImageBytes(String communityId, String imageId) {
+		if (!bridged() || !communityId.matches("[\\w-]{1,32}") || !imageId.matches("[\\w-]{22}")) throw new IllegalStateException("no launcher");
+		try {
+			HttpRequest req = HttpRequest.newBuilder(URI.create(URL + "/community/image/" + communityId + "/" + imageId))
 				.timeout(Duration.ofSeconds(30)).header("Authorization", "Bearer " + KEY).GET().build();
 			HttpResponse<byte[]> res = HTTP.send(req, HttpResponse.BodyHandlers.ofByteArray());
 			if (res.statusCode() != 200) throw new IllegalStateException("HTTP " + res.statusCode());

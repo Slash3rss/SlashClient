@@ -4,6 +4,7 @@ import { confirmDialog, control, el, icon, modalWindow } from './dialog';
 import { editHint, editedLabel, openMenu, replaceMessage, tombstone, withMenu, type MenuItem } from './chatEdits';
 import { disabledText, featureOn } from './features';
 import { createCommunityLinks, linkLogName, type CommunityServer } from './communityLinks';
+import { createCommunityMedia, keepMyVotes, type CommunityImage, type Poll } from './communityMedia';
 
 /**
  * Communities ("Społeczności") in the Friends view: like a clan but big (up to a thousand players),
@@ -53,6 +54,8 @@ export interface CommunityMessage {
   id: number; community: string; channel: string; from: string; author: { name: string; handle: string; role?: CommunityRole };
   text: string; at: number; editedAt?: number; deleted?: boolean; moderated?: boolean; mentions?: string[];
   replyTo?: ReplyQuote; reactions?: Reaction[]; pinned?: boolean;
+  /** A picture or a poll (server 0.9.30+; the text is then what older launchers show). */
+  image?: CommunityImage; poll?: Poll;
 }
 interface Member extends Person { role: CommunityRole; joinedAt: number; status: string; online: boolean; mutedUntil?: number }
 
@@ -165,6 +168,8 @@ interface Deps {
     socialCommunityLogo?: (id: string, version: number) => Promise<string>;
     socialProfileUrl?: (handle: string, open?: boolean) => Promise<string>;
     pingServer?: (address: string) => Promise<any>;
+    socialSendCommunityImage?: (communityId: string, channelId: string, pasted?: Uint8Array) => Promise<any>;
+    socialCommunityImage?: (communityId: string, id: string) => Promise<string>;
   };
   toast: (message: string, isError?: boolean) => void;
   errorText: (err: unknown) => string;
@@ -189,7 +194,9 @@ export function createCommunities(deps: Deps) {
   let list: Community[] = [];
   let invites: { community: CommunitySummary; by: Person; at: number }[] = [];
   let requests: { community: CommunitySummary; at: number }[] = [];
-  let limits = { members: 1000, perPlayer: 10, owned: 3, message: 2000, description: 500 };
+  /** `imageBytes` and `pollOptions` come from a server with pictures and polls (0.9.30+). */
+  let limits: { members: number; perPlayer: number; owned: number; message: number; description: number; imageBytes?: number; pollOptions?: number } = { members: 1000, perPlayer: 10, owned: 3, message: 2000, description: 500 };
+  const media = createCommunityMedia({ api, toast: deps.toast, errorText: deps.errorText });
   let open: { community: string; channel: string } | undefined;
   let editingId: number | undefined;
   /** `nextPostAt`: when slow mode lets me write again; `pins`: how many are pinned there. */
@@ -394,6 +401,39 @@ export function createCommunities(deps: Deps) {
       return false;
     }
   }
+
+  /** A message with a picture or a poll in the open channel: slow mode and the rest as for a text. */
+  async function sendExtra(run: (at: { community: string; channel: string }) => Promise<{ message?: CommunityMessage; nextPostAt?: number } | undefined>): Promise<boolean> {
+    const at = open;
+    if (!at) return false;
+    const chat = chats.get(at.channel);
+    if (chat?.nextPostAt && chat.nextPostAt > Date.now()) return (deps.toast(t('Tryb powolny: możesz napisać za {0}.', waitText((chat.nextPostAt - Date.now()) / 1000)), true), false);
+    try {
+      const res = await run(at);
+      if (!res) return false;
+      if (chat && res.nextPostAt) chat.nextPostAt = res.nextPostAt;
+      if (res.message) addMessage(res.message);
+      renderNote();
+      return true;
+    } catch (err) {
+      const wait = /slow_mode:(\d+)/.exec(String((err as Error)?.message ?? ''));
+      if (wait && chat) {
+        chat.nextPostAt = Date.now() + Number(wait[1]) * 1000;
+        renderNote();
+      }
+      deps.toast(deps.errorText(err), true);
+      return false;
+    }
+  }
+
+  /** A poll to the open channel (the server writes the text older launchers show). */
+  const sendPoll = (poll: object) => sendExtra((at) => api.socialApi('POST', `/v1/communities/${at.community}/channels/${at.channel}/messages`, { poll, lang: locale().startsWith('en') ? 'en' : 'pl' }));
+
+  /** A picture to the open channel: picked, or pasted (`pasted`); the launcher scales it and makes it a JPEG. */
+  const sendPicture = (pasted?: Uint8Array) => sendExtra((at) => api.socialSendCommunityImage ? api.socialSendCommunityImage(at.community, at.channel, pasted) : Promise.resolve(undefined));
+
+  /** Whether the open channel takes pictures: a server that has them, the owner's switch on, and I may write here. */
+  const picturesHere = () => !!limits.imageBytes && !!api.socialSendCommunityImage && featureOn('chatImages') && composerState().canPost;
 
   /** Starts a reply to a message: a bar above the composer says to whom (Esc or × lets go). */
   function reply(m: CommunityMessage) {
@@ -696,14 +736,14 @@ export function createCommunities(deps: Deps) {
     const items: MenuItem[] = [];
     if (m.deleted) return items;
     if (composerState().canPost) items.push({ label: t('Odpowiedz'), icon: 'fa-reply', run: () => reply(m) });
-    if (mine && chat.editWindowMs && Date.now() - m.at < chat.editWindowMs) {
+    if (mine && chat.editWindowMs && Date.now() - m.at < chat.editWindowMs && !m.image && !m.poll) {
       items.push({ label: t('Edytuj'), icon: 'fa-pen', hint: editHint(m, chat.editWindowMs), run: () => {
         editingId = m.id;
         renderMessages();
         deps.edit(m);
       } });
     }
-    items.push({ label: t('Kopiuj'), icon: 'fa-copy', run: () => void navigator.clipboard.writeText(m.text).then(() => deps.toast(t('Skopiowano'))) });
+    if (!m.image) items.push({ label: t('Kopiuj'), icon: 'fa-copy', run: () => void navigator.clipboard.writeText(m.poll ? [m.poll.question, ...m.poll.options.map((o) => `• ${o.text}`)].join('\n') : m.text).then(() => deps.toast(t('Skopiowano'))) });
     if (communityMay(c.role, 'pin')) items.push({ label: m.pinned ? t('Odepnij') : t('Przypnij'), icon: m.pinned ? 'fa-thumbtack-slash' : 'fa-thumbtack', run: () => void setPinned(m, !m.pinned) });
     if (mine || communityMay(c.role, 'deleteMessage', m.author.role ?? 'member')) {
       items.push({ label: mine ? t('Usuń') : t('Usuń (moderacja)'), icon: 'fa-trash', danger: true, run: () => void deleteMessage(m, !mine) });
@@ -761,6 +801,8 @@ export function createCommunities(deps: Deps) {
       actions.push(b);
     };
     button('fa-users', t('Członkowie'), () => membersWindow(c));
+    // a poll in this channel, for those who may write here (server 0.9.30+)
+    if (limits.pollOptions && composerState().canPost) button('fa-square-poll-horizontal', t('Nowa ankieta'), () => media.pollWindow((poll) => sendPoll(poll), limits.pollOptions));
     const openChannel = c.channels.find((x) => x.id === open?.channel);
     const pins = open ? chats.get(open.channel)?.pins ?? 0 : 0;
     button('fa-thumbtack', t('Przypięte wiadomości'), () => pinsWindow(c), pins, ' fr-pins-btn');
@@ -830,6 +872,15 @@ export function createCommunities(deps: Deps) {
       if (m.deleted) {
         bubble = tombstone();
         if (m.moderated) bubble.title = t('Usunięta przez moderację');
+      } else if (m.poll) {
+        bubble = media.pollCard({ ...m, poll: m.poll }, {
+          canVote: canReact, canClose: m.from === my?.id || communityMay(c.role, 'pin'),
+          changed: (poll) => updateMessage(m.channel, m.id, (x) => ({ ...x, poll })),
+        });
+        if (m.pinned) bubble.append(el('i', { className: 'fa-solid fa-thumbtack fr-pinned-mark', title: t('Przypięta') }));
+      } else if (m.image) {
+        bubble = media.pictureCard(m.community, m.image, mine);
+        if (m.pinned) bubble.append(el('i', { className: 'fa-solid fa-thumbtack fr-pinned-mark', title: t('Przypięta') }));
       } else {
         const toMe = !!my && !!m.mentions?.includes(my.id);
         bubble = el('div', { className: `fr-bubble${toMe ? ' fr-mention' : ''}` }, ...mentionParts(m.text, my?.handle).map((p) => (p.mention ? el('b', { className: `fr-at${p.me ? ' me' : ''}`, textContent: p.text }) : p.text)));
@@ -1306,7 +1357,8 @@ export function createCommunities(deps: Deps) {
         if (seen) markRead();
         else if (shouldNotify(c, m, me())) {
           const title = `${c.name} · ${m.author.name}`;
-          const text = m.text.length > 120 ? `${m.text.slice(0, 117)}…` : m.text;
+          const plain = m.image ? t('wysyła zdjęcie') : m.poll ? t('Ankieta: {0}', m.poll.question) : m.text;
+          const text = plain.length > 120 ? `${plain.slice(0, 117)}…` : plain;
           if (!document.hasFocus()) void api.notify?.(title, text, { view: 'friends' }).catch(() => undefined);
           else deps.toast(t('{0}: {1}', title, text));
         }
@@ -1321,6 +1373,10 @@ export function createCommunities(deps: Deps) {
         // someone's emoji under a message here (mine too: from another launcher or the game)
         reactors.delete(e.message);
         updateMessage(e.channel, e.message, (m) => ({ ...m, reactions: applyReaction(m.reactions, e, me()) }));
+        return true;
+      case 'community-poll':
+        // a poll's results changed (someone voted, or it was closed): my own choices kept (a vote of mine from the game shows after the next page)
+        updateMessage(e.channel, e.message, (m) => (m.poll ? { ...m, poll: keepMyVotes(m.poll, e.poll) } : m));
         return true;
       case 'community-pin': {
         const m = e.message as CommunityMessage | undefined;
@@ -1358,7 +1414,7 @@ export function createCommunities(deps: Deps) {
   }
 
   return {
-    refresh, sections, onEvent, renderChat, send, saveEdit, loadOlder, markRead, composerState, cancelReply,
+    refresh, sections, onEvent, renderChat, send, saveEdit, loadOlder, markRead, composerState, cancelReply, sendPicture, picturesHere,
     /** The composer let go of the message it was editing. */
     stopEditing: () => {
       if (editingId === undefined) return;

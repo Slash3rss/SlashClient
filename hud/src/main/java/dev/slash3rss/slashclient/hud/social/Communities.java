@@ -27,6 +27,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * ones toggled from the message's menu or by clicking a count), the quote of the message a reply
  * answers, pinned messages marked, a channel's slow mode (a countdown above the field) and the
  * timeout ("Wyciszony do …"); `community-reaction` and `community-pin` keep them current.
+ *
+ * Server 0.9.30+: pictures (not encrypted: the launcher fetches the JPEG and hands over a PNG) and
+ * polls, kept beside the messages by id (`image`, `poll`); a screenshot is sent from the picker, a
+ * vote by clicking an answer, and `community-poll` moves the results live. Closing a poll and
+ * making one stay in the launcher.
  */
 public final class Communities {
 	private Communities() {}
@@ -164,6 +169,7 @@ public final class Communities {
 	}
 
 	static Message messageFrom(JsonObject o) {
+		extrasFrom(o, o.get("id").getAsLong());
 		JsonObject a = o.has("author") && o.get("author").isJsonObject() ? o.getAsJsonObject("author") : new JsonObject();
 		List<String> mentions = new ArrayList<>();
 		if (o.has("mentions") && o.get("mentions").isJsonArray()) for (JsonElement m : o.getAsJsonArray("mentions")) mentions.add(m.getAsString());
@@ -180,6 +186,129 @@ public final class Communities {
 		return new Message(o.get("id").getAsLong(), Social.str(o, "community"), Social.str(o, "channel"), Social.str(o, "from"), Social.str(a, "name"), Social.str(a, "role"),
 			Social.str(o, "text"), o.get("at").getAsLong(), Social.longOf(o, "editedAt"), Social.bool(o, "deleted"), Social.bool(o, "moderated"), List.copyOf(mentions),
 			q == null ? 0 : Social.longOf(q, "id"), Social.str(qa, "name"), q == null ? "" : Social.str(q, "text"), q != null && (Social.bool(q, "deleted") || !q.has("author")), List.copyOf(reactions), Social.bool(o, "pinned"));
+	}
+
+	// ---------- pictures and polls (server 0.9.30+) ----------
+
+	/** A picture in a channel: its size, or that it expired on the server. */
+	public record Image(String id, int w, int h, boolean expired) {}
+
+	/** A poll: the answers with their votes, one or several choices, its end (0: none), and our own choices. */
+	public record Poll(String question, List<String> options, List<Integer> votes, boolean multiple, int voters, long endsAt, boolean closed, List<Integer> mine) {
+		public boolean open() {
+			return !closed && (endsAt == 0 || endsAt > System.currentTimeMillis());
+		}
+
+		/** An answer's share in whole percent (several choices: of the voters). */
+		public int percent(int i) {
+			int total = total();
+			return total == 0 ? 0 : Math.round(votes.get(i) * 100f / total);
+		}
+
+		/** All votes cast (several choices: the voters). */
+		public int total() {
+			return multiple ? voters : votes.stream().mapToInt(Integer::intValue).sum();
+		}
+	}
+
+	private static final Map<Long, Image> images = new ConcurrentHashMap<>();
+	private static final Map<Long, Poll> polls = new ConcurrentHashMap<>();
+	/** The server has pictures in communities (its list says how big one may be). */
+	private static volatile boolean pictures;
+
+	/** A message's picture, or null. */
+	public static Image image(long messageId) {
+		return images.get(messageId);
+	}
+
+	/** A message's poll, or null. */
+	public static Poll poll(long messageId) {
+		return polls.get(messageId);
+	}
+
+	/** Whether we may send pictures to communities here (a launcher, and a server that has them). */
+	public static boolean picturesAllowed() {
+		return pictures && Social.bridged() && Social.communityMedia();
+	}
+
+	private static List<Integer> ints(JsonObject o, String key) {
+		List<Integer> out = new ArrayList<>();
+		if (o.has(key) && o.get(key).isJsonArray()) for (JsonElement x : o.getAsJsonArray(key)) out.add(x.getAsInt());
+		return List.copyOf(out);
+	}
+
+	/** A poll from the server; `old`: our choices when this one (pushed) has none. */
+	static Poll pollFrom(JsonObject p, Poll old) {
+		List<String> options = new ArrayList<>();
+		List<Integer> votes = new ArrayList<>();
+		if (p.has("options") && p.get("options").isJsonArray()) {
+			for (JsonElement el : p.getAsJsonArray("options")) {
+				JsonObject o = el.getAsJsonObject();
+				options.add(Social.str(o, "text"));
+				votes.add((int) Social.longOf(o, "votes"));
+			}
+		}
+		List<Integer> mine = p.has("mine") ? ints(p, "mine") : old != null ? old.mine() : List.of();
+		return new Poll(Social.str(p, "question"), List.copyOf(options), List.copyOf(votes), Social.bool(p, "multiple"), (int) Social.longOf(p, "voters"), Social.longOf(p, "endsAt"), Social.bool(p, "closed"), mine);
+	}
+
+	/** What a message carries besides its text, kept by its id (a deleted one has none). */
+	private static void extrasFrom(JsonObject o, long id) {
+		if (o.has("image") && o.get("image").isJsonObject()) {
+			JsonObject i = o.getAsJsonObject("image");
+			images.put(id, new Image(Social.str(i, "id"), (int) Social.longOf(i, "w"), (int) Social.longOf(i, "h"), Social.bool(i, "expired")));
+		} else images.remove(id);
+		if (o.has("poll") && o.get("poll").isJsonObject()) polls.put(id, pollFrom(o.getAsJsonObject("poll"), polls.get(id)));
+		else polls.remove(id);
+	}
+
+	/** A screenshot to a channel: the launcher makes it a JPEG and sends it (not encrypted: the community's members see it). */
+	public static void sendImage(String communityId, String channelId, java.io.File png) {
+		JsonObject body = new JsonObject();
+		body.addProperty("community", communityId);
+		body.addProperty("channel", channelId);
+		body.addProperty("path", png.getAbsolutePath());
+		Thread.ofVirtual().start(() -> {
+			try {
+				if (!Social.bridged()) throw new IllegalStateException("no launcher");
+				JsonObject res = Social.call("POST", "/chat/image", body, 60);
+				Message m = messageFrom(res.getAsJsonObject("message"));
+				List<Message> chat = chats.computeIfAbsent(channelId, k -> new CopyOnWriteArrayList<>());
+				if (chat.stream().noneMatch(x -> x.id() == m.id())) chat.add(m);
+				bump(m, false);
+			} catch (Exception e) {
+				String msg = e.getMessage() == null ? "" : e.getMessage();
+				String key = msg.contains("image_quota") ? "slashclient-hud.picture.quota" : msg.contains("too_large") ? "slashclient-hud.picture.tooLarge" : "slashclient-hud.picture.failed";
+				boolean told = msg.contains("slow_") || msg.contains("community_muted");
+				Social.toast(Component.translatable("slashclient-hud.picture.notSent").getString(), told ? Social.errorText(e) : Component.translatable(key).getString(), "info");
+			}
+		});
+	}
+
+	/** A click on an answer: one choice swaps (or is taken back), several toggle; the results come back at once. */
+	public static void vote(Message m, int option) {
+		Poll p = poll(m.id());
+		if (p == null || !p.open()) return;
+		List<Integer> next = new ArrayList<>(p.mine());
+		if (next.contains(option)) next.remove(Integer.valueOf(option));
+		else {
+			if (!p.multiple()) next.clear();
+			next.add(option);
+		}
+		next.sort(null);
+		JsonObject body = new JsonObject();
+		com.google.gson.JsonArray options = new com.google.gson.JsonArray();
+		for (int o : next) options.add(o);
+		body.add("options", options);
+		Thread.ofVirtual().start(() -> {
+			try {
+				JsonObject res = Social.api("POST", "/v1/communities/" + m.community() + "/channels/" + m.channel() + "/messages/" + m.id() + "/vote", body);
+				JsonObject msg = res.getAsJsonObject("message");
+				if (msg != null && msg.has("poll") && msg.get("poll").isJsonObject()) polls.put(m.id(), pollFrom(msg.getAsJsonObject("poll"), null));
+			} catch (Exception e) {
+				Social.toast(Component.translatable("slashclient-hud.poll.notVoted").getString(), Social.errorText(e), "info");
+			}
+		});
 	}
 
 	/** Our reactions after someone's change (`count`: that emoji's number now); emoji nobody has any more go. */
@@ -205,6 +334,9 @@ public final class Communities {
 			JsonObject res = Social.api("GET", "/v1/communities/mine", null);
 			List<Community> next = new ArrayList<>();
 			for (JsonElement el : res.getAsJsonArray("communities")) next.add(communityFrom(el.getAsJsonObject()));
+			// pictures in communities: a server that has them says how big one may be (0.9.30+)
+			JsonObject limits = res.has("limits") && res.get("limits").isJsonObject() ? res.getAsJsonObject("limits") : new JsonObject();
+			pictures = Social.longOf(limits, "imageBytes") > 0;
 			sort(next);
 			list = List.copyOf(next);
 		} catch (Exception e) {
@@ -237,7 +369,7 @@ public final class Communities {
 				boolean open = m.channel().equals(viewing);
 				bump(m, !mine && !open);
 				if (open && !mine) markRead(c.id(), m.channel());
-				else if (!mine && ("all".equals(c.notifyMode()) || "mentions".equals(c.notifyMode()) && m.mentionsMe())) Social.toast(c.name() + " · " + m.author(), m.text(), "m-players");
+				else if (!mine && ("all".equals(c.notifyMode()) || "mentions".equals(c.notifyMode()) && m.mentionsMe())) Social.toast(c.name() + " · " + m.author(), toastText(m), "m-players");
 			}
 			case "community-message-edit", "community-message-delete" -> {
 				if (e.has("message") && e.get("message").isJsonObject()) replaced(messageFrom(e.getAsJsonObject("message")));
@@ -247,6 +379,11 @@ public final class Communities {
 				String emoji = Social.str(e, "emoji");
 				boolean mine = Social.str(e, "user").equals(Social.myId());
 				update(Social.str(e, "channel"), Social.longOf(e, "message"), m -> m.withReactions(applyReaction(m.reactions(), emoji, (int) Social.longOf(e, "count"), mine, Social.bool(e, "on"))));
+			}
+			case "community-poll" -> {
+				// a poll's results after someone's vote, or it was closed (our choices kept: the pushed one has none)
+				long id = Social.longOf(e, "message");
+				if (e.has("poll") && e.get("poll").isJsonObject() && polls.containsKey(id)) polls.put(id, pollFrom(e.getAsJsonObject("poll"), polls.get(id)));
 			}
 			case "community-pin" -> {
 				if (!e.has("message") || !e.get("message").isJsonObject()) return;
@@ -273,6 +410,13 @@ public final class Communities {
 			}
 			default -> {}
 		}
+	}
+
+	/** A message as a toast says it: a picture and a poll in the game's language. */
+	private static String toastText(Message m) {
+		if (image(m.id()) != null) return Component.translatable("slashclient-hud.picture.community").getString();
+		Poll p = poll(m.id());
+		return p != null ? Component.translatable("slashclient-hud.poll.toast", p.question()).getString() : m.text();
 	}
 
 	/** One more message: up the list, unread (and a mention) unless it is open or ours. */
@@ -431,7 +575,8 @@ public final class Communities {
 	/** Our own text, within the window the server gave with the history. */
 	public static boolean canEdit(Message m) {
 		long window = editWindows.getOrDefault(m.channel(), 0L);
-		return window > 0 && m.from().equals(Social.myId()) && !m.deleted() && System.currentTimeMillis() - m.at() < window;
+		// a picture or a poll is not edited
+		return window > 0 && m.from().equals(Social.myId()) && !m.deleted() && System.currentTimeMillis() - m.at() < window && image(m.id()) == null && poll(m.id()) == null;
 	}
 
 	/** Our own any time; others' when our role is above the author's (the server checks it again). */

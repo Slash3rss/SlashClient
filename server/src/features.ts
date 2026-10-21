@@ -92,5 +92,7 @@ export function featuresFor(method: string, path: string, groupClan: (id: string
   if (/^\/v1\/me\/streams(\/|$)/.test(path) || /^\/v1\/streams\/(twitch|kick)\/callback$/.test(path)) out.push('streams');
   // a picture to a friend or to a group
   if (method === 'POST' && (/^\/v1\/images\/[\w-]+$/.test(path) || /^\/v1\/groups\/[\w-]+\/images$/.test(path))) out.push('chatImages');
+  // and to a community's channel (server 0.9.30+)
+  if (method === 'POST' && /^\/v1\/communities\/[\w-]+\/channels\/[\w-]+\/images$/.test(path)) out.push('chatImages');
   return out;
 }

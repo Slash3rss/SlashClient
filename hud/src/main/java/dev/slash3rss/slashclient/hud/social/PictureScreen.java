@@ -13,6 +13,9 @@ public class PictureScreen extends Screen {
 	private final String imageId;
 	private final String from;
 
+	/** Set for a picture from a community's chat (not encrypted; fetched by its community). */
+	private String communityId;
+
 	public PictureScreen(Screen parent, String imageId, String from) {
 		super(Component.translatable("slashclient-hud.picture.view"));
 		this.parent = parent;
@@ -20,12 +23,19 @@ public class PictureScreen extends Screen {
 		this.from = from;
 	}
 
+	/** A picture from a community's chat. */
+	public static PictureScreen forCommunity(Screen parent, String communityId, String imageId, String from) {
+		PictureScreen s = new PictureScreen(parent, imageId, from);
+		s.communityId = communityId;
+		return s;
+	}
+
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		//#if MC < 1.20.2
 		//$ extractBackground(g, mx, my, delta);
 		//#endif
-		ChatImages.Texture tex = ChatImages.chat(imageId);
+		ChatImages.Texture tex = communityId != null ? ChatImages.community(communityId, imageId) : ChatImages.chat(imageId);
 		if (tex.ready()) {
 			int[] size = ChatImages.fit(tex.w(), tex.h(), width - 40, height - 50);
 			int x = (width - size[0]) / 2, y = (height - 14 - size[1]) / 2;

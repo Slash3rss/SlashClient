@@ -52,6 +52,17 @@ public class ShotPickerScreen extends Screen {
 		return s;
 	}
 
+	/** Set when the picture goes to a community's channel (not encrypted: its members see it). */
+	private String communityId, channelId;
+
+	/** The picker for a community's channel (`title`: the community's name). */
+	public static ShotPickerScreen forCommunity(Screen parent, String communityId, String channelId, String title) {
+		ShotPickerScreen s = new ShotPickerScreen(parent, null, title);
+		s.communityId = communityId;
+		s.channelId = channelId;
+		return s;
+	}
+
 	/** The newest PNGs in this game's screenshots folder. */
 	static List<File> newest(int n) {
 		File[] files = new File(net.minecraft.client.Minecraft.getInstance().gameDirectory, "screenshots").listFiles((d, name) -> name.endsWith(".png"));
@@ -80,7 +91,7 @@ public class ShotPickerScreen extends Screen {
 		Ui.icon(g, "m-screenshot", px + 10, py + 10, 10, Ui.ACCENT_LIGHT);
 		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.picture.pickTitle", friendName), pw - 60), px + 25, py + 10, Ui.TEXT);
 		Ui.icon(g, "lock", px + 10, py + 22, 8, Ui.MUTED);
-		Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.picture.private", friendName), pw - 40), px + 22, py + 22, Ui.MUTED);
+		Ui.draw(g, Ui.fit(Ui.tr(communityId != null ? "slashclient-hud.picture.public" : "slashclient-hud.picture.private", friendName), pw - 40), px + 22, py + 22, Ui.MUTED);
 		g.fill(px + 8, py + 34, px + pw - 8, py + 35, Ui.BORDER);
 
 		if (shots.isEmpty()) {
@@ -120,7 +131,8 @@ public class ShotPickerScreen extends Screen {
 	}
 
 	private void send(File f) {
-		if (groupId != null) Social.sendGroupImage(groupId, f);
+		if (communityId != null) Communities.sendImage(communityId, channelId, f);
+		else if (groupId != null) Social.sendGroupImage(groupId, f);
 		else Social.sendImage(friendId, f, null);
 		if (f.equals(dev.slash3rss.slashclient.hud.Shots.recent())) dev.slash3rss.slashclient.hud.Shots.forgetRecent();
 		Social.toast(friendName, Component.translatable("slashclient-hud.picture.sending").getString(), "m-screenshot");
