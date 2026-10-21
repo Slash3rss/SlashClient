@@ -151,6 +151,15 @@ export function socialErrorText(code: string): string {
     bad_reaction: t('Tej reakcji nie można dodać.'),
     too_many_reactions: t('Pod tą wiadomością jest już najwięcej różnych reakcji.'),
     too_many_pins: t('W tym kanale przypięto już najwięcej wiadomości. Najpierw odepnij którąś.'),
+    // own channels and custom roles (server 0.9.30+)
+    too_many_channels: t('Ta społeczność ma już najwięcej kanałów. Usuń któryś.'),
+    bad_channel_name: t('Nazwa kanału: 2–24 znaki – litery, cyfry, - i _.'),
+    channel_taken: t('Kanał o tej nazwie już jest.'),
+    builtin_channel: t('Wbudowanego kanału nie można przemianować, ukryć ani usunąć.'),
+    too_many_roles: t('Ta społeczność ma już najwięcej własnych ról. Usuń którąś.'),
+    bad_role_name: t('Nazwa roli: 1–24 znaki.'),
+    role_taken: t('Rola o tej nazwie już jest.'),
+    bad_color: t('Wybierz kolor roli.'),
     // the shop (sparks from achievements)
     not_enough_sparks: t('Za mało Iskier.'),
     owned: t('Masz już ten przedmiot.'),

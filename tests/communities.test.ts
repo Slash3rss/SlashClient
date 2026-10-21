@@ -20,7 +20,7 @@ describe('communities in the Friends view', () => {
             const below = target !== undefined && RANK[target] < r;
             const want = {
               invite: r >= 1, requests: r >= 1, reports: r >= 1, pin: r >= 1, slowMode: r >= 2, kick: r >= 1 && below, mute: r >= 1 && below, deleteMessage: r >= 1 && below,
-              ban: r >= 2 && below, edit: r >= 2, announce: r >= 2, log: r >= 2, setRole: r >= 2 && below && next !== undefined && next !== 'owner' && RANK[next] < r,
+              ban: r >= 2 && below, edit: r >= 2, announce: r >= 2, log: r >= 1, setRole: r >= 2 && below && next !== undefined && next !== 'owner' && RANK[next] < r,
               transfer: role === 'owner' && target !== undefined && target !== 'owner', delete: role === 'owner',
             }[action];
             assert.equal(communityMay(role, action, target, next), want, `${role} ${action} ${target} ${next}`);

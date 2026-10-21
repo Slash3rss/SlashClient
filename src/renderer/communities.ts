@@ -3,6 +3,7 @@ import { logoFromFile, logoUrl, stageLogo } from './clanLogo';
 import { confirmDialog, control, el, icon, modalWindow } from './dialog';
 import { editHint, editedLabel, openMenu, replaceMessage, tombstone, withMenu, type MenuItem } from './chatEdits';
 import { disabledText, featureOn } from './features';
+import { channelClosed, channelsWindow, communityCan, customRolePick, logWindow as moderationLog, roleChip, rolesWindow, type ChannelAccess, type CustomRole, type ManageDeps, type RoleTag } from './communityRoles';
 
 /**
  * Communities ("Społeczności") in the Friends view: like a clan but big (up to a thousand players),
@@ -22,6 +23,10 @@ import { disabledText, featureOn } from './features';
  * under a message (a fixed set, the quick six first), replies with a quote of the message answered
  * (a click on it scrolls back to it), pinned messages (a list in the header), a channel's slow mode
  * (a countdown above the composer) and a timeout (the mute: "Wyciszony do …").
+ *
+ * Server 0.9.30+ (communityRoles.ts): own channels with who reads and writes them, custom roles
+ * (their colour and name by the nick in the chat and the members' list) and the moderation log in
+ * pages for moderators too.
  */
 
 interface Person { id: string; handle: string; name: string; avatar: string }
@@ -29,7 +34,7 @@ export type CommunityRole = 'owner' | 'admin' | 'moderator' | 'member';
 export const RANK: Record<CommunityRole, number> = { owner: 3, admin: 2, moderator: 1, member: 0 };
 export type Notify = 'all' | 'mentions' | 'none';
 /** `slowMode`: seconds between one member's messages when it is on (moderators and up are exempt). */
-export interface Channel { id: string; kind: 'general' | 'announcements' | 'custom'; name: string; canPost: boolean; unread: number; mentions: number; slowMode?: number }
+export interface Channel extends ChannelAccess { id: string; kind: 'general' | 'announcements' | 'custom'; name: string; canPost: boolean; unread: number; mentions: number; slowMode?: number }
 export interface CommunitySummary {
   id: string; name: string; tag: string; slug: string; description: string; visibility: 'public' | 'private'; joinMode: 'open' | 'request';
   members: number; owner: Person; createdAt: number; logo?: number;
@@ -41,17 +46,19 @@ export interface Community extends CommunitySummary {
   unread: number; mentions: number; channels: Channel[]; permissions: Record<string, boolean>;
   /** Waiting requests and open reports, for those who handle them. */
   pending?: number; reports?: number;
+  /** The community's custom roles (the highest first) and mine (server 0.9.30+). */
+  roles?: CustomRole[]; customRole?: RoleTag;
 }
 /** One emoji under a message: how many, and whether one of them is mine. */
 export interface Reaction { emoji: string; count: number; me?: boolean }
 /** The message a reply answers: who and its first line, or only `deleted` when it is gone. */
 export interface ReplyQuote { id: number; from?: string; author?: { name: string; handle: string }; text?: string; deleted?: boolean }
 export interface CommunityMessage {
-  id: number; community: string; channel: string; from: string; author: { name: string; handle: string; role?: CommunityRole };
+  id: number; community: string; channel: string; from: string; author: { name: string; handle: string; role?: CommunityRole; customRole?: RoleTag };
   text: string; at: number; editedAt?: number; deleted?: boolean; moderated?: boolean; mentions?: string[];
   replyTo?: ReplyQuote; reactions?: Reaction[]; pinned?: boolean;
 }
-interface Member extends Person { role: CommunityRole; joinedAt: number; status: string; online: boolean; mutedUntil?: number }
+interface Member extends Person { role: CommunityRole; joinedAt: number; status: string; online: boolean; mutedUntil?: number; customRole?: RoleTag }
 
 const PAGE = 50;
 
@@ -100,10 +107,10 @@ export function communityMay(role: CommunityRole | undefined, action: string, ta
   const r = RANK[role];
   const below = target !== undefined && RANK[target] < r;
   switch (action) {
-    case 'invite': case 'requests': case 'reports': case 'pin': return r >= 1;
+    case 'invite': case 'requests': case 'reports': case 'pin': case 'log': return r >= 1;
     case 'kick': case 'mute': case 'deleteMessage': return r >= 1 && below;
     case 'ban': return r >= 2 && below;
-    case 'edit': case 'announce': case 'log': case 'slowMode': return r >= 2;
+    case 'edit': case 'announce': case 'slowMode': return r >= 2;
     case 'setRole': return r >= 2 && below && next !== undefined && next !== 'owner' && RANK[next] < r;
     case 'transfer': return role === 'owner' && target !== undefined && target !== 'owner';
     case 'delete': return role === 'owner';
@@ -215,6 +222,9 @@ export function createCommunities(deps: Deps) {
       requests = [];
     }
     if (open && !community(open.community)) open = undefined;
+    // a channel gone, or closed to me now: back to the general one
+    const c = community(open?.community);
+    if (open && c && !c.channels.some((ch) => ch.id === open!.channel)) open = { community: c.id, channel: c.channels.find((ch) => ch.kind === 'general')?.id ?? c.channels[0]?.id ?? '' };
     deps.changed();
   }
 
@@ -617,7 +627,7 @@ export function createCommunities(deps: Deps) {
           void jumpTo(p.message.id);
         });
         const row = el('div', { className: 'fr-row fr-pin-row' }, go);
-        if (communityMay(c.role, 'pin')) {
+        if (communityCan(c, 'pin')) {
           const unpin = el('button', { type: 'button', className: 'icon-btn', title: t('Odepnij') }, icon('fa-thumbtack-slash'));
           unpin.addEventListener('click', async () => {
             await setPinned(p.message, false);
@@ -627,7 +637,7 @@ export function createCommunities(deps: Deps) {
         }
         return row;
       }));
-      if (!rows.childElementCount) rows.append(el('p', { className: 'muted fr-empty', textContent: communityMay(c.role, 'pin') ? t('Nic tu nie przypięto. Przypnij wiadomość z jej menu „…”.') : t('Nic tu nie przypięto.') }));
+      if (!rows.childElementCount) rows.append(el('p', { className: 'muted fr-empty', textContent: communityCan(c, 'pin') ? t('Nic tu nie przypięto. Przypnij wiadomość z jej menu „…”.') : t('Nic tu nie przypięto.') }));
     };
     void load();
   }
@@ -691,8 +701,8 @@ export function createCommunities(deps: Deps) {
       } });
     }
     items.push({ label: t('Kopiuj'), icon: 'fa-copy', run: () => void navigator.clipboard.writeText(m.text).then(() => deps.toast(t('Skopiowano'))) });
-    if (communityMay(c.role, 'pin')) items.push({ label: m.pinned ? t('Odepnij') : t('Przypnij'), icon: m.pinned ? 'fa-thumbtack-slash' : 'fa-thumbtack', run: () => void setPinned(m, !m.pinned) });
-    if (mine || communityMay(c.role, 'deleteMessage', m.author.role ?? 'member')) {
+    if (communityCan(c, 'pin')) items.push({ label: m.pinned ? t('Odepnij') : t('Przypnij'), icon: m.pinned ? 'fa-thumbtack-slash' : 'fa-thumbtack', run: () => void setPinned(m, !m.pinned) });
+    if (mine || communityCan(c, 'deleteMessage', { role: m.author.role ?? 'member', customRole: m.author.customRole })) {
       items.push({ label: mine ? t('Usuń') : t('Usuń (moderacja)'), icon: 'fa-trash', danger: true, run: () => void deleteMessage(m, !mine) });
     }
     if (!mine) items.push({ label: t('Zgłoś'), icon: 'fa-flag', danger: true, run: () => reportWindow(m) });
@@ -752,13 +762,13 @@ export function createCommunities(deps: Deps) {
     const pins = open ? chats.get(open.channel)?.pins ?? 0 : 0;
     button('fa-thumbtack', t('Przypięte wiadomości'), () => pinsWindow(c), pins, ' fr-pins-btn');
 
-    if (openChannel && communityMay(c.role, 'slowMode')) {
+    if (openChannel && communityCan(c, 'slowMode')) {
       button('fa-hourglass-half', openChannel.slowMode ? t('Tryb powolny: {0}', waitText(openChannel.slowMode)) : t('Tryb powolny'), (b) => slowModeMenu(c, openChannel, b), 0, openChannel.slowMode ? ' on' : '');
     }
-    if (communityMay(c.role, 'requests') && c.joinMode === 'request' || (c.pending ?? 0) > 0) button('fa-user-clock', t('Prośby o dołączenie'), () => requestsWindow(c), c.pending ?? 0);
-    if (communityMay(c.role, 'reports')) button('fa-flag', t('Zgłoszenia'), () => reportsWindow(c), c.reports ?? 0);
+    if (communityCan(c, 'requests') && c.joinMode === 'request' || (c.pending ?? 0) > 0) button('fa-user-clock', t('Prośby o dołączenie'), () => requestsWindow(c), c.pending ?? 0);
+    if (communityCan(c, 'reports')) button('fa-flag', t('Zgłoszenia'), () => reportsWindow(c), c.reports ?? 0);
     button(c.notify === 'none' ? 'fa-bell-slash' : 'fa-bell', t('Powiadomienia'), (b) => notifyMenu(c, b), 0, c.notify === 'all' ? ' on' : '');
-    if (communityMay(c.role, 'edit') || communityMay(c.role, 'ban', 'member') || communityMay(c.role, 'delete')) button('fa-gear', t('Ustawienia społeczności'), () => settingsWindow(c));
+    if (communityMay(c.role, 'edit') || communityCan(c, 'ban') || communityMay(c.role, 'delete') || ['log', 'manageChannels', 'manageRoles'].some((p) => communityCan(c, p))) button('fa-gear', t('Ustawienia społeczności'), () => settingsWindow(c));
     if (c.role !== 'owner') {
       button('fa-right-from-bracket', t('Opuść społeczność'), async () => {
         if (!(await confirmDialog({ title: t('Opuścić „{0}”?', c.name), body: [el('p', { className: 'muted', textContent: c.visibility === 'private' ? t('To prywatna społeczność: wrócić można tylko na zaproszenie.') : t('Możesz wrócić później przez „Odkrywaj”.') })], ok: t('Opuść'), danger: true }))) return;
@@ -770,15 +780,16 @@ export function createCommunities(deps: Deps) {
       }, 0, ' danger');
     }
     const tabs = el('div', { className: 'fr-com-tabs' }, ...c.channels.map((ch) => {
-      const b = el('button', { type: 'button', className: `fr-com-tab${ch.id === open?.channel ? ' active' : ''}` }, icon(ch.kind === 'announcements' ? 'fa-bullhorn' : 'fa-hashtag'), ` ${channelName(ch)}`);
+      const b = el('button', { type: 'button', className: `fr-com-tab${ch.id === open?.channel ? ' active' : ''}` }, icon(ch.kind === 'announcements' ? 'fa-bullhorn' : channelClosed(ch) ? 'fa-lock' : 'fa-hashtag'), ` ${channelName(ch)}`);
       if (ch.id !== open?.channel && (ch.unread || ch.mentions)) b.append(el('span', { className: `fr-tab-dot${ch.mentions ? ' mention' : ''}` }));
       b.addEventListener('click', () => void select(c.id, ch.id));
       return b;
     }));
     head.replaceChildren(communityAvatar(c),
       el('div', { className: 'grow fr-names' }, el('b', { textContent: c.name }),
-        el('small', { className: 'muted', textContent: `${subline(c)} · ${communityRoleText(c.role)}` }), tabs),
-      ...actions);
+        el('small', { className: 'muted', textContent: `${subline(c)} · ${communityRoleText(c.role)}` })),
+      // the channels in a row of their own under the name and the buttons (own channels make many)
+      ...actions, tabs);
     renderNote();
     renderMessages();
     ticker ??= setInterval(tick, 1000);
@@ -839,7 +850,7 @@ export function createCommunities(deps: Deps) {
         }
       }
       const node = el('div', { className: `fr-msg${mine ? ' mine' : ''}${grouped && !m.replyTo ? ' grouped' : ''}${editingId === m.id ? ' editing' : ''}${flashId === m.id ? ' flash' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
-        showHead ? el('small', { className: 'fr-time' }, role && !mine ? el('span', { className: `fr-com-role ${role}`, textContent: communityRoleText(role) }) : '', who) : '',
+        showHead ? el('small', { className: 'fr-time' }, role && !mine ? el('span', { className: `fr-com-role ${role}`, textContent: communityRoleText(role) }) : '', m.author.customRole && !mine ? roleChip(m.author.customRole) : '', who) : '',
         m.replyTo ? quoteBox(m.replyTo) : '',
         line,
         reactionsRow(c, m, canReact));
@@ -856,7 +867,7 @@ export function createCommunities(deps: Deps) {
     const c = community(open?.community);
     const ch = c?.channels.find((x) => x.id === open?.channel);
     if (!c || !ch) return { canPost: false };
-    if (!ch.canPost) return { canPost: false, reason: t('Tu piszą tylko administratorzy społeczności.') };
+    if (!ch.canPost) return { canPost: false, reason: ch.kind === 'custom' ? t('W tym kanale możesz tylko czytać.') : t('Tu piszą tylko administratorzy społeczności.') };
     const until = c.mutedUntil ?? chats.get(ch.id)?.mutedUntil;
     if (until && until > Date.now()) return { canPost: false, reason: t('Wyciszony do {0} — możesz tylko czytać.', new Date(until).toLocaleString(locale(), { dateStyle: 'short', timeStyle: 'short' })) };
     return { canPost: true };
@@ -1014,7 +1025,9 @@ export function createCommunities(deps: Deps) {
           pick.addEventListener('change', () => void call('POST', `/v1/communities/${c.id}/members/${m.id}/role`, { role: pick.value }, t('Zmieniono rolę.')));
           buttons.push(pick);
         }
-        if (communityMay(c.role, 'mute', m.role)) {
+        const pickRole = customRolePick(c, m, (role) => void call('POST', `/v1/communities/${c.id}/members/${m.id}/custom-role`, { role }, role ? t('Nadano rolę.') : t('Zabrano rolę.')));
+        if (pickRole) buttons.push(pickRole);
+        if (communityCan(c, 'mute', m)) {
           const mute = el('button', { type: 'button', className: 'icon-btn', title: m.mutedUntil ? t('Wyciszony do {0}', new Date(m.mutedUntil).toLocaleString(locale())) : t('Wycisz na czacie') }, icon(m.mutedUntil ? 'fa-comment-slash' : 'fa-volume-xmark'));
           // a timeout: may read, not write or react, until it ends by itself
           mute.addEventListener('click', () => openMenu(mute, [
@@ -1032,14 +1045,14 @@ export function createCommunities(deps: Deps) {
           });
           buttons.push(crown);
         }
-        if (communityMay(c.role, 'kick', m.role)) {
+        if (communityCan(c, 'kick', m)) {
           const kick = el('button', { type: 'button', className: 'icon-btn danger', title: t('Wyrzuć ze społeczności') }, icon('fa-user-minus'));
           kick.addEventListener('click', async () => {
             if (await confirmDialog({ title: t('Wyrzucić {0}?', m.name), body: [el('p', { className: 'muted', textContent: t('Może wrócić później. Żeby nie mógł, zbanuj.') })], ok: t('Wyrzuć'), danger: true })) await call('DELETE', `/v1/communities/${c.id}/members/${m.id}`);
           });
           buttons.push(kick);
         }
-        if (communityMay(c.role, 'ban', m.role)) {
+        if (communityCan(c, 'ban', m)) {
           const ban = el('button', { type: 'button', className: 'icon-btn danger', title: t('Zbanuj') }, icon('fa-ban'));
           ban.addEventListener('click', () => banWindow(c, m, () => void load(true)));
           buttons.push(ban);
@@ -1047,7 +1060,8 @@ export function createCommunities(deps: Deps) {
       }
       return el('div', { className: `fr-row${m.online ? '' : ' is-offline'}` }, deps.avatar(m, { status: m.status }),
         el('div', { className: 'grow fr-names' }, el('b', { textContent: mine ? t('{0} (Ty)', m.name) : m.name }),
-          el('small', { className: `muted fr-com-role-line ${m.role}`, textContent: `${communityRoleText(m.role)} · ${m.online ? t('online') : t('offline')}` }),
+          // a custom role (server 0.9.30+) in its colour, before the built-in one
+          el('small', { className: `muted fr-com-role-line ${m.role}` }, m.customRole ? roleChip(m.customRole) : '', `${communityRoleText(m.role)} · ${m.online ? t('online') : t('offline')}`),
           m.mutedUntil ? el('small', { className: 'fr-muted-line' }, icon('fa-comment-slash'), ` ${t('Wyciszony do {0}', new Date(m.mutedUntil).toLocaleString(locale(), { dateStyle: 'short', timeStyle: 'short' }))}`) : ''),
         ...buttons);
     };
@@ -1071,7 +1085,7 @@ export function createCommunities(deps: Deps) {
     });
     more.addEventListener('click', () => void load(false));
     const body: Node[] = [counter, search, rows, more];
-    if (communityMay(c.role, 'invite')) body.push(...inviteSection(c));
+    if (communityCan(c, 'invite')) body.push(...inviteSection(c));
     modalWindow(t('Członkowie: {0}', c.name), body, [], undefined, 'fr-group-modal fr-com-modal');
     void load(true);
   }
@@ -1172,7 +1186,22 @@ export function createCommunities(deps: Deps) {
         if (fresh) settingsWindow(fresh);
       }));
     }
-    if (communityMay(c.role, 'ban', 'member')) {
+    // own channels and custom roles (server 0.9.30+: it sends `roles`)
+    if (c.roles && (communityCan(c, 'manageChannels') || communityCan(c, 'manageRoles'))) {
+      const tools: Node[] = [];
+      if (communityCan(c, 'manageChannels')) {
+        const channels = el('button', { type: 'button' }, icon('fa-hashtag'), t(' Kanały'));
+        channels.addEventListener('click', () => channelsWindow(manage, community(c.id) ?? c));
+        tools.push(channels);
+      }
+      if (communityCan(c, 'manageRoles')) {
+        const roles = el('button', { type: 'button' }, icon('fa-user-tag'), t(' Role'));
+        roles.addEventListener('click', () => rolesWindow(manage, community(c.id) ?? c));
+        tools.push(roles);
+      }
+      body.push(el('h3', { textContent: t('Kanały i role') }), el('div', { className: 'row' }, ...tools));
+    }
+    if (communityCan(c, 'ban')) {
       const bans = el('div', { className: 'fr-clan-members' });
       const loadBans = async () => {
         const res = await api.socialApi('GET', `/v1/communities/${c.id}/bans`).catch(() => undefined);
@@ -1186,7 +1215,7 @@ export function createCommunities(deps: Deps) {
       void loadBans();
       body.push(el('h3', { textContent: t('Bany') }), bans);
     }
-    if (communityMay(c.role, 'log')) {
+    if (communityCan(c, 'log')) {
       const show = el('button', { type: 'button' }, icon('fa-clock-rotate-left'), t(' Dziennik moderacji'));
       show.addEventListener('click', () => void logWindow(c));
       body.push(el('div', { className: 'row' }, show));
@@ -1206,21 +1235,13 @@ export function createCommunities(deps: Deps) {
     close = modalWindow(t('Ustawienia: {0}', c.name), body, [], undefined, 'fr-group-modal fr-com-modal');
   }
 
-  async function logWindow(c: Community) {
-    const res = await act(() => api.socialApi('GET', `/v1/communities/${c.id}/log`));
-    if (!res) return;
-    const names: Record<string, string> = {
-      create: t('zakłada społeczność'), join: t('dołącza'), accept: t('przyjmuje prośbę'), decline: t('odrzuca prośbę'), leave: t('odchodzi'), kick: t('wyrzuca'),
-      ban: t('banuje'), unban: t('zdejmuje bana'), mute: t('wycisza'), unmute: t('zdejmuje wyciszenie'), role: t('zmienia rolę'), transfer: t('przekazuje społeczność'),
-      invite: t('zaprasza'), edit: t('zmienia ustawienia'), logo: t('zmienia logo'), logo_remove: t('usuwa logo'), heir: t('przejmuje społeczność'),
-      message_delete: t('usuwa wiadomość'), report_delete: t('usuwa zgłoszoną wiadomość'), report_dismiss: t('odrzuca zgłoszenie'),
-      pin: t('przypina wiadomość od'), unpin: t('odpina wiadomość od'), slowmode: t('zmienia tryb powolny'),
-    };
-    const rows = (res.log as { at: number; byName: string; action: string; targetName: string; detail: string }[]).map((e) => el('div', { className: 'fr-com-log' },
-      el('small', { className: 'muted', textContent: new Date(e.at).toLocaleString(locale(), { dateStyle: 'short', timeStyle: 'short' }) }),
-      el('span', {}, el('b', { textContent: e.byName || t('Administracja') }), ` ${names[e.action] ?? t('(administracja) {0}', e.action)} `, el('b', { textContent: e.targetName }), e.detail ? ` (${e.detail})` : '')));
-    modalWindow(t('Dziennik moderacji'), [el('div', { className: 'fr-clan-members' }, ...rows)], [], undefined, 'fr-group-modal fr-com-modal');
+  /** The moderation log, in pages and by kind (communityRoles.ts). */
+  function logWindow(c: Community) {
+    moderationLog(manage, c);
   }
+
+  /** What the channels', roles' and log's windows need. */
+  const manage: ManageDeps = { api, act, refresh, community, channelName: (ch) => channelName(ch as Channel) };
 
   /** The logo: the clans' pipeline (a square scaled to 64×64 here, checked again by the main process and the server). */
   function logoSection(c: Community, redraw: () => void): Node[] {
@@ -1302,6 +1323,11 @@ export function createCommunities(deps: Deps) {
       case 'community-message-edit':
       case 'community-message-delete':
         if (e.message) replaced(e.message as CommunityMessage);
+        return true;
+      case 'community-channel-delete':
+        // an own channel deleted (0.9.30): its messages go; the list comes again without it
+        chats.delete(e.channel);
+        if (open?.channel === e.channel) deps.toast(t('Ten kanał został usunięty.'), true);
         return true;
       case 'community-reaction':
         // someone's emoji under a message here (mine too: from another launcher or the game)
