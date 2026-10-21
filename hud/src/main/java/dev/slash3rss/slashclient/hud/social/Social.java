@@ -199,6 +199,8 @@ public final class Social {
 					if (signedIn) Groups.refresh();
 					// communities (an older launcher or server has none: nothing happens)
 					if (signedIn) Communities.refresh();
+					// whether we share our position with friends (an older launcher or server: nothing happens)
+					if (signedIn) FriendPositions.refresh();
 					reachable = true;
 				}
 				JsonObject res = request("GET", "/events?after=" + seq, null, 35);
@@ -379,6 +381,8 @@ public final class Social {
 				FriendActivity.News news = playing.update(id, status, kind, server, System.currentTimeMillis());
 				if (news != null && f != null && !f.muted() && dev.slash3rss.slashclient.hud.SlashHud.config != null && dev.slash3rss.slashclient.hud.SlashHud.config.friendPlayingToasts) playingToast(f, news);
 			}
+			// a friend's position on the same server (the minimap), or that they stopped sharing it
+			case "friend-position" -> FriendPositions.onEvent(e);
 			case "party" -> {
 				if (e.has("party") && e.get("party").isJsonObject()) Party.onEvent(e.getAsJsonObject("party"));
 			}

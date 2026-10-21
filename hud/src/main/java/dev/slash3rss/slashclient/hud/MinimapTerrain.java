@@ -22,6 +22,11 @@ import java.util.Arrays;
  * Where the dimension has a roof (the Nether), a column is read from just above the player's
  * height down to the first floor under open space, not from the top, which would be the bedrock
  * roof; a chunk is read again once the player is a few blocks higher or lower.
+ *
+ * Every chunk read is also remembered as drawn (its 256 colours) for the full map (WorldMapScreen),
+ * per dimension, while the player stays in the same world: the map shows all that was seen, not
+ * only the grid around the player. At most EXPLORED chunks a dimension (about 1 MB each 1000): the
+ * ones read longest ago go first. Kept in memory only.
  */
 final class MinimapTerrain {
 	private MinimapTerrain() {}
@@ -48,6 +53,13 @@ final class MinimapTerrain {
 	private static int nearTurn, allTurn;
 	/** Goes up whenever a column changed, so the view knows to paint itself again. */
 	static int version;
+	/** The chunks seen in each dimension of this world, as drawn, the most recently read last. */
+	static final int EXPLORED = 12_000;
+	private static final java.util.Map<String, java.util.LinkedHashMap<Long, int[]>> explored = new java.util.HashMap<>();
+	private static java.util.LinkedHashMap<Long, int[]> seen = new java.util.LinkedHashMap<>();
+	private static String seenWorld = "";
+	/** Goes up whenever a chunk of the full map changed. */
+	static int exploredVersion;
 	/** Chunk offsets around the player, nearest first. */
 	private static final int[][] RING = ring();
 
@@ -85,6 +97,15 @@ final class MinimapTerrain {
 		if (mc.level != level) {
 			level = mc.level;
 			clear();
+			// another world forgets what was seen; another dimension of the same one keeps it for coming back
+			String world = Waypoints.worldKey(mc);
+			if (!world.equals(seenWorld)) {
+				explored.clear();
+				seenWorld = world;
+			}
+			seen = explored.computeIfAbsent(Waypoints.dimension(mc), k -> new java.util.LinkedHashMap<>());
+			lastKey = Long.MIN_VALUE;
+			exploredVersion++;
 		}
 		boolean roof = level.dimensionType().hasCeiling();
 		int base = mc.player.getBlockY();
@@ -146,6 +167,53 @@ final class MinimapTerrain {
 		slotKey[s] = key(cx, cz);
 		slotBase[s] = base;
 		if (changed) version++;
+		remember(cx, cz);
+		// the chunk south of it is shaded by this one's last row: drawn again for the full map
+		if (changed && seen.containsKey(key(cx, cz + 1)) && slotKey[slot(cx, cz + 1)] == key(cx, cz + 1)) remember(cx, cz + 1);
+	}
+
+	/** A chunk as drawn into the full map's memory, now the newest (the oldest go when it is full). */
+	private static void remember(int cx, int cz) {
+		long k = key(cx, cz);
+		int[] cols = seen.remove(k);
+		boolean changed = cols == null;
+		if (cols == null) cols = new int[256];
+		for (int lz = 0; lz < 16; lz++) {
+			for (int lx = 0; lx < 16; lx++) {
+				int c = sample(cx * 16 + lx, cz * 16 + lz);
+				if (cols[lz * 16 + lx] != c) {
+					cols[lz * 16 + lx] = c;
+					changed = true;
+				}
+			}
+		}
+		seen.put(k, cols);
+		while (seen.size() > EXPLORED) {
+			var it = seen.keySet().iterator();
+			it.next();
+			it.remove();
+			lastKey = Long.MIN_VALUE;
+		}
+		if (changed) exploredVersion++;
+	}
+
+	/** The last chunk the full map looked up, so a picture's row does not ask the map each pixel. */
+	private static long lastKey = Long.MIN_VALUE;
+	private static int[] lastCols;
+
+	/** A column's colour as the full map draws it (0xFFRRGGBB), or 0 where nothing was seen in this dimension. */
+	static int explored(int x, int z) {
+		long k = key(x >> 4, z >> 4);
+		if (k != lastKey) {
+			lastKey = k;
+			lastCols = seen.get(k);
+		}
+		return lastCols == null ? 0 : lastCols[(z & 15) * 16 + (x & 15)];
+	}
+
+	/** How many chunks the full map knows in this dimension (for the test and the map's corner). */
+	static int exploredChunks() {
+		return seen.size();
 	}
 
 	/**

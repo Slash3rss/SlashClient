@@ -34,6 +34,7 @@ const ICONS = {
   'm-autoclicker': 'computer-mouse', 'm-autotool': 'screwdriver-wrench', 'm-autorefill': 'arrows-rotate', 'm-holdkeys': 'hand-pointer', 'm-toolwarning': 'triangle-exclamation', 'm-hearts': 'heart', 'm-mousetweaks': 'arrow-pointer',
   'lock': 'lock', 'bell': 'bell', 'bell-slash': 'bell-slash', 'image': 'image', 'pen': 'pen', 'trash': 'trash', 'ban': 'ban', 'm-dropguard': 'hand-holding', 'm-damage': 'heart-crack', 'm-tnt': 'bomb', 'm-nickhider': 'user-secret', 'm-reconnect': 'plug-circle-bolt', 'm-keybinds': 'keyboard', 'm-dungeonmap': 'map', 'm-skytasks': 'list-check', 'm-skyfish': 'fish', 'm-skycase': 'gift', 'skyup': 'dungeon',
   'm-inventory': 'table-cells', 'm-shulker': 'box-open', 'm-invsearch': 'magnifying-glass-arrow-right', 'm-slotlock': 'lock', 'm-shotcaption': 'image',
+  'm-sort': 'arrow-down-a-z', 'm-worldmap': 'map-location-dot', 'm-friendmap': 'street-view',
 };
 
 /** Size of the glyph inside the 64×64 square, matching the icons already there. */
@@ -62,7 +63,10 @@ app.whenReady().then(async () => {
   }
   const win = new BrowserWindow({ width: 64, height: 64, show: false, webPreferences: { offscreen: true } });
   await win.loadURL('data:text/html,<canvas id=c width=64 height=64></canvas>');
+  // --only=m-sort,m-worldmap: just these (the others stay as they are)
+  const only = process.argv.find((a) => a.startsWith('--only='))?.split('=')[1]?.split(',');
   for (const [name, icon] of Object.entries(ICONS)) {
+    if (only && !only.includes(name)) continue;
     const [set, file] = icon.includes('/') ? icon.split('/') : ['solid', icon];
     // Font Awesome 7 paints with currentColor, which is black in an image: make it white (the game tints it)
     const svg = fs.readFileSync(path.join(fa, set, `${file}.svg`), 'utf8')
