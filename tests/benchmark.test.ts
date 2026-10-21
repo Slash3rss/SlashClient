@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import { fpsChange, readBenchmarks, type BenchmarkResult } from '../src/main/benchmark';
-import { benchTips } from '../src/shared/benchTips';
+import { BENCH_SCENES, benchTips, comparableBefore } from '../src/shared/benchTips';
 
 const run = (at: number, avg: number): BenchmarkResult => ({
   at, version: '26.3', fps: { avg, low1: avg / 2, low01: avg / 3, median: avg, min: 10, max: avg * 2 }, frames: 3000, stutters: 4,
@@ -22,6 +22,27 @@ describe('benchmark results', () => {
     await fs.writeFile(path.join(dir, 'config', 'slashclient-benchmarks.json'), 'not json');
     assert.deepEqual(await readBenchmarks(dir), []);
     await fs.rm(dir, { recursive: true });
+  });
+
+  it('keeps the test scene mark and its scenes, and compares like with like', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'slash-bench-'));
+    await fs.mkdir(path.join(dir, 'config'));
+    const scene = (at: number, avg: number): BenchmarkResult => ({ ...run(at, avg), scene: 'slashclient-1', world: 'SlashClient Benchmark',
+      scenes: [{ id: 'forest', avg, low1: avg / 2, frames: 600, stutters: 1 }, { id: 'night', avg: avg * 0.9, low1: avg / 3, frames: 650, stutters: 0 }] });
+    // an old run without the new fields, two on the test scene and one in an own world between them
+    await fs.writeFile(path.join(dir, 'config', 'slashclient-benchmarks.json'), JSON.stringify([run(1, 90), scene(2, 200), run(3, 100), scene(4, 220)]));
+    const runs = await readBenchmarks(dir);
+    assert.deepEqual(runs.map((r) => r.at), [4, 3, 2, 1]);
+    assert.deepEqual(runs[0].scenes?.map((s) => s.id), ['forest', 'night']);
+    assert.equal(comparableBefore(runs, 0)?.at, 2);
+    assert.equal(comparableBefore(runs, 1)?.at, 1);
+    assert.equal(comparableBefore(runs, 2), undefined);
+    assert.equal(comparableBefore(runs, 3), undefined);
+    await fs.rm(dir, { recursive: true });
+  });
+
+  it('names every scene of the test scene', () => {
+    for (const id of ['forest', 'panorama', 'village', 'water', 'entities', 'particles', 'night']) assert.ok(BENCH_SCENES[id], id);
   });
 
   it('tells how much faster or slower a run was', () => {

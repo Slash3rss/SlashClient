@@ -59,6 +59,7 @@ import { checkModsFolder, installedModIds } from './modcheck';
 import { addModsArgs, hudVersions, prepareHud } from './hud';
 import { exportHud, importHud } from './hudShare';
 import { readBenchmarks } from './benchmark';
+import { comparableBefore } from '../shared/benchTips';
 import { appendSession, readSessions, summarize } from './stats';
 import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type ForeignInstance } from './importers';
 import { perfModsFor } from './perfmods';
@@ -1544,7 +1545,7 @@ handle('skinlib:apply', async (accountId: string, id: string) => {
 handle('news:list', (offset: number, limit: number, filter: NewsFilter) => newsPage(offset, limit, filter));
 handle('news:article', (id: string) => newsArticle(id));
 
-handle('game:launch', async (profileId: string, accountId: string, server?: string, world?: string, benchmark = false) => {
+handle('game:launch', async (profileId: string, accountId: string, server?: string, world?: string, benchmark: boolean | 'scene' = false) => {
   if (games.has(profileId)) throw new Error(t('Ten profil już działa.'));
   if (snapshotBusy.has(profileId)) throw new Error(t('Poczekaj, aż skończy się zapisywanie lub przywracanie migawki.'));
   const profile = store.profiles.find((p) => p.id === profileId);
@@ -1587,10 +1588,15 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     await bridge.start();
     hud.jvmArgs.push(...bridge.jvmArgs());
   }
-  // the benchmark runs inside SlashClient HUD: it starts by itself once the world is loaded
+  // the benchmark runs inside SlashClient HUD: it starts by itself once the world is loaded; on the
+  // test scene the mod opens (the first time makes) its own world from the menu
   if (benchmark) {
     if (!hud.jvmArgs.length) throw new Error(t('Benchmark działa z modem SlashClient: w profilu Fabric lub vanilla w wersji, którą mod obsługuje.'));
     hud.jvmArgs.push('-Dslashclient.benchmark=true');
+    if (benchmark === 'scene') {
+      hud.jvmArgs.push('-Dslashclient.benchmark.scene=true');
+      world = undefined;
+    }
   }
   const benchmarksBefore = benchmark ? (await readBenchmarks(profileGameDir(profile)))[0]?.at ?? 0 : 0;
   const activityVersion = `${await resolveVersionId(profile.versionId)}${loaderName}`;
@@ -1646,7 +1652,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     clearInterval(linkTimer);
     // a finished benchmark run: tell the page, which shows the result
     if (benchmark) readBenchmarks(profileGameDir(profile)).then((runs) => {
-      if (runs[0] && runs[0].at > benchmarksBefore) send('benchmark:done', { profileId: profile.id, result: runs[0], before: runs[1] });
+      if (runs[0] && runs[0].at > benchmarksBefore) send('benchmark:done', { profileId: profile.id, result: runs[0], before: comparableBefore(runs, 0) });
     }).catch(() => {});
     if (profile.syncOptions) pushShared(profileGameDir(profile)).catch(() => {});
     // profiles synced with the account go there after the game

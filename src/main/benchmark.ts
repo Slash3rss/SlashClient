@@ -6,12 +6,26 @@ import path from 'node:path';
  * <game dir>/config/slashclient-benchmarks.json (newest last). The launcher only reads them.
  */
 
+/** One part of the SlashClient test scene, measured on its own. */
+export interface BenchmarkScene {
+  /** "forest", "panorama", "village", "water", "entities", "particles", "night". */
+  id: string;
+  avg: number;
+  low1: number;
+  frames: number;
+  stutters: number;
+}
+
 export interface BenchmarkResult {
   /** Epoch ms of the end of the run. */
   at: number;
   /** Minecraft version, e.g. "26.3". */
   version: string;
   world?: string;
+  /** Set (e.g. "slashclient-1") when the run was on the SlashClient test scene: compared only with such runs. */
+  scene?: string;
+  /** The test scene's parts; only with `scene`. */
+  scenes?: BenchmarkScene[];
   fps: { avg: number; low1: number; low01: number; median: number; min: number; max: number };
   frames: number;
   /** Frames that took more than twice the median: what you feel as stutter. */

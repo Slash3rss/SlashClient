@@ -16,7 +16,7 @@ import { currencyName, sparks } from '../shared/sparks';
 import { openSkinEditor } from './skinEditor';
 import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
 import type { SlashApi } from '../main/preload';
-import { benchTips, type BenchTip } from '../shared/benchTips';
+import { BENCH_SCENES, benchTips, comparableBefore, type BenchTip } from '../shared/benchTips';
 import { createConfigEditor } from './configEditor';
 import { createDiskCleanup } from './diskCleanup';
 import { createKeyConflicts } from './keyConflicts';
@@ -820,6 +820,8 @@ function renderVersionOptions(selected: string) {
 
 interface BenchmarkResult {
   at: number; version: string; world?: string;
+  /** Set when the run was on the SlashClient test scene; `scenes` are its parts. */
+  scene?: string; scenes?: { id: string; avg: number; low1: number; frames: number; stutters: number }[];
   fps: { avg: number; low1: number; low01: number; median: number; min: number; max: number };
   frames: number; stutters: number; cpu?: number; gpu?: number;
   settings: { renderDistance: number; simulationDistance?: number; width: number; height: number; vsync: boolean; maxFps: number; fullscreen: boolean; mods: number; memoryMb?: number };
@@ -848,8 +850,11 @@ async function renderBenchmarks(profileId: string) {
     return;
   }
   const best = Math.max(...runs.map((r) => r.fps.avg));
+  // the newest test scene run shows its scenes open, older ones folded
+  const newestScene = runs.find((r) => r.scenes?.length);
   list.replaceChildren(...runs.slice(0, 8).map((r, i) => {
-    const before = runs[i + 1];
+    // test scene runs are compared with test scene runs, own worlds with own worlds
+    const before = comparableBefore(runs, i);
     const change = before && before.fps.avg > 0 ? ((r.fps.avg - before.fps.avg) / before.fps.avg) * 100 : undefined;
     const bar = el('div', { className: 'bench-bar' }, el('div'));
     (bar.firstElementChild as HTMLElement).style.width = `${Math.max(4, (r.fps.avg / best) * 100).toFixed(1)}%`;
@@ -865,12 +870,54 @@ async function renderBenchmarks(profileId: string) {
       el('div', { className: 'bench-top' },
         el('b', { className: 'bench-fps', textContent: t('{0} FPS', fmtFps(r.fps.avg)) }),
         change === undefined ? '' : el('span', { className: `bench-change ${change >= 0 ? 'up' : 'down'}`, textContent: `${change >= 0 ? '+' : ''}${change.toFixed(0)}%` }),
+        r.scene ? el('span', { className: 'bench-kind scene', textContent: t('Scena testowa') }) : el('span', { className: 'bench-kind', textContent: r.world || t('Własny świat') }),
         el('small', { className: 'muted', textContent: new Date(r.at).toLocaleString(locale(), { dateStyle: 'medium', timeStyle: 'short' }) })),
       bar, low,
       el('small', { textContent: details }),
-      el('small', { className: 'muted', textContent: setup + (diff.length ? ` · ${t('zmiana: {0}', diff.join(', '))}` : '') }));
+      el('small', { className: 'muted', textContent: setup + (diff.length ? ` · ${t('zmiana: {0}', diff.join(', '))}` : '') }),
+      benchScenes(r, before, r === newestScene));
   }));
   renderBenchTips(profileId, runs[0]);
+}
+
+/**
+ * The test scene's parts of a run: a bar of average FPS each (the 1% low darker inside it) and
+ * the change since the scene's run before. Open for the newest such run, folded for older ones.
+ */
+function benchScenes(r: BenchmarkResult, before: BenchmarkResult | undefined, open: boolean): HTMLElement | string {
+  if (!r.scenes?.length) return '';
+  const max = Math.max(1, ...r.scenes.map((s) => s.avg));
+  const rows = r.scenes.map((s) => {
+    const old = before?.scenes?.find((b) => b.id === s.id);
+    const change = old && old.avg > 0 ? ((s.avg - old.avg) / old.avg) * 100 : undefined;
+    const bar = el('div', { className: 'bench-scene-bar' }, el('div'), el('div', { className: 'low' }));
+    (bar.children[0] as HTMLElement).style.width = `${Math.max(2, (s.avg / max) * 100).toFixed(1)}%`;
+    (bar.children[1] as HTMLElement).style.width = `${Math.max(1, (Math.min(s.low1, s.avg) / max) * 100).toFixed(1)}%`;
+    const tone = change === undefined || Math.abs(change) < 3 ? '' : change > 0 ? 'up' : 'down';
+    return el('div', { className: 'bench-scene' },
+      el('span', { className: 'bench-scene-name', textContent: t(BENCH_SCENES[s.id] ?? s.id) }),
+      bar,
+      el('span', { className: 'bench-scene-fps', textContent: `${fmtFps(s.avg)} · ${fmtFps(s.low1)}` }),
+      el('span', { className: `bench-scene-change ${tone}`, textContent: change === undefined ? '' : `${change >= 0 ? '+' : ''}${change.toFixed(0)}%` }));
+  });
+  const box = el('details', { className: 'bench-scenes' },
+    el('summary', { textContent: t('Sceny: FPS średnio · 1% low · zmiana') }), ...rows);
+  if (open) box.setAttribute('open', '');
+  return box;
+}
+
+/** Where the profile card's benchmark runs: the test scene first, then the profile's worlds. */
+async function renderBenchTarget(profileId: string) {
+  const select = $<HTMLSelectElement>('#bench-target');
+  const keep = select.dataset.profile === profileId ? select.value : '';
+  const scene = el('option', { value: '', textContent: t('Scena testowa SlashClient') });
+  select.replaceChildren(scene);
+  select.dataset.profile = profileId;
+  const worlds: WorldInfo[] = (await guard(() => api.listWorlds(profileId))) ?? [];
+  if (profileId !== editingId) return;
+  // the scene's own world is the test scene itself
+  select.append(...worlds.filter((w) => w.folder !== 'SlashClient Benchmark').map((w) => el('option', { value: w.folder, textContent: t('Świat: {0}', w.name) })));
+  select.value = [...select.options].some((o) => o.value === keep) ? keep : '';
 }
 
 /** What the newest run says about the profile, with the missing performance mods one click away. */
@@ -907,32 +954,34 @@ function benchTipRow(profileId: string, tip: BenchTip, plan: PerfPlanItem[]): HT
   return row;
 }
 
-/** The world for a run from the profile card: the last one played, or the first one there is. */
+/**
+ * A run from the profile card: on the SlashClient test scene (the mod opens its own world, the
+ * same flight every time) or in the world picked next to the button.
+ */
 async function benchmarkFromProfile(profileId: string) {
   const profile = store.profiles.find((p) => p.id === profileId);
   if (!profile) return;
-  let folder = profile.lastTarget?.kind === 'world' ? profile.lastTarget.folder : undefined;
-  if (!folder) {
-    const worlds: WorldInfo[] = (await guard(() => api.listWorlds(profileId))) ?? [];
-    folder = worlds[0]?.folder;
-  }
-  // no world yet: the game opens on its menu and the benchmark starts in whatever world the player enters
-  if (!folder) toast(t('Ten profil nie ma jeszcze świata: stwórz go w grze albo wejdź na serwer, a benchmark ruszy sam.'));
+  const folder = $<HTMLSelectElement>('#bench-target').value;
   store.settings.selectedProfileId = profileId;
   renderPlay();
-  startGame(undefined, folder, true);
+  if (folder) startGame(undefined, folder, true);
+  else startGame(undefined, undefined, 'scene');
 }
 
 $('#bench-run').addEventListener('click', () => editingId && benchmarkFromProfile(editingId));
 
 api.on('benchmark:done', ({ profileId, result, before }: { profileId: string; result: BenchmarkResult; before?: BenchmarkResult }) => {
   const change = before && before.fps.avg > 0 ? ((result.fps.avg - before.fps.avg) / before.fps.avg) * 100 : undefined;
-  toast(t('Benchmark: średnio {0} FPS, 1% low {1} FPS', fmtFps(result.fps.avg), fmtFps(result.fps.low1)) + (change === undefined ? '' : ` (${change >= 0 ? '+' : ''}${change.toFixed(0)}%)`));
-  if (profileId === editingId) renderBenchmarks(profileId);
+  toast(t(result.scene ? 'Scena testowa: średnio {0} FPS, 1% low {1} FPS' : 'Benchmark: średnio {0} FPS, 1% low {1} FPS', fmtFps(result.fps.avg), fmtFps(result.fps.low1)) + (change === undefined ? '' : ` (${change >= 0 ? '+' : ''}${change.toFixed(0)}%)`));
+  if (profileId === editingId) {
+    renderBenchmarks(profileId);
+    renderBenchTarget(profileId);
+  }
 });
 
 function loadProfileForm(profile: Profile) {
   renderBenchmarks(profile.id);
+  void renderBenchTarget(profile.id);
   profileFiles.renderSnapshots(profile.id, $('#snapshot-list'));
   keyConflicts.open(profile.id, (store.runningProfiles ?? []).length > 0);
   void cloudCard.render(profile.id);
@@ -1201,7 +1250,7 @@ function showView(name: string) {
 }
 
 /** Starts the selected profile with the selected account, optionally joining a server. */
-async function startGame(server?: string, world?: string, benchmark = false) {
+async function startGame(server?: string, world?: string, benchmark: boolean | 'scene' = false) {
   if (launching) return;
   if (selectedRunning()) return toast(t('Ten profil już działa.'), true);
   launching = true;
