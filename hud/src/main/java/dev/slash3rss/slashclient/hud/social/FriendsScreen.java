@@ -695,6 +695,18 @@ public class FriendsScreen extends Screen {
 				drawTombstone(g, bx2, y + nameH);
 				continue;
 			}
+			// a picture or a poll (server 0.9.30+): a card of its own
+			Communities.Image picture = Communities.image(m.id());
+			Communities.Poll poll = picture == null ? Communities.poll(m.id()) : null;
+			if (picture != null || poll != null) {
+				lastCard = null;
+				int[] used = picture != null ? drawCommunityPicture(g, m, picture, mine, named ? name : null, nameColor, cx, cw, maxBubble, y, top, bottom, mx, my)
+					: drawPoll(g, m, poll, mine, named ? name : null, nameColor, cx, cw, maxBubble, y, top, bottom, mx, my);
+				y = used[0];
+				total += used[1];
+				if (lastCard != null) bubbles.add(new Bubble(lastCard[0], lastCard[1], lastCard[2], lastCard[3], null, null, m));
+				continue;
+			}
 			List<FormattedCharSequence> lines = font.split(Ui.text(m.text()), maxBubble - 12);
 			int textW = 0;
 			for (FormattedCharSequence l : lines) textW = Math.max(textW, font.width(l));
@@ -767,6 +779,111 @@ public class FriendsScreen extends Screen {
 		int sx = cx + cw - 10 - 24;
 		Ui.button(g, "friends:send", sx, fy, 24, INPUT_H, "arrow", Component.empty(), true, mx, my);
 		hits.add(new Hit(sx, fy, 24, INPUT_H, this::send));
+		// a screenshot to this channel (server 0.9.30+; not encrypted: the members see it)
+		if (Communities.picturesAllowed()) {
+			int ix = sx - 24;
+			Ui.button(g, "friends:picture", ix, fy, 20, INPUT_H, "image", Component.empty(), false, mx, my);
+			if (Ui.inside(mx, my, ix, fy, 20, INPUT_H)) tooltip = Ui.tr("slashclient-hud.picture.button");
+			String cid = c.id(), chid = ch.id(), cname = c.name();
+			hits.add(new Hit(ix, fy, 20, INPUT_H, () -> minecraft.setScreenAndShow(ShotPickerScreen.forCommunity(this, cid, chid, cname))));
+		}
+	}
+
+	/** A picture in a community's chat (not encrypted, so no lock); a click shows it big. Returns the new y and the height used. */
+	private int[] drawCommunityPicture(GuiGraphicsExtractor g, Communities.Message m, Communities.Image img, boolean mine, Component name, int nameColor, int cx, int cw, int maxBubble, int y, int top, int bottom, int mx, int my) {
+		ChatImages.Texture tex = img.expired() ? null : ChatImages.community(m.community(), img.id());
+		boolean ready = tex != null && tex.ready();
+		int w0 = ready ? tex.w() : img.w(), h0 = ready ? tex.h() : img.h();
+		int[] size = ChatImages.fit(w0, h0, Math.min(maxBubble - 8, 150), 96);
+		int nameH = name != null ? 11 : 0, reactH = m.reactions().isEmpty() ? 0 : 14;
+		int bw = size[0] + 8, bh = size[1] + 8 + 11;
+		y -= bh + 4 + nameH + reactH;
+		int used = bh + 4 + nameH + reactH;
+		if (y > bottom || y + used < top) return new int[] { y, used };
+		int bx = mine ? cx + cw - 10 - bw : cx + 10;
+		if (name != null) Ui.draw(g, Ui.fit(name, maxBubble), bx + 2, y, nameColor);
+		int by = y + nameH;
+		lastCard = visible(bx, by, bw, bh, top, bottom);
+		Ui.round(g, bx, by, bw, bh, 5, mine ? Ui.ACCENT_DARK : Ui.CARD);
+		if (ready) {
+			g.blit(RenderPipelines.GUI_TEXTURED, tex.id(), bx + 4, by + 4, 0, 0, size[0], size[1], tex.w(), tex.h(), tex.w(), tex.h(), 0xFFFFFFFF);
+			if (Ui.inside(mx, my, bx + 4, by + 4, size[0], size[1])) Ui.roundOutline(g, bx + 3, by + 3, size[0] + 2, size[1] + 2, 3, 0x993B82F6);
+		} else {
+			Ui.round(g, bx + 4, by + 4, size[0], size[1], 3, 0x40000000);
+			Component state = Ui.tr(img.expired() ? "slashclient-hud.picture.expired" : tex.failed() ? "slashclient-hud.picture.gone" : "slashclient-hud.picture.loading");
+			Ui.icon(g, "image", bx + 4 + size[0] / 2 - 6, by + 4 + size[1] / 2 - 12, 12, Ui.MUTED);
+			Ui.centered(g, Ui.fit(state, size[0] - 6), bx + 4 + size[0] / 2, by + 4 + size[1] / 2 + 4, Ui.MUTED);
+		}
+		Component time = Ui.text(TIME.format(Instant.ofEpochMilli(m.at())));
+		Ui.draw(g, time, bx + bw - 4 - Ui.width(time), by + bh - 11, mine ? 0xB3FFFFFF : Ui.MUTED);
+		if (m.pinned()) g.fill(bx + bw - 5, by + 2, bx + bw - 2, by + 5, 0xFFFBBF24);
+		if (reactH > 0) drawReactions(g, m, mine, bx, bw, by + bh + 3, cx, cw, top, bottom);
+		if (ready && by + 4 >= top && by + 4 + size[1] <= bottom) {
+			String from = mine ? Social.myName() : m.author();
+			String community = m.community(), id = img.id();
+			hits.add(new Hit(bx + 4, by + 4, size[0], size[1], () -> minecraft.setScreenAndShow(PictureScreen.forCommunity(this, community, id, from))));
+		}
+		return new int[] { y, used };
+	}
+
+	/**
+	 * A poll: the question, each answer with its share as a bar (ours marked), how many voted and
+	 * when it ends. A click on an answer votes while it is open (making and closing polls is in the launcher).
+	 */
+	private int[] drawPoll(GuiGraphicsExtractor g, Communities.Message m, Communities.Poll p, boolean mine, Component name, int nameColor, int cx, int cw, int maxBubble, int y, int top, int bottom, int mx, int my) {
+		int bw = Math.min(maxBubble, 200);
+		List<FormattedCharSequence> question = font.split(Ui.bold(p.question()), bw - 22);
+		boolean open = p.open();
+		boolean canVote = open && Communities.canReact(m) && Social.bridged();
+		int nameH = name != null ? 11 : 0, reactH = m.reactions().isEmpty() ? 0 : 14;
+		int rowH = 13;
+		int bh = 6 + question.size() * 10 + 3 + p.options().size() * (rowH + 2) + 12 + (canVote ? 10 : 0) + 3;
+		y -= bh + 4 + nameH + reactH;
+		int used = bh + 4 + nameH + reactH;
+		if (y > bottom || y + used < top) return new int[] { y, used };
+		int bx = mine ? cx + cw - 10 - bw : cx + 10;
+		if (name != null) Ui.draw(g, Ui.fit(name, maxBubble), bx + 2, y, nameColor);
+		int by = y + nameH;
+		lastCard = visible(bx, by, bw, bh, top, bottom);
+		Ui.round(g, bx, by, bw, bh, 5, Ui.CARD);
+		Ui.roundOutline(g, bx, by, bw, bh, 5, mine ? 0x993B82F6 : Ui.BORDER);
+		Ui.icon(g, "m-stats", bx + 6, by + 6, 8, open ? Ui.ACCENT_LIGHT : Ui.MUTED);
+		int ly = by + 6;
+		for (FormattedCharSequence l : question) {
+			g.text(font, l, bx + 17, ly, Ui.TEXT, false);
+			ly += 10;
+		}
+		ly += 3;
+		for (int i = 0; i < p.options().size(); i++) {
+			boolean chosen = p.mine().contains(i);
+			int pct = p.percent(i);
+			int ox = bx + 5, ow = bw - 10;
+			boolean over = canVote && Ui.inside(mx, my, ox, ly, ow, rowH) && my >= top && my <= bottom;
+			Ui.round(g, ox, ly, ow, rowH, 3, over ? 0x40FFFFFF : 0x30000000);
+			int fill = Math.round(ow * pct / 100f);
+			if (fill > 0) Ui.round(g, ox, ly, Math.max(fill, 4), rowH, 3, chosen ? 0x803B82F6 : 0x4060A5FA);
+			if (chosen) Ui.roundOutline(g, ox, ly, ow, rowH, 3, 0xCC60A5FA);
+			if (chosen) Ui.icon(g, "check", ox + 3, ly + 3, 7, Ui.TEXT);
+			Component pctText = Ui.text(pct + "%");
+			int pw2 = Ui.width(pctText);
+			Ui.draw(g, Ui.fit(Ui.text(p.options().get(i)), ow - 16 - pw2 - 6), ox + 13, ly + 3, Ui.TEXT);
+			Ui.draw(g, pctText, ox + ow - 4 - pw2, ly + 3, Ui.TEXT_2);
+			if (canVote && ly >= top && ly + rowH <= bottom) {
+				int option = i;
+				hits.add(new Hit(ox, ly, ow, rowH, () -> Communities.vote(m, option)));
+			}
+			ly += rowH + 2;
+		}
+		// how many voted and the end, then what a click does
+		Component state = open ? (p.endsAt() > 0 ? Ui.tr("slashclient-hud.poll.ends", UNTIL.format(Instant.ofEpochMilli(p.endsAt()))) : Ui.tr("slashclient-hud.poll.open")) : Ui.tr("slashclient-hud.poll.closed");
+		Component foot = Ui.tr("slashclient-hud.poll.votes", p.total()).append(Component.literal(" · ")).append(state);
+		Component time = Ui.text(TIME.format(Instant.ofEpochMilli(m.at())));
+		Ui.draw(g, Ui.fit(foot, bw - 14 - Ui.width(time)), bx + 6, ly + 1, Ui.MUTED);
+		Ui.draw(g, time, bx + bw - 6 - Ui.width(time), ly + 1, Ui.MUTED);
+		if (canVote) Ui.draw(g, Ui.fit(Ui.tr(p.multiple() ? "slashclient-hud.poll.hintSeveral" : "slashclient-hud.poll.hint"), bw - 12), bx + 6, ly + 11, Ui.TEXT_2);
+		if (m.pinned()) g.fill(bx + bw - 5, by + 2, bx + bw - 2, by + 5, 0xFFFBBF24);
+		if (reactH > 0) drawReactions(g, m, mine, bx, bw, by + bh + 3, cx, cw, top, bottom);
+		return new int[] { y, used };
 	}
 
 	/** A timeout's end: the day too (it may last a week). */
