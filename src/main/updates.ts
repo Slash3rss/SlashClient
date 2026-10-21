@@ -166,7 +166,14 @@ async function macDownload(feed: string, version: string, files: MacFile[], onLo
   macDownloading = true;
   try {
     set({ state: 'downloading', version, percent: 0 });
-    const next = await downloadMacUpdate(feed, version, file, (percent) => set({ state: 'downloading', version, percent }));
+    // the steps go to logs/update.log too: a download that stops can be told apart from one that never started
+    macLog(`pobieranie ${version}: ${file.url} (${Math.round((file.size ?? 0) / 1e6)} MB)`, onLog);
+    let logged = 0;
+    const next = await downloadMacUpdate(feed, version, file, (percent) => {
+      set({ state: 'downloading', version, percent });
+      if (percent >= logged + 25) macLog(`pobrano ${(logged = percent)}%`, onLog);
+    });
+    macLog(`gotowe: ${next}`, onLog);
     macReady = { current, next };
     set({ state: 'ready', version });
   } catch (err) {
