@@ -95,6 +95,12 @@ describe('achievements', () => {
     const mc = '1'.repeat(32);
     const ala = await player('AlaPlay', mc);
     const live = await connect(ala.token, { status: 'online', activity: { kind: 'server', server: 'skyup.pl' } });
+    // a friend sees each change of her presence: the server has taken it in (a fixed wait was too short on a busy CI machine)
+    const watcher = await login('AlaWatcher');
+    await call('POST', '/v1/friends/requests', ala.token, { handle: 'AlaWatcher' });
+    await call('POST', `/v1/friends/requests/${ala.user.id}/accept`, watcher.token);
+    const watching = await connect(watcher.token);
+    const seen = (kind: string | undefined) => watching.waitFor((e) => e.type === 'presence' && e.id === ala.user.id && (kind ? e.presence?.activity?.kind === kind : e.presence?.status === 'offline'));
     const t0 = Date.now();
     // the launcher connected, but no game reported: nothing
     app.achievements.tick(t0);
@@ -113,14 +119,16 @@ describe('achievements', () => {
     assert.equal(app.achievements.store.stats(ala.user.id, t0 + 480_000).todaySeconds, 180);
     // in the menu: no time
     live.ws.send(JSON.stringify({ type: 'presence', presence: { status: 'online', activity: { kind: 'menu' } } }));
-    await new Promise((r) => setTimeout(r, 100));
+    await seen('menu');
     app.achievements.tick(t0 + 540_000);
     app.achievements.tick(t0 + 560_000);
     assert.equal(app.achievements.store.stats(ala.user.id, t0 + 560_000).todaySeconds, 180);
     // the launcher gone: no time either, even with the game's last report still fresh
     live.ws.send(JSON.stringify({ type: 'presence', presence: { status: 'online', activity: { kind: 'singleplayer' } } }));
+    await seen('singleplayer');
     live.ws.close();
-    await new Promise((r) => setTimeout(r, 100));
+    await seen(undefined);
+    watching.ws.close();
     app.achievements.tick(t0 + 570_000);
     app.achievements.tick(t0 + 580_000);
     assert.equal(app.achievements.store.stats(ala.user.id, t0 + 580_000).todaySeconds, 180);
