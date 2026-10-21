@@ -71,6 +71,50 @@ export async function netFetch(url: string, init?: RequestInit): Promise<Respons
   }
 }
 
+/** How long a big download may go without any data before it is given up (and can be tried again). */
+export const STALL_MS = 60_000;
+
+/**
+ * A big file (an update): its answer, and its body as chunks. A connection that stops sending would
+ * otherwise wait for ever (the progress stuck at one number): after `stallMs` without data, both
+ * waiting for the answer and between chunks, it is cut and an error says so.
+ */
+export async function fetchWatched(url: string, stallMs = STALL_MS): Promise<{ res: Response; chunks: AsyncIterable<Uint8Array> }> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let stalled = false;
+  const arm = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      stalled = true;
+      controller.abort();
+    }, stallMs);
+  };
+  const stalledError = () => new Error(t('Pobieranie stanęło: przez {0} s nie przyszły żadne dane. Spróbuj ponownie.', Math.round(stallMs / 1000)));
+  arm();
+  let res: Response;
+  try {
+    res = await netFetch(url, { signal: controller.signal });
+  } catch (err) {
+    clearTimeout(timer);
+    throw stalled ? stalledError() : err;
+  }
+  async function* chunks(): AsyncGenerator<Uint8Array> {
+    try {
+      for await (const chunk of res.body as unknown as AsyncIterable<Uint8Array>) {
+        arm();
+        yield chunk;
+      }
+    } catch (err) {
+      throw stalled ? stalledError() : err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  if (!res.ok || !res.body) clearTimeout(timer);
+  return { res, chunks: chunks() };
+}
+
 export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await netFetch(url, init);
   if (!res.ok) {

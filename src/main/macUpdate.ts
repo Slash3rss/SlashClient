@@ -5,7 +5,7 @@ import { createWriteStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
-import { netFetch } from './download';
+import { fetchWatched } from './download';
 import { throttled } from './rateLimit';
 
 /**
@@ -79,14 +79,14 @@ export async function downloadMacUpdate(feed: string, version: string, file: Mac
   }
   await fs.mkdir(dir, { recursive: true });
   const zip = path.join(dir, `SlashClient-${version}.zip`);
-  const res = await netFetch(`${feed.replace(/\/$/, '')}/${encodeURIComponent(file.url)}`);
+  const { res, chunks } = await fetchWatched(`${feed.replace(/\/$/, '')}/${encodeURIComponent(file.url)}`);
   if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
   const total = file.size ?? Number(res.headers.get('content-length') ?? 0);
   const hash = createHash('sha512');
   const out = createWriteStream(zip);
   let got = 0;
   let shown = -1;
-  for await (const chunk of throttled(res.body as unknown as AsyncIterable<Uint8Array>)) {
+  for await (const chunk of throttled(chunks)) {
     hash.update(chunk);
     if (!out.write(chunk)) await new Promise((r) => out.once('drain', r));
     got += chunk.length;

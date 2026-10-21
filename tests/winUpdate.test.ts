@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import AdmZip from 'adm-zip';
+import { fetchWatched } from '../src/main/download';
 import {
   canWrite, cleanupWinUpdate, downloadVerified, findUninstallKey, parseManifest, pickWinArtifact, psQuote, stageWinUpdate,
   startSwap, swapScript, unpackZip, winArg, winInstall, workDirs, type WinInstall, type WinManifest,
@@ -103,6 +104,24 @@ describe('Windows updates in place', () => {
     await assert.rejects(downloadVerified(url, { url: 'x.zip', sha512: sha(Buffer.from('other')) }, path.join(root, 'b.zip'), () => {}), /suma kontrolna/);
     server.close();
     await fs.rm(root, { recursive: true });
+  });
+
+  it('gives up a download that stops sending, instead of waiting for ever', async () => {
+    // the answer comes, a little of the file, then nothing (a stuck connection)
+    const server = createServer((_req, res) => {
+      res.writeHead(200, { 'Content-Length': '1000000' });
+      res.write(Buffer.alloc(1000, 1));
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/x.zip`;
+    const { chunks } = await fetchWatched(url, 300);
+    const started = Date.now();
+    await assert.rejects((async () => {
+      for await (const _ of chunks) { /* the first bytes come, then the wait */ }
+    })(), /stanęło/);
+    assert.ok(Date.now() - started < 3000);
+    server.closeAllConnections();
+    server.close();
   });
 
   it('stages the whole new version, or the installed one with new resources', async () => {

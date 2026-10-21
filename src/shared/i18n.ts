@@ -958,6 +958,7 @@ const EN: Record<string, string> = {
   'Minecraft:': 'Minecraft:',
   'Dostępna nowa wersja SlashClient: {0}': 'A new SlashClient version is available: {0}',
   'Pobieram nową wersję SlashClient {0}… {1}%': 'Downloading SlashClient {0}… {1}%',
+  'Pobieranie stanęło: przez {0} s nie przyszły żadne dane. Spróbuj ponownie.': 'The download stalled: no data came for {0} s. Try again.',
   'Nowa wersja SlashClient jest gotowa: {0}': 'A new SlashClient version is ready: {0}',
   '(wersja deweloperska, bez aktualizacji)': '(development build, no updates)',
   '· sprawdzam…': '· checking…',

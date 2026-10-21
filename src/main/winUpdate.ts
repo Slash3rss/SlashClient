@@ -4,7 +4,7 @@ import { appendFileSync, createWriteStream, mkdirSync, writeFileSync } from 'nod
 import nodeFs from 'node:fs/promises';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
-import { netFetch } from './download';
+import { fetchWatched } from './download';
 import { throttled } from './rateLimit';
 
 // Electron's own fs looks into app.asar as if it were a folder (copying, unpacking and deleting the
@@ -137,7 +137,7 @@ export async function cleanupWinUpdate(dir: string): Promise<void> {
 
 /** Downloads a file to `dest`, checking it against the release's SHA-512 (base64, as electron-builder writes it). */
 export async function downloadVerified(url: string, file: WinFile, dest: string, progress: (percent: number) => void): Promise<void> {
-  const res = await netFetch(url);
+  const { res, chunks } = await fetchWatched(url);
   if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
   const total = file.size ?? Number(res.headers.get('content-length') ?? 0);
   const hash = createHash('sha512');
@@ -145,7 +145,7 @@ export async function downloadVerified(url: string, file: WinFile, dest: string,
   let got = 0;
   let shown = -1;
   try {
-    for await (const chunk of throttled(res.body as unknown as AsyncIterable<Uint8Array>)) {
+    for await (const chunk of throttled(chunks)) {
       hash.update(chunk);
       if (!out.write(chunk)) await new Promise((r) => out.once('drain', r));
       got += chunk.length;
