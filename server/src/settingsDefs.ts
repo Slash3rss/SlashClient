@@ -124,6 +124,8 @@ export const SETTING_DEFS: SettingDef[] = [
     { key: 'communities.mentions', label: 'Wzmianek w wiadomości', labelEn: 'Mentions per message', description: 'Ile @nicków z jednej wiadomości dostaje powiadomienie.', type: 'int', default: COMMUNITY_LIMITS.mentions, min: 0, max: 100 },
     { key: 'communities.reactions', label: 'Różnych reakcji pod wiadomością', labelEn: 'Different reactions per message', description: 'Ile różnych emoji może być pod jedną wiadomością (każdy członek może dodać każde z nich).', type: 'int', default: COMMUNITY_LIMITS.reactions, min: 1, max: 60 },
     { key: 'communities.pins', label: 'Przypiętych wiadomości w kanale', labelEn: 'Pinned messages per channel', description: 'Moderatorzy nie przypną więcej, dopóki któraś nie zostanie odpięta.', type: 'int', default: COMMUNITY_LIMITS.pins, min: 1, max: 1000 },
+    { key: 'communities.channels', label: 'Kanałów w społeczności', labelEn: 'Channels per community', description: 'Razem z dwoma wbudowanymi (Ogólny, Ogłoszenia).', type: 'int', default: COMMUNITY_LIMITS.channels, min: 2, max: 200 },
+    { key: 'communities.roles', label: 'Własnych ról w społeczności', labelEn: 'Custom roles per community', description: 'Poza wbudowanymi (założyciel, administrator, moderator, członek).', type: 'int', default: COMMUNITY_LIMITS.roles, min: 0, max: 100 },
     rate('communities.createPerMinute', 'Zakładanie społeczności na minutę', 'Communities created per minute', 3, 'Na konto.'),
     rate('communities.joinPerMinute', 'Dołączanie na minutę', 'Joins per minute', 20, 'Na konto.'),
     rate('communities.changesPerMinute', 'Zmiany w społecznościach na minutę', 'Community changes per minute', 60, 'Na konto (role, zaproszenia, ustawienia).'),

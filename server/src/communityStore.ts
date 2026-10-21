@@ -39,6 +39,10 @@ export const COMMUNITY_LIMITS = {
   reactions: 20,
   /** Pinned messages in one channel. */
   pins: 50,
+  /** Channels in one community, the two built-in ones included (0.9.30). */
+  channels: 20,
+  /** Custom roles in one community (0.9.30). */
+  roles: 15,
 };
 export type CommunityLimits = typeof COMMUNITY_LIMITS;
 
@@ -73,7 +77,7 @@ export const isReaction = (e: unknown): e is string => typeof e === 'string' && 
 export type CommunityAction = 'invite' | 'requests' | 'reports' | 'pin' | 'kick' | 'mute' | 'deleteMessage' | 'ban' | 'edit' | 'announce' | 'log' | 'slowMode' | 'setRole' | 'transfer' | 'delete';
 
 /**
- * Who may do what to whom. Moderators invite, answer requests, look at reports, pin messages, and
+ * Who may do what to whom. Moderators invite, answer requests, look at reports and the log (0.9.30), pin messages, and
  * take out, mute (time out) and delete the messages of those below them; admins also ban, change
  * the community's info, logo, slow mode and roles below their own, and post announcements; only the
  * owner hands the community over or deletes it. Someone who is not a member (any more) counts as a
@@ -88,6 +92,7 @@ export function may(role: CommunityRole | undefined, action: CommunityAction, ta
     case 'requests':
     case 'reports':
     case 'pin':
+    case 'log':
       return r >= RANK.moderator;
     case 'kick':
     case 'mute':
@@ -97,7 +102,6 @@ export function may(role: CommunityRole | undefined, action: CommunityAction, ta
       return r >= RANK.admin && below;
     case 'edit':
     case 'announce':
-    case 'log':
     case 'slowMode':
       return r >= RANK.admin;
     case 'setRole':
@@ -152,9 +156,17 @@ export interface CommunityRow {
   id: string; name: string; tag: string; description: string; visibility: Visibility; joinMode: JoinMode;
   owner: string; members: number; createdAt: number; lastMessageAt: number;
 }
-export interface MemberRow { uuid: string; role: CommunityRole; joinedAt: number; notify: Notify; onProfile: boolean; mutedUntil: number }
-/** `slowMode`: seconds between one member's messages (0: off). */
-export interface ChannelRow { id: string; community: string; kind: 'general' | 'announcements' | 'custom'; name: string; postRole: CommunityRole; position: number; slowMode: number }
+/** `customRole`: the id of the member's custom role (0.9.30, communityRoles.ts), if any. */
+export interface MemberRow { uuid: string; role: CommunityRole; joinedAt: number; notify: Notify; onProfile: boolean; mutedUntil: number; customRole?: string | null }
+/**
+ * `slowMode`: seconds between one member's messages (0: off). Who reads and who writes (0.9.30,
+ * communityRoles.ts): `readRole`/`postRole` the lowest built-in role, `readRoles`/`writeRoles` the
+ * custom roles let in besides.
+ */
+export interface ChannelRow {
+  id: string; community: string; kind: 'general' | 'announcements' | 'custom'; name: string; postRole: CommunityRole; position: number; slowMode: number;
+  readRole: CommunityRole; readRoles: string[]; writeRoles: string[];
+}
 /** `replyTo`: the message this one answers (in the same channel); `pinnedAt`: when it was pinned. */
 export interface MessageRow {
   id: number; community: string; channel: string; from: string; text: string; at: number;
@@ -166,7 +178,9 @@ export interface ReactionCount { emoji: string; count: number; me?: true }
 const COLUMNS = `id, name, tag, description, visibility, join_mode AS joinMode, owner, member_count AS members, created_at AS createdAt, last_message_at AS lastMessageAt`;
 const MESSAGE_COLUMNS = `id, community_id AS community, channel_id AS channel, from_uuid AS "from", text, created_at AS at, mentions, edited_at AS editedAt, deleted_at AS deletedAt, deleted_by AS deletedBy,
   reply_to AS replyTo, (SELECT p.at FROM community_pins p WHERE p.message_id = community_messages.id) AS pinnedAt`;
-const CHANNEL_COLUMNS = 'id, community_id AS community, kind, name, post_role AS postRole, position, slow_seconds AS slowMode';
+const CHANNEL_COLUMNS = 'id, community_id AS community, kind, name, post_role AS postRole, position, slow_seconds AS slowMode, read_role AS readRole, read_roles AS readRoles, write_roles AS writeRoles';
+type RawChannel = Omit<ChannelRow, 'readRoles' | 'writeRoles'> & { readRoles: string | null; writeRoles: string | null };
+const toChannel = (r: RawChannel): ChannelRow => ({ ...r, readRoles: r.readRoles ? JSON.parse(r.readRoles) as string[] : [], writeRoles: r.writeRoles ? JSON.parse(r.writeRoles) as string[] : [] });
 type RawMessage = Omit<MessageRow, 'mentions'> & { mentions: string | null };
 const toMessage = (r: RawMessage): MessageRow => ({ ...r, mentions: r.mentions ? JSON.parse(r.mentions) as string[] : [] });
 /** LIKE with the user's text taken as it is. */
@@ -228,6 +242,15 @@ CREATE INDEX IF NOT EXISTS community_pins_channel ON community_pins(channel_id, 
     if (!messageColumns.includes('reply_to')) sql.exec('ALTER TABLE community_messages ADD COLUMN reply_to INTEGER');
     const channelColumns = (sql.prepare('PRAGMA table_info(community_channels)').all() as { name: string }[]).map((c) => c.name);
     if (!channelColumns.includes('slow_seconds')) sql.exec('ALTER TABLE community_channels ADD COLUMN slow_seconds INTEGER NOT NULL DEFAULT 0');
+    // added later (0.9.30): who reads and writes a channel, and a member's custom role (communityRoles.ts);
+    // the channels there were before stay readable by everyone, as they were
+    if (!channelColumns.includes('read_role')) {
+      sql.exec("ALTER TABLE community_channels ADD COLUMN read_role TEXT NOT NULL DEFAULT 'member'");
+      sql.exec('ALTER TABLE community_channels ADD COLUMN read_roles TEXT');
+      sql.exec('ALTER TABLE community_channels ADD COLUMN write_roles TEXT');
+    }
+    const memberColumns = (sql.prepare('PRAGMA table_info(community_members)').all() as { name: string }[]).map((c) => c.name);
+    if (!memberColumns.includes('custom_role')) sql.exec('ALTER TABLE community_members ADD COLUMN custom_role TEXT');
     // a member's last message in a channel (slow mode)
     sql.exec('CREATE INDEX IF NOT EXISTS community_messages_author ON community_messages(channel_id, from_uuid, id)');
   }
@@ -298,7 +321,7 @@ CREATE INDEX IF NOT EXISTS community_pins_channel ON community_pins(channel_id, 
   // ---------- members ----------
 
   member(id: string, uuid: string): MemberRow | undefined {
-    const r = this.sql.prepare('SELECT uuid, role, joined_at AS joinedAt, notify, on_profile AS onProfile, muted_until AS mutedUntil FROM community_members WHERE community_id = ? AND uuid = ?').get(id, uuid) as
+    const r = this.sql.prepare('SELECT uuid, role, joined_at AS joinedAt, notify, on_profile AS onProfile, muted_until AS mutedUntil, custom_role AS customRole FROM community_members WHERE community_id = ? AND uuid = ?').get(id, uuid) as
       (Omit<MemberRow, 'onProfile'> & { onProfile: number }) | undefined;
     return r && { ...r, onProfile: !!r.onProfile };
   }
@@ -389,7 +412,7 @@ CREATE INDEX IF NOT EXISTS community_pins_channel ON community_pins(channel_id, 
     const where = q ? "AND (u.handle_lower LIKE ? ESCAPE '\\' OR lower(u.name) LIKE ? ESCAPE '\\')" : '';
     const args = q ? [like(q), like(q)] : [];
     const total = (this.sql.prepare(`SELECT COUNT(*) AS n FROM community_members m JOIN users u ON u.uuid = m.uuid WHERE m.community_id = ? ${where}`).get(id, ...args) as { n: number }).n;
-    const list = this.sql.prepare(`SELECT m.uuid, m.role, m.joined_at AS joinedAt, m.notify, m.on_profile AS onProfile, m.muted_until AS mutedUntil, u.handle, u.name
+    const list = this.sql.prepare(`SELECT m.uuid, m.role, m.joined_at AS joinedAt, m.notify, m.on_profile AS onProfile, m.muted_until AS mutedUntil, m.custom_role AS customRole, u.handle, u.name
       FROM community_members m JOIN users u ON u.uuid = m.uuid WHERE m.community_id = ? ${where}
       ORDER BY CASE m.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'moderator' THEN 2 ELSE 3 END, m.joined_at, m.rowid LIMIT ? OFFSET ?`).all(id, ...args, limit, offset) as Record<string, unknown>[];
     return { list: list.map((r) => ({ ...(r as unknown as MemberRow & { handle: string; name: string }), onProfile: !!r.onProfile })), total };
@@ -475,11 +498,12 @@ CREATE INDEX IF NOT EXISTS community_pins_channel ON community_pins(channel_id, 
   }
 
   channels(id: string): ChannelRow[] {
-    return this.sql.prepare(`SELECT ${CHANNEL_COLUMNS} FROM community_channels WHERE community_id = ? ORDER BY position, created_at`).all(id) as never;
+    return (this.sql.prepare(`SELECT ${CHANNEL_COLUMNS} FROM community_channels WHERE community_id = ? ORDER BY position, created_at`).all(id) as unknown as RawChannel[]).map(toChannel);
   }
 
   channel(id: string, ch: string): ChannelRow | undefined {
-    return this.sql.prepare(`SELECT ${CHANNEL_COLUMNS} FROM community_channels WHERE community_id = ? AND id = ?`).get(id, ch) as ChannelRow | undefined;
+    const r = this.sql.prepare(`SELECT ${CHANNEL_COLUMNS} FROM community_channels WHERE community_id = ? AND id = ?`).get(id, ch) as RawChannel | undefined;
+    return r && toChannel(r);
   }
 
   setSlowMode(ch: string, seconds: number) {

@@ -92,7 +92,7 @@ describe('community rules', () => {
             const want = {
               invite: r >= 1, requests: r >= 1, reports: r >= 1, pin: r >= 1, slowMode: r >= 2,
               kick: r >= 1 && below, mute: r >= 1 && below, deleteMessage: r >= 1 && below,
-              ban: r >= 2 && below, edit: r >= 2, announce: r >= 2, log: r >= 2,
+              ban: r >= 2 && below, edit: r >= 2, announce: r >= 2, log: r >= 1,
               setRole: r >= 2 && below && next !== undefined && next !== 'owner' && RANK[next!] < r,
               transfer: role === 'owner' && target !== undefined && target !== 'owner',
               delete: role === 'owner',
@@ -105,7 +105,7 @@ describe('community rules', () => {
     }
     // the table the clients get matches
     assert.deepEqual(permissions('moderator'), { invite: true, requests: true, reports: true, pin: true, slowMode: false, kick: true,
- mute: true, deleteMessage: true, ban: false, edit: false, announce: false, log: false, setRole: false, transfer: false, delete: false });
+ mute: true, deleteMessage: true, ban: false, edit: false, announce: false, log: true, setRole: false, transfer: false, delete: false });
     assert.equal(permissions('member').invite, false);
     assert.equal(permissions('owner').delete, true);
   });
@@ -244,7 +244,8 @@ describe('communities over HTTP', () => {
     assert.equal((await call('POST', `/v1/communities/${c.id}/members/${owner.user.id}/role`, admin.token, { role: 'member' })).status, 403);
     assert.equal((await call('POST', `/v1/communities/${c.id}/settings`, admin.token, { description: 'Opis', joinMode: 'request' })).body.community.joinMode, 'request');
     assert.ok((await call('GET', `/v1/communities/${c.id}/log`, admin.token)).body.log.some((e: any) => e.action === 'edit'));
-    assert.equal((await call('GET', `/v1/communities/${c.id}/log`, mod.token)).status, 403);
+    // the moderation log: moderators read it too (0.9.30)
+    assert.equal((await call('GET', `/v1/communities/${c.id}/log`, mod.token)).status, 200);
     assert.equal((await call('POST', `/v1/communities/${c.id}/owner`, admin.token, { user: member.user.id })).status, 403);
     assert.equal((await call('DELETE', `/v1/communities/${c.id}`, admin.token)).status, 403);
     // the owner cannot leave with others in it; hands it over and stays an admin
