@@ -3,6 +3,7 @@ import { logoFromFile, logoUrl, stageLogo } from './clanLogo';
 import { confirmDialog, control, el, icon, modalWindow } from './dialog';
 import { editHint, editedLabel, openMenu, replaceMessage, tombstone, withMenu, type MenuItem } from './chatEdits';
 import { disabledText, featureOn } from './features';
+import { createCommunityLinks, linkLogName, type CommunityServer } from './communityLinks';
 
 /**
  * Communities ("Społeczności") in the Friends view: like a clan but big (up to a thousand players),
@@ -33,6 +34,8 @@ export interface Channel { id: string; kind: 'general' | 'announcements' | 'cust
 export interface CommunitySummary {
   id: string; name: string; tag: string; slug: string; description: string; visibility: 'public' | 'private'; joinMode: 'open' | 'request';
   members: number; owner: Person; createdAt: number; logo?: number;
+  /** Server 0.9.30+ (communityLinks.ts): an official community, and its game server. */
+  verified?: boolean; server?: CommunityServer;
   /** In the directory: how I may get in. */
   state?: 'member' | 'invited' | 'open' | 'request' | 'requested' | 'invite' | 'banned' | 'full';
 }
@@ -161,6 +164,7 @@ interface Deps {
     socialSetCommunityLogo?: (id: string, png: Uint8Array) => Promise<any>;
     socialCommunityLogo?: (id: string, version: number) => Promise<string>;
     socialProfileUrl?: (handle: string, open?: boolean) => Promise<string>;
+    pingServer?: (address: string) => Promise<any>;
   };
   toast: (message: string, isError?: boolean) => void;
   errorText: (err: unknown) => string;
@@ -176,6 +180,8 @@ interface Deps {
   editGone: () => void;
   /** The composer gets the focus (a reply was started). */
   focus?: () => void;
+  /** The usual "join server" window: a community's game server (communityLinks.ts). */
+  join?: (address: string, version?: string) => void;
 }
 
 export function createCommunities(deps: Deps) {
@@ -199,6 +205,11 @@ export function createCommunities(deps: Deps) {
   let ticker: ReturnType<typeof setInterval> | undefined;
 
   const community = (id: string | undefined) => list.find((c) => c.id === id);
+  // invite links, the game server and the verified badge (communityLinks.ts)
+  const extras = createCommunityLinks({
+    api, toast: deps.toast, errorText: deps.errorText, join: deps.join, membersText, take: (res) => take(res),
+    avatar: (c) => communityAvatar(c), open: (id) => void select(id),
+  });
   const me = () => deps.me()?.id;
 
   async function refresh() {
@@ -259,7 +270,7 @@ export function createCommunities(deps: Deps) {
     const staff = (c.pending ?? 0) + (c.reports ?? 0);
     const r = el('button', { type: 'button', className: `fr-row fr-group fr-community${selected ? ' selected' : ''}` },
       communityAvatar(c),
-      el('div', { className: 'grow fr-names' }, el('b', { textContent: c.name }), el('small', { className: 'muted', textContent: subline(c) })),
+      el('div', { className: 'grow fr-names' }, extras.name(c), el('small', { className: 'muted', textContent: subline(c) })),
       staff ? el('i', { className: 'fa-solid fa-user-clock fr-staff-dot', title: t('Prośby lub zgłoszenia czekają: {0}', staff) }) : '',
       c.notify === 'none' ? el('i', { className: 'fa-solid fa-bell-slash fr-muted', title: t('Bez powiadomień') }) : '',
       badge);
@@ -277,14 +288,16 @@ export function createCommunities(deps: Deps) {
     discover.addEventListener('click', () => discoverWindow());
     const add = el('button', { type: 'button', className: 'icon-btn fr-section-btn', title: t('Załóż społeczność') }, icon('fa-plus'));
     add.addEventListener('click', () => createWindow());
-    out.push(el('div', { className: 'fr-section fr-section-row' }, el('span', { textContent: t('Społeczności') }), el('span', { className: 'row fr-section-btns' }, discover, add)));
+    const byLink = el('button', { type: 'button', className: 'icon-btn fr-section-btn', title: t('Dołącz przez zaproszenie') }, icon('fa-link'));
+    byLink.addEventListener('click', () => extras.joinWindow());
+    out.push(el('div', { className: 'fr-section fr-section-row' }, el('span', { textContent: t('Społeczności') }), el('span', { className: 'row fr-section-btns' }, byLink, discover, add)));
     for (const inv of invites) {
       const accept = el('button', { type: 'button', className: 'icon-btn primary', title: t('Dołącz') }, icon('fa-check'));
       const decline = el('button', { type: 'button', className: 'icon-btn', title: t('Odrzuć') }, icon('fa-xmark'));
       accept.addEventListener('click', async () => take(await act(() => api.socialApi('POST', `/v1/communities/${inv.community.id}/invites/accept`), t('Dołączono do społeczności {0}.', inv.community.name))));
       decline.addEventListener('click', async () => take(await act(() => api.socialApi('POST', `/v1/communities/${inv.community.id}/invites/decline`))));
       out.push(el('div', { className: 'fr-row' }, communityAvatar(inv.community),
-        el('div', { className: 'grow fr-names' }, el('b', { textContent: inv.community.name }), el('small', { className: 'muted', textContent: t('{0} zaprasza do społeczności', inv.by.name) })),
+        el('div', { className: 'grow fr-names' }, extras.name(inv.community), el('small', { className: 'muted', textContent: t('{0} zaprasza do społeczności', inv.by.name) })),
         accept, decline));
     }
     out.push(...list.map(row));
@@ -757,6 +770,7 @@ export function createCommunities(deps: Deps) {
     }
     if (communityMay(c.role, 'requests') && c.joinMode === 'request' || (c.pending ?? 0) > 0) button('fa-user-clock', t('Prośby o dołączenie'), () => requestsWindow(c), c.pending ?? 0);
     if (communityMay(c.role, 'reports')) button('fa-flag', t('Zgłoszenia'), () => reportsWindow(c), c.reports ?? 0);
+    if (communityMay(c.role, 'edit')) button('fa-link', t('Linki zaproszeń'), () => extras.linksWindow(c));
     button(c.notify === 'none' ? 'fa-bell-slash' : 'fa-bell', t('Powiadomienia'), (b) => notifyMenu(c, b), 0, c.notify === 'all' ? ' on' : '');
     if (communityMay(c.role, 'edit') || communityMay(c.role, 'ban', 'member') || communityMay(c.role, 'delete')) button('fa-gear', t('Ustawienia społeczności'), () => settingsWindow(c));
     if (c.role !== 'owner') {
@@ -776,9 +790,9 @@ export function createCommunities(deps: Deps) {
       return b;
     }));
     head.replaceChildren(communityAvatar(c),
-      el('div', { className: 'grow fr-names' }, el('b', { textContent: c.name }),
+      el('div', { className: 'grow fr-names' }, extras.name(c),
         el('small', { className: 'muted', textContent: `${subline(c)} · ${communityRoleText(c.role)}` }), tabs),
-      ...actions);
+      ...actions, extras.serverStrip(c.server));
     renderNote();
     renderMessages();
     ticker ??= setInterval(tick, 1000);
@@ -984,8 +998,8 @@ export function createCommunities(deps: Deps) {
       reload();
     });
     return el('div', { className: 'fr-row fr-com-dir-row' }, communityAvatar(c),
-      el('div', { className: 'grow fr-names' }, el('b', { textContent: c.name }), el('small', { className: 'muted', textContent: subline(c) }),
-        c.description ? el('small', { className: 'fr-com-desc', textContent: c.description }) : ''),
+      el('div', { className: 'grow fr-names' }, extras.name(c), el('small', { className: 'muted', textContent: subline(c) }),
+        c.description ? el('small', { className: 'fr-com-desc', textContent: c.description }) : '', extras.serverStrip(c.server, true)),
       go);
   }
 
@@ -1170,7 +1184,7 @@ export function createCommunities(deps: Deps) {
         close();
         const fresh = community(c.id);
         if (fresh) settingsWindow(fresh);
-      }));
+      }), ...extras.serverSection(c, () => void refresh()));
     }
     if (communityMay(c.role, 'ban', 'member')) {
       const bans = el('div', { className: 'fr-clan-members' });
@@ -1218,7 +1232,7 @@ export function createCommunities(deps: Deps) {
     };
     const rows = (res.log as { at: number; byName: string; action: string; targetName: string; detail: string }[]).map((e) => el('div', { className: 'fr-com-log' },
       el('small', { className: 'muted', textContent: new Date(e.at).toLocaleString(locale(), { dateStyle: 'short', timeStyle: 'short' }) }),
-      el('span', {}, el('b', { textContent: e.byName || t('Administracja') }), ` ${names[e.action] ?? t('(administracja) {0}', e.action)} `, el('b', { textContent: e.targetName }), e.detail ? ` (${e.detail})` : '')));
+      el('span', {}, el('b', { textContent: e.byName || t('Administracja') }), ` ${names[e.action] ?? linkLogName(e.action) ?? t('(administracja) {0}', e.action)} `, el('b', { textContent: e.targetName }), e.detail ? ` (${e.detail})` : '')));
     modalWindow(t('Dziennik moderacji'), [el('div', { className: 'fr-clan-members' }, ...rows)], [], undefined, 'fr-group-modal fr-com-modal');
   }
 

@@ -1,6 +1,7 @@
 import { getLang, locale, t } from '../shared/i18n';
 import { createGroups } from './groups';
 import { createCommunities, waitText } from './communities';
+import { linkErrorText } from './communityLinks';
 import { PlayingWatch, type PlayingNews } from './friendActivity';
 import { createParty, type Party } from './party';
 import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
@@ -156,7 +157,7 @@ export function socialErrorText(code: string): string {
     owned: t('Masz już ten przedmiot.'),
     not_for_sale: t('Tego nie ma w sklepie.'),
   };
-  return texts[code] ?? t('Błąd serwera znajomych ({0}).', code);
+  return texts[code] ?? linkErrorText(code) ?? t('Błąd serwera znajomych ({0}).', code);
 }
 
 export function createFriends(root: HTMLElement, badge: HTMLElement, deps: FriendsDeps) {
@@ -241,6 +242,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     edit: (m) => startEditing({ id: m.id, community: m.community, channel: m.channel }, m.text),
     editGone: () => stopEditing(),
     focus: () => input?.focus(),
+    join: deps.join,
   });
   const friend = (id: string | undefined) => list.friends.find((f) => f.id === id);
   /** A friends list from the server with each stream checked (streams.ts). */
