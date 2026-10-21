@@ -3,6 +3,7 @@ import { IMAGE_LIMITS } from './chatImages.ts';
 import { MAX_LOGO_BYTES } from './clanLogos.ts';
 import { BLOCKED_TAGS, BLOCKED_WORDS, CLAN_LIMITS } from './clans.ts';
 import { COMMUNITY_LIMITS } from './communityStore.ts';
+import { COMMUNITY_MEDIA_LIMITS } from './communityMedia.ts';
 import { BANNER_DEFS, FEATURE_DEFS } from './features.ts';
 import { RANK_SETTING_DEFS } from './ranks.ts';
 import { GROUP_LIMITS } from './groups.ts';
@@ -131,6 +132,13 @@ export const SETTING_DEFS: SettingDef[] = [
     rate('communities.reportsPerMinute', 'Zgłoszenia wiadomości na minutę', 'Message reports per minute', 10, 'Na konto.'),
     rate('communities.reactionsPerMinute', 'Reakcje na minutę', 'Reactions per minute', 60, 'Na konto: dodanie lub zdjęcie reakcji pod wiadomością społeczności.'),
 
+  ]),
+
+  // pictures in communities' chats (communityMedia.ts): not encrypted, kept on the server as JPEG
+  ...group('communities', [
+    bytes('communities.imageBytes', 'Największe zdjęcie w społeczności', 'Largest community picture', COMMUNITY_MEDIA_LIMITS.imageBytes, 'JPEG bez metadanych (launcher zmniejsza zrzuty do 1920 px).', 64 * 1024, 50 * MB),
+    { key: 'communities.imagesPerDay', label: 'Zdjęć w społecznościach dziennie', labelEn: 'Community pictures a day', description: 'Na konto, we wszystkich społecznościach razem.', type: 'int', default: COMMUNITY_MEDIA_LIMITS.imagesPerDay, min: 0, max: 10_000 },
+    { key: 'communities.imageDays', label: 'Przechowywanie zdjęć ze społeczności', labelEn: 'Community pictures kept', description: 'Po tylu dniach zdjęcie znika z serwera (wiadomość zostaje z napisem, że wygasło).', type: 'duration', default: COMMUNITY_MEDIA_LIMITS.imageDays, min: 1, max: 3650, unit: 'dni', risky: true },
   ]),
 
   ...group('sparks', [

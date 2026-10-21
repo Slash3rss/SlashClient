@@ -3,6 +3,7 @@ import type { Db, Person } from './db.ts';
 import { LogoStore, serveLogo, takeLogo } from './clanLogos.ts';
 import { EDIT_WINDOW_MS, editRefusal } from './chatLimits.ts';
 import { withDefaults } from './settings.ts';
+import { POLL_OPTIONS, createCommunityMedia, type CommunityMediaLimits } from './communityMedia.ts';
 import {
   COMMUNITY_LIMITS, CommunityStore, NOTIFY, RANK, ROLES, SLOW_MODES, cleanCommunityName, cleanDescription, communityTagProblem, isReaction, mentionedHandles, may, offensiveText, permissions,
   type ChannelRow, type CommunityLimits, type CommunityRole, type CommunityRow, type JoinMode, type MemberRow, type MessageRow, type Notify, type ReactionCount, type Visibility,
@@ -70,6 +71,8 @@ interface Deps {
   limits?: Partial<CommunityLimits>;
   /** How long a message may be edited now (the admin panel's setting; EDIT_WINDOW_MS by default). */
   editWindowMs?: () => number;
+  /** Pictures and polls in the chat (communityMedia.ts): where the pictures' files go, their limits. */
+  media: { dir: string; limits?: Partial<CommunityMediaLimits>; limitUploads: (key: string) => void; limitDownloads: (key: string) => void; limitVotes?: (key: string) => void };
 }
 
 type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
@@ -88,6 +91,38 @@ export function createCommunities(deps: Deps) {
   const editWindow = () => deps.editWindowMs?.() ?? EDIT_WINDOW_MS;
   const store = new CommunityStore(db.sql);
   const logos = new LogoStore(db.sql, 'community_logos', 'communities', '/v1/communities');
+  // pictures and polls in the chat (communityMedia.ts); its functions below are hoisted
+  const media = createCommunityMedia({
+    sql: db.sql, dir: deps.media.dir, limits: deps.media.limits, authed, body, fail,
+    limitUploads: deps.media.limitUploads, limitDownloads: deps.media.limitDownloads, limitVotes: deps.media.limitVotes ?? deps.limitReactions,
+    reader: (id, ch, me) => {
+      const { m } = membership(id, me);
+      const channel = store.channel(id, ch);
+      if (!channel || !mayRead(channel, m)) fail(404, 'not_found');
+      return m;
+    },
+    writer: (id, ch, me) => {
+      const { m } = membership(id, me);
+      const channel = store.channel(id, ch);
+      if (!channel || !mayRead(channel, m)) fail(404, 'not_found');
+      if (RANK[m.role] < RANK[channel!.postRole]) fail(403, 'read_only_channel');
+      if (m.mutedUntil > Date.now()) fail(403, 'community_muted');
+    },
+    message: (id, mid, me) => {
+      const m = store.message(id, mid);
+      return m && messageView(m, new Map(), store.reactionsOf([m.id], me).get(m.id) ?? [], me);
+    },
+    moderates: (role) => may(role, 'pin'),
+    toMembers: (id, event) => toMembers(id, event),
+    log: (id, by, action, target, detail) => store.log(id, by, action, target, detail),
+  });
+  /** What the clients learn of pictures and polls with the list (their presence says the server has them). */
+  const mediaLimits = () => ({ imageBytes: media.limits.imageBytes, pollOptions: POLL_OPTIONS.max });
+  /**
+   * Whether a member may read a channel's messages and pictures. Every member reads every channel
+   * now; a channel's own read access goes here (pictures and polls follow it).
+   */
+  const mayRead = (_ch: ChannelRow, _m: MemberRow) => true;
 
   const person = (id: string): Person => {
     const u = db.user(id);
@@ -143,6 +178,7 @@ export function createCommunities(deps: Deps) {
     const invited = store.sentInvites(c.id).map((i) => i.uuid);
     const asked = store.requests(c.id, 10_000).map((r) => r.uuid);
     logos.remove(c.id);
+    media.removeCommunity(c.id);
     store.remove(c.id);
     store.log(c.id, by, action, '', c.name);
     pushMany(new Set([...members, ...invited, ...asked]), { type: 'communities', id: c.id, removed: true });
@@ -195,7 +231,7 @@ export function createCommunities(deps: Deps) {
         const c = store.community(r.community);
         return c ? [{ community: summary(c), at: r.at }] : [];
       }),
-      limits: { members: L.members, perPlayer: L.perPlayer, owned: L.owned, message: L.message, description: L.description },
+      limits: { members: L.members, perPlayer: L.perPlayer, owned: L.owned, message: L.message, description: L.description, ...mediaLimits() },
     };
   }
 
@@ -238,14 +274,14 @@ export function createCommunities(deps: Deps) {
    * hand), deleted ones empty; the quote it answers, its reactions (`me` only for the reader of a
    * page) and whether it is pinned.
    */
-  function messageView(m: MessageRow, authors: Authors = new Map(), reactions?: ReactionCount[]) {
+  function messageView(m: MessageRow, authors: Authors = new Map(), reactions?: ReactionCount[], me?: string) {
     const author = authorOf(m.community, m.from, authors);
     const base = { id: m.id, community: m.community, channel: m.channel, from: m.from, author, text: m.text, at: m.at, ...quoteOf(m, authors) };
     if (m.deletedAt) return { ...base, text: '', deleted: true as const, ...(m.deletedBy && m.deletedBy !== m.from ? { moderated: true } : {}) };
     const r = reactions ?? store.reactionsOf([m.id]).get(m.id);
     return {
       ...base, ...(m.editedAt ? { editedAt: m.editedAt } : {}), ...(m.mentions.length ? { mentions: m.mentions } : {}),
-      ...(r?.length ? { reactions: r } : {}), ...(m.pinnedAt ? { pinned: true } : {}),
+      ...(r?.length ? { reactions: r } : {}), ...(m.pinnedAt ? { pinned: true } : {}), ...media.extras(m.id, me),
     };
   }
 
@@ -253,7 +289,7 @@ export function createCommunities(deps: Deps) {
   function messageViews(list: MessageRow[], me: string) {
     const authors: Authors = new Map();
     const reactions = store.reactionsOf(list.filter((m) => !m.deletedAt).map((m) => m.id), me);
-    return list.map((m) => messageView(m, authors, reactions.get(m.id) ?? []));
+    return list.map((m) => messageView(m, authors, reactions.get(m.id) ?? [], me));
   }
 
   /** Every connected member hears it. */
@@ -339,6 +375,7 @@ export function createCommunities(deps: Deps) {
 
   function deleteMessage(c: CommunityRow, m: MessageRow, by: string) {
     store.deleteMessage(m.id, by);
+    media.remove(m.id);
     // a deleted message's reports are settled with it
     if (store.resolveReports(m.id, by, 'deleted')) listChanged(c.id, store.staff(c.id));
     const message = messageView(store.message(c.id, m.id)!);
@@ -726,12 +763,16 @@ export function createCommunities(deps: Deps) {
         if (!replyTo || replyTo.channel !== ch) fail(400, 'bad_reply');
         if (replyTo!.deletedAt) fail(404, 'reply_deleted');
       }
-      const text = cleanText(raw.text);
+      // a picture uploaded just before, or a poll (communityMedia.ts): a short text for older launchers
+      const extra = media.prepare(raw, id, ch, me);
+      const text = extra?.text ?? cleanText(raw.text);
       deps.limitMessages(me);
       deps.limitBurst?.(me, `c:${ch}`);
       const mentions = mentionsIn(id, text);
       if (replyTo && replyTo.from !== me && store.memberSet(id).has(replyTo.from) && !mentions.includes(replyTo.from)) mentions.push(replyTo.from);
-      const message = messageView(store.addMessage(id, ch, me, text, mentions, now, replyTo?.id ?? null), new Map(), []);
+      const row = store.addMessage(id, ch, me, text, mentions, now, replyTo?.id ?? null);
+      extra?.attach(row.id);
+      const message = messageView(row, new Map(), [], me);
       toMembers(id, { type: 'community-message', message });
       if (c.members >= 3) deps.countMessage?.(me);
       return { message, ...(channel.slowMode && RANK[m.role] < RANK.moderator ? { nextPostAt: now + channel.slowMode * 1000 } : {}) };
@@ -743,7 +784,7 @@ export function createCommunities(deps: Deps) {
       deps.limitEdits(me);
       const old = store.message(id, Number(raw));
       if (!old || old.channel !== ch) fail(404, 'not_found');
-      const refusal = editRefusal({ ...old!, deleted: !!old!.deletedAt }, me, false, Date.now(), editWindow());
+      const refusal = editRefusal({ ...old!, deleted: !!old!.deletedAt }, me, media.special(old!.id), Date.now(), editWindow());
       if (refusal) fail(...refusal);
       const text = cleanText((await body(req)).text);
       store.editMessage(old!.id, text, mentionsIn(id, text));
@@ -894,6 +935,9 @@ export function createCommunities(deps: Deps) {
       return { reports: reportsView(store.openReports(id)) };
     }],
 
+    // pictures and polls (communityMedia.ts)
+    ...media.routes,
+
     // -- the site's admins (moderation) --
     ['GET', /^\/v1\/admin\/communities$/, (req, _p, url) => {
       deps.admin(req);
@@ -976,6 +1020,10 @@ export function createCommunities(deps: Deps) {
     store,
     /** The logos' pictures (not JSON). */
     serveLogo: (req: http.IncomingMessage, res: http.ServerResponse, url: URL) => serveLogo(logos, req, res, url),
+    /** The chat's pictures (JPEG, members only), and their hourly cleanup. */
+    serveImage: (req: http.IncomingMessage, res: http.ServerResponse, url: URL) => media.serve(req, res, url),
+    cleanupImages: (now?: number) => media.cleanup(now),
+    media,
     /** What a profile shows: public communities the player left on (never private ones). */
     onProfile: (uuid: string) => store.onProfile(uuid).map((c) => ({
       name: c.name, tag: c.tag, slug: c.tag || c.id, members: c.members, role: c.role, ...(logos.version(c.id) !== undefined ? { logo: logos.url(c.id, logos.version(c.id)!) } : {}),
