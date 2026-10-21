@@ -1,12 +1,17 @@
 import { app } from 'electron';
 import { execFile, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createWriteStream } from 'node:fs';
-import fs from 'node:fs/promises';
+import nodeFs from 'node:fs/promises';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
 import { fetchWatched } from './download';
 import { throttled } from './rateLimit';
+
+// Electron treats app.asar as a virtual directory. Update bundles must be handled
+// as real files, including cleanup and replacing an archive left by a failed unpack.
+const diskFs: typeof import('node:fs') = process.versions.electron ? require('original-fs') : require('node:fs');
+const fs: typeof nodeFs = diskFs.promises;
+const { createWriteStream } = diskFs;
 
 /**
  * Updates on macOS without Apple's signature: macOS lets only signed apps replace themselves
