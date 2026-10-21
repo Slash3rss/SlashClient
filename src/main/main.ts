@@ -67,7 +67,7 @@ import fsp from 'node:fs/promises';
 import { backupWorld, deleteFile, listBackups, listClips, listScreenshots, listWorlds, restoreBackup } from './worlds';
 import { applySnapshot, createSnapshot, deleteSnapshot, listSnapshots, restoreSnapshot } from './snapshots';
 import { exportWorld, importWorldZip, installDatapack, listDatapacks, readWorldZip, removeDatapack, type WorldZipSummary } from './worldFiles';
-import { t } from '../shared/i18n';
+import { getLang, t } from '../shared/i18n';
 import { APP_USER_MODEL_ID, cleanTarget, Notifier } from './notifications';
 import { registerMaintenance } from './maintenance';
 import { applyToolSettings, gpuLaunchOptions, registerLauncherTools } from './launcherTools';
@@ -1765,6 +1765,14 @@ const bridge = new GameBridge({
   // a screenshot sent to a friend from the game's chat: the same check, then encrypted here and sent
   sendImage: async (friendId, file) => ({ message: await sendChatImage(friendId, await screenshotFile(file)) }),
   sendGroupImage: async (groupId, file) => ({ message: await sendGroupImage(groupId, await screenshotFile(file)) }),
+  // to a community's channel (not encrypted: the server keeps it as a JPEG for the members)
+  sendCommunityImage: async (communityId, channelId, file) => ({ message: await sendCommunityImage(communityId, channelId, await screenshotFile(file)) }),
+  communityImage: async (communityId, id) => {
+    const img = nativeImage.createFromBuffer(await communityImageData(communityId, id));
+    const { width, height } = img.getSize();
+    const size = fitSize(width, height, 960);
+    return (size.w < width ? img.resize({ width: size.w, height: size.h, quality: 'good' }) : img).toPNG();
+  },
   // a picture from the chat for the game: PNG (the game reads only that), small enough for its window
   chatImage: async (id) => {
     const img = nativeImage.createFromBuffer(await chatImageData(id));
@@ -2040,6 +2048,36 @@ handle('social:sendGroupImage', (groupId: string, pasted?: Uint8Array) => social
   const file = await pictureToSend(pasted);
   return file ? { message: await sendGroupImage(groupId, file) } : undefined;
 }));
+// ---------- pictures in a community's chat (server 0.9.30+): not encrypted, a plain JPEG for its members ----------
+
+/** A picture (a file, or pasted bytes) to a community's channel: scaled and made a JPEG here, the server leaves out any metadata left. */
+async function sendCommunityImage(community: string, channel: string, file: string | Buffer): Promise<unknown> {
+  if (!social.state().user?.id) throw new SocialError('unauthorized');
+  const { jpeg } = pictureFile(file);
+  const { id } = await social.upload<{ id: string }>(`/v1/communities/${community}/channels/${channel}/images`, jpeg);
+  // the text older launchers show instead, in this player's language
+  const res = await social.call<{ message: unknown }>('POST', `/v1/communities/${community}/channels/${channel}/messages`, { image: id, lang: getLang() });
+  imageCache.set(`c:${id}`, jpeg);
+  return res.message;
+}
+/** A community's picture, downloaded (kept for a while with the others). */
+async function communityImageData(community: string, id: string): Promise<Buffer> {
+  const kept = imageCache.get(`c:${id}`);
+  if (kept) return kept;
+  const data = await social.download(`/v1/communities/${community}/images/${id}`);
+  imageCache.set(`c:${id}`, data);
+  return data;
+}
+handle('social:sendCommunityImage', (communityId: string, channelId: string, pasted?: Uint8Array) => socialCall(async () => {
+  if (typeof communityId !== 'string' || !/^[\w-]{1,32}$/.test(communityId) || typeof channelId !== 'string' || !/^[\w-]{1,32}$/.test(channelId)) throw new SocialError('bad_request');
+  const file = await pictureToSend(pasted);
+  return file ? { message: await sendCommunityImage(communityId, channelId, file) } : undefined;
+}));
+handle('social:communityImage', (communityId: string, id: string) => socialCall(async () => {
+  if (typeof communityId !== 'string' || !/^[\w-]{1,32}$/.test(communityId) || typeof id !== 'string' || !/^[\w-]{22}$/.test(id)) throw new SocialError('bad_request');
+  return `data:image/jpeg;base64,${(await communityImageData(communityId, id)).toString('base64')}`;
+}));
+
 /** A picture from the chat for the page, as a data: address. */
 handle('social:image', (id: string) => socialCall(async () => {
   if (typeof id !== 'string' || !/^[\w-]{22}$/.test(id)) throw new SocialError('bad_request');
