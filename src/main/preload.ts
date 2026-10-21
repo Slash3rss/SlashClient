@@ -164,8 +164,8 @@ const api = {
   socialTyping: (friendId: string) => invoke('social:typing', friendId),
   socialActivity: () => invoke('social:activity'),
   /** Picks a picture and sends it to the friend, encrypted; undefined when the player cancelled. */
-  socialSendImage: (friendId: string) => invoke('social:sendImage', friendId),
-  socialSendGroupImage: (groupId: string) => invoke('social:sendGroupImage', groupId),
+  socialSendImage: (friendId: string, pasted?: Uint8Array) => invoke('social:sendImage', friendId, pasted),
+  socialSendGroupImage: (groupId: string, pasted?: Uint8Array) => invoke('social:sendGroupImage', groupId, pasted),
   /** A picture from the chat as a data: address. */
   socialImage: (id: string) => invoke('social:image', id),
   /** A clan's logo: the owner's new one (a 64×64 PNG the page made), and one to show as a data: address. */

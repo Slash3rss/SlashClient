@@ -79,7 +79,7 @@ export const roleText = (r: ClanRole) => ({ owner: t('Założyciel'), officer: t
 
 interface Deps {
   api: {
-    socialApi: (method: string, path: string, body?: unknown) => Promise<any>; socialSendGroupImage?: (groupId: string) => Promise<any>; notify?: (title: string, body: string, target?: unknown) => Promise<unknown>;
+    socialApi: (method: string, path: string, body?: unknown) => Promise<any>; socialSendGroupImage?: (groupId: string, pasted?: Uint8Array) => Promise<any>; notify?: (title: string, body: string, target?: unknown) => Promise<unknown>;
     /** A clan's logo (clanLogo.ts): the owner's new one, and one to show (a data: address). */
     socialSetClanLogo?: (png: Uint8Array) => Promise<any>; socialClanLogo?: (id: string, version: number) => Promise<string>;
   };
@@ -268,11 +268,11 @@ export function createGroups(deps: Deps) {
     return !!res;
   }
 
-  /** A picture to the open group (the main process asks for the file, encrypts and sends it). */
-  async function sendPicture(): Promise<void> {
+  /** A picture to the open group (pasted, or the main process asks for the file; it encrypts and sends it). */
+  async function sendPicture(pasted?: Uint8Array): Promise<void> {
     const id = open;
     if (!id || !api.socialSendGroupImage) return;
-    const res = await act(() => api.socialSendGroupImage!(id));
+    const res = await act(() => api.socialSendGroupImage!(id, pasted));
     if (res?.message) addMessage(res.message);
   }
 

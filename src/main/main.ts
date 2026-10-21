@@ -186,6 +186,21 @@ function windowSize(choice: string | undefined, saved: Settings['launcherBounds'
   return { width: 1000, height: 640 };
 }
 
+/** A new choice in Settings, at once: the window takes that size (centred), maximizes or goes full screen. */
+function applyWindowChoice(choice: string | undefined) {
+  if (!win || win.isDestroyed()) return;
+  if (choice === 'remember') return; // the window stays as it is, and is remembered as it closes
+  if (win.isFullScreen() && choice !== 'fullscreen') win.setFullScreen(false);
+  if (choice === 'fullscreen') return win.setFullScreen(true);
+  if (choice === 'maximized') return win.maximize();
+  if (win.isMaximized()) win.unmaximize();
+  const { width, height } = windowSize(choice, undefined);
+  // no bigger than the screen the window is on
+  const area = screen.getDisplayMatching(win.getBounds()).workArea;
+  const w = Math.min(width, area.width), h = Math.min(height, area.height);
+  win.setBounds({ x: Math.round(area.x + (area.width - w) / 2), y: Math.round(area.y + (area.height - h) / 2), width: w, height: h });
+}
+
 function createWindow() {
   const choice = store.settings.launcherWindow;
   win = new BrowserWindow({
@@ -279,6 +294,7 @@ handle('settings:save', async (settings: Partial<Settings>) => {
   const accountChanged = allowed.selectedAccountId !== undefined && allowed.selectedAccountId !== store.settings.selectedAccountId;
   const previous = store.settings;
   store.settings = { ...store.settings, ...allowed };
+  if (allowed.launcherWindow !== undefined && (allowed.launcherWindow || '') !== (previous.launcherWindow || '')) applyWindowChoice(allowed.launcherWindow);
   await applyToolSettings(store.settings, previous);
   if (accountChanged) void signInWithMinecraft();
   if (urlChanged) await social.logout();
@@ -1952,7 +1968,7 @@ async function chatImageData(id: string): Promise<Buffer> {
  * key, uploaded; then a message carrying that key, encrypted for the friend's launchers and ours.
  * A friend whose launcher has no chat key (an older version) cannot get one: it would not be private.
  */
-async function sendChatImage(to: string, file: string): Promise<ChatMessage> {
+async function sendChatImage(to: string, file: string | Buffer): Promise<ChatMessage> {
   const me = social.state().user?.id;
   if (!me) throw new SocialError('unauthorized');
   const { jpeg, size } = pictureFile(file);
@@ -1969,9 +1985,9 @@ async function sendChatImage(to: string, file: string): Promise<ChatMessage> {
   return openMessage(res.message);
 }
 
-/** A picture file ready to send: scaled to at most 1920 px and made a JPEG small enough for the server. */
-function pictureFile(file: string): { jpeg: Buffer; size: { w: number; h: number } } {
-  let img = nativeImage.createFromPath(file);
+/** A picture (a file, or pasted bytes) ready to send: scaled to at most 1920 px and made a JPEG small enough for the server. */
+function pictureFile(file: string | Buffer): { jpeg: Buffer; size: { w: number; h: number } } {
+  let img = typeof file === 'string' ? nativeImage.createFromPath(file) : nativeImage.createFromBuffer(file);
   if (img.isEmpty()) throw new SocialError('not_an_image');
   const { width, height } = img.getSize();
   const size = fitSize(width, height);
@@ -1983,7 +1999,7 @@ function pictureFile(file: string): { jpeg: Buffer; size: { w: number; h: number
 }
 
 /** The same to a group (or clan) chat: the picture's key and the caption encrypted for the members' launchers. */
-async function sendGroupImage(group: string, file: string): Promise<GroupChatMessage> {
+async function sendGroupImage(group: string, file: string | Buffer): Promise<GroupChatMessage> {
   if (!social.state().user?.id) throw new SocialError('unauthorized');
   const { jpeg, size } = pictureFile(file);
   const sealed = sealImage(jpeg, 'image/jpeg', size.w, size.h);
@@ -2008,14 +2024,20 @@ async function pickPicture(): Promise<string | undefined> {
   });
   return picked.canceled ? undefined : picked.filePaths[0];
 }
-handle('social:sendImage', (friendId: string) => socialCall(async () => {
+/** A picture pasted into the chat (its bytes from the page), or else one the player picks. */
+async function pictureToSend(pasted: unknown): Promise<string | Buffer | undefined> {
+  if (pasted === undefined) return pickPicture();
+  if (!(pasted instanceof Uint8Array) || pasted.length > 40 * 1024 * 1024) throw new SocialError('not_an_image');
+  return Buffer.from(pasted);
+}
+handle('social:sendImage', (friendId: string, pasted?: Uint8Array) => socialCall(async () => {
   if (typeof friendId !== 'string' || !/^[\w-]{1,64}$/.test(friendId)) throw new SocialError('bad_request');
-  const file = await pickPicture();
+  const file = await pictureToSend(pasted);
   return file ? { message: await sendChatImage(friendId, file) } : undefined;
 }));
-handle('social:sendGroupImage', (groupId: string) => socialCall(async () => {
+handle('social:sendGroupImage', (groupId: string, pasted?: Uint8Array) => socialCall(async () => {
   if (typeof groupId !== 'string' || !/^[\w-]{1,32}$/.test(groupId)) throw new SocialError('bad_request');
-  const file = await pickPicture();
+  const file = await pictureToSend(pasted);
   return file ? { message: await sendGroupImage(groupId, file) } : undefined;
 }));
 /** A picture from the chat for the page, as a data: address. */

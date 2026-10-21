@@ -1092,6 +1092,7 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .disk-confirm-row b { font: 12px var(--font-mono); white-space: nowrap; }
 @media (max-width: 900px) { .cfg-split { grid-template-columns: 1fr; height: auto; } .cfg-side { max-height: 240px; } .cfg-code { min-height: 360px; } }
 .confirm-box p { margin: 0; }
+.fr-paste-preview { display: block; max-width: 100%; max-height: 50vh; margin: 0 auto 10px; border-radius: 8px; object-fit: contain; }
 /* Osiągnięcia: stats on top, then a card per achievement with its progress and reward */
 .ach-root { display: flex; flex-direction: column; gap: 14px; }
 .ach-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }

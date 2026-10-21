@@ -1582,6 +1582,12 @@ $('#settings-form').addEventListener('input', (e) => {
   const target = e.target as HTMLInputElement;
   if (target.name === 'defaultMemoryMb') $('#default-memory-value').textContent = `${target.value} MB`;
 });
+// the window's size takes effect (and is kept) as soon as it is picked, without "Zapisz"
+$<HTMLSelectElement>('#settings-form select[name="launcherWindow"]').addEventListener('change', async (e) => {
+  const launcherWindow = (e.target as HTMLSelectElement).value;
+  await guard(() => api.saveSettings({ launcherWindow }));
+  store.settings.launcherWindow = launcherWindow;
+});
 $('#settings-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const form = e.target as HTMLFormElement;

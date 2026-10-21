@@ -481,6 +481,14 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     sendBtn = el('button', { type: 'submit', className: 'primary', title: t('Wyślij') }, icon('fa-paper-plane'));
     pictureBtn = el('button', { type: 'button', className: 'icon-btn feature-chatImages', title: t('Wyślij obraz (zaszyfrowany)') }, icon('fa-image'));
     pictureBtn.addEventListener('click', () => sendPicture(pictureBtn));
+    // a picture pasted from the clipboard (Ctrl+V): shown first, sent on "Wyślij"
+    input.addEventListener('paste', (e) => {
+      const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith('image/'));
+      // no picture button here (a community, or pictures switched off by the owner): no pasted pictures either
+      if (!file || pictureBtn.offsetParent === null) return;
+      e.preventDefault();
+      void pastePicture(file);
+    });
     composer = el('form', { className: 'fr-composer' }, pictureBtn, input, counter, sendBtn);
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
@@ -976,6 +984,52 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       deps.toast(deps.errorText(err), true);
     } finally {
       btn.disabled = false;
+    }
+  }
+
+  /** A pasted picture's bytes as PNG or JPEG (what the main process reads); others drawn again as PNG. */
+  async function pastedBytes(file: File): Promise<Uint8Array | undefined> {
+    if (file.type === 'image/png' || file.type === 'image/jpeg') return new Uint8Array(await file.arrayBuffer());
+    try {
+      const bitmap = await createImageBitmap(file);
+      const canvas = el('canvas', { width: bitmap.width, height: bitmap.height }) as HTMLCanvasElement;
+      canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+      return blob ? new Uint8Array(await blob.arrayBuffer()) : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** A pasted picture: a look at it first, then sent like a picked one. */
+  async function pastePicture(file: File) {
+    const url = URL.createObjectURL(file);
+    const ok = await confirmDialog({
+      title: t('Wysłać obraz?'),
+      body: [el('img', { className: 'fr-paste-preview', src: url, alt: '' }), el('p', { className: 'muted', textContent: t('Obraz zostanie zaszyfrowany i wysłany do tej rozmowy.') })],
+      ok: t('Wyślij'), okIcon: 'fa-paper-plane',
+    });
+    URL.revokeObjectURL(url);
+    if (!ok) return input.focus();
+    const bytes = await pastedBytes(file);
+    if (!bytes) return deps.toast(t('Nie udało się odczytać obrazka.'), true);
+    if (groups.active()) {
+      pictureBtn.disabled = true;
+      await groups.sendPicture(bytes);
+      pictureBtn.disabled = false;
+      return input.focus();
+    }
+    const id = selected;
+    if (!id) return;
+    pictureBtn.disabled = true;
+    try {
+      const res: { message: Message } | undefined = await api.socialSendImage(id, bytes);
+      if (res) addMessage(res.message);
+    } catch (err) {
+      deps.toast(deps.errorText(err), true);
+    } finally {
+      pictureBtn.disabled = false;
+      input.focus();
     }
   }
 
