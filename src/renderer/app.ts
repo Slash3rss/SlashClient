@@ -25,6 +25,7 @@ import { createSupportCard } from './support';
 import { initFeatures } from './features';
 import { checkLegalNotices, createLegalCard } from './legal';
 import { createWiki } from './wiki';
+import { createServerPages } from './serverPages';
 import { confirmDialog, modalWindow } from './dialog';
 
 declare global {
@@ -1713,17 +1714,38 @@ function filteredServers(): ListedServer[] {
   return list.sort((a, b) => Number(b.promoted) - Number(a.promoted) || byKey(a, b));
 }
 
+/** The MOTD as the cards show it: live from the ping, else the list's. */
+function motdOf(s: ListedServer): MotdSegment[][] {
+  const live = pings.get(s.ip)?.result;
+  return live ? live.motd : s.motdHtml.length ? s.motdHtml.map(motdFromHtml) : s.motdClean.map((t) => [{ text: t }]);
+}
+
+// votes in one click and a page for each server (serverPages.ts)
+const serverPages = createServerPages($('#view-servers'), {
+  api, toast, errorText, listApi: LIST_API,
+  motd: (s) => renderMotd(motdOf(s)),
+  live: (s) => pings.get(s.ip)?.result,
+  pinged: (s, result, error) => {
+    pings.set(s.ip, result ? { at: Date.now(), result: result as PingResult } : { at: Date.now(), error });
+    document.querySelector<HTMLElement>(`.server[data-ip="${CSS.escape(s.ip)}"]`)?.replaceWith(serverCard(s));
+  },
+  openJoin: (s) => openJoin(s),
+  signIn: () => showView('friends'),
+});
+
 function serverCard(s: ListedServer): HTMLElement {
   const ping = pings.get(s.ip);
   const live = ping?.result;
   const icon = el('img', { className: 'server-icon', alt: '', loading: 'lazy' });
   icon.src = live?.favicon ?? (s.hasIcon ? `${LIST_API}/servers/${s.id}/icon` : 'logo.png');
 
-  const title = el('div', { className: 'server-title' }, el('b', { textContent: s.name }));
+  // the name and the icon open the server's page
+  const name = el('button', { type: 'button', className: 'server-name', title: t('Więcej o serwerze') }, el('b', { textContent: s.name }));
+  const title = el('div', { className: 'server-title' }, name);
   if (s.promoted) title.append(el('span', { className: 'tag promo', textContent: 'Promowany' }));
   for (const m of s.modes.slice(0, 3)) title.append(el('span', { className: 'tag mode', textContent: m }));
 
-  const motd = live ? live.motd : s.motdHtml.length ? s.motdHtml.map(motdFromHtml) : s.motdClean.map((t) => [{ text: t }]);
+  const motd = motdOf(s);
 
   const stats = el('div', { className: 'server-stats' });
   if (live) {
@@ -1736,7 +1758,6 @@ function serverCard(s: ListedServer): HTMLElement {
   } else {
     stats.append(el('span', {}, el('b', { textContent: `${s.playersOnline}` }), ` / ${s.playersMax}`), el('span', { className: 'sk ping-sk', title: 'Sprawdzanie…' }));
   }
-  stats.append(el('span', { title: 'Głosy' }, el('i', { className: 'fa-solid fa-thumbs-up' }), ` ${s.votes}`));
 
   const play = el('button', { className: 'primary' }, el('i', { className: 'fa-solid fa-play' }), 'Graj');
   play.addEventListener('click', () => openJoin(s));
@@ -1745,7 +1766,8 @@ function serverCard(s: ListedServer): HTMLElement {
     await navigator.clipboard.writeText(s.ip);
     toast(t('Skopiowano {0}', s.ip));
   });
-  const actions = el('div', { className: 'server-actions' }, play, copy);
+  const info = el('button', { className: 'icon-btn', title: t('Więcej o serwerze') }, el('i', { className: 'fa-solid fa-circle-info' }));
+  const actions = el('div', { className: 'server-actions' }, s.id ? serverPages.voteButton(s) : '', play, copy, ...(s.id ? [info] : []));
   for (const [url, icon, label] of [[s.website, 'fa-solid fa-globe', 'Strona'], [s.discord, 'fa-brands fa-discord', 'Discord']] as const) {
     if (!url?.startsWith('https://')) continue;
     // a plain button (not <a><button>) so it lines up with the others; the main process opens it in the browser
@@ -1759,6 +1781,10 @@ function serverCard(s: ListedServer): HTMLElement {
     el('div', { className: 'server-main' }, title, el('span', { className: 'server-ip', textContent: s.ip }), renderMotd(motd)),
     el('div', { className: 'server-side' }, stats, actions));
   card.dataset.ip = s.ip;
+  if (s.id) {
+    icon.classList.add('clickable');
+    for (const b of [icon, name, info]) b.addEventListener('click', () => void serverPages.open(s));
+  }
   return card;
 }
 
@@ -1876,6 +1902,8 @@ function renderServers() {
   else if (!list.length) $('#server-list').append(el('p', { className: 'muted appear', textContent: 'Brak serwerów pasujących do filtrów.' }));
   $('#servers-more').classList.toggle('hidden', list.length <= shown);
   pingVisible(page);
+  // "Zagłosowano dziś" for the cards shown
+  serverPages.checkVotes(page.map((s) => s.id));
 }
 
 /** Pings the shown servers (6 at a time) and refreshes each card as answers arrive. */
@@ -1950,6 +1978,14 @@ $('#servers-refresh').addEventListener('click', () => loadServers(true));
 document.querySelector('.nav[data-view="servers"]')?.addEventListener('click', () => {
   if (!servers.length) loadServers();
 }, { once: true });
+// back to the list from a server's page; votes asked again (one may have signed in meanwhile)
+document.querySelector('.nav[data-view="servers"]')?.addEventListener('click', () => {
+  if (serverPages.isOpen()) serverPages.close();
+  else if (servers.length) {
+    serverPages.resetVotes();
+    serverPages.checkVotes(filteredServers().slice(0, shown).map((s) => s.id));
+  }
+});
 
 // ---------- mods, resource packs, shaders, modpacks (Modrinth, CurseForge) ----------
 

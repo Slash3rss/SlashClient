@@ -32,7 +32,13 @@ let cache: { at: number; servers: ListedServer[] } | undefined;
 export async function listServers(force = false): Promise<ListedServer[]> {
   if (!force && cache && Date.now() - cache.at < 60_000) return cache.servers;
   const raw = await fetchJson<Record<string, unknown>[]>(`${LIST_API}/servers`);
-  const servers = raw.map((s) => ({
+  const servers = raw.map(listedServer);
+  cache = { at: Date.now(), servers };
+  return servers;
+}
+
+function listedServer(s: Record<string, unknown>): ListedServer {
+  return {
     id: String(s.id ?? s._id),
     name: String(s.customName || s.name || s.ip),
     ip: String(s.ip),
@@ -50,9 +56,53 @@ export async function listServers(force = false): Promise<ListedServer[]> {
     featured: Boolean(s.featured),
     website: (s.website as string) || undefined,
     discord: (s.discord as string) || undefined,
-  }));
-  cache = { at: Date.now(), servers };
-  return servers;
+  };
+}
+
+/** A server's page in the launcher: more about it, its players over the last 30 days and its reviews. */
+export interface ServerDetails {
+  server: ListedServer & { views: number; peakPlayers: number; createdAt?: number; hasBanner: boolean; versionText: string };
+  /** [time, players], oldest first. */
+  history: [number, number][];
+  reviews: { user: string; avatar?: string; rating: number; content: string; at: number }[];
+}
+
+export async function serverDetails(id: string): Promise<ServerDetails> {
+  if (typeof id !== 'string' || !/^[\w.:-]{1,100}$/.test(id)) throw new Error('bad_request');
+  const base = `${LIST_API}/servers/${encodeURIComponent(id)}`;
+  // the history and the reviews are extras: the page still opens without them
+  const [raw, history, reviews] = await Promise.all([
+    fetchJson<Record<string, unknown>>(base),
+    fetchJson<{ playersOnline?: number; timestamp?: string }[]>(`${base}/history`).catch(() => []),
+    fetchJson<Record<string, unknown>[]>(`${base}/reviews`).catch(() => []),
+  ]);
+  const created = Date.parse(String(raw.createdAt ?? ''));
+  return {
+    server: {
+      ...listedServer(raw),
+      views: Number(raw.views ?? 0),
+      peakPlayers: Number(raw.peakPlayersRecord ?? 0),
+      createdAt: Number.isFinite(created) ? created : undefined,
+      hasBanner: Boolean(raw.hasBanner),
+      versionText: String(raw.version ?? ''),
+    },
+    history: (Array.isArray(history) ? history : [])
+      .map((h): [number, number] => [Date.parse(String(h.timestamp ?? '')), Number(h.playersOnline ?? 0)])
+      .filter(([at, n]) => Number.isFinite(at) && Number.isFinite(n))
+      .sort((a, b) => a[0] - b[0]),
+    reviews: (Array.isArray(reviews) ? reviews : []).slice(0, 50).map((r) => {
+      const user = (r.user ?? {}) as Record<string, unknown>;
+      const discordId = String(user.discordId ?? r.discordId ?? '');
+      const avatar = String(user.avatar ?? r.avatar ?? '');
+      return {
+        user: String(user.username ?? r.username ?? '?').slice(0, 40),
+        avatar: /^\d{5,25}$/.test(discordId) && /^(a_)?[0-9a-f]{32}$/.test(avatar) ? `https://cdn.discordapp.com/avatars/${discordId}/${avatar}.png?size=64` : undefined,
+        rating: Math.max(0, Math.min(5, Math.round(Number(r.rating ?? 0)))),
+        content: String(r.content ?? '').slice(0, 2000),
+        at: Date.parse(String(r.createdAt ?? '')) || 0,
+      };
+    }),
+  };
 }
 
 // ---------- Server List Ping (the protocol the multiplayer screen uses) ----------

@@ -1,4 +1,5 @@
 import type { DatabaseSync } from 'node:sqlite';
+import type { SecretBox } from './storage.ts';
 
 /**
  * The server's settings an admin may change in the panel ("Ustawienia"), in one registry: each has
@@ -10,12 +11,15 @@ import type { DatabaseSync } from 'node:sqlite';
  * variable or the app's config, as before the registry; tests lower limits this way), else the
  * definition's default, which equals the constant the code had before. So nothing changes until an
  * admin saves a different value; "przywróć domyślne" deletes the row and the default applies again.
+ *
+ * A 'secret' (an API key) is write-only: sealed with STORAGE_SECRET_KEY (storage.ts's box) in the
+ * database, never sent back to the panel (only whether it is set) and never written to the log.
  */
 
-export type SettingType = 'int' | 'float' | 'bool' | 'string' | 'enum' | 'duration' | 'bytes' | 'list' | 'datetime' | 'url';
+export type SettingType = 'int' | 'float' | 'bool' | 'string' | 'enum' | 'duration' | 'bytes' | 'list' | 'datetime' | 'url' | 'secret';
 export type SettingValue = number | boolean | string | string[];
 export type SettingCategory =
-  | 'features' | 'banner' | 'chat' | 'media' | 'cloud' | 'clans' | 'groups' | 'communities' | 'sparks' | 'support' | 'profiles' | 'security' | 'storage' | 'moderation' | 'streams';
+  | 'features' | 'banner' | 'chat' | 'media' | 'cloud' | 'clans' | 'groups' | 'communities' | 'sparks' | 'support' | 'profiles' | 'security' | 'storage' | 'moderation' | 'streams' | 'servers';
 
 export interface SettingDef {
   key: string;
@@ -88,6 +92,12 @@ export function validateSetting(def: SettingDef, raw: unknown): SettingValue {
     case 'enum':
       if (typeof raw !== 'string' || !def.options?.includes(raw)) bad();
       return raw as string;
+    case 'secret': {
+      if (typeof raw !== 'string') bad();
+      const s = (raw as string).replace(/[\u0000-\u001f\u007f]/g, '').trim();
+      if (s.length > (def.maxLength ?? 500)) bad('setting_too_long');
+      return s;
+    }
     case 'string':
     case 'url': {
       if (typeof raw !== 'string') bad();
@@ -122,13 +132,16 @@ export class Settings {
   /** The admin's values (only those), as checked; filled once and kept in step by set(). */
   private overrides = new Map<string, { value: SettingValue; at: number; by: string }>();
   private readonly listeners: ((changes: SettingChange[]) => void)[] = [];
+  /** Seals the secrets (STORAGE_SECRET_KEY); without it secrets cannot be saved. */
+  private readonly box?: SecretBox;
 
   /**
    * `base`: the server's own defaults for some keys (environment variables, the app's config);
    * undefined entries are left out. A base value outside the bounds is still taken (tests set tiny limits).
    */
-  constructor(sql: DatabaseSync, defs: SettingDef[], base: Record<string, SettingValue | undefined> = {}) {
+  constructor(sql: DatabaseSync, defs: SettingDef[], base: Record<string, SettingValue | undefined> = {}, box?: SecretBox) {
     this.sql = sql;
+    this.box = box;
     this.defs = new Map(defs.map((d) => [d.key, d]));
     for (const [k, v] of Object.entries(base)) if (v !== undefined && this.defs.has(k)) this.base.set(k, v);
     sql.exec(SCHEMA);
@@ -142,7 +155,13 @@ export class Settings {
       const def = this.defs.get(r.key);
       if (!def) continue;
       try {
-        next.set(r.key, { value: validateSetting(def, JSON.parse(r.value)), at: r.at, by: r.by });
+        let raw = JSON.parse(r.value);
+        if (def.type === 'secret') {
+          // without the key (or with another one) the secret is as if unset
+          if (!this.box) continue;
+          raw = this.box.open(raw, `setting:${r.key}`);
+        }
+        next.set(r.key, { value: validateSetting(def, raw), at: r.at, by: r.by });
       } catch {
         // a value an older or newer definition allowed: the default applies
       }
@@ -215,8 +234,11 @@ export class Settings {
           continue;
         }
         if (this.overrides.has(key) && same(this.overrides.get(key)!.value, value)) continue;
+        const def = this.defs.get(key)!;
+        if (def.type === 'secret' && !this.box) throw new SettingError(key, 'setting_no_secret_key');
+        const stored = def.type === 'secret' ? this.box!.seal(value as string, `setting:${key}`) : value;
         this.sql.prepare(`INSERT INTO app_settings (key, value, updated_at, updated_by) VALUES (?, ?, ?, ?)
-          ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at, updated_by = excluded.updated_by`).run(key, JSON.stringify(value), now, by);
+          ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at, updated_by = excluded.updated_by`).run(key, JSON.stringify(stored), now, by);
         this.overrides.set(key, { value, at: now, by });
         if (!same(old, value)) changes.push({ key, old, new: value, reset: false });
       }
@@ -240,6 +262,8 @@ export class Settings {
   view() {
     return [...this.defs.values()].map((d) => {
       const o = this.overrides.get(d.key);
+      // a secret: only whether it is set
+      if (d.type === 'secret') return { ...d, value: '', default: '', codeDefault: '', secretSet: !!this.get(d.key), overridden: !!o, updatedAt: o?.at ?? null, updatedBy: o?.by ?? null };
       return { ...d, value: this.get(d.key), default: this.defaultOf(d.key), codeDefault: d.default, overridden: !!o, updatedAt: o?.at ?? null, updatedBy: o?.by ?? null };
     });
   }
@@ -275,6 +299,7 @@ export function liveSettings<T extends Record<string, SettingValue>>(settings: S
 
 /** Bytes as the panel shows them in the audit log: 10 MB, 32 KB. */
 export function formatSetting(def: SettingDef | undefined, v: SettingValue): string {
+  if (def?.type === 'secret') return v ? '(ukryty)' : '—';
   if (Array.isArray(v)) return v.length > 6 ? `${v.slice(0, 6).join(', ')}… (${v.length})` : v.join(', ') || '—';
   if (typeof v === 'boolean') return v ? 'tak' : 'nie';
   if (def?.type === 'bytes' && typeof v === 'number') return def.bytesUnit === 'KB' ? `${Math.round((v / 1024) * 100) / 100} KB` : `${Math.round((v / 1024 / 1024) * 100) / 100} MB`;

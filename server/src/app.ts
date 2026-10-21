@@ -27,7 +27,7 @@ import { achievementsAdminRoutes } from './achievementsAdmin.ts';
 import { Wallet, economyRoutes } from './economy.ts';
 import { createGroups } from './groups.ts';
 import { createClans } from './clans.ts';
-import { Storage, type DiskSpace } from './storage.ts';
+import { Storage, secretBox, type DiskSpace } from './storage.ts';
 import { storageAdminRoutes } from './storageAdmin.ts';
 import { muteRoutes } from './mutes.ts';
 import { chatImageRoutes, type ImageLimits } from './chatImages.ts';
@@ -42,6 +42,7 @@ import { COMMUNITY_LIMITS, type CommunityLimits } from './communityStore.ts';
 import { Settings, liveSettings, type SettingValue } from './settings.ts';
 import { SETTING_DEFS } from './settingsDefs.ts';
 import { settingsAdminRoutes } from './settingsAdmin.ts';
+import { serverVoteRoutes } from './serverVotes.ts';
 import { featureKey, featuresFor } from './features.ts';
 import { disabledPage, errorPage, homeRedirect, notFoundPage, sitePage, siteLang } from './sitePages.ts';
 import { useBlocklist } from './clans.ts';
@@ -194,7 +195,8 @@ export function createApp(cfg: Config) {
   take('chatImages.', cfg.imageLimits);
   take('communities.', cfg.communityLimits);
   take('chat.', cfg.chatBurst, { messages: 'burstMessages', seconds: 'burstSeconds', strikes: 'burstStrikes', muteSeconds: 'holdSeconds' });
-  const settings = new Settings(db.sql, SETTING_DEFS, base);
+  // secrets among them (API keys) are sealed with the same key as the buckets' (storage.ts)
+  const settings = new Settings(db.sql, SETTING_DEFS, base, secretBox(cfg.storage?.secretKey).box);
   /** A rate limiter whose per-minute number is that setting. */
   const limiter = (key: string) => rateLimiter(() => settings.num(key));
   const sessionIdleMs = () => settings.num('security.sessionIdleDays') * 86_400_000;
@@ -1373,6 +1375,15 @@ export function createApp(cfg: Config) {
     ...legal.routes,
     ...home.routes,
     ...streams.routes,
+    // voting for a server on the server list from the launcher (serverVotes.ts)
+    ...serverVoteRoutes({
+      settings, authed, clientIp, body, fetchImpl: cfg.fetchImpl,
+      minecraftNames: (id) => db.minecraftAccounts(id).map((a) => a.name),
+      limitVotes: limiter('security.serverVotesPerMinute'), limitChecks: limiter('security.serverVoteChecksPerMinute'),
+      fail: (status, code) => {
+        throw new HttpError(status, code);
+      },
+    }),
     // the admin panel's settings, the feature switches and the banner (settingsAdmin.ts)
     ...settingsAdminRoutes({
       settings, admin, body, handleOf: (id) => db.user(id)?.handle ?? '',

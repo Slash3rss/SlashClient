@@ -37,7 +37,7 @@ import {
   latestCurseForgePack, listCurseForgeVersions, searchCurseForge, setCurseForgeServer, updateCurseForgePack, type ManualFile,
 } from './curseforge';
 import { copyManualFiles, downloadLink, findManualFiles, FolderWatch, manualKey } from './manualFiles';
-import { listServers, pingServer } from './servers';
+import { listServers, pingServer, serverDetails } from './servers';
 import {
   applySettings, countParts, DEFAULT_PARTS, includePath, manualFilesOf, PACK_PARTS, readPackSummary, settingsOf, uniqueName, writeProfilePack,
   type LinkResolver, type PackPart, type PackSummary,
@@ -1226,6 +1226,42 @@ handle('bug:report', async (text?: string) => {
 handle('servers:list', (force?: boolean) => listServers(force));
 // a server that is off is an answer, not an error: no noise in the log for every offline server
 handle('servers:ping', (address: string) => pingServer(address).catch((err: Error) => ({ offline: err.message })));
+handle('servers:details', (id: string) => serverDetails(id));
+
+// voting on the server list in one click: the SlashClient server vouches for the player's Minecraft
+// name (verified by Mojang when linked) to the list (server/src/serverVotes.ts)
+const SERVER_ID = /^[\w.:-]{1,100}$/;
+/** The Minecraft account chosen in the launcher, when it is a Microsoft one: its name is the one to vote as. */
+function votingAccount() {
+  const account = store.accounts.find((a) => a.id === store.settings.selectedAccountId) ?? store.accounts[0];
+  return account?.type === 'msa' ? account : undefined;
+}
+handle('servers:voted', (ids: string[]) => socialCall(async () => {
+  if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'string' && SERVER_ID.test(id))) throw new SocialError('bad_request');
+  const signedIn = !!store.settings.socialToken;
+  try {
+    return await social.call('POST', '/v1/servers/voted', { ids: ids.slice(0, 100), nick: votingAccount()?.name }, signedIn);
+  } catch (err) {
+    // a server from before voting (or an expired session): voting on the website
+    if (err instanceof SocialError && (err.httpStatus === 404 || err.code === 'offline')) return { enabled: false, nick: null, voted: {} };
+    throw err;
+  }
+}));
+handle('servers:vote', (id: string) => socialCall(async () => {
+  if (typeof id !== 'string' || !SERVER_ID.test(id)) throw new SocialError('bad_request');
+  const account = votingAccount();
+  const vote = () => social.call<{ ok: boolean; nick: string; votes: number | null }>('POST', `/v1/servers/${encodeURIComponent(id)}/vote`, { nick: account?.name });
+  try {
+    return await vote();
+  } catch (err) {
+    // the chosen Minecraft account is not linked yet: link it (Mojang confirms it) and vote again
+    if (account && err instanceof SocialError && (err.code === 'mc_not_linked' || err.code === 'mc_account_not_linked')) {
+      await linkMinecraft(account.id);
+      return vote();
+    }
+    throw err;
+  }
+}));
 
 // ---------- worlds, backups, screenshots ----------
 

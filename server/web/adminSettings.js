@@ -9,12 +9,15 @@ const MB = 1024 * 1024;
 const ERRORS = {
   setting_invalid: 'nieprawidłowa wartość', setting_too_small: 'za mało', setting_too_big: 'za dużo', setting_too_long: 'za długie',
   setting_too_many: 'za dużo pozycji', setting_bad_url: 'link musi zaczynać się od https:// albo /', setting_unknown: 'nieznane ustawienie',
+  setting_no_secret_key: 'brak STORAGE_SECRET_KEY na serwerze, kluczy nie da się zapisać',
 };
 
 let state = { q: '', changedOnly: false };
 
 /** A value as the panel shows it (bytes in MB or KB, lists counted, dates readable). */
 function show(def, v) {
+  // a key is never sent back: only whether one is set, or that a new one was typed
+  if (def.type === 'secret') return v === null ? 'usunięty' : v ? 'nowy (ukryty)' : def.secretSet ? 'ustawiony' : 'nie ustawiony';
   if (Array.isArray(v)) return v.length ? `${v.length} poz.` : 'pusta';
   if (typeof v === 'boolean') return v ? 'włączone' : 'wyłączone';
   if (def.type === 'bytes') return def.bytesUnit === 'KB' ? `${round(v / 1024)} KB` : `${round(v / MB)} MB`;
@@ -57,6 +60,13 @@ function inputFor(def, value, onValue) {
       const input = el('input', { type: 'text', value, maxLength: def.maxLength ?? 500, placeholder: def.type === 'url' ? 'https://… albo /strona' : '' });
       input.addEventListener('input', () => onValue(input.value));
       return { node: input, set: (v) => { input.value = v; } };
+    }
+    case 'secret': {
+      // write-only: empty keeps the saved key, ↺ removes it
+      const input = el('input', { type: 'password', value: '', autocomplete: 'new-password', maxLength: def.maxLength ?? 500,
+        placeholder: def.secretSet ? '•••••••• (ustawiony; wpisz nowy, aby zmienić)' : 'nie ustawiony' });
+      input.addEventListener('input', () => onValue(input.value.trim()));
+      return { node: input, set: () => { input.value = ''; } };
     }
     case 'datetime': {
       const input = el('input', { type: 'datetime-local', value: toLocal(value) });
@@ -141,7 +151,7 @@ export async function settingsPage() {
         note(v);
         refresh();
       });
-      const reset = el('button', { type: 'button', class: 'icon-btn', title: `Przywróć domyślne (${show(def, def.default)})`, onclick: () => {
+      const reset = el('button', { type: 'button', class: 'icon-btn', title: def.type === 'secret' ? 'Usuń klucz' : `Przywróć domyślne (${show(def, def.default)})`, onclick: () => {
         field.set(def.default);
         invalid.delete(def.key);
         if (def.overridden) pending.set(def.key, null);
@@ -155,10 +165,10 @@ export async function settingsPage() {
           el('div', { class: 'row' }, el('b', { textContent: def.label }), changedChip, def.risky && cat.id !== 'features' ? el('span', { class: 'chip gold', title: 'Panel zapyta jeszcze raz przed zapisem' }, icon('fa-solid fa-triangle-exclamation'), 'ważne') : '',
             def.restart ? el('span', { class: 'chip', textContent: 'po restarcie' }) : ''),
           el('small', { class: 'muted', textContent: def.description }),
-          el('small', { class: 'set-meta' }, el('code', { textContent: def.key }), ` · domyślnie ${show(def, def.default)}`,
+          el('small', { class: 'set-meta' }, el('code', { textContent: def.key }), def.type === 'secret' ? ' · zapisany zaszyfrowany, nie da się go odczytać' : ` · domyślnie ${show(def, def.default)}`,
             def.env ? ` (z ${def.env} na tym serwerze, jeśli ustawione)` : '', bounds(def) ? ` · zakres ${bounds(def)}` : '', who ? ` · ${who}` : '')),
         el('div', { class: 'set-input' }, field.node, el('span', { class: 'muted small', textContent: def.type === 'bytes' ? def.bytesUnit ?? 'MB' : ['int', 'float', 'duration'].includes(def.type) ? def.unit ?? '' : '' }),
-          def.overridden || def.type !== 'bool' ? reset : ''));
+          def.overridden || !['bool', 'secret'].includes(def.type) ? reset : ''));
       row.dataset.search = `${cat.label} ${cat.labelEn} ${def.label} ${def.labelEn} ${def.description} ${def.key}`.toLowerCase();
       row.dataset.changed = def.overridden ? '1' : '';
       rows.push(row);
@@ -167,7 +177,7 @@ export async function settingsPage() {
     saveBtn.addEventListener('click', async () => {
       const lines = [...pending].map(([key, v]) => {
         const def = defs.find((d) => d.key === key);
-        return { def, text: `• ${def.label}: ${show(def, def.value)} → ${show(def, v === null ? def.default : v)}${v === null ? ' (domyślne)' : ''}` };
+        return { def, text: `• ${def.label}: ${show(def, def.value)} → ${show(def, v === null && def.type !== 'secret' ? def.default : v)}${v === null && def.type !== 'secret' ? ' (domyślne)' : ''}` };
       });
       if (!confirm(`Zapisać zmiany w „${cat.label}”?\n\n${lines.map((l) => l.text).join('\n')}`)) return;
       const risky = lines.filter((l) => l.def.risky);

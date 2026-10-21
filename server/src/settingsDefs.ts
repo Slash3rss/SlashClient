@@ -39,6 +39,7 @@ export const CATEGORIES: { id: SettingCategory; label: string; labelEn: string }
   { id: 'storage', label: 'Przechowywanie', labelEn: 'Storage' },
   { id: 'moderation', label: 'Moderacja', labelEn: 'Moderation' },
   { id: 'streams', label: 'Streamy', labelEn: 'Streams' },
+  { id: 'servers', label: 'Lista serwerów', labelEn: 'Server list' },
 ];
 
 const MB = 1024 * 1024;
@@ -187,4 +188,12 @@ export const SETTING_DEFS: SettingDef[] = [
   ]),
 
   ...STREAM_SETTING_DEFS,
+
+  // voting from the launcher's "Serwery" (serverVotes.ts): the list's API trusts this server's key
+  ...group('servers', [
+    { key: 'serverList.apiUrl', label: 'Adres API listy serwerów', labelEn: 'Server list API address', description: 'Skąd launcher bierze listę serwerów (api.slash3rss.dev); tam serwer wysyła głosy graczy.', type: 'url', default: 'https://api.slash3rss.dev', maxLength: 200 },
+    { key: 'serverList.voteKey', label: 'Klucz głosowania z launchera', labelEn: 'Launcher voting key', description: 'Ten sam co SLASHCLIENT_VOTE_KEY na serwerze listy. Z nim gracze z połączonym kontem Minecraft głosują jednym kliknięciem w launcherze (bez captchy; limity jak na stronie: raz na 24 h na nick i na adres IP). Pusty: launcher otwiera stronę serwera na liście.', type: 'secret', default: '', maxLength: 200 },
+    rate('security.serverVotesPerMinute', 'Głosy na serwery na minutę', 'Server votes per minute', 10, 'Na konto (głosowanie z launchera).'),
+    rate('security.serverVoteChecksPerMinute', 'Sprawdzanie głosów na minutę', 'Vote checks per minute', 60, 'Na konto albo adres IP („Zagłosowano dziś” na liście serwerów w launcherze).'),
+  ]),
 ];

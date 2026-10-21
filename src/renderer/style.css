@@ -296,6 +296,55 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
 .server-actions .icon-btn { width: 36px; padding: 0; }
 .more { align-self: center; margin-bottom: 16px; }
 
+/* votes in one click and a server's page (serverPages.ts) */
+.server-name { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; }
+.server-name:hover:not(:disabled) { background: none; color: var(--accent-light); }
+.server-name:hover b { text-decoration: underline; text-underline-offset: 3px; }
+.server-icon.clickable { cursor: pointer; transition: var(--transition); }
+.server-icon.clickable:hover { filter: brightness(1.15); transform: scale(1.03); }
+.vote-btn { gap: 6px; font-variant-numeric: tabular-nums; }
+.vote-btn i { color: var(--accent-light); }
+.vote-btn.voted { border-color: rgba(74, 222, 128, .35); background: rgba(74, 222, 128, .08); }
+.vote-btn.voted i { color: #4ade80; }
+.vote-btn.busy { opacity: .7; pointer-events: none; }
+.vote-btn .vote-count { margin-left: 4px; padding: 1px 8px; border-radius: 999px; background: rgba(255, 255, 255, .08); font-size: 13px; }
+#view-servers.server-open > :not(.server-page) { display: none; }
+.server-page { display: flex; flex-direction: column; gap: 14px; padding-bottom: 18px; }
+.server-page .grow { flex: 1; min-width: 0; }
+.sp-top { padding-top: 10px; }
+.sp-back { padding: 7px 14px; }
+.sp-hero { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.sp-hero.sp-loading { height: 150px; }
+.sp-banner { width: 100%; max-height: 160px; object-fit: cover; display: block; border-bottom: 1px solid var(--glass-border); }
+.sp-head { display: flex; align-items: center; gap: 18px; padding: 18px 20px; flex-wrap: wrap; }
+.sp-icon { width: 88px; height: 88px; border-radius: 14px; }
+.sp-name { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 8px; }
+.sp-name h2 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+.sp-ip { display: flex; align-items: center; gap: 8px; }
+.sp-ip code { font: 14px var(--font-mono); color: var(--text-secondary); user-select: text; }
+.sp-ip .icon-btn { width: 30px; height: 30px; padding: 0; }
+.sp-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sp-actions button { height: 44px; }
+.sp-actions .icon-btn { width: 44px; padding: 0; }
+.sp-play { padding: 0 28px; font-size: 16px; font-weight: 800; letter-spacing: .02em; }
+.sp-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 1100px) { .sp-grid { grid-template-columns: 1fr; } }
+.sp-panel { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.sp-panel h3 { margin: 0; font-size: 16px; font-weight: 700; }
+.sp-panel-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sp-panel-head h3 { flex: 0 0 auto; }
+.sp-panel-head .segmented { margin-left: auto; }
+.sp-desc { margin: 0; white-space: pre-wrap; color: var(--text-secondary); line-height: 1.55; user-select: text; }
+.sp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sp-chart { height: 170px; }
+.sp-chart-wrap { display: flex; flex-direction: column; gap: 6px; }
+.sp-stars { color: var(--gold); display: inline-flex; gap: 2px; font-size: 12px; }
+.sp-avg { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
+.sp-review { display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid var(--glass-border); animation: appear .35s ease both; }
+.sp-review p { margin: 4px 0 0; color: var(--text-secondary); white-space: pre-wrap; user-select: text; }
+.sp-review-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sp-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; background: var(--bg-secondary); display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted); object-fit: cover; }
+
 /* ---------- content (Modrinth) ---------- */
 .field.compact { width: 220px; }
 .segmented button i { margin-right: 4px; font-size: 12px; }
