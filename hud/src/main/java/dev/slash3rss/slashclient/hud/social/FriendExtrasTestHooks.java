@@ -29,6 +29,8 @@ public final class FriendExtrasTestHooks {
 			new Social.Message(3, "me", FRIEND, "[Zrzut ekranu]", now - 60_000, true, "", "", "", null, new Social.Image("pic-mine-00000000000a", 1280, 1024, false)),
 			new Social.Message(4, FRIEND, "me", "[Zrzut ekranu]", now - 30_000, true, "", "", "", null, new Social.Image("pic-other-device-0000", 800, 600, true)));
 		Social.sampleForTest(f, chat, "me");
+		// no conversation left open by an earlier test (FriendsChat): its messages would be read at once
+		Social.viewing = null;
 		pictures();
 	}
 
