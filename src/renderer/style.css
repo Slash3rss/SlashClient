@@ -989,8 +989,13 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .skin-info .capes-box .segmented button { height: 28px; padding: 0 10px; background: transparent; border: 0; box-shadow: none; color: var(--text-secondary); }
 .skin-info .capes-box .segmented button.active { background: var(--glass-bg-hover); color: var(--text-primary); }
 
-/* Odkrywaj: "Instaluj do [profile]" on one line, next to the title */
-.discover-target { align-items: center; gap: 10px; white-space: nowrap; }
+/* Odkrywaj: the target profile's tile under "instalowane do tego profilu" (hidden off the page) */
+#view-discover > .discover-target { display: none; }
+.discover-target { max-width: 360px; margin: -4px 0 14px; }
+.discover-target .picker-button { height: 56px; background: rgba(59, 130, 246, .1); border-color: rgba(59, 130, 246, .35); }
+.discover-target .picker-button:hover { background: rgba(59, 130, 246, .16); }
+.discover-target .picker img { width: 40px; height: 40px; }
+.picker.down .picker-menu { bottom: auto; top: calc(100% + 6px); }
 
 /* ---------- profile snapshots, world import, datapacks of a world ---------- */
 .snapshot-list { max-height: none; margin-top: 0; }

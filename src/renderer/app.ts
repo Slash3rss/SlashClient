@@ -648,10 +648,10 @@ interface PickItem { value: string; label: string; sub?: string; img: string; pi
  * Replaces a <select>'s look with a list that can show pictures. The real
  * <select> stays (hidden) and keeps the value, so the rest of the code reads it as before.
  */
-function picker(select: HTMLSelectElement, items: PickItem[], empty = 'Brak') {
+function picker(select: HTMLSelectElement, items: PickItem[], empty = 'Brak', down = false) {
   let box = select.nextElementSibling as HTMLElement | null;
   if (!box?.classList.contains('picker')) {
-    box = el('div', { className: 'picker' });
+    box = el('div', { className: down ? 'picker down' : 'picker' });
     select.classList.add('native-hidden');
     select.after(box);
   }
@@ -661,7 +661,7 @@ function picker(select: HTMLSelectElement, items: PickItem[], empty = 'Brak') {
     img.src = item?.img ?? 'logo.png';
     return [img, el('span', { className: 'picker-text' }, el('b', { textContent: item?.label ?? empty }), el('small', { textContent: item?.sub ?? '' }))];
   };
-  const button = el('button', { type: 'button', className: 'picker-button', disabled: !items.length }, ...face(current), el('i', { className: 'fa-solid fa-chevron-up' }));
+  const button = el('button', { type: 'button', className: 'picker-button', disabled: !items.length }, ...face(current), el('i', { className: `fa-solid ${down ? 'fa-chevron-down' : 'fa-chevron-up'}` }));
   const menu = el('div', { className: 'picker-menu hidden' }, ...items.map((item) => {
     const row = el('button', { type: 'button', className: `picker-item${item.value === select.value ? ' selected' : ''}` }, ...face(item));
     row.addEventListener('click', () => {
@@ -2822,12 +2822,23 @@ const contentAfter = contentPane.nextSibling;
 function openDiscover() {
   const sel = $<HTMLSelectElement>('#discover-profile');
   fillSelect(sel, store.profiles.map((p) => ({ value: p.id, label: p.name })), sel.value || store.settings.selectedProfileId || store.profiles[0]?.id || '');
+  renderDiscoverTarget();
   if (!discovering) {
     discovering = true;
     $('#discover-body').append(contentPane);
     contentPane.classList.remove('hidden');
+    // the profile's tile right under "instalowane do tego profilu", which it is about
+    contentPane.querySelector('.sub')?.after($('#discover-target'));
   }
   openContentPane(true);
+}
+
+/** The target profile as a tile (its icon, name, version and play time), opening the list of profiles. */
+function renderDiscoverTarget() {
+  picker($<HTMLSelectElement>('#discover-profile'), store.profiles.map((p) => ({
+    value: p.id, label: p.name, img: profileIconUrl(p), pixelated: p.icon !== 'custom',
+    sub: [profileLabel(p), p.playTimeMs ? fmtPlaytime(p.playTimeMs) : ''].filter(Boolean).join(' · '),
+  })), t('Brak profili'), true);
 }
 
 /** Back in Profiles: the browser goes home, shown only when its pane is the open one. */
@@ -2835,13 +2846,17 @@ function closeDiscover() {
   if (!discovering) return;
   discovering = false;
   contentHome.insertBefore(contentPane, contentAfter);
+  $('#view-discover').append($('#discover-target'));
   contentPane.classList.toggle('hidden', profilePane !== 'content');
   if (profilePane === 'content') openContentPane(true);
 }
 
 document.querySelectorAll<HTMLButtonElement>('.nav').forEach((b) =>
   b.addEventListener('click', () => (b.dataset.view === 'discover' ? openDiscover() : closeDiscover())));
-$('#discover-profile').addEventListener('change', () => openContentPane(true));
+$('#discover-profile').addEventListener('change', () => {
+  renderDiscoverTarget();
+  openContentPane(true);
+});
 
 // ---------- worlds, backups, screenshots ----------
 
