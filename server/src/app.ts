@@ -13,6 +13,7 @@ import { partnerRoutes } from './partners.ts';
 import { createStatusRules } from './statusRules.ts';
 import { trackerRoutes } from './tracker.ts';
 import { sharingRoutes } from './sharing.ts';
+import { positionRoutes } from './positions.ts';
 import { RequestLog, clientOf, maskIp, routeOf } from './requests.ts';
 import { serveWeb, versioned } from './web.ts';
 import { mediaRoutes, type MediaLimits } from './media.ts';
@@ -636,6 +637,27 @@ export function createApp(cfg: Config) {
   // waypoints and parties shared with friends (sharing.ts)
   const sharing = sharingRoutes({
     db, authed, body, push, limitWaypoints: limiter('security.waypointsPerMinute'), limitParties: limiter('security.partiesPerMinute'),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  // friends on the minimap: positions passed on to friends on the same server, never stored (positions.ts)
+  const positionLimit = new SprayLimit(1500, () => settings.num('security.positionsPerMinute'));
+  const positions = positionRoutes({
+    db, authed, body, push,
+    presenceOf: (userId) => (sockets.get(userId)?.size ? presences.get(userId) : undefined),
+    playingAs: (userId) => {
+      const now = Date.now();
+      const out: string[] = [];
+      for (const [uuid, l] of linked) {
+        if (l.user !== userId || now - l.at >= IN_GAME_TTL_MS || out.length >= 4) continue;
+        const hex = uuid.replace(/-/g, '');
+        out.push(`${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`);
+      }
+      return out;
+    },
+    allow: (userId) => positionLimit.allow(userId),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -1294,6 +1316,7 @@ export function createApp(cfg: Config) {
     ...media.routes,
     ...cloud.routes,
     ...sharing.routes,
+    ...positions.routes,
     ...groups.routes,
     ...clans.routes,
     ...communities.routes,
