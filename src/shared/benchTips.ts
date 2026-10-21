@@ -12,6 +12,26 @@ export interface BenchRun {
   settings: { renderDistance: number; simulationDistance?: number; width: number; height: number; vsync: boolean; maxFps: number; memoryMb?: number };
 }
 
+/** The SlashClient test scene's parts, by the id the mod writes; Polish names, keys for t(). */
+export const BENCH_SCENES: Record<string, string> = {
+  forest: 'Las',
+  panorama: 'Panorama',
+  village: 'Wioska',
+  water: 'Woda',
+  entities: 'Stworzenia',
+  particles: 'Cząsteczki',
+  night: 'Noc',
+};
+
+/**
+ * The run before `runs[index]` (newest first) that it can be compared with: test scene runs only
+ * with test scene runs (`scene` set by the mod), runs in the player's own worlds with each other.
+ */
+export function comparableBefore<R extends { scene?: string }>(runs: R[], index: number): R | undefined {
+  const kind = runs[index]?.scene ?? '';
+  return runs.slice(index + 1).find((r) => (r.scene ?? '') === kind);
+}
+
 export interface BenchTip {
   id: string;
   level: 'good' | 'info' | 'warn';

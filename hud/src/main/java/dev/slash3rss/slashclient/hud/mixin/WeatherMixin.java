@@ -25,6 +25,6 @@ abstract class WeatherMixin {
 	}
 
 	private boolean off() {
-		return (Object) this instanceof ClientLevel && SlashHud.config != null && SlashHud.config.weatherOff;
+		return (Object) this instanceof ClientLevel && (SlashHud.config != null && SlashHud.config.weatherOff || dev.slash3rss.slashclient.hud.BenchScene.active());
 	}
 }

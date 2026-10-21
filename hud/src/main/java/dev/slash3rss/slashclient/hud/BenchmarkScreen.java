@@ -10,8 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A benchmark's result: average FPS large, the lows and the load as tiles, every frame's time
- * as a graph, the settings it ran with and how it compares to the run before.
+ * A benchmark's result: average FPS large, the lows and the load as tiles, on the test scene
+ * each of its scenes as a bar, every frame's time as a graph, the settings it ran with and how
+ * it compares to the run before it can be compared with (test scene with test scene).
  */
 public class BenchmarkScreen extends Screen {
 	private record Hit(int x, int y, int w, int h, Runnable action) {}
@@ -27,9 +28,8 @@ public class BenchmarkScreen extends Screen {
 
 	/** The last run, from the settings window. */
 	public static BenchmarkScreen latest() {
-		List<Benchmark.Result> all = Benchmark.load();
-		all.sort((a, b) -> Long.compare(b.at, a.at));
-		return new BenchmarkScreen(all.isEmpty() ? null : all.get(0), all.size() > 1 ? all.get(1) : null);
+		Benchmark.Result last = Benchmark.latest();
+		return new BenchmarkScreen(last, last == null ? null : Benchmark.previous(last));
 	}
 
 	private static String num(double v) {
@@ -43,7 +43,8 @@ public class BenchmarkScreen extends Screen {
 		//#endif
 		hits.clear();
 		int pw = Math.min(width - 16, 440);
-		int ph = Math.min(height - 16, 286);
+		boolean scenes = result != null && result.scenes != null && !result.scenes.isEmpty();
+		int ph = Math.min(height - 16, scenes ? 372 : 286);
 		int px = (width - pw) / 2, py = (height - ph) / 2;
 		Ui.panel(g, px, py, pw, ph);
 		Ui.begin("benchmark", px, py, pw, ph);
@@ -60,8 +61,9 @@ public class BenchmarkScreen extends Screen {
 		} else {
 			y = summary(g, x, y, w);
 			y = tiles(g, x, y + 8, w);
-			// the graph takes what is left above the settings line
 			int settingsY = buttonsY - 16;
+			if (scenes) y = scenes(g, x, y + 8, w, settingsY - 6 - y - 8);
+			// the graph takes what is left above the settings line
 			if (result.frameTimes != null && settingsY - y - 10 >= 24) graph(g, x, y + 8, w, settingsY - y - 14);
 			Component settings = Ui.text(settingsLine());
 			Ui.draw(g, Ui.fit(settings, w), x, settingsY, Ui.MUTED);
@@ -88,7 +90,8 @@ public class BenchmarkScreen extends Screen {
 			Component c = Ui.tr("slashclient-hud.benchmark.change", sign + Math.round(Math.abs(change)) + "%");
 			Ui.draw(g, Ui.fit(c, w - bw - 6), x + bw + 6, y + 12, Math.abs(change) < 3 ? Ui.TEXT_2 : change > 0 ? Ui.GREEN : 0xFFF87171);
 		}
-		String where = (result.world == null ? "" : result.world + "  ·  ") + result.version + "  ·  "
+		String place = result.scene != null ? Component.translatable("slashclient-hud.benchmark.scene").getString() : result.world;
+		String where = (place == null ? "" : place + "  ·  ") + result.version + "  ·  "
 			+ java.time.format.DateTimeFormatter.ofPattern("d.MM HH:mm").format(java.time.Instant.ofEpochMilli(result.at).atZone(java.time.ZoneId.systemDefault()));
 		Component wc = Ui.fit(Ui.text(where), w);
 		Ui.draw(g, wc, x, y + 22, Ui.MUTED);
@@ -115,6 +118,60 @@ public class BenchmarkScreen extends Screen {
 		}
 		int rows = (t.size() + cols - 1) / cols;
 		return y + rows * th + (rows - 1) * gap;
+	}
+
+	/**
+	 * The test scene's parts: name, a bar of average FPS (the 1% low darker inside it), the
+	 * numbers and the change since the run before. Two columns when the panel is wide.
+	 */
+	private int scenes(GuiGraphicsExtractor g, int x, int y, int w, int room) {
+		var list = result.scenes;
+		int rh = 12, gap = 10;
+		// one column when it fits, else two side by side
+		int cols = list.size() * rh + 10 <= room || w < 260 ? 1 : 2, rows = (list.size() + cols - 1) / cols;
+		if (room < rh * 2) return y;
+		rows = Math.min(rows, room / rh);
+		int cw = (w - gap * (cols - 1)) / cols;
+		double max = 1;
+		for (var sc : list) max = Math.max(max, sc.avg);
+		int nameW = 0;
+		for (var sc : list) nameW = Math.max(nameW, Ui.width(BenchScene.name(sc.id)));
+		nameW = Math.min(nameW + 6, cw / 3);
+		for (int i = 0; i < list.size(); i++) {
+			int col = i / rows, row = i % rows;
+			if (col >= cols) break;
+			var sc = list.get(i);
+			int rx = x + col * (cw + gap), ry = y + row * rh;
+			Ui.begin("scene " + i, rx, ry, cw, rh);
+			Ui.draw(g, Ui.fit(BenchScene.name(sc.id), nameW - 4), rx, ry + 2, Ui.TEXT_2);
+			Benchmark.SceneFps old = beforeScene(sc.id);
+			Component nums = Ui.text(num(sc.avg) + " · " + num(sc.low1));
+			Component change = Component.empty();
+			int changeColor = Ui.TEXT_2;
+			if (old != null && old.avg > 0) {
+				double c = (sc.avg - old.avg) / old.avg * 100;
+				change = Ui.text((c >= 0 ? " +" : " −") + Math.round(Math.abs(c)) + "%");
+				changeColor = Math.abs(c) < 3 ? Ui.TEXT_2 : c > 0 ? Ui.GREEN : 0xFFF87171;
+			}
+			int numsW = Ui.width(nums), changeW = Ui.width(change);
+			int bx = rx + nameW, bw = Math.max(10, cw - nameW - numsW - changeW - 6);
+			Ui.round(g, bx, ry + 3, bw, 6, 2, Ui.CARD);
+			Ui.round(g, bx, ry + 3, Math.max(2, (int) (bw * sc.avg / max)), 6, 2, Ui.ACCENT);
+			Ui.round(g, bx, ry + 3, Math.max(1, (int) (bw * Math.min(sc.avg, sc.low1) / max)), 6, 2, Ui.ACCENT_DARK);
+			Ui.draw(g, nums, bx + bw + 4, ry + 2, Ui.TEXT);
+			if (changeW > 0) Ui.draw(g, change, bx + bw + 4 + numsW, ry + 2, changeColor);
+			Ui.end();
+		}
+		Component legend = Ui.tr("slashclient-hud.benchmark.scene.legend");
+		int ly = y + rows * rh;
+		if (room >= rows * rh + 10) Ui.draw(g, Ui.fit(legend, w), x, ly + 1, Ui.MUTED);
+		return ly + 10;
+	}
+
+	private Benchmark.SceneFps beforeScene(String id) {
+		if (before == null || before.scenes == null) return null;
+		for (var sc : before.scenes) if (id.equals(sc.id)) return sc;
+		return null;
 	}
 
 	/** Every frame's time, slowest of each column; red where a frame took twice the usual. */
@@ -157,6 +214,11 @@ public class BenchmarkScreen extends Screen {
 			labels.add(Ui.tr("slashclient-hud.benchmark.again"));
 			icons.add("reset");
 			actions.add(() -> Benchmark.start(minecraft));
+		} else if (minecraft.level == null) {
+			// from the menu: the test scene's world opens and the run starts by itself
+			labels.add(Ui.tr("slashclient-hud.benchmark.scene.start"));
+			icons.add("play");
+			actions.add(() -> BenchScene.open(minecraft));
 		}
 		if (Benchmark.fromLauncher()) {
 			labels.add(Ui.tr("slashclient-hud.benchmark.quit"));
