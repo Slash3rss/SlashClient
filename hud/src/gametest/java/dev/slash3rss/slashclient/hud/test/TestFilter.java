@@ -25,7 +25,7 @@ final class TestFilter {
 	private static final Map<String, Integer> SECONDS = Map.ofEntries(
 		Map.entry("GameCosmeticsScreen", 130), Map.entry("HudScreenshots", 73), Map.entry("WebsiteShots", 69),
 		Map.entry("GameWorldAids", 47), Map.entry("GameBenchmark", 37), Map.entry("GameKillEffects", 33),
-		Map.entry("GameRingMoves", 30), Map.entry("GameMinimap", 30), Map.entry("GameHeadwear", 29),
+		Map.entry("GameRingMoves", 30), Map.entry("GameAutumnLeaves", 35), Map.entry("GameMinimap", 30), Map.entry("GameHeadwear", 29),
 		Map.entry("GameLimbWear", 29), Map.entry("GameDungeon", 27), Map.entry("GameSuits", 27),
 		Map.entry("GameCosmetics", 26), Map.entry("GameGear", 24), Map.entry("GameAllCosmetics", 23),
 		Map.entry("GameExtras", 18), Map.entry("GameStreamChat", 18), Map.entry("GameHeldSkins", 17),

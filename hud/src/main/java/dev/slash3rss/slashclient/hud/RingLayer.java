@@ -76,12 +76,12 @@ public final class RingLayer extends RenderLayer<AvatarRenderState, PlayerModel>
 		pose.pushPose();
 		// the feet are 1.501 under the model's origin; crouching, the whole model is drawn 2 pixels lower
 		pose.translate(0, 1.501f + (float) ((above - LIFT) / scale - (state.isCrouching ? 0.125 : 0)) / MODEL_SCALE, 0);
-		float size = RingEffects.SIZE * RingEffects.pulse() * (float) (1 - above * 0.12) / MODEL_SCALE / scale;
+		float size = RingEffects.SIZE * RingEffects.pulse(id) * (float) (1 - above * 0.12) / MODEL_SCALE / scale;
 		pose.scale(size, 1, size);
 		//#if MC >= 26.3
-		pose.rotate(com.mojang.math.Axis.YP.rotationDegrees(180 - state.bodyRot - RingEffects.spin()));
+		pose.rotate(com.mojang.math.Axis.YP.rotationDegrees(180 - state.bodyRot - RingEffects.spin(id)));
 		//#else
-		//$ pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180 - state.bodyRot - RingEffects.spin()));
+		//$ pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180 - state.bodyRot - RingEffects.spin(id)));
 		//#endif
 		int color = Math.round(alpha * 255) << 24 | 0xFFFFFF;
 		var type = RenderTypes.entityTranslucent(RingEffects.texture(id));
@@ -145,9 +145,9 @@ public final class RingLayer extends RenderLayer<AvatarRenderState, PlayerModel>
 //$ 		if (alpha <= 0.02f) return;
 //$ 		pose.pushPose();
 //$ 		pose.translate(0, 1.501f + (float) (above - LIFT - (crouching ? 0.125 : 0)) / MODEL_SCALE, 0);
-//$ 		float size = RingEffects.SIZE * RingEffects.pulse() * (float) (1 - above * 0.12) / MODEL_SCALE;
+//$ 		float size = RingEffects.SIZE * RingEffects.pulse(id) * (float) (1 - above * 0.12) / MODEL_SCALE;
 //$ 		pose.scale(size, 1, size);
-//$ 		pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180 - Mth.rotLerp(partialTick, player.yBodyRotO, player.yBodyRot) - RingEffects.spin()));
+//$ 		pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(180 - Mth.rotLerp(partialTick, player.yBodyRotO, player.yBodyRot) - RingEffects.spin(id)));
 //$ 		var buffer = buffers.getBuffer(RenderType.entityTranslucent(RingEffects.texture(id)));
 		//#if MC >= 1.21
 		//$ ring.render(pose, buffer, 0xF000F0, OverlayTexture.NO_OVERLAY, Math.round(alpha * 255) << 24 | 0xFFFFFF);

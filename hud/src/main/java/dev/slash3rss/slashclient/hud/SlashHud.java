@@ -209,6 +209,7 @@ public class SlashHud implements ClientModInitializer {
 			KillEffects.tick(mc);
 			HitMarker.tick(mc);
 			MoveEffects.tick(mc);
+			RingEffects.tick(mc);
 			Sprays.tick(mc);
 			Clips.tick(mc);
 			Badges.tick(mc);

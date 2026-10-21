@@ -88,6 +88,11 @@ final class CosmeticEffects {
 			case "enchant" -> add(mc, ParticleTypes.ENCHANT, p.getX(), p.getY() + 1.2, p.getZ(), x - p.getX(), y - p.getY() - 1.2, z - p.getZ());
 			case "portal" -> add(mc, ParticleTypes.PORTAL, p.getX(), p.getY() + 0.8, p.getZ(), (x - p.getX()) * 1.5, y - p.getY() - 0.8, (z - p.getZ()) * 1.5);
 			case "cherry" -> add(mc, ParticleTypes.CHERRY_LEAVES, x, p.getY() + 2.2, z, 0, 0, 0);
+			// autumn leaves falling around the player from above the head, near and a little further off
+			case "leaves_gold", "leaves_autumn" -> {
+				double lr = 0.5 + RANDOM.nextDouble() * 0.7;
+				Leaves.fall(mc, Leaves.variant(kind), p.getX() + Math.cos(a) * lr, p.getY() + 2.1 + RANDOM.nextDouble() * 0.6, p.getZ() + Math.sin(a) * lr);
+			}
 			case "souls" -> add(mc, ParticleTypes.SOUL, x, p.getY() + 0.1, z, 0, 0.02, 0);
 			case "glow" -> add(mc, ParticleTypes.GLOW, x, y, z, 0, 0.02, 0);
 			case "magic" -> add(mc, ParticleTypes.ENCHANTED_HIT, x, y, z, 0, 0.05, 0);
