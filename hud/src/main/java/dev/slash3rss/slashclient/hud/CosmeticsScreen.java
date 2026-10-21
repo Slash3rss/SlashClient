@@ -594,7 +594,8 @@ public class CosmeticsScreen extends Screen {
 				tipY = y + 30;
 			}
 		}
-		y += 13;
+		// the second line clear of the Sparks badge and the close button above it (both 15 tall)
+		y += 16;
 		Component owner = character != null
 			? Ui.tr(ownSet ? "slashclient-hud.cosmetics.character" : "slashclient-hud.cosmetics.characterShared", characterName)
 			: Ui.tr("slashclient-hud.cosmetics.account");
