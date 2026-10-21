@@ -14,7 +14,8 @@
 export type Vec3 = [number, number, number];
 /** What a box is made of: each item paints it its own way (scripts/make-props.mjs). */
 export type PropMaterial = 'frame' | 'grip' | 'tub' | 'rim' | 'tire' | 'hub' | 'axle' | 'soil' | 'stem'
-  | 'petal_red' | 'petal_yellow' | 'petal_blue' | 'petal_pink' | 'petal_white' | 'petal_orange' | 'bloom';
+  | 'petal_red' | 'petal_yellow' | 'petal_blue' | 'petal_pink' | 'petal_white' | 'petal_orange' | 'bloom'
+  | 'leaves' | 'leaf_red' | 'leaf_orange' | 'leaf_gold' | 'pumpkin' | 'pumpkin_stem';
 
 export interface PropBox {
   from: Vec3;
@@ -36,9 +37,27 @@ export interface PropItem {
   id: string;
   slot: 'prop';
   name: string;
-  /** How it is painted: the classic one (wood and a galvanised tub), gold, or wood with flowers. */
-  look: 'classic' | 'gold' | 'flowers';
+  /** How it is painted: the classic one (wood and a galvanised tub), gold, wood with flowers, or wood full of autumn leaves with a pumpkin. */
+  look: 'classic' | 'gold' | 'flowers' | 'autumn';
 }
+
+/**
+ * Pets made of a prop: a small wheelbarrow following the player at the shoulder like the other pets
+ * (scripts/make-props.mjs writes it as one of our own pets: pet/<id>.json, textures/pet/<id>_0.png,
+ * src/renderer/ourPetModels.ts), standing on its wheel and legs, the wheel ahead.
+ */
+export interface PropPet {
+  id: string;
+  look: PropItem['look'];
+}
+export const PROP_PETS: PropPet[] = [
+  { id: 'pet_wheelbarrow', look: 'classic' },
+  { id: 'pet_wheelbarrow_autumn', look: 'autumn' },
+];
+/** How big a prop pet is drawn next to the player (the game's mobs are 0.55 to 0.8; a wheelbarrow is long). */
+export const PROP_PET_SCALE = 0.4;
+/** Its turn (the game's yRot): the wheel ahead and outwards, so its side shows from behind the player. */
+export const PROP_PET_YAW = -1;
 
 /** The picture of every item is this big, in model pixels (painted 4× finer). */
 export const PROP_TEXTURE: [number, number] = [128, 64];
@@ -110,6 +129,34 @@ function flower(n: number, x: number, z: number, h: number, petal: PropMaterial)
   };
 }
 
+/** A single leaf lying on the pile, tipped a little: a thin box. */
+function leaf(n: number, pose: [number, number, number, number, number, number], mat: PropMaterial): PropPart {
+  return { name: `leaf${n}`, pose, boxes: [box([-1, -0.25, -0.75], [2, 0.25, 1.5], mat)] };
+}
+
+/** The tub full of autumn leaves, heaped over the brim, with a small pumpkin on top. */
+function autumnLoad(): PropPart[] {
+  return [
+    {
+      name: 'leaf_pile',
+      pose: [0, 0, 0, 0, 0, 0],
+      // up to the brim, a heap over it (as wide as the tub's top) and its rounded top
+      boxes: [box([-3.5, -8, -5], [7, 1, 10], 'leaves'), box([-4, -9.5, -5.5], [8, 1.5, 11], 'leaves'), box([-3, -11, -4], [6, 1.5, 8], 'leaves')],
+    },
+    {
+      name: 'pumpkin',
+      pose: [0.6, -10.6, -1.4, 0, 0.35, 0],
+      boxes: [box([-2, -3.5, -2], [4, 3.5, 4], 'pumpkin'), box([-0.5, -4.5, -0.5], [1, 1, 1], 'pumpkin_stem')],
+    },
+    leaf(0, [-3, -9.7, 3.4, 0.35, 0.5, 0.25], 'leaf_red'),
+    leaf(1, [3.2, -9.6, 3.6, -0.3, 1.1, -0.35], 'leaf_gold'),
+    leaf(2, [-2.2, -11.1, -2.8, 0.2, 2, 0.3], 'leaf_orange'),
+    leaf(3, [1.4, -11.2, 2.4, -0.15, 2.6, 0.1], 'leaf_red'),
+    leaf(4, [3.6, -9.7, -4.6, 0.3, 0.9, -0.4], 'leaf_orange'),
+    leaf(5, [-3.4, -9.6, -1.2, -0.25, 1.6, 0.35], 'leaf_gold'),
+  ];
+}
+
 /** The whole prop, as parts: the frame (rails, grips, fork, legs, axle), the tub and the wheel. */
 export function propModel(item: PropItem): PropPart {
   const rail = (side: 1 | -1): PropPart => ({
@@ -137,7 +184,7 @@ export function propModel(item: PropItem): PropPart {
       flower(3, 2, 2, 3, 'petal_pink'),
       flower(4, -2, 3.5, 3.5, 'petal_white'),
       flower(5, 1, 4, 4.5, 'petal_orange'),
-    ] : [],
+    ] : item.look === 'autumn' ? autumnLoad() : [],
   };
   return {
     name: 'prop',

@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { OUR_PET_FRAMES, OUR_PET_MODELS } from '../src/renderer/ourPetModels';
+import { PET_MODELS } from '../src/renderer/petModels';
 import { ITEMS } from '../server/src/cosmetics';
+import { PROP_PETS, PROP_PET_SCALE, propBoxes, propModel } from '../src/shared/props';
+import { COSMETIC_TEXTURES } from '../src/shared/cosmeticTextures';
 
 const assets = 'hud/src/main/resources/assets/slashclient-hud';
 
@@ -30,5 +33,27 @@ describe('our own pets', () => {
       assert.ok(cosmetics.includes(`"${id}"`) && ours.includes(`"${id}"`), id);
     }
     assert.equal(ITEMS.find((i) => i.id === 'duszek_haze')?.name, 'Duszek Haze');
+  });
+
+  it('the small wheelbarrows are the props\' wheelbarrow, box for box (node scripts/make-props.mjs)', () => {
+    for (const pet of PROP_PETS) {
+      const mod = JSON.parse(readFileSync(`${assets}/pet/${pet.id}.json`, 'utf8'));
+      assert.equal(mod.scale, PROP_PET_SCALE);
+      const boxes = propBoxes(propModel({ id: pet.id, slot: 'prop', name: '', look: pet.look })).map((b) => b.box);
+      assert.deepEqual(mod.boxes.map((b: { size: number[] }) => b.size), boxes.map((b) => b.size.map((v) => Math.round(v * 1e5) / 1e5)), pet.id);
+      assert.equal(OUR_PET_MODELS[pet.id].children.length, boxes.length);
+      assert.equal(ITEMS.find((i) => i.id === pet.id)?.since, '0.9.29');
+    }
+    // the autumn one carries leaves and a pumpkin
+    assert.ok(propBoxes(propModel({ id: 'x', slot: 'prop', name: '', look: 'autumn' })).some((b) => b.box.mat === 'pumpkin'));
+    assert.equal(ITEMS.find((i) => i.id === 'pet_wheelbarrow')?.name, 'Taczka');
+  });
+
+  it('the cat is the game\'s ginger one, in the previews too', () => {
+    assert.equal(ITEMS.find((i) => i.id === 'cat')?.slot, 'pet');
+    assert.ok(PET_MODELS.cat.children.some((c) => c.name === 'tail2'));
+    for (const p of ['item/cat_spawn_egg', 'entity/cat/cat_red', 'entity/cat/red']) assert.ok(COSMETIC_TEXTURES.includes(p), p);
+    const layer = readFileSync('hud/src/main/java/dev/slash3rss/slashclient/hud/CosmeticLayer.java', 'utf8');
+    assert.ok(layer.includes('vanilla("cat/cat_red")') && layer.includes('vanilla("cat/red")'));
   });
 });

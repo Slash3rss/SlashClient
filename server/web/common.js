@@ -233,7 +233,7 @@ const ITEM_ICONS = {
   blaze: 'fa-fire', phantom: 'fa-dragon',
   crits: 'fa-burst', witch: 'fa-flask', ink: 'fa-droplet', ash: 'fa-smog',
   spores: 'fa-seedling', nautilus: 'fa-water', tears: 'fa-face-sad-tear', fireflies: 'fa-lightbulb',
-  axolotl: 'fa-fish', frog: 'fa-frog', fox: 'fa-paw',
+  axolotl: 'fa-fish', frog: 'fa-frog', fox: 'fa-paw', cat: 'fa-cat',
   // kill effects
   lightning: 'fa-bolt-lightning', blood: 'fa-droplet', heartburst: 'fa-heart-crack', firework: 'fa-wand-magic-sparkles',
   soulrise: 'fa-fire-flame-curved', enderpoof: 'fa-eye', confetti: 'fa-champagne-glasses', blast: 'fa-explosion',
@@ -256,7 +256,7 @@ const KILL_ICON_COLORS = {
 };
 
 /** Pets of our own (not the game's mobs). */
-const OUR_PETS = ['duszek_haze'];
+const OUR_PETS = ['duszek_haze', 'pet_wheelbarrow', 'pet_wheelbarrow_autumn'];
 
 /** A picture of any cosmetic: the cape's front, a wing's back, a view of the clothing (or a back item or tail), or an icon. */
 export function cosmeticEl(id, slot = 'cape', small = false) {

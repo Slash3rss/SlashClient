@@ -135,6 +135,11 @@ public final class SkinPreview {
 		return wings;
 	}
 
+	/** The pets' size by the figure: the game's mobs all alike, ours as much smaller as they are in the game (a wheelbarrow). */
+	private static float petScale(String id) {
+		return dev.slash3rss.slashclient.hud.CosmeticLayer.petLayer(id) != null ? 0.55f : 0.55f * dev.slash3rss.slashclient.hud.OurPets.scale(id) / 0.75f;
+	}
+
 	private Object petModel(String id, float time) {
 		var layer = dev.slash3rss.slashclient.hud.CosmeticLayer.petLayer(id);
 		// the game's mobs by their layer, ours from their boxes
@@ -142,13 +147,13 @@ public final class SkinPreview {
 		Object model = pets.computeIfAbsent(id, k -> {
 			ModelPart pet = layer != null ? Minecraft.getInstance().getEntityModels().bakeLayer(layer) : dev.slash3rss.slashclient.hud.OurPets.bake(id);
 			ModelPart holder = new ModelPart(java.util.List.of(), java.util.Map.of("pet", pet));
-			holder.xScale = holder.yScale = holder.zScale = 0.55f;
+			holder.xScale = holder.yScale = holder.zScale = petScale(id);
 			return wrap(holder);
 		});
 		// by the shoulder, its feet (24 pixels under its origin) a little above it, bobbing
 		ModelPart holder = root(model).getChild("slashclient");
 		holder.x = 9;
-		holder.y = -3 - 24 * 0.55f + (float) Math.sin(time * 2.2f) * 0.8f;
+		holder.y = -3 - 24 * petScale(id) + (float) Math.sin(time * 2.2f) * 0.8f;
 		holder.z = 1;
 		return model;
 	}

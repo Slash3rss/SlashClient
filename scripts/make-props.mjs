@@ -2,11 +2,13 @@
 //   hud/src/main/resources/assets/slashclient-hud/textures/prop/<id>.png       the picture on the boxes
 //   hud/src/main/resources/assets/slashclient-hud/textures/prop/icon/<id>.png  a small view of it for the menus
 //   hud/src/main/resources/assets/slashclient-hud/props.json                   the parts and boxes, with where their pictures are
+// and the props that are pets (PROP_PETS: a small wheelbarrow at the shoulder) as our own pets:
+//   textures/pet/<id>_0.png, textures/pet/icon/<id>.png, pet/<id>.json and src/renderer/ourPetModels.ts
 // (build.mjs copies the pictures to the launcher and the website.) Run with: node scripts/make-props.mjs
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { deflateSync } from 'node:zlib';
-import { GRIP, HAND, HOLD, HOLD_CROUCHING, PROPS, PROP_SCALE as K, PROP_TEXTURE, WHEEL_RADIUS, propBoxes, propLayout, propModel, propQuads } from '../src/shared/props.ts';
+import { GRIP, HAND, HOLD, HOLD_CROUCHING, PROPS, PROP_PETS, PROP_PET_SCALE, PROP_PET_YAW, PROP_SCALE as K, PROP_TEXTURE, WHEEL_RADIUS, propBoxes, propLayout, propModel, propQuads } from '../src/shared/props.ts';
 
 const assets = 'hud/src/main/resources/assets/slashclient-hud';
 const [TW, TH] = PROP_TEXTURE;
@@ -86,7 +88,11 @@ const PALETTES = {
   classic: { frame: '#9a6a3a', tub: '#9aa4ad', rim: '#d23a2a', grip: '#2a2420', shine: false, woodTub: false },
   gold: { frame: '#e0a92a', tub: '#f2c230', rim: '#f6d76a', grip: '#5a3416', shine: true, woodTub: false },
   flowers: { frame: '#8a5a30', tub: '#b07a44', rim: '#3f8f4a', grip: '#2a2420', shine: false, woodTub: true },
+  autumn: { frame: '#7a4c28', tub: '#8f5e34', rim: '#c8501e', grip: '#2a2420', shine: false, woodTub: true },
 };
+/** Autumn leaves: orange, red, gold, amber and a few brown ones. */
+const LEAVES = ['#e8641c', '#c8321e', '#f2a81d', '#d9831f', '#e8641c', '#f2a81d', '#9a4a1e', '#b8281a'];
+const LEAF = { leaf_red: '#c8321e', leaf_orange: '#e8641c', leaf_gold: '#f2b01d' };
 const PETALS = { petal_red: '#d8283c', petal_yellow: '#f4cf2a', petal_blue: '#3b6fe0', petal_pink: '#f08ac0', petal_white: '#f2f2ec', petal_orange: '#f08a24' };
 
 /** One texel of a box: { mat, box (its index), face, x, y (in the face), w, h (the face's size), look } → [r, g, b] or null. */
@@ -132,6 +138,36 @@ function paint(t) {
       return shade(hex('#3f8f2e'), 0.85 + grain(90, x, y) * 0.2);
     case 'bloom':
       return hex('#ffd23a');
+    case 'leaves': {
+      // a heap of leaves: each about a pixel, of its own colour, darker at its lower edge and between them
+      const cx = Math.floor(x / K + grain(101, 0, Math.floor(y / K)) * 0.6), cy = Math.floor(y / K);
+      const c = hex(LEAVES[Math.floor(grain(100 + box, cx, cy) * LEAVES.length)]);
+      const edge = (y % K === K - 1) || grain(102, x, y) > 0.93;
+      return shade(c, (edge ? 0.7 : 0.92 + grain(103, x, y) * 0.16) * (face === 'up' ? 1 : 0.88));
+    }
+    case 'leaf_red': case 'leaf_orange': case 'leaf_gold': {
+      const c = hex(LEAF[mat]);
+      if (face !== 'up' && face !== 'down') return shade(c, 0.75);
+      // a pointed leaf with its midrib along it: the corners left out
+      const u = (x + 0.5) / w - 0.5, v = (y + 0.5) / h - 0.5;
+      if (Math.abs(v) > 0.5 - Math.abs(u) * 0.55 + 0.05) return null;
+      if (Math.abs(v) < 0.09 && u > -0.45) return shade(c, 0.68);
+      return shade(c, 0.95 + grain(110, x, y) * 0.12);
+    }
+    case 'pumpkin': {
+      const c = hex('#e3791c');
+      if (face === 'up' || face === 'down') {
+        // seen from above: ridges running out from the middle
+        const a = Math.atan2(y + 0.5 - h / 2, x + 0.5 - w / 2);
+        return shade(c, Math.cos(a * 8) > 0.6 ? 0.78 : 1.02 + grain(120, x, y) * 0.08);
+      }
+      // the sides: lengthwise ribs, a little darker towards the top and the bottom
+      const rib = Math.floor(x / (K * 0.75)) % 2 ? 0.86 : 1.04;
+      const round = 1 - Math.abs((y + 0.5) / h - 0.5) * 0.35;
+      return shade(c, rib * round * (0.95 + grain(121, x, y) * 0.08));
+    }
+    case 'pumpkin_stem':
+      return shade(hex('#5d6b26'), 0.85 + grain(130, x, y) * 0.25);
     default: {
       const petal = hex(PETALS[mat]);
       // the blossom's top is lighter in the middle, its sides darker towards the stem
@@ -146,18 +182,17 @@ function paint(t) {
 const out = path.join(assets, 'textures', 'prop');
 mkdirSync(path.join(out, 'icon'), { recursive: true });
 const items = [];
-for (const item of PROPS) {
-  const model = propModel(item);
-  const W = TW * K, H = TH * K;
+const W = TW * K, H = TH * K;
+/** An item's picture: each box's faces painted where the layout puts them. */
+function picture(look, model, uvs) {
   const tex = Buffer.alloc(W * H * 4);
-  const uvs = propLayout(model);
   propBoxes(model).forEach(({ box: b }, box) => {
     for (const q of propQuads(b, uvs[box])) {
       const us = q.corners.map((c) => c[3] * W), vs = q.corners.map((c) => c[4] * H);
       const u0 = Math.round(Math.min(...us)), u1 = Math.round(Math.max(...us));
       const v0 = Math.round(Math.min(...vs)), v1 = Math.round(Math.max(...vs));
       for (let ty = v0; ty < v1; ty++) for (let tx = u0; tx < u1; tx++) {
-        const c = paint({ look: item.look, mat: b.mat, box, face: q.face, x: tx - u0, y: ty - v0, w: u1 - u0, h: v1 - v0 });
+        const c = paint({ look, mat: b.mat, box, face: q.face, x: tx - u0, y: ty - v0, w: u1 - u0, h: v1 - v0 });
         if (!c) continue;
         const i = (ty * W + tx) * 4;
         tex[i] = c[0];
@@ -167,6 +202,12 @@ for (const item of PROPS) {
       }
     }
   });
+  return tex;
+}
+for (const item of PROPS) {
+  const model = propModel(item);
+  const uvs = propLayout(model);
+  const tex = picture(item.look, model, uvs);
   writeFileSync(path.join(out, `${item.id}.png`), png(W, H, tex));
   writeFileSync(path.join(out, 'icon', `${item.id}.png`), png(ICON, ICON, icon(model, uvs, tex, W, H)));
   let n = 0;
@@ -182,6 +223,56 @@ writeFileSync(path.join(assets, 'props.json'), JSON.stringify({
   texture: PROP_TEXTURE, wheelRadius: WHEEL_RADIUS, grip: GRIP, hold: HOLD, holdCrouching: HOLD_CROUCHING, hand: HAND, items,
 }) + '\n');
 console.log(`${items.length} props -> ${out}`);
+
+// ---------- props as pets: one of our own pets (OurPets.java, ourPetModels.ts), each box on its own pivot ----------
+
+/** The game's (z, then y, then x) angles of a turn (a 3×3 matrix made by `rotation`). */
+function angles(m) {
+  const ry = Math.asin(Math.max(-1, Math.min(1, -m[2][0])));
+  return [Math.atan2(m[2][1], m[2][2]), ry, Math.atan2(m[1][0], m[0][0])];
+}
+const round = (v) => Math.round(v * 1e5) / 1e5 + 0;
+const ts = 'src/renderer/ourPetModels.ts';
+const previous = readFileSync(ts, 'utf8');
+const known = JSON.parse(/OUR_PET_MODELS[^=]*= (\{.*\});/.exec(previous)[1]);
+const knownFrames = JSON.parse(/OUR_PET_FRAMES[^=]*= (\{.*\});/.exec(previous)[1]);
+const petDir = path.join(assets, 'textures', 'pet');
+mkdirSync(path.join(petDir, 'icon'), { recursive: true });
+for (const pet of PROP_PETS) {
+  const model = propModel({ id: pet.id, slot: 'prop', name: '', look: pet.look });
+  const uvs = propLayout(model);
+  const tex = picture(pet.look, model, uvs);
+  writeFileSync(path.join(petDir, `${pet.id}_0.png`), png(W, H, tex));
+  writeFileSync(path.join(petDir, 'icon', `${pet.id}.png`), png(ICON, ICON, icon(model, uvs, tex, W, H)));
+  // placed like the game's mobs: standing on the ground 24 pixels down (the wheel's radius under the axle), the middle of its length over the origin
+  const boxes = [];
+  let n = 0;
+  const walk = (p, m, t) => {
+    const [x, y, z, rx, ry, rz] = p.pose ?? [0, 0, 0, 0, 0, 0];
+    const off = apply(m, [x, y, z]);
+    const at = [t[0] + off[0], t[1] + off[1], t[2] + off[2]];
+    const turn = mul(m, rotation(rx, ry, rz));
+    for (const b of p.boxes ?? []) boxes.push({ box: b, pivot: at.map(round), rotation: angles(turn).map(round), uv: uvs[n++] });
+    for (const c of p.children ?? []) walk(c, turn, at);
+  };
+  // turned so the wheel points ahead and outwards (the pets float at the left shoulder): seen from behind, its side shows
+  walk({ name: 'pet', pose: [0, 24 - WHEEL_RADIUS, 0, 0, PROP_PET_YAW, 0], children: [{ ...model, pose: [0, 0, -10, 0, 0, 0] }] }, rotation(0, 0, 0), [0, 0, 0]);
+  mkdirSync(path.join(assets, 'pet'), { recursive: true });
+  const json = boxes.map(({ box: b, pivot, rotation: r, uv }) => ({ pivot, rotation: r, from: b.from.map(round), size: b.size.map(round), uv, ...(b.inflate ? { inflate: b.inflate } : {}) }));
+  writeFileSync(path.join(assets, 'pet', `${pet.id}.json`), `{"texture": [${TW}, ${TH}], "frames": 1, "scale": ${PROP_PET_SCALE}, "boxes": [\n${json.map((b) => `\t${JSON.stringify(b)}`).join(',\n')}\n]}\n`);
+  known[pet.id] = {
+    name: 'root', pose: [0, 0, 0, 0, 0, 0], quads: [],
+    children: boxes.map(({ box: b, pivot, rotation: r, uv }, i) => ({
+      name: `box${i}`, pose: [...pivot, ...r], children: [],
+      quads: propQuads(b, uv).map((q) => q.corners.flat().map(round)),
+    })),
+  };
+  knownFrames[pet.id] = 1;
+}
+writeFileSync(ts, previous
+  .replace(/(OUR_PET_MODELS[^=]*= )\{.*\};/, (_, a) => `${a}${JSON.stringify(known)};`)
+  .replace(/(OUR_PET_FRAMES[^=]*= )\{.*\};/, (_, a) => `${a}${JSON.stringify(knownFrames)};`));
+console.log(`${PROP_PETS.length} prop pets -> ${petDir}`);
 
 // ---------- the icons: the prop seen from the side and a little from the front and above ----------
 
