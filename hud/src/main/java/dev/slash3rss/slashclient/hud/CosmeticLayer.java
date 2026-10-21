@@ -127,8 +127,14 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		// ours, from Blockbench models (Map.of takes ten at most)
 		for (String id : OurPets.IDS) {
 			ModelPart root = OurPets.bake(id);
-			if (root != null) all.put(id, new Pet(new OurPetModel(root), LivingEntityRenderState::new, petTexture(id), 0.75f));
+			if (root != null) all.put(id, new Pet(new OurPetModel(root), LivingEntityRenderState::new, petTexture(id), OurPets.scale(id)));
 		}
+		// a ginger cat (the game's cat model is 0.8 of the ocelot's on its own); it got a baby twin in 26.1 too
+		//#if MC >= 26.1
+		all.put("cat", new Pet(new net.minecraft.client.model.animal.feline.AdultCatModel(context.bakeLayer(ModelLayers.CAT)), net.minecraft.client.renderer.entity.state.CatRenderState::new, petTexture("cat"), 0.7f));
+		//#else
+		//$ all.put("cat", new Pet(new net.minecraft.client.model.animal.feline.CatModel(context.bakeLayer(ModelLayers.CAT)), net.minecraft.client.renderer.entity.state.CatRenderState::new, petTexture("cat"), 0.7f));
+		//#endif
 		pets = Map.copyOf(all);
 	}
 
@@ -152,6 +158,7 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			case "axolotl" -> ModelLayers.AXOLOTL;
 			case "frog" -> ModelLayers.FROG;
 			case "fox" -> ModelLayers.FOX;
+			case "cat" -> ModelLayers.CAT;
 			default -> null;
 		};
 	}
@@ -177,6 +184,12 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 			//#endif
 			case "axolotl" -> vanilla("axolotl/axolotl_lucy");
 			case "fox" -> vanilla("fox/fox");
+			// the ginger cat ("red"); its pictures got a cat_ in front in 26.1
+			//#if MC >= 26.1
+			case "cat" -> vanilla("cat/cat_red");
+			//#else
+			//$ case "cat" -> vanilla("cat/red");
+			//#endif
 			// renamed in 26.1 (temperate_frog → frog_temperate)
 			//#if MC >= 26.1
 			case "frog" -> vanilla("frog/frog_temperate");
@@ -276,6 +289,9 @@ public final class CosmeticLayer extends RenderLayer<AvatarRenderState, PlayerMo
 		} else if (s instanceof BatRenderState b) {
 			b.isResting = false;
 			b.flyAnimationState.startIfStopped(0);
+		} else if (s instanceof net.minecraft.client.renderer.entity.state.FelineRenderState cat) {
+			// the cat sits, as on the shoulder
+			cat.isSitting = true;
 		}
 		// floats by the shoulder, a little behind the head, bobbing up and down; the mob's feet are 1.5 down from its origin
 		float bob = (float) Math.sin(age * 0.12f) * 0.06f;

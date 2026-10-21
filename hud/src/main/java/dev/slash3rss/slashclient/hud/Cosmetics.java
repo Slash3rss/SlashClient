@@ -63,7 +63,7 @@ public final class Cosmetics {
 	//$ static final List<String> AURAS = List.of("enchant", "portal", "cherry", "souls", "royal", "glow", "magic", "amber", "sculk",
 	//$ 	"spores", "nautilus", "tears");
 	//#endif
-	static final List<String> PETS = List.of("allay", "vex", "bat", "parrot", "bee", "blaze", "phantom", "axolotl", "frog", "fox", "duszek_haze");
+	static final List<String> PETS = List.of("allay", "vex", "bat", "parrot", "bee", "blaze", "phantom", "axolotl", "frog", "fox", "cat", "duszek_haze", "pet_wheelbarrow", "pet_wheelbarrow_autumn");
 	private static final Map<String, List<String>> SLOTS = Map.ofEntries(Map.entry("cape", CAPES), Map.entry("wings", WINGS), Map.entry("elytra", ELYTRAS),
 		Map.entry("trail", TRAILS), Map.entry("aura", AURAS), Map.entry("pet", PETS), Map.entry("hat", Clothing.HATS), Map.entry("top", Clothing.TOPS),
 		Map.entry("kill", KillEffects.IDS), Map.entry("suit", Suits.IDS), Map.entry("shield", HeldSkins.SHIELDS), Map.entry("weapon", HeldSkins.WEAPONS),

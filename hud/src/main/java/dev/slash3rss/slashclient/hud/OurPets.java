@@ -18,14 +18,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
- * Pets of our own (not the game's mobs), made from Blockbench models by scripts/make-model-pet.mjs:
+ * Pets of our own (not the game's mobs), made from Blockbench models by scripts/make-model-pet.mjs
+ * (and the small wheelbarrows, from the props, by scripts/make-props.mjs):
  * their boxes (pet/<id>.json, placed like the game's mobs: the feet 24 pixels under the origin)
  * and their pictures, a frame a second (textures/pet/<id>_<frame>.png).
  */
 public final class OurPets {
 	private OurPets() {}
 
-	public static final List<String> IDS = List.of("duszek_haze");
+	public static final List<String> IDS = List.of("duszek_haze", "pet_wheelbarrow", "pet_wheelbarrow_autumn");
 	private static final long FRAME_MS = 1000;
 
 	private static JsonObject read(String id) {
@@ -52,7 +53,8 @@ public final class OurPets {
 			float[] from = floats(b.getAsJsonArray("from")), size = floats(b.getAsJsonArray("size"));
 			JsonArray uv = b.getAsJsonArray("uv");
 			mesh.getRoot().addOrReplaceChild("box" + i++,
-				CubeListBuilder.create().texOffs(uv.get(0).getAsInt(), uv.get(1).getAsInt()).addBox(from[0], from[1], from[2], size[0], size[1], size[2], CubeDeformation.NONE),
+				CubeListBuilder.create().texOffs(uv.get(0).getAsInt(), uv.get(1).getAsInt()).addBox(from[0], from[1], from[2], size[0], size[1], size[2],
+					b.has("inflate") ? new CubeDeformation(b.get("inflate").getAsFloat()) : CubeDeformation.NONE),
 				PartPose.offsetAndRotation(pivot[0], pivot[1], pivot[2], rot[0], rot[1], rot[2]));
 		}
 		JsonArray tex = o.getAsJsonArray("texture");
@@ -62,6 +64,15 @@ public final class OurPets {
 	private static float[] floats(JsonArray a) {
 		return new float[] {a.get(0).getAsFloat(), a.get(1).getAsFloat(), a.get(2).getAsFloat()};
 	}
+
+	/** How big the pet is drawn next to the player ("scale" in its boxes' file; most are 0.75). */
+	public static float scale(String id) {
+		return scales.computeIfAbsent(id, k -> {
+			JsonObject o = read(k);
+			return o != null && o.has("scale") ? o.get("scale").getAsFloat() : 0.75f;
+		});
+	}
+	private static final java.util.Map<String, Float> scales = new java.util.concurrent.ConcurrentHashMap<>();
 
 	/** The pet's picture now (its current frame). */
 	public static Identifier texture(String id) {

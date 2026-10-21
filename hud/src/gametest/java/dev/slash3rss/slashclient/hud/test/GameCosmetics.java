@@ -103,7 +103,18 @@ public class GameCosmetics implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.cosmeticsSelf(null, true));
 			context.waitTicks(20);
 			context.takeScreenshot("cosmetics-pet-duszek_haze-front");
+			// the 0.9.29 ones: the game's ginger cat, sitting, and the props' wheelbarrow small (the autumn one full of leaves)
+			for (String pet : new String[] {"cat", "pet_wheelbarrow", "pet_wheelbarrow_autumn"}) {
+				context.runOnClient(mc -> TestHooks.wear("pet", pet));
+				context.waitTicks(10);
+				context.takeScreenshot("cosmetics-pet-" + pet + "-front");
+			}
 			context.runOnClient(mc -> TestHooks.cosmeticsSelf("aurora", false));
+			for (String pet : new String[] {"cat", "pet_wheelbarrow", "pet_wheelbarrow_autumn"}) {
+				context.runOnClient(mc -> TestHooks.wear("pet", pet));
+				context.waitTicks(10);
+				context.takeScreenshot("cosmetics-pet-" + pet);
+			}
 			context.runOnClient(mc -> TestHooks.wear("pet", null));
 			context.runOnClient(mc -> TestHooks.wear("aura", "fireflies"));
 			context.runOnClient(mc -> TestHooks.cosmeticsSelf("vortex", false));
@@ -146,6 +157,12 @@ public class GameCosmetics implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.wearOwn("pet", "duszek_haze"));
 			context.waitTicks(5);
 			context.takeScreenshot("cosmetics-menu-figure-duszek_haze");
+			context.runOnClient(mc -> TestHooks.wearOwn("pet", "cat"));
+			context.waitTicks(5);
+			context.takeScreenshot("cosmetics-menu-figure-cat");
+			context.runOnClient(mc -> TestHooks.wearOwn("pet", "pet_wheelbarrow_autumn"));
+			context.waitTicks(5);
+			context.takeScreenshot("cosmetics-menu-figure-pet_wheelbarrow_autumn");
 			context.runOnClient(mc -> { TestHooks.wearOwn("wings", null); TestHooks.wearOwn("pet", null); TestHooks.wearOwn("cape", null); });
 			context.setScreen(() -> null);
 			// the menu in the game, on two slots

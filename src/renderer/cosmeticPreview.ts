@@ -10,6 +10,7 @@ import { RocketFlames } from './limbsPreview';
 import { GearPreview } from './gearPreview';
 import { MoveEffectPreview, RingPreview } from './ringMovePreview';
 import { PropPreview } from './propPreview';
+import { PROP_PETS, PROP_PET_SCALE } from '../shared/props';
 import type { SkinViewer } from 'skinview3d';
 
 /**
@@ -75,8 +76,14 @@ const PET_TEXTURES: Record<string, string[]> = {
   blaze: ['entity/blaze/blaze', 'entity/blaze'], phantom: ['entity/phantom/phantom', 'entity/phantom'],
   // the frog's was renamed in 26.1
   axolotl: ['entity/axolotl/axolotl_lucy'], frog: ['entity/frog/frog_temperate', 'entity/frog/temperate_frog'], fox: ['entity/fox/fox'],
+  // the ginger cat's picture got a cat_ in front in 26.1
+  cat: ['entity/cat/cat_red', 'entity/cat/red'],
 };
-const PET_SCALE: Record<string, number> = { allay: 0.6, vex: 0.6, bat: 0.45, parrot: 0.55, bee: 0.5, blaze: 0.3, phantom: 0.5, axolotl: 0.55, frog: 0.6, fox: 0.5 };
+// the cat's model is the ocelot's (the game draws the cat at 0.8 of it); our wheelbarrows are small (PROP_PET_SCALE)
+const PET_SCALE: Record<string, number> = {
+  allay: 0.6, vex: 0.6, bat: 0.45, parrot: 0.55, bee: 0.5, blaze: 0.3, phantom: 0.5, axolotl: 0.55, frog: 0.6, fox: 0.5, cat: 0.5,
+  ...Object.fromEntries(PROP_PETS.map((p) => [p.id, (PROP_PET_SCALE / 0.75) * 0.7])),
+};
 
 /**
  * Frames that read well as an icon, where the first ones would not: the dots that start small,

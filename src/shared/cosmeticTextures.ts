@@ -17,9 +17,11 @@ export const COSMETIC_TEXTURES = [
   ...Array.from({ length: 8 }, (_, i) => `particle/spark_${i}`),
   ...Array.from({ length: 10 }, (_, i) => `particle/sculk_soul_${i}`),
   'particle/bubble', 'particle/glint', 'particle/soul_fire_flame', 'particle/enchanted_hit',
-  ...['axolotl', 'frog', 'fox'].map((m) => `item/${m}_spawn_egg`),
+  ...['axolotl', 'frog', 'fox', 'cat'].map((m) => `item/${m}_spawn_egg`),
   // the frog's picture was renamed in 26.1
   'entity/axolotl/axolotl_lucy', 'entity/frog/frog_temperate', 'entity/frog/temperate_frog', 'entity/fox/fox',
+  // the ginger cat's picture got a cat_ in front in 26.1
+  'entity/cat/cat_red', 'entity/cat/red',
   ...Array.from({ length: 8 }, (_, i) => `particle/spell_${i}`),
   'particle/critical_hit', 'particle/drip_fall', 'particle/drip_hang', 'particle/nautilus', 'particle/firefly',
 ];

@@ -3346,7 +3346,7 @@ const ITEM_ICONS: Record<string, string> = {
   blaze: 'fa-fire', phantom: 'fa-dragon',
   crits: 'fa-burst', witch: 'fa-flask', ink: 'fa-droplet', ash: 'fa-smog',
   spores: 'fa-seedling', nautilus: 'fa-water', tears: 'fa-face-sad-tear', fireflies: 'fa-lightbulb',
-  axolotl: 'fa-fish', frog: 'fa-frog', fox: 'fa-paw',
+  axolotl: 'fa-fish', frog: 'fa-frog', fox: 'fa-paw', cat: 'fa-cat',
   // kill effects
   lightning: 'fa-bolt-lightning', blood: 'fa-droplet', heartburst: 'fa-heart-crack', firework: 'fa-wand-magic-sparkles',
   soulrise: 'fa-fire-flame-curved', enderpoof: 'fa-eye', confetti: 'fa-champagne-glasses', blast: 'fa-explosion',
