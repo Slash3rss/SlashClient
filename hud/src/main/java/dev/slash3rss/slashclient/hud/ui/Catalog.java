@@ -291,6 +291,14 @@ public final class Catalog {
 				() -> String.valueOf(cfg.fixedTime), v -> cfg.fixedTime = Integer.parseInt(v))), null));
 		out.add(new Entry("freelook", "slashclient-hud.extra.freelook", "extras", "m-freelook", () -> cfg.freelook, v -> cfg.freelook = v, List.of(), null));
 		out.add(new Entry("waypoints", "slashclient-hud.extra.waypoints", "world", "m-waypoints", () -> cfg.waypoints, v -> cfg.waypoints = v, List.of(), null));
+		// M outside a dungeon: all the ground seen, waypoints and friends, over the whole screen
+		out.add(new Entry("worldMap", "slashclient-hud.worldMap", "world", "m-worldmap", () -> cfg.worldMap, v -> cfg.worldMap = v, List.of(
+			new Slider("slashclient-hud.worldMap.zoom", dev.slash3rss.slashclient.hud.WorldMapScreen.MIN_ZOOM, dev.slash3rss.slashclient.hud.WorldMapScreen.MAX_ZOOM, 0.125f, "%.2f×",
+				() -> cfg.worldMapZoom, v -> cfg.worldMapZoom = v)), null));
+		// friends sharing their position on the minimap and the map; ours shared or not (on the account, as in the launcher)
+		out.add(new Entry("friendsOnMap", "slashclient-hud.friendMap", "world", "m-friendmap", () -> cfg.friendsOnMap, v -> cfg.friendsOnMap = v, List.of(
+			new Toggle("slashclient-hud.friendMap.names", () -> cfg.friendsOnMapNames, v -> cfg.friendsOnMapNames = v),
+			new Toggle("slashclient-hud.friendMap.share", dev.slash3rss.slashclient.hud.social.FriendPositions::sharing, dev.slash3rss.slashclient.hud.social.FriendPositions::setSharing)), null));
 		// the death point, the light level overlay, no weather and the F5 camera's distance (one file each in the HUD's package)
 		out.add(new Entry("deathWaypoint", "slashclient-hud.deathPoint", "world", "m-deathpoint", () -> cfg.deathWaypoint, v -> cfg.deathWaypoint = v, List.of(), null));
 		out.add(new Entry("lightOverlay", "slashclient-hud.lightOverlay", "world", "m-lightoverlay", () -> cfg.lightOverlay, v -> cfg.lightOverlay = v, List.of(
@@ -378,6 +386,12 @@ public final class Catalog {
 		out.add(new Entry("toolWarning", "slashclient-hud.assist.toolWarning", "combat", "m-toolwarning", () -> cfg.toolWarning, v -> cfg.toolWarning = v, List.of(
 			new Slider("slashclient-hud.assist.toolWarningAt", 1f, 30f, 1f, "%.0f%%", () -> (float) cfg.toolWarningPercent, v -> cfg.toolWarningPercent = Math.round(v))), null));
 		out.add(new Entry("mouseTweaks", "slashclient-hud.extra.mouseTweaks", "extras", "m-mousetweaks", () -> cfg.mouseTweaks, v -> cfg.mouseTweaks = v, List.of(), null));
+		// sorting with R or the window's button, with the normal clicks at a pace servers accept; off on the servers listed
+		out.add(new Entry("inventorySort", "slashclient-hud.sort", "extras", "m-sort", () -> cfg.inventorySort, v -> cfg.inventorySort = v, List.of(
+			new Slider("slashclient-hud.sort.delay", 0f, 250f, 10f, "%.0f ms", () -> (float) cfg.sortDelay, v -> cfg.sortDelay = Math.round(v)),
+			new Toggle("slashclient-hud.sort.hotbar", () -> cfg.sortHotbar, v -> cfg.sortHotbar = v),
+			new Toggle("slashclient-hud.sort.button", () -> cfg.sortButton, v -> cfg.sortButton = v),
+			new Text("slashclient-hud.sort.offServers", "slashclient-hud.sort.offServersHint", 200, () -> cfg.sortOffServers, v -> cfg.sortOffServers = v)), null));
 		out.add(new Entry("shulkerPreview", "slashclient-hud.shulkerPreview", "extras", "m-shulker", () -> cfg.shulkerPreview, v -> cfg.shulkerPreview = v, List.of(), null));
 		out.add(new Entry("inventorySearch", "slashclient-hud.invSearch", "extras", "m-invsearch", () -> cfg.inventorySearch, v -> cfg.inventorySearch = v, List.of(), null));
 		out.add(new Entry("slotLock", "slashclient-hud.slotLock", "combat", "m-slotlock", () -> cfg.slotLock, v -> cfg.slotLock = v, List.of(), null));

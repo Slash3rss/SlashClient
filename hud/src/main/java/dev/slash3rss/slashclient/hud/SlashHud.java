@@ -86,6 +86,8 @@ public class SlashHud implements ClientModInitializer {
 		//#endif
 		ChatTabs.register();
 		Assist.register(category);
+		// R over a chest or the inventory sorts it (InventorySort; the window's small button does too)
+		InventorySort.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.sort", InputConstants.KEY_R, category));
 		// K locks the hotbar slot in hand (or the one under the mouse in an inventory)
 		SlotLock.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.slotLock", InputConstants.KEY_K, category));
 		// shulker boxes show what is inside in their tooltips
@@ -151,6 +153,8 @@ public class SlashHud implements ClientModInitializer {
 				// a search box over the slots, and the locks of hotbar slots
 				InventorySearch.attach(mc, container);
 				SlotLock.attach(container);
+				// sorting with a key or the window's button
+				InventorySort.attach(mc, container);
 				// the helpers' keys (holding a button, the autoclicker) also over the window
 				Assist.attach(mc, container);
 				//#if MC >= 26.3
@@ -190,6 +194,9 @@ public class SlashHud implements ClientModInitializer {
 			TntTimer.tick(mc);
 			DungeonMap.tick(mc);
 			Minimap.tick(mc);
+			// sorting's clicks also go out between the window's frames; friends see where we are (when we share it)
+			InventorySort.pump(mc);
+			dev.slash3rss.slashclient.hud.social.FriendPositions.tick(mc);
 			StreamChatModule.tick(mc);
 			//#if MC >= 26.3
 			SkyTasks.tick(mc);

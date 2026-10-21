@@ -169,6 +169,7 @@ export const SETTING_DEFS: SettingDef[] = [
     rate('security.reportsPerMinute', 'Zgłoszenia błędów i logi na minutę', 'Bug reports and logs per minute', 6, 'Na adres IP.'),
     rate('security.waypointsPerMinute', 'Udostępnione punkty na minutę', 'Waypoints shared per minute', 20, 'Na konto.'),
     rate('security.partiesPerMinute', 'Drużyny na minutę', 'Parties per minute', 6, 'Na konto.'),
+    rate('security.positionsPerMinute', 'Pozycje dla znajomych na minutę', 'Positions for friends per minute', 40, 'Na konto (gra wysyła co 2 s, gdy gracz udostępnia pozycję; co najmniej 1,5 s odstępu).'),
     rate('security.curseforgePerMinute', 'Zapytania CurseForge na minutę', 'CurseForge requests per minute', 240, 'Na adres IP (wyszukiwanie i instalowanie modpacków przez klucz serwera).', 100_000),
   ]),
 

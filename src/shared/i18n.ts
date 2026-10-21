@@ -16,6 +16,7 @@ import { COMMUNITY_MEDIA_EN } from './i18nCommunityMedia';
 import { FEATURES_EN } from './i18nFeatures';
 import { STREAMS_EN } from './i18nStreams';
 import { SERVER_STATUS_EN } from './i18nServerStatus';
+import { FRIEND_MAP_EN } from './i18nFriendMap';
 import { MANUAL_EN } from './i18nManual';
 
 export type Lang = 'pl' | 'en';
@@ -49,6 +50,8 @@ const EN: Record<string, string> = {
   ...STREAMS_EN,
   // statuses from a server's tab list (own file)
   ...SERVER_STATUS_EN,
+  // friends on the minimap (own file)
+  ...FRIEND_MAP_EN,
   // the "blocked files" dialog for CurseForge files downloaded by hand (own file)
   ...MANUAL_EN,
   // navigation and common

@@ -172,10 +172,12 @@ public final class DungeonMap implements HudModule {
 				return;
 			}
 		}
-		// M: the whole map on the screen
+		// M: the whole map on the screen; outside a dungeon the map of the world (WorldMapScreen)
 		if (fullKey != null) {
 			while (fullKey.consumeClick()) {
-				if (active && minX <= maxX && Compat.screen(mc) == null) mc.setScreenAndShow(new DungeonMapScreen(fullKey));
+				if (Compat.screen(mc) != null || mc.player == null) continue;
+				if (active && minX <= maxX) mc.setScreenAndShow(new DungeonMapScreen(fullKey));
+				else if (WorldMapScreen.on()) mc.setScreenAndShow(new WorldMapScreen(fullKey));
 			}
 		}
 		if (!active) return;

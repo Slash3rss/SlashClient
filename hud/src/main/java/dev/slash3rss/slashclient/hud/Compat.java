@@ -284,6 +284,19 @@ public final class Compat {
 	//$ }
 	//#endif
 
+	/** A player's skin from the tab list (a friend on the minimap, out of sight). */
+	public static net.minecraft.resources.Identifier skinTexture(net.minecraft.client.multiplayer.PlayerInfo info) {
+		//#if MC >= 1.21.9
+		return info.getSkin().body().texturePath();
+		//#endif
+		//#if MC >= 1.20.2 && MC < 1.21.9
+		//$ return info.getSkin().texture();
+		//#endif
+		//#if MC < 1.20.2
+		//$ return info.getSkinLocation();
+		//#endif
+	}
+
 	/** A player's skin (for their face on the dungeon map). */
 	public static net.minecraft.resources.Identifier skinTexture(net.minecraft.client.player.AbstractClientPlayer player) {
 		//#if MC >= 1.21.9

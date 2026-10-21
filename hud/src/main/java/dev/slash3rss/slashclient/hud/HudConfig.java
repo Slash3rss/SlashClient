@@ -321,6 +321,22 @@ public final class HudConfig {
 	public boolean compactHearts = true;
 	/** Shift-drag over slots and the wheel move items in inventories. */
 	public boolean mouseTweaks = true;
+	/**
+	 * Sorting chests and the inventory with a key (InventorySort): the pause between its clicks (ms),
+	 * the hotbar sorted too, the small button in the window's corner, and the servers it stays off on.
+	 */
+	public boolean inventorySort = true;
+	public int sortDelay = 50;
+	public boolean sortHotbar = false;
+	public boolean sortButton = true;
+	/** Their rules forbid sorting mods (Hypixel's do): more can be added, with their subdomains. */
+	public String sortOffServers = "hypixel.net";
+	/** Friends who share their position, on the minimap and the full map, with their nicks. */
+	public boolean friendsOnMap = true;
+	public boolean friendsOnMapNames = true;
+	/** M outside a dungeon opens the map of all the ground seen (WorldMapScreen), at this zoom (GUI pixels a block). */
+	public boolean worldMap = true;
+	public float worldMapZoom = 2f;
 	// ---- options of single modules ----
 	public boolean clockSeconds = false;
 	public boolean clock12h = false;
@@ -492,6 +508,7 @@ public final class HudConfig {
 		if (read.crosshairLast == null) read.crosshairLast = defaults.crosshairLast;
 		if (read.nickAlias == null) read.nickAlias = defaults.nickAlias;
 		if (read.skyFishSplit == null) read.skyFishSplit = defaults.skyFishSplit;
+		if (read.sortOffServers == null) read.sortOffServers = defaults.sortOffServers;
 		read.skyCaseLayout = oneOf(read.skyCaseLayout, SKY_CASE_LAYOUTS);
 		read.chatCopyFormat = oneOf(read.chatCopyFormat, ChatExtras.COPY_FORMATS);
 		read.chatCopyTime = oneOf(read.chatCopyTime, ChatExtras.COPY_TIMES);
@@ -661,6 +678,15 @@ public final class HudConfig {
 		toolWarningPercent = Math.max(1, Math.min(50, other.toolWarningPercent));
 		compactHearts = other.compactHearts;
 		mouseTweaks = other.mouseTweaks;
+		inventorySort = other.inventorySort;
+		sortDelay = Math.max(0, Math.min(250, other.sortDelay));
+		sortHotbar = other.sortHotbar;
+		sortButton = other.sortButton;
+		sortOffServers = other.sortOffServers == null ? "hypixel.net" : other.sortOffServers;
+		friendsOnMap = other.friendsOnMap;
+		friendsOnMapNames = other.friendsOnMapNames;
+		worldMap = other.worldMap;
+		worldMapZoom = Math.max(WorldMapScreen.MIN_ZOOM, Math.min(WorldMapScreen.MAX_ZOOM, other.worldMapZoom));
 		clockSeconds = other.clockSeconds;
 		clock12h = other.clock12h;
 		coordsDecimals = Math.max(0, Math.min(2, other.coordsDecimals));

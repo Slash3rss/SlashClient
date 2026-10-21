@@ -11,7 +11,9 @@ import java.util.List;
 /**
  * A minimap: the loaded ground around the player from above (MinimapTerrain), the player's own
  * waypoints and the player as an arrow; north up or turning with the player, square or round.
- * Deliberately no players, mobs or items on it: many servers forbid radars.
+ * Deliberately no players, mobs or items on it: many servers forbid radars. The one exception is
+ * friends who chose to share their position with us through SlashClient (FriendPositions): they
+ * show as their face with their nick, or an arrow on the edge when further away.
  *
  * The picture is painted on the CPU into a texture of its own, only when something it shows
  * changed (the player moved or turned, or the ground under it was read anew), so a still player
@@ -42,7 +44,9 @@ public final class Minimap implements HudModule {
 	}
 
 	static void tick(Minecraft mc) {
-		if (!on() || mc.level == null || mc.player == null) return;
+		// the full map (WorldMapScreen) shows the same ground, so it is read for that too
+		boolean map = SlashHud.config != null && SlashHud.config.worldMap;
+		if (!on() && !map || mc.level == null || mc.player == null) return;
 		tickedAt = System.nanoTime();
 		MinimapTerrain.tick(mc);
 	}
@@ -126,6 +130,7 @@ public final class Minimap implements HudModule {
 		String letter = "N";
 		g.text(mc.font, letter, cx + Math.round(n[0]) - mc.font.width(letter) / 2 + 1, cy + Math.round(n[1]) - 3, 0xFFF87171, true);
 		if (cfg.minimapWaypoints) waypoints(g, mc, cx, cy, at, scale, cos, sin, r, circle);
+		friends(g, mc, cx, cy, at, scale, cos, sin, r, circle);
 		// the player: up when the map turns, else the way they look
 		float[] dir = rotate ? new float[] { 0, -1 } : new float[] { (float) -Math.sin(Math.toRadians(mc.player.getYRot())), (float) Math.cos(Math.toRadians(mc.player.getYRot())) };
 		arrow(g, cx, cy, dir[0], dir[1], 5f, 4f, 0xFF000000);
@@ -170,7 +175,7 @@ public final class Minimap implements HudModule {
 	}
 
 	/** A point `ox`, `oz` blocks from the player to screen pixels from the map's middle. */
-	private static float[] toScreen(double ox, double oz, float scale, float cos, float sin) {
+	static float[] toScreen(double ox, double oz, float scale, float cos, float sin) {
 		return new float[] { (float) (-cos * ox - sin * oz) * scale, (float) (sin * ox - cos * oz) * scale };
 	}
 
@@ -203,7 +208,72 @@ public final class Minimap implements HudModule {
 		}
 	}
 
-	private static void diamond(GuiGraphicsExtractor g, int x, int y, int r, int color) {
+	/** Friends sharing their position, in this dimension: their face (and nick) on the map, or an arrow on its edge. */
+	private static void friends(GuiGraphicsExtractor g, Minecraft mc, int cx, int cy, double[] at, float scale, float cos, float sin, float r, boolean circle) {
+		var list = dev.slash3rss.slashclient.hud.social.FriendPositions.visible(mc);
+		if (list.isEmpty()) return;
+		float reach = r - 6;
+		// the furthest first, so the nearest are drawn on top
+		for (int i = list.size() - 1; i >= 0; i--) {
+			var p = list.get(i);
+			float[] s = toScreen(p.x() - at[0], p.z() - at[1], scale, cos, sin);
+			boolean inside = circle ? s[0] * s[0] + s[1] * s[1] <= reach * reach : Math.abs(s[0]) <= reach && Math.abs(s[1]) <= reach;
+			if (inside) {
+				friend(g, mc, p, cx + Math.round(s[0]), cy + Math.round(s[1]), SlashHud.config.friendsOnMapNames);
+			} else {
+				float len = (float) Math.max(1e-4, Math.hypot(s[0], s[1]));
+				float[] e = edge(s[0], s[1], reach + 1, circle);
+				arrow(g, cx + e[0], cy + e[1], s[0] / len, s[1] / len, 4.5f, 4f, 0xFF000000);
+				arrow(g, cx + e[0], cy + e[1], s[0] / len, s[1] / len, 3.5f, 3f, FRIEND);
+			}
+		}
+	}
+
+	/** A friend's colour on the maps. */
+	static final int FRIEND = 0xFF4ADE80;
+
+	/** A friend on a map at (x, y): their face in a green frame (a green dot when the game has no skin for them), the nick under it. */
+	static void friend(GuiGraphicsExtractor g, Minecraft mc, dev.slash3rss.slashclient.hud.social.FriendPositions.Pos p, int x, int y, boolean name) {
+		Identifier skin = null;
+		var player = dev.slash3rss.slashclient.hud.social.FriendPositions.player(mc, p);
+		if (player != null) skin = Compat.skinTexture(player);
+		else if (mc.getConnection() != null) {
+			for (java.util.UUID u : p.uuids()) {
+				var info = mc.getConnection().getPlayerInfo(u);
+				if (info != null) {
+					skin = Compat.skinTexture(info);
+					break;
+				}
+			}
+		}
+		g.fill(x - 5, y - 5, x + 5, y + 5, 0xFF000000);
+		g.fill(x - 4, y - 4, x + 4, y + 4, FRIEND);
+		if (skin != null) {
+			g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, skin, x - 3, y - 3, 8, 8, 6, 6, 8, 8, 64, 64, 0xFFFFFFFF);
+			g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, skin, x - 3, y - 3, 40, 8, 6, 6, 8, 8, 64, 64, 0xFFFFFFFF);
+		} else {
+			String initial = p.name().isEmpty() ? "?" : p.name().substring(0, 1).toUpperCase(java.util.Locale.ROOT);
+			g.fill(x - 3, y - 3, x + 3, y + 3, 0xFF166534);
+			var pose = g.pose();
+			pose.pushMatrix();
+			pose.translate(x - mc.font.width(initial) * 0.35f, y - 2.5f);
+			pose.scale(0.7f, 0.7f);
+			g.text(mc.font, initial, 0, 0, 0xFFFFFFFF, false);
+			pose.popMatrix();
+		}
+		if (!name || p.name().isEmpty()) return;
+		// the nick, half size, on a dark strip under the face
+		var pose = g.pose();
+		int tw = mc.font.width(p.name());
+		pose.pushMatrix();
+		pose.translate(x - tw * 0.3f, y + 6);
+		pose.scale(0.6f, 0.6f);
+		g.fill(-2, -1, tw + 2, 9, 0xB0000000);
+		g.text(mc.font, p.name(), 0, 0, FRIEND, false);
+		pose.popMatrix();
+	}
+
+	static void diamond(GuiGraphicsExtractor g, int x, int y, int r, int color) {
 		for (int i = 0; i <= r; i++) g.fill(x - i, y - r + i, x + i + 1, y - r + i + 1, color);
 		for (int i = 0; i < r; i++) g.fill(x - r + 1 + i, y + 1 + i, x + r - i, y + 2 + i, color);
 	}
