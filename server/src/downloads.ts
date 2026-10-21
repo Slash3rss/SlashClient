@@ -23,17 +23,28 @@ export function isDownloadOs(os: string): os is DownloadOs {
 
 interface Asset { name: string; url: string; browser_download_url: string }
 
-/** What a release says is new, for the home page's badge: per language, from its notes. */
-export type ReleaseNews = Partial<Record<'pl' | 'en', string>>;
+/** What a release says is new, for the home page's badge: per language its text and where it leads. */
+export type ReleaseNews = Partial<Record<'pl' | 'en', { text: string; href: string }>>;
+
+/** A badge's own link: a place on the site (#section, /path) or a web page; anything else is not used. */
+const safeHref = (href: string) => (/^(#[\w-]{1,60}|\/[\w\-/.#?=&%]{0,200}|https:\/\/[^\s"'<>]{1,300})$/.test(href) ? href : undefined);
 
 /**
- * The badge text a release's notes carry (release-notes/vX.md, the release's description):
- * `<!-- nowosc: … -->` in Polish, `<!-- news: … -->` in English. Releases with nothing worth a
- * badge have none, and the badge stays as it was.
+ * The badge a release's notes carry (release-notes/vX.md, the release's description):
+ * `<!-- nowosc: … -->` in Polish, `<!-- news: … -->` in English, each optionally with its own link
+ * after ` | ` (`<!-- nowosc: Nowość: pupile | #kosmetyki -->`); without one the badge leads to the
+ * release's page (`releaseUrl`, its full list of changes). Releases with nothing worth a badge have
+ * none, and the badge stays as it was.
  */
-export function releaseNews(body: string | undefined): ReleaseNews {
+export function releaseNews(body: string | undefined, releaseUrl?: string): ReleaseNews {
   const out: ReleaseNews = {};
-  const pick = (re: RegExp) => re.exec(body ?? '')?.[1]?.replace(/\s+/g, ' ').trim().slice(0, 80) || undefined;
+  const pick = (re: RegExp) => {
+    const raw = re.exec(body ?? '')?.[1]?.replace(/\s+/g, ' ').trim();
+    if (!raw) return undefined;
+    const [text, link] = raw.split(/\s+\|\s+/, 2);
+    const href = (link && safeHref(link.trim())) || (releaseUrl && safeHref(releaseUrl)) || '#funkcje';
+    return text ? { text: text.slice(0, 80), href } : undefined;
+  };
   const pl = pick(/<!--\s*nowo(?:ść|sc)\s*:([^>]*?)-->/i);
   const en = pick(/<!--\s*news\s*:([^>]*?)-->/i);
   if (pl) out.pl = pl;
@@ -58,8 +69,8 @@ export function createDownloads(opts: { repo: string; token?: string; fetchImpl:
     if (cached && Date.now() - cached.at < CACHE_MS) return cached.assets;
     const res = await opts.fetchImpl(`https://api.github.com/repos/${opts.repo}/releases/latest`, { headers: headers('application/vnd.github+json') });
     if (!res.ok) throw new Error(`GitHub ${res.status}`);
-    const release = (await res.json()) as { assets?: Asset[]; body?: string };
-    cached = { at: Date.now(), assets: release.assets ?? [], news: releaseNews(release.body) };
+    const release = (await res.json()) as { assets?: Asset[]; body?: string; html_url?: string };
+    cached = { at: Date.now(), assets: release.assets ?? [], news: releaseNews(release.body, release.html_url) };
     if (cached.news.pl || cached.news.en) lastNews = cached.news;
     return cached.assets;
   }

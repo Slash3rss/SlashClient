@@ -22,7 +22,7 @@ const fakeGitHub = (async (input: string | URL | Request, init?: RequestInit) =>
   if (auth !== 'Bearer sekret') return new Response('{"message":"Not Found"}', { status: 404 });
   if (url.endsWith('/releases/latest')) {
     const asset = (name: string, id: number) => ({ name, url: `https://api.github.com/repos/x/y/releases/assets/${id}`, browser_download_url: `https://github.com/x/y/releases/download/v0.5.0/${name}` });
-    return Response.json({ body: '<!-- nowosc: Nowość: jesienne liście -->\n<!-- news: New: autumn leaves -->\n## SlashClient 0.5.0', assets: [asset('SlashClient-Setup-0.5.0.exe', 1), asset('SlashClient-0.5.0-arm64.dmg', 2), asset('SlashClient-0.5.0.dmg', 3), asset('SlashClient-0.5.0-arm64.dmg.blockmap', 4), asset('latest.yml', 5), asset('SlashClient-0.5.0-win-app.zip', 6), asset('win-update-0.5.0.json', 7)] });
+    return Response.json({ body: '<!-- nowosc: Nowość: jesienne liście | #kosmetyki -->\n<!-- news: New: autumn leaves -->\n## SlashClient 0.5.0', html_url: 'https://github.com/x/y/releases/tag/v0.5.0', assets: [asset('SlashClient-Setup-0.5.0.exe', 1), asset('SlashClient-0.5.0-arm64.dmg', 2), asset('SlashClient-0.5.0.dmg', 3), asset('SlashClient-0.5.0-arm64.dmg.blockmap', 4), asset('latest.yml', 5), asset('SlashClient-0.5.0-win-app.zip', 6), asset('win-update-0.5.0.json', 7)] });
   }
   // an older release, which still has a Linux build
   if (url.endsWith('/releases?per_page=10')) {
@@ -85,17 +85,22 @@ describe('downloads', () => {
 
   it('puts the newest release badge on the home page, in each language', async () => {
     const pl = await (await fetch(`${base}/`, { headers: { 'Accept-Language': 'pl' } })).text();
-    assert.match(pl, /<span class="dot"><\/span> Nowość: jesienne liście /);
+    assert.match(pl, /<a class="pill" href="#kosmetyki"><span class="dot"><\/span> Nowość: jesienne liście /);
     const en = await (await fetch(`${base}/en`)).text();
-    assert.match(en, /<span class="dot"><\/span> New: autumn leaves /);
+    // without a link of its own: to the release's page (its full list of changes)
+    assert.match(en, /<a class="pill" href="https:\/\/github.com\/x\/y\/releases\/tag\/v0.5.0"[^>]*><span class="dot"><\/span> New: autumn leaves /);
   });
 });
 
 describe('release badge', () => {
   it('reads the badge lines of the release notes, and nothing when there are none', () => {
-    assert.deepEqual(releaseNews('<!-- nowość: Nowość: pupile -->\n<!--news:New: pets-->\n## x'), { pl: 'Nowość: pupile', en: 'New: pets' });
+    const page = 'https://github.com/x/y/releases/tag/v1';
+    assert.deepEqual(releaseNews('<!-- nowość: Nowość: pupile | #kosmetyki -->\n<!--news:New: pets-->\n## x', page),
+      { pl: { text: 'Nowość: pupile', href: '#kosmetyki' }, en: { text: 'New: pets', href: page } });
+    // a link that is not a place on the site or a web page is not used
+    assert.equal(releaseNews('<!-- nowosc: X | javascript:alert(1) -->', page).pl?.href, page);
     assert.deepEqual(releaseNews('## SlashClient 0.9.29\n- fix'), {});
     assert.deepEqual(releaseNews(undefined), {});
-    assert.equal(releaseNews(`<!-- nowosc: ${'a'.repeat(200)} -->`).pl?.length, 80);
+    assert.equal(releaseNews(`<!-- nowosc: ${'a'.repeat(200)} -->`).pl?.text.length, 80);
   });
 });
