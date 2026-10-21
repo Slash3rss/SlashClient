@@ -10,3 +10,6 @@ client.slash3rss.dev {
 		}
 	}
 }
+
+# other sites on this VPS (api.slash3rss.dev…), outside the SlashClient deploy
+import /etc/caddy/sites/*.caddy
