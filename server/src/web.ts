@@ -35,6 +35,8 @@ function pageOf(pathname: string): string | undefined {
   if (/^\/(zgloszenia|bugs)(\/\d+)?\/?$/.test(pathname)) return 'zgloszenia.html';
   // a public community's page (communities.ts), by its tag or id
   if (/^\/(s|spolecznosc|community)\/[\w-]{1,32}\/?$/.test(pathname)) return 'spolecznosc.html';
+  // an invite link to a community (communityLinks.ts)
+  if (/^\/c\/[A-Za-z0-9]{6,16}\/?$/.test(pathname)) return 'zaproszenie.html';
   return undefined;
 }
 

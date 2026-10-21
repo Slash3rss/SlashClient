@@ -307,5 +307,6 @@ export const COMMUNITIES_EN: Record<string, string> = {
   'Nazwa roli: 1–24 znaki.': 'Role name: 1–24 characters.',
   'Rola o tej nazwie już jest.': 'A role with this name already exists.',
   'Wybierz kolor roli.': 'Pick the role’s colour.',
+  'zamyka ankietę od': 'closes the poll of',
 };
 

@@ -36,6 +36,7 @@ import { homeRoutes } from './home/routes.ts';
 import { BurstLimiter, SlowDown, editRefusal, type BurstLimits } from './chatLimits.ts';
 import { supportRoutes } from './payments/support.ts';
 import { createCommunities } from './communities.ts';
+import { createCommunityLinks } from './communityLinks.ts';
 import { COMMUNITY_LIMITS, type CommunityLimits } from './communityStore.ts';
 import { Settings, liveSettings, type SettingValue } from './settings.ts';
 import { SETTING_DEFS } from './settingsDefs.ts';
@@ -97,6 +98,8 @@ export interface Config {
   storage?: { secretKey?: string; minFreeBytes?: number; diskSpace?: DiskSpace; localHttp?: boolean };
   /** Folder for pictures sent in the chat (CHAT_IMAGES_DIR); default "chat-images" next to the database. */
   imagesDir?: string;
+  /** Folder for pictures in communities' chats; default "community-images" next to the database. */
+  communityImagesDir?: string;
   /** Size, quota and time of chat pictures (tests lower them). */
   imageLimits?: Partial<ImageLimits>;
   /** The "draft" banner on the legal documents when an admin has not chosen one in the panel (LEGAL_DRAFT, on unless "0"). */
@@ -699,10 +702,35 @@ export function createApp(cfg: Config) {
     countMessage: (user) => achievements.store.messages.count(user),
     checkAchievements: (user) => achievements.check(user),
     sizeGoals: () => achievements.registry.active().filter((a) => a.group === 'community_size').map((a) => a.goal),
+    // pictures and polls in the chat (communityMedia.ts): the pictures next to the database, like the chat's
+    media: {
+      dir: cfg.communityImagesDir ?? path.join(path.dirname(cfg.dbFile), 'community-images'),
+      limits: liveSettings(settings, { imageBytes: 'communities.imageBytes', imagesPerDay: 'communities.imagesPerDay', imageDays: 'communities.imageDays' }),
+      limitUploads: limiter('chatImages.uploadsPerMinute'), limitDownloads: limiter('chatImages.downloadsPerMinute'),
+    },
     fail: (status, code, retryAfter) => {
       throw new HttpError(status, code, retryAfter);
     },
 
+  });
+
+  // communities' invite links, game servers and the verified badge (communityLinks.ts)
+  const communityLinks = createCommunityLinks({
+    db, communities, publicUrl: cfg.publicUrl, authed, admin, body, clientIp,
+    limitLookups: limiter('communities.linkLookupsPerMinute'), limitJoin: limiter('communities.joinPerMinute'), limitChanges: limiter('communities.changesPerMinute'),
+    // members on that server now: connected, not invisible, letting friends see their server
+    playingOn: (members, server) => {
+      let n = 0;
+      const count = (id: string, p: Presence | undefined) => {
+        if (p?.activity?.kind === 'server' && p.status !== 'invisible' && sockets.get(id)?.size && serverKeyOf(p.activity.server) === server && db.user(id)?.showServer) n++;
+      };
+      if (members.size < presences.size) for (const id of members) count(id, presences.get(id));
+      else for (const [id, p] of presences) if (members.has(id)) count(id, p);
+      return n;
+    },
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
   });
 
   // muted friends (mutes.ts) and pictures in the chat (chatImages.ts)
@@ -1297,6 +1325,7 @@ export function createApp(cfg: Config) {
     ...groups.routes,
     ...clans.routes,
     ...communities.routes,
+    ...communityLinks.routes,
     ...storageAdminRoutes({
       storage, admin, body, dataDir: path.dirname(cfg.dbFile),
       audit: (who, action, target, detail) => db.log(who, action, target, detail),
@@ -1501,6 +1530,7 @@ export function createApp(cfg: Config) {
       if (await images.serve(req, res, url)) return;
       if (clans.serveLogo(req, res, url)) return;
       if (communities.serveLogo(req, res, url)) return;
+      if (await communities.serveImage(req, res, url)) return;
       if (ranks.serveIcon(req, res, url)) return;
     } catch (err) {
       console.error('profil:', (err as Error).message);
@@ -1827,6 +1857,7 @@ export function createApp(cfg: Config) {
     void media.cleanup().catch((err) => console.error('media:', (err as Error).message));
     void cloud.cleanup().catch((err) => console.error('chmura:', (err as Error).message));
     void images.cleanup().catch((err) => console.error('obrazy czatu:', (err as Error).message));
+    void communities.cleanupImages().catch((err) => console.error('obrazy społeczności:', (err as Error).message));
   }, 3_600_000);
 
   return {
@@ -1844,6 +1875,8 @@ export function createApp(cfg: Config) {
     },
     /** For tests: dropping old chat pictures with a chosen clock. */
     chatImages: images,
+    /** For tests: dropping old community pictures and unsent uploads with a chosen clock. */
+    cleanupCommunityImages: (now?: number) => communities.cleanupImages(now),
     /** For tests: the profiles' settings. */
     profiles,
     /** For tests: the supporters' tiers and payments. */

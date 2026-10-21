@@ -292,6 +292,24 @@ describe('custom roles and own channels over HTTP', () => {
     vipLive.ws.close();
   });
 
+  it('polls follow a channel\'s access, and a custom role that may invite makes invite links (not the game server)', async () => {
+    const c = await community('Pl');
+    const vip = (await newRole(c, c.owner, { name: 'VIP', permissions: ['invite', 'pin'] })).body.role;
+    await give(c, c.owner, c.vip, vip.id);
+    const lounge = (await newChannel(c, c.admin, { name: 'vip', readRole: 'moderator', readRoles: [vip.id], postRole: 'admin', writeRoles: [vip.id] })).body.channel;
+    const poll = { poll: { question: 'Kiedy?', options: ['Dziś', 'Jutro'] } };
+    assert.equal((await call('POST', `/v1/communities/${c.id}/channels/${lounge.id}/messages`, c.member.token, poll)).status, 404);
+    assert.equal((await call('POST', `/v1/communities/${c.id}/channels/${lounge.id}/messages`, c.mod.token, poll)).status, 403);
+    const made = await call('POST', `/v1/communities/${c.id}/channels/${lounge.id}/messages`, c.vip.token, poll);
+    assert.equal(made.status, 200, JSON.stringify(made.body));
+    assert.ok(made.body.message.poll);
+    // invite links: the VIP yes, a plain member and a moderator no; the game server only admins
+    assert.equal((await call('POST', `/v1/communities/${c.id}/links`, c.vip.token, { minutes: 60, uses: 5 })).status, 200);
+    assert.equal((await call('POST', `/v1/communities/${c.id}/links`, c.member.token, { minutes: 60, uses: 5 })).status, 403);
+    assert.equal((await call('POST', `/v1/communities/${c.id}/links`, c.mod.token, { minutes: 60, uses: 5 })).status, 403);
+    assert.equal((await call('POST', `/v1/communities/${c.id}/server`, c.vip.token, { address: 'mc.example.com' })).status, 403);
+  });
+
   it('a custom role may manage channels', async () => {
     const c = await community('Cm');
     const keeper = (await newRole(c, c.owner, { name: 'Kanały', permissions: ['manageChannels'] })).body.role;

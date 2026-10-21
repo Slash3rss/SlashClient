@@ -33,6 +33,10 @@ export interface BridgeOptions {
   sendGroupImage?: (groupId: string, file: string) => Promise<unknown>;
   /** A picture from the chat, decrypted, as PNG. */
   chatImage?: (id: string) => Promise<Buffer>;
+  /** A screenshot to a community's channel (not encrypted; server 0.9.30+). */
+  sendCommunityImage?: (communityId: string, channelId: string, file: string) => Promise<unknown>;
+  /** A picture from a community's chat, as PNG. */
+  communityImage?: (communityId: string, id: string) => Promise<Buffer>;
   /** A clan's logo (PNG, 64×64) by the clan's id and the logo's version. */
   clanLogo?: (id: string, version: number) => Promise<Buffer>;
   /** A community's logo, the same way. */
@@ -88,6 +92,8 @@ const ALLOWED: [string, RegExp][] = [
   ['DELETE', /^\/v1\/communities\/[\w-]{1,32}\/channels\/[\w-]{1,32}\/messages\/\d{1,15}$/],
   ['GET', /^\/v1\/communities\/[\w-]{1,32}\/members(\?(offset=\d+&?|limit=\d+&?)*)?$/],
   ['POST', /^\/v1\/communities\/[\w-]{1,32}\/notify$/],
+  // a vote in a community's poll (server 0.9.30+)
+  ['POST', /^\/v1\/communities\/[\w-]{1,32}\/channels\/[\w-]{1,32}\/messages\/\d{1,15}\/vote$/],
 ];
 /** From the game, /v1/me changes only cosmetics (not, say, whether friends see the server). */
 const ME_KEYS = new Set(['cape', 'loadout', 'character', 'own']);
@@ -108,6 +114,8 @@ const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', '
   'communities', 'community-message', 'community-message-edit', 'community-message-delete', 'community',
   // a reaction under a community message, a message pinned or unpinned (server 0.9.27+)
   'community-reaction', 'community-pin',
+  // a community poll's results changed (server 0.9.30+)
+  'community-poll',
 
   // a friend went live on Twitch or Kick, or ended: the LIVE badge, and a toast when `notify`
   'stream']);
@@ -237,7 +245,17 @@ export class GameBridge {
 
     // pictures in the chat: a screenshot to send, and one to show (PNG bytes, not JSON)
     if (method === 'POST' && url === '/chat/image') {
-      const { friend, group, path } = ((await this.body(req)) ?? {}) as { friend?: unknown; group?: unknown; path?: unknown };
+      const { friend, group, community, channel, path } = ((await this.body(req)) ?? {}) as { friend?: unknown; group?: unknown; community?: unknown; channel?: unknown; path?: unknown };
+      // a community's channel (HUD 0.9.30+)
+      if (community !== undefined) {
+        const ok = typeof community === 'string' && /^[\w-]{1,32}$/.test(community) && typeof channel === 'string' && /^[\w-]{1,32}$/.test(channel) && typeof path === 'string' && !!this.opts.sendCommunityImage;
+        if (!ok) return this.send(res, 400, { error: 'bad_request' });
+        try {
+          return this.send(res, 200, { message: await this.opts.sendCommunityImage!(community as string, channel as string, path as string) });
+        } catch (err) {
+          return this.send(res, 502, { error: (err as { code?: string }).code ?? (err as Error).message });
+        }
+      }
       const toGroup = typeof group === 'string' && /^[\w-]{1,32}$/.test(group) && !!this.opts.sendGroupImage;
       if ((!toGroup && (typeof friend !== 'string' || !/^[\w-]{1,64}$/.test(friend) || !this.opts.sendImage)) || typeof path !== 'string') return this.send(res, 400, { error: 'bad_request' });
       try {
@@ -251,6 +269,18 @@ export class GameBridge {
       if (!this.opts.chatImage) return this.send(res, 404, { error: 'not_found' });
       try {
         const png = await this.opts.chatImage(image[1]);
+        res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-store' });
+        return res.end(png);
+      } catch (err) {
+        return this.send(res, 404, { error: (err as { code?: string }).code ?? (err as Error).message });
+      }
+    }
+
+    const communityImage = /^\/community\/image\/([\w-]{1,32})\/([\w-]{22})$/.exec(url);
+    if (method === 'GET' && communityImage) {
+      if (!this.opts.communityImage) return this.send(res, 404, { error: 'not_found' });
+      try {
+        const png = await this.opts.communityImage(communityImage[1], communityImage[2]);
         res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-store' });
         return res.end(png);
       } catch (err) {

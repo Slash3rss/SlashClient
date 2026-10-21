@@ -96,6 +96,7 @@ export const logActionText = (action: string) => ({
   pin: t('przypina wiadomość od'), unpin: t('odpina wiadomość od'), slowmode: t('zmienia tryb powolny'),
   channel_create: t('tworzy kanał'), channel_edit: t('zmienia kanał'), channel_delete: t('usuwa kanał'), channel_order: t('zmienia kolejność kanałów'),
   role_create: t('tworzy rolę'), role_edit: t('zmienia rolę'), role_delete: t('usuwa rolę'), role_order: t('zmienia kolejność ról'), member_role: t('nadaje rolę'),
+  poll_close: t('zamyka ankietę od'),
 })[action];
 
 interface Community extends RoleHolder { id: string; name: string; channels: (ChannelAccess & { id: string; kind: string; name: string })[] }
@@ -106,6 +107,8 @@ export interface ManageDeps {
   refresh: () => Promise<void>;
   community: (id: string) => Community | undefined;
   channelName: (ch: { kind: string; name: string }) => string;
+  /** Words for the log's entries other modules add (invite links, the game server). */
+  logName?: (action: string) => string | undefined;
 }
 
 /** Up and down by a row, a click moving it in `ids`; undefined when it cannot move that way. */
@@ -322,7 +325,7 @@ export function logWindow(d: ManageDeps, c: Community) {
   const time = new Intl.DateTimeFormat(locale(), { dateStyle: 'short', timeStyle: 'short' });
   const row = (e: LogEntry) => el('div', { className: 'fr-com-log' },
     el('small', { className: 'muted', textContent: time.format(e.at) }),
-    el('span', {}, el('b', { textContent: e.byName || t('Administracja') }), ` ${logActionText(e.action) ?? t('(administracja) {0}', e.action)} `, el('b', { textContent: e.targetName }), e.detail ? ` (${e.detail})` : ''));
+    el('span', {}, el('b', { textContent: e.byName || t('Administracja') }), ` ${logActionText(e.action) ?? d.logName?.(e.action) ?? t('(administracja) {0}', e.action)} `, el('b', { textContent: e.targetName }), e.detail ? ` (${e.detail})` : ''));
   const load = async (reset: boolean) => {
     if (reset) {
       last = undefined;

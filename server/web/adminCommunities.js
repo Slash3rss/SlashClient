@@ -19,6 +19,35 @@ const ACTIONS = {
   admin_transfer: '(admin) przekazał(a) społeczność', admin_report_delete: '(admin) usunął(ęła) zgłoszoną wiadomość', admin_report_dismiss: '(admin) odrzucił(a) zgłoszenie',
 };
 
+// invite links, the game server and the verified badge (communityLinks.ts)
+Object.assign(ACTIONS, {
+  link_create: 'utworzył(a) link zaproszenia', link_revoke: 'cofnął(ęła) link zaproszenia', link_join: 'dołączył(a) z linku', server: 'ustawił(a) serwer gry',
+  admin_verify: '(admin) zweryfikował(a) społeczność', admin_unverify: '(admin) zdjął(ęła) weryfikację',
+});
+const verifiedMark = (c) => (c.verified ? el('span', { class: 'chip sky', title: 'Zweryfikowana: znaczek przy nazwie w launcherze i na stronie' }, icon('fa-solid fa-circle-check'), ' zweryfikowana') : '');
+
+/** Verifying, the game server and the invite links of one community (its detail page). */
+async function linksCard(id, c, again) {
+  const res = await guard(() => api('GET', `/v1/admin/communities/${encodeURIComponent(id)}/links`));
+  const verify = el('button', { class: c.verified ? '' : 'primary', onclick: async () => {
+    const verified = !c.verified;
+    if (!verified && !confirm(`Zdjąć weryfikację społeczności „${c.name}”?`)) return;
+    if (await guard(() => api('POST', `/v1/admin/communities/${id}/verified`, { verified }))) {
+      toast(verified ? 'Społeczność zweryfikowana.' : 'Zdjęto weryfikację.');
+      again();
+    }
+  } }, icon(c.verified ? 'fa-solid fa-circle-xmark' : 'fa-solid fa-circle-check'), c.verified ? ' Zdejmij weryfikację' : ' Oznacz jako zweryfikowaną');
+  const links = (res?.links ?? []).map((l) => el('tr', {}, el('td', {}, el('code', { textContent: l.code })), el('td', { textContent: `@${l.by.handle}` }),
+    el('td', { textContent: l.maxUses ? `${l.uses} / ${l.maxUses}` : `${l.uses} / ∞` }), el('td', { class: 'muted small', textContent: l.expiresAt ? `do ${fmtDate(l.expiresAt)}` : 'bez terminu' })));
+  return el('div', { class: 'glass card' }, el('h2', {}, icon('fa-solid fa-circle-check'), ' Weryfikacja, serwer i zaproszenia'),
+    el('p', { class: 'muted', textContent: c.verified ? 'Oficjalna społeczność: przy nazwie widać znaczek (launcher, katalog, strona, zaproszenia).' : 'Zweryfikuj oficjalne społeczności (np. serwerów-partnerów): dostaną znaczek przy nazwie.' }),
+    el('div', { class: 'row' }, verify),
+    el('p', {}, 'Serwer gry: ', c.server ? el('b', { textContent: `${c.server.address}${c.server.version ? ` · ${c.server.version}` : ''}` }) : el('span', { class: 'muted', textContent: 'brak' }),
+      c.server ? el('span', { class: 'muted', textContent: ` · gra teraz: ${c.server.playing}` }) : ''),
+    links.length ? el('table', {}, el('thead', {}, el('tr', {}, el('th', { textContent: 'Kod' }), el('th', { textContent: 'Utworzył(a)' }), el('th', { textContent: 'Użycia' }), el('th', { textContent: 'Ważny' }))), el('tbody', {}, ...links))
+      : el('p', { class: 'muted', textContent: 'Brak aktywnych linków zaproszeń.' }));
+}
+
 const logoOf = (c) => (c.logo
   ? el('img', { class: 'clan-logo', src: `/v1/communities/${encodeURIComponent(c.id)}/logo.png?v=${c.logo}`, alt: '', width: 32, height: 32 })
   : el('span', { class: 'clan-logo clan-logo-none' }, icon('fa-solid fa-users')));
@@ -48,7 +77,7 @@ export async function communitiesPage(q = '') {
   search.addEventListener('keydown', (e) => e.key === 'Enter' && communitiesPage(search.value.trim()));
   const rows = res.communities.map((c) => el('tr', {},
     el('td', {}, logoOf(c)),
-    el('td', {}, el('b', { textContent: c.name }), c.tag ? el('span', { class: 'muted', textContent: ` #${c.tag}` }) : '',
+    el('td', {}, el('b', { textContent: c.name }), c.tag ? el('span', { class: 'muted', textContent: ` #${c.tag}` }) : '', c.verified ? ' ' : '', verifiedMark(c),
       el('div', { class: 'muted small', textContent: c.visibility === 'private' ? 'prywatna' : c.joinMode === 'open' ? 'publiczna, otwarta' : 'publiczna, na prośbę' })),
     el('td', { textContent: String(c.members) }),
     el('td', { class: 'hide-sm', textContent: c.ownerHandle ? `@${c.ownerHandle}` : '—' }),
@@ -107,12 +136,14 @@ async function communityPage(id, q = '') {
       again();
     }
   };
+  const extra = await linksCard(id, c, again);
   $('#main').replaceChildren(
-    el('div', { class: 'page-head' }, back, el('h1', {}, logoOf(c), ' ', c.name, c.tag ? el('span', { class: 'muted', textContent: ` #${c.tag}` }) : '')),
+    el('div', { class: 'page-head' }, back, el('h1', {}, logoOf(c), ' ', c.name, c.tag ? el('span', { class: 'muted', textContent: ` #${c.tag}` }) : '', c.verified ? ' ' : '', verifiedMark(c))),
     el('div', { class: 'glass card' },
       el('p', { textContent: c.description || '(bez opisu)' }),
       el('p', { class: 'muted', textContent: `${c.visibility === 'private' ? 'Prywatna' : 'Publiczna'} · ${c.joinMode === 'open' ? 'otwarta' : 'na prośbę'} · ${c.members} członków · ${c.pending} próśb · ${c.bans} banów · od ${fmtDate(c.createdAt)} · założyciel @${c.owner.handle}` }),
       el('div', { class: 'row' }, ...tools)),
+    extra,
     el('div', { class: 'glass card' }, el('h2', {}, icon('fa-solid fa-flag'), ' Zgłoszenia'), reportsTable(res.reports, resolve, false)),
     el('div', { class: 'glass card' }, el('h2', {}, icon('fa-solid fa-users'), ` Członkowie (${res.total})`),
       el('div', { class: 'row' }, search, el('button', { onclick: () => communityPage(id, search.value.trim()) }, icon('fa-solid fa-magnifying-glass'))),

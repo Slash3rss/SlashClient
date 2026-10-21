@@ -41,6 +41,18 @@ public final class ChatImages {
 		return get("chat:" + imageId, () -> Social.imageBytes(imageId));
 	}
 
+	/** A picture from a community's chat (not encrypted; the launcher hands over a PNG); null while it loads. */
+	public static synchronized Texture community(String communityId, String imageId) {
+		return get("community:" + imageId, () -> Social.communityImageBytes(communityId, imageId));
+	}
+
+	/** For the in-game test: a made-up picture (PNG bytes) under this community picture's id; on the game's thread. */
+	public static synchronized void sampleCommunityForTest(String imageId, byte[] png) throws java.io.IOException {
+		try (InputStream in = new ByteArrayInputStream(png)) {
+			register("community:" + imageId, NativeImage.read(in));
+		}
+	}
+
 	/** One of the player's screenshots (a PNG file). */
 	public static synchronized Texture file(File png) {
 		return get("file:" + png.getAbsolutePath() + ":" + png.lastModified(), () -> {

@@ -147,5 +147,81 @@ public final class CommunitiesTestHooks {
 		e.addProperty("count", count);
 		Communities.eventForTest(e);
 	}
+
+	/** A picture's id in the test (GameCommunities registers a made-up picture under it). */
+	public static final String PICTURE = "testpicture-0000000001";
+
+	/** A message with a picture (server 0.9.30+), as the server pushes it. */
+	public static void picture(String community, String channel, long id, String from, String author, int w, int h) {
+		JsonObject m = message(community, channel, id, from, author, "[Zdjęcie]");
+		JsonObject i = new JsonObject();
+		i.addProperty("id", PICTURE);
+		i.addProperty("w", w);
+		i.addProperty("h", h);
+		i.addProperty("size", 12345);
+		m.add("image", i);
+		pushed(m);
+	}
+
+	/** A poll (server 0.9.30+), as the server pushes it: the answers with their votes. */
+	public static void poll(String community, String channel, long id, String from, String author, String question, List<String> options, List<Integer> votes, boolean multiple, long endsAt) {
+		JsonObject m = message(community, channel, id, from, author, "📊 Ankieta: " + question);
+		m.add("poll", pollJson(question, options, votes, multiple, endsAt, false));
+		pushed(m);
+	}
+
+	/** New results of a poll (someone voted, or it was closed), as the server pushes them. */
+	public static void pollResults(String community, String channel, long id, String question, List<String> options, List<Integer> votes, boolean closed) {
+		JsonObject e = new JsonObject();
+		e.addProperty("type", "community-poll");
+		e.addProperty("community", community);
+		e.addProperty("channel", channel);
+		e.addProperty("message", id);
+		e.add("poll", pollJson(question, options, votes, false, 0, closed));
+		e.addProperty("user", "ola");
+		Communities.eventForTest(e);
+	}
+
+	private static JsonObject pollJson(String question, List<String> options, List<Integer> votes, boolean multiple, long endsAt, boolean closed) {
+		JsonObject p = new JsonObject();
+		p.addProperty("question", question);
+		JsonArray list = new JsonArray();
+		int voters = 0;
+		for (int i = 0; i < options.size(); i++) {
+			JsonObject o = new JsonObject();
+			o.addProperty("text", options.get(i));
+			o.addProperty("votes", votes.get(i));
+			voters += votes.get(i);
+			list.add(o);
+		}
+		p.add("options", list);
+		p.addProperty("multiple", multiple);
+		p.addProperty("voters", voters);
+		if (endsAt > 0) p.addProperty("endsAt", endsAt);
+		if (closed) p.addProperty("closed", true);
+		return p;
+	}
+
+	private static JsonObject message(String community, String channel, long id, String from, String author, String text) {
+		JsonObject m = new JsonObject();
+		m.addProperty("id", id);
+		m.addProperty("community", community);
+		m.addProperty("channel", channel);
+		m.addProperty("from", from);
+		JsonObject a = new JsonObject();
+		a.addProperty("name", author);
+		a.addProperty("handle", author.toLowerCase());
+		m.add("author", a);
+		m.addProperty("text", text);
+		m.addProperty("at", System.currentTimeMillis());
+		return m;
+	}
+
+	private static void pushed(JsonObject m) {
+		JsonObject e = new JsonObject();
+		e.addProperty("type", "community-message");
+		e.add("message", m);
+		Communities.eventForTest(e);
+	}
 }
 

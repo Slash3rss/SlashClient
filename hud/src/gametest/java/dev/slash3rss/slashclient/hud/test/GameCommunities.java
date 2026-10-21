@@ -109,14 +109,47 @@ public class GameCommunities implements FabricClientGameTest {
 			context.waitTicks(3);
 			context.takeScreenshot("communities-reactions-reply");
 
+			// a picture and a poll (server 0.9.30+): the picture as a thumbnail, the poll with its results as bars, live
+			context.runOnClient(mc -> {
+				try {
+					dev.slash3rss.slashclient.hud.social.ChatImages.sampleCommunityForTest(CommunitiesTestHooks.PICTURE, picture());
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+				CommunitiesTestHooks.picture(CommunitiesTestHooks.BIG, CommunitiesTestHooks.GENERAL, 11, "kasia", "Kasia", 320, 180);
+				CommunitiesTestHooks.poll(CommunitiesTestHooks.BIG, CommunitiesTestHooks.GENERAL, 12, "bartek", "Bartek", "Kiedy budujemy zamek?",
+					List.of("Sobota", "Niedziela", "Za tydzień"), List.of(3, 1, 0), false, System.currentTimeMillis() + 86_400_000L);
+			});
+			if (context.computeOnClient(mc -> Communities.image(11)) == null) throw new AssertionError("The picture is not kept with its message");
+			if (context.computeOnClient(mc -> Communities.poll(12).total()) != 4) throw new AssertionError("The poll: " + context.computeOnClient(mc -> Communities.poll(12)));
+			// someone voted: the results move
+			context.runOnClient(mc -> CommunitiesTestHooks.pollResults(CommunitiesTestHooks.BIG, CommunitiesTestHooks.GENERAL, 12, "Kiedy budujemy zamek?", List.of("Sobota", "Niedziela", "Za tydzień"), List.of(3, 2, 0), false));
+			Communities.Poll moved = context.computeOnClient(mc -> Communities.poll(12));
+			if (moved.total() != 5 || moved.percent(0) != 60 || !moved.open()) throw new AssertionError("The poll after a vote: " + moved);
+			// a picture or a poll is not edited
+			if (context.computeOnClient(mc -> Communities.canEdit(Communities.chat(CommunitiesTestHooks.GENERAL).stream().filter(m -> m.id() == 11).findFirst().orElseThrow()))) throw new AssertionError("A picture offered for editing");
+			context.waitTicks(5);
+			context.takeScreenshot("communities-picture-poll");
+			List<String> pictureMenu = rightClick(context, screen[0], 11);
+			if (pictureMenu.isEmpty()) throw new AssertionError("No menu on a picture");
+			context.runOnClient(mc -> ChatEditsTestHooks.click(screen[0], 1, 1, true));
+			// closed: no more votes
+			context.runOnClient(mc -> CommunitiesTestHooks.pollResults(CommunitiesTestHooks.BIG, CommunitiesTestHooks.GENERAL, 12, "Kiedy budujemy zamek?", List.of("Sobota", "Niedziela", "Za tydzień"), List.of(3, 2, 0), true));
+			if (context.computeOnClient(mc -> Communities.poll(12).open())) throw new AssertionError("A closed poll still open");
+			context.waitTicks(3);
+			context.takeScreenshot("communities-poll-closed");
+
 			// a custom role (server 0.9.30+): the author's comes with their message, and goes when it comes without one
-			if (!"Turniejowy".equals(context.computeOnClient(mc -> Communities.customRole(CommunitiesTestHooks.BIG, "bartek").name()))) throw new AssertionError("Bartek's custom role");
-			context.runOnClient(mc -> CommunitiesTestHooks.incomingWithRole(CommunitiesTestHooks.BIG, CommunitiesTestHooks.GENERAL, 11, "zbyszek", "Zbyszek", "Mam rolę VIP!", "VIP", "#22c55e"));
+			// (Ala's from the sample: Bartek's went when his poll came without one)
+			Communities.RoleTag ala = context.computeOnClient(mc -> Communities.customRole(CommunitiesTestHooks.BIG, "ala"));
+			if (ala == null || !"Architekt".equals(ala.name())) throw new AssertionError("Ala's custom role: " + ala);
+			if (context.computeOnClient(mc -> Communities.customRole(CommunitiesTestHooks.BIG, "bartek")) != null) throw new AssertionError("Bartek's custom role stayed after a message without one");
+			context.runOnClient(mc -> CommunitiesTestHooks.incomingWithRole(CommunitiesTestHooks.BIG, CommunitiesTestHooks.GENERAL, 31, "zbyszek", "Zbyszek", "Mam rolę VIP!", "VIP", "#22c55e"));
 			Communities.RoleTag zbyszek = context.computeOnClient(mc -> Communities.customRole(CommunitiesTestHooks.BIG, "zbyszek"));
 			if (zbyszek == null || zbyszek.color() != 0x22C55E) throw new AssertionError("Zbyszek's custom role: " + zbyszek);
 			context.waitTicks(3);
 			context.takeScreenshot("communities-custom-role");
-			context.runOnClient(mc -> CommunitiesTestHooks.incoming(CommunitiesTestHooks.BIG, CommunitiesTestHooks.GENERAL, 12, "zbyszek", "Zbyszek", "Już bez roli", false));
+			context.runOnClient(mc -> CommunitiesTestHooks.incoming(CommunitiesTestHooks.BIG, CommunitiesTestHooks.GENERAL, 32, "zbyszek", "Zbyszek", "Już bez roli", false));
 			if (context.computeOnClient(mc -> Communities.customRole(CommunitiesTestHooks.BIG, "zbyszek")) != null) throw new AssertionError("Zbyszek's custom role stayed");
 
 			// an own channel (server 0.9.30+), by its name
@@ -172,6 +205,24 @@ public class GameCommunities implements FabricClientGameTest {
 			ChatEditsTestHooks.click(screen, b[0] + b[2] / 2.0, b[1] + b[3] / 2.0, true);
 			return screen.menuForTest();
 		});
+	}
+
+	/** A made-up screenshot: sky, grass and a little house, 320×180. */
+	private static byte[] picture() throws java.io.IOException {
+		BufferedImage img = new BufferedImage(320, 180, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = img.createGraphics();
+		g.setPaint(new java.awt.GradientPaint(0, 0, new Color(0x5EA8F2), 0, 120, new Color(0xBFE3FF)));
+		g.fillRect(0, 0, 320, 120);
+		g.setColor(new Color(0x4C8A2E));
+		g.fillRect(0, 120, 320, 60);
+		g.setColor(new Color(0x9A6B3F));
+		g.fillRect(120, 70, 80, 50);
+		g.setColor(new Color(0xA8322A));
+		g.fillPolygon(new int[] { 112, 160, 208 }, new int[] { 72, 40, 72 }, 3);
+		g.dispose();
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		ImageIO.write(img, "png", out);
+		return out.toByteArray();
 	}
 
 	/** A made-up logo: a white tree in a teal ring, 64×64. */

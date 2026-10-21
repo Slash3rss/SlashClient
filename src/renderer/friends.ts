@@ -1,6 +1,7 @@
 import { getLang, locale, t } from '../shared/i18n';
 import { createGroups } from './groups';
 import { createCommunities, waitText } from './communities';
+import { linkErrorText } from './communityLinks';
 import { PlayingWatch, type PlayingNews } from './friendActivity';
 import { createParty, type Party } from './party';
 import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
@@ -160,12 +161,17 @@ export function socialErrorText(code: string): string {
     bad_role_name: t('Nazwa roli: 1–24 znaki.'),
     role_taken: t('Rola o tej nazwie już jest.'),
     bad_color: t('Wybierz kolor roli.'),
+    // polls in communities (communityMedia.ts)
+    bad_poll: t('Ankieta: pytanie i 2–10 różnych odpowiedzi.'),
+    bad_poll_end: t('Koniec ankiety: od minuty do miesiąca od teraz.'),
+    poll_closed: t('Ta ankieta jest już zakończona.'),
+    bad_vote: t('Nie udało się oddać głosu.'),
     // the shop (sparks from achievements)
     not_enough_sparks: t('Za mało Iskier.'),
     owned: t('Masz już ten przedmiot.'),
     not_for_sale: t('Tego nie ma w sklepie.'),
   };
-  return texts[code] ?? t('Błąd serwera znajomych ({0}).', code);
+  return texts[code] ?? linkErrorText(code) ?? t('Błąd serwera znajomych ({0}).', code);
 }
 
 export function createFriends(root: HTMLElement, badge: HTMLElement, deps: FriendsDeps) {
@@ -250,6 +256,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     edit: (m) => startEditing({ id: m.id, community: m.community, channel: m.channel }, m.text),
     editGone: () => stopEditing(),
     focus: () => input?.focus(),
+    join: deps.join,
   });
   const friend = (id: string | undefined) => list.friends.find((f) => f.id === id);
   /** A friends list from the server with each stream checked (streams.ts). */
@@ -493,7 +500,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     // a picture pasted from the clipboard (Ctrl+V): shown first, sent on "Wyślij"
     input.addEventListener('paste', (e) => {
       const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith('image/'));
-      // no picture button here (a community, or pictures switched off by the owner): no pasted pictures either
+      // no picture button here (an older server's community, or pictures switched off by the owner): no pasted pictures either
       if (!file || pictureBtn.offsetParent === null) return;
       e.preventDefault();
       void pastePicture(file);
@@ -977,6 +984,13 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   /** A picture file to the open chat: the launcher scales it, encrypts it and sends it. */
   async function sendPicture(btn: HTMLButtonElement) {
+    // a community's channel: not encrypted, kept on the server for its members (communities.ts)
+    if (communities.active()) {
+      btn.disabled = true;
+      await communities.sendPicture();
+      btn.disabled = false;
+      return;
+    }
     if (groups.active()) {
       btn.disabled = true;
       await groups.sendPicture();
@@ -1013,15 +1027,22 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   /** A pasted picture: a look at it first, then sent like a picked one. */
   async function pastePicture(file: File) {
     const url = URL.createObjectURL(file);
+    const community = !!communities.active();
     const ok = await confirmDialog({
       title: t('Wysłać obraz?'),
-      body: [el('img', { className: 'fr-paste-preview', src: url, alt: '' }), el('p', { className: 'muted', textContent: t('Obraz zostanie zaszyfrowany i wysłany do tej rozmowy.') })],
+      body: [el('img', { className: 'fr-paste-preview', src: url, alt: '' }), el('p', { className: 'muted', textContent: community ? t('Obraz zobaczą wszyscy członkowie społeczności (czat społeczności nie jest szyfrowany).') : t('Obraz zostanie zaszyfrowany i wysłany do tej rozmowy.') })],
       ok: t('Wyślij'), okIcon: 'fa-paper-plane',
     });
     URL.revokeObjectURL(url);
     if (!ok) return input.focus();
     const bytes = await pastedBytes(file);
     if (!bytes) return deps.toast(t('Nie udało się odczytać obrazka.'), true);
+    if (community && communities.active()) {
+      pictureBtn.disabled = true;
+      await communities.sendPicture(bytes);
+      pictureBtn.disabled = false;
+      return input.focus();
+    }
     if (groups.active()) {
       pictureBtn.disabled = true;
       await groups.sendPicture(bytes);
@@ -1057,9 +1078,10 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   function renderChat() {
     if (!chatBox) return;
-    // a community: no pictures there (not end-to-end encrypted), and the composer says when one cannot write
+    // a community: pictures where its server has them (not end-to-end encrypted there), and the composer says when one cannot write
     const com = communities.active() ? communities.composerState() : undefined;
-    pictureBtn.classList.toggle('hidden', !!com);
+    pictureBtn.classList.toggle('hidden', !!com && !communities.picturesHere());
+    pictureBtn.title = com ? t('Wyślij obraz (widzą go członkowie społeczności)') : t('Wyślij obraz (zaszyfrowany)');
     input.disabled = !!com && !com.canPost;
     sendBtn.disabled = !!com && !com.canPost;
     input.placeholder = com?.reason ?? t('Napisz wiadomość…');

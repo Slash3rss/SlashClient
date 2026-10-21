@@ -11,6 +11,8 @@ import { SUPPORT_EN } from './i18nSupport';
 import { RANKS_EN } from './i18nRanks';
 import { LEGAL_EN } from './i18nLegal';
 import { COMMUNITIES_EN } from './i18nCommunities';
+import { COMMUNITY_LINKS_EN } from './i18nCommunityLinks';
+import { COMMUNITY_MEDIA_EN } from './i18nCommunityMedia';
 import { FEATURES_EN } from './i18nFeatures';
 import { STREAMS_EN } from './i18nStreams';
 import { SERVER_STATUS_EN } from './i18nServerStatus';
@@ -39,6 +41,10 @@ const EN: Record<string, string> = {
   ...LEGAL_EN,
   // communities in the Friends view (own file)
   ...COMMUNITIES_EN,
+  // invite links, game servers and the verified badge of communities (own file)
+  ...COMMUNITY_LINKS_EN,
+  // pictures and polls in communities (own file)
+  ...COMMUNITY_MEDIA_EN,
   // friends live on Twitch and Kick (own file)
   ...STREAMS_EN,
   // statuses from a server's tab list (own file)

@@ -1622,7 +1622,35 @@ body.feature-off-streams .feature-streams { display: none !important; }
 .fr-custom-role-pick { width: 116px !important; }
 /* the channels in a row of their own under the community's name and buttons */
 .fr-chat-head:has(> .fr-com-tabs) { flex-wrap: wrap; row-gap: 8px; }
-.fr-chat-head > .fr-com-tabs { flex-basis: 100%; margin-top: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+.fr-chat-head > .fr-com-tabs { flex-basis: 100%; margin-top: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); }
 .fr-chat-head > .fr-com-tabs .fr-com-tab { flex: none; white-space: nowrap; }
-.fr-chat-head > .fr-com-tabs::-webkit-scrollbar { height: 3px; }
-.fr-chat-head > .fr-com-tabs::-webkit-scrollbar-button { display: none; }
+
+/* polls in a community's chat (communityMedia.ts): the results as bars behind each option */
+.fr-bubble.fr-poll, .fr-msg.mine .fr-bubble.fr-poll { display: grid; gap: 6px; width: 340px; max-width: 100%; box-sizing: border-box; padding: 10px 12px; white-space: normal; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .08); color: var(--text-primary, #fff); }
+/* a poll takes more of a narrow chat than a text does */
+.fr-msg:has(.fr-poll) { max-width: 92%; }
+.fr-poll-head { display: flex; gap: 8px; align-items: flex-start; line-height: 1.35; }
+.fr-poll-head i { color: var(--accent-light); margin-top: 2px; }
+.fr-poll-option { position: relative; display: flex; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; min-height: 32px; padding: 6px 10px; overflow: hidden; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .1); background: rgba(0, 0, 0, .18); box-shadow: none; color: inherit; font-size: 13px; text-align: left; }
+.fr-poll-option:not(:disabled):hover { border-color: var(--accent); }
+.fr-poll-option:disabled { cursor: default; opacity: 1; }
+.fr-poll-option > :not(.fr-poll-bar) { position: relative; }
+.fr-poll-bar { position: absolute; inset: 0 auto 0 0; background: rgba(96, 165, 250, .18); transition: width .3s ease; }
+.fr-poll-option.mine { border-color: var(--accent); }
+.fr-poll-option.mine .fr-poll-bar { background: rgba(59, 130, 246, .35); }
+.fr-poll-option.mine > i { color: var(--accent-light); }
+.fr-poll-text { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 500; }
+.fr-poll-pct { font-variant-numeric: tabular-nums; }
+.fr-poll-foot { display: flex; gap: 8px; align-items: center; }
+.fr-poll-close { flex: none; height: 26px; padding: 0 10px; font-size: 12px; white-space: nowrap; box-shadow: none; }
+.fr-poll.closed .fr-poll-head i { color: var(--text-secondary); }
+.fr-poll-inputs { display: grid; gap: 6px; }
+.fr-poll-input input { flex: 1; }
+.fr-poll-modal .fr-check { display: flex; justify-content: flex-start; gap: 8px; align-items: center; cursor: pointer; }
+.fr-poll-modal .fr-check input { width: auto; flex: none; margin: 0; }
+.fr-poll-modal .fr-field { display: grid; gap: 4px; }
+@media (prefers-reduced-motion: reduce) { .fr-poll-bar { transition: none; } }
+/* with a game server too (communityLinks.css): one wrapping row – the name and buttons, the channels, the server */
+.fr-chat-head:has(> .fr-com-tabs):has(> .fr-com-server) { display: flex; column-gap: 6px; }
+.fr-chat-head:has(> .fr-com-tabs) > .fr-com-server { flex-basis: 100%; min-width: 0; }
+.fr-chat-head:has(> .fr-com-tabs):has(> .fr-com-server) > .fr-names { margin: 0 4px 0 6px; }

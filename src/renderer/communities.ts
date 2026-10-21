@@ -4,6 +4,8 @@ import { confirmDialog, control, el, icon, modalWindow } from './dialog';
 import { editHint, editedLabel, openMenu, replaceMessage, tombstone, withMenu, type MenuItem } from './chatEdits';
 import { disabledText, featureOn } from './features';
 import { channelClosed, channelsWindow, communityCan, customRolePick, logWindow as moderationLog, roleChip, rolesWindow, type ChannelAccess, type CustomRole, type ManageDeps, type RoleTag } from './communityRoles';
+import { createCommunityLinks, linkLogName, type CommunityServer } from './communityLinks';
+import { createCommunityMedia, keepMyVotes, type CommunityImage, type Poll } from './communityMedia';
 
 /**
  * Communities ("Społeczności") in the Friends view: like a clan but big (up to a thousand players),
@@ -38,6 +40,8 @@ export interface Channel extends ChannelAccess { id: string; kind: 'general' | '
 export interface CommunitySummary {
   id: string; name: string; tag: string; slug: string; description: string; visibility: 'public' | 'private'; joinMode: 'open' | 'request';
   members: number; owner: Person; createdAt: number; logo?: number;
+  /** Server 0.9.30+ (communityLinks.ts): an official community, and its game server. */
+  verified?: boolean; server?: CommunityServer;
   /** In the directory: how I may get in. */
   state?: 'member' | 'invited' | 'open' | 'request' | 'requested' | 'invite' | 'banned' | 'full';
 }
@@ -57,6 +61,8 @@ export interface CommunityMessage {
   id: number; community: string; channel: string; from: string; author: { name: string; handle: string; role?: CommunityRole; customRole?: RoleTag };
   text: string; at: number; editedAt?: number; deleted?: boolean; moderated?: boolean; mentions?: string[];
   replyTo?: ReplyQuote; reactions?: Reaction[]; pinned?: boolean;
+  /** A picture or a poll (server 0.9.30+; the text is then what older launchers show). */
+  image?: CommunityImage; poll?: Poll;
 }
 interface Member extends Person { role: CommunityRole; joinedAt: number; status: string; online: boolean; mutedUntil?: number; customRole?: RoleTag }
 
@@ -168,6 +174,9 @@ interface Deps {
     socialSetCommunityLogo?: (id: string, png: Uint8Array) => Promise<any>;
     socialCommunityLogo?: (id: string, version: number) => Promise<string>;
     socialProfileUrl?: (handle: string, open?: boolean) => Promise<string>;
+    pingServer?: (address: string) => Promise<any>;
+    socialSendCommunityImage?: (communityId: string, channelId: string, pasted?: Uint8Array) => Promise<any>;
+    socialCommunityImage?: (communityId: string, id: string) => Promise<string>;
   };
   toast: (message: string, isError?: boolean) => void;
   errorText: (err: unknown) => string;
@@ -183,6 +192,8 @@ interface Deps {
   editGone: () => void;
   /** The composer gets the focus (a reply was started). */
   focus?: () => void;
+  /** The usual "join server" window: a community's game server (communityLinks.ts). */
+  join?: (address: string, version?: string) => void;
 }
 
 export function createCommunities(deps: Deps) {
@@ -190,7 +201,9 @@ export function createCommunities(deps: Deps) {
   let list: Community[] = [];
   let invites: { community: CommunitySummary; by: Person; at: number }[] = [];
   let requests: { community: CommunitySummary; at: number }[] = [];
-  let limits = { members: 1000, perPlayer: 10, owned: 3, message: 2000, description: 500 };
+  /** `imageBytes` and `pollOptions` come from a server with pictures and polls (0.9.30+). */
+  let limits: { members: number; perPlayer: number; owned: number; message: number; description: number; imageBytes?: number; pollOptions?: number } = { members: 1000, perPlayer: 10, owned: 3, message: 2000, description: 500 };
+  const media = createCommunityMedia({ api, toast: deps.toast, errorText: deps.errorText });
   let open: { community: string; channel: string } | undefined;
   let editingId: number | undefined;
   /** `nextPostAt`: when slow mode lets me write again; `pins`: how many are pinned there. */
@@ -206,6 +219,11 @@ export function createCommunities(deps: Deps) {
   let ticker: ReturnType<typeof setInterval> | undefined;
 
   const community = (id: string | undefined) => list.find((c) => c.id === id);
+  // invite links, the game server and the verified badge (communityLinks.ts)
+  const extras = createCommunityLinks({
+    api, toast: deps.toast, errorText: deps.errorText, join: deps.join, membersText, take: (res) => take(res),
+    avatar: (c) => communityAvatar(c), open: (id) => void select(id),
+  });
   const me = () => deps.me()?.id;
 
   async function refresh() {
@@ -269,7 +287,7 @@ export function createCommunities(deps: Deps) {
     const staff = (c.pending ?? 0) + (c.reports ?? 0);
     const r = el('button', { type: 'button', className: `fr-row fr-group fr-community${selected ? ' selected' : ''}` },
       communityAvatar(c),
-      el('div', { className: 'grow fr-names' }, el('b', { textContent: c.name }), el('small', { className: 'muted', textContent: subline(c) })),
+      el('div', { className: 'grow fr-names' }, extras.name(c), el('small', { className: 'muted', textContent: subline(c) })),
       staff ? el('i', { className: 'fa-solid fa-user-clock fr-staff-dot', title: t('Prośby lub zgłoszenia czekają: {0}', staff) }) : '',
       c.notify === 'none' ? el('i', { className: 'fa-solid fa-bell-slash fr-muted', title: t('Bez powiadomień') }) : '',
       badge);
@@ -287,14 +305,16 @@ export function createCommunities(deps: Deps) {
     discover.addEventListener('click', () => discoverWindow());
     const add = el('button', { type: 'button', className: 'icon-btn fr-section-btn', title: t('Załóż społeczność') }, icon('fa-plus'));
     add.addEventListener('click', () => createWindow());
-    out.push(el('div', { className: 'fr-section fr-section-row' }, el('span', { textContent: t('Społeczności') }), el('span', { className: 'row fr-section-btns' }, discover, add)));
+    const byLink = el('button', { type: 'button', className: 'icon-btn fr-section-btn', title: t('Dołącz przez zaproszenie') }, icon('fa-link'));
+    byLink.addEventListener('click', () => extras.joinWindow());
+    out.push(el('div', { className: 'fr-section fr-section-row' }, el('span', { textContent: t('Społeczności') }), el('span', { className: 'row fr-section-btns' }, byLink, discover, add)));
     for (const inv of invites) {
       const accept = el('button', { type: 'button', className: 'icon-btn primary', title: t('Dołącz') }, icon('fa-check'));
       const decline = el('button', { type: 'button', className: 'icon-btn', title: t('Odrzuć') }, icon('fa-xmark'));
       accept.addEventListener('click', async () => take(await act(() => api.socialApi('POST', `/v1/communities/${inv.community.id}/invites/accept`), t('Dołączono do społeczności {0}.', inv.community.name))));
       decline.addEventListener('click', async () => take(await act(() => api.socialApi('POST', `/v1/communities/${inv.community.id}/invites/decline`))));
       out.push(el('div', { className: 'fr-row' }, communityAvatar(inv.community),
-        el('div', { className: 'grow fr-names' }, el('b', { textContent: inv.community.name }), el('small', { className: 'muted', textContent: t('{0} zaprasza do społeczności', inv.by.name) })),
+        el('div', { className: 'grow fr-names' }, extras.name(inv.community), el('small', { className: 'muted', textContent: t('{0} zaprasza do społeczności', inv.by.name) })),
         accept, decline));
     }
     out.push(...list.map(row));
@@ -391,6 +411,39 @@ export function createCommunities(deps: Deps) {
       return false;
     }
   }
+
+  /** A message with a picture or a poll in the open channel: slow mode and the rest as for a text. */
+  async function sendExtra(run: (at: { community: string; channel: string }) => Promise<{ message?: CommunityMessage; nextPostAt?: number } | undefined>): Promise<boolean> {
+    const at = open;
+    if (!at) return false;
+    const chat = chats.get(at.channel);
+    if (chat?.nextPostAt && chat.nextPostAt > Date.now()) return (deps.toast(t('Tryb powolny: możesz napisać za {0}.', waitText((chat.nextPostAt - Date.now()) / 1000)), true), false);
+    try {
+      const res = await run(at);
+      if (!res) return false;
+      if (chat && res.nextPostAt) chat.nextPostAt = res.nextPostAt;
+      if (res.message) addMessage(res.message);
+      renderNote();
+      return true;
+    } catch (err) {
+      const wait = /slow_mode:(\d+)/.exec(String((err as Error)?.message ?? ''));
+      if (wait && chat) {
+        chat.nextPostAt = Date.now() + Number(wait[1]) * 1000;
+        renderNote();
+      }
+      deps.toast(deps.errorText(err), true);
+      return false;
+    }
+  }
+
+  /** A poll to the open channel (the server writes the text older launchers show). */
+  const sendPoll = (poll: object) => sendExtra((at) => api.socialApi('POST', `/v1/communities/${at.community}/channels/${at.channel}/messages`, { poll, lang: locale().startsWith('en') ? 'en' : 'pl' }));
+
+  /** A picture to the open channel: picked, or pasted (`pasted`); the launcher scales it and makes it a JPEG. */
+  const sendPicture = (pasted?: Uint8Array) => sendExtra((at) => api.socialSendCommunityImage ? api.socialSendCommunityImage(at.community, at.channel, pasted) : Promise.resolve(undefined));
+
+  /** Whether the open channel takes pictures: a server that has them, the owner's switch on, and I may write here. */
+  const picturesHere = () => !!limits.imageBytes && !!api.socialSendCommunityImage && featureOn('chatImages') && composerState().canPost;
 
   /** Starts a reply to a message: a bar above the composer says to whom (Esc or × lets go). */
   function reply(m: CommunityMessage) {
@@ -693,14 +746,14 @@ export function createCommunities(deps: Deps) {
     const items: MenuItem[] = [];
     if (m.deleted) return items;
     if (composerState().canPost) items.push({ label: t('Odpowiedz'), icon: 'fa-reply', run: () => reply(m) });
-    if (mine && chat.editWindowMs && Date.now() - m.at < chat.editWindowMs) {
+    if (mine && chat.editWindowMs && Date.now() - m.at < chat.editWindowMs && !m.image && !m.poll) {
       items.push({ label: t('Edytuj'), icon: 'fa-pen', hint: editHint(m, chat.editWindowMs), run: () => {
         editingId = m.id;
         renderMessages();
         deps.edit(m);
       } });
     }
-    items.push({ label: t('Kopiuj'), icon: 'fa-copy', run: () => void navigator.clipboard.writeText(m.text).then(() => deps.toast(t('Skopiowano'))) });
+    if (!m.image) items.push({ label: t('Kopiuj'), icon: 'fa-copy', run: () => void navigator.clipboard.writeText(m.poll ? [m.poll.question, ...m.poll.options.map((o) => `• ${o.text}`)].join('\n') : m.text).then(() => deps.toast(t('Skopiowano'))) });
     if (communityCan(c, 'pin')) items.push({ label: m.pinned ? t('Odepnij') : t('Przypnij'), icon: m.pinned ? 'fa-thumbtack-slash' : 'fa-thumbtack', run: () => void setPinned(m, !m.pinned) });
     if (mine || communityCan(c, 'deleteMessage', { role: m.author.role ?? 'member', customRole: m.author.customRole })) {
       items.push({ label: mine ? t('Usuń') : t('Usuń (moderacja)'), icon: 'fa-trash', danger: true, run: () => void deleteMessage(m, !mine) });
@@ -757,39 +810,57 @@ export function createCommunities(deps: Deps) {
       b.addEventListener('click', () => run(b));
       actions.push(b);
     };
+    // at hand: members, pins, notifications; the rest in "…" (a narrow window has no room for them all)
+    const more: MenuItem[] = [];
+    const later = (ico: string, label: string, run: () => void, count = 0, danger = false) => more.push({ label: count ? `${label} (${count > 99 ? '99+' : count})` : label, icon: ico, run, ...(danger ? { danger } : {}) });
     button('fa-users', t('Członkowie'), () => membersWindow(c));
     const openChannel = c.channels.find((x) => x.id === open?.channel);
     const pins = open ? chats.get(open.channel)?.pins ?? 0 : 0;
     button('fa-thumbtack', t('Przypięte wiadomości'), () => pinsWindow(c), pins, ' fr-pins-btn');
-
-    if (openChannel && communityCan(c, 'slowMode')) {
-      button('fa-hourglass-half', openChannel.slowMode ? t('Tryb powolny: {0}', waitText(openChannel.slowMode)) : t('Tryb powolny'), (b) => slowModeMenu(c, openChannel, b), 0, openChannel.slowMode ? ' on' : '');
-    }
-    if (communityCan(c, 'requests') && c.joinMode === 'request' || (c.pending ?? 0) > 0) button('fa-user-clock', t('Prośby o dołączenie'), () => requestsWindow(c), c.pending ?? 0);
-    if (communityCan(c, 'reports')) button('fa-flag', t('Zgłoszenia'), () => reportsWindow(c), c.reports ?? 0);
     button(c.notify === 'none' ? 'fa-bell-slash' : 'fa-bell', t('Powiadomienia'), (b) => notifyMenu(c, b), 0, c.notify === 'all' ? ' on' : '');
-    if (communityMay(c.role, 'edit') || communityCan(c, 'ban') || communityMay(c.role, 'delete') || ['log', 'manageChannels', 'manageRoles'].some((p) => communityCan(c, p))) button('fa-gear', t('Ustawienia społeczności'), () => settingsWindow(c));
+    // a poll in this channel, for those who may write here (server 0.9.30+)
+    if (limits.pollOptions && composerState().canPost) later('fa-square-poll-horizontal', t('Nowa ankieta'), () => media.pollWindow((poll) => sendPoll(poll), limits.pollOptions));
+    if (communityCan(c, 'requests') && c.joinMode === 'request' || (c.pending ?? 0) > 0) later('fa-user-clock', t('Prośby o dołączenie'), () => requestsWindow(c), c.pending ?? 0);
+    if (communityCan(c, 'reports')) later('fa-flag', t('Zgłoszenia'), () => reportsWindow(c), c.reports ?? 0);
+    // invite links: admins, and a custom role that may invite (communityLinks.ts)
+    if (communityMay(c.role, 'edit') || !!c.roles?.find((r) => r.id === c.customRole?.id)?.permissions.includes('invite')) later('fa-link', t('Linki zaproszeń'), () => extras.linksWindow(c));
+    if (openChannel && communityCan(c, 'slowMode')) later('fa-hourglass-half', openChannel.slowMode ? t('Tryb powolny: {0}', waitText(openChannel.slowMode)) : t('Tryb powolny'), () => slowModeMenu(c, openChannel, moreButton));
+    if (communityMay(c.role, 'edit') || communityCan(c, 'ban') || communityMay(c.role, 'delete') || ['log', 'manageChannels', 'manageRoles'].some((p) => communityCan(c, p))) later('fa-gear', t('Ustawienia społeczności'), () => settingsWindow(c));
     if (c.role !== 'owner') {
-      button('fa-right-from-bracket', t('Opuść społeczność'), async () => {
+      later('fa-right-from-bracket', t('Opuść społeczność'), async () => {
         if (!(await confirmDialog({ title: t('Opuścić „{0}”?', c.name), body: [el('p', { className: 'muted', textContent: c.visibility === 'private' ? t('To prywatna społeczność: wrócić można tylko na zaproszenie.') : t('Możesz wrócić później przez „Odkrywaj”.') })], ok: t('Opuść'), danger: true }))) return;
         const res = await act(() => api.socialApi('POST', `/v1/communities/${c.id}/leave`));
         if (res) {
           open = undefined;
           take(res);
         }
-      }, 0, ' danger');
+      }, 0, true);
     }
+    // what waits for the staff shows on "…" too
+    const waiting = (communityCan(c, 'requests') ? c.pending ?? 0 : 0) + (communityCan(c, 'reports') ? c.reports ?? 0 : 0);
+    let moreButton: HTMLButtonElement = el('button', { type: 'button' });
+    if (more.length) button('fa-ellipsis', t('Więcej'), (b) => {
+      moreButton = b;
+      openMenu(b, more);
+    }, waiting, openChannel?.slowMode ? ' on' : '');
     const tabs = el('div', { className: 'fr-com-tabs' }, ...c.channels.map((ch) => {
       const b = el('button', { type: 'button', className: `fr-com-tab${ch.id === open?.channel ? ' active' : ''}` }, icon(ch.kind === 'announcements' ? 'fa-bullhorn' : channelClosed(ch) ? 'fa-lock' : 'fa-hashtag'), ` ${channelName(ch)}`);
       if (ch.id !== open?.channel && (ch.unread || ch.mentions)) b.append(el('span', { className: `fr-tab-dot${ch.mentions ? ' mention' : ''}` }));
       b.addEventListener('click', () => void select(c.id, ch.id));
       return b;
     }));
+    // many channels scroll sideways, by the wheel too; the open one in view
+    tabs.addEventListener('wheel', (e) => {
+      if (!e.deltaY || tabs.scrollWidth <= tabs.clientWidth) return;
+      e.preventDefault();
+      tabs.scrollLeft += e.deltaY;
+    }, { passive: false });
+    requestAnimationFrame(() => tabs.querySelector<HTMLElement>('.fr-com-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
     head.replaceChildren(communityAvatar(c),
-      el('div', { className: 'grow fr-names' }, el('b', { textContent: c.name }),
+      el('div', { className: 'grow fr-names' }, extras.name(c),
         el('small', { className: 'muted', textContent: `${subline(c)} · ${communityRoleText(c.role)}` })),
-      // the channels in a row of their own under the name and the buttons (own channels make many)
-      ...actions, tabs);
+      // the channels in a row of their own under the name and the buttons (own channels make many), then the game server
+      ...actions, tabs, extras.serverStrip(c.server));
     renderNote();
     renderMessages();
     ticker ??= setInterval(tick, 1000);
@@ -827,6 +898,15 @@ export function createCommunities(deps: Deps) {
       if (m.deleted) {
         bubble = tombstone();
         if (m.moderated) bubble.title = t('Usunięta przez moderację');
+      } else if (m.poll) {
+        bubble = media.pollCard({ ...m, poll: m.poll }, {
+          canVote: canReact, canClose: m.from === my?.id || communityMay(c.role, 'pin'),
+          changed: (poll) => updateMessage(m.channel, m.id, (x) => ({ ...x, poll })),
+        });
+        if (m.pinned) bubble.append(el('i', { className: 'fa-solid fa-thumbtack fr-pinned-mark', title: t('Przypięta') }));
+      } else if (m.image) {
+        bubble = media.pictureCard(m.community, m.image, mine);
+        if (m.pinned) bubble.append(el('i', { className: 'fa-solid fa-thumbtack fr-pinned-mark', title: t('Przypięta') }));
       } else {
         const toMe = !!my && !!m.mentions?.includes(my.id);
         bubble = el('div', { className: `fr-bubble${toMe ? ' fr-mention' : ''}` }, ...mentionParts(m.text, my?.handle).map((p) => (p.mention ? el('b', { className: `fr-at${p.me ? ' me' : ''}`, textContent: p.text }) : p.text)));
@@ -995,8 +1075,8 @@ export function createCommunities(deps: Deps) {
       reload();
     });
     return el('div', { className: 'fr-row fr-com-dir-row' }, communityAvatar(c),
-      el('div', { className: 'grow fr-names' }, el('b', { textContent: c.name }), el('small', { className: 'muted', textContent: subline(c) }),
-        c.description ? el('small', { className: 'fr-com-desc', textContent: c.description }) : ''),
+      el('div', { className: 'grow fr-names' }, extras.name(c), el('small', { className: 'muted', textContent: subline(c) }),
+        c.description ? el('small', { className: 'fr-com-desc', textContent: c.description }) : '', extras.serverStrip(c.server, true)),
       go);
   }
 
@@ -1184,7 +1264,7 @@ export function createCommunities(deps: Deps) {
         close();
         const fresh = community(c.id);
         if (fresh) settingsWindow(fresh);
-      }));
+      }), ...extras.serverSection(c, () => void refresh()));
     }
     // own channels and custom roles (server 0.9.30+: it sends `roles`)
     if (c.roles && (communityCan(c, 'manageChannels') || communityCan(c, 'manageRoles'))) {
@@ -1241,7 +1321,7 @@ export function createCommunities(deps: Deps) {
   }
 
   /** What the channels', roles' and log's windows need. */
-  const manage: ManageDeps = { api, act, refresh, community, channelName: (ch) => channelName(ch as Channel) };
+  const manage: ManageDeps = { api, act, refresh, community, channelName: (ch) => channelName(ch as Channel), logName: linkLogName };
 
   /** The logo: the clans' pipeline (a square scaled to 64×64 here, checked again by the main process and the server). */
   function logoSection(c: Community, redraw: () => void): Node[] {
@@ -1313,7 +1393,8 @@ export function createCommunities(deps: Deps) {
         if (seen) markRead();
         else if (shouldNotify(c, m, me())) {
           const title = `${c.name} · ${m.author.name}`;
-          const text = m.text.length > 120 ? `${m.text.slice(0, 117)}…` : m.text;
+          const plain = m.image ? t('wysyła zdjęcie') : m.poll ? t('Ankieta: {0}', m.poll.question) : m.text;
+          const text = plain.length > 120 ? `${plain.slice(0, 117)}…` : plain;
           if (!document.hasFocus()) void api.notify?.(title, text, { view: 'friends' }).catch(() => undefined);
           else deps.toast(t('{0}: {1}', title, text));
         }
@@ -1333,6 +1414,10 @@ export function createCommunities(deps: Deps) {
         // someone's emoji under a message here (mine too: from another launcher or the game)
         reactors.delete(e.message);
         updateMessage(e.channel, e.message, (m) => ({ ...m, reactions: applyReaction(m.reactions, e, me()) }));
+        return true;
+      case 'community-poll':
+        // a poll's results changed (someone voted, or it was closed): my own choices kept (a vote of mine from the game shows after the next page)
+        updateMessage(e.channel, e.message, (m) => (m.poll ? { ...m, poll: keepMyVotes(m.poll, e.poll) } : m));
         return true;
       case 'community-pin': {
         const m = e.message as CommunityMessage | undefined;
@@ -1370,7 +1455,7 @@ export function createCommunities(deps: Deps) {
   }
 
   return {
-    refresh, sections, onEvent, renderChat, send, saveEdit, loadOlder, markRead, composerState, cancelReply,
+    refresh, sections, onEvent, renderChat, send, saveEdit, loadOlder, markRead, composerState, cancelReply, sendPicture, picturesHere,
     /** The composer let go of the message it was editing. */
     stopEditing: () => {
       if (editingId === undefined) return;
