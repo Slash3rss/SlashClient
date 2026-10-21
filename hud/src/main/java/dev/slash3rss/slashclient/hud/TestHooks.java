@@ -929,6 +929,11 @@ public final class TestHooks {
 		return new float[] {f[0], f[1], f[2], f[3], f[4], (float) mc.getWindow().getGuiScale()};
 	}
 
+	/** The open cosmetics menu's layout: its panel (GUI pixels: x, y, width, height), the slot tabs' rows and how many show, the tiles in a row. */
+	public static int[] cosmeticsLayout() {
+		return Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c ? c.layoutForTest() : null;
+	}
+
 	/** Our own player in their own skin again (after testSkin). */
 	public static void noTestSkin() {
 		Cosmetics.testSkinSlim = false;

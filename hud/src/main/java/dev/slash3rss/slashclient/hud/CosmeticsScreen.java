@@ -59,7 +59,7 @@ public class CosmeticsScreen extends Screen {
 		Map.entry("move_steps", Items.LEATHER_BOOTS), Map.entry("move_jump", Items.SLIME_BALL), Map.entry("move_landing", Items.ANVIL),
 		Map.entry("move_arrows", Items.SPECTRAL_ARROW), Map.entry("move_sprint", Items.SUGAR), Map.entry("move_bubbles", Items.PUFFERFISH),
 		Map.entry("move_petals", Items.PINK_PETALS));
-	private static final int TILE_W = 32, TILE_H = 40, GAP = 4;
+	private static final int TILE_W = 32, TILE_H = 40, GAP = 4, MIN_COLS = 6, MAX_COLS = 14;
 
 	/**
 	 * `hint`: how to earn an item that only an achievement gives ("" for the rest); `price`: what it
@@ -196,9 +196,13 @@ public class CosmeticsScreen extends Screen {
 
 	@Override
 	protected void init() {
-		pw = Math.min(width - 24, 6 * (TILE_W + GAP) - GAP + 24);
-		ph = Math.min(height - 24, 250);
-		// the panel on the right: the player stays visible on the left
+		// the panel on the right, as tall as the screen; as wide as leaves the figure on the left its full
+		// size with room for open wings (see the figure's size below), in whole columns of tiles: at least
+		// six (on small screens the figure then shrinks or goes, as before), at most fourteen
+		int figure = Math.min(height - 40, 240) + 60;
+		int cols = Math.max(MIN_COLS, Math.min(MAX_COLS, (width - 12 - figure - 24 + GAP) / (TILE_W + GAP)));
+		pw = Math.min(width - 24, cols * (TILE_W + GAP) - GAP + 24);
+		ph = height - 24;
 		px = width - pw - 12;
 		py = (height - ph) / 2;
 		if (camera == null) {
@@ -242,6 +246,11 @@ public class CosmeticsScreen extends Screen {
 	/** For the test: the figure's box on screen (GUI pixels: x, y, width, height; width 0 when not shown) and its turn by hand so far. */
 	float[] figureForTest() {
 		return new float[] {fx, fy, fw, fh, dragTurn};
+	}
+
+	/** For the test: the panel (GUI pixels: x, y, width, height), the slot tabs' rows and how many show, and the tiles in a row. */
+	int[] layoutForTest() {
+		return new int[] {px, py, pw, ph, tabRows, tabShown, Math.max(1, (pw - 24 + GAP) / (TILE_W + GAP))};
 	}
 
 	/** For the test: another slot, as a click on its tab. */
