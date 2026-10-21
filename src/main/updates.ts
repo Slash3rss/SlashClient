@@ -154,17 +154,20 @@ function winSwap(relaunch: string[] | null, onLog?: (message: string) => void) {
 async function macDownload(feed: string, version: string, files: MacFile[], onLog?: (message: string) => void) {
   macLast = { feed, version, files, onLog };
   if (macDownloading || (macReady && status.version === version)) return;
+  // taken at once, before anything is awaited: two checks at the same moment (the start, the hourly
+  // one, "Spróbuj ponownie") would otherwise both download into the same folder and delete each
+  // other's files (a download stuck at 0%, "ENOTEMPTY" while unpacking)
+  macDownloading = true;
   const manual = (reason: NonNullable<UpdateStatus['reason']>, error?: string) => {
     macLog(`bez samodzielnej podmiany (${reason})${error ? `: ${error}` : ''}`, onLog);
     set({ state: 'available', version, manual: true, reason, ...(error ? { error } : {}) });
   };
-  const state = await bundleState();
-  const file = pickMacZip(files ?? []);
-  if (!('bundle' in state)) return manual(state.problem);
-  if (!file) return manual('no-file');
-  const current = state.bundle;
-  macDownloading = true;
   try {
+    const state = await bundleState();
+    const file = pickMacZip(files ?? []);
+    if (!('bundle' in state)) return manual(state.problem);
+    if (!file) return manual('no-file');
+    const current = state.bundle;
     set({ state: 'downloading', version, percent: 0 });
     // the steps go to logs/update.log too: a download that stops can be told apart from one that never started
     macLog(`pobieranie ${version}: ${file.url} (${Math.round((file.size ?? 0) / 1e6)} MB)`, onLog);
