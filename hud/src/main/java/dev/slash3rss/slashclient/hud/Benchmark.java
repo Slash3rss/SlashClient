@@ -24,7 +24,9 @@ import java.util.List;
  * and are shown on {@link BenchmarkScreen}, next to the run before.
  *
  * Started from the HUD settings window, or by itself a few seconds after the world loads when
- * the launcher asks for it (-Dslashclient.benchmark=true).
+ * the launcher asks for it (-Dslashclient.benchmark=true). In the test scene's world
+ * ({@link BenchScene}) the camera flies the scene's path instead, and every scene is also
+ * measured on its own.
  */
 public final class Benchmark {
 	private Benchmark() {}
@@ -38,7 +40,7 @@ public final class Benchmark {
 	static final double LENGTH = WARMUP + SPIN + SKY + STILL;
 
 	/** Asked for by the launcher: runs once, by itself, once the world is there. */
-	private static boolean auto = Boolean.getBoolean("slashclient.benchmark");
+	static boolean auto = Boolean.getBoolean("slashclient.benchmark");
 	private static int autoWait;
 
 	private static boolean running;
@@ -51,6 +53,12 @@ public final class Benchmark {
 	private static double gpuSum;
 	private static int gpuSamples;
 	private static long lastSample;
+	/** The test scene being flown, or null for the turn in the player's own world. */
+	private static BenchScene.Plan plan;
+	/** Which of the scene's scenes each frame was in. */
+	private static byte[] frameShot = new byte[4096];
+	/** Tests run the scene faster (2 = twice as fast); a real run is always 1. */
+	static double timeScale = 1;
 
 	/** The game measures the GPU only while something needs it (see GpuTimerMixin). */
 	public static boolean running() {
@@ -73,12 +81,23 @@ public final class Benchmark {
 		public Double cpu;
 		public Double gpu;
 		public Settings settings = new Settings();
+		/** {@link BenchScene#ID} when the run was on the test scene: compared only with such runs. */
+		public String scene;
+		/** The test scene's parts, each measured on its own. */
+		public List<SceneFps> scenes;
 		/** Frame times in ms; only for the screen right after the run, not saved. */
 		public transient float[] frameTimes;
 	}
 
 	public static final class Fps {
 		public double avg, low1, low01, median, min, max;
+	}
+
+	/** One part of the test scene ("forest", "water"...). */
+	public static final class SceneFps {
+		public String id;
+		public double avg, low1;
+		public int frames, stutters;
 	}
 
 	public static final class Settings {
@@ -94,6 +113,19 @@ public final class Benchmark {
 
 	public static void start(Minecraft mc) {
 		if (mc.player == null || running) return;
+		// the test scene's world: the camera flies its path once everything is loaded
+		if (BenchScene.isSceneWorld(mc)) {
+			auto = false;
+			BenchScene.prepare(mc);
+			return;
+		}
+		begin(mc, null);
+	}
+
+	/** Measuring starts: the turn in place, or the test scene's flight. */
+	static void begin(Minecraft mc, BenchScene.Plan scene) {
+		if (mc.player == null || running) return;
+		plan = scene;
 		running = true;
 		startedAt = System.nanoTime();
 		lastFrame = 0;
@@ -110,18 +142,28 @@ public final class Benchmark {
 	public static void cancel(Minecraft mc) {
 		if (!running) return;
 		running = false;
-		if (mc.player != null) look(mc, startYaw, startPitch);
+		if (mc.player != null && plan == null) look(mc, startYaw, startPitch);
+		plan = null;
+		BenchScene.stopped(mc);
 		Compat.overlay(mc, Component.translatable("slashclient-hud.benchmark.cancelled"));
 	}
 
 	static void tick(Minecraft mc) {
+		BenchScene.tick(mc);
+		//#if MC >= 1.21.4
+		// nobody touches the keys during a run: without this the game drops to 30 FPS after a while "away"
+		if (running || BenchScene.active()) mc.getFramerateLimitTracker().onInputReceived();
+		//#endif
 		if (running) {
-			if (mc.player == null) running = false;
+			if (mc.player == null) {
+				running = false;
+				plan = null;
+			}
 			// Esc, the chat or an inventory spoil the measurement
 			else if (Compat.screen(mc) != null && !(Compat.screen(mc) instanceof BenchmarkScreen)) cancel(mc);
 			return;
 		}
-		if (!auto) return;
+		if (!auto || BenchScene.busy()) return;
 		// a few seconds in the world first, so chunks around are loaded
 		if (mc.player != null && mc.level != null && Compat.screen(mc) == null) {
 			if (++autoWait >= 100) {
@@ -133,11 +175,23 @@ public final class Benchmark {
 
 	/** Every frame while drawing the HUD: the frame time, the camera, the progress line. */
 	static void frame(GuiGraphicsExtractor g, Minecraft mc) {
+		if (!running) BenchScene.draw(g, mc);
 		if (!running || mc.player == null) return;
 		long now = System.nanoTime();
-		double t = (now - startedAt) / 1e9;
-		if (t >= WARMUP && lastFrame != 0) {
-			if (count == frames.length) frames = Arrays.copyOf(frames, count * 2);
+		double t = (now - startedAt) / 1e9 * timeScale;
+		// in the test scene: which part, and the cut at its start is left out
+		int shot = 0;
+		boolean cut = false;
+		if (plan != null && t >= WARMUP) {
+			shot = plan.shotAt(t - WARMUP);
+			cut = t - WARMUP - plan.shotStart(shot) < BenchScene.INTRO;
+		}
+		if (t >= WARMUP && lastFrame != 0 && !cut) {
+			if (count == frames.length) {
+				frames = Arrays.copyOf(frames, count * 2);
+				frameShot = Arrays.copyOf(frameShot, count * 2);
+			}
+			frameShot[count] = (byte) shot;
 			frames[count++] = (now - lastFrame) / 1e6f;
 		}
 		lastFrame = now;
@@ -155,18 +209,30 @@ public final class Benchmark {
 			}
 		}
 
-		// where the camera looks at this moment
+		// where the camera looks at this moment (the test scene moves the camera itself, BenchCameraMixin)
 		double s = t - WARMUP;
-		if (s < 0) look(mc, startYaw, 0);
+		if (plan != null) {
+			// nothing: BenchScene.camera()
+		} else if (s < 0) look(mc, startYaw, 0);
 		else if (s < SPIN) look(mc, startYaw + (float) (s / SPIN * 360), 0);
 		else if (s < SPIN + SKY) look(mc, startYaw + (float) ((s - SPIN) / SKY * 180), -35);
 		else look(mc, startYaw, 0);
 
-		if (t >= LENGTH) {
+		if (t >= length()) {
 			finish(mc);
 			return;
 		}
 		drawProgress(g, mc, t);
+	}
+
+	private static double length() {
+		return plan == null ? LENGTH : WARMUP + plan.length();
+	}
+
+	/** Seconds into the test scene's flight (below 0 during the warm-up), or -1 when it is not flying. */
+	static double flightTime() {
+		if (!running || plan == null) return -1;
+		return (System.nanoTime() - startedAt) / 1e9 * timeScale - WARMUP;
 	}
 
 	private static void look(Minecraft mc, float yaw, float pitch) {
@@ -179,22 +245,51 @@ public final class Benchmark {
 	}
 
 	private static void drawProgress(GuiGraphicsExtractor g, Minecraft mc, double t) {
-		Component label = Ui.trBold(t < WARMUP ? "slashclient-hud.benchmark.warmup" : "slashclient-hud.benchmark.running");
+		Component label = t < WARMUP ? Ui.trBold("slashclient-hud.benchmark.warmup") : plan == null ? Ui.trBold("slashclient-hud.benchmark.running")
+			: Ui.trBold("slashclient-hud.benchmark.scene.progress", plan.shotAt(t - WARMUP) + 1, plan.shots.size(), BenchScene.name(plan.shots.get(plan.shotAt(t - WARMUP)).id));
 		int w = Math.min(g.guiWidth() - 12, Math.max(160, Ui.width(label) + 52)), x = (g.guiWidth() - w) / 2, y = 6;
 		Ui.round(g, x, y, w, 26, 6, 0xC0111622);
 		Ui.draw(g, Ui.fit(label, w - 50), x + 8, y + 5, Ui.TEXT);
-		Component left = Ui.text((int) Math.ceil(LENGTH - t) + " s");
+		Component left = Ui.text((int) Math.ceil((length() - t) / timeScale) + " s");
 		Ui.draw(g, left, x + w - 8 - Ui.width(left), y + 5, Ui.TEXT_2);
 		Ui.round(g, x + 8, y + 17, w - 16, 3, 1, 0xFF2A3142);
-		Ui.round(g, x + 8, y + 17, Math.max(2, (int) ((w - 16) * Math.min(1, t / LENGTH))), 3, 1, Ui.ACCENT);
+		Ui.round(g, x + 8, y + 17, Math.max(2, (int) ((w - 16) * Math.min(1, t / length()))), 3, 1, Ui.ACCENT);
 	}
 
 	private static void finish(Minecraft mc) {
 		running = false;
-		look(mc, startYaw, startPitch);
+		if (plan == null) look(mc, startYaw, startPitch);
 		Result r = result(mc, Arrays.copyOf(frames, count));
-		Result before = latest();
+		if (plan != null) {
+			r.scene = BenchScene.ID;
+			r.scenes = new ArrayList<>();
+			for (int i = 0; i < plan.shots.size(); i++) {
+				int n = 0;
+				for (int f = 0; f < count; f++) if (frameShot[f] == i) n++;
+				float[] part = new float[n];
+				n = 0;
+				for (int f = 0; f < count; f++) if (frameShot[f] == i) part[n++] = frames[f];
+				Result one = new Result();
+				stats(one, part);
+				SceneFps sf = new SceneFps();
+				sf.id = plan.shots.get(i).id;
+				sf.avg = one.fps.avg;
+				sf.low1 = one.fps.low1;
+				sf.frames = one.frames;
+				sf.stutters = one.stutters;
+				r.scenes.add(sf);
+			}
+		}
+		plan = null;
+		BenchScene.stopped(mc);
+		Result before = previous(r);
 		save(r);
+		// measuring several runs one after another (gradlew runClient -PbenchScene): the game closes by itself
+		if (Boolean.getBoolean("slashclient.benchmark.quit")) {
+			SlashHud.LOG.info("Benchmark: {} FPS average, 1% low {}, scene {}", r.fps.avg, r.fps.low1, r.scene);
+			mc.stop();
+			return;
+		}
 		mc.setScreenAndShow(new BenchmarkScreen(r, before));
 	}
 
@@ -287,6 +382,19 @@ public final class Benchmark {
 		return out;
 	}
 
+	/**
+	 * The run before `r` that it can be compared with: the test scene with the test scene, a
+	 * player's own world with own worlds. Null when there is none.
+	 */
+	public static Result previous(Result r) {
+		Result best = null;
+		for (Result x : load()) {
+			if (x.at >= r.at || !java.util.Objects.equals(x.scene, r.scene)) continue;
+			if (best == null || x.at > best.at) best = x;
+		}
+		return best;
+	}
+
 	/** The newest saved run, or null. */
 	public static Result latest() {
 		Result best = null;
@@ -294,7 +402,7 @@ public final class Benchmark {
 		return best;
 	}
 
-	private static void save(Result r) {
+	static void save(Result r) {
 		List<Result> all = load();
 		all.add(r);
 		all.sort((a, b) -> Long.compare(a.at, b.at));

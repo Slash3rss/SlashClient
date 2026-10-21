@@ -653,6 +653,118 @@ public final class TestHooks {
 		return r.frames + " " + r.fps.avg + " " + r.fps.low1 + " " + (screen() instanceof BenchmarkScreen) + " " + r.settings.renderDistance;
 	}
 
+	/** The test scene from the menu, flown `speed` times faster than a real run. */
+	public static void benchScene(double speed) {
+		Benchmark.timeScale = speed;
+		BenchScene.open(net.minecraft.client.Minecraft.getInstance());
+	}
+
+	/** "stage scene running", e.g. "running forest true", for the test scene's test. */
+	public static String benchSceneState() {
+		return BenchScene.state() + " " + Benchmark.running();
+	}
+
+	/** The newest run's mark and its scenes as "id:avg:frames", for the test scene's test. */
+	public static String benchSceneResult() {
+		Benchmark.Result r = Benchmark.latest();
+		if (r == null) return "none";
+		StringBuilder b = new StringBuilder(String.valueOf(r.scene)).append(' ').append(r.frames).append(' ').append(r.fps.avg)
+			.append(' ').append(screen() instanceof BenchmarkScreen);
+		if (r.scenes != null) for (var sc : r.scenes) b.append(' ').append(sc.id).append(':').append(sc.avg).append(':').append(sc.frames);
+		return b.toString();
+	}
+
+	/**
+	 * Runs from before, for the comparison: a test scene run (slower in every scene) and, newer,
+	 * one in an own world, which the test scene's result must not be compared with.
+	 */
+	public static void benchEarlierRuns() {
+		long now = System.currentTimeMillis();
+		Benchmark.Result scene = new Benchmark.Result();
+		scene.at = now - 120_000;
+		scene.version = "26.3";
+		scene.scene = BenchScene.ID;
+		scene.fps.avg = 40;
+		scene.fps.low1 = 9;
+		scene.frames = 2000;
+		scene.scenes = new java.util.ArrayList<>();
+		for (String id : new String[] { "forest", "panorama", "village", "water", "entities", "particles", "night" }) {
+			Benchmark.SceneFps sc = new Benchmark.SceneFps();
+			sc.id = id;
+			sc.avg = 40;
+			sc.low1 = 9;
+			sc.frames = 300;
+			scene.scenes.add(sc);
+		}
+		Benchmark.save(scene);
+		Benchmark.Result own = new Benchmark.Result();
+		own.at = now - 60_000;
+		own.version = "26.3";
+		own.world = "New World";
+		own.fps.avg = 500;
+		own.fps.low1 = 100;
+		own.frames = 5000;
+		Benchmark.save(own);
+	}
+
+	/** What the newest run is compared with: "scene avg" of the run before it, or "none". */
+	public static String benchCompared() {
+		Benchmark.Result r = Benchmark.latest();
+		Benchmark.Result before = r == null ? null : Benchmark.previous(r);
+		return before == null ? "none" : before.scene + " " + before.fps.avg;
+	}
+
+	/** Where the scene's camera is now: x y z yaw pitch, or "none". */
+	public static String benchCamera() {
+		double[] at = BenchScene.camera();
+		return at == null ? "none" : at[0] + " " + at[1] + " " + at[2] + " " + at[3] + " " + at[4];
+	}
+
+	/** The places the test scene would use in this server's world, as "key=value" words (on the server's thread). */
+	public static String benchPlan(net.minecraft.server.MinecraftServer server) {
+		BenchScene.Plan p = BenchScene.compute(server.overworld());
+		return "village=" + p.village + " centre=" + p.cx + "," + p.ground + "," + p.cz + " forest=" + p.forestHits + " water=" + p.waterHits
+			+ " bumps=" + p.penBumps + " lanterns=" + p.lanterns.size() + " mobs=" + p.mobs.size() + " seconds=" + p.length();
+	}
+
+	public static void benchSceneDone() {
+		Benchmark.timeScale = 1;
+	}
+
+	/**
+	 * Out of a world the test opened itself (not through the test's world builder), as the test
+	 * framework closes its own: without waiting here for the save, which the test's ticks drive.
+	 */
+	public static void leaveWorld() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		var saving = net.minecraft.network.chat.Component.translatable("menu.savingLevel");
+		//#if MC >= 1.21.6
+		if (mc.level != null) mc.level.disconnect(saving);
+		//#elif MC >= 1.21.4
+		//$ if (mc.level != null) mc.level.disconnect();
+		//#endif
+		//#if MC >= 1.21.4
+		mc.disconnect(new net.minecraft.client.gui.screens.GenericMessageScreen(saving), false);
+		//#else
+		//$ Compat.leaveWorld(mc, saving);
+		//#endif
+	}
+
+	public static boolean inWorld() {
+		return net.minecraft.client.Minecraft.getInstance().level != null;
+	}
+
+	/** Out of the world and on a menu that is not a loading or saving screen. */
+	public static boolean onMenu() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		var s = screen();
+		return mc.level == null && (s instanceof net.minecraft.client.gui.screens.TitleScreen || s instanceof dev.slash3rss.slashclient.hud.ui.SlashTitleScreen);
+	}
+
+	public static int renderDistance() {
+		return net.minecraft.client.Minecraft.getInstance().options.renderDistance().get();
+	}
+
 	public static float yaw() {
 		return net.minecraft.client.Minecraft.getInstance().player.getYRot();
 	}

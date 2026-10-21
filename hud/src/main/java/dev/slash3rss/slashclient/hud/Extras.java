@@ -42,6 +42,9 @@ public final class Extras {
 
 	/** Your own time of day: the same day as the server's (so the moon keeps its phase), your hour. */
 	public static long time(long ticks) {
+		// the benchmark's test scene: always the same hour, whatever the player chose
+		long scene = BenchScene.time();
+		if (scene >= 0) return Math.floorDiv(ticks, 24000L) * 24000L + scene;
 		if (cfg() == null || !cfg().timeChanger) return ticks;
 		return Math.floorDiv(ticks, 24000L) * 24000L + cfg().fixedTime;
 	}

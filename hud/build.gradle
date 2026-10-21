@@ -216,6 +216,16 @@ if (project.hasProperty('shots')) {
 	}
 }
 
+// the benchmark's test scene, measured once and the game closed: gradlew runClient -PbenchScene
+// (results in build/<mc>/run/config/slashclient-benchmarks.json; run it a few times to see the spread)
+if (project.hasProperty('benchScene')) {
+	loom.runs.matching { it.name == 'client' }.configureEach {
+		vmArg "-Dslashclient.benchmark=true"
+		vmArg "-Dslashclient.benchmark.scene=true"
+		vmArg "-Dslashclient.benchmark.quit=true"
+	}
+}
+
 // partner servers from a running SlashClient server: gradlew runClientGameTest -PsocialUrl=http://localhost:8787
 if (project.hasProperty('socialUrl')) {
 	loom.runs.matching { it.name == 'clientGameTest' }.configureEach {
