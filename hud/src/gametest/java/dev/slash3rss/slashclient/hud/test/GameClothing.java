@@ -11,19 +11,27 @@ public class GameClothing implements FabricClientGameTest {
 	public void runTest(ClientGameTestContext context) {
 		if (TestFilter.skip(context, getClass())) return;
 		String known = context.computeOnClient(mc -> TestHooks.clothing());
-		if (!known.equals("tophat,crown,cap,headphones,beanie,wizard,halo|scarf,bowtie,tie,medal,jacket")) throw new AssertionError("Not the clothing we made: " + known);
+		if (!known.equals("tophat,crown,cap,headphones,beanie,wizard,halo|scarf,bowtie,tie,medal,jacket,autumnscarf")) throw new AssertionError("Not the clothing we made: " + known);
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			world.getServer().runCommand("time set 6000");
 			context.runOnClient(mc -> TestHooks.cosmeticsSelf(null, true));
 			// every item, a hat and a top at a time, seen from the front
 			String[][] outfits = {{"tophat", "bowtie"}, {"crown", "medal"}, {"cap", "jacket"}, {"headphones", "scarf"},
-				{"beanie", "scarf"}, {"wizard", "tie"}, {"halo", "jacket"}};
+				{"beanie", "scarf"}, {"wizard", "tie"}, {"halo", "jacket"}, {"cap", "autumnscarf"}};
 			for (String[] o : outfits) {
 				context.runOnClient(mc -> { TestHooks.wear("hat", o[0]); TestHooks.wear("top", o[1]); });
 				context.waitTicks(5);
 				context.takeScreenshot("clothing-" + o[0] + "-" + o[1]);
 			}
+			// the autumn scarf alone: its knot and the two ends in front, and from the side
+			context.runOnClient(mc -> { TestHooks.wear("hat", null); TestHooks.wear("top", "autumnscarf"); });
+			context.waitTicks(5);
+			context.takeScreenshot("clothing-autumnscarf-front");
+			context.runOnClient(mc -> { TestHooks.cosmeticsSelf(null, false); TestHooks.cameraTurn(90); });
+			context.waitTicks(5);
+			context.takeScreenshot("clothing-autumnscarf-side");
+			context.runOnClient(mc -> { TestHooks.cameraTurn(0); TestHooks.cosmeticsSelf(null, true); });
 			// from behind and from the side, then crouching: it moves with the head, body and arms
 			context.runOnClient(mc -> { TestHooks.wear("hat", "headphones"); TestHooks.wear("top", "jacket"); });
 			context.runOnClient(mc -> TestHooks.cosmeticsSelf(null, false));

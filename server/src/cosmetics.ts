@@ -188,6 +188,7 @@ export const ITEMS: Item[] = [
   { id: 'tie', slot: 'top', name: 'Krawat', since: '0.9.11' },
   { id: 'medal', slot: 'top', name: 'Medal', since: '0.9.11' },
   { id: 'jacket', slot: 'top', name: 'Kurtka', since: '0.9.11' },
+  { id: 'autumnscarf', slot: 'top', name: 'Szalik jesienny', since: '0.9.29' },
   // kill effects: a short burst of particles where a mob or player the wearer killed falls (seen only by SlashClient players)
   { id: 'lightning', slot: 'kill', name: 'Piorun', since: '0.9.14' },
   { id: 'blood', slot: 'kill', name: 'Krew', since: '0.9.14' },
@@ -259,6 +260,7 @@ export const ITEMS: Item[] = [
   { id: 'ramhorns', slot: 'ears', name: 'Rogi barana', since: '0.9.20' },
   { id: 'antlers', slot: 'ears', name: 'Poroże', since: '0.9.20' },
   { id: 'unicorn', slot: 'ears', name: 'Róg jednorożca', since: '0.9.20' },
+  { id: 'earmuffs', slot: 'ears', name: 'Nauszniki', since: '0.9.29' },
   // on the back (in the cape's and the wings' place) and tails, boxes like the clothing (src/shared/gear.ts)
   { id: 'backpack', slot: 'back', name: 'Plecak', since: '0.9.20' },
   { id: 'quiver', slot: 'back', name: 'Kołczan', since: '0.9.20' },

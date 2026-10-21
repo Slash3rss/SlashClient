@@ -135,6 +135,13 @@ export const CLOTHING: ClothingItem[] = [
     { bone: 'right_arm', from: [-3, -2, -2], size: [4, 10, 4], inflate: 0.4 },
     { bone: 'left_arm', from: [-1, -2, -2], size: [4, 10, 4], inflate: 0.4 },
   ] },
+  // a thick knitted scarf wound round the neck, tied in front, a long and a short end hanging from the knot
+  { id: 'autumnscarf', slot: 'top', name: 'Szalik jesienny', boxes: [
+    { bone: 'body', from: [-4, 0.25, -2], size: [8, 2.5, 4], inflate: 0.75 },
+    { bone: 'body', from: [-2.75, 2, -3.5], size: [2.5, 2, 1] },
+    { bone: 'body', from: [-2.5, 3.25, -3.25], size: [2, 7.25, 0.75] },
+    { bone: 'body', from: [-0.75, 3.25, -3], size: [2, 4.75, 0.45] },
+  ] },
   // ---------- on the feet: the same pair on both legs (hidden under real boots) ----------
   { id: 'sneakers_red', slot: 'shoes', name: 'Trampki czerwone', boxes: legs(SNEAKER) },
   { id: 'sneakers_blue', slot: 'shoes', name: 'Trampki niebieskie', boxes: legs(SNEAKER) },
@@ -298,6 +305,17 @@ export const CLOTHING: ClothingItem[] = [
   { id: 'unicorn', slot: 'ears', name: 'Róg jednorożca', boxes: ([
     [[-1, -10, -4], [2, 1.5, 2]], [[-0.75, -11.5, -3.75], [1.5, 1.5, 1.5]], [[-0.5, -13, -3.5], [1, 1.5, 1]], [[-0.25, -14.25, -3.25], [0.5, 1.25, 0.5]],
   ] as [number, number, number][][]).map(([from, size]): ClothingBox => ({ bone: 'head', from, size, pivot: [0, -8.5, -3], rotate: [20, 0, 0], hats: ['crown', 'cap', 'beanie', 'headphones', 'halo'] })) },
+  // fluffy muffs over the ears (where the headphones' cups sit, so those hide them), round from the side:
+  // a square with a bar across and one up and down; a band over the top of the head between them.
+  // Under a hat the band hides (the muffs stay, pressed to the hat's side); where it only goes under a brim, its sides stay
+  { id: 'earmuffs', slot: 'ears', name: 'Nauszniki', boxes: [
+    { bone: 'head', from: [-5.2, -9.35, -0.75], size: [10.4, 0.6, 1], hats: ['halo'] },
+    ...sides([
+      { bone: 'head', from: [4.6, -8.75, -0.75], size: [0.55, 2.75, 1], hats: ['tophat', 'wizard', 'halo'] },
+      ...([[[4.4, -5.75, -2.25], [1.85, 4, 4]], [[4.45, -6.25, -1.5], [1.6, 5, 2.5]], [[4.45, -5, -2.75], [1.6, 2.5, 5]]] as [number, number, number][][])
+        .map(([from, size]): ClothingBox => ({ bone: 'head', from, size, hats: ['tophat', 'crown', 'cap', 'beanie', 'wizard', 'halo'] })),
+    ]),
+  ] },
 ];
 
 /** The same boxes on the left (as given, +x) and mirrored on the right, with the pivot, turn and twitch mirrored too. */

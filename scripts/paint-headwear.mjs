@@ -232,5 +232,26 @@ export function headwearPaint({ hex, shade, grain, isSide, K }) {
       if (isSide(face) && (x + y) % 8 < 2) return shade(hex('#f0c040'), 0.95);
       return face === 'down' ? shade(pearl, 0.8) : pearl;
     },
+    earmuffs({ box, face, x, y, w, h, px, py }) {
+      // the band over the head and down to the muffs: burgundy, a lighter line along its top
+      const n = box === 0 ? -1 : (box - 1) % 4;
+      if (n <= 0) {
+        const red = shade(hex('#8e1c2c'), 0.9 + grain(62, px, py) * 0.14);
+        if (face === 'down') return shade(red, 1.25);
+        if (box === 0 && isSide(face) && y === 0) return shade(red, 1.2);
+        return red;
+      }
+      // the muffs: thick cream fur in tufts (strands of lighter and darker), puffed out in the middle of the outer side
+      const left = box < 5;
+      const tuft = grain(63, Math.floor(x / 2) + px * 7, Math.floor(y / 3) + py * 5);
+      let fur = shade(hex('#f3e9dc'), 0.86 + tuft * 0.2 + grain(64, x + px * 9, y + py * 9) * 0.06);
+      if (tuft > 0.9) fur = shade(hex('#e6d2bd'), 0.95);
+      if (face === (left ? 'west' : 'east')) return shade(hex('#d9c6b0'), 0.85);
+      if (face === (left ? 'east' : 'west') && n === 1) {
+        const r = Math.hypot(x + 0.5 - w / 2, y + 0.5 - h / 2) / (Math.min(w, h) / 2);
+        if (r < 0.55) return shade(fur, 1.06);
+      }
+      return fur;
+    },
   };
 }
