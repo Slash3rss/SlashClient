@@ -818,6 +818,8 @@ export function createApp(cfg: Config) {
     sql: db.sql, webDir: cfg.webDir, publicUrl: cfg.publicUrl, imageDir: path.join(path.dirname(cfg.dbFile), 'home-images'), admin,
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
     versioned: (html) => versioned(html, 'text/html'),
+    // the badge from the newest release's notes (downloads is made further down; asked only later)
+    news: () => downloads.news(),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },

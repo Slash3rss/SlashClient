@@ -25,6 +25,8 @@ export interface HomeContext {
   admin: (req: http.IncomingMessage) => string;
   audit: (admin: string, action: string, target: string, detail?: string) => void;
   versioned: (html: string) => string;
+  /** The newest release's badge text per language (downloads.ts), for "Plakietka z najnowszego wydania". */
+  news?: () => Promise<Partial<Record<Lang, string>>>;
   now?: () => number;
   fail: (status: number, code: string) => never;
 }
@@ -255,12 +257,17 @@ export function homeRoutes(ctx: HomeContext) {
     } catch {
       return undefined;
     }
-    const key = `${info.mtimeMs}:${store.publishedId(lang)}`;
+    // the release's badge (GitHub may be slow or down: then the badge from the editor)
+    const fresh = ctx.news ? await Promise.race([ctx.news().catch(() => ({})), new Promise<Record<string, string>>((r) => setTimeout(() => r({}), 1500))]) : {};
+    const news = (fresh as Partial<Record<Lang, string>>)[lang];
+    const key = `${info.mtimeMs}:${store.publishedId(lang)}:${news ?? ''}`;
     const hit = cache.get(lang);
     if (hit?.key === key) return hit;
     const t = await template();
     if (!t) return undefined;
-    const html = ctx.versioned(homePage(t.text, store.live(lang), lang, base));
+    const live = store.live(lang);
+    const content = news && live.hero.pillAuto !== false ? { ...live, hero: { ...live.hero, pillShow: true, pillText: news } } : live;
+    const html = ctx.versioned(homePage(t.text, content, lang, base));
     const made = { key, html, etag: `"${createHash('sha256').update(html).digest('base64url').slice(0, 27)}"` };
     cache.set(lang, made);
     return made;

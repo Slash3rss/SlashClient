@@ -66,6 +66,7 @@ export const SECTIONS: Section[] = [
     id: 'hero', name: 'Nagłówek (na górze strony)', icon: 'fa-solid fa-heading',
     fields: {
       pillShow: { t: 'bool', label: 'Pokaż plakietkę „Nowość” nad tytułem' },
+      pillAuto: { t: 'bool', label: 'Plakietka z najnowszego wydania (gdy wydanie ma swoją; inaczej ten tekst)' },
       pillText: text('Plakietka: tekst', 80),
       pillHref: { t: 'link', label: 'Plakietka: link' },
       titleBefore: text('Tytuł: początek', 60, { hint: 'Spacje na końcu się liczą.' }),
@@ -210,7 +211,7 @@ export const DEFAULTS: Record<Lang, Content> = {
       admin: 'Panel admina', account: 'Zaloguj się', accountTitle: 'Twoje konto', download: 'Pobierz',
     },
     hero: {
-      pillShow: true, pillText: 'Nowość: peleryny, emotki i klipy', pillHref: '#kosmetyki',
+      pillShow: true, pillAuto: true, pillText: 'Nowość: peleryny, emotki i klipy', pillHref: '#kosmetyki',
       titleBefore: 'Minecraft, tylko ', titleHighlight: 'lepiej', titleAfter: '.',
       lead: 'Darmowy launcher Minecraft z własnym HUD-em, znajomymi, pelerynami, benchmarkiem FPS i klipami. Bez szukania i instalowania modów.',
       download: 'Pobierz dla {os}', otherSystems: 'Inne systemy:',
@@ -295,7 +296,7 @@ export const DEFAULTS: Record<Lang, Content> = {
       admin: 'Admin panel', account: 'Sign in', accountTitle: 'Your account', download: 'Download',
     },
     hero: {
-      pillShow: true, pillText: 'New: capes, emotes and clips', pillHref: '#kosmetyki',
+      pillShow: true, pillAuto: true, pillText: 'New: capes, emotes and clips', pillHref: '#kosmetyki',
       titleBefore: 'Minecraft, only ', titleHighlight: 'better', titleAfter: '.',
       lead: 'A free Minecraft launcher with its own HUD, friends, capes, an FPS benchmark and clips. No hunting for mods and installing them.',
       download: 'Download for {os}', otherSystems: 'Other systems:',

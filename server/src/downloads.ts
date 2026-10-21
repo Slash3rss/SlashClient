@@ -23,10 +23,30 @@ export function isDownloadOs(os: string): os is DownloadOs {
 
 interface Asset { name: string; url: string; browser_download_url: string }
 
+/** What a release says is new, for the home page's badge: per language, from its notes. */
+export type ReleaseNews = Partial<Record<'pl' | 'en', string>>;
+
+/**
+ * The badge text a release's notes carry (release-notes/vX.md, the release's description):
+ * `<!-- nowosc: … -->` in Polish, `<!-- news: … -->` in English. Releases with nothing worth a
+ * badge have none, and the badge stays as it was.
+ */
+export function releaseNews(body: string | undefined): ReleaseNews {
+  const out: ReleaseNews = {};
+  const pick = (re: RegExp) => re.exec(body ?? '')?.[1]?.replace(/\s+/g, ' ').trim().slice(0, 80) || undefined;
+  const pl = pick(/<!--\s*nowo(?:ść|sc)\s*:([^>]*?)-->/i);
+  const en = pick(/<!--\s*news\s*:([^>]*?)-->/i);
+  if (pl) out.pl = pl;
+  if (en) out.en = en;
+  return out;
+}
+
 const CACHE_MS = 5 * 60_000;
 
 export function createDownloads(opts: { repo: string; token?: string; fetchImpl: typeof fetch }) {
-  let cached: { at: number; assets: Asset[] } | undefined;
+  let cached: { at: number; assets: Asset[]; news: ReleaseNews } | undefined;
+  /** The badge text of the newest release that has one (kept until a newer one says otherwise). */
+  let lastNews: ReleaseNews = {};
 
   const headers = (accept: string): Record<string, string> => ({
     Accept: accept,
@@ -38,9 +58,16 @@ export function createDownloads(opts: { repo: string; token?: string; fetchImpl:
     if (cached && Date.now() - cached.at < CACHE_MS) return cached.assets;
     const res = await opts.fetchImpl(`https://api.github.com/repos/${opts.repo}/releases/latest`, { headers: headers('application/vnd.github+json') });
     if (!res.ok) throw new Error(`GitHub ${res.status}`);
-    const release = (await res.json()) as { assets?: Asset[] };
-    cached = { at: Date.now(), assets: release.assets ?? [] };
+    const release = (await res.json()) as { assets?: Asset[]; body?: string };
+    cached = { at: Date.now(), assets: release.assets ?? [], news: releaseNews(release.body) };
+    if (cached.news.pl || cached.news.en) lastNews = cached.news;
     return cached.assets;
+  }
+
+  /** What the latest release with a badge says is new (empty until GitHub has answered once). */
+  async function news(): Promise<ReleaseNews> {
+    await assets();
+    return lastNews;
   }
 
   /**
@@ -97,5 +124,5 @@ export function createDownloads(opts: { repo: string; token?: string; fetchImpl:
     return text;
   }
 
-  return { link, fileLink, fileText };
+  return { link, fileLink, fileText, news };
 }

@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 import { createApp } from '../src/app.ts';
+import { releaseNews } from '../src/downloads.ts';
 
 const dir = mkdtempSync(path.join(os.tmpdir(), 'slash-downloads-'));
 let base = '';
@@ -21,7 +22,7 @@ const fakeGitHub = (async (input: string | URL | Request, init?: RequestInit) =>
   if (auth !== 'Bearer sekret') return new Response('{"message":"Not Found"}', { status: 404 });
   if (url.endsWith('/releases/latest')) {
     const asset = (name: string, id: number) => ({ name, url: `https://api.github.com/repos/x/y/releases/assets/${id}`, browser_download_url: `https://github.com/x/y/releases/download/v0.5.0/${name}` });
-    return Response.json({ assets: [asset('SlashClient-Setup-0.5.0.exe', 1), asset('SlashClient-0.5.0-arm64.dmg', 2), asset('SlashClient-0.5.0.dmg', 3), asset('SlashClient-0.5.0-arm64.dmg.blockmap', 4), asset('latest.yml', 5), asset('SlashClient-0.5.0-win-app.zip', 6), asset('win-update-0.5.0.json', 7)] });
+    return Response.json({ body: '<!-- nowosc: Nowość: jesienne liście -->\n<!-- news: New: autumn leaves -->\n## SlashClient 0.5.0', assets: [asset('SlashClient-Setup-0.5.0.exe', 1), asset('SlashClient-0.5.0-arm64.dmg', 2), asset('SlashClient-0.5.0.dmg', 3), asset('SlashClient-0.5.0-arm64.dmg.blockmap', 4), asset('latest.yml', 5), asset('SlashClient-0.5.0-win-app.zip', 6), asset('win-update-0.5.0.json', 7)] });
   }
   // an older release, which still has a Linux build
   if (url.endsWith('/releases?per_page=10')) {
@@ -37,7 +38,7 @@ const fakeGitHub = (async (input: string | URL | Request, init?: RequestInit) =>
 }) as typeof fetch;
 
 before(async () => {
-  app = createApp({ dbFile: path.join(dir, 'test.db'), publicUrl: 'http://localhost', allowDevLogin: false, oauth: {}, fetchImpl: fakeGitHub, releasesRepo: 'x/y', releasesToken: 'sekret' });
+  app = createApp({ dbFile: path.join(dir, 'test.db'), publicUrl: 'http://localhost', allowDevLogin: false, oauth: {}, fetchImpl: fakeGitHub, releasesRepo: 'x/y', releasesToken: 'sekret', webDir: path.resolve(import.meta.dirname, '../web') });
   await new Promise<void>((r) => app.server.listen(0, r));
   base = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
 });
@@ -80,5 +81,21 @@ describe('downloads', () => {
     assert.equal(linux.status, 302);
     assert.equal(linux.headers.get('location'), 'https://objects.githubusercontent.com/signed/9');
     assert.equal((await fetch(`${base}/pobierz/android`, { redirect: 'manual' })).status, 404);
+  });
+
+  it('puts the newest release badge on the home page, in each language', async () => {
+    const pl = await (await fetch(`${base}/`, { headers: { 'Accept-Language': 'pl' } })).text();
+    assert.match(pl, /<span class="dot"><\/span> Nowość: jesienne liście /);
+    const en = await (await fetch(`${base}/en`)).text();
+    assert.match(en, /<span class="dot"><\/span> New: autumn leaves /);
+  });
+});
+
+describe('release badge', () => {
+  it('reads the badge lines of the release notes, and nothing when there are none', () => {
+    assert.deepEqual(releaseNews('<!-- nowość: Nowość: pupile -->\n<!--news:New: pets-->\n## x'), { pl: 'Nowość: pupile', en: 'New: pets' });
+    assert.deepEqual(releaseNews('## SlashClient 0.9.29\n- fix'), {});
+    assert.deepEqual(releaseNews(undefined), {});
+    assert.equal(releaseNews(`<!-- nowosc: ${'a'.repeat(200)} -->`).pl?.length, 80);
   });
 });
