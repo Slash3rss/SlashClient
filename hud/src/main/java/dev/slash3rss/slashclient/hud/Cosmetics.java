@@ -58,10 +58,10 @@ public final class Cosmetics {
 	// fireflies came with 1.21.5
 	//#if MC >= 1.21.5
 	static final List<String> AURAS = List.of("enchant", "portal", "cherry", "souls", "royal", "glow", "magic", "amber", "sculk",
-		"spores", "nautilus", "tears", "fireflies");
+		"spores", "nautilus", "tears", "fireflies", "leaves_gold", "leaves_autumn");
 	//#else
 	//$ static final List<String> AURAS = List.of("enchant", "portal", "cherry", "souls", "royal", "glow", "magic", "amber", "sculk",
-	//$ 	"spores", "nautilus", "tears");
+	//$ 	"spores", "nautilus", "tears", "leaves_gold", "leaves_autumn");
 	//#endif
 	static final List<String> PETS = List.of("allay", "vex", "bat", "parrot", "bee", "blaze", "phantom", "axolotl", "frog", "fox", "cat", "duszek_haze", "pet_wheelbarrow", "pet_wheelbarrow_autumn");
 	private static final Map<String, List<String>> SLOTS = Map.ofEntries(Map.entry("cape", CAPES), Map.entry("wings", WINGS), Map.entry("elytra", ELYTRAS),

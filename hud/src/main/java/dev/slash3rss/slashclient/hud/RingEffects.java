@@ -5,12 +5,17 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -19,6 +24,8 @@ import java.util.UUID;
  * It lies on the block the player stands on; jumping or falling it stays on the ground below and
  * fades with the height, and it is gone in the air (higher than {@link #FADE} blocks), swimming,
  * gliding or sleeping. Crouching dims it. What others wear comes from the SlashClient server.
+ * The leaf rings (a patch of autumn leaves) lie still, and walking over them kicks a few leaves up
+ * (Leaves: the game's falling-leaf particles with our pictures).
  *
  * The pictures (textures/ring/<id>.png, or <id>_<n>.png for an animated one's frames) are two squares
  * side by side, the ring on the left (scripts/make-rings.mjs).
@@ -29,7 +36,9 @@ public final class RingEffects {
 	/** In the order of the menus (and of the server's catalog). */
 	public static final List<String> IDS = List.of("ring_runes", "ring_flame", "ring_frost", "ring_rainbow", "ring_mushroom",
 		"ring_galaxy", "ring_halo", "ring_toxic",
-		"ring_sparks", "ring_ocean");
+		"ring_sparks", "ring_ocean", "ring_leaves_gold", "ring_leaves_autumn");
+	/** Rings that lie still (leaves on the ground do not turn or breathe). */
+	static final Set<String> STILL = Set.of("ring_leaves_gold", "ring_leaves_autumn");
 	/** Rings drawn as a loop of frames, and how many. */
 	static final Map<String, Integer> FRAMES = Map.of("ring_runes", 8, "ring_flame", 8, "ring_rainbow", 8, "ring_galaxy", 8, "ring_toxic", 8);
 	private static final long FRAME_MS = 140;
@@ -46,14 +55,14 @@ public final class RingEffects {
 		return Cosmetics.textureId("ring", frames == null ? id : id + "_" + (System.currentTimeMillis() / FRAME_MS) % frames);
 	}
 
-	/** How far it has turned now, in degrees: once round in 14 seconds. */
-	public static float spin() {
-		return (System.currentTimeMillis() % 14_000) / 14_000f * 360f;
+	/** How far it has turned now, in degrees: once round in 14 seconds (a still one not at all). */
+	public static float spin(String id) {
+		return STILL.contains(id) ? 0 : (System.currentTimeMillis() % 14_000) / 14_000f * 360f;
 	}
 
-	/** Its size now, breathing in and out a little (1 ± 4%). */
-	public static float pulse() {
-		return 1f + 0.04f * (float) Math.sin((System.currentTimeMillis() % 3_600_000) / 1000.0 * 2.2);
+	/** Its size now, breathing in and out a little (1 ± 4%; a still one keeps its size). */
+	public static float pulse(String id) {
+		return STILL.contains(id) ? 1 : 1f + 0.04f * (float) Math.sin((System.currentTimeMillis() % 3_600_000) / 1000.0 * 2.2);
 	}
 
 	/** Whether a player's ring shows: rings on, and others' too unless they are switched off. */
@@ -86,5 +95,35 @@ public final class RingEffects {
 		if (above < 0) return 0;
 		float a = (float) Mth.clamp(1 - above / FADE, 0, 1);
 		return crouching ? a * CROUCHING : a;
+	}
+
+	/** Further than this nobody would see the kicked-up leaves. */
+	private static final double RANGE_SQ = 48 * 48;
+	private static final RandomSource R = RandomSource.create();
+	private static final Map<UUID, Vec3> last = new HashMap<>();
+	private static int tick;
+
+	/** Leaves kicked up from the leaf rings of players walking over the ground; once a tick. */
+	static void tick(Minecraft mc) {
+		if (mc.level == null || mc.player == null) {
+			last.clear();
+			return;
+		}
+		if (mc.isPaused()) return;
+		tick++;
+		for (Player p : mc.level.players()) {
+			Vec3 pos = p.position(), before = last.put(p.getUUID(), pos);
+			String variant = Leaves.variant(Cosmetics.worn(p.getUUID(), "ring"));
+			if (variant == null || before == null || !shows(p.getUUID()) || !p.onGround() || p.isInWater() || p.isPassenger()
+				|| p.isInvisible() || p.isSpectator() || p.distanceToSqr(mc.player) > RANGE_SQ) continue;
+			double dx = pos.x - before.x, dz = pos.z - before.z;
+			if (Math.hypot(dx, dz) < 0.04) continue;
+			// running kicks up more of them
+			if (tick % (p.isSprinting() ? 2 : 4) != 0) continue;
+			double a = R.nextDouble() * Math.PI * 2, r = 0.25 + R.nextDouble() * 0.4;
+			Leaves.kick(mc, variant, pos.x + Math.cos(a) * r, pos.y + 0.05, pos.z + Math.sin(a) * r,
+				dx * 0.25 + (R.nextDouble() - 0.5) * 0.06, 0.05 + R.nextDouble() * 0.035, dz * 0.25 + (R.nextDouble() - 0.5) * 0.06);
+		}
+		if (tick % 200 == 0) last.keySet().removeIf(id -> mc.level.players().stream().noneMatch(p -> p.getUUID().equals(id)));
 	}
 }

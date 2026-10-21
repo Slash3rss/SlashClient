@@ -747,6 +747,11 @@ public final class TestHooks {
 		return String.join(",", RingEffects.IDS) + "|" + String.join(",", MoveEffects.IDS);
 	}
 
+	/** How many autumn leaves (Leaves: the leaf auras and rings) have been made so far. */
+	public static int leavesMade() {
+		return Leaves.made;
+	}
+
 	/** Sprays as the key does (`wait`: keeping the wait between sprays), and what is sprayed then (Sprays.summary). */
 	public static String spray(boolean wait) {
 		var mc = net.minecraft.client.Minecraft.getInstance();

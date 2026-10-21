@@ -22,6 +22,8 @@ public final class FigureParticles {
 
 	private static final class P {
 		float x, y, z, vx, vy, vz, gravity, age, life;
+		/** How far it swings from side to side as it falls (a leaf), and where in the swing it starts. */
+		float sway, phase;
 		Style style;
 		int frame, color;
 		boolean blink;
@@ -64,6 +66,11 @@ public final class FigureParticles {
 			}
 			p.vy -= p.gravity * dt;
 			p.x += p.vx * dt;
+			if (p.sway > 0) {
+				// a leaf: swinging to and fro, slower at the ends of the swing
+				p.x += (float) Math.cos(p.age * 2.4f + p.phase) * p.sway * dt;
+				p.z += (float) Math.sin(p.age * 1.7f + p.phase) * p.sway * 0.6f * dt;
+			}
 			p.y += p.vy * dt;
 			p.z += p.vz * dt;
 		}
@@ -162,6 +169,19 @@ public final class FigureParticles {
 				add(letter, x * 1.25f, y + 0.4f, z * 1.25f, -x * 1.25f, (1.2f - y - 0.4f), -z * 1.25f, 1.0f).life = 1.0f;
 			}
 			case "portal" -> add(new Style(frames("generic", 7, 0), 0xFFB050F0, 0.12f, true), x * 1.25f, y, z * 1.25f, -x * 1.2f, (0.8f - y) * 0.9f, -z * 1.2f, 1.0f);
+			// autumn leaves of ours, falling from above the head and swaying
+			case "leaves_gold", "leaves_autumn" -> {
+				// they fall slowly: fewer of them, or the figure would be buried
+				if (random.nextInt(2) != 0) break;
+				String[] colours = dev.slash3rss.slashclient.hud.Leaves.colours(dev.slash3rss.slashclient.hud.Leaves.variant(kind));
+				String leaf = "slashclient-hud:leaf_" + colours[random.nextInt(colours.length)] + "_" + random.nextInt(dev.slash3rss.slashclient.hud.Leaves.SHAPES);
+				float lr = 0.5f + random.nextFloat() * 0.6f;
+				P p = add(style(leaf, 0xFFFFFFFF, 0.16f), x / r * lr, 2.1f + random.nextFloat() * 0.4f, z / r * lr, 0, -0.38f, 0, 5.0f);
+				p.sway = 0.5f + random.nextFloat() * 0.3f;
+				p.phase = random.nextFloat() * 6.3f;
+				// it lies down on the ground at the end
+				p.life = (p.y + 0.02f) / 0.38f;
+			}
 			case "cherry" -> {
 				P p = add(new Style(frames("cherry", 0, 11), 0xFFFFFFFF, 0.14f, false), x, 2.2f, z, spread(0.3f), -0.35f, spread(0.3f), 2.4f);
 				p.gravity = 0.05f;
@@ -195,6 +215,9 @@ public final class FigureParticles {
 	}
 
 	private static Identifier texture(String name) {
+		// ours are named with their namespace ("slashclient-hud:leaf_gold_0"), the game's without
+		int colon = name.indexOf(':');
+		if (colon > 0) return Identifier.fromNamespaceAndPath(name.substring(0, colon), "textures/particle/" + name.substring(colon + 1) + ".png");
 		return Identifier.fromNamespaceAndPath("minecraft", "textures/particle/" + name + ".png");
 	}
 

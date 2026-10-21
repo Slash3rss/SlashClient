@@ -899,6 +899,14 @@ public class CosmeticsScreen extends Screen {
 			default -> {
 				// our own pets have a picture of their own
 				if (OurPets.IDS.contains(e.id())) g.blit(RenderPipelines.GUI_TEXTURED, OurPets.icon(e.id()), x + (TILE_W - 24) / 2, y + (TILE_H - 24) / 2, 0, 0, 24, 24, 64, 64, 64, 64, alpha);
+				// the leaf auras: three of their leaves, falling
+				String leaves = Leaves.variant(e.id());
+				if (leaves != null) {
+					String[] colours = leaves.equals("gold") ? new String[] {"gold", "gold", "gold"} : new String[] {"red", "gold", "brown"};
+					g.blit(RenderPipelines.GUI_TEXTURED, Leaves.picture(colours[0], 2), x + 4, y + 8, 0, 0, 16, 16, 8, 8, 8, 8, alpha);
+					g.blit(RenderPipelines.GUI_TEXTURED, Leaves.picture(colours[1], 0), x + 18, y + 6, 0, 0, 10, 10, 8, 8, 8, 8, alpha);
+					g.blit(RenderPipelines.GUI_TEXTURED, Leaves.picture(colours[2], 1), x + 16, y + 22, 0, 0, 12, 12, 8, 8, 8, 8, alpha);
+				}
 				Item item = ITEMS.get(e.id());
 				if (item != null) Ui.icon(g, item, "m-appearance", x + (TILE_W - 16) / 2, y + (TILE_H - 16) / 2);
 			}

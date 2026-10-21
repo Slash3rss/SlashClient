@@ -222,11 +222,11 @@ public final class FigureMoves {
 	 */
 	public static void drawRing(GuiGraphicsExtractor g, String ring, float cx, float feetY, float scale, float yaw) {
 		if (ring == null) return;
-		float r = dev.slash3rss.slashclient.hud.RingEffects.SIZE * dev.slash3rss.slashclient.hud.RingEffects.pulse() * scale / 2;
+		float r = dev.slash3rss.slashclient.hud.RingEffects.SIZE * dev.slash3rss.slashclient.hud.RingEffects.pulse(ring) * scale / 2;
 		g.pose().pushMatrix();
 		g.pose().translate(cx, feetY);
 		g.pose().scale(r / 32f, r / 32f * SQUASH);
-		g.pose().rotate((float) Math.toRadians(dev.slash3rss.slashclient.hud.RingEffects.spin() + yaw));
+		g.pose().rotate((float) Math.toRadians(dev.slash3rss.slashclient.hud.RingEffects.spin(ring) + yaw));
 		// the picture's left square (64×64 of 128×64)
 		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, dev.slash3rss.slashclient.hud.RingEffects.texture(ring), -32, -32, 0, 0, 64, 64, 64, 64, 128, 64, 0xFFFFFFFF);
 		g.pose().popMatrix();

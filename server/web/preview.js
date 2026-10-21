@@ -2,7 +2,7 @@
 // cape, wings or elytra on its back, the trail, aura and pet from the game's pictures and models,
 // the clothing, shoes and things on the hands, face and ears (/vendor/clothing), the suits (/vendor/suits), the held
 // shield and weapon (/vendor/held), the back item and tail (/vendor/gear), the ring (/vendor/rings) and the prop pushed
-// in front (/vendor/props).
+// in front (/vendor/props), the leaf auras' leaves (/vendor/particles).
 // The code is the launcher's, bundled as /vendor/preview3d.js (window.SlashPreview); the game's
 // pictures are in /vendor/mc (listed in index.json).
 
@@ -33,7 +33,7 @@ export function library() {
 export async function gameIconInto(box, id) {
   try {
     const { lib, pictures } = await library();
-    const icon = lib.cosmeticIcon(pictures, id);
+    const icon = lib.cosmeticIcon(pictures, id, '/vendor/particles/');
     if (icon) box.replaceChildren(lib.gameIcon(icon.srcs, icon.tint));
   } catch {
     // the icon from Font Awesome stays
@@ -58,7 +58,7 @@ export class Preview {
     this.viewer.autoRotate = true;
     this.viewer.autoRotateSpeed = 0.6;
     this.viewer.controls.enableZoom = false;
-    this.cosmetics = new lib.CosmeticPreview(this.viewer, pictures, '/vendor/clothing/', '/vendor/pets/', '/vendor/suits/', '/vendor/held/', '/vendor/gear/', '/vendor/rings/', '/vendor/props/');
+    this.cosmetics = new lib.CosmeticPreview(this.viewer, pictures, '/vendor/clothing/', '/vendor/pets/', '/vendor/suits/', '/vendor/held/', '/vendor/gear/', '/vendor/rings/', '/vendor/props/', '/vendor/particles/');
   }
 
   async skin(uuid) {

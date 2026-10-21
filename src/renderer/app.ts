@@ -3346,6 +3346,7 @@ const ITEM_ICONS: Record<string, string> = {
   blaze: 'fa-fire', phantom: 'fa-dragon',
   crits: 'fa-burst', witch: 'fa-flask', ink: 'fa-droplet', ash: 'fa-smog',
   spores: 'fa-seedling', nautilus: 'fa-water', tears: 'fa-face-sad-tear', fireflies: 'fa-lightbulb',
+  leaves_gold: 'fa-leaf', leaves_autumn: 'fa-leaf',
   axolotl: 'fa-fish', frog: 'fa-frog', fox: 'fa-paw', cat: 'fa-cat',
   // kill effects
   lightning: 'fa-bolt-lightning', blood: 'fa-droplet', heartburst: 'fa-heart-crack', firework: 'fa-wand-magic-sparkles',
@@ -3444,7 +3445,8 @@ function cosmeticPicture(slot: Slot, id: string): Node {
     i.style.color = MOVE_ICONS[id]?.[1] ?? '';
     return i;
   }
-  const icon = gamePictures && cosmeticIcon(gamePictures, id);
+  // (the leaf auras are pictures of ours: also without a game)
+  const icon = cosmeticIcon(gamePictures ?? {}, id);
   if (icon) return gameIcon(icon.srcs, icon.tint);
   return el('i', { className: `fa-solid ${ITEM_ICONS[id] ?? 'fa-star'} cosmetic-icon` });
 }
