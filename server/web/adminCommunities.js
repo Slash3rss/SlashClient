@@ -11,6 +11,9 @@ const ACTIONS = {
   invite: 'zaprosił(a)', edit: 'zmienił(a) ustawienia', logo: 'zmienił(a) logo', logo_remove: 'usunął(ęła) logo', delete: 'usunął(ęła) społeczność', heir: 'przejął(ęła) społeczność',
   message_delete: 'usunął(ęła) wiadomość', report_delete: 'usunął(ęła) zgłoszoną wiadomość', report_dismiss: 'odrzucił(a) zgłoszenie',
   pin: 'przypiął(ęła) wiadomość od', unpin: 'odpiął(ęła) wiadomość od', slowmode: 'zmienił(a) tryb powolny',
+  // own channels and custom roles (0.9.30)
+  channel_create: 'utworzył(a) kanał', channel_edit: 'zmienił(a) kanał', channel_delete: 'usunął(ęła) kanał', channel_order: 'zmienił(a) kolejność kanałów',
+  role_create: 'utworzył(a) rolę', role_edit: 'zmienił(a) rolę', role_delete: 'usunął(ęła) rolę', role_order: 'zmienił(a) kolejność ról', member_role: 'nadał(a) rolę',
   admin_delete:
  '(admin) usunął(ęła) społeczność', admin_logo_remove: '(admin) usunął(ęła) logo', admin_description_remove: '(admin) usunął(ęła) opis',
   admin_transfer: '(admin) przekazał(a) społeczność', admin_report_delete: '(admin) usunął(ęła) zgłoszoną wiadomość', admin_report_dismiss: '(admin) odrzucił(a) zgłoszenie',

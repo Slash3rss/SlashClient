@@ -299,8 +299,8 @@ export interface MediaContext {
   writer: (community: string, channel: string, me: string) => void;
   /** The message as the members get it (`me`: their own votes marked). */
   message: (community: string, mid: number, me?: string) => { id: number; from: string; channel: string; deleted?: boolean; author: { role?: Role } } | undefined;
-  /** Whether this role may close others' polls (moderators and up). */
-  moderates: (role: Role) => boolean;
+  /** Whether this member may close others' polls (moderators and up, or a custom role that may pin). */
+  moderates: (member: { role: Role }) => boolean;
   toMembers: (community: string, event: unknown) => void;
   log: (community: string, by: string, action: string, target: string, detail: string) => void;
   limitUploads: (key: string) => void;
@@ -407,7 +407,7 @@ export function createCommunityMedia(ctx: MediaContext) {
       const me = ctx.authed(req);
       const member = ctx.reader(community, channel, me);
       const { m, p } = pollMessage(community, channel, Number(raw), me);
-      if (m.from !== me && !ctx.moderates(member.role)) fail(403, 'not_allowed');
+      if (m.from !== me && !ctx.moderates(member)) fail(403, 'not_allowed');
       if (p.closedAt || (p.endsAt && p.endsAt <= Date.now())) fail(409, 'poll_closed');
       store.closePoll(p.messageId, me);
       if (m.from !== me) ctx.log(community, me, 'poll_close', m.from, `#${p.messageId}`);

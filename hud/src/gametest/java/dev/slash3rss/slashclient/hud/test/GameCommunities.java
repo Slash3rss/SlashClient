@@ -26,7 +26,8 @@ import java.util.List;
  * deleted message; the channels (the announcements read-only for a plain member); the right-click
  * menu of a moderator (copy, reactions, delete, report) and on our own message (edit too), with the
  * quick reactions one row away; a new message pushed as an event, a reply with its quote and
- * reactions under a message; and the first members, read only. The layout audit runs over all of it.
+ * reactions under a message; custom roles by the nick and an own channel (0.9.30); and the first
+ * members, read only. The layout audit runs over all of it.
  */
 public class GameCommunities implements FabricClientGameTest {
 	@Override
@@ -137,6 +138,24 @@ public class GameCommunities implements FabricClientGameTest {
 			if (context.computeOnClient(mc -> Communities.poll(12).open())) throw new AssertionError("A closed poll still open");
 			context.waitTicks(3);
 			context.takeScreenshot("communities-poll-closed");
+
+			// a custom role (server 0.9.30+): the author's comes with their message, and goes when it comes without one
+			// (Ala's from the sample: Bartek's went when his poll came without one)
+			Communities.RoleTag ala = context.computeOnClient(mc -> Communities.customRole(CommunitiesTestHooks.BIG, "ala"));
+			if (ala == null || !"Architekt".equals(ala.name())) throw new AssertionError("Ala's custom role: " + ala);
+			if (context.computeOnClient(mc -> Communities.customRole(CommunitiesTestHooks.BIG, "bartek")) != null) throw new AssertionError("Bartek's custom role stayed after a message without one");
+			context.runOnClient(mc -> CommunitiesTestHooks.incomingWithRole(CommunitiesTestHooks.BIG, CommunitiesTestHooks.GENERAL, 31, "zbyszek", "Zbyszek", "Mam rolę VIP!", "VIP", "#22c55e"));
+			Communities.RoleTag zbyszek = context.computeOnClient(mc -> Communities.customRole(CommunitiesTestHooks.BIG, "zbyszek"));
+			if (zbyszek == null || zbyszek.color() != 0x22C55E) throw new AssertionError("Zbyszek's custom role: " + zbyszek);
+			context.waitTicks(3);
+			context.takeScreenshot("communities-custom-role");
+			context.runOnClient(mc -> CommunitiesTestHooks.incoming(CommunitiesTestHooks.BIG, CommunitiesTestHooks.GENERAL, 32, "zbyszek", "Zbyszek", "Już bez roli", false));
+			if (context.computeOnClient(mc -> Communities.customRole(CommunitiesTestHooks.BIG, "zbyszek")) != null) throw new AssertionError("Zbyszek's custom role stayed");
+
+			// an own channel (server 0.9.30+), by its name
+			context.runOnClient(mc -> screen[0].selectCommunity(CommunitiesTestHooks.BIG, CommunitiesTestHooks.TRADE));
+			context.waitTicks(5);
+			context.takeScreenshot("communities-own-channel");
 
 
 			// the announcements: we moderate but are not an admin, so read only

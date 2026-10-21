@@ -14,7 +14,7 @@ import java.util.Map;
 public final class CommunitiesTestHooks {
 	private CommunitiesTestHooks() {}
 
-	public static final String BIG = "budn", GENERAL = "budn-g", NEWS = "budn-n", SMALL = "speed", SMALL_GENERAL = "speed-g", SMALL_NEWS = "speed-n";
+	public static final String BIG = "budn", GENERAL = "budn-g", NEWS = "budn-n", TRADE = "budn-handel", SMALL = "speed", SMALL_GENERAL = "speed-g", SMALL_NEWS = "speed-n";
 	public static final long WINDOW = 15 * 60_000L;
 
 	public static void sample() {
@@ -22,7 +22,9 @@ public final class CommunitiesTestHooks {
 		long now = System.currentTimeMillis();
 		Social.sampleForTest(new Social.Friend("kumpel", "Kumpel", "kumpel", "online", "launcher", "", 0, now), List.of(), "me");
 		var big = new Communities.Community(BIG, "Budowniczowie Północy", "BUDN", 3, "moderator", "mentions", 3, 1, 128, 0, now - 30_000, List.of(
-			new Communities.Channel(GENERAL, "general", "", true, 1, 1), new Communities.Channel(NEWS, "announcements", "", false, 2, 0)));
+			new Communities.Channel(GENERAL, "general", "", true, 1, 1), new Communities.Channel(NEWS, "announcements", "", false, 2, 0),
+			// an own channel (server 0.9.30+): shown by its name
+			new Communities.Channel(TRADE, "custom", "handel", true, 0, 0)));
 		var small = new Communities.Community(SMALL, "Speedrunnerzy PL", "SPEED", 0, "member", "all", 4, 0, 12, 0, now - 90_000, List.of(
 			new Communities.Channel(SMALL_GENERAL, "general", "", true, 4, 0), new Communities.Channel(SMALL_NEWS, "announcements", "", false, 0, 0)));
 		Communities.sampleForTest("me", List.of(big, small), Map.of(
@@ -43,6 +45,34 @@ public final class CommunitiesTestHooks {
 				new Communities.Member("ola", "Ola", "member", false), new Communities.Member("igor", "Igor", "member", false),
 				new Communities.Member("piotrek", "Piotrek", "member", true), new Communities.Member("zbyszek", "Zbyszek", "member", false))),
 			WINDOW);
+		// custom roles (server 0.9.30+): by the nick in the chat and the members' list
+		Communities.sampleRolesForTest(Map.of(BIG + "/bartek", new Communities.RoleTag("Turniejowy", 0xF59E0B), BIG + "/piotrek", new Communities.RoleTag("VIP", 0x22C55E),
+			BIG + "/ala", new Communities.RoleTag("Architekt", 0xA855F7)));
+	}
+
+	/** A new message from someone with a custom role (server 0.9.30+), as the server pushes it. */
+	public static void incomingWithRole(String community, String channel, long id, String from, String author, String text, String roleName, String roleColor) {
+		JsonObject m = new JsonObject();
+		m.addProperty("id", id);
+		m.addProperty("community", community);
+		m.addProperty("channel", channel);
+		m.addProperty("from", from);
+		JsonObject a = new JsonObject();
+		a.addProperty("name", author);
+		a.addProperty("handle", author.toLowerCase());
+		a.addProperty("role", "member");
+		JsonObject r = new JsonObject();
+		r.addProperty("id", "r-" + roleName.toLowerCase());
+		r.addProperty("name", roleName);
+		r.addProperty("color", roleColor);
+		a.add("customRole", r);
+		m.add("author", a);
+		m.addProperty("text", text);
+		m.addProperty("at", System.currentTimeMillis());
+		JsonObject e = new JsonObject();
+		e.addProperty("type", "community-message");
+		e.add("message", m);
+		Communities.eventForTest(e);
 	}
 
 	public static Communities.Message msg(long id, String community, String channel, String from, String author, String role, String text, long at, long editedAt, boolean deleted, boolean moderated, List<String> mentions) {

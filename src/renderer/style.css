@@ -1605,6 +1605,30 @@ body.feature-off-streams .feature-streams { display: none !important; }
 .fr-clan-logo-preview.pending { outline: 2px dashed var(--accent); outline-offset: 2px; }
 .fr-clan-logo-preview.pending img { width: 100%; height: 100%; image-rendering: pixelated; border-radius: inherit; object-fit: cover; }
 .mod-launch-problems { margin: 0 0 8px; padding-left: 20px; color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
+/* communities' own channels, custom roles and the moderation log (server 0.9.30+, communityRoles.ts) */
+.fr-com-custom-role { --role-color: #94a3b8; display: inline-block; margin-right: 4px; padding: 0 6px; border-radius: 4px; font-size: 10px; font-weight: 800; letter-spacing: .02em; line-height: 16px; vertical-align: middle;
+  color: var(--role-color); background: color-mix(in srgb, var(--role-color) 18%, transparent); border: 1px solid color-mix(in srgb, var(--role-color) 35%, transparent); white-space: nowrap; }
+.fr-com-role-line .fr-com-custom-role { line-height: 14px; }
+.fr-com-role-dot { flex: none; width: 14px; height: 14px; margin: 0 6px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255, 255, 255, .08); }
+.fr-com-channel-icon { flex: none; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 8px; background: rgba(255, 255, 255, .05); color: var(--text-secondary); }
+.fr-com-manage .fr-row { gap: 6px; }
+.fr-com-manage .fr-names small { white-space: normal; }
+.fr-com-checks { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 4px 2px; }
+.fr-com-checks.columns { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.fr-com-check { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+.fr-com-check input { width: 16px; height: 16px; accent-color: #14b8a6; }
+.fr-com-check:has(input:disabled) { opacity: .45; cursor: not-allowed; }
+.fr-com-role-fields { align-items: center; }
+.fr-com-role-fields > input.fr-com-color { flex: 0 0 48px; width: 48px !important; min-width: 0; height: 36px; padding: 2px; border-radius: 8px; background: transparent; border: 1px solid var(--glass-border); cursor: pointer; }
+.fr-com-role-fields > input:not(.fr-com-color) { flex: 1; min-width: 0; }
+.fr-com-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-secondary); }
+.fr-com-log-filter { flex: none; width: 190px !important; height: 34px; padding: 0 10px; font-size: 12px; }
+.fr-com-log-list { max-height: 420px; }
+.fr-custom-role-pick { width: 116px !important; }
+/* the channels in a row of their own under the community's name and buttons */
+.fr-chat-head:has(> .fr-com-tabs) { flex-wrap: wrap; row-gap: 8px; }
+.fr-chat-head > .fr-com-tabs { flex-basis: 100%; margin-top: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); }
+.fr-chat-head > .fr-com-tabs .fr-com-tab { flex: none; white-space: nowrap; }
 
 /* polls in a community's chat (communityMedia.ts): the results as bars behind each option */
 .fr-bubble.fr-poll, .fr-msg.mine .fr-bubble.fr-poll { display: grid; gap: 6px; width: 340px; max-width: 100%; box-sizing: border-box; padding: 10px 12px; white-space: normal; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .08); color: var(--text-primary, #fff); }
@@ -1631,3 +1655,7 @@ body.feature-off-streams .feature-streams { display: none !important; }
 .fr-poll-modal .fr-check input { width: auto; flex: none; margin: 0; }
 .fr-poll-modal .fr-field { display: grid; gap: 4px; }
 @media (prefers-reduced-motion: reduce) { .fr-poll-bar { transition: none; } }
+/* with a game server too (communityLinks.css): one wrapping row – the name and buttons, the channels, the server */
+.fr-chat-head:has(> .fr-com-tabs):has(> .fr-com-server) { display: flex; column-gap: 6px; }
+.fr-chat-head:has(> .fr-com-tabs) > .fr-com-server { flex-basis: 100%; min-width: 0; }
+.fr-chat-head:has(> .fr-com-tabs):has(> .fr-com-server) > .fr-names { margin: 0 4px 0 6px; }

@@ -169,8 +169,13 @@ const ID = '([\\w-]{1,32})';
 const CODE = '([A-Za-z0-9]{6,16})';
 const route = (path: string) => new RegExp(`^/v1/communities${path}$`);
 
-/** Links and the game server are for those who may change the community (admins and the owner). */
-export const mayManage = (role: CommunityRole | undefined) => may(role, 'edit');
+/**
+ * Links and the game server are for those who may change the community (admins and the owner);
+ * invite links also for a custom role given `invite` (communityRoles.ts; the built-in moderators'
+ * own invites stay by nick).
+ */
+export const mayManage = (role: CommunityRole | undefined, custom?: { permissions: string[] }, what: 'links' | 'server' = 'server') =>
+  may(role, 'edit') || (what === 'links' && !!custom?.permissions.includes('invite'));
 
 export function createCommunityLinks(deps: Deps) {
   const { communities, authed, body, fail } = deps;
@@ -188,12 +193,12 @@ export function createCommunityLinks(deps: Deps) {
     };
   });
 
-  /** A member who may manage the links and the server, and the community; 404 or 403 otherwise. */
-  function manager(id: string, me: string): CommunityRow {
+  /** A member who may manage the links (or the server), and the community; 404 or 403 otherwise. */
+  function manager(id: string, me: string, what: 'links' | 'server' = 'links'): CommunityRow {
     const c = communityOf(id);
     const m = c && store.member(id, me);
     if (!c || !m) return fail(404, 'not_found');
-    if (!mayManage(m.role)) fail(403, 'not_allowed');
+    if (!mayManage(m.role, communities.roles.role(id, m.customRole), what)) fail(403, 'not_allowed');
     return c;
   }
 
@@ -274,7 +279,7 @@ export function createCommunityLinks(deps: Deps) {
     // the game server: `address` ('' takes it off) and `version` (a hint, optional)
     ['POST', route(`/${ID}/server`), async (req, [id]) => {
       const me = authed(req);
-      const c = manager(id, me);
+      const c = manager(id, me, 'server');
       const raw = await body(req);
       const address = cleanServerAddress(raw.address);
       if (address === undefined) fail(400, 'bad_server');
