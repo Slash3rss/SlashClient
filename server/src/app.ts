@@ -36,6 +36,7 @@ import { homeRoutes } from './home/routes.ts';
 import { BurstLimiter, SlowDown, editRefusal, type BurstLimits } from './chatLimits.ts';
 import { supportRoutes } from './payments/support.ts';
 import { createCommunities } from './communities.ts';
+import { createCommunityLinks } from './communityLinks.ts';
 import { COMMUNITY_LIMITS, type CommunityLimits } from './communityStore.ts';
 import { Settings, liveSettings, type SettingValue } from './settings.ts';
 import { SETTING_DEFS } from './settingsDefs.ts';
@@ -705,6 +706,25 @@ export function createApp(cfg: Config) {
 
   });
 
+  // communities' invite links, game servers and the verified badge (communityLinks.ts)
+  const communityLinks = createCommunityLinks({
+    db, communities, publicUrl: cfg.publicUrl, authed, admin, body, clientIp,
+    limitLookups: limiter('communities.linkLookupsPerMinute'), limitJoin: limiter('communities.joinPerMinute'), limitChanges: limiter('communities.changesPerMinute'),
+    // members on that server now: connected, not invisible, letting friends see their server
+    playingOn: (members, server) => {
+      let n = 0;
+      const count = (id: string, p: Presence | undefined) => {
+        if (p?.activity?.kind === 'server' && p.status !== 'invisible' && sockets.get(id)?.size && serverKeyOf(p.activity.server) === server && db.user(id)?.showServer) n++;
+      };
+      if (members.size < presences.size) for (const id of members) count(id, presences.get(id));
+      else for (const [id, p] of presences) if (members.has(id)) count(id, p);
+      return n;
+    },
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
   // muted friends (mutes.ts) and pictures in the chat (chatImages.ts)
   const mutes = muteRoutes({
     sql: db.sql, authed, body, push, friendList, areFriends: (a, b) => db.areFriends(a, b),
@@ -1297,6 +1317,7 @@ export function createApp(cfg: Config) {
     ...groups.routes,
     ...clans.routes,
     ...communities.routes,
+    ...communityLinks.routes,
     ...storageAdminRoutes({
       storage, admin, body, dataDir: path.dirname(cfg.dbFile),
       audit: (who, action, target, detail) => db.log(who, action, target, detail),

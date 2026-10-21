@@ -88,6 +88,8 @@ export function createCommunities(deps: Deps) {
   const editWindow = () => deps.editWindowMs?.() ?? EDIT_WINDOW_MS;
   const store = new CommunityStore(db.sql);
   const logos = new LogoStore(db.sql, 'community_logos', 'communities', '/v1/communities');
+  /** More of what anyone may see of a community, from other modules (communityLinks.ts: verified, its game server). */
+  let extras: (c: CommunityRow) => Record<string, unknown> = () => ({});
 
   const person = (id: string): Person => {
     const u = db.user(id);
@@ -152,7 +154,7 @@ export function createCommunities(deps: Deps) {
   function summary(c: CommunityRow) {
     return {
       id: c.id, name: c.name, tag: c.tag, slug: c.tag || c.id, description: c.description, visibility: c.visibility, joinMode: c.joinMode,
-      members: c.members, owner: person(c.owner), createdAt: c.createdAt, ...logoField(c.id),
+      members: c.members, owner: person(c.owner), createdAt: c.createdAt, ...logoField(c.id), ...extras(c),
     };
   }
 
@@ -897,7 +899,7 @@ export function createCommunities(deps: Deps) {
     // -- the site's admins (moderation) --
     ['GET', /^\/v1\/admin\/communities$/, (req, _p, url) => {
       deps.admin(req);
-      return { communities: store.all(query(url)).map((c) => ({ ...c, slug: c.tag || c.id, ...logoField(c.id) })), limits: L };
+      return { communities: store.all(query(url)).map((c) => ({ ...c, slug: c.tag || c.id, ...logoField(c.id), ...extras(c) })), limits: L };
     }],
     ['GET', /^\/v1\/admin\/communities\/reports$/, (req) => {
       deps.admin(req);
@@ -981,5 +983,10 @@ export function createCommunities(deps: Deps) {
       name: c.name, tag: c.tag, slug: c.tag || c.id, members: c.members, role: c.role, ...(logos.version(c.id) !== undefined ? { logo: logos.url(c.id, logos.version(c.id)!) } : {}),
     })),
     limits: L,
+    /** For communityLinks.ts: its fields in every summary, and what joining and the lists need. */
+    extend: (fn: typeof extras) => {
+      extras = fn;
+    },
+    internals: { communityOf, admit, mine, joinState, listChanged, summary, person },
   };
 }

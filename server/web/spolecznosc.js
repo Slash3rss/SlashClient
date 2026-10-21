@@ -32,14 +32,17 @@ async function main() {
   document.title = `${c.name} – SlashClient`;
   const logo = c.logoUrl ? el('img', { class: 'avatar big community-logo', src: c.logoUrl, alt: '' }) : el('div', { class: 'avatar big' }, icon('fa-solid fa-users'));
   const chips = [el('span', { class: 'chip purple' }, icon('fa-solid fa-users'), ' ', L(`${c.members} członków`, `${c.members} members`))];
+  // an official community (marked in the admin panel, communityLinks.ts)
+  if (c.verified) chips.unshift(el('span', { class: 'chip verified' }, icon('fa-solid fa-circle-check'), ' ', L('Zweryfikowana', 'Verified')));
   if (c.tag) chips.push(el('span', { class: 'chip' }, `#${c.tag}`));
   chips.push(el('span', { class: 'chip' }, icon(c.joinMode === 'open' ? 'fa-solid fa-door-open' : 'fa-solid fa-hand'), ' ',
     c.joinMode === 'open' ? L('Otwarta: dołącza każdy', 'Open: anyone can join') : L('Dołączenie na prośbę', 'Join on request')));
   const owner = c.owner?.handle ? el('a', { href: `/u/${encodeURIComponent(c.owner.handle)}`, textContent: c.owner.name || c.owner.handle }) : el('span', { textContent: '—' });
   box.replaceChildren(
     el('div', { class: 'glass card' },
-      el('div', { class: 'row profile-name' }, logo, el('div', {}, el('h1', { textContent: c.name }), el('div', { class: 'row' }, ...chips))),
+      el('div', { class: 'row profile-name' }, logo, el('div', {}, el('h1', {}, c.name, c.verified ? el('span', { class: 'verified-badge', title: L('Zweryfikowana społeczność', 'Verified community') }, icon('fa-solid fa-circle-check')) : ''), el('div', { class: 'row' }, ...chips))),
       c.description ? el('p', { class: 'community-description', textContent: c.description }) : '',
+      c.server ? el('div', { class: 'invite-server' }, icon('fa-solid fa-cube'), el('span', {}, L('Serwer społeczności: ', "The community's server: "), el('b', { textContent: c.server.address }), c.server.version ? ` · ${c.server.version}` : '')) : '',
       el('p', { class: 'muted' }, icon('fa-solid fa-crown'), ' ', L('Założyciel: ', 'Owner: '), owner, ' · ', L(`od ${day(c.createdAt)}`, `since ${day(c.createdAt)}`))),
     el('div', { class: 'glass card' },
       el('h2', {}, icon('fa-solid fa-right-to-bracket'), ' ', L('Jak dołączyć?', 'How to join?')),

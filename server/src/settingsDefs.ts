@@ -130,6 +130,7 @@ export const SETTING_DEFS: SettingDef[] = [
     rate('communities.logosPerMinute', 'Wysyłanie logo społeczności na minutę', 'Community logo uploads per minute', 6, 'Na konto.'),
     rate('communities.reportsPerMinute', 'Zgłoszenia wiadomości na minutę', 'Message reports per minute', 10, 'Na konto.'),
     rate('communities.reactionsPerMinute', 'Reakcje na minutę', 'Reactions per minute', 60, 'Na konto: dodanie lub zdjęcie reakcji pod wiadomością społeczności.'),
+    rate('communities.linkLookupsPerMinute', 'Sprawdzanie linków zaproszeń na minutę', 'Invite link lookups per minute', 20, 'Na konto w launcherze i na adres na stronie zaproszenia (kodów nie da się zgadywać).'),
 
   ]),
 
