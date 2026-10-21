@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
-import { appBundle, bundleState, pickMacZip, swapScript, unpackApp, unpackRelease } from '../src/main/macUpdate';
+import { appBundle, bundleState, clearDir, pickMacZip, swapScript, unpackApp, unpackRelease } from '../src/main/macUpdate';
 
 const FILES = [
   { url: 'SlashClient-0.9.2-mac.zip', sha512: 'intel' },
@@ -14,6 +14,29 @@ const FILES = [
 ];
 
 describe('macOS updates', () => {
+  it('clears the old update folder, moving it aside when it cannot be removed', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'slash-clear-'));
+    const dir = path.join(root, 'update');
+    await fs.mkdir(path.join(dir, 'app', 'SlashClient.next', 'Contents', 'Resources'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'app', 'SlashClient.next', 'Contents', 'Resources', 'a.asar'), 'x');
+    await clearDir(dir);
+    await assert.rejects(fs.stat(dir));
+    await clearDir(dir); // nothing there: fine
+    if (process.platform !== 'win32' && process.getuid?.() !== 0) {
+      // a folder whose files cannot be removed (as when macOS holds the bundle): moved out of the way
+      const stuck = path.join(dir, 'app', 'locked');
+      await fs.mkdir(stuck, { recursive: true });
+      await fs.writeFile(path.join(stuck, 'f'), 'x');
+      await fs.chmod(stuck, 0o555);
+      await clearDir(dir);
+      await assert.rejects(fs.stat(dir));
+      const aside = (await fs.readdir(root)).find((n) => n.startsWith('update.old-'));
+      assert.ok(aside);
+      await fs.chmod(path.join(root, aside!, 'app', 'locked'), 0o755);
+    }
+    await fs.rm(root, { recursive: true, force: true });
+  });
+
   it('downloads the zip for this Mac’s processor', () => {
     assert.equal(pickMacZip(FILES, 'arm64')?.sha512, 'arm');
     assert.equal(pickMacZip(FILES, 'x64')?.sha512, 'intel');

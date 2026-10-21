@@ -53,10 +53,30 @@ export async function appBundle(execPath = process.execPath): Promise<string | u
 
 const workDir = () => path.join(app.getPath('userData'), 'update');
 
+/**
+ * Removes a folder that may hold an old unpacked app. macOS can still be adding to a bundle being
+ * removed (Spotlight, quarantine), so a plain removal may fail with ENOTEMPTY: it is retried, and
+ * when it still fails the folder is moved out of the way (renaming always works) and removed later.
+ */
+export async function clearDir(dir: string): Promise<void> {
+  try {
+    await fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  } catch {
+    const aside = `${dir}.old-${Date.now()}`;
+    await fs.rename(dir, aside);
+    void fs.rm(aside, { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 }).catch(() => {});
+  }
+}
+
 /** Downloads and unpacks a version; resolves to the unpacked app (named SlashClient.next until the swap). */
 export async function downloadMacUpdate(feed: string, version: string, file: MacFile, progress: (percent: number) => void): Promise<string> {
   const dir = workDir();
-  await fs.rm(dir, { recursive: true, force: true });
+  await clearDir(dir);
+  // what an earlier failed removal moved aside
+  const parent = path.dirname(dir);
+  for (const old of (await fs.readdir(parent).catch(() => [] as string[])).filter((n) => n.startsWith(`${path.basename(dir)}.old-`))) {
+    void fs.rm(path.join(parent, old), { recursive: true, force: true, maxRetries: 5, retryDelay: 1000 }).catch(() => {});
+  }
   await fs.mkdir(dir, { recursive: true });
   const zip = path.join(dir, `SlashClient-${version}.zip`);
   const res = await netFetch(`${feed.replace(/\/$/, '')}/${encodeURIComponent(file.url)}`);
@@ -92,7 +112,7 @@ export async function unpackRelease(zip: string, into: string): Promise<string> 
   if (process.platform !== 'darwin') return unpackApp(zip, into);
   const staging = `${into}.ditto`;
   try {
-    await fs.rm(staging, { recursive: true, force: true });
+    await clearDir(staging);
     await new Promise<void>((resolve, reject) => execFile('/usr/bin/ditto', ['-x', '-k', zip, staging], (err, _out, stderr) => (err ? reject(new Error(`ditto: ${stderr || err.message}`.trim())) : resolve())));
     const app = (await fs.readdir(staging)).find((n) => n.endsWith('.app'));
     if (!app) throw new Error('W aktualizacji nie ma aplikacji.');
