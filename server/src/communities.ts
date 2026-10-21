@@ -32,6 +32,9 @@ import {
  * `reactions` ([{ emoji, count, me? }]; pushed ones have no `me`) and `pinned`. Channels carry
  * `slowMode` (seconds) when it is on; a message too soon is a 429 'slow_mode' with `retryAfter`.
  * A timeout is the mute that was there before: `mutedUntil`, no writing, editing or reacting.
+ * Since 0.9.30 (communityMedia.ts): messages may carry `image` or `poll` (their `text` is what older
+ * clients show), and `community-poll` with `community`, `channel`, `message` (its id), `poll` and
+ * `user` comes after every vote and when a poll is closed.
  */
 
 interface Deps {
