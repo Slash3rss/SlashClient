@@ -57,6 +57,10 @@ const ALLOWED: [string, RegExp][] = [
   ['POST', /^\/v1\/parties\/[\w-]{1,32}\/(accept|decline|leave)$/],
   ['DELETE', /^\/v1\/parties\/[\w-]{1,32}$/],
   ['POST', /^\/v1\/mc\/emote$/],
+  // friends on the minimap: the game's position while the player shares it, and the switch for it (only the mode: picking friends stays in the launcher)
+  ['POST', /^\/v1\/mc\/position$/],
+  ['GET', /^\/v1\/me\/position-sharing$/],
+  ['POST', /^\/v1\/me\/position-sharing$/],
   // a spray on a block, for players there with SlashClient
   ['POST', /^\/v1\/mc\/spray$/],
   // the cosmetics menu in the game: what there is, what is worn, and changing it
@@ -91,6 +95,8 @@ const ALLOWED: [string, RegExp][] = [
 ];
 /** From the game, /v1/me changes only cosmetics (not, say, whether friends see the server). */
 const ME_KEYS = new Set(['cape', 'loadout', 'character', 'own']);
+/** From the game, sharing the position is switched on or off (all friends, or those picked in the launcher), nothing more. */
+const POSITION_MODES = new Set(['off', 'all', 'some']);
 
 /** Events the game cares about; the rest (login flow, account state) stays in the launcher. */
 const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', 'state', 'join', 'emote', 'achievement', 'party',
@@ -108,6 +114,9 @@ const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', '
   'communities', 'community-message', 'community-message-edit', 'community-message-delete', 'community',
   // a reaction under a community message, a message pinned or unpinned (server 0.9.27+)
   'community-reaction', 'community-pin',
+
+  // a friend sharing their position on the same server (the minimap), or no longer sharing it
+  'friend-position',
 
   // a friend went live on Twitch or Kick, or ended: the LIVE badge, and a toast when `notify`
   'stream']);
@@ -148,6 +157,8 @@ export class GameBridge {
   /** A social event from the launcher's WebSocket, passed on to the game. */
   push(event: { type: string; [key: string]: unknown }) {
     if (!FORWARDED.has(event.type)) return;
+    // a friend's position every 2 seconds: only the newest one of each friend waits, so they never crowd out messages
+    if (event.type === 'friend-position') this.events = this.events.filter((e) => e.type !== 'friend-position' || e.from !== event.from);
     this.events.push({ ...event, seq: ++this.seq });
     if (this.events.length > KEEP) this.events.splice(0, this.events.length - KEEP);
     for (const wake of this.waiting) wake();
@@ -296,6 +307,10 @@ export class GameBridge {
     try {
       const body = method === 'POST' ? await this.body(req) : undefined;
       if (url === '/v1/me' && Object.keys((body as object | undefined) ?? {}).some((k) => !ME_KEYS.has(k))) return this.send(res, 403, { error: 'forbidden' });
+      if (url === '/v1/me/position-sharing' && method === 'POST') {
+        const b = (body ?? {}) as Record<string, unknown>;
+        if (Object.keys(b).some((k) => k !== 'mode') || !POSITION_MODES.has(b.mode as string)) return this.send(res, 403, { error: 'forbidden' });
+      }
       this.send(res, 200, (await this.opts.call(method, url, body)) ?? {});
     } catch (err) {
       const code = (err as { code?: string }).code ?? (err as Error).message;

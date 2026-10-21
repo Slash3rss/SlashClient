@@ -9,6 +9,7 @@ import { confirmDialog } from './dialog';
 import { onFeatures } from './features';
 import { legalNote } from './legal';
 import { badgeChoices, rankBadge, rankName, safeColor, type RankView } from './rankBadge';
+import { createPositionSharing } from './positionSharing';
 import { cleanStream, createStreamsSection, liveBadge, noticeText, streamLine, type FriendStream } from './streams';
 import { canDelete, canEdit, editHint, editedLabel, replaceMessage, slowDownSeconds, slowDownText, tombstone, withMenu, type MenuItem } from './chatEdits';
 
@@ -250,6 +251,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   };
   /** The account window's "Streamy" (streams.ts), while the window is open. */
   let streamsBox: ReturnType<typeof createStreamsSection> | undefined;
+  /** Friends on the minimap: who sees my position (positionSharing.ts), in the account window. */
+  let positionsBox: ReturnType<typeof createPositionSharing> | undefined;
 
   // ---------- avatars: the face from the Minecraft skin (from the SlashClient server), Discord's, Google's or GitHub's picture, or a letter ----------
 
@@ -611,6 +614,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       el('div', { className: 'fr-account-section', textContent: t('Prywatność i powiadomienia') }),
       el('label', { className: 'check fr-share' }, share, t(' Pokazuj znajomym, na jakim serwerze gram')),
       el('label', { className: 'check fr-share' }, playingBox(), t(' Powiadamiaj, gdy znajomi zaczynają grać')),
+      ...(positionsBox ? [positionsBox.element] : []),
       el('div', { className: 'fr-account-section', textContent: t('Konta') }),
       el('div', { className: 'fr-linked-row' }, el('small', { className: 'muted', textContent: t('Logowanie:') }), linked),
       minecraftRow(me),
@@ -666,6 +670,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       modal.remove();
       accountBody = undefined;
       streamsBox = undefined;
+      positionsBox = undefined;
       document.removeEventListener('keydown', onKey, true);
     };
     const onKey = (e: KeyboardEvent) => {
@@ -679,6 +684,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     accountBody = body;
     streamsBox = createStreamsSection(deps);
     void streamsBox.load();
+    positionsBox = createPositionSharing(deps, () => list.friends.map((f) => ({ id: f.id, name: f.name })));
+    void positionsBox.load();
     document.body.append(modal);
     renderMe();
   }
