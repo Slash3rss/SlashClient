@@ -217,13 +217,14 @@ public final class ChatTabs {
 	public static void drawMentionBadge(net.minecraft.client.gui.GuiGraphicsExtractor g, Minecraft mc) {
 		if (mentions <= 0 || !SlashHud.config.chatMentions || Compat.screen(mc) instanceof ChatScreen) return;
 		Component text = dev.slash3rss.slashclient.hud.ui.Ui.bold("@ " + (mentions > 99 ? "99+" : mentions));
-		int w = dev.slash3rss.slashclient.hud.ui.Ui.width(text) + 12, h = 13, x = 2, y = g.guiHeight() - 29;
-		// a slow pulse so it is seen without being in the way
+		int tw = dev.slash3rss.slashclient.hud.ui.Ui.width(text), w = tw + 12, h = 13, x = 2, y = g.guiHeight() - 29;
+		// a slow pulse of its own colour, so it is seen without being in the way (a glow around it looks muddy over the world)
 		float pulse = 0.5f + 0.5f * (float) Math.sin(System.currentTimeMillis() / 300.0);
-		dev.slash3rss.slashclient.hud.ui.Ui.round(g, x - 1, y - 1, w + 2, h + 2, 6, dev.slash3rss.slashclient.hud.ui.Ui.blend(0x30EF4444, 0x80EF4444, pulse));
-		dev.slash3rss.slashclient.hud.ui.Ui.round(g, x, y, w, h, 5, 0xFFDC2626);
-		g.fillGradient(x + 2, y + 1, x + w - 2, y + h - 1, 0xFFF87171, 0xFFDC2626);
-		dev.slash3rss.slashclient.hud.ui.Ui.draw(g, text, x + 6, y + 3, 0xFFFFFFFF);
+		dev.slash3rss.slashclient.hud.ui.Ui.round(g, x, y + 1, w, h, 6, 0x50000000);
+		// one rounded pill: lighter red at the top, darker at the bottom, a thin darker edge
+		dev.slash3rss.slashclient.hud.ui.Ui.roundGradient(g, x, y, w, h, 6, dev.slash3rss.slashclient.hud.ui.Ui.blend(0xFFEF4444, 0xFFF87171, pulse), 0xFFC81E1E);
+		dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, x, y, w, h, 6, 0x80991B1B);
+		dev.slash3rss.slashclient.hud.ui.Ui.draw(g, text, x + (w - tw) / 2, y + 3, 0xFFFFFFFF);
 	}
 
 	/** Tabs that catch the player's nick count in red, like a mention. */
