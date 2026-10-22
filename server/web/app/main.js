@@ -6,7 +6,7 @@
 import { api, ApiError, Live, token, whenSignedOut } from './api.js';
 import { closeChat, current as currentChat, onEvent as chatEvent, openChat, setSubtitle } from './chat.js';
 import { groupsChanged, keysChanged, startKeys } from './e2e.js';
-import { lang, setLang, t } from './i18n.js';
+import { lang, members, plural, setLang, t } from './i18n.js';
 import * as push from './notify.js';
 import { $, ago, avatarEl, badge, el, errorText, guard, icon, sheet, toast } from './ui.js';
 
@@ -456,7 +456,7 @@ function clanCard() {
   return el('section', { class: 'card clan-card' },
     el('div', { class: 'row' },
       el('span', { class: 'tag big', textContent: `[${c.tag}]` }),
-      el('div', { class: 'grow' }, el('b', { textContent: c.name }), el('div', { class: 'muted small', textContent: t('{0} członków · {1} online', c.members.length, online) })),
+      el('div', { class: 'grow' }, el('b', { textContent: c.name }), el('div', { class: 'muted small', textContent: `${members(c.members.length)} · ${t('{0} online', online)}` })),
       mayInvite ? el('button', { class: 'icon-btn', 'aria-label': t('Zaproś do klanu'), onclick: inviteToClan }, icon('fa-solid fa-user-plus')) : ''),
     el('div', { class: 'members' }, ...c.members.map((m) => el('span', { class: 'member', title: m.name }, avatarEl(m, m.status === 'offline' ? 'offline' : m.status), el('span', { class: 'small ellipsis', textContent: m.name })))));
 }
@@ -513,7 +513,7 @@ async function openGroupChat(view, id) {
     }
   } }, icon('fa-solid fa-right-from-bracket')) : '';
   await openChat(view, 'group', id, undefined, {
-    title: g.name, subtitle: t('{0} osób · szyfrowane', g.members.length), avatar: groupIcon(g), me: S.me.id, people, actions: [leave],
+    title: g.name, subtitle: `${plural(g.members.length, ['osoba', 'osoby', 'osób'], ['person', 'people'])} · ${t('szyfrowane')}`, avatar: groupIcon(g), me: S.me.id, people, actions: [leave],
     onBack: () => (location.hash = '#/chats'),
     onRead: () => {
       g.unread = 0;
@@ -524,6 +524,9 @@ async function openGroupChat(view, id) {
 
 // ---------- Społeczności ----------
 
+/** The built-in channels have no name of their own, as in the launcher (communities.ts). */
+const channelName = (ch) => (ch.kind === 'general' ? t('Ogólny') : ch.kind === 'announcements' ? t('Ogłoszenia') : ch.name);
+
 function renderCommunities(view) {
   const list = [...S.communities].sort(byActivity);
   view.replaceChildren(
@@ -531,10 +534,10 @@ function renderCommunities(view) {
     list.length ? el('div', { class: 'stack' }, ...list.map((c) => el('section', { class: 'card' },
       el('div', { class: 'row' },
         c.logo !== undefined ? el('span', { class: 'avatar square' }, el('img', { src: `/v1/communities/${c.id}/logo.png?v=${c.logo}`, alt: '' })) : el('span', { class: 'avatar square' }, icon('fa-solid fa-users')),
-        el('div', { class: 'grow' }, el('b', { textContent: c.name }), el('div', { class: 'muted small', textContent: t('{0} członków', c.members) }))),
+        el('div', { class: 'grow' }, el('b', { textContent: c.name }), el('div', { class: 'muted small', textContent: members(c.members) }))),
       el('ul', { class: 'channels' }, ...c.channels.map((ch) => el('li', {}, el('a', { class: 'channel', href: `#/community/${c.id}/${ch.id}` },
         icon(ch.kind === 'announcements' ? 'fa-solid fa-bullhorn' : 'fa-solid fa-hashtag'),
-        el('span', { class: 'grow', textContent: ch.name }),
+        el('span', { class: 'grow', textContent: channelName(ch) }),
         ch.mentions ? el('span', { class: 'badge mention', textContent: `@${ch.mentions}` }) : badge(ch.unread))))))))
       : el('div', { class: 'empty-state' }, icon('fa-solid fa-users'), el('p', { textContent: t('Nie należysz jeszcze do żadnej społeczności. Dołączysz do nich w launcherze albo z zaproszenia.') })));
 }
@@ -547,7 +550,7 @@ async function openCommunityChat(view, id, channel) {
     return;
   }
   await openChat(view, 'community', id, channel, {
-    title: `#${ch.name}`, subtitle: c.name, me: S.me.id,
+    title: `#${channelName(ch)}`, subtitle: c.name, me: S.me.id,
     onBack: () => (location.hash = '#/communities'),
     onRead: () => {
       c.mentions = Math.max(0, (c.mentions ?? 0) - (ch.mentions ?? 0));
@@ -575,12 +578,12 @@ function renderInvites(view) {
     el('button', { class: 'icon-btn', 'aria-label': t('Odrzuć'), onclick: act(() => api('DELETE', `/v1/friends/requests/${p.id}`), loadFriends) }, icon('fa-solid fa-xmark'))))));
   if (S.clanInvites.length) sections.push(el('h2', { textContent: t('Do klanu') }), el('ul', { class: 'list' }, ...S.clanInvites.map((i) => el('li', { class: 'item' },
     el('span', { class: 'tag big', textContent: `[${i.clan.tag}]` }),
-    el('div', { class: 'grow' }, el('div', { class: 'name', textContent: i.clan.name }), el('div', { class: 'muted small', textContent: t('od {0} · {1} członków', i.by.name, i.clan.members) })),
+    el('div', { class: 'grow' }, el('div', { class: 'name', textContent: i.clan.name }), el('div', { class: 'muted small', textContent: `${t('od {0}', i.by.name)} · ${members(i.clan.members)}` })),
     el('button', { class: 'btn small', onclick: act(() => api('POST', `/v1/clans/${i.clan.id}/accept`), async () => Promise.all([loadClan(), loadGroups()])) }, icon('fa-solid fa-check'), t('Dołącz')),
     el('button', { class: 'icon-btn', 'aria-label': t('Odrzuć'), onclick: act(() => api('POST', `/v1/clans/${i.clan.id}/decline`), loadClan) }, icon('fa-solid fa-xmark'))))));
   if (S.communityInvites.length) sections.push(el('h2', { textContent: t('Do społeczności') }), el('ul', { class: 'list' }, ...S.communityInvites.map((i) => el('li', { class: 'item' },
     el('span', { class: 'avatar square' }, icon('fa-solid fa-users')),
-    el('div', { class: 'grow' }, el('div', { class: 'name', textContent: i.community.name }), el('div', { class: 'muted small', textContent: t('od {0} · {1} członków', i.by.name, i.community.members) })),
+    el('div', { class: 'grow' }, el('div', { class: 'name', textContent: i.community.name }), el('div', { class: 'muted small', textContent: `${t('od {0}', i.by.name)} · ${members(i.community.members)}` })),
     el('button', { class: 'btn small', onclick: act(() => api('POST', `/v1/communities/${i.community.id}/invites/accept`), loadCommunities) }, icon('fa-solid fa-check'), t('Dołącz')),
     el('button', { class: 'icon-btn', 'aria-label': t('Odrzuć'), onclick: act(() => api('POST', `/v1/communities/${i.community.id}/invites/decline`), loadCommunities) }, icon('fa-solid fa-xmark'))))));
   if (S.outgoing.length) sections.push(el('h2', { textContent: t('Wysłane') }), el('ul', { class: 'list' }, ...S.outgoing.map((p) => el('li', { class: 'item' },

@@ -964,7 +964,7 @@ export function createApp(cfg: Config) {
         const c = communities.store.community(id);
         const ch = communities.store.channel(id, channel);
         const m = communities.store.member(id, uuid);
-        return c && ch && m ? { name: c.name, channel: ch.name, notify: m.notify } : undefined;
+        return c && ch && m ? { name: c.name, channel: ch.name, channelKind: ch.kind, notify: m.notify } : undefined;
       },
       mentionText: () => settings.bool('push.mentionText'),
     },

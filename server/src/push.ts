@@ -144,7 +144,7 @@ export interface NoticeLookups {
   /** A group chat's name, and its clan's tag when it is a clan's chat. */
   group: (id: string) => { name: string; clanTag?: string } | undefined;
   /** A community's name and a channel's, and how the member wants to hear about it ('none': not at all). */
-  community: (id: string, channel: string, uuid: string) => { name: string; channel: string; notify: string } | undefined;
+  community: (id: string, channel: string, uuid: string) => { name: string; channel: string; channelKind: string; notify: string } | undefined;
   mentionText: () => boolean;
 }
 
@@ -187,10 +187,12 @@ export function noticeFor(userId: string, event: unknown, l: NoticeLookups): Not
     if (!c || c.notify === 'none') return undefined;
     const name = l.nameOf(m.from);
     const text = l.mentionText() && typeof m.text === 'string' && m.text.trim() ? `: ${clip(m.text.trim())}` : '';
-    const title = `${c.name} · #${c.channel}`;
+    // the built-in channels have no name of their own (clients call them by their kind)
+    const channel = (pl: boolean) => (c.channelKind === 'general' ? (pl ? 'Ogólny' : 'General') : c.channelKind === 'announcements' ? (pl ? 'Ogłoszenia' : 'Announcements') : c.channel);
     return {
       kind: 'mention', key: `c:${m.community}:${m.channel}`, url: `/app/#/community/${m.community}/${m.channel}`,
-      pl: { title, body: text ? `${name}${text}` : `${name} wspomina o Tobie` }, en: { title, body: text ? `${name}${text}` : `${name} mentioned you` },
+      pl: { title: `${c.name} · #${channel(true)}`, body: text ? `${name}${text}` : `${name} wspomina o Tobie` },
+      en: { title: `${c.name} · #${channel(false)}`, body: text ? `${name}${text}` : `${name} mentioned you` },
     };
   }
   const invite = (key: string, pl: string, en: string): Notice => ({ kind: 'invite', key, url: '/app/#/invites', pl: { title: 'SlashClient', body: pl }, en: { title: 'SlashClient', body: en } });

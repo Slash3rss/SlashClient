@@ -261,7 +261,7 @@ describe('notifications', () => {
     await call('POST', `/v1/communities/${id}/channels/${general}/messages`, a.token, { text: '@GrpB wbijasz?' });
     const [, mention] = await received(p, 2);
     assert.equal(mention.payload.kind, 'mention');
-    assert.match(mention.payload.title, /^Wzmianki · #/);
+    assert.equal(mention.payload.title, 'Wzmianki · #Ogólny');
     assert.equal(mention.payload.body, 'GrpA: @GrpB wbijasz?');
     // the admin keeps the text out
     app.settings.set({ 'push.mentionText': false }, 'test');
