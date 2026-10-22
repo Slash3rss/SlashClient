@@ -6,7 +6,7 @@ import { PlayingWatch, type PlayingNews } from './friendActivity';
 import { createParty, type Party } from './party';
 import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
 import { openProfilePrivacy, profileLink } from './profilePrivacy';
-import { confirmDialog } from './dialog';
+import { confirmDialog, modalWindow } from './dialog';
 import { onFeatures } from './features';
 import { legalNote } from './legal';
 import { badgeChoices, rankBadge, rankName, safeColor, type RankView } from './rankBadge';
@@ -197,10 +197,42 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   const pictures = new Map<string, Promise<string>>();
   /** The code of a "type this code" sign-in (Microsoft) while it waits. */
   let loginCode: { code: string; url: string } | undefined;
+  /** The window with the code while an account is being linked (signed in already: no sign-in page to show it). */
+  let closeLinkCode: (() => void) | undefined;
   api.on('social:loginCode', (c: { code: string; url: string }) => {
     loginCode = c;
     if (signingIn) render();
+    else if (state?.user) showLinkCode(c);
   });
+
+  /** "Połącz konto Microsoft" in the account: the code, already copied, said big, with the steps. */
+  function showLinkCode(c: { code: string; url: string }) {
+    closeLinkCode?.();
+    const copy = el('button', { type: 'button' }, icon('fa-copy'), t(' Kopiuj ponownie'));
+    copy.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(c.code);
+      deps.toast(t('Skopiowano kod'));
+    });
+    const link = el('a', { href: c.url, target: '_blank', textContent: c.url.replace(/^https:\/\/(www\.)?/, '') });
+    const paste = navigator.platform.startsWith('Mac') ? '⌘+V' : 'Ctrl+V';
+    const cancel = el('button', { type: 'button' }, t('Anuluj'));
+    cancel.addEventListener('click', () => {
+      void api.socialCancelLogin();
+      closeLinkCode?.();
+    });
+    closeLinkCode = modalWindow(t('Połącz konto Microsoft'), [el('div', { className: 'ms-code' },
+      el('div', { className: 'ms-copied-note' }, icon('fa-clipboard-check'),
+        el('div', {}, el('b', { textContent: t('Kod jest już skopiowany do schowka!') }), el('span', { textContent: t('Nie musisz go przepisywać – po prostu go wklej.') }))),
+      el('ol', { className: 'ms-steps' },
+        el('li', {}, t('W przeglądarce otworzyła się strona Microsoftu ('), link, t('). Jeśli nie, kliknij ten link.')),
+        el('li', { textContent: t('Kliknij w pole na kod i wklej go: {0}.', paste) }),
+        el('li', { textContent: t('Zaloguj się kontem Microsoft i wróć tutaj – launcher dokończy sam.') })),
+      el('div', { className: 'code-row' }, el('div', { className: 'code', textContent: c.code }), copy),
+      el('p', { className: 'muted' }, el('span', { className: 'spinner' }), t(' Czekam na zalogowanie…')))], [cancel], () => {
+      closeLinkCode = undefined;
+    });
+    deps.toast(t('Kod {0} jest w schowku – wklej go na stronie Microsoftu.', c.code));
+  }
 
   const party = createParty({
     api, toast: deps.toast, errorText: deps.errorText, inviteTarget: deps.inviteTarget, join: deps.join,
@@ -601,6 +633,9 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
             deps.toast(deps.errorText(err), true);
           } finally {
             chip.disabled = false;
+            // the code's window goes once the linking is over, either way
+            closeLinkCode?.();
+            loginCode = undefined;
           }
         }
       });
