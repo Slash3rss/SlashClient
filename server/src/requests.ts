@@ -39,7 +39,8 @@ CREATE INDEX IF NOT EXISTS request_log_at ON request_log (at);
 
 /** "launcher", "mod", "strona" or "inne", with a version when the client says it. */
 export function clientOf(req: http.IncomingMessage): { client: string; version: string } {
-  const named = /^(launcher|mod)\/([\w.+-]{1,32})$/.exec(String(req.headers['x-slashclient'] ?? ''));
+  // the phone app (web/app) says 'app/<version>'
+  const named = /^(launcher|mod|app)\/([\w.+-]{1,32})$/.exec(String(req.headers['x-slashclient'] ?? ''));
   if (named) return { client: named[1], version: named[2] };
   const ua = String(req.headers['user-agent'] ?? '');
   const launcher = /SlashClient\/([\w.+-]+)/.exec(ua);

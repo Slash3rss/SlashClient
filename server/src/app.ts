@@ -54,6 +54,7 @@ import { createSpotify } from './spotify.ts';
 import { createStreams } from './streams/streams.ts';
 import type { KICK, TWITCH } from './streams/providers.ts';
 import { createSuggestions } from './suggestions.ts';
+import { createPush } from './push.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -334,9 +335,14 @@ export function createApp(cfg: Config) {
 
   // ---- live events ----
 
+  /** Phones' notifications (push.ts), made below once the modules they ask about exist. */
+  let phones: ReturnType<typeof createPush> | undefined;
+
   function push(userId: string, event: unknown) {
     const data = JSON.stringify(event);
     for (const ws of sockets.get(userId) ?? []) ws.send(data);
+    // the same event may be worth a notification on the player's phone
+    void phones?.onEvent(userId, event);
   }
 
   /** One event to many accounts at once (a community's chat): serialised once, sent only to those connected (whichever set is smaller is walked). */
@@ -350,6 +356,11 @@ export function createApp(cfg: Config) {
     if (sockets.size < users.size) {
       for (const [id, set] of sockets) if (users.has(id)) send(set);
     } else for (const id of users) send(sockets.get(id));
+    // a community's message: only those it mentions may get a notification on the phone
+    const e = event as { type?: string; message?: { mentions?: unknown } };
+    if (phones && e.type === 'community-message' && Array.isArray(e.message?.mentions)) {
+      for (const id of e.message.mentions) if (typeof id === 'string' && users.has(id)) void phones.onEvent(id, event);
+    }
   }
 
   // a feature switched or the banner changed: every launcher connected asks /v1/features again
@@ -939,6 +950,29 @@ export function createApp(cfg: Config) {
     },
   });
 
+  // notifications on the phone app (push.ts): the live events above, for the player's phones
+  phones = createPush({
+    sql: db.sql, settings, box: storage.box, publicUrl: cfg.publicUrl, authed, body, limitSubscribe: limiter('push.subscribesPerMinute'), fetchImpl: cfg.fetchImpl,
+    lookups: {
+      nameOf: (uuid) => db.user(uuid)?.name || '?',
+      muted: (uuid) => mutes.store.muted(uuid),
+      group: (id) => {
+        const g = groups.store.group(id);
+        return g && { name: g.name, ...(g.clan ? { clanTag: clans.tagOfClan(g.clan) ?? '' } : {}) };
+      },
+      community: (id, channel, uuid) => {
+        const c = communities.store.community(id);
+        const ch = communities.store.channel(id, channel);
+        const m = communities.store.member(id, uuid);
+        return c && ch && m ? { name: c.name, channel: ch.name, notify: m.notify } : undefined;
+      },
+      mentionText: () => settings.bool('push.mentionText'),
+    },
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
   const routes: [string, RegExp, Handler][] = [
     // the request log: newest first, with who asked (handles looked up once per request)
     ['GET', /^\/v1\/admin\/requests$/, (req, _p, url) => {
@@ -1469,6 +1503,7 @@ export function createApp(cfg: Config) {
     ...home.routes,
     ...streams.routes,
     ...spotify.routes,
+    ...phones.routes,
     // voting for a server on the server list from the launcher (serverVotes.ts)
     ...serverVoteRoutes({
       settings, authed, clientIp, body, fetchImpl: cfg.fetchImpl,
@@ -1845,6 +1880,11 @@ export function createApp(cfg: Config) {
     to.handleUpgrade(req, socket, head, (ws) => to.emit('connection', ws, req));
   });
   const alive = new WeakSet<WebSocket>();
+  /**
+   * What each connection last said about the player (a launcher and the phone app at once): when one
+   * closes, the status is the latest of those left, not that of the one gone (a game that ended).
+   */
+  const socketPresence = new WeakMap<WebSocket, { presence: Presence; at: number }>();
   wss.on('connection', (ws) => {
     let me: string | undefined;
     alive.add(ws);
@@ -1867,7 +1907,10 @@ export function createApp(cfg: Config) {
         if (!sockets.has(me)) sockets.set(me, new Set());
         sockets.get(me)!.add(ws);
         const presence = cleanPresence(msg.presence);
-        if (presence) presences.set(me, presence);
+        if (presence) {
+          presences.set(me, presence);
+          socketPresence.set(ws, { presence, at: Date.now() });
+        }
         activity.seen(me);
         if (first) activity.sample(sockets.size, live().inGame);
         ws.send(JSON.stringify({ type: 'ready', me: meWithProviders(me) }));
@@ -1888,6 +1931,7 @@ export function createApp(cfg: Config) {
         const presence = cleanPresence(msg.presence);
         if (!presence) return;
         presences.set(me, presence);
+        socketPresence.set(ws, { presence, at: Date.now() });
         broadcastPresence(me);
       } else if (msg.type === 'lan' && typeof msg.open === 'boolean') {
         const was = lanHosts.has(me);
@@ -1908,6 +1952,15 @@ export function createApp(cfg: Config) {
         presences.delete(me);
         lanHosts.delete(me);
         db.touch(me);
+        broadcastPresence(me);
+      } else if (socketPresence.has(ws)) {
+        let latest: { presence: Presence; at: number } | undefined;
+        for (const other of set) {
+          const p = socketPresence.get(other);
+          if (p && (!latest || p.at > latest.at)) latest = p;
+        }
+        if (latest) presences.set(me, latest.presence);
+        else presences.delete(me);
         broadcastPresence(me);
       }
     });
@@ -2064,6 +2117,8 @@ export function createApp(cfg: Config) {
     streams,
     /** For tests: linked Spotify accounts. */
     spotify,
+    /** For tests: the phones' notifications. */
+    phones,
     close: () => new Promise<void>((resolve) => {
       clearInterval(heartbeat);
       clearInterval(playTick);
