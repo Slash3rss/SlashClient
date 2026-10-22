@@ -66,6 +66,8 @@ public class SlashHud implements ClientModInitializer {
 		Freelook.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.freelook", InputConstants.KEY_LALT, category));
 		KeyMapping waypointsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.waypoints", InputConstants.KEY_B, category));
 		Clips.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.clip", InputConstants.KEY_F8, category));
+		// the instant replay: F6 (F7–F9 are taken by SkyUp's dump, clips and the light overlay)
+		Replay.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.replay", InputConstants.KEY_F6, category));
 		Cosmetics.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.emote", InputConstants.KEY_N, category));
 		// sprays: no key by default (set in SlashClient's keys window or the game's Controls)
 		Sprays.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.spray", InputConstants.UNKNOWN.getValue(), category));
@@ -222,6 +224,7 @@ public class SlashHud implements ClientModInitializer {
 			RingEffects.tick(mc);
 			Sprays.tick(mc);
 			Clips.tick(mc);
+			Replay.tick(mc);
 			Badges.tick(mc);
 			while (edit.consumeClick()) {
 				if (Compat.screen(mc) == null) mc.setScreenAndShow(new HudEditScreen());
