@@ -1,5 +1,5 @@
 import { t } from '../shared/i18n';
-import { el, icon } from './dialog';
+import { ask, el, icon } from './dialog';
 
 /**
  * Spotify in the account window (server 0.9.36+, spotify.ts there): link or unlink the account
@@ -55,7 +55,7 @@ export function createSpotifySection(deps: SpotifyDeps) {
   }
 
   async function unlink() {
-    if (!confirm(t('Odłączyć Spotify? Moduł „Spotify” w grze przestanie pokazywać, czego słuchasz.'))) return;
+    if (!(await ask(t('Odłączyć Spotify? Moduł „Spotify” w grze przestanie pokazywać, czego słuchasz.'), t('Odłącz'), { danger: true, okIcon: 'fa-link-slash' }))) return;
     try {
       state = await deps.api.socialApi('DELETE', '/v1/me/spotify');
     } catch (err) {

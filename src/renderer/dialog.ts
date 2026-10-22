@@ -24,6 +24,14 @@ export interface ConfirmOptions {
   danger?: boolean;
 }
 
+/**
+ * A yes/no question in the launcher's own window style instead of the system's confirm() box: the
+ * question as the title, an optional line under it, and the button saying what happens.
+ */
+export function ask(question: string, ok: string, opts: { detail?: string; danger?: boolean; okIcon?: string } = {}): Promise<boolean> {
+  return confirmDialog({ title: question, body: opts.detail ? [el('p', { className: 'muted', textContent: opts.detail })] : [], ok, okIcon: opts.okIcon, danger: opts.danger });
+}
+
 /** A question in the launcher's own window style; resolves true when the player confirms. */
 export function confirmDialog(opts: ConfirmOptions): Promise<boolean> {
   return new Promise((resolve) => {

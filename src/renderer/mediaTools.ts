@@ -1,5 +1,5 @@
 import { locale, t } from '../shared/i18n';
-import { confirmDialog, control, el, fmtSize, icon } from './dialog';
+import { ask, confirmDialog, control, el, fmtSize, icon } from './dialog';
 
 /**
  * The gallery's extras: trimming a clip (a window with the clip, two handles for the start and
@@ -331,7 +331,7 @@ export function createMediaTools(d: MediaToolDeps) {
         });
         const remove = el('button', { type: 'button', className: 'icon-btn danger', title: t('Usuń link') }, el('i', { className: 'fa-regular fa-trash-can' }));
         remove.addEventListener('click', async () => {
-          if (!confirm(t('Usunąć ten link? Nikt już go nie otworzy.'))) return;
+          if (!(await ask(t('Usunąć ten link? Nikt już go nie otworzy.'), t('Usuń'), { danger: true, okIcon: 'fa-trash-can' }))) return;
           await guard(() => api.deleteSharedMedia(m.id));
           void render();
         });

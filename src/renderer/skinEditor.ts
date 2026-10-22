@@ -1,5 +1,6 @@
 import { IdleAnimation, SkinViewer } from 'skinview3d';
 import { t } from '../shared/i18n';
+import { ask } from './dialog';
 import { floodRegion, regionAt, skinRegions, upgradeLegacySkin, type SkinRegion } from '../shared/skinLayout';
 
 /**
@@ -352,8 +353,16 @@ export async function openSkinEditor(opts: SkinEditorOptions): Promise<void> {
 
   // ---- leaving ----
   const changed = () => undo.length > 0;
-  function finish(force = false) {
-    if (!force && changed() && !confirm(t('Zamknąć edytor? Niezapisane zmiany przepadną.'))) return;
+  // while the question is open, Escape or another click on close does not ask again
+  let asking = false;
+  async function finish(force = false) {
+    if (asking) return;
+    if (!force && changed()) {
+      asking = true;
+      const ok = await ask(t('Zamknąć edytor? Niezapisane zmiany przepadną.'), t('Zamknij bez zapisu'), { danger: true });
+      asking = false;
+      if (!ok) return;
+    }
     document.removeEventListener('keydown', onKey, true);
     viewer.dispose();
     modal.remove();

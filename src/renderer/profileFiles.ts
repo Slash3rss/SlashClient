@@ -1,4 +1,5 @@
 import { t } from '../shared/i18n';
+import { ask } from './dialog';
 
 /**
  * Profile snapshots (the card in a profile's settings), world export and import as .zip,
@@ -68,14 +69,14 @@ export function createProfileFiles(deps: ProfileFilesDeps) {
       const title = s.reason === 'update' ? t('Przed aktualizacją modpacka') : t('Migawka ręczna');
       const restore = el('button', { type: 'button' }, el('i', { className: 'fa-solid fa-clock-rotate-left' }), t('Przywróć'));
       restore.addEventListener('click', async () => {
-        if (!confirm(t('Przywrócić migawkę z {0}? Foldery mods i config wrócą do stanu z tamtej chwili, a zmiany wprowadzone od tego czasu zostaną usunięte.', fmtDate(s.createdAt)))) return;
+        if (!(await ask(t('Przywrócić migawkę z {0}? Foldery mods i config wrócą do stanu z tamtej chwili, a zmiany wprowadzone od tego czasu zostaną usunięte.', fmtDate(s.createdAt)), t('Przywróć'), { danger: true, okIcon: 'fa-rotate-left' }))) return;
         const done = await busy(restore, () => guard(() => api.restoreSnapshot(profileId, s.id)), t('Przywracam…'));
         if (!done) return;
         toast(t('Przywrócono migawkę z {0}.', fmtDate(s.createdAt)));
         await deps.profileChanged(profileId);
       });
-      const remove = iconButton('fa-regular fa-trash-can', t('Usuń'), () => {
-        if (confirm(t('Usunąć migawkę z {0}?', fmtDate(s.createdAt)))) guard(() => api.deleteSnapshot(profileId, s.id)).then(() => renderSnapshots(profileId, list));
+      const remove = iconButton('fa-regular fa-trash-can', t('Usuń'), async () => {
+        if (await ask(t('Usunąć migawkę z {0}?', fmtDate(s.createdAt)), t('Usuń'), { danger: true, okIcon: 'fa-trash-can' })) guard(() => api.deleteSnapshot(profileId, s.id)).then(() => renderSnapshots(profileId, list));
       }, 'danger');
       const pack = s.profile.modpack ? `${s.profile.modpack.title} ${s.profile.modpack.versionNumber}` : t('Minecraft {0}', s.profile.versionId);
       return el('div', { className: 'version-row' },
@@ -103,7 +104,7 @@ export function createProfileFiles(deps: ProfileFilesDeps) {
     const picked: { key: string; summary: WorldZipSummary } | undefined = await busy(button, () => guard(() => api.pickWorldZip()));
     if (!picked) return false;
     const { name, sizeBytes, files } = picked.summary;
-    if (!confirm(t('Zaimportować świat „{0}” ({1}, plików: {2}) do tego profilu?', name, fmtSize(sizeBytes), files))) return false;
+    if (!(await ask(t('Zaimportować świat „{0}” ({1}, plików: {2}) do tego profilu?', name, fmtSize(sizeBytes), files), t('Importuj'), { okIcon: 'fa-file-import' }))) return false;
     const folder = await busy(button, () => guard(() => api.importWorld(profileId, picked.key)), t('Importuję…'));
     return !!folder;
   }
@@ -119,8 +120,8 @@ export function createProfileFiles(deps: ProfileFilesDeps) {
           el('div', { className: 'version-meta' },
             el('span', { textContent: d.versionNumber ?? (d.folder ? t('folder') : d.filename) }),
             ...(d.sizeBytes ? [el('span', { textContent: fmtSize(d.sizeBytes) })] : [])))),
-      el('div', { className: 'actions' }, iconButton('fa-regular fa-trash-can', t('Usuń'), () => {
-        if (!confirm(t('Usunąć datapack {0} ze świata „{1}”?', d.title, world.name))) return;
+      el('div', { className: 'actions' }, iconButton('fa-regular fa-trash-can', t('Usuń'), async () => {
+        if (!(await ask(t('Usunąć datapack {0} ze świata „{1}”?', d.title, world.name), t('Usuń'), { danger: true, okIcon: 'fa-trash-can' }))) return;
         guard(() => api.removeDatapack(profileId, world.folder, d.filename)).then(() => renderDatapacks(profileId, world, panel));
       }, 'danger'))));
     panel.replaceChildren(

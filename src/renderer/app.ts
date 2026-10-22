@@ -26,7 +26,7 @@ import { initFeatures } from './features';
 import { checkLegalNotices, createLegalCard } from './legal';
 import { createWiki } from './wiki';
 import { createServerPages } from './serverPages';
-import { confirmDialog, modalWindow } from './dialog';
+import { ask, confirmDialog, modalWindow } from './dialog';
 import { createWizard } from './wizard';
 import { createSessionSummary } from './sessionSummary';
 
@@ -2583,8 +2583,8 @@ function installedCard(item: InstalledItem): HTMLElement {
     await refreshInstalled();
   }));
   const remove = el('button', { className: 'icon-btn danger', title: 'Usuń' }, el('i', { className: 'fa-regular fa-trash-can' }));
-  remove.addEventListener('click', () => {
-    if (!confirm(t('Usunąć {0}?', item.title))) return;
+  remove.addEventListener('click', async () => {
+    if (!(await ask(t('Usunąć {0}?', item.title), t('Usuń'), { danger: true, okIcon: 'fa-trash-can' }))) return;
     guard(async () => {
       await api.removeContent(contentProfileId(), item.type, item.filename);
       await refreshInstalled();
@@ -3102,8 +3102,8 @@ async function renderWorlds() {
           el('div', { className: 'project-meta' }, el('span', { textContent: fmtDate(b.createdAt) }), el('span', { textContent: fmtSize(b.sizeBytes) }))),
         el('div', { className: 'project-actions' }, restore,
           iconButton('fa-regular fa-folder-open', 'Pokaż w folderze', () => api.revealFile(b.file)),
-          iconButton('fa-regular fa-trash-can', 'Usuń', () => {
-            if (confirm(t('Usunąć kopię z {0}?', fmtDate(b.createdAt)))) guard(() => api.deleteBackup(profileId, fileName(b.file))).then(renderWorlds);
+          iconButton('fa-regular fa-trash-can', 'Usuń', async () => {
+            if (await ask(t('Usunąć kopię z {0}?', fmtDate(b.createdAt)), t('Usuń'), { danger: true, okIcon: 'fa-trash-can' })) guard(() => api.deleteBackup(profileId, fileName(b.file))).then(renderWorlds);
           }, 'danger')));
     })));
     if (!backups.length) box.replaceChildren(el('p', { className: 'muted', textContent: 'Brak kopii. Utworzysz je przyciskiem „Kopia” przy świecie.' }));
@@ -3124,8 +3124,8 @@ async function renderWorlds() {
             iconButton('fa-solid fa-share-nodes', t('Udostępnij linkiem'), () => mediaTools.shareFile(profileId, 'clips', c.name), 'feature-media'),
           ] : []),
           iconButton('fa-regular fa-folder-open', t('Pokaż w folderze'), () => api.revealFile(c.file)),
-          iconButton('fa-regular fa-trash-can', t('Usuń'), () => {
-            if (confirm(t('Usunąć ten klip?'))) guard(() => api.deleteClip(profileId, c.name)).then(renderWorlds);
+          iconButton('fa-regular fa-trash-can', t('Usuń'), async () => {
+            if (await ask(t('Usunąć ten klip?'), t('Usuń'), { danger: true, okIcon: 'fa-trash-can' })) guard(() => api.deleteClip(profileId, c.name)).then(renderWorlds);
           }, 'danger')));
     })));
     if (!clips.length) box.replaceChildren(el('p', { className: 'muted', textContent: t('Brak klipów. Włącz „Klipy” w ustawieniach HUD w grze (Prawy Shift), a F8 zapisze ostatnie sekundy gry.') }));
@@ -3140,8 +3140,8 @@ async function renderWorlds() {
         el('div', {}, el('span', { textContent: fmtDate(sh.createdAt) }),
           iconButton('fa-solid fa-share-nodes', t('Udostępnij linkiem'), () => mediaTools.shareFile(profileId, 'screenshots', sh.name), 'feature-media'),
           iconButton('fa-regular fa-folder-open', 'Pokaż w folderze', () => api.revealFile(sh.file)),
-          iconButton('fa-regular fa-trash-can', 'Usuń', () => {
-            if (confirm(t('Usunąć ten zrzut ekranu?'))) guard(() => api.deleteScreenshot(profileId, sh.name)).then(renderWorlds);
+          iconButton('fa-regular fa-trash-can', 'Usuń', async () => {
+            if (await ask(t('Usunąć ten zrzut ekranu?'), t('Usuń'), { danger: true, okIcon: 'fa-trash-can' })) guard(() => api.deleteScreenshot(profileId, sh.name)).then(renderWorlds);
           }, 'danger')));
     })));
     if (!shots.length) box.replaceChildren(el('p', { className: 'muted', textContent: 'Brak zrzutów. W grze zrobisz je klawiszem F2.' }));
@@ -3834,9 +3834,9 @@ $('#skin-upload').addEventListener('click', () => {
     }
   });
 });
-$('#skin-reset').addEventListener('click', () => {
+$('#skin-reset').addEventListener('click', async () => {
   const accountId = skinAccountId;
-  if (!accountId || !confirm(t('Przywrócić domyślny skin na koncie Minecraft?'))) return;
+  if (!accountId || !(await ask(t('Przywrócić domyślny skin na koncie Minecraft?'), t('Przywróć'), { okIcon: 'fa-rotate-left' }))) return;
   busy($<HTMLButtonElement>('#skin-reset'), async () => {
     try {
       await api.resetSkin(accountId);
@@ -3982,7 +3982,7 @@ document.querySelectorAll<HTMLButtonElement>('#lib-variant button').forEach((b) 
   }));
 $('#lib-remove').addEventListener('click', async () => {
   const p = presets.find((x) => x.id === chosenPreset);
-  if (!p || !confirm(t('Usunąć „{0}” z biblioteki?', p.name))) return;
+  if (!p || !(await ask(t('Usunąć „{0}” z biblioteki?', p.name), t('Usuń'), { danger: true, okIcon: 'fa-trash-can' }))) return;
   await guard(() => api.removeSkinPreset(p.id));
   leavePreview();
   await loadLibrary();

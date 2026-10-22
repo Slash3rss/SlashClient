@@ -1,6 +1,7 @@
 /** English texts of linking Spotify in the account window, for the game's "Spotify" module (spotify.ts). */
 export const SPOTIFY_EN: Record<string, string> = {
   'Muzyka:': 'Music:',
+  'Odłącz': 'Unlink',
   ' Połącz Spotify': ' Link Spotify',
   'Połącz konto Spotify: moduł „Spotify” w grze pokaże, czego słuchasz': 'Link a Spotify account: the game\'s "Spotify" module will show what you are listening to',
   'Połączone: Spotify ({0}). Kliknij, żeby odłączyć.': 'Linked: Spotify ({0}). Click to unlink.',

@@ -1,5 +1,5 @@
 import { t } from '../shared/i18n';
-import { control, el, icon } from './dialog';
+import { ask, control, el, icon } from './dialog';
 
 /**
  * "Streamy" in Friends (server 0.9.24+, server/src/streams): a friend live on Twitch or Kick gets
@@ -90,7 +90,7 @@ export function createStreamsSection(deps: StreamsDeps) {
   }
 
   async function unlink(a: Account) {
-    if (!confirm(t('Odłączyć kanał {0} {1}? Znajomi przestaną widzieć, że nadajesz.', PLATFORM_NAMES[a.platform], a.login))) return;
+    if (!(await ask(t('Odłączyć kanał {0} {1}? Znajomi przestaną widzieć, że nadajesz.', PLATFORM_NAMES[a.platform], a.login), t('Odłącz'), { danger: true, okIcon: 'fa-link-slash' }))) return;
     try {
       state = await deps.api.socialApi('DELETE', `/v1/me/streams/${a.platform}`);
     } catch (err) {

@@ -6,7 +6,7 @@ import { PlayingWatch, type PlayingNews } from './friendActivity';
 import { createParty, type Party } from './party';
 import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
 import { openProfilePrivacy, profileLink } from './profilePrivacy';
-import { confirmDialog, modalWindow } from './dialog';
+import { ask, confirmDialog, modalWindow } from './dialog';
 import { createSuggestions } from './friendSuggestions';
 import { onFeatures } from './features';
 import { legalNote } from './legal';
@@ -426,7 +426,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     for (const mc of me.minecraft ?? []) {
       const chip = el('button', { type: 'button', className: 'fr-chip on', title: t('Konto Minecraft {0}. Kliknij, żeby odłączyć.', mc.name) }, icon('fa-cube'), mc.name);
       chip.addEventListener('click', async () => {
-        if (!confirm(t('Odłączyć konto Minecraft {0} od konta SlashClient?', mc.name))) return;
+        if (!(await ask(t('Odłączyć konto Minecraft {0} od konta SlashClient?', mc.name), t('Odłącz'), { danger: true, okIcon: 'fa-link-slash' }))) return;
         try {
           state!.user = await api.socialApi('DELETE', `/v1/me/minecraft/${mc.uuid}`);
           renderMe();
@@ -622,7 +622,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     });
     const logout = el('button', { type: 'button', className: 'icon-btn', title: t('Wyloguj') }, icon('fa-right-from-bracket'));
     logout.addEventListener('click', async () => {
-      if (!confirm(t('Wylogować się ze znajomych?'))) return;
+      if (!(await ask(t('Wylogować się ze znajomych?'), t('Wyloguj'), { okIcon: 'fa-right-from-bracket' }))) return;
       await api.socialLogout();
       selected = undefined;
       chats.clear();
@@ -643,7 +643,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       }, providerIcon(provider), has ? icon('fa-check') : icon('fa-plus'));
       chip.addEventListener('click', async () => {
         if (has) {
-          if (!confirm(t('Odłączyć {0} od konta SlashClient?', PROVIDERS[provider] ?? provider))) return;
+          if (!(await ask(t('Odłączyć {0} od konta SlashClient?', PROVIDERS[provider] ?? provider), t('Odłącz'), { danger: true, okIcon: 'fa-link-slash' }))) return;
           try {
             state!.user = await api.socialApi('DELETE', `/v1/me/providers/${provider}`);
             renderMe();
@@ -1257,8 +1257,16 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       f.muted ? t('{0} znowu może Cię powiadamiać.', f.name) : t('Wyciszono {0}: wiadomości przyjdą bez powiadomień.', f.name)));
     actions.push(mute);
     const remove = el('button', { type: 'button', className: 'icon-btn danger', title: t('Usuń ze znajomych') }, icon('fa-user-minus'));
-    remove.addEventListener('click', () => {
-      if (confirm(t('Usunąć {0} ze znajomych?', f.name))) act(() => api.socialApi('DELETE', `/v1/friends/${f.id}`), t('Usunięto {0} ze znajomych.', f.name));
+    remove.addEventListener('click', async () => {
+      const ok = await confirmDialog({
+        title: t('Usunąć ze znajomych?'),
+        body: [
+          el('div', { className: 'confirm-person' }, avatar(f, f.presence), el('b', {}, ...rankTag(f.badgeRank), f.name)),
+          el('p', { className: 'muted', textContent: t('Znikniecie sobie nawzajem z list znajomych. Zaproszenie możesz wysłać ponownie w każdej chwili.') }),
+        ],
+        ok: t('Usuń ze znajomych'), okIcon: 'fa-user-minus', danger: true,
+      });
+      if (ok) act(() => api.socialApi('DELETE', `/v1/friends/${f.id}`), t('Usunięto {0} ze znajomych.', f.name));
     });
     actions.push(remove);
     chatHead.replaceChildren(avatar(f, f.presence),
