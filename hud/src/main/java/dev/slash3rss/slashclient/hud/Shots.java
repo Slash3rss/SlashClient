@@ -82,6 +82,9 @@ public final class Shots {
 		int w = 112, h = Math.max(1, w * imgH / imgW);
 		float out = age > SHOW_MS - 300 ? (age - (SHOW_MS - 300)) / 300f : 0f;
 		int x = g.guiWidth() - w - 8 + Math.round(out * (w + 12)), y = 8;
+		// sliding out past the screen's edge is on purpose: the layout audit is not told about it
+		boolean sliding = out > 0;
+		if (sliding) Ui.beginClip("screenshot preview sliding out", 0, 0, g.guiWidth(), g.guiHeight());
 		// with friends: which key opens them, where the picture can be sent
 		boolean hint = Social.signedIn() && !Social.friends().isEmpty() && SlashHud.friendsKey != null;
 		int extra = hint ? 10 : 0;
@@ -94,5 +97,6 @@ public final class Shots {
 			String key = SlashHud.friendsKey.getTranslatedKeyMessage().getString();
 			Ui.draw(g, Ui.fit(Ui.text(Component.translatable("slashclient-hud.picture.hint", key).getString()), w), x, y + h + 14, Ui.MUTED);
 		}
+		if (sliding) Ui.end();
 	}
 }
