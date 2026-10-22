@@ -15,6 +15,7 @@ import { SHARE_LIMITS } from './profileShares.ts';
 import type { SettingCategory, SettingDef } from './settings.ts';
 import { DEFAULT_MIN_FREE } from './storage.ts';
 import { STREAM_SETTING_DEFS } from './streams/settings.ts';
+import { SUGGESTION_SETTING_DEFS } from './suggestions.ts';
 import { LOG_DAYS, MAX_LOG } from './tracker.ts';
 
 /**
@@ -40,6 +41,7 @@ export const CATEGORIES: { id: SettingCategory; label: string; labelEn: string }
   { id: 'moderation', label: 'Moderacja', labelEn: 'Moderation' },
   { id: 'streams', label: 'Streamy', labelEn: 'Streams' },
   { id: 'servers', label: 'Lista serwerów', labelEn: 'Server list' },
+  { id: 'suggestions', label: 'Propozycje znajomych', labelEn: 'Friend suggestions' },
 ];
 
 const MB = 1024 * 1024;
@@ -188,6 +190,9 @@ export const SETTING_DEFS: SettingDef[] = [
   ]),
 
   ...STREAM_SETTING_DEFS,
+
+  // friend suggestions from players met recently (suggestions.ts)
+  ...SUGGESTION_SETTING_DEFS,
 
   // voting from the launcher's "Serwery" (serverVotes.ts): the list's API trusts this server's key
   ...group('servers', [
