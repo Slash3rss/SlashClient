@@ -781,9 +781,10 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         sections.push(el('div', { className: 'fr-row' }, avatar(r), el('div', { className: 'grow fr-names' }, el('b', { textContent: r.name }), el('small', { className: 'muted', textContent: `@${r.handle}` })), accept, decline));
       }
     }
+    // players met recently, under the invites (collapsible)
+    sections.push(...suggestions.sections());
     sections.push(...groups.sections());
     sections.push(...communities.sections());
-    sections.push(...suggestions.sections());
     const sorted = [...list.friends].sort((a, b) => rank(a) - rank(b) || b.lastMessageAt - a.lastMessageAt || a.name.localeCompare(b.name));
     const online = sorted.filter((f) => f.presence.status !== 'offline').length;
     sections.push(el('div', { className: 'fr-section', textContent: t('Znajomi · {0} online', online) }));

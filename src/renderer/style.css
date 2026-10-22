@@ -1396,11 +1396,12 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 button.fr-sug-head { width: calc(100% - 8px); background: transparent; border: 0; padding: 0; cursor: pointer; text-align: left; }
 button.fr-sug-head:hover { color: var(--text); background: transparent; transform: none; }
 .fr-sug-hint { font-size: 12px; margin: 0 4px 4px; }
-.fr-sug-row { gap: 8px; }
-.fr-sug-row .fr-names small { line-height: 1.35; }
+.fr-sug-row { gap: 8px; align-items: flex-start; }
+.fr-sug-row > .fr-avatar { margin-top: 2px; }
+/* the reason wraps instead of being cut: it is the point of the row */
+.fr-sug-row .fr-names small { white-space: normal; line-height: 1.35; }
 .fr-sug-row .fr-sug-extra { font-size: 11.5px; opacity: .85; }
-.fr-sug-row .fr-sug-add { height: 30px; padding: 0 10px; font-size: 12.5px; flex-shrink: 0; white-space: nowrap; }
-.fr-sug-row .fr-sug-hide { width: 28px; height: 28px; }
+.fr-sug-row .icon-btn { width: 30px; height: 30px; margin-top: 2px; }
 .fr-sug-foot { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 4px 6px; }
 .fr-sug-foot .fr-chip-btn { font-size: 12px; }
 .pp-suggest-hint { font-size: 12.5px; margin-top: 4px; }

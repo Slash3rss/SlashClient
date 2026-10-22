@@ -152,9 +152,12 @@ export function createSuggestions(deps: Deps) {
 
   function row(s: Suggestion): HTMLElement {
     const why = reasons(s);
-    const addBtn = el('button', { type: 'button', className: 'fr-sug-add primary', title: t('Wyślij zaproszenie do znajomych'), disabled: busy.has(s.id) }, icon('fa-user-plus'), ` ${t('Dodaj')}`);
+    // the panel is narrow: icons, with the words in the tooltip and for screen readers
+    const addBtn = el('button', { type: 'button', className: 'icon-btn primary fr-sug-add', title: `${t('Dodaj')}: ${t('Wyślij zaproszenie do znajomych')}`, disabled: busy.has(s.id) }, icon('fa-user-plus'));
+    addBtn.setAttribute('aria-label', t('Dodaj'));
     addBtn.addEventListener('click', () => void add(s));
     const hide = el('button', { type: 'button', className: 'icon-btn fr-sug-hide', title: t('Nie proponuj więcej'), disabled: busy.has(s.id) }, icon('fa-xmark'));
+    hide.setAttribute('aria-label', t('Nie proponuj więcej'));
     hide.addEventListener('click', () => void dismiss(s));
     return el('div', { className: 'fr-row fr-sug-row', title: why.join('\n') },
       deps.avatar(s),
