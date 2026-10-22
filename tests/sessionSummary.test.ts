@@ -69,6 +69,12 @@ describe('session summary: building it', () => {
     assert.equal(s.screenshotCount, 2);
     assert.equal(s.stats?.blocks.mined, 320);
   });
+  it('never counts more time than the session had', () => {
+    const s = buildSummary({ ...base, end: START + 20 * M, mod: parseModSession(modFile(), START), joins: [], screenshots: [], clips: [] });
+    assert.deepEqual(s.places.map((p) => p.ms), [20 * M, 20 * M]);
+    assert.equal(s.stats?.playMs, 20 * M);
+    assert.equal(s.stats?.longestLifeMs, 20 * M);
+  });
   it('works without the mod: servers from the log, the saved world before them', () => {
     const s = buildSummary({ ...base, joins: [{ address: 'skyup.pl', at: START + 30 * M }], world: { name: 'Dom' }, screenshots: [], clips: [] });
     assert.equal(s.stats, null);

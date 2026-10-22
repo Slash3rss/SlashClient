@@ -97,6 +97,11 @@ export function parseChallenges(res: unknown): Challenge[] {
   });
 }
 
+/** Names of servers and worlds stay as the player wrote them (the page's translator skips them). */
+const raw = <T extends HTMLElement>(node: T) => {
+  node.dataset.noI18n = '';
+  return node;
+};
 const media = (file: string) => `slash-media://local/?path=${encodeURIComponent(file)}`;
 const timeOf = (ms: number) => new Date(ms).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' });
 const dateOf = (ms: number) => new Date(ms).toLocaleDateString(locale(), { day: 'numeric', month: 'short' });
@@ -120,7 +125,7 @@ export function createSessionSummary(deps: SessionSummaryDeps) {
     return el('div', { className: 'ss-place' }, pic,
       el('div', { className: 'ss-place-main' },
         el('div', { className: 'ss-place-top' },
-          el('b', { textContent: p.name }),
+          raw(el('b', { textContent: p.name })),
           el('span', { className: 'muted', textContent: p.address && p.address !== p.name ? p.address : p.kind === 'world' ? t('świat') : t('serwer') }),
           el('span', { className: 'ss-place-time', textContent: p.ms ? fmtDuration(p.ms) : '' })),
         el('div', { className: 'ss-bar' }, fill)));
@@ -128,7 +133,9 @@ export function createSessionSummary(deps: SessionSummaryDeps) {
 
   function tiles(list: Highlight[]) {
     return el('div', { className: 'ss-tiles' }, ...list.map((h, i) => {
-      const tile = el('div', { className: `ss-tile ss-${h.id}` }, el('small', {}, icon(h.icon), ` ${h.label}`), el('b', { textContent: h.value }), el('span', { textContent: h.note ?? '' }));
+      // hearts in their colour
+      const value = h.value.endsWith(' ❤') ? el('b', {}, h.value.slice(0, -2), el('span', { className: 'ss-heart', textContent: ' ❤' })) : el('b', { textContent: h.value });
+      const tile = el('div', { className: `ss-tile ss-${h.id}` }, el('small', {}, icon(h.icon), ` ${h.label}`), value, el('span', { textContent: h.note ?? '' }));
       tile.style.animationDelay = `${i * 35}ms`;
       return tile;
     }));
@@ -261,7 +268,7 @@ export function createSessionSummary(deps: SessionSummaryDeps) {
     more.addEventListener('click', () => show(s));
     crash.append(el('div', { className: 'ss-crash' },
       el('b', {}, icon('fa-clock-rotate-left'), ' ', t('Sesja przed awarią: {0}', fmtDuration(s.end - s.start))),
-      el('span', { className: 'muted', textContent: [placesLine(s.places), ...top].join(' · ') }),
+      raw(el('span', { className: 'muted', textContent: [placesLine(s.places), ...top].join(' · ') })),
       more));
   }
 
@@ -295,7 +302,7 @@ export function createSessionSummary(deps: SessionSummaryDeps) {
       const row = el('button', { type: 'button', className: 'ss-history-row' },
         el('span', { className: 'ss-history-date' }, el('b', { textContent: dateOf(s.start) }), el('small', { className: 'muted', textContent: timeOf(s.start) })),
         el('span', { className: 'ss-history-main' },
-          el('b', { textContent: placesLine(s.places) }),
+          raw(el('b', { textContent: placesLine(s.places) })),
           el('small', { className: 'muted', textContent: [s.profileName, ...top.map((h) => `${h.label} ${h.value}`)].join(' · ') })),
         s.crashed ? el('span', { className: 'ss-history-crash', title: t('Awaria') }, icon('fa-triangle-exclamation')) : '',
         el('span', { className: 'ss-history-time', textContent: fmtDuration(s.end - s.start) }));

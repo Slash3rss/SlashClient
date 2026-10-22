@@ -156,6 +156,10 @@ export function buildSummary(input: {
     const world = places.find((p) => p.kind === 'world' && p.name === input.world!.name) ?? (places.filter((p) => p.kind === 'world').length === 1 ? places.find((p) => p.kind === 'world') : undefined);
     if (world) world.icon = input.world.icon;
   }
+  // the mod starts after the launcher: its times never go past the session (a stale file could)
+  const length = Math.max(0, input.end - input.start);
+  for (const p of places) p.ms = Math.min(p.ms, length);
+  const stats = input.mod ? { ...input.mod.stats, playMs: Math.min(input.mod.stats.playMs, length), longestLifeMs: Math.min(input.mod.stats.longestLifeMs, length) } : null;
   places.sort((a, b) => b.ms - a.ms);
   const inSession = (m: SummaryMedia) => m.createdAt >= input.start - 1000 && m.createdAt <= input.end + 60_000;
   const shots = input.screenshots.filter(inSession).sort((a, b) => b.createdAt - a.createdAt);
@@ -170,7 +174,7 @@ export function buildSummary(input: {
     loader: input.profile.loader,
     crashed: input.crashed,
     places: places.slice(0, 12),
-    stats: input.mod?.stats ?? null,
+    stats,
     screenshots: shots.slice(0, MAX_MEDIA),
     screenshotCount: shots.length,
     clips: clips.slice(0, MAX_MEDIA),
