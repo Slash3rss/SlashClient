@@ -24,6 +24,7 @@ import { profileCloudRoutes, type CloudLimits } from './profileCloud.ts';
 import { createAchievements, serverKey, TICK_MS } from './achievements.ts';
 import { ActivityTracker, createAdminStats } from './adminStats.ts';
 import { achievementsAdminRoutes } from './achievementsAdmin.ts';
+import { createChallenges } from './challenges.ts';
 import { Wallet, economyRoutes } from './economy.ts';
 import { createGroups } from './groups.ts';
 import { createClans } from './clans.ts';
@@ -568,8 +569,25 @@ export function createApp(cfg: Config) {
   // achievements: play time from what this server sees (a launcher connected, its game reporting, in a world);
   // each pays sparks, spent in the shop (economy.ts)
   const wallet = new Wallet(db.sql);
+  // daily and weekly challenges for sparks (challenges.ts): counted from the same things, from the period's start
+  const challenges = createChallenges({
+    sql: db.sql, wallet, push, authed, admin, body, setting: (key) => settings.get(key),
+    audit: (who, action, target, detail) => db.log(who, action, target, detail),
+    partyMates: (uuid) => sharing.partyMates(uuid),
+    available: (metric) => metric !== 'votes' || (/^https?:\/\//.test(settings.str('serverList.apiUrl')) && !!settings.str('serverList.voteKey')),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
   const achievements = createAchievements({
     sql: db.sql, wallet, push, authed, areFriends: (a, b) => db.areFriends(a, b),
+    played: (credits, now) => {
+      try {
+        challenges.played(credits, now);
+      } catch (err) {
+        console.error('wyzwania:', (err as Error).message);
+      }
+    },
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -586,6 +604,7 @@ export function createApp(cfg: Config) {
 
   // messages counted for achievements a day (the admin panel's setting)
   achievements.store.messages.capOf = () => settings.num('sparks.messagesPerDay');
+  achievements.store.messages.onCounted = (uuid, at) => challenges.message(uuid, at);
 
   const limitReports = limiter('security.reportsPerMinute');
   const tracker = trackerRoutes({
@@ -1326,9 +1345,11 @@ export function createApp(cfg: Config) {
     // statuses from the tab list (statusRules.ts): the rules in the admin panel
     ...statusRules.routes,
     ...achievements.routes,
+    ...challenges.routes,
     ...economyRoutes({
       db, wallet, authed, admin, body, push,
-      label: (reason, ref) => {
+      label: (reason, ref, note) => {
+        if (reason === 'challenge') return challenges.label(ref, note);
         const a = reason === 'achievement' ? achievements.registry.get(ref) : undefined;
         const name = reason === 'purchase' ? CAPE_NAMES[ref] ?? ref : '';
         return a ? { label: a.name, labelEn: a.nameEn || a.name } : { label: name, labelEn: name };
@@ -1647,6 +1668,11 @@ export function createApp(cfg: Config) {
         } catch (err) {
           console.error('osiągnięcia:', (err as Error).message);
         }
+        try {
+          challenges.after(method, url.pathname, (req as SeenRequest).slashUser);
+        } catch (err) {
+          console.error('wyzwania:', (err as Error).message);
+        }
       } catch (err) {
         const known = err instanceof HttpError;
         if (!known) console.error(err);
@@ -1766,6 +1792,12 @@ export function createApp(cfg: Config) {
         if (first || presence) broadcastPresence(me);
         // achievements reached before they existed (friends, messages) come with the first connection
         achievements.check(me);
+        // a day with the launcher on, for the weekly challenge
+        try {
+          challenges.online(me);
+        } catch (err) {
+          console.error('wyzwania:', (err as Error).message);
+        }
         return;
       }
       // a connection that floods (presence or typing many times a second) is only ignored, friends are not spammed
@@ -1882,7 +1914,15 @@ export function createApp(cfg: Config) {
     const now = live();
     activity.sample(now.online, now.inGame);
   }, 30_000);
-  const playTick = setInterval(() => achievements.tick(), TICK_MS);
+  const playTick = setInterval(() => {
+    achievements.tick();
+    // launchers left on past midnight count the new day too
+    try {
+      for (const uuid of sockets.keys()) challenges.online(uuid);
+    } catch (err) {
+      console.error('wyzwania:', (err as Error).message);
+    }
+  }, TICK_MS);
   // achievements from before the sparks get paid, and ones already reached in the data unlock (once; safe on every start)
   const backfilled = achievements.backfill();
   if (backfilled.paid || backfilled.unlocked) console.log(`osiągnięcia: wypłacono ${backfilled.paid}, odblokowano ${backfilled.unlocked}`);
@@ -1900,6 +1940,8 @@ export function createApp(cfg: Config) {
     server,
     /** For tests: play-time ticks with a chosen clock. */
     achievements,
+    /** For tests: the daily and weekly challenges. */
+    challenges,
     /** For tests: the database (data from before an update) and the sparks. */
     db,
     wallet,

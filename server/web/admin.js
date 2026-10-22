@@ -3,6 +3,7 @@ import { $, PROVIDERS, partnerBanner, uploadPicture, SLOTS, ago, api, avatarEl, 
 import { storagePage } from './adminStorage.js';
 import { shopSection, walletSection } from './adminSparks.js';
 import { achievementsPage, foreignHash, obtainLine } from './adminAchievements.js';
+import { challengesPage } from './adminChallenges.js';
 import { clansPage } from './adminClans.js';
 import { communitiesPage } from './adminCommunities.js';
 import { supportPage } from './adminSupport.js';
@@ -20,6 +21,7 @@ const TABS = [
   ['ranks', 'Rangi', 'fa-solid fa-certificate'],
   ['cosmetics', 'Kosmetyki', 'fa-solid fa-wand-magic-sparkles'],
   ['achievements', 'Osiągnięcia', 'fa-solid fa-trophy'],
+  ['challenges', 'Wyzwania', 'fa-solid fa-list-check'],
   ['partners', 'Partnerzy', 'fa-solid fa-handshake'],
   ['clans', 'Klany', 'fa-solid fa-shield-halved'],
   ['communities', 'Społeczności', 'fa-solid fa-users-rectangle'],
@@ -45,6 +47,7 @@ const ACTIONS = {
   sparks_give: 'dodał(a) Iskry', sparks_take: 'odebrał(a) Iskry', shop_price: 'zmienił(a) cenę w sklepie',
   ach_create: 'utworzył(a) osiągnięcie', ach_edit: 'zmienił(a) osiągnięcie', ach_reset: 'przywrócił(a) domyślne osiągnięcie', ach_delete: 'usunął(ęła) osiągnięcie',
   ach_grant: 'przyznał(a) osiągnięcie', ach_revoke: 'odebrał(a) osiągnięcie',
+  challenge_create: 'utworzył(a) wyzwanie', challenge_edit: 'zmienił(a) wyzwanie', challenge_reset: 'przywrócił(a) domyślne wyzwanie', challenge_delete: 'usunął(ęła) wyzwanie',
   profile_hide: 'ukrył(a) profil', profile_show: 'przywrócił(a) profil',
   'clan.delete': 'usunął(ęła) klan', 'clan.logo_remove': 'usunął(ęła) logo klanu',
   'community.delete': 'usunął(ęła) społeczność', 'community.logo_remove': 'usunął(ęła) logo społeczności', 'community.description_remove': 'usunął(ęła) opis społeczności',
@@ -119,7 +122,7 @@ function layout() {
     el('button', { class: 'icon-btn', title: 'Wyloguj', onclick: async () => { await signOut(); me = undefined; gate(); } }, icon('fa-solid fa-right-from-bracket'))));
   const main = el('main', { class: 'main', id: 'main' });
   $('#root').replaceChildren(el('div', { class: 'admin' }, side, main));
-  ({ dashboard, users: usersPage, ranks: ranksPage, cosmetics: cosmeticsPage, achievements: achievementsPage, partners: partnersPage, clans: clansPage, communities: communitiesPage, requests: requestsPage, logs: logsPage, storage: storagePage, support: supportPage, streams: streamsPage, home: homePage, legal: legalPage, settings: settingsPage, log: logPage })[tab]?.();
+  ({ dashboard, users: usersPage, ranks: ranksPage, cosmetics: cosmeticsPage, achievements: achievementsPage, challenges: challengesPage, partners: partnersPage, clans: clansPage, communities: communitiesPage, requests: requestsPage, logs: logsPage, storage: storagePage, support: supportPage, streams: streamsPage, home: homePage, legal: legalPage, settings: settingsPage, log: logPage })[tab]?.();
 }
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);

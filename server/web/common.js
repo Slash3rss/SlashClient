@@ -116,6 +116,10 @@ const ERRORS = {
   no_player: 'Nie ma takiego gracza.',
   bad_players: 'Podaj od 1 do 100 graczy.',
   disabled: 'Osiągnięcie jest wyłączone.',
+  // the challenges (adminChallenges.js)
+  bad_period: 'Ta metryka liczy się tylko w wyzwaniach tygodniowych.',
+  bad_target: 'Cel poza zakresem dla tej metryki.',
+  bad_weight: 'Waga: liczba od 0 do 100.',
   // ranks (adminRanks.js, the account page)
   bad_rank_id: 'Id rangi: małe litery, cyfry i _, 2–24 znaki, zaczyna się od litery.',
   rank_exists: 'Ranga o takim id już jest.',

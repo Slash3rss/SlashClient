@@ -21,7 +21,7 @@ export function walletSection(userId) {
     } }, amount, reason, el('button', { type: 'submit' }, icon('fa-solid fa-coins'), 'Zapisz'));
     const rows = w.ledger.slice(0, 30).map((e) => el('tr', {},
       el('td', { class: 'nowrap', textContent: new Date(e.at).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }) }),
-      el('td', { textContent: e.reason === 'achievement' ? `Osiągnięcie: ${e.label || e.ref}` : e.reason === 'purchase' ? `Zakup: ${e.label || e.ref}` : `Admin${e.by ? ` @${e.by}` : ''}: ${e.note}` }),
+      el('td', { textContent: e.reason === 'achievement' ? `Osiągnięcie: ${e.label || e.ref}` : e.reason === 'purchase' ? `Zakup: ${e.label || e.ref}` : e.reason === 'challenge' ? `Wyzwanie: ${e.label || e.ref}` : `Admin${e.by ? ` @${e.by}` : ''}: ${e.note}` }),
       el('td', { class: e.amount > 0 ? 'plus' : 'minus', textContent: `${e.amount > 0 ? '+' : ''}${e.amount}` }),
       el('td', { class: 'muted', textContent: String(e.balance) })));
     box.replaceChildren(el('h4', { textContent: 'Iskry' }),

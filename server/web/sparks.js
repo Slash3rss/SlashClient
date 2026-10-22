@@ -73,7 +73,7 @@ export async function achievementsCard() {
   if (wallet?.ledger?.length) {
     card.append(el('div', { class: 'ach-cat' }, el('h4', {}, icon('fa-solid fa-clock-rotate-left'), ' Ostatnie zmiany'),
       el('div', { class: 'ledger' }, ...wallet.ledger.map((e) => el('div', { class: 'ledger-row' },
-        el('span', { class: 'grow', textContent: e.reason === 'achievement' ? `Osiągnięcie: ${e.label || e.ref}` : e.reason === 'purchase' ? `Zakup: ${e.label || e.ref}` : `Od administracji: ${e.note}` }),
+        el('span', { class: 'grow', textContent: e.reason === 'achievement' ? `Osiągnięcie: ${e.label || e.ref}` : e.reason === 'purchase' ? `Zakup: ${e.label || e.ref}` : e.reason === 'challenge' ? `Wyzwanie: ${e.label || e.ref}` : `Od administracji: ${e.note}` }),
         el('span', { class: 'muted small', textContent: new Date(e.at).toLocaleDateString('pl-PL') }),
         el('b', { class: e.amount > 0 ? 'plus' : 'minus', textContent: `${e.amount > 0 ? '+' : '−'}${Math.abs(e.amount)}` }))))));
   }

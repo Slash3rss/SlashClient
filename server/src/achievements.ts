@@ -779,6 +779,8 @@ interface Deps {
   authed: (req: http.IncomingMessage) => string;
   areFriends: (a: string, b: string) => boolean;
   fail: (status: number, code: string) => never;
+  /** After each tick: what each player in a game was credited, and where (the challenges count it too: challenges.ts). */
+  played?: (credits: Map<string, { seconds: number; server?: string; stayed: boolean; ticks: number }>, now: number) => void;
 }
 
 export function createAchievements(deps: Deps) {
@@ -863,6 +865,7 @@ export function createAchievements(deps: Deps) {
   function tick(now = Date.now()) {
     const playing = deps.playing(now);
     for (const id of last.keys()) if (!playing.has(id)) last.delete(id);
+    const credits = new Map<string, { seconds: number; server?: string; stayed: boolean; ticks: number }>();
     for (const [userId, address] of playing) {
       const server = serverKey(address);
       const before = last.get(userId);
@@ -871,12 +874,14 @@ export function createAchievements(deps: Deps) {
       // the first tick only starts the clock: nothing is known about the time before it
       if (!before) continue;
       const credited = store.addPlay(userId, dayOf(now), Math.min(MAX_CREDIT_MS, Math.max(0, now - before.at)) / 1000);
+      credits.set(userId, { seconds: credited, server, stayed: !!server && before.server === server, ticks });
       // the time since the last tick goes to the server only when the player was there then too (not singleplayer, not a LAN world)
       if (server && before.server === server) store.addServerPlay(userId, server, dayOf(now), credited);
       if (server && ticks >= SERVER_MIN_TICKS) store.addServer(userId, server, now);
       if (new Date(now).getUTCHours() < NIGHT_UNTIL_HOUR && !store.counter(userId, 'night')) store.bump(userId, 'night');
       check(userId, now);
     }
+    deps.played?.(credits, now);
   }
 
   /**

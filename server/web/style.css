@@ -367,6 +367,15 @@ button.chip.active { background: var(--accent); color: #fff; }
 .ach-preview-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
 .ach-preview-reward { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; }
 .holder { padding: 6px 0; border-top: 1px solid var(--border); }
+/* the challenges (adminChallenges.js) */
+.chal-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 16px; margin-bottom: 18px; align-items: start; }
+.chal-top .card { padding: 20px; }
+.chal-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin: 10px 0; }
+.chal-stat { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 255, 255, .03); border: 1px solid var(--border); }
+.chal-stat b { font-size: 18px; }
+.chal-pool { margin-bottom: 20px; }
+.chal-pool h2 { font-size: 17px; margin: 6px 0 10px; }
+.chal-row .switch { display: inline-block; }
 .cos .obtain { margin-top: -2px; }
 .cos label.opt input[type=number] { width: 90px; height: 32px; padding: 0 8px; color: var(--text); background: rgba(0, 0, 0, .25); border: 1px solid var(--border); border-radius: 8px; }
 .ach-editor label.opt, .card label.opt { display: inline-flex; align-items: center; gap: 10px; margin-right: 18px; font-size: 14px; }

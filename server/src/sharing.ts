@@ -180,6 +180,16 @@ export function sharingRoutes(deps: Deps) {
     sweep();
     return parties.size;
   };
+  /** Who plays in a party with `me` (both accepted, the party alive), for the challenges (challenges.ts). */
+  const partyMates = (me: string): string[] => {
+    const out = new Set<string>();
+    const now = Date.now();
+    for (const p of parties.values()) {
+      if (p.disbanded || p.expiresAt <= now || p.members.get(me) !== 'accepted') continue;
+      for (const [id, status] of p.members) if (id !== me && status === 'accepted') out.add(id);
+    }
+    return [...out];
+  };
 
-  return { routes, activeParties };
+  return { routes, activeParties, partyMates };
 }
