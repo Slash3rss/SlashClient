@@ -139,6 +139,13 @@ public class GameCommunities implements FabricClientGameTest {
 			context.waitTicks(3);
 			context.takeScreenshot("communities-poll-closed");
 
+			// the picture taken down (server 0.9.36+): the message stays and says so
+			context.runOnClient(mc -> CommunitiesTestHooks.pictureRemoved(CommunitiesTestHooks.BIG, CommunitiesTestHooks.GENERAL, 11, "kasia", "Kasia", 320, 180));
+			Communities.Image removed = context.computeOnClient(mc -> Communities.image(11));
+			if (removed == null || !removed.removed()) throw new AssertionError("The removed picture: " + removed);
+			context.waitTicks(3);
+			context.takeScreenshot("communities-picture-removed");
+
 			// a custom role (server 0.9.30+): the author's comes with their message, and goes when it comes without one
 			// (Ala's from the sample: Bartek's went when his poll came without one)
 			Communities.RoleTag ala = context.computeOnClient(mc -> Communities.customRole(CommunitiesTestHooks.BIG, "ala"));

@@ -223,7 +223,8 @@ public final class Communities {
 	// ---------- pictures and polls (server 0.9.30+) ----------
 
 	/** A picture in a channel: its size, or that it expired on the server. */
-	public record Image(String id, int w, int h, boolean expired) {}
+	/** `removed`: taken down by its sender or a moderator (server 0.9.36+; `expired` is then set too). */
+	public record Image(String id, int w, int h, boolean expired, boolean removed) {}
 
 	/** A poll: the answers with their votes, one or several choices, its end (0: none), and our own choices. */
 	public record Poll(String question, List<String> options, List<Integer> votes, boolean multiple, int voters, long endsAt, boolean closed, List<Integer> mine) {
@@ -288,7 +289,7 @@ public final class Communities {
 	private static void extrasFrom(JsonObject o, long id) {
 		if (o.has("image") && o.get("image").isJsonObject()) {
 			JsonObject i = o.getAsJsonObject("image");
-			images.put(id, new Image(Social.str(i, "id"), (int) Social.longOf(i, "w"), (int) Social.longOf(i, "h"), Social.bool(i, "expired")));
+			images.put(id, new Image(Social.str(i, "id"), (int) Social.longOf(i, "w"), (int) Social.longOf(i, "h"), Social.bool(i, "expired"), Social.bool(i, "removed")));
 		} else images.remove(id);
 		if (o.has("poll") && o.get("poll").isJsonObject()) polls.put(id, pollFrom(o.getAsJsonObject("poll"), polls.get(id)));
 		else polls.remove(id);
@@ -310,7 +311,8 @@ public final class Communities {
 				bump(m, false);
 			} catch (Exception e) {
 				String msg = e.getMessage() == null ? "" : e.getMessage();
-				String key = msg.contains("image_quota") ? "slashclient-hud.picture.quota" : msg.contains("too_large") ? "slashclient-hud.picture.tooLarge" : "slashclient-hud.picture.failed";
+				String key = msg.contains("image_quota") ? "slashclient-hud.picture.quota" : msg.contains("chat_media_full") ? "slashclient-hud.picture.chatFull"
+					: msg.contains("chat_media_daily") ? "slashclient-hud.picture.chatDaily" : msg.contains("too_large") ? "slashclient-hud.picture.tooLarge" : "slashclient-hud.picture.failed";
 				boolean told = msg.contains("slow_") || msg.contains("community_muted");
 				Social.toast(Component.translatable("slashclient-hud.picture.notSent").getString(), told ? Social.errorText(e) : Component.translatable(key).getString(), "info");
 			}
