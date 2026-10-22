@@ -176,8 +176,24 @@ public final class DungeonRooms {
 		SlashHud.config.dungeonOresOff = String.join(",", off);
 	}
 
+	/** One piece of loot: where it is and which kind (an index of LOOT). */
+	interface LootVisitor {
+		void loot(int x, int y, int z, int cat);
+	}
+
+	/**
+	 * The loot still there and not taken yet (a double chest once, by its left half), for the
+	 * highlight in the world (LootHighlight); ores only of the kinds counted on the map.
+	 */
+	static void untaken(LootVisitor out) {
+		for (Container c : containers.values()) {
+			if (!c.present || c.taken() || c.ore && !oreCounted(c.oreType)) continue;
+			out.loot(c.x, c.y, c.z, c.cat);
+		}
+	}
+
 	/** Which kind of loot a block is (an index of LOOT), or -1. */
-	private static int kind(Block block) {
+	static int kind(Block block) {
 		if (block instanceof ChestBlock) return 0;
 		if (block instanceof BarrelBlock) return 1;
 		if (block instanceof DecoratedPotBlock) return 2;

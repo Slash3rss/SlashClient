@@ -1,0 +1,215 @@
+package dev.slash3rss.slashclient.hud;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.ChestType;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.VoxelShape;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * SkyUp's dungeon loot outlined in the world: the chests, barrels, pots, flower pots and ores
+ * DungeonRooms knows of and that were not taken yet, each kind in its own colour, with a soft fill
+ * and faint pulsing when wanted. Only in a dungeon (DungeonMap.active), only what DungeonRooms has
+ * already found (no scanning of its own), a double chest as one box. Taken loot goes at once: what
+ * was opened or broken is left out, and so is a block that is no longer there (before the map's
+ * next scan notices). Each tick the boxes are made anew; each frame they are drawn as one batch of
+ * flat quads (thin boxes along the edges), with the depth test, or through walls when switched on.
+ */
+public final class LootHighlight {
+	private LootHighlight() {}
+
+	/** The colours offered for each kind: yellow, orange, purple, green, aqua, blue, red, white, pink. */
+	public static final int[] COLORS = { 0xFFFACC15, 0xFFFB923C, 0xFFA855F7, 0xFF4ADE80, 0xFF55FFFF, 0xFF60A5FA, 0xFFF87171, 0xFFFFFFFF, 0xFFFF55FF };
+	public static final int MIN_RANGE = 8, MAX_RANGE = 64;
+	/** A white texture: the text render types want one, the colour comes from the vertices. */
+	private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/misc/white.png");
+	/** Full brightness for the lightmap: as bright in a dark dungeon as in the day. */
+	private static final int FULL_BRIGHT = 0xF000F0;
+	/** The fill stands this far out of the block, so it does not flicker with the block's faces. */
+	private static final double OUT = 0.004;
+
+	/** One piece of loot's box in the world and its kind (an index of DungeonRooms.LOOT). */
+	public record Box(double x0, double y0, double z0, double x1, double y1, double z1, int cat) {}
+
+	private static List<Box> boxes = List.of();
+
+	static HudConfig cfg() {
+		return SlashHud.config;
+	}
+
+	/** The boxes drawn now (for the test). */
+	public static List<Box> boxes() {
+		return boxes;
+	}
+
+	public static void register() {
+		//#if MC >= 26.1
+		net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents.COLLECT_SUBMITS.register(ctx -> submit(ctx.poseStack(), ctx.submitNodeCollector()));
+		//#elif MC >= 1.21.9
+		//$ net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents.BEFORE_DEBUG_RENDER.register(ctx -> draw(ctx.matrices(), ctx.consumers()));
+		//#else
+		//$ // after the block entities too: the fill writes depth, a chest drawn after it would be hidden behind it
+		//$ net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents.BEFORE_DEBUG_RENDER.register(ctx -> draw(ctx.matrixStack(), ctx.consumers()));
+		//#endif
+	}
+
+	/** Whether a kind of loot is outlined (its own switch, not the map's). */
+	static boolean shown(int cat) {
+		HudConfig c = cfg();
+		return switch (cat) {
+			case 0 -> c.lootChests;
+			case 1 -> c.lootBarrels;
+			case 2 -> c.lootPots;
+			case 3 -> c.lootFlowerPots;
+			default -> c.lootOres;
+		};
+	}
+
+	static int color(int cat) {
+		HudConfig c = cfg();
+		return switch (cat) {
+			case 0 -> c.lootChestColor;
+			case 1 -> c.lootBarrelColor;
+			case 2 -> c.lootPotColor;
+			case 3 -> c.lootFlowerPotColor;
+			default -> c.lootOreColor;
+		};
+	}
+
+	static void tick(Minecraft mc) {
+		HudConfig c = cfg();
+		if (c == null || !c.lootHighlight || mc.level == null || mc.player == null || !DungeonMap.active()) {
+			boxes = List.of();
+			return;
+		}
+		int range = Math.max(MIN_RANGE, Math.min(MAX_RANGE, c.lootHighlightRange));
+		boxes = collect(mc.level, mc.player.getX(), mc.player.getEyeY(), mc.player.getZ(), c.lootHighlightLimit ? range : -1);
+	}
+
+	/** The boxes of the loot not taken within `range` blocks of a point (-1: any distance). */
+	static List<Box> collect(Level level, double px, double py, double pz, int range) {
+		List<Box> out = new ArrayList<>();
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		double r2 = (double) range * range;
+		DungeonRooms.untaken((x, y, z, cat) -> {
+			if (!shown(cat)) return;
+			double dx = x + 0.5 - px, dy = y + 0.5 - py, dz = z + 0.5 - pz;
+			if (range >= 0 && dx * dx + dy * dy + dz * dz > r2) return;
+			if (!level.hasChunkAt(pos.set(x, y, z))) return;
+			BlockState state = level.getBlockState(pos);
+			// broken since the map's last scan: gone already
+			if (DungeonRooms.kind(state.getBlock()) != cat) return;
+			AABB box = shape(level, pos, state);
+			// a double chest: both halves in one box
+			if (state.getBlock() instanceof ChestBlock && state.hasProperty(ChestBlock.TYPE) && state.getValue(ChestBlock.TYPE) != ChestType.SINGLE) {
+				BlockPos other = pos.relative(ChestBlock.getConnectedDirection(state));
+				BlockState otherState = level.getBlockState(other);
+				if (otherState.getBlock() instanceof ChestBlock) box = box.minmax(shape(level, other, otherState));
+			}
+			out.add(new Box(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ, cat));
+		});
+		return out;
+	}
+
+	/** A block's outline in the world, or the whole block when it has none. */
+	private static AABB shape(Level level, BlockPos pos, BlockState state) {
+		VoxelShape shape = state.getShape(level, pos);
+		AABB b = shape.isEmpty() ? new AABB(0, 0, 0, 1, 1, 1) : shape.bounds();
+		return b.move(pos.getX(), pos.getY(), pos.getZ());
+	}
+
+	//#if MC >= 26.1
+	private static void submit(PoseStack pose, net.minecraft.client.renderer.SubmitNodeCollector out) {
+		List<Box> list = boxes;
+		if (list.isEmpty()) return;
+		var camera = Compat.camera(Minecraft.getInstance());
+		Vec3 cam = camera.position();
+		if (pose == null) pose = new PoseStack();
+		out.submitCustomGeometry(pose, type(), (p, vc) -> emit(p, vc, list, cam));
+	}
+	//#else
+	//$ private static void draw(PoseStack pose, net.minecraft.client.renderer.MultiBufferSource buffers) {
+	//$ 	List<Box> list = boxes;
+	//$ 	if (list.isEmpty() || buffers == null) return;
+	//$ 	var camera = Compat.camera(Minecraft.getInstance());
+	//$ 	Vec3 cam = camera.position();
+	//$ 	if (pose == null) pose = new PoseStack();
+	//$ 	var type = type();
+	//$ 	emit(pose.last(), buffers.getBuffer(type), list, cam);
+	//$ 	// drawn now: later the buffers may already have been drawn for this frame
+	//$ 	if (buffers instanceof net.minecraft.client.renderer.MultiBufferSource.BufferSource source) source.endBatch(type);
+	//$ }
+	//#endif
+
+	/** Translucent quads with a white texture: through walls without the depth test, else with it. */
+	private static net.minecraft.client.renderer.rendertype.RenderType type() {
+		return cfg().lootHighlightWalls ? RenderTypes.textSeeThrough(TEXTURE) : RenderTypes.text(TEXTURE);
+	}
+
+	/** Every box: its soft fill (when on), then its twelve edges as thin boxes, a little thicker further off. */
+	private static void emit(PoseStack.Pose p, VertexConsumer vc, List<Box> list, Vec3 cam) {
+		HudConfig c = cfg();
+		// faint pulsing: between two thirds and full strength, once in 1.6 seconds
+		float pulse = c.lootHighlightPulse ? 0.67f + 0.33f * (float) Math.sin(System.currentTimeMillis() % 1600 / 1600.0 * Math.PI * 2) : 1f;
+		// the text shader drops anything fainter than a tenth
+		int fillAlpha = Math.max(30, Math.round(64 * pulse)), lineAlpha = Math.max(60, Math.round(235 * pulse));
+		for (Box b : list) {
+			int rgb = color(b.cat());
+			float x0 = (float) (b.x0() - cam.x), y0 = (float) (b.y0() - cam.y), z0 = (float) (b.z0() - cam.z);
+			float x1 = (float) (b.x1() - cam.x), y1 = (float) (b.y1() - cam.y), z1 = (float) (b.z1() - cam.z);
+			if (c.lootHighlightFill) box(p, vc, (float) (x0 - OUT), (float) (y0 - OUT), (float) (z0 - OUT), (float) (x1 + OUT), (float) (y1 + OUT), (float) (z1 + OUT), rgb, fillAlpha);
+			double mx = (x0 + x1) / 2, my = (y0 + y1) / 2, mz = (z0 + z1) / 2;
+			double dist = Math.sqrt(mx * mx + my * my + mz * mz);
+			float h = (float) Math.max(0.015, Math.min(0.07, 0.014 + dist * 0.0016));
+			for (int i = 0; i < 4; i++) {
+				float y = (i & 1) == 0 ? y0 : y1, z = (i & 2) == 0 ? z0 : z1, x = (i & 2) == 0 ? x0 : x1;
+				// along x, along z (at each height), and the four upright edges
+				box(p, vc, x0 - h, y - h, z - h, x1 + h, y + h, z + h, rgb, lineAlpha);
+				box(p, vc, x - h, y - h, z0 + h, x + h, y + h, z1 - h, rgb, lineAlpha);
+				float ux = (i & 1) == 0 ? x0 : x1;
+				box(p, vc, ux - h, y0 + h, z - h, ux + h, y1 - h, z + h, rgb, lineAlpha);
+			}
+		}
+	}
+
+	/** A box's six faces, each counter-clockwise seen from outside. */
+	private static void box(PoseStack.Pose p, VertexConsumer vc, float x0, float y0, float z0, float x1, float y1, float z1, int rgb, int a) {
+		int r = rgb >> 16 & 0xFF, g = rgb >> 8 & 0xFF, b = rgb & 0xFF;
+		// up, down
+		quad(p, vc, x0, y1, z0, x0, y1, z1, x1, y1, z1, x1, y1, z0, r, g, b, a);
+		quad(p, vc, x0, y0, z0, x1, y0, z0, x1, y0, z1, x0, y0, z1, r, g, b, a);
+		// north, south
+		quad(p, vc, x0, y0, z0, x0, y1, z0, x1, y1, z0, x1, y0, z0, r, g, b, a);
+		quad(p, vc, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1, r, g, b, a);
+		// west, east
+		quad(p, vc, x0, y0, z0, x0, y0, z1, x0, y1, z1, x0, y1, z0, r, g, b, a);
+		quad(p, vc, x1, y0, z0, x1, y1, z0, x1, y1, z1, x1, y0, z1, r, g, b, a);
+	}
+
+	private static void quad(PoseStack.Pose p, VertexConsumer vc, float ax, float ay, float az, float bx, float by, float bz, float cx, float cy, float cz,
+			float dx, float dy, float dz, int r, int g, int b, int a) {
+		vertex(p, vc, ax, ay, az, r, g, b, a);
+		vertex(p, vc, bx, by, bz, r, g, b, a);
+		vertex(p, vc, cx, cy, cz, r, g, b, a);
+		vertex(p, vc, dx, dy, dz, r, g, b, a);
+	}
+
+	private static void vertex(PoseStack.Pose p, VertexConsumer vc, float x, float y, float z, int r, int g, int b, int a) {
+		//#if MC >= 1.21
+		vc.addVertex(p, x, y, z).setColor(r, g, b, a).setUv(0.5f, 0.5f).setLight(FULL_BRIGHT);
+		//#else
+		//$ vc.vertex(p.pose(), x, y, z).color(r, g, b, a).uv(0.5f, 0.5f).uv2(FULL_BRIGHT).endVertex();
+		//#endif
+	}
+}

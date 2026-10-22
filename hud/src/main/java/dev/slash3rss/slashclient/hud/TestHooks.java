@@ -1240,6 +1240,29 @@ public final class TestHooks {
 		return DungeonRooms.summary();
 	}
 
+	/**
+	 * The dungeon loot highlight on (through walls or not; a distance limit, or -1 for none) or
+	 * off, made at once: how many boxes, and per kind of DungeonRooms.LOOT ("6 [2, 1, 1, 1, 1]").
+	 */
+	public static String lootHighlight(boolean on, boolean walls, int range) {
+		HudConfig c = SlashHud.config;
+		c.lootHighlight = on;
+		c.lootHighlightWalls = walls;
+		c.lootHighlightLimit = range > 0;
+		if (range > 0) c.lootHighlightRange = range;
+		LootHighlight.tick(net.minecraft.client.Minecraft.getInstance());
+		int[] kinds = new int[DungeonRooms.LOOT.length];
+		for (var b : LootHighlight.boxes()) kinds[b.cat()]++;
+		return LootHighlight.boxes().size() + " " + java.util.Arrays.toString(kinds);
+	}
+
+	/** The widest loot box now (blocks along x or z): a double chest is one box two blocks long. */
+	public static double lootWidest() {
+		double w = 0;
+		for (var b : LootHighlight.boxes()) w = Math.max(w, Math.max(b.x1() - b.x0(), b.z1() - b.z0()));
+		return w;
+	}
+
 	/** The window's title and the brand the server is told. */
 	public static String branding() {
 		var mc = net.minecraft.client.Minecraft.getInstance();
