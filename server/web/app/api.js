@@ -114,7 +114,7 @@ export class Live {
     if (this.ws && this.ws.readyState <= 1) return;
     const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/v1/ws`);
     this.ws = ws;
-    ws.onopen = () => ws.send(JSON.stringify({ type: 'auth', token: token.get(), presence: this.presence() }));
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'auth', token: token.get(), presence: this.presence(), client: 'app' }));
     ws.onmessage = (e) => {
       let event;
       try {

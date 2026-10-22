@@ -338,34 +338,50 @@ describe('notifications', () => {
 });
 
 describe('the phone and a launcher connected at once', () => {
-  it('when the launcher closes, friends see what the phone says, not the launcher\'s last game', async () => {
+  it('a launcher\'s status wins; with only the phone left, friends see "on the phone", not the launcher\'s last game', async () => {
     const { default: WebSocket } = await import('ws');
     const p = await login('TwoP');
     const f = await login('TwoF');
     await befriend(p, f);
-    const open = async (token: string, presence?: unknown) => {
+    const open = async (token: string, presence?: unknown, client?: string) => {
       const ws = new WebSocket(base.replace('http', 'ws') + '/v1/ws');
       const events: any[] = [];
       ws.on('message', (d) => events.push(JSON.parse(String(d))));
       await new Promise((r) => ws.once('open', r));
-      ws.send(JSON.stringify({ type: 'auth', token, presence }));
+      ws.send(JSON.stringify({ type: 'auth', token, presence, ...(client ? { client } : {}) }));
       for (let i = 0; i < 100 && !events.some((e) => e.type === 'ready'); i++) await new Promise((r) => setTimeout(r, 10));
       return { ws, events };
     };
     const friend = await open(f.token);
-    const phoneWs = await open(p.token, { status: 'busy' });
+    const seen = async (pred: (presence: any) => boolean) => {
+      for (let i = 0; i < 100; i++) {
+        const last = friend.events.filter((e) => e.type === 'presence' && e.id === p.user.id).at(-1);
+        if (last && pred(last.presence)) return last.presence;
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      return friend.events.filter((e) => e.type === 'presence' && e.id === p.user.id).at(-1)?.presence;
+    };
     const launcher = await open(p.token, { status: 'online', activity: { kind: 'server', server: 'mc.example.com' } });
+    // the phone comes later and says it is busy: the game on the server still shows, not "on the phone"
+    const phone = await open(p.token, { status: 'busy' }, 'app');
+    phone.ws.send(JSON.stringify({ type: 'presence', presence: { status: 'busy' } }));
+    await settle();
+    const both = friend.events.filter((e) => e.type === 'presence' && e.id === p.user.id).at(-1).presence;
+    assert.equal(both.activity?.kind, 'server');
+    assert.equal(both.mobile, undefined);
+    // the launcher goes: what the phone says, marked as the phone
     launcher.ws.close();
-    for (let i = 0; i < 100; i++) {
-      const last = friend.events.filter((e) => e.type === 'presence' && e.id === p.user.id).at(-1);
-      if (last?.presence.status === 'busy') break;
-      await new Promise((r) => setTimeout(r, 10));
-    }
-    const last = friend.events.filter((e) => e.type === 'presence' && e.id === p.user.id).at(-1);
-    assert.equal(last.presence.status, 'busy');
-    assert.equal(last.presence.activity, undefined);
+    const onPhone = await seen((x) => x.status === 'busy');
+    assert.equal(onPhone.status, 'busy');
+    assert.equal(onPhone.activity, undefined);
+    assert.equal(onPhone.mobile, true);
+    // invisible on the phone: offline for friends, no phone either
+    phone.ws.send(JSON.stringify({ type: 'presence', presence: { status: 'invisible' } }));
+    const hidden = await seen((x) => x.status === 'offline');
+    assert.equal(hidden.status, 'offline');
+    assert.equal(hidden.mobile, undefined);
     // closed before the server goes, so their goodbyes do not reach a closed database
-    for (const ws of [phoneWs.ws, friend.ws]) {
+    for (const ws of [phone.ws, friend.ws]) {
       ws.close();
       await new Promise((r) => ws.once('close', r));
     }

@@ -67,11 +67,13 @@ export async function guard(fn) {
   }
 }
 
-export function avatarEl(user, status) {
+/** `mobile`: they are here on the phone app, so the dot is a small phone in the status' colour. */
+export function avatarEl(user, status, mobile = false) {
   const box = el('span', { class: 'avatar' });
   if (user?.avatar) box.append(el('img', { src: user.avatar, alt: '', referrerpolicy: 'no-referrer', loading: 'lazy' }));
   else box.append(el('span', { class: 'initial', textContent: (user?.name || user?.handle || '?').slice(0, 1).toUpperCase() }));
-  if (status) box.append(el('span', { class: `dot ${status}` }));
+  if (status && mobile) box.append(el('span', { class: `dot mobile ${status}` }, icon('fa-solid fa-mobile-screen-button')));
+  else if (status) box.append(el('span', { class: `dot ${status}` }));
   return box;
 }
 

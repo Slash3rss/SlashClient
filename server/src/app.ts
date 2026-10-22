@@ -1885,6 +1885,30 @@ export function createApp(cfg: Config) {
    * closes, the status is the latest of those left, not that of the one gone (a game that ended).
    */
   const socketPresence = new WeakMap<WebSocket, { presence: Presence; at: number }>();
+  /** Connections of the phone app (it says { client: 'app' } when it signs in). */
+  const appSockets = new WeakSet<WebSocket>();
+  /**
+   * The player's status from their connections: a launcher's (the game, the server) wins over the
+   * phone's, the latest of each; only the phone's is marked as such. Undefined when none said one.
+   */
+  function presenceFrom(userId: string): Presence | undefined {
+    let launcher: { presence: Presence; at: number } | undefined;
+    let phone: { presence: Presence; at: number } | undefined;
+    for (const ws of sockets.get(userId) ?? []) {
+      const p = socketPresence.get(ws);
+      if (!p) continue;
+      if (appSockets.has(ws)) {
+        if (!phone || p.at > phone.at) phone = p;
+      } else if (!launcher || p.at > launcher.at) launcher = p;
+    }
+    if (launcher) return launcher.presence;
+    return phone && { ...phone.presence, mobile: true };
+  }
+  function settlePresence(userId: string) {
+    const p = presenceFrom(userId);
+    if (p) presences.set(userId, p);
+    else presences.delete(userId);
+  }
   wss.on('connection', (ws) => {
     let me: string | undefined;
     alive.add(ws);
@@ -1906,10 +1930,11 @@ export function createApp(cfg: Config) {
         const first = !sockets.get(me)?.size;
         if (!sockets.has(me)) sockets.set(me, new Set());
         sockets.get(me)!.add(ws);
+        if (msg.client === 'app') appSockets.add(ws);
         const presence = cleanPresence(msg.presence);
         if (presence) {
-          presences.set(me, presence);
           socketPresence.set(ws, { presence, at: Date.now() });
+          settlePresence(me);
         }
         activity.seen(me);
         if (first) activity.sample(sockets.size, live().inGame);
@@ -1930,8 +1955,8 @@ export function createApp(cfg: Config) {
       if (msg.type === 'presence') {
         const presence = cleanPresence(msg.presence);
         if (!presence) return;
-        presences.set(me, presence);
         socketPresence.set(ws, { presence, at: Date.now() });
+        settlePresence(me);
         broadcastPresence(me);
       } else if (msg.type === 'lan' && typeof msg.open === 'boolean') {
         const was = lanHosts.has(me);
@@ -1954,13 +1979,7 @@ export function createApp(cfg: Config) {
         db.touch(me);
         broadcastPresence(me);
       } else if (socketPresence.has(ws)) {
-        let latest: { presence: Presence; at: number } | undefined;
-        for (const other of set) {
-          const p = socketPresence.get(other);
-          if (p && (!latest || p.at > latest.at)) latest = p;
-        }
-        if (latest) presences.set(me, latest.presence);
-        else presences.delete(me);
+        settlePresence(me);
         broadcastPresence(me);
       }
     });

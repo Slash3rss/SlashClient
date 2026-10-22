@@ -26,7 +26,11 @@ import { directSource } from './chatMediaSources';
 type Status = 'online' | 'away' | 'busy' | 'invisible';
 /** `detail`: what the server's tab list says ("S3 (Wyspy)"), `serverName` its name from the admin's rule (server 0.9.25+). */
 interface Activity { kind: 'launcher' | 'menu' | 'singleplayer' | 'server'; version?: string; server?: string; detail?: string; serverName?: string; since?: number }
-interface Presence { status: 'online' | 'away' | 'busy' | 'offline'; activity?: Activity; lastSeen?: number; /** their world is open to LAN: joinable through SlashClient */ lan?: boolean }
+interface Presence {
+  status: 'online' | 'away' | 'busy' | 'offline'; activity?: Activity; lastSeen?: number; /** their world is open to LAN: joinable through SlashClient */ lan?: boolean;
+  /** only the phone app is on (servers with the phone app; older ones never send it): a small phone instead of the dot */
+  mobile?: boolean;
+}
 interface Person { id: string; handle: string; name: string; avatar: string }
 /** `clan`: their clan's tag; `muted`: on the account, their messages come, but no toast or notification (server 0.9.21+). */
 interface Friend extends Person { presence: Presence; unread: number; lastMessageAt: number; since: number; clan?: string; muted?: boolean; /** the rank badge they show next to the nick (server 0.9.23+) */ badgeRank?: RankView; /** live on Twitch or Kick now (server 0.9.24+, streams.ts) */ stream?: FriendStream }
@@ -326,7 +330,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   function avatar(p: Person, presence?: Presence) {
     const box = el('div', { className: 'fr-avatar' });
-    const dot = presence ? el('span', { className: `fr-dot ${presenceClass(presence)}` }) : undefined;
+    const onPhone = presence?.mobile && presence.status !== 'offline';
+    const dot = presence ? el('span', { className: `fr-dot ${presenceClass(presence)}${onPhone ? ' mobile' : ''}` }, ...(onPhone ? [icon('fa-mobile-screen-button')] : [])) : undefined;
     const letter = el('span', { textContent: (p.name || p.handle).slice(0, 1).toUpperCase() });
     box.append(letter);
     const src = /^\/v1\/head\/[0-9a-f]{32}$/.test(p.avatar) && state?.url ? `${state.url.replace(/\/$/, '')}${p.avatar}`
@@ -356,6 +361,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   function statusLine(p: Presence): string {
     if (p.status === 'offline') return p.lastSeen ? t('Offline · {0}', ago(p.lastSeen)) : t('Offline');
+    if (p.mobile) return { online: t('Dostępny na telefonie'), away: t('Zaraz wracam · na telefonie'), busy: t('Nie przeszkadzać · na telefonie') }[p.status];
     const a = p.activity;
     const version = a?.version ? `Minecraft ${a.version}` : 'Minecraft';
     // "Gra na SkyUp.pl · S3 (Wyspy)": the sector says more than the game's version
