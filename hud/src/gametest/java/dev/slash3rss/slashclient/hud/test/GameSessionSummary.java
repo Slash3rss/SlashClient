@@ -50,7 +50,17 @@ public class GameSessionSummary implements FabricClientGameTest {
 			// a zombie with one heart left, hit once
 			server.runCommand("summon zombie 0 100 -2 {NoAI:1b,Health:1f}");
 			context.waitTicks(10);
-			if (!context.computeOnClient(mc -> TestHooks.attackNearest())) throw new AssertionError("Nothing to hit");
+			// the zombie itself (a pet from an earlier test may stand nearer)
+			boolean hitZombie = context.computeOnClient(mc -> {
+				for (var e : mc.level.entitiesForRendering()) {
+					if (net.minecraft.world.entity.EntityType.getKey(e.getType()).getPath().equals("zombie")) {
+						mc.gameMode.attack(mc.player, e);
+						return true;
+					}
+				}
+				return false;
+			});
+			if (!hitZombie) throw new AssertionError("No zombie to hit");
 			context.waitTicks(30);
 
 			// one death, then back
