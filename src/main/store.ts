@@ -76,6 +76,10 @@ export interface Settings {
   closeOnLaunch: boolean;
   /** "Podsumowanie sesji" after the game closes; missing = on. */
   sessionSummary?: boolean;
+  /** System notifications (Windows toasts, macOS Notification Center) while the launcher is in the background; missing = on. */
+  systemNotifications?: boolean;
+  /** Whether those notifications play the system's sound; missing = off. */
+  notificationSound?: boolean;
   /** Fewer animations (slower computers): no transitions, a still starry sky, 3D previews that don't spin. */
   reduceMotion?: boolean;
   /** How much memory new profiles start with (MB); each profile can change its own. */

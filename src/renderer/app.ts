@@ -68,7 +68,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; launcherWindow?: string; reduceMotion?: boolean; defaultMemoryMb?: number; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; defaultMemoryMb?: number; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -1090,6 +1090,13 @@ function renderSettings() {
   memory.value = String(store.settings.defaultMemoryMb ?? 4096);
   $('#default-memory-value').textContent = `${memory.value} MB`;
   (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked = store.settings.discordEnabled ?? true;
+  const notifications = form.elements.namedItem('systemNotifications') as HTMLInputElement;
+  const sound = form.elements.namedItem('notificationSound') as HTMLInputElement;
+  notifications.checked = store.settings.systemNotifications !== false;
+  sound.checked = store.settings.notificationSound === true;
+  // the sound only means something with the notifications on
+  sound.disabled = !notifications.checked;
+  notifications.onchange = () => (sound.disabled = !notifications.checked);
   $('#data-dir').textContent = store.dataDir;
   api.appVersion().then((v: string) => ($('#app-version').textContent = v));
 }
@@ -1669,6 +1676,8 @@ $('#settings-form').addEventListener('submit', async (e) => {
       launcherWindow: (form.elements.namedItem('launcherWindow') as HTMLSelectElement).value,
       defaultMemoryMb: Number((form.elements.namedItem('defaultMemoryMb') as HTMLInputElement).value),
       discordEnabled: (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked,
+      systemNotifications: (form.elements.namedItem('systemNotifications') as HTMLInputElement).checked,
+      notificationSound: (form.elements.namedItem('notificationSound') as HTMLInputElement).checked,
       language: $<HTMLSelectElement>('#language-select').value,
     }),
   );

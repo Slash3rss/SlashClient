@@ -1196,6 +1196,8 @@ const EN: Record<string, string> = {
   'Zmaksymalizowane': 'Maximized',
   'Pełny ekran': 'Full screen',
   'Pokazuj na Discordzie, w co grasz': 'Show on Discord what you are playing',
+  'Powiadomienia systemowe, gdy launcher jest w tle': 'System notifications while the launcher is in the background',
+  'Dźwięk powiadomień systemowych': 'Sound for system notifications',
   'Folder danych:': 'Data folder:',
   'Wersja launchera:': 'Launcher version:',
   'Uruchom ponownie': 'Restart',
