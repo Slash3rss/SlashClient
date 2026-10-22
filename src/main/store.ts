@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import type { ManualFile } from './manualFiles';
 import { paths } from './paths';
@@ -170,9 +171,43 @@ function defaults(): StoreData {
   };
 }
 
+/** The last good list of profiles, accounts and settings: written before each save. */
+const BACKUP = () => `${FILE()}.bak`;
+
+/** One store file; a file busy for a moment (antivirus, an update swapping files) is read again. */
+async function readStoreFile(file: string): Promise<Partial<StoreData>> {
+  let last: unknown;
+  for (let i = 0; i < 5; i++) {
+    try {
+      return JSON.parse(await fs.readFile(file, 'utf8')) as Partial<StoreData>;
+    } catch (err) {
+      last = err;
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT' || err instanceof SyntaxError) throw err;
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  }
+  throw last;
+}
+
+/** Whether the last load could not read the store and started from a backup or from scratch (profiles are then looked for on disk). */
+export let storeRecovered = false;
+
 export async function loadStore(): Promise<StoreData> {
+  let data: Partial<StoreData> | undefined;
   try {
-    const data = JSON.parse(await fs.readFile(FILE(), 'utf8')) as Partial<StoreData>;
+    data = await readStoreFile(FILE());
+  } catch (err) {
+    // never started over silently on top of a file that is there: it is kept aside (and the profiles'
+    // folders are found again), then the copy from the last good save is taken
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      console.error(`launcher.json: ${(err as Error).message}`);
+      await fs.rename(FILE(), `${FILE()}.broken-${Date.now()}`).catch(() => {});
+    }
+    data = await readStoreFile(BACKUP()).catch(() => undefined);
+    storeRecovered = existsSync(paths.instances);
+  }
+  if (!data) return defaults();
+  try {
     const base = defaults();
     // both are built in (no field in Settings any more): what an older version saved does not count
     if (data.settings) Object.assign(data.settings, { msClientId: DEFAULT_MS_CLIENT_ID, socialUrl: DEFAULT_SOCIAL_URL });
@@ -184,8 +219,35 @@ export async function loadStore(): Promise<StoreData> {
       settings: { ...base.settings, ...data.settings },
     };
   } catch {
+    storeRecovered = existsSync(paths.instances);
     return defaults();
   }
+}
+
+/**
+ * Folders in instances/ that hold a game (mods, worlds, configs, packs) but belong to no profile:
+ * after a lost list of profiles they come back as profiles of their own (the folder's name is the
+ * profile's id, so it plays from the same folder). The game version and loader are read from the
+ * folder's last game log.
+ */
+export async function orphanProfiles(profiles: Profile[]): Promise<Profile[]> {
+  const used = new Set(profiles.map((p) => path.resolve(profileGameDir(p)).toLowerCase()));
+  const out: Profile[] = [];
+  for (const name of await fs.readdir(paths.instances).catch(() => [] as string[])) {
+    const dir = path.join(paths.instances, name);
+    if (!/^[\w-]{1,64}$/.test(name) || used.has(path.resolve(dir).toLowerCase())) continue;
+    if (!(await fs.stat(dir).then((s) => s.isDirectory(), () => false))) continue;
+    const parts = await Promise.all(['mods', 'saves', 'config', 'resourcepacks', 'shaderpacks', 'options.txt'].map((n) => fs.stat(path.join(dir, n)).then(() => true, () => false)));
+    if (!parts.some(Boolean)) continue;
+    const log = await fs.readFile(path.join(dir, 'logs', 'latest.log'), 'utf8').then((s) => s.slice(0, 20000), () => '');
+    const m = /Loading Minecraft (\S+) with (Fabric|Quilt) Loader (\S+)/.exec(log);
+    out.push(newProfile({
+      id: name, name: `Odzyskany profil ${out.length + 1}`,
+      versionId: m?.[1] ?? 'latest-release', loader: m ? (m[2].toLowerCase() as Profile['loader']) : 'vanilla', loaderVersion: m?.[3] ?? '',
+      syncOptions: false, jvmPreset: 'default',
+    }));
+  }
+  return out;
 }
 
 let saving: Promise<void> = Promise.resolve();
@@ -201,6 +263,8 @@ export function saveStore(data: StoreData): Promise<void> {
     await fs.mkdir(paths.config, { recursive: true });
     const tmp = `${FILE()}.${process.pid}.${++saves}.tmp`;
     await fs.writeFile(tmp, json, { mode: 0o600 });
+    // the file being replaced is the last good one: kept, for a start that cannot read the new one
+    await fs.copyFile(FILE(), BACKUP()).catch(() => {});
     await fs.rename(tmp, FILE());
   };
   const next = saving.then(write, write);

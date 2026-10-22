@@ -25,7 +25,7 @@ import { RankIconCache } from './rankIcons';
 import { fitSize, ImageCache, keyText, MAX_BYTES, openImage, parseKey, sealImage, type ChatImageView, type ImageKey } from './chatImages';
 import { launch, resolveVersionId } from './launch';
 import { paths } from './paths';
-import { loadStore, newProfile, profileGameDir, saveStore, secrets, setSecretCodec, type MicrosoftAccount, type Profile, type Settings, type StoreData } from './store';
+import { loadStore, newProfile, orphanProfiles, profileGameDir, saveStore, secrets, setSecretCodec, storeRecovered, type MicrosoftAccount, type Profile, type Settings, type StoreData } from './store';
 import { LOADER_NAMES, loaderVersions, type Loader } from './loaders';
 import {
   checkUpdates, datapackFile, downloadModpack, identifyModpack, installMrpack, installProject, latestModpackVersion, listContentVersions,
@@ -341,6 +341,22 @@ handle('profile:folderInfo', async (id: string) => {
   const dir = profileGameDir(profile);
   const exists = await fsp.stat(dir).then((s) => s.isDirectory(), () => false);
   return { own: ownsGameDir(profile), exists, sizeBytes: exists ? await folderSize(dir) : 0 };
+});
+
+/** Profiles found again at start (shown once by the page), and the folders with a game but no profile. */
+let recoveredAtStart = 0;
+handle('profiles:recovered', () => {
+  const n = recoveredAtStart;
+  recoveredAtStart = 0;
+  return n;
+});
+handle('profiles:orphans', async () => (await orphanProfiles(store.profiles)).length);
+/** "Odzyskaj profile": every folder in instances/ with a game but no profile becomes a profile again. */
+handle('profiles:recover', async () => {
+  const found = await orphanProfiles(store.profiles);
+  store.profiles.push(...found);
+  if (found.length) await persist();
+  return found.length;
 });
 
 handle('profile:delete', async (id: string, trashFiles = false) => {
@@ -2274,6 +2290,15 @@ app.whenReady().then(async () => {
   // In development the Dock would otherwise show Electron's default icon.
   if (process.platform === 'darwin') app.dock?.setIcon(nativeImage.createFromPath(ICON));
   store = await loadStore();
+  // the list of profiles could not be read: the profiles' folders on disk come back as profiles
+  if (storeRecovered) {
+    const found = await orphanProfiles(store.profiles);
+    if (found.length) {
+      recoveredAtStart = found.length;
+      store.profiles.push(...found);
+      await persist();
+    }
+  }
   hudSupported = await hudVersions(HUD_DIR);
   // first start: follow the system language
   if (!store.settings.language) store.settings.language = app.getLocale().toLowerCase().startsWith('pl') ? 'pl' : 'en';

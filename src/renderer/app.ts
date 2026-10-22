@@ -2371,6 +2371,23 @@ interface FoundInstance { key: string; source: string; sourceName: string; name:
 let foundInstances: FoundInstance[] = [];
 const importChosen = new Set<string>();
 
+// ---------- profiles whose folders are on disk but not on the list (after a lost list of profiles) ----------
+
+async function refreshOrphans() {
+  const n: number = (await api.orphanProfiles().catch(() => 0)) ?? 0;
+  const btn = $('#profiles-recover');
+  btn.classList.toggle('hidden', !n);
+  btn.querySelector('span')!.textContent = t('Odzyskaj profile ({0})', n);
+}
+$('#profiles-recover').addEventListener('click', () => busy($<HTMLButtonElement>('#profiles-recover'), async () => {
+  const n: number = await guard(() => api.recoverProfiles()) ?? 0;
+  if (!n) return;
+  store = await api.getStore();
+  render();
+  toast(t('Odzyskano profile: {0}. Sprawdź w ich ustawieniach wersję gry i loader.', n));
+  await refreshOrphans();
+}));
+
 $('#import-open').addEventListener('click', async () => {
   $('#import-list').replaceChildren(...skeletons('project', 3));
   $('#import-modal').classList.remove('hidden');
@@ -4292,6 +4309,9 @@ function finishBoot() {
     startStars();
     store = await api.getStore();
     applyMotion();
+    // the list of profiles could not be read at start: the profiles found on disk were added back
+    void api.recoveredProfiles().then((n: number) => n && toast(t('Nie udało się odczytać listy profili, więc odzyskano je z dysku ({0}). Sprawdź w ich ustawieniach wersję gry i loader.', n), true));
+    void refreshOrphans();
     applyLanguage(store.settings.language);
     loadNews();
     render();
