@@ -7,6 +7,7 @@ import { BLOCKED_TAGS, BLOCKED_WORDS, CLAN_LIMITS } from './clans.ts';
 import { COMMUNITY_LIMITS } from './communityStore.ts';
 import { COMMUNITY_MEDIA_LIMITS } from './communityMedia.ts';
 import { BANNER_DEFS, FEATURE_DEFS } from './features.ts';
+import { PUSH_SETTING_DEFS } from './push.ts';
 import { RANK_SETTING_DEFS } from './ranks.ts';
 import { GROUP_LIMITS } from './groups.ts';
 import { MEDIA_LIMITS } from './media.ts';
@@ -47,6 +48,7 @@ export const CATEGORIES: { id: SettingCategory; label: string; labelEn: string }
   { id: 'servers', label: 'Lista serwerów', labelEn: 'Server list' },
   { id: 'spotify', label: 'Spotify', labelEn: 'Spotify' },
   { id: 'suggestions', label: 'Propozycje znajomych', labelEn: 'Friend suggestions' },
+  { id: 'push', label: 'Powiadomienia na telefon', labelEn: 'Phone notifications' },
 ];
 
 const MB = 1024 * 1024;
@@ -204,6 +206,8 @@ export const SETTING_DEFS: SettingDef[] = [
   ...SPOTIFY_SETTING_DEFS,
   // friend suggestions from players met recently (suggestions.ts)
   ...SUGGESTION_SETTING_DEFS,
+  // notifications on the phone app (push.ts)
+  ...PUSH_SETTING_DEFS,
 
   // voting from the launcher's "Serwery" (serverVotes.ts): the list's API trusts this server's key
   ...group('servers', [
