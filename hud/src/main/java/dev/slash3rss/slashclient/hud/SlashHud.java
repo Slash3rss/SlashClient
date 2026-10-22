@@ -125,6 +125,8 @@ public class SlashHud implements ClientModInitializer {
 		dev.slash3rss.slashclient.hud.ui.FigureRender.register();
 		//#endif
 		Badges.load();
+		// the session in numbers for the launcher's summary after the game (SessionStats)
+		SessionStats.register();
 		// the partners (and which are pinned on top of the server list) before the list is first opened
 		PartnerServers.refresh();
 		// another server or world: what we knew about its players is gone
@@ -236,6 +238,7 @@ public class SlashHud implements ClientModInitializer {
 			}
 			MoreModules.Combat.tick(mc);
 			ExtraModules.Stats.tick(mc);
+			SessionStats.tick(mc);
 			if (mc.getConnection() == null) ExtraModules.Stats.disconnected();
 			// a new world or server starts a new session
 			if (mc.player != null && MoreModules.sessionStart == 0) MoreModules.sessionStart = System.currentTimeMillis();
@@ -257,6 +260,7 @@ public class SlashHud implements ClientModInitializer {
 				SkyCounters.attacked(player, entity);
 				//#endif
 				ExtraModules.Stats.attack(player, entity);
+				SessionStats.attacked(entity);
 				KillEffects.attacked(entity);
 				HitMarker.attacked(entity);
 			}

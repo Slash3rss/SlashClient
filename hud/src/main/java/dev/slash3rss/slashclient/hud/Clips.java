@@ -176,6 +176,7 @@ public final class Clips {
 			try {
 				Files.createDirectories(dir);
 				AviWriter.write(file, clip.stream().map(Frame::jpeg).toList(), clip.getLast().width(), clip.getLast().height(), fps);
+				mc.execute(SessionStats::clip);
 				mc.execute(() -> SystemToast.add(Compat.toasts(mc), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
 					Component.translatable("slashclient-hud.clips.saved", Math.round(seconds)), Component.literal(file.getFileName().toString())));
 			} catch (Exception e) {
