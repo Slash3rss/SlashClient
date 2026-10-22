@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -23,8 +24,9 @@ import java.util.List;
  * and faint pulsing when wanted. Only in a dungeon (DungeonMap.active), only what DungeonRooms has
  * already found (no scanning of its own), a double chest as one box. Taken loot goes at once: what
  * was opened or broken is left out, and so is a block that is no longer there (before the map's
- * next scan notices). Each tick the boxes are made anew; each frame they are drawn as one batch of
- * flat quads (thin boxes along the edges), with the depth test: never through walls.
+ * next scan notices). Items lying on the ground in the dungeon (mob drops, what was thrown) get a
+ * box of their own, in their own colour. Each tick the boxes are made anew; each frame they are drawn as one batch of
+ * flat quads (thin boxes along the edges), with the depth test, or through walls when switched on.
  */
 public final class LootHighlight {
 	private LootHighlight() {}
@@ -39,7 +41,12 @@ public final class LootHighlight {
 	/** The fill stands this far out of the block, so it does not flicker with the block's faces. */
 	private static final double OUT = 0.004;
 
-	/** One piece of loot's box in the world and its kind (an index of DungeonRooms.LOOT). */
+	/** The kind after DungeonRooms.LOOT's: an item lying on the ground. */
+	public static final int DROP = DungeonRooms.LOOT.length;
+	/** How many kinds there are: the loot's and the dropped items. */
+	public static final int KINDS = DROP + 1;
+
+	/** One piece of loot's box in the world and its kind (an index of DungeonRooms.LOOT, or DROP). */
 	public record Box(double x0, double y0, double z0, double x1, double y1, double z1, int cat) {}
 
 	private static List<Box> boxes = List.of();
@@ -72,7 +79,8 @@ public final class LootHighlight {
 			case 1 -> c.lootBarrels;
 			case 2 -> c.lootPots;
 			case 3 -> c.lootFlowerPots;
-			default -> c.lootOres;
+			case 4 -> c.lootOres;
+			default -> c.lootDrops;
 		};
 	}
 
@@ -83,7 +91,8 @@ public final class LootHighlight {
 			case 1 -> c.lootBarrelColor;
 			case 2 -> c.lootPotColor;
 			case 3 -> c.lootFlowerPotColor;
-			default -> c.lootOreColor;
+			case 4 -> c.lootOreColor;
+			default -> c.lootDropColor;
 		};
 	}
 
@@ -119,7 +128,22 @@ public final class LootHighlight {
 			}
 			out.add(new Box(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ, cat));
 		});
+		if (shown(DROP)) drops(level, px, py, pz, range, out);
 		return out;
+	}
+
+	/** Items on the ground within `range` (-1: as far as the largest range), each a small box round the item. */
+	private static void drops(Level level, double px, double py, double pz, int range, List<Box> out) {
+		int reach = range >= 0 ? range : MAX_RANGE;
+		double r2 = (double) reach * reach;
+		AABB around = new AABB(px - reach, py - reach, pz - reach, px + reach, py + reach, pz + reach);
+		for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, around, e -> e.isAlive() && !e.getItem().isEmpty())) {
+			double x = item.getX(), y = item.getY(), z = item.getZ();
+			double dx = x - px, dy = y - py, dz = z - pz;
+			if (dx * dx + dy * dy + dz * dz > r2) continue;
+			// a little wider and taller than the item's own box: it bobs and turns above the ground
+			out.add(new Box(x - 0.22, y, z - 0.22, x + 0.22, y + 0.5, z + 0.22, DROP));
+		}
 	}
 
 	/** A block's outline in the world, or the whole block when it has none. */
@@ -152,9 +176,9 @@ public final class LootHighlight {
 	//$ }
 	//#endif
 
-	/** Translucent quads with a white texture, with the depth test (loot behind a wall stays hidden). */
+	/** Translucent quads with a white texture: through walls without the depth test, else with it. */
 	private static net.minecraft.client.renderer.rendertype.RenderType type() {
-		return RenderTypes.text(TEXTURE);
+		return cfg().lootHighlightWalls ? RenderTypes.textSeeThrough(TEXTURE) : RenderTypes.text(TEXTURE);
 	}
 
 	/** Every box: its soft fill (when on), then its twelve edges as thin boxes, a little thicker further off. */

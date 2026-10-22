@@ -158,14 +158,14 @@ public final class HudConfig {
 	/** Deepslate ores not counted ("coal,copper"), the rest are. */
 	public String dungeonOresOff = "";
 	/**
-	 * Loot not taken yet outlined in the world while in a SkyUp dungeon (LootHighlight): each kind
+	 * Loot not taken yet, and items lying on the ground, outlined in the world while in a SkyUp dungeon (LootHighlight): each kind
 	 * (as DungeonRooms.LOOT) on or off and in its colour, a soft fill, faint pulsing, as far as
-	 * lootHighlightRange (when limited), never through walls.
+	 * lootHighlightRange (when limited), and seen through walls only when switched on.
 	 */
 	public boolean lootHighlight = false;
-	public boolean lootChests = true, lootBarrels = true, lootPots = true, lootFlowerPots = true, lootOres = true;
-	public int lootChestColor = 0xFFFACC15, lootBarrelColor = 0xFFFB923C, lootPotColor = 0xFFA855F7, lootFlowerPotColor = 0xFF4ADE80, lootOreColor = 0xFF55FFFF;
-	public boolean lootHighlightFill = true, lootHighlightPulse = false, lootHighlightLimit = true;
+	public boolean lootChests = true, lootBarrels = true, lootPots = true, lootFlowerPots = true, lootOres = true, lootDrops = true;
+	public int lootChestColor = 0xFFFACC15, lootBarrelColor = 0xFFFB923C, lootPotColor = 0xFFA855F7, lootFlowerPotColor = 0xFF4ADE80, lootOreColor = 0xFF55FFFF, lootDropColor = 0xFFFFFFFF;
+	public boolean lootHighlightFill = true, lootHighlightPulse = false, lootHighlightWalls = false, lootHighlightLimit = true;
 	public int lootHighlightRange = 32;
 	/** Rooms cleared of mobs in green, with the time until they come back. */
 	public boolean dungeonCleared = true;
@@ -586,13 +586,16 @@ public final class HudConfig {
 		lootPots = other.lootPots;
 		lootFlowerPots = other.lootFlowerPots;
 		lootOres = other.lootOres;
+		lootDrops = other.lootDrops;
 		lootChestColor = other.lootChestColor;
 		lootBarrelColor = other.lootBarrelColor;
 		lootPotColor = other.lootPotColor;
 		lootFlowerPotColor = other.lootFlowerPotColor;
 		lootOreColor = other.lootOreColor;
+		lootDropColor = other.lootDropColor;
 		lootHighlightFill = other.lootHighlightFill;
 		lootHighlightPulse = other.lootHighlightPulse;
+		lootHighlightWalls = other.lootHighlightWalls;
 		lootHighlightLimit = other.lootHighlightLimit;
 		lootHighlightRange = Math.max(8, Math.min(64, other.lootHighlightRange));
 		dungeonOres = other.dungeonOres;

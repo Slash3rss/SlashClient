@@ -1241,16 +1241,17 @@ public final class TestHooks {
 	}
 
 	/**
-	 * The dungeon loot highlight on (with a distance limit, or -1 for none) or
+	 * The dungeon loot highlight on (through walls or not; a distance limit, or -1 for none) or
 	 * off, made at once: how many boxes, and per kind of DungeonRooms.LOOT ("6 [2, 1, 1, 1, 1]").
 	 */
-	public static String lootHighlight(boolean on, int range) {
+	public static String lootHighlight(boolean on, boolean walls, int range) {
 		HudConfig c = SlashHud.config;
 		c.lootHighlight = on;
+		c.lootHighlightWalls = walls;
 		c.lootHighlightLimit = range > 0;
 		if (range > 0) c.lootHighlightRange = range;
 		LootHighlight.tick(net.minecraft.client.Minecraft.getInstance());
-		int[] kinds = new int[DungeonRooms.LOOT.length];
+		int[] kinds = new int[LootHighlight.KINDS];
 		for (var b : LootHighlight.boxes()) kinds[b.cat()]++;
 		return LootHighlight.boxes().size() + " " + java.util.Arrays.toString(kinds);
 	}
