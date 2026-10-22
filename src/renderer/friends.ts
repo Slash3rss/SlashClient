@@ -13,6 +13,8 @@ import { badgeChoices, rankBadge, rankName, safeColor, type RankView } from './r
 import { createPositionSharing } from './positionSharing';
 import { cleanStream, createStreamsSection, liveBadge, noticeText, streamLine, type FriendStream } from './streams';
 import { canDelete, canEdit, editHint, editedLabel, replaceMessage, slowDownSeconds, slowDownText, tombstone, withMenu, type MenuItem } from './chatEdits';
+import { openMediaPanel, removedCard, revealMessage } from './chatMediaPanel';
+import { directSource } from './chatMediaSources';
 
 /**
  * The "Friends" view: signing in to the social server, the friends list with live
@@ -38,7 +40,7 @@ export const inviteExpired = (inv: { expiresAt?: number }, now = Date.now()) => 
 /** A picture in the chat (the launcher decrypts it); `unreadable`: its key was for another launcher. */
 interface ChatImage { id: string; w?: number; h?: number; unreadable?: boolean }
 /** `editedAt`, `deleted`: changed or taken back by the author (server 0.9.23+). */
-interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite; waypoint?: SharedWaypoint; image?: ChatImage; encrypted?: boolean; unreadable?: boolean; editedAt?: number; deleted?: boolean }
+interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite; waypoint?: SharedWaypoint; image?: ChatImage; encrypted?: boolean; unreadable?: boolean; editedAt?: number; deleted?: boolean; imageRemoved?: { at: number; expired?: boolean; by?: string } }
 interface SocialState { url: string; user?: Me; connected: boolean; status: Status }
 interface FriendList { friends: Friend[]; incoming: Request[]; outgoing: Request[] }
 
@@ -167,6 +169,10 @@ export function socialErrorText(code: string): string {
     bad_poll_end: t('Koniec ankiety: od minuty do miesiąca od teraz.'),
     poll_closed: t('Ta ankieta jest już zakończona.'),
     bad_vote: t('Nie udało się oddać głosu.'),
+    // the Multimedia panel and the shared chats' limits (chatMediaPanel.ts)
+    chat_media_full: t('Ten czat ma już pełny limit multimediów – usuń stare albo poczekaj.'),
+    chat_media_daily: t('Wysłano dziś do tego czatu za dużo zdjęć. Spróbuj jutro.'),
+    bad_limits: t('Limity muszą być dodatnie i nie wyższe niż ustawione przez administrację.'),
     // the shop (sparks from achievements)
     not_enough_sparks: t('Za mało Iskier.'),
     owned: t('Masz już ten przedmiot.'),
@@ -954,8 +960,32 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     const other = m.from === me ? m.to : m.from;
     const items: MenuItem[] = [];
     if (canEdit(m, me, windowMs)) items.push({ label: t('Edytuj'), icon: 'fa-pen', hint: editHint(m, windowMs!), run: () => startEditing({ id: m.id, friend: other }, m.text) });
+    // the picture alone, the message kept (server 0.9.36+; an older one answers 404)
+    if (m.image && !m.deleted && m.from === me && windowMs) items.push({ label: t('Usuń zdjęcie'), icon: 'fa-image', danger: true, run: () => void removePicture(other, m.id) });
     if (canDelete(m, me, windowMs)) items.push({ label: t('Usuń'), icon: 'fa-trash', danger: true, run: () => void deleteMessage(m) });
     return items;
+  }
+
+  /** Takes a picture of a direct message down (the message stays with "Zdjęcie usunięte"); the server tells both. */
+  async function removePicture(other: string, id: number) {
+    if (!(await confirmDialog({ title: t('Usunąć zdjęcie?'), body: [el('p', { className: 'muted', textContent: t('Zniknie u Ciebie i u znajomego, a wiadomość zostanie z napisem „Zdjęcie usunięte”. Tego nie da się cofnąć.') })], ok: t('Usuń'), danger: true }))) return;
+    try {
+      await api.socialApi('DELETE', `/v1/messages/${other}/${id}/image`);
+    } catch (err) {
+      deps.toast(deps.errorText(err), true);
+    }
+  }
+
+  /** The Multimedia panel of the conversation with a friend (chatMediaPanel.ts). */
+  function openMedia(f: Friend) {
+    openMediaPanel(directSource({
+      api, friend: { id: f.id, name: f.name }, me: () => state?.user?.id, myName: () => state?.user?.name ?? t('Ty'),
+      messages: () => chats.get(f.id)?.messages ?? [],
+      jump: (id) => {
+        if (selected !== f.id || groups.active() || communities.active()) openChat(f.id);
+        void revealMessage(id, { has: () => !!chats.get(f.id)?.messages.some((m) => m.id === id), more: () => !!chats.get(f.id)?.more, loadOlder: () => loadOlder(f.id), box: () => messagesBox });
+      },
+    }), { api, toast: deps.toast, errorText: deps.errorText });
   }
 
   async function send() {
@@ -1141,6 +1171,10 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       actions.push(watch);
     }
     // their public profile on the site (server 0.9.22+; an older one answers 404 there)
+    // the conversation's pictures (server 0.9.36+)
+    const mediaBtn = el('button', { type: 'button', className: 'icon-btn feature-chatImages', title: t('Multimedia') }, icon('fa-photo-film'));
+    mediaBtn.addEventListener('click', () => openMedia(f));
+    actions.push(mediaBtn);
     const profile = el('button', { type: 'button', className: 'icon-btn feature-profiles', title: t('Pokaż profil') }, icon('fa-id-card'));
     profile.addEventListener('click', () => profileLink(deps, f.handle, 'open'));
     actions.push(profile);
@@ -1285,10 +1319,13 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       }
       // messages sent close together stick to each other
       const grouped = m.from === lastFrom && m.at - lastAt < 5 * 60_000;
-      const content = m.deleted ? bubble(m) : m.invite ? inviteCard(m, m.from === me) : m.waypoint ? waypointCard(m.waypoint, m.from === me, deps.toast) : m.image ? imageCard(m.image, m.from === me) : bubble(m);
-      nodes.push(el('div', { className: `fr-msg${m.from === me ? ' mine' : ''}${grouped ? ' grouped' : ''}${editing?.id === m.id && !editing.group ? ' editing' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
+      const content = m.deleted ? bubble(m) : m.invite ? inviteCard(m, m.from === me) : m.waypoint ? waypointCard(m.waypoint, m.from === me, deps.toast) : m.image ? imageCard(m.image, m.from === me)
+        : m.imageRemoved ? removedCard(m.imageRemoved, m.from === me) : bubble(m);
+      const row = el('div', { className: `fr-msg${m.from === me ? ' mine' : ''}${grouped ? ' grouped' : ''}${editing?.id === m.id && !editing.group ? ' editing' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
         withMenu(content, messageMenu(m, chat.editWindowMs)),
-        grouped ? '' : el('small', { className: 'fr-time', textContent: time.format(m.at) })));
+        grouped ? '' : el('small', { className: 'fr-time', textContent: time.format(m.at) }));
+      row.dataset.mid = String(m.id);
+      nodes.push(row);
       if (m === lastMineRead) nodes.push(el('small', { className: 'fr-read', textContent: t('Przeczytano') }));
       lastDay = d;
       lastFrom = m.from;

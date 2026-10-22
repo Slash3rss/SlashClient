@@ -97,6 +97,8 @@ export const logActionText = (action: string) => ({
   channel_create: t('tworzy kanał'), channel_edit: t('zmienia kanał'), channel_delete: t('usuwa kanał'), channel_order: t('zmienia kolejność kanałów'),
   role_create: t('tworzy rolę'), role_edit: t('zmienia rolę'), role_delete: t('usuwa rolę'), role_order: t('zmienia kolejność ról'), member_role: t('nadaje rolę'),
   poll_close: t('zamyka ankietę od'),
+  // the Multimedia panel (0.9.36+)
+  image_delete: t('usuwa zdjęcie od'), media_limits: t('zmienia limity multimediów'),
 })[action];
 
 interface Community extends RoleHolder { id: string; name: string; channels: (ChannelAccess & { id: string; kind: string; name: string })[] }

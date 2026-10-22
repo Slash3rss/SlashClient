@@ -19,6 +19,7 @@ import { SERVER_STATUS_EN } from './i18nServerStatus';
 import { FRIEND_MAP_EN } from './i18nFriendMap';
 import { MANUAL_EN } from './i18nManual';
 import { SERVER_VOTES_EN } from './i18nServerVotes';
+import { CHAT_MEDIA_EN } from './i18nChatMedia';
 
 export type Lang = 'pl' | 'en';
 
@@ -57,6 +58,8 @@ const EN: Record<string, string> = {
   ...MANUAL_EN,
   // votes on the server list and the server pages (own file)
   ...SERVER_VOTES_EN,
+  // the Multimedia panel of chats and the shared chats' media limits (own file)
+  ...CHAT_MEDIA_EN,
   // navigation and common
   'Graj': 'Play',
   'GRAJ': 'PLAY',

@@ -15,13 +15,15 @@ export interface ChatLine {
   id: number; from: string; at: number; text: string;
   editedAt?: number; deleted?: boolean; unreadable?: boolean;
   invite?: unknown; waypoint?: unknown; image?: unknown; event?: unknown;
+  /** The picture was taken down or ran out (server 0.9.36+): the message stays, not editable. */
+  imageRemoved?: unknown;
 }
 /** Whose messages a group member may delete besides their own: everyone's, or plain members' (a clan officer). */
 export type Moderator = 'all' | 'members';
 
 /** Text only, one's own, not taken back, and still within the window. */
 export function canEdit(m: ChatLine, me: string | undefined, windowMs: number | undefined, now = Date.now()): boolean {
-  return !!me && !!windowMs && m.from === me && !m.deleted && !m.unreadable && !m.invite && !m.waypoint && !m.image && !m.event && now - m.at < windowMs;
+  return !!me && !!windowMs && m.from === me && !m.deleted && !m.unreadable && !m.invite && !m.waypoint && !m.image && !m.imageRemoved && !m.event && now - m.at < windowMs;
 }
 
 /** One's own any time; in a group also others' for its moderators (an officer: not the owner's or other officers'). */
@@ -37,7 +39,7 @@ export function replaceMessage<T extends ChatLine>(list: T[], next: T): T[] {
   return list.map((m) => {
     if (m.id !== next.id) return m;
     // the server's edit does not repeat the picture's key; a deleted message has none any more
-    return { ...next, ...(!next.deleted && m.image && !next.image ? { image: m.image } : {}) };
+    return { ...next, ...(!next.deleted && m.image && !next.image && !next.imageRemoved ? { image: m.image } : {}) };
   });
 }
 
