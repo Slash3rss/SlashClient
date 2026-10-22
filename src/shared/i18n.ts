@@ -15,7 +15,6 @@ import { COMMUNITY_LINKS_EN } from './i18nCommunityLinks';
 import { COMMUNITY_MEDIA_EN } from './i18nCommunityMedia';
 import { FEATURES_EN } from './i18nFeatures';
 import { STREAMS_EN } from './i18nStreams';
-import { SPOTIFY_EN } from './i18nSpotify';
 import { SERVER_STATUS_EN } from './i18nServerStatus';
 import { FRIEND_MAP_EN } from './i18nFriendMap';
 import { MANUAL_EN } from './i18nManual';
@@ -54,8 +53,6 @@ const EN: Record<string, string> = {
   ...COMMUNITY_MEDIA_EN,
   // friends live on Twitch and Kick (own file)
   ...STREAMS_EN,
-  // linking Spotify for the game's "Spotify" module (own file)
-  ...SPOTIFY_EN,
   // the summary after a game session (own file)
   ...SESSION_SUMMARY_EN,
   // statuses from a server's tab list (own file)

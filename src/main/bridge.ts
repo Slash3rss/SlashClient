@@ -43,9 +43,9 @@ export interface BridgeOptions {
   communityLogo?: (id: string, version: number) => Promise<Buffer>;
   /** What the server's tab list says (serverStatus.ts): the server, the short status and its values; or nothing. */
   gameStatus?: (status: { server: string; detail?: string; values: Record<string, string> } | undefined) => void;
-  /** What plays on the player's linked Spotify (spotify.ts), asked by the game only while its "Spotify" module is on. */
-  spotifyNow?: () => Promise<unknown>;
-  /** A Spotify album cover by its id on i.scdn.co, as a 64×64 PNG. */
+  /** What plays on this computer (nowPlaying.ts), asked by the game only while its "Now playing" module is on; `onlySpotify` leaves out browsers and other players. */
+  spotifyNow?: (onlySpotify: boolean) => Promise<unknown>;
+  /** The cover of what plays by its id (from the system, or Spotify's image host), as a 64×64 PNG. */
   spotifyCover?: (id: string) => Promise<Buffer>;
 }
 
@@ -311,10 +311,11 @@ export class GameBridge {
       }
     }
 
-    // Spotify (HUD 0.9.36+): what plays now, and an album's cover (only Spotify's own image host, fetched by the launcher)
-    if (method === 'GET' && url === '/spotify/now') {
+    // "Now playing" (HUD 0.9.36+, the routes keep their old name): what plays on this computer, and its cover
+    const now = /^\/spotify\/now(\?only=spotify)?$/.exec(url);
+    if (method === 'GET' && now) {
       if (!this.opts.spotifyNow) return this.send(res, 404, { error: 'not_found' });
-      return this.send(res, 200, await this.opts.spotifyNow());
+      return this.send(res, 200, await this.opts.spotifyNow(!!now[1]));
     }
     const cover = /^\/spotify\/cover\/([0-9a-f]{16,64})$/.exec(url);
     if (method === 'GET' && cover) {
