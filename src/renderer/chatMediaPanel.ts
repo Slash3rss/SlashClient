@@ -90,7 +90,7 @@ export async function revealMessage(id: number, o: { has: () => boolean; more: (
 }
 
 let styled = false;
-/** The panel's look, once (its own sheet, so the launcher's style.css stays as it is). */
+/** The panel's look, once (its own constructed sheet, so the launcher's style.css stays as it is). */
 function ensureStyles() {
   if (styled) return;
   styled = true;
@@ -125,7 +125,7 @@ function ensureStyles() {
 .fr-media-links { display: flex; flex-direction: column; gap: 6px; max-height: min(58vh, 560px); overflow-y: auto; }
 .fr-media-link { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 8px; background: var(--glass-bg); }
 .fr-media-link a { color: var(--accent-light); word-break: break-all; }
-.fr-media-viewer { position: fixed; inset: 0; z-index: 1200; display: flex; flex-direction: column; background: rgba(0,0,0,.88); }
+.fr-media-viewer { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; background: rgba(0,0,0,.88); }
 .fr-media-viewer .fr-media-stage { flex: 1; min-height: 0; display: grid; place-items: center; padding: 16px 64px; }
 .fr-media-viewer .fr-media-stage img { max-width: 100%; max-height: 100%; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
 .fr-media-viewer .fr-media-bottom { display: flex; gap: 10px; align-items: center; padding: 12px 18px; background: rgba(10,13,20,.9); border-top: 1px solid var(--glass-border); }
@@ -138,7 +138,10 @@ function ensureStyles() {
 .fr-msg.fr-flash > .fr-line > .fr-bubble, .fr-msg.fr-flash > .fr-bubble { box-shadow: 0 0 0 2px var(--accent), 0 0 18px var(--accent-glow); transition: box-shadow .3s; }
 .fr-bubble.fr-image-removed { opacity: .8; font-style: italic; }
 `;
-  document.head.append(el('style', { textContent: css }));
+  // a constructed sheet: the page's CSP takes no inline <style>
+  const sheet = new CSSStyleSheet();
+  sheet.replaceSync(css);
+  document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
 }
 
 const dateText = (at: number) => new Date(at).toLocaleString(locale(), { dateStyle: 'medium', timeStyle: 'short' });
