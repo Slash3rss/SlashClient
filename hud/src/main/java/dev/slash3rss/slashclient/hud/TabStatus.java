@@ -335,6 +335,36 @@ public final class TabStatus {
 		});
 	}
 
+	// ---------- the mode, for waypoints ----------
+
+	/** SkyUp's rule as the server seeds it (statusRules.ts, SKYUP_RULE), until the server's rules came. */
+	private static final List<Rule> BUILT_IN = rulesFrom("{\"rules\":[{\"server\":\"skyup.pl\",\"name\":\"SkyUp.pl\",\"strip\":\"»« \",\"extractors\":["
+		+ "{\"source\":\"header\",\"line\":1,\"pattern\":\"^Sky[Uu][Pp] - (?<mode>[^»«]{1,32})$\"},"
+		+ "{\"source\":\"header\",\"line\":2,\"pattern\":\"^(?<sector>LOBBY|Lobby|S\\\\d{1,2}(?: \\\\([^()]{1,24}\\\\))?)$\"}],"
+		+ "\"map\":{\"LOBBY\":\"Lobby\"},\"template\":\"{sector}\"}]}");
+
+	/**
+	 * Which mode of a server network the tab list says the player is in ("AnyBlock · S3 (Wyspy)"): the
+	 * `mode` and `sector` values of the server's rule, those it has; null when it says neither (no rule,
+	 * or a header that is not the rule's). Waypoints keep the points of each mode apart with it.
+	 */
+	public static String mode(String server, String header, String footer) {
+		List<Rule> list = rules.isEmpty() ? BUILT_IN : rules;
+		Rule rule = ruleFor(list, server);
+		if (rule == null) return null;
+		Map<String, String> values = evaluate(rule, header, footer).values();
+		String mode = sanitize(values.get("mode")), sector = sanitize(values.get("sector"));
+		if (mode == null) return sector;
+		return sector == null ? mode : mode + " · " + sector;
+	}
+
+	/** The mode the tab list the game holds now says, on `server`. */
+	public static String modeOnTab(Minecraft mc, String server) {
+		var parts = (dev.slash3rss.slashclient.hud.mixin.PlayerTabOverlayAccessor) Compat.tabList(mc);
+		Component h = parts.slashclient$header(), f = parts.slashclient$footer();
+		return mode(server, h == null ? "" : h.getString(), f == null ? "" : f.getString());
+	}
+
 	/** For the test: the rules as the server would give them, without the network. */
 	public static void rulesForTest(String json) {
 		rules = rulesFrom(json);

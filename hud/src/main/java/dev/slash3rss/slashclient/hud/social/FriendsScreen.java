@@ -1461,7 +1461,7 @@ public class FriendsScreen extends Screen {
 	private int[] drawWaypoint(GuiGraphicsExtractor g, Social.Message m, String friendName, boolean mine, int cx, int cw, int maxBubble, int y, int top, int bottom, int mx, int my) {
 		SharedWaypoints.Shared w = m.waypoint();
 		Component title = Ui.trBold(mine ? "slashclient-hud.share.sentCard" : "slashclient-hud.share.card", w.name());
-		Component where = Ui.text(w.x() + " " + w.y() + " " + w.z() + " · " + SharedWaypoints.worldName(w.world()));
+		Component where = Ui.text(w.x() + " " + w.y() + " " + w.z() + " · " + SharedWaypoints.worldName(w.world(), w.mode()));
 		Component add = Ui.tr("slashclient-hud.share.add");
 		int bw = Math.min(maxBubble, Math.max(Math.max(Ui.width(title), Ui.width(where)) + 18, mine ? 0 : Ui.buttonWidth(add, "check", 16, 2)) + 12);
 		int bh = mine ? 30 : 50;

@@ -32,7 +32,8 @@ export type Provider = 'discord' | 'microsoft' | 'google' | 'github' | 'dev' | '
 /** `expiresAt`: after it Join is gone ("Zaproszenie wygasło"); none: it does not expire (server 0.9.25+). */
 export interface Invite { server: string; version?: string; party?: string; expiresAt?: number }
 /** A waypoint a friend shared: where it is and in which world (`server:<address>` or `world:<name>`, as the HUD keys them). */
-export interface SharedWaypoint { name: string; x: number; y: number; z: number; dimension: string; world: string }
+/** `mode`: the server's mode it belongs to ("AnyBlock · S3 (Wyspy)"); none: every mode (HUDs before modes send none). */
+export interface SharedWaypoint { name: string; x: number; y: number; z: number; dimension: string; world: string; mode?: string }
 /** `editedAt`: when the author last changed the text; `deleted`: taken back (no text, invite or waypoint left) (server 0.9.23+). */
 export interface Message { id: number; from: string; to: string; text: string; at: number; readAt: number | null; invite?: Invite; waypoint?: SharedWaypoint; editedAt?: number; deleted?: true }
 /** Another player as friends lists show them. */

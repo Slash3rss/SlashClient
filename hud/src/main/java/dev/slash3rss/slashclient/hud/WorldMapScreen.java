@@ -201,7 +201,7 @@ public class WorldMapScreen extends Screen {
 		Ui.draw(g, info, cx - bw - 14 - Ui.width(info), 7, Ui.MUTED);
 	}
 
-	private static String dimensionName(Minecraft mc) {
+	static String dimensionName(Minecraft mc) {
 		String id = Waypoints.dimensionId(Waypoints.dimension(mc));
 		String key = "slashclient-hud.worldMap.dim." + id.replace("minecraft:", "");
 		Component c = Component.translatable(key);
@@ -318,8 +318,7 @@ public class WorldMapScreen extends Screen {
 		}));
 		Ui.button(g, "map:delete", bx + 40, panelY + 3, 18, 17, "trash", Component.empty(), false, mx, my);
 		hits.add(new Hit(bx + 40, panelY + 3, 18, 17, () -> {
-			Waypoints.here(mc).remove(p);
-			Waypoints.save();
+			Waypoints.remove(p);
 			select(null);
 		}));
 		Ui.button(g, "map:deselect", bx + 60, panelY + 3, 18, 17, "back", Component.empty(), false, mx, my);

@@ -23,6 +23,8 @@ const DIMENSION = /^[a-z0-9_.-]{1,64}:[a-z0-9_./-]{1,64}$/;
 /** As the HUD keys its waypoints: a server's address or a singleplayer world's name. */
 const WORLD = /^(server:[\w.-]{1,253}(:\d{1,5})?|world:[^\u0000-\u001f]{1,64})$/;
 const VERSION = /^[\w.+ -]{1,32}$/;
+/** The server's mode a point belongs to ("AnyBlock · S3 (Wyspy)", from the tab list); HUDs before it send none. */
+const MODE_MAX = 64;
 
 export type MemberStatus = 'invited' | 'accepted' | 'declined' | 'left';
 interface Party { id: string; leader: string; server: string; version?: string; createdAt: number; expiresAt: number; members: Map<string, MemberStatus>; disbanded?: boolean }
@@ -40,13 +42,15 @@ interface Deps {
 
 /** A waypoint from a request, or undefined when something in it is off. */
 export function cleanWaypoint(raw: Record<string, unknown>): SharedWaypoint | undefined {
-  const { name, x, y, z, dimension, world } = raw;
+  const { name, x, y, z, dimension, world, mode } = raw;
   const int = (v: unknown, max: number) => typeof v === 'number' && Number.isInteger(v) && Math.abs(v) <= max;
   if (typeof name !== 'string' || !name.trim() || name.trim().length > WAYPOINT_NAME || /[\u0000-\u001f]/.test(name)) return undefined;
   if (!int(x, MAX_XZ) || !int(z, MAX_XZ) || !int(y, 4096)) return undefined;
   if (typeof dimension !== 'string' || !DIMENSION.test(dimension)) return undefined;
   if (typeof world !== 'string' || !WORLD.test(world)) return undefined;
-  return { name: name.trim(), x: x as number, y: y as number, z: z as number, dimension, world: world.startsWith('server:') ? world.toLowerCase() : world };
+  // a mode that is off is left out (the point then shows in every mode), not a reason to refuse the point
+  const m = typeof mode === 'string' && world.startsWith('server:') && mode.trim() && mode.trim().length <= MODE_MAX && !/[\u0000-\u001f]/.test(mode) ? mode.trim() : undefined;
+  return { name: name.trim(), x: x as number, y: y as number, z: z as number, dimension, world: world.startsWith('server:') ? world.toLowerCase() : world, ...(m ? { mode: m } : {}) };
 }
 
 export function sharingRoutes(deps: Deps) {

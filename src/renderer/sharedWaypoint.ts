@@ -1,13 +1,13 @@
 import { t } from '../shared/i18n';
 
 /** A waypoint a friend shared from the game (a message with `waypoint`), as the server sends it. */
-export interface SharedWaypoint { name: string; x: number; y: number; z: number; dimension: string; world: string }
+export interface SharedWaypoint { name: string; x: number; y: number; z: number; dimension: string; world: string; mode?: string }
 
 const DIMENSIONS: Record<string, string> = { 'minecraft:overworld': 'Overworld', 'minecraft:the_nether': 'Nether', 'minecraft:the_end': 'End' };
 
-/** "skyup.pl" for a server, the world's name for singleplayer. */
+/** "skyup.pl" (with the server's mode: "skyup.pl · AnyBlock") for a server, the world's name for singleplayer. */
 export function waypointWorld(w: SharedWaypoint): string {
-  if (w.world.startsWith('server:')) return w.world.slice(7);
+  if (w.world.startsWith('server:')) return w.world.slice(7) + (w.mode ? ` · ${w.mode}` : '');
   if (w.world.startsWith('world:')) return t('świat {0}', w.world.slice(6));
   return '';
 }

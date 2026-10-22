@@ -50,16 +50,48 @@ public final class Waypoints {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static Map<String, List<Point>> all;
 
+	/** The file as it was before keys were first written another way (WaypointKeys), kept once. */
+	private static final Path BACKUP = FILE.resolveSibling("slashclient-waypoints-before-keys.json");
+
 	private static Map<String, List<Point>> all() {
 		if (all == null) {
 			try {
 				all = Files.exists(FILE) ? GSON.fromJson(Files.readString(FILE), new TypeToken<LinkedHashMap<String, List<Point>>>() {}.getType()) : null;
 			} catch (Exception e) {
 				SlashHud.LOG.warn("SlashClient: waypoints: {}", e.toString());
+				// a file that cannot be read is kept aside, not written over with an empty list
+				try {
+					Files.copy(FILE, FILE.resolveSibling("slashclient-waypoints-unreadable-" + System.currentTimeMillis() + ".json"));
+				} catch (Exception ignored) {
+					// nothing more to save
+				}
 			}
 			if (all == null) all = new LinkedHashMap<>();
+			all.values().removeIf(java.util.Objects::isNull);
+			// server addresses written one way ("SkyUp.pl:25565" is "skyup.pl"): lists of one server put together
+			if (WaypointKeys.normalizeKeys(all)) save();
 		}
 		return all;
+	}
+
+	/** For the test: the file read again at the next look. */
+	static void reloadForTest() {
+		all = null;
+		all();
+	}
+
+	/** Every list, by key (WaypointKeys moves points between them). */
+	static Map<String, List<Point>> lists() {
+		return all();
+	}
+
+	/** Copies the file before the first change of its keys, once. */
+	static void backupOnce() {
+		try {
+			if (Files.exists(FILE) && !Files.exists(BACKUP)) Files.copy(FILE, BACKUP);
+		} catch (Exception e) {
+			SlashHud.LOG.warn("SlashClient: waypoints backup: {}", e.toString());
+		}
 	}
 
 	public static void save() {
@@ -71,26 +103,48 @@ public final class Waypoints {
 		}
 	}
 
-	/** Which world the player is in: the server's address, or the singleplayer world's name. */
+	/**
+	 * Where new points of the place the player is in go: the server (its address written one way, and
+	 * its mode when the server has modes), or the singleplayer world's folder (WaypointKeys).
+	 */
 	public static String worldKey(Minecraft mc) {
-		if (mc.getCurrentServer() != null) return "server:" + mc.getCurrentServer().ip.toLowerCase();
-		if (mc.getSingleplayerServer() != null) return "world:" + mc.getSingleplayerServer().getWorldData().getLevelName();
-		return "unknown";
+		return WaypointKeys.key(mc);
 	}
 
 	public static String dimension(Minecraft mc) {
 		return mc.level == null ? "" : String.valueOf(mc.level.dimension());
 	}
 
-	/** The points of the current world (a live list: changes stick after save()). */
+	/** The list new points of this place go into (a live list: changes stick after save()). */
 	public static List<Point> here(Minecraft mc) {
 		return all().computeIfAbsent(worldKey(mc), k -> new ArrayList<>());
 	}
 
-	/** The points of the current world, without making an entry for it (the minimap reads them every frame). */
+	/**
+	 * The points shown here, without making an entry for the place (the minimap reads them every
+	 * frame): in a server's mode its own and the server's from before, which show in every mode.
+	 */
 	public static List<Point> points(Minecraft mc) {
-		List<Point> list = all().get(worldKey(mc));
-		return list == null ? List.of() : list;
+		String key = worldKey(mc), base = WaypointKeys.base(key);
+		List<Point> list = all().get(key);
+		if (key.equals(base)) {
+			// modes there, but not kept apart (switched off): every mode's points too, none hidden
+			if (WaypointKeys.split(base)) return list == null ? List.of() : list;
+			List<Point> every = new ArrayList<>();
+			for (var e : all().entrySet()) if (WaypointKeys.base(e.getKey()).equals(base)) every.addAll(e.getValue());
+			return every;
+		}
+		List<Point> shared = all().get(base);
+		if (shared == null || shared.isEmpty()) return list == null ? List.of() : list;
+		List<Point> both = new ArrayList<>(list == null ? List.of() : list);
+		both.addAll(shared);
+		return both;
+	}
+
+	/** Deletes a point from whichever list holds it. */
+	public static void remove(Point p) {
+		for (List<Point> list : all().values()) list.removeIf(q -> q == p);
+		save();
 	}
 
 	public static Point add(Minecraft mc, String name) {
@@ -103,9 +157,19 @@ public final class Waypoints {
 		return p;
 	}
 
+	/** A point at given coordinates (from the chat) in the dimension the player is in, into this place's list. */
+	public static Point addAt(Minecraft mc, String name, int x, int y, int z, int color) {
+		List<Point> list = here(mc);
+		String n = name == null || name.isBlank() ? Component.translatable("slashclient-hud.waypoints.point", list.size() + 1).getString() : name.strip();
+		Point p = new Point(n.length() > 32 ? n.substring(0, 32) : n, x, y, z, dimension(mc), color);
+		list.add(p);
+		save();
+		return p;
+	}
+
 	/** A point a friend shared, put into the list of `worldKey` (not necessarily the world the player is in). */
 	public static Point addShared(String worldKey, String name, int x, int y, int z, String dimension, String from) {
-		List<Point> list = all().computeIfAbsent(worldKey, k -> new ArrayList<>());
+		List<Point> list = all().computeIfAbsent(WaypointKeys.normalize(worldKey), k -> new ArrayList<>());
 		for (Point p : list) if (p.x == x && p.y == y && p.z == z && p.name.equals(name) && dimension.equals(p.dimension)) return p;
 		Point p = new Point(name, x, y, z, dimension, COLORS[list.size() % COLORS.length]);
 		p.from = from;
@@ -135,8 +199,8 @@ public final class Waypoints {
 	 */
 	static void draw(GuiGraphicsExtractor g, Minecraft mc) {
 		if (SlashHud.config == null || !SlashHud.config.waypoints || mc.player == null || mc.level == null) return;
-		List<Point> list = all().get(worldKey(mc));
-		if (list == null || list.isEmpty()) return;
+		List<Point> list = points(mc);
+		if (list.isEmpty()) return;
 		int w = g.guiWidth(), h = g.guiHeight();
 		String dim = dimension(mc);
 		for (Point p : list) {

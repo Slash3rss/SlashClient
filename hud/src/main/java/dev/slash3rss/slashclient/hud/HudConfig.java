@@ -356,6 +356,8 @@ public final class HudConfig {
 	public boolean chatStack = true;
 	/** Right click on a chat line copies it. */
 	public boolean chatCopy = true;
+	/** Coordinates in chat lines underlined: a click saves them as a waypoint (ChatCoords). */
+	public boolean chatCoords = true;
 	/** How a copied message comes out: "plain", "section" (§ codes), "ampersand" (& codes) or "json". */
 	public String chatCopyFormat = "plain";
 	/** The time the message came in, in front: "off", "hm" ([HH:mm]) or "hms" ([HH:mm:ss]). */
@@ -708,6 +710,7 @@ public final class HudConfig {
 		effectIcons = other.effectIcons;
 		chatStack = other.chatStack;
 		chatCopy = other.chatCopy;
+		chatCoords = other.chatCoords;
 		chatCopyFormat = oneOf(other.chatCopyFormat, ChatExtras.COPY_FORMATS);
 		chatCopyTime = oneOf(other.chatCopyTime, ChatExtras.COPY_TIMES);
 		chatCopyNoSender = other.chatCopyNoSender;

@@ -69,6 +69,16 @@ describe('shared waypoints', () => {
     assert.deepEqual(cleanWaypoint({ ...point, world: 'world:Mój świat' })?.world, 'world:Mój świat');
   });
 
+  it('keeps the server mode a waypoint belongs to, and leaves out one that is off', () => {
+    assert.deepEqual(cleanWaypoint({ ...point, mode: ' AnyBlock · S3 (Wyspy) ' }), { ...point, world: 'server:skyup.pl', mode: 'AnyBlock · S3 (Wyspy)' });
+    // older HUDs send none; a bad one does not refuse the point, it only shows in every mode
+    assert.equal(cleanWaypoint(point)?.mode, undefined);
+    assert.deepEqual(cleanWaypoint({ ...point, mode: 'x'.repeat(65) }), { ...point, world: 'server:skyup.pl' });
+    assert.deepEqual(cleanWaypoint({ ...point, mode: 'a\nb' }), { ...point, world: 'server:skyup.pl' });
+    assert.deepEqual(cleanWaypoint({ ...point, mode: 42 }), { ...point, world: 'server:skyup.pl' });
+    assert.equal(cleanWaypoint({ ...point, world: 'world:Mój świat', mode: 'AnyBlock' })?.mode, undefined);
+  });
+
   it('sends a waypoint to friends only, as a chat message', async () => {
     const ala = await login('WpAla');
     const bob = await login('WpBob');

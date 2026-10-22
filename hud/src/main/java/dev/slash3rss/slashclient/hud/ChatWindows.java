@@ -134,12 +134,48 @@ public final class ChatWindows {
 		}
 	}
 
-	private static void drawWindow(GuiGraphicsExtractor g, Minecraft mc, HudConfig.ChatTab tab, boolean open, long now) {
+	/** The text under the mouse in an open chat window (GUI coordinates), as the chat finds it under a click; null elsewhere. */
+	public static net.minecraft.network.chat.Style styleAt(double mx, double my) {
+		Minecraft mc = Minecraft.getInstance();
+		if (SlashHud.config == null || Compat.hudHidden(mc)) return null;
+		int sw = mc.getWindow().getGuiScaledWidth(), sh = mc.getWindow().getGuiScaledHeight();
+		for (HudConfig.ChatTab tab : SlashHud.config.chatTabs) {
+			if (tab.window == null) continue;
+			int[] p = at(tab, sw, sh);
+			float s = tab.window.scale();
+			double lx = (mx - p[0]) / s, ly = (my - p[1]) / s;
+			int rows = rows(tab);
+			if (lx < 0 || ly < 0 || lx >= cols(tab) || ly >= TITLE + rows * LINE_H + 5) continue;
+			List<FormattedCharSequence> shown = visible(mc, tab, true, System.currentTimeMillis(), new ArrayList<>());
+			int top = TITLE + 2 + (rows - shown.size()) * LINE_H;
+			int row = (int) Math.floor((ly - top) / LINE_H);
+			if (row < 0 || row >= shown.size()) return null;
+			return styleAtWidth(mc, shown.get(row), lx - 5);
+		}
+		return null;
+	}
+
+	/** The style of the character `x` pixels into a line (the game's own helper for this is gone in newer versions). */
+	private static net.minecraft.network.chat.Style styleAtWidth(Minecraft mc, FormattedCharSequence line, double x) {
+		if (x < 0) return null;
+		double[] at = { 0 };
+		net.minecraft.network.chat.Style[] found = new net.minecraft.network.chat.Style[1];
+		line.accept((index, style, cp) -> {
+			at[0] += mc.font.width(Component.literal(new String(Character.toChars(cp))).setStyle(style));
+			if (at[0] > x) {
+				found[0] = style;
+				return false;
+			}
+			return true;
+		});
+		return found[0];
+	}
+
+	/** The newest lines of a window that fit, broken to its width, oldest first (with how faded each is). */
+	private static List<FormattedCharSequence> visible(Minecraft mc, HudConfig.ChatTab tab, boolean open, long now, List<Float> alpha) {
 		var font = mc.font;
-		int w = cols(tab), rows = rows(tab), h = TITLE + rows * LINE_H + 5;
-		// the newest lines that fit, broken to the window's width, oldest first
+		int w = cols(tab), rows = rows(tab);
 		List<FormattedCharSequence> shown = new ArrayList<>();
-		List<Float> alpha = new ArrayList<>();
 		// first sight of a window (the game just started): what the chat already holds for it
 		if (!lines.containsKey(tab.name)) backfill(tab);
 		ArrayDeque<Line> list = lines.getOrDefault(tab.name, new ArrayDeque<>());
@@ -155,6 +191,14 @@ public final class ChatWindows {
 				alpha.add(0, a);
 			}
 		}
+		return shown;
+	}
+
+	private static void drawWindow(GuiGraphicsExtractor g, Minecraft mc, HudConfig.ChatTab tab, boolean open, long now) {
+		var font = mc.font;
+		int w = cols(tab), rows = rows(tab), h = TITLE + rows * LINE_H + 5;
+		List<Float> alpha = new ArrayList<>();
+		List<FormattedCharSequence> shown = visible(mc, tab, open, now, alpha);
 		if (!open && shown.isEmpty()) return;
 
 		int n = shown.size();

@@ -329,6 +329,7 @@ public final class Catalog {
 			new Choice("slashclient-hud.chat.copy.time", dev.slash3rss.slashclient.hud.ChatExtras.COPY_TIMES, "slashclient-hud.chat.copy.time.", () -> cfg.chatCopyTime, v -> cfg.chatCopyTime = v),
 			new Toggle("slashclient-hud.chat.copy.noSender", () -> cfg.chatCopyNoSender, v -> cfg.chatCopyNoSender = v),
 			new Choice("slashclient-hud.chat.copy.notice", dev.slash3rss.slashclient.hud.ChatExtras.COPY_NOTICES, "slashclient-hud.chat.copy.notice.", () -> cfg.chatCopyNotice, v -> cfg.chatCopyNotice = v)), null));
+		out.add(new Entry("chatCoords", "slashclient-hud.chatCoords.setting", "chat", "m-waypoints", () -> cfg.chatCoords, v -> cfg.chatCoords = v, List.of(), null));
 		out.add(new Entry("chatSearch", "slashclient-hud.chat.searchBox", "chat", "m-chatsearch", () -> cfg.chatSearch, v -> cfg.chatSearch = v, List.of(), null));
 		// the game's own HUD parts
 		// the game's own parts: moved in the editor (drag their boxes), shown, scaled

@@ -38,6 +38,13 @@ abstract class ChatScreenMixin {
 	//$ private void slashclient$copyLine(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
 	//#endif
+		// coordinates marked in a line (ChatCoords), or in a chat window: saved as a waypoint
+		if (e.button() == InputConstants.MOUSE_BUTTON_LEFT && SlashHud.config != null && SlashHud.config.chatCoords
+			&& (dev.slash3rss.slashclient.hud.ChatCoords.clicked(slashclient$styleAt(e.x(), e.y()))
+				|| dev.slash3rss.slashclient.hud.ChatCoords.clicked(dev.slash3rss.slashclient.hud.ChatWindows.styleAt(e.x(), e.y())))) {
+			cir.setReturnValue(true);
+			return;
+		}
 		// by the constant: 26.3 numbers the buttons anew (left 1, right 3), and a plain 1 there took over the left click
 		if (e.button() != InputConstants.MOUSE_BUTTON_RIGHT || SlashHud.config == null || !SlashHud.config.chatCopy) return;
 		if (slashclient$clickable(e.x(), e.y())) return;
@@ -56,10 +63,24 @@ abstract class ChatScreenMixin {
 
 	/** The text under the mouse has its own action (a link, a command, text to insert): the game handles that click. */
 	private boolean slashclient$clickable(double x, double y) {
+		net.minecraft.network.chat.Style style = slashclient$styleAt(x, y);
+		// our marked coordinates are no server's action: a right click there still copies the line
+		if (style == null) return false;
+		if (style.getClickEvent() != null) return true;
+		//#if MC >= 1.21.11
+		// text to insert counts with Shift held, as the game's own search has it
+		return style.getInsertion() != null && Minecraft.getInstance().hasShiftDown() && !dev.slash3rss.slashclient.hud.ChatCoords.isMarked(style);
+		//#else
+		//$ return style.getInsertion() != null && !dev.slash3rss.slashclient.hud.ChatCoords.isMarked(style);
+		//#endif
+	}
+
+	/** The style of the clickable text under the mouse in the chat (a click event or an insertion), or null. */
+	private net.minecraft.network.chat.Style slashclient$styleAt(double x, double y) {
 		Minecraft mc = Minecraft.getInstance();
 		//#if MC >= 1.21.11
 		// the same search the chat screen makes before it runs a click event
-		ActiveTextCollector.ClickableStyleFinder finder = new ActiveTextCollector.ClickableStyleFinder(mc.font, (int) x, (int) y).includeInsertions(mc.hasShiftDown());
+		ActiveTextCollector.ClickableStyleFinder finder = new ActiveTextCollector.ClickableStyleFinder(mc.font, (int) x, (int) y).includeInsertions(true);
 		//#if MC >= 26.2
 		Compat.chat(mc).captureClickableText(finder, mc.getWindow().getGuiScaledHeight(), mc.gui.hud.getGuiTicks(), displayMode);
 		//#elif MC >= 26.1
@@ -67,10 +88,9 @@ abstract class ChatScreenMixin {
 		//#else
 		//$ Compat.chat(mc).captureClickableText(finder, mc.getWindow().getGuiScaledHeight(), mc.gui.getGuiTicks(), true);
 		//#endif
-		return finder.result() != null;
+		return finder.result();
 		//#else
-		//$ net.minecraft.network.chat.Style style = Compat.chat(mc).getClickedComponentStyleAt(x, y);
-		//$ return style != null && (style.getClickEvent() != null || style.getInsertion() != null);
+		//$ return Compat.chat(mc).getClickedComponentStyleAt(x, y);
 		//#endif
 	}
 }

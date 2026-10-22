@@ -7,7 +7,7 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 
 /**
- * A waypoint put by itself where the player died: one per world (or server) and dimension, so
+ * A waypoint put by itself where the player died: one per world (or server, or server's mode) and dimension, so
  * the way back to the items shows with its distance. The next death there moves it; it can be
  * removed in the waypoints list (B) like any other.
  */
@@ -29,9 +29,10 @@ public final class DeathPoint {
 
 	/** The death point of this world and dimension, now at the player's feet. */
 	static Waypoints.Point place(Minecraft mc) {
-		List<Waypoints.Point> list = Waypoints.here(mc);
 		String dimension = Waypoints.dimension(mc);
-		list.removeIf(p -> p.death && dimension.equals(p.dimension));
+		// the one before, in this mode's list or (from before modes were told apart) the server's own
+		for (Waypoints.Point old : new java.util.ArrayList<>(Waypoints.points(mc))) if (old.death && dimension.equals(old.dimension)) Waypoints.remove(old);
+		List<Waypoints.Point> list = Waypoints.here(mc);
 		var pos = mc.player.blockPosition();
 		// fallen into the void: the point at the bottom of the world, where the fall started to count
 		//#if MC >= 1.21.2
