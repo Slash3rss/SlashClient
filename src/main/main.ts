@@ -49,6 +49,7 @@ import { getManifest } from './versions';
 import { newsArticle, newsPage, type NewsFilter } from './news';
 import { ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin } from './skins';
 import { GameBridge } from './bridge';
+import { CoverCache, NowPlayingPoller } from './spotify';
 import { LanTunnels } from './lan';
 import { BLOCK_FACES, blockTextures, cosmeticTextures } from './blockTextures';
 import { ConsoleHistory } from './consoleHistory';
@@ -1825,6 +1826,16 @@ const bridge = new GameBridge({
   clanLogo: (id, version) => clanLogos.get(id, version),
   communityLogo: (id, version) => communityLogos.get(id, version),
   gameStatus: (status) => onGameStatus(status),
+  // the game's "Spotify" module, only while it is on: what plays (the server asked every few seconds at most) and album covers
+  spotifyNow: () => spotifyNow.get(),
+  spotifyCover: (id) => spotifyCovers.get(id),
+});
+
+/** Spotify for the game (spotify.ts): what plays on the linked account, and covers as small PNGs. */
+const spotifyNow = new NowPlayingPoller(() => social.call('GET', '/v1/me/spotify/now'));
+const spotifyCovers = new CoverCache((data, size) => {
+  const img = nativeImage.createFromBuffer(data);
+  return img.isEmpty() ? Buffer.alloc(0) : img.resize({ width: size, height: size, quality: 'good' }).toPNG();
 });
 
 /** A PNG in the screenshots folder of one of the profiles (what the game may send or copy); its real path. */
@@ -2228,6 +2239,24 @@ handle('social:linkStream', (platform: string) => socialCall(async () => {
     if (attempt !== browserLogin) throw new SocialError('cancelled');
     const res = await social.call<{ pending?: boolean; streams?: unknown }>('GET', `/v1/me/streams/poll?state=${encodeURIComponent(state)}`);
     if (!res.pending) return res.streams;
+  }
+  throw new SocialError('login_expired');
+}));
+/**
+ * Links the player's Spotify (server 0.9.36+, spotify.ts) for the game's "Spotify" module: Spotify's
+ * page in the browser, then the server asked (up to 10 minutes) until the player is back.
+ */
+handle('social:linkSpotify', () => socialCall(async () => {
+  const attempt = ++browserLogin;
+  const { state, url } = await social.call<{ state: string; url: string }>('POST', '/v1/me/spotify/start');
+  if (!/^https:\/\/accounts\.spotify\.com\//.test(url)) throw new SocialError('provider_failed');
+  await shell.openExternal(url);
+  const until = Date.now() + 10 * 60_000;
+  while (Date.now() < until) {
+    await new Promise((r) => setTimeout(r, 2000));
+    if (attempt !== browserLogin) throw new SocialError('cancelled');
+    const res = await social.call<{ pending?: boolean; spotify?: unknown }>('GET', `/v1/me/spotify/poll?state=${encodeURIComponent(state)}`);
+    if (!res.pending) return res.spotify;
   }
   throw new SocialError('login_expired');
 }));
