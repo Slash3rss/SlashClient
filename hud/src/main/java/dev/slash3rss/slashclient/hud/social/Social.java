@@ -431,6 +431,12 @@ public final class Social {
 			}
 			// several at once (e.g. earned before the server counted them): one toast for all, with the Sparks they paid
 			case "achievements-summary" -> achievementsSummary(num(e, "count"), num(e, "sparks"));
+			// a daily or weekly challenge completed (server 0.9.36+): its name and the Sparks it paid
+			case "challenge" -> {
+				if (e.has("challenge") && e.get("challenge").isJsonObject()) challenge(e.getAsJsonObject("challenge"));
+			}
+			// all of a day's or a week's challenges done: the bonus
+			case "challenges-bonus" -> challengesBonus("weekly".equals(str(e, "period")), num(e, "sparks"));
 			// the Sparks balance changed (an achievement, a purchase, an admin): the cosmetics menu shows it
 			case "wallet" -> dev.slash3rss.slashclient.hud.CosmeticsScreen.walletChanged(num(e, "balance"));
 			case "friends" -> {
@@ -472,6 +478,23 @@ public final class Social {
 		// the Sparks it paid on a line of their own (servers before 0.9.22 pay none)
 		int sparks = num(a, "sparks");
 		toast(Component.translatable("slashclient-hud.achievement.unlocked").getString(), text, "m-advancements",
+			sparks > 0 ? "+" + dev.slash3rss.slashclient.hud.Sparks.format(sparks) : null);
+	}
+
+	/** "Daily challenge completed", its name in the game's language and the Sparks it paid (the server's 'challenge' event). */
+	public static void challenge(JsonObject c) {
+		boolean polish = Minecraft.getInstance().options.languageCode.startsWith("pl");
+		String name = str(c, polish ? "name" : "nameEn");
+		if (name.isEmpty()) name = str(c, "name");
+		int sparks = num(c, "sparks");
+		toast(Component.translatable("weekly".equals(str(c, "period")) ? "slashclient-hud.challenge.doneWeekly" : "slashclient-hud.challenge.done").getString(), name, "m-advancements",
+			sparks > 0 ? "+" + dev.slash3rss.slashclient.hud.Sparks.format(sparks) : null);
+	}
+
+	/** "All of today's challenges done!" and the bonus (the server's 'challenges-bonus' event). */
+	public static void challengesBonus(boolean weekly, int sparks) {
+		toast(Component.translatable(weekly ? "slashclient-hud.challenge.bonusWeekly" : "slashclient-hud.challenge.bonus").getString(),
+			Component.translatable("slashclient-hud.challenge.bonusHint").getString(), "m-advancements",
 			sparks > 0 ? "+" + dev.slash3rss.slashclient.hud.Sparks.format(sparks) : null);
 	}
 

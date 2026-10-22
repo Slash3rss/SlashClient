@@ -108,6 +108,15 @@ public class GameShop implements FabricClientGameTest {
 		context.waitTicks(20);
 		context.takeScreenshot("shop-toast-summary");
 		context.runOnClient(mc -> TestHooks.cleanScreen());
+		// a daily challenge, a weekly one and the bonus for all of a day: a toast each
+		before = toasts(context);
+		event(context, () -> TestHooks.challengeToast(false));
+		event(context, () -> TestHooks.challengeToast(true));
+		event(context, () -> TestHooks.challengesBonusToast(30));
+		if (toasts(context) != before + 3) throw new AssertionError("Challenge toasts: " + (toasts(context) - before));
+		context.waitTicks(20);
+		context.takeScreenshot("shop-toast-challenges");
+		context.runOnClient(mc -> TestHooks.cleanScreen());
 
 		// in English: the menu, a box and the summary
 		language(context, "en_us");
@@ -128,6 +137,7 @@ public class GameShop implements FabricClientGameTest {
 		context.setScreen(() -> null);
 		event(context, () -> TestHooks.achievementsSummaryToast(5, 320));
 		event(context, () -> TestHooks.achievementSparksToast(true, false));
+		event(context, () -> TestHooks.challengeToast(false));
 		context.waitTicks(20);
 		context.takeScreenshot("shop-toasts-en");
 		context.runOnClient(mc -> TestHooks.cleanScreen());

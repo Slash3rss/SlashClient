@@ -1166,6 +1166,29 @@ public final class TestHooks {
 		dev.slash3rss.slashclient.hud.social.Social.eventForTest(e);
 	}
 
+	/** A daily or weekly challenge completed: the server's 'challenge' event (server 0.9.36+). */
+	public static void challengeToast(boolean weekly) throws Exception {
+		com.google.gson.JsonObject c = new com.google.gson.JsonObject();
+		c.addProperty("id", weekly ? "w_play_300" : "d_play_30");
+		c.addProperty("period", weekly ? "weekly" : "daily");
+		c.addProperty("name", weekly ? "Graj 300 min w tym tygodniu" : "Graj 30 min");
+		c.addProperty("nameEn", weekly ? "Play for 300 min this week" : "Play for 30 min");
+		c.addProperty("sparks", weekly ? 100 : 15);
+		com.google.gson.JsonObject e = new com.google.gson.JsonObject();
+		e.addProperty("type", "challenge");
+		e.add("challenge", c);
+		dev.slash3rss.slashclient.hud.social.Social.eventForTest(e);
+	}
+
+	/** All of a day's challenges done: the server's 'challenges-bonus' event. */
+	public static void challengesBonusToast(int sparks) throws Exception {
+		com.google.gson.JsonObject e = new com.google.gson.JsonObject();
+		e.addProperty("type", "challenges-bonus");
+		e.addProperty("period", "daily");
+		e.addProperty("sparks", sparks);
+		dev.slash3rss.slashclient.hud.social.Social.eventForTest(e);
+	}
+
 	/** Several achievements at once: the server's 'achievements-summary' event. */
 	public static void achievementsSummaryToast(int count, int sparks) throws Exception {
 		com.google.gson.JsonObject e = new com.google.gson.JsonObject();
