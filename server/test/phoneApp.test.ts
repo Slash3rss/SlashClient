@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { after, before, describe, it } from 'node:test';
 import { createApp } from '../src/app.ts';
 
@@ -35,6 +36,25 @@ describe('the phone app', () => {
     assert.deepEqual(missing, []);
     // the same {0} {1} in both
     for (const k of all) assert.deepEqual((EN[k].match(/\{\d\}/g) ?? []).sort(), (k.match(/\{\d\}/g) ?? []).sort(), k);
+  });
+
+  it('makes QR codes a phone reads (the page for computers)', async () => {
+    const { qrMatrix } = await import(String(new URL('qr.js', appDir)));
+    const fingerprint = (m: boolean[][]) => createHash('sha256').update(m.map((r) => r.map(Number).join('')).join('\n')).digest('hex').slice(0, 16);
+    // these exact codes were read back by a QR decoder (jsQR) when the encoder was written
+    assert.equal(fingerprint(qrMatrix('https://client.slash3rss.dev/app/')), '3f3ff7afae4f089d');
+    assert.equal(fingerprint(qrMatrix('Zażółć gęślą jaźń 🚀')), '838e807c80f09883');
+    // the finder patterns in three corners, the timing line between them
+    const m: boolean[][] = qrMatrix('http://localhost:8812/app/');
+    const n = m.length;
+    for (const [x, y] of [[0, 0], [n - 7, 0], [0, n - 7]]) {
+      for (let i = 0; i < 7; i++) assert.ok(m[y][x + i] && m[y + 6][x + i] && m[y + i][x] && m[y + i][x + 6]);
+      assert.ok(m[y + 3][x + 3] && !m[y + 1][x + 1]);
+    }
+    for (let i = 8; i < n - 8; i++) assert.equal(m[6][i], i % 2 === 0);
+    // longer texts take bigger versions, up to version 10
+    assert.equal(qrMatrix('x'.repeat(200)).length, 17 + 4 * 10);
+    assert.throws(() => qrMatrix('x'.repeat(300)));
   });
 
   describe('served by the server', () => {

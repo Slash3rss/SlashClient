@@ -8,6 +8,7 @@ import { closeChat, current as currentChat, onEvent as chatEvent, openChat, setS
 import { groupsChanged, keysChanged, startKeys } from './e2e.js';
 import { lang, members, plural, setLang, t } from './i18n.js';
 import * as push from './notify.js';
+import { qrSvg } from './qr.js';
 import { $, ago, avatarEl, badge, el, errorText, guard, icon, sheet, toast } from './ui.js';
 
 const S = {
@@ -76,6 +77,12 @@ async function boot() {
   });
   addEventListener('hashchange', route);
   whenSignedOut(() => signedOut());
+  // on a computer the app's place is the phone: how to get it there, unless the player chose to stay
+  if (onComputer() && pref(DESKTOP, '') !== 'open') return renderDesktop();
+  await start();
+}
+
+async function start() {
   S.health = await api('GET', '/v1/health').catch(() => S.health);
   if (!token.get()) return renderLogin();
   await startSession();
@@ -167,7 +174,8 @@ function renderLogin() {
       el('p', { class: 'muted', textContent: t('Znajomi, czaty, klany i społeczności z launchera – na telefonie.') }),
       list,
       el('p', { class: 'muted small', textContent: t('Konto SlashClient zakłada się w launcherze, razem z kontem Minecraft. Tutaj zalogujesz się sposobem, który do niego podpiąłeś (Znajomi → konto w launcherze).') }),
-      langSwitch()),
+      langSwitch(),
+      onComputer() ? phoneLink() : ''),
     el('div', { id: 'toast', class: 'toast', role: 'status' }));
   renderInstallHint();
 }
@@ -629,7 +637,8 @@ function renderMe(view) {
       el('button', { class: 'btn small ghost', onclick: () => void signOut() }, icon('fa-solid fa-right-from-bracket'), t('Wyloguj'))),
     el('section', { class: 'card stack' },
       el('label', { class: 'field' }, el('span', { textContent: t('Status dla znajomych') }), statusSel),
-      el('div', { class: 'field' }, el('span', { textContent: t('Język') }), langSwitch())),
+      el('div', { class: 'field' }, el('span', { textContent: t('Język') }), langSwitch()),
+      onComputer() ? phoneLink() : ''),
     notifications,
     achievements);
   void renderNotifications(notifications);
@@ -709,8 +718,71 @@ function langSwitch() {
       renderShell();
       route();
       void push.refresh();
-    } else renderLogin();
+    } else if (document.querySelector('.desktop')) renderDesktop();
+    else renderLogin();
   } }, l)));
+}
+
+// ---------- on a computer: how to get the app on the phone ----------
+
+const DESKTOP = 'slashclient.app.desktop';
+
+/** A computer: a desktop browser, or one without touch on a wide screen. The installed app never is. */
+function onComputer() {
+  if (push.standalone()) return false;
+  const phoneUa = /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent) || push.isIos();
+  const touch = navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches;
+  return !phoneUa || (!touch && innerWidth >= 900);
+}
+
+/** "Zainstaluj na telefonie": back to the page with the code (the choice to stay here is forgotten). */
+const phoneLink = () => el('button', { type: 'button', class: 'link-btn', onclick: () => {
+  save(DESKTOP, '');
+  live?.stop();
+  live = undefined;
+  S.me = undefined;
+  closeChat();
+  renderDesktop();
+} }, icon('fa-solid fa-mobile-screen-button'), ' ', t('Zainstaluj na telefonie'));
+
+function renderDesktop() {
+  document.body.classList.remove('signed-in', 'in-chat');
+  const address = `${location.origin}/app/`;
+  const copy = el('button', { type: 'button', class: 'btn small ghost', onclick: () => navigator.clipboard?.writeText(address).then(() => toast(t('Skopiowano adres')), () => {}) },
+    icon('fa-regular fa-copy'), t('Kopiuj'));
+  const step = (n, text) => el('li', {}, el('span', { class: 'step-n', textContent: String(n) }), el('span', { textContent: text }));
+  document.body.replaceChildren(
+    el('main', { class: 'desktop' },
+      el('div', { class: 'desk-card' },
+        el('header', { class: 'desk-head' },
+          el('img', { class: 'desk-logo', src: '/app/icon-192.png', alt: '' }),
+          el('div', {},
+            el('h1', { textContent: t('SlashClient na telefon') }),
+            el('p', { class: 'muted', textContent: t('Znajomi, czaty, klany i społeczności z launchera w kieszeni. Aplikację instaluje się prosto z przeglądarki telefonu – bez sklepu.') }))),
+        el('div', { class: 'desk-grid' },
+          el('section', { class: 'desk-qr' },
+            el('div', { class: 'qr-box', title: address }, qrSvg(address, 208)),
+            el('p', { class: 'muted small center', textContent: t('Zeskanuj aparatem telefonu') }),
+            el('div', { class: 'desk-address' }, el('code', { textContent: address }), copy)),
+          el('section', { class: 'desk-steps' },
+            el('h2', {}, icon('fa-brands fa-android'), ' Android'),
+            el('ol', {},
+              step(1, t('Otwórz adres w Chrome.')),
+              step(2, t('Menu ⋮ → „Zainstaluj aplikację” (albo „Dodaj do ekranu głównego”).')),
+              step(3, t('Otwórz SlashClient z ekranu głównego i zaloguj się.'))),
+            el('h2', {}, icon('fa-brands fa-apple'), ' iPhone'),
+            el('ol', {},
+              step(1, t('Otwórz adres w Safari.')),
+              step(2, t('Udostępnij → „Do ekranu początkowego”.')),
+              step(3, t('Otwórz SlashClient z ekranu początkowego. Powiadomienia działają od iOS 16.4.'))))),
+        el('footer', { class: 'desk-foot' },
+          langSwitch(),
+          el('button', { type: 'button', class: 'link-btn', onclick: () => {
+            save(DESKTOP, 'open');
+            renderSplash();
+            void start();
+          } }, t('Otwórz mimo to w przeglądarce'), ' ', icon('fa-solid fa-arrow-right'))))),
+    el('div', { id: 'toast', class: 'toast', role: 'status' }));
 }
 
 // ---------- "Dodaj do ekranu głównego" ----------
