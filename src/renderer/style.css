@@ -892,6 +892,10 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .fr-dot.ingame { background: #3b82f6; }
 .fr-dot.away { background: #eab308; }
 .fr-dot.busy { background: #ef4444; }
+/* a friend only on the phone app: a small phone in the status' colour instead of the dot */
+.fr-dot.mobile { display: grid; place-items: center; width: 14px; height: 16px; right: -4px; bottom: -4px; border: 0; border-radius: 4px; background: #111622; color: #22c55e; font-size: 12px; }
+.fr-dot.mobile.away { color: #eab308; }
+.fr-dot.mobile.busy { color: #ef4444; }
 .fr-chat { display: flex; flex-direction: column; min-height: 0; padding: 0; overflow: hidden; }
 .fr-chat-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--glass-border); }
 .fr-chat-head:empty { display: none; }
