@@ -4,6 +4,7 @@ import { LogoStore, serveLogo, takeLogo } from './clanLogos.ts';
 import { EDIT_WINDOW_MS, editRefusal } from './chatLimits.ts';
 import { withDefaults } from './settings.ts';
 import { POLL_OPTIONS, createCommunityMedia, type CommunityMediaLimits } from './communityMedia.ts';
+import type { ChatMediaLimits, OverrideStore } from './chatMediaLimits.ts';
 import {
   COMMUNITY_LIMITS, CommunityStore, NOTIFY, RANK, ROLES, SLOW_MODES, cleanCommunityName, cleanDescription, communityTagProblem, isReaction, mentionedHandles, may, offensiveText, permissions,
   type ChannelRow, type CommunityLimits, type CommunityRole, type CommunityRow, type JoinMode, type MemberRow, type MessageRow, type Notify, type ReactionCount, type Visibility,
@@ -82,7 +83,11 @@ interface Deps {
   /** How long a message may be edited now (the admin panel's setting; EDIT_WINDOW_MS by default). */
   editWindowMs?: () => number;
   /** Pictures and polls in the chat (communityMedia.ts): where the pictures' files go, their limits. */
-  media: { dir: string; limits?: Partial<CommunityMediaLimits>; limitUploads: (key: string) => void; limitDownloads: (key: string) => void; limitVotes?: (key: string) => void };
+  media: {
+    dir: string; limits?: Partial<CommunityMediaLimits>; limitUploads: (key: string) => void; limitDownloads: (key: string) => void; limitVotes?: (key: string) => void;
+    /** The panel's limits of community chats and the communities' own lower ones (chatMediaLimits.ts, 0.9.36+). */
+    chatLimits?: () => ChatMediaLimits; overrides?: OverrideStore;
+  };
 }
 
 type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
@@ -130,6 +135,21 @@ export function createCommunities(deps: Deps) {
     // a poll's votes only to those who read its channel
     toMembers: (id, event) => toReaders(id, String((event as { channel?: string }).channel ?? ''), event),
     log: (id, by, action, target, detail) => store.log(id, by, action, target, detail),
+    // the Multimedia panel (0.9.36+): pictures taken down by whoever may delete their sender's messages
+    chatLimits: deps.media.chatLimits, overrides: deps.media.overrides,
+    mayDelete: (id, me, author) => {
+      const m = store.member(id, me);
+      if (!m) return false;
+      return author ? allowedOn(actorOf(id, m), 'deleteMessage', actorOf(id, store.member(id, author))) : allowed(actorOf(id, m), 'deleteMessage');
+    },
+    manages: (id, me) => {
+      const m = store.member(id, me);
+      return !!m && RANK[m.role] >= RANK.admin;
+    },
+    changed: (id, mid) => {
+      const m = store.message(id, mid);
+      if (m) toReaders(id, m.channel, { type: 'community-message-edit', message: messageView(m) });
+    },
   });
   /** What the clients learn of pictures and polls with the list (their presence says the server has them). */
   const mediaLimits = () => ({ imageBytes: media.limits.imageBytes, pollOptions: POLL_OPTIONS.max });

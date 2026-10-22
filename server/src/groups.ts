@@ -213,6 +213,8 @@ interface Deps {
     decorate: <M extends { id: number }>(messages: M[], group?: string) => M[];
     has: (messageId: number, group?: string) => boolean;
     remove: (messageId: number, group?: string) => Promise<void>;
+    /** A group chat went: its pictures go too (0.9.36+). */
+    removeChat?: (group: string) => Promise<void>;
   };
   /** Too many messages in a row in one conversation ("g:<id>"): throws (chatLimits.ts). */
   limitBurst?: (user: string, conversation: string) => void;
@@ -347,6 +349,7 @@ export function createGroups(deps: Deps) {
     const left = store.memberIds(id);
     if (!left.length) {
       store.remove(id);
+      void deps.images?.().removeChat?.(id);
       return;
     }
     if (store.group(id)?.owner === uuid) store.setOwner(id, left[0]);
@@ -506,9 +509,28 @@ export function createGroups(deps: Deps) {
     }],
   ];
 
+  /**
+   * For the Multimedia panel (chatImages.ts): whether `me` may take down `author`'s pictures in the
+   * group by the rules of deleting messages (`author` empty: whether they moderate it at all), and
+   * whether they set its own limits (a group's owner, a clan's owner).
+   */
+  function mayModerate(id: string, me: string, author: string): boolean {
+    const mod = moderation(id, me);
+    if (!mod) return false;
+    if (mod === 'all' || !author) return true;
+    const g = store.group(id);
+    const role = g?.clan ? deps.clanRole?.(g.clan, author) : undefined;
+    return role === undefined || role === 'member';
+  }
+  const manages = (id: string, me: string) => moderation(id, me) === 'all';
+  const sinceOf = (id: string, me: string) => (db.sql.prepare('SELECT since_id AS n FROM chat_group_members WHERE group_id = ? AND uuid = ?').get(id, me) as { n: number } | undefined)?.n ?? 0;
+
   return {
     routes,
     store,
+    mayModerate,
+    manages,
+    sinceOf,
     /** For clans.ts: the clan's chat follows its members and name. */
     clanChat: {
       create: (clanId: string, name: string, owner: string) => {
@@ -544,6 +566,7 @@ export function createGroups(deps: Deps) {
       remove: (id: string) => {
         const members = store.memberIds(id);
         store.remove(id);
+        void deps.images?.().removeChat?.(id);
         for (const m of members) push(m, { type: 'groups', id });
       },
       /** Pushes a fresh list (the clan's tag changed). */
