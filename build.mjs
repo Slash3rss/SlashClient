@@ -14,6 +14,7 @@ await Promise.all([
 cpSync('src/renderer/index.html', 'dist/renderer/index.html');
 cpSync('src/renderer/style.css', 'dist/renderer/style.css');
 cpSync('src/renderer/communityLinks.css', 'dist/renderer/communityLinks.css');
+cpSync('src/renderer/wizard.css', 'dist/renderer/wizard.css');
 cpSync('build/icons/256x256.png', 'dist/renderer/logo.png');
 cpSync('src/renderer/img', 'dist/renderer/img', { recursive: true });
 for (const [from, to] of [['cape', 'capes'], ['wings', 'wings'], ['elytra', 'elytra'], ['clothing', 'clothing'], ['pet', 'pets'], ['suit', 'suits'], ['item/held', 'held'], ['gear', 'gear'], ['ring', 'rings'], ['spray', 'spray'], ['prop', 'props'], ['particle', 'particles']]) {

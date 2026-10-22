@@ -104,6 +104,8 @@ export interface Settings {
   launcherWindow?: string;
   /** The window's last size and place, for 'remember'. */
   launcherBounds?: { x: number; y: number; width: number; height: number; maximized?: boolean };
+  /** The first-run wizard was finished or skipped (set on upgrade for players who already had accounts or profiles). */
+  firstRunDone?: boolean;
 }
 
 export interface StoreData {

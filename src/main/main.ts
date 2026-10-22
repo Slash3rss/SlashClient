@@ -10,6 +10,7 @@ import { analyzeCrash } from './crash';
 import { iconFile, iconFromFile, iconFromUrl } from './profileIcon';
 import { pullShared, pushShared } from './sync';
 import { recommendedMemoryMb } from './jvm';
+import { markExistingUser } from '../shared/firstRun';
 import { shareLog } from './logshare';
 import { clipFrameResponse, registerMediaSharing } from './mediaShare';
 import { previewPack } from './packPreview';
@@ -2299,6 +2300,8 @@ app.whenReady().then(async () => {
       await persist();
     }
   }
+  // players who already use the launcher never get the first-run wizard
+  if (markExistingUser(store)) await saveStore(store);
   hudSupported = await hudVersions(HUD_DIR);
   // first start: follow the system language
   if (!store.settings.language) store.settings.language = app.getLocale().toLowerCase().startsWith('pl') ? 'pl' : 'en';

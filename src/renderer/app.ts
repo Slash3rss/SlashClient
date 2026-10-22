@@ -27,6 +27,7 @@ import { checkLegalNotices, createLegalCard } from './legal';
 import { createWiki } from './wiki';
 import { createServerPages } from './serverPages';
 import { confirmDialog, modalWindow } from './dialog';
+import { createWizard } from './wizard';
 
 declare global {
   interface Window {
@@ -4280,8 +4281,8 @@ $('#update-check').addEventListener('click', async () => {
 });
 
 // switching the language takes effect immediately
-$('#language-select').addEventListener('change', async () => {
-  const lang = $<HTMLSelectElement>('#language-select').value;
+$('#language-select').addEventListener('change', () => switchLanguage($<HTMLSelectElement>('#language-select').value));
+async function switchLanguage(lang: string) {
   await api.saveSettings({ language: lang });
   applyLanguage(lang);
   render();
@@ -4292,6 +4293,24 @@ $('#language-select').addEventListener('change', async () => {
   skinAccountId = undefined;
   if (document.querySelector('#view-accounts.active')) renderSkin();
   loadNews();
+}
+
+// ---------- first-run wizard (wizard.ts) ----------
+
+const wizard = createWizard({
+  api, toast, errorText, avatar, switchLanguage,
+  setReduceMotion: (on) => {
+    store.settings.reduceMotion = on;
+    applyMotion();
+  },
+  refreshFriends: () => friends.init(),
+  play: async (profileId, start) => {
+    store = await api.getStore();
+    store.settings.selectedProfileId = profileId;
+    render();
+    showView('play');
+    if (start) await startGame();
+  },
 });
 
 // ---------- boot ----------
@@ -4327,7 +4346,9 @@ function finishBoot() {
     await new Promise((r) => setTimeout(r, Math.max(0, 700 - (performance.now() - shownAt))));
     finishBoot();
   }
-  versions = (await guard(() => api.listVersions())) ?? [];
+  // a brand new installation: the first-run wizard
+  wizard.maybeShow(store);
+  versions =(await guard(() => api.listVersions())) ?? [];
   loadBlockIcons();
   renderProfiles();
 })();
