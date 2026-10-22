@@ -950,7 +950,6 @@
 	"slashclient-hud.lootHighlight.oreColor": "Kolor rud",
 	"slashclient-hud.lootHighlight.fill": "Delikatne wypełnienie",
 	"slashclient-hud.lootHighlight.pulse": "Lekkie pulsowanie",
-	"slashclient-hud.lootHighlight.walls": "Przez ściany",
 	"slashclient-hud.lootHighlight.limit": "Limit odległości",
 	"slashclient-hud.lootHighlight.range": "Odległość (bloki)",
 	"slashclient-hud.dungeon.ore.coal": "  · ruda węgla",

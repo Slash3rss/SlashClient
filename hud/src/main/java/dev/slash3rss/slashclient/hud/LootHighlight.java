@@ -24,7 +24,7 @@ import java.util.List;
  * already found (no scanning of its own), a double chest as one box. Taken loot goes at once: what
  * was opened or broken is left out, and so is a block that is no longer there (before the map's
  * next scan notices). Each tick the boxes are made anew; each frame they are drawn as one batch of
- * flat quads (thin boxes along the edges), with the depth test, or through walls when switched on.
+ * flat quads (thin boxes along the edges), with the depth test: never through walls.
  */
 public final class LootHighlight {
 	private LootHighlight() {}
@@ -152,9 +152,9 @@ public final class LootHighlight {
 	//$ }
 	//#endif
 
-	/** Translucent quads with a white texture: through walls without the depth test, else with it. */
+	/** Translucent quads with a white texture, with the depth test (loot behind a wall stays hidden). */
 	private static net.minecraft.client.renderer.rendertype.RenderType type() {
-		return cfg().lootHighlightWalls ? RenderTypes.textSeeThrough(TEXTURE) : RenderTypes.text(TEXTURE);
+		return RenderTypes.text(TEXTURE);
 	}
 
 	/** Every box: its soft fill (when on), then its twelve edges as thin boxes, a little thicker further off. */

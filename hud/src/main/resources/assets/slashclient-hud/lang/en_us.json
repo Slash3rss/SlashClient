@@ -950,7 +950,6 @@
 	"slashclient-hud.lootHighlight.oreColor": "Ore colour",
 	"slashclient-hud.lootHighlight.fill": "Soft fill",
 	"slashclient-hud.lootHighlight.pulse": "Faint pulsing",
-	"slashclient-hud.lootHighlight.walls": "Through walls",
 	"slashclient-hud.lootHighlight.limit": "Distance limit",
 	"slashclient-hud.lootHighlight.range": "Distance (blocks)",
 	"slashclient-hud.dungeon.ore.coal": "  · Coal ore",

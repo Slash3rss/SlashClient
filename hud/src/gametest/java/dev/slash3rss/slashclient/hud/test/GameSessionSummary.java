@@ -16,7 +16,7 @@ import net.minecraft.world.phys.Vec3;
 
 /**
  * The session summary for the launcher: a bit of play (a block placed and mined, a few steps, a
- * zombie killed, one death, a screenshot) shows up in config/slashclient-session.json.
+ * husk killed, one death, a screenshot) shows up in config/slashclient-session.json.
  */
 public class GameSessionSummary implements FabricClientGameTest {
 	@Override
@@ -47,24 +47,22 @@ public class GameSessionSummary implements FabricClientGameTest {
 				context.waitTick();
 			}
 
-			// a zombie with one heart left, hit once
-			server.runCommand("summon zombie 0 100 -2 {NoAI:1b,Health:1f}");
+			// a husk with a sliver of health, hit once: even a weak hit (the swing still recharging after the
+			// block) finishes it, and unlike a zombie it does not burn in the daylight an earlier test may leave
+			server.runCommand("summon husk 0 100 -2 {NoAI:1b,Health:0.1f}");
 			context.waitTicks(10);
-			// the zombie itself (a pet from an earlier test may stand nearer)
-			boolean hitZombie = context.computeOnClient(mc -> {
+			// the husk itself (a pet from an earlier test may stand nearer)
+			boolean hitHusk = context.computeOnClient(mc -> {
 				for (var e : mc.level.entitiesForRendering()) {
-					if (net.minecraft.world.entity.EntityType.getKey(e.getType()).getPath().equals("zombie")) {
+					if (net.minecraft.world.entity.EntityType.getKey(e.getType()).getPath().equals("husk") && e.isAlive()) {
 						mc.gameMode.attack(mc.player, e);
 						return true;
 					}
 				}
 				return false;
 			});
-			if (!hitZombie) throw new AssertionError("No zombie to hit");
-			context.waitTicks(10);
-			// the hit alone does not always finish it after a long run of tests: dying soon after our hit counts
-			server.runCommand("kill @e[type=zombie]");
-			context.waitTicks(20);
+			if (!hitHusk) throw new AssertionError("No husk to hit");
+			context.waitTicks(30);
 
 			// one death, then back
 			server.runCommand("kill @a");
@@ -82,7 +80,7 @@ public class GameSessionSummary implements FabricClientGameTest {
 			if (s.get("playMs").getAsLong() <= before.get("playMs").getAsLong()) throw new AssertionError("No play time counted: " + s);
 			if (delta(s, before, "blocks", "placed") < 1) throw new AssertionError("The placed block was not counted: " + s.get("blocks"));
 			if (delta(s, before, "blocks", "mined") < 1) throw new AssertionError("The mined block was not counted: " + s.get("blocks"));
-			if (delta(s, before, "kills", "mobs") < 1) throw new AssertionError("The zombie kill was not counted: " + s.get("kills"));
+			if (delta(s, before, "kills", "mobs") < 1) throw new AssertionError("The husk kill was not counted: " + s.get("kills"));
 			if (s.get("deaths").getAsInt() - before.get("deaths").getAsInt() != 1) throw new AssertionError("Deaths: " + s.get("deaths") + " (before " + before.get("deaths") + ")");
 			if (s.get("screenshots").getAsInt() - before.get("screenshots").getAsInt() != 1) throw new AssertionError("Screenshots: " + s.get("screenshots"));
 			JsonObject d = s.getAsJsonObject("distance");
