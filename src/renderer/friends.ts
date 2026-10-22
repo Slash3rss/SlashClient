@@ -6,6 +6,7 @@ import { PlayingWatch, type PlayingNews } from './friendActivity';
 import { createParty, type Party } from './party';
 import { waypointCard, type SharedWaypoint } from './sharedWaypoint';
 import { openProfilePrivacy, profileLink } from './profilePrivacy';
+import { createSuggestions } from './friendSuggestions';
 import { confirmDialog } from './dialog';
 import { onFeatures } from './features';
 import { legalNote } from './legal';
@@ -259,6 +260,16 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     focus: () => input?.focus(),
     join: deps.join,
   });
+  /** "Propozycje": players met recently on the same server (friendSuggestions.ts), above the friends. */
+  const suggestions = createSuggestions({
+    api, toast: deps.toast, errorText: deps.errorText, avatar: (p) => avatar(p), changed: () => renderList(),
+    sent: (res, name, status) => {
+      list = withStreams(res as FriendList);
+      deps.toast(status === 'friends' ? t('Jesteście teraz znajomymi.') : t('Wysłano zaproszenie do {0}.', name));
+      renderList();
+    },
+    openPrivacy: () => state?.user && openProfilePrivacy(deps, state.user.handle, () => void suggestions.refresh()),
+  });
   const friend = (id: string | undefined) => list.friends.find((f) => f.id === id);
   /** A friends list from the server with each stream checked (streams.ts). */
   const withStreams = (l: FriendList): FriendList => {
@@ -332,6 +343,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     if (state?.user) void party.refresh();
     if (state?.user) void groups.refresh();
     if (state?.user) void communities.refresh();
+    if (state?.user) void suggestions.refresh();
   }
 
   async function refreshList() {
@@ -713,7 +725,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     const copy = el('button', { type: 'button', className: 'icon-btn feature-profiles', title: t('Kopiuj link do profilu') }, icon('fa-copy'));
     copy.addEventListener('click', () => profileLink(deps, me.handle, 'copy'));
     const privacy = el('button', { type: 'button', className: 'fr-chip-btn' }, icon('fa-user-lock'), t(' Prywatność profilu'));
-    privacy.addEventListener('click', () => openProfilePrivacy(deps, me.handle));
+    privacy.addEventListener('click', () => openProfilePrivacy(deps, me.handle, () => void suggestions.refresh()));
     return el('div', { className: 'row fr-profile-row' }, own, copy, privacy);
   }
 
@@ -771,6 +783,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     }
     sections.push(...groups.sections());
     sections.push(...communities.sections());
+    sections.push(...suggestions.sections());
     const sorted = [...list.friends].sort((a, b) => rank(a) - rank(b) || b.lastMessageAt - a.lastMessageAt || a.name.localeCompare(b.name));
     const online = sorted.filter((f) => f.presence.status !== 'offline').length;
     sections.push(el('div', { className: 'fr-section', textContent: t('Znajomi · {0} online', online) }));
@@ -1322,11 +1335,13 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
           chats.clear();
           groups.clear();
           communities.clear();
+          suggestions.clear();
           watch.clear();
           if (was && state?.user) root.replaceChildren();
           deps.accountChanged?.();
         }
         if (state?.user && state.user.id !== was) await refreshList();
+        if (state?.user && state.user.id !== was) void suggestions.refresh();
         if (state?.user) void party.refresh();
         if (state?.user && state.user.id !== was) void groups.refresh();
         if (state?.user && state.user.id !== was) void communities.refresh();
@@ -1412,6 +1427,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       }
       case 'friends': {
         await refreshList();
+        // someone became a friend or asked: no longer a suggestion
+        void suggestions.refresh();
         if (e.request) {
           const text = t('{0} zaprasza Cię do znajomych.', e.request.name);
           deps.toast(text);
