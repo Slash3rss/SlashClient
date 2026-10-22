@@ -9,7 +9,8 @@ import type { PluginBuild } from 'esbuild';
 
 // Run in Electron too: ordinary Node tests cannot see Electron's virtual ASAR filesystem.
 const electron = process.env.ELECTRON_TEST_EXECUTABLE;
-it('removes real update archives without leaving ASAR folders behind in Electron', { skip: !electron }, async () => {
+// macOS updates only; on Windows the probe's own read keeps app.asar open, and Windows cannot delete an open file
+it('removes real update archives without leaving ASAR folders behind in Electron', { skip: !electron || process.platform === 'win32' }, async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'slash-electron-update-'));
   try {
     const require = createRequire(path.join(process.cwd(), 'package.json'));
