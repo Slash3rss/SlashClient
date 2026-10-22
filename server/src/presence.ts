@@ -23,10 +23,15 @@ export interface Activity {
   since?: number;
 }
 
-export interface Presence { status: Status; activity?: Activity }
+/**
+ * `mobile`: set by the server (never taken from a client) when the status comes from the phone app
+ * (web/app) and no launcher of the player says anything: friends see "on the phone". Older
+ * launchers ignore it and show a plain "available".
+ */
+export interface Presence { status: Status; activity?: Activity; mobile?: true }
 
 /** What friends see; 'offline' covers both disconnected and invisible players. */
-export interface PublicPresence { status: Exclude<Status, 'invisible'> | 'offline'; activity?: Activity; lastSeen?: number }
+export interface PublicPresence { status: Exclude<Status, 'invisible'> | 'offline'; activity?: Activity; lastSeen?: number; mobile?: true }
 
 const STATUSES: Status[] = ['online', 'away', 'busy', 'invisible'];
 const KINDS: Activity['kind'][] = ['launcher', 'menu', 'singleplayer', 'server'];
@@ -64,7 +69,7 @@ export function publicPresence(p: Presence | undefined, showServer: boolean, las
     const name = nameOf?.(activity.server);
     if (name) activity.serverName = name;
   }
-  return { status: p.status, activity };
+  return { status: p.status, activity, ...(p.mobile ? { mobile: true as const } : {}) };
 }
 
 /**
