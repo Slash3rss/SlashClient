@@ -19,6 +19,8 @@ export interface ModMeta {
 
 export interface Dependency {
   id: string;
+  /** Which loader's metadata says so: a jar for several loaders has a list for each. */
+  loader?: ModMeta['loaders'][number];
   /** Fabric/Quilt: list of ranges (any may match). Forge: one maven range. */
   ranges: string[];
   style: 'semver' | 'maven';
@@ -96,8 +98,8 @@ function fabricMeta(zip: AdmZip, meta: ModMeta, depth: number) {
   meta.ids.push(f.id, ...((f.provides ?? []) as string[]));
   meta.versions[f.id] = String(f.version ?? '');
   if (depth === 0) {
-    for (const [id, range] of Object.entries(f.depends ?? {})) meta.depends.push({ id, ranges: asRanges(range), style: 'semver' });
-    for (const [id, range] of Object.entries(f.breaks ?? {})) meta.breaks.push({ id, ranges: asRanges(range), style: 'semver' });
+    for (const [id, range] of Object.entries(f.depends ?? {})) meta.depends.push({ id, ranges: asRanges(range), style: 'semver', loader: 'fabric' });
+    for (const [id, range] of Object.entries(f.breaks ?? {})) meta.breaks.push({ id, ranges: asRanges(range), style: 'semver', loader: 'fabric' });
   }
   for (const jar of (f.jars ?? []) as { file: string }[]) nested(zip, jar.file, meta, depth);
   return true;
@@ -113,9 +115,9 @@ function quiltMeta(zip: AdmZip, meta: ModMeta, depth: number) {
   meta.versions[q.id] = String(q.version ?? '');
   if (depth === 0) {
     const deps = (list: unknown[] = []) => list.flatMap((d) => {
-      if (typeof d === 'string') return [{ id: d, ranges: ['*'], style: 'semver' as const }];
+      if (typeof d === 'string') return [{ id: d, ranges: ['*'], style: 'semver' as const, loader: 'quilt' as const }];
       const o = d as { id?: string; versions?: unknown; optional?: boolean };
-      return o.id && !o.optional ? [{ id: o.id, ranges: asRanges(o.versions), style: 'semver' as const }] : [];
+      return o.id && !o.optional ? [{ id: o.id, ranges: asRanges(o.versions), style: 'semver' as const, loader: 'quilt' as const }] : [];
     });
     meta.depends.push(...deps(q.depends));
     meta.breaks.push(...deps(q.breaks));
@@ -145,7 +147,7 @@ function forgeMeta(zip: AdmZip, meta: ModMeta, depth: number) {
       for (const dep of toml[`dependencies.${id}`] ?? []) {
         const required = dep.type ? String(dep.type).toLowerCase() === 'required' : dep.mandatory === true;
         const incompatible = String(dep.type ?? '').toLowerCase() === 'incompatible';
-        const d: Dependency = { id: String(dep.modId ?? ''), ranges: [String(dep.versionRange ?? '')], style: 'maven' };
+        const d: Dependency = { id: String(dep.modId ?? ''), ranges: [String(dep.versionRange ?? '')], style: 'maven', loader };
         if (!d.id) continue;
         if (required) meta.depends.push(d);
         else if (incompatible) meta.breaks.push(d);
@@ -157,19 +159,23 @@ function forgeMeta(zip: AdmZip, meta: ModMeta, depth: number) {
   return found;
 }
 
-function nested(zip: AdmZip, entry: string, meta: ModMeta, depth: number) {
-  if (depth >= 2) return;
+function nested(zip: AdmZip, entry: string, meta: ModMeta, depth: number): ModMeta['loaders'] {
+  if (depth >= 2) return [];
   const e = zip.getEntry(entry);
-  if (!e) return;
+  if (!e) return [];
   try {
     const inner = new AdmZip(e.getData());
     const sub: ModMeta = { file: entry, name: '', version: '', loaders: [], ids: [], versions: {}, depends: [], breaks: [] };
     fabricMeta(inner, sub, depth + 1) || quiltMeta(inner, sub, depth + 1) || forgeMeta(inner, sub, depth + 1);
     meta.ids.push(...sub.ids);
     Object.assign(meta.versions, Object.fromEntries(Object.entries(sub.versions).filter(([k]) => !(k in meta.versions))));
+    meta.name ||= sub.name;
+    meta.version ||= sub.version;
+    return sub.loaders;
   } catch {
     // a broken bundled jar is the mod author's problem, not a reason to stop
   }
+  return [];
 }
 
 /** Reads a mod jar; undefined for jars without Fabric, Quilt or Forge metadata (plain libraries). */
@@ -184,6 +190,13 @@ export function readModMeta(data: Buffer, file: string): ModMeta | undefined {
   quiltMeta(zip, meta, 0);
   fabricMeta(zip, meta, 0);
   forgeMeta(zip, meta, 0);
+  if (!meta.loaders.length) {
+    // no metadata of its own, the mod bundled inside (Sinytra Connector does this)
+    for (const e of zip.getEntries()) {
+      if (/^META-INF\/jarjar\/[^/]+\.jar$/.test(e.entryName)) meta.loaders.push(...nested(zip, e.entryName, meta, 0));
+    }
+    meta.loaders = [...new Set(meta.loaders)];
+  }
   if (!meta.loaders.length) return undefined;
   meta.ids = [...new Set(meta.ids.filter(Boolean))];
   meta.name ||= file;
@@ -286,10 +299,26 @@ const BUILTIN = new Set(['minecraft', 'java', 'fabricloader', 'fabric-loader', '
 
 const LOADER_NAMES: Record<string, string> = { fabric: 'Fabric', quilt: 'Quilt', forge: 'Forge', neoforge: 'NeoForge' };
 
-/** Which mod loaders can run a jar in a profile with this loader. */
+/** Which mod loaders can run a jar in a profile with this loader, the profile's own first. */
 function runsOn(profileLoader: string): string[] {
   if (profileLoader === 'quilt') return ['quilt', 'fabric'];
   return [profileLoader];
+}
+
+/**
+ * Sinytra Connector runs Fabric mods on Forge and NeoForge, with Forgified Fabric API: there a
+ * Fabric mod is usable, and Fabric's ids are the Forge ones with "_" for "-" (fabric-api is fabric_api).
+ */
+const CONNECTOR = 'connectormod';
+const connectorId = (id: string) => id.replace(/-/g, '_');
+
+/**
+ * The loader whose metadata counts for a jar in this profile: a jar for several loaders has a list
+ * of needs for each (Forge's mods.toml asks for Minecraft 1.20.1, its NeoForge one for 1.21.1 and its
+ * Fabric one for Fabric API), and only the one the game reads applies.
+ */
+function readBy(m: ModMeta, usable: string[]): string | undefined {
+  return usable.find((l) => (m.loaders as string[]).includes(l));
 }
 
 export function checkMods(mods: ModMeta[], profileLoader: string, gameVersion: string): ModProblem[] {
@@ -298,7 +327,10 @@ export function checkMods(mods: ModMeta[], profileLoader: string, gameVersion: s
   if (profileLoader === 'vanilla') {
     return [{ severity: 'warning', kind: 'noloader', file: '', mod: '', message: t('Profil nie ma mod loadera, więc gra nie wczyta żadnego z {0} modów. Ustaw Fabric, Quilt, Forge albo NeoForge w ustawieniach profilu.', mods.length) }];
   }
-  const usable = runsOn(profileLoader);
+  const own = runsOn(profileLoader);
+  const connector = (profileLoader === 'forge' || profileLoader === 'neoforge') && mods.some((m) => m.ids.includes(CONNECTOR));
+  // NeoForge still reads Forge's mods.toml; Connector adds Fabric mods
+  const usable = [...own, ...(profileLoader === 'neoforge' ? ['forge'] : []), ...(connector ? ['fabric'] : [])];
   const active = mods.filter((m) => m.loaders.some((l) => usable.includes(l)));
   for (const m of mods) {
     if (active.includes(m)) continue;
@@ -310,7 +342,10 @@ export function checkMods(mods: ModMeta[], profileLoader: string, gameVersion: s
   }
 
   const provided = new Map<string, ModMeta>();
-  for (const m of active) for (const id of m.ids) if (!provided.has(id)) provided.set(id, m);
+  for (const m of active) for (const id of m.ids) {
+    if (!provided.has(id)) provided.set(id, m);
+    if (connector && !provided.has(connectorId(id))) provided.set(connectorId(id), m);
+  }
   const versionOf = (id: string) => provided.get(id)?.versions[id] || provided.get(id)?.version || '';
   const knownGameVersion = /^\d+(\.\d+)+$/.test(gameVersion);
 
@@ -324,7 +359,10 @@ export function checkMods(mods: ModMeta[], profileLoader: string, gameVersion: s
   }
 
   for (const m of active) {
-    for (const dep of m.depends) {
+    const by = readBy(m, usable);
+    const mine = (d: Dependency) => !d.loader || d.loader === by || (by === 'quilt' && d.loader === 'fabric');
+    for (const dep0 of m.depends.filter(mine)) {
+      const dep = connector && dep0.loader === 'fabric' ? { ...dep0, id: connectorId(dep0.id) } : dep0;
       if (dep.id === 'minecraft') {
         if (knownGameVersion && satisfies(gameVersion, dep) === false) {
           problems.push({ severity: 'error', kind: 'minecraft', file: m.file, mod: m.name, message: t('{0} nie działa z Minecraft {1} (wymaga {2}).', m.name, gameVersion, dep.ranges.join(' / ')) });
@@ -341,7 +379,7 @@ export function checkMods(mods: ModMeta[], profileLoader: string, gameVersion: s
         problems.push({ severity: 'warning', kind: 'version', file: m.file, mod: m.name, message: t('{0} wymaga {1} w wersji {2}, a jest {3}.', m.name, provided.get(dep.id)!.name, dep.ranges.join(' / '), have) });
       }
     }
-    for (const dep of m.breaks) {
+    for (const dep of m.breaks.filter(mine)) {
       const other = provided.get(dep.id);
       if (!other || other === m) continue;
       const have = versionOf(dep.id);

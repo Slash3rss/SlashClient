@@ -81,4 +81,42 @@ versionRange="[15,)"
     const meta = readModMeta(jar({ 'META-INF/mods.toml': `modLoader="javafml"\n[[mods]]\nmodId="mymod"\nversion="2.0"\n[[dependencies.mymod]]\nmodId="minecraft"\nmandatory=true\nversionRange="[1.20.1,1.20.2)"\n[[dependencies.mymod]]\nmodId="jei"\nmandatory=true\nversionRange="[15,)"\n` }), 'mymod.jar')!;
     assert.deepEqual(checkMods([meta], 'forge', '1.21.1').map((p) => p.kind).sort(), ['minecraft', 'missing']);
   });
+
+  it('reads only the loader the profile runs: a jar for Forge 1.20.1 that also carries NeoForge 1.21.1 and Fabric metadata', () => {
+    const toml = (mc: string, loader: string) => `modLoader="javafml"
+[[mods]]
+modId="incision"
+version="1.0"
+[[dependencies.incision]]
+modId="minecraft"
+type="required"
+versionRange="${mc}"
+[[dependencies.incision]]
+modId="${loader}"
+type="required"
+versionRange="[1,)"
+`;
+    const meta = readModMeta(jar({
+      'META-INF/mods.toml': toml('[1.20.1]', 'forge'),
+      'META-INF/neoforge.mods.toml': toml('[1.21.1]', 'neoforge'),
+      'fabric.mod.json': JSON.stringify({ id: 'incision', version: '1.0', depends: { 'fabric-api': '*', minecraft: '1.19.3' } }),
+    }), 'incision.jar')!;
+    assert.deepEqual(checkMods([meta], 'forge', '1.20.1'), []);
+    // on NeoForge its NeoForge list counts
+    assert.deepEqual(checkMods([meta], 'neoforge', '1.20.1').map((p) => p.kind), ['minecraft']);
+  });
+
+  it('runs Fabric mods through Sinytra Connector on Forge, with Forgified Fabric API for fabric-api', () => {
+    // Connector has no metadata of its own: its mod is bundled inside
+    const connector = readModMeta(jar({
+      'META-INF/MANIFEST.MF': 'Manifest-Version: 1.0\n',
+      'META-INF/jarjar/connector-mod.jar': jar({ 'META-INF/mods.toml': 'modLoader="javafml"\n[[mods]]\nmodId="connectormod"\nversion="1.0"\n' }),
+    }), 'Connector.jar')!;
+    assert.ok(connector.ids.includes('connectormod'));
+    const forgifiedApi = readModMeta(jar({ 'META-INF/mods.toml': 'modLoader="javafml"\n[[mods]]\nmodId="fabric_api"\nversion="0.92.6"\n' }), 'fabric-api.jar')!;
+    const fabricOnly = fabric('ambientsounds', { depends: { 'fabric-api': '*', fabricloader: '>=0.14' } });
+    assert.deepEqual(checkMods([connector, forgifiedApi, fabricOnly], 'forge', '1.20.1'), []);
+    // without Connector a Fabric mod still does not run on Forge
+    assert.deepEqual(checkMods([forgifiedApi, fabricOnly], 'forge', '1.20.1').map((p) => p.kind), ['loader']);
+  });
 });
