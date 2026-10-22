@@ -83,6 +83,10 @@ input[type="text"]:focus, textarea:focus, select:focus { border-color: var(--acc
 }
 .splash-logo img { position: relative; width: 100%; height: 100%; border-radius: 26px; box-shadow: 0 12px 32px rgba(0, 0, 0, .45); animation: splash-breathe 1.8s ease-in-out infinite; }
 .splash-name { font-size: 22px; font-weight: 700; letter-spacing: .02em; animation: splash-in .5s .08s cubic-bezier(.2, .8, .2, 1) both; }
+/* the app in a line for readers without scripts and search engines: barely there while it loads */
+.splash-about { max-width: 300px; margin: 0; text-align: center; font-size: 12px; font-weight: 400; line-height: 1.5; color: rgba(255, 255, 255, .35); animation: splash-in .5s .24s ease both; }
+h1.splash-about { margin-top: 18px; font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, .5); }
+.splash-about a { color: inherit; }
 .splash-bar { position: relative; width: 120px; height: 3px; overflow: hidden; border-radius: 3px; background: rgba(255, 255, 255, .08); animation: splash-in .5s .16s ease both; }
 .splash-bar span { position: absolute; top: 0; bottom: 0; width: 40%; border-radius: inherit; background: linear-gradient(90deg, transparent, var(--accent), transparent); animation: splash-slide 1.1s ease-in-out infinite; }
 @keyframes splash-in { from { opacity: 0; transform: translateY(8px) scale(.96); } to { opacity: 1; transform: none; } }
