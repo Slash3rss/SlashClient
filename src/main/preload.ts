@@ -90,6 +90,7 @@ const api = {
   blockTextures: () => invoke('blocks:textures'),
   cosmeticTextures: () => invoke('cosmetics:textures'),
   getStats: (days: number) => invoke('stats:get', days),
+  sessionSummaries: () => invoke('sessionSummary:list'),
   findInstances: () => invoke('import:find'),
   instancesFromFolder: () => invoke('import:folder'),
   importInstances: (keys: string[]) => invoke('import:run', keys),

@@ -23,6 +23,7 @@ import { SERVER_VOTES_EN } from './i18nServerVotes';
 import { WIZARD_EN } from './i18nWizard';
 import { SUGGESTIONS_EN } from './i18nSuggestions';
 import { CHAT_MEDIA_EN } from './i18nChatMedia';
+import { SESSION_SUMMARY_EN } from './i18nSessionSummary';
 
 export type Lang = 'pl' | 'en';
 
@@ -55,6 +56,8 @@ const EN: Record<string, string> = {
   ...STREAMS_EN,
   // linking Spotify for the game's "Spotify" module (own file)
   ...SPOTIFY_EN,
+  // the summary after a game session (own file)
+  ...SESSION_SUMMARY_EN,
   // statuses from a server's tab list (own file)
   ...SERVER_STATUS_EN,
   // friends on the minimap (own file)

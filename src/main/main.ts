@@ -64,6 +64,7 @@ import { exportHud, importHud } from './hudShare';
 import { readBenchmarks } from './benchmark';
 import { comparableBefore } from '../shared/benchTips';
 import { appendSession, readSessions, summarize } from './stats';
+import { appendSummary, collectSummary, MIN_SESSION_MS, readSummaries, summaryDisplay, withStats } from './sessionSummary';
 import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type ForeignInstance } from './importers';
 import { perfModsFor } from './perfmods';
 import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePreset, type SkinPreset } from './skinLibrary';
@@ -569,6 +570,20 @@ handle('stats:get', async (days: number) => {
   const allTimeMs = Math.max(store.profiles.reduce((sum, p) => sum + (p.playTimeMs ?? 0), 0), sessions.reduce((sum, s) => sum + s.end - s.start, 0));
   return { ...summary, allTimeMs, names: Object.fromEntries(store.profiles.map((p) => [p.id, p.name])) };
 });
+
+// the last session summaries, for the statistics page
+handle('sessionSummary:list', () => readSummaries());
+
+async function finishSessionSummary(o: { profile: Profile; versionId: string; startedAt: number; endedAt: number; joins: { address: string; at: number }[]; code: number | null; byUser: boolean; benchmark: boolean }) {
+  const display = summaryDisplay({ enabled: store.settings.sessionSummary !== false, code: o.code, byUser: o.byUser, durationMs: o.endedAt - o.startedAt, benchmark: o.benchmark });
+  if (o.endedAt - o.startedAt < MIN_SESSION_MS || o.benchmark) return;
+  const crashed = o.code !== 0 && !o.byUser;
+  const summary = withStats(await collectSummary({
+    gameDir: profileGameDir(o.profile), start: o.startedAt, end: o.endedAt, profile: o.profile, versionId: o.versionId, crashed, joins: o.joins,
+  }), await readSessions());
+  await appendSummary(summary);
+  if (display !== 'none') send('session:summary', { summary, display });
+}
 
 // ---------- importing instances from other launchers ----------
 
@@ -1677,9 +1692,12 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     // profiles synced with the account go there after the game
     cloudProfiles.afterGame(profile.id).catch((err) => console.error('chmura:', (err as Error).message));
     recordSession(profile, startedAt, lastServer).catch(() => {});
-    resolveVersionId(profile.versionId).then((versionId) => appendSession({
-      start: startedAt, end: Date.now(), profileId: profile.id, profileName: profile.name, versionId, loader: profile.loader, servers: joins,
-    })).catch(() => {});
+    const endedAt = Date.now();
+    resolveVersionId(profile.versionId).then(async (versionId) => {
+      await appendSession({ start: startedAt, end: endedAt, profileId: profile.id, profileName: profile.name, versionId, loader: profile.loader, servers: joins }).catch(() => {});
+      // "Podsumowanie sesji" (sessionSummary.ts): kept for the statistics, shown when the setting allows
+      await finishSessionSummary({ profile, versionId, startedAt, endedAt, joins, code, byUser: killRequested, benchmark: !!benchmark });
+    }).catch((err) => console.error('podsumowanie sesji:', (err as Error).message));
     // another game still running keeps Discord and friends up to date; the last one closing goes back to idle
     const other = [...games.values()].at(-1);
     showPresence(other ? other.presence : idlePresence());

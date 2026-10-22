@@ -39,6 +39,7 @@ public final class Shots {
 		if (files == null || files.length == 0) return;
 		File newest = Arrays.stream(files).max(Comparator.comparingLong(File::lastModified)).get();
 		if (System.currentTimeMillis() - newest.lastModified() > 15_000) return;
+		SessionStats.screenshot();
 		latest = newest;
 		latestAt = System.currentTimeMillis();
 		if (SlashHud.config == null || !SlashHud.config.screenshotClipboard) return;

@@ -90,6 +90,7 @@ public final class ExtraModules {
 				Entity entity = mc.level.getEntity(e.getKey());
 				if (entity instanceof LivingEntity le && le.isDeadOrDying()) {
 					kills++;
+					SessionStats.killed(le);
 					it.remove();
 				} else if (entity == null || now - e.getValue() > 10_000) it.remove();
 			}
