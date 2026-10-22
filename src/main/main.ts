@@ -277,7 +277,8 @@ function focusWindow() {
 /** System notifications: a click brings the launcher back and opens where the notification points. */
 const notifier = new Notifier({
   supported: () => Notification.isSupported(),
-  create: (title, body) => new Notification({ title, body, icon: ICON }),
+  // silent: the system's notification sound was too much for every message
+  create: (title, body) => new Notification({ title, body, icon: ICON, silent: true }),
   focus: focusWindow,
   open: (target) => {
     // a window made just now gets it once its page has loaded
