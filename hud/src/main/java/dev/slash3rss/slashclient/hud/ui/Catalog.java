@@ -16,7 +16,7 @@ public final class Catalog {
 	public static final String[] CATEGORIES = { "all", "hud", "combat", "world", "game", "extras", "skyup", "chat", "share" };
 
 	/** One row in an entry's settings. */
-	public sealed interface Setting permits Toggle, Slider, Choice, Colors, Text {
+	public sealed interface Setting permits Toggle, Slider, Choice, Colors, Text, Note {
 		String labelKey();
 	}
 
@@ -31,6 +31,9 @@ public final class Catalog {
 
 	/** A line of text typed in (a channel's name, …); `hintKey` is shown while it is empty. */
 	public record Text(String labelKey, String hintKey, int maxLength, Supplier<String> get, Consumer<String> set) implements Setting {}
+
+	/** A line (or a few) of explanation without controls; `args` fill the %s in its text. */
+	public record Note(String labelKey, Supplier<Object[]> args) implements Setting {}
 
 	/**
 	 * A card: `get`/`set` are null when the card has no on/off switch (it only opens something).
@@ -363,6 +366,12 @@ public final class Catalog {
 		// clips: the last seconds of the game, saved with F8
 		out.add(new Entry("clips", "slashclient-hud.clips", "extras", "m-clips", () -> cfg.clips, v -> cfg.clips = v, List.of(
 			new Slider("slashclient-hud.clips.length", 10f, 60f, 5f, "%.0f s", () -> (float) cfg.clipSeconds, v -> cfg.clipSeconds = Math.round(v))), null));
+		// the instant replay: the last seconds watched in the game (Replay)
+		out.add(new Entry("replay", "slashclient-hud.replay", "extras", "m-replay", () -> cfg.replay, v -> cfg.replay = v, List.of(
+			new Slider("slashclient-hud.replay.length", 15f, 60f, 15f, "%.0f s", () -> (float) cfg.replaySeconds, v -> cfg.replaySeconds = Math.round(v)),
+			new Toggle("slashclient-hud.replay.pause", () -> cfg.replayPause, v -> cfg.replayPause = v),
+			new Note("slashclient-hud.replay.key", dev.slash3rss.slashclient.hud.Replay::keyArgs),
+			new Note("slashclient-hud.replay.cost", () -> new Object[0])), null));
 		// helpers; the automatic ones say first that servers may ban for them
 		out.add(new Entry("autoClicker", "slashclient-hud.assist.autoClicker", "combat", "m-autoclicker", () -> cfg.autoClicker,
 			v -> risky(v, () -> cfg.autoClicker = v), List.of(

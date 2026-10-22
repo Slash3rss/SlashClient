@@ -298,6 +298,11 @@ public final class HudConfig {
 	/** Clips: the last seconds of the screen in memory, saved with a key (off: it costs memory and a little CPU). */
 	public boolean clips = false;
 	public int clipSeconds = 30;
+	/** Instant replay (Replay): a key shows the last seconds in the game; it keeps the clips' frames, so it takes the same memory. */
+	public boolean replay = false;
+	public int replaySeconds = 30;
+	/** Singleplayer stops while the replay is watched. */
+	public boolean replayPause = true;
 
 	// ---- helpers (see Assist) ----
 	/** The player has read that servers may ban for the automatic helpers. */
@@ -662,6 +667,9 @@ public final class HudConfig {
 		ownNametag = other.ownNametag;
 		clips = other.clips;
 		clipSeconds = Math.max(10, Math.min(60, other.clipSeconds));
+		replay = other.replay;
+		replaySeconds = Math.max(15, Math.min(60, other.replaySeconds));
+		replayPause = other.replayPause;
 		assistWarned = other.assistWarned;
 		autoClicker = other.autoClicker;
 		autoClickLeft = other.autoClickLeft;

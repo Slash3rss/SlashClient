@@ -35,6 +35,8 @@ const ICONS = {
   'lock': 'lock', 'bell': 'bell', 'bell-slash': 'bell-slash', 'image': 'image', 'pen': 'pen', 'trash': 'trash', 'ban': 'ban', 'm-dropguard': 'hand-holding', 'm-damage': 'heart-crack', 'm-tnt': 'bomb', 'm-nickhider': 'user-secret', 'm-reconnect': 'plug-circle-bolt', 'm-keybinds': 'keyboard', 'm-dungeonmap': 'map', 'm-skytasks': 'list-check', 'm-skyfish': 'fish', 'm-skycase': 'gift', 'skyup': 'dungeon',
   'm-inventory': 'table-cells', 'm-shulker': 'box-open', 'm-invsearch': 'magnifying-glass-arrow-right', 'm-slotlock': 'lock', 'm-shotcaption': 'image',
   'm-sort': 'arrow-down-a-z', 'm-worldmap': 'map-location-dot', 'm-friendmap': 'street-view',
+  // the instant replay (Replay, ReplayScreen)
+  'm-replay': 'clock-rotate-left', 'pause': 'pause', 'step-back': 'backward-step', 'step-forward': 'forward-step', 'repeat': 'repeat', 'save': 'floppy-disk',
 };
 
 /** Size of the glyph inside the 64×64 square, matching the icons already there. */

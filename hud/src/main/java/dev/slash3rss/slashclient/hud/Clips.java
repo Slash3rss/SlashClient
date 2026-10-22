@@ -40,7 +40,8 @@ public final class Clips {
 	private static final int IN_FLIGHT = 3;
 	static KeyMapping key;
 
-	private record Frame(byte[] jpeg, int width, int height, long at) {}
+	/** One frame in memory: a JPEG, its size and when it was taken (System.nanoTime). */
+	record Frame(byte[] jpeg, int width, int height, long at) {}
 
 	private static final ArrayDeque<Frame> frames = new ArrayDeque<>();
 	private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(r -> {
@@ -57,6 +58,11 @@ public final class Clips {
 		return SlashHud.config.clips;
 	}
 
+	/** Frames are taken while clips or the instant replay (Replay) are on: one buffer for both. */
+	static boolean capturing() {
+		return SlashHud.config.clips || SlashHud.config.replay;
+	}
+
 	/** Seconds in memory right now (for the settings card). */
 	public static double bufferedSeconds() {
 		synchronized (frames) {
@@ -66,14 +72,16 @@ public final class Clips {
 
 	/** After every drawn frame (GameRenderer.render): takes one, at most 30 a second. */
 	public static void afterFrame(Minecraft mc) {
-		if (!enabled() || mc.level == null) {
-			if (!frames.isEmpty() && !enabled()) synchronized (frames) {
+		if (!capturing() || mc.level == null) {
+			if (!frames.isEmpty() && !capturing()) synchronized (frames) {
 				frames.clear();
 			}
 			return;
 		}
 		long now = System.nanoTime();
 		if (now - lastFrame < FRAME_NS || inFlight.get() >= IN_FLIGHT) return;
+		// the replay viewer itself is not recorded
+		if (Compat.screen(mc) instanceof ReplayScreen) return;
 		lastFrame = now;
 		var target = Compat.mainTarget(mc);
 		// at most 1280 wide: a 1920 window is halved, a 4K one quartered
@@ -108,10 +116,10 @@ public final class Clips {
 				rgb.setRGB(0, y, w, 1, row, 0, w);
 			}
 			byte[] jpeg = jpeg(rgb);
-			long keep = SlashHud.config.clipSeconds * 1_000_000_000L;
+			long keep = Math.max(SlashHud.config.clips ? SlashHud.config.clipSeconds : 0, Replay.seconds()) * 1_000_000_000L;
 			synchronized (frames) {
 				// switched off while this frame was on its way
-				if (!enabled()) return;
+				if (!capturing()) return;
 				frames.addLast(new Frame(jpeg, w, h, at));
 				while (!frames.isEmpty() && at - frames.getFirst().at() > keep) frames.removeFirst();
 			}
@@ -149,11 +157,25 @@ public final class Clips {
 			return;
 		}
 		if (saving) return;
+		// the buffer may hold more for the instant replay: the clip is its own length
+		List<Frame> clip = recent(SlashHud.config.clipSeconds);
+		if (clip.size() < 10) {
+			Compat.overlay(mc, Component.translatable("slashclient-hud.clips.empty"));
+			return;
+		}
+		write(mc, clip, "clip");
+	}
+
+	/**
+	 * The frames of the last `seconds` (a copy: the buffer goes on without it), only those after
+	 * the last change of the window's size (a video has one frame size).
+	 */
+	static List<Frame> recent(double seconds) {
 		List<Frame> list;
 		synchronized (frames) {
 			list = new ArrayList<>(frames);
 		}
-		// a resized window changes the frame size: the clip is what came after the last change
+		if (list.isEmpty()) return list;
 		int cut = 0;
 		for (int i = list.size() - 1; i > 0; i--) {
 			if (list.get(i - 1).width() != list.getLast().width() || list.get(i - 1).height() != list.getLast().height()) {
@@ -161,14 +183,26 @@ public final class Clips {
 				break;
 			}
 		}
-		List<Frame> clip = list.subList(cut, list.size());
-		if (clip.size() < 10) {
-			Compat.overlay(mc, Component.translatable("slashclient-hud.clips.empty"));
-			return;
-		}
+		long from = list.getLast().at() - (long) (seconds * 1e9);
+		while (cut < list.size() - 1 && list.get(cut).at() < from) cut++;
+		return new ArrayList<>(list.subList(cut, list.size()));
+	}
+
+	/** True while a clip is being written (one at a time). */
+	static boolean saving() {
+		return saving;
+	}
+
+	/** Writes these frames as clips/<prefix>-<date>.avi on a background thread, with a toast when done; the file, or null when not started. */
+	static Path write(Minecraft mc, List<Frame> clip, String prefix) {
+		if (saving || clip.size() < 2) return null;
 		saving = true;
 		Path dir = FabricLoader.getInstance().getGameDir().resolve("clips");
-		Path file = dir.resolve("clip-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss")) + ".avi");
+		String stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss"));
+		Path named = dir.resolve(prefix + "-" + stamp + ".avi");
+		// two saves in one second (a range saved twice) do not overwrite each other
+		for (int i = 2; Files.exists(named); i++) named = dir.resolve(prefix + "-" + stamp + "-" + i + ".avi");
+		Path file = named;
 		double seconds = Math.max(0.1, (clip.getLast().at() - clip.getFirst().at()) / 1e9);
 		double fps = (clip.size() - 1) / seconds;
 		Compat.overlay(mc, Component.translatable("slashclient-hud.clips.saving"));
@@ -185,6 +219,7 @@ public final class Clips {
 				saving = false;
 			}
 		});
+		return file;
 	}
 
 	/** For the test: frames in memory. */

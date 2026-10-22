@@ -696,6 +696,7 @@ public class HudEditScreen extends Screen {
 	/** Width the controls of a setting need on one line. */
 	private static int controlsWidth(Catalog.Setting s) {
 		if (s instanceof Catalog.Toggle) return 20;
+		if (s instanceof Catalog.Note) return 0;
 		if (s instanceof Catalog.Slider) return 150;
 		if (s instanceof Catalog.Text) return 150;
 		if (s instanceof Catalog.Choice ch) {
@@ -730,6 +731,8 @@ public class HudEditScreen extends Screen {
 			int labelW = Ui.width(Ui.tr(s.labelKey())) + 24;
 			boolean oneLine = s instanceof Catalog.Toggle || labelW + controlsWidth(s) <= w - 20;
 			heights[i] = oneLine ? 26 : 44;
+			// a note: as many lines as its text needs
+			if (s instanceof Catalog.Note n) heights[i] = Math.max(26, 14 + 11 * font.split(Ui.tr(n.labelKey(), n.args().get()), w - 20).size());
 			contentH += heights[i] + 4;
 		}
 		int listTop = y + 26;
@@ -748,7 +751,8 @@ public class HudEditScreen extends Screen {
 			Ui.round(g, x, ry, w, rh, 4, Ui.CARD);
 			Ui.begin("row " + s.labelKey(), x, ry, w, rh);
 			Component label = Ui.fit(Ui.tr(s.labelKey()), w - 20);
-			Ui.draw(g, label, x + 10, ry + 9, Ui.TEXT);
+			if (s instanceof Catalog.Note n) Ui.wrapped(g, Ui.tr(n.labelKey(), n.args().get()), x + 10, ry + 8, w - 20, Ui.TEXT_2);
+			else Ui.draw(g, label, x + 10, ry + 9, Ui.TEXT);
 			int labelEnd = x + 10 + Ui.width(label) + 14;
 			int right = x + w - 10;
 			// controls start after the label, or at the left edge of the second line
@@ -820,7 +824,7 @@ public class HudEditScreen extends Screen {
 				}
 			}
 			// controls on the label's line must not cover it
-			if (!twoLines && !(s instanceof Catalog.Toggle)) Ui.expect(labelEnd - 14 <= right - controlsWidth(s) || s instanceof Catalog.Slider, "controls cover the label of " + s.labelKey());
+			if (!twoLines && !(s instanceof Catalog.Toggle) && !(s instanceof Catalog.Note)) Ui.expect(labelEnd - 14 <= right - controlsWidth(s) || s instanceof Catalog.Slider, "controls cover the label of " + s.labelKey());
 			Ui.end();
 			// rows scrolled out of the box cannot be clicked
 			if (!inList) while (hits.size() > hitsBefore) hits.remove(hits.size() - 1);
