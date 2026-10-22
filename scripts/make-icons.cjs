@@ -34,7 +34,7 @@ app.disableHardwareAcceleration();
 app.on('window-all-closed', () => {});
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1];
 
-async function render(variant) {
+async function render(variant, query = {}) {
   const win = new BrowserWindow({
     width: 1024,
     height: 1024,
@@ -48,7 +48,7 @@ async function render(variant) {
   win.webContents.on('console-message', (e) => {
     if (e.level === 'error') console.error(`[${variant}] ${e.message} (wiersz ${e.lineNumber})`);
   });
-  await win.loadFile(path.join(__dirname, 'icon', 'icon.html'), { query: { variant } });
+  await win.loadFile(path.join(__dirname, 'icon', 'icon.html'), { query: { variant, ...query } });
   await win.webContents.executeJavaScript('document.fonts.ready.then(() => new Promise(r => setTimeout(r, 300)))');
   const image = await win.webContents.capturePage();
   win.destroy();
@@ -61,6 +61,19 @@ app.whenReady().then(async () => {
   if (preview) {
     fs.mkdirSync(preview, { recursive: true });
     for (const v of (arg('variants') ?? 'ring').split(',')) fs.writeFileSync(path.join(preview, `${v}.png`), (await render(v)).toPNG());
+    app.quit();
+    return;
+  }
+  // --app: only the phone app's icons (server/web/app/icon-*.png, named in its manifest.webmanifest)
+  if (process.argv.includes('--app')) {
+    const img = path.join(root, 'server', 'web', 'app');
+    const tile = await render(arg('variant') ?? 'slashS');
+    const bleed = await render(arg('variant') ?? 'slashS', { bleed: '1' });
+    for (const size of [192, 512]) fs.writeFileSync(path.join(img, `icon-${size}.png`), tile.resize({ width: size, quality: 'best' }).toPNG());
+    fs.writeFileSync(path.join(img, 'icon-maskable-512.png'), bleed.resize({ width: 512, quality: 'best' }).toPNG());
+    // iOS rounds the corners itself and shows transparency as black
+    fs.writeFileSync(path.join(img, 'icon-apple-180.png'), bleed.resize({ width: 180, quality: 'best' }).toPNG());
+    console.log(`Ikony aplikacji zapisane w ${img}`);
     app.quit();
     return;
   }

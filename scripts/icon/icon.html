@@ -645,6 +645,16 @@ if (variant.startsWith('block-')) {
 }
 
 (variants[variant] || variants.ring)();
+
+// ?bleed: the tile fills the whole square, for the phone app's maskable icon (the phone cuts its own shape out of it)
+if (new URLSearchParams(location.search).has('bleed')) {
+  const tile = document.getElementById('tile-bg');
+  for (const rect of [...tile.querySelectorAll('rect'), document.querySelector('#tile rect')]) {
+    Object.entries({ x: 0, y: 0, width: 1024, height: 1024, rx: 0 }).forEach(([k, v]) => rect.setAttribute(k, v));
+    rect.removeAttribute('filter');
+  }
+  tile.querySelector('rect[stroke]').remove();
+}
 </script>
 </body>
 </html>

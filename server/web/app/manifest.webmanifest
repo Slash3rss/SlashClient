@@ -1,0 +1,18 @@
+{
+  "id": "/app/",
+  "name": "SlashClient",
+  "short_name": "SlashClient",
+  "description": "Znajomi, czaty, klany i społeczności SlashClient na telefonie.",
+  "lang": "pl",
+  "start_url": "/app/#/friends",
+  "scope": "/app/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0d14",
+  "theme_color": "#0a0d14",
+  "icons": [
+    { "src": "/app/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/app/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/app/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
