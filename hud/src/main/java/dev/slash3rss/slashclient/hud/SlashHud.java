@@ -198,6 +198,7 @@ public class SlashHud implements ClientModInitializer {
 			InventorySort.pump(mc);
 			dev.slash3rss.slashclient.hud.social.FriendPositions.tick(mc);
 			StreamChatModule.tick(mc);
+			SpotifyModule.tick(mc);
 			//#if MC >= 26.3
 			SkyTasks.tick(mc);
 			SkyCase.tick(mc);

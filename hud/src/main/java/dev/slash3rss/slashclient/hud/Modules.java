@@ -47,6 +47,8 @@ public final class Modules {
 		//#endif
 		// a Twitch and a Kick channel's live chat
 		out.addAll(StreamChatModule.all());
+		// what plays on the linked Spotify
+		out.add(new SpotifyModule());
 		// the backpack's 27 slots
 		out.add(new InventoryModule());
 		// the game's own parts, moved in the editor like the modules

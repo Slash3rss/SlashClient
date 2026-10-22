@@ -29,7 +29,7 @@ const ICONS = {
   'm-advancements': 'trophy', 'm-stats': 'chart-simple', 'm-pause': 'pause', 'm-accounts': 'user-gear',
   'm-scoreboard': 'list-ol', 'm-bossbar': 'skull', 'm-tablist': 'table-list', 'm-titles': 'heading', 'm-toasts': 'bell', 'm-actionbar': 'message', 'm-nametag': 'tag',
   'm-benchmark': 'chart-column', 'm-sprint': 'person-running', 'm-emotes': 'face-smile', 'm-clips': 'film', 'partner': 'handshake', 'm-mentions': 'at',
-  'm-twitchchat': 'brands/twitch',
+  'm-twitchchat': 'brands/twitch', 'm-spotify': 'brands/spotify',
   'm-nethercoords': 'arrows-left-right', 'm-deathpoint': 'cross', 'm-lightoverlay': 'ghost', 'm-weather': 'umbrella', 'm-cameradistance': 'video',
   'm-autoclicker': 'computer-mouse', 'm-autotool': 'screwdriver-wrench', 'm-autorefill': 'arrows-rotate', 'm-holdkeys': 'hand-pointer', 'm-toolwarning': 'triangle-exclamation', 'm-hearts': 'heart', 'm-mousetweaks': 'arrow-pointer',
   'lock': 'lock', 'bell': 'bell', 'bell-slash': 'bell-slash', 'image': 'image', 'pen': 'pen', 'trash': 'trash', 'ban': 'ban', 'm-dropguard': 'hand-holding', 'm-damage': 'heart-crack', 'm-tnt': 'bomb', 'm-nickhider': 'user-secret', 'm-reconnect': 'plug-circle-bolt', 'm-keybinds': 'keyboard', 'm-dungeonmap': 'map', 'm-skytasks': 'list-check', 'm-skyfish': 'fish', 'm-skycase': 'gift', 'skyup': 'dungeon',

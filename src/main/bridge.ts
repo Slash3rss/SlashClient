@@ -43,6 +43,10 @@ export interface BridgeOptions {
   communityLogo?: (id: string, version: number) => Promise<Buffer>;
   /** What the server's tab list says (serverStatus.ts): the server, the short status and its values; or nothing. */
   gameStatus?: (status: { server: string; detail?: string; values: Record<string, string> } | undefined) => void;
+  /** What plays on the player's linked Spotify (spotify.ts), asked by the game only while its "Spotify" module is on. */
+  spotifyNow?: () => Promise<unknown>;
+  /** A Spotify album cover by its id on i.scdn.co, as a 64×64 PNG. */
+  spotifyCover?: (id: string) => Promise<Buffer>;
 }
 
 /** What the game may ask for: its friends and the messages with them. */
@@ -298,6 +302,23 @@ export class GameBridge {
         return res.end(png);
       } catch (err) {
         return this.send(res, 404, { error: (err as { code?: string }).code ?? (err as Error).message });
+      }
+    }
+
+    // Spotify (HUD 0.9.36+): what plays now, and an album's cover (only Spotify's own image host, fetched by the launcher)
+    if (method === 'GET' && url === '/spotify/now') {
+      if (!this.opts.spotifyNow) return this.send(res, 404, { error: 'not_found' });
+      return this.send(res, 200, await this.opts.spotifyNow());
+    }
+    const cover = /^\/spotify\/cover\/([0-9a-f]{16,64})$/.exec(url);
+    if (method === 'GET' && cover) {
+      if (!this.opts.spotifyCover) return this.send(res, 404, { error: 'not_found' });
+      try {
+        const png = await this.opts.spotifyCover(cover[1]);
+        res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-store' });
+        return res.end(png);
+      } catch (err) {
+        return this.send(res, 404, { error: (err as Error).message });
       }
     }
 

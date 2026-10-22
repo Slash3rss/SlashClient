@@ -16,7 +16,7 @@ public final class Catalog {
 	public static final String[] CATEGORIES = { "all", "hud", "combat", "world", "game", "extras", "skyup", "chat", "share" };
 
 	/** One row in an entry's settings. */
-	public sealed interface Setting permits Toggle, Slider, Choice, Colors, Text {
+	public sealed interface Setting permits Toggle, Slider, Choice, Colors, Text, Info {
 		String labelKey();
 	}
 
@@ -31,6 +31,9 @@ public final class Catalog {
 
 	/** A line of text typed in (a channel's name, …); `hintKey` is shown while it is empty. */
 	public record Text(String labelKey, String hintKey, int maxLength, Supplier<String> get, Consumer<String> set) implements Setting {}
+
+	/** A note in the settings (how to link an account, …): `text` gives its translation key, asked each time it is drawn. */
+	public record Info(String labelKey, Supplier<String> text) implements Setting {}
 
 	/**
 	 * A card: `get`/`set` are null when the card has no on/off switch (it only opens something).
@@ -182,6 +185,7 @@ public final class Catalog {
 				}
 				case "fps" -> settings.add(new Toggle("slashclient-hud.set.fpsColored", () -> cfg.fpsColored, v -> cfg.fpsColored = v));
 				case "twitchchat", "kickchat" -> streamChat(settings, m.id().equals("kickchat") ? () -> cfg.kickChat : () -> cfg.twitchChat, m.id().equals("kickchat"));
+				case "spotify" -> dev.slash3rss.slashclient.hud.SpotifyModule.settings(settings, () -> SlashHud.config.spotify);
 				default -> {}
 			}
 			if (m.id().equals("effects")) settings.add(new Toggle("slashclient-hud.effectIcons", () -> cfg.effectIcons, v -> cfg.effectIcons = v));

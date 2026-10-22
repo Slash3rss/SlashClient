@@ -17,6 +17,8 @@ export interface SettingsAdminContext {
   /** Handles of who changed what, for the panel. */
   handleOf: (userId: string) => string;
   fail: (status: number, code: string) => never;
+  /** This server's address, put where a description says {publicUrl} (an address to register with a provider). */
+  publicUrl?: string;
 }
 
 type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
@@ -25,7 +27,10 @@ export function settingsAdminRoutes(ctx: SettingsAdminContext): [string, RegExp,
   const { settings } = ctx;
   const view = () => ({
     categories: CATEGORIES,
-    settings: settings.view().map((s) => ({ ...s, updatedByHandle: s.updatedBy ? ctx.handleOf(s.updatedBy) || null : null })),
+    settings: settings.view().map((s) => ({
+      ...s, description: s.description.replaceAll('{publicUrl}', (ctx.publicUrl ?? '').replace(/\/$/, '')),
+      updatedByHandle: s.updatedBy ? ctx.handleOf(s.updatedBy) || null : null,
+    })),
     // what clients see now
     features: featuresOf(settings), banner: bannerOf(settings),
   });
