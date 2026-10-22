@@ -21,6 +21,8 @@ abstract class ChatComponentMixin {
 	private Component slashclient$incoming(Component message) {
 		ChatExtras.arrived();
 		message = dev.slash3rss.slashclient.hud.NickHider.apply(message);
+		// coordinates in the line: underlined, a click saves them as a waypoint
+		message = dev.slash3rss.slashclient.hud.ChatCoords.mark(message);
 		ChatTabs.onMessage(message.getString());
 		dev.slash3rss.slashclient.hud.DungeonMap.onChat(message.getString());
 		//#if MC >= 26.3

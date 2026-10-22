@@ -94,11 +94,12 @@ final class MinimapTerrain {
 			slotBase = new int[SLOTS * SLOTS];
 			Arrays.fill(slotKey, EMPTY);
 		}
-		if (mc.level != level) {
+		// another world (or another mode of a server network, read from the tab list a moment after
+		// joining it) forgets what was seen; another dimension of the same one keeps it for coming back
+		String world = WaypointKeys.terrainKey(mc);
+		if (mc.level != level || !world.equals(seenWorld)) {
 			level = mc.level;
 			clear();
-			// another world forgets what was seen; another dimension of the same one keeps it for coming back
-			String world = Waypoints.worldKey(mc);
 			if (!world.equals(seenWorld)) {
 				explored.clear();
 				seenWorld = world;
@@ -212,6 +213,11 @@ final class MinimapTerrain {
 	}
 
 	/** How many chunks the full map knows in this dimension (for the test and the map's corner). */
+	/** Whose explored map is kept now (WaypointKeys.terrainKey). */
+	static String exploredWorld() {
+		return seenWorld;
+	}
+
 	static int exploredChunks() {
 		return seen.size();
 	}

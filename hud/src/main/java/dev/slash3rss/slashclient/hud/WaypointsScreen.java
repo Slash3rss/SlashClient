@@ -15,15 +15,26 @@ import java.util.List;
 /**
  * The waypoints of this world: add one where you stand, show or hide, recolour, delete, share with
  * friends. "Received" lists points friends shared for other servers or worlds, to accept or drop.
+ *
+ * Over the list: where the points belong ("skyup.pl · AnyBlock · S3 (Wyspy) · Overworld"), and
+ * "Move…": the points kept under another server's address or another world's name, to bring here.
+ * On a server with modes, a switch keeps each mode's points apart, and a point from before (shown in
+ * every mode) can be given to the mode the player is in ("Only this mode").
  */
 public class WaypointsScreen extends Screen {
 	private record Hit(int x, int y, int w, int h, Runnable action) {}
 
 	private final List<Hit> hits = new ArrayList<>();
+	/** Where some buttons were drawn (their middle), for the test to click them. */
+	private final java.util.Map<String, int[]> spots = new java.util.HashMap<>();
 	private EditBox name;
 	private int px, py, pw, ph, scroll;
 	/** The friends' points waiting to be accepted, instead of this world's. */
 	private boolean received;
+	/** The other servers' and worlds' points, to move here. */
+	private boolean moving;
+	/** What the last move did, under the list of other places. */
+	private Component moved;
 	/** Room for "share where I stand" next to Add (with SlashClient friends only). */
 	private int shareW;
 	private static final int ROW = 22;
@@ -36,6 +47,13 @@ public class WaypointsScreen extends Screen {
 	public WaypointsScreen(boolean received) {
 		this();
 		this.received = received;
+	}
+
+	/** Opens on the other places' points to move here (the screenshot test). */
+	public static WaypointsScreen moving() {
+		WaypointsScreen s = new WaypointsScreen();
+		s.moving = true;
+		return s;
 	}
 
 	@Override
@@ -65,15 +83,24 @@ public class WaypointsScreen extends Screen {
 		//$ extractBackground(g, mx, my, delta);
 		//#endif
 		hits.clear();
+		spots.clear();
 		Ui.panel(g, px, py, pw, ph);
 		Ui.begin("waypoints", px, py, pw, ph);
 		Ui.icon(g, "m-waypoints", px + 14, py + 11, 10, Ui.ACCENT_LIGHT);
 		Ui.draw(g, Ui.trBold("slashclient-hud.waypoints"), px + 30, py + 12, Ui.TEXT);
 		Ui.button(g, "wp:close", px + pw - 26, py + 7, 18, 18, "close", Component.empty(), false, mx, my);
 		hits.add(new Hit(px + pw - 26, py + 7, 18, 18, this::onClose));
-		// the friends' points: a tab next to Close while there are any
+		// the friends' points: a tab next to Close while there are any; back from moving points
 		int waiting = dev.slash3rss.slashclient.hud.social.SharedWaypoints.pending().size();
-		if (waiting > 0 || received) {
+		if (moving) {
+			Component tab = Ui.tr("slashclient-hud.share.back");
+			int tw = Ui.buttonWidth(tab, "back", 18, 3);
+			Ui.button(g, "wp:moveBack", px + pw - 30 - tw, py + 7, tw, 18, "back", tab, false, mx, my);
+			hits.add(new Hit(px + pw - 30 - tw, py + 7, tw, 18, () -> {
+				moving = false;
+				scroll = 0;
+			}));
+		} else if (waiting > 0 || received) {
 			Component tab = Ui.tr(received ? "slashclient-hud.share.back" : "slashclient-hud.share.received", waiting);
 			int tw = Ui.buttonWidth(tab, received ? "back" : "share", 18, 3);
 			Ui.button(g, "wp:received", px + pw - 30 - tw, py + 7, tw, 18, received ? "back" : "share", tab, !received, mx, my);
@@ -83,24 +110,53 @@ public class WaypointsScreen extends Screen {
 			}));
 		}
 		g.fill(px + 1, py + 31, px + pw - 1, py + 32, Ui.BORDER);
-		name.visible = !received;
-		if (received) {
-			drawReceived(g, mx, my);
+		name.visible = !received && !moving;
+		if (received || moving) {
+			if (received) drawReceived(g, mx, my);
+			else drawMoving(g, mx, my);
 			Ui.end();
 			super.extractRenderState(g, mx, my, delta);
 			return;
 		}
 		boolean canShare = dev.slash3rss.slashclient.hud.social.SharedWaypoints.canShare(minecraft);
 
-		List<Waypoints.Point> list = Waypoints.here(minecraft);
-		int top = py + 38, bottom = py + ph - 38;
+		// where these points belong, and the points of other places to move here
+		String key = Waypoints.worldKey(minecraft), base = WaypointKeys.baseKey(minecraft);
+		Component move = Ui.tr("slashclient-hud.waypoints.move");
+		int moveW = Ui.buttonWidth(move, "move", 16, 2);
+		Ui.button(g, "wp:move", px + pw - 10 - moveW, py + 36, moveW, 16, "move", move, false, mx, my);
+		spots.put("move", new int[] { px + pw - 10 - moveW / 2, py + 44 });
+		hits.add(new Hit(px + pw - 10 - moveW, py + 36, moveW, 16, () -> {
+			moving = true;
+			moved = null;
+			scroll = 0;
+		}));
+		String mode = WaypointKeys.mode(minecraft);
+		String place = WaypointKeys.describe(WaypointKeys.withMode(base, mode)) + (minecraft.level == null ? "" : " · " + WorldMapScreen.dimensionName(minecraft));
+		Ui.icon(g, WaypointKeys.isServer(base) ? "server" : "world", px + 14, py + 40, 9, Ui.MUTED);
+		Ui.draw(g, Ui.fit(Ui.text(place), pw - 46 - moveW), px + 28, py + 40, Ui.TEXT_2);
+		int top = py + 58;
+		// a server with modes: keep each mode's points apart (on unless switched off)
+		if (mode != null) {
+			boolean split = WaypointKeys.split(base);
+			Ui.toggle(g, "wp:split", px + 14, py + 59, split);
+			Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.waypoints.splitModes"), pw - 50), px + 40, py + 60, Ui.TEXT_2);
+			hits.add(new Hit(px + 12, py + 56, pw - 24, 16, () -> WaypointKeys.setSplit(base, !split)));
+			top = py + 76;
+		}
+
+		List<Waypoints.Point> list = Waypoints.points(minecraft);
+		int bottom = py + ph - 38;
 		if (list.isEmpty()) Ui.centered(g, Ui.fit(Ui.tr("slashclient-hud.waypoints.none"), pw - 30), px + pw / 2, top + 30, Ui.MUTED);
 		int fit = (bottom - top) / ROW;
 		scroll = Math.max(0, Math.min(scroll, Math.max(0, list.size() - fit)));
 		String dim = Waypoints.dimension(minecraft);
+		Component hint = null;
+		int hintX = 0, hintY = 0;
 		for (int i = scroll; i < Math.min(list.size(), scroll + fit); i++) {
 			Waypoints.Point p = list.get(i);
 			int y = top + (i - scroll) * ROW, rx = px + 10, rw = pw - 20;
+			boolean everyMode = WaypointKeys.everyMode(minecraft, p);
 			Ui.round(g, rx, y, rw, ROW - 3, 4, Ui.CARD);
 			// the colour dot changes colour on click
 			Ui.round(g, rx + 6, y + 5, 9, 9, 4, p.color);
@@ -110,26 +166,40 @@ public class WaypointsScreen extends Screen {
 				p.color = Waypoints.COLORS[next];
 				Waypoints.save();
 			}));
-			boolean otherDim = !dim.equals(p.dimension);
-			String where = p.x + " " + p.y + " " + p.z + (otherDim ? "" : "  ·  " + Math.round(Waypoints.distance(minecraft, p)) + " m");
-			int shareRoom = canShare ? 24 : 0;
-			Component title = p.from == null ? Ui.bold(p.name) : Ui.bold(p.name).append(Ui.tr("slashclient-hud.share.from", p.from).withStyle(s -> s.withBold(false).withColor(Ui.MUTED & 0xFFFFFF)));
-			Ui.draw(g, Ui.fit(title, rw - 150 - shareRoom), rx + 22, y + 6, p.visible ? Ui.TEXT : Ui.MUTED);
-			Ui.draw(g, Ui.fit(Ui.text(where), 110), rx + rw - 62 - shareRoom - Math.min(110, Ui.width(Ui.text(where))), y + 6, otherDim ? Ui.MUTED : Ui.TEXT_2);
-			if (canShare) {
-				Ui.button(g, "wp:share:" + i, rx + rw - 72, y + 1, 22, ROW - 5, "share", Component.empty(), false, mx, my);
-				hits.add(new Hit(rx + rw - 72, y + 1, 22, ROW - 5, () -> minecraft.setScreenAndShow(dev.slash3rss.slashclient.hud.social.PickFriendsScreen.shareWaypoint(this, p))));
-			}
-			Ui.button(g, "wp:eye:" + i, rx + rw - 48, y + 1, 22, ROW - 5, p.visible ? "check" : "close", Component.empty(), false, mx, my);
-			hits.add(new Hit(rx + rw - 48, y + 1, 22, ROW - 5, () -> {
+			// the buttons from the right: delete, show/hide, share, only this mode
+			int bx = rx + rw - 24;
+			Ui.button(g, "wp:del:" + i, bx, y + 1, 22, ROW - 5, "reset", Component.empty(), false, mx, my);
+			hits.add(new Hit(bx, y + 1, 22, ROW - 5, () -> Waypoints.remove(p)));
+			bx -= 24;
+			Ui.button(g, "wp:eye:" + i, bx, y + 1, 22, ROW - 5, p.visible ? "check" : "close", Component.empty(), false, mx, my);
+			hits.add(new Hit(bx, y + 1, 22, ROW - 5, () -> {
 				p.visible = !p.visible;
 				Waypoints.save();
 			}));
-			Ui.button(g, "wp:del:" + i, rx + rw - 24, y + 1, 22, ROW - 5, "reset", Component.empty(), false, mx, my);
-			hits.add(new Hit(rx + rw - 24, y + 1, 22, ROW - 5, () -> {
-				list.remove(p);
-				Waypoints.save();
-			}));
+			if (canShare) {
+				bx -= 24;
+				Ui.button(g, "wp:share:" + i, bx, y + 1, 22, ROW - 5, "share", Component.empty(), false, mx, my);
+				hits.add(new Hit(bx, y + 1, 22, ROW - 5, () -> minecraft.setScreenAndShow(dev.slash3rss.slashclient.hud.social.PickFriendsScreen.shareWaypoint(this, p))));
+			}
+			if (everyMode) {
+				bx -= 24;
+				Ui.button(g, "wp:mode:" + i, bx, y + 1, 22, ROW - 5, "lock", Component.empty(), false, mx, my);
+				hits.add(new Hit(bx, y + 1, 22, ROW - 5, () -> WaypointKeys.onlyThisMode(minecraft, p)));
+				spots.put("mode:" + p.name, new int[] { bx + 11, y + 9 });
+				if (Ui.inside(mx, my, bx, y + 1, 22, ROW - 5)) {
+					hint = Ui.tr("slashclient-hud.waypoints.onlyThisMode");
+					hintX = bx + 11;
+					hintY = y - 13;
+				}
+			}
+			boolean otherDim = !dim.equals(p.dimension);
+			String where = p.x + " " + p.y + " " + p.z + (otherDim ? "" : "  ·  " + Math.round(Waypoints.distance(minecraft, p)) + " m");
+			int whereW = Math.min(110, Ui.width(Ui.text(where)));
+			Component title = Ui.bold(p.name);
+			if (p.from != null) title = title.copy().append(Ui.tr("slashclient-hud.share.from", p.from).withStyle(s -> s.withBold(false).withColor(Ui.MUTED & 0xFFFFFF)));
+			if (everyMode) title = title.copy().append(Ui.tr("slashclient-hud.waypoints.allModes").withStyle(s -> s.withBold(false).withColor(Ui.MUTED & 0xFFFFFF)));
+			Ui.draw(g, Ui.fit(title, bx - rx - 22 - whereW - 10), rx + 22, y + 6, p.visible ? Ui.TEXT : Ui.MUTED);
+			Ui.draw(g, Ui.fit(Ui.text(where), 110), bx - 6 - whereW, y + 6, otherDim ? Ui.MUTED : Ui.TEXT_2);
 		}
 
 		// the name field and "Add here"
@@ -146,8 +216,51 @@ public class WaypointsScreen extends Screen {
 		Component add = Ui.tr("slashclient-hud.waypoints.add");
 		Ui.button(g, "wp:add", px + pw - 102, fy, 92, 20, "check", add, true, mx, my);
 		hits.add(new Hit(px + pw - 102, fy, 92, 20, this::add));
+		// what the hovered "only this mode" does, over it
+		if (hint != null) {
+			int hw = Ui.width(hint) + 8;
+			int hx = Math.max(px + 4, Math.min(hintX - hw / 2, px + pw - 4 - hw));
+			Ui.round(g, hx, hintY, hw, 12, 3, 0xF0101420);
+			Ui.draw(g, hint, hx + 4, hintY + 2, Ui.TEXT);
+		}
 		Ui.end();
 		super.extractRenderState(g, mx, my, delta);
+	}
+
+	/** For the test: the middle of a button drawn last frame ("move", "mode:<point>", "moveHere:<key>"), or null. */
+	public int[] spot(String id) {
+		return spots.get(id);
+	}
+
+	/** Points kept under another server's address or another world's name: moved here with one click. */
+	private void drawMoving(GuiGraphicsExtractor g, int mx, int my) {
+		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.waypoints.moveTitle"), pw - 28), px + 14, py + 38, Ui.TEXT);
+		Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.waypoints.moveHelp", WaypointKeys.describe(WaypointKeys.baseKey(minecraft))), pw - 28), px + 14, py + 50, Ui.MUTED);
+		List<String> others = WaypointKeys.others(minecraft);
+		int top = py + 64, bottom = py + ph - (moved == null ? 10 : 24);
+		if (others.isEmpty()) Ui.centered(g, Ui.fit(Ui.tr("slashclient-hud.waypoints.moveNone"), pw - 30), px + pw / 2, top + 30, Ui.MUTED);
+		int fit = (bottom - top) / ROW;
+		scroll = Math.max(0, Math.min(scroll, Math.max(0, others.size() - fit)));
+		Component here = Ui.tr("slashclient-hud.waypoints.moveHere");
+		int hw = Ui.buttonWidth(here, "check", ROW - 5, 2);
+		for (int i = scroll; i < Math.min(others.size(), scroll + fit); i++) {
+			String key = others.get(i);
+			int y = top + (i - scroll) * ROW, rx = px + 10, rw = pw - 20;
+			Ui.round(g, rx, y, rw, ROW - 3, 4, Ui.CARD);
+			Ui.icon(g, WaypointKeys.isServer(key) ? "server" : "world", rx + 6, y + 5, 9, Ui.ACCENT_LIGHT);
+			List<Waypoints.Point> points = Waypoints.lists().get(key);
+			Component count = Ui.tr("slashclient-hud.waypoints.count", points == null ? 0 : points.size());
+			int cw = Ui.width(count);
+			Component place = Ui.bold(WaypointKeys.describe(key));
+			// kept under a world's name (from before worlds were kept by their folder)
+			if (key.startsWith(WaypointKeys.OLD_WORLD)) place = place.copy().append(Ui.tr("slashclient-hud.waypoints.oldName").withStyle(s -> s.withBold(false).withColor(Ui.MUTED & 0xFFFFFF)));
+			Ui.draw(g, Ui.fit(place, rw - 22 - hw - cw - 16), rx + 22, y + 6, Ui.TEXT);
+			Ui.draw(g, count, rx + rw - hw - 8 - cw, y + 6, Ui.MUTED);
+			Ui.button(g, "wp:moveHere:" + i, rx + rw - hw - 2, y + 1, hw, ROW - 5, "check", here, true, mx, my);
+			spots.put("moveHere:" + key, new int[] { rx + rw - hw / 2 - 2, y + 9 });
+			hits.add(new Hit(rx + rw - hw - 2, y + 1, hw, ROW - 5, () -> moved = Ui.tr("slashclient-hud.waypoints.moved", WaypointKeys.moveHere(minecraft, key))));
+		}
+		if (moved != null) Ui.centered(g, Ui.fit(moved, pw - 30), px + pw / 2, py + ph - 18, Ui.ACCENT_LIGHT);
 	}
 
 	/** Points friends shared for another server or world: accept (into that world's list) or drop. */
@@ -162,7 +275,7 @@ public class WaypointsScreen extends Screen {
 			int y = top + (i - scroll) * ROW, rx = px + 10, rw = pw - 20;
 			Ui.round(g, rx, y, rw, ROW - 3, 4, Ui.CARD);
 			Ui.icon(g, "m-waypoints", rx + 6, y + 5, 9, Ui.ACCENT_LIGHT);
-			Component where = Ui.tr("slashclient-hud.share.fromWhere", r.from, dev.slash3rss.slashclient.hud.social.SharedWaypoints.worldName(r.world));
+			Component where = Ui.tr("slashclient-hud.share.fromWhere", r.from, dev.slash3rss.slashclient.hud.social.SharedWaypoints.worldName(r.world, r.mode));
 			int ww = Math.min(Ui.width(where), rw / 2 - 30);
 			Ui.draw(g, Ui.fit(Ui.bold(r.name), rw - 80 - ww), rx + 22, y + 6, Ui.TEXT);
 			Ui.draw(g, Ui.fit(where, ww), rx + rw - 54 - ww, y + 6, Ui.MUTED);
@@ -213,7 +326,7 @@ public class WaypointsScreen extends Screen {
 	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
 	//$ 	KeyEvent e = new KeyEvent(keyCode, scanCode, modifiers);
 	//#endif
-		if ((e.key() == InputConstants.KEY_RETURN || e.key() == InputConstants.KEY_NUMPADENTER) && name.isFocused() && !received) {
+		if ((e.key() == InputConstants.KEY_RETURN || e.key() == InputConstants.KEY_NUMPADENTER) && name.isFocused() && !received && !moving) {
 			add();
 			return true;
 		}

@@ -26,6 +26,7 @@ describe('parties and shared waypoints in the launcher', () => {
   it('describes where a shared waypoint is', () => {
     const w = { name: 'Baza', x: 1, y: 2, z: 3, dimension: 'minecraft:the_nether', world: 'server:skyup.pl' };
     assert.equal(waypointWorld(w), 'skyup.pl');
+    assert.equal(waypointWorld({ ...w, mode: 'AnyBlock · S3 (Wyspy)' }), 'skyup.pl · AnyBlock · S3 (Wyspy)');
     assert.equal(waypointDimension(w), 'Nether');
     assert.equal(waypointDimension({ ...w, dimension: 'mymod:moon' }), 'mymod:moon');
     assert.match(waypointWorld({ ...w, world: 'world:Nowy świat' }), /Nowy świat/);

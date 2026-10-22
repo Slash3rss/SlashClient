@@ -457,7 +457,7 @@ public final class ExtraModules {
 			// waypoints of this world as coloured marks over the strip
 			if (mc.player != null && mc.level != null && cfg.waypoints) {
 				String dim = Waypoints.dimension(mc);
-				for (Waypoints.Point p : Waypoints.here(mc)) {
+				for (Waypoints.Point p : Waypoints.points(mc)) {
 					if (!p.visible || !dim.equals(p.dimension)) continue;
 					double dx = p.x + 0.5 - mc.player.getX(), dz = p.z + 0.5 - mc.player.getZ();
 					float bearing = (float) Math.toDegrees(Math.atan2(dx, -dz));
