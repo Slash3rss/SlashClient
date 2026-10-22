@@ -914,6 +914,7 @@
 	"slashclient-hud.dungeon.zoom": "Zoom",
 	"slashclient-hud.dungeon.follow": "Follow the player (you in the middle)",
 	"slashclient-hud.dungeon.size": "Map size",
+	"slashclient-hud.dungeon.scanRange": "Terrain read range (blocks)",
 	"slashclient-hud.dungeon.title": "\"Dungeon · level\" title",
 	"slashclient-hud.dungeon.progress": "Progress to the next level",
 	"slashclient-hud.dungeon.plan": "Whole layout from the map above the dungeon (unseen rooms dimmed)",

@@ -133,6 +133,8 @@ public final class HudConfig {
 	public boolean dungeonTitle = true;
 	/** The dungeon map's size on screen, in pixels (80–240): more map, the text and icons as they are. */
 	public int dungeonSize = 120;
+	/** How far around the player the dungeon's floor is read for the map (blocks; DungeonMap.MIN_RANGE–MAX_RANGE). */
+	public int dungeonScanRange = 96;
 	/** Rooms not seen yet drawn from the map SkyUp builds above the dungeon. */
 	public boolean dungeonPlan = false;
 	/** Progress to the next level (the boss bar's fill) on the dungeon map. */
@@ -565,6 +567,7 @@ public final class HudConfig {
 		dungeonPlayers = other.dungeonPlayers;
 		dungeonTitle = other.dungeonTitle;
 		dungeonSize = other.dungeonSize;
+		dungeonScanRange = Math.max(32, Math.min(128, other.dungeonScanRange));
 		dungeonPlan = other.dungeonPlan;
 		dungeonProgress = other.dungeonProgress;
 		dungeonSelfHead = other.dungeonSelfHead;

@@ -914,6 +914,7 @@
 	"slashclient-hud.dungeon.zoom": "Przybliżenie",
 	"slashclient-hud.dungeon.follow": "Śledź gracza (ty na środku)",
 	"slashclient-hud.dungeon.size": "Rozmiar mapy",
+	"slashclient-hud.dungeon.scanRange": "Zasięg odczytu terenu (bloki)",
 	"slashclient-hud.dungeon.title": "Napis „Dungeon · poziom”",
 	"slashclient-hud.dungeon.progress": "Postęp do następnego poziomu",
 	"slashclient-hud.dungeon.plan": "Cały układ z mapki nad dungeonem (nieodkryte pokoje przyciemnione)",

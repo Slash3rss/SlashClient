@@ -111,6 +111,8 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.dungeon.plan", () -> cfg.dungeonPlan, v -> cfg.dungeonPlan = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.blockColors", () -> cfg.dungeonBlockColors, v -> cfg.dungeonBlockColors = v));
 					settings.add(new Slider("slashclient-hud.dungeon.size", 80f, 240f, 10f, "%.0f px", () -> (float) cfg.dungeonSize, v -> cfg.dungeonSize = Math.round(v)));
+					settings.add(new Slider("slashclient-hud.dungeon.scanRange", dev.slash3rss.slashclient.hud.DungeonMap.MIN_RANGE, dev.slash3rss.slashclient.hud.DungeonMap.MAX_RANGE, 8f, "%.0f",
+						() -> (float) cfg.dungeonScanRange, v -> cfg.dungeonScanRange = Math.round(v)));
 					settings.add(new Toggle("slashclient-hud.dungeon.title", () -> cfg.dungeonTitle, v -> cfg.dungeonTitle = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.progress", () -> cfg.dungeonProgress, v -> cfg.dungeonProgress = v));
 					settings.add(new Choice("slashclient-hud.set.shape", new String[] { "square", "circle" }, "slashclient-hud.dungeon.shape.",

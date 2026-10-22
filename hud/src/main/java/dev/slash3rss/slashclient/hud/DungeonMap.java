@@ -38,8 +38,14 @@ import java.util.regex.Pattern;
 public final class DungeonMap implements HudModule {
 	/** The blocks the map can hold, around where the dungeon was entered. */
 	private static final int SIZE = 256;
-	/** How far around the player the floor is read, each half second. */
-	private static final int RADIUS = 36;
+	/**
+	 * The floor is read in two rings: close by (NEAR) all of it every half second, so a broken pot or
+	 * a mined ore shows at once; further out, as far as the setting says (MIN_RANGE–MAX_RANGE: the map
+	 * fills in as far as the game has the dungeon loaded), a few hundred columns each tick.
+	 */
+	private static final int NEAR = 36, NEAR_TICKS = 10;
+	public static final int MIN_RANGE = 32, MAX_RANGE = 128;
+	private static final int FAR_COLUMNS_PER_TICK = 320;
 	private static final int UNKNOWN = 0, WALL = 0xFF0E131C;
 	private static final Pattern LEVEL = Pattern.compile("Dungeon\\s+poz\\.?\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
 
@@ -62,9 +68,8 @@ public final class DungeonMap implements HudModule {
 	private static int groundY;
 	private static boolean grounded;
 	private static final int BELOW = 21, ABOVE = 14;
-	/** The floor is read over this many ticks, a slice each. */
-	private static final int SCAN_TICKS = 10;
-	private static int scanRow;
+	/** Which slice of rows each ring reads next. */
+	private static int scanRow, farRow;
 	private static int tick;
 	private static String dungeonLevel = "";
 	/** The boss bar's fill: progress to the next level (0–1), or -1 when not known. */
@@ -358,37 +363,59 @@ public final class DungeonMap implements HudModule {
 		// loot is counted in all of a room: from 21 blocks below the start room's floor to 14 above it
 		int low = groundY - BELOW, high = groundY + ABOVE;
 		int near = at == Integer.MIN_VALUE ? py : at;
-		// a slice of the rows each tick, all of them every SCAN_TICKS ticks
-		int rows = (RADIUS * 2 + 1 + SCAN_TICKS - 1) / SCAN_TICKS;
-		int from = cx - RADIUS + scanRow * rows;
-		scanRow = (scanRow + 1) % SCAN_TICKS;
-		for (int x = from; x < from + rows && x <= cx + RADIUS; x++) {
-			for (int z = cz - RADIUS; z <= cz + RADIUS; z++) {
-				int ix = x - originX, iz = z - originZ;
-				if (ix < 0 || iz < 0 || ix >= SIZE || iz >= SIZE) continue;
-				if (!world.hasChunk(x >> 4, z >> 4)) continue;
-				DungeonRooms.scanColumn(world, pos, x, low - 1, high + 3, z);
-				// drawn as seen near the player's height: a place to stand a couple of blocks up or down
-				int color = WALL;
-				for (int dy = -2; dy <= 2; dy++) {
-					int y = near + dy;
-					if (solid(world, pos.set(x, y - 1, z)) && !solid(world, pos.set(x, y, z)) && !solid(world, pos.set(x, y + 1, z))) {
-						color = floorColor(world.getBlockState(pos.set(x, y - 1, z)).getMapColor(world, pos).col);
-						break;
-					}
-				}
-				// columns of nothing at all (outside the dungeon, open sky below) stay unknown
-				if (color == WALL && !anySolid(world, pos, x, near, z)) continue;
-				if (image.getPixel(ix, iz) != color) {
-					image.setPixel(ix, iz, color);
-				}
-				cell[iz * SIZE + ix] = (byte) (color == WALL ? 1 : 2);
-				minX = Math.min(minX, ix);
-				minZ = Math.min(minZ, iz);
-				maxX = Math.max(maxX, ix);
-				maxZ = Math.max(maxZ, iz);
+		// close by: a slice of the rows each tick, all of them every NEAR_TICKS ticks
+		int nearRows = (NEAR * 2 + 1 + NEAR_TICKS - 1) / NEAR_TICKS;
+		int nearFrom = cx - NEAR + scanRow * nearRows;
+		scanRow = (scanRow + 1) % NEAR_TICKS;
+		for (int x = nearFrom; x < nearFrom + nearRows && x <= cx + NEAR; x++) {
+			for (int z = cz - NEAR; z <= cz + NEAR; z++) column(world, pos, x, z, low, high, near);
+		}
+		// further out: what the near ring does not cover, from the player's own slice outwards (middle,
+		// one left, one right…) so the nearest part shows first; 96 blocks take about five seconds
+		int radius = Math.max(MIN_RANGE, Math.min(MAX_RANGE, SlashHud.config.dungeonScanRange));
+		if (radius <= NEAR) return;
+		int side = radius * 2 + 1;
+		int ticks = Math.max(1, (side * side - (NEAR * 2 + 1) * (NEAR * 2 + 1) + FAR_COLUMNS_PER_TICK - 1) / FAR_COLUMNS_PER_TICK);
+		int rows = (side + ticks - 1) / ticks;
+		if (farRow >= ticks) farRow = 0;
+		int middle = ticks / 2;
+		int slice = farRow % 2 == 0 ? middle + farRow / 2 : middle - (farRow + 1) / 2;
+		int from = cx - radius + Math.floorMod(slice, ticks) * rows;
+		farRow = (farRow + 1) % ticks;
+		for (int x = from; x < from + rows && x <= cx + radius; x++) {
+			boolean nearX = Math.abs(x - cx) <= NEAR;
+			for (int z = cz - radius; z <= cz + radius; z++) {
+				if (nearX && Math.abs(z - cz) <= NEAR) continue;
+				column(world, pos, x, z, low, high, near);
 			}
 		}
+	}
+
+	/** One column of the floor: its loot for the rooms, and its colour on the map (`near`: the height it is seen at). */
+	private static void column(ClientLevel world, BlockPos.MutableBlockPos pos, int x, int z, int low, int high, int near) {
+		int ix = x - originX, iz = z - originZ;
+		if (ix < 0 || iz < 0 || ix >= SIZE || iz >= SIZE) return;
+		if (!world.hasChunk(x >> 4, z >> 4)) return;
+		DungeonRooms.scanColumn(world, pos, x, low - 1, high + 3, z);
+		// drawn as seen near the player's height: a place to stand a couple of blocks up or down
+		int color = WALL;
+		for (int dy = -2; dy <= 2; dy++) {
+			int y = near + dy;
+			if (solid(world, pos.set(x, y - 1, z)) && !solid(world, pos.set(x, y, z)) && !solid(world, pos.set(x, y + 1, z))) {
+				color = floorColor(world.getBlockState(pos.set(x, y - 1, z)).getMapColor(world, pos).col);
+				break;
+			}
+		}
+		// columns of nothing at all (outside the dungeon, open sky below) stay unknown
+		if (color == WALL && !anySolid(world, pos, x, near, z)) return;
+		if (image.getPixel(ix, iz) != color) {
+			image.setPixel(ix, iz, color);
+		}
+		cell[iz * SIZE + ix] = (byte) (color == WALL ? 1 : 2);
+		minX = Math.min(minX, ix);
+		minZ = Math.min(minZ, iz);
+		maxX = Math.max(maxX, ix);
+		maxZ = Math.max(maxZ, iz);
 	}
 
 	private static boolean anySolid(ClientLevel world, BlockPos.MutableBlockPos pos, int x, int cy, int z) {
