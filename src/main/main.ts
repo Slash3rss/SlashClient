@@ -24,6 +24,7 @@ import { groupAad, openGroupMessage, sealGroupText, type GroupChatMessage, type 
 import { ClanLogoCache, isLogoPng } from './clanLogo';
 import { RankIconCache } from './rankIcons';
 import { fitSize, ImageCache, keyText, MAX_BYTES, openImage, parseKey, sealImage, type ChatImageView, type ImageKey } from './chatImages';
+import { removedText, thumbnail, ThumbCache, type MediaItem, type RemovedImage } from './chatMedia';
 import { launch, resolveVersionId } from './launch';
 import { paths } from './paths';
 import { loadStore, newProfile, orphanProfiles, profileGameDir, saveStore, secrets, setSecretCodec, storeRecovered, type MicrosoftAccount, type Profile, type Settings, type StoreData } from './store';
@@ -1986,7 +1987,13 @@ async function sealText(to: string, text: string): Promise<string> {
   return encrypt(text, own, devices, `${me}|${to}`);
 }
 
+/** A message as the page and the game get it; one whose picture was taken down or ran out says so (0.9.36+). */
 function openMessage(m: ChatMessage): ChatMessage {
+  const opened = openMessageText(m);
+  const gone = opened.image ? undefined : removedText((m as { imageRemoved?: RemovedImage }).imageRemoved, t);
+  return gone ? { ...opened, text: gone } : opened;
+}
+function openMessageText(m: ChatMessage): ChatMessage {
   if (m.image) m = { ...m, image: openImageKey(m.image, `${m.from}|${m.to}`) };
   if (!isEncrypted(m.text)) return m;
   const text = decrypt(m.text, chatKey(), `${m.from}|${m.to}`);
@@ -2011,7 +2018,9 @@ async function sealGroup(group: string, text: string): Promise<string> {
 function openGroup<T extends GroupChatMessage>(m: T): T {
   const opened = openGroupMessage(m, chatKey(), t('Wiadomość zaszyfrowana dla innego urządzenia.'));
   const image = (m as { image?: unknown }).image;
-  return image ? { ...opened, image: openImageKey(image, groupAad(m.group, m.from)) } : opened;
+  if (image) return { ...opened, image: openImageKey(image, groupAad(m.group, m.from)) };
+  const gone = removedText((m as { imageRemoved?: RemovedImage }).imageRemoved, t);
+  return gone ? { ...opened, text: gone } : opened;
 }
 // ---------- pictures in the chat (chatImages.ts): encrypted here, the key inside the message ----------
 
@@ -2148,6 +2157,25 @@ handle('social:communityImage', (communityId: string, id: string) => socialCall(
   return `data:image/jpeg;base64,${(await communityImageData(communityId, id)).toString('base64')}`;
 }));
 
+/** Small thumbnails for the Multimedia panel (chatMedia.ts): made here from the decrypted picture, kept a while. */
+const thumbs = new ThumbCache();
+async function thumbOf(cacheId: string, data: () => Promise<Buffer>): Promise<string> {
+  const kept = thumbs.get(cacheId);
+  if (kept) return kept;
+  const url = thumbnail(await data());
+  if (!url) throw new SocialError('not_an_image');
+  thumbs.set(cacheId, url);
+  return url;
+}
+handle('social:imageThumb', (id: string) => socialCall(async () => {
+  if (typeof id !== 'string' || !/^[\w-]{22}$/.test(id)) throw new SocialError('bad_request');
+  return thumbOf(id, () => chatImageData(id));
+}));
+handle('social:communityImageThumb', (communityId: string, id: string) => socialCall(async () => {
+  if (typeof communityId !== 'string' || !/^[\w-]{1,32}$/.test(communityId) || typeof id !== 'string' || !/^[\w-]{22}$/.test(id)) throw new SocialError('bad_request');
+  return thumbOf(`c:${id}`, () => communityImageData(communityId, id));
+}));
+
 /** A picture from the chat for the page, as a data: address. */
 handle('social:image', (id: string) => socialCall(async () => {
   if (typeof id !== 'string' || !/^[\w-]{22}$/.test(id)) throw new SocialError('bad_request');
@@ -2179,6 +2207,12 @@ handle('social:rankIcon', (apiPath: string) => socialCall(() => rankIcons.get(ap
 async function chatCall(method: string, apiPath: string, body?: unknown) {
   // a community's chat is kept on the server as it is (not end-to-end encrypted: see the server's communityStore.ts)
   if (apiPath.startsWith('/v1/communities')) return social.call(method, apiPath, body);
+  // the Multimedia panel (0.9.36+): each picture's key opened as in its conversation
+  if (method === 'GET' && /^\/v1\/(messages|groups)\/[\w-]+\/media(\?.*)?$/.test(apiPath)) {
+    const res = await social.call<{ media?: MediaItem[] }>(method, apiPath, body);
+    const media = (res?.media ?? []).map((m) => ({ ...m, image: openImageKey(m.image, m.group ? groupAad(m.group, m.from) : `${m.from}|${m.to}`) }));
+    return { ...res, media };
+  }
   // a new message, or an edited one (server 0.9.23+): the new text is sealed exactly like a new message
   const send = /^\/v1\/messages\/([\w-]+)(\/\d+\/edit)?$/.exec(apiPath);
   if (method === 'POST' && send && body && typeof (body as { text?: unknown }).text === 'string') {

@@ -11,7 +11,8 @@ import { control, el, icon, modalWindow } from './dialog';
  * launchers see the message's text instead ("[Zdjęcie]", or the question with the options).
  */
 
-export interface CommunityImage { id: string; w: number; h: number; size: number; expired?: boolean }
+/** `removed`: taken down by its sender or a moderator (0.9.36+; `expired` then too, for older launchers). */
+export interface CommunityImage { id: string; w: number; h: number; size: number; expired?: boolean; removed?: boolean }
 export interface Poll {
   question: string; options: { text: string; votes: number }[]; multiple: boolean; voters: number;
   endsAt?: number; closed?: boolean; closedAt?: number;
@@ -94,7 +95,7 @@ export function createCommunityMedia(deps: { api: Api; toast: (message: string, 
   function pictureCard(community: string, image: CommunityImage, mine: boolean): HTMLElement {
     const card = el('div', { className: `fr-bubble fr-image fr-com-image${mine ? ' mine' : ''}` });
     if (image.expired || !api.socialCommunityImage) {
-      card.append(icon('fa-image'), el('span', { textContent: image.expired ? t('Zdjęcie wygasło i zniknęło z serwera.') : t('Zdjęcie') }));
+      card.append(icon('fa-image'), el('span', { textContent: image.removed ? t('Zdjęcie usunięte') : image.expired ? t('Zdjęcie wygasło i zniknęło z serwera.') : t('Zdjęcie') }));
       card.classList.add('unreadable');
       return card;
     }

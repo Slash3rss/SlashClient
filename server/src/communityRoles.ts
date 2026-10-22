@@ -127,10 +127,10 @@ export const offensiveName = (name: string) => offensive(name);
  * and channels, and members coming and going. Anything else (new kinds) shows under "all".
  */
 export const LOG_GROUPS: Record<string, string[]> = {
-  moderation: ['kick', 'ban', 'unban', 'mute', 'unmute', 'message_delete', 'report_delete', 'report_dismiss', 'admin_report_delete', 'admin_report_dismiss', 'pin', 'unpin', 'poll_close'],
+  moderation: ['kick', 'ban', 'unban', 'mute', 'unmute', 'message_delete', 'report_delete', 'report_dismiss', 'admin_report_delete', 'admin_report_dismiss', 'pin', 'unpin', 'poll_close', 'image_delete'],
   roles: ['role', 'transfer', 'heir', 'admin_transfer', 'role_create', 'role_edit', 'role_delete', 'role_order', 'member_role'],
   settings: ['create', 'edit', 'logo', 'logo_remove', 'admin_logo_remove', 'admin_description_remove', 'slowmode', 'channel_create', 'channel_edit', 'channel_delete', 'channel_order',
-    'link_create', 'link_revoke', 'server', 'admin_verify', 'admin_unverify'],
+    'link_create', 'link_revoke', 'server', 'admin_verify', 'admin_unverify', 'media_limits'],
   members: ['join', 'leave', 'accept', 'decline', 'invite', 'link_join'],
 };
 

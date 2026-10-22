@@ -176,6 +176,9 @@ const api = {
   socialSendGroupImage: (groupId: string, pasted?: Uint8Array) => invoke('social:sendGroupImage', groupId, pasted),
   socialSendCommunityImage: (communityId: string, channelId: string, pasted?: Uint8Array) => invoke('social:sendCommunityImage', communityId, channelId, pasted),
   socialCommunityImage: (communityId: string, id: string) => invoke('social:communityImage', communityId, id),
+  // the Multimedia panel's thumbnails (decrypted here, small)
+  socialImageThumb: (id: string) => invoke('social:imageThumb', id),
+  socialCommunityImageThumb: (communityId: string, id: string) => invoke('social:communityImageThumb', communityId, id),
   /** A picture from the chat as a data: address. */
   socialImage: (id: string) => invoke('social:image', id),
   /** A clan's logo: the owner's new one (a 64×64 PNG the page made), and one to show as a data: address. */

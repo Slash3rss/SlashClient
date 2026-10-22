@@ -22,6 +22,7 @@ import { MANUAL_EN } from './i18nManual';
 import { SERVER_VOTES_EN } from './i18nServerVotes';
 import { WIZARD_EN } from './i18nWizard';
 import { SUGGESTIONS_EN } from './i18nSuggestions';
+import { CHAT_MEDIA_EN } from './i18nChatMedia';
 
 export type Lang = 'pl' | 'en';
 
@@ -66,6 +67,8 @@ const EN: Record<string, string> = {
   ...WIZARD_EN,
   // friend suggestions from players met recently (own file)
   ...SUGGESTIONS_EN,
+  // the Multimedia panel of chats and the shared chats' media limits (own file)
+  ...CHAT_MEDIA_EN,
   // navigation and common
   'Graj': 'Play',
   'GRAJ': 'PLAY',

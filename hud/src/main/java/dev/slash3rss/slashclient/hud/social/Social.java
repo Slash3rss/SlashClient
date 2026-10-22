@@ -601,6 +601,7 @@ public final class Social {
 			} catch (Exception e) {
 				String msg = e.getMessage() == null ? "" : e.getMessage();
 				String key = msg.contains("no_keys") ? "slashclient-hud.picture.noKeys" : msg.contains("image_quota") ? "slashclient-hud.picture.quota"
+					: msg.contains("chat_media_full") ? "slashclient-hud.picture.chatFull" : msg.contains("chat_media_daily") ? "slashclient-hud.picture.chatDaily"
 					: msg.contains("too_large") ? "slashclient-hud.picture.tooLarge" : "slashclient-hud.picture.failed";
 				// too many in a row: how long to wait
 				toast(Component.translatable("slashclient-hud.picture.notSent").getString(), msg.contains("slow_down") ? errorText(e) : Component.translatable(key).getString(), "info");

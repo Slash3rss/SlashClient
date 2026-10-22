@@ -1,6 +1,7 @@
 import { BURST_LIMITS, COUNTED_PER_DAY, EDIT_WINDOW_MS } from './chatLimits.ts';
 import { CHALLENGE_SETTING_DEFS } from './challenges.ts';
 import { IMAGE_LIMITS } from './chatImages.ts';
+import { chatMediaSettingDefs } from './chatMediaLimits.ts';
 import { MAX_LOGO_BYTES } from './clanLogos.ts';
 import { BLOCKED_TAGS, BLOCKED_WORDS, CLAN_LIMITS } from './clans.ts';
 import { COMMUNITY_LIMITS } from './communityStore.ts';
@@ -31,6 +32,7 @@ export const CATEGORIES: { id: SettingCategory; label: string; labelEn: string }
   { id: 'banner', label: 'Komunikat', labelEn: 'Announcement' },
   { id: 'chat', label: 'Czat', labelEn: 'Chat' },
   { id: 'media', label: 'Zdjęcia i klipy', labelEn: 'Pictures and clips' },
+  { id: 'chatMedia', label: 'Multimedia w czatach', labelEn: 'Chat media' },
   { id: 'cloud', label: 'Profile w chmurze', labelEn: 'Cloud profiles' },
   { id: 'clans', label: 'Klany', labelEn: 'Clans' },
   { id: 'groups', label: 'Grupy', labelEn: 'Groups' },
@@ -84,7 +86,7 @@ export const SETTING_DEFS: SettingDef[] = [
     bytes('chatImages.maxBytes', 'Największe zdjęcie w czacie', 'Largest chat picture', IMAGE_LIMITS.maxBytes, 'Zaszyfrowane zdjęcie w wiadomości.', 64 * 1024, 50 * MB),
     { key: 'chatImages.perDay', label: 'Zdjęć w czacie dziennie', labelEn: 'Chat pictures a day', description: 'Na konto.', type: 'int', default: IMAGE_LIMITS.perDay, min: 1, max: 10_000 },
     bytes('chatImages.bytesPerDay', 'Rozmiar zdjęć w czacie dziennie', 'Chat pictures\' size a day', IMAGE_LIMITS.bytesPerDay, 'Na konto.', 1 * MB, 100 * 1024 * MB),
-    { key: 'chatImages.days', label: 'Przechowywanie zdjęć z czatu', labelEn: 'Chat pictures kept', description: 'Po tylu dniach zdjęcie znika z serwera (wiadomość zostaje).', type: 'duration', default: IMAGE_LIMITS.days, min: 1, max: 3650, unit: 'dni', risky: true },
+    { key: 'chatImages.days', label: 'Przechowywanie zdjęć z czatu', labelEn: 'Chat pictures kept', description: 'Rozmowy prywatne: po tylu dniach zdjęcie znika z serwera (wiadomość zostaje). Grupy, klany i społeczności mają swoje w „Multimedia w czatach”.', type: 'duration', default: IMAGE_LIMITS.days, min: 1, max: 3650, unit: 'dni', risky: true },
     rate('chatImages.uploadsPerMinute', 'Wysyłanie zdjęć w czacie na minutę', 'Chat picture uploads per minute', 10, 'Na konto.'),
     rate('chatImages.downloadsPerMinute', 'Pobrania zdjęć z czatu na minutę', 'Chat picture downloads per minute', 120, 'Na konto.'),
   ]),
@@ -144,11 +146,14 @@ export const SETTING_DEFS: SettingDef[] = [
   ]),
 
   // pictures in communities' chats (communityMedia.ts): not encrypted, kept on the server as JPEG
-  ...group('communities', [
+  ...group('chatMedia', [
     bytes('communities.imageBytes', 'Największe zdjęcie w społeczności', 'Largest community picture', COMMUNITY_MEDIA_LIMITS.imageBytes, 'JPEG bez metadanych (launcher zmniejsza zrzuty do 1920 px).', 64 * 1024, 50 * MB),
     { key: 'communities.imagesPerDay', label: 'Zdjęć w społecznościach dziennie', labelEn: 'Community pictures a day', description: 'Na konto, we wszystkich społecznościach razem.', type: 'int', default: COMMUNITY_MEDIA_LIMITS.imagesPerDay, min: 0, max: 10_000 },
     { key: 'communities.imageDays', label: 'Przechowywanie zdjęć ze społeczności', labelEn: 'Community pictures kept', description: 'Po tylu dniach zdjęcie znika z serwera (wiadomość zostaje z napisem, że wygasło).', type: 'duration', default: COMMUNITY_MEDIA_LIMITS.imageDays, min: 1, max: 3650, unit: 'dni', risky: true },
   ]),
+
+  // limits of pictures in group, clan and community chats: each chat's store, keeping time, size and pictures per member a day (chatMediaLimits.ts)
+  ...group('chatMedia', chatMediaSettingDefs()),
 
   ...group('sparks', [
     { key: 'sparks.messagesPerDay', label: 'Wiadomości liczone dziennie', labelEn: 'Messages counted a day', description: 'Do osiągnięć za wiadomości liczy się najwyżej tyle wiadomości dziennie (UTC).', type: 'int', default: COUNTED_PER_DAY, min: 0, max: 10_000 },

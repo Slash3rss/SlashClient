@@ -6,6 +6,8 @@ import { disabledText, featureOn } from './features';
 import { channelClosed, channelsWindow, communityCan, customRolePick, logWindow as moderationLog, roleChip, rolesWindow, type ChannelAccess, type CustomRole, type ManageDeps, type RoleTag } from './communityRoles';
 import { createCommunityLinks, linkLogName, type CommunityServer } from './communityLinks';
 import { createCommunityMedia, keepMyVotes, type CommunityImage, type Poll } from './communityMedia';
+import { openMediaPanel } from './chatMediaPanel';
+import { communitySource } from './chatMediaSources';
 
 /**
  * Communities ("Społeczności") in the Friends view: like a clan but big (up to a thousand players),
@@ -177,6 +179,8 @@ interface Deps {
     pingServer?: (address: string) => Promise<any>;
     socialSendCommunityImage?: (communityId: string, channelId: string, pasted?: Uint8Array) => Promise<any>;
     socialCommunityImage?: (communityId: string, id: string) => Promise<string>;
+    /** The Multimedia panel's thumbnails, and pushed events while it is open. */
+    socialCommunityImageThumb?: (communityId: string, id: string) => Promise<string>; on?: (channel: string, fn: (payload: any) => void) => () => void;
   };
   toast: (message: string, isError?: boolean) => void;
   errorText: (err: unknown) => string;
@@ -755,6 +759,10 @@ export function createCommunities(deps: Deps) {
     }
     if (!m.image) items.push({ label: t('Kopiuj'), icon: 'fa-copy', run: () => void navigator.clipboard.writeText(m.poll ? [m.poll.question, ...m.poll.options.map((o) => `• ${o.text}`)].join('\n') : m.text).then(() => deps.toast(t('Skopiowano'))) });
     if (communityCan(c, 'pin')) items.push({ label: m.pinned ? t('Odepnij') : t('Przypnij'), icon: m.pinned ? 'fa-thumbtack-slash' : 'fa-thumbtack', run: () => void setPinned(m, !m.pinned) });
+    // the picture alone, the message kept (server 0.9.36+)
+    if (m.image && !m.image.expired && (mine || communityCan(c, 'deleteMessage', { role: m.author.role ?? 'member', customRole: m.author.customRole }))) {
+      items.push({ label: mine ? t('Usuń zdjęcie') : t('Usuń zdjęcie (moderacja)'), icon: 'fa-image', danger: true, run: () => void removePicture(m, !mine) });
+    }
     if (mine || communityCan(c, 'deleteMessage', { role: m.author.role ?? 'member', customRole: m.author.customRole })) {
       items.push({ label: mine ? t('Usuń') : t('Usuń (moderacja)'), icon: 'fa-trash', danger: true, run: () => void deleteMessage(m, !mine) });
     }
@@ -778,6 +786,33 @@ export function createCommunities(deps: Deps) {
     if (!ok) return;
     const res = await act(() => api.socialApi('DELETE', `/v1/communities/${m.community}/channels/${m.channel}/messages/${m.id}`));
     if (res?.message) replaced(res.message);
+  }
+
+  /** Takes a message's picture down (the message stays with "Zdjęcie usunięte"); someone else's goes to the moderation log. */
+  async function removePicture(m: CommunityMessage, theirs: boolean) {
+    const ok = await confirmDialog({
+      title: t('Usunąć zdjęcie?'),
+      body: [el('p', { className: 'muted', textContent: theirs ? t('Zdjęcie od {0} zniknie u wszystkich w społeczności, wiadomość zostanie. Trafi to do dziennika moderacji.', m.author.name) : t('Zniknie u wszystkich w społeczności, a wiadomość zostanie z napisem „Zdjęcie usunięte”. Tego nie da się cofnąć.') })],
+      ok: t('Usuń'), danger: true,
+    });
+    if (ok) await act(() => api.socialApi('DELETE', `/v1/communities/${m.community}/channels/${m.channel}/messages/${m.id}/image`));
+  }
+
+  /** The Multimedia panel of the open channel (chatMediaPanel.ts): pictures taken down by whoever may delete their sender's messages. */
+  function openMedia(c: Community, ch: { id: string; name: string }) {
+    openMediaPanel(communitySource({
+      api, community: { id: c.id, name: c.name }, channel: { id: ch.id, name: ch.name }, me,
+      mayModerate: (item) => {
+        const author = (item as { author?: { role?: CommunityRole; customRole?: RoleTag } }).author;
+        return communityCan(c, 'deleteMessage', { role: author?.role ?? 'member', customRole: author?.customRole });
+      },
+      messages: () => chats.get(ch.id)?.messages ?? [],
+      jump: (id) => {
+        const go = () => void jumpTo(id);
+        if (open?.channel !== ch.id) void select(c.id, ch.id).then(go);
+        else go();
+      },
+    }), { api, toast: deps.toast, errorText: deps.errorText });
   }
 
   function reportWindow(m: CommunityMessage) {
@@ -819,6 +854,8 @@ export function createCommunities(deps: Deps) {
     button('fa-thumbtack', t('Przypięte wiadomości'), () => pinsWindow(c), pins, ' fr-pins-btn');
     button(c.notify === 'none' ? 'fa-bell-slash' : 'fa-bell', t('Powiadomienia'), (b) => notifyMenu(c, b), 0, c.notify === 'all' ? ' on' : '');
     // a poll in this channel, for those who may write here (server 0.9.30+)
+    // the channel's pictures (server 0.9.36+: one that knows pictures)
+    if (limits.imageBytes && openChannel) later('fa-photo-film', t('Multimedia'), () => openMedia(c, { id: openChannel.id, name: channelName(openChannel) }));
     if (limits.pollOptions && composerState().canPost) later('fa-square-poll-horizontal', t('Nowa ankieta'), () => media.pollWindow((poll) => sendPoll(poll), limits.pollOptions));
     if (communityCan(c, 'requests') && c.joinMode === 'request' || (c.pending ?? 0) > 0) later('fa-user-clock', t('Prośby o dołączenie'), () => requestsWindow(c), c.pending ?? 0);
     if (communityCan(c, 'reports')) later('fa-flag', t('Zgłoszenia'), () => reportsWindow(c), c.reports ?? 0);

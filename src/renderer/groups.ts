@@ -3,6 +3,8 @@ import { logoFromFile, logoUrl, stageLogo } from './clanLogo';
 import { confirmDialog, control, el, icon, modalWindow } from './dialog';
 import { canDelete, canEdit, editHint, editedLabel, replaceMessage, tombstone, withMenu, type MenuItem, type Moderator } from './chatEdits';
 import { disabledText, featureOn } from './features';
+import { openMediaPanel, removedCard, revealMessage } from './chatMediaPanel';
+import { groupSource } from './chatMediaSources';
 
 /**
  * Group chats and clans in the Friends view. Groups are conversations with several friends
@@ -17,7 +19,7 @@ export interface GroupEvent { kind: 'created' | 'added' | 'removed' | 'left' | '
 /** A picture in a message, as the main process opened it (no key here: the page gets it by id). */
 export interface GroupImage { id: string; w?: number; h?: number; size?: number; unreadable?: boolean }
 /** `editedAt`, `deleted`: changed by the author, or taken back by them or a moderator (server 0.9.23+). */
-export interface GroupMessage { id: number; group: string; from: string; text: string; at: number; event?: GroupEvent; encrypted?: boolean; unreadable?: boolean; image?: GroupImage; editedAt?: number; deleted?: boolean }
+export interface GroupMessage { id: number; group: string; from: string; text: string; at: number; event?: GroupEvent; encrypted?: boolean; unreadable?: boolean; image?: GroupImage; editedAt?: number; deleted?: boolean; imageRemoved?: { at: number; expired?: boolean; by?: string } }
 export interface Group {
   id: string; name: string; owner: string; createdAt: number; clan?: { id: string; tag: string; logo?: number };
   members: (Person & { joinedAt: number })[]; unread: number; lastMessageAt: number;
@@ -80,6 +82,8 @@ export const roleText = (r: ClanRole) => ({ owner: t('Założyciel'), officer: t
 interface Deps {
   api: {
     socialApi: (method: string, path: string, body?: unknown) => Promise<any>; socialSendGroupImage?: (groupId: string, pasted?: Uint8Array) => Promise<any>; notify?: (title: string, body: string, target?: unknown) => Promise<unknown>;
+    /** The Multimedia panel's pictures (decrypted in the main process). */
+    socialImage?: (id: string) => Promise<string>; socialImageThumb?: (id: string) => Promise<string>; on?: (channel: string, fn: (payload: any) => void) => () => void;
     /** A clan's logo (clanLogo.ts): the owner's new one, and one to show (a data: address). */
     socialSetClanLogo?: (png: Uint8Array) => Promise<any>; socialClanLogo?: (id: string, version: number) => Promise<string>;
   };
@@ -306,6 +310,8 @@ export function createGroups(deps: Deps) {
     }
     // in our clan's chat an officer may delete plain members' messages (and of those who left)
     const role = g.clan && clan?.chat === g.id ? clan.members.find((x) => x.id === m.from)?.role : undefined;
+    // the picture alone, the message kept (server 0.9.36+)
+    if (m.image && canDelete(m, me, chat.editWindowMs, chat.moderator, role)) items.push({ label: m.from === me ? t('Usuń zdjęcie') : t('Usuń zdjęcie (moderacja)'), icon: 'fa-image', danger: true, run: () => void removePicture(m) });
     if (canDelete(m, me, chat.editWindowMs, chat.moderator, role)) {
       const theirs = m.from !== me;
       items.push({ label: theirs ? t('Usuń (moderacja)') : t('Usuń'), icon: 'fa-trash', danger: true, run: () => void deleteMessage(m, theirs) });
@@ -333,6 +339,34 @@ export function createGroups(deps: Deps) {
     if (res?.message) replaced(res.message);
   }
 
+  /** Takes a message's picture down (the message stays with "Zdjęcie usunięte"); the server tells the members. */
+  async function removePicture(m: GroupMessage) {
+    const ok = await confirmDialog({
+      title: t('Usunąć zdjęcie?'),
+      body: [el('p', { className: 'muted', textContent: t('Zniknie u wszystkich w grupie, a wiadomość zostanie z napisem „Zdjęcie usunięte”. Tego nie da się cofnąć.') })],
+      ok: t('Usuń'), danger: true,
+    });
+    if (ok) await act(() => api.socialApi('DELETE', `/v1/groups/${m.group}/messages/${m.id}/image`));
+  }
+
+  /** The Multimedia panel of a group or clan chat (chatMediaPanel.ts): who may take down whose pictures as for messages. */
+  function openMedia(g: Group) {
+    const nameOf = (id: string) => g.members.find((x) => x.id === id)?.name ?? (id === deps.me() ? t('Ty') : '?');
+    openMediaPanel(groupSource({
+      api, group: { id: g.id, name: g.clan && clan ? clan.name : g.name }, me: deps.me, name: nameOf,
+      mayModerate: (author) => {
+        const mod = chats.get(g.id)?.moderator;
+        const role = g.clan && clan?.chat === g.id ? clan.members.find((x) => x.id === author)?.role : undefined;
+        return mod === 'all' || (mod === 'members' && (role === undefined || role === 'member'));
+      },
+      messages: () => (chats.get(g.id)?.messages ?? []).filter((m) => !m.event),
+      jump: (id) => {
+        if (open !== g.id) void select(g.id);
+        void revealMessage(id, { has: () => !!chats.get(g.id)?.messages.some((m) => m.id === id), more: () => chats.get(g.id)?.more !== false, loadOlder: () => loadOlder(), box: () => parts?.messages });
+      },
+    }), { api, toast: deps.toast, errorText: deps.errorText });
+  }
+
   /** A message's new version (edited or deleted, here or elsewhere). */
   function replaced(m: GroupMessage) {
     const chat = chats.get(m.group);
@@ -351,6 +385,10 @@ export function createGroups(deps: Deps) {
     if (!g) return;
     typing.textContent = '';
     const actions: Node[] = [];
+    // the chat's pictures (server 0.9.36+)
+    const mediaBtn = el('button', { type: 'button', className: 'icon-btn feature-chatImages', title: t('Multimedia') }, icon('fa-photo-film'));
+    mediaBtn.addEventListener('click', () => openMedia(g));
+    actions.push(mediaBtn);
     if (g.clan) {
       const manage = el('button', { type: 'button', className: 'icon-btn', title: t('Członkowie klanu') }, icon('fa-users'));
       manage.addEventListener('click', () => openClan());
@@ -410,12 +448,14 @@ export function createGroups(deps: Deps) {
       }
       const mine = m.from === me;
       const grouped = m.from === lastFrom && m.at - lastAt < 5 * 60_000;
-      const bubble = m.deleted ? tombstone() : m.image ? deps.imageCard(m.image, mine) : el('div', { className: `fr-bubble${m.unreadable ? ' unreadable' : ''}`, textContent: m.text });
-      if (m.editedAt && !m.deleted && !m.image) bubble.append(editedLabel(m.editedAt));
-      if (m.encrypted && !m.image && !m.deleted) bubble.append(el('i', { className: 'fa-solid fa-lock fr-lock', title: t('Zaszyfrowana od nadawcy do odbiorcy') }));
-      nodes.push(el('div', { className: `fr-msg${mine ? ' mine' : ''}${grouped ? ' grouped' : ''}${editingId === m.id ? ' editing' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
+      const bubble = m.deleted ? tombstone() : m.image ? deps.imageCard(m.image, mine) : m.imageRemoved ? removedCard(m.imageRemoved, mine) : el('div', { className: `fr-bubble${m.unreadable ? ' unreadable' : ''}`, textContent: m.text });
+      if (m.editedAt && !m.deleted && !m.image && !m.imageRemoved) bubble.append(editedLabel(m.editedAt));
+      if (m.encrypted && !m.image && !m.imageRemoved && !m.deleted) bubble.append(el('i', { className: 'fa-solid fa-lock fr-lock', title: t('Zaszyfrowana od nadawcy do odbiorcy') }));
+      const row = el('div', { className: `fr-msg${mine ? ' mine' : ''}${grouped ? ' grouped' : ''}${editingId === m.id ? ' editing' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
         withMenu(bubble, messageMenu(g, m, chat)),
-        grouped ? '' : el('small', { className: 'fr-time', textContent: mine ? time.format(m.at) : `${names.get(m.from) ?? '?'} · ${time.format(m.at)}` })));
+        grouped ? '' : el('small', { className: 'fr-time', textContent: mine ? time.format(m.at) : `${names.get(m.from) ?? '?'} · ${time.format(m.at)}` }));
+      row.dataset.mid = String(m.id);
+      nodes.push(row);
       lastFrom = m.from;
       lastAt = m.at;
     }

@@ -5,6 +5,7 @@ import type http from 'node:http';
 import path from 'node:path';
 import type { DatabaseSync } from 'node:sqlite';
 import { withDefaults } from './settings.ts';
+import { cleanOverrides, effective, type ChatMediaLimits, type LimitsView, type OverrideStore } from './chatMediaLimits.ts';
 
 /**
  * Pictures and polls in a community's chat (server 0.9.30+).
@@ -16,6 +17,12 @@ import { withDefaults } from './settings.ts';
  * trailing bytes) and serves it to the community's members only. The message that carries it has
  * a short text ("[Zdjęcie]") that older launchers show instead. A deleted message's picture goes
  * with it; pictures past `imageDays` leave the message with `image.expired`.
+ *
+ * The Multimedia panel (server 0.9.36+): a channel's pictures newest first; a picture taken down
+ * without its message by its sender, or by a moderator who may delete the sender's messages (in the
+ * moderation log as `image_delete`), leaves `image.removed` (and `expired`, which older launchers
+ * show). Each community has a store of its own (chatMediaLimits.ts): pictures kept at once, their
+ * bytes, pictures per member a day; its admins may lower the panel's limits for it.
  *
  * Polls: a message whose text is a readable fallback (the question and the options, for older
  * launchers and the game's notifications) and a poll beside it: 2–10 options, one or several
@@ -163,11 +170,11 @@ export interface PollView {
   question: string; options: { text: string; votes: number }[]; multiple: boolean; voters: number;
   endsAt?: number; closed?: true; closedAt?: number; mine?: number[];
 }
-export interface ImageView { id: string; w: number; h: number; size: number; expired?: true }
+export interface ImageView { id: string; w: number; h: number; size: number; expired?: true; removed?: true }
 
 // ---------- the data ----------
 
-interface ImageRow { id: string; community: string; channel: string; owner: string; size: number; width: number; height: number; createdAt: number; messageId: number | null; gone: number }
+interface ImageRow { id: string; community: string; channel: string; owner: string; size: number; width: number; height: number; createdAt: number; messageId: number | null; gone: number; removedAt: number | null; removedBy: string | null }
 interface PollRow { messageId: number; community: string; channel: string; question: string; options: string; multiple: number; endsAt: number | null; closedAt: number | null; closedBy: string | null }
 
 export class CommunityMediaStore {
@@ -185,11 +192,16 @@ CREATE TABLE IF NOT EXISTS community_polls (message_id INTEGER PRIMARY KEY REFER
 CREATE TABLE IF NOT EXISTS community_poll_votes (message_id INTEGER NOT NULL REFERENCES community_polls(message_id) ON DELETE CASCADE, uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
   option INTEGER NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (message_id, uuid, option));
 `);
+    // taken down by its sender or a moderator, the message kept (0.9.36+)
+    const columns = (sql.prepare('PRAGMA table_info(community_images)').all() as { name: string }[]).map((c) => c.name);
+    if (!columns.includes('removed_at')) sql.exec('ALTER TABLE community_images ADD COLUMN removed_at INTEGER');
+    if (!columns.includes('removed_by')) sql.exec('ALTER TABLE community_images ADD COLUMN removed_by TEXT');
+    sql.exec('CREATE INDEX IF NOT EXISTS community_images_community ON community_images(community_id, created_at)');
   }
 
-  private static readonly IMAGE = `id, community_id AS community, channel_id AS channel, owner, size, width, height, created_at AS createdAt, message_id AS messageId, gone`;
+  private static readonly IMAGE = `id, community_id AS community, channel_id AS channel, owner, size, width, height, created_at AS createdAt, message_id AS messageId, gone, removed_at AS removedAt, removed_by AS removedBy`;
 
-  addImage(r: Omit<ImageRow, 'messageId' | 'gone'>) {
+  addImage(r: Omit<ImageRow, 'messageId' | 'gone' | 'removedAt' | 'removedBy'>) {
     this.sql.prepare('INSERT INTO community_images (id, community_id, channel_id, owner, size, width, height, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
       .run(r.id, r.community, r.channel, r.owner, r.size, r.width, r.height, r.createdAt);
   }
@@ -220,6 +232,39 @@ CREATE TABLE IF NOT EXISTS community_poll_votes (message_id INTEGER NOT NULL REF
 
   markGone(id: string) {
     this.sql.prepare('UPDATE community_images SET gone = 1 WHERE id = ?').run(id);
+  }
+
+  /** Taken down by someone (its file goes too): the message says so. */
+  markRemoved(id: string, by: string, now = Date.now()) {
+    this.sql.prepare('UPDATE community_images SET gone = 1, removed_at = ?, removed_by = ? WHERE id = ?').run(now, by, id);
+  }
+
+  /** Pictures kept in a community now (sent or about to be), and their bytes. */
+  usage(community: string): { bytes: number; count: number } {
+    const r = this.sql.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS bytes FROM community_images WHERE community_id = ? AND gone = 0').get(community) as { n: number; bytes: number };
+    return { bytes: Number(r.bytes), count: Number(r.n) };
+  }
+
+  /** Pictures one member sent to one community since then. */
+  sentTo(community: string, owner: string, since: number): number {
+    return (this.sql.prepare('SELECT COUNT(*) AS n FROM community_images WHERE community_id = ? AND owner = ? AND created_at > ?').get(community, owner, since) as { n: number }).n;
+  }
+
+  /** A channel's pictures still there, newest first, by their message's id (messages not deleted). */
+  channelImages(channel: string, before: number, limit: number): ImageRow[] {
+    return this.sql.prepare(`SELECT ${CommunityMediaStore.IMAGE.split(', ').map((c) => `i.${c}`).join(', ')} FROM community_images i
+      JOIN community_messages m ON m.id = i.message_id
+      WHERE i.channel_id = ? AND i.gone = 0 AND m.deleted_at IS NULL AND i.message_id < ? ORDER BY i.message_id DESC LIMIT ?`).all(channel, before, limit) as unknown as ImageRow[];
+  }
+
+  /** Communities with a sent picture older than that, still kept. */
+  communitiesWithOld(before: number): string[] {
+    return (this.sql.prepare('SELECT community_id AS c FROM community_images WHERE gone = 0 AND message_id IS NOT NULL GROUP BY community_id HAVING MIN(created_at) < ?').all(before) as { c: string }[]).map((r) => r.c);
+  }
+
+  /** A community's sent pictures older than that, still kept. */
+  oldIn(community: string, before: number): ImageRow[] {
+    return this.sql.prepare(`SELECT ${CommunityMediaStore.IMAGE} FROM community_images WHERE community_id = ? AND gone = 0 AND message_id IS NOT NULL AND created_at < ?`).all(community, before) as unknown as ImageRow[];
   }
 
   deleteImage(id: string) {
@@ -306,6 +351,15 @@ export interface MediaContext {
   limitUploads: (key: string) => void;
   limitDownloads: (key: string) => void;
   limitVotes?: (key: string) => void;
+  /** The panel's limits of community chats (chatMediaLimits.ts), and the communities' own lower ones. */
+  chatLimits?: () => ChatMediaLimits;
+  overrides?: OverrideStore;
+  /** Whether `me` may take down `author`'s things (above them with 'deleteMessage'); `author` empty: whether they may at all. */
+  mayDelete?: (community: string, me: string, author: string) => boolean;
+  /** Whether `me` sets the community's own limits (its admins). */
+  manages?: (community: string, me: string) => boolean;
+  /** A message's picture went: the message as it is now, to those who read the channel. */
+  changed?: (community: string, mid: number) => void;
 }
 
 const MID = '(\\d{1,15})';
@@ -319,8 +373,9 @@ export function createCommunityMedia(ctx: MediaContext) {
   const fileOf = (id: string) => path.join(ctx.dir, `${id}.jpg`);
   const route = (p: string) => new RegExp(`^/v1/communities/${ID}/channels/${ID}${p}$`);
 
-  async function readBody(req: http.IncomingMessage): Promise<Buffer> {
-    if (Number(req.headers['content-length']) > L.imageBytes) {
+  async function readBody(req: http.IncomingMessage, limit?: number): Promise<Buffer> {
+    const max = Math.min(L.imageBytes, limit ?? Infinity);
+    if (Number(req.headers['content-length']) > max) {
       req.resume();
       fail(413, 'too_large');
     }
@@ -328,9 +383,9 @@ export function createCommunityMedia(ctx: MediaContext) {
     let size = 0;
     for await (const chunk of req) {
       size += chunk.length;
-      if (size <= L.imageBytes) chunks.push(chunk);
+      if (size <= max) chunks.push(chunk);
     }
-    if (size > L.imageBytes) fail(413, 'too_large');
+    if (size > max) fail(413, 'too_large');
     return Buffer.concat(chunks);
   }
 
@@ -349,7 +404,55 @@ export function createCommunityMedia(ctx: MediaContext) {
   function imageView(mid: number): ImageView | undefined {
     const r = store.imageOf(mid);
     if (!r) return undefined;
-    return { id: r.id, w: r.width, h: r.height, size: r.size, ...(r.gone ? { expired: true as const } : {}) };
+    return { id: r.id, w: r.width, h: r.height, size: r.size, ...(r.gone ? { expired: true as const } : {}), ...(r.removedAt ? { removed: true as const } : {}) };
+  }
+
+  /** A community's limits now: the panel's (`L` may be lower: tests), lowered by its own. */
+  function chatLimits(community: string): ChatMediaLimits | undefined {
+    const global = ctx.chatLimits?.();
+    if (!global) return undefined;
+    const g = { ...global, maxBytes: Math.min(global.maxBytes, L.imageBytes), days: Math.min(global.days, L.imageDays) };
+    return effective(g, ctx.overrides?.get(`c:${community}`) ?? {});
+  }
+
+  /** What a member sees of the limits: the limits; the use for its moderators; its own ones for its admins. */
+  function limitsView(community: string, me: string): LimitsView | undefined {
+    const global = ctx.chatLimits?.();
+    if (!global) return undefined;
+    const g = { ...global, maxBytes: Math.min(global.maxBytes, L.imageBytes), days: Math.min(global.days, L.imageDays) };
+    const own = ctx.overrides?.get(`c:${community}`) ?? {};
+    return {
+      limits: effective(g, own),
+      ...(ctx.mayDelete?.(community, me, '') ? { usage: store.usage(community) } : {}),
+      ...(ctx.manages?.(community, me) ? { global: g, own } : {}),
+    };
+  }
+
+  /** Takes these messages' pictures down in a channel: one's own, and others' for those above them; logged when not one's own. */
+  function removeImages(community: string, channel: string, me: string, mids: number[]) {
+    const removed: number[] = [];
+    const refused: number[] = [];
+    for (const mid of mids) {
+      const r = store.imageOf(mid);
+      const m = r && ctx.message(community, mid);
+      if (!r || !m || m.deleted || r.channel !== channel || r.community !== community || r.gone) continue;
+      if (r.owner !== me && !ctx.mayDelete?.(community, me, r.owner)) {
+        refused.push(mid);
+        continue;
+      }
+      store.markRemoved(r.id, me);
+      rmSync(fileOf(r.id), { force: true });
+      if (r.owner !== me) ctx.log(community, me, 'image_delete', r.owner, `#${mid}`);
+      ctx.changed?.(community, mid);
+      removed.push(mid);
+    }
+    return { removed, refused };
+  }
+
+  /** Message ids from a request: the panel's selection. */
+  function messageIds(raw: unknown): number[] {
+    if (!Array.isArray(raw) || !raw.length || raw.length > 100 || raw.some((n) => !Number.isSafeInteger(n) || n <= 0)) fail(400, 'bad_request');
+    return [...new Set(raw as number[])];
   }
 
   /** The poll after a change, to everyone connected (without anyone's own votes). */
@@ -370,16 +473,21 @@ export function createCommunityMedia(ctx: MediaContext) {
     // a picture for the next message in this channel: a JPEG (the launcher makes it) as the raw body
     ['POST', route('/images'), async (req, [community, channel]) => {
       const me = ctx.authed(req);
+      const chat = chatLimits(community);
       try {
         ctx.writer(community, channel, me);
         ctx.limitUploads(`cimage:${me}`);
         if (store.sentSince(me, Date.now() - 86_400_000) >= L.imagesPerDay) fail(429, 'image_quota');
+        // the community's own store and the pictures one member sends it a day
+        if (chat && store.sentTo(community, me, Date.now() - 86_400_000) >= chat.perMemberDay) fail(429, 'chat_media_daily');
+        if (chat && store.usage(community).count >= chat.quotaCount) fail(409, 'chat_media_full');
       } catch (err) {
         req.resume();
         throw err;
       }
-      const clean = cleanJpeg(await readBody(req), L.imageSide);
+      const clean = cleanJpeg(await readBody(req, chat?.maxBytes), L.imageSide);
       if (!clean) fail(400, 'not_an_image');
+      if (chat && store.usage(community).bytes + clean!.jpeg.length > chat.quotaBytes) fail(409, 'chat_media_full');
       const id = randomBytes(16).toString('base64url');
       // written aside and moved in, so a half-written file is never served
       await writeFile(`${fileOf(id)}.part`, clean!.jpeg);
@@ -401,6 +509,45 @@ export function createCommunityMedia(ctx: MediaContext) {
       store.vote(p.messageId, me, [...(options as number[])].sort((a, b) => a - b));
       pushPoll(community, channel, p.messageId, me);
       return { message: ctx.message(community, p.messageId, me) };
+    }],
+    // the Multimedia panel of a channel: its pictures newest first (`before` a message id), the community's limits and use
+    ['GET', route('/media'), (req, [community, channel], url) => {
+      const me = ctx.authed(req);
+      ctx.reader(community, channel, me);
+      const before = Number(url.searchParams.get('before')) || Number.MAX_SAFE_INTEGER;
+      const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit')) || 40));
+      const rows = store.channelImages(channel, before, limit);
+      const media = rows.map((r) => {
+        const m = ctx.message(community, r.messageId!, me) as { id: number; from: string; at?: number; author?: unknown } | undefined;
+        return m && { id: r.messageId!, from: r.owner, at: m.at ?? r.createdAt, author: m.author, image: { id: r.id, w: r.width, h: r.height, size: r.size } };
+      }).filter(Boolean);
+      return { media, more: rows.length === limit, ...(ctx.mayDelete?.(community, me, '') ? { moderator: true } : {}), ...(limitsView(community, me) ?? {}) };
+    }],
+    // one picture taken down, its message kept
+    ['DELETE', route(`/messages/${MID}/image`), (req, [community, channel, raw]) => {
+      const me = ctx.authed(req);
+      ctx.reader(community, channel, me);
+      const res = removeImages(community, channel, me, [Number(raw)]);
+      if (!res.removed.length) fail(res.refused.length ? 403 : 404, res.refused.length ? 'not_allowed' : 'not_found');
+      return res;
+    }],
+    // several at once (the panel's selection); what may not be taken down is in `refused`
+    ['POST', route('/media/delete'), async (req, [community, channel]) => {
+      const me = ctx.authed(req);
+      ctx.reader(community, channel, me);
+      return removeImages(community, channel, me, messageIds((await ctx.body(req)).messages));
+    }],
+    // the community's own lower limits, by its admins (nothing set: the panel's)
+    ['POST', new RegExp(`^/v1/communities/${ID}/media/limits$`), async (req, [community]) => {
+      const me = ctx.authed(req);
+      const global = ctx.chatLimits?.();
+      if (!global || !ctx.overrides || !ctx.manages?.(community, me)) fail(403, 'not_allowed');
+      const g = { ...global!, maxBytes: Math.min(global!.maxBytes, L.imageBytes), days: Math.min(global!.days, L.imageDays) };
+      const own = cleanOverrides(await ctx.body(req), g);
+      if (own === 'bad_limits') fail(400, 'bad_limits');
+      ctx.overrides!.set(`c:${community}`, own as Exclude<typeof own, 'bad_limits'>, me);
+      ctx.log(community, me, 'media_limits', '', Object.entries(own).map(([k, v]) => `${k}=${v}`).join(', '));
+      return limitsView(community, me);
     }],
     // closed before its end: by its author, or a moderator and up
     ['POST', route(`/messages/${MID}/poll/close`), (req, [community, channel, raw]) => {
@@ -461,6 +608,7 @@ export function createCommunityMedia(ctx: MediaContext) {
   /** A community deleted: its pictures' files go (the rows go with the community). */
   function removeCommunity(community: string) {
     for (const id of store.imagesOfCommunity(community)) rmSync(fileOf(id), { force: true });
+    ctx.overrides?.remove(`c:${community}`);
   }
 
   /** GET /v1/communities/<id>/images/<image>: the JPEG, to members who may read its channel. True when the request was this. */
@@ -496,10 +644,14 @@ export function createCommunityMedia(ctx: MediaContext) {
 
   /** Pictures past their time (the message stays, saying so), uploads no message took, and files nobody needs. */
   async function cleanup(now = Date.now()) {
-    const { old, orphans } = store.stale(now, L.imageDays);
-    for (const id of old) {
-      await rm(fileOf(id), { force: true });
-      store.markGone(id);
+    const { orphans } = store.stale(now, L.imageDays);
+    // each community by its own keeping time (only those with a picture older than a day are looked at)
+    for (const community of store.communitiesWithOld(now - 86_400_000)) {
+      const days = chatLimits(community)?.days ?? L.imageDays;
+      for (const r of store.oldIn(community, now - days * 86_400_000)) {
+        await rm(fileOf(r.id), { force: true });
+        store.markGone(r.id);
+      }
     }
     for (const id of orphans) {
       await rm(fileOf(id), { force: true });

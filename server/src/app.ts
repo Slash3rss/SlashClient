@@ -32,6 +32,7 @@ import { Storage, secretBox, type DiskSpace } from './storage.ts';
 import { storageAdminRoutes } from './storageAdmin.ts';
 import { muteRoutes } from './mutes.ts';
 import { chatImageRoutes, type ImageLimits } from './chatImages.ts';
+import { OverrideStore, globalLimits } from './chatMediaLimits.ts';
 import { DEFAULT_ELEMENTS, profileRoutes, type Visibility } from './profiles.ts';
 import { legalRoutes } from './legal/routes.ts';
 import { homeRoutes } from './home/routes.ts';
@@ -743,6 +744,8 @@ export function createApp(cfg: Config) {
     },
   });
 
+  // limits of pictures in group, clan and community chats, and the chats' own lower ones (chatMediaLimits.ts)
+  const mediaOverrides = new OverrideStore(db.sql);
   // group chats and clans (groups.ts, clans.ts); a clan's chat is one of the groups
   const limitGroupChanges = limiter('groups.changesPerMinute');
   let clanTag: (uuid: string) => string | undefined = () => undefined;
@@ -785,6 +788,7 @@ export function createApp(cfg: Config) {
       dir: cfg.communityImagesDir ?? path.join(path.dirname(cfg.dbFile), 'community-images'),
       limits: liveSettings(settings, { imageBytes: 'communities.imageBytes', imagesPerDay: 'communities.imagesPerDay', imageDays: 'communities.imageDays' }),
       limitUploads: limiter('chatImages.uploadsPerMinute'), limitDownloads: limiter('chatImages.downloadsPerMinute'),
+      overrides: mediaOverrides, chatLimits: () => globalLimits((k) => settings.get(k), 'community'),
     },
     fail: (status, code, retryAfter) => {
       throw new HttpError(status, code, retryAfter);
@@ -822,7 +826,30 @@ export function createApp(cfg: Config) {
     sql: db.sql, authed, areFriends: (a, b) => db.areFriends(a, b), isGroupMember: (group, uuid) => groups.store.isMember(group, uuid), dir: cfg.imagesDir ?? path.join(path.dirname(cfg.dbFile), 'chat-images'),
     limits: Object.assign(liveSettings(settings, { maxBytes: 'chatImages.maxBytes', perDay: 'chatImages.perDay', bytesPerDay: 'chatImages.bytesPerDay', days: 'chatImages.days' }),
       cfg.imageLimits?.orphanMs !== undefined ? { orphanMs: cfg.imageLimits.orphanMs } : {}),
-    limitUploads: limiter('chatImages.uploadsPerMinute'), limitDownloads: limiter('chatImages.downloadsPerMinute'), limitBurst,
+    limitUploads: limiter('chatImages.uploadsPerMinute'), limitDownloads: limiter('chatImages.downloadsPerMinute'), limitBurst, body,
+    // the Multimedia panel and the shared chats' limits (0.9.36+): a clan's chat has the clans' limits
+    overrides: mediaOverrides,
+    groupLimits: (group) => {
+      const g = groups.store.group(group);
+      return g ? globalLimits((k) => settings.get(k), g.clan ? 'clan' : 'group') : undefined;
+    },
+    mayModerate: (group, me, author) => groups.mayModerate(group, me, author),
+    manages: (group, me) => groups.manages(group, me),
+    sinceOf: (group, me) => groups.sinceOf(group, me),
+    // a picture taken down or run out: the message as it is now, to whoever sees it
+    changedDirect: (a, b, id) => {
+      const m = db.messageBetween(a, b, id);
+      if (!m) return;
+      const message = images.decorate([m])[0];
+      push(a, { type: 'message-edit', message });
+      push(b, { type: 'message-edit', message });
+    },
+    changedGroup: (group, id, by) => {
+      const m = groups.store.message(group, id);
+      if (!m) return;
+      const message = images.decorate([m], group)[0];
+      for (const u of groups.store.readersOf(group, id)) push(u, { type: 'group-message-edit', message, ...(by ? { by } : {}) });
+    },
     fail: (status, code) => {
       throw new HttpError(status, code);
     },

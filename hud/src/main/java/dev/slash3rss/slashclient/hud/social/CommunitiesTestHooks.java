@@ -163,6 +163,23 @@ public final class CommunitiesTestHooks {
 		pushed(m);
 	}
 
+	/** That picture taken down by its sender or a moderator (server 0.9.36+): the message comes again as an edit, its picture marked. */
+	public static void pictureRemoved(String community, String channel, long id, String from, String author, int w, int h) {
+		JsonObject m = message(community, channel, id, from, author, "[Zdjęcie]");
+		JsonObject i = new JsonObject();
+		i.addProperty("id", PICTURE);
+		i.addProperty("w", w);
+		i.addProperty("h", h);
+		i.addProperty("size", 12345);
+		i.addProperty("expired", true);
+		i.addProperty("removed", true);
+		m.add("image", i);
+		JsonObject e = new JsonObject();
+		e.addProperty("type", "community-message-edit");
+		e.add("message", m);
+		Communities.eventForTest(e);
+	}
+
 	/** A poll (server 0.9.30+), as the server pushes it: the answers with their votes. */
 	public static void poll(String community, String channel, long id, String from, String author, String question, List<String> options, List<Integer> votes, boolean multiple, long endsAt) {
 		JsonObject m = message(community, channel, id, from, author, "📊 Ankieta: " + question);

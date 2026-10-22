@@ -815,7 +815,7 @@ public class FriendsScreen extends Screen {
 			if (Ui.inside(mx, my, bx + 4, by + 4, size[0], size[1])) Ui.roundOutline(g, bx + 3, by + 3, size[0] + 2, size[1] + 2, 3, 0x993B82F6);
 		} else {
 			Ui.round(g, bx + 4, by + 4, size[0], size[1], 3, 0x40000000);
-			Component state = Ui.tr(img.expired() ? "slashclient-hud.picture.expired" : tex.failed() ? "slashclient-hud.picture.gone" : "slashclient-hud.picture.loading");
+			Component state = Ui.tr(img.removed() ? "slashclient-hud.picture.removed" : img.expired() ? "slashclient-hud.picture.expired" : tex.failed() ? "slashclient-hud.picture.gone" : "slashclient-hud.picture.loading");
 			Ui.icon(g, "image", bx + 4 + size[0] / 2 - 6, by + 4 + size[1] / 2 - 12, 12, Ui.MUTED);
 			Ui.centered(g, Ui.fit(state, size[0] - 6), bx + 4 + size[0] / 2, by + 4 + size[1] / 2 + 4, Ui.MUTED);
 		}
