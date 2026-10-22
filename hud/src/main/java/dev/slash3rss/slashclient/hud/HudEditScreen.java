@@ -695,7 +695,7 @@ public class HudEditScreen extends Screen {
 
 	/** Width the controls of a setting need on one line. */
 	private static int controlsWidth(Catalog.Setting s) {
-		if (s instanceof Catalog.Toggle) return 20;
+		if (s instanceof Catalog.Toggle || s instanceof Catalog.Info) return 20;
 		if (s instanceof Catalog.Slider) return 150;
 		if (s instanceof Catalog.Text) return 150;
 		if (s instanceof Catalog.Choice ch) {
@@ -704,6 +704,11 @@ public class HudEditScreen extends Screen {
 			return total - 4;
 		}
 		return ((Catalog.Colors) s).colors().length * 16;
+	}
+
+	/** A note's height: its text wrapped beside the icon. */
+	private static int infoHeight(Catalog.Info info, int w) {
+		return Math.max(26, 7 + net.minecraft.client.Minecraft.getInstance().font.split(Ui.tr(info.text().get()), w - 36).size() * 11 + 6);
 	}
 
 	private void drawSettings(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h) {
@@ -729,7 +734,7 @@ public class HudEditScreen extends Screen {
 			Catalog.Setting s = rows.get(i);
 			int labelW = Ui.width(Ui.tr(s.labelKey())) + 24;
 			boolean oneLine = s instanceof Catalog.Toggle || labelW + controlsWidth(s) <= w - 20;
-			heights[i] = oneLine ? 26 : 44;
+			heights[i] = s instanceof Catalog.Info info ? infoHeight(info, w) : oneLine ? 26 : 44;
 			contentH += heights[i] + 4;
 		}
 		int listTop = y + 26;
@@ -745,6 +750,16 @@ public class HudEditScreen extends Screen {
 			Catalog.Setting s = rows.get(i);
 			int rh = heights[i];
 			boolean twoLines = rh > 26;
+			if (s instanceof Catalog.Info info) {
+				// a note: an icon and its text wrapped, on a quieter card
+				Ui.round(g, x, ry, w, rh, 4, 0xFF13203A);
+				Ui.begin("row " + s.labelKey(), x, ry, w, rh);
+				Ui.icon(g, "info", x + 9, ry + 8, 10, Ui.ACCENT_LIGHT);
+				Ui.wrapped(g, Ui.tr(info.text().get()), x + 26, ry + 9, w - 36, Ui.TEXT_2);
+				Ui.end();
+				ry += rh + 4;
+				continue;
+			}
 			Ui.round(g, x, ry, w, rh, 4, Ui.CARD);
 			Ui.begin("row " + s.labelKey(), x, ry, w, rh);
 			Component label = Ui.fit(Ui.tr(s.labelKey()), w - 20);

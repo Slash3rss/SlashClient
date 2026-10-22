@@ -1,0 +1,154 @@
+package dev.slash3rss.slashclient.hud.test;
+
+import dev.slash3rss.slashclient.hud.HudEditScreen;
+import dev.slash3rss.slashclient.hud.SpotifyTestHooks;
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
+
+import javax.imageio.ImageIO;
+import java.awt.Color;
+import java.awt.GradientPaint;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+
+/**
+ * "Spotify": answers as the launcher's bridge gives them fed in (no launcher, no Spotify), the
+ * parser on odd ones, then the module in several configurations: the card with a cover, the album
+ * and the times; a long title sliding in a narrow card; paused (with the mark, then hidden); one
+ * line in the module's colour; a big cover alone; nothing playing; not linked; the editor's
+ * made-up track and the settings with the note on linking.
+ */
+public class GameSpotify implements FabricClientGameTest {
+	@Override
+	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
+		String parser = context.computeOnClient(mc -> SpotifyTestHooks.parser());
+		if (!parser.equals("ok")) throw new AssertionError("Spotify answers:\n" + parser);
+		try (TestSingleplayerContext world = context.worldBuilder().create()) {
+			context.waitTicks(40);
+			world.getServer().runCommand("time set 6000");
+			context.runOnClient(mc -> {
+				try {
+					SpotifyTestHooks.cover(cover());
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			});
+
+			// the card: cover, title, artists, album, the bar and the times, Spotify's green
+			context.runOnClient(mc -> {
+				SpotifyTestHooks.configure("card", true, 36, true, true, true, "spotify", 220, true);
+				SpotifyTestHooks.feed(SpotifyTestHooks.answer(true, "Kopalnia o świcie", true, 61_000, 200_000, "Slash3rss", "DJ Kubełek"));
+			});
+			context.waitTicks(5);
+			String card = context.computeOnClient(mc -> SpotifyTestHooks.shown());
+			System.out.println("SlashClient test: Spotify card: " + card);
+			if (!card.startsWith("Kopalnia o świcie | Slash3rss, DJ Kubełek | Lato na serwerze [1:0")) throw new AssertionError("The card shows: " + card);
+			context.takeScreenshot("spotify-card");
+
+			// a long title in a narrow card slides through (two moments of the slide)
+			context.runOnClient(mc -> {
+				SpotifyTestHooks.configure("card", true, 28, false, true, true, "spotify", 140, true);
+				SpotifyTestHooks.feed(SpotifyTestHooks.answer(true, "Bardzo długi tytuł utworu, który się nie mieści w module (wersja rozszerzona)", true, 125_000, 312_000, "Zespół z bardzo długą nazwą"));
+			});
+			context.waitTicks(5);
+			context.takeScreenshot("spotify-marquee-start");
+			context.waitTicks(50);
+			context.takeScreenshot("spotify-marquee-later");
+			// without sliding: cut with "…"
+			context.runOnClient(mc -> SpotifyTestHooks.set(s -> s.marquee = false));
+			context.waitTicks(3);
+			context.takeScreenshot("spotify-cut");
+
+			// paused: the pause mark; then hidden while paused
+			context.runOnClient(mc -> {
+				SpotifyTestHooks.configure("card", true, 36, false, true, true, "spotify", 220, true);
+				SpotifyTestHooks.feed(SpotifyTestHooks.answer(true, "Kopalnia o świcie", false, 61_000, 200_000, "Slash3rss"));
+			});
+			context.waitTicks(5);
+			String paused = context.computeOnClient(mc -> SpotifyTestHooks.shown());
+			if (!paused.endsWith("[1:01 / 3:20] (paused)")) throw new AssertionError("Paused, the card shows: " + paused);
+			context.takeScreenshot("spotify-paused");
+			context.runOnClient(mc -> SpotifyTestHooks.set(s -> s.showPaused = false));
+			if (!context.computeOnClient(mc -> SpotifyTestHooks.shown()).isEmpty()) throw new AssertionError("A paused track shows with showPaused off");
+
+			// one line, the module's own colour for the bar
+			context.runOnClient(mc -> {
+				SpotifyTestHooks.configure("line", true, 36, false, true, true, "theme", 260, true);
+				SpotifyTestHooks.feed(SpotifyTestHooks.answer(true, "Kopalnia o świcie", true, 61_000, 200_000, "Slash3rss", "DJ Kubełek"));
+			});
+			context.waitTicks(5);
+			String line = context.computeOnClient(mc -> SpotifyTestHooks.shown());
+			if (!line.startsWith("Kopalnia o świcie – Slash3rss, DJ Kubełek [1:0")) throw new AssertionError("The line shows: " + line);
+			context.takeScreenshot("spotify-line");
+
+			// a big cover with only the title and the bar
+			context.runOnClient(mc -> {
+				SpotifyTestHooks.configure("card", true, 64, false, true, false, "spotify", 200, true);
+				SpotifyTestHooks.set(s -> s.artists = false);
+			});
+			context.waitTicks(3);
+			context.takeScreenshot("spotify-big-cover");
+
+			// nothing plays: hidden, or said
+			context.runOnClient(mc -> {
+				SpotifyTestHooks.configure("card", true, 36, false, true, true, "spotify", 220, true);
+				SpotifyTestHooks.feed(SpotifyTestHooks.answer(true, null, false, 0, 0));
+			});
+			context.waitTicks(3);
+			if (!context.computeOnClient(mc -> SpotifyTestHooks.shown()).isEmpty()) throw new AssertionError("Nothing plays, but the module shows");
+			context.runOnClient(mc -> SpotifyTestHooks.set(s -> s.hideIdle = false));
+			if (!context.computeOnClient(mc -> SpotifyTestHooks.shown()).startsWith("status: ")) throw new AssertionError("Nothing plays with hideIdle off: no status");
+
+			// not linked: the module says to link it in the launcher, so does the settings' note
+			context.runOnClient(mc -> SpotifyTestHooks.feed(SpotifyTestHooks.answer(false, null, false, 0, 0)));
+			context.waitTicks(3);
+			String notLinked = context.computeOnClient(mc -> SpotifyTestHooks.shown());
+			if (!notLinked.startsWith("status: ")) throw new AssertionError("Not linked, the module shows: " + notLinked);
+			String info = context.computeOnClient(mc -> SpotifyTestHooks.infoKey());
+			if (!info.equals("slashclient-hud.spotify.info.howTo")) throw new AssertionError("Not linked, the settings say: " + info);
+			context.takeScreenshot("spotify-not-linked");
+
+			// the editor: a made-up track, and the module's settings with the note
+			context.setScreen(HudEditScreen::new);
+			context.waitTicks(5);
+			String preview = context.computeOnClient(mc -> SpotifyTestHooks.shown());
+			if (!preview.startsWith("Nocna jazda")) throw new AssertionError("The editor shows: " + preview);
+			context.takeScreenshot("spotify-editor");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.TestHooks.audit(true));
+			context.setScreen(() -> new HudEditScreen("spotify"));
+			context.waitTicks(5);
+			context.takeScreenshot("spotify-settings");
+			// the module's own options, at the end of the page
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.TestHooks.scrollDown());
+			context.waitTicks(5);
+			context.takeScreenshot("spotify-settings-end");
+			String problems = context.computeOnClient(mc -> String.join("\n", dev.slash3rss.slashclient.hud.ui.Ui.PROBLEMS));
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.TestHooks.audit(false));
+			if (problems.contains("spotify")) throw new AssertionError("The Spotify settings do not fit:\n" + problems);
+			context.setScreen(() -> null);
+			context.runOnClient(mc -> SpotifyTestHooks.reset());
+		}
+		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.TestHooks.vanillaMenu());
+	}
+
+	/** A made-up album cover: a sunset gradient, a sun and hills. */
+	private static byte[] cover() throws java.io.IOException {
+		BufferedImage img = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = img.createGraphics();
+		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+		g.setPaint(new GradientPaint(0, 0, new Color(0x7C3AED), 0, 64, new Color(0xF97316)));
+		g.fillRect(0, 0, 64, 64);
+		g.setColor(new Color(0xFDE047));
+		g.fillOval(20, 18, 24, 24);
+		g.setColor(new Color(0x14532D));
+		g.fillPolygon(new int[] { 0, 18, 34, 50, 64, 64, 0 }, new int[] { 48, 36, 46, 34, 44, 64, 64 }, 7);
+		g.dispose();
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		ImageIO.write(img, "png", out);
+		return out.toByteArray();
+	}
+}

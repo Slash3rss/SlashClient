@@ -179,18 +179,29 @@ public final class Ui {
 			centered(g, tw <= w ? c : fit(c, w), cx, y, color);
 			return;
 		}
-		long now = System.currentTimeMillis();
-		long started = MARQUEE.computeIfAbsent(key, k -> now);
-		int over = tw - w;
-		long pause = 700, slide = Math.max(600, over * 1000L / 30);
-		long cycle = pause + slide + pause, at = (now - started) % cycle;
-		int shift = at < pause ? 0 : at < pause + slide ? (int) (over * (at - pause) / slide) : over;
+		int shift = marqueeShift(key, tw - w);
 		int x = cx - w / 2;
 		beginClip("marquee " + key, x, y - 1, w, 11);
 		g.enableScissor(x, y - 1, x + w, y + 10);
 		draw(g, c, x - shift, y, color);
 		g.disableScissor();
 		end();
+	}
+
+	/**
+	 * How far a sliding text is moved now (0…`over` pixels), the marquee's pace: a moment at its
+	 * start, along to its end at an easy reading pace, a moment there, and back. `key` keeps its clock.
+	 */
+	public static int marqueeShift(String key, int over) {
+		if (over <= 0) {
+			MARQUEE.remove(key);
+			return 0;
+		}
+		long now = System.currentTimeMillis();
+		long started = MARQUEE.computeIfAbsent(key, k -> now);
+		long pause = 700, slide = Math.max(600, over * 1000L / 30);
+		long cycle = pause + slide + pause, at = (now - started) % cycle;
+		return at < pause ? 0 : at < pause + slide ? (int) (over * (at - pause) / slide) : over;
 	}
 
 	/** Text cut with "…" to fit `max` pixels. */

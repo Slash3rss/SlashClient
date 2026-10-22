@@ -1671,7 +1671,7 @@ body.feature-off-streams .feature-streams { display: none !important; }
 .kick-mark { display: inline-grid; place-items: center; width: 14px; height: 14px; border-radius: 3px; background: #53fc18; color: #0b0e14; font-weight: 900; font-size: 10px; line-height: 1; flex-shrink: 0; }
 .twitch-mark { color: #a970ff; }
 .spotify-mark { color: #1ed760; }
-.fr-spotify .fr-hint { display: block; margin: 2px 0 6px; line-height: 1.35; }
+.fr-spotify .fr-hint { display: block; margin: 2px 0 6px; font-size: 11.5px; line-height: 1.4; }
 .fr-names small.fr-live-line { color: #fda4af; }
 .fr-watch { background: linear-gradient(135deg, #e11d48, #9f1239); border-color: transparent; color: #fff; }
 .fr-streams { display: grid; gap: 6px; }
