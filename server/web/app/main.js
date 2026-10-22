@@ -49,6 +49,8 @@ const dotOf = (p) => (p.status === 'offline' ? 'offline' : p.activity && p.activ
 
 function statusLine(p) {
   if (p.status === 'offline') return p.lastSeen ? t('Offline · {0}', ago(p.lastSeen)) : t('Offline');
+  // only the phone app is on (the server says so; a launcher's status wins)
+  if (p.mobile) return { online: t('Dostępny na telefonie'), away: t('Zaraz wracam · na telefonie'), busy: t('Nie przeszkadzać · na telefonie') }[p.status] ?? t('Na telefonie');
   const a = p.activity;
   const version = a?.version ? `Minecraft ${a.version}` : 'Minecraft';
   if (a?.kind === 'server' && a.server && a.detail) return t('Gra na {0} · {1}', a.serverName || a.server, a.detail);
@@ -79,7 +81,18 @@ async function boot() {
   await startSession();
 }
 
+/** The screen while the app starts and loads the lists: the logo, the name and a thin bar. */
+function renderSplash() {
+  document.body.classList.remove('signed-in');
+  document.body.replaceChildren(splash(), el('div', { id: 'toast', class: 'toast', role: 'status' }));
+}
+const splash = () => el('main', { class: 'splash', 'aria-busy': 'true', 'aria-label': t('Wczytywanie…') },
+  el('div', { class: 'splash-logo' }, el('img', { src: '/app/icon-192.png', alt: '' })),
+  el('div', { class: 'splash-name', textContent: 'SlashClient' }),
+  el('div', { class: 'splash-bar' }, el('span')));
+
 async function startSession() {
+  renderSplash();
   try {
     S.me = await api('GET', '/v1/me');
   } catch (err) {
@@ -90,7 +103,7 @@ async function startSession() {
       el('button', { class: 'btn', onclick: () => location.reload() }, t('Spróbuj ponownie'))));
     return;
   }
-  renderShell();
+  // the splash stays until the lists are here, so the first screen comes complete
   await startKeys(S.me.id);
   live = new Live({ presence, onEvent, onState: (c) => {
     S.connected = c;
@@ -100,6 +113,8 @@ async function startSession() {
   await Promise.all([loadFriends(), loadGroups(), loadClan(), loadCommunities()]);
   S.pushInfo = await push.serverInfo();
   void push.refresh().catch((err) => console.error('powiadomienia:', err));
+  renderShell();
+  $('#offline')?.classList.toggle('hidden', S.connected);
   route();
 }
 
@@ -382,7 +397,7 @@ function renderFriends(view) {
     header(t('Znajomi'), el('button', { class: 'icon-btn', 'aria-label': t('Dodaj znajomego'), onclick: addFriend }, icon('fa-solid fa-user-plus'))),
     S.incoming.length ? el('a', { class: 'banner', href: '#/invites' }, icon('fa-solid fa-envelope'), t('Zaproszenia do znajomych: {0}', S.incoming.length)) : '',
     list.length ? el('ul', { class: 'list' }, ...list.map((f) => el('li', {}, el('a', { class: 'item', href: `#/chat/${f.id}` },
-      avatarEl(f, dotOf(f.presence)),
+      avatarEl(f, dotOf(f.presence), f.presence.mobile),
       el('div', { class: 'grow' },
         el('div', { class: 'name' }, f.clan ? el('span', { class: 'tag', textContent: `[${f.clan}]` }) : '', f.name, f.muted ? icon('fa-solid fa-bell-slash muted') : ''),
         el('div', { class: 'muted small ellipsis', textContent: statusLine(f.presence) })),
@@ -417,7 +432,7 @@ async function openFriendChat(view, id) {
   }
   const people = new Map([[f.id, f], [S.me.id, S.me]]);
   await openChat(view, 'dm', id, undefined, {
-    title: f.name, subtitle: statusLine(f.presence), avatar: avatarEl(f, dotOf(f.presence)), me: S.me.id, people,
+    title: f.name, subtitle: statusLine(f.presence), avatar: avatarEl(f, dotOf(f.presence), f.presence.mobile), me: S.me.id, people,
     onBack: () => history.length > 1 ? history.back() : (location.hash = '#/friends'),
     onRead: () => {
       f.unread = 0;
