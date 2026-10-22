@@ -165,6 +165,8 @@ public final class HudConfig {
 	public boolean lootHighlight = false;
 	public boolean lootChests = true, lootBarrels = true, lootPots = true, lootFlowerPots = true, lootOres = true, lootDrops = true;
 	public int lootChestColor = 0xFFFACC15, lootBarrelColor = 0xFFFB923C, lootPotColor = 0xFFA855F7, lootFlowerPotColor = 0xFF4ADE80, lootOreColor = 0xFF55FFFF, lootDropColor = 0xFFFFFFFF;
+	/** Dropped items glow in a colour like the item (dungeon drops); off, or for other items: lootDropColor. */
+	public boolean lootDropItemColors = true;
 	public boolean lootHighlightFill = true, lootHighlightPulse = false, lootHighlightWalls = false, lootHighlightLimit = true;
 	public int lootHighlightRange = 32;
 	/** Rooms cleared of mobs in green, with the time until they come back. */
@@ -593,6 +595,7 @@ public final class HudConfig {
 		lootFlowerPotColor = other.lootFlowerPotColor;
 		lootOreColor = other.lootOreColor;
 		lootDropColor = other.lootDropColor;
+		lootDropItemColors = other.lootDropItemColors;
 		lootHighlightFill = other.lootHighlightFill;
 		lootHighlightPulse = other.lootHighlightPulse;
 		lootHighlightWalls = other.lootHighlightWalls;

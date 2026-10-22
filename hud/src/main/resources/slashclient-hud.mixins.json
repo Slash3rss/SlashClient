@@ -3,6 +3,8 @@
 	"package": "dev.slash3rss.slashclient.hud.mixin",
 	"compatibilityLevel": "JAVA_${java}",
 	"client": [
+		"DropGlowColorMixin",
+		"DropGlowMixin",
 		"AuthServiceMixin",
 		"BenchCameraMixin",
 		"BossHealthOverlayAccessor",

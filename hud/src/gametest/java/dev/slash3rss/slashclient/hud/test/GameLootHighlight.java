@@ -69,11 +69,16 @@ public class GameLootHighlight implements FabricClientGameTest {
 			if (!shown.equals("6 [2, 1, 1, 1, 1, 0]")) throw new AssertionError("Taken loot came back: " + shown);
 			context.takeScreenshot("loot-highlight");
 			// items on the ground (as a mob's drop): outlined too, in their own colour, and gone with them
-			server.runCommand(String.format("summon item %d.5 %d %d.5 {Item:{id:\"minecraft:diamond\",count:1},PickupDelay:32767}", x0 - 5, y, z0 + 2));
-			server.runCommand(String.format("summon item %d.5 %d %d.5 {Item:{id:\"minecraft:bone\",count:3},PickupDelay:32767}", x0 + 5, y, z0 + 2));
+			server.runCommand(String.format("summon item %d.5 %d %d.5 {Item:{id:\"minecraft:diamond\",count:1},PickupDelay:32767}", x0 - 1, y, z0 + 3));
+			server.runCommand(String.format("summon item %d.5 %d %d.5 {Item:{id:\"minecraft:bone\",count:3},PickupDelay:32767}", x0 + 1, y, z0 + 3));
 			context.waitTicks(20);
 			shown = context.computeOnClient(mc -> TestHooks.lootHighlight(true, false, -1));
 			if (!shown.equals("8 [2, 1, 1, 1, 1, 2]")) throw new AssertionError("The drops on the ground: " + shown);
+			// each glows in its own colour: a diamond turquoise, bones bone-white; a server item in its name's colour
+			String glow = context.computeOnClient(mc -> TestHooks.lootGlow());
+			if (!glow.equals("4deeea f1ead8 drawn")) throw new AssertionError("The drops' glow: " + glow);
+			int named = context.computeOnClient(mc -> TestHooks.lootNameColor());
+			if (named != 0xFF55FF) throw new AssertionError("A coloured name's glow: " + Integer.toHexString(named));
 			context.takeScreenshot("loot-highlight-drops");
 			server.runCommand("kill @e[type=item]");
 			context.waitTicks(5);

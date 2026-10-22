@@ -224,6 +224,7 @@ public final class Catalog {
 			new Toggle("slashclient-hud.dungeon.loot.ore", () -> cfg.lootOres, v -> cfg.lootOres = v),
 			new Colors("slashclient-hud.lootHighlight.oreColor", lootColors, () -> cfg.lootOreColor, v -> cfg.lootOreColor = v),
 			new Toggle("slashclient-hud.lootHighlight.drops", () -> cfg.lootDrops, v -> cfg.lootDrops = v),
+			new Toggle("slashclient-hud.lootHighlight.dropItemColors", () -> cfg.lootDropItemColors, v -> cfg.lootDropItemColors = v),
 			new Colors("slashclient-hud.lootHighlight.dropColor", lootColors, () -> cfg.lootDropColor, v -> cfg.lootDropColor = v),
 			new Toggle("slashclient-hud.lootHighlight.fill", () -> cfg.lootHighlightFill, v -> cfg.lootHighlightFill = v),
 			new Toggle("slashclient-hud.lootHighlight.pulse", () -> cfg.lootHighlightPulse, v -> cfg.lootHighlightPulse = v),

@@ -16,7 +16,9 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * SkyUp's dungeon loot outlined in the world: the chests, barrels, pots, flower pots and ores
@@ -24,8 +26,9 @@ import java.util.List;
  * and faint pulsing when wanted. Only in a dungeon (DungeonMap.active), only what DungeonRooms has
  * already found (no scanning of its own), a double chest as one box. Taken loot goes at once: what
  * was opened or broken is left out, and so is a block that is no longer there (before the map's
- * next scan notices). Items lying on the ground in the dungeon (mob drops, what was thrown) get a
- * box of their own, in their own colour. Each tick the boxes are made anew; each frame they are drawn as one batch of
+ * next scan notices). Items lying on the ground in the dungeon (mob drops, what was thrown) glow
+ * the game's own way (the outline of the item, seen through walls), each in a colour that suits it
+ * (dropColor below), or all in one colour. Each tick the boxes are made anew; each frame they are drawn as one batch of
  * flat quads (thin boxes along the edges), with the depth test, or through walls when switched on.
  */
 public final class LootHighlight {
@@ -50,6 +53,8 @@ public final class LootHighlight {
 	public record Box(double x0, double y0, double z0, double x1, double y1, double z1, int cat) {}
 
 	private static List<Box> boxes = List.of();
+	/** The items glowing now: entity id → colour (0xRRGGBB). */
+	private static Map<Integer, Integer> glowing = Map.of();
 
 	static HudConfig cfg() {
 		return SlashHud.config;
@@ -58,6 +63,63 @@ public final class LootHighlight {
 	/** The boxes drawn now (for the test). */
 	public static List<Box> boxes() {
 		return boxes;
+	}
+
+	/** The items glowing now (for the test): entity id → colour. */
+	public static Map<Integer, Integer> glowing() {
+		return glowing;
+	}
+
+	/** The glow colour of an item on the ground (0xRRGGBB), or -1 when it does not glow (DropGlowMixin). */
+	public static int glowColor(net.minecraft.world.entity.Entity entity) {
+		if (glowing.isEmpty() || !(entity instanceof ItemEntity)) return -1;
+		Integer c = glowing.get(entity.getId());
+		return c == null ? -1 : c;
+	}
+
+	/**
+	 * The colour of a dropped item. The server's own items (mystic cobblestone and ore, and whatever it
+	 * adds later) glow in their name's colour; plain Minecraft items, whose names have none, in a colour
+	 * like their texture (what drops in SkyUp's dungeons, skyup.pl/wiki/dungeony); anything else in
+	 * the general drop colour from the settings.
+	 */
+	static int dropColor(net.minecraft.world.item.ItemStack stack, int general) {
+		int named = nameColor(stack.getHoverName());
+		if (named >= 0) return named;
+		String id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+		if (id.endsWith("_pottery_sherd")) return 0xD9825B;
+		if (id.endsWith("_armor_trim_smithing_template")) return 0x5EEAD4;
+		return switch (id) {
+			case "coal", "coal_ore", "deepslate_coal_ore", "coal_block" -> 0x8A8F98;
+			case "raw_iron", "iron_ingot", "iron_nugget", "iron_ore", "deepslate_iron_ore", "iron_block" -> 0xE3C6AE;
+			case "redstone", "redstone_ore", "deepslate_redstone_ore", "redstone_block" -> 0xFF3B30;
+			case "lapis_lazuli", "lapis_ore", "deepslate_lapis_ore", "lapis_block" -> 0x3B6CFF;
+			case "raw_gold", "gold_ingot", "gold_nugget", "gold_ore", "deepslate_gold_ore", "gold_block" -> 0xFFD43B;
+			case "diamond", "diamond_ore", "deepslate_diamond_ore", "diamond_block" -> 0x4DEEEA;
+			case "emerald", "emerald_ore", "deepslate_emerald_ore", "emerald_block" -> 0x22E06B;
+			case "netherite_scrap", "ancient_debris", "netherite_ingot" -> 0xA0705F;
+			case "cobblestone", "cobbled_deepslate" -> 0xC084FC;
+			case "bone", "bone_meal" -> 0xF1EAD8;
+			case "string" -> 0xFFFFFF;
+			case "spider_eye", "fermented_spider_eye" -> 0xE0304E;
+			case "ghast_tear" -> 0xCFF3FF;
+			case "breeze_rod", "wind_charge" -> 0x9FB4FF;
+			case "blaze_powder", "blaze_rod" -> 0xFF9F1C;
+			case "heavy_core" -> 0x9CA3AF;
+			case "totem_of_undying" -> 0xFDE047;
+			default -> general;
+		};
+	}
+
+	/** The first colour a name is written in (a gradient: where it starts), or -1 when plain or white. */
+	static int nameColor(net.minecraft.network.chat.Component name) {
+		java.util.Optional<Integer> first = name.visit((style, text) -> {
+			if (text.isBlank() || style.getColor() == null) return java.util.Optional.empty();
+			int rgb = style.getColor().getValue() & 0xFFFFFF;
+			// white is the plain colour of a name, not a colour of its own
+			return rgb == 0xFFFFFF ? java.util.Optional.empty() : java.util.Optional.of(rgb);
+		}, net.minecraft.network.chat.Style.EMPTY);
+		return first.orElse(-1);
 	}
 
 	public static void register() {
@@ -100,10 +162,12 @@ public final class LootHighlight {
 		HudConfig c = cfg();
 		if (c == null || !c.lootHighlight || mc.level == null || mc.player == null || !DungeonMap.active()) {
 			boxes = List.of();
+			glowing = Map.of();
 			return;
 		}
 		int range = Math.max(MIN_RANGE, Math.min(MAX_RANGE, c.lootHighlightRange));
 		boxes = collect(mc.level, mc.player.getX(), mc.player.getEyeY(), mc.player.getZ(), c.lootHighlightLimit ? range : -1);
+		glowing = shown(DROP) ? drops(mc.level, mc.player.getX(), mc.player.getEyeY(), mc.player.getZ(), c.lootHighlightLimit ? range : -1) : Map.of();
 	}
 
 	/** The boxes of the loot not taken within `range` blocks of a point (-1: any distance). */
@@ -128,12 +192,14 @@ public final class LootHighlight {
 			}
 			out.add(new Box(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ, cat));
 		});
-		if (shown(DROP)) drops(level, px, py, pz, range, out);
 		return out;
 	}
 
-	/** Items on the ground within `range` (-1: as far as the largest range), each a small box round the item. */
-	private static void drops(Level level, double px, double py, double pz, int range, List<Box> out) {
+	/** Items on the ground within `range` (-1: as far as the largest range) and the colour each glows in. */
+	static Map<Integer, Integer> drops(Level level, double px, double py, double pz, int range) {
+		Map<Integer, Integer> out = new HashMap<>();
+		HudConfig c = cfg();
+		int general = c.lootDropColor & 0xFFFFFF;
 		int reach = range >= 0 ? range : MAX_RANGE;
 		double r2 = (double) reach * reach;
 		AABB around = new AABB(px - reach, py - reach, pz - reach, px + reach, py + reach, pz + reach);
@@ -141,9 +207,9 @@ public final class LootHighlight {
 			double x = item.getX(), y = item.getY(), z = item.getZ();
 			double dx = x - px, dy = y - py, dz = z - pz;
 			if (dx * dx + dy * dy + dz * dz > r2) continue;
-			// a little wider and taller than the item's own box: it bobs and turns above the ground
-			out.add(new Box(x - 0.22, y, z - 0.22, x + 0.22, y + 0.5, z + 0.22, DROP));
+			out.put(item.getId(), c.lootDropItemColors ? dropColor(item.getItem(), general) : general);
 		}
+		return out;
 	}
 
 	/** A block's outline in the world, or the whole block when it has none. */

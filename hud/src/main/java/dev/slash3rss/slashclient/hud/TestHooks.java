@@ -1253,7 +1253,29 @@ public final class TestHooks {
 		LootHighlight.tick(net.minecraft.client.Minecraft.getInstance());
 		int[] kinds = new int[LootHighlight.KINDS];
 		for (var b : LootHighlight.boxes()) kinds[b.cat()]++;
-		return LootHighlight.boxes().size() + " " + java.util.Arrays.toString(kinds);
+		// the drops glow instead of a box: counted as their kind
+		kinds[LootHighlight.DROP] = LootHighlight.glowing().size();
+		return (LootHighlight.boxes().size() + LootHighlight.glowing().size()) + " " + java.util.Arrays.toString(kinds);
+	}
+
+	/** The colours the glowing drops have now, sorted ("4deeea f1ead8"), and whether the game draws them glowing. */
+	public static String lootGlow() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		StringBuilder out = new StringBuilder();
+		LootHighlight.glowing().values().stream().sorted().forEach((c) -> out.append(String.format("%06x ", c)));
+		boolean drawn = LootHighlight.glowing().keySet().stream().allMatch((id) -> {
+			var e = mc.level.getEntity(id);
+			return e != null && mc.shouldEntityAppearGlowing(e) && e.getTeamColor() == LootHighlight.glowColor(e);
+		});
+		return out.toString().trim() + (drawn ? " drawn" : " not-drawn");
+	}
+
+	/** The glow colour a server item named in a colour gets (the name's colour). */
+	public static int lootNameColor() {
+		return LootHighlight.dropColor(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COBBLESTONE)
+			.copy(), 0xFFFFFF) == 0xC084FC
+			? LootHighlight.nameColor(net.minecraft.network.chat.Component.literal("Mistyczna ruda").withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE))
+			: -2;
 	}
 
 	/** The widest loot box now (blocks along x or z): a double chest is one box two blocks long. */
