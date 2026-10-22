@@ -116,6 +116,8 @@ const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', '
   'message-edit', 'message-delete', 'group-message-edit', 'group-message-delete',
   // sparks: the balance changed, and many achievements unlocked at once (one toast)
   'wallet', 'achievements-summary',
+  // a daily or weekly challenge completed, and all of a day's or week's (server 0.9.36+): a toast
+  'challenge', 'challenges-bonus',
   // communities: the list changed, their chat, and news for one (invited, accepted, kicked…)
   'communities', 'community-message', 'community-message-edit', 'community-message-delete', 'community',
   // a reaction under a community message, a message pinned or unpinned (server 0.9.27+)

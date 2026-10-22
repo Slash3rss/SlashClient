@@ -1,6 +1,7 @@
 import { getLang, locale, t } from '../shared/i18n';
 import { currencyName, currencyOf, signedSparks, sparkAmount, sparks } from '../shared/sparks';
 import { buyWithConfirm, shortBy, type ShopItem } from './sparkShop';
+import { bonusText, completedText, renderChallenges, type Challenge, type Challenges } from './challenges';
 
 /**
  * The "Achievements" view: SlashClient achievements of the signed-in account in categories (play
@@ -102,7 +103,7 @@ export function byCategory(list: Achievement[], order: string[]): { category: st
   }).filter((g) => g.items.length);
 }
 
-type Tab = 'list' | 'shop' | 'history';
+type Tab = 'list' | 'challenges' | 'shop' | 'history';
 
 export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
   const { api } = deps;
@@ -196,7 +197,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
 
   function tabs() {
     const bar = el('div', { className: 'ach-tabs' });
-    for (const [key, label, iconName] of [['list', t('Osiągnięcia'), 'fa-trophy'], ['shop', t('Sklep'), 'fa-store'], ['history', t('Historia {0}', currencyOf()), 'fa-clock-rotate-left']] as [Tab, string, string][]) {
+    for (const [key, label, iconName] of [['list', t('Osiągnięcia'), 'fa-trophy'], ['challenges', t('Wyzwania'), 'fa-list-check'], ['shop', t('Sklep'), 'fa-store'], ['history', t('Historia {0}', currencyOf()), 'fa-clock-rotate-left']] as [Tab, string, string][]) {
       const b = el('button', { type: 'button', className: `ach-tab${tab === key ? ' active' : ''}` }, icon(iconName), ` ${label}`);
       b.addEventListener('click', () => {
         tab = key;
@@ -268,6 +269,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
       const label = getLang() === 'en' ? e.labelEn : e.label;
       if (e.reason === 'achievement') return [icon('fa-trophy'), t(' Osiągnięcie: {0}', label || e.ref)];
       if (e.reason === 'purchase') return [icon('fa-bag-shopping'), t(' Zakup: {0}', label || e.ref)];
+      if (e.reason === 'challenge') return [icon('fa-list-check'), t(' Wyzwanie: {0}', label || e.ref)];
       return [icon('fa-user-shield'), t(' Od administracji: {0}', e.note)];
     };
     const rows = w.ledger.map((e) => el('div', { className: 'ledger-row' },
@@ -278,9 +280,30 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     return [el('div', { className: 'ledger glass-panel' }, ...rows)];
   }
 
-  async function render() {
+  /** The challenges' tab; an older server has none. */
+  async function renderChallengesTab(ticket: number) {
+    const fetchedAt = Date.now();
+    let res: Challenges;
+    try {
+      res = await api.socialApi('GET', '/v1/challenges');
+    } catch (err) {
+      if (/not_found|404/.test(String((err as { code?: string })?.code ?? (err as Error)?.message ?? ''))) {
+        return [el('div', { className: 'card glass-panel' }, el('p', { className: 'muted', textContent: t('Ten serwer SlashClient nie ma jeszcze wyzwań.') }))];
+      }
+      throw err;
+    }
+    if (ticket !== loading) return [];
+    const ends = [res.daily?.endsAt, res.weekly?.endsAt].filter((n): n is number => typeof n === 'number');
+    // a new day or week: the next set as soon as it is there
+    nextReset = ends.length ? Math.min(...ends) - (res.now ? res.now - fetchedAt : 0) : 0;
+    return renderChallenges(res, fetchedAt);
+  }
+  /** When the shown challenges change (our clock), to load the new ones. */
+  let nextReset = 0;
+
+  async function render(quiet = false) {
     const ticket = ++loading;
-    root.replaceChildren(el('p', { className: 'muted' }, el('span', { className: 'spinner' }), t(' Wczytywanie…')));
+    if (!quiet) root.replaceChildren(el('p', { className: 'muted' }, el('span', { className: 'spinner' }), t(' Wczytywanie…')));
     const state = await api.socialState().catch(() => undefined);
     if (ticket !== loading) return;
     if (!state?.user) {
@@ -311,8 +334,8 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
           chips, ...sections);
         return;
       }
-      if (tab === 'shop' || tab === 'history') {
-        const body = tab === 'shop' ? await renderShop(ticket) : await renderHistory(ticket);
+      if (tab === 'shop' || tab === 'history' || tab === 'challenges') {
+        const body = tab === 'shop' ? await renderShop(ticket) : tab === 'history' ? await renderHistory(ticket) : await renderChallengesTab(ticket);
         if (ticket !== loading) return;
         root.replaceChildren(el('div', { className: 'ach-top' }, balanceCard(), tabs()), ...body);
         return;
@@ -370,8 +393,28 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     notice(title, body);
   }
 
-  api.on('social:event', (e: { type?: string; achievement?: Achievement; quiet?: boolean; count?: number; sparks?: number; balance?: number; state?: { user?: unknown; connected?: boolean } }) => {
-    if (e?.type === 'achievement' && e.achievement) {
+  /** The challenges' tab is in front: its numbers and the time left are kept fresh. */
+  const challengesShown = () => isVisible() && !friend && tab === 'challenges';
+  setInterval(() => {
+    if (challengesShown() && document.visibilityState === 'visible') void render(true);
+  }, 60_000);
+  setInterval(() => {
+    if (nextReset && Date.now() >= nextReset + 2000 && challengesShown()) {
+      nextReset = 0;
+      void render(true);
+    }
+  }, 5_000);
+
+  api.on('social:event', (e: { type?: string; achievement?: Achievement; challenge?: Challenge; period?: string; quiet?: boolean; count?: number; sparks?: number; balance?: number; state?: { user?: unknown; connected?: boolean } }) => {
+    if (e?.type === 'challenge' && e.challenge) {
+      const { title, body } = completedText(e.challenge);
+      notice(title, body);
+      if (challengesShown()) void render(true);
+    } else if (e?.type === 'challenges-bonus' && e.sparks) {
+      const { title, body } = bonusText(e.period ?? 'daily', e.sparks);
+      notice(title, body);
+      if (challengesShown()) void render(true);
+    } else if (e?.type === 'achievement' && e.achievement) {
       // one of many at once: the summary that follows says it
       if (!e.quiet) {
         const { title, body } = unlockText(e.achievement);

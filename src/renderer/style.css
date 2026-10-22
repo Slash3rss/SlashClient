@@ -1437,6 +1437,14 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .ach-section-head .ach-section-bar { width: 140px; margin: 0; }
 .ach-section-head small { font: 11.5px var(--font-mono); }
 .ach-section-sparks { margin-left: auto; color: var(--text-secondary); }
+/* daily and weekly challenges (challenges.ts) */
+.chal-left { margin-left: auto; white-space: nowrap; }
+.chal-card .ach-text { flex: 1; }
+.chal-card.done .ach-bar span { background: linear-gradient(90deg, #facc15, #f97316); }
+.chal-bonus { padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-secondary); border-style: dashed; }
+.chal-bonus > i { color: var(--text-muted); }
+.chal-bonus.done { border-style: solid; border-color: rgba(250, 204, 21, .35); color: var(--text-primary); }
+.chal-bonus.done > i { color: #facc15; }
 .ach-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; }
 .ach-sparks { font: 600 12px var(--font-mono); color: var(--text-muted); white-space: nowrap; padding: 2px 7px; border-radius: 10px; background: rgba(255, 255, 255, .04); }
 .ach-sparks .spark-sign { color: var(--text-muted); text-shadow: none; }
