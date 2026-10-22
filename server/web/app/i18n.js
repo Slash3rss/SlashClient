@@ -31,6 +31,14 @@ export function t(text, ...args) {
   return args.length ? s.replace(/\{(\d)\}/g, (_, i) => String(args[i] ?? '')) : s;
 }
 
+/** "1 członek", "3 członków", "5 osób": the count with its noun in the player's language. `pl`: forms for 1, for 2–4, for 5+. */
+export function plural(n, pl, en) {
+  if (lang() === 'en') return `${n} ${n === 1 ? en[0] : en[1]}`;
+  const few = n % 10 >= 2 && n % 10 <= 4 && !(n % 100 >= 12 && n % 100 <= 14);
+  return `${n} ${n === 1 ? pl[0] : few ? pl[1] : pl[2]}`;
+}
+export const members = (n) => plural(n, ['członek', 'członków', 'członków'], ['member', 'members']);
+
 export const EN = {
   'Napisz wiadomość…': 'Write a message…',
   'Wiadomość': 'Message',
@@ -106,7 +114,7 @@ export const EN = {
   'Czaty': 'Chats',
   'Nowa grupa': 'New group',
   'Nie masz jeszcze czatów grupowych.': 'No group chats yet.',
-  '{0} członków · {1} online': '{0} members · {1} online',
+  '{0} online': '{0} online',
   'Zaproś do klanu': 'Invite to the clan',
   'Zaproś': 'Invite',
   'Najpierw dodaj znajomych.': 'Add some friends first.',
@@ -115,15 +123,16 @@ export const EN = {
   'Utwórz grupę': 'Create group',
   'Opuść grupę': 'Leave group',
   'Opuścić grupę „{0}”?': 'Leave the group “{0}”?',
-  '{0} osób · szyfrowane': '{0} people · encrypted',
+  'szyfrowane': 'encrypted',
   'Społeczności': 'Communities',
-  '{0} członków': '{0} members',
+  'Ogólny': 'General',
+  'Ogłoszenia': 'Announcements',
   'Nie należysz jeszcze do żadnej społeczności. Dołączysz do nich w launcherze albo z zaproszenia.': 'You are not in any community yet. Join them in the launcher or from an invitation.',
   'Do znajomych': 'Friend requests',
   'Przyjmij': 'Accept',
   'Odrzuć': 'Decline',
   'Do klanu': 'Clan invitations',
-  'od {0} · {1} członków': 'from {0} · {1} members',
+  'od {0}': 'from {0}',
   'Dołącz': 'Join',
   'Do społeczności': 'Community invitations',
   'Wysłane': 'Sent',
