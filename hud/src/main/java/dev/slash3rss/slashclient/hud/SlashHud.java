@@ -73,6 +73,7 @@ public class SlashHud implements ClientModInitializer {
 		// the light level overlay (F9) and the third person camera's distance (V + the wheel in F5)
 		LightOverlay.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.lightOverlay", InputConstants.KEY_F9, category));
 		LightOverlay.register();
+		LootHighlight.register();
 		CameraDistance.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.cameraDistance", InputConstants.KEY_V, category));
 		// the dungeon map's zoom: = and - (free in the game)
 		DungeonMap.zoomInKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonZoomIn", InputConstants.KEY_EQUALS, category));
@@ -193,6 +194,7 @@ public class SlashHud implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
 			TntTimer.tick(mc);
 			DungeonMap.tick(mc);
+			LootHighlight.tick(mc);
 			Minimap.tick(mc);
 			// sorting's clicks also go out between the window's frames; friends see where we are (when we share it)
 			InventorySort.pump(mc);

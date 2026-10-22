@@ -204,6 +204,25 @@ public final class Catalog {
 			var mc = net.minecraft.client.Minecraft.getInstance();
 			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.KeybindsScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
 		}));
+		// SkyUp's dungeon loot not taken yet, outlined in the world (only in a dungeon); through walls only when switched on
+		int[] lootColors = dev.slash3rss.slashclient.hud.LootHighlight.COLORS;
+		out.add(new Entry("lootHighlight", "slashclient-hud.lootHighlight", "skyup", "m-loothighlight", () -> cfg.lootHighlight, v -> cfg.lootHighlight = v, List.of(
+			new Toggle("slashclient-hud.dungeon.loot.chest", () -> cfg.lootChests, v -> cfg.lootChests = v),
+			new Colors("slashclient-hud.lootHighlight.chestColor", lootColors, () -> cfg.lootChestColor, v -> cfg.lootChestColor = v),
+			new Toggle("slashclient-hud.dungeon.loot.barrel", () -> cfg.lootBarrels, v -> cfg.lootBarrels = v),
+			new Colors("slashclient-hud.lootHighlight.barrelColor", lootColors, () -> cfg.lootBarrelColor, v -> cfg.lootBarrelColor = v),
+			new Toggle("slashclient-hud.dungeon.loot.pot", () -> cfg.lootPots, v -> cfg.lootPots = v),
+			new Colors("slashclient-hud.lootHighlight.potColor", lootColors, () -> cfg.lootPotColor, v -> cfg.lootPotColor = v),
+			new Toggle("slashclient-hud.dungeon.loot.flowerPot", () -> cfg.lootFlowerPots, v -> cfg.lootFlowerPots = v),
+			new Colors("slashclient-hud.lootHighlight.flowerPotColor", lootColors, () -> cfg.lootFlowerPotColor, v -> cfg.lootFlowerPotColor = v),
+			new Toggle("slashclient-hud.dungeon.loot.ore", () -> cfg.lootOres, v -> cfg.lootOres = v),
+			new Colors("slashclient-hud.lootHighlight.oreColor", lootColors, () -> cfg.lootOreColor, v -> cfg.lootOreColor = v),
+			new Toggle("slashclient-hud.lootHighlight.fill", () -> cfg.lootHighlightFill, v -> cfg.lootHighlightFill = v),
+			new Toggle("slashclient-hud.lootHighlight.pulse", () -> cfg.lootHighlightPulse, v -> cfg.lootHighlightPulse = v),
+			new Toggle("slashclient-hud.lootHighlight.walls", () -> cfg.lootHighlightWalls, v -> cfg.lootHighlightWalls = v),
+			new Toggle("slashclient-hud.lootHighlight.limit", () -> cfg.lootHighlightLimit, v -> cfg.lootHighlightLimit = v),
+			new Slider("slashclient-hud.lootHighlight.range", dev.slash3rss.slashclient.hud.LootHighlight.MIN_RANGE, dev.slash3rss.slashclient.hud.LootHighlight.MAX_RANGE, 4f, "%.0f",
+				() -> (float) cfg.lootHighlightRange, v -> cfg.lootHighlightRange = Math.round(v))), null));
 		//#if MC >= 26.3
 		// SkyUp's cases in detail: every reward of each case, won or not
 		out.add(new Entry("skyCaseStats", "slashclient-hud.skyCase.screen", "skyup", "m-skycase", null, null, List.of(), () -> {

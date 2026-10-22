@@ -32,7 +32,7 @@ const ICONS = {
   'm-twitchchat': 'brands/twitch',
   'm-nethercoords': 'arrows-left-right', 'm-deathpoint': 'cross', 'm-lightoverlay': 'ghost', 'm-weather': 'umbrella', 'm-cameradistance': 'video',
   'm-autoclicker': 'computer-mouse', 'm-autotool': 'screwdriver-wrench', 'm-autorefill': 'arrows-rotate', 'm-holdkeys': 'hand-pointer', 'm-toolwarning': 'triangle-exclamation', 'm-hearts': 'heart', 'm-mousetweaks': 'arrow-pointer',
-  'lock': 'lock', 'bell': 'bell', 'bell-slash': 'bell-slash', 'image': 'image', 'pen': 'pen', 'trash': 'trash', 'ban': 'ban', 'm-dropguard': 'hand-holding', 'm-damage': 'heart-crack', 'm-tnt': 'bomb', 'm-nickhider': 'user-secret', 'm-reconnect': 'plug-circle-bolt', 'm-keybinds': 'keyboard', 'm-dungeonmap': 'map', 'm-skytasks': 'list-check', 'm-skyfish': 'fish', 'm-skycase': 'gift', 'skyup': 'dungeon',
+  'lock': 'lock', 'bell': 'bell', 'bell-slash': 'bell-slash', 'image': 'image', 'pen': 'pen', 'trash': 'trash', 'ban': 'ban', 'm-dropguard': 'hand-holding', 'm-damage': 'heart-crack', 'm-tnt': 'bomb', 'm-nickhider': 'user-secret', 'm-reconnect': 'plug-circle-bolt', 'm-keybinds': 'keyboard', 'm-dungeonmap': 'map', 'm-skytasks': 'list-check', 'm-skyfish': 'fish', 'm-skycase': 'gift', 'm-loothighlight': 'gem', 'skyup': 'dungeon',
   'm-inventory': 'table-cells', 'm-shulker': 'box-open', 'm-invsearch': 'magnifying-glass-arrow-right', 'm-slotlock': 'lock', 'm-shotcaption': 'image',
   'm-sort': 'arrow-down-a-z', 'm-worldmap': 'map-location-dot', 'm-friendmap': 'street-view',
 };
