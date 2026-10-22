@@ -936,5 +936,21 @@
 	"slashclient-hud.skyCase.resetSure": "Sure?",
 	"slashclient-hud.skyCase.items": "%s pcs",
 	"slashclient-hud.skyCase.removed": "(removed from the pool)",
-	"slashclient-hud.skyCase.empty": "No rewards yet: open this case's preview on the server."
+	"slashclient-hud.skyCase.empty": "No rewards yet: open this case's preview on the server.",
+	"slashclient-hud.suggestions.title": "Friend suggestions",
+	"slashclient-hud.suggestions.hint": "SlashClient players you met recently on servers",
+	"slashclient-hud.suggestions.played": "Played together on %s",
+	"slashclient-hud.suggestions.nearby": "Nearby on %s",
+	"slashclient-hud.suggestions.mutual1": "1 mutual friend",
+	"slashclient-hud.suggestions.mutual": "%s mutual friends",
+	"slashclient-hud.suggestions.min": "%s min",
+	"slashclient-hud.suggestions.hours": "%s h",
+	"slashclient-hud.suggestions.today": "today",
+	"slashclient-hud.suggestions.yesterday": "yesterday",
+	"slashclient-hud.suggestions.daysAgo": "%s days ago",
+	"slashclient-hud.suggestions.add": "Add as a friend",
+	"slashclient-hud.suggestions.dismiss": "Don't suggest again",
+	"slashclient-hud.suggestions.sent": "Friend request sent",
+	"slashclient-hud.suggestions.friends": "You are friends now",
+	"slashclient-hud.suggestions.failed": "Could not send the friend request"
 }

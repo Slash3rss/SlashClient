@@ -88,6 +88,8 @@ public class FriendsScreen extends Screen {
 			}
 		}
 		Party.refresh();
+		// players met recently, shown while no conversation is open
+		FriendSuggestions.refresh(false);
 	}
 
 	@Override
@@ -983,9 +985,14 @@ public class FriendsScreen extends Screen {
 		Social.Friend f = selected == null ? null : Social.friend(selected);
 		if (f == null) {
 			Component hint = Ui.tr("slashclient-hud.friends.pick");
+			input.visible = false;
+			// nothing open: players met recently (FriendSuggestions), with the hint under them
+			if (drawSuggestions(g, cx, cw, mx, my)) {
+				Ui.centered(g, Ui.fit(hint, cw - 20), cx + cw / 2, py + ph - 20, Ui.MUTED);
+				return;
+			}
 			Ui.icon(g, "chat", cx + cw / 2 - 8, py + ph / 2 - 22, 16, Ui.MUTED);
 			Ui.centered(g, Ui.fit(hint, cw - 20), cx + cw / 2, py + ph / 2, Ui.MUTED);
-			input.visible = false;
 			return;
 		}
 		input.visible = true;
@@ -1122,6 +1129,56 @@ public class FriendsScreen extends Screen {
 	}
 
 	/** The tooltip of what is under the mouse, over everything else. */
+	/**
+	 * "Propozycje": SlashClient players met recently on the same server, each with why, "Dodaj"
+	 * (a friend request) and "×" (not suggested again). False when there are none to show.
+	 */
+	private boolean drawSuggestions(GuiGraphicsExtractor g, int cx, int cw, int mx, int my) {
+		List<FriendSuggestions.Suggestion> list = FriendSuggestions.list();
+		if (list.isEmpty()) return false;
+		int x = cx + 12, w = cw - 24;
+		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.suggestions.title"), w - 30), x, py + 12, Ui.TEXT);
+		Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.suggestions.hint"), w), x, py + 25, Ui.MUTED);
+		int y = py + 40, bottom = py + ph - 32;
+		// "Dodaj" as an icon with its word in the tooltip: the reasons need the room
+		int addW = 18;
+		int textW = w - 32 - addW - 30;
+		for (FriendSuggestions.Suggestion s : list) {
+			// the name; where they met; how long, when and the shared friends
+			Component why = FriendSuggestions.reason(s);
+			Component mutual = FriendSuggestions.mutual(s);
+			Component detail = FriendSuggestions.detail(s);
+			int rowH = 42;
+			if (y + rowH > bottom) break;
+			boolean over = Ui.inside(mx, my, x, y, w, rowH);
+			float t = Ui.hover("suggestion:" + s.id(), over);
+			Ui.round(g, x, y, w, rowH, 5, t > 0 ? Ui.blend(Ui.CARD, Ui.CARD_HOVER, t) : Ui.CARD);
+			int my0 = y + (rowH - 18) / 2;
+			Ui.round(g, x + 6, my0, 18, 18, 5, Ui.ACCENT_DARK);
+			Component initial = Ui.bold(s.name().isEmpty() ? "?" : s.name().substring(0, 1).toUpperCase());
+			Ui.draw(g, initial, x + 15 - Ui.width(initial) / 2, my0 + 5, 0xFFFFFFFF);
+			Ui.draw(g, Ui.fit(Ui.bold(s.name()), textW), x + 30, y + 5, Ui.TEXT);
+			Ui.draw(g, Ui.fit(why, textW), x + 30, y + 17, Ui.MUTED);
+			Component second = mutual == null ? detail : detail.copy().append(Ui.text(" · ")).append(mutual);
+			Ui.draw(g, Ui.fit(second, textW), x + 30, y + 28, Ui.MUTED);
+			// cut short: the whole reason under the mouse
+			Component whole = why.copy().append(Ui.text(" · ")).append(second);
+			if ((Ui.width(why) > textW || Ui.width(second) > textW) && Ui.inside(mx, my, x + 30, y + 15, textW, 22)) tooltip = whole;
+			boolean busy = FriendSuggestions.busy(s.id());
+			int by = my0;
+			int bx = x + w - 6 - 18;
+			Ui.button(g, "suggestion:hide:" + s.id(), bx, by, 18, 18, "close", Component.empty(), false, mx, my);
+			if (Ui.inside(mx, my, bx, by, 18, 18)) tooltip = Ui.tr("slashclient-hud.suggestions.dismiss");
+			if (!busy) hits.add(new Hit(bx, by, 18, 18, () -> FriendSuggestions.dismiss(s)));
+			bx -= addW + 4;
+			Ui.button(g, "suggestion:add:" + s.id(), bx, by, addW, 18, "user", Component.empty(), !busy, mx, my);
+			if (Ui.inside(mx, my, bx, by, addW, 18)) tooltip = Ui.tr("slashclient-hud.suggestions.add");
+			if (!busy) hits.add(new Hit(bx, by, addW, 18, () -> FriendSuggestions.add(s)));
+			y += rowH + 4;
+		}
+		return true;
+	}
+
 	private void drawTooltip(GuiGraphicsExtractor g, int mx, int my) {
 		if (tooltip == null) return;
 		overEverything(g);

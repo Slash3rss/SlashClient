@@ -260,7 +260,7 @@ public final class Social {
 		}
 	}
 
-	private static void refreshFriends() throws Exception {
+	static void refreshFriends() throws Exception {
 		JsonObject res = request("GET", "/v1/friends", null, 8);
 		List<Friend> list = new ArrayList<>();
 		for (JsonElement el : res.getAsJsonArray("friends")) list.add(friendFrom(el.getAsJsonObject()));
@@ -435,6 +435,8 @@ public final class Social {
 			case "wallet" -> dev.slash3rss.slashclient.hud.CosmeticsScreen.walletChanged(num(e, "balance"));
 			case "friends" -> {
 				refreshFriends();
+				// a new friend or request: no longer a suggestion
+				if (!FriendSuggestions.list().isEmpty()) FriendSuggestions.refresh(true);
 				if (e.has("request") && e.get("request").isJsonObject()) toast(str(e.getAsJsonObject("request"), "name"), Component.translatable("slashclient-hud.friends.invite").getString(), null);
 			}
 			case "state" -> {
