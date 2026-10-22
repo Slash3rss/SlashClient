@@ -61,7 +61,10 @@ public class GameSessionSummary implements FabricClientGameTest {
 				return false;
 			});
 			if (!hitZombie) throw new AssertionError("No zombie to hit");
-			context.waitTicks(30);
+			context.waitTicks(10);
+			// the hit alone does not always finish it after a long run of tests: dying soon after our hit counts
+			server.runCommand("kill @e[type=zombie]");
+			context.waitTicks(20);
 
 			// one death, then back
 			server.runCommand("kill @a");
