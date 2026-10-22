@@ -19,6 +19,7 @@ import { SERVER_STATUS_EN } from './i18nServerStatus';
 import { FRIEND_MAP_EN } from './i18nFriendMap';
 import { MANUAL_EN } from './i18nManual';
 import { SERVER_VOTES_EN } from './i18nServerVotes';
+import { SESSION_SUMMARY_EN } from './i18nSessionSummary';
 
 export type Lang = 'pl' | 'en';
 
@@ -49,6 +50,8 @@ const EN: Record<string, string> = {
   ...COMMUNITY_MEDIA_EN,
   // friends live on Twitch and Kick (own file)
   ...STREAMS_EN,
+  // the summary after a game session (own file)
+  ...SESSION_SUMMARY_EN,
   // statuses from a server's tab list (own file)
   ...SERVER_STATUS_EN,
   // friends on the minimap (own file)

@@ -73,6 +73,8 @@ export interface Settings {
   selectedProfileId?: string;
   selectedAccountId?: string;
   closeOnLaunch: boolean;
+  /** "Podsumowanie sesji" after the game closes; missing = on. */
+  sessionSummary?: boolean;
   /** Fewer animations (slower computers): no transitions, a still starry sky, 3D previews that don't spin. */
   reduceMotion?: boolean;
   /** How much memory new profiles start with (MB); each profile can change its own. */

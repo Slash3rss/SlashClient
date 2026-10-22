@@ -27,6 +27,7 @@ import { checkLegalNotices, createLegalCard } from './legal';
 import { createWiki } from './wiki';
 import { createServerPages } from './serverPages';
 import { confirmDialog, modalWindow } from './dialog';
+import { createSessionSummary } from './sessionSummary';
 
 declare global {
   interface Window {
@@ -756,6 +757,14 @@ const configEditor = createConfigEditor($('#config-pane'), { api, toast, errorTe
 createDiskCleanup($('#disk-card'), { api, toast, errorText });
 const keyConflicts = createKeyConflicts($('#keys-card'), { api, toast, errorText });
 createToolSettings($('#tools-card'), { api, toast, errorText });
+// "Podsumowanie sesji" after the game closes, and the last ones on the statistics page (sessionSummary.ts)
+const sessionSummary = createSessionSummary({
+  api, toast,
+  openGallery: (profileId, tab) => {
+    openProfilePane('worlds', profileId);
+    document.querySelector<HTMLButtonElement>(`#worlds-tab button[data-tab="${tab}"]`)?.click();
+  },
+});
 const wiki = createWiki($('#wiki-root'), { api, toast, errorText });
 document.querySelector('.nav[data-view="wiki"]')?.addEventListener('click', () => wiki.focus());
 // "Wesprzyj projekt": opens the website's support page; the tier shown is asked again on each visit to Settings
@@ -2356,6 +2365,7 @@ async function renderStats() {
     cell.style.setProperty('--a', String(ms ? 0.15 + (ms / hourMax) * 0.85 : 0.03));
     return cell;
   }));
+  void sessionSummary.renderHistory(document.querySelector('.profile-pane[data-pane="stats"]'));
 }
 
 document.querySelectorAll<HTMLButtonElement>('#stats-range button').forEach((b) =>
