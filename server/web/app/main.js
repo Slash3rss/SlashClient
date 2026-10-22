@@ -220,7 +220,7 @@ function renderShell() {
   document.body.classList.add('signed-in');
   document.body.replaceChildren(
     el('div', { id: 'install' }),
-    el('div', { id: 'offline', class: 'offline hidden', role: 'status' }, icon('fa-solid fa-plug-circle-xmark'), ' ', t('Łączenie z serwerem…')),
+    el('div', { id: 'offline', class: 'offline-bar hidden', role: 'status' }, icon('fa-solid fa-plug-circle-xmark'), ' ', t('Łączenie z serwerem…')),
     el('main', { id: 'view' }),
     el('nav', { class: 'tabs', 'aria-label': t('Zakładki') }, ...TABS.map(([id, cls, label]) => el('a', { href: `#/${id}`, class: 'tab', dataset: { tab: id } },
       el('span', { class: 'tab-icon' }, icon(cls), el('span', { class: 'tab-badge' })), el('span', { class: 'tab-label', textContent: t(label) })))),

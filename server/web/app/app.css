@@ -97,7 +97,7 @@ body.in-chat .tabs { display: none; }
 .tab-icon { position: relative; font-size: 20px; }
 .tab-badge { display: none; position: absolute; top: -4px; left: 14px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
 .tab-badge.on { display: block; }
-.offline { padding: 6px 12px; padding-top: calc(6px + env(safe-area-inset-top)); background: var(--amber); color: #111; font-size: 13px; text-align: center; }
+.offline-bar { padding: 6px 12px; padding-top: calc(6px + env(safe-area-inset-top)); background: var(--amber); color: #111; font-size: 13px; text-align: center; }
 .install { display: flex; align-items: center; gap: 10px; margin: 0; padding: 10px 6px 10px 14px; padding-top: calc(10px + env(safe-area-inset-top)); background: var(--card-2); border-bottom: 1px solid var(--border); font-size: 14px; }
 .install + * .top, .install ~ #view .top { padding-top: 14px; }
 
