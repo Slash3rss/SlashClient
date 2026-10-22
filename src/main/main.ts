@@ -451,8 +451,9 @@ function startTask(title: string, icon?: string) {
   return {
     progress: (stage: string, done: number, total: number, stats?: { bytes: number; totalBytes: number; speed: number }) =>
       send('task:progress', { id, stage, done, total, ...stats }),
-    finish: (ok: boolean, message: string, profileId?: string) => {
-      send('task:done', { id, ok, message, profileId });
+    /** `missing`: files the player still has to download by hand (no "Play now" until they are there). */
+    finish: (ok: boolean, message: string, profileId?: string, missing = 0) => {
+      send('task:done', { id, ok, message, profileId, missing });
       // tell the player even when the launcher is in the background
       if (!win?.isFocused()) notifier.show({ title: 'SlashClient', body: message });
     },
@@ -927,7 +928,8 @@ async function installModpackTask(title: string, iconUrl: string | undefined, ge
     store.profiles.push(profile);
     store.settings.selectedProfileId = profile.id;
     await persist();
-    task.finish(true, t('Zainstalowano modpack {0}. Profil jest gotowy do gry.', info.name) + manualNote(manual), profile.id);
+    // ready to play only with every file there
+    task.finish(true, (manual.length ? t('Zainstalowano modpack {0}.', info.name) : t('Zainstalowano modpack {0}. Profil jest gotowy do gry.', info.name)) + manualNote(manual), profile.id, manual.length);
     return profile.id;
   } catch (err) {
     task.finish(false, t('Nie udało się zainstalować modpacka: {0}', (err as Error).message));
@@ -988,7 +990,7 @@ handle('modpack:update', async (profileId: string, versionId?: string) => {
     const { info, manual } = await installPackFile(profile, file, true, task.progress);
     applyPack(profile, info, version, pack.title, source);
     await persist();
-    task.finish(true, t('Modpack {0} ma teraz wersję {1}.', pack.title, version!.versionNumber) + manualNote(manual), profile.id);
+    task.finish(true, t('Modpack {0} ma teraz wersję {1}.', pack.title, version!.versionNumber) + manualNote(manual), profile.id, manual.length);
   } catch (err) {
     task.finish(false, t('Nie udało się zaktualizować modpacka: {0}', (err as Error).message));
     throw err;
@@ -1154,7 +1156,7 @@ handle('profile:importPack', async (key: string, opts: { name?: string; parts?: 
     store.settings.selectedProfileId = profile.id;
     if (manual.length) await rememberManual(profile, manual);
     await persist();
-    task.finish(true, t('Zaimportowano profil {0}.', name) + manualNote(manual), profile.id);
+    task.finish(true, t('Zaimportowano profil {0}.', name) + manualNote(manual), profile.id, manual.length);
     return profile.id;
   } catch (err) {
     task.finish(false, t('Nie udało się zaimportować profilu: {0}', (err as Error).message));

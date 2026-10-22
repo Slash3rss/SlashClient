@@ -2858,9 +2858,16 @@ $('#manual-add-folder').addEventListener('click', () => guard(async () => {
 }));
 $('#manual-ok').addEventListener('click', () => guard(async () => {
   const res: { copied: number; left: number } = await api.manualAccept();
+  const profileId = manualState?.profileId;
   $('#manual-modal').classList.add('hidden');
   manualState = undefined;
-  if (res.copied) toast(res.left ? t('Skopiowano do profilu: {0}. Brakuje jeszcze: {1}.', res.copied, res.left) : t('Skopiowano do profilu: {0}. Wszystkie pliki są na miejscu.', res.copied));
+  // everything there: now the profile can be played
+  const play = !res.left && profileId ? { label: t('Graj teraz'), run: () => {
+    store.settings.selectedProfileId = profileId;
+    renderPlay();
+    startGame();
+  } } : undefined;
+  if (res.copied) toast(res.left ? t('Skopiowano do profilu: {0}. Brakuje jeszcze: {1}.', res.copied, res.left) : t('Skopiowano do profilu: {0}. Wszystkie pliki są na miejscu.', res.copied), false, play);
   await refreshInstalled();
   refreshManual();
 }));
@@ -4154,7 +4161,7 @@ function startStars() {
 
 interface TaskStart { id: string; title: string; icon?: string }
 interface TaskProgress { id: string; stage: string; done: number; total: number; bytes?: number; totalBytes?: number; speed?: number }
-interface TaskDone { id: string; ok: boolean; message: string; profileId?: string }
+interface TaskDone { id: string; ok: boolean; message: string; profileId?: string; missing?: number }
 
 const taskCards = new Map<string, HTMLElement>();
 
@@ -4198,7 +4205,7 @@ function progressTaskCard({ id, stage, done, total, bytes, totalBytes, speed }: 
 }
 
 /** Turns a card into its result; `stayMs` overrides how long it stays. */
-function finishTaskCard({ id, ok, message, profileId }: TaskDone, stayMs?: number) {
+function finishTaskCard({ id, ok, message, profileId, missing }: TaskDone, stayMs?: number) {
   const card = taskCards.get(id);
   if (!card) return;
   taskCards.delete(id);
@@ -4207,7 +4214,15 @@ function finishTaskCard({ id, ok, message, profileId }: TaskDone, stayMs?: numbe
   const close = el('button', { type: 'button', textContent: t('Zamknij') });
   close.addEventListener('click', () => dismiss(card));
   const actions = el('div', { className: 'task-actions' });
-  if (ok && profileId) {
+  if (ok && profileId && missing) {
+    // files still to download by hand: the way to them, not "Play now" (the game would not start)
+    const get = el('button', { type: 'button', className: 'primary' }, el('i', { className: 'fa-solid fa-download' }), t('Pobierz brakujące ({0})', missing));
+    get.addEventListener('click', () => {
+      dismiss(card);
+      void openManual(profileId);
+    });
+    actions.append(close, get);
+  } else if (ok && profileId) {
     const play = el('button', { type: 'button', className: 'primary' }, el('i', { className: 'fa-solid fa-play' }), t('Graj teraz'));
     play.addEventListener('click', () => {
       dismiss(card);

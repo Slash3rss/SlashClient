@@ -675,6 +675,8 @@ const EN: Record<string, string> = {
   'Pobieranie ikony': 'Downloading icon',
   'Przygotowanie…': 'Preparing…',
   'Zainstalowano modpack {0}. Profil jest gotowy do gry.': 'Installed modpack {0}. The profile is ready to play.',
+  'Zainstalowano modpack {0}.': 'Installed modpack {0}.',
+  'Pobierz brakujące ({0})': 'Get the missing ones ({0})',
   'Nie udało się zainstalować modpacka: {0}': 'Could not install the modpack: {0}',
   'Graj teraz': 'Play now',
   'Ikona': 'Icon',
