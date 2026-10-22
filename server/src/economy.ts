@@ -32,7 +32,7 @@ export function sparksText(n: number, lang: 'pl' | 'en' = 'pl'): string {
 }
 
 /** Why the balance changed. */
-export type Reason = 'achievement' | 'purchase' | 'admin';
+export type Reason = 'achievement' | 'purchase' | 'admin' | 'challenge';
 
 export interface LedgerEntry { id: number; amount: number; reason: Reason; ref: string; note: string; by: string; balance: number; at: number }
 
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS shop_prices (id TEXT PRIMARY KEY, price INTEGER CHECK
     return inTransaction(this.sql, () => {
       const next = this.balance(uuid) + amount;
       if (next < 0) return undefined;
-      const added = this.sql.prepare(`INSERT ${reason === 'achievement' ? 'OR IGNORE ' : ''}INTO sparks_ledger (uuid, amount, reason, ref, note, by_uuid, balance, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+      const added = this.sql.prepare(`INSERT ${reason === 'achievement' || reason === 'challenge' ? 'OR IGNORE ' : ''}INTO sparks_ledger (uuid, amount, reason, ref, note, by_uuid, balance, at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
         .run(uuid, amount, reason, ref, note.slice(0, 200), by, next, at).changes > 0;
       if (!added) return undefined;
       this.sql.prepare('INSERT INTO sparks_wallets (uuid, balance) VALUES (?, ?) ON CONFLICT (uuid) DO UPDATE SET balance = excluded.balance').run(uuid, next);
@@ -155,7 +155,7 @@ interface Deps {
   body: (req: http.IncomingMessage) => Promise<Record<string, unknown>>;
   push: (userId: string, event: unknown) => void;
   /** What a ledger row was for, in both languages (an achievement's or an item's name). */
-  label: (reason: Reason, ref: string) => { label: string; labelEn: string };
+  label: (reason: Reason, ref: string, note: string) => { label: string; labelEn: string };
   /** After a purchase: the achievements about the shop. */
   bought: (userId: string) => void;
   /** An item went on sale: who wears it now keeps it (a grant), so nothing is taken from them. */
@@ -169,7 +169,7 @@ export function economyRoutes(deps: Deps): [string, RegExp, Handler][] {
   const { db, wallet, fail } = deps;
   const entries = (uuid: string, limit: number) => wallet.ledger(uuid, limit).map((e) => {
     const by = e.by ? db.user(e.by)?.handle ?? '' : '';
-    return { id: e.id, amount: e.amount, reason: e.reason, ref: e.ref, ...deps.label(e.reason, e.ref), note: e.note, balance: e.balance, at: e.at, ...(by ? { by } : {}) };
+    return { id: e.id, amount: e.amount, reason: e.reason, ref: e.ref, ...deps.label(e.reason, e.ref, e.note), note: e.note, balance: e.balance, at: e.at, ...(by ? { by } : {}) };
   });
   const userOr404 = (id: string) => db.user(id) ?? fail(404, 'not_found');
 

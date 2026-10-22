@@ -140,8 +140,13 @@ export class MessageCounter {
   count(uuid: string, at = Date.now()): boolean {
     const r = this.sql.prepare(`INSERT INTO message_counts (uuid, day, n) SELECT ?, ?, 1 WHERE ? > 0
       ON CONFLICT (uuid, day) DO UPDATE SET n = n + 1 WHERE n < ?`).run(uuid, utcDay(at), this.capOf(), this.capOf());
-    return Number(r.changes) > 0;
+    const counted = Number(r.changes) > 0;
+    if (counted) this.onCounted?.(uuid, at);
+    return counted;
   }
+
+  /** Told about every message that counted (the challenges count the same ones: challenges.ts). */
+  onCounted?: (uuid: string, at: number) => void;
 
   total(uuid: string): number {
     return Number((this.sql.prepare('SELECT COALESCE(SUM(n), 0) AS n FROM message_counts WHERE uuid = ?').get(uuid) as { n: number }).n);

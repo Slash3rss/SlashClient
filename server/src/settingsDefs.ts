@@ -1,4 +1,5 @@
 import { BURST_LIMITS, COUNTED_PER_DAY, EDIT_WINDOW_MS } from './chatLimits.ts';
+import { CHALLENGE_SETTING_DEFS } from './challenges.ts';
 import { IMAGE_LIMITS } from './chatImages.ts';
 import { MAX_LOGO_BYTES } from './clanLogos.ts';
 import { BLOCKED_TAGS, BLOCKED_WORDS, CLAN_LIMITS } from './clans.ts';
@@ -148,6 +149,7 @@ export const SETTING_DEFS: SettingDef[] = [
   ...group('sparks', [
     { key: 'sparks.messagesPerDay', label: 'Wiadomości liczone dziennie', labelEn: 'Messages counted a day', description: 'Do osiągnięć za wiadomości liczy się najwyżej tyle wiadomości dziennie (UTC).', type: 'int', default: COUNTED_PER_DAY, min: 0, max: 10_000 },
   ]),
+  ...CHALLENGE_SETTING_DEFS,
 
   ...group('support', [
     { key: 'support.refundWindowDays', label: 'Okno na zwrot', labelEn: 'Refund window', description: 'Ile dni po płatności gracz sam może poprosić o zwrot. Regulamin obiecuje 14 dni (prawo konsumenta), więc nie mniej.', type: 'duration', default: REFUND_WINDOW_DAYS, min: 14, max: 365, unit: 'dni', risky: true },
