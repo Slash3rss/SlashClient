@@ -405,9 +405,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         });
         const link = el('a', { href: loginCode.url, target: '_blank', textContent: loginCode.url.replace(/^https:\/\/(www\.)?/, '') });
         buttons.append(el('div', { className: 'ms-code' },
-          el('p', {}, t('Otwórz '), link, t(' i wpisz kod:')),
+          // many players miss that the code is already copied: said big
+          el('div', { className: 'ms-copied-note' }, icon('fa-clipboard-check'),
+            el('div', {}, el('b', { textContent: t('Kod jest już skopiowany do schowka!') }), el('span', { textContent: t('Nie musisz go przepisywać – po prostu go wklej.') }))),
+          el('p', {}, t('Otwórz '), link, t(' i wklej kod (Ctrl+V):')),
           el('div', { className: 'code-row' }, el('div', { className: 'code', textContent: loginCode.code }), copy),
-          el('p', { className: 'muted' }, icon('fa-check'), t(' Kod jest już w schowku, wystarczy go wkleić.')),
           el('p', { className: 'muted' }, el('span', { className: 'spinner' }), t(' Czekam na zalogowanie…')),
           cancel));
       } else buttons.append(el('p', { className: 'muted' }, el('span', { className: 'spinner' }), t(' Dokończ logowanie w przeglądarce…')), cancel);

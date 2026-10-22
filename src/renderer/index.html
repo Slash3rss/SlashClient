@@ -492,12 +492,20 @@
           <p class="muted">Oficjalne logowanie. Pozwala grać na serwerach premium.</p>
           <button class="primary" id="ms-login"><i class="fa-brands fa-microsoft"></i> Zaloguj przez Microsoft</button>
           <div id="ms-code" class="ms-code hidden">
-            <p>Otwórz <a id="ms-url" target="_blank"></a> i wpisz kod:</p>
+            <!-- many players miss that the code is already copied: said big, with the steps -->
+            <div class="ms-copied-note" id="ms-copied"><i class="fa-solid fa-clipboard-check"></i>
+              <div><b>Kod jest już skopiowany do schowka!</b><span>Nie musisz go przepisywać – po prostu go wklej.</span></div>
+            </div>
+            <ol class="ms-steps">
+              <li>W przeglądarce otworzyła się strona Microsoftu (<a id="ms-url" target="_blank"></a>). Jeśli nie, kliknij ten link.</li>
+              <li>Kliknij w pole na kod i wklej go: <kbd class="ms-paste-key">Ctrl</kbd>+<kbd>V</kbd>.</li>
+              <li>Zaloguj się kontem Microsoft z Minecraftem i wróć tutaj – launcher dokończy sam.</li>
+            </ol>
             <div class="code-row">
               <div class="code" id="ms-user-code"></div>
-              <button id="ms-copy"><i class="fa-regular fa-copy"></i> Kopiuj kod</button>
+              <button id="ms-copy"><i class="fa-regular fa-copy"></i> Kopiuj ponownie</button>
             </div>
-            <p class="muted hidden" id="ms-copied"><i class="fa-solid fa-check"></i> Kod jest już w schowku, wystarczy go wkleić.</p>
+            <p class="muted"><span class="spinner"></span> Czekam na zalogowanie…</p>
             <button id="ms-cancel">Anuluj</button>
           </div>
         </div>

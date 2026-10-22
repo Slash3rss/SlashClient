@@ -1618,13 +1618,17 @@ $('#ms-cancel').addEventListener('click', () => api.cancelLogin());
 $('#ms-copy').addEventListener('click', async () => {
   await navigator.clipboard.writeText($('#ms-user-code').textContent ?? '');
   $('#ms-copy').replaceChildren(el('i', { className: 'fa-solid fa-check' }), t(' Skopiowano'));
-  setTimeout(() => $('#ms-copy').replaceChildren(el('i', { className: 'fa-regular fa-copy' }), t(' Kopiuj kod')), 1500);
+  setTimeout(() => $('#ms-copy').replaceChildren(el('i', { className: 'fa-regular fa-copy' }), t(' Kopiuj ponownie')), 1500);
 });
 api.on('login:code', ({ userCode, url, copied }: { userCode: string; url: string; copied?: boolean }) => {
   $('#ms-user-code').textContent = userCode;
   $('#ms-copied').classList.toggle('hidden', !copied);
-  Object.assign($<HTMLAnchorElement>('#ms-url'), { href: url, textContent: url });
+  Object.assign($<HTMLAnchorElement>('#ms-url'), { href: url, textContent: url.replace(/^https:\/\/(www\.)?/, '') });
+  // on a Mac it is Cmd+V
+  document.querySelector('.ms-paste-key')!.textContent = navigator.platform.startsWith('Mac') ? '⌘' : 'Ctrl';
   $('#ms-code').classList.remove('hidden');
+  $('#ms-code').scrollIntoView({ block: 'nearest' });
+  if (copied) toast(t('Kod {0} jest w schowku – wklej go na stronie Microsoftu.', userCode));
 });
 
 // ---------- settings ----------
