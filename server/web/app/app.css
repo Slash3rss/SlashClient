@@ -174,14 +174,6 @@ a.item:active, label.item:active { background: var(--card-2); }
 .pick { display: flex; flex-direction: column; max-height: 45dvh; overflow-y: auto; }
 .pick input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent); }
 
-/* cosmetics: a slot per row, its items in a sheet */
-.slots { display: flex; flex-direction: column; }
-.slot-row { width: 100%; border: 0; background: transparent; text-align: left; cursor: pointer; padding: 6px 4px; min-height: 52px; }
-.slot-row:active { background: var(--card-2); }
-.options { display: flex; flex-direction: column; gap: 6px; }
-.option { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); text-align: left; cursor: pointer; }
-.option.on { border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
-
 /* settings and achievements */
 .switch-row { display: flex; align-items: center; gap: 12px; min-height: 48px; }
 .switch-row input { appearance: none; position: relative; width: 48px; height: 28px; border-radius: 14px; background: var(--card-2); border: 1px solid var(--border); cursor: pointer; transition: background .15s; flex: none; }

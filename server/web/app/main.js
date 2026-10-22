@@ -603,7 +603,6 @@ function renderMe(view) {
     save(STATUS, statusSel.value);
     live?.send({ type: 'presence', presence: presence() });
   } }, ...statuses.map(([v, l]) => el('option', { value: v, textContent: t(l), selected: myStatus() === v })));
-  const cosmetics = el('section', { class: 'card' }, el('h2', { textContent: t('Kosmetyki') }), el('p', { class: 'muted small', textContent: t('Wczytywanie…') }));
   const achievements = el('section', { class: 'card' }, el('h2', { textContent: t('Osiągnięcia') }), el('p', { class: 'muted small', textContent: t('Wczytywanie…') }));
   const notifications = el('section', { class: 'card', id: 'notifications' });
   view.replaceChildren(
@@ -614,42 +613,11 @@ function renderMe(view) {
       el('label', { class: 'field' }, el('span', { textContent: t('Status dla znajomych') }), statusSel),
       el('div', { class: 'field' }, el('span', { textContent: t('Język') }), langSwitch())),
     notifications,
-    cosmetics,
     achievements);
   void renderNotifications(notifications);
-  void renderCosmetics(cosmetics);
   void renderAchievements(achievements);
 }
 
-// ---------- Kosmetyki: what the account wears in the game (POST /v1/me, as on the website) ----------
-
-const SLOT_NAMES = { cape: 'Peleryna', wings: 'Skrzydła', elytra: 'Elytra', trail: 'Ślad', aura: 'Aura', pet: 'Pupil', hat: 'Na głowę', top: 'Ubranie', kill: 'Efekt zabójstwa', suit: 'Strój', shield: 'Tarcza', weapon: 'Skórka broni', shoes: 'Buty', hands: 'Dłonie', face: 'Twarz', ears: 'Uszy i rogi', back: 'Na plecy', tail: 'Ogon', ring: 'Krąg pod stopami', move: 'Efekt ruchu', spray: 'Spray', prop: 'Rekwizyt' };
-
-async function renderCosmetics(box) {
-  const title = el('h2', { textContent: t('Kosmetyki') });
-  const res = await api('GET', '/v1/cosmetics').catch(() => undefined);
-  if (!res) return box.replaceChildren(title, el('p', { class: 'muted small', textContent: t('Nie udało się wczytać kosmetyków.') }));
-  const worn = (slot) => (slot === 'cape' ? S.me.cape : S.me.loadout?.[slot]) || '';
-  const bySlot = new Map();
-  for (const i of res.items) if (i.available && SLOT_NAMES[i.slot]) bySlot.set(i.slot, [...(bySlot.get(i.slot) ?? []), i]);
-  const nameOf = (slot) => res.items.find((i) => i.slot === slot && i.id === worn(slot))?.name ?? t('Brak');
-  const rows = Object.keys(SLOT_NAMES).filter((slot) => bySlot.has(slot)).map((slot) => el('button', { class: 'item slot-row', onclick: async () => {
-    const id = await sheet(t(SLOT_NAMES[slot]), (body, close) => {
-      const option = (value, label) => el('button', { class: `option${worn(slot) === value ? ' on' : ''}`, onclick: () => close(value) },
-        el('span', { class: 'grow', textContent: label }), worn(slot) === value ? icon('fa-solid fa-check') : '');
-      body.append(el('div', { class: 'options' }, option('', t('Brak')), ...bySlot.get(slot).map((i) => option(i.id, i.name))));
-    });
-    if (id === undefined || id === worn(slot)) return;
-    const me = await guard(() => api('POST', '/v1/me', slot === 'cape' ? { cape: id } : { loadout: { [slot]: id } }));
-    if (!me) return;
-    S.me = { ...S.me, ...me };
-    toast(t('Zapisano. Gra pokaże zmianę za chwilę.'));
-    void renderCosmetics(box);
-  } }, el('span', { class: 'grow' }, el('div', { class: 'name', textContent: t(SLOT_NAMES[slot]) }), el('div', { class: 'muted small', textContent: nameOf(slot) })), icon('fa-solid fa-chevron-right muted')));
-  box.replaceChildren(title,
-    el('p', { class: 'muted small', textContent: t('Zestaw konta. Postać z własnym zestawem (ustawionym w launcherze) nosi swój.') }),
-    rows.length ? el('div', { class: 'slots' }, ...rows) : el('p', { class: 'muted small', textContent: t('Nie masz jeszcze żadnych kosmetyków.') }));
-}
 
 const KIND_NAMES = { dm: 'Wiadomości od znajomych', group: 'Czaty grupowe', clan: 'Czat klanu', mention: 'Wzmianki w społecznościach', invite: 'Zaproszenia' };
 

@@ -16,12 +16,12 @@ function texts(): string[] {
   for (const file of readdirSync(appDir).filter((f) => f.endsWith('.js') && f !== 'i18n.js' && f !== 'sw.js')) {
     const s = readFileSync(new URL(file, appDir), 'utf8');
     for (const m of s.matchAll(/\bt\('((?:[^'\\]|\\.)*)'/g)) out.add(m[1]);
-    // ERRORS in ui.js; the tabs, statuses, kinds of notifications and cosmetics' slots in main.js
+    // ERRORS in ui.js; the tabs, statuses and kinds of notifications in main.js
     if (file === 'ui.js') for (const m of s.matchAll(/^ {2}\w+: '((?:[^'\\]|\\.)*)',$/gm)) out.add(m[1]);
     if (file === 'main.js') {
       for (const m of s.matchAll(/\['\w+', 'fa-[^']*', '([^']*)'\]/g)) out.add(m[1]);
       for (const m of s.matchAll(/\['(?:online|away|busy|invisible)', '([^']*)'\]/g)) out.add(m[1]);
-      for (const names of s.matchAll(/(?:KIND|SLOT)_NAMES = \{(.*?)\};/g)) for (const m of names[1].matchAll(/: '([^']*)'/g)) out.add(m[1]);
+      for (const names of s.matchAll(/KIND_NAMES = \{(.*?)\};/g)) for (const m of names[1].matchAll(/: '([^']*)'/g)) out.add(m[1]);
     }
   }
   return [...out];
