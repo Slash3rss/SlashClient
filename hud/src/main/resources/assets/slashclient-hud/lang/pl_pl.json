@@ -968,5 +968,21 @@
 	"slashclient-hud.skyCase.resetSure": "Na pewno?",
 	"slashclient-hud.skyCase.items": "%s szt.",
 	"slashclient-hud.skyCase.removed": "(usunięta z puli)",
-	"slashclient-hud.skyCase.empty": "Brak nagród – otwórz podgląd tej skrzyni na serwerze."
+	"slashclient-hud.skyCase.empty": "Brak nagród – otwórz podgląd tej skrzyni na serwerze.",
+	"slashclient-hud.suggestions.title": "Propozycje znajomych",
+	"slashclient-hud.suggestions.hint": "Gracze SlashClient spotkani ostatnio na serwerach",
+	"slashclient-hud.suggestions.played": "Razem na %s",
+	"slashclient-hud.suggestions.nearby": "Obok siebie na %s",
+	"slashclient-hud.suggestions.mutual1": "1 wspólny znajomy",
+	"slashclient-hud.suggestions.mutual": "%s wspólnych znajomych",
+	"slashclient-hud.suggestions.min": "%s min",
+	"slashclient-hud.suggestions.hours": "%s h",
+	"slashclient-hud.suggestions.today": "dzisiaj",
+	"slashclient-hud.suggestions.yesterday": "wczoraj",
+	"slashclient-hud.suggestions.daysAgo": "%s dni temu",
+	"slashclient-hud.suggestions.add": "Dodaj do znajomych",
+	"slashclient-hud.suggestions.dismiss": "Nie proponuj więcej",
+	"slashclient-hud.suggestions.sent": "Wysłano zaproszenie do znajomych",
+	"slashclient-hud.suggestions.friends": "Jesteście teraz znajomymi",
+	"slashclient-hud.suggestions.failed": "Nie udało się wysłać zaproszenia"
 }

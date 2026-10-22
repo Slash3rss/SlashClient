@@ -3,6 +3,7 @@ package dev.slash3rss.slashclient.hud.test;
 import com.google.gson.JsonObject;
 import dev.slash3rss.slashclient.hud.TestHooks;
 import dev.slash3rss.slashclient.hud.social.FriendStreams;
+import dev.slash3rss.slashclient.hud.social.FriendSuggestions;
 import dev.slash3rss.slashclient.hud.social.FriendsScreen;
 import dev.slash3rss.slashclient.hud.social.Social;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -65,6 +66,9 @@ public class GameFriendStreams implements FabricClientGameTest {
 			context.waitTicks(10);
 			context.takeScreenshot("friends-live");
 
+			// no conversation open: friend suggestions (players met recently) with why, "Dodaj" and "×"
+			suggestions(context, now);
+
 			// it ended: the badge goes
 			context.runOnClient(mc -> {
 				JsonObject e = new JsonObject();
@@ -87,6 +91,26 @@ public class GameFriendStreams implements FabricClientGameTest {
 			});
 		}
 		context.runOnClient(mc -> TestHooks.vanillaMenu());
+	}
+
+	/** Made-up suggestions in the friends window with nothing open; the reasons say where, how long, when and shared friends. */
+	private static void suggestions(ClientGameTestContext context, long now) {
+		context.runOnClient(mc -> FriendSuggestions.sampleForTest(List.of(
+			new FriendSuggestions.Suggestion("s-ola", "OlaBuduje", "OlaBuduje", "SkyUp.pl", 125, 6, now - 86_400_000L, 2),
+			new FriendSuggestions.Suggestion("s-kuba", "KubaPvP", "KubaPvP", "mc.hypixel.net", 45, 0, now - 60_000, 0),
+			new FriendSuggestions.Suggestion("s-marek", "Marek", "Marek", "SkyUp.pl", 0, 3, now - 3 * 86_400_000L, 1))));
+		String played = context.computeOnClient(mc -> FriendSuggestions.reason(FriendSuggestions.list().get(1)).getString());
+		String detail = context.computeOnClient(mc -> FriendSuggestions.detail(FriendSuggestions.list().get(1)).getString());
+		if (!played.contains("mc.hypixel.net") || !detail.contains("45")) throw new AssertionError("Suggestion reason: " + played + " / " + detail);
+		String mutual = context.computeOnClient(mc -> FriendSuggestions.mutual(FriendSuggestions.list().get(0)).getString());
+		if (!mutual.contains("2")) throw new AssertionError("Mutual friends: " + mutual);
+		context.setScreen(() -> {
+			Social.viewing = null;
+			return new FriendsScreen(null);
+		});
+		context.waitTicks(10);
+		context.takeScreenshot("friends-suggestions");
+		context.runOnClient(mc -> FriendSuggestions.clearForTest());
 	}
 
 	private static int toasts(ClientGameTestContext context) {

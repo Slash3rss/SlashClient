@@ -24,6 +24,16 @@ export const PRIVACY_ELEMENTS = [
 export async function privacyCard() {
   let state = await api('GET', '/v1/me/profile-privacy').catch(() => undefined);
   if (!state) return null;
+  // "Pokazuj mnie w propozycjach znajomych" (suggestions.ts); a server without it: no switch
+  let suggest = await api('GET', '/v1/me/suggestions').catch(() => undefined);
+  const saveSuggest = async (visible) => {
+    const next = await guard(() => api('POST', '/v1/me/suggestions', { visible }));
+    if (next) {
+      suggest = next;
+      toast('Zapisano ustawienia profilu.');
+    }
+    draw();
+  };
   const card = el('div', { class: 'glass card privacy-card', id: 'prywatnosc' });
   const save = async (change) => {
     const next = await guard(() => api('POST', '/v1/me/profile-privacy', change));
@@ -55,7 +65,19 @@ export async function privacyCard() {
         el('button', { type: 'button', onclick: async () => { await navigator.clipboard.writeText(link).catch(() => {}); toast('Skopiowano link do profilu.'); } }, icon('fa-regular fa-copy'), ' Kopiuj link')),
       el('h4', { textContent: 'Kto widzi profil' }), options,
       el('h4', { textContent: 'Co jest na profilu' }), switches,
-      el('label', { class: 'row small privacy-index' }, el('span', { class: 'switch' }, index, el('span')), 'Pozwól wyszukiwarkom (Google itp.) pokazywać mój profil'));
+      el('label', { class: 'row small privacy-index' }, el('span', { class: 'switch' }, index, el('span')), 'Pozwól wyszukiwarkom (Google itp.) pokazywać mój profil'),
+      ...suggestSection());
+  }
+  /** Being suggested to players met on the same server, and seeing suggestions. */
+  function suggestSection() {
+    if (!suggest?.enabled) return [];
+    const box = el('input', { type: 'checkbox', checked: suggest.visible });
+    box.addEventListener('change', () => saveSuggest(box.checked));
+    return [
+      el('h4', { textContent: 'Propozycje znajomych' }),
+      el('label', { class: 'row small privacy-suggest' }, el('span', { class: 'switch' }, box, el('span')), 'Pokazuj mnie w propozycjach znajomych'),
+      el('p', { class: 'muted small', textContent: 'Gracze SlashClient, z którymi grasz na tym samym serwerze, mogą zobaczyć Cię w „Propozycjach” w launcherze i w grze (z nazwą serwera i czasem wspólnej gry), a Ty ich. Wyłączone: nikt Cię nie zobaczy, Ty nie dostaniesz propozycji, a zapisane spotkania zostaną usunięte. Status „Niewidoczny” nigdy nie jest liczony.' }),
+    ];
   }
   draw();
   return card;

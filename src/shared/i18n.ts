@@ -21,6 +21,7 @@ import { FRIEND_MAP_EN } from './i18nFriendMap';
 import { MANUAL_EN } from './i18nManual';
 import { SERVER_VOTES_EN } from './i18nServerVotes';
 import { WIZARD_EN } from './i18nWizard';
+import { SUGGESTIONS_EN } from './i18nSuggestions';
 
 export type Lang = 'pl' | 'en';
 
@@ -63,6 +64,8 @@ const EN: Record<string, string> = {
   ...SERVER_VOTES_EN,
   // the first-run wizard (own file)
   ...WIZARD_EN,
+  // friend suggestions from players met recently (own file)
+  ...SUGGESTIONS_EN,
   // navigation and common
   'Graj': 'Play',
   'GRAJ': 'PLAY',

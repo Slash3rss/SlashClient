@@ -19,7 +19,8 @@ import type { SecretBox } from './storage.ts';
 export type SettingType = 'int' | 'float' | 'bool' | 'string' | 'enum' | 'duration' | 'bytes' | 'list' | 'datetime' | 'url' | 'secret';
 export type SettingValue = number | boolean | string | string[];
 export type SettingCategory =
-  | 'features' | 'banner' | 'chat' | 'media' | 'cloud' | 'clans' | 'groups' | 'communities' | 'sparks' | 'support' | 'profiles' | 'security' | 'storage' | 'moderation' | 'streams' | 'servers' | 'spotify';
+  | 'features' | 'banner' | 'chat' | 'media' | 'cloud' | 'clans' | 'groups' | 'communities' | 'sparks' | 'support' | 'profiles' | 'security' | 'storage' | 'moderation' | 'streams' | 'servers' | 'spotify'
+  | 'suggestions';
 
 export interface SettingDef {
   key: string;

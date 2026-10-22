@@ -1,5 +1,6 @@
 import { t } from '../shared/i18n';
 import { control, el, icon } from './dialog';
+import { suggestionPrivacy } from './friendSuggestions';
 
 /**
  * "Profile privacy" from Friends: who sees the player's public profile on the site (/u/<handle>)
@@ -43,7 +44,8 @@ export async function profileLink(deps: Deps, handle: string, how: 'open' | 'cop
   }
 }
 
-export async function openProfilePrivacy(deps: Deps, handle: string) {
+/** `suggestionsChanged`: the switch for friend suggestions was flipped (Friends asks for them again). */
+export async function openProfilePrivacy(deps: Deps, handle: string, suggestionsChanged?: () => void) {
   let state: State;
   try {
     state = await deps.api.socialApi('GET', '/v1/me/profile-privacy');
@@ -52,6 +54,8 @@ export async function openProfilePrivacy(deps: Deps, handle: string) {
     deps.toast(deps.errorText(err), true);
     return;
   }
+  // "Pokazuj mnie w propozycjach znajomych" (friendSuggestions.ts); an older server has none
+  let suggest = await suggestionPrivacy(deps.api);
   const body = el('div', { className: 'pp-body' });
   const close = el('button', { type: 'button', className: 'icon-btn modal-close', title: t('Zamknij') }, icon('fa-xmark'));
   const modal = el('div', { className: 'modal' }, el('div', { className: 'modal-box glass-panel pp-box' }, close, body));
@@ -110,7 +114,28 @@ export async function openProfilePrivacy(deps: Deps, handle: string) {
       el('div', { className: 'row pp-links' }, see, copy),
       el('h3', { textContent: t('Kto widzi profil') }), options,
       el('h3', { textContent: t('Co jest na profilu') }), switches,
-      el('label', { className: 'check pp-index' }, index, t(' Pozwól wyszukiwarkom (Google itp.) pokazywać mój profil')));
+      el('label', { className: 'check pp-index' }, index, t(' Pozwól wyszukiwarkom (Google itp.) pokazywać mój profil')),
+      ...suggestSection());
+  }
+
+  /** Being suggested to players met on the same server (and seeing suggestions): on unless turned off. */
+  function suggestSection(): Node[] {
+    if (!suggest?.enabled) return [];
+    const box = control<HTMLInputElement>('input', { type: 'checkbox', checked: suggest.visible });
+    box.addEventListener('change', async () => {
+      try {
+        suggest = await deps.api.socialApi('POST', '/v1/me/suggestions', { visible: box.checked });
+        suggestionsChanged?.();
+      } catch (err) {
+        deps.toast(deps.errorText(err), true);
+      }
+      draw();
+    });
+    return [
+      el('h3', { textContent: t('Propozycje znajomych') }),
+      el('label', { className: 'check pp-suggest' }, box, ` ${t('Pokazuj mnie w propozycjach znajomych')}`),
+      el('p', { className: 'muted pp-suggest-hint', textContent: t('Gracze SlashClient, z którymi grasz na tym samym serwerze, mogą zobaczyć Cię w „Propozycjach” (z nazwą serwera i czasem wspólnej gry), a Ty ich. Wyłączone: nikt Cię nie zobaczy, Ty nie dostaniesz propozycji, a zapisane spotkania zostaną usunięte. Status „Niewidoczny” nigdy nie jest liczony.') }),
+    ];
   }
   draw();
   document.body.append(modal);

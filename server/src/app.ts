@@ -52,6 +52,7 @@ import { createRanks, gameBadge, type RankUser } from './ranks.ts';
 import { createSpotify } from './spotify.ts';
 import { createStreams } from './streams/streams.ts';
 import type { KICK, TWITCH } from './streams/providers.ts';
+import { createSuggestions } from './suggestions.ts';
 
 /**
  * Friends, statuses and direct messages for SlashClient.
@@ -685,6 +686,37 @@ export function createApp(cfg: Config) {
       return out;
     },
     allow: (userId) => positionLimit.allow(userId),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  // friend suggestions from players met recently on the same server (suggestions.ts)
+  const suggestions = createSuggestions({
+    db, authed, body,
+    enabled: () => settings.bool('suggestions.enabled'),
+    settings: () => ({ keepDays: settings.num('suggestions.keepDays'), minMinutes: settings.num('suggestions.minMinutes'), dismissDays: settings.num('suggestions.dismissDays'), maxPerServer: settings.num('suggestions.maxPerServer') }),
+    // connected, in a game on a server, not invisible, not banned
+    playing: () => {
+      const out: { user: string; server: string }[] = [];
+      for (const [user, p] of presences) {
+        if (!sockets.get(user)?.size || p.status === 'invisible' || p.activity?.kind !== 'server' || !p.activity.server) continue;
+        if (db.user(user)?.banned) continue;
+        out.push({ user, server: p.activity.server });
+      }
+      return out;
+    },
+    presenceOf: (userId) => (sockets.get(userId)?.size ? presences.get(userId) : undefined),
+    // a player in this game with SlashClient (its launcher said so), or a Minecraft account linked to an account
+    accountOf: (uuid) => {
+      const hex = uuid.toLowerCase().replace(/-/g, '');
+      const dashed = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+      const l = linked.get(dashed) ?? linked.get(hex);
+      if (l && Date.now() - l.at < IN_GAME_TTL_MS) return l.user;
+      return db.owner('minecraft', hex);
+    },
+    serverName: (server) => statusRules.nameFor(server),
+    limitList: limiter('suggestions.listPerMinute'), limitDismiss: limiter('suggestions.dismissPerMinute'), limitNearby: limiter('suggestions.nearbyPerMinute'),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -1382,6 +1414,7 @@ export function createApp(cfg: Config) {
     ...cloud.routes,
     ...sharing.routes,
     ...positions.routes,
+    ...suggestions.routes,
     ...groups.routes,
     ...clans.routes,
     ...communities.routes,
@@ -1945,6 +1978,14 @@ export function createApp(cfg: Config) {
       console.error('wyzwania:', (err as Error).message);
     }
   }, TICK_MS);
+  // who plays on the same server as whom, once a minute (suggestions.ts)
+  const encounterTick = setInterval(() => {
+    try {
+      suggestions.tick();
+    } catch (err) {
+      console.error('propozycje:', (err as Error).message);
+    }
+  }, 60_000);
   // achievements from before the sparks get paid, and ones already reached in the data unlock (once; safe on every start)
   const backfilled = achievements.backfill();
   if (backfilled.paid || backfilled.unlocked) console.log(`osiągnięcia: wypłacono ${backfilled.paid}, odblokowano ${backfilled.unlocked}`);
@@ -1956,6 +1997,11 @@ export function createApp(cfg: Config) {
     void cloud.cleanup().catch((err) => console.error('chmura:', (err as Error).message));
     void images.cleanup().catch((err) => console.error('obrazy czatu:', (err as Error).message));
     void communities.cleanupImages().catch((err) => console.error('obrazy społeczności:', (err as Error).message));
+    try {
+      suggestions.prune();
+    } catch (err) {
+      console.error('propozycje:', (err as Error).message);
+    }
   }, 3_600_000);
 
   return {
@@ -1985,6 +2031,8 @@ export function createApp(cfg: Config) {
     communities,
     /** For tests: the admin panel's settings. */
     settings,
+    /** For tests: encounters counted with a chosen clock, pruning, the store. */
+    suggestions,
     /** For tests: linked channels, the live state and the reconcile. */
     streams,
     /** For tests: linked Spotify accounts. */
@@ -1992,6 +2040,7 @@ export function createApp(cfg: Config) {
     close: () => new Promise<void>((resolve) => {
       clearInterval(heartbeat);
       clearInterval(playTick);
+      clearInterval(encounterTick);
       clearInterval(logCleanup);
       streams.close();
       for (const timer of cosmeticsTimers.values()) clearTimeout(timer);

@@ -102,6 +102,12 @@ const ALLOWED: [string, RegExp][] = [
   ['POST', /^\/v1\/communities\/[\w-]{1,32}\/notify$/],
   // a vote in a community's poll (server 0.9.30+)
   ['POST', /^\/v1\/communities\/[\w-]{1,32}\/channels\/[\w-]{1,32}\/messages\/\d{1,15}\/vote$/],
+  // friend suggestions (players met recently on the same server): the list, "×", and a friend request to one of them
+  ['GET', /^\/v1\/friends\/suggestions(\?limit=\d{1,2})?$/],
+  ['POST', /^\/v1\/friends\/suggestions\/[\w-]{1,64}\/dismiss$/],
+  ['POST', /^\/v1\/friends\/requests$/],
+  // the Minecraft uuids of players in sight on this server, now and then (the server keeps only SlashClient players)
+  ['POST', /^\/v1\/mc\/nearby$/],
 ];
 /** From the game, /v1/me changes only cosmetics (not, say, whether friends see the server). */
 const ME_KEYS = new Set(['cape', 'loadout', 'character', 'own']);
@@ -360,6 +366,11 @@ export class GameBridge {
     try {
       const body = method === 'POST' ? await this.body(req) : undefined;
       if (url === '/v1/me' && Object.keys((body as object | undefined) ?? {}).some((k) => !ME_KEYS.has(k))) return this.send(res, 403, { error: 'forbidden' });
+      // a friend request from the game names only the player (by handle)
+      if (url === '/v1/friends/requests') {
+        const b = (body ?? {}) as Record<string, unknown>;
+        if (Object.keys(b).some((k) => k !== 'handle') || typeof b.handle !== 'string' || !/^@?[\w.]{1,40}$/.test(b.handle)) return this.send(res, 403, { error: 'forbidden' });
+      }
       if (url === '/v1/me/position-sharing' && method === 'POST') {
         const b = (body ?? {}) as Record<string, unknown>;
         if (Object.keys(b).some((k) => k !== 'mode') || !POSITION_MODES.has(b.mode as string)) return this.send(res, 403, { error: 'forbidden' });

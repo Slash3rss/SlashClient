@@ -197,6 +197,8 @@ public class SlashHud implements ClientModInitializer {
 			// sorting's clicks also go out between the window's frames; friends see where we are (when we share it)
 			InventorySort.pump(mc);
 			dev.slash3rss.slashclient.hud.social.FriendPositions.tick(mc);
+			// once a minute on a server: the players in sight, for friend suggestions (only SlashClient players are kept)
+			dev.slash3rss.slashclient.hud.social.FriendSuggestions.tick(mc);
 			StreamChatModule.tick(mc);
 			SpotifyModule.tick(mc);
 			//#if MC >= 26.3
