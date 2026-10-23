@@ -17,7 +17,8 @@ import { positionRoutes } from './positions.ts';
 import { RequestLog, clientOf, maskIp, routeOf } from './requests.ts';
 import { serveWeb, versioned } from './web.ts';
 import { mediaRoutes, type MediaLimits } from './media.ts';
-import { createDownloads, isDownloadOs } from './downloads.ts';
+import { changelogRoutes, createDownloads, holdForPaused, isDownloadOs } from './downloads.ts';
+import { serveChangelog } from './changelogPage.ts';
 import { createCurseForge } from './curseforge.ts';
 import { profileShareRoutes, type ShareLimits } from './profileShares.ts';
 import { profileCloudRoutes, type CloudLimits } from './profileCloud.ts';
@@ -1490,6 +1491,10 @@ export function createApp(cfg: Config) {
     ...support.routes,
     ...legal.routes,
     ...home.routes,
+    // the releases' notes (downloads.ts; made further down, asked only later)
+    ...changelogRoutes(() => downloads, (status, code) => {
+      throw new HttpError(status, code);
+    }),
     ...streams.routes,
     ...phones.routes,
     // voting for a server on the server list from the launcher (serverVotes.ts)
@@ -1730,6 +1735,8 @@ export function createApp(cfg: Config) {
     }
     // the legal documents' pages, from the database
     if (legal.serve(req, res, url)) return;
+    // the changelog page (/zmiany, /changelog) from the releases' notes
+    if (await serveChangelog(req, res, url, { downloads, publicUrl: cfg.publicUrl, versioned: (html) => versioned(html, 'text/html'), hidden: (p) => home.isHidden(p) })) return;
     // the tab list's status rules for games and launchers, with an ETag (statusRules.ts)
     if (statusRules.serve(req, res, url)) return;
 
@@ -1795,16 +1802,18 @@ export function createApp(cfg: Config) {
       return;
     }
     // the launcher's update feed: what is new (latest*.yml) from here, the files as signed links
-    const update = /^\/(?:aktualizacje|updates)\/([\w][\w.-]{0,120})$/.exec(url.pathname);
+    // (…/v/<version>/<file>: one older release, for a launcher going back to it)
+    const update = /^\/(?:aktualizacje|updates)\/(?:v\/v?(\d{1,4}\.\d{1,4}\.\d{1,4})\/)?([\w][\w.-]{0,120})$/.exec(url.pathname);
     if (req.method === 'GET' && update) {
-      const name = update[1];
+      const [, version, name] = update;
       try {
         if (name.endsWith('.yml')) {
-          const text = await downloads.fileText(name);
+          // a launcher that went back to an older version waits for a release newer than the one it left
+          const text = version ? await downloads.versionFileText(version, name) : await downloads.fileText(name).then((t) => t && holdForPaused(t, req.headers['x-user-staging-id']));
           res.writeHead(text === undefined ? 404 : 200, { 'Content-Type': 'text/yaml; charset=utf-8', 'Cache-Control': 'no-cache' });
           res.end(text ?? '');
         } else {
-          const to = await downloads.fileLink(name);
+          const to = version ? await downloads.versionFileLink(version, name) : await downloads.fileLink(name);
           res.writeHead(to ? 302 : 404, to ? { Location: to, 'Cache-Control': 'no-store' } : {});
           res.end();
         }

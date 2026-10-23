@@ -78,7 +78,20 @@ Mod (`hud/`, potrzebny JDK 25, np. `JAVA_HOME="/c/Program Files/Eclipse Adoptium
    <!-- nowosc: Nowość: krótki opis | #kotwica -->
    <!-- news: New: short description | #anchor -->
    ```
-   (link jest opcjonalny, domyślnie strona wydania na GitHubie)
+   (link jest opcjonalny, domyślnie notki wydania w historii zmian: `/zmiany#X.Y.Z`, po angielsku `/changelog#X.Y.Z`)
+
+   Notki mogą mieć część angielską: po polskiej linia z samym `<!-- en -->`, a pod nią to samo po angielsku.
+   Historia zmian (strona `/zmiany` i `/changelog`, launcher: „Co nowego”, „Nowości w launcherze”, „Historia zmian”)
+   pokazuje graczom z angielskim tę część, a gdy jej nie ma – polską. Pierwszy nagłówek `## SlashClient X.Y.Z`
+   i komentarze `<!-- … -->` się nie wyświetlają. Markdown: nagłówki, listy, **pogrubienie**, *kursywa*, `kod`
+   i linki tylko `https://` (HTML jest pokazywany jako tekst; `server/src/releaseNotes.ts`).
+   ```
+   ## SlashClient X.Y.Z
+   - polskie notki…
+   <!-- en -->
+   ## SlashClient X.Y.Z
+   - English notes…
+   ```
 3. commit „Wydanie X.Y.Z”, tag `vX.Y.Z`, push `main` i tagu – resztę robi `.github/workflows/release.yml`
 4. sprawdź, że kanały aktualizacji (`https://client.slash3rss.dev/aktualizacje/latest*.yml`) pokazują nową wersję
 

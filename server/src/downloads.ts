@@ -2,10 +2,15 @@
  * /pobierz/<system>: the installer of the latest release for one system, straight to the file.
  * /aktualizacje/<file>: the same release as an update feed for the launcher (electron-updater's
  * "generic" provider): latest*.yml served from here, the files themselves as signed links.
+ * /aktualizacje/v/<version>/<file>: the same for one older release (going back to a previous version).
+ * /v1/changelog: the releases' notes, for the site's /zmiany and the launcher.
  * The release list comes from GitHub (kept for a few minutes). With RELEASES_TOKEN set, a
  * private repository works too: GitHub hands out a short-lived signed link to the file,
  * and the visitor is sent there, so the token never leaves the server.
  */
+
+import type http from 'node:http';
+import { compareVersion, notesFor, parseVersion, pausedUntil } from './releaseNotes.ts';
 
 export type DownloadOs = 'windows' | 'mac' | 'mac-intel' | 'linux';
 
@@ -23,36 +28,86 @@ export function isDownloadOs(os: string): os is DownloadOs {
 
 interface Asset { name: string; url: string; browser_download_url: string }
 
+/** A release as GitHub lists it. */
+interface GhRelease { tag_name?: string; body?: string; draft?: boolean; prerelease?: boolean; published_at?: string; created_at?: string; html_url?: string; assets?: Asset[] }
+
 /** What a release says is new, for the home page's badge: per language its text and where it leads. */
 export type ReleaseNews = Partial<Record<'pl' | 'en', { text: string; href: string }>>;
 
 /** A badge's own link: a place on the site (#section, /path) or a web page; anything else is not used. */
 const safeHref = (href: string) => (/^(#[\w-]{1,60}|\/[\w\-/.#?=&%]{0,200}|https:\/\/[^\s"'<>]{1,300})$/.test(href) ? href : undefined);
 
+/** Where a release's notes are on the site: /zmiany#0.9.40 (Polish), /changelog#0.9.40 (English). */
+export function changelogLinks(tag: string | undefined): { pl: string; en: string } | undefined {
+  const v = parseVersion(tag);
+  return v ? { pl: `/zmiany#${v.join('.')}`, en: `/changelog#${v.join('.')}` } : undefined;
+}
+
 /**
  * The badge a release's notes carry (release-notes/vX.md, the release's description):
  * `<!-- nowosc: … -->` in Polish, `<!-- news: … -->` in English, each optionally with its own link
  * after ` | ` (`<!-- nowosc: Nowość: pupile | #kosmetyki -->`); without one the badge leads to the
- * release's page (`releaseUrl`, its full list of changes). Releases with nothing worth a badge have
- * none, and the badge stays as it was.
+ * release's notes in the changelog (`releaseUrl`: one address, or one per language). Releases with
+ * nothing worth a badge have none, and the badge stays as it was.
  */
-export function releaseNews(body: string | undefined, releaseUrl?: string): ReleaseNews {
+export function releaseNews(body: string | undefined, releaseUrl?: string | Partial<Record<'pl' | 'en', string>>): ReleaseNews {
   const out: ReleaseNews = {};
-  const pick = (re: RegExp) => {
+  const pick = (re: RegExp, lang: 'pl' | 'en') => {
     const raw = re.exec(body ?? '')?.[1]?.replace(/\s+/g, ' ').trim();
     if (!raw) return undefined;
     const [text, link] = raw.split(/\s+\|\s+/, 2);
-    const href = (link && safeHref(link.trim())) || (releaseUrl && safeHref(releaseUrl)) || '#funkcje';
+    const fallback = typeof releaseUrl === 'string' ? releaseUrl : releaseUrl?.[lang];
+    const href = (link && safeHref(link.trim())) || (fallback && safeHref(fallback)) || '#funkcje';
     return text ? { text: text.slice(0, 80), href } : undefined;
   };
-  const pl = pick(/<!--\s*nowo(?:ść|sc)\s*:([^>]*?)-->/i);
-  const en = pick(/<!--\s*news\s*:([^>]*?)-->/i);
+  const pl = pick(/<!--\s*nowo(?:ść|sc)\s*:([^>]*?)-->/i, 'pl');
+  const en = pick(/<!--\s*news\s*:([^>]*?)-->/i, 'en');
   if (pl) out.pl = pl;
   if (en) out.en = en;
   return out;
 }
 
+/** The systems a release can update (its update feed files). */
+export type FeedPlatform = 'windows' | 'mac' | 'linux';
+const FEEDS: Record<string, FeedPlatform> = { 'latest.yml': 'windows', 'latest-mac.yml': 'mac', 'latest-linux.yml': 'linux' };
+
+/** One release in the changelog. */
+export interface ChangelogEntry {
+  version: string;
+  /** When it was published (ISO). */
+  date: string;
+  /** Its notes (Markdown, releaseNotes.ts) in the asked language, without the badge lines. */
+  notes: string;
+  /** The "Nowość" badge's text, when the release has one. */
+  title?: string;
+  /** The systems it has an update for (latest.yml, latest-mac.yml, latest-linux.yml). */
+  platforms: FeedPlatform[];
+}
+
+export function changelogEntry(r: GhRelease, lang: 'pl' | 'en'): ChangelogEntry | undefined {
+  const v = parseVersion(r.tag_name);
+  if (!v || r.draft || r.prerelease) return undefined;
+  const news = releaseNews(r.body);
+  const title = (news[lang] ?? news.pl ?? news.en)?.text;
+  const platforms = [...new Set((r.assets ?? []).map((a) => FEEDS[a.name]).filter(Boolean))];
+  return { version: v.join('.'), date: r.published_at ?? r.created_at ?? '', notes: notesFor(r.body, lang).slice(0, 40_000), ...(title ? { title } : {}), platforms };
+}
+
+/**
+ * A launcher that went back to an older version keeps its automatic updates paused until a release
+ * newer than the one it left (its update id says which, releaseNotes.ts): its update check gets the
+ * release with `stagingPercentage: 0`, which electron-updater takes as "not for you yet".
+ */
+export function holdForPaused(yml: string, stagingId: string | string[] | undefined): string {
+  const until = pausedUntil(Array.isArray(stagingId) ? stagingId[0] : stagingId);
+  if (!until) return yml;
+  const version = /^version:\s*['"]?([^\s'"]+)/m.exec(yml)?.[1];
+  if (version && compareVersion(version, until) > 0) return yml;
+  return `${yml.replace(/^stagingPercentage:.*$\n?/m, '').trimEnd()}\nstagingPercentage: 0\n`;
+}
+
 const CACHE_MS = 5 * 60_000;
+const PER_PAGE = 100;
 
 export function createDownloads(opts: { repo: string; token?: string; fetchImpl: typeof fetch }) {
   let cached: { at: number; assets: Asset[]; news: ReleaseNews } | undefined;
@@ -69,8 +124,9 @@ export function createDownloads(opts: { repo: string; token?: string; fetchImpl:
     if (cached && Date.now() - cached.at < CACHE_MS) return cached.assets;
     const res = await opts.fetchImpl(`https://api.github.com/repos/${opts.repo}/releases/latest`, { headers: headers('application/vnd.github+json') });
     if (!res.ok) throw new Error(`GitHub ${res.status}`);
-    const release = (await res.json()) as { assets?: Asset[]; body?: string; html_url?: string };
-    cached = { at: Date.now(), assets: release.assets ?? [], news: releaseNews(release.body, release.html_url) };
+    const release = (await res.json()) as GhRelease;
+    // without a link of its own, the badge leads to the release's notes on the site
+    cached = { at: Date.now(), assets: release.assets ?? [], news: releaseNews(release.body, changelogLinks(release.tag_name) ?? release.html_url) };
     if (cached.news.pl || cached.news.en) lastNews = cached.news;
     return cached.assets;
   }
@@ -106,7 +162,7 @@ export function createDownloads(opts: { repo: string; token?: string; fetchImpl:
     if (recent && Date.now() - recent.at < CACHE_MS) return recent.releases;
     const res = await opts.fetchImpl(`https://api.github.com/repos/${opts.repo}/releases?per_page=10`, { headers: headers('application/vnd.github+json') });
     if (!res.ok) throw new Error(`GitHub ${res.status}`);
-    const list = (await res.json()) as { draft?: boolean; prerelease?: boolean; assets?: Asset[] }[];
+    const list = (await res.json()) as GhRelease[];
     recent = { at: Date.now(), releases: list.filter((r) => !r.draft && !r.prerelease).map((r) => r.assets ?? []) };
     return recent.releases;
   }
@@ -122,18 +178,115 @@ export function createDownloads(opts: { repo: string; token?: string; fetchImpl:
   }
 
   const texts = new Map<string, { at: number; text: string }>();
-  /** A small text file of the latest release (latest.yml…), kept as long as the release list. */
-  async function fileText(name: string): Promise<string | undefined> {
-    const hit = texts.get(name);
+  /** A small text file (latest.yml…), kept as long as the release list. */
+  async function cachedText(key: string, to: () => Promise<string | undefined>): Promise<string | undefined> {
+    const hit = texts.get(key);
     if (hit && Date.now() - hit.at < CACHE_MS) return hit.text;
-    const to = await fileLink(name);
-    if (!to) return undefined;
-    const res = await opts.fetchImpl(to, { headers: { 'User-Agent': 'SlashClient-server' } });
+    const url = await to();
+    if (!url) return undefined;
+    const res = await opts.fetchImpl(url, { headers: { 'User-Agent': 'SlashClient-server' } });
     if (!res.ok) throw new Error(`GitHub ${res.status}`);
     const text = await res.text();
-    texts.set(name, { at: Date.now(), text });
+    texts.set(key, { at: Date.now(), text });
     return text;
   }
+  /** A small text file of the latest release (latest.yml…). */
+  const fileText = (name: string) => cachedText(name, () => fileLink(name));
 
-  return { link, fileLink, fileText, news };
+  // ---- the whole list of releases, for the changelog ----
+
+  const pages = new Map<number, { at: number; list: GhRelease[] }>();
+  async function page(n: number): Promise<GhRelease[]> {
+    const hit = pages.get(n);
+    if (hit && Date.now() - hit.at < CACHE_MS) return hit.list;
+    const res = await opts.fetchImpl(`https://api.github.com/repos/${opts.repo}/releases?per_page=${PER_PAGE}&page=${n}`, { headers: headers('application/vnd.github+json') });
+    if (!res.ok) throw new Error(`GitHub ${res.status}`);
+    const list = (await res.json()) as GhRelease[];
+    pages.set(n, { at: Date.now(), list: Array.isArray(list) ? list : [] });
+    return pages.get(n)!.list;
+  }
+
+  /**
+   * Published releases (no drafts, no prereleases), newest version first: as many pages as it
+   * takes to have `want` of them older than `before`. `complete`: there are no more.
+   */
+  async function published(want: number, before?: string): Promise<{ list: GhRelease[]; complete: boolean }> {
+    const all: GhRelease[] = [];
+    for (let n = 1; n <= 20; n++) {
+      const list = await page(n);
+      all.push(...list.filter((r) => !r.draft && !r.prerelease && parseVersion(r.tag_name)));
+      const older = before ? all.filter((r) => compareVersion(r.tag_name, before) < 0).length : all.length;
+      if (list.length < PER_PAGE) return { list: sortReleases(all), complete: true };
+      if (older > want) break;
+    }
+    return { list: sortReleases(all), complete: false };
+  }
+  const sortReleases = (list: GhRelease[]) => list.sort((a, b) => compareVersion(b.tag_name, a.tag_name));
+
+  /** A page of the changelog: up to `limit` releases older than `before` (or the newest ones). */
+  async function changelog(o: { limit: number; before?: string; lang: 'pl' | 'en' }): Promise<{ releases: ChangelogEntry[]; more: boolean }> {
+    const { list, complete } = await published(o.limit, o.before);
+    const older = o.before ? list.filter((r) => compareVersion(r.tag_name, o.before) < 0) : list;
+    const shown = older.slice(0, o.limit).map((r) => changelogEntry(r, o.lang)!);
+    return { releases: shown, more: older.length > o.limit || !complete };
+  }
+
+  const tagged = new Map<string, { at: number; release?: GhRelease }>();
+  /** One published release by its version (undefined: there is none, or it is a draft or a prerelease). */
+  async function release(version: string): Promise<GhRelease | undefined> {
+    const v = parseVersion(version)?.join('.');
+    if (!v) return undefined;
+    const hit = tagged.get(v);
+    if (hit && Date.now() - hit.at < CACHE_MS) return hit.release;
+    const res = await opts.fetchImpl(`https://api.github.com/repos/${opts.repo}/releases/tags/v${v}`, { headers: headers('application/vnd.github+json') });
+    if (!res.ok && res.status !== 404) throw new Error(`GitHub ${res.status}`);
+    const r = res.ok ? ((await res.json()) as GhRelease) : undefined;
+    const ok = r && !r.draft && !r.prerelease ? r : undefined;
+    tagged.set(v, { at: Date.now(), release: ok });
+    return ok;
+  }
+
+  /** One release's notes. */
+  async function changelogOf(version: string, lang: 'pl' | 'en'): Promise<ChangelogEntry | undefined> {
+    const r = await release(version);
+    return r && changelogEntry(r, lang);
+  }
+
+  /** A short-lived link to one file of one release (going back to it). */
+  async function versionFileLink(version: string, name: string): Promise<string | undefined> {
+    const asset = (await release(version))?.assets?.find((a) => a.name === name);
+    return asset && signed(asset);
+  }
+  /** A small text file of one release (its latest.yml…). */
+  const versionFileText = (version: string, name: string) => cachedText(`${version}/${name}`, () => versionFileLink(version, name));
+
+  return { link, fileLink, fileText, news, changelog, changelogOf, versionFileLink, versionFileText };
+}
+
+export type Downloads = ReturnType<typeof createDownloads>;
+
+type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
+
+/**
+ * GET /v1/changelog?limit=20&before=<version>&lang=en: the releases' notes, newest first, a page at
+ * a time (`more`: older ones follow). GET /v1/changelog/<version>: one release.
+ */
+export function changelogRoutes(downloads: () => Downloads, fail: (status: number, code: string) => never): [string, RegExp, Handler][] {
+  const langOf = (url: URL): 'pl' | 'en' => (url.searchParams.get('lang') === 'en' ? 'en' : 'pl');
+  const unavailable = (err: unknown) => {
+    console.error('zmiany:', (err as Error).message);
+    return fail(503, 'changelog_unavailable');
+  };
+  return [
+    ['GET', /^\/v1\/changelog$/, async (_req, _p, url) => {
+      const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit')) || 20));
+      const before = url.searchParams.get('before') ?? undefined;
+      if (before !== undefined && !parseVersion(before)) fail(400, 'bad_version');
+      return downloads().changelog({ limit, before, lang: langOf(url) }).catch(unavailable);
+    }],
+    ['GET', /^\/v1\/changelog\/v?(\d{1,4}\.\d{1,4}\.\d{1,4})$/, async (_req, [version], url) => {
+      const entry = await downloads().changelogOf(version, langOf(url)).catch(unavailable);
+      return entry ?? fail(404, 'not_found');
+    }],
+  ];
 }

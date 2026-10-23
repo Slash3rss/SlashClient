@@ -9,7 +9,7 @@ import type http from 'node:http';
 export type SiteLang = 'pl' | 'en';
 
 /** English for /en and the English pages' addresses, else the browser's first language. */
-const EN_PATHS = /^\/(?:en|account|bugs|support|terms|privacy|download|community|profile)(?:\/|$)/;
+const EN_PATHS = /^\/(?:en|account|bugs|support|terms|privacy|download|community|profile|changelog)(?:\/|$)/;
 export function siteLang(req: http.IncomingMessage, pathname: string): SiteLang {
   if (EN_PATHS.test(pathname)) return 'en';
   const first = String(req.headers['accept-language'] ?? '').split(',')[0].trim().toLowerCase();
