@@ -69,7 +69,6 @@ async function write(gameDir: string, data: Buffer, ext: string): Promise<void> 
 /** Gives the profile an icon from the library. */
 export async function iconFromLibrary(gameDir: string, id: string): Promise<void> {
   const file = libraryFile(LIBRARY, id);
-  const data = await fs.readFile(file);
   // its place in the library stays: the picked icon does not jump away from under the pointer
   await write(gameDir, await fs.readFile(file), path.extname(file).slice(1));
 }
