@@ -46,6 +46,32 @@ public final class ChatImages {
 		return get("community:" + imageId, () -> Social.communityImageBytes(communityId, imageId));
 	}
 
+	/** A GIF's or sticker's still frame from the chat (ChatGifs), by its CDN address; null while it loads. */
+	public static synchronized Texture gif(String url) {
+		return get("gif:" + url, () -> png(Social.gifStillBytes(url)));
+	}
+
+	/** For the in-game test: a made-up GIF still (PNG bytes) under this address; on the game's thread. */
+	public static synchronized void sampleGifForTest(String url, byte[] png) throws java.io.IOException {
+		try (InputStream in = new ByteArrayInputStream(png)) {
+			register("gif:" + url, NativeImage.read(in));
+		}
+	}
+
+	/** A GIF's still frame as PNG (the game reads only that): GIPHY's are GIFs, Tenor's PNGs. */
+	static byte[] png(byte[] data) {
+		if (data.length > 8 && (data[0] & 0xFF) == 0x89 && data[1] == 'P' && data[2] == 'N' && data[3] == 'G') return data;
+		try {
+			java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(new ByteArrayInputStream(data));
+			if (img == null) throw new IllegalStateException("not a picture");
+			java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+			javax.imageio.ImageIO.write(img, "png", out);
+			return out.toByteArray();
+		} catch (java.io.IOException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
 	/** For the in-game test: a made-up picture (PNG bytes) under this community picture's id; on the game's thread. */
 	public static synchronized void sampleCommunityForTest(String imageId, byte[] png) throws java.io.IOException {
 		try (InputStream in = new ByteArrayInputStream(png)) {

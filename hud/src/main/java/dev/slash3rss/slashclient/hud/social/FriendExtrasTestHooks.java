@@ -34,6 +34,38 @@ public final class FriendExtrasTestHooks {
 		pictures();
 	}
 
+	/** The still frame of the sample GIF (on GIPHY's CDN host, as a message must have it). */
+	public static final String GIF_STILL = "https://media0.giphy.com/media/test/200w_s.gif";
+
+	/** A chat with a GIF from the friend and a sticker of ours, as the launcher and the phone app send them; the GIF's still frame drawn here. */
+	public static void sampleGif() throws Exception {
+		long now = System.currentTimeMillis();
+		var f = new Social.Friend(FRIEND, "Kumpel", "kumpel", "online", "launcher", "", 0, now);
+		String gif = "[GIF] Kot tańczy\nslashgif:{\"v\":1,\"p\":\"giphy\",\"k\":\"gif\",\"id\":\"test\",\"t\":\"Kot tańczy\",\"w\":200,\"h\":150,\"s\":\"" + GIF_STILL
+			+ "\",\"a\":\"https://media0.giphy.com/media/test/200w.webp\",\"f\":\"https://media0.giphy.com/media/test/giphy.webp\"}";
+		String sticker = "[GIF] Pies macha\nslashgif:{\"v\":1,\"p\":\"tenor\",\"k\":\"sticker\",\"id\":\"123\",\"t\":\"Pies macha\",\"w\":220,\"h\":220,"
+			+ "\"a\":\"https://media.tenor.com/x/tiny.webp\",\"f\":\"https://media.tenor.com/x/big.webp\"}";
+		String evil = "[GIF] Śledzik\nslashgif:{\"v\":1,\"p\":\"giphy\",\"k\":\"gif\",\"id\":\"x\",\"t\":\"x\",\"w\":1,\"h\":1,\"s\":\"https://tracker.example/x.gif\",\"a\":\"https://tracker.example/x.gif\",\"f\":\"https://tracker.example/x.gif\"}";
+		if (ChatGifs.parse(gif) == null || ChatGifs.parse(sticker) == null || !ChatGifs.parse(sticker).sticker()) throw new AssertionError("A GIF from the launcher must be read");
+		if (ChatGifs.parse(evil) != null) throw new AssertionError("A GIF off the providers' CDN must not be opened");
+		List<Social.Message> chat = List.of(
+			new Social.Message(1, FRIEND, "me", "Zobacz to", now - 120_000, true, "", "", "", null, null),
+			new Social.Message(2, FRIEND, "me", gif, now - 110_000, true, "", "", "", null, null),
+			new Social.Message(3, "me", FRIEND, sticker, now - 60_000, true, "", "", "", null, null));
+		if (chat.get(1).plainText()) throw new AssertionError("A GIF must not be edited or copied as a text");
+		Social.sampleForTest(f, chat, "me");
+		Social.viewing = null;
+		// GIPHY's still frames are GIFs; the game reads only PNG, so the launcher's bytes are drawn again
+		BufferedImage frame = javax.imageio.ImageIO.read(new java.io.ByteArrayInputStream(png(200, 150, new Color(0xDB2777), new Color(0xF59E0B), "GIF")));
+		BufferedImage rgb = new BufferedImage(frame.getWidth(), frame.getHeight(), BufferedImage.TYPE_INT_RGB);
+		rgb.getGraphics().drawImage(frame, 0, 0, null);
+		ByteArrayOutputStream out = new ByteArrayOutputStream();
+		javax.imageio.ImageIO.write(rgb, "gif", out);
+		byte[] still = ChatImages.png(out.toByteArray());
+		if ((still[0] & 0xFF) != 0x89 || still[1] != 'P') throw new AssertionError("A GIF still frame must become a PNG");
+		ChatImages.sampleGifForTest(GIF_STILL, still);
+	}
+
 	/** The made-up pictures those messages (and the group chat's sample) show. */
 	public static void pictures() throws Exception {
 		ChatImages.sampleForTest("pic-theirs-0000000000", png(480, 270, new Color(0x2563EB), new Color(0x22C55E), "Baza"));

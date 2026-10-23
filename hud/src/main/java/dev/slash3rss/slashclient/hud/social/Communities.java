@@ -99,7 +99,7 @@ public final class Communities {
 		}
 
 		public boolean plainText() {
-			return !deleted;
+			return !deleted && !ChatGifs.isGif(text);
 		}
 
 		public boolean mentionsMe() {
@@ -450,7 +450,7 @@ public final class Communities {
 	private static String toastText(Message m) {
 		if (image(m.id()) != null) return Component.translatable("slashclient-hud.picture.community").getString();
 		Poll p = poll(m.id());
-		return p != null ? Component.translatable("slashclient-hud.poll.toast", p.question()).getString() : m.text();
+		return p != null ? Component.translatable("slashclient-hud.poll.toast", p.question()).getString() : ChatGifs.shown(m.text());
 	}
 
 	/** One more message: up the list, unread (and a mention) unless it is open or ours. */
