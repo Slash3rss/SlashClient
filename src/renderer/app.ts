@@ -1909,7 +1909,8 @@ function serverCard(s: ListedServer): HTMLElement {
       el('span', { className: pingClass(live.latency), textContent: `${live.latency} ms` }),
     );
   } else if (ping?.error) {
-    stats.append(el('span', { className: 'offline', textContent: 'Offline' }));
+    // why: shown on hover (no answer, refused, unknown address…)
+    stats.append(el('span', { className: 'offline', textContent: 'Offline', title: ping.error }));
   } else {
     stats.append(el('span', {}, el('b', { textContent: `${s.playersOnline}` }), ` / ${s.playersMax}`), el('span', { className: 'sk ping-sk', title: 'Sprawdzanie…' }));
   }
