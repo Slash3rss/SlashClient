@@ -2250,6 +2250,10 @@ const installing = new Set<string>();
 
 /** The browser is on Odkrywaj (else in a profile's "Mody i zasoby"). */
 let discovering = false;
+/** The profile the last search was for: coming back to Odkrywaj keeps its results instead of searching again. */
+let searchedProfile = '';
+/** Search results already on screen: a later redraw (the installed list arriving) does not make them appear again. */
+const shownHits = new Set<string>();
 const contentProfileId = () => $<HTMLSelectElement>(discovering ? '#discover-profile' : '#content-profile').value;
 const fmtCount = (n: number) => (n >= 1e6 ? t('{0} mln', (n / 1e6).toLocaleString(locale(), { maximumFractionDigits: 1 })) : n >= 1e3 ? t('{0} tys.', Math.round(n / 1e3)) : String(n));
 
@@ -2687,7 +2691,9 @@ function renderContent() {
     return;
   }
   const cards = contentHits.map(hitCard);
-  if (from !== undefined) appear(cards.slice(from));
+  const fresh = cards.filter((_, i) => !shownHits.has(contentHits[i].id));
+  if (from !== undefined) appear(fresh);
+  contentHits.forEach((h) => shownHits.add(h.id));
   list.replaceChildren(...cards);
   if (contentLoading) list.append(...skeletons('project', contentHits.length ? 3 : 6));
   else if (!contentHits.length) list.append(el('p', { className: 'muted appear', textContent: 'Brak wyników.' }));
@@ -2708,7 +2714,7 @@ function matchesInstalled(item: { title: string; filename: string; versionNumber
 async function refreshInstalled(animate = false) {
   if (!contentProfileId()) return;
   installed = (await guard(() => api.listContent(contentProfileId()))) ?? [];
-  if (animate) animateFrom = 0;
+  if (animate && contentTab === 'installed') animateFrom = 0;
   renderContent();
   refreshManual();
   if (contentType === 'mod' && contentTab === 'installed') runModCheck();
@@ -2717,8 +2723,12 @@ async function refreshInstalled(animate = false) {
 let searchRequest = 0;
 async function searchContent(append = false) {
   const request = ++searchRequest;
+  searchedProfile = contentProfileId();
   contentLoading = true;
-  if (!append) contentHits = [];
+  if (!append) {
+    contentHits = [];
+    shownHits.clear();
+  }
   renderContent();
   const source = contentType === 'datapack' ? 'modrinth' : contentSource;
   const res: { hits: ProjectHit[]; total: number; unavailable?: boolean } | undefined =
@@ -3009,7 +3019,8 @@ function openDiscover() {
     // the profile's tile right under "instalowane do tego profilu", which it is about
     contentPane.querySelector('.sub')?.after($('#discover-target'));
   }
-  openContentPane(true);
+  // the same list serves a profile's own Mods tab: other results there mean searching again here
+  openContentPane(contentProfileId() !== searchedProfile);
 }
 
 /** The target profile as a tile (its icon, name, version and play time), opening the list of profiles. */
