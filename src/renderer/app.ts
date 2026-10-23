@@ -2513,9 +2513,59 @@ async function refreshOrphans() {
   btn.classList.toggle('hidden', !n);
   btn.querySelector('span')!.textContent = t('Odzyskaj profile ({0})', n);
 }
-$('#profiles-recover').addEventListener('click', () => busy($<HTMLButtonElement>('#profiles-recover'), async () => {
-  const n: number = await guard(() => api.recoverProfiles()) ?? 0;
+/** A folder that can come back as a profile, as the recovery window lists it. */
+interface OrphanFolder { id: string; versionId: string; loader: string; loaderVersion: string; mods: number; worlds: string[]; worldCount: number; changedAt: number }
+let orphanFolders: OrphanFolder[] = [];
+const recoverChosen = new Set<string>();
+
+/** The recovery window: every folder ticked at first, the player unticks the ones to leave on disk. */
+$('#profiles-recover').addEventListener('click', async () => {
+  $('#recover-list').replaceChildren(...skeletons('project', 2));
+  $('#recover-modal').classList.remove('hidden');
+  orphanFolders = (await guard(() => api.orphanList())) ?? [];
+  recoverChosen.clear();
+  for (const f of orphanFolders) recoverChosen.add(f.id);
+  renderRecover();
+});
+$('#recover-close').addEventListener('click', () => $('#recover-modal').classList.add('hidden'));
+$('#recover-all').addEventListener('click', () => {
+  const all = recoverChosen.size < orphanFolders.length;
+  recoverChosen.clear();
+  if (all) for (const f of orphanFolders) recoverChosen.add(f.id);
+  renderRecover();
+});
+
+function renderRecover() {
+  const list = $('#recover-list');
+  if (!orphanFolders.length) list.replaceChildren(el('p', { className: 'muted', textContent: t('Nie ma folderów do odzyskania.') }));
+  else list.replaceChildren(...orphanFolders.map((f): HTMLElement => {
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = recoverChosen.has(f.id);
+    box.addEventListener('change', () => {
+      if (box.checked) recoverChosen.add(f.id);
+      else recoverChosen.delete(f.id);
+      renderRecover();
+    });
+    const row = document.createElement('label');
+    row.className = `join-choice perf-choice${recoverChosen.has(f.id) ? ' selected' : ''}`;
+    const loader = LOADER_NAMES[f.loader as keyof typeof LOADER_NAMES];
+    const details = [versionLabel(f.versionId), loader ? `${loader}${f.loaderVersion ? ` ${f.loaderVersion}` : ''}` : '', f.mods ? t('modów: {0}', f.mods) : '',
+      f.worldCount ? t('światy: {0}', [...f.worlds, ...(f.worldCount > f.worlds.length ? ['…'] : [])].join(', ')) : ''].filter(Boolean).join(' · ');
+    row.append(box, el('div', { className: 'grow' }, f.id, el('small', { textContent: details })),
+      el('span', { className: 'import-src', textContent: f.changedAt ? fmtAgo(f.changedAt) : '' }));
+    return row;
+  }));
+  const go = $<HTMLButtonElement>('#recover-go');
+  go.disabled = !recoverChosen.size;
+  go.querySelector('span')!.textContent = recoverChosen.size ? t('Przywróć zaznaczone ({0})', recoverChosen.size) : t('Przywróć zaznaczone');
+  $('#recover-all').textContent = recoverChosen.size < orphanFolders.length ? t('Zaznacz wszystkie') : t('Odznacz wszystkie');
+}
+
+$('#recover-go').addEventListener('click', () => busy($<HTMLButtonElement>('#recover-go'), async () => {
+  const n: number = await guard(() => api.recoverProfiles([...recoverChosen])) ?? 0;
   if (!n) return;
+  $('#recover-modal').classList.add('hidden');
   store = await api.getStore();
   render();
   toast(t('Odzyskano profile: {0}. Sprawdź w ich ustawieniach wersję gry i loader.', n));

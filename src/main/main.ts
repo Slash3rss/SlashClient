@@ -380,10 +380,27 @@ handle('profiles:recovered', () => {
   return n;
 });
 handle('profiles:orphans', async () => (await orphanProfiles(store.profiles)).length);
-/** "Odzyskaj profile": every folder in instances/ with a game but no profile becomes a profile again. */
-handle('profiles:recover', async () => {
-  const found = await orphanProfiles(store.profiles);
-  store.profiles.push(...found);
+/** The folders that could come back, with what helps tell them apart (version, mods, worlds, last change). */
+handle('profiles:orphanList', async () => Promise.all((await orphanProfiles(store.profiles)).map(async (p) => {
+  const dir = profileGameDir(p);
+  const list = (sub: string) => fsp.readdir(path.join(dir, sub), { withFileTypes: true }).catch(() => []);
+  const mods = (await list('mods')).filter((e) => e.isFile() && /\.jar$/i.test(e.name)).length;
+  const worlds = (await list('saves')).filter((e) => e.isDirectory()).map((e) => e.name);
+  const changedAt = (await fsp.stat(dir).catch(() => undefined))?.mtimeMs ?? 0;
+  return { id: p.id, versionId: p.versionId, loader: p.loader, loaderVersion: p.loaderVersion, mods, worlds: worlds.slice(0, 3), worldCount: worlds.length, changedAt };
+})));
+/** "Odzyskaj profile": the chosen folders in instances/ with a game but no profile become profiles again (all of them without a choice). */
+handle('profiles:recover', async (ids?: string[]) => {
+  const chosen = Array.isArray(ids) ? new Set(ids) : undefined;
+  const found = (await orphanProfiles(store.profiles)).filter((p) => !chosen || chosen.has(p.id));
+  // a folder with a readable name keeps it, a random id gets a number; never the name of another profile
+  for (const p of found) {
+    const taken = store.profiles.map((x) => x.name.toLowerCase());
+    let n = 1;
+    while (taken.includes(t('Odzyskany profil {0}', n).toLowerCase())) n++;
+    p.name = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(p.id) ? t('Odzyskany profil {0}', n) : uniqueName(p.id.slice(0, 40), taken);
+    store.profiles.push(p);
+  }
   if (found.length) await persist();
   return found.length;
 });
