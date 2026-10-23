@@ -61,6 +61,11 @@ public class HudEditScreen extends Screen {
 	/** Where each row of the open settings page was drawn last (x, y, w, h), and each slider (x, y, w): for the in-game test. */
 	static final java.util.Map<String, int[]> ROWS = new java.util.HashMap<>();
 	static final java.util.Map<String, int[]> SLIDERS = new java.util.HashMap<>();
+	/** Where the key buttons on the settings page were drawn last, by the key's name; for the tests. */
+	static final java.util.Map<String, int[]> KEYS = new java.util.HashMap<>();
+	/** A key row on the settings page waiting for the new key, or null. */
+	private Catalog.Key waitingKey;
+	private static final int KEY_W = 90;
 
 	/** Undo and redo for this opening of the editor. */
 	private final EditHistory history = new EditHistory();
@@ -464,6 +469,7 @@ public class HudEditScreen extends Screen {
 
 	private void reopen() {
 		scroll = 0;
+		waitingKey = null;
 		status = Component.empty();
 		String keep = search == null ? "" : search.getValue();
 		rebuildWidgets();
@@ -837,14 +843,20 @@ public class HudEditScreen extends Screen {
 				if (clickable) hits.add(new Hit(x + w - 24, y + h - 21, 16, 16, () -> openSettings(e)));
 			}
 		} else {
-			Component action = Ui.tr(gear ? "slashclient-hud.ui.settings" : "slashclient-hud.ui.openIt");
+			boolean settings = gear && e.open() == null;
+			Component action = Ui.tr(settings ? "slashclient-hud.ui.settings" : "slashclient-hud.ui.openIt");
 			int aw = Ui.width(action) + 22;
-			Ui.icon(g, gear ? "gear" : "arrow", x + (w - aw) / 2, y + h - 16, 9, Ui.ACCENT_LIGHT);
+			Ui.icon(g, settings ? "gear" : "arrow", x + (w - aw) / 2, y + h - 16, 9, Ui.ACCENT_LIGHT);
 			Ui.draw(g, action, x + (w - aw) / 2 + 13, y + h - 16, Ui.ACCENT_LIGHT);
 			if (clickable) hits.add(new Hit(x, y, w, h, () -> {
 				if (e.open() != null) e.open().run();
 				else openSettings(e);
 			}));
+			// a card that opens something and has settings too (its keys): the gear opens them
+			if (e.open() != null && gear) {
+				Ui.button(g, "gear:" + e.id(), x + w - 24, y + 4, 16, 16, "gear", Component.empty(), false, mx, my);
+				if (clickable) hits.add(new Hit(x + w - 24, y + 4, 16, 16, () -> openSettings(e)));
+			}
 		}
 	}
 
@@ -860,12 +872,59 @@ public class HudEditScreen extends Screen {
 		if (s instanceof Catalog.Note) return 0;
 		if (s instanceof Catalog.Slider) return 150;
 		if (s instanceof Catalog.Text) return 150;
+		if (s instanceof Catalog.Key) return KEY_W + 4 + 17;
 		if (s instanceof Catalog.Choice ch) {
 			int total = 0;
 			for (String v : ch.values()) total += Ui.width(Ui.tr(ch.valueKeyPrefix() + v)) + 16;
 			return total - 4;
 		}
 		return ((Catalog.Colors) s).colors().length * 16;
+	}
+
+	/** The line under a key row: what to press while it waits, or the other bindings on the same key; null for none. */
+	private Component keyLine(Catalog.Key k) {
+		if (k.equals(waitingKey)) return Ui.tr("slashclient-hud.keyRow.press");
+		var key = Catalog.keyMapping(k.labelKey());
+		if (key == null) return null;
+		List<net.minecraft.client.KeyMapping> others = Catalog.clashes(key);
+		if (others.isEmpty()) return null;
+		net.minecraft.network.chat.MutableComponent names = Component.empty();
+		for (int i = 0; i < others.size(); i++) {
+			if (i > 0) names.append(", ");
+			names.append(Component.translatable(others.get(i).getName()));
+		}
+		return Ui.tr("slashclient-hud.keyRow.clash", names);
+	}
+
+	/**
+	 * A key of the game's controls on a module's page: the button shows the key (red when another
+	 * binding has it too), a click waits for the next key or mouse button, the arrow sets it back.
+	 */
+	private void drawKey(GuiGraphicsExtractor g, int mx, int my, Catalog.Key k, int right, int cy, int lineY, int lineW, int lineX) {
+		var key = Catalog.keyMapping(k.labelKey());
+		if (key == null) return;
+		boolean waiting = k.equals(waitingKey);
+		boolean clash = !Catalog.clashes(key).isEmpty();
+		Component label = waiting ? Ui.text("> … <") : key.isUnbound() ? Ui.tr("slashclient-hud.keybinds.none") : key.getTranslatedKeyMessage();
+		int kx = right - 17 - 4 - KEY_W;
+		Ui.button(g, "key:" + k.labelKey(), kx, cy, KEY_W, 16, null, Ui.fit(label.copy(), KEY_W - 8).copy().withStyle(st -> clash && !waiting ? st.withColor(0xF87171) : st), waiting, mx, my);
+		KEYS.put(k.labelKey(), new int[] { kx, cy, KEY_W, 16 });
+		hits.add(new Hit(kx, cy, KEY_W, 16, () -> waitingKey = waiting ? null : k));
+		boolean changed = !key.getDefaultKey().equals(Catalog.keyOf(key));
+		Ui.button(g, "key:reset:" + k.labelKey(), right - 17, cy, 17, 16, "reset", Component.empty(), false, mx, my);
+		if (changed) hits.add(new Hit(right - 17, cy, 17, 16, () -> {
+			Catalog.setKey(key, key.getDefaultKey());
+			waitingKey = null;
+		}));
+		Component line = keyLine(k);
+		if (line != null) Ui.wrapped(g, line, lineX, lineY, lineW, waiting ? Ui.ACCENT_LIGHT : 0xFFF87171);
+	}
+
+	/** The key waiting on the settings page gets this one (UNKNOWN: none) and stops waiting. */
+	private void bindWaiting(InputConstants.Key to) {
+		var key = Catalog.keyMapping(waitingKey.labelKey());
+		waitingKey = null;
+		if (key != null) Catalog.setKey(key, to);
 	}
 
 	/** A note's height: its text wrapped beside the icon. */
@@ -891,12 +950,16 @@ public class HudEditScreen extends Screen {
 
 		// a row is one line, or two when its controls do not fit beside the label (narrow windows)
 		int[] heights = new int[rows.size()];
+		boolean[] split = new boolean[rows.size()];
 		int contentH = (isModule ? 28 : 0) + (rows.isEmpty() ? 14 : 0);
 		for (int i = 0; i < rows.size(); i++) {
 			Catalog.Setting s = rows.get(i);
 			int labelW = Ui.width(Ui.tr(s.labelKey())) + 24;
 			boolean oneLine = s instanceof Catalog.Toggle || labelW + controlsWidth(s) <= w - 20;
 			heights[i] = s instanceof Catalog.Info info ? infoHeight(info, w) : oneLine ? 26 : 44;
+			split[i] = !oneLine;
+			// a key: a line more under it while it waits for a key, or when another binding has the same one
+			if (s instanceof Catalog.Key k && keyLine(k) != null) heights[i] += 1 + 11 * font.split(keyLine(k), w - 20).size();
 			// a note: as many lines as its text needs
 			if (s instanceof Catalog.Note n) heights[i] = Math.max(26, 14 + 11 * font.split(Ui.tr(n.labelKey(), n.args().get()), w - 20).size());
 			contentH += heights[i] + 4;
@@ -911,11 +974,12 @@ public class HudEditScreen extends Screen {
 		boolean inList = my >= listTop && my < listTop + listH;
 		ROWS.clear();
 		SLIDERS.clear();
+		KEYS.clear();
 		for (EditBox box : textFields.values()) box.visible = false;
 		for (int i = 0; i < rows.size(); i++) {
 			Catalog.Setting s = rows.get(i);
 			int rh = heights[i];
-			boolean twoLines = rh > 26;
+			boolean twoLines = s instanceof Catalog.Note ? rh > 26 : split[i];
 			if (s instanceof Catalog.Info info) {
 				// a note: an icon and its text wrapped, on a quieter card
 				Ui.round(g, x, ry, w, rh, 4, 0xFF13203A);
@@ -1002,6 +1066,8 @@ public class HudEditScreen extends Screen {
 					hits.add(new Hit(bx, cy + 2, 12, 12, () -> co.set().accept(c)));
 					bx += 16;
 				}
+			} else if (s instanceof Catalog.Key k) {
+				drawKey(g, mx, my, k, right, cy, twoLines ? ry + 44 - 2 : ry + 26 - 2, w - 20, x + 10);
 			}
 			// controls on the label's line must not cover it
 			if (!twoLines && !(s instanceof Catalog.Toggle) && !(s instanceof Catalog.Note)) Ui.expect(labelEnd - 14 <= right - controlsWidth(s) || s instanceof Catalog.Slider, "controls cover the label of " + s.labelKey());
@@ -1107,6 +1173,11 @@ public class HudEditScreen extends Screen {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
 	//$ 	boolean doubleClick = false;
 	//#endif
+		// a key row waiting: the next mouse button, any of them, is its new key
+		if (waitingKey != null) {
+			bindWaiting(InputConstants.Type.MOUSE.getOrCreate(e.button()));
+			return true;
+		}
 		settleTyping();
 		//#if MC >= 1.21.9
 		if (super.mouseClicked(e, doubleClick)) return true;
@@ -1264,6 +1335,17 @@ public class HudEditScreen extends Screen {
 	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
 	//$ 	KeyEvent e = new KeyEvent(keyCode, scanCode, modifiers);
 	//#endif
+		// a key row waiting: Esc gives up, Backspace or Delete leaves it without a key, any other key is the new one
+		if (waitingKey != null) {
+			if (e.key() == InputConstants.KEY_ESCAPE) waitingKey = null;
+			else if (e.key() == InputConstants.KEY_BACKSPACE || e.key() == InputConstants.KEY_DELETE) bindWaiting(InputConstants.UNKNOWN);
+			//#if MC >= 1.21.9
+			else bindWaiting(InputConstants.getKey(e));
+			//#else
+			//$ else bindWaiting(InputConstants.getKey(e.key(), e.scancode()));
+			//#endif
+			return true;
+		}
 		// Ctrl+Z undoes, Ctrl+Y and Ctrl+Shift+Z redo (Cmd on a Mac), also while typing in a field
 		boolean command = command(e), shift = shift(e);
 		if (command && letter(e, 'z')) {

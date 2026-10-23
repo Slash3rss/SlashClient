@@ -49,9 +49,7 @@ public class KeybindsScreen extends Screen {
 	}
 
 	private void bind(KeyMapping key, InputConstants.Key to) {
-		key.setKey(to);
-		KeyMapping.resetMapping();
-		minecraft.options.save();
+		dev.slash3rss.slashclient.hud.ui.Catalog.setKey(key, to);
 		waiting = null;
 	}
 
@@ -78,20 +76,19 @@ public class KeybindsScreen extends Screen {
 		scroll = Math.max(0, Math.min(maxScroll, scroll));
 		g.enableScissor(px, listTop, px + pw, listBottom);
 		Ui.beginClip("keybinds list", px, listTop, pw, listBottom - listTop);
-		var all = minecraft.options.keyMappings;
 		for (int i = 0; i < keys.size(); i++) {
 			KeyMapping key = keys.get(i);
 			int ry = listTop + i * ROW_H - scroll;
 			if (ry + ROW_H < listTop || ry > listBottom) continue;
 			Ui.draw(g, Ui.fit(Component.translatable(key.getName()), pw - 24 - KEY_W - 26), x, ry + 6, Ui.TEXT_2);
-			boolean clash = !key.isUnbound() && Arrays.stream(all).anyMatch(o -> o != key && o.same(key));
+			boolean clash = !dev.slash3rss.slashclient.hud.ui.Catalog.clashes(key).isEmpty();
 			Component label = key == waiting ? Ui.text("> … <") : key.isUnbound() ? Ui.tr("slashclient-hud.keybinds.none") : key.getTranslatedKeyMessage();
 			int kx = px + pw - 12 - 20 - KEY_W;
 			Ui.button(g, "keys:" + key.getName(), kx, ry + 2, KEY_W, 17, null, label.copy().withStyle(s -> clash ? s.withColor(0xF87171) : s), key == waiting, mx, my);
 			boolean visible = ry + 2 >= listTop && ry + 19 <= listBottom;
 			if (visible) hits.add(new Hit(kx, ry + 2, KEY_W, 17, () -> waiting = key == waiting ? null : key));
 			// back to its default
-			boolean changed = !key.getDefaultKey().equals(keyOf(key));
+			boolean changed = !key.getDefaultKey().equals(dev.slash3rss.slashclient.hud.ui.Catalog.keyOf(key));
 			Ui.button(g, "keys:reset:" + key.getName(), px + pw - 12 - 17, ry + 2, 17, 17, "reset", Component.empty(), false, mx, my);
 			if (visible && changed) hits.add(new Hit(px + pw - 12 - 17, ry + 2, 17, 17, () -> bind(key, key.getDefaultKey())));
 		}
@@ -108,11 +105,6 @@ public class KeybindsScreen extends Screen {
 		// the main menu's panorama, or the game dimmed behind
 		if (minecraft.level == null) extractPanorama(g, delta);
 		g.fill(0, 0, width, height, minecraft.level == null ? 0x800A0D14 : 0x90000000);
-	}
-
-	/** The key a binding has now (its saved name read back: the field itself is private). */
-	private static InputConstants.Key keyOf(KeyMapping key) {
-		return InputConstants.getKey(key.saveString());
 	}
 
 	@Override

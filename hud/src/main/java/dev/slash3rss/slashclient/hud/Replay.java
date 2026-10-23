@@ -21,11 +21,6 @@ public final class Replay {
 		return SlashHud.config.replay ? Math.max(15, Math.min(60, SlashHud.config.replaySeconds)) : 0;
 	}
 
-	/** For the settings card: the key that opens it, as the keys window shows it. */
-	public static Object[] keyArgs() {
-		return new Object[] { key == null ? Component.literal("?") : key.getTranslatedKeyMessage() };
-	}
-
 	static void tick(Minecraft mc) {
 		if (key == null) return;
 		while (key.consumeClick()) open(mc);
