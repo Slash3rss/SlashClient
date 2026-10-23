@@ -59,6 +59,8 @@ export interface Profile {
   /** Game directory; empty means instances/<id>. */
   gameDir: string;
   memoryMb: number;
+  /** The memory the modpack's authors recommend (MB), counted in the profile's recommendation. */
+  packMemoryMb?: number;
   jvmArgs: string;
   /** JVM flag preset ('default' | 'g1' | 'zgc'), expanded for the game's Java at launch. */
   jvmPreset: 'default' | 'g1' | 'zgc';
@@ -84,6 +86,8 @@ export interface Settings {
   reduceMotion?: boolean;
   /** How much memory new profiles start with (MB); each profile can change its own. */
   defaultMemoryMb?: number;
+  /** New profiles and modpacks get the recommended memory instead of defaultMemoryMb. */
+  autoMemory?: boolean;
   /** Show the game status on Discord (Rich Presence). */
   discordEnabled: boolean;
   /** UI language ('pl' | 'en'); empty = follow the system. */

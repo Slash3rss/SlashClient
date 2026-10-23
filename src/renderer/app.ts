@@ -69,7 +69,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; defaultMemoryMb?: number; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -1111,7 +1111,9 @@ function renderSettings() {
   memory.max = String(Math.max(4096, Math.floor((store.systemMemoryMb - 2048) / 512) * 512));
   // (the same limit as each profile's own slider: some memory is left to the system)
   memory.value = String(store.settings.defaultMemoryMb ?? 4096);
-  $('#default-memory-value').textContent = `${memory.value} MB`;
+  const autoMemory = form.elements.namedItem('autoMemory') as HTMLInputElement;
+  autoMemory.checked = !!store.settings.autoMemory;
+  showDefaultMemory();
   (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked = store.settings.discordEnabled ?? true;
   const notifications = form.elements.namedItem('systemNotifications') as HTMLInputElement;
   const sound = form.elements.namedItem('notificationSound') as HTMLInputElement;
@@ -1699,9 +1701,17 @@ api.on('login:code', ({ userCode, url, copied }: { userCode: string; url: string
 
 // ---------- settings ----------
 
+/** The new profiles' memory: the slider, or "recommended" (the slider locked) with "use recommended" on. */
+function showDefaultMemory() {
+  const form = $<HTMLFormElement>('#settings-form');
+  const memory = form.elements.namedItem('defaultMemoryMb') as HTMLInputElement;
+  const auto = (form.elements.namedItem('autoMemory') as HTMLInputElement).checked;
+  memory.disabled = auto;
+  $('#default-memory-value').textContent = auto ? t('zalecana') : `${memory.value} MB`;
+}
 $('#settings-form').addEventListener('input', (e) => {
   const target = e.target as HTMLInputElement;
-  if (target.name === 'defaultMemoryMb') $('#default-memory-value').textContent = `${target.value} MB`;
+  if (target.name === 'defaultMemoryMb' || target.name === 'autoMemory') showDefaultMemory();
 });
 // fewer animations: at once too, without "Zapisz"
 $<HTMLInputElement>('#settings-form input[name="reduceMotion"]').addEventListener('change', async (e) => {
@@ -1724,6 +1734,7 @@ $('#settings-form').addEventListener('submit', async (e) => {
       closeOnLaunch: (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked,
       launcherWindow: (form.elements.namedItem('launcherWindow') as HTMLSelectElement).value,
       defaultMemoryMb: Number((form.elements.namedItem('defaultMemoryMb') as HTMLInputElement).value),
+      autoMemory: (form.elements.namedItem('autoMemory') as HTMLInputElement).checked,
       discordEnabled: (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked,
       systemNotifications: (form.elements.namedItem('systemNotifications') as HTMLInputElement).checked,
       notificationSound: (form.elements.namedItem('notificationSound') as HTMLInputElement).checked,

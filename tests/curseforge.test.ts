@@ -105,6 +105,15 @@ describe('curseforge manifest', () => {
     assert.equal(m.loaderVersion, '47.2.0');
     assert.deepEqual(m.files, [{ projectID: 1, fileID: 11, required: true }, { projectID: 2, fileID: 21, required: false }]);
     assert.equal(m.overrides, 'overrides');
+    assert.equal(m.recommendedRam, undefined);
+  });
+
+  it("reads the memory the pack's authors recommend, leaving odd values out", () => {
+    const pack = (recommendedRam: unknown) => parseCurseManifest(JSON.stringify({ manifestType: 'minecraftModpack', minecraft: { version: '1.21.1', modLoaders: [{ id: 'neoforge-21.1.77', primary: true }], recommendedRam } }));
+    assert.equal(pack(10240).recommendedRam, 10240);
+    assert.equal(pack('8192').recommendedRam, 8192);
+    assert.equal(pack(512).recommendedRam, undefined);
+    assert.equal(pack('a lot').recommendedRam, undefined);
   });
 
   it('understands NeoForge ids with the game version inside, and packs without a loader', () => {

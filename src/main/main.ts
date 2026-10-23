@@ -322,7 +322,28 @@ handle('profile:save', async (profile: Profile) => {
   return clean.id;
 });
 /** New profiles (made, imported, from a modpack) start with the memory set in Settings. */
-const newMemory = () => ({ memoryMb: store.settings.defaultMemoryMb ?? 4096 });
+const systemMemoryMb = () => Math.round(os.totalmem() / 1024 / 1024);
+const newMemory = () => ({ memoryMb: store.settings.autoMemory ? recommendedMemoryMb(systemMemoryMb(), 'vanilla', 0) : store.settings.defaultMemoryMb ?? 4096 });
+
+/** What a profile should get: by its loader, its mods and what its modpack's authors recommend. */
+async function profileRecommendedMemory(profile: Profile): Promise<{ mb: number; mods: number }> {
+  const mods = (await listInstalled(profileGameDir(profile))).filter((i) => i.type === 'mod' && i.enabled).length;
+  return { mb: recommendedMemoryMb(systemMemoryMb(), profile.loader, mods, profile.packMemoryMb), mods };
+}
+
+/**
+ * After a modpack is installed: the recommended memory with "use recommended" on, else at least it, so
+ * a big pack does not crash out of memory on the default 4 GB (more chosen by the player stays).
+ * A note for the finished task when it raised the memory.
+ */
+async function fitPackMemory(profile: Profile, raiseOnly = false): Promise<string> {
+  const before = profile.memoryMb;
+  const { mb } = await profileRecommendedMemory(profile).catch(() => ({ mb: before }));
+  profile.memoryMb = store.settings.autoMemory && !raiseOnly ? mb : Math.max(before, mb);
+  return profile.memoryMb > before
+    ? ` ${t('Pamięć RAM profilu: {0} GB (zalecane dla tego modpacka).', (profile.memoryMb / 1024).toLocaleString(store.settings.language === 'en' ? 'en' : 'pl', { maximumFractionDigits: 1 }))}`
+    : '';
+}
 handle('profile:new', () => newProfile({ versionId: 'latest-release', ...newMemory() }));
 handle('console:sessions', (profileId: string) => consoleHistory.list(profileId));
 handle('console:read', (profileId: string, id: string) => consoleHistory.read(profileId, id));
@@ -931,6 +952,7 @@ async function installModpackTask(title: string, iconUrl: string | undefined, ge
     const { info, manual } = await installPackFile(profile, file, false, task.progress);
     profile.name = info.name;
     applyPack(profile, info, version, info.name, source);
+    const memoryNote = await fitPackMemory(profile);
     // the page's picture, else the one the site gives for the pack (a CurseForge zip: looked up by its manifest)
     let icon = iconUrl ?? pack.iconUrl;
     if (!icon && isCurseForgePack(file)) icon = await curseForgePackIcon(readCursePack(file).manifest).catch(() => undefined);
@@ -949,7 +971,7 @@ async function installModpackTask(title: string, iconUrl: string | undefined, ge
     store.settings.selectedProfileId = profile.id;
     await persist();
     // ready to play only with every file there
-    task.finish(true, (manual.length ? t('Zainstalowano modpack {0}.', info.name) : t('Zainstalowano modpack {0}. Profil jest gotowy do gry.', info.name)) + manualNote(manual), profile.id, manual.length);
+    task.finish(true, (manual.length ? t('Zainstalowano modpack {0}.', info.name) : t('Zainstalowano modpack {0}. Profil jest gotowy do gry.', info.name)) + memoryNote + manualNote(manual), profile.id, manual.length);
     return profile.id;
   } catch (err) {
     task.finish(false, t('Nie udało się zainstalować modpacka: {0}', (err as Error).message));
@@ -1009,19 +1031,16 @@ handle('modpack:update', async (profileId: string, versionId?: string) => {
     }));
     const { info, manual } = await installPackFile(profile, file, true, task.progress);
     applyPack(profile, info, version, pack.title, source);
+    const memoryNote = await fitPackMemory(profile, true);
     await persist();
-    task.finish(true, t('Modpack {0} ma teraz wersję {1}.', pack.title, version!.versionNumber) + manualNote(manual), profile.id, manual.length);
+    task.finish(true, t('Modpack {0} ma teraz wersję {1}.', pack.title, version!.versionNumber) + memoryNote + manualNote(manual), profile.id, manual.length);
   } catch (err) {
     task.finish(false, t('Nie udało się zaktualizować modpacka: {0}', (err as Error).message));
     throw err;
   }
 });
 
-handle('profile:recommendedMemory', async (id: string) => {
-  const profile = profileById(id);
-  const mods = (await listInstalled(profileGameDir(profile))).filter((i) => i.type === 'mod' && i.enabled).length;
-  return { mb: recommendedMemoryMb(Math.round(os.totalmem() / 1024 / 1024), profile.loader, mods), mods };
-});
+handle('profile:recommendedMemory', (id: string) => profileRecommendedMemory(profileById(id)));
 // ---------- copying and exporting profiles ----------
 
 /** Folders that are never copied with a profile: per-session files and potentially huge archives. */
@@ -1166,6 +1185,7 @@ handle('profile:importPack', async (key: string, opts: { name?: string; parts?: 
       applySettings(profile, summary.settings);
       if (profile.icon === 'custom') profile.iconVersion = Date.now();
     }
+    const memoryNote = summary.settings && parts.includes('settings') ? '' : await fitPackMemory(profile);
     // a custom icon whose picture was not in the pack falls back to the default one
     if (profile.icon === 'custom' && !iconFile(gameDir)) profile.icon = '';
     // the pack's own game settings would be replaced by the shared ones at launch
@@ -1176,7 +1196,7 @@ handle('profile:importPack', async (key: string, opts: { name?: string; parts?: 
     store.settings.selectedProfileId = profile.id;
     if (manual.length) await rememberManual(profile, manual);
     await persist();
-    task.finish(true, t('Zaimportowano profil {0}.', name) + manualNote(manual), profile.id, manual.length);
+    task.finish(true, t('Zaimportowano profil {0}.', name) + memoryNote + manualNote(manual), profile.id, manual.length);
     return profile.id;
   } catch (err) {
     task.finish(false, t('Nie udało się zaimportować profilu: {0}', (err as Error).message));

@@ -584,6 +584,7 @@ body.entering main { animation: rise-in .55s cubic-bezier(.2, .7, .3, 1) .12s bo
 .icon-choice img { width: 100%; height: 100%; object-fit: contain; }
 .icon-choice.selected { border-color: var(--accent); background: rgba(59, 130, 246, .15); box-shadow: 0 0 0 3px rgba(59, 130, 246, .15); }
 .icon-choice.upload { width: auto; padding: 0 14px; font-size: 13px; }
+input[type="range"]:disabled { opacity: .4; cursor: not-allowed; }
 /* "Your icons": the icons profiles got before, under the blocks */
 .icon-library { flex-basis: 100%; }
 .icon-library:empty { display: none; }

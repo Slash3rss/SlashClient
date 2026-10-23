@@ -295,13 +295,15 @@ export interface CurseManifest {
   overrides: string;
   /** The pack's own project, when the exporter wrote it. */
   projectID?: number;
+  /** The memory the pack's authors recommend (MB), when they gave it. */
+  recommendedRam?: number;
 }
 
 /** Reads a modpack's manifest.json; throws for anything that is not a CurseForge Minecraft modpack. */
 export function parseCurseManifest(text: string): CurseManifest {
   let json: {
     manifestType?: string; name?: string; version?: string; overrides?: string; projectID?: unknown;
-    minecraft?: { version?: string; modLoaders?: { id?: string; primary?: boolean }[] };
+    minecraft?: { version?: string; modLoaders?: { id?: string; primary?: boolean }[]; recommendedRam?: unknown };
     files?: { projectID?: unknown; fileID?: unknown; required?: unknown }[];
   };
   try {
@@ -319,9 +321,13 @@ export function parseCurseManifest(text: string): CurseManifest {
     .map((f) => ({ projectID: f.projectID as number, fileID: f.fileID as number, required: f.required !== false }));
   const overrides = typeof json.overrides === 'string' && json.overrides ? json.overrides.replace(/^\/+|\/+$/g, '') : 'overrides';
   const projectID = Number.isSafeInteger(json.projectID) && (json.projectID as number) > 0 ? json.projectID as number : undefined;
+  // MB, as CurseForge's app writes it; anything odd is left out
+  const ram = Number(json.minecraft.recommendedRam);
+  const recommendedRam = Number.isFinite(ram) && ram >= 1024 && ram <= 65536 ? Math.round(ram) : undefined;
   return {
     name: json.name || 'Modpack', version: json.version ?? '', gameVersion: info.versionId, loader: info.loader, loaderVersion: info.loaderVersion, files, overrides,
     ...(projectID ? { projectID } : {}),
+    ...(recommendedRam ? { recommendedRam } : {}),
   };
 }
 
@@ -363,7 +369,7 @@ async function bulk<T>(endpoint: '/mods' | '/mods/files', key: 'modIds' | 'fileI
   return out;
 }
 
-export type CurseModpackInfo = ModpackInfo & { manual: ManualFile[] };
+export type CurseModpackInfo = ModpackInfo & { manual: ManualFile[]; recommendedRam?: number };
 
 export function readCursePack(zipFile: string): { zip: AdmZip; manifest: CurseManifest } {
   const zip = new AdmZip(zipFile);
@@ -423,7 +429,10 @@ export async function installCurseForgePack(zipFile: string, gameDir: string, on
   await fs.mkdir(path.join(gameDir, '.slashclient'), { recursive: true });
   await fs.writeFile(packSnapshot(gameDir), JSON.stringify(placed));
 
-  return { name: manifest.name, gameVersion: manifest.gameVersion, loader: manifest.loader, loaderVersion: manifest.loaderVersion, manual };
+  return {
+    name: manifest.name, gameVersion: manifest.gameVersion, loader: manifest.loader, loaderVersion: manifest.loaderVersion, manual,
+    ...(manifest.recommendedRam ? { recommendedRam: manifest.recommendedRam } : {}),
+  };
 }
 
 /** Moves a CurseForge modpack profile to another version, like updateMrpack does for Modrinth. */

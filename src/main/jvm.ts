@@ -20,11 +20,12 @@ export function presetArgs(preset: JvmPreset | undefined, javaMajor: number): st
 }
 
 /**
- * Suggested memory for a profile: more for mod loaders and big modpacks, never
- * more than the computer can spare (4 GB stay with the system) and at least 2 GB.
+ * Suggested memory for a profile: more for mod loaders and big modpacks (or what the modpack's
+ * authors recommend, when more), never more than the computer can spare (4 GB stay with the
+ * system) and at least 2 GB.
  */
-export function recommendedMemoryMb(systemMb: number, loader: string, modCount: number): number {
-  const wanted = loader === 'vanilla' ? 4096 : modCount > 150 ? 10240 : modCount > 60 ? 8192 : 6144;
+export function recommendedMemoryMb(systemMb: number, loader: string, modCount: number, packMb = 0): number {
+  const wanted = Math.max(loader === 'vanilla' ? 4096 : modCount > 150 ? 10240 : modCount > 60 ? 8192 : 6144, packMb);
   const spare = Math.max(2048, systemMb - 4096);
   return Math.max(2048, Math.floor(Math.min(wanted, spare) / 512) * 512);
 }
