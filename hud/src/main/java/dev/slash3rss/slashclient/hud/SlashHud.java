@@ -197,6 +197,7 @@ public class SlashHud implements ClientModInitializer {
 		ClientTickEvents.START_CLIENT_TICK.register(DropGuard::tick);
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
 			TntTimer.tick(mc);
+			PartnerIcons.tick(mc);
 			DungeonMap.tick(mc);
 			LootHighlight.tick(mc);
 			Minimap.tick(mc);

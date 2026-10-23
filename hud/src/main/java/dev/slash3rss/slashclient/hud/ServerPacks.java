@@ -169,6 +169,11 @@ public final class ServerPacks {
 		};
 	}
 
+	/** How wide the tag is on screen. */
+	public static int tagWidth(ServerData server) {
+		return Math.round((Minecraft.getInstance().font.width(Ui.tr("slashclient-hud.serverPacks.tag." + of(server).id())) + 6) * 0.75f);
+	}
+
 	/** A small tag in the bottom right corner of a server's row in the list, when it does not just ask. */
 	public static void drawTag(GuiGraphicsExtractor g, ServerData server, int x, int y, int w, int h) {
 		if (server == null || w <= 0) return;

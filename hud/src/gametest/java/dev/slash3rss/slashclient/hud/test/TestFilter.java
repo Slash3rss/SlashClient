@@ -33,7 +33,7 @@ final class TestFilter {
 		Map.entry("GameClothing", 11), Map.entry("GameInventoryTools", 11), Map.entry("GameServerPacks", 11),
 		Map.entry("GameSkyTasks", 11), Map.entry("GameSkyCase", 10), Map.entry("GameAutoClicker", 8), Map.entry("GameHudParts", 10), Map.entry("GameClips", 9), Map.entry("GameReplay", 30),
 		Map.entry("GameSprays", 8), Map.entry("GameGroupsClans", 7), Map.entry("GameModules", 7),
-		Map.entry("GameServerLayouts", 7), Map.entry("GameHandView", 6), Map.entry("GameLiveCosmetics", 6),
+		Map.entry("GameServerLayouts", 7), Map.entry("GameServerList", 8), Map.entry("GameHandView", 6), Map.entry("GameLiveCosmetics", 6),
 		Map.entry("GameAids", 5), Map.entry("GameLootHighlight", 20), Map.entry("GameHideArmor", 9), Map.entry("GameHitMarker", 15), Map.entry("GameWaypointKeys", 15), Map.entry("GameChatCoords", 15));
 	private static final int DEFAULT = 25;
 

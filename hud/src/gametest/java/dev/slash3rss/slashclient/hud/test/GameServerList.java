@@ -1,0 +1,228 @@
+package dev.slash3rss.slashclient.hud.test;
+
+import com.mojang.blaze3d.platform.InputConstants;
+import dev.slash3rss.slashclient.hud.Compat;
+import dev.slash3rss.slashclient.hud.PartnerIcons;
+import dev.slash3rss.slashclient.hud.PartnerServers;
+import dev.slash3rss.slashclient.hud.PinnedServer;
+import dev.slash3rss.slashclient.hud.SlashHud;
+import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.ui.SlashServerScreen;
+import dev.slash3rss.slashclient.hud.ui.Ui;
+import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
+import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.ServerList;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Our server list (ui.SlashServerScreen): made-up servers in servers.dat (answers made up too, no
+ * network), the pinned partner on top with its picture and animated icon, searching by name and
+ * address, choosing with the keys and the mouse, moving with Shift+arrows (never past the pinned
+ * one), deleting after the question (Esc keeps the server, Enter deletes it, a pinned one cannot be
+ * deleted), screenshots at several sizes with the layout audit, and the game's own list when the
+ * setting is off.
+ */
+public class GameServerList implements FabricClientGameTest {
+	private static final String[][] SERVERS = {
+		{ "Alfa Survival", "alpha.test" }, { "Beta SkyBlock", "beta.test" }, { "Stary serwer", "old.test" },
+		{ "Nie odpowiada", "down.test" }, { "Długi opis serwera", "long.test" }, { "Gamma PvP", "gamma.test" }, { "Delta", "delta.test" },
+	};
+
+	private static ServerData server(String name, String ip) {
+		//#if MC >= 1.20.2
+		return new ServerData(name, ip, ServerData.Type.OTHER);
+		//#else
+		//$ return new ServerData(name, ip, false);
+		//#endif
+	}
+
+	private static List<String> saved() {
+		ServerList list = new ServerList(Minecraft.getInstance());
+		list.load();
+		List<String> out = new ArrayList<>();
+		for (int i = 0; i < list.size(); i++) out.add(list.get(i).name);
+		return out;
+	}
+
+	private static SlashServerScreen screen() {
+		if (Compat.screen(Minecraft.getInstance()) instanceof SlashServerScreen s) return s;
+		throw new AssertionError("Not our server list: " + Compat.screen(Minecraft.getInstance()));
+	}
+
+	/** A key with Shift held, as the game hands it to the screen (the test's input sends no modifiers). */
+	private static void shiftKey(int key) {
+		//#if MC >= 1.21.9
+		screen().keyPressed(new net.minecraft.client.input.KeyEvent(key, 0, 1));
+		//#else
+		//$ screen().keyPressed(key, 0, 1);
+		//#endif
+	}
+
+	private static void open(ClientGameTestContext context) {
+		context.setScreen(() -> new JoinMultiplayerScreen(new TitleScreen()));
+		context.waitTicks(10);
+	}
+
+	private static void size(ClientGameTestContext context, int w, int h, int scale) {
+		context.getInput().resizeWindow(w, h);
+		context.runOnClient(mc -> TestHooks.guiScale(scale));
+		context.waitTicks(4);
+	}
+
+	@Override
+	public void runTest(ClientGameTestContext context) {
+		if (TestFilter.skip(context, getClass())) return;
+		if (Boolean.getBoolean("slashclient.test.friendsOnly")) return;
+		size(context, 854, 480, 2);
+		context.runOnClient(mc -> {
+			SlashHud.config.customServerList = true;
+			SlashServerScreen.sampleStatusForTest = true;
+			PinnedServer.sampleForTest(List.of(new PinnedServer.Pin("skyup.pl", "SkyUp.pl", false)));
+			PartnerServers.sampleForTest("skyup.pl");
+			// four frames, a second each: two screenshots a second apart show two of them
+			PartnerIcons.sampleForTest("skyup.pl", 4, 1000);
+			ServerList list = new ServerList(mc);
+			list.load();
+			for (String[] s : SERVERS) if (list.get(s[1]) == null) list.add(server(s[0], s[1]), false);
+			list.save();
+		});
+		try {
+			run(context);
+		} finally {
+			context.runOnClient(mc -> {
+				SlashServerScreen.sampleStatusForTest = false;
+				SlashHud.config.customServerList = true;
+				TestHooks.audit(false);
+				ServerList list = new ServerList(mc);
+				list.load();
+				for (String[] s : SERVERS) {
+					ServerData d = list.get(s[1]);
+					if (d != null) list.remove(d);
+				}
+				list.save();
+			});
+		}
+		context.runOnClient(mc -> TestHooks.vanillaMenu());
+	}
+
+	private void run(ClientGameTestContext context) {
+		context.runOnClient(mc -> TestHooks.audit(true));
+		open(context);
+		context.computeOnClient(mc -> screen());
+		context.getInput().setCursorPos(10, 10);
+		context.waitTicks(10);
+		context.takeScreenshot("server-list");
+
+		List<String> shown = context.computeOnClient(mc -> screen().shownForTest());
+		if (!"SkyUp.pl".equals(shown.get(0))) throw new AssertionError("The pinned server is not on top: " + shown);
+		for (String[] s : SERVERS) if (!shown.contains(s[0])) throw new AssertionError("Missing " + s[0] + " in " + shown);
+		if (!context.computeOnClient(mc -> PartnerIcons.loadedForTest(server("SkyUp.pl", "skyup.pl")))) throw new AssertionError("The partner's animated icon is not loaded");
+
+		// two frames of the animated icon
+		int first = context.computeOnClient(mc -> PartnerIcons.frameForTest("skyup.pl"));
+		context.takeScreenshot("server-list-icon-frame-a");
+		for (int i = 0; i < 60 && context.computeOnClient(mc -> PartnerIcons.frameForTest("skyup.pl")) == first; i++) context.waitTick();
+		context.waitTicks(2);
+		if (context.computeOnClient(mc -> PartnerIcons.frameForTest("skyup.pl")) == first) throw new AssertionError("The animated icon does not move on");
+		context.takeScreenshot("server-list-icon-frame-b");
+
+		// searching: by name, by address, nothing
+		context.runOnClient(mc -> screen().searchForTest("beta"));
+		context.waitTicks(2);
+		List<String> beta = context.computeOnClient(mc -> screen().shownForTest());
+		if (!beta.equals(List.of("Beta SkyBlock"))) throw new AssertionError("Search by name: " + beta);
+		context.takeScreenshot("server-list-search");
+		context.runOnClient(mc -> screen().searchForTest("ALPHA.TEST"));
+		context.waitTicks(2);
+		List<String> alpha = context.computeOnClient(mc -> screen().shownForTest());
+		if (!alpha.equals(List.of("Alfa Survival"))) throw new AssertionError("Search by address: " + alpha);
+		context.runOnClient(mc -> screen().searchForTest("zzzz"));
+		context.waitTicks(2);
+		if (!context.computeOnClient(mc -> screen().shownForTest()).isEmpty()) throw new AssertionError("Search for nothing shows servers");
+		context.takeScreenshot("server-list-no-match");
+		context.runOnClient(mc -> screen().searchForTest(""));
+		context.waitTicks(2);
+
+		// the keys choose, top down
+		context.getInput().pressKey(InputConstants.KEY_DOWN);
+		context.getInput().pressKey(InputConstants.KEY_DOWN);
+		context.waitTicks(2);
+		String second = context.computeOnClient(mc -> screen().selectedForTest());
+		shown = context.computeOnClient(mc -> screen().shownForTest());
+		if (!second.equals(shown.get(1))) throw new AssertionError("Two presses of ↓ chose '" + second + "', expected " + shown.get(1));
+
+		// a click chooses the card under the mouse (the third: list at y 54 + 14, cards 39 apart, GUI scale 2)
+		context.getInput().setCursorPos(427, 2 * (54 + 14 + 2 * 39 + 18));
+		context.getInput().pressMouse(0);
+		context.waitTicks(3);
+		String clicked = context.computeOnClient(mc -> screen().selectedForTest());
+		if (!clicked.equals(shown.get(2))) throw new AssertionError("The click chose '" + clicked + "', expected " + shown.get(2));
+		context.takeScreenshot("server-list-selected");
+		context.getInput().setCursorPos(10, 10);
+
+		// Shift+↓ moves a server down, saved at once
+		context.runOnClient(mc -> screen().selectForTest("Beta SkyBlock"));
+		int before = context.computeOnClient(mc -> saved().indexOf("Beta SkyBlock"));
+		context.runOnClient(mc -> shiftKey(InputConstants.KEY_DOWN));
+		context.waitTicks(2);
+		int after = context.computeOnClient(mc -> saved().indexOf("Beta SkyBlock"));
+		if (after != before + 1) throw new AssertionError("Shift+↓ moved Beta from " + before + " to " + after);
+		// right under the pinned server, Shift+↑ does nothing
+		String underPinned = context.computeOnClient(mc -> saved().get(1));
+		context.runOnClient(mc -> screen().selectForTest(underPinned));
+		context.runOnClient(mc -> shiftKey(InputConstants.KEY_UP));
+		context.waitTicks(2);
+		if (!context.computeOnClient(mc -> saved().get(0)).equals("SkyUp.pl")) throw new AssertionError("A server moved past the pinned one");
+
+		// deleting asks first: Esc keeps it, Enter deletes it
+		context.runOnClient(mc -> screen().selectForTest("Delta"));
+		context.getInput().pressKey(InputConstants.KEY_DELETE);
+		context.waitTicks(3);
+		if (!context.computeOnClient(mc -> screen().confirmingForTest())) throw new AssertionError("Delete did not ask");
+		context.takeScreenshot("server-list-delete-question");
+		context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+		context.waitTicks(2);
+		if (context.computeOnClient(mc -> screen().confirmingForTest() || !saved().contains("Delta"))) throw new AssertionError("Esc should keep the server and close the question");
+		context.getInput().pressKey(InputConstants.KEY_DELETE);
+		context.waitTicks(2);
+		context.getInput().pressKey(InputConstants.KEY_RETURN);
+		context.waitTicks(5);
+		if (context.computeOnClient(mc -> saved().contains("Delta"))) throw new AssertionError("Enter did not delete the server");
+		if (context.computeOnClient(mc -> screen().shownForTest().contains("Delta"))) throw new AssertionError("The deleted server still shows");
+		// the pinned partner cannot be deleted
+		context.runOnClient(mc -> screen().selectForTest("SkyUp.pl"));
+		context.getInput().pressKey(InputConstants.KEY_DELETE);
+		context.waitTicks(2);
+		if (context.computeOnClient(mc -> screen().confirmingForTest())) throw new AssertionError("Asked to delete the pinned server");
+
+		// sizes: the smallest window, Full HD, Full HD at a small GUI scale
+		int[][] sizes = { { 640, 480, 2 }, { 1920, 1080, 3 }, { 1920, 1080, 1 }, { 1280, 720, 2 } };
+		for (int[] s : sizes) {
+			size(context, s[0], s[1], s[2]);
+			context.waitTicks(4);
+			context.takeScreenshot("server-list-" + s[0] + "x" + s[1] + "-gui" + s[2]);
+		}
+		size(context, 854, 480, 2);
+
+		String problems = context.computeOnClient(mc -> String.join("\n", Ui.PROBLEMS));
+		context.runOnClient(mc -> TestHooks.audit(false));
+		if (!problems.isEmpty()) throw new AssertionError("Server list layout:\n" + problems);
+
+		// switched off: the game's own list (with the partner's animated icon in it)
+		context.runOnClient(mc -> SlashHud.config.customServerList = false);
+		open(context);
+		String vanilla = context.computeOnClient(mc -> Compat.screen(mc).getClass().getName());
+		if (!vanilla.equals(JoinMultiplayerScreen.class.getName())) throw new AssertionError("With the setting off the game's list should show, not " + vanilla);
+		context.waitTicks(10);
+		context.takeScreenshot("server-list-vanilla");
+		context.runOnClient(mc -> SlashHud.config.customServerList = true);
+		context.setScreen(() -> null);
+		context.waitTicks(2);
+	}
+}
