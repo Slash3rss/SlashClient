@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="communityLinks.css">
   <link rel="stylesheet" href="wizard.css">
   <link rel="stylesheet" href="sessionSummary.css">
+  <link rel="stylesheet" href="launcherNews.css">
 </head>
 <body class="booting">
   <div class="splash" id="splash" role="status" aria-live="polite">
@@ -78,12 +79,21 @@
         </div>
       </div>
       <div class="segmented play-tabs" id="play-tabs">
-        <button type="button" class="active" data-tab="news"><i class="fa-regular fa-newspaper"></i> Nowości</button>
+        <!-- a shorter label on a narrow window -->
+        <button type="button" class="active" data-tab="news"><i class="fa-regular fa-newspaper"></i> <span class="tab-long">Nowości z Minecrafta</span><span class="tab-short">Minecraft</span></button>
+        <button type="button" class="hidden" data-tab="launcher" data-needs-changelog><i class="fa-solid fa-rocket"></i> <span class="tab-long">Nowości w launcherze</span><span class="tab-short">Launcher</span> <span class="live-dot new-dot hidden" id="launcher-news-dot"></span></button>
         <button type="button" data-tab="console"><i class="fa-solid fa-terminal"></i> Konsola <span class="live-dot hidden" id="console-live"></span></button>
+      </div>
+      <div class="news-wrap hidden" id="launcher-news-wrap">
+        <div class="news-head">
+          <h3><i class="fa-solid fa-rocket"></i> Nowości w launcherze</h3>
+          <button type="button" id="launcher-news-history"><i class="fa-solid fa-clock-rotate-left"></i> Historia zmian</button>
+        </div>
+        <div class="ln-list" id="launcher-news"></div>
       </div>
       <div class="news-wrap" id="news-wrap">
         <div class="news-head">
-          <h3><i class="fa-regular fa-newspaper"></i> Nowości <small class="hint" id="news-lang-hint"></small></h3>
+          <h3><i class="fa-regular fa-newspaper"></i> Nowości z Minecrafta <small class="hint" id="news-lang-hint"></small></h3>
           <div class="segmented" id="news-filter">
             <button class="active" data-filter="all">Wszystkie</button>
             <button data-filter="release">Wydania</button>
@@ -562,6 +572,15 @@
           <p class="muted">Wersja launchera: <code id="app-version"></code> <span id="update-state"></span></p>
           <button type="button" id="update-check"><i class="fa-solid fa-rotate"></i> Sprawdź aktualizacje</button>
         </div>
+        <div class="updates-paused hidden" id="updates-paused">
+          <label class="check"><input type="checkbox" id="auto-updates"> Automatyczne aktualizacje</label>
+          <small class="muted" id="updates-paused-note"></small>
+        </div>
+        <div class="row update-extra hidden" data-needs-changelog>
+          <button type="button" id="changelog-open"><i class="fa-solid fa-clock-rotate-left"></i> Historia zmian</button>
+          <button type="button" id="rollback-open"><i class="fa-solid fa-backward"></i> Wróć do poprzedniej wersji</button>
+        </div>
+        <label class="check hidden" data-needs-changelog><input type="checkbox" id="whats-new-toggle"> Pokazuj „Co nowego” po aktualizacjach</label>
         <div class="row actions"><button class="primary" type="submit">Zapisz</button></div>
       </form>
       <div class="card glass-panel tools-card" id="tools-card"></div>

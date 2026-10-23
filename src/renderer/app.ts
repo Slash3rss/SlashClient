@@ -29,6 +29,7 @@ import { createServerPages } from './serverPages';
 import { ask, confirmDialog, modalWindow } from './dialog';
 import { createWizard } from './wizard';
 import { createSessionSummary } from './sessionSummary';
+import { createLauncherNews } from './launcherNews';
 
 declare global {
   interface Window {
@@ -1180,17 +1181,43 @@ async function renderConsole() {
   $('#log-empty').classList.toggle('hidden', log.childElementCount > 0 || consoleView === 'live');
 }
 
-/** News or console; the console is always there, with the running game or the saved sessions. */
-async function setPlayTab(tab: 'news' | 'console') {
+type PlayTab = 'news' | 'launcher' | 'console';
+/** The news tab last picked (Minecraft's or SlashClient's own), where the Play screen goes back to. */
+let newsTab: 'news' | 'launcher' = (() => {
+  try {
+    return localStorage.getItem('slash.newsTab') === 'launcher' ? 'launcher' : 'news';
+  } catch {
+    return 'news';
+  }
+})();
+let launcherNews: ReturnType<typeof createLauncherNews> | undefined;
+
+/** Minecraft's news, the launcher's news or the console; the console is always there, with the running game or the saved sessions. */
+async function setPlayTab(tab: PlayTab) {
+  // the launcher's news only while the server has them
+  if (tab === 'launcher' && document.querySelector('#play-tabs [data-tab="launcher"]')?.classList.contains('hidden')) tab = 'news';
   $('#news-wrap').classList.toggle('hidden', tab !== 'news');
+  $('#launcher-news-wrap').classList.toggle('hidden', tab !== 'launcher');
   $('#log-wrap').classList.toggle('hidden', tab !== 'console');
   document.querySelectorAll<HTMLButtonElement>('#play-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
+  if (tab === 'launcher') launcherNews?.shown();
   if (tab === 'console') {
     await renderSessions();
     await renderConsole();
   }
 }
-document.querySelectorAll<HTMLButtonElement>('#play-tabs button').forEach((b) => b.addEventListener('click', () => void setPlayTab(b.dataset.tab as 'news' | 'console')));
+document.querySelectorAll<HTMLButtonElement>('#play-tabs button').forEach((b) => b.addEventListener('click', () => {
+  const tab = b.dataset.tab as PlayTab;
+  if (tab !== 'console') {
+    newsTab = tab;
+    try {
+      localStorage.setItem('slash.newsTab', tab);
+    } catch {
+      // only a convenience
+    }
+  }
+  void setPlayTab(tab);
+}));
 $('#log-session').addEventListener('change', () => {
   consoleView = $<HTMLSelectElement>('#log-session').value;
   void renderConsole();
@@ -1200,7 +1227,7 @@ $('#log-session').addEventListener('change', () => {
 function showProfileLog() {
   $('#console-live').classList.toggle('hidden', !selectedRunning());
   consoleView = 'live';
-  void setPlayTab(selectedRunning() ? 'console' : 'news');
+  void setPlayTab(selectedRunning() ? 'console' : newsTab);
 }
 
 $('#log-search').addEventListener('input', () => {
@@ -1342,11 +1369,11 @@ api.on('game:exit', () => {
 api.on('game:exit', ({ code, byUser, profileId }: { code: number | null; byUser: boolean; profileId: string }) => {
   if (profileId !== pickedProfile()) return;
   $('#console-live').classList.add('hidden');
-  // a game that closed normally: back to the news (its console stays in the Console tab's history);
+  // a game that closed normally: back to the news last picked (its console stays in the Console tab's history);
   // after a crash the console stays, under the crash's explanation
   if ((code === 0 || byUser) && !$('#log-wrap').classList.contains('hidden') && consoleView === 'live') {
     setTimeout(() => {
-      if (!selectedRunning() && profileId === pickedProfile()) void setPlayTab('news');
+      if (!selectedRunning() && profileId === pickedProfile()) void setPlayTab(newsTab);
     }, 1500);
   }
 });
@@ -3312,7 +3339,7 @@ document.addEventListener('keydown', (e) => {
 
 /** News while idle, the game log once a launch starts. */
 function showLog(show: boolean) {
-  void setPlayTab(show ? 'console' : 'news');
+  void setPlayTab(show ? 'console' : newsTab);
 }
 
 // ---------- skin preview ----------
@@ -4251,7 +4278,7 @@ function finishTaskCard({ id, ok, message, profileId, missing }: TaskDone, stayM
 
 // ---------- updates ----------
 
-type UpdateStatus = { state: string; version?: string; percent?: number; manual?: boolean; reason?: string; error?: string };
+type UpdateStatus = { state: string; version?: string; percent?: number; manual?: boolean; reason?: string; error?: string; pausedUntil?: string; rollback?: string };
 let updateClosed = '';
 /** The bar at the top (a new version: downloading, ready, or to download on macOS) and the line in Settings. */
 function showUpdate(u: UpdateStatus) {
@@ -4281,6 +4308,11 @@ function showUpdate(u: UpdateStatus) {
   $('#update-retry').classList.toggle('hidden', !(manual && u.reason === 'failed'));
   // the website's download: only when nothing else can help
   $('#update-download').classList.toggle('hidden', !(manual && !outside));
+  // going back to an older version (Settings → "Wróć do poprzedniej wersji") says so
+  if (u.rollback) {
+    text.downloading = t('Pobieram SlashClient {0} (powrót do starszej wersji)… {1}%', u.version ?? '', u.percent ?? 0);
+    text.ready = t('SlashClient {0} jest gotowy – uruchom ponownie, żeby wrócić do tej wersji.', u.version ?? '');
+  }
   const settings: Record<string, string> = {
     dev: t('(wersja deweloperska, bez aktualizacji)'),
     checking: t('· sprawdzam…'),
@@ -4290,6 +4322,7 @@ function showUpdate(u: UpdateStatus) {
     ready: t('· {0} gotowa, uruchom ponownie', u.version ?? ''),
     error: t('· nie udało się sprawdzić'),
   };
+  if (u.pausedUntil && (u.state === 'none' || u.state === 'idle')) settings[u.state] = t('· automatyczne aktualizacje wstrzymane');
   $('#update-state').textContent = settings[u.state] ?? '';
   $('#update-state').title = u.error ?? '';
 }
@@ -4327,7 +4360,17 @@ async function switchLanguage(lang: string) {
   skinAccountId = undefined;
   if (document.querySelector('#view-accounts.active')) renderSkin();
   loadNews();
+  launcherNews?.reload();
 }
+
+// ---------- SlashClient's own releases (launcherNews.ts) ----------
+
+launcherNews = createLauncherNews({ api, toast, errorText, version: () => api.appVersion(), settings: () => store?.settings as never });
+$('#launcher-news-history').addEventListener('click', () => launcherNews?.openHistory());
+// the server has the changelog: back to the launcher's news if that was the tab last picked
+launcherNews.onAvailable((on) => {
+  if (on && newsTab === 'launcher' && !$('#news-wrap').classList.contains('hidden')) void setPlayTab('launcher');
+});
 
 // ---------- first-run wizard (wizard.ts) ----------
 
@@ -4382,6 +4425,8 @@ function finishBoot() {
   }
   // a brand new installation: the first-run wizard
   wizard.maybeShow(store);
+  // the launcher's releases; after an update "Co nowego w SlashClient X"
+  void launcherNews?.init();
   versions =(await guard(() => api.listVersions())) ?? [];
   loadBlockIcons();
   renderProfiles();

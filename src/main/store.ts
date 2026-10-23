@@ -112,6 +112,14 @@ export interface Settings {
   launcherBounds?: { x: number; y: number; width: number; height: number; maximized?: boolean };
   /** The first-run wizard was finished or skipped (set on upgrade for players who already had accounts or profiles). */
   firstRunDone?: boolean;
+  /** "Co nowego w SlashClient X" after an update; missing = on. */
+  whatsNewAfterUpdate?: boolean;
+  /** The launcher version started last time (to tell an update from a plain start). */
+  lastRunVersion?: string;
+  /** The newest launcher release the player has seen in "Nowości w launcherze" (the tab's dot). */
+  changelogSeen?: string;
+  /** After going back to an older version: automatic updates wait for a release newer than this one. */
+  updatesPausedUntil?: string;
 }
 
 export interface StoreData {
@@ -278,6 +286,25 @@ export function saveStore(data: StoreData): Promise<void> {
   const next = saving.then(write, write);
   saving = next.catch(() => {});
   return next;
+}
+
+/**
+ * Before going back to an older launcher: a copy of everything in the config folder (launcher.json,
+ * its .bak and the other settings files) in config/rollback-backups/<time>-<from>-to-<to>, where the
+ * player can take it from. The last three copies are kept.
+ */
+export async function backupForRollback(from: string, to: string): Promise<string> {
+  await saving;
+  const root = path.join(paths.config, 'rollback-backups');
+  const dir = path.join(root, `${new Date().toISOString().replace(/[:.]/g, '-')}-${from}-to-${to}`);
+  await fs.mkdir(dir, { recursive: true });
+  for (const name of await fs.readdir(paths.config)) {
+    const file = path.join(paths.config, name);
+    if ((await fs.stat(file).catch(() => undefined))?.isFile()) await fs.copyFile(file, path.join(dir, name));
+  }
+  if (existsSync(FILE()) && !existsSync(path.join(dir, 'launcher.json'))) throw new Error('launcher.json');
+  for (const old of (await fs.readdir(root)).sort().reverse().slice(3)) await fs.rm(path.join(root, old), { recursive: true, force: true }).catch(() => {});
+  return dir;
 }
 
 export function profileGameDir(profile: Profile): string {

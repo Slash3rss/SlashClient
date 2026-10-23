@@ -1,6 +1,10 @@
 import { app } from 'electron';
 import { autoUpdater } from 'electron-updater';
+import { randomUUID } from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { compareVersion, pauseMarker, pausedUntil } from '../../server/src/releaseNotes';
+import { pauseHolds, pauseOver } from '../shared/launcherReleases';
 import { bundleState, downloadMacUpdate, installMacUpdate, pickMacZip, type BundleProblem, type MacFile } from './macUpdate';
 import { netFetch } from './download';
 import { appendUpdateLog, cleanupWinUpdate, downloadWinUpdate, manifestName, parseManifest, startSwap, winInstall, type WinInstall } from './winUpdate';
@@ -15,6 +19,16 @@ export interface UpdateStatus {
   /** macOS, with `manual`: why the launcher could not update itself ('failed': the download or unpacking went wrong). */
   reason?: BundleProblem | 'no-file' | 'failed';
   error?: string;
+  /** After going back to an older version: automatic updates wait for a release newer than this one. */
+  pausedUntil?: string;
+  /** The older version being downloaded to go back to (the update bar says so). */
+  rollback?: string;
+}
+
+/** Where the pause after going back to an older version is kept (the player's settings). */
+export interface PauseStore {
+  get: () => string | undefined;
+  set: (version: string | undefined) => Promise<void> | void;
 }
 
 export interface UpdateOptions {
@@ -22,6 +36,7 @@ export interface UpdateOptions {
   serverUrl: () => string;
   send: (status: UpdateStatus) => void;
   onLog?: (message: string) => void;
+  pause?: PauseStore;
 }
 
 /**
@@ -48,10 +63,57 @@ let winDownloading = false;
 let winSwapped = false;
 let status: UpdateStatus = { state: app.isPackaged ? 'idle' : 'dev' };
 let send: (status: UpdateStatus) => void = () => {};
+let pause: PauseStore | undefined;
+/** The older version the player chose to go back to, while it downloads (its own feed: /aktualizacje/v/<version>). */
+let rollbackTarget: string | undefined;
+let feedOverride: string | undefined;
+let serverOf: () => string = () => '';
+let logTo: ((message: string) => void) | undefined;
 
 function set(next: UpdateStatus) {
-  status = next;
+  const paused = pause?.get();
+  status = { ...next, pausedUntil: paused || undefined, rollback: rollbackTarget };
   send(status);
+}
+
+/** The feed the files come from now: the newest release's, or the older one's being gone back to. */
+const activeFeed = () => feedOverride ?? feedUrl(serverOf());
+
+/**
+ * electron-updater's own id of this launcher (userData/.updaterId), sent with every update check.
+ * While updates are paused it says which version the player left (releaseNotes.ts): launchers from
+ * before rollbacks existed know nothing of the pause, but the server holds their update back by it.
+ */
+const updaterIdFile = () => path.join(app.getPath('userData'), '.updaterId');
+function syncUpdaterId(pausedUntilVersion: string | undefined) {
+  let id = '';
+  try {
+    id = readFileSync(updaterIdFile(), 'utf8').trim();
+  } catch {
+    // none yet
+  }
+  const ordinary = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id) && !pausedUntil(id) ? id : undefined;
+  const next = (pausedUntilVersion && pauseMarker(pausedUntilVersion)) || ordinary || randomUUID();
+  if (next !== id) {
+    try {
+      writeFileSync(updaterIdFile(), next);
+    } catch (err) {
+      logTo?.(`Aktualizacja: nie udało się zapisać .updaterId (${(err as Error).message})`);
+    }
+  }
+  // electron-updater reads its file once: the header carries the id as it is now
+  autoUpdater.requestHeaders = { ...(autoUpdater.requestHeaders ?? {}), 'x-user-staging-id': next };
+}
+
+/** Pauses automatic updates until a release newer than `version`, or resumes them (undefined). */
+async function setPause(version: string | undefined) {
+  await pause?.set(version);
+  if (app.isPackaged) {
+    syncUpdaterId(version);
+    // Windows with the installer and Linux download by themselves only while nothing is paused
+    if (!winInstalled && !MANUAL) autoUpdater.autoDownload = !version && !rollbackTarget;
+  }
+  set(status);
 }
 
 /** The update feed: the server's /aktualizacje, or SLASHCLIENT_UPDATE_URL (for testing updates against a local feed). */
@@ -59,11 +121,18 @@ function feedUrl(server: string): string {
   return (process.env.SLASHCLIENT_UPDATE_URL || `${server.replace(/\/$/, '')}/aktualizacje`).replace(/\/$/, '');
 }
 
-export function startUpdateChecks({ serverUrl, send: sendStatus, onLog }: UpdateOptions): void {
+export function startUpdateChecks({ serverUrl, send: sendStatus, onLog, pause: pauseStore }: UpdateOptions): void {
   send = sendStatus;
+  pause = pauseStore;
+  serverOf = serverUrl;
+  logTo = onLog;
+  // a version newer than the one left runs already (installed by hand): nothing to wait for any more
+  if (pause?.get() && pauseOver(pause.get(), app.getVersion())) void pause.set(undefined);
+  status = { ...status, pausedUntil: pause?.get() || undefined };
   if (!app.isPackaged) return;
+  syncUpdaterId(pause?.get());
   autoUpdater.setFeedURL({ provider: 'generic', url: feedUrl(serverUrl()) });
-  autoUpdater.autoDownload = !MANUAL;
+  autoUpdater.autoDownload = !MANUAL && !pause?.get();
   autoUpdater.autoInstallOnAppQuit = !MANUAL;
   autoUpdater.on('checking-for-update', () => {
     // a found or downloaded update stays on screen while the next check runs
@@ -71,9 +140,19 @@ export function startUpdateChecks({ serverUrl, send: sendStatus, onLog }: Update
   });
   autoUpdater.on('update-not-available', () => set({ state: 'none' }));
   autoUpdater.on('update-available', (info) => {
-    if (winInstalled) return void winDownload(feedUrl(serverUrl()), info.version, onLog);
-    if (!MANUAL) return set({ state: 'downloading', version: info.version, percent: 0 });
-    void macDownload(feedUrl(serverUrl()), info.version, info.files as MacFile[], onLog);
+    if (rollbackTarget) {
+      if (info.version !== rollbackTarget) return;
+    } else if (pauseHolds(pause?.get(), info.version)) {
+      // after going back: only a release newer than the one left installs by itself
+      return set({ state: 'none' });
+    } else if (pause?.get()) {
+      void setPause(undefined);
+    }
+    if (winInstalled) return void winDownload(activeFeed(), info.version, onLog);
+    if (MANUAL) return void macDownload(activeFeed(), info.version, info.files as MacFile[], onLog);
+    set({ state: 'downloading', version: info.version, percent: 0 });
+    // with automatic downloads off (a pause, going back) the download starts here
+    if (!autoUpdater.autoDownload) void autoUpdater.downloadUpdate().catch(() => {});
   });
   autoUpdater.on('download-progress', (p) => set({ ...status, state: 'downloading', percent: Math.round(p.percent) }));
   autoUpdater.on('update-downloaded', (info) => set({ state: 'ready', version: info.version }));
@@ -190,6 +269,37 @@ async function macDownload(feed: string, version: string, files: MacFile[], onLo
 function macLog(message: string, onLog?: (message: string) => void) {
   onLog?.(`Aktualizacja (macOS): ${message}`);
   appendUpdateLog(updateLog(), message);
+}
+
+/**
+ * Goes back to an older release: the same download, checks (SHA-512) and installation as an update,
+ * from that release's own feed on the server (/aktualizacje/v/<version>), with going down allowed.
+ * Automatic updates pause until a release newer than the running one (the player can turn them on).
+ */
+export async function rollbackTo(version: string): Promise<UpdateStatus> {
+  if (!app.isPackaged) throw new Error('update:dev');
+  if (status.state === 'downloading' || macDownloading || winDownloading) throw new Error('update:busy');
+  const current = app.getVersion();
+  rollbackTarget = version;
+  feedOverride = `${feedUrl(serverOf())}/v/${version}`;
+  winReady = undefined;
+  macReady = undefined;
+  // going back further keeps waiting for the newest version left
+  const left = pause?.get();
+  await setPause(left && compareVersion(left, current) > 0 ? left : current);
+  autoUpdater.allowDowngrade = true;
+  if (!winInstalled && !MANUAL) autoUpdater.autoDownload = false;
+  autoUpdater.setFeedURL({ provider: 'generic', url: feedOverride });
+  logTo?.(`Aktualizacja: powrót z ${current} do ${version}`);
+  set({ state: 'checking' });
+  await autoUpdater.checkForUpdates().catch((err: Error) => set({ state: 'error', error: err.message }));
+  return status;
+}
+
+/** Turns automatic updates back on after going back to an older version. */
+export async function resumeUpdates(): Promise<UpdateStatus> {
+  await setPause(undefined);
+  return status;
 }
 
 /** Checks now (the button in Settings); the result also arrives as a status event. */
