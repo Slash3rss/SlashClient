@@ -1,6 +1,6 @@
 // Sparks ("Iskry", the achievements' currency) on the website: the balance, the achievements in
 // categories, the history, and buying a cosmetic from the shop (the account page uses these).
-import { api, el, guard, icon, toast } from './common.js';
+import { api, confirmModal, el, guard, icon, toast } from './common.js';
 import { featureOn, siteFeatures } from './siteBanner.js';
 
 /** The currency's names, in one place here (the server's economy.ts and the launcher's sparks.ts have theirs). */
@@ -35,7 +35,7 @@ export async function buy(item, balance) {
     toast(`Za mało Iskier na ${item.name}: brakuje ${sparks(item.price - balance)}.`, true);
     return false;
   }
-  if (!confirm(`Kupić ${item.name} za ${sparks(item.price)}?\nZostanie Ci ${sparks(balance - item.price)}. Przedmiot zostaje na koncie na zawsze.`)) return false;
+  if (!await confirmModal({ title: `Kupić ${item.name} za ${sparks(item.price)}?`, text: `Zostanie Ci ${sparks(balance - item.price)}. Przedmiot zostaje na koncie na zawsze.`, ok: 'Kup', okIcon: 'fa-solid fa-cart-shopping' })) return false;
   const res = await guard(() => api('POST', `/v1/shop/${item.id}/buy`, {}));
   if (!res) return false;
   toast(`Kupiono: ${item.name}. Zostało Ci ${sparks(res.balance)}.`);

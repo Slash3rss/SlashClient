@@ -1,7 +1,7 @@
 // The account page's "Streamy" card: link a Twitch or Kick channel (not a way to sign in, only to
 // show friends and the profile when the player is live), unlink it, and the two choices: hide the
 // live status from friends, and be told when friends go live. The server keeps it (streams/streams.ts).
-import { ApiError, api, el, errorText, guard, icon, toast } from './common.js';
+import { ApiError, api, confirmModal, el, errorText, guard, icon, toast } from './common.js';
 import { platformIcon } from './profileStream.js';
 
 const NAMES = { twitch: 'Twitch', kick: 'Kick' };
@@ -48,7 +48,7 @@ export async function streamsCard() {
   }
 
   async function unlink(a) {
-    if (!confirm(`Odłączyć kanał ${NAMES[a.platform]} ${a.login}? Znajomi przestaną widzieć, że nadajesz.`)) return;
+    if (!await confirmModal({ title: `Odłączyć kanał ${NAMES[a.platform]} ${a.login}?`, text: 'Znajomi przestaną widzieć, że nadajesz.', ok: 'Odłącz', okIcon: 'fa-solid fa-link-slash', danger: true })) return;
     const res = await guard(() => api('DELETE', `/v1/me/streams/${a.platform}`));
     if (res) {
       state = res;

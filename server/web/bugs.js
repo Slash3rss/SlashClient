@@ -1,7 +1,7 @@
 // The bug tracker: the list (/zgloszenia), one report (/zgloszenia/<n>) and a new one (?nowe=1).
 // Anyone can read; signed-in players write; admins change the status.
 import { go } from '/router.js';
-import { $, api, ago, el, fmtDate, guard, icon, toast, token } from './common.js';
+import { $, api, ago, confirmModal, el, fmtDate, guard, icon, toast, token } from './common.js';
 
 const STATUS = {
   open: ['Otwarte', 'fa-regular fa-circle'],
@@ -123,7 +123,7 @@ async function renderBug() {
       }
     });
     const remove = el('button', { class: 'danger', onclick: async () => {
-      if (!confirm('Usunąć to zgłoszenie razem z komentarzami?')) return;
+      if (!await confirmModal({ title: 'Usunąć to zgłoszenie?', text: 'Razem z komentarzami.', ok: 'Usuń', okIcon: 'fa-solid fa-trash', danger: true })) return;
       if (await guard(() => api('DELETE', `/v1/bugs/${bug.id}`))) go('/zgloszenia');
     } }, icon('fa-solid fa-trash'), 'Usuń');
     card.append(el('div', { class: 'row', style: 'margin-top:14px' }, el('span', { class: 'muted small', textContent: 'Status:' }), pick, remove));
@@ -132,7 +132,7 @@ async function renderBug() {
   const comments = el('div', { class: 'comments' }, ...res.comments.map((c) => {
     const { staff } = c;
     const del = me && (res.canModerate || c.author === me.id) ? el('button', { class: 'chip', title: 'Usuń komentarz', onclick: async () => {
-      if (confirm('Usunąć komentarz?') && await guard(() => api('DELETE', `/v1/bugs/${bug.id}/comments/${c.id}`))) renderBug();
+      if (await confirmModal({ title: 'Usunąć komentarz?', ok: 'Usuń', danger: true }) && await guard(() => api('DELETE', `/v1/bugs/${bug.id}/comments/${c.id}`))) renderBug();
     } }, icon('fa-solid fa-xmark')) : '';
     return el('div', { class: `glass comment${staff ? ' staff' : ''}` },
       el('div', { class: 'who' }, el('b', { textContent: author(c.authorHandle) }), staff ? el('span', { class: 'chip blue', textContent: 'Zespół' }) : '',

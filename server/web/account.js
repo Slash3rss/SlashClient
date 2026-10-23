@@ -6,7 +6,7 @@ import { streamsCard } from './accountStreams.js';
 import { legalNotices, signInNote } from './legalNotice.js';
 import { chip as supporterChip, supportCard } from './supportCard.js';
 import { rankBadge, rankChip } from './ranks.js';
-import { $, partnerBanner, uploadPicture, PROVIDERS, SLOTS, api, avatarEl, capeEl, cosmeticEl, el, errorText, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
+import { $, partnerBanner, uploadPicture, PROVIDERS, SLOTS, api, avatarEl, capeEl, confirmModal, cosmeticEl, el, errorText, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 
 let me;
 let health = { providers: [], dev: false };
@@ -137,7 +137,7 @@ function renderAccount() {
   if (me.minecraft?.length) {
     profile.append(el('div', { class: 'row small mc-accounts' }, el('span', { class: 'muted', textContent: 'Minecraft:' }),
       ...me.minecraft.map((mc) => el('button', { class: 'chip', title: 'Kliknij, żeby odłączyć', onclick: async () => {
-        if (!confirm(`Odłączyć konto Minecraft ${mc.name}?`)) return;
+        if (!await confirmModal({ title: `Odłączyć konto Minecraft ${mc.name}?`, ok: 'Odłącz', okIcon: 'fa-solid fa-link-slash', danger: true })) return;
         const u = await guard(() => api('DELETE', `/v1/me/minecraft/${mc.uuid}`));
         if (u) {
           me = u;

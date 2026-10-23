@@ -2,7 +2,7 @@
 // amount, tier, provider and method, status, the period it gave, a confirmation, and the refund
 // request (asked for, followed and cancelled right here). Only the account's own payments come
 // from /v1/me/support/payments; a refund request is seen only by the player and the admins.
-import { api, el, guard, icon, toast } from './common.js';
+import { api, confirmModal, el, guard, icon, toast } from './common.js';
 
 const PAGE = 10;
 export const PAY_STATUS = {
@@ -73,7 +73,7 @@ export function paymentHistory(names, changed = () => {}) {
       item.append(el('div', { class: `pay-refund ${r.status}` }, icon(r.status === 'rejected' ? 'fa-solid fa-circle-xmark' : r.status === 'pending' ? 'fa-regular fa-clock' : 'fa-solid fa-rotate-left'),
         el('span', { class: 'grow' }, REFUND_STATUS[r.status], r.status === 'rejected' && r.answer ? `: ${r.answer}` : ''),
         r.status === 'pending' ? el('button', { class: 'chip', onclick: async () => {
-          if (!confirm('Anulować prośbę o zwrot?')) return;
+          if (!await confirmModal({ title: 'Anulować prośbę o zwrot?', ok: 'Anuluj prośbę', cancel: 'Wróć', danger: true })) return;
           if (await call('POST', `/v1/me/support/refunds/${r.id}/cancel`)) { toast('Prośba anulowana.'); changed(); load(); }
         } }, 'Anuluj prośbę') : ''));
     }

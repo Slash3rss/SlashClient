@@ -171,6 +171,128 @@ export async function guard(fn) {
   }
 }
 
+/**
+ * The site's own question instead of the browser's confirm(): a title, what will happen, and the
+ * buttons "Anuluj" and the action. Escape, a click beside the box or "Anuluj" says no; Enter says yes.
+ * `list`: rows under the text, each a string or a change { name, from, to, note?, risky? } shown as
+ * "name: old → new" (risky ones in gold); `warning`: a gold box above the buttons; `danger`: the
+ * action button in red (deleting, taking away). Resolves true for yes.
+ */
+export function confirmModal({ title, text, list, warning, ok = 'OK', okIcon, danger = false, cancel = 'Anuluj', icon: headIcon } = {}) {
+  return openModal({ title, text, list, warning, ok, okIcon, danger, cancel, headIcon }).then((v) => v !== null);
+}
+
+/**
+ * The site's own prompt(): a title, a text and one field. Resolves with what was typed (as typed),
+ * or null when cancelled. `required`: an empty answer is not accepted (the box says so).
+ * `type`: the field's type ('text', 'number'…); `multiline`: a larger field for longer notes.
+ */
+export function promptModal({ title, text, label, value = '', placeholder = '', ok = 'OK', okIcon, danger = false, required = false, type = 'text', multiline = false,
+  min, max, maxLength, cancel = 'Anuluj', requiredText = 'To pole jest wymagane.', icon: headIcon } = {}) {
+  const input = multiline
+    ? el('textarea', { rows: 3, value, placeholder, maxLength })
+    : el('input', { type, value, placeholder, min, max, maxLength, autocomplete: 'off' });
+  return openModal({ title, text, ok, okIcon, danger, cancel, headIcon, field: { input, label, required, requiredText } });
+}
+
+let modalSeq = 0;
+/** The box behind confirmModal and promptModal: '' (or the field's value) for yes, null for no. */
+function openModal({ title, text, list, warning, ok, okIcon, danger, cancel, headIcon, field }) {
+  return new Promise((resolve) => {
+    const id = `modal-${++modalSeq}`;
+    const before = document.activeElement;
+    let done = false;
+    const close = (value) => {
+      if (done) return;
+      done = true;
+      document.removeEventListener('keydown', onKey, true);
+      const gone = () => {
+        back.remove();
+        if (!document.querySelector('.modal-back')) document.documentElement.classList.remove('modal-open');
+        if (before instanceof HTMLElement && before.isConnected) before.focus({ preventScroll: true });
+      };
+      // a short fade out, unless animations are off ("Animacje: wył." or the system's setting)
+      if (motionOff()) gone();
+      else {
+        back.classList.add('closing');
+        setTimeout(gone, 140);
+      }
+      resolve(value);
+    };
+    const okBtn = el('button', { type: 'submit', class: danger ? 'modal-danger' : 'primary' }, okIcon ? icon(okIcon) : null, ok);
+    const cancelBtn = el('button', { type: 'button', onclick: () => close(null) }, cancel);
+    const error = field ? el('small', { class: 'modal-error', id: `${id}-error` }) : null;
+    const textNode = text ? el('p', { class: 'modal-text', id: `${id}-text` }, text) : null;
+    const rows = list?.length ? el('ul', { class: 'modal-list' }, ...list.map(modalRow)) : null;
+    const kind = danger ? 'danger' : warning ? 'warning' : field ? 'prompt' : 'question';
+    const mark = headIcon ?? { danger: 'fa-solid fa-triangle-exclamation', warning: 'fa-solid fa-triangle-exclamation', prompt: 'fa-solid fa-pen', question: 'fa-solid fa-circle-question' }[kind];
+    if (field) {
+      field.input.id = `${id}-field`;
+      field.input.addEventListener('input', () => { error.textContent = ''; field.input.classList.remove('bad'); });
+    }
+    const box = el('form', { class: `glass modal is-${kind}${list?.some((r) => typeof r === 'object') ? ' wide' : ''}`, noValidate: true, onsubmit: (e) => {
+      e.preventDefault();
+      if (!field) return close('');
+      const v = field.input.value;
+      if (field.required && !v.trim()) {
+        error.textContent = field.requiredText;
+        field.input.classList.add('bad');
+        field.input.focus();
+        return;
+      }
+      close(v);
+    } },
+      el('div', { class: 'modal-head' }, el('span', { class: 'modal-mark' }, icon(mark)), el('h2', { id: `${id}-title`, textContent: title })),
+      textNode, rows,
+      field ? el('div', { class: 'modal-field' }, field.label ? el('label', { htmlFor: field.input.id, textContent: field.label }) : null, field.input, error) : null,
+      warning ? el('div', { class: 'modal-warning', role: 'note' }, icon('fa-solid fa-triangle-exclamation'), el('span', { textContent: warning })) : null,
+      el('div', { class: 'modal-actions' }, cancelBtn, okBtn));
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-labelledby', `${id}-title`);
+    if (textNode) box.setAttribute('aria-describedby', `${id}-text`);
+    if (field) {
+      field.input.setAttribute('aria-describedby', `${id}-error`);
+      if (!field.label) field.input.setAttribute('aria-labelledby', `${id}-title`);
+    }
+    // a click beside the box cancels (only one that also started there, so selecting text in the field does not)
+    let downOnBack = false;
+    const back = el('div', { class: 'modal-back', onmousedown: (e) => { downOnBack = e.target === back; }, onclick: (e) => { if (downOnBack && e.target === back) close(null); } }, box);
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        close(null);
+      } else if (e.key === 'Tab') {
+        // the focus stays in the box
+        const items = [...box.querySelectorAll('button, input, textarea, select, a[href]')].filter((n) => !n.disabled);
+        const first = items[0], last = items[items.length - 1];
+        if (!box.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+        else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      } else if (e.key === 'Enter' && !field && e.target === document.body) {
+        e.preventDefault();
+        close('');
+      }
+    };
+    document.addEventListener('keydown', onKey, true);
+    document.documentElement.classList.add('modal-open');
+    document.body.append(back);
+    (field?.input ?? okBtn).focus();
+    field?.input.select?.();
+  });
+}
+
+/** One row of a question's list: a plain line, or a change "name: old → new". */
+function modalRow(r) {
+  if (typeof r !== 'object' || r === null) return el('li', { textContent: String(r) });
+  return el('li', { class: `modal-change${r.risky ? ' risky' : ''}` },
+    el('span', { class: 'modal-change-name' }, r.risky ? icon('fa-solid fa-triangle-exclamation') : null, el('span', { textContent: r.name })),
+    el('span', { class: 'modal-change-values' },
+      el('span', { class: 'old', textContent: r.from }), el('span', { class: 'arrow', textContent: '→' }), el('span', { class: 'new', textContent: r.to }),
+      r.note ? el('small', { class: 'muted', textContent: ` ${r.note}` }) : null));
+}
+
 /** A cape's front, cut from its texture; an animated one turns its frames like in the game. */
 export function capeEl(id, small = false) {
   const c = el('div', { class: `cape${small ? ' sm' : ''}`, title: id });

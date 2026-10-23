@@ -2,7 +2,7 @@
 // from the server and achievements. The server sends only what the owner lets this visitor see
 // (profiles.ts); the owner and admins get the whole profile and tools for it.
 import { Preview } from './preview.js';
-import { $, SLOTS, ApiError, api, cosmeticEl, el, errorText, guard, icon, toast, token } from './common.js';
+import { $, SLOTS, ApiError, api, cosmeticEl, el, errorText, guard, icon, promptModal, toast, token } from './common.js';
 import { rankChip } from './ranks.js';
 import { streamSection } from './profileStream.js';
 
@@ -94,7 +94,10 @@ function toolsBar(p) {
   if (p.adminView) {
     const hidden = p.moderation?.hidden;
     items.push(el('button', { type: 'button', class: hidden ? '' : 'danger', onclick: async () => {
-      const reason = hidden ? '' : prompt(L('Powód ukrycia profilu (zapisze się w dzienniku):', 'Why hide this profile (goes into the log):'), '');
+      const reason = hidden ? '' : await promptModal({
+        title: L(`Ukryć profil @${p.handle}?`, `Hide @${p.handle}'s profile?`), label: L('Powód ukrycia profilu (zapisze się w dzienniku)', 'Why hide this profile (goes into the log)'),
+        ok: L('Ukryj', 'Hide'), cancel: L('Anuluj', 'Cancel'), okIcon: 'fa-solid fa-eye-slash', danger: true,
+      });
       if (reason === null) return;
       const res = await guard(() => api('POST', `/v1/admin/profiles/${encodeURIComponent(p.handle)}`, { hidden: !hidden, reason }));
       if (!res) return;
