@@ -32,6 +32,8 @@ export interface Clan {
   id: string; tag: string; name: string; createdAt: number; chat: string; role: ClanRole;
   /** the logo's version, when the clan has one */
   logo?: number;
+  /** whether I hide the tag by my nick; servers before 0.9.43 do not send it (and have no such option) */
+  tagHidden?: boolean;
   members: ClanMember[]; invites?: (Person & { at: number })[];
 }
 export interface ClanInvite { clan: { id: string; tag: string; name: string; members: number; logo?: number }; by: Person; at: number }
@@ -618,6 +620,12 @@ export function createGroups(deps: Deps) {
       el('p', { className: 'muted', textContent: t('{0}/{1} online · klan od {2}', c.members.filter((m) => m.online).length, c.members.length, new Date(c.createdAt).toLocaleDateString(locale())) }),
       members,
     ];
+    if (c.tagHidden !== undefined) {
+      // the tag off my nick for others (friends' lists, the game); the clan and its chat stay
+      const hide = control<HTMLInputElement>('input', { type: 'checkbox', checked: c.tagHidden });
+      hide.addEventListener('change', () => void call('POST', '/v1/clans/mine/hide-tag', { hidden: hide.checked }, hide.checked ? t('Tag klanu ukryty.') : t('Tag klanu znów widać przy Twoim nicku.')));
+      body.push(el('label', { className: 'check fr-share' }, hide, t(' Ukryj tag klanu przy moim nicku')));
+    }
     if (clanMay(c.role, 'invite')) {
       const handle = control<HTMLInputElement>('input', { placeholder: t('Nick gracza'), maxLength: 32 });
       const invite = el('button', { type: 'button', className: 'primary' }, icon('fa-paper-plane'), t(' Zaproś'));
