@@ -6,7 +6,11 @@ import { t } from '../shared/i18n';
 import { httpMessage, netFetch } from './download';
 
 const SIZE = 128;
-const MAX_RAW = 2 * 1024 * 1024;
+/**
+ * WebP/GIF are kept as they are (Electron cannot scale them), up to this size: animated modpack
+ * logos on CurseForge reach a few MB even as 256 px thumbnails (Cube Warper's: 2.3 MB).
+ */
+const MAX_RAW = 8 * 1024 * 1024;
 const EXTENSIONS = ['png', 'webp', 'gif'] as const;
 
 const iconPath = (gameDir: string, ext: string) => path.join(gameDir, '.slashclient', `icon.${ext}`);
