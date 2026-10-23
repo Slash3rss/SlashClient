@@ -29,6 +29,7 @@ interface Mine {
 }
 interface LedgerEntry { id: number; amount: number; reason: string; ref: string; label: string; labelEn: string; note: string; balance: number; at: number; by?: string }
 interface Wallet { balance: number; ledger: LedgerEntry[]; unseen: { count: number; amount: number } }
+type ShopData = { items: (ShopItem & { available: boolean })[]; wallet?: { balance: number } };
 
 export interface AchievementsDeps {
   api: any;
@@ -171,7 +172,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
       const b = el('button', { type: 'button', className: `ach-chip${filter === key ? ' active' : ''}` }, icon(iconName), ` ${label} `, el('small', { textContent: count }));
       b.addEventListener('click', () => {
         filter = key;
-        void render();
+        redraw();
       });
       return b;
     };
@@ -217,10 +218,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
         earned !== undefined && total ? el('small', { className: 'muted', textContent: t('Z osiągnięć: {0} z {1} do zdobycia', fmt(earned), sparks(total)) }) : ''));
   }
 
-  async function renderShop(ticket: number) {
-    const res: { items: (ShopItem & { available: boolean })[]; wallet?: { balance: number } } = await api.socialApi('GET', '/v1/cosmetics');
-    if (ticket !== loading) return [];
-    if (res.wallet) setBalance(res.wallet.balance);
+  function renderShop(res: ShopData) {
     const items = res.items.filter((i) => i.price);
     if (!items.length) return [el('p', { className: 'muted', textContent: t('Sklep jest jeszcze pusty.') })];
     const grid = el('div', { className: 'shop-grid' });
@@ -260,10 +258,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     return [el('p', { className: 'muted ach-rules', textContent: t('Kosmetyki ze sklepu kupuje się za {0} z osiągnięć. Kupione zostają na koncie na zawsze; załóż je tutaj albo w menu kosmetyków.', currencyName()) }), grid];
   }
 
-  async function renderHistory(ticket: number) {
-    const w: Wallet = await api.socialApi('GET', '/v1/wallet');
-    if (ticket !== loading) return [];
-    setBalance(w.balance);
+  function renderHistory(w: Wallet) {
     if (!w.ledger.length) return [el('p', { className: 'muted', textContent: t('Jeszcze nic. {0} dostajesz za osiągnięcia.', currencyName()) })];
     const what = (e: LedgerEntry) => {
       const label = getLang() === 'en' ? e.labelEn : e.label;
@@ -280,33 +275,130 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     return [el('div', { className: 'ledger glass-panel' }, ...rows)];
   }
 
-  /** The challenges' tab; an older server has none. */
-  async function renderChallengesTab(ticket: number) {
-    const fetchedAt = Date.now();
-    let res: Challenges;
-    try {
-      res = await api.socialApi('GET', '/v1/challenges');
-    } catch (err) {
-      if (/not_found|404/.test(String((err as { code?: string })?.code ?? (err as Error)?.message ?? ''))) {
-        return [el('div', { className: 'card glass-panel' }, el('p', { className: 'muted', textContent: t('Ten serwer SlashClient nie ma jeszcze wyzwań.') }))];
-      }
-      throw err;
-    }
-    if (ticket !== loading) return [];
-    const ends = [res.daily?.endsAt, res.weekly?.endsAt].filter((n): n is number => typeof n === 'number');
-    // a new day or week: the next set as soon as it is there
-    nextReset = ends.length ? Math.min(...ends) - (res.now ? res.now - fetchedAt : 0) : 0;
+  /** The challenges' tab; an older server has none (no `res`). */
+  function renderChallengesTab(res: Challenges | undefined, fetchedAt: number) {
+    if (!res) return [el('div', { className: 'card glass-panel' }, el('p', { className: 'muted', textContent: t('Ten serwer SlashClient nie ma jeszcze wyzwań.') }))];
     return renderChallenges(res, fetchedAt);
   }
   /** When the shown challenges change (our clock), to load the new ones. */
   let nextReset = 0;
 
+  /** What one tab (or a friend's list) shows, as the server gave it. */
+  type Loaded =
+    | { kind: 'friend'; f: { id: string; name: string }; achievements: Achievement[] }
+    | { kind: 'list'; mine: Mine }
+    | { kind: 'shop'; res: ShopData }
+    | { kind: 'history'; w: Wallet }
+    | { kind: 'challenges'; res?: Challenges; fetchedAt: number };
+  /**
+   * What each tab showed last, by tab (and friend): coming back to it, or picking a category, shows it
+   * at once instead of "Wczytywanie…"; it is asked again quietly and redrawn only if something changed.
+   */
+  const kept = new Map<string, { data: Loaded; json: string }>();
+  const keyNow = () => (friend ? `friend:${friend.id}` : tab);
+  /** The tab and data on screen now ('' for a placeholder, an error or the sign-in card). */
+  let onScreen = '';
+  /** The account the kept pages are of. */
+  let keptFor: string | undefined;
+
+  /** Asks the server for what the tab shows (and notes the balance and the challenges' end on the way). */
+  async function load(): Promise<Loaded> {
+    if (friend) {
+      const f = friend;
+      const { achievements }: { achievements: Achievement[] } = await api.socialApi('GET', `/v1/achievements/${f.id}`);
+      return { kind: 'friend', f, achievements };
+    }
+    if (tab === 'shop') {
+      const res: ShopData = await api.socialApi('GET', '/v1/cosmetics');
+      if (res.wallet) setBalance(res.wallet.balance);
+      return { kind: 'shop', res };
+    }
+    if (tab === 'history') {
+      const w: Wallet = await api.socialApi('GET', '/v1/wallet');
+      setBalance(w.balance);
+      return { kind: 'history', w };
+    }
+    if (tab === 'challenges') {
+      const fetchedAt = Date.now();
+      let res: Challenges;
+      try {
+        res = await api.socialApi('GET', '/v1/challenges');
+      } catch (err) {
+        if (/not_found|404/.test(String((err as { code?: string })?.code ?? (err as Error)?.message ?? ''))) return { kind: 'challenges', fetchedAt };
+        throw err;
+      }
+      const ends = [res.daily?.endsAt, res.weekly?.endsAt].filter((n): n is number => typeof n === 'number');
+      // a new day or week: the next set as soon as it is there
+      nextReset = ends.length ? Math.min(...ends) - (res.now ? res.now - fetchedAt : 0) : 0;
+      return { kind: 'challenges', res, fetchedAt };
+    }
+    const mine: Mine = await api.socialApi('GET', '/v1/achievements');
+    if (mine.sparks) setBalance(mine.sparks.balance);
+    return { kind: 'list', mine };
+  }
+
+  /** Builds the page from what was loaded. */
+  function draw(data: Loaded) {
+    if (data.kind === 'friend') {
+      const { f, achievements } = data;
+      const back = el('button', { type: 'button' }, icon('fa-arrow-left'), t(' Moje osiągnięcia'));
+      back.addEventListener('click', () => {
+        friend = undefined;
+        filter = '';
+        void render();
+      });
+      const { chips, sections, unlocked } = renderList(achievements, false, Object.keys(CATEGORY));
+      root.replaceChildren(
+        el('div', { className: 'ach-head' }, el('h3', {}, icon('fa-trophy'), t(' Osiągnięcia: {0}', f.name)),
+          el('span', { className: 'muted', textContent: t('{0} z {1} odblokowanych', unlocked, achievements.length) }), back),
+        chips, ...sections);
+      return;
+    }
+    if (data.kind !== 'list') {
+      const body = data.kind === 'shop' ? renderShop(data.res) : data.kind === 'history' ? renderHistory(data.w) : renderChallengesTab(data.res, data.fetchedAt);
+      root.replaceChildren(el('div', { className: 'ach-top' }, balanceCard(), tabs()), ...body);
+      return;
+    }
+    const { mine } = data;
+    const s = mine.stats;
+    const stat = (iconName: string, value: string, label: string) =>
+      el('div', { className: 'ach-stat glass-panel' }, icon(iconName), el('b', { textContent: value }), el('small', { className: 'muted', textContent: label }));
+    const { chips, sections } = renderList(mine.achievements, true, mine.categories ?? Object.keys(CATEGORY));
+    root.replaceChildren(
+      el('div', { className: 'ach-top' }, mine.sparks ? balanceCard(mine.sparks.earned, mine.sparks.total) : '', tabs()),
+      el('div', { className: 'ach-stats' },
+        stat('fa-fire', String(s.streak), t('dni z rzędu (rekord {0})', s.bestStreak)),
+        stat('fa-clock', String(s.hours), t('godzin gry')),
+        stat('fa-calendar-day', String(s.todayMinutes), t('minut dzisiaj')),
+        s.daysPlayed !== undefined ? stat('fa-calendar-check', String(s.daysPlayed), t('dni gry')) : '',
+        stat('fa-server', String(s.servers), t('serwerów'))),
+      el('p', { className: 'muted ach-rules', textContent: t('Liczy się czas w świecie lub na serwerze, gdy launcher jest połączony z SlashClient. Dzień do serii: co najmniej {0} min gry; dni zaczynają się o północy UTC; najwyżej {1} h dziennie.', mine.rules.minMinutesPerDay, mine.rules.maxHoursPerDay) }),
+      chips, ...sections);
+  }
+
+  /** The tab as kept, drawn again (a category picked): nothing is asked. */
+  function redraw() {
+    const shown = kept.get(keyNow());
+    if (shown) draw(shown.data);
+    else void render();
+  }
+
   async function render(quiet = false) {
     const ticket = ++loading;
-    if (!quiet) root.replaceChildren(el('p', { className: 'muted' }, el('span', { className: 'spinner' }), t(' Wczytywanie…')));
+    const key = keyNow();
+    const shown = kept.get(key);
+    if (shown && onScreen !== `${key}|${shown.json}`) {
+      draw(shown.data);
+      onScreen = `${key}|${shown.json}`;
+    } else if (!shown && !quiet) {
+      root.replaceChildren(el('p', { className: 'muted' }, el('span', { className: 'spinner' }), t(' Wczytywanie…')));
+      onScreen = '';
+    }
     const state = await api.socialState().catch(() => undefined);
     if (ticket !== loading) return;
     if (!state?.user) {
+      kept.clear();
+      onScreen = '';
       setBalance(undefined);
       const go = el('button', { type: 'button', className: 'primary' }, icon('fa-user-group'), t(' Przejdź do Znajomych'));
       go.addEventListener('click', () => document.querySelector<HTMLButtonElement>('.nav[data-view="friends"]')?.click());
@@ -317,51 +409,22 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
       return;
     }
     try {
-      if (friend) {
-        const f = friend;
-        const { achievements }: { achievements: Achievement[] } = await api.socialApi('GET', `/v1/achievements/${f.id}`);
-        if (ticket !== loading) return;
-        const back = el('button', { type: 'button' }, icon('fa-arrow-left'), t(' Moje osiągnięcia'));
-        back.addEventListener('click', () => {
-          friend = undefined;
-          filter = '';
-          void render();
-        });
-        const { chips, sections, unlocked } = renderList(achievements, false, Object.keys(CATEGORY));
-        root.replaceChildren(
-          el('div', { className: 'ach-head' }, el('h3', {}, icon('fa-trophy'), t(' Osiągnięcia: {0}', f.name)),
-            el('span', { className: 'muted', textContent: t('{0} z {1} odblokowanych', unlocked, achievements.length) }), back),
-          chips, ...sections);
-        return;
-      }
-      if (tab === 'shop' || tab === 'history' || tab === 'challenges') {
-        const body = tab === 'shop' ? await renderShop(ticket) : tab === 'history' ? await renderHistory(ticket) : await renderChallengesTab(ticket);
-        if (ticket !== loading) return;
-        root.replaceChildren(el('div', { className: 'ach-top' }, balanceCard(), tabs()), ...body);
-        return;
-      }
-      const mine: Mine = await api.socialApi('GET', '/v1/achievements');
+      const data = await load();
       if (ticket !== loading) return;
-      if (mine.sparks) setBalance(mine.sparks.balance);
-      const s = mine.stats;
-      const stat = (iconName: string, value: string, label: string) =>
-        el('div', { className: 'ach-stat glass-panel' }, icon(iconName), el('b', { textContent: value }), el('small', { className: 'muted', textContent: label }));
-      const { chips, sections } = renderList(mine.achievements, true, mine.categories ?? Object.keys(CATEGORY));
-      root.replaceChildren(
-        el('div', { className: 'ach-top' }, mine.sparks ? balanceCard(mine.sparks.earned, mine.sparks.total) : '', tabs()),
-        el('div', { className: 'ach-stats' },
-          stat('fa-fire', String(s.streak), t('dni z rzędu (rekord {0})', s.bestStreak)),
-          stat('fa-clock', String(s.hours), t('godzin gry')),
-          stat('fa-calendar-day', String(s.todayMinutes), t('minut dzisiaj')),
-          s.daysPlayed !== undefined ? stat('fa-calendar-check', String(s.daysPlayed), t('dni gry')) : '',
-          stat('fa-server', String(s.servers), t('serwerów'))),
-        el('p', { className: 'muted ach-rules', textContent: t('Liczy się czas w świecie lub na serwerze, gdy launcher jest połączony z SlashClient. Dzień do serii: co najmniej {0} min gry; dni zaczynają się o północy UTC; najwyżej {1} h dziennie.', mine.rules.minMinutesPerDay, mine.rules.maxHoursPerDay) }),
-        chips, ...sections);
+      const json = JSON.stringify(data);
+      kept.set(key, { data, json });
+      // shown from memory and nothing changed: the page stays as it is (no redraw, no jump)
+      if (onScreen === `${key}|${json}`) return;
+      draw(data);
+      onScreen = `${key}|${json}`;
     } catch (err) {
       if (ticket !== loading) return;
+      // what was kept stays when only its refresh failed
+      if (shown) return;
       const retry = el('button', { type: 'button' }, icon('fa-rotate-right'), t(' Spróbuj ponownie'));
       retry.addEventListener('click', () => void render());
       root.replaceChildren(el('div', { className: 'card glass-panel' }, el('p', { className: 'fr-error', textContent: deps.errorText(err) }), el('div', { className: 'row' }, retry)));
+      onScreen = '';
     }
   }
 
@@ -427,6 +490,10 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     } else if (e?.type === 'wallet' && typeof e.balance === 'number') {
       setBalance(e.balance);
     } else if (e?.type === 'state') {
+      // another account signed in: nothing kept from the one before is shown
+      const user = (e.state?.user as { id?: string } | undefined)?.id;
+      if (user !== keptFor) kept.clear();
+      keptFor = user;
       if (e.state?.user && e.state.connected) void catchUp();
       else if (!e.state?.user) setBalance(undefined);
       if (isVisible()) void render();
