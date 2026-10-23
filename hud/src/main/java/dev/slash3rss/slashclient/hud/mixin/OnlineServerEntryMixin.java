@@ -22,7 +22,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Partner servers get their picture behind them. No move arrows that would move SkyUp.pl: none down on SkyUp.pl itself, none up on the
+ * Partner servers get their picture behind them; friends playing on a server, their faces (ServerFriends). No move arrows that would move SkyUp.pl: none down on SkyUp.pl itself, none up on the
  * server right under it. Clicks and Shift+arrow keys go through swap(), stopped here too.
  */
 @Mixin(ServerSelectionList.OnlineServerEntry.class)
@@ -89,12 +89,14 @@ abstract class OnlineServerEntryMixin {
 		var entry = (ServerSelectionList.Entry) (Object) this;
 		dev.slash3rss.slashclient.hud.PartnerServers.drawBadge(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
 		dev.slash3rss.slashclient.hud.ServerPacks.drawTag(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
+		dev.slash3rss.slashclient.hud.ServerFriends.drawInRow(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight(), mouseX, mouseY);
 	}
 	//#else
 	//$ @Inject(method = "render", at = @At("TAIL"))
 	//$ private void slashclient$partnerBadge(GuiGraphicsExtractor g, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
 	//$ 	dev.slash3rss.slashclient.hud.PartnerServers.drawBadge(g, serverData, left, top, width, height);
 	//$ 	dev.slash3rss.slashclient.hud.ServerPacks.drawTag(g, serverData, left, top, width, height);
+	//$ 	dev.slash3rss.slashclient.hud.ServerFriends.drawInRow(g, serverData, left, top, width, height, mouseX, mouseY);
 	//$ }
 	//#endif
 

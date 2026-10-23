@@ -421,6 +421,7 @@ public final class Catalog {
 			new Toggle("slashclient-hud.caption.server", () -> cfg.screenshotCaptionServer, v -> cfg.screenshotCaptionServer = v)), null));
 		out.add(new Entry("liveNametags", "slashclient-hud.extra.liveNametags", "extras", "m-badges", () -> cfg.liveNametags, v -> cfg.liveNametags = v, List.of(), null));
 		out.add(new Entry("friendsPlaying", "slashclient-hud.extra.friendsPlaying", "extras", "m-friends", () -> cfg.friendPlayingToasts, v -> cfg.friendPlayingToasts = v, List.of(), null));
+		out.add(new Entry("serverFriends", "slashclient-hud.serverFriends.setting", "extras", "m-friends", () -> cfg.serverFriends, v -> cfg.serverFriends = v, List.of(), null));
 		out.add(new Entry("chatStack", "slashclient-hud.chat.stack", "chat", "m-chatstack", () -> cfg.chatStack, v -> cfg.chatStack = v, List.of(), null));
 		out.add(new Entry("chatCopy", "slashclient-hud.chat.copy", "chat", "m-chatcopy", () -> cfg.chatCopy, v -> cfg.chatCopy = v, List.of(
 			new Choice("slashclient-hud.chat.copy.format", dev.slash3rss.slashclient.hud.ChatExtras.COPY_FORMATS, "slashclient-hud.chat.copy.format.", () -> cfg.chatCopyFormat, v -> cfg.chatCopyFormat = v),

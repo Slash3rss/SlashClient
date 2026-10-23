@@ -519,6 +519,8 @@
 	"slashclient-hud.lan.join": "Join world",
 	"slashclient-hud.lan.failed": "Could not join",
 	"slashclient-hud.extra.friendsPlaying": "Notify when friends start playing",
+	"slashclient-hud.serverFriends.setting": "Friends next to servers in the list",
+	"slashclient-hud.serverFriends.title": "Friends on this server: %s",
 	"slashclient-hud.playing.online": "is online now",
 	"slashclient-hud.playing.world": "started playing Minecraft",
 	"slashclient-hud.playing.server": "is playing on %s",

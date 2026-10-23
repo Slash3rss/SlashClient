@@ -2,6 +2,7 @@ package dev.slash3rss.slashclient.hud.ui;
 
 import dev.slash3rss.slashclient.hud.PartnerServers;
 import dev.slash3rss.slashclient.hud.PinnedServer;
+import dev.slash3rss.slashclient.hud.ServerFriends;
 import dev.slash3rss.slashclient.hud.ServerPacks;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import dev.slash3rss.slashclient.hud.mixin.JoinMultiplayerScreenAccessor;
@@ -47,6 +48,8 @@ import java.util.Map;
  */
 public class SlashServerScreen extends JoinMultiplayerScreen {
 	private static final int CARD_H = 36, CARD_GAP = 3, HEADER_H = 14;
+	/** A friend's face next to a server (ServerFriends). */
+	private static final int FACE = 11;
 	/** The keyboard's modifier bits (as GLFW gives them). */
 	private static final int MOD_SHIFT = 1, MOD_CONTROL = 2;
 
@@ -85,6 +88,8 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 	private int listY, listH;
 	private List<Component> tip;
 	private int tipX, tipY;
+	/** Where friends' faces were drawn last, by the server's name (for the test's mouse). */
+	private final Map<String, int[]> facesAt = new HashMap<>();
 
 	public SlashServerScreen(Screen parent) {
 		super(parent);
@@ -218,6 +223,7 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		//$ extractBackground(g, mouseX, mouseY, delta);
 		//#endif
 		hits.clear();
+		facesAt.clear();
 		tip = null;
 		// under the question nothing else lights up
 		int mx = confirm != null ? -1 : mouseX, my = confirm != null ? -1 : mouseY;
@@ -436,7 +442,17 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		// the resource pack mode (ServerPacks), when it does not just ask: a small tag at the end of the name's line
 		int tag = ServerPacks.of(d) == ServerPacks.Mode.PROMPT ? 0 : ServerPacks.tagWidth(d) + 4;
 		if (tag > 0) ServerPacks.drawTag(g, d, tx, y + 2, rx - 4 - tx, 10);
-		Component name = Ui.fit(Ui.bold(d.name == null ? "" : d.name), textW - tag - (PinnedServer.is(d) ? 12 : 0) - (partner ? PartnerServers.pillWidth() + 4 : 0));
+		// friends playing there now (ServerFriends): their faces at the end of the name's line, who they are on hover
+		List<dev.slash3rss.slashclient.hud.social.Social.Friend> friends = ServerFriends.on(d);
+		int fw = ServerFriends.width(friends, FACE);
+		if (fw > 0) {
+			int fx = rx - 6 - tag - fw;
+			ServerFriends.draw(g, friends, fx, y + 2, FACE);
+			facesAt.put(d.name, new int[] { fx, y + 2, fw, FACE });
+			if (Ui.inside(mx, my, fx - 1, y + 1, fw + 2, FACE + 2)) tipAt(ServerFriends.tip(friends), mx, my);
+			fw += 6;
+		}
+		Component name = Ui.fit(Ui.bold(d.name == null ? "" : d.name), textW - tag - fw - (PinnedServer.is(d) ? 12 : 0) - (partner ? PartnerServers.pillWidth() + 4 : 0));
 		Ui.draw(g, name, tx, y + 4, Ui.TEXT);
 		int after = tx + Ui.width(name) + 4;
 		if (PinnedServer.is(d)) {
@@ -940,6 +956,25 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 
 	public boolean confirmingForTest() {
 		return confirm != null;
+	}
+
+	/** The names of the friends whose faces show on that server's card (by the server's name). */
+	public List<String> friendsForTest(String name) {
+		List<String> out = new ArrayList<>();
+		for (ServerData d : servers()) if (name.equals(d.name)) for (var f : ServerFriends.on(d)) out.add(f.name());
+		return out;
+	}
+
+	/** Where that server's friends' faces were drawn last (x, y, width, height), or null. */
+	public int[] facesForTest(String name) {
+		return facesAt.get(name);
+	}
+
+	/** The tooltip's lines this frame, as text. */
+	public List<String> tipForTest() {
+		List<String> out = new ArrayList<>();
+		if (tip != null) for (Component c : tip) out.add(c.getString());
+		return out;
 	}
 
 	public void searchForTest(String text) {

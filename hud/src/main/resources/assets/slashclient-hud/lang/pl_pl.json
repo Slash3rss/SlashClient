@@ -519,6 +519,8 @@
 	"slashclient-hud.lan.join": "Dołącz do świata",
 	"slashclient-hud.lan.failed": "Nie udało się dołączyć",
 	"slashclient-hud.extra.friendsPlaying": "Powiadomienia: znajomy zaczyna grać",
+	"slashclient-hud.serverFriends.setting": "Znajomi przy serwerach na liście",
+	"slashclient-hud.serverFriends.title": "Znajomi na tym serwerze: %s",
 	"slashclient-hud.playing.online": "jest teraz online",
 	"slashclient-hud.playing.world": "zaczyna grać w Minecraft",
 	"slashclient-hud.playing.server": "gra na %s",

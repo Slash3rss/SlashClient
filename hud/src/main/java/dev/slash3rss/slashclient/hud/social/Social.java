@@ -112,6 +112,11 @@ public final class Social {
 		friends = List.copyOf(sorted);
 	}
 
+	/** For the in-game test: the friends list replaced (empty: none left over for the next test). */
+	public static void friendsForTest(List<Friend> list) {
+		friends = List.copyOf(list);
+	}
+
 	public static boolean signedIn() {
 		return signedIn;
 	}
@@ -283,6 +288,8 @@ public final class Social {
 		lanFrom(str(o, "id"), p);
 		// live on Twitch or Kick (servers 0.9.24+): the LIVE badge
 		FriendStreams.fromFriend(str(o, "id"), o);
+		// their face next to the server they play on, in the server list
+		dev.slash3rss.slashclient.hud.ServerFriends.avatarFrom(str(o, "id"), str(o, "avatar"));
 		JsonObject a = p.has("activity") && p.get("activity").isJsonObject() ? p.getAsJsonObject("activity") : null;
 		detailFrom(str(o, "id"), a);
 		return new Friend(str(o, "id"), str(o, "name"), str(o, "handle"), p.has("status") ? str(p, "status") : "offline",
