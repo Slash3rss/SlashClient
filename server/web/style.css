@@ -431,6 +431,3 @@ button.chip.active { background: var(--accent); color: #fff; }
 i.fa-twitch { color: #a970ff; }
 .streams-card .stream-row { align-items: center; gap: 10px; margin: 6px 0; }
 .streams-card .stream-row a { overflow-wrap: anywhere; }
-.spotify-card .stream-row { align-items: center; gap: 10px; margin: 6px 0; }
-.spotify-card .stream-row span { overflow-wrap: anywhere; }
-i.fa-spotify { color: #1ed760; }

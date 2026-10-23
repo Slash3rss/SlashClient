@@ -50,7 +50,6 @@ import { disabledPage, errorPage, homeRedirect, notFoundPage, sitePage, siteLang
 import { useBlocklist } from './clans.ts';
 import { useLogoLimit } from './clanLogos.ts';
 import { createRanks, gameBadge, type RankUser } from './ranks.ts';
-import { createSpotify } from './spotify.ts';
 import { createStreams } from './streams/streams.ts';
 import type { KICK, TWITCH } from './streams/providers.ts';
 import { createSuggestions } from './suggestions.ts';
@@ -119,8 +118,6 @@ export interface Config {
   communityLimits?: Partial<CommunityLimits>;
   /** "Streamy" (streams/streams.ts): tests point Twitch and Kick at fakes, set the clock and stop the timer. */
   streams?: { twitch?: Partial<typeof TWITCH>; kick?: Partial<typeof KICK>; now?: () => number; timers?: boolean };
-  /** Spotify (spotify.ts): tests set its clock (its calls go through fetchImpl). */
-  spotifyNow?: () => number;
 }
 
 /** Names for the test sign-in: like Minecraft nicks. */
@@ -916,14 +913,6 @@ export function createApp(cfg: Config) {
     },
   });
 
-  // a linked Spotify account and what plays on it, for the HUD's "Spotify" module (spotify.ts)
-  const spotify = createSpotify({
-    sql: db.sql, box: storage.box, publicUrl: cfg.publicUrl, settings, authed, limitLinks: limiter('spotify.linksPerMinute'),
-    fetchImpl: cfg.fetchImpl, now: cfg.spotifyNow,
-    fail: (status, code) => {
-      throw new HttpError(status, code);
-    },
-  });
 
   // the terms, the privacy policy and the support terms, edited in the admin panel (legal/routes.ts)
   const legal = legalRoutes({
@@ -1502,7 +1491,6 @@ export function createApp(cfg: Config) {
     ...legal.routes,
     ...home.routes,
     ...streams.routes,
-    ...spotify.routes,
     ...phones.routes,
     // voting for a server on the server list from the launcher (serverVotes.ts)
     ...serverVoteRoutes({
@@ -1750,15 +1738,6 @@ export function createApp(cfg: Config) {
       if (await streams.serve(req, res, url)) return;
     } catch (err) {
       console.error('streamy:', (err as Error).message);
-      if (!res.headersSent) serverError(req, res, url);
-      return;
-    }
-
-    // Spotify: the browser back from linking an account
-    try {
-      if (await spotify.serve(req, res, url)) return;
-    } catch (err) {
-      console.error('spotify:', (err as Error).message);
       if (!res.headersSent) serverError(req, res, url);
       return;
     }
@@ -2134,8 +2113,6 @@ export function createApp(cfg: Config) {
     suggestions,
     /** For tests: linked channels, the live state and the reconcile. */
     streams,
-    /** For tests: linked Spotify accounts. */
-    spotify,
     /** For tests: the phones' notifications. */
     phones,
     close: () => new Promise<void>((resolve) => {

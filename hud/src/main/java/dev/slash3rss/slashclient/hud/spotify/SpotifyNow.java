@@ -23,26 +23,31 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * What plays on the player's linked Spotify, for the "Spotify" module: asked of the launcher's
- * bridge (/spotify/now) on a thread of its own, only while the module is on (the launcher asks
- * the server, which asks Spotify at most every few seconds). Between the answers the track's time
- * moves on here. Album covers come through the launcher too (/spotify/cover/<id>: Spotify's own
- * image host only, as a 64×64 PNG), once per track; the last few stay as textures.
+ * What plays on this computer, for the "Now playing" module (id "spotify"): asked of the launcher's
+ * bridge (/spotify/now) on a thread of its own, only while the module is on (the launcher reads it
+ * from the system: Spotify, a browser, another player). Between the answers the track's time moves
+ * on here. Covers come through the launcher too (/spotify/cover/<id>, as a 64×64 PNG), once per
+ * track; the last few stay as textures. Launchers 0.9.36–0.9.38 asked a linked Spotify account
+ * instead: their answers read the same, without `source`.
  */
 public final class SpotifyNow {
 	private SpotifyNow() {}
 
-	/** A track (or a podcast's episode) as the launcher passes it on. */
-	public record Track(String kind, String title, List<String> artists, String album, String cover, long durationMs, long progressMs, boolean playing) {
+	/** A track (or a podcast's episode) as the launcher passes it on; `source`: "spotify", "browser", "other" ("" from older launchers). */
+	public record Track(String kind, String title, List<String> artists, String album, String cover, long durationMs, long progressMs, boolean playing, String source) {
+		public boolean fromSpotify() {
+			return source.isEmpty() || "spotify".equals(source);
+		}
+
 		public String artistLine() {
 			return String.join(", ", artists);
 		}
 	}
 
 	/**
-	 * The last answer: `known` once the launcher answered; `available` when the server has a Spotify
-	 * app, `linked` when this account linked one; `track` null when nothing plays. `at`: when it came
-	 * (System.currentTimeMillis), to move the time on.
+	 * The last answer: `known` once the launcher answered; `available` and `linked` are always true
+	 * from launchers that read the system (older ones asked a linked Spotify account); `track` null
+	 * when nothing plays. `at`: when it came (System.currentTimeMillis), to move the time on.
 	 */
 	public record State(boolean known, boolean available, boolean linked, Track track, String error, long at) {
 		/** Where the track is now: its time when it came plus what passed since, while it plays. */
@@ -70,8 +75,8 @@ public final class SpotifyNow {
 	private static volatile boolean wanted;
 	private static volatile long wantedAt;
 	private static Thread thread;
-	/** The settings page asked to know whether an account is linked (the module may be off). */
-	private static volatile long peekAt;
+	/** Ask only for Spotify (the module's "Only Spotify"): browsers and other players are left out. */
+	private static volatile boolean onlySpotify;
 
 	public static State state() {
 		return state;
@@ -83,26 +88,12 @@ public final class SpotifyNow {
 	}
 
 	/** From the game's tick: asks the launcher while the module is on, stops when it is switched off. */
-	public static void tick(boolean on) {
+	public static void tick(boolean on, boolean onlySpotify) {
+		SpotifyNow.onlySpotify = onlySpotify;
 		if (sample || !bridged()) return;
 		wanted = on;
 		if (on) wantedAt = System.currentTimeMillis();
 		if (on) start();
-	}
-
-	/** The settings page: one ask (at most every ten seconds) so it can say whether Spotify is linked. */
-	public static void peek() {
-		if (sample || !bridged() || wanted) return;
-		long now = System.currentTimeMillis();
-		if (now - peekAt < 10_000) return;
-		peekAt = now;
-		Thread.ofVirtual().start(() -> {
-			try {
-				accept(fetchNow());
-			} catch (Exception e) {
-				SlashHud.LOG.debug("SlashClient: Spotify: {}", e.toString());
-			}
-		});
 	}
 
 	private static synchronized void start() {
@@ -122,7 +113,7 @@ public final class SpotifyNow {
 				failures = 0;
 				State s = state;
 				// playing: often enough for a new track to show soon; else less often
-				wait = !s.available() || !s.linked() ? 15_000 : s.track() != null && s.track().playing() ? 3000 : 5000;
+				wait = !s.available() ? 15_000 : s.track() != null && s.track().playing() ? 3000 : 5000;
 			} catch (InterruptedException e) {
 				return;
 			} catch (Exception e) {
@@ -139,10 +130,16 @@ public final class SpotifyNow {
 	}
 
 	private static JsonObject fetchNow() throws Exception {
-		HttpRequest req = HttpRequest.newBuilder(URI.create(URL + "/spotify/now")).timeout(Duration.ofSeconds(15)).header("Authorization", "Bearer " + KEY).GET().build();
-		HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString());
+		HttpResponse<String> res = get(onlySpotify ? "/spotify/now?only=spotify" : "/spotify/now");
+		// a launcher before "Now playing" knows only the plain address (and only Spotify then)
+		if (res.statusCode() != 200 && onlySpotify) res = get("/spotify/now");
 		if (res.statusCode() != 200) throw new IllegalStateException("HTTP " + res.statusCode());
 		return GSON.fromJson(res.body(), JsonObject.class);
+	}
+
+	private static HttpResponse<String> get(String path) throws Exception {
+		HttpRequest req = HttpRequest.newBuilder(URI.create(URL + path)).timeout(Duration.ofSeconds(15)).header("Authorization", "Bearer " + KEY).GET().build();
+		return HTTP.send(req, HttpResponse.BodyHandlers.ofString());
 	}
 
 	// ---------- the launcher's answer ----------
@@ -187,8 +184,10 @@ public final class SpotifyNow {
 				String cover = str(t, "cover", 64);
 				long duration = num(t, "durationMs");
 				long progress = num(t, "progressMs");
+				String source = str(t, "source", 10);
 				track = new Track("episode".equals(str(t, "kind", 10)) ? "episode" : "track", title, List.copyOf(artists), str(t, "album", 200),
-					COVER_ID.matcher(cover).matches() ? cover : "", duration, duration > 0 ? Math.min(duration, progress) : progress, bool(t, "isPlaying"));
+					COVER_ID.matcher(cover).matches() ? cover : "", duration, duration > 0 ? Math.min(duration, progress) : progress, bool(t, "isPlaying"),
+					source.equals("spotify") || source.equals("browser") || source.equals("other") ? source : "");
 			}
 		}
 		state = new State(true, bool(o, "available"), bool(o, "linked"), track, str(o, "error", 40), System.currentTimeMillis());

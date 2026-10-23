@@ -163,6 +163,9 @@ export class Db {
     if (!identityColumns.some((c) => c.name === 'label')) this.db.exec("ALTER TABLE identities ADD COLUMN label TEXT NOT NULL DEFAULT ''");
     // a Minecraft account's own cosmetics (cape and the other slots, JSON); '' = the account's default
     if (!identityColumns.some((c) => c.name === 'loadout')) this.db.exec("ALTER TABLE identities ADD COLUMN loadout TEXT NOT NULL DEFAULT ''");
+    // linking Spotify accounts is gone (the launcher reads what plays from the computer itself): no tokens are kept
+    this.db.exec('DROP TABLE IF EXISTS spotify_accounts');
+    if (this.db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'app_settings'").get()) this.db.exec("DELETE FROM app_settings WHERE key LIKE 'spotify.%'");
     this.db.exec(`
 CREATE TABLE IF NOT EXISTS cosmetics (id TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1, exclusive INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS cape_grants (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, cape TEXT NOT NULL, PRIMARY KEY (uuid, cape));

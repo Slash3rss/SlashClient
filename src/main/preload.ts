@@ -165,8 +165,6 @@ const api = {
   socialLoginMinecraft: () => invoke('social:loginMinecraft'),
   /** Links a Twitch or Kick channel in the browser; the account's channels when done. */
   socialLinkStream: (platform: string) => invoke('social:linkStream', platform),
-  /** Links a Spotify account in the browser (the game's "Spotify" module); the account's Spotify state when done. */
-  socialLinkSpotify: () => invoke('social:linkSpotify'),
   socialCancelLogin: () => invoke('social:cancelLogin'),
   socialLogout: () => invoke('social:logout'),
   socialSetStatus: (status: string) => invoke('social:setStatus', status),

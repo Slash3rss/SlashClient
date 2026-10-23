@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.spotify;
 
-/** The "Spotify" module's own settings (in config/slashclient-hud.json as "spotify"). */
+/** The "Now playing" module's own settings (in config/slashclient-hud.json as "spotify", its id from when it showed only Spotify). */
 public final class SpotifySettings {
 	public static final String[] LAYOUTS = { "card", "line" };
 	public static final String[] ACCENTS = { "spotify", "theme" };
@@ -26,6 +26,10 @@ public final class SpotifySettings {
 	/** The widest the module gets (GUI pixels); longer texts slide through (`marquee`) or are cut with "…". */
 	public int width = 190;
 	public boolean marquee = true;
+	/** A small mark of where it plays on the cover: Spotify's, or a note for a browser and other players. */
+	public boolean sourceIcon = true;
+	/** Only what Spotify plays: browsers and other players are left out. */
+	public boolean onlySpotify = false;
 
 	/** For Gson, so missing fields keep the defaults above. */
 	public SpotifySettings() {}
@@ -55,6 +59,8 @@ public final class SpotifySettings {
 		s.hideIdle = hideIdle;
 		s.width = width;
 		s.marquee = marquee;
+		s.sourceIcon = sourceIcon;
+		s.onlySpotify = onlySpotify;
 		return s.checked();
 	}
 

@@ -2,7 +2,6 @@
 import { Preview } from './preview.js';
 import { achievementsCard, buy, priceTag, sparks } from './sparks.js';
 import { privacyCard } from './profilePrivacy.js';
-import { spotifyCard } from './accountSpotify.js';
 import { streamsCard } from './accountStreams.js';
 import { legalNotices, signInNote } from './legalNotice.js';
 import { chip as supporterChip, supportCard } from './supportCard.js';
@@ -202,11 +201,8 @@ function renderAccount() {
   const support = el('div', { class: 'support-slot' });
   // linked Twitch and Kick channels (accountStreams.js), when the server has them
   const streams = el('div', { class: 'streams-slot' });
-  // a linked Spotify account (accountSpotify.js), when the server has its app
-  const spotify = el('div', { class: 'spotify-slot' });
-  $('#account').replaceChildren(el('div', { class: 'account' }, el('div', { class: 'account-side' }, profile, privacy, streams, spotify, support), capes));
+  $('#account').replaceChildren(el('div', { class: 'account' }, el('div', { class: 'account-side' }, profile, privacy, streams, support), capes));
   streamsCard().then((card) => card && streams.replaceWith(card)).catch(() => {});
-  spotifyCard().then((card) => card && spotify.replaceWith(card)).catch(() => {});
   supportCard().then((card) => {
     if (!card) return;
     support.replaceWith(card);

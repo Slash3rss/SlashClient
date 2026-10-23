@@ -6,7 +6,7 @@ import dev.slash3rss.slashclient.hud.spotify.SpotifyNow;
 import dev.slash3rss.slashclient.hud.spotify.SpotifySettings;
 
 /**
- * For the in-game test of the "Spotify" module (GameSpotify): answers as the launcher's bridge
+ * For the in-game test of the "Now playing" module (GameSpotify): answers as the launcher's bridge
  * gives them (/spotify/now) fed in, a made-up cover, the module's settings set, what it shows.
  */
 public final class SpotifyTestHooks {
@@ -19,8 +19,13 @@ public final class SpotifyTestHooks {
 		throw new IllegalStateException("no Spotify module");
 	}
 
-	/** An answer of /spotify/now: a track (null: nothing plays), linked or not. */
+	/** An answer of /spotify/now: a track from Spotify (null: nothing plays); `linked` false as older launchers said without a Spotify account. */
 	public static JsonObject answer(boolean linked, String title, boolean playing, long progressMs, long durationMs, String... artists) {
+		return answer(linked, "spotify", title, playing, progressMs, durationMs, artists);
+	}
+
+	/** The same from a given source ("spotify", "browser", "other"; "" as older launchers). */
+	public static JsonObject answer(boolean linked, String source, String title, boolean playing, long progressMs, long durationMs, String... artists) {
 		JsonObject o = new JsonObject();
 		o.addProperty("available", true);
 		o.addProperty("linked", linked);
@@ -36,6 +41,7 @@ public final class SpotifyTestHooks {
 			t.addProperty("durationMs", durationMs);
 			t.addProperty("progressMs", progressMs);
 			t.addProperty("isPlaying", playing);
+			if (!source.isEmpty()) t.addProperty("source", source);
 			o.add("playing", t);
 		} else o.add("playing", com.google.gson.JsonNull.INSTANCE);
 		return o;
@@ -71,6 +77,13 @@ public final class SpotifyTestHooks {
 		if (s.progress(s.at() + 5000) != 200_000) bad.append("past the end ").append(s.progress(s.at() + 5000)).append('\n');
 		SpotifyNow.accept(null);
 		if (SpotifyNow.state().linked() || SpotifyNow.state().track() != null) bad.append("null answer\n");
+		// where it plays: kept when known, "" from older launchers (counted as Spotify), odd ones dropped
+		SpotifyNow.accept(answer(true, "browser", "X", true, 0, 0));
+		if (!"browser".equals(SpotifyNow.state().track().source()) || SpotifyNow.state().track().fromSpotify()) bad.append("browser source\n");
+		SpotifyNow.accept(answer(true, "", "X", true, 0, 0));
+		if (!SpotifyNow.state().track().fromSpotify()) bad.append("older launcher not Spotify\n");
+		SpotifyNow.accept(answer(true, "<script>", "X", true, 0, 0));
+		if (!SpotifyNow.state().track().source().isEmpty()) bad.append("odd source kept\n");
 		if (!SpotifyModule.time(61_000).equals("1:01") || !SpotifyModule.time(3_725_000).equals("1:02:05")) bad.append("times ").append(SpotifyModule.time(61_000)).append('\n');
 		return bad.isEmpty() ? "ok" : bad.toString();
 	}
@@ -111,7 +124,7 @@ public final class SpotifyTestHooks {
 		return module().shownText(net.minecraft.client.Minecraft.getInstance());
 	}
 
-	/** The settings' note on the account. */
+	/** The settings' note on where it reads from. */
 	public static String infoKey() {
 		return SpotifyModule.infoKey();
 	}
