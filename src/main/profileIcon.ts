@@ -4,6 +4,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { t } from '../shared/i18n';
 import { httpMessage, netFetch } from './download';
+import { addToLibrary, iconId, libraryFile } from './iconLibrary';
+import { paths } from './paths';
 
 const SIZE = 128;
 /**
@@ -12,6 +14,9 @@ const SIZE = 128;
  */
 const MAX_RAW = 8 * 1024 * 1024;
 const EXTENSIONS = ['png', 'webp', 'gif'] as const;
+
+/** Every icon a profile got, for any profile to pick again (see iconLibrary). */
+export const LIBRARY = path.join(paths.root, 'icon-library');
 
 const iconPath = (gameDir: string, ext: string) => path.join(gameDir, '.slashclient', `icon.${ext}`);
 
@@ -50,9 +55,30 @@ async function store(gameDir: string, buf: Buffer): Promise<void> {
     ext = raw;
     data = buf;
   }
+  await write(gameDir, data, ext);
+  // the library is an extra: the profile has its icon even when it cannot be added there
+  await addToLibrary(LIBRARY, data, ext).catch(() => undefined);
+}
+
+async function write(gameDir: string, data: Buffer, ext: string): Promise<void> {
   await fs.mkdir(path.dirname(iconPath(gameDir, ext)), { recursive: true });
   for (const other of EXTENSIONS) if (other !== ext) await fs.rm(iconPath(gameDir, other), { force: true });
   await fs.writeFile(iconPath(gameDir, ext), data);
+}
+
+/** Gives the profile an icon from the library. */
+export async function iconFromLibrary(gameDir: string, id: string): Promise<void> {
+  const file = libraryFile(LIBRARY, id);
+  const data = await fs.readFile(file);
+  // its place in the library stays: the picked icon does not jump away from under the pointer
+  await write(gameDir, await fs.readFile(file), path.extname(file).slice(1));
+}
+
+/** The library id of the profile's own icon (to mark it as chosen), if it has one. */
+export async function currentIconId(gameDir: string): Promise<string | undefined> {
+  const file = iconFile(gameDir);
+  if (!file) return undefined;
+  return iconId(await fs.readFile(file), path.extname(file).slice(1));
 }
 
 export async function iconFromFile(gameDir: string, source: string): Promise<void> {

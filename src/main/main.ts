@@ -7,7 +7,8 @@ import path from 'node:path';
 import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, gameSessionMargin, pollDeviceCode, startDeviceCode } from './auth';
 import { setLang } from '../shared/i18n';
 import { analyzeCrash } from './crash';
-import { iconFile, iconFromFile, iconFromUrl } from './profileIcon';
+import { currentIconId, iconFile, iconFromFile, iconFromLibrary, iconFromUrl, LIBRARY } from './profileIcon';
+import { libraryIcons, removeFromLibrary } from './iconLibrary';
 import { pullShared, pushShared } from './sync';
 import { recommendedMemoryMb } from './jvm';
 import { markExistingUser } from '../shared/firstRun';
@@ -488,6 +489,22 @@ handle('profile:chooseIcon', async (id: string) => {
   await persist();
   return true;
 });
+/** The icons any profile got before (the library), and which of them this profile has now. */
+handle('icons:library', async (id: string) => {
+  const profile = profileById(id);
+  const existing = store.profiles.map((p) => iconFile(profileGameDir(p))).filter((f): f is string => !!f);
+  const icons = await libraryIcons(LIBRARY, existing);
+  const current = profile.icon === 'custom' ? await currentIconId(profileGameDir(profile)).catch(() => undefined) : undefined;
+  return { icons, current };
+});
+handle('icons:use', async (id: string, iconId: string) => {
+  const profile = profileById(id);
+  await iconFromLibrary(profileGameDir(profile), iconId);
+  profile.icon = 'custom';
+  profile.iconVersion = Date.now();
+  await persist();
+});
+handle('icons:remove', (iconId: string) => removeFromLibrary(LIBRARY, iconId));
 
 // ---------- Modrinth and CurseForge content ----------
 
@@ -1458,6 +1475,8 @@ registerVersionMove({
 /** True for files inside one of the profiles' game folders. */
 function isInsideInstances(file: string): boolean {
   const full = path.resolve(file);
+  // the icon library is shown next to the profiles' own pictures
+  if (full.startsWith(path.resolve(LIBRARY) + path.sep)) return true;
   return store.profiles.some((p) => full.startsWith(path.resolve(profileGameDir(p)) + path.sep));
 }
 

@@ -584,6 +584,18 @@ body.entering main { animation: rise-in .55s cubic-bezier(.2, .7, .3, 1) .12s bo
 .icon-choice img { width: 100%; height: 100%; object-fit: contain; }
 .icon-choice.selected { border-color: var(--accent); background: rgba(59, 130, 246, .15); box-shadow: 0 0 0 3px rgba(59, 130, 246, .15); }
 .icon-choice.upload { width: auto; padding: 0 14px; font-size: 13px; }
+/* "Your icons": the icons profiles got before, under the blocks */
+.icon-library { flex-basis: 100%; }
+.icon-library:empty { display: none; }
+.icon-library-head { margin: 6px 0 8px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.icon-library-item { position: relative; }
+.icon-library-item .icon-choice img { border-radius: 6px; }
+.icon-remove {
+  position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; padding: 0; border-radius: 50%; font-size: 11px;
+  background: #1f2433; border: 1px solid var(--glass-border); color: var(--text-muted); opacity: 0; transition: opacity .15s, color .15s;
+}
+.icon-library-item:hover .icon-remove, .icon-remove:focus-visible { opacity: 1; }
+.icon-remove:hover { color: #f87171; }
 .check .hint { display: block; font-size: 12px; color: var(--text-muted); }
 
 /* ---------- task panel (installs) ---------- */

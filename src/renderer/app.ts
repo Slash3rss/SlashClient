@@ -616,10 +616,32 @@ function renderIconChoices(profile: Profile) {
     return b;
   };
   const items = blockNames().map((k) => choice(`block:${k}`, blockIconUrl(k), k));
-  if (profile.icon === 'custom') items.push(choice('custom', profileIconUrl(profile), t('Własny obrazek')));
   const upload = el('button', { type: 'button', className: 'icon-choice upload' }, el('i', { className: 'fa-regular fa-image' }), ` ${t('Własny obrazek…')}`);
   upload.addEventListener('click', () => guard(() => busy(upload, () => api.chooseProfileIcon(profile.id))));
-  $('#icon-choices').replaceChildren(...items, upload);
+  const library = el('div', { className: 'icon-library' });
+  $('#icon-choices').replaceChildren(...items, upload, library);
+  void renderIconLibrary(profile, library).catch(() => undefined);
+}
+
+/** "Your icons": every icon a profile got before (uploaded, from a modpack), for this profile to pick. */
+async function renderIconLibrary(profile: Profile, box: HTMLElement) {
+  const { icons, current } = await api.iconLibrary(profile.id) as { icons: { id: string; file: string }[]; current?: string };
+  if (!box.isConnected || !icons.length) return;
+  const choices = icons.map((icon) => {
+    const chosen = profile.icon === 'custom' && icon.id === current;
+    const b = el('button', { type: 'button', className: `icon-choice${chosen ? ' selected' : ''}`, title: t('Ustaw tę ikonę') },
+      el('img', { src: `slash-media://local/?path=${encodeURIComponent(icon.file)}`, alt: '' }));
+    b.addEventListener('click', () => guard(() => api.useLibraryIcon(profile.id, icon.id)));
+    const remove = el('button', { type: 'button', className: 'icon-remove', title: t('Usuń z biblioteki (profile, które jej używają, ją zachowają)') }, el('i', { className: 'fa-solid fa-xmark' }));
+    const wrap = el('div', { className: 'icon-library-item' }, b, remove);
+    remove.addEventListener('click', () => guard(async () => {
+      await api.removeLibraryIcon(icon.id);
+      wrap.remove();
+      if (!box.querySelector('.icon-library-item')) box.replaceChildren();
+    }));
+    return wrap;
+  });
+  box.replaceChildren(el('div', { className: 'icon-library-head', textContent: t('Twoje ikony') }), el('div', { className: 'icon-choices' }, ...choices));
 }
 
 // ---------- back to the game ----------
