@@ -36,6 +36,8 @@ public final class PartnerServers {
 	private static volatile Map<String, String> backgrounds = Map.of();
 	/** Every partner's normalized address, with a picture or without. */
 	private static volatile java.util.Set<String> partners = java.util.Set.of();
+	/** A partner's other addresses (another domain, a raw IP), normalized → that partner's own address. */
+	private static volatile Map<String, String> aliases = Map.of();
 	/** Picture address → texture, once loaded. */
 	private static final Map<String, Picture> pictures = new ConcurrentHashMap<>();
 	private static final Map<String, Boolean> loading = new ConcurrentHashMap<>();
@@ -50,21 +52,35 @@ public final class PartnerServers {
 	}
 
 	/**
-	 * The partner a server in the player's list is, as the server keeps it: the address itself, or the
-	 * partner's domain when the player wrote one of its subdomains ("play.skyup.pl", "mc.skyup.pl:25565"
-	 * → "skyup.pl"). The longest matching partner wins. Null when it is no partner.
+	 * The partner a server in the player's list is, as the server keeps it: the address itself, one of
+	 * the partner's other addresses the admin listed ("1.2.3.4", "skyup.eu"), or a subdomain of either
+	 * ("play.skyup.pl", "mc.skyup.eu:25565" → "skyup.pl"). The longest matching address wins. Null when
+	 * it is no partner.
 	 */
 	public static String partnerKey(String address) {
 		String a = normalize(address);
 		if (a.isEmpty()) return null;
 		java.util.Set<String> all = partners;
+		Map<String, String> other = aliases;
 		if (all.contains(a)) return a;
+		String alias = other.get(a);
+		if (alias != null) return alias;
 		// a port other than 25565 belongs to the address: "mc.x.pl:25566" is x.pl's only if the partner has that port
-		String best = null;
+		String best = null, key = null;
 		for (String p : all) {
-			if (a.endsWith("." + p) && (best == null || p.length() > best.length())) best = p;
+			if (a.endsWith("." + p) && (best == null || p.length() > best.length())) {
+				best = p;
+				key = p;
+			}
 		}
-		return best;
+		for (Map.Entry<String, String> e : other.entrySet()) {
+			String p = e.getKey();
+			if (a.endsWith("." + p) && (best == null || p.length() > best.length())) {
+				best = p;
+				key = e.getValue();
+			}
+		}
+		return key;
 	}
 
 	/** Asks SlashClient's server for the partners, when the server list opens. */
@@ -79,11 +95,19 @@ public final class PartnerServers {
 			java.util.Set<String> all = ConcurrentHashMap.newKeySet();
 			java.util.List<PinnedServer.Pin> pins = new java.util.ArrayList<>();
 			Map<String, PartnerIcons.Anim> icons = new java.util.HashMap<>();
+			Map<String, String> other = new ConcurrentHashMap<>();
 			boolean saysPinned = false;
 			for (JsonElement e : GSON.fromJson(res.body(), JsonObject.class).getAsJsonArray("partners")) {
 				JsonObject p = e.getAsJsonObject();
 				String address = normalize(p.get("address").getAsString());
 				all.add(address);
+				// the partner's other addresses (older servers do not send them); pins stay on the main address
+				if (p.has("aliases") && p.get("aliases").isJsonArray()) {
+					for (JsonElement alias : p.getAsJsonArray("aliases")) {
+						String a = alias.isJsonPrimitive() ? normalize(alias.getAsString()) : "";
+						if (!a.isEmpty() && !a.equals(address)) other.putIfAbsent(a, address);
+					}
+				}
 				// the ones the admin pinned on top of the server list (servers before 0.9.2 do not say)
 				saysPinned |= p.has("pinned");
 				if (p.has("pinned") && p.get("pinned").getAsBoolean()) {
@@ -99,7 +123,10 @@ public final class PartnerServers {
 					if (times.length > 0) icons.put(address, new PartnerIcons.Anim(server + p.get("icon").getAsString(), p.has("iconSize") ? p.get("iconSize").getAsInt() : 0, times));
 				}
 			}
+			// a partner's own address beats another partner's alias
+			all.forEach(other::remove);
 			partners = all;
+			aliases = other;
 			backgrounds = next;
 			PartnerIcons.set(icons);
 			if (saysPinned) PinnedServer.set(pins);
@@ -225,7 +252,7 @@ public final class PartnerServers {
 	}
 
 	/** For the test: a partner with a made-up picture, without the network. */
-	public static void sampleForTest(String address) {
+	public static void sampleForTest(String address, String... otherAddresses) {
 		NativeImage image = new NativeImage(600, 64, false);
 		for (int px = 0; px < 600; px++) {
 			for (int py = 0; py < 64; py++) {
@@ -242,5 +269,8 @@ public final class PartnerServers {
 		all.addAll(partners);
 		all.add(normalize(address));
 		partners = all;
+		Map<String, String> other = new ConcurrentHashMap<>(aliases);
+		for (String a : otherAddresses) other.put(normalize(a), normalize(address));
+		aliases = other;
 	}
 }
