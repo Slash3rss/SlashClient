@@ -58,6 +58,21 @@ public class HudEditScreen extends Screen {
 	private final List<Hit> hits = new ArrayList<>();
 	/** Where each card was drawn last (x, y, w, h): for the in-game test that puts the mouse on one. */
 	static final java.util.Map<String, int[]> CARDS = new java.util.HashMap<>();
+	/** Where each row of the open settings page was drawn last (x, y, w, h), and each slider (x, y, w): for the in-game test. */
+	static final java.util.Map<String, int[]> ROWS = new java.util.HashMap<>();
+	static final java.util.Map<String, int[]> SLIDERS = new java.util.HashMap<>();
+
+	/** Undo and redo for this opening of the editor. */
+	private final EditHistory history = new EditHistory();
+	/** History starts with the first frame: drawing fills in the places of modules seen for the first time. */
+	private boolean historyStarted;
+	/** When text was last typed in a field (ms), so a pause in typing makes one step; 0 when nothing waits. */
+	private long typedAt;
+	/** The undo and redo buttons as drawn last (x, y, size), null when not shown: for the in-game test. */
+	private int[] undoAt, redoAt;
+	/** The hovered button's tooltip this frame, and where its button is. */
+	private Component tip;
+	private int tipX, tipY;
 
 	public HudEditScreen() {
 		super(Component.translatable("slashclient-hud.editor"));
@@ -129,6 +144,7 @@ public class HudEditScreen extends Screen {
 			name.setResponder(v -> {
 				tab.name = v;
 				tabsChanged();
+				typed();
 			});
 			// "catches" takes most of the room, "but not" the rest
 			int room = cw - 82 - 98, pw = Math.round((room - 10) * 0.52f);
@@ -141,6 +157,7 @@ public class HudEditScreen extends Screen {
 			patterns.setResponder(v -> {
 				ChatTabsScreen.setPatterns(tab, v);
 				tabsChanged();
+				typed();
 			});
 			EditBox excludes = new EditBox(font, cx + 82 + pw + 10, y, room - pw - 10, 12, Ui.tr("slashclient-hud.chat.excludes"));
 			excludes.setBordered(false);
@@ -151,6 +168,7 @@ public class HudEditScreen extends Screen {
 			excludes.setResponder(v -> {
 				ChatTabsScreen.setExcludes(tab, v);
 				tabsChanged();
+				typed();
 			});
 			addRenderableWidget(name);
 			addRenderableWidget(patterns);
@@ -406,6 +424,8 @@ public class HudEditScreen extends Screen {
 
 	@Override
 	protected void init() {
+		// what changed while the widgets were away (a page switched by a click) is a step of its own
+		history.commit();
 		entries();
 		search = null;
 		tabFields.clear();
@@ -431,7 +451,10 @@ public class HudEditScreen extends Screen {
 			box.setMaxLength(t.maxLength());
 			box.setValue(t.get().get());
 			box.setHint(Ui.tr(t.hintKey()));
-			box.setResponder(v -> t.set().accept(v));
+			box.setResponder(v -> {
+				t.set().accept(v);
+				typed();
+			});
 			// shown once drawSettings has put it on its row
 			box.visible = false;
 			addRenderableWidget(box);
@@ -466,9 +489,138 @@ public class HudEditScreen extends Screen {
 			}
 		}
 		SlashHud.drawAll(g, minecraft, true);
+		tip = null;
+		undoAt = redoAt = null;
 		if (!window) drawLayout(g, mx, my);
 		else drawWindow(g, mx, my);
 		super.extractRenderState(g, mx, my, delta);
+		drawTip(g);
+		if (!historyStarted) {
+			historyStarted = true;
+			history.reset();
+		}
+	}
+
+	// ---------- undo and redo ----------
+
+	/** Ctrl+Z (Cmd+Z on a Mac) and the like: the shortcut as the tooltip names it. */
+	private static String shortcut(boolean redo) {
+		if (System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("mac")) return redo ? "Cmd+Shift+Z" : "Cmd+Z";
+		return redo ? "Ctrl+Y" : "Ctrl+Z";
+	}
+
+	/** Ctrl held, or Cmd on a Mac: as the game's own text fields take their shortcuts. */
+	private static boolean command(KeyEvent e) {
+		//#if MC >= 1.21.9
+		return (e.modifiers() & net.minecraft.client.input.InputQuirks.EDIT_SHORTCUT_KEY_MODIFIER) != 0;
+		//#else
+		//$ return (e.modifiers() & (net.minecraft.client.Minecraft.ON_OSX ? org.lwjgl.glfw.GLFW.GLFW_MOD_SUPER : org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL)) != 0;
+		//#endif
+	}
+
+	private static boolean shift(KeyEvent e) {
+		//#if MC >= 1.21.9
+		return e.hasShiftDown();
+		//#else
+		//$ return (e.modifiers() & org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT) != 0;
+		//#endif
+	}
+
+	/** The key types this letter: from 26.3 by the keyboard's own layout, before it by the key's place on a US keyboard. */
+	private static boolean letter(KeyEvent e, char c) {
+		//#if MC >= 26.3
+		return e.shortcutKey() == c;
+		//#else
+		//$ return e.key() == (c == 'z' ? InputConstants.KEY_Z : InputConstants.KEY_Y);
+		//#endif
+	}
+
+	private void typed() {
+		typedAt = System.currentTimeMillis();
+	}
+
+	/** Text typed and not yet a step becomes one now, before the next action. */
+	private void settleTyping() {
+		if (typedAt == 0) return;
+		typedAt = 0;
+		history.commit();
+	}
+
+	@Override
+	public void tick() {
+		super.tick();
+		// a second without typing closes the step: a word typed is undone at once, not letter by letter
+		if (typedAt != 0 && System.currentTimeMillis() - typedAt > 1000) settleTyping();
+	}
+
+	private void undo() {
+		typedAt = 0;
+		if (history.undo()) afterHistory();
+	}
+
+	private void redo() {
+		typedAt = 0;
+		if (history.redo()) afterHistory();
+	}
+
+	/** The settings were put back: the cards, the open page and its fields show them, the place in the list stays. */
+	private void afterHistory() {
+		dragging = null;
+		draggingSlider = null;
+		painting = null;
+		String open = settingsOf == null ? null : settingsOf.id();
+		entries = null;
+		entries();
+		settingsOf = open == null ? null : entries.stream().filter(e -> e.id().equals(open)).findFirst().orElse(null);
+		float keep = scroll;
+		String query = search == null ? "" : search.getValue();
+		rebuildWidgets();
+		if (search != null) search.setValue(query);
+		scroll = keep;
+	}
+
+	/** A small square button for undo or redo: greyed out, and not clickable, when there is nothing to take back or bring back. */
+	private void historyButton(GuiGraphicsExtractor g, int x, int y, boolean redo, int mx, int my) {
+		boolean enabled = redo ? history.canRedo() : history.canUndo();
+		String icon = redo ? "redo" : "undo";
+		if (enabled) {
+			Ui.button(g, icon, x, y, 18, 18, icon, Component.empty(), false, mx, my);
+			hits.add(new Hit(x, y, 18, 18, redo ? this::redo : this::undo));
+		} else {
+			Ui.round(g, x, y, 18, 18, 4, 0x80161C2A);
+			Ui.roundOutline(g, x, y, 18, 18, 4, Ui.BORDER);
+			Ui.icon(g, icon, x + 4, y + 4, 10, 0x806B7280);
+		}
+		if (redo) redoAt = new int[] { x, y, 18 };
+		else undoAt = new int[] { x, y, 18 };
+		if (Ui.inside(mx, my, x, y, 18, 18)) {
+			tip = Ui.tr(redo ? "slashclient-hud.ui.redo" : "slashclient-hud.ui.undo", shortcut(redo));
+			tipX = x + 9;
+			tipY = y;
+		}
+	}
+
+	/** The hovered undo or redo button's name and shortcut, in a small label above it (below at the top of the screen). */
+	private void drawTip(GuiGraphicsExtractor g) {
+		if (tip == null) return;
+		int w = Ui.width(tip) + 12, h = 15;
+		int x = Math.max(4, Math.min(width - w - 4, tipX - w / 2));
+		int y = tipY - h - 3 >= 2 ? tipY - h - 3 : tipY + 21;
+		Ui.layer(g);
+		Ui.round(g, x, y, w, h, 4, 0xF0111622);
+		Ui.roundOutline(g, x, y, w, h, 4, 0x403B82F6);
+		Ui.draw(g, tip, x + 6, y + 4, Ui.TEXT);
+	}
+
+	/** For the in-game test: "steps back, steps forward". */
+	String historySizes() {
+		return history.sizes();
+	}
+
+	/** For the in-game test: the middle of the undo or redo button, or null when it is not shown. */
+	double[] historyButtonCenter(boolean redo) {
+		int[] b = redo ? redoAt : undoAt;
+		return b == null ? null : new double[] { b[0] + b[2] / 2.0, b[1] + b[2] / 2.0 };
 	}
 
 	/**
@@ -529,7 +681,7 @@ public class HudEditScreen extends Screen {
 		int openW = Ui.width(open) + 30;
 		int doneW = Ui.width(done) + 20;
 		int brandW = Ui.brandWidth(1f);
-		int barW = 12 + brandW + 14 + openW + 6 + doneW + 10;
+		int barW = 12 + brandW + 14 + openW + 6 + doneW + 8 + 18 + 4 + 18 + 10;
 		int barH = 28;
 		int bx = (width - barW) / 2;
 		int by = toolbarY(bx, barW, barH + 4 + 14);
@@ -545,6 +697,9 @@ public class HudEditScreen extends Screen {
 		x += openW + 6;
 		Ui.button(g, "done", x, by + 5, doneW, 18, done, false, mx, my);
 		hits.add(new Hit(x, by + 5, doneW, 18, this::onClose));
+		x += doneW + 8;
+		historyButton(g, x, by + 5, false, mx, my);
+		historyButton(g, x + 22, by + 5, true, mx, my);
 		Ui.end();
 		Component hint = Ui.tr("slashclient-hud.ui.dragHint");
 		int hw = Ui.width(hint) + 16;
@@ -568,6 +723,12 @@ public class HudEditScreen extends Screen {
 		}
 		Ui.button(g, "close", x + w - 32, y + 7, 18, 18, "close", Component.empty(), false, mx, my);
 		hits.add(new Hit(x + w - 32, y + 7, 18, 18, this::onClose));
+		// undo and redo left of the search box, when the brand leaves room for them
+		int hx = x + w - 196 - 8 - 40;
+		if (hx >= x + 14 + Ui.brandWidth(1.15f) + 8) {
+			historyButton(g, hx, y + 7, false, mx, my);
+			historyButton(g, hx + 22, y + 7, true, mx, my);
+		}
 
 		// sidebar with the launcher's icons
 		Ui.begin("sidebar", x, y + 33, 122, h - 33);
@@ -748,6 +909,8 @@ public class HudEditScreen extends Screen {
 		Ui.beginClip("settings list", x, listTop, w, listH);
 		int ry = listTop + 2 - Math.round(scroll);
 		boolean inList = my >= listTop && my < listTop + listH;
+		ROWS.clear();
+		SLIDERS.clear();
 		for (EditBox box : textFields.values()) box.visible = false;
 		for (int i = 0; i < rows.size(); i++) {
 			Catalog.Setting s = rows.get(i);
@@ -764,6 +927,7 @@ public class HudEditScreen extends Screen {
 				continue;
 			}
 			Ui.round(g, x, ry, w, rh, 4, Ui.CARD);
+			ROWS.put(s.labelKey(), new int[] { x, ry, w, rh });
 			Ui.begin("row " + s.labelKey(), x, ry, w, rh);
 			Component label = Ui.fit(Ui.tr(s.labelKey()), w - 20);
 			if (s instanceof Catalog.Note n) Ui.wrapped(g, Ui.tr(n.labelKey(), n.args().get()), x + 10, ry + 8, w - 20, Ui.TEXT_2);
@@ -785,6 +949,7 @@ public class HudEditScreen extends Screen {
 				int sx = twoLines ? left + 4 : Math.max(left, right - 196);
 				int sw = Math.max(30, right - vw - 12 - sx);
 				Ui.slider(g, sx, cy + 3, sw, (value - sl.min()) / (sl.max() - sl.min()));
+				SLIDERS.put(s.labelKey(), new int[] { sx, cy + 3, sw });
 				Ui.round(g, right - vw, cy + 1, vw, 14, 4, 0xFF202839);
 				Ui.draw(g, shownValue, right - vw + 5, cy + 4, Ui.TEXT);
 				hits.add(new Hit(sx - 4, cy - 1, sw + 8, 18, () -> {
@@ -911,6 +1076,8 @@ public class HudEditScreen extends Screen {
 		int end = ServerLayoutsPanel.draw(g, mx, my, x, below, w, (hx, hy, hw, hh, action) -> hits.add(new Hit(hx, hy, hw, hh, action)), () -> {
 			entries = null;
 			entries();
+			// another server's layout (or the player's own) is on: undo would mix the two
+			history.reset();
 		});
 		Ui.end();
 		g.disableScissor();
@@ -940,6 +1107,7 @@ public class HudEditScreen extends Screen {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
 	//$ 	boolean doubleClick = false;
 	//#endif
+		settleTyping();
 		//#if MC >= 1.21.9
 		if (super.mouseClicked(e, doubleClick)) return true;
 		//#else
@@ -1062,6 +1230,8 @@ public class HudEditScreen extends Screen {
 		lastCellX = lastCellY = -1;
 		snappedX = snappedY = false;
 		guides.clear();
+		// a click, a drag of a module or a slider, a stroke on the crosshair: one step each
+		if (typedAt == 0) history.commit();
 		//#if MC >= 1.21.9
 		return super.mouseReleased(e);
 		//#else
@@ -1094,6 +1264,17 @@ public class HudEditScreen extends Screen {
 	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
 	//$ 	KeyEvent e = new KeyEvent(keyCode, scanCode, modifiers);
 	//#endif
+		// Ctrl+Z undoes, Ctrl+Y and Ctrl+Shift+Z redo (Cmd on a Mac), also while typing in a field
+		boolean command = command(e), shift = shift(e);
+		if (command && letter(e, 'z')) {
+			if (shift) redo();
+			else undo();
+			return true;
+		}
+		if (command && letter(e, 'y') && !shift) {
+			redo();
+			return true;
+		}
 		// Esc closes the window first, then the editor
 		if (e.key() == InputConstants.KEY_ESCAPE && window) {
 			if (settingsOf != null) settingsOf = null;

@@ -800,4 +800,28 @@ public final class HudConfig {
 	public Placement placement(String id) {
 		return modules.computeIfAbsent(id, k -> new Placement(false, 0, 0, 2, 2));
 	}
+
+	/** Every setting as the file holds it, for the editor's undo (EditHistory). */
+	String snapshot() {
+		return GSON.toJson(this);
+	}
+
+	/**
+	 * Puts back settings taken with snapshot(), every field of them, into this same object: whatever
+	 * holds on to the config keeps seeing the HUD as it is now.
+	 */
+	void restore(String snapshot) {
+		HudConfig from = GSON.fromJson(snapshot, HudConfig.class);
+		if (from == null) return;
+		for (java.lang.reflect.Field f : HudConfig.class.getDeclaredFields()) {
+			int mod = f.getModifiers();
+			if (java.lang.reflect.Modifier.isStatic(mod) || java.lang.reflect.Modifier.isTransient(mod)) continue;
+			try {
+				f.setAccessible(true);
+				f.set(this, f.get(from));
+			} catch (ReflectiveOperationException | RuntimeException e) {
+				SlashHud.LOG.warn("Nie udało się cofnąć {}: {}", f.getName(), e.toString());
+			}
+		}
+	}
 }

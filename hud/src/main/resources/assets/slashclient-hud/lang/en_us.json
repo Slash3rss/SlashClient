@@ -196,6 +196,8 @@
 	"slashclient-hud.ui.settings": "Settings",
 	"slashclient-hud.ui.openIt": "Open",
 	"slashclient-hud.ui.back": "Back",
+	"slashclient-hud.ui.undo": "Undo (%s)",
+	"slashclient-hud.ui.redo": "Redo (%s)",
 	"slashclient-hud.ui.enabled": "Enabled",
 	"slashclient-hud.ui.noSettings": "This extra has no settings.",
 	"slashclient-hud.ui.moveIt": "Move on screen",

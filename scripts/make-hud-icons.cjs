@@ -37,6 +37,8 @@ const ICONS = {
   'm-sort': 'arrow-down-a-z', 'm-worldmap': 'map-location-dot', 'm-friendmap': 'street-view',
   // the instant replay (Replay, ReplayScreen)
   'm-replay': 'clock-rotate-left', 'pause': 'pause', 'step-back': 'backward-step', 'step-forward': 'forward-step', 'repeat': 'repeat', 'save': 'floppy-disk',
+  // undo and redo in the HUD editor
+  'undo': 'rotate-left', 'redo': 'rotate-right',
 };
 
 /** Size of the glyph inside the 64×64 square, matching the icons already there. */

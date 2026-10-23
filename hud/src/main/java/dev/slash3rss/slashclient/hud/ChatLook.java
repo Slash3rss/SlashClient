@@ -67,6 +67,15 @@ public final class ChatLook {
 		optionsDirty = true;
 	}
 
+	/** The game's chat scale and background put back as they were (the editor's undo). */
+	static void restore(Minecraft mc, double scale, double background) {
+		if (mc.options.chatScale().get() == scale && mc.options.textBackgroundOpacity().get() == background) return;
+		mc.options.chatScale().set(scale);
+		mc.options.textBackgroundOpacity().set(background);
+		optionsDirty = true;
+		rescale(mc);
+	}
+
 	/** The chat's lines broken again for its width at the new scale. */
 	static void rescale(Minecraft mc) {
 		if (mc.gui != null) Compat.chat(mc).rescaleChat();
