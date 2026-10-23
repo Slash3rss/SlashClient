@@ -14,8 +14,9 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * "Spotify": what plays on the player's linked Spotify account (linked in the launcher), as a card
- * (the album's cover by the title, the artists, the album and the track's progress) or as one line.
+ * "Now playing" (id "spotify"): what plays on this computer (Spotify, a browser, another player; read
+ * by the launcher from the system), as a card (the cover by the title, the artists, the album and
+ * the track's progress) or as one line.
  * What shows is up to the player: the cover and its size, each text, the bar, the times, Spotify's
  * green or the module's own colour, a paused track (with a pause mark) or none, nothing at all
  * while nothing plays, and the widest the module gets: longer texts slide through. The data comes
@@ -28,7 +29,7 @@ public final class SpotifyModule implements HudModule {
 	private static final int ROW = 10;
 
 	/** A made-up track for the editor (and the settings' preview) before a real one plays. */
-	static final SpotifyNow.Track SAMPLE = new SpotifyNow.Track("track", "Nocna jazda przez neonowe miasto (Remix)", List.of("SlashBand", "DJ Kubełek"), "Neonowe miasto", "", 221_000, 83_000, true);
+	static final SpotifyNow.Track SAMPLE = new SpotifyNow.Track("track", "Nocna jazda przez neonowe miasto (Remix)", List.of("SlashBand", "DJ Kubełek"), "Neonowe miasto", "", 221_000, 83_000, true, "spotify");
 
 	@Override
 	public String id() {
@@ -45,7 +46,7 @@ public final class SpotifyModule implements HudModule {
 
 	/** From the game's tick: the launcher is asked only while the module is on. */
 	static void tick(Minecraft mc) {
-		if (Modules.cfg != null) SpotifyNow.tick(Modules.cfg.placement("spotify").enabled);
+		if (Modules.cfg != null) SpotifyNow.tick(Modules.cfg.placement("spotify").enabled, Modules.cfg.spotify.onlySpotify);
 	}
 
 	// ---------- what shows ----------
@@ -72,15 +73,17 @@ public final class SpotifyModule implements HudModule {
 		SpotifySettings s = s();
 		SpotifyNow.State st = SpotifyNow.state();
 		SpotifyNow.Track t = st.track();
-		if (editor && (t == null || !st.linked())) {
+		// "Only Spotify": a browser or another player counts as nothing (also from a launcher that did not leave them out)
+		if (t != null && s.onlySpotify && !t.fromSpotify()) t = null;
+		if (editor && t == null) {
 			// the editor: a made-up track that moves, so every setting shows
 			long p = SAMPLE.progressMs() + (now / 1000 % 60) * 1000;
 			return new View(SAMPLE, Math.min(p, SAMPLE.durationMs()), null, true);
 		}
-		// no launcher, no answer yet, or no Spotify on the server: nothing to show
+		// no launcher or no answer yet: nothing to show
 		if (!st.known() || !st.available()) return null;
-		if (!st.linked()) return new View(null, 0, Component.translatable("slashclient-hud.spotify.status.notLinked"), false);
-		if (t == null) return s.hideIdle ? null : new View(null, 0, Component.translatable("slashclient-hud.spotify.status.idle"), false);
+		// an older launcher with no Spotify linked counts as nothing playing
+		if (t == null || !st.linked()) return s.hideIdle ? null : new View(null, 0, Component.translatable("slashclient-hud.spotify.status.idle"), false);
 		if (!t.playing() && !s.showPaused) return null;
 		return new View(t, st.progress(now), null, false);
 	}
@@ -106,6 +109,8 @@ public final class SpotifyModule implements HudModule {
 	}
 
 	private static String times(View v) {
+		// a browser's live stream (or a player that does not say) has no length: only the time so far
+		if (v.track().durationMs() <= 0) return time(v.progress());
 		return time(v.progress()) + " / " + time(v.track().durationMs());
 	}
 
@@ -192,8 +197,8 @@ public final class SpotifyModule implements HudModule {
 		int pad = Modules.PAD;
 		int w = width(mc), h = height(mc);
 		if (v.track() == null) {
-			// a status: Spotify's mark and what to do
-			Ui.icon(g, "m-spotify", x + pad, y + pad, 9, accent);
+			// a status: a note and that nothing plays
+			Ui.icon(g, "m-music", x + pad, y + pad, 9, accent);
 			g.text(mc.font, Ui.fit(v.status(), w - pad * 2 - 12), x + pad + 12, y + pad + 1, MUTED, shadow);
 			return;
 		}
@@ -264,15 +269,26 @@ public final class SpotifyModule implements HudModule {
 		return (a & 0xFF) << 24 | (color & 0xFFFFFF);
 	}
 
-	/** The album's cover, or Spotify's mark on green while it loads (and in the editor's made-up track). */
+	/** Where it plays: Spotify's mark, or a note for a browser and other players. */
+	private static String sourceIcon(SpotifyNow.Track t) {
+		return t.fromSpotify() ? "m-spotify" : "m-music";
+	}
+
+	/** The cover, or where it plays (big, on dark) while it loads, when there is none, and in the editor's made-up track. */
 	private static void cover(GuiGraphicsExtractor g, SpotifyNow.Track t, boolean sample, int x, int y, int size, int accent, boolean mark) {
 		Identifier id = sample ? null : SpotifyNow.cover(t.cover());
 		if (id != null) {
 			g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, id, x, y, 0, 0, size, size, 64, 64, 64, 64, 0xFFFFFFFF);
+			// a small mark of where it plays in the corner (not on the small cover of the line)
+			if (s().sourceIcon && size >= 20) {
+				int b = Math.max(7, size / 4);
+				g.fill(x + size - b - 2, y + size - b - 2, x + size, y + size, 0xC0000000);
+				Ui.icon(g, sourceIcon(t), x + size - b - 1, y + size - b - 1, b, t.fromSpotify() ? GREEN : 0xFFFFFFFF);
+			}
 		} else {
 			g.fill(x, y, x + size, y + size, 0xFF121212);
 			int icon = Math.max(6, size * 5 / 8);
-			Ui.icon(g, "m-spotify", x + (size - icon) / 2, y + (size - icon) / 2, icon, GREEN);
+			Ui.icon(g, sourceIcon(t), x + (size - icon) / 2, y + (size - icon) / 2, icon, t.fromSpotify() ? GREEN : accent);
 		}
 		// paused without a title to put the mark by: it goes on the cover
 		if (mark) {
@@ -339,7 +355,7 @@ public final class SpotifyModule implements HudModule {
 
 	// ---------- the settings card ----------
 
-	/** The module's own settings, after the usual ones; first a line on linking (in the launcher). */
+	/** The module's own settings, after the usual ones; first a line on where it reads from. */
 	public static void settings(List<Catalog.Setting> settings, java.util.function.Supplier<SpotifySettings> s) {
 		// read through `s` each time: pasting a share code or a server's layout puts new settings in place
 		settings.add(0, new Catalog.Info("slashclient-hud.spotify.info", SpotifyModule::infoKey));
@@ -357,17 +373,15 @@ public final class SpotifyModule implements HudModule {
 		settings.add(new Catalog.Toggle("slashclient-hud.spotify.hideIdle", () -> s.get().hideIdle, v -> s.get().hideIdle = v));
 		settings.add(new Catalog.Slider("slashclient-hud.spotify.width", 100f, 320f, 10f, "%.0f px", () -> (float) s.get().width, v -> s.get().width = Math.round(v)));
 		settings.add(new Catalog.Toggle("slashclient-hud.spotify.marquee", () -> s.get().marquee, v -> s.get().marquee = v));
+		settings.add(new Catalog.Toggle("slashclient-hud.spotify.sourceIcon", () -> s.get().sourceIcon, v -> s.get().sourceIcon = v));
+		settings.add(new Catalog.Toggle("slashclient-hud.spotify.onlySpotify", () -> s.get().onlySpotify, v -> s.get().onlySpotify = v));
 	}
 
-	/** What the settings say about the account: how to link it, or that it is. */
+	/** What the settings say: what it reads (on this computer), or that it needs the launcher. */
 	static String infoKey() {
-		SpotifyNow.peek();
 		SpotifyNow.State st = SpotifyNow.state();
 		if (!SpotifyNow.bridged() && !st.known()) return "slashclient-hud.spotify.info.noLauncher";
-		if (!st.known()) return "slashclient-hud.spotify.info.howTo";
-		if (!st.available()) return "slashclient-hud.spotify.info.unavailable";
-		if (!st.linked()) return "spotify_not_allowed".equals(st.error()) ? "slashclient-hud.spotify.info.notAllowed" : "slashclient-hud.spotify.info.howTo";
-		return "spotify_not_allowed".equals(st.error()) ? "slashclient-hud.spotify.info.notAllowed" : "slashclient-hud.spotify.info.linked";
+		return "slashclient-hud.spotify.info.local";
 	}
 
 	// ---------- for the in-game tests ----------
@@ -382,6 +396,7 @@ public final class SpotifyModule implements HudModule {
 		String out = ("line".equals(s.layout) ? lineText(v.track(), s) : String.join(" | ", lines(v.track(), s).stream().map(l -> l[1]).toList()));
 		if (s.times) out += " [" + times(v) + "]";
 		if (paused(v)) out += " (paused)";
+		if (!v.track().source().isEmpty()) out += " {" + v.track().source() + "}";
 		return out;
 	}
 }

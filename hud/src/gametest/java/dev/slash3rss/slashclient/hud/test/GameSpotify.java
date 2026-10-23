@@ -15,18 +15,19 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 
 /**
- * "Spotify": answers as the launcher's bridge gives them fed in (no launcher, no Spotify), the
- * parser on odd ones, then the module in several configurations: the card with a cover, the album
- * and the times; a long title sliding in a narrow card; paused (with the mark, then hidden); one
- * line in the module's colour; a big cover alone; nothing playing; not linked; the editor's
- * made-up track and the settings with the note on linking.
+ * "Now playing" (id "spotify"): answers as the launcher's bridge gives them fed in (no launcher, no
+ * player), the parser on odd ones, then the module in several configurations: the card with a
+ * cover, the album and the times; a long title sliding in a narrow card; paused (with the mark,
+ * then hidden); one line in the module's colour; a big cover alone; a browser's video (a note as
+ * its mark) and "Only Spotify" leaving it out; nothing playing; an older launcher without a linked
+ * account; the editor's made-up track and the settings with the note on what it reads.
  */
 public class GameSpotify implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		if (TestFilter.skip(context, getClass())) return;
 		String parser = context.computeOnClient(mc -> SpotifyTestHooks.parser());
-		if (!parser.equals("ok")) throw new AssertionError("Spotify answers:\n" + parser);
+		if (!parser.equals("ok")) throw new AssertionError("Now playing answers:\n" + parser);
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			world.getServer().runCommand("time set 6000");
@@ -45,7 +46,7 @@ public class GameSpotify implements FabricClientGameTest {
 			});
 			context.waitTicks(5);
 			String card = context.computeOnClient(mc -> SpotifyTestHooks.shown());
-			System.out.println("SlashClient test: Spotify card: " + card);
+			System.out.println("SlashClient test: Now playing card: " + card);
 			if (!card.startsWith("Kopalnia o świcie | Slash3rss, DJ Kubełek | Lato na serwerze [1:0")) throw new AssertionError("The card shows: " + card);
 			context.takeScreenshot("spotify-card");
 
@@ -70,7 +71,7 @@ public class GameSpotify implements FabricClientGameTest {
 			});
 			context.waitTicks(5);
 			String paused = context.computeOnClient(mc -> SpotifyTestHooks.shown());
-			if (!paused.endsWith("[1:01 / 3:20] (paused)")) throw new AssertionError("Paused, the card shows: " + paused);
+			if (!paused.endsWith("[1:01 / 3:20] (paused) {spotify}")) throw new AssertionError("Paused, the card shows: " + paused);
 			context.takeScreenshot("spotify-paused");
 			context.runOnClient(mc -> SpotifyTestHooks.set(s -> s.showPaused = false));
 			if (!context.computeOnClient(mc -> SpotifyTestHooks.shown()).isEmpty()) throw new AssertionError("A paused track shows with showPaused off");
@@ -93,6 +94,22 @@ public class GameSpotify implements FabricClientGameTest {
 			context.waitTicks(3);
 			context.takeScreenshot("spotify-big-cover");
 
+			// a browser's video: its cover with a note in the corner; "Only Spotify" leaves it out
+			context.runOnClient(mc -> {
+				SpotifyTestHooks.configure("card", true, 36, false, true, true, "spotify", 220, true);
+				SpotifyTestHooks.feed(SpotifyTestHooks.answer(true, "browser", "Lofi do kopania – YouTube", true, 30_000, 0, "Kanał Slasha"));
+			});
+			context.waitTicks(5);
+			String browser = context.computeOnClient(mc -> SpotifyTestHooks.shown());
+			if (!browser.startsWith("Lofi do kopania – YouTube | Kanał Slasha [0:3") || browser.contains(" / ") || !browser.endsWith("{browser}")) throw new AssertionError("A browser's video shows: " + browser);
+			context.takeScreenshot("spotify-browser");
+			context.runOnClient(mc -> {
+				SpotifyTestHooks.set(s -> s.onlySpotify = true);
+				SpotifyTestHooks.feed(SpotifyTestHooks.answer(true, "browser", "Lofi do kopania – YouTube", true, 30_000, 0, "Kanał Slasha"));
+			});
+			if (!context.computeOnClient(mc -> SpotifyTestHooks.shown()).isEmpty()) throw new AssertionError("Only Spotify, but a browser's video shows");
+			context.runOnClient(mc -> SpotifyTestHooks.set(s -> s.onlySpotify = false));
+
 			// nothing plays: hidden, or said
 			context.runOnClient(mc -> {
 				SpotifyTestHooks.configure("card", true, 36, false, true, true, "spotify", 220, true);
@@ -103,14 +120,15 @@ public class GameSpotify implements FabricClientGameTest {
 			context.runOnClient(mc -> SpotifyTestHooks.set(s -> s.hideIdle = false));
 			if (!context.computeOnClient(mc -> SpotifyTestHooks.shown()).startsWith("status: ")) throw new AssertionError("Nothing plays with hideIdle off: no status");
 
-			// not linked: the module says to link it in the launcher, so does the settings' note
+			context.waitTicks(3);
+			context.takeScreenshot("spotify-idle");
+			// an older launcher without a linked Spotify account: nothing plays too, no talk of linking
 			context.runOnClient(mc -> SpotifyTestHooks.feed(SpotifyTestHooks.answer(false, null, false, 0, 0)));
 			context.waitTicks(3);
 			String notLinked = context.computeOnClient(mc -> SpotifyTestHooks.shown());
-			if (!notLinked.startsWith("status: ")) throw new AssertionError("Not linked, the module shows: " + notLinked);
+			if (!notLinked.startsWith("status: ") || notLinked.toLowerCase().contains("link") || notLinked.toLowerCase().contains("połącz")) throw new AssertionError("An older launcher, the module shows: " + notLinked);
 			String info = context.computeOnClient(mc -> SpotifyTestHooks.infoKey());
-			if (!info.equals("slashclient-hud.spotify.info.howTo")) throw new AssertionError("Not linked, the settings say: " + info);
-			context.takeScreenshot("spotify-not-linked");
+			if (!info.equals("slashclient-hud.spotify.info.local")) throw new AssertionError("The settings say: " + info);
 
 			// the editor: a made-up track, and the module's settings with the note
 			context.setScreen(HudEditScreen::new);
@@ -128,7 +146,7 @@ public class GameSpotify implements FabricClientGameTest {
 			context.takeScreenshot("spotify-settings-end");
 			String problems = context.computeOnClient(mc -> String.join("\n", dev.slash3rss.slashclient.hud.ui.Ui.PROBLEMS));
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.TestHooks.audit(false));
-			if (problems.contains("spotify")) throw new AssertionError("The Spotify settings do not fit:\n" + problems);
+			if (problems.contains("spotify")) throw new AssertionError("The Now playing settings do not fit:\n" + problems);
 			context.setScreen(() -> null);
 			context.runOnClient(mc -> SpotifyTestHooks.reset());
 		}

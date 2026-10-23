@@ -424,7 +424,7 @@ public final class HudConfig {
 	/** The live chats of a Twitch and a Kick channel on the HUD (see StreamChatModule). */
 	public dev.slash3rss.slashclient.hud.streams.StreamChatSettings twitchChat = new dev.slash3rss.slashclient.hud.streams.StreamChatSettings();
 	public dev.slash3rss.slashclient.hud.streams.StreamChatSettings kickChat = new dev.slash3rss.slashclient.hud.streams.StreamChatSettings();
-	/** What plays on the linked Spotify (see SpotifyModule): what shows and how. */
+	/** "Now playing" (see SpotifyModule; "spotify" from when it showed only Spotify): what shows and how. */
 	public dev.slash3rss.slashclient.hud.spotify.SpotifySettings spotify = new dev.slash3rss.slashclient.hud.spotify.SpotifySettings();
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -493,7 +493,7 @@ public final class HudConfig {
 		// a stream's chat low on the left, above the game's chat; off until a channel is set
 		c.modules.put("twitchchat", new Placement(false, 0, 0.62f, 2, 0));
 		c.modules.put("kickchat", new Placement(false, 1, 0.62f, -2, 0));
-		// what plays on Spotify on the right, between the effects and the armour; off until switched on (and linked in the launcher)
+		// what plays on this computer on the right, between the effects and the armour; off until switched on
 		c.modules.put("spotify", new Placement(false, 1, 0.3f, -2, 0));
 		// the backpack's slots low on the right, above the item counter; off until switched on
 		c.modules.put("inventory", new Placement(false, 1, 0.8f, -2, 0));
