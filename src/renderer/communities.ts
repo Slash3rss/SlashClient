@@ -8,6 +8,8 @@ import { createCommunityLinks, linkLogName, type CommunityServer } from './commu
 import { createCommunityMedia, keepMyVotes, type CommunityImage, type Poll } from './communityMedia';
 import { openMediaPanel } from './chatMediaPanel';
 import { communitySource } from './chatMediaSources';
+import { gifCard } from './gifs';
+import { gifFallback, looksLikeGif, parseGifText } from '../shared/gifMessage';
 
 /**
  * Communities ("Społeczności") in the Friends view: like a clan but big (up to a thousand players),
@@ -69,6 +71,8 @@ export interface CommunityMessage {
 interface Member extends Person { role: CommunityRole; joinedAt: number; status: string; online: boolean; mutedUntil?: number; customRole?: RoleTag }
 
 const PAGE = 50;
+/** A long text cut for a quote. */
+const quoted = (text: string) => (text.length > 300 ? `${text.slice(0, 297)}…` : text);
 
 /** The emoji one may react with (the server's REACTIONS, communityStore.ts): the quick six, then the picker. */
 export const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
@@ -392,7 +396,8 @@ export function createCommunities(deps: Deps) {
   async function send(text: string): Promise<boolean> {
     const at = open;
     if (!at || !text.trim()) return false;
-    if (text.length > limits.message) return (deps.toast(t('Wiadomość jest za długa (maks. {0} znaków).', limits.message), true), false);
+    // a GIF's addresses do not count against the length (the server writes its text again)
+    if (text.length > limits.message && !looksLikeGif(text)) return (deps.toast(t('Wiadomość jest za długa (maks. {0} znaków).', limits.message), true), false);
     const chat = chats.get(at.channel);
     // slow mode: the countdown is above the composer; the text stays in it
     if (chat?.nextPostAt && chat.nextPostAt > Date.now()) return (deps.toast(t('Tryb powolny: możesz napisać za {0}.', waitText((chat.nextPostAt - Date.now()) / 1000)), true), false);
@@ -677,7 +682,7 @@ export function createCommunities(deps: Deps) {
       rows.replaceChildren(...(res.pins as { message: CommunityMessage; by: Person; at: number }[]).map((p) => {
         const go = el('button', { type: 'button', className: 'fr-pin grow' },
           el('div', { className: 'fr-pin-head' }, el('b', { textContent: p.message.author.name }), el('small', { className: 'muted', textContent: ` · ${time.format(p.message.at)}` })),
-          el('div', { className: 'fr-pin-text', textContent: p.message.text }),
+          el('div', { className: 'fr-pin-text', textContent: gifFallback(p.message.text) }),
           el('small', { className: 'muted', textContent: t('Przypiął(-ęła) {0}, {1}', p.by.name, time.format(p.at)) }));
         go.addEventListener('click', () => {
           close();
@@ -820,7 +825,7 @@ export function createCommunities(deps: Deps) {
     const cancel = el('button', { type: 'button' }, t('Anuluj'));
     const go = el('button', { type: 'button', className: 'danger' }, icon('fa-flag'), t(' Zgłoś'));
     const done = modalWindow(t('Zgłoś wiadomość'), [
-      el('blockquote', { className: 'fr-quote', textContent: `${m.author.name}: ${m.text.length > 300 ? `${m.text.slice(0, 297)}…` : m.text}` }),
+      el('blockquote', { className: 'fr-quote', textContent: `${m.author.name}: ${quoted(gifFallback(m.text))}` }),
       el('p', { className: 'muted', textContent: t('Zgłoszenie zobaczą moderatorzy tej społeczności i administracja SlashClient.') }),
       reason,
     ], [cancel, go], undefined, 'fr-group-modal fr-com-modal');
@@ -943,6 +948,10 @@ export function createCommunities(deps: Deps) {
         if (m.pinned) bubble.append(el('i', { className: 'fa-solid fa-thumbtack fr-pinned-mark', title: t('Przypięta') }));
       } else if (m.image) {
         bubble = media.pictureCard(m.community, m.image, mine);
+        if (m.pinned) bubble.append(el('i', { className: 'fa-solid fa-thumbtack fr-pinned-mark', title: t('Przypięta') }));
+      } else if (parseGifText(m.text)) {
+        // a GIF or a sticker (gifs.ts; the server checked its addresses)
+        bubble = gifCard(parseGifText(m.text)!, mine);
         if (m.pinned) bubble.append(el('i', { className: 'fa-solid fa-thumbtack fr-pinned-mark', title: t('Przypięta') }));
       } else {
         const toMe = !!my && !!m.mentions?.includes(my.id);
@@ -1278,7 +1287,7 @@ export function createCommunities(deps: Deps) {
         dismiss.addEventListener('click', () => void resolve('dismiss'));
         remove.addEventListener('click', () => void resolve('delete'));
         return el('div', { className: 'fr-com-report' },
-          el('blockquote', { className: 'fr-quote', textContent: `${r.message.author?.name ?? '?'}: ${r.message.text}` }),
+          el('blockquote', { className: 'fr-quote', textContent: `${r.message.author?.name ?? '?'}: ${gifFallback(r.message.text)}` }),
           el('small', { className: 'muted', textContent: t('Zgłasza {0}{1}: {2}', r.reporter.name, r.count > 1 ? t(' (i {0} innych)', r.count - 1) : '', r.reason || t('bez powodu')) }),
           el('div', { className: 'row' }, dismiss, remove));
       }));
@@ -1430,7 +1439,7 @@ export function createCommunities(deps: Deps) {
         if (seen) markRead();
         else if (shouldNotify(c, m, me())) {
           const title = `${c.name} · ${m.author.name}`;
-          const plain = m.image ? t('wysyła zdjęcie') : m.poll ? t('Ankieta: {0}', m.poll.question) : m.text;
+          const plain = m.image ? t('wysyła zdjęcie') : m.poll ? t('Ankieta: {0}', m.poll.question) : gifFallback(m.text);
           const text = plain.length > 120 ? `${plain.slice(0, 117)}…` : plain;
           if (!document.hasFocus()) void api.notify?.(title, text, { view: 'friends' }).catch(() => undefined);
           else deps.toast(t('{0}: {1}', title, text));

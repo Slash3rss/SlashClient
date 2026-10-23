@@ -5,6 +5,8 @@ import { canDelete, canEdit, editHint, editedLabel, replaceMessage, tombstone, w
 import { disabledText, featureOn } from './features';
 import { openMediaPanel, removedCard, revealMessage } from './chatMediaPanel';
 import { groupSource } from './chatMediaSources';
+import { gifCard } from './gifs';
+import { gifFallback, parseGifText } from '../shared/gifMessage';
 
 /**
  * Group chats and clans in the Friends view. Groups are conversations with several friends
@@ -448,9 +450,11 @@ export function createGroups(deps: Deps) {
       }
       const mine = m.from === me;
       const grouped = m.from === lastFrom && m.at - lastAt < 5 * 60_000;
-      const bubble = m.deleted ? tombstone() : m.image ? deps.imageCard(m.image, mine) : m.imageRemoved ? removedCard(m.imageRemoved, mine) : el('div', { className: `fr-bubble${m.unreadable ? ' unreadable' : ''}`, textContent: m.text });
-      if (m.editedAt && !m.deleted && !m.image && !m.imageRemoved) bubble.append(editedLabel(m.editedAt));
-      if (m.encrypted && !m.image && !m.imageRemoved && !m.deleted) bubble.append(el('i', { className: 'fa-solid fa-lock fr-lock', title: t('Zaszyfrowana od nadawcy do odbiorcy') }));
+      const gif = !m.deleted && !m.unreadable && !m.image ? parseGifText(m.text) : undefined;
+      const bubble = m.deleted ? tombstone() : m.image ? deps.imageCard(m.image, mine) : m.imageRemoved ? removedCard(m.imageRemoved, mine) : gif ? gifCard(gif, mine, m.encrypted)
+        : el('div', { className: `fr-bubble${m.unreadable ? ' unreadable' : ''}`, textContent: m.text });
+      if (m.editedAt && !m.deleted && !m.image && !m.imageRemoved && !gif) bubble.append(editedLabel(m.editedAt));
+      if (m.encrypted && !m.image && !m.imageRemoved && !m.deleted && !gif) bubble.append(el('i', { className: 'fa-solid fa-lock fr-lock', title: t('Zaszyfrowana od nadawcy do odbiorcy') }));
       const row = el('div', { className: `fr-msg${mine ? ' mine' : ''}${grouped ? ' grouped' : ''}${editingId === m.id ? ' editing' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
         withMenu(bubble, messageMenu(g, m, chat)),
         grouped ? '' : el('small', { className: 'fr-time', textContent: mine ? time.format(m.at) : `${names.get(m.from) ?? '?'} · ${time.format(m.at)}` }));
@@ -729,8 +733,9 @@ export function createGroups(deps: Deps) {
             const g = group(m.group)!;
             const who = g.members.find((x) => x.id === m.from)?.name ?? '?';
             const title = g.clan ? `[${g.clan.tag}] ${clan?.name ?? g.name}` : g.name;
-            if (!document.hasFocus()) void api.notify?.(title, `${who}: ${m.text}`, { view: 'friends' }).catch(() => undefined);
-            else deps.toast(t('{0} · {1}: {2}', title, who, m.text.length > 100 ? `${m.text.slice(0, 97)}…` : m.text));
+            const text = gifFallback(m.text);
+            if (!document.hasFocus()) void api.notify?.(title, `${who}: ${text}`, { view: 'friends' }).catch(() => undefined);
+            else deps.toast(t('{0} · {1}: {2}', title, who, text.length > 100 ? `${text.slice(0, 97)}…` : text));
           }
         }
         deps.changed();

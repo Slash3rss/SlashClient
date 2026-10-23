@@ -23,6 +23,7 @@ import { WIZARD_EN } from './i18nWizard';
 import { SUGGESTIONS_EN } from './i18nSuggestions';
 import { CHAT_MEDIA_EN } from './i18nChatMedia';
 import { SESSION_SUMMARY_EN } from './i18nSessionSummary';
+import { GIFS_EN } from './i18nGifs';
 
 export type Lang = 'pl' | 'en';
 
@@ -69,6 +70,8 @@ const EN: Record<string, string> = {
   ...SUGGESTIONS_EN,
   // the Multimedia panel of chats and the shared chats' media limits (own file)
   ...CHAT_MEDIA_EN,
+  // GIFs and stickers in the chat (own file)
+  ...GIFS_EN,
   // navigation and common
   'Graj': 'Play',
   'GRAJ': 'PLAY',
