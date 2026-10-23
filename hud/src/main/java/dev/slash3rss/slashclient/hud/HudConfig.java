@@ -292,6 +292,10 @@ public final class HudConfig {
 	public boolean customPause = true;
 	/** The SlashClient server list (cards, search) instead of Minecraft's own. */
 	public boolean customServerList = true;
+	/** SlashClient's own look for joining a server and entering a world (only the look: the game loads as always). */
+	public boolean customLoading = true;
+	/** The rotating tip line at the bottom of that screen. */
+	public boolean loadingTips = true;
 
 	// ---- the game's own HUD parts: shown or hidden, scaled, moved ----
 	public boolean scoreboard = true;
@@ -688,6 +692,8 @@ public final class HudConfig {
 		customMenu = other.customMenu;
 		customPause = other.customPause;
 		customServerList = other.customServerList;
+		customLoading = other.customLoading;
+		loadingTips = other.loadingTips;
 		badges = other.badges;
 		killEffects = other.killEffects;
 		killEffectsOthers = other.killEffectsOthers;
