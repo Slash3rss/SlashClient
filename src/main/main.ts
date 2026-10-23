@@ -4,7 +4,7 @@ import os from 'node:os';
 import { pathToFileURL } from 'node:url';
 import type { ChildProcess } from 'node:child_process';
 import path from 'node:path';
-import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, pollDeviceCode, startDeviceCode } from './auth';
+import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, gameSessionMargin, pollDeviceCode, startDeviceCode } from './auth';
 import { setLang } from '../shared/i18n';
 import { analyzeCrash } from './crash';
 import { iconFile, iconFromFile, iconFromUrl } from './profileIcon';
@@ -1496,11 +1496,11 @@ handle('update:retry', () => retryMacUpdate());
 handle('update:moveToApplications', () => moveToApplications());
 handle('update:download', () => shell.openExternal(`${store.settings.socialUrl}/pobierz/${process.arch === 'arm64' ? 'mac' : 'mac-intel'}`));
 handle('app:version', () => app.getVersion());
-/** A Microsoft account with a valid Minecraft token (refreshed and saved if needed). */
-async function freshMsa(accountId: string): Promise<MicrosoftAccount> {
+/** A Microsoft account with a valid Minecraft token, at least `marginMs` left (refreshed and saved if needed). */
+async function freshMsa(accountId: string, marginMs = 0): Promise<MicrosoftAccount> {
   const account = store.accounts.find((a) => a.id === accountId);
   if (account?.type !== 'msa') throw new Error(t('Skin i pelerynę można zmienić tylko na koncie Microsoft.'));
-  const fresh = await ensureFreshAccount(account, store.settings.msClientId.trim());
+  const fresh = await ensureFreshAccount(account, store.settings.msClientId.trim(), marginMs);
   if (fresh !== account) {
     store.accounts = store.accounts.map((a) => (a.id === fresh.id ? fresh : a));
     await saveStore(store);
@@ -1814,6 +1814,24 @@ const lan = new LanTunnels({
 
 /** The account the running game plays as (it can change from the game's menu). */
 let gameAccountId: string | undefined;
+/** When the game last asked for its session to be renewed at once (a server refused it). */
+let lastForcedRenew: number | undefined;
+/** The last renewal asked for: the game's timer and its join may ask at the same moment, they go one after another (the second finds the fresh token). */
+let renewing: Promise<unknown> | undefined;
+
+/** The running game's session with a token that lasts (bridge `/session`); offline accounts need nothing. */
+async function gameSession(force: boolean) {
+  const account = store.accounts.find((a) => a.id === gameAccountId);
+  if (!account) return undefined;
+  if (account.type !== 'msa') return { type: 'offline' as const };
+  const now = Date.now();
+  const margin = gameSessionMargin(force, lastForcedRenew, now);
+  if (margin === Infinity) lastForcedRenew = now;
+  const run = (renewing ?? Promise.resolve()).catch(() => undefined).then(() => freshMsa(account.id, margin));
+  renewing = run;
+  const fresh = await run;
+  return { type: 'msa' as const, name: fresh.name, uuid: fresh.uuid, accessToken: fresh.accessToken, xuid: fresh.xuid, expiresAt: fresh.expiresAt };
+}
 
 /** Friends and chat for SlashClient HUD in the game, without handing it the account token. */
 const bridge = new GameBridge({
@@ -1823,6 +1841,8 @@ const bridge = new GameBridge({
     return { signedIn: !!s.user, user: s.user, connected: s.connected };
   },
   accounts: () => store.accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, current: a.id === gameAccountId })),
+  // the game renews its own Minecraft token before it runs out (about a day), with no restart
+  session: (force) => gameSession(force),
   lanHost: (port) => lan.setHost(port),
   lanJoin: (host) => lan.join(host),
   // switching accounts in the game's menu: the game gets this one account's session, nothing else

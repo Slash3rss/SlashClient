@@ -27,6 +27,12 @@ export interface BridgeOptions {
   lanJoin?: (host: string) => Promise<number>;
   /** The session for one account, picked in the game's menu (a fresh token for Microsoft). */
   useAccount?: (id: string) => Promise<{ name: string; uuid: string; accessToken: string; xuid: string; type: string }>;
+  /**
+   * The running game's own session, so it renews its token without a restart: `{ type: 'offline' }` for an
+   * offline account, nothing when the launcher started no game. Refreshed through Microsoft when under
+   * two hours are left, or at once with `force` (a server refused the session).
+   */
+  session?: (force: boolean) => Promise<{ type: 'msa'; name: string; uuid: string; accessToken: string; xuid: string; expiresAt: number } | { type: 'offline' } | undefined>;
   /** Sends a screenshot to a friend (encrypted by the launcher); rejects paths that are not a profile's screenshot. */
   sendImage?: (friendId: string, file: string) => Promise<unknown>;
   /** The same to a group (or clan) chat the player is in. */
@@ -223,6 +229,18 @@ export class GameBridge {
       if (typeof id !== 'string' || !this.opts.useAccount) return this.send(res, 400, { error: 'bad_request' });
       try {
         return this.send(res, 200, await this.opts.useAccount(id));
+      } catch (err) {
+        return this.send(res, 502, { error: (err as Error).message });
+      }
+    }
+
+    // the game's session renewed before its token runs out (HUD 0.9.40+); the token goes only to the game, through this keyed bridge
+    const session = /^\/session(\?force=1)?$/.exec(url);
+    if (method === 'GET' && session) {
+      if (!this.opts.session) return this.send(res, 404, { error: 'not_found' });
+      try {
+        const answer = await this.opts.session(!!session[1]);
+        return answer ? this.send(res, 200, answer) : this.send(res, 404, { error: 'no_game_account' });
       } catch (err) {
         return this.send(res, 502, { error: (err as Error).message });
       }
