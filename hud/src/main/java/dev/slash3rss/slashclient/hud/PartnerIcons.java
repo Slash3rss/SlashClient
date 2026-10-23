@@ -86,7 +86,14 @@ public final class PartnerIcons {
 	/** Fetches and decodes a strip on the network's threads; only making the texture waits for the render thread. */
 	private static void load(Anim a) {
 		if (loading.putIfAbsent(a.url(), true) != null) return;
-		HttpRequest request = HttpRequest.newBuilder(URI.create(a.url())).timeout(Duration.ofSeconds(15)).GET().build();
+		HttpRequest request;
+		try {
+			request = HttpRequest.newBuilder(URI.create(a.url())).timeout(Duration.ofSeconds(15)).GET().build();
+		} catch (IllegalArgumentException e) {
+			// an address that is no http(s) link: no icon (and not asked again), the list goes on drawing
+			SlashHud.LOG.debug("SlashClient: partner icon {}: {}", a.url(), e.toString());
+			return;
+		}
 		HTTP.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray()).thenAccept(res -> {
 			if (res.statusCode() != 200) {
 				loading.remove(a.url());
