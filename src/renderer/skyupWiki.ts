@@ -1,6 +1,9 @@
 import { t } from '../shared/i18n';
 import { control, el, icon } from './dialog';
 
+/** "Wczytywanie…" only when loading takes longer than this (what was read before comes at once). */
+const LOADING_AFTER_MS = 150;
+
 /**
  * The SkyUp.pl wiki tab of the Wiki view: the website's articles in their categories, a filter of
  * their titles and the website's search in their content, and an article with all its sections.
@@ -146,9 +149,10 @@ export function createSkyupWiki(root: HTMLElement, deps: SkyupWikiDeps) {
       if (anchor) scrollTo(anchor);
       return;
     }
-    article.replaceChildren(el('p', { className: 'muted wiki-hint', textContent: t('Wczytywanie…') }));
+    // an article read before comes at once (the main process keeps it): no "Wczytywanie…" flashing in between
+    const wait = setTimeout(() => mine === articleSeq && article.replaceChildren(el('p', { className: 'muted wiki-hint', textContent: t('Wczytywanie…') })), LOADING_AFTER_MS);
     try {
-      const a = (await api.skyupWikiArticle(slug)) as Article;
+      const a = (await api.skyupWikiArticle(slug).finally(() => clearTimeout(wait))) as Article;
       if (mine !== articleSeq) return;
       current = a.slug;
       const open = el('a', { href: a.url, className: 'button-link', title: t('Otwórz w przeglądarce') }, icon('fa-arrow-up-right-from-square'), ' skyup.pl');

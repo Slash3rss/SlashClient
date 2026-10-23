@@ -367,7 +367,11 @@ export function createServerPages(view: HTMLElement, deps: ServerPagesDeps) {
     let range: '24h' | '7d' | '30d' = '24h';
     const chartBox = el('div');
     const tabs = el('div', { className: 'segmented' });
+    // a range drawn before comes back without its bars growing again
+    const drawnRanges = new Set<string>();
     const drawChart = () => {
+      chartBox.classList.toggle('still', drawnRanges.has(range));
+      if (history) drawnRanges.add(range);
       chartBox.replaceChildren(!history ? el('div', { className: 'sk sp-chart-sk' })
         : history.length ? playerChart(history, range) : el('p', { className: 'muted', textContent: t('Lista nie ma jeszcze historii graczy tego serwera.') }));
       tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.range === range));
@@ -450,6 +454,8 @@ export function createServerPages(view: HTMLElement, deps: ServerPagesDeps) {
     page.classList.remove('hidden');
     const kept = details.get(s.id);
     const usable = kept && Date.now() - kept.at < KEEP_MS ? kept : undefined;
+    // a page seen before is simply there again (and stays so when its refresh changes something)
+    page.classList.toggle('still', !!usable);
     render(usable?.d, s);
     view.scrollTop = 0;
     page.scrollIntoView({ block: 'start' });

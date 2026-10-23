@@ -505,6 +505,8 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 
 /* items fade and slide in one after another (--i is set from JS) */
 .appear { animation: appear .4s cubic-bezier(.2, .7, .3, 1) both; animation-delay: calc(var(--i, 0) * 35ms); }
+/* seen a moment ago (statistics, a server's page, a chart's range): drawn again as it was, without growing or appearing */
+.still .appear, .still .stat-card, .still .day-chart div, .still .rank-row, .still .rank-bar i, .still .ss-history-row, .still .sp-review { animation: none; }
 
 /* pictures fade in once loaded instead of popping in */
 img.fade { opacity: 0; transition: opacity .35s ease; }
