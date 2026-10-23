@@ -229,6 +229,7 @@
 	"slashclient-hud.menu.noServers": "Add servers in Multiplayer and they will show up here.",
 	"slashclient-hud.chat.more": "%s more tabs: make the window bigger to edit them.",
 	"slashclient-hud.set.badges": "Logo next to names",
+	"slashclient-hud.set.badges.clans": "Clan tags next to names",
 	"slashclient-hud.set.killEffects": "Kill effects",
 	"slashclient-hud.set.killEffects.others": "Other players' effects",
 	"slashclient-hud.set.heldSkins": "Shield and weapon skins",

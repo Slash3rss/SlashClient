@@ -33,6 +33,18 @@ public final class SocialTestHooks {
 		return name.getString();
 	}
 
+	/** The name above our head with clan tags switched on or off in the settings (and the setting back as it was). */
+	public static String ownNameWithClanTags(boolean on) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		boolean was = SlashHud.config.clanTags;
+		SlashHud.config.clanTags = on;
+		try {
+			return Badges.decorate(mc.player.getUUID(), mc.player.getName()).getString();
+		} finally {
+			SlashHud.config.clanTags = was;
+		}
+	}
+
 	/** What the layout audit found, one per line ("" when everything fits). */
 	public static String problems() {
 		return String.join("\n", dev.slash3rss.slashclient.hud.ui.Ui.PROBLEMS);

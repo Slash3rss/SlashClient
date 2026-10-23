@@ -273,6 +273,8 @@ public final class HudConfig {
 	public boolean hideOwnElytra = false;
 	/** The logo next to SlashClient players (and telling the server that you are one). */
 	public boolean badges = true;
+	/** The [TAG] of a player's SlashClient clan after that logo: off, so names stay short. */
+	public boolean clanTags = true;
 	/** Kill effects (a SlashClient cosmetic): ours when we kill something, and those of other players with SlashClient. */
 	public boolean killEffects = true;
 	public boolean killEffectsOthers = true;
@@ -695,6 +697,7 @@ public final class HudConfig {
 		customLoading = other.customLoading;
 		loadingTips = other.loadingTips;
 		badges = other.badges;
+		clanTags = other.clanTags;
 		killEffects = other.killEffects;
 		killEffectsOthers = other.killEffectsOthers;
 		heldSkinsOthers = other.heldSkinsOthers;

@@ -168,7 +168,7 @@ public final class Badges {
 			: "supporter".equals(rank) && tierBadges.containsKey(id) ? tierBadges.get(id) : RANK_BADGES.getOrDefault(rank, BADGE);
 		MutableComponent out = Component.empty().append(logo).append(" ");
 		String tag = clans.get(id);
-		if (tag != null) out.append(Component.literal("[" + tag + "] ").withStyle(Style.EMPTY.withColor(CLAN_COLOR).withBold(true)));
+		if (tag != null && (SlashHud.config == null || SlashHud.config.clanTags)) out.append(Component.literal("[" + tag + "] ").withStyle(Style.EMPTY.withColor(CLAN_COLOR).withBold(true)));
 		return out.append(name);
 	}
 

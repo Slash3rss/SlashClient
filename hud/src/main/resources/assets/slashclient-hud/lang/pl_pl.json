@@ -229,6 +229,7 @@
 	"slashclient-hud.menu.noServers": "Dodaj serwery w Wieloosobowej, a pojawią się tutaj.",
 	"slashclient-hud.chat.more": "Jeszcze %s zakładek: powiększ okno, żeby je edytować.",
 	"slashclient-hud.set.badges": "Logo przy nickach",
+	"slashclient-hud.set.badges.clans": "Tagi klanów przy nickach",
 	"slashclient-hud.set.killEffects": "Efekty zabójstwa",
 	"slashclient-hud.set.killEffects.others": "Efekty innych graczy",
 	"slashclient-hud.set.heldSkins": "Skórki tarcz i broni",

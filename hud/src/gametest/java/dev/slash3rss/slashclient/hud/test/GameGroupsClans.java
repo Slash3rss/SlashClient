@@ -97,12 +97,20 @@ public class GameGroupsClans implements FabricClientGameTest {
 			// the clan's tag by the name: above the head and on the tab list
 			String shown = context.computeOnClient(mc -> SocialTestHooks.ownClan("WOLF"));
 			if (!shown.contains("[WOLF] ")) throw new AssertionError("The name does not carry the clan tag: " + shown);
+			// "Tagi klanów przy nickach" off in the settings: the logo stays, the tag goes
+			String plain = context.computeOnClient(mc -> SocialTestHooks.ownNameWithClanTags(false));
+			if (plain.contains("[WOLF]") || plain.isBlank()) throw new AssertionError("The clan tag shows although switched off: " + plain);
 			context.waitTicks(10);
 			context.getInput().holdKey(o -> o.keyPlayerList);
 			context.waitTicks(10);
 			context.takeScreenshot("groups-clan-tag");
 			context.getInput().releaseKey(o -> o.keyPlayerList);
 			context.runOnClient(mc -> SocialTestHooks.ownClan(null));
+			// where it is switched off: under "Logo przy nickach"
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("badges"));
+			context.waitTicks(5);
+			context.takeScreenshot("groups-clan-tags-setting");
+			context.setScreen(() -> null);
 		}
 		context.runOnClient(mc -> TestHooks.vanillaMenu());
 	}
