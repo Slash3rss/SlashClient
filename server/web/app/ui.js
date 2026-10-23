@@ -100,6 +100,52 @@ export function when(at) {
 
 export const badge = (n) => (n > 0 ? el('span', { class: 'badge', textContent: n > 99 ? '99+' : String(n) }) : '');
 
+let confirmSeq = 0;
+/**
+ * The app's own question instead of the browser's confirm(): a sheet from the bottom with the question,
+ * an optional line of what happens, "Anuluj" and the action (red with `danger`). A tap beside it, Escape
+ * or "Anuluj" says no; Enter says yes. Resolves true for yes.
+ */
+export function confirmSheet({ title, text, ok, danger = false }) {
+  return new Promise((resolve) => {
+    const id = `confirm-${++confirmSeq}`;
+    const before = document.activeElement;
+    let done = false;
+    const close = (yes) => {
+      if (done) return;
+      done = true;
+      document.removeEventListener('keydown', onKey, true);
+      back.remove();
+      if (before instanceof HTMLElement && before.isConnected) before.focus({ preventScroll: true });
+      resolve(yes);
+    };
+    const okBtn = el('button', { type: 'button', class: `btn${danger ? ' danger' : ''}`, onclick: () => close(true) }, ok);
+    const cancelBtn = el('button', { type: 'button', class: 'btn ghost', onclick: () => close(false) }, t('Anuluj'));
+    const box = el('div', { class: 'sheet confirm-sheet', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': `${id}-title`, 'aria-describedby': text ? `${id}-text` : undefined },
+      el('h2', { id: `${id}-title`, textContent: title }),
+      text ? el('p', { id: `${id}-text`, class: 'confirm-text', textContent: text }) : '',
+      el('div', { class: 'confirm-actions' }, cancelBtn, okBtn));
+    const back = el('div', { class: 'sheet-back confirm-back', onclick: (e) => e.target === back && close(false) }, box);
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        close(false);
+      } else if (e.key === 'Tab') {
+        // the focus stays on the two buttons
+        e.preventDefault();
+        (document.activeElement === okBtn ? cancelBtn : okBtn).focus();
+      } else if (e.key === 'Enter' && !box.contains(document.activeElement)) {
+        e.preventDefault();
+        close(true);
+      }
+    };
+    document.addEventListener('keydown', onKey, true);
+    document.body.append(back);
+    okBtn.focus({ preventScroll: true });
+  });
+}
+
 /** A sheet from the bottom of the screen; resolves with what the form gives, or undefined when closed. */
 export function sheet(title, build) {
   return new Promise((resolve) => {

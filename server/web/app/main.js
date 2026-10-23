@@ -9,7 +9,7 @@ import { groupsChanged, keysChanged, startKeys } from './e2e.js';
 import { lang, members, plural, setLang, t } from './i18n.js';
 import * as push from './notify.js';
 import { qrSvg } from './qr.js';
-import { $, ago, avatarEl, badge, el, errorText, guard, icon, sheet, toast } from './ui.js';
+import { $, ago, avatarEl, badge, confirmSheet, el, errorText, guard, icon, sheet, toast } from './ui.js';
 
 const S = {
   me: undefined,
@@ -529,7 +529,7 @@ async function openGroupChat(view, id) {
   }
   const people = new Map(g.members.map((m) => [m.id, m]));
   const leave = !g.clan ? el('button', { class: 'icon-btn', 'aria-label': t('Opuść grupę'), onclick: async () => {
-    if (!confirm(t('Opuścić grupę „{0}”?', g.name))) return;
+    if (!await confirmSheet({ title: t('Opuścić grupę „{0}”?', g.name), ok: t('Opuść grupę'), danger: true })) return;
     if (await guard(() => api('POST', `/v1/groups/${id}/leave`))) {
       await loadGroups();
       location.hash = '#/chats';
