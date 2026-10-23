@@ -203,6 +203,7 @@ public class SlashHud implements ClientModInitializer {
 			TntTimer.tick(mc);
 			// a fresh Microsoft token from the launcher before the game's runs out (in the menus)
 			SessionRenew.tick(mc);
+			PartnerIcons.tick(mc);
 			DungeonMap.tick(mc);
 			LootHighlight.tick(mc);
 			Minimap.tick(mc);

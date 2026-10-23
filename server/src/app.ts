@@ -570,7 +570,7 @@ export function createApp(cfg: Config) {
 
   type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
   const partners = partnerRoutes({
-    db, authed, admin, body, dir: path.join(path.dirname(cfg.dbFile), 'partners'),
+    db, authed, admin, body, dir: path.join(path.dirname(cfg.dbFile), 'partners'), setting: (key) => settings.num(key),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -1650,6 +1650,28 @@ export function createApp(cfg: Config) {
         return;
       }
       res.writeHead(200, { 'Content-Type': found.type, 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' });
+      res.end(found.data);
+      return;
+    }
+
+    // a partner server's animated icon (frames stacked top to bottom): the game may ask for it without
+    // the version in the address, so it is kept for a day and checked again cheaply with its ETag
+    const partnerIcon = /^\/v1\/partners\/(\w+)\/icon$/.exec(url.pathname);
+    if (req.method === 'GET' && partnerIcon) {
+      const found = await partners.icon(partnerIcon[1]);
+      if (!found) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'not_found' }));
+        return;
+      }
+      const headers = { ETag: found.etag, 'Cache-Control': 'public, max-age=86400', 'X-Content-Type-Options': 'nosniff' };
+      const asked = String(req.headers['if-none-match'] ?? '').split(',').map((t) => t.trim());
+      if (asked.includes(found.etag) || asked.includes('*')) {
+        res.writeHead(304, headers);
+        res.end();
+        return;
+      }
+      res.writeHead(200, { ...headers, 'Content-Type': 'image/png' });
       res.end(found.data);
       return;
     }

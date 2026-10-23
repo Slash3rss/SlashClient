@@ -290,6 +290,8 @@ public final class HudConfig {
 	public boolean customMenu = true;
 	/** The SlashClient pause menu instead of Minecraft's own. */
 	public boolean customPause = true;
+	/** The SlashClient server list (cards, search) instead of Minecraft's own. */
+	public boolean customServerList = true;
 
 	// ---- the game's own HUD parts: shown or hidden, scaled, moved ----
 	public boolean scoreboard = true;
@@ -685,6 +687,7 @@ public final class HudConfig {
 		hideOwnElytra = other.hideOwnElytra;
 		customMenu = other.customMenu;
 		customPause = other.customPause;
+		customServerList = other.customServerList;
 		badges = other.badges;
 		killEffects = other.killEffects;
 		killEffectsOthers = other.killEffectsOthers;

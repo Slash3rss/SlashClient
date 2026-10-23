@@ -60,6 +60,7 @@ public final class PartnerServers {
 			Map<String, String> next = new ConcurrentHashMap<>();
 			java.util.Set<String> all = ConcurrentHashMap.newKeySet();
 			java.util.List<PinnedServer.Pin> pins = new java.util.ArrayList<>();
+			Map<String, PartnerIcons.Anim> icons = new java.util.HashMap<>();
 			boolean saysPinned = false;
 			for (JsonElement e : GSON.fromJson(res.body(), JsonObject.class).getAsJsonArray("partners")) {
 				JsonObject p = e.getAsJsonObject();
@@ -72,9 +73,17 @@ public final class PartnerServers {
 					pins.add(new PinnedServer.Pin(address, name, p.has("rotate") && p.get("rotate").getAsBoolean()));
 				}
 				if (p.has("background") && !p.get("background").isJsonNull()) next.put(address, server + p.get("background").getAsString());
+				// an animated icon in place of the server's own (older servers do not send one)
+				if (p.has("icon") && !p.get("icon").isJsonNull() && p.has("iconDelays")) {
+					var delays = p.getAsJsonArray("iconDelays");
+					int[] times = new int[delays.size()];
+					for (int i = 0; i < times.length; i++) times[i] = delays.get(i).getAsInt();
+					if (times.length > 0) icons.put(address, new PartnerIcons.Anim(server + p.get("icon").getAsString(), p.has("iconSize") ? p.get("iconSize").getAsInt() : 0, times));
+				}
 			}
 			partners = all;
 			backgrounds = next;
+			PartnerIcons.set(icons);
 			if (saysPinned) PinnedServer.set(pins);
 			next.values().forEach(PartnerServers::load);
 		}).exceptionally(err -> {
@@ -147,17 +156,31 @@ public final class PartnerServers {
 		if (!isPartner(server)) return;
 		drawFrame(g, x, y, w, h);
 		var font = Minecraft.getInstance().font;
-		net.minecraft.network.chat.Component label = dev.slash3rss.slashclient.hud.ui.Ui.trBold("slashclient-hud.partner");
-		int bw = 4 + 7 + 3 + font.width(label) + 5, bh = 11;
-		// drawn at three quarters: a small mark next to the name, not a second title
-		float s = 0.75f;
-		int sw = Math.round(bw * s), sh = Math.round(bh * s);
+		int sw = pillWidth(), sh = pillHeight();
 		// the game writes the name at 32 + 3 px from the row's left edge, the player count at its right
 		int bx = x + 35 + font.width(server.name == null ? "" : server.name) + 4, by = y + 1;
 		if (bx + sw > x + w - 72) {
 			bx = x + w - sw - 2;
 			by = y + h - sh - 1;
 		}
+		drawPill(g, bx, by);
+	}
+
+	/** The "Partner" pill's size on screen (drawn at three quarters: a small mark next to the name, not a second title). */
+	public static int pillWidth() {
+		net.minecraft.network.chat.Component label = dev.slash3rss.slashclient.hud.ui.Ui.trBold("slashclient-hud.partner");
+		return Math.round((4 + 7 + 3 + Minecraft.getInstance().font.width(label) + 5) * 0.75f);
+	}
+
+	public static int pillHeight() {
+		return Math.round(11 * 0.75f);
+	}
+
+	/** The gold "Partner" pill with its top left corner at (bx, by). */
+	public static void drawPill(GuiGraphicsExtractor g, int bx, int by) {
+		net.minecraft.network.chat.Component label = dev.slash3rss.slashclient.hud.ui.Ui.trBold("slashclient-hud.partner");
+		int bw = 4 + 7 + 3 + Minecraft.getInstance().font.width(label) + 5, bh = 11;
+		float s = 0.75f;
 		var pose = g.pose();
 		pose.pushMatrix();
 		pose.translate(bx, by);
@@ -176,7 +199,7 @@ public final class PartnerServers {
 	 * A gold frame around the row: a deep gold edge, a light inner line like polished metal, and
 	 * a brighter strip along the top where the light falls.
 	 */
-	private static void drawFrame(GuiGraphicsExtractor g, int x, int y, int w, int h) {
+	public static void drawFrame(GuiGraphicsExtractor g, int x, int y, int w, int h) {
 		// a thin gold line, lit a little from inside
 		dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, x - 1, y - 1, w + 2, h + 2, 3, 0xFFF59E0B);
 		dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, x, y, w, h, 2, 0x50FDE68A);

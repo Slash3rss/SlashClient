@@ -39,6 +39,8 @@ const ICONS = {
   'm-replay': 'clock-rotate-left', 'pause': 'pause', 'step-back': 'backward-step', 'step-forward': 'forward-step', 'repeat': 'repeat', 'save': 'floppy-disk',
   // undo and redo in the HUD editor
   'undo': 'rotate-left', 'redo': 'rotate-right',
+  // the server list (ui.SlashServerScreen)
+  'thumbtack': 'thumbtack', 'arrow-up': 'arrow-up', 'arrow-down': 'arrow-down', 'plus': 'plus', 'plug': 'plug',
 };
 
 /** Size of the glyph inside the 64×64 square, matching the icons already there. */

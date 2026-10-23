@@ -98,6 +98,16 @@ abstract class OnlineServerEntryMixin {
 	//$ }
 	//#endif
 
+	/** A partner's animated icon (PartnerIcons) in place of the server's own, once it is loaded. */
+	//#if MC >= 26.1
+	@Inject(method = "extractIcon", at = @At("HEAD"), cancellable = true)
+	//#else
+	//$ @Inject(method = "drawIcon", at = @At("HEAD"), cancellable = true)
+	//#endif
+	private void slashclient$animatedIcon(GuiGraphicsExtractor g, int x, int y, Identifier icon, CallbackInfo ci) {
+		if (dev.slash3rss.slashclient.hud.PartnerIcons.draw(g, serverData, x, y, 32)) ci.cancel();
+	}
+
 	@Inject(method = "swap", at = @At("HEAD"), cancellable = true)
 	private void slashclient$noMovePinned(int a, int b, CallbackInfo ci) {
 		ServerList servers = screen.getServers();

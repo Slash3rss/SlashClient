@@ -8,6 +8,7 @@ import { COMMUNITY_LIMITS } from './communityStore.ts';
 import { COMMUNITY_MEDIA_LIMITS } from './communityMedia.ts';
 import { BANNER_DEFS, FEATURE_DEFS } from './features.ts';
 import { GIF_SETTING_DEFS } from './gifs.ts';
+import { ICON_SETTING_DEFAULTS } from './partners.ts';
 import { PUSH_SETTING_DEFS } from './push.ts';
 import { RANK_SETTING_DEFS } from './ranks.ts';
 import { GROUP_LIMITS } from './groups.ts';
@@ -215,5 +216,9 @@ export const SETTING_DEFS: SettingDef[] = [
     { key: 'serverList.voteKey', label: 'Klucz głosowania z launchera', labelEn: 'Launcher voting key', description: 'Ten sam co SLASHCLIENT_VOTE_KEY na serwerze listy. Z nim gracze z połączonym kontem Minecraft głosują jednym kliknięciem w launcherze (bez captchy; limity jak na stronie: raz na 24 h na nick i na adres IP). Pusty: launcher otwiera stronę serwera na liście.', type: 'secret', default: '', maxLength: 200 },
     rate('security.serverVotesPerMinute', 'Głosy na serwery na minutę', 'Server votes per minute', 10, 'Na konto (głosowanie z launchera).'),
     rate('security.serverVoteChecksPerMinute', 'Sprawdzanie głosów na minutę', 'Vote checks per minute', 60, 'Na konto albo adres IP („Zagłosowano dziś” na liście serwerów w launcherze).'),
+    // partner servers' animated icons (partnerIcons.ts): turned into one PNG strip on upload
+    bytes('partners.iconBytes', 'Największa animowana ikona', 'Largest animated icon', ICON_SETTING_DEFAULTS.bytes, 'Plik GIF lub APNG wgrywany przez partnera albo admina jako ikona serwera.', 64 * 1024, 20 * MB),
+    { key: 'partners.iconFrames', label: 'Klatki animowanej ikony', labelEn: 'Animated icon frames', description: 'Najwięcej klatek animowanej ikony serwera partnerskiego (dłuższe animacje są odrzucane).', type: 'int', default: ICON_SETTING_DEFAULTS.frames, min: 1, max: 128 },
+    { key: 'partners.iconSide', label: 'Rozmiar animowanej ikony', labelEn: 'Animated icon size', description: 'Bok kwadratu, do którego serwer zmniejsza większe ikony (mniejszych nie powiększa). Gra rysuje ikonę 32×32.', type: 'int', default: ICON_SETTING_DEFAULTS.side, min: 16, max: 256, unit: 'px' },
   ]),
 ];

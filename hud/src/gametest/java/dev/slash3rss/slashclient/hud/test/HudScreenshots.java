@@ -57,7 +57,8 @@ public class HudScreenshots implements FabricClientGameTest {
 		context.setScreen(() -> null);
 		context.waitTicks(5);
 
-		// pinned partner servers first in the multiplayer list
+		// pinned partner servers first in the multiplayer list (the game's own list here: ours has GameServerList)
+		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.customServerList = false);
 		context.runOnClient(mc -> TestHooks.checkPinnedServer());
 		context.setScreen(() -> new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(new net.minecraft.client.gui.screens.TitleScreen()));
 		context.waitTicks(20);
@@ -78,6 +79,7 @@ public class HudScreenshots implements FabricClientGameTest {
 		context.getInput().setCursorPos(10, 10);
 		context.waitTicks(40);
 		context.takeScreenshot("servers-partner");
+		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.customServerList = true);
 		context.setScreen(() -> null);
 		context.waitTicks(5);
 
