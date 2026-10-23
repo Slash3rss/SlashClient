@@ -429,6 +429,8 @@ public final class HudConfig {
 	public int lockedSlots = 0;
 	/** A toast when a friend comes online or starts playing (muted friends never make one). */
 	public boolean friendPlayingToasts = true;
+	/** Faces of friends playing on a server next to it in the server list (ServerFriends). */
+	public boolean serverFriends = true;
 	/** "● NA ŻYWO" above SlashClient players live on Twitch or Kick with Minecraft (Badges.liveLabel). */
 	public boolean liveNametags = true;
 	/** The live chats of a Twitch and a Kick channel on the HUD (see StreamChatModule). */
@@ -784,6 +786,7 @@ public final class HudConfig {
 		inventorySearch = other.inventorySearch;
 		slotLock = other.slotLock;
 		friendPlayingToasts = other.friendPlayingToasts;
+		serverFriends = other.serverFriends;
 		liveNametags = other.liveNametags;
 		twitchChat = other.twitchChat == null ? new dev.slash3rss.slashclient.hud.streams.StreamChatSettings() : other.twitchChat.copy();
 		kickChat = other.kickChat == null ? new dev.slash3rss.slashclient.hud.streams.StreamChatSettings() : other.kickChat.copy();
