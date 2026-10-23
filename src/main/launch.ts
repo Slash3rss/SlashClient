@@ -39,6 +39,19 @@ function substitute(arg: string, vars: Record<string, string>): string {
   return arg.replace(/\$\{([^}]+)\}/g, (match, key: string) => vars[key] ?? match);
 }
 
+/**
+ * Forge and NeoForge (1.17+) leave the vanilla game jar out by name: `-DignoreList=…,${version_name}.jar`.
+ * The official launcher copies that jar under the loader version's name; this launcher keeps the one
+ * shared jar (versions/1.20.1/1.20.1.jar), so its own name is added too. Without it the game loads
+ * Minecraft twice ("Modules minecraft and _1._20._1 export package net.minecraft.data").
+ */
+export function withClientJarIgnored(arg: string, clientJar: string): string {
+  if (!arg.startsWith('-DignoreList=')) return arg;
+  const jar = clientJar.split(/[\\/]/).pop() ?? '';
+  const list = arg.slice('-DignoreList='.length).split(',');
+  return !jar || list.includes(jar) ? arg : `${arg},${jar}`;
+}
+
 /** Splits user-supplied JVM arguments, honouring double quotes. */
 function splitArgs(text: string): string[] {
   return [...text.matchAll(/"([^"]*)"|(\S+)/g)].map((m) => m[1] ?? m[2]);
@@ -137,7 +150,7 @@ export async function launch({ profile, account, onStage, onLog, server, world, 
     ...presetArgs(profile.jvmPreset, version.javaVersion?.majorVersion ?? 8),
     ...splitArgs(profile.jvmArgs),
     ...extraJvmArgs,
-    ...jvmArgs.map((a) => substitute(a, vars)),
+    ...jvmArgs.map((a) => withClientJarIgnored(substitute(a, vars), clientJar)),
     ...(loggingConfig && version.logging?.client ? [substitute(version.logging.client.argument, { path: loggingConfig })] : []),
     version.mainClass,
     ...gameArgs.map((a) => substitute(a, vars)),

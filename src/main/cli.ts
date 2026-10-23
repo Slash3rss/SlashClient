@@ -1,18 +1,20 @@
 // Headless entry point for testing installs and launches without the GUI:
-//   node dist/cli.js <version|latest-release> [nick] [server] [--fabric]
-// --fabric starts the game with Fabric and SlashClient HUD, as the launcher does.
+//   node dist/cli.js <version|latest-release> [nick] [server] [--fabric] [--loader=forge:47.4.23]
+// --fabric starts the game with Fabric and SlashClient HUD, as the launcher does; --loader picks
+// another mod loader (and its version) without the HUD.
 import path from 'node:path';
 import { createOfflineAccount } from './auth';
 import { addModsArgs, prepareHud } from './hud';
 import { paths } from './paths';
-import { newProfile, profileGameDir } from './store';
+import { newProfile, profileGameDir, type Profile } from './store';
 import { launch, resolveVersionId } from './launch';
 
 async function main() {
   const args = process.argv.slice(2);
   const fabric = args.includes('--fabric');
-  const [versionId = 'latest-release', nick = 'Gracz', server] = args.filter((a) => a !== '--fabric');
-  const profile = newProfile({ name: 'cli', versionId, memoryMb: 2048, loader: fabric ? 'fabric' : 'vanilla' });
+  const [loader, loaderVersion = ''] = (args.find((a) => a.startsWith('--loader='))?.slice('--loader='.length) ?? '').split(':');
+  const [versionId = 'latest-release', nick = 'Gracz', server] = args.filter((a) => a !== '--fabric' && !a.startsWith('--loader='));
+  const profile = newProfile({ name: 'cli', versionId, memoryMb: 2048, loader: fabric ? 'fabric' : ((loader || 'vanilla') as Profile['loader']), loaderVersion });
   let hudArgs: string[] = [];
   if (fabric) {
     hudArgs = addModsArgs(await prepareHud(path.join(__dirname, 'hud'), profileGameDir(profile), {
