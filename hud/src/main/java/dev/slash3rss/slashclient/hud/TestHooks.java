@@ -204,6 +204,34 @@ public final class TestHooks {
 		return r == null ? null : new double[] { r[0] + r[2] / 2.0, r[1] + r[3] / 2.0 };
 	}
 
+	/** The middle of a key button on the open settings page (by the key's name), or null when it is not drawn. */
+	public static double[] keyButton(String name) {
+		int[] k = HudEditScreen.KEYS.get(name);
+		return k == null ? null : new double[] { k[0] + k[2] / 2.0, k[1] + k[3] / 2.0 };
+	}
+
+	/** The key a binding of the game's controls has now, as options.txt saves it ("key.keyboard.g"). */
+	public static String keyOf(String name) {
+		return dev.slash3rss.slashclient.hud.ui.Catalog.keyMapping(name).saveString();
+	}
+
+	/** Sets a binding back to its default key. */
+	public static void defaultKey(String name) {
+		var k = dev.slash3rss.slashclient.hud.ui.Catalog.keyMapping(name);
+		dev.slash3rss.slashclient.hud.ui.Catalog.setKey(k, k.getDefaultKey());
+	}
+
+	/** What options.txt says about a binding now ("key.keyboard.g"), or null when it has no line. */
+	public static String savedKey(String name) {
+		try {
+			for (String line : java.nio.file.Files.readAllLines(new java.io.File(net.minecraft.client.Minecraft.getInstance().gameDirectory, "options.txt").toPath()))
+				if (line.startsWith("key_" + name + ":")) return line.substring(name.length() + 5);
+		} catch (java.io.IOException e) {
+			throw new java.io.UncheckedIOException(e);
+		}
+		return null;
+	}
+
 	/** A point on a slider of the open settings page, `f` of the way along it. */
 	public static double[] sliderPoint(String labelKey, double f) {
 		int[] s = HudEditScreen.SLIDERS.get(labelKey);

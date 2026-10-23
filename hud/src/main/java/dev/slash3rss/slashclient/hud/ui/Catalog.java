@@ -16,7 +16,7 @@ public final class Catalog {
 	public static final String[] CATEGORIES = { "all", "hud", "combat", "world", "game", "extras", "skyup", "chat", "share" };
 
 	/** One row in an entry's settings. */
-	public sealed interface Setting permits Toggle, Slider, Choice, Colors, Text, Info, Note {
+	public sealed interface Setting permits Toggle, Slider, Choice, Colors, Text, Info, Note, Key {
 		String labelKey();
 	}
 
@@ -36,6 +36,75 @@ public final class Catalog {
 	public record Info(String labelKey, Supplier<String> text) implements Setting {}
 	/** A line (or a few) of explanation without controls; `args` fill the %s in its text. */
 	public record Note(String labelKey, Supplier<Object[]> args) implements Setting {}
+	/**
+	 * A key of the game's controls, by its name ("key.slashclient-hud.zoom"): set right on the module's page.
+	 * It is the game's own key, so the Controls screen and SlashClient's keys window show the same one.
+	 */
+	public record Key(String labelKey) implements Setting {}
+
+	/** The keys each card works with, shown first on its page (only those this version of the game has). */
+	private static final Map<String, String[]> ENTRY_KEYS = Map.ofEntries(
+		Map.entry("zoom", new String[] { "key.slashclient-hud.zoom" }),
+		Map.entry("fullbright", new String[] { "key.slashclient-hud.fullbright" }),
+		Map.entry("friends", new String[] { "key.slashclient-hud.friends" }),
+		Map.entry("freelook", new String[] { "key.slashclient-hud.freelook" }),
+		Map.entry("waypoints", new String[] { "key.slashclient-hud.waypoints" }),
+		Map.entry("worldMap", new String[] { "key.slashclient-hud.dungeonMap" }),
+		Map.entry("dungeonmap", new String[] { "key.slashclient-hud.dungeonMap", "key.slashclient-hud.dungeonZoomIn", "key.slashclient-hud.dungeonZoomOut" }),
+		Map.entry("skytasks", new String[] { "key.slashclient-hud.skyTasksTrack" }),
+		Map.entry("clips", new String[] { "key.slashclient-hud.clip" }),
+		Map.entry("replay", new String[] { "key.slashclient-hud.replay" }),
+		Map.entry("emotes", new String[] { "key.slashclient-hud.emote" }),
+		Map.entry("sprays", new String[] { "key.slashclient-hud.spray" }),
+		Map.entry("lightOverlay", new String[] { "key.slashclient-hud.lightOverlay" }),
+		Map.entry("cameraDistance", new String[] { "key.slashclient-hud.cameraDistance" }),
+		Map.entry("autoClicker", new String[] { "key.slashclient-hud.autoClick" }),
+		Map.entry("holdKeys", new String[] { "key.slashclient-hud.holdAttack", "key.slashclient-hud.holdUse" }),
+		Map.entry("inventorySort", new String[] { "key.slashclient-hud.sort" }),
+		Map.entry("slotLock", new String[] { "key.slashclient-hud.slotLock" }));
+
+	/** The game's key with this name, or null when this version has none. */
+	public static net.minecraft.client.KeyMapping keyMapping(String name) {
+		for (var k : net.minecraft.client.Minecraft.getInstance().options.keyMappings) if (k.getName().equals(name)) return k;
+		return null;
+	}
+
+	/**
+	 * Sets the game's key and saves it to options.txt: the game's Controls, SlashClient's keys window
+	 * and the module's page all show the new one at once.
+	 */
+	public static void setKey(net.minecraft.client.KeyMapping key, com.mojang.blaze3d.platform.InputConstants.Key to) {
+		key.setKey(to);
+		net.minecraft.client.KeyMapping.resetMapping();
+		net.minecraft.client.Minecraft.getInstance().options.save();
+	}
+
+	/** The key a binding has now (its saved name read back: the field itself is private). */
+	public static com.mojang.blaze3d.platform.InputConstants.Key keyOf(net.minecraft.client.KeyMapping key) {
+		return com.mojang.blaze3d.platform.InputConstants.getKey(key.saveString());
+	}
+
+	/**
+	 * The other bindings on the same key (of the game or any mod), for the warning under the key. The
+	 * F3 shortcuts are left out: they only work with F3 held, so they do not get in the way.
+	 */
+	public static List<net.minecraft.client.KeyMapping> clashes(net.minecraft.client.KeyMapping key) {
+		List<net.minecraft.client.KeyMapping> out = new ArrayList<>();
+		if (key.isUnbound()) return out;
+		for (var k : net.minecraft.client.Minecraft.getInstance().options.keyMappings)
+			if (k != key && k.same(key) && !k.getName().startsWith("key.debug.")) out.add(k);
+		return out;
+	}
+
+	/** The card with the rows of its keys added at the top of its settings. */
+	private static Entry withKeys(Entry e) {
+		String[] names = ENTRY_KEYS.get(e.id());
+		if (names == null) return e;
+		List<Setting> settings = new ArrayList<>();
+		for (String name : names) if (keyMapping(name) != null) settings.add(new Key(name));
+		settings.addAll(e.settings());
+		return new Entry(e.id(), e.nameKey(), e.category(), e.icon(), e.get(), e.set(), settings, e.open());
+	}
 
 	/**
 	 * A card: `get`/`set` are null when the card has no on/off switch (it only opens something).
@@ -403,7 +472,6 @@ public final class Catalog {
 		out.add(new Entry("replay", "slashclient-hud.replay", "extras", "m-replay", () -> cfg.replay, v -> cfg.replay = v, List.of(
 			new Slider("slashclient-hud.replay.length", 15f, 60f, 15f, "%.0f s", () -> (float) cfg.replaySeconds, v -> cfg.replaySeconds = Math.round(v)),
 			new Toggle("slashclient-hud.replay.pause", () -> cfg.replayPause, v -> cfg.replayPause = v),
-			new Note("slashclient-hud.replay.key", dev.slash3rss.slashclient.hud.Replay::keyArgs),
 			new Note("slashclient-hud.replay.cost", () -> new Object[0])), null));
 		// helpers; the automatic ones say first that servers may ban for them
 		out.add(new Entry("autoClicker", "slashclient-hud.assist.autoClicker", "combat", "m-autoclicker", () -> cfg.autoClicker,
@@ -420,11 +488,8 @@ public final class Catalog {
 			new Toggle("slashclient-hud.assist.restore", () -> cfg.autoToolRestore, v -> cfg.autoToolRestore = v)), null));
 		out.add(new Entry("autoRefill", "slashclient-hud.assist.autoRefill", "world", "m-autorefill", () -> cfg.autoRefill,
 			v -> risky(v, () -> cfg.autoRefill = v), List.of(), null));
-		// holding a button is set up with keys of its own, in the game's controls
-		out.add(new Entry("holdKeys", "slashclient-hud.assist.holdKeys", "extras", "m-holdkeys", null, null, List.of(), () -> {
-			var mc = net.minecraft.client.Minecraft.getInstance();
-			mc.setScreenAndShow(new net.minecraft.client.gui.screens.options.controls.KeyBindsScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc), mc.options));
-		}));
+		// holding a button is set up with keys of its own: they are its settings (withKeys)
+		out.add(new Entry("holdKeys", "slashclient-hud.assist.holdKeys", "extras", "m-holdkeys", null, null, List.of(), null));
 		out.add(new Entry("toolWarning", "slashclient-hud.assist.toolWarning", "combat", "m-toolwarning", () -> cfg.toolWarning, v -> cfg.toolWarning = v, List.of(
 			new Slider("slashclient-hud.assist.toolWarningAt", 1f, 30f, 1f, "%.0f%%", () -> (float) cfg.toolWarningPercent, v -> cfg.toolWarningPercent = Math.round(v))), null));
 		out.add(new Entry("mouseTweaks", "slashclient-hud.extra.mouseTweaks", "extras", "m-mousetweaks", () -> cfg.mouseTweaks, v -> cfg.mouseTweaks = v, List.of(), null));
@@ -443,6 +508,7 @@ public final class Catalog {
 			cfg.chatWindowsOnly = v;
 			dev.slash3rss.slashclient.hud.ChatTabs.reapply();
 		}, List.of(), null));
+		out.replaceAll(Catalog::withKeys);
 		return out;
 	}
 }
