@@ -53,7 +53,8 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 	/** For the test: servers that were never pinged get a made-up answer instead (no network). */
 	public static boolean sampleStatusForTest;
 
-	private record Hit(int x, int y, int w, int h, Runnable action) {}
+	/** `item`: the server or LAN game whose card it is, null for buttons. */
+	private record Hit(int x, int y, int w, int h, Runnable action, Object item) {}
 
 	private final List<Hit> hits = new ArrayList<>();
 	/** The game's buttons by their text's key ("selectServer.add"...), pressed for its own actions. */
@@ -70,6 +71,14 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 	private ServerData confirm;
 	private Object lastClicked;
 	private long lastClickAt;
+	/**
+	 * A server held by the mouse, and the one being dragged once the mouse moved a few pixels with it:
+	 * the list makes room for it as it goes and is saved when it is let go.
+	 */
+	private ServerData pressed, dragging;
+	private double pressY;
+	/** Where in its card the dragged server was grabbed, so the card does not jump under the mouse. */
+	private int grabOffset;
 	/** What shows now, in order (for the keys), and where each one is in the scrolled content. */
 	private final List<Object> shown = new ArrayList<>();
 	private final Map<Object, Integer> shownY = new java.util.IdentityHashMap<>();
@@ -268,6 +277,18 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 	}
 
 	private void drawList(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h, float delta) {
+		// a few pixels with the button down and the server comes along (a click stays a click);
+		// read here, as not every game version hands the screen the mouse's moves while a button is down
+		if (pressed != null && dragging == null && Math.abs(my - pressY) > 4) {
+			dragging = pressed;
+			lastClicked = null;
+		}
+		if (dragging != null) {
+			// held near the list's top or bottom edge, the list scrolls on by itself
+			if (my < y + 12) scroll = Math.max(0, scroll - 4);
+			else if (my > y + h - 12) scroll = Math.min(maxScroll, scroll + 4);
+			dragTo(my - y + scroll);
+		}
 		List<ServerData> all = servers();
 		List<ServerData> online = new ArrayList<>();
 		for (ServerData d : all) if (matches(d.name, d.ip)) online.add(d);
@@ -319,8 +340,18 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		for (ServerData d : online) {
 			int ry = top + shownY.get(d);
 			if (ry + CARD_H <= y || ry >= y + h) continue;
-			serverCard(g, d, x, ry, w, CARD_H, overList ? mx : -1, overList ? my : -1);
-			clickable(x, ry, w, CARD_H, y, h, () -> clicked(d));
+			if (d == dragging) {
+				// the place it would land: an empty slot, the card itself follows the mouse
+				Ui.round(g, x, ry, w, CARD_H, 5, 0x1A3B82F6);
+				Ui.roundOutline(g, x, ry, w, CARD_H, 5, 0x663B82F6);
+				continue;
+			}
+			serverCard(g, d, x, ry, w, CARD_H, overList && dragging == null ? mx : -1, overList && dragging == null ? my : -1);
+			clickable(x, ry, w, CARD_H, y, h, d, () -> clicked(d));
+		}
+		if (dragging != null && online.contains(dragging)) {
+			int dy = Math.max(y - CARD_H / 2, Math.min(y + h - CARD_H / 2, my - grabOffset));
+			serverCard(g, dragging, x, dy, w, CARD_H, mx, my);
 		}
 		if (emptyLine) {
 			Component text = query.isBlank() ? Ui.tr("slashclient-hud.serverList.empty") : Ui.tr("slashclient-hud.serverList.noMatch", query.trim());
@@ -331,7 +362,7 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 			int ry = top + shownY.get(l);
 			if (ry + CARD_H <= y || ry >= y + h) continue;
 			lanCard(g, l, x, ry, w, CARD_H, overList ? mx : -1, overList ? my : -1);
-			clickable(x, ry, w, CARD_H, y, h, () -> clicked(l));
+			clickable(x, ry, w, CARD_H, y, h, l, () -> clicked(l));
 		}
 		if (lan.isEmpty()) {
 			// a few dots that come and go while the game listens for LAN games
@@ -355,9 +386,9 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 	}
 
 	/** A card's clickable part: only what is inside the list (a half-hidden card is clicked where it shows). */
-	private void clickable(int x, int ry, int w, int h, int listTop, int listH, Runnable action) {
+	private void clickable(int x, int ry, int w, int h, int listTop, int listH, Object item, Runnable action) {
 		int top = Math.max(ry, listTop), bottom = Math.min(ry + h, listTop + listH);
-		if (bottom > top) hits.add(new Hit(x, top, w, bottom - top, action));
+		if (bottom > top) hits.add(new Hit(x, top, w, bottom - top, action, item));
 	}
 
 	private void cardBase(GuiGraphicsExtractor g, String id, boolean partner, ServerData d, int x, int y, int w, int h, boolean over, boolean sel, int warn) {
@@ -548,7 +579,7 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		int left = x + (w - total) / 2;
 		Ui.icon(g, icon, left, y + (h - iconSize) / 2, iconSize, color);
 		if (hasLabel) Ui.draw(g, fitted, left + iconSize + 5, y + (h - 8) / 2, color);
-		if (enabled) hits.add(new Hit(x, y, w, h, action));
+		if (enabled) hits.add(new Hit(x, y, w, h, action, null));
 	}
 
 	private void iconAction(GuiGraphicsExtractor g, String icon, int x, int y, int s, String tipKey, boolean enabled, int mx, int my, Runnable action) {
@@ -666,6 +697,29 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 	private boolean canMove(int index, int dir) {
 		int to = index + dir;
 		return index >= 0 && to >= 0 && to < getServers().size() && !PinnedServer.blocksSwap(servers(), index, to);
+	}
+
+	/**
+	 * Moves the dragged server to the place under the mouse (`at`: the mouse in the scrolled content),
+	 * one step at a time, so it stops under the pinned ones as Shift+arrows do.
+	 */
+	private void dragTo(float at) {
+		int index = servers().indexOf(dragging);
+		if (index < 0) return;
+		int slot = (int) Math.floor((at - grabOffset + CARD_H / 2f - HEADER_H) / (CARD_H + CARD_GAP));
+		slot = Math.max(0, Math.min(getServers().size() - 1, slot));
+		while (index < slot && canMove(index, 1)) getServers().swap(index, ++index);
+		while (index > slot && canMove(index, -1)) getServers().swap(index, --index);
+	}
+
+	/** The dragged server let go: the new order is saved and the game's hidden list follows. */
+	private void drop() {
+		ServerData d = dragging;
+		dragging = pressed = null;
+		if (d == null) return;
+		getServers().save();
+		serverSelectionList.updateOnlineServers(getServers());
+		select(d);
 	}
 
 	/** Moves the chosen server up or down the list (never past the pinned ones on top). */
@@ -805,6 +859,14 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 			Hit h = hits.get(i);
 			if (Ui.inside(e.x(), e.y(), h.x(), h.y(), h.w(), h.h())) {
 				h.action().run();
+				Integer at = h.item() instanceof ServerData d ? shownY.get(d) : null;
+				if (at != null && e.button() == InputConstants.MOUSE_BUTTON_LEFT && query.isBlank() && !PinnedServer.is((ServerData) h.item())) {
+					pressed = (ServerData) h.item();
+					pressY = e.y();
+					// the game then sends this screen the mouse's moves and its release
+					setDragging(true);
+					grabOffset = (int) Math.round(e.y() - (listY - scroll + at));
+				}
 				return true;
 			}
 		}
@@ -824,6 +886,7 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 			scroll = bar.drag(e.y());
 			return true;
 		}
+		if (dragging != null) return true;
 		//#if MC >= 1.21.9
 		return super.mouseDragged(e, dx, dy);
 		//#else
@@ -839,6 +902,12 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
 	//#endif
 		bar.release();
+		setDragging(false);
+		if (dragging != null) {
+			drop();
+			return true;
+		}
+		pressed = null;
 		//#if MC >= 1.21.9
 		return super.mouseReleased(e);
 		//#else
@@ -875,6 +944,16 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 
 	public void searchForTest(String text) {
 		search.setValue(text);
+	}
+
+	/** The middle of a server's card on screen (GUI units), or -1 when it is not shown. */
+	public int cardYForTest(String name) {
+		for (Object o : shown) if (o instanceof ServerData d && name.equals(d.name)) return listY - Math.round(scroll) + shownY.get(d) + CARD_H / 2;
+		return -1;
+	}
+
+	public boolean draggingForTest() {
+		return dragging != null;
 	}
 
 	public void selectForTest(String name) {

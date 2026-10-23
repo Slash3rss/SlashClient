@@ -64,6 +64,26 @@ public class GameServerList implements FabricClientGameTest {
 		//#endif
 	}
 
+	/** Holds a server's card with the mouse and moves it by `by` GUI pixels in small steps (GUI scale 2), a screenshot halfway. */
+	private static void drag(ClientGameTestContext context, String name, int by, String shot) {
+		int y = context.computeOnClient(mc -> screen().cardYForTest(name));
+		if (y < 0) throw new AssertionError(name + " is not on screen");
+		context.getInput().setCursorPos(427, 2 * y);
+		context.waitTick();
+		context.getInput().holdMouse(InputConstants.MOUSE_BUTTON_LEFT);
+		context.waitTick();
+		int steps = 12;
+		for (int i = 0; i < steps; i++) {
+			context.getInput().moveCursor(0, 2.0 * by / steps);
+			context.waitTick();
+			if (i == steps / 2 && shot != null) context.takeScreenshot(shot);
+		}
+		context.waitTicks(2);
+		context.getInput().releaseMouse(InputConstants.MOUSE_BUTTON_LEFT);
+		context.waitTicks(3);
+		context.getInput().setCursorPos(10, 10);
+	}
+
 	private static void open(ClientGameTestContext context) {
 		context.setScreen(() -> new JoinMultiplayerScreen(new TitleScreen()));
 		context.waitTicks(10);
@@ -204,6 +224,22 @@ public class GameServerList implements FabricClientGameTest {
 		context.runOnClient(mc -> shiftKey(InputConstants.KEY_UP));
 		context.waitTicks(2);
 		if (!context.computeOnClient(mc -> saved().get(0)).equals("SkyUp.pl")) throw new AssertionError("A server moved past the pinned one");
+
+		// dragged with the mouse two places down, it lands there and is saved
+		String grabbed = context.computeOnClient(mc -> saved().get(1));
+		int from = context.computeOnClient(mc -> saved().indexOf(grabbed));
+		drag(context, grabbed, 2 * 39, "server-list-dragging");
+		int to = context.computeOnClient(mc -> saved().indexOf(grabbed));
+		if (to != from + 2) throw new AssertionError("Dragging moved " + grabbed + " from " + from + " to " + to + ", expected " + (from + 2));
+		if (context.computeOnClient(mc -> screen().draggingForTest())) throw new AssertionError("Still dragging after the mouse was let go");
+		// dragged far up, it stops under the pinned server
+		drag(context, grabbed, -6 * 39, null);
+		if (!context.computeOnClient(mc -> saved().get(0)).equals("SkyUp.pl") || !context.computeOnClient(mc -> saved().get(1)).equals(grabbed)) {
+			throw new AssertionError("Dragged up: " + context.computeOnClient(mc -> saved()));
+		}
+		// the pinned server itself does not move
+		drag(context, "SkyUp.pl", 2 * 39, null);
+		if (!context.computeOnClient(mc -> saved().get(0)).equals("SkyUp.pl")) throw new AssertionError("The pinned server was dragged");
 
 		// deleting asks first: Esc keeps it, Enter deletes it
 		context.runOnClient(mc -> screen().selectForTest("Delta"));
