@@ -11,6 +11,7 @@
 		"LoadingScreenMixin",
 		"PackReloadOverlayMixin",
 		"LoadingScreensAccessor",
+		"ScreenPanoramaInvoker",
 		"ProgressScreenAccessor",
 		"LevelLoadingScreenAccessor",
 		"ReceivingLevelScreenAccessor",

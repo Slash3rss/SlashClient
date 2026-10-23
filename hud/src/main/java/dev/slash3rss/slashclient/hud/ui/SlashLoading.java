@@ -68,7 +68,7 @@ public final class SlashLoading {
 	private static float shown;
 	private static long lastFrame, tipsFrom;
 	private static int tipsOffset;
-	private static boolean warned;
+	private static boolean warned, panoramaFailed;
 
 	// the icon of the server or world in the card
 	private static String iconKey;
@@ -321,7 +321,24 @@ public final class SlashLoading {
 		g.nextStratum();
 		//#endif
 		Ui.layer(g);
-		g.fill(0, 0, w, h, 0xFF0A0D14);
+		// joining a server (and its resource packs): the title screen's panorama behind, dimmed as in our menu
+		boolean join = st.kind().equals("connect") || st.kind().equals("pack") || st.kind().equals("apply");
+		if (join && !panoramaFailed) {
+			g.fill(0, 0, w, h, 0xFF0A0D14);
+			try {
+				//#if MC >= 1.20.2
+				((dev.slash3rss.slashclient.hud.mixin.ScreenPanoramaInvoker) screen).slashclient$panorama(g, dt / 50f);
+				//#else
+				//$ dev.slash3rss.slashclient.hud.compat.Legacy.panorama(g, dt / 50f);
+				//#endif
+			} catch (RuntimeException e) {
+				panoramaFailed = true;
+				SlashHud.LOG.warn("Loading screen panorama failed, a plain background shows", e);
+			}
+			g.fill(0, 0, w, h, 0x990A0D14);
+		} else {
+			g.fill(0, 0, w, h, 0xFF0A0D14);
+		}
 		g.fillGradient(0, 0, w, h * 2 / 3, 0x203B82F6, 0x003B82F6);
 		g.fillGradient(0, h / 2, w, h, 0x00000000, 0x70000000);
 
