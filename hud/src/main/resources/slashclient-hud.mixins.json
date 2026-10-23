@@ -6,6 +6,7 @@
 		"DropGlowColorMixin",
 		"DropGlowMixin",
 		"AuthServiceMixin",
+		"ConnectScreenMixin",
 		"BenchCameraMixin",
 		"BossHealthOverlayAccessor",
 		"BlockOutlineMixin",

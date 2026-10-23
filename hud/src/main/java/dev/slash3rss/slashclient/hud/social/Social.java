@@ -988,6 +988,20 @@ public final class Social {
 		});
 	}
 
+	/**
+	 * The game's own session from the launcher (`force`: renewed now, a server refused it), for SessionRenew;
+	 * null from a launcher that has none for this game (an older one, or the game started elsewhere).
+	 */
+	public static JsonObject session(boolean force) throws Exception {
+		if (!bridged()) return null;
+		try {
+			return request("GET", force ? "/session?force=1" : "/session", null, 30);
+		} catch (IllegalStateException e) {
+			if (String.valueOf(e.getMessage()).startsWith("HTTP 404")) return null;
+			throw e;
+		}
+	}
+
 	/** Asks the launcher to put a picture file on the clipboard; false without a launcher. */
 	public static boolean copyImage(String path) {
 		// only a real launcher can (the screenshot tests' made-up friends have no address to ask)

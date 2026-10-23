@@ -165,9 +165,27 @@ export async function completeMicrosoftLogin(tokens: MsTokens, clientId: string)
   return { id: randomUUID(), ...account, refreshToken: secrets.encrypt(tokens.refresh_token), clientId };
 }
 
-/** Returns the account with a valid Minecraft token, refreshing it through Microsoft if needed. */
-export async function ensureFreshAccount(account: MicrosoftAccount, defaultClientId: string): Promise<MicrosoftAccount> {
-  if (Date.now() < account.expiresAt) return account;
+/** How long before its end a running game's token is renewed (the HUD asks the launcher through the bridge). */
+export const GAME_RENEW_MS = 2 * 60 * 60_000;
+/** A forced renewal (a server said "invalid session") at most this often, so a broken server can't make us hammer Microsoft. */
+export const FORCED_RENEW_GAP_MS = 5 * 60_000;
+
+/** Whether a token ending at `expiresAt` has less than `marginMs` left. */
+export function needsRefresh(expiresAt: number, now: number, marginMs = 0): boolean {
+  return expiresAt - now < marginMs;
+}
+
+/**
+ * How much time a game's token must still have, else the launcher renews it: two hours normally, or
+ * "renew now" when the game was refused by a server (unless that happened a moment ago already).
+ */
+export function gameSessionMargin(force: boolean, lastForcedAt: number | undefined, now: number): number {
+  return force && (lastForcedAt === undefined || now - lastForcedAt >= FORCED_RENEW_GAP_MS) ? Infinity : GAME_RENEW_MS;
+}
+
+/** Returns the account with a valid Minecraft token (at least `marginMs` left), refreshing it through Microsoft if needed. */
+export async function ensureFreshAccount(account: MicrosoftAccount, defaultClientId: string, marginMs = 0): Promise<MicrosoftAccount> {
+  if (!needsRefresh(account.expiresAt, Date.now(), marginMs)) return account;
   // a refresh token works only with the app that issued it, even after the launcher's default changes
   const clientId = account.clientId || defaultClientId;
   requireClientId(clientId);

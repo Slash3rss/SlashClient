@@ -86,4 +86,42 @@ describe('game bridge', () => {
     assert.deepEqual(got.events.map((e: { type: string }) => e.type), ['community-message', 'communities']);
     bridge.stop();
   });
+
+  it('hands the game its own session for renewal, only with the key', async () => {
+    type Answer = Awaited<ReturnType<NonNullable<ConstructorParameters<typeof GameBridge>[0]['session']>>>;
+    const asked: boolean[] = [];
+    let answer: Answer = { type: 'msa', name: 'Steve', uuid: 'u-1', accessToken: 'fake.jwt.token', xuid: '1', expiresAt: 123 };
+    const bridge = new GameBridge({
+      call: async () => ({}),
+      state: () => ({}),
+      session: async (force) => {
+        asked.push(force);
+        if (force && answer?.type === 'msa') throw new Error('Sesja Microsoft wygasła');
+        return answer;
+      },
+    });
+    const { url, key } = await bridge.start();
+    const req = (path: string, k = key) => fetch(url + path, { headers: { Authorization: `Bearer ${k}` } });
+    assert.equal((await req('/session', 'wrong')).status, 401);
+    assert.deepEqual(await (await req('/session')).json(), answer);
+    // a server refused the session: the launcher is told to renew now, and its failure reaches the game
+    const failed = await req('/session?force=1');
+    assert.equal(failed.status, 502);
+    assert.match((await failed.json()).error, /wygasła/);
+    assert.equal((await req('/session?force=2')).status, 403);
+    assert.equal((await req('/session/x')).status, 403);
+    answer = { type: 'offline' };
+    assert.deepEqual(await (await req('/session')).json(), { type: 'offline' });
+    // no game started by this launcher
+    answer = undefined;
+    assert.equal((await req('/session')).status, 404);
+    assert.deepEqual(asked, [false, true, false, false]);
+    bridge.stop();
+
+    // a launcher without the option: the game keeps its token as before
+    const plain = new GameBridge({ call: async () => ({}), state: () => ({}) });
+    const p = await plain.start();
+    assert.equal((await fetch(p.url + '/session', { headers: { Authorization: `Bearer ${p.key}` } })).status, 404);
+    plain.stop();
+  });
 });

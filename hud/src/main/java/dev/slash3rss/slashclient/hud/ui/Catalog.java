@@ -242,6 +242,7 @@ public final class Catalog {
 		}));
 		//#endif
 		out.add(new Entry("reconnect", "slashclient-hud.reconnectButton", "extras", "m-reconnect", () -> cfg.reconnect, v -> cfg.reconnect = v, List.of(), null));
+		out.add(new Entry("sessionRenew", "slashclient-hud.sessionRenew", "extras", "m-accounts", () -> cfg.sessionRenew, v -> cfg.sessionRenew = v, List.of(), null));
 		// each server in the list has its own mode (its edit screen); this one is for the rest
 		out.add(new Entry("serverPacks", "slashclient-hud.serverPacks", "extras", "m-server", null, null, List.of(
 			new Choice("slashclient-hud.serverPacks.default", dev.slash3rss.slashclient.hud.ServerPacks.MODES, "slashclient-hud.serverPacks.choice.",
