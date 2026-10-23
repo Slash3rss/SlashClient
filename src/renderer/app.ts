@@ -1908,6 +1908,11 @@ function serverCard(s: ListedServer): HTMLElement {
       el('span', {}, el('b', { textContent: `${live.playersOnline}` }), ` / ${live.playersMax}`),
       el('span', { className: pingClass(live.latency), textContent: `${live.latency} ms` }),
     );
+  } else if (ping?.error && s.online) {
+    // the list sees it online but this computer gets no answer (a firewall, an antivirus, a network
+    // that blocks game ports): the list's players, and why there is no ping on hover
+    stats.append(el('span', {}, el('b', { textContent: `${s.playersOnline}` }), ` / ${s.playersMax}`),
+      el('span', { className: 'muted no-ping', textContent: t('bez pingu'), title: t('Ten komputer nie dostał odpowiedzi od serwera ({0}). Lista serwerów widzi go jako działający – jeśli gra też się nie łączy, sprawdź zaporę, antywirusa albo sieć.', ping.error) }));
   } else if (ping?.error) {
     // why: shown on hover (no answer, refused, unknown address…)
     stats.append(el('span', { className: 'offline', textContent: 'Offline', title: ping.error }));

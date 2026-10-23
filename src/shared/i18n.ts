@@ -1043,6 +1043,8 @@ const EN: Record<string, string> = {
   'Zaloguj się kontem Microsoft z Minecraftem i wróć tutaj – launcher dokończy sam.': 'Sign in with the Microsoft account that has Minecraft and come back here – the launcher finishes by itself.',
   'Odzyskaj profile ({0})': 'Recover profiles ({0})',
   'Odzyskany profil {0}': 'Recovered profile {0}',
+  'bez pingu': 'no ping',
+  'Ten komputer nie dostał odpowiedzi od serwera ({0}). Lista serwerów widzi go jako działający – jeśli gra też się nie łączy, sprawdź zaporę, antywirusa albo sieć.': 'This computer got no answer from the server ({0}). The server list sees it running – if the game cannot connect either, check your firewall, antivirus or network.',
   'Nie ma folderów do odzyskania.': 'There are no folders to recover.',
   'światy: {0}': 'worlds: {0}',
   'Przywróć zaznaczone ({0})': 'Restore selected ({0})',
