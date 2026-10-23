@@ -22,6 +22,7 @@ import { activityFromLog, SocialClient, SocialError, type SocialUser, type Statu
 import { decorate, serverKey, StatusRules, Throttle, type GameStatus } from './serverStatus';
 import { decrypt, encrypt, isEncrypted, newDeviceKey, type DeviceKey, type PublicDevice } from './chatCrypto';
 import { groupAad, openGroupMessage, sealGroupText, type GroupChatMessage, type GroupKey } from './groupChat';
+import { createGifMedia } from './gifMedia';
 import { ClanLogoCache, isLogoPng } from './clanLogo';
 import { RankIconCache } from './rankIcons';
 import { fitSize, ImageCache, keyText, MAX_BYTES, openImage, parseKey, sealImage, type ChatImageView, type ImageKey } from './chatImages';
@@ -1806,6 +1807,13 @@ const social = new SocialClient({
   },
 });
 
+/** GIFs and stickers in the chat: their files through the server or from the CDN, as the server says (gifMedia.ts). */
+const gifMedia = createGifMedia({
+  config: () => social.call<{ proxy?: boolean }>('GET', '/v1/gifs', undefined, false),
+  serverUrl: () => store.settings.socialUrl,
+  fetch: (url) => net.fetch(url),
+});
+
 /** Friends joining worlds opened to LAN, through the server's relay. */
 const lan = new LanTunnels({
   url: () => store.settings.socialUrl,
@@ -1883,6 +1891,7 @@ const bridge = new GameBridge({
     const size = fitSize(width, height, 960);
     return (size.w < width ? img.resize({ width: size.w, height: size.h, quality: 'good' }) : img).toPNG();
   },
+  gifStill: (url) => gifMedia.bytes(url),
   clanLogo: (id, version) => clanLogos.get(id, version),
   communityLogo: (id, version) => communityLogos.get(id, version),
   gameStatus: (status) => onGameStatus(status),
@@ -1979,7 +1988,7 @@ handle('lan:join', (friendId: string) => {
 });
 
 handle('social:api', (method: string, apiPath: string, body?: unknown) => {
-  if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages|invites|cosmetics|waypoints|parties|achievements|challenges|groups|clans|communities|wallet|shop)(\/[\w-]+)*(\?[\w=&%.-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
+  if (!['GET', 'POST', 'DELETE'].includes(method) || !/^\/v1\/(me|friends|messages|invites|cosmetics|waypoints|parties|achievements|challenges|groups|clans|communities|wallet|shop|gifs)(\/[\w-]+)*(\?[\w=&%.-]*)?$/.test(apiPath)) throw new Error('social:bad_request');
   return socialCall(() => chatCall(method, apiPath, body));
 });
 
@@ -2363,9 +2372,14 @@ handle('notify:show', (title: unknown, body: unknown, target: unknown) => {
 if (process.platform === 'win32') app.setAppUserModelId(app.isPackaged ? APP_USER_MODEL_ID : process.execPath);
 
 // Lets the page show screenshots and world icons (only images inside profile folders).
-protocol.registerSchemesAsPrivileged([{ scheme: 'slash-media', privileges: { standard: true, secure: true, supportFetchAPI: true } }]);
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'slash-media', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  // GIFs and stickers in the chat (gifMedia.ts): only the providers' CDN files, through the server when it says so
+  { scheme: 'slash-gif', privileges: { standard: true, secure: true } },
+]);
 
 app.whenReady().then(async () => {
+  protocol.handle('slash-gif', (request) => gifMedia.handle(request));
   protocol.handle('slash-media', (request) => {
     const url = new URL(request.url);
     const file = url.searchParams.get('path') ?? '';

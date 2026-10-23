@@ -3,6 +3,7 @@
 
 import { api } from './api.js';
 import { openDirect, openGroup, pictureUrl, sealDirect, sealGroup } from './e2e.js';
+import { gifCard, gifConfig, openGifSheet, parseGif } from './gif.js';
 import { t } from './i18n.js';
 import { $, avatarEl, el, errorText, guard, icon, toast, when } from './ui.js';
 
@@ -32,10 +33,13 @@ export async function openChat(root, kind, id, channel, info) {
   const typing = el('div', { class: 'typing muted small' });
   const input = el('textarea', { rows: 1, placeholder: t('Napisz wiadomość…'), maxLength: 2000, 'aria-label': t('Wiadomość') });
   const sendBtn = el('button', { class: 'send', type: 'submit', 'aria-label': t('Wyślij') }, icon('fa-solid fa-paper-plane'));
+  // GIFs and stickers (gif.js): shown when the server has a provider's key
+  const gifBtn = el('button', { class: 'gif-btn hidden', type: 'button', 'aria-label': t('GIF-y i naklejki'), textContent: 'GIF', onclick: () => void openGifSheet((text) => post(text)) });
+  void gifConfig().then((c) => gifBtn.classList.toggle('hidden', !c.enabled));
   const form = el('form', { class: 'composer', onsubmit: (e) => {
     e.preventDefault();
     void send();
-  } }, input, sendBtn);
+  } }, gifBtn, input, sendBtn);
   const more = el('button', { class: 'more-btn hidden', onclick: () => void older() }, t('Wcześniejsze wiadomości'));
   const head = el('header', { class: 'chat-head' },
     el('button', { class: 'icon-btn', 'aria-label': t('Wstecz'), onclick: info.onBack }, icon('fa-solid fa-chevron-left')),
@@ -103,21 +107,30 @@ async function send() {
   const text = c.input.value.trim();
   if (!text) return;
   c.input.disabled = true;
+  if (await post(text) && chat === c) {
+    c.input.value = '';
+    c.input.style.height = 'auto';
+  }
+  c.input.disabled = false;
+  c.input.focus();
+}
+
+/** A text (or a GIF's) to the open conversation, sealed for a friend or a group; true when it went. */
+async function post(text) {
+  const c = chat;
+  if (!c) return false;
   try {
     const body = c.kind === 'dm' ? await sealDirect(c.id, text) : c.kind === 'group' ? await sealGroup(c.id, text) : text;
     const res = await api('POST', paths[c.kind](c), { text: body });
-    if (chat !== c) return;
-    c.input.value = '';
-    c.input.style.height = 'auto';
+    if (chat !== c) return true;
     // the live event may have come first
     if (!c.messages.some((m) => m.id === res.message.id)) c.messages.push(c.kind === 'community' ? res.message : { ...(await open(res.message)), text });
     render(true);
+    return true;
   } catch (err) {
     const wait = err.retryAfter ? ` (${err.retryAfter} s)` : '';
     toast(errorText(err) + wait, true);
-  } finally {
-    c.input.disabled = false;
-    c.input.focus();
+    return false;
   }
 }
 
@@ -196,6 +209,7 @@ function bubble(m, prev) {
   const author = m.author ?? c.info.people?.get(m.from);
   const showName = !mine && c.kind !== 'dm' && (!prev || prev.from !== m.from || prev.event || m.at - prev.at > 5 * 60_000);
   const body = el('div', { class: 'text' });
+  const gif = !m.deleted && !m.unreadable ? parseGif(m.text) : undefined;
   if (m.deleted) body.append(el('i', { class: 'muted', textContent: t('Wiadomość usunięta') }));
   else if (m.invite) {
     body.append(el('div', { class: 'invite-card' }, icon('fa-solid fa-gamepad'), el('div', {},
@@ -204,11 +218,12 @@ function bubble(m, prev) {
   } else if (m.waypoint) body.append(icon('fa-solid fa-location-dot'), ` ${m.waypoint.name} (${m.waypoint.x}, ${m.waypoint.y}, ${m.waypoint.z})`);
   else if (m.image) body.append(picture(m.image));
   else if (m.poll) body.append(icon('fa-solid fa-square-poll-vertical'), ` ${m.poll.question ?? m.text}`);
+  else if (gif) body.append(gifCard(gif));
   else body.append(...linkify(m.text ?? ''));
   if (m.unreadable && !m.deleted) body.classList.add('unreadable');
   const meta = el('div', { class: 'meta' }, when(m.at), m.editedAt && !m.deleted ? ` · ${t('edytowano')}` : '', m.encrypted ? el('span', { title: t('Zaszyfrowana') }, ' ', icon('fa-solid fa-lock')) : '',
     mine && c.kind === 'dm' && m.readAt ? ` · ${t('przeczytano')}` : '');
-  return el('div', { class: `msg${mine ? ' mine' : ''}${m.mentions?.includes(c.info.me) ? ' mention' : ''}` },
+  return el('div', { class: `msg${mine ? ' mine' : ''}${m.mentions?.includes(c.info.me) ? ' mention' : ''}${gif ? ` has-gif${gif.k === 'sticker' ? ' has-sticker' : ''}` : ''}` },
     showName ? el('div', { class: 'author', textContent: author?.name ?? '?' }) : '', body, meta);
 }
 

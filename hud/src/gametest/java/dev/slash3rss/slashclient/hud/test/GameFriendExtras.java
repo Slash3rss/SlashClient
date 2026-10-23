@@ -124,6 +124,26 @@ public class GameFriendExtras implements FabricClientGameTest {
 			context.waitTicks(5);
 			context.takeScreenshot("friends-picture-view");
 
+			// GIFs and stickers from the launcher: "[GIF] title" in the bubble, a click shows the still frame big
+			context.runOnClient(mc -> {
+				try {
+					FriendExtrasTestHooks.sampleGif();
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+				// the fresh screenshot's card would cover the bubbles
+				Shots.forgetRecent();
+			});
+			context.setScreen(() -> {
+				Social.viewing = F;
+				return new FriendsScreen(null);
+			});
+			context.waitTicks(10);
+			context.takeScreenshot("friends-gif");
+			context.setScreen(() -> PictureScreen.forGif(null, FriendExtrasTestHooks.GIF_STILL, "Kumpel"));
+			context.waitTicks(5);
+			context.takeScreenshot("friends-gif-view");
+
 			context.runOnClient(mc -> TestHooks.reportAudit());
 			String problems = context.computeOnClient(mc -> String.join("\n", dev.slash3rss.slashclient.hud.ui.Ui.PROBLEMS));
 			context.runOnClient(mc -> TestHooks.audit(false));

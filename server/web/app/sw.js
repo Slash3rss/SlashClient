@@ -2,7 +2,7 @@
 // shows the server's notifications (push.ts). The API (/v1/) is never kept: it always goes to the server.
 
 const CACHE = 'slashclient-app-v3';
-const SHELL = ['/app/', '/app/app.css', '/app/main.js', '/app/api.js', '/app/chat.js', '/app/crypto.js', '/app/e2e.js', '/app/i18n.js', '/app/notify.js', '/app/qr.js', '/app/ui.js',
+const SHELL = ['/app/', '/app/app.css', '/app/main.js', '/app/api.js', '/app/chat.js', '/app/crypto.js', '/app/e2e.js', '/app/gif.js', '/app/i18n.js', '/app/notify.js', '/app/qr.js', '/app/ui.js',
   '/app/manifest.webmanifest', '/app/icon-192.png', '/vendor/fa/css/all.min.css', '/vendor/fa/webfonts/fa-solid-900.woff2', '/vendor/fa/webfonts/fa-regular-400.woff2', '/vendor/fa/webfonts/fa-brands-400.woff2'];
 
 self.addEventListener('install', (e) => {

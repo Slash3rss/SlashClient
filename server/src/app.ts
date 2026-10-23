@@ -20,6 +20,7 @@ import { mediaRoutes, type MediaLimits } from './media.ts';
 import { changelogRoutes, createDownloads, holdForPaused, isDownloadOs } from './downloads.ts';
 import { serveChangelog } from './changelogPage.ts';
 import { createCurseForge } from './curseforge.ts';
+import { createGifs, gifRoutes } from './gifs.ts';
 import { profileShareRoutes, type ShareLimits } from './profileShares.ts';
 import { profileCloudRoutes, type CloudLimits } from './profileCloud.ts';
 import { createAchievements, serverKey, TICK_MS } from './achievements.ts';
@@ -204,6 +205,9 @@ export function createApp(cfg: Config) {
   const settings = new Settings(db.sql, SETTING_DEFS, base, secretBox(cfg.storage?.secretKey).box);
   /** A rate limiter whose per-minute number is that setting. */
   const limiter = (key: string) => rateLimiter(() => settings.num(key));
+  // GIFs and stickers: searches with the server's key, media passed through (gifs.ts)
+  const gifs = createGifs({ settings, fetchImpl: cfg.fetchImpl });
+  const limitGifMedia = limiter('gifs.mediaPerMinute');
   const sessionIdleMs = () => settings.num('security.sessionIdleDays') * 86_400_000;
   // the word lists and the logo's size are module-wide (clans and communities share them)
   useBlocklist(() => ({ words: settings.list('moderation.blockedWords'), tags: settings.list('moderation.blockedTags') }));
@@ -791,6 +795,7 @@ export function createApp(cfg: Config) {
     limitReactions: limiter('communities.reactionsPerMinute'),
     countMessage: (user) => achievements.store.messages.count(user),
     checkAchievements: (user) => achievements.check(user),
+    gifs: { enabled: () => gifs.enabled(), limitSend: limiter('gifs.sendPerMinute') },
     sizeGoals: () => achievements.registry.active().filter((a) => a.group === 'community_size').map((a) => a.goal),
     // pictures and polls in the chat (communityMedia.ts): the pictures next to the database, like the chat's
     media: {
@@ -1497,6 +1502,13 @@ export function createApp(cfg: Config) {
     }),
     ...streams.routes,
     ...phones.routes,
+    // GIF and sticker search through the server's key (gifs.ts)
+    ...gifRoutes({
+      gifs, authed, limitSearch: limiter('gifs.searchesPerMinute'),
+      fail: (status, code) => {
+        throw new HttpError(status, code);
+      },
+    }),
     // voting for a server on the server list from the launcher (serverVotes.ts)
     ...serverVoteRoutes({
       settings, authed, clientIp, body, fetchImpl: cfg.fetchImpl,
@@ -1678,6 +1690,20 @@ export function createApp(cfg: Config) {
       if (answer.status !== 200) (req as SeenRequest).slashError = JSON.parse(answer.body).error ?? String(answer.status);
       res.writeHead(answer.status, { 'Content-Type': 'application/json' });
       res.end(answer.body);
+      return;
+    }
+
+    // a GIF's or sticker's file from the provider's CDN, passed through so players' addresses stay here (gifs.ts)
+    if ((req.method === 'GET' || req.method === 'HEAD') && url.pathname === '/v1/gifs/media') {
+      try {
+        limitGifMedia(clientIp(req));
+      } catch {
+        (req as SeenRequest).slashError = 'rate_limited';
+        res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '10' });
+        res.end(JSON.stringify({ error: 'rate_limited' }));
+        return;
+      }
+      await gifs.media(req, res, url.searchParams.get('u'));
       return;
     }
 

@@ -391,6 +391,11 @@ public class FriendsScreen extends Screen {
 		return y1 > y0 ? new int[] { x, y0, w, y1 - y0 } : null;
 	}
 
+	/** A GIF's or sticker's bubble ("[GIF] title"): a click shows its still frame big. */
+	private void openGif(int[] seen, ChatGifs.Gif gif, String from) {
+		hits.add(new Hit(seen[0], seen[1], seen[2], seen[3], () -> minecraft.setScreenAndShow(PictureScreen.forGif(this, gif.still(), from))));
+	}
+
 	/** A deleted message: a muted outline with "Message deleted". Returns the bubble's width. */
 	private int tombstoneWidth() {
 		return Ui.width(Ui.tr("slashclient-hud.message.deleted")) + 26;
@@ -712,7 +717,8 @@ public class FriendsScreen extends Screen {
 				if (lastCard != null) bubbles.add(new Bubble(lastCard[0], lastCard[1], lastCard[2], lastCard[3], null, null, m));
 				continue;
 			}
-			List<FormattedCharSequence> lines = font.split(Ui.text(m.text()), maxBubble - 12);
+			ChatGifs.Gif gif = ChatGifs.parse(m.text());
+			List<FormattedCharSequence> lines = font.split(Ui.text(gif != null ? gif.line() : m.text()), maxBubble - 12);
 			int textW = 0;
 			for (FormattedCharSequence l : lines) textW = Math.max(textW, font.width(l));
 			Component time = timeOf(m.at(), m.editedAt());
@@ -760,6 +766,7 @@ public class FriendsScreen extends Screen {
 			if (reactH > 0) drawReactions(g, m, mine, bx2, bw, by + bh + 3, cx, cw, top, bottom);
 			int[] seen = visible(bx2, by, bw, bh, top, bottom);
 			if (seen != null) bubbles.add(new Bubble(seen[0], seen[1], seen[2], seen[3], null, null, m));
+			if (seen != null && gif != null) openGif(seen, gif, m.author());
 		}
 		Ui.end();
 		g.disableScissor();
@@ -1074,7 +1081,8 @@ public class FriendsScreen extends Screen {
 				if (lastCard != null) bubbles.add(new Bubble(lastCard[0], lastCard[1], lastCard[2], lastCard[3], m, null));
 				continue;
 			}
-			String text = m.image() != null ? Ui.tr("slashclient-hud.picture.unreadable").getString() : m.text();
+			ChatGifs.Gif gif = m.image() == null ? ChatGifs.parse(m.text()) : null;
+			String text = m.image() != null ? Ui.tr("slashclient-hud.picture.unreadable").getString() : gif != null ? gif.line() : m.text();
 			List<FormattedCharSequence> lines = font.split(Ui.text(text), maxBubble - 12);
 			int textW = 0;
 			for (FormattedCharSequence l : lines) textW = Math.max(textW, font.width(l));
@@ -1098,6 +1106,7 @@ public class FriendsScreen extends Screen {
 				tooltip = Ui.tr("slashclient-hud.message.editedAt", TIME.format(Instant.ofEpochMilli(m.editedAt())));
 			int[] seen = visible(bx, y, bw, bh, top, bottom);
 			if (seen != null) bubbles.add(new Bubble(seen[0], seen[1], seen[2], seen[3], m, null));
+			if (seen != null && gif != null) openGif(seen, gif, f.name());
 		}
 		g.disableScissor();
 		maxScroll = Math.max(0, total - (bottom - top));
@@ -1340,7 +1349,8 @@ public class FriendsScreen extends Screen {
 				}
 				continue;
 			}
-			List<FormattedCharSequence> lines = font.split(Ui.text(m.text()), maxBubble - 12);
+			ChatGifs.Gif gif = ChatGifs.parse(m.text());
+			List<FormattedCharSequence> lines = font.split(Ui.text(gif != null ? gif.line() : m.text()), maxBubble - 12);
 			int textW = 0;
 			for (FormattedCharSequence l : lines) textW = Math.max(textW, font.width(l));
 			Component time = timeOf(m.at(), m.editedAt());
@@ -1365,6 +1375,7 @@ public class FriendsScreen extends Screen {
 				tooltip = Ui.tr("slashclient-hud.message.editedAt", TIME.format(Instant.ofEpochMilli(m.editedAt())));
 			int[] seen = visible(bx2, by, bw, bh, top, bottom);
 			if (seen != null) bubbles.add(new Bubble(seen[0], seen[1], seen[2], seen[3], null, m));
+			if (seen != null && gif != null) openGif(seen, gif, gr.nameOf(m.from()));
 		}
 		Ui.end();
 		g.disableScissor();

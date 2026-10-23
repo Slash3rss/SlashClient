@@ -1773,3 +1773,35 @@ body.feature-off-streams .feature-streams { display: none !important; }
 .fr-chat-head:has(> .fr-com-tabs):has(> .fr-com-server) { display: flex; column-gap: 6px; }
 .fr-chat-head:has(> .fr-com-tabs) > .fr-com-server { flex-basis: 100%; min-width: 0; }
 .fr-chat-head:has(> .fr-com-tabs):has(> .fr-com-server) > .fr-names { margin: 0 4px 0 6px; }
+
+/* GIFs and stickers in the chat (gifs.ts): the picker above the composer and the messages */
+.fr-chat { position: relative; }
+.fr-composer .fr-gif-btn { font-weight: 800; font-size: 11px; letter-spacing: .04em; }
+.gif-picker { position: absolute; left: 12px; bottom: 66px; z-index: 30; width: min(420px, calc(100% - 24px)); height: min(460px, calc(100% - 90px)); display: flex; flex-direction: column; gap: 8px; padding: 10px; background: rgba(14, 17, 26, .97); }
+.gif-head { display: flex; align-items: center; gap: 8px; }
+.gif-tabs { display: flex; gap: 4px; flex: 1; }
+.gif-tab { padding: 6px 12px; border-radius: 999px; font-size: 13px; background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary); }
+.gif-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.gif-search { width: 100%; padding: 8px 10px; font: inherit; font-size: 14px; color: var(--text-primary); background: rgba(0, 0, 0, .25); border: 1px solid var(--glass-border); border-radius: var(--btn-radius); }
+.gif-search:focus { outline: none; border-color: var(--glass-border-focus); }
+.gif-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.gif-grid { columns: 3; column-gap: 6px; }
+.gif-item { display: block; width: 100%; margin: 0 0 6px; padding: 0; border: 0; border-radius: 8px; overflow: hidden; break-inside: avoid; background: rgba(255, 255, 255, .05); cursor: pointer; line-height: 0; }
+.gif-item.sticker { background: transparent; }
+.gif-item img { width: 100%; height: auto; display: block; }
+.gif-item:hover, .gif-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.gif-item:disabled { opacity: .5; }
+.gif-status { padding: 10px; text-align: center; font-size: 13px; }
+.gif-status:empty { display: none; }
+.gif-foot { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-align: right; color: var(--text-secondary); }
+.fr-bubble.fr-gif { padding: 4px; position: relative; line-height: 0; cursor: zoom-in; }
+.fr-msg.mine .fr-bubble.fr-gif { background: rgba(59, 130, 246, .35); }
+.fr-bubble.fr-gif img { display: block; max-width: 100%; height: auto; border-radius: 10px; background: rgba(0, 0, 0, .25); }
+.fr-bubble.fr-gif.fr-sticker, .fr-msg.mine .fr-bubble.fr-gif.fr-sticker { padding: 0; background: transparent; box-shadow: none; border: 0; }
+.fr-bubble.fr-gif.fr-sticker img { background: transparent; border-radius: 0; }
+.fr-gif-tag { position: absolute; left: 10px; top: 9px; padding: 1px 5px; border-radius: 4px; font-size: 10px; font-weight: 800; line-height: 1.4; color: #fff; background: rgba(0, 0, 0, .55); }
+.fr-bubble.fr-gif .fr-lock { position: absolute; right: 10px; bottom: 9px; margin: 0; color: #fff; opacity: .8; text-shadow: 0 1px 2px #000; }
+.fr-gif-lightbox { grid-template-rows: 1fr auto; gap: 10px; }
+.fr-gif-lightbox img { min-width: min(320px, 100%); image-rendering: auto; }
+.fr-gif-caption { color: #ddd; font-size: 13px; }
+.fr-gif-caption:empty { display: none; }

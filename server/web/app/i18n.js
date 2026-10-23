@@ -212,4 +212,16 @@ export const EN = {
   'Nazwa grupy: do 32 znaków.': 'Group name: up to 32 characters.',
   'Już jest w środku.': 'Already a member.',
   'Nie masz do tego uprawnień.': 'You are not allowed to do that.',
+  // GIFs and stickers (gif.js)
+  'GIF-y i naklejki': 'GIFs and stickers',
+  'GIF-y': 'GIFs',
+  'Naklejki': 'Stickers',
+  'Szukaj GIF-ów…': 'Search GIFs…',
+  'Szukaj naklejek…': 'Search stickers…',
+  'Nic nie znaleziono.': 'Nothing found.',
+  'Brak wyników.': 'No results.',
+  'GIF-y są chwilowo niedostępne.': 'GIFs are unavailable for now.',
+  'GIF-y są wyłączone na tym serwerze.': 'GIFs are switched off on this server.',
+  'Nie udało się wczytać GIF-ów. Spróbuj za chwilę.': 'Could not load GIFs. Try again in a moment.',
+  'Tego GIF-a nie można wysłać.': 'This GIF cannot be sent.',
 };

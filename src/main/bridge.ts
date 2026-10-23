@@ -43,6 +43,8 @@ export interface BridgeOptions {
   sendCommunityImage?: (communityId: string, channelId: string, file: string) => Promise<unknown>;
   /** A picture from a community's chat, as PNG. */
   communityImage?: (communityId: string, id: string) => Promise<Buffer>;
+  /** A GIF's or sticker's still frame from the provider's CDN (through the server when it says so), as it comes: GIF, PNG or JPEG. */
+  gifStill?: (url: string) => Promise<{ type: string; data: Buffer }>;
   /** A clan's logo (PNG, 64×64) by the clan's id and the logo's version. */
   clanLogo?: (id: string, version: number) => Promise<Buffer>;
   /** A community's logo, the same way. */
@@ -326,6 +328,19 @@ export class GameBridge {
         return res.end(png);
       } catch (err) {
         return this.send(res, 404, { error: (err as { code?: string }).code ?? (err as Error).message });
+      }
+    }
+
+    // a GIF's still frame (HUD 0.9.40+): only addresses on the providers' CDN hosts (gifMedia.ts checks)
+    const gif = /^\/gif\/still\?u=([\w%.~*-]{1,1500})$/.exec(url);
+    if (method === 'GET' && gif) {
+      if (!this.opts.gifStill) return this.send(res, 404, { error: 'not_found' });
+      try {
+        const still = await this.opts.gifStill(decodeURIComponent(gif[1]));
+        res.writeHead(200, { 'Content-Type': still.type, 'Content-Length': still.data.length, 'Cache-Control': 'no-store' });
+        return res.end(still.data);
+      } catch (err) {
+        return this.send(res, 404, { error: (err as Error).message });
       }
     }
 

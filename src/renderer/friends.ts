@@ -16,6 +16,8 @@ import { cleanStream, createStreamsSection, liveBadge, noticeText, streamLine, t
 import { canDelete, canEdit, editHint, editedLabel, replaceMessage, slowDownSeconds, slowDownText, tombstone, withMenu, type MenuItem } from './chatEdits';
 import { openMediaPanel, removedCard, revealMessage } from './chatMediaPanel';
 import { directSource } from './chatMediaSources';
+import { gifCard, gifConfig, toggleGifPicker } from './gifs';
+import { gifFallback, parseGifText } from '../shared/gifMessage';
 
 /**
  * The "Friends" view: signing in to the social server, the friends list with live
@@ -169,6 +171,11 @@ export function socialErrorText(code: string): string {
     bad_role_name: t('Nazwa roli: 1–24 znaki.'),
     role_taken: t('Rola o tej nazwie już jest.'),
     bad_color: t('Wybierz kolor roli.'),
+    // GIFs and stickers (gifs.ts)
+    gifs_unavailable: t('GIF-y są chwilowo niedostępne.'),
+    gifs_disabled: t('GIF-y są wyłączone na tym serwerze.'),
+    gifs_failed: t('Nie udało się wczytać GIF-ów. Spróbuj za chwilę.'),
+    bad_gif: t('Tego GIF-a nie można wysłać.'),
     // polls in communities (communityMedia.ts)
     bad_poll: t('Ankieta: pytanie i 2–10 różnych odpowiedzi.'),
     bad_poll_end: t('Koniec ankiety: od minuty do miesiąca od teraz.'),
@@ -518,7 +525,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   // the layout is built once, so the message box keeps its text and focus
   let meBox: HTMLElement, listBox: HTMLElement, chatBox: HTMLElement, messagesBox: HTMLElement, chatHead: HTMLElement, typingBox: HTMLElement;
   let inviteBar: HTMLFormElement;
-  let input: HTMLTextAreaElement, counter: HTMLElement, sendBtn: HTMLButtonElement, composer: HTMLFormElement, editBar: HTMLElement, pictureBtn: HTMLButtonElement;
+  let input: HTMLTextAreaElement, counter: HTMLElement, sendBtn: HTMLButtonElement, composer: HTMLFormElement, editBar: HTMLElement, pictureBtn: HTMLButtonElement, gifBtn: HTMLButtonElement;
 
   function buildLayout() {
     meBox = el('div', { className: 'fr-me' });
@@ -566,7 +573,10 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       e.preventDefault();
       void pastePicture(file);
     });
-    composer = el('form', { className: 'fr-composer' }, pictureBtn, input, counter, sendBtn);
+    // GIFs and stickers (server 0.9.40+ with a provider's key): a picker above the composer (gifs.ts)
+    gifBtn = el('button', { type: 'button', className: 'icon-btn fr-gif-btn hidden', title: t('GIF-y i naklejki'), textContent: 'GIF' });
+    gifBtn.addEventListener('click', () => void toggleGifPicker({ api, host: chatBox, send: sendGif, errorText: deps.errorText }));
+    composer = el('form', { className: 'fr-composer' }, pictureBtn, gifBtn, input, counter, sendBtn);
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
         e.preventDefault();
@@ -1076,6 +1086,22 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     }
   }
 
+  /** A GIF's message text to the open chat (encrypted like any text in direct and group chats). */
+  async function sendGif(text: string): Promise<boolean> {
+    if (communities.active()) return communities.send(text);
+    if (groups.active()) return groups.send(text);
+    const id = selected;
+    if (!id) return false;
+    try {
+      const { message }: { message: Message } = await api.socialApi('POST', `/v1/messages/${id}`, { text });
+      addMessage(message);
+      return true;
+    } catch (err) {
+      deps.toast(deps.errorText(err), true);
+      return false;
+    }
+  }
+
   /** A picture file to the open chat: the launcher scales it, encrypts it and sends it. */
   async function sendPicture(btn: HTMLButtonElement) {
     // a community's channel: not encrypted, kept on the server for its members (communities.ts)
@@ -1176,6 +1202,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     const com = communities.active() ? communities.composerState() : undefined;
     pictureBtn.classList.toggle('hidden', !!com && !communities.picturesHere());
     pictureBtn.title = com ? t('Wyślij obraz (widzą go członkowie społeczności)') : t('Wyślij obraz (zaszyfrowany)');
+    void gifConfig(api).then((c) => gifBtn.classList.toggle('hidden', !c.enabled || (!!com && !com.canPost)));
     input.disabled = !!com && !com.canPost;
     sendBtn.disabled = !!com && !com.canPost;
     input.placeholder = com?.reason ?? t('Napisz wiadomość…');
@@ -1384,8 +1411,9 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       }
       // messages sent close together stick to each other
       const grouped = m.from === lastFrom && m.at - lastAt < 5 * 60_000;
+      const gif = !m.deleted && !m.unreadable ? parseGifText(m.text) : undefined;
       const content = m.deleted ? bubble(m) : m.invite ? inviteCard(m, m.from === me) : m.waypoint ? waypointCard(m.waypoint, m.from === me, deps.toast) : m.image ? imageCard(m.image, m.from === me)
-        : m.imageRemoved ? removedCard(m.imageRemoved, m.from === me) : bubble(m);
+        : m.imageRemoved ? removedCard(m.imageRemoved, m.from === me) : gif ? gifCard(gif, m.from === me, m.encrypted) : bubble(m);
       const row = el('div', { className: `fr-msg${m.from === me ? ' mine' : ''}${grouped ? ' grouped' : ''}${editing?.id === m.id && !editing.group ? ' editing' : ''}`, title: new Date(m.at).toLocaleString(locale()) },
         withMenu(content, messageMenu(m, chat.editWindowMs)),
         grouped ? '' : el('small', { className: 'fr-time', textContent: time.format(m.at) }));
@@ -1469,7 +1497,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
             if (!document.hasFocus()) systemNotify(f.name, t('{0} zaprasza Cię na {1}', f.name, inv.server), f.id);
           } else if (m.waypoint) notify(f, t('udostępnia punkt {0} ({1}, {2}, {3})', m.waypoint.name, m.waypoint.x, m.waypoint.y, m.waypoint.z));
           else if (m.image) notify(f, t('wysyła zrzut ekranu'));
-          else notify(f, m.text);
+          else notify(f, gifFallback(m.text));
         }
         renderList();
         if (m.from === selected) renderChat();

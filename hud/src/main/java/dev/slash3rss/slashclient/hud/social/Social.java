@@ -57,7 +57,7 @@ public final class Social {
 
 		/** Plain text (not a picture, invite or waypoint) that is still there: what may be edited or copied. */
 		public boolean plainText() {
-			return !deleted && image == null && invite.isEmpty() && waypoint == null;
+			return !deleted && image == null && invite.isEmpty() && waypoint == null && !ChatGifs.isGif(text);
 		}
 
 		public Message(long id, String from, String to, String text, long at, boolean read, String invite, String inviteVersion) {
@@ -376,7 +376,7 @@ public final class Social {
 					else if (m.image() != null) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.picture.toast").getString(), null);
 					else if (!m.party().isEmpty()) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.party.toast", m.invite()).getString(), null);
 					else if (!m.invite().isEmpty()) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.invite.toast", m.invite()).getString(), null);
-					else toast(f != null ? f.name() : "?", m.text(), null);
+					else toast(f != null ? f.name() : "?", ChatGifs.shown(m.text()), null);
 				}
 			}
 			case "presence" -> {
@@ -614,6 +614,23 @@ public final class Social {
 		if (!bridged()) throw new IllegalStateException("no launcher");
 		try {
 			HttpRequest req = HttpRequest.newBuilder(URI.create(URL + "/chat/image/" + imageId))
+				.timeout(Duration.ofSeconds(30)).header("Authorization", "Bearer " + KEY).GET().build();
+			HttpResponse<byte[]> res = HTTP.send(req, HttpResponse.BodyHandlers.ofByteArray());
+			if (res.statusCode() != 200) throw new IllegalStateException("HTTP " + res.statusCode());
+			return res.body();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException(e);
+		} catch (java.io.IOException e) {
+			throw new IllegalStateException(e);
+		}
+	}
+
+	/** A GIF's still frame from the chat, through the launcher (which asks the server or the CDN, as the server says); blocks. */
+	static byte[] gifStillBytes(String url) {
+		if (!bridged() || !ChatGifs.cdn(url)) throw new IllegalStateException("no launcher");
+		try {
+			HttpRequest req = HttpRequest.newBuilder(URI.create(URL + "/gif/still?u=" + java.net.URLEncoder.encode(url, java.nio.charset.StandardCharsets.UTF_8)))
 				.timeout(Duration.ofSeconds(30)).header("Authorization", "Bearer " + KEY).GET().build();
 			HttpResponse<byte[]> res = HTTP.send(req, HttpResponse.BodyHandlers.ofByteArray());
 			if (res.statusCode() != 200) throw new IllegalStateException("HTTP " + res.statusCode());

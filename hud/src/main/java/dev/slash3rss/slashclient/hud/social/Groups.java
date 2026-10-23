@@ -47,7 +47,7 @@ public final class Groups {
 
 		/** A text message still there (not a picture or the group's own line): what may be edited or copied. */
 		public boolean plainText() {
-			return !deleted && image == null && event.isEmpty();
+			return !deleted && image == null && event.isEmpty() && !ChatGifs.isGif(text);
 		}
 	}
 	public record ClanMember(String id, String name, String role, boolean online) {}
@@ -191,7 +191,7 @@ public final class Groups {
 				boolean open = m.group().equals(viewing);
 				bump(m.group(), mine || open || !m.event().isEmpty() ? 0 : 1, m.at());
 				if (open && !mine) markRead(m.group());
-				else if (!mine && m.event().isEmpty()) Social.toast(title(g) + " · " + g.nameOf(m.from()), m.text(), "m-friends");
+				else if (!mine && m.event().isEmpty()) Social.toast(title(g) + " · " + g.nameOf(m.from()), ChatGifs.shown(m.text()), "m-friends");
 			}
 			// edited or deleted: only the new version, no toast
 			case "group-message-edit", "group-message-delete" -> {

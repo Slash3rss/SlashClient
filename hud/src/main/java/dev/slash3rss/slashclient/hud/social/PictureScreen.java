@@ -15,6 +15,8 @@ public class PictureScreen extends Screen {
 
 	/** Set for a picture from a community's chat (not encrypted; fetched by its community). */
 	private String communityId;
+	/** Set for a GIF or a sticker (ChatGifs): its still frame's CDN address. */
+	private String gifStill;
 
 	public PictureScreen(Screen parent, String imageId, String from) {
 		super(Component.translatable("slashclient-hud.picture.view"));
@@ -30,12 +32,19 @@ public class PictureScreen extends Screen {
 		return s;
 	}
 
+	/** A GIF's or sticker's still frame, big. */
+	public static PictureScreen forGif(Screen parent, String still, String from) {
+		PictureScreen s = new PictureScreen(parent, "", from);
+		s.gifStill = still;
+		return s;
+	}
+
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		//#if MC < 1.20.2
 		//$ extractBackground(g, mx, my, delta);
 		//#endif
-		ChatImages.Texture tex = communityId != null ? ChatImages.community(communityId, imageId) : ChatImages.chat(imageId);
+		ChatImages.Texture tex = gifStill != null ? ChatImages.gif(gifStill) : communityId != null ? ChatImages.community(communityId, imageId) : ChatImages.chat(imageId);
 		if (tex.ready()) {
 			int[] size = ChatImages.fit(tex.w(), tex.h(), width - 40, height - 50);
 			int x = (width - size[0]) / 2, y = (height - 14 - size[1]) / 2;
