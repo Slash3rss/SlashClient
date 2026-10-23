@@ -196,6 +196,8 @@
 	"slashclient-hud.ui.settings": "Ustawienia",
 	"slashclient-hud.ui.openIt": "Otwórz",
 	"slashclient-hud.ui.back": "Wstecz",
+	"slashclient-hud.ui.undo": "Cofnij (%s)",
+	"slashclient-hud.ui.redo": "Ponów (%s)",
 	"slashclient-hud.ui.enabled": "Włączony",
 	"slashclient-hud.ui.noSettings": "Ten dodatek nie ma ustawień.",
 	"slashclient-hud.ui.moveIt": "Przesuń na ekranie",

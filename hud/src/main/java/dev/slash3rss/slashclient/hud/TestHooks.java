@@ -180,6 +180,72 @@ public final class TestHooks {
 		return SlashHud.config.placement(id).enabled;
 	}
 
+	// ---------- the editor's undo and redo (GameHudUndo) ----------
+
+	/** "steps back, steps forward" of the open editor. */
+	public static String historyState() {
+		return ((HudEditScreen) screen()).historySizes();
+	}
+
+	/** The middle of the editor's undo or redo button (GUI coordinates), or null when it is not shown. */
+	public static double[] historyButton(boolean redo) {
+		return ((HudEditScreen) screen()).historyButtonCenter(redo);
+	}
+
+	/** A point inside a module's box in the layout editor. */
+	public static double[] modulePoint(String id) {
+		int[] b = ((HudEditScreen) screen()).boxOf(id);
+		return new double[] { b[0] + Math.min(4, b[2] / 2.0), b[1] + Math.min(4, b[3] / 2.0) };
+	}
+
+	/** The middle of a row of the open settings page, or null when it is not drawn. */
+	public static double[] settingsRow(String labelKey) {
+		int[] r = HudEditScreen.ROWS.get(labelKey);
+		return r == null ? null : new double[] { r[0] + r[2] / 2.0, r[1] + r[3] / 2.0 };
+	}
+
+	/** A point on a slider of the open settings page, `f` of the way along it. */
+	public static double[] sliderPoint(String labelKey, double f) {
+		int[] s = HudEditScreen.SLIDERS.get(labelKey);
+		return s == null ? null : new double[] { s[0] + s[2] * f, s[1] + 5 };
+	}
+
+	/** The right mouse button pressed and let go on the open screen. */
+	public static void rightClick(double[] at) {
+		var e = new net.minecraft.client.input.MouseButtonEvent(at[0], at[1], new net.minecraft.client.input.MouseButtonInfo(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT, 0));
+		//#if MC >= 1.21.9
+		screen().mouseClicked(e, false);
+		screen().mouseReleased(e);
+		//#else
+		//$ screen().mouseClicked(e.x(), e.y(), e.button());
+		//$ screen().mouseReleased(e.x(), e.y(), e.button());
+		//#endif
+	}
+
+	/** A key with Ctrl (Cmd on a Mac), and Shift when asked, pressed on the open screen. */
+	public static void commandKey(char letter, boolean shift) {
+		int key = letter == 'z' ? com.mojang.blaze3d.platform.InputConstants.KEY_Z : com.mojang.blaze3d.platform.InputConstants.KEY_Y;
+		//#if MC >= 1.21.9
+		int mods = net.minecraft.client.input.InputQuirks.EDIT_SHORTCUT_KEY_MODIFIER | (shift ? com.mojang.blaze3d.platform.InputConstants.MOD_SHIFT : 0);
+		//#else
+		//$ int mods = (net.minecraft.client.Minecraft.ON_OSX ? org.lwjgl.glfw.GLFW.GLFW_MOD_SUPER : org.lwjgl.glfw.GLFW.GLFW_MOD_CONTROL)
+		//$ 	| (shift ? org.lwjgl.glfw.GLFW.GLFW_MOD_SHIFT : 0);
+		//#endif
+		//#if MC >= 1.21.9
+		// the key's place, then from 26.3 the letter it types with the keyboard's layout (before it a scan code, not read)
+		screen().keyPressed(new net.minecraft.client.input.KeyEvent(key, letter, mods));
+		//#else
+		//$ screen().keyPressed(key, 0, mods);
+		//#endif
+	}
+
+	/** What the undo test changes: the FPS module's place, scale and background, and whether the ping is on. */
+	public static String undoProbe() {
+		HudConfig.Placement fps = SlashHud.config.placement("fps");
+		return String.format(java.util.Locale.ROOT, "fps %.2f,%.2f,%d,%d x%.2f bg=%s | ping %s", fps.ax, fps.ay, fps.dx, fps.dy, fps.scale(),
+			fps.background(SlashHud.config), SlashHud.config.placement("ping").enabled);
+	}
+
 	public static String crosshairState() {
 		return SlashHud.config.crosshair + " " + SlashHud.config.crosshairPattern;
 	}
