@@ -31,7 +31,7 @@ import java.util.List;
 public class GameServerList implements FabricClientGameTest {
 	private static final String[][] SERVERS = {
 		{ "Alfa Survival", "alpha.test" }, { "Beta SkyBlock", "beta.test" }, { "Stary serwer", "old.test" },
-		{ "Nie odpowiada", "down.test" }, { "Długi opis serwera", "long.test" }, { "Gamma PvP", "gamma.test" }, { "Delta", "delta.test" },
+		{ "Nie odpowiada", "down.test" }, { "Sieć z napisem", "text.test" }, { "Długi opis serwera", "long.test" }, { "Gamma PvP", "gamma.test" }, { "Delta", "delta.test" },
 	};
 
 	private static ServerData server(String name, String ip) {
@@ -123,6 +123,21 @@ public class GameServerList implements FabricClientGameTest {
 		if (!"SkyUp.pl".equals(shown.get(0))) throw new AssertionError("The pinned server is not on top: " + shown);
 		for (String[] s : SERVERS) if (!shown.contains(s[0])) throw new AssertionError("Missing " + s[0] + " in " + shown);
 		if (!context.computeOnClient(mc -> PartnerIcons.loadedForTest(server("SkyUp.pl", "skyup.pl")))) throw new AssertionError("The partner's animated icon is not loaded");
+		// a network that sends words for its version is shown as online; a real other version stays marked
+		String soft = context.computeOnClient(mc -> {
+			ServerData words = server("w", "text.test"), old = server("o", "old.test");
+			words.version = net.minecraft.network.chat.Component.literal("NOWY SEZON w sobotę");
+			old.version = net.minecraft.network.chat.Component.literal("1.8.9");
+			//#if MC >= 1.21
+			words.setState(ServerData.State.INCOMPATIBLE);
+			old.setState(ServerData.State.INCOMPATIBLE);
+			//#else
+			//$ words.pinged = old.pinged = true;
+			//$ words.protocol = old.protocol = 47;
+			//#endif
+			return SlashServerScreen.softIncompatible(words) + " " + SlashServerScreen.softIncompatible(old);
+		});
+		if (!soft.equals("true false")) throw new AssertionError("Text versions: " + soft);
 		// a partner added by hand under another of its addresses is still the partner (badge, frame, icon)
 		String partners = context.computeOnClient(mc -> PartnerServers.isPartner(server("a", "play.skyup.pl")) + " " + PartnerServers.isPartner(server("b", "MC.SkyUp.pl:25565"))
 			+ " " + PartnerServers.isPartner(server("c", "notskyup.pl")) + " " + PartnerServers.isPartner(server("d", "skyup.pl.evil.com"))

@@ -131,6 +131,19 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		//#endif
 	}
 
+	/**
+	 * "Another version" that is only the server's own text: networks that take several versions
+	 * (ViaVersion) often send words ("NOWY SEZON 26.3", "SkyUP") instead of a version and another
+	 * protocol number, and usually let the player in anyway. Shown as an online server, not red.
+	 * A real version number (1.8.9, 1.21.4) other than the game's stays marked.
+	 */
+	public static boolean softIncompatible(ServerData d) {
+		if (status(d) != Status.INCOMPATIBLE || d.version == null) return false;
+		String v = d.version.getString().trim();
+		// a version: "1.21.4", "Paper 1.21.4", "1.8.x-1.21.x"; anything else is the server's own words
+		return !v.matches("^[A-Za-z]{0,12}\\s?\\d+\\.\\d+[\\d.xX\\s\\-–]*$");
+	}
+
 	private List<ServerData> servers() {
 		List<ServerData> out = new ArrayList<>();
 		for (int i = 0; i < getServers().size(); i++) out.add(getServers().get(i));
@@ -361,6 +374,8 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		boolean over = Ui.inside(mx, my, x, y, w, h);
 		boolean sel = selected == d;
 		Status st = status(d);
+		// a version that is only words: drawn as an online server (softIncompatible)
+		if (softIncompatible(d)) st = Status.ONLINE;
 		boolean partner = PartnerServers.isPartner(d);
 		cardBase(g, "s" + System.identityHashCode(d), partner, d, x, y, w, h, over, sel, st == Status.INCOMPATIBLE ? 0x88EF4444 : 0);
 		Ui.begin("card", x, y, w, h);
@@ -890,6 +905,13 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		if (ip.startsWith("old.")) {
 			d.version = Component.literal("1.8.9");
 			d.protocol = 47;
+			//#if MC >= 1.21
+			state = ServerData.State.INCOMPATIBLE;
+			//#endif
+		}
+		if (ip.startsWith("text.")) {
+			d.version = Component.literal("NOWY SEZON w sobotę");
+			d.protocol = 9999;
 			//#if MC >= 1.21
 			state = ServerData.State.INCOMPATIBLE;
 			//#endif
