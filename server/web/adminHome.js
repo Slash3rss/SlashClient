@@ -3,7 +3,10 @@
 // links, icons, pictures, and lists (features, FAQ, modules, blocks) to add, remove and reorder.
 // A live preview shows the page as it would be; changes are saved as a draft or published, every
 // version stays in the history to restore, and each section can go back to its defaults.
-import { $, ApiError, api, el, errorText, fmtDate, guard, icon, toast, token } from './common.js';
+import { $, ApiError, api, confirmModal, el, errorText, fmtDate, guard, icon, toast, token } from './common.js';
+
+/** The question before leaving the editor's changes behind. */
+const DISCARD = { title: 'Porzucić niezapisane zmiany?', text: 'Zmiany z edytora przepadną.', ok: 'Porzuć', danger: true };
 
 const LANG_NAMES = { pl: 'polski', en: 'angielski' };
 const REASONS = {
@@ -253,9 +256,9 @@ async function editor() {
           render();
           changed();
         };
-        const remove = (e) => {
+        const remove = async (e) => {
           e.preventDefault();
-          if (!confirm(`Usunąć „${String(item[f.title] ?? '').trim() || `#${i + 1}`}”?`)) return;
+          if (!await confirmModal({ title: `Usunąć „${String(item[f.title] ?? '').trim() || `#${i + 1}`}”?`, ok: 'Usuń', okIcon: 'fa-solid fa-trash-can', danger: true })) return;
           list.splice(i, 1);
           open.clear();
           render();
@@ -293,8 +296,8 @@ async function editor() {
   const cards = {};
   const chips = {};
   function sectionCard(s) {
-    const reset = el('button', { type: 'button', title: 'Wróć do tego, co strona mówiła na początku', onclick: () => {
-      if (!confirm(`Przywrócić domyślną treść sekcji „${s.name}” (${LANG_NAMES[lang]})? Zmiana trafi na stronę po zapisaniu lub opublikowaniu.`)) return;
+    const reset = el('button', { type: 'button', title: 'Wróć do tego, co strona mówiła na początku', onclick: async () => {
+      if (!await confirmModal({ title: `Przywrócić domyślną treść sekcji „${s.name}” (${LANG_NAMES[lang]})?`, text: 'Zmiana trafi na stronę po zapisaniu lub opublikowaniu.', ok: 'Przywróć', okIcon: 'fa-solid fa-rotate-left' })) return;
       content[s.id] = clone(meta.defaults[lang][s.id]);
       const fresh = sectionCard(s);
       cards[s.id].replaceWith(fresh);
@@ -337,12 +340,22 @@ async function editor() {
     if (r) { toast('Szkic zapisany. Strona pokazuje dalej opublikowaną wersję.'); load(r); }
   } }, icon('fa-solid fa-floppy-disk'), 'Zapisz szkic');
   const publish = el('button', { class: 'primary', onclick: async () => {
-    if (!confirm(`Opublikować stronę główną (${LANG_NAMES[lang]})? Odwiedzający od razu zobaczą tę treść.`)) return;
+    // what goes live: the sections edited since the last save, the draft, the note for the history
+    const saved = JSON.parse(base);
+    const edited = meta.sections.filter((s) => JSON.stringify(content[s.id]) !== JSON.stringify(saved[s.id])).map((s) => s.name);
+    const rows = [
+      edited.length ? `Niezapisane zmiany w sekcjach: ${edited.join(', ')}` : state.draft ? `Szkic z ${fmtDate(state.draft.createdAt)}` : 'Treść bez zmian względem tego, co jest w edytorze.',
+      note.value.trim() ? `Notatka: „${note.value.trim()}”` : 'Bez notatki do historii.',
+    ];
+    if (!await confirmModal({
+      title: `Opublikować stronę główną (${LANG_NAMES[lang]})?`, text: 'Odwiedzający od razu zobaczą tę treść.', list: rows,
+      ok: 'Opublikuj', okIcon: 'fa-solid fa-upload', icon: 'fa-solid fa-upload',
+    })) return;
     const r = await send('publish', { content, note: note.value });
     if (r) { toast('Opublikowano. Strona główna pokazuje już nową treść.'); note.value = ''; load(r); }
   } }, icon('fa-solid fa-upload'), 'Opublikuj');
-  const resetAll = el('button', { onclick: () => {
-    if (!confirm(`Przywrócić domyślną treść wszystkich sekcji (${LANG_NAMES[lang]})? Zmiana trafi na stronę po zapisaniu lub opublikowaniu.`)) return;
+  const resetAll = el('button', { onclick: async () => {
+    if (!await confirmModal({ title: `Przywrócić domyślną treść wszystkich sekcji (${LANG_NAMES[lang]})?`, text: 'Zmiana trafi na stronę po zapisaniu lub opublikowaniu.', ok: 'Przywróć wszystko', okIcon: 'fa-solid fa-rotate-left', danger: true })) return;
     content = clone(meta.defaults[lang]);
     for (const s of meta.sections) {
       const fresh = sectionCard(s);
@@ -360,7 +373,7 @@ async function editor() {
         ? el('span', { class: `chip ${v.id === pubId ? 'green' : ''}`, textContent: v.id === pubId ? 'Opublikowana (na stronie)' : 'Opublikowana' })
         : el('span', { class: 'chip gold', textContent: v.restoredFrom ? `Szkic (przywrócona #${v.restoredFrom})` : 'Szkic' });
       const restore = el('button', { title: 'Przywróć jako nowy szkic', onclick: async () => {
-        if (dirty() && !confirm('W edytorze są niezapisane zmiany. Przywrócić mimo to?')) return;
+        if (dirty() && !await confirmModal({ title: `Przywrócić wersję #${v.id}?`, text: 'W edytorze są niezapisane zmiany. Przepadną, a ta wersja wróci jako nowy szkic.', ok: 'Przywróć', okIcon: 'fa-solid fa-clock-rotate-left', danger: true })) return;
         const r = await guard(() => api('POST', `/v1/admin/home/versions/${v.id}/restore`));
         if (r) { toast(`Wersja #${v.id} przywrócona jako szkic — opublikuj, żeby trafiła na stronę.`); load(r); }
       } }, icon('fa-solid fa-clock-rotate-left'));
@@ -381,8 +394,8 @@ async function editor() {
   }
 
   const langs = el('div', { class: 'row hm-langs' }, ...Object.keys(LANG_NAMES).map((l) => el('button', {
-    class: l === lang ? 'primary' : '', onclick: () => {
-      if (l === lang || (dirty() && !confirm('Porzucić niezapisane zmiany?'))) return;
+    class: l === lang ? 'primary' : '', onclick: async () => {
+      if (l === lang || (dirty() && !await confirmModal(DISCARD))) return;
       lang = l;
       editor();
     },

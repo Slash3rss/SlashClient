@@ -2,7 +2,7 @@
 // editor with a live preview of the card, the reward picked from the catalog (with how each item can
 // be got now), and the players who have one (given and taken by hand for the manual ones). The
 // server checks everything again (achievementsAdmin.ts); this only asks.
-import { $, cosmeticEl, el, fmtDate, guard, icon, api, toast } from './common.js';
+import { $, confirmModal, cosmeticEl, el, fmtDate, guard, icon, api, toast } from './common.js';
 import { sparks } from './sparks.js';
 
 const CATEGORY_NAMES = {
@@ -200,8 +200,19 @@ function editor(id) {
   const save = async (e) => {
     e.preventDefault();
     const rewardChanged = now && ((now.reward ?? '') !== (a.reward ?? '') || now.sparks !== a.sparks);
-    if (rewardChanged && now.holders && !confirm(`Nowa nagroda dotyczy tylko tych, którzy odblokują osiągnięcie od teraz. ${now.holders} graczy, którzy już je mają, nie dostanie nic więcej. Zapisać?`)) return;
-    if (now && now.enabled && !a.enabled && !confirm('Wyłączone osiągnięcie przestanie być przyznawane i zniknie z listy u tych, którzy go nie mają. Kto je ma, zachowuje je. Zapisać?')) return;
+    // one question for both warnings: what changes, old → new, and what it means for the players
+    const changes = [];
+    const warnings = [];
+    if (rewardChanged && now.holders) {
+      const prize = (x) => [x.sparks ? sparks(x.sparks) : '', x.reward ?? ''].filter(Boolean).join(' + ') || 'brak';
+      changes.push({ name: 'Nagroda', from: prize(now), to: prize(a), risky: true });
+      warnings.push(`Nowa nagroda dotyczy tylko tych, którzy odblokują osiągnięcie od teraz. ${now.holders} graczy, którzy już je mają, nie dostanie nic więcej.`);
+    }
+    if (now && now.enabled && !a.enabled) {
+      changes.push({ name: 'Włączone', from: 'tak', to: 'nie', risky: true });
+      warnings.push('Wyłączone osiągnięcie przestanie być przyznawane i zniknie z listy u tych, którzy go nie mają. Kto je ma, zachowuje je.');
+    }
+    if (changes.length && !await confirmModal({ title: `Zapisać osiągnięcie „${a.name}”?`, list: changes, warning: warnings.join('\n'), ok: 'Zapisz', okIcon: 'fa-solid fa-floppy-disk', icon: 'fa-solid fa-floppy-disk' })) return;
     const res = await guard(() => api('POST', isNew ? '/v1/admin/achievements' : `/v1/admin/achievements/${a.id}`, body()));
     if (!res) return;
     data = res;
@@ -210,7 +221,7 @@ function editor(id) {
     editor(isNew ? a.id.trim() : a.id);
   };
   const reset = async () => {
-    if (!confirm('Przywrócić domyślne ustawienia tego osiągnięcia (nazwy, opisy, ikonę, cel, nagrodę)? Kto je ma, zachowuje je.')) return;
+    if (!await confirmModal({ title: 'Przywrócić domyślne ustawienia tego osiągnięcia?', text: 'Nazwy, opisy, ikona, cel i nagroda wrócą do domyślnych. Kto je ma, zachowuje je.', ok: 'Przywróć', okIcon: 'fa-solid fa-rotate-left' })) return;
     const res = await guard(() => api('POST', `/v1/admin/achievements/${a.id}/reset`));
     if (!res) return;
     data = res;
@@ -218,7 +229,7 @@ function editor(id) {
     editor(a.id);
   };
   const remove = async () => {
-    if (!confirm(`Usunąć osiągnięcie „${a.name}”?`)) return;
+    if (!await confirmModal({ title: `Usunąć osiągnięcie „${a.name}”?`, ok: 'Usuń', okIcon: 'fa-solid fa-trash-can', danger: true })) return;
     const res = await guard(() => api('DELETE', `/v1/admin/achievements/${a.id}`));
     if (!res) return;
     data = res;
@@ -289,7 +300,7 @@ function holdersSection(a) {
   };
   const revoke = async (h) => {
     const clawback = claw.checked;
-    if (!confirm(`Odebrać osiągnięcie @${h.handle}? ${clawback ? `Zabierzesz też wypłacone Iskry${a.reward ? ' i przedmiot' : ''}.` : 'Iskry zostają u gracza.'}`)) return;
+    if (!await confirmModal({ title: `Odebrać osiągnięcie @${h.handle}?`, text: clawback ? `Zabierzesz też wypłacone Iskry${a.reward ? ' i przedmiot' : ''}.` : 'Iskry zostają u gracza.', ok: 'Odbierz', danger: true })) return;
     const res = await guard(() => api('POST', `/v1/admin/achievements/${a.id}/revoke`, { player: h.id, clawback }));
     if (!res) return;
     toast(clawback ? `Odebrano. Iskry: −${res.taken}.` : 'Odebrano.');

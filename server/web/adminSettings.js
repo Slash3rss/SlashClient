@@ -1,9 +1,9 @@
 // The admin panel's "Ustawienia": every limit and switch of the server (server/src/settingsDefs.ts),
 // grouped as on the server, with the value now, the default and who changed it. Each group is saved
-// on its own, after a summary of what changes (a second question for risky ones); the server logs
+// on its own, after a summary of what changes (the risky ones marked, with a warning); the server logs
 // every change old → new. Also the editor of "tylko dla wspierających od poziomu N" for the
 // cosmetics tab.
-import { $, api, el, fmtDate, guard, icon, toast } from './common.js';
+import { $, api, confirmModal, el, fmtDate, guard, icon, toast } from './common.js';
 
 const MB = 1024 * 1024;
 const ERRORS = {
@@ -162,7 +162,7 @@ export async function settingsPage() {
       const who = def.overridden ? `Zmienione ${fmtDate(def.updatedAt)}${def.updatedByHandle ? ` przez @${def.updatedByHandle}` : ''}.` : '';
       const row = el('div', { class: `set-row${def.type === 'list' ? ' wide' : ''}`, dataset: { key: def.key } },
         el('div', { class: 'set-text' },
-          el('div', { class: 'row' }, el('b', { textContent: def.label }), changedChip, def.risky && cat.id !== 'features' ? el('span', { class: 'chip gold', title: 'Panel zapyta jeszcze raz przed zapisem' }, icon('fa-solid fa-triangle-exclamation'), 'ważne') : '',
+          el('div', { class: 'row' }, el('b', { textContent: def.label }), changedChip, def.risky && cat.id !== 'features' ? el('span', { class: 'chip gold', title: 'Panel ostrzeże o tym przed zapisem' }, icon('fa-solid fa-triangle-exclamation'), 'ważne') : '',
             def.restart ? el('span', { class: 'chip', textContent: 'po restarcie' }) : ''),
           el('small', { class: 'muted', textContent: def.description }),
           el('small', { class: 'set-meta' }, el('code', { textContent: def.key }), def.type === 'secret' ? ' · zapisany zaszyfrowany, nie da się go odczytać' : ` · domyślnie ${show(def, def.default)}`,
@@ -175,13 +175,20 @@ export async function settingsPage() {
     }
 
     saveBtn.addEventListener('click', async () => {
-      const lines = [...pending].map(([key, v]) => {
+      const changes = [...pending].map(([key, v]) => {
         const def = defs.find((d) => d.key === key);
-        return { def, text: `• ${def.label}: ${show(def, def.value)} → ${show(def, v === null && def.type !== 'secret' ? def.default : v)}${v === null && def.type !== 'secret' ? ' (domyślne)' : ''}` };
+        const back = v === null && def.type !== 'secret';
+        return { name: def.label, from: show(def, def.value), to: show(def, back ? def.default : v), note: back ? '(domyślne)' : '', risky: !!def.risky };
       });
-      if (!confirm(`Zapisać zmiany w „${cat.label}”?\n\n${lines.map((l) => l.text).join('\n')}`)) return;
-      const risky = lines.filter((l) => l.def.risky);
-      if (risky.length && !confirm(`Uwaga, te zmiany wpływają na graczy od razu:\n\n${risky.map((l) => l.text).join('\n')}\n\nNa pewno?`)) return;
+      // one question: every change as "name: old → new", the risky ones marked and the warning in the same box
+      const risky = changes.filter((c) => c.risky).length;
+      if (!await confirmModal({
+        title: `Zapisać zmiany w „${cat.label}”?`,
+        text: changes.length === 1 ? 'Jedna zmiana:' : `Zmiany do zapisania: ${changes.length}`,
+        list: changes,
+        warning: risky ? `Uwaga, ${risky === 1 ? 'zaznaczona zmiana wpływa' : 'zaznaczone zmiany wpływają'} na graczy od razu.` : undefined,
+        ok: 'Zapisz', okIcon: 'fa-solid fa-floppy-disk', icon: 'fa-solid fa-floppy-disk',
+      })) return;
       try {
         const r = await api('POST', '/v1/admin/settings', { values: Object.fromEntries(pending) });
         toast(r.changed.length ? `Zapisano (${r.changed.length}).` : 'Nic się nie zmieniło.');
@@ -247,10 +254,10 @@ export function supporterEditor(c, o, done) {
     if (r) toast(`${r.supporter ? `Tylko dla wspierających od poziomu ${r.supporter}.` : 'Dla wszystkich.'}${r.removed ? ` Zdjęto u ${r.removed} graczy bez tego poziomu.` : ''}`);
     done();
   };
-  input.addEventListener('change', () => {
+  input.addEventListener('change', async () => {
     const n = input.value.trim() === '' ? 0 : Number(input.value);
     if (!Number.isInteger(n) || n < 0 || n > 100 || n === level) return;
-    if (n > level && c.wearing && !confirm(`„${c.name}” zostanie zdjęty graczom bez poziomu wsparcia ${n} (i bez przyznania). Kontynuować?`)) return done();
+    if (n > level && c.wearing && !await confirmModal({ title: `Tylko od poziomu wsparcia ${n}?`, text: `„${c.name}” zostanie zdjęty graczom bez poziomu wsparcia ${n} (i bez przyznania).`, ok: 'Kontynuuj' })) return done();
     send(n);
   });
   return el('label', { class: 'opt', title: 'Tylko dla graczy z poziomem wsparcia co najmniej tyle (Wsparcie → poziomy). Nie jest wtedy sprzedawany za Iskry.' },

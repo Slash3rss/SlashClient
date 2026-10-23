@@ -3,7 +3,7 @@
 // the platforms' consoles, every linked channel with its live state, unlinking one by force and
 // asking the platforms right now. Intervals and limits are in Ustawienia → Streamy, the switch in
 // Ustawienia → Funkcje. Every change goes to the log (Dziennik).
-import { $, api, el, errorText, fmtDate, guard, icon, toast } from './common.js';
+import { $, api, confirmModal, el, errorText, fmtDate, guard, icon, toast } from './common.js';
 import { platformIcon } from './profileStream.js';
 
 const ERRORS = {
@@ -91,7 +91,7 @@ function draw() {
     el('td', { class: 'small muted', textContent: a.webhooks ? 'tak' : 'nie' }),
     el('td', { class: 'small muted', textContent: fmtDate(a.linkedAt) }),
     el('td', {}, el('button', { type: 'button', class: 'icon-btn danger', title: 'Odłącz kanał (w dzienniku)', onclick: async () => {
-      if (!confirm(`Odłączyć kanał ${a.login} od @${a.handle}? Gracz może go połączyć ponownie.`)) return;
+      if (!await confirmModal({ title: `Odłączyć kanał ${a.login} od @${a.handle}?`, text: 'Gracz może go połączyć ponownie.', ok: 'Odłącz', okIcon: 'fa-solid fa-link-slash', danger: true })) return;
       const res = await call('DELETE', `/v1/admin/streams/accounts/${a.uuid}/${a.platform}`);
       if (res) { data = res; toast('Odłączono.'); draw(); }
     } }, icon('fa-solid fa-link-slash')))));

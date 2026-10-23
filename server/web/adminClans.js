@@ -1,6 +1,6 @@
 // The admin panel's "Klany": every clan with its tag, name, members and logo. An offensive logo can
 // be taken off (the clan stays), or the whole clan removed; both go to the log.
-import { $, api, el, fmtDate, guard, icon, toast } from './common.js';
+import { $, api, confirmModal, el, fmtDate, guard, icon, toast } from './common.js';
 
 export async function clansPage() {
   const res = await guard(() => api('GET', '/v1/admin/clans'));
@@ -10,11 +10,11 @@ export async function clansPage() {
       ? el('img', { class: 'clan-logo', src: `/v1/clans/${encodeURIComponent(c.id)}/logo.png?v=${c.logo}`, alt: '', width: 32, height: 32 })
       : el('span', { class: 'clan-logo clan-logo-none', textContent: c.tag.slice(0, 3) });
     const removeLogo = c.logo ? el('button', { title: 'Usuń logo', onclick: async () => {
-      if (!confirm(`Usunąć logo klanu [${c.tag}]?`)) return;
+      if (!await confirmModal({ title: `Usunąć logo klanu [${c.tag}]?`, ok: 'Usuń logo', okIcon: 'fa-solid fa-eraser', danger: true })) return;
       if (await guard(() => api('DELETE', `/v1/admin/clans/${c.id}/logo`))) { toast('Logo usunięte.'); clansPage(); }
     } }, icon('fa-solid fa-eraser'), 'Usuń logo') : '';
     const remove = el('button', { class: 'danger', title: 'Usuń klan', onclick: async () => {
-      if (!confirm(`Usunąć klan [${c.tag}] ${c.name}? Zniknie razem z czatem dla wszystkich członków.`)) return;
+      if (!await confirmModal({ title: `Usunąć klan [${c.tag}] ${c.name}?`, text: 'Zniknie razem z czatem dla wszystkich członków.', ok: 'Usuń klan', okIcon: 'fa-solid fa-trash-can', danger: true })) return;
       if (await guard(() => api('DELETE', `/v1/admin/clans/${c.id}`))) { toast('Klan usunięty.'); clansPage(); }
     } }, icon('fa-solid fa-trash-can'));
     return el('tr', {},

@@ -3,7 +3,7 @@
 // supporters with granting, extending and taking back by hand, and the money per month. Every
 // change goes to the log (Dziennik); refunds and chargebacks take back what they gave by themselves.
 import { refundsSection } from './adminRefunds.js';
-import { $, api, el, errorText, fmtDate, guard, icon, toast } from './common.js';
+import { $, api, confirmModal, el, errorText, fmtDate, guard, icon, promptModal, toast } from './common.js';
 
 const ERRORS = {
   provider_not_configured: 'Najpierw wpisz wszystkie klucze dla wybranego trybu.',
@@ -189,7 +189,7 @@ function tierCard(t) {
     el('div', { class: 'row' }, flag('cosmetics', 'Kosmetyki wspierających'), flag('profile', 'Ramka avatara na profilu'), flag('earlyAccess', 'Wcześniejszy dostęp'), flag('enabled', 'Włączony')),
     el('div', { class: 'row' }, el('button', { class: 'primary', onclick: save }, icon('fa-solid fa-check'), isNew ? 'Dodaj' : 'Zapisz'),
       isNew ? '' : el('button', { class: 'danger', onclick: async () => {
-        if (!confirm(`Usunąć poziom ${t.name}?`)) return;
+        if (!await confirmModal({ title: `Usunąć poziom ${t.name}?`, ok: 'Usuń', okIcon: 'fa-solid fa-trash-can', danger: true })) return;
         if (await call('DELETE', `/v1/admin/support/tiers/${t.id}`)) { toast('Usunięto.'); supportPage(); }
       } }, icon('fa-solid fa-trash-can'), 'Usuń')));
   card.style.setProperty('--tier', t.color);
@@ -221,11 +221,11 @@ async function supportersSection() {
     g.note ? el('span', { class: 'muted', textContent: `„${g.note}”` }) : '', g.by ? el('span', { class: 'muted', textContent: `przez @${g.by}` }) : '',
     el('span', { class: 'grow' }),
     !g.revokedAt && g.expiresAt ? el('button', { class: 'icon-btn', title: 'Przedłuż', onclick: async () => {
-      const n = Number(prompt('O ile dni przedłużyć?', '30'));
+      const n = Number(await promptModal({ title: 'Przedłużyć wsparcie?', label: 'O ile dni przedłużyć?', value: '30', type: 'number', min: 1, required: true, ok: 'Przedłuż', okIcon: 'fa-solid fa-calendar-plus' }));
       if (n && await call('POST', `/v1/admin/support/grants/${g.id}/extend`, { days: n })) { toast('Przedłużono.'); supportersSection(); }
     } }, icon('fa-solid fa-calendar-plus')) : '',
     !g.revokedAt ? el('button', { class: 'icon-btn danger', title: 'Odbierz', onclick: async () => {
-      const reason = prompt('Powód odebrania (zapisze się w dzienniku):', '');
+      const reason = await promptModal({ title: 'Odebrać wsparcie?', label: 'Powód odebrania (zapisze się w dzienniku)', ok: 'Odbierz', okIcon: 'fa-solid fa-ban', danger: true });
       if (reason !== null && await call('POST', `/v1/admin/support/grants/${g.id}/revoke`, { reason })) { toast('Odebrano.'); supportersSection(); }
     } }, icon('fa-solid fa-ban')) : '');
   box.replaceChildren(form, el('div', { class: 'glass card' }, res.supporters.length

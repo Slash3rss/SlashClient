@@ -2,7 +2,7 @@
 // a player gets a day and a week, the bonus for finishing all of them, the pool (switch each on and
 // off, its target, reward and weight, new ones from a metric the server counts itself) and how many
 // players got and finished each. The server checks everything again; this only asks.
-import { $, el, fmtDate, guard, icon, api, toast } from './common.js';
+import { $, confirmModal, el, fmtDate, guard, icon, api, toast } from './common.js';
 import { sparks } from './sparks.js';
 
 let data;
@@ -36,7 +36,17 @@ function settingsCard() {
   const field = (label, input, hint) => el('label', { class: 'field' }, el('span', { textContent: label }), input, hint ? el('small', { class: 'muted', textContent: hint }) : '');
   const save = async (e) => {
     e.preventDefault();
-    if (s.enabled && !enabled.checked && !confirm('Wyłączyć wyzwania? Nikt nie dostanie nowych, postęp przestanie się liczyć, launcher schowa zakładkę.')) return;
+    if (s.enabled && !enabled.checked) {
+      // switching them off asks first, with everything this save changes
+      const changes = [{ name: 'Wyzwania', from: 'włączone', to: 'wyłączone', risky: true },
+        ...[['Dzienne', s.daily, daily], ['Tygodniowe', s.weekly, weekly], ['Premia za dzienne', s.dailyBonus, dailyBonus], ['Premia za tygodniowe', s.weeklyBonus, weeklyBonus]]
+          .filter(([, was, input]) => Number(input.value) !== was).map(([name, was, input]) => ({ name, from: String(was), to: input.value }))];
+      if (!await confirmModal({
+        title: 'Zapisać ustawienia wyzwań?', list: changes,
+        warning: 'Wyłączone wyzwania: nikt nie dostanie nowych, postęp przestanie się liczyć, launcher schowa zakładkę.',
+        ok: 'Zapisz', okIcon: 'fa-solid fa-floppy-disk', icon: 'fa-solid fa-floppy-disk',
+      })) return;
+    }
     const res = await guard(() => api('POST', '/v1/admin/settings', { values: {
       'challenges.enabled': enabled.checked, 'challenges.daily': Number(daily.value), 'challenges.weekly': Number(weekly.value),
       'challenges.dailyBonus': Number(dailyBonus.value), 'challenges.weeklyBonus': Number(weeklyBonus.value),
@@ -177,8 +187,11 @@ function editor(id) {
     editor(c.id);
   };
   const remove = async () => {
-    const what = now.custom ? `Usunąć wyzwanie „${now.preview}”?` : 'Przywrócić domyślne ustawienia tego wyzwania?';
-    if (!confirm(`${what} Kto ma je w tym okresie, nadal może je ukończyć.`)) return;
+    if (!await confirmModal({
+      title: now.custom ? `Usunąć wyzwanie „${now.preview}”?` : 'Przywrócić domyślne ustawienia tego wyzwania?',
+      text: 'Kto ma je w tym okresie, nadal może je ukończyć.',
+      ...(now.custom ? { ok: 'Usuń', okIcon: 'fa-solid fa-trash-can', danger: true } : { ok: 'Przywróć', okIcon: 'fa-solid fa-rotate-left' }),
+    })) return;
     const res = await guard(() => api('DELETE', `/v1/admin/challenges/${c.id}`));
     if (!res) return;
     data = res;

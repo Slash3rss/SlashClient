@@ -2,7 +2,10 @@
 // English. Each is edited as Markdown with a live preview (rendered by the server, exactly as the
 // site shows it), saved as a draft or published, and every version stays in the history to view,
 // compare and restore. The administrator's details fill {{admin.…}} in all of them.
-import { $, api, el, fmtDate, guard, icon, toast } from './common.js';
+import { $, api, confirmModal, el, fmtDate, guard, icon, toast } from './common.js';
+
+/** The question before leaving the editor's changes behind. */
+const DISCARD = { title: 'Porzucić niezapisane zmiany?', text: 'Zmiany z edytora przepadną.', ok: 'Porzuć', danger: true };
 
 const LANG_NAMES = { pl: 'polski', en: 'angielski' };
 
@@ -164,7 +167,21 @@ async function editor(doc, lang) {
   } }, icon('fa-solid fa-floppy-disk'), 'Zapisz jako szkic');
   const publish = el('button', { class: 'primary', onclick: async () => {
     const what = `${state.name} (${LANG_NAMES[lang]})`;
-    if (!confirm(`Opublikować ${what}? Strona od razu pokaże ten tekst${major.checked ? ', a zalogowani gracze dostaną powiadomienie o zmianie' : ''}.`)) return;
+    // what goes live: how many lines change against the published text, the note, and whether players are told
+    // (a text first published from a file may still have Windows line ends; the field never does)
+    const diff = lineDiff((state.published?.body ?? '').replace(/\r\n?/g, '\n'), area.value);
+    const added = diff.filter(([k]) => k === '+').length;
+    const removed = diff.filter(([k]) => k === '-').length;
+    const rows = [
+      state.published ? (added || removed ? `Względem opublikowanej: +${added} / −${removed} linii` : 'Tekst jak w opublikowanej wersji.') : 'Pierwsza publikacja tego dokumentu.',
+      note.value.trim() ? `Notatka: „${note.value.trim()}”` : 'Bez notatki.',
+      { name: 'Powiadomienie dla graczy', from: 'nie', to: major.checked ? 'tak' : 'nie', risky: major.checked },
+    ];
+    if (!await confirmModal({
+      title: `Opublikować ${what}?`, text: 'Strona od razu pokaże ten tekst.', list: rows,
+      warning: major.checked ? 'Ważna zmiana: zalogowani gracze dostaną powiadomienie o zmianie.' : undefined,
+      ok: 'Opublikuj', okIcon: 'fa-solid fa-upload', icon: 'fa-solid fa-upload',
+    })) return;
     const r = await guard(() => api('POST', `/v1/admin/legal/${doc}/${lang}/publish`, { body: area.value, major: major.checked, note: note.value }));
     if (r) {
       toast('Opublikowano. Data „Ostatnia aktualizacja” jest już nowa.');
@@ -195,7 +212,7 @@ async function editor(doc, lang) {
         preview.replaceChildren(diffView(lineDiff(full.body, area.value)));
       } }, icon('fa-solid fa-code-compare'));
       const restore = el('button', { title: 'Przywróć jako nowy szkic', onclick: async () => {
-        if (dirty() && !confirm('W edytorze są niezapisane zmiany. Przywrócić mimo to?')) return;
+        if (dirty() && !await confirmModal({ title: `Przywrócić wersję #${v.id}?`, text: 'W edytorze są niezapisane zmiany. Przepadną, a ta wersja wróci jako nowy szkic.', ok: 'Przywróć', okIcon: 'fa-solid fa-clock-rotate-left', danger: true })) return;
         const r = await guard(() => api('POST', `/v1/admin/legal/versions/${v.id}/restore`));
         if (r) { toast(`Wersja #${v.id} przywrócona jako szkic — opublikuj, żeby trafiła na stronę.`); load(r); }
       } }, icon('fa-solid fa-clock-rotate-left'));
@@ -213,11 +230,11 @@ async function editor(doc, lang) {
         el('tbody', {}, ...rows))));
   }
 
-  const back = el('button', { onclick: () => { if (!dirty() || confirm('Porzucić niezapisane zmiany?')) legalPage(); } }, icon('fa-solid fa-arrow-left'), 'Dokumenty');
+  const back = el('button', { onclick: async () => { if (!dirty() || await confirmModal(DISCARD)) legalPage(); } }, icon('fa-solid fa-arrow-left'), 'Dokumenty');
   const other = lang === 'pl' ? 'en' : 'pl';
   head.append(back, el('h1', { textContent: `${state.name} — ${LANG_NAMES[lang]}` }),
     el('a', { class: 'btn', href: state.path, target: '_blank', rel: 'noopener' }, icon('fa-solid fa-arrow-up-right-from-square'), 'Na stronie'),
-    el('button', { onclick: () => { if (!dirty() || confirm('Porzucić niezapisane zmiany?')) editor(doc, other); } }, icon('fa-solid fa-language'), `Wersja: ${LANG_NAMES[other]}`));
+    el('button', { onclick: async () => { if (!dirty() || await confirmModal(DISCARD)) editor(doc, other); } }, icon('fa-solid fa-language'), `Wersja: ${LANG_NAMES[other]}`));
 
   $('#main').replaceChildren(
     head,

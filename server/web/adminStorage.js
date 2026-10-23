@@ -2,7 +2,7 @@
 // other S3 buckets), the biggest users, and adding, testing, switching off, removing and emptying
 // backends. Keys typed here go to the server once and are never shown again (only "set" and the
 // key id's last 4 characters).
-import { $, api, el, errorText, fmtDate, guard, icon, toast } from './common.js';
+import { $, api, confirmModal, el, errorText, fmtDate, guard, icon, toast } from './common.js';
 
 const TYPES = { r2: ['Cloudflare R2', 'fa-brands fa-cloudflare'], b2: ['Backblaze B2', 'fa-solid fa-fire'], s3: ['Inne S3', 'fa-solid fa-bucket'], local: ['Folder na serwerze', 'fa-solid fa-hard-drive'] };
 const KINDS = { image: ['Zrzuty', 'fa-solid fa-image'], clip: ['Klipy', 'fa-solid fa-film'], profile: ['Profile', 'fa-solid fa-box-archive'] };
@@ -78,7 +78,10 @@ export async function storagePage() {
     moveTo.addEventListener('change', async () => {
       const to = s.backends.find((o) => o.id === moveTo.value);
       if (!to) return;
-      if (!confirm(`Przenieść wszystkie pliki (${b.files}, ${bytes(b.used)}) z „${b.name}” do „${to.name}”? Trwa to w tle; linki działają cały czas.`)) { moveTo.value = ''; return; }
+      if (!await confirmModal({
+        title: `Przenieść wszystkie pliki z „${b.name}” do „${to.name}”?`, text: `Pliki: ${b.files} (${bytes(b.used)}). Trwa to w tle; linki działają cały czas.`,
+        ok: 'Przenieś', okIcon: 'fa-solid fa-truck-fast',
+      })) { moveTo.value = ''; return; }
       if (await call('POST', `/v1/admin/storage/${b.id}/move`, { to: to.id })) toast('Przenoszenie ruszyło.');
       storagePage();
     });
@@ -88,10 +91,13 @@ export async function storagePage() {
     };
     const remove = async () => {
       if (b.files) {
-        if (confirm(`„${b.name}” trzyma ${b.files} plików (${bytes(b.used)}), więc nie można go usunąć. Najpierw przenieś pliki.\n\nWyłączyć je zamiast tego (nowe pliki nie będą tu trafiać)?`) && b.enabled) await toggle();
+        if (await confirmModal({
+          title: `Nie można usunąć „${b.name}”`, text: `Trzyma ${b.files} plików (${bytes(b.used)}). Najpierw przenieś pliki.\n\nWyłączyć je zamiast tego (nowe pliki nie będą tu trafiać)?`,
+          ok: 'Wyłącz', okIcon: 'fa-solid fa-power-off',
+        }) && b.enabled) await toggle();
         return;
       }
-      if (!confirm(`Usunąć „${b.name}” z listy? Bucket i jego zawartość zostają nietknięte.`)) return;
+      if (!await confirmModal({ title: `Usunąć „${b.name}” z listy?`, text: 'Bucket i jego zawartość zostają nietknięte.', ok: 'Usuń', okIcon: 'fa-solid fa-trash-can', danger: true })) return;
       if (await call('DELETE', `/v1/admin/storage/${b.id}`)) toast('Usunięto.');
       storagePage();
     };

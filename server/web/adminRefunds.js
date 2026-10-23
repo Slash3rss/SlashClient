@@ -2,7 +2,7 @@
 // the payment, the account, the reason and how old the payment was. "Zwróć" refunds through the
 // provider's API (the webhook that follows takes the perks back), "Odrzuć" asks for a reason the
 // player sees, "Oznacz jako zwrócone ręcznie" is for money returned outside. Each goes to the log.
-import { api, el, errorText, fmtDate, icon, toast } from './common.js';
+import { api, confirmModal, el, errorText, fmtDate, icon, promptModal, toast } from './common.js';
 
 const ERRORS = {
   not_pending: 'Ta prośba już nie czeka (ktoś ją obsłużył?). Odśwież.',
@@ -53,15 +53,19 @@ export async function refundsSection(box, tierName, done = () => {}) {
       r.answer ? el('p', { class: 'small', textContent: `Odpowiedź dla gracza: ${r.answer}` }) : '',
       r.decidedBy ? el('p', { class: 'muted small', textContent: `Obsłużył(a): @${r.decidedBy}` }) : '',
       el('div', { class: 'row' },
-        r.status === 'pending' ? el('button', { class: 'primary', onclick: () => {
-          if (confirm(`Zwrócić ${p ? money(p.amount, p.currency) : ''} graczowi @${r.handle} przez ${p?.provider ?? 'operatora'}? Korzyści skończą się, gdy operator potwierdzi zwrot.`)) act(r, 'refund', {}, 'Zwrot zlecony.');
+        r.status === 'pending' ? el('button', { class: 'primary', onclick: async () => {
+          if (await confirmModal({
+            title: `Zwrócić ${p ? `${money(p.amount, p.currency)} ` : ''}graczowi @${r.handle}?`,
+            text: `Przez ${p?.provider ?? 'operatora'}. Korzyści skończą się, gdy operator potwierdzi zwrot.`,
+            ok: 'Zwróć', okIcon: 'fa-solid fa-rotate-left',
+          })) act(r, 'refund', {}, 'Zwrot zlecony.');
         } }, icon('fa-solid fa-rotate-left'), 'Zwróć') : '',
-        r.status === 'pending' ? el('button', { onclick: () => {
-          const reason = prompt('Powód odrzucenia (zobaczy go gracz):', '');
+        r.status === 'pending' ? el('button', { onclick: async () => {
+          const reason = await promptModal({ title: `Odrzucić prośbę @${r.handle} o zwrot?`, label: 'Powód odrzucenia (zobaczy go gracz)', multiline: true, ok: 'Odrzuć', okIcon: 'fa-solid fa-xmark', danger: true });
           if (reason !== null) act(r, 'reject', { reason }, 'Odrzucono.');
         } }, icon('fa-solid fa-xmark'), 'Odrzuć') : '',
-        r.status === 'pending' || r.status === 'approved' ? el('button', { onclick: () => {
-          const note = prompt('Oznaczyć jako zwrócone ręcznie? Korzyści z tej płatności skończą się od razu. Notatka do dziennika (np. „przelew”):', '');
+        r.status === 'pending' || r.status === 'approved' ? el('button', { onclick: async () => {
+          const note = await promptModal({ title: 'Oznaczyć jako zwrócone ręcznie?', text: 'Korzyści z tej płatności skończą się od razu.', label: 'Notatka do dziennika (np. „przelew”)', ok: 'Oznacz', okIcon: 'fa-solid fa-hand-holding-dollar' });
           if (note !== null) act(r, 'manual', { note }, 'Oznaczono jako zwrócone.');
         } }, icon('fa-solid fa-hand-holding-dollar'), 'Oznacz jako zwrócone ręcznie') : ''));
   };

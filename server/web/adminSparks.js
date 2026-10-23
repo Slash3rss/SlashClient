@@ -1,6 +1,6 @@
 // The admin panel's sparks (the achievements' currency): a player's balance and history, giving and
 // taking sparks with a reason (written to the admin log), and the shop's prices.
-import { api, cosmeticEl, el, guard, icon, toast } from './common.js';
+import { api, confirmModal, cosmeticEl, el, guard, icon, toast } from './common.js';
 import { sparks } from './sparks.js';
 
 /** The section in a player's drawer; loads itself. */
@@ -13,7 +13,7 @@ export function walletSection(userId) {
       e.preventDefault();
       const n = Number(amount.value);
       if (!Number.isInteger(n) || !n) return toast('Podaj liczbę całkowitą różną od zera.', true);
-      if (!confirm(`${n > 0 ? 'Dodać' : 'Odebrać'} ${sparks(Math.abs(n))}? Powód: ${reason.value.trim()}`)) return;
+      if (!await confirmModal({ title: `${n > 0 ? 'Dodać' : 'Odebrać'} ${sparks(Math.abs(n))}?`, text: `Powód: ${reason.value.trim()}`, ok: n > 0 ? 'Dodaj' : 'Odbierz', danger: n < 0 })) return;
       const res = await guard(() => api('POST', `/v1/admin/users/${userId}/wallet`, { amount: n, reason: reason.value.trim() }));
       if (!res) return;
       toast(`Saldo: ${sparks(res.balance)}.`);

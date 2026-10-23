@@ -3,7 +3,7 @@
 // short status friends see ("Gra na SkyUp.pl · S3 (Wyspy)"), and what Discord shows there. The
 // server checks every pattern (both the game's Java and JavaScript must read it alike, and nothing
 // that backtracks for long); "Sprawdź" runs a rule against a pasted header. Changes go to the log.
-import { api, el, errorText, icon, toast } from './common.js';
+import { api, confirmModal, el, errorText, icon, toast } from './common.js';
 
 const ERRORS = {
   bad_server: 'Zły adres serwera (np. skyup.pl).', bad_name: 'Nazwa do 48 znaków.', bad_strip: 'Znaki do obcięcia: do 16.',
@@ -110,7 +110,7 @@ function card(r) {
   } }, icon('fa-solid fa-check'), 'Zapisz');
   const remove = el('button', { type: 'button', class: 'danger', onclick: async () => {
     if (!r.id) return draw();
-    if (!confirm(`Usunąć regułę statusów dla ${r.server}?`)) return;
+    if (!await confirmModal({ title: `Usunąć regułę statusów dla ${r.server}?`, ok: 'Usuń', okIcon: 'fa-solid fa-trash-can', danger: true })) return;
     const res = await call('DELETE', `/v1/admin/status-rules/${r.id}`);
     if (res) { data = res; draw(); }
   } }, icon('fa-solid fa-trash-can'), r.id ? 'Usuń' : 'Anuluj');

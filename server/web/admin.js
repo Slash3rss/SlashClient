@@ -1,5 +1,5 @@
 // The admin panel: numbers, accounts (ban, sign out, role, cape, delete), cosmetics and the log.
-import { $, PROVIDERS, partnerBanner, uploadPicture, SLOTS, ago, api, avatarEl, capeEl, cosmeticEl, el, errorText, fmtDate, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
+import { $, PROVIDERS, partnerBanner, uploadPicture, SLOTS, ago, api, avatarEl, capeEl, confirmModal, cosmeticEl, el, errorText, fmtDate, guard, icon, promptModal, signInDev, signInWith, signOut, toast, token } from './common.js';
 import { storagePage } from './adminStorage.js';
 import { shopSection, walletSection } from './adminSparks.js';
 import { achievementsPage, foreignHash, obtainLine } from './adminAchievements.js';
@@ -232,7 +232,7 @@ async function openUser(id) {
       el('button', { disabled: self || u.configAdmin, title: u.configAdmin ? 'Admin z konfiguracji serwera (ADMIN_HANDLES)' : '', onclick: () => update({ role: u.role === 'admin' ? '' : 'admin' }, u.role === 'admin' ? 'Odebrano uprawnienia admina.' : 'Nadano uprawnienia admina.') },
         icon('fa-solid fa-shield-halved'), u.role === 'admin' || u.configAdmin ? 'Odbierz admina' : 'Nadaj admina'),
       el('button', { class: 'danger', disabled: self || u.configAdmin, onclick: async () => {
-        if (!confirm(`Usunąć konto ${u.name} (@${u.handle}) razem ze znajomymi i wiadomościami? Tego nie da się cofnąć.`)) return;
+        if (!await confirmModal({ title: `Usunąć konto ${u.name} (@${u.handle})?`, text: 'Razem ze znajomymi i wiadomościami.', warning: 'Tego nie da się cofnąć.', ok: 'Usuń konto', okIcon: 'fa-solid fa-trash-can', danger: true })) return;
         if (await guard(() => api('DELETE', `/v1/admin/users/${id}`))) { toast('Konto usunięte.'); closeDrawer(); loadUsers(); }
       } }, icon('fa-solid fa-trash-can'), 'Usuń konto')));
   document.body.append(el('div', { class: 'shade', onclick: closeDrawer }), drawer);
@@ -249,7 +249,7 @@ function profileHideButton(u) {
     b.replaceChildren(icon(hidden ? 'fa-solid fa-eye' : 'fa-solid fa-eye-slash'), hidden ? 'Przywróć profil' : 'Ukryj profil');
     if (hidden && profile.moderation.reason) b.title = `Ukryty: ${profile.moderation.reason}`;
     b.onclick = async () => {
-      const reason = hidden ? '' : prompt(`Dlaczego ukryć profil @${u.handle}? (zapisze się w dzienniku)`, '');
+      const reason = hidden ? '' : await promptModal({ title: `Ukryć profil @${u.handle}?`, label: 'Dlaczego? (zapisze się w dzienniku)', ok: 'Ukryj', okIcon: 'fa-solid fa-eye-slash', danger: true });
       if (reason === null) return;
       if (await guard(() => api('POST', `/v1/admin/profiles/${encodeURIComponent(u.handle)}`, { hidden: !hidden, reason }))) {
         toast(hidden ? 'Profil znowu widoczny.' : 'Profil ukryty.');
@@ -273,17 +273,19 @@ function priceEditor(c, o, done) {
   if (!o.sellable) return '';
   const input = el('input', { type: 'number', min: 1, step: 1, value: o.price ?? '', placeholder: 'brak', title: `Pusta: poza sklepem. ${o.defaultPrice ? `Domyślnie ${o.defaultPrice}` : 'Domyślnie poza sklepem'}` });
   const send = async (body, ask) => {
-    if (ask && !confirm(ask)) return done();
+    if (ask && !await confirmModal(ask)) return done();
     const r = await guard(() => api('POST', `/v1/admin/shop/${c.id}`, body));
     if (r) toast(r.price ? `Cena: ${r.price}.${r.kept ? ` ${r.kept} graczy, którzy go noszą, zachowuje go.` : ''}` : 'Poza sklepem.');
     done();
   };
   input.addEventListener('change', () => {
     const v = input.value.trim();
-    if (v === '') return o.price === null ? undefined : send({ price: null }, 'Zdjąć ze sprzedaży? Przedmiot stanie się dostępny za darmo (chyba że jest ekskluzywny). Kupione zostają u kupujących.');
+    if (v === '') {
+      return o.price === null ? undefined : send({ price: null }, { title: `Zdjąć „${c.name}” ze sprzedaży?`, text: 'Przedmiot stanie się dostępny za darmo (chyba że jest ekskluzywny). Kupione zostają u kupujących.', ok: 'Zdejmij' });
+    }
     const n = Number(v);
     if (n === o.price) return;
-    send({ price: n }, o.price === null ? `Wystawić „${c.name}” w sklepie za ${n} Iskier? Odtąd tylko kupujący (i ci, którzy go teraz noszą) będą mogli go założyć.` : '');
+    send({ price: n }, o.price === null ? { title: `Wystawić „${c.name}” w sklepie za ${n} Iskier?`, text: 'Odtąd tylko kupujący (i ci, którzy go teraz noszą) będą mogli go założyć.', ok: 'Wystaw' } : null);
   });
   return el('label', { class: 'opt', title: 'Cena w sklepie za Iskry' }, el('span', {}, el('span', { class: 'spark-sign', textContent: '✦' }), ' Sklep'),
     el('span', { class: 'row' }, input,
@@ -298,9 +300,10 @@ async function cosmeticsPage() {
     const toggle = (label, key, hint) => {
       const box = el('input', { type: 'checkbox', checked: c[key] });
       box.addEventListener('change', async () => {
-        const warn = key === 'enabled' && !box.checked ? 'Wyłączona peleryna zniknie wszystkim, którzy ją noszą. Kontynuować?'
-          : key === 'exclusive' && box.checked ? 'Peleryna zostanie zdjęta tym, którzy jej nie mają przyznanej. Kontynuować?' : '';
-        if (warn && c.wearing && !confirm(warn)) { box.checked = !box.checked; return; }
+        const warn = key === 'enabled' && !box.checked ? { title: `Wyłączyć „${c.name}”?`, text: 'Wyłączona peleryna zniknie wszystkim, którzy ją noszą.', ok: 'Wyłącz', danger: true }
+          : key === 'exclusive' && box.checked ? { title: `„${c.name}” tylko z przyznania?`, text: 'Peleryna zostanie zdjęta tym, którzy jej nie mają przyznanej.', ok: 'Kontynuuj' } : null;
+        // "Anuluj" puts the switch back where it was
+        if (warn && c.wearing && !await confirmModal(warn)) { box.checked = !box.checked; return; }
         if (await guard(() => api('POST', `/v1/admin/cosmetics/${c.id}`, { [key]: box.checked }))) { toast('Zapisano.'); cosmeticsPage(); } else box.checked = !box.checked;
       });
       return el('label', { class: 'opt', title: hint }, label, el('span', { class: 'switch' }, box, el('span')));
@@ -383,7 +386,7 @@ async function partnersPage() {
         p.background ? el('button', { onclick: async () => { if (await guard(() => api('DELETE', `/v1/admin/partners/${p.id}/background`))) partnersPage(); } }, icon('fa-solid fa-eraser'), 'Usuń tło') : '',
         el('div', { class: 'grow' }),
         el('button', { class: 'danger', onclick: async () => {
-          if (!confirm(`Usunąć ${p.address} z serwerów partnerskich?`)) return;
+          if (!await confirmModal({ title: `Usunąć ${p.address} z serwerów partnerskich?`, ok: 'Usuń', okIcon: 'fa-solid fa-trash-can', danger: true })) return;
           if (await guard(() => api('DELETE', `/v1/admin/partners/${p.id}`))) partnersPage();
         } }, icon('fa-solid fa-trash-can'), 'Usuń')),
       save);
@@ -492,7 +495,7 @@ async function logsPage() {
       el('td', { class: 'row' },
         el('a', { class: 'btn', href: `/logi/${l.id}`, target: '_blank', rel: 'noopener' }, icon('fa-solid fa-up-right-from-square'), el('span', { class: 'hide-sm', textContent: ' Otwórz' })),
         el('button', { class: 'icon-btn danger', title: 'Usuń log', onclick: async () => {
-          if (!confirm(`Usunąć log ${l.id}? Link przestanie działać.`)) return;
+          if (!await confirmModal({ title: `Usunąć log ${l.id}?`, text: 'Link przestanie działać.', ok: 'Usuń', okIcon: 'fa-solid fa-trash', danger: true })) return;
           if (await guard(() => api('DELETE', `/v1/admin/logs/${l.id}`))) { toast('Usunięto log'); load(); }
         } }, icon('fa-solid fa-trash')))));
     const pages = el('div', { class: 'row pager' });

@@ -1,7 +1,7 @@
 // The admin panel's "Rangi": the ranks with their colour (the Slash logo next to the nick is drawn
 // in it), name, order, description and own icon; new ranks for admins to give. And in a player's
 // drawer: the ranks they hold, given (optionally until a day) and taken back (ranks.ts).
-import { $, ApiError, api, el, fmtDate, guard, icon, toast, token } from './common.js';
+import { $, ApiError, api, confirmModal, el, fmtDate, guard, icon, toast, token } from './common.js';
 import { rankBadge, rankChip } from './ranks.js';
 
 const AUTO = { role: 'automatyczna: rola admina', payment: 'automatyczna: aktywne wsparcie (kolor i nazwa z poziomu wsparcia)' };
@@ -79,7 +79,7 @@ function rankCard(r) {
     el('div', { class: 'row' }, el('label', { class: 'row small' }, el('span', { class: 'switch' }, f.enabled, el('span')), 'Włączona (wyłączona nie pokazuje się nigdzie i nie daje kosmetyków)')),
     el('div', { class: 'row' }, el('button', { class: 'primary', onclick: save }, icon('fa-solid fa-check'), isNew ? 'Dodaj' : 'Zapisz'),
       isNew || r.builtin ? '' : el('button', { class: 'danger', onclick: async () => {
-        if (!confirm(`Usunąć rangę ${r.name}? ${r.holders} graczy ją straci.`)) return;
+        if (!await confirmModal({ title: `Usunąć rangę ${r.name}?`, text: `${r.holders} graczy ją straci.`, ok: 'Usuń', okIcon: 'fa-solid fa-trash-can', danger: true })) return;
         if (await guard(() => api('DELETE', `/v1/admin/ranks/${encodeURIComponent(r.id)}`))) { toast('Usunięto.'); ranksPage(); }
       } }, icon('fa-solid fa-trash-can'), 'Usuń'),
       r.builtin ? el('span', { class: 'muted small', textContent: 'Wbudowanej rangi nie da się usunąć, można ją wyłączyć.' }) : ''));
@@ -99,7 +99,7 @@ export function userRanksSection(userId, changed) {
       el('span', { class: 'muted grow', textContent: [SOURCES[g.source] ?? g.source, g.grantedByHandle ? `przez @${g.grantedByHandle}` : '', fmtDate(g.grantedAt),
         g.expiresAt ? `${g.expired ? 'wygasła' : 'do'} ${fmtDate(g.expiresAt)}` : 'na zawsze'].filter(Boolean).join(' · ') }),
       el('button', { class: 'icon-btn', title: 'Odbierz', onclick: async () => {
-        if (!confirm(`Odebrać rangę ${byId[g.rank]?.name ?? g.rank}?`)) return;
+        if (!await confirmModal({ title: `Odebrać rangę ${byId[g.rank]?.name ?? g.rank}?`, ok: 'Odbierz', danger: true })) return;
         const r = await guard(() => api('DELETE', `/v1/admin/users/${userId}/ranks/${encodeURIComponent(g.rank)}`));
         if (r) { toast('Ranga odebrana.'); draw(r); changed?.(); }
       } }, icon('fa-solid fa-xmark'))));
