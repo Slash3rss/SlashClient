@@ -952,6 +952,11 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		return -1;
 	}
 
+	/** Scrolls the list so a server's card is at its top (room below it to drag). */
+	public void scrollToForTest(String name) {
+		for (Object o : shown) if (o instanceof ServerData d && name.equals(d.name)) scroll = Math.max(0, Math.min(maxScroll, shownY.get(d) - HEADER_H));
+	}
+
 	public boolean draggingForTest() {
 		return dragging != null;
 	}

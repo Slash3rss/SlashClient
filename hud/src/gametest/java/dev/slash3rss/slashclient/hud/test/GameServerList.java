@@ -66,6 +66,9 @@ public class GameServerList implements FabricClientGameTest {
 
 	/** Holds a server's card with the mouse and moves it by `by` GUI pixels in small steps (GUI scale 2), a screenshot halfway. */
 	private static void drag(ClientGameTestContext context, String name, int by, String shot) {
+		// at the list's top, so the drag does not reach the bottom edge (where the list scrolls by itself)
+		context.runOnClient(mc -> screen().scrollToForTest(name));
+		context.waitTicks(2);
 		int y = context.computeOnClient(mc -> screen().cardYForTest(name));
 		if (y < 0) throw new AssertionError(name + " is not on screen");
 		context.getInput().setCursorPos(427, 2 * y);
@@ -226,7 +229,11 @@ public class GameServerList implements FabricClientGameTest {
 		if (!context.computeOnClient(mc -> saved().get(0)).equals("SkyUp.pl")) throw new AssertionError("A server moved past the pinned one");
 
 		// dragged with the mouse two places down, it lands there and is saved
-		String grabbed = context.computeOnClient(mc -> saved().get(1));
+		// one of this test's own servers: other tests leave pinned ones (rotating partners) on top of the list
+		String grabbed = context.computeOnClient(mc -> {
+			for (String name : saved()) for (String[] s : SERVERS) if (s[0].equals(name)) return name;
+			throw new AssertionError("None of the test's servers is saved: " + saved());
+		});
 		int from = context.computeOnClient(mc -> saved().indexOf(grabbed));
 		drag(context, grabbed, 2 * 39, "server-list-dragging");
 		int to = context.computeOnClient(mc -> saved().indexOf(grabbed));
