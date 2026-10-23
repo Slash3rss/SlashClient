@@ -7,6 +7,7 @@ import { BLOCKED_TAGS, BLOCKED_WORDS, CLAN_LIMITS } from './clans.ts';
 import { COMMUNITY_LIMITS } from './communityStore.ts';
 import { COMMUNITY_MEDIA_LIMITS } from './communityMedia.ts';
 import { BANNER_DEFS, FEATURE_DEFS } from './features.ts';
+import { GIF_SETTING_DEFS } from './gifs.ts';
 import { PUSH_SETTING_DEFS } from './push.ts';
 import { RANK_SETTING_DEFS } from './ranks.ts';
 import { GROUP_LIMITS } from './groups.ts';
@@ -33,6 +34,7 @@ export const CATEGORIES: { id: SettingCategory; label: string; labelEn: string }
   { id: 'chat', label: 'Czat', labelEn: 'Chat' },
   { id: 'media', label: 'Zdjęcia i klipy', labelEn: 'Pictures and clips' },
   { id: 'chatMedia', label: 'Multimedia w czatach', labelEn: 'Chat media' },
+  { id: 'gifs', label: 'GIF-y i naklejki', labelEn: 'GIFs and stickers' },
   { id: 'cloud', label: 'Profile w chmurze', labelEn: 'Cloud profiles' },
   { id: 'clans', label: 'Klany', labelEn: 'Clans' },
   { id: 'groups', label: 'Grupy', labelEn: 'Groups' },
@@ -154,6 +156,8 @@ export const SETTING_DEFS: SettingDef[] = [
 
   // limits of pictures in group, clan and community chats: each chat's store, keeping time, size and pictures per member a day (chatMediaLimits.ts)
   ...group('chatMedia', chatMediaSettingDefs()),
+  // GIFs and stickers from GIPHY or Tenor (gifs.ts)
+  ...GIF_SETTING_DEFS,
 
   ...group('sparks', [
     { key: 'sparks.messagesPerDay', label: 'Wiadomości liczone dziennie', labelEn: 'Messages counted a day', description: 'Do osiągnięć za wiadomości liczy się najwyżej tyle wiadomości dziennie (UTC).', type: 'int', default: COUNTED_PER_DAY, min: 0, max: 10_000 },

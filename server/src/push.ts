@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { gifFallback } from './gifs.ts';
 import type http from 'node:http';
 import type { DatabaseSync } from 'node:sqlite';
 import type { SettingDef, Settings } from './settings.ts';
@@ -186,7 +187,7 @@ export function noticeFor(userId: string, event: unknown, l: NoticeLookups): Not
     const c = l.community(m.community, m.channel, userId);
     if (!c || c.notify === 'none') return undefined;
     const name = l.nameOf(m.from);
-    const text = l.mentionText() && typeof m.text === 'string' && m.text.trim() ? `: ${clip(m.text.trim())}` : '';
+    const text = l.mentionText() && typeof m.text === 'string' && m.text.trim() ? `: ${clip(gifFallback(m.text.trim()))}` : '';
     // the built-in channels have no name of their own (clients call them by their kind)
     const channel = (pl: boolean) => (c.channelKind === 'general' ? (pl ? 'Ogólny' : 'General') : c.channelKind === 'announcements' ? (pl ? 'Ogłoszenia' : 'Announcements') : c.channel);
     return {

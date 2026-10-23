@@ -2,6 +2,7 @@ import type http from 'node:http';
 import type { Db, Person } from './db.ts';
 import { LogoStore, serveLogo, takeLogo } from './clanLogos.ts';
 import { EDIT_WINDOW_MS, editRefusal } from './chatLimits.ts';
+import { gifText, looksLikeGif, parseGifText } from './gifs.ts';
 import { withDefaults } from './settings.ts';
 import { POLL_OPTIONS, createCommunityMedia, type CommunityMediaLimits } from './communityMedia.ts';
 import type { ChatMediaLimits, OverrideStore } from './chatMediaLimits.ts';
@@ -74,6 +75,8 @@ interface Deps {
   limitBurst?: (user: string, conversation: string) => void;
   /** A message to a real conversation, for the achievements. */
   countMessage?: (user: string) => void;
+  /** GIFs and stickers (gifs.ts): whether they may be sent now, and the per-member rate limit. */
+  gifs?: { enabled: () => boolean; limitSend: (user: string) => void };
   /** Looks at a player's achievements again (joined, founded, the community grew). */
   checkAchievements?: (user: string) => void;
   /** Sizes an achievement asks a community to reach (everyone in it is looked at when it gets there). */
@@ -838,10 +841,14 @@ export function createCommunities(deps: Deps) {
       }
       // a picture uploaded just before, or a poll (communityMedia.ts): a short text for older launchers
       const extra = media.prepare(raw, id, ch, me);
-      const text = extra?.text ?? cleanText(raw.text);
+      // a GIF or a sticker (gifs.ts): only a valid reference to the providers' CDN, written again here; its addresses do not count against the text's length
+      const gif = !extra && looksLikeGif(raw.text) ? parseGifText(raw.text) ?? fail(400, 'bad_gif') : undefined;
+      if (gif && !deps.gifs?.enabled()) fail(403, 'gifs_disabled');
+      const text = extra?.text ?? (gif ? gifText(gif) : cleanText(raw.text));
       deps.limitMessages(me);
       deps.limitBurst?.(me, `c:${ch}`);
-      const mentions = mentionsIn(id, text, channel);
+      if (gif) deps.gifs!.limitSend(me);
+      const mentions = gif ? [] : mentionsIn(id, text, channel);
       const readers = roles.readers(id, channel) ?? store.memberSet(id);
       if (replyTo && replyTo.from !== me && readers.has(replyTo.from) && !mentions.includes(replyTo.from)) mentions.push(replyTo.from);
       const row = store.addMessage(id, ch, me, text, mentions, now, replyTo?.id ?? null);
@@ -859,9 +866,11 @@ export function createCommunities(deps: Deps) {
       const old = store.message(id, Number(raw));
       if (!old || old.channel !== ch) fail(404, 'not_found');
       const channel = readable(id, ch, actorOf(id, m));
-      const refusal = editRefusal({ ...old!, deleted: !!old!.deletedAt }, me, media.special(old!.id), Date.now(), editWindow());
+      const refusal = editRefusal({ ...old!, deleted: !!old!.deletedAt }, me, media.special(old!.id) || looksLikeGif(old!.text), Date.now(), editWindow());
       if (refusal) fail(...refusal);
       const text = cleanText((await body(req)).text);
+      // a text does not become a GIF by editing (its addresses were never checked)
+      if (looksLikeGif(text)) fail(400, 'not_editable');
       store.editMessage(old!.id, text, mentionsIn(id, text, channel));
       const message = messageView(store.message(id, old!.id)!);
       toReaders(id, ch, { type: 'community-message-edit', message });

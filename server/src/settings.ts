@@ -20,7 +20,7 @@ export type SettingType = 'int' | 'float' | 'bool' | 'string' | 'enum' | 'durati
 export type SettingValue = number | boolean | string | string[];
 export type SettingCategory =
   | 'features' | 'banner' | 'chat' | 'media' | 'chatMedia' | 'cloud' | 'clans' | 'groups' | 'communities' | 'sparks' | 'support' | 'profiles' | 'security' | 'storage' | 'moderation' | 'streams' | 'servers'
-  | 'suggestions' | 'push';
+  | 'suggestions' | 'push' | 'gifs';
 
 export interface SettingDef {
   key: string;
