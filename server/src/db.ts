@@ -122,6 +122,17 @@ type MessageRow = Omit<Message, 'invite' | 'waypoint' | 'editedAt' | 'deleted'> 
 const toMessage = ({ invite, waypoint, editedAt, deletedAt, ...m }: MessageRow): Message => (deletedAt ? { ...m, text: '', deleted: true } : {
   ...m, ...(invite ? { invite: JSON.parse(invite) as Invite } : {}), ...(waypoint ? { waypoint: JSON.parse(waypoint) as SharedWaypoint } : {}), ...(editedAt ? { editedAt } : {}),
 });
+const PARTNER_COLUMNS = 'id, address, name, owner, background, pinned, rotate, updated_at AS updatedAt, icon, icon_size AS iconSize, icon_delays AS iconDelays, icon_updated_at AS iconUpdatedAt';
+type PartnerRow = Omit<import('./partners.ts').Partner, 'pinned' | 'rotate' | 'iconDelays'> & { pinned: number; rotate: number; iconDelays: string };
+const toPartner = (p: PartnerRow): import('./partners.ts').Partner => {
+  let iconDelays: number[] = [];
+  try {
+    iconDelays = JSON.parse(p.iconDelays) as number[];
+  } catch {
+    // a broken value: the icon simply has no delays
+  }
+  return { ...p, pinned: !!p.pinned, rotate: !!p.rotate, iconDelays };
+};
 const SHARE_COLUMNS ='s.code, s.owner, s.name, s.game_version AS gameVersion, s.loader, s.size, s.downloads, s.created_at AS createdAt, s.expires_at AS expiresAt';
 
 /** Friendships are stored once, with the smaller uuid first. */
@@ -179,6 +190,15 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
 CREATE TABLE IF NOT EXISTS profile_shares (code TEXT PRIMARY KEY, owner TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', game_version TEXT NOT NULL DEFAULT '', loader TEXT NOT NULL DEFAULT '', size INTEGER NOT NULL, downloads INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created_at);
 `);
+    // a partner's animated icon (partnerIcons.ts): the sprite sheet's file, a frame's side and each frame's delay (JSON);
+    // added after partners existed, so every file (a new one too, the table above has none of them) gets the columns here
+    const iconColumns = this.db.prepare('PRAGMA table_info(partners)').all() as { name: string }[];
+    if (!iconColumns.some((c) => c.name === 'icon')) {
+      this.db.exec("ALTER TABLE partners ADD COLUMN icon TEXT NOT NULL DEFAULT ''");
+      this.db.exec('ALTER TABLE partners ADD COLUMN icon_size INTEGER NOT NULL DEFAULT 0');
+      this.db.exec("ALTER TABLE partners ADD COLUMN icon_delays TEXT NOT NULL DEFAULT '[]'");
+      this.db.exec('ALTER TABLE partners ADD COLUMN icon_updated_at INTEGER NOT NULL DEFAULT 0');
+    }
   }
 
   close() {
@@ -656,17 +676,22 @@ CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created
   // ---- partner servers ----
 
   partners(): import('./partners.ts').Partner[] {
-    return (this.db.prepare('SELECT id, address, name, owner, background, pinned, rotate, updated_at AS updatedAt FROM partners ORDER BY address').all() as { pinned: number; rotate: number }[])
-      .map((p) => ({ ...p, pinned: !!p.pinned, rotate: !!p.rotate })) as unknown as import('./partners.ts').Partner[];
+    return (this.db.prepare(`SELECT ${PARTNER_COLUMNS} FROM partners ORDER BY address`).all() as unknown as PartnerRow[]).map(toPartner);
   }
 
   partner(id: string): import('./partners.ts').Partner | undefined {
-    const p = this.db.prepare('SELECT id, address, name, owner, background, pinned, rotate, updated_at AS updatedAt FROM partners WHERE id = ?').get(id) as { pinned: number; rotate: number } | undefined;
-    return p ? ({ ...p, pinned: !!p.pinned, rotate: !!p.rotate } as unknown as import('./partners.ts').Partner) : undefined;
+    const p = this.db.prepare(`SELECT ${PARTNER_COLUMNS} FROM partners WHERE id = ?`).get(id) as unknown as PartnerRow | undefined;
+    return p ? toPartner(p) : undefined;
   }
 
   partnerByAddress(address: string): import('./partners.ts').Partner | undefined {
-    return this.db.prepare('SELECT id, address, name, owner, background, pinned, rotate, updated_at AS updatedAt FROM partners WHERE address = ?').get(address) as import('./partners.ts').Partner | undefined;
+    const p = this.db.prepare(`SELECT ${PARTNER_COLUMNS} FROM partners WHERE address = ?`).get(address) as unknown as PartnerRow | undefined;
+    return p ? toPartner(p) : undefined;
+  }
+
+  /** A partner's animated icon: the sprite sheet's file ('' for none), a frame's side and the frames' delays in ms. */
+  setPartnerIcon(id: string, icon: string, size: number, delays: number[]) {
+    this.db.prepare('UPDATE partners SET icon = ?, icon_size = ?, icon_delays = ?, icon_updated_at = ? WHERE id = ?').run(icon, size, JSON.stringify(delays), Date.now(), id);
   }
 
   addPartner(p: import('./partners.ts').Partner) {

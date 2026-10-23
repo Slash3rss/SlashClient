@@ -1,9 +1,10 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import type http from 'node:http';
 import path from 'node:path';
 import type { Db } from './db.ts';
+import { IconError, makeIcon, type Icon } from './partnerIcons.ts';
 
 /**
  * Partner servers: an address (as players type it) with a background picture that SlashClient HUD
@@ -11,7 +12,14 @@ import type { Db } from './db.ts';
  * the owner may change the picture itself. Pictures are files next to the database.
  */
 
-export interface Partner { id: string; address: string; name: string; owner: string; background: string; pinned: boolean; rotate: boolean; updatedAt: number }
+/**
+ * `icon`: the file of the animated icon's sprite sheet (partnerIcons.ts), '' for none; `iconSize` a
+ * frame's side, `iconDelays` each frame's delay in ms; `iconUpdatedAt` versions its address.
+ */
+export interface Partner {
+  id: string; address: string; name: string; owner: string; background: string; pinned: boolean; rotate: boolean; updatedAt: number;
+  icon: string; iconSize: number; iconDelays: number[]; iconUpdatedAt: number;
+}
 
 const MAX_PICTURE = 3 * 1024 * 1024;
 // PNG and JPEG only: the game reads those itself (no WebP)
@@ -30,15 +38,15 @@ function pictureType(data: Buffer): string | undefined {
   return undefined;
 }
 
-async function rawBody(req: http.IncomingMessage, fail: (status: number, code: string) => never): Promise<Buffer> {
+async function rawBody(req: http.IncomingMessage, fail: (status: number, code: string) => never, max = MAX_PICTURE): Promise<Buffer> {
   const chunks: Buffer[] = [];
   let size = 0;
   // the rest of a too big upload is read and dropped, so the sender gets the answer instead of a broken connection
   for await (const chunk of req) {
     size += chunk.length;
-    if (size <= MAX_PICTURE) chunks.push(chunk);
+    if (size <= max) chunks.push(chunk);
   }
-  if (size > MAX_PICTURE) fail(413, 'too_large');
+  if (size > max) fail(413, 'too_large');
   return Buffer.concat(chunks);
 }
 
@@ -49,19 +57,37 @@ export interface PartnerContext {
   admin: (req: http.IncomingMessage) => string;
   body: (req: http.IncomingMessage) => Promise<Record<string, unknown>>;
   fail: (status: number, code: string) => never;
+  /** A number from the admin panel's settings (the icon's limits). */
+  setting: (key: string) => number;
 }
+
+/** The animated icon's limits, from the admin panel ("Lista serwerów"). */
+export const ICON_SETTING_DEFAULTS = { bytes: 2 * 1024 * 1024, frames: 64, side: 128 };
 
 type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
 
-export function partnerRoutes(ctx: PartnerContext): { routes: [string, RegExp, Handler][]; picture: (id: string) => Promise<{ data: Buffer; type: string } | undefined> } {
+export function partnerRoutes(ctx: PartnerContext): {
+  routes: [string, RegExp, Handler][];
+  picture: (id: string) => Promise<{ data: Buffer; type: string } | undefined>;
+  icon: (id: string) => Promise<{ data: Buffer; etag: string } | undefined>;
+} {
   const { db } = ctx;
   mkdirSync(ctx.dir, { recursive: true });
   const fileOf = (p: Partner) => path.join(ctx.dir, p.background);
-  /** What the game and the pages see; the picture's address changes with it, so it can be kept long. */
+  const iconFileOf = (p: Partner) => path.join(ctx.dir, p.icon);
+  /**
+   * What the game and the pages see; the pictures' addresses change with them, so they can be kept long.
+   * The animated icon is a PNG with the frames stacked top to bottom, `iconSize` pixels square each,
+   * shown for `iconDelays` ms each (older mods ignore these fields).
+   */
   const view = (p: Partner) => ({
     id: p.id, address: p.address, name: p.name, pinned: p.pinned, rotate: p.rotate,
     background: p.background ? `/v1/partners/${p.id}/background?v=${p.updatedAt}` : null,
+    icon: p.icon ? `/v1/partners/${p.id}/icon?v=${p.iconUpdatedAt}` : null,
+    iconSize: p.icon ? p.iconSize : 0,
+    iconDelays: p.icon ? p.iconDelays : [],
   });
+  const iconLimits = () => ({ bytes: ctx.setting('partners.iconBytes'), frames: ctx.setting('partners.iconFrames'), side: ctx.setting('partners.iconSide') });
   const withOwner = (p: Partner) => ({ ...view(p), owner: p.owner ? db.user(p.owner)?.handle ?? '' : '' });
   const partnerOr404 = (id: string) => db.partner(id) ?? ctx.fail(404, 'not_found');
 
@@ -84,6 +110,40 @@ export function partnerRoutes(ctx: PartnerContext): { routes: [string, RegExp, H
     return withOwner(db.partner(p.id)!);
   }
 
+  /** Turns the upload into the sprite sheet once, so neither the mod nor the pages decode GIFs. */
+  async function setIcon(req: http.IncomingMessage, p: Partner, who: string) {
+    const limits = iconLimits();
+    const data = await rawBody(req, ctx.fail, limits.bytes);
+    let made: Icon;
+    try {
+      made = makeIcon(data, limits);
+    } catch (e) {
+      if (e instanceof IconError) ctx.fail(400, e.message);
+      throw e;
+    }
+    const name = `${p.id}-icon-${Date.now()}.png`;
+    await writeFile(path.join(ctx.dir, name), made!.png);
+    if (p.icon) await rm(iconFileOf(p), { force: true });
+    db.setPartnerIcon(p.id, name, made!.size, made!.delays);
+    db.log(who, 'partner_icon', p.address);
+    return withOwner(db.partner(p.id)!);
+  }
+
+  async function clearIcon(p: Partner, who: string) {
+    if (p.icon) await rm(iconFileOf(p), { force: true });
+    db.setPartnerIcon(p.id, '', 0, []);
+    db.log(who, 'partner_icon', p.address, '—');
+    return withOwner(db.partner(p.id)!);
+  }
+
+  /** Only the server's owner (a partner account) may change its pictures from the account page. */
+  const ownedBy = (req: http.IncomingMessage, id: string) => {
+    const me = ctx.authed(req);
+    const p = partnerOr404(id);
+    if (p.owner !== me) ctx.fail(403, 'not_owner');
+    return { me, p };
+  };
+
   const ownerFrom = (handle: unknown): string => {
     if (typeof handle !== 'string' || !handle.trim()) return '';
     return db.userByHandle(handle.trim().replace(/^@/, ''))?.id ?? ctx.fail(404, 'no_such_user');
@@ -95,7 +155,7 @@ export function partnerRoutes(ctx: PartnerContext): { routes: [string, RegExp, H
     // -- the admin --
     ['GET', /^\/v1\/admin\/partners$/, (req) => {
       ctx.admin(req);
-      return { partners: db.partners().map(withOwner) };
+      return { partners: db.partners().map(withOwner), iconLimits: iconLimits() };
     }],
     ['POST', /^\/v1\/admin\/partners$/, async (req) => {
       const me = ctx.admin(req);
@@ -104,7 +164,7 @@ export function partnerRoutes(ctx: PartnerContext): { routes: [string, RegExp, H
       const norm = normalizeAddress(address);
       if (db.partnerByAddress(norm)) ctx.fail(409, 'exists');
       const id = randomBytes(6).toString('hex');
-      db.addPartner({ id, address: norm, name: typeof name === 'string' ? name.trim().slice(0, 48) : '', owner: ownerFrom(owner), background: '', pinned: false, rotate: false, updatedAt: Date.now() });
+      db.addPartner({ id, address: norm, name: typeof name === 'string' ? name.trim().slice(0, 48) : '', owner: ownerFrom(owner), background: '', pinned: false, rotate: false, updatedAt: Date.now(), icon: '', iconSize: 0, iconDelays: [], iconUpdatedAt: 0 });
       db.log(me, 'partner_add', norm);
       return withOwner(db.partner(id)!);
     }],
@@ -125,17 +185,20 @@ export function partnerRoutes(ctx: PartnerContext): { routes: [string, RegExp, H
       const me = ctx.admin(req);
       const p = partnerOr404(id);
       if (p.background) await rm(fileOf(p), { force: true });
+      if (p.icon) await rm(iconFileOf(p), { force: true });
       db.removePartner(id);
       db.log(me, 'partner_remove', p.address);
       return { ok: true };
     }],
     ['PUT', /^\/v1\/admin\/partners\/(\w+)\/background$/, (req, [id]) => setPicture(req, partnerOr404(id), ctx.admin(req))],
     ['DELETE', /^\/v1\/admin\/partners\/(\w+)\/background$/, (req, [id]) => clearPicture(partnerOr404(id), ctx.admin(req))],
+    ['PUT', /^\/v1\/admin\/partners\/(\w+)\/icon$/, (req, [id]) => setIcon(req, partnerOr404(id), ctx.admin(req))],
+    ['DELETE', /^\/v1\/admin\/partners\/(\w+)\/icon$/, (req, [id]) => clearIcon(partnerOr404(id), ctx.admin(req))],
 
     // -- the server's owner (a partner account) --
     ['GET', /^\/v1\/me\/partners$/, (req) => {
       const me = ctx.authed(req);
-      return { partners: db.partners().filter((p) => p.owner === me).map(withOwner) };
+      return { partners: db.partners().filter((p) => p.owner === me).map(withOwner), iconLimits: iconLimits() };
     }],
     ['PUT', /^\/v1\/me\/partners\/(\w+)\/background$/, (req, [id]) => {
       const me = ctx.authed(req);
@@ -149,6 +212,14 @@ export function partnerRoutes(ctx: PartnerContext): { routes: [string, RegExp, H
       if (p.owner !== me) ctx.fail(403, 'not_owner');
       return clearPicture(p, me);
     }],
+    ['PUT', /^\/v1\/me\/partners\/(\w+)\/icon$/, (req, [id]) => {
+      const { me, p } = ownedBy(req, id);
+      return setIcon(req, p, me);
+    }],
+    ['DELETE', /^\/v1\/me\/partners\/(\w+)\/icon$/, (req, [id]) => {
+      const { me, p } = ownedBy(req, id);
+      return clearIcon(p, me);
+    }],
   ];
 
   async function picture(id: string) {
@@ -158,5 +229,13 @@ export function partnerRoutes(ctx: PartnerContext): { routes: [string, RegExp, H
     return data && { data, type: TYPES[path.extname(p.background).slice(1)] ?? 'application/octet-stream' };
   }
 
-  return { routes, picture };
+  /** The sprite sheet with a strong ETag (its hash), so the game asks again cheaply and gets a 304. */
+  async function icon(id: string) {
+    const p = db.partner(id);
+    if (!p?.icon) return undefined;
+    const data = await readFile(iconFileOf(p)).catch(() => undefined);
+    return data && { data, etag: `"${createHash('sha256').update(data).digest('hex').slice(0, 32)}"` };
+  }
+
+  return { routes, picture, icon };
 }

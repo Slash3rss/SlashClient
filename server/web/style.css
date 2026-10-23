@@ -256,6 +256,12 @@ tbody tr:hover { background: var(--card); }
 .mc-bars { display: inline-flex; align-items: flex-end; gap: 1px; }
 .mc-bars i { width: 2px; background: #22c55e; display: block; }
 .partner-own { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+/* the animated icon fills the icon's square, pixel art kept sharp */
+.partner-banner .mc-icon canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+.partner-icon { align-items: center; flex-wrap: wrap; }
+.partner-icon small { flex-basis: 100%; }
+.partner-icon-preview { width: 64px; height: 64px; flex-shrink: 0; display: grid; place-items: center; border-radius: 6px; background: rgba(0, 0, 0, .35); color: rgba(255, 255, 255, .35); }
+.partner-icon-preview canvas, .partner-icon-preview img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; border-radius: 6px; }
 label.btn input.hidden { display: none; }
 
 /* the request log in the admin panel */

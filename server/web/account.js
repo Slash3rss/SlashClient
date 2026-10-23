@@ -6,7 +6,7 @@ import { streamsCard } from './accountStreams.js';
 import { legalNotices, signInNote } from './legalNotice.js';
 import { chip as supporterChip, supportCard } from './supportCard.js';
 import { rankBadge, rankChip } from './ranks.js';
-import { $, partnerBanner, uploadPicture, PROVIDERS, SLOTS, api, avatarEl, capeEl, cosmeticEl, el, errorText, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
+import { $, partnerBanner, partnerIconControls, uploadPicture, PROVIDERS, SLOTS, api, avatarEl, capeEl, cosmeticEl, el, errorText, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 
 let me;
 let health = { providers: [], dev: false };
@@ -247,7 +247,8 @@ async function renderPartners() {
     });
     section.append(partnerBanner(p), el('div', { class: 'row' },
       el('label', { class: 'btn' }, icon('fa-solid fa-image'), p.background ? 'Zmień tło' : 'Wgraj tło', input),
-      p.background ? el('button', { onclick: async () => { if (await guard(() => api('DELETE', `/v1/me/partners/${p.id}/background`))) renderAccount(); } }, icon('fa-solid fa-eraser'), 'Usuń tło') : ''));
+      p.background ? el('button', { onclick: async () => { if (await guard(() => api('DELETE', `/v1/me/partners/${p.id}/background`))) renderAccount(); } }, icon('fa-solid fa-eraser'), 'Usuń tło') : ''),
+      partnerIconControls(p, `/v1/me/partners/${p.id}/icon`, res.iconLimits, renderAccount));
   }
   $('#account').append(section);
 }

@@ -1,5 +1,5 @@
 // The admin panel: numbers, accounts (ban, sign out, role, cape, delete), cosmetics and the log.
-import { $, PROVIDERS, partnerBanner, uploadPicture, SLOTS, ago, api, avatarEl, capeEl, cosmeticEl, el, errorText, fmtDate, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
+import { $, PROVIDERS, partnerBanner, partnerIconControls, uploadPicture, SLOTS, ago, api, avatarEl, capeEl, cosmeticEl, el, errorText, fmtDate, guard, icon, signInDev, signInWith, signOut, toast, token } from './common.js';
 import { storagePage } from './adminStorage.js';
 import { shopSection, walletSection } from './adminSparks.js';
 import { achievementsPage, foreignHash, obtainLine } from './adminAchievements.js';
@@ -41,7 +41,7 @@ const ACTIONS = {
   grant: 'przyznał(a) pelerynę', revoke: 'odebrał(a) pelerynę',
   log_remove: 'usunął(ęła) log', bug_status: 'zmienił(a) status zgłoszenia', bug_remove: 'usunął(ęła) zgłoszenie',
   partner_add: 'dodał(a) serwer partnerski', partner_edit: 'zmienił(a) serwer partnerski', partner_remove: 'usunął(ęła) serwer partnerski',
-  partner_background: 'zmienił(a) tło serwera', set_rank: 'zmienił(a) rangę',
+  partner_background: 'zmienił(a) tło serwera', partner_icon: 'zmienił(a) animowaną ikonę serwera',set_rank: 'zmienił(a) rangę',
   storage_add: 'dodał(a) miejsce na pliki', storage_edit: 'zmienił(a) miejsce na pliki', storage_remove: 'usunął(ęła) miejsce na pliki',
   storage_move: 'przenosi pliki z', storage_move_stop: 'zatrzymał(a) przenoszenie plików z',
   sparks_give: 'dodał(a) Iskry', sparks_take: 'odebrał(a) Iskry', shop_price: 'zmienił(a) cenę w sklepie',
@@ -386,6 +386,7 @@ async function partnersPage() {
           if (!confirm(`Usunąć ${p.address} z serwerów partnerskich?`)) return;
           if (await guard(() => api('DELETE', `/v1/admin/partners/${p.id}`))) partnersPage();
         } }, icon('fa-solid fa-trash-can'), 'Usuń')),
+      partnerIconControls(p, `/v1/admin/partners/${p.id}/icon`, res.iconLimits, partnersPage),
       save);
   });
   $('#main').replaceChildren(head('Serwery partnerskie'),

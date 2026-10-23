@@ -31,15 +31,77 @@ export async function api(method, path, body) {
   return data;
 }
 
-/** Sends a picture (PNG or JPG) as it is, for a partner server's background. */
-export async function uploadPicture(path, file) {
-  if (file.size > 3 * 1024 * 1024) throw new ApiError('too_large', 413);
+/** Sends a picture as it is, for a partner server's background (PNG or JPG) or animated icon (GIF or APNG). */
+export async function uploadPicture(path, file, max = 3 * 1024 * 1024) {
+  if (file.size > max) throw new ApiError('too_large', 413);
   const headers = { 'Content-Type': file.type || 'application/octet-stream' };
   if (token.get()) headers.Authorization = `Bearer ${token.get()}`;
   const res = await fetch(path, { method: 'PUT', headers, body: file });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError(data.error ?? 'server_error', res.status);
   return data;
+}
+
+/**
+ * Plays a partner's animated icon: the server keeps it as one PNG with the frames stacked top to
+ * bottom (`iconSize` square each, `iconDelays` ms each), the same strip SlashClient HUD draws in the game.
+ */
+export function animatedIcon(p, cls = '') {
+  const canvas = el('canvas', { class: cls, width: p.iconSize, height: p.iconSize });
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+  let frame = 0, shown = false;
+  const draw = () => {
+    // stops once the page is redrawn without this canvas
+    if (canvas.isConnected) shown = true;
+    else if (shown) return;
+    ctx.clearRect(0, 0, p.iconSize, p.iconSize);
+    ctx.drawImage(img, 0, frame * p.iconSize, p.iconSize, p.iconSize, 0, 0, p.iconSize, p.iconSize);
+    const delay = p.iconDelays[frame] ?? 100;
+    frame = (frame + 1) % Math.max(1, p.iconDelays.length);
+    setTimeout(draw, delay);
+  };
+  img.onload = draw;
+  img.src = p.icon;
+  return canvas;
+}
+
+const ICON_ERRORS = { bad_icon: 'bad_icon_file', too_large: 'icon_too_large' };
+
+/**
+ * The animated icon's controls on a partner's card (the account page and the admin panel): a preview,
+ * upload, remove and the limits. `path` is the icon's address in the API, `done` redraws the page.
+ */
+export function partnerIconControls(p, path, limits, done) {
+  const preview = el('div', { class: 'partner-icon-preview' });
+  const show = () => preview.replaceChildren(p.icon ? animatedIcon(p) : icon('fa-regular fa-image'));
+  show();
+  const input = el('input', { type: 'file', accept: 'image/gif,image/png', class: 'hidden' });
+  input.addEventListener('change', async () => {
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    // the original file while it uploads (the browser plays GIF and APNG itself)
+    const url = URL.createObjectURL(file);
+    preview.replaceChildren(el('img', { src: url, alt: '' }));
+    const ok = await guard(async () => {
+      try {
+        return await uploadPicture(path, file, limits?.bytes ?? 2 * 1024 * 1024);
+      } catch (e) {
+        throw ICON_ERRORS[e?.code] ? new ApiError(ICON_ERRORS[e.code], e.status) : e;
+      }
+    });
+    URL.revokeObjectURL(url);
+    if (ok) {
+      toast('Ikona zapisana.');
+      done();
+    } else show();
+  });
+  const mb = Math.round(((limits?.bytes ?? 2 * 1024 * 1024) / 1024 / 1024) * 10) / 10;
+  return el('div', { class: 'row partner-icon' }, preview,
+    el('label', { class: 'btn' }, icon('fa-solid fa-film'), p.icon ? 'Zmień animowaną ikonę' : 'Animowana ikona', input),
+    p.icon ? el('button', { onclick: async () => { if (await guard(() => api('DELETE', path))) done(); } }, icon('fa-solid fa-eraser'), 'Usuń ikonę') : '',
+    el('small', { class: 'muted', textContent: `GIF lub APNG, kwadrat (inne są przycinane do środka), do ${mb} MB i ${limits?.frames ?? 64} klatek; większe niż ${limits?.side ?? 128}×${limits?.side ?? 128} px są zmniejszane. W grze zastępuje ikonę serwera.` }));
 }
 
 /** A partner server's card: its background as it shows behind the server in the game's list. */
@@ -51,7 +113,8 @@ export async function uploadPicture(path, file) {
 export function partnerBanner(p, extra = []) {
   const bars = el('span', { class: 'mc-bars' }, ...[1, 2, 3, 4, 5].map((n) => el('i', { style: `height:${n * 2 + 2}px` })));
   const row = el('div', { class: `partner-banner${p.background ? '' : ' empty'}` },
-    el('div', { class: 'mc-icon' }, el('img', { src: '/vendor/logo.png', alt: '' })),
+    // the animated icon replaces the server's own one in the game
+    el('div', { class: 'mc-icon' }, p.icon ? animatedIcon(p) : el('img', { src: '/vendor/logo.png', alt: '' })),
     el('div', { class: 'mc-text' },
       el('div', { class: 'mc-name' }, el('span', { textContent: p.name || p.address }), el('span', { class: 'mc-badge' }, icon('fa-solid fa-handshake'), 'Partner')),
       el('div', { class: 'mc-motd', textContent: p.address })),
@@ -136,6 +199,11 @@ const ERRORS = {
   bad_level: 'Poziom wsparcia: liczba od 0 do 100.',
   not_for_supporters: 'Ten przedmiot daje ranga albo osiągnięcie, nie wsparcie.',
   feature_disabled: 'Ta funkcja jest chwilowo wyłączona.',
+  // a partner server's animated icon (the server's 'bad_icon' and 'too_large', renamed by partnerIconControls)
+  bad_icon_file: 'To nie jest animowany GIF ani PNG/APNG albo plik jest uszkodzony.',
+  icon_too_large: 'Ikona jest za duża.',
+  too_many_frames: 'Animacja ma za dużo klatek.',
+  webp_unsupported: 'Animowany WebP nie jest obsługiwany. Zapisz animację jako GIF albo APNG.',
 };
 export const errorText = (err) => ERRORS[err?.code] ?? (err?.message || 'Coś poszło nie tak.');
 
