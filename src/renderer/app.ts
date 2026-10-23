@@ -2756,6 +2756,36 @@ async function refreshInstalled(animate = false) {
   if (contentType === 'mod' && contentTab === 'installed') runModCheck();
 }
 
+/**
+ * Results seen in this run, by profile, kind, site and search text: switching Modrinth/CurseForge
+ * or mods/packs back and forth shows them at once instead of searching again (fresh for a while).
+ */
+const searchCache = new Map<string, { hits: ProjectHit[]; total: number; at: number }>();
+const SEARCH_FRESH_MS = 5 * 60_000;
+const searchKey = () => [contentProfileId(), contentType, contentType === 'datapack' ? 'modrinth' : contentSource, $<HTMLInputElement>('#content-search').value.trim()].join('|');
+
+/** Shows the kept results for what is chosen now, or searches when there are none (or they are old). */
+function showOrSearch() {
+  const kept = searchCache.get(searchKey());
+  if (!kept || Date.now() - kept.at > SEARCH_FRESH_MS) {
+    contentHits = [];
+    renderContent();
+    void searchContent();
+    return;
+  }
+  // a search still on its way for the previous choice must not land here
+  searchRequest++;
+  contentLoading = false;
+  searchedProfile = contentProfileId();
+  contentHits = kept.hits;
+  contentTotal = kept.total;
+  // seen before: they are simply there, without appearing one by one as fresh results do
+  shownHits.clear();
+  for (const h of kept.hits) shownHits.add(h.id);
+  animateFrom = undefined;
+  renderContent();
+}
+
 let searchRequest = 0;
 async function searchContent(append = false) {
   const request = ++searchRequest;
@@ -2776,6 +2806,7 @@ async function searchContent(append = false) {
   animateFrom = append ? contentHits.length : 0;
   contentHits = append ? [...contentHits, ...res.hits] : res.hits;
   contentTotal = res.total;
+  searchCache.set(searchKey(), { hits: contentHits, total: contentTotal, at: Date.now() });
   renderContent();
 }
 
@@ -2818,9 +2849,7 @@ function setContentSource(source: Source) {
   site.href = source === 'curseforge' ? 'https://www.curseforge.com/minecraft' : 'https://modrinth.com';
   site.textContent = source === 'curseforge' ? 'CurseForge' : 'Modrinth';
   $<HTMLInputElement>('#content-search').placeholder = source === 'curseforge' ? t('Szukaj na CurseForge…') : t('Szukaj na Modrinth…');
-  contentHits = [];
-  renderContent();
-  searchContent();
+  showOrSearch();
 }
 document.querySelectorAll<HTMLButtonElement>('#content-source button').forEach((b) =>
   b.addEventListener('click', () => b.dataset.source !== contentSource && setContentSource(b.dataset.source as Source)));
@@ -3004,9 +3033,7 @@ document.querySelectorAll<HTMLButtonElement>('#content-type button').forEach((b)
     contentType = b.dataset.type!;
     document.querySelectorAll('#content-type button').forEach((x) => x.classList.toggle('active', x === b));
     $<HTMLInputElement>('#installed-search').value = '';
-    contentHits = [];
-    renderContent();
-    searchContent();
+    showOrSearch();
   }));
 document.querySelectorAll<HTMLButtonElement>('#content-tab button').forEach((b) =>
   b.addEventListener('click', () => {
