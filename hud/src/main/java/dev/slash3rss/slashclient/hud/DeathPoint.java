@@ -33,6 +33,17 @@ public final class DeathPoint {
 		// the one before, in this mode's list or (from before modes were told apart) the server's own
 		for (Waypoints.Point old : new java.util.ArrayList<>(Waypoints.points(mc))) if (old.death && dimension.equals(old.dimension)) Waypoints.remove(old);
 		List<Waypoints.Point> list = Waypoints.here(mc);
+		int[] at = spot(mc);
+		Waypoints.Point p = new Waypoints.Point(Component.translatable("slashclient-hud.deathPoint.name").getString(), at[0], at[1], at[2], dimension, COLOR);
+		p.death = true;
+		list.add(p);
+		Waypoints.save();
+		Compat.chat(mc).addClientSystemMessage(Component.translatable("slashclient-hud.deathPoint.placed", at[0], at[1], at[2]).withStyle(ChatFormatting.GRAY));
+		return p;
+	}
+
+	/** Where the player is (died): x, y, z of the block at their feet. */
+	static int[] spot(Minecraft mc) {
 		var pos = mc.player.blockPosition();
 		// fallen into the void: the point at the bottom of the world, where the fall started to count
 		//#if MC >= 1.21.2
@@ -40,12 +51,7 @@ public final class DeathPoint {
 		//#else
 		//$ int y = Math.max(pos.getY(), mc.level.getMinBuildHeight());
 		//#endif
-		Waypoints.Point p = new Waypoints.Point(Component.translatable("slashclient-hud.deathPoint.name").getString(), pos.getX(), y, pos.getZ(), dimension, COLOR);
-		p.death = true;
-		list.add(p);
-		Waypoints.save();
-		Compat.chat(mc).addClientSystemMessage(Component.translatable("slashclient-hud.deathPoint.placed", pos.getX(), y, pos.getZ()).withStyle(ChatFormatting.GRAY));
-		return p;
+		return new int[] { pos.getX(), y, pos.getZ() };
 	}
 
 	/** The death point of this world and dimension, or null. */

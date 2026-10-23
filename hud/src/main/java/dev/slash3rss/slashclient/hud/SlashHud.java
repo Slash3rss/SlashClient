@@ -174,6 +174,8 @@ public class SlashHud implements ClientModInitializer {
 				// refused for an old session: renewed at once, and the screen says to connect again
 				SessionRenew.disconnected(mc, screen);
 			}
+			// the death screen: where it happened, how long the life was, and the place kept as a waypoint
+			if (screen instanceof net.minecraft.client.gui.screens.DeathScreen death) DeathInfo.attach(mc, death);
 			// the server list: partner servers' pictures, fresh enough
 			if (screen instanceof net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen) PartnerServers.refresh();
 			// the game's own pause menu gets a way back to ours too
@@ -243,6 +245,7 @@ public class SlashHud implements ClientModInitializer {
 			}
 			Freelook.tick(mc);
 			DeathPoint.tick(mc);
+			DeathInfo.tick(mc);
 			LightOverlay.tick(mc);
 			CameraDistance.tick(mc);
 			SlotLock.keyTick(mc);
