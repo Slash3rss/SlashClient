@@ -402,6 +402,8 @@ public final class HudConfig {
 	public boolean waypoints = true;
 	/** A waypoint put by itself where you last died (one per world and dimension, see DeathPoint). */
 	public boolean deathWaypoint = true;
+	/** The death screen with the place, the time lived and a button keeping the place as a waypoint (DeathInfo). */
+	public boolean deathScreen = true;
 	/** Crosses where monsters can spawn, switched with a key (F9), this many blocks around (LightOverlay). */
 	public boolean lightOverlay = false;
 	public int lightOverlayRadius = 16;
@@ -768,6 +770,7 @@ public final class HudConfig {
 		freelook = other.freelook;
 		waypoints = other.waypoints;
 		deathWaypoint = other.deathWaypoint;
+		deathScreen = other.deathScreen;
 		lightOverlay = other.lightOverlay;
 		lightOverlayRadius = Math.max(4, Math.min(32, other.lightOverlayRadius));
 		weatherOff = other.weatherOff;

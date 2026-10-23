@@ -335,6 +335,8 @@ public final class Catalog {
 			new Toggle("slashclient-hud.friendMap.share", dev.slash3rss.slashclient.hud.social.FriendPositions::sharing, dev.slash3rss.slashclient.hud.social.FriendPositions::setSharing)), null));
 		// the death point, the light level overlay, no weather and the F5 camera's distance (one file each in the HUD's package)
 		out.add(new Entry("deathWaypoint", "slashclient-hud.deathPoint", "world", "m-deathpoint", () -> cfg.deathWaypoint, v -> cfg.deathWaypoint = v, List.of(), null));
+		// the death screen: where, how long, and a button keeping the place (DeathInfo)
+		out.add(new Entry("deathScreen", "slashclient-hud.deathScreen", "world", "m-deathscreen", () -> cfg.deathScreen, v -> cfg.deathScreen = v, List.of(), null));
 		out.add(new Entry("lightOverlay", "slashclient-hud.lightOverlay", "world", "m-lightoverlay", () -> cfg.lightOverlay, v -> cfg.lightOverlay = v, List.of(
 			new Slider("slashclient-hud.lightOverlay.radius", 4f, 32f, 2f, "%.0f", () -> (float) cfg.lightOverlayRadius, v -> cfg.lightOverlayRadius = Math.round(v))), null));
 		out.add(new Entry("weatherOff", "slashclient-hud.weatherOff", "world", "m-weather", () -> cfg.weatherOff, v -> cfg.weatherOff = v, List.of(), null));
