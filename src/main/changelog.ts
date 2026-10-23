@@ -60,7 +60,7 @@ export function initChangelog(d: ChangelogDeps): void {
   }
   d.handle('update:rollbackList', async (lang?: string) => {
     const releases = await candidates(langOf(lang));
-    return releases ? { current: version, min: MIN_ROLLBACK_VERSION, packaged: app.isPackaged, releases } : null;
+    return releases ? { current: version, min: MIN_ROLLBACK_VERSION, packaged: app.isPackaged, os: process.platform, releases } : null;
   });
   d.handle('update:rollback', async (target: string) => {
     if (!parseVersion(target)) throw new Error('update:bad_version');

@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import { setLang, t } from '../src/shared/i18n';
-import { hasUnseen, MIN_ROLLBACK_VERSION, pauseHolds, pauseOver, rollbackCandidates, shouldShowWhatsNew, type LauncherRelease } from '../src/shared/launcherReleases';
+import { hasUnseen, MIN_ROLLBACK_VERSION, pauseHolds, pauseOver, rollbackCandidates, shouldShowWhatsNew, updateIssues, type LauncherRelease } from '../src/shared/launcherReleases';
 import { parseNotes, pauseMarker, pausedUntil } from '../server/src/releaseNotes';
 
 /** Just enough of a page for building elements: tags, attributes, children, text. */
@@ -159,5 +159,14 @@ describe('launcher releases', () => {
     } finally {
       setLang('pl');
     }
+  });
+});
+
+describe('known update problems in the rollback window', () => {
+  it('warns about 0.9.36 on macOS only', () => {
+    assert.equal(updateIssues('0.9.36', 'darwin').length, 1);
+    assert.equal(updateIssues('0.9.36', 'win32').length, 0);
+    assert.equal(updateIssues('0.9.37', 'darwin').length, 0);
+    assert.equal(updateIssues('0.9.39', 'linux').length, 0);
   });
 });

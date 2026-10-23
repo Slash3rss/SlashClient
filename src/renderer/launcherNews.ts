@@ -1,5 +1,5 @@
 import { getLang, locale, t } from '../shared/i18n';
-import { hasUnseen, type ChangelogPage, type LauncherRelease } from '../shared/launcherReleases';
+import { hasUnseen, updateIssues, type ChangelogPage, type LauncherRelease } from '../shared/launcherReleases';
 import { compareVersion, parseNotes, type Block, type Inline } from '../../server/src/releaseNotes';
 import { confirmDialog, control, el, icon, modalWindow } from './dialog';
 
@@ -287,7 +287,7 @@ export function createLauncherNews(d: LauncherNewsDeps) {
     const cancel = el('button', { type: 'button', textContent: t('Anuluj') });
     const close = modalWindow(t('Wróć do poprzedniej wersji'), [body], [cancel, go], undefined, 'ln-modal');
     cancel.addEventListener('click', () => close());
-    let info: { current: string; min: string; packaged: boolean; releases: LauncherRelease[] } | null;
+    let info: { current: string; min: string; packaged: boolean; os: string; releases: LauncherRelease[] } | null;
     try {
       info = await api.rollbackList(getLang());
     } catch (err) {
@@ -310,9 +310,15 @@ export function createLauncherNews(d: LauncherNewsDeps) {
       notes.classList.add('hidden');
       const show = el('button', { type: 'button', className: 'link-btn' }, icon('fa-list'), ` ${t('Zmiany')}`);
       show.addEventListener('click', () => notes.classList.toggle('hidden'));
-      return el('div', { className: 'ln-rollback-row' },
-        el('label', { className: 'ln-rollback-pick' }, radio, el('b', { textContent: `SlashClient ${r.version}` }), el('small', { className: 'muted', textContent: fmtDate(r.date) })),
-        show, notes);
+      // a version whose own update did not work here: said right at it
+      const issues = updateIssues(r.version, info!.os);
+      const issueBox = issues.length
+        ? el('div', { className: 'ln-rollback-issue' }, icon('fa-triangle-exclamation'), el('span', { textContent: issues.map((i) => t(i.text)).join(' ') }))
+        : undefined;
+      return el('div', { className: `ln-rollback-row${issues.length ? ' has-issue' : ''}` },
+        el('label', { className: 'ln-rollback-pick' }, radio, el('b', { textContent: `SlashClient ${r.version}` }), el('small', { className: 'muted', textContent: fmtDate(r.date) }),
+          ...(issues.length ? [el('span', { className: 'ln-issue-tag', textContent: t('Problem z aktualizacją') })] : [])),
+        show, ...(issueBox ? [issueBox] : []), notes);
     });
     const warn = (iconName: string, text: string) => el('li', {}, icon(iconName), el('span', { textContent: text }));
     body.replaceChildren(
@@ -330,7 +336,10 @@ export function createLauncherNews(d: LauncherNewsDeps) {
       if (!picked) return;
       const sure = await confirmDialog({
         title: t('Wrócić do SlashClient {0}?', picked),
-        body: [el('p', { className: 'muted', textContent: t('Launcher pobierze wersję {0} i zainstaluje ją po ponownym uruchomieniu. Nowsze funkcje znikną.', picked) })],
+        body: [
+          el('p', { className: 'muted', textContent: t('Launcher pobierze wersję {0} i zainstaluje ją po ponownym uruchomieniu. Nowsze funkcje znikną.', picked) }),
+          ...updateIssues(picked, info!.os).map((i) => el('p', { className: 'ln-rollback-issue' }, icon('fa-triangle-exclamation'), el('span', { textContent: t(i.text) }))),
+        ],
         ok: t('Wróć do {0}', picked), okIcon: 'fa-clock-rotate-left', danger: true,
       });
       if (!sure) return;

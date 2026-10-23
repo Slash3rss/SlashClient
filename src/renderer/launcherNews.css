@@ -55,6 +55,11 @@
 .ln-rollback-pick b, .ln-rollback-pick small { white-space: nowrap; }
 .ln-rollback-pick small { margin-left: auto; }
 .ln-rollback .link-btn { height: 28px; padding: 0 10px; font-size: 12.5px; }
+/* a version whose own update had a problem on this system */
+.ln-rollback-row.has-issue { border-color: rgba(251, 146, 60, .45); }
+.ln-issue-tag { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; color: #fdba74; background: rgba(251, 146, 60, .14); border: 1px solid rgba(251, 146, 60, .35); }
+.ln-rollback-issue { flex-basis: 100%; display: flex; gap: 8px; align-items: baseline; margin: 2px 0; font-size: 13px; color: #fed7aa; }
+.ln-rollback-issue i { color: #fb923c; flex-shrink: 0; }
 .ln-warnings { list-style: none; margin: 0; padding: 10px 12px; border-radius: 10px; background: rgba(250, 204, 21, .06); border: 1px solid rgba(250, 204, 21, .25); display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-secondary); }
 .ln-warnings li { display: flex; gap: 8px; align-items: baseline; }
 .ln-warnings i { color: #fde68a; width: 16px; text-align: center; flex-shrink: 0; }

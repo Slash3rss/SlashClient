@@ -26,6 +26,36 @@ export interface ChangelogPage { releases: LauncherRelease[]; more: boolean }
  */
 export const MIN_ROLLBACK_VERSION = '0.9.36';
 
+/**
+ * Versions whose own update did not work on some system: going back to one of them may leave the
+ * player there (the next update fails, the installer from the website is the way out). Shown in the
+ * rollback window next to the version and in its last question. Add new cases here.
+ */
+export interface UpdateIssue {
+  /** The affected versions, both ends included. */
+  from: string;
+  to: string;
+  /** Only these systems (platformOf); every system when left out. */
+  platforms?: ('windows' | 'mac' | 'linux')[];
+  /** Polish text (the English one is in i18nLauncherNews). */
+  text: string;
+}
+
+export const UPDATE_ISSUES: UpdateIssue[] = [
+  {
+    from: '0.9.36', to: '0.9.36', platforms: ['mac'],
+    // app.asar was taken for a folder while the previous update was cleared away (fixed in 0.9.37)
+    text: 'Na macOS aktualizacja z tej wersji może się nie udać (błąd „ENOTEMPTY”). Jeśli utkniesz, pobierz nowszą wersję ze strony client.slash3rss.dev.',
+  },
+];
+
+/** The known update problems of a version on this system (`os`: process.platform). */
+export function updateIssues(version: string, os: string, issues: UpdateIssue[] = UPDATE_ISSUES): UpdateIssue[] {
+  const platform = platformOf(os);
+  return issues.filter((i) => compareVersion(version, i.from) >= 0 && compareVersion(version, i.to) <= 0
+    && (!i.platforms || (platform !== undefined && i.platforms.includes(platform))));
+}
+
 /** How many older releases the rollback window offers. */
 export const ROLLBACK_CHOICES = 5;
 

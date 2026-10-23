@@ -1,5 +1,9 @@
 /** English texts of SlashClient's own releases: "Nowości w launcherze", "Co nowego", "Historia zmian", going back (launcherNews.ts). */
 export const LAUNCHER_NEWS_EN: Record<string, string> = {
+  // known update problems of older versions (UPDATE_ISSUES)
+  'Problem z aktualizacją': 'Update problem',
+  'Na macOS aktualizacja z tej wersji może się nie udać (błąd „ENOTEMPTY”). Jeśli utkniesz, pobierz nowszą wersję ze strony client.slash3rss.dev.':
+    'On macOS the update from this version may fail ("ENOTEMPTY"). If you get stuck, download a newer version from client.slash3rss.dev.',
   // the Play screen's tabs
   'Nowości z Minecrafta': 'Minecraft news',
   'Nowości w launcherze': 'Launcher news',
