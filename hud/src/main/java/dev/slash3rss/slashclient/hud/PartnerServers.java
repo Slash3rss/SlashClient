@@ -49,6 +49,24 @@ public final class PartnerServers {
 		return a.endsWith(":25565") ? a.substring(0, a.length() - 6) : a;
 	}
 
+	/**
+	 * The partner a server in the player's list is, as the server keeps it: the address itself, or the
+	 * partner's domain when the player wrote one of its subdomains ("play.skyup.pl", "mc.skyup.pl:25565"
+	 * → "skyup.pl"). The longest matching partner wins. Null when it is no partner.
+	 */
+	public static String partnerKey(String address) {
+		String a = normalize(address);
+		if (a.isEmpty()) return null;
+		java.util.Set<String> all = partners;
+		if (all.contains(a)) return a;
+		// a port other than 25565 belongs to the address: "mc.x.pl:25566" is x.pl's only if the partner has that port
+		String best = null;
+		for (String p : all) {
+			if (a.endsWith("." + p) && (best == null || p.length() > best.length())) best = p;
+		}
+		return best;
+	}
+
 	/** Asks SlashClient's server for the partners, when the server list opens. */
 	public static void refresh() {
 		String server = Badges.server;
@@ -127,7 +145,8 @@ public final class PartnerServers {
 	/** Draws the partner's picture over the row (cut to fill it), dimmed so the game's text stays readable. */
 	public static void drawBehind(GuiGraphicsExtractor g, ServerData server, int x, int y, int w, int h) {
 		if (server == null || w <= 0 || h <= 0) return;
-		String url = backgrounds.get(normalize(server.ip));
+		String key = partnerKey(server.ip);
+		String url = key == null ? null : backgrounds.get(key);
 		Picture p = url == null ? null : pictures.get(url);
 		if (p == null) return;
 		// "cover": the part of the picture with the row's proportions, from its middle
@@ -145,7 +164,7 @@ public final class PartnerServers {
 	}
 
 	public static boolean isPartner(ServerData server) {
-		return server != null && partners.contains(normalize(server.ip));
+		return server != null && partnerKey(server.ip) != null;
 	}
 
 	/**

@@ -123,6 +123,11 @@ public class GameServerList implements FabricClientGameTest {
 		if (!"SkyUp.pl".equals(shown.get(0))) throw new AssertionError("The pinned server is not on top: " + shown);
 		for (String[] s : SERVERS) if (!shown.contains(s[0])) throw new AssertionError("Missing " + s[0] + " in " + shown);
 		if (!context.computeOnClient(mc -> PartnerIcons.loadedForTest(server("SkyUp.pl", "skyup.pl")))) throw new AssertionError("The partner's animated icon is not loaded");
+		// a partner added by hand under another of its addresses is still the partner (badge, frame, icon)
+		String partners = context.computeOnClient(mc -> PartnerServers.isPartner(server("a", "play.skyup.pl")) + " " + PartnerServers.isPartner(server("b", "MC.SkyUp.pl:25565"))
+			+ " " + PartnerServers.isPartner(server("c", "notskyup.pl")) + " " + PartnerServers.isPartner(server("d", "skyup.pl.evil.com"))
+			+ " " + PartnerIcons.loadedForTest(server("e", "play.skyup.pl")));
+		if (!partners.equals("true true false false true")) throw new AssertionError("Partner addresses: " + partners);
 
 		// two frames of the animated icon
 		int first = context.computeOnClient(mc -> PartnerIcons.frameForTest("skyup.pl"));

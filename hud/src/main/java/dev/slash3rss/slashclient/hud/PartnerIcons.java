@@ -55,7 +55,8 @@ public final class PartnerIcons {
 	 */
 	public static boolean draw(GuiGraphicsExtractor g, ServerData server, int x, int y, int size) {
 		if (server == null || server.ip == null) return false;
-		Anim a = anims.get(PartnerServers.normalize(server.ip));
+		String key = PartnerServers.partnerKey(server.ip);
+		Anim a = key == null ? null : anims.get(key);
 		if (a == null) return false;
 		long now = System.currentTimeMillis();
 		drawn.put(a.url(), now);
@@ -139,7 +140,8 @@ public final class PartnerIcons {
 
 	/** Whether this strip is loaded now (for the test). */
 	public static boolean loadedForTest(ServerData server) {
-		Anim a = server == null ? null : anims.get(PartnerServers.normalize(server.ip));
+		String key = server == null ? null : PartnerServers.partnerKey(server.ip);
+		Anim a = key == null ? null : anims.get(key);
 		return a != null && loaded.containsKey(a.url());
 	}
 
