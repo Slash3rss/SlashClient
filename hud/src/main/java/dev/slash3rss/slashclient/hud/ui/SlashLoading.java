@@ -287,6 +287,29 @@ public final class SlashLoading {
 	}
 
 	/** The game's "distortion effects" at 0 (its accessibility setting for less motion): nothing moves. */
+	/** The sides of the title screen's panorama, in the order they go round. */
+	private static final Identifier[] PANORAMA = {
+		Identifier.fromNamespaceAndPath("minecraft", "textures/gui/title/background/panorama_0.png"),
+		Identifier.fromNamespaceAndPath("minecraft", "textures/gui/title/background/panorama_1.png"),
+		Identifier.fromNamespaceAndPath("minecraft", "textures/gui/title/background/panorama_2.png"),
+		Identifier.fromNamespaceAndPath("minecraft", "textures/gui/title/background/panorama_3.png"),
+	};
+
+	/**
+	 * The title screen's panorama as a slow sideways pan of its four sides, each the screen's height.
+	 * Drawn as plain pictures in our own layer: the game's own spinning panorama is drawn under the whole
+	 * interface in newer versions, where nothing over the game's loading screen could show it.
+	 */
+	private static void panorama(GuiGraphicsExtractor g, int w, int h, long ms) {
+		int side = Math.max(h, 1);
+		int round = side * PANORAMA.length;
+		int off = (int) (ms / 60 % round);
+		for (int x = -off; x < w; x += side) {
+			Identifier face = PANORAMA[Math.floorMod((x + off) / side, PANORAMA.length)];
+			g.blit(RenderPipelines.GUI_TEXTURED, face, x, 0, 0, 0, side, side, side, side);
+		}
+	}
+
 	private static boolean still(Minecraft mc) {
 		try {
 			return mc.options.screenEffectScale().get() <= 0.0;
@@ -326,11 +349,7 @@ public final class SlashLoading {
 		if (join && !panoramaFailed) {
 			g.fill(0, 0, w, h, 0xFF0A0D14);
 			try {
-				//#if MC >= 1.20.2
-				((dev.slash3rss.slashclient.hud.mixin.ScreenPanoramaInvoker) screen).slashclient$panorama(g, dt / 50f);
-				//#else
-				//$ dev.slash3rss.slashclient.hud.compat.Legacy.panorama(g, dt / 50f);
-				//#endif
+				panorama(g, w, h, still ? 0 : anim);
 			} catch (RuntimeException e) {
 				panoramaFailed = true;
 				SlashHud.LOG.warn("Loading screen panorama failed, a plain background shows", e);
