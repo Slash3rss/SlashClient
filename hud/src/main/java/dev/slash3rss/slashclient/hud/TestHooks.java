@@ -615,6 +615,11 @@ public final class TestHooks {
 	}
 
 	/** GUI scale for the size test (the window size is set by the test itself). */
+	/** For the test: a server played on, so the disconnect screen offers "Reconnect" to it. */
+	public static void reconnectTo(net.minecraft.client.multiplayer.ServerData data) {
+		Reconnect.lastForTest(data);
+	}
+
 	public static void guiScale(int scale) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
 		mc.options.guiScale().set(scale);

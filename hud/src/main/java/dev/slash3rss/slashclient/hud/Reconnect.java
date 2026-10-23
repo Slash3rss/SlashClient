@@ -18,6 +18,11 @@ final class Reconnect {
 	/** The server played on last (none after singleplayer). */
 	private static ServerData last;
 
+	/** For the test: the server "Reconnect" goes back to. */
+	static void lastForTest(ServerData data) {
+		last = data;
+	}
+
 	static void joined(Minecraft mc) {
 		last = mc.isLocalServer() ? null : mc.getCurrentServer();
 	}
@@ -26,6 +31,12 @@ final class Reconnect {
 	static void addButton(Minecraft mc, Screen screen) {
 		if (SlashHud.config == null || !SlashHud.config.reconnect || last == null) return;
 		var widgets = Screens.getWidgets(screen);
+		// one is enough: ours from an earlier init of this screen, or another mod's (Auto Reconnect and the like)
+		String ours = Component.translatable("slashclient-hud.reconnect").getString().toLowerCase(java.util.Locale.ROOT);
+		for (var w : widgets) {
+			String text = w.getMessage().getString().toLowerCase(java.util.Locale.ROOT);
+			if (text.contains(ours) || text.contains("reconnect")) return;
+		}
 		int bottom = widgets.stream().mapToInt(w -> w.getY() + w.getHeight()).max().orElse(screen.height / 2);
 		ServerData data = last;
 		widgets.add(Button.builder(Component.translatable("slashclient-hud.reconnect"), b -> join(mc, data))

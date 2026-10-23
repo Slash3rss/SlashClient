@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
+import dev.slash3rss.slashclient.hud.TestHooks;
 import net.minecraft.client.gui.screens.DisconnectedScreen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.network.chat.Component;
@@ -106,6 +107,36 @@ public class GameSessionRenew implements FabricClientGameTest {
 				w.getMessage().getContents() instanceof TranslatableContents t && t.getKey().equals("slashclient-hud.sessionRenew.renewed")));
 			if (!shown) throw new AssertionError("No line about the renewed session");
 			context.takeScreenshot("session-renewed");
+
+			// "Reconnect" once: not again when the screen is laid out anew, and not beside another mod's
+			context.runOnClient(mc -> TestHooks.reconnectTo(new net.minecraft.client.multiplayer.ServerData("Testowy", "127.0.0.1:1",
+				//#if MC >= 1.20.2
+				net.minecraft.client.multiplayer.ServerData.Type.OTHER)));
+				//#else
+				//$ false)));
+				//#endif
+			context.setScreen(() -> new DisconnectedScreen(new TitleScreen(), Component.translatable("connect.failed"), Component.literal("Timed out")));
+			context.waitTicks(3);
+			context.runOnClient(mc -> {
+				var s = dev.slash3rss.slashclient.hud.Compat.screen(mc);
+				//#if MC >= 26.1
+				s.resize(s.width, s.height);
+				//#else
+				//$ s.resize(mc, s.width, s.height);
+				//#endif
+			});
+			context.waitTicks(3);
+			if (reconnects(context) != 1) throw new AssertionError("Reconnect buttons: " + reconnects(context));
+			context.setScreen(() -> new DisconnectedScreen(new TitleScreen(), Component.translatable("connect.failed"), Component.literal("Timed out")) {
+				@Override
+				protected void init() {
+					super.init();
+					addRenderableWidget(net.minecraft.client.gui.components.Button.builder(Component.literal("Reconnect"), b -> {}).bounds(10, 10, 80, 20).build());
+				}
+			});
+			context.waitTicks(3);
+			if (reconnects(context) != 1) throw new AssertionError("Beside another mod's Reconnect: " + reconnects(context));
+			context.runOnClient(mc -> TestHooks.reconnectTo(null));
 		} finally {
 			context.runOnClient(mc -> {
 				SessionRenew.fakeLauncher = null;
@@ -113,6 +144,12 @@ public class GameSessionRenew implements FabricClientGameTest {
 			});
 			context.setScreen(TitleScreen::new);
 		}
+	}
+
+	/** Buttons on the screen that reconnect (ours or another mod's). */
+	private static long reconnects(ClientGameTestContext context) {
+		return context.computeOnClient(mc -> Screens.getWidgets(dev.slash3rss.slashclient.hud.Compat.screen(mc)).stream()
+			.filter(w -> w.getMessage().getString().equalsIgnoreCase("Reconnect") || w.getMessage().getString().equals("Połącz ponownie")).count());
 	}
 
 	private static void expect(ClientGameTestContext context, String token, String when) {
