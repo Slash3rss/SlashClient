@@ -36,7 +36,8 @@ html:has(body.landing) { overflow-x: clip; }
 .pill i { font-size: 11px; color: var(--accent-light); }
 @keyframes ping { 70% { box-shadow: 0 0 0 8px rgba(74, 222, 128, 0); } 100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); } }
 .hero2 h1 { font-size: clamp(44px, 8vw, 92px); font-weight: 800; letter-spacing: -.035em; line-height: 1.02; margin: 26px auto 0; max-width: 900px; }
-.grad { background: linear-gradient(120deg, #93c5fd 0%, #3b82f6 35%, #a855f7 70%, #f0abfc 100%); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shine 6s linear infinite; }
+/* the colours come back to the first one at the end, so the moving shine loops without a jump */
+.grad { background: linear-gradient(120deg, #93c5fd 0%, #3b82f6 25%, #a855f7 50%, #f0abfc 75%, #93c5fd 100%); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shine 6s linear infinite; }
 @keyframes shine { to { background-position: 200% center; } }
 .lead { font-size: clamp(16px, 2vw, 20px); color: var(--text-2); max-width: 680px; margin: 22px auto 0; }
 .cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 34px; }
