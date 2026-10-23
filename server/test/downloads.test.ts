@@ -22,7 +22,7 @@ const fakeGitHub = (async (input: string | URL | Request, init?: RequestInit) =>
   if (auth !== 'Bearer sekret') return new Response('{"message":"Not Found"}', { status: 404 });
   if (url.endsWith('/releases/latest')) {
     const asset = (name: string, id: number) => ({ name, url: `https://api.github.com/repos/x/y/releases/assets/${id}`, browser_download_url: `https://github.com/x/y/releases/download/v0.5.0/${name}` });
-    return Response.json({ body: '<!-- nowosc: Nowość: jesienne liście | #kosmetyki -->\n<!-- news: New: autumn leaves -->\n## SlashClient 0.5.0', html_url: 'https://github.com/x/y/releases/tag/v0.5.0', assets: [asset('SlashClient-Setup-0.5.0.exe', 1), asset('SlashClient-0.5.0-arm64.dmg', 2), asset('SlashClient-0.5.0.dmg', 3), asset('SlashClient-0.5.0-arm64.dmg.blockmap', 4), asset('latest.yml', 5), asset('SlashClient-0.5.0-win-app.zip', 6), asset('win-update-0.5.0.json', 7)] });
+    return Response.json({ tag_name: 'v0.5.0', body: '<!-- nowosc: Nowość: jesienne liście | #kosmetyki -->\n<!-- news: New: autumn leaves -->\n## SlashClient 0.5.0', html_url: 'https://github.com/x/y/releases/tag/v0.5.0', assets: [asset('SlashClient-Setup-0.5.0.exe', 1), asset('SlashClient-0.5.0-arm64.dmg', 2), asset('SlashClient-0.5.0.dmg', 3), asset('SlashClient-0.5.0-arm64.dmg.blockmap', 4), asset('latest.yml', 5), asset('SlashClient-0.5.0-win-app.zip', 6), asset('win-update-0.5.0.json', 7)] });
   }
   // an older release, which still has a Linux build
   if (url.endsWith('/releases?per_page=10')) {
@@ -87,8 +87,8 @@ describe('downloads', () => {
     const pl = await (await fetch(`${base}/`, { headers: { 'Accept-Language': 'pl' } })).text();
     assert.match(pl, /<a class="pill" href="#kosmetyki"><span class="dot"><\/span> Nowość: jesienne liście /);
     const en = await (await fetch(`${base}/en`)).text();
-    // without a link of its own: to the release's page (its full list of changes)
-    assert.match(en, /<a class="pill" href="https:\/\/github.com\/x\/y\/releases\/tag\/v0.5.0"[^>]*><span class="dot"><\/span> New: autumn leaves /);
+    // without a link of its own: to the release's notes in the site's changelog (GitHub's page is a 404 for a private repository)
+    assert.match(en, /<a class="pill" href="\/changelog#0.5.0"[^>]*><span class="dot"><\/span> New: autumn leaves /);
   });
 });
 

@@ -16,6 +16,7 @@ import { clipFrameResponse, registerMediaSharing } from './mediaShare';
 import { previewPack } from './packPreview';
 import { lastTarget, serverFromLog, worldPlayedSince } from './sessions';
 import { checkForUpdates, installUpdate, startUpdateChecks, updateStatus, moveToApplications, retryMacUpdate } from './updates';
+import { initChangelog } from './changelog';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { activityFromLog, SocialClient, SocialError, type SocialUser, type Status } from './social';
 import { decorate, serverKey, StatusRules, Throttle, type GameStatus } from './serverStatus';
@@ -2399,8 +2400,19 @@ app.whenReady().then(async () => {
   if (!store.settings.language) store.settings.language = app.getLocale().toLowerCase().startsWith('pl') ? 'pl' : 'en';
   setLang(store.settings.language);
   void applyToolSettings(store.settings);
+  // the launcher's changelog, "Co nowego" after an update, going back to an older version (changelog.ts)
+  initChangelog({
+    handle, settings: () => store.settings, persist,
+    get: (p) => socialCall(() => social.call('GET', p, undefined, false).catch((err) => {
+      if (err instanceof SocialError && err.httpStatus === 404) return undefined;
+      throw err;
+    })) as never,
+  });
   createWindow();
-  startUpdateChecks({ serverUrl: () => store.settings.socialUrl, send: (status) => send('update:status', status), onLog: (m) => console.error(m) });
+  startUpdateChecks({
+    serverUrl: () => store.settings.socialUrl, send: (status) => send('update:status', status), onLog: (m) => console.error(m),
+    pause: { get: () => store.settings.updatesPausedUntil, set: (v) => { store.settings.updatesPausedUntil = v; return persist(); } },
+  });
   showPresence(idlePresence());
   social.start();
   void signInWithMinecraft();

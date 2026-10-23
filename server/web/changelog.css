@@ -1,0 +1,25 @@
+/* The changelog (/zmiany, /changelog): one card per release, newest first. */
+.changelog { max-width: 860px; display: flex; flex-direction: column; gap: 18px; }
+.changelog .legal-head { margin-bottom: 6px; }
+.cl-lead { max-width: 640px; margin: 0 0 14px; }
+.cl-actions { margin: 0; }
+.cl-release { scroll-margin-top: 90px; padding: 20px 22px; border-radius: 18px; background: rgba(17, 22, 34, .72); border: 1px solid var(--border); }
+.cl-release:target { border-color: rgba(96, 165, 250, .6); box-shadow: 0 0 0 3px rgba(59, 130, 246, .18); }
+.cl-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 14px; }
+.cl-head h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -.01em; }
+.cl-head h2 a { color: var(--text); }
+.cl-head h2 a:hover { color: var(--accent-light); }
+.cl-head time { color: var(--text-2); font-size: 14px; }
+.cl-badge { display: inline-flex; align-items: center; gap: 8px; margin: 10px 0 0; padding: 4px 12px; border-radius: 99px; background: rgba(59, 130, 246, .12); border: 1px solid rgba(96, 165, 250, .3); color: var(--accent-light); font-weight: 700; font-size: 14px; }
+.cl-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
+.cl-notes { margin-top: 8px; }
+.cl-notes h3 { font-size: 17px; margin: 16px 0 6px; }
+.cl-notes h4 { font-size: 15px; font-weight: 700; margin: 14px 0 4px; color: var(--text); }
+.cl-notes p { margin: 8px 0; }
+.cl-notes code { font-size: .92em; padding: 1px 5px; border-radius: 6px; background: rgba(255, 255, 255, .07); }
+.cl-empty { padding: 30px 0; }
+.cl-pager { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; }
+@media (max-width: 600px) {
+  .cl-release { padding: 16px; }
+  .cl-head h2 { font-size: 19px; }
+}

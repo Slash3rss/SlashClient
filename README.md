@@ -21,8 +21,13 @@ Strona: <https://client.slash3rss.dev>. Poradniki dla graczy: [wiki](https://git
 - wybór konkretnej wersji przy instalacji i zmiana wersji zainstalowanego moda lub modpacka,
 - zmiana skina (Steve/Alex, podgląd 3D) i peleryny dla kont Microsoft,
 - czas gry w każdym profilu i kafelek „Wróć do gry” (ostatni serwer albo świat),
-- ekran **Graj** z zakładkami **Nowości** (informacje o wersjach Java Edition od Mojang) i **Konsola**; po zamknięciu gry
-  wraca do nowości, po crashu zostaje konsola z wyjaśnieniem błędu,
+- ekran **Graj** z zakładkami **Nowości z Minecrafta** (informacje o wersjach Java Edition od Mojang), **Nowości
+  w launcherze** (wydania SlashClient z notkami, „Twoja wersja”, „Aktualizuj” przy nowszej, kropka przy wydaniu, którego
+  gracz jeszcze nie widział) i **Konsola**; launcher pamięta ostatnio wybraną zakładkę nowości i po zamknięciu gry do niej
+  wraca, po crashu zostaje konsola z wyjaśnieniem błędu; na wąskim oknie krótsze nazwy zakładek,
+- „Co nowego w SlashClient X” przy pierwszym starcie po aktualizacji, **Historia zmian** w Ustawieniach (też na stronie:
+  `/zmiany`, `/changelog`) i **Wróć do poprzedniej wersji** (kilka ostatnich wydań od 0.9.36, instalowanych jak
+  aktualizacja, z kopią ustawień i wstrzymaniem automatycznych aktualizacji do nowszego wydania),
 - historia konsoli: logi ostatnich 10 sesji każdego profilu (sesje z crashem oznaczone), do obejrzenia po zamknięciu gry,
 - rekomendacja RAM i zestawy flag JVM (G1, ZGC) dobierane do wersji Javy,
 - kopiowanie profili i eksport do `.mrpack`,
