@@ -229,6 +229,42 @@ describe('clan permissions', () => {
     assert.equal((await call('POST', '/v1/mc/lookup', undefined, { uuids: [mc] })).body.clans, undefined);
   });
 
+  it('lets a member hide the tag by their nick', async () => {
+    const ala = await login('HideAla');
+    const bob = await login('HideBob');
+    await befriend(ala, bob);
+    const made = (await call('POST', '/v1/clans', ala.token, { tag: 'HIDE', name: 'Ukryty' })).body.clan;
+    assert.equal(made.tagHidden, false);
+    const mc = 'abcdefab-cdef-abcd-efab-cdefabcdef34';
+    const { serverId } = (await call('POST', '/v1/auth/minecraft/start')).body;
+    joined.set(serverId, { id: mc.replace(/-/g, ''), name: 'HideAlaMC' });
+    assert.equal((await call('POST', '/v1/auth/minecraft/finish', ala.token, { serverId, name: 'HideAlaMC' })).body.linked, true);
+    await call('POST', '/v1/mc/link', ala.token, { uuid: mc });
+    assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [mc] })).body.clans, { [mc]: 'HIDE' });
+
+    // hidden: not in the friends list, not in game, and Bob's launcher hears of it
+    const bobLive = await connect(bob.token);
+    assert.equal((await call('POST', '/v1/clans/mine/hide-tag', ala.token, { hidden: 'yes' })).body.error, 'bad_request');
+    const hidden = await call('POST', '/v1/clans/mine/hide-tag', ala.token, { hidden: true });
+    assert.equal(hidden.status, 200);
+    assert.equal(hidden.body.clan.tagHidden, true);
+    assert.equal(hidden.body.clan.tag, 'HIDE');
+    await bobLive.waitFor((e) => e.type === 'friends');
+    bobLive.ws.close();
+    const friend = (await call('GET', '/v1/friends', bob.token)).body.friends.find((f: any) => f.id === ala.user.id);
+    assert.equal(friend.clan, undefined);
+    assert.equal(friend.clanLogo, undefined);
+    const lookup = (await call('POST', '/v1/mc/lookup', undefined, { uuids: [mc] })).body;
+    assert.equal(lookup.clans, undefined);
+    assert.ok(lookup.active.includes(mc));
+
+    // shown again
+    assert.equal((await call('POST', '/v1/clans/mine/hide-tag', ala.token, { hidden: false })).body.clan.tagHidden, false);
+    assert.deepEqual((await call('POST', '/v1/mc/lookup', undefined, { uuids: [mc] })).body.clans, { [mc]: 'HIDE' });
+    // outside a clan there is nothing to hide
+    assert.equal((await call('POST', '/v1/clans/mine/hide-tag', bob.token, { hidden: true })).body.error, 'no_clan');
+  });
+
   it('lets an admin remove a clan', async () => {
     const admin = await login('ClanAdmin');
     const ala = await login('ModAla');

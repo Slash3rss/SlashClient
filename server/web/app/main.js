@@ -481,7 +481,20 @@ function clanCard() {
       el('span', { class: 'tag big', textContent: `[${c.tag}]` }),
       el('div', { class: 'grow' }, el('b', { textContent: c.name }), el('div', { class: 'muted small', textContent: `${members(c.members.length)} · ${t('{0} online', online)}` })),
       mayInvite ? el('button', { class: 'icon-btn', 'aria-label': t('Zaproś do klanu'), onclick: inviteToClan }, icon('fa-solid fa-user-plus')) : ''),
-    el('div', { class: 'members' }, ...c.members.map((m) => el('span', { class: 'member', title: m.name }, avatarEl(m, m.status === 'offline' ? 'offline' : m.status), el('span', { class: 'small ellipsis', textContent: m.name })))));
+    el('div', { class: 'members' }, ...c.members.map((m) => el('span', { class: 'member', title: m.name }, avatarEl(m, m.status === 'offline' ? 'offline' : m.status), el('span', { class: 'small ellipsis', textContent: m.name })))),
+    el('label', { class: 'switch-row' }, el('span', { class: 'grow', textContent: t('Ukryj tag klanu przy moim nicku') }),
+      el('input', { type: 'checkbox', role: 'switch', checked: !!c.tagHidden, onchange: (e) => void hideClanTag(e.target) })));
+}
+
+/** The tag off my nick (or back on): friends' lists and the game stop showing it; the clan stays. */
+async function hideClanTag(box) {
+  const res = await guard(() => api('POST', '/v1/clans/mine/hide-tag', { hidden: box.checked }));
+  if (!res) {
+    box.checked = !box.checked;
+    return;
+  }
+  S.clan = res.clan;
+  toast(box.checked ? t('Tag klanu ukryty.') : t('Tag klanu znów widać przy Twoim nicku.'));
 }
 
 async function inviteToClan() {

@@ -109,6 +109,9 @@ CREATE TABLE IF NOT EXISTS clan_members (uuid TEXT PRIMARY KEY REFERENCES users(
 CREATE INDEX IF NOT EXISTS clan_members_clan ON clan_members(clan_id);
 CREATE TABLE IF NOT EXISTS clan_invites (clan_id TEXT NOT NULL REFERENCES clans(id) ON DELETE CASCADE, uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, by_uuid TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (clan_id, uuid));
 `);
+    // a member who hides the tag by their nick (0.9.43+); it goes with the membership, so a new clan shows it again
+    const columns = (sql.prepare('PRAGMA table_info(clan_members)').all() as { name: string }[]).map((c) => c.name);
+    if (!columns.includes('hide_tag')) sql.exec('ALTER TABLE clan_members ADD COLUMN hide_tag INTEGER NOT NULL DEFAULT 0');
   }
 
   clan(id: string): ClanRow | undefined {
@@ -140,8 +143,14 @@ CREATE TABLE IF NOT EXISTS clan_invites (clan_id TEXT NOT NULL REFERENCES clans(
   }
 
   /** The clan a player is in, with their role. */
-  membership(uuid: string): { clan: string; role: ClanRole } | undefined {
-    return this.sql.prepare('SELECT clan_id AS clan, role FROM clan_members WHERE uuid = ?').get(uuid) as never;
+  membership(uuid: string): { clan: string; role: ClanRole; hideTag: boolean } | undefined {
+    const m = this.sql.prepare('SELECT clan_id AS clan, role, hide_tag AS hideTag FROM clan_members WHERE uuid = ?').get(uuid) as { clan: string; role: ClanRole; hideTag: number } | undefined;
+    return m && { clan: m.clan, role: m.role, hideTag: !!m.hideTag };
+  }
+
+  /** Whether the tag stays off the member's nick (in the launcher and in game). */
+  setHideTag(uuid: string, hide: boolean) {
+    this.sql.prepare('UPDATE clan_members SET hide_tag = ? WHERE uuid = ?').run(hide ? 1 : 0, uuid);
   }
 
   /** Members: the owner, officers, then the rest, each by when they came. */
@@ -264,10 +273,10 @@ export function createClans(deps: Deps) {
     for (const m of members) friendsChanged(m);
   }
 
-  /** The tag of a player's clan, for names in the launcher and in game. */
+  /** The tag of a player's clan, for names in the launcher and in game; none when they hide it. */
   function tagOf(uuid: string): string | undefined {
     const m = store.membership(uuid);
-    return m ? store.clan(m.clan)?.tag : undefined;
+    return m && !m.hideTag ? store.clan(m.clan)?.tag : undefined;
   }
 
   /** My clan and role, or 404 when I am in none. */
@@ -280,9 +289,11 @@ export function createClans(deps: Deps) {
   }
 
   function view(c: ClanRow, me: string) {
-    const role = store.membership(me)?.role;
+    const m = store.membership(me);
+    const role = m?.role;
     return {
-      id: c.id, tag: c.tag, name: c.name, createdAt: c.createdAt, chat: c.chat, role, ...logoField(c.id),
+      // tagHidden: whether I hide the tag by my nick (launchers before 0.9.43 ignore it; its being there says the server has it)
+      id: c.id, tag: c.tag, name: c.name, createdAt: c.createdAt, chat: c.chat, role, tagHidden: !!m?.hideTag, ...logoField(c.id),
       members: store.members(c.id).map((m) => {
         const status = deps.status(m.uuid);
         return { ...person(m.uuid), role: m.role, joinedAt: m.joinedAt, status, online: status !== 'offline' };
@@ -390,6 +401,17 @@ export function createClans(deps: Deps) {
       if (!store.removeInvite(id, me)) fail(404, 'not_found');
       const c = store.clan(id);
       if (c) changed(c);
+      return answer(me);
+    }],
+    // hiding the tag by my nick (or showing it again): friends' lists and the game stop showing it
+    ['POST', /^\/v1\/clans\/mine\/hide-tag$/, async (req) => {
+      const me = authed(req);
+      mine(me);
+      const { hidden } = await body(req);
+      if (typeof hidden !== 'boolean') fail(400, 'bad_request');
+      store.setHideTag(me, hidden as boolean);
+      push(me, { type: 'clan' });
+      friendsChanged(me);
       return answer(me);
     }],
     // the owner cannot just walk out of a clan with others in it: they hand it over or delete it
@@ -525,9 +547,10 @@ export function createClans(deps: Deps) {
     }],
   ];
 
-  /** A player's clan and its logo's version, when it has one (friends lists, the game's lookup). */
+  /** A player's clan and its logo's version, when it has one (friends lists, the game's lookup); none when they hide the tag. */
   function logoOf(uuid: string): { id: string; v: number } | undefined {
     const m = store.membership(uuid);
+    if (m?.hideTag) return undefined;
     const v = m ? logos.version(m.clan) : undefined;
     return m && v !== undefined ? { id: m.clan, v } : undefined;
   }
