@@ -20,6 +20,7 @@ import java.util.concurrent.CompletableFuture;
  * server or in a world), the game gets a new session and everything made from it - the account
  * service, the chat signing keys, reports, the block list and the profile with its skin.
  * The launcher supplies the account (a fresh Microsoft token) when the player picks it.
+ * The same swap, for the same account with a new token, keeps the session alive (SessionRenew).
  */
 public final class AccountSwitch {
 	private AccountSwitch() {}
@@ -41,6 +42,20 @@ public final class AccountSwitch {
 
 	/** Makes the game play as this account from now on. */
 	public static void apply(Minecraft mc, String name, UUID uuid, String token, String xuid, boolean offline) throws Exception {
+		swap(mc, name, uuid, token, xuid, offline, true);
+		SlashHud.LOG.info("SlashClient: playing as {} now", name);
+	}
+
+	/**
+	 * The same account with a fresh token (the old one runs out after about a day): everything bound to
+	 * the token is made anew; the profile with its skin stays, it is the same player.
+	 */
+	public static void renew(Minecraft mc, String name, UUID uuid, String token, String xuid, boolean offline) throws Exception {
+		swap(mc, name, uuid, token, xuid, offline, false);
+		SlashHud.LOG.info("SlashClient: session of {} renewed", name);
+	}
+
+	private static void swap(Minecraft mc, String name, UUID uuid, String token, String xuid, boolean offline, boolean newProfile) throws Exception {
 		if (!available(mc)) throw new IllegalStateException("Account switching only works in the menu");
 		//#if MC >= 1.21.9
 		User user = new User(name, uuid, token, Optional.ofNullable(xuid).filter(x -> !x.isBlank() && !x.equals("0")), Optional.empty());
@@ -70,8 +85,7 @@ public final class AccountSwitch {
 		//#endif
 		// from 26.2 the block list also runs the game's own friends: it stays until the next start
 		//#if MC >= 1.20.2
-		access.slashclient$setProfileFuture(CompletableFuture.supplyAsync(() -> mc.services().sessionService().fetchProfile(uuid, true)));
+		if (newProfile) access.slashclient$setProfileFuture(CompletableFuture.supplyAsync(() -> mc.services().sessionService().fetchProfile(uuid, true)));
 		//#endif
-		SlashHud.LOG.info("SlashClient: playing as {} now", name);
 	}
 }

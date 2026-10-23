@@ -169,7 +169,11 @@ public class SlashHud implements ClientModInitializer {
 				//#endif
 			}
 			// dropped by a server: a way straight back to it
-			if (screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen) Reconnect.addButton(mc, screen);
+			if (screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen) {
+				Reconnect.addButton(mc, screen);
+				// refused for an old session: renewed at once, and the screen says to connect again
+				SessionRenew.disconnected(mc, screen);
+			}
 			// the server list: partner servers' pictures, fresh enough
 			if (screen instanceof net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen) PartnerServers.refresh();
 			// the game's own pause menu gets a way back to ours too
@@ -197,6 +201,8 @@ public class SlashHud implements ClientModInitializer {
 		ClientTickEvents.START_CLIENT_TICK.register(DropGuard::tick);
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
 			TntTimer.tick(mc);
+			// a fresh Microsoft token from the launcher before the game's runs out (in the menus)
+			SessionRenew.tick(mc);
 			DungeonMap.tick(mc);
 			LootHighlight.tick(mc);
 			Minimap.tick(mc);

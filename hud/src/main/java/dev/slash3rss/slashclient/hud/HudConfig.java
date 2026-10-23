@@ -221,6 +221,8 @@ public final class HudConfig {
 	public String nickAlias = "you";
 	/** A button on the "disconnected" screen that joins the same server again. */
 	public boolean reconnect = true;
+	/** The game's Microsoft session renewed from the launcher before it runs out, without a restart (SessionRenew). */
+	public boolean sessionRenew = true;
 	/** Server resource packs on servers not in the list: one of ServerPacks.MODES. */
 	public String serverPackDefault = "prompt";
 	public boolean fullbright = false;
@@ -639,6 +641,7 @@ public final class HudConfig {
 		nickHider = other.nickHider;
 		nickAlias = other.nickAlias;
 		reconnect = other.reconnect;
+		sessionRenew = other.sessionRenew;
 		serverPackDefault = oneOf(other.serverPackDefault, ServerPacks.MODES);
 		fullbright = other.fullbright;
 		lowFire = other.lowFire;
