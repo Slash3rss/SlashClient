@@ -99,4 +99,50 @@ describe('partner servers', () => {
     assert.equal(listed.rotate, true);
     assert.equal((await call('POST', `/v1/admin/partners/${p.id}`, boss.token, { pinned: false })).body.rotate, false);
   });
+
+  it('keeps other addresses of a partner, checked and only set by the admin', async () => {
+    const boss = await login('Szef');
+    const owner = await login('WlascicielAlias');
+    const p = (await call('POST', '/v1/admin/partners', boss.token, { address: 'alias.example.pl', name: 'Alias', owner: '@WlascicielAlias' })).body;
+    const other = (await call('POST', '/v1/admin/partners', boss.token, { address: 'other.example.pl', name: 'Inny' })).body;
+    assert.deepEqual(p.aliases, []);
+    const url = `/v1/admin/partners/${p.id}/aliases`;
+
+    // not the owner, nor anyone else: only the admin
+    assert.equal((await call('PUT', url, owner.token, { aliases: ['alias.eu'] })).body.error, 'not_admin');
+    assert.equal((await call('PUT', `/v1/me/partners/${p.id}/aliases`, owner.token, { aliases: ['alias.eu'] })).status, 404);
+
+    // normalized, repeats and the partner's own address dropped; one per line works too
+    const saved = (await call('PUT', url, boss.token, { aliases: [' Alias.EU:25565 ', 'alias.eu', '51.38.10.20', 'ALIAS.example.pl', '', '51.38.10.20:25566'] })).body;
+    assert.deepEqual(saved.aliases, ['alias.eu', '51.38.10.20', '51.38.10.20:25566']);
+    assert.deepEqual((await call('PUT', url, boss.token, { aliases: 'alias.eu\n\nmc.alias.net.\n' })).body.aliases, ['alias.eu', 'mc.alias.net']);
+    const listed = (await call('GET', '/v1/partners')).body.partners.find((x: any) => x.id === p.id);
+    assert.deepEqual(listed.aliases, ['alias.eu', 'mc.alias.net']);
+    assert.deepEqual((await call('GET', '/v1/me/partners', owner.token)).body.partners[0].aliases, ['alias.eu', 'mc.alias.net']);
+
+    // not an address, too many: refused with what was wrong, the list unchanged
+    const bad = (await call('PUT', url, boss.token, { aliases: ['ok.pl', 'zly adres'] }));
+    assert.equal(bad.status, 400);
+    assert.equal(bad.body.error, 'bad_alias');
+    assert.equal(bad.body.alias, 'zly adres');
+    const many = (await call('PUT', url, boss.token, { aliases: Array.from({ length: 21 }, (_, i) => `a${i}.pl`) })).body;
+    assert.equal(many.error, 'too_many_aliases');
+    assert.equal(many.max, 20);
+
+    // another partner's address or other address is taken, and a new partner cannot take an alias as its address
+    const taken = await call('PUT', url, boss.token, { aliases: ['alias.eu', 'Other.Example.pl'] });
+    assert.equal(taken.status, 409);
+    assert.equal(taken.body.error, 'alias_taken');
+    assert.equal(taken.body.alias, 'other.example.pl');
+    assert.equal(taken.body.partner, 'Inny');
+    assert.equal((await call('PUT', `/v1/admin/partners/${other.id}/aliases`, boss.token, { aliases: ['mc.alias.net'] })).body.partner, 'Alias');
+    assert.equal((await call('POST', '/v1/admin/partners', boss.token, { address: 'alias.eu' })).body.error, 'alias_taken');
+    assert.deepEqual((await call('GET', '/v1/partners')).body.partners.find((x: any) => x.id === p.id).aliases, ['alias.eu', 'mc.alias.net']);
+
+    // cleared with an empty list; every change is in the admin log
+    assert.deepEqual((await call('PUT', url, boss.token, { aliases: [] })).body.aliases, []);
+    const log = (await call('GET', '/v1/admin/log', boss.token)).body.entries.filter((e: any) => e.action === 'partner_aliases');
+    assert.ok(log.some((e: any) => e.detail === 'alias.eu, mc.alias.net'), JSON.stringify(log));
+    assert.ok(log.some((e: any) => e.detail === '—'));
+  });
 });

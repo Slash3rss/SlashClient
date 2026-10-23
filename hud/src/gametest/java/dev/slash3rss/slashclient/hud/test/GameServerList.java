@@ -84,7 +84,7 @@ public class GameServerList implements FabricClientGameTest {
 			SlashHud.config.customServerList = true;
 			SlashServerScreen.sampleStatusForTest = true;
 			PinnedServer.sampleForTest(List.of(new PinnedServer.Pin("skyup.pl", "SkyUp.pl", false)));
-			PartnerServers.sampleForTest("skyup.pl");
+			PartnerServers.sampleForTest("skyup.pl", "skyup.eu", "51.38.10.20");
 			// four frames, a second each: two screenshots a second apart show two of them
 			PartnerIcons.sampleForTest("skyup.pl", 4, 1000);
 			ServerList list = new ServerList(mc);
@@ -143,6 +143,11 @@ public class GameServerList implements FabricClientGameTest {
 			+ " " + PartnerServers.isPartner(server("c", "notskyup.pl")) + " " + PartnerServers.isPartner(server("d", "skyup.pl.evil.com"))
 			+ " " + PartnerIcons.loadedForTest(server("e", "play.skyup.pl")));
 		if (!partners.equals("true true false false true")) throw new AssertionError("Partner addresses: " + partners);
+		// the admin's other addresses for the partner (another domain, a raw IP) and their subdomains, mapped to the partner
+		String other = context.computeOnClient(mc -> PartnerServers.partnerKey("SkyUp.EU") + " " + PartnerServers.partnerKey("51.38.10.20:25565")
+			+ " " + PartnerServers.partnerKey("play.skyup.eu") + " " + PartnerServers.isPartner(server("f", "51.38.10.20:25566"))
+			+ " " + PartnerServers.isPartner(server("g", "notskyup.eu")) + " " + PartnerIcons.loadedForTest(server("h", "mc.skyup.eu")));
+		if (!other.equals("skyup.pl skyup.pl skyup.pl false false true")) throw new AssertionError("Partner's other addresses: " + other);
 
 		// two frames of the animated icon
 		int first = context.computeOnClient(mc -> PartnerIcons.frameForTest("skyup.pl"));

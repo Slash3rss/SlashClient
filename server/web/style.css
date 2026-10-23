@@ -238,6 +238,11 @@ tbody tr:hover { background: var(--card); }
 .partner-add input { flex: 1; min-width: 150px; }
 .partner-card { display: flex; flex-direction: column; gap: 12px; }
 .partner-card form input { width: 200px; }
+.partner-addresses { flex-wrap: wrap; gap: 6px; }
+.partner-aliases { display: flex; flex-direction: column; gap: 6px; }
+.partner-aliases textarea { width: 100%; max-width: 420px; box-sizing: border-box; padding: 8px 10px; color: var(--text); background: rgba(0, 0, 0, .25); border: 1px solid var(--border); border-radius: var(--btn-radius); font: 13px ui-monospace, Consolas, monospace; resize: vertical; }
+.partner-alias-error { margin: 0; padding: 6px 10px; max-width: 420px; box-sizing: border-box; border-radius: var(--btn-radius); background: rgba(239, 68, 68, .14); color: #fca5a5; font-size: 13px; }
+.partner-alias-error[hidden] { display: none; }
 /* one row of the game's server list (300×32 there), twice as large, with the game's dark list behind it */
 .partner-row-wrap { background: rgba(0, 0, 0, .45); border-radius: 6px; padding: 8px; max-width: 476px; }
 .partner-banner { position: relative; width: 100%; aspect-ratio: 300 / 32; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 0;

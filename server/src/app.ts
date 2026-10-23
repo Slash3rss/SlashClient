@@ -149,11 +149,14 @@ class HttpError extends Error {
   readonly code: string;
   /** Seconds to wait (a 429 'slow_down'): sent as Retry-After and in the body. */
   readonly retryAfter?: number;
-  constructor(status: number, code: string, retryAfter?: number) {
+  /** More about the error for the page to show (which address, which partner), sent in the body next to `error`. */
+  readonly detail?: Record<string, string | number>;
+  constructor(status: number, code: string, retryAfter?: number, detail?: Record<string, string | number>) {
     super(code);
     this.status = status;
     this.code = code;
     this.retryAfter = retryAfter;
+    this.detail = detail;
   }
 }
 
@@ -571,8 +574,8 @@ export function createApp(cfg: Config) {
   type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
   const partners = partnerRoutes({
     db, authed, admin, body, dir: path.join(path.dirname(cfg.dbFile), 'partners'), setting: (key) => settings.num(key),
-    fail: (status, code) => {
-      throw new HttpError(status, code);
+    fail: (status, code, detail) => {
+      throw new HttpError(status, code, undefined, detail);
     },
   });
 
@@ -1830,7 +1833,7 @@ export function createApp(cfg: Config) {
         (req as SeenRequest).slashError = known ? err.code : 'server_error';
         const wait = known && err.retryAfter ? err.retryAfter : undefined;
         res.writeHead(known ? err.status : 500, { 'Content-Type': 'application/json', ...(wait ? { 'Retry-After': String(wait) } : {}) });
-        res.end(JSON.stringify({ error: known ? err.code : 'server_error', ...(wait ? { retryAfter: wait } : {}) }));
+        res.end(JSON.stringify({ ...(known ? err.detail : undefined), error: known ? err.code : 'server_error', ...(wait ? { retryAfter: wait } : {}) }));
       }
       return;
     }

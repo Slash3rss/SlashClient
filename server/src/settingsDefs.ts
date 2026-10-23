@@ -8,7 +8,7 @@ import { COMMUNITY_LIMITS } from './communityStore.ts';
 import { COMMUNITY_MEDIA_LIMITS } from './communityMedia.ts';
 import { BANNER_DEFS, FEATURE_DEFS } from './features.ts';
 import { GIF_SETTING_DEFS } from './gifs.ts';
-import { ICON_SETTING_DEFAULTS } from './partners.ts';
+import { ALIASES_DEFAULT, ICON_SETTING_DEFAULTS } from './partners.ts';
 import { PUSH_SETTING_DEFS } from './push.ts';
 import { RANK_SETTING_DEFS } from './ranks.ts';
 import { GROUP_LIMITS } from './groups.ts';
@@ -220,5 +220,6 @@ export const SETTING_DEFS: SettingDef[] = [
     bytes('partners.iconBytes', 'Największa animowana ikona', 'Largest animated icon', ICON_SETTING_DEFAULTS.bytes, 'Plik GIF lub APNG wgrywany przez partnera albo admina jako ikona serwera.', 64 * 1024, 20 * MB),
     { key: 'partners.iconFrames', label: 'Klatki animowanej ikony', labelEn: 'Animated icon frames', description: 'Najwięcej klatek animowanej ikony serwera partnerskiego (dłuższe animacje są odrzucane).', type: 'int', default: ICON_SETTING_DEFAULTS.frames, min: 1, max: 128 },
     { key: 'partners.iconSide', label: 'Rozmiar animowanej ikony', labelEn: 'Animated icon size', description: 'Bok kwadratu, do którego serwer zmniejsza większe ikony (mniejszych nie powiększa). Gra rysuje ikonę 32×32.', type: 'int', default: ICON_SETTING_DEFAULTS.side, min: 16, max: 256, unit: 'px' },
+    { key: 'partners.aliases', label: 'Alternatywne adresy partnera', labelEn: 'Partner alternative addresses', description: 'Najwięcej innych adresów (domen, IP) jednego serwera partnerskiego, pod którymi gra też pokazuje go jako partnera.', type: 'int', default: ALIASES_DEFAULT, min: 1, max: 100 },
   ]),
 ];
