@@ -97,6 +97,26 @@ public class GameLoadingScreens implements FabricClientGameTest {
 		context.setScreen(() -> new GenericMessageScreen(Component.translatable("menu.savingLevel")));
 		context.waitTicks(4);
 		context.takeScreenshot("loading-saving");
+		// a server's pack being applied: the game's reload screen over a loading screen shows ours, with its progress
+		context.runOnClient(mc -> {
+			SlashLoading.drawnForTest.clear();
+			overlay(mc, new net.minecraft.client.gui.screens.LoadingOverlay(mc, new net.minecraft.server.packs.resources.ReloadInstance() {
+				@Override
+				public java.util.concurrent.CompletableFuture<?> done() {
+					return new java.util.concurrent.CompletableFuture<>();
+				}
+
+				@Override
+				public float getActualProgress() {
+					return 0.6f;
+				}
+			}, e -> {}, true));
+		});
+		context.waitTicks(20);
+		context.takeScreenshot("loading-pack-apply");
+		boolean applied = context.computeOnClient(mc -> SlashLoading.drawnForTest.stream().anyMatch(d -> d.startsWith("apply:")));
+		context.runOnClient(mc -> overlay(mc, null));
+		if (!applied) throw new AssertionError("The pack reload was not drawn in our look: " + context.computeOnClient(mc -> new ArrayList<>(SlashLoading.drawnForTest)));
 		context.setScreen(() -> {
 			ProgressScreen p = new ProgressScreen(false);
 			p.progressStartNoAbort(Component.literal("Pobieranie świata"));
@@ -239,5 +259,13 @@ public class GameLoadingScreens implements FabricClientGameTest {
 		} catch (IOException e) {
 			return null;
 		}
+	}
+
+	private static void overlay(net.minecraft.client.Minecraft mc, net.minecraft.client.gui.screens.Overlay o) {
+		//#if MC >= 26.2
+		mc.gui.setOverlay(o);
+		//#else
+		//$ mc.setOverlay(o);
+		//#endif
 	}
 }

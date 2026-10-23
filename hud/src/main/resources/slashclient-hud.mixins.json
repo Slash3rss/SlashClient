@@ -9,6 +9,7 @@
 		"ConnectScreenMixin",
 		"ConnectInfoMixin",
 		"LoadingScreenMixin",
+		"PackReloadOverlayMixin",
 		"LoadingScreensAccessor",
 		"ProgressScreenAccessor",
 		"LevelLoadingScreenAccessor",

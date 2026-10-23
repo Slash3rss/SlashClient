@@ -151,6 +151,24 @@ public final class SlashLoading {
 		}
 	}
 
+	/**
+	 * The game reloading its resources (a server's packs being applied) under its red Mojang screen:
+	 * while one of the loading screens is under it, ours is drawn over it with the reload's progress.
+	 * Its Cancel is left out: the game takes no clicks until the reload is done.
+	 */
+	public static void overPackReload(GuiGraphicsExtractor g, int mx, int my, float progress) {
+		// with either our loading screen or our server list on, the join keeps our look
+		if (!on() && !(SlashHud.config != null && SlashHud.config.customServerList)) return;
+		Screen screen = dev.slash3rss.slashclient.hud.Compat.screen(Minecraft.getInstance());
+		if (screen == null) return;
+		try {
+			if (read(screen) == null) return;
+			draw(screen, g, new State("apply", Ui.tr("slashclient-hud.loading.applyPack"), Math.max(0, Math.min(1, progress)), null), mx, my);
+		} catch (RuntimeException e) {
+			warn(e);
+		}
+	}
+
 	private static void warn(RuntimeException e) {
 		if (warned) return;
 		warned = true;
@@ -225,7 +243,7 @@ public final class SlashLoading {
 			String id = root.getFileName() == null ? name : root.getFileName().toString();
 			return new Subject(Ui.bold(name), Ui.tr("slashclient-hud.loading.singleplayer"), null, "w:" + id, null, local.getWorldPath(LevelResource.ICON_FILE), "world");
 		}
-		ServerData server = st.kind().equals("connect") || st.kind().equals("pack") || mc.getCurrentServer() == null ? joining : mc.getCurrentServer();
+		ServerData server = st.kind().equals("connect") || st.kind().equals("pack") || st.kind().equals("apply") || mc.getCurrentServer() == null ? joining : mc.getCurrentServer();
 		if (server == null) server = mc.getCurrentServer();
 		if (server != null) {
 			String address = server.ip != null && !server.ip.isEmpty() ? server.ip : joiningAddress;

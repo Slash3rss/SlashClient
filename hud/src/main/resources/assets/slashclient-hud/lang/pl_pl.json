@@ -1082,6 +1082,7 @@
 	"slashclient-hud.loading.terrain": "Wczytywanie terenu",
 	"slashclient-hud.loading.pack": "Pobieranie paczki zasobów serwera",
 	"slashclient-hud.loading.packOf": "Pobieranie paczki zasobów %s z %s",
+	"slashclient-hud.loading.applyPack": "Wczytywanie paczki zasobów serwera",
 	"slashclient-hud.loading.percent": "%s%%",
 	"slashclient-hud.loading.wait": "Chwileczka…",
 	"slashclient-hud.loading.tip.edit": "%s otwiera edytor HUD-a",
