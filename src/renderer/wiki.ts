@@ -26,6 +26,8 @@ const SUGGESTIONS = ['Crafting Table', 'Creeper', 'Diamond', 'Enchanting', 'Brew
 const OPEN_FIRST = /^(obtaining|crafting|recipe|drops|usage)$/i;
 
 const TAB_KEY = 'wiki.tab';
+/** "Wczytywanie…" only when loading takes longer than this (what was read before comes at once). */
+const LOADING_AFTER_MS = 150;
 
 export function createWiki(root: HTMLElement, deps: WikiDeps) {
   const mc = el('div', { className: 'wiki-pane' });
@@ -136,10 +138,11 @@ function createMinecraftWiki(root: HTMLElement, deps: WikiDeps) {
     const mine = ++articleSeq;
     if (!fromHistory && current && current !== title) history.push(current);
     back.disabled = !history.length;
-    article.replaceChildren(el('p', { className: 'muted wiki-hint', textContent: t('Wczytywanie…') }));
+    // an article read before comes at once (the main process keeps it): no "Wczytywanie…" flashing in between
+    const wait = setTimeout(() => mine === articleSeq && article.replaceChildren(el('p', { className: 'muted wiki-hint', textContent: t('Wczytywanie…') })), LOADING_AFTER_MS);
     results.querySelectorAll<HTMLElement>('.wiki-hit').forEach((r) => r.classList.toggle('selected', r.dataset.title === title));
     try {
-      const a = (await api.wikiArticle(title)) as Article;
+      const a = (await api.wikiArticle(title).finally(() => clearTimeout(wait))) as Article;
       if (mine !== articleSeq) return;
       current = a.title;
       const open = el('a', { href: a.url, className: 'button-link', title: t('Otwórz w przeglądarce') }, icon('fa-arrow-up-right-from-square'), ' minecraft.wiki');
@@ -156,9 +159,9 @@ function createMinecraftWiki(root: HTMLElement, deps: WikiDeps) {
         details.addEventListener('toggle', async () => {
           if (!details.open || loaded) return;
           loaded = true;
-          content.replaceChildren(el('p', { className: 'muted', textContent: t('Wczytywanie…') }));
+          const wait = setTimeout(() => content.replaceChildren(el('p', { className: 'muted', textContent: t('Wczytywanie…') })), LOADING_AFTER_MS);
           try {
-            const html = (await api.wikiSection(a.title, s.index)) as string;
+            const html = (await api.wikiSection(a.title, s.index).finally(() => clearTimeout(wait))) as string;
             fillHtml(content, html);
             // the section's own heading repeats the summary (newer MediaWiki wraps it in a div)
             const heading = content.querySelector('h2');

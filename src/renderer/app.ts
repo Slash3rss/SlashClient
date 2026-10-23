@@ -184,6 +184,18 @@ function appear<T extends Element>(nodes: T[], start = 0): T[] {
   return nodes;
 }
 
+/**
+ * Items that come in with an animation do it once: a list hidden and shown again (another tab, pane
+ * or view and back) would otherwise play it anew, as if everything had just been loaded.
+ */
+const ENTRANCE = '.appear, .stat-card, .day-chart div, .rank-row, .rank-bar i, .ss-history-row, .sp-review, .lib-choice';
+document.addEventListener('animationend', (e) => {
+  const n = e.target;
+  if (!(n instanceof HTMLElement) || !n.matches(ENTRANCE)) return;
+  n.classList.remove('appear');
+  n.style.animation = 'none';
+});
+
 const sk = (cls = '') => el('div', { className: `sk ${cls}` });
 
 /** Placeholder rows with a shimmer, shaped like the content that is loading. */
@@ -813,7 +825,7 @@ function showPane(pane: ProfilePane) {
 
 /** Loads what the open pane shows, for the profile picked on the left. */
 function refreshPane() {
-  if (profilePane === 'content') openContentPane(true);
+  if (profilePane === 'content') openContentPane();
   else if (profilePane === 'worlds') {
     renderContentProfiles();
     renderWorlds();
@@ -1193,12 +1205,15 @@ async function renderSessions() {
 /** The lines of what the console shows now. */
 async function renderConsole() {
   const profileId = pickedProfile();
-  log.replaceChildren();
   if (consoleView === 'live') {
+    log.replaceChildren();
     for (const line of logs.get(profileId) ?? []) appendLog(line);
   } else {
-    const text: string = await api.consoleRead(profileId, consoleView).catch(() => '');
-    if (profileId !== pickedProfile()) return;
+    // read first: the lines shown stay until the session's own replace them (no empty flash)
+    const view = consoleView;
+    const text: string = await api.consoleRead(profileId, view).catch(() => '');
+    if (profileId !== pickedProfile() || view !== consoleView) return;
+    log.replaceChildren();
     for (const line of text.split('\n')) if (line) appendLog(line);
     log.scrollTop = log.scrollHeight;
   }
@@ -2048,10 +2063,16 @@ $('#join-create').addEventListener('click', () => {
   });
 });
 
+/** Servers whose cards have been on screen: sorting, filtering or "more" does not make them appear again. */
+const shownServers = new Set<string>();
+
 function renderServers() {
   const list = filteredServers();
   const page = list.slice(0, shown);
-  $('#server-list').replaceChildren(...appear(page.map(serverCard)));
+  const cards = page.map(serverCard);
+  appear(cards.filter((_, i) => !shownServers.has(page[i].ip)));
+  for (const s of page) shownServers.add(s.ip);
+  $('#server-list').replaceChildren(...cards);
   if (!servers.length) $('#server-list').replaceChildren(...skeletons('server', 5));
   else if (!list.length) $('#server-list').append(el('p', { className: 'muted appear', textContent: 'Brak serwerów pasujących do filtrów.' }));
   $('#servers-more').classList.toggle('hidden', list.length <= shown);
@@ -2093,6 +2114,8 @@ async function loadServers(force = false) {
   btn.disabled = true;
   btn.querySelector('i')?.classList.add('spin-icon');
   if (!servers.length || force) $('#server-list').replaceChildren(...skeletons('server', 5));
+  // after the placeholders the list appears as new
+  if (force) shownServers.clear();
   try {
     servers = await api.listServers(force);
     if (force) pings.clear();
@@ -2286,10 +2309,14 @@ const installing = new Set<string>();
 
 /** The browser is on Odkrywaj (else in a profile's "Mody i zasoby"). */
 let discovering = false;
-/** The profile the last search was for: coming back to Odkrywaj keeps its results instead of searching again. */
-let searchedProfile = '';
+/** What the shown results are for (searchKey): coming back to the browser keeps them instead of searching again. */
+let searchedKey = '';
 /** Search results already on screen: a later redraw (the installed list arriving) does not make them appear again. */
 const shownHits = new Set<string>();
+/** Profiles whose installed list has been on screen: it appears one by one only the first time. */
+const installedShown = new Set<string>();
+/** The profile the installed list is of. */
+let installedFor = '';
 const contentProfileId = () => $<HTMLSelectElement>(discovering ? '#discover-profile' : '#content-profile').value;
 const fmtCount = (n: number) => (n >= 1e6 ? t('{0} mln', (n / 1e6).toLocaleString(locale(), { maximumFractionDigits: 1 })) : n >= 1e3 ? t('{0} tys.', Math.round(n / 1e3)) : String(n));
 
@@ -2388,9 +2415,24 @@ let statsDays = 30;
 /** Short durations for the charts: "3 h 20 min", "45 min". */
 const fmtShort = (ms: number) => (ms < 60_000 ? '0 min' : fmtPlaytime(ms));
 
+/** The statistics seen for each range (JSON): coming back to one draws it without the bars growing again. */
+const statsSeen = new Map<number, string>();
+/** The range and statistics on screen now. */
+let statsShown = '';
+
 async function renderStats() {
-  const s: StatsSummary | undefined = await guard(() => api.getStats(statsDays));
-  if (!s) return;
+  const days = statsDays;
+  const s: StatsSummary | undefined = await guard(() => api.getStats(days));
+  if (!s || days !== statsDays) return;
+  const pane = document.querySelector('.profile-pane[data-pane="stats"]');
+  const json = JSON.stringify(s);
+  pane?.classList.toggle('still', statsSeen.get(days) === json);
+  statsSeen.set(days, json);
+  if (statsShown === `${days}|${json}`) {
+    void sessionSummary.renderHistory(pane);
+    return;
+  }
+  statsShown = `${days}|${json}`;
   const card = (label: string, value: string, note = '', i = 0) => {
     const c = el('div', { className: 'stat-card glass-panel' }, el('small', { textContent: label }), el('b', { textContent: value }), el('span', { textContent: note }));
     c.style.animationDelay = `${i * 40}ms`;
@@ -2713,9 +2755,12 @@ function renderContent() {
     const query = $<HTMLInputElement>('#installed-search').value;
     const shown = forType.filter((i) => matchesInstalled(i, query));
     const cards = shown.map(installedCard);
-    list.replaceChildren(...(from !== undefined ? appear(cards) : cards));
-    if (!forType.length) list.append(el('p', { className: 'muted appear', textContent: 'Nic tu jeszcze nie ma.' }));
-    else if (!shown.length) list.append(el('p', { className: 'muted appear', textContent: t('Nic nie pasuje do „{0}”.', query.trim()) }));
+    const animate = from !== undefined && !installedShown.has(installedFor);
+    installedShown.add(installedFor);
+    list.replaceChildren(...(animate ? appear(cards) : cards));
+    const muted = animate ? 'muted appear' : 'muted';
+    if (!forType.length) list.append(el('p', { className: muted, textContent: 'Nic tu jeszcze nie ma.' }));
+    else if (!shown.length) list.append(el('p', { className: muted, textContent: t('Nic nie pasuje do „{0}”.', query.trim()) }));
     $('#content-more').classList.add('hidden');
     return;
   }
@@ -2732,7 +2777,7 @@ function renderContent() {
   contentHits.forEach((h) => shownHits.add(h.id));
   list.replaceChildren(...cards);
   if (contentLoading) list.append(...skeletons('project', contentHits.length ? 3 : 6));
-  else if (!contentHits.length) list.append(el('p', { className: 'muted appear', textContent: 'Brak wyników.' }));
+  else if (!contentHits.length) list.append(el('p', { className: from !== undefined ? 'muted appear' : 'muted', textContent: 'Brak wyników.' }));
   $('#content-more').classList.toggle('hidden', contentLoading || contentHits.length >= contentTotal);
 }
 
@@ -2748,10 +2793,17 @@ function matchesInstalled(item: { title: string; filename: string; versionNumber
 }
 
 async function refreshInstalled(animate = false) {
-  if (!contentProfileId()) return;
-  installed = (await guard(() => api.listContent(contentProfileId()))) ?? [];
+  const profileId = contentProfileId();
+  if (!profileId) return;
+  const list: InstalledItem[] = (await guard(() => api.listContent(profileId))) ?? [];
+  if (profileId !== contentProfileId()) return;
+  // the same list as on screen (coming back to the pane): nothing to redraw
+  const same = installedFor === profileId && JSON.stringify(list) === JSON.stringify(installed);
+  installed = list;
+  installedFor = profileId;
   if (animate && contentTab === 'installed') animateFrom = 0;
-  renderContent();
+  if (!same) renderContent();
+  else animateFrom = undefined;
   refreshManual();
   if (contentType === 'mod' && contentTab === 'installed') runModCheck();
 }
@@ -2762,7 +2814,11 @@ async function refreshInstalled(animate = false) {
  */
 const searchCache = new Map<string, { hits: ProjectHit[]; total: number; at: number }>();
 const SEARCH_FRESH_MS = 5 * 60_000;
-const searchKey = () => [contentProfileId(), contentType, contentType === 'datapack' ? 'modrinth' : contentSource, $<HTMLInputElement>('#content-search').value.trim()].join('|');
+const searchKey = () => {
+  // the profile's game version and loader too: results are for them
+  const p = store.profiles.find((x) => x.id === contentProfileId());
+  return [contentProfileId(), p?.versionId, p?.loader, contentType, contentType === 'datapack' ? 'modrinth' : contentSource, $<HTMLInputElement>('#content-search').value.trim()].join('|');
+};
 
 /** Shows the kept results for what is chosen now, or searches when there are none (or they are old). */
 function showOrSearch() {
@@ -2776,7 +2832,7 @@ function showOrSearch() {
   // a search still on its way for the previous choice must not land here
   searchRequest++;
   contentLoading = false;
-  searchedProfile = contentProfileId();
+  searchedKey = searchKey();
   contentHits = kept.hits;
   contentTotal = kept.total;
   // seen before: they are simply there, without appearing one by one as fresh results do
@@ -2789,7 +2845,7 @@ function showOrSearch() {
 let searchRequest = 0;
 async function searchContent(append = false) {
   const request = ++searchRequest;
-  searchedProfile = contentProfileId();
+  searchedKey = searchKey();
   contentLoading = true;
   if (!append) {
     contentHits = [];
@@ -3053,16 +3109,16 @@ $('#content-search').addEventListener('input', () => {
 });
 $('#installed-search').addEventListener('input', () => renderContent());
 $('#content-more').addEventListener('click', () => searchContent(true));
-$('#content-profile').addEventListener('change', () => {
-  refreshInstalled(true);
-  searchContent();
-});
+$('#content-profile').addEventListener('change', () => openContentPane());
 $('#modpack-import').addEventListener('click', () => busy($<HTMLButtonElement>('#modpack-import'), () => api.importModpack().then(offerManual, () => undefined), 'Importuję…'));
-/** The Mods pane opened, or its profile changed: installed list and search for that profile. */
-function openContentPane(profileChanged: boolean) {
+/**
+ * The Mods pane opened, or its profile changed: installed list and search for that profile.
+ * Results already shown for it stay as they are; ones seen a moment ago come back at once (showOrSearch).
+ */
+function openContentPane() {
   renderContentProfiles();
   refreshInstalled(true);
-  if (profileChanged || !contentHits.length) searchContent();
+  if (searchKey() !== searchedKey || (!contentHits.length && !contentLoading)) showOrSearch();
 }
 
 // ---------- Odkrywaj: the same browser on a page of its own, for any profile ----------
@@ -3083,7 +3139,7 @@ function openDiscover() {
     contentPane.querySelector('.sub')?.after($('#discover-target'));
   }
   // the same list serves a profile's own Mods tab: other results there mean searching again here
-  openContentPane(contentProfileId() !== searchedProfile);
+  openContentPane();
 }
 
 /** The target profile as a tile (its icon, name, version and play time), opening the list of profiles. */
@@ -3101,14 +3157,14 @@ function closeDiscover() {
   contentHome.insertBefore(contentPane, contentAfter);
   $('#view-discover').append($('#discover-target'));
   contentPane.classList.toggle('hidden', profilePane !== 'content');
-  if (profilePane === 'content') openContentPane(true);
+  if (profilePane === 'content') openContentPane();
 }
 
 document.querySelectorAll<HTMLButtonElement>('.nav').forEach((b) =>
   b.addEventListener('click', () => (b.dataset.view === 'discover' ? openDiscover() : closeDiscover())));
 $('#discover-profile').addEventListener('change', () => {
   renderDiscoverTarget();
-  openContentPane(true);
+  openContentPane();
 });
 
 // ---------- worlds, backups, screenshots ----------
@@ -3161,15 +3217,41 @@ const myLinksButton = () => {
   return b;
 };
 
+/** What each tab of each profile showed last (as JSON): coming back to it shows it at once. */
+const worldsKept = new Map<string, string>();
+/** What the box shows now: the tab's key and its JSON. */
+let worldsShown = '';
+
 async function renderWorlds() {
   const box = $('#worlds-content');
   const profileId = worldsProfileId();
   if (!profileId) return;
-  $('#world-import').classList.toggle('hidden', worldsTab !== 'worlds');
-  box.replaceChildren(worldsTab === 'screenshots' ? el('div', { className: 'shots' }, ...skeletons('shot', 6)) : el('div', { className: 'project-list' }, ...skeletons('project', 3)));
+  const tab = worldsTab;
+  const key = `${profileId}|${tab}`;
+  $('#world-import').classList.toggle('hidden', tab !== 'worlds');
+  // seen before: there at once as it was (no placeholders, no appearing again), redrawn only if it changed
+  const kept = worldsKept.get(key);
+  if (kept === undefined) {
+    box.replaceChildren(tab === 'screenshots' ? el('div', { className: 'shots' }, ...skeletons('shot', 6)) : el('div', { className: 'project-list' }, ...skeletons('project', 3)));
+    worldsShown = '';
+  } else if (worldsShown !== `${key}|${kept}`) {
+    drawWorlds(profileId, tab, JSON.parse(kept), false);
+    worldsShown = `${key}|${kept}`;
+  }
+  const list: unknown[] = (await guard(() => (tab === 'worlds' ? api.listWorlds(profileId) : tab === 'backups' ? api.listBackups(profileId)
+    : tab === 'clips' ? api.listClips(profileId) : api.listScreenshots(profileId)))) ?? [];
+  if (profileId !== worldsProfileId() || tab !== worldsTab) return;
+  const json = JSON.stringify(list);
+  worldsKept.set(key, json);
+  if (worldsShown === `${key}|${json}`) return;
+  drawWorlds(profileId, tab, list, kept === undefined);
+  worldsShown = `${key}|${json}`;
+}
 
-  if (worldsTab === 'worlds') {
-    const worlds: WorldInfo[] = (await guard(() => api.listWorlds(profileId))) ?? [];
+function drawWorlds(profileId: string, tab: string, list: unknown[], animate: boolean) {
+  const box = $('#worlds-content');
+  if (tab === 'worlds') {
+    const worlds = list as WorldInfo[];
     box.replaceChildren(el('div', { className: 'project-list' }, ...worlds.map((w) => {
       const icon = el('img', { className: 'world-icon', alt: '' });
       icon.src = w.icon ? media(w.icon) : 'logo.png';
@@ -3204,8 +3286,8 @@ async function renderWorlds() {
       return card;
     })));
     if (!worlds.length) box.replaceChildren(el('p', { className: 'muted', textContent: 'Ten profil nie ma jeszcze żadnych światów.' }));
-  } else if (worldsTab === 'backups') {
-    const backups: Backup[] = (await guard(() => api.listBackups(profileId))) ?? [];
+  } else if (tab === 'backups') {
+    const backups = list as Backup[];
     box.replaceChildren(el('div', { className: 'project-list' }, ...backups.map((b) => {
       const restore = el('button', {}, el('i', { className: 'fa-solid fa-clock-rotate-left' }), 'Przywróć');
       restore.addEventListener('click', async () => {
@@ -3224,8 +3306,8 @@ async function renderWorlds() {
           }, 'danger')));
     })));
     if (!backups.length) box.replaceChildren(el('p', { className: 'muted', textContent: 'Brak kopii. Utworzysz je przyciskiem „Kopia” przy świecie.' }));
-  } else if (worldsTab === 'clips') {
-    const clips: Screenshot[] = (await guard(() => api.listClips(profileId))) ?? [];
+  } else if (tab === 'clips') {
+    const clips = list as Screenshot[];
     box.replaceChildren(el('div', { className: 'project-list' }, ...clips.map((c) => {
       const play = el('button', { className: 'primary' }, el('i', { className: 'fa-solid fa-play' }), t(' Odtwórz'));
       play.addEventListener('click', () => api.openFile(c.file));
@@ -3248,7 +3330,7 @@ async function renderWorlds() {
     if (!clips.length) box.replaceChildren(el('p', { className: 'muted', textContent: t('Brak klipów. Włącz „Klipy” w ustawieniach HUD w grze (Prawy Shift), a F8 zapisze ostatnie sekundy gry.') }));
     box.prepend(myLinksButton());
   } else {
-    const shots: Screenshot[] = (await guard(() => api.listScreenshots(profileId))) ?? [];
+    const shots = list as Screenshot[];
     box.replaceChildren(el('div', { className: 'shots' }, ...shots.map((sh) => {
       const img = el('img', { alt: sh.name, loading: 'lazy' });
       img.src = media(sh.file);
@@ -3266,7 +3348,7 @@ async function renderWorlds() {
   }
   // the last child: the gallery tabs put the "My links" button before the list
   const listEl = box.lastElementChild;
-  if (listEl) appear(listEl.children.length ? [...listEl.children] : [listEl]);
+  if (animate && listEl) appear(listEl.children.length ? [...listEl.children] : [listEl]);
 }
 
 document.querySelectorAll<HTMLButtonElement>('#worlds-tab button').forEach((b) =>
@@ -3301,32 +3383,72 @@ function newsCard(n: NewsItem): HTMLElement {
   return card;
 }
 
-/** Loads the first page of news (or the next one with `more`). */
-async function loadNews(more = false) {
+/**
+ * The news seen in this run, by filter: switching Wszystkie/Wydania/Snapshoty back and forth shows them
+ * at once; after a while the first page is asked again quietly and redrawn only if it changed.
+ */
+const newsKept = new Map<string, { items: NewsItem[]; total: number; at: number }>();
+const NEWS_FRESH_MS = 5 * 60_000;
+
+function newsMoreButton(grid: HTMLElement) {
+  if (newsItems.length >= newsTotal) return;
+  const btn = el('button', { className: 'more', type: 'button' }, el('i', { className: 'fa-solid fa-chevron-down' }), ` ${t('Pokaż więcej ({0})', newsTotal - newsItems.length)}`);
+  btn.addEventListener('click', () => loadNews(true));
+  grid.append(btn);
+}
+
+/** The news as kept for the filter picked: simply there, without placeholders or appearing one by one. */
+function showKeptNews() {
+  const kept = newsKept.get(newsFilter);
+  if (!kept) {
+    void loadNews();
+    return;
+  }
+  newsItems = kept.items;
+  newsTotal = kept.total;
+  const grid = $('#news');
+  grid.replaceChildren(...newsItems.map(newsCard));
+  newsMoreButton(grid);
+  if (Date.now() - kept.at > NEWS_FRESH_MS) void loadNews(false, true);
+}
+
+/** Loads the first page of news (or the next one with `more`); `quiet` keeps what is shown until the answer differs. */
+async function loadNews(more = false, quiet = false) {
   if (newsLoading) return;
   newsLoading = true;
   const grid = $('#news');
+  const filter = newsFilter;
   const offset = more ? newsItems.length : 0;
-  const placeholders = skeletons('news', more ? 3 : 6);
+  const placeholders = quiet ? [] : skeletons('news', more ? 3 : 6);
   if (more) {
     grid.querySelector('.more')?.remove();
     grid.querySelector('.news-failed')?.remove();
     grid.append(...placeholders);
-  } else {
+  } else if (!quiet) {
     grid.replaceChildren(...placeholders);
   }
   try {
-    const page: { items: NewsItem[]; total: number } = await api.listNews(offset, NEWS_PAGE, newsFilter);
+    const page: { items: NewsItem[]; total: number } = await api.listNews(offset, NEWS_PAGE, filter);
+    if (quiet) {
+      const kept = newsKept.get(filter);
+      const same = kept && kept.total === page.total && JSON.stringify(kept.items.slice(0, page.items.length)) === JSON.stringify(page.items);
+      if (same) {
+        kept.at = Date.now();
+        return;
+      }
+      newsKept.set(filter, { items: page.items, total: page.total, at: Date.now() });
+      if (filter === newsFilter) showKeptNews();
+      return;
+    }
     newsItems = more ? [...newsItems, ...page.items] : page.items;
     newsTotal = page.total;
+    newsKept.set(filter, { items: newsItems, total: newsTotal, at: Date.now() });
     placeholders.forEach((p) => p.remove());
     grid.append(...appear(page.items.map(newsCard)));
-    if (newsItems.length < newsTotal) {
-      const btn = el('button', { className: 'more', type: 'button' }, el('i', { className: 'fa-solid fa-chevron-down' }), ` ${t('Pokaż więcej ({0})', newsTotal - newsItems.length)}`);
-      btn.addEventListener('click', () => loadNews(true));
-      grid.append(btn);
-    }
+    newsMoreButton(grid);
   } catch {
+    // a quiet refresh that failed leaves the news shown as they are
+    if (quiet) return;
     placeholders.forEach((p) => p.remove());
     // what failed can be tried again: the first page, or the next one under those already shown
     const retry = el('button', { type: 'button' }, el('i', { className: 'fa-solid fa-rotate-right' }), ` ${t('Spróbuj ponownie')}`);
@@ -3344,7 +3466,7 @@ document.querySelectorAll<HTMLButtonElement>('#news-filter button').forEach((b) 
     if (newsLoading) return;
     newsFilter = b.dataset.filter!;
     document.querySelectorAll('#news-filter button').forEach((x) => x.classList.toggle('active', x === b));
-    loadNews();
+    showKeptNews();
   }));
 
 const ARTICLE_TAGS = new Set(['P', 'H1', 'H2', 'H3', 'H4', 'UL', 'OL', 'LI', 'CODE', 'B', 'STRONG', 'I', 'EM', 'BR', 'A', 'BLOCKQUOTE']);
@@ -3719,26 +3841,22 @@ function cosmeticPicture(slot: Slot, id: string): Node {
   return el('i', { className: `fa-solid ${ITEM_ICONS[id] ?? 'fa-star'} cosmetic-icon` });
 }
 
-async function renderSlashCapes() {
+type CosmeticsMe = { cape?: string; loadout?: Partial<Record<Slot, string>>; minecraft?: { uuid: string; name: string; loadout: Partial<Record<Slot, string>> | null }[] };
+type CatalogItem = { id: string; slot: Slot; name: string; rank?: string; exclusive: boolean; available: boolean; frames?: number; price?: number; owned?: boolean; hint?: string; hintEn?: string; supporter?: number };
+/** What the cosmetics were last drawn from: picking another slot's tab draws from it at once, without asking the server. */
+let cosmeticsKept: { me?: CosmeticsMe; catalog: CatalogItem[]; walletBalance?: number } | undefined;
+
+/** The cosmetics menu; `fresh` asks the server for what is worn and offered (a slot's tab picked uses what was just read). */
+async function renderSlashCapes(fresh = true) {
   const pictures = await loadGamePictures();
-  // what is worn is read fresh: the launcher's copy of the account may predate the last change
-  const state: { user?: unknown } | undefined = await api.socialState().catch(() => undefined);
-  type Me = { cape?: string; loadout?: Partial<Record<Slot, string>>; minecraft?: { uuid: string; name: string; loadout: Partial<Record<Slot, string>> | null }[] };
-  const me: Me | undefined = state?.user ? await api.socialApi('GET', '/v1/me').catch(() => undefined) : undefined;
+  const data = (!fresh && cosmeticsKept) || (cosmeticsKept = await readCosmetics());
+  const { me, catalog, walletBalance } = data;
   // a Minecraft account linked to the SlashClient account has a set of its own; others wear the account's
   const character = me?.minecraft?.find((m) => m.uuid === cosmeticCharacter);
   const worn: Partial<Record<Slot, string>> = character?.loadout ? { ...character.loadout } : { ...me?.loadout, cape: me?.cape ?? '' };
   $('#cosmetic-owner').textContent = character ? t('Zestaw postaci {0}', character.name) + (character.loadout ? '' : t(' (jak całe konto)')) : me ? t('Zestaw całego konta') : '';
   $('#cosmetic-shared').classList.toggle('hidden', !character?.loadout);
   const signedIn = !!me;
-  // what the server offers now: switched-off items are left out, exclusive and rank ones say if they are ours
-  type CatalogItem = { id: string; slot: Slot; name: string; rank?: string; exclusive: boolean; available: boolean; frames?: number; price?: number; owned?: boolean; hint?: string; hintEn?: string; supporter?: number };
-  let walletBalance: number | undefined;
-  const catalog: CatalogItem[] = (await api.socialApi('GET', '/v1/cosmetics').then((r: { capes: CatalogItem[]; items?: CatalogItem[]; wallet?: { balance: number } }) => {
-    walletBalance = r.wallet?.balance;
-    return r.items ?? r.capes.map((c) => ({ ...c, slot: 'cape' as Slot }));
-  }).catch(() => undefined))
-    ?? SLASH_CAPES.map(([id, name]) => ({ id, slot: 'cape' as Slot, name, exclusive: false, available: true }));
   if (walletBalance !== undefined) achievements.setBalance(walletBalance);
   // the balance and the way to the shop (in the Achievements view), while signed in to a server that has it
   $('#cosmetic-shop').classList.toggle('hidden', walletBalance === undefined);
@@ -3752,7 +3870,7 @@ async function renderSlashCapes() {
       el('i', { className: `fa-solid ${icon}` }), ` ${t(name)}`);
     b.addEventListener('click', () => {
       cosmeticSlot = slot;
-      renderSlashCapes();
+      renderSlashCapes(false);
     });
     return b;
   }));
@@ -3865,6 +3983,20 @@ async function renderSlashCapes() {
   else if (capeId) await wearCape(capeId);
 }
 
+/** What is worn and what the server offers now (switched-off items left out, exclusive and rank ones saying if they are ours). */
+async function readCosmetics(): Promise<NonNullable<typeof cosmeticsKept>> {
+  // what is worn is read fresh: the launcher's copy of the account may predate the last change
+  const state: { user?: unknown } | undefined = await api.socialState().catch(() => undefined);
+  const me: CosmeticsMe | undefined = state?.user ? await api.socialApi('GET', '/v1/me').catch(() => undefined) : undefined;
+  let walletBalance: number | undefined;
+  const catalog: CatalogItem[] = (await api.socialApi('GET', '/v1/cosmetics').then((r: { capes: CatalogItem[]; items?: CatalogItem[]; wallet?: { balance: number } }) => {
+    walletBalance = r.wallet?.balance;
+    return r.items ?? r.capes.map((c) => ({ ...c, slot: 'cape' as Slot }));
+  }).catch(() => undefined))
+    ?? SLASH_CAPES.map(([id, name]) => ({ id, slot: 'cape' as Slot, name, exclusive: false, available: true }));
+  return { me, catalog, walletBalance };
+}
+
 $('#cosmetic-shop').addEventListener('click', () => achievements.showShop());
 $('#cosmetic-shared').addEventListener('click', async () => {
   if (!cosmeticCharacter || !(await guard(() => api.socialApi('POST', '/v1/me', { character: cosmeticCharacter, own: false })))) return;
@@ -3891,8 +4023,22 @@ async function loadSkinEditor(account: { id: string; type: string; uuid?: string
   $('#skin-actions').classList.remove('hidden');
   $('#cape-apply').classList.add('hidden');
   if (account.type !== 'msa') return;
-  $('#cape-grid').replaceChildren(...skeletons('shot', 3).map((s) => Object.assign(s, { className: 'cape-choice sk' })));
-  capes = (await guard(() => api.ownedCapes(account.id))) ?? [];
+  // an account seen before: its capes at once (then read again), placeholders only the first time
+  const kept = capesKept.get(account.id);
+  if (kept) showOwnedCapes(kept);
+  else $('#cape-grid').replaceChildren(...skeletons('shot', 3).map((s) => Object.assign(s, { className: 'cape-choice sk' })));
+  const owned: OwnedCape[] | undefined = await guard(() => api.ownedCapes(account.id));
+  if (skinAccountId !== account.id) return;
+  if (owned) capesKept.set(account.id, owned);
+  if (kept && JSON.stringify(kept) === JSON.stringify(owned)) return;
+  showOwnedCapes(owned ?? []);
+}
+
+/** The Minecraft capes of each account, as last read. */
+const capesKept = new Map<string, OwnedCape[]>();
+
+function showOwnedCapes(list: OwnedCape[]) {
+  capes = list;
   chosenCape = capes.find((c) => c.active)?.id ?? '';
   // no Minecraft capes on this account: no tab to switch to
   $('#cape-tabs').classList.toggle('hidden', !capes.length);
@@ -4010,12 +4156,17 @@ async function loadLibrary() {
   renderLibrary();
 }
 
+/** Skins of the library already on screen: picking one or coming back does not make them appear again. */
+const shownPresets = new Set<string>();
+
 function renderLibrary() {
   $('#lib-empty').classList.toggle('hidden', presets.length > 0);
   $('#lib-grid').replaceChildren(...presets.map((p, i) => {
     const b = el('button', { type: 'button', className: `lib-choice${p.id === chosenPreset ? ' selected' : ''}`, title: p.name },
       skinFront(p.dataUrl, p.variant === 'slim'), el('span', { textContent: p.name }));
     b.style.animationDelay = `${Math.min(i, 12) * 25}ms`;
+    if (shownPresets.has(p.id)) b.style.animation = 'none';
+    shownPresets.add(p.id);
     b.addEventListener('click', () => (p.id === chosenPreset ? leavePreview() : previewPreset(p.id)));
     return b;
   }));
@@ -4430,9 +4581,13 @@ async function switchLanguage(lang: string) {
   renderProfiles();
   if (servers.length) renderServers();
   if (contentHits.length || installed.length) renderContent();
+  // what was kept is drawn again in the new language (the news come in it)
+  worldsShown = '';
+  statsShown = '';
   if (document.querySelector('#view-profiles.active') && profilePane === 'worlds') renderWorlds();
   skinAccountId = undefined;
   if (document.querySelector('#view-accounts.active')) renderSkin();
+  newsKept.clear();
   loadNews();
   launcherNews?.reload();
 }
