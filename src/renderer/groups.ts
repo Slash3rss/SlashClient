@@ -785,7 +785,8 @@ export function createGroups(deps: Deps) {
       open = undefined;
     },
     unread: () => groups.reduce((n, g) => n + g.unread, 0) + invites.length,
-    myTag: () => clan?.tag,
+    // as others see me: none while I hide it
+    myTag: () => (clan?.tagHidden ? undefined : clan?.tag),
     clear: () => {
       groups = [];
       clan = null;
