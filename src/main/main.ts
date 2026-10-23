@@ -41,7 +41,7 @@ import {
   latestCurseForgePack, listCurseForgeVersions, searchCurseForge, setCurseForgeServer, updateCurseForgePack, type ManualFile,
 } from './curseforge';
 import { copyManualFiles, downloadLink, findManualFiles, FolderWatch, manualKey } from './manualFiles';
-import { listServers, pingServer, serverDetails } from './servers';
+import { listServers, pingServer, serverDetails, serverHistory } from './servers';
 import {
   applySettings, countParts, DEFAULT_PARTS, includePath, manualFilesOf, PACK_PARTS, readPackSummary, settingsOf, uniqueName, writeProfilePack,
   type LinkResolver, type PackPart, type PackSummary,
@@ -1266,7 +1266,8 @@ handle('bug:report', async (text?: string) => {
 handle('servers:list', (force?: boolean) => listServers(force));
 // a server that is off is an answer, not an error: no noise in the log for every offline server
 handle('servers:ping', (address: string) => pingServer(address).catch((err: Error) => ({ offline: err.message })));
-handle('servers:details', (id: string) => serverDetails(id));
+handle('servers:details', (id: string, withHistory?: boolean) => serverDetails(id, withHistory !== false));
+handle('servers:history', (id: string) => serverHistory(id));
 
 // voting on the server list in one click: the SlashClient server vouches for the player's Minecraft
 // name (verified by Mojang when linked) to the list (server/src/serverVotes.ts)

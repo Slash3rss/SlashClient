@@ -350,6 +350,11 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 .sp-desc { margin: 0; white-space: pre-wrap; color: var(--text-secondary); line-height: 1.55; user-select: text; }
 .sp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .sp-chart { height: 170px; }
+/* the server page drawn before its details arrive: placeholders where they go, the same size */
+.sk.sk-inline { display: inline-block; width: 64px; height: 18px; vertical-align: middle; }
+.sk.sk-inline.short { display: block; width: 30%; height: 12px; margin-bottom: 8px; }
+.sk.sk-inline.line { display: block; width: 85%; height: 12px; }
+.sp-chart-sk { display: block; width: 100%; height: 170px; border-radius: 10px; }
 .sp-chart-wrap { display: flex; flex-direction: column; gap: 6px; }
 .sp-stars { color: var(--gold); display: inline-flex; gap: 2px; font-size: 12px; }
 .sp-avg { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }

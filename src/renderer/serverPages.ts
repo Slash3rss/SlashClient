@@ -66,6 +66,45 @@ export function createServerPages(view: HTMLElement, deps: ServerPagesDeps) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let pending = new Set<string>();
 
+  // ---------- a server's details: kept, asked for once at a time ----------
+
+  /** Pages seen in this run: shown again at once, refreshed behind when older than FRESH_MS. */
+  const details = new Map<string, { d: Details; at: number }>();
+  const asking = new Map<string, Promise<Details>>();
+  /** The players' history, which the list answers slowly: asked apart, drawn into the chart when it comes. */
+  const histories = new Map<string, { h: [number, number][]; at: number }>();
+  const askingHistory = new Map<string, Promise<[number, number][]>>();
+  function fetchHistory(id: string): Promise<[number, number][]> {
+    const going = askingHistory.get(id);
+    if (going) return going;
+    const p = (api.serverHistory(id) as Promise<[number, number][]>).then((h) => {
+      histories.set(id, { h, at: Date.now() });
+      return h;
+    }).finally(() => askingHistory.delete(id));
+    askingHistory.set(id, p);
+    return p;
+  }
+  const FRESH_MS = 60_000;
+  const KEEP_MS = 60 * 60_000;
+  function fetchDetails(id: string): Promise<Details> {
+    const going = asking.get(id);
+    if (going) return going;
+    const p = (api.serverDetails(id, false) as Promise<Details>).then((d) => {
+      details.set(id, { d, at: Date.now() });
+      return d;
+    }).finally(() => asking.delete(id));
+    asking.set(id, p);
+    return p;
+  }
+  /** Starts fetching a server's page before it is opened (the pointer over its card). */
+  function prefetch(s: PagedServer) {
+    if (!s.id) return;
+    const kept = details.get(s.id);
+    if (!kept || Date.now() - kept.at >= FRESH_MS) void fetchDetails(s.id).catch(() => undefined);
+    const keptHistory = histories.get(s.id);
+    if (!keptHistory || Date.now() - keptHistory.at >= FRESH_MS) void fetchHistory(s.id).catch(() => undefined);
+  }
+
   const siteUrl = (s: PagedServer) => `${SITE}/server/${encodeURIComponent(s.id)}`;
   const openSite = (s: PagedServer) => window.open(siteUrl(s), '_blank');
   const countOf = (s: PagedServer) => counts.get(s.id) ?? s.votes;
@@ -254,7 +293,12 @@ export function createServerPages(view: HTMLElement, deps: ServerPagesDeps) {
     return el('span', { className: 'sp-stars', title: t('{0} na 5', rating) }, ...Array.from({ length: 5 }, (_, i) => el('i', { className: `${i < rating ? 'fa-solid' : 'fa-regular'} fa-star` })));
   }
 
-  function render(d: Details, base: PagedServer) {
+  function render(given: Details | undefined, base: PagedServer) {
+    // not here yet: the page from what the list already says, placeholders for the rest
+    const loading = !given;
+    const d: Details = given ?? { server: { ...base, views: 0, peakPlayers: 0, hasBanner: false, versionText: '' }, history: [], reviews: [] };
+    let history = histories.get(base.id)?.h;
+    const sk = (cls = '') => el('span', { className: `sk sk-inline ${cls}` });
     const s = { ...base, ...d.server, id: base.id || d.server.id };
     const live = deps.live(s);
     const iconImg = el('img', { className: 'server-icon sp-icon', alt: '' });
@@ -293,18 +337,18 @@ export function createServerPages(view: HTMLElement, deps: ServerPagesDeps) {
       el('div', { className: 'sp-name' }, title, el('div', { className: 'sp-ip' }, el('code', { textContent: s.ip }), copy)),
       el('div', { className: 'sp-actions' }, play, voteButton(s, true), ...links, onList)));
 
-    const playersNow = el('b', { textContent: live ? `${live.playersOnline} / ${live.playersMax}` : s.online ? `${s.playersOnline} / ${s.playersMax}` : t('Offline') });
-    const pingNote = el('span', { textContent: live ? t('ping {0} ms', live.latency) : '' });
+    const playersNow = el('b', { className: 'sp-players-now', textContent: live ? `${live.playersOnline} / ${live.playersMax}` : s.online ? `${s.playersOnline} / ${s.playersMax}` : t('Offline') });
+    const pingNote = el('span', { className: 'sp-ping-note', textContent: live ? t('ping {0} ms', live.latency) : '' });
     const nowCard = statCard(t('Gracze teraz'), playersNow, '', 0);
     nowCard.lastElementChild!.replaceWith(pingNote);
     const votes = el('b', { className: 'sp-votes', textContent: String(countOf(s)) });
     votes.dataset.id = s.id;
     const stats = el('div', { className: 'stat-cards' },
       nowCard,
-      statCard(t('Rekord graczy'), fmtNum(d.server.peakPlayers || 0), '', 1),
+      statCard(t('Rekord graczy'), loading ? sk() : fmtNum(d.server.peakPlayers || 0), '', 1),
       statCard(t('Głosy'), votes, t('jeden głos dziennie'), 2),
-      statCard(t('Wyświetlenia'), fmtNum(d.server.views || 0), t('na liście'), 3),
-      statCard(t('Na liście od'), d.server.createdAt ? fmtDay(d.server.createdAt) : '—', '', 4));
+      statCard(t('Wyświetlenia'), loading ? sk() : fmtNum(d.server.views || 0), t('na liście'), 3),
+      statCard(t('Na liście od'), loading ? sk() : d.server.createdAt ? fmtDay(d.server.createdAt) : '—', '', 4));
 
     // about: MOTD, description, modes and versions (the server's own words: never translated)
     const about = el('div', { className: 'glass-panel sp-panel' }, el('h3', { textContent: t('O serwerze') }), deps.motd(s));
@@ -324,7 +368,8 @@ export function createServerPages(view: HTMLElement, deps: ServerPagesDeps) {
     const chartBox = el('div');
     const tabs = el('div', { className: 'segmented' });
     const drawChart = () => {
-      chartBox.replaceChildren(d.history.length ? playerChart(d.history, range) : el('p', { className: 'muted', textContent: t('Lista nie ma jeszcze historii graczy tego serwera.') }));
+      chartBox.replaceChildren(!history ? el('div', { className: 'sk sp-chart-sk' })
+        : history.length ? playerChart(history, range) : el('p', { className: 'muted', textContent: t('Lista nie ma jeszcze historii graczy tego serwera.') }));
       tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.range === range));
     };
     for (const [r, label] of [['24h', t('24 godziny')], ['7d', t('7 dni')], ['30d', t('30 dni')]] as const) {
@@ -337,6 +382,19 @@ export function createServerPages(view: HTMLElement, deps: ServerPagesDeps) {
       tabs.append(b);
     }
     drawChart();
+    // the history on its way: the chart is drawn when it comes (this page still open)
+    if (!history || Date.now() - (histories.get(base.id)?.at ?? 0) >= FRESH_MS) {
+      void fetchHistory(base.id).then((h) => {
+        if (openId !== base.id || !chartBox.isConnected) return;
+        if (history && JSON.stringify(history) === JSON.stringify(h)) return;
+        history = h;
+        drawChart();
+      }).catch(() => {
+        if (openId !== base.id || !chartBox.isConnected || history) return;
+        history = [];
+        drawChart();
+      });
+    }
     const players = el('div', { className: 'glass-panel sp-panel' }, el('div', { className: 'sp-panel-head' }, el('h3', { textContent: t('Gracze') }), tabs), chartBox);
 
     // reviews, read only (written on the website)
@@ -345,10 +403,11 @@ export function createServerPages(view: HTMLElement, deps: ServerPagesDeps) {
     const write = el('button', { type: 'button' }, icon('fa-pen'), ' ', t('Napisz opinię na stronie'));
     write.addEventListener('click', () => openSite(s));
     reviews.append(el('div', { className: 'sp-panel-head' },
-      el('h3', { textContent: t('Opinie ({0})', d.reviews.length) }),
+      el('h3', { textContent: loading ? t('Opinie') : t('Opinie ({0})', d.reviews.length) }),
       d.reviews.length ? el('span', { className: 'sp-avg' }, stars(Math.round(avg)), ` ${avg.toFixed(1).replace('.', locale().startsWith('pl') ? ',' : '.')}`) : '',
       el('span', { className: 'grow' }), write));
-    if (!d.reviews.length) reviews.append(el('p', { className: 'muted', textContent: t('Nikt jeszcze nie ocenił tego serwera.') }));
+    if (loading) reviews.append(...[0, 1].map(() => el('div', { className: 'sp-review' }, el('span', { className: 'sp-avatar sk' }), el('div', { className: 'grow' }, sk('short'), sk('line')))));
+    else if (!d.reviews.length) reviews.append(el('p', { className: 'muted', textContent: t('Nikt jeszcze nie ocenił tego serwera.') }));
     for (const r of d.reviews) {
       const avatar = r.avatar ? el('img', { className: 'sp-avatar', alt: '', loading: 'lazy', src: r.avatar }) : el('span', { className: 'sp-avatar' }, icon('fa-user'));
       const text = el('p', { textContent: r.content });
@@ -361,22 +420,27 @@ export function createServerPages(view: HTMLElement, deps: ServerPagesDeps) {
 
     page.replaceChildren(el('div', { className: 'sp-top' }, back), hero, stats, el('div', { className: 'sp-grid' }, about, players), reviews);
 
-    // the live status, when the list's cards did not ping it yet
-    if (!live) {
+    // the live status, when the list's cards did not ping it yet (once: not again for the full page)
+    if (!live && !pinging.has(s.id)) {
+      pinging.add(s.id);
       void api.pingServer(s.ip).then((res: Live | { offline: string }) => {
         if (openId !== base.id) return;
+        const now = page.querySelector<HTMLElement>('.sp-players-now');
         if ('offline' in res) {
           deps.pinged(s, undefined, res.offline);
-          playersNow.textContent = t('Offline');
+          if (now) now.textContent = t('Offline');
           return;
         }
         deps.pinged(s, res);
-        playersNow.textContent = `${res.playersOnline} / ${res.playersMax}`;
-        pingNote.textContent = t('ping {0} ms', res.latency);
-        if (res.favicon) iconImg.src = res.favicon;
-      }).catch(() => {});
+        if (now) now.textContent = `${res.playersOnline} / ${res.playersMax}`;
+        const note = page.querySelector<HTMLElement>('.sp-ping-note');
+        if (note) note.textContent = t('ping {0} ms', res.latency);
+        const img = page.querySelector<HTMLImageElement>('.sp-icon');
+        if (res.favicon && img) img.src = res.favicon;
+      }).catch(() => {}).finally(() => pinging.delete(s.id));
     }
   }
+  const pinging = new Set<string>();
 
   async function open(s: PagedServer) {
     if (!s.id) return;
@@ -384,16 +448,23 @@ export function createServerPages(view: HTMLElement, deps: ServerPagesDeps) {
     const mine = ++seq;
     view.classList.add('server-open');
     page.classList.remove('hidden');
-    page.replaceChildren(el('div', { className: 'sp-top' }, el('button', { type: 'button', className: 'sp-back', onclick: close }, icon('fa-arrow-left'), ' ', t('Serwery'))),
-      el('div', { className: 'sp-hero glass-panel sk sp-loading' }), el('div', { className: 'stat-cards' }, ...Array.from({ length: 5 }, () => el('div', { className: 'stat-card glass-panel sk' }))));
+    const kept = details.get(s.id);
+    const usable = kept && Date.now() - kept.at < KEEP_MS ? kept : undefined;
+    render(usable?.d, s);
     view.scrollTop = 0;
     page.scrollIntoView({ block: 'start' });
     checkVotes([s.id], true);
+    // seen a moment ago: nothing to ask
+    if (usable && Date.now() - usable.at < FRESH_MS) return;
     try {
-      const d: Details = await api.serverDetails(s.id);
+      const d: Details = await fetchDetails(s.id);
       if (mine !== seq) return;
+      // shown from memory and nothing changed: the page stays as it is (no redraw, the chart keeps its range)
+      if (usable && JSON.stringify(usable.d) === JSON.stringify(d)) return;
       render(d, s);
     } catch (err) {
+      // the kept page stays when only its refresh failed
+      if (usable || mine !== seq) return;
       if (mine !== seq) return;
       const retry = el('button', { type: 'button' }, icon('fa-rotate'), ' ', t('Spróbuj ponownie'));
       retry.addEventListener('click', () => void open(s));
@@ -408,6 +479,7 @@ export function createServerPages(view: HTMLElement, deps: ServerPagesDeps) {
     voteButton,
     checkVotes,
     open,
+    prefetch,
     close,
     isOpen: () => openId !== undefined,
     /** After signing in or out: ask again for everything shown. */

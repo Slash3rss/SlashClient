@@ -1896,6 +1896,9 @@ function serverCard(s: ListedServer): HTMLElement {
       if ((e.target as HTMLElement).closest('button, a, input') && !(e.target as HTMLElement).closest('.server-name')) return;
       void serverPages.open(s);
     });
+    // the page starts loading while the pointer is still on its way to click
+    card.addEventListener('pointerenter', () => serverPages.prefetch(s));
+    card.addEventListener('focus', () => serverPages.prefetch(s));
     card.addEventListener('keydown', (e) => {
       if ((e.key === 'Enter' || e.key === ' ') && e.target === card) {
         e.preventDefault();

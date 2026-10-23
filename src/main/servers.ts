@@ -67,13 +67,27 @@ export interface ServerDetails {
   reviews: { user: string; avatar?: string; rating: number; content: string; at: number }[];
 }
 
-export async function serverDetails(id: string): Promise<ServerDetails> {
+const serverUrl = (id: string) => {
   if (typeof id !== 'string' || !/^[\w.:-]{1,100}$/.test(id)) throw new Error('bad_request');
-  const base = `${LIST_API}/servers/${encodeURIComponent(id)}`;
+  return `${LIST_API}/servers/${encodeURIComponent(id)}`;
+};
+
+/** A server's players over the last 30 days, [time, players] oldest first (the list answers this one slowly). */
+export async function serverHistory(id: string): Promise<[number, number][]> {
+  const history = await fetchJson<{ playersOnline?: number; timestamp?: string }[]>(`${serverUrl(id)}/history`).catch(() => []);
+  return (Array.isArray(history) ? history : [])
+    .map((h): [number, number] => [Date.parse(String(h.timestamp ?? '')), Number(h.playersOnline ?? 0)])
+    .filter(([at, n]) => Number.isFinite(at) && Number.isFinite(n))
+    .sort((a, b) => a[0] - b[0]);
+}
+
+/** `withHistory: false` leaves the history out (see serverHistory): the page opens without waiting for it. */
+export async function serverDetails(id: string, withHistory = true): Promise<ServerDetails> {
+  const base = serverUrl(id);
   // the history and the reviews are extras: the page still opens without them
   const [raw, history, reviews] = await Promise.all([
     fetchJson<Record<string, unknown>>(base),
-    fetchJson<{ playersOnline?: number; timestamp?: string }[]>(`${base}/history`).catch(() => []),
+    withHistory ? serverHistory(id) : Promise.resolve([] as [number, number][]),
     fetchJson<Record<string, unknown>[]>(`${base}/reviews`).catch(() => []),
   ]);
   const created = Date.parse(String(raw.createdAt ?? ''));
@@ -86,10 +100,7 @@ export async function serverDetails(id: string): Promise<ServerDetails> {
       hasBanner: Boolean(raw.hasBanner),
       versionText: String(raw.version ?? ''),
     },
-    history: (Array.isArray(history) ? history : [])
-      .map((h): [number, number] => [Date.parse(String(h.timestamp ?? '')), Number(h.playersOnline ?? 0)])
-      .filter(([at, n]) => Number.isFinite(at) && Number.isFinite(n))
-      .sort((a, b) => a[0] - b[0]),
+    history,
     reviews: (Array.isArray(reviews) ? reviews : []).slice(0, 50).map((r) => {
       const user = (r.user ?? {}) as Record<string, unknown>;
       const discordId = String(user.discordId ?? r.discordId ?? '');
