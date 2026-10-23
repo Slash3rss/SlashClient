@@ -19,6 +19,8 @@ import { IconError, makeIcon, type Icon } from './partnerIcons.ts';
 export interface Partner {
   id: string; address: string; name: string; owner: string; background: string; pinned: boolean; rotate: boolean; updatedAt: number;
   icon: string; iconSize: number; iconDelays: number[]; iconUpdatedAt: number;
+  /** Other addresses players add the same server under (another domain, a raw IP), normalized; pins stay on `address`. */
+  aliases: string[];
 }
 
 const MAX_PICTURE = 3 * 1024 * 1024;
@@ -56,13 +58,15 @@ export interface PartnerContext {
   authed: (req: http.IncomingMessage) => string;
   admin: (req: http.IncomingMessage) => string;
   body: (req: http.IncomingMessage) => Promise<Record<string, unknown>>;
-  fail: (status: number, code: string) => never;
-  /** A number from the admin panel's settings (the icon's limits). */
+  fail: (status: number, code: string, detail?: Record<string, string | number>) => never;
+  /** A number from the admin panel's settings (the icon's limits, how many other addresses). */
   setting: (key: string) => number;
 }
 
 /** The animated icon's limits, from the admin panel ("Lista serwerów"). */
 export const ICON_SETTING_DEFAULTS = { bytes: 2 * 1024 * 1024, frames: 64, side: 128 };
+/** How many other addresses a partner may have, by default (admin panel: "Lista serwerów"). */
+export const ALIASES_DEFAULT = 20;
 
 type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
 
@@ -86,6 +90,7 @@ export function partnerRoutes(ctx: PartnerContext): {
     icon: p.icon ? `/v1/partners/${p.id}/icon?v=${p.iconUpdatedAt}` : null,
     iconSize: p.icon ? p.iconSize : 0,
     iconDelays: p.icon ? p.iconDelays : [],
+    aliases: p.aliases,
   });
   const iconLimits = () => ({ bytes: ctx.setting('partners.iconBytes'), frames: ctx.setting('partners.iconFrames'), side: ctx.setting('partners.iconSide') });
   const withOwner = (p: Partner) => ({ ...view(p), owner: p.owner ? db.user(p.owner)?.handle ?? '' : '' });
@@ -144,6 +149,33 @@ export function partnerRoutes(ctx: PartnerContext): {
     return { me, p };
   };
 
+  /** The partner (other than `except`) that already claims this address, as its own or as another of its addresses. */
+  const claimedBy = (address: string, except?: string) =>
+    db.partners().find((q) => q.id !== except && (q.address === address || q.aliases.includes(address)));
+
+  /**
+   * The admin's list of other addresses (an array, or one per line): each one checked and normalized,
+   * repeats and the partner's own address dropped, none another partner's.
+   */
+  const aliasesFrom = (raw: unknown, p: Partner): string[] => {
+    const items = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(/[\s,]+/) : ctx.fail(400, 'bad_alias');
+    const out: string[] = [];
+    for (const item of items) {
+      if (typeof item !== 'string') ctx.fail(400, 'bad_alias');
+      const text = (item as string).trim();
+      if (!text) continue;
+      if (!ADDRESS.test(text)) ctx.fail(400, 'bad_alias', { alias: text.slice(0, 80) });
+      const norm = normalizeAddress(text);
+      if (norm === p.address || out.includes(norm)) continue;
+      const other = claimedBy(norm, p.id);
+      if (other) ctx.fail(409, 'alias_taken', { alias: norm, partner: other.name || other.address });
+      out.push(norm);
+    }
+    const max = ctx.setting('partners.aliases');
+    if (out.length > max) ctx.fail(400, 'too_many_aliases', { max });
+    return out;
+  };
+
   const ownerFrom = (handle: unknown): string => {
     if (typeof handle !== 'string' || !handle.trim()) return '';
     return db.userByHandle(handle.trim().replace(/^@/, ''))?.id ?? ctx.fail(404, 'no_such_user');
@@ -163,8 +195,10 @@ export function partnerRoutes(ctx: PartnerContext): {
       if (typeof address !== 'string' || !ADDRESS.test(address.trim())) ctx.fail(400, 'bad_server');
       const norm = normalizeAddress(address);
       if (db.partnerByAddress(norm)) ctx.fail(409, 'exists');
+      const other = claimedBy(norm);
+      if (other) ctx.fail(409, 'alias_taken', { alias: norm, partner: other.name || other.address });
       const id = randomBytes(6).toString('hex');
-      db.addPartner({ id, address: norm, name: typeof name === 'string' ? name.trim().slice(0, 48) : '', owner: ownerFrom(owner), background: '', pinned: false, rotate: false, updatedAt: Date.now(), icon: '', iconSize: 0, iconDelays: [], iconUpdatedAt: 0 });
+      db.addPartner({ id, address: norm, name: typeof name === 'string' ? name.trim().slice(0, 48) : '', owner: ownerFrom(owner), background: '', pinned: false, rotate: false, updatedAt: Date.now(), icon: '', iconSize: 0, iconDelays: [], iconUpdatedAt: 0, aliases: [] });
       db.log(me, 'partner_add', norm);
       return withOwner(db.partner(id)!);
     }],
@@ -179,6 +213,15 @@ export function partnerRoutes(ctx: PartnerContext): {
         db.setPartnerPinning(id, pin, pin && (typeof rotate === 'boolean' ? rotate : p.rotate));
       }
       db.log(me, 'partner_edit', p.address);
+      return withOwner(db.partner(id)!);
+    }],
+    // other addresses only the admin sets: each one claims an address for the partner in every player's list
+    ['PUT', /^\/v1\/admin\/partners\/(\w+)\/aliases$/, async (req, [id]) => {
+      const me = ctx.admin(req);
+      const p = partnerOr404(id);
+      const aliases = aliasesFrom((await ctx.body(req)).aliases, p);
+      db.setPartnerAliases(id, aliases);
+      db.log(me, 'partner_aliases', p.address, aliases.join(', ') || '—');
       return withOwner(db.partner(id)!);
     }],
     ['DELETE', /^\/v1\/admin\/partners\/(\w+)$/, async (req, [id]) => {

@@ -122,16 +122,23 @@ type MessageRow = Omit<Message, 'invite' | 'waypoint' | 'editedAt' | 'deleted'> 
 const toMessage = ({ invite, waypoint, editedAt, deletedAt, ...m }: MessageRow): Message => (deletedAt ? { ...m, text: '', deleted: true } : {
   ...m, ...(invite ? { invite: JSON.parse(invite) as Invite } : {}), ...(waypoint ? { waypoint: JSON.parse(waypoint) as SharedWaypoint } : {}), ...(editedAt ? { editedAt } : {}),
 });
-const PARTNER_COLUMNS = 'id, address, name, owner, background, pinned, rotate, updated_at AS updatedAt, icon, icon_size AS iconSize, icon_delays AS iconDelays, icon_updated_at AS iconUpdatedAt';
-type PartnerRow = Omit<import('./partners.ts').Partner, 'pinned' | 'rotate' | 'iconDelays'> & { pinned: number; rotate: number; iconDelays: string };
+const PARTNER_COLUMNS = 'id, address, name, owner, background, pinned, rotate, updated_at AS updatedAt, icon, icon_size AS iconSize, icon_delays AS iconDelays, icon_updated_at AS iconUpdatedAt, aliases';
+type PartnerRow = Omit<import('./partners.ts').Partner, 'pinned' | 'rotate' | 'iconDelays' | 'aliases'> & { pinned: number; rotate: number; iconDelays: string; aliases: string };
 const toPartner = (p: PartnerRow): import('./partners.ts').Partner => {
   let iconDelays: number[] = [];
+  let aliases: string[] = [];
   try {
     iconDelays = JSON.parse(p.iconDelays) as number[];
   } catch {
     // a broken value: the icon simply has no delays
   }
-  return { ...p, pinned: !!p.pinned, rotate: !!p.rotate, iconDelays };
+  try {
+    const list: unknown = JSON.parse(p.aliases);
+    if (Array.isArray(list)) aliases = list.filter((a): a is string => typeof a === 'string');
+  } catch {
+    // a broken value: no other addresses
+  }
+  return { ...p, pinned: !!p.pinned, rotate: !!p.rotate, iconDelays, aliases };
 };
 const SHARE_COLUMNS ='s.code, s.owner, s.name, s.game_version AS gameVersion, s.loader, s.size, s.downloads, s.created_at AS createdAt, s.expires_at AS expiresAt';
 
@@ -199,6 +206,8 @@ CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created
       this.db.exec("ALTER TABLE partners ADD COLUMN icon_delays TEXT NOT NULL DEFAULT '[]'");
       this.db.exec('ALTER TABLE partners ADD COLUMN icon_updated_at INTEGER NOT NULL DEFAULT 0');
     }
+    // a partner's other addresses (another domain, a raw IP) as a JSON list, added the same way
+    if (!iconColumns.some((c) => c.name === 'aliases')) this.db.exec("ALTER TABLE partners ADD COLUMN aliases TEXT NOT NULL DEFAULT '[]'");
   }
 
   close() {
@@ -708,6 +717,11 @@ CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created
 
   removePartner(id: string) {
     this.db.prepare('DELETE FROM partners WHERE id = ?').run(id);
+  }
+
+  /** The partner's other addresses (normalized), which the game treats as the partner too; its pictures keep their version. */
+  setPartnerAliases(id: string, aliases: string[]) {
+    this.db.prepare('UPDATE partners SET aliases = ? WHERE id = ?').run(JSON.stringify(aliases), id);
   }
 
   /** Whether the game pins this partner on top of its server list, and lets it take turns at the very top. */

@@ -41,7 +41,7 @@ const ACTIONS = {
   grant: 'przyznał(a) pelerynę', revoke: 'odebrał(a) pelerynę',
   log_remove: 'usunął(ęła) log', bug_status: 'zmienił(a) status zgłoszenia', bug_remove: 'usunął(ęła) zgłoszenie',
   partner_add: 'dodał(a) serwer partnerski', partner_edit: 'zmienił(a) serwer partnerski', partner_remove: 'usunął(ęła) serwer partnerski',
-  partner_background: 'zmienił(a) tło serwera', partner_icon: 'zmienił(a) animowaną ikonę serwera',set_rank: 'zmienił(a) rangę',
+  partner_background: 'zmienił(a) tło serwera', partner_aliases: 'zmienił(a) alternatywne adresy serwera', partner_icon: 'zmienił(a) animowaną ikonę serwera',set_rank: 'zmienił(a) rangę',
   storage_add: 'dodał(a) miejsce na pliki', storage_edit: 'zmienił(a) miejsce na pliki', storage_remove: 'usunął(ęła) miejsce na pliki',
   storage_move: 'przenosi pliki z', storage_move_stop: 'zatrzymał(a) przenoszenie plików z',
   sparks_give: 'dodał(a) Iskry', sparks_take: 'odebrał(a) Iskry', shop_price: 'zmienił(a) cenę w sklepie',
@@ -379,8 +379,33 @@ async function partnersPage() {
         el('span', { class: 'switch' }, pin, el('span')), 'Przypinaj na górze listy'),
       el('label', { class: `row small${p.pinned ? '' : ' muted'}`, title: 'Przypięte serwery z tą opcją zmieniają się na pierwszym miejscu przy każdym otwarciu listy.' },
         el('span', { class: 'switch' }, rot, el('span')), 'Rotuj na pierwszym miejscu'));
+    // other addresses players add the same server under: the game shows those as the partner too
+    const aliases = p.aliases ?? [];
+    const addresses = el('div', { class: 'row partner-addresses' },
+      el('small', { class: 'muted', textContent: 'Adresy:' }),
+      el('span', { class: 'chip gold', title: 'Główny adres (przypinanie zostaje na nim)', textContent: p.address }),
+      ...aliases.map((a) => el('span', { class: 'chip', textContent: a })));
+    const aliasInput = el('textarea', { rows: Math.min(8, Math.max(3, aliases.length + 1)), placeholder: 'np.\nskyup.eu\n51.38.10.20\nmc.skyup.net:25566', value: aliases.join('\n'), spellcheck: false });
+    const aliasError = el('p', { class: 'partner-alias-error', role: 'alert', hidden: true });
+    const aliasForm = el('form', { class: 'partner-aliases', onsubmit: async (e) => {
+      e.preventDefault();
+      aliasError.hidden = true;
+      try {
+        await api('PUT', `/v1/admin/partners/${p.id}/aliases`, { aliases: aliasInput.value.split('\n') });
+        toast('Zapisano alternatywne adresy.');
+        partnersPage();
+      } catch (err) {
+        aliasError.textContent = errorText(err);
+        aliasError.hidden = false;
+        aliasInput.focus();
+      }
+    } },
+      el('label', { class: 'small', textContent: 'Alternatywne adresy' }),
+      el('small', { class: 'muted', textContent: 'Inne domeny, IP lub zapisy tego serwera, po jednym w linii. Gracz, który doda serwer pod takim adresem (albo jego subdomeną), też zobaczy ramkę, znak „Partner”, tło i ikonę.' }),
+      aliasInput, aliasError,
+      el('div', { class: 'row' }, el('button', { type: 'submit' }, icon('fa-solid fa-check'), 'Zapisz adresy')));
     return el('div', { class: 'glass card partner-card' },
-      partnerBanner(p), toggles,
+      partnerBanner(p), addresses, toggles,
       el('div', { class: 'row' },
         pictureButton(p.background ? 'Zmień tło' : 'Wgraj tło', `/v1/admin/partners/${p.id}/background`, partnersPage),
         p.background ? el('button', { onclick: async () => { if (await guard(() => api('DELETE', `/v1/admin/partners/${p.id}/background`))) partnersPage(); } }, icon('fa-solid fa-eraser'), 'Usuń tło') : '',
@@ -390,6 +415,7 @@ async function partnersPage() {
           if (await guard(() => api('DELETE', `/v1/admin/partners/${p.id}`))) partnersPage();
         } }, icon('fa-solid fa-trash-can'), 'Usuń')),
       partnerIconControls(p, `/v1/admin/partners/${p.id}/icon`, res.iconLimits, partnersPage),
+      aliasForm,
       save);
   });
   $('#main').replaceChildren(head('Serwery partnerskie'),

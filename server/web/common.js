@@ -11,10 +11,12 @@ export const token = {
 };
 
 export class ApiError extends Error {
-  constructor(code, status) {
+  /** `data`: the rest of the server's answer (which address, which partner), for a clearer message. */
+  constructor(code, status, data = {}) {
     super(code);
     this.code = code;
     this.status = status;
+    this.data = data;
   }
 }
 
@@ -26,7 +28,7 @@ export async function api(method, path, body) {
   if (!res.ok) {
     // a session that ended (signed out elsewhere, banned) is forgotten here too
     if (res.status === 401) token.set('');
-    throw new ApiError(data.error ?? 'server_error', res.status);
+    throw new ApiError(data.error ?? 'server_error', res.status, data);
   }
   return data;
 }
@@ -133,6 +135,9 @@ const ERRORS = {
   bad_server: 'To nie wygląda na adres serwera.',
   exists: 'Ten serwer już jest na liście.',
   not_owner: 'To nie Twój serwer.',
+  bad_alias: (d) => d.alias ? `„${d.alias}” nie wygląda na adres serwera.` : 'Któryś adres nie wygląda na adres serwera.',
+  alias_taken: (d) => `Adres ${d.alias ?? ''} należy już do serwera partnerskiego ${d.partner ?? ''}.`,
+  too_many_aliases: (d) => `Za dużo adresów (najwięcej ${d.max ?? 20}).`,
   bad_name: 'Nick: 3–16 znaków, litery, cyfry i _.',
   bad_cape: 'Tej peleryny nie możesz teraz założyć.',
   provider_disabled: 'Ten sposób logowania jest wyłączony.',
@@ -205,7 +210,10 @@ const ERRORS = {
   too_many_frames: 'Animacja ma za dużo klatek.',
   webp_unsupported: 'Animowany WebP nie jest obsługiwany. Zapisz animację jako GIF albo APNG.',
 };
-export const errorText = (err) => ERRORS[err?.code] ?? (err?.message || 'Coś poszło nie tak.');
+export const errorText = (err) => {
+  const text = ERRORS[err?.code];
+  return (typeof text === 'function' ? text(err.data ?? {}) : text) ?? (err?.message || 'Coś poszło nie tak.');
+};
 
 export function el(tag, props = {}, ...children) {
   const node = document.createElement(tag);
