@@ -29,6 +29,16 @@ public class GameInventoryTools implements FabricClientGameTest {
 		context.runOnClient(mc -> TestHooks.endOnVanillaMenu());
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
+			// auto tool takes a worn pickaxe like any other: it does not keep a tool from breaking
+			String speeds = context.computeOnClient(mc -> {
+				var stone = net.minecraft.world.level.block.Blocks.STONE.defaultBlockState();
+				var fresh = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_PICKAXE);
+				var worn = fresh.copy();
+				worn.setDamageValue(worn.getMaxDamage() - 1);
+				return TestHooks.autoToolSpeed(fresh, stone) + " " + TestHooks.autoToolSpeed(worn, stone);
+			});
+			String[] sp = speeds.split(" ");
+			if (!sp[0].equals(sp[1]) || Float.parseFloat(sp[1]) <= 1f) throw new AssertionError("A worn pickaxe for auto tool: " + speeds);
 			var server = world.getServer();
 			server.runCommand("time set 6000");
 			server.runCommand("gamemode survival @a");

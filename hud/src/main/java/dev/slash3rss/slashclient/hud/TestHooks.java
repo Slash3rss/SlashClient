@@ -647,6 +647,11 @@ public final class TestHooks {
 
 	/** GUI scale for the size test (the window size is set by the test itself). */
 	/** For the test: a server played on, so the disconnect screen offers "Reconnect" to it. */
+	/** For the test: how good auto tool finds a stack for a block. */
+	public static float autoToolSpeed(net.minecraft.world.item.ItemStack stack, net.minecraft.world.level.block.state.BlockState state) {
+		return Assist.speed(stack, state);
+	}
+
 	public static void reconnectTo(net.minecraft.client.multiplayer.ServerData data) {
 		Reconnect.lastForTest(data);
 	}

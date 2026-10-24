@@ -241,10 +241,12 @@ public final class Assist {
 		}
 	}
 
-	/** How fast a stack breaks the block; tools about to break are not picked. */
-	private static float speed(ItemStack stack, BlockState state) {
+	/**
+	 * How fast a stack breaks the block. A worn tool counts like any other: auto tool does not keep it
+	 * from breaking (the low durability warning says when it is close).
+	 */
+	static float speed(ItemStack stack, BlockState state) {
 		if (stack.isEmpty()) return 1f;
-		if (stack.isDamageableItem() && stack.getMaxDamage() - stack.getDamageValue() <= 2) return 0f;
 		float s = stack.getDestroySpeed(state);
 		// a tool that gets the drop beats a faster one that does not
 		if (state.requiresCorrectToolForDrops() && stack.isCorrectToolForDrops(state)) s += 100f;
