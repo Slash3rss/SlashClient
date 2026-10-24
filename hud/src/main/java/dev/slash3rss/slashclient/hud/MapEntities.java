@@ -17,7 +17,8 @@ import java.util.UUID;
 /**
  * Players and mobs on the minimap and the full map: whatever the game itself already knows about
  * around the player (what the server sends), nothing more. Other players show as their face in a
- * blue frame, hostile mobs as red dots, the other mobs (animals, villagers, golems) as green ones;
+ * blue frame, mobs as their own face (MobHeads) in a red frame (hostile) or a green one (animals,
+ * villagers, golems), or as a dot of that colour when we have no face for them (other mods' mobs);
  * each kind can be switched off. Friends sharing their position are drawn by the maps themselves,
  * so they are left out here, and so are server NPCs (players who are not real ones: not on the
  * tab list and with an NPC's id or name), armour stands, items and invisible things.
@@ -33,6 +34,8 @@ final class MapEntities {
 
 	/** For the tests: what each map drew last ("players,hostile,passive" counts and the players' names). */
 	static String drawnMinimap = "", drawnWorldMap = "";
+	/** For the tests: the marks each map drew last. */
+	static List<Mark> shownMinimap = List.of(), shownWorldMap = List.of();
 
 	/** A real player's nick (a Bedrock one through Geyser may start with "." or "*"). */
 	private static final java.util.regex.Pattern NICK = java.util.regex.Pattern.compile("[.*]?[A-Za-z0-9_]{1,16}");
@@ -85,9 +88,18 @@ final class MapEntities {
 	static void draw(GuiGraphicsExtractor g, Minecraft mc, Mark m, int x, int y, boolean names) {
 		if (m.kind() != KIND_PLAYER) {
 			int color = m.kind() == KIND_HOSTILE ? HOSTILE : PASSIVE;
-			// a dot of 3 pixels in a black ring, seen on grass as well as on sand
-			g.fill(x - 2, y - 2, x + 3, y + 3, 0xFF000000);
-			g.fill(x - 1, y - 1, x + 2, y + 2, color);
+			MobHeads.Head head = MobHeads.head(m.entity());
+			if (head == null) {
+				// a dot of 3 pixels in a black ring, seen on grass as well as on sand
+				g.fill(x - 2, y - 2, x + 3, y + 3, 0xFF000000);
+				g.fill(x - 1, y - 1, x + 2, y + 2, color);
+				return;
+			}
+			// its face as large as a player's, in a frame of its kind's colour (dark behind a face that is not square)
+			g.fill(x - 5, y - 5, x + 5, y + 5, 0xFF000000);
+			g.fill(x - 4, y - 4, x + 4, y + 4, color);
+			g.fill(x - 3, y - 3, x + 3, y + 3, 0xFF1C1C1C);
+			MobHeads.draw(g, head, x - 3, y - 3, 6, 6);
 			return;
 		}
 		AbstractClientPlayer p = (AbstractClientPlayer) m.entity();
@@ -106,6 +118,32 @@ final class MapEntities {
 		g.fill(-2, -1, tw + 2, 9, 0xB0000000);
 		g.text(mc.font, name, 0, 0, PLAYER, false);
 		pose.popMatrix();
+	}
+
+	/** How each mob was drawn, for the tests: "cow:head,silverfish:dot," (sorted). */
+	static String markers(List<Mark> drawn) {
+		List<String> out = new ArrayList<>();
+		for (Mark m : drawn) {
+			if (m.kind() == KIND_PLAYER) continue;
+			Identifier id = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(m.entity().getType());
+			out.add(id.getPath() + ":" + (MobHeads.head(m.entity()) != null ? "head" : "dot"));
+		}
+		out.sort(null);
+		StringBuilder s = new StringBuilder();
+		for (String o : out) s.append(o).append(',');
+		return s.toString();
+	}
+
+	/** The texture each mob's face is cut from and its size, for the tests' log ("cow=minecraft:textures/…png 64x64,"). */
+	static String textures(List<Mark> drawn) {
+		StringBuilder out = new StringBuilder();
+		for (Mark m : drawn) {
+			MobHeads.Head head = m.kind() == KIND_PLAYER ? null : MobHeads.head(m.entity());
+			if (head == null) continue;
+			out.append(net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(m.entity().getType()).getPath()).append('=')
+				.append(head.texture()).append(' ').append(head.texW()).append('x').append(head.texH()).append(',');
+		}
+		return out.toString();
 	}
 
 	/** What was drawn, for the tests: "1,2,3:Name" (players, hostile, passive, the players' nicks). */

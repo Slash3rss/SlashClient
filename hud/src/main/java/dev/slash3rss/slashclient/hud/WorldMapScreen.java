@@ -260,7 +260,7 @@ public class WorldMapScreen extends Screen {
 		return best;
 	}
 
-	/** Players (face and nick) and mobs (dots) nearby, where they are on the map. */
+	/** Players (face and nick) and mobs (their faces, or dots) nearby, where they are on the map. */
 	private void drawEntities(GuiGraphicsExtractor g, Minecraft mc) {
 		List<MapEntities.Mark> drawn = new ArrayList<>();
 		for (MapEntities.Mark m : MapEntities.around(mc, Minimap.partial())) {
@@ -270,6 +270,7 @@ public class WorldMapScreen extends Screen {
 			drawn.add(m);
 		}
 		MapEntities.drawnWorldMap = MapEntities.describe(drawn);
+		MapEntities.shownWorldMap = drawn;
 	}
 
 	/** Friends sharing their position here: their face and nick, or an arrow on the map's edge pointing to them. */
