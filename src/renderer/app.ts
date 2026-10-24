@@ -8,6 +8,7 @@ import { createProfileFiles } from './profileFiles';
 import { initProfileSharing } from './profileShare';
 import { createMediaTools } from './mediaTools';
 import { openPackPreview } from './packPreview';
+import { openProjectDetails } from './projectDetails';
 import { initCloudProfiles } from './cloudProfiles';
 import { initVersionMove } from './versionMove';
 import { createAchievements } from './achievements';
@@ -2731,16 +2732,29 @@ function hitCard(hit: ProjectHit): HTMLElement {
     eye.addEventListener('click', () => openPackPreview({ api, profileId: contentProfileId, source: () => contentSource, install: () => installHit(hit) }, hit));
     preview.push(eye);
   }
+  // the details window with the project's pictures (projectDetails.ts): the icon, the title or the button
+  const details = () => openProjectDetails({
+    api, source: contentSource, type: contentType, installed: isInstalled,
+    installLabel: isInstalled ? t('Zainstalowany') : contentType === 'modpack' ? t('Utwórz profil') : t('Instaluj'),
+    install: () => installHit(hit), chooseVersion: () => pick.click(), fmtCount,
+  }, hit);
+  const info = el('button', { type: 'button', className: 'icon-btn', title: t('Szczegóły') }, el('i', { className: 'fa-solid fa-circle-info' }));
+  info.addEventListener('click', details);
+  const logo = projectIcon(hit.iconUrl);
+  const name = el('b', { className: 'pd-open' }, hit.title, el('small', { textContent: t('od {0}', hit.author) }));
+  logo.classList.add('pd-open');
+  logo.addEventListener('click', details);
+  name.addEventListener('click', details);
   if (hit.manualOnly) extra.push(el('span', { className: 'tag beta', textContent: t('Pobieranie tylko ze strony CurseForge'), title: t('Autor nie pozwala pobierać plików poza CurseForge: launcher pokaże link do strony pliku') }));
   return el('div', { className: 'project' },
-    projectIcon(hit.iconUrl),
+    logo,
     el('div', { className: 'project-main' },
-      el('b', {}, hit.title, el('small', { textContent: t('od {0}', hit.author) })),
+      name,
       el('p', { textContent: hit.description, title: hit.description }),
       el('div', { className: 'project-meta' },
         el('span', {}, el('i', { className: 'fa-solid fa-download' }), ` ${fmtCount(hit.downloads)}`),
         el('span', { textContent: hit.categories.slice(0, 4).join(' · ') }), ...extra)),
-    el('div', { className: 'project-actions' }, btn, ...preview, pick));
+    el('div', { className: 'project-actions' }, btn, info, ...preview, pick));
 }
 
 function installedCard(item: InstalledItem): HTMLElement {

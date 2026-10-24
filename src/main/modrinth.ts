@@ -35,6 +35,42 @@ export interface ProjectHit {
   manualOnly?: boolean;
 }
 
+/** One picture of a project's gallery: a small one for the strip, the full one only for the viewer. */
+export interface GalleryImage {
+  thumb: string;
+  full: string;
+  title?: string;
+  description?: string;
+}
+
+/** Only https pictures; anything else (or nothing) is left out, so the window never shows a broken link. */
+const httpsUrl = (v: unknown) => (typeof v === 'string' && v.startsWith('https://') ? v : undefined);
+const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+
+/**
+ * A Modrinth project's `gallery`: the featured picture first, then in the author's order
+ * (`ordering`, the order given when equal). `url` is Modrinth's smaller copy, `raw_url` the original.
+ */
+export function modrinthGallery(project: { gallery?: unknown }): GalleryImage[] {
+  const list = Array.isArray(project?.gallery) ? project.gallery : [];
+  return list
+    .map((g: Record<string, unknown>, i) => ({ g: g ?? {}, i }))
+    .map(({ g, i }) => {
+      const thumb = httpsUrl(g.url) ?? httpsUrl(g.raw_url);
+      const full = httpsUrl(g.raw_url) ?? thumb;
+      const order = typeof g.ordering === 'number' && Number.isFinite(g.ordering) ? g.ordering : 0;
+      return { i, featured: g.featured === true, order, image: thumb && full ? { thumb, full, title: text(g.title), description: text(g.description) } : undefined };
+    })
+    .filter((x) => x.image)
+    .sort((a, b) => Number(b.featured) - Number(a.featured) || a.order - b.order || a.i - b.i)
+    .map((x) => x.image!);
+}
+
+/** The pictures of a Modrinth project (an empty list when it has none). */
+export async function projectGallery(projectId: string): Promise<GalleryImage[]> {
+  return modrinthGallery(await get<{ gallery?: unknown }>(`${API}/project/${encodeURIComponent(projectId)}`));
+}
+
 export interface SearchOptions {
   query: string;
   type: ProjectType;

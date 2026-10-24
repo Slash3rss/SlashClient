@@ -6,7 +6,7 @@ import { downloadAll, httpMessage, netFetch, type DownloadTask, type ProgressFn 
 import { fromCurseForge } from './importers';
 import {
   contentFile, FOLDERS, mergeManifest, packSnapshot, readManifest, removeContent, safeJoin, writeManifest,
-  type ContentType, type ManifestEntry, type ModpackInfo, type ProjectHit, type ProjectType, type StageProgress, type UpdateInfo, type VersionInfo,
+  type ContentType, type GalleryImage, type ManifestEntry, type ModpackInfo, type ProjectHit, type ProjectType, type StageProgress, type UpdateInfo, type VersionInfo,
 } from './modrinth';
 import type { ManualFile } from './manualFiles';
 import { t } from '../shared/i18n';
@@ -61,6 +61,7 @@ export interface CfMod {
   categories?: { name: string }[];
   links?: { websiteUrl?: string };
   allowModDistribution?: boolean | null;
+  screenshots?: { url?: string; thumbnailUrl?: string; title?: string; description?: string }[] | null;
 }
 
 export interface CfFile {
@@ -162,6 +163,23 @@ export function toHit(m: CfMod): ProjectHit {
 }
 
 const getMod = (id: string | number) => call<CfMod>(`/mods/${Number(id)}`);
+
+/**
+ * A CurseForge project's `screenshots`, in the order the API gives (CurseForge has no "featured"
+ * or order of its own): the thumbnail for the strip, the full picture for the viewer.
+ */
+export function curseForgeGallery(mod: Pick<CfMod, 'screenshots'>): GalleryImage[] {
+  const https = (v: unknown) => (typeof v === 'string' && v.startsWith('https://') ? v : undefined);
+  const text = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
+  return (Array.isArray(mod?.screenshots) ? mod.screenshots : []).flatMap((s) => {
+    const full = https(s?.url) ?? https(s?.thumbnailUrl);
+    const thumb = https(s?.thumbnailUrl) ?? full;
+    return thumb && full ? [{ thumb, full, title: text(s.title), description: text(s.description) }] : [];
+  });
+}
+
+/** The pictures of a CurseForge project (through the SlashClient server, which passes the field on as it is). */
+export const curseForgeScreenshots = async (projectId: string) => curseForgeGallery(await getMod(projectId));
 
 /** Files of a project, newest first; optionally only those for this game version / loader. */
 async function listFiles(projectId: string | number, filter: { gameVersion?: string; loader?: string } = {}): Promise<CfFile[]> {

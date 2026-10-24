@@ -34,12 +34,12 @@ import { loadStore, newProfile, orphanProfiles, profileGameDir, saveStore, secre
 import { LOADER_NAMES, loaderVersions, type Loader } from './loaders';
 import {
   checkUpdates, datapackFile, downloadModpack, identifyModpack, installMrpack, installProject, latestModpackVersion, listContentVersions,
-  findFitting, modrinthLinks, installedProjectIds, listInstalled, removeContent, search, setEnabled, updateMrpack,
+  findFitting, modrinthLinks, installedProjectIds, listInstalled, projectGallery, removeContent, search, setEnabled, updateMrpack,
   type ContentType, type ModpackInfo, type ProjectType, type UpdateInfo, type VersionInfo,
 } from './modrinth';
 import {
   checkCurseForgeUpdates, curseForgeLinks, curseForgePackIcon, CurseForgeUnavailable, downloadCurseForgePack, installCurseForgePack, installCurseForgeProject, isCurseForgePack, readCursePack,
-  latestCurseForgePack, listCurseForgeVersions, searchCurseForge, setCurseForgeServer, updateCurseForgePack, type ManualFile,
+  curseForgeScreenshots, latestCurseForgePack, listCurseForgeVersions, searchCurseForge, setCurseForgeServer, updateCurseForgePack, type ManualFile,
 } from './curseforge';
 import { copyManualFiles, downloadLink, findManualFiles, FolderWatch, manualKey } from './manualFiles';
 import { listServers, pingServer, serverDetails, serverHistory } from './servers';
@@ -581,6 +581,12 @@ handle('content:packPreview', async (profileId: string, projectId: string, sourc
   const { gameVersion } = await profileTarget(profileId);
   if (source === 'curseforge') curseforge();
   return previewPack({ projectId: String(projectId), source: source === 'curseforge' ? 'curseforge' : 'modrinth', gameVersion, versionId, temp: app.getPath('temp') });
+});
+/** The pictures in a project's details window (its gallery on Modrinth, its screenshots on CurseForge). */
+handle('content:gallery', async (projectId: string, source: Source = 'modrinth') => {
+  if (source !== 'curseforge') return projectGallery(String(projectId));
+  curseforge();
+  return curseForgeScreenshots(String(projectId));
 });
 handle('content:versions', async (profileId: string, projectId: string, type: ProjectType, onlyCompatible: boolean, source: Source = 'modrinth') => {
   const list = source === 'curseforge' && type !== 'datapack' ? (curseforge(), listCurseForgeVersions) : listContentVersions;
