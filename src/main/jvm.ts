@@ -12,6 +12,8 @@ const G1 = [
   '-XX:G1MixedGCLiveThresholdPercent=90', '-XX:SurvivorRatio=32', '-XX:+PerfDisableSharedMem', '-XX:MaxTenuringThreshold=1',
 ];
 
+// The same flags suit every vendor's Java (javaVendors.ts): GraalVM Community already runs its own JIT
+// compiler by default (UseJVMCICompiler), and its 21 and 25 builds start fine with ZGC and with G1 above.
 export function presetArgs(preset: JvmPreset | undefined, javaMajor: number): string[] {
   if (preset === 'g1') return G1;
   // ZGC: very short pauses, best with plenty of RAM; needs Java 21+, older versions fall back to G1

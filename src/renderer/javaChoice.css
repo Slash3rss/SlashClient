@@ -1,0 +1,14 @@
+/* The Java choice in a profile's settings and its comparison in the benchmark (javaChoice.ts). */
+.java-choice { display: flex; flex-direction: column; gap: 8px; }
+.java-choice .java-hint { margin: -2px 0 0; font-size: 12.5px; line-height: 1.45; }
+.java-compare-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.java-compare-row button { flex: none; }
+.java-compare-note { font-size: 12.5px; flex: 1 1 220px; min-width: 0; }
+.java-compare-result:empty { display: none; }
+.java-compare-card { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: var(--btn-radius); background: rgba(255, 255, 255, .02); border: 1px solid var(--glass-border); }
+.java-compare-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.java-run { display: flex; flex-direction: column; gap: 5px; }
+.java-run-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.java-run-top .muted { font-size: 12px; }
+.java-run-fps { margin-left: auto; font-size: 13px; }
+.java-compare-diff { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; }

@@ -8,6 +8,8 @@ import { resolveVersionId } from './launch';
 import { paths } from './paths';
 import { profileGameDir, type Profile } from './store';
 import { getManifest, type VersionJson } from './versions';
+import { vendorDirName } from './javaVendors';
+import { effectiveJavaVendor } from '../shared/javaVendors';
 import { t } from '../shared/i18n';
 
 /**
@@ -25,10 +27,12 @@ export interface MaintenanceDeps {
   anyRunning: () => boolean;
   trash: (file: string) => Promise<void>;
   openPath: (dir: string) => Promise<unknown>;
+  /** The default Java vendor from Settings. */
+  defaultJavaVendor?: () => string | undefined;
 }
 
-/** The Java runtime a game version wants, from its JSON on disk or Mojang's manifest (nothing is written). */
-async function javaComponentOf(gameVersion: string): Promise<string | undefined> {
+/** The Java runtime (and its version) a game version wants, from its JSON on disk or Mojang's manifest (nothing is written). */
+async function javaOf(gameVersion: string): Promise<{ component: string; major: number } | undefined> {
   const local = await fs.readFile(paths.versionJson(gameVersion), 'utf8').then((s) => JSON.parse(s) as VersionJson, () => undefined);
   const json = local ?? await (async () => {
     const entry = (await getManifest()).versions.find((v) => v.id === gameVersion);
@@ -36,7 +40,8 @@ async function javaComponentOf(gameVersion: string): Promise<string | undefined>
   })();
   if (!json) return undefined;
   // a version without javaVersion is old and runs on Java 8, like ensureJava assumes
-  return json.javaVersion?.component ?? (json.inheritsFrom ? javaComponentOf(json.inheritsFrom) : 'jre-legacy');
+  if (json.javaVersion?.component) return { component: json.javaVersion.component, major: json.javaVersion.majorVersion ?? 8 };
+  return json.inheritsFrom ? javaOf(json.inheritsFrom) : { component: 'jre-legacy', major: 8 };
 }
 
 export function registerMaintenance(deps: MaintenanceDeps): void {
@@ -87,8 +92,11 @@ export function registerMaintenance(deps: MaintenanceDeps): void {
     const days = Number.isFinite(olderThanDays) ? Math.min(3650, Math.max(1, Math.round(olderThanDays))) : 30;
     const profiles: CleanupProfile[] = await Promise.all(deps.profiles().map(async (p) => {
       const gameVersion = await resolveVersionId(p.versionId).catch(() => undefined);
-      const javaComponent = gameVersion ? await javaComponentOf(gameVersion).catch(() => undefined) : undefined;
-      return { id: p.id, name: p.name, gameDir: profileGameDir(p), gameVersion: gameVersion || undefined, javaComponent, running: deps.running(p.id) };
+      const java = gameVersion ? await javaOf(gameVersion).catch(() => undefined) : undefined;
+      // another vendor's Java the profile plays on stays too (Mojang's as well: it is the fallback)
+      const vendor = effectiveJavaVendor(p.javaVendor, deps.defaultJavaVendor?.());
+      const javaDir = java && vendor !== 'mojang' && !p.javaPath ? vendorDirName(vendor, java.major) : undefined;
+      return { id: p.id, name: p.name, gameDir: profileGameDir(p), gameVersion: gameVersion || undefined, javaComponent: java?.component, javaDir, running: deps.running(p.id) };
     }));
     const report = await scanDisk(layout(), profiles, days);
     last = { report, items: new Map(report.items.map((i) => [i.id, i])) };

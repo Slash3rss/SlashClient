@@ -7,7 +7,7 @@ import { createLogParser } from './gamelog';
 import { installLoader, LOADER_NAMES } from './loaders';
 import { presetArgs } from './jvm';
 import { installVersion, libraryClasspath, type StageFn } from './install';
-import { ensureJava } from './java';
+import { resolveJava, type JavaChoice } from './javaVendors';
 import { paths } from './paths';
 import { classpathSeparator, osName } from './platform';
 import { rulesAllow, type Features } from './rules';
@@ -15,6 +15,7 @@ import { profileGameDir, type Account, type Profile } from './store';
 import { resolveAddress } from './servers';
 import { getManifest, type Argument } from './versions';
 import { t } from '../shared/i18n';
+import type { JavaVendor } from '../shared/javaVendors';
 
 export const LAUNCHER_NAME = 'SlashClient';
 export const LAUNCHER_VERSION = APP_VERSION;
@@ -72,9 +73,15 @@ export interface LaunchOptions {
   extraEnv?: Record<string, string>;
   /** Runs with the Java path right before the game starts (e.g. the Windows GPU preference for it). */
   prepareJava?: (java: string) => Promise<unknown>;
+  /** Whose Java to play on when the profile has no Java path of its own; missing = Mojang's. */
+  javaVendor?: JavaVendor;
+  /** Something the player should know, e.g. that the chosen Java was not available and Mojang's is used. */
+  onNotice?: (message: string) => void;
+  /** The Java the game starts with, once it is known. */
+  onJava?: (choice: JavaChoice) => void;
 }
 
-export async function launch({ profile, account, onStage, onLog, server, world, extraJvmArgs = [], extraEnv, prepareJava }: LaunchOptions): Promise<ChildProcess> {
+export async function launch({ profile, account, onStage, onLog, server, world, extraJvmArgs = [], extraEnv, prepareJava, javaVendor = 'mojang', onNotice, onJava }: LaunchOptions): Promise<ChildProcess> {
   const gameVersion = await resolveVersionId(profile.versionId);
   const gameDir = profileGameDir(profile);
   await fs.mkdir(gameDir, { recursive: true });
@@ -85,7 +92,12 @@ export async function launch({ profile, account, onStage, onLog, server, world, 
   const versionId = await installLoader(profile.loader, gameVersion, profile.loaderVersion, { gameDir, onStage, onLog });
 
   const { version, clientJar, assetsDir, loggingConfig } = await installVersion(versionId, gameDir, onStage);
-  const java = profile.javaPath || (await ensureJava(version, (d, t, s) => onStage('Java', d, t, s)));
+  const choice: JavaChoice = profile.javaPath ? { java: profile.javaPath, vendor: 'mojang' } : await resolveJava(javaVendor, version, (d, t, s) => onStage('Java', d, t, s), (message) => {
+    onLog(`> ${message}`);
+    onNotice?.(message);
+  });
+  const java = choice.java;
+  onJava?.(choice);
 
   const classpath = [...libraryClasspath(version), clientJar].join(classpathSeparator);
   // 1.20+ joins a server through Quick Play; older versions take --server/--port.

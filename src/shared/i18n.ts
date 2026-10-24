@@ -28,6 +28,7 @@ import { GIFS_EN } from './i18nGifs';
 import { PROJECT_DETAILS_EN } from './i18nProjectDetails';
 import { MOD_DEPS_EN } from './i18nModDeps';
 import { FRIENDS_POPULAR_EN } from './i18nFriendsPopular';
+import { JAVA_EN } from './i18nJava';
 
 export type Lang = 'pl' | 'en';
 
@@ -84,6 +85,8 @@ const EN: Record<string, string> = {
   ...CHAT_MEDIA_EN,
   // GIFs and stickers in the chat (own file)
   ...GIFS_EN,
+  // the Java choice of profiles and its comparison in the benchmark (own file)
+  ...JAVA_EN,
   // navigation and common
   'Graj': 'Play',
   'GRAJ': 'PLAY',
