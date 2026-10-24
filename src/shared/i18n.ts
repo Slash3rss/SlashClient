@@ -26,6 +26,7 @@ import { SESSION_SUMMARY_EN } from './i18nSessionSummary';
 import { LAUNCHER_NEWS_EN } from './i18nLauncherNews';
 import { GIFS_EN } from './i18nGifs';
 import { PROJECT_DETAILS_EN } from './i18nProjectDetails';
+import { MOD_DEPS_EN } from './i18nModDeps';
 
 export type Lang = 'pl' | 'en';
 
@@ -39,6 +40,8 @@ const EN: Record<string, string> = {
   ...TOOLS_EN,
   // sparks, the shop and the achievements in categories (own file)
   ...SPARKS_EN,
+  // the Installed list's dependencies, leftover libraries and multi-select (own file)
+  ...MOD_DEPS_EN,
   // public profiles (own file)
   ...PROFILES_EN,
   ...RANKS_EN,

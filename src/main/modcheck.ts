@@ -2,6 +2,7 @@ import AdmZip from 'adm-zip';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { t } from '../shared/i18n';
+import type { DepLink, ModNode, ModOrigin } from '../shared/modDeps';
 
 /** What a mod jar says about itself: who it is, which loaders it is for and what it needs. */
 export interface ModMeta {
@@ -15,6 +16,10 @@ export interface ModMeta {
   versions: Record<string, string>;
   depends: Dependency[];
   breaks: Dependency[];
+  /** Dependencies the mod works without (Fabric "recommends"/"suggests", Quilt optional, Forge optional). */
+  optional?: Dependency[];
+  /** It says it is a library (Mod Menu's "library" badge): it adds nothing of its own. */
+  library?: boolean;
 }
 
 export interface Dependency {
@@ -87,6 +92,8 @@ export function parseModsToml(text: string): Record<string, Record<string, strin
   return out;
 }
 
+const hasLibraryBadge = (modmenu: any) => Array.isArray(modmenu?.badges) && modmenu.badges.includes('library');
+
 const asRanges = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : v === undefined ? ['*'] : [String(v)]);
 
 function fabricMeta(zip: AdmZip, meta: ModMeta, depth: number) {
@@ -100,6 +107,8 @@ function fabricMeta(zip: AdmZip, meta: ModMeta, depth: number) {
   if (depth === 0) {
     for (const [id, range] of Object.entries(f.depends ?? {})) meta.depends.push({ id, ranges: asRanges(range), style: 'semver', loader: 'fabric' });
     for (const [id, range] of Object.entries(f.breaks ?? {})) meta.breaks.push({ id, ranges: asRanges(range), style: 'semver', loader: 'fabric' });
+    for (const [id, range] of Object.entries({ ...f.suggests, ...f.recommends })) (meta.optional ??= []).push({ id, ranges: asRanges(range), style: 'semver', loader: 'fabric' });
+    if (hasLibraryBadge(f.custom?.modmenu) || f.custom?.['modmenu:api'] === true) meta.library = true;
   }
   for (const jar of (f.jars ?? []) as { file: string }[]) nested(zip, jar.file, meta, depth);
   return true;
@@ -121,6 +130,13 @@ function quiltMeta(zip: AdmZip, meta: ModMeta, depth: number) {
     });
     meta.depends.push(...deps(q.depends));
     meta.breaks.push(...deps(q.breaks));
+    const optional = ((q.depends ?? []) as unknown[]).flatMap((d) => {
+      const o = d as { id?: string; versions?: unknown; optional?: boolean };
+      return typeof d === 'object' && o.id && o.optional ? [{ id: o.id, ranges: asRanges(o.versions), style: 'semver' as const, loader: 'quilt' as const }] : [];
+    });
+    if (optional.length) (meta.optional ??= []).push(...optional);
+    const root = json(zip, 'quilt.mod.json');
+    if (hasLibraryBadge(root?.modmenu) || hasLibraryBadge(q.metadata?.modmenu)) meta.library = true;
   }
   for (const jar of (q.jars ?? []) as string[]) nested(zip, jar, meta, depth);
   return true;
@@ -151,6 +167,7 @@ function forgeMeta(zip: AdmZip, meta: ModMeta, depth: number) {
         if (!d.id) continue;
         if (required) meta.depends.push(d);
         else if (incompatible) meta.breaks.push(d);
+        else if (!dep.type || String(dep.type).toLowerCase() === 'optional') (meta.optional ??= []).push(d);
       }
     }
   }
@@ -321,16 +338,22 @@ function readBy(m: ModMeta, usable: string[]): string | undefined {
   return usable.find((l) => (m.loaders as string[]).includes(l));
 }
 
+/** The loaders whose mods this profile runs, and whether Sinytra Connector is among the mods. */
+function usableLoaders(mods: ModMeta[], profileLoader: string) {
+  const own = runsOn(profileLoader);
+  const connector = (profileLoader === 'forge' || profileLoader === 'neoforge') && mods.some((m) => m.ids.includes(CONNECTOR));
+  // NeoForge still reads Forge's mods.toml; Connector adds Fabric mods
+  const usable = [...own, ...(profileLoader === 'neoforge' ? ['forge'] : []), ...(connector ? ['fabric'] : [])];
+  return { usable, connector };
+}
+
 export function checkMods(mods: ModMeta[], profileLoader: string, gameVersion: string): ModProblem[] {
   const problems: ModProblem[] = [];
   if (!mods.length) return problems;
   if (profileLoader === 'vanilla') {
     return [{ severity: 'warning', kind: 'noloader', file: '', mod: '', message: t('Profil nie ma mod loadera, więc gra nie wczyta żadnego z {0} modów. Ustaw Fabric, Quilt, Forge albo NeoForge w ustawieniach profilu.', mods.length) }];
   }
-  const own = runsOn(profileLoader);
-  const connector = (profileLoader === 'forge' || profileLoader === 'neoforge') && mods.some((m) => m.ids.includes(CONNECTOR));
-  // NeoForge still reads Forge's mods.toml; Connector adds Fabric mods
-  const usable = [...own, ...(profileLoader === 'neoforge' ? ['forge'] : []), ...(connector ? ['fabric'] : [])];
+  const { usable, connector } = usableLoaders(mods, profileLoader);
   const active = mods.filter((m) => m.loaders.some((l) => usable.includes(l)));
   for (const m of mods) {
     if (active.includes(m)) continue;
@@ -420,4 +443,68 @@ export async function checkModsFolder(gameDir: string, profileLoader: string, ga
     if (meta) mods.push(meta);
   }
   return checkMods(mods, profileLoader, gameVersion);
+}
+
+// ---------- the dependency tree shown in the Installed list ----------
+
+/** Libraries that rarely say so in their metadata (Forge has no "library" badge), by mod id. */
+const KNOWN_LIBRARIES = new Set([
+  'fabric-api', 'fabric', 'fabric_api', 'cloth-config', 'cloth-config2', 'cloth_config', 'architectury', 'owo', 'owo-lib',
+  'fabric-language-kotlin', 'kotlinforforge', 'geckolib', 'geckolib3', 'yet_another_config_lib_v3', 'yacl', 'balm', 'puzzleslib',
+  'forgeconfigapiport', 'collective', 'creativecore', 'midnightlib', 'libipn', 'bookshelf', 'resourcefullib', 'placeholder-api',
+  'cardinal-components', 'cardinal-components-base', 'moonlight', 'framework', 'supermartijn642corelib', 'citadel', 'terrablender',
+  'lithostitched', 'qsl', 'quilted_fabric_api', 'forgified_fabric_api', 'konkrete', 'fancymenu_lib', 'iceberg', 'prism', 'cristellib',
+  'kambrik', 'libz', 'fzzy_config', 'polymer', 'trinkets', 'curios', 'accessories', 'zeta', 'autoreglib', 'blueprint', 'ftblibrary',
+  'jamlib', 'coroutil', 'uranus', 'searchables', 'shetiphiancore', 'silk', 'kotlinlibraries', 'kotlin', 'satin', 'veil', 'mru',
+]);
+
+export type { DepLink, ModNode, ModOrigin };
+
+/** Every jar with what it needs and where that is: "Wymaga" / "Potrzebny dla" and the warnings before disabling or removing. */
+export function buildModGraph(mods: { meta: ModMeta; enabled: boolean; origin: ModOrigin }[], profileLoader: string): ModNode[] {
+  const { usable, connector } = usableLoaders(mods.filter((m) => m.enabled).map((m) => m.meta), profileLoader);
+  const idsOf = (m: ModMeta) => [...new Set(connector ? [...m.ids, ...m.ids.map(connectorId)] : m.ids)];
+  const nodes: ModNode[] = mods.map(({ meta, enabled, origin }) => ({
+    file: meta.file, enabled, name: meta.name, version: meta.version, ids: idsOf(meta),
+    library: !!meta.library || meta.ids.slice(0, 1).some((id) => KNOWN_LIBRARIES.has(id)), origin, requires: [],
+  }));
+  const providers = (id: string) => mods.map((m, i) => ({ m, n: nodes[i] })).filter(({ n }) => n.ids.includes(id))
+    .sort((a, b) => Number(b.n.enabled) - Number(a.n.enabled));
+  mods.forEach(({ meta }, i) => {
+    const by = readBy(meta, usable);
+    if (!by) return;
+    const mine = (d: Dependency) => !d.loader || d.loader === by || (by === 'quilt' && d.loader === 'fabric');
+    const links: DepLink[] = [];
+    for (const [list, optional] of [[meta.depends, false], [meta.optional ?? [], true]] as const) {
+      for (const dep0 of list.filter(mine)) {
+        const dep = connector && dep0.loader === 'fabric' ? { ...dep0, id: connectorId(dep0.id) } : dep0;
+        if (dep.id === 'minecraft' || BUILTIN.has(dep.id) || nodes[i].ids.includes(dep.id) || links.some((l) => l.id === dep.id)) continue;
+        const found = providers(dep.id)[0];
+        const ranges = dep.ranges.filter((r) => r && r !== '*').join(' / ');
+        if (!found) {
+          links.push({ id: dep.id, ranges, optional, state: 'missing' });
+          continue;
+        }
+        const have = found.m.meta.versions[dep.id] || found.m.meta.version;
+        const state = !found.n.enabled ? 'disabled' : have && satisfies(have, dep) === false ? 'version' : 'ok';
+        links.push({ id: dep.id, ranges, optional, provider: found.n.file, state });
+      }
+    }
+    nodes[i].requires = links;
+  });
+  return nodes;
+}
+
+/** Reads every jar in mods/ once (enabled or not): the dependency tree and the check of the enabled ones. */
+export async function inspectModsFolder(gameDir: string, profileLoader: string, gameVersion: string, originOf: (file: string) => ModOrigin): Promise<{ nodes: ModNode[]; problems: ModProblem[] }> {
+  const dir = path.join(gameDir, 'mods');
+  const mods: { meta: ModMeta; enabled: boolean; origin: ModOrigin }[] = [];
+  for (const f of await fs.readdir(dir).catch(() => [] as string[])) {
+    if (!/\.jar(\.disabled)?$/.test(f) || f.startsWith('.')) continue;
+    const file = f.replace(/\.disabled$/, '');
+    const meta = readModMeta(await fs.readFile(path.join(dir, f)).catch(() => Buffer.alloc(0)), file);
+    if (meta) mods.push({ meta, enabled: !f.endsWith('.disabled'), origin: originOf(file) });
+  }
+  const problems = checkMods(mods.filter((m) => m.enabled).map((m) => ({ ...m.meta })), profileLoader, gameVersion);
+  return { nodes: buildModGraph(mods, profileLoader), problems };
 }

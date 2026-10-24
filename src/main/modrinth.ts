@@ -232,7 +232,23 @@ export interface InstalledItem {
   source?: 'curseforge';
 }
 
-export interface ManifestEntry { type: ContentType; filename: string; projectId: string; versionId: string; versionNumber: string; title: string; iconUrl?: string; source?: 'curseforge' }
+export interface ManifestEntry {
+  type: ContentType; filename: string; projectId: string; versionId: string; versionNumber: string; title: string; iconUrl?: string; source?: 'curseforge';
+  /**
+   * true: the launcher installed it because another mod needed it; false: the player chose it (search, by hand, a
+   * file the launcher only recognised). Missing in entries written by launchers before 0.9.45.
+   */
+  dependency?: boolean;
+}
+
+/** How a project being installed is marked: the player's choice, another mod's dependency, or as it was (updates). */
+export type InstallRole = 'direct' | 'dependency' | 'keep';
+
+/** The dependency mark of a newly written entry: the top project gets `role`, what it pulls in is a dependency unless it was there before. */
+export function dependencyMark(top: boolean, role: InstallRole, before: ManifestEntry | undefined): { dependency?: boolean } {
+  const mark = top ? (role === 'keep' ? before?.dependency : role === 'dependency') : before ? before.dependency : true;
+  return mark === undefined ? {} : { dependency: mark };
+}
 
 const manifestPath = (gameDir: string) => path.join(gameDir, '.slashclient', 'content.json');
 
@@ -320,6 +336,7 @@ export async function installProject(
   onProgress?: ProgressFn,
   /** Install exactly this version of the project (dependencies still get their newest fitting version). */
   versionId?: string,
+  role: InstallRole = 'direct',
 ): Promise<string[]> {
   const manifest = await readManifest(gameDir);
   const installed: string[] = [];
@@ -345,10 +362,11 @@ export async function installProject(
     await downloadAll([{ url: file.url, dest, sha1: file.hashes.sha1, size: file.size }], onProgress, { verifyHash: true });
     if (keepDisabled) await fs.rename(dest, `${dest}.disabled`);
 
+    const i = manifest.findIndex((m) => m.projectId === id);
     const entry: ManifestEntry = {
       type, filename: path.basename(file.filename), projectId: id, versionId: version.id, versionNumber: version.version_number, title: project.title, iconUrl: project.icon_url,
+      ...dependencyMark(id === projectId, role, manifest[i]),
     };
-    const i = manifest.findIndex((m) => m.projectId === id);
     if (i >= 0) manifest[i] = entry;
     else manifest.push(entry);
     installed.push(project.title);
@@ -416,7 +434,8 @@ export async function checkUpdates(gameDir: string, gameVersion: string, loader:
     for (const f of unknown) {
       const v = current[f.sha1];
       const p = projects.find((x) => x.id === v.project_id);
-      manifest.push({ type: f.type, filename: f.filename, projectId: v.project_id, versionId: v.id, versionNumber: v.version_number, title: p?.title ?? f.filename, iconUrl: p?.icon_url });
+      // put there by the player (or a modpack), not pulled in as a dependency: never offered as a leftover library
+      manifest.push({ type: f.type, filename: f.filename, projectId: v.project_id, versionId: v.id, versionNumber: v.version_number, title: p?.title ?? f.filename, iconUrl: p?.icon_url, dependency: false });
     }
     await writeManifest(gameDir, manifest);
   }

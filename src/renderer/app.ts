@@ -31,6 +31,9 @@ import { ask, confirmDialog, modalWindow } from './dialog';
 import { createWizard } from './wizard';
 import { createSessionSummary } from './sessionSummary';
 import { createLauncherNews } from './launcherNews';
+import { askDependants, depsDetails, modsCount, pickOrphans } from './modDepsUi';
+import { brokenBy, orphansAfter, planChange, type ModNode } from '../shared/modDeps';
+import { selectAllVisible, selectRange, visibleSelection } from '../shared/selection';
 
 declare global {
   interface Window {
@@ -261,6 +264,7 @@ function errorText(err: unknown): string {
 function dismiss(card: HTMLElement) {
   if (card.classList.contains('leaving')) return;
   card.classList.add('leaving');
+  card.dispatchEvent(new Event('notif-gone'));
   card.addEventListener('animationend', () => card.remove(), { once: true });
   setTimeout(() => card.remove(), 400); // in case animations are off
 }
@@ -303,20 +307,24 @@ function trimStack() {
     else dismiss(c);
   }
 }
-function toast(message: string, isError = false, action?: { label: string; run: () => void }) {
+function toast(message: string, isError = false, action?: { label: string; run: () => void; icon?: string; onGone?: () => void }) {
   const close = el('button', { type: 'button', className: 'notif-close', title: t('Zamknij') }, el('i', { className: 'fa-solid fa-xmark' }));
   const text = el('div', { className: 'notif-text', textContent: message });
   const card = el('div', { className: `task notif${isError ? ' failed' : ''}`, role: isError ? 'alert' : 'status' },
-    el('i', { className: `notif-icon fa-solid ${isError ? 'fa-circle-exclamation' : action ? 'fa-gamepad' : 'fa-circle-check'}` }),
+    el('i', { className: `notif-icon fa-solid ${isError ? 'fa-circle-exclamation' : action ? action.icon ?? 'fa-gamepad' : 'fa-circle-check'}` }),
     text,
     close);
   if (action) {
     const go = el('button', { type: 'button', className: 'primary notif-action' }, action.label);
+    let acted = false;
     go.addEventListener('click', () => {
+      acted = true;
       dismiss(card);
       action.run();
     });
     text.append(go);
+    // closed, timed out or pushed out of the stack without the button: whatever waited on it can go on
+    if (action.onGone) card.addEventListener('notif-gone', () => acted || action.onGone!(), { once: true });
   }
   close.addEventListener('click', () => dismiss(card));
   $('#tasks').prepend(card);
@@ -2333,12 +2341,35 @@ interface ModProblem { severity: 'error' | 'warning'; kind: string; file: string
 let modProblems: ModProblem[] = [];
 let modProblemsFor: string | undefined;
 
+/** The profile's dependency tree (modcheck.ts), read together with the check. */
+let modGraph: ModNode[] | undefined;
+let modGraphFor: string | undefined;
+/** The tree for the profile on screen, with the names the list shows (Modrinth's title over the jar's own name). */
+function graphNow(): ModNode[] | undefined {
+  if (modGraphFor !== contentProfileId() || !modGraph) return undefined;
+  const titles = new Map(installed.filter((i) => i.type === 'mod' && i.projectId).map((i) => [i.filename, i.title]));
+  return modGraph.map((n) => (titles.has(n.file) ? { ...n, name: titles.get(n.file)! } : n));
+}
+
 async function runModCheck() {
   const profileId = contentProfileId();
   if (!profileId) return;
-  modProblems = (await guard(() => api.checkMods(profileId))) ?? [];
+  const res: { nodes: ModNode[]; problems: ModProblem[] } | undefined = await guard(() => api.modGraph(profileId));
+  if (profileId !== contentProfileId()) return;
+  modProblems = res?.problems ?? [];
   modProblemsFor = profileId;
+  if (res) {
+    modGraph = res.nodes;
+    modGraphFor = profileId;
+  }
   renderModCheck();
+  refreshOpenDetails();
+}
+
+/** The tree for the current profile, read now if the one on hand is for another profile or missing. */
+async function freshGraph(): Promise<ModNode[]> {
+  if (!graphNow()) await runModCheck();
+  return graphNow() ?? [];
 }
 
 function renderModCheck() {
@@ -2757,7 +2788,171 @@ function hitCard(hit: ProjectHit): HTMLElement {
     el('div', { className: 'project-actions' }, btn, info, ...preview, pick));
 }
 
+const itemKey = (i: { type: string; filename: string }) => `${i.type}:${i.filename}`;
+/** Rows ticked in the Installed list (all kinds, this profile); actions take only those the search shows. */
+let selectedItems = new Set<string>();
+/** The last row clicked, for Shift+click ranges. */
+let selectAnchor: string | undefined;
+/** The visible rows of the Installed list, in order (keys). */
+let shownOrder: string[] = [];
+/** Mods whose details (dependencies) are open. */
+const openDetails = new Set<string>();
+
+function selectionShown(): InstalledItem[] {
+  const keys = new Set(visibleSelection(shownOrder, selectedItems));
+  return installed.filter((i) => keys.has(itemKey(i)));
+}
+
+/** Ticks and the bar change in place: no redraw of the list. */
+function syncSelection() {
+  document.querySelectorAll<HTMLElement>('#content-list .project[data-key]').forEach((card) => {
+    const on = selectedItems.has(card.dataset.key!);
+    card.classList.toggle('selected', on);
+    const box = card.querySelector<HTMLInputElement>('.row-pick');
+    if (box) box.checked = on;
+  });
+  renderSelectBar();
+}
+
+function renderSelectBar() {
+  const bar = $('#select-bar');
+  const picked = contentTab === 'installed' ? selectionShown() : [];
+  bar.classList.toggle('hidden', !picked.length);
+  if (!picked.length) return;
+  $('#select-text').replaceChildren(el('b', { textContent: t('Zaznaczone: {0}', picked.length) }));
+  $('#select-all').textContent = t('Zaznacz wszystkie ({0})', shownOrder.length);
+  $('#select-all').classList.toggle('hidden', picked.length === shownOrder.length);
+  const pendingUpdates = picked.filter((i) => updates.some((u) => u.type === i.type && u.filename === i.filename));
+  $('#select-update').classList.toggle('hidden', !pendingUpdates.length);
+  $('#select-update-n').textContent = pendingUpdates.length ? ` (${pendingUpdates.length})` : '';
+  $('#select-enable').classList.toggle('hidden', !picked.some((i) => !i.enabled));
+  $('#select-disable').classList.toggle('hidden', !picked.some((i) => i.enabled));
+}
+
+/** Details of a mod under its row, kept open across redraws and refreshed when the tree arrives. */
+function refreshOpenDetails() {
+  document.querySelectorAll<HTMLElement>('#content-list .project[data-key]').forEach((card) => {
+    const old = card.querySelector('.mod-deps');
+    card.querySelector('.fa-sitemap')?.parentElement?.classList.toggle('active', openDetails.has(card.dataset.key!));
+    if (!openDetails.has(card.dataset.key!)) {
+      old?.remove();
+      return;
+    }
+    const filename = card.dataset.key!.slice(4);
+    const details = depsDetails(graphNow()?.find((n) => n.file === filename), graphNow(), goToMod);
+    if (old) old.replaceWith(details);
+    else card.append(details);
+  });
+}
+
+/** A click on a mod in "Wymaga" / "Potrzebny dla": that mod's row, with its details open. */
+function goToMod(filename: string) {
+  const key = `mod:${filename}`;
+  if (!shownOrder.includes(key)) {
+    $<HTMLInputElement>('#installed-search').value = '';
+    renderContent();
+  }
+  openDetails.add(key);
+  refreshOpenDetails();
+  const card = document.querySelector<HTMLElement>(`#content-list .project[data-key="${CSS.escape(key)}"]`);
+  if (!card) return;
+  card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  card.classList.remove('flash');
+  void card.offsetWidth;
+  card.classList.add('flash');
+}
+
+/** Removed files wait in the profile while the notification offers "Cofnij", then go to the system trash. */
+async function removeWithUndo(profileId: string, items: InstalledItem[], message: string): Promise<boolean> {
+  const res: { id: string; removed: number } | undefined = await guard(() => api.binContent(profileId, items.map((i) => ({ type: i.type, filename: i.filename }))));
+  if (!res) return false;
+  for (const i of items) selectedItems.delete(itemKey(i));
+  toast(message, false, {
+    label: t('Cofnij'), icon: 'fa-trash-can',
+    run: () => guard(async () => {
+      const back: { restored: number; skipped: string[] } = await api.unbinContent(profileId, res.id);
+      if (back.skipped.length) toast(t('Nie przywrócono (jest już plik o tej nazwie): {0}', back.skipped.join(', ')), true);
+      else toast(t('Przywrócono: {0}', back.restored));
+      if (contentProfileId() === profileId) await refreshInstalled();
+    }),
+    onGone: () => void api.binDone(profileId, res.id).catch(() => {}),
+  });
+  if (contentProfileId() === profileId) await refreshInstalled();
+  return true;
+}
+
+/** After a disable or removal: libraries nothing needs any more, offered for removal (trash, with "Cofnij"). */
+async function offerOrphans(profileId: string, nodes: ModNode[], away: string[]) {
+  const orphans = orphansAfter(nodes, away);
+  if (!orphans.length) return;
+  const chosen = await pickOrphans(orphans);
+  if (!chosen.length) return;
+  const items = chosen.map((n) => installed.find((i) => i.type === 'mod' && i.filename === n.file)).filter((i): i is InstalledItem => !!i);
+  await removeWithUndo(profileId, items, t('Usunięto niepotrzebne biblioteki: {0}', chosen.map((n) => n.name).join(', ')));
+}
+
+const titleOf = (i: InstalledItem, nodes: ModNode[]) => (i.type === 'mod' ? nodes.find((n) => n.file === i.filename)?.name : undefined) ?? i.title;
+
+/**
+ * Disabling one or many: mods others need get the warning first (cancel / anyway / with the mods
+ * that need them), and afterwards the libraries left without a user are offered for removal.
+ */
+async function disableItems(items: InstalledItem[]): Promise<boolean> {
+  const profileId = contentProfileId();
+  const targets = items.filter((i) => i.enabled);
+  if (!targets.length) return true;
+  const nodes = targets.some((i) => i.type === 'mod') ? await freshGraph() : [];
+  const mods = targets.filter((i) => i.type === 'mod').map((i) => i.filename);
+  const broken = brokenBy(nodes, mods);
+  let choice: 'anyway' | 'together' = 'anyway';
+  if (broken.length) {
+    const answer = await askDependants('disable', targets.map((i) => titleOf(i, nodes)), broken);
+    if (answer === 'cancel') return false;
+    choice = answer;
+  }
+  const plan = planChange(nodes, 'disable', mods, choice);
+  const off = [...targets.filter((i) => i.type !== 'mod'), ...plan.disable.map((f) => ({ type: 'mod', filename: f }))];
+  const ok = await guard(() => api.toggleContentMany(profileId, off.map((i) => ({ type: i.type, filename: i.filename })), false));
+  await refreshInstalled();
+  if (ok === undefined) return false;
+  if (mods.length) await offerOrphans(profileId, nodes, plan.away);
+  return true;
+}
+
+async function enableItems(items: InstalledItem[]) {
+  const profileId = contentProfileId();
+  await guard(() => api.toggleContentMany(profileId, items.filter((i) => !i.enabled).map((i) => ({ type: i.type, filename: i.filename })), true));
+  await refreshInstalled();
+}
+
+/** Removing one or many: the same warning as disabling (the mods that need them are only disabled), a confirmation, "Cofnij". */
+async function removeItems(items: InstalledItem[]): Promise<boolean> {
+  if (!items.length) return true;
+  const profileId = contentProfileId();
+  const nodes = items.some((i) => i.type === 'mod') ? await freshGraph() : [];
+  const mods = items.filter((i) => i.type === 'mod').map((i) => i.filename);
+  const broken = brokenBy(nodes, mods);
+  let choice: 'anyway' | 'together' = 'anyway';
+  const names = items.map((i) => titleOf(i, nodes));
+  if (broken.length) {
+    const answer = await askDependants('remove', names, broken);
+    if (answer === 'cancel') return false;
+    choice = answer;
+  } else {
+    const question = items.length === 1 ? t('Usunąć {0}?', names[0]) : t('Usunąć zaznaczone ({0})?', items.length);
+    const detail = t('Pliki trafią do kosza systemowego. Zaraz po usunięciu możesz to cofnąć.');
+    if (!(await ask(question, t('Usuń'), { danger: true, okIcon: 'fa-trash-can', detail }))) return false;
+  }
+  const plan = planChange(nodes, 'remove', mods, choice);
+  if (plan.disable.length) await guard(() => api.toggleContentMany(profileId, plan.disable.map((f) => ({ type: 'mod', filename: f })), false));
+  const message = items.length === 1 ? t('Usunięto {0}.', names[0]) : t('Usunięto zaznaczone ({0}).', items.length);
+  if (!(await removeWithUndo(profileId, items, message))) return false;
+  if (mods.length) await offerOrphans(profileId, nodes, plan.away);
+  return true;
+}
+
 function installedCard(item: InstalledItem): HTMLElement {
+  const key = itemKey(item);
   // built by hand: el('input', …) makes the TypeScript checker give up on the props union
   const toggle = document.createElement('input');
   toggle.type = 'checkbox';
@@ -2767,16 +2962,21 @@ function installedCard(item: InstalledItem): HTMLElement {
   switchLabel.title = item.enabled ? 'Wyłącz' : 'Włącz';
   switchLabel.append(toggle, document.createElement('span'));
   toggle.addEventListener('change', () => guard(async () => {
-    await api.toggleContent(contentProfileId(), item.type, item.filename, toggle.checked);
-    await refreshInstalled();
+    if (toggle.checked) await enableItems([item]);
+    // the warning was cancelled: the switch goes back
+    else if (!(await disableItems([item]))) toggle.checked = true;
   }));
   const remove = el('button', { className: 'icon-btn danger', title: 'Usuń' }, el('i', { className: 'fa-regular fa-trash-can' }));
-  remove.addEventListener('click', async () => {
-    if (!(await ask(t('Usunąć {0}?', item.title), t('Usuń'), { danger: true, okIcon: 'fa-trash-can' }))) return;
-    guard(async () => {
-      await api.removeContent(contentProfileId(), item.type, item.filename);
-      await refreshInstalled();
-    });
+  remove.addEventListener('click', () => removeItems([item]));
+  const pick = document.createElement('input');
+  pick.type = 'checkbox';
+  pick.className = 'row-pick';
+  pick.title = t('Zaznacz (Shift: zakres, Ctrl+A: wszystkie)');
+  pick.checked = selectedItems.has(key);
+  pick.addEventListener('click', (e) => {
+    selectedItems = e.shiftKey ? selectRange(shownOrder, selectedItems, selectAnchor, key, pick.checked) : selectRange(shownOrder, selectedItems, key, key, pick.checked);
+    selectAnchor = key;
+    syncSelection();
   });
   const update = updates.find((u) => u.type === item.type && u.filename === item.filename);
   const actions: HTMLElement[] = [];
@@ -2784,6 +2984,17 @@ function installedCard(item: InstalledItem): HTMLElement {
     const btn = el('button', { type: 'button', className: 'primary' }, el('i', { className: 'fa-solid fa-circle-arrow-up' }), t('Aktualizuj'));
     btn.addEventListener('click', () => busy(btn, () => applyUpdates([update])));
     actions.push(btn);
+  }
+  if (item.type === 'mod') {
+    const deps = el('button', { type: 'button', className: `icon-btn${openDetails.has(key) ? ' active' : ''}`, title: t('Zależności') }, el('i', { className: 'fa-solid fa-sitemap' }));
+    deps.addEventListener('click', () => {
+      if (openDetails.has(key)) openDetails.delete(key);
+      else openDetails.add(key);
+      deps.classList.toggle('active', openDetails.has(key));
+      refreshOpenDetails();
+      if (openDetails.has(key) && !graphNow()) runModCheck();
+    });
+    actions.push(deps);
   }
   if (item.projectId) {
     const versions = el('button', { type: 'button', className: 'icon-btn', title: t('Zmień wersję') }, el('i', { className: 'fa-solid fa-code-branch' }));
@@ -2793,13 +3004,17 @@ function installedCard(item: InstalledItem): HTMLElement {
     });
     actions.push(versions);
   }
-  return el('div', { className: `project${item.enabled ? '' : ' disabled'}` },
+  const card = el('div', { className: `project installed-row${item.enabled ? '' : ' disabled'}${selectedItems.has(key) ? ' selected' : ''}` },
+    pick,
     projectIcon(item.iconUrl),
     el('div', { className: 'project-main' },
       el('b', {}, item.title, el('small', { textContent: item.versionNumber ?? '' }),
         ...(update ? [el('span', { className: 'tag update', textContent: t('Nowa wersja: {0}', update.latestVersion) })] : [])),
       el('p', { textContent: item.filename })),
     el('div', { className: 'project-actions' }, ...actions, switchLabel, remove));
+  card.dataset.key = key;
+  if (openDetails.has(key)) card.append(depsDetails(graphNow()?.find((n) => n.file === item.filename), graphNow(), goToMod));
+  return card;
 }
 
 function renderContent() {
@@ -2824,6 +3039,7 @@ function renderContent() {
   if (contentTab === 'installed' && !browseOnly) {
     const query = $<HTMLInputElement>('#installed-search').value;
     const shown = forType.filter((i) => matchesInstalled(i, query));
+    shownOrder = shown.map(itemKey);
     const cards = shown.map(installedCard);
     const animate = from !== undefined && !installedShown.has(installedFor);
     installedShown.add(installedFor);
@@ -2832,8 +3048,11 @@ function renderContent() {
     if (!forType.length) list.append(el('p', { className: muted, textContent: 'Nic tu jeszcze nie ma.' }));
     else if (!shown.length) list.append(el('p', { className: muted, textContent: t('Nic nie pasuje do „{0}”.', query.trim()) }));
     $('#content-more').classList.add('hidden');
+    renderSelectBar();
     return;
   }
+  shownOrder = [];
+  renderSelectBar();
   if (contentSource === 'curseforge' && contentType !== 'datapack' && curseforgeUnavailable && !contentLoading) {
     list.replaceChildren(el('div', { className: 'notice content-unavailable appear' },
       el('i', { className: 'fa-solid fa-plug-circle-xmark' }), ' ',
@@ -2869,6 +3088,15 @@ async function refreshInstalled(animate = false) {
   if (profileId !== contentProfileId()) return;
   // the same list as on screen (coming back to the pane): nothing to redraw
   const same = installedFor === profileId && JSON.stringify(list) === JSON.stringify(installed);
+  if (installedFor !== profileId) {
+    selectedItems = new Set();
+    openDetails.clear();
+    selectAnchor = undefined;
+  } else {
+    // removed files leave the selection
+    const present = new Set(list.map(itemKey));
+    selectedItems = new Set([...selectedItems].filter((k) => present.has(k)));
+  }
   installed = list;
   installedFor = profileId;
   if (animate && contentTab === 'installed') animateFrom = 0;
@@ -3178,6 +3406,36 @@ $('#content-search').addEventListener('input', () => {
   searchTimer = window.setTimeout(() => searchContent(), 300);
 });
 $('#installed-search').addEventListener('input', () => renderContent());
+$('#select-all').addEventListener('click', () => {
+  selectedItems = selectAllVisible(shownOrder, selectedItems);
+  syncSelection();
+});
+$('#select-none').addEventListener('click', () => {
+  selectedItems = new Set();
+  syncSelection();
+});
+$('#select-enable').addEventListener('click', () => busy($<HTMLButtonElement>('#select-enable'), () => enableItems(selectionShown())));
+$('#select-disable').addEventListener('click', () => busy($<HTMLButtonElement>('#select-disable'), () => disableItems(selectionShown())));
+$('#select-remove').addEventListener('click', () => removeItems(selectionShown()));
+$('#select-update').addEventListener('click', () => {
+  const picked = selectionShown();
+  busy($<HTMLButtonElement>('#select-update'), () => applyUpdates(updates.filter((u) => picked.some((i) => i.type === u.type && i.filename === u.filename))));
+});
+/** Ctrl+A in the Installed list ticks every visible row; Escape clears the ticks. */
+document.addEventListener('keydown', (e) => {
+  const list = $('#content-list');
+  if (contentTab !== 'installed' || !list.offsetParent || document.querySelector('.modal:not(.hidden)')) return;
+  const typing = e.target instanceof HTMLElement && (e.target.matches('input:not([type=checkbox]), textarea, select') || e.target.isContentEditable);
+  if (typing) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && shownOrder.length) {
+    e.preventDefault();
+    selectedItems = selectAllVisible(shownOrder, selectedItems);
+    syncSelection();
+  } else if (e.key === 'Escape' && selectionShown().length) {
+    selectedItems = new Set();
+    syncSelection();
+  }
+});
 $('#content-more').addEventListener('click', () => searchContent(true));
 $('#content-profile').addEventListener('change', () => openContentPane());
 $('#modpack-import').addEventListener('click', () => busy($<HTMLButtonElement>('#modpack-import'), () => api.importModpack().then(offerManual, () => undefined), 'Importuję…'));
