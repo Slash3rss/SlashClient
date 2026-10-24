@@ -92,19 +92,31 @@ export async function search({ query, type, gameVersion, loader, offset = 0 }: S
     index: query ? 'relevance' : 'downloads',
   });
   const res = await get<{ hits: Record<string, any>[]; total_hits: number }>(`${API}/search?${params}`);
-  return {
-    total: res.total_hits,
-    hits: res.hits.map((h) => ({
-      id: h.project_id,
-      slug: h.slug,
-      title: h.title,
-      description: h.description,
-      author: h.author,
-      iconUrl: h.icon_url || undefined,
-      downloads: h.downloads,
-      categories: h.display_categories ?? h.categories ?? [],
-    })),
-  };
+  return { total: res.total_hits, hits: res.hits.map(searchHit) };
+}
+
+const searchHit = (h: Record<string, any>): ProjectHit => ({
+  id: h.project_id,
+  slug: h.slug,
+  title: h.title,
+  description: h.description,
+  author: h.author,
+  iconUrl: h.icon_url || undefined,
+  downloads: h.downloads,
+  categories: h.display_categories ?? h.categories ?? [],
+});
+
+/**
+ * Projects by their ids, as search hits (with the author, which the projects route lacks), in the
+ * order asked; ids Modrinth does not know are left out. For "Popularne wśród znajomych".
+ */
+export async function projectsByIds(ids: string[]): Promise<ProjectHit[]> {
+  const wanted = [...new Set(ids.filter((id) => /^[A-Za-z0-9]{8}$/.test(id)))].slice(0, 100);
+  if (!wanted.length) return [];
+  const params = new URLSearchParams({ facets: JSON.stringify([wanted.map((id) => `project_id:${id}`)]), limit: String(wanted.length) });
+  const res = await get<{ hits: Record<string, any>[] }>(`${API}/search?${params}`);
+  const hits = res.hits.map(searchHit);
+  return wanted.map((id) => hits.find((h) => h.id === id)).filter((h): h is ProjectHit => !!h);
 }
 
 interface ModrinthFile { url: string; filename: string; primary: boolean; size: number; hashes: { sha1: string; sha512?: string } }

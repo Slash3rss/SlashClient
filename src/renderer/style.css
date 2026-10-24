@@ -1858,3 +1858,12 @@ body.feature-off-streams .feature-streams { display: none !important; }
 .pd-close { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; padding: 0; background: rgba(0, 0, 0, .55); }
 .pd-caption { width: min(900px, 100%); margin: 0 auto; padding: 0 24px 20px; }
 .pd-caption p { margin: 6px 0 0; color: var(--text-secondary, #cbd5e1); font-size: 14px; }
+
+/* "Popularne wśród znajomych" above the content browser's results and the server list (friendsPopular.ts) */
+.friends-popular { display: grid; gap: 8px; margin-bottom: 14px; }
+.friends-popular-head { display: flex; align-items: center; gap: 10px; }
+.friends-popular-head h3 { margin: 0; font-size: 14px; font-weight: 800; color: var(--text-primary); }
+.friends-popular-head h3 i { color: var(--accent); }
+.friends-popular-more { margin-left: auto; padding: 4px 10px; font-size: 12px; }
+.friends-used { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--accent-light); cursor: help; white-space: nowrap; }
+.server-title .friends-used { font-size: 12px; margin-left: 4px; }

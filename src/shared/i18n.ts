@@ -26,6 +26,7 @@ import { SESSION_SUMMARY_EN } from './i18nSessionSummary';
 import { LAUNCHER_NEWS_EN } from './i18nLauncherNews';
 import { GIFS_EN } from './i18nGifs';
 import { PROJECT_DETAILS_EN } from './i18nProjectDetails';
+import { FRIENDS_POPULAR_EN } from './i18nFriendsPopular';
 
 export type Lang = 'pl' | 'en';
 
@@ -66,6 +67,8 @@ const EN: Record<string, string> = {
   ...SERVER_STATUS_EN,
   // friends on the minimap (own file)
   ...FRIEND_MAP_EN,
+  // mods, packs, shaders and servers popular among friends (own file)
+  ...FRIENDS_POPULAR_EN,
   // the "blocked files" dialog for CurseForge files downloaded by hand (own file)
   ...MANUAL_EN,
   // votes on the server list and the server pages (own file)
