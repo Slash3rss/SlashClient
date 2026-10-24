@@ -1040,6 +1040,8 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .stats-entry i { width: 28px; text-align: center; color: var(--accent-light); font-size: 16px; }
 .stats-entry.selected { background: linear-gradient(135deg, rgba(59, 130, 246, .15) 0%, rgba(59, 130, 246, .05) 100%); border-color: rgba(59, 130, 246, .35); }
 /* compact: only the icons (names show on hover) */
+/* the smallest window: a narrower list, so the profile's settings next to it keep a usable width */
+@media (max-width: 900px) { .split.profiles .profile-side { width: 196px; } }
 .split.profiles.compact .profile-side { width: 60px; }
 .split.profiles.compact .profile-side .list li { padding: 8px; justify-content: center; }
 .split.profiles.compact .profile-side .list li .grow,
@@ -1297,7 +1299,9 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .ach-cape { width: 40px; height: 64px; background-size: 256px 128px; background-position: -4px -4px; background-repeat: no-repeat; image-rendering: pixelated; border-radius: 3px; }
 /* Friends: parties (several friends invited at once) and shared waypoints in the chat */
 .fr-add button[type="button"] { width: 40px; height: 40px; padding: 0; flex-shrink: 0; }
-.fr-party { display: flex; flex-direction: column; gap: 8px; }
+.fr-party { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+/* a low window: the friends list gives way to the party form, and the column scrolls when even that is not enough */
+.fr-side:has(.fr-party-form) { overflow-y: auto; }
 .fr-party-card, .fr-party-form { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--glass-border); border-radius: 10px; background: var(--glass-bg); }
 .fr-party-head { display: flex; align-items: center; gap: 10px; }
 .fr-party-head > i { color: var(--accent-light); font-size: 16px; }
@@ -1308,8 +1312,10 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .fr-party-invited .fa-solid { color: #facc15; }
 .fr-party-declined, .fr-party-left { opacity: .6; }
 .fr-party-card .row button, .fr-party-form .row button { padding: 6px 12px; font-size: 12px; height: auto; }
-.fr-party-pick { display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow-y: auto; }
-.fr-party-pick label { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.fr-party-pick { display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow-y: auto; overflow-x: hidden; flex-shrink: 0; }
+.fr-party-pick label { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; min-width: 0; overflow-wrap: anywhere; }
+.fr-party-form .row { flex-wrap: wrap; }
+.fr-party-form .row button { white-space: nowrap; }
 .fr-party-pick label.is-offline { color: var(--text-muted); }
 .fr-waypoint .grow small.muted { opacity: .7; }
 
