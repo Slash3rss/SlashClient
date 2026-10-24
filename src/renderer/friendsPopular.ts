@@ -65,7 +65,11 @@ export function friendsWho(item: { count: number; friends: FriendRef[] }): strin
 
 /** The tag on a card: the count, with the friends' nicks on hover. */
 export function friendsBadge(kind: 'content' | 'server', item: { count: number; friends: FriendRef[] }): HTMLElement {
-  return el('span', { className: 'friends-used', title: friendsWho(item) }, icon('fa-user-group'), ` ${friendsCountText(kind, item.count)}`);
+  const badge = el('span', { className: 'friends-used', tabIndex: 0 }, icon('fa-user-group'), ` ${friendsCountText(kind, item.count)}`);
+  // the nicks in our own bubble on hover or focus (a title would wait a second and look like the system's)
+  badge.dataset.who = friendsWho(item);
+  badge.setAttribute('aria-label', `${friendsCountText(kind, item.count)}: ${badge.dataset.who}`);
+  return badge;
 }
 
 export interface PopularDeps { api: any }
