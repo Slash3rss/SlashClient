@@ -1295,7 +1295,13 @@ $('#log-copy').addEventListener('click', async () => {
   await navigator.clipboard.writeText(logText());
   toast(t('Skopiowano log'));
 });
+/** Sharing a log is public: asked first, in the launcher's own window. */
+const askShareLog = () => ask(t('Udostępnić log publicznie?'), t('Udostępnij'), {
+  okIcon: 'fa-share-nodes',
+  detail: t('Log zostanie wysłany na serwer SlashClient (trzymany 90 dni), a link skopiowany do schowka. Każdy, kto dostanie link, zobaczy jego treść. Ścieżki z Twoją nazwą użytkownika i tokeny zostaną ukryte.'),
+});
 $('#log-share').addEventListener('click', () => busy($<HTMLButtonElement>('#log-share'), async () => {
+  if (!(await askShareLog())) return;
   try {
     const url: string | undefined = await api.shareLog(logText());
     if (url) toast(t('Link do logu skopiowany: {0}', url));
@@ -1401,6 +1407,7 @@ $('#crash-install').addEventListener('click', () => busy($<HTMLButtonElement>('#
   if (ok) $('#crash').classList.add('hidden');
 }));
 $('#crash-bug').addEventListener('click', () => busy($<HTMLButtonElement>('#crash-bug'), async () => {
+  if (logText().trim() && !(await askShareLog())) return;
   try {
     await api.reportBug(logText());
   } catch (err) {
@@ -1527,9 +1534,33 @@ $('#delete-go').addEventListener('click', () => {
 });
 $('#profile-folder').addEventListener('click', () => editingId && guard(() => api.openProfileDir(editingId!)));
 $('#profile-mods').addEventListener('click', () => editingId && guard(() => api.openModsDir(editingId!)));
+/** "Copy profile": with or without its worlds (they can be big), asked in the launcher's own window. */
+function askDuplicate(name: string): Promise<boolean | undefined> {
+  return new Promise((resolve) => {
+    let answer: boolean | undefined;
+    const pick = (worlds: boolean | undefined) => () => {
+      answer = worlds;
+      close();
+    };
+    const cancel = el('button', { type: 'button' }, t('Anuluj'));
+    const withWorlds = el('button', { type: 'button' }, el('i', { className: 'fa-solid fa-earth-europe' }), ' ', t('Ze światami'));
+    const without = el('button', { type: 'button', className: 'primary' }, el('i', { className: 'fa-solid fa-copy' }), ' ', t('Bez światów'));
+    cancel.addEventListener('click', pick(undefined));
+    withWorlds.addEventListener('click', pick(true));
+    without.addEventListener('click', pick(false));
+    const close = modalWindow(t('Skopiować profil „{0}”?', name),
+      [el('p', { className: 'muted', textContent: t('Mody, konfiguracja, paczki zasobów i ustawienia zostaną skopiowane. Światy mogą zajmować dużo miejsca.') })],
+      [cancel, withWorlds, without], () => resolve(answer), 'confirm-box');
+    without.focus();
+  });
+}
+
 $('#profile-duplicate').addEventListener('click', async () => {
   if (!editingId) return;
-  const id: string | undefined = await guard(() => api.duplicateProfile(editingId!));
+  const source = store.profiles.find((p) => p.id === editingId);
+  const worlds = await askDuplicate(source?.name ?? '');
+  if (worlds === undefined) return;
+  const id: string | undefined = await guard(() => api.duplicateProfile(editingId!, worlds));
   if (id) {
     editingId = id;
     renderProfiles();

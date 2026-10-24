@@ -1115,18 +1115,10 @@ handle('profile:recommendedMemory', (id: string) => profileRecommendedMemory(pro
 /** Folders that are never copied with a profile: per-session files and potentially huge archives. */
 const NOT_COPIED = new Set(['logs', 'crash-reports', 'screenshots', 'backups', 'debug']);
 
-handle('profile:duplicate', async (id: string) => {
+/** A copy of a profile; the page asks first (with or without its worlds) in its own window. */
+handle('profile:duplicate', async (id: string, worlds?: boolean) => {
+  const withWorlds = worlds === true;
   const source = profileById(id);
-  const { response } = await dialog.showMessageBox(win!, {
-    type: 'question',
-    message: t('Skopiować profil „{0}”?', source.name),
-    detail: t('Mody, konfiguracja, paczki zasobów i ustawienia zostaną skopiowane. Światy mogą zajmować dużo miejsca.'),
-    buttons: [t('Bez światów'), t('Ze światami'), t('Anuluj')],
-    defaultId: 0,
-    cancelId: 2,
-  });
-  if (response === 2) return undefined;
-  const withWorlds = response === 1;
   // everything but the identity, folder and play history comes along
   const { id: _id, gameDir: _dir, playTimeMs: _time, lastPlayedAt: _at, lastTarget: _target, ...settings } = source;
   const copy = newProfile({ ...settings, name: t('{0} (kopia)', source.name) });
@@ -1342,30 +1334,17 @@ handle('profile:importCode', async (raw: string): Promise<{ key: string; summary
   }
 });
 
-/** Publishes the log on the SlashClient server after the player agrees. */
-async function askAndShareLog(text: string) {
-  const { response } = await dialog.showMessageBox(win!, {
-    type: 'question',
-    message: t('Udostępnić log publicznie?'),
-    detail: t('Log zostanie wysłany na serwer SlashClient (trzymany 90 dni), a link skopiowany do schowka. Każdy, kto dostanie link, zobaczy jego treść. Ścieżki z Twoją nazwą użytkownika i tokeny zostaną ukryte.'),
-    buttons: [t('Udostępnij'), t('Anuluj')],
-    defaultId: 0,
-    cancelId: 1,
-  });
-  if (response !== 0) return undefined;
+/** Publishes the log on the SlashClient server (the page has asked the player first, in its own window). */
+async function shareLogText(text: string) {
   const shared = await shareLog(text, store.settings.socialUrl);
   clipboard.writeText(shared.url);
   return shared;
 }
-handle('log:share', async (text: string) => (await askAndShareLog(text))?.url);
+handle('log:share', async (text: string) => (await shareLogText(text)).url);
 /** A bug report on the site, with the log attached when there is one and the player agrees to share it. */
 handle('bug:report', async (text?: string) => {
   const params = new URLSearchParams({ nowe: '1', wersja: app.getVersion() });
-  if (text?.trim()) {
-    const shared = await askAndShareLog(text);
-    if (!shared) return false;
-    params.set('log', shared.id);
-  }
+  if (text?.trim()) params.set('log', (await shareLogText(text)).id);
   await shell.openExternal(`${store.settings.socialUrl.replace(/\/$/, '')}/zgloszenia?${params}`);
   return true;
 });
