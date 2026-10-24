@@ -51,6 +51,7 @@ const api = {
   serverVote: (id: string) => invoke('servers:vote', id),
   searchContent: (profileId: string, query: string, type: string, offset?: number, source?: string) => invoke('content:search', profileId, query, type, offset, source),
   projectGallery: (projectId: string, source?: string) => invoke('content:gallery', projectId, source),
+  popularProjects: (source: string, ids: string[]) => invoke('content:popularProjects', source, ids),
   packPreview: (profileId: string, projectId: string, source?: string, versionId?: string) => invoke('content:packPreview', profileId, projectId, source, versionId),
   listContent: (profileId: string) => invoke('content:list', profileId),
   installContent: (profileId: string, projectId: string, type: string, title?: string, icon?: string, versionId?: string, source?: string) =>

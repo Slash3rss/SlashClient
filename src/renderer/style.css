@@ -1893,3 +1893,17 @@ body.feature-off-streams .feature-streams { display: none !important; }
 .pd-close { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; padding: 0; background: rgba(0, 0, 0, .55); }
 .pd-caption { width: min(900px, 100%); margin: 0 auto; padding: 0 24px 20px; }
 .pd-caption p { margin: 6px 0 0; color: var(--text-secondary, #cbd5e1); font-size: 14px; }
+
+/* "Popularne wśród znajomych" above the content browser's results and the server list (friendsPopular.ts) */
+.friends-popular { display: grid; gap: 8px; margin-bottom: 14px; }
+.friends-popular-head { display: flex; align-items: center; gap: 10px; }
+.friends-popular-head h3 { margin: 0; font-size: 14px; font-weight: 800; color: var(--text-primary); }
+.friends-popular-head h3 i { color: var(--accent); }
+.friends-popular-more { margin-left: auto; padding: 4px 10px; font-size: 12px; }
+.friends-used { position: relative; display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--accent-light); cursor: help; white-space: nowrap; }
+.friends-used:hover::after, .friends-used:focus-visible::after {
+  content: attr(data-who); position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; width: max-content; max-width: 280px; white-space: normal;
+  padding: 6px 10px; border-radius: 8px; background: var(--bg-secondary); border: 1px solid var(--glass-border); color: var(--text-primary);
+  font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); pointer-events: none;
+}
+.server-title .friends-used { font-size: 12px; margin-left: 4px; }

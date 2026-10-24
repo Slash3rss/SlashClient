@@ -9,6 +9,7 @@ import { initProfileSharing } from './profileShare';
 import { createMediaTools } from './mediaTools';
 import { openPackPreview } from './packPreview';
 import { openProjectDetails } from './projectDetails';
+import { createPopularSource, friendsBadge, serverKey, type PopularContent, type PopularServer } from './friendsPopular';
 import { initCloudProfiles } from './cloudProfiles';
 import { initVersionMove } from './versionMove';
 import { createAchievements } from './achievements';
@@ -2094,6 +2095,7 @@ function renderServers() {
   pingVisible(page);
   // "Zagłosowano dziś" for the cards shown
   serverPages.checkVotes(page.map((s) => s.id));
+  void renderPopularServers();
 }
 
 /** Pings the shown servers (6 at a time) and refreshes each card as answers arrive. */
@@ -3019,6 +3021,7 @@ function installedCard(item: InstalledItem): HTMLElement {
 
 function renderContent() {
   contentNotice();
+  void renderPopularContent();
   const isPack = contentType === 'modpack';
   // datapacks live in worlds (listed in Worlds), so like modpacks they only have the browser; they come from Modrinth only
   const browseOnly = isPack || contentType === 'datapack';
@@ -3185,6 +3188,105 @@ async function installHit(hit: ProjectHit, versionId?: string) {
     installing.delete(hit.id);
     renderContent();
   }
+}
+
+// ---------- "Popularne wśród znajomych" on Mody / Odkrywaj and Serwery (friendsPopular.ts) ----------
+
+const popular = createPopularSource({ api });
+/** Sections the player opened in full ("Pokaż wszystkie"). */
+const popularOpen = new Set<string>();
+/** Cards shown before "Pokaż wszystkie". */
+const POPULAR_FEW = 3;
+
+/** The section above the results: a heading and the first few cards; empty hides it. */
+function popularSection(box: HTMLElement, key: string, cards: HTMLElement[], listClass: string) {
+  if (!cards.length) {
+    box.classList.add('hidden');
+    box.replaceChildren();
+    return;
+  }
+  const open = popularOpen.has(key);
+  const head = el('div', { className: 'friends-popular-head' }, el('h3', {}, el('i', { className: 'fa-solid fa-user-group' }), ' ', t('Popularne wśród znajomych')));
+  if (cards.length > POPULAR_FEW) {
+    const more = el('button', { type: 'button', className: 'friends-popular-more' }, open ? t('Pokaż mniej') : t('Pokaż wszystkie ({0})', cards.length));
+    more.addEventListener('click', () => {
+      if (open) popularOpen.delete(key);
+      else popularOpen.add(key);
+      popularSection(box, key, cards, listClass);
+    });
+    head.append(more);
+  }
+  box.replaceChildren(head, el('div', { className: listClass }, ...(open ? cards : cards.slice(0, POPULAR_FEW))));
+  box.classList.remove('hidden');
+}
+
+let popularContentRequest = 0;
+/** Mods, packs or shaders of the kind and site shown, while browsing without a search. */
+async function renderPopularContent() {
+  const request = ++popularContentRequest;
+  const box = $('#friends-popular-content');
+  const type = contentType;
+  const source = contentSource;
+  const browsing = contentTab === 'browse' && ['mod', 'resourcepack', 'shader'].includes(type) && !$<HTMLInputElement>('#content-search').value.trim();
+  if (!browsing) return popularSection(box, '', [], '');
+  const profile = store.profiles.find((p) => p.id === contentProfileId());
+  // mods for another loader would not fit this profile: the server leaves them out
+  const data = await popular.get(profile?.loader ?? '');
+  const items: PopularContent[] = data?.content.filter((c) => c.type === type && c.source === source) ?? [];
+  const hits: ProjectHit[] = items.length ? await popular.hits(source, items.map((i) => i.id)) : [];
+  if (request !== popularContentRequest) return;
+  const cards = items.flatMap((item) => {
+    const hit = hits.find((h) => h.id === item.id);
+    if (!hit) return [];
+    const card = hitCard(hit);
+    card.classList.add('popular');
+    card.querySelector('.project-meta')?.prepend(friendsBadge('content', item));
+    return [card];
+  });
+  popularSection(box, `content|${type}|${source}`, cards, 'project-list');
+}
+
+let popularServerRequest = 0;
+/** Popular servers' pings asked from here (a server not on the list is pinged by nobody else). */
+const popularPinging = new Set<string>();
+
+/** A popular server as the list knows it, or what we know: its address and name. */
+function popularListed(p: PopularServer): ListedServer {
+  return servers.find((x) => serverKey(x.ip) === p.address) ?? {
+    id: '', name: p.name ?? p.address, ip: p.address, description: '', motdHtml: [], motdClean: [t('Serwer, na którym grają znajomi.')], modes: [], versions: [],
+    votes: 0, online: true, playersOnline: 0, playersMax: 0, hasIcon: false, promoted: false, featured: false,
+  };
+}
+
+/** The list's card with the friends' tag (its own data attribute, so the list's pings do not replace it). */
+function popularServerCard(p: PopularServer): HTMLElement {
+  const s = popularListed(p);
+  const card = serverCard(s);
+  delete card.dataset.ip;
+  card.dataset.popularIp = s.ip;
+  card.classList.add('popular');
+  card.querySelector('.server-title')?.append(friendsBadge('server', p));
+  const ping = pings.get(s.ip);
+  if (!ping?.result && !ping?.error && !popularPinging.has(s.ip)) {
+    popularPinging.add(s.ip);
+    api.pingServer(s.ip).then((result: PingResult | { offline: string }) => {
+      pings.set(s.ip, 'offline' in result ? { at: Date.now(), error: result.offline } : { at: Date.now(), result });
+    }, (err: unknown) => pings.set(s.ip, { at: Date.now(), error: errorText(err) })).finally(() => {
+      popularPinging.delete(s.ip);
+      document.querySelector<HTMLElement>(`.server[data-popular-ip="${CSS.escape(s.ip)}"]`)?.replaceWith(popularServerCard(p));
+    });
+  }
+  return card;
+}
+
+/** Servers friends played on lately, above the list (not while searching). */
+async function renderPopularServers() {
+  const request = ++popularServerRequest;
+  const box = $('#friends-popular-servers');
+  if ($<HTMLInputElement>('#servers-search').value.trim()) return popularSection(box, '', [], '');
+  const data = await popular.get();
+  if (request !== popularServerRequest) return;
+  popularSection(box, 'servers', (data?.servers ?? []).map(popularServerCard), 'server-list');
 }
 
 /** Mods and Worlds work on the profile picked in Profiles; their (hidden) pickers follow it. */

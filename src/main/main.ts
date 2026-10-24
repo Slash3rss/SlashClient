@@ -34,12 +34,12 @@ import { loadStore, newProfile, orphanProfiles, profileGameDir, saveStore, secre
 import { LOADER_NAMES, loaderVersions, type Loader } from './loaders';
 import {
   checkUpdates, contentFile, datapackFile, downloadModpack, identifyModpack, installMrpack, installProject, latestModpackVersion, listContentVersions,
-  findFitting, installedProjectIds, listInstalled, modrinthLinks, projectGallery, readManifest, removeContent, search, setEnabled, updateMrpack,
+  findFitting, installedProjectIds, listInstalled, modrinthLinks, projectGallery, projectsByIds, readManifest, removeContent, search, setEnabled, updateMrpack,
   type ContentType, type InstallRole, type ModpackInfo, type ProjectType, type UpdateInfo, type VersionInfo,
 } from './modrinth';
 import {
   checkCurseForgeUpdates, curseForgeLinks, curseForgePackIcon, CurseForgeUnavailable, downloadCurseForgePack, installCurseForgePack, installCurseForgeProject, isCurseForgePack, readCursePack,
-  curseForgeScreenshots, latestCurseForgePack, listCurseForgeVersions, searchCurseForge, setCurseForgeServer, updateCurseForgePack, type ManualFile,
+  curseForgeProjects, curseForgeScreenshots, latestCurseForgePack, listCurseForgeVersions, searchCurseForge, setCurseForgeServer, updateCurseForgePack, type ManualFile,
 } from './curseforge';
 import { copyManualFiles, downloadLink, findManualFiles, FolderWatch, manualKey } from './manualFiles';
 import { listServers, pingServer, serverDetails, serverHistory } from './servers';
@@ -68,6 +68,7 @@ import { exportHud, importHud } from './hudShare';
 import { readBenchmarks } from './benchmark';
 import { comparableBefore } from '../shared/benchTips';
 import { appendSession, readSessions, summarize } from './stats';
+import { contentOf, PopularReporter, recentServers } from './friendsPopular';
 import { appendSummary, collectSummary, MIN_SESSION_MS, readSummaries, summaryDisplay, withStats } from './sessionSummary';
 import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type ForeignInstance } from './importers';
 import { perfModsFor } from './perfmods';
@@ -1802,6 +1803,8 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     // profiles synced with the account go there after the game
     cloudProfiles.afterGame(profile.id).catch((err) => console.error('chmura:', (err as Error).message));
     recordSession(profile, startedAt, lastServer).catch(() => {});
+    // the servers of this game count for friends' "Popularne" once the session is written
+    setTimeout(() => popular.poke(), 5_000);
     const endedAt = Date.now();
     resolveVersionId(profile.versionId).then(async (versionId) => {
       await appendSession({ start: startedAt, end: endedAt, profileId: profile.id, profileName: profile.name, versionId, loader: profile.loader, servers: joins }).catch(() => {});
@@ -1906,10 +1909,50 @@ const social = new SocialClient({
   },
   onReady: () => {
     void registerChatKey();
+    popularReady();
     lan.resend();
     // connected again (the server restarted, or the network was away): the running games say who plays, right away
     for (const g of games.values()) g.link();
   },
+});
+
+/**
+ * "Popularne wśród znajomych" (friendsPopular.ts): the recognised projects of the profiles and the
+ * servers of the last 30 days go to the server when they change, at most every few minutes.
+ */
+const popular = new PopularReporter({
+  signedIn: () => !!social.state().user,
+  collect: async () => {
+    const profiles = await Promise.all(store.profiles.map(async (p) => ({
+      loader: p.loader,
+      gameVersion: await resolveVersionId(p.versionId).catch(() => p.versionId),
+      items: await listInstalled(profileGameDir(p)).catch(() => []),
+    })));
+    const last = store.profiles.flatMap((p) => (p.lastTarget?.kind === 'server' && p.lastPlayedAt ? [{ address: p.lastTarget.address, at: p.lastPlayedAt }] : []));
+    return { content: contentOf(profiles), servers: recentServers(await readSessions().catch(() => []), Date.now(), last) };
+  },
+  send: (report) => social.call('POST', '/v1/me/popular', report),
+});
+let popularUser: string | undefined;
+/** Signed in (again): a new account sends its own list even when it is the same as the last one. */
+function popularReady() {
+  const id = social.state().user?.id;
+  if (id !== popularUser) popular.reset();
+  popularUser = id;
+  popular.poke();
+}
+// installs, removals and new profiles are picked up within minutes; nothing goes when nothing changed
+setInterval(() => popular.poke(), 10 * 60_000).unref?.();
+/** The projects a friends' section shows, as search hits (titles and icons from the sites). */
+handle('content:popularProjects', async (source: Source, ids: string[]) => {
+  if (!Array.isArray(ids)) return [];
+  const list = ids.filter((id) => typeof id === 'string');
+  if (source !== 'curseforge') return projectsByIds(list);
+  curseforge();
+  return curseForgeProjects(list).catch((err) => {
+    if (err instanceof CurseForgeUnavailable) return [];
+    throw err;
+  });
 });
 
 /** GIFs and stickers in the chat: their files through the server or from the CDN, as the server says (gifMedia.ts). */

@@ -389,6 +389,14 @@ async function bulk<T>(endpoint: '/mods' | '/mods/files', key: 'modIds' | 'fileI
   return out;
 }
 
+/** Projects by their ids, as search hits, in the order asked (for "Popularne wśród znajomych"). */
+export async function curseForgeProjects(ids: string[]): Promise<ProjectHit[]> {
+  const wanted = [...new Set(ids.filter((id) => /^\d{1,10}$/.test(id)))].slice(0, 100);
+  if (!wanted.length) return [];
+  const mods = await bulk<CfMod>('/mods', 'modIds', wanted.map(Number));
+  return wanted.map((id) => mods.find((m) => String(m.id) === id)).filter((m): m is CfMod => !!m).map(toHit);
+}
+
 export type CurseModpackInfo = ModpackInfo & { manual: ManualFile[]; recommendedRam?: number };
 
 export function readCursePack(zipFile: string): { zip: AdmZip; manifest: CurseManifest } {
