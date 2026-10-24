@@ -97,6 +97,8 @@ public class GameInventoryTools implements FabricClientGameTest {
 			if (!swept.equals("empty,empty,empty,empty|stick x5,string x6,feather x7,bone x8")) throw new AssertionError("Shift-drag over the backpack: " + swept);
 			context.getInput().setCursorPos(4, 4);
 			context.waitTicks(3);
+			// the recipes the new items unlocked: no toast over the next pictures
+			context.runOnClient(mc -> InvToolsTestHooks.quiet());
 			context.takeScreenshot("invtools-shift-drag");
 
 			// a locked slot: its lock in the inventory, Q over it and the number key 2 over the diamond do nothing
