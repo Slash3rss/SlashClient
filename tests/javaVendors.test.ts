@@ -133,6 +133,7 @@ describe('GraalVM Community (GitHub releases)', () => {
     assert.match(b.url, /graal-25\.4\.4\.1\.1\/graalvm-community-jdk-25i4-25\.0\.4\.1\.1_windows-x64_bin\.zip$/);
     assert.equal(b.sha256, SHA('a'));
     assert.equal(b.archive, 'zip');
+    assert.equal(b.release, 'graalvm-community-jdk-25i4-25.0.4.1.1');
     // the newest release has no Intel Mac build: the one before it does
     assert.match(pickGraal(GRAAL_RELEASES, 25, 'mac', 'x64')!.url, /jdk-25\.0\.1\/graalvm-community-jdk-25\.0\.1_macos-x64_bin\.tar\.gz$/);
     assert.match(pickGraal(GRAAL_RELEASES, 17, 'windows', 'x64')!.url, /jdk-17\.0\.9/);

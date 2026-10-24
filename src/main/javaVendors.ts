@@ -138,7 +138,7 @@ export function pickGraal(data: unknown, major: number, os: HostPlatform['os'], 
     const digest = /^sha256:([0-9a-f]{64})$/i.exec(asset.digest ?? '')?.[1];
     const side = r.assets?.find((a) => a.name === `${asset.name}.sha256`)?.browser_download_url;
     if (!digest && !fromHost(side, ['github.com'])) continue;
-    return { vendor: 'graalvm', major, release: asset.name!.replace(/_bin\.(zip|tar\.gz)$/, ''), url: asset.browser_download_url, archive, size: asset.size,
+    return { vendor: 'graalvm', major, release: asset.name!.replace(/_[a-z]+-[a-z0-9]+_bin\.(zip|tar\.gz)$/, ''), url: asset.browser_download_url, archive, size: asset.size,
       ...(digest ? { sha256: digest.toLowerCase() } : { sha256Url: side }) };
   }
   return undefined;
