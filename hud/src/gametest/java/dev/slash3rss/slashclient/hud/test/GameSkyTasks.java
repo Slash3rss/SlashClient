@@ -120,6 +120,64 @@ public class GameSkyTasks implements FabricClientGameTest {
 			check(!tasks.contains("|Huta:") && tasks.strip().split("\n").length == 12, "completed task gone", tasks);
 			rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			check(!rows.contains("Huta") && rows.contains("Podstawowy kamieniołom") && rows.contains(" | 28/128"), "HUD after completing (the server's number again)", rows);
+			// whole categories tracked from the menu: Wirtuoz (never opened) with the key, Nowicjusz with the middle button
+			context.runOnClient(mc -> TestHooks.skyMenuScreen(5));
+			context.waitTicks(10);
+			double[] wirtuoz = context.computeOnClient(mc -> TestHooks.slotPoint(14));
+			double[] nowicjusz = context.computeOnClient(mc -> TestHooks.slotPoint(12));
+			context.getInput().setCursorPos(wirtuoz[0], wirtuoz[1]);
+			context.waitTicks(3);
+			context.getInput().pressKey(options -> TestHooks.skyTrackKey());
+			context.waitTicks(3);
+			String state = context.computeOnClient(mc -> TestHooks.skyCategoryState());
+			rows = context.computeOnClient(mc -> TestHooks.skyRows());
+			check(state.equals("Wirtuoz visible true") && rows.startsWith("Wirtuoz | 16 left\nopen the category to load its tasks | \n"), "a category never opened, at once", state + "\n" + rows);
+			context.getInput().setCursorPos(nowicjusz[0], nowicjusz[1]);
+			context.waitTicks(3);
+			context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_MIDDLE);
+			context.waitTicks(3);
+			state = context.computeOnClient(mc -> TestHooks.skyCategoryState());
+			rows = context.computeOnClient(mc -> TestHooks.skyRows());
+			// the whole of Nowicjusz on the HUD under its row, Od czego zacząć? too (never tracked on its own)
+			check(state.equals("Nowicjusz,Wirtuoz visible true") && rows.startsWith("Nowicjusz | 5 left · ") && rows.contains("Od czego zacząć?") && rows.contains("Wirtuoz | 16 left"), "two categories", state + "\n" + rows);
+			context.getInput().setCursorPos(wirtuoz[0], wirtuoz[1]);
+			context.waitTicks(5);
+			context.takeScreenshot("skytasks-category-menu");
+			context.setScreen(() -> null);
+			context.waitTicks(5);
+			context.takeScreenshot("skytasks-category-hud");
+			// Nowicjusz unticked: its row and the tasks it brought gone at once, Wirtuoz stays
+			context.runOnClient(mc -> TestHooks.skyMenuScreen(5));
+			context.waitTicks(10);
+			context.getInput().setCursorPos(nowicjusz[0], nowicjusz[1]);
+			context.waitTicks(3);
+			context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_MIDDLE);
+			context.waitTicks(3);
+			state = context.computeOnClient(mc -> TestHooks.skyCategoryState());
+			rows = context.computeOnClient(mc -> TestHooks.skyRows());
+			check(state.equals("Wirtuoz visible true") && !rows.contains("Nowicjusz |") && !rows.contains("Od czego zacząć?") && rows.contains("Podstawowy kamieniołom"), "Nowicjusz unticked", state + "\n" + rows);
+			context.setScreen(() -> null);
+			context.waitTicks(5);
+			context.takeScreenshot("skytasks-category-untracked");
+			// Wirtuoz unticked too, and Nowicjusz opened again: no category row comes back
+			context.runOnClient(mc -> TestHooks.skyMenuScreen(5));
+			context.waitTicks(10);
+			context.getInput().setCursorPos(wirtuoz[0], wirtuoz[1]);
+			context.waitTicks(3);
+			context.getInput().pressKey(options -> TestHooks.skyTrackKey());
+			context.waitTicks(3);
+			context.runOnClient(mc -> TestHooks.skyTasksScreen(true, false));
+			context.waitTicks(15);
+			// and the quarry, the last task tracked: the module is gone
+			context.getInput().setCursorPos(quarry[0], quarry[1]);
+			context.waitTicks(3);
+			context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_MIDDLE);
+			context.waitTicks(3);
+			context.setScreen(() -> null);
+			context.waitTicks(5);
+			state = context.computeOnClient(mc -> TestHooks.skyCategoryState());
+			rows = context.computeOnClient(mc -> TestHooks.skyRows());
+			check(state.equals(" visible false") && rows.isEmpty(), "nothing tracked", state + "\n" + rows);
 			context.runOnClient(mc -> TestHooks.skyTasksOptions(false, false));
 		}
 		//#endif
