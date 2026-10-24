@@ -1917,6 +1917,17 @@ public final class TestHooks {
 	 * SkyUp's tasks GUI ("NOWICJUSZ"), made on the client with tasks as in the owner's screenshots
 	 * (one of them, Huta, left out when `withoutHuta`, as after completing it; `reset`: nothing known before).
 	 */
+	//#if MC >= 26.3
+	/** For the test: SkyUp's task progress saved to the account's file and read back. */
+	public static String skyTasksStaleRows() {
+		return SkyTasks.staleRowsForTest(net.minecraft.client.Minecraft.getInstance());
+	}
+
+	public static String skyTasksReload() {
+		return SkyTasks.reloadForTest();
+	}
+	//#endif
+
 	public static void skyTasksScreen(boolean withoutHuta, boolean reset) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
 		SkyTasks.testWorld = true;

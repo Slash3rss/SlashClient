@@ -62,7 +62,18 @@ public final class SkyTasks {
 		Map<String, Long> jobs = new LinkedHashMap<>();
 	}
 
+	/** The progress from before each account had its own file: the first account that plays takes it over. */
 	static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("slashclient-skyup").resolve("zadania.json");
+
+	/** The file of the account playing now: every Minecraft account keeps its own progress. */
+	static Path file() {
+		var user = Minecraft.getInstance().getUser();
+		java.util.UUID id = user == null ? null : user.getProfileId();
+		return id == null ? FILE : FILE.resolveSibling("zadania-" + id.toString().replace("-", "") + ".json");
+	}
+
+	/** Where the progress in memory came from (and is saved to). */
+	private static Path loadedFrom;
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static Data data;
 	private static boolean dirty;
@@ -98,9 +109,19 @@ public final class SkyTasks {
 	}
 
 	static Data data() {
+		// another account than the progress in memory belongs to: its own file
+		Path file = file();
+		if (data != null && loadedFrom != null && !file.equals(loadedFrom)) {
+			if (dirty) save();
+			data = null;
+			lastTier = "";
+			readNow.clear();
+		}
 		if (data == null) {
+			loadedFrom = file;
 			try {
-				if (Files.exists(FILE)) data = GSON.fromJson(Files.readString(FILE), Data.class);
+				Path from = Files.exists(file) ? file : Files.exists(FILE) ? FILE : null;
+				if (from != null) data = GSON.fromJson(Files.readString(from), Data.class);
 			} catch (Exception e) {
 				SlashHud.LOG.warn("SlashClient: SkyUp tasks: {}", e.toString());
 			}
@@ -136,8 +157,10 @@ public final class SkyTasks {
 		dirty = false;
 		savedAt = System.currentTimeMillis();
 		try {
-			Files.createDirectories(FILE.getParent());
-			Files.writeString(FILE, GSON.toJson(data()));
+			Data now = data();
+			Path to = loadedFrom != null ? loadedFrom : file();
+			Files.createDirectories(to.getParent());
+			Files.writeString(to, GSON.toJson(now));
 		} catch (Exception e) {
 			SlashHud.LOG.warn("SlashClient: SkyUp tasks: {}", e.toString());
 		}
@@ -166,6 +189,11 @@ public final class SkyTasks {
 	/** The counters added something: saved before long. */
 	static void changed() {
 		dirty = true;
+	}
+
+	/** Leaving a server or closing the game: what is not saved yet (up to the last 30 s of counting) is saved now. */
+	static void flush() {
+		if (dirty) save();
 	}
 
 	/** Each stack read once (the GUI draws them every frame; the server sends new stacks when they change). */
@@ -567,9 +595,11 @@ public final class SkyTasks {
 		for (String tier : headerTiers()) {
 			int[] c = tierCount(mc, tier);
 			boolean fresh = fresh(tier), unopened = unopened(tier);
-			String right = !fresh ? Component.translatable("slashclient-hud.skyTasks.notLoaded").getString()
-				: unopened ? Component.translatable("slashclient-hud.skyTasks.leftOnly", c[0]).getString()
+			// not looked at since joining: the last known counts from disk, marked "~" (or "not loaded" when none)
+			boolean known = c[0] > 0 || byTier(data().categories, tier) != null || byTier(data().tierSeen, tier) != null;
+			String counts = unopened ? Component.translatable("slashclient-hud.skyTasks.leftOnly", c[0]).getString()
 				: Component.translatable("slashclient-hud.skyTasks.left", c[0], c[1]).getString();
+			String right = fresh ? counts : known ? "~" + counts : Component.translatable("slashclient-hud.skyTasks.notLoaded").getString();
 			out.add(new Row(tier, 0xFFA855F7, right, fresh ? GREY : 0xFFF59E0B, -1, 0));
 			// tracked before it was ever open: the row at once, its tasks once the player looks inside
 			if (unopened && categoryTracked(tier)) out.add(new Row(Component.translatable("slashclient-hud.skyTasks.openCategory").getString(), 0xFFF59E0B, "", 0, -1, 4));
@@ -587,6 +617,8 @@ public final class SkyTasks {
 		long now = System.currentTimeMillis();
 		for (SkyTaskParser.Task t : tasks) {
 			boolean ready = ready(mc, t);
+			// its GUI not open since joining: the server's numbers are the last known ones, from disk
+			boolean stale = !fresh(t.tier);
 			boolean serverOnly = false;
 			for (SkyTaskParser.Section s : t.sections) serverOnly |= !s.inventory() && !s.items.isEmpty();
 			String age = "";
@@ -603,7 +635,7 @@ public final class SkyTasks {
 					long c = current(mc, s, r);
 					boolean met = met(mc, s, r);
 					String progress = r.required < 0 ? r.unit
-						: (c >= 0 ? (estimated(s, r) ? "~" : "") + c + "/" : "") + r.required + (r.unit.isEmpty() ? "" : " " + r.unit);
+						: (c >= 0 ? (estimated(s, r) || (stale && !s.inventory()) ? "~" : "") + c + "/" : "") + r.required + (r.unit.isEmpty() ? "" : " " + r.unit);
 					String thing = r.thing.equals(s.header) || r.thing.isEmpty() ? s.header : r.thing;
 					float bar = cfg.skyTasksCompact || c < 0 || r.required <= 0 ? -1 : Math.min(1f, (float) c / r.required);
 					out.add(new Row((met ? "✔ " : "• ") + thing, met ? 0xFF6B7280 : WHITE, progress, met ? GREEN : WHITE, bar, 6));
@@ -689,8 +721,24 @@ public final class SkyTasks {
 
 	// ---------- for the in-game tests ----------
 
+	/** For the test: saved, forgotten and read back from the account's own file ("tasks before, after, file"). */
+	/** For the test: the HUD's rows as right after joining (nothing read yet this session). */
+	static String staleRowsForTest(Minecraft mc) {
+		readNow.clear();
+		menuReadNow = false;
+		return debugRows(mc);
+	}
+
+	static String reloadForTest() {
+		save();
+		int before = data().tasks.size();
+		data = null;
+		return before + " " + data().tasks.size() + " " + file().getFileName();
+	}
+
 	static void resetForTest() {
 		data = new Data();
+		loadedFrom = file();
 		readNow.clear();
 		menuReadNow = false;
 		lastTier = "";

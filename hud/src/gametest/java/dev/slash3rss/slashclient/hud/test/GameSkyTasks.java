@@ -80,6 +80,14 @@ public class GameSkyTasks implements FabricClientGameTest {
 			String rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			check(rows.contains("Nowicjusz | ") && rows.contains("Podstawowy kamieniołom") && rows.contains(" | 28/128") && rows.contains("Huta") && rows.contains(" | 5/16"), "HUD rows", rows);
 			context.takeScreenshot("skytasks-hud");
+			// the progress is on disk, in the playing account's own file, and comes back from it
+			String reload = context.computeOnClient(mc -> TestHooks.skyTasksReload());
+			String[] r = reload.split(" ");
+			if (r[0].equals("0") || !r[0].equals(r[1]) || !r[2].startsWith("zadania-") || r[2].length() != "zadania-".length() + 32 + ".json".length()) throw new AssertionError("Saved progress: " + reload);
+			// after joining again, before the menu is opened: the last known numbers, marked "~"
+			String stale = context.computeOnClient(mc -> TestHooks.skyTasksStaleRows());
+			if (!stale.contains("| ~") || stale.contains("Not loaded") || stale.contains("Nie wczytano")) throw new AssertionError("Last known progress: " + stale);
+			context.takeScreenshot("skytasks-last-known");
 			// what the player does counts on top of the server's numbers until the GUI is open again:
 			// three stone mined, four torches crafted, two chests close by
 			world.getServer().runCommand("execute at @p run setblock ~2 ~ ~ chest");

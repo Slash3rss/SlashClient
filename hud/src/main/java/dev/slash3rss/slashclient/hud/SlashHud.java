@@ -133,6 +133,11 @@ public class SlashHud implements ClientModInitializer {
 		// the partners (and which are pinned on top of the server list) before the list is first opened
 		PartnerServers.refresh();
 		// another server or world: what we knew about its players is gone
+		//#if MC >= 26.3
+		// SkyUp's task progress counted in the last moments is not lost on leaving the server or closing the game
+		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.DISCONNECT.register((handler, mc) -> SkyTasks.flush());
+		net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents.CLIENT_STOPPING.register(mc -> SkyTasks.flush());
+		//#endif
 		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> {
 			Badges.reset();
 			Cosmetics.reset();
