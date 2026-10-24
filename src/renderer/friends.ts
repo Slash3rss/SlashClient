@@ -14,7 +14,7 @@ import { badgeChoices, rankBadge, rankName, safeColor, type RankView } from './r
 import { createPositionSharing } from './positionSharing';
 import { createPopularSharing } from './friendsPopular';
 import { cleanStream, createStreamsSection, liveBadge, noticeText, streamLine, type FriendStream } from './streams';
-import { canDelete, canEdit, editHint, editedLabel, replaceMessage, slowDownSeconds, slowDownText, tombstone, withMenu, type MenuItem } from './chatEdits';
+import { canDelete, canEdit, editHint, editedLabel, openMenu, replaceMessage, slowDownSeconds, slowDownText, tombstone, withMenu, type MenuItem } from './chatEdits';
 import { openMediaPanel, removedCard, revealMessage } from './chatMediaPanel';
 import { directSource } from './chatMediaSources';
 import { gifCard, gifConfig, toggleGifPicker } from './gifs';
@@ -556,6 +556,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     });
     listBox = el('div', { className: 'fr-list' });
     chatHead = el('div', { className: 'fr-chat-head' });
+    // a narrower window folds the head's buttons into its menu (fitChatHead)
+    new ResizeObserver(() => fitHead()).observe(chatHead);
     messagesBox = el('div', { className: 'fr-messages' });
     messagesBox.addEventListener('scroll', () => {
       if (messagesBox.scrollTop < 60 && communities.active()) void communities.loadOlder();
@@ -1232,6 +1234,12 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       return;
     }
     const actions: Node[] = [];
+    /** The icon buttons, most important first, each with its entry in the "more" menu for when it does not fit. */
+    const extras: { btn: HTMLButtonElement; item: MenuItem }[] = [];
+    const extra = (btn: HTMLButtonElement, label: string, iconName: string, danger = false) => {
+      extras.push({ btn, item: { label, icon: iconName, danger, run: () => btn.click() } });
+      actions.push(btn);
+    };
     const a = f.presence.activity;
     if (f.presence.status !== 'offline' && a?.kind === 'server' && a.server) {
       const join = el('button', { type: 'button', className: 'primary' }, icon('fa-right-to-bracket'), t(' Dołącz'));
@@ -1259,29 +1267,29 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       const s = f.stream;
       const watch = el('button', { type: 'button', className: 'icon-btn fr-watch', title: `${t('Oglądaj')}: ${s.url}` }, icon('fa-play'));
       watch.addEventListener('click', () => window.open(s.url, '_blank'));
-      actions.push(watch);
+      extra(watch, t('Oglądaj'), 'fa-play');
     }
     // their public profile on the site (server 0.9.22+; an older one answers 404 there)
     // the conversation's pictures (server 0.9.36+)
-    const mediaBtn = el('button', { type: 'button', className: 'icon-btn feature-chatImages', title: t('Multimedia') }, icon('fa-photo-film'));
-    mediaBtn.addEventListener('click', () => openMedia(f));
-    actions.push(mediaBtn);
+    const invite = el('button', { type: 'button', className: 'icon-btn', title: t('Zaproś do gry') }, icon('fa-gamepad'));
+    invite.addEventListener('click', () => openInvite(f));
+    extra(invite, t('Zaproś do gry'), 'fa-gamepad');
     const profile = el('button', { type: 'button', className: 'icon-btn feature-profiles', title: t('Pokaż profil') }, icon('fa-id-card'));
     profile.addEventListener('click', () => profileLink(deps, f.handle, 'open'));
-    actions.push(profile);
+    extra(profile, t('Pokaż profil'), 'fa-id-card');
+    const mediaBtn = el('button', { type: 'button', className: 'icon-btn feature-chatImages', title: t('Multimedia') }, icon('fa-photo-film'));
+    mediaBtn.addEventListener('click', () => openMedia(f));
+    extra(mediaBtn, t('Multimedia'), 'fa-photo-film');
     if (deps.showAchievements) {
       const trophies = el('button', { type: 'button', className: 'icon-btn', title: t('Osiągnięcia') }, icon('fa-trophy'));
       trophies.addEventListener('click', () => deps.showAchievements!(f.id, f.name));
-      actions.push(trophies);
+      extra(trophies, t('Osiągnięcia'), 'fa-trophy');
     }
-    const invite = el('button', { type: 'button', className: 'icon-btn', title: t('Zaproś do gry') }, icon('fa-gamepad'));
-    invite.addEventListener('click', () => openInvite(f));
-    actions.push(invite);
     // muted: still a friend, messages still come, but no toasts or notifications (on the account, so everywhere)
     const mute = el('button', { type: 'button', className: `icon-btn${f.muted ? ' on' : ''}`, title: f.muted ? t('Wyłącz wyciszenie') : t('Wycisz powiadomienia') }, icon(f.muted ? 'fa-bell-slash' : 'fa-bell'));
     mute.addEventListener('click', () => act(() => api.socialApi('POST', `/v1/friends/${f.id}/mute`, { muted: !f.muted }),
       f.muted ? t('{0} znowu może Cię powiadamiać.', f.name) : t('Wyciszono {0}: wiadomości przyjdą bez powiadomień.', f.name)));
-    actions.push(mute);
+    extra(mute, f.muted ? t('Wyłącz wyciszenie') : t('Wycisz powiadomienia'), f.muted ? 'fa-bell-slash' : 'fa-bell');
     const remove = el('button', { type: 'button', className: 'icon-btn danger', title: t('Usuń ze znajomych') }, icon('fa-user-minus'));
     remove.addEventListener('click', async () => {
       const ok = await confirmDialog({
@@ -1294,14 +1302,31 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       });
       if (ok) act(() => api.socialApi('DELETE', `/v1/friends/${f.id}`), t('Usunięto {0} ze znajomych.', f.name));
     });
-    actions.push(remove);
-    chatHead.replaceChildren(avatar(f, f.presence),
-      el('div', { className: 'grow fr-names' }, el('b', {}, ...rankTag(f.badgeRank), f.name, ...(f.stream ? [' ', liveBadge(f.stream)] : [])),
-        el('small', { className: 'muted', textContent: `@${f.handle} · ${f.stream ? streamLine(f.stream) : statusLine(f.presence)}` })),
-      ...actions);
+    extra(remove, t('Usuń ze znajomych'), 'fa-user-minus', true);
+    const more = el('button', { type: 'button', className: 'icon-btn hidden', title: t('Więcej') }, icon('fa-ellipsis'));
+    more.addEventListener('click', () => openMenu(more, extras.filter((x) => x.btn.classList.contains('fr-folded')).map((x) => x.item)));
+    const names = el('div', { className: 'grow fr-names' }, el('b', {}, ...rankTag(f.badgeRank), f.name, ...(f.stream ? [' ', liveBadge(f.stream)] : [])),
+      el('small', { className: 'muted', textContent: `@${f.handle} · ${f.stream ? streamLine(f.stream) : statusLine(f.presence)}` }));
+    chatHead.replaceChildren(avatar(f, f.presence), names, ...actions, more);
+    fitHead = () => fitChatHead(names, extras.map((x) => x.btn), more);
+    fitHead();
     renderMessages();
     typingBox.textContent = typing.has(f.id) ? t('{0} pisze…', f.name) : '';
   }
+
+  /**
+   * The chat head's buttons in the width there is: the least important fold into the "more" menu one by
+   * one until the name has room (a narrow window, a long list of buttons).
+   */
+  function fitChatHead(names: HTMLElement, btns: HTMLButtonElement[], more: HTMLButtonElement) {
+    for (const b of btns) b.classList.remove('fr-folded');
+    more.classList.add('hidden');
+    const tight = () => names.clientWidth < 110 || chatHead.scrollWidth > chatHead.clientWidth + 1;
+    if (!chatHead.isConnected || !tight()) return;
+    more.classList.remove('hidden');
+    for (let i = btns.length - 1; i >= 0 && tight(); i--) btns[i].classList.add('fr-folded');
+  }
+  let fitHead: () => void = () => {};
 
   /** "Join me": the server to invite to, filled in with where the player is or played last. */
   async function openInvite(f: Friend) {
