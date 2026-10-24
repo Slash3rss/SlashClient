@@ -52,6 +52,11 @@ public final class SkyTasks {
 		/** The menu's categories: tasks left in each ("Pozostałe zadania"), and when the menu was read. */
 		Map<String, Integer> categories = new LinkedHashMap<>();
 		long categoriesSeen;
+		/**
+		 * The categories tracked from the menu (the middle button or the key on one): each has its row on the
+		 * HUD with all its tasks. Null until the player picks one: then the category last open shows instead.
+		 */
+		Set<String> trackedCategories;
 		/** From SkyUp's sidebar: the island's level (-1: not seen), each job's level. */
 		long islandLevel = -1;
 		Map<String, Long> jobs = new LinkedHashMap<>();
@@ -113,6 +118,15 @@ public final class SkyTasks {
 				tasks.put(t.key(), t);
 			}
 			data.tasks = tasks;
+			// a category ticked in the menu before categories were tracked on their own: kept as a task's key
+			// (the menu's title and the category's name) that no task has
+			for (String k : List.copyOf(data.tracked)) {
+				String name = k.substring(k.indexOf('|') + 1);
+				if (data.tasks.containsKey(k) || !data.categories.containsKey(name)) continue;
+				data.tracked.remove(k);
+				if (data.trackedCategories == null) data.trackedCategories = new LinkedHashSet<>();
+				data.trackedCategories.add(name);
+			}
 			for (var e : data.tierSeen.entrySet()) if (lastTier.isEmpty() || e.getValue() >= data.tierSeen.getOrDefault(lastTier, 0L)) lastTier = e.getKey();
 		}
 		return data;
@@ -251,14 +265,42 @@ public final class SkyTasks {
 
 	// ---------- tracking ----------
 
-	static boolean tracked(String key) {
+	/** A task (or a category of the menu) on the HUD: tracked on its own, or by "track all", or its whole category. */
+	static boolean tracked(SkyTaskParser.Task t) {
+		if (t.category) return categoryTracked(t.name);
 		Data d = data();
-		return SlashHud.config.skyTasksTrackAll ? !d.untracked.contains(key) : d.tracked.contains(key);
+		String key = t.key();
+		boolean all = SlashHud.config.skyTasksTrackAll || categoryTracked(t.tier);
+		return all ? !d.untracked.contains(key) : d.tracked.contains(key);
 	}
 
-	static void toggle(String key) {
+	static boolean categoryTracked(String name) {
+		Set<String> picked = data().trackedCategories;
+		if (picked == null) return false;
+		for (String c : picked) if (c.equalsIgnoreCase(name)) return true;
+		return false;
+	}
+
+	/** A category ticked or unticked in the menu: on the HUD (or off it) at once, opened or not. */
+	static void toggleCategory(String name) {
 		Data d = data();
-		boolean on = !tracked(key);
+		if (d.trackedCategories == null) d.trackedCategories = new LinkedHashSet<>();
+		if (!d.trackedCategories.removeIf(c -> c.equalsIgnoreCase(name))) {
+			d.trackedCategories.add(name);
+			// the whole category: tasks of it left out before come back
+			d.untracked.removeIf(k -> k.substring(0, Math.max(0, k.indexOf('|'))).equalsIgnoreCase(name));
+		}
+		save();
+	}
+
+	static void toggle(SkyTaskParser.Task t) {
+		if (t.category) {
+			toggleCategory(t.name);
+			return;
+		}
+		Data d = data();
+		String key = t.key();
+		boolean on = !tracked(t);
 		if (on) {
 			d.tracked.add(key);
 			d.untracked.remove(key);
@@ -282,7 +324,7 @@ public final class SkyTasks {
 		if (e.button() != InputConstants.MOUSE_BUTTON_MIDDLE || !on(Minecraft.getInstance())) return false;
 		SkyTaskParser.Task t = hovered(screen);
 		if (t == null) return false;
-		toggle(t.key());
+		toggle(t);
 		return true;
 	}
 
@@ -291,7 +333,7 @@ public final class SkyTasks {
 		if (trackKey == null || !trackKey.matches(e) || !on(Minecraft.getInstance())) return false;
 		SkyTaskParser.Task t = hovered(screen);
 		if (t == null) return false;
-		toggle(t.key());
+		toggle(t);
 		return true;
 	}
 
@@ -307,7 +349,7 @@ public final class SkyTasks {
 			SkyTaskParser.Task t = task(tier, slot.getItem());
 			if (t == null) continue;
 			any = true;
-			if (!tracked(t.key())) continue;
+			if (!tracked(t)) continue;
 			// a gold corner, top right
 			int x = at.slashclient$leftPos() + slot.x + 16, y = at.slashclient$topPos() + slot.y;
 			for (int i = 0; i < 5; i++) g.fill(x - 5 + i, y + i, x, y + i + 1, 0xFFFACC15);
@@ -316,12 +358,12 @@ public final class SkyTasks {
 		SkyTaskParser.Task t = hovered(screen);
 		Component keyName = trackKey == null ? Component.literal("?") : trackKey.getTranslatedKeyMessage();
 		Component hint = t == null ? Component.translatable("slashclient-hud.skyTasks.hint", keyName)
-			: Component.translatable(tracked(t.key()) ? "slashclient-hud.skyTasks.untrack" : "slashclient-hud.skyTasks.track", keyName, t.name);
+			: Component.translatable("slashclient-hud.skyTasks." + (tracked(t) ? "untrack" : "track") + (t.category ? "Category" : ""), keyName, t.name);
 		int w = mc.font.width(hint) + 8;
 		int x = at.slashclient$leftPos() + (at.slashclient$imageWidth() - w) / 2;
 		int y = Math.min(screen.height - 14, at.slashclient$topPos() + at.slashclient$imageHeight() + 3);
 		g.fill(x, y, x + w, y + 12, 0xE0101827);
-		g.fill(x, y + 11, x + w, y + 12, t != null && tracked(t.key()) ? 0xFFFACC15 : 0xFF60A5FA);
+		g.fill(x, y + 11, x + w, y + 12, t != null && tracked(t) ? 0xFFFACC15 : 0xFF60A5FA);
 		g.text(mc.font, hint, x + 4, y + 2, 0xFFFFFFFF, false);
 	}
 
@@ -451,7 +493,7 @@ public final class SkyTasks {
 		List<SkyTaskParser.Task> out = new ArrayList<>();
 		HudConfig cfg = SlashHud.config;
 		for (SkyTaskParser.Task t : data().tasks.values()) {
-			if (!tracked(t.key())) continue;
+			if (!tracked(t)) continue;
 			if (cfg.skyTasksHideDone && ready(mc, t)) continue;
 			out.add(t);
 			if (out.size() >= cfg.skyTasksMax) break;
@@ -459,24 +501,55 @@ public final class SkyTasks {
 		return out;
 	}
 
-	/** The tier last open: how many of its tasks are left, and how many are ready to complete. */
-	static int[] tierCount(Minecraft mc) {
+	/** A value of a map keyed by category, whatever the letters' case (the menu's item and the GUI's title). */
+	private static <V> V byTier(Map<String, V> map, String tier) {
+		V v = map.get(tier);
+		if (v != null) return v;
+		for (var e : map.entrySet()) if (e.getKey().equalsIgnoreCase(tier)) return e.getValue();
+		return null;
+	}
+
+	/** A category: how many of its tasks are left, and how many are ready to complete. */
+	static int[] tierCount(Minecraft mc, String tier) {
 		Data d = data();
 		int left = 0, ready = 0;
 		for (SkyTaskParser.Task t : d.tasks.values()) {
-			if (!t.tier.equals(lastTier)) continue;
+			if (!t.tier.equalsIgnoreCase(tier)) continue;
 			left++;
 			if (ready(mc, t)) ready++;
 		}
 		// the menu read after the category: its count is the newer one
-		Integer menu = d.categories.get(lastTier);
-		if (menu != null && menu >= 0 && d.categoriesSeen > d.tierSeen.getOrDefault(lastTier, 0L)) left = menu;
+		Integer menu = byTier(d.categories, tier);
+		Long seen = byTier(d.tierSeen, tier);
+		if (menu != null && menu >= 0 && d.categoriesSeen > (seen == null ? 0L : seen)) left = menu;
 		return new int[] { left, ready };
 	}
 
 	/** The count shown is from this session (the category's GUI, or the menu, open since joining). */
-	private static boolean fresh() {
-		return readNow.contains(lastTier) || (menuReadNow && data().categories.containsKey(lastTier));
+	private static boolean fresh(String tier) {
+		for (String t : readNow) if (t.equalsIgnoreCase(tier)) return true;
+		return menuReadNow && byTier(data().categories, tier) != null;
+	}
+
+	/** A category whose GUI was never open: its tasks are not known yet (only how many, from the menu). */
+	private static boolean unopened(String tier) {
+		return byTier(data().tierSeen, tier) == null;
+	}
+
+	/**
+	 * The categories with a row of their own: the ones tracked, in the menu's order; until the player
+	 * tracks one, the one last open (when that setting is on).
+	 */
+	static List<String> headerTiers() {
+		Data d = data();
+		List<String> out = new ArrayList<>();
+		if (d.trackedCategories != null) {
+			for (String c : d.categories.keySet()) if (categoryTracked(c)) out.add(c);
+			for (String c : d.trackedCategories) if (out.stream().noneMatch(c::equalsIgnoreCase)) out.add(c);
+		} else if (SlashHud.config.skyTasksTierCount && !lastTier.isEmpty()) {
+			out.add(lastTier);
+		}
+		return out;
 	}
 
 	// ---------- on the HUD ----------
@@ -489,12 +562,28 @@ public final class SkyTasks {
 	private static List<Row> rows(Minecraft mc, List<SkyTaskParser.Task> tasks) {
 		HudConfig cfg = SlashHud.config;
 		List<Row> out = new ArrayList<>();
-		if (cfg.skyTasksTierCount && !lastTier.isEmpty()) {
-			int[] c = tierCount(mc);
-			boolean fresh = fresh();
-			out.add(new Row(lastTier, 0xFFA855F7, fresh ? Component.translatable("slashclient-hud.skyTasks.left", c[0], c[1]).getString()
-				: Component.translatable("slashclient-hud.skyTasks.notLoaded").getString(), fresh ? GREY : 0xFFF59E0B, -1, 0));
+		// each category's row with its tasks under it, then the tasks tracked on their own
+		List<SkyTaskParser.Task> left = new ArrayList<>(tasks);
+		for (String tier : headerTiers()) {
+			int[] c = tierCount(mc, tier);
+			boolean fresh = fresh(tier), unopened = unopened(tier);
+			String right = !fresh ? Component.translatable("slashclient-hud.skyTasks.notLoaded").getString()
+				: unopened ? Component.translatable("slashclient-hud.skyTasks.leftOnly", c[0]).getString()
+				: Component.translatable("slashclient-hud.skyTasks.left", c[0], c[1]).getString();
+			out.add(new Row(tier, 0xFFA855F7, right, fresh ? GREY : 0xFFF59E0B, -1, 0));
+			// tracked before it was ever open: the row at once, its tasks once the player looks inside
+			if (unopened && categoryTracked(tier)) out.add(new Row(Component.translatable("slashclient-hud.skyTasks.openCategory").getString(), 0xFFF59E0B, "", 0, -1, 4));
+			List<SkyTaskParser.Task> under = new ArrayList<>();
+			for (SkyTaskParser.Task t : left) if (t.tier.equalsIgnoreCase(tier)) under.add(t);
+			left.removeAll(under);
+			taskRows(mc, under, out);
 		}
+		taskRows(mc, left, out);
+		return out;
+	}
+
+	private static void taskRows(Minecraft mc, List<SkyTaskParser.Task> tasks, List<Row> out) {
+		HudConfig cfg = SlashHud.config;
 		long now = System.currentTimeMillis();
 		for (SkyTaskParser.Task t : tasks) {
 			boolean ready = ready(mc, t);
@@ -522,7 +611,6 @@ public final class SkyTasks {
 			}
 			if (cfg.skyTasksRewards && !t.rewards.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyTasks.reward", String.join(", ", t.rewards)).getString(), 0xFF60A5FA, "", 0, -1, 6));
 		}
-		return out;
 	}
 
 	/** The module's widest (setting, 220 by default): longer task names and lines end with "…". */
@@ -575,7 +663,10 @@ public final class SkyTasks {
 		@Override
 		public boolean visible(Minecraft mc) {
 			if (!onSkyUp(mc)) return false;
-			return !shown(mc).isEmpty() || (SlashHud.config.skyTasksTierCount && !lastTier.isEmpty() && tierCount(mc)[0] > 0);
+			if (!shown(mc).isEmpty()) return true;
+			// a tracked category shows even with nothing loaded or left; the one last open only with tasks left
+			if (data().trackedCategories != null) return !headerTiers().isEmpty();
+			return SlashHud.config.skyTasksTierCount && !lastTier.isEmpty() && tierCount(mc, lastTier)[0] > 0;
 		}
 
 		private List<Row> rowsOrPreview(Minecraft mc) {
@@ -643,7 +734,7 @@ public final class SkyTasks {
 
 	static String debugTracked() {
 		List<String> out = new ArrayList<>();
-		for (String k : data().tasks.keySet()) if (tracked(k)) out.add(k);
+		for (SkyTaskParser.Task t : data().tasks.values()) if (tracked(t)) out.add(t.key());
 		return String.join(",", out);
 	}
 

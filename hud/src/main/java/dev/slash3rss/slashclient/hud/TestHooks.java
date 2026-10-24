@@ -2041,6 +2041,11 @@ public final class TestHooks {
 		return SkyTasks.debugRows(net.minecraft.client.Minecraft.getInstance());
 	}
 
+	/** The categories tracked from the menu, and whether the HUD module shows at all: "Nowicjusz,Wirtuoz visible true". */
+	public static String skyCategoryState() {
+		return String.join(",", SkyTasks.headerTiers()) + " visible " + new SkyTasks.Module().visible(net.minecraft.client.Minecraft.getInstance());
+	}
+
 	public static void skyTasksOptions(boolean rewards, boolean compact) {
 		SlashHud.config.skyTasksRewards = rewards;
 		SlashHud.config.skyTasksCompact = compact;
