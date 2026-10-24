@@ -26,6 +26,7 @@ public final class InvToolsTestHooks {
 		c.slotLock = true;
 		c.lockedSlots = 0;
 		c.screenshotCaption = false;
+		c.mouseTweaks = true;
 	}
 
 	/** No toasts or chat lines (the advancements for the items given) over the screenshots. */

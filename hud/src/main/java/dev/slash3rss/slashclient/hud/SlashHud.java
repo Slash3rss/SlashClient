@@ -153,8 +153,7 @@ public class SlashHud implements ClientModInitializer {
 		ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
 			// inventories: Shift-drag and the wheel move items (MouseTweaks)
 			if (screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> container) {
-				ScreenEvents.afterExtract(screen).register((s, g, mx, my, delta) -> MouseTweaks.frame(container));
-				net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseScroll(screen).register((s, mx, my, h2, v) -> !MouseTweaks.scroll(container, v));
+				MouseTweaks.attach(container);
 				// a search box over the slots, and the locks of hotbar slots
 				InventorySearch.attach(mc, container);
 				SlotLock.attach(container);
@@ -165,7 +164,7 @@ public class SlashHud implements ClientModInitializer {
 				//#if MC >= 26.3
 				net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents.allowKeyPress(screen).register((s, e) -> !SkyDump.key(container, e) && !SkyTasks.key(container, e));
 				net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(screen).register((s, e) -> !SkyTasks.click(container, e));
-				ScreenEvents.afterExtract(screen).register((s, g, mx, my, delta) -> SkyTasks.drawOver(container, g));
+				ContainerLayer.under(container, (g, mx, my) -> SkyTasks.drawOver(container, g));
 				//#endif
 			}
 			// dropped by a server: a way straight back to it

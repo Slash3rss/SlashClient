@@ -10,7 +10,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 
 /**
  * The inventory tools in a survival world: a shulker box's contents in its tooltip, the search
- * box framing what matches, a locked hotbar slot (its lock drawn, Q, the number keys and the
+ * box framing what matches, Shift held and the mouse swept over slots moving each of them, a locked hotbar slot (its lock drawn, Q, the number keys and the
  * offhand key stopped on it, while an unlocked slot still drops), the inventory module on the
  * HUD and in the editor, and F2's screenshot with its caption drawn in.
  */
@@ -65,6 +65,39 @@ public class GameInventoryTools implements FabricClientGameTest {
 			context.waitTicks(5);
 			context.takeScreenshot("invtools-search");
 			context.computeOnClient(mc -> InvToolsTestHooks.search(""));
+
+			// Shift held and the left button swept along a row of the backpack: every slot passed over
+			// goes to the hotbar, also those the cursor jumped across between two frames
+			server.runCommand("item replace entity @p inventory.12 with minecraft:stick 5");
+			server.runCommand("item replace entity @p inventory.13 with minecraft:string 6");
+			server.runCommand("item replace entity @p inventory.14 with minecraft:feather 7");
+			server.runCommand("item replace entity @p inventory.15 with minecraft:bone 8");
+			context.waitTicks(5);
+			// the press on the empty slot before them (the test's clicks carry no Shift for the game's
+			// own Shift-click, which moves the first slot when a player does it)
+			int[] first = context.computeOnClient(mc -> InvToolsTestHooks.slotOnWindow(20));
+			int[] last = context.computeOnClient(mc -> InvToolsTestHooks.slotOnWindow(24));
+			context.getInput().setCursorPos(first[0], first[1]);
+			context.waitTicks(2);
+			context.getInput().holdKey(InputConstants.KEY_LSHIFT);
+			context.getInput().holdMouse(InputConstants.MOUSE_BUTTON_LEFT);
+			context.waitTicks(2);
+			// three slots in one step, then the last one
+			int step = (last[0] - first[0]) / 4;
+			context.getInput().moveCursor(step * 3, 0);
+			context.waitTicks(2);
+			context.getInput().moveCursor(last[0] - first[0] - step * 3, 0);
+			context.waitTicks(2);
+			context.getInput().releaseMouse(InputConstants.MOUSE_BUTTON_LEFT);
+			context.getInput().releaseKey(InputConstants.KEY_LSHIFT);
+			context.waitTicks(10);
+			String swept = context.computeOnClient(mc -> InvToolsTestHooks.item(21) + "," + InvToolsTestHooks.item(22) + "," + InvToolsTestHooks.item(23) + "," + InvToolsTestHooks.item(24)
+				+ "|" + InvToolsTestHooks.item(4) + "," + InvToolsTestHooks.item(5) + "," + InvToolsTestHooks.item(6) + "," + InvToolsTestHooks.item(7));
+			System.out.println("SlashClient test: Shift-drag " + swept);
+			if (!swept.equals("empty,empty,empty,empty|stick x5,string x6,feather x7,bone x8")) throw new AssertionError("Shift-drag over the backpack: " + swept);
+			context.getInput().setCursorPos(4, 4);
+			context.waitTicks(3);
+			context.takeScreenshot("invtools-shift-drag");
 
 			// a locked slot: its lock in the inventory, Q over it and the number key 2 over the diamond do nothing
 			context.runOnClient(mc -> InvToolsTestHooks.lock(1));

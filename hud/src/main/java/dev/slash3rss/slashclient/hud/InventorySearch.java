@@ -77,7 +77,7 @@ public final class InventorySearch {
 			field.setX(at[0] + 14);
 			field.setY(at[1] + 2);
 		});
-		ScreenEvents.afterExtract(screen).register((s, g, mx, my, delta) -> highlight(screen, g));
+		ContainerLayer.under(screen, (g, mx, my) -> highlight(screen, g));
 		// a click anywhere else lets go of the keys
 		//#if MC >= 1.21.9
 		ScreenMouseEvents.allowMouseClick(screen).register((s, e) -> {

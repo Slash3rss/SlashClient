@@ -73,6 +73,13 @@ public class GameInventorySort implements FabricClientGameTest {
 			context.getInput().setCursorPos(4, 4);
 			context.waitTicks(3);
 			context.takeScreenshot("sort-chest-after");
+			// the tooltip of the apple next to the button covers the button, not the other way round
+			int[] apple = context.computeOnClient(mc -> MapSortTestHooks.chestSlotTop(7));
+			context.getInput().setCursorPos(apple[0], apple[1]);
+			context.waitTicks(3);
+			context.takeScreenshot("sort-chest-tooltip");
+			context.getInput().setCursorPos(4, 4);
+			context.waitTicks(2);
 			// sorted again: nothing to do
 			check(context.computeOnClient(mc -> MapSortTestHooks.sort(false)).equals("nothing"), "a sorted chest sorted again");
 

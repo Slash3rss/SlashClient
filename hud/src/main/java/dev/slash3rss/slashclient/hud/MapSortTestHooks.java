@@ -76,6 +76,16 @@ public final class MapSortTestHooks {
 	}
 
 	/** The open window's chest part, slot by slot ("dirt x64,-,…"). */
+	/** The top edge of a slot of the open window's chest part, in window pixels (its tooltip rises above the window). */
+	public static int[] chestSlotTop(int index) {
+		Minecraft mc = Minecraft.getInstance();
+		if (!(Compat.screen(mc) instanceof AbstractContainerScreen<?> screen)) return new int[] { 0, 0 };
+		ContainerScreenAccessor a = (ContainerScreenAccessor) screen;
+		Slot s = screen.getMenu().slots.get(index);
+		double scale = mc.getWindow().getGuiScale();
+		return new int[] { (int) ((a.slashclient$leftPos() + s.x + 8) * scale), (int) ((a.slashclient$topPos() + s.y) * scale) };
+	}
+
 	public static String chest() {
 		Minecraft mc = Minecraft.getInstance();
 		if (!(Compat.screen(mc) instanceof AbstractContainerScreen<?> screen)) return "";
