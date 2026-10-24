@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { downloadAll, httpMessage, netFetch, type DownloadTask, type ProgressFn } from './download';
+import { PresentMods } from './modcheck';
 import { fromCurseForge } from './importers';
 import {
   contentFile, dependencyMark, FOLDERS, mergeManifest, packSnapshot, readManifest, removeContent, safeJoin, writeManifest,
@@ -237,6 +238,7 @@ export async function installCurseForgeProject(
   const queue = [projectId];
   const seen = new Set<string>();
   const present = new Set(await fs.readdir(path.join(gameDir, FOLDERS[type])).catch(() => [] as string[]));
+  const presentMods = new PresentMods(gameDir);
   while (queue.length) {
     const id = queue.shift()!;
     if (seen.has(id)) continue;
@@ -259,6 +261,12 @@ export async function installCurseForgeProject(
         await removeContent(gameDir, old.type, old.filename).catch(() => {});
       }
       await downloadAll([taskOf(file, dest)], onProgress, { verifyHash: true });
+      // a dependency the profile already has under another file (another version, from the modpack): not twice
+      if (type === 'mod' && id !== projectId && await presentMods.duplicateOf(filename)) {
+        await fs.rm(dest, { force: true });
+        continue;
+      }
+      if (type === 'mod') await presentMods.add(filename);
       if (keepDisabled) await fs.rename(dest, `${dest}.disabled`);
       const i = manifest.findIndex((m) => m.source === 'curseforge' && m.projectId === id);
       const entry: ManifestEntry = {

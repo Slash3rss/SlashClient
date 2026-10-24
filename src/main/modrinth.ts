@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { downloadAll, fetchJson, sha1File, type ProgressFn } from './download';
+import { PresentMods } from './modcheck';
 import { t } from '../shared/i18n';
 import { USER_AGENT } from '../shared/version';
 
@@ -354,6 +355,7 @@ export async function installProject(
   const installed: string[] = [];
   const queue = [projectId];
   const seen = new Set<string>();
+  const present = new PresentMods(gameDir);
   while (queue.length) {
     const id = queue.shift()!;
     if (seen.has(id)) continue;
@@ -372,6 +374,12 @@ export async function installProject(
       await removeContent(gameDir, old.type, old.filename).catch(() => {});
     }
     await downloadAll([{ url: file.url, dest, sha1: file.hashes.sha1, size: file.size }], onProgress, { verifyHash: true });
+    // a dependency the profile already has (another version, from a modpack or the other site): not twice
+    if (type === 'mod' && id !== projectId && await present.duplicateOf(path.basename(dest))) {
+      await fs.rm(dest, { force: true });
+      continue;
+    }
+    if (type === 'mod') await present.add(path.basename(dest));
     if (keepDisabled) await fs.rename(dest, `${dest}.disabled`);
 
     const i = manifest.findIndex((m) => m.projectId === id);

@@ -433,6 +433,43 @@ export async function installedModIds(gameDir: string): Promise<Set<string>> {
   return ids;
 }
 
+/**
+ * A dependency just downloaded that the profile already has under another file (another version, from
+ * a modpack, from the other site): its own mod id is provided by a jar that was there before. Read
+ * from the jars themselves, so mods the launcher did not install count too.
+ */
+export class PresentMods {
+  private ids?: Map<string, string>;
+  constructor(private readonly gameDir: string) {}
+
+  /** The other file that already provides `file`'s mod, or undefined (also for jars without metadata). */
+  async duplicateOf(file: string): Promise<string | undefined> {
+    const dir = path.join(this.gameDir, 'mods');
+    if (!this.ids) {
+      this.ids = new Map();
+      for (const f of await fs.readdir(dir).catch(() => [] as string[])) {
+        if (f === file || !/\.jar(\.disabled)?$/.test(f)) continue;
+        const meta = readModMeta(await fs.readFile(path.join(dir, f)).catch(() => Buffer.alloc(0)), f);
+        // only a jar's own mod: a library bundled inside another mod may be older than others need
+        const own = meta?.ids[0];
+        if (own && !this.ids.has(own)) this.ids.set(own, f);
+      }
+    }
+    const meta = readModMeta(await fs.readFile(path.join(dir, file)).catch(() => Buffer.alloc(0)), file);
+    const own = meta?.ids[0];
+    const other = own ? this.ids.get(own) : undefined;
+    return other === file ? undefined : other;
+  }
+
+  /** A file kept after all: its ids count as present for the next dependencies. */
+  async add(file: string): Promise<void> {
+    if (!this.ids) return;
+    const meta = readModMeta(await fs.readFile(path.join(this.gameDir, 'mods', file)).catch(() => Buffer.alloc(0)), file);
+    const own = meta?.ids[0];
+    if (own && !this.ids.has(own)) this.ids.set(own, file);
+  }
+}
+
 /** Reads every enabled jar in mods/ and checks them together. */
 export async function checkModsFolder(gameDir: string, profileLoader: string, gameVersion: string): Promise<ModProblem[]> {
   const dir = path.join(gameDir, 'mods');

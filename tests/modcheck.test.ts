@@ -1,7 +1,10 @@
 import AdmZip from 'adm-zip';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { checkMods, parseModsToml, readModMeta, satisfies, type ModMeta } from '../src/main/modcheck';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { checkMods, parseModsToml, PresentMods, readModMeta, satisfies, type ModMeta } from '../src/main/modcheck';
 import { setLang } from '../src/shared/i18n';
 
 function jar(files: Record<string, string | Buffer>): Buffer {
@@ -118,5 +121,30 @@ versionRange="[1,)"
     assert.deepEqual(checkMods([connector, forgifiedApi, fabricOnly], 'forge', '1.20.1'), []);
     // without Connector a Fabric mod still does not run on Forge
     assert.deepEqual(checkMods([forgifiedApi, fabricOnly], 'forge', '1.20.1').map((p) => p.kind), ['loader']);
+  });
+});
+
+describe('dependencies the profile already has', () => {
+  const toml = (id: string, version: string) => jar({ 'META-INF/mods.toml': `modLoader="javafml"
+loaderVersion="[47,)"
+[[mods]]
+modId="${id}"
+version="${version}"
+` });
+  it('finds a mod already there under another file (another version, from a modpack)', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'present-'));
+    await fs.mkdir(path.join(dir, 'mods'));
+    // the modpack's copy, and a disabled jar of another mod
+    await fs.writeFile(path.join(dir, 'mods', 'sophisticatedcore-1.20.1-1.0.0.jar'), toml('sophisticatedcore', '1.0.0'));
+    await fs.writeFile(path.join(dir, 'mods', 'backpacks.jar.disabled'), toml('sophisticatedbackpacks', '3.0.0'));
+    // just downloaded as a dependency
+    await fs.writeFile(path.join(dir, 'mods', 'sophisticatedcore-1.20.1-1.2.0.jar'), toml('sophisticatedcore', '1.2.0'));
+    await fs.writeFile(path.join(dir, 'mods', 'storage.jar'), toml('sophisticatedstorage', '1.0.0'));
+    const present = new PresentMods(dir);
+    assert.equal(await present.duplicateOf('sophisticatedcore-1.20.1-1.2.0.jar'), 'sophisticatedcore-1.20.1-1.0.0.jar');
+    assert.equal(await present.duplicateOf('storage.jar'), undefined);
+    // a plain jar without metadata is never taken for a duplicate
+    await fs.writeFile(path.join(dir, 'mods', 'lib.jar'), jar({ 'a.txt': 'x' }));
+    assert.equal(await present.duplicateOf('lib.jar'), undefined);
   });
 });
