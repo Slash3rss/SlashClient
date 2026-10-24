@@ -245,6 +245,42 @@ public final class MapSortTestHooks {
 		return MapEntities.drawnWorldMap;
 	}
 
+	/** How each mob was drawn last on a map: "cow:head,silverfish:dot,". */
+	public static String markers(boolean worldMap) {
+		return MapEntities.markers(worldMap ? MapEntities.shownWorldMap : MapEntities.shownMinimap);
+	}
+
+	/** A screen with the faces of the mobs nearby drawn large with their names, to see each face is cut right. */
+	public static net.minecraft.client.gui.screens.Screen facesSheet() {
+		return new net.minecraft.client.gui.screens.Screen(net.minecraft.network.chat.Component.literal("faces")) {
+			@Override
+			public void extractRenderState(net.minecraft.client.gui.GuiGraphicsExtractor g, int mx, int my, float delta) {
+				Minecraft mc = Minecraft.getInstance();
+				g.fill(0, 0, width, height, 0xFF404850);
+				java.util.TreeMap<String, net.minecraft.world.entity.Entity> one = new java.util.TreeMap<>();
+				for (var e : mc.level.entitiesForRendering()) if (MobHeads.listed(e.getType())) one.putIfAbsent(net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).getPath(), e);
+				int i = 0, size = 20, cols = Math.max(1, width / (size + 22));
+				for (var entry : one.entrySet()) {
+					MobHeads.Head head = MobHeads.head(entry.getValue());
+					int x = 10 + (i % cols) * (size + 22), y = 6 + (i / cols) * (size + 12);
+					if (head != null) MobHeads.draw(g, head, x, y, size, size);
+					var pose = g.pose();
+					pose.pushMatrix();
+					pose.translate(x, y + size + 1);
+					pose.scale(0.5f, 0.5f);
+					g.text(mc.font, entry.getKey(), 0, 0, 0xFFFFFFFF, false);
+					pose.popMatrix();
+					i++;
+				}
+			}
+		};
+	}
+
+	/** The textures the faces on a map were cut from, with their sizes. */
+	public static String faceTextures(boolean worldMap) {
+		return MapEntities.textures(worldMap ? MapEntities.shownWorldMap : MapEntities.shownMinimap);
+	}
+
 	private static final java.util.List<net.minecraft.client.player.RemotePlayer> fakePlayers = new java.util.ArrayList<>();
 
 	/**

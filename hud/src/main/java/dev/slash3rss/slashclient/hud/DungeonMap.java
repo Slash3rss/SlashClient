@@ -601,7 +601,7 @@ public final class DungeonMap implements HudModule {
 				else if (!worn.isEmpty() && worn.getItem() instanceof net.minecraft.world.item.BlockItem block && block.getBlock() instanceof net.minecraft.world.level.block.AbstractSkullBlock) {
 					g.fill(x - size / 2 - 1, y - size / 2 - 1, x + size / 2 + 1, y + size / 2 + 1, frame);
 					item(g, worn, x, y, size);
-				} else if (!MobHeads.draw(g, e.getType(), x, y, size, frame)) g.fill(x - 1, y - 1, x + 2, y + 2, frame);
+				} else if (!MobHeads.draw(g, e, x, y, size, frame)) g.fill(x - 1, y - 1, x + 2, y + 2, frame);
 			}
 		}
 	}

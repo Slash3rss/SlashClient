@@ -226,6 +226,7 @@ public final class Minimap implements HudModule {
 			drawn.add(m);
 		}
 		MapEntities.drawnMinimap = MapEntities.describe(drawn);
+		MapEntities.shownMinimap = drawn;
 	}
 
 	/** Friends sharing their position, in this dimension: their face (and nick) on the map, or an arrow on its edge. */
