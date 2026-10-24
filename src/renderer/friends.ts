@@ -14,7 +14,7 @@ import { badgeChoices, rankBadge, rankName, safeColor, type RankView } from './r
 import { createPositionSharing } from './positionSharing';
 import { createPopularSharing } from './friendsPopular';
 import { cleanStream, createStreamsSection, liveBadge, noticeText, streamLine, type FriendStream } from './streams';
-import { canDelete, canEdit, editHint, editedLabel, openMenu, replaceMessage, slowDownSeconds, slowDownText, tombstone, withMenu, type MenuItem } from './chatEdits';
+import { canDelete, canEdit, editHint, editedLabel, fitChatHead, openMenu, refitChatHead, replaceMessage, slowDownSeconds, slowDownText, tombstone, withMenu, type MenuItem } from './chatEdits';
 import { openMediaPanel, removedCard, revealMessage } from './chatMediaPanel';
 import { directSource } from './chatMediaSources';
 import { gifCard, gifConfig, toggleGifPicker } from './gifs';
@@ -557,7 +557,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     listBox = el('div', { className: 'fr-list' });
     chatHead = el('div', { className: 'fr-chat-head' });
     // a narrower window folds the head's buttons into its menu (fitChatHead)
-    new ResizeObserver(() => fitHead()).observe(chatHead);
+    new ResizeObserver(() => refitChatHead(chatHead)).observe(chatHead);
     messagesBox = el('div', { className: 'fr-messages' });
     messagesBox.addEventListener('scroll', () => {
       if (messagesBox.scrollTop < 60 && communities.active()) void communities.loadOlder();
@@ -1308,25 +1308,11 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     const names = el('div', { className: 'grow fr-names' }, el('b', {}, ...rankTag(f.badgeRank), f.name, ...(f.stream ? [' ', liveBadge(f.stream)] : [])),
       el('small', { className: 'muted', textContent: `@${f.handle} · ${f.stream ? streamLine(f.stream) : statusLine(f.presence)}` }));
     chatHead.replaceChildren(avatar(f, f.presence), names, ...actions, more);
-    fitHead = () => fitChatHead(names, extras.map((x) => x.btn), more);
-    fitHead();
+    fitChatHead(chatHead, names, extras.map((x) => x.btn), more);
     renderMessages();
     typingBox.textContent = typing.has(f.id) ? t('{0} pisze…', f.name) : '';
   }
 
-  /**
-   * The chat head's buttons in the width there is: the least important fold into the "more" menu one by
-   * one until the name has room (a narrow window, a long list of buttons).
-   */
-  function fitChatHead(names: HTMLElement, btns: HTMLButtonElement[], more: HTMLButtonElement) {
-    for (const b of btns) b.classList.remove('fr-folded');
-    more.classList.add('hidden');
-    const tight = () => names.clientWidth < 110 || chatHead.scrollWidth > chatHead.clientWidth + 1;
-    if (!chatHead.isConnected || !tight()) return;
-    more.classList.remove('hidden');
-    for (let i = btns.length - 1; i >= 0 && tight(); i--) btns[i].classList.add('fr-folded');
-  }
-  let fitHead: () => void = () => {};
 
   /** "Join me": the server to invite to, filled in with where the player is or played last. */
   async function openInvite(f: Friend) {
