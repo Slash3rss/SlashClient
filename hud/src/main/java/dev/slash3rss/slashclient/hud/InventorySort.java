@@ -145,10 +145,9 @@ public final class InventorySort {
 		//$ 	return !press(mc, screen, hovered(screen));
 		//$ });
 		//#endif
-		net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.afterExtract(screen).register((s, g, mx, my, delta) -> {
-			drawButtons(screen, g, mx, my);
-			pump(mc);
-		});
+		// the buttons under the item tooltips; the clicks every frame
+		ContainerLayer.under(screen, (g, mx, my) -> drawButtons(screen, g, mx, my));
+		net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.afterExtract(screen).register((s, g, mx, my, delta) -> pump(mc));
 		net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.remove(screen).register(s -> {
 			if (job != null && job.screen == screen) stop("closed");
 		});

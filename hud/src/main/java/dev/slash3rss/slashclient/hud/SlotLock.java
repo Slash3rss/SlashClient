@@ -117,7 +117,7 @@ public final class SlotLock {
 
 	public static void attach(AbstractContainerScreen<?> screen) {
 		if (screen instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen) return;
-		net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.afterExtract(screen).register((s, g, mx, my, delta) -> drawSlots(screen, g));
+		ContainerLayer.under(screen, (g, mx, my) -> drawSlots(screen, g));
 		//#if MC >= 1.21.9
 		net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents.allowKeyPress(screen).register((s, e) -> !(key != null && key.matches(e) && toggleHovered(screen)));
 		//#else

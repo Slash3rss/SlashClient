@@ -39,6 +39,7 @@
 		"FreelookMixin",
 		"GpuTimerMixin",
 		"ContainerScreenAccessor",
+		"ContainerLayerMixin",
 		"DebugVersionMixin",
 		"EditServerScreenMixin",
 		"GuiGraphicsAccessor",
