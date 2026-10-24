@@ -33,9 +33,9 @@ import { paths } from './paths';
 import { loadStore, newProfile, orphanProfiles, profileGameDir, saveStore, secrets, setSecretCodec, storeRecovered, type MicrosoftAccount, type Profile, type Settings, type StoreData } from './store';
 import { LOADER_NAMES, loaderVersions, type Loader } from './loaders';
 import {
-  checkUpdates, datapackFile, downloadModpack, identifyModpack, installMrpack, installProject, latestModpackVersion, listContentVersions,
-  findFitting, modrinthLinks, installedProjectIds, listInstalled, removeContent, search, setEnabled, updateMrpack,
-  type ContentType, type ModpackInfo, type ProjectType, type UpdateInfo, type VersionInfo,
+  checkUpdates, contentFile, datapackFile, downloadModpack, identifyModpack, installMrpack, installProject, latestModpackVersion, listContentVersions,
+  findFitting, modrinthLinks, installedProjectIds, listInstalled, readManifest, removeContent, search, setEnabled, updateMrpack,
+  type ContentType, type InstallRole, type ModpackInfo, type ProjectType, type UpdateInfo, type VersionInfo,
 } from './modrinth';
 import {
   checkCurseForgeUpdates, curseForgeLinks, curseForgePackIcon, CurseForgeUnavailable, downloadCurseForgePack, installCurseForgePack, installCurseForgeProject, isCurseForgePack, readCursePack,
@@ -61,7 +61,8 @@ import { ConsoleHistory } from './consoleHistory';
 
 /** Every game session's console, kept for the Play screen (the last ones of each profile). */
 const consoleHistory = new ConsoleHistory(path.join(paths.root, 'console'));
-import { checkModsFolder, installedModIds } from './modcheck';
+import { checkModsFolder, inspectModsFolder, installedModIds, type ModOrigin } from './modcheck';
+import { binContent, emptyBin, restoreContent } from './contentBin';
 import { addModsArgs, hudVersions, prepareHud } from './hud';
 import { exportHud, importHud } from './hudShare';
 import { readBenchmarks } from './benchmark';
@@ -575,7 +576,14 @@ handle('content:search', async (profileId: string, query: string, type: ProjectT
     throw err;
   }
 });
-handle('content:list', async (profileId: string) => listInstalled((await profileTarget(profileId)).gameDir));
+/** Removed files whose notification is long gone (the launcher was closed meanwhile) go to the system trash. */
+const BIN_KEEP_MS = 30 * 60_000;
+const trashFile = (file: string) => shell.trashItem(file);
+handle('content:list', async (profileId: string) => {
+  const { gameDir } = await profileTarget(profileId);
+  void emptyBin(gameDir, trashFile, { olderThanMs: BIN_KEEP_MS }).catch(() => {});
+  return listInstalled(gameDir);
+});
 /** A resource pack's textures next to the game's, before installing it (packPreview.ts). */
 handle('content:packPreview', async (profileId: string, projectId: string, source: Source = 'modrinth', versionId?: string) => {
   const { gameVersion } = await profileTarget(profileId);
@@ -611,8 +619,8 @@ handle('content:update', async (profileId: string, items: Pick<UpdateInfo, 'type
       task.progress(t('{0} ({1}/{2})', item.title, i + 1, items.length), i, items.length);
       if (item.source === 'curseforge') {
         curseforge();
-        await installCurseForgeProject(gameDir, item.projectId, item.type, gameVersion, profile.loader, undefined, item.latestVersionId);
-      } else await installProject(gameDir, item.projectId, item.type, gameVersion, profile.loader, undefined, item.latestVersionId);
+        await installCurseForgeProject(gameDir, item.projectId, item.type, gameVersion, profile.loader, undefined, item.latestVersionId, 'keep');
+      } else await installProject(gameDir, item.projectId, item.type, gameVersion, profile.loader, undefined, item.latestVersionId, 'keep');
     }
     task.finish(true, items.length === 1 ? t('Zaktualizowano {0}.', items[0].title) : t('Zaktualizowano {0} elementów.', items.length));
   } catch (err) {
@@ -716,7 +724,7 @@ handle('perf:plan', async (profileId: string): Promise<PerfPlanItem[]> => {
   }));
 });
 /** Installs several Modrinth mods (with their dependencies) as one task. */
-async function installMany(profileId: string, items: { projectId: string; title: string }[], title: string) {
+async function installMany(profileId: string, items: { projectId: string; title: string }[], title: string, role: InstallRole = 'direct') {
   const { profile, gameDir, gameVersion } = await profileTarget(profileId);
   const task = startTask(title);
   const done: string[] = [];
@@ -724,7 +732,7 @@ async function installMany(profileId: string, items: { projectId: string; title:
   for (const [i, item] of items.entries()) {
     task.progress(t('{0} ({1}/{2})', item.title, i + 1, items.length), i, items.length);
     try {
-      done.push(...(await installProject(gameDir, item.projectId, 'mod', gameVersion, profile.loader)));
+      done.push(...(await installProject(gameDir, item.projectId, 'mod', gameVersion, profile.loader, undefined, undefined, role)));
     } catch {
       failed.push(item.title);
     }
@@ -737,6 +745,18 @@ handle('perf:install', (profileId: string, items: { projectId: string; title: st
 handle('mods:check', async (profileId: string) => {
   const { profile, gameDir, gameVersion } = await profileTarget(profileId);
   return checkModsFolder(gameDir, profile.loader, gameVersion);
+});
+/** The Installed list's dependency tree ("Wymaga", "Potrzebny dla") with the same check as above, from one read of the jars. */
+handle('mods:graph', async (profileId: string) => {
+  const { profile, gameDir, gameVersion } = await profileTarget(profileId);
+  const manifest = await readManifest(gameDir);
+  const originOf = (file: string): ModOrigin => {
+    const entry = manifest.find((m) => m.type === 'mod' && m.filename === file);
+    // not in the launcher's notes at all: the player put it there by hand
+    if (!entry) return 'direct';
+    return entry.dependency === true ? 'dependency' : entry.dependency === false ? 'direct' : 'unknown';
+  };
+  return inspectModsFolder(gameDir, profile.loader, gameVersion, originOf);
 });
 /** Looks the missing mod ids up on Modrinth (id = slug for most mods), then CurseForge, and installs those found. */
 handle('mods:fixMissing', async (profileId: string, ids: string[]) => {
@@ -751,7 +771,8 @@ handle('mods:fixMissing', async (profileId: string, ids: string[]) => {
     if (hit && !found.some((f) => f.projectId === hit!.projectId)) found.push({ projectId: hit.projectId, title: hit.title });
     else if (!hit) notFound.push(id);
   }
-  if (found.length) await installMany(profileId, found, t('Brakujące mody'));
+  // other mods need them: they count as dependencies (offered for removal once nothing needs them)
+  if (found.length) await installMany(profileId, found, t('Brakujące mody'), 'dependency');
   // not on Modrinth: CurseForge, a project whose address name is the mod's id
   const fromCurse: string[] = [];
   for (const id of [...notFound]) {
@@ -761,7 +782,7 @@ handle('mods:fixMissing', async (profileId: string, ids: string[]) => {
       const { hits } = await searchCurseForge({ query: id.replace(/[_-]/g, ' '), type: 'mod', gameVersion, loader: profile.loader });
       const hit = hits.find((h) => slugs.has(h.slug));
       if (!hit) continue;
-      const { installed } = await installCurseForgeProject(gameDir, hit.id, 'mod', gameVersion, profile.loader, () => {});
+      const { installed } = await installCurseForgeProject(gameDir, hit.id, 'mod', gameVersion, profile.loader, () => {}, undefined, 'dependency');
       fromCurse.push(...installed);
       notFound.splice(notFound.indexOf(id), 1);
     } catch {
@@ -929,6 +950,27 @@ handle('content:toggle', async (profileId: string, type: ContentType, filename: 
   setEnabled((await profileTarget(profileId)).gameDir, type, filename, enabled));
 handle('content:remove', async (profileId: string, type: ContentType, filename: string) =>
   removeContent((await profileTarget(profileId)).gameDir, type, filename));
+type ContentRef = { type: ContentType; filename: string };
+const contentRefs = (items: unknown): ContentRef[] => (Array.isArray(items) ? items : [])
+  .filter((i): i is ContentRef => !!i && typeof i.filename === 'string' && ['mod', 'resourcepack', 'shader'].includes(i.type));
+/** Several at once (the Installed list's selection); those already in that state are left alone. */
+handle('content:toggleMany', async (profileId: string, items: unknown, enabled: boolean) => {
+  const { gameDir } = await profileTarget(profileId);
+  let changed = 0;
+  for (const { type, filename } of contentRefs(items)) {
+    const file = contentFile(gameDir, type, filename);
+    const on = await fsp.access(file).then(() => true, () => false);
+    const off = await fsp.access(`${file}.disabled`).then(() => true, () => false);
+    if ((enabled && !off) || (!enabled && !on)) continue;
+    await setEnabled(gameDir, type, filename, !!enabled);
+    changed++;
+  }
+  return changed;
+});
+/** Removal with a way back: the files go aside in the profile ("Cofnij"), then to the system trash. */
+handle('content:bin', async (profileId: string, items: unknown) => binContent((await profileTarget(profileId)).gameDir, contentRefs(items)));
+handle('content:unbin', async (profileId: string, id: string) => restoreContent((await profileTarget(profileId)).gameDir, String(id)));
+handle('content:binDone', async (profileId: string, id: string) => emptyBin((await profileTarget(profileId)).gameDir, trashFile, { id: String(id) }));
 
 /** Creates a new profile from a .mrpack file and returns its id. */
 /**

@@ -5,8 +5,8 @@ import path from 'node:path';
 import { downloadAll, httpMessage, netFetch, type DownloadTask, type ProgressFn } from './download';
 import { fromCurseForge } from './importers';
 import {
-  contentFile, FOLDERS, mergeManifest, packSnapshot, readManifest, removeContent, safeJoin, writeManifest,
-  type ContentType, type ManifestEntry, type ModpackInfo, type ProjectHit, type ProjectType, type StageProgress, type UpdateInfo, type VersionInfo,
+  contentFile, dependencyMark, FOLDERS, mergeManifest, packSnapshot, readManifest, removeContent, safeJoin, writeManifest,
+  type ContentType, type InstallRole, type ManifestEntry, type ModpackInfo, type ProjectHit, type ProjectType, type StageProgress, type UpdateInfo, type VersionInfo,
 } from './modrinth';
 import type { ManualFile } from './manualFiles';
 import { t } from '../shared/i18n';
@@ -211,6 +211,7 @@ export async function installCurseForgeProject(
   loader: string | undefined,
   onProgress?: ProgressFn,
   fileId?: string,
+  role: InstallRole = 'direct',
 ): Promise<{ installed: string[]; manual: ManualFile[] }> {
   const manifest = await readManifest(gameDir);
   const installed: string[] = [];
@@ -241,10 +242,11 @@ export async function installCurseForgeProject(
       }
       await downloadAll([taskOf(file, dest)], onProgress, { verifyHash: true });
       if (keepDisabled) await fs.rename(dest, `${dest}.disabled`);
+      const i = manifest.findIndex((m) => m.source === 'curseforge' && m.projectId === id);
       const entry: ManifestEntry = {
         type, filename, projectId: id, versionId: String(file.id), versionNumber: file.displayName || filename, title: mod.name, iconUrl: mod.logo?.thumbnailUrl || undefined, source: 'curseforge',
+        ...dependencyMark(id === projectId, role, manifest[i]),
       };
-      const i = manifest.findIndex((m) => m.source === 'curseforge' && m.projectId === id);
       if (i >= 0) manifest[i] = entry;
       else manifest.push(entry);
       installed.push(mod.name);

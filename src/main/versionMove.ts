@@ -249,6 +249,8 @@ export async function applyMove(opts: ApplyOptions): Promise<MoveReport> {
       title: item.title, ...(item.iconUrl ? { iconUrl: item.iconUrl } : {}),
     };
     const at = manifest.findIndex((m) => m.type === 'mod' && (m.filename === item.filename || m.projectId === next.project_id));
+    // a library pulled in as a dependency stays one in the new version
+    if (at >= 0 && manifest[at].dependency !== undefined) entry.dependency = manifest[at].dependency;
     if (at >= 0) manifest[at] = entry;
     else manifest.push(entry);
     moved.push(next);
