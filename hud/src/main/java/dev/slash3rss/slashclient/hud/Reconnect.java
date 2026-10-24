@@ -34,13 +34,35 @@ final class Reconnect {
 		// one is enough: ours from an earlier init of this screen, or another mod's (Auto Reconnect and the like)
 		String ours = Component.translatable("slashclient-hud.reconnect").getString().toLowerCase(java.util.Locale.ROOT);
 		for (var w : widgets) {
+			// ours, kept through a new init of the screen (a resized window): placed again and followed again
+			if (w instanceof Button own && mine.contains(own)) {
+				follow(screen, own);
+				return;
+			}
 			String text = w.getMessage().getString().toLowerCase(java.util.Locale.ROOT);
 			if (text.contains(ours) || text.contains("reconnect")) return;
 		}
-		int bottom = widgets.stream().mapToInt(w -> w.getY() + w.getHeight()).max().orElse(screen.height / 2);
 		ServerData data = last;
-		widgets.add(Button.builder(Component.translatable("slashclient-hud.reconnect"), b -> join(mc, data))
-			.bounds(screen.width / 2 - 100, Math.min(screen.height - 24, bottom + 4), 200, 20).build());
+		Button button = Button.builder(Component.translatable("slashclient-hud.reconnect"), b -> join(mc, data)).bounds(0, 0, 200, 20).build();
+		mine.add(button);
+		widgets.add(button);
+		follow(screen, button);
+	}
+
+	/** Our buttons (not another mod's "Reconnect"). */
+	private static final java.util.Set<Button> mine = java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>());
+
+	/** Placed now, and every frame after: a resized window moves the game's buttons, ours goes with them. */
+	private static void follow(Screen screen, Button button) {
+		place(screen, button);
+		net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.afterExtract(screen).register((s, g, mx, my, delta) -> place(screen, button));
+	}
+
+	/** Centred under the screen's own buttons (kept on screen). */
+	private static void place(Screen screen, Button button) {
+		int bottom = Screens.getWidgets(screen).stream().filter(w -> w != button).mapToInt(w -> w.getY() + w.getHeight()).max().orElse(screen.height / 2);
+		button.setX(screen.width / 2 - 100);
+		button.setY(Math.min(screen.height - 24, bottom + 4));
 	}
 
 	private static void join(Minecraft mc, ServerData data) {

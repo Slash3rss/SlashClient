@@ -127,6 +127,19 @@ public class GameSessionRenew implements FabricClientGameTest {
 			});
 			context.waitTicks(3);
 			if (reconnects(context) != 1) throw new AssertionError("Reconnect buttons: " + reconnects(context));
+			// a smaller window: the button follows the game's buttons, centred
+			context.getInput().resizeWindow(700, 420);
+			context.waitTicks(4);
+			String placed = context.computeOnClient(mc -> {
+				var s = dev.slash3rss.slashclient.hud.Compat.screen(mc);
+				var w = Screens.getWidgets(s).stream().filter(x -> x.getMessage().getString().equalsIgnoreCase("Reconnect") || x.getMessage().getString().equals("Połącz ponownie")).findFirst().orElseThrow();
+				int othersBottom = Screens.getWidgets(s).stream().filter(x -> x != w).mapToInt(x -> x.getY() + x.getHeight()).max().orElse(0);
+				return (w.getX() + w.getWidth() / 2 == s.width / 2) + " " + (w.getY() >= othersBottom && w.getY() + w.getHeight() <= s.height);
+			});
+			context.takeScreenshot("reconnect-resized");
+			context.getInput().resizeWindow(854, 480);
+			context.waitTicks(4);
+			if (!placed.equals("true true")) throw new AssertionError("Reconnect after a resize: " + placed);
 			context.setScreen(() -> new DisconnectedScreen(new TitleScreen(), Component.translatable("connect.failed"), Component.literal("Timed out")) {
 				@Override
 				protected void init() {
