@@ -1,7 +1,7 @@
 import { locale, t } from '../shared/i18n';
 import { logoFromFile, logoUrl, stageLogo } from './clanLogo';
 import { confirmDialog, control, el, icon, modalWindow } from './dialog';
-import { editHint, editedLabel, openMenu, replaceMessage, tombstone, withMenu, type MenuItem } from './chatEdits';
+import { editHint, editedLabel, fitChatHead, foldedItems, openMenu, replaceMessage, tombstone, withMenu, type MenuItem } from './chatEdits';
 import { disabledText, featureOn } from './features';
 import { channelClosed, channelsWindow, communityCan, customRolePick, logWindow as moderationLog, roleChip, rolesWindow, type ChannelAccess, type CustomRole, type ManageDeps, type RoleTag } from './communityRoles';
 import { createCommunityLinks, linkLogName, type CommunityServer } from './communityLinks';
@@ -881,9 +881,11 @@ export function createCommunities(deps: Deps) {
     // what waits for the staff shows on "…" too
     const waiting = (communityCan(c, 'requests') ? c.pending ?? 0 : 0) + (communityCan(c, 'reports') ? c.reports ?? 0 : 0);
     let moreButton: HTMLButtonElement = el('button', { type: 'button' });
-    if (more.length) button('fa-ellipsis', t('Więcej'), (b) => {
+    // a narrow window: pins and notifications wait in "…" too, so the name keeps its room
+    const foldable = actions.slice(1) as HTMLButtonElement[];
+    button('fa-ellipsis', t('Więcej'), (b) => {
       moreButton = b;
-      openMenu(b, more);
+      openMenu(b, [...foldedItems(foldable), ...more]);
     }, waiting, openChannel?.slowMode ? ' on' : '');
     const tabs = el('div', { className: 'fr-com-tabs' }, ...c.channels.map((ch) => {
       const b = el('button', { type: 'button', className: `fr-com-tab${ch.id === open?.channel ? ' active' : ''}` }, icon(ch.kind === 'announcements' ? 'fa-bullhorn' : channelClosed(ch) ? 'fa-lock' : 'fa-hashtag'), ` ${channelName(ch)}`);
@@ -898,11 +900,12 @@ export function createCommunities(deps: Deps) {
       tabs.scrollLeft += e.deltaY;
     }, { passive: false });
     requestAnimationFrame(() => tabs.querySelector<HTMLElement>('.fr-com-tab.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
-    head.replaceChildren(communityAvatar(c),
-      el('div', { className: 'grow fr-names' }, extras.name(c),
-        el('small', { className: 'muted', textContent: `${subline(c)} · ${communityRoleText(c.role)}` })),
+    const names = el('div', { className: 'grow fr-names' }, extras.name(c),
+      el('small', { className: 'muted', textContent: `${subline(c)} · ${communityRoleText(c.role)}` }));
+    head.replaceChildren(communityAvatar(c), names,
       // the channels in a row of their own under the name and the buttons (own channels make many), then the game server
       ...actions, tabs, extras.serverStrip(c.server));
+    fitChatHead(head, names, foldable, actions[actions.length - 1] as HTMLButtonElement, more.length > 0);
     renderNote();
     renderMessages();
     ticker ??= setInterval(tick, 1000);

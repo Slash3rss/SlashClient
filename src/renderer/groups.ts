@@ -1,7 +1,7 @@
 import { locale, t } from '../shared/i18n';
 import { logoFromFile, logoUrl, stageLogo } from './clanLogo';
 import { confirmDialog, control, el, icon, modalWindow } from './dialog';
-import { canDelete, canEdit, editHint, editedLabel, replaceMessage, tombstone, withMenu, type MenuItem, type Moderator } from './chatEdits';
+import { canDelete, canEdit, editHint, editedLabel, fitChatHead, foldedItems, openMenu, replaceMessage, tombstone, withMenu, type MenuItem, type Moderator } from './chatEdits';
 import { disabledText, featureOn } from './features';
 import { openMediaPanel, removedCard, revealMessage } from './chatMediaPanel';
 import { groupSource } from './chatMediaSources';
@@ -417,9 +417,13 @@ export function createGroups(deps: Deps) {
     const subtitle = g.clan && clan
       ? t('[{0}] · {1}/{2} online', clan.tag, clan.members.filter((m) => m.online).length, clan.members.length)
       : t('Członkowie ({0}): {1}', g.members.length, others.map((m) => m.name).join(', '));
-    head.replaceChildren(groupAvatar(g),
-      el('div', { className: 'grow fr-names' }, el('b', { textContent: g.clan && clan ? clan.name : g.name }), el('small', { className: 'muted', textContent: subtitle })),
-      ...actions);
+    // a narrow window: the buttons that do not fit wait in "more" (the last ones first)
+    const btns = actions as HTMLButtonElement[];
+    const more = el('button', { type: 'button', className: 'icon-btn hidden', title: t('Więcej') }, icon('fa-ellipsis'));
+    more.addEventListener('click', () => openMenu(more, foldedItems(btns)));
+    const names = el('div', { className: 'grow fr-names' }, el('b', { textContent: g.clan && clan ? clan.name : g.name }), el('small', { className: 'muted', textContent: subtitle }));
+    head.replaceChildren(groupAvatar(g), names, ...actions, more);
+    fitChatHead(head, names, btns, more);
     renderMessages();
   }
 

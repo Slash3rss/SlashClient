@@ -65,6 +65,42 @@ export function editedLabel(editedAt: number): HTMLElement {
 
 export interface MenuItem { label: string; icon: string; danger?: boolean; hint?: string; run: () => void }
 
+/** The latest fitting of each chat head, run again when the head changes size (a resized window). */
+const headFits = new WeakMap<HTMLElement, () => void>();
+
+/**
+ * A chat head's buttons in the width there is: the least important (the last ones) fold into the "more"
+ * menu one by one until the name has room (a narrow window, a long list of buttons). The "more" button
+ * shows only while something is folded, unless it has entries of its own (`keepMore`).
+ */
+export function fitChatHead(head: HTMLElement, names: HTMLElement, btns: HTMLButtonElement[], more: HTMLButtonElement, keepMore = false) {
+  const fit = () => {
+    for (const b of btns) b.classList.remove('fr-folded');
+    more.classList.toggle('hidden', !keepMore);
+    const tight = () => names.clientWidth < 110 || head.scrollWidth > head.clientWidth + 1;
+    if (!head.isConnected || !names.isConnected || !tight()) return;
+    more.classList.remove('hidden');
+    for (let i = btns.length - 1; i >= 0 && tight(); i--) btns[i].classList.add('fr-folded');
+  };
+  headFits.set(head, fit);
+  fit();
+}
+
+export const refitChatHead = (head: HTMLElement) => headFits.get(head)?.();
+
+/** The "more" menu's entries for a head's folded buttons: their tooltips, icons and clicks. */
+export function foldedItems(btns: HTMLButtonElement[]): MenuItem[] {
+  return btns.filter((b) => b.classList.contains('fr-folded')).map((b) => {
+    const count = b.querySelector('.fr-btn-count')?.textContent;
+    return {
+      label: count ? `${b.title} (${count})` : b.title,
+      icon: [...(b.querySelector('i')?.classList ?? [])].find((c) => c.startsWith('fa-') && !['fa-solid', 'fa-regular', 'fa-brands'].includes(c)) ?? 'fa-ellipsis',
+      danger: b.classList.contains('danger'),
+      run: () => b.click(),
+    };
+  });
+}
+
 /**
  * The small "…" button by a bubble (shown on hover) and its menu; nothing when there is nothing to do.
  * The bubble and the button share a row, the button towards the middle of the chat.

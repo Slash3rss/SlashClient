@@ -755,6 +755,8 @@ function renderPlay() {
 
   const profile = store.profiles.find((p) => p.id === profileSel.value) ?? store.profiles[0];
   $('#hero-title').textContent = profile?.name ?? 'Minecraft';
+  // a long name is cut to two lines; the whole of it on hover
+  $('#hero-title').title = profile?.name ?? '';
   const heroIcon = $<HTMLImageElement>('#hero-icon');
   if (profile && heroIcon.getAttribute('src') !== profileIconUrl(profile)) heroIcon.src = profileIconUrl(profile);
   heroIcon.classList.toggle('custom', profile?.icon === 'custom');
