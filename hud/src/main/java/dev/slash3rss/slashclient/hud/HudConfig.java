@@ -437,6 +437,8 @@ public final class HudConfig {
 	public boolean serverFriends = true;
 	/** "● NA ŻYWO" above SlashClient players live on Twitch or Kick with Minecraft (Badges.liveLabel). */
 	public boolean liveNametags = true;
+	/** Other players' ping after their name above the head, on servers (NametagPing). */
+	public boolean nametagPing = false;
 	/** The live chats of a Twitch and a Kick channel on the HUD (see StreamChatModule). */
 	public dev.slash3rss.slashclient.hud.streams.StreamChatSettings twitchChat = new dev.slash3rss.slashclient.hud.streams.StreamChatSettings();
 	public dev.slash3rss.slashclient.hud.streams.StreamChatSettings kickChat = new dev.slash3rss.slashclient.hud.streams.StreamChatSettings();
@@ -794,6 +796,7 @@ public final class HudConfig {
 		friendPlayingToasts = other.friendPlayingToasts;
 		serverFriends = other.serverFriends;
 		liveNametags = other.liveNametags;
+		nametagPing = other.nametagPing;
 		twitchChat = other.twitchChat == null ? new dev.slash3rss.slashclient.hud.streams.StreamChatSettings() : other.twitchChat.copy();
 		kickChat = other.kickChat == null ? new dev.slash3rss.slashclient.hud.streams.StreamChatSettings() : other.kickChat.copy();
 		spotify = other.spotify == null ? new dev.slash3rss.slashclient.hud.spotify.SpotifySettings() : other.spotify.copy();
