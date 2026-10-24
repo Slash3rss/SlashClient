@@ -1,4 +1,5 @@
 import AdmZip from 'adm-zip';
+import { existsSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { downloadAll, type ByteStats, type DownloadTask } from './download';
@@ -77,10 +78,35 @@ function libraryTasks(version: VersionJson): DownloadTask[] {
   return tasks;
 }
 
+/**
+ * Empties a natives folder. A game of this version still running (a second instance being started)
+ * keeps some of its files open, which Windows does not let go (EPERM/EBUSY): those stay, the rest goes.
+ */
+export async function clearNatives(dir: string): Promise<void> {
+  try {
+    await fs.rm(dir, { recursive: true, force: true });
+    return;
+  } catch {
+    // some file is in use: one by one below
+  }
+  const walk = async (d: string) => {
+    for (const e of await fs.readdir(d, { withFileTypes: true }).catch(() => [])) {
+      const full = path.join(d, e.name);
+      if (e.isDirectory()) {
+        await walk(full);
+        await fs.rmdir(full).catch(() => {});
+      } else {
+        await fs.rm(full, { force: true }).catch(() => {});
+      }
+    }
+  };
+  await walk(dir);
+}
+
 /** Unpacks legacy natives jars (LWJGL 2 / early LWJGL 3) into the version's natives directory. */
 async function extractNatives(version: VersionJson): Promise<void> {
   const dir = paths.natives(version.id);
-  await fs.rm(dir, { recursive: true, force: true });
+  await clearNatives(dir);
   await fs.mkdir(dir, { recursive: true });
   for (const lib of activeLibraries(version)) {
     const classifier = nativeClassifier(lib);
@@ -90,7 +116,12 @@ async function extractNatives(version: VersionJson): Promise<void> {
     const zip = new AdmZip(path.join(paths.libraries, native.path));
     for (const entry of zip.getEntries()) {
       if (entry.isDirectory || excludes.some((ex) => entry.entryName.startsWith(ex))) continue;
-      zip.extractEntryTo(entry, dir, true, true);
+      try {
+        zip.extractEntryTo(entry, dir, true, true);
+      } catch (err) {
+        // the same library still open in a running game of this version: the file there is the one it needs
+        if (!existsSync(path.join(dir, entry.entryName))) throw err;
+      }
     }
   }
 }
