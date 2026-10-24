@@ -218,6 +218,7 @@ public class SlashHud implements ClientModInitializer {
 			dev.slash3rss.slashclient.hud.social.FriendPositions.tick(mc);
 			// once a minute on a server: the players in sight, for friend suggestions (only SlashClient players are kept)
 			dev.slash3rss.slashclient.hud.social.FriendSuggestions.tick(mc);
+			BenchDisplay.tick(mc);
 			StreamChatModule.tick(mc);
 			SpotifyModule.tick(mc);
 			//#if MC >= 26.3

@@ -81,6 +81,8 @@ export interface Settings {
   closeOnLaunch: boolean;
   /** "Podsumowanie sesji" after the game closes; missing = on. */
   sessionSummary?: boolean;
+  /** The window the Benchmark runs in: as the game opens it (''), full screen, or a borderless window over the screen. */
+  benchDisplay?: '' | 'fullscreen' | 'borderless';
   /** System notifications (Windows toasts, macOS Notification Center) while the launcher is in the background; missing = on. */
   systemNotifications?: boolean;
   /** Whether those notifications play the system's sound; missing = off. */

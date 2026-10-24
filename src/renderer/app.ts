@@ -75,7 +75,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -1027,6 +1027,12 @@ async function benchmarkFromProfile(profileId: string) {
 }
 
 $('#bench-run').addEventListener('click', () => editingId && benchmarkFromProfile(editingId));
+// the window the Benchmark runs in, remembered for the next runs (the Java comparison too)
+$<HTMLSelectElement>('#bench-display').addEventListener('change', (e) => {
+  const benchDisplay = (e.target as HTMLSelectElement).value as '' | 'fullscreen' | 'borderless';
+  store.settings.benchDisplay = benchDisplay;
+  void guard(() => api.saveSettings({ benchDisplay }));
+});
 
 api.on('benchmark:done', ({ profileId, result, before }: { profileId: string; result: BenchmarkResult; before?: BenchmarkResult }) => {
   const change = before && before.fps.avg > 0 ? ((result.fps.avg - before.fps.avg) / before.fps.avg) * 100 : undefined;
@@ -1038,6 +1044,7 @@ api.on('benchmark:done', ({ profileId, result, before }: { profileId: string; re
 });
 
 function loadProfileForm(profile: Profile) {
+  $<HTMLSelectElement>('#bench-display').value = store.settings.benchDisplay ?? '';
   renderBenchmarks(profile.id);
   void renderBenchTarget(profile.id);
   profileFiles.renderSnapshots(profile.id, $('#snapshot-list'));

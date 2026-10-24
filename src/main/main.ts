@@ -1729,6 +1729,9 @@ async function launchGame(profileId: string, accountId: string, server?: string,
     }
     // runs one after another (the Java comparison): the game closes by itself after the run
     if (extras.quitAfterBenchmark) hud.jvmArgs.push('-Dslashclient.benchmark.quit=true');
+    // full screen or a borderless window, for this run only (the mod switches the window, options.txt stays)
+    const display = store.settings.benchDisplay;
+    if (display === 'fullscreen' || display === 'borderless') hud.jvmArgs.push(`-Dslashclient.benchmark.display=${display}`);
   }
   const benchmarksBefore = benchmark ? (await readBenchmarks(profileGameDir(profile)))[0]?.at ?? 0 : 0;
   const activityVersion = `${await resolveVersionId(profile.versionId)}${loaderName}`;
