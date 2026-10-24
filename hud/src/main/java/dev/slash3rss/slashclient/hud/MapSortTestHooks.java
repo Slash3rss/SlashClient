@@ -217,5 +217,49 @@ public final class MapSortTestHooks {
 		Minecraft mc = Minecraft.getInstance();
 		Waypoints.addShared(Waypoints.worldKey(mc), name, x, y, z, Waypoints.dimension(mc), from);
 	}
+
+	// ---------- players and mobs on the maps ----------
+
+	public static void mapEntities(boolean players, boolean hostile, boolean passive) {
+		SlashHud.config.mapPlayers = players;
+		SlashHud.config.mapHostile = hostile;
+		SlashHud.config.mapPassive = passive;
+	}
+
+	/** What the minimap and the full map drew last: "players,hostile,passive:nicks". */
+	public static String entitiesOnMinimap() {
+		return MapEntities.drawnMinimap;
+	}
+
+	public static String entitiesOnWorldMap() {
+		return MapEntities.drawnWorldMap;
+	}
+
+	private static final java.util.List<net.minecraft.client.player.RemotePlayer> fakePlayers = new java.util.ArrayList<>();
+
+	/**
+	 * Another player standing at a place, only in this game (a singleplayer world has no one
+	 * else): as a server would send them, with a real player's id; `npc` gives them an NPC's id.
+	 */
+	public static void fakePlayer(String name, double x, double y, double z, boolean npc) {
+		Minecraft mc = Minecraft.getInstance();
+		java.util.UUID id = npc ? new java.util.UUID(java.util.UUID.randomUUID().getMostSignificantBits() & ~0xF000L | 0x2000L, java.util.UUID.randomUUID().getLeastSignificantBits())
+			: java.util.UUID.nameUUIDFromBytes(("SlashClient test " + name).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+		var p = new net.minecraft.client.player.RemotePlayer(mc.level, new com.mojang.authlib.GameProfile(id, name));
+		p.setPos(x, y, z);
+		p.xo = x;
+		p.yo = y;
+		p.zo = z;
+		// an id far from the server's own ones
+		p.setId(2_000_000_000 + fakePlayers.size());
+		mc.level.addEntity(p);
+		fakePlayers.add(p);
+	}
+
+	public static void fakePlayersGone() {
+		Minecraft mc = Minecraft.getInstance();
+		for (var p : fakePlayers) if (mc.level != null) mc.level.removeEntity(p.getId(), net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);
+		fakePlayers.clear();
+	}
 }
 //#endif
