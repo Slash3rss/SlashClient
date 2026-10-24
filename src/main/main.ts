@@ -29,6 +29,9 @@ import { RankIconCache } from './rankIcons';
 import { fitSize, ImageCache, keyText, MAX_BYTES, openImage, parseKey, sealImage, type ChatImageView, type ImageKey } from './chatImages';
 import { removedText, thumbnail, ThumbCache, type MediaItem, type RemovedImage } from './chatMedia';
 import { launch, resolveVersionId } from './launch';
+import { registerJavaCompare } from './javaCompare';
+import type { JavaChoice } from './javaVendors';
+import { effectiveJavaVendor, type JavaVendor } from '../shared/javaVendors';
 import { paths } from './paths';
 import { loadStore, newProfile, orphanProfiles, profileGameDir, saveStore, secrets, setSecretCodec, storeRecovered, type MicrosoftAccount, type Profile, type Settings, type StoreData } from './store';
 import { LOADER_NAMES, loaderVersions, type Loader } from './loaders';
@@ -1376,7 +1379,7 @@ registerMediaSharing({ handle, gameDirOf, session: () => shareSession(), copy: (
 
 registerMaintenance({
   handle, profiles: () => store.profiles, running: (id) => games.has(id), anyRunning: () => games.size > 0,
-  trash: (file) => shell.trashItem(file), openPath: (dir) => shell.openPath(dir),
+  trash: (file) => shell.trashItem(file), openPath: (dir) => shell.openPath(dir), defaultJavaVendor: () => store.settings.javaVendor,
 });
 registerLauncherTools({ handle, profiles: () => store.profiles, running: (id) => games.has(id) });
 
@@ -1641,7 +1644,10 @@ handle('skinlib:apply', async (accountId: string, id: string) => {
 handle('news:list', (offset: number, limit: number, filter: NewsFilter) => newsPage(offset, limit, filter));
 handle('news:article', (id: string) => newsArticle(id));
 
-handle('game:launch', async (profileId: string, accountId: string, server?: string, world?: string, benchmark: boolean | 'scene' = false) => {
+handle('game:launch', (profileId: string, accountId: string, server?: string, world?: string, benchmark: boolean | 'scene' = false) => launchGame(profileId, accountId, server, world, benchmark));
+/** Launch options only the launcher itself uses (the Java comparison in javaCompare.ts). */
+interface LaunchExtras { javaVendor?: JavaVendor; quitAfterBenchmark?: boolean; onJava?: (choice: JavaChoice) => void }
+async function launchGame(profileId: string, accountId: string, server?: string, world?: string, benchmark: boolean | 'scene' = false, extras: LaunchExtras = {}) {
   if (games.has(profileId)) throw new Error(t('Ten profil już działa.'));
   if (snapshotBusy.has(profileId)) throw new Error(t('Poczekaj, aż skończy się zapisywanie lub przywracanie migawki.'));
   const profile = store.profiles.find((p) => p.id === profileId);
@@ -1693,6 +1699,8 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
       hud.jvmArgs.push('-Dslashclient.benchmark.scene=true');
       world = undefined;
     }
+    // runs one after another (the Java comparison): the game closes by itself after the run
+    if (extras.quitAfterBenchmark) hud.jvmArgs.push('-Dslashclient.benchmark.quit=true');
   }
   const benchmarksBefore = benchmark ? (await readBenchmarks(profileGameDir(profile)))[0]?.at ?? 0 : 0;
   const activityVersion = `${await resolveVersionId(profile.versionId)}${loaderName}`;
@@ -1726,6 +1734,9 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     world,
     extraJvmArgs: hud.jvmArgs,
     ...(await gpuLaunchOptions(store.settings)),
+    javaVendor: extras.javaVendor ?? effectiveJavaVendor(profile.javaVendor, store.settings.javaVendor),
+    onNotice: (message) => send('launch:notice', { profileId: profile.id, message }),
+    onJava: extras.onJava,
   });
   // capes and emotes: the SlashClient account says which Minecraft player it is, while the game runs
   const linkPlayer = () => {
@@ -1773,7 +1784,7 @@ handle('game:launch', async (profileId: string, accountId: string, server?: stri
     send('store', publicStore());
     if (store.settings.closeOnLaunch && !games.size) win?.show();
   });
-});
+}
 handle('file:reveal', (file: string) => {
   // only crash reports inside the launcher's own folders
   if (path.resolve(file).startsWith(paths.root + path.sep) || store.profiles.some((p) => path.resolve(file).startsWith(path.resolve(profileGameDir(p)) + path.sep))) shell.showItemInFolder(file);
@@ -1788,6 +1799,22 @@ handle('game:kill', (profileId?: string) => {
 });
 
 // ---------- SlashClient HUD ----------
+
+// "Porównaj w benchmarku": the test scene on the profile's Java and on another one
+registerJavaCompare({
+  handle, send,
+  profile: (id) => store.profiles.find((p) => p.id === id),
+  defaultVendor: () => store.settings.javaVendor,
+  running: (id) => games.has(id),
+  launch: (profileId, accountId, javaVendor, onJava) => launchGame(profileId, accountId, undefined, undefined, 'scene', { javaVendor, quitAfterBenchmark: true, onJava }),
+  child: (id) => games.get(id)?.child,
+  kill: (id) => {
+    const g = games.get(id);
+    if (!g) return;
+    g.killRequested = true;
+    g.child.kill();
+  },
+});
 
 handle('benchmark:list', (profileId: string) => {
   const profile = profileById(profileId);

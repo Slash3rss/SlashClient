@@ -33,6 +33,8 @@ export interface CleanupProfile {
   gameVersion?: string;
   /** The Mojang Java runtime the version wants (e.g. "java-runtime-delta"); undefined when unknown. */
   javaComponent?: string;
+  /** The folder in runtimes/ of another vendor's Java the profile plays on (e.g. "temurin-21"; javaVendors.ts). */
+  javaDir?: string;
   running: boolean;
 }
 
@@ -264,6 +266,7 @@ export async function scanDisk(layout: DiskLayout, profiles: CleanupProfile[], o
   if (components.every(Boolean)) {
     const needed = new Set(components as string[]);
     for (const v of keptVersions) if (v.javaComponent) needed.add(v.javaComponent);
+    for (const p of profiles) if (p.javaDir) needed.add(p.javaDir);
     for (const e of await fs.readdir(layout.runtimes, { withFileTypes: true }).catch(() => [])) {
       if (!e.isDirectory() || needed.has(e.name)) continue;
       const dir = path.join(layout.runtimes, e.name);

@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import type { ManualFile } from './manualFiles';
 import { paths } from './paths';
+import type { JavaVendor } from '../shared/javaVendors';
 
 export interface OfflineAccount {
   id: string;
@@ -66,6 +67,8 @@ export interface Profile {
   jvmPreset: 'default' | 'g1' | 'zgc';
   /** Overrides the automatically installed Java; empty means automatic. */
   javaPath: string;
+  /** Whose Java the launcher installs for this profile (javaVendors.ts); missing or empty = the default from Settings. */
+  javaVendor?: '' | JavaVendor;
   width: number;
   height: number;
 }
@@ -84,6 +87,8 @@ export interface Settings {
   notificationSound?: boolean;
   /** Fewer animations (slower computers): no transitions, a still starry sky, 3D previews that don't spin. */
   reduceMotion?: boolean;
+  /** Whose Java profiles play on unless they choose their own; missing = Mojang's. */
+  javaVendor?: JavaVendor;
   /** How much memory new profiles start with (MB); each profile can change its own. */
   defaultMemoryMb?: number;
   /** New profiles and modpacks get the recommended memory instead of defaultMemoryMb. */

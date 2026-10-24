@@ -10,6 +10,7 @@ import { createMediaTools } from './mediaTools';
 import { openPackPreview } from './packPreview';
 import { initCloudProfiles } from './cloudProfiles';
 import { initVersionMove } from './versionMove';
+import { initJavaChoice } from './javaChoice';
 import { createAchievements } from './achievements';
 import { buyWithConfirm } from './sparkShop';
 import { currencyName, sparks } from '../shared/sparks';
@@ -42,7 +43,7 @@ interface Profile {
   /** The Minecraft account this profile always plays as. */
   accountId?: string;
   id: string; name: string; versionId: string; loader: 'vanilla' | 'fabric' | 'quilt' | 'forge' | 'neoforge'; loaderVersion: string; gameDir: string; memoryMb: number;
-  jvmArgs: string; javaPath: string; width: number; height: number;
+  jvmArgs: string; javaPath: string; javaVendor?: '' | 'mojang' | 'temurin' | 'graalvm' | 'zulu'; width: number; height: number;
   icon: string; iconVersion: number; syncOptions: boolean; hud?: boolean; iconFile?: string;
   modpack?: { projectId: string; versionId: string; versionNumber: string; title: string; source?: 'curseforge' };
   playTimeMs?: number; lastPlayedAt?: number; jvmPreset?: 'default' | 'g1' | 'zgc';
@@ -69,7 +70,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -1035,6 +1036,7 @@ function loadProfileForm(profile: Profile) {
   for (const key of ['name', 'gameDir', 'jvmArgs', 'javaPath', 'memoryMb', 'width', 'height'] as const) {
     (form.elements.namedItem(key) as HTMLInputElement).value = String(profile[key]);
   }
+  javaChoice.load(profile);
   renderVersionOptions(profile.versionId);
   renderIconChoices(profile);
   renderModpackBox(profile);
@@ -1126,6 +1128,7 @@ function renderSettings() {
   const autoMemory = form.elements.namedItem('autoMemory') as HTMLInputElement;
   autoMemory.checked = !!store.settings.autoMemory;
   showDefaultMemory();
+  javaChoice.renderSettings();
   (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked = store.settings.discordEnabled ?? true;
   const notifications = form.elements.namedItem('systemNotifications') as HTMLInputElement;
   const sound = form.elements.namedItem('notificationSound') as HTMLInputElement;
@@ -1467,7 +1470,7 @@ $('#profile-form').addEventListener('submit', async (e) => {
     loaderVersion: str('loaderVersion'),
     gameDir: str('gameDir'),
     jvmArgs: str('jvmArgs'),
-    javaPath: str('javaPath'),
+    ...javaChoice.values(data),
     memoryMb: Number(str('memoryMb')),
     width: Number(str('width')) || 854,
     height: Number(str('height')) || 480,
@@ -1665,6 +1668,19 @@ const cloudCard = initCloudProfiles({
     renderProfiles();
   },
 });
+// the profile's Java (and its comparison in the benchmark), the default one in Settings
+const javaChoice = initJavaChoice({
+  api, $, toast, errorText, editing: () => editingId,
+  profile: (id) => store.profiles.find((p) => p.id === id),
+  defaultVendor: () => store.settings.javaVendor,
+  accountId: () => $<HTMLSelectElement>('#play-account').value,
+  running: (id) => (store.runningProfiles ?? []).includes(id),
+  startCard: (title) => {
+    const profile = store.profiles.find((p) => p.id === editingId);
+    startTaskCard(LAUNCH_CARD, title, profile ? profileIconUrl(profile) : 'logo.png');
+  },
+  finishCard: (ok, message) => finishTaskCard({ id: LAUNCH_CARD, ok, message }, ok ? 8000 : undefined),
+});
 const moveCard = initVersionMove({ api, $, guard, toast, busy, editing: () => editingId, versions: () => versions, resolve: resolvedVersion, projectIcon });
 
 $('#loader-select').addEventListener('change', () => renderLoaderVersions(''));
@@ -1750,6 +1766,7 @@ $('#settings-form').addEventListener('submit', async (e) => {
       launcherWindow: (form.elements.namedItem('launcherWindow') as HTMLSelectElement).value,
       defaultMemoryMb: Number((form.elements.namedItem('defaultMemoryMb') as HTMLInputElement).value),
       autoMemory: (form.elements.namedItem('autoMemory') as HTMLInputElement).checked,
+      javaVendor: javaChoice.settingsValue(),
       discordEnabled: (form.elements.namedItem('discordEnabled') as HTMLInputElement).checked,
       systemNotifications: (form.elements.namedItem('systemNotifications') as HTMLInputElement).checked,
       notificationSound: (form.elements.namedItem('notificationSound') as HTMLInputElement).checked,

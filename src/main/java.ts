@@ -87,7 +87,7 @@ async function installRuntime(home: string, manifestUrl: string, onProgress?: Pr
  * Runs `java -version` as a smoke test. A damaged runtime (e.g. a dylib whose
  * code signature no longer matches) gets killed by macOS before printing anything.
  */
-function javaWorks(java: string): Promise<boolean> {
+export function javaWorks(java: string): Promise<boolean> {
   return new Promise((resolve) => {
     execFile(java, ['-version'], { timeout: 20_000 }, (err) => resolve(!err));
   });

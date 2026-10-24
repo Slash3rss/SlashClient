@@ -25,6 +25,7 @@ import { CHAT_MEDIA_EN } from './i18nChatMedia';
 import { SESSION_SUMMARY_EN } from './i18nSessionSummary';
 import { LAUNCHER_NEWS_EN } from './i18nLauncherNews';
 import { GIFS_EN } from './i18nGifs';
+import { JAVA_EN } from './i18nJava';
 
 export type Lang = 'pl' | 'en';
 
@@ -75,6 +76,8 @@ const EN: Record<string, string> = {
   ...CHAT_MEDIA_EN,
   // GIFs and stickers in the chat (own file)
   ...GIFS_EN,
+  // the Java choice of profiles and its comparison in the benchmark (own file)
+  ...JAVA_EN,
   // navigation and common
   'Graj': 'Play',
   'GRAJ': 'PLAY',

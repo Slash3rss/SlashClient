@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="wizard.css">
   <link rel="stylesheet" href="sessionSummary.css">
   <link rel="stylesheet" href="launcherNews.css">
+  <link rel="stylesheet" href="javaChoice.css">
 </head>
 <body class="booting">
   <div class="splash" id="splash" role="status" aria-live="polite">
@@ -249,7 +250,25 @@
                 </select>
               </label>
               <label class="field"><span class="label">Dodatkowe argumenty JVM <span class="hint">opcjonalne</span></span><input name="jvmArgs" placeholder="-Dfml.ignorePatchDiscrepancies=true"></label>
-              <label class="field"><span class="label">Ścieżka do Javy <span class="hint">puste = automatycznie</span></span><input name="javaPath"></label>
+              <div class="java-choice" id="java-choice">
+                <label class="field">Java
+                  <select name="javaVendor" id="java-vendor">
+                    <option value="">Jak w ustawieniach</option>
+                    <option value="mojang">Mojang (domyślna)</option>
+                    <option value="temurin">Eclipse Temurin</option>
+                    <option value="graalvm">GraalVM Community</option>
+                    <option value="zulu">Azul Zulu</option>
+                    <option value="custom">Własna ścieżka do Javy</option>
+                  </select>
+                </label>
+                <label class="field java-path hidden" id="java-path-field"><span class="label">Ścieżka do Javy <span class="hint">plik java lub javaw</span></span><input name="javaPath"></label>
+                <p class="muted java-hint" id="java-hint"></p>
+                <div class="row java-compare-row" id="java-compare-row">
+                  <button type="button" id="java-compare"><i class="fa-solid fa-scale-balanced"></i> Porównaj w benchmarku</button>
+                  <span class="muted java-compare-note" id="java-compare-note"></span>
+                </div>
+                <div class="java-compare-result" id="java-compare-result"></div>
+              </div>
               <div class="row actions">
                 <button type="button" id="profile-folder"><i class="fa-regular fa-folder-open"></i> Otwórz folder</button>
                 <button type="button" id="profile-mods"><i class="fa-solid fa-puzzle-piece"></i> Folder modów</button>
@@ -549,6 +568,15 @@
           <select name="language" id="language-select"></select>
         </label>
         <label class="field"><span class="label">Pamięć RAM dla nowych profili <b id="default-memory-value"></b></span><input type="range" name="defaultMemoryMb" min="1024" max="16384" step="512"></label>
+        <label class="field">Java dla profili
+          <select name="javaVendor" id="settings-java-vendor">
+            <option value="mojang">Mojang (domyślna)</option>
+            <option value="temurin">Eclipse Temurin</option>
+            <option value="graalvm">GraalVM Community</option>
+            <option value="zulu">Azul Zulu</option>
+          </select>
+          <span class="hint">każdy profil może wybrać inną w swoich ustawieniach; gdy wybranej nie ma dla wersji gry, gra uruchomi się na Javie od Mojang</span>
+        </label>
         <label class="check"><input type="checkbox" name="autoMemory"> <span>Ustawiaj zalecaną ilość <span class="hint">nowe profile i modpacki dostają tyle, ile zalecamy dla ich modów i Twojego komputera (albo ile zalecają autorzy modpacka)</span></span></label>
         <label class="field">Okno launchera przy uruchomieniu
           <select name="launcherWindow">
