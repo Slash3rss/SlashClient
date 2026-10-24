@@ -31,7 +31,8 @@ import net.minecraft.client.renderer.entity.player.AvatarRenderer;
  * "● NA ŻYWO" above a live player's name before 26.1, where the players' renderer draws its own
  * name tag (with the score under it): right after the name, the same call once more one line
  * higher, so it is drawn exactly like the name (sneaking, through walls, distance). From 26.1 the
- * entities' name drawing does it (LiveNametagMixin) and this mixin is empty.
+ * entities' name drawing does it (LiveNametagMixin) and this mixin is empty. Before 1.21.2 the ping
+ * after the name (NametagPing) is added here too, only to the name and not to the score under it.
  */
 //#if MC >= 1.21.9
 @Mixin(AvatarRenderer.class)
@@ -69,7 +70,7 @@ abstract class LivePlayerNametagMixin {
 	//$ @WrapOperation(method = "renderNameTag(Lnet/minecraft/client/player/AbstractClientPlayer;Lnet/minecraft/network/chat/Component;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;IF)V",
 	//$ 	at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/LivingEntityRenderer;renderNameTag(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/network/chat/Component;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;IF)V", ordinal = 1))
 	//$ private void slashclient$liveLine(PlayerRenderer self, net.minecraft.world.entity.Entity entity, Component name, PoseStack pose, MultiBufferSource buffers, int light, float partialTick, Operation<Void> original) {
-	//$ 	original.call(self, entity, name, pose, buffers, light, partialTick);
+	//$ 	original.call(self, entity, dev.slash3rss.slashclient.hud.NametagPing.decorate(entity, name), pose, buffers, light, partialTick);
 	//$ 	Component live = dev.slash3rss.slashclient.hud.Badges.liveLabel(entity.getUUID());
 	//$ 	if (live == null) return;
 	//$ 	pose.pushPose();
@@ -81,7 +82,7 @@ abstract class LivePlayerNametagMixin {
 	//$ @WrapOperation(method = "renderNameTag(Lnet/minecraft/client/player/AbstractClientPlayer;Lnet/minecraft/network/chat/Component;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
 	//$ 	at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/LivingEntityRenderer;renderNameTag(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/network/chat/Component;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V", ordinal = 1))
 	//$ private void slashclient$liveLine(PlayerRenderer self, net.minecraft.world.entity.Entity entity, Component name, PoseStack pose, MultiBufferSource buffers, int light, Operation<Void> original) {
-	//$ 	original.call(self, entity, name, pose, buffers, light);
+	//$ 	original.call(self, entity, dev.slash3rss.slashclient.hud.NametagPing.decorate(entity, name), pose, buffers, light);
 	//$ 	Component live = dev.slash3rss.slashclient.hud.Badges.liveLabel(entity.getUUID());
 	//$ 	if (live == null) return;
 	//$ 	pose.pushPose();

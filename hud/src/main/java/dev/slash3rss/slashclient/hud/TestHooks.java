@@ -167,6 +167,37 @@ public final class TestHooks {
 		return Badges.liveLabel(net.minecraft.client.Minecraft.getInstance().player.getUUID());
 	}
 
+	/**
+	 * Our own name tag (F5) as another player's on a server, with this ping on our tab list entry
+	 * (anyWorld: singleplayer counts as a server); the name tag as it would be drawn now, as text with
+	 * the ping's colour after "#" ("Slash 45ms#55FF55"), or the bare name when it has no ping.
+	 */
+	public static String nametagPing(boolean anyWorld, int ms) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		SlashHud.config.ownNametag = true;
+		NametagPing.anyWorld = anyWorld;
+		var info = mc.getConnection().getPlayerInfo(mc.player.getUUID());
+		try {
+			var set = net.minecraft.client.multiplayer.PlayerInfo.class.getDeclaredMethod("setLatency", int.class);
+			set.setAccessible(true);
+			set.invoke(info, ms);
+		} catch (ReflectiveOperationException e) {
+			throw new IllegalStateException(e);
+		}
+		var label = NametagPing.label(mc.player.getUUID());
+		String name = NametagPing.decorate(mc.player, mc.player.getName()).getString();
+		boolean shown = !name.equals(mc.player.getName().getString());
+		return !shown || label == null || label.getStyle().getColor() == null ? name : name + String.format("#%06X", label.getStyle().getColor().getValue());
+	}
+
+	/** Our name tag with everything around it at once: the logo in a rank's colour, a clan's [TAG] and "● NA ŻYWO" (null: all off). */
+	public static void nametagExtras(boolean on) {
+		var id = net.minecraft.client.Minecraft.getInstance().player.getUUID();
+		Badges.setRank(id, on ? "partner" : null);
+		Badges.setClan(id, on ? "SLSH" : null);
+		Badges.setLive(id, on ? "twitch" : null);
+	}
+
 	/** As if the server had said we support the project with a tier of this colour (-1: the default pink), written to the chat like ownRank. */
 	public static void supporterRank(String label, int color) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
