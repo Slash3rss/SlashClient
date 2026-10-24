@@ -2,6 +2,7 @@ import AdmZip from 'adm-zip';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { t } from '../shared/i18n';
+import type { DepLink, ModNode, ModOrigin } from '../shared/modDeps';
 
 /** What a mod jar says about itself: who it is, which loaders it is for and what it needs. */
 export interface ModMeta {
@@ -457,32 +458,7 @@ const KNOWN_LIBRARIES = new Set([
   'jamlib', 'coroutil', 'uranus', 'searchables', 'shetiphiancore', 'silk', 'kotlinlibraries', 'kotlin', 'satin', 'veil', 'mru',
 ]);
 
-/** How a mod got into the profile: as another mod's dependency, put there by the player, or unknown (older launchers kept no note). */
-export type ModOrigin = 'dependency' | 'direct' | 'unknown';
-
-/** One dependency of a mod, as the details of the Installed list show it. */
-export interface DepLink {
-  id: string;
-  /** Allowed versions in the mod's own words ("" = any). */
-  ranges: string;
-  optional: boolean;
-  /** The installed jar that has it (enabled ones first). */
-  provider?: string;
-  /** ok, missing, the wrong version, or only in a disabled jar. */
-  state: 'ok' | 'missing' | 'version' | 'disabled';
-}
-
-export interface ModNode {
-  /** The jar's name without ".disabled", as in the Installed list. */
-  file: string;
-  enabled: boolean;
-  name: string;
-  version: string;
-  ids: string[];
-  library: boolean;
-  origin: ModOrigin;
-  requires: DepLink[];
-}
+export type { DepLink, ModNode, ModOrigin };
 
 /** Every jar with what it needs and where that is: "Wymaga" / "Potrzebny dla" and the warnings before disabling or removing. */
 export function buildModGraph(mods: { meta: ModMeta; enabled: boolean; origin: ModOrigin }[], profileLoader: string): ModNode[] {
