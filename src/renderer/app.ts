@@ -2343,7 +2343,12 @@ let modProblemsFor: string | undefined;
 /** The profile's dependency tree (modcheck.ts), read together with the check. */
 let modGraph: ModNode[] | undefined;
 let modGraphFor: string | undefined;
-const graphNow = () => (modGraphFor === contentProfileId() ? modGraph : undefined);
+/** The tree for the profile on screen, with the names the list shows (Modrinth's title over the jar's own name). */
+function graphNow(): ModNode[] | undefined {
+  if (modGraphFor !== contentProfileId() || !modGraph) return undefined;
+  const titles = new Map(installed.filter((i) => i.type === 'mod' && i.projectId).map((i) => [i.filename, i.title]));
+  return modGraph.map((n) => (titles.has(n.file) ? { ...n, name: titles.get(n.file)! } : n));
+}
 
 async function runModCheck() {
   const profileId = contentProfileId();
@@ -2814,6 +2819,7 @@ function renderSelectBar() {
 function refreshOpenDetails() {
   document.querySelectorAll<HTMLElement>('#content-list .project[data-key]').forEach((card) => {
     const old = card.querySelector('.mod-deps');
+    card.querySelector('.fa-sitemap')?.parentElement?.classList.toggle('active', openDetails.has(card.dataset.key!));
     if (!openDetails.has(card.dataset.key!)) {
       old?.remove();
       return;
@@ -2871,7 +2877,7 @@ async function offerOrphans(profileId: string, nodes: ModNode[], away: string[])
   await removeWithUndo(profileId, items, t('Usunięto niepotrzebne biblioteki: {0}', chosen.map((n) => n.name).join(', ')));
 }
 
-const titleOf = (i: InstalledItem, nodes: ModNode[]) => (i.type === 'mod' && !i.projectId ? nodes.find((n) => n.file === i.filename)?.name : undefined) ?? i.title;
+const titleOf = (i: InstalledItem, nodes: ModNode[]) => (i.type === 'mod' ? nodes.find((n) => n.file === i.filename)?.name : undefined) ?? i.title;
 
 /**
  * Disabling one or many: mods others need get the warning first (cancel / anyway / with the mods
@@ -3404,7 +3410,7 @@ $('#select-update').addEventListener('click', () => {
 /** Ctrl+A in the Installed list ticks every visible row; Escape clears the ticks. */
 document.addEventListener('keydown', (e) => {
   const list = $('#content-list');
-  if (contentTab !== 'installed' || !list.offsetParent || document.querySelector('.modal')) return;
+  if (contentTab !== 'installed' || !list.offsetParent || document.querySelector('.modal:not(.hidden)')) return;
   const typing = e.target instanceof HTMLElement && (e.target.matches('input:not([type=checkbox]), textarea, select') || e.target.isContentEditable);
   if (typing) return;
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && shownOrder.length) {

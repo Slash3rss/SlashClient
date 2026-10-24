@@ -407,8 +407,11 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 .mod-dep-list .tag.bad-tag { color: #fecaca; background: rgba(239, 68, 68, .18); }
 .mod-dep-list .tag.muted-tag { color: var(--text-muted); background: rgba(255, 255, 255, .05); }
 @media (max-width: 760px) { .mod-deps { grid-template-columns: 1fr; } }
-.select-bar { flex-wrap: wrap; }
-.mod-deps-modal .mod-broken-list { max-height: 240px; overflow: auto; }
+.select-bar { flex-wrap: wrap; position: sticky; top: 8px; z-index: 5; background: rgba(17, 20, 32, .92); backdrop-filter: blur(14px); box-shadow: 0 8px 24px rgba(0, 0, 0, .35); }
+.fr-group-modal.mod-deps-modal { width: min(640px, 100%); }
+.mod-deps-modal .join-actions { flex-wrap: wrap; }
+.mod-deps-modal .join-actions button { white-space: nowrap; }
+.mod-deps-modal .mod-broken-list { max-height: 240px; overflow: auto; columns: 2; column-gap: 24px; }
 .orphan-list { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow: auto; margin: 4px 0 6px; }
 .orphan-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--glass-border); cursor: pointer; }
 .orphan-row input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
