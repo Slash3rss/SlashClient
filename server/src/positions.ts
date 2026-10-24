@@ -44,21 +44,30 @@ export function cleanSharing(raw: Record<string, unknown>): PositionSharing | un
   return { mode: mode as ShareMode, friends: [...new Set((friends as string[] | undefined) ?? [])] };
 }
 
-/** The choices, one row per account that ever made one (none: off). */
+/**
+ * The choices, one row per account that ever made one. With no row the choice is `fallback`
+ * ("off" for positions). The same kind of choice keeps "Pokazuj znajomym, czego używam"
+ * (friendsPopular.ts) in a table of its own.
+ */
 export class PositionSharingStore {
   private readonly sql: DatabaseSync;
+  private readonly table: string;
+  private readonly fallback: () => ShareMode;
 
-  constructor(sql: DatabaseSync) {
+  constructor(sql: DatabaseSync, table = 'position_sharing', fallback: () => ShareMode = () => 'off') {
     this.sql = sql;
+    this.table = table;
+    this.fallback = fallback;
     sql.exec(`
-CREATE TABLE IF NOT EXISTS position_sharing (
+CREATE TABLE IF NOT EXISTS ${table} (
   uuid TEXT PRIMARY KEY REFERENCES users(uuid) ON DELETE CASCADE, mode TEXT NOT NULL DEFAULT 'off', friends TEXT NOT NULL DEFAULT '[]',
   updated_at INTEGER NOT NULL DEFAULT 0);`);
   }
 
   get(uuid: string): PositionSharing {
-    const r = this.sql.prepare('SELECT mode, friends FROM position_sharing WHERE uuid = ?').get(uuid) as { mode: string; friends: string } | undefined;
-    if (!r || !MODES.includes(r.mode as ShareMode)) return { mode: 'off', friends: [] };
+    const r = this.sql.prepare(`SELECT mode, friends FROM ${this.table} WHERE uuid = ?`).get(uuid) as { mode: string; friends: string } | undefined;
+    if (!r) return { mode: this.fallback(), friends: [] };
+    if (!MODES.includes(r.mode as ShareMode)) return { mode: 'off', friends: [] };
     let friends: string[] = [];
     try {
       const parsed = JSON.parse(r.friends);
@@ -70,7 +79,7 @@ CREATE TABLE IF NOT EXISTS position_sharing (
   }
 
   set(uuid: string, s: PositionSharing) {
-    this.sql.prepare(`INSERT INTO position_sharing (uuid, mode, friends, updated_at) VALUES (?, ?, ?, ?)
+    this.sql.prepare(`INSERT INTO ${this.table} (uuid, mode, friends, updated_at) VALUES (?, ?, ?, ?)
       ON CONFLICT (uuid) DO UPDATE SET mode = excluded.mode, friends = excluded.friends, updated_at = excluded.updated_at`)
       .run(uuid, s.mode, JSON.stringify(s.friends), Date.now());
   }

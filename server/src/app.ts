@@ -55,6 +55,7 @@ import { createRanks, gameBadge, type RankUser } from './ranks.ts';
 import { createStreams } from './streams/streams.ts';
 import type { KICK, TWITCH } from './streams/providers.ts';
 import { createSuggestions } from './suggestions.ts';
+import { popularRoutes } from './friendsPopular.ts';
 import { createPush } from './push.ts';
 
 /**
@@ -703,6 +704,21 @@ export function createApp(cfg: Config) {
       return out;
     },
     allow: (userId) => positionLimit.allow(userId),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  // "Popularne wśród znajomych": what the friends who share it use, counted (friendsPopular.ts)
+  const popular = popularRoutes({
+    db, authed, body,
+    settings: () => ({
+      enabled: settings.bool('friendsPopular.enabled'), defaultMode: settings.str('friendsPopular.defaultMode') === 'off' ? 'off' : 'all',
+      maxItems: settings.num('friendsPopular.maxItems'), maxServers: settings.num('friendsPopular.maxServers'), serverDays: settings.num('friendsPopular.serverDays'),
+      keepDays: settings.num('friendsPopular.keepDays'), maxResults: settings.num('friendsPopular.maxResults'), cacheSeconds: settings.num('friendsPopular.cacheSeconds'),
+    }),
+    serverName: (server) => statusRules.nameFor(server),
+    limitReports: limiter('friendsPopular.reportsPerMinute'), limitList: limiter('friendsPopular.listPerMinute'),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -1474,6 +1490,7 @@ export function createApp(cfg: Config) {
     ...sharing.routes,
     ...positions.routes,
     ...suggestions.routes,
+    ...popular.routes,
     ...groups.routes,
     ...clans.routes,
     ...communities.routes,
@@ -2140,6 +2157,11 @@ export function createApp(cfg: Config) {
     } catch (err) {
       console.error('propozycje:', (err as Error).message);
     }
+    try {
+      popular.prune();
+    } catch (err) {
+      console.error('popularne:', (err as Error).message);
+    }
   }, 3_600_000);
 
   return {
@@ -2171,6 +2193,8 @@ export function createApp(cfg: Config) {
     settings,
     /** For tests: encounters counted with a chosen clock, pruning, the store. */
     suggestions,
+    /** For tests: what friends use, its store and the cached results. */
+    popular,
     /** For tests: linked channels, the live state and the reconcile. */
     streams,
     /** For tests: the phones' notifications. */
