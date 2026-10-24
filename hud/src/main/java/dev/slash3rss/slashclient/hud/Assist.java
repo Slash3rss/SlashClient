@@ -37,6 +37,8 @@ public final class Assist {
 	static int leftClicks, rightClicks;
 	/** The slot the player had before auto tool picked another (-1 = none). */
 	private static int toolFrom = -1;
+	/** A tool auto tool brought from the backpack (its backpack slot and the hotbar slot it went to), to put back. */
+	private static int swappedFrom = -1, swappedTo = -1;
 	private static int idleTicks;
 	/** What was in the hand last tick, to see a stack run out. */
 	private static ItemStack lastHand = ItemStack.EMPTY;
@@ -85,7 +87,7 @@ public final class Assist {
 		if (player == null || mc.level == null) {
 			holdAttack = holdUse = armed = false;
 			lastHand = ItemStack.EMPTY;
-			toolFrom = -1;
+			toolFrom = swappedFrom = swappedTo = -1;
 			return;
 		}
 		boolean inGame = Compat.screen(mc) == null;
@@ -218,27 +220,51 @@ public final class Assist {
 		if (!digging) {
 			// a moment after digging stops, the hand goes back to what it held
 			if (toolFrom >= 0 && ++idleTicks > 4) {
-				if (cfg().autoToolRestore) inv.setSelectedSlot(toolFrom);
-				toolFrom = -1;
+				if (cfg().autoToolRestore) {
+					// the tool from the backpack goes back where it was (and what it replaced comes back)
+					if (swappedFrom >= 0 && mc.gameMode != null) Compat.swapIntoHotbar(mc, player, swappedFrom, swappedTo);
+					inv.setSelectedSlot(toolFrom);
+				}
+				toolFrom = swappedFrom = swappedTo = -1;
 			}
 			return;
 		}
 		idleTicks = 0;
 		BlockState state = mc.level.getBlockState(((BlockHitResult) mc.hitResult).getBlockPos());
 		if (state.isAir()) return;
+		int best = bestSlot(inv, state);
+		if (best == inv.getSelectedSlot()) return;
+		if (toolFrom < 0) toolFrom = inv.getSelectedSlot();
+		if (best < Inventory.getSelectionSize()) {
+			inv.setSelectedSlot(best);
+			return;
+		}
+		// the best tool is in the backpack: onto the hotbar (an empty slot, else the one in hand), once per dig
+		if (swappedFrom >= 0 || mc.gameMode == null) return;
+		int to = inv.getSelectedSlot();
+		for (int i = 0; i < Inventory.getSelectionSize(); i++) if (inv.getItem(i).isEmpty()) {
+			to = i;
+			break;
+		}
+		Compat.swapIntoHotbar(mc, player, best, to);
+		swappedFrom = best;
+		swappedTo = to;
+		inv.setSelectedSlot(to);
+	}
+
+	/** The slot (hotbar 0-8, backpack 9-35) with the stack that breaks the block best; the hand's when nothing beats it. */
+	static int bestSlot(Inventory inv, BlockState state) {
 		int best = inv.getSelectedSlot();
 		float bestSpeed = speed(inv.getItem(best), state);
-		for (int i = 0; i < Inventory.getSelectionSize(); i++) {
+		// the hotbar first: a tool there is used as it is, the backpack only when it has a better one
+		for (int i = 0; i < 36; i++) {
 			float s = speed(inv.getItem(i), state);
 			if (s > bestSpeed + 0.01f) {
 				best = i;
 				bestSpeed = s;
 			}
 		}
-		if (best != inv.getSelectedSlot()) {
-			if (toolFrom < 0) toolFrom = inv.getSelectedSlot();
-			inv.setSelectedSlot(best);
-		}
+		return best;
 	}
 
 	/**

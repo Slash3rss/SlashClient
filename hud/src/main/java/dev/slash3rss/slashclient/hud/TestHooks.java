@@ -648,6 +648,11 @@ public final class TestHooks {
 	/** GUI scale for the size test (the window size is set by the test itself). */
 	/** For the test: a server played on, so the disconnect screen offers "Reconnect" to it. */
 	/** For the test: how good auto tool finds a stack for a block. */
+	/** For the test: the slot auto tool picks for a block (hotbar 0-8, backpack 9-35). */
+	public static int autoToolSlot(net.minecraft.world.entity.player.Inventory inv, net.minecraft.world.level.block.state.BlockState state) {
+		return Assist.bestSlot(inv, state);
+	}
+
 	public static float autoToolSpeed(net.minecraft.world.item.ItemStack stack, net.minecraft.world.level.block.state.BlockState state) {
 		return Assist.speed(stack, state);
 	}

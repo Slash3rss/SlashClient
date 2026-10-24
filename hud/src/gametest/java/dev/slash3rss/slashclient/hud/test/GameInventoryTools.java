@@ -39,6 +39,23 @@ public class GameInventoryTools implements FabricClientGameTest {
 			});
 			String[] sp = speeds.split(" ");
 			if (!sp[0].equals(sp[1]) || Float.parseFloat(sp[1]) <= 1f) throw new AssertionError("A worn pickaxe for auto tool: " + speeds);
+			// a pickaxe only in the backpack is found too (and one on the hotbar wins when equal)
+			String slots = context.computeOnClient(mc -> {
+				var stone = net.minecraft.world.level.block.Blocks.STONE.defaultBlockState();
+				// the player's own inventory, put back as it was afterwards
+				var inv = mc.player.getInventory();
+				var keep3 = inv.getItem(3).copy();
+				var keep20 = inv.getItem(20).copy();
+				inv.setItem(3, net.minecraft.world.item.ItemStack.EMPTY);
+				inv.setItem(20, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_PICKAXE));
+				int fromBackpack = TestHooks.autoToolSlot(inv, stone);
+				inv.setItem(3, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_PICKAXE));
+				int fromHotbar = TestHooks.autoToolSlot(inv, stone);
+				inv.setItem(3, keep3);
+				inv.setItem(20, keep20);
+				return fromBackpack + " " + fromHotbar;
+			});
+			if (!slots.equals("20 3")) throw new AssertionError("Auto tool slots (backpack, then hotbar): " + slots);
 			var server = world.getServer();
 			server.runCommand("time set 6000");
 			server.runCommand("gamemode survival @a");
