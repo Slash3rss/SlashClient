@@ -21,8 +21,8 @@ import java.util.List;
 /**
  * The map over the whole screen (M outside a dungeon): all the ground the minimap has seen in this
  * dimension of this world (MinimapTerrain remembers it), the player with the way they look, the
- * waypoints (own, a friend's shared ones, the death point) with their names, and friends who share
- * their position. Dragging moves it, the wheel zooms around the mouse, Space or "Do mnie" comes back
+ * waypoints (own, a friend's shared ones, the death point) with their names, the players and mobs
+ * the game knows about nearby (MapEntities), and friends who share their position. Dragging moves it, the wheel zooms around the mouse, Space or "Do mnie" comes back
  * to the player; a right click puts a new waypoint there, a click on one opens it to rename,
  * recolour, hide, share or delete. M, Escape or ✕ closes it.
  */
@@ -154,6 +154,7 @@ public class WorldMapScreen extends Screen {
 		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, textureId, ox, oy, 0, 0, aw, ah, pw, ph, pw, ph, 0xFFFFFFFF);
 		g.enableScissor(ox, oy, ox + aw, oy + ah);
 		drawWaypoints(g, mc, mx, my);
+		drawEntities(g, mc);
 		drawFriends(g, mc);
 		drawPlayer(g, mc);
 		g.disableScissor();
@@ -257,6 +258,18 @@ public class WorldMapScreen extends Screen {
 			}
 		}
 		return best;
+	}
+
+	/** Players (face and nick) and mobs (dots) nearby, where they are on the map. */
+	private void drawEntities(GuiGraphicsExtractor g, Minecraft mc) {
+		List<MapEntities.Mark> drawn = new ArrayList<>();
+		for (MapEntities.Mark m : MapEntities.around(mc, Minimap.partial())) {
+			float x = sx(m.x()), y = sy(m.z());
+			if (x < ox || y < oy || x > ox + aw || y > oy + ah) continue;
+			MapEntities.draw(g, mc, m, Math.round(x), Math.round(y), zoom >= 1f);
+			drawn.add(m);
+		}
+		MapEntities.drawnWorldMap = MapEntities.describe(drawn);
 	}
 
 	/** Friends sharing their position here: their face and nick, or an arrow on the map's edge pointing to them. */

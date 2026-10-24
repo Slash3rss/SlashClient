@@ -182,13 +182,17 @@ public final class HudConfig {
 	public int dungeonY = 64;
 	/** "square" or "circle". */
 	public String dungeonShape = "square";
-	/** The minimap (terrain and waypoints only): its size in pixels, pixels per block, shape, turning with the player, the line under it, waypoints on it. */
+	/** The minimap: its size in pixels, pixels per block, shape, turning with the player, the line under it, waypoints on it. */
 	public int minimapSize = 100;
 	public float minimapZoom = 1f;
 	public String minimapShape = "square";
 	public boolean minimapRotate = false;
 	public boolean minimapCoords = true;
 	public boolean minimapWaypoints = true;
+	/** Players, hostile mobs and other mobs the game knows about around the player, on the minimap and the full map. */
+	public boolean mapPlayers = true;
+	public boolean mapHostile = true;
+	public boolean mapPassive = true;
 	/** SkyUp's tasks on the HUD: how many at most, one line each, those ready to complete hidden, rewards shown. */
 	public int skyTasksMax = 5;
 	/** The module's widest, in pixels: longer names are cut with "…". */
@@ -635,6 +639,9 @@ public final class HudConfig {
 		minimapRotate = other.minimapRotate;
 		minimapCoords = other.minimapCoords;
 		minimapWaypoints = other.minimapWaypoints;
+		mapPlayers = other.mapPlayers;
+		mapHostile = other.mapHostile;
+		mapPassive = other.mapPassive;
 		skyTasksMax = Math.max(1, Math.min(10, other.skyTasksMax));
 		skyTasksWidth = Math.max(100, Math.min(320, other.skyTasksWidth));
 		skyTasksCompact = other.skyTasksCompact;

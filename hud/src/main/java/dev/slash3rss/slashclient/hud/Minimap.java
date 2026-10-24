@@ -10,10 +10,10 @@ import java.util.List;
 
 /**
  * A minimap: the loaded ground around the player from above (MinimapTerrain), the player's own
- * waypoints and the player as an arrow; north up or turning with the player, square or round.
- * Deliberately no players, mobs or items on it: many servers forbid radars. The one exception is
- * friends who chose to share their position with us through SlashClient (FriendPositions): they
- * show as their face with their nick, or an arrow on the edge when further away.
+ * waypoints, the players and mobs the game knows about nearby (MapEntities, each kind can be
+ * switched off) and the player as an arrow; north up or turning with the player, square or round.
+ * Friends who chose to share their position with us through SlashClient (FriendPositions) show
+ * as their face with their nick, or an arrow on the edge when further away.
  *
  * The picture is painted on the CPU into a texture of its own, only when something it shows
  * changed (the player moved or turned, or the ground under it was read anew), so a still player
@@ -90,10 +90,15 @@ public final class Minimap implements HudModule {
 		return size() + (SlashHud.config.minimapCoords ? INFO : 0);
 	}
 
+	/** How far it is from the last tick to the next (0..1), to place things between ticks. */
+	static float partial() {
+		return Math.max(0f, Math.min(1f, (System.nanoTime() - tickedAt) / 50_000_000f));
+	}
+
 	/** The player's place between the last tick and the next (x, z). */
 	private static double[] where(Minecraft mc) {
 		var p = mc.player;
-		float t = Math.max(0f, Math.min(1f, (System.nanoTime() - tickedAt) / 50_000_000f));
+		float t = partial();
 		return new double[] { p.xo + (p.getX() - p.xo) * t, p.zo + (p.getZ() - p.zo) * t };
 	}
 
@@ -130,6 +135,7 @@ public final class Minimap implements HudModule {
 		String letter = "N";
 		g.text(mc.font, letter, cx + Math.round(n[0]) - mc.font.width(letter) / 2 + 1, cy + Math.round(n[1]) - 3, 0xFFF87171, true);
 		if (cfg.minimapWaypoints) waypoints(g, mc, cx, cy, at, scale, cos, sin, r, circle);
+		entities(g, mc, cx, cy, at, scale, cos, sin, r, circle);
 		friends(g, mc, cx, cy, at, scale, cos, sin, r, circle);
 		// the player: up when the map turns, else the way they look
 		float[] dir = rotate ? new float[] { 0, -1 } : new float[] { (float) -Math.sin(Math.toRadians(mc.player.getYRot())), (float) Math.cos(Math.toRadians(mc.player.getYRot())) };
@@ -206,6 +212,20 @@ public final class Minimap implements HudModule {
 				arrow(g, cx + e[0], cy + e[1], s[0] / len, s[1] / len, 3f, 2.5f, p.color | 0xFF000000);
 			}
 		}
+	}
+
+	/** Players and mobs nearby, where they are inside the map (none on its edge: only those the game knows of, close by). */
+	private static void entities(GuiGraphicsExtractor g, Minecraft mc, int cx, int cy, double[] at, float scale, float cos, float sin, float r, boolean circle) {
+		float reach = r - 4;
+		List<MapEntities.Mark> drawn = new java.util.ArrayList<>();
+		for (MapEntities.Mark m : MapEntities.around(mc, partial())) {
+			float[] s = toScreen(m.x() - at[0], m.z() - at[1], scale, cos, sin);
+			boolean inside = circle ? s[0] * s[0] + s[1] * s[1] <= reach * reach : Math.abs(s[0]) <= reach && Math.abs(s[1]) <= reach;
+			if (!inside) continue;
+			MapEntities.draw(g, mc, m, cx + Math.round(s[0]), cy + Math.round(s[1]), false);
+			drawn.add(m);
+		}
+		MapEntities.drawnMinimap = MapEntities.describe(drawn);
 	}
 
 	/** Friends sharing their position, in this dimension: their face (and nick) on the map, or an arrow on its edge. */
