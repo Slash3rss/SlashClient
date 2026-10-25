@@ -1939,6 +1939,13 @@ public final class TestHooks {
 	}
 
 	/** What is typed in the open chat, or null. */
+	/** Block info's extra lines for the block looked at, with all of them switched on. */
+	public static String blockInfoLines() {
+		HudConfig c = SlashHud.config;
+		c.blockGrowth = c.blockDetails = c.blockPower = c.blockCoords = c.blockLight = c.blockHardness = c.blockId = c.blockState = true;
+		return ExtraModules.BlockInfo.linesForTest(net.minecraft.client.Minecraft.getInstance());
+	}
+
 	/** A tab's mention sound ("" = the usual bell). */
 	public static void chatTabSound(String name, String sound) {
 		for (HudConfig.ChatTab t : SlashHud.config.chatTabs) if (t.name.equals(name)) t.sound = sound;

@@ -548,15 +548,100 @@ public final class ExtraModules {
 			return !s.requiresCorrectToolForDrops() || mc.player.getMainHandItem().isCorrectToolForDrops(s);
 		}
 
+		/** The extra lines for the block looked at, as text (for the test); "" when none is. */
+		static String linesForTest(Minecraft mc) {
+			BlockPos pos = target(mc);
+			if (pos == null) return "";
+			StringBuilder out = new StringBuilder();
+			for (var line : extras(mc, mc.level.getBlockState(pos), pos)) out.append(line.getKey().getString()).append('\n');
+			return out.toString();
+		}
+
+		/** Numbered properties worth a line: honey, fill level, charges, moisture, bites, note, delay, how many. */
+		private static final List<String> DETAILS = List.of("honey_level", "level", "charges", "moisture", "bites", "note", "delay", "pickles", "candles", "eggs", "hatch", "flower_amount", "segment_amount");
+		/** Those whose top value means ready: a hive full of honey, a full composter, a charged anchor, wet farmland. */
+		private static final List<String> FULL_IS_DONE = List.of("honey_level", "level", "charges", "moisture");
+
+		/** An integer property of the state by its name ("age", "power"), with its highest value; null when it has none. */
+		private static int[] intProperty(BlockState s, String name) {
+			for (var p : s.getProperties()) {
+				if (p instanceof net.minecraft.world.level.block.state.properties.IntegerProperty ip && ip.getName().equals(name)) {
+					int max = 0;
+					for (int v : ip.getPossibleValues()) max = Math.max(max, v);
+					return new int[] { s.getValue(ip), max };
+				}
+			}
+			return null;
+		}
+
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+		private static String value(BlockState s, net.minecraft.world.level.block.state.properties.Property p) {
+			return p.getName(s.getValue(p));
+		}
+
+		/** The extra lines the settings ask for (those that say nothing for this block are left out), each with its colour. */
+		private static List<Map.Entry<Component, Integer>> extras(Minecraft mc, BlockState s, BlockPos pos) {
+			List<Map.Entry<Component, Integer>> out = new ArrayList<>();
+			int muted = 0xFFAAAAAA;
+			if (cfg.blockGrowth) {
+				int[] age = intProperty(s, "age");
+				if (age != null && age[1] > 0) {
+					int pct = Math.round(age[0] * 100f / age[1]);
+					out.add(Map.entry(age[0] >= age[1] ? Component.translatable("slashclient-hud.block.grown")
+						: Component.translatable("slashclient-hud.block.growth", pct, age[0], age[1]), age[0] >= age[1] ? 0xFF55FF55 : 0xFFFFCC55));
+				}
+			}
+			// what the block holds or counts, by its own numbered properties (the game's names)
+			if (cfg.blockDetails) for (String name : DETAILS) {
+				int[] v = intProperty(s, name);
+				if (v == null) continue;
+				// a note block counts from 0, a repeater's delay from 1: shown as the game numbers them
+				out.add(Map.entry(Component.translatable("slashclient-hud.block.detail." + name, v[0], v[1]), v[0] >= v[1] && FULL_IS_DONE.contains(name) ? 0xFF55FF55 : 0xFFDDDDDD));
+			}
+			if (cfg.blockPower) {
+				int[] power = intProperty(s, "power");
+				int signal = power != null ? power[0] : mc.level.getBestNeighborSignal(pos);
+				if (signal > 0 || power != null) out.add(Map.entry(Component.translatable("slashclient-hud.block.power", signal), signal > 0 ? 0xFFFF5555 : muted));
+			}
+			if (cfg.blockCoords) out.add(Map.entry(Component.literal(pos.getX() + " " + pos.getY() + " " + pos.getZ()), muted));
+			if (cfg.blockLight && mc.hitResult instanceof BlockHitResult hit) {
+				BlockPos face = pos.relative(hit.getDirection());
+				int block = mc.level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK, face), sky = mc.level.getBrightness(net.minecraft.world.level.LightLayer.SKY, face);
+				// mobs spawn in the dark of block light 0
+				out.add(Map.entry(Component.translatable("slashclient-hud.block.light", block, sky), block == 0 ? 0xFFFF7777 : muted));
+			}
+			if (cfg.blockHardness) {
+				float hard = s.getDestroySpeed(mc.level, pos), blast = s.getBlock().getExplosionResistance();
+				out.add(Map.entry(Component.translatable("slashclient-hud.block.hardness",
+					hard < 0 ? "∞" : String.format(java.util.Locale.ROOT, "%.1f", hard), String.format(java.util.Locale.ROOT, "%.1f", blast)), muted));
+			}
+			if (cfg.blockId) out.add(Map.entry(Component.literal(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(s.getBlock()).toString()), 0xFF6B7FA8));
+			if (cfg.blockState) {
+				List<String> parts = new ArrayList<>();
+				for (var p : s.getProperties()) {
+					// what the lines above already say
+					if (cfg.blockGrowth && p.getName().equals("age") || cfg.blockPower && p.getName().equals("power") || cfg.blockDetails && DETAILS.contains(p.getName())) continue;
+					parts.add(p.getName() + "=" + value(s, p));
+				}
+				// a long state in lines of a few
+				for (int i = 0; i < parts.size(); i += 3) out.add(Map.entry(Component.literal(String.join(", ", parts.subList(i, Math.min(parts.size(), i + 3)))), 0xFF8B95A7));
+			}
+			return out;
+		}
+
 		public int width(Minecraft mc) {
 			BlockPos pos = target(mc);
 			if (pos == null || !visible(mc)) return 20 + Math.max(mc.font.width(Component.translatable("block.minecraft.diamond_ore")), 70) + PAD * 2;
 			BlockState s = mc.level.getBlockState(pos);
-			return 20 + Math.max(mc.font.width(s.getBlock().getName()), mc.font.width(detail(mc, s, pos))) + PAD * 2;
+			int w = Math.max(mc.font.width(s.getBlock().getName()), mc.font.width(detail(mc, s, pos)));
+			for (var line : extras(mc, s, pos)) w = Math.max(w, mc.font.width(line.getKey()));
+			return 20 + w + PAD * 2;
 		}
 
 		public int height(Minecraft mc) {
-			return 20 + PAD * 2;
+			BlockPos pos = target(mc);
+			int more = pos == null || !visible(mc) ? 0 : extras(mc, mc.level.getBlockState(pos), pos).size();
+			return 20 + more * 10 + PAD * 2;
 		}
 
 		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
@@ -567,6 +652,11 @@ public final class ExtraModules {
 			if (item != Items.AIR) g.item(new ItemStack(item), x + PAD, y + PAD + 2);
 			text(g, mc, s.getBlock().getName(), x + PAD + 20, y + PAD, cfg.textColor);
 			text(g, mc, detail(mc, s, pos), x + PAD + 20, y + PAD + 11, drops(mc, s) ? 0xFFAAAAAA : 0xFFFF5555);
+			int ly = y + PAD + 22;
+			for (var line : extras(mc, s, pos)) {
+				text(g, mc, line.getKey(), x + PAD + 20, ly, line.getValue());
+				ly += 10;
+			}
 		}
 
 		@Override

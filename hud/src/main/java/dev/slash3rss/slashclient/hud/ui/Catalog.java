@@ -172,6 +172,16 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.set.clockSeconds", () -> cfg.clockSeconds, v -> cfg.clockSeconds = v));
 					settings.add(new Toggle("slashclient-hud.set.clock12h", () -> cfg.clock12h, v -> cfg.clock12h = v));
 				}
+				case "block" -> {
+					settings.add(new Toggle("slashclient-hud.set.blockGrowth", () -> cfg.blockGrowth, v -> cfg.blockGrowth = v));
+					settings.add(new Toggle("slashclient-hud.set.blockDetails", () -> cfg.blockDetails, v -> cfg.blockDetails = v));
+					settings.add(new Toggle("slashclient-hud.set.blockPower", () -> cfg.blockPower, v -> cfg.blockPower = v));
+					settings.add(new Toggle("slashclient-hud.set.blockCoords", () -> cfg.blockCoords, v -> cfg.blockCoords = v));
+					settings.add(new Toggle("slashclient-hud.set.blockLight", () -> cfg.blockLight, v -> cfg.blockLight = v));
+					settings.add(new Toggle("slashclient-hud.set.blockHardness", () -> cfg.blockHardness, v -> cfg.blockHardness = v));
+					settings.add(new Toggle("slashclient-hud.set.blockId", () -> cfg.blockId, v -> cfg.blockId = v));
+					settings.add(new Toggle("slashclient-hud.set.blockState", () -> cfg.blockState, v -> cfg.blockState = v));
+				}
 				case "coords" -> {
 					settings.add(new Slider("slashclient-hud.set.coordsDecimals", 0f, 2f, 1f, "%.0f", () -> (float) cfg.coordsDecimals, v -> cfg.coordsDecimals = Math.round(v)));
 					settings.add(new Toggle("slashclient-hud.set.coordsFacing", () -> cfg.coordsFacing, v -> cfg.coordsFacing = v));

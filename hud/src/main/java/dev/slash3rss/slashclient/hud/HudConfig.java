@@ -397,6 +397,13 @@ public final class HudConfig {
 	public boolean clock12h = false;
 	public int coordsDecimals = 0;
 	public boolean coordsFacing = true;
+	/**
+	 * Block info's extra lines: a crop's growth, what a block holds or counts (honey in a hive, a
+	 * composter's level, an anchor's charges, candles…) and the redstone signal (only where there is one),
+	 * the block's coordinates, the light on the face looked at, hardness and blast resistance, its
+	 * id (with the mod it comes from) and its state (facing, half, waterlogged…).
+	 */
+	public boolean blockGrowth = true, blockDetails = true, blockPower = true, blockCoords = false, blockLight = false, blockHardness = false, blockId = false, blockState = false;
 	/** FPS green, yellow or red by how smooth the game runs. */
 	public boolean fpsColored = false;
 	public boolean effectIcons = true;
@@ -795,6 +802,14 @@ public final class HudConfig {
 		clock12h = other.clock12h;
 		coordsDecimals = Math.max(0, Math.min(2, other.coordsDecimals));
 		coordsFacing = other.coordsFacing;
+		blockGrowth = other.blockGrowth;
+		blockDetails = other.blockDetails;
+		blockPower = other.blockPower;
+		blockCoords = other.blockCoords;
+		blockLight = other.blockLight;
+		blockHardness = other.blockHardness;
+		blockId = other.blockId;
+		blockState = other.blockState;
 		fpsColored = other.fpsColored;
 		effectIcons = other.effectIcons;
 		chatStack = other.chatStack;
