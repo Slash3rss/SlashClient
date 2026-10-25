@@ -19,6 +19,17 @@ public interface MinecraftAccessor {
 	@org.spongepowered.asm.mixin.gen.Invoker("createTitle")
 	String slashclient$createTitle();
 
+	/** What a held attack button does every tick (dig on); for holding it with a screen open (Assist). */
+	@org.spongepowered.asm.mixin.gen.Invoker("continueAttack")
+	void slashclient$continueAttack(boolean down);
+
+	@org.spongepowered.asm.mixin.gen.Invoker("startUseItem")
+	void slashclient$startUseItem();
+
+	/** Ticks until the use button may be used again. */
+	@Accessor("rightClickDelay")
+	int slashclient$rightClickDelay();
+
 	@Mutable
 	@Accessor("user")
 	void slashclient$setUser(User user);

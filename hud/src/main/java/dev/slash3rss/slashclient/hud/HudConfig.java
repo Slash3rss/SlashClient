@@ -357,6 +357,8 @@ public final class HudConfig {
 	public boolean autoTool = false;
 	public boolean autoToolRestore = true;
 	public boolean autoRefill = false;
+	/** Buttons held by their keys go on with the inventory or the pause menu open. */
+	public boolean holdInScreens = true;
 	public boolean toolWarning = true;
 	public int toolWarningPercent = 10;
 	/** Health above 10 hearts in one row, each 10 hearts more in another colour. */
@@ -764,6 +766,7 @@ public final class HudConfig {
 		autoTool = other.autoTool;
 		autoToolRestore = other.autoToolRestore;
 		autoRefill = other.autoRefill;
+		holdInScreens = other.holdInScreens;
 		toolWarning = other.toolWarning;
 		toolWarningPercent = Math.max(1, Math.min(50, other.toolWarningPercent));
 		compactHearts = other.compactHearts;
