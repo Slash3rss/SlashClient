@@ -18,4 +18,8 @@ public interface JoinMultiplayerScreenAccessor {
 
 	@Invoker("deleteCallback")
 	void slashclient$deleteCallback(boolean confirmed);
+
+	/** The list read again, as its "Refresh" button does. */
+	@Invoker("refreshServerList")
+	void slashclient$refreshServerList();
 }

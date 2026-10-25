@@ -750,7 +750,8 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		reveal(d);
 	}
 
-	private void refresh() {
+	/** The list read again (F5, the button; new pinned partners from the server too). */
+	public void refresh() {
 		SlashServerScreen next = new SlashServerScreen(game().slashclient$lastScreen());
 		next.query = query;
 		minecraft.setScreenAndShow(next);

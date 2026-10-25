@@ -117,6 +117,14 @@ public final class PinnedServer {
 		} catch (Exception e) {
 			SlashHud.LOG.debug("SlashClient: pinned servers: {}", e.toString());
 		}
+		// the answer comes after the list was read for the open window: read again, so a new partner is there now
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		mc.execute(() -> {
+			var screen = Compat.screen(mc);
+			if (screen instanceof dev.slash3rss.slashclient.hud.ui.SlashServerScreen ours) ours.refresh();
+			else if (screen instanceof net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen game)
+				((dev.slash3rss.slashclient.hud.mixin.JoinMultiplayerScreenAccessor) game).slashclient$refreshServerList();
+		});
 	}
 
 	public static List<Pin> pins() {

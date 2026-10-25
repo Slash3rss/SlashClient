@@ -90,7 +90,10 @@ public final class PartnerServers {
 		fetchedAt = System.currentTimeMillis();
 		HttpRequest request = HttpRequest.newBuilder(URI.create(server + "/v1/partners")).timeout(Duration.ofSeconds(8)).GET().build();
 		HTTP.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenAccept(res -> {
-			if (res.statusCode() != 200) return;
+			if (res.statusCode() != 200) {
+				retrySoon();
+				return;
+			}
 			Map<String, String> next = new ConcurrentHashMap<>();
 			java.util.Set<String> all = ConcurrentHashMap.newKeySet();
 			java.util.List<PinnedServer.Pin> pins = new java.util.ArrayList<>();
@@ -133,8 +136,14 @@ public final class PartnerServers {
 			next.values().forEach(PartnerServers::load);
 		}).exceptionally(err -> {
 			SlashHud.LOG.debug("SlashClient: partner servers: {}", err.toString());
+			retrySoon();
 			return null;
 		});
+	}
+
+	/** No answer (no network for a moment, the server restarting): asked again in half a minute, not in five. */
+	private static void retrySoon() {
+		fetchedAt = System.currentTimeMillis() - REFRESH_MS + 30_000;
 	}
 
 	private static void load(String url) {
