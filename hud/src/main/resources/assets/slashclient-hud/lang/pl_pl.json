@@ -736,6 +736,7 @@
 	"slashclient-hud.assist.restore": "Wracaj do poprzedniego slotu",
 	"slashclient-hud.assist.autoRefill": "Uzupełnianie ręki",
 	"slashclient-hud.assist.holdKeys": "Trzymanie przycisków (klawisze)",
+	"slashclient-hud.assist.holdScreens": "Działa też z otwartym ekwipunkiem i menu pauzy",
 	"slashclient-hud.assist.toolWarning": "Ostrzeżenie o zniszczeniu narzędzia",
 	"slashclient-hud.assist.toolWarningAt": "Ostrzegaj poniżej",
 	"slashclient-hud.assist.toolWarning.left": "⚠ %s zaraz się zniszczy: zostało %s użyć",

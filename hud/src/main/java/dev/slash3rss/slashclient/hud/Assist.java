@@ -30,6 +30,8 @@ public final class Assist {
 	static KeyMapping holdAttackKey, holdUseKey, autoClickKey;
 
 	private static boolean holdAttack, holdUse;
+	/** A block was being dug over a screen last tick (see `holdOverScreen`). */
+	private static boolean dugOverScreen;
 	/** The autoclicker's key arms it; armed, it clicks (see `tick`). With no key bound it is armed while switched on. */
 	private static boolean armed;
 	private static long nextLeft, nextRight;
@@ -85,21 +87,57 @@ public final class Assist {
 		while (holdUseKey.consumeClick()) pressed(mc, holdUseKey);
 		while (autoClickKey.consumeClick()) pressed(mc, autoClickKey);
 		if (player == null || mc.level == null) {
-			holdAttack = holdUse = armed = false;
+			holdAttack = holdUse = armed = dugOverScreen = false;
 			lastHand = ItemStack.EMPTY;
 			toolFrom = -1;
 			swaps.clear();
 			return;
 		}
 		boolean inGame = Compat.screen(mc) == null;
-		// a held button stays down while the key's toggle is on (only in the game, not in menus)
+		// a held button stays down while the key's toggle is on, in the game and (see `holdOverScreen`) with
+		// the inventory or the pause menu open
 		if (holdAttack && inGame) mc.options.keyAttack.setDown(true);
 		if (holdUse && inGame) mc.options.keyUse.setDown(true);
+		holdOverScreen(mc, player, inGame);
 
 		if (cfg().autoClicker && (armed || autoClickKey.isUnbound()) && inGame) autoClick(mc, player);
 		if (cfg().autoTool && inGame) autoTool(mc, player);
 		if (cfg().autoRefill) refill(mc, player);
 		if (cfg().toolWarning) warn(mc, player);
+	}
+
+	/** Screens over which a held button goes on: the player's own inventory and the pause menu, ours or the game's (not a chest or a server's window). */
+	static boolean holdsOver(net.minecraft.client.gui.screens.Screen screen) {
+		return screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen
+			|| screen instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen
+			|| screen instanceof net.minecraft.client.gui.screens.PauseScreen
+			|| screen instanceof dev.slash3rss.slashclient.hud.ui.SlashPauseScreen;
+	}
+
+	/**
+	 * With the inventory or the pause menu open the game neither digs nor uses the item in hand (it
+	 * only does that with no screen), so a farm left running would stop the moment the player looks
+	 * into the backpack. Here the button held by its key does the same as in the game: digs the block
+	 * under the crosshair and uses the item again whenever the game would. The keys themselves stay
+	 * up, so closing the screen leaves nothing stuck. A paused game (the pause menu in singleplayer)
+	 * is left alone.
+	 */
+	private static void holdOverScreen(Minecraft mc, Player player, boolean inGame) {
+		boolean on = !inGame && cfg().holdInScreens && mc.gameMode != null && !mc.isPaused() && holdsOver(Compat.screen(mc));
+		var game = (dev.slash3rss.slashclient.hud.mixin.MinecraftAccessor) mc;
+		if (on && holdUse && game.slashclient$rightClickDelay() == 0 && !player.isUsingItem()) game.slashclient$startUseItem();
+		if (on && holdAttack) {
+			// the game keeps attacks off while a screen is open (a click on it must not hit); the held key goes on digging
+			int miss = mc.missTime;
+			mc.missTime = 0;
+			game.slashclient$continueAttack(true);
+			mc.missTime = miss;
+			dugOverScreen = true;
+		} else if (dugOverScreen) {
+			// let go over the screen: the cracks stop (in the game the game itself does that)
+			if (!inGame && mc.gameMode != null) mc.gameMode.stopDestroyBlock();
+			dugOverScreen = false;
+		}
 	}
 
 	/** One of the helpers' keys pressed, in the game or over a window (see `attach`). */
@@ -159,6 +197,12 @@ public final class Assist {
 	/** Whether a key's toggle is on (for the tests). */
 	static boolean holding(boolean attack) {
 		return attack ? holdAttack : holdUse;
+	}
+
+	/** Switches a key's toggle as its key would (for the tests). */
+	static void hold(boolean attack, boolean on) {
+		Minecraft mc = Minecraft.getInstance();
+		if (holding(attack) != on) pressed(mc, attack ? holdAttackKey : holdUseKey);
 	}
 
 	private static boolean toggle(Minecraft mc, boolean on, String key, KeyMapping button) {

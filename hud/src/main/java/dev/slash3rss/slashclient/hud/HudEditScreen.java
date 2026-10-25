@@ -1069,7 +1069,8 @@ public class HudEditScreen extends Screen {
 			Ui.round(g, x, ry, w, rh, 4, Ui.CARD);
 			ROWS.put(s.labelKey(), new int[] { x, ry, w, rh });
 			Ui.begin("row " + s.labelKey(), x, ry, w, rh);
-			Component label = Ui.fit(Ui.tr(s.labelKey()), w - 20);
+			// a switch's label stops before the switch (a long one ends in "…" instead of running under it)
+			Component label = Ui.fit(Ui.tr(s.labelKey()), s instanceof Catalog.Toggle ? w - 46 : w - 20);
 			if (s instanceof Catalog.Note n) Ui.wrapped(g, Ui.tr(n.labelKey(), n.args().get()), x + 10, ry + 8, w - 20, Ui.TEXT_2);
 			else Ui.draw(g, label, x + 10, ry + 9, Ui.TEXT);
 			int labelEnd = x + 10 + Ui.width(label) + 14;

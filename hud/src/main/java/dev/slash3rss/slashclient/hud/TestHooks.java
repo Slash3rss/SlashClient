@@ -90,6 +90,29 @@ public final class TestHooks {
 		net.minecraft.client.KeyMapping.resetMapping();
 	}
 
+	/** A button held by its key (attack: the left one) on or off, and whether it goes on over the inventory and the pause menu. */
+	public static void hold(boolean attack, boolean on, boolean inScreens) {
+		SlashHud.config.holdInScreens = inScreens;
+		Assist.hold(attack, on);
+	}
+
+	/** Whether a key or the use button is down now ("attack/use"), to see nothing stays stuck. */
+	public static String buttonsDown() {
+		var o = net.minecraft.client.Minecraft.getInstance().options;
+		return o.keyAttack.isDown() + "/" + o.keyUse.isDown();
+	}
+
+	/** The world opened to LAN, so the pause menu does not pause it (as on a server). */
+	public static boolean openToLan() {
+		var server = net.minecraft.client.Minecraft.getInstance().getSingleplayerServer();
+		if (server == null) return false;
+		//#if MC >= 26.2
+		return server.publishServer(net.minecraft.server.MinecraftServer.MultiplayerScope.LAN, net.minecraft.util.HttpUtil.getAvailablePort());
+		//#else
+		//$ return server.publishServer(net.minecraft.world.level.GameType.SURVIVAL, false, net.minecraft.util.HttpUtil.getAvailablePort());
+		//#endif
+	}
+
 	/** Whether the right button is being held by its key. */
 	public static boolean holdingUse() {
 		return Assist.holding(false);
