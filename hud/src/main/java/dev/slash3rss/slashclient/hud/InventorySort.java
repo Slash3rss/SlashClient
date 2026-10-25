@@ -125,6 +125,8 @@ public final class InventorySort {
 		});
 		net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(screen).register((s, e) -> {
 			if (e.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT) {
+				Boolean into = moveButtonAt(screen, e.x(), e.y());
+				if (into != null) return !move(mc, screen, into);
 				Boolean player = buttonAt(screen, e.x(), e.y());
 				if (player != null) return !start(mc, screen, player);
 			}
@@ -138,6 +140,8 @@ public final class InventorySort {
 		//$ });
 		//$ net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(screen).register((s, x, y, button) -> {
 		//$ 	if (button == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT) {
+		//$ 		Boolean into = moveButtonAt(screen, x, y);
+		//$ 		if (into != null) return !move(mc, screen, into);
 		//$ 		Boolean player = buttonAt(screen, x, y);
 		//$ 		if (player != null) return !start(mc, screen, player);
 		//$ 	}
@@ -146,7 +150,10 @@ public final class InventorySort {
 		//$ });
 		//#endif
 		// the buttons under the item tooltips; the clicks every frame
-		ContainerLayer.under(screen, (g, mx, my) -> drawButtons(screen, g, mx, my));
+		ContainerLayer.under(screen, (g, mx, my) -> {
+			drawButtons(screen, g, mx, my);
+			drawMoveButtons(screen, g, mx, my);
+		});
 		net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.afterExtract(screen).register((s, g, mx, my, delta) -> pump(mc));
 		net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.remove(screen).register(s -> {
 			if (job != null && job.screen == screen) stop("closed");
@@ -192,6 +199,73 @@ public final class InventorySort {
 			Ui.round(g, b[0], b[1], BUTTON, BUTTON, 2, busy ? 0xE01D4ED8 : over ? 0xE0374151 : 0xC0111622);
 			Ui.icon(g, "m-sort", b[0] + 2, b[1] + 2, 6, blocked ? Ui.MUTED : busy || over ? 0xFFFFFFFF : 0xFFB4BCC8);
 		}
+	}
+
+	// ---------- all of it in, all of it out ----------
+
+	private static boolean moveOn(AbstractContainerScreen<?> screen) {
+		AbstractContainerMenu menu = screen.getMenu();
+		return SlashHud.config != null && SlashHud.config.chestMove && (menu instanceof ChestMenu || menu instanceof ShulkerBoxMenu);
+	}
+
+	/** The arrows, left of the sort buttons: {x, y, 1 into the chest (by "Inventory"), 0 out of it (by the chest's title)}. */
+	private static int[][] moveButtons(AbstractContainerScreen<?> screen) {
+		ContainerScreenAccessor a = (ContainerScreenAccessor) screen;
+		// next to the sort button when it is there, else where it would be
+		int right = a.slashclient$leftPos() + a.slashclient$imageWidth() - 7 - BUTTON - (on() && SlashHud.config.sortButton ? BUTTON + 2 : 0);
+		return new int[][] { { right, a.slashclient$topPos() + 4, 0 }, { right, a.slashclient$topPos() + a.slashclient$imageHeight() - 96, 1 } };
+	}
+
+	/** Which arrow is at this point: true the one putting all into the chest, false the one taking all out; null neither. */
+	private static Boolean moveButtonAt(AbstractContainerScreen<?> screen, double x, double y) {
+		if (!moveOn(screen)) return null;
+		for (int[] b : moveButtons(screen)) if (Ui.inside(x, y, b[0], b[1], BUTTON, BUTTON)) return b[2] == 1;
+		return null;
+	}
+
+	private static void drawMoveButtons(AbstractContainerScreen<?> screen, GuiGraphicsExtractor g, int mx, int my) {
+		if (!moveOn(screen)) return;
+		boolean blocked = blockedHere(Minecraft.getInstance());
+		for (int[] b : moveButtons(screen)) {
+			boolean over = Ui.inside(mx, my, b[0], b[1], BUTTON, BUTTON);
+			Ui.round(g, b[0], b[1], BUTTON, BUTTON, 2, over ? 0xE0374151 : 0xC0111622);
+			// up from the inventory into the chest, down from the chest into the inventory
+			Ui.icon(g, b[2] == 1 ? "arrow-up" : "arrow-down", b[0] + 2, b[1] + 2, 6, blocked ? Ui.MUTED : over ? 0xFFFFFFFF : 0xFFB4BCC8);
+		}
+	}
+
+	/** The slots moved by "all of it": the chest's, or the inventory's (the hotbar's unlocked ones only when asked for). */
+	static List<Slot> moveFrom(AbstractContainerMenu menu, boolean intoChest) {
+		if (!intoChest) return containerRegion(menu);
+		List<Slot> out = new ArrayList<>();
+		for (Slot s : menu.slots) {
+			if (!(s.container instanceof Inventory)) continue;
+			int i = s.getContainerSlot();
+			if (i >= 9 && i < 36 || i < 9 && SlashHud.config.chestMoveHotbar && !SlotLock.locked(i)) out.add(s);
+		}
+		return out;
+	}
+
+	/**
+	 * All that fits from the inventory into the chest (or back): each slot shift-clicked, as the
+	 * player's hand would, so what does not fit stays where it was. True when the click was ours.
+	 */
+	static boolean move(Minecraft mc, AbstractContainerScreen<?> screen, boolean intoChest) {
+		if (mc.player == null || mc.gameMode == null) return false;
+		if (blockedHere(mc)) {
+			Compat.overlay(mc, Component.translatable("slashclient-hud.sort.blocked"));
+			return true;
+		}
+		AbstractContainerMenu menu = screen.getMenu();
+		if (mc.player.containerMenu != menu || !menu.getCarried().isEmpty() || job != null) return true;
+		int clicks = 0;
+		for (Slot s : moveFrom(menu, intoChest)) {
+			if (!s.hasItem() || !s.mayPickup(mc.player)) continue;
+			Compat.containerClick(mc, mc.player, menu.containerId, s.index, 0, Compat.Click.QUICK_MOVE);
+			clicks++;
+		}
+		last = "moved " + clicks;
+		return true;
 	}
 
 	// ---------- running ----------

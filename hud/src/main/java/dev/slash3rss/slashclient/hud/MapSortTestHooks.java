@@ -71,6 +71,17 @@ public final class MapSortTestHooks {
 		return new int[] { (int) (x * scale), (int) (y * scale) };
 	}
 
+	/** The middle of an arrow next to the sort buttons (window pixels): into the chest by "Inventory", out of it by its title. */
+	public static int[] moveButton(boolean intoChest) {
+		Minecraft mc = Minecraft.getInstance();
+		if (!(Compat.screen(mc) instanceof AbstractContainerScreen<?> screen)) return new int[] { 0, 0 };
+		ContainerScreenAccessor a = (ContainerScreenAccessor) screen;
+		int x = a.slashclient$leftPos() + a.slashclient$imageWidth() - 7 - 10 - (SlashHud.config.sortButton ? 12 : 0) + 5;
+		int y = intoChest ? a.slashclient$topPos() + a.slashclient$imageHeight() - 96 + 5 : a.slashclient$topPos() + 4 + 5;
+		double scale = mc.getWindow().getGuiScale();
+		return new int[] { (int) (x * scale), (int) (y * scale) };
+	}
+
 	private static String describe(ItemStack s) {
 		return s.isEmpty() ? "-" : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem()).getPath() + " x" + s.getCount();
 	}

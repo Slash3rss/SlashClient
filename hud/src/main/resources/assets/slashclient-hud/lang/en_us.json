@@ -956,6 +956,8 @@
 	"slashclient-hud.sort.delay": "Delay between clicks",
 	"slashclient-hud.sort.hotbar": "Sort the hotbar too",
 	"slashclient-hud.sort.button": "Sort button in the window",
+	"slashclient-hud.sort.move": "\"Put all in\" and \"take all out\" arrows in chests",
+	"slashclient-hud.sort.moveHotbar": "Put in from the hotbar too",
 	"slashclient-hud.sort.offServers": "Off on servers",
 	"slashclient-hud.sort.offServersHint": "e.g. hypixel.net, example.com",
 	"slashclient-hud.sort.blocked": "Sorting is off on this server",

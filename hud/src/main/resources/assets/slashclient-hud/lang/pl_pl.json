@@ -956,6 +956,8 @@
 	"slashclient-hud.sort.delay": "Odstęp między kliknięciami",
 	"slashclient-hud.sort.hotbar": "Sortuj też pasek szybkiego wyboru",
 	"slashclient-hud.sort.button": "Przycisk sortowania w oknie",
+	"slashclient-hud.sort.move": "Strzałki „włóż wszystko” i „weź wszystko” w skrzyniach",
+	"slashclient-hud.sort.moveHotbar": "Wkładaj też z hotbara",
 	"slashclient-hud.sort.offServers": "Wyłączone na serwerach",
 	"slashclient-hud.sort.offServersHint": "np. hypixel.net, przyklad.pl",
 	"slashclient-hud.sort.blocked": "Sortowanie jest wyłączone na tym serwerze",

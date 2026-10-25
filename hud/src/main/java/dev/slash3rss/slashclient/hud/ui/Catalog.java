@@ -521,6 +521,8 @@ public final class Catalog {
 			new Slider("slashclient-hud.sort.delay", 0f, 250f, 10f, "%.0f ms", () -> (float) cfg.sortDelay, v -> cfg.sortDelay = Math.round(v)),
 			new Toggle("slashclient-hud.sort.hotbar", () -> cfg.sortHotbar, v -> cfg.sortHotbar = v),
 			new Toggle("slashclient-hud.sort.button", () -> cfg.sortButton, v -> cfg.sortButton = v),
+			new Toggle("slashclient-hud.sort.move", () -> cfg.chestMove, v -> cfg.chestMove = v),
+			new Toggle("slashclient-hud.sort.moveHotbar", () -> cfg.chestMoveHotbar, v -> cfg.chestMoveHotbar = v),
 			new Text("slashclient-hud.sort.offServers", "slashclient-hud.sort.offServersHint", 200, () -> cfg.sortOffServers, v -> cfg.sortOffServers = v)), null));
 		out.add(new Entry("shulkerPreview", "slashclient-hud.shulkerPreview", "extras", "m-shulker", () -> cfg.shulkerPreview, v -> cfg.shulkerPreview = v, List.of(), null));
 		out.add(new Entry("inventorySearch", "slashclient-hud.invSearch", "extras", "m-invsearch", () -> cfg.inventorySearch, v -> cfg.inventorySearch = v, List.of(), null));

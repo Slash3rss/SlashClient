@@ -384,6 +384,9 @@ public final class HudConfig {
 	public Boolean sortDelayMoved;
 	public boolean sortHotbar = false;
 	public boolean sortButton = true;
+	/** Arrows in a chest's window: all that fits from the inventory into the chest, or from the chest into the inventory (the hotbar too when asked). */
+	public boolean chestMove = true;
+	public boolean chestMoveHotbar = false;
 	/** Their rules forbid sorting mods (Hypixel's do): more can be added, with their subdomains. */
 	public String sortOffServers = "hypixel.net";
 	/** Friends who share their position, on the minimap and the full map, with their nicks. */
@@ -793,6 +796,8 @@ public final class HudConfig {
 		sortDelayMoved = true;
 		sortHotbar = other.sortHotbar;
 		sortButton = other.sortButton;
+		chestMove = other.chestMove;
+		chestMoveHotbar = other.chestMoveHotbar;
 		sortOffServers = other.sortOffServers == null ? "hypixel.net" : other.sortOffServers;
 		friendsOnMap = other.friendsOnMap;
 		friendsOnMapNames = other.friendsOnMapNames;

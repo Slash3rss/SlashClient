@@ -127,6 +127,34 @@ public class GameInventorySort implements FabricClientGameTest {
 			check(hotbar.equals("torch x5,-,-,-,dirt x3,-,-,-,-,"), "the hotbar changed: " + hotbar);
 			context.takeScreenshot("sort-inventory-after");
 			context.runOnClient(mc -> MapSortTestHooks.closeWindow());
+			context.waitTicks(5);
+
+			// the arrows in a chest: all of the chest into the inventory (the game fills the hotbar first, as
+			// with shift-clicks), then all of the backpack into the chest (the hotbar stays as it is)
+			context.runOnClient(mc -> MapSortTestHooks.use(0, 100, 2));
+			waitFor(context, () -> !context.computeOnClient(mc -> MapSortTestHooks.chest()).isEmpty(), "the chest did not open for the arrows");
+			context.waitTicks(5);
+			int[] out = context.computeOnClient(mc -> MapSortTestHooks.moveButton(false));
+			context.getInput().setCursorPos(out[0], out[1]);
+			context.waitTicks(3);
+			context.takeScreenshot("chest-move-buttons");
+			context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
+			context.waitTicks(10);
+			String emptied = context.computeOnClient(mc -> MapSortTestHooks.chest());
+			check(emptied.replace("-,", "").isEmpty(), "the chest not emptied by its arrow: " + emptied);
+			int[] in = context.computeOnClient(mc -> MapSortTestHooks.moveButton(true));
+			context.getInput().setCursorPos(in[0], in[1]);
+			context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
+			context.waitTicks(10);
+			String packAfter = context.computeOnClient(mc -> MapSortTestHooks.inventory(9, 35));
+			String hotbarAfter = context.computeOnClient(mc -> MapSortTestHooks.inventory(0, 8));
+			String filled = context.computeOnClient(mc -> MapSortTestHooks.chest());
+			check(packAfter.replace("-,", "").isEmpty() && hotbarAfter.startsWith("torch x5,") && filled.contains("golden_apple x2"),
+				"all into the chest: backpack " + packAfter + " hotbar " + hotbarAfter + " chest " + filled);
+			context.getInput().setCursorPos(4, 4);
+			context.waitTicks(2);
+			context.takeScreenshot("chest-move-filled");
+			context.runOnClient(mc -> MapSortTestHooks.closeWindow());
 			context.runOnClient(mc -> MapSortTestHooks.sortSettings(true, 50, false, "hypixel.net"));
 		}
 	}
