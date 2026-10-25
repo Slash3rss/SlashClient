@@ -31,6 +31,8 @@
 		"ChatScreenMixin",
 		"HoverEffectInvoker",
 		"KeepPacksOnStopMixin",
+		"ScoreboardRoundMixin",
+		"RoundFillMixin",
 		"ConfirmScreenAccessor",
 		"AutoToolAttackMixin",
 		"ChatScreenAccessor",

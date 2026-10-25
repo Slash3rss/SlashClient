@@ -256,6 +256,23 @@ public final class Ui {
 		}
 	}
 
+	/** As `round`, with only the top corners, only the bottom ones, or both rounded (pieces of one rounded box). */
+	public static void round(GuiGraphicsExtractor g, int x, int y, int w, int h, int r, boolean top, boolean bottom, int color) {
+		if (w <= 0 || h <= 0) return;
+		if (top && bottom) {
+			round(g, x, y, w, h, r, color);
+			return;
+		}
+		r = Math.min(r, Math.min(w / 2, h));
+		g.fill(x + r, y, x + w - r, y + h, color);
+		for (int i = 0; i < r; i++) {
+			int cut = inset(i, r);
+			int y1 = y + (top ? cut : 0), y2 = y + h - (bottom ? cut : 0);
+			g.fill(x + i, y1, x + i + 1, y2, color);
+			g.fill(x + w - i - 1, y1, x + w - i, y2, color);
+		}
+	}
+
 	/** How far row (or column) `k` of a corner with radius `r` is cut in; the same curve `round` fills. */
 	private static int inset(int k, int r) {
 		return r - (int) Math.round(Math.sqrt(r * r - (r - k - 0.5) * (r - k - 0.5)));

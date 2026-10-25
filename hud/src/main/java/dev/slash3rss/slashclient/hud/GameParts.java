@@ -285,6 +285,15 @@ public final class GameParts {
 	 * in all), with the header and the footer over and under it, wrapped to the same width,
 	 * centred and 9 pixels from the top.
 	 */
+	/** The scoreboard's and the tab list's boxes as the game lays them out, for their rounded corners (GameRound). */
+	public static int[] scoreboardRect(Minecraft mc, Objective objective, int sw, int sh) {
+		return objective == null ? null : scoreboardDrawn(mc, objective, sw, sh);
+	}
+
+	public static int[] tabListRect(Minecraft mc) {
+		return mc.level == null ? null : tabListDrawn(mc, mc.getWindow().getGuiScaledWidth());
+	}
+
 	static int[] tabListDrawn(Minecraft mc, int sw) {
 		Font font = mc.font;
 		var tab = Compat.tabList(mc);
