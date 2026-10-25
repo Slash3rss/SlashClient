@@ -447,6 +447,8 @@ public final class HudConfig {
 	/** Crosses where monsters can spawn, switched with a key (F9), this many blocks around (LightOverlay). */
 	public boolean lightOverlay = false;
 	public int lightOverlayRadius = 16;
+	/** The overlay marks farmland too: green where crops on it grow (light 9 and up), blue where it is too dark. */
+	public boolean lightOverlayCrops = true;
 	/** No rain, snow or thunder, only for you (the server's weather stays). */
 	public boolean weatherOff = false;
 	/** The third person camera's distance with the mouse wheel: held key or the wheel alone, starting distance, back to it after F5. */
@@ -836,6 +838,7 @@ public final class HudConfig {
 		deathScreen = other.deathScreen;
 		lightOverlay = other.lightOverlay;
 		lightOverlayRadius = Math.max(4, Math.min(32, other.lightOverlayRadius));
+		lightOverlayCrops = other.lightOverlayCrops;
 		weatherOff = other.weatherOff;
 		cameraDistance = other.cameraDistance;
 		cameraDistanceKey = other.cameraDistanceKey;

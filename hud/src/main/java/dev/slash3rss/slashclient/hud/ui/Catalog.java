@@ -424,7 +424,8 @@ public final class Catalog {
 		// the death screen: where, how long, and a button keeping the place (DeathInfo)
 		out.add(new Entry("deathScreen", "slashclient-hud.deathScreen", "world", "m-deathscreen", () -> cfg.deathScreen, v -> cfg.deathScreen = v, List.of(), null));
 		out.add(new Entry("lightOverlay", "slashclient-hud.lightOverlay", "world", "m-lightoverlay", () -> cfg.lightOverlay, v -> cfg.lightOverlay = v, List.of(
-			new Slider("slashclient-hud.lightOverlay.radius", 4f, 32f, 2f, "%.0f", () -> (float) cfg.lightOverlayRadius, v -> cfg.lightOverlayRadius = Math.round(v))), null));
+			new Slider("slashclient-hud.lightOverlay.radius", 4f, 32f, 2f, "%.0f", () -> (float) cfg.lightOverlayRadius, v -> cfg.lightOverlayRadius = Math.round(v)),
+			new Toggle("slashclient-hud.lightOverlay.crops", () -> cfg.lightOverlayCrops, v -> cfg.lightOverlayCrops = v)), null));
 		out.add(new Entry("weatherOff", "slashclient-hud.weatherOff", "world", "m-weather", () -> cfg.weatherOff, v -> cfg.weatherOff = v, List.of(), null));
 		out.add(new Entry("cameraDistance", "slashclient-hud.cameraDistance", "extras", "m-cameradistance", () -> cfg.cameraDistance, v -> cfg.cameraDistance = v, List.of(
 			new Slider("slashclient-hud.cameraDistance.default", dev.slash3rss.slashclient.hud.CameraDistance.MIN, dev.slash3rss.slashclient.hud.CameraDistance.MAX, 0.5f, "%.1f",

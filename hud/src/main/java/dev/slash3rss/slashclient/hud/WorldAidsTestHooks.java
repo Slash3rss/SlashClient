@@ -68,9 +68,12 @@ public final class WorldAidsTestHooks {
 		return spots.size() + " " + red + " " + yellow;
 	}
 
-	/** What the overlay marks at a block: "red", "yellow" or "-". */
+	/** What the overlay marks at a block: "red", "yellow", farmland "grows" or "dark", or "-". */
 	public static String spotAt(int x, int y, int z) {
 		var mc = Minecraft.getInstance();
+		for (var c : LightOverlay.scanCrops(mc.level, new BlockPos(x, y, z), 1)) {
+			if (c.x() == x && c.y() == y && c.z() == z) return c.grows() ? "grows" : "dark";
+		}
 		for (var s : LightOverlay.scan(mc.level, new BlockPos(x, y, z), 1)) {
 			if (s.x() == x && s.y() == y && s.z() == z) return s.night() ? "yellow" : "red";
 		}

@@ -28,13 +28,18 @@ import java.util.List;
  * on a block it may spawn on (a solid top: no glass, slabs at the bottom, leaves, bedrock), with
  * the dimension's block light limit (0 in the Overworld). A key switches it; the blocks are looked
  * through a few times a second, in a radius, and drawn as one batch of flat squares.
+ *
+ * Farmland is marked too (a setting): green where what grows on it gets the light crops need (9 and
+ * up, from the sky or from blocks, by night as well), blue where it is too dark for them to grow.
  */
 public final class LightOverlay {
 	private LightOverlay() {}
 
 	public static KeyMapping key;
 	private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/misc/light_overlay.png");
-	static final int RED = 0xFFFF3B3B, YELLOW = 0xFFFFD43B;
+	static final int RED = 0xFFFF3B3B, YELLOW = 0xFFFFD43B, GROWS = 0xFF4ADE80, DARK = 0xFF60A5FA;
+	/** The light crops need to grow: the brightest of sky and block light where the crop is. */
+	static final int CROP_LIGHT = 9;
 	/** Light from the sky by night: the game darkens it by 11. */
 	private static final int NIGHT_DARKEN = 11;
 	/** How far up and down from the feet, in blocks. */
@@ -45,7 +50,11 @@ public final class LightOverlay {
 	/** One spawnable block: where its floor is (the top of what lies there, e.g. snow) and whether only at night. */
 	public record Spot(int x, int y, int z, float floor, boolean night) {}
 
+	/** One farmland block (x, y, z of the farmland) and whether crops on it get the light to grow. */
+	public record Crop(int x, int y, int z, boolean grows) {}
+
 	private static List<Spot> spots = List.of();
+	private static List<Crop> crops = List.of();
 	private static int ticks;
 	private static BlockPos scannedAt;
 
@@ -77,6 +86,7 @@ public final class LightOverlay {
 		}
 		if (!cfg().lightOverlay || mc.player == null || mc.level == null) {
 			spots = List.of();
+			crops = List.of();
 			scannedAt = null;
 			return;
 		}
@@ -85,7 +95,31 @@ public final class LightOverlay {
 		if (--ticks > 0 && at.equals(scannedAt)) return;
 		ticks = 10;
 		scannedAt = at;
-		spots = scan(mc.level, at, Math.max(4, Math.min(32, cfg().lightOverlayRadius)));
+		int radius = Math.max(4, Math.min(32, cfg().lightOverlayRadius));
+		spots = scan(mc.level, at, radius);
+		crops = cfg().lightOverlayCrops ? scanCrops(mc.level, at, radius) : List.of();
+	}
+
+	/** The farmland within `radius` (a circle) and HEIGHT up and down of `center`, with whether crops on it grow. */
+	public static List<Crop> scanCrops(Level level, BlockPos center, int radius) {
+		List<Crop> out = new ArrayList<>();
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(), above = new BlockPos.MutableBlockPos();
+		int r2 = radius * radius;
+		for (int dx = -radius; dx <= radius; dx++) {
+			for (int dz = -radius; dz <= radius; dz++) {
+				if (dx * dx + dz * dz > r2) continue;
+				int x = center.getX() + dx, z = center.getZ() + dz;
+				if (!level.hasChunkAt(pos.set(x, center.getY(), z))) continue;
+				for (int y = center.getY() - HEIGHT; y <= center.getY() + HEIGHT; y++) {
+					if (!level.getBlockState(pos.set(x, y, z)).is(net.minecraft.world.level.block.Blocks.FARMLAND)) continue;
+					// the crop's own place, as the game checks it: sky light as by day (crops grow at night under the open sky)
+					above.set(x, y + 1, z);
+					int light = Math.max(level.getBrightness(LightLayer.SKY, above), level.getBrightness(LightLayer.BLOCK, above));
+					out.add(new Crop(x, y, z, light >= CROP_LIGHT));
+				}
+			}
+		}
+		return out;
 	}
 
 	/** The spawnable blocks within `radius` (a circle) and HEIGHT up and down of `center`. */
@@ -143,24 +177,28 @@ public final class LightOverlay {
 	//#if MC >= 26.1
 	private static void submit(PoseStack pose, net.minecraft.client.renderer.SubmitNodeCollector out) {
 		List<Spot> list = spots;
-		if (list.isEmpty()) return;
+		List<Crop> farm = crops;
+		if (list.isEmpty() && farm.isEmpty()) return;
 		var camera = Compat.camera(Minecraft.getInstance());
 		Vec3 cam = camera.position();
 		if (pose == null) pose = new PoseStack();
 		out.submitCustomGeometry(pose, RenderTypes.entityTranslucent(TEXTURE), (p, vc) -> {
 			for (Spot s : list) quad(p, vc, s, cam);
+			for (Crop c : farm) quad(p, vc, c, cam);
 		});
 	}
 	//#else
 	//$ private static void draw(PoseStack pose, net.minecraft.client.renderer.MultiBufferSource buffers) {
 	//$ 	List<Spot> list = spots;
-	//$ 	if (list.isEmpty() || buffers == null) return;
+	//$ 	List<Crop> farm = crops;
+	//$ 	if (list.isEmpty() && farm.isEmpty() || buffers == null) return;
 	//$ 	var camera = Compat.camera(Minecraft.getInstance());
 	//$ 	Vec3 cam = camera.position();
 	//$ 	if (pose == null) pose = new PoseStack();
 	//$ 	var type = RenderTypes.entityTranslucent(TEXTURE);
 	//$ 	VertexConsumer vc = buffers.getBuffer(type);
 	//$ 	for (Spot s : list) quad(pose.last(), vc, s, cam);
+	//$ 	for (Crop c : farm) quad(pose.last(), vc, c, cam);
 	//$ 	// drawn now: later the buffers may already have been drawn for this frame
 	//$ 	if (buffers instanceof net.minecraft.client.renderer.MultiBufferSource.BufferSource source) source.endBatch(type);
 	//$ }
@@ -168,9 +206,17 @@ public final class LightOverlay {
 
 	/** The cross on the block's floor, a hair above it, counter-clockwise seen from above. */
 	private static void quad(PoseStack.Pose p, VertexConsumer vc, Spot s, Vec3 cam) {
-		float x0 = (float) (s.x() - cam.x), z0 = (float) (s.z() - cam.z);
-		float y = (float) (s.y() + s.floor() + 0.01 - cam.y);
-		int c = s.night() ? YELLOW : RED;
+		quad(p, vc, s.x(), s.y() + s.floor(), s.z(), s.night() ? YELLOW : RED, cam);
+	}
+
+	/** Farmland's mark, on its top (lower than a full block), under what grows there. */
+	private static void quad(PoseStack.Pose p, VertexConsumer vc, Crop c, Vec3 cam) {
+		quad(p, vc, c.x(), c.y() + 15 / 16f, c.z(), c.grows() ? GROWS : DARK, cam);
+	}
+
+	private static void quad(PoseStack.Pose p, VertexConsumer vc, int x, float floor, int z, int c, Vec3 cam) {
+		float x0 = (float) (x - cam.x), z0 = (float) (z - cam.z);
+		float y = (float) (floor + 0.01 - cam.y);
 		int r = c >> 16 & 0xFF, g = c >> 8 & 0xFF, b = c & 0xFF;
 		vertex(p, vc, x0, y, z0, 0, 0, r, g, b);
 		vertex(p, vc, x0, y, z0 + 1, 0, 1, r, g, b);

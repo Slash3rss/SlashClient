@@ -394,6 +394,7 @@
 	"slashclient-hud.deathScreen.pointName": "Death %s",
 	"slashclient-hud.deathScreen.dateFormat": "yyyy-MM-dd HH:mm",
 	"slashclient-hud.lightOverlay.radius": "Radius (blocks)",
+	"slashclient-hud.lightOverlay.crops": "Show where crops grow (green) and where it is too dark (blue)",
 	"slashclient-hud.lightOverlay.on": "Light level overlay on",
 	"slashclient-hud.lightOverlay.off": "Light level overlay off",
 	"slashclient-hud.weatherOff": "No rain or snow",

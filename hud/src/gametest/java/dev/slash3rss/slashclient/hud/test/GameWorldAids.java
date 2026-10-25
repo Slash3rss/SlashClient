@@ -108,6 +108,9 @@ public class GameWorldAids implements FabricClientGameTest {
 		server.runCommand(String.format("fill 4 %d -10 10 %d -4 water", y, y));
 		server.runCommand(String.format("fill -10 %d 9 10 %d 9 smooth_stone_slab", y, y));
 		server.runCommand(String.format("fill -10 %d 11 10 %d 11 glass", y, y));
+		// farmland: under the open sky crops grow on it, in the dark room they do not
+		server.runCommand(String.format("setblock -8 %d 3 farmland", y));
+		server.runCommand(String.format("setblock -9 %d -9 farmland", y));
 		server.runCommand("tp @a 0 157 6 180 55");
 		context.runOnClient(mc -> WorldAidsTestHooks.fly());
 		context.waitTicks(60);
@@ -122,6 +125,8 @@ public class GameWorldAids implements FabricClientGameTest {
 		expect(context, 0, y + 1, 9, "-", "on a bottom slab");
 		expect(context, 0, y + 1, 11, "-", "on glass");
 		expect(context, -5, y + 1, -1, "-", "in the glass wall");
+		expect(context, -8, y, 3, "grows", "farmland under the sky");
+		expect(context, -9, y, -9, "dark", "farmland in the dark room");
 		context.waitTicks(10);
 		context.takeScreenshot("worldaids-light-overlay");
 		// at night the open floor is no different (the overlay shows what can spawn by night too)
