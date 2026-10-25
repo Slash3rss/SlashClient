@@ -224,7 +224,10 @@ public final class TestHooks {
 	}
 
 	/** A point inside a module's box in the layout editor. */
-	/** Only these modules on (the others off, the game's parts too); gives back the ids that were on, for {@link #modulesOn}. */
+	/**
+	 * Only these modules on (the others off, the game's parts too), at their normal size, as earlier
+	 * tests may have scaled them; gives back the ids that were on, for {@link #modulesOn}.
+	 */
 	public static java.util.List<String> onlyModules(String... ids) {
 		java.util.List<String> was = new java.util.ArrayList<>();
 		java.util.Set<String> keep = java.util.Set.of(ids);
@@ -232,13 +235,14 @@ public final class TestHooks {
 			HudConfig.Placement p = SlashHud.config.placement(m.id());
 			if (p.enabled) was.add(m.id());
 			p.enabled = keep.contains(m.id());
+			if (p.enabled) p.scale = 1f;
 		}
 		return was;
 	}
 
 	/** These modules on again, the others off. */
 	public static void modulesOn(java.util.List<String> ids) {
-		onlyModules(ids.toArray(new String[0]));
+		for (HudModule m : SlashHud.MODULES) SlashHud.config.placement(m.id()).enabled = ids.contains(m.id());
 	}
 
 	/** The module the mouse is on in the open editor, or null. */
