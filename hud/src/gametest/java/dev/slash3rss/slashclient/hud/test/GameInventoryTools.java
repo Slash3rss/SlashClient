@@ -143,6 +143,17 @@ public class GameInventoryTools implements FabricClientGameTest {
 			context.getInput().setCursorPos(4, 4);
 			context.waitTicks(5);
 			context.takeScreenshot("invtools-search");
+			// pinned with a double click: the next window opened has it already; a double click again unpins
+			String pin = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.InventorySearch.doubleClickForTest());
+			context.setScreen(() -> null);
+			context.waitTicks(2);
+			context.runOnClient(mc -> InvToolsTestHooks.openInventory());
+			context.waitTicks(5);
+			String kept = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.InventorySearch.boxText());
+			context.takeScreenshot("invtools-search-pinned");
+			String unpinned = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.InventorySearch.doubleClickForTest());
+			if (!pin.equals("diamond") || !kept.equals("diamond") || !unpinned.isEmpty())
+				throw new AssertionError("The pinned search (pinned, in the next window, after unpinning): " + pin + " | " + kept + " | " + unpinned);
 			context.computeOnClient(mc -> InvToolsTestHooks.search(""));
 
 			// Shift held and the left button swept along a row of the backpack: every slot passed over

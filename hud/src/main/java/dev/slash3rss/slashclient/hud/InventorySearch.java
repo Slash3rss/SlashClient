@@ -32,6 +32,14 @@ public final class InventorySearch {
 	private static final int W = 88, H = 12;
 	private static String query = "";
 	private static EditBox box;
+	/**
+	 * The search pinned with a double click on the box: it fills the box of every window opened
+	 * after (to look for one thing through many chests) until a double click again or an empty box.
+	 */
+	private static String pinned;
+	/** The last click on the box (ms), for the double click. */
+	private static long clickedAt;
+	private static final long DOUBLE_CLICK_MS = 400;
 	/** What each stack's tooltip says, in lower case; made again every second (items change). */
 	private static final Map<ItemStack, String> TEXT = new IdentityHashMap<>();
 	private static long textMadeAt;
@@ -68,7 +76,16 @@ public final class InventorySearch {
 		field.setTextColor(Ui.TEXT);
 		field.setHint(Component.translatable("slashclient-hud.invSearch.hint"));
 		field.setMaxLength(48);
-		field.setResponder(text -> query = text.strip().toLowerCase(Locale.ROOT));
+		// a pinned search is there at once
+		if (pinned != null) {
+			field.setValue(pinned);
+			query = pinned.strip().toLowerCase(Locale.ROOT);
+		}
+		field.setResponder(text -> {
+			query = text.strip().toLowerCase(Locale.ROOT);
+			// the pinned search follows what is typed; emptied, it is unpinned
+			if (pinned != null) pinned = query.isEmpty() ? null : text;
+		});
 		box = field;
 		Screens.getWidgets(screen).add(field);
 		// the window moves (the recipe book): the box follows before each frame
@@ -82,6 +99,7 @@ public final class InventorySearch {
 		//#if MC >= 1.21.9
 		ScreenMouseEvents.allowMouseClick(screen).register((s, e) -> {
 			if (field.isFocused() && !field.isMouseOver(e.x(), e.y())) unfocus(screen);
+			if (field.isMouseOver(e.x(), e.y())) clicked(field);
 			return true;
 		});
 		ScreenKeyboardEvents.allowKeyPress(screen).register((s, e) -> {
@@ -93,6 +111,7 @@ public final class InventorySearch {
 		//#else
 		//$ ScreenMouseEvents.allowMouseClick(screen).register((s, x, y, button) -> {
 		//$ 	if (field.isFocused() && !field.isMouseOver(x, y)) unfocus(screen);
+		//$ 	if (field.isMouseOver(x, y)) clicked(field);
 		//$ 	return true;
 		//$ });
 		//$ ScreenKeyboardEvents.allowKeyPress(screen).register((s, key, scancode, mods) -> {
@@ -109,12 +128,30 @@ public final class InventorySearch {
 		});
 	}
 
-	/** The rounded field under the box's text, with a magnifier; yellow-edged while it filters. */
+	/** A click on the box: the second one soon after pins the search, or unpins it. */
+	private static void clicked(EditBox field) {
+		long now = System.currentTimeMillis();
+		if (now - clickedAt < DOUBLE_CLICK_MS) {
+			togglePin(field.getValue());
+			clickedAt = 0;
+		} else clickedAt = now;
+	}
+
+	/** Pinned (with that text; nothing to pin when empty) or unpinned. */
+	private static void togglePin(String text) {
+		pinned = pinned == null && !text.isBlank() ? text : null;
+	}
+
+	/**
+	 * The rounded field under the box's text, with a magnifier; yellow-edged while it filters,
+	 * green with a pin while the search is pinned.
+	 */
 	private static void field(GuiGraphicsExtractor g, EditBox field) {
 		int x = field.getX() - 14, y = field.getY() - 2;
+		boolean pin = pinned != null;
 		Ui.round(g, x, y, W, H, 4, 0xE0111622);
-		Ui.roundOutline(g, x, y, W, H, 4, field.isFocused() ? 0x993B82F6 : !query.isEmpty() ? 0x80FACC15 : Ui.BORDER);
-		Ui.icon(g, "search", x + 4, y + 3, 6, field.isFocused() ? Ui.ACCENT_LIGHT : Ui.MUTED);
+		Ui.roundOutline(g, x, y, W, H, 4, field.isFocused() ? 0x993B82F6 : pin ? 0xC04ADE80 : !query.isEmpty() ? 0x80FACC15 : Ui.BORDER);
+		Ui.icon(g, pin ? "thumbtack" : "search", x + 4, y + 3, 6, pin ? Ui.GREEN : field.isFocused() ? Ui.ACCENT_LIGHT : Ui.MUTED);
 	}
 
 	private static void unfocus(AbstractContainerScreen<?> screen) {
@@ -220,5 +257,16 @@ public final class InventorySearch {
 
 	public static boolean focused() {
 		return box != null && box.isFocused();
+	}
+
+	/** The box double clicked; what is pinned now ("" for nothing). */
+	public static String doubleClickForTest() {
+		if (box != null) togglePin(box.getValue());
+		return pinned == null ? "" : pinned;
+	}
+
+	/** What the open window's box says. */
+	public static String boxText() {
+		return box == null ? "" : box.getValue();
 	}
 }
