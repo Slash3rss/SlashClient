@@ -234,6 +234,7 @@ public class SlashHud implements ClientModInitializer {
 			//#if MC >= 26.3
 			SkyTasks.tick(mc);
 			SkyCase.tick(mc);
+			SkyWardrobe.tick(mc);
 			//#endif
 			if (mc.level != null && mc.level.getGameTime() % 20 == 0) dev.slash3rss.slashclient.hud.social.Social.watchLan(mc);
 			// what the server's tab list says ("S3 (Wyspy)"), for friends and Discord

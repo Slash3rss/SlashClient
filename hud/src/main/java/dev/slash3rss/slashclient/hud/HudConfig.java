@@ -237,6 +237,8 @@ public final class HudConfig {
 	public int skyCaseWindow = 60;
 	/** Rewards summed by item ("4x Diament" counts as 4 Diament): the detail window grouped, the top rewards in pieces. */
 	public boolean skyCaseSum = false;
+	/** SkyUp's wardrobe module: the worn items' names beside them (else only their pictures in a row), and the wardrobe's two switches. */
+	public boolean skyWardrobeNames = true, skyWardrobeStatus = true;
 	/** How much health a mob or player just lost, rising from it. */
 	public boolean damageNumbers = true;
 	/** Your nick written differently in chat, the tab list and above your head (for recordings and streams). */
@@ -509,6 +511,8 @@ public final class HudConfig {
 		c.modules.put("skyfish", new Placement(true, 1f, 0.75f, -2, 0));
 		// the case counter above it; shown once a case was opened on SkyUp
 		c.modules.put("skycase", new Placement(true, 1f, 0.55f, -2, 0));
+		// the wardrobe above the case counter; shown once SkyUp's wardrobe window was opened
+		c.modules.put("skywardrobe", new Placement(true, 1f, 0.35f, -2, 0));
 		// the minimap in the top right corner, off until switched on; its own picture needs no background
 		Placement minimap = new Placement(false, 1f, 0f, -2, 2);
 		minimap.background = false;
@@ -701,6 +705,8 @@ public final class HudConfig {
 		skyCaseLayout = oneOf(other.skyCaseLayout, SKY_CASE_LAYOUTS);
 		skyCaseRows = Math.max(1, Math.min(10, other.skyCaseRows));
 		skyCaseNewDrop = other.skyCaseNewDrop;
+		skyWardrobeNames = other.skyWardrobeNames;
+		skyWardrobeStatus = other.skyWardrobeStatus;
 		skyPackLocal = other.skyPackLocal;
 		skyCaseWindow = Math.max(5, Math.min(600, other.skyCaseWindow));
 		skyCaseSum = other.skyCaseSum;

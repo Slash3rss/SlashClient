@@ -44,6 +44,8 @@ public final class Modules {
 		out.add(new SkyFish.Module());
 		// and what SkyUp's cases gave
 		out.add(new SkyCase.Module());
+		// and what is worn in SkyUp's cosmetic wardrobe
+		out.add(new SkyWardrobe.Module());
 		//#endif
 		// a Twitch and a Kick channel's live chat
 		out.addAll(StreamChatModule.all());
