@@ -25,10 +25,21 @@ describe('shared game settings', () => {
     assert.deepEqual((await pullShared(b)).sort(), ['options.txt', 'servers.dat']);
     assert.equal(await fs.readFile(path.join(b, 'options.txt'), 'utf8'), 'fov:0.5\nkey_key.jump:key.keyboard.space\n');
 
-    // and changes made there come back to the first one
+    // and changes made there come back to the first one; what the second one does not know stays
     await fs.writeFile(path.join(b, 'options.txt'), 'fov:1.0\n');
     await pushShared(b);
     await pullShared(a);
-    assert.equal(await fs.readFile(path.join(a, 'options.txt'), 'utf8'), 'fov:1.0\n');
+    assert.equal(await fs.readFile(path.join(a, 'options.txt'), 'utf8'), 'fov:1.0\nkey_key.jump:key.keyboard.space\n');
+  });
+
+  it("keeps a mod's key bindings when a profile without that mod is played", async () => {
+    const { mergeOptions } = await import('../src/main/sync.js');
+    const withMod = 'fov:0.5\nkey_key.slashclient-hud.zoom:key.keyboard.c\nkey_key.jump:key.keyboard.space\n';
+    // a vanilla profile wrote its options: it knows nothing of the mod's key
+    const vanilla = 'fov:0.7\nkey_key.jump:key.keyboard.j\n';
+    const shared = mergeOptions(withMod, vanilla);
+    assert.equal(shared, 'fov:0.7\nkey_key.jump:key.keyboard.j\nkey_key.slashclient-hud.zoom:key.keyboard.c\n');
+    // the modded profile changes its key: that wins next time
+    assert.match(mergeOptions(shared, 'key_key.slashclient-hud.zoom:key.keyboard.z\n'), /zoom:key\.keyboard\.z/);
   });
 });
