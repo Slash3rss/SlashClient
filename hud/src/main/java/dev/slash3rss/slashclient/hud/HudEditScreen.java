@@ -176,7 +176,7 @@ public class HudEditScreen extends Screen {
 			name.setTextColor(Ui.TEXT);
 			name.setMaxLength(16);
 			name.setValue(tab.name);
-			name.setHint(Ui.tr("slashclient-hud.chat.name"));
+			fitHint(name, Ui.tr("slashclient-hud.chat.name"));
 			name.setResponder(v -> {
 				tab.name = v;
 				tabsChanged();
@@ -189,7 +189,7 @@ public class HudEditScreen extends Screen {
 			patterns.setTextColor(Ui.TEXT);
 			patterns.setMaxLength(256);
 			patterns.setValue(ChatTabsScreen.joined(tab));
-			patterns.setHint(Ui.tr(tab.regex ? "slashclient-hud.chat.hint.regex" : "slashclient-hud.chat.hint.text"));
+			fitHint(patterns, Ui.tr(tab.regex ? "slashclient-hud.chat.hint.regex" : "slashclient-hud.chat.hint.text"));
 			patterns.setResponder(v -> {
 				ChatTabsScreen.setPatterns(tab, v);
 				tabsChanged();
@@ -200,7 +200,7 @@ public class HudEditScreen extends Screen {
 			excludes.setTextColor(Ui.TEXT);
 			excludes.setMaxLength(256);
 			excludes.setValue(ChatTabsScreen.joinedExcludes(tab));
-			excludes.setHint(Ui.tr("slashclient-hud.chat.hint.excludes"));
+			fitHint(excludes, Ui.tr("slashclient-hud.chat.hint.excludes"));
 			excludes.setResponder(v -> {
 				ChatTabsScreen.setExcludes(tab, v);
 				tabsChanged();
@@ -221,7 +221,7 @@ public class HudEditScreen extends Screen {
 				prefix.setTextColor(Ui.TEXT);
 				prefix.setMaxLength(64);
 				prefix.setValue(tab.prefix());
-				prefix.setHint(Ui.tr("slashclient-hud.chat.hint.prefix"));
+				fitHint(prefix, Ui.tr("slashclient-hud.chat.hint.prefix"));
 				prefix.setResponder(v -> {
 					tab.replyPrefix = v;
 					tabsChanged();
@@ -231,6 +231,35 @@ public class HudEditScreen extends Screen {
 				prefixField = prefix;
 			}
 		}
+	}
+
+	/** Hints longer than their field: the whole text, scrolled along each frame (marquee). */
+	private final java.util.Map<EditBox, Component> longHints = new java.util.HashMap<>();
+	/** When the window's fields were made: every scroll starts at the hint's beginning. */
+	private long hintsFrom;
+
+	/** A field's grey hint; one too long for the field scrolls through it instead of running into the next field. */
+	private void fitHint(EditBox box, Component hint) {
+		box.setHint(hint);
+		if (Ui.width(hint) > box.getWidth() - 4) {
+			if (longHints.isEmpty()) hintsFrom = System.currentTimeMillis();
+			longHints.put(box, hint);
+			scrollHint(box, hint, 0);
+		}
+	}
+
+	/** The hint's window `ms` into the scroll: a pause at the start, then a step a letter at a time, round and round. */
+	private void scrollHint(EditBox box, Component hint, long ms) {
+		String text = hint.getString(), loop = text + "     ";
+		var style = hint.getStyle();
+		int steps = loop.length(), at = (int) Math.max(0, (ms % (1500 + steps * 120L) - 1500) / 120);
+		String turned = loop.substring(at) + loop.substring(0, at), shown = "";
+		int room = box.getWidth() - 4;
+		for (int n = 1; n <= turned.length(); n++) {
+			if (Ui.width(Component.literal(turned.substring(0, n)).withStyle(style)) > room) break;
+			shown = turned.substring(0, n);
+		}
+		box.setHint(Component.literal(shown).withStyle(style));
 	}
 
 	private void drawChatTabs(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h) {
@@ -509,13 +538,14 @@ public class HudEditScreen extends Screen {
 		search = null;
 		tabFields.clear();
 		textFields.clear();
+		longHints.clear();
 		if (chatTabsPage()) initChatTabs();
 		else if (window && settingsOf != null && !crosshairPage()) initTextFields();
 		if (window && settingsOf == null && !category.equals("share")) {
 			search = new EditBox(font, winX() + winW() - 176, winY() + 12, 132, 12, Ui.tr("slashclient-hud.ui.search"));
 			search.setBordered(false);
 			search.setTextColor(Ui.TEXT);
-			search.setHint(Ui.tr("slashclient-hud.ui.search"));
+			fitHint(search, Ui.tr("slashclient-hud.ui.search"));
 			search.setResponder(v -> scroll = 0);
 			addRenderableWidget(search);
 		}
@@ -529,7 +559,7 @@ public class HudEditScreen extends Screen {
 			box.setTextColor(Ui.TEXT);
 			box.setMaxLength(t.maxLength());
 			box.setValue(t.get().get());
-			box.setHint(Ui.tr(t.hintKey()));
+			fitHint(box, Ui.tr(t.hintKey()));
 			box.setResponder(v -> {
 				t.set().accept(v);
 				typed();
@@ -558,6 +588,11 @@ public class HudEditScreen extends Screen {
 		//$ extractBackground(g, mx, my, delta);
 		//#endif
 		hits.clear();
+		long now = System.currentTimeMillis() - hintsFrom;
+		// only an empty field shows its hint: the scroll runs while it is seen
+		longHints.forEach((box, hint) -> {
+			if (box.getValue().isEmpty()) scrollHint(box, hint, now);
+		});
 		bar.hide();
 		g.fill(0, 0, width, height, window ? 0xB0050710 : 0x30000000);
 		if (dragging != null) {

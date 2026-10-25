@@ -158,6 +158,8 @@ public class SlashHud implements ClientModInitializer {
 		});
 		// the game's own menu gets a way back to ours
 		ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
+			// servers' windows (a login): Enter in the text field presses the button under it
+			DialogEnter.attach(screen);
 			// inventories: Shift-drag and the wheel move items (MouseTweaks)
 			if (screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> container) {
 				MouseTweaks.attach(container);
