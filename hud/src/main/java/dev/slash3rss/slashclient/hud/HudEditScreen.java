@@ -359,6 +359,15 @@ public class HudEditScreen extends Screen {
 		else if (hidden > 0) Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.chat.more", hidden), w), x, y + h - 10, Ui.MUTED);
 	}
 
+	/** A tab moved to another place; its settings stay open. */
+	private void moveTab(int from, int to) {
+		List<HudConfig.ChatTab> tabs = SlashHud.config.chatTabs;
+		tabs.add(to, tabs.remove(from));
+		tabMore = to;
+		tabsChanged();
+		reopen();
+	}
+
 	/** What copying or pasting the tabs did, under them (null: nothing yet). */
 	private Component tabsStatus;
 
@@ -397,6 +406,17 @@ public class HudEditScreen extends Screen {
 		String icon = "none".equals(tab.sound()) ? "bell-slash" : "bell";
 		int bw = Math.max(90, Ui.buttonWidth(now, icon, 18, 6)), bx = Math.max(box.getX() - 5, x + 6 + Ui.width(Ui.tr("slashclient-hud.chat.sound")) + 10);
 		Ui.button(g, "chatSound:" + tab.name, bx, sy, bw, 18, icon, now, false, mx, my);
+		// the tab's place among the others (in the chat's row of tabs too)
+		List<HudConfig.ChatTab> tabs = SlashHud.config.chatTabs;
+		int at = tabs.indexOf(tab), ux = x + w - 46;
+		if (at > 0) {
+			Ui.button(g, "tabUp", ux, sy, 22, 18, "arrow-up", Component.empty(), false, mx, my);
+			hits.add(new Hit(ux, sy, 22, 18, () -> moveTab(at, at - 1)));
+		}
+		if (at >= 0 && at < tabs.size() - 1) {
+			Ui.button(g, "tabDown", ux + 24, sy, 22, 18, "arrow-down", Component.empty(), false, mx, my);
+			hits.add(new Hit(ux + 24, sy, 22, 18, () -> moveTab(at, at + 1)));
+		}
 		hits.add(new Hit(bx, sy, bw, 18, () -> {
 			List<String> all = List.of(ChatTabs.SOUNDS);
 			tab.sound = all.get((all.indexOf(tab.sound()) + 1) % all.size());

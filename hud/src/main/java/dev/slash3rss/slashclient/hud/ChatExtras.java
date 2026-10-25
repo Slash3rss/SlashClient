@@ -80,7 +80,8 @@ public final class ChatExtras {
 	public static final String[] COPY_NOTICES = { "off", "short", "preview" };
 
 	/** A chat line's message: its text with the style of every char, and the GUI tick it came in at. */
-	private record Picked(String text, List<Style> styles, int addedTime) {}
+	/** A message picked to copy: its text, each character's style, and when it came (the chat's GUI ticks, or the time for a window's line). */
+	private record Picked(String text, List<Style> styles, int addedTime, Long at) {}
 
 	/** "<nick> text", "[rank] nick » text", "nick: text" (a nick of the game's own letters only, as "Note: …" is no sender). */
 	private static final Pattern SENDER = Pattern.compile("^(?:<[^<>]{1,40}> |(?:\\[[^\\]]{1,24}] ?)*\\S{1,32} (?:»|>>|→) |(?:\\[[^\\]]{1,24}] ?)*[A-Za-z0-9_]{2,16}: )");
@@ -110,7 +111,7 @@ public final class ChatExtras {
 		};
 		String time = c == null ? "off" : c.chatCopyTime;
 		if (!time.equals("off")) {
-			Long at = ARRIVED.get(p.addedTime());
+			Long at = p.at() != null ? p.at() : ARRIVED.get(p.addedTime());
 			// a message from before this was recorded: counted back from the GUI ticks (20 a second)
 			long millis = at != null ? at : System.currentTimeMillis() - (Compat.guiTicks(Minecraft.getInstance()) - p.addedTime()) * 50L;
 			LocalTime t = LocalTime.ofInstant(Instant.ofEpochMilli(millis), ZoneId.systemDefault());
@@ -121,6 +122,19 @@ public final class ChatExtras {
 
 	private static Picked pick(double mouseX, double mouseY) {
 		Minecraft mc = Minecraft.getInstance();
+		// a line in a pulled-out tab's window: the whole message it is part of
+		var inWindow = ChatWindows.messageAt(mouseX, mouseY);
+		if (inWindow != null) {
+			StringBuilder text = new StringBuilder();
+			List<Style> styles = new ArrayList<>();
+			inWindow.getKey().getVisualOrderText().accept((pos, style, cp) -> {
+				int before = text.length();
+				text.appendCodePoint(cp);
+				for (int k = before; k < text.length(); k++) styles.add(style);
+				return true;
+			});
+			return trimmed(new Picked(text.toString(), styles, 0, inWindow.getValue()));
+		}
 		ChatComponent chat = Compat.chat(mc);
 		ChatComponentAccessor access = (ChatComponentAccessor) chat;
 		double scale = ChatLook.scale(mc);
@@ -150,8 +164,11 @@ public final class ChatExtras {
 				return true;
 			});
 		}
-		Picked p = new Picked(text.toString(), styles, ((GuiMessage.Line) lines.get(first)).addedTime());
-		// without our time stamp in front and the repeat count at the end
+		return trimmed(new Picked(text.toString(), styles, ((GuiMessage.Line) lines.get(first)).addedTime(), null));
+	}
+
+	/** Without our time stamp in front and the repeat count at the end. */
+	private static Picked trimmed(Picked p) {
 		String s = p.text();
 		int start = 0, end = s.length();
 		Matcher stamp = STAMP.matcher(s);
@@ -167,7 +184,7 @@ public final class ChatExtras {
 	private static final Pattern COUNT = Pattern.compile(" ×\\d+$");
 
 	private static Picked cut(Picked p, int start, int end) {
-		return new Picked(p.text().substring(start, end), p.styles().subList(start, end), p.addedTime());
+		return new Picked(p.text().substring(start, end), p.styles().subList(start, end), p.addedTime(), p.at());
 	}
 
 	/** The text in runs of one style each. */

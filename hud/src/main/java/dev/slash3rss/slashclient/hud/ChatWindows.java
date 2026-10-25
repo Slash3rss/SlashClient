@@ -160,6 +160,28 @@ public final class ChatWindows {
 		return null;
 	}
 
+	/** The whole message under the mouse in an open chat window (GUI coordinates), with when it came: for copying it; null elsewhere. */
+	public static Map.Entry<Component, Long> messageAt(double mx, double my) {
+		Minecraft mc = Minecraft.getInstance();
+		if (SlashHud.config == null || Compat.hudHidden(mc)) return null;
+		int sw = mc.getWindow().getGuiScaledWidth(), sh = mc.getWindow().getGuiScaledHeight();
+		for (HudConfig.ChatTab tab : SlashHud.config.chatTabs) {
+			if (tab.window == null) continue;
+			int[] p = at(tab, sw, sh);
+			float s = tab.window.scale();
+			double lx = (mx - p[0]) / s, ly = (my - p[1]) / s;
+			if (lx < 0 || ly < 0 || lx >= cols(tab) || ly >= inner(tab)) continue;
+			List<Line> owners = new ArrayList<>();
+			List<FormattedCharSequence> shown = visible(mc, tab, true, System.currentTimeMillis(), new ArrayList<>(), owners);
+			int top = TITLE + 2 + (rows(tab) - shown.size()) * LINE_H;
+			int row = (int) Math.floor((ly - top) / LINE_H);
+			if (row < 0 || row >= owners.size()) return null;
+			Line line = owners.get(row);
+			return Map.entry(line.text(), line.at());
+		}
+		return null;
+	}
+
 	/** The style of the character `x` pixels into a line (the game's own helper for this is gone in newer versions). */
 	private static net.minecraft.network.chat.Style styleAtWidth(Minecraft mc, FormattedCharSequence line, double x) {
 		if (x < 0) return null;
@@ -178,6 +200,11 @@ public final class ChatWindows {
 
 	/** The newest lines of a window that fit, broken to its width, oldest first (with how faded each is). */
 	private static List<FormattedCharSequence> visible(Minecraft mc, HudConfig.ChatTab tab, boolean open, long now, List<Float> alpha) {
+		return visible(mc, tab, open, now, alpha, new ArrayList<>());
+	}
+
+	/** The same, with the message each shown row is part of (`owners`, row by row). */
+	private static List<FormattedCharSequence> visible(Minecraft mc, HudConfig.ChatTab tab, boolean open, long now, List<Float> alpha, List<Line> owners) {
 		var font = mc.font;
 		int w = cols(tab), rows = rows(tab);
 		List<FormattedCharSequence> shown = new ArrayList<>();
@@ -194,6 +221,7 @@ public final class ChatWindows {
 			for (int i = parts.size() - 1; i >= 0 && shown.size() < rows; i--) {
 				shown.add(0, parts.get(i));
 				alpha.add(0, a);
+				owners.add(0, line);
 			}
 		}
 		return shown;

@@ -284,6 +284,9 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.getInput().setCursorPos(reply[0] * guiScale, reply[1] * guiScale);
 			context.waitTicks(3);
 			context.takeScreenshot("chat-window-hover");
+			// a right click copies the window's message, as in the chat
+			String copied = context.computeOnClient(mc -> TestHooks.copyAt(reply));
+			if (copied == null || !copied.endsWith("[MSG] Steve -> me: [Odpowiedz]")) throw new AssertionError("Copying a line of the PM window: " + copied);
 			context.runOnClient(mc -> TestHooks.mouse("press", reply));
 			context.runOnClient(mc -> TestHooks.mouse("release", reply));
 			context.waitTicks(2);

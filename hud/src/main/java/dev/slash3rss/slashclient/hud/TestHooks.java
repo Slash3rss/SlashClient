@@ -1952,6 +1952,11 @@ public final class TestHooks {
 		return ChatTabs.lastSound;
 	}
 
+	/** What a right click at this point (GUI coordinates) would copy from the chat or a chat window. */
+	public static String copyAt(double[] at) {
+		return ChatExtras.copyAt(at[0], at[1]);
+	}
+
 	/** A point (GUI coordinates) over text with a click action in an open chat window, or null. */
 	public static double[] chatWindowClickable() {
 		var w = net.minecraft.client.Minecraft.getInstance().getWindow();
