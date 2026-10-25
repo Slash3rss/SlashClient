@@ -1410,8 +1410,11 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 }
 .wiki-content .w-invslot-large { width: 52px; height: 52px; }
 .wiki-content .w-invslot-item { display: inline-flex; }
-.wiki-content .w-animated > .w-invslot-item { display: none; }
-.wiki-content .w-animated > .w-invslot-item.w-animated-active { display: inline-flex; }
+/* an animated slot shows one item at a time, also when its items come in groups (subframes) */
+.wiki-content .w-animated .w-invslot-item { display: none; }
+.wiki-content .w-animated .w-invslot-item.w-animated-active { display: inline-flex; }
+.wiki-content .w-animated-subframe { display: contents; }
+.wiki-content .w-animated-subframe:not(.w-animated-active) .w-invslot-item { display: none; }
 .wiki-content .w-invslot-item img { width: 32px; height: 32px; }
 .wiki-content .w-invslot-stacksize { position: absolute; right: 1px; bottom: -2px; font: 700 13px var(--font-sans); color: #fff; text-shadow: 2px 2px #3f3f3f; }
 .wiki-content .w-sprite-file img { width: 16px; height: 16px; }

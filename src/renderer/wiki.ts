@@ -207,15 +207,21 @@ function createMinecraftWiki(root: HTMLElement, deps: WikiDeps) {
     else if (link.dataset.external && link.href.startsWith('https://')) window.open(link.href);
   });
 
-  // the wiki's animated slots (e.g. "any planks" in a recipe) cycle through their items
+  // the wiki's animated slots (e.g. "any planks" in a recipe) cycle through their items; some keep
+  // them in groups ("subframes", e.g. any log, then any stripped log…): all of them go round as one
   setInterval(() => {
     if (!root.offsetParent) return;
     root.querySelectorAll('.w-invslot.w-animated').forEach((slot) => {
-      const items = [...slot.querySelectorAll(':scope > .w-invslot-item')];
+      const items = [...slot.querySelectorAll('.w-invslot-item')];
       if (items.length < 2) return;
-      const i = items.findIndex((x) => x.classList.contains('w-animated-active'));
+      // the hidden ones load now, not when shown (lazy pictures shown for a moment would stay blank)
+      slot.querySelectorAll<HTMLImageElement>('img[loading="lazy"]').forEach((img) => { img.loading = 'eager'; });
+      // the one shown: in the group shown, if the slot has groups
+      const i = items.findIndex((x) => x.classList.contains('w-animated-active') && !x.closest('.w-animated-subframe:not(.w-animated-active)'));
       items.forEach((x) => x.classList.remove('w-animated-active'));
       items[(i + 1) % items.length].classList.add('w-animated-active');
+      // from now on the groups are one list: none of them hidden as a whole
+      slot.querySelectorAll('.w-animated-subframe').forEach((g) => g.classList.add('w-animated-active'));
     });
   }, 1500);
 
