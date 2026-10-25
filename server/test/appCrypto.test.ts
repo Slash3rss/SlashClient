@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createPrivateKey, createPublicKey, diffieHellman, generateKeyPairSync } from 'node:crypto';
 import { describe, it } from 'node:test';
-import { decrypt, encrypt, newDeviceKey } from '../../src/main/chatCrypto.ts';
+import { decrypt, encrypt, messageKey, newDeviceKey, rewrap } from '../../src/main/chatCrypto.ts';
 
 // the phone app's module (plain JS for the browser); Node has the same WebCrypto
 const app = await import(String(new URL('../web/app/crypto.js', import.meta.url)));
@@ -65,6 +65,19 @@ describe('the phone app\'s chat encryption', () => {
     // the same message claimed by someone else: unreadable
     assert.equal(decrypt(fromPhone, launcher, groupAad('g1', 'ala')), undefined);
   });
+
+  for (const native of [true, false]) {
+    it(`reads history a launcher handed over to it (${native ? 'WebCrypto' : 'its own'} X25519)`, async () => {
+      const launcher = newDeviceKey();
+      const friend = newDeviceKey();
+      const old = encrypt('sprzed telefonu', friend, [{ device: launcher.device, pub: launcher.publicKey }], 'bob|ala');
+      const phone = await app.newDeviceKey(native);
+      assert.equal(await app.decrypt(old, phone, 'bob|ala'), undefined);
+      const extra = rewrap(messageKey(old, launcher, 'bob|ala')!, launcher, { device: phone.device, pub: phone.publicKey }, 'bob|ala');
+      assert.equal(await app.decrypt(old, phone, 'bob|ala', extra), 'sprzed telefonu');
+      assert.equal(await app.decrypt(old, phone, 'eve|ala', extra), undefined);
+    });
+  }
 
   it('keeps a key made by Node (pkcs8) usable', async () => {
     const k = newDeviceKey();

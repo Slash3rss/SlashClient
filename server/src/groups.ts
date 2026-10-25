@@ -167,11 +167,14 @@ CREATE INDEX IF NOT EXISTS chat_group_messages_group ON chat_group_messages(grou
   /** The author's new text; the old one is not kept. */
   editMessage(id: number, text: string, at = Date.now()) {
     this.sql.prepare('UPDATE chat_group_messages SET text = ?, edited_at = ? WHERE id = ? AND deleted_at IS NULL').run(text, at, id);
+    // keys handed over for the old text cannot open the new one (chatKeys.ts)
+    this.sql.prepare("DELETE FROM chat_wraps WHERE kind = 'g' AND msg = ? AND field = 'text'").run(id);
   }
 
   /** Takes a message back: only that there was one stays. */
   deleteMessage(id: number, at = Date.now()) {
     this.sql.prepare("UPDATE chat_group_messages SET text = '', edited_at = NULL, deleted_at = ? WHERE id = ?").run(at, id);
+    this.sql.prepare("DELETE FROM chat_wraps WHERE kind = 'g' AND msg = ?").run(id);
   }
 
   /** Members who see a message (they were there when it came). */
@@ -454,7 +457,7 @@ export function createGroups(deps: Deps) {
     ['GET', /^\/v1\/groups\/([\w-]{1,32})\/keys$/, (req, [id]) => {
       const me = authed(req);
       groupOf(me, id);
-      return { keys: store.memberIds(id).flatMap((user) => db.deviceKeys(user).slice(0, KEYS_PER_MEMBER).map((k) => ({ user, ...k }))) };
+      return { keys: store.memberIds(id).flatMap((user) => db.deviceKeysFor(user, KEYS_PER_MEMBER).map((k) => ({ user, ...k }))) };
     }],
     // any member may bring in their own friends
     ['POST', /^\/v1\/groups\/([\w-]{1,32})\/members$/, async (req, [id]) => {

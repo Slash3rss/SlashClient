@@ -5,7 +5,7 @@
 
 import { api, ApiError, Live, token, whenSignedOut } from './api.js';
 import { closeChat, current as currentChat, onEvent as chatEvent, openChat, setSubtitle } from './chat.js';
-import { groupsChanged, keysChanged, startKeys } from './e2e.js';
+import { groupsChanged, keysChanged, startKeys, wrapsChanged } from './e2e.js';
 import { lang, members, plural, setLang, t } from './i18n.js';
 import * as push from './notify.js';
 import { qrSvg } from './qr.js';
@@ -374,6 +374,10 @@ async function onEvent(e) {
       return rerender();
     case 'keys':
       return keysChanged(e.user);
+    // the launcher handed the history over to this phone: the open chat is read again
+    case 'chat-wraps':
+      if (await wrapsChanged()) route();
+      return;
     case 'groups':
       groupsChanged();
       await loadGroups();

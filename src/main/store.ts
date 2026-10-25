@@ -107,6 +107,10 @@ export interface Settings {
   socialToken?: string;
   /** This launcher's chat encryption key; the private half encrypted like the token. */
   chatKey?: { device: string; publicKey: string; privateKey: string };
+  /** Keys this launcher had before its key was removed on another device: still read what was sealed for them. */
+  chatKeysRetired?: { device: string; publicKey: string; privateKey: string }[];
+  /** Chat history this launcher agreed to hand over and has not finished (chatKeys.ts); the page cannot change it. */
+  chatShares?: import('./chatKeys').ShareTarget[];
   /** The status the player picked for friends. */
   socialStatus: 'online' | 'away' | 'busy' | 'invisible';
   /** Download speed limit in MB/s for all of the launcher's downloads; 0 or missing = no limit. */

@@ -197,6 +197,21 @@ CREATE TABLE IF NOT EXISTS admin_log (id INTEGER PRIMARY KEY AUTOINCREMENT, at I
 CREATE TABLE IF NOT EXISTS profile_shares (code TEXT PRIMARY KEY, owner TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', game_version TEXT NOT NULL DEFAULT '', loader TEXT NOT NULL DEFAULT '', size INTEGER NOT NULL, downloads INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, expires_at INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created_at);
 `);
+    // chat keys of each launcher (chatKeys.ts, 0.9.47+): a name, when it first came, whether it is the
+    // account's password backup, and what the player decided about handing it the history. Keys
+    // from before are 'old': nobody is asked about them.
+    const keyColumns = (this.db.prepare('PRAGMA table_info(device_keys)').all() as { name: string }[]).map((c) => c.name);
+    if (!keyColumns.includes('name')) this.db.exec("ALTER TABLE device_keys ADD COLUMN name TEXT NOT NULL DEFAULT ''");
+    if (!keyColumns.includes('created_at')) this.db.exec('ALTER TABLE device_keys ADD COLUMN created_at INTEGER NOT NULL DEFAULT 0');
+    if (!keyColumns.includes('kind')) this.db.exec("ALTER TABLE device_keys ADD COLUMN kind TEXT NOT NULL DEFAULT ''");
+    if (!keyColumns.includes('handover')) this.db.exec("ALTER TABLE device_keys ADD COLUMN handover TEXT NOT NULL DEFAULT 'old'");
+    this.db.exec(`
+CREATE TABLE IF NOT EXISTS device_revoked (uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, device TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (uuid, device));
+CREATE TABLE IF NOT EXISTS chat_wraps (seq INTEGER PRIMARY KEY AUTOINCREMENT, uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, device TEXT NOT NULL,
+  kind TEXT NOT NULL, msg INTEGER NOT NULL, field TEXT NOT NULL, wrap TEXT NOT NULL, at INTEGER NOT NULL, UNIQUE (uuid, device, kind, msg, field));
+CREATE INDEX IF NOT EXISTS chat_wraps_msg ON chat_wraps(kind, msg);
+CREATE TABLE IF NOT EXISTS chat_backups (uuid TEXT PRIMARY KEY REFERENCES users(uuid) ON DELETE CASCADE, device TEXT NOT NULL, blob TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
+`);
     // a partner's animated icon (partnerIcons.ts): the sprite sheet's file, a frame's side and each frame's delay (JSON);
     // added after partners existed, so every file (a new one too, the table above has none of them) gets the columns here
     const iconColumns = this.db.prepare('PRAGMA table_info(partners)').all() as { name: string }[];
@@ -335,15 +350,51 @@ CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created
 
   // ---- chat encryption: the public keys of each account's launchers ----
 
-  /** Adds or refreshes a launcher's key; an account keeps its 10 most recent launchers. */
-  setDeviceKey(uuid: string, device: string, pub: string) {
-    this.db.prepare('INSERT INTO device_keys (uuid, device, pub, at) VALUES (?, ?, ?, ?) ON CONFLICT (uuid, device) DO UPDATE SET pub = excluded.pub, at = excluded.at')
-      .run(uuid, device, pub, Date.now());
-    this.db.prepare('DELETE FROM device_keys WHERE uuid = ? AND device NOT IN (SELECT device FROM device_keys WHERE uuid = ? ORDER BY at DESC LIMIT 10)').run(uuid, uuid);
+  /**
+   * Adds or refreshes a launcher's key; an account keeps its `max` most recent launchers (the
+   * password backup's key, chatKeys.ts, is not one of them and is never pushed out). A key that
+   * is new (or a device whose key changed) waits for the player's answer on another launcher
+   * about the history, unless the account has no other launcher to ask. A device the player
+   * removed cannot come back under the same id: 'revoked'.
+   */
+  setDeviceKey(uuid: string, device: string, pub: string, name = '', max = 10): 'added' | 'refreshed' | 'revoked' {
+    if (this.db.prepare('SELECT 1 FROM device_revoked WHERE uuid = ? AND device = ?').get(uuid, device)) return 'revoked';
+    const now = Date.now();
+    const old = this.db.prepare('SELECT pub, kind FROM device_keys WHERE uuid = ? AND device = ?').get(uuid, device) as { pub: string; kind: string } | undefined;
+    // the backup's id is not a launcher's: a launcher claiming it is refused like a removed one
+    if (old?.kind === 'backup') return 'revoked';
+    if (old && old.pub === pub) {
+      this.db.prepare("UPDATE device_keys SET at = ?, name = CASE WHEN ? != '' THEN ? ELSE name END WHERE uuid = ? AND device = ?").run(now, name, name, uuid, device);
+      return 'refreshed';
+    }
+    const others = (this.db.prepare("SELECT COUNT(*) AS n FROM device_keys WHERE uuid = ? AND device != ? AND kind = ''").get(uuid, device) as { n: number }).n;
+    this.db.prepare(`INSERT INTO device_keys (uuid, device, pub, at, name, created_at, kind, handover) VALUES (?, ?, ?, ?, ?, ?, '', ?)
+      ON CONFLICT (uuid, device) DO UPDATE SET pub = excluded.pub, at = excluded.at, name = excluded.name, created_at = excluded.created_at, handover = excluded.handover`)
+      .run(uuid, device, pub, now, name, now, others ? 'pending' : 'none');
+    // what was wrapped for the old key cannot be opened by the new one
+    if (old) this.db.prepare('DELETE FROM chat_wraps WHERE uuid = ? AND device = ?').run(uuid, device);
+    const gone = this.db.prepare(`SELECT device FROM device_keys WHERE uuid = ? AND kind = '' AND device NOT IN
+      (SELECT device FROM device_keys WHERE uuid = ? AND kind = '' ORDER BY at DESC LIMIT ?)`).all(uuid, uuid, max) as { device: string }[];
+    for (const g of gone) this.dropDevice(uuid, g.device);
+    return 'added';
   }
 
+  /** A device's key and what was wrapped for it, gone (pushed out, removed by the player, or a replaced backup). */
+  dropDevice(uuid: string, device: string) {
+    this.db.prepare('DELETE FROM device_keys WHERE uuid = ? AND device = ?').run(uuid, device);
+    this.db.prepare('DELETE FROM chat_wraps WHERE uuid = ? AND device = ?').run(uuid, device);
+  }
+
+  /** The keys to encrypt for: the password backup's first (when there is one), then the launchers, most recent first. */
   deviceKeys(uuid: string): { device: string; pub: string }[] {
-    return this.db.prepare('SELECT device, pub FROM device_keys WHERE uuid = ? ORDER BY at DESC').all(uuid) as { device: string; pub: string }[];
+    return this.db.prepare("SELECT device, pub FROM device_keys WHERE uuid = ? ORDER BY kind = 'backup' DESC, at DESC").all(uuid) as { device: string; pub: string }[];
+  }
+
+  /** The keys for a group's message: the backup's, and at most `max` launchers. */
+  deviceKeysFor(uuid: string, max: number): { device: string; pub: string }[] {
+    const all = this.db.prepare("SELECT device, pub, kind FROM device_keys WHERE uuid = ? ORDER BY kind = 'backup' DESC, at DESC").all(uuid) as { device: string; pub: string; kind: string }[];
+    const backup = all.filter((k) => k.kind === 'backup');
+    return [...backup, ...all.filter((k) => k.kind !== 'backup').slice(0, max)].map(({ device, pub }) => ({ device, pub }));
   }
 
   setRank(uuid: string, rank: string) {
@@ -656,11 +707,14 @@ CREATE INDEX IF NOT EXISTS profile_shares_owner ON profile_shares(owner, created
   /** The author's new text; the old one is not kept. */
   editMessage(id: number, text: string, at = Date.now()) {
     this.db.prepare('UPDATE messages SET text = ?, edited_at = ? WHERE id = ? AND deleted_at IS NULL').run(text, at, id);
+    // keys handed over for the old text cannot open the new one (chatKeys.ts); the picture's stay
+    this.db.prepare("DELETE FROM chat_wraps WHERE kind = 'm' AND msg = ? AND field = 'text'").run(id);
   }
 
   /** Takes a message back: what stays is that there was one (no text, invite or waypoint); it does not count as unread. */
   deleteMessage(id: number, at = Date.now()) {
     this.db.prepare("UPDATE messages SET text = '', invite = NULL, waypoint = NULL, edited_at = NULL, deleted_at = ? WHERE id = ?").run(at, id);
+    this.db.prepare("DELETE FROM chat_wraps WHERE kind = 'm' AND msg = ?").run(id);
   }
 
   /** Marks what `from` sent to `reader` as read; returns the time used, or undefined when nothing was unread. */
