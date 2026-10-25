@@ -16,7 +16,9 @@ import java.net.URL;
 /**
  * A server's resource pack, answered by the mode chosen for that server (ServerPacks): "prompt" is
  * the game's own way; "accept" downloads and applies it without the prompt; "decline" refuses it;
- * "ignore" downloads nothing and tells the server it was accepted, downloaded and loaded.
+ * "ignore" downloads nothing and tells the server it was accepted, downloaded and loaded; "keep" (and
+ * SkyUp's pack) answers so too when the player's kept copy is current and on, else takes the pack
+ * as "accept" while the copy is brought up to date (KeptPacks).
  */
 //#if MC >= 1.20.3
 @Mixin(net.minecraft.client.multiplayer.ClientCommonPacketListenerImpl.class)
@@ -37,10 +39,20 @@ abstract class ResourcePackPushMixin {
 	@Inject(method = "handleResourcePackPush", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread", shift = At.Shift.AFTER), cancellable = true)
 	private void slashclient$packMode(net.minecraft.network.protocol.common.ClientboundResourcePackPushPacket packet, CallbackInfo ci) {
 		ServerPacks.Mode mode = ServerPacks.forConnection(serverData);
+		// the pack kept in the player's resource packs, current and switched on: nothing to download or ask
+		if (dev.slash3rss.slashclient.hud.KeptPacks.covers(serverData, mode, packet.url(), packet.hash())) {
+			ServerPacks.decided(ServerPacks.Mode.KEEP);
+			slashclient$answer(packet.id(), net.minecraft.network.protocol.common.ServerboundResourcePackPacket.Action.ACCEPTED);
+			slashclient$answer(packet.id(), net.minecraft.network.protocol.common.ServerboundResourcePackPacket.Action.DOWNLOADED);
+			slashclient$answer(packet.id(), net.minecraft.network.protocol.common.ServerboundResourcePackPacket.Action.SUCCESSFULLY_LOADED);
+			ci.cancel();
+			return;
+		}
 		ServerPacks.decided(mode);
 		switch (mode) {
 			case PROMPT -> {}
-			case ACCEPT -> {
+			// kept, its copy not ready yet: this time as "accept"
+			case ACCEPT, KEEP -> {
 				URL url = parseResourcePackUrl(packet.url());
 				// a broken address: the game answers that itself
 				if (url == null) return;
@@ -90,7 +102,7 @@ abstract class ResourcePackPushMixin {
 	//$ 	ServerPacks.decided(mode);
 	//$ 	switch (mode) {
 	//$ 		case PROMPT -> {}
-	//$ 		case ACCEPT -> {
+	//$ 		case ACCEPT, KEEP -> {
 	//$ 			URL url = parseResourcePackUrl(packet.getUrl());
 	//$ 			if (url == null) return;
 	//$ 			send(net.minecraft.network.protocol.game.ServerboundResourcePackPacket.Action.ACCEPTED);

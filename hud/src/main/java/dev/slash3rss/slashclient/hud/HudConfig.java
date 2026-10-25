@@ -231,6 +231,8 @@ public final class HudConfig {
 	public int skyCaseRows = 5;
 	/** A toast when a case gives a reward never won before. */
 	public boolean skyCaseNewDrop = true;
+	/** SkyUp's resource pack kept up to date in the player's resource packs; switched on there, SkyUp's offer is not asked about (SkyPack). */
+	public boolean skyPackLocal = true;
 	/** Seconds a case's preview (or a win only it gives) counts as the case being opened, for rewards more cases give. */
 	public int skyCaseWindow = 60;
 	/** Rewards summed by item ("4x Diament" counts as 4 Diament): the detail window grouped, the top rewards in pieces. */
@@ -695,6 +697,7 @@ public final class HudConfig {
 		skyCaseLayout = oneOf(other.skyCaseLayout, SKY_CASE_LAYOUTS);
 		skyCaseRows = Math.max(1, Math.min(10, other.skyCaseRows));
 		skyCaseNewDrop = other.skyCaseNewDrop;
+		skyPackLocal = other.skyPackLocal;
 		skyCaseWindow = Math.max(5, Math.min(600, other.skyCaseWindow));
 		skyCaseSum = other.skyCaseSum;
 		damageNumbers = other.damageNumbers;

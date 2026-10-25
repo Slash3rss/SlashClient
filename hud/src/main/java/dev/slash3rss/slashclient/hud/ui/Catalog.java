@@ -317,6 +317,9 @@ public final class Catalog {
 			new Slider("slashclient-hud.lootHighlight.range", dev.slash3rss.slashclient.hud.LootHighlight.MIN_RANGE, dev.slash3rss.slashclient.hud.LootHighlight.MAX_RANGE, 4f, "%.0f",
 				() -> (float) cfg.lootHighlightRange, v -> cfg.lootHighlightRange = Math.round(v))), null));
 		//#if MC >= 26.3
+		// SkyUp's pack in the player's own resource packs, kept up to date; switched on, the server does not ask
+		out.add(new Entry("skyPack", "slashclient-hud.skyPack", "skyup", "skyup", () -> cfg.skyPackLocal, v -> cfg.skyPackLocal = v, List.of(
+			new Note("slashclient-hud.skyPack.note", () -> new Object[0])), null));
 		// SkyUp's cases in detail: every reward of each case, won or not
 		out.add(new Entry("skyCaseStats", "slashclient-hud.skyCase.screen", "skyup", "m-skycase", null, null, List.of(), () -> {
 			var mc = net.minecraft.client.Minecraft.getInstance();

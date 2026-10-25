@@ -57,6 +57,72 @@ public class GameServerPacks implements FabricClientGameTest {
 		world.getServer().runOnServer(server -> server.getPlayerList().getPlayers().get(0).connection.send(new ClientboundResourcePackPushPacket(id, URL, "", required, Optional.empty())));
 	}
 
+	//#if MC >= 26.3
+	/**
+	 * SkyUp's pack in the resource packs: the first offer saves it (and is still asked about), the
+	 * copy switched on stands in for the next offer (no question, no download, the server hears it
+	 * loaded), and a new version on the server brings the copy up to date.
+	 */
+	private static void skyPack(ClientGameTestContext context, TestSingleplayerContext world) {
+		String url = context.computeOnClient(mc -> {
+			try {
+				return dev.slash3rss.slashclient.hud.SkyPackTestHooks.serve("1");
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		});
+		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.skyUp(true));
+		try {
+			boolean first = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.offer(url));
+			waitFetched(context);
+			String saved = context.computeOnClient(mc -> copy());
+			boolean notOn = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.offer(url));
+			if (first || !saved.equals("current") || notOn) throw new AssertionError("SkyUp's pack saved: " + first + " " + saved + " " + notOn);
+			// switched on: SkyUp's own offer (prompt mode) is answered at once, nothing asked
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.select(true));
+			ServerPacks.heard.clear();
+			SlashHud.config.serverPackDefault = "prompt";
+			String sha = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.sha());
+			world.getServer().runOnServer(server -> server.getPlayerList().getPlayers().get(0).connection.send(new ClientboundResourcePackPushPacket(UUID.randomUUID(), url, sha, true, Optional.empty())));
+			List<String> answers = heard(context, 3);
+			String screen = context.computeOnClient(mc -> Compat.screen(mc) == null ? "none" : Compat.screen(mc).getClass().getSimpleName());
+			if (!answers.equals(List.of("ACCEPTED", "DOWNLOADED", "SUCCESSFULLY_LOADED")) || !screen.equals("none")) throw new AssertionError("SkyUp's pack switched on: " + answers + " screen " + screen);
+			// a new version on the server: not standing in any more, the copy brought up to date
+			context.computeOnClient(mc -> {
+				try {
+					return dev.slash3rss.slashclient.hud.SkyPackTestHooks.serve("2");
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			});
+			boolean stale = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.offer(url));
+			waitFetched(context);
+			String updated = context.computeOnClient(mc -> copy());
+			boolean again = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.offer(url));
+			if (stale || !updated.equals("current") || !again) throw new AssertionError("SkyUp's pack updated: " + stale + " " + updated + " " + again);
+		} finally {
+			context.runOnClient(mc -> {
+				dev.slash3rss.slashclient.hud.SkyPackTestHooks.select(false);
+				dev.slash3rss.slashclient.hud.SkyPackTestHooks.skyUp(false);
+				dev.slash3rss.slashclient.hud.SkyPackTestHooks.stop();
+			});
+		}
+	}
+
+	private static String copy() {
+		try {
+			return dev.slash3rss.slashclient.hud.SkyPackTestHooks.copy();
+		} catch (Exception e) {
+			return e.toString();
+		}
+	}
+
+	private static void waitFetched(ClientGameTestContext context) {
+		for (int i = 0; i < 100 && context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.fetching()); i++) context.waitTicks(2);
+		context.waitTicks(2);
+	}
+	//#endif
+
 	private static void pop(TestSingleplayerContext world, UUID id) {
 		world.getServer().runOnServer(server -> server.getPlayerList().getPlayers().get(0).connection.send(new ClientboundResourcePackPopPacket(Optional.of(id))));
 	}
@@ -198,6 +264,9 @@ public class GameServerPacks implements FabricClientGameTest {
 			context.takeScreenshot("server-packs-prompt");
 			context.setScreen(() -> null);
 			context.waitTicks(5);
+			//#if MC >= 26.3
+			skyPack(context, world);
+			//#endif
 		} finally {
 			ServerPacks.listening = false;
 			SlashHud.config.serverPackDefault = before;

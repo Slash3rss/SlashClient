@@ -134,6 +134,8 @@ public class SlashHud implements ClientModInitializer {
 		PartnerServers.refresh();
 		// a crash still saves the game's and other mods' settings
 		CrashSave.register();
+		// a server's kept pack downloaded while the old copy was in use: in its place before the packs load
+		KeptPacks.applyWaiting();
 		// another server or world: what we knew about its players is gone
 		//#if MC >= 26.3
 		// SkyUp's task progress counted in the last moments is not lost on leaving the server or closing the game

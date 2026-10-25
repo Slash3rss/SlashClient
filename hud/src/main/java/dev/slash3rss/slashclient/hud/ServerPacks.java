@@ -23,8 +23,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /**
  * Server resource packs, chosen per server: "prompt" (the game asks, as always), "accept" (downloaded
  * and applied without asking), "decline" (refused; a server that requires its pack may kick for it)
- * and "ignore" (nothing is downloaded or applied, but the server hears that the pack loaded fine, so
- * servers that insist on their pack let the player in with their own textures).
+ * "ignore" (nothing is downloaded or applied, but the server hears that the pack loaded fine, so
+ * servers that insist on their pack let the player in with their own textures) and "keep" (the pack
+ * kept in the player's resource packs and switched on for good: not loaded again at every join;
+ * KeptPacks).
  *
  * The first three are the game's own setting of a server in the list (its pack status), so that
  * stays in step; "ignore" is kept here by address (normalized like the partner servers), the game's
@@ -36,7 +38,7 @@ public final class ServerPacks {
 	private ServerPacks() {}
 
 	public enum Mode {
-		PROMPT, ACCEPT, DECLINE, IGNORE;
+		PROMPT, ACCEPT, DECLINE, IGNORE, KEEP;
 
 		public String id() {
 			return name().toLowerCase(Locale.ROOT);
@@ -53,20 +55,22 @@ public final class ServerPacks {
 	}
 
 	/** The modes as the settings window lists them (the first is the default). */
-	public static final String[] MODES = { "prompt", "accept", "decline", "ignore" };
+	public static final String[] MODES = { "prompt", "accept", "decline", "ignore", "keep" };
 
 	private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("slashclient-server-packs.json");
 	private static final Gson GSON = new Gson();
-	/** Normalized addresses set to "ignore". */
-	private static final Set<String> ignored = load();
+	/** Normalized addresses set to "ignore", and those set to "keep" (a file of its own, so older mods read the first as before). */
+	private static final Set<String> ignored = load(FILE);
+	private static final Path KEEP_FILE = FabricLoader.getInstance().getConfigDir().resolve("slashclient-server-packs-keep.json");
+	private static final Set<String> kept = load(KEEP_FILE);
 	/** The servers in the list as last loaded or saved (the game's own objects, so their setting is current). */
 	private static volatile List<ServerData> listed = List.of();
 
-	private static Set<String> load() {
+	private static Set<String> load(Path file) {
 		Set<String> out = new TreeSet<>();
 		try {
-			if (Files.exists(FILE)) {
-				List<String> read = GSON.fromJson(Files.readString(FILE, StandardCharsets.UTF_8), new TypeToken<List<String>>() {}.getType());
+			if (Files.exists(file)) {
+				List<String> read = GSON.fromJson(Files.readString(file, StandardCharsets.UTF_8), new TypeToken<List<String>>() {}.getType());
 				if (read != null) for (String a : read) out.add(PartnerServers.normalize(a));
 			}
 		} catch (Exception e) {
@@ -78,6 +82,7 @@ public final class ServerPacks {
 	private static void save() {
 		try {
 			Files.writeString(FILE, GSON.toJson(new ArrayList<>(ignored)), StandardCharsets.UTF_8);
+			Files.writeString(KEEP_FILE, GSON.toJson(new ArrayList<>(kept)), StandardCharsets.UTF_8);
 		} catch (Exception e) {
 			SlashHud.LOG.debug("SlashClient: server packs: {}", e.toString());
 		}
@@ -88,6 +93,7 @@ public final class ServerPacks {
 		if (server == null) return Mode.PROMPT;
 		synchronized (ignored) {
 			if (server.ip != null && ignored.contains(PartnerServers.normalize(server.ip))) return Mode.IGNORE;
+			if (server.ip != null && kept.contains(PartnerServers.normalize(server.ip))) return Mode.KEEP;
 		}
 		return switch (server.getResourcePackStatus()) {
 			case ENABLED -> Mode.ACCEPT;
@@ -99,7 +105,8 @@ public final class ServerPacks {
 	/** The game's own setting for `mode` ("ignore" leaves it asking, should SlashClient be gone one day). */
 	public static void setVanilla(ServerData server, Mode mode) {
 		server.setResourcePackStatus(switch (mode) {
-			case ACCEPT -> ServerData.ServerPackStatus.ENABLED;
+			// kept: without SlashClient the game takes the pack by itself
+			case ACCEPT, KEEP -> ServerData.ServerPackStatus.ENABLED;
 			case DECLINE -> ServerData.ServerPackStatus.DISABLED;
 			default -> ServerData.ServerPackStatus.PROMPT;
 		});
@@ -109,7 +116,9 @@ public final class ServerPacks {
 	public static void remember(String oldAddress, String newAddress, Mode mode) {
 		synchronized (ignored) {
 			boolean changed = oldAddress != null && ignored.remove(PartnerServers.normalize(oldAddress));
+			changed |= oldAddress != null && kept.remove(PartnerServers.normalize(oldAddress));
 			if (mode == Mode.IGNORE && newAddress != null && !newAddress.isBlank()) changed |= ignored.add(PartnerServers.normalize(newAddress));
+			if (mode == Mode.KEEP && newAddress != null && !newAddress.isBlank()) changed |= kept.add(PartnerServers.normalize(newAddress));
 			if (changed) save();
 		}
 	}
@@ -165,6 +174,7 @@ public final class ServerPacks {
 			case DECLINE -> 0xFFFCA5A5;
 			case IGNORE -> 0xFFFDE68A;
 			case ACCEPT -> 0xFF86EFAC;
+			case KEEP -> 0xFF93C5FD;
 			default -> 0xFFA0A0A0;
 		};
 	}
