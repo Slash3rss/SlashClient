@@ -29,7 +29,8 @@ export const CHAT_KEYS_EN: Record<string, string> = {
   'Zaszyfrowana Twoim hasłem kopia klucza trafi na serwer. Na nowym komputerze wpiszesz to hasło i odczytasz całą historię czatu.':
     'A copy of the key, encrypted with your password, goes to the server. On a new computer you type that password and read your whole chat history.',
   'Zapisz kopię': 'Save the backup',
-  'Kopia klucza czatu zapisana. Historia jest do niej dopisywana w tle.': 'Chat key backup saved. The history is being added to it in the background.',
+  'Kopia klucza czatu zapisana.': 'Chat key backup saved.',
+  'Albo potwierdź to na innym swoim urządzeniu. {0}': 'Or confirm it on another of your devices. {0}',
   'Zmień hasło czatu': 'Change the chat password',
   'Zmień hasło': 'Change password',
   'Hasło czatu zmienione.': 'Chat password changed.',

@@ -13,6 +13,8 @@ export interface ChatKeysView {
   backup: { device: string; createdAt: number; updatedAt: number; unlocked: boolean } | null;
   revoked: boolean;
   sharing: { device: string; done: number; backup?: boolean; own?: boolean }[];
+  /** new devices waiting for the player's answer */
+  pending?: string[];
 }
 
 export interface ChatKeysDeps {
@@ -64,11 +66,25 @@ export function createChatKeys(deps: ChatKeysDeps) {
     }
   }
 
+  /** devices this page already asked about (a reload of the page asks again) */
+  const asked = new Set<string>();
+  function queueNew(d: DeviceView) {
+    if (asked.has(d.device) || queue.some((x) => x.device === d.device)) return;
+    asked.add(d.device);
+    queue.push(d);
+    askNext();
+  }
+
   async function load() {
     try {
       set(await deps.api.chatKeysState());
     } catch {
       set(undefined);
+    }
+    // asked while this page was not listening yet (the launcher was starting): asked now
+    for (const id of view?.pending ?? []) {
+      const d = view!.devices.find((x) => x.device === id);
+      if (d) queueNew(d);
     }
   }
 
@@ -116,7 +132,9 @@ export function createChatKeys(deps: ChatKeysDeps) {
     const ok = el('button', { type: 'button', className: 'primary' }, opts.ok);
     const cancel = el('button', { type: 'button' }, t('Anuluj'));
     const close = modalWindow(opts.title, [
-      ...opts.intro.map((line, i) => el('p', { className: i ? 'muted' : '', textContent: line })),
+      // the warning that nothing can bring the backup back without the password stands out
+      ...opts.intro.map((line, i) => (line === WARNING() ? el('div', { className: 'fr-chatkeys-warn' }, icon('fa-triangle-exclamation'), el('span', { textContent: line }))
+        : el('p', { className: i ? 'muted' : '', textContent: line }))),
       ...(current ? [current] : []), pw, ...(again ? [again] : []), error,
     ], [cancel, ok], undefined, 'fr-group-modal fr-chatkeys-window');
     cancel.addEventListener('click', () => close());
@@ -152,7 +170,7 @@ export function createChatKeys(deps: ChatKeysDeps) {
       repeat: true, ok: t('Zapisz kopię'),
       run: async (pw) => {
         set(await deps.api.chatKeysSetBackup(pw));
-        deps.toast(t('Kopia klucza czatu zapisana. Historia jest do niej dopisywana w tle.'));
+        deps.toast(t('Kopia klucza czatu zapisana.'));
       },
     });
   }
@@ -214,7 +232,7 @@ export function createChatKeys(deps: ChatKeysDeps) {
     if (!d.own && d.handover === 'pending' && !sharing) {
       const share = el('button', { type: 'button', className: 'fr-chip-btn' }, icon('fa-share-nodes'), ` ${t('Udostępnij historię')}`);
       share.addEventListener('click', () => {
-        queue.unshift(d);
+        if (!queue.some((x) => x.device === d.device)) queue.unshift(d);
         askNext();
       });
       actions.push(share);
@@ -287,12 +305,15 @@ export function createChatKeys(deps: ChatKeysDeps) {
   function notice(unreadable: boolean): HTMLElement | null {
     if (!unreadable || !view?.supported) return null;
     const ownShare = view.sharing.find((s) => s.own);
-    const parts: Node[] = [icon('fa-clock-rotate-left'), el('div', { className: 'grow' },
-      el('span', { textContent: ownShare ? t('Odczytuję historię czatu… ({0})', ownShare.done) : t('Historia czatu pojawi się, gdy potwierdzisz to na innym swoim urządzeniu.') }),
-      el('small', { className: 'muted', textContent: ` ${t('Kod tego urządzenia: {0}', view.fingerprint)}` }))];
-    if (view.backup && !view.backup.unlocked && !ownShare) {
+    const password = !!view.backup && !view.backup.unlocked && !ownShare;
+    const line = ownShare ? t('Odczytuję historię czatu… ({0})', ownShare.done)
+      : password ? t('Masz kopię klucza – wpisz hasło czatu, żeby odczytać historię.') : t('Historia czatu pojawi się, gdy potwierdzisz to na innym swoim urządzeniu.');
+    const code = t('Kod tego urządzenia: {0}', view.fingerprint);
+    const parts: Node[] = [icon(password ? 'fa-key' : 'fa-clock-rotate-left'), el('div', { className: 'grow' },
+      el('span', { textContent: line }),
+      el('small', { className: 'muted', textContent: ` ${password ? t('Albo potwierdź to na innym swoim urządzeniu. {0}', code) : code}` }))];
+    if (password) {
       const read = el('button', { type: 'button', className: 'fr-chip-btn' }, icon('fa-unlock'), ` ${t('Wpisz hasło czatu')}`);
-      read.title = t('Masz kopię klucza – wpisz hasło czatu, żeby odczytać historię.');
       read.addEventListener('click', unlock);
       parts.push(read);
     }
@@ -306,8 +327,7 @@ export function createChatKeys(deps: ChatKeysDeps) {
         set(e.state);
         return true;
       case 'chat-device-new':
-        if (!queue.some((d) => d.device === e.device.device)) queue.push(e.device);
-        askNext();
+        queueNew(e.device);
         return true;
       case 'chat-history':
         deps.historyChanged();

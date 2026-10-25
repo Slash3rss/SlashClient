@@ -275,6 +275,10 @@ describe('chat keys: the password backup', () => {
     assert.deepEqual(await readDirect(ela, c.keys, max), ['przed kopią', 'po kopii']);
     await c.keys.idle();
     assert.ok(c.events.some((e) => e.type === 'chat-share-done' && e.own && e.done === 3));
+    // read it all itself: the other launchers stop asking about it
+    assert.equal((await call('GET', '/v1/chat-keys', ela.token)).body.devices.find((x: any) => x.device === fresh.device).handover, 'done');
+    await a.keys.refresh();
+    assert.deepEqual(a.keys.view().pending, []);
 
     // the launcher restarted (the backup's key not kept): still readable, with its own key
     const again = launcher(ela, fresh);

@@ -37,6 +37,8 @@ export interface ChatKeysView {
   revoked: boolean;
   /** history being handed over right now (to another device, the backup or this one) */
   sharing: { device: string; done: number; backup?: boolean; own?: boolean }[];
+  /** new devices to ask the player about (the page asks once per window it shows) */
+  pending: string[];
 }
 
 interface ServerState {
@@ -128,6 +130,7 @@ export class ChatKeys {
       backup: this.server?.backup ? { device: this.server.backup.device, createdAt: this.server.backup.createdAt, updatedAt: this.server.backup.updatedAt, unlocked: !!this.backupKey } : null,
       revoked: this.revoked,
       sharing: this.deps.shares().filter((s) => s.account === me).map((s) => ({ device: s.device, done: this.progress.get(s.device) ?? s.done, ...(s.backup ? { backup: true } : {}), ...(s.own ? { own: true } : {}) })),
+      pending: this.server ? this.pendingDevices().map((d) => d.device) : [],
     };
   }
 
@@ -185,12 +188,18 @@ export class ChatKeys {
     }
   }
 
-  /** Devices waiting for the player's answer; each one asked once per run. */
+  /** Devices waiting for the player's answer (not this one, not one being handed the history already, not too old). */
   pending(): DeviceView[] {
+    const own = this.deps.own().device;
+    return this.pendingDevices().map((d) => ({ ...d, fingerprint: fingerprint(d.pub), own: d.device === own }));
+  }
+
+  private pendingDevices() {
     const days = this.server?.limits.handoverDays ?? 30;
     const me = this.deps.me();
+    const own = this.deps.own().device;
     const mine = new Set(this.deps.shares().filter((s) => s.account === me).map((s) => s.device));
-    return this.view().devices.filter((d) => !d.own && d.handover === 'pending' && !mine.has(d.device) && (d.createdAt ?? 0) > Date.now() - days * 86_400_000);
+    return (this.server?.devices ?? []).filter((d) => d.device !== own && d.handover === 'pending' && !mine.has(d.device) && (d.createdAt ?? 0) > Date.now() - days * 86_400_000);
   }
 
   private askAboutNew() {
@@ -292,7 +301,8 @@ export class ChatKeys {
     }
     this.saveShare(t, true);
     this.progress.delete(t.device);
-    if (!t.backup && !t.own) await this.deps.call('POST', `/v1/chat-keys/devices/${t.device}`, { handover: 'done' }).catch(() => undefined);
+    // this launcher read it all with the password: the other launchers stop asking about it
+    if (!t.backup) await this.deps.call('POST', `/v1/chat-keys/devices/${t.device}`, { handover: 'done' }).catch(() => undefined);
     this.deps.emit({ type: 'chat-share-done', device: t.device, done: t.done, ...(t.backup ? { backup: true } : {}), ...(t.own ? { own: true } : {}) });
   }
 
