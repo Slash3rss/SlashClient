@@ -614,12 +614,12 @@ public final class ExtraModules {
 			return null;
 		}
 
-		/** The best tool's line: "Best:", its picture, then "min." and the weakest one's picture. */
-		private static final String MIN = " · min.";
+		/** After the breaking time: "best", its picture, then "min." and the weakest one's picture. */
+		private static final String MIN = " · min.", DOT = " · ";
 
 		private static int bestWidth(Minecraft mc, BlockState s) {
 			Item best = bestTool(s), weakest = weakestTool(s, best);
-			return mc.font.width(Component.translatable("slashclient-hud.block.best")) + 14 + (weakest != null && weakest != best ? mc.font.width(MIN) + 12 : 0);
+			return mc.font.width(Component.translatable("slashclient-hud.block.best")) + 13 + (weakest != null && weakest != best ? mc.font.width(MIN) + 12 : 0);
 		}
 
 		private static boolean showsBest(Minecraft mc, BlockState s) {
@@ -638,7 +638,7 @@ public final class ExtraModules {
 
 		/** Where the extra lines start: under the name, the tool line and the best tool's line, when shown. */
 		private static int linesTop(Minecraft mc, BlockState s) {
-			return 11 + (cfg.blockTool ? 11 : 0) + (showsBest(mc, s) ? 10 : 0);
+			return cfg.blockTool || showsBest(mc, s) ? 22 : 11;
 		}
 
 		private static boolean drops(Minecraft mc, BlockState s) {
@@ -791,8 +791,9 @@ public final class ExtraModules {
 			BlockPos pos = target(mc);
 			if (pos == null || !visible(mc)) return 20 + Math.max(mc.font.width(Component.translatable("block.minecraft.diamond_ore")), 70) + PAD * 2;
 			BlockState s = mc.level.getBlockState(pos);
-			int w = Math.max(mc.font.width(s.getBlock().getName()), cfg.blockTool ? detailWidth(mc, s, pos) : 0);
-			if (showsBest(mc, s)) w = Math.max(w, bestWidth(mc, s));
+			// the tool line: the time, then the best tool in the same row
+			int row = (cfg.blockTool ? detailWidth(mc, s, pos) : 0) + (showsBest(mc, s) ? (cfg.blockTool ? mc.font.width(DOT) : 0) + bestWidth(mc, s) : 0);
+			int w = Math.max(mc.font.width(s.getBlock().getName()), row);
 			for (var line : extras(mc, s, pos)) w = Math.max(w, mc.font.width(line.getKey()));
 			return 20 + w + PAD * 2;
 		}
@@ -825,6 +826,7 @@ public final class ExtraModules {
 			Item item = s.getBlock().asItem();
 			if (item != Items.AIR) g.item(new ItemStack(item), x + PAD, y + PAD + 2);
 			text(g, mc, s.getBlock().getName(), x + PAD + 20, y + PAD, cfg.textColor);
+			int bx = x + PAD + 20;
 			if (cfg.blockTool) {
 				Item tool = toolIcon(s);
 				int tx = x + PAD + 20;
@@ -832,11 +834,17 @@ public final class ExtraModules {
 					smallItem(g, tool, tx, y + PAD + 10);
 					tx += 12;
 				}
-				text(g, mc, detail(mc, s, pos), tx, y + PAD + 11, drops(mc, s) ? 0xFFAAAAAA : 0xFFFF5555);
+				Component time = detail(mc, s, pos);
+				text(g, mc, time, tx, y + PAD + 11, drops(mc, s) ? 0xFFAAAAAA : 0xFFFF5555);
+				bx = tx + mc.font.width(time);
 			}
 			if (showsBest(mc, s)) {
 				Item best = bestTool(s), weakest = weakestTool(s, best);
-				int by = y + PAD + (cfg.blockTool ? 22 : 11), bx = x + PAD + 20;
+				int by = y + PAD + 11;
+				if (cfg.blockTool) {
+					text(g, mc, Component.literal(DOT), bx, by, 0xFFAAAAAA);
+					bx += mc.font.width(DOT);
+				}
 				Component label = Component.translatable("slashclient-hud.block.best");
 				// green when that tool is already in hand
 				text(g, mc, label, bx, by, mc.player.getMainHandItem().is(best) ? 0xFF55FF55 : 0xFFFFCC55);

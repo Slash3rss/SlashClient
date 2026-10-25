@@ -55,7 +55,7 @@ public class GameBlockInfo implements FabricClientGameTest {
 			server.runCommand("tp @a 5.5 100 1.5 0 90");
 			context.waitTicks(10);
 			String best = context.computeOnClient(mc -> TestHooks.blockInfoLines());
-			check(best.contains("Best: Netherite Pickaxe · min. Diamond Pickaxe"), "obsidian, the best pickaxe", best);
+			check(best.contains("best Netherite Pickaxe · min. Diamond Pickaxe"), "obsidian, the best pickaxe", best);
 			context.takeScreenshot("blockinfo-best-tool");
 			//#if MC >= 1.21.9
 			// a shelf with five diamonds in its first slot

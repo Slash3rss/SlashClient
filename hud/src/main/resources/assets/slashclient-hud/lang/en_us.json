@@ -96,7 +96,7 @@
 	"slashclient-hud.set.blockShelf": "Items on a shelf",
 	"slashclient-hud.set.blockFrames": "What item frames hold",
 	"slashclient-hud.set.blockBestTool": "Best tool (and the weakest that makes the block drop)",
-	"slashclient-hud.block.best": "Best:",
+	"slashclient-hud.block.best": "best",
 	"slashclient-hud.set.blockGrowth": "Crop growth",
 	"slashclient-hud.set.blockPower": "Redstone signal",
 	"slashclient-hud.set.blockCoords": "Block coordinates",
