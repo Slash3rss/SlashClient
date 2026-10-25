@@ -191,6 +191,8 @@
 	"slashclient-hud.ui.search": "Search…",
 	"slashclient-hud.ui.open": "Settings",
 	"slashclient-hud.ui.dragHint": "Drag a module to move it  ·  Right click a module: its settings",
+	"slashclient-hud.ui.stackedHint": "Stacked modules: click again or Alt+click for the one below",
+	"slashclient-hud.ui.stacked": "%s  %s/%s",
 	"slashclient-hud.ui.editLayout": "Edit layout",
 	"slashclient-hud.ui.nothing": "Nothing matches the search.",
 	"slashclient-hud.ui.settings": "Settings",
