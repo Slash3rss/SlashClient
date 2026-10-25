@@ -61,9 +61,10 @@ public final class KeptPacks {
 
 	/** The file a server's pack is kept in: SkyUp's own name, else one from its address; null when it is not kept. */
 	static String fileFor(ServerData server, ServerPacks.Mode mode) {
+		if (mode == ServerPacks.Mode.KEEP && skyUp(server)) return SKYUP;
 		if (mode == ServerPacks.Mode.KEEP && server != null && server.ip != null) {
 			String host = PartnerServers.normalize(server.ip).replaceAll("[^\\w.-]", "_");
-			return skyUp(server) ? SKYUP : "Serwer " + host + ".zip";
+			return "Serwer " + host + ".zip";
 		}
 		if (skyUp(server) && SlashHud.config != null && SlashHud.config.skyPackLocal) return SKYUP;
 		return null;
@@ -92,18 +93,37 @@ public final class KeptPacks {
 		return "file/" + name;
 	}
 
-	/**
-	 * SkyUp with its copy not switched on, and the player not asked yet: whether to ask "for good?".
-	 * (Kept "for good" already, or once said no: not asked.)
-	 */
-	public static boolean askSkyUp(ServerData server, ServerPacks.Mode mode) {
-		return mode != ServerPacks.Mode.KEEP && skyUp(server) && SlashHud.config != null && SlashHud.config.skyPackLocal
-			&& !SlashHud.config.skyPackAsked && !selected(SKYUP);
+	/** A pack the game is asking about now: its server, address and SHA-1. */
+	record Offer(ServerData server, String url, String hash) {}
+
+	/** The packs of the game's open question, for its "Ustaw na stałe". */
+	private static final java.util.List<Offer> offers = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+	/** The game asks about this pack (with others of the same server, maybe). */
+	public static void offered(ServerData server, String url, String hash) {
+		offers.add(new Offer(server, url, hash));
 	}
 
-	/** SkyUp, not kept "for good": its pack is taken without the game's question (the copy kept up to date beside it). */
-	public static boolean skyUpWithoutPrompt(ServerData server) {
-		return skyUp(server) && SlashHud.config != null && SlashHud.config.skyPackLocal;
+	/**
+	 * The game's pack question answered: with "Ustaw na stałe" ticked and yes, the server is kept
+	 * "for good" and its packs saved; this time the game loads the server's own (two loads at once would
+	 * get in each other's way), from the next join the copy, switched on, stands in for it. Either way
+	 * the question's packs are forgotten.
+	 */
+	public static void answered(boolean yes, boolean forGood) {
+		java.util.List<Offer> asked = java.util.List.copyOf(offers);
+		offers.clear();
+		if (!yes || !forGood || asked.isEmpty()) return;
+		ServerPacks.keep(asked.get(0).server());
+		for (Offer o : asked) {
+			String name = fileFor(o.server(), ServerPacks.Mode.KEEP);
+			if (name != null && !current(name, o.url(), o.hash())) fetch(name, o.url(), o.hash(), false);
+		}
+	}
+
+	/** Whether the game's question is about packs this can keep (so it gets the checkbox). */
+	public static boolean asking() {
+		return !offers.isEmpty();
 	}
 
 	/** Switched on in the game's resource packs (as loaded now). */

@@ -160,6 +160,8 @@ public class SlashHud implements ClientModInitializer {
 		});
 		// the game's own menu gets a way back to ours
 		ScreenEvents.AFTER_INIT.register((mc, screen, w, h) -> {
+			// the game's question about a server's pack: "Ustaw na stałe" under it
+			PackForGood.attach(mc, screen);
 			// servers' windows (a login): Enter in the text field presses the button under it
 			DialogEnter.attach(screen);
 			// inventories: Shift-drag and the wheel move items (MouseTweaks)

@@ -59,8 +59,8 @@ public class GameServerPacks implements FabricClientGameTest {
 
 	//#if MC >= 26.3
 	/**
-	 * SkyUp's pack in the resource packs: the first offer saves it; with the copy off, SkyUp's offer
-	 * asks whether to keep it for good, and "for good" switches it on and answers the offer as loaded;
+	 * SkyUp's pack in the resource packs: the first offer saves it; with the copy off, the game's
+	 * question about it has "Ustaw na stałe", and ticked with yes the copy is switched on;
 	 * the copy on then stands in for the next offer (no question, no download); and a new version on
 	 * the server replaces the copy in use (switched off, replaced, switched on again).
 	 */
@@ -79,23 +79,30 @@ public class GameServerPacks implements FabricClientGameTest {
 			String saved = context.computeOnClient(mc -> copy());
 			boolean notOn = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.offer(url));
 			if (first || !saved.equals("current") || notOn) throw new AssertionError("SkyUp's pack saved: " + first + " " + saved + " " + notOn);
-			// SkyUp's offer with the copy off: "keep it for good?"; yes keeps SkyUp "for good", switches
-			// the copy on and answers the offer as loaded
+			// SkyUp's offer with the copy off: the game's question, with "Ustaw na stałe" under it; ticked
+			// and yes, the server's pack loads this time and the copy is switched on for good
 			ServerPacks.heard.clear();
 			SlashHud.config.serverPackDefault = "prompt";
-			SlashHud.config.skyPackAsked = false;
 			String sha = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.sha());
 			world.getServer().runOnServer(server -> server.getPlayerList().getPlayers().get(0).connection.send(new ClientboundResourcePackPushPacket(UUID.randomUUID(), url, sha, true, Optional.empty())));
 			for (int i = 0; i < 40 && !context.computeOnClient(mc -> Compat.screen(mc) instanceof net.minecraft.client.gui.screens.ConfirmScreen); i++) context.waitTick();
 			context.waitTicks(5);
-			context.takeScreenshot("server-packs-skyup-ask");
-			if (!context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.answerQuestion(true))) throw new AssertionError("SkyUp's pack: no question about keeping it");
-			List<String> answers = heard(context, 3);
-			context.waitTicks(30);
+			context.takeScreenshot("server-packs-for-good");
+			if (!context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.answerForGood())) throw new AssertionError("SkyUp's pack: the game's question has no \"Ustaw na stałe\"");
+			// the question gone: this time the game takes the server's pack its own way
+			context.waitTicks(5);
+			String after = context.computeOnClient(mc -> Compat.screen(mc) == null ? "none" : Compat.screen(mc).getClass().getSimpleName());
+			if (after.contains("PackConfirm")) throw new AssertionError("SkyUp's pack, yes with the box ticked: the question stayed open");
+			// the next join, kept "for good" (the test world has no address to keep it by: SkyUp's own here):
+			// the copy switched on, standing in for the offer
+			boolean covered = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.offerKept(url));
+			context.waitTicks(40);
 			boolean on = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.selected());
-			if (!answers.equals(List.of("ACCEPTED", "DOWNLOADED", "SUCCESSFULLY_LOADED")) || !on) throw new AssertionError("SkyUp's pack kept for good: " + answers + " on " + on);
+			if (!covered || !on) throw new AssertionError("SkyUp's pack kept for good at the next join: covered " + covered + " on " + on);
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.keepSkyUp(true));
 			// the next offer: the copy on and current, answered at once
 			ServerPacks.heard.clear();
+			List<String> answers;
 			world.getServer().runOnServer(server -> server.getPlayerList().getPlayers().get(0).connection.send(new ClientboundResourcePackPushPacket(UUID.randomUUID(), url, sha, true, Optional.empty())));
 			answers = heard(context, 3);
 			String screen = context.computeOnClient(mc -> Compat.screen(mc) == null ? "none" : Compat.screen(mc).getClass().getSimpleName());

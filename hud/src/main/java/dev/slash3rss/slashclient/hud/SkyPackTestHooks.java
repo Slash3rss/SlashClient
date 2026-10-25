@@ -28,7 +28,7 @@ public final class SkyPackTestHooks {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		try (ZipOutputStream zip = new ZipOutputStream(out)) {
 			zip.putNextEntry(new ZipEntry("pack.mcmeta"));
-			zip.write(("{\"pack\":{\"pack_format\":99,\"description\":\"SkyUp " + version + "\"}}").getBytes(StandardCharsets.UTF_8));
+			zip.write(("{\"pack\":{\"pack_format\":99,\"min_format\":1,\"max_format\":999,\"description\":\"SkyUp " + version + "\"}}").getBytes(StandardCharsets.UTF_8));
 			zip.closeEntry();
 		}
 		pack = out.toByteArray();
@@ -77,26 +77,29 @@ public final class SkyPackTestHooks {
 		return Files.isRegularFile(KeptPacks.dir().resolve(KeptPacks.SKYUP + ".next"));
 	}
 
+	/** SkyUp, kept "for good", offering its pack: whether the copy stands in for it (switched on when it was off). */
+	public static boolean offerKept(String url) {
+		return KeptPacks.covers(new ServerData("SkyUp", "skyup.pl", ServerData.Type.OTHER), ServerPacks.Mode.KEEP, url, sha);
+	}
+
+	/** The test world kept "for good" (as joining skyup.pl would be after the question), or not. */
+	public static void keepSkyUp(boolean on) {
+		if (on) ServerPacks.keep(new ServerData("SkyUp", "skyup.pl", ServerData.Type.OTHER));
+		else ServerPacks.remember("skyup.pl", null, ServerPacks.Mode.PROMPT);
+	}
+
 	/** Whether the copy is switched on in the game's resource packs. */
 	public static boolean selected() {
 		return KeptPacks.selected(KeptPacks.SKYUP);
 	}
 
-	/** "Keep SkyUp's pack for good?" answered, as its button would; false when the question is not open. */
-	public static boolean answerQuestion(boolean yes) {
+	/** The game's pack question answered yes with "Ustaw na stałe" ticked; false when it is not open or has no box. */
+	public static boolean answerForGood() {
 		if (!(Compat.screen(Minecraft.getInstance()) instanceof net.minecraft.client.gui.screens.ConfirmScreen screen)) return false;
-		String want = net.minecraft.network.chat.Component.translatable(yes ? "slashclient-hud.skyPack.askYes" : "slashclient-hud.skyPack.askNo").getString();
-		for (var child : screen.children()) {
-			if (child instanceof net.minecraft.client.gui.components.Button b && b.getMessage().getString().equals(want)) {
-				//#if MC >= 1.21.9
-				b.onPress(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 0, 0));
-				//#else
-				//$ b.onPress();
-				//#endif
-				return true;
-			}
-		}
-		return false;
+		boolean box = screen.children().stream().anyMatch(c -> c instanceof net.minecraft.client.gui.components.Checkbox);
+		if (!box || !PackForGood.tickForTest(screen)) return false;
+		((dev.slash3rss.slashclient.hud.mixin.ConfirmScreenAccessor) screen).slashclient$callback().accept(true);
+		return true;
 	}
 
 	/** Switched on in the game's resource packs (and loaded), or off again. */
