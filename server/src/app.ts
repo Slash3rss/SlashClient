@@ -1462,7 +1462,12 @@ export function createApp(cfg: Config) {
       const me = authed(req);
       friendOrThrow(me, other);
       const at = db.markRead(me, other);
-      if (at) push(other, { type: 'read', by: me, at });
+      if (at) {
+        push(other, { type: 'read', by: me, at });
+        // the reader's other launchers, games and phone: that conversation is read, its unread count goes
+        // (older clients see `by` as themselves, a conversation they have no chat with, and ignore it)
+        push(me, { type: 'read', by: me, with: other, at });
+      }
       return { ok: true };
     }],
     ...partners.routes,

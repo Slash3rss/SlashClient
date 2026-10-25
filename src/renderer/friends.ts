@@ -1524,8 +1524,10 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       }
       case 'message': {
         const m: Message = e.message;
+        // who we are not known yet: our own message (from the game or the phone) must not count as someone else's
+        if (!state?.user) return;
         addMessage(m);
-        if (m.from === state?.user?.id) return;
+        if (m.from === state.user.id) return;
         clearTimeout(typing.get(m.from));
         typing.delete(m.from);
         const f = friend(m.from);
@@ -1568,6 +1570,15 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
         void streamsBox?.refresh();
         return;
       case 'read': {
+        // read on another device of ours (the game, the phone): no longer unread here
+        if (e.by === state?.user?.id && e.with) {
+          const f = friend(e.with);
+          if (f?.unread) {
+            f.unread = 0;
+            renderList();
+          }
+          return;
+        }
         const chat = chats.get(e.by);
         chat?.messages.forEach((m) => m.from === state?.user?.id && !m.readAt && (m.readAt = e.at));
         if (e.by === selected) renderMessages();

@@ -293,6 +293,8 @@ describe('social server', () => {
     assert.equal((await call('GET', '/v1/friends', bob.token)).body.friends[0].unread, 1);
     await call('POST', `/v1/messages/${ala.user.id}/read`, bob.token);
     await alaLive.waitFor((e) => e.type === 'read' && e.by === bob.user.id);
+    // Bob's other launchers, games and phone hear it too: that conversation is read
+    await bobLive.waitFor((e) => e.type === 'read' && e.by === bob.user.id && e.with === ala.user.id);
     assert.equal((await call('GET', '/v1/friends', bob.token)).body.friends[0].unread, 0);
     const history = (await call('GET', `/v1/messages/${ala.user.id}`, bob.token)).body.messages;
     assert.equal(history.length, 1);

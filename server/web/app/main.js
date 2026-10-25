@@ -338,6 +338,14 @@ async function onEvent(e) {
       if (currentChat()?.kind === 'dm' && currentChat().id === e.id) setSubtitle(statusLine(f.presence));
       return rerender();
     }
+    case 'read': {
+      // read on another device of ours (the launcher, the game): no longer unread here
+      if (e.by !== S.me.id || !e.with) return;
+      const f = friend(e.with);
+      if (!f || !f.unread) return;
+      f.unread = 0;
+      return rerender();
+    }
     case 'message': {
       const m = e.message;
       const other = m.from === S.me.id ? m.to : m.from;

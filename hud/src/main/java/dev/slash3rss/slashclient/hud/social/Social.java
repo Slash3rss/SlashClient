@@ -355,6 +355,9 @@ public final class Social {
 						SlashHud.LOG.debug("SlashClient: friends: {}", ex.toString());
 					}
 				}
+				// still not known who we are: our own message (sent from the launcher or the phone) must not look like
+				// someone else's – no unread count, no toast; the chat shows it once it is opened
+				if (myId.isEmpty()) return;
 				String other = m.from().equals(myId) ? m.to() : m.from();
 				List<Message> chat = chats.get(other);
 				if (chat != null && chat.stream().noneMatch(x -> x.id() == m.id())) chat.add(m);
@@ -379,7 +382,7 @@ public final class Social {
 					Friend f = friend(other);
 					// muted: the message waits on the list (a waypoint among the received ones), without a toast
 					if (m.waypoint() != null) SharedWaypoints.received(m, f != null ? f.name() : "?", f != null && f.muted());
-					else if (f != null && f.muted()) return;
+					else if (f == null || f.muted()) return;
 					else if (m.image() != null) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.picture.toast").getString(), null);
 					else if (!m.party().isEmpty()) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.party.toast", m.invite()).getString(), null);
 					else if (!m.invite().isEmpty()) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.invite.toast", m.invite()).getString(), null);
@@ -417,6 +420,10 @@ public final class Social {
 			// communities: the list, their chat, and news (invited, accepted, kicked…)
 			case "communities", "community-message", "community-message-edit", "community-message-delete", "community", "community-reaction", "community-pin", "community-poll" -> Communities.onEvent(e);
 			case "typing" -> typingUntil.put(str(e, "from"), System.currentTimeMillis() + 6_000);
+			// read on another device of ours (the launcher, the phone): no longer unread in the game
+			case "read" -> {
+				if (!myId.isEmpty() && myId.equals(str(e, "by")) && e.has("with")) bump(str(e, "with"), 0, 0);
+			}
 			// "Join" on a friend's invite in the launcher while this game runs
 			case "join" -> join(str(e, "server"));
 			// someone in sight changed what they wear (in the launcher, on the website or in their game's menu)
