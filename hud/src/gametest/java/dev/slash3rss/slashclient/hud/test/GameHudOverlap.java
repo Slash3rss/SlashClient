@@ -82,7 +82,8 @@ public class GameHudOverlap implements FabricClientGameTest {
 			context.waitTicks(20);
 			context.runOnClient(mc -> {
 				TestHooks.place("fps", 0, 0, 60, 60);
-				TestHooks.place("ping", 0, 0, 60, 60);
+				// the ping 6 pixels lower: the FPS's top rows are its own, its lower ones under the ping
+				TestHooks.place("ping", 0, 0, 60, 66);
 				TestHooks.place("inventory", 0, 0, 60, 140);
 			});
 			context.setScreen(HudEditScreen::new);
@@ -90,12 +91,13 @@ public class GameHudOverlap implements FabricClientGameTest {
 			away(context);
 			hovered(context, null, "The cursor off every module");
 
-			// 1. the mouse comes onto the FPS beside the ping, then moves over the ping lying on it: still the FPS
+			// 1. the mouse comes onto the FPS above the ping, then moves down over the ping lying on it: still the FPS
+			// (boxes are measured again before each use: the FPS's width follows its number, which earlier tests' load changes)
 			int[] fps = box(context, "fps"), ping = box(context, "ping");
-			if (fps[2] <= ping[2]) throw new AssertionError("The FPS is not wider than the ping: " + Arrays.toString(fps) + " " + Arrays.toString(ping));
-			cursor(context, fps[0] + fps[2] - 3, fps[1] + 4);
-			hovered(context, "fps", "The cursor on the FPS beside the ping");
-			cursor(context, fps[0] + 3, fps[1] + 4);
+			if (!(ping[1] > fps[1] + 2 && ping[1] < fps[1] + fps[3] - 2)) throw new AssertionError("The ping does not lie on the FPS's lower part: " + Arrays.toString(fps) + " " + Arrays.toString(ping));
+			cursor(context, fps[0] + 3, fps[1] + 2);
+			hovered(context, "fps", "The cursor on the FPS above the ping");
+			cursor(context, fps[0] + 3, fps[1] + fps[3] - 2);
 			hovered(context, "fps", "The cursor moved inside the FPS onto the ping lying on it");
 			context.takeScreenshot("hudoverlap-sticky");
 			drag(context, 90, 50);
@@ -106,7 +108,8 @@ public class GameHudOverlap implements FabricClientGameTest {
 			// 2. coming from outside onto both, the top one (the ping) is taken and moves alone
 			context.runOnClient(mc -> TestHooks.place("fps", 0, 0, 60, 60));
 			away(context);
-			cursor(context, ping[0] + 3, ping[1] + 4);
+			fps = box(context, "fps");
+			cursor(context, ping[0] + 3, fps[1] + fps[3] - 2);
 			hovered(context, "ping", "The cursor from outside onto the FPS and the ping lying on each other");
 			drag(context, 90, 50);
 			moved(ping, box(context, "ping"), "ping");
@@ -116,6 +119,7 @@ public class GameHudOverlap implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.place("inventory", 0, 0, 40, 40));
 			away(context);
 			int[] inv = box(context, "inventory");
+			fps = box(context, "fps");
 			if (!(inv[0] <= fps[0] && inv[1] <= fps[1] && inv[0] + inv[2] >= fps[0] + fps[2] && inv[1] + inv[3] >= fps[1] + fps[3]))
 				throw new AssertionError("The inventory does not cover the FPS: " + Arrays.toString(inv) + " " + Arrays.toString(fps));
 			cursor(context, fps[0] + 3, fps[1] + 4);
@@ -127,7 +131,8 @@ public class GameHudOverlap implements FabricClientGameTest {
 			hovered(context, "fps", "A second click in the same place");
 			context.takeScreenshot("hudoverlap-under");
 			// and it stays the one, drawn on top, while the mouse moves inside it
-			cursor(context, fps[0] + fps[2] - 3, fps[1] + 6);
+			int[] now = box(context, "fps");
+			cursor(context, now[0] + now[2] / 2.0, now[1] + now[3] / 2.0);
 			hovered(context, "fps", "The cursor moved inside the FPS taken from under the inventory");
 			drag(context, 0, -70);
 			int[] fpsOut = box(context, "fps");
