@@ -66,8 +66,11 @@ public final class ChatTabs {
 			dragging = -1;
 			ScreenEvents.remove(screen).register(s -> {
 				dragging = -1;
+				ChatWindows.scrollToNewest();
 				SlashHud.config.save();
 			});
+			// the wheel over a pulled-out window scrolls its lines (elsewhere the chat's own)
+			net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseScroll(screen).register((s, mx, my, sideways, v) -> !ChatWindows.scroll(mx, my, v));
 			// pulled-out tabs: drawn under their handles, dragged by their title, docked back with the ×
 			ScreenEvents.beforeExtract(screen).register((s, g, mouseX, mouseY, delta) -> ChatWindows.drawOpen(g, mc));
 			ChatWindows.addHandles(screen, width, height, () -> mc.execute(() -> Compat.relayout(screen)));

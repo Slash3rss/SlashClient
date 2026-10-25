@@ -758,6 +758,8 @@
 	"slashclient-hud.chat.mentions": "Oznaczenia (dźwięk i @)",
 	"slashclient-hud.chat.window.drop": "Upuść: okno „%s”",
 	"slashclient-hud.chat.window.dock": "Przypnij z powrotem do czatu",
+	"slashclient-hud.chat.window.fold": "Kliknij, aby zwinąć do nagłówka (przeciągnij, aby przesunąć)",
+	"slashclient-hud.chat.window.unfold": "Kliknij, aby rozwinąć (przeciągnij, aby przesunąć)",
 	"slashclient-hud.chat.window.empty": "Tu pojawią się linie tej zakładki",
 	"key.slashclient-hud.holdAttack": "Trzymaj lewy przycisk (przełącz)",
 	"key.slashclient-hud.holdUse": "Trzymaj prawy przycisk (przełącz)",

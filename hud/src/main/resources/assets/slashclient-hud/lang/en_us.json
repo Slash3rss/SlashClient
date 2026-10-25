@@ -758,6 +758,8 @@
 	"slashclient-hud.chat.mentions": "Mentions (sound and @)",
 	"slashclient-hud.chat.window.drop": "Drop: “%s” window",
 	"slashclient-hud.chat.window.dock": "Put back into the chat",
+	"slashclient-hud.chat.window.fold": "Click to fold to the title (drag to move)",
+	"slashclient-hud.chat.window.unfold": "Click to unfold (drag to move)",
 	"slashclient-hud.chat.window.empty": "This tab's lines will show here",
 	"key.slashclient-hud.holdAttack": "Hold left button (toggle)",
 	"key.slashclient-hud.holdUse": "Hold right button (toggle)",

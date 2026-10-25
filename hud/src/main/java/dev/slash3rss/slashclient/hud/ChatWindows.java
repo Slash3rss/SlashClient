@@ -90,9 +90,15 @@ public final class ChatWindows {
 		return Math.round(inner(tab) * tab.window.scale());
 	}
 
-	/** The window's height before its scale: the title, its lines and, when the tab has one, the typing line. */
+	/** The window's height before its scale: the title, its lines and, when the tab has one, the typing line; folded, the title alone. */
 	static int inner(HudConfig.ChatTab tab) {
-		return TITLE + rows(tab) * LINE_H + 5 + (tab.input ? ChatTabInput.ROW : 0);
+		if (tab.collapsed) return TITLE;
+		return TITLE + rows(tab) * LINE_H + 5 + (typing(tab) ? ChatTabInput.ROW : 0);
+	}
+
+	/** Whether the window has its typing line now: the tab has one and the window is not folded. */
+	static boolean typing(HudConfig.ChatTab tab) {
+		return tab.input && !tab.collapsed;
 	}
 
 	/** Where a window is on a screen of this size: its anchor plus offset, kept inside. */
@@ -160,6 +166,35 @@ public final class ChatWindows {
 		return null;
 	}
 
+	/** How far each window is scrolled back (rows), while the chat is open; back at the newest once it closes. */
+	private static final Map<String, Integer> scrolled = new HashMap<>();
+
+	/** The wheel over a window: three rows back (up) or forward (down) a notch. True when it was over a window. */
+	public static boolean scroll(double mx, double my, double amount) {
+		Minecraft mc = Minecraft.getInstance();
+		if (SlashHud.config == null || Compat.hudHidden(mc) || amount == 0) return false;
+		int sw = mc.getWindow().getGuiScaledWidth(), sh = mc.getWindow().getGuiScaledHeight();
+		for (HudConfig.ChatTab tab : SlashHud.config.chatTabs) {
+			if (tab.window == null || tab.collapsed) continue;
+			int[] p = at(tab, sw, sh);
+			if (mx < p[0] || my < p[1] || mx >= p[0] + width(tab) || my >= p[1] + height(tab)) continue;
+			int now = scrolled.getOrDefault(tab.name, 0);
+			scrolled.put(tab.name, Math.max(0, now + (amount > 0 ? 3 : -3)));
+			return true;
+		}
+		return false;
+	}
+
+	/** The chat closed: every window back at its newest lines. */
+	static void scrollToNewest() {
+		scrolled.clear();
+	}
+
+	/** How far a window is scrolled back (for the test). */
+	static int scrolledForTest(String tab) {
+		return scrolled.getOrDefault(tab, 0);
+	}
+
 	/** The whole message under the mouse in an open chat window (GUI coordinates), with when it came: for copying it; null elsewhere. */
 	public static Map.Entry<Component, Long> messageAt(double mx, double my) {
 		Minecraft mc = Minecraft.getInstance();
@@ -208,9 +243,13 @@ public final class ChatWindows {
 		var font = mc.font;
 		int w = cols(tab), rows = rows(tab);
 		List<FormattedCharSequence> shown = new ArrayList<>();
+		// folded: no lines to show (nor to click or copy)
+		if (tab.collapsed) return shown;
 		// first sight of a window (the game just started): what the chat already holds for it
 		if (!lines.containsKey(tab.name)) backfill(tab);
 		ArrayDeque<Line> list = lines.getOrDefault(tab.name, new ArrayDeque<>());
+		// scrolled back (the wheel, while the chat is open): that many of the newest rows left out
+		int skip = open ? scrolled.getOrDefault(tab.name, 0) : 0, seen = 0;
 		var it = list.descendingIterator();
 		while (it.hasNext() && shown.size() < rows) {
 			Line line = it.next();
@@ -219,19 +258,32 @@ public final class ChatWindows {
 			float a = open ? 1f : Math.min(1f, (SHOW_MS - age) / 1000f);
 			List<FormattedCharSequence> parts = font.split(line.text(), w - 10);
 			for (int i = parts.size() - 1; i >= 0 && shown.size() < rows; i--) {
+				if (seen++ < skip) continue;
 				shown.add(0, parts.get(i));
 				alpha.add(0, a);
 				owners.add(0, line);
 			}
 		}
+		// scrolled past the oldest line: back to where the oldest fills the window
+		if (skip > 0 && shown.size() < rows) scrolled.put(tab.name, Math.max(0, seen - rows));
 		return shown;
 	}
 
 	private static void drawWindow(GuiGraphicsExtractor g, Minecraft mc, HudConfig.ChatTab tab, boolean open, long now) {
 		var font = mc.font;
 		int w = cols(tab), rows = rows(tab), h = inner(tab);
+		if (tab.collapsed) {
+			// folded: its title only while the chat is open, nothing in the game
+			if (!open) return;
+			Ui.round(g, 0, 0, w, h, 6, 0xC00B0F18);
+			Ui.roundOutline(g, 0, 0, w, h, 6, Ui.BORDER);
+			Ui.icon(g, "chat", 5, 3, 7, Ui.ACCENT_LIGHT);
+			Ui.draw(g, Ui.fit(Ui.bold(tab.name), w - 52), 16, 3, Ui.TEXT);
+			Ui.icon(g, "arrow-down", w - 28, 3, 7, Ui.MUTED);
+			return;
+		}
 		// in the game the lines sit at the bottom, where the typing line is when the chat is open
-		int bottom = h - (tab.input ? ChatTabInput.ROW : 0);
+		int bottom = h - (typing(tab) ? ChatTabInput.ROW : 0);
 		List<Float> alpha = new ArrayList<>();
 		List<FormattedCharSequence> shown = visible(mc, tab, open, now, alpha);
 		if (!open && shown.isEmpty()) return;
@@ -244,6 +296,8 @@ public final class ChatWindows {
 			Ui.round(g, 1, 1, w - 2, TITLE - 1, 5, 0x14FFFFFF);
 			Ui.icon(g, "chat", 5, 3, 7, Ui.ACCENT_LIGHT);
 			Ui.draw(g, Ui.fit(Ui.bold(tab.name), w - 40), 16, 3, Ui.TEXT);
+			// scrolled back: an arrow saying newer lines are below
+			if (scrolled.getOrDefault(tab.name, 0) > 0) Ui.icon(g, "arrow-down", w - 28, 3, 7, Ui.ACCENT_LIGHT);
 		} else {
 			// in the game: only a soft backing under the visible lines, like the chat's
 			Ui.round(g, 0, y - 2, w, bottom - y + 2, 5, 0x60000000);
@@ -257,7 +311,7 @@ public final class ChatWindows {
 			Component empty = Ui.tr("slashclient-hud.chat.window.empty");
 			Ui.centered(g, Ui.fit(empty, w - 12), w / 2, TITLE + (bottom - TITLE) / 2 - 4, Ui.MUTED);
 		}
-		if (open && tab.input) ChatTabInput.drawRow(g, tab, w, h, ChatTabInput.focused(tab));
+		if (open && typing(tab)) ChatTabInput.drawRow(g, tab, w, h, ChatTabInput.focused(tab));
 		if (open) {
 			// the corner to drag for another size: three short diagonal steps
 			int c = 0x99FFFFFF;
@@ -280,31 +334,39 @@ public final class ChatWindows {
 				docked.run();
 			});
 			dock.setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.translatable("slashclient-hud.chat.window.dock")));
-			Handle handle = new Handle(tab, p[0], p[1], w - 16, th, dock, sw, sh);
+			Handle handle = new Handle(tab, p[0], p[1], w - 16, th, dock, sw, sh, docked);
+			net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(screen).add(handle);
+			net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(screen).add(dock);
+			// a folded window has no corner to size it by
+			if (tab.collapsed) continue;
 			int grip = Math.max(6, Math.round(GRIP * tab.window.scale()));
 			Resize resize = new Resize(tab, p[0] + w - grip, p[1] + height(tab) - grip, grip, handle, dock, sw, sh);
 			handle.resize = resize;
-			net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(screen).add(handle);
-			net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(screen).add(dock);
 			net.fabricmc.fabric.api.client.screen.v1.Screens.getWidgets(screen).add(resize);
 		}
 	}
 
-	/** An invisible strip over a window's title: dragging it moves the window. */
+	/** An invisible strip over a window's title: dragging it moves the window, a click folds it to the title (and back). */
 	private static final class Handle extends Button {
 		private final HudConfig.ChatTab tab;
 		private final Button dock;
 		private final int sw, sh;
-		private double grabX, grabY;
+		/** The widgets made anew for the window's new size. */
+		private final Runnable changed;
+		private double grabX, grabY, pressX, pressY;
+		/** Dragged further than a click's wobble: a move, not a fold. */
+		private boolean moved;
 		/** The corner grip, moved along with the window. */
 		Resize resize;
 
-		Handle(HudConfig.ChatTab tab, int x, int y, int w, int h, Button dock, int sw, int sh) {
+		Handle(HudConfig.ChatTab tab, int x, int y, int w, int h, Button dock, int sw, int sh, Runnable changed) {
 			super(x, y, w, h, Component.literal(tab.name), b -> {}, DEFAULT_NARRATION);
 			this.tab = tab;
 			this.dock = dock;
 			this.sw = sw;
 			this.sh = sh;
+			this.changed = changed;
+			setTooltip(net.minecraft.client.gui.components.Tooltip.create(Component.translatable(tab.collapsed ? "slashclient-hud.chat.window.unfold" : "slashclient-hud.chat.window.fold")));
 		}
 
 		/** Only the mouse moves it: the arrow keys stay with the chat's history. */
@@ -323,6 +385,9 @@ public final class ChatWindows {
 		//#endif
 			grabX = e.x() - getX();
 			grabY = e.y() - getY();
+			pressX = e.x();
+			pressY = e.y();
+			moved = false;
 		}
 
 		@Override
@@ -332,6 +397,8 @@ public final class ChatWindows {
 		//$ protected void onDrag(double mouseX, double mouseY, double dx, double dy) {
 		//$ 	var e = new net.minecraft.client.input.MouseButtonEvent(mouseX, mouseY, 0);
 		//#endif
+			if (!moved && Math.abs(e.x() - pressX) < 3 && Math.abs(e.y() - pressY) < 3) return;
+			moved = true;
 			moveTo(tab, (int) Math.round(e.x() - grabX), (int) Math.round(e.y() - grabY), sw, sh);
 			int[] p = at(tab, sw, sh);
 			setX(p[0]);
@@ -348,6 +415,13 @@ public final class ChatWindows {
 		//$ public void onRelease(double mouseX, double mouseY) {
 		//$ 	var e = new net.minecraft.client.input.MouseButtonEvent(mouseX, mouseY, 0);
 		//#endif
+			if (!moved) {
+				// the title stays where it is, whichever edge the window is kept by
+				int[] before = at(tab, sw, sh);
+				tab.collapsed = !tab.collapsed;
+				moveTo(tab, before[0], before[1], sw, sh);
+				changed.run();
+			}
 			SlashHud.config.save();
 		}
 

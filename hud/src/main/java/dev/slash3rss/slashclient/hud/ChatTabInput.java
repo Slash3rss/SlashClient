@@ -189,7 +189,7 @@ public final class ChatTabInput {
 	static void addFields(Screen screen, int sw, int sh) {
 		List<Field> fields = new ArrayList<>();
 		if (!Compat.hudHidden(Minecraft.getInstance())) for (HudConfig.ChatTab tab : SlashHud.config.chatTabs) {
-			if (tab.window == null || !tab.input) continue;
+			if (tab.window == null || !ChatWindows.typing(tab)) continue;
 			Field f = new Field(tab);
 			place(f, sw, sh);
 			fields.add(f);

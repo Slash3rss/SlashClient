@@ -293,6 +293,35 @@ public class HudScreenshots implements FabricClientGameTest {
 			String typed = context.computeOnClient(mc -> TestHooks.chatInput());
 			if (!"/msg Steve ".equals(typed)) throw new AssertionError("A click on [Odpowiedz] in the window typed: " + typed);
 			reopenChat(context);
+			// many lines: the wheel over the window scrolls them back, and forward again
+			for (int i = 1; i <= 16; i++) world.getServer().runCommand("tellraw @a \"[MSG] Steve -> me: line " + i + "\"");
+			context.waitTicks(5);
+			reopenChat(context);
+			double[] title = context.computeOnClient(mc -> TestHooks.chatWindowTitle("PM"));
+			double[] middle = { title[0], title[1] + 40 };
+			double wheelScale = context.computeOnClient(mc -> mc.getWindow().getGuiScale());
+			context.getInput().setCursorPos(middle[0] * wheelScale, middle[1] * wheelScale);
+			context.getInput().scroll(1);
+			context.waitTicks(2);
+			String scrolled = context.computeOnClient(mc -> TestHooks.chatWindowState("PM"));
+			context.takeScreenshot("chat-window-scrolled");
+			context.getInput().scroll(-1);
+			context.waitTicks(2);
+			String back = context.computeOnClient(mc -> TestHooks.chatWindowState("PM"));
+			if (!scrolled.endsWith(" 3") || !back.endsWith(" 0")) throw new AssertionError("Scrolling the PM window: " + scrolled + " / " + back);
+			// a click on its title folds it to the title, another unfolds it; a drag still moves it
+			context.runOnClient(mc -> TestHooks.mouse("press", title));
+			context.runOnClient(mc -> TestHooks.mouse("release", title));
+			context.waitTicks(3);
+			String folded = context.computeOnClient(mc -> TestHooks.chatWindowState("PM"));
+			context.takeScreenshot("chat-window-folded");
+			double[] titleNow = context.computeOnClient(mc -> TestHooks.chatWindowTitle("PM"));
+			context.runOnClient(mc -> TestHooks.mouse("press", titleNow));
+			context.runOnClient(mc -> TestHooks.mouse("release", titleNow));
+			context.waitTicks(3);
+			String unfolded = context.computeOnClient(mc -> TestHooks.chatWindowState("PM"));
+			if (!folded.startsWith("folded 13 ") || !unfolded.startsWith("open ")) throw new AssertionError("Folding the PM window: " + folded + " / " + unfolded);
+			reopenChat(context);
 			chatTabTyping(context);
 			// in the game: the window's lines fade like the chat's; a mention shows the "@" badge
 			context.setScreen(() -> null);

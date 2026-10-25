@@ -93,6 +93,8 @@ public final class HudConfig {
 		public boolean input;
 		/** Put in front of every message sent from this tab ("/msg Steve ", "/g ", "@"); "" = nothing. */
 		public String replyPrefix = "";
+		/** The pulled-out window folded to its title (a click on the title folds and unfolds it). */
+		public boolean collapsed;
 		/** The sound of a mention caught by this tab ("" = the usual bell, "none" = silent; ChatTabs.SOUNDS). */
 		public String sound = "";
 

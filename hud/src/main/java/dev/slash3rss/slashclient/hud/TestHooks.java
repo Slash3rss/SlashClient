@@ -1960,6 +1960,23 @@ public final class TestHooks {
 		return ChatTabs.lastSound;
 	}
 
+	/** A point on a pulled-out window's title, left of its × (GUI coordinates). */
+	public static double[] chatWindowTitle(String name) {
+		var w = net.minecraft.client.Minecraft.getInstance().getWindow();
+		for (HudConfig.ChatTab t : SlashHud.config.chatTabs) if (t.name.equals(name) && t.window != null) {
+			int[] p = ChatWindows.at(t, w.getGuiScaledWidth(), w.getGuiScaledHeight());
+			return new double[] { p[0] + 30, p[1] + 4 };
+		}
+		return null;
+	}
+
+	/** A window's state: folded or not, its height (GUI pixels) and how far it is scrolled back. */
+	public static String chatWindowState(String name) {
+		for (HudConfig.ChatTab t : SlashHud.config.chatTabs) if (t.name.equals(name) && t.window != null)
+			return (t.collapsed ? "folded " : "open ") + ChatWindows.inner(t) + " " + ChatWindows.scrolledForTest(name);
+		return "none";
+	}
+
 	/** What a right click at this point (GUI coordinates) would copy from the chat or a chat window. */
 	public static String copyAt(double[] at) {
 		return ChatExtras.copyAt(at[0], at[1]);
