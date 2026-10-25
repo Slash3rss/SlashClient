@@ -72,6 +72,33 @@ public final class SkyPackTestHooks {
 		return got.equals(sha) ? "current" : "old";
 	}
 
+	/** A new copy waiting for the next start (the old one in use). */
+	public static boolean waiting() {
+		return Files.isRegularFile(KeptPacks.dir().resolve(KeptPacks.SKYUP + ".next"));
+	}
+
+	/** Whether the copy is switched on in the game's resource packs. */
+	public static boolean selected() {
+		return KeptPacks.selected(KeptPacks.SKYUP);
+	}
+
+	/** "Keep SkyUp's pack for good?" answered, as its button would; false when the question is not open. */
+	public static boolean answerQuestion(boolean yes) {
+		if (!(Compat.screen(Minecraft.getInstance()) instanceof net.minecraft.client.gui.screens.ConfirmScreen screen)) return false;
+		String want = net.minecraft.network.chat.Component.translatable(yes ? "slashclient-hud.skyPack.askYes" : "slashclient-hud.skyPack.askNo").getString();
+		for (var child : screen.children()) {
+			if (child instanceof net.minecraft.client.gui.components.Button b && b.getMessage().getString().equals(want)) {
+				//#if MC >= 1.21.9
+				b.onPress(new net.minecraft.client.input.KeyEvent(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN, 0, 0));
+				//#else
+				//$ b.onPress();
+				//#endif
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** Switched on in the game's resource packs (and loaded), or off again. */
 	public static void select(boolean on) {
 		var repo = Minecraft.getInstance().getResourcePackRepository();
@@ -82,8 +109,9 @@ public final class SkyPackTestHooks {
 		repo.setSelected(ids);
 	}
 
-	/** Stops the local pack server (its thread would keep the game from closing). */
+	/** Stops the local pack server (its thread would keep the game from closing); SkyUp asked about again. */
 	public static void stop() {
+		ServerPacks.remember("skyup.pl", null, ServerPacks.Mode.PROMPT);
 		if (server != null) server.stop(0);
 		server = null;
 	}

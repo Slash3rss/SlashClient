@@ -133,9 +133,24 @@ public final class ServerPacks {
 		return SlashHud.config == null ? Mode.PROMPT : Mode.of(SlashHud.config.serverPackDefault);
 	}
 
+	/** A server set to "keep" from outside its edit screen (SkyUp's question): by its address, and in the list when it is there. */
+	public static void keep(ServerData server) {
+		if (server == null || server.ip == null) return;
+		synchronized (ignored) {
+			ignored.remove(PartnerServers.normalize(server.ip));
+			kept.add(PartnerServers.normalize(server.ip));
+			save();
+		}
+		for (ServerData s : listed) if (s.ip != null && PartnerServers.normalize(s.ip).equals(PartnerServers.normalize(server.ip))) setVanilla(s, Mode.KEEP);
+	}
+
 	/** The mode for the server being joined: its own when it is in the list (by itself or by its address), else the default. */
 	public static Mode forConnection(ServerData server) {
 		if (server != null && server.ip != null) {
+			// kept "for good" by its address (also joined without the list, e.g. SkyUp's question)
+			synchronized (ignored) {
+				if (kept.contains(PartnerServers.normalize(server.ip))) return Mode.KEEP;
+			}
 			List<ServerData> list = listed;
 			for (ServerData s : list) if (s == server) return of(s);
 			String ip = PartnerServers.normalize(server.ip);

@@ -233,6 +233,8 @@ public final class HudConfig {
 	public boolean skyCaseNewDrop = true;
 	/** SkyUp's resource pack kept up to date in the player's resource packs; switched on there, SkyUp's offer is not asked about (SkyPack). */
 	public boolean skyPackLocal = true;
+	/** The player was asked once whether to keep SkyUp's pack "for good" and said no: not asked again. */
+	public boolean skyPackAsked = false;
 	/** Seconds a case's preview (or a win only it gives) counts as the case being opened, for rewards more cases give. */
 	public int skyCaseWindow = 60;
 	/** Rewards summed by item ("4x Diament" counts as 4 Diament): the detail window grouped, the top rewards in pieces. */
@@ -698,6 +700,7 @@ public final class HudConfig {
 		skyCaseRows = Math.max(1, Math.min(10, other.skyCaseRows));
 		skyCaseNewDrop = other.skyCaseNewDrop;
 		skyPackLocal = other.skyPackLocal;
+		skyPackAsked = other.skyPackAsked;
 		skyCaseWindow = Math.max(5, Math.min(600, other.skyCaseWindow));
 		skyCaseSum = other.skyCaseSum;
 		damageNumbers = other.damageNumbers;

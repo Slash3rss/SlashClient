@@ -59,9 +59,10 @@ public class GameServerPacks implements FabricClientGameTest {
 
 	//#if MC >= 26.3
 	/**
-	 * SkyUp's pack in the resource packs: the first offer saves it (and is still asked about), the
-	 * copy switched on stands in for the next offer (no question, no download, the server hears it
-	 * loaded), and a new version on the server brings the copy up to date.
+	 * SkyUp's pack in the resource packs: the first offer saves it; with the copy off, SkyUp's offer
+	 * asks whether to keep it for good, and "for good" switches it on and answers the offer as loaded;
+	 * the copy on then stands in for the next offer (no question, no download); and a new version on
+	 * the server replaces the copy in use (switched off, replaced, switched on again).
 	 */
 	private static void skyPack(ClientGameTestContext context, TestSingleplayerContext world) {
 		String url = context.computeOnClient(mc -> {
@@ -78,13 +79,25 @@ public class GameServerPacks implements FabricClientGameTest {
 			String saved = context.computeOnClient(mc -> copy());
 			boolean notOn = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.offer(url));
 			if (first || !saved.equals("current") || notOn) throw new AssertionError("SkyUp's pack saved: " + first + " " + saved + " " + notOn);
-			// switched on: SkyUp's own offer (prompt mode) is answered at once, nothing asked
-			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.select(true));
+			// SkyUp's offer with the copy off: "keep it for good?"; yes keeps SkyUp "for good", switches
+			// the copy on and answers the offer as loaded
 			ServerPacks.heard.clear();
 			SlashHud.config.serverPackDefault = "prompt";
+			SlashHud.config.skyPackAsked = false;
 			String sha = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.sha());
 			world.getServer().runOnServer(server -> server.getPlayerList().getPlayers().get(0).connection.send(new ClientboundResourcePackPushPacket(UUID.randomUUID(), url, sha, true, Optional.empty())));
+			for (int i = 0; i < 40 && !context.computeOnClient(mc -> Compat.screen(mc) instanceof net.minecraft.client.gui.screens.ConfirmScreen); i++) context.waitTick();
+			context.waitTicks(5);
+			context.takeScreenshot("server-packs-skyup-ask");
+			if (!context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.answerQuestion(true))) throw new AssertionError("SkyUp's pack: no question about keeping it");
 			List<String> answers = heard(context, 3);
+			context.waitTicks(30);
+			boolean on = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.selected());
+			if (!answers.equals(List.of("ACCEPTED", "DOWNLOADED", "SUCCESSFULLY_LOADED")) || !on) throw new AssertionError("SkyUp's pack kept for good: " + answers + " on " + on);
+			// the next offer: the copy on and current, answered at once
+			ServerPacks.heard.clear();
+			world.getServer().runOnServer(server -> server.getPlayerList().getPlayers().get(0).connection.send(new ClientboundResourcePackPushPacket(UUID.randomUUID(), url, sha, true, Optional.empty())));
+			answers = heard(context, 3);
 			String screen = context.computeOnClient(mc -> Compat.screen(mc) == null ? "none" : Compat.screen(mc).getClass().getSimpleName());
 			if (!answers.equals(List.of("ACCEPTED", "DOWNLOADED", "SUCCESSFULLY_LOADED")) || !screen.equals("none")) throw new AssertionError("SkyUp's pack switched on: " + answers + " screen " + screen);
 			// a new version on the server: not standing in any more, the copy brought up to date
@@ -98,8 +111,13 @@ public class GameServerPacks implements FabricClientGameTest {
 			boolean stale = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.offer(url));
 			waitFetched(context);
 			String updated = context.computeOnClient(mc -> copy());
-			boolean again = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.offer(url));
-			if (stale || !updated.equals("current") || !again) throw new AssertionError("SkyUp's pack updated: " + stale + " " + updated + " " + again);
+			// the copy in use: switched off, replaced and switched on again (two loads of the packs)
+			for (int i = 0; i < 100 && !context.computeOnClient(mc -> copy()).equals("current"); i++) context.waitTicks(2);
+			context.waitTicks(40);
+			String swapped = context.computeOnClient(mc -> copy());
+			boolean stillOn = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.selected());
+			boolean waiting = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.waiting());
+			if (stale || !swapped.equals("current") || !stillOn || waiting) throw new AssertionError("SkyUp's pack updated in use: " + stale + " " + updated + " → " + swapped + " on " + stillOn + " waiting " + waiting);
 		} finally {
 			context.runOnClient(mc -> {
 				dev.slash3rss.slashclient.hud.SkyPackTestHooks.select(false);

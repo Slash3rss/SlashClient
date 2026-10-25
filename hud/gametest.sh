@@ -39,8 +39,14 @@ for i in $(seq 1 "$n"); do
   if wait "${pids[$((i - 1))]}"; then
     echo "share $i/$n: ok"
   else
-    echo "share $i/$n: FAILED, see hud/build/gametest-$i.log"
-    grep -m1 -A8 "AssertionError\|Exception:" "build/gametest-$i.log" | sed 's/^/    /'
+    # kept beside the next run's logs, so a failure can still be read after another version's run
+    cp "build/gametest-$i.log" "build/gametest-$mc-$i.failed.log"
+    echo "share $i/$n: FAILED, see hud/build/gametest-$mc-$i.failed.log"
+    # the test's own failure first; the game's harmless warnings (the Windows counters' OSHI one) are no reason
+    reason=$(grep -m1 -A8 "AssertionError\|Test .* failed\|Minecraft has crashed\|NoClassDefFoundError\|ClassNotFoundException" "build/gametest-$i.log")
+    [ -z "$reason" ] && reason=$(grep -v "HkeyPerformanceDataUtil\|Win32Exception\|Advapi32Util" "build/gametest-$i.log" | grep -m1 -A8 "Exception:")
+    printf '%s
+' "$reason" | sed 's/^/    /'
     failed=1
   fi
 done

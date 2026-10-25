@@ -33,8 +33,9 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * Each offer checks the copy against the pack offered (the SHA-1 the server gives, else the address
  * it came from) and downloads it again when it differs; until then the server's pack covers the
- * session. A copy in use cannot be replaced on Windows: the new one waits next to it (".next") and
- * takes its place at the next start.
+ * session. A copy in use is switched off (the game lets go of its file), replaced, and switched on
+ * again. Should the file stay locked even so, the new one waits next to it (".next") and takes its
+ * place at the next start.
  */
 public final class KeptPacks {
 	private KeptPacks() {}
@@ -89,6 +90,20 @@ public final class KeptPacks {
 
 	static String id(String name) {
 		return "file/" + name;
+	}
+
+	/**
+	 * SkyUp with its copy not switched on, and the player not asked yet: whether to ask "for good?".
+	 * (Kept "for good" already, or once said no: not asked.)
+	 */
+	public static boolean askSkyUp(ServerData server, ServerPacks.Mode mode) {
+		return mode != ServerPacks.Mode.KEEP && skyUp(server) && SlashHud.config != null && SlashHud.config.skyPackLocal
+			&& !SlashHud.config.skyPackAsked && !selected(SKYUP);
+	}
+
+	/** SkyUp, not kept "for good": its pack is taken without the game's question (the copy kept up to date beside it). */
+	public static boolean skyUpWithoutPrompt(ServerData server) {
+		return skyUp(server) && SlashHud.config != null && SlashHud.config.skyPackLocal;
 	}
 
 	/** Switched on in the game's resource packs (as loaded now). */
@@ -155,21 +170,23 @@ public final class KeptPacks {
 				Files.createDirectories(dir);
 				Path part = dir.resolve(name + ".part"), file = dir.resolve(name);
 				Files.write(part, data);
-				boolean later = false;
+				boolean inUse = false;
 				try {
 					Files.move(part, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-				} catch (Exception inUse) {
-					// the copy is loaded (Windows keeps it open): the new one takes its place at the next start
+				} catch (Exception locked) {
+					// the copy is loaded (Windows keeps it open): it is switched off, replaced and switched on below
 					Files.move(part, dir.resolve(name + ".next"), StandardCopyOption.REPLACE_EXISTING);
-					later = true;
+					inUse = true;
 				}
 				remember(name, url, hash);
-				// kept for good: switched on now, so the next join needs nothing
-				if (keep && !later) select(name);
 				Minecraft mc = Minecraft.getInstance();
-				String key = later ? "slashclient-hud.keptPack.later" : keep ? "slashclient-hud.keptPack.kept" : selected(name) ? "slashclient-hud.keptPack.updated" : "slashclient-hud.keptPack.saved";
-				mc.execute(() -> net.minecraft.client.gui.components.toasts.SystemToast.add(Compat.toasts(mc), net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
-					Component.translatable("slashclient-hud.keptPack.title", name.replaceFirst("\\.zip$", "")), Component.translatable(key)));
+				if (inUse) {
+					swapInUse(name);
+					return;
+				}
+				// kept for good: switched on now, so the next join needs nothing
+				if (keep) select(name);
+				toast(name, keep ? "slashclient-hud.keptPack.kept" : selected(name) ? "slashclient-hud.keptPack.updated" : "slashclient-hud.keptPack.saved");
 			} catch (Exception e) {
 				SlashHud.LOG.warn("SlashClient: keeping the server's pack {}: {}", name, e.toString());
 			} finally {
@@ -178,6 +195,54 @@ public final class KeptPacks {
 		}, "SlashClient kept pack");
 		t.setDaemon(true);
 		t.start();
+	}
+
+	private static void toast(String name, String key) {
+		Minecraft mc = Minecraft.getInstance();
+		mc.execute(() -> net.minecraft.client.gui.components.toasts.SystemToast.add(Compat.toasts(mc), net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+			Component.translatable("slashclient-hud.keptPack.title", name.replaceFirst("\\.zip$", "")), Component.translatable(key)));
+	}
+
+	/**
+	 * The copy in use replaced by the new one waiting beside it: switched off and the packs loaded
+	 * without it (so the game lets go of its file), the file replaced, then switched on again and the
+	 * packs loaded with the new one. The options are not saved in between, so a crash leaves it on.
+	 */
+	static void swapInUse(String name) {
+		Minecraft mc = Minecraft.getInstance();
+		mc.execute(() -> {
+			var repo = mc.getResourcePackRepository();
+			var ids = new java.util.ArrayList<>(repo.getSelectedIds());
+			int at = ids.indexOf(id(name));
+			if (at < 0) {
+				// not on (any more): only the file is replaced
+				replaceWaiting(name);
+				return;
+			}
+			ids.remove(at);
+			repo.setSelected(ids);
+			mc.reloadResourcePacks().thenRun(() -> mc.execute(() -> {
+				boolean replaced = replaceWaiting(name);
+				repo.reload();
+				var back = new java.util.ArrayList<>(repo.getSelectedIds());
+				if (repo.getAvailableIds().contains(id(name))) back.add(Math.min(at, back.size()), id(name));
+				repo.setSelected(back);
+				mc.options.updateResourcePacks(repo);
+				toast(name, replaced ? "slashclient-hud.keptPack.updated" : "slashclient-hud.keptPack.later");
+			}));
+		});
+	}
+
+	/** The new copy waiting beside the old one put in its place; false when the old file is still held. */
+	private static boolean replaceWaiting(String name) {
+		Path next = dir().resolve(name + ".next");
+		try {
+			if (Files.isRegularFile(next)) Files.move(next, dir().resolve(name), StandardCopyOption.REPLACE_EXISTING);
+			return true;
+		} catch (Exception e) {
+			SlashHud.LOG.warn("SlashClient: replacing the kept pack {}: {}", name, e.toString());
+			return false;
+		}
 	}
 
 	private static synchronized void remember(String name, String url, String hash) throws Exception {

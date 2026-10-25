@@ -48,18 +48,20 @@ abstract class ResourcePackPushMixin {
 			ci.cancel();
 			return;
 		}
+		// SkyUp, its copy not on: asked once whether to keep it "for good"; the answer decides this pack too
+		if (dev.slash3rss.slashclient.hud.KeptPacks.askSkyUp(serverData, mode)) {
+			ci.cancel();
+			slashclient$askSkyUp(packet);
+			return;
+		}
+		// SkyUp otherwise: its pack without the game's question (the copy is kept up to date beside it)
+		if (mode == ServerPacks.Mode.PROMPT && dev.slash3rss.slashclient.hud.KeptPacks.skyUpWithoutPrompt(serverData)) mode = ServerPacks.Mode.ACCEPT;
 		ServerPacks.decided(mode);
 		switch (mode) {
 			case PROMPT -> {}
 			// kept, its copy not ready yet: this time as "accept"
 			case ACCEPT, KEEP -> {
-				URL url = parseResourcePackUrl(packet.url());
-				// a broken address: the game answers that itself
-				if (url == null) return;
-				var packs = Minecraft.getInstance().getDownloadedPackSource();
-				packs.allowServerPacks();
-				packs.pushPack(packet.id(), url, packet.hash());
-				ci.cancel();
+				if (slashclient$accept(packet)) ci.cancel();
 			}
 			case DECLINE -> {
 				slashclient$answer(packet.id(), net.minecraft.network.protocol.common.ServerboundResourcePackPacket.Action.DECLINED);
@@ -72,6 +74,41 @@ abstract class ResourcePackPushMixin {
 				ci.cancel();
 			}
 		}
+	}
+
+	/** The pack downloaded and applied without the game's question; false for a broken address (the game answers that itself). */
+	private boolean slashclient$accept(net.minecraft.network.protocol.common.ClientboundResourcePackPushPacket packet) {
+		URL url = parseResourcePackUrl(packet.url());
+		if (url == null) return false;
+		var packs = Minecraft.getInstance().getDownloadedPackSource();
+		packs.allowServerPacks();
+		packs.pushPack(packet.id(), url, packet.hash());
+		return true;
+	}
+
+	/** "Keep SkyUp's pack for good?": yes keeps it (the copy on from now), no takes the server's pack and does not ask again. */
+	private void slashclient$askSkyUp(net.minecraft.network.protocol.common.ClientboundResourcePackPushPacket packet) {
+		Minecraft mc = Minecraft.getInstance();
+		var back = dev.slash3rss.slashclient.hud.Compat.screen(mc);
+		mc.setScreenAndShow(new net.minecraft.client.gui.screens.ConfirmScreen(yes -> {
+			mc.setScreenAndShow(back);
+			if (yes) {
+				ServerPacks.keep(serverData);
+				ServerPacks.decided(ServerPacks.Mode.KEEP);
+				// the copy current: switched on and standing in now; else the server's pack this time, the copy on its way
+				if (dev.slash3rss.slashclient.hud.KeptPacks.covers(serverData, ServerPacks.Mode.KEEP, packet.url(), packet.hash())) {
+					slashclient$answer(packet.id(), net.minecraft.network.protocol.common.ServerboundResourcePackPacket.Action.ACCEPTED);
+					slashclient$answer(packet.id(), net.minecraft.network.protocol.common.ServerboundResourcePackPacket.Action.DOWNLOADED);
+					slashclient$answer(packet.id(), net.minecraft.network.protocol.common.ServerboundResourcePackPacket.Action.SUCCESSFULLY_LOADED);
+				} else if (!slashclient$accept(packet)) slashclient$answer(packet.id(), net.minecraft.network.protocol.common.ServerboundResourcePackPacket.Action.INVALID_URL);
+			} else {
+				dev.slash3rss.slashclient.hud.SlashHud.config.skyPackAsked = true;
+				dev.slash3rss.slashclient.hud.SlashHud.config.save();
+				ServerPacks.decided(ServerPacks.Mode.ACCEPT);
+				if (!slashclient$accept(packet)) slashclient$answer(packet.id(), net.minecraft.network.protocol.common.ServerboundResourcePackPacket.Action.INVALID_URL);
+			}
+		}, net.minecraft.network.chat.Component.translatable("slashclient-hud.skyPack.askTitle"), net.minecraft.network.chat.Component.translatable("slashclient-hud.skyPack.ask"),
+			net.minecraft.network.chat.Component.translatable("slashclient-hud.skyPack.askYes"), net.minecraft.network.chat.Component.translatable("slashclient-hud.skyPack.askNo")));
 	}
 
 	private void slashclient$answer(java.util.UUID id, net.minecraft.network.protocol.common.ServerboundResourcePackPacket.Action action) {
