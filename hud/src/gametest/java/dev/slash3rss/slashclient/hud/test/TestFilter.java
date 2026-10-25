@@ -54,6 +54,8 @@ final class TestFilter {
 			}));
 		}
 		if (mine.contains(name)) {
+			// the test games are silent: the master volume at 0 before every test (only in memory, not saved)
+			context.runOnClient(mc -> mc.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).set(0.0));
 			lastName = name;
 			lastStart = now;
 			return false;

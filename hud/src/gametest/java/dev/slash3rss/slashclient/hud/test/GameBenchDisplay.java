@@ -9,7 +9,7 @@ public class GameBenchDisplay implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		if (TestFilter.skip(context, getClass())) return;
-		// the test games are silent (MuteTests)
+		// the test games are silent (TestFilter)
 		double volume = context.computeOnClient(mc -> mc.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).get());
 		if (volume != 0) throw new AssertionError("The test game is not muted: " + volume);
 		try {
