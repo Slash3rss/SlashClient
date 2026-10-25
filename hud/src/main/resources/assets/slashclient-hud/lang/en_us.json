@@ -1000,6 +1000,7 @@
 	"slashclient-hud.skyTasks.leftOnly": "%s left",
 	"slashclient-hud.skyTasks.openCategory": "open the category to load its tasks",
 	"slashclient-hud.skyTasks.left": "%s left · %s ready",
+	"slashclient-hud.skyTasks.handIn": "Hand in!",
 	"slashclient-hud.skyTasks.notLoaded": "open the tasks GUI",
 	"slashclient-hud.skyTasks.now": "just now",
 	"slashclient-hud.skyTasks.ago": "%s min ago",

@@ -1000,6 +1000,7 @@
 	"slashclient-hud.skyTasks.leftOnly": "zostało %s",
 	"slashclient-hud.skyTasks.openCategory": "wejdź w kategorię, by wczytać zadania",
 	"slashclient-hud.skyTasks.left": "zostało %s · gotowe %s",
+	"slashclient-hud.skyTasks.handIn": "Oddaj!",
 	"slashclient-hud.skyTasks.notLoaded": "otwórz GUI zadań",
 	"slashclient-hud.skyTasks.now": "przed chwilą",
 	"slashclient-hud.skyTasks.ago": "%s min temu",
