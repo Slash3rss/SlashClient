@@ -89,6 +89,15 @@ public final class HudConfig {
 		/** Lines that match one of these stay out of the tab, even when `patterns` catch them. */
 		public List<String> excludes = new ArrayList<>();
 		public boolean regex;
+		/** The pulled-out window has its own line to type in while the chat is open (off: it only shows lines). */
+		public boolean input;
+		/** Put in front of every message sent from this tab ("/msg Steve ", "/g ", "@"); "" = nothing. */
+		public String replyPrefix = "";
+
+		/** Never null: configs from before the field get "". */
+		public String prefix() {
+			return replyPrefix == null ? "" : replyPrefix;
+		}
 
 		/** Never null: configs from before the field get an empty list. */
 		public List<String> excludes() {

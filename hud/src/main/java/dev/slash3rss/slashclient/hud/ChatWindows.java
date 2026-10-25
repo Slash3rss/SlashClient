@@ -87,7 +87,12 @@ public final class ChatWindows {
 	}
 
 	static int height(HudConfig.ChatTab tab) {
-		return Math.round((TITLE + rows(tab) * LINE_H + 5) * tab.window.scale());
+		return Math.round(inner(tab) * tab.window.scale());
+	}
+
+	/** The window's height before its scale: the title, its lines and, when the tab has one, the typing line. */
+	static int inner(HudConfig.ChatTab tab) {
+		return TITLE + rows(tab) * LINE_H + 5 + (tab.input ? ChatTabInput.ROW : 0);
 	}
 
 	/** Where a window is on a screen of this size: its anchor plus offset, kept inside. */
@@ -145,7 +150,7 @@ public final class ChatWindows {
 			float s = tab.window.scale();
 			double lx = (mx - p[0]) / s, ly = (my - p[1]) / s;
 			int rows = rows(tab);
-			if (lx < 0 || ly < 0 || lx >= cols(tab) || ly >= TITLE + rows * LINE_H + 5) continue;
+			if (lx < 0 || ly < 0 || lx >= cols(tab) || ly >= inner(tab)) continue;
 			List<FormattedCharSequence> shown = visible(mc, tab, true, System.currentTimeMillis(), new ArrayList<>());
 			int top = TITLE + 2 + (rows - shown.size()) * LINE_H;
 			int row = (int) Math.floor((ly - top) / LINE_H);
@@ -196,13 +201,15 @@ public final class ChatWindows {
 
 	private static void drawWindow(GuiGraphicsExtractor g, Minecraft mc, HudConfig.ChatTab tab, boolean open, long now) {
 		var font = mc.font;
-		int w = cols(tab), rows = rows(tab), h = TITLE + rows * LINE_H + 5;
+		int w = cols(tab), rows = rows(tab), h = inner(tab);
+		// in the game the lines sit at the bottom, where the typing line is when the chat is open
+		int bottom = h - (tab.input ? ChatTabInput.ROW : 0);
 		List<Float> alpha = new ArrayList<>();
 		List<FormattedCharSequence> shown = visible(mc, tab, open, now, alpha);
 		if (!open && shown.isEmpty()) return;
 
 		int n = shown.size();
-		int y = open ? TITLE + 2 + (rows - n) * LINE_H : h - 3 - n * LINE_H;
+		int y = open ? TITLE + 2 + (rows - n) * LINE_H : bottom - 3 - n * LINE_H;
 		if (open) {
 			Ui.round(g, 0, 0, w, h, 6, 0xC00B0F18);
 			Ui.roundOutline(g, 0, 0, w, h, 6, Ui.BORDER);
@@ -211,7 +218,7 @@ public final class ChatWindows {
 			Ui.draw(g, Ui.fit(Ui.bold(tab.name), w - 40), 16, 3, Ui.TEXT);
 		} else {
 			// in the game: only a soft backing under the visible lines, like the chat's
-			Ui.round(g, 0, y - 2, w, h - y + 2, 5, 0x60000000);
+			Ui.round(g, 0, y - 2, w, bottom - y + 2, 5, 0x60000000);
 		}
 		for (int i = 0; i < shown.size(); i++) {
 			int a = Math.round(255 * alpha.get(i));
@@ -220,8 +227,9 @@ public final class ChatWindows {
 		}
 		if (open && shown.isEmpty()) {
 			Component empty = Ui.tr("slashclient-hud.chat.window.empty");
-			Ui.centered(g, Ui.fit(empty, w - 12), w / 2, TITLE + (h - TITLE) / 2 - 4, Ui.MUTED);
+			Ui.centered(g, Ui.fit(empty, w - 12), w / 2, TITLE + (bottom - TITLE) / 2 - 4, Ui.MUTED);
 		}
+		if (open && tab.input) ChatTabInput.drawRow(g, tab, w, h, ChatTabInput.focused(tab));
 		if (open) {
 			// the corner to drag for another size: three short diagonal steps
 			int c = 0x99FFFFFF;
