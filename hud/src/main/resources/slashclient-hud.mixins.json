@@ -29,6 +29,7 @@
 		"ChatComponentMixin",
 		"ChatFilterMixin",
 		"ChatScreenMixin",
+		"ChatScreenAccessor",
 		"ChatScaleMixin",
 		"ConnectionAccessor",
 		"EntityRendererMixin",

@@ -271,6 +271,7 @@ public class HudScreenshots implements FabricClientGameTest {
 			String after = context.computeOnClient(mc -> TestHooks.chatWindowSize("PM"));
 			if (!"210x8".equals(before) || !"290x12".equals(after)) throw new AssertionError("Resizing the PM window: " + before + " -> " + after);
 			context.takeScreenshot("chat-window-resized");
+			chatTabTyping(context);
 			// in the game: the window's lines fade like the chat's; a mention shows the "@" badge
 			context.setScreen(() -> null);
 			world.getServer().runCommand("tellraw @a \"Player0 look over here!\"");
@@ -355,6 +356,138 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.logBadge());
 			context.runOnClient(mc -> TestHooks.endOnVanillaMenu());
 		}
+	}
+
+	/** Reopens the chat, so its widgets are made again for changed tab settings. */
+	private static void reopenChat(ClientGameTestContext context) {
+		context.setScreen(() -> null);
+		context.setScreen(() -> dev.slash3rss.slashclient.hud.Compat.chatScreen());
+		context.waitTicks(2);
+	}
+
+	private static void clickField(ClientGameTestContext context, String tab) {
+		double[] at = context.computeOnClient(mc -> TestHooks.chatFieldCenter(tab));
+		if (at == null) throw new AssertionError("The " + tab + " window has no typing line");
+		context.runOnClient(mc -> TestHooks.mouse("press", at));
+		context.runOnClient(mc -> TestHooks.mouse("release", at));
+		context.waitTicks(1);
+		String focus = context.computeOnClient(mc -> TestHooks.chatFocus());
+		if (!("window:" + tab).equals(focus)) throw new AssertionError("A click on the " + tab + " window's line did not put the cursor there: " + focus);
+	}
+
+	private static void expectSent(ClientGameTestContext context, String expected, String what) {
+		String got = context.computeOnClient(mc -> TestHooks.takeOutgoing());
+		if (!expected.equals(got)) throw new AssertionError(what + ": expected \"" + expected + "\", sent \"" + got + "\"");
+	}
+
+	/**
+	 * A pulled-out tab's own typing line and the tabs' reply prefix (the chat is open with the PM
+	 * window out): off by default, then typing in the window, Enter, Esc, an empty line, history,
+	 * a command of the player's own, and the open tab's prefix in the chat's own line.
+	 */
+	private static void chatTabTyping(ClientGameTestContext context) {
+		var keys = context.getInput();
+		if (context.computeOnClient(mc -> TestHooks.chatFieldCenter("PM")) != null) throw new AssertionError("A window has a typing line without the setting");
+		context.runOnClient(mc -> TestHooks.captureOutgoing(true));
+		try {
+			// the line on, without a prefix: what is typed goes as a plain message
+			context.runOnClient(mc -> TestHooks.chatTabTyping("PM", true, ""));
+			reopenChat(context);
+			clickField(context, "PM");
+			keys.typeChars("hello there");
+			keys.pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN);
+			context.waitTicks(2);
+			expectSent(context, "chat:hello there", "The window's line without a prefix");
+			if (context.computeOnClient(mc -> TestHooks.chatOpen())) throw new AssertionError("Enter in the window's line left the chat open");
+
+			// with a prefix: it is written dim in front and goes before the message
+			context.runOnClient(mc -> TestHooks.chatTabTyping("PM", true, "/msg Steve "));
+			reopenChat(context);
+			context.takeScreenshot("chattab-window-field");
+			clickField(context, "PM");
+			keys.typeChars("are you coming?");
+			context.waitTicks(2);
+			context.takeScreenshot("chattab-window-typing");
+			keys.pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN);
+			context.waitTicks(2);
+			expectSent(context, "command:/msg Steve are you coming?", "The window's line with a command prefix");
+
+			// Esc leaves the line for the chat's own, sending nothing and keeping the chat open
+			reopenChat(context);
+			clickField(context, "PM");
+			keys.typeChars("not this");
+			keys.pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE);
+			context.waitTicks(2);
+			if (!context.computeOnClient(mc -> TestHooks.chatOpen())) throw new AssertionError("Esc in the window's line closed the chat");
+			if (!"chat".equals(context.computeOnClient(mc -> TestHooks.chatFocus()))) throw new AssertionError("Esc in the window's line did not go back to the chat's line");
+			expectSent(context, "", "Esc in the window's line");
+			// Up in the window's line: the last message as it was written, without the prefix
+			clickField(context, "PM");
+			context.runOnClient(mc -> TestHooks.chatFieldClear("PM"));
+			keys.pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_UP);
+			context.waitTicks(1);
+			String recalled = context.computeOnClient(mc -> TestHooks.chatFieldValue("PM"));
+			if (!"are you coming?".equals(recalled)) throw new AssertionError("Up in the window's line gave: " + recalled);
+			// an empty line (spaces only) sends nothing
+			context.runOnClient(mc -> TestHooks.chatFieldClear("PM"));
+			keys.typeChars("   ");
+			keys.pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN);
+			context.waitTicks(2);
+			expectSent(context, "", "An empty window line");
+			// a command the player writes himself goes without the prefix
+			reopenChat(context);
+			clickField(context, "PM");
+			keys.typeChars("/time query day");
+			keys.pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN);
+			context.waitTicks(2);
+			expectSent(context, "command:/time query day", "A command typed in the window's line");
+			// a chat prefix ("@") and a command prefix without its space ("/g")
+			context.runOnClient(mc -> TestHooks.chatTabTyping("PM", true, "@"));
+			reopenChat(context);
+			clickField(context, "PM");
+			keys.typeChars("hi all");
+			keys.pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN);
+			context.waitTicks(2);
+			expectSent(context, "chat:@hi all", "The window's line with a chat prefix");
+
+			// the setting off again: no line, and the window as before
+			context.runOnClient(mc -> TestHooks.chatTabTyping("PM", false, "/g"));
+			reopenChat(context);
+			if (context.computeOnClient(mc -> TestHooks.chatFieldCenter("PM")) != null) throw new AssertionError("The typing line stayed after it was switched off");
+
+			// the chat's own line while a docked tab with a prefix is open: the prefix goes in front
+			context.runOnClient(mc -> TestHooks.chatTabTyping("@", false, "/g"));
+			context.runOnClient(mc -> TestHooks.selectChatTab("@"));
+			context.waitTicks(1);
+			if (context.computeOnClient(mc -> TestHooks.chatInputX()) <= 4) throw new AssertionError("The chat's line did not move over for the open tab's prefix");
+			keys.typeChars("team meeting");
+			context.waitTicks(2);
+			context.takeScreenshot("chattab-main-prefix");
+			keys.pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN);
+			context.waitTicks(2);
+			expectSent(context, "command:/g team meeting", "The chat's line with the open tab's prefix");
+			// "All" open: the same line goes as it is
+			reopenChat(context);
+			context.runOnClient(mc -> TestHooks.selectChatTab(""));
+			if (context.computeOnClient(mc -> TestHooks.chatInputX()) != 4) throw new AssertionError("On \"All\" the chat's line is not back in its place");
+			keys.typeChars("plain message");
+			keys.pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_RETURN);
+			context.waitTicks(2);
+			expectSent(context, "chat:plain message", "The chat's line on \"All\"");
+
+			// the settings: a tab's more settings line with the prefix and the switch
+			context.runOnClient(mc -> TestHooks.chatTabTyping("PM", true, "/msg Steve "));
+			context.setScreen(() -> new HudEditScreen("chatTabs").tabMore(1));
+			context.waitTicks(10);
+			context.takeScreenshot("chattab-settings");
+		} finally {
+			context.runOnClient(mc -> TestHooks.captureOutgoing(false));
+			context.runOnClient(mc -> TestHooks.chatTabTyping("PM", false, ""));
+			context.runOnClient(mc -> TestHooks.chatTabTyping("@", false, ""));
+			context.runOnClient(mc -> TestHooks.selectChatTab(""));
+		}
+		context.setScreen(() -> dev.slash3rss.slashclient.hud.Compat.chatScreen());
+		context.waitTicks(2);
 	}
 
 	/**

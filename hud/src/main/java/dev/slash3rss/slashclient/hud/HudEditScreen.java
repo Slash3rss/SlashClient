@@ -133,6 +133,21 @@ public class HudEditScreen extends Screen {
 	private final List<EditBox> tabFields = new ArrayList<>();
 	private int tabsTop;
 	private int tabsFit;
+	/** The tab whose more settings (reply prefix, typing line) show in a line under it (-1 = none). */
+	private int tabMore = -1;
+	/** That line's prefix field. */
+	private EditBox prefixField;
+
+	/** The chat tabs page with a tab's more settings open (for the screenshot test). */
+	public HudEditScreen tabMore(int index) {
+		tabMore = index;
+		return this;
+	}
+
+	/** A tab row's top: the rows under the opened one move down by the extra line. */
+	private int tabRowY(int i) {
+		return tabsTop + i * TAB_ROW + (tabMore >= 0 && i > tabMore ? TAB_ROW : 0);
+	}
 
 	private boolean chatTabsPage() {
 		return window && settingsOf != null && settingsOf.id().equals("chatTabs");
@@ -149,9 +164,13 @@ public class HudEditScreen extends Screen {
 		tabsTop = cy + 26 + help * 11 + 4;
 		tabsFit = Math.max(1, (cy + ch - 26 - tabsTop) / TAB_ROW);
 		List<HudConfig.ChatTab> tabs = SlashHud.config.chatTabs;
+		prefixField = null;
+		if (tabMore >= Math.min(tabs.size(), tabsFit)) tabMore = -1;
+		// the opened tab's extra line takes one row's room
+		if (tabMore >= 0) tabsFit = Math.max(tabMore + 1, tabsFit - 1);
 		for (int i = 0; i < Math.min(tabs.size(), tabsFit); i++) {
 			HudConfig.ChatTab tab = tabs.get(i);
-			int y = tabsTop + i * TAB_ROW + 5;
+			int y = tabRowY(i) + 5;
 			EditBox name = new EditBox(font, cx + 6, y, 62, 12, Ui.tr("slashclient-hud.chat.name"));
 			name.setBordered(false);
 			name.setTextColor(Ui.TEXT);
@@ -164,7 +183,7 @@ public class HudEditScreen extends Screen {
 				typed();
 			});
 			// "catches" takes most of the room, "but not" the rest
-			int room = cw - 82 - 98, pw = Math.round((room - 10) * 0.52f);
+			int room = cw - 82 - 122, pw = Math.round((room - 10) * 0.52f);
 			EditBox patterns = new EditBox(font, cx + 82, y, pw, 12, Ui.tr("slashclient-hud.chat.patterns"));
 			patterns.setBordered(false);
 			patterns.setTextColor(Ui.TEXT);
@@ -193,6 +212,24 @@ public class HudEditScreen extends Screen {
 			tabFields.add(name);
 			tabFields.add(patterns);
 			tabFields.add(excludes);
+			if (i == tabMore) {
+				// the line under the tab: what goes in front of messages sent from it
+				int lw = Ui.width(Ui.tr("slashclient-hud.chat.prefix"));
+				int toggleRoom = Ui.width(Ui.tr("slashclient-hud.chat.input")) + 40;
+				EditBox prefix = new EditBox(font, cx + 6 + lw + 10, y + TAB_ROW, Math.max(40, cw - lw - 26 - toggleRoom), 12, Ui.tr("slashclient-hud.chat.prefix"));
+				prefix.setBordered(false);
+				prefix.setTextColor(Ui.TEXT);
+				prefix.setMaxLength(64);
+				prefix.setValue(tab.prefix());
+				prefix.setHint(Ui.tr("slashclient-hud.chat.hint.prefix"));
+				prefix.setResponder(v -> {
+					tab.replyPrefix = v;
+					tabsChanged();
+					typed();
+				});
+				addRenderableWidget(prefix);
+				prefixField = prefix;
+			}
 		}
 	}
 
@@ -214,7 +251,7 @@ public class HudEditScreen extends Screen {
 		String error = "";
 		for (int i = 0; i < tabFields.size() / 3 && i < tabs.size(); i++) {
 			HudConfig.ChatTab tab = tabs.get(i);
-			int ry = tabsTop + i * TAB_ROW;
+			int ry = tabRowY(i);
 			EditBox name = tabFields.get(i * 3), patterns = tabFields.get(i * 3 + 1), excludes = tabFields.get(i * 3 + 2);
 			for (EditBox box : List.of(name, patterns, excludes)) {
 				Ui.round(g, box.getX() - 5, ry, box.getWidth() + 10, 18, 4, Ui.CARD);
@@ -222,7 +259,7 @@ public class HudEditScreen extends Screen {
 				int edge = box == excludes ? 0x40F87171 : Ui.BORDER;
 				Ui.roundOutline(g, box.getX() - 5, ry, box.getWidth() + 10, 18, 4, box.isFocused() ? 0x993B82F6 : edge);
 			}
-			int bx = x + w - 92;
+			int bx = x + w - 112;
 			Ui.button(g, "mode:" + i, bx, ry, 64, 18, Ui.tr(tab.regex ? "slashclient-hud.chat.regex" : "slashclient-hud.chat.text"), tab.regex, mx, my);
 			hits.add(new Hit(bx, ry, 64, 18, () -> {
 				String current = patterns.getValue(), currentEx = excludes.getValue();
@@ -232,9 +269,18 @@ public class HudEditScreen extends Screen {
 				tabsChanged();
 				reopen();
 			}));
+			// more settings of the tab: its reply prefix and the typing line of its window
+			int index = i;
+			Ui.button(g, "more:" + i, x + w - 46, ry, 22, 18, "sliders", Component.empty(), tabMore == i, mx, my);
+			hits.add(new Hit(x + w - 46, ry, 22, 18, () -> {
+				tabMore = tabMore == index ? -1 : index;
+				reopen();
+			}));
+			if (i == tabMore && prefixField != null) drawTabMore(g, tab, mx, my, x, ry + TAB_ROW, w);
 			Ui.button(g, "remove:" + i, x + w - 22, ry, 22, 18, "close", Component.empty(), false, mx, my);
 			hits.add(new Hit(x + w - 22, ry, 22, 18, () -> {
 				tabs.remove(tab);
+				tabMore = -1;
 				tabsChanged();
 				reopen();
 			}));
@@ -243,7 +289,7 @@ public class HudEditScreen extends Screen {
 				if (problem != null) error = tab.name + ": " + problem;
 			}
 		}
-		int below = tabsTop + Math.min(tabs.size(), tabsFit) * TAB_ROW + 2;
+		int below = tabRowY(Math.min(tabs.size(), tabsFit)) + 2;
 		if (tabs.size() < Math.min(MAX_TABS, tabsFit)) {
 			Component add = Ui.tr("slashclient-hud.chat.add");
 			int aw = Ui.buttonWidth(add, null, 18, 6);
@@ -257,6 +303,22 @@ public class HudEditScreen extends Screen {
 		int hidden = Math.max(0, tabs.size() - tabsFit);
 		if (!error.isEmpty()) Ui.draw(g, Ui.fit(Ui.text(error), w), x, y + h - 10, Ui.DANGER);
 		else if (hidden > 0) Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.chat.more", hidden), w), x, y + h - 10, Ui.MUTED);
+	}
+
+	/** The opened tab's extra line: "Reply prefix" with its field, and the switch for its window's typing line. */
+	private void drawTabMore(GuiGraphicsExtractor g, HudConfig.ChatTab tab, int mx, int my, int x, int y, int w) {
+		Ui.draw(g, Ui.tr("slashclient-hud.chat.prefix"), x + 6, y + 5, Ui.TEXT_2);
+		EditBox box = prefixField;
+		Ui.round(g, box.getX() - 5, y, box.getWidth() + 10, 18, 4, Ui.CARD);
+		Ui.roundOutline(g, box.getX() - 5, y, box.getWidth() + 10, 18, 4, box.isFocused() ? 0x993B82F6 : Ui.BORDER);
+		Component input = Ui.tr("slashclient-hud.chat.input");
+		int iw = Ui.width(input), tx = x + w - 22;
+		Ui.draw(g, input, tx - 6 - iw, y + 5, Ui.TEXT_2);
+		Ui.toggle(g, "chatInput:" + tab.name, tx, y + 4, tab.input);
+		hits.add(new Hit(tx - 6 - iw, y, iw + 28, 18, () -> {
+			tab.input = !tab.input;
+			tabsChanged();
+		}));
 	}
 
 	// ---------- crosshair page ----------

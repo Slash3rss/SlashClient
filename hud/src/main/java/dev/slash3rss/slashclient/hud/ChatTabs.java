@@ -35,6 +35,7 @@ public final class ChatTabs {
 	private static final Map<String, Pattern> compiled = new HashMap<>();
 
 	static void register() {
+		ChatTabInput.register();
 		ScreenEvents.AFTER_INIT.register((mc, screen, width, height) -> {
 			if (!(screen instanceof ChatScreen)) return;
 			chatOpened();
@@ -66,6 +67,8 @@ public final class ChatTabs {
 			// pulled-out tabs: drawn under their handles, dragged by their title, docked back with the ×
 			ScreenEvents.beforeExtract(screen).register((s, g, mouseX, mouseY, delta) -> ChatWindows.drawOpen(g, mc));
 			ChatWindows.addHandles(screen, width, height, () -> mc.execute(() -> Compat.relayout(screen)));
+			// the windows' own typing lines, and the open tab's reply prefix in front of the chat's line
+			ChatTabInput.addFields(screen, width, height);
 			// a tab being dragged out shows where its window will go
 			ScreenEvents.afterExtract(screen).register((s, g, mouseX, mouseY, delta) -> drawDrag(g, mouseX, mouseY));
 			// a search box on the right of the same row; it filters the chat until it is closed
@@ -109,6 +112,13 @@ public final class ChatTabs {
 		active = index;
 		unread.remove(index);
 		apply();
+		if (Compat.screen(Minecraft.getInstance()) instanceof ChatScreen chat) ChatTabInput.fitMain(chat);
+	}
+
+	/** The open tab in the chat's row, or null for "All" (a pulled-out tab is never the open one). */
+	static HudConfig.ChatTab activeTab() {
+		List<HudConfig.ChatTab> tabs = SlashHud.config.chatTabs;
+		return active >= 0 && active < tabs.size() && tabs.get(active).window == null ? tabs.get(active) : null;
 	}
 
 	/** The search box's text (also for the in-game test). */
