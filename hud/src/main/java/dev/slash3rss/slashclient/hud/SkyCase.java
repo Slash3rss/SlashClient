@@ -173,6 +173,8 @@ public final class SkyCase {
 	/** Colour codes with § or & (also "&#rrggbb" and "§x§r§r…"), as the server may send them in the text itself. */
 	private static final Pattern CODES = Pattern.compile("(?i)[§&]x(?:[§&][0-9a-f]){6}|[§&]#[0-9a-f]{6}|[§&][0-9a-fk-or]");
 	private static final Pattern WIN = Pattern.compile("(?i)SkyCase\\s*(?:»|>>)\\s*Wygrano\\s*:\\s*(.+?)\\s*!*\\s*$");
+	/** SkyUp's newer line, said for everyone's wins: "SkyCase » Guardes otworzył Elementium i wygrał: :: Perun ::!" (player, case, reward). */
+	private static final Pattern OPENED = Pattern.compile("(?i)SkyCase\\s*(?:»|>>)\\s*(\\S+)\\s+otworzył\\s+(.+?)\\s+i\\s+wygrał\\s*:\\s*(.+?)\\s*!*\\s*$");
 	/** ":: Karambit ::", "♦ Klejnot klucznika ♦": the name inside. */
 	private static final Pattern DECORATED = Pattern.compile("^(?::{2,}|♦+)\\s*(.+?)\\s*(?::{2,}|♦+)$");
 	private static final Pattern COUNT_BEFORE = Pattern.compile("(?i)^(\\d{1,5})\\s*[x×]\\s+(.+)$");
@@ -249,17 +251,43 @@ public final class SkyCase {
 
 	/** Every chat line: SkyUp's win counted. */
 	public static void onChat(String line) {
-		if (line == null || !line.contains("Wygrano") || SlashHud.config == null) return;
+		if (line == null || !(line.contains("Wygrano") || line.contains("wygrał")) || SlashHud.config == null) return;
 		Minecraft mc = Minecraft.getInstance();
 		if (!SkyTasks.onSkyUp(mc)) return;
+		long now = System.currentTimeMillis();
+		String[] opened = parseOpened(line);
+		if (opened != null) {
+			// everyone's wins are said: only the player's own count, and the line names the case
+			if (mc.player != null && opened[0].equalsIgnoreCase(mc.player.getGameProfile().name())) won(caseNamed(opened[1]), opened[2], now);
+			return;
+		}
 		String reward = parse(line);
-		if (reward != null) won(reward, System.currentTimeMillis());
+		if (reward != null) won(reward, now);
+	}
+
+	/** The newer win line as {player, case, reward}, or null for any other line. */
+	static String[] parseOpened(String line) {
+		Matcher m = OPENED.matcher(plain(line));
+		if (!m.find()) return null;
+		String reward = canonical(m.group(3));
+		return reward.isEmpty() ? null : new String[] { m.group(1), m.group(2).strip(), reward };
+	}
+
+	/** The case the line names, written as this counter knows it ("elementium" is "Elementium"). */
+	static String caseNamed(String name) {
+		for (String known : lifetime().cases.keySet()) if (known.equalsIgnoreCase(name)) return known;
+		return name;
 	}
 
 	/** A win counted for the case it came from. */
 	static String won(String reward, long now) {
+		return won(null, reward, now);
+	}
+
+	/** A win counted for `named` (the case the line names), or for the case it came from when the line does not say. */
+	static String won(String named, String reward, long now) {
 		Data life = lifetime();
-		String type = attribute(reward, now);
+		String type = named != null ? named : attribute(reward, now);
 		Stats stats = life.of(type);
 		// the pool's own spelling, when the line writes it otherwise
 		String k = key(reward);

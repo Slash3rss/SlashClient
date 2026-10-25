@@ -34,6 +34,15 @@ public final class SkyCaseTestHooks {
 		chat("§6§lSkyCase §8§l» §e§aWygrano: §e" + reward + "§a!");
 	}
 
+	/** SkyUp's newer win line, said for every player's win ("SkyCase » Guardes otworzył Elementium i wygrał: :: Perun ::!"). */
+	public static void opened(String player, String type, String reward) {
+		chat("§6§lSkyCase §8§l» §e" + player + " §aotworzył §e" + type + " §ai wygrał: §e" + reward + "§a!");
+	}
+
+	public static String playerName() {
+		return Minecraft.getInstance().player.getGameProfile().name();
+	}
+
 	public static String parse(String line) {
 		return String.valueOf(SkyCase.parse(line));
 	}

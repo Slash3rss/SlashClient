@@ -199,6 +199,17 @@ public class GameSkyCase implements FabricClientGameTest {
 			context.runOnClient(mc -> SkyCaseTestHooks.sum(false));
 			context.runOnClient(mc -> SkyCaseTestHooks.layout("recent"));
 			context.runOnClient(mc -> SkyCaseTestHooks.newDropToast(false));
+
+			// SkyUp's newer line names the player and the case: the player's own wins count for that case
+			// (a diamond many cases give, Łowiecki's here), another player's do not
+			String me = context.computeOnClient(mc -> SkyCaseTestHooks.playerName());
+			context.runOnClient(mc -> SkyCaseTestHooks.forget());
+			context.runOnClient(mc -> SkyCaseTestHooks.opened(me, "Elementium", ":: Perun ::"));
+			context.runOnClient(mc -> SkyCaseTestHooks.opened(me, "Łowiecki", "4x Diament"));
+			context.runOnClient(mc -> SkyCaseTestHooks.opened("Bentlej", "Elementium", ":: Perun ::"));
+			context.waitTicks(3);
+			String after = context.computeOnClient(mc -> SkyCaseTestHooks.counted());
+			check(after.contains("Perun=1") && !after.contains("Perun=2") && after.contains("Łowiecki: 2/2 {Diament=1, 4x Diament=1}"), "the newer line", after);
 		}
 		//#endif
 	}
