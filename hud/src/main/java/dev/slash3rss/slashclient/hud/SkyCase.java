@@ -258,11 +258,30 @@ public final class SkyCase {
 		String[] opened = parseOpened(line);
 		if (opened != null) {
 			// everyone's wins are said: only the player's own count, and the line names the case
-			if (mc.player != null && opened[0].equalsIgnoreCase(mc.player.getGameProfile().name())) won(caseNamed(opened[1]), opened[2], now);
+			if (mc.player != null && opened[0].equalsIgnoreCase(mc.player.getGameProfile().name()) && !again(opened[2], true, now)) won(caseNamed(opened[1]), opened[2], now);
 			return;
 		}
 		String reward = parse(line);
-		if (reward != null) won(reward, now);
+		if (reward != null && !again(reward, false, now)) won(reward, now);
+	}
+
+	/**
+	 * The last win counted from the chat and in which line, so one win said in both ("Wygrano" and
+	 * "otworzył … i wygrał") counts once, while wins in a row said in one kind of line (a key gem
+	 * opening many keys) all count.
+	 */
+	private static String lastChatWin;
+	private static boolean lastChatWinOpened;
+	private static long lastChatWinAt;
+
+	private static boolean again(String reward, boolean opened, long now) {
+		String k = key(reward);
+		boolean same = k.equals(lastChatWin) && opened != lastChatWinOpened && now - lastChatWinAt < 3000;
+		// the pair's second line: the next same win is a win of its own again
+		lastChatWin = same ? null : k;
+		lastChatWinOpened = opened;
+		lastChatWinAt = now;
+		return same;
 	}
 
 	/** The newer win line as {player, case, reward}, or null for any other line. */
