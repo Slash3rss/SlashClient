@@ -263,6 +263,7 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.skyTasks.trackAll", () -> cfg.skyTasksTrackAll, v -> cfg.skyTasksTrackAll = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.tierCount", () -> cfg.skyTasksTierCount, v -> cfg.skyTasksTierCount = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.joinHintSetting", () -> cfg.skyTasksJoinHint, v -> cfg.skyTasksJoinHint = v));
+					settings.add(new Slider("slashclient-hud.skyTasks.dailyRemind", 0f, 120f, 5f, "%.0f min", () -> (float) cfg.skyDailyRemind, v -> cfg.skyDailyRemind = Math.round(v)));
 				}
 				case "skyfish" -> {
 					settings.add(new Choice("slashclient-hud.skyFish.split", new String[] { "none", "size", "species", "quality" }, "slashclient-hud.skyFish.split.",

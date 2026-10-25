@@ -106,6 +106,8 @@ public final class SkyTasks {
 	static void joined(Minecraft mc) {
 		readNow.clear();
 		menuReadNow = false;
+		// the first reminder of the daily task one interval after joining
+		remindAt = System.currentTimeMillis() + remindEvery();
 		if (!on(mc) || !SlashHud.config.skyTasksJoinHint) return;
 		Compat.chat(mc).addClientSystemMessage(Component.translatable("slashclient-hud.skyTasks.joinHint").withStyle(net.minecraft.ChatFormatting.GOLD));
 	}
@@ -187,6 +189,43 @@ public final class SkyTasks {
 			save();
 		}
 		SkyCounters.tick(mc);
+		remindDaily(mc);
+	}
+
+	// ---------- the daily task's reminder ----------
+
+	/** When the daily task is to be brought up next (ms). */
+	private static long remindAt;
+
+	/** How often (ms): the setting's minutes; 0 when switched off. */
+	private static long remindEvery() {
+		return SlashHud.config == null ? 0 : SlashHud.config.skyDailyRemind * 60_000L;
+	}
+
+	/** Now and then, while the daily task is tracked and not handed in: a reminder with how far it is. */
+	private static void remindDaily(Minecraft mc) {
+		long every = remindEvery(), now = System.currentTimeMillis();
+		if (every <= 0 || now < remindAt) return;
+		remindAt = now + every;
+		Component what = dailyReminder(mc);
+		if (what == null) return;
+		mc.execute(() -> net.minecraft.client.gui.components.toasts.SystemToast.add(Compat.toasts(mc), net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+			Component.translatable("slashclient-hud.skyTasks.dailyTitle"), what));
+	}
+
+	/** What the reminder says: the daily task's requirements still to do ("Szkielet 0/6"), or that it is ready; null when none is tracked. */
+	static Component dailyReminder(Minecraft mc) {
+		for (SkyTaskParser.Task t : data().tasks.values()) {
+			if (!nameKey(t.name).equals("zadanie codzienne") || !tracked(t)) continue;
+			if (ready(mc, t)) return Component.translatable("slashclient-hud.skyTasks.dailyReady");
+			List<String> left = new ArrayList<>();
+			for (SkyTaskParser.Section s : t.sections) for (SkyTaskParser.Req r : s.items) {
+				if (met(mc, s, r)) continue;
+				left.add(r.known() ? r.thing + " " + Math.min(r.required, r.current + r.extra) + "/" + r.required : r.thing);
+			}
+			return Component.translatable("slashclient-hud.skyTasks.dailyLeft", left.isEmpty() ? t.name : String.join(", ", left));
+		}
+		return null;
 	}
 
 	private static long savedAt;

@@ -194,6 +194,9 @@ public class GameSkyTasks implements FabricClientGameTest {
 			// whole categories tracked from the menu: Wirtuoz (never opened) with the key, Nowicjusz with the middle button
 			context.runOnClient(mc -> TestHooks.skyMenuScreen(5));
 			context.waitTicks(10);
+			// the daily task: nothing to remind of until it is tracked, then what is left of it
+			String daily = context.computeOnClient(mc -> TestHooks.skyDaily());
+			check(daily.equals("null | Still to do: Buraki 0/3888"), "the daily task's reminder (untracked | tracked)", daily);
 			double[] wirtuoz = context.computeOnClient(mc -> TestHooks.slotPoint(14));
 			double[] nowicjusz = context.computeOnClient(mc -> TestHooks.slotPoint(12));
 			context.getInput().setCursorPos(wirtuoz[0], wirtuoz[1]);

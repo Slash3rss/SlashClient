@@ -2199,6 +2199,20 @@ public final class TestHooks {
 		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, mc.player.getInventory(), net.minecraft.network.chat.Component.literal("\ue001\ue151\ue002Wyzwania » Nowicjusz")));
 	}
 
+	/** The daily task's reminder: untracked, then tracked (and untracked again after); "none" without the task. */
+	public static String skyDaily() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		SkyTaskParser.Task daily = null;
+		for (SkyTaskParser.Task t : SkyTasks.data().tasks.values()) if (t.name.contains("Zadanie codzienne")) daily = t;
+		if (daily == null) return "none";
+		var before = SkyTasks.dailyReminder(mc);
+		boolean was = SkyTasks.tracked(daily);
+		if (!was) SkyTasks.toggle(daily);
+		var after = SkyTasks.dailyReminder(mc);
+		if (!was) SkyTasks.toggle(daily);
+		return (before == null ? "null" : before.getString()) + " | " + (after == null ? "null" : after.getString());
+	}
+
 	/** SkyUp's challenges menu ("Wyzwania"): the Nowicjusz category with `left` tasks left, and the daily task. */
 	public static void skyMenuScreen(int left) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
