@@ -46,7 +46,9 @@ const { execFile, spawn } = require('node:child_process');
 
 /** Shares asked to run again: the one clicked once waits for a second click (until then: when). */
 const restartArmed = {};
+/** Shares being run again by this window (until their game is done), and why one could not be. */
 const restarting = new Set();
+const restartError = {};
 
 /** Closes this share's test game (found by its share in the command line: never a player's game). */
 function killShare(i) {
@@ -61,20 +63,36 @@ function killShare(i) {
 
 /** The share run again on its own: its old game closed, its log and result started over. */
 async function restart(i) {
+  if (restarting.has(i)) return;
   restarting.add(i);
-  await killShare(i);
-  // the old run's gradle notices its game is gone and writes its result: wait for that, then start over
-  for (let t = 0; t < 30 && !fs.existsSync(path.join(logs, `gametest-${i}.status`)); t++) await new Promise((r) => setTimeout(r, 500));
-  for (const f of [`gametest-${i}.status`, `gametest-${i}.log`]) try { fs.rmSync(path.join(logs, f)); } catch {}
-  for (const k of Object.keys(since)) if (k.startsWith(`${i}:`)) delete since[k];
-  const out = fs.openSync(path.join(logs, `gametest-${i}.log`), 'w');
-  const extra = (process.env.SLASHCLIENT_TEST_ARGS || '').split(' ').filter(Boolean);
-  const args = ['runClientGameTest', `-Pmc=${mc}`, `-Pshard=${i}/${n}`, ...extra, '-q'];
-  const child = process.platform === 'win32'
-    ? spawn('cmd.exe', ['/c', 'gradlew.bat', ...args], { cwd: hud, stdio: ['ignore', out, out], windowsHide: true })
-    : spawn('./gradlew', args, { cwd: hud, stdio: ['ignore', out, out] });
-  restarting.delete(i);
-  child.on('exit', (code) => fs.writeFileSync(path.join(logs, `gametest-${i}.status`), `${code ?? 1}\n`));
+  delete restartError[i];
+  try {
+    await killShare(i);
+    // the old run's gradle notices its game is gone and writes its result: wait for that, then start over
+    for (let t = 0; t < 30 && !fs.existsSync(path.join(logs, `gametest-${i}.status`)); t++) await new Promise((r) => setTimeout(r, 500));
+    try { fs.rmSync(path.join(logs, `gametest-${i}.status`)); } catch {}
+    for (const k of Object.keys(since)) if (k.startsWith(`${i}:`)) delete since[k];
+    // the log emptied, not deleted: on Windows a file still open elsewhere cannot be made again under its name
+    const out = fs.openSync(path.join(logs, `gametest-${i}.log`), 'w');
+    const extra = (process.env.SLASHCLIENT_TEST_ARGS || '').split(' ').filter(Boolean);
+    const args = ['runClientGameTest', `-Pmc=${mc}`, `-Pshard=${i}/${n}`, ...extra, '-q'];
+    const child = process.platform === 'win32'
+      ? spawn('cmd.exe', ['/c', path.join(hud, 'gradlew.bat'), ...args], { cwd: hud, stdio: ['ignore', out, out], windowsHide: true })
+      : spawn('./gradlew', args, { cwd: hud, stdio: ['ignore', out, out] });
+    // the game writes through its own copy: this window lets go of the file at once
+    fs.closeSync(out);
+    child.on('exit', (code) => {
+      fs.writeFileSync(path.join(logs, `gametest-${i}.status`), `${code ?? 1}\n`);
+      restarting.delete(i);
+    });
+    child.on('error', (e) => {
+      restartError[i] = e.message;
+      restarting.delete(i);
+    });
+  } catch (e) {
+    restartError[i] = e.message;
+    restarting.delete(i);
+  }
 }
 const started = Date.now();
 document.getElementById('title').textContent = `Testy SlashClient · ${mc}`;
@@ -131,8 +149,11 @@ function render() {
       const sure = restartArmed[i] > Date.now();
       const btn = document.createElement('button');
       btn.className = `restart${sure ? ' sure' : ''}`;
-      btn.textContent = restarting.has(i) ? 'Uruchamiam…' : sure ? 'Na pewno?' : 'Uruchom ponownie';
+      // while its new run goes on the share shows as running, without the button
+      if (restarting.has(i) && !s.current) btn.textContent = 'Uruchamiam…';
+      else btn.textContent = sure ? 'Na pewno?' : 'Uruchom ponownie';
       btn.disabled = restarting.has(i);
+      if (restarting.has(i) && s.current) btn.style.display = 'none';
       btn.onclick = () => {
         if (restartArmed[i] > Date.now()) {
           delete restartArmed[i];
@@ -148,10 +169,10 @@ function render() {
       now.textContent = `${s.current} · ${fmt(runFor)}${s.expected ? ` / ~${fmt(s.expected)}` : ''}`;
       el.append(now);
     }
-    if (s.failed) {
+    if (s.failed || restartError[i]) {
       const err = document.createElement('div');
       err.className = 'err';
-      err.textContent = s.failed;
+      err.textContent = restartError[i] ? `Nie udało się uruchomić ponownie: ${restartError[i]}` : s.failed;
       el.append(err);
     }
     box.append(el);
