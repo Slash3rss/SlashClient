@@ -132,6 +132,8 @@ public class SlashHud implements ClientModInitializer {
 		SessionStats.register();
 		// the partners (and which are pinned on top of the server list) before the list is first opened
 		PartnerServers.refresh();
+		// a crash still saves the game's and other mods' settings
+		CrashSave.register();
 		// another server or world: what we knew about its players is gone
 		//#if MC >= 26.3
 		// SkyUp's task progress counted in the last moments is not lost on leaving the server or closing the game
