@@ -136,10 +136,29 @@ public final class SkyCase {
 			if (lifetime == null) lifetime = new Data();
 			if (lifetime.cases == null) lifetime.cases = new LinkedHashMap<>();
 			if (lifetime.lastType == null) lifetime.lastType = "";
-			for (Stats s : lifetime.cases.values()) s.fixed();
+			for (Stats s : lifetime.cases.values()) {
+				s.fixed();
+				unstack(s);
+			}
 			seed(lifetime);
 		}
 		return lifetime;
+	}
+
+	/**
+	 * Wins read from lines with the chat's "×2" before it was known (":: Cassis ::! ×2" became
+	 * "2x :: Cassis ::!"): each was one win of the reward itself, so it goes back there. A real reward
+	 * never ends with "!" (the lines' "!" is never part of it).
+	 */
+	static void unstack(Stats s) {
+		for (String wrong : List.copyOf(s.drops.keySet())) {
+			if (!wrong.endsWith("!")) continue;
+			Matcher m = COUNT_BEFORE.matcher(wrong);
+			String right = canonical((m.matches() ? m.group(2) : wrong).replaceAll("!+$", ""));
+			if (right.isEmpty()) continue;
+			s.drops.merge(right, s.drops.remove(wrong), Long::sum);
+			if (wrong.equals(s.last)) s.last = right;
+		}
 	}
 
 	/** The built-in pools for the cases no preview window has shown yet (all of them, the first time). */
@@ -190,6 +209,17 @@ public final class SkyCase {
 		return CODES.matcher(s).replaceAll("").replaceAll("[\\uE000-\\uF8FF\\u200B-\\u200D\\uFEFF]", "").replace(' ', ' ').replaceAll("\\s+", " ").strip();
 	}
 
+	/**
+	 * The chat's "×2" of a repeated line (ChatExtras.stack), after the line's "!": in the game's log too.
+	 * It says the line came again, not how many: each such line is one win.
+	 */
+	private static final Pattern STACKED = Pattern.compile("(!+)\\s*×\\d+\\s*$");
+
+	/** A win line as the server sent it: plain, without the chat's repeat mark. */
+	static String winLine(String s) {
+		return STACKED.matcher(plain(s)).replaceFirst("$1");
+	}
+
 	/** A name without its decoration: ":: Karambit ::" is "Karambit", "♦ Klejnot klucznika ♦" "Klejnot klucznika". */
 	static String clean(String name) {
 		String s = plain(name);
@@ -235,7 +265,7 @@ public final class SkyCase {
 
 	/** SkyUp's win line: the reward ("5x Zaklęta butelka"), or null when the line is something else. */
 	public static String parse(String line) {
-		Matcher m = WIN.matcher(plain(line));
+		Matcher m = WIN.matcher(winLine(line));
 		if (!m.find()) return null;
 		String reward = canonical(m.group(1));
 		return reward.isEmpty() ? null : reward;
@@ -322,7 +352,7 @@ public final class SkyCase {
 
 	/** The newer win line as {player, case, reward}, or null for any other line. */
 	static String[] parseOpened(String line) {
-		Matcher m = OPENED.matcher(plain(line));
+		Matcher m = OPENED.matcher(winLine(line));
 		if (!m.find()) return null;
 		String reward = canonical(m.group(3));
 		return reward.isEmpty() ? null : new String[] { m.group(1), m.group(2).strip(), reward };

@@ -219,6 +219,9 @@ public class GameSkyCase implements FabricClientGameTest {
 			String log = "[11:55:12] [Render thread/INFO]: [System] [CHAT] SkyCase » " + me + " otworzył Elementium i wygrał: :: Cassis ::!\n"
 				+ "[11:55:19] [Render thread/INFO]: [System] [CHAT] SkyCase » Bentlej otworzył Elementium i wygrał: :: Cassis ::!\n"
 				+ "[11:56:02] [Render thread/INFO]: [System] [CHAT] SkyCase » Wygrano: Kask Górnika!\n"
+				// the same lines again, with the chat's "×2" of a repeated line: one more win each, not two
+				+ "[11:56:20] [Render thread/INFO]: [System] [CHAT] SkyCase » " + me + " otworzył Elementium i wygrał: :: Cassis ::! ×2\n"
+				+ "[11:56:30] [Render thread/INFO]: [System] [CHAT] SkyCase » Wygrano: Kask Górnika! ×2\n"
 				+ "[11:56:40] [Render thread/INFO]: [System] [CHAT] S-KBC » Ktoś: otworzyc\n";
 			context.runOnClient(mc -> SkyCaseTestHooks.importScreen(log));
 			context.waitTicks(3);
@@ -227,7 +230,10 @@ public class GameSkyCase implements FabricClientGameTest {
 			context.takeScreenshot("skycase-import");
 			int second = context.computeOnClient(mc -> SkyCaseTestHooks.importAdd());
 			String imported = context.computeOnClient(mc -> SkyCaseTestHooks.counted());
-			check(first == 2 && second == 0 && imported.contains("Cassis=1") && imported.contains("Kask Górnika=3"), "added from the log (" + first + ", " + second + ")", imported);
+			check(first == 4 && second == 0 && imported.contains("Cassis=2") && imported.contains("Kask Górnika=4") && !imported.contains("!"), "added from the log (" + first + ", " + second + ")", imported);
+			// and wins counted wrong that way before are mended at start
+			String mended = context.computeOnClient(mc -> SkyCaseTestHooks.unstacked());
+			check(mended.equals("{Cassis=3, 5x Zaklęta butelka=1, Kaptur sztormowy=1}"), "wins with the chat's ×2 mended", mended);
 			context.setScreen(() -> null);
 		}
 		//#endif

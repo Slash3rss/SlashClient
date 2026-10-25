@@ -58,6 +58,17 @@ public final class SkyCaseTestHooks {
 		return Minecraft.getInstance().player.getGameProfile().name();
 	}
 
+	/** Wins counted before the chat's "×2" was known, mended as at start: the drops after. */
+	public static String unstacked() {
+		SkyCase.Stats s = new SkyCase.Stats();
+		s.drops.put("Cassis", 1L);
+		s.drops.put("2x :: Cassis ::!", 2L);
+		s.drops.put("2x :: Kaptur sztormowy ::!", 1L);
+		s.drops.put("5x Zaklęta butelka", 1L);
+		SkyCase.unstack(s);
+		return s.drops.toString();
+	}
+
 	public static String parse(String line) {
 		return String.valueOf(SkyCase.parse(line));
 	}
