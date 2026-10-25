@@ -18,7 +18,8 @@ for i in $(seq 1 "$n"); do rm -f "build/gametest-$i.log" "build/gametest-$i.stat
 # a small window with the progress (progress/; off with SLASHCLIENT_TEST_WINDOW=0, never on CI)
 electron=../node_modules/.bin/electron
 if [ -z "${CI:-}" ] && [ "${SLASHCLIENT_TEST_WINDOW:-1}" != 0 ] && [ -e "$electron" ]; then
-  "$electron" progress --mc="$mc" --n="$n" > /dev/null 2>&1 &
+  # the window's "Restart" runs a share again with the same gradle arguments
+  SLASHCLIENT_TEST_ARGS="$*" "$electron" progress --mc="$mc" --n="$n" > /dev/null 2>&1 &
 fi
 for i in $(seq 1 "$n"); do
   rm -rf "build/run/clientGameTest-${i}of$n/screenshots"

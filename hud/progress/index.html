@@ -25,6 +25,9 @@
   .tag.ok { background: rgba(34,197,94,.18); color: #86efac; }
   .tag.bad { background: rgba(239,68,68,.18); color: #fca5a5; }
   .tag.wait { background: #1a2232; color: var(--muted); }
+  .restart { margin-left: 6px; font: inherit; font-size: 11px; color: var(--text); background: #1a2232; border: 1px solid var(--border); border-radius: 6px; padding: 1px 8px; cursor: pointer; }
+  .restart:hover { border-color: var(--accent); }
+  .restart.sure { background: rgba(239,68,68,.18); color: #fca5a5; border-color: rgba(239,68,68,.5); }
 </style>
 </head>
 <body>
@@ -38,7 +41,41 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const q = new URLSearchParams(location.search);
-const mc = q.get('mc'), n = Number(q.get('n')) || 4, logs = q.get('logs');
+const mc = q.get('mc'), n = Number(q.get('n')) || 4, logs = q.get('logs'), hud = q.get('hud');
+const { execFile, spawn } = require('node:child_process');
+
+/** Shares asked to run again: the one clicked once waits for a second click (until then: when). */
+const restartArmed = {};
+const restarting = new Set();
+
+/** Closes this share's test game (found by its share in the command line: never a player's game). */
+function killShare(i) {
+  const mark = `slashclient.test.shard=${i}/${n}`;
+  return new Promise((resolve) => {
+    if (process.platform === 'win32') {
+      const ps = `Get-CimInstance Win32_Process -Filter "Name='java.exe' OR Name='javaw.exe'" | Where-Object { $_.CommandLine -like '*${mark}*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`;
+      execFile('powershell.exe', ['-NoProfile', '-Command', ps], () => resolve());
+    } else execFile('pkill', ['-f', mark], () => resolve());
+  });
+}
+
+/** The share run again on its own: its old game closed, its log and result started over. */
+async function restart(i) {
+  restarting.add(i);
+  await killShare(i);
+  // the old run's gradle notices its game is gone and writes its result: wait for that, then start over
+  for (let t = 0; t < 30 && !fs.existsSync(path.join(logs, `gametest-${i}.status`)); t++) await new Promise((r) => setTimeout(r, 500));
+  for (const f of [`gametest-${i}.status`, `gametest-${i}.log`]) try { fs.rmSync(path.join(logs, f)); } catch {}
+  for (const k of Object.keys(since)) if (k.startsWith(`${i}:`)) delete since[k];
+  const out = fs.openSync(path.join(logs, `gametest-${i}.log`), 'w');
+  const extra = (process.env.SLASHCLIENT_TEST_ARGS || '').split(' ').filter(Boolean);
+  const args = ['runClientGameTest', `-Pmc=${mc}`, `-Pshard=${i}/${n}`, ...extra, '-q'];
+  const child = process.platform === 'win32'
+    ? spawn('cmd.exe', ['/c', 'gradlew.bat', ...args], { cwd: hud, stdio: ['ignore', out, out], windowsHide: true })
+    : spawn('./gradlew', args, { cwd: hud, stdio: ['ignore', out, out] });
+  restarting.delete(i);
+  child.on('exit', (code) => fs.writeFileSync(path.join(logs, `gametest-${i}.status`), `${code ?? 1}\n`));
+}
 const started = Date.now();
 document.getElementById('title').textContent = `Testy SlashClient · ${mc}`;
 const fmt = (s) => (s >= 60 ? `${Math.floor(s / 60)} min ${String(Math.round(s % 60)).padStart(2, '0')} s` : `${Math.round(s)} s`);
@@ -89,6 +126,22 @@ function render() {
     const pct = s.total ? Math.round(((s.finished && s.ok ? s.total : s.done) / s.total) * 100) : 0;
     el.innerHTML = `<div class="row"><b>Gra ${i}/${n}</b><span><span class="tag ${state[0]}">${state[1]}</span> ${s.total ? `${s.finished && s.ok ? s.total : s.done}/${s.total}` : ''}</span></div>
       <div class="bar ${state[0] === 'ok' ? 'ok' : state[0] === 'bad' ? 'bad' : ''}"><div style="width:${pct}%"></div></div>`;
+    // a game that hangs ("not responding") or failed: run its share again (two clicks, the first only asks)
+    if (!(s.finished && s.ok) && !s.wait) {
+      const sure = restartArmed[i] > Date.now();
+      const btn = document.createElement('button');
+      btn.className = `restart${sure ? ' sure' : ''}`;
+      btn.textContent = restarting.has(i) ? 'Uruchamiam…' : sure ? 'Na pewno?' : 'Uruchom ponownie';
+      btn.disabled = restarting.has(i);
+      btn.onclick = () => {
+        if (restartArmed[i] > Date.now()) {
+          delete restartArmed[i];
+          restart(i);
+        } else restartArmed[i] = Date.now() + 4000;
+        render();
+      };
+      el.querySelector('.row > span').append(btn);
+    }
     if (s.current && !s.finished) {
       const now = document.createElement('div');
       now.className = 'now';

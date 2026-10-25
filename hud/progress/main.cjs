@@ -1,6 +1,7 @@
 // A small window that shows how the game tests run (gametest.sh starts it): each game's share with its
 // progress bar and the test running now, the whole run's progress and time left, and what failed.
-// It only reads the shares' logs (build/gametest-N.log); closing it changes nothing in the tests.
+// It reads the shares' logs (build/gametest-N.log); closing it changes nothing in the tests. A share's
+// "Restart" closes only that share's test game (never a real one) and runs the share again.
 const { app, BrowserWindow, screen } = require('electron');
 const path = require('node:path');
 
@@ -17,7 +18,7 @@ app.whenReady().then(() => {
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
   win.loadFile(path.join(__dirname, 'index.html'), {
-    query: { mc: arg('mc', '?'), n: arg('n', '4'), logs: path.resolve(__dirname, '..', 'build') },
+    query: { mc: arg('mc', '?'), n: arg('n', '4'), logs: path.resolve(__dirname, '..', 'build'), hud: path.resolve(__dirname, '..') },
   });
   // shown without taking the focus from what the player is doing
   win.once('ready-to-show', () => win.showInactive());
