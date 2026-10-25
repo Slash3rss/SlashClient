@@ -88,10 +88,9 @@ public final class ChatTabInput {
 		return tab == null ? "" : tab.prefix();
 	}
 
-	/** The chat's own line (the first text field the chat screen makes). */
+	/** The chat's own line. */
 	static EditBox mainInput(Screen screen) {
-		for (var child : screen.children()) if (child instanceof EditBox box && !(child instanceof Field)) return box;
-		return null;
+		return screen instanceof ChatScreen chat ? ((dev.slash3rss.slashclient.hud.mixin.ChatScreenAccessor) chat).slashclient$input() : null;
 	}
 
 	/** The width the prefix label takes in front of a line (0 = no prefix). */
@@ -119,7 +118,7 @@ public final class ChatTabInput {
 		if (prefix.isEmpty() || in == null) return;
 		// a command the player writes himself goes without the prefix: it fades further
 		int color = in.getValue().startsWith("/") ? 0x50FFFFFF : 0xFF7C8699;
-		Ui.draw(g, Ui.fit(Ui.text(prefix.strip()), labelWidth(prefix, screen.width) - 3), 4, in.getY() + (in.getHeight() - 8) / 2, color);
+		Ui.draw(g, Ui.fit(Ui.text(prefix.strip()), labelWidth(prefix, screen.width) - 3), 4, in.getY(), color);
 	}
 
 	// ---------- the typing line of a pulled-out window ----------

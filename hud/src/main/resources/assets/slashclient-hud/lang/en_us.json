@@ -711,7 +711,7 @@
 	"slashclient-hud.chat.hint.excludes": "except…",
 	"slashclient-hud.chat.prefix": "Reply prefix",
 	"slashclient-hud.chat.hint.prefix": "e.g. /msg Steve, /g, @ (empty = none)",
-	"slashclient-hud.chat.input": "Typing line in the window",
+	"slashclient-hud.chat.input": "Typing line",
 	"slashclient-hud.chat.input.hint": "Write in “%s”…",
 	"slashclient-hud.chat.mentions": "Mentions (sound and @)",
 	"slashclient-hud.chat.window.drop": "Drop: “%s” window",

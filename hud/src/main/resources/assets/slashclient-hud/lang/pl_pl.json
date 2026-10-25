@@ -711,7 +711,7 @@
 	"slashclient-hud.chat.hint.excludes": "bez…",
 	"slashclient-hud.chat.prefix": "Prefiks odpowiedzi",
 	"slashclient-hud.chat.hint.prefix": "np. /msg Steve, /g, @ (puste = brak)",
-	"slashclient-hud.chat.input": "Pole do pisania w oknie",
+	"slashclient-hud.chat.input": "Pole do pisania",
 	"slashclient-hud.chat.input.hint": "Napisz w „%s”…",
 	"slashclient-hud.chat.mentions": "Oznaczenia (dźwięk i @)",
 	"slashclient-hud.chat.window.drop": "Upuść: okno „%s”",

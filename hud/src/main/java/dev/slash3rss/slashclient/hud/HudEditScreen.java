@@ -126,6 +126,12 @@ public class HudEditScreen extends Screen {
 	/** That line's prefix field. */
 	private EditBox prefixField;
 
+	/** The chat tabs page with a tab's more settings open (for the screenshot test). */
+	public HudEditScreen tabMore(int index) {
+		tabMore = index;
+		return this;
+	}
+
 	/** A tab row's top: the rows under the opened one move down by the extra line. */
 	private int tabRowY(int i) {
 		return tabsTop + i * TAB_ROW + (tabMore >= 0 && i > tabMore ? TAB_ROW : 0);

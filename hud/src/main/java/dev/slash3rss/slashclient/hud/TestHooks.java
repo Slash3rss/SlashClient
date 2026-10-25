@@ -1778,6 +1778,63 @@ public final class TestHooks {
 		return ChatWindows.linesOf(name);
 	}
 
+	/** A tab's typing line in its window and its reply prefix. */
+	public static void chatTabTyping(String name, boolean input, String prefix) {
+		for (var tab : SlashHud.config.chatTabs) if (tab.name.equals(name)) {
+			tab.input = input;
+			tab.replyPrefix = prefix;
+		}
+	}
+
+	/** Makes a docked tab the open one in the chat ("" = "All"). */
+	public static void selectChatTab(String name) {
+		int index = -1;
+		for (int i = 0; i < SlashHud.config.chatTabs.size(); i++) if (SlashHud.config.chatTabs.get(i).name.equals(name)) index = i;
+		ChatTabs.select(index);
+	}
+
+	/** Outgoing chat and commands kept for the test instead of being sent (off = they go again). */
+	public static void captureOutgoing(boolean on) {
+		ChatTabInput.captured = on ? new java.util.ArrayList<>() : null;
+	}
+
+	/** What was kept, one per line ("chat:…", "command:/…"), and the list emptied. */
+	public static String takeOutgoing() {
+		if (ChatTabInput.captured == null) return "";
+		String out = String.join("\n", ChatTabInput.captured);
+		ChatTabInput.captured.clear();
+		return out;
+	}
+
+	public static double[] chatFieldCenter(String name) {
+		return ChatTabInput.fieldCenter(name);
+	}
+
+	public static String chatFocus() {
+		return ChatTabInput.focus();
+	}
+
+	public static String chatFieldValue(String name) {
+		return ChatTabInput.fieldValue(name);
+	}
+
+	public static void chatFieldClear(String name) {
+		var screen = screen();
+		if (screen != null) for (var child : screen.children()) if (child instanceof ChatTabInput.Field f && f.tab.name.equals(name)) f.setValue("");
+	}
+
+	/** Where the chat's own line starts (it moves over for the open tab's prefix); -1 without the chat. */
+	public static int chatInputX() {
+		var screen = screen();
+		var in = screen == null ? null : ChatTabInput.mainInput(screen);
+		return in == null ? -1 : in.getX();
+	}
+
+	/** Whether the chat is open. */
+	public static boolean chatOpen() {
+		return screen() instanceof net.minecraft.client.gui.screens.ChatScreen;
+	}
+
 	public static void dockAllChatTabs() {
 		for (var tab : SlashHud.config.chatTabs) tab.window = null;
 		ChatTabs.changed();
