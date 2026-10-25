@@ -521,10 +521,28 @@ public final class ExtraModules {
 			return hit.getBlockPos();
 		}
 
+		/** The item frame looked at (its item shown as a block would be), or null. */
+		private static net.minecraft.world.entity.decoration.ItemFrame frame(Minecraft mc) {
+			if (mc.level == null || mc.player == null || !cfg.blockFrames) return null;
+			return mc.hitResult instanceof net.minecraft.world.phys.EntityHitResult hit && hit.getEntity() instanceof net.minecraft.world.entity.decoration.ItemFrame f ? f : null;
+		}
+
 		@Override
 		public boolean visible(Minecraft mc) {
+			if (frame(mc) != null) return true;
 			BlockPos pos = target(mc);
 			return pos != null && !mc.level.getBlockState(pos).isAir();
+		}
+
+		/** A frame's lines: what it holds (or that it is empty), the frame and its turn, and how worn a tool in it is. */
+		private static List<Map.Entry<Component, Integer>> frameLines(net.minecraft.world.entity.decoration.ItemFrame f) {
+			List<Map.Entry<Component, Integer>> out = new ArrayList<>();
+			ItemStack held = f.getItem();
+			out.add(Map.entry(held.isEmpty() ? Component.translatable("slashclient-hud.block.frame.empty") : held.getHoverName(), cfg.textColor));
+			// a comparator behind the frame reads its turn
+			out.add(Map.entry(f.getName().copy().append(Component.literal(" · ")).append(Component.translatable("slashclient-hud.block.frame.rotation", f.getRotation(), 8)), 0xFFAAAAAA));
+			if (held.isDamageableItem()) out.add(Map.entry(Component.translatable("slashclient-hud.block.frame.durability", held.getMaxDamage() - held.getDamageValue(), held.getMaxDamage()), 0xFFDDDDDD));
+			return out;
 		}
 
 		private static String tool(BlockState s) {
@@ -535,13 +553,95 @@ public final class ExtraModules {
 			return "hand";
 		}
 
-		/** Second line: tool and time; red when what you hold drops nothing. */
+		/** The tool's picture on the second line; none for blocks broken by hand (those say "Hand"). */
+		private static Item toolIcon(BlockState s) {
+			return switch (tool(s)) {
+				case "pickaxe" -> Items.IRON_PICKAXE;
+				case "axe" -> Items.IRON_AXE;
+				case "shovel" -> Items.IRON_SHOVEL;
+				case "hoe" -> Items.IRON_HOE;
+				default -> null;
+			};
+		}
+
+		/** Second line, after the tool's picture: how long breaking takes; red when what you hold drops nothing. */
 		private static Component detail(Minecraft mc, BlockState s, BlockPos pos) {
 			float perTick = s.getDestroyProgress(mc.player, mc.level, pos);
 			Component time = perTick <= 0 ? Component.translatable("slashclient-hud.block.never")
 				: perTick >= 1 ? Component.translatable("slashclient-hud.block.instant")
 				: Component.literal(String.format(java.util.Locale.ROOT, "%.2f s", Math.ceil(1 / perTick) / 20));
-			return Component.translatable("slashclient-hud.block.tool." + tool(s)).append(Component.literal(" · ")).append(time);
+			return toolIcon(s) != null ? time : Component.translatable("slashclient-hud.block.tool.hand").append(Component.literal(" · ")).append(time);
+		}
+
+		/** The tool line's width: the small picture and the time. */
+		private static int detailWidth(Minecraft mc, BlockState s, BlockPos pos) {
+			return (toolIcon(s) != null ? 12 : 0) + mc.font.width(detail(mc, s, pos));
+		}
+
+		/** Each kind of tool, weakest first (gold left out: it digs fast but breaks no more than wood and wears out at once). */
+		private static final Item[][] KINDS = {
+			{ Items.WOODEN_PICKAXE, Items.STONE_PICKAXE, Items.IRON_PICKAXE, Items.DIAMOND_PICKAXE, Items.NETHERITE_PICKAXE },
+			{ Items.WOODEN_AXE, Items.STONE_AXE, Items.IRON_AXE, Items.DIAMOND_AXE, Items.NETHERITE_AXE },
+			{ Items.WOODEN_SHOVEL, Items.STONE_SHOVEL, Items.IRON_SHOVEL, Items.DIAMOND_SHOVEL, Items.NETHERITE_SHOVEL },
+			{ Items.WOODEN_HOE, Items.STONE_HOE, Items.IRON_HOE, Items.DIAMOND_HOE, Items.NETHERITE_HOE },
+			{ Items.WOODEN_SWORD, Items.STONE_SWORD, Items.IRON_SWORD, Items.DIAMOND_SWORD, Items.NETHERITE_SWORD },
+			{ Items.SHEARS },
+		};
+
+		/** The fastest tool in the game that makes this block drop; null when none beats bare hands. */
+		private static Item bestTool(BlockState s) {
+			Item best = null;
+			float speed = 1;
+			for (Item[] kind : KINDS) {
+				ItemStack top = new ItemStack(kind[kind.length - 1]);
+				if (s.requiresCorrectToolForDrops() && !top.isCorrectToolForDrops(s)) continue;
+				float v = top.getDestroySpeed(s);
+				if (v > speed) {
+					best = top.getItem();
+					speed = v;
+				}
+			}
+			return best;
+		}
+
+		/** The weakest tool of the best one's kind that still makes the block drop (obsidian: a diamond pickaxe); null when any would. */
+		private static Item weakestTool(BlockState s, Item best) {
+			if (best == null || !s.requiresCorrectToolForDrops()) return null;
+			for (Item[] kind : KINDS) {
+				if (kind[kind.length - 1] != best) continue;
+				for (Item it : kind) if (new ItemStack(it).isCorrectToolForDrops(s)) return it;
+			}
+			return null;
+		}
+
+		/** The best tool's name (with "in hand" when it is), then "min." before the weakest one's picture. */
+		private static Component bestLine(Minecraft mc, Item best) {
+			Component name = new ItemStack(best).getHoverName();
+			return mc.player.getMainHandItem().is(best) ? Component.translatable("slashclient-hud.block.bestHeld", name) : name;
+		}
+
+		private static int bestWidth(Minecraft mc, BlockState s) {
+			Item best = bestTool(s), weakest = weakestTool(s, best);
+			return 12 + mc.font.width(bestLine(mc, best)) + (weakest != null && weakest != best ? mc.font.width(" · min.") + 12 : 0);
+		}
+
+		private static boolean showsBest(Minecraft mc, BlockState s) {
+			return cfg.blockBestTool && bestTool(s) != null;
+		}
+
+		/** A small picture of an item, the height of a line of text. */
+		private static void smallItem(GuiGraphicsExtractor g, Item item, int x, int y) {
+			var pose = g.pose();
+			pose.pushMatrix();
+			pose.translate(x, y);
+			pose.scale(0.625f, 0.625f);
+			g.item(new ItemStack(item), 0, 0);
+			pose.popMatrix();
+		}
+
+		/** Where the extra lines start: under the name, the tool line and the best tool's line, when shown. */
+		private static int linesTop(Minecraft mc, BlockState s) {
+			return 11 + (cfg.blockTool ? 11 : 0) + (showsBest(mc, s) ? 10 : 0);
 		}
 
 		private static boolean drops(Minecraft mc, BlockState s) {
@@ -550,10 +650,21 @@ public final class ExtraModules {
 
 		/** The extra lines for the block looked at, as text (for the test); "" when none is. */
 		static String linesForTest(Minecraft mc) {
+			var f = frame(mc);
+			if (f != null) {
+				StringBuilder out = new StringBuilder();
+				for (var line : frameLines(f)) out.append(line.getKey().getString()).append('\n');
+				return out.toString();
+			}
 			BlockPos pos = target(mc);
 			if (pos == null) return "";
 			StringBuilder out = new StringBuilder();
-			for (var line : extras(mc, mc.level.getBlockState(pos), pos)) out.append(line.getKey().getString()).append('\n');
+			BlockState s = mc.level.getBlockState(pos);
+			if (showsBest(mc, s)) {
+				Item best = bestTool(s), weakest = weakestTool(s, best);
+				out.append(bestLine(mc, best).getString()).append(weakest != null && weakest != best ? " · min. " + new ItemStack(weakest).getHoverName().getString() : "").append('\n');
+			}
+			for (var line : extras(mc, s, pos)) out.append(line.getKey().getString()).append('\n');
 			return out.toString();
 		}
 
@@ -572,6 +683,33 @@ public final class ExtraModules {
 				}
 			}
 			return null;
+		}
+
+		/** The bees last counted in the hive looked at (its spot and how many). */
+		private static volatile long beesAt = Long.MIN_VALUE;
+		private static volatile int beesIn = -1;
+		private static long beesAsked;
+
+		/**
+		 * Bees in a hive or nest: servers never send them to players, so only in singleplayer, asked of the
+		 * game's own server (on its thread) and shown from the last answer; -1 when not known.
+		 */
+		private static int bees(Minecraft mc, BlockState s, BlockPos pos) {
+			var server = mc.getSingleplayerServer();
+			if (server == null || !(s.getBlock() instanceof net.minecraft.world.level.block.BeehiveBlock)) return -1;
+			long at = pos.asLong(), now = System.currentTimeMillis();
+			if (now - beesAsked > 500) {
+				beesAsked = now;
+				var dim = mc.level.dimension();
+				server.execute(() -> {
+					var level = server.getLevel(dim);
+					if (level != null && level.getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.BeehiveBlockEntity hive) {
+						beesIn = hive.getOccupantCount();
+						beesAt = at;
+					}
+				});
+			}
+			return beesAt == at ? beesIn : -1;
 		}
 
 		@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -597,6 +735,21 @@ public final class ExtraModules {
 				if (v == null) continue;
 				// a note block counts from 0, a repeater's delay from 1: shown as the game numbers them
 				out.add(Map.entry(Component.translatable("slashclient-hud.block.detail." + name, v[0], v[1]), v[0] >= v[1] && FULL_IS_DONE.contains(name) ? 0xFF55FF55 : 0xFFDDDDDD));
+			}
+			// what a shelf holds, slot by slot (players see its items, so the server sends them)
+			//#if MC >= 1.21.9
+			if (cfg.blockShelf && mc.level.getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.ShelfBlockEntity shelf) {
+				var items = shelf.getItems();
+				for (int i = 0; i < items.size(); i++) {
+					ItemStack it = items.get(i);
+					out.add(it.isEmpty() ? Map.entry(Component.translatable("slashclient-hud.block.shelf.empty", i + 1), muted)
+						: Map.entry(Component.literal((i + 1) + ". ").append(it.getHoverName()).append(it.getCount() > 1 ? " ×" + it.getCount() : ""), 0xFFDDDDDD));
+				}
+			}
+			//#endif
+			if (cfg.blockBees) {
+				int bees = bees(mc, s, pos);
+				if (bees >= 0) out.add(Map.entry(Component.translatable("slashclient-hud.block.bees", bees, 3), bees >= 3 ? 0xFF55FF55 : 0xFFDDDDDD));
 			}
 			if (cfg.blockPower) {
 				int[] power = intProperty(s, "power");
@@ -630,29 +783,72 @@ public final class ExtraModules {
 		}
 
 		public int width(Minecraft mc) {
+			var f = frame(mc);
+			if (f != null) {
+				int w = 70;
+				for (var line : frameLines(f)) w = Math.max(w, mc.font.width(line.getKey()));
+				return 20 + w + PAD * 2;
+			}
 			BlockPos pos = target(mc);
 			if (pos == null || !visible(mc)) return 20 + Math.max(mc.font.width(Component.translatable("block.minecraft.diamond_ore")), 70) + PAD * 2;
 			BlockState s = mc.level.getBlockState(pos);
-			int w = Math.max(mc.font.width(s.getBlock().getName()), mc.font.width(detail(mc, s, pos)));
+			int w = Math.max(mc.font.width(s.getBlock().getName()), cfg.blockTool ? detailWidth(mc, s, pos) : 0);
+			if (showsBest(mc, s)) w = Math.max(w, bestWidth(mc, s));
 			for (var line : extras(mc, s, pos)) w = Math.max(w, mc.font.width(line.getKey()));
 			return 20 + w + PAD * 2;
 		}
 
 		public int height(Minecraft mc) {
+			var f = frame(mc);
+			if (f != null) return 20 + (frameLines(f).size() - 2) * 10 + PAD * 2;
 			BlockPos pos = target(mc);
-			int more = pos == null || !visible(mc) ? 0 : extras(mc, mc.level.getBlockState(pos), pos).size();
-			return 20 + more * 10 + PAD * 2;
+			if (pos == null || !visible(mc)) return 20 + PAD * 2;
+			int more = extras(mc, mc.level.getBlockState(pos), pos).size();
+			BlockState s = mc.level.getBlockState(pos);
+			return Math.max(20, linesTop(mc, s) - 2 + more * 10) + PAD * 2;
 		}
 
 		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
+			var f = frame(mc);
+			if (f != null) {
+				ItemStack held = f.getItem();
+				g.item(held.isEmpty() ? new ItemStack(f instanceof net.minecraft.world.entity.decoration.GlowItemFrame ? Items.GLOW_ITEM_FRAME : Items.ITEM_FRAME) : held, x + PAD, y + PAD + 2);
+				int ly = y + PAD;
+				for (var line : frameLines(f)) {
+					text(g, mc, line.getKey(), x + PAD + 20, ly, line.getValue());
+					ly += ly == y + PAD ? 11 : 10;
+				}
+				return;
+			}
 			BlockPos pos = target(mc);
 			if (pos == null) return;
 			BlockState s = mc.level.getBlockState(pos);
 			Item item = s.getBlock().asItem();
 			if (item != Items.AIR) g.item(new ItemStack(item), x + PAD, y + PAD + 2);
 			text(g, mc, s.getBlock().getName(), x + PAD + 20, y + PAD, cfg.textColor);
-			text(g, mc, detail(mc, s, pos), x + PAD + 20, y + PAD + 11, drops(mc, s) ? 0xFFAAAAAA : 0xFFFF5555);
-			int ly = y + PAD + 22;
+			if (cfg.blockTool) {
+				Item tool = toolIcon(s);
+				int tx = x + PAD + 20;
+				if (tool != null) {
+					smallItem(g, tool, tx, y + PAD + 10);
+					tx += 12;
+				}
+				text(g, mc, detail(mc, s, pos), tx, y + PAD + 11, drops(mc, s) ? 0xFFAAAAAA : 0xFFFF5555);
+			}
+			if (showsBest(mc, s)) {
+				Item best = bestTool(s), weakest = weakestTool(s, best);
+				int by = y + PAD + (cfg.blockTool ? 22 : 11), bx = x + PAD + 20;
+				smallItem(g, best, bx, by - 1);
+				bx += 12;
+				Component line = bestLine(mc, best);
+				text(g, mc, line, bx, by, mc.player.getMainHandItem().is(best) ? 0xFF55FF55 : 0xFFFFCC55);
+				if (weakest != null && weakest != best) {
+					bx += mc.font.width(line);
+					text(g, mc, Component.literal(" · min."), bx, by, 0xFFAAAAAA);
+					smallItem(g, weakest, bx + mc.font.width(" · min.") + 2, by - 1);
+				}
+			}
+			int ly = y + PAD + linesTop(mc, s);
 			for (var line : extras(mc, s, pos)) {
 				text(g, mc, line.getKey(), x + PAD + 20, ly, line.getValue());
 				ly += 10;
@@ -667,7 +863,13 @@ public final class ExtraModules {
 			}
 			Ui.icon(g, Items.DIAMOND_ORE, "#", x + PAD, y + PAD + 2);
 			text(g, mc, Component.translatable("block.minecraft.diamond_ore"), x + PAD + 20, y + PAD, cfg.textColor);
-			text(g, mc, Component.translatable("slashclient-hud.block.tool.pickaxe").append(Component.literal(" · 0.75 s")), x + PAD + 20, y + PAD + 11, 0xFFAAAAAA);
+			var pose = g.pose();
+			pose.pushMatrix();
+			pose.translate(x + PAD + 20, y + PAD + 10);
+			pose.scale(0.625f, 0.625f);
+			g.item(new ItemStack(Items.IRON_PICKAXE), 0, 0);
+			pose.popMatrix();
+			text(g, mc, Component.literal("0.75 s"), x + PAD + 32, y + PAD + 11, 0xFFAAAAAA);
 		}
 	}
 

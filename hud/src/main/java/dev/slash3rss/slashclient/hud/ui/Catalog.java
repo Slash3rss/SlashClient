@@ -173,8 +173,13 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.set.clock12h", () -> cfg.clock12h, v -> cfg.clock12h = v));
 				}
 				case "block" -> {
+					settings.add(new Toggle("slashclient-hud.set.blockTool", () -> cfg.blockTool, v -> cfg.blockTool = v));
+					settings.add(new Toggle("slashclient-hud.set.blockBestTool", () -> cfg.blockBestTool, v -> cfg.blockBestTool = v));
 					settings.add(new Toggle("slashclient-hud.set.blockGrowth", () -> cfg.blockGrowth, v -> cfg.blockGrowth = v));
 					settings.add(new Toggle("slashclient-hud.set.blockDetails", () -> cfg.blockDetails, v -> cfg.blockDetails = v));
+					settings.add(new Toggle("slashclient-hud.set.blockBees", () -> cfg.blockBees, v -> cfg.blockBees = v));
+					settings.add(new Toggle("slashclient-hud.set.blockShelf", () -> cfg.blockShelf, v -> cfg.blockShelf = v));
+					settings.add(new Toggle("slashclient-hud.set.blockFrames", () -> cfg.blockFrames, v -> cfg.blockFrames = v));
 					settings.add(new Toggle("slashclient-hud.set.blockPower", () -> cfg.blockPower, v -> cfg.blockPower = v));
 					settings.add(new Toggle("slashclient-hud.set.blockCoords", () -> cfg.blockCoords, v -> cfg.blockCoords = v));
 					settings.add(new Toggle("slashclient-hud.set.blockLight", () -> cfg.blockLight, v -> cfg.blockLight = v));

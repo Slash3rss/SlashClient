@@ -414,6 +414,10 @@ public final class HudConfig {
 	 * id (with the mod it comes from) and its state (facing, half, waterlogged…).
 	 */
 	public boolean blockGrowth = true, blockDetails = true, blockPower = true, blockCoords = false, blockLight = false, blockHardness = false, blockId = false, blockState = false;
+	/** Block info: the tool (as a picture) and how long breaking takes, bees in a hive (singleplayer), a shelf's items, what an item frame holds. */
+	public boolean blockTool = true, blockBees = true, blockShelf = true, blockFrames = true;
+	/** Block info: the fastest tool in the game that makes the block drop, and the weakest that still does. */
+	public boolean blockBestTool = true;
 	/** FPS green, yellow or red by how smooth the game runs. */
 	public boolean fpsColored = false;
 	public boolean effectIcons = true;
@@ -828,6 +832,11 @@ public final class HudConfig {
 		blockHardness = other.blockHardness;
 		blockId = other.blockId;
 		blockState = other.blockState;
+		blockTool = other.blockTool;
+		blockBees = other.blockBees;
+		blockShelf = other.blockShelf;
+		blockFrames = other.blockFrames;
+		blockBestTool = other.blockBestTool;
 		fpsColored = other.fpsColored;
 		effectIcons = other.effectIcons;
 		chatStack = other.chatStack;
