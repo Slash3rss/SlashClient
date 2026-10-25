@@ -160,13 +160,24 @@ export async function encrypt(text, own, devices, aad) {
   return PREFIX + b64(enc.encode(JSON.stringify({ from: own.device, pub: own.publicKey, ...body, keys })));
 }
 
-/** The text for this device; undefined when it was not encrypted for it or was changed on the way. */
-export async function decrypt(text, own, aad) {
+/** The key of a message key handed over later by another device of the account (src/main/chatCrypto.ts `rewrap`). */
+async function rewrapKey(own, otherPub, by, to) {
+  const ikm = await subtle.importKey('raw', await shared(own, otherPub), 'HKDF', false, ['deriveBits']);
+  const bits = await subtle.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(0), info: enc.encode(`slashclient-chat-rewrap-v1|${by}|${to}`) }, ikm, 256);
+  return subtle.importKey('raw', bits, 'AES-GCM', false, ['decrypt']);
+}
+
+/**
+ * The text for this device; undefined when it was not encrypted for it or was changed on the way.
+ * `extra`: the message key handed over to this phone later by another device of the account
+ * ({ by, pub, iv, ct }), for messages from before the phone had its key.
+ */
+export async function decrypt(text, own, aad, extra) {
   try {
     const e = JSON.parse(dec.decode(unb64(text.slice(PREFIX.length))));
     const wrapped = e.keys?.[own.device];
-    if (!wrapped) return undefined;
-    const raw = await open(await wrapKey(own, e.pub, e.from, own.device), wrapped, aad);
+    if (!wrapped && !extra) return undefined;
+    const raw = wrapped ? await open(await wrapKey(own, e.pub, e.from, own.device), wrapped, aad) : await open(await rewrapKey(own, extra.pub, extra.by, own.device), extra, aad);
     const messageKey = await subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
     return dec.decode(await open(messageKey, e, aad));
   } catch {

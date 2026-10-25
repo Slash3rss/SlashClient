@@ -12,19 +12,50 @@ const userKeys = new Map();
 const groupKeys = new Map();
 /** Opened pictures' keys, by the picture's id. */
 const imageKeys = new Map();
+/**
+ * Message keys handed over to this phone by the player's launcher (server 0.9.47+, chatKeys.ts),
+ * for the history from before the phone had its key: by "m12:text" / "g7:image".
+ */
+const wraps = new Map();
+let wrapsAfter = 0;
+
+/** The handed-over keys again (all of them the first time, then what is new); how many came. An older server has none. */
+export async function wrapsChanged() {
+  if (!own) return 0;
+  let added = 0;
+  for (;;) {
+    const res = await api('GET', `/v1/chat-keys/wraps?device=${own.device}&after=${wrapsAfter}`).catch(() => undefined);
+    if (!res?.wraps) return added;
+    added += res.wraps.length;
+    for (const w of res.wraps) {
+      wraps.set(`${w.kind}${w.id}:${w.field}`, { by: w.by, pub: w.pub, iv: w.iv, ct: w.ct });
+      wrapsAfter = Math.max(wrapsAfter, w.seq);
+    }
+    if (!res.next) return added;
+  }
+}
+
+/** What the player's other devices show for this phone ("Urządzenia" in the launcher). */
+function deviceName() {
+  const ua = navigator.userAgent;
+  return `SlashClient Web · ${/iPhone|iPad|iPod/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Mac OS/.test(ua) ? 'macOS' : /Windows/.test(ua) ? 'Windows' : 'Linux'}`;
+}
 
 /** This phone's key for the account (made the first time), published to the server. */
 export async function startKeys(userId) {
   me = userId;
   userKeys.clear();
   groupKeys.clear();
+  wraps.clear();
+  wrapsAfter = 0;
   own = await idbGet(`chat:${userId}`).catch(() => undefined);
   if (!own) {
     own = await newDeviceKey();
     await idbSet(`chat:${userId}`, own).catch((err) => console.error('klucz czatu:', err));
   }
   // every start: the server keeps each member's most recent devices, this one among them
-  await api('POST', '/v1/keys', { device: own.device, pub: own.publicKey }).catch((err) => console.error('klucz czatu:', err));
+  await api('POST', '/v1/keys', { device: own.device, pub: own.publicKey, name: deviceName() }).catch((err) => console.error('klucz czatu:', err));
+  await wrapsChanged();
 }
 
 /** A friend's (or our own) devices changed: asked again next time. */
@@ -62,19 +93,19 @@ export async function sealGroup(group, text) {
 }
 
 /** A message with its text (and its picture's key) opened when this phone can; `aad` is the conversation's. */
-async function openWith(m, aad) {
+async function openWith(m, aad, kind) {
   const out = { ...m };
   if (m.image?.id) {
-    const key = isEncrypted(m.image.key) ? parseImageKey((await decrypt(m.image.key, own, aad)) ?? '') : undefined;
+    const key = isEncrypted(m.image.key) ? parseImageKey((await decrypt(m.image.key, own, aad, wraps.get(`${kind}${m.id}:image`))) ?? '') : undefined;
     if (key) imageKeys.set(m.image.id, key);
     out.image = { id: m.image.id, w: key?.w, h: key?.h, unreadable: !key };
   }
   if (!isEncrypted(m.text)) return out;
-  const text = own ? await decrypt(m.text, own, aad) : undefined;
+  const text = own ? await decrypt(m.text, own, aad, wraps.get(`${kind}${m.id}:text`)) : undefined;
   return text === undefined ? { ...out, text: t('Wiadomość zaszyfrowana dla innego urządzenia.'), encrypted: true, unreadable: true } : { ...out, text, encrypted: true };
 }
-export const openDirect = (m) => openWith(m, `${m.from}|${m.to}`);
-export const openGroup = (m) => openWith(m, groupAad(m.group, m.from));
+export const openDirect = (m) => openWith(m, `${m.from}|${m.to}`, 'm');
+export const openGroup = (m) => openWith(m, groupAad(m.group, m.from), 'g');
 
 /** A picture from a message, downloaded and decrypted, as a data: address (the app's pages allow only those). */
 const pictures = new Map();
