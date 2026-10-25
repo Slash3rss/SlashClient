@@ -359,7 +359,9 @@ public final class HudConfig {
 	 * the hotbar sorted too, the small button in the window's corner, and the servers it stays off on.
 	 */
 	public boolean inventorySort = true;
-	public int sortDelay = 50;
+	public int sortDelay = 0;
+	/** The delay's old default (50 ms) was moved to 0 once: sorting all at once like other mods. */
+	public Boolean sortDelayMoved;
 	public boolean sortHotbar = false;
 	public boolean sortButton = true;
 	/** Their rules forbid sorting mods (Hypixel's do): more can be added, with their subdomains. */
@@ -757,6 +759,9 @@ public final class HudConfig {
 		mouseTweaks = other.mouseTweaks;
 		inventorySort = other.inventorySort;
 		sortDelay = Math.max(0, Math.min(250, other.sortDelay));
+		// the old default (50 ms between clicks), never changed by the player: now all at once
+		if (other.sortDelayMoved == null && sortDelay == 50) sortDelay = 0;
+		sortDelayMoved = true;
 		sortHotbar = other.sortHotbar;
 		sortButton = other.sortButton;
 		sortOffServers = other.sortOffServers == null ? "hypixel.net" : other.sortOffServers;

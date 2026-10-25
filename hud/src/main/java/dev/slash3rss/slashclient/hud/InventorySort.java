@@ -29,8 +29,8 @@ import java.util.Locale;
  * count, with half-full stacks of the same item put together first.
  *
  * It is done with the game's ordinary clicks (pick up, put down), the ones a player's hand makes,
- * one every few dozen milliseconds (the delay in the settings), so servers see nothing they would
- * not see from a quick player; never the creative inventory's own way of setting slots. Closing
+ * all at once by default, or one every few dozen milliseconds (the delay in the settings) for servers
+ * that kick for fast clicking; never the creative inventory's own way of setting slots. Closing
  * the window stops it. Servers in the settings' list (and Hypixel by default, whose rules forbid
  * sorting mods) are left alone.
  */
@@ -250,8 +250,8 @@ public final class InventorySort {
 			return;
 		}
 		long delay = Math.max(0, Math.min(500, SlashHud.config.sortDelay)) * 1_000_000L;
-		// with no delay at all a few dozen a frame, so a large chest does not go out in one burst either
-		for (int n = 0; n < 32 && !j.clicks.isEmpty() && System.nanoTime() >= j.nextAt; n++) {
+		// with no delay every click at once, in one tick (as other sorting mods do); with a delay one at a time
+		for (int n = 0; n < 4000 && !j.clicks.isEmpty() && System.nanoTime() >= j.nextAt; n++) {
 			int[] c = j.clicks.poll();
 			Compat.containerClick(mc, mc.player, j.containerId, c[0], 0, Compat.Click.PICKUP);
 			j.made++;
