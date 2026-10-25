@@ -388,6 +388,12 @@ public final class HudConfig {
 	public boolean autoClickPlayers = false;
 	public boolean autoTool = false;
 	public boolean autoToolRestore = true;
+	/**
+	 * What auto tool takes into the hand: the tool for digging, the hardest-hitting weapon for a hit,
+	 * and for a right click on a mob shears, a bucket or a bowl (milk, stew), a water bucket (fish),
+	 * a brush (armadillo) and an animal's food.
+	 */
+	public boolean autoToolBlocks = true, autoToolWeapons = true, autoToolShears = true, autoToolMilk = true, autoToolFish = true, autoToolBrush = true, autoToolFeed = false;
 	public boolean autoRefill = false;
 	/** Buttons held by their keys go on with the inventory or the pause menu open. */
 	public boolean holdInScreens = true;
@@ -832,6 +838,13 @@ public final class HudConfig {
 		autoClickPlayers = other.autoClickPlayers;
 		autoTool = other.autoTool;
 		autoToolRestore = other.autoToolRestore;
+		autoToolBlocks = other.autoToolBlocks;
+		autoToolWeapons = other.autoToolWeapons;
+		autoToolShears = other.autoToolShears;
+		autoToolMilk = other.autoToolMilk;
+		autoToolFish = other.autoToolFish;
+		autoToolBrush = other.autoToolBrush;
+		autoToolFeed = other.autoToolFeed;
 		autoRefill = other.autoRefill;
 		holdInScreens = other.holdInScreens;
 		toolWarning = other.toolWarning;

@@ -42,6 +42,9 @@ public final class Assist {
 	/** Tools auto tool brought from the backpack ({backpack slot, hotbar slot}), newest last, to put back in reverse. */
 	private static final java.util.ArrayDeque<int[]> swaps = new java.util.ArrayDeque<>();
 	private static int idleTicks;
+	/** When auto tool last took a weapon for a hit (ms): between hits the fight goes on, so the hand does not go back yet. */
+	private static long weaponAt;
+	private static final long FIGHT_MS = 1500;
 	/** What was in the hand last tick, to see a stack run out. */
 	private static ItemStack lastHand = ItemStack.EMPTY;
 	private static int lastSlot = -1;
@@ -261,8 +264,10 @@ public final class Assist {
 
 	private static void autoTool(Minecraft mc, Player player) {
 		Inventory inv = player.getInventory();
-		boolean digging = mc.options.keyAttack.isDown() && mc.hitResult instanceof BlockHitResult b && b.getType() == HitResult.Type.BLOCK;
+		boolean digging = cfg().autoToolBlocks && mc.options.keyAttack.isDown() && mc.hitResult instanceof BlockHitResult b && b.getType() == HitResult.Type.BLOCK;
 		if (!digging) {
+			// in a fight: the weapon stays in the hand between hits
+			if (System.currentTimeMillis() - weaponAt < FIGHT_MS) return;
 			// a moment after digging stops, the hand goes back to what it held
 			if (toolFrom >= 0 && ++idleTicks > 4) {
 				if (cfg().autoToolRestore) {
@@ -281,7 +286,72 @@ public final class Assist {
 		idleTicks = 0;
 		BlockState state = mc.level.getBlockState(((BlockHitResult) mc.hitResult).getBlockPos());
 		if (state.isAir()) return;
-		int best = bestSlot(inv, state);
+		take(mc, player, bestSlot(inv, state));
+	}
+
+	/**
+	 * Auto tool right before a hit on a mob (Minecraft.startAttack): the weapon that hits hardest goes
+	 * into the hand first, so the very first hit is made with it (the game tells the server the held
+	 * item before the hit).
+	 */
+	public static void beforeAttack(Minecraft mc) {
+		if (!cfg().autoTool || !cfg().autoToolWeapons || mc.player == null || !(mc.hitResult instanceof EntityHitResult hit) || !(hit.getEntity() instanceof LivingEntity)) return;
+		Player player = mc.player;
+		weaponAt = System.currentTimeMillis();
+		idleTicks = 0;
+		take(mc, player, bestWeapon(player.getInventory()));
+	}
+
+	/**
+	 * Auto tool right before a right click on a mob: the item its interaction takes into the hand first
+	 * (each switched on in the card): shears for a sheep ready for them (a mooshroom, a snow golem, a
+	 * bogged), a bucket to milk a cow or a goat, a bowl for a mooshroom's stew, a water bucket to scoop
+	 * up a fish, an axolotl or a tadpole, a brush for an armadillo, and the food an animal eats.
+	 */
+	public static void beforeUse(Minecraft mc) {
+		if (!cfg().autoTool || mc.player == null || !(mc.hitResult instanceof EntityHitResult hit)) return;
+		int slot = slotFor(mc.player.getInventory(), hit.getEntity());
+		if (slot < 0) return;
+		weaponAt = System.currentTimeMillis();
+		idleTicks = 0;
+		take(mc, mc.player, slot);
+	}
+
+	/** The slot with what a right click on this mob needs (the hand's first, then the hotbar, then the backpack); -1 for none. */
+	static int slotFor(Inventory inv, net.minecraft.world.entity.Entity mob) {
+		java.util.function.Predicate<ItemStack> wanted = wanted(mob);
+		if (wanted == null) return -1;
+		if (wanted.test(inv.getItem(inv.getSelectedSlot()))) return inv.getSelectedSlot();
+		for (int i = 0; i < 36; i++) if (!inv.getItem(i).isEmpty() && wanted.test(inv.getItem(i))) return i;
+		return -1;
+	}
+
+	/** What a right click on this mob takes, or null when auto tool leaves it be. */
+	private static java.util.function.Predicate<ItemStack> wanted(net.minecraft.world.entity.Entity mob) {
+		HudConfig c = cfg();
+		// the mob's id ("cow"): the same in every version of the game
+		String type = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(mob.getType()).getPath();
+		boolean adult = !(mob instanceof LivingEntity l) || !l.isBaby();
+		if (c.autoToolShears && mob instanceof net.minecraft.world.entity.Shearable s && s.readyForShearing())
+			return st -> st.getItem() instanceof net.minecraft.world.item.ShearsItem;
+		if (c.autoToolMilk && adult && type.equals("mooshroom")) return st -> st.is(net.minecraft.world.item.Items.BOWL) || st.is(net.minecraft.world.item.Items.BUCKET);
+		if (c.autoToolMilk && adult && (type.equals("cow") || type.equals("goat"))) return st -> st.is(net.minecraft.world.item.Items.BUCKET);
+		if (c.autoToolFish && mob.isAlive() && FISH.contains(type)) return st -> st.is(net.minecraft.world.item.Items.WATER_BUCKET);
+		if (c.autoToolBrush && type.equals("armadillo")) return st -> st.is(net.minecraft.world.item.Items.BRUSH);
+		// feeding: not the mobs a right click rides or that belong to someone (it would feed them instead)
+		if (c.autoToolFeed && mob instanceof net.minecraft.world.entity.animal.Animal animal && !(mob instanceof net.minecraft.world.entity.OwnableEntity) && !RIDDEN.contains(type))
+			return animal::isFood;
+		return null;
+	}
+
+	/** The mobs a water bucket scoops up. */
+	private static final java.util.Set<String> FISH = java.util.Set.of("cod", "salmon", "tropical_fish", "pufferfish", "axolotl", "tadpole");
+	/** Ridden with a right click (fed only by hand). */
+	private static final java.util.Set<String> RIDDEN = java.util.Set.of("pig", "strider", "camel");
+
+	/** The slot `best` into the hand: chosen on the hotbar, or brought there from the backpack; what was held is remembered. */
+	private static void take(Minecraft mc, Player player, int best) {
+		Inventory inv = player.getInventory();
 		if (best == inv.getSelectedSlot()) return;
 		if (toolFrom < 0) toolFrom = inv.getSelectedSlot();
 		if (best < Inventory.getSelectionSize()) {
@@ -314,6 +384,37 @@ public final class Assist {
 			}
 		}
 		return best;
+	}
+
+	/** The slot (hotbar 0-8, backpack 9-35) with the weapon that hits hardest; the hand's when nothing beats it. */
+	static int bestWeapon(Inventory inv) {
+		int best = inv.getSelectedSlot();
+		double bestDamage = damage(inv.getItem(best));
+		for (int i = 0; i < 36; i++) {
+			double d = damage(inv.getItem(i));
+			if (d > bestDamage + 0.01) {
+				best = i;
+				bestDamage = d;
+			}
+		}
+		return best;
+	}
+
+	/** The attack damage a stack adds in the main hand (a sword 6, an axe 8, a fist 0). */
+	static double damage(ItemStack stack) {
+		if (stack.isEmpty()) return 0;
+		double[] sum = { 0 };
+		//#if MC >= 1.21
+		stack.forEachModifier(net.minecraft.world.entity.EquipmentSlot.MAINHAND, (attribute, modifier) -> {
+			if (attribute.value() == net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE.value()
+				&& modifier.operation() == net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_VALUE) sum[0] += modifier.amount();
+		});
+		//#else
+		//$ for (var e : stack.getAttributeModifiers(net.minecraft.world.entity.EquipmentSlot.MAINHAND).entries())
+		//$ 	if (e.getKey() == net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE
+		//$ 		&& e.getValue().getOperation() == net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADDITION) sum[0] += e.getValue().getAmount();
+		//#endif
+		return sum[0];
 	}
 
 	/**

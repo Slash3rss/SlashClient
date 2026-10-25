@@ -56,6 +56,58 @@ public class GameInventoryTools implements FabricClientGameTest {
 				return fromBackpack + " " + fromHotbar;
 			});
 			if (!slots.equals("20 3")) throw new AssertionError("Auto tool slots (backpack, then hotbar): " + slots);
+			// for a hit: the weapon that hits hardest (a diamond axe in the backpack over an iron sword on the
+			// hotbar); for a sheep: the shears
+			String weapons = context.computeOnClient(mc -> {
+				var inv = mc.player.getInventory();
+				var keep3 = inv.getItem(3).copy();
+				var keep20 = inv.getItem(20).copy();
+				var keep25 = inv.getItem(25).copy();
+				inv.setItem(3, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_SWORD));
+				inv.setItem(20, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_AXE));
+				String out = TestHooks.autoToolWeapon(inv) + " " + TestHooks.weaponDamage(inv.getItem(3)) + " " + TestHooks.weaponDamage(inv.getItem(20))
+					+ " " + TestHooks.weaponDamage(net.minecraft.world.item.ItemStack.EMPTY);
+				inv.setItem(3, keep3);
+				inv.setItem(20, keep20);
+				inv.setItem(25, keep25);
+				return out;
+			});
+			if (!weapons.equals("20 5.0 8.0 0.0")) throw new AssertionError("Auto tool for a hit (weapon slot, damages): " + weapons);
+			// a right click on a mob: shears for the sheep, the bucket for the cow; with milking off the cow
+			// gets its food (feeding switched on), with feeding off nothing
+			world.getServer().runCommand("summon minecraft:sheep ~3 ~ ~");
+			world.getServer().runCommand("summon minecraft:cow ~-3 ~ ~");
+			context.waitTicks(20);
+			String uses = context.computeOnClient(mc -> {
+				var inv = mc.player.getInventory();
+				var cfg = dev.slash3rss.slashclient.hud.SlashHud.config;
+				net.minecraft.world.entity.Entity sheep = null, cow = null;
+				for (var e : mc.level.entitiesForRendering()) {
+					String id = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).getPath();
+					if (id.equals("sheep")) sheep = e;
+					if (id.equals("cow")) cow = e;
+				}
+				if (sheep == null || cow == null) return "no mobs";
+				int[] spots = { 25, 26, 27 };
+				var keep = new net.minecraft.world.item.ItemStack[3];
+				for (int i = 0; i < 3; i++) keep[i] = inv.getItem(spots[i]).copy();
+				inv.setItem(25, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SHEARS));
+				inv.setItem(26, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BUCKET));
+				inv.setItem(27, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.WHEAT));
+				boolean milk = cfg.autoToolMilk, feed = cfg.autoToolFeed;
+				cfg.autoToolFeed = true;
+				String out = TestHooks.autoToolFor(inv, sheep) + " " + TestHooks.autoToolFor(inv, cow);
+				cfg.autoToolMilk = false;
+				out += " " + TestHooks.autoToolFor(inv, cow);
+				cfg.autoToolFeed = false;
+				out += " " + TestHooks.autoToolFor(inv, cow);
+				cfg.autoToolMilk = milk;
+				cfg.autoToolFeed = feed;
+				for (int i = 0; i < 3; i++) inv.setItem(spots[i], keep[i]);
+				return out;
+			});
+			if (!uses.equals("25 26 27 -1")) throw new AssertionError("Auto tool for a right click (sheep, cow, cow fed, cow left be): " + uses);
+			world.getServer().runCommand("kill @e[type=!player]");
 			var server = world.getServer();
 			server.runCommand("time set 6000");
 			server.runCommand("gamemode survival @a");

@@ -716,6 +716,20 @@ public final class TestHooks {
 		return Assist.bestSlot(inv, state);
 	}
 
+	/** Auto tool's weapon for a hit: the slot it picks, and a stack's attack damage. */
+	public static int autoToolWeapon(net.minecraft.world.entity.player.Inventory inv) {
+		return Assist.bestWeapon(inv);
+	}
+
+	/** The slot auto tool takes for a right click on that mob (-1: none). */
+	public static int autoToolFor(net.minecraft.world.entity.player.Inventory inv, net.minecraft.world.entity.Entity mob) {
+		return Assist.slotFor(inv, mob);
+	}
+
+	public static double weaponDamage(net.minecraft.world.item.ItemStack stack) {
+		return Assist.damage(stack);
+	}
+
 	public static float autoToolSpeed(net.minecraft.world.item.ItemStack stack, net.minecraft.world.level.block.state.BlockState state) {
 		return Assist.speed(stack, state);
 	}

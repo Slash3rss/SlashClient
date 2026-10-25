@@ -32,6 +32,7 @@
 		"HoverEffectInvoker",
 		"KeepPacksOnStopMixin",
 		"ConfirmScreenAccessor",
+		"AutoToolAttackMixin",
 		"ChatScreenAccessor",
 		"ChatScaleMixin",
 		"ConnectionAccessor",

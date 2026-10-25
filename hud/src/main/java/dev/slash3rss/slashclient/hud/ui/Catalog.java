@@ -536,7 +536,14 @@ public final class Catalog {
 			new Toggle("slashclient-hud.assist.players", () -> cfg.autoClickPlayers, v -> cfg.autoClickPlayers = v)), null));
 		out.add(new Entry("autoTool", "slashclient-hud.assist.autoTool", "world", "m-autotool", () -> cfg.autoTool,
 			v -> risky(v, () -> cfg.autoTool = v), List.of(
-			new Toggle("slashclient-hud.assist.restore", () -> cfg.autoToolRestore, v -> cfg.autoToolRestore = v)), null));
+			new Toggle("slashclient-hud.assist.restore", () -> cfg.autoToolRestore, v -> cfg.autoToolRestore = v),
+			new Toggle("slashclient-hud.assist.toolBlocks", () -> cfg.autoToolBlocks, v -> cfg.autoToolBlocks = v),
+			new Toggle("slashclient-hud.assist.toolWeapons", () -> cfg.autoToolWeapons, v -> cfg.autoToolWeapons = v),
+			new Toggle("slashclient-hud.assist.toolShears", () -> cfg.autoToolShears, v -> cfg.autoToolShears = v),
+			new Toggle("slashclient-hud.assist.toolMilk", () -> cfg.autoToolMilk, v -> cfg.autoToolMilk = v),
+			new Toggle("slashclient-hud.assist.toolFish", () -> cfg.autoToolFish, v -> cfg.autoToolFish = v),
+			new Toggle("slashclient-hud.assist.toolBrush", () -> cfg.autoToolBrush, v -> cfg.autoToolBrush = v),
+			new Toggle("slashclient-hud.assist.toolFeed", () -> cfg.autoToolFeed, v -> cfg.autoToolFeed = v)), null));
 		out.add(new Entry("autoRefill", "slashclient-hud.assist.autoRefill", "world", "m-autorefill", () -> cfg.autoRefill,
 			v -> risky(v, () -> cfg.autoRefill = v), List.of(), null));
 		// holding a button is set up with keys of its own: they are its settings (withKeys)
