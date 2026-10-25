@@ -238,7 +238,7 @@ public final class HudConfig {
 	/** Rewards summed by item ("4x Diament" counts as 4 Diament): the detail window grouped, the top rewards in pieces. */
 	public boolean skyCaseSum = false;
 	/** SkyUp's wardrobe module: the worn items' names beside them (else only their pictures in a row), and the wardrobe's two switches. */
-	public boolean skyWardrobeNames = true, skyWardrobeStatus = true;
+	public boolean skyWardrobeNames = false, skyWardrobeStatus = true;
 	/** How much health a mob or player just lost, rising from it. */
 	public boolean damageNumbers = true;
 	/** Your nick written differently in chat, the tab list and above your head (for recordings and streams). */

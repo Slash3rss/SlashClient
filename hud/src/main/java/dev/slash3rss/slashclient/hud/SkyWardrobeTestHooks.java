@@ -34,7 +34,11 @@ public final class SkyWardrobeTestHooks {
 		chest.setItem(8, item("minecraft:player_head", "Przełącz wyświetlanie", "▪ Widzenie własnej garderoby » " + (seen ? "Włączone" : "Wyłączone"), "▪ LPM  » " + (seen ? "Wyłącz" : "Włącz")));
 		chest.setItem(19, item("minecraft:paper", "Elfie uszy", "▪  LPM » Załóż"));
 		chest.setItem(13, item("minecraft:red_stained_glass_pane", "Kosmetyczny hełm", "▪ SHIFT +  LPM w EQ » Załóż"));
-		chest.setItem(22, item("minecraft:diamond_chestplate", "Kosmetyczna zbroja", "▪ SHIFT +  LPM w EQ » Załóż", "▪  LPM » Zdejmij"));
+		// the chestplate with a look of SkyUp's resource pack: another model and custom model data
+		ItemStack worn = item("minecraft:diamond_chestplate", "Kosmetyczna zbroja", "▪ SHIFT +  LPM w EQ » Załóż", "▪  LPM » Zdejmij");
+		worn.set(DataComponents.ITEM_MODEL, net.minecraft.resources.Identifier.withDefaultNamespace("netherite_chestplate"));
+		worn.set(DataComponents.CUSTOM_MODEL_DATA, new net.minecraft.world.item.component.CustomModelData(List.of(7f), List.of(), List.of("skyup"), List.of()));
+		chest.setItem(22, worn);
 		chest.setItem(31, legs ? item("minecraft:diamond_leggings", "Kosmetyczne spodnie", "▪ SHIFT +  LPM w EQ » Załóż", "▪  LPM » Zdejmij")
 			: item("minecraft:red_stained_glass_pane", "Kosmetyczne spodnie", "▪ SHIFT +  LPM w EQ » Załóż"));
 		chest.setItem(40, item("minecraft:red_stained_glass_pane", "Kosmetyczne buty", "▪ SHIFT +  LPM w EQ » Załóż"));
@@ -62,6 +66,15 @@ public final class SkyWardrobeTestHooks {
 	/** Read again from the saved file (as after a restart). */
 	public static void reload() {
 		SkyWardrobe.reloadForTest();
+	}
+
+	/** The first worn item's model and custom model data, as shown. */
+	public static String look() {
+		var worn = SkyWardrobe.worn(Minecraft.getInstance());
+		if (worn.isEmpty()) return "none";
+		ItemStack first = worn.get(0);
+		var data = first.get(DataComponents.CUSTOM_MODEL_DATA);
+		return first.get(DataComponents.ITEM_MODEL) + "|" + (data == null ? "none" : data.getFloat(0) + "," + data.getString(0));
 	}
 
 	public static boolean visible() {

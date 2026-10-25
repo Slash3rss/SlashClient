@@ -37,6 +37,9 @@ public class GameSkyWardrobe implements FabricClientGameTest {
 			context.runOnClient(mc -> SkyWardrobeTestHooks.reload());
 			check(context, "on false seen true worn Kosmetyczna zbroja");
 			if (!context.computeOnClient(mc -> SkyWardrobeTestHooks.visible())) throw new AssertionError("Wardrobe: not shown once read");
+			// the chestplate keeps the look the server gave it (its model and custom model data)
+			String look = context.computeOnClient(mc -> SkyWardrobeTestHooks.look());
+			if (!look.equals("minecraft:netherite_chestplate|7.0,skyup")) throw new AssertionError("Wardrobe: the chestplate's look lost: " + look);
 			context.takeScreenshot("skywardrobe-off");
 		}
 		//#endif
