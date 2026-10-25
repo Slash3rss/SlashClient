@@ -384,8 +384,22 @@ public class SlashHud implements ClientModInitializer {
 		pose.popMatrix();
 	}
 
-	/** F3's version line with SlashClient's name in place of the game's ("Minecraft 1.21.4 …"). */
+	/** F3's version line with SlashClient's name and version in place of the game's ("SlashClient 0.9.50 · 1.21.4 …"). */
 	public static String brandedVersion(String line) {
-		return line.startsWith("Minecraft ") ? "SlashClient " + line.substring("Minecraft ".length()) : line;
+		if (!line.startsWith("Minecraft ")) return line;
+		String v = version();
+		return "SlashClient " + (v.isEmpty() ? "" : v + " · ") + line.substring("Minecraft ".length());
+	}
+
+	/** The launcher's version, as it started the game ("0.9.50"); "" from an older launcher, or without one. */
+	public static String version() {
+		String v = System.getProperty("slashclient.version", "").strip();
+		return v.matches("[0-9A-Za-z.+-]{1,32}") ? v : "";
+	}
+
+	/** The name the servers see (the client's brand): "slashclient", with the version when it is known. */
+	public static String brand() {
+		String v = version();
+		return v.isEmpty() ? "slashclient" : "slashclient " + v;
 	}
 }

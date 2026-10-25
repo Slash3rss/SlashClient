@@ -16,9 +16,11 @@ public class GameDungeon implements FabricClientGameTest {
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			var server = world.getServer();
-			// the window says SlashClient and its version, and servers are told "slashclient"
+			// the window says SlashClient with the launcher's and the game's versions, servers are told "slashclient" and its version
 			String branding = context.computeOnClient(mc -> TestHooks.branding());
-			if (!branding.matches("SlashClient \\d[\\w.\\-]*\\|slashclient")) throw new AssertionError("Title and brand: " + branding);
+			if (!branding.matches("SlashClient 9\\.9\\.9-test · \\d[\\w.\\-]*\\|slashclient 9\\.9\\.9-test")) throw new AssertionError("Title and brand: " + branding);
+			String f3 = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.brandedVersion("Minecraft 1.21.4 (1.21.4/vanilla)"));
+			if (!f3.equals("SlashClient 9.9.9-test · 1.21.4 (1.21.4/vanilla)")) throw new AssertionError("F3's version line: " + f3);
 			server.runCommand("time set 6000");
 			// flying, so waiting above the place before the dungeon is built is safe
 			server.runCommand("gamemode creative @a");

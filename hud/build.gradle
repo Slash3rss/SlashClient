@@ -192,6 +192,8 @@ if (gametests) {
 if (gametests) {
 	loom.runs.matching { it.name == 'clientGameTest' }.configureEach {
 		if (project.hasProperty('tests')) vmArg "-Dslashclient.test.only=${project.property('tests')}"
+		// as the launcher starts it: SlashClient's version on F3, in the title and to the servers
+		vmArg "-Dslashclient.version=9.9.9-test"
 		if (project.hasProperty('shard')) {
 			vmArg "-Dslashclient.test.shard=${project.property('shard')}"
 			runDir "build/run/clientGameTest-${project.property('shard').toString().replace('/', 'of')}"

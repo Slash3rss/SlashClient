@@ -1728,6 +1728,8 @@ async function launchGame(profileId: string, accountId: string, server?: string,
   if (hud.jvmArgs.length) {
     await bridge.start();
     hud.jvmArgs.push(...bridge.jvmArgs());
+    // the mod names SlashClient with its version: on F3 and to the servers (the client's brand)
+    hud.jvmArgs.push(`-Dslashclient.version=${app.getVersion()}`);
   }
   // the benchmark runs inside SlashClient HUD: it starts by itself once the world is loaded; on the
   // test scene the mod opens (the first time makes) its own world from the menu
