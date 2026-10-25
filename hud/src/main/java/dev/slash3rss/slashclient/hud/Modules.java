@@ -65,6 +65,13 @@ public final class Modules {
 	/** The module being drawn: its own text colour and shadow stand in for the HUD-wide ones. */
 	static HudConfig.Placement drawing;
 
+	/** A key's (or a part's) box, with the corners the module being drawn has. */
+	static void box(GuiGraphicsExtractor g, int x, int y, int w, int h, int color) {
+		int r = drawing == null ? 0 : drawing.radius(cfg);
+		if (r > 0) dev.slash3rss.slashclient.hud.ui.Ui.round(g, x, y, w, h, r, color);
+		else g.fill(x, y, x + w, y + h, color);
+	}
+
 	private static int color(int color) {
 		return drawing != null && color == cfg.textColor ? drawing.textColor(cfg) : color;
 	}
@@ -482,7 +489,7 @@ public final class Modules {
 
 		private void key(GuiGraphicsExtractor g, Minecraft mc, int x, int y, int w, int h, KeyMapping k, String label, String sub) {
 			boolean down = k.isDown();
-			g.fill(x, y, x + w, y + h, down ? 0xC0FFFFFF : 0x80000000);
+			box(g, x, y, w, h, down ? 0xC0FFFFFF : 0x80000000);
 			int color = down ? 0xFF000000 : cfg.textColor;
 			int ty = y + (h - mc.font.lineHeight) / 2 + 1 - (sub == null ? 0 : 4);
 			g.text(mc.font, label, x + (w - mc.font.width(label)) / 2, ty, color, !down && cfg.textShadow);
@@ -507,7 +514,7 @@ public final class Modules {
 			key(g, mc, x + half + GAP, my, width(mc) - half - GAP, KEY, o.keyUse, "RMB", CLICKS.right() + " CPS");
 			int sy = my + KEY + GAP;
 			boolean jump = o.keyJump.isDown();
-			g.fill(x, sy, x + width(mc), sy + 10, jump ? 0xC0FFFFFF : 0x80000000);
+			box(g, x, sy, width(mc), 10, jump ? 0xC0FFFFFF : 0x80000000);
 			g.fill(x + width(mc) / 2 - 12, sy + 4, x + width(mc) / 2 + 12, sy + 6, jump ? 0xFF000000 : cfg.textColor);
 		}
 	}

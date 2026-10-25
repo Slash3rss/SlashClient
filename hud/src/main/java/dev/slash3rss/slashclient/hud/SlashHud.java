@@ -374,13 +374,22 @@ public class SlashHud implements ClientModInitializer {
 		pose.scale(p.scale(), p.scale());
 		// keystrokes draw their own boxes
 		int w = m.width(mc), h = m.height(mc);
-		if (p.background(config) && !(m instanceof Modules.Keystrokes) && !(m instanceof GameParts.Part)) g.fill(0, 0, w, h, Math.round(p.opacity() * 2.55f) << 24);
+		int r = p.radius(config);
+		if (p.background(config) && !(m instanceof Modules.Keystrokes) && !(m instanceof GameParts.Part)) {
+			int bg = Math.round(p.opacity() * 2.55f) << 24;
+			if (r > 0) dev.slash3rss.slashclient.hud.ui.Ui.round(g, 0, 0, w, h, r, bg);
+			else g.fill(0, 0, w, h, bg);
+		}
 		if (p.outline && !(m instanceof GameParts.Part)) {
 			int c = 0xCC60A5FA;
-			g.fill(-1, -1, w + 1, 0, c);
-			g.fill(-1, h, w + 1, h + 1, c);
-			g.fill(-1, 0, 0, h, c);
-			g.fill(w, 0, w + 1, h, c);
+			// rounded, the frame follows the corners one pixel out
+			if (r > 0) dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, -1, -1, w + 2, h + 2, r + 1, c);
+			else {
+				g.fill(-1, -1, w + 1, 0, c);
+				g.fill(-1, h, w + 1, h + 1, c);
+				g.fill(-1, 0, 0, h, c);
+				g.fill(w, 0, w + 1, h, c);
+			}
 		}
 		// the module's own text colour and shadow, where it draws in the HUD's
 		Modules.drawing = p;
@@ -390,11 +399,11 @@ public class SlashHud implements ClientModInitializer {
 		pose.popMatrix();
 	}
 
-	/** F3's version line with SlashClient's name and version in place of the game's ("SlashClient 0.9.50 · 1.21.4 …"). */
+	/** F3's version line with SlashClient's name and version before the game's ("SlashClient 0.9.50/1.21.4 …"). */
 	public static String brandedVersion(String line) {
 		if (!line.startsWith("Minecraft ")) return line;
 		String v = version();
-		return "SlashClient " + (v.isEmpty() ? "" : v + " · ") + line.substring("Minecraft ".length());
+		return "SlashClient " + (v.isEmpty() ? "" : v + "/") + line.substring("Minecraft ".length());
 	}
 
 	/** The launcher's version, as it started the game ("0.9.50"); "" from an older launcher, or without one. */
@@ -403,9 +412,9 @@ public class SlashHud implements ClientModInitializer {
 		return v.matches("[0-9A-Za-z.+-]{1,32}") ? v : "";
 	}
 
-	/** The name the servers see (the client's brand): "slashclient", with the version when it is known. */
+	/** The name the servers see (the client's brand): "slashclient", its version (when known) and the game's ("slashclient 0.9.50/1.21.4"). */
 	public static String brand() {
 		String v = version();
-		return v.isEmpty() ? "slashclient" : "slashclient " + v;
+		return "slashclient " + (v.isEmpty() ? "" : v + "/") + net.minecraft.SharedConstants.getCurrentVersion().name();
 	}
 }

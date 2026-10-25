@@ -163,6 +163,9 @@ public final class Catalog {
 				new Toggle("slashclient-hud.background", () -> p.background(cfg), v -> p.background = v),
 				new Slider("slashclient-hud.set.opacity", 0f, 100f, 5f, "%.0f%%", () -> (float) p.opacity(), v -> p.opacity = Math.round(v)),
 				new Toggle("slashclient-hud.set.outline", () -> p.outline, v -> p.outline = v),
+				// its own corners, or the HUD-wide ones
+				new Toggle("slashclient-hud.set.ownRadius", () -> p.radius != null, v -> p.radius = v ? cfg.cornerRadius : null),
+				new Slider("slashclient-hud.set.radius", 0f, HudConfig.MAX_RADIUS, 1f, "%.0f px", () -> (float) p.radius(cfg), v -> p.radius = Math.round(v)),
 				new Toggle("slashclient-hud.set.ownColor", () -> p.color != null, v -> p.color = v ? cfg.textColor : null),
 				new Colors("slashclient-hud.textColor", COLORS, () -> p.textColor(cfg), v -> p.color = v),
 				new Toggle("slashclient-hud.shadow", () -> p.shadow(cfg), v -> p.shadow = v)));
@@ -398,7 +401,8 @@ public final class Catalog {
 		out.add(new Entry("appearance", "slashclient-hud.set.appearance", "extras", "m-appearance", null, null, List.of(
 			new Colors("slashclient-hud.textColor", COLORS, () -> cfg.textColor, v -> cfg.textColor = v),
 			new Toggle("slashclient-hud.shadow", () -> cfg.textShadow, v -> cfg.textShadow = v),
-			new Toggle("slashclient-hud.set.backgroundAll", () -> cfg.background, v -> cfg.background = v)), null));
+			new Toggle("slashclient-hud.set.backgroundAll", () -> cfg.background, v -> cfg.background = v),
+			new Slider("slashclient-hud.set.radiusAll", 0f, HudConfig.MAX_RADIUS, 1f, "%.0f px", () -> (float) cfg.cornerRadius, v -> cfg.cornerRadius = Math.round(v))), null));
 		out.add(new Entry("badges", "slashclient-hud.set.badges", "extras", "m-badges", () -> cfg.badges, v -> cfg.badges = v, List.of(
 			new Toggle("slashclient-hud.set.badges.clans", () -> cfg.clanTags, v -> cfg.clanTags = v)), null));
 		out.add(new Entry("killEffects", "slashclient-hud.set.killEffects", "extras", "m-kd", () -> cfg.killEffects, v -> cfg.killEffects = v, List.of(

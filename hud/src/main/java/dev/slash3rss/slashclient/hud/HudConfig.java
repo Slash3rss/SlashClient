@@ -44,6 +44,8 @@ public final class HudConfig {
 		public Integer opacity;
 		/** A thin accent frame around the module. */
 		public boolean outline;
+		/** How rounded the background's corners are, in pixels (null = the HUD-wide `cornerRadius`). */
+		public Integer radius;
 
 		/** For Gson, so missing fields keep the defaults above. */
 		Placement() {}
@@ -66,6 +68,10 @@ public final class HudConfig {
 
 		public int opacity() {
 			return opacity == null ? 44 : Math.max(0, Math.min(100, opacity));
+		}
+
+		public int radius(HudConfig cfg) {
+			return Math.max(0, Math.min(MAX_RADIUS, radius == null ? cfg.cornerRadius : radius));
 		}
 
 		Placement(boolean enabled, float ax, float ay, int dx, int dy) {
@@ -126,6 +132,9 @@ public final class HudConfig {
 	/** ARGB colour of the text. */
 	public int textColor = 0xFFFFFFFF;
 	public boolean background = true;
+	/** How rounded the modules' backgrounds (and the keystrokes' keys) are, in pixels; 0 = square, as always. */
+	public int cornerRadius = 0;
+	public static final int MAX_RADIUS = 8;
 	public boolean textShadow = true;
 
 	// ---- extras, the other things clients usually have ----
@@ -632,6 +641,7 @@ public final class HudConfig {
 		chatTabs = other.chatTabs;
 		textColor = other.textColor;
 		background = other.background;
+		cornerRadius = Math.max(0, Math.min(MAX_RADIUS, other.cornerRadius));
 		textShadow = other.textShadow;
 		zoom = other.zoom;
 		zoomFactor = other.zoomFactor;
