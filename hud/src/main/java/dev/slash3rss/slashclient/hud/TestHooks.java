@@ -2155,6 +2155,12 @@ public final class TestHooks {
 		return SkyTasks.highlighted.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
 	}
 
+	/** For the test: a task the GUI still shows as handed in (admins' preview) is no task. */
+	public static boolean skyCompletedIsNoTask() {
+		return SkyTaskParser.parse("NOWICJUSZ", "» Ciasno, ale własno «", java.util.List.of("", "• Zadanie ukończone!", "", "Podgląd admina:", "Opis » Zwiększ poziom wyspy.", "Posiadaj poziom wyspy: 20 poz.", "Za ukończenie otrzymasz:", "» 200.0 SC")) == null
+			&& SkyTaskParser.parse("NOWICJUSZ", "» Ciasno, ale własno «", java.util.List.of("Posiadaj poziom wyspy: 20 poz.", "Za ukończenie otrzymasz:", "» 200.0 SC")) != null;
+	}
+
 	/** A plain line in the chat. */
 	public static void skyChat(String line) {
 		Compat.chat(net.minecraft.client.Minecraft.getInstance()).addClientSystemMessage(net.minecraft.network.chat.Component.literal(line));

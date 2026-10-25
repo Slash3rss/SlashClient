@@ -177,6 +177,8 @@ public final class SkyTaskParser {
 	public static Task parse(String tier, String name, List<String> lore) {
 		Matcher title = TITLE.matcher(plain(name));
 		if (!title.matches()) return null;
+		// handed in already: some players (admins' preview) still see it in the GUI, marked so – not a task to do
+		for (String line : lore) if (plain(line).replaceFirst("^[»>•▪\\s-]+", "").toLowerCase(Locale.ROOT).startsWith("zadanie ukończone")) return null;
 		Task task = new Task();
 		task.tier = plain(tier);
 		task.name = title.group(1).strip();

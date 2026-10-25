@@ -295,7 +295,12 @@ public final class SkyTasks {
 	}
 
 	/** SkyUp in the chat once a task is handed in: "Wyzwania » Ukończono zadanie Składzik!". */
-	private static final java.util.regex.Pattern COMPLETED = java.util.regex.Pattern.compile("Wyzwania\\s*»\\s*Ukończono zadanie\\s+(.+?)\\s*!*$");
+	private static final java.util.regex.Pattern COMPLETED = java.util.regex.Pattern.compile("(?iu)wyzwania\\b.*?ukończono\\s+zadanie\\s*:?\\s+(.+?)[\\s!.«»]*$");
+
+	/** A task's name compared by its letters and digits only (SkyUp's arrows, glyphs and colours aside). */
+	private static String nameKey(String s) {
+		return SkyTaskParser.plain(s).toLowerCase(Locale.ROOT).replaceAll("[^\\p{L}\\p{N}]+", " ").trim();
+	}
 
 	/** A chat line: a task handed in leaves the list (and the HUD) at once, before the GUI is open again. */
 	public static void onChat(Component message) {
@@ -307,13 +312,13 @@ public final class SkyTasks {
 
 	/** The task of that name gone: from the category last open first, else any category (ready, then tracked ones first). */
 	static boolean completed(String name) {
-		String plain = SkyTaskParser.plain(name).replaceAll("^[»\\s]+|[«\\s]+$", "");
+		String plain = nameKey(name);
 		Data d = data();
 		SkyTaskParser.Task best = null;
 		int bestScore = -1;
 		Minecraft mc = Minecraft.getInstance();
 		for (SkyTaskParser.Task t : d.tasks.values()) {
-			if (!t.name.equalsIgnoreCase(plain)) continue;
+			if (!nameKey(t.name).equals(plain)) continue;
 			int score = (t.tier.equalsIgnoreCase(lastTier) ? 4 : 0) + (ready(mc, t) ? 2 : 0) + (tracked(t) ? 1 : 0);
 			if (score > bestScore) {
 				best = t;

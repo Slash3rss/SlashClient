@@ -163,6 +163,7 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.skyChat("Ukończono zadanie Huta!"));
 			context.waitTicks(3);
 			check(context.computeOnClient(mc -> TestHooks.skyTasks()).contains("|Huta:"), "not SkyUp's line", "");
+			check(context.computeOnClient(mc -> TestHooks.skyCompletedIsNoTask()), "a handed-in task in the GUI is no task", "");
 			// the two ready ones untracked again (the rest of the test tracks the quarry and Huta only)
 			context.runOnClient(mc -> TestHooks.skyTasksScreen(false, false));
 			context.waitTicks(15);
@@ -243,6 +244,11 @@ public class GameSkyTasks implements FabricClientGameTest {
 			state = context.computeOnClient(mc -> TestHooks.skyCategoryState());
 			rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			check(state.equals(" visible false") && rows.isEmpty(), "nothing tracked", state + "\n" + rows);
+			// the hand-in line with another arrow, SkyUp's glyph and a decorated name: still found
+			check(context.computeOnClient(mc -> TestHooks.skyTasks()).contains("|Podstawowy kamieniołom:"), "the quarry still listed", "");
+			context.runOnClient(mc -> TestHooks.skyChat(" Wyzwania >> Ukończono zadanie » Podstawowy kamieniołom «!"));
+			context.waitTicks(3);
+			check(!context.computeOnClient(mc -> TestHooks.skyTasks()).contains("|Podstawowy kamieniołom:"), "handed in, other arrows", context.computeOnClient(mc -> TestHooks.skyTasks()));
 			context.runOnClient(mc -> TestHooks.skyTasksOptions(false, false));
 		}
 		//#endif
