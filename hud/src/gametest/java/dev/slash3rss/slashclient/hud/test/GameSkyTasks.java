@@ -214,6 +214,9 @@ public class GameSkyTasks implements FabricClientGameTest {
 			rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			// the whole of Nowicjusz on the HUD under its row, Od czego zacząć? too (never tracked on its own)
 			check(state.equals("Nowicjusz,Wirtuoz visible true") && rows.startsWith("Nowicjusz | 5 left · ") && rows.contains("Od czego zacząć?") && rows.contains("Wirtuoz | 16 left"), "two categories", state + "\n" + rows);
+			// the daily task, tracked, above the categories
+			String top = context.computeOnClient(mc -> TestHooks.skyDailyOnTop());
+			check(top.startsWith("Zadanie codzienne"), "the daily task on top", top);
 			context.getInput().setCursorPos(wirtuoz[0], wirtuoz[1]);
 			context.waitTicks(5);
 			context.takeScreenshot("skytasks-category-menu");

@@ -2213,6 +2213,19 @@ public final class TestHooks {
 		return (before == null ? "null" : before.getString()) + " | " + (after == null ? "null" : after.getString());
 	}
 
+	/** The HUD's first row with the daily task tracked for a moment ("none" without the task). */
+	public static String skyDailyOnTop() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		SkyTaskParser.Task daily = null;
+		for (SkyTaskParser.Task t : SkyTasks.data().tasks.values()) if (SkyTasks.daily(t)) daily = t;
+		if (daily == null) return "none";
+		boolean was = SkyTasks.tracked(daily);
+		if (!was) SkyTasks.toggle(daily);
+		String rows = SkyTasks.debugRows(mc);
+		if (!was) SkyTasks.toggle(daily);
+		return rows.split("\n")[0];
+	}
+
 	/** SkyUp's challenges menu ("Wyzwania"): the Nowicjusz category with `left` tasks left, and the daily task. */
 	public static void skyMenuScreen(int left) {
 		var mc = net.minecraft.client.Minecraft.getInstance();

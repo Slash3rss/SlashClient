@@ -213,10 +213,15 @@ public final class SkyTasks {
 			Component.translatable("slashclient-hud.skyTasks.dailyTitle"), what));
 	}
 
+	/** SkyUp's daily task ("Zadanie codzienne"). */
+	static boolean daily(SkyTaskParser.Task t) {
+		return nameKey(t.name).equals("zadanie codzienne");
+	}
+
 	/** What the reminder says: the daily task's requirements still to do ("Szkielet 0/6"), or that it is ready; null when none is tracked. */
 	static Component dailyReminder(Minecraft mc) {
 		for (SkyTaskParser.Task t : data().tasks.values()) {
-			if (!nameKey(t.name).equals("zadanie codzienne") || !tracked(t)) continue;
+			if (!daily(t) || !tracked(t)) continue;
 			if (ready(mc, t)) return Component.translatable("slashclient-hud.skyTasks.dailyReady");
 			List<String> left = new ArrayList<>();
 			for (SkyTaskParser.Section s : t.sections) for (SkyTaskParser.Req r : s.items) {
@@ -672,6 +677,8 @@ public final class SkyTasks {
 			(done ? ready : rest).add(t);
 		}
 		ready.addAll(rest);
+		// the daily task first: it is always on top of the list
+		ready.sort(java.util.Comparator.comparing(t -> !daily(t)));
 		return ready.size() > cfg.skyTasksMax ? new ArrayList<>(ready.subList(0, cfg.skyTasksMax)) : ready;
 	}
 
@@ -750,8 +757,12 @@ public final class SkyTasks {
 	private static List<Row> rows(Minecraft mc, List<SkyTaskParser.Task> tasks) {
 		HudConfig cfg = SlashHud.config;
 		List<Row> out = new ArrayList<>();
-		// each category's row with its tasks under it, then the tasks tracked on their own
+		// the daily task on top, then each category's row with its tasks under it, then the tasks tracked on their own
 		List<SkyTaskParser.Task> left = new ArrayList<>(tasks);
+		List<SkyTaskParser.Task> dailies = new ArrayList<>();
+		for (SkyTaskParser.Task t : left) if (daily(t)) dailies.add(t);
+		left.removeAll(dailies);
+		taskRows(mc, dailies, out);
 		for (String tier : headerTiers()) {
 			int[] c = tierCount(mc, tier);
 			boolean fresh = fresh(tier), unopened = unopened(tier);
