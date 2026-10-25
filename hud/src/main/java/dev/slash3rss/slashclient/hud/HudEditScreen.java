@@ -248,16 +248,19 @@ public class HudEditScreen extends Screen {
 		}
 	}
 
-	/** The hint's window `ms` into the scroll: a pause at the start, then a step a letter at a time, round and round. */
+	/** The hint's window `ms` into the scroll: a pause at the start, a letter at a time to its end, a pause, and back. */
 	private void scrollHint(EditBox box, Component hint, long ms) {
-		String text = hint.getString(), loop = text + "     ";
+		String text = hint.getString();
 		var style = hint.getStyle();
-		int steps = loop.length(), at = (int) Math.max(0, (ms % (1500 + steps * 120L) - 1500) / 120);
-		String turned = loop.substring(at) + loop.substring(0, at), shown = "";
 		int room = box.getWidth() - 4;
-		for (int n = 1; n <= turned.length(); n++) {
-			if (Ui.width(Component.literal(turned.substring(0, n)).withStyle(style)) > room) break;
-			shown = turned.substring(0, n);
+		// the furthest it moves: until the end of the text fits
+		int last = 0;
+		while (last < text.length() && Ui.width(Component.literal(text.substring(last)).withStyle(style)) > room) last++;
+		int at = Ui.bounce(ms, last, 1500, last * 120L);
+		String from = text.substring(at), shown = "";
+		for (int n = 1; n <= from.length(); n++) {
+			if (Ui.width(Component.literal(from.substring(0, n)).withStyle(style)) > room) break;
+			shown = from.substring(0, n);
 		}
 		box.setHint(Component.literal(shown).withStyle(style));
 	}

@@ -19,6 +19,13 @@ public class GameDialogEnter implements FabricClientGameTest {
 	public void runTest(ClientGameTestContext context) {
 		if (TestFilter.skip(context, getClass())) return;
 		context.runOnClient(mc -> TestHooks.endOnVanillaMenu());
+		// sliding text bounces: a pause at the start, along, a pause at the end, and back the same way
+		String bounce = context.computeOnClient(mc -> {
+			StringBuilder s = new StringBuilder();
+			for (long ms : new long[] { 0, 1200, 1800, 2900, 3400 }) s.append(dev.slash3rss.slashclient.hud.ui.Ui.bounce(ms, 100, 700, 1000)).append(' ');
+			return s.toString().strip();
+		});
+		if (!bounce.equals("0 50 100 50 0")) throw new AssertionError("Sliding text: " + bounce);
 		// a chat tab with nothing in it yet: its hint is longer than the field and scrolls
 		context.runOnClient(mc -> {
 			SlashHud.config.chatTabs.clear();

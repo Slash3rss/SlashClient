@@ -190,7 +190,8 @@ public final class Ui {
 
 	/**
 	 * How far a sliding text is moved now (0…`over` pixels), the marquee's pace: a moment at its
-	 * start, along to its end at an easy reading pace, a moment there, and back. `key` keeps its clock.
+	 * start, along to its end at an easy reading pace, a moment there, and back the same way (it
+	 * bounces between its ends instead of jumping back). `key` keeps its clock.
 	 */
 	public static int marqueeShift(String key, int over) {
 		if (over <= 0) {
@@ -199,9 +200,16 @@ public final class Ui {
 		}
 		long now = System.currentTimeMillis();
 		long started = MARQUEE.computeIfAbsent(key, k -> now);
-		long pause = 700, slide = Math.max(600, over * 1000L / 30);
-		long cycle = pause + slide + pause, at = (now - started) % cycle;
-		return at < pause ? 0 : at < pause + slide ? (int) (over * (at - pause) / slide) : over;
+		return bounce(now - started, over, 700, Math.max(600, over * 1000L / 30));
+	}
+
+	/** `ms` into a bounce between 0 and `to`: `pause` at each end, `slide` ms each way. */
+	public static int bounce(long ms, int to, long pause, long slide) {
+		long at = ms % (2 * (pause + slide));
+		if (at < pause) return 0;
+		if (at < pause + slide) return (int) (to * (at - pause) / slide);
+		if (at < 2 * pause + slide) return to;
+		return (int) (to - to * (at - 2 * pause - slide) / slide);
 	}
 
 	/** Text cut with "…" to fit `max` pixels. */
