@@ -86,6 +86,12 @@ public class SkyCaseScreen extends Screen {
 				resetArmed = 0;
 			} else resetArmed = System.currentTimeMillis() + 3000;
 		}));
+		// wins the counter missed, added from a part of the game's log
+		Component fromLog = Ui.tr("slashclient-hud.skyCase.importButton");
+		int iw = Ui.buttonWidth(fromLog, null, 15, 2);
+		bx -= iw + 4;
+		Ui.button(g, "skycase:import", bx, y - 4, iw, 15, fromLog, false, mx, my);
+		hits.add(new Hit(bx, y - 4, iw, 15, () -> minecraft.setScreenAndShow(new SkyCaseImportScreen(this))));
 		Component group = Ui.tr("slashclient-hud.skyCase.sum");
 		int gw = Ui.buttonWidth(group, null, 15, 2);
 		bx -= gw + 4;

@@ -39,6 +39,21 @@ public final class SkyCaseTestHooks {
 		chat("§6§lSkyCase §8§l» §e" + player + " §aotworzył §e" + type + " §ai wygrał: §e" + reward + "§a!");
 	}
 
+	/** The "Add from logs" window over the cases' window, with `text` pasted in. */
+	public static void importScreen(String text) {
+		var mc = Minecraft.getInstance();
+		var screen = new SkyCaseImportScreen(new SkyCaseScreen(null));
+		mc.setScreenAndShow(screen);
+		screen.paste(text);
+	}
+
+	/** "Add" pressed in the open window: how many wins it added. */
+	public static int importAdd() {
+		if (!(Compat.screen(Minecraft.getInstance()) instanceof SkyCaseImportScreen screen)) return -2;
+		screen.add();
+		return screen.addedForTest();
+	}
+
 	public static String playerName() {
 		return Minecraft.getInstance().player.getGameProfile().name();
 	}

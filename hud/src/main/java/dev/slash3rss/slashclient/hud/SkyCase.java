@@ -94,6 +94,8 @@ public final class SkyCase {
 	static final class Data {
 		Map<String, Stats> cases = new LinkedHashMap<>();
 		String lastType = "";
+		/** Log lines already added by hand (with their time), so pasting the same part twice adds nothing. */
+		List<String> imported = new ArrayList<>();
 
 		Stats of(String type) {
 			return cases.computeIfAbsent(type, k -> new Stats()).fixed();
@@ -284,6 +286,40 @@ public final class SkyCase {
 		return same;
 	}
 
+	/** The game log's start of a chat line: "[14:08:00] [Render thread/INFO]: [System] [CHAT] ". */
+	private static final Pattern LOG_PREFIX = Pattern.compile("^\\s*(?:\\[[^\\]]*\\]\\s*)+?:?\\s*(?:\\[System\\]\\s*)?(?:\\[CHAT\\]\\s*)");
+
+	/**
+	 * Wins the counter missed, added by hand from a part of the game's log (logs/latest.log) pasted
+	 * in: SkyUp's lines of both kinds, of the newer one only the player's own. A line added once is
+	 * not added again. How many wins were added.
+	 */
+	public static int addFromLog(String text, String player) {
+		Data life = lifetime();
+		if (life.imported == null) life.imported = new ArrayList<>();
+		long now = System.currentTimeMillis();
+		int added = 0;
+		for (String raw : text.split("\\r?\\n")) {
+			String line = raw.strip();
+			if (line.isEmpty() || life.imported.contains(line)) continue;
+			String chat = LOG_PREFIX.matcher(line).replaceFirst("");
+			String[] opened = parseOpened(chat);
+			String type = null, reward = null;
+			if (opened != null) {
+				if (!opened[0].equalsIgnoreCase(player)) continue;
+				type = caseNamed(opened[1]);
+				reward = opened[2];
+			} else reward = parse(chat);
+			if (reward == null) continue;
+			won(type, reward, now, false);
+			life.imported.add(line);
+			added++;
+		}
+		while (life.imported.size() > 5000) life.imported.remove(0);
+		if (added > 0) save();
+		return added;
+	}
+
 	/** The newer win line as {player, case, reward}, or null for any other line. */
 	static String[] parseOpened(String line) {
 		Matcher m = OPENED.matcher(plain(line));
@@ -305,6 +341,11 @@ public final class SkyCase {
 
 	/** A win counted for `named` (the case the line names), or for the case it came from when the line does not say. */
 	static String won(String named, String reward, long now) {
+		return won(named, reward, now, true);
+	}
+
+	/** A win counted; one added from an old log (`live` false) goes to all time only, without the toast. */
+	static String won(String named, String reward, long now, boolean live) {
 		Data life = lifetime();
 		String type = named != null ? named : attribute(reward, now);
 		Stats stats = life.of(type);
@@ -317,6 +358,7 @@ public final class SkyCase {
 			first = false;
 		}
 		stats.won(reward, now);
+		if (!live) return type;
 		session.of(type).won(reward, now);
 		life.lastType = type;
 		session.lastType = type;

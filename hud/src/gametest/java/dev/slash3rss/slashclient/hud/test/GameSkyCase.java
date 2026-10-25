@@ -213,6 +213,22 @@ public class GameSkyCase implements FabricClientGameTest {
 			context.waitTicks(3);
 			String after = context.computeOnClient(mc -> SkyCaseTestHooks.counted());
 			check(after.contains("Perun=1") && !after.contains("Perun=2") && after.contains("Łowiecki: 3/3 {Diament=1, 4x Diament=2}"), "the newer line", after);
+
+			// missed wins added from a part of the game's log: the player's own two (one of each kind),
+			// not another player's nor other lines; the same part pasted again adds nothing
+			String log = "[11:55:12] [Render thread/INFO]: [System] [CHAT] SkyCase » " + me + " otworzył Elementium i wygrał: :: Cassis ::!\n"
+				+ "[11:55:19] [Render thread/INFO]: [System] [CHAT] SkyCase » Bentlej otworzył Elementium i wygrał: :: Cassis ::!\n"
+				+ "[11:56:02] [Render thread/INFO]: [System] [CHAT] SkyCase » Wygrano: Kask Górnika!\n"
+				+ "[11:56:40] [Render thread/INFO]: [System] [CHAT] S-KBC » Ktoś: otworzyc\n";
+			context.runOnClient(mc -> SkyCaseTestHooks.importScreen(log));
+			context.waitTicks(3);
+			int first = context.computeOnClient(mc -> SkyCaseTestHooks.importAdd());
+			context.waitTicks(3);
+			context.takeScreenshot("skycase-import");
+			int second = context.computeOnClient(mc -> SkyCaseTestHooks.importAdd());
+			String imported = context.computeOnClient(mc -> SkyCaseTestHooks.counted());
+			check(first == 2 && second == 0 && imported.contains("Cassis=1") && imported.contains("Kask Górnika=3"), "added from the log (" + first + ", " + second + ")", imported);
+			context.setScreen(() -> null);
 		}
 		//#endif
 	}
