@@ -674,12 +674,43 @@ async function renderIconLibrary(profile: Profile, box: HTMLElement) {
 
 // ---------- back to the game ----------
 
+/** Servers' own icons (from a ping), by address: asked once per run. */
+const continueFavicons = new Map<string, Promise<string | undefined>>();
+
+function serverFavicon(address: string): Promise<string | undefined> {
+  const key = address.toLowerCase();
+  if (!continueFavicons.has(key)) {
+    continueFavicons.set(key, Promise.resolve(api.pingServer(address)).then((r: { favicon?: string }) => r?.favicon, () => undefined));
+  }
+  return continueFavicons.get(key)!;
+}
+
+/** The server's icon in the card: the server list's at once, its own when the ping brings it; a world keeps the globe. */
+function continueIcon(target: NonNullable<Profile['lastTarget']>) {
+  const img = $<HTMLImageElement>('#continue-img'), glyph = $('#continue-icon');
+  const show = (src: string | undefined) => {
+    img.classList.toggle('hidden', !src);
+    glyph.classList.toggle('hidden', !!src);
+    if (src) img.src = src;
+  };
+  if (target.kind !== 'server') return show(undefined);
+  const address = target.address;
+  const listed = servers.find((s) => s.ip.toLowerCase() === address.toLowerCase());
+  show(listed?.hasIcon ? `${LIST_API}/servers/${listed.id}/icon` : undefined);
+  void serverFavicon(address).then((favicon) => {
+    // still this server in the card
+    const now = store.profiles.find((p) => p.id === $<HTMLSelectElement>('#play-profile').value)?.lastTarget;
+    if (favicon && now?.kind === 'server' && now.address === address) show(favicon);
+  });
+}
+
 function renderContinue(profile: Profile | undefined) {
   const box = $('#continue');
   const target = profile?.lastTarget;
   box.classList.toggle('hidden', !target || selectedRunning() || launching);
   if (!target || !profile) return;
   $('#continue-icon').className = target.kind === 'server' ? 'fa-solid fa-server' : 'fa-solid fa-earth-europe';
+  continueIcon(target);
   $('#continue-where').textContent = target.kind === 'server'
     ? t('{0} · serwer', servers.find((s) => s.ip.toLowerCase() === target.address.toLowerCase())?.name ?? target.address)
     : t('{0} · świat', target.name);
