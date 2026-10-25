@@ -614,15 +614,12 @@ public final class ExtraModules {
 			return null;
 		}
 
-		/** The best tool's name (with "in hand" when it is), then "min." before the weakest one's picture. */
-		private static Component bestLine(Minecraft mc, Item best) {
-			Component name = new ItemStack(best).getHoverName();
-			return mc.player.getMainHandItem().is(best) ? Component.translatable("slashclient-hud.block.bestHeld", name) : name;
-		}
+		/** The best tool's line: "Best:", its picture, then "min." and the weakest one's picture. */
+		private static final String MIN = " · min.";
 
 		private static int bestWidth(Minecraft mc, BlockState s) {
 			Item best = bestTool(s), weakest = weakestTool(s, best);
-			return 12 + mc.font.width(bestLine(mc, best)) + (weakest != null && weakest != best ? mc.font.width(" · min.") + 12 : 0);
+			return mc.font.width(Component.translatable("slashclient-hud.block.best")) + 14 + (weakest != null && weakest != best ? mc.font.width(MIN) + 12 : 0);
 		}
 
 		private static boolean showsBest(Minecraft mc, BlockState s) {
@@ -662,7 +659,9 @@ public final class ExtraModules {
 			BlockState s = mc.level.getBlockState(pos);
 			if (showsBest(mc, s)) {
 				Item best = bestTool(s), weakest = weakestTool(s, best);
-				out.append(bestLine(mc, best).getString()).append(weakest != null && weakest != best ? " · min. " + new ItemStack(weakest).getHoverName().getString() : "").append('\n');
+				// the pictures by name, for the test
+				out.append(Component.translatable("slashclient-hud.block.best").getString()).append(' ').append(new ItemStack(best).getHoverName().getString())
+					.append(weakest != null && weakest != best ? MIN + " " + new ItemStack(weakest).getHoverName().getString() : "").append('\n');
 			}
 			for (var line : extras(mc, s, pos)) out.append(line.getKey().getString()).append('\n');
 			return out.toString();
@@ -838,14 +837,15 @@ public final class ExtraModules {
 			if (showsBest(mc, s)) {
 				Item best = bestTool(s), weakest = weakestTool(s, best);
 				int by = y + PAD + (cfg.blockTool ? 22 : 11), bx = x + PAD + 20;
+				Component label = Component.translatable("slashclient-hud.block.best");
+				// green when that tool is already in hand
+				text(g, mc, label, bx, by, mc.player.getMainHandItem().is(best) ? 0xFF55FF55 : 0xFFFFCC55);
+				bx += mc.font.width(label) + 2;
 				smallItem(g, best, bx, by - 1);
 				bx += 12;
-				Component line = bestLine(mc, best);
-				text(g, mc, line, bx, by, mc.player.getMainHandItem().is(best) ? 0xFF55FF55 : 0xFFFFCC55);
 				if (weakest != null && weakest != best) {
-					bx += mc.font.width(line);
-					text(g, mc, Component.literal(" · min."), bx, by, 0xFFAAAAAA);
-					smallItem(g, weakest, bx + mc.font.width(" · min.") + 2, by - 1);
+					text(g, mc, Component.literal(MIN), bx, by, 0xFFAAAAAA);
+					smallItem(g, weakest, bx + mc.font.width(MIN) + 2, by - 1);
 				}
 			}
 			int ly = y + PAD + linesTop(mc, s);
