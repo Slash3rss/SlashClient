@@ -27,6 +27,7 @@ abstract class ChatComponentMixin {
 		dev.slash3rss.slashclient.hud.DungeonMap.onChat(message.getString());
 		//#if MC >= 26.3
 		dev.slash3rss.slashclient.hud.SkyCounters.onChat(message);
+		dev.slash3rss.slashclient.hud.SkyTasks.onChat(message);
 		dev.slash3rss.slashclient.hud.SkyCase.onChat(message.getString());
 		//#endif
 		Component shown = ChatExtras.stack((ChatComponent) (Object) this, message.getString(), Extras.timestamp(message));

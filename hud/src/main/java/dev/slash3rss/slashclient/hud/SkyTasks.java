@@ -6,6 +6,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.slash3rss.slashclient.hud.mixin.ContainerScreenAccessor;
+import dev.slash3rss.slashclient.hud.ui.Ui;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 
 /**
  * SkyUp.pl's island tasks: read from the tasks GUI whenever it is open (every item that looks like a
@@ -148,6 +150,9 @@ public final class SkyTasks {
 				if (data.trackedCategories == null) data.trackedCategories = new LinkedHashSet<>();
 				data.trackedCategories.add(name);
 			}
+			// tracking of tasks no longer known (completed before this version cleaned it up) is dropped
+			data.tracked.removeIf(k -> !data.tasks.containsKey(k));
+			data.untracked.removeIf(k -> !data.tasks.containsKey(k));
 			for (var e : data.tierSeen.entrySet()) if (lastTier.isEmpty() || e.getValue() >= data.tierSeen.getOrDefault(lastTier, 0L)) lastTier = e.getKey();
 		}
 		return data;
@@ -280,10 +285,50 @@ public final class SkyTasks {
 			}
 			return gone;
 		});
+		// tracking of a task of this tier that is gone (completed in the chat, then the GUI read again)
+		d.tracked.removeIf(k -> k.startsWith(tier + "|") && !d.tasks.containsKey(k));
+		d.untracked.removeIf(k -> k.startsWith(tier + "|") && !d.tasks.containsKey(k));
 		d.tierSeen.put(tier, now);
 		readNow.add(tier);
 		// the menu is no category: the one last open stays on the HUD
 		if (!menu) lastTier = tier;
+	}
+
+	/** SkyUp in the chat once a task is handed in: "Wyzwania » Ukończono zadanie Składzik!". */
+	private static final java.util.regex.Pattern COMPLETED = java.util.regex.Pattern.compile("Wyzwania\\s*»\\s*Ukończono zadanie\\s+(.+?)\\s*!*$");
+
+	/** A chat line: a task handed in leaves the list (and the HUD) at once, before the GUI is open again. */
+	public static void onChat(Component message) {
+		if (SlashHud.config == null) return;
+		Matcher m = COMPLETED.matcher(SkyTaskParser.plain(message.getString()));
+		if (!m.find() || !onSkyUp(Minecraft.getInstance())) return;
+		completed(m.group(1));
+	}
+
+	/** The task of that name gone: from the category last open first, else any category (ready, then tracked ones first). */
+	static boolean completed(String name) {
+		String plain = SkyTaskParser.plain(name).replaceAll("^[»\\s]+|[«\\s]+$", "");
+		Data d = data();
+		SkyTaskParser.Task best = null;
+		int bestScore = -1;
+		Minecraft mc = Minecraft.getInstance();
+		for (SkyTaskParser.Task t : d.tasks.values()) {
+			if (!t.name.equalsIgnoreCase(plain)) continue;
+			int score = (t.tier.equalsIgnoreCase(lastTier) ? 4 : 0) + (ready(mc, t) ? 2 : 0) + (tracked(t) ? 1 : 0);
+			if (score > bestScore) {
+				best = t;
+				bestScore = score;
+			}
+		}
+		if (best == null) return false;
+		String key = best.key();
+		d.tasks.remove(key);
+		d.tracked.remove(key);
+		d.untracked.remove(key);
+		// the menu's count of the category: one fewer left
+		for (var e : d.categories.entrySet()) if (e.getKey().equalsIgnoreCase(best.tier) && e.getValue() > 0) e.setValue(e.getValue() - 1);
+		save();
+		return true;
 	}
 
 	/** The same task, as far as the HUD shows it. */
@@ -372,16 +417,28 @@ public final class SkyTasks {
 		ContainerScreenAccessor at = (ContainerScreenAccessor) screen;
 		String tier = tier(screen);
 		boolean any = false;
-		for (Slot slot : screen.getMenu().slots) {
+		List<Integer> lit = new ArrayList<>();
+		float glow = glow();
+		for (int i = 0; i < screen.getMenu().slots.size(); i++) {
+			Slot slot = screen.getMenu().slots.get(i);
 			if (slot.container instanceof Inventory) continue;
 			SkyTaskParser.Task t = task(tier, slot.getItem());
 			if (t == null) continue;
 			any = true;
+			int sx = at.slashclient$leftPos() + slot.x, sy = at.slashclient$topPos() + slot.y;
+			// ready to hand in (a task done, or a category of the menu with one done): a green glowing frame
+			if (t.category ? tierCount(mc, t.name)[1] > 0 : ready(mc, known(t))) {
+				lit.add(i);
+				g.fill(sx, sy, sx + 16, sy + 16, 0x3822C55E);
+				frame(g, sx - 1, sy - 1, 18, 18, Ui.blend(0xFF16A34A, 0xFF4ADE80, glow));
+				frame(g, sx - 2, sy - 2, 20, 20, ((int) (0x40 + 0x40 * glow) << 24) | 0x22C55E);
+			}
 			if (!tracked(t)) continue;
 			// a gold corner, top right
-			int x = at.slashclient$leftPos() + slot.x + 16, y = at.slashclient$topPos() + slot.y;
-			for (int i = 0; i < 5; i++) g.fill(x - 5 + i, y + i, x, y + i + 1, 0xFFFACC15);
+			int x = sx + 16, y = sy;
+			for (int k = 0; k < 5; k++) g.fill(x - 5 + k, y + k, x, y + k + 1, 0xFFFACC15);
 		}
+		highlighted = lit;
 		if (!any) return;
 		SkyTaskParser.Task t = hovered(screen);
 		Component keyName = trackKey == null ? Component.literal("?") : trackKey.getTranslatedKeyMessage();
@@ -393,6 +450,27 @@ public final class SkyTasks {
 		g.fill(x, y, x + w, y + 12, 0xE0101827);
 		g.fill(x, y + 11, x + w, y + 12, t != null && tracked(t) ? 0xFFFACC15 : 0xFF60A5FA);
 		g.text(mc.font, hint, x + 4, y + 2, 0xFFFFFFFF, false);
+	}
+
+	/** The slots lit as ready on the last frame (for the test). */
+	static List<Integer> highlighted = List.of();
+
+	/** A slow breath (0-1, about two seconds) for what is ready: seen at a glance, never flashing. */
+	private static float glow() {
+		return 0.5f + 0.5f * (float) Math.sin(System.currentTimeMillis() / 350.0);
+	}
+
+	private static void frame(GuiGraphicsExtractor g, int x, int y, int w, int h, int color) {
+		g.fill(x, y, x + w, y + 1, color);
+		g.fill(x, y + h - 1, x + w, y + h, color);
+		g.fill(x, y + 1, x + 1, y + h - 1, color);
+		g.fill(x + w - 1, y + 1, x + w, y + h - 1, color);
+	}
+
+	/** The task as saved (with what the client counted on top), or the one on the slot when it is new. */
+	private static SkyTaskParser.Task known(SkyTaskParser.Task t) {
+		SkyTaskParser.Task saved = data().tasks.get(t.key());
+		return saved != null ? saved : t;
 	}
 
 	// ---------- counting what the player has ----------
@@ -516,17 +594,18 @@ public final class SkyTasks {
 		return !t.sections.isEmpty();
 	}
 
-	/** The tasks on the HUD, in the order they were seen. */
+	/** The tasks on the HUD: the ones ready to hand in first, then in the order they were seen. */
 	static List<SkyTaskParser.Task> shown(Minecraft mc) {
-		List<SkyTaskParser.Task> out = new ArrayList<>();
+		List<SkyTaskParser.Task> ready = new ArrayList<>(), rest = new ArrayList<>();
 		HudConfig cfg = SlashHud.config;
 		for (SkyTaskParser.Task t : data().tasks.values()) {
 			if (!tracked(t)) continue;
-			if (cfg.skyTasksHideDone && ready(mc, t)) continue;
-			out.add(t);
-			if (out.size() >= cfg.skyTasksMax) break;
+			boolean done = ready(mc, t);
+			if (cfg.skyTasksHideDone && done) continue;
+			(done ? ready : rest).add(t);
 		}
-		return out;
+		ready.addAll(rest);
+		return ready.size() > cfg.skyTasksMax ? new ArrayList<>(ready.subList(0, cfg.skyTasksMax)) : ready;
 	}
 
 	/** A value of a map keyed by category, whatever the letters' case (the menu's item and the GUI's title). */
@@ -583,7 +662,21 @@ public final class SkyTasks {
 	// ---------- on the HUD ----------
 
 	/** One row of the module: text on the left, text on the right, a bar under it (fill 0–1, or -1 for none). */
-	private record Row(String left, int leftColor, String right, int rightColor, float bar, int indent) {}
+	private record Row(String left, int leftColor, String right, int rightColor, float bar, int indent, boolean ready, boolean badge) {
+		Row(String left, int leftColor, String right, int rightColor, float bar, int indent) {
+			this(left, leftColor, right, rightColor, bar, indent, false, false);
+		}
+
+		/** The same row on a ready task's green band. */
+		Row lit() {
+			return new Row(left, leftColor, right, rightColor, bar, indent, true, badge);
+		}
+	}
+
+	/** The room the right text takes: a badge has its padding around it. */
+	private static int rightWidth(Minecraft mc, Row r) {
+		return r.right.isEmpty() ? 0 : mc.font.width(r.right) + (r.badge ? 6 : 0);
+	}
 
 	private static final int GOLD = 0xFFFACC15, GREY = 0xFF9CA3AF, GREEN = 0xFF4ADE80, WHITE = 0xFFE5E7EB;
 
@@ -617,6 +710,7 @@ public final class SkyTasks {
 		long now = System.currentTimeMillis();
 		for (SkyTaskParser.Task t : tasks) {
 			boolean ready = ready(mc, t);
+			int first = out.size();
 			// its GUI not open since joining: the server's numbers are the last known ones, from disk
 			boolean stale = !fresh(t.tier);
 			boolean serverOnly = false;
@@ -626,7 +720,9 @@ public final class SkyTasks {
 				long min = (now - t.seen) / 60_000;
 				age = min < 1 ? Component.translatable("slashclient-hud.skyTasks.now").getString() : Component.translatable("slashclient-hud.skyTasks.ago", min).getString();
 			}
-			out.add(new Row((ready ? "✔ " : "") + t.name, ready ? GREEN : GOLD, age, 0xFF6B7280, -1, 0));
+			// ready to hand in: "Oddaj!" on a green badge where the age would be
+			if (ready) out.add(new Row("✔ " + t.name, GREEN, Component.translatable("slashclient-hud.skyTasks.handIn").getString(), 0xFFFFFFFF, -1, 0, false, true));
+			else out.add(new Row(t.name, GOLD, age, 0xFF6B7280, -1, 0));
 			// locked until another challenge is done
 			if (!cfg.skyTasksCompact && !t.requires.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyTasks.requires", t.requires).getString(), 0xFFF87171, "", 0, -1, 4));
 			for (SkyTaskParser.Section s : t.sections) {
@@ -642,6 +738,8 @@ public final class SkyTasks {
 				}
 			}
 			if (cfg.skyTasksRewards && !t.rewards.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyTasks.reward", String.join(", ", t.rewards)).getString(), 0xFF60A5FA, "", 0, -1, 6));
+			// the whole task on a green band (not in the compact mode: the badge says it there)
+			if (ready && !cfg.skyTasksCompact) for (int i = first; i < out.size(); i++) out.set(i, out.get(i).lit());
 		}
 	}
 
@@ -656,7 +754,7 @@ public final class SkyTasks {
 
 	private static int width(Minecraft mc, List<Row> rows) {
 		int w = 80;
-		for (Row r : rows) w = Math.max(w, r.indent + mc.font.width(r.left) + (r.right.isEmpty() ? 0 : 8 + mc.font.width(r.right)));
+		for (Row r : rows) w = Math.max(w, r.indent + mc.font.width(r.left) + (r.right.isEmpty() ? 0 : 8 + rightWidth(mc, r)));
 		return Math.min(maxWidth(), w) + Modules.PAD * 2;
 	}
 
@@ -670,19 +768,29 @@ public final class SkyTasks {
 		int w = width(mc, rows) - Modules.PAD * 2;
 		int row = y + Modules.PAD;
 		int left = x + Modules.PAD;
+		float glow = glow();
 		for (int i = 0; i < rows.size(); i++) {
 			Row r = rows.get(i);
-			// a little room above each task's title (not the first row)
-			int room = w - r.indent - (r.right.isEmpty() ? 0 : mc.font.width(r.right) + 8);
+			int h = rowHeight(mc, r);
+			// a task ready to hand in: a green band across its rows, a slowly breathing bar on its left edge
+			if (r.ready) {
+				g.fill(x + 1, row - 1, x + Modules.PAD * 2 + w - 1, row + h - 1, 0x2E22C55E);
+				g.fill(x + 1, row - 1, x + 2, row + h - 1, Ui.blend(0xFF16A34A, 0xFF86EFAC, glow));
+			}
+			int room = w - r.indent - (r.right.isEmpty() ? 0 : rightWidth(mc, r) + 8);
 			String text = mc.font.width(r.left) > room ? mc.font.plainSubstrByWidth(r.left, room - mc.font.width("…")) + "…" : r.left;
 			Modules.text(g, mc, text, left + r.indent, row, r.leftColor);
-			if (!r.right.isEmpty()) Modules.text(g, mc, r.right, left + w - mc.font.width(r.right), row, r.rightColor);
+			if (r.badge) {
+				int bw = rightWidth(mc, r), bx = left + w - bw;
+				Ui.round(g, bx, row - 1, bw, mc.font.lineHeight + 1, 2, 0xFF16A34A);
+				g.text(mc.font, r.right, bx + 3, row, r.rightColor, false);
+			} else if (!r.right.isEmpty()) Modules.text(g, mc, r.right, left + w - mc.font.width(r.right), row, r.rightColor);
 			if (r.bar >= 0) {
 				int by = row + mc.font.lineHeight + 1, bx = left + r.indent + 8;
 				g.fill(bx, by, left + w, by + 2, 0x80374151);
 				g.fill(bx, by, bx + Math.round((left + w - bx) * r.bar), by + 2, r.bar >= 1 ? GREEN : 0xFF60A5FA);
 			}
-			row += rowHeight(mc, r);
+			row += h;
 		}
 	}
 
@@ -747,7 +855,7 @@ public final class SkyTasks {
 	/** The module's rows as text ("left | right"), one per line. */
 	static String debugRows(Minecraft mc) {
 		StringBuilder out = new StringBuilder();
-		for (Row r : rows(mc, shown(mc))) out.append(r.left).append(" | ").append(r.right).append('\n');
+		for (Row r : rows(mc, shown(mc))) out.append(r.left).append(" | ").append(r.right).append(r.ready ? " [lit]" : "").append('\n');
 		return out.toString();
 	}
 

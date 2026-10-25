@@ -2062,6 +2062,25 @@ public final class TestHooks {
 		return SkyTasks.debugRows(net.minecraft.client.Minecraft.getInstance());
 	}
 
+	/** The slots of the open challenges GUI lit as ready to hand in on the last frame: "4,7,11". */
+	public static String skyHighlighted() {
+		return SkyTasks.highlighted.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
+	}
+
+	/** A plain line in the chat. */
+	public static void skyChat(String line) {
+		Compat.chat(net.minecraft.client.Minecraft.getInstance()).addClientSystemMessage(net.minecraft.network.chat.Component.literal(line));
+	}
+
+	/** SkyUp's line in the chat after handing a task in, with its colours and private glyphs. */
+	public static void skyCompletedChat(String name) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		Compat.chat(mc).addClientSystemMessage(net.minecraft.network.chat.Component.literal(" ").append(net.minecraft.network.chat.Component.literal("Wyzwania » ").withStyle(net.minecraft.ChatFormatting.LIGHT_PURPLE))
+			.append(net.minecraft.network.chat.Component.literal("Ukończono zadanie ").withStyle(net.minecraft.ChatFormatting.GRAY))
+			.append(net.minecraft.network.chat.Component.literal(name).withStyle(net.minecraft.ChatFormatting.GOLD, net.minecraft.ChatFormatting.BOLD))
+			.append(net.minecraft.network.chat.Component.literal("!").withStyle(net.minecraft.ChatFormatting.GRAY)));
+	}
+
 	/** The categories tracked from the menu, and whether the HUD module shows at all: "Nowicjusz,Wirtuoz visible true". */
 	public static String skyCategoryState() {
 		return String.join(",", SkyTasks.headerTiers()) + " visible " + new SkyTasks.Module().visible(net.minecraft.client.Minecraft.getInstance());

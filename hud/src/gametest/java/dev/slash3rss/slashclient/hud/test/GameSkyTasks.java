@@ -119,6 +119,63 @@ public class GameSkyTasks implements FabricClientGameTest {
 			elsewhere = context.computeOnClient(mc -> TestHooks.skyElsewhere(false));
 			check(elsewhere.equals("tasks true fish true"), "back on SkyUp", elsewhere);
 			context.takeScreenshot("skytasks-estimate");
+			// ready to hand in: the job's and the island's level (the sidebar) and the furnace with Fortune
+			// (the inventory) lit green in the GUI
+			context.runOnClient(mc -> TestHooks.skyTasksScreen(false, false));
+			context.waitTicks(15);
+			String lit = context.computeOnClient(mc -> TestHooks.skyHighlighted());
+			check(lit.equals("4,7,11"), "ready slots lit", lit);
+			// Składzik, Ciasno, ale własno and Piecoznawstwo tracked too
+			for (int slot : new int[] { 6, 7, 11 }) {
+				double[] at = context.computeOnClient(mc -> TestHooks.slotPoint(slot));
+				context.getInput().setCursorPos(at[0], at[1]);
+				context.waitTicks(3);
+				context.getInput().pressKey(options -> TestHooks.skyTrackKey());
+				context.waitTicks(3);
+			}
+			context.waitTicks(5);
+			context.takeScreenshot("skyready-gui");
+			// on the HUD the ready ones first, on a green band with "Hand in!"
+			context.setScreen(() -> null);
+			context.waitTicks(5);
+			rows = context.computeOnClient(mc -> TestHooks.skyRows());
+			int ready = rows.indexOf("✔ Ciasno, ale własno | Hand in! [lit]"), furnace = rows.indexOf("✔ Piecoznawstwo | Hand in! [lit]"), notYet = rows.indexOf("Podstawowy kamieniołom");
+			check(ready > 0 && furnace > ready && notYet > furnace && !rows.contains("Składzik | Hand in!") && rows.contains("Składzik | "), "ready tasks marked and first", rows);
+			context.takeScreenshot("skyready-hud");
+			// the compact mode: the badge only
+			context.runOnClient(mc -> TestHooks.skyTasksOptions(true, true));
+			rows = context.computeOnClient(mc -> TestHooks.skyRows());
+			check(rows.contains("✔ Ciasno, ale własno | Hand in!\n") && !rows.contains("[lit]"), "compact ready", rows);
+			context.waitTicks(3);
+			context.takeScreenshot("skyready-hud-compact");
+			context.runOnClient(mc -> TestHooks.skyTasksOptions(true, false));
+			// SkyUp's line after handing Składzik in: gone from the list, the tracking and the HUD at once
+			context.runOnClient(mc -> TestHooks.skyCompletedChat("Składzik"));
+			context.waitTicks(3);
+			tasks = context.computeOnClient(mc -> TestHooks.skyTasks());
+			tracked = context.computeOnClient(mc -> TestHooks.skyTracked());
+			rows = context.computeOnClient(mc -> TestHooks.skyRows());
+			categories = context.computeOnClient(mc -> TestHooks.skyCategories());
+			check(!tasks.contains("|Składzik:") && !tracked.contains("Składzik") && !rows.contains("Składzik") && tracked.contains("Nowicjusz|Ciasno, ale własno")
+				&& categories.equals("{Nowicjusz=4, Wirtuoz=16}"), "handed in from the chat", tasks + tracked + "\n" + rows + categories);
+			context.takeScreenshot("skyready-handed-in");
+			// another chest's line of the same words is no completion
+			context.runOnClient(mc -> TestHooks.skyChat("Ukończono zadanie Huta!"));
+			context.waitTicks(3);
+			check(context.computeOnClient(mc -> TestHooks.skyTasks()).contains("|Huta:"), "not SkyUp's line", "");
+			// the two ready ones untracked again (the rest of the test tracks the quarry and Huta only)
+			context.runOnClient(mc -> TestHooks.skyTasksScreen(false, false));
+			context.waitTicks(15);
+			for (int slot : new int[] { 7, 11 }) {
+				double[] at = context.computeOnClient(mc -> TestHooks.slotPoint(slot));
+				context.getInput().setCursorPos(at[0], at[1]);
+				context.waitTicks(3);
+				context.getInput().pressKey(options -> TestHooks.skyTrackKey());
+				context.waitTicks(3);
+			}
+			tracked = context.computeOnClient(mc -> TestHooks.skyTracked());
+			check(tracked.equals("Nowicjusz|Podstawowy kamieniołom,Nowicjusz|Huta"), "tracked again", tracked);
+			context.setScreen(() -> null);
 			// the furnace completed: the GUI without it, and the HUD without it
 			context.runOnClient(mc -> TestHooks.skyTasksScreen(true, false));
 			context.waitTicks(15);
