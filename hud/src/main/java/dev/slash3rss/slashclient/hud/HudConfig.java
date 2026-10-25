@@ -93,6 +93,13 @@ public final class HudConfig {
 		public boolean input;
 		/** Put in front of every message sent from this tab ("/msg Steve ", "/g ", "@"); "" = nothing. */
 		public String replyPrefix = "";
+		/** The sound of a mention caught by this tab ("" = the usual bell, "none" = silent; ChatTabs.SOUNDS). */
+		public String sound = "";
+
+		/** Never null: configs from before the field get "" (the usual bell). */
+		public String sound() {
+			return sound == null ? "" : sound;
+		}
 
 		/** Never null: configs from before the field get "". */
 		public String prefix() {

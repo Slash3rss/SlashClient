@@ -271,6 +271,25 @@ public class HudScreenshots implements FabricClientGameTest {
 			String after = context.computeOnClient(mc -> TestHooks.chatWindowSize("PM"));
 			if (!"210x8".equals(before) || !"290x12".equals(after)) throw new AssertionError("Resizing the PM window: " + before + " -> " + after);
 			context.takeScreenshot("chat-window-resized");
+			// a server's [Odpowiedz] in the window: its hover shows, and a click types its command in the chat
+			//#if MC >= 1.21.5
+			world.getServer().runCommand("tellraw @a [\"[MSG] Steve -> me: \",{\"text\":\"[Odpowiedz]\",\"color\":\"aqua\",\"click_event\":{\"action\":\"suggest_command\",\"command\":\"/msg Steve \"},\"hover_event\":{\"action\":\"show_text\",\"value\":\"Kliknij, aby odpisać\"}}]");
+			//#else
+			//$ world.getServer().runCommand("tellraw @a [\"[MSG] Steve -> me: \",{\"text\":\"[Odpowiedz]\",\"color\":\"aqua\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/msg Steve \"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"Kliknij, aby odpisać\"}}]");
+			//#endif
+			context.waitTicks(5);
+			double[] reply = context.computeOnClient(mc -> TestHooks.chatWindowClickable());
+			if (reply == null) throw new AssertionError("No clickable [Odpowiedz] in the PM window");
+			double guiScale = context.computeOnClient(mc -> mc.getWindow().getGuiScale());
+			context.getInput().setCursorPos(reply[0] * guiScale, reply[1] * guiScale);
+			context.waitTicks(3);
+			context.takeScreenshot("chat-window-hover");
+			context.runOnClient(mc -> TestHooks.mouse("press", reply));
+			context.runOnClient(mc -> TestHooks.mouse("release", reply));
+			context.waitTicks(2);
+			String typed = context.computeOnClient(mc -> TestHooks.chatInput());
+			if (!"/msg Steve ".equals(typed)) throw new AssertionError("A click on [Odpowiedz] in the window typed: " + typed);
+			reopenChat(context);
 			chatTabTyping(context);
 			// in the game: the window's lines fade like the chat's; a mention shows the "@" badge
 			context.setScreen(() -> null);
@@ -477,9 +496,18 @@ public class HudScreenshots implements FabricClientGameTest {
 
 			// the settings: a tab's more settings line with the prefix and the switch
 			context.runOnClient(mc -> TestHooks.chatTabTyping("PM", true, "/msg Steve "));
+			context.runOnClient(mc -> TestHooks.chatTabSound("PM", "pling"));
 			context.setScreen(() -> new HudEditScreen("chatTabs").tabMore(1));
 			context.waitTicks(10);
 			context.takeScreenshot("chattab-settings");
+			// a mention the PM tab catches rings its own sound; one no tab with a sound catches, the bell
+			String me = context.computeOnClient(mc -> mc.player.getName().getString());
+			String pm = context.computeOnClient(mc -> TestHooks.mentionSoundFor("[MSG] Steve -> me: hej " + me));
+			String plain = context.computeOnClient(mc -> TestHooks.mentionSoundFor("<Alex> hej " + me));
+			context.runOnClient(mc -> TestHooks.chatTabSound("PM", "none"));
+			String muted = context.computeOnClient(mc -> TestHooks.mentionSoundFor("[MSG] Steve -> me: cisza " + me));
+			context.runOnClient(mc -> TestHooks.chatTabSound("PM", ""));
+			if (!"pling".equals(pm) || !"".equals(plain) || !"none".equals(muted)) throw new AssertionError("Mention sounds per tab: " + pm + " / " + plain + " / " + muted);
 		} finally {
 			context.runOnClient(mc -> TestHooks.captureOutgoing(false));
 			context.runOnClient(mc -> TestHooks.chatTabTyping("PM", false, ""));

@@ -11,12 +11,16 @@ import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 //#if MC >= 1.21.11
 import net.minecraft.client.gui.ActiveTextCollector;
 //#endif
 //#if MC >= 26.1
 import net.minecraft.client.gui.components.ChatComponent;
+//#endif
+//#if MC >= 1.21.11
 import org.spongepowered.asm.mixin.Shadow;
 //#endif
 
@@ -29,6 +33,12 @@ abstract class ChatScreenMixin {
 	//#if MC >= 26.1
 	@Shadow
 	private ChatComponent.DisplayMode displayMode;
+	//#endif
+	//#if MC >= 1.21.11
+	@Shadow
+	private boolean handleComponentClicked(net.minecraft.network.chat.Style style, boolean insertionMode) {
+		return false;
+	}
 	//#endif
 
 	@Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
@@ -45,6 +55,18 @@ abstract class ChatScreenMixin {
 			cir.setReturnValue(true);
 			return;
 		}
+		// text in a chat window with its own action (a command to type or run, a link): as in the chat
+		if (e.button() == InputConstants.MOUSE_BUTTON_LEFT) {
+			net.minecraft.network.chat.Style inWindow = dev.slash3rss.slashclient.hud.ChatWindows.styleAt(e.x(), e.y());
+			if (inWindow != null && (inWindow.getClickEvent() != null || inWindow.getInsertion() != null)) {
+				//#if MC >= 1.21.11
+				cir.setReturnValue(handleComponentClicked(inWindow, Minecraft.getInstance().hasShiftDown()));
+				//#else
+				//$ cir.setReturnValue(((net.minecraft.client.gui.screens.Screen) (Object) this).handleComponentClicked(inWindow));
+				//#endif
+				return;
+			}
+		}
 		// by the constant: 26.3 numbers the buttons anew (left 1, right 3), and a plain 1 there took over the left click
 		if (e.button() != InputConstants.MOUSE_BUTTON_RIGHT || SlashHud.config == null || !SlashHud.config.chatCopy) return;
 		if (slashclient$clickable(e.x(), e.y())) return;
@@ -59,6 +81,18 @@ abstract class ChatScreenMixin {
 			default -> Compat.overlay(mc, Component.translatable("slashclient-hud.chat.copied"));
 		}
 		cir.setReturnValue(true);
+	}
+
+	/** Text in a chat window under the mouse: its hover shown as in the chat (a text, an item, an entity). */
+	@Inject(method = "extractRenderState", at = @At("TAIL"))
+	private void slashclient$windowHover(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta, CallbackInfo ci) {
+		net.minecraft.network.chat.Style style = dev.slash3rss.slashclient.hud.ChatWindows.styleAt(mouseX, mouseY);
+		if (style == null || style.getHoverEvent() == null) return;
+		//#if MC >= 26.1
+		((HoverEffectInvoker) g).slashclient$hoverEffect(Minecraft.getInstance().font, style, mouseX, mouseY);
+		//#else
+		//$ g.renderComponentHoverEffect(Minecraft.getInstance().font, style, mouseX, mouseY);
+		//#endif
 	}
 
 	/** The text under the mouse has its own action (a link, a command, text to insert): the game handles that click. */

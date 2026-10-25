@@ -29,6 +29,7 @@
 		"ChatComponentMixin",
 		"ChatFilterMixin",
 		"ChatScreenMixin",
+		"HoverEffectInvoker",
 		"ChatScreenAccessor",
 		"ChatScaleMixin",
 		"ConnectionAccessor",

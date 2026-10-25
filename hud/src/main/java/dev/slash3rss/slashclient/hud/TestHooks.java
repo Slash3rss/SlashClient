@@ -840,6 +840,18 @@ public final class TestHooks {
 		if (back == null || !ShareCode.encode(back).equals(code)) throw new AssertionError("share code does not round-trip: " + code);
 		if (ShareCode.decode("SCHUD1:not-a-code") != null || ShareCode.decode("hello") != null) throw new AssertionError("bad codes must be refused");
 		SlashHud.LOG.info("Share code ({} chars): {}", code.length(), code);
+		// only the chat tabs: back the same, a tab of the same name replaced, a new one added, no HUD code taken
+		HudConfig.ChatTab spy = new HudConfig.ChatTab("SPY", false, "{nick}");
+		spy.sound = "pling";
+		spy.replyPrefix = "/g ";
+		String tabs = ShareCode.encodeTabs(java.util.List.of(spy, new HudConfig.ChatTab("PM", true, "\\[msg\\]")));
+		java.util.List<HudConfig.ChatTab> read = ShareCode.decodeTabs(tabs);
+		if (read == null || read.size() != 2 || !"pling".equals(read.get(0).sound) || !"/g ".equals(read.get(0).prefix()) || !read.get(1).regex)
+			throw new AssertionError("tabs code does not round-trip: " + tabs);
+		if (ShareCode.decodeTabs(code) != null || ShareCode.decodeTabs("SCTABS1:not-a-code") != null) throw new AssertionError("bad tabs codes must be refused");
+		java.util.List<HudConfig.ChatTab> mine = new java.util.ArrayList<>(java.util.List.of(new HudConfig.ChatTab("PM", false, "old"), new HudConfig.ChatTab("@", false, "{nick}")));
+		int added = HudEditScreen.importTabs(mine, read);
+		if (added != 2 || mine.size() != 3 || !mine.get(0).regex || !mine.get(2).name.equals("SPY")) throw new AssertionError("tabs import: " + added + " " + mine.size());
 	}
 
 	public static void startBenchmark() {
@@ -1927,6 +1939,29 @@ public final class TestHooks {
 	}
 
 	/** What is typed in the open chat, or null. */
+	/** A tab's mention sound ("" = the usual bell). */
+	public static void chatTabSound(String name, String sound) {
+		for (HudConfig.ChatTab t : SlashHud.config.chatTabs) if (t.name.equals(name)) t.sound = sound;
+	}
+
+	/** The mention sound last played after `line` came in ("" = the bell, "none" = silent), or "-" when none rang. */
+	public static String mentionSoundFor(String line) {
+		ChatTabs.lastSound = "-";
+		ChatTabs.lastChimeForTest(0);
+		ChatTabs.onMessage(line);
+		return ChatTabs.lastSound;
+	}
+
+	/** A point (GUI coordinates) over text with a click action in an open chat window, or null. */
+	public static double[] chatWindowClickable() {
+		var w = net.minecraft.client.Minecraft.getInstance().getWindow();
+		for (int y = 0; y < w.getGuiScaledHeight(); y += 2) for (int x = 0; x < w.getGuiScaledWidth(); x += 2) {
+			var style = ChatWindows.styleAt(x, y);
+			if (style != null && style.getClickEvent() != null) return new double[] { x + 1, y + 1 };
+		}
+		return null;
+	}
+
 	public static String chatInput() {
 		if (!(screen() instanceof net.minecraft.client.gui.screens.ChatScreen chat)) return null;
 		try {

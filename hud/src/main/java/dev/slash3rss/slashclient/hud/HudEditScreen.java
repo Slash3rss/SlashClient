@@ -146,7 +146,7 @@ public class HudEditScreen extends Screen {
 
 	/** A tab row's top: the rows under the opened one move down by the extra line. */
 	private int tabRowY(int i) {
-		return tabsTop + i * TAB_ROW + (tabMore >= 0 && i > tabMore ? TAB_ROW : 0);
+		return tabsTop + i * TAB_ROW + (tabMore >= 0 && i > tabMore ? 2 * TAB_ROW : 0);
 	}
 
 	private boolean chatTabsPage() {
@@ -166,8 +166,8 @@ public class HudEditScreen extends Screen {
 		List<HudConfig.ChatTab> tabs = SlashHud.config.chatTabs;
 		prefixField = null;
 		if (tabMore >= Math.min(tabs.size(), tabsFit)) tabMore = -1;
-		// the opened tab's extra line takes one row's room
-		if (tabMore >= 0) tabsFit = Math.max(tabMore + 1, tabsFit - 1);
+		// the opened tab's two extra lines take two rows' room
+		if (tabMore >= 0) tabsFit = Math.max(tabMore + 1, tabsFit - 2);
 		for (int i = 0; i < Math.min(tabs.size(), tabsFit); i++) {
 			HudConfig.ChatTab tab = tabs.get(i);
 			int y = tabRowY(i) + 5;
@@ -271,12 +271,36 @@ public class HudEditScreen extends Screen {
 			settingsOf = null;
 			reopen();
 		}));
+		List<HudConfig.ChatTab> tabs = SlashHud.config.chatTabs;
+		// only the tabs as a code to share, and a code pasted back (tabs of the same name are replaced),
+		// on the right of the title: with their names when there is room, else as icons
+		Component copy = Ui.tr("slashclient-hud.chat.copyTabs"), paste = Ui.tr("slashclient-hud.chat.pasteTabs");
+		boolean named = Ui.buttonWidth(copy, "copy", 18, 6) + Ui.buttonWidth(paste, "paste", 18, 6) + 6 < w - 106 - 90;
+		int copyW = named ? Ui.buttonWidth(copy, "copy", 18, 6) : 22, pasteW = named ? Ui.buttonWidth(paste, "paste", 18, 6) : 22;
+		int pasteX = x + w - pasteW, copyX = pasteX - 6 - copyW;
+		Ui.button(g, "copyTabs", copyX, y, copyW, 18, "copy", named ? copy : Component.empty(), false, mx, my);
+		hits.add(new Hit(copyX, y, copyW, 18, () -> {
+			minecraft.keyboardHandler.setClipboard(ShareCode.encodeTabs(tabs));
+			tabsStatus = Ui.tr("slashclient-hud.chat.tabsCopied");
+		}));
+		Ui.button(g, "pasteTabs", pasteX, y, pasteW, 18, "paste", named ? paste : Component.empty(), false, mx, my);
+		hits.add(new Hit(pasteX, y, pasteW, 18, () -> {
+			List<HudConfig.ChatTab> pasted = ShareCode.decodeTabs(minecraft.keyboardHandler.getClipboard());
+			if (pasted == null) {
+				tabsStatus = Ui.tr("slashclient-hud.chat.tabsInvalid").withStyle(st -> st.withColor(Ui.DANGER));
+				return;
+			}
+			int added = importTabs(tabs, pasted);
+			tabMore = -1;
+			tabsChanged();
+			reopen();
+			tabsStatus = Ui.tr("slashclient-hud.chat.tabsPasted", added);
+		}));
 		Ui.round(g, x + 78, y, 20, 18, 4, 0xFF1B2B4D);
 		Ui.icon(g, e.icon(), x + 82, y + 3, 12, Ui.ACCENT_LIGHT);
-		Ui.draw(g, Ui.fit(Ui.trBold(e.nameKey()), w - 106), x + 104, y + 5, Ui.TEXT);
+		Ui.draw(g, Ui.fit(Ui.trBold(e.nameKey()), copyX - x - 110), x + 104, y + 5, Ui.TEXT);
 		Ui.wrapped(g, Ui.tr("slashclient-hud.chat.help"), x, y + 26, w, Ui.TEXT_2);
 
-		List<HudConfig.ChatTab> tabs = SlashHud.config.chatTabs;
 		String error = "";
 		for (int i = 0; i < tabFields.size() / 3 && i < tabs.size(); i++) {
 			HudConfig.ChatTab tab = tabs.get(i);
@@ -331,10 +355,28 @@ public class HudEditScreen extends Screen {
 		}
 		int hidden = Math.max(0, tabs.size() - tabsFit);
 		if (!error.isEmpty()) Ui.draw(g, Ui.fit(Ui.text(error), w), x, y + h - 10, Ui.DANGER);
+		else if (tabsStatus != null) Ui.draw(g, Ui.fit(tabsStatus, w), x, y + h - 10, Ui.GREEN);
 		else if (hidden > 0) Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.chat.more", hidden), w), x, y + h - 10, Ui.MUTED);
 	}
 
-	/** The opened tab's extra line: "Reply prefix" with its field, and the switch for its window's typing line. */
+	/** What copying or pasting the tabs did, under them (null: nothing yet). */
+	private Component tabsStatus;
+
+	/** Pasted tabs added to the player's: one of the same name is replaced, the rest added while there is room. How many came in. */
+	static int importTabs(List<HudConfig.ChatTab> tabs, List<HudConfig.ChatTab> pasted) {
+		int n = 0;
+		for (HudConfig.ChatTab t : pasted) {
+			int same = -1;
+			for (int i = 0; i < tabs.size(); i++) if (tabs.get(i).name.equalsIgnoreCase(t.name)) same = i;
+			if (same >= 0) tabs.set(same, t);
+			else if (tabs.size() < MAX_TABS) tabs.add(t);
+			else continue;
+			n++;
+		}
+		return n;
+	}
+
+	/** The opened tab's extra lines: "Reply prefix" with its field, the switch for its window's typing line, and its mention sound. */
 	private void drawTabMore(GuiGraphicsExtractor g, HudConfig.ChatTab tab, int mx, int my, int x, int y, int w) {
 		Ui.draw(g, Ui.tr("slashclient-hud.chat.prefix"), x + 6, y + 5, Ui.TEXT_2);
 		EditBox box = prefixField;
@@ -346,6 +388,19 @@ public class HudEditScreen extends Screen {
 		Ui.toggle(g, "chatInput:" + tab.name, tx, y + 4, tab.input);
 		hits.add(new Hit(tx - 6 - iw, y, iw + 28, 18, () -> {
 			tab.input = !tab.input;
+			tabsChanged();
+		}));
+		// the second line: the sound of a mention this tab catches, heard when changed
+		int sy = y + TAB_ROW;
+		Ui.draw(g, Ui.tr("slashclient-hud.chat.sound"), x + 6, sy + 5, Ui.TEXT_2);
+		Component now = Ui.tr("slashclient-hud.chat.sound." + (tab.sound().isEmpty() ? "default" : tab.sound()));
+		String icon = "none".equals(tab.sound()) ? "bell-slash" : "bell";
+		int bw = Math.max(90, Ui.buttonWidth(now, icon, 18, 6)), bx = Math.max(box.getX() - 5, x + 6 + Ui.width(Ui.tr("slashclient-hud.chat.sound")) + 10);
+		Ui.button(g, "chatSound:" + tab.name, bx, sy, bw, 18, icon, now, false, mx, my);
+		hits.add(new Hit(bx, sy, bw, 18, () -> {
+			List<String> all = List.of(ChatTabs.SOUNDS);
+			tab.sound = all.get((all.indexOf(tab.sound()) + 1) % all.size());
+			ChatTabs.playSound(minecraft, tab.sound());
 			tabsChanged();
 		}));
 	}

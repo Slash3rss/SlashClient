@@ -32,6 +32,10 @@ public final class ChatTabs {
 	/** Lines that named the player since the chat was last open. */
 	private static int mentions;
 	private static long lastChime;
+
+	static void lastChimeForTest(long at) {
+		lastChime = at;
+	}
 	private static final Map<String, Pattern> compiled = new HashMap<>();
 
 	static void register() {
@@ -185,6 +189,36 @@ public final class ChatTabs {
 		});
 	}
 
+	/** The last mention sound chosen (for the test). */
+	static String lastSound;
+
+	/** The sounds a tab's mention can have, in the order the setting cycles through them ("" = the usual bell). */
+	public static final String[] SOUNDS = { "", "none", "pling", "chime", "harp", "orb", "amethyst", "hat" };
+
+	/** A mention's sound, also as a preview when the setting is changed. */
+	public static void playSound(Minecraft mc, String sound) {
+		lastSound = sound;
+		if ("none".equals(sound)) return;
+		net.minecraft.sounds.SoundEvent event;
+		float pitch = 1.4f;
+		switch (sound) {
+			case "pling" -> event = net.minecraft.sounds.SoundEvents.NOTE_BLOCK_PLING.value();
+			case "chime" -> event = net.minecraft.sounds.SoundEvents.NOTE_BLOCK_CHIME.value();
+			case "harp" -> event = net.minecraft.sounds.SoundEvents.NOTE_BLOCK_HARP.value();
+			case "orb" -> {
+				event = net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP;
+				pitch = 1.0f;
+			}
+			case "amethyst" -> {
+				event = net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_CHIME;
+				pitch = 1.0f;
+			}
+			case "hat" -> event = net.minecraft.sounds.SoundEvents.NOTE_BLOCK_HAT.value();
+			default -> event = net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BELL.value();
+		}
+		mc.getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(event, pitch, 0.7f));
+	}
+
 	/** A new line in chat: tabs that catch it and are not open count it; a line with our nick chimes. */
 	public static void onMessage(String text) {
 		Minecraft mc = Minecraft.getInstance();
@@ -194,7 +228,13 @@ public final class ChatTabs {
 			// several lines at once ring once
 			if (now - lastChime > 700) {
 				lastChime = now;
-				mc.getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BELL.value(), 1.4f, 0.7f));
+				// the first tab catching the line with a sound of its own decides it
+				String sound = "";
+				for (HudConfig.ChatTab t : SlashHud.config.chatTabs) if (!t.sound().isEmpty() && matches(t, text)) {
+					sound = t.sound();
+					break;
+				}
+				playSound(mc, sound);
 			}
 		}
 		List<HudConfig.ChatTab> tabs = SlashHud.config.chatTabs;
