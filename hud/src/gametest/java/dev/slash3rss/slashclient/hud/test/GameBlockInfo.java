@@ -57,6 +57,24 @@ public class GameBlockInfo implements FabricClientGameTest {
 			String best = context.computeOnClient(mc -> TestHooks.blockInfoLines());
 			check(best.contains("best Netherite Pickaxe · min. Diamond Pickaxe"), "obsidian, the best pickaxe", best);
 			context.takeScreenshot("blockinfo-best-tool");
+			// dug half way: the bar along the bottom; another block dug: none for this one
+			float half = context.computeOnClient(mc -> TestHooks.digging(5, 99, 1, 0.5f));
+			// really dug for a while with a diamond pickaxe: the bar on the screen
+			world.getServer().runCommand("gamemode survival @a");
+			world.getServer().runCommand("item replace entity @p weapon.mainhand with minecraft:diamond_pickaxe");
+			context.waitTicks(5);
+			context.getInput().holdKey(o -> o.keyAttack);
+			context.waitTicks(40);
+			float dug = context.computeOnClient(mc -> TestHooks.breakingAt(5, 99, 1));
+			context.takeScreenshot("blockinfo-breaking");
+			context.getInput().releaseKey(o -> o.keyAttack);
+			if (dug <= 0.05f || dug >= 1f) throw new AssertionError("Block info's breaking bar while digging: " + dug);
+			float other = context.computeOnClient(mc -> {
+				TestHooks.digging(6, 99, 1, 0.5f);
+				return TestHooks.breakingAt(5, 99, 1);
+			});
+			context.runOnClient(mc -> TestHooks.digging(5, 99, 1, -1));
+			if (half != 0.5f || other != -1f) throw new AssertionError("Block info's breaking bar (this block, another): " + half + " " + other);
 			//#if MC >= 1.21.9
 			// a shelf with five diamonds in its first slot
 			server.runCommand("setblock 5 100 3 minecraft:oak_shelf[facing=north]{Items:[{Slot:0b,id:\"minecraft:diamond\",count:5}]}");

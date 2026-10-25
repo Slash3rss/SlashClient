@@ -13,12 +13,12 @@ app.whenReady().then(() => {
   const win = new BrowserWindow({
     width, height, x: workArea.x + workArea.width - width - 16, y: workArea.y + workArea.height - height - 16,
     alwaysOnTop: true, resizable: true, minimizable: true, maximizable: false, autoHideMenuBar: true,
-    title: 'Testy SlashClient', backgroundColor: '#0a0d14', show: false,
+    title: `Testy SlashClient ${arg('mc', '')}`, backgroundColor: '#0a0d14', show: false,
     // a local page of our own reading local logs: no remote content ever loads here
     webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
   win.loadFile(path.join(__dirname, 'index.html'), {
-    query: { mc: arg('mc', '?'), n: arg('n', '4'), logs: path.resolve(__dirname, '..', 'build'), hud: path.resolve(__dirname, '..') },
+    query: { mc: arg('mc', '?'), n: arg('n', '4'), run: arg('run', ''), logs: path.resolve(__dirname, '..', 'build'), hud: path.resolve(__dirname, '..') },
   });
   // shown without taking the focus from what the player is doing
   win.once('ready-to-show', () => win.showInactive());

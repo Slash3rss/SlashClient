@@ -17,11 +17,14 @@ NO_COMPILE="-x compileJava -x processResources -x compileGametestJava -x process
 export NO_COMPILE
 pids=()
 for i in $(seq 1 "$n"); do rm -f "build/gametest-$i.log" "build/gametest-$i.status"; done
+# this run's mark: a progress window of an earlier run sees another one started and keeps its own results
+run="$mc-$(date +%s)"
+echo "$run" > build/gametest-run
 # a small window with the progress (progress/; off with SLASHCLIENT_TEST_WINDOW=0, never on CI)
 electron=../node_modules/.bin/electron
 if [ -z "${CI:-}" ] && [ "${SLASHCLIENT_TEST_WINDOW:-1}" != 0 ] && [ -e "$electron" ]; then
   # the window's "Restart" runs a share again with the same gradle arguments
-  SLASHCLIENT_TEST_ARGS="$*" "$electron" progress --mc="$mc" --n="$n" > /dev/null 2>&1 &
+  SLASHCLIENT_TEST_ARGS="$*" "$electron" progress --mc="$mc" --n="$n" --run="$run" > /dev/null 2>&1 &
 fi
 for i in $(seq 1 "$n"); do
   rm -rf "build/run/clientGameTest-${i}of$n/screenshots"
@@ -43,8 +46,8 @@ for i in $(seq 1 "$n"); do
     cp "build/gametest-$i.log" "build/gametest-$mc-$i.failed.log"
     echo "share $i/$n: FAILED, see hud/build/gametest-$mc-$i.failed.log"
     # the test's own failure first; the game's harmless warnings (the Windows counters' OSHI one) are no reason
-    reason=$(grep -m1 -A8 "AssertionError\|Test .* failed\|Minecraft has crashed\|NoClassDefFoundError\|ClassNotFoundException" "build/gametest-$i.log")
-    [ -z "$reason" ] && reason=$(grep -v "HkeyPerformanceDataUtil\|Win32Exception\|Advapi32Util" "build/gametest-$i.log" | grep -m1 -A8 "Exception:")
+    reason=$(grep -m1 -A8 "AssertionError\|Test .* failed\|Minecraft has crashed\|NoClassDefFoundError\|ClassNotFoundException\|Caused by: " "build/gametest-$i.log")
+    [ -z "$reason" ] && reason=$(grep -v "HkeyPerformanceDataUtil\|Win32Exception\|Advapi32Util\|Realms server" "build/gametest-$i.log" | grep -m1 -A8 "Exception:")
     printf '%s
 ' "$reason" | sed 's/^/    /'
     failed=1

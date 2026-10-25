@@ -178,6 +178,7 @@ public final class Catalog {
 				case "block" -> {
 					settings.add(new Toggle("slashclient-hud.set.blockTool", () -> cfg.blockTool, v -> cfg.blockTool = v));
 					settings.add(new Toggle("slashclient-hud.set.blockBestTool", () -> cfg.blockBestTool, v -> cfg.blockBestTool = v));
+					settings.add(new Toggle("slashclient-hud.set.blockBreakBar", () -> cfg.blockBreakBar, v -> cfg.blockBreakBar = v));
 					settings.add(new Toggle("slashclient-hud.set.blockGrowth", () -> cfg.blockGrowth, v -> cfg.blockGrowth = v));
 					settings.add(new Toggle("slashclient-hud.set.blockDetails", () -> cfg.blockDetails, v -> cfg.blockDetails = v));
 					settings.add(new Toggle("slashclient-hud.set.blockBees", () -> cfg.blockBees, v -> cfg.blockBees = v));

@@ -160,7 +160,11 @@ public final class SkyWardrobe {
 
 		private Shown shown(Minecraft mc) {
 			if (visible(mc)) return new Shown(worn(mc), saved().on, saved().seen);
-			ItemStack chest = new ItemStack(Items.DIAMOND_CHESTPLATE), legs = new ItemStack(Items.DIAMOND_LEGGINGS);
+			// out of a world (the main menu's editor) items cannot be made: the sample has none then
+			ItemStack chest = dev.slash3rss.slashclient.hud.ui.Ui.stack(Items.DIAMOND_CHESTPLATE), legs = dev.slash3rss.slashclient.hud.ui.Ui.stack(Items.DIAMOND_LEGGINGS);
+			if (chest == null || legs == null) return new Shown(List.of(), true, true);
+			chest = chest.copy();
+			legs = legs.copy();
 			chest.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("» Kosmetyczna zbroja «"));
 			legs.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("» Kosmetyczne spodnie «"));
 			return new Shown(List.of(chest, legs), true, true);

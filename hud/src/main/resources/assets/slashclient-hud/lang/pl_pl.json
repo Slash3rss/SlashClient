@@ -100,6 +100,7 @@
 	"slashclient-hud.set.ownRadius": "Własne zaokrąglenie rogów",
 	"slashclient-hud.set.radius": "Zaokrąglenie rogów",
 	"slashclient-hud.set.radiusAll": "Zaokrąglenie rogów modułów",
+	"slashclient-hud.set.blockBreakBar": "Pasek postępu niszczenia",
 	"slashclient-hud.set.blockGrowth": "Wzrost roślin",
 	"slashclient-hud.set.blockPower": "Sygnał redstone",
 	"slashclient-hud.set.blockCoords": "Współrzędne bloku",

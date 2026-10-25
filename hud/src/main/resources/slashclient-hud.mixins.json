@@ -35,6 +35,7 @@
 		"RoundFillMixin",
 		"ConfirmScreenAccessor",
 		"AutoToolAttackMixin",
+		"DestroyProgressAccessor",
 		"ChatScreenAccessor",
 		"ChatScaleMixin",
 		"ConnectionAccessor",

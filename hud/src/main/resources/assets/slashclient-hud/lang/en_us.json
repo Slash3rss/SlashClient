@@ -100,6 +100,7 @@
 	"slashclient-hud.set.ownRadius": "Own corner rounding",
 	"slashclient-hud.set.radius": "Corner rounding",
 	"slashclient-hud.set.radiusAll": "Module corner rounding",
+	"slashclient-hud.set.blockBreakBar": "Breaking progress bar",
 	"slashclient-hud.set.blockGrowth": "Crop growth",
 	"slashclient-hud.set.blockPower": "Redstone signal",
 	"slashclient-hud.set.blockCoords": "Block coordinates",

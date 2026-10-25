@@ -442,6 +442,8 @@ public final class HudConfig {
 	public boolean blockTool = true, blockBees = true, blockShelf = true, blockFrames = true;
 	/** Block info: the fastest tool in the game that makes the block drop, and the weakest that still does. */
 	public boolean blockBestTool = true;
+	/** Block info: a bar along its bottom with how far the block being dug is broken. */
+	public boolean blockBreakBar = true;
 	/** FPS green, yellow or red by how smooth the game runs. */
 	public boolean fpsColored = false;
 	public boolean effectIcons = true;
@@ -883,6 +885,7 @@ public final class HudConfig {
 		blockShelf = other.blockShelf;
 		blockFrames = other.blockFrames;
 		blockBestTool = other.blockBestTool;
+		blockBreakBar = other.blockBreakBar;
 		fpsColored = other.fpsColored;
 		effectIcons = other.effectIcons;
 		chatStack = other.chatStack;

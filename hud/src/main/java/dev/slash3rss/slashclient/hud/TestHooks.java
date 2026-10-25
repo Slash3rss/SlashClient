@@ -1963,6 +1963,22 @@ public final class TestHooks {
 
 	/** What is typed in the open chat, or null. */
 	/** Block info's extra lines for the block looked at, with all of them switched on. */
+	/** As if the player were digging `pos` this far (or stopped, with a negative `progress`); what block info then reads. */
+	public static float digging(int x, int y, int z, float progress) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		var dig = (dev.slash3rss.slashclient.hud.mixin.DestroyProgressAccessor) mc.gameMode;
+		var pos = new net.minecraft.core.BlockPos(x, y, z);
+		dig.slashclient$setDestroying(progress >= 0);
+		dig.slashclient$setPos(pos);
+		dig.slashclient$setProgress(Math.max(0, progress));
+		return ExtraModules.BlockInfo.breaking(mc, pos);
+	}
+
+	/** What block info reads for that block: how far it is broken (-1: not being dug). */
+	public static float breakingAt(int x, int y, int z) {
+		return ExtraModules.BlockInfo.breaking(net.minecraft.client.Minecraft.getInstance(), new net.minecraft.core.BlockPos(x, y, z));
+	}
+
 	public static String blockInfoLines() {
 		HudConfig c = SlashHud.config;
 		c.blockGrowth = c.blockDetails = c.blockPower = c.blockCoords = c.blockLight = c.blockHardness = c.blockId = c.blockState = true;

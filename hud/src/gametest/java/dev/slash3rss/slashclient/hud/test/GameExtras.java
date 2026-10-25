@@ -100,7 +100,9 @@ public class GameExtras implements FabricClientGameTest {
 			// the × shows with the mouse on the module (the test's cursor sits in GUI points × scale)
 			double scale = context.computeOnClient(mc -> mc.getWindow().getScreenWidth() / (double) mc.getWindow().getGuiScaledWidth());
 			context.getInput().setCursorPos(x[0] * scale, x[1] * scale);
-			context.waitTicks(3);
+			// the × is there once the editor has the module under the mouse (a frame or a few later)
+			for (int t = 0; t < 40 && !"fps".equals(context.computeOnClient(mc -> TestHooks.editorHovered())); t++) context.waitTick();
+			context.waitTicks(2);
 			context.takeScreenshot("extras-hide-module");
 			context.runOnClient(mc -> TestHooks.mouse("press", x));
 			context.waitTicks(2);

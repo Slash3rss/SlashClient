@@ -861,6 +861,20 @@ public final class ExtraModules {
 				text(g, mc, line.getKey(), x + PAD + 20, ly, line.getValue());
 				ly += 10;
 			}
+			// how far the block being dug is broken: a thin bar in the bottom edge
+			float broken = breaking(mc, pos);
+			if (cfg.blockBreakBar && broken >= 0) {
+				int w = width(mc), h = height(mc), barX = x + PAD, barW = w - PAD * 2, barY = y + h - 2;
+				g.fill(barX, barY, barX + barW, barY + 2, 0x80000000);
+				g.fill(barX, barY, barX + Math.round(barW * broken), barY + 2, broken >= 1 ? 0xFF55FF55 : 0xFFFFCC55);
+			}
+		}
+
+		/** How far this block is broken by the player digging it now (0..1), or -1 when it is not being dug. */
+		static float breaking(Minecraft mc, BlockPos pos) {
+			if (mc.gameMode == null || !mc.gameMode.isDestroying()) return -1;
+			var dig = (dev.slash3rss.slashclient.hud.mixin.DestroyProgressAccessor) mc.gameMode;
+			return pos.equals(dig.slashclient$pos()) ? Math.max(0, Math.min(1, dig.slashclient$progress())) : -1;
 		}
 
 		@Override
@@ -875,7 +889,8 @@ public final class ExtraModules {
 			pose.pushMatrix();
 			pose.translate(x + PAD + 20, y + PAD + 10);
 			pose.scale(0.625f, 0.625f);
-			g.item(new ItemStack(Items.IRON_PICKAXE), 0, 0);
+			// out of a world (the main menu's editor) items cannot be made: Ui.icon stands in
+			Ui.icon(g, Items.IRON_PICKAXE, "m-autotool", 0, 0);
 			pose.popMatrix();
 			text(g, mc, Component.literal("0.75 s"), x + PAD + 32, y + PAD + 11, 0xFFAAAAAA);
 		}

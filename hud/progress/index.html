@@ -41,7 +41,17 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const q = new URLSearchParams(location.search);
-const mc = q.get('mc'), n = Number(q.get('n')) || 4, logs = q.get('logs'), hud = q.get('hud');
+const mc = q.get('mc'), n = Number(q.get('n')) || 4, logs = q.get('logs'), hud = q.get('hud'), run = q.get('run') || '';
+
+/** Another run (another version) started in the same logs: this window keeps showing its own run as it ended. */
+function overtaken() {
+  if (!run) return false;
+  try {
+    return fs.readFileSync(path.join(logs, 'gametest-run'), 'utf8').trim() !== run;
+  } catch {
+    return false;
+  }
+}
 const { execFile, spawn } = require('node:child_process');
 
 /** Shares asked to run again: the one clicked once waits for a second click (until then: when). */
@@ -187,10 +197,18 @@ function render() {
     ? (failed ? 'Zakończone z błędami' : 'Wszystko przeszło')
     : left ? `zostało ok. ${fmt(left)}` : '';
   document.getElementById('clock').textContent = fmt((Date.now() - started) / 1000);
-  document.title = allFinished ? (failed ? '✖ Testy SlashClient' : '✔ Testy SlashClient') : `${total ? Math.round((done / total) * 100) : 0}% · Testy SlashClient`;
+  document.title = allFinished ? (failed ? `✖ Testy SlashClient ${mc}` : `✔ Testy SlashClient ${mc}`) : `${total ? Math.round((done / total) * 100) : 0}% · Testy SlashClient ${mc}`;
 }
 render();
-setInterval(render, 1000);
+const timer = setInterval(() => {
+  if (overtaken()) {
+    // the logs belong to the next run now: what is shown stays, with the version in the title
+    clearInterval(timer);
+    document.getElementById('eta').textContent += ` · ${mc}, potem ruszył kolejny przebieg`;
+    return;
+  }
+  render();
+}, 1000);
 </script>
 </body>
 </html>
