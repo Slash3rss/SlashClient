@@ -1580,7 +1580,16 @@ handle('skin:save', async (accountId: string) => {
   const { canceled, filePath } = await dialog.showSaveDialog(win!, { defaultPath: `${account.name}.png`, filters: [{ name: 'PNG', extensions: ['png'] }] });
   if (!canceled && filePath) await fsp.writeFile(filePath, Buffer.from(dataUrl.split(',')[1], 'base64'));
 });
-handle('update:install', () => installUpdate());
+/** "Install" pressed while a game runs: the launcher quits to install, so it waits for the last game to close. */
+let installAfterGames = false;
+handle('update:install', () => {
+  if (games.size) {
+    installAfterGames = true;
+    return 'after-game';
+  }
+  installUpdate();
+  return 'now';
+});
 handle('update:status', () => updateStatus());
 handle('update:check', () => checkForUpdates());
 // macOS: the new version from the website (Apple Silicon or Intel, like this build)
@@ -1786,6 +1795,11 @@ async function launchGame(profileId: string, accountId: string, server?: string,
     games.delete(profile.id);
     // the game is gone: its LAN world too, and the ports into friends' worlds
     if (!games.size) lan.stop();
+    // an update waiting for the game: installed once what follows the game (settings, the session) is written
+    if (!games.size && installAfterGames) {
+      installAfterGames = false;
+      setTimeout(() => installUpdate(), 5_000);
+    }
     const killRequested = running.killRequested;
     // the console goes into the history; the Play screen lists it once it is written
     consoleLog?.end(code, code !== 0 && !killRequested).then(() => send('console:saved', { profileId: profile.id })).catch(() => {});

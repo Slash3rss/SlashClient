@@ -173,7 +173,10 @@ export async function launch({ profile, account, onStage, onLog, server, world, 
   // a failed preparation (e.g. the registry) never stops the game
   await prepareJava?.(java).catch((err) => onLog(`> ${String((err as Error)?.message ?? err)}`));
   const env = extraEnv && Object.keys(extraEnv).length ? { ...process.env, ...extraEnv } : undefined;
-  const child = spawn(java, args, { cwd: gameDir, stdio: ['ignore', 'pipe', 'pipe'], env });
+  // on Windows a child of the launcher is closed together with it (Node puts it in a job that ends
+  // with the launcher): the game is started on its own, so quitting the launcher (to update it, say)
+  // never takes a running game down with it; without a console window of its own
+  const child = spawn(java, args, { cwd: gameDir, stdio: ['ignore', 'pipe', 'pipe'], env, detached: process.platform === 'win32', windowsHide: true });
   child.stdout?.setEncoding('utf8').on('data', createLogParser(onLog));
   child.stderr?.setEncoding('utf8').on('data', createLogParser(onLog));
   return child;

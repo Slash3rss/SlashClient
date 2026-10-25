@@ -309,6 +309,11 @@ function trimStack() {
     else dismiss(c);
   }
 }
+/** Installs the downloaded update; with a game running it waits for it to close (quitting would end the game). */
+async function installUpdateNow() {
+  if ((await api.installUpdate()) === 'after-game') toast(t('Aktualizacja zainstaluje się, gdy zamkniesz grę.'));
+}
+
 function toast(message: string, isError = false, action?: { label: string; run: () => void; icon?: string; onGone?: () => void }) {
   const close = el('button', { type: 'button', className: 'notif-close', title: t('Zamknij') }, el('i', { className: 'fa-solid fa-xmark' }));
   const text = el('div', { className: 'notif-text', textContent: message });
@@ -5040,7 +5045,7 @@ function showUpdate(u: UpdateStatus) {
 }
 api.on('update:status', showUpdate);
 api.updateStatus().then(showUpdate);
-$('#update-install').addEventListener('click', () => api.installUpdate());
+$('#update-install').addEventListener('click', () => installUpdateNow());
 $('#update-download').addEventListener('click', () => api.downloadUpdate());
 $('#update-retry').addEventListener('click', () => api.retryUpdate());
 $('#update-move').addEventListener('click', async () => {

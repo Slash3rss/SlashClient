@@ -140,9 +140,14 @@ export function createLauncherNews(d: LauncherNewsDeps) {
     return box;
   }
 
+  /** A game runs: the update waits for it, and the player is told. */
+  function afterGame(how: 'now' | 'after-game') {
+    if (how === 'after-game') d.toast(t('Aktualizacja zainstaluje się, gdy zamkniesz grę.'));
+  }
+
   /** "Aktualizuj": the update the launcher already knows (the bar at the top), or a check for it now. */
   async function updateNow(button: HTMLButtonElement) {
-    if (update.state === 'ready' && !update.rollback) return api.installUpdate();
+    if (update.state === 'ready' && !update.rollback) return afterGame(await api.installUpdate());
     if (update.state === 'dev') return d.toast(t('To wersja deweloperska – nie aktualizuje się sama.'), true);
     button.disabled = true;
     try {
@@ -150,7 +155,7 @@ export function createLauncherNews(d: LauncherNewsDeps) {
       if (update.pausedUntil) await api.resumeUpdates();
       const u: UpdateState = await api.checkForUpdates();
       update = u;
-      if (u.state === 'ready') return api.installUpdate();
+      if (u.state === 'ready') return afterGame(await api.installUpdate());
       d.toast(u.state === 'none' ? t('Masz już najnowszą wersję, jaką serwer udostępnia.') : t('Pobieram nową wersję – gdy będzie gotowa, pasek na górze pozwoli uruchomić launcher ponownie.'), u.state === 'error');
     } catch (err) {
       d.toast(d.errorText(err), true);

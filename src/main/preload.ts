@@ -121,7 +121,8 @@ const api = {
   removeSkinPreset: (id: string) => invoke('skinlib:remove', id),
   applySkinPreset: (accountId: string, id: string) => invoke('skinlib:apply', accountId, id),
   listNews: (offset: number, limit: number, filter: string) => invoke('news:list', offset, limit, filter),
-  installUpdate: () => invoke('update:install'),
+  /** "now", or "after-game" when a game runs: the update installs once it is closed. */
+  installUpdate: () => invoke('update:install') as Promise<'now' | 'after-game'>,
   updateStatus: () => invoke('update:status'),
   checkForUpdates: () => invoke('update:check'),
   downloadUpdate: () => invoke('update:download'),

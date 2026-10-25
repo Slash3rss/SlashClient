@@ -16,6 +16,7 @@ export const LAUNCHER_NEWS_EN: Record<string, string> = {
   'Nie udało się pobrać nowości launchera.': 'Could not load the launcher news.',
   'Brak opisu zmian.': 'No description of the changes.',
   'Masz już najnowszą wersję, jaką serwer udostępnia.': 'You already have the newest version the server offers.',
+  'Aktualizacja zainstaluje się, gdy zamkniesz grę.': 'The update installs once you close the game.',
   'Pobieram nową wersję – gdy będzie gotowa, pasek na górze pozwoli uruchomić launcher ponownie.': 'Downloading the new version – when it is ready, the bar at the top lets you restart the launcher.',
   'To wersja deweloperska – nie aktualizuje się sama.': 'This is a development build – it does not update itself.',
   // "Co nowego"
