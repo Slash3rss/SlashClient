@@ -145,6 +145,50 @@ public final class Social {
 		return friends;
 	}
 
+	/** A player asking to be the player's friend: their id (what accepting names), name and handle. */
+	public record Request(String id, String name, String handle) {}
+
+	private static volatile List<Request> incoming = List.of();
+	/** Requests with an answer on the way. */
+	private static final java.util.Set<String> answering = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+	/** The friend requests to the player, the oldest first. */
+	public static List<Request> incoming() {
+		return incoming;
+	}
+
+	public static boolean answering(String id) {
+		return answering.contains(id);
+	}
+
+	/**
+	 * ✔ or ×: the request taken (they are a friend now) or turned down. An older launcher does not let
+	 * the game do it: then it says so, and the launcher's friends list is the place for it.
+	 */
+	public static void answer(Request r, boolean accept) {
+		if (!bridged() || !answering.add(r.id())) return;
+		Thread.ofVirtual().start(() -> {
+			try {
+				if (accept) api("POST", "/v1/friends/requests/" + r.id() + "/accept", null);
+				else api("DELETE", "/v1/friends/requests/" + r.id(), null);
+				incoming = incoming.stream().filter(x -> !x.id().equals(r.id())).toList();
+				if (accept) toast(r.name(), Component.translatable("slashclient-hud.friends.accepted").getString(), null);
+				refreshFriends();
+			} catch (Exception e) {
+				boolean old = String.valueOf(e.getMessage()).contains("403");
+				toast(Component.translatable("slashclient-hud.friends.answerFailed").getString(),
+					old ? Component.translatable("slashclient-hud.friends.answerOld").getString() : String.valueOf(e.getMessage()).replaceFirst("^HTTP \\d+ ", ""), "info");
+			} finally {
+				answering.remove(r.id());
+			}
+		});
+	}
+
+	/** For the test: requests as the server lists them. */
+	public static void incomingForTest(List<Request> list) {
+		incoming = List.copyOf(list);
+	}
+
 	public static int onlineCount() {
 		return (int) friends.stream().filter(f -> !"offline".equals(f.status())).count();
 	}
@@ -271,6 +315,14 @@ public final class Social {
 		for (JsonElement el : res.getAsJsonArray("friends")) list.add(friendFrom(el.getAsJsonObject()));
 		sort(list);
 		friends = List.copyOf(list);
+		// who asks to be a friend (the game's window answers them too)
+		List<Request> asking = new ArrayList<>();
+		if (res.has("incoming") && res.get("incoming").isJsonArray()) for (JsonElement el : res.getAsJsonArray("incoming")) {
+			if (!el.isJsonObject()) continue;
+			JsonObject o = el.getAsJsonObject();
+			if (!str(o, "id").isEmpty()) asking.add(new Request(str(o, "id"), str(o, "name"), str(o, "handle")));
+		}
+		incoming = List.copyOf(asking);
 		// whoever is online or playing now is not news
 		long now = System.currentTimeMillis();
 		for (Friend f : list) playing.know(f.id(), f.status(), f.activity(), now);

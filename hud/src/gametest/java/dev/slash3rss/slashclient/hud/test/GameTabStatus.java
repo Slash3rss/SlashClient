@@ -113,6 +113,8 @@ public class GameTabStatus implements FabricClientGameTest {
 			});
 			String line = context.computeOnClient(mc -> Social.activity(Social.friend(ALA)).getString());
 			if (!line.contains("SkyUp.pl") || !line.contains("S3 (Wyspy)")) throw new AssertionError("The friend's status line is '" + line + "'");
+			// two friend requests on top of the list, to take or turn down from the game
+			context.runOnClient(mc -> Social.incomingForTest(List.of(new Social.Request("u-zosia", "Zosia", "zosia"), new Social.Request("u-marek", "MarekBudowniczy", "marek_b"))));
 			context.runOnClient(mc -> TestHooks.audit(true));
 			context.setScreen(() -> {
 				Social.viewing = ALA;

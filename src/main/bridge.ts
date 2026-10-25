@@ -114,6 +114,9 @@ const ALLOWED: [string, RegExp][] = [
   ['GET', /^\/v1\/friends\/suggestions(\?limit=\d{1,2})?$/],
   ['POST', /^\/v1\/friends\/suggestions\/[\w-]{1,64}\/dismiss$/],
   ['POST', /^\/v1\/friends\/requests$/],
+  // friend requests to the player, taken or turned down in the game's friends window
+  ['POST', /^\/v1\/friends\/requests\/[\w-]{1,64}\/accept$/],
+  ['DELETE', /^\/v1\/friends\/requests\/[\w-]{1,64}$/],
   // the Minecraft uuids of players in sight on this server, now and then (the server keeps only SlashClient players)
   ['POST', /^\/v1\/mc\/nearby$/],
 ];

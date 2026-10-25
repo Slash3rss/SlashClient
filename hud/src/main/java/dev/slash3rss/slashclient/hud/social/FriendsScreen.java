@@ -476,9 +476,10 @@ public class FriendsScreen extends Screen {
 		}
 		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.friends.title", Social.onlineCount()), titleW), px + 10, py + 10, Ui.TEXT);
 		int y = py + 26;
+		y = drawRequests(g, y, mx, my);
 		y = drawGroups(g, y, mx, my);
 		y = drawCommunities(g, y, mx, my);
-		if (friends.isEmpty() && Groups.groups().isEmpty() && Communities.list().isEmpty()) {
+		if (friends.isEmpty() && Groups.groups().isEmpty() && Communities.list().isEmpty() && Social.incoming().isEmpty()) {
 			int ty = y + 4;
 			for (FormattedCharSequence line : font.split(Ui.tr("slashclient-hud.friends.none"), LIST_W - 20)) {
 				g.text(font, line, px + 10, ty, Ui.MUTED, false);
@@ -525,6 +526,35 @@ public class FriendsScreen extends Screen {
 			hits.add(new Hit(rx, y, rw, ROW_H, () -> select(id)));
 			y += ROW_H + 2;
 		}
+	}
+
+	/** Who asks to be a friend, on top: ✔ takes them, × turns them down; returns where the rest starts. */
+	private int drawRequests(GuiGraphicsExtractor g, int y, int mx, int my) {
+		List<Social.Request> asking = Social.incoming();
+		if (asking.isEmpty()) return y;
+		Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.friends.requests", asking.size()), LIST_W - 20), px + 10, y + 2, Ui.MUTED);
+		y += 14;
+		for (Social.Request r : asking) {
+			int rx = px + 5, rw = LIST_W - 10;
+			Ui.round(g, rx, y, rw, ROW_H, 4, 0xFF1A2236);
+			Ui.round(g, rx + 4, y + 4, 18, 18, 5, Ui.ACCENT_DARK);
+			Component initial = Ui.bold(r.name().isEmpty() ? "?" : r.name().substring(0, 1).toUpperCase());
+			Ui.draw(g, initial, rx + 13 - Ui.width(initial) / 2, y + 9, 0xFFFFFFFF);
+			int textW = rw - 30 - 42;
+			Ui.draw(g, Ui.fit(Ui.bold(r.name()), textW), rx + 27, y + 4, Ui.TEXT);
+			Ui.draw(g, Ui.fit(Ui.text("@" + r.handle()), textW), rx + 27, y + 15, Ui.MUTED);
+			boolean busy = Social.answering(r.id());
+			int by = y + 4, bx = rx + rw - 4 - 18;
+			Ui.button(g, "request:no:" + r.id(), bx, by, 18, 18, "close", Component.empty(), false, mx, my);
+			if (Ui.inside(mx, my, bx, by, 18, 18)) tooltip = Ui.tr("slashclient-hud.friends.decline");
+			if (!busy) hits.add(new Hit(bx, by, 18, 18, () -> Social.answer(r, false)));
+			bx -= 21;
+			Ui.button(g, "request:yes:" + r.id(), bx, by, 18, 18, "check", Component.empty(), !busy, mx, my);
+			if (Ui.inside(mx, my, bx, by, 18, 18)) tooltip = Ui.tr("slashclient-hud.friends.accept");
+			if (!busy) hits.add(new Hit(bx, by, 18, 18, () -> Social.answer(r, true)));
+			y += ROW_H + 2;
+		}
+		return y + 4;
 	}
 
 	/** The clan's chat and the group chats, above the friends; returns where the friends start. */
