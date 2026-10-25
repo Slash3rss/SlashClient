@@ -1943,6 +1943,7 @@ public final class TestHooks {
 	public static String blockInfoLines() {
 		HudConfig c = SlashHud.config;
 		c.blockGrowth = c.blockDetails = c.blockPower = c.blockCoords = c.blockLight = c.blockHardness = c.blockId = c.blockState = true;
+		c.placement("block").enabled = true;
 		return ExtraModules.BlockInfo.linesForTest(net.minecraft.client.Minecraft.getInstance());
 	}
 
