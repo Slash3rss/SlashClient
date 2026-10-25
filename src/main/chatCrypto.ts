@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, createPrivateKey, createPublicKey, diffieHellman, generateKeyPairSync, hkdfSync, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, createPrivateKey, createPublicKey, diffieHellman, generateKeyPairSync, hkdfSync, randomBytes } from 'node:crypto';
 
 /**
  * End-to-end encryption of the chat with friends. Every launcher (device) has its own X25519 key;
@@ -9,10 +9,17 @@ import { createCipheriv, createDecipheriv, createPrivateKey, createPublicKey, di
  *
  * The server stores and passes on only the envelope. `aad` ties a message to its sender and
  * recipient, so the server cannot move it to another conversation unnoticed.
+ *
+ * A device added later gets older messages only from another device of the same account that can
+ * read them (chatKeys.ts): that device opens the message key and wraps it once more for the new
+ * device (`ExtraWrap`), with a key from X25519 between the two of them. Those wraps are stored next
+ * to the message, not in the envelope, so older launchers never see them.
  */
 
 export interface DeviceKey { device: string; publicKey: string; privateKey: string }
 export interface PublicDevice { device: string; pub: string }
+/** A message key wrapped later for one more device of the account, by device `by` (public key `pub`) that could open it. */
+export interface ExtraWrap { by: string; pub: string; iv: string; ct: string }
 
 /** What travels in the `text` of an encrypted message. */
 export const PREFIX = 'e2e1:';
@@ -65,6 +72,78 @@ function open(key: Buffer, box: { iv: string; ct: string }, aad: string): Buffer
   return Buffer.concat([d.update(all.subarray(0, all.length - 16)), d.final()]);
 }
 
+/** The key that wraps a handed-over message key, between the device that had it and the new one. */
+function rewrapKey(own: DeviceKey, otherPub: string, by: string, to: string): Buffer {
+  const shared = diffieHellman({ privateKey: priv(own.privateKey), publicKey: pub(otherPub) });
+  return Buffer.from(hkdfSync('sha256', shared, Buffer.alloc(0), `slashclient-chat-rewrap-v1|${by}|${to}`, 32));
+}
+
+function parse(text: string): Envelope | undefined {
+  try {
+    const e = JSON.parse(Buffer.from(text.slice(PREFIX.length), 'base64').toString('utf8')) as Envelope;
+    return e && typeof e === 'object' && typeof e.iv === 'string' && typeof e.ct === 'string' ? e : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The devices the envelope itself was sealed for. */
+export function envelopeDevices(text: string): string[] {
+  const e = parse(text);
+  return e?.keys && typeof e.keys === 'object' ? Object.keys(e.keys) : [];
+}
+
+/**
+ * The message key of `text` for this device: from its own wrap in the envelope, or else from a wrap
+ * handed over to it later (`extra`). Undefined when neither opens.
+ */
+export function messageKey(text: string, own: DeviceKey, aad: string, extra?: ExtraWrap): Buffer | undefined {
+  const e = parse(text);
+  if (!e) return undefined;
+  try {
+    const wrapped = e.keys?.[own.device];
+    if (wrapped) {
+      const key = open(wrapKey(own, e.from, e.pub, e.from, own.device), wrapped, aad);
+      if (key.length === 32) return key;
+    }
+  } catch {
+    // not this one; maybe the handed-over wrap opens
+  }
+  if (!extra) return undefined;
+  try {
+    const key = open(rewrapKey(own, extra.pub, extra.by, own.device), extra, aad);
+    return key.length === 32 ? key : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The text of an envelope whose message key is known; undefined when the key is not its own or it was changed. */
+export function openWithKey(text: string, key: Buffer, aad: string): string | undefined {
+  const e = parse(text);
+  if (!e) return undefined;
+  try {
+    return open(key, e, aad).toString('utf8');
+  } catch {
+    return undefined;
+  }
+}
+
+/** A message key (opened by this device) wrapped for another device of the same account; `aad` is the message's. */
+export function rewrap(key: Buffer, own: DeviceKey, target: PublicDevice, aad: string): ExtraWrap {
+  return { by: own.device, pub: own.publicKey, ...seal(rewrapKey(own, target.pub, own.device, target.device), key, aad) };
+}
+
+/**
+ * A short code of a device's public key ("3FA2 91C0 77DE 0B14"), shown on the new device and on the
+ * one that asks about it: when both show the same, the key is really that device's and not one the
+ * server slipped in.
+ */
+export function fingerprint(publicKey: string): string {
+  const hex = createHash('sha256').update(Buffer.from(`slashclient-device|${publicKey}`)).digest('hex').slice(0, 16).toUpperCase();
+  return hex.match(/.{4}/g)!.join(' ');
+}
+
 /** `text` encrypted for these devices; `aad` names the conversation ("from|to" user ids). */
 export function encrypt(text: string, own: DeviceKey, devices: PublicDevice[], aad: string): string {
   const messageKey = randomBytes(32);
@@ -79,15 +158,8 @@ export function isEncrypted(text: unknown): text is string {
   return typeof text === 'string' && text.startsWith(PREFIX);
 }
 
-/** The text of a message for this device; undefined when it was not encrypted for it or was changed. */
-export function decrypt(text: string, own: DeviceKey, aad: string): string | undefined {
-  try {
-    const e = JSON.parse(Buffer.from(text.slice(PREFIX.length), 'base64').toString('utf8')) as Envelope;
-    const wrapped = e.keys?.[own.device];
-    if (!wrapped) return undefined;
-    const messageKey = open(wrapKey(own, e.from, e.pub, e.from, own.device), wrapped, aad);
-    return open(messageKey, e, aad).toString('utf8');
-  } catch {
-    return undefined;
-  }
+/** The text of a message for this device (or handed over to it: `extra`); undefined when it was not encrypted for it or was changed. */
+export function decrypt(text: string, own: DeviceKey, aad: string, extra?: ExtraWrap): string | undefined {
+  const key = messageKey(text, own, aad, extra);
+  return key && openWithKey(text, key, aad);
 }
