@@ -191,6 +191,8 @@
 	"slashclient-hud.ui.search": "Szukaj…",
 	"slashclient-hud.ui.open": "Ustawienia",
 	"slashclient-hud.ui.dragHint": "Przeciągnij moduł, żeby go przesunąć  ·  PPM na module: jego ustawienia",
+	"slashclient-hud.ui.stackedHint": "Moduły na sobie: kliknij jeszcze raz lub Alt+klik – ten pod spodem",
+	"slashclient-hud.ui.stacked": "%s  %s/%s",
 	"slashclient-hud.ui.editLayout": "Edytuj układ",
 	"slashclient-hud.ui.nothing": "Nic nie pasuje do wyszukiwania.",
 	"slashclient-hud.ui.settings": "Ustawienia",

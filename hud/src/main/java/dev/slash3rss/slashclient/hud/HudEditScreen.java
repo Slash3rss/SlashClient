@@ -26,6 +26,18 @@ public class HudEditScreen extends Screen {
 	private static final int EDGE = 2;
 
 	private HudModule dragging;
+	/**
+	 * The module the mouse is on: drawn over the others and grabbed by a click. It stays the one
+	 * while the mouse moves inside its box, also over another module lying on it, and changes only
+	 * when the mouse leaves it.
+	 */
+	private HudModule hover;
+	/** The module of the last click that moved nothing, and where it was: a second click there takes the one under it. */
+	private HudModule clicked;
+	private double clickX, clickY;
+	/** Where the dragged module was grabbed, and whether it has moved since. */
+	private double pressX, pressY;
+	private boolean moved;
 	private double grabX;
 	private double grabY;
 	private boolean snappedX;
@@ -494,7 +506,8 @@ public class HudEditScreen extends Screen {
 				else g.fill(0, line[1], width, line[1] + 1, 0xCCFACC15);
 			}
 		}
-		SlashHud.drawAll(g, minecraft, true);
+		if (!window) updateHover(mx, my);
+		SlashHud.drawAll(g, minecraft, true, window ? null : hover);
 		tip = null;
 		undoAt = redoAt = null;
 		if (!window) drawLayout(g, mx, my);
@@ -634,14 +647,12 @@ public class HudEditScreen extends Screen {
 	 * solid panel, so it reads well over any world) with the way into the settings.
 	 */
 	private void drawLayout(GuiGraphicsExtractor g, int mx, int my) {
-		HudModule hovered = dragging != null ? dragging : moduleAt(mx, my);
-		// the mouse on a module's × or gear still counts as on the module, though they stick out of it
-		if (hovered == null) for (HudModule m : SlashHud.MODULES) {
-			int[] c = closeBox(m), s = gearBox(m);
-			if (SlashHud.config.placement(m.id()).enabled && (Ui.inside(mx, my, c[0], c[1], c[2], c[2])
-				|| settingsEntry(m) != null && Ui.inside(mx, my, s[0], s[1], s[2], s[2]))) hovered = m;
-		}
-		for (HudModule m : SlashHud.MODULES) {
+		HudModule hovered = hover;
+		// the hovered module's outline, name, × and gear over everything else's
+		List<HudModule> order = new ArrayList<>(SlashHud.MODULES);
+		if (hovered != null && order.remove(hovered)) order.add(hovered);
+		List<HudModule> under = dragging == null ? stack(mx, my) : List.of();
+		for (HudModule m : order) {
 			HudConfig.Placement p = SlashHud.config.placement(m.id());
 			if (!p.enabled) continue;
 			int[] b = box(m);
@@ -649,6 +660,8 @@ public class HudEditScreen extends Screen {
 			Ui.roundOutline(g, b[0] - 2, b[1] - 2, b[2] + 4, b[3] + 4, 3, hot ? Ui.ACCENT_LIGHT : 0x66FFFFFF);
 			if (hot) {
 				Component name = Ui.tr("slashclient-hud.module." + m.id());
+				// modules lying on each other: which of them this is, e.g. "FPS 1/2"
+				if (under.size() > 1 && under.contains(m)) name = Ui.tr("slashclient-hud.ui.stacked", name, under.indexOf(m) + 1, under.size());
 				int tw = Ui.width(name) + 10;
 				int ty = b[1] > 16 ? b[1] - 15 : b[1] + b[3] + 3;
 				Ui.round(g, b[0] - 2, ty, tw, 13, 3, Ui.ACCENT_DARK);
@@ -707,7 +720,8 @@ public class HudEditScreen extends Screen {
 		historyButton(g, x, by + 5, false, mx, my);
 		historyButton(g, x + 22, by + 5, true, mx, my);
 		Ui.end();
-		Component hint = Ui.tr("slashclient-hud.ui.dragHint");
+		// over modules lying on each other the hint says how to reach the one below
+		Component hint = Ui.tr(under.size() > 1 ? "slashclient-hud.ui.stackedHint" : "slashclient-hud.ui.dragHint");
 		int hw = Ui.width(hint) + 16;
 		Ui.round(g, (width - hw) / 2, by + barH + 4, hw, 14, 4, 0xCC0A0D14);
 		Ui.centered(g, hint, width / 2, by + barH + 7, Ui.TEXT_2);
@@ -1186,6 +1200,8 @@ public class HudEditScreen extends Screen {
 		//#endif
 		if (search != null) search.setFocused(false);
 		for (EditBox box : textFields.values()) box.setFocused(false);
+		HudModule last = clicked;
+		clicked = null;
 		if (e.button() == InputConstants.MOUSE_BUTTON_RIGHT && !window) {
 			HudModule m = moduleAt(e.x(), e.y());
 			if (m != null) {
@@ -1227,15 +1243,30 @@ public class HudEditScreen extends Screen {
 			return true;
 		}
 		HudModule m = moduleAt(e.x(), e.y());
-		// the chat stays where the game draws it
-		if (m != null && !GameParts.fixed(m)) {
-			int[] b = box(m);
-			dragging = m;
-			grabX = e.x() - b[0];
-			grabY = e.y() - b[1];
+		// modules lying on each other: Alt+click, or a second click in the same place without moving,
+		// takes the next one down (and from the lowest the top one again)
+		List<HudModule> under = stack(e.x(), e.y());
+		boolean again = m != null && m == last && Math.abs(e.x() - clickX) <= 2 && Math.abs(e.y() - clickY) <= 2;
+		if (m != null && under.size() > 1 && (again || altDown(e))) {
+			m = under.get((under.indexOf(m) + 1) % under.size());
+			hover = m;
+		}
+		if (m == null) return false;
+		// the chat stays where the game draws it, but a click on it still counts for reaching what lies under it
+		if (GameParts.fixed(m)) {
+			clicked = m;
+			clickX = e.x();
+			clickY = e.y();
 			return true;
 		}
-		return false;
+		int[] b = box(m);
+		dragging = m;
+		grabX = e.x() - b[0];
+		grabY = e.y() - b[1];
+		pressX = e.x();
+		pressY = e.y();
+		moved = false;
+		return true;
 	}
 
 	private void dragSlider(double mouseX) {
@@ -1270,6 +1301,11 @@ public class HudEditScreen extends Screen {
 		//#else
 		//$ if (dragging == null) return super.mouseDragged(e.x(), e.y(), e.button(), dx, dy);
 		//#endif
+		// a click that wobbles by a pixel moves nothing (and a second one in place reaches the module under it)
+		if (!moved) {
+			if (Math.abs(e.x() - pressX) <= 1 && Math.abs(e.y() - pressY) <= 1) return true;
+			moved = true;
+		}
 		int[] b = box(dragging);
 		HudConfig.Placement p = SlashHud.config.placement(dragging.id());
 		int rawX = (int) Math.round(e.x() - grabX), rawY = (int) Math.round(e.y() - grabY);
@@ -1294,6 +1330,11 @@ public class HudEditScreen extends Screen {
 	//$ public boolean mouseReleased(double mouseX, double mouseY, int button) {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
 	//#endif
+		if (dragging != null && !moved) {
+			clicked = dragging;
+			clickX = pressX;
+			clickY = pressY;
+		}
 		dragging = null;
 		draggingSlider = null;
 		bar.release();
@@ -1373,14 +1414,62 @@ public class HudEditScreen extends Screen {
 
 	// ---------- module boxes ----------
 
+	/** The module a click here takes: the hovered one while the mouse is inside it, else the topmost. */
 	private HudModule moduleAt(double x, double y) {
+		updateHover(x, y);
+		return hover != null && inside(hover, x, y) ? hover : null;
+	}
+
+	/** The shown modules whose box holds the point, the topmost first: the order a second click goes down through them. */
+	private List<HudModule> stack(double x, double y) {
+		List<HudModule> out = new ArrayList<>();
 		for (int i = SlashHud.MODULES.size() - 1; i >= 0; i--) {
 			HudModule m = SlashHud.MODULES.get(i);
-			if (!SlashHud.config.placement(m.id()).enabled) continue;
-			int[] b = box(m);
-			if (Ui.inside(x, y, b[0], b[1], b[2], b[3])) return m;
+			if (SlashHud.config.placement(m.id()).enabled && inside(m, x, y)) out.add(m);
 		}
-		return null;
+		return out;
+	}
+
+	private boolean inside(HudModule m, double x, double y) {
+		int[] b = box(m);
+		return Ui.inside(x, y, b[0], b[1], b[2], b[3]);
+	}
+
+	/** On the module's × or gear: they stick out of its box, and still count as on the module. */
+	private boolean onButtons(HudModule m, double x, double y) {
+		int[] c = closeBox(m), s = gearBox(m);
+		return Ui.inside(x, y, c[0], c[1], c[2], c[2]) || settingsEntry(m) != null && Ui.inside(x, y, s[0], s[1], s[2], s[2]);
+	}
+
+	/**
+	 * Keeps the hovered module while the mouse stays inside it (or on its × or gear), so moving over
+	 * a part where another module lies on it does not switch to that one; outside it, the topmost
+	 * module under the mouse.
+	 */
+	private void updateHover(double x, double y) {
+		if (dragging != null) {
+			hover = dragging;
+			return;
+		}
+		if (hover != null && SlashHud.config.placement(hover.id()).enabled && (inside(hover, x, y) || onButtons(hover, x, y))) return;
+		List<HudModule> under = stack(x, y);
+		hover = under.isEmpty() ? null : under.get(0);
+		if (hover == null) for (HudModule m : SlashHud.MODULES) {
+			if (SlashHud.config.placement(m.id()).enabled && onButtons(m, x, y)) hover = m;
+		}
+	}
+
+	private boolean altDown(MouseButtonEvent e) {
+		//#if MC >= 1.21.9
+		return e.hasAltDown() || minecraft.hasAltDown();
+		//#else
+		//$ return Screen.hasAltDown();
+		//#endif
+	}
+
+	/** For the in-game test: the module the mouse is on, or null. */
+	String hoveredId() {
+		return hover == null ? null : hover.id();
 	}
 
 	/** x, y, width, height of a module on screen, with its scale. */

@@ -341,33 +341,41 @@ public class SlashHud implements ClientModInitializer {
 	}
 
 	static void drawAll(GuiGraphicsExtractor g, Minecraft mc, boolean preview) {
+		drawAll(g, mc, preview, null);
+	}
+
+	/** Every module, with {@code top} (the one the editor's mouse is on) drawn last, over the others. */
+	static void drawAll(GuiGraphicsExtractor g, Minecraft mc, boolean preview, HudModule top) {
 		Modules.CLICKS.sample(mc);
-		for (HudModule m : MODULES) {
-			HudConfig.Placement p = config.placement(m.id());
-			if (!p.enabled || (!preview && !m.visible(mc))) continue;
-			int[] size = size(m, mc, p);
-			int[] at = position(p, size[0], size[1], g.guiWidth(), g.guiHeight());
-			var pose = g.pose();
-			pose.pushMatrix();
-			pose.translate(at[0], at[1]);
-			pose.scale(p.scale(), p.scale());
-			// keystrokes draw their own boxes
-			int w = m.width(mc), h = m.height(mc);
-			if (p.background(config) && !(m instanceof Modules.Keystrokes) && !(m instanceof GameParts.Part)) g.fill(0, 0, w, h, Math.round(p.opacity() * 2.55f) << 24);
-			if (p.outline && !(m instanceof GameParts.Part)) {
-				int c = 0xCC60A5FA;
-				g.fill(-1, -1, w + 1, 0, c);
-				g.fill(-1, h, w + 1, h + 1, c);
-				g.fill(-1, 0, 0, h, c);
-				g.fill(w, 0, w + 1, h, c);
-			}
-			// the module's own text colour and shadow, where it draws in the HUD's
-			Modules.drawing = p;
-			if (preview) m.drawPreview(g, mc, 0, 0);
-			else m.draw(g, mc, 0, 0);
-			Modules.drawing = null;
-			pose.popMatrix();
+		for (HudModule m : MODULES) if (m != top) drawOne(g, mc, preview, m);
+		if (top != null) drawOne(g, mc, preview, top);
+	}
+
+	private static void drawOne(GuiGraphicsExtractor g, Minecraft mc, boolean preview, HudModule m) {
+		HudConfig.Placement p = config.placement(m.id());
+		if (!p.enabled || (!preview && !m.visible(mc))) return;
+		int[] size = size(m, mc, p);
+		int[] at = position(p, size[0], size[1], g.guiWidth(), g.guiHeight());
+		var pose = g.pose();
+		pose.pushMatrix();
+		pose.translate(at[0], at[1]);
+		pose.scale(p.scale(), p.scale());
+		// keystrokes draw their own boxes
+		int w = m.width(mc), h = m.height(mc);
+		if (p.background(config) && !(m instanceof Modules.Keystrokes) && !(m instanceof GameParts.Part)) g.fill(0, 0, w, h, Math.round(p.opacity() * 2.55f) << 24);
+		if (p.outline && !(m instanceof GameParts.Part)) {
+			int c = 0xCC60A5FA;
+			g.fill(-1, -1, w + 1, 0, c);
+			g.fill(-1, h, w + 1, h + 1, c);
+			g.fill(-1, 0, 0, h, c);
+			g.fill(w, 0, w + 1, h, c);
 		}
+		// the module's own text colour and shadow, where it draws in the HUD's
+		Modules.drawing = p;
+		if (preview) m.drawPreview(g, mc, 0, 0);
+		else m.draw(g, mc, 0, 0);
+		Modules.drawing = null;
+		pose.popMatrix();
 	}
 
 	/** F3's version line with SlashClient's name in place of the game's ("Minecraft 1.21.4 …"). */

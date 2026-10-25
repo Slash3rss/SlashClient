@@ -224,6 +224,33 @@ public final class TestHooks {
 	}
 
 	/** A point inside a module's box in the layout editor. */
+	/** Only these modules on (the others off, the game's parts too); gives back the ids that were on, for {@link #modulesOn}. */
+	public static java.util.List<String> onlyModules(String... ids) {
+		java.util.List<String> was = new java.util.ArrayList<>();
+		java.util.Set<String> keep = java.util.Set.of(ids);
+		for (HudModule m : SlashHud.MODULES) {
+			HudConfig.Placement p = SlashHud.config.placement(m.id());
+			if (p.enabled) was.add(m.id());
+			p.enabled = keep.contains(m.id());
+		}
+		return was;
+	}
+
+	/** These modules on again, the others off. */
+	public static void modulesOn(java.util.List<String> ids) {
+		onlyModules(ids.toArray(new String[0]));
+	}
+
+	/** The module the mouse is on in the open editor, or null. */
+	public static String editorHovered() {
+		return ((HudEditScreen) screen()).hoveredId();
+	}
+
+	/** A module's box (x, y, width, height) in the open editor. */
+	public static int[] editorBox(String id) {
+		return ((HudEditScreen) screen()).boxOf(id);
+	}
+
 	public static double[] modulePoint(String id) {
 		int[] b = ((HudEditScreen) screen()).boxOf(id);
 		return new double[] { b[0] + Math.min(4, b[2] / 2.0), b[1] + Math.min(4, b[3] / 2.0) };
