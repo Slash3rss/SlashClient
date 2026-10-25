@@ -13,6 +13,8 @@ shift
 # compiled once, so the games only start (several builds of the same classes at once would collide)
 ./gradlew compileGametestJava processGametestResources -Pmc="$mc" -q || exit 1
 
+NO_COMPILE="-x compileJava -x processResources -x compileGametestJava -x processGametestResources"
+export NO_COMPILE
 pids=()
 for i in $(seq 1 "$n"); do rm -f "build/gametest-$i.log" "build/gametest-$i.status"; done
 # a small window with the progress (progress/; off with SLASHCLIENT_TEST_WINDOW=0, never on CI)
@@ -24,7 +26,9 @@ fi
 for i in $(seq 1 "$n"); do
   rm -rf "build/run/clientGameTest-${i}of$n/screenshots"
   # each share's exit code in a file when it ends, for the progress window
-  ( ./gradlew runClientGameTest -Pmc="$mc" -Pshard="$i/$n" "$@" -q > "build/gametest-$i.log" 2>&1; code=$?; echo $code > "build/gametest-$i.status"; exit $code ) &
+  # compiled once above: the games only run (the version preprocessor rewrites the sources each time
+  # gradle starts, and four compiles at once would overwrite each other's classes mid-run)
+  ( ./gradlew runClientGameTest -Pmc="$mc" -Pshard="$i/$n" $NO_COMPILE "$@" -q > "build/gametest-$i.log" 2>&1; code=$?; echo $code > "build/gametest-$i.status"; exit $code ) &
   pids+=($!)
   # the games start a little apart, not all loading at the same moment
   sleep 8

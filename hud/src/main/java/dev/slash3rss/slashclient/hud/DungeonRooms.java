@@ -111,8 +111,37 @@ public final class DungeonRooms {
 	private static final java.util.regex.Pattern LEFT = java.util.regex.Pattern.compile("Pozosta\\S*\\s+moby:?\\s*(\\d+)", java.util.regex.Pattern.CASE_INSENSITIVE);
 	private static final java.util.regex.Pattern BACK = java.util.regex.Pattern.compile("Posi\\S*\\s+za:?\\s*(\\d+)\\s*s", java.util.regex.Pattern.CASE_INSENSITIVE);
 
-	static void reset(int mapSize) {
+	/**
+	 * The start room, where the player stands when the dungeon's boss bar shows: no loot, mobs or
+	 * timers are kept there. When the rooms are known, the room that point is in (walls included);
+	 * before that, SkyUp's start room size around it, 65 by 65 blocks.
+	 */
+	static final int START_HALF = 32;
+	private static int startX = -1, startZ = -1;
+
+	static void setStart(int x, int z) {
+		startX = x;
+		startZ = z;
+	}
+
+	/** Whether a map point (x, z) is in the start room. */
+	static boolean inStart(int x, int z) {
+		if (startX < 0) return false;
+		int start = startRoom();
+		if (start >= 0) return roomAt(x, z, 1) == start;
+		return Math.abs(x - startX) <= START_HALF && Math.abs(z - startZ) <= START_HALF;
+	}
+
+	/** The room the start point is in, or -1 while not known. */
+	private static int startRoom() {
+		return startX < 0 || rooms.isEmpty() ? -1 : roomAt(startX, startZ, 2);
+	}
+
+	static void reset(int mapSize, int mapX, int mapZ) {
 		size = mapSize;
+		originX = mapX;
+		originZ = mapZ;
+		startX = startZ = -1;
 		if (roomOf.length != size * size) {
 			roomOf = new int[size * size];
 			edge = new boolean[size * size];
@@ -204,6 +233,11 @@ public final class DungeonRooms {
 
 	/** The containers in one column: found ones are new or back, missing ones were broken. */
 	static void scanColumn(ClientLevel world, BlockPos.MutableBlockPos pos, int x, int low, int high, int z) {
+		// the start room has nothing to take
+		if (inStart(x - originX, z - originZ)) {
+			for (int y = low; y <= high; y++) containers.remove(BlockPos.asLong(x, y, z));
+			return;
+		}
 		// all of a room's levels, up to the top of its walls for the ores in them
 		boolean spawner = false;
 		for (int y = low; y <= high; y++) {
@@ -303,7 +337,7 @@ public final class DungeonRooms {
 			if (spawnerLabel(e)) seenSpawners.put(key(ex, ez), new int[] { ex, ez });
 			else if (e instanceof ArmorStand stand) {
 				if (stand.getItemBySlot(EquipmentSlot.HEAD).is(Items.SPAWNER)) seenSpawners.put(key(ex, ez), new int[] { ex, ez });
-			} else if (e instanceof Mob) {
+			} else if (e instanceof Mob && !inStart(ex, ez)) {
 				// on a ledge or in a pit its column may be no floor where the map was read: a room a few blocks off
 				int r = roomAt(ex, ez, 8);
 				if (r >= 0) rooms.get(r).mobs++;
@@ -324,7 +358,7 @@ public final class DungeonRooms {
 		for (long[] h : holograms.values()) {
 			// a spawner's hologram floats over it, maybe up on a ledge: its room may be a few blocks off
 			int r = roomAt((int) h[0], (int) h[1], 12);
-			if (r < 0) continue;
+			if (r < 0 || r == startRoom()) continue;
 			Room room = rooms.get(r);
 			if (h[3] > now) room.respawnAt = Math.max(room.respawnAt, h[3]);
 			else if (h[2] >= 0) room.left = room.left < 0 ? (int) h[2] : room.left + (int) h[2];
@@ -333,7 +367,7 @@ public final class DungeonRooms {
 		List<int[]> stillInfested = new ArrayList<>();
 		for (int[] p : infested) {
 			int r = roomAt(p[0], p[1]);
-			if (r < 0 || hadMobs[r]) continue;
+			if (r < 0 || hadMobs[r] || r == startRoom()) continue;
 			hadMobs[r] = true;
 			Room room = rooms.get(r);
 			boolean near = Math.abs(room.centerX() - px) < NEAR && Math.abs(room.centerZ() - pz) < NEAR;
@@ -344,6 +378,11 @@ public final class DungeonRooms {
 		infested.addAll(stillInfested);
 		for (int r = 0; r < rooms.size(); r++) {
 			Room room = rooms.get(r);
+			if (r == startRoom()) {
+				room.respawnAt = 0;
+				room.left = -1;
+				continue;
+			}
 			if (room.mobs > 0) infested.add(new int[] { room.centerX(), room.centerZ() });
 		}
 		for (Iterator<long[]> it = cleared.iterator(); it.hasNext();) {
@@ -619,7 +658,7 @@ public final class DungeonRooms {
 		if (r < 0 || r >= rooms.size()) return color;
 		Room room = rooms.get(r);
 		HudConfig cfg = SlashHud.config;
-		if (cfg.dungeonNoSpawner && edge[z * size + x] && room.visited && room.spawners == 0) return 0xFF60A5FA;
+		if (cfg.dungeonNoSpawner && edge[z * size + x] && room.visited && room.spawners == 0 && r != startRoom()) return 0xFF60A5FA;
 		if (cfg.dungeonCleared && room.respawnAt > System.currentTimeMillis()) return mix(color, 0x22C55E, 0.45f);
 		return color;
 	}
@@ -714,7 +753,7 @@ public final class DungeonRooms {
 		int clearedRooms = 0, noSpawner = 0;
 		for (Room r : rooms) {
 			if (r.respawnAt > 0) clearedRooms++;
-			if (r.visited && r.spawners == 0) noSpawner++;
+			if (r.visited && r.spawners == 0 && rooms.indexOf(r) != startRoom()) noSpawner++;
 		}
 		return rooms.size() + " rooms, containers " + containerCount(false) + ", ores " + containerCount(true) + ", cleared " + clearedRooms + ", without spawner " + noSpawner;
 	}

@@ -36,8 +36,8 @@ import java.util.regex.Pattern;
  * around the player (zoomed in, or following them), square or round.
  */
 public final class DungeonMap implements HudModule {
-	/** The blocks the map can hold, around where the dungeon was entered. */
-	private static final int SIZE = 256;
+	/** The blocks the map can hold, around where the dungeon was entered (a big dungeon fits whole: 512 each way). */
+	private static final int SIZE = 1024;
 	/**
 	 * The floor is read in two rings: close by (NEAR) all of it every half second, so a broken pot or
 	 * a mined ore shows at once; further out, as far as the setting says (MIN_RANGE–MAX_RANGE: the map
@@ -123,7 +123,9 @@ public final class DungeonMap implements HudModule {
 		if (image == null) {
 			image = new NativeImage(SIZE, SIZE, true);
 		}
-		DungeonRooms.reset(SIZE);
+		DungeonRooms.reset(SIZE, originX, originZ);
+		// already in the dungeon (the boss bar is up): the player is in its start room
+		if (bossBar) DungeonRooms.setStart(SIZE / 2, SIZE / 2);
 		java.util.Arrays.fill(plan, (byte) 0);
 		if (view == null) {
 			view = new NativeImage(W, H, true);
@@ -170,6 +172,8 @@ public final class DungeonMap implements HudModule {
 				groundY = mc.player.getBlockY();
 				grounded = true;
 				clear();
+				// and where the start room is: nothing to take or clear there
+				DungeonRooms.setStart(mc.player.getBlockX() - originX, mc.player.getBlockZ() - originZ);
 			}
 			boolean hinted = hintedAt > 0 && System.currentTimeMillis() - hintedAt < 20_000;
 			if (!bossBar && active && !hinted) {

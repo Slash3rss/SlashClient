@@ -75,7 +75,9 @@ async function restart(i) {
     // the log emptied, not deleted: on Windows a file still open elsewhere cannot be made again under its name
     const out = fs.openSync(path.join(logs, `gametest-${i}.log`), 'w');
     const extra = (process.env.SLASHCLIENT_TEST_ARGS || '').split(' ').filter(Boolean);
-    const args = ['runClientGameTest', `-Pmc=${mc}`, `-Pshard=${i}/${n}`, ...extra, '-q'];
+    // the other shares' games run from the same classes: this one only runs, compiling nothing anew
+    const noCompile = (process.env.NO_COMPILE || '').split(' ').filter(Boolean);
+    const args = ['runClientGameTest', `-Pmc=${mc}`, `-Pshard=${i}/${n}`, ...noCompile, ...extra, '-q'];
     const child = process.platform === 'win32'
       ? spawn('cmd.exe', ['/c', path.join(hud, 'gradlew.bat'), ...args], { cwd: hud, stdio: ['ignore', out, out], windowsHide: true })
       : spawn('./gradlew', args, { cwd: hud, stdio: ['ignore', out, out] });
