@@ -310,7 +310,7 @@ export function createApp(cfg: Config) {
   const limitCurseForge = limiter('security.curseforgePerMinute');
   /** Who is asking, for the rate limits: behind Caddy every request comes from 127.0.0.1. */
   // kept in the database too, so the admin panel's list survives a restart
-  const requests = new RequestLog(db.sql);
+  const requests = new RequestLog(db.sql, () => settings.num('storage.requestsKept'));
   const clientIp = (req: http.IncomingMessage): string => {
     const forwarded = cfg.trustProxy ? String(req.headers['x-forwarded-for'] ?? '').split(',').pop()?.trim() : '';
     return forwarded || req.socket.remoteAddress || '';

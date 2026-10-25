@@ -1,3 +1,4 @@
+import { KEEP as REQUESTS_KEPT } from './requests.ts';
 import { BURST_LIMITS, COUNTED_PER_DAY, EDIT_WINDOW_MS } from './chatLimits.ts';
 import { CHALLENGE_SETTING_DEFS } from './challenges.ts';
 import { IMAGE_LIMITS } from './chatImages.ts';
@@ -198,6 +199,7 @@ export const SETTING_DEFS: SettingDef[] = [
   ]),
 
   ...group('storage', [
+    { key: 'storage.requestsKept', label: 'Zapamiętane zapytania', labelEn: 'Requests kept', description: 'Ile ostatnich zapytań pokazuje dziennik zapytań (pamięć serwera; baza trzyma je do 7 dni).', type: 'int', default: REQUESTS_KEPT, min: 1000, max: 500_000 },
     { key: 'storage.minFreeMb', label: 'Wolne miejsce na dysku serwera', labelEn: 'Free space kept on the server\'s disk', description: 'Poniżej tego dysk serwera nie przyjmuje nowych plików (idą do innych magazynów).', type: 'int', default: DEFAULT_MIN_FREE / MB, min: 0, max: 10_000_000, unit: 'MB', env: 'STORAGE_MIN_FREE_MB' },
     { key: 'logs.days', label: 'Przechowywanie logów (/logi)', labelEn: 'Logs kept (/logi)', description: 'Ile dni działa link do logu udostępnionego z launchera.', type: 'duration', default: LOG_DAYS, min: 1, max: 3650, unit: 'dni' },
     bytes('logs.maxBytes', 'Największy log', 'Largest log', MAX_LOG, 'Log wysyłany z launchera.', 64 * 1024, 64 * MB),

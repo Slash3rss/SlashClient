@@ -118,6 +118,14 @@ describe('request log', () => {
     const paths = again.query({}).entries.map((e) => e.path);
     assert.deepEqual(paths, ['/v1/messages', '/v1/friends']);
     assert.equal(again.query({}).summary.lastHour, 2);
+    // as many as the admin panel says are kept, the oldest going first
+    let keep = 3;
+    const few = new RequestLog(undefined, () => keep);
+    for (let i = 0; i < 5; i++) few.add(entry(Date.now(), `/v1/r${i}`));
+    assert.deepEqual(few.query({}).entries.map((e) => e.path), ['/v1/r4', '/v1/r3', '/v1/r2']);
+    keep = 4;
+    few.add(entry(Date.now(), '/v1/r5'));
+    assert.equal(few.query({}).kept, 4);
     sql.close();
   });
 });

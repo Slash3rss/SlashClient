@@ -23,8 +23,9 @@ export interface RequestEntry {
   error: string;
 }
 
-const KEEP = 5000;
-/** How long requests stay in the database, and at most how many. */
+/** How many the panel keeps when no setting says (the admin panel's `storage.requestsKept`). */
+export const KEEP = 50_000;
+/** How long requests stay in the database, and at least how many it may hold (more when the panel keeps more). */
 const KEEP_DAYS = 7;
 const KEEP_ROWS = 50_000;
 const FLUSH_MS = 2000;
@@ -74,19 +75,23 @@ export class RequestLog {
   private pending: RequestEntry[] = [];
   private timer?: ReturnType<typeof setTimeout>;
   private prunedAt = 0;
+  /** How many are kept (read on every request, so a change in the panel applies at once). */
+  private readonly keep: () => number;
 
-  constructor(sql?: DatabaseSync) {
+  constructor(sql?: DatabaseSync, keep: () => number = () => KEEP) {
     this.sql = sql;
+    this.keep = keep;
     if (!sql) return;
     sql.exec(SCHEMA);
     this.prune(Date.now());
-    const rows = sql.prepare('SELECT at, method, path, route, status, ms, user, ip, client, version, error FROM request_log ORDER BY id DESC LIMIT ?').all(KEEP) as unknown as RequestEntry[];
+    const rows = sql.prepare('SELECT at, method, path, route, status, ms, user, ip, client, version, error FROM request_log ORDER BY id DESC LIMIT ?').all(this.keep()) as unknown as RequestEntry[];
     this.entries = rows.reverse().map((r) => ({ ...r }));
   }
 
   add(e: RequestEntry) {
     this.entries.push(e);
-    if (this.entries.length > KEEP) this.entries.splice(0, this.entries.length - KEEP);
+    const keep = this.keep();
+    if (this.entries.length > keep) this.entries.splice(0, this.entries.length - keep);
     if (!this.sql) return;
     this.pending.push(e);
     if (!this.timer) {
@@ -114,12 +119,12 @@ export class RequestLog {
     if (now - this.prunedAt > 3_600_000) this.prune(now);
   }
 
-  /** Older than a week, or beyond the newest KEEP_ROWS, goes. */
+  /** Older than a week, or beyond the newest KEEP_ROWS (or as many as the panel keeps), goes. */
   private prune(now: number) {
     this.prunedAt = now;
     try {
       this.sql!.prepare('DELETE FROM request_log WHERE at < ?').run(now - KEEP_DAYS * 86_400_000);
-      this.sql!.prepare('DELETE FROM request_log WHERE id <= (SELECT id FROM request_log ORDER BY id DESC LIMIT 1 OFFSET ?)').run(KEEP_ROWS);
+      this.sql!.prepare('DELETE FROM request_log WHERE id <= (SELECT id FROM request_log ORDER BY id DESC LIMIT 1 OFFSET ?)').run(Math.max(KEEP_ROWS, this.keep()));
     } catch { /* the next hour tries again */ }
   }
 
