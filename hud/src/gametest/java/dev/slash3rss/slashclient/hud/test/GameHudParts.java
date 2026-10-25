@@ -15,6 +15,8 @@ public class GameHudParts implements FabricClientGameTest {
 	public void runTest(ClientGameTestContext context) {
 		if (TestFilter.skip(context, getClass())) return;
 		context.runOnClient(mc -> TestHooks.gameParts());
+		// the titles closed with ✕ in the editor come back from the module list
+		if (!context.computeOnClient(mc -> TestHooks.titlesBackAfterClose())) throw new AssertionError("The titles cannot be switched back on after ✕");
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			for (String cmd : new String[] {
 				"scoreboard objectives add test dummy \"SlashClient\"",

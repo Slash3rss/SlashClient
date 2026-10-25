@@ -661,6 +661,16 @@ public final class TestHooks {
 		Reconnect.lastForTest(data);
 	}
 
+	/** For the test: the titles' box closed with ✕ in the editor, then switched on in the module list – shown again? */
+	public static boolean titlesBackAfterClose() {
+		SlashHud.config.placement("titles").enabled = false;
+		for (var e : dev.slash3rss.slashclient.hud.ui.Catalog.entries(() -> {})) if (e.id().equals("titles")) {
+			if (e.get().get()) return false;
+			e.set().accept(true);
+		}
+		return GameParts.TITLES.on();
+	}
+
 	public static void guiScale(int scale) {
 		var mc = net.minecraft.client.Minecraft.getInstance();
 		mc.options.guiScale().set(scale);

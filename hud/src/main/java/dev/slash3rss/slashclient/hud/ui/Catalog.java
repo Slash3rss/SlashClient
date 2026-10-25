@@ -441,7 +441,7 @@ public final class Catalog {
 		out.add(new Entry("chatSearch", "slashclient-hud.chat.searchBox", "chat", "m-chatsearch", () -> cfg.chatSearch, v -> cfg.chatSearch = v, List.of(), null));
 		// the game's own HUD parts
 		// the game's own parts: moved in the editor (drag their boxes), shown, scaled
-		HudConfig.Placement scoreboard = cfg.placement("scoreboard"), bossbar = cfg.placement("bossbar"), tablist = cfg.placement("tablist"), actionbar = cfg.placement("actionbar");
+		HudConfig.Placement scoreboard = cfg.placement("scoreboard"), bossbar = cfg.placement("bossbar"), tablist = cfg.placement("tablist"), actionbar = cfg.placement("actionbar"), titles = cfg.placement("titles");
 		out.add(new Entry("scoreboard", "slashclient-hud.game.scoreboard", "game", "m-scoreboard", () -> cfg.scoreboard && scoreboard.enabled, v -> cfg.scoreboard = scoreboard.enabled = v, List.of(
 			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.scoreboardScale, v -> cfg.scoreboardScale = v),
 			new Toggle("slashclient-hud.game.numbers", () -> cfg.scoreboardNumbers, v -> cfg.scoreboardNumbers = v)), null));
@@ -454,7 +454,8 @@ public final class Catalog {
 		out.add(new Entry("actionbar", "slashclient-hud.game.actionbar", "game", "m-actionbar", () -> cfg.actionBar && actionbar.enabled, v -> cfg.actionBar = actionbar.enabled = v, List.of(
 			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.actionBarScale, v -> cfg.actionBarScale = v)), null));
 		//#endif
-		out.add(new Entry("titles", "slashclient-hud.game.titles", "game", "m-titles", () -> cfg.titles, v -> cfg.titles = v, List.of(
+		// on = the setting and the editor's box both (the box's ✕ turns off the latter, so this turns both on again)
+		out.add(new Entry("titles", "slashclient-hud.game.titles", "game", "m-titles", () -> cfg.titles && titles.enabled, v -> cfg.titles = titles.enabled = v, List.of(
 			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.titleScale, v -> cfg.titleScale = v)), null));
 		out.add(new Entry("toasts", "slashclient-hud.game.toasts", "game", "m-toasts", () -> cfg.placement("toasts").enabled, v -> cfg.placement("toasts").enabled = v, List.of(), null));
 		// the chat: the game's own background opacity and scale (above 1 with ours), the same as in its Chat Settings
