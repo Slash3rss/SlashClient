@@ -422,15 +422,22 @@ public final class SkyTasks {
 		ContainerScreenAccessor at = (ContainerScreenAccessor) screen;
 		String tier = tier(screen);
 		boolean any = false;
-		List<Integer> lit = new ArrayList<>();
+		List<Integer> lit = new ArrayList<>(), done = new ArrayList<>();
 		float glow = glow();
 		for (int i = 0; i < screen.getMenu().slots.size(); i++) {
 			Slot slot = screen.getMenu().slots.get(i);
 			if (slot.container instanceof Inventory) continue;
 			SkyTaskParser.Task t = task(tier, slot.getItem());
+			int sx = at.slashclient$leftPos() + slot.x, sy = at.slashclient$topPos() + slot.y;
+			// handed in already (admins still see it in the GUI): a quiet slate frame, not the green of "ready"
+			if (t == null && handedIn(slot.getItem())) {
+				done.add(i);
+				g.fill(sx, sy, sx + 16, sy + 16, 0x50202A3A);
+				frame(g, sx - 1, sy - 1, 18, 18, 0xFF64748B);
+				continue;
+			}
 			if (t == null) continue;
 			any = true;
-			int sx = at.slashclient$leftPos() + slot.x, sy = at.slashclient$topPos() + slot.y;
 			// ready to hand in (a task done, or a category of the menu with one done): a green glowing frame
 			if (t.category ? tierCount(mc, t.name)[1] > 0 : ready(mc, known(t))) {
 				lit.add(i);
@@ -444,6 +451,7 @@ public final class SkyTasks {
 			for (int k = 0; k < 5; k++) g.fill(x - 5 + k, y + k, x, y + k + 1, 0xFFFACC15);
 		}
 		highlighted = lit;
+		handedInSlots = done;
 		if (!any) return;
 		SkyTaskParser.Task t = hovered(screen);
 		Component keyName = trackKey == null ? Component.literal("?") : trackKey.getTranslatedKeyMessage();
@@ -459,6 +467,21 @@ public final class SkyTasks {
 
 	/** The slots lit as ready on the last frame (for the test). */
 	static List<Integer> highlighted = List.of();
+	/** The slots marked as handed in on the last frame (for the test). */
+	static List<Integer> handedInSlots = List.of();
+
+	private static final Map<ItemStack, Boolean> handedIn = new java.util.WeakHashMap<>();
+
+	/** A task item the GUI still shows after it was handed in: its lore says "Zadanie ukończone!". */
+	static boolean handedIn(ItemStack stack) {
+		if (stack.isEmpty()) return false;
+		return handedIn.computeIfAbsent(stack, s -> {
+			for (Component line : SkyDump.lore(s)) {
+				if (SkyTaskParser.plain(line.getString()).toLowerCase(Locale.ROOT).contains("zadanie ukończone")) return true;
+			}
+			return false;
+		});
+	}
 
 	/** A slow breath (0-1, about two seconds) for what is ready: seen at a glance, never flashing. */
 	private static float glow() {

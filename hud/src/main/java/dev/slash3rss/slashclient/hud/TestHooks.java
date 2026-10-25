@@ -2061,6 +2061,9 @@ public final class TestHooks {
 		chest.setItem(10, task(net.minecraft.world.item.Items.TROPICAL_FISH, "Mamut morski", "Opis » Ostatecznie mogą być też ogromne.", "", "Wyłów conajmniej ogromne: 0/45", "", "Za ukończenie otrzymasz:", "» 500.0 SC", "", "LPM \ue510 » Ukończ"));
 		chest.setItem(11, task(net.minecraft.world.item.Items.FURNACE, "Piecoznawstwo", "Opis » Ulepsz piec na fortunę!", "", "Posiadaj w ekwipunku:", "» Piec przynajmniej Szczęście I: 1", "",
 			"Za ukończenie otrzymasz:", "» 250.0 SC", "", "LPM \ue510 » Ukończ"));
+		// handed in already, as admins still see it: a slate frame, no task
+		chest.setItem(12, task(net.minecraft.world.item.Items.OAK_SAPLING, "Pierwsze drzewo", "", "• Zadanie ukończone!", "", "Podgląd admina:", "Opis » Posadź drzewo.", "",
+			"Za ukończenie otrzymasz:", "» 50.0 SC"));
 		// the info item and the way back: no tasks
 		chest.setItem(13, task(net.minecraft.world.item.Items.OAK_SIGN, "Informacje", "Wyzwania to kluczowy element", "  gry na Skyblocku!"));
 		chest.setItem(22, task(net.minecraft.world.item.Items.PLAYER_HEAD, "Wróć", "LPM » Wróć"));
@@ -2085,7 +2088,11 @@ public final class TestHooks {
 	public static void skyEvents() {
 		var mc = net.minecraft.client.Minecraft.getInstance();
 		for (int i = 0; i < 3; i++) SkyCounters.broken(mc.player, net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+		// a shift-click: the game foresees the first four torches, the server sends eight more a moment later
+		var inv = mc.player.getInventory();
+		inv.setItem(20, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.TORCH, 4));
 		SkyCounters.crafted(mc.player, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.TORCH, 4), 4);
+		inv.setItem(20, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.TORCH, 12));
 		// a fish as SkyUp gives them: a cod with its own name, the weight and size in the lore
 		var fish = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COD);
 		fish.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal("Ogromny, niezjadliwy Halibut atlantycki"));
@@ -2151,6 +2158,10 @@ public final class TestHooks {
 	}
 
 	/** The slots of the open challenges GUI lit as ready to hand in on the last frame: "4,7,11". */
+	public static String skyHandedIn() {
+		return SkyTasks.handedInSlots.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
+	}
+
 	public static String skyHighlighted() {
 		return SkyTasks.highlighted.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
 	}

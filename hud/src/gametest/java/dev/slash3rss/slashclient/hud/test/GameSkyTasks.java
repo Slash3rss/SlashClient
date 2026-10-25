@@ -89,7 +89,7 @@ public class GameSkyTasks implements FabricClientGameTest {
 			if (!stale.contains("| ~") || stale.contains("Not loaded") || stale.contains("Nie wczytano")) throw new AssertionError("Last known progress: " + stale);
 			context.takeScreenshot("skytasks-last-known");
 			// what the player does counts on top of the server's numbers until the GUI is open again:
-			// three stone mined, four torches crafted, two chests close by
+			// three stone mined, twelve torches crafted (a shift-click), two chests close by
 			world.getServer().runCommand("execute at @p run setblock ~2 ~ ~ chest");
 			world.getServer().runCommand("execute at @p run setblock ~-2 ~ ~ chest");
 			context.runOnClient(mc -> TestHooks.skyEvents());
@@ -103,7 +103,7 @@ public class GameSkyTasks implements FabricClientGameTest {
 			}
 			context.waitTicks(30);
 			String progress = context.computeOnClient(mc -> TestHooks.skyProgress());
-			check(progress.contains(" ~31/128") && progress.contains("A co tutaj tak ciemno?: ") && progress.contains(" ~4/64") && progress.contains("Składzik: ") && progress.contains(" ~2/8")
+			check(progress.contains(" ~31/128") && progress.contains("A co tutaj tak ciemno?: ") && progress.contains(" ~12/64") && progress.contains("Składzik: ") && progress.contains(" ~2/8")
 				&& progress.contains("Ciasno, ale własno: Posiadaj poziom wyspy 20/20") && progress.contains("Dobra praca się opłaca: Posiadaj poziom dowolnej pracy ~7/5")
 				&& progress.contains("Moczykij: Dowolna ryba ~1/24") && progress.contains("Rybak: Wyłów ~8090/200000") && progress.contains("Mamut morski: Wyłów conajmniej ogromne ~1/45")
 				&& progress.contains("Piecoznawstwo: Piec przynajmniej Szczęście I 1/1"), "counted", progress);
@@ -125,6 +125,11 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.waitTicks(15);
 			String lit = context.computeOnClient(mc -> TestHooks.skyHighlighted());
 			check(lit.equals("4,7,11"), "ready slots lit", lit);
+			String done = context.computeOnClient(mc -> TestHooks.skyHandedIn());
+			check(done.equals("12"), "handed-in slot marked apart", done);
+			context.getInput().setCursorPos(2, 2);
+			context.waitTicks(3);
+			context.takeScreenshot("skyready-colors");
 			// Składzik, Ciasno, ale własno and Piecoznawstwo tracked too
 			for (int slot : new int[] { 6, 7, 11 }) {
 				double[] at = context.computeOnClient(mc -> TestHooks.slotPoint(slot));

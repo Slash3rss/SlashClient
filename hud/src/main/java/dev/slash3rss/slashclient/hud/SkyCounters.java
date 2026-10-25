@@ -183,6 +183,46 @@ public final class SkyCounters {
 	public static void crafted(Player player, ItemStack stack, int amount) {
 		if (!mine(player) || stack.isEmpty()) return;
 		add(Kind.CRAFT, item(stack), amount);
+		// shift-click crafts as many as the grid allows, but the game here only foresees the first:
+		// the rest shows up as the server sends the inventory, so that growth is counted too
+		if (crafting != null && ItemStack.isSameItemSameComponents(crafting, stack)) {
+			craftedCount += amount;
+		} else {
+			crafting = stack.copyWithCount(1);
+			// the crafted items are already in the inventory or on the cursor by now
+			craftBase = held(Minecraft.getInstance(), crafting) - amount;
+			craftedCount = amount;
+		}
+		craftedAt = System.currentTimeMillis();
+	}
+
+	/** The item last crafted, how many of it the player held then, and how many were counted since. */
+	private static ItemStack crafting;
+	private static int craftBase, craftedCount;
+	private static long craftedAt;
+
+	/** All of `like` in the inventory and on the cursor. */
+	private static int held(Minecraft mc, ItemStack like) {
+		int n = 0;
+		var inv = mc.player.getInventory();
+		for (int i = 0; i < inv.getContainerSize(); i++) {
+			ItemStack is = inv.getItem(i);
+			if (ItemStack.isSameItemSameComponents(is, like)) n += is.getCount();
+		}
+		ItemStack carried = mc.player.containerMenu.getCarried();
+		if (ItemStack.isSameItemSameComponents(carried, like)) n += carried.getCount();
+		return n;
+	}
+
+	private static void watchCrafting(Minecraft mc, long now) {
+		if (crafting == null) return;
+		int more = held(mc, crafting) - craftBase - craftedCount;
+		if (more > 0) {
+			add(Kind.CRAFT, item(crafting), more);
+			craftedCount += more;
+			craftedAt = now;
+		}
+		if (now - craftedAt > 1500) crafting = null;
 	}
 
 	public static void ate(Player player) {
@@ -279,6 +319,7 @@ public final class SkyCounters {
 		if (mc.player == null || mc.level == null || !SkyTasks.onSkyUp(mc)) {
 			hit.clear();
 			before = null;
+			crafting = null;
 			return;
 		}
 		long now = System.currentTimeMillis();
@@ -310,6 +351,7 @@ public final class SkyCounters {
 			}
 			if (now - reeledAt > 2000) before = null;
 		}
+		watchCrafting(mc, now);
 		readNear(mc);
 		// the sidebar: read again each second
 		if (++tick % 20 == 0) {
