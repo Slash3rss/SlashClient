@@ -1,6 +1,7 @@
 import { BURST_LIMITS, COUNTED_PER_DAY, EDIT_WINDOW_MS } from './chatLimits.ts';
 import { CHALLENGE_SETTING_DEFS } from './challenges.ts';
 import { IMAGE_LIMITS } from './chatImages.ts';
+import { CHAT_KEY_SETTING_DEFS } from './chatKeys.ts';
 import { chatMediaSettingDefs } from './chatMediaLimits.ts';
 import { MAX_LOGO_BYTES } from './clanLogos.ts';
 import { BLOCKED_TAGS, BLOCKED_WORDS, CLAN_LIMITS } from './clans.ts';
@@ -34,6 +35,7 @@ export const CATEGORIES: { id: SettingCategory; label: string; labelEn: string }
   { id: 'features', label: 'Funkcje', labelEn: 'Features' },
   { id: 'banner', label: 'Komunikat', labelEn: 'Announcement' },
   { id: 'chat', label: 'Czat', labelEn: 'Chat' },
+  { id: 'chatKeys', label: 'Klucze czatu', labelEn: 'Chat keys' },
   { id: 'media', label: 'Zdjęcia i klipy', labelEn: 'Pictures and clips' },
   { id: 'chatMedia', label: 'Multimedia w czatach', labelEn: 'Chat media' },
   { id: 'gifs', label: 'GIF-y i naklejki', labelEn: 'GIFs and stickers' },
@@ -159,6 +161,7 @@ export const SETTING_DEFS: SettingDef[] = [
 
   // limits of pictures in group, clan and community chats: each chat's store, keeping time, size and pictures per member a day (chatMediaLimits.ts)
   ...group('chatMedia', chatMediaSettingDefs()),
+  ...group('chatKeys', CHAT_KEY_SETTING_DEFS),
   // GIFs and stickers from GIPHY or Tenor (gifs.ts)
   ...GIF_SETTING_DEFS,
 

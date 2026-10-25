@@ -34,6 +34,7 @@ import { Storage, secretBox, type DiskSpace } from './storage.ts';
 import { storageAdminRoutes } from './storageAdmin.ts';
 import { muteRoutes } from './mutes.ts';
 import { chatImageRoutes, type ImageLimits } from './chatImages.ts';
+import { chatKeyRoutes, cleanDeviceName } from './chatKeys.ts';
 import { OverrideStore, globalLimits } from './chatMediaLimits.ts';
 import { DEFAULT_ELEMENTS, profileRoutes, type Visibility } from './profiles.ts';
 import { legalRoutes } from './legal/routes.ts';
@@ -1352,12 +1353,16 @@ export function createApp(cfg: Config) {
     // -- chat encryption: launchers publish their public key; friends fetch them to encrypt --
     ['POST', /^\/v1\/keys$/, async (req) => {
       const me = authed(req);
-      const { device, pub } = await body(req);
+      const { device, pub, name } = await body(req);
       // an X25519 public key in DER (spki) is 44 bytes: 60 characters of base64
       if (typeof device !== 'string' || !/^[0-9a-f]{24}$/.test(device) || typeof pub !== 'string' || !/^[A-Za-z0-9+/=]{40,80}$/.test(pub)) throw new HttpError(400, 'bad_request');
-      db.setDeviceKey(me, device, pub);
+      // `name` (launchers 0.9.47+): what "Urządzenia" shows; a device removed there stays out (chatKeys.ts)
+      const result = db.setDeviceKey(me, device, pub, cleanDeviceName(name), settings.num('chatKeys.maxDevices'));
+      if (result === 'revoked') throw new HttpError(403, 'device_revoked');
       push(me, { type: 'keys', user: me });
       for (const f of db.friends(me)) push(f.id, { type: 'keys', user: me });
+      // a new device: the player's other launchers ask about handing it the history
+      if (result === 'added') push(me, { type: 'chat-keys' });
       return { ok: true };
     }],
     ['GET', /^\/v1\/keys\/([\w-]+)$/, (req, [other]) => {
@@ -1504,6 +1509,14 @@ export function createApp(cfg: Config) {
     }),
     ...mutes.routes,
     ...images.routes,
+    // history for a new device, and the password backup of the chat key (chatKeys.ts)
+    ...chatKeyRoutes({
+      db, authed, body, push, num: (key) => settings.num(key),
+      limitRequests: limiter('chatKeys.requestsPerMinute'), limitBackup: limiter('chatKeys.backupChangesPerMinute'),
+      fail: (status, code) => {
+        throw new HttpError(status, code);
+      },
+    }).routes,
     // the achievement creator and how each cosmetic can be got (achievementsAdmin.ts)
     ...achievementsAdminRoutes({
       db, wallet, achievements, admin, body, push,
