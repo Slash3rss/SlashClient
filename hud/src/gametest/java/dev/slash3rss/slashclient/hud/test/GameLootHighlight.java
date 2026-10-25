@@ -46,11 +46,17 @@ public class GameLootHighlight implements FabricClientGameTest {
 			// switched on outside a dungeon: nothing
 			String shown = context.computeOnClient(mc -> TestHooks.lootHighlight(true, false, -1));
 			if (!shown.startsWith("0 ")) throw new AssertionError("Loot outlined outside a dungeon: " + shown);
-			// as on SkyUp: the hint, then the boss bar
+			// as on SkyUp: the hint, then the boss bar while in the start room (a platform of its own:
+			// the start room has nothing to take), then on into the room with the loot
+			server.runCommand(String.format("fill %d %d %d %d %d %d polished_deepslate", x0 + 70, y - 1, z0 - 4, x0 + 78, y - 1, z0 + 4));
 			server.runCommand("tellraw @a \"Dungeon » Czy wiesz że... test\"");
+			context.waitTicks(10);
+			server.runCommand(String.format("tp @a %d.5 %d %d.5 180 15", x0 + 74, y, z0));
 			context.waitTicks(10);
 			server.runCommand("bossbar add dungeon \"Dungeon poz. 1\"");
 			server.runCommand("bossbar set dungeon players @a");
+			context.waitTicks(30);
+			server.runCommand(String.format("tp @a %d.5 %d %d.5 180 15", x0, y, z0 + 6));
 			context.waitTicks(60);
 			shown = context.computeOnClient(mc -> TestHooks.lootHighlight(true, false, -1));
 			System.out.println("SlashClient test: loot highlight " + shown);
