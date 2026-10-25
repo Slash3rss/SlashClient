@@ -124,7 +124,7 @@ public final class Catalog {
 		Map.entry("block", "world"), Map.entry("durability", "combat"), Map.entry("ammo", "combat"), Map.entry("kd", "combat"), Map.entry("hits", "combat"), Map.entry("session", "hud"), Map.entry("biome", "world"), Map.entry("daytime", "world"),
 		Map.entry("light", "world"), Map.entry("saturation", "world"), Map.entry("movement", "world"), Map.entry("combo", "combat"),
 		Map.entry("reach", "combat"), Map.entry("target", "combat"), Map.entry("armor", "combat"), Map.entry("effects", "combat"),
-		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"), Map.entry("skycase", "skyup"), Map.entry("skywardrobe", "skyup"),
+		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"), Map.entry("skycase", "skyup"), Map.entry("skywardrobe", "skyup"), Map.entry("skyxp", "skyup"),
 		Map.entry("twitchchat", "chat"), Map.entry("kickchat", "chat"), Map.entry("nethercoords", "world"));
 
 	static final int[] COLORS = { 0xFFFFFFFF, 0xFF60A5FA, 0xFF4ADE80, 0xFF55FFFF, 0xFFFACC15, 0xFFF87171, 0xFFA855F7, 0xFFFF55FF };
@@ -325,7 +325,17 @@ public final class Catalog {
 			new Toggle("slashclient-hud.lootHighlight.limit", () -> cfg.lootHighlightLimit, v -> cfg.lootHighlightLimit = v),
 			new Slider("slashclient-hud.lootHighlight.range", dev.slash3rss.slashclient.hud.LootHighlight.MIN_RANGE, dev.slash3rss.slashclient.hud.LootHighlight.MAX_RANGE, 4f, "%.0f",
 				() -> (float) cfg.lootHighlightRange, v -> cfg.lootHighlightRange = Math.round(v))), null));
+		// the XP calculator of slash3rss.dev
+		out.add(new Entry("xpCalc", "slashclient-hud.xp.title", "extras", "m-xpcalc", null, null, List.of(), () -> {
+			var mc = net.minecraft.client.Minecraft.getInstance();
+			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.XpCalcScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+		}));
 		//#if MC >= 26.3
+		// and its SkyUp edition: bottling with the tax, the mending assistant, the AFK countdown
+		out.add(new Entry("skyXpCalc", "slashclient-hud.skyXp.title", "skyup", "m-skyxpcalc", null, null, List.of(), () -> {
+			var mc = net.minecraft.client.Minecraft.getInstance();
+			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.SkyXpScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+		}));
 		// SkyUp's pack in the player's own resource packs, kept up to date; switched on, the server does not ask
 		out.add(new Entry("skyPack", "slashclient-hud.skyPack", "skyup", "skyup", () -> cfg.skyPackLocal, v -> cfg.skyPackLocal = v, List.of(
 			new Note("slashclient-hud.skyPack.note", () -> new Object[0])), null));

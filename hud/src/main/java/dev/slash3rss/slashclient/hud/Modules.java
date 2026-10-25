@@ -46,6 +46,8 @@ public final class Modules {
 		out.add(new SkyCase.Module());
 		// and what is worn in SkyUp's cosmetic wardrobe
 		out.add(new SkyWardrobe.Module());
+		// and the bottling countdown of SkyUp's XP calculator, while it runs
+		out.add(new SkyXp.Module());
 		//#endif
 		// a Twitch and a Kick channel's live chat
 		out.addAll(StreamChatModule.all());
