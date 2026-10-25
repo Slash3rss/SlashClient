@@ -94,6 +94,11 @@ public final class SkyPackTestHooks {
 	}
 
 	/** The game's pack question answered yes with "Ustaw na stałe" ticked; false when it is not open or has no box. */
+	/** Whether SkyUp's copy is in the game's options (what loads after leaving the server and at the next start). */
+	public static boolean inOptions() {
+		return Minecraft.getInstance().options.resourcePacks.contains(KeptPacks.id(KeptPacks.SKYUP));
+	}
+
 	public static boolean answerForGood() {
 		if (!(Compat.screen(Minecraft.getInstance()) instanceof net.minecraft.client.gui.screens.ConfirmScreen screen)) return false;
 		boolean box = screen.children().stream().anyMatch(c -> c instanceof net.minecraft.client.gui.components.Checkbox);

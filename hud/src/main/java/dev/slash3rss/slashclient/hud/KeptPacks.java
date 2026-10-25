@@ -107,8 +107,9 @@ public final class KeptPacks {
 	/**
 	 * The game's pack question answered: with "Ustaw na stałe" ticked and yes, the server is kept
 	 * "for good" and its packs saved; this time the game loads the server's own (two loads at once would
-	 * get in each other's way), from the next join the copy, switched on, stands in for it. Either way
-	 * the question's packs are forgotten.
+	 * get in each other's way), but the copy is switched on quietly beside it, so leaving the server keeps
+	 * the pack on (and from the next join the copy stands in for the server's). Either way the question's
+	 * packs are forgotten.
 	 */
 	public static void answered(boolean yes, boolean forGood) {
 		java.util.List<Offer> asked = java.util.List.copyOf(offers);
@@ -117,8 +118,39 @@ public final class KeptPacks {
 		ServerPacks.keep(asked.get(0).server());
 		for (Offer o : asked) {
 			String name = fileFor(o.server(), ServerPacks.Mode.KEEP);
-			if (name != null && !current(name, o.url(), o.hash())) fetch(name, o.url(), o.hash(), false);
+			if (name == null) continue;
+			if (current(name, o.url(), o.hash())) selectQuietly(name);
+			else {
+				quietly.add(name);
+				fetch(name, o.url(), o.hash(), false);
+			}
 		}
+	}
+
+	/** Copies to switch on quietly once downloaded. */
+	private static final java.util.Set<String> quietly = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+	/**
+	 * Switches the copy on without loading the packs now (the server's own is loading or loaded): it
+	 * is in the options (saved) and the selection, so leaving the server, when the game drops the server's
+	 * pack and loads the packs again, keeps it on.
+	 */
+	static void selectQuietly(String name) {
+		Minecraft mc = Minecraft.getInstance();
+		mc.execute(() -> {
+			var repo = mc.getResourcePackRepository();
+			repo.reload();
+			if (!repo.getAvailableIds().contains(id(name))) return;
+			if (!mc.options.resourcePacks.contains(id(name))) {
+				mc.options.resourcePacks.add(id(name));
+				mc.options.save();
+			}
+			if (!repo.getSelectedIds().contains(id(name))) {
+				var ids = new java.util.ArrayList<>(repo.getSelectedIds());
+				ids.add(id(name));
+				repo.setSelected(ids);
+			}
+		});
 	}
 
 	/** Whether the game's question is about packs this can keep (so it gets the checkbox). */
@@ -204,8 +236,9 @@ public final class KeptPacks {
 					swapInUse(name);
 					return;
 				}
-				// kept for good: switched on now, so the next join needs nothing
+				// kept for good: switched on now, so the next join needs nothing (quietly while the server's own is in use)
 				if (keep) select(name);
+				else if (quietly.remove(name)) selectQuietly(name);
 				toast(name, keep ? "slashclient-hud.keptPack.kept" : selected(name) ? "slashclient-hud.keptPack.updated" : "slashclient-hud.keptPack.saved");
 			} catch (Exception e) {
 				SlashHud.LOG.warn("SlashClient: keeping the server's pack {}: {}", name, e.toString());

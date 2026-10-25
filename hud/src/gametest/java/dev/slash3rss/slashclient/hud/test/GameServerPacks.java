@@ -93,6 +93,9 @@ public class GameServerPacks implements FabricClientGameTest {
 			context.waitTicks(5);
 			String after = context.computeOnClient(mc -> Compat.screen(mc) == null ? "none" : Compat.screen(mc).getClass().getSimpleName());
 			if (after.contains("PackConfirm")) throw new AssertionError("SkyUp's pack, yes with the box ticked: the question stayed open");
+			// the copy switched on quietly at once, so leaving the server keeps the pack on
+			context.waitTicks(5);
+			if (!context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.inOptions())) throw new AssertionError("SkyUp's pack, ticked: the copy is not on for after leaving");
 			// the next join, kept "for good" (the test world has no address to keep it by: SkyUp's own here):
 			// the copy switched on, standing in for the offer
 			boolean covered = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.offerKept(url));
