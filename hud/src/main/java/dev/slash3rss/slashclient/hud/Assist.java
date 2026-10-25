@@ -37,8 +37,8 @@ public final class Assist {
 	static int leftClicks, rightClicks;
 	/** The slot the player had before auto tool picked another (-1 = none). */
 	private static int toolFrom = -1;
-	/** A tool auto tool brought from the backpack (its backpack slot and the hotbar slot it went to), to put back. */
-	private static int swappedFrom = -1, swappedTo = -1;
+	/** Tools auto tool brought from the backpack ({backpack slot, hotbar slot}), newest last, to put back in reverse. */
+	private static final java.util.ArrayDeque<int[]> swaps = new java.util.ArrayDeque<>();
 	private static int idleTicks;
 	/** What was in the hand last tick, to see a stack run out. */
 	private static ItemStack lastHand = ItemStack.EMPTY;
@@ -87,7 +87,8 @@ public final class Assist {
 		if (player == null || mc.level == null) {
 			holdAttack = holdUse = armed = false;
 			lastHand = ItemStack.EMPTY;
-			toolFrom = swappedFrom = swappedTo = -1;
+			toolFrom = -1;
+			swaps.clear();
 			return;
 		}
 		boolean inGame = Compat.screen(mc) == null;
@@ -221,11 +222,15 @@ public final class Assist {
 			// a moment after digging stops, the hand goes back to what it held
 			if (toolFrom >= 0 && ++idleTicks > 4) {
 				if (cfg().autoToolRestore) {
-					// the tool from the backpack goes back where it was (and what it replaced comes back)
-					if (swappedFrom >= 0 && mc.gameMode != null) Compat.swapIntoHotbar(mc, player, swappedFrom, swappedTo);
+					// the tools from the backpack go back where they were, the last one first (and what they replaced comes back)
+					while (!swaps.isEmpty() && mc.gameMode != null) {
+						int[] sw = swaps.removeLast();
+						Compat.swapIntoHotbar(mc, player, sw[0], sw[1]);
+					}
 					inv.setSelectedSlot(toolFrom);
 				}
-				toolFrom = swappedFrom = swappedTo = -1;
+				toolFrom = -1;
+				swaps.clear();
 			}
 			return;
 		}
@@ -239,16 +244,16 @@ public final class Assist {
 			inv.setSelectedSlot(best);
 			return;
 		}
-		// the best tool is in the backpack: onto the hotbar (an empty slot, else the one in hand), once per dig
-		if (swappedFrom >= 0 || mc.gameMode == null) return;
+		// the best tool is in the backpack: onto the hotbar (an empty slot, else the one in hand); again for every
+		// block that needs another one (items picked up meanwhile may have filled the empty hotbar slots)
+		if (mc.gameMode == null || swaps.size() >= 9) return;
 		int to = inv.getSelectedSlot();
 		for (int i = 0; i < Inventory.getSelectionSize(); i++) if (inv.getItem(i).isEmpty()) {
 			to = i;
 			break;
 		}
 		Compat.swapIntoHotbar(mc, player, best, to);
-		swappedFrom = best;
-		swappedTo = to;
+		swaps.addLast(new int[] { best, to });
 		inv.setSelectedSlot(to);
 	}
 
