@@ -24,6 +24,7 @@ import { SUGGESTIONS_EN } from './i18nSuggestions';
 import { CHAT_MEDIA_EN } from './i18nChatMedia';
 import { SESSION_SUMMARY_EN } from './i18nSessionSummary';
 import { LAUNCHER_NEWS_EN } from './i18nLauncherNews';
+import { CHAT_KEYS_EN } from './i18nChatKeys';
 import { GIFS_EN } from './i18nGifs';
 import { PROJECT_DETAILS_EN } from './i18nProjectDetails';
 import { MOD_DEPS_EN } from './i18nModDeps';
@@ -65,6 +66,7 @@ const EN: Record<string, string> = {
   ...SESSION_SUMMARY_EN,
   // SlashClient's own releases: launcher news, "Co nowego", the changelog, going back (own file)
   ...LAUNCHER_NEWS_EN,
+  ...CHAT_KEYS_EN,
   // a project's details window and its gallery in the content browser (own file)
   ...PROJECT_DETAILS_EN,
   // statuses from a server's tab list (own file)

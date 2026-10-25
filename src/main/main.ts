@@ -21,8 +21,9 @@ import { initChangelog } from './changelog';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { activityFromLog, SocialClient, SocialError, type SocialUser, type Status } from './social';
 import { decorate, serverKey, StatusRules, Throttle, type GameStatus } from './serverStatus';
-import { decrypt, encrypt, isEncrypted, newDeviceKey, type DeviceKey, type PublicDevice } from './chatCrypto';
+import { encrypt, isEncrypted, newDeviceKey, type DeviceKey, type PublicDevice } from './chatCrypto';
 import { groupAad, openGroupMessage, sealGroupText, type GroupChatMessage, type GroupKey } from './groupChat';
+import { ChatKeys, type WrapRef } from './chatKeys';
 import { createGifMedia } from './gifMedia';
 import { ClanLogoCache, isLogoPng } from './clanLogo';
 import { RankIconCache } from './rankIcons';
@@ -175,7 +176,7 @@ function publicStore() {
   return {
     ...store,
     // secrets stay in the main process
-    settings: { ...store.settings, socialToken: undefined, chatKey: undefined },
+    settings: { ...store.settings, socialToken: undefined, chatKey: undefined, chatKeysRetired: undefined, chatShares: undefined },
     accounts: store.accounts.map(({ id, type, name, uuid }) => ({ id, type, name, uuid })),
     profiles: store.profiles.map((p) => ({ ...p, iconFile: p.icon === 'custom' ? iconFile(profileGameDir(p)) : undefined })),
     running: games.size > 0,
@@ -303,7 +304,8 @@ handle('store:get', () => publicStore());
 handle('versions:list', async () => (await getManifest()).versions.map(({ id, type }) => ({ id, type })));
 
 handle('settings:save', async (settings: Partial<Settings>) => {
-  const { socialToken: _ignored, chatKey: _key, ...allowed } = settings;
+  // the chat's keys and the history hand-overs the player agreed to are the main process's alone
+  const { socialToken: _ignored, chatKey: _key, chatKeysRetired: _retired, chatShares: _shares, ...allowed } = settings;
   const urlChanged = allowed.socialUrl !== undefined && allowed.socialUrl !== store.settings.socialUrl;
   const accountChanged = allowed.selectedAccountId !== undefined && allowed.selectedAccountId !== store.settings.selectedAccountId;
   const previous = store.settings;
@@ -1905,6 +1907,8 @@ const social = new SocialClient({
     // an edited message comes as a new one would; a deleted one has no text left to open (server 0.9.23+)
     if ((event.type === 'message' || event.type === 'message-edit' || event.type === 'message-delete') && event.message) event = { ...event, message: openMessage(event.message as ChatMessage) };
     if (event.type === 'keys' && typeof event.user === 'string') chatKeys.delete(event.user);
+    // a new device of the account, a device removed, history handed over to this launcher (chatKeys.ts)
+    if (event.type === 'chat-keys' || event.type === 'chat-wraps' || (event.type === 'keys' && event.user === social.state().user?.id)) refreshChatKeys();
     // group chats: the same, with the group's members' keys (who is in it may have changed)
     if ((event.type === 'group-message' || event.type === 'group-message-edit' || event.type === 'group-message-delete') && event.message) event = { ...event, message: openGroup(event.message as GroupChatMessage) };
     if (event.type === 'groups' || event.type === 'keys') groupKeys.clear();
@@ -1914,6 +1918,9 @@ const social = new SocialClient({
     if (event.type === 'lan-connect' && typeof event.id === 'string') lan.accept(event.id);
   },
   onReady: () => {
+    // another account than before: nothing of the old one's keys stays in memory
+    if (social.state().user?.id !== chatKeysUser) historyKeys.reset();
+    chatKeysUser = social.state().user?.id;
     void registerChatKey();
     popularReady();
     lan.resend();
@@ -2156,7 +2163,7 @@ handle('social:profileUrl', async (profileHandle: string, open?: boolean) => {
 
 // ---------- end-to-end encrypted chat (chatCrypto.ts) ----------
 
-interface ChatMessage { from: string; to: string; text: string; invite?: unknown; encrypted?: boolean; unreadable?: boolean; image?: unknown }
+interface ChatMessage { id?: number; from: string; to: string; text: string; invite?: unknown; encrypted?: boolean; unreadable?: boolean; image?: unknown }
 
 /** This launcher's key, made on first use and kept in the config (the private half encrypted). */
 function chatKey(): DeviceKey {
@@ -2169,11 +2176,99 @@ function chatKey(): DeviceKey {
   return { device: k.device, publicKey: k.publicKey, privateKey: secrets.decrypt(k.privateKey) };
 }
 
-/** Publishes this launcher's public key, so friends (and our other launchers) can encrypt for it. */
+/** What "Urządzenia" shows for this launcher on the player's other devices: the system and the computer's name. */
+function deviceName(): string {
+  const system = process.platform === 'win32' ? 'Windows' : process.platform === 'darwin' ? 'macOS' : 'Linux';
+  return `${system} · ${os.hostname()}`.slice(0, 60);
+}
+
+/**
+ * Publishes this launcher's public key, so friends (and our other launchers) can encrypt for it.
+ * A key removed on another device ("Usuń urządzenie") is refused; the player can make a new one.
+ */
 async function registerChatKey() {
   const k = chatKey();
-  await social.call('POST', '/v1/keys', { device: k.device, pub: k.publicKey }).catch((err) => console.error('Klucz czatu:', (err as Error).message));
+  try {
+    await social.call('POST', '/v1/keys', { device: k.device, pub: k.publicKey, name: deviceName() });
+    historyKeys.revoked = false;
+  } catch (err) {
+    if (err instanceof SocialError && err.code === 'device_revoked') historyKeys.revoked = true;
+    else console.error('Klucz czatu:', (err as Error).message);
+  }
+  refreshChatKeys();
 }
+
+/** The keys this launcher had before (removed elsewhere): kept to read what was sealed for them. */
+function retiredChatKeys(): DeviceKey[] {
+  return (store.settings.chatKeysRetired ?? []).map((k) => ({ device: k.device, publicKey: k.publicKey, privateKey: secrets.decrypt(k.privateKey) }));
+}
+
+/** History on a new device: hand-overs from the player's other launchers and the password backup (chatKeys.ts). */
+let chatKeysUser: string | undefined;
+const historyKeys = new ChatKeys({
+  call: (method, apiPath, body) => social.call(method, apiPath, body),
+  own: () => chatKey(),
+  retired: retiredChatKeys,
+  me: () => social.state().user?.id,
+  shares: () => store.settings.chatShares ?? [],
+  saveShares: (list) => {
+    store.settings.chatShares = list;
+    void persist();
+  },
+  emit: (event) => send('social:event', event),
+});
+let chatKeysRefresh: Promise<unknown> | undefined;
+/** The devices, the backup and the handed-over wraps asked again (one at a time). */
+function refreshChatKeys() {
+  if (!social.state().user) return;
+  const run = (chatKeysRefresh ?? Promise.resolve()).catch(() => undefined).then(() => historyKeys.refresh())
+    .catch((err) => console.error('Klucze czatu:', (err as Error).message));
+  chatKeysRefresh = run;
+}
+const chatKeysCall = <T>(fn: () => Promise<T>) => socialCall(async () => {
+  try {
+    return await fn();
+  } catch (err) {
+    // the checks of chatKeys.ts and chatBackup.ts say what is wrong in a word ("wrong_password", "too_short", …)
+    if (err instanceof SocialError) throw err;
+    const e = err as Error & { wait?: number };
+    throw new Error(`chatkeys:${e.message}${e.wait ? `:${Math.ceil(e.wait / 1000)}` : ''}`);
+  }
+});
+handle('chatKeys:state', () => chatKeysCall(async () => (social.state().user ? historyKeys.refresh() : historyKeys.view())));
+handle('chatKeys:decide', (device: string, share: boolean, shown: string) => chatKeysCall(async () => {
+  if (typeof device !== 'string' || !/^[0-9a-f]{24}$/.test(device) || typeof shown !== 'string') throw new SocialError('bad_request');
+  return historyKeys.decide(device, share === true, shown);
+}));
+handle('chatKeys:revoke', (device: string) => chatKeysCall(async () => {
+  if (typeof device !== 'string' || !/^[0-9a-f]{24}$/.test(device)) throw new SocialError('bad_request');
+  return historyKeys.revoke(device);
+}));
+handle('chatKeys:setBackup', (password: string) => chatKeysCall(async () => {
+  if (typeof password !== 'string') throw new SocialError('bad_request');
+  return historyKeys.setBackup(password);
+}));
+handle('chatKeys:changeBackup', (current: string, next: string) => chatKeysCall(async () => {
+  if (typeof current !== 'string' || typeof next !== 'string') throw new SocialError('bad_request');
+  return historyKeys.changeBackupPassword(current, next);
+}));
+handle('chatKeys:removeBackup', () => chatKeysCall(() => historyKeys.removeBackup()));
+handle('chatKeys:unlock', (password: string) => chatKeysCall(async () => {
+  if (typeof password !== 'string') throw new SocialError('bad_request');
+  return historyKeys.unlockBackup(password);
+}));
+/** This launcher's key was removed elsewhere: a new one (the old one kept for reading), asking for the history again. */
+handle('chatKeys:newKey', () => chatKeysCall(async () => {
+  const old = store.settings.chatKey;
+  if (old) store.settings.chatKeysRetired = [...(store.settings.chatKeysRetired ?? []), old].slice(-5);
+  store.settings.chatKey = undefined;
+  chatKey();
+  await persist();
+  chatKeys.clear();
+  groupKeys.clear();
+  await registerChatKey();
+  return historyKeys.refresh();
+}));
 
 const chatKeys = new Map<string, { at: number; keys: PublicDevice[] }>();
 async function keysOf(userId: string): Promise<PublicDevice[]> {
@@ -2205,9 +2300,10 @@ function openMessage(m: ChatMessage): ChatMessage {
   return gone ? { ...opened, text: gone } : opened;
 }
 function openMessageText(m: ChatMessage): ChatMessage {
-  if (m.image) m = { ...m, image: openImageKey(m.image, `${m.from}|${m.to}`) };
+  const ref = (field: WrapRef['field']): WrapRef | undefined => (typeof m.id === 'number' ? { kind: 'm', id: m.id, field } : undefined);
+  if (m.image) m = { ...m, image: openImageKey(m.image, `${m.from}|${m.to}`, ref('image')) };
   if (!isEncrypted(m.text)) return m;
-  const text = decrypt(m.text, chatKey(), `${m.from}|${m.to}`);
+  const text = historyKeys.open(m.text, `${m.from}|${m.to}`, ref('text'));
   return text === undefined
     ? { ...m, text: t('Wiadomość zaszyfrowana dla innego urządzenia.'), encrypted: true, unreadable: true }
     : { ...m, text, encrypted: true };
@@ -2227,9 +2323,11 @@ async function sealGroup(group: string, text: string): Promise<string> {
 }
 /** A group message as the page and the game get it: its text and its picture's key opened, when this launcher can. */
 function openGroup<T extends GroupChatMessage>(m: T): T {
-  const opened = openGroupMessage(m, chatKey(), t('Wiadomość zaszyfrowana dla innego urządzenia.'));
+  const id = (m as { id?: unknown }).id;
+  const ref = (field: WrapRef['field']): WrapRef | undefined => (typeof id === 'number' ? { kind: 'g', id, field } : undefined);
+  const opened = openGroupMessage(m, (text, aad) => historyKeys.open(text, aad, ref('text')), t('Wiadomość zaszyfrowana dla innego urządzenia.'));
   const image = (m as { image?: unknown }).image;
-  if (image) return { ...opened, image: openImageKey(image, groupAad(m.group, m.from)) };
+  if (image) return { ...opened, image: openImageKey(image, groupAad(m.group, m.from), ref('image')) };
   const gone = removedText((m as { imageRemoved?: RemovedImage }).imageRemoved, t);
   return gone ? { ...opened, text: gone } : opened;
 }
@@ -2240,10 +2338,10 @@ const imageKeys = new Map<string, ImageKey>();
 const imageCache = new ImageCache();
 
 /** A message's picture with its key opened (`aad`: what the key's encryption is bound to: the two people, or the group and sender). */
-function openImageKey(image: unknown, aad: string): ChatImageView | undefined {
+function openImageKey(image: unknown, aad: string, ref?: WrapRef): ChatImageView | undefined {
   const i = image as { id?: unknown; key?: unknown; size?: unknown };
   if (!i || typeof i.id !== 'string' || !/^[\w-]{22}$/.test(i.id)) return undefined;
-  const text = typeof i.key === 'string' && isEncrypted(i.key) ? decrypt(i.key, chatKey(), aad) : undefined;
+  const text = typeof i.key === 'string' && isEncrypted(i.key) ? historyKeys.open(i.key, aad, ref) : undefined;
   const key = text === undefined ? undefined : parseKey(text);
   if (!key) return { id: i.id, unreadable: true };
   imageKeys.set(i.id, key);
@@ -2421,7 +2519,7 @@ async function chatCall(method: string, apiPath: string, body?: unknown) {
   // the Multimedia panel (0.9.36+): each picture's key opened as in its conversation
   if (method === 'GET' && /^\/v1\/(messages|groups)\/[\w-]+\/media(\?.*)?$/.test(apiPath)) {
     const res = await social.call<{ media?: MediaItem[] }>(method, apiPath, body);
-    const media = (res?.media ?? []).map((m) => ({ ...m, image: openImageKey(m.image, m.group ? groupAad(m.group, m.from) : `${m.from}|${m.to}`) }));
+    const media = (res?.media ?? []).map((m) => ({ ...m, image: openImageKey(m.image, m.group ? groupAad(m.group, m.from) : `${m.from}|${m.to}`, { kind: m.group ? 'g' : 'm', id: m.id, field: 'image' }) }));
     return { ...res, media };
   }
   // a new message, or an edited one (server 0.9.23+): the new text is sealed exactly like a new message

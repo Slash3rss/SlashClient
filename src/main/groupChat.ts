@@ -33,9 +33,13 @@ export function sealGroupText(text: string, own: DeviceKey, keys: GroupKey[], gr
   return encrypt(text, own, groupDevices(keys, own), groupAad(group, me));
 }
 
-/** A message as this launcher reads it; one not sealed for it says so instead of the envelope. */
-export function openGroupMessage<T extends GroupChatMessage>(m: T, own: DeviceKey, unreadableText: string): T {
+/**
+ * A message as this launcher reads it; one not sealed for it says so instead of the envelope. `own`
+ * is the launcher's key, or a function that also tries history handed over to it (chatKeys.ts).
+ */
+export function openGroupMessage<T extends GroupChatMessage>(m: T, own: DeviceKey | ((text: string, aad: string) => string | undefined), unreadableText: string): T {
   if (!isEncrypted(m.text)) return m;
-  const text = decrypt(m.text, own, groupAad(m.group, m.from));
+  const aad = groupAad(m.group, m.from);
+  const text = typeof own === 'function' ? own(m.text, aad) : decrypt(m.text, own, aad);
   return text === undefined ? { ...m, text: unreadableText, encrypted: true, unreadable: true } : { ...m, text, encrypted: true };
 }

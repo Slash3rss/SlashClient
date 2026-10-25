@@ -210,6 +210,15 @@ const api = {
   socialCommunityLogo: (id: string, version: number) => invoke('social:communityLogo', id, version),
   /** A rank's own icon by its address (/v1/ranks/<id>/logo.png?v=…) as a data: address. */
   socialRankIcon: (apiPath: string) => invoke('social:rankIcon', apiPath),
+  // the chat's history on a new device and the password backup of the chat key (chatKeys.ts)
+  chatKeysState: () => invoke('chatKeys:state'),
+  chatKeysDecide: (device: string, share: boolean, shown: string) => invoke('chatKeys:decide', device, share, shown),
+  chatKeysRevoke: (device: string) => invoke('chatKeys:revoke', device),
+  chatKeysSetBackup: (password: string) => invoke('chatKeys:setBackup', password),
+  chatKeysChangeBackup: (current: string, next: string) => invoke('chatKeys:changeBackup', current, next),
+  chatKeysRemoveBackup: () => invoke('chatKeys:removeBackup'),
+  chatKeysUnlock: (password: string) => invoke('chatKeys:unlock', password),
+  chatKeysNewKey: () => invoke('chatKeys:newKey'),
   joinInGame: (address: string) => invoke('game:join', address),
   listConfigs: (profileId: string) => invoke('configs:list', profileId),
   readConfig: (profileId: string, rel: string) => invoke('configs:read', profileId, rel),

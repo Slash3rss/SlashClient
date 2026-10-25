@@ -12,6 +12,7 @@ import { onFeatures } from './features';
 import { legalNote } from './legal';
 import { badgeChoices, rankBadge, rankName, safeColor, type RankView } from './rankBadge';
 import { createPositionSharing } from './positionSharing';
+import { createChatKeys } from './chatKeys';
 import { createPopularSharing } from './friendsPopular';
 import { cleanStream, createStreamsSection, liveBadge, noticeText, streamLine, type FriendStream } from './streams';
 import { canDelete, canEdit, editHint, editedLabel, fitChatHead, openMenu, refitChatHead, replaceMessage, slowDownSeconds, slowDownText, tombstone, withMenu, type MenuItem } from './chatEdits';
@@ -272,9 +273,20 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   const isVisible = () => !!root.closest('.view')?.classList.contains('active') && document.hasFocus();
   /** Group chats and the clan (groups.ts): their rows in the list, and their conversation in the chat panel. */
+  /** The chat's keys on this launcher (chatKeys.ts): the history for a new device, the password backup, the account's devices. */
+  const chatKeys = createChatKeys({
+    api, toast: deps.toast, errorText: deps.errorText,
+    // history handed over to this launcher, or opened with the chat password: the open chats again
+    historyChanged: () => {
+      chats.clear();
+      if (selected) void loadOlder(selected);
+      groups.reloadHistory();
+    },
+  });
   const groups = createGroups({
     api, toast: deps.toast, errorText: deps.errorText, avatar: (p, presence) => avatar(p, presence as Presence | undefined), visible: isVisible,
     imageCard: (image, mine) => imageCard(image, mine),
+    historyNotice: (unreadable) => chatKeys.notice(unreadable),
     me: () => state?.user?.id,
     friends: () => list.friends.map((f) => ({ id: f.id, name: f.name, online: f.presence.status !== 'offline' })),
     changed: () => {
@@ -398,6 +410,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     if (state?.user) void groups.refresh();
     if (state?.user) void communities.refresh();
     if (state?.user) void suggestions.refresh();
+    if (state?.user) void chatKeys.load();
   }
 
   async function refreshList() {
@@ -708,6 +721,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       el('label', { className: 'check fr-share' }, playingBox(), t(' Powiadamiaj, gdy znajomi zaczynają grać')),
       ...(positionsBox ? [positionsBox.element] : []),
       ...(popularBox ? [popularBox.element] : []),
+      // the chat's devices and the password backup (servers before 0.9.47 have neither: nothing shows)
+      ...(chatKeysBox ? [chatKeysBox] : []),
       el('div', { className: 'fr-account-section', textContent: t('Konta') }),
       el('div', { className: 'fr-linked-row' }, el('small', { className: 'muted', textContent: t('Logowanie:') }), linked),
       minecraftRow(me),
@@ -753,6 +768,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
 
   /** The account's window ("Konto i profil"), drawn again by renderMe while it is open. */
   let accountBody: HTMLElement | undefined;
+  let chatKeysBox: HTMLElement | undefined;
   function openAccount() {
     if (accountBody) return;
     const body = el('div', { className: 'fr-account-body' });
@@ -765,6 +781,8 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       streamsBox = undefined;
       positionsBox = undefined;
       popularBox = undefined;
+      chatKeysBox = undefined;
+      chatKeys.closeSection();
       document.removeEventListener('keydown', onKey, true);
     };
     const onKey = (e: KeyboardEvent) => {
@@ -782,6 +800,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     void positionsBox.load();
     popularBox = createPopularSharing(deps, () => list.friends.map((f) => ({ id: f.id, name: f.name })));
     void popularBox.load();
+    chatKeysBox = chatKeys.section();
     document.body.append(modal);
     renderMe();
   }
@@ -1414,6 +1433,9 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
     if (!chat) return messagesBox.replaceChildren(el('div', { className: 'fr-placeholder' }, el('span', { className: 'spinner' })));
     const me = state?.user?.id;
     const nodes: Node[] = [];
+    // older messages this launcher cannot read yet: how the history gets here
+    const keysNotice = chatKeys.notice(chat.messages.some((m) => m.unreadable || m.image?.unreadable));
+    if (keysNotice) nodes.push(keysNotice);
     if (!chat.messages.length) nodes.push(el('div', { className: 'fr-placeholder' }, icon('fa-hand'), el('p', { className: 'muted', textContent: t('To początek Waszej rozmowy. Napisz coś!') })));
     const day = new Intl.DateTimeFormat(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
     const time = new Intl.DateTimeFormat(locale(), { hour: '2-digit', minute: '2-digit' });
@@ -1458,6 +1480,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
   });
 
   api.on('social:event', async (e: any) => {
+    if (chatKeys.onEvent(e)) return;
     if (groups.onEvent(e)) return updateBadge();
     if (communities.onEvent(e)) return updateBadge();
     switch (e.type) {
@@ -1470,6 +1493,7 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
           chats.clear();
           groups.clear();
           communities.clear();
+          chatKeys.clear();
           suggestions.clear();
           watch.clear();
           if (was && state?.user) root.replaceChildren();

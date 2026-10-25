@@ -109,6 +109,8 @@ interface Deps {
   edit?: (m: GroupMessage) => void;
   /** The message being edited was deleted meanwhile. */
   editGone?: () => void;
+  /** The line above a chat with messages this launcher cannot read yet (chatKeys.ts). */
+  historyNotice?: (unreadable: boolean) => HTMLElement | null;
 }
 
 export function createGroups(deps: Deps) {
@@ -436,6 +438,8 @@ export function createGroups(deps: Deps) {
     const me = deps.me();
     const names = new Map(g.members.map((m) => [m.id, m.name]));
     const nodes: Node[] = [];
+    const keysNotice = deps.historyNotice?.(chat.messages.some((m) => m.unreadable || m.image?.unreadable));
+    if (keysNotice) nodes.push(keysNotice);
     if (!chat.messages.length) nodes.push(el('div', { className: 'fr-placeholder' }, icon('fa-users'), el('p', { className: 'muted', textContent: t('Napisz pierwszą wiadomość do grupy.') })));
     const day = new Intl.DateTimeFormat(locale(), { weekday: 'long', day: 'numeric', month: 'long' });
     const time = new Intl.DateTimeFormat(locale(), { hour: '2-digit', minute: '2-digit' });
@@ -783,6 +787,11 @@ export function createGroups(deps: Deps) {
     },
     loadOlder,
     markRead,
+    /** Messages became readable here (history handed over, chat password): the chats are fetched again. */
+    reloadHistory: () => {
+      chats.clear();
+      if (open) void loadOlder();
+    },
     /** The open group, if one is open (instead of a friend). */
     active: () => (open && group(open) ? open : undefined),
     deselect: () => {
