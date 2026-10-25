@@ -2093,6 +2093,12 @@ public final class TestHooks {
 		inv.setItem(20, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.TORCH, 4));
 		SkyCounters.crafted(mc.player, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.TORCH, 4), 4);
 		inv.setItem(20, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.TORCH, 12));
+		// two torches placed, one of them broken and placed again on its spot within three minutes: two
+		var wall = (net.minecraft.world.item.BlockItem) net.minecraft.world.item.Items.TORCH;
+		var spot = mc.player.blockPosition();
+		SkyCounters.placed(mc.player, wall, spot);
+		SkyCounters.placed(mc.player, wall, spot);
+		SkyCounters.placed(mc.player, wall, spot.east());
 		// a fish as SkyUp gives them: a cod with its own name, the weight and size in the lore
 		var fish = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.COD);
 		fish.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal("Ogromny, niezjadliwy Halibut atlantycki"));

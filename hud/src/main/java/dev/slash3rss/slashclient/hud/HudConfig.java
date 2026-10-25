@@ -363,6 +363,8 @@ public final class HudConfig {
 	public boolean compactHearts = true;
 	/** Shift-drag over slots and the wheel move items in inventories. */
 	public boolean mouseTweaks = true;
+	/** Shift-clicking a crafting result crafts only what fits, with room kept for what stays on the grid (CraftFit). */
+	public boolean craftFit = true;
 	/**
 	 * Sorting chests and the inventory with a key (InventorySort): the pause between its clicks (ms),
 	 * the hotbar sorted too, the small button in the window's corner, and the servers it stays off on.
@@ -766,6 +768,7 @@ public final class HudConfig {
 		toolWarningPercent = Math.max(1, Math.min(50, other.toolWarningPercent));
 		compactHearts = other.compactHearts;
 		mouseTweaks = other.mouseTweaks;
+		craftFit = other.craftFit;
 		inventorySort = other.inventorySort;
 		sortDelay = Math.max(0, Math.min(250, other.sortDelay));
 		// the old default (50 ms between clicks), never changed by the player: now all at once

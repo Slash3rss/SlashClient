@@ -17,7 +17,7 @@ abstract class SkyPlaceMixin {
 	//#if MC >= 26.3
 	@Inject(method = "place", at = @At("RETURN"))
 	private void slashclient$placed(BlockPlaceContext context, CallbackInfoReturnable<InteractionResult> cir) {
-		if (context.getLevel().isClientSide() && cir.getReturnValue().consumesAction()) SkyCounters.placed(context.getPlayer(), (BlockItem) (Object) this);
+		if (context.getLevel().isClientSide() && cir.getReturnValue().consumesAction()) SkyCounters.placed(context.getPlayer(), (BlockItem) (Object) this, context.getClickedPos());
 	}
 	//#endif
 }

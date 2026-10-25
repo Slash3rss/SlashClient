@@ -159,6 +159,8 @@ public class SlashHud implements ClientModInitializer {
 			// inventories: Shift-drag and the wheel move items (MouseTweaks)
 			if (screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> container) {
 				MouseTweaks.attach(container);
+				// shift-crafting only what fits, with room for the grid's leftovers
+				CraftFit.attach(container);
 				// a search box over the slots, and the locks of hotbar slots
 				InventorySearch.attach(mc, container);
 				SlotLock.attach(container);

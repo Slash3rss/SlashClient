@@ -19,6 +19,7 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -175,10 +176,22 @@ public final class SkyCounters {
 		CROPS.put(Blocks.MELON, Items.MELON_SLICE);
 	}
 
-	public static void placed(Player player, BlockItem item) {
+	public static void placed(Player player, BlockItem item, net.minecraft.core.BlockPos pos) {
 		if (!mine(player)) return;
+		// placing, breaking and placing again on one spot counts once in three minutes (as SkyUp counts it)
+		String spot = player.level().dimension() + " " + pos.asLong();
+		long now = System.currentTimeMillis();
+		Long last = placedAt.get(spot);
+		if (last != null && now - last < PLACE_AGAIN_MS) return;
+		placedAt.remove(spot);
+		placedAt.put(spot, now);
+		if (placedAt.size() > 20000) placedAt.remove(placedAt.keySet().iterator().next());
 		add(Kind.PLACE, item(new ItemStack(item)), 1);
 	}
+
+	private static final long PLACE_AGAIN_MS = 3 * 60_000;
+	/** The spots a block was counted as placed on, oldest first, and when. */
+	private static final LinkedHashMap<String, Long> placedAt = new LinkedHashMap<>();
 
 	public static void crafted(Player player, ItemStack stack, int amount) {
 		if (!mine(player) || stack.isEmpty()) return;
@@ -320,6 +333,7 @@ public final class SkyCounters {
 			hit.clear();
 			before = null;
 			crafting = null;
+			placedAt.clear();
 			return;
 		}
 		long now = System.currentTimeMillis();

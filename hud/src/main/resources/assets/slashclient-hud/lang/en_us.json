@@ -749,6 +749,8 @@
 	"slashclient-hud.game.compactHearts": "Stacked hearts",
 	"slashclient-hud.effectIcons": "Effect icons",
 	"slashclient-hud.extra.mouseTweaks": "Mouse tweaks (Shift-drag, wheel in inventories)",
+	"slashclient-hud.craftFit": "Shift-craft only what fits (room kept for the grid)",
+	"slashclient-hud.craftFit.full": "No room in the inventory for this and the crafting grid's leftovers",
 	"slashclient-hud.set.opacity": "Background opacity",
 	"slashclient-hud.set.outline": "Frame",
 	"slashclient-hud.set.ownColor": "Own text colour",

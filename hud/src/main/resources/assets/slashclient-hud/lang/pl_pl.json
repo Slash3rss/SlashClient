@@ -749,6 +749,8 @@
 	"slashclient-hud.game.compactHearts": "Stackowanie serc",
 	"slashclient-hud.effectIcons": "Ikonki efektów",
 	"slashclient-hud.extra.mouseTweaks": "Mouse tweaks (Shift+przeciąganie, kółko w ekwipunku)",
+	"slashclient-hud.craftFit": "Shift w craftingu tylko tyle, ile się zmieści (z miejscem na resztę z siatki)",
+	"slashclient-hud.craftFit.full": "Brak miejsca w ekwipunku na to i resztę z siatki craftingu",
 	"slashclient-hud.set.opacity": "Krycie tła",
 	"slashclient-hud.set.outline": "Ramka",
 	"slashclient-hud.set.ownColor": "Własny kolor tekstu",

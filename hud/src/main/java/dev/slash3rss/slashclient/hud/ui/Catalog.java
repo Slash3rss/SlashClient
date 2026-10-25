@@ -504,6 +504,7 @@ public final class Catalog {
 		out.add(new Entry("toolWarning", "slashclient-hud.assist.toolWarning", "combat", "m-toolwarning", () -> cfg.toolWarning, v -> cfg.toolWarning = v, List.of(
 			new Slider("slashclient-hud.assist.toolWarningAt", 1f, 30f, 1f, "%.0f%%", () -> (float) cfg.toolWarningPercent, v -> cfg.toolWarningPercent = Math.round(v))), null));
 		out.add(new Entry("mouseTweaks", "slashclient-hud.extra.mouseTweaks", "extras", "m-mousetweaks", () -> cfg.mouseTweaks, v -> cfg.mouseTweaks = v, List.of(), null));
+		out.add(new Entry("craftFit", "slashclient-hud.craftFit", "extras", "m-mousetweaks", () -> cfg.craftFit, v -> cfg.craftFit = v, List.of(), null));
 		// sorting with R or the window's button, with the normal clicks at a pace servers accept; off on the servers listed
 		out.add(new Entry("inventorySort", "slashclient-hud.sort", "extras", "m-sort", () -> cfg.inventorySort, v -> cfg.inventorySort = v, List.of(
 			new Slider("slashclient-hud.sort.delay", 0f, 250f, 10f, "%.0f ms", () -> (float) cfg.sortDelay, v -> cfg.sortDelay = Math.round(v)),

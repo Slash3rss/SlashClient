@@ -103,7 +103,7 @@ public class GameSkyTasks implements FabricClientGameTest {
 			}
 			context.waitTicks(30);
 			String progress = context.computeOnClient(mc -> TestHooks.skyProgress());
-			check(progress.contains(" ~31/128") && progress.contains("A co tutaj tak ciemno?: ") && progress.contains(" ~12/64") && progress.contains("Składzik: ") && progress.contains(" ~2/8")
+			check(progress.contains(" ~31/128") && progress.contains("A co tutaj tak ciemno?: ") && progress.contains(" ~12/64") && progress.contains(" ~2/64") && progress.contains("Składzik: ") && progress.contains(" ~2/8")
 				&& progress.contains("Ciasno, ale własno: Posiadaj poziom wyspy 20/20") && progress.contains("Dobra praca się opłaca: Posiadaj poziom dowolnej pracy ~7/5")
 				&& progress.contains("Moczykij: Dowolna ryba ~1/24") && progress.contains("Rybak: Wyłów ~8090/200000") && progress.contains("Mamut morski: Wyłów conajmniej ogromne ~1/45")
 				&& progress.contains("Piecoznawstwo: Piec przynajmniej Szczęście I 1/1"), "counted", progress);
