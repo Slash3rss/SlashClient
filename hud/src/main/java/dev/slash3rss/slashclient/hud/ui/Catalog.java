@@ -460,7 +460,10 @@ public final class Catalog {
 			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.bossBarScale, v -> cfg.bossBarScale = v)), null));
 		out.add(new Entry("tablist", "slashclient-hud.game.tablist", "game", "m-tablist", () -> tablist.enabled, v -> tablist.enabled = v, List.of(
 			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.tabScale, v -> cfg.tabScale = v),
-			new Toggle("slashclient-hud.game.numericPing", () -> cfg.tabNumericPing, v -> cfg.tabNumericPing = v)), null));
+			new Toggle("slashclient-hud.game.numericPing", () -> cfg.tabNumericPing, v -> cfg.tabNumericPing = v),
+			new Toggle("slashclient-hud.game.tabHideHeader", () -> cfg.tabHideHeader, v -> cfg.tabHideHeader = v),
+			new Toggle("slashclient-hud.game.tabHideFooter", () -> cfg.tabHideFooter, v -> cfg.tabHideFooter = v),
+			new Slider("slashclient-hud.game.tabMaxPlayers", 10f, 80f, 5f, "%.0f", () -> (float) cfg.tabMaxPlayers, v -> cfg.tabMaxPlayers = Math.round(v))), null));
 		//#if MC >= 1.20.2
 		out.add(new Entry("actionbar", "slashclient-hud.game.actionbar", "game", "m-actionbar", () -> cfg.actionBar && actionbar.enabled, v -> cfg.actionBar = actionbar.enabled = v, List.of(
 			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.actionBarScale, v -> cfg.actionBarScale = v)), null));

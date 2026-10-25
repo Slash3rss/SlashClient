@@ -35,6 +35,12 @@ public class GameHudParts implements FabricClientGameTest {
 			context.getInput().holdKey(o -> o.keyPlayerList);
 			context.waitTicks(20);
 			context.takeScreenshot("game-hud-parts");
+			// the server's texts hidden: drawn without them, and still there for what reads them (the tab status)
+			context.runOnClient(mc -> TestHooks.tabTexts(true));
+			context.waitTicks(5);
+			context.takeScreenshot("game-hud-tab-plain");
+			String kept = context.computeOnClient(mc -> TestHooks.tabTexts(false));
+			if (!kept.equals("SlashClient\nNagłówek listy graczy, dość długi|Stopka")) throw new AssertionError("The tab list's texts after drawing it without them: " + kept);
 			context.getInput().releaseKey(o -> o.keyPlayerList);
 			context.runOnClient(mc -> TestHooks.thirdPerson(false));
 			// dragged in the editor: the scoreboard on the left edge, the action bar in the middle

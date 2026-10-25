@@ -493,6 +493,15 @@ public final class TestHooks {
 		tab.setFooter(net.minecraft.network.chat.Component.literal("Stopka"));
 	}
 
+	/** The tab list's own texts hidden (or shown again); what it holds afterwards: "header|footer", "-" for none. */
+	public static String tabTexts(boolean hide) {
+		SlashHud.config.tabHideHeader = SlashHud.config.tabHideFooter = hide;
+		var parts = (dev.slash3rss.slashclient.hud.mixin.PlayerTabOverlayAccessor) Compat.tabList(net.minecraft.client.Minecraft.getInstance());
+		var h = parts.slashclient$header();
+		var f = parts.slashclient$footer();
+		return (h == null ? "-" : h.getString()) + "|" + (f == null ? "-" : f.getString());
+	}
+
 	/** The game HUD parts changed so the screenshot shows every setting at work. */
 	public static void gameParts() {
 		HudConfig c = SlashHud.config;

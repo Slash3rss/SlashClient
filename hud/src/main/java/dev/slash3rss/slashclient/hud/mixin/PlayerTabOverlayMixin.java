@@ -10,13 +10,45 @@ import net.minecraft.client.gui.components.PlayerTabOverlay;
 import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** The SlashClient logo before the names of its players on the tab list, and the ping as a number. */
+/**
+ * The SlashClient logo before the names of its players on the tab list, the ping as a number, and
+ * the list as the player set it up: without the server's text above or below, with fewer players.
+ */
 @Mixin(PlayerTabOverlay.class)
 abstract class PlayerTabOverlayMixin {
+	@Shadow
+	private Component header;
+	@Shadow
+	private Component footer;
+	/** The server's texts while the list is drawn without them, put back after. */
+	private Component slashclient$header, slashclient$footer;
+
+	@Inject(method = "extractRenderState", at = @At("HEAD"))
+	private void slashclient$hideTexts(CallbackInfo ci) {
+		slashclient$header = header;
+		slashclient$footer = footer;
+		if (SlashHud.config == null) return;
+		if (SlashHud.config.tabHideHeader) header = null;
+		if (SlashHud.config.tabHideFooter) footer = null;
+	}
+
+	@Inject(method = "extractRenderState", at = @At("RETURN"))
+	private void slashclient$restoreTexts(CallbackInfo ci) {
+		header = slashclient$header;
+		footer = slashclient$footer;
+	}
+
+	/** At most as many players as set (the first ones in the list's order). */
+	@ModifyReturnValue(method = "getPlayerInfos", at = @At("RETURN"))
+	private java.util.List<PlayerInfo> slashclient$fewer(java.util.List<PlayerInfo> list) {
+		int max = SlashHud.config == null ? 80 : SlashHud.config.tabMaxPlayers;
+		return max > 0 && list.size() > max ? list.subList(0, max) : list;
+	}
 	@ModifyReturnValue(method = "getNameForDisplay", at = @At("RETURN"))
 	private Component slashclient$badge(Component name, PlayerInfo info) {
 		return Badges.decorate(info.getProfile().id(), dev.slash3rss.slashclient.hud.NickHider.apply(name));

@@ -334,6 +334,9 @@ public final class HudConfig {
 	public float tabScale = 1f;
 	/** The ping in milliseconds instead of the signal bars. */
 	public boolean tabNumericPing = false;
+	/** The tab list without the server's text above or below it, and with at most this many players (80: the game's own). */
+	public boolean tabHideHeader = false, tabHideFooter = false;
+	public int tabMaxPlayers = 80;
 	public boolean titles = true;
 	public float titleScale = 1f;
 	/** The action bar above the hotbar (a server's short messages). */
@@ -765,6 +768,9 @@ public final class HudConfig {
 		bossBarOffset = other.bossBarOffset;
 		tabScale = other.tabScale;
 		tabNumericPing = other.tabNumericPing;
+		tabHideHeader = other.tabHideHeader;
+		tabHideFooter = other.tabHideFooter;
+		tabMaxPlayers = Math.max(10, Math.min(80, other.tabMaxPlayers == 0 ? 80 : other.tabMaxPlayers));
 		titles = other.titles;
 		titleScale = other.titleScale;
 		actionBar = other.actionBar;

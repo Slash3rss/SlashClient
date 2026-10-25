@@ -323,11 +323,11 @@ public final class GameParts {
 		int column = Math.min(columns * ((faces ? 9 : 0) + names + scoreW + 13), sw - 50) / columns;
 		int wide = column * columns + (columns - 1) * 5;
 		List<net.minecraft.util.FormattedCharSequence> header = null, footer = null;
-		if (parts.slashclient$header() != null) {
+		if (parts.slashclient$header() != null && !SlashHud.config.tabHideHeader) {
 			header = font.split(parts.slashclient$header(), sw - 50);
 			for (var line : header) wide = Math.max(wide, font.width(line));
 		}
-		if (parts.slashclient$footer() != null) {
+		if (parts.slashclient$footer() != null && !SlashHud.config.tabHideFooter) {
 			footer = font.split(parts.slashclient$footer(), sw - 50);
 			for (var line : footer) wide = Math.max(wide, font.width(line));
 		}
