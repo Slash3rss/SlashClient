@@ -186,7 +186,7 @@ export const SETTING_DEFS: SettingDef[] = [
   ...group('security', [
     rate('security.loginsPerMinute', 'Logowania na minutę', 'Sign-ins per minute', 10, 'Na adres IP.', 1000),
     { key: 'security.sessionIdleDays', label: 'Wylogowanie po bezczynności', labelEn: 'Sign-out after idle', description: 'Sesja nieużywana tyle dni wygasa.', type: 'duration', default: 90, min: 1, max: 3650, unit: 'dni', risky: true },
-    rate('security.gamePerMinute', 'Zapytania gry na minutę', 'Game requests per minute', 30, 'Logo SlashClient w grze (heartbeat, lookup, link), na adres IP.'),
+    rate('security.gamePerMinute', 'Zapytania gry na minutę', 'Game requests per minute', 120, 'Logo SlashClient w grze (heartbeat, lookup, link), na adres IP (kilka gier z jednego domu dzieli limit).'),
     rate('security.emotesPerMinute', 'Emotki na minutę', 'Emotes per minute', 20, 'Na konto.'),
     { key: 'security.sprayGapSeconds', label: 'Odstęp między sprayami', labelEn: 'Gap between sprays', description: 'Najkrótszy odstęp między sprayami jednego konta.', type: 'duration', default: 3, min: 0, max: 3600, unit: 's' },
     rate('security.spraysPerMinute', 'Spraye na minutę', 'Sprays per minute', 20, 'Na konto.'),
