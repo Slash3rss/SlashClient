@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Testy SlashClient</title>
+<style>
+  :root { --bg: #0a0d14; --card: #121826; --border: #1f2937; --text: #e5e7eb; --muted: #8b95a7; --accent: #3b82f6; --ok: #22c55e; --bad: #ef4444; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 14px; background: var(--bg); color: var(--text); font: 13px/1.4 "Segoe UI", system-ui, sans-serif; user-select: none; }
+  h1 { margin: 0 0 2px; font-size: 15px; font-weight: 700; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  h1 small { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .overall { margin: 8px 0 12px; }
+  .bar { height: 8px; border-radius: 999px; background: #1a2232; overflow: hidden; }
+  .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .4s ease; }
+  .bar.ok > div { background: var(--ok); }
+  .bar.bad > div { background: var(--bad); }
+  .meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .share { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+  .share .row { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+  .share b { font-weight: 600; }
+  .share .now { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px; }
+  .share .err { color: var(--bad); font-size: 12px; margin-top: 4px; white-space: pre-wrap; word-break: break-word; max-height: 3.6em; overflow: hidden; }
+  .tag { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; }
+  .tag.run { background: rgba(59,130,246,.18); color: #93c5fd; }
+  .tag.ok { background: rgba(34,197,94,.18); color: #86efac; }
+  .tag.bad { background: rgba(239,68,68,.18); color: #fca5a5; }
+  .tag.wait { background: #1a2232; color: var(--muted); }
+</style>
+</head>
+<body>
+<h1><span id="title">Testy SlashClient</span><small id="clock"></small></h1>
+<div class="overall">
+  <div class="bar" id="all"><div></div></div>
+  <div class="meta"><span id="count"></span><span id="eta"></span></div>
+</div>
+<div id="shares"></div>
+<script>
+const fs = require('node:fs');
+const path = require('node:path');
+const q = new URLSearchParams(location.search);
+const mc = q.get('mc'), n = Number(q.get('n')) || 4, logs = q.get('logs');
+const started = Date.now();
+document.getElementById('title').textContent = `Testy SlashClient · ${mc}`;
+const fmt = (s) => (s >= 60 ? `${Math.floor(s / 60)} min ${String(Math.round(s % 60)).padStart(2, '0')} s` : `${Math.round(s)} s`);
+
+/** What one share's log says: its tests, the finished ones, the one running, and whether it failed or ended. */
+function read(i) {
+  let text = '';
+  try { text = fs.readFileSync(path.join(logs, `gametest-${i}.log`), 'utf8'); } catch { return { total: 0, done: 0, wait: true }; }
+  const list = /SlashClient tests in share \d+\/\d+: \[(.*)\]/.exec(text);
+  const total = list ? list[1].split(',').filter((x) => x.trim()).length : 0;
+  const done = (text.match(/SlashClient test time: /g) || []).length;
+  const starts = [...text.matchAll(/SlashClient test start: (\S+) (\d+) s/g)];
+  const last = starts[starts.length - 1];
+  const failure = /(AssertionError[^\n]*|What went wrong:\s*\n[^\n]*)/.exec(text);
+  // gametest.sh writes the share's exit code when its game is done (gradle runs quiet, without "BUILD …")
+  let code = null;
+  try { code = fs.readFileSync(path.join(logs, `gametest-${i}.status`), 'utf8').trim(); } catch {}
+  const finished = code === null ? null : [null, code === '0' ? 'SUCCESSFUL' : 'FAILED'];
+  return {
+    total, done: Math.min(done, total || done), current: last?.[1], expected: last ? Number(last[2]) : 0,
+    failed: failure ? failure[1].replace(/\s+/g, ' ').trim() : (finished?.[1] === 'FAILED' ? 'BUILD FAILED' : ''),
+    finished: !!finished, ok: finished?.[1] === 'SUCCESSFUL',
+  };
+}
+
+/** When each share's current test started (by when its line first appeared). */
+const since = {};
+
+function render() {
+  const box = document.getElementById('shares');
+  box.replaceChildren();
+  let total = 0, done = 0, left = 0, failed = false, allFinished = true;
+  for (let i = 1; i <= n; i++) {
+    const s = read(i);
+    total += s.total;
+    done += s.finished && s.ok ? s.total : s.done;
+    if (!s.finished) allFinished = false;
+    if (s.failed) failed = true;
+    const key = `${i}:${s.current}`;
+    if (s.current && !since[key]) since[key] = Date.now();
+    const runFor = s.current ? (Date.now() - since[key]) / 1000 : 0;
+    // what is left: the rest of this test and about as long as the done ones took for the others
+    if (!s.finished && s.total) left = Math.max(left, Math.max(0, s.expected - runFor) + (s.total - s.done - 1) * 25);
+
+    const el = document.createElement('div');
+    el.className = 'share';
+    const state = s.wait ? ['wait', 'czeka'] : s.failed ? ['bad', 'błąd'] : s.finished ? ['ok', 'gotowe'] : ['run', 'trwa'];
+    const pct = s.total ? Math.round(((s.finished && s.ok ? s.total : s.done) / s.total) * 100) : 0;
+    el.innerHTML = `<div class="row"><b>Gra ${i}/${n}</b><span><span class="tag ${state[0]}">${state[1]}</span> ${s.total ? `${s.finished && s.ok ? s.total : s.done}/${s.total}` : ''}</span></div>
+      <div class="bar ${state[0] === 'ok' ? 'ok' : state[0] === 'bad' ? 'bad' : ''}"><div style="width:${pct}%"></div></div>`;
+    if (s.current && !s.finished) {
+      const now = document.createElement('div');
+      now.className = 'now';
+      now.textContent = `${s.current} · ${fmt(runFor)}${s.expected ? ` / ~${fmt(s.expected)}` : ''}`;
+      el.append(now);
+    }
+    if (s.failed) {
+      const err = document.createElement('div');
+      err.className = 'err';
+      err.textContent = s.failed;
+      el.append(err);
+    }
+    box.append(el);
+  }
+  const bar = document.getElementById('all');
+  bar.className = `bar${allFinished ? (failed ? ' bad' : ' ok') : failed ? ' bad' : ''}`;
+  bar.firstElementChild.style.width = `${total ? Math.round((done / total) * 100) : 0}%`;
+  document.getElementById('count').textContent = total ? `${done}/${total} testów` : 'Gry się uruchamiają…';
+  document.getElementById('eta').textContent = allFinished
+    ? (failed ? 'Zakończone z błędami' : 'Wszystko przeszło')
+    : left ? `zostało ok. ${fmt(left)}` : '';
+  document.getElementById('clock').textContent = fmt((Date.now() - started) / 1000);
+  document.title = allFinished ? (failed ? '✖ Testy SlashClient' : '✔ Testy SlashClient') : `${total ? Math.round((done / total) * 100) : 0}% · Testy SlashClient`;
+}
+render();
+setInterval(render, 1000);
+</script>
+</body>
+</html>

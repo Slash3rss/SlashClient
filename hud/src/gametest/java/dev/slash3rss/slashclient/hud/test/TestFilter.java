@@ -56,6 +56,8 @@ final class TestFilter {
 		if (mine.contains(name)) {
 			// the test games are silent: the master volume at 0 before every test (only in memory, not saved)
 			context.runOnClient(mc -> mc.options.getSoundSourceOptionInstance(net.minecraft.sounds.SoundSource.MASTER).set(0.0));
+			// for the progress window (progress/): which test runs now, and about how long it takes
+			System.out.printf("SlashClient test start: %s %d s%n", name, SECONDS.getOrDefault(name, DEFAULT));
 			lastName = name;
 			lastStart = now;
 			return false;

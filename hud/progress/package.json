@@ -1,0 +1,5 @@
+{
+  "name": "slashclient-test-progress",
+  "private": true,
+  "main": "main.cjs"
+}

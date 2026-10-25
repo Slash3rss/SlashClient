@@ -14,9 +14,16 @@ shift
 ./gradlew compileGametestJava processGametestResources -Pmc="$mc" -q || exit 1
 
 pids=()
+for i in $(seq 1 "$n"); do rm -f "build/gametest-$i.log" "build/gametest-$i.status"; done
+# a small window with the progress (progress/; off with SLASHCLIENT_TEST_WINDOW=0, never on CI)
+electron=../node_modules/.bin/electron
+if [ -z "${CI:-}" ] && [ "${SLASHCLIENT_TEST_WINDOW:-1}" != 0 ] && [ -e "$electron" ]; then
+  "$electron" progress --mc="$mc" --n="$n" > /dev/null 2>&1 &
+fi
 for i in $(seq 1 "$n"); do
   rm -rf "build/run/clientGameTest-${i}of$n/screenshots"
-  ./gradlew runClientGameTest -Pmc="$mc" -Pshard="$i/$n" "$@" -q > "build/gametest-$i.log" 2>&1 &
+  # each share's exit code in a file when it ends, for the progress window
+  ( ./gradlew runClientGameTest -Pmc="$mc" -Pshard="$i/$n" "$@" -q > "build/gametest-$i.log" 2>&1; code=$?; echo $code > "build/gametest-$i.status"; exit $code ) &
   pids+=($!)
   # the games start a little apart, not all loading at the same moment
   sleep 8
