@@ -92,6 +92,8 @@ public class GameDungeon implements FabricClientGameTest {
 			server.runCommand(String.format("setblock %d %d %d deepslate_diamond_ore", x0 + 18, y + 1, z0 + 15));
 			// the start room has nothing to take: this chest and the potted dandelion there are not counted
 			server.runCommand(String.format("setblock %d %d %d chest", x0 + 3, y, z0 + 15));
+			// the husk's room has a spawner: only such a room counts down to its mobs coming back
+			server.runCommand(String.format("setblock %d %d %d spawner", x0 + 14, y, z0 + 10));
 			server.runCommand(String.format("summon husk %d %d %d {NoAI:1b,PersistenceRequired:1b}", x0 + 12, y, z0 + 12));
 			context.waitTicks(30);
 			String rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());

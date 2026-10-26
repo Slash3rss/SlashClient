@@ -157,7 +157,24 @@ public final class DungeonMap implements HudModule {
 		return active;
 	}
 
+	/** When the last tick ran (ns): how far between two ticks a frame is, for the player's smooth place. */
+	private static long tickAt = System.nanoTime();
+
+	/** The player's place now, between the last two ticks (x, z), so a map following them glides instead of stepping 20 times a second. */
+	private static double[] smooth(Minecraft mc) {
+		double f = Math.min(1.0, (System.nanoTime() - tickAt) / 50_000_000.0);
+		var p = mc.player;
+		return new double[] { p.xo + (p.getX() - p.xo) * f, p.zo + (p.getZ() - p.zo) * f };
+	}
+
+	/** The map follows the player (round, or set so, or zoomed in): drawn again each frame. */
+	private static boolean following() {
+		HudConfig cfg = SlashHud.config;
+		return "circle".equals(cfg.dungeonShape) || cfg.dungeonFollow || cfg.dungeonZoom > 1.001f;
+	}
+
 	static void tick(Minecraft mc) {
+		tickAt = System.nanoTime();
 		if (mc.level == null || mc.player == null) {
 			if (active) stop();
 			return;
@@ -234,8 +251,9 @@ public final class DungeonMap implements HudModule {
 			// around the player: the whole of it at 1×, closer as it zooms in
 			float span = Math.max(12f, Math.max(mw, mh) / Math.max(1f, cfg.dungeonZoom));
 			viewScale = W / span;
-			viewX = (float) (mc.player.getX() - originX) - span / 2f;
-			viewZ = (float) (mc.player.getZ() - originZ) - span / 2f;
+			double[] at = smooth(mc);
+			viewX = (float) (at[0] - originX) - span / 2f;
+			viewZ = (float) (at[1] - originZ) - span / 2f;
 		}
 		paint(view, W, H, viewX, viewZ, viewScale, circle);
 		viewTexture.upload();
@@ -481,7 +499,8 @@ public final class DungeonMap implements HudModule {
 	@Override
 	public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
 		if (!visible(mc)) return;
-		if (viewTexture == null) render(mc);
+		// following the player: the picture made again for this frame, where they are now
+		if (viewTexture == null || following()) render(mc);
 		if (SlashHud.config.dungeonTitle) title(g, mc, x, y);
 		progress(g, x, y + (SlashHud.config.dungeonTitle ? TITLE : 0));
 		int ox = x, oy = y + title();
@@ -516,7 +535,8 @@ public final class DungeonMap implements HudModule {
 		DungeonRooms.draw(g, mc, ox, oy, viewX, viewZ, viewScale, originX, originZ, clip);
 		markers(g, mc, ox, oy);
 		if (SlashHud.config.dungeonStartArrow) startMark(g, ox, oy);
-		int sx = Math.round((float) (mc.player.getX() - originX - viewX) * viewScale), sz = Math.round((float) (mc.player.getZ() - originZ - viewZ) * viewScale);
+		double[] at = smooth(mc);
+		int sx = Math.round((float) (at[0] - originX - viewX) * viewScale), sz = Math.round((float) (at[1] - originZ - viewZ) * viewScale);
 		if (clip.test(sx, sz)) {
 			if (SlashHud.config.dungeonSelfHead) {
 				// the face, and a dot just past its edge the way they look

@@ -376,7 +376,8 @@ public final class DungeonRooms {
 			hadMobs[r] = true;
 			Room room = rooms.get(r);
 			boolean near = Math.abs(room.centerX() - px) < NEAR && Math.abs(room.centerZ() - pz) < NEAR;
-			if (room.mobs == 0 && near) cleared.add(new long[] { room.centerX(), room.centerZ(), now + RESPAWN_MS });
+			// mobs come back only from a spawner: a room without one has no time to count down
+			if (room.mobs == 0 && near && room.spawners > 0) cleared.add(new long[] { room.centerX(), room.centerZ(), now + RESPAWN_MS });
 			else if (room.mobs == 0) stillInfested.add(p);
 		}
 		infested.clear();
@@ -398,7 +399,11 @@ public final class DungeonRooms {
 				it.remove();
 				continue;
 			}
-			// a hologram's time, when there is one, stands
+			// a hologram's time, when there is one, stands; a room found to have no spawner after all, none
+			if (rooms.get(r).spawners == 0) {
+				it.remove();
+				continue;
+			}
 			if (rooms.get(r).respawnAt == 0) rooms.get(r).respawnAt = c[2];
 		}
 	}
