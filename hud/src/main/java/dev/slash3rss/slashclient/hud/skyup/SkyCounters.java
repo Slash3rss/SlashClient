@@ -37,7 +37,7 @@ import dev.slash3rss.slashclient.hud.SlashHud;
  *
  * Names are matched as the game shows them in the player's language (the tasks are written in
  * Polish, as the game is when played in Polish); "Dowolne drewno", "Dowolna sadzonka" and "Dowolna
- * ryba" are any log, sapling or fish.
+ * ryba" are any log, sapling or fish, "Dowolny blok" and "Dowolny przedmiot" anything.
  */
 public final class SkyCounters {
 	private SkyCounters() {}
@@ -59,8 +59,8 @@ public final class SkyCounters {
 	}
 
 	/** What a requirement could be: the names the game gives it, and the groups ("dowolne drewno") it is in. */
-	record Thing(List<String> names, boolean log, boolean sapling, boolean fish, boolean baby) {
-		static Thing of(boolean baby, boolean log, boolean sapling, boolean fish, String... names) {
+	public record Thing(List<String> names, boolean log, boolean sapling, boolean fish, boolean baby) {
+		public static Thing of(boolean baby, boolean log, boolean sapling, boolean fish, String... names) {
 			List<String> out = new ArrayList<>();
 			for (String n : names) if (n != null && !n.isBlank()) out.add(norm(n));
 			return new Thing(out, log, sapling, fish, baby);
@@ -73,12 +73,14 @@ public final class SkyCounters {
 	}
 
 	/** Whether a requirement's thing is this one. */
-	static boolean matches(String thing, Thing t) {
+	public static boolean matches(String thing, Thing t) {
 		String want = norm(thing);
 		if (want.startsWith("dowoln")) {
 			if (want.contains("drewn") || want.contains("pień") || want.contains("kłod")) return t.log;
 			if (want.contains("sadzon")) return t.sapling;
 			if (want.contains("ryb")) return t.fish;
+			// "Dowolny blok" ("Postaw" any 256 blocks), "Dowolny przedmiot": whatever it is
+			if (want.contains("blok") || want.contains("przedmiot")) return true;
 			return false;
 		}
 		// "(dorosły)": only grown ones

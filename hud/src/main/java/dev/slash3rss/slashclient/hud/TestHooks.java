@@ -2506,6 +2506,14 @@ public final class TestHooks {
 		return out.toString().strip();
 	}
 
+	/** For the test: "Dowolny blok" (any block placed, "Mało miejsca dla kolegów") takes stone and planks, "Dowolne drewno" only logs. */
+	public static String skyAnyBlock() {
+		var stone = dev.slash3rss.slashclient.hud.skyup.SkyCounters.Thing.of(false, false, false, false, "Kamień");
+		var log = dev.slash3rss.slashclient.hud.skyup.SkyCounters.Thing.of(false, true, false, false, "Dębowy pień");
+		return dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolny blok", stone) + " " + dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolny blok", log)
+			+ " " + dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolne drewno", stone) + " " + dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolne drewno", log);
+	}
+
 	/** For the test: a task the GUI still shows as handed in (admins' preview) is no task. */
 	public static boolean skyCompletedIsNoTask() {
 		return SkyTaskParser.parse("NOWICJUSZ", "» Ciasno, ale własno «", java.util.List.of("", "• Zadanie ukończone!", "", "Podgląd admina:", "Opis » Zwiększ poziom wyspy.", "Posiadaj poziom wyspy: 20 poz.", "Za ukończenie otrzymasz:", "» 200.0 SC")) == null
