@@ -36,6 +36,10 @@ public class GameSkyAtlas implements FabricClientGameTest {
 			context.runOnClient(mc -> SkyAtlasTestHooks.open(null));
 			context.waitTicks(10);
 			context.takeScreenshot("skyatlas-album");
+			// opened as the player opens it: the cards are dealt one after another
+			context.runOnClient(mc -> SkyAtlasTestHooks.openMoving());
+			context.waitTicks(2);
+			context.takeScreenshot("skyatlas-dealing");
 			context.runOnClient(mc -> SkyAtlasTestHooks.open("Amur biały"));
 			context.waitTicks(10);
 			context.takeScreenshot("skyatlas-species");

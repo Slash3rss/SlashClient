@@ -73,8 +73,15 @@ public final class SkyAtlasTestHooks {
 		return look == null ? "none" : look.getItem() + " " + (model == null ? "-" : model.floats());
 	}
 
+	/** The album as the player sees it opened: its cards being dealt. */
+	public static void openMoving() {
+		open(null);
+		SkyAtlasScreen.still = false;
+	}
+
 	/** The atlas: the album (null) or one species open. */
 	public static void open(String chosen) {
+		SkyAtlasScreen.still = true;
 		var screen = new SkyAtlasScreen(null);
 		screen.choose(chosen, "all");
 		Minecraft.getInstance().setScreenAndShow(screen);

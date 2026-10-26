@@ -27,6 +27,10 @@ import java.util.Locale;
  * weight; the rest dark with a question mark), with a filter (all, caught, missing) and a search. A
  * card clicked opens its species: the records and fun fact beside the list of every fish of it caught
  * (when, weight, size, quality, price), the record one in gold (SkyAtlas).
+ *
+ * It moves a little: the cards are dealt onto each page (from the side the page turns to), a card
+ * under the mouse lifts and its fish sways, a starred card shimmers gold, and a card opened grows from
+ * where it lay into the species' view while its catches slide in.
  */
 public class SkyAtlasScreen extends Screen {
 	private static final int CARD_W = 62, CARD_H = 84, GAP = 6, ROW_H = 13;
@@ -46,6 +50,15 @@ public class SkyAtlasScreen extends Screen {
 	/** The species open (null: the album). */
 	private String open;
 	private int page, pages, scroll, maxScroll, px, py, pw, ph;
+	/** When the cards on show were dealt, from which side (1: from the right), and what was shown then. */
+	private long dealtAt;
+	private int dealFrom = 1;
+	private String dealt;
+	/** When a card was opened and where it lay, so it grows from there. */
+	private long openedAt;
+	private int openX, openY;
+	/** Off for the in-game test, so its screenshots are not caught mid-move. */
+	static boolean still;
 
 	public SkyAtlasScreen(Screen parent) {
 		super(Component.translatable("slashclient-hud.skyAtlas.title"));
@@ -154,32 +167,84 @@ public class SkyAtlasScreen extends Screen {
 		Ui.button(g, "skyatlas:prev", right - 44 - lw, ay, 16, 15, "back", Component.empty(), false, mx, my);
 		hits.add(new Hit(right - 44 - lw, ay, 16, 15, () -> page = Math.max(0, page - 1)));
 		int left = px + 12 + (inner - (cols * (CARD_W + GAP) - GAP)) / 2;
+		// another page, filter or search: the cards are dealt again
+		String showing = page + "|" + filter + "|" + search.getValue();
+		if (!showing.equals(dealt)) {
+			int before = dealt == null ? -1 : Integer.parseInt(dealt.substring(0, dealt.indexOf('|')));
+			dealFrom = page < before ? -1 : 1;
+			dealt = showing;
+			dealtAt = now();
+		}
+		var pose = g.pose();
 		for (int i = 0; i < per && page * per + i < cards.size(); i++) {
 			SkyAtlas.Fish f = cards.get(page * per + i);
 			int cx = left + (i % cols) * (CARD_W + GAP), cy = top + (i / cols) * (CARD_H + GAP);
 			boolean over = Ui.inside(mx, my, cx, cy, CARD_W, CARD_H);
-			card(g, f, cx, cy, CARD_W, CARD_H, over, 2);
+			// dealt one after another: it slides in from the side and pops to its size
+			float t = progress(dealtAt + i * 28L, 260), size = backOut(t);
+			if (size <= 0) continue;
+			float lift = Ui.hover("skyatlas:card:" + f.name, over);
+			pose.pushMatrix();
+			pose.translate(cx + CARD_W / 2f + (1 - smooth(t)) * 26 * dealFrom, cy + CARD_H / 2f - lift * 2);
+			pose.scale(size * (1 + 0.05f * lift), size * (1 + 0.05f * lift));
+			pose.translate(-CARD_W / 2f, -CARD_H / 2f);
+			card(g, f, 0, 0, CARD_W, CARD_H, over, 2, lift);
+			pose.popMatrix();
 			hits.add(new Hit(cx, cy, CARD_W, CARD_H, () -> {
 				open = f.name;
 				scroll = 0;
+				openX = cx;
+				openY = cy;
+				openedAt = now();
 			}));
 		}
 	}
 
-	/** A card: the fish (dark with "?" when not caught), its name, how many, a star for a great record. */
-	private void card(GuiGraphicsExtractor g, SkyAtlas.Fish f, int x, int y, int w, int h, boolean over, int scale) {
+	// ---------- moving ----------
+
+	private static long now() {
+		return net.minecraft.util.Util.getMillis();
+	}
+
+	/** 0 → 1 over the time from the start (1 at once in the test). */
+	private static float progress(long start, int millis) {
+		if (still) return 1;
+		return Math.max(0, Math.min(1, (now() - start) / (float) millis));
+	}
+
+	private static float smooth(float t) {
+		float u = 1 - t;
+		return 1 - u * u * u;
+	}
+
+	/** Out a touch past its size and back, as a card put down. */
+	private static float backOut(float t) {
+		if (t <= 0) return 0;
+		float c = 1.6f, u = t - 1;
+		return 1 + (c + 1) * u * u * u + c * u * u;
+	}
+
+	/** A card: the fish (dark with "?" when not caught), its name, how many, a star for a great record; `lift` 0–1 under the mouse. */
+	private void card(GuiGraphicsExtractor g, SkyAtlas.Fish f, int x, int y, int w, int h, boolean over, int scale, float lift) {
 		boolean has = f.caught > 0, star = has && f.maxGrams > 0 && f.recordGrams >= f.maxGrams * STAR;
-		int edge = !has ? 0x30FFFFFF : star ? GOLD : over ? Ui.ACCENT_LIGHT : 0x8060A5FA;
+		// a starred card's edge shimmers, brighter and paler in turn
+		float shine = still ? 0 : (float) (Math.sin(now() / 320.0) + 1) / 2;
+		int edge = !has ? 0x30FFFFFF : star ? Ui.blend(GOLD, 0xFFFFF4B8, shine * 0.7f) : Ui.blend(0x8060A5FA, Ui.ACCENT_LIGHT, lift);
+		if (lift > 0 && has) Ui.round(g, x - 1, y - 1, w + 2, h + 2, 6, Ui.blend(0x00000000, star ? 0x40FACC15 : 0x4060A5FA, lift));
 		Ui.round(g, x, y, w, h, 5, edge);
 		Ui.round(g, x + 1, y + 1, w - 2, h - 2, 4, has ? 0xFF16213A : 0xFF0E1117);
-		if (over) Ui.round(g, x + 1, y + 1, w - 2, h - 2, 4, 0x14FFFFFF);
+		if (lift > 0) Ui.round(g, x + 1, y + 1, w - 2, h - 2, 4, Ui.blend(0x00FFFFFF, 0x14FFFFFF, lift));
 		// the picture straight on the card
 		int size = 16 * scale, ix = x + (w - size) / 2, iy = y + 8;
 		// not caught yet: SkyUp's own grey picture when its pack is on, else the fish in shadow
 		ItemStack grey = has ? null : SkyAtlas.hidden(f), look = grey != null ? grey : SkyAtlas.look(f);
 		var pose = g.pose();
 		pose.pushMatrix();
-		pose.translate(ix, iy);
+		// a caught fish under the mouse sways as if it still swam
+		float sway = has && !still ? (float) Math.sin(now() / 170.0) * 0.12f * lift : 0;
+		pose.translate(ix + size / 2f, iy + size / 2f);
+		pose.rotate(sway);
+		pose.translate(-size / 2f, -size / 2f);
 		pose.scale(scale, scale);
 		g.item(look != null && !look.isEmpty() ? look : new ItemStack(Items.COD), 0, 0);
 		pose.popMatrix();
@@ -209,8 +274,19 @@ public class SkyAtlasScreen extends Screen {
 
 	private void species(GuiGraphicsExtractor g, SkyAtlas.Fish f, int mx, int my) {
 		int x = px + 12, top = py + 32, bottom = py + ph - 10, side = 150;
-		// its card, bigger, and the records under it
-		card(g, f, x + (side - 96) / 2, top, 96, 124, false, 3);
+		// its card, bigger, grown from where it lay in the album; the records under it
+		float grow = smooth(progress(openedAt, 280)), appear = smooth(progress(openedAt + 120, 260));
+		int cardX = x + (side - 96) / 2;
+		var pose = g.pose();
+		pose.pushMatrix();
+		float fromScale = CARD_W / 96f, s = fromScale + (1 - fromScale) * grow;
+		pose.translate(openX + (cardX - openX) * grow, openY + (top - openY) * grow);
+		pose.scale(s, s);
+		card(g, f, 0, 0, 96, 124, false, 3, 0);
+		pose.popMatrix();
+		// the records and the list come in after it
+		pose.pushMatrix();
+		pose.translate(0, (1 - appear) * 10);
 		int y = top + 132;
 		y = line(g, "slashclient-hud.skyAtlas.count", String.valueOf(f.caught), x, y);
 		if (f.known || f.caught > 0) {
@@ -251,8 +327,10 @@ public class SkyAtlasScreen extends Screen {
 				g.text(font, l, lx, ty, Ui.MUTED, false);
 				ty += 10;
 			}
+			pose.popMatrix();
 			return;
 		}
+		pose.popMatrix();
 		// newest first; the heaviest in gold
 		list.sort(Comparator.comparingLong(SkyAtlas.Catch::at).reversed());
 		double best = list.stream().mapToDouble(SkyAtlas.Catch::grams).max().orElse(0);
@@ -264,6 +342,10 @@ public class SkyAtlasScreen extends Screen {
 			SkyAtlas.Catch c = list.get(i);
 			int ry = listTop + i * ROW_H - scroll;
 			if (ry + ROW_H < listTop || ry > bottom) continue;
+			// the rows slide in from the right one after another
+			float in = smooth(progress(openedAt + 150 + Math.min(i, 20) * 25L, 220));
+			pose.pushMatrix();
+			pose.translate((1 - in) * 30, 0);
 			if (i % 2 == 1) g.fill(lx - 2, ry - 2, lx + lw, ry + ROW_H - 2, 0x0AFFFFFF);
 			int color = c.grams() > 0 && c.grams() == best ? GOLD : Ui.TEXT_2;
 			Ui.draw(g, Ui.text(WHEN.format(Instant.ofEpochMilli(c.at()))), cWhen, ry, Ui.MUTED);
@@ -272,6 +354,7 @@ public class SkyAtlasScreen extends Screen {
 			if (lw > 260) Ui.draw(g, Ui.fit(Ui.text(c.quality().isEmpty() ? "—" : c.quality()), cPrice - cQuality - 50), cQuality, ry, color);
 			Component price = Ui.text(c.price() > 0 ? money(c.price()) : "—");
 			Ui.draw(g, price, cPrice - Ui.width(price), ry, color);
+			pose.popMatrix();
 		}
 		Ui.end();
 		g.disableScissor();
