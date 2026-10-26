@@ -71,6 +71,15 @@
 			"chars": [
 				""
 			]
+		},
+		{
+			"type": "bitmap",
+			"file": "slashclient-hud:emote/sixseven.png",
+			"ascent": 10,
+			"height": 12,
+			"chars": [
+				""
+			]
 		}
 	]
 }

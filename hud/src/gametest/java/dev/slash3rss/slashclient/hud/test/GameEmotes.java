@@ -11,7 +11,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
  * our own and back after; walking off ends it.
  */
 public class GameEmotes implements FabricClientGameTest {
-	private static final String[] EMOTES = { "wave", "heart", "laugh", "gg", "like", "angry", "question", "fire" };
+	private static final String[] EMOTES = { "wave", "heart", "laugh", "gg", "like", "angry", "question", "fire", "sixseven" };
 
 	@Override
 	public void runTest(ClientGameTestContext context) {

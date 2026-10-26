@@ -11,7 +11,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
 /**
- * The emote wheel: eight emotes around the middle of the screen. Click one, press 1–8, or hold
+ * The emote wheel: the emotes around the middle of the screen. Click one, press its number (1–9), or hold
  * the key, point and let go. The game keeps running behind it.
  */
 public class EmoteScreen extends Screen {

@@ -365,7 +365,7 @@ export const item = (id: string): Item | undefined => BY_ID.get(id);
 /** The capes, by the old names the rest still uses. */
 export const CAPES = ITEMS.filter((i) => i.slot === 'cape').map((i) => i.id);
 export const CAPE_NAMES: Record<string, string> = Object.fromEntries(ITEMS.map((i) => [i.id, i.name]));
-export const EMOTES = ['wave', 'heart', 'laugh', 'gg', 'like', 'angry', 'question', 'fire'];
+export const EMOTES = ['wave', 'heart', 'laugh', 'gg', 'like', 'angry', 'question', 'fire', 'sixseven'];
 
 /** What the admin set for an item; items never touched are on and for everyone. */
 export function capeSetting(settings: Map<string, CosmeticSetting>, id: string): CosmeticSetting {

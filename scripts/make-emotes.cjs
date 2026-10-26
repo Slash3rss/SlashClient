@@ -20,6 +20,8 @@ const EMOTES = {
   angry: ['face-angry', '#fb923c'],
   question: ['question', '#c4b5fd'],
   fire: ['fire', '#f97316'],
+  // "six seven": the words themselves, drawn like the icons
+  sixseven: ['text:67', '#a3e635'],
 };
 
 app.disableHardwareAcceleration();
@@ -30,7 +32,10 @@ app.whenReady().then(async () => {
   fs.mkdirSync(path.join(assets, 'textures/emote'), { recursive: true });
   const providers = [];
   for (const [i, [id, [icon, color]]] of Object.entries(EMOTES).entries()) {
-    const svg = (c) => fs.readFileSync(path.join(fa, `${icon}.svg`), 'utf8').replaceAll('currentColor', c).replace('<svg ', `<svg fill="${c}" color="${c}" `);
+    // "text:67": the text in a bold font, as an svg like an icon's
+    const svg = (c) => icon.startsWith('text:')
+      ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><text x="256" y="390" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="360" fill="${c}">${icon.slice(5)}</text></svg>`
+      : fs.readFileSync(path.join(fa, `${icon}.svg`), 'utf8').replaceAll('currentColor', c).replace('<svg ', `<svg fill="${c}" color="${c}" `);
     const b64 = (c) => Buffer.from(svg(c)).toString('base64');
     const png = await win.webContents.executeJavaScript(`(async () => {
       const load = async (src) => { const img = new Image(); img.src = 'data:image/svg+xml;base64,' + src; await img.decode(); return img; };

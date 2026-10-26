@@ -8,7 +8,8 @@ import net.minecraft.world.entity.Entity;
 /**
  * The emotes as moves of the player's body (the emote wheel's eight, by the same names the server
  * passes on, so older launchers still see the picture): waving, a heart, laughing, clapping, a thumb
- * up, stamping angrily, scratching the head and dancing. Posed over the game's own pose for the frame
+ * up, stamping angrily, scratching the head, dancing and "six seven" (both hands held out, palms up,
+ * going up and down in turn, as if weighing two things). Posed over the game's own pose for the frame
  * (PropArmsMixin), easing in and out; a player walking off ends their own (others' are simply not
  * posed while they move). The player's own is watched from the front: the camera turns while it plays.
  */
@@ -88,6 +89,14 @@ public final class Emotes {
 				set(leftLeg, -0.35f * beat, 0, -0.08f, w);
 				set(body, 0, 0.25f * beat, 0, w);
 				set(head, 0, 0.3f * beat, 0.1f * beat, w);
+			}
+			case "sixseven" -> {
+				// both hands out in front, going up and down in turn, the head and body with them
+				float beat = (float) Math.sin(t * 9);
+				set(rightArm, -1.05f + 0.4f * beat, -0.15f, 0, w);
+				set(leftArm, -1.05f - 0.4f * beat, 0.15f, 0, w);
+				set(head, 0.05f, 0.12f * beat, 0.06f * beat, w);
+				set(body, 0, 0.08f * beat, 0, w);
 			}
 			default -> {}
 		}

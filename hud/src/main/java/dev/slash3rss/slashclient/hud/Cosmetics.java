@@ -29,7 +29,7 @@ public final class Cosmetics {
 	private Cosmetics() {}
 
 	/** The order of the emote wheel and of the glyphs in font/emote.json (U+E100 onwards). */
-	public static final List<String> EMOTES = List.of("wave", "heart", "laugh", "gg", "like", "angry", "question", "fire");
+	public static final List<String> EMOTES = List.of("wave", "heart", "laugh", "gg", "like", "angry", "question", "fire", "sixseven");
 	static final List<String> CAPES = List.of("slash", "ocean", "ember", "forest", "galaxy", "rose", "gold", "mono",
 		"aurora", "inferno", "waves", "pulse", "staff_admin", "staff_support", "staff_partner", "staff_friend", "staff_friend_pink",
 		"sakura", "night", "rainbow", "ice", "toxic", "checker", "matrix", "storm",
