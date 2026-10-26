@@ -96,6 +96,17 @@ public final class TestHooks {
 		Assist.hold(attack, on);
 	}
 
+	/** The hotbar slot in hand, set and read (the game's way differs between versions). */
+	public static void selectSlot(int slot) {
+		// written as the versions' replacements expect it ("inv.setSelectedSlot(")
+		var inv = net.minecraft.client.Minecraft.getInstance().player.getInventory();
+		inv.setSelectedSlot(slot);
+	}
+
+	public static int selectedSlot() {
+		return net.minecraft.client.Minecraft.getInstance().player.getInventory().getSelectedSlot();
+	}
+
 	/** Whether a key or the use button is down now ("attack/use"), to see nothing stays stuck. */
 	public static String buttonsDown() {
 		var o = net.minecraft.client.Minecraft.getInstance().options;

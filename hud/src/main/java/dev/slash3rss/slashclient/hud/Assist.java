@@ -104,7 +104,8 @@ public final class Assist {
 		holdOverScreen(mc, player, inGame);
 
 		if (cfg().autoClicker && (armed || autoClickKey.isUnbound()) && inGame) autoClick(mc, player);
-		if (cfg().autoTool && inGame) autoTool(mc, player);
+		// also while the held button digs under the inventory or the pause menu
+		if (cfg().autoTool && (inGame || dugOverScreen)) autoTool(mc, player);
 		if (cfg().autoRefill) refill(mc, player);
 		if (cfg().toolWarning) warn(mc, player);
 	}
@@ -264,7 +265,8 @@ public final class Assist {
 
 	private static void autoTool(Minecraft mc, Player player) {
 		Inventory inv = player.getInventory();
-		boolean digging = cfg().autoToolBlocks && mc.options.keyAttack.isDown() && mc.hitResult instanceof BlockHitResult b && b.getType() == HitResult.Type.BLOCK;
+		// under a screen the key stays up while the held button digs (holdOverScreen)
+		boolean digging = cfg().autoToolBlocks && (mc.options.keyAttack.isDown() || dugOverScreen) && mc.hitResult instanceof BlockHitResult b && b.getType() == HitResult.Type.BLOCK;
 		if (!digging) {
 			// in a fight: the weapon stays in the hand between hits
 			if (System.currentTimeMillis() - weaponAt < FIGHT_MS) return;

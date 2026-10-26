@@ -55,6 +55,30 @@ public class GameHoldScreens implements FabricClientGameTest {
 			context.waitTicks(30);
 			check(!air(context), "the block was dug with holding let go");
 
+			// auto tool under the inventory too: the hand on a stick, the pickaxe two slots on, taken for the digging
+			server.runCommand("item replace entity @a hotbar.0 with stick");
+			server.runCommand("item replace entity @a hotbar.2 with diamond_pickaxe");
+			context.runOnClient(mc -> {
+				dev.slash3rss.slashclient.hud.SlashHud.config.autoTool = true;
+				TestHooks.selectSlot(0);
+			});
+			context.waitTicks(5);
+			context.setScreen(() -> new InventoryScreen(Minecraft.getInstance().player));
+			context.waitTicks(3);
+			context.runOnClient(mc -> TestHooks.hold(true, true, true));
+			context.waitTicks(10);
+			int picked = context.computeOnClient(mc -> TestHooks.selectedSlot());
+			waitFor(context, () -> air(context), "the block was not dug with auto tool under the inventory");
+			context.runOnClient(mc -> TestHooks.hold(true, false, true));
+			context.setScreen(() -> null);
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.autoTool = false);
+			check(picked == 2, "auto tool under the inventory took slot " + picked + ", not the pickaxe's");
+			server.runCommand("item replace entity @a hotbar.0 with diamond_pickaxe");
+			server.runCommand("item replace entity @a hotbar.2 with air");
+			context.runOnClient(mc -> TestHooks.selectSlot(0));
+			server.runCommand("setblock 0 101 1 deepslate");
+			context.waitTicks(10);
+
 			// switched off in the settings: nothing over the inventory
 			context.setScreen(() -> new InventoryScreen(Minecraft.getInstance().player));
 			context.waitTicks(3);
