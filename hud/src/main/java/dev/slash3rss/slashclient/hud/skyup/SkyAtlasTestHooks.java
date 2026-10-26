@@ -48,7 +48,9 @@ public final class SkyAtlasTestHooks {
 		SkyAtlas.caught("Amur biały", 1210, 6.1, "przeciętny", "zjadliwy", ItemStack.EMPTY);
 		SkyAtlas.caught("Amur biały", 39200, 98.5, "ogromny", "wyśmienity", ItemStack.EMPTY);
 		StringBuilder out = new StringBuilder();
-		for (SkyAtlas.Fish f : SkyAtlas.all())
+		List<SkyAtlas.Fish> read = new ArrayList<>(SkyAtlas.data().fish.values());
+		read.sort(java.util.Comparator.comparing(f -> f.name));
+		for (SkyAtlas.Fish f : read)
 			out.append(f.name).append(' ').append(f.caught).append(' ').append(Math.round(f.recordGrams)).append('/').append(Math.round(f.maxGrams)).append(f.fact.isEmpty() ? "" : " fact").append(f.look == null ? "" : " look").append(" | ");
 		return out.toString().strip();
 	}

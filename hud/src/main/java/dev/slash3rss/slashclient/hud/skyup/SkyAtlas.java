@@ -131,9 +131,31 @@ public final class SkyAtlas {
 		return s.replaceAll("\\p{M}", "").replaceAll("[^a-z0-9]", "");
 	}
 
-	/** All species, by name. */
+	/**
+	 * Every species SkyUp has (its "Moje okazy" window, both pages), so the album has a card for each
+	 * from the start; a species the window lists that is not here (a new one) joins them when it is read.
+	 */
+	static final List<String> SPECIES = List.of(
+		"Amur biały", "Amur czarny", "Bass słoneczny", "Białorybica", "Boleń", "Brzana aralska", "Buffalo", "Certa", "Ciernik",
+		"Ciosa", "Czawycza", "Dorsz atlantycki", "Flądra", "Golec arktyczny", "Golec czerwony", "Gorbusza", "Halibut atlantycki",
+		"Jazgarz", "Jaź", "Jesiotr bałtycki", "Jesiotr gwiaździsty", "Jesiotr rosyjski", "Karaś srebrzysty", "Karaś złocisty",
+		"Karp golec", "Karp koi", "Karp lustrzeń", "Karp pospolity", "Kiżucz", "Kleń", "Krąp", "Leszcz", "Lin", "Lipień",
+		"Makrela atlantycka", "Malma", "Marlin błękitny", "Mintaj", "Minóg", "Miętus", "Morszczuk zwyczajny", "Muksun", "Nelma",
+		"Nerka", "Okoń", "Omul bajkalski", "Palia jeziorowa", "Peluga", "Pstrąg potokowy", "Pstrąg sewański", "Płoć",
+		"Rozdymka tygrysia", "Sandacz", "Sapa", "Sardela", "Sazan", "Sieja ostronosa", "Sum", "Szczupak", "Szprotka", "Tajmień",
+		"Tołpyga biała", "Tołpyga pstra", "Tuńczyk pospolity", "Ukleja", "Welon", "Wzdręga", "Węgorz", "Złoty lin", "Łosoś atlantycki",
+		"Śledź czarnomorski", "Żarłacz tępogłowy");
+
+	/** All species, by name: the ones known so far and the rest of SkyUp's, not caught yet. */
 	public static List<Fish> all() {
-		List<Fish> out = new ArrayList<>(data().fish.values());
+		Map<String, Fish> known = data().fish;
+		List<Fish> out = new ArrayList<>(known.values());
+		for (String name : SPECIES) {
+			if (known.containsKey(key(name))) continue;
+			Fish f = new Fish();
+			f.name = name;
+			out.add(f);
+		}
 		out.sort(Comparator.comparing(f -> f.name.toLowerCase(new Locale("pl"))));
 		return out;
 	}

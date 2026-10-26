@@ -74,7 +74,8 @@ public class SkyAtlasScreen extends Screen {
 		for (SkyAtlas.Fish f : SkyAtlas.all()) {
 			if ("caught".equals(filter) && f.caught <= 0) continue;
 			if ("missing".equals(filter) && f.caught > 0) continue;
-			if (!q.isEmpty() && !SkyAtlas.key(f.name).contains(q)) continue;
+			// the search finds caught ones only: the rest have no name to show yet
+			if (!q.isEmpty() && (f.caught <= 0 || !SkyAtlas.key(f.name).contains(q))) continue;
 			out.add(f);
 		}
 		return out;
@@ -187,9 +188,9 @@ public class SkyAtlasScreen extends Screen {
 			g.fill(ix - 3, iy - 3, ix + size + 3, iy + size + 3, 0xE00E1117);
 			Ui.centered(g, Ui.bold("?"), x + w / 2, iy + size / 2 - 4, 0xFF9CA3AF);
 		}
-		// the name, on up to two lines
+		// the name, on up to two lines; not caught yet, scrambled as SkyUp shows it
 		int ty = iy + size + 7;
-		var lines = font.split(Ui.text(f.name), w - 6);
+		var lines = font.split(name(f), w - 6);
 		for (int i = 0; i < Math.min(2, lines.size()); i++) {
 			int lw = font.width(lines.get(i));
 			g.text(font, lines.get(i), x + (w - lw) / 2, ty + i * 9, has ? Ui.TEXT : Ui.MUTED, false);
@@ -197,6 +198,11 @@ public class SkyAtlasScreen extends Screen {
 		Component count = Ui.text(has ? "×" + f.caught : "—");
 		Ui.draw(g, count, x + w - 5 - Ui.width(count), y + h - 12, has ? Ui.ACCENT_LIGHT : 0xFF4B5563);
 		if (star) Ui.draw(g, Ui.text("★"), x + 5, y + h - 12, GOLD);
+	}
+
+	/** A species' name; not caught yet, scrambled as SkyUp's own window shows it. */
+	private static Component name(SkyAtlas.Fish f) {
+		return f.caught > 0 ? Ui.text(f.name) : Ui.text(f.name).withStyle(s -> s.withObfuscated(true));
 	}
 
 	// ---------- one species ----------
