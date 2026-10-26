@@ -152,7 +152,9 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.waitTicks(5);
 			rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			int ready = rows.indexOf("✔ Ciasno, ale własno | Hand in! [lit]"), furnace = rows.indexOf("✔ Piecoznawstwo | Hand in! [lit]"), notYet = rows.indexOf("Podstawowy kamieniołom");
-			check(ready > 0 && furnace > ready && notYet > furnace && !rows.contains("Składzik | Hand in!") && rows.contains("Składzik | "), "ready tasks marked and first", rows);
+			// at the very top, above the categories, and without their requirements
+			check(ready == 0 && furnace > ready && notYet > furnace && !rows.contains("Składzik | Hand in!") && rows.contains("Składzik | ")
+				&& !rows.contains("Posiadaj poziom wyspy") && !rows.contains("Piec przynajmniej"), "ready tasks marked and on top", rows);
 			context.takeScreenshot("skyready-hud");
 			// the compact mode: the badge only
 			context.runOnClient(mc -> TestHooks.skyTasksOptions(true, true));
@@ -229,10 +231,13 @@ public class GameSkyTasks implements FabricClientGameTest {
 			state = context.computeOnClient(mc -> TestHooks.skyCategoryState());
 			rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			// the whole of Nowicjusz on the HUD under its row, Od czego zacząć? too (never tracked on its own)
-			check(state.equals("Nowicjusz,Wirtuoz visible true") && rows.startsWith("Nowicjusz | 5 left · ") && rows.contains("Od czego zacząć?") && rows.contains("Wirtuoz | 16 left"), "two categories", state + "\n" + rows);
+			// the ready tasks above the categories
+			check(state.equals("Nowicjusz,Wirtuoz visible true") && rows.contains("\nNowicjusz | 5 left · ") && rows.startsWith("✔ ") && rows.contains("Od czego zacząć?") && rows.contains("Wirtuoz | 16 left"), "two categories", state + "\n" + rows);
 			// the daily task, tracked, above the categories
 			String top = context.computeOnClient(mc -> TestHooks.skyDailyOnTop());
-			check(top.startsWith("Zadanie codzienne"), "the daily task on top", top);
+			// under the ready ones, above the categories
+			int dailyAt = top.indexOf("Zadanie codzienne"), categoryAt = top.indexOf("Nowicjusz |"), readyAt = top.indexOf("✔ ");
+			check(dailyAt > readyAt && readyAt == 0 && dailyAt < categoryAt, "the daily task on top", top);
 			context.getInput().setCursorPos(wirtuoz[0], wirtuoz[1]);
 			context.waitTicks(5);
 			context.takeScreenshot("skytasks-category-menu");

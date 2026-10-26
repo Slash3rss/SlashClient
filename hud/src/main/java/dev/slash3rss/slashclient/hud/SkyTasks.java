@@ -785,9 +785,14 @@ public final class SkyTasks {
 		List<Row> out = new ArrayList<>();
 		// the daily task on top, then each category's row with its tasks under it, then the tasks tracked on their own
 		List<SkyTaskParser.Task> left = new ArrayList<>(tasks);
-		List<SkyTaskParser.Task> dailies = new ArrayList<>();
+		// the tasks ready to hand in above everything (the daily one first among them), then the daily one
+		List<SkyTaskParser.Task> done = new ArrayList<>(), dailies = new ArrayList<>();
+		for (SkyTaskParser.Task t : left) if (ready(mc, t)) done.add(t);
+		done.sort(java.util.Comparator.comparing(t -> !daily(t)));
+		left.removeAll(done);
 		for (SkyTaskParser.Task t : left) if (daily(t)) dailies.add(t);
 		left.removeAll(dailies);
+		taskRows(mc, done, out);
 		taskRows(mc, dailies, out);
 		for (String tier : headerTiers()) {
 			int[] c = tierCount(mc, tier);
@@ -829,7 +834,8 @@ public final class SkyTasks {
 			else out.add(new Row(t.name, GOLD, age, 0xFF6B7280, -1, 0));
 			// locked until another challenge is done
 			if (!cfg.skyTasksCompact && !t.requires.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyTasks.requires", t.requires).getString(), 0xFFF87171, "", 0, -1, 4));
-			for (SkyTaskParser.Section s : t.sections) {
+			// ready to hand in: its requirements are met, only its name stays
+			for (SkyTaskParser.Section s : ready ? List.<SkyTaskParser.Section>of() : t.sections) {
 				if (!cfg.skyTasksCompact && t.sections.size() > 1) out.add(new Row(s.header, GREY, "", 0, -1, 4));
 				for (SkyTaskParser.Req r : s.items) {
 					long c = current(mc, s, r);

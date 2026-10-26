@@ -2281,7 +2281,7 @@ public final class TestHooks {
 		return rows + "\ncount " + now;
 	}
 
-	/** The HUD's first row with the daily task tracked for a moment ("none" without the task). */
+	/** The HUD's rows with the daily task tracked for a moment ("none" without the task). */
 	public static String skyDailyOnTop() {
 		var mc = net.minecraft.client.Minecraft.getInstance();
 		SkyTaskParser.Task daily = null;
@@ -2291,7 +2291,7 @@ public final class TestHooks {
 		if (!was) SkyTasks.toggle(daily);
 		String rows = SkyTasks.debugRows(mc);
 		if (!was) SkyTasks.toggle(daily);
-		return rows.split("\n")[0];
+		return rows;
 	}
 
 	/** SkyUp's challenges menu ("Wyzwania"): the Nowicjusz category with `left` tasks left, and the daily task. */
