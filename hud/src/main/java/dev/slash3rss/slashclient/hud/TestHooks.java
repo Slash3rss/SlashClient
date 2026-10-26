@@ -2176,7 +2176,8 @@ public final class TestHooks {
 		SlashHud.config.placement("skytasks").enabled = true;
 		// the iron ingot as the game names it in the language the test plays in
 		// SkyUp's Polish names (the test game plays in English: matched all the same)
-		String iron = "Sztabka żelaza", stone = "Kamień", torch = "Pochodnia", chestName = "Skrzynia";
+		// SkyUp's no-break space inside a name ("Stojak na zbroję"): the iron's counted all the same
+		String iron = "Sztabka żelaza", stone = "Kamień", torch = "Pochodnia", chestName = "Skrzynia";
 		var chest = new net.minecraft.world.SimpleContainer(27);
 		chest.setItem(0, task(net.minecraft.world.item.Items.LAVA_BUCKET, "Od czego zacząć?", "Opis » Żeby wygenerować kamień musimy", "  znaleźć lawę. Powinna być w tej", "  jaskini koło domku!", "",
 			"Posiadaj w ekwipunku:", "» Wiadro lawy: 1", "", "Za ukończenie otrzymasz:", "» 1 x Generator kamienia", "» 100.0 SC", "» 30 xp", "", "LPM \ue510 » Ukończ"));

@@ -120,7 +120,8 @@ public final class SkyTaskParser {
 	 * and puts a mouse icon in "LPM \ue510 » Ukończ".
 	 */
 	public static String plain(String s) {
-		return s == null ? "" : s.replaceAll("§.", "").replaceAll("[\\uE000-\\uF8FF]", "").replace(' ', ' ').strip();
+		// SkyUp's no-break spaces ("Stojak na zbroję") as plain ones; written as codes, so no editor loses them
+		return s == null ? "" : s.replaceAll("§.", "").replaceAll("[\\uE000-\\uF8FF]", "").replaceAll("[\\u00A0\\u2007\\u202F]", " ").strip();
 	}
 
 	private static final Pattern CHALLENGES_TITLE = Pattern.compile("(?i)^wyzwania(\\s*(»|>>)\\s*\\S.*)?$");
@@ -151,7 +152,7 @@ public final class SkyTaskParser {
 	static List<Block> blocks(List<String> lore) {
 		List<Block> out = new ArrayList<>();
 		for (String raw : lore) {
-			String s = raw == null ? "" : raw.replaceAll("§.", "").replace(' ', ' ');
+			String s = raw == null ? "" : raw.replaceAll("§.", "").replaceAll("[\\u00A0\\u2007\\u202F]", " ");
 			String line = BULLET.matcher(s).replaceFirst("").strip();
 			if (line.isEmpty()) continue;
 			boolean indented = Character.isWhitespace(s.charAt(0)) && !s.strip().startsWith("▪");

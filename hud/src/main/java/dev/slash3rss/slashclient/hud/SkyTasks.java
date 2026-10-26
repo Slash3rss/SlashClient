@@ -619,7 +619,9 @@ public final class SkyTasks {
 
 	static long carried(Minecraft mc, String thing) {
 		if (mc.player == null || thing.isEmpty()) return -1;
-		java.util.regex.Matcher least = AT_LEAST.matcher(thing.strip());
+		// tasks read before SkyUp's no-break spaces were made plain ones still have them
+		thing = SkyTaskParser.plain(thing);
+		java.util.regex.Matcher least = AT_LEAST.matcher(thing);
 		if (least.matches()) {
 			// "Piec przynajmniej Szczęście I": furnaces with Fortune I or better
 			Item item = itemNamed(mc, least.group(1));
@@ -643,7 +645,7 @@ public final class SkyTasks {
 			if (i >= Inventory.INVENTORY_SIZE && i != Inventory.SLOT_OFFHAND) continue;
 			ItemStack s = inv.getItem(i);
 			if (s.isEmpty()) continue;
-			boolean byName = s.getHoverName().getString().equalsIgnoreCase(thing);
+			boolean byName = SkyTaskParser.plain(s.getHoverName().getString()).equalsIgnoreCase(thing);
 			if (byName || (item != null && s.is(item))) {
 				n += s.getCount();
 				named |= byName;
