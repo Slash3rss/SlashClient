@@ -196,6 +196,16 @@ public final class LootHighlight {
 	}
 
 	/** Items on the ground within `range` (-1: as far as the largest range) and the colour each glows in. */
+	/**
+	 * An item that was dropped, not one the server shows: SkyUp floats a spawner's item over the
+	 * spawner, and an item hanging in the air (no gravity) is a decoration, not something to pick up.
+	 */
+	private static boolean dropped(ItemEntity e) {
+		if (!e.isAlive() || e.getItem().isEmpty() || e.isNoGravity()) return false;
+		String id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(e.getItem().getItem()).getPath();
+		return !id.equals("spawner") && !id.equals("trial_spawner");
+	}
+
 	static Map<Integer, Integer> drops(Level level, double px, double py, double pz, int range) {
 		Map<Integer, Integer> out = new HashMap<>();
 		HudConfig c = cfg();
@@ -203,7 +213,7 @@ public final class LootHighlight {
 		int reach = range >= 0 ? range : MAX_RANGE;
 		double r2 = (double) reach * reach;
 		AABB around = new AABB(px - reach, py - reach, pz - reach, px + reach, py + reach, pz + reach);
-		for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, around, e -> e.isAlive() && !e.getItem().isEmpty())) {
+		for (ItemEntity item : level.getEntitiesOfClass(ItemEntity.class, around, LootHighlight::dropped)) {
 			double x = item.getX(), y = item.getY(), z = item.getZ();
 			double dx = x - px, dy = y - py, dz = z - pz;
 			if (dx * dx + dy * dy + dz * dz > r2) continue;

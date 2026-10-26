@@ -77,6 +77,9 @@ public class GameLootHighlight implements FabricClientGameTest {
 			// items on the ground (as a mob's drop): outlined too, in their own colour, and gone with them
 			server.runCommand(String.format("summon item %d.5 %d %d.5 {Item:{id:\"minecraft:diamond\",count:1},PickupDelay:32767}", x0 - 1, y, z0 + 3));
 			server.runCommand(String.format("summon item %d.5 %d %d.5 {Item:{id:\"minecraft:bone\",count:3},PickupDelay:32767}", x0 + 1, y, z0 + 3));
+			// not loot: a spawner shown as an item over its block, and an item floating in place (a server's decoration)
+			server.runCommand(String.format("summon item %d.5 %d %d.5 {Item:{id:\"minecraft:spawner\",count:1},PickupDelay:32767}", x0, y, z0 + 4));
+			server.runCommand(String.format("summon item %d.5 %d %d.5 {Item:{id:\"minecraft:emerald\",count:1},PickupDelay:32767,NoGravity:1b}", x0 + 2, y + 2, z0 + 4));
 			context.waitTicks(20);
 			shown = context.computeOnClient(mc -> TestHooks.lootHighlight(true, false, -1));
 			if (!shown.equals("8 [2, 1, 1, 1, 1, 2]")) throw new AssertionError("The drops on the ground: " + shown);
