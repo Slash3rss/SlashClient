@@ -585,6 +585,23 @@ public final class TestHooks {
 		return ChatTabs.dragging;
 	}
 
+	/**
+	 * As the game starts with a tab already pulled out and its lines kept out of "All": the setting
+	 * on, the chat's filter as the game starts it (everything); null name = all of that undone.
+	 */
+	public static void pulledOutAtStart(String name, String pattern) {
+		SlashHud.config.chatTabs.removeIf(t -> t.window != null && t.name.startsWith("Start "));
+		SlashHud.config.chatWindowsOnly = name != null;
+		if (name != null) {
+			HudConfig.ChatTab tab = new HudConfig.ChatTab(name, false);
+			tab.patterns.add(pattern);
+			tab.window = HudConfig.Placement.at(0.6f, 0.1f);
+			SlashHud.config.chatTabs.add(tab);
+		}
+		ChatTabs.changed();
+		if (name != null) Compat.setChatFilter(Compat.chat(net.minecraft.client.Minecraft.getInstance()), m -> true);
+	}
+
 	/** The setting that keeps pulled-out tabs' lines out of "All". */
 	public static void chatWindowsOnly(boolean on) {
 		SlashHud.config.chatWindowsOnly = on;
