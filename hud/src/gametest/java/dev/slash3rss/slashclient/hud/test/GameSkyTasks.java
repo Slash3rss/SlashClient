@@ -130,7 +130,7 @@ public class GameSkyTasks implements FabricClientGameTest {
 			check(elsewhere.equals("tasks true fish true"), "back on SkyUp", elsewhere);
 			// the jobs' levels from their window and a job's boss bar; a needed task done turns its line green
 			String jobs = context.computeOnClient(mc -> TestHooks.skyJobsAndNeeds());
-			check(jobs.equals("7 9 false | bar 10 | needs 'Zmory podziemi' false -> true"), "jobs and needed tasks", jobs);
+			check(jobs.equals("7 9 false | bar 10 | needs 'Zmory podziemi' false -> true | long ago 'Szamaństwo' false -> true [pierwsze drzewo, szamaństwo, zmory podziemi]"), "jobs and needed tasks", jobs);
 			context.takeScreenshot("skytasks-estimate");
 			// ready to hand in: the job's and the island's level (the sidebar) and the furnace with Fortune
 			// (the inventory) lit green in the GUI

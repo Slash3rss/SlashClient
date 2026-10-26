@@ -1216,6 +1216,7 @@
 	"slashclient-hud.skyTasks.dailyReady": "Gotowe – możesz je oddać",
 	"slashclient-hud.skyTasks.openGenerator": "otwórz generator",
 	"slashclient-hud.skyTasks.openIncubator": "otwórz inkubator",
+	"slashclient-hud.skyTasks.enterDungeon": "wejdź do dungeona (?/%s)",
 	"slashclient-hud.skyTasks.scroll": "Przewijaj za długie wiersze",
 	"slashclient-hud.skyShaman.tools": "różdżka %s · druga ręka %s · poziom %s",
 	"slashclient-hud.skyTasks.shaman": "Przepis szamaństwa pod mobem do przyzwania",

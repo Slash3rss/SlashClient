@@ -333,13 +333,16 @@ public final class SkyTasks {
 	static void read(AbstractContainerScreen<?> screen) {
 		String tier = tier(screen);
 		Map<String, SkyTaskParser.Task> found = new LinkedHashMap<>();
+		List<ItemStack> stacks = new ArrayList<>();
 		for (Slot slot : screen.getMenu().slots) {
 			if (slot.container instanceof Inventory) continue;
+			stacks.add(slot.getItem());
 			SkyTaskParser.Task t = task(tier, slot.getItem());
 			if (t != null) found.put(t.key(), t);
 		}
-		if (found.isEmpty()) return;
 		Data d = data();
+		if (doneShown(d, stacks)) dirty = true;
+		if (found.isEmpty()) return;
 		long now = System.currentTimeMillis();
 		// the menu: each category's count (the daily task in it is a task like the others)
 		boolean menu = false;
@@ -388,6 +391,34 @@ public final class SkyTasks {
 		if (!menu) lastTier = tier;
 	}
 
+	/**
+	 * The tasks a category shows done ("» Kuźnia «" with "▪ Zadanie ukończone!" and nothing else to do),
+	 * kept as done: another task may need them, and they were done before the mod could see them handed
+	 * in. True when one is new.
+	 */
+	static boolean doneShown(Data d, List<ItemStack> stacks) {
+		boolean added = false;
+		for (ItemStack stack : stacks) {
+			if (stack.isEmpty()) continue;
+			boolean done = false;
+			for (Component line : SkyDump.lore(stack)) if (SkyTaskParser.plain(line.getString()).toLowerCase(Locale.ROOT).contains("zadanie ukończone")) done = true;
+			if (!done) continue;
+			String name = nameKey(stack.getHoverName().getString());
+			if (!name.isEmpty() && d.done().add(name)) added = true;
+		}
+		return added;
+	}
+
+	/** For the in-game test: a category's window holding these items read. */
+	public static void doneShownForTest(List<ItemStack> stacks) {
+		doneShown(data(), stacks);
+	}
+
+	/** For the in-game test: the tasks known done. */
+	public static String doneNames() {
+		return new java.util.TreeSet<>(data().done()).toString();
+	}
+
 	/** SkyUp in the chat once a task is handed in: "Wyzwania » Ukończono zadanie Składzik!". */
 	private static final java.util.regex.Pattern COMPLETED = java.util.regex.Pattern.compile("(?iu)wyzwania\\b.*?ukończono\\s+zadanie\\s*:?\\s+(.+?)[\\s!.«»]*$");
 
@@ -404,7 +435,7 @@ public final class SkyTasks {
 		completed(m.group(1));
 	}
 
-	/** The task another one needs ("Wymaga ukończenia wyzwania Zmory podziemi") is done. */
+	/** The task another one needs ("Wymaga ukończenia wyzwania Zmory podziemi") is done: handed in, or shown done in its category. */
 	public static boolean requirementDone(SkyTaskParser.Task t) {
 		return !t.requires.isEmpty() && data().done().contains(nameKey(t.requires));
 	}
@@ -892,6 +923,9 @@ public final class SkyTasks {
 					int points = SkyGenerator.needed(r.thing), spent = SkyGenerator.spent();
 					// an incubator never opened: where to look
 					if (r.current < 0 && c < 0 && SkyIncubator.about(r.thing)) progress = Component.translatable("slashclient-hud.skyTasks.openIncubator").getString();
+					// the dungeon's level comes from its boss bar: not in one since, where to look
+					if (r.current < 0 && c < 0 && s.header.toLowerCase(Locale.ROOT).startsWith("dotrzyj do poziomu w dungeon"))
+						progress = Component.translatable("slashclient-hud.skyTasks.enterDungeon", r.required).getString();
 					if (points > 0 && r.current < 0) {
 						progress = spent < 0 ? Component.translatable("slashclient-hud.skyTasks.openGenerator").getString() : "~" + Math.min(spent, points) + "/" + points + " pkt";
 						bar = cfg.skyTasksCompact || spent < 0 ? -1 : Math.min(1f, (float) spent / points);

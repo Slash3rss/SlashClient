@@ -2567,7 +2567,13 @@ public final class TestHooks {
 		var task = SkyTaskParser.parse("WTAJEMNICZONY", "» Kryptomaniak «", java.util.List.of("▪ Wymaga ukończenia wyzwania Zmory", "  podziemi", "▪ Dotrzyj do poziomu w dungeonach: 10", "  poz.", "▪ Za ukończenie otrzymasz:", "  » 200.0 SC"));
 		boolean before = dev.slash3rss.slashclient.hud.skyup.SkyTasks.requirementDone(task);
 		dev.slash3rss.slashclient.hud.skyup.SkyTasks.onChat(net.minecraft.network.chat.Component.literal("Wyzwania » Ukończono zadanie Zmory podziemi!"));
-		return window + " | bar " + d.jobs.get("Drwal") + " | needs '" + task.requires + "' " + before + " -> " + dev.slash3rss.slashclient.hud.skyup.SkyTasks.requirementDone(task);
+		// one done long before the mod watched: its category shows it as "Zadanie ukończone!"
+		var older = SkyTaskParser.parse("WTAJEMNICZONY", "» Ranczo «", java.util.List.of("▪ Wymaga ukończenia wyzwania Szamaństwo", "▪ Przyzwij: 1", "▪ Za ukończenie otrzymasz:", "  » 200.0 SC"));
+		boolean unread = dev.slash3rss.slashclient.hud.skyup.SkyTasks.requirementDone(older);
+		dev.slash3rss.slashclient.hud.skyup.SkyTasks.doneShownForTest(java.util.List.of(head.apply("» Szamaństwo «", "▪ Zadanie ukończone!"), head.apply("» Kuźnia «", "▪ Stój obok:")));
+		return window + " | bar " + d.jobs.get("Drwal") + " | needs '" + task.requires + "' " + before + " -> " + dev.slash3rss.slashclient.hud.skyup.SkyTasks.requirementDone(task)
+			+ " | long ago '" + older.requires + "' " + unread + " -> " + dev.slash3rss.slashclient.hud.skyup.SkyTasks.requirementDone(older)
+			+ " " + dev.slash3rss.slashclient.hud.skyup.SkyTasks.doneNames();
 	}
 
 	/** For the test: "Dotrzyj do poziomu w dungeonach: 10 poz." before any dungeon, and after level 7 was on the boss bar. */
