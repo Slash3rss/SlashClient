@@ -232,7 +232,14 @@ public class SkyAtlasScreen extends Screen {
 		return reveals.computeIfAbsent(f.name, k -> after);
 	}
 
-	/** A card face down: SkyUp blue with a frame, a pattern of waves and a fishing rod. */
+	/** Karpiołap, the Elementium case's fishing rod (its model from SkyUp's pack; a plain rod without it). */
+	private static final ItemStack KARPIOLAP = new ItemStack(Items.FISHING_ROD);
+	static {
+		KARPIOLAP.set(net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA,
+			new net.minecraft.world.item.component.CustomModelData(List.of(10008f), List.of(), List.of(), List.of()));
+	}
+
+	/** A card face down: SkyUp blue with a frame, a pattern of waves and Karpiołap. */
 	private void cardBack(GuiGraphicsExtractor g, int x, int y, int w, int h) {
 		Ui.round(g, x, y, w, h, 5, 0xFF3B82F6);
 		Ui.round(g, x + 1, y + 1, w - 2, h - 2, 4, 0xFF13204A);
@@ -250,7 +257,7 @@ public class SkyAtlasScreen extends Screen {
 		pose.pushMatrix();
 		pose.translate(x + w / 2f - 12, y + h / 2f - 12);
 		pose.scale(1.5f, 1.5f);
-		g.item(new ItemStack(Items.FISHING_ROD), 0, 0);
+		g.item(KARPIOLAP, 0, 0);
 		pose.popMatrix();
 	}
 
