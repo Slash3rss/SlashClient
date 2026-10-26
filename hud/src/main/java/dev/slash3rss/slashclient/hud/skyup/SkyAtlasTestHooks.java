@@ -41,9 +41,12 @@ public final class SkyAtlasTestHooks {
 			item(Items.COD, "» Sum «", "", "▪ Wyłowiono » 1", "", "▪ Rekord wagi » 12 400g (duży)", "▪ Rekord ceny » 40 SC", "",
 				"▪ Maksymalna waga » 150 000g", "▪ Ciekawostka » Największa ryba słodkowodna Europy.", ""),
 			item(Items.GLASS_PANE, "» Boleń «", "", "▪ Nie złowiono.", ""),
+			item(Items.GLASS_PANE, "» Certa «", "", "▪ Nie złowiono.", ""),
 			item(Items.PLAYER_HEAD, "» Następna strona «", "", "▪ LPM » Następna strona")));
-		// a catch from the chat: one more Boleń, its first record
+		// catches from the chat: one more Boleń (its first record), two more Amur (one the heaviest yet)
 		SkyAtlas.caught("Boleń", 1830, 7.4, "niewielki");
+		SkyAtlas.caught("Amur biały", 1210, 6.1, "przeciętny", "zjadliwy", ItemStack.EMPTY);
+		SkyAtlas.caught("Amur biały", 39200, 98.5, "ogromny", "wyśmienity", ItemStack.EMPTY);
 		StringBuilder out = new StringBuilder();
 		for (SkyAtlas.Fish f : SkyAtlas.all())
 			out.append(f.name).append(' ').append(f.caught).append(' ').append(Math.round(f.recordGrams)).append('/').append(Math.round(f.maxGrams)).append(f.fact.isEmpty() ? "" : " fact").append(f.look == null ? "" : " look").append(" | ");
@@ -59,6 +62,7 @@ public final class SkyAtlasTestHooks {
 		return String.join(" | ", SkyDump.components(Minecraft.getInstance(), fish));
 	}
 
+	/** The atlas: the album (null) or one species open. */
 	public static void open(String chosen) {
 		var screen = new SkyAtlasScreen(null);
 		screen.choose(chosen, "all");

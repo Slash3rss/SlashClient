@@ -125,7 +125,7 @@ public final class SkyFish {
 		session.add(size, kind, quality, grams, value);
 		lifetime().add(size, kind, quality, grams, value);
 		save();
-		SkyAtlas.caught(kind, grams, value, size, fish);
+		SkyAtlas.caught(kind, grams, value, size, quality, fish);
 	}
 
 	/** The species: SkyUp's own id in the item's data, or the name without its two words of size and quality. */

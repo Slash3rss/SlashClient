@@ -41,7 +41,20 @@ public final class SkyAtlas {
 		public boolean known;
 		/** How it looks: the item as SkyUp shows it (its own model from the server's pack), name and lore left out. */
 		public com.google.gson.JsonElement look;
+		/** Each one caught since the atlas keeps them, newest last (the window only tells how many and the records). */
+		public List<Catch> catches = new ArrayList<>();
+
+		public List<Catch> catches() {
+			if (catches == null) catches = new ArrayList<>();
+			return catches;
+		}
 	}
+
+	/** One fish caught: when, its weight (g), size, quality and what the fisherman pays (SC; -1 not known). */
+	public record Catch(long at, double grams, String size, String quality, double price) {}
+
+	/** The most catches kept of one species (the oldest go). */
+	private static final int CATCHES_KEPT = 500;
 
 	/** The looks as items, made once from the saved ones. */
 	private static final Map<String, ItemStack> looks = new java.util.HashMap<>();
@@ -202,10 +215,10 @@ public final class SkyAtlas {
 
 	/** A fish caught (SkyFish, from the chat): one more of its species, and maybe a record. */
 	static void caught(String species, double grams, double price, String size) {
-		caught(species, grams, price, size, ItemStack.EMPTY);
+		caught(species, grams, price, size, "", ItemStack.EMPTY);
 	}
 
-	static void caught(String species, double grams, double price, String size, ItemStack fish) {
+	static void caught(String species, double grams, double price, String size, String quality, ItemStack fish) {
 		if (species.isEmpty()) return;
 		Data d = data();
 		Fish f = d.fish.computeIfAbsent(key(species), k -> {
@@ -214,6 +227,8 @@ public final class SkyAtlas {
 			return n;
 		});
 		f.caught++;
+		f.catches().add(new Catch(System.currentTimeMillis(), grams, size, quality, price));
+		while (f.catches().size() > CATCHES_KEPT) f.catches().remove(0);
 		if (grams > f.recordGrams) {
 			f.recordGrams = grams;
 			f.recordSize = size;
