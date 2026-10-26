@@ -32,24 +32,41 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "SlashClient",
-    "url": "https://client.slash3rss.dev/",
-    "image": "https://client.slash3rss.dev/img/og.jpg",
-    "screenshot": "https://client.slash3rss.dev/img/hero-menu.jpg",
-    "description": "Darmowy launcher Minecraft z własnym HUD-em, znajomymi, kosmetykami, benchmarkiem FPS i klipami.",
-    "applicationCategory": "GameApplication",
-    "operatingSystem": "Windows, macOS, Linux",
-    "inLanguage": "pl",
-    "author": {
-      "@type": "Person",
-      "name": "Slash3rss"
-    },
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "PLN"
-    }
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://client.slash3rss.dev/#website",
+        "name": "SlashClient",
+        "url": "https://client.slash3rss.dev/",
+        "inLanguage": [
+          "pl",
+          "en"
+        ]
+      },
+      {
+        "@type": "SoftwareApplication",
+        "name": "SlashClient",
+        "url": "https://client.slash3rss.dev/",
+        "image": "https://client.slash3rss.dev/img/og.jpg",
+        "screenshot": "https://client.slash3rss.dev/img/hero-menu.jpg",
+        "description": "Darmowy launcher Minecraft z własnym HUD-em, znajomymi, kosmetykami, benchmarkiem FPS i klipami.",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "Windows, macOS, Linux",
+        "inLanguage": "pl",
+        "author": {
+          "@type": "Person",
+          "name": "Slash3rss"
+        },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "PLN"
+        },
+        "isPartOf": {
+          "@id": "https://client.slash3rss.dev/#website"
+        }
+      }
+    ]
   }
   </script>
   <!--/home:head--><meta name="theme-color" content="#07090f">
@@ -92,7 +109,7 @@
     <section class="hero2">
       <div class="wrap center">
         <a class="pill" href="#kosmetyki"><span class="dot"></span> Nowość: peleryny, emotki i klipy <i class="fa-solid fa-arrow-right"></i></a>
-        <h1>Minecraft, tylko <span class="grad">lepiej</span>.</h1>
+        <h1><span class="hero-brand">SlashClient</span> Minecraft, tylko <span class="grad">lepiej</span>.</h1>
         <p class="lead">Darmowy launcher Minecraft z własnym HUD-em, znajomymi, pelerynami, benchmarkiem FPS i klipami. Bez szukania i instalowania modów.</p>
         <div class="cta">
           <a class="btn primary huge glow" id="download-main" href="/pobierz/windows" data-label="Pobierz dla {os}" data-other="Inne systemy:" data-phone="SlashClient działa na komputerze" data-phone-note="Otwórz tę stronę na komputerze z Windows, macOS lub Linuksem, żeby pobrać launcher." data-path="/pobierz/"><i class="fa-brands fa-windows" id="os-icon"></i> <span id="os-label">Pobierz dla Windows</span></a>

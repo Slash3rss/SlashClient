@@ -36,20 +36,27 @@ function head(c: Content, lang: Lang, base: string): string {
   const title = esc(str(m.title));
   const desc = esc(str(m.description));
   const image = esc(absolute(str(m.image) || '/img/og.jpg', base));
+  // the site (its name in search results is the home page's) and the launcher on it;
   // the JSON's "<" written out, so no text in it can end the script
   const ld = JSON.stringify({
     '@context': 'https://schema.org',
-    '@type': 'SoftwareApplication',
-    name: 'SlashClient',
-    url,
-    image: absolute(str(m.image) || '/img/og.jpg', base),
-    screenshot: absolute(str(c.hero.image), base),
-    description: str(m.appDescription) || str(m.description),
-    applicationCategory: 'GameApplication',
-    operatingSystem: 'Windows, macOS, Linux',
-    inLanguage: lang,
-    author: { '@type': 'Person', name: 'Slash3rss' },
-    offers: { '@type': 'Offer', price: '0', priceCurrency: 'PLN' },
+    '@graph': [
+      { '@type': 'WebSite', '@id': `${base}/#website`, name: 'SlashClient', url: `${base}/`, inLanguage: ['pl', 'en'] },
+      {
+        '@type': 'SoftwareApplication',
+        name: 'SlashClient',
+        url,
+        image: absolute(str(m.image) || '/img/og.jpg', base),
+        screenshot: absolute(str(c.hero.image), base),
+        description: str(m.appDescription) || str(m.description),
+        applicationCategory: 'GameApplication',
+        operatingSystem: 'Windows, macOS, Linux',
+        inLanguage: lang,
+        author: { '@type': 'Person', name: 'Slash3rss' },
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'PLN' },
+        isPartOf: { '@id': `${base}/#website` },
+      },
+    ],
   }, null, 2).replace(/</g, '\\u003c').replace(/\n/g, '\n  ');
   return `
   <title>${title}</title>
@@ -117,7 +124,7 @@ function hero(c: Content, lang: Lang): string {
   return `
     <section class="hero2">
       <div class="wrap center">${pill}
-        <h1>${esc(str(h.titleBefore))}<span class="grad">${esc(str(h.titleHighlight))}</span>${esc(str(h.titleAfter))}</h1>
+        <h1><span class="hero-brand">SlashClient</span> ${esc(str(h.titleBefore))}<span class="grad">${esc(str(h.titleHighlight))}</span>${esc(str(h.titleAfter))}</h1>
         <p class="lead">${inline(str(h.lead))}</p>
         <div class="cta">
           <a class="btn primary huge glow" id="download-main" href="${UI[lang].download}windows" ${data}><i class="fa-brands fa-windows" id="os-icon"></i> <span id="os-label">${esc(str(h.download).replaceAll('{os}', 'Windows'))}</span></a>${secondary}

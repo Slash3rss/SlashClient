@@ -61,7 +61,9 @@ describe('home page defaults', () => {
     assert.match(pl.headers.get('content-type') ?? '', /text\/html/);
     assert.match(pl.headers.get('content-security-policy') ?? '', /default-src 'self'/);
     assert.match(pl.text, /<html lang="pl">/);
-    assert.match(pl.text, /<h1>Minecraft, tylko <span class="grad">lepiej<\/span>.<\/h1>/);
+    // the heading names the product first, for search engines too
+    assert.match(pl.text, /<h1><span class="hero-brand">SlashClient<\/span> Minecraft, tylko <span class="grad">lepiej<\/span>.<\/h1>/);
+    assert.match(pl.text, /"@type": "WebSite"/);
     assert.match(pl.text, /<summary>Ile kosztuje SlashClient\?<\/summary>/);
     assert.match(pl.text, /<h3>Mody z Modrinth<\/h3>/);
     assert.match(pl.text, /<link rel="canonical" href="http:\/\/localhost\/">/);
