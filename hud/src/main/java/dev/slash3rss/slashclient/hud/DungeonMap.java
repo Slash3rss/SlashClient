@@ -487,7 +487,7 @@ public final class DungeonMap implements HudModule {
 		int ox = x, oy = y + title();
 		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, viewId, ox, oy, 0, 0, W, H, W, H, W, H, 0xFFFFFFFF);
 		drawCounters(g, mc, ox, oy + H, counters());
-		drawOver(g, mc, ox, oy, viewX, viewZ, viewScale, DungeonMap::shown);
+		drawOver(g, mc, ox, oy, viewX, viewZ, viewScale, SHOWN);
 	}
 
 	/** What goes over the map's picture: room marks, loot, mobs, players and you. */
@@ -508,11 +508,14 @@ public final class DungeonMap implements HudModule {
 		}
 	}
 
-	private static java.util.function.BiPredicate<Integer, Integer> clip = DungeonMap::shown;
+	/** The module's own map's shape (the full map screen draws over its own). */
+	private static final java.util.function.BiPredicate<Integer, Integer> SHOWN = DungeonMap::shown;
+	private static java.util.function.BiPredicate<Integer, Integer> clip = SHOWN;
 
 	private static void drawOverView(GuiGraphicsExtractor g, Minecraft mc, int ox, int oy) {
 		DungeonRooms.draw(g, mc, ox, oy, viewX, viewZ, viewScale, originX, originZ, clip);
 		markers(g, mc, ox, oy);
+		if (SlashHud.config.dungeonStartArrow) startMark(g, ox, oy);
 		int sx = Math.round((float) (mc.player.getX() - originX - viewX) * viewScale), sz = Math.round((float) (mc.player.getZ() - originZ - viewZ) * viewScale);
 		if (clip.test(sx, sz)) {
 			if (SlashHud.config.dungeonSelfHead) {
@@ -731,6 +734,40 @@ public final class DungeonMap implements HudModule {
 			// all of a kind taken: green
 			Modules.text(g, mc, c[1] + "/" + c[2], cx + 10, cy, c[1] == c[2] ? 0xFF86EFAC : 0xFFFFFFFF);
 			at += w + 6;
+		}
+	}
+
+	/**
+	 * The way back to the start room: a green mark on it while it is in sight, else (the module's map
+	 * following the player, zoomed in) a green arrow on the map's edge pointing to it.
+	 */
+	private static void startMark(GuiGraphicsExtractor g, int ox, int oy) {
+		int[] start = DungeonRooms.start();
+		if (start == null) return;
+		float sx = (start[0] + 0.5f - viewX) * viewScale, sz = (start[1] + 0.5f - viewZ) * viewScale;
+		if (clip.test(Math.round(sx), Math.round(sz))) {
+			int x = ox + Math.round(sx), y = oy + Math.round(sz);
+			g.fill(x - 3, y - 3, x + 4, y + 4, 0xFF000000);
+			g.fill(x - 2, y - 2, x + 3, y + 3, 0xFF4ADE80);
+			return;
+		}
+		// only the module's own map has an edge to point from (the full map shows all)
+		if (clip != SHOWN) return;
+		float cx = W / 2f, cz = H / 2f, dx = sx - cx, dz = sz - cz;
+		double len = Math.sqrt(dx * dx + dz * dz);
+		if (len < 1) return;
+		// as far out as the map goes, a few pixels in from its edge (a round map: its circle)
+		double reach = "circle".equals(SlashHud.config.dungeonShape) ? Math.min(W, H) / 2.0 - 6
+			: Math.min((W / 2.0 - 6) / Math.max(1e-6, Math.abs(dx)), (H / 2.0 - 6) / Math.max(1e-6, Math.abs(dz))) * len;
+		double ux = dx / len, uz = dz / len;
+		double tipX = ox + cx + ux * reach, tipZ = oy + cz + uz * reach;
+		// a small filled triangle: its tip on the edge, its back 6 pixels in
+		for (int back = 0; back <= 6; back++) {
+			double half = back * 0.6;
+			for (double side = -half; side <= half; side += 0.5) {
+				int px = (int) Math.round(tipX - ux * back - uz * side), pz = (int) Math.round(tipZ - uz * back + ux * side);
+				g.fill(px, pz, px + 1, pz + 1, back == 0 || Math.abs(side) > half - 0.6 || back == 6 ? 0xFF000000 : 0xFF4ADE80);
+			}
 		}
 	}
 

@@ -1033,6 +1033,7 @@
 	"slashclient-hud.dungeon.progress": "Progress to the next level",
 	"slashclient-hud.dungeon.plan": "Whole layout from the map above the dungeon (unseen rooms dimmed)",
 	"slashclient-hud.dungeon.blockColors": "Floor in block colours (instead of plain)",
+	"slashclient-hud.dungeon.startArrow": "Start room: a mark and an arrow to it",
 	"slashclient-hud.dungeon.selfHead": "Your head instead of the arrow",
 	"slashclient-hud.dungeon.players": "Show other players",
 	"slashclient-hud.dungeon.mobs": "Show mobs and NPCs",

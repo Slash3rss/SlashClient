@@ -208,6 +208,7 @@ public final class Catalog {
 					settings.add(new Slider("slashclient-hud.dungeon.zoom", 1f, 4f, 0.25f, "%.2f×", () -> cfg.dungeonZoom, v -> cfg.dungeonZoom = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.follow", () -> cfg.dungeonFollow, v -> cfg.dungeonFollow = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.selfHead", () -> cfg.dungeonSelfHead, v -> cfg.dungeonSelfHead = v));
+					settings.add(new Toggle("slashclient-hud.dungeon.startArrow", () -> cfg.dungeonStartArrow, v -> cfg.dungeonStartArrow = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.players", () -> cfg.dungeonPlayers, v -> cfg.dungeonPlayers = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.mobs", () -> cfg.dungeonMobs, v -> cfg.dungeonMobs = v));
 					// each mob class its own look

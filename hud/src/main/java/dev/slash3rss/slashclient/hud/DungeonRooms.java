@@ -124,6 +124,11 @@ public final class DungeonRooms {
 		startZ = z;
 	}
 
+	/** The start room's point on the map (x, z), or null while not known. */
+	static int[] start() {
+		return startX < 0 ? null : new int[] { startX, startZ };
+	}
+
 	/** Whether a map point (x, z) is in the start room. */
 	static boolean inStart(int x, int z) {
 		if (startX < 0) return false;

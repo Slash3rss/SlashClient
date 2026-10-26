@@ -105,6 +105,20 @@ public class GameDungeon implements FabricClientGameTest {
 			// from the map above: exactly the nine rooms, none run together through a door
 			if (Integer.parseInt(rooms.split(" ")[0]) != 9) throw new AssertionError("Rooms from the map above: " + rooms);
 			context.takeScreenshot("dungeon-rooms");
+			// zoomed in, following the player, the start room out of sight: an arrow on the map's edge to it
+			context.runOnClient(mc -> {
+				dev.slash3rss.slashclient.hud.SlashHud.config.dungeonFollow = true;
+				dev.slash3rss.slashclient.hud.SlashHud.config.dungeonZoom = 4f;
+			});
+			server.runCommand(String.format("tp @a %d %d %d", x0 + 30, y + 2, z0 + 30));
+			context.waitTicks(20);
+			context.takeScreenshot("dungeon-start-arrow");
+			context.runOnClient(mc -> {
+				dev.slash3rss.slashclient.hud.SlashHud.config.dungeonFollow = false;
+				dev.slash3rss.slashclient.hud.SlashHud.config.dungeonZoom = 1f;
+			});
+			server.runCommand(String.format("tp @a %d %d %d 180 30", x0, y, z0 + 12));
+			context.waitTicks(10);
 			// spawner holograms (armour stand names): the respawn time counts as cleared
 			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,CustomNameVisible:1b," + name("\"Posiłki za: 30s\"") + "}", x0 - 12, y + 1, z0 - 12));
 			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,CustomNameVisible:1b," + name("\"Pozostałe moby: 4\"") + "}", x0 + 12, y + 1, z0 - 12));
