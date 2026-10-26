@@ -112,6 +112,24 @@ public final class SkyAtlas {
 		});
 	}
 
+	/** SkyUp's pack has a grey "not caught yet" picture of each fish (a red pane with the fish's model number). */
+	private static final net.minecraft.resources.Identifier HIDDEN_MODEL =
+		net.minecraft.resources.Identifier.parse("skyup:models/item/przedmioty/ryba/nieodblokowana/amur_bialy.json");
+	private static final Map<String, ItemStack> hidden = new java.util.HashMap<>();
+
+	/** A species not caught yet as SkyUp's own window shows it, or null without SkyUp's pack (a plain red pane then). */
+	public static ItemStack hidden(Fish f) {
+		Minecraft mc = Minecraft.getInstance();
+		Integer model = MODELS.get(key(f.name));
+		if (model == null || mc.getResourceManager().getResource(HIDDEN_MODEL).isEmpty()) return null;
+		return hidden.computeIfAbsent(key(f.name), k -> {
+			ItemStack pane = new ItemStack(net.minecraft.core.registries.BuiltInRegistries.ITEM.getValue(net.minecraft.resources.Identifier.withDefaultNamespace("red_stained_glass_pane")));
+			pane.set(net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA,
+				new net.minecraft.world.item.component.CustomModelData(List.of((float) model), List.of(), List.of(), List.of()));
+			return pane;
+		});
+	}
+
 	/** Keeps how a fish looks (only an actual fish's item, not the window's placeholder pane). */
 	private static void keepLook(Fish f, ItemStack stack) {
 		Minecraft mc = Minecraft.getInstance();

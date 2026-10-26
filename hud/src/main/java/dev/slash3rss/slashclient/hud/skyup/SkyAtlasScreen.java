@@ -175,14 +175,15 @@ public class SkyAtlasScreen extends Screen {
 		if (over) Ui.round(g, x + 1, y + 1, w - 2, h - 2, 4, 0x14FFFFFF);
 		// the picture straight on the card
 		int size = 16 * scale, ix = x + (w - size) / 2, iy = y + 8;
-		ItemStack look = SkyAtlas.look(f);
+		// not caught yet: SkyUp's own grey picture when its pack is on, else the fish in shadow
+		ItemStack grey = has ? null : SkyAtlas.hidden(f), look = grey != null ? grey : SkyAtlas.look(f);
 		var pose = g.pose();
 		pose.pushMatrix();
 		pose.translate(ix, iy);
 		pose.scale(scale, scale);
 		g.item(look != null && !look.isEmpty() ? look : new ItemStack(Items.COD), 0, 0);
 		pose.popMatrix();
-		if (!has) {
+		if (!has && grey == null) {
 			// not caught yet: a shadow and a question mark
 			g.fill(ix - 3, iy - 3, ix + size + 3, iy + size + 3, 0xE00E1117);
 			Ui.centered(g, Ui.bold("?"), x + w / 2, iy + size / 2 - 4, 0xFF9CA3AF);
