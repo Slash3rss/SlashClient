@@ -2385,6 +2385,12 @@ public final class TestHooks {
 		int max = SlashHud.config.skyTasksMax;
 		SlashHud.config.skyTasksMax = 10;
 		String rows = SkyTasks.debugRows(mc);
+		// the rotten flesh carried: still on the list, marked as there
+		var inv = mc.player.getInventory();
+		var kept = inv.getItem(20);
+		inv.setItem(20, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ROTTEN_FLESH, 20));
+		rows += "\n--- carried\n" + SkyTasks.debugRows(mc);
+		inv.setItem(20, kept);
 		SlashHud.config.skyTasksMax = max;
 		SkyShaman.pendingForTest("Wiedźma");
 		SkyCounters.onChat(net.minecraft.network.chat.Component.literal("Szamaństwo » To… to… TO ŻYJE!!!"));

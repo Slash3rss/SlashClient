@@ -98,8 +98,8 @@ public final class SkyShaman {
 		return n;
 	}
 
-	/** What the recipe still lacks, as the tracker's lines (a mark per piece, the materials short); empty when all is there. */
-	static List<String> lacking(Minecraft mc, Mob mob) {
+	/** The recipe as the tracker's lines: a mark per tool, then every material with how many are carried ("✔" once there are enough). */
+	static List<String> recipe(Minecraft mc, Mob mob) {
 		List<String> out = new ArrayList<>();
 		if (mc.player == null) return out;
 		Item wand = item(mob.wand()), main = item(mob.main());
@@ -109,7 +109,7 @@ public final class SkyShaman {
 			(levelOk ? "✔ " : "✖ ") + mob.level()).getString());
 		for (var e : mob.materials().entrySet()) {
 			int have = carried(mc, e.getKey());
-			if (have < e.getValue()) out.add(itemName(e.getKey()) + " " + have + "/" + e.getValue());
+			out.add((have >= e.getValue() ? "✔ " : "") + itemName(e.getKey()) + " " + Math.min(have, e.getValue()) + "/" + e.getValue());
 		}
 		return out;
 	}

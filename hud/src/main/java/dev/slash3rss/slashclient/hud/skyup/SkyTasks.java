@@ -931,10 +931,16 @@ public final class SkyTasks {
 						bar = cfg.skyTasksCompact || spent < 0 ? -1 : Math.min(1f, (float) spent / points);
 					}
 					out.add(new Row((met ? "✔ " : "• ") + thing, met ? 0xFF6B7280 : WHITE, progress, met ? GREEN : WHITE, bar, 6));
-					// a mob to summon: its shamanism recipe, with what is missing
+					// a mob to summon: its shamanism recipe, what is carried already in green
 					if (!met && !cfg.skyTasksCompact && cfg.skyTasksShaman && SkyCounters.kind(s) == SkyCounters.Kind.SUMMON) {
 						SkyShaman.Mob mob = SkyShaman.named(r.thing);
-						if (mob != null) for (String l : SkyShaman.lacking(mc, mob)) out.add(new Row(l, l.contains("✖") ? 0xFFFBBF24 : 0xFFF87171, "", 0, -1, 12));
+						List<String> recipe = mob == null ? List.of() : SkyShaman.recipe(mc, mob);
+						// the tools first (amber while one is missing), then the materials
+						for (int i = 0; i < recipe.size(); i++) {
+							String l = recipe.get(i);
+							int color = i == 0 ? (l.contains("✖") ? 0xFFFBBF24 : GREEN) : l.startsWith("✔") ? GREEN : 0xFFF87171;
+							out.add(new Row(l, color, "", 0, -1, 12));
+						}
 					}
 				}
 			}
