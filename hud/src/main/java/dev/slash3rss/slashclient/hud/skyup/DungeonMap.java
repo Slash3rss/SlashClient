@@ -370,8 +370,10 @@ public final class DungeonMap implements HudModule {
 			if (m.find()) {
 				dungeonLevel = m.group(1);
 				dungeonProgress = event.getProgress();
-				// how far the player got, for SkyUp's task "Dotrzyj do poziomu w dungeonach"
+				// how far the player got, for SkyUp's task "Dotrzyj do poziomu w dungeonach" (the tasks are on 26.3)
+				//#if MC >= 26.3
 				SkyCounters.dungeonLevel(Long.parseLong(dungeonLevel));
+				//#endif
 				return true;
 			}
 		}
