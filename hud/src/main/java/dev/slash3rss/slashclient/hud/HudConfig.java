@@ -400,15 +400,17 @@ public final class HudConfig {
 	/** The player has read that servers may ban for the automatic helpers. */
 	public boolean assistWarned = false;
 	public boolean autoClicker = false;
+	/** "hold": it clicks while the player holds the mouse button; "toggle": its key starts and stops clicking on its own. */
+	public String autoClickMode = "hold";
+	public static final String[] AUTO_CLICK_MODES = { "hold", "toggle" };
 	public boolean autoClickLeft = true;
 	public boolean autoClickRight = false;
-	public int cpsMin = 8;
-	public int cpsMax = 12;
-	/** Left clicks wait for the weapon to charge fully instead of the clicks per second. */
-	public boolean autoClickCooldown = true;
-	/** Left clicks on their own whenever a mob is under the crosshair. */
+	/** Each button's clicks a second, steady. */
+	public int autoClickCps = 10;
+	public int autoClickRightCps = 10;
+	/** Left clicks only with a mob under the crosshair (never at a player either way). */
 	public boolean autoClickMobs = false;
-	public boolean autoClickPlayers = false;
+	public static final String[] AUTO_CLICK_TARGETS = { "all", "mobs" };
 	public boolean autoTool = false;
 	public boolean autoToolRestore = true;
 	/**
@@ -874,11 +876,10 @@ public final class HudConfig {
 		autoClicker = other.autoClicker;
 		autoClickLeft = other.autoClickLeft;
 		autoClickRight = other.autoClickRight;
-		cpsMin = Math.max(1, Math.min(20, other.cpsMin));
-		cpsMax = Math.max(1, Math.min(20, other.cpsMax));
-		autoClickCooldown = other.autoClickCooldown;
+		autoClickMode = oneOf(other.autoClickMode, AUTO_CLICK_MODES);
+		autoClickCps = Math.max(1, Math.min(20, other.autoClickCps));
+		autoClickRightCps = Math.max(1, Math.min(20, other.autoClickRightCps));
 		autoClickMobs = other.autoClickMobs;
-		autoClickPlayers = other.autoClickPlayers;
 		autoTool = other.autoTool;
 		autoToolRestore = other.autoToolRestore;
 		autoToolBlocks = other.autoToolBlocks;

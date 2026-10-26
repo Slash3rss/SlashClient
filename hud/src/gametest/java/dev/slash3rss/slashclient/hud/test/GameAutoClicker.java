@@ -6,9 +6,10 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 /**
- * The autoclicker clicks on its own, no button held: switched on with no key bound it is armed at
- * once, the left button hits a husk in front of us (also only with it under the crosshair), the
- * right one clicks too; switched off, nothing. The key holding a button lets go of it over a window too.
+ * The autoclicker as other mods have it: held, it clicks while the mouse buttons are held (the left one
+ * hits a husk in front of us, also only with it under the crosshair; the right one clicks too) and
+ * nothing once they are let go; in the toggle mode its key starts the clicking with no button held;
+ * switched off, nothing. The key holding a button lets go of it over a window too.
  */
 public class GameAutoClicker implements FabricClientGameTest {
 	@Override
@@ -23,17 +24,33 @@ public class GameAutoClicker implements FabricClientGameTest {
 			float start = context.computeOnClient(mc -> TestHooks.nearestHealth());
 			if (start < 100) throw new AssertionError("No husk in front of us: " + start);
 
-			// both buttons, no button held: the husk is hit and the right button clicks
-			context.runOnClient(mc -> TestHooks.autoClicker(true, true, true, false, false, 10));
+			// held: no button held, no clicks
+			context.runOnClient(mc -> TestHooks.autoClicker(true, "hold", true, true, false, 10));
+			context.waitTicks(20);
+			String idle = context.computeOnClient(mc -> TestHooks.autoClicks());
+			if (!idle.equals("0/0")) throw new AssertionError("Clicked with no button held: " + idle);
+			// both buttons held: the husk is hit and the right button clicks
+			context.runOnClient(mc -> TestHooks.holdButtons(true, true));
 			context.waitTicks(40);
+			context.runOnClient(mc -> TestHooks.holdButtons(false, false));
 			String clicks = context.computeOnClient(mc -> TestHooks.autoClicks());
 			float hit = context.computeOnClient(mc -> TestHooks.nearestHealth());
 			String[] lr = clicks.split("/");
 			if (Integer.parseInt(lr[0]) < 10 || Integer.parseInt(lr[1]) < 10) throw new AssertionError("Too few clicks in 2 s: " + clicks);
 			if (hit >= start) throw new AssertionError("The husk was not hit: " + start + " -> " + hit);
 
+			// the toggle mode: nothing until its key, then clicks with no button held
+			context.runOnClient(mc -> TestHooks.autoClicker(true, "toggle", true, false, false, 10));
+			context.waitTicks(20);
+			String unarmed = context.computeOnClient(mc -> TestHooks.autoClicks());
+			if (!unarmed.equals("0/0")) throw new AssertionError("Clicked before its key: " + unarmed);
+			context.runOnClient(mc -> TestHooks.armAutoClicker());
+			context.waitTicks(20);
+			String armed = context.computeOnClient(mc -> TestHooks.autoClicks());
+			if (armed.startsWith("0/")) throw new AssertionError("Did not click once its key was pressed: " + armed);
+
 			// left only with a mob under the crosshair: looking away, no clicks
-			context.runOnClient(mc -> { TestHooks.autoClicker(true, true, false, true, false, 10); mc.player.setYRot(180f); mc.player.setYHeadRot(180f); });
+			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, true, 10); TestHooks.armAutoClicker(); mc.player.setYRot(180f); mc.player.setYHeadRot(180f); });
 			context.waitTicks(20);
 			String away = context.computeOnClient(mc -> TestHooks.autoClicks());
 			if (!away.equals("0/0")) throw new AssertionError("Clicked with no mob under the crosshair: " + away);
@@ -43,7 +60,7 @@ public class GameAutoClicker implements FabricClientGameTest {
 			if (onMob.startsWith("0/")) throw new AssertionError("Did not click the mob under the crosshair: " + onMob);
 
 			// switched off: nothing
-			context.runOnClient(mc -> TestHooks.autoClicker(false, true, true, false, false, 10));
+			context.runOnClient(mc -> { TestHooks.autoClicker(false, "toggle", true, true, false, 10); TestHooks.armAutoClicker(); });
 			context.waitTicks(20);
 			String off = context.computeOnClient(mc -> TestHooks.autoClicks());
 			if (!off.equals("0/0")) throw new AssertionError("Clicked while switched off: " + off);
@@ -61,6 +78,11 @@ public class GameAutoClicker implements FabricClientGameTest {
 			if (context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.Compat.screen(mc) == null)) throw new AssertionError("The key reached the window (closed it)");
 			context.setScreen(() -> null);
 			context.runOnClient(mc -> TestHooks.bindHoldUse(null));
+			// its settings: the mode, each button's steady clicks a second, what the left one clicks at
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("autoClicker"));
+			context.waitTicks(5);
+			context.takeScreenshot("autoclicker-settings");
+			context.setScreen(() -> null);
 		}
 	}
 }

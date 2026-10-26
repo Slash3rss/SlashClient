@@ -117,17 +117,30 @@ public final class TestHooks {
 		return true;
 	}
 
-	/** The autoclicker switched on (no key bound: armed at once), its buttons and speed; its click counts reset. */
-	public static void autoClicker(boolean on, boolean left, boolean right, boolean mobs, boolean cooldown, int cps) {
+	/** The autoclicker switched on in a mode ("hold" or "toggle", not armed yet), its buttons and speed; its click counts reset. */
+	public static void autoClicker(boolean on, String mode, boolean left, boolean right, boolean mobs, int cps) {
 		HudConfig c = SlashHud.config;
 		c.assistWarned = true;
 		c.autoClicker = on;
+		c.autoClickMode = mode;
 		c.autoClickLeft = left;
 		c.autoClickRight = right;
 		c.autoClickMobs = mobs;
-		c.autoClickCooldown = cooldown;
-		c.cpsMin = c.cpsMax = cps;
+		c.autoClickCps = c.autoClickRightCps = cps;
+		Assist.arm(false);
 		Assist.leftClicks = Assist.rightClicks = 0;
+	}
+
+	/** The mouse buttons held down by the player (or let go). */
+	public static void holdButtons(boolean left, boolean right) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		mc.options.keyAttack.setDown(left);
+		mc.options.keyUse.setDown(right);
+	}
+
+	/** The toggle mode's key pressed: the clicking starts on its own. */
+	public static void armAutoClicker() {
+		Assist.arm(true);
 	}
 
 	/** "Hold the right button" on a key ("key.keyboard.h"; null: none), for the test that lets go of it over a window. */

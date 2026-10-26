@@ -559,13 +559,15 @@ public final class Catalog {
 		// helpers; the automatic ones say first that servers may ban for them
 		out.add(new Entry("autoClicker", "slashclient-hud.assist.autoClicker", "combat", "m-autoclicker", () -> cfg.autoClicker,
 			v -> risky(v, () -> cfg.autoClicker = v), List.of(
+			new Choice("slashclient-hud.assist.mode", HudConfig.AUTO_CLICK_MODES, "slashclient-hud.assist.mode.", () -> cfg.autoClickMode, v -> cfg.autoClickMode = v),
+			new Note("slashclient-hud.assist.mode.note", () -> new Object[0]),
 			new Toggle("slashclient-hud.assist.left", () -> cfg.autoClickLeft, v -> cfg.autoClickLeft = v),
+			new Slider("slashclient-hud.assist.cps", 1f, 20f, 1f, "%.0f CPS", () -> (float) cfg.autoClickCps, v -> cfg.autoClickCps = Math.round(v)),
 			new Toggle("slashclient-hud.assist.right", () -> cfg.autoClickRight, v -> cfg.autoClickRight = v),
-			new Slider("slashclient-hud.assist.cpsMin", 1f, 20f, 1f, "%.0f CPS", () -> (float) cfg.cpsMin, v -> cfg.cpsMin = Math.round(v)),
-			new Slider("slashclient-hud.assist.cpsMax", 1f, 20f, 1f, "%.0f CPS", () -> (float) cfg.cpsMax, v -> cfg.cpsMax = Math.round(v)),
-			new Toggle("slashclient-hud.assist.cooldown", () -> cfg.autoClickCooldown, v -> cfg.autoClickCooldown = v),
-			new Toggle("slashclient-hud.assist.mobs", () -> cfg.autoClickMobs, v -> cfg.autoClickMobs = v),
-			new Toggle("slashclient-hud.assist.players", () -> cfg.autoClickPlayers, v -> cfg.autoClickPlayers = v)), null));
+			new Slider("slashclient-hud.assist.rightCps", 1f, 20f, 1f, "%.0f CPS", () -> (float) cfg.autoClickRightCps, v -> cfg.autoClickRightCps = Math.round(v)),
+			// what the left button clicks at: anything (but a player), or only a mob under the crosshair
+			new Choice("slashclient-hud.assist.target", HudConfig.AUTO_CLICK_TARGETS, "slashclient-hud.assist.target.",
+				() -> cfg.autoClickMobs ? "mobs" : "all", v -> cfg.autoClickMobs = "mobs".equals(v))), null));
 		out.add(new Entry("autoTool", "slashclient-hud.assist.autoTool", "world", "m-autotool", () -> cfg.autoTool,
 			v -> risky(v, () -> cfg.autoTool = v), List.of(
 			new Toggle("slashclient-hud.assist.restore", () -> cfg.autoToolRestore, v -> cfg.autoToolRestore = v),

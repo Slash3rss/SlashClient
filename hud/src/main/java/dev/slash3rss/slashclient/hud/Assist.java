@@ -7,6 +7,7 @@ import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -16,7 +17,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Things that take work off the hands: holding a mouse button with a key, the autoclicker, the
@@ -32,8 +32,11 @@ public final class Assist {
 	private static boolean holdAttack, holdUse;
 	/** A block was being dug over a screen last tick (see `holdOverScreen`). */
 	private static boolean dugOverScreen;
-	/** The autoclicker's key arms it; armed, it clicks (see `tick`). With no key bound it is armed while switched on. */
-	private static boolean armed;
+	/**
+	 * The autoclicker's key: in the "toggle" mode it starts and stops the clicking (armed); in the
+	 * "hold" mode it pauses the clicking while the buttons are held (paused) and lets it go on.
+	 */
+	private static boolean armed, paused;
 	private static long nextLeft, nextRight;
 	/** Clicks made, for the tests. */
 	static int leftClicks, rightClicks;
@@ -103,7 +106,7 @@ public final class Assist {
 		if (holdUse && inGame) mc.options.keyUse.setDown(true);
 		holdOverScreen(mc, player, inGame);
 
-		if (cfg().autoClicker && (armed || autoClickKey.isUnbound()) && inGame) autoClick(mc, player);
+		if (cfg().autoClicker && inGame && (holdMode() ? !paused : armed)) autoClick(mc, player);
 		// also while the held button digs under the inventory or the pause menu
 		if (cfg().autoTool && (inGame || dugOverScreen)) autoTool(mc, player);
 		if (cfg().autoRefill) refill(mc, player);
@@ -153,8 +156,10 @@ public final class Assist {
 				Compat.overlay(mc, Component.translatable("slashclient-hud.assist.autoClick.disabled"));
 				return;
 			}
-			armed = !armed;
-			Compat.overlay(mc, Component.translatable(armed ? "slashclient-hud.assist.autoClick.on" : "slashclient-hud.assist.autoClick.off"));
+			boolean on;
+			if (holdMode()) on = !(paused = !paused);
+			else on = armed = !armed;
+			Compat.overlay(mc, Component.translatable(on ? "slashclient-hud.assist.autoClick.on" : "slashclient-hud.assist.autoClick.off"));
 		}
 	}
 
@@ -218,42 +223,40 @@ public final class Assist {
 
 	// ---------- autoclicker ----------
 
-	private static long interval() {
-		int min = Math.max(1, Math.min(cfg().cpsMin, cfg().cpsMax)), max = Math.max(cfg().cpsMin, cfg().cpsMax);
-		// a little uneven, like a hand
-		double cps = min + ThreadLocalRandom.current().nextDouble() * (max - min + 0.999);
-		return Math.round(1000 / Math.max(1, cps));
+	/** "Hold" (the default, as other mods do): it clicks while the player holds the mouse button. */
+	static boolean holdMode() {
+		return !"toggle".equals(cfg().autoClickMode);
+	}
+
+	/** Milliseconds between two clicks at this many a second. */
+	private static long interval(int cps) {
+		return Math.round(1000.0 / Math.max(1, Math.min(20, cps)));
 	}
 
 	private static void autoClick(Minecraft mc, Player player) {
 		long now = System.currentTimeMillis();
-		// both click on their own while armed, no button held
-		if (cfg().autoClickLeft) {
+		boolean hold = holdMode();
+		// held: while the player holds the button (no click from the game itself on an entity or the air,
+		// the button held only digs); toggle: on their own while armed
+		if (cfg().autoClickLeft && (!hold || mc.options.keyAttack.isDown())) {
 			HitResult hit = mc.hitResult;
-			boolean onTarget = hit instanceof EntityHitResult e && e.getEntity() instanceof LivingEntity living && living.isAlive()
-				&& (cfg().autoClickPlayers || !(living instanceof Player));
+			Entity aimed = hit instanceof EntityHitResult e ? e.getEntity() : null;
+			// never at a player: it is for mobs, farms and blocks
+			boolean atPlayer = aimed instanceof Player;
+			boolean onMob = aimed instanceof LivingEntity living && living.isAlive() && !atPlayer;
 			// a block being dug with the button held is left alone: clicking would restart the digging
 			boolean digging = mc.options.keyAttack.isDown() && hit != null && hit.getType() == HitResult.Type.BLOCK;
-			boolean want = cfg().autoClickMobs ? onTarget : !digging;
-			if (want) {
-				if (cfg().autoClickCooldown) {
-					// hits as hard as they can: once the weapon is charged again
-					if (player.getAttackStrengthScale(0f) >= 1f && now >= nextLeft) {
-						click(mc.options.keyAttack);
-						leftClicks++;
-						nextLeft = now + 120;
-					}
-				} else if (now >= nextLeft) {
-					click(mc.options.keyAttack);
-					leftClicks++;
-					nextLeft = now + interval();
-				}
+			boolean want = !atPlayer && (cfg().autoClickMobs ? onMob : !digging);
+			if (want && now >= nextLeft) {
+				click(mc.options.keyAttack);
+				leftClicks++;
+				nextLeft = now + interval(cfg().autoClickCps);
 			}
 		}
-		if (cfg().autoClickRight && now >= nextRight) {
+		if (cfg().autoClickRight && (!hold || mc.options.keyUse.isDown()) && now >= nextRight) {
 			click(mc.options.keyUse);
 			rightClicks++;
-			nextRight = now + interval();
+			nextRight = now + interval(cfg().autoClickRightCps);
 		}
 	}
 
@@ -474,7 +477,9 @@ public final class Assist {
 		return armed;
 	}
 
+	/** The toggle mode's key pressed, or let go (for the tests); not paused in the hold mode either. */
 	public static void arm(boolean on) {
 		armed = on;
+		paused = false;
 	}
 }
