@@ -26,6 +26,14 @@ public final class SkyCaseTestHooks {
 		SlashHud.config.skyCaseNewDrop = false;
 	}
 
+	/** A reward's look before any preview was opened: from the built-in dumps (its item, model number, head). */
+	public static String builtInLook(String reward) {
+		net.minecraft.world.item.ItemStack look = SkyCase.look("Elementium", reward);
+		if (look == null) return "none";
+		var model = look.get(net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA);
+		return look.getItem() + " " + (model == null ? "-" : model.floats()) + (look.has(net.minecraft.core.component.DataComponents.PROFILE) ? " head" : "");
+	}
+
 	/** A line in the chat, as the server sends it (through the chat, as any line). */
 	public static void chat(String line) {
 		Compat.chat(Minecraft.getInstance()).addClientSystemMessage(Component.literal(line));

@@ -1,0 +1,983 @@
+{
+	"10x Blok suszonych wodorostów": {
+		"item": "minecraft:dried_kelp_block"
+	},
+	"10x Blok trawy": {
+		"item": "minecraft:grass_block"
+	},
+	"10x Książka": {
+		"item": "minecraft:book"
+	},
+	"10x Odłamek ametystu": {
+		"item": "minecraft:amethyst_shard"
+	},
+	"10x Piasek": {
+		"item": "minecraft:sand"
+	},
+	"10x Sztabka złota": {
+		"item": "minecraft:gold_ingot"
+	},
+	"10x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"10x Ziemia": {
+		"item": "minecraft:dirt"
+	},
+	"10x Żwir": {
+		"item": "minecraft:gravel"
+	},
+	"11x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"12x Książka": {
+		"item": "minecraft:book"
+	},
+	"12x Odłamek ametystu": {
+		"item": "minecraft:amethyst_shard"
+	},
+	"12x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"13x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"14x Odłamek ametystu": {
+		"item": "minecraft:amethyst_shard"
+	},
+	"14x Sztabka złota": {
+		"item": "minecraft:gold_ingot"
+	},
+	"15x Blok suszonych wodorostów": {
+		"item": "minecraft:dried_kelp_block"
+	},
+	"15x Blok trawy": {
+		"item": "minecraft:grass_block"
+	},
+	"15x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"15x Ziemia": {
+		"item": "minecraft:dirt"
+	},
+	"16x Kamień": {
+		"item": "minecraft:stone"
+	},
+	"16x Kamień Endu": {
+		"item": "minecraft:end_stone"
+	},
+	"16x Netherowa brodawka": {
+		"item": "minecraft:nether_wart"
+	},
+	"16x Odłamek ametystu": {
+		"item": "minecraft:amethyst_shard"
+	},
+	"16x Pochodnia": {
+		"item": "minecraft:torch"
+	},
+	"16x Sproszkowany redstone": {
+		"item": "minecraft:redstone"
+	},
+	"16x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"16x Łupek": {
+		"item": "minecraft:deepslate"
+	},
+	"18x Sproszkowany redstone": {
+		"item": "minecraft:redstone"
+	},
+	"20x Blok suszonych wodorostów": {
+		"item": "minecraft:dried_kelp_block"
+	},
+	"20x Blok trawy": {
+		"item": "minecraft:grass_block"
+	},
+	"20x Piasek": {
+		"item": "minecraft:sand"
+	},
+	"20x Sproszkowany redstone": {
+		"item": "minecraft:redstone"
+	},
+	"20x Ziemia": {
+		"item": "minecraft:dirt"
+	},
+	"20x Żwir": {
+		"item": "minecraft:gravel"
+	},
+	"22x Sproszkowany redstone": {
+		"item": "minecraft:redstone"
+	},
+	"24x Lazuryt": {
+		"item": "minecraft:lapis_lazuli"
+	},
+	"24x Sproszkowany redstone": {
+		"item": "minecraft:redstone"
+	},
+	"25x Blok suszonych wodorostów": {
+		"item": "minecraft:dried_kelp_block"
+	},
+	"25x Blok trawy": {
+		"item": "minecraft:grass_block"
+	},
+	"25x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"25x Ziemia": {
+		"item": "minecraft:dirt"
+	},
+	"2x Blok redstone": {
+		"item": "minecraft:redstone_block"
+	},
+	"2x Blok szmaragdu": {
+		"item": "minecraft:emerald_block"
+	},
+	"2x Blok trawy": {
+		"item": "minecraft:grass_block"
+	},
+	"2x Blok złota": {
+		"item": "minecraft:gold_block"
+	},
+	"2x Blok żelaza": {
+		"item": "minecraft:iron_block"
+	},
+	"2x Diament": {
+		"item": "minecraft:diamond"
+	},
+	"2x Dobra przynęta": {
+		"item": "minecraft:nautilus_shell",
+		"model": 10314.0
+	},
+	"2x Enderperła": {
+		"item": "minecraft:ender_pearl"
+	},
+	"2x Glina": {
+		"item": "minecraft:clay"
+	},
+	"2x Kwiat refrenusu": {
+		"item": "minecraft:chorus_flower"
+	},
+	"2x Lód": {
+		"item": "minecraft:ice"
+	},
+	"2x Oceaniczna ruda": {
+		"item": "minecraft:player_head",
+		"model": 10307.0,
+		"profile": {
+			"id": [
+				737815031,
+				463221560,
+				-1732936727,
+				1195232064
+			],
+			"name": "custom-textures",
+			"properties": [
+				{
+					"name": "textures",
+					"value": "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGJmNGQwMzI5NWI1YTlhZDk5MDYxNTM4ZGIwMzIyMDMxNWJkODhlZjkxNzhiODI2YzhjNjI4ZWVkOTg0ZWRmZCJ9fX0="
+				}
+			]
+		}
+	},
+	"2x Odłamek netherytu": {
+		"item": "minecraft:netherite_scrap"
+	},
+	"2x Piasek": {
+		"item": "minecraft:sand"
+	},
+	"2x Piasek dusz": {
+		"item": "minecraft:soul_sand"
+	},
+	"2x Pieczona wołowina": {
+		"item": "minecraft:cooked_beef"
+	},
+	"2x Płomienna różdżka": {
+		"item": "minecraft:blaze_rod"
+	},
+	"2x Sproszkowany redstone": {
+		"item": "minecraft:redstone"
+	},
+	"2x Szkło": {
+		"item": "minecraft:glass"
+	},
+	"2x Szmaragd": {
+		"item": "minecraft:emerald"
+	},
+	"2x Sztabka złota": {
+		"item": "minecraft:gold_ingot"
+	},
+	"2x Sztabka żelaza": {
+		"item": "minecraft:iron_ingot"
+	},
+	"2x Torbiel ze świecącym atramentem": {
+		"item": "minecraft:glow_ink_sac"
+	},
+	"2x Zaklęte złote jabłko": {
+		"item": "minecraft:enchanted_golden_apple"
+	},
+	"2x Ziemia": {
+		"item": "minecraft:dirt"
+	},
+	"30x Piasek": {
+		"item": "minecraft:sand"
+	},
+	"30x Ziemia": {
+		"item": "minecraft:dirt"
+	},
+	"30x Żwir": {
+		"item": "minecraft:gravel"
+	},
+	"32x Lazuryt": {
+		"item": "minecraft:lapis_lazuli"
+	},
+	"32x Netherowa brodawka": {
+		"item": "minecraft:nether_wart"
+	},
+	"32x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"35x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"3x Blok kości": {
+		"item": "minecraft:bone_block"
+	},
+	"3x Blok redstone": {
+		"item": "minecraft:redstone_block"
+	},
+	"3x Blok szmaragdu": {
+		"item": "minecraft:emerald_block"
+	},
+	"3x Blok trawy": {
+		"item": "minecraft:grass_block"
+	},
+	"3x Blok złota": {
+		"item": "minecraft:gold_block"
+	},
+	"3x Blok żelaza": {
+		"item": "minecraft:iron_block"
+	},
+	"3x Butelka miodu": {
+		"item": "minecraft:honey_bottle"
+	},
+	"3x Diament": {
+		"item": "minecraft:diamond"
+	},
+	"3x Dobra przynęta": {
+		"item": "minecraft:nautilus_shell",
+		"model": 10314.0
+	},
+	"3x Enderperła": {
+		"item": "minecraft:ender_pearl"
+	},
+	"3x Glina": {
+		"item": "minecraft:clay"
+	},
+	"3x Jabłko": {
+		"item": "minecraft:apple"
+	},
+	"3x Jasnopył": {
+		"item": "minecraft:glowstone_dust"
+	},
+	"3x Królicza łapka": {
+		"item": "minecraft:rabbit_foot"
+	},
+	"3x Kwiat refrenusu": {
+		"item": "minecraft:chorus_flower"
+	},
+	"3x Lód": {
+		"item": "minecraft:ice"
+	},
+	"3x Netherowy kwarc": {
+		"item": "minecraft:quartz"
+	},
+	"3x Oceaniczna ruda": {
+		"item": "minecraft:player_head",
+		"model": 10307.0,
+		"profile": {
+			"id": [
+				737815031,
+				463221560,
+				-1732936727,
+				1195232064
+			],
+			"name": "custom-textures",
+			"properties": [
+				{
+					"name": "textures",
+					"value": "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGJmNGQwMzI5NWI1YTlhZDk5MDYxNTM4ZGIwMzIyMDMxNWJkODhlZjkxNzhiODI2YzhjNjI4ZWVkOTg0ZWRmZCJ9fX0="
+				}
+			]
+		}
+	},
+	"3x Odłamek netherytu": {
+		"item": "minecraft:netherite_scrap"
+	},
+	"3x Piasek": {
+		"item": "minecraft:sand"
+	},
+	"3x Piasek dusz": {
+		"item": "minecraft:soul_sand"
+	},
+	"3x Pieczona wołowina": {
+		"item": "minecraft:cooked_beef"
+	},
+	"3x Sproszkowany redstone": {
+		"item": "minecraft:redstone"
+	},
+	"3x Szmaragd": {
+		"item": "minecraft:emerald"
+	},
+	"3x Sztabka złota": {
+		"item": "minecraft:gold_ingot"
+	},
+	"3x Sztabka żelaza": {
+		"item": "minecraft:iron_ingot"
+	},
+	"3x Torbiel z atramentem": {
+		"item": "minecraft:ink_sac"
+	},
+	"3x Torbiel ze świecącym atramentem": {
+		"item": "minecraft:glow_ink_sac"
+	},
+	"3x Zaklęte złote jabłko": {
+		"item": "minecraft:enchanted_golden_apple"
+	},
+	"3x Ziemia": {
+		"item": "minecraft:dirt"
+	},
+	"3x Żeton budowlany": {
+		"item": "minecraft:sunflower",
+		"model": 10291.0
+	},
+	"45x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"4x Blok mchu": {
+		"item": "minecraft:moss_block"
+	},
+	"4x Blok redstone": {
+		"item": "minecraft:redstone_block"
+	},
+	"4x Blok szmaragdu": {
+		"item": "minecraft:emerald_block"
+	},
+	"4x Blok trawy": {
+		"item": "minecraft:grass_block"
+	},
+	"4x Blok złota": {
+		"item": "minecraft:gold_block"
+	},
+	"4x Blok żelaza": {
+		"item": "minecraft:iron_block"
+	},
+	"4x Borowik": {
+		"item": "minecraft:brown_mushroom"
+	},
+	"4x Diament": {
+		"item": "minecraft:diamond"
+	},
+	"4x Enderperła": {
+		"item": "minecraft:ender_pearl"
+	},
+	"4x Kwiat refrenusu": {
+		"item": "minecraft:chorus_flower"
+	},
+	"4x Muchomor": {
+		"item": "minecraft:red_mushroom"
+	},
+	"4x Oko pająka": {
+		"item": "minecraft:spider_eye"
+	},
+	"4x Piasek": {
+		"item": "minecraft:sand"
+	},
+	"4x Płomienna różdżka": {
+		"item": "minecraft:blaze_rod"
+	},
+	"4x Sproszkowany redstone": {
+		"item": "minecraft:redstone"
+	},
+	"4x Szmaragd": {
+		"item": "minecraft:emerald"
+	},
+	"4x Sztabka złota": {
+		"item": "minecraft:gold_ingot"
+	},
+	"4x Sztabka żelaza": {
+		"item": "minecraft:iron_ingot"
+	},
+	"4x Ziemia": {
+		"item": "minecraft:dirt"
+	},
+	"55x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"5x Blok kości": {
+		"item": "minecraft:bone_block"
+	},
+	"5x Blok szmaragdu": {
+		"item": "minecraft:emerald_block"
+	},
+	"5x Blok trawy": {
+		"item": "minecraft:grass_block"
+	},
+	"5x Blok złota": {
+		"item": "minecraft:gold_block"
+	},
+	"5x Blok żelaza": {
+		"item": "minecraft:iron_block"
+	},
+	"5x Butelka miodu": {
+		"item": "minecraft:honey_bottle"
+	},
+	"5x Diament": {
+		"item": "minecraft:diamond"
+	},
+	"5x Enderperła": {
+		"item": "minecraft:ender_pearl"
+	},
+	"5x Jasnopył": {
+		"item": "minecraft:glowstone_dust"
+	},
+	"5x Netherowy kwarc": {
+		"item": "minecraft:quartz"
+	},
+	"5x Sproszkowany redstone": {
+		"item": "minecraft:redstone"
+	},
+	"5x Szmaragd": {
+		"item": "minecraft:emerald"
+	},
+	"5x Sztabka złota": {
+		"item": "minecraft:gold_ingot"
+	},
+	"5x Sztabka żelaza": {
+		"item": "minecraft:iron_ingot"
+	},
+	"5x Torbiel z atramentem": {
+		"item": "minecraft:ink_sac"
+	},
+	"5x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"5x Ziemia": {
+		"item": "minecraft:dirt"
+	},
+	"5x Żeton budowlany": {
+		"item": "minecraft:sunflower",
+		"model": 10291.0
+	},
+	"64x Bruk": {
+		"item": "minecraft:cobblestone"
+	},
+	"64x Chaber": {
+		"item": "minecraft:cornflower"
+	},
+	"64x Mak": {
+		"item": "minecraft:poppy"
+	},
+	"64x Nasiona pszenicy": {
+		"item": "minecraft:wheat_seeds"
+	},
+	"64x Netherrack": {
+		"item": "minecraft:netherrack"
+	},
+	"64x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"6x Blok złota": {
+		"item": "minecraft:gold_block"
+	},
+	"6x Blok żelaza": {
+		"item": "minecraft:iron_block"
+	},
+	"6x Sztabka żelaza": {
+		"item": "minecraft:iron_ingot"
+	},
+	"6x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"7x Blok złota": {
+		"item": "minecraft:gold_block"
+	},
+	"7x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"7x Żeton budowlany": {
+		"item": "minecraft:sunflower",
+		"model": 10291.0
+	},
+	"8x Akacjowy pień": {
+		"item": "minecraft:acacia_log"
+	},
+	"8x Brzozowy pień": {
+		"item": "minecraft:birch_log"
+	},
+	"8x Ciemnodębowy pień": {
+		"item": "minecraft:dark_oak_log"
+	},
+	"8x Dębowy pień": {
+		"item": "minecraft:oak_log"
+	},
+	"8x Kamień": {
+		"item": "minecraft:stone"
+	},
+	"8x Kamień Endu": {
+		"item": "minecraft:end_stone"
+	},
+	"8x Książka": {
+		"item": "minecraft:book"
+	},
+	"8x Magmowy krem": {
+		"item": "minecraft:magma_cream"
+	},
+	"8x Namorzynowy pień": {
+		"item": "minecraft:mangrove_log"
+	},
+	"8x Odłamek ametystu": {
+		"item": "minecraft:amethyst_shard"
+	},
+	"8x Płomienna różdżka": {
+		"item": "minecraft:blaze_rod"
+	},
+	"8x Tropikalny pień": {
+		"item": "minecraft:jungle_log"
+	},
+	"8x Wiśniowy pień": {
+		"item": "minecraft:cherry_log"
+	},
+	"8x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"8x Łupek": {
+		"item": "minecraft:deepslate"
+	},
+	"8x Świerkowy pień": {
+		"item": "minecraft:spruce_log"
+	},
+	"9x Zaklęta butelka": {
+		"item": "minecraft:experience_bottle"
+	},
+	"9x Żeton budowlany": {
+		"item": "minecraft:sunflower",
+		"model": 10291.0
+	},
+	":: Arbalet ::": {
+		"item": "minecraft:crossbow",
+		"model": 10009.0
+	},
+	":: Azada ::": {
+		"item": "minecraft:iron_hoe",
+		"model": 10006.0
+	},
+	":: Cassis ::": {
+		"item": "minecraft:diamond_helmet",
+		"model": 10031.0
+	},
+	":: Cosset ::": {
+		"item": "minecraft:diamond_boots",
+		"model": 10031.0
+	},
+	":: Cuirass ::": {
+		"item": "minecraft:diamond_chestplate",
+		"model": 10031.0
+	},
+	":: Cuissot ::": {
+		"item": "minecraft:diamond_leggings",
+		"model": 10031.0
+	},
+	":: Cymofan ::": {
+		"item": "minecraft:diamond_pickaxe",
+		"model": 10003.0
+	},
+	":: Etherica ::": {
+		"item": "minecraft:iron_shovel",
+		"model": 10029.0
+	},
+	":: Impet ::": {
+		"item": "minecraft:furnace",
+		"model": 10016.0
+	},
+	":: Jajko niespodzianka ::": {
+		"item": "minecraft:turtle_egg",
+		"model": 10022.0
+	},
+	":: Kamizelka biwakowa ::": {
+		"item": "minecraft:diamond_chestplate",
+		"model": 10032.0
+	},
+	":: Kapelusz pracusia ::": {
+		"item": "minecraft:paper",
+		"model": 10428.0
+	},
+	":: Kaptur sztormowy ::": {
+		"item": "minecraft:diamond_helmet",
+		"model": 10032.0
+	},
+	":: Karambit ::": {
+		"item": "minecraft:diamond_sword",
+		"model": 10001.0
+	},
+	":: Karpiołap ::": {
+		"item": "minecraft:fishing_rod",
+		"model": 10008.0
+	},
+	":: Klejnot kupiecki uniwersalny ::": {
+		"item": "minecraft:amethyst_shard",
+		"model": 10020.0
+	},
+	":: Kontroler magazynów ::": {
+		"item": "minecraft:echo_shard",
+		"model": 10030.0
+	},
+	":: Magiczne wiaderko ::": {
+		"item": "minecraft:water_bucket",
+		"model": 10018.0
+	},
+	":: Majster ::": {
+		"item": "minecraft:crafter",
+		"model": 10024.0
+	},
+	":: Młot Thora ::": {
+		"item": "minecraft:diamond_pickaxe",
+		"model": 10004.0
+	},
+	":: Nogawice ognioodporne ::": {
+		"item": "minecraft:diamond_leggings",
+		"model": 10032.0
+	},
+	":: Perun ::": {
+		"item": "minecraft:diamond_axe",
+		"model": 10002.0
+	},
+	":: Phlox ::": {
+		"item": "minecraft:furnace",
+		"model": 10017.0
+	},
+	":: Powrót Odysa ::": {
+		"item": "minecraft:trident",
+		"model": 10010.0
+	},
+	":: Rivendell ::": {
+		"item": "minecraft:stick",
+		"model": 10019.0
+	},
+	":: Spinel ::": {
+		"item": "minecraft:diamond_hoe",
+		"model": 10007.0
+	},
+	":: StatTracker ::": {
+		"item": "minecraft:name_tag",
+		"model": 10021.0
+	},
+	":: Tajemnice SkyUPa v.5 ::": {
+		"item": "minecraft:written_book"
+	},
+	":: Trapery terenowe ::": {
+		"item": "minecraft:diamond_boots",
+		"model": 10032.0
+	},
+	":: Urizel ::": {
+		"item": "minecraft:wooden_pickaxe",
+		"model": 10005.0
+	},
+	":: Łuk Legolasa ::": {
+		"item": "minecraft:bow",
+		"model": 10028.0
+	},
+	"Bandana Łowcy": {
+		"item": "minecraft:paper",
+		"model": 10413.0
+	},
+	"Blok kości": {
+		"item": "minecraft:bone_block"
+	},
+	"Blok redstone": {
+		"item": "minecraft:redstone_block"
+	},
+	"Blok szmaragdu": {
+		"item": "minecraft:emerald_block"
+	},
+	"Blok złota": {
+		"item": "minecraft:gold_block"
+	},
+	"Blok żelaza": {
+		"item": "minecraft:iron_block"
+	},
+	"Butelka miodu": {
+		"item": "minecraft:honey_bottle"
+	},
+	"Czapka Drwala": {
+		"item": "minecraft:paper",
+		"model": 10411.0
+	},
+	"Dekot Arcylisza": {
+		"item": "minecraft:splash_potion"
+	},
+	"Diament": {
+		"item": "minecraft:diamond"
+	},
+	"Dobra przynęta": {
+		"item": "minecraft:nautilus_shell",
+		"model": 10314.0
+	},
+	"Enderperła": {
+		"item": "minecraft:ender_pearl"
+	},
+	"Glina": {
+		"item": "minecraft:clay"
+	},
+	"Iskrzyłuda": {
+		"item": "minecraft:sea_pickle"
+	},
+	"Jad Tarantuli": {
+		"item": "minecraft:splash_potion"
+	},
+	"Jasnopył": {
+		"item": "minecraft:glowstone_dust"
+	},
+	"Kapelusz Czarodzieja": {
+		"item": "minecraft:paper",
+		"model": 10416.0
+	},
+	"Kapelusz Farmera": {
+		"item": "minecraft:paper",
+		"model": 10412.0
+	},
+	"Kapelusz Rybaka": {
+		"item": "minecraft:paper",
+		"model": 10415.0
+	},
+	"Kask Budowniczego": {
+		"item": "minecraft:paper",
+		"model": 10414.0
+	},
+	"Kask Górnika": {
+		"item": "minecraft:paper",
+		"model": 10410.0
+	},
+	"Klucz do Elementium SkyCase": {
+		"item": "minecraft:player_head",
+		"model": 10201.0,
+		"profile": {
+			"id": [
+				737815031,
+				463221560,
+				-1732936727,
+				1195232064
+			],
+			"name": "custom-textures",
+			"properties": [
+				{
+					"name": "textures",
+					"value": "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvM2QwZWEwNjllYTA3OTAzZTdiNWVkNmQzMzdkMGVlMGFjZmViYTkxOWQ2NWI5ZDhjNzk3NTUwNTJlODYyZGUxIn19fQ=="
+				}
+			]
+		}
+	},
+	"Kowadło": {
+		"item": "minecraft:anvil"
+	},
+	"Krzemień": {
+		"item": "minecraft:flint"
+	},
+	"Królicza łapka": {
+		"item": "minecraft:rabbit_foot"
+	},
+	"Kwiat refrenusu": {
+		"item": "minecraft:chorus_flower"
+	},
+	"Lód": {
+		"item": "minecraft:ice"
+	},
+	"Mikstura": {
+		"item": "minecraft:potion"
+	},
+	"Mikstura Knura": {
+		"item": "minecraft:potion"
+	},
+	"Netherowy kwarc": {
+		"item": "minecraft:quartz"
+	},
+	"Oceaniczna ruda": {
+		"item": "minecraft:player_head",
+		"model": 10307.0,
+		"profile": {
+			"id": [
+				737815031,
+				463221560,
+				-1732936727,
+				1195232064
+			],
+			"name": "custom-textures",
+			"properties": [
+				{
+					"name": "textures",
+					"value": "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGJmNGQwMzI5NWI1YTlhZDk5MDYxNTM4ZGIwMzIyMDMxNWJkODhlZjkxNzhiODI2YzhjNjI4ZWVkOTg0ZWRmZCJ9fX0="
+				}
+			]
+		}
+	},
+	"Odłamek netherytu": {
+		"item": "minecraft:netherite_scrap"
+	},
+	"Piasek": {
+		"item": "minecraft:sand"
+	},
+	"Piasek dusz": {
+		"item": "minecraft:soul_sand"
+	},
+	"Sadzonka akacji": {
+		"item": "minecraft:acacia_sapling"
+	},
+	"Sadzonka brzozy": {
+		"item": "minecraft:birch_sapling"
+	},
+	"Sadzonka ciemnego dębu": {
+		"item": "minecraft:dark_oak_sapling"
+	},
+	"Sadzonka dębu": {
+		"item": "minecraft:oak_sapling"
+	},
+	"Sadzonka tropikalna": {
+		"item": "minecraft:jungle_sapling"
+	},
+	"Sadzonka wiśni": {
+		"item": "minecraft:cherry_sapling"
+	},
+	"Sadzonka świerku": {
+		"item": "minecraft:spruce_sapling"
+	},
+	"Siewka namorzynu": {
+		"item": "minecraft:mangrove_propagule"
+	},
+	"Siodło": {
+		"item": "minecraft:saddle"
+	},
+	"Spaczony grzyb": {
+		"item": "minecraft:warped_fungus"
+	},
+	"Specjał Awanturnika": {
+		"item": "minecraft:potion"
+	},
+	"Sproszkowany redstone": {
+		"item": "minecraft:redstone"
+	},
+	"Szkarłatny grzyb": {
+		"item": "minecraft:crimson_fungus"
+	},
+	"Szkło": {
+		"item": "minecraft:glass"
+	},
+	"Szmaragd": {
+		"item": "minecraft:emerald"
+	},
+	"Sztabka miedzi": {
+		"item": "minecraft:copper_ingot"
+	},
+	"Sztabka złota": {
+		"item": "minecraft:gold_ingot"
+	},
+	"Sztabka żelaza": {
+		"item": "minecraft:iron_ingot"
+	},
+	"Tarcza": {
+		"item": "minecraft:shield"
+	},
+	"Torbiel z atramentem": {
+		"item": "minecraft:ink_sac"
+	},
+	"Totem nieśmiertelności": {
+		"item": "minecraft:totem_of_undying"
+	},
+	"Wsparcie Komandosa": {
+		"item": "minecraft:potion"
+	},
+	"Wybitna przynęta": {
+		"item": "minecraft:nautilus_shell",
+		"model": 10315.0
+	},
+	"Wywar Topornika": {
+		"item": "minecraft:potion"
+	},
+	"Zaklęta książka (Jedwabny dotyk I)": {
+		"item": "minecraft:enchanted_book"
+	},
+	"Zaklęta książka (Naprawa I)": {
+		"item": "minecraft:enchanted_book"
+	},
+	"Zaklęta książka (Niezniszczalność I)": {
+		"item": "minecraft:enchanted_book"
+	},
+	"Zaklęta książka (Niezniszczalność III)": {
+		"item": "minecraft:enchanted_book"
+	},
+	"Zaklęta książka (Ochrona IV)": {
+		"item": "minecraft:enchanted_book"
+	},
+	"Zaklęta książka (Ostrość IV)": {
+		"item": "minecraft:enchanted_book"
+	},
+	"Zaklęta książka (Ostrość V)": {
+		"item": "minecraft:enchanted_book"
+	},
+	"Zaklęta książka (Szczęście I)": {
+		"item": "minecraft:enchanted_book"
+	},
+	"Zaklęta książka (Szczęście III)": {
+		"item": "minecraft:enchanted_book"
+	},
+	"Zaklęta książka (Wydajność I)": {
+		"item": "minecraft:enchanted_book"
+	},
+	"Zaklęta książka (Wydajność II)": {
+		"item": "minecraft:enchanted_book"
+	},
+	"Zaklęta książka (Wydajność III)": {
+		"item": "minecraft:enchanted_book"
+	},
+	"Zaklęta książka (Wydajność IV)": {
+		"item": "minecraft:enchanted_book"
+	},
+	"Zaklęta książka (Wydajność V)": {
+		"item": "minecraft:enchanted_book"
+	},
+	"Zaklęta książka (Zaklęty ogień II)": {
+		"item": "minecraft:enchanted_book"
+	},
+	"Zaklęte złote jabłko": {
+		"item": "minecraft:enchanted_golden_apple"
+	},
+	"Ziemia": {
+		"item": "minecraft:dirt"
+	},
+	"Złota marchewka": {
+		"item": "minecraft:golden_carrot"
+	},
+	"Łza ghasta": {
+		"item": "minecraft:ghast_tear"
+	},
+	"Świecące jagody": {
+		"item": "minecraft:glow_berries"
+	},
+	"Żeton budowlany": {
+		"item": "minecraft:sunflower",
+		"model": 10291.0
+	},
+	"Żeton dekoracyjny": {
+		"item": "minecraft:sunflower",
+		"model": 10293.0
+	},
+	"Żeton symbol": {
+		"item": "minecraft:sunflower",
+		"model": 10292.0
+	},
+	"♦ Klejnot klucznika ♦": {
+		"item": "minecraft:quartz",
+		"model": 10303.0
+	},
+	"♦ Wzmocniony klejnot klucznika ♦": {
+		"item": "minecraft:quartz",
+		"model": 10304.0
+	}
+}

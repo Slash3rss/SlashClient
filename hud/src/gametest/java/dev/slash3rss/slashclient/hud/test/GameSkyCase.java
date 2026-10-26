@@ -80,6 +80,11 @@ public class GameSkyCase implements FabricClientGameTest {
 			context.waitTicks(40);
 			world.getServer().runCommand("time set 6000");
 			context.runOnClient(mc -> SkyCaseTestHooks.reset());
+			// the rewards' looks are built in: the model of a skin, a key's head, a plain item
+			String looks = context.computeOnClient(mc -> SkyCaseTestHooks.builtInLook("Karambit") + " | " + SkyCaseTestHooks.builtInLook("Klucz do Elementium SkyCase")
+				+ " | " + SkyCaseTestHooks.builtInLook("10x Ziemia"));
+			if (!looks.equals("minecraft:diamond_sword [10001.0] | minecraft:player_head [10201.0] head | minecraft:dirt -"))
+				throw new AssertionError("Built-in looks: " + looks);
 			// the line as SkyUp writes it (with "&" codes), the count kept in the name, the decorations off
 			parsed(context, "&6&lSkyCase &8&l» &e&aWygrano: &e5x Zaklęta butelka&a!", "5x Zaklęta butelka");
 			parsed(context, "SkyCase » Wygrano: :: Karambit ::!", "Karambit");

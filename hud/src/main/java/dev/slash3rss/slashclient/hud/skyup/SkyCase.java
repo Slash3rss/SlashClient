@@ -547,7 +547,36 @@ public final class SkyCase {
 
 	/** Decoded looks by their JSON, and the built-in coloured names by key (from the owner's GUI dumps). */
 	private static final Map<String, Optional<ItemStack>> LOOKS = new HashMap<>();
-	private static Map<String, JsonElement> names;
+	private static Map<String, JsonElement> names, builtInLooks;
+
+	/** Each reward's item, model number and head as the cases' previews showed them (from the owner's GUI dumps), by key. */
+	private static Map<String, JsonElement> builtInLooks() {
+		if (builtInLooks == null) {
+			builtInLooks = new HashMap<>();
+			try (InputStream in = SkyCase.class.getResourceAsStream("/assets/" + SlashHud.ID + "/skyup/skycase-looks.json")) {
+				if (in != null) for (var e : JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject().entrySet()) {
+					// as an item's JSON: {"id", "components": {model, head}}
+					var look = e.getValue().getAsJsonObject();
+					var stack = new com.google.gson.JsonObject();
+					stack.addProperty("id", look.get("item").getAsString());
+					var components = new com.google.gson.JsonObject();
+					if (look.has("model")) {
+						var floats = new com.google.gson.JsonArray();
+						floats.add(look.get("model"));
+						var model = new com.google.gson.JsonObject();
+						model.add("floats", floats);
+						components.add("minecraft:custom_model_data", model);
+					}
+					if (look.has("profile")) components.add("minecraft:profile", look.get("profile"));
+					if (look.has("model") || look.has("profile")) stack.add("components", components);
+					builtInLooks.putIfAbsent(key(e.getKey()), stack);
+				}
+			} catch (Exception e) {
+				SlashHud.LOG.warn("SlashClient: SkyUp case looks: {}", e.toString());
+			}
+		}
+		return builtInLooks;
+	}
 
 	private static Map<String, JsonElement> names() {
 		if (names == null) {
@@ -563,7 +592,8 @@ public final class SkyCase {
 
 	/**
 	 * A reward as its case's preview showed it (any case's, when its own never did): its model and
-	 * coloured name; else its item with the name coloured as the built-in dumps had it; null out of a world.
+	 * coloured name; else as the built-in dumps had it (its item, model and coloured name); else its
+	 * item; null out of a world.
 	 */
 	static ItemStack look(String type, String reward) {
 		Minecraft mc = Minecraft.getInstance();
@@ -577,6 +607,15 @@ public final class SkyCase {
 		if (json != null) {
 			JsonElement j = json;
 			ItemStack stack = LOOKS.computeIfAbsent(j.toString(), s -> ItemStack.CODEC.parse(mc.level.registryAccess().createSerializationContext(JsonOps.INSTANCE), j).result()).orElse(null);
+			if (stack != null) return stack;
+		}
+		JsonElement builtIn = builtInLooks().get(k);
+		if (builtIn != null) {
+			ItemStack stack = LOOKS.computeIfAbsent("built-in|" + k, s -> ItemStack.CODEC.parse(mc.level.registryAccess().createSerializationContext(JsonOps.INSTANCE), builtIn).result().map(found -> {
+				JsonElement name = names().get(k);
+				if (name != null) ComponentSerialization.CODEC.parse(JsonOps.INSTANCE, name).result().ifPresent(c -> found.set(DataComponents.CUSTOM_NAME, c));
+				return found;
+			})).orElse(null);
 			if (stack != null) return stack;
 		}
 		String id = own.pool.get(reward);
