@@ -413,6 +413,8 @@ public final class HudConfig {
 	public int autoClickJumps = 2;
 	/** The left button is not clicked while the player's own shield is up. */
 	public boolean autoClickShield = true;
+	/** It rests in SkyUp's dungeons and goes on once out (the setting itself stays as it was). */
+	public boolean autoClickDungeonPause = true;
 	/** Left clicks only with a mob under the crosshair (never at a player either way). */
 	public boolean autoClickMobs = false;
 	public static final String[] AUTO_CLICK_TARGETS = { "all", "mobs" };
@@ -887,6 +889,7 @@ public final class HudConfig {
 		autoClickJump = other.autoClickJump;
 		autoClickJumps = Math.max(1, Math.min(10, other.autoClickJumps));
 		autoClickShield = other.autoClickShield;
+		autoClickDungeonPause = other.autoClickDungeonPause;
 		autoClickMobs = other.autoClickMobs;
 		autoTool = other.autoTool;
 		autoToolRestore = other.autoToolRestore;

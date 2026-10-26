@@ -840,6 +840,16 @@ public final class DungeonMap implements HudModule {
 		start();
 	}
 
+	/** For the test: in a dungeon (as when the server's line just came: it lasts 20 s with no boss bar), or out. */
+	public static void inDungeonForTest(boolean in) {
+		if (!in) {
+			stop();
+			return;
+		}
+		start();
+		hintedAt = System.currentTimeMillis();
+	}
+
 	/** For the test: what the map knows of a column (0 nothing, 1 wall, 2 floor). */
 	public static int cellAt(int x, int z) {
 		int ix = x - originX, iz = z - originZ;

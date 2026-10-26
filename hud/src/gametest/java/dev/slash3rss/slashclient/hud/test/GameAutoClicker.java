@@ -66,6 +66,15 @@ public class GameAutoClicker implements FabricClientGameTest {
 			String shielded = context.computeOnClient(mc -> TestHooks.autoClicks());
 			context.runOnClient(mc -> TestHooks.raiseShield(false));
 			if (!shielded.startsWith("0/")) throw new AssertionError("Hit with the shield up: " + shielded);
+			// in a SkyUp dungeon it rests, out of it it goes on (armed as it was)
+			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, false, 10); TestHooks.armAutoClicker();
+				dev.slash3rss.slashclient.hud.skyup.DungeonMap.inDungeonForTest(true); });
+			context.waitTicks(20);
+			String inDungeon = context.computeOnClient(mc -> TestHooks.autoClicks());
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.DungeonMap.inDungeonForTest(false));
+			context.waitTicks(20);
+			String outOfDungeon = context.computeOnClient(mc -> TestHooks.autoClicks());
+			if (!inDungeon.equals("0/0") || outOfDungeon.startsWith("0/")) throw new AssertionError("Dungeon rest: in " + inDungeon + ", out " + outOfDungeon);
 			// left only with a mob under the crosshair: looking away, no clicks
 			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, true, 10); TestHooks.armAutoClicker(); mc.player.setYRot(180f); mc.player.setYHeadRot(180f); });
 			context.waitTicks(20);

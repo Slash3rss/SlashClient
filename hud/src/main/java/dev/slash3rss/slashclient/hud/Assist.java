@@ -40,6 +40,8 @@ public final class Assist {
 	private static long nextLeft, nextRight, nextJump;
 	/** The autoclicker pressed the jump key last tick: let go of it now. */
 	private static boolean jumpPressed;
+	/** In a SkyUp dungeon the autoclicker rests (see `tick`); this was so last tick. */
+	private static boolean inDungeon;
 	/** Clicks made, for the tests. */
 	static int leftClicks, rightClicks, jumps;
 	/** The slot the player had before auto tool picked another (-1 = none). */
@@ -108,7 +110,13 @@ public final class Assist {
 		if (holdUse && inGame) mc.options.keyUse.setDown(true);
 		holdOverScreen(mc, player, inGame);
 
-		if (cfg().autoClicker && inGame && (holdMode() ? !paused : armed)) autoClick(mc, player);
+		// in a dungeon it rests, out of it it goes on as it was (said once each way)
+		boolean dungeon = cfg().autoClickDungeonPause && dev.slash3rss.slashclient.hud.skyup.DungeonMap.active();
+		if (dungeon != inDungeon) {
+			inDungeon = dungeon;
+			if (cfg().autoClicker) Compat.overlay(mc, Component.translatable(dungeon ? "slashclient-hud.assist.dungeonPause.on" : "slashclient-hud.assist.dungeonPause.off"));
+		}
+		if (cfg().autoClicker && inGame && !dungeon && (holdMode() ? !paused : armed)) autoClick(mc, player);
 		else letGoOfJump(mc);
 		// also while the held button digs under the inventory or the pause menu
 		if (cfg().autoTool && (inGame || dugOverScreen)) autoTool(mc, player);
