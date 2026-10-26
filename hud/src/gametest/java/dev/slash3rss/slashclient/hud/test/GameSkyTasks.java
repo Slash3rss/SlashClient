@@ -197,6 +197,9 @@ public class GameSkyTasks implements FabricClientGameTest {
 			// a generator's window: the points spent (the time at 3, coal at 4 of which 1 is free, iron's free 1)
 			int spentPoints = context.computeOnClient(mc -> TestHooks.skyGeneratorSpent(3, 4));
 			check(spentPoints == 6, "the generator's spent points", String.valueOf(spentPoints));
+			// an incubator's window: cocoa at level 5 (its speed-up), found by the crop's word; no cactus one seen
+			String incubator = context.computeOnClient(mc -> TestHooks.skyIncubator());
+			check(incubator.equals("5 -1 true true false"), "the incubator's level", incubator);
 			// the daily task: nothing to remind of until it is tracked, then what is left of it
 			String daily = context.computeOnClient(mc -> TestHooks.skyDaily());
 			check(daily.equals("null | Still to do: Buraki 0/3888"), "the daily task's reminder (untracked | tracked)", daily);

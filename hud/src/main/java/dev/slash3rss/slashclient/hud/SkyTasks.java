@@ -61,6 +61,8 @@ public final class SkyTasks {
 		Set<String> trackedCategories;
 		/** The most upgrade points seen spent in a stone generator (its window; SkyGenerator), or null before any. */
 		Integer generatorSpent;
+		/** Incubators' highest levels seen, by an item of their upgrade's cost (SkyIncubator), or null before any. */
+		Map<String, Integer> incubators;
 		/** From SkyUp's sidebar: the island's level (-1: not seen), each job's level. */
 		long islandLevel = -1;
 		Map<String, Long> jobs = new LinkedHashMap<>();
@@ -191,6 +193,7 @@ public final class SkyTasks {
 			List<net.minecraft.world.item.ItemStack> items = new ArrayList<>();
 			for (Slot slot : c.getMenu().slots) if (!(slot.container instanceof Inventory)) items.add(slot.getItem());
 			SkyGenerator.seen(items);
+			SkyIncubator.seen(items);
 		} else if (dirty && System.currentTimeMillis() - savedAt > 30_000) {
 			// what the counters add is saved now and then, not at every block
 			save();
@@ -661,6 +664,8 @@ public final class SkyTasks {
 			int spent = SkyGenerator.spent();
 			return spent < 0 ? -1 : spent >= points ? Math.max(1, r.required) : 0;
 		}
+		// "Inkubator kaktusów: 1 poz.": the level read from the incubator's window
+		if (r.current < 0 && SkyIncubator.about(r.thing)) return SkyIncubator.level(r.thing);
 		// "Stój obok": what is around now
 		if (r.current < 0 && SkyCounters.kind(s) == SkyCounters.Kind.NEAR) return SkyCounters.around(mc, r.thing);
 		// the island's and the jobs' levels: from the sidebar
@@ -673,7 +678,7 @@ public final class SkyTasks {
 
 	/** The number shown is the client's own count, not the server's (shown with "~"). */
 	static boolean estimated(SkyTaskParser.Section s, SkyTaskParser.Req r) {
-		return !s.inventory() && (r.extra > 0 || (r.current < 0 && SkyCounters.kind(s) == SkyCounters.Kind.NEAR)
+		return !s.inventory() && (r.extra > 0 || (r.current < 0 && SkyCounters.kind(s) == SkyCounters.Kind.NEAR) || (r.current < 0 && SkyIncubator.about(r.thing))
 			|| (r.current < 0 && SkyCounters.sidebarEstimate(s) && SkyCounters.fromSidebar(s) >= 0));
 	}
 
@@ -835,6 +840,8 @@ public final class SkyTasks {
 					float bar = cfg.skyTasksCompact || c < 0 || r.required <= 0 ? -1 : Math.min(1f, (float) c / r.required);
 					// the generator's spent points: "~7/10 pkt" from its window (or a hint to open it)
 					int points = SkyGenerator.needed(r.thing), spent = SkyGenerator.spent();
+					// an incubator never opened: where to look
+					if (r.current < 0 && c < 0 && SkyIncubator.about(r.thing)) progress = Component.translatable("slashclient-hud.skyTasks.openIncubator").getString();
 					if (points > 0 && r.current < 0) {
 						progress = spent < 0 ? Component.translatable("slashclient-hud.skyTasks.openGenerator").getString() : "~" + Math.min(spent, points) + "/" + points + " pkt";
 						bar = cfg.skyTasksCompact || spent < 0 ? -1 : Math.min(1f, (float) spent / points);

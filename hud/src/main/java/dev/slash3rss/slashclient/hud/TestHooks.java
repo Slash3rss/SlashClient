@@ -2242,6 +2242,22 @@ public final class TestHooks {
 		return SkyGenerator.read(items);
 	}
 
+	/**
+	 * An incubator's window as SkyUp sends it (the owner's dumps: cocoa at level 5) seen, then what a
+	 * task's requirement reads: "kakao, kaktusów, Ziarna" levels.
+	 */
+	public static String skyIncubator() {
+		java.util.List<net.minecraft.world.item.ItemStack> items = new java.util.ArrayList<>();
+		for (int i = 0; i < 45; i++) items.add(net.minecraft.world.item.ItemStack.EMPTY);
+		items.set(8, task(net.minecraft.world.item.Items.PAPER, "Ulepsz", "▪ Koszt ulepszenia:", "» Ziarna kakaowe: 240/240", "» Tropikalny pień: 180/180", "» Szmaragd: 2/2",
+			"» Koszt: 3 750 SC", "▪ Następny poziom » 22,15/min (+3,69/min)"));
+		for (int i = 9; i < 15; i++) items.set(i, task(net.minecraft.world.item.Items.GLASS_PANE, "Status", "▪ Przyspieszenie » x5/x500",
+			"▪ Prędkość inkubacji » 18,46/min (0,92/3s)", "▪ Stan magazynu » 1", "▪ Pojemność magazynu » 2 225"));
+		SkyIncubator.seen(items);
+		return SkyIncubator.level("Inkubator kakao") + " " + SkyIncubator.level("Inkubator kaktusów") + " " + SkyIncubator.sameCrop("buraków", "nasiona buraka")
+			+ " " + SkyIncubator.sameCrop("marchewek", "marchewka") + " " + SkyIncubator.sameCrop("kaktusów", "ziemniak");
+	}
+
 	/** The HUD's first row with the daily task tracked for a moment ("none" without the task). */
 	public static String skyDailyOnTop() {
 		var mc = net.minecraft.client.Minecraft.getInstance();
