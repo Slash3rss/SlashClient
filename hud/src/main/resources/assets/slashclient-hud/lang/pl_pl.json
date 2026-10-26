@@ -357,6 +357,8 @@
 	"slashclient-hud.chat.stack": "Łączenie powtórzeń",
 	"slashclient-hud.chat.copy": "Kopiowanie prawym klikiem",
 	"slashclient-hud.chat.searchBox": "Wyszukiwarka czatu",
+	"slashclient-hud.chat.history": "Dłuższa historia czatu",
+	"slashclient-hud.chat.history.lines": "Linii w historii",
 	"slashclient-hud.chatCoords.setting": "Klikalne koordynaty w czacie",
 	"slashclient-hud.chatCoords.hover": "Kliknij, żeby zapisać jako waypoint",
 	"slashclient-hud.chatCoords.title": "Zapisz jako waypoint",

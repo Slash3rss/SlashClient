@@ -357,6 +357,8 @@
 	"slashclient-hud.chat.stack": "Stack repeated lines",
 	"slashclient-hud.chat.copy": "Right click copies",
 	"slashclient-hud.chat.searchBox": "Chat search",
+	"slashclient-hud.chat.history": "Longer chat history",
+	"slashclient-hud.chat.history.lines": "Lines kept",
 	"slashclient-hud.chatCoords.setting": "Clickable coordinates in chat",
 	"slashclient-hud.chatCoords.hover": "Click to save as a waypoint",
 	"slashclient-hud.chatCoords.title": "Save as a waypoint",

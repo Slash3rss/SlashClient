@@ -12,7 +12,13 @@ public class GameClips implements FabricClientGameTest {
 		if (TestFilter.skip(context, getClass())) return;
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
+			// turned on in the middle of play, from the settings (as a player does), then back in the game
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("clips"));
+			context.waitTicks(5);
 			context.runOnClient(mc -> TestHooks.clips(true));
+			long open = System.currentTimeMillis();
+			while (System.currentTimeMillis() - open < 1500) context.waitTick();
+			context.setScreen(() -> null);
 			// frames come by the clock: a few seconds of play
 			long started = System.currentTimeMillis();
 			while (System.currentTimeMillis() - started < 4000) context.waitTick();

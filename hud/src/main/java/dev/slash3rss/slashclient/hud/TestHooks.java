@@ -762,6 +762,29 @@ public final class TestHooks {
 		return (copied == null ? "-" : copied) + "|" + chatInput();
 	}
 
+	/** How many messages the chat keeps after 1500 different ones arrive, with the longer history on (at `lines`) or off. */
+	public static int chatHistory(boolean longer, int lines) {
+		var cfg = SlashHud.config;
+		boolean keptOn = cfg.chatLongHistory;
+		int keptLines = cfg.chatHistoryLines;
+		cfg.chatLongHistory = longer;
+		cfg.chatHistoryLines = lines;
+		var chat = Compat.chat(net.minecraft.client.Minecraft.getInstance());
+		chat.clearMessages(false);
+		for (int i = 0; i < 1500; i++) {
+			//#if MC >= 26.1
+			chat.addClientSystemMessage(net.minecraft.network.chat.Component.literal("history line " + i));
+			//#else
+			//$ chat.addMessage(net.minecraft.network.chat.Component.literal("history line " + i));
+			//#endif
+		}
+		int kept = ((dev.slash3rss.slashclient.hud.mixin.ChatComponentAccessor) chat).slashclient$allMessages().size();
+		chat.clearMessages(false);
+		cfg.chatLongHistory = keptOn;
+		cfg.chatHistoryLines = keptLines;
+		return kept;
+	}
+
 	public static void chatSearch(String text) {
 		ChatTabs.searchFor(text);
 	}

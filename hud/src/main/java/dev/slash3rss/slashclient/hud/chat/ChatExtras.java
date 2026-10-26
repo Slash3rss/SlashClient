@@ -251,4 +251,10 @@ public final class ChatExtras {
 			return p.text();
 		}
 	}
+
+	/** How many lines the chat keeps: the player's setting, or the game's own 100. */
+	public static int historyLines() {
+		var cfg = dev.slash3rss.slashclient.hud.SlashHud.config;
+		return cfg == null || !cfg.chatLongHistory ? 100 : Math.max(100, Math.min(5000, cfg.chatHistoryLines));
+	}
 }

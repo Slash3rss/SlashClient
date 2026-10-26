@@ -53,6 +53,9 @@ public class GameExtras implements FabricClientGameTest {
 			context.waitTicks(5);
 			context.takeScreenshot("extras-chat-search");
 			context.setScreen(() -> null);
+			// the longer chat history: as many lines as set, the game's 100 when off
+			int longer = context.computeOnClient(mc -> TestHooks.chatHistory(true, 1200)), vanilla = context.computeOnClient(mc -> TestHooks.chatHistory(false, 1200));
+			if (longer != 1200 || vanilla != 100) throw new AssertionError("Chat history kept " + longer + " / " + vanilla + " lines");
 
 			// F2: the preview in the corner
 			context.runOnClient(mc -> TestHooks.screenshot());

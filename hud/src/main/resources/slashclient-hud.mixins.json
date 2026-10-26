@@ -28,6 +28,7 @@
 		"ClipFrameMixin",
 		"ChatComponentAccessor",
 		"ChatComponentMixin",
+		"ChatHistoryMixin",
 		"ChatFilterMixin",
 		"ChatScreenMixin",
 		"HoverEffectInvoker",
