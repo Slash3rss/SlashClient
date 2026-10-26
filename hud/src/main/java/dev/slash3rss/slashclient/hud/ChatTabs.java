@@ -256,9 +256,14 @@ public final class ChatTabs {
 	 */
 	public static boolean mentions(String text, String nick) {
 		if (nick == null || nick.isEmpty() || text == null) return false;
-		String q = Pattern.quote(nick);
-		String rest = Pattern.compile("^(?:\\[[^\\]]{0,24}\\]\\s*)*<?" + q + ">?\\s*[:»>\\-]", Pattern.CASE_INSENSITIVE).matcher(text).replaceFirst("");
-		return Pattern.compile("(?<![A-Za-z0-9_])" + q + "(?![A-Za-z0-9_])", Pattern.CASE_INSENSITIVE).matcher(rest).find();
+		String rest = withoutOwnName(text, nick);
+		return Pattern.compile("(?<![A-Za-z0-9_])" + Pattern.quote(nick) + "(?![A-Za-z0-9_])", Pattern.CASE_INSENSITIVE).matcher(rest).find();
+	}
+
+	/** A line without the player's own name as its sender ("<Nick> …", "[VIP] Nick » …"): their own lines never name them. */
+	static String withoutOwnName(String text, String nick) {
+		if (nick == null || nick.isEmpty()) return text;
+		return Pattern.compile("^(?:\\[[^\\]]{0,24}\\]\\s*)*<?" + Pattern.quote(nick) + ">?\\s*[:»>\\-]", Pattern.CASE_INSENSITIVE).matcher(text).replaceFirst("");
 	}
 
 	/** The open chat shows them in the "@" tab: the badge over the closed chat starts again. */
@@ -297,12 +302,14 @@ public final class ChatTabs {
 		String nick = Minecraft.getInstance().player == null ? "" : Minecraft.getInstance().player.getName().getString();
 		for (String raw : patterns) {
 			if (raw == null || raw.isBlank()) continue;
+			// "{nick}": named by someone else, not in the player's own line
+			String in = raw.contains("{nick}") ? withoutOwnName(text, nick) : text;
 			if (regex) {
 				Pattern p = pattern(raw.replace("{nick}", Pattern.quote(nick)));
-				if (p != null && p.matcher(text).find()) return true;
+				if (p != null && p.matcher(in).find()) return true;
 			} else {
 				String needle = raw.replace("{nick}", nick).toLowerCase(Locale.ROOT);
-				if (!needle.isEmpty() && text.toLowerCase(Locale.ROOT).contains(needle)) return true;
+				if (!needle.isEmpty() && in.toLowerCase(Locale.ROOT).contains(needle)) return true;
 			}
 		}
 		return false;

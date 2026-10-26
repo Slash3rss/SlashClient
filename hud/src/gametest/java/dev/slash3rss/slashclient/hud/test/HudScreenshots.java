@@ -205,6 +205,12 @@ public class HudScreenshots implements FabricClientGameTest {
 				|| !context.computeOnClient(mc -> TestHooks.tabCatches("", "party", "Hello everyone"))
 				|| context.computeOnClient(mc -> TestHooks.tabCatches("", "party", "[Party] Steve: gg")))
 				throw new AssertionError("The chat tab's exclusions do not work");
+			// a "{nick}" tab (the mentions): someone else naming the player, never the player's own line
+			String nick = context.computeOnClient(mc -> mc.player.getName().getString());
+			if (!context.computeOnClient(mc -> TestHooks.tabCatches("{nick}", "", "Steve: hej " + nick))
+				|| context.computeOnClient(mc -> TestHooks.tabCatches("{nick}", "", "<" + nick + "> hej"))
+				|| context.computeOnClient(mc -> TestHooks.tabCatches("{nick}", "", "[VIP] " + nick + " » hej")))
+				throw new AssertionError("The mentions tab catches the player's own lines");
 			// a mention is the nick as a word, not the line's own sender
 			for (String[] c : new String[][] { { "Player0, are you there?", "true" }, { "<Player0> hello", "false" }, { "[VIP] Player0: hi", "false" }, { "Player01 joined", "false" }, { "hej player0 :)", "true" } }) {
 				boolean got = context.computeOnClient(mc -> TestHooks.mentionCheck(c[0], "Player0"));
