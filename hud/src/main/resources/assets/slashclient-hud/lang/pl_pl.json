@@ -1175,6 +1175,7 @@
 	"slashclient-hud.skyTasks.dailyReady": "Gotowe – możesz je oddać",
 	"slashclient-hud.skyTasks.openGenerator": "otwórz generator",
 	"slashclient-hud.skyTasks.openIncubator": "otwórz inkubator",
+	"slashclient-hud.skyTasks.scroll": "Przewijaj za długie wiersze",
 	"slashclient-hud.module.skycase": "Licznik dropu SkyCase",
 	"slashclient-hud.skyCase.screen": "Drop ze SkyCase",
 	"slashclient-hud.skyCase.opened": "Otwarte",

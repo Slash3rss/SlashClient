@@ -72,11 +72,11 @@ public final class Modules {
 		else g.fill(x, y, x + w, y + h, color);
 	}
 
-	private static int color(int color) {
+	static int color(int color) {
 		return drawing != null && color == cfg.textColor ? drawing.textColor(cfg) : color;
 	}
 
-	private static boolean shadow() {
+	static boolean shadow() {
 		return drawing != null ? drawing.shadow(cfg) : cfg.textShadow;
 	}
 

@@ -231,6 +231,8 @@ public final class HudConfig {
 	public boolean skyTasksTierCount = true;
 	/** On joining SkyUp, a line saying the tasks GUI loads the progress. */
 	public boolean skyTasksJoinHint = true;
+	/** Rows too long for the tasks module slide along instead of ending with "…". */
+	public boolean skyTasksScroll = true;
 	/** How often the daily task, while tracked and not done, is brought up (minutes); 0 = never. */
 	public int skyDailyRemind = 30;
 	/** SkyUp's fish counter: split by "none", "size", "species" or "quality"; their weight and value shown. */
@@ -724,6 +726,7 @@ public final class HudConfig {
 		skyTasksWidth = Math.max(100, Math.min(320, other.skyTasksWidth));
 		skyTasksCompact = other.skyTasksCompact;
 		skyDailyRemind = Math.max(0, Math.min(240, other.skyDailyRemind));
+		skyTasksScroll = other.skyTasksScroll;
 		skyTasksHideDone = other.skyTasksHideDone;
 		skyTasksRewards = other.skyTasksRewards;
 		skyTasksTrackAll = other.skyTasksTrackAll;

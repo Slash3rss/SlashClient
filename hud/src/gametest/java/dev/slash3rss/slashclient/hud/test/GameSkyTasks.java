@@ -80,6 +80,13 @@ public class GameSkyTasks implements FabricClientGameTest {
 			String rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			check(rows.contains("Nowicjusz | ") && rows.contains("Podstawowy kamieniołom") && rows.contains(" | 28/128") && rows.contains("Huta") && rows.contains(" | 5/16"), "HUD rows", rows);
 			context.takeScreenshot("skytasks-hud");
+			// narrow: rows too long slide along (two moments apart), instead of ending with "…"
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.skyTasksWidth = 120);
+			context.waitTicks(30);
+			context.takeScreenshot("skytasks-scroll-1");
+			context.waitTicks(30);
+			context.takeScreenshot("skytasks-scroll-2");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.skyTasksWidth = 220);
 			// the progress is on disk, in the playing account's own file, and comes back from it
 			String reload = context.computeOnClient(mc -> TestHooks.skyTasksReload());
 			String[] r = reload.split(" ");

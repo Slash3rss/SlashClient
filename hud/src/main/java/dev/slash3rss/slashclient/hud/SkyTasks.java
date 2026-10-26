@@ -890,8 +890,14 @@ public final class SkyTasks {
 				g.fill(x + 1, row - 1, x + 2, row + h - 1, Ui.blend(0xFF16A34A, 0xFF86EFAC, glow));
 			}
 			int room = w - r.indent - (r.right.isEmpty() ? 0 : rightWidth(mc, r) + 8);
-			String text = mc.font.width(r.left) > room ? mc.font.plainSubstrByWidth(r.left, room - mc.font.width("…")) + "…" : r.left;
-			Modules.text(g, mc, text, left + r.indent, row, r.leftColor);
+			int over = mc.font.width(r.left) - room;
+			if (over > 0 && SlashHud.config.skyTasksScroll) {
+				// too long: it slides along and back (as in the Spotify module), each row on its own clock
+				SpotifyModule.slide(g, mc, r.left, left + r.indent, row, room, Modules.color(r.leftColor), Modules.shadow(), Ui.marqueeShift("skytasks:" + r.left, over));
+			} else {
+				String text = over > 0 ? mc.font.plainSubstrByWidth(r.left, room - mc.font.width("…")) + "…" : r.left;
+				Modules.text(g, mc, text, left + r.indent, row, r.leftColor);
+			}
 			if (r.badge) {
 				int bw = rightWidth(mc, r), bx = left + w - bw;
 				Ui.round(g, bx, row - 1, bw, mc.font.lineHeight + 1, 2, 0xFF16A34A);

@@ -1175,6 +1175,7 @@
 	"slashclient-hud.skyTasks.dailyReady": "Done – you can hand it in",
 	"slashclient-hud.skyTasks.openGenerator": "open the generator",
 	"slashclient-hud.skyTasks.openIncubator": "open the incubator",
+	"slashclient-hud.skyTasks.scroll": "Scroll rows that are too long",
 	"slashclient-hud.module.skycase": "SkyCase drop counter",
 	"slashclient-hud.skyCase.screen": "SkyCase drops",
 	"slashclient-hud.skyCase.opened": "Opened",
