@@ -2250,7 +2250,10 @@ public final class TestHooks {
 		var chest = new net.minecraft.world.SimpleContainer(27);
 		chest.setItem(10, task(net.minecraft.world.item.Items.BEETROOT, "Zadanie codzienne", "Ukończone zadania dzienne » 0", "Kategoria » Wirtuoz", "",
 			"Zbierz:", "» Buraki: 0/3 888", "", "Za ukończenie otrzymasz:", "» 20000.0 SC", "", "LPM \ue510 » Ukończ wyzwanie"));
-		chest.setItem(12, task(net.minecraft.world.item.Items.EMERALD, "Nowicjusz", "Pozostałe zadania » " + left, "", "Na tym poziomie » 969", "Ukończyli » 458", "",
+		// none left: as SkyUp shows a category done
+		chest.setItem(12, left == 0
+			? task(net.minecraft.world.item.Items.EMERALD_BLOCK, "Nowicjusz", "Kategoria ukończona!", "Wszystkie zadania ukończone!", "Na tym poziomie » 181", "Ukończyli » 151")
+			: task(net.minecraft.world.item.Items.EMERALD, "Nowicjusz", "Pozostałe zadania » " + left, "", "Na tym poziomie » 969", "Ukończyli » 458", "",
 			"Na tym poziomie otrzymasz m.in:", "» grzybnię", "", "LPM \ue510 » Sprawdź wyzwania"));
 		chest.setItem(14, task(net.minecraft.world.item.Items.DIAMOND, "Wirtuoz", "Pozostałe zadania » 16", "", "Za ukończenie poziomu otrzymasz:", "» 500 SP", "", "LPM \ue510 » Sprawdź wyzwania"));
 		var menu = net.minecraft.world.inventory.ChestMenu.threeRows(1001, mc.player.getInventory(), chest);

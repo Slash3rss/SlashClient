@@ -315,6 +315,14 @@ public final class SkyTasks {
 			found.remove(t.key());
 			Integer old = d.categories.put(t.name, t.remaining());
 			if (old == null || old != t.remaining()) dirty = true;
+			// a category done: no longer tracked, nor any task of it
+			if (t.remaining() == 0 && (categoryTracked(t.name) || d.tasks.values().stream().anyMatch(x -> x.tier.equalsIgnoreCase(t.name)))) {
+				if (d.trackedCategories != null) d.trackedCategories.removeIf(c -> c.equalsIgnoreCase(t.name));
+				d.tasks.values().removeIf(x -> x.tier.equalsIgnoreCase(t.name));
+				d.tracked.removeIf(k -> k.substring(0, Math.max(0, k.indexOf('|'))).equalsIgnoreCase(t.name));
+				d.untracked.removeIf(k -> k.substring(0, Math.max(0, k.indexOf('|'))).equalsIgnoreCase(t.name));
+				dirty = true;
+			}
 		}
 		if (menu) {
 			d.categoriesSeen = now;

@@ -203,6 +203,10 @@ public final class SkyTaskParser {
 				task.rewards.addAll(b.entries);
 			} else if (lower.startsWith("na tym poziomie otrzymasz")) {
 				task.category = true;
+			} else if (lower.startsWith("kategoria ukończona") || lower.startsWith("wszystkie zadania ukończone")) {
+				// a category done: no tasks left in it (the menu says so instead of "Pozostałe zadania")
+				task.category = true;
+				task.info.put("Pozostałe zadania", "0");
 			} else if (lower.startsWith("uwaga")) {
 				if (lower.contains("zabrane")) task.takesItems = true;
 			} else if (lower.startsWith("lpm") || lower.startsWith("ppm") || lower.startsWith("śpm")) {

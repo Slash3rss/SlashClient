@@ -263,6 +263,21 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.skyChat(" Wyzwania >> Ukończono zadanie » Podstawowy kamieniołom «!"));
 			context.waitTicks(3);
 			check(!context.computeOnClient(mc -> TestHooks.skyTasks()).contains("|Podstawowy kamieniołom:"), "handed in, other arrows", context.computeOnClient(mc -> TestHooks.skyTasks()));
+			// Nowicjusz tracked, then the menu says it is done ("Kategoria ukończona!"): no longer tracked, its tasks gone
+			context.runOnClient(mc -> TestHooks.skyMenuScreen(5));
+			context.waitTicks(10);
+			context.getInput().setCursorPos(nowicjusz[0], nowicjusz[1]);
+			context.waitTicks(3);
+			context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_MIDDLE);
+			context.waitTicks(3);
+			check(context.computeOnClient(mc -> TestHooks.skyCategoryState()).startsWith("Nowicjusz"), "Nowicjusz tracked again", "");
+			context.runOnClient(mc -> TestHooks.skyMenuScreen(0));
+			context.waitTicks(10);
+			context.setScreen(() -> null);
+			context.waitTicks(3);
+			state = context.computeOnClient(mc -> TestHooks.skyCategoryState());
+			rows = context.computeOnClient(mc -> TestHooks.skyRows());
+			check(!state.startsWith("Nowicjusz") && !rows.contains("Nowicjusz") && !context.computeOnClient(mc -> TestHooks.skyTasks()).contains("Nowicjusz|"), "a category done", state + "\n" + rows);
 			context.runOnClient(mc -> TestHooks.skyTasksOptions(false, false));
 		}
 		//#endif
