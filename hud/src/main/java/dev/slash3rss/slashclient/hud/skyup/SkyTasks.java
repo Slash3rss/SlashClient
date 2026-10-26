@@ -240,12 +240,10 @@ public final class SkyTasks {
 		remindAt = now + every;
 		Component what = dailyReminder(mc);
 		if (what == null) return;
-		mc.execute(() -> {
-			net.minecraft.client.gui.components.toasts.SystemToast.add(Compat.toasts(mc), net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
-				Component.translatable("slashclient-hud.skyTasks.dailyTitle"), what);
-			// with a sound of its own, as set (the chat tabs' sounds)
-			ChatTabs.playSound(mc, dailySound());
-		});
+		// in SlashClient's own look, as its other notifications
+		dev.slash3rss.slashclient.hud.social.Social.toast(Component.translatable("slashclient-hud.skyTasks.dailyTitle").getString(), what.getString(), "m-skytasks");
+		// with a sound of its own, as set (the chat tabs' sounds)
+		mc.execute(() -> ChatTabs.playSound(mc, dailySound()));
 	}
 
 	/** SkyUp's daily task ("Zadanie codzienne"). */

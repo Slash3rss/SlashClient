@@ -253,9 +253,8 @@ public final class KeptPacks {
 	}
 
 	private static void toast(String name, String key) {
-		Minecraft mc = Minecraft.getInstance();
-		mc.execute(() -> net.minecraft.client.gui.components.toasts.SystemToast.add(Compat.toasts(mc), net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
-			Component.translatable("slashclient-hud.keptPack.title", name.replaceFirst("\\.zip$", "")), Component.translatable(key)));
+		dev.slash3rss.slashclient.hud.social.Social.toast(Component.translatable("slashclient-hud.keptPack.title", name.replaceFirst("\\.zip$", "")).getString(),
+			Component.translatable(key).getString(), "m-server");
 	}
 
 	/**

@@ -5,7 +5,6 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
-import net.minecraft.client.gui.components.toasts.SystemToast;
 import net.minecraft.network.chat.Component;
 
 import javax.imageio.IIOImage;
@@ -240,8 +239,7 @@ public final class Clips {
 				Files.createDirectories(dir);
 				AviWriter.write(file, clip.stream().map(Frame::jpeg).toList(), clip.getLast().width(), clip.getLast().height(), fps);
 				mc.execute(SessionStats::clip);
-				mc.execute(() -> SystemToast.add(Compat.toasts(mc), SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
-					Component.translatable("slashclient-hud.clips.saved", Math.round(seconds)), Component.literal(file.getFileName().toString())));
+				dev.slash3rss.slashclient.hud.social.Social.toast(Component.translatable("slashclient-hud.clips.saved", Math.round(seconds)).getString(), file.getFileName().toString(), "m-clips");
 			} catch (Exception e) {
 				SlashHud.LOG.warn("Could not save the clip", e);
 				mc.execute(() -> Compat.overlay(mc, Component.translatable("slashclient-hud.clips.failed")));
