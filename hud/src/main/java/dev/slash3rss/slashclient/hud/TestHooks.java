@@ -762,8 +762,8 @@ public final class TestHooks {
 		return (copied == null ? "-" : copied) + "|" + chatInput();
 	}
 
-	/** How many messages the chat keeps after 1500 different ones arrive, with the longer history on (at `lines`) or off. */
-	public static int chatHistory(boolean longer, int lines) {
+	/** How many messages the chat keeps after 1500 different ones arrive and 1500 are sent ("kept/sent"), with the longer history on (at `lines`) or off. */
+	public static String chatHistory(boolean longer, int lines) {
 		var cfg = SlashHud.config;
 		boolean keptOn = cfg.chatLongHistory;
 		int keptLines = cfg.chatHistoryLines;
@@ -779,10 +779,12 @@ public final class TestHooks {
 			//#endif
 		}
 		int kept = ((dev.slash3rss.slashclient.hud.mixin.ChatComponentAccessor) chat).slashclient$allMessages().size();
-		chat.clearMessages(false);
+		for (int i = 0; i < 1500; i++) chat.addRecentChat("sent " + i);
+		int sent = chat.getRecentChat().size();
+		chat.clearMessages(true);
 		cfg.chatLongHistory = keptOn;
 		cfg.chatHistoryLines = keptLines;
-		return kept;
+		return kept + "/" + sent;
 	}
 
 	public static void chatSearch(String text) {

@@ -492,7 +492,7 @@ public final class HudConfig {
 	public String chatCopyNotice = "short";
 	/** A search box over the open chat. */
 	public boolean chatSearch = true;
-	/** The chat keeps more than the game's 100 lines: this many (100 to 5000). */
+	/** The chat keeps more than the game's 100 lines (and sent messages): this many (100, the game's own, to 16 000). */
 	public boolean chatLongHistory = true;
 	public int chatHistoryLines = 1000;
 	/** The chat bigger than the game's largest chat scale: the game's scale times this, 1 to 1.5 (see ChatLook). */
@@ -940,7 +940,7 @@ public final class HudConfig {
 		chatCopyNotice = oneOf(other.chatCopyNotice, ChatExtras.COPY_NOTICES);
 		chatSearch = other.chatSearch;
 		chatLongHistory = other.chatLongHistory;
-		chatHistoryLines = Math.max(100, Math.min(5000, other.chatHistoryLines));
+		chatHistoryLines = Math.max(100, Math.min(16000, other.chatHistoryLines));
 		chatScaleExtra = Math.max(1f, Math.min(ChatLook.MAX, other.chatScaleExtra));
 		timeChanger = other.timeChanger;
 		fixedTime = other.fixedTime;

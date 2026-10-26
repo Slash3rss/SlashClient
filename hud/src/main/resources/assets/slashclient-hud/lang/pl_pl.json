@@ -359,6 +359,7 @@
 	"slashclient-hud.chat.searchBox": "Wyszukiwarka czatu",
 	"slashclient-hud.chat.history": "Dłuższa historia czatu",
 	"slashclient-hud.chat.history.lines": "Linii w historii",
+	"slashclient-hud.chat.history.note": "Tyle linii czatu i tyle Twoich wysłanych wiadomości (strzałka w górę) zostaje w pamięci. Na płynność gry to nie wpływa – przy największych wartościach może się tylko na moment przyciąć przy zmianie rozmiaru okna lub czatu.",
 	"slashclient-hud.chatCoords.setting": "Klikalne koordynaty w czacie",
 	"slashclient-hud.chatCoords.hover": "Kliknij, żeby zapisać jako waypoint",
 	"slashclient-hud.chatCoords.title": "Zapisz jako waypoint",

@@ -502,7 +502,8 @@ public final class Catalog {
 		out.add(new Entry("chatCoords", "slashclient-hud.chatCoords.setting", "chat", "m-waypoints", () -> cfg.chatCoords, v -> cfg.chatCoords = v, List.of(), null));
 		out.add(new Entry("chatSearch", "slashclient-hud.chat.searchBox", "chat", "m-chatsearch", () -> cfg.chatSearch, v -> cfg.chatSearch = v, List.of(), null));
 		out.add(new Entry("chatHistory", "slashclient-hud.chat.history", "chat", "chat", () -> cfg.chatLongHistory, v -> cfg.chatLongHistory = v, List.of(
-			new Slider("slashclient-hud.chat.history.lines", 100f, 5000f, 100f, "%.0f", () -> (float) cfg.chatHistoryLines, v -> cfg.chatHistoryLines = Math.round(v))), null));
+			new Slider("slashclient-hud.chat.history.lines", 100f, 16000f, 100f, "%.0f", () -> (float) cfg.chatHistoryLines, v -> cfg.chatHistoryLines = Math.round(v)),
+			new Note("slashclient-hud.chat.history.note", () -> new Object[0])), null));
 		// the game's own HUD parts
 		// the game's own parts: moved in the editor (drag their boxes), shown, scaled
 		HudConfig.Placement scoreboard = cfg.placement("scoreboard"), bossbar = cfg.placement("bossbar"), tablist = cfg.placement("tablist"), actionbar = cfg.placement("actionbar"), titles = cfg.placement("titles");
