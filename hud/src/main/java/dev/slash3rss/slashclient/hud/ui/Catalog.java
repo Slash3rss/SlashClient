@@ -546,7 +546,10 @@ public final class Catalog {
 		}));
 		// clips: the last seconds of the game, saved with F8
 		out.add(new Entry("clips", "slashclient-hud.clips", "extras", "m-clips", () -> cfg.clips, v -> cfg.clips = v, List.of(
-			new Slider("slashclient-hud.clips.length", 10f, 60f, 5f, "%.0f s", () -> (float) cfg.clipSeconds, v -> cfg.clipSeconds = Math.round(v))), null));
+			new Slider("slashclient-hud.clips.length", 10f, 60f, 5f, "%.0f s", () -> (float) cfg.clipSeconds, v -> cfg.clipSeconds = Math.round(v)),
+			new Choice("slashclient-hud.clips.resolution", HudConfig.CLIP_RESOLUTIONS, "slashclient-hud.clips.resolution.", () -> cfg.clipResolution, v -> cfg.clipResolution = v),
+			new Choice("slashclient-hud.clips.fps", HudConfig.CLIP_FPS, "slashclient-hud.clips.fps.", () -> String.valueOf(cfg.clipFps), v -> cfg.clipFps = Integer.parseInt(v)),
+			new Note("slashclient-hud.clips.quality.note", () -> new Object[0])), null));
 		// the instant replay: the last seconds watched in the game (Replay)
 		out.add(new Entry("replay", "slashclient-hud.replay", "extras", "m-replay", () -> cfg.replay, v -> cfg.replay = v, List.of(
 			new Slider("slashclient-hud.replay.length", 15f, 60f, 15f, "%.0f s", () -> (float) cfg.replaySeconds, v -> cfg.replaySeconds = Math.round(v)),

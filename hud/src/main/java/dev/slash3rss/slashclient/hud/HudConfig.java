@@ -385,6 +385,11 @@ public final class HudConfig {
 	/** Clips: the last seconds of the screen in memory, saved with a key (off: it costs memory and a little CPU). */
 	public boolean clips = false;
 	public int clipSeconds = 30;
+	/** The clips' (and the instant replay's) size, at most this wide ("480p" … "1440p", "native": the window's), and frames a second. */
+	public String clipResolution = "720p";
+	public int clipFps = 30;
+	public static final String[] CLIP_RESOLUTIONS = { "480p", "720p", "1080p", "1440p", "native" };
+	public static final String[] CLIP_FPS = { "20", "30", "60" };
 	/** Instant replay (Replay): a key shows the last seconds in the game; it keeps the clips' frames, so it takes the same memory. */
 	public boolean replay = false;
 	public int replaySeconds = 30;
@@ -860,6 +865,8 @@ public final class HudConfig {
 		ownNametag = other.ownNametag;
 		clips = other.clips;
 		clipSeconds = Math.max(10, Math.min(60, other.clipSeconds));
+		clipResolution = oneOf(other.clipResolution, CLIP_RESOLUTIONS);
+		clipFps = other.clipFps == 20 || other.clipFps == 60 ? other.clipFps : 30;
 		replay = other.replay;
 		replaySeconds = Math.max(15, Math.min(60, other.replaySeconds));
 		replayPause = other.replayPause;

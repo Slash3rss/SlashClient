@@ -30,17 +30,34 @@ import dev.slash3rss.slashclient.hud.Compat;
 import dev.slash3rss.slashclient.hud.SessionStats;
 
 /**
- * Clips, like ShadowPlay: while on, the game keeps the last seconds of what is on screen (about
- * 30 frames a second, at most 1280 pixels wide, as JPEG in memory) and a key saves them as a video
+ * Clips, like ShadowPlay: while on, the game keeps the last seconds of what is on screen (20, 30 or
+ * 60 frames a second and at most 480p to 1440p wide or the window's own size, as the player set, as
+ * JPEG in memory) and a key saves them as a video
  * in clips/ next to screenshots. Frames are copied after the whole frame is drawn (the world and
  * the HUD) and squeezed on a background thread, so the game itself waits for nothing.
  */
 public final class Clips {
 	private Clips() {}
 
-	private static final long FRAME_NS = 1_000_000_000L / 30;
 	/** Frames on their way to the background thread; more and the new ones are skipped. */
-	private static final int IN_FLIGHT = 3;
+	private static final int IN_FLIGHT = 4;
+
+	/** Time between two frames, at the frames a second set. */
+	private static long frameNs() {
+		int fps = SlashHud.config.clipFps;
+		return 1_000_000_000L / (fps == 20 || fps == 60 ? fps : 30);
+	}
+
+	/** The widest frame kept, by the resolution set (0: the window's own). */
+	static int maxWidth() {
+		return switch (SlashHud.config.clipResolution) {
+			case "480p" -> 854;
+			case "1080p" -> 1920;
+			case "1440p" -> 2560;
+			case "native" -> 0;
+			default -> 1280;
+		};
+	}
 	public static KeyMapping key;
 
 	/** One frame in memory: a JPEG, its size and when it was taken (System.nanoTime). */
@@ -55,6 +72,7 @@ public final class Clips {
 	});
 	private static final AtomicInteger inFlight = new AtomicInteger();
 	private static long lastFrame;
+	private static boolean lostWarned;
 	private static volatile boolean saving;
 
 	public static boolean enabled() {
@@ -82,13 +100,21 @@ public final class Clips {
 			return;
 		}
 		long now = System.nanoTime();
-		if (now - lastFrame < FRAME_NS || inFlight.get() >= IN_FLIGHT) return;
+		// frames asked for but never handed back (another mod in the way of the game's own grab): after
+		// a second and a half without one the count starts over, or no frame would be taken again
+		if (inFlight.get() >= IN_FLIGHT && now - lastFrame > 1_500_000_000L) {
+			if (!lostWarned) SlashHud.LOG.warn("SlashClient clips: frames were not handed back, starting over");
+			lostWarned = true;
+			inFlight.set(0);
+		}
+		if (now - lastFrame < frameNs() || inFlight.get() >= IN_FLIGHT) return;
 		// the replay viewer itself is not recorded
 		if (Compat.screen(mc) instanceof ReplayScreen) return;
 		lastFrame = now;
 		var target = Compat.mainTarget(mc);
-		// at most 1280 wide: a 1920 window is halved, a 4K one quartered
-		int scale = Math.max(1, (int) Math.ceil(mc.getWindow().getWidth() / 1280.0));
+		// at most as wide as set, by a whole step: at 720p a 1920 window is halved, a 4K one a third
+		int max = maxWidth();
+		int scale = max <= 0 ? 1 : Math.max(1, (int) Math.ceil(mc.getWindow().getWidth() / (double) max));
 		inFlight.incrementAndGet();
 		try {
 			//#if MC >= 1.21.6
@@ -103,7 +129,7 @@ public final class Clips {
 			//$ Screenshot.takeScreenshot(target, scale, image -> WORKER.execute(() -> encode(image, now, 1)));
 			//#endif
 		} catch (RuntimeException e) {
-			inFlight.decrementAndGet();
+			inFlight.updateAndGet(n -> Math.max(0, n - 1));
 			SlashHud.LOG.debug("SlashClient clips: {}", e.toString());
 		}
 	}
@@ -129,7 +155,7 @@ public final class Clips {
 		} catch (Exception e) {
 			SlashHud.LOG.debug("SlashClient clips: {}", e.toString());
 		} finally {
-			inFlight.decrementAndGet();
+			inFlight.updateAndGet(n -> Math.max(0, n - 1));
 		}
 	}
 

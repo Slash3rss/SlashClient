@@ -18,6 +18,7 @@ public class GameClips implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.clips(true));
 			long open = System.currentTimeMillis();
 			while (System.currentTimeMillis() - open < 1500) context.waitTick();
+			context.takeScreenshot("clips-settings");
 			context.setScreen(() -> null);
 			// frames come by the clock: a few seconds of play
 			long started = System.currentTimeMillis();
