@@ -2471,6 +2471,34 @@ public final class TestHooks {
 	 * Shamanism: a task "Przyzwij: Wiedźma 0/1" tracked, the HUD's rows under it (the recipe), then a
 	 * summon (SkyUp's line after a click on a campfire) and the requirement's count.
 	 */
+	/** A task with the newly counted kinds (a bell, a sheep, the level, a case by hand), on the HUD's list. */
+	public static void skyMoreTasks() {
+		SkyTaskParser.Task t = SkyTaskParser.parse("Zaawansowany", "» Wszystko naraz «", java.util.List.of("Opis » Test.", "",
+			"Uderz w dzwony:", "  » Uderz w dzwony: 0/5", "",
+			"Ostrzyż:", "  » Owca: 0/32", "",
+			"Otwórz SkyCase:", "  » Ręcznie: 0/8", "",
+			"Posiadaj poziom: 60", "  poz.", "",
+			"Za ukończenie otrzymasz:", "  » 100.0 SC"));
+		t.seen = System.currentTimeMillis();
+		SkyTasks.data().tasks.put(t.key(), t);
+	}
+
+	/** That task's requirements as counted now: "header=count" each. */
+	public static String skyMoreProgress() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		StringBuilder out = new StringBuilder();
+		for (SkyTaskParser.Task t : SkyTasks.data().tasks.values()) {
+			if (!t.name.equals("Wszystko naraz")) continue;
+			for (SkyTaskParser.Section s : t.sections) for (SkyTaskParser.Req r : s.items) out.append(s.header).append('=').append(SkyTasks.current(mc, s, r)).append(' ');
+		}
+		return out.toString().strip();
+	}
+
+	/** A right click as the game makes it, on what is under the crosshair now (a bell, a sheep, a chest). */
+	public static void skyUse() {
+		dev.slash3rss.slashclient.hud.skyup.SkyCounters.used(net.minecraft.client.Minecraft.getInstance());
+	}
+
 	public static String skyShaman() {
 		var mc = net.minecraft.client.Minecraft.getInstance();
 		SkyTaskParser.Task t = SkyTaskParser.parse("Wtajemniczony", "» Szamaństwo «", java.util.List.of("Opis » Przyzwij wiedźmę.", "", "Przyzwij:", "  » Wiedźma: 0/1", "",

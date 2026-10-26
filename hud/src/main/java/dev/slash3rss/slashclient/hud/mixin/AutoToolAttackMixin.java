@@ -23,6 +23,8 @@ abstract class AutoToolAttackMixin {
 		//#if MC >= 26.3
 		// a click on a campfire with a shaman's wand: the mob coming is remembered for SkyUp's line after
 		dev.slash3rss.slashclient.hud.skyup.SkyShaman.used((Minecraft) (Object) this);
+		// a bell rung, a sheep shorn, a case's chest clicked: for SkyUp's tasks
+		dev.slash3rss.slashclient.hud.skyup.SkyCounters.used((Minecraft) (Object) this);
 		//#endif
 	}
 }

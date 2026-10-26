@@ -43,7 +43,12 @@ public final class SkyCounters {
 	private SkyCounters() {}
 
 	/** The kind of a section, from its header. */
-	enum Kind { BREAK, PLACE, CRAFT, EAT, FISH, KILL, NEAR, SUMMON, OTHER }
+	enum Kind { BREAK, PLACE, CRAFT, EAT, FISH, KILL, NEAR, SUMMON, BELL, DRINK, CASE, SHEAR, TAME, BARTER, TRADE, HATCH, WITCH, OTHER }
+
+	/** Kinds whose requirement is the thing done, whatever its line says ("Uderz w dzwony", "Wypij mikstury", "Ręcznie"). */
+	private static boolean anyThing(Kind k) {
+		return k == Kind.BELL || k == Kind.DRINK || k == Kind.CASE || k == Kind.BARTER || k == Kind.HATCH || k == Kind.WITCH;
+	}
 
 	static Kind kind(SkyTaskParser.Section s) {
 		String h = s.header.toLowerCase(Locale.ROOT);
@@ -55,6 +60,15 @@ public final class SkyCounters {
 		if (h.startsWith("zabij")) return Kind.KILL;
 		if (h.startsWith("stój obok") || h.startsWith("stań obok")) return Kind.NEAR;
 		if (h.startsWith("przyzwij")) return Kind.SUMMON;
+		if (h.startsWith("uderz w dzwon")) return Kind.BELL;
+		if (h.startsWith("wypij mikstur")) return Kind.DRINK;
+		if (h.startsWith("otwórz skycase")) return Kind.CASE;
+		if (h.startsWith("ostrzyż")) return Kind.SHEAR;
+		if (h.startsWith("oswój")) return Kind.TAME;
+		if (h.startsWith("handluj z piglin")) return Kind.BARTER;
+		if (h.startsWith("wymień z piglin")) return Kind.TRADE;
+		if (h.startsWith("wykluj z jaj")) return Kind.HATCH;
+		if (h.startsWith("przeżyj ataki wiedźm")) return Kind.WITCH;
 		return Kind.OTHER;
 	}
 
@@ -111,7 +125,8 @@ public final class SkyCounters {
 				if (kind(s) != kind) continue;
 				for (SkyTaskParser.Req r : s.items) {
 					// counted only where the server gave a number to count on from
-					if (r.current < 0 || r.required < 0 || !matches(r.thing, what)) continue;
+					// counted only where the server gave a number; some kinds whatever the line names
+					if (r.current < 0 || r.required < 0 || (!anyThing(kind) && !matches(r.thing, what))) continue;
 					r.extra += amount;
 					any = true;
 				}
@@ -254,7 +269,123 @@ public final class SkyCounters {
 	public static void ate(Player player) {
 		if (!mine(player)) return;
 		ItemStack food = player.getUseItem();
-		if (!food.isEmpty()) add(Kind.EAT, item(food), 1);
+		if (food.isEmpty()) return;
+		// a potion drunk ("Wypij mikstury"); anything else eaten
+		if (food.is(Items.POTION)) add(Kind.DRINK, item(food), 1);
+		else add(Kind.EAT, item(food), 1);
+	}
+
+	// ---------- a right click, a case opened ----------
+
+	/** When the player last right-clicked a block (a case's chest is opened so), for "Otwórz SkyCase: Ręcznie". */
+	private static long blockUsedAt;
+
+	/** A right click: on a bell it rings ("Uderz w dzwony"); shears on a sheep that has wool ("Ostrzyż"). */
+	public static void used(Minecraft mc) {
+		if (mc.player == null || mc.level == null) return;
+		if (mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit && hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
+			blockUsedAt = System.currentTimeMillis();
+			if (mc.level.getBlockState(hit.getBlockPos()).is(Blocks.BELL)) add(Kind.BELL, Thing.of(false, false, false, false, "Dzwon"), 1);
+		} else if (mc.hitResult instanceof net.minecraft.world.phys.EntityHitResult hit
+			&& hit.getEntity() instanceof net.minecraft.world.entity.animal.sheep.Sheep sheep && sheep.readyForShearing()
+			&& (mc.player.getMainHandItem().is(Items.SHEARS) || mc.player.getOffhandItem().is(Items.SHEARS))) {
+			add(Kind.SHEAR, Thing.of(false, false, false, false, sheep.getType().getDescription().getString(), plEntity(sheep.getType())), 1);
+		}
+	}
+
+	/** A case won (SkyCase): one opening; by hand when the player had just clicked a chest (a key gem's run of wins counts once). */
+	public static void caseOpened() {
+		long now = System.currentTimeMillis();
+		if (now - blockUsedAt > 15_000) return;
+		blockUsedAt = 0;
+		add(Kind.CASE, Thing.of(false, false, false, false, "Ręcznie"), 1);
+	}
+
+	// ---------- around the player: tamed animals, piglins, eggs, witches' potions ----------
+
+	/** What was seen around the player last tick (entity id →): tamed or not, a piglin admiring gold, an egg or a witch's potion and where. */
+	private static final Map<Integer, Boolean> tamed = new HashMap<>(), admiring = new HashMap<>();
+	private static final Map<Integer, net.minecraft.world.phys.Vec3> eggs = new HashMap<>(), witchPotions = new HashMap<>();
+	private static final java.util.Set<Integer> seenItems = new java.util.HashSet<>(), seenChicks = new java.util.HashSet<>();
+	/** Where the player's eggs broke, and when ({x, y, z, ms}): a chick there right after hatched from it. */
+	private static final List<double[]> eggsBroken = new ArrayList<>();
+	/** Piglins that just let go of the gold (id → when): what lies by them right after is what they gave. */
+	private static final Map<Integer, Long> traded = new HashMap<>();
+
+	private static boolean wants(Kind... kinds) {
+		for (SkyTaskParser.Task t : SkyTasks.data().tasks.values()) for (SkyTaskParser.Section s : t.sections) for (Kind k : kinds) if (kind(s) == k) return true;
+		return false;
+	}
+
+	/** Each tick, when a task asks for it: what around the player became so since the last one. */
+	private static void watchAround(Minecraft mc) {
+		if (!wants(Kind.TAME, Kind.BARTER, Kind.TRADE, Kind.HATCH, Kind.WITCH)) return;
+		long now = System.currentTimeMillis();
+		var player = mc.player;
+		var box = player.getBoundingBox().inflate(24);
+		Map<Integer, net.minecraft.world.phys.Vec3> eggsNow = new HashMap<>(), potionsNow = new HashMap<>();
+		for (var e : mc.level.getEntities(player, box)) {
+			int id = e.getId();
+			// an animal by the player that is tamed now and was not ("Oswój")
+			boolean isTamed = e instanceof net.minecraft.world.entity.TamableAnimal ta ? ta.isTame()
+				: e instanceof net.minecraft.world.entity.animal.equine.AbstractHorse h && h.isTamed();
+			if (e instanceof net.minecraft.world.entity.TamableAnimal || e instanceof net.minecraft.world.entity.animal.equine.AbstractHorse) {
+				Boolean was = tamed.put(id, isTamed);
+				if (was != null && !was && isTamed && e.distanceTo(player) < 8)
+					add(Kind.TAME, Thing.of(false, false, false, false, e.getType().getDescription().getString(), plEntity(e.getType())), 1);
+			}
+			// a piglin taking gold to admire ("Handluj z piglinami"), and letting go of it (its barter drops)
+			if (e instanceof net.minecraft.world.entity.monster.piglin.Piglin piglin) {
+				boolean gold = piglin.getOffhandItem().is(Items.GOLD_INGOT);
+				Boolean was = admiring.put(id, gold);
+				if (was != null && !was && gold && e.distanceTo(player) < 16) add(Kind.BARTER, Thing.of(false, false, false, false, "Piglin"), 1);
+				if (was != null && was && !gold) traded.put(id, now);
+			}
+			// the player's thrown eggs, and the witches' thrown potions
+			if (e instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile p) {
+				if (p.getOwner() == player && net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(p.getItem().getItem()).getPath().endsWith("egg")) eggsNow.put(id, e.position());
+				if (p.getOwner() instanceof net.minecraft.world.entity.monster.Witch && p instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.AbstractThrownPotion) potionsNow.put(id, e.position());
+			}
+			// a chick where an egg of the player's broke ("Wykluj z jajek")
+			if (e instanceof net.minecraft.world.entity.animal.chicken.Chicken chick && chick.isBaby() && seenChicks.add(id)) {
+				for (var it = eggsBroken.iterator(); it.hasNext(); ) {
+					double[] b = it.next();
+					if (now - (long) b[3] < 2000 && e.distanceToSqr(b[0], b[1], b[2]) < 6.25) {
+						add(Kind.HATCH, Thing.of(true, false, false, false, "Kurczak"), 1);
+						it.remove();
+						break;
+					}
+				}
+			}
+			// what lies by a piglin that just bartered ("Wymień z piglinami: Obsydian")
+			if (e instanceof net.minecraft.world.entity.item.ItemEntity drop && seenItems.add(id)) {
+				for (var t : traded.entrySet()) {
+					var piglin = mc.level.getEntity(t.getKey());
+					if (piglin != null && now - t.getValue() < 3000 && piglin.distanceTo(e) < 3) {
+						add(Kind.TRADE, item(drop.getItem()), drop.getItem().getCount());
+						break;
+					}
+				}
+			}
+		}
+		// eggs gone since the last tick broke where they were last
+		for (var e : eggs.entrySet()) if (!eggsNow.containsKey(e.getKey())) eggsBroken.add(new double[] { e.getValue().x, e.getValue().y, e.getValue().z, now });
+		eggs.clear();
+		eggs.putAll(eggsNow);
+		eggsBroken.removeIf(b -> now - (long) b[3] > 2000);
+		// a witch's potion gone by the player: an attack lived through ("Przeżyj ataki wiedźmy")
+		for (var e : witchPotions.entrySet()) {
+			if (!potionsNow.containsKey(e.getKey()) && player.isAlive() && player.position().distanceTo(e.getValue()) < 5)
+				add(Kind.WITCH, Thing.of(false, false, false, false, "Wiedźma"), 1);
+		}
+		witchPotions.clear();
+		witchPotions.putAll(potionsNow);
+		traded.values().removeIf(at -> now - at > 3000);
+		// what was seen keeps to what is still around
+		if (tamed.size() > 2000) tamed.clear();
+		if (admiring.size() > 500) admiring.clear();
+		if (seenItems.size() > 5000) seenItems.clear();
+		if (seenChicks.size() > 2000) seenChicks.clear();
 	}
 
 	// ---------- the scoreboard: the island's level, the jobs' levels ----------
@@ -351,6 +482,11 @@ public final class SkyCounters {
 		SkyTasks.Data d = SkyTasks.data();
 		if (h.startsWith("posiadaj poziom wyspy")) return d.islandLevel;
 		if (h.startsWith("dotrzyj do poziomu w dungeon")) return d.dungeonLevel;
+		// "Posiadaj poziom: 60 poz.": the player's own experience level
+		if (h.equals("posiadaj poziom")) {
+			var player = Minecraft.getInstance().player;
+			return player == null ? -1 : player.experienceLevel;
+		}
 		if (d.jobs.isEmpty()) return -1;
 		if (h.startsWith("posiadaj poziom dowolnej pracy")) return d.jobs.values().stream().mapToLong(Long::longValue).max().orElse(-1);
 		if (h.startsWith("posiadaj sumę poziomów prac")) return d.jobs.values().stream().mapToLong(Long::longValue).sum();
@@ -429,6 +565,7 @@ public final class SkyCounters {
 		}
 		watchCrafting(mc, now);
 		readNear(mc);
+		watchAround(mc);
 		// the sidebar: read again each second
 		if (++tick % 20 == 0) {
 			readSidebar(mc);

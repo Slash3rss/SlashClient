@@ -295,11 +295,18 @@ public final class SkyCase {
 		String[] opened = parseOpened(line);
 		if (opened != null) {
 			// everyone's wins are said: only the player's own count, and the line names the case
-			if (mc.player != null && opened[0].equalsIgnoreCase(mc.player.getGameProfile().name()) && !again(opened[2], true, now)) won(caseNamed(opened[1]), opened[2], now);
+			if (mc.player != null && opened[0].equalsIgnoreCase(mc.player.getGameProfile().name()) && !again(opened[2], true, now)) {
+				won(caseNamed(opened[1]), opened[2], now);
+				// "Otwórz SkyCase: Ręcznie" (SkyTasks)
+				SkyCounters.caseOpened();
+			}
 			return;
 		}
 		String reward = parse(line);
-		if (reward != null && !again(reward, false, now)) won(reward, now);
+		if (reward != null && !again(reward, false, now)) {
+			won(reward, now);
+			SkyCounters.caseOpened();
+		}
 	}
 
 	/**

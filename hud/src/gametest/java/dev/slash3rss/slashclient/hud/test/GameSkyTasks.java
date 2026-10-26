@@ -234,6 +234,24 @@ public class GameSkyTasks implements FabricClientGameTest {
 			String incubator = context.computeOnClient(mc -> TestHooks.skyIncubator());
 			check(incubator.equals("5 -1 dynia wodorosty null"), "the incubator's level", incubator);
 			// shamanism: the witch's recipe under the task (nothing in hand: all missing), then a summon counted
+			// more counted live: a bell rung, a sheep shorn, the level, a case opened by hand
+			context.runOnClient(mc -> TestHooks.skyMoreTasks());
+			world.getServer().runCommand("xp set @a 61 levels");
+			world.getServer().runCommand("execute at @p run setblock ^ ^1 ^2 bell");
+			context.runOnClient(mc -> { mc.player.setXRot(0f); mc.player.setYRot(mc.player.getYRot()); });
+			context.waitTicks(10);
+			context.runOnClient(mc -> TestHooks.skyUse());
+			// the case's chest clicked (the bell is a block too), then SkyUp's win line
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCase.onChat("SkyCase » Wygrano: 5x Zaklęta butelka!"));
+			world.getServer().runCommand("execute at @p run setblock ^ ^1 ^2 air");
+			world.getServer().runCommand("execute at @p run summon sheep ^ ^ ^2 {NoAI:1b}");
+			world.getServer().runCommand("item replace entity @a weapon.mainhand with shears"); context.runOnClient(mc -> mc.player.setXRot(35f));
+			context.waitTicks(10);
+			context.runOnClient(mc -> TestHooks.skyUse());
+			String more = context.computeOnClient(mc -> TestHooks.skyMoreProgress());
+			check(more.equals("Uderz w dzwony=1 Ostrzyż=1 Otwórz SkyCase=1 Posiadaj poziom=61"), "bells, sheep, a case by hand, the level", more);
+			world.getServer().runCommand("kill @e[type=sheep]");
+			world.getServer().runCommand("item replace entity @a weapon.mainhand with air");
 			String shaman = context.computeOnClient(mc -> TestHooks.skyShaman());
 			check(shaman.contains("✖ Redstone Torch") && shaman.contains("✖ Glass Bottle") && shaman.contains("Rotten Flesh 0/20") && shaman.contains("✔ Rotten Flesh 20/20") && shaman.endsWith("count 1"), "shamanism", shaman);
 			// the daily task: nothing to remind of until it is tracked, then what is left of it
