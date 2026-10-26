@@ -390,14 +390,30 @@ const framesOfCapes = () => capeFrames ??= fetch('/v1/cosmetics')
 /** Whether animations are off: "Animacje: wył." in the footer (siteBanner.js), or the system's reduced motion. */
 export const motionOff = () => document.documentElement.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/**
+ * Each animated cape's frames, loaded and decoded before it starts to turn, and kept here so the
+ * browser keeps them too: a frame shown before it is there (or after the browser let it go) is a
+ * moment of nothing, and the cape stutters.
+ */
+const capeImages = new Map();
+function capeReady(id, n) {
+  let ready = capeImages.get(id);
+  if (!ready) {
+    const images = Array.from({ length: n }, (_, f) => Object.assign(new Image(), { src: `/vendor/capes/${id}_${f}.png` }));
+    ready = Promise.all(images.map((i) => i.decode().catch(() => {}))).then(() => images);
+    capeImages.set(id, ready);
+  }
+  return ready;
+}
+
 /** Makes a cape's picture (an element with the cape as its background) play its frames while it is on the page (still with animations off). */
 export function animateCape(node, id) {
-  node.dataset.capeAnim = id;
-  void framesOfCapes().then((frames) => {
+  void framesOfCapes().then(async (frames) => {
     const n = frames.get(id);
     if (!n) return;
-    // the frames loaded ahead, so turning them does not flicker
-    for (let f = 0; f < n; f++) new Image().src = `/vendor/capes/${id}_${f}.png`;
+    // it turns once all its frames are there
+    await capeReady(id, n);
+    node.dataset.capeAnim = id;
     capeTimer ??= setInterval(() => {
       if (document.hidden || motionOff()) return;
       capeTick++;
