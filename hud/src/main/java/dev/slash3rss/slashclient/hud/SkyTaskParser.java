@@ -111,6 +111,8 @@ public final class SkyTaskParser {
 	/** "1 x Generator kamienia z 10 zużytymi punktami ulepszeń": how many of what. */
 	private static final Pattern TIMES = Pattern.compile("^" + "(\\d+)" + "\\s*x\\s+(.+)$");
 	private static final Pattern SIZE = Pattern.compile("^\\d+\\s*x\\s*\\d+$");
+	/** "(/recipe)": a command to look something up, written into a task's text. */
+	private static final Pattern COMMAND_HINT = Pattern.compile("\\(\\s*/[^()]*\\)");
 	/** Bullets and other marks before a line's text. */
 	private static final Pattern BULLET = Pattern.compile("^[\\s▪■•●◆◇▸►*·]+");
 
@@ -153,6 +155,8 @@ public final class SkyTaskParser {
 		List<Block> out = new ArrayList<>();
 		for (String raw : lore) {
 			String s = raw == null ? "" : raw.replaceAll("§.", "").replaceAll("[\\u00A0\\u2007\\u202F]", " ");
+			// a command hint in the text ("Stwórz (/recipe):") is no requirement and no part of the header
+			s = COMMAND_HINT.matcher(s).replaceAll("");
 			String line = BULLET.matcher(s).replaceFirst("").strip();
 			if (line.isEmpty()) continue;
 			boolean indented = Character.isWhitespace(s.charAt(0)) && !s.strip().startsWith("▪");

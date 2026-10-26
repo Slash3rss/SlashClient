@@ -2444,6 +2444,22 @@ public final class TestHooks {
 		return SkyTasks.highlighted.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
 	}
 
+	/** For the test: "(/recipe)" in a task's text, on the header or after it, is neither a requirement nor part of the header. */
+	public static String skyCommandHint() {
+		StringBuilder out = new StringBuilder();
+		for (var lore : java.util.List.of(
+				java.util.List.of("Opis » Stwórz stojak.", "Stwórz (/recipe):", "  » Stojak na zbroję: 3/12", "Za ukończenie otrzymasz:", "» 200.0 SC"),
+				java.util.List.of("Opis » Stwórz stojak.", "Stwórz: (/recipe)", "  » Stojak na zbroję: 3/12", "Za ukończenie otrzymasz:", "» 200.0 SC"))) {
+			SkyTaskParser.Task t = SkyTaskParser.parse("ZBROJOWNIA", "» Stojak «", lore);
+			for (SkyTaskParser.Section s : t.sections) {
+				out.append(s.header).append('[');
+				for (SkyTaskParser.Req r : s.items) out.append(r.thing).append(' ').append(r.current).append('/').append(r.required).append(';');
+				out.append("] ");
+			}
+		}
+		return out.toString().strip();
+	}
+
 	/** For the test: a task the GUI still shows as handed in (admins' preview) is no task. */
 	public static boolean skyCompletedIsNoTask() {
 		return SkyTaskParser.parse("NOWICJUSZ", "» Ciasno, ale własno «", java.util.List.of("", "• Zadanie ukończone!", "", "Podgląd admina:", "Opis » Zwiększ poziom wyspy.", "Posiadaj poziom wyspy: 20 poz.", "Za ukończenie otrzymasz:", "» 200.0 SC")) == null

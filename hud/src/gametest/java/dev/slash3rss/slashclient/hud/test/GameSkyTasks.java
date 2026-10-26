@@ -178,6 +178,8 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.waitTicks(3);
 			check(context.computeOnClient(mc -> TestHooks.skyTasks()).contains("|Huta:"), "not SkyUp's line", "");
 			check(context.computeOnClient(mc -> TestHooks.skyCompletedIsNoTask()), "a handed-in task in the GUI is no task", "");
+			String hint = context.computeOnClient(mc -> TestHooks.skyCommandHint());
+			check(hint.equals("Stwórz[Stojak na zbroję 3/12;] Stwórz[Stojak na zbroję 3/12;]"), "\"(/recipe)\" in the task's text left out", hint);
 			// the two ready ones untracked again (the rest of the test tracks the quarry and Huta only)
 			context.runOnClient(mc -> TestHooks.skyTasksScreen(false, false));
 			context.waitTicks(15);
