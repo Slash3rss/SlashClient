@@ -368,6 +368,10 @@ public final class TestHooks {
 	}
 
 	/** The module the mouse is on in the open editor, or null. */
+	public static String editorSelected() {
+		return ((HudEditScreen) screen()).selectedId();
+	}
+
 	public static String editorHovered() {
 		return ((HudEditScreen) screen()).hoveredId();
 	}

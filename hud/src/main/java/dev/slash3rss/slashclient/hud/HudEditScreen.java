@@ -31,6 +31,8 @@ public class HudEditScreen extends Screen {
 	private static final int EDGE = 2;
 
 	private HudModule dragging;
+	/** The module last taken with the mouse: the arrows (or WASD) move it a pixel at a time, ten with Shift. */
+	private HudModule selected;
 	/**
 	 * The module the mouse is on: drawn over the others and grabbed by a click. It stays the one
 	 * while the mouse moves inside its box, also over another module lying on it, and changes only
@@ -837,7 +839,8 @@ public class HudEditScreen extends Screen {
 			if (!p.enabled) continue;
 			int[] b = box(m);
 			boolean hot = m == hovered;
-			Ui.roundOutline(g, b[0] - 2, b[1] - 2, b[2] + 4, b[3] + 4, 3, hot ? Ui.ACCENT_LIGHT : 0x66FFFFFF);
+			// the one the arrows move: in blue even when the mouse is elsewhere
+			Ui.roundOutline(g, b[0] - 2, b[1] - 2, b[2] + 4, b[3] + 4, 3, hot || m == selected ? Ui.ACCENT_LIGHT : 0x66FFFFFF);
 			if (hot) {
 				Component name = Ui.tr("slashclient-hud.module." + m.id());
 				// modules lying on each other: which of them this is, e.g. "FPS 1/2"
@@ -1442,6 +1445,7 @@ public class HudEditScreen extends Screen {
 		}
 		int[] b = box(m);
 		dragging = m;
+		selected = m;
 		grabX = e.x() - b[0];
 		grabY = e.y() - b[1];
 		pressX = e.x();
@@ -1579,6 +1583,15 @@ public class HudEditScreen extends Screen {
 			redo();
 			return true;
 		}
+		// the arrows or WASD move the module last taken, a pixel at a time (ten with Shift), not while typing
+		int[] step = nudgeStep(e);
+		if (step != null && !window && selected != null && SlashHud.config.placement(selected.id()).enabled
+			&& !(getFocused() instanceof EditBox field && field.isFocused())) {
+			int by = shift || shiftHeld() ? 10 : 1;
+			nudge(selected, step[0] * by, step[1] * by);
+			history.commit();
+			return true;
+		}
 		// Esc closes the window first, then the editor
 		if (e.key() == InputConstants.KEY_ESCAPE && window) {
 			if (settingsOf != null) settingsOf = null;
@@ -1591,6 +1604,42 @@ public class HudEditScreen extends Screen {
 		//#else
 		//$ return super.keyPressed(e.key(), e.scancode(), e.modifiers());
 		//#endif
+	}
+
+	/** Shift held on the keyboard (the key's own event may not carry it). */
+	private boolean shiftHeld() {
+		//#if MC >= 1.21.9
+		return minecraft.hasShiftDown();
+		//#else
+		//$ return Screen.hasShiftDown();
+		//#endif
+	}
+
+	/** Which way a key moves a module (x, y), or null when it is not an arrow or W, A, S, D. */
+	private static int[] nudgeStep(KeyEvent e) {
+		return switch (e.key()) {
+			case InputConstants.KEY_LEFT, InputConstants.KEY_A -> new int[] { -1, 0 };
+			case InputConstants.KEY_RIGHT, InputConstants.KEY_D -> new int[] { 1, 0 };
+			case InputConstants.KEY_UP, InputConstants.KEY_W -> new int[] { 0, -1 };
+			case InputConstants.KEY_DOWN, InputConstants.KEY_S -> new int[] { 0, 1 };
+			default -> null;
+		};
+	}
+
+	/** Moves a module by so many pixels, on the screen, kept to the third of it it ends in (as a drag does). */
+	private void nudge(HudModule m, int dx, int dy) {
+		int[] b = box(m);
+		HudConfig.Placement p = SlashHud.config.placement(m.id());
+		int x = Math.max(0, Math.min(width - b[2], b[0] + dx)), y = Math.max(0, Math.min(height - b[3], b[1] + dy));
+		p.ax = anchor(x + b[2] / 2.0, width);
+		p.ay = anchor(y + b[3] / 2.0, height);
+		p.dx = x - Math.round(p.ax * (width - b[2]));
+		p.dy = y - Math.round(p.ay * (height - b[3]));
+	}
+
+	/** For the in-game test: the module the arrows move. */
+	String selectedId() {
+		return selected == null ? null : selected.id();
 	}
 
 	// ---------- module boxes ----------

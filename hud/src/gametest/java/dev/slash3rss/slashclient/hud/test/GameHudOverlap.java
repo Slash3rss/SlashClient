@@ -160,6 +160,32 @@ public class GameHudOverlap implements FabricClientGameTest {
 			context.getInput().releaseKey(InputConstants.KEY_LALT);
 			context.waitTick();
 			hovered(context, "fps", "Alt+click on the inventory over the FPS");
+
+			// 5. the module last taken moves with the arrows and WASD: a pixel, ten with Shift; the undo button (Ctrl+Z) takes a step back
+			context.runOnClient(mc -> TestHooks.place("ping", 0, 0, 200, 120));
+			away(context);
+			int[] p0 = box(context, "ping");
+			cursor(context, p0[0] + 3, p0[1] + 3);
+			click(context);
+			if (!"ping".equals(context.computeOnClient(mc -> TestHooks.editorSelected()))) throw new AssertionError("A click did not select the ping");
+			away(context);
+			for (int i = 0; i < 3; i++) context.getInput().pressKey(InputConstants.KEY_RIGHT);
+			context.getInput().pressKey(InputConstants.KEY_D);
+			context.getInput().pressKey(InputConstants.KEY_W);
+			context.getInput().holdKey(InputConstants.KEY_LSHIFT);
+			context.getInput().pressKey(InputConstants.KEY_DOWN);
+			context.getInput().releaseKey(InputConstants.KEY_LSHIFT);
+			context.waitTicks(2);
+			int[] p1 = box(context, "ping");
+			if (p1[0] - p0[0] != 4 || p1[1] - p0[1] != 9) throw new AssertionError("The keys moved the ping by " + (p1[0] - p0[0]) + ", " + (p1[1] - p0[1]) + " (expected 4, 9)");
+			context.takeScreenshot("hudoverlap-nudged");
+			// (the undo button: the test's key presses carry no Ctrl)
+			double[] undoAt = context.computeOnClient(mc -> TestHooks.historyButton(false));
+			cursor(context, undoAt[0], undoAt[1]);
+			click(context);
+			context.waitTicks(2);
+			int[] p2 = box(context, "ping");
+			if (p2[1] - p0[1] != -1 || p2[0] - p0[0] != 4) throw new AssertionError("Undo did not take back the last step: " + (p2[0] - p0[0]) + ", " + (p2[1] - p0[1]));
 			context.setScreen(() -> null);
 		} finally {
 			context.runOnClient(mc -> TestHooks.modulesOn(was));

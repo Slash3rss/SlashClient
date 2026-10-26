@@ -478,9 +478,9 @@ public class SlashHud implements ClientModInitializer {
 		return v.matches("[0-9A-Za-z.+-]{1,32}") ? v : "";
 	}
 
-	/** The name the servers see (the client's brand): "slashclient", its version (when known) and the game's ("slashclient 0.9.50/1.21.4"). */
+	/** The name the servers see (the client's brand): "slashclient", its version (when known) and the game's, no spaces ("slashclient-0.9.50/1.21.4"). */
 	public static String brand() {
 		String v = version();
-		return "slashclient " + (v.isEmpty() ? "" : v + "/") + net.minecraft.SharedConstants.getCurrentVersion().name();
+		return "slashclient-" + (v.isEmpty() ? "" : v + "/") + net.minecraft.SharedConstants.getCurrentVersion().name();
 	}
 }

@@ -19,7 +19,7 @@ public class GameDungeon implements FabricClientGameTest {
 			// the window says SlashClient with the launcher's and the game's versions, servers are told "slashclient" with both
 			String branding = context.computeOnClient(mc -> TestHooks.branding());
 			String game = context.computeOnClient(mc -> net.minecraft.SharedConstants.getCurrentVersion().name());
-			if (!branding.equals("SlashClient 9.9.9-test · " + game + "|slashclient 9.9.9-test/" + game)) throw new AssertionError("Title and brand: " + branding);
+			if (!branding.equals("SlashClient 9.9.9-test · " + game + "|slashclient-9.9.9-test/" + game)) throw new AssertionError("Title and brand: " + branding);
 			String f3 = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.brandedVersion("Minecraft 1.21.4 (1.21.4/vanilla)"));
 			if (!f3.equals("SlashClient 9.9.9-test/1.21.4 (1.21.4/vanilla)")) throw new AssertionError("F3's version line: " + f3);
 			server.runCommand("time set 6000");
