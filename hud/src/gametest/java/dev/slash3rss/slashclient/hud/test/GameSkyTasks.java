@@ -114,6 +114,12 @@ public class GameSkyTasks implements FabricClientGameTest {
 				&& progress.contains("Ciasno, ale własno: Posiadaj poziom wyspy 20/20") && progress.contains("Dobra praca się opłaca: Posiadaj poziom dowolnej pracy ~7/5")
 				&& progress.contains("Moczykij: Dowolna ryba ~1/24") && progress.contains("Rybak: Wyłów ~8090/200000") && progress.contains("Mamut morski: Wyłów conajmniej ogromne ~1/45")
 				&& progress.contains("Piecoznawstwo: Piec przynajmniej Szczęście I 1/1"), "counted", progress);
+			// "Stój obok" counts creatures too: an iron golem nearby
+			world.getServer().runCommand("execute at @p run summon iron_golem ~3 ~ ~3 {NoAI:1b}");
+			context.waitTicks(40);
+			long golems = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.aroundForTest("Żelazny golem"));
+			check(golems == 1, "an iron golem nearby", String.valueOf(golems));
+			world.getServer().runCommand("kill @e[type=iron_golem]");
 			rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			check(rows.contains(" | ~31/128"), "HUD estimate", rows);
 			// the fish counter: the catch from the chat, its weight, size, species and quality

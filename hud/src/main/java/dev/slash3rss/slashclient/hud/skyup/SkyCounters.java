@@ -531,6 +531,8 @@ public final class SkyCounters {
 	private static final int SLICES_PER_TICK = 4;
 	/** Each kind of block in the last full read, and how many of it. */
 	private static Map<Block, Long> nearCounts = Map.of();
+	/** The creatures around in the last full read ("Stój obok: Żelazny golem"), each as its names. */
+	private static List<Thing> nearMobs = List.of();
 	private static Map<Block, Long> reading = new HashMap<>();
 	private static BlockPos readAt;
 	private static int readX = Integer.MIN_VALUE;
@@ -561,10 +563,21 @@ public final class SkyCounters {
 		}
 		if (readX > NEAR_RADIUS) {
 			nearCounts = reading;
+			// and the creatures in the same cube (not the player)
+			List<Thing> mobs = new ArrayList<>();
+			var box = new net.minecraft.world.phys.AABB(readAt).inflate(NEAR_RADIUS);
+			for (var living : mc.level.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class, box, e -> e != mc.player && e.isAlive()))
+				mobs.add(Thing.of(living.isBaby(), false, false, false, living.getType().getDescription().getString(), plEntity(living.getType()), living.getName().getString()));
+			nearMobs = mobs;
 			readX = Integer.MIN_VALUE;
 			nearRead = true;
 			near.clear();
 		}
+	}
+
+	/** For the in-game test: what "Stój obok" counts of a thing around the player now. */
+	public static long aroundForTest(String thing) {
+		return around(Minecraft.getInstance(), thing);
 	}
 
 	/** How many blocks named `thing` are around the player (an estimate of "Stój obok"), or -1 before the first read. */
@@ -577,6 +590,7 @@ public final class SkyCounters {
 				BlockState state = b.defaultBlockState();
 				if (matches(k, Thing.of(false, state.is(BlockTags.LOGS), state.is(BlockTags.SAPLINGS), false, b.getName().getString(), plBlock(b)))) n += e.getValue();
 			}
+			for (Thing mob : nearMobs) if (matches(k, mob)) n++;
 			return n;
 		});
 	}
