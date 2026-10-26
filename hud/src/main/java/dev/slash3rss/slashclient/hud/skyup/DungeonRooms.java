@@ -369,9 +369,12 @@ public final class DungeonRooms {
 			int r = roomAt((int) h[0], (int) h[1], 12);
 			if (r < 0 || r == startRoom()) continue;
 			Room room = rooms.get(r);
-			if (h[3] > now) room.respawnAt = Math.max(room.respawnAt, h[3]);
+			// a room can have up to three spawners: the first to send reinforcements is when the room fills again
+			if (h[3] > now) room.respawnAt = room.respawnAt == 0 ? h[3] : Math.min(room.respawnAt, h[3]);
 			else if (h[2] >= 0) room.left = room.left < 0 ? (int) h[2] : room.left + (int) h[2];
 		}
+		// and it is cleared only once none of them has mobs left
+		for (Room room : rooms) if (room.left > 0) room.respawnAt = 0;
 		boolean[] hadMobs = new boolean[rooms.size()];
 		List<int[]> stillInfested = new ArrayList<>();
 		for (int[] p : infested) {
@@ -408,7 +411,7 @@ public final class DungeonRooms {
 				it.remove();
 				continue;
 			}
-			if (rooms.get(r).respawnAt == 0) rooms.get(r).respawnAt = c[2];
+			if (rooms.get(r).respawnAt == 0 && rooms.get(r).left <= 0) rooms.get(r).respawnAt = c[2];
 		}
 	}
 

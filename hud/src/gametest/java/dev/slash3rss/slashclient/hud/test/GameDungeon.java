@@ -143,6 +143,17 @@ public class GameDungeon implements FabricClientGameTest {
 			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
 			if (!rooms.contains("cleared 2")) throw new AssertionError("Hologram not read: " + rooms);
 			context.takeScreenshot("dungeon-holograms");
+			// a room can have up to three spawners: one cleared and one still with mobs is no cleared room yet
+			server.runCommand(String.format("summon armor_stand %d %d %d {Tags:[\"second\"],Invisible:1b,NoGravity:1b,CustomNameVisible:1b," + name("\"Pozostałe moby: 2\"") + "}", x0 - 9, y + 1, z0 - 12));
+			context.waitTicks(30);
+			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
+			if (!rooms.contains("cleared 1")) throw new AssertionError("A room with a spawner still full counted as cleared: " + rooms);
+			// that one cleared too: the room is cleared again
+			server.runCommand("kill @e[tag=second]");
+			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,CustomNameVisible:1b," + name("\"Posiłki za: 50s\"") + "}", x0 - 9, y + 1, z0 - 12));
+			context.waitTicks(30);
+			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
+			if (!rooms.contains("cleared 2")) throw new AssertionError("Both spawners cleared, but the room is not: " + rooms);
 			// a spawner block up on a ledge in the room south-east: visited, it is a room with a spawner
 			server.runCommand(String.format("fill %d %d %d %d %d %d stone", x0 + 15, y, z0 + 15, x0 + 16, y + 2, z0 + 16));
 			server.runCommand(String.format("setblock %d %d %d spawner", x0 + 15, y + 3, z0 + 15));
