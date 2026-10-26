@@ -2,20 +2,20 @@ package dev.slash3rss.slashclient.hud;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import dev.slash3rss.slashclient.hud.spotify.SpotifyNow;
-import dev.slash3rss.slashclient.hud.spotify.SpotifySettings;
+import dev.slash3rss.slashclient.hud.nowplaying.NowPlaying;
+import dev.slash3rss.slashclient.hud.nowplaying.NowPlayingSettings;
 
 /**
- * For the in-game test of the "Now playing" module (GameSpotify): answers as the launcher's bridge
+ * For the in-game test of the "Now playing" module (GameNowPlaying): answers as the launcher's bridge
  * gives them (/spotify/now) fed in, a made-up cover, the module's settings set, what it shows.
  */
-public final class SpotifyTestHooks {
-	private SpotifyTestHooks() {}
+public final class NowPlayingTestHooks {
+	private NowPlayingTestHooks() {}
 
 	public static final String COVER = "ab67616d00004851c0ffee00c0ffee00c0ffee00";
 
-	private static SpotifyModule module() {
-		for (HudModule m : SlashHud.MODULES) if (m instanceof SpotifyModule s) return s;
+	private static NowPlayingModule module() {
+		for (HudModule m : SlashHud.MODULES) if (m instanceof NowPlayingModule s) return s;
 		throw new IllegalStateException("no Spotify module");
 	}
 
@@ -48,7 +48,7 @@ public final class SpotifyTestHooks {
 	}
 
 	public static void feed(JsonObject answer) {
-		SpotifyNow.sampleForTest(answer);
+		NowPlaying.sampleForTest(answer);
 	}
 
 	/** The parser on odd answers: what it keeps, one problem per line ("ok" when right). */
@@ -56,8 +56,8 @@ public final class SpotifyTestHooks {
 		StringBuilder bad = new StringBuilder();
 		JsonObject odd = answer(true, "Tytuł\u0000z\nśmieciami", true, 999_999, 200_000, "A", "B");
 		odd.getAsJsonObject("playing").addProperty("cover", "../../etc/passwd");
-		SpotifyNow.accept(odd);
-		SpotifyNow.Track t = SpotifyNow.state().track();
+		NowPlaying.accept(odd);
+		NowPlaying.Track t = NowPlaying.state().track();
 		if (t == null) bad.append("no track\n");
 		else {
 			if (!t.title().equals("Tytuł z śmieciami")) bad.append("title ").append(t.title()).append('\n');
@@ -66,36 +66,36 @@ public final class SpotifyTestHooks {
 			if (!t.artistLine().equals("A, B")) bad.append("artists ").append(t.artistLine()).append('\n');
 		}
 		// the time moves on while it plays, not while it is paused
-		SpotifyNow.accept(answer(true, "X", true, 10_000, 200_000));
-		SpotifyNow.State s = SpotifyNow.state();
+		NowPlaying.accept(answer(true, "X", true, 10_000, 200_000));
+		NowPlaying.State s = NowPlaying.state();
 		if (s.progress(s.at() + 2500) != 12_500) bad.append("playing progress ").append(s.progress(s.at() + 2500)).append('\n');
-		SpotifyNow.accept(answer(true, "X", false, 10_000, 200_000));
-		s = SpotifyNow.state();
+		NowPlaying.accept(answer(true, "X", false, 10_000, 200_000));
+		s = NowPlaying.state();
 		if (s.progress(s.at() + 2500) != 10_000) bad.append("paused progress ").append(s.progress(s.at() + 2500)).append('\n');
-		SpotifyNow.accept(answer(true, "X", true, 199_000, 200_000));
-		s = SpotifyNow.state();
+		NowPlaying.accept(answer(true, "X", true, 199_000, 200_000));
+		s = NowPlaying.state();
 		if (s.progress(s.at() + 5000) != 200_000) bad.append("past the end ").append(s.progress(s.at() + 5000)).append('\n');
-		SpotifyNow.accept(null);
-		if (SpotifyNow.state().linked() || SpotifyNow.state().track() != null) bad.append("null answer\n");
+		NowPlaying.accept(null);
+		if (NowPlaying.state().linked() || NowPlaying.state().track() != null) bad.append("null answer\n");
 		// where it plays: kept when known, "" from older launchers (counted as Spotify), odd ones dropped
-		SpotifyNow.accept(answer(true, "browser", "X", true, 0, 0));
-		if (!"browser".equals(SpotifyNow.state().track().source()) || SpotifyNow.state().track().fromSpotify()) bad.append("browser source\n");
-		SpotifyNow.accept(answer(true, "", "X", true, 0, 0));
-		if (!SpotifyNow.state().track().fromSpotify()) bad.append("older launcher not Spotify\n");
-		SpotifyNow.accept(answer(true, "<script>", "X", true, 0, 0));
-		if (!SpotifyNow.state().track().source().isEmpty()) bad.append("odd source kept\n");
-		if (!SpotifyModule.time(61_000).equals("1:01") || !SpotifyModule.time(3_725_000).equals("1:02:05")) bad.append("times ").append(SpotifyModule.time(61_000)).append('\n');
+		NowPlaying.accept(answer(true, "browser", "X", true, 0, 0));
+		if (!"browser".equals(NowPlaying.state().track().source()) || NowPlaying.state().track().fromSpotify()) bad.append("browser source\n");
+		NowPlaying.accept(answer(true, "", "X", true, 0, 0));
+		if (!NowPlaying.state().track().fromSpotify()) bad.append("older launcher not Spotify\n");
+		NowPlaying.accept(answer(true, "<script>", "X", true, 0, 0));
+		if (!NowPlaying.state().track().source().isEmpty()) bad.append("odd source kept\n");
+		if (!NowPlayingModule.time(61_000).equals("1:01") || !NowPlayingModule.time(3_725_000).equals("1:02:05")) bad.append("times ").append(NowPlayingModule.time(61_000)).append('\n');
 		return bad.isEmpty() ? "ok" : bad.toString();
 	}
 
 	public static void cover(byte[] png) throws java.io.IOException {
-		SpotifyNow.sampleCoverForTest(COVER, png);
+		NowPlaying.sampleCoverForTest(COVER, png);
 	}
 
 	/** The module on, alone on the HUD's right side where the screenshots look, with these settings. */
 	public static void configure(String layout, boolean cover, int coverSize, boolean album, boolean progress, boolean times, String accent, int width, boolean marquee) {
 		HudConfig cfg = SlashHud.config;
-		SpotifySettings s = new SpotifySettings();
+		NowPlayingSettings s = new NowPlayingSettings();
 		s.layout = layout;
 		s.cover = cover;
 		s.coverSize = coverSize;
@@ -115,7 +115,7 @@ public final class SpotifyTestHooks {
 		p.scale = 1.5f;
 	}
 
-	public static void set(java.util.function.Consumer<SpotifySettings> change) {
+	public static void set(java.util.function.Consumer<NowPlayingSettings> change) {
 		change.accept(SlashHud.config.spotify);
 	}
 
@@ -126,13 +126,13 @@ public final class SpotifyTestHooks {
 
 	/** The settings' note on where it reads from. */
 	public static String infoKey() {
-		return SpotifyModule.infoKey();
+		return NowPlayingModule.infoKey();
 	}
 
 	public static void reset() {
-		SpotifyNow.sampleForTest(null);
+		NowPlaying.sampleForTest(null);
 		SlashHud.config.placement("spotify").enabled = false;
 		SlashHud.config.placement("spotify").scale = 1f;
-		SlashHud.config.spotify = new SpotifySettings();
+		SlashHud.config.spotify = new NowPlayingSettings();
 	}
 }

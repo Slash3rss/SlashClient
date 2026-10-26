@@ -235,7 +235,7 @@ public class SlashHud implements ClientModInitializer {
 			dev.slash3rss.slashclient.hud.social.FriendSuggestions.tick(mc);
 			BenchDisplay.tick(mc);
 			StreamChatModule.tick(mc);
-			SpotifyModule.tick(mc);
+			NowPlayingModule.tick(mc);
 			//#if MC >= 26.3
 			SkyTasks.tick(mc);
 			SkyCase.tick(mc);

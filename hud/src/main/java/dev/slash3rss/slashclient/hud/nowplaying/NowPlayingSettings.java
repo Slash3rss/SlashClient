@@ -1,7 +1,7 @@
-package dev.slash3rss.slashclient.hud.spotify;
+package dev.slash3rss.slashclient.hud.nowplaying;
 
 /** The "Now playing" module's own settings (in config/slashclient-hud.json as "spotify", its id from when it showed only Spotify). */
-public final class SpotifySettings {
+public final class NowPlayingSettings {
 	public static final String[] LAYOUTS = { "card", "line" };
 	public static final String[] ACCENTS = { "spotify", "theme" };
 
@@ -32,10 +32,10 @@ public final class SpotifySettings {
 	public boolean onlySpotify = false;
 
 	/** For Gson, so missing fields keep the defaults above. */
-	public SpotifySettings() {}
+	public NowPlayingSettings() {}
 
 	/** Values from a hand-edited file or an older version, kept in range. */
-	public SpotifySettings checked() {
+	public NowPlayingSettings checked() {
 		layout = oneOf(layout, LAYOUTS);
 		accent = oneOf(accent, ACCENTS);
 		coverSize = Math.max(16, Math.min(64, coverSize));
@@ -43,8 +43,8 @@ public final class SpotifySettings {
 		return this;
 	}
 
-	public SpotifySettings copy() {
-		SpotifySettings s = new SpotifySettings();
+	public NowPlayingSettings copy() {
+		NowPlayingSettings s = new NowPlayingSettings();
 		s.layout = layout;
 		s.cover = cover;
 		s.coverSize = coverSize;

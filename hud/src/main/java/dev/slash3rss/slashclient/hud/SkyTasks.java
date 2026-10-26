@@ -916,7 +916,7 @@ public final class SkyTasks {
 			int over = mc.font.width(r.left) - room;
 			if (over > 0 && SlashHud.config.skyTasksScroll) {
 				// too long: it slides along and back (as in the Spotify module), each row on its own clock
-				SpotifyModule.slide(g, mc, r.left, left + r.indent, row, room, Modules.color(r.leftColor), Modules.shadow(), Ui.marqueeShift("skytasks:" + r.left, over));
+				NowPlayingModule.slide(g, mc, r.left, left + r.indent, row, room, Modules.color(r.leftColor), Modules.shadow(), Ui.marqueeShift("skytasks:" + r.left, over));
 			} else {
 				String text = over > 0 ? mc.font.plainSubstrByWidth(r.left, room - mc.font.width("…")) + "…" : r.left;
 				Modules.text(g, mc, text, left + r.indent, row, r.leftColor);

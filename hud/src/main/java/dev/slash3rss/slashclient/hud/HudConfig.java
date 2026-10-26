@@ -525,8 +525,8 @@ public final class HudConfig {
 	/** The live chats of a Twitch and a Kick channel on the HUD (see StreamChatModule). */
 	public dev.slash3rss.slashclient.hud.streams.StreamChatSettings twitchChat = new dev.slash3rss.slashclient.hud.streams.StreamChatSettings();
 	public dev.slash3rss.slashclient.hud.streams.StreamChatSettings kickChat = new dev.slash3rss.slashclient.hud.streams.StreamChatSettings();
-	/** "Now playing" (see SpotifyModule; "spotify" from when it showed only Spotify): what shows and how. */
-	public dev.slash3rss.slashclient.hud.spotify.SpotifySettings spotify = new dev.slash3rss.slashclient.hud.spotify.SpotifySettings();
+	/** "Now playing" (see NowPlayingModule; "spotify" from when it showed only Spotify): what shows and how. */
+	public dev.slash3rss.slashclient.hud.nowplaying.NowPlayingSettings spotify = new dev.slash3rss.slashclient.hud.nowplaying.NowPlayingSettings();
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("slashclient-hud.json");
@@ -937,7 +937,7 @@ public final class HudConfig {
 		nametagPing = other.nametagPing;
 		twitchChat = other.twitchChat == null ? new dev.slash3rss.slashclient.hud.streams.StreamChatSettings() : other.twitchChat.copy();
 		kickChat = other.kickChat == null ? new dev.slash3rss.slashclient.hud.streams.StreamChatSettings() : other.kickChat.copy();
-		spotify = other.spotify == null ? new dev.slash3rss.slashclient.hud.spotify.SpotifySettings() : other.spotify.copy();
+		spotify = other.spotify == null ? new dev.slash3rss.slashclient.hud.nowplaying.NowPlayingSettings() : other.spotify.copy();
 		save();
 	}
 

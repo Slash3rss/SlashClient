@@ -1,4 +1,4 @@
-package dev.slash3rss.slashclient.hud.spotify;
+package dev.slash3rss.slashclient.hud.nowplaying;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -30,8 +30,8 @@ import java.util.Map;
  * track; the last few stay as textures. Launchers 0.9.36–0.9.38 asked a linked Spotify account
  * instead: their answers read the same, without `source`.
  */
-public final class SpotifyNow {
-	private SpotifyNow() {}
+public final class NowPlaying {
+	private NowPlaying() {}
 
 	/** A track (or a podcast's episode) as the launcher passes it on; `source`: "spotify", "browser", "other" ("" from older launchers). */
 	public record Track(String kind, String title, List<String> artists, String album, String cover, long durationMs, long progressMs, boolean playing, String source) {
@@ -89,7 +89,7 @@ public final class SpotifyNow {
 
 	/** From the game's tick: asks the launcher while the module is on, stops when it is switched off. */
 	public static void tick(boolean on, boolean onlySpotify) {
-		SpotifyNow.onlySpotify = onlySpotify;
+		NowPlaying.onlySpotify = onlySpotify;
 		if (sample || !bridged()) return;
 		wanted = on;
 		if (on) wantedAt = System.currentTimeMillis();
@@ -98,7 +98,7 @@ public final class SpotifyNow {
 
 	private static synchronized void start() {
 		if (thread != null && thread.isAlive()) return;
-		thread = new Thread(SpotifyNow::run, "SlashClient Spotify");
+		thread = new Thread(NowPlaying::run, "SlashClient Spotify");
 		thread.setDaemon(true);
 		thread.start();
 	}
@@ -231,13 +231,13 @@ public final class SpotifyNow {
 				throw new IllegalStateException("too big");
 			}
 			Minecraft.getInstance().execute(() -> {
-				synchronized (SpotifyNow.class) {
+				synchronized (NowPlaying.class) {
 					register(coverId, img);
 				}
 			});
 		} catch (Exception e) {
 			SlashHud.LOG.debug("SlashClient: Spotify cover {}: {}", coverId, e.toString());
-			synchronized (SpotifyNow.class) {
+			synchronized (NowPlaying.class) {
 				covers.put(coverId, new Cover(null, true));
 			}
 		}

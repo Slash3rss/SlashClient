@@ -291,7 +291,7 @@ public final class Catalog {
 				}
 				case "fps" -> settings.add(new Toggle("slashclient-hud.set.fpsColored", () -> cfg.fpsColored, v -> cfg.fpsColored = v));
 				case "twitchchat", "kickchat" -> streamChat(settings, m.id().equals("kickchat") ? () -> cfg.kickChat : () -> cfg.twitchChat, m.id().equals("kickchat"));
-				case "spotify" -> dev.slash3rss.slashclient.hud.SpotifyModule.settings(settings, () -> SlashHud.config.spotify);
+				case "spotify" -> dev.slash3rss.slashclient.hud.NowPlayingModule.settings(settings, () -> SlashHud.config.spotify);
 				default -> {}
 			}
 			if (m.id().equals("effects")) settings.add(new Toggle("slashclient-hud.effectIcons", () -> cfg.effectIcons, v -> cfg.effectIcons = v));
