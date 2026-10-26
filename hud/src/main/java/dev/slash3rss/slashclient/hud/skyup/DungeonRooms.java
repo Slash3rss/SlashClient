@@ -84,6 +84,8 @@ public final class DungeonRooms {
 		/** When its mobs come back (0: not cleared), and how many are left (-1: not known). */
 		long respawnAt;
 		int left = -1;
+		/** Each spawner's hologram in it (up to three): where it is, its mobs left (-1) and when they come back (0). */
+		final List<long[]> spawnerLabels = new ArrayList<>();
 
 		int centerX() {
 			return (int) (sumX / pixels);
@@ -372,6 +374,7 @@ public final class DungeonRooms {
 			// a room can have up to three spawners: the first to send reinforcements is when the room fills again
 			if (h[3] > now) room.respawnAt = room.respawnAt == 0 ? h[3] : Math.min(room.respawnAt, h[3]);
 			else if (h[2] >= 0) room.left = room.left < 0 ? (int) h[2] : room.left + (int) h[2];
+			room.spawnerLabels.add(new long[] { h[0], h[1], h[3] > now ? -1 : h[2], h[3] > now ? h[3] : 0 });
 		}
 		// and it is cleared only once none of them has mobs left
 		for (Room room : rooms) if (room.left > 0) room.respawnAt = 0;
@@ -706,11 +709,33 @@ public final class DungeonRooms {
 		long now = System.currentTimeMillis();
 		for (Room room : rooms) {
 			if (room.pixels == 0) continue;
+			// several spawners: each its own smaller time (or mobs left) where it stands
+			if (cfg.dungeonCleared && room.spawnerLabels.size() > 1) {
+				// spawners close together (or the map zoomed out): the labels one under another, not over each other
+				List<int[]> placed = new ArrayList<>();
+				for (long[] s : room.spawnerLabels) {
+					String text = s[3] > now ? clock((s[3] - now + 999) / 1000) : s[2] > 0 ? "☠" + s[2] : null;
+					if (text == null) continue;
+					int sx = Math.round((s[0] + 0.5f - viewX) * scale), sz = Math.round((s[1] + 0.5f - viewZ) * scale);
+					if (!shown.test(sx, sz)) continue;
+					int half = Math.round((mc.font.width(text) + 5) * 0.35f) + 1;
+					boolean moved = true;
+					while (moved) {
+						moved = false;
+						for (int[] p : placed) if (Math.abs(p[0] - sx) < half + p[2] && Math.abs(p[1] - sz) < 8) {
+							sz = p[1] + 8;
+							moved = true;
+						}
+					}
+					placed.add(new int[] { sx, sz, half });
+					plate(g, mc, text, ox + sx, oy + sz, s[3] > now ? 0xFF4ADE80 : 0xFFF87171, 0.7f);
+				}
+				continue;
+			}
 			List<String> lines = new ArrayList<>();
 			List<Integer> colors = new ArrayList<>();
 			if (cfg.dungeonCleared && room.respawnAt > now) {
-				long left = (room.respawnAt - now + 999) / 1000;
-				lines.add(left / 60 + ":" + String.format("%02d", left % 60));
+				lines.add(clock((room.respawnAt - now + 999) / 1000));
 				colors.add(0xFF4ADE80);
 			} else if (cfg.dungeonCleared && room.left > 0) {
 				// mobs left, as the spawner's hologram says
@@ -722,14 +747,26 @@ public final class DungeonRooms {
 			if (!shown.test(sx, sz)) continue;
 			// the font's own size, on a dark plate with a rim, so it reads on any floor
 			int top = oy + sz - lines.size() * 5;
-			for (int i = 0; i < lines.size(); i++) {
-				String s = lines.get(i);
-				int w = mc.font.width(s), lx = ox + sx - w / 2, ly = top + i * 10;
-				g.fill(lx - 3, ly - 2, lx + w + 2, ly + 9, 0xFF000000);
-				g.fill(lx - 2, ly - 1, lx + w + 1, ly + 8, 0xFF1F2937);
-				g.text(mc.font, s, lx, ly, colors.get(i), true);
-			}
+			for (int i = 0; i < lines.size(); i++) plate(g, mc, lines.get(i), ox + sx, top + i * 10 + 4, colors.get(i), 1f);
 		}
+	}
+
+	/** "1:05" for 65 seconds. */
+	private static String clock(long seconds) {
+		return seconds / 60 + ":" + String.format("%02d", seconds % 60);
+	}
+
+	/** A text centred on (cx, cy) on a dark plate with a rim, at `size` of the font's own. */
+	private static void plate(GuiGraphicsExtractor g, Minecraft mc, String s, int cx, int cy, int color, float size) {
+		var pose = g.pose();
+		pose.pushMatrix();
+		pose.translate(cx, cy);
+		pose.scale(size, size);
+		int w = mc.font.width(s), lx = -w / 2, ly = -4;
+		g.fill(lx - 3, ly - 2, lx + w + 2, ly + 9, 0xFF000000);
+		g.fill(lx - 2, ly - 1, lx + w + 1, ly + 8, 0xFF1F2937);
+		g.text(mc.font, s, lx, ly, color, true);
+		pose.popMatrix();
 	}
 
 	/** One kind of loot in the room the player is in (or was in last): taken, and all found. */

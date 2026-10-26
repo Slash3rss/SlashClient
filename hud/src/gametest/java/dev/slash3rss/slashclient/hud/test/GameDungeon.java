@@ -154,6 +154,11 @@ public class GameDungeon implements FabricClientGameTest {
 			context.waitTicks(30);
 			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
 			if (!rooms.contains("cleared 2")) throw new AssertionError("Both spawners cleared, but the room is not: " + rooms);
+			// each of the two spawners with its own smaller time where it stands
+			context.runOnClient(mc -> TestHooks.dungeonFull(true));
+			context.waitTicks(10);
+			context.takeScreenshot("dungeon-spawner-times");
+			context.runOnClient(mc -> TestHooks.dungeonFull(false));
 			// a spawner block up on a ledge in the room south-east: visited, it is a room with a spawner
 			server.runCommand(String.format("fill %d %d %d %d %d %d stone", x0 + 15, y, z0 + 15, x0 + 16, y + 2, z0 + 16));
 			server.runCommand(String.format("setblock %d %d %d spawner", x0 + 15, y + 3, z0 + 15));
