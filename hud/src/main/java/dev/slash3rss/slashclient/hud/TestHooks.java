@@ -2213,6 +2213,24 @@ public final class TestHooks {
 		return (before == null ? "null" : before.getString()) + " | " + (after == null ? "null" : after.getString());
 	}
 
+	/** A generator's window as SkyUp sends it (the owner's dump): the points read as spent in it. */
+	public static int skyGeneratorSpent(int timeLevel, int coalLevel) {
+		java.util.List<net.minecraft.world.item.ItemStack> items = new java.util.ArrayList<>();
+		for (int i = 0; i < 54; i++) items.add(net.minecraft.world.item.ItemStack.EMPTY);
+		items.set(1, task(net.minecraft.world.item.Items.PAPER, "Punkty ulepszeń", "▪ Dostępne punkty ulepszeń » 26 pkt", "▪ Wykopane bloki » 1 749 bloków"));
+		items.set(9, task(net.minecraft.world.item.Items.CLOCK, "Czas regeneracji", "▪ Czas regeneracji » 2s"));
+		items.set(10, task(net.minecraft.world.item.Items.PAPER, "Postęp", "▪ Poziom » " + timeLevel + " / 10"));
+		items.set(11, task(net.minecraft.world.item.Items.PAPER, "Postęp", "▪ Poziom » " + timeLevel + " / 10"));
+		items.set(12, task(net.minecraft.world.item.Items.PAPER, "Ulepsz", "▪ Koszty ulepszenia:", "  » ✔ 1 pkt"));
+		items.set(18, task(net.minecraft.world.item.Items.COAL, "Węgiel", "▪ Szansa na drop » 0,3%"));
+		items.set(19, task(net.minecraft.world.item.Items.PAPER, "Postęp", "▪ Poziom » " + coalLevel + " / 10"));
+		items.set(20, task(net.minecraft.world.item.Items.PAPER, "Postęp", "▪ Poziom » " + coalLevel + " / 10"));
+		items.set(23, task(net.minecraft.world.item.Items.RAW_IRON, "Ruda żelaza", "▪ Szansa na drop » 0,2%"));
+		items.set(24, task(net.minecraft.world.item.Items.PAPER, "Postęp", "▪ Poziom » 1 / 10"));
+		items.set(25, task(net.minecraft.world.item.Items.PAPER, "Postęp", "▪ Poziom » 1 / 10"));
+		return SkyGenerator.read(items);
+	}
+
 	/** The HUD's first row with the daily task tracked for a moment ("none" without the task). */
 	public static String skyDailyOnTop() {
 		var mc = net.minecraft.client.Minecraft.getInstance();

@@ -59,6 +59,8 @@ public final class SkyTasks {
 		 * HUD with all its tasks. Null until the player picks one: then the category last open shows instead.
 		 */
 		Set<String> trackedCategories;
+		/** The most upgrade points seen spent in a stone generator (its window; SkyGenerator), or null before any. */
+		Integer generatorSpent;
 		/** From SkyUp's sidebar: the island's level (-1: not seen), each job's level. */
 		long islandLevel = -1;
 		Map<String, Long> jobs = new LinkedHashMap<>();
@@ -78,7 +80,7 @@ public final class SkyTasks {
 	private static Path loadedFrom;
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static Data data;
-	private static boolean dirty;
+	static boolean dirty;
 	private static int tick;
 	static KeyMapping trackKey;
 	/** The tier whose GUI was open last: its count is shown on the HUD. */
@@ -184,6 +186,11 @@ public final class SkyTasks {
 		}
 		if (screen instanceof AbstractContainerScreen<?> c && challengesGui(c)) {
 			if (++tick % 5 == 0) read(c);
+		} else if (screen instanceof AbstractContainerScreen<?> c && ++tick % 5 == 0) {
+			// a generator's window: the upgrade points spent in it (a task asks for them)
+			List<net.minecraft.world.item.ItemStack> items = new ArrayList<>();
+			for (Slot slot : c.getMenu().slots) if (!(slot.container instanceof Inventory)) items.add(slot.getItem());
+			SkyGenerator.seen(items);
 		} else if (dirty && System.currentTimeMillis() - savedAt > 30_000) {
 			// what the counters add is saved now and then, not at every block
 			save();
@@ -640,6 +647,12 @@ public final class SkyTasks {
 			long have = carried(mc, r.thing);
 			if (have >= 0) return have;
 		}
+		// "Generator kamienia z 10 zużytymi punktami ulepszeń": the points read from the generator's window
+		int points = SkyGenerator.needed(r.thing);
+		if (points > 0 && r.current < 0) {
+			int spent = SkyGenerator.spent();
+			return spent < 0 ? -1 : spent >= points ? Math.max(1, r.required) : 0;
+		}
 		// "Stój obok": what is around now
 		if (r.current < 0 && SkyCounters.kind(s) == SkyCounters.Kind.NEAR) return SkyCounters.around(mc, r.thing);
 		// the island's and the jobs' levels: from the sidebar
@@ -812,6 +825,12 @@ public final class SkyTasks {
 						: (c >= 0 ? (estimated(s, r) || (stale && !s.inventory()) ? "~" : "") + c + "/" : "") + r.required + (r.unit.isEmpty() ? "" : " " + r.unit);
 					String thing = r.thing.equals(s.header) || r.thing.isEmpty() ? s.header : r.thing;
 					float bar = cfg.skyTasksCompact || c < 0 || r.required <= 0 ? -1 : Math.min(1f, (float) c / r.required);
+					// the generator's spent points: "~7/10 pkt" from its window (or a hint to open it)
+					int points = SkyGenerator.needed(r.thing), spent = SkyGenerator.spent();
+					if (points > 0 && r.current < 0) {
+						progress = spent < 0 ? Component.translatable("slashclient-hud.skyTasks.openGenerator").getString() : "~" + Math.min(spent, points) + "/" + points + " pkt";
+						bar = cfg.skyTasksCompact || spent < 0 ? -1 : Math.min(1f, (float) spent / points);
+					}
 					out.add(new Row((met ? "✔ " : "• ") + thing, met ? 0xFF6B7280 : WHITE, progress, met ? GREEN : WHITE, bar, 6));
 				}
 			}

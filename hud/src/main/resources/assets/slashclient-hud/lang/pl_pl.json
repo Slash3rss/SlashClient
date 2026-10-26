@@ -1173,6 +1173,7 @@
 	"slashclient-hud.skyTasks.dailyTitle": "Zadanie codzienne",
 	"slashclient-hud.skyTasks.dailyLeft": "Zostało: %s",
 	"slashclient-hud.skyTasks.dailyReady": "Gotowe – możesz je oddać",
+	"slashclient-hud.skyTasks.openGenerator": "otwórz generator",
 	"slashclient-hud.module.skycase": "Licznik dropu SkyCase",
 	"slashclient-hud.skyCase.screen": "Drop ze SkyCase",
 	"slashclient-hud.skyCase.opened": "Otwarte",
