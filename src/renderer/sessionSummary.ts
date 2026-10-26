@@ -236,9 +236,14 @@ export function createSessionSummary(deps: SessionSummaryDeps) {
   }
 
   let closeCard: (() => void) | undefined;
+  /** Which card is open: a card replaced by another must not bring up the waiting ones. */
+  let shown = 0;
+  /** Summaries of other games that closed while a card was open: each comes up once the one before is closed. */
+  const waiting: SessionSummary[] = [];
 
   /** The card; `fromHistory` leaves out "Nie pokazuj więcej". */
   function show(s: SessionSummary, fromHistory = false) {
+    const mine = ++shown;
     closeCard?.();
     const buttons: HTMLButtonElement[] = [];
     if (!fromHistory) {
@@ -246,6 +251,7 @@ export function createSessionSummary(deps: SessionSummaryDeps) {
       never.addEventListener('click', async () => {
         await Promise.resolve(api.saveSettings({ sessionSummary: false })).catch(() => undefined);
         syncCheckbox(false);
+        waiting.length = 0;
         closeCard?.();
         deps.toast(t('Podsumowanie sesji wyłączone. Włączysz je w Ustawieniach.'));
       });
@@ -255,7 +261,12 @@ export function createSessionSummary(deps: SessionSummaryDeps) {
     ok.addEventListener('click', () => closeCard?.());
     buttons.push(ok);
     const title = s.crashed ? t('Podsumowanie sesji (przed awarią)') : t('Podsumowanie sesji');
-    closeCard = modalWindow(title, [body(s)], buttons, () => (closeCard = undefined), 'session-summary-modal');
+    closeCard = modalWindow(title, [body(s)], buttons, () => {
+      if (mine !== shown) return;
+      closeCard = undefined;
+      const next = waiting.shift();
+      if (next) show(next);
+    }, 'session-summary-modal');
   }
 
   /** A short version under the crash's explanation. */
@@ -275,6 +286,8 @@ export function createSessionSummary(deps: SessionSummaryDeps) {
   api.on('game:exit', () => document.querySelector('#crash .ss-crash')?.remove());
   api.on('session:summary', ({ summary, display }: { summary: SessionSummary; display: 'card' | 'crash' }) => {
     if (display === 'crash') crashSection(summary);
+    // several games closed one after another: one card at a time, none closes another
+    else if (closeCard) waiting.push(summary);
     else show(summary);
   });
 
