@@ -172,10 +172,6 @@ public final class HudConfig {
 	public boolean dungeonMobs = true;
 	/** How each mob class shows on the dungeon map: "head", "dot", "skull" or "hidden". */
 	public String dungeonMobNormal = "head", dungeonMobElite = "head", dungeonMobBoss = "head", dungeonMobMinion = "head", dungeonMobOther = "head";
-	/** Spawners on the dungeon map: armour stands with a spawner on the head. */
-	public boolean dungeonSpawners = true;
-	/** How a spawner shows on the dungeon map: "icon", "dot" or "hidden". */
-	public String dungeonSpawnerStyle = "icon";
 	/** Chests, barrels and pots on the dungeon map, counted per room (taken of all). */
 	public boolean dungeonContainers = true;
 	/** The dungeon map's floor in its blocks' colours instead of one plain grey. */
@@ -679,8 +675,6 @@ public final class HudConfig {
 		dungeonMobBoss = other.dungeonMobBoss;
 		dungeonMobMinion = other.dungeonMobMinion;
 		dungeonMobOther = other.dungeonMobOther;
-		dungeonSpawners = other.dungeonSpawners;
-		dungeonSpawnerStyle = other.dungeonSpawnerStyle;
 		dungeonContainers = other.dungeonContainers;
 		dungeonBlockColors = other.dungeonBlockColors;
 		dungeonChests = other.dungeonChests;

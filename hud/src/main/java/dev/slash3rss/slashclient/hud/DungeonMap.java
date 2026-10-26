@@ -526,9 +526,9 @@ public final class DungeonMap implements HudModule {
 	}
 
 	/**
-	 * What is about in the dungeon: spawners (armour stands with a spawner on the head), mobs as
-	 * their head, NPCs (players with a skin, not on the tab list) with a red frame, and players
-	 * with a blue one.
+	 * What is about in the dungeon: mobs as their head, NPCs (players with a skin, not on the tab
+	 * list) with a red frame, and players with a blue one. Spawners (their holograms and the armour
+	 * stands carrying them) are not drawn.
 	 */
 	private static void markers(GuiGraphicsExtractor g, Minecraft mc, int ox, int oy) {
 		HudConfig cfg = SlashHud.config;
@@ -537,36 +537,14 @@ public final class DungeonMap implements HudModule {
 			if (e == mc.player || !e.isAlive()) continue;
 			int sx = Math.round((float) (e.getX() - originX - viewX) * viewScale), sz = Math.round((float) (e.getZ() - originZ - viewZ) * viewScale);
 			if (!clip.test(sx, sz)) continue;
-			if (DungeonRooms.spawnerLabel(e)) {
-				// SkyUp's spawner: its hologram ("Spawner", its level, the mobs left) over a floating spawner
-				if (cfg.dungeonSpawners) spawner(g, ox + sx, oy + sz);
-			} else if (e instanceof ArmorStand stand) {
-				ItemStack head = stand.getItemBySlot(EquipmentSlot.HEAD);
-				if (cfg.dungeonSpawners && head.is(Items.SPAWNER)) spawner(g, ox + sx, oy + sz);
-			} else if (e instanceof AbstractClientPlayer p && connection != null && connection.getPlayerInfo(p.getUUID()) != null) {
+			// SkyUp's spawners (a hologram over a floating spawner on an armour stand): nothing on the map
+			if (DungeonRooms.spawnerLabel(e) || e instanceof ArmorStand) continue;
+			if (e instanceof AbstractClientPlayer p && connection != null && connection.getPlayerInfo(p.getUUID()) != null) {
 				if (cfg.dungeonPlayers) face(g, p, ox + sx, oy + sz, 0xFF60A5FA);
 			} else if ((e instanceof Mob || e instanceof AbstractClientPlayer) && cfg.dungeonMobs && !e.isInvisible()) {
 				// a mob, or an NPC (a player with a skin who is not on the tab list): drawn as its class is set to be
 				int kind = kind(e), size = kind == 3 ? 12 : 8, frame = FRAMES[kind];
 				mob(g, (net.minecraft.world.entity.LivingEntity) e, ox + sx, oy + sz, size, frame, mobStyle(kind));
-			}
-		}
-	}
-
-	public static final String[] SPAWNER_STYLES = { "icon", "dot", "hidden" };
-
-	/** A spawner as set: the cage on an orange square (alone it is hard to see), an orange dot, or nothing. */
-	private static void spawner(GuiGraphicsExtractor g, int x, int y) {
-		switch (SlashHud.config.dungeonSpawnerStyle) {
-			case "hidden" -> {}
-			case "dot" -> {
-				g.fill(x - 3, y - 3, x + 3, y + 3, 0xFF000000);
-				g.fill(x - 2, y - 2, x + 2, y + 2, 0xFFF59E0B);
-			}
-			default -> {
-				g.fill(x - 5, y - 5, x + 5, y + 5, 0xFFF59E0B);
-				g.fill(x - 4, y - 4, x + 4, y + 4, 0xFF1F2937);
-				item(g, new ItemStack(Items.SPAWNER), x, y, 8);
 			}
 		}
 	}

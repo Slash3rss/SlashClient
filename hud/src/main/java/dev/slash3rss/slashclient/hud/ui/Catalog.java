@@ -217,9 +217,6 @@ public final class Catalog {
 					settings.add(new Choice("slashclient-hud.dungeon.mobBoss", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobBoss, v -> cfg.dungeonMobBoss = v));
 					settings.add(new Choice("slashclient-hud.dungeon.mobMinion", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobMinion, v -> cfg.dungeonMobMinion = v));
 					settings.add(new Choice("slashclient-hud.dungeon.mobOther", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobOther, v -> cfg.dungeonMobOther = v));
-					settings.add(new Toggle("slashclient-hud.dungeon.spawners", () -> cfg.dungeonSpawners, v -> cfg.dungeonSpawners = v));
-					settings.add(new Choice("slashclient-hud.dungeon.spawnerStyle", dev.slash3rss.slashclient.hud.DungeonMap.SPAWNER_STYLES, "slashclient-hud.dungeon.spawnerStyle.",
-						() -> cfg.dungeonSpawnerStyle, v -> cfg.dungeonSpawnerStyle = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.containers", () -> cfg.dungeonContainers, v -> cfg.dungeonContainers = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.counters", () -> cfg.dungeonCounters, v -> cfg.dungeonCounters = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.loot.chest", () -> cfg.dungeonChests, v -> cfg.dungeonChests = v));
