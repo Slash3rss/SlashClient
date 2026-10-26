@@ -240,6 +240,9 @@ public final class HudConfig {
 	public boolean skyTasksScroll = true;
 	/** Under a mob to summon: its shamanism recipe (wand, main item, level) and the materials still missing. */
 	public boolean skyTasksShaman = true;
+	/** How the challenges' window marks a task ready or handed in: a frame round the slot, or its background behind the item. */
+	public String skyTasksMark = "frame";
+	public static final String[] SKY_TASKS_MARKS = { "frame", "background" };
 	/** How often the daily task, while tracked and not done, is brought up (minutes); 0 = never. */
 	public int skyDailyRemind = 30;
 	/** The daily task reminder's sound: "default" (the bell), "none", or one of the chat tabs' (ChatTabs.SOUNDS). */
@@ -774,6 +777,7 @@ public final class HudConfig {
 		skyDailySound = other.skyDailySound == null ? "default" : other.skyDailySound;
 		skyTasksScroll = other.skyTasksScroll;
 		skyTasksShaman = other.skyTasksShaman;
+		skyTasksMark = oneOf(other.skyTasksMark, SKY_TASKS_MARKS);
 		skyTasksHideDone = other.skyTasksHideDone;
 		skyTasksRewards = other.skyTasksRewards;
 		skyTasksTrackAll = other.skyTasksTrackAll;

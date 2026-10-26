@@ -153,6 +153,11 @@ public class GameSkyTasks implements FabricClientGameTest {
 			}
 			context.waitTicks(5);
 			context.takeScreenshot("skyready-gui");
+			// marked as a background behind the item instead of a frame
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.skyTasksMark = "background");
+			context.waitTicks(3);
+			context.takeScreenshot("skyready-gui-background");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.skyTasksMark = "frame");
 			// on the HUD the ready ones first, on a green band with "Hand in!"
 			context.setScreen(() -> null);
 			context.waitTicks(5);

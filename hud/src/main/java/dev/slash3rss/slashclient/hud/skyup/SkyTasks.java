@@ -561,11 +561,15 @@ public final class SkyTasks {
 			if (slot.container instanceof Inventory) continue;
 			SkyTaskParser.Task t = task(tier, slot.getItem());
 			int sx = at.slashclient$leftPos() + slot.x, sy = at.slashclient$topPos() + slot.y;
+			// as a background instead: drawn behind the item (slotBehind), nothing over it here
+			boolean frames = !"background".equals(SlashHud.config.skyTasksMark);
 			// handed in already (admins still see it in the GUI): a quiet slate frame, not the green of "ready"
 			if (t == null && handedIn(slot.getItem())) {
 				done.add(i);
-				g.fill(sx, sy, sx + 16, sy + 16, 0x50202A3A);
-				frame(g, sx - 1, sy - 1, 18, 18, 0xFF64748B);
+				if (frames) {
+					g.fill(sx, sy, sx + 16, sy + 16, 0x50202A3A);
+					frame(g, sx - 1, sy - 1, 18, 18, 0xFF64748B);
+				}
 				continue;
 			}
 			if (t == null) continue;
@@ -573,9 +577,11 @@ public final class SkyTasks {
 			// ready to hand in (a task done, or a category of the menu with one done): a green glowing frame
 			if (t.category ? tierCount(mc, t.name)[1] > 0 : ready(mc, known(t))) {
 				lit.add(i);
-				g.fill(sx, sy, sx + 16, sy + 16, 0x3822C55E);
-				frame(g, sx - 1, sy - 1, 18, 18, Ui.blend(0xFF16A34A, 0xFF4ADE80, glow));
-				frame(g, sx - 2, sy - 2, 20, 20, ((int) (0x40 + 0x40 * glow) << 24) | 0x22C55E);
+				if (frames) {
+					g.fill(sx, sy, sx + 16, sy + 16, 0x3822C55E);
+					frame(g, sx - 1, sy - 1, 18, 18, Ui.blend(0xFF16A34A, 0xFF4ADE80, glow));
+					frame(g, sx - 2, sy - 2, 20, 20, ((int) (0x40 + 0x40 * glow) << 24) | 0x22C55E);
+				}
 			}
 			if (!tracked(t)) continue;
 			// a gold corner, top right
@@ -595,6 +601,20 @@ public final class SkyTasks {
 		g.fill(x, y, x + w, y + 12, 0xE0101827);
 		g.fill(x, y + 11, x + w, y + 12, t != null && tracked(t) ? 0xFFFACC15 : 0xFF60A5FA);
 		g.text(mc.font, hint, x + 4, y + 2, 0xFFFFFFFF, false);
+	}
+
+	/**
+	 * Behind a slot's item, before the game draws it (the marks as a background, "skyTasksMark"): ready
+	 * to hand in in glowing green, handed in in slate. The slot's own place, the window's corner already applied.
+	 */
+	public static void slotBehind(AbstractContainerScreen<?> screen, GuiGraphicsExtractor g, Slot slot) {
+		Minecraft mc = Minecraft.getInstance();
+		if (!"background".equals(SlashHud.config.skyTasksMark) || slot.container instanceof Inventory || !on(mc) || !challengesGui(screen)) return;
+		int x = slot.x, y = slot.y;
+		SkyTaskParser.Task t = task(tier(screen), slot.getItem());
+		if (t == null && handedIn(slot.getItem())) g.fill(x, y, x + 16, y + 16, 0xC0475569);
+		else if (t != null && (t.category ? tierCount(mc, t.name)[1] > 0 : ready(mc, known(t))))
+			g.fill(x, y, x + 16, y + 16, Ui.blend(0xD016A34A, 0xE04ADE80, glow()));
 	}
 
 	/** The slots lit as ready on the last frame (for the test). */
