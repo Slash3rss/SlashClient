@@ -173,9 +173,8 @@ public class SkyAtlasScreen extends Screen {
 		Ui.round(g, x, y, w, h, 5, edge);
 		Ui.round(g, x + 1, y + 1, w - 2, h - 2, 4, has ? 0xFF16213A : 0xFF0E1117);
 		if (over) Ui.round(g, x + 1, y + 1, w - 2, h - 2, 4, 0x14FFFFFF);
-		// the picture's own window on the card
+		// the picture straight on the card
 		int size = 16 * scale, ix = x + (w - size) / 2, iy = y + 8;
-		g.fill(ix - 3, iy - 3, ix + size + 3, iy + size + 3, has ? 0x30000000 : 0x40000000);
 		ItemStack look = SkyAtlas.look(f);
 		var pose = g.pose();
 		pose.pushMatrix();
