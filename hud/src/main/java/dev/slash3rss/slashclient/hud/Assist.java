@@ -260,7 +260,14 @@ public final class Assist {
 			// the player's own shield up: no hits through it (they would lower it)
 			boolean shielding = cfg().autoClickShield && player.isBlocking();
 			boolean want = !atPlayer && !shielding && (cfg().autoClickMobs ? onMob : !digging);
-			if (want && now >= nextLeft) {
+			if (want && cfg().autoClickCooldown && onMob) {
+				// at a mob: full hits only, once the weapon is charged again
+				if (player.getAttackStrengthScale(0f) >= 1f && now >= nextLeft) {
+					click(mc.options.keyAttack);
+					leftClicks++;
+					nextLeft = now + 100;
+				}
+			} else if (want && now >= nextLeft) {
 				click(mc.options.keyAttack);
 				leftClicks++;
 				nextLeft = now + interval(cfg().autoClickCps);

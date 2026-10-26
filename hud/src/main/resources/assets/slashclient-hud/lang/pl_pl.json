@@ -815,6 +815,7 @@
 	"slashclient-hud.assist.target": "Lewy klika w (nigdy w graczy)",
 	"slashclient-hud.assist.target.all": "Wszystko",
 	"slashclient-hud.assist.target.mobs": "Tylko moby",
+	"slashclient-hud.assist.cooldown": "Pełne ciosy na moby (reszta z CPS)",
 	"slashclient-hud.assist.shield": "Nie klikaj lewym z podniesioną tarczą",
 	"slashclient-hud.assist.dungeonPause": "Wstrzymaj w dungeonie",
 	"slashclient-hud.assist.dungeonPause.on": "Autoclicker wstrzymany w dungeonie",

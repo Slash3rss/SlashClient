@@ -815,6 +815,7 @@
 	"slashclient-hud.assist.target": "Left button clicks at (never players)",
 	"slashclient-hud.assist.target.all": "Anything",
 	"slashclient-hud.assist.target.mobs": "Mobs only",
+	"slashclient-hud.assist.cooldown": "Full hits at mobs (the rest at the CPS)",
 	"slashclient-hud.assist.shield": "No left clicks with your shield up",
 	"slashclient-hud.assist.dungeonPause": "Rest in dungeons",
 	"slashclient-hud.assist.dungeonPause.on": "Autoclicker resting in the dungeon",

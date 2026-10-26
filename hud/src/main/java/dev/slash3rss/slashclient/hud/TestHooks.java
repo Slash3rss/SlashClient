@@ -129,6 +129,7 @@ public final class TestHooks {
 		c.autoClickCps = c.autoClickRightCps = cps;
 		c.autoClickJump = false;
 		c.autoClickShield = true;
+		c.autoClickCooldown = false;
 		Assist.arm(false);
 		Assist.leftClicks = Assist.rightClicks = 0;
 	}
@@ -197,6 +198,11 @@ public final class TestHooks {
 			SlashHud.config.autoClickJumps = perSecond;
 		}
 		return Assist.jumps;
+	}
+
+	/** Full hits at mobs on or off. */
+	public static void autoClickCooldown(boolean on) {
+		SlashHud.config.autoClickCooldown = on;
 	}
 
 	/** A shield in the off hand, raised (or lowered). */

@@ -415,6 +415,8 @@ public final class HudConfig {
 	public boolean autoClickShield = true;
 	/** It rests in SkyUp's dungeons and goes on once out (the setting itself stays as it was). */
 	public boolean autoClickDungeonPause = true;
+	/** With a mob under the crosshair the left button waits for full hits (the weapon charged); at the rest, the CPS. */
+	public boolean autoClickCooldown = false;
 	/** Left clicks only with a mob under the crosshair (never at a player either way). */
 	public boolean autoClickMobs = false;
 	public static final String[] AUTO_CLICK_TARGETS = { "all", "mobs" };
@@ -889,6 +891,7 @@ public final class HudConfig {
 		autoClickJump = other.autoClickJump;
 		autoClickJumps = Math.max(1, Math.min(10, other.autoClickJumps));
 		autoClickShield = other.autoClickShield;
+		autoClickCooldown = other.autoClickCooldown;
 		autoClickDungeonPause = other.autoClickDungeonPause;
 		autoClickMobs = other.autoClickMobs;
 		autoTool = other.autoTool;

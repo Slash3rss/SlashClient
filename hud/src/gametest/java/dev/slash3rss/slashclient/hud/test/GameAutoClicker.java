@@ -66,6 +66,15 @@ public class GameAutoClicker implements FabricClientGameTest {
 			String shielded = context.computeOnClient(mc -> TestHooks.autoClicks());
 			context.runOnClient(mc -> TestHooks.raiseShield(false));
 			if (!shielded.startsWith("0/")) throw new AssertionError("Hit with the shield up: " + shielded);
+			// full hits at a mob: with a sword (charged in 0.6 s) far fewer than 10 a second, but some
+			world.getServer().runCommand("item replace entity @a weapon.mainhand with iron_sword");
+			context.waitTicks(5);
+			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, false, 10); TestHooks.autoClickCooldown(true);
+				TestHooks.lookSouth(); TestHooks.armAutoClicker(); });
+			context.waitTicks(40);
+			int full = Integer.parseInt(context.computeOnClient(mc -> TestHooks.autoClicks()).split("/")[0]);
+			world.getServer().runCommand("item replace entity @a weapon.mainhand with air");
+			if (full < 2 || full > 5) throw new AssertionError("Full hits in 2 s: " + full);
 			// in a SkyUp dungeon it rests, out of it it goes on (armed as it was)
 			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, false, 10); TestHooks.armAutoClicker();
 				dev.slash3rss.slashclient.hud.skyup.DungeonMap.inDungeonForTest(true); });

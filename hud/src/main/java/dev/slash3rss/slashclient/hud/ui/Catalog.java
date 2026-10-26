@@ -568,6 +568,7 @@ public final class Catalog {
 			// what the left button clicks at: anything (but a player), or only a mob under the crosshair
 			new Choice("slashclient-hud.assist.target", HudConfig.AUTO_CLICK_TARGETS, "slashclient-hud.assist.target.",
 				() -> cfg.autoClickMobs ? "mobs" : "all", v -> cfg.autoClickMobs = "mobs".equals(v)),
+			new Toggle("slashclient-hud.assist.cooldown", () -> cfg.autoClickCooldown, v -> cfg.autoClickCooldown = v),
 			new Toggle("slashclient-hud.assist.shield", () -> cfg.autoClickShield, v -> cfg.autoClickShield = v),
 			new Toggle("slashclient-hud.assist.dungeonPause", () -> cfg.autoClickDungeonPause, v -> cfg.autoClickDungeonPause = v),
 			new Toggle("slashclient-hud.assist.jump", () -> cfg.autoClickJump, v -> cfg.autoClickJump = v),
