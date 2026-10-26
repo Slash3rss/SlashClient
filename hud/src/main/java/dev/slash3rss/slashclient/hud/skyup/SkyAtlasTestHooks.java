@@ -64,6 +64,15 @@ public final class SkyAtlasTestHooks {
 		return String.join(" | ", SkyDump.components(Minecraft.getInstance(), fish));
 	}
 
+	/** A species not caught yet, as its card draws it: a cod with its model from SkyUp's pack. */
+	public static String unseenLook() {
+		SkyAtlas.Fish sapa = new SkyAtlas.Fish();
+		sapa.name = "Sapa";
+		ItemStack look = SkyAtlas.look(sapa);
+		var model = look == null ? null : look.get(DataComponents.CUSTOM_MODEL_DATA);
+		return look == null ? "none" : look.getItem() + " " + (model == null ? "-" : model.floats());
+	}
+
 	/** The atlas: the album (null) or one species open. */
 	public static void open(String chosen) {
 		var screen = new SkyAtlasScreen(null);

@@ -28,6 +28,10 @@ public class GameSkyAtlas implements FabricClientGameTest {
 			String dump = context.computeOnClient(mc -> SkyAtlasTestHooks.dumpData());
 			if (!dump.contains("minecraft:custom_model_data") || !dump.contains("1001") || !dump.contains("amur_bialy") || dump.contains("minecraft:lore"))
 				throw new AssertionError("The dump's item data: " + dump);
+			// a species never seen has its real look all the same, from its model number
+			String unseen = context.computeOnClient(mc -> SkyAtlasTestHooks.unseenLook());
+			if (!unseen.equals("minecraft:cod [10167.0]"))
+				throw new AssertionError("A species not caught yet: " + unseen);
 			// the album of cards, then a card opened: its catches, the record one in gold
 			context.runOnClient(mc -> SkyAtlasTestHooks.open(null));
 			context.waitTicks(10);

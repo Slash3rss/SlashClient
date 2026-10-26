@@ -59,10 +59,53 @@ public final class SkyAtlas {
 	/** The looks as items, made once from the saved ones. */
 	private static final Map<String, ItemStack> looks = new java.util.HashMap<>();
 
-	/** The fish's item as SkyUp draws it, or null before one was seen (or outside a world). */
+	/**
+	 * Each species' model in SkyUp's pack: a cod with this custom model data (read from its "Moje okazy"
+	 * window), so a card shows the real fish before one was seen.
+	 */
+	static final Map<String, Integer> MODELS = models(Map.ofEntries(
+		Map.entry("Amur biały", 10101), Map.entry("Amur czarny", 10102), Map.entry("Bass słoneczny", 10142),
+		Map.entry("Białorybica", 10103), Map.entry("Boleń", 10104), Map.entry("Brzana aralska", 10143), Map.entry("Buffalo", 10144),
+		Map.entry("Certa", 10145), Map.entry("Ciernik", 10147), Map.entry("Ciosa", 10146), Map.entry("Czawycza", 10148),
+		Map.entry("Dorsz atlantycki", 10131), Map.entry("Flądra", 10133), Map.entry("Golec arktyczny", 10105),
+		Map.entry("Golec czerwony", 10106), Map.entry("Gorbusza", 10149), Map.entry("Halibut atlantycki", 10132),
+		Map.entry("Jazgarz", 10139), Map.entry("Jaź", 10107), Map.entry("Jesiotr bałtycki", 10108),
+		Map.entry("Jesiotr gwiaździsty", 10150), Map.entry("Jesiotr rosyjski", 10109), Map.entry("Karaś srebrzysty", 10110),
+		Map.entry("Karaś złocisty", 10111), Map.entry("Karp golec", 10151), Map.entry("Karp koi", 10112),
+		Map.entry("Karp lustrzeń", 10152), Map.entry("Karp pospolity", 10113), Map.entry("Kiżucz", 10153), Map.entry("Kleń", 10154),
+		Map.entry("Krąp", 10155), Map.entry("Leszcz", 10114), Map.entry("Lin", 10156), Map.entry("Lipień", 10115),
+		Map.entry("Makrela atlantycka", 10134), Map.entry("Malma", 10157), Map.entry("Marlin błękitny", 10140),
+		Map.entry("Mintaj", 10135), Map.entry("Minóg", 10158), Map.entry("Miętus", 10117), Map.entry("Morszczuk zwyczajny", 10136),
+		Map.entry("Muksun", 10159), Map.entry("Nelma", 10160), Map.entry("Nerka", 10161), Map.entry("Okoń", 10118),
+		Map.entry("Omul bajkalski", 10162), Map.entry("Palia jeziorowa", 10163), Map.entry("Peluga", 10164),
+		Map.entry("Pstrąg potokowy", 10120), Map.entry("Pstrąg sewański", 10165), Map.entry("Płoć", 10119),
+		Map.entry("Rozdymka tygrysia", 10121), Map.entry("Sandacz", 10122), Map.entry("Sapa", 10167), Map.entry("Sardela", 10137),
+		Map.entry("Sazan", 10166), Map.entry("Sieja ostronosa", 10123), Map.entry("Sum", 10125), Map.entry("Szczupak", 10126),
+		Map.entry("Szprotka", 10168), Map.entry("Tajmień", 10169), Map.entry("Tołpyga biała", 10171),
+		Map.entry("Tołpyga pstra", 10127), Map.entry("Tuńczyk pospolity", 10141), Map.entry("Ukleja", 10128),
+		Map.entry("Welon", 10170), Map.entry("Wzdręga", 10138), Map.entry("Węgorz", 10129), Map.entry("Złoty lin", 10130),
+		Map.entry("Łosoś atlantycki", 10116), Map.entry("Śledź czarnomorski", 10124), Map.entry("Żarłacz tępogłowy", 10172)));
+
+	private static Map<String, Integer> models(Map<String, Integer> byName) {
+		Map<String, Integer> out = new java.util.HashMap<>();
+		byName.forEach((name, model) -> out.put(key(name), model));
+		return out;
+	}
+
+	/** The fish's item as SkyUp draws it: the one seen, else a cod with its species' model; null if neither (or outside a world). */
 	public static ItemStack look(Fish f) {
 		Minecraft mc = Minecraft.getInstance();
-		if (f.look == null || mc.level == null) return null;
+		if (mc.level == null) return null;
+		if (f.look == null) {
+			Integer model = MODELS.get(key(f.name));
+			if (model == null) return null;
+			return looks.computeIfAbsent(key(f.name), k -> {
+				ItemStack cod = new ItemStack(net.minecraft.world.item.Items.COD);
+				cod.set(net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA,
+					new net.minecraft.world.item.component.CustomModelData(List.of((float) model), List.of(), List.of(), List.of()));
+				return cod;
+			});
+		}
 		return looks.computeIfAbsent(key(f.name), k -> {
 			var ops = mc.level.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
 			return ItemStack.CODEC.parse(ops, f.look).result().orElse(ItemStack.EMPTY);
