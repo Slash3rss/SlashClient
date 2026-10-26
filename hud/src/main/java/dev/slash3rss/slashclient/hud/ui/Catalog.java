@@ -520,7 +520,8 @@ public final class Catalog {
 			else mc.setScreenAndShow(dev.slash3rss.slashclient.hud.BenchmarkScreen.latest());
 		}));
 		// the emote wheel (key N): in a world it opens at once
-		out.add(new Entry("emotes", "slashclient-hud.emote", "extras", "m-emotes", null, null, List.of(), () -> {
+		out.add(new Entry("emotes", "slashclient-hud.emote", "extras", "m-emotes", null, null, List.of(
+			new Toggle("slashclient-hud.emote.camera", () -> cfg.emoteCamera, v -> cfg.emoteCamera = v)), () -> {
 			var mc = net.minecraft.client.Minecraft.getInstance();
 			if (mc.player != null) mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.EmoteScreen(dev.slash3rss.slashclient.hud.Cosmetics.emoteKey()));
 		}));

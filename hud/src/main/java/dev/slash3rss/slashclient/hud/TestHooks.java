@@ -1784,6 +1784,25 @@ public final class TestHooks {
 		Cosmetics.show(mc.player.getUUID(), emote);
 	}
 
+	/** Our own emote playing now ("" for none). */
+	public static String emotePlaying() {
+		var p = Cosmetics.playing(net.minecraft.client.Minecraft.getInstance().player.getUUID());
+		return p == null ? "" : p.emote();
+	}
+
+	/** Our own emote as the wheel sends it (shown, the camera turned; the launcher is not there in the test). */
+	public static void emoteSend(String emote) {
+		Cosmetics.send(net.minecraft.client.Minecraft.getInstance(), emote);
+	}
+
+	/** Our own player turned to that yaw (body and head), as if they turned round. */
+	public static void turnSelf(float yaw) {
+		var p = net.minecraft.client.Minecraft.getInstance().player;
+		p.setYRot(yaw);
+		p.setYHeadRot(yaw);
+		p.setYBodyRot(yaw);
+	}
+
 	public static void emoteWheel() {
 		var mc = net.minecraft.client.Minecraft.getInstance();
 		mc.setScreenAndShow(new EmoteScreen(Cosmetics.emoteKey()));

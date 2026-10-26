@@ -170,6 +170,8 @@ public final class HudConfig {
 	public boolean dungeonSelfHead = false;
 	/** The start room marked on the dungeon map, with an arrow on its edge when it is out of sight. */
 	public boolean dungeonStartArrow = true;
+	/** The player's own emote watched from the front: the camera turns while it plays, and back after. */
+	public boolean emoteCamera = true;
 	/** Mobs and NPCs (players with a skin who are not on the tab list) on the dungeon map. */
 	public boolean dungeonMobs = true;
 	/** How each mob class shows on the dungeon map: "head", "dot", "skull" or "hidden". */
@@ -674,6 +676,7 @@ public final class HudConfig {
 		dungeonProgress = other.dungeonProgress;
 		dungeonSelfHead = other.dungeonSelfHead;
 		dungeonStartArrow = other.dungeonStartArrow;
+		emoteCamera = other.emoteCamera;
 		dungeonMobs = other.dungeonMobs;
 		dungeonMobNormal = other.dungeonMobNormal;
 		dungeonMobElite = other.dungeonMobElite;

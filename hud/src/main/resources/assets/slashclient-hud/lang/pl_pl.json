@@ -638,6 +638,7 @@
 	"slashclient-hud.dungeon.whole": "Cały dungeon",
 	"slashclient-hud.dungeon.fullHelp": "Przeciągnij: przesuń · Kółko: przybliż · PPM: cała mapa · M/Esc: zamknij",
 	"slashclient-hud.emote": "Emotki",
+	"slashclient-hud.emote.camera": "Kamera od przodu podczas własnej emotki",
 	"slashclient-hud.emote.pick": "Wybierz emotkę",
 	"slashclient-hud.emote.sent": "Emotka:",
 	"slashclient-hud.emote.noLauncher": "Emotki widzą inni tylko w grze uruchomionej z SlashClient (konto w Znajomych)",

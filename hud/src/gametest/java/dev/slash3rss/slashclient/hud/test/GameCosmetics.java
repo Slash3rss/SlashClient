@@ -5,7 +5,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
-/** A SlashClient cape on our own player (cape and elytra), an emote by the name, and the emote wheel. */
+/** A SlashClient cape on our own player (cape and elytra), an emote (its move and picture), and the emote wheel. */
 public class GameCosmetics implements FabricClientGameTest {
 	@Override
 	public void runTest(ClientGameTestContext context) {
@@ -181,7 +181,7 @@ public class GameCosmetics implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.audit(false));
 			context.setScreen(() -> null);
 			context.runOnClient(mc -> { TestHooks.wear("wings", null); TestHooks.wear("pet", null); TestHooks.wear("aura", null); });
-			// an emote by the name, looking at the player's face
+			// an emote: its move, its picture beside the face
 			context.runOnClient(mc -> TestHooks.cosmeticsSelf("slash", true));
 			context.runOnClient(mc -> TestHooks.emoteSelf("heart"));
 			context.waitTicks(5);

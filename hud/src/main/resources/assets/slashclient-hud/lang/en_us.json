@@ -638,6 +638,7 @@
 	"slashclient-hud.dungeon.whole": "Whole dungeon",
 	"slashclient-hud.dungeon.fullHelp": "Drag: move · Wheel: zoom · Right click: whole map · M/Esc: close",
 	"slashclient-hud.emote": "Emotes",
+	"slashclient-hud.emote.camera": "Camera from the front during your own emote",
 	"slashclient-hud.emote.pick": "Pick an emote",
 	"slashclient-hud.emote.sent": "Emote:",
 	"slashclient-hud.emote.noLauncher": "Others see emotes only in a game started from SlashClient (signed in on Friends)",

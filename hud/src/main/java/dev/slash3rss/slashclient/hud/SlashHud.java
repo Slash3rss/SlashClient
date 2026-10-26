@@ -105,6 +105,8 @@ public class SlashHud implements ClientModInitializer {
 				helper.register(new RingLayer(avatar));
 				// a prop pushed in front (Props)
 				helper.register(new PropLayer(avatar));
+				// an emote's picture in front of the face
+				helper.register(new EmoteLayer(avatar));
 			}
 		});
 		//#else
@@ -116,6 +118,7 @@ public class SlashHud implements ClientModInitializer {
 		//$ 		helper.register(new GearLayer(player));
 		//$ 		helper.register(new RingLayer(player));
 		//$ 		helper.register(new PropLayer(player));
+		//$ 		helper.register(new EmoteLayer(player));
 		//$ 	}
 		//$ });
 		//#endif
@@ -247,6 +250,7 @@ public class SlashHud implements ClientModInitializer {
 			Latency.tick(mc);
 			Benchmark.tick(mc);
 			Cosmetics.tick(mc);
+			Emotes.tick(mc);
 			CosmeticEffects.tick(mc);
 			LimbWear.tick(mc);
 			KillEffects.tick(mc);

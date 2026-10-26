@@ -22,8 +22,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * SlashClient cosmetics, seen by everyone who plays with the launcher: the cape a player picked
- * in the launcher (the server tells, with the logo lookup in {@link Badges}), and emotes shown
- * next to the name above the head for a few seconds.
+ * in the launcher (the server tells, with the logo lookup in {@link Badges}), and emotes played for
+ * a few seconds: the player's moves ({@link Emotes}) with the picture beside the face ({@link EmoteLayer}).
  */
 public final class Cosmetics {
 	private Cosmetics() {}
@@ -70,7 +70,6 @@ public final class Cosmetics {
 		Map.entry("shoes", Clothing.SHOES), Map.entry("hands", Clothing.HANDS), Map.entry("face", Clothing.FACE), Map.entry("ears", Clothing.EARS),
 		Map.entry("back", Gear.BACKS), Map.entry("tail", Gear.TAILS), Map.entry("ring", RingEffects.IDS), Map.entry("move", MoveEffects.IDS),
 		Map.entry("spray", Sprays.IDS), Map.entry("prop", Props.IDS));
-	private static final long EMOTE_MS = 3500;
 	private static final FontDescription EMOTE_FONT = Compat.font(Identifier.fromNamespaceAndPath(SlashHud.ID, "emote"));
 
 	/** uuid → slot → item, what the server says each player wears (only items this mod knows). */
@@ -79,6 +78,9 @@ public final class Cosmetics {
 	private static final Map<String, ClientAsset.Texture> textures = new ConcurrentHashMap<>();
 	//#endif
 	private record Shown(String emote, long until) {}
+
+	/** An emote playing: which, and when it started (ms). */
+	public record Playing(String emote, long start) {}
 	private static final Map<UUID, Shown> emotes = new ConcurrentHashMap<>();
 
 	/** The emote wheel's key, registered with the others in SlashHud. */
@@ -267,9 +269,25 @@ public final class Cosmetics {
 	}
 	//#endif
 
-	/** An emote arrived (from the launcher) or was sent: it shows by the name for a few seconds. */
+	/** An emote arrived (from the launcher) or was sent: the player moves (Emotes) with its picture in front (EmoteLayer) for a few seconds. */
 	public static void show(UUID id, String emote) {
-		if (EMOTES.contains(emote)) emotes.put(id, new Shown(emote, System.currentTimeMillis() + EMOTE_MS));
+		if (EMOTES.contains(emote)) emotes.put(id, new Shown(emote, System.currentTimeMillis() + Emotes.MS));
+	}
+
+	/** The emote a player plays now, or null. */
+	public static Playing playing(UUID id) {
+		Shown s = emotes.get(id);
+		if (s == null) return null;
+		if (System.currentTimeMillis() > s.until()) {
+			emotes.remove(id);
+			return null;
+		}
+		return new Playing(s.emote(), s.until() - Emotes.MS);
+	}
+
+	/** An emote ended early (the player walked off). */
+	static void stop(UUID id) {
+		emotes.remove(id);
 	}
 
 	/** The emote's picture as a character of the emote font. */
@@ -277,15 +295,9 @@ public final class Cosmetics {
 		return Component.literal(String.valueOf((char) (0xE100 + EMOTES.indexOf(emote)))).withStyle(Style.EMPTY.withFont(EMOTE_FONT));
 	}
 
-	/** The name above a head, with the player's emote in front while it lasts. */
+	/** The name above a head: as it is (an emote's picture shows in front of the player now: EmoteLayer). */
 	public static Component decorate(UUID id, Component name) {
-		Shown s = emotes.get(id);
-		if (s == null || name == null) return name;
-		if (System.currentTimeMillis() > s.until()) {
-			emotes.remove(id);
-			return name;
-		}
-		return Component.empty().append(glyph(s.emote())).append(" ").append(name);
+		return name;
 	}
 
 	/** For the test: whether a player shows this cape. */
@@ -305,6 +317,7 @@ public final class Cosmetics {
 	public static void send(Minecraft mc, String emote) {
 		if (mc.player == null) return;
 		show(mc.player.getUUID(), emote);
+		Emotes.started(mc);
 		if (!dev.slash3rss.slashclient.hud.social.Social.available()) {
 			Compat.overlay(mc, Component.translatable("slashclient-hud.emote.noLauncher"));
 			return;
