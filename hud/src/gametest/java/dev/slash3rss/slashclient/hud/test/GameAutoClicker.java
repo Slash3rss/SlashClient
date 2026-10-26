@@ -82,6 +82,13 @@ public class GameAutoClicker implements FabricClientGameTest {
 			context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("autoClicker"));
 			context.waitTicks(5);
 			context.takeScreenshot("autoclicker-settings");
+			// the rest of the card, scrolled down
+			context.getInput().setCursorPos(550, 330);
+			for (int page = 2; page <= 4; page++) {
+				for (int i = 0; i < 4; i++) context.getInput().scroll(-1);
+				context.waitTicks(5);
+				context.takeScreenshot("autoclicker-settings-" + page);
+			}
 			context.setScreen(() -> null);
 		}
 	}
