@@ -298,7 +298,7 @@ public final class Social {
 		boolean was = cosmeticsEvents && reachable;
 		cosmeticsEvents = connected && passes;
 		// connected again (launcher or server): changes made meanwhile did not come, so everyone in sight is asked about anew
-		if (cosmeticsEvents && !was) dev.slash3rss.slashclient.hud.Cosmetics.missedChanges();
+		if (cosmeticsEvents && !was) dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.missedChanges();
 		JsonObject user = s.has("user") && s.get("user").isJsonObject() ? s.getAsJsonObject("user") : null;
 		myId = user != null ? str(user, "id") : "";
 		myName = user != null ? str(user, "name") : "";
@@ -341,7 +341,7 @@ public final class Social {
 		// live on Twitch or Kick (servers 0.9.24+): the LIVE badge
 		FriendStreams.fromFriend(str(o, "id"), o);
 		// their face next to the server they play on, in the server list
-		dev.slash3rss.slashclient.hud.ServerFriends.avatarFrom(str(o, "id"), str(o, "avatar"));
+		dev.slash3rss.slashclient.hud.servers.ServerFriends.avatarFrom(str(o, "id"), str(o, "avatar"));
 		JsonObject a = p.has("activity") && p.get("activity").isJsonObject() ? p.getAsJsonObject("activity") : null;
 		detailFrom(str(o, "id"), a);
 		return new Friend(str(o, "id"), str(o, "name"), str(o, "handle"), p.has("status") ? str(p, "status") : "offline",
@@ -479,16 +479,16 @@ public final class Social {
 			// "Join" on a friend's invite in the launcher while this game runs
 			case "join" -> join(str(e, "server"));
 			// someone in sight changed what they wear (in the launcher, on the website or in their game's menu)
-			case "cosmetics" -> dev.slash3rss.slashclient.hud.Cosmetics.live(e);
+			case "cosmetics" -> dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.live(e);
 			case "emote" -> {
 				try {
-					dev.slash3rss.slashclient.hud.Cosmetics.show(java.util.UUID.fromString(str(e, "uuid")), str(e, "emote"));
+					dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.show(java.util.UUID.fromString(str(e, "uuid")), str(e, "emote"));
 				} catch (IllegalArgumentException ignored) {
 					// not a uuid: nothing to show it on
 				}
 			}
 			// someone with SlashClient sprayed on a block where we may see it
-			case "spray" -> dev.slash3rss.slashclient.hud.Sprays.received(e);
+			case "spray" -> dev.slash3rss.slashclient.hud.cosmetics.Sprays.received(e);
 			// a SlashClient achievement unlocked (play streak, hours…): "Achievement unlocked" and its name, with the reward
 			case "achievement" -> {
 				// "quiet": one of several unlocked at once; the 'achievements-summary' after them makes the toast
@@ -504,7 +504,7 @@ public final class Social {
 			// all of a day's or a week's challenges done: the bonus
 			case "challenges-bonus" -> challengesBonus("weekly".equals(str(e, "period")), num(e, "sparks"));
 			// the Sparks balance changed (an achievement, a purchase, an admin): the cosmetics menu shows it
-			case "wallet" -> dev.slash3rss.slashclient.hud.CosmeticsScreen.walletChanged(num(e, "balance"));
+			case "wallet" -> dev.slash3rss.slashclient.hud.cosmetics.CosmeticsScreen.walletChanged(num(e, "balance"));
 			case "friends" -> {
 				refreshFriends();
 				// a new friend or request: no longer a suggestion
@@ -546,7 +546,7 @@ public final class Social {
 		// the Sparks it paid on a line of their own (servers before 0.9.22 pay none)
 		int sparks = num(a, "sparks");
 		toast(Component.translatable("slashclient-hud.achievement.unlocked").getString(), text, "m-advancements",
-			sparks > 0 ? "+" + dev.slash3rss.slashclient.hud.Sparks.format(sparks) : null);
+			sparks > 0 ? "+" + dev.slash3rss.slashclient.hud.cosmetics.Sparks.format(sparks) : null);
 	}
 
 	/** "Daily challenge completed", its name in the game's language and the Sparks it paid (the server's 'challenge' event). */
@@ -556,14 +556,14 @@ public final class Social {
 		if (name.isEmpty()) name = str(c, "name");
 		int sparks = num(c, "sparks");
 		toast(Component.translatable("weekly".equals(str(c, "period")) ? "slashclient-hud.challenge.doneWeekly" : "slashclient-hud.challenge.done").getString(), name, "m-advancements",
-			sparks > 0 ? "+" + dev.slash3rss.slashclient.hud.Sparks.format(sparks) : null);
+			sparks > 0 ? "+" + dev.slash3rss.slashclient.hud.cosmetics.Sparks.format(sparks) : null);
 	}
 
 	/** "All of today's challenges done!" and the bonus (the server's 'challenges-bonus' event). */
 	public static void challengesBonus(boolean weekly, int sparks) {
 		toast(Component.translatable(weekly ? "slashclient-hud.challenge.bonusWeekly" : "slashclient-hud.challenge.bonus").getString(),
 			Component.translatable("slashclient-hud.challenge.bonusHint").getString(), "m-advancements",
-			sparks > 0 ? "+" + dev.slash3rss.slashclient.hud.Sparks.format(sparks) : null);
+			sparks > 0 ? "+" + dev.slash3rss.slashclient.hud.cosmetics.Sparks.format(sparks) : null);
 	}
 
 	/** Marked "quiet": shown by the summary that follows (on the event or on the achievement in it). */
@@ -574,8 +574,8 @@ public final class Social {
 	/** "5 achievements unlocked", where to spend them, and "+320 Sparks" (the server's 'achievements-summary' event). */
 	public static void achievementsSummary(int count, int sparks) {
 		toast(Component.translatable("slashclient-hud.achievement.summary", count).getString(),
-			Component.translatable("slashclient-hud.achievement.summaryHint", dev.slash3rss.slashclient.hud.Sparks.name()).getString(), "m-advancements",
-			sparks > 0 ? "+" + dev.slash3rss.slashclient.hud.Sparks.format(sparks) : null);
+			Component.translatable("slashclient-hud.achievement.summaryHint", dev.slash3rss.slashclient.hud.cosmetics.Sparks.name()).getString(), "m-advancements",
+			sparks > 0 ? "+" + dev.slash3rss.slashclient.hud.cosmetics.Sparks.format(sparks) : null);
 	}
 
 	// ---------- friends starting to play, muted friends ----------

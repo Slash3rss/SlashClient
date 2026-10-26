@@ -3,7 +3,7 @@ package dev.slash3rss.slashclient.hud.social;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.Waypoints;
+import dev.slash3rss.slashclient.hud.map.Waypoints;
 import net.minecraft.client.Minecraft;
 
 import java.util.ArrayList;

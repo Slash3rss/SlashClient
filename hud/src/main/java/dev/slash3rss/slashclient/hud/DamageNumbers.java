@@ -13,6 +13,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import dev.slash3rss.slashclient.hud.map.Waypoints;
 
 /**
  * Damage indicators: when a mob or player near you loses health, the amount rises from above it

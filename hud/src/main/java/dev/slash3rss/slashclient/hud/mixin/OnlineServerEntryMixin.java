@@ -7,7 +7,7 @@ import com.mojang.renderpearl.api.pipeline.RenderPipeline;
 //#elif MC >= 1.21.6
 //$ import com.mojang.blaze3d.pipeline.RenderPipeline;
 //#endif
-import dev.slash3rss.slashclient.hud.PinnedServer;
+import dev.slash3rss.slashclient.hud.servers.PinnedServer;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.multiplayer.ServerSelectionList;
@@ -73,12 +73,12 @@ abstract class OnlineServerEntryMixin {
 	@Inject(method = "extractContent", at = @At("HEAD"))
 	private void slashclient$partnerBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
 		var entry = (ServerSelectionList.Entry) (Object) this;
-		dev.slash3rss.slashclient.hud.PartnerServers.drawBehind(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
+		dev.slash3rss.slashclient.hud.servers.PartnerServers.drawBehind(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
 	}
 	//#else
 	//$ @Inject(method = "render", at = @At("HEAD"))
 	//$ private void slashclient$partnerBackground(GuiGraphicsExtractor g, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
-	//$ 	dev.slash3rss.slashclient.hud.PartnerServers.drawBehind(g, serverData, left, top, width, height);
+	//$ 	dev.slash3rss.slashclient.hud.servers.PartnerServers.drawBehind(g, serverData, left, top, width, height);
 	//$ }
 	//#endif
 
@@ -87,16 +87,16 @@ abstract class OnlineServerEntryMixin {
 	@Inject(method = "extractContent", at = @At("TAIL"))
 	private void slashclient$partnerBadge(GuiGraphicsExtractor g, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
 		var entry = (ServerSelectionList.Entry) (Object) this;
-		dev.slash3rss.slashclient.hud.PartnerServers.drawBadge(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
-		dev.slash3rss.slashclient.hud.ServerPacks.drawTag(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
-		dev.slash3rss.slashclient.hud.ServerFriends.drawInRow(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight(), mouseX, mouseY);
+		dev.slash3rss.slashclient.hud.servers.PartnerServers.drawBadge(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
+		dev.slash3rss.slashclient.hud.servers.ServerPacks.drawTag(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight());
+		dev.slash3rss.slashclient.hud.servers.ServerFriends.drawInRow(g, serverData, entry.getContentX(), entry.getContentY(), entry.getContentWidth(), entry.getContentHeight(), mouseX, mouseY);
 	}
 	//#else
 	//$ @Inject(method = "render", at = @At("TAIL"))
 	//$ private void slashclient$partnerBadge(GuiGraphicsExtractor g, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean hovered, float delta, CallbackInfo ci) {
-	//$ 	dev.slash3rss.slashclient.hud.PartnerServers.drawBadge(g, serverData, left, top, width, height);
-	//$ 	dev.slash3rss.slashclient.hud.ServerPacks.drawTag(g, serverData, left, top, width, height);
-	//$ 	dev.slash3rss.slashclient.hud.ServerFriends.drawInRow(g, serverData, left, top, width, height, mouseX, mouseY);
+	//$ 	dev.slash3rss.slashclient.hud.servers.PartnerServers.drawBadge(g, serverData, left, top, width, height);
+	//$ 	dev.slash3rss.slashclient.hud.servers.ServerPacks.drawTag(g, serverData, left, top, width, height);
+	//$ 	dev.slash3rss.slashclient.hud.servers.ServerFriends.drawInRow(g, serverData, left, top, width, height, mouseX, mouseY);
 	//$ }
 	//#endif
 
@@ -107,7 +107,7 @@ abstract class OnlineServerEntryMixin {
 	//$ @Inject(method = "drawIcon", at = @At("HEAD"), cancellable = true)
 	//#endif
 	private void slashclient$animatedIcon(GuiGraphicsExtractor g, int x, int y, Identifier icon, CallbackInfo ci) {
-		if (dev.slash3rss.slashclient.hud.PartnerIcons.draw(g, serverData, x, y, 32)) ci.cancel();
+		if (dev.slash3rss.slashclient.hud.servers.PartnerIcons.draw(g, serverData, x, y, 32)) ci.cancel();
 	}
 
 	@Inject(method = "swap", at = @At("HEAD"), cancellable = true)

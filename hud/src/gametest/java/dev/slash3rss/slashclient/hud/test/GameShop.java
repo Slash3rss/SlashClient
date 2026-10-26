@@ -46,7 +46,7 @@ public class GameShop implements FabricClientGameTest {
 		context.getInput().pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE);
 		context.waitTicks(2);
 		if (!state(context, "emberstar").startsWith("1250|false|false")) throw new AssertionError("Escape did not close the box: " + state(context, "emberstar"));
-		if (!context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.Compat.screen(mc) instanceof dev.slash3rss.slashclient.hud.CosmeticsScreen))
+		if (!context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.Compat.screen(mc) instanceof dev.slash3rss.slashclient.hud.cosmetics.CosmeticsScreen))
 			throw new AssertionError("Escape on the box closed the menu");
 		if (context.computeOnClient(mc -> TestHooks.shopOffer("coral"))) throw new AssertionError("An owned item offered for sale");
 

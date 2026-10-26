@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
-import dev.slash3rss.slashclient.hud.PinnedServer;
+import dev.slash3rss.slashclient.hud.servers.PinnedServer;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.multiplayer.ServerList;
 import org.spongepowered.asm.mixin.Final;
@@ -20,13 +20,13 @@ abstract class ServerListMixin {
 	@Inject(method = "load", at = @At("TAIL"))
 	private void slashclient$pin(CallbackInfo ci) {
 		PinnedServer.ensure(serverList);
-		dev.slash3rss.slashclient.hud.ServerPacks.listed(serverList);
+		dev.slash3rss.slashclient.hud.servers.ServerPacks.listed(serverList);
 	}
 
 	/** Which servers are in the list, for their resource pack modes (ServerPacks). */
 	@Inject(method = "save", at = @At("TAIL"))
 	private void slashclient$listed(CallbackInfo ci) {
-		dev.slash3rss.slashclient.hud.ServerPacks.listed(serverList);
+		dev.slash3rss.slashclient.hud.servers.ServerPacks.listed(serverList);
 	}
 
 	@Inject(method = "remove", at = @At("HEAD"), cancellable = true)

@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Style;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import dev.slash3rss.slashclient.hud.benchmark.BenchScene;
 
 /** Zoom, fullbright, low fire, chat timestamps and the crosshair; the mixins call in here. */
 public final class Extras {

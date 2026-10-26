@@ -12,6 +12,11 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import dev.slash3rss.slashclient.hud.chat.ChatExtras;
+import dev.slash3rss.slashclient.hud.chat.ChatLook;
+import dev.slash3rss.slashclient.hud.map.WorldMapScreen;
+import dev.slash3rss.slashclient.hud.replay.ShotCaption;
+import dev.slash3rss.slashclient.hud.servers.ServerPacks;
 
 /**
  * Settings in config/slashclient-hud.json. The launcher writes the same file, so the
@@ -624,7 +629,7 @@ public final class HudConfig {
 	}
 
 	/** Settings from an older version or a share code: whatever is missing gets its default. */
-	static HudConfig fillMissing(HudConfig read) {
+	public static HudConfig fillMissing(HudConfig read) {
 		HudConfig defaults = defaults();
 		if (read.modules == null) read.modules = new LinkedHashMap<>();
 		// modules added in newer versions get their default place

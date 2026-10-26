@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import dev.slash3rss.slashclient.hud.Cosmetics;
+import dev.slash3rss.slashclient.hud.cosmetics.Cosmetics;
 import net.minecraft.client.player.AbstractClientPlayer;
 //#if MC >= 1.21.9
 import net.minecraft.world.entity.player.PlayerSkin;

@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
-import dev.slash3rss.slashclient.hud.PinnedServer;
-import dev.slash3rss.slashclient.hud.ServerPacks;
+import dev.slash3rss.slashclient.hud.servers.PinnedServer;
+import dev.slash3rss.slashclient.hud.servers.ServerPacks;
 import dev.slash3rss.slashclient.hud.ui.Ui;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.gui.GuiGraphicsExtractor;

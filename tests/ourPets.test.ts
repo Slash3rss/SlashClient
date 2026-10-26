@@ -26,8 +26,8 @@ describe('our own pets', () => {
   });
 
   it('are pets in the server catalog, and the mod knows them', () => {
-    const cosmetics = readFileSync('hud/src/main/java/dev/slash3rss/slashclient/hud/Cosmetics.java', 'utf8');
-    const ours = readFileSync('hud/src/main/java/dev/slash3rss/slashclient/hud/OurPets.java', 'utf8');
+    const cosmetics = readFileSync('hud/src/main/java/dev/slash3rss/slashclient/hud/cosmetics/Cosmetics.java', 'utf8');
+    const ours = readFileSync('hud/src/main/java/dev/slash3rss/slashclient/hud/cosmetics/OurPets.java', 'utf8');
     for (const id of Object.keys(OUR_PET_MODELS)) {
       assert.equal(ITEMS.find((i) => i.id === id)?.slot, 'pet', id);
       assert.ok(cosmetics.includes(`"${id}"`) && ours.includes(`"${id}"`), id);
@@ -53,7 +53,7 @@ describe('our own pets', () => {
     assert.equal(ITEMS.find((i) => i.id === 'cat')?.slot, 'pet');
     assert.ok(PET_MODELS.cat.children.some((c) => c.name === 'tail2'));
     for (const p of ['item/cat_spawn_egg', 'entity/cat/cat_red', 'entity/cat/red']) assert.ok(COSMETIC_TEXTURES.includes(p), p);
-    const layer = readFileSync('hud/src/main/java/dev/slash3rss/slashclient/hud/CosmeticLayer.java', 'utf8');
+    const layer = readFileSync('hud/src/main/java/dev/slash3rss/slashclient/hud/cosmetics/CosmeticLayer.java', 'utf8');
     assert.ok(layer.includes('vanilla("cat/cat_red")') && layer.includes('vanilla("cat/red")'));
   });
 });

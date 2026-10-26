@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.ReplayTestHooks;
+import dev.slash3rss.slashclient.hud.replay.ReplayTestHooks;
 import dev.slash3rss.slashclient.hud.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;

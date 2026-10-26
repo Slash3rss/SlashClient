@@ -13,6 +13,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import dev.slash3rss.slashclient.hud.map.Waypoints;
+import dev.slash3rss.slashclient.hud.map.DeathPoint;
+import dev.slash3rss.slashclient.hud.map.WorldMapScreen;
 
 /**
  * The death screen tells more: under the cause of death a card with where it happened (the

@@ -4,6 +4,8 @@ package dev.slash3rss.slashclient.hud;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import dev.slash3rss.slashclient.hud.map.DeathPoint;
+import dev.slash3rss.slashclient.hud.map.Waypoints;
 
 /**
  * For the in-game test of the world helpers (src/gametest GameWorldAids): the death point, the

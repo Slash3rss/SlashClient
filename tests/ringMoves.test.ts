@@ -4,7 +4,7 @@ import { describe, it } from 'node:test';
 import { MOVE_ICONS, MOVE_IDS, RING_FRAMES, RING_IDS, RING_STILL } from '../src/renderer/ringMovePreview';
 import { ITEMS, compareVersions } from '../server/src/cosmetics';
 
-const MOD = 'hud/src/main/java/dev/slash3rss/slashclient/hud';
+const MOD = 'hud/src/main/java/dev/slash3rss/slashclient/hud/cosmetics';
 
 describe('rings and movement effects', () => {
   it('are the same lists in the server catalog, the mod and the previews', () => {

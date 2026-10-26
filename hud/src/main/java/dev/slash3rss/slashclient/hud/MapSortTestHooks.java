@@ -14,6 +14,12 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import dev.slash3rss.slashclient.hud.inventory.InventorySort;
+import dev.slash3rss.slashclient.hud.map.MapEntities;
+import dev.slash3rss.slashclient.hud.map.MinimapTerrain;
+import dev.slash3rss.slashclient.hud.map.MobHeads;
+import dev.slash3rss.slashclient.hud.map.Waypoints;
+import dev.slash3rss.slashclient.hud.map.WorldMapScreen;
 
 /**
  * Sorting, friends on the minimap and the full map for the in-game tests (src/gametest

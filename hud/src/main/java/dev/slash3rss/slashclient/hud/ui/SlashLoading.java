@@ -2,7 +2,7 @@ package dev.slash3rss.slashclient.hud.ui;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import dev.slash3rss.slashclient.hud.LoadingTips;
-import dev.slash3rss.slashclient.hud.PartnerIcons;
+import dev.slash3rss.slashclient.hud.servers.PartnerIcons;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import dev.slash3rss.slashclient.hud.mixin.LevelLoadingScreenAccessor;
 import dev.slash3rss.slashclient.hud.mixin.LoadingScreensAccessor;

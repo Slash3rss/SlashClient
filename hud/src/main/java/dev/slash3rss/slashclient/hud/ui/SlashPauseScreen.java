@@ -3,7 +3,7 @@ package dev.slash3rss.slashclient.hud.ui;
 import dev.slash3rss.slashclient.hud.Compat;
 import dev.slash3rss.slashclient.hud.HudEditScreen;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.WaypointsScreen;
+import dev.slash3rss.slashclient.hud.map.WaypointsScreen;
 import dev.slash3rss.slashclient.hud.social.FriendsScreen;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.PauseScreen;
@@ -33,7 +33,7 @@ public class SlashPauseScreen extends MenuScreen {
 		List<Nav> items = new ArrayList<>(List.of(
 			new Nav(Ui.tr("menu.returnToGame"), "play", this::onClose),
 			new Nav(Ui.tr("slashclient-hud.friends"), "user", () -> minecraft.setScreenAndShow(new FriendsScreen(this)))
-				.with(new Nav(Ui.tr("slashclient-hud.cosmetics"), "m-appearance", () -> minecraft.setScreenAndShow(new dev.slash3rss.slashclient.hud.CosmeticsScreen(this)))),
+				.with(new Nav(Ui.tr("slashclient-hud.cosmetics"), "m-appearance", () -> minecraft.setScreenAndShow(new dev.slash3rss.slashclient.hud.cosmetics.CosmeticsScreen(this)))),
 			new Nav(Ui.tr("slashclient-hud.editor"), "sliders", () -> minecraft.setScreenAndShow(HudEditScreen.settingsWindow()))));
 		Nav options = new Nav(Ui.tr("menu.options"), "gear", () -> minecraft.setScreenAndShow(Compat.options(minecraft, this)));
 		//#if MC >= 26.3

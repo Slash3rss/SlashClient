@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import dev.slash3rss.slashclient.hud.LootHighlight;
+import dev.slash3rss.slashclient.hud.skyup.LootHighlight;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
-import dev.slash3rss.slashclient.hud.Props;
+import dev.slash3rss.slashclient.hud.cosmetics.Props;
 import net.minecraft.client.model.player.PlayerModel;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -25,7 +25,7 @@ abstract class PropArmsMixin {
 		var entity = mc.level.getEntity(state.id);
 		Props.holdArms(entity, state.isCrouching, self.rightArm, self.leftArm);
 		// an emote's moves (the hat, jacket and sleeves are children of their parts here)
-		dev.slash3rss.slashclient.hud.Emotes.pose(entity, self.head, self.body, self.rightArm, self.leftArm, self.rightLeg, self.leftLeg);
+		dev.slash3rss.slashclient.hud.cosmetics.Emotes.pose(entity, self.head, self.body, self.rightArm, self.leftArm, self.rightLeg, self.leftLeg);
 	}
 	//#else
 	//$ @Inject(method = "setupAnim(Lnet/minecraft/world/entity/LivingEntity;FFFFF)V", at = @At("TAIL"))
@@ -34,7 +34,7 @@ abstract class PropArmsMixin {
 	//$ 	Props.holdArms(entity, entity.isCrouching(), self.rightArm, self.leftArm);
 	//$ 	self.rightSleeve.copyFrom(self.rightArm);
 	//$ 	self.leftSleeve.copyFrom(self.leftArm);
-	//$ 	dev.slash3rss.slashclient.hud.Emotes.pose(entity, self.head, self.body, self.rightArm, self.leftArm, self.rightLeg, self.leftLeg,
+	//$ 	dev.slash3rss.slashclient.hud.cosmetics.Emotes.pose(entity, self.head, self.body, self.rightArm, self.leftArm, self.rightLeg, self.leftLeg,
 	//$ 		self.hat, self.jacket, self.rightSleeve, self.leftSleeve, self.rightPants, self.leftPants);
 	//$ }
 	//#endif

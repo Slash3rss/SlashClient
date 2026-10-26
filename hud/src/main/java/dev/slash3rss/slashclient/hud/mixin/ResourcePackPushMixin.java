@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
-import dev.slash3rss.slashclient.hud.ServerPacks;
+import dev.slash3rss.slashclient.hud.servers.ServerPacks;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.network.Connection;
@@ -40,7 +40,7 @@ abstract class ResourcePackPushMixin {
 	private void slashclient$packMode(net.minecraft.network.protocol.common.ClientboundResourcePackPushPacket packet, CallbackInfo ci) {
 		ServerPacks.Mode mode = ServerPacks.forConnection(serverData);
 		// the pack kept in the player's resource packs, current and switched on: nothing to download or ask
-		if (dev.slash3rss.slashclient.hud.KeptPacks.covers(serverData, mode, packet.url(), packet.hash())) {
+		if (dev.slash3rss.slashclient.hud.servers.KeptPacks.covers(serverData, mode, packet.url(), packet.hash())) {
 			ServerPacks.decided(ServerPacks.Mode.KEEP);
 			slashclient$answer(packet.id(), net.minecraft.network.protocol.common.ServerboundResourcePackPacket.Action.ACCEPTED);
 			slashclient$answer(packet.id(), net.minecraft.network.protocol.common.ServerboundResourcePackPacket.Action.DOWNLOADED);
@@ -51,7 +51,7 @@ abstract class ResourcePackPushMixin {
 		ServerPacks.decided(mode);
 		switch (mode) {
 			// the game asks; its question gets "Ustaw na stałe" (KeptPacks.offered), which needs to know the packs
-			case PROMPT -> dev.slash3rss.slashclient.hud.KeptPacks.offered(serverData, packet.url(), packet.hash());
+			case PROMPT -> dev.slash3rss.slashclient.hud.servers.KeptPacks.offered(serverData, packet.url(), packet.hash());
 			// kept, its copy not ready yet: this time as "accept"
 			case ACCEPT, KEEP -> {
 				if (slashclient$accept(packet)) ci.cancel();

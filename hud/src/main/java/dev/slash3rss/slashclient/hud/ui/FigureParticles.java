@@ -173,8 +173,8 @@ public final class FigureParticles {
 			case "leaves_gold", "leaves_autumn" -> {
 				// they fall slowly: fewer of them, or the figure would be buried
 				if (random.nextInt(2) != 0) break;
-				String[] colours = dev.slash3rss.slashclient.hud.Leaves.colours(dev.slash3rss.slashclient.hud.Leaves.variant(kind));
-				String leaf = "slashclient-hud:leaf_" + colours[random.nextInt(colours.length)] + "_" + random.nextInt(dev.slash3rss.slashclient.hud.Leaves.SHAPES);
+				String[] colours = dev.slash3rss.slashclient.hud.cosmetics.Leaves.colours(dev.slash3rss.slashclient.hud.cosmetics.Leaves.variant(kind));
+				String leaf = "slashclient-hud:leaf_" + colours[random.nextInt(colours.length)] + "_" + random.nextInt(dev.slash3rss.slashclient.hud.cosmetics.Leaves.SHAPES);
 				float lr = 0.5f + random.nextFloat() * 0.6f;
 				P p = add(style(leaf, 0xFFFFFFFF, 0.16f), x / r * lr, 2.1f + random.nextFloat() * 0.4f, z / r * lr, 0, -0.38f, 0, 5.0f);
 				p.sway = 0.5f + random.nextFloat() * 0.3f;

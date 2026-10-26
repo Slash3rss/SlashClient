@@ -1,8 +1,8 @@
 package dev.slash3rss.slashclient.hud.test;
 
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.PartnerServers;
-import dev.slash3rss.slashclient.hud.ServerFriends;
+import dev.slash3rss.slashclient.hud.servers.PartnerServers;
+import dev.slash3rss.slashclient.hud.servers.ServerFriends;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import dev.slash3rss.slashclient.hud.TestHooks;
 import dev.slash3rss.slashclient.hud.social.Social;

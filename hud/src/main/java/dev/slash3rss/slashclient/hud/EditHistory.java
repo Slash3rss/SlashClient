@@ -5,6 +5,8 @@ import net.minecraft.client.Options;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import dev.slash3rss.slashclient.hud.chat.ChatLook;
+import dev.slash3rss.slashclient.hud.chat.ChatTabs;
 
 /**
  * Undo and redo in the HUD editor, for one opening of it. A step is whatever changed between two

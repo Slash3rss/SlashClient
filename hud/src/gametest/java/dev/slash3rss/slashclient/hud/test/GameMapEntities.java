@@ -90,7 +90,7 @@ public class GameMapEntities implements FabricClientGameTest {
 			context.takeScreenshot("map-entities-minimap-round");
 
 			// the full map
-			context.setScreen(() -> new dev.slash3rss.slashclient.hud.WorldMapScreen(null));
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.map.WorldMapScreen(null));
 			context.waitTicks(10);
 			context.runOnClient(mc -> MapSortTestHooks.mapCenter(0, 0, 4f));
 			context.getInput().setCursorPos(4, 4);
@@ -121,7 +121,7 @@ public class GameMapEntities implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.minimap(true, "square", false, 3f, 160));
 			context.waitTicks(5);
 			context.takeScreenshot("map-entities-heads-minimap");
-			context.setScreen(() -> new dev.slash3rss.slashclient.hud.WorldMapScreen(null));
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.map.WorldMapScreen(null));
 			context.waitTicks(10);
 			context.runOnClient(mc -> MapSortTestHooks.mapCenter(0, -3, 5f));
 			context.getInput().setCursorPos(4, 4);

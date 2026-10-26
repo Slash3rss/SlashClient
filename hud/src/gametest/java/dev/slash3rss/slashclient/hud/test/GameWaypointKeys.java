@@ -1,13 +1,13 @@
 package dev.slash3rss.slashclient.hud.test;
 
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.DeathPoint;
+import dev.slash3rss.slashclient.hud.map.DeathPoint;
 import dev.slash3rss.slashclient.hud.TabStatus;
 import dev.slash3rss.slashclient.hud.TestHooks;
-import dev.slash3rss.slashclient.hud.WaypointKeys;
-import dev.slash3rss.slashclient.hud.WaypointKeysTestHooks;
-import dev.slash3rss.slashclient.hud.Waypoints;
-import dev.slash3rss.slashclient.hud.WaypointsScreen;
+import dev.slash3rss.slashclient.hud.map.WaypointKeys;
+import dev.slash3rss.slashclient.hud.map.WaypointKeysTestHooks;
+import dev.slash3rss.slashclient.hud.map.Waypoints;
+import dev.slash3rss.slashclient.hud.map.WaypointsScreen;
 import dev.slash3rss.slashclient.hud.social.SharedWaypoints;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;

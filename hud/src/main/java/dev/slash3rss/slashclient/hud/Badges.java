@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import dev.slash3rss.slashclient.hud.cosmetics.Cosmetics;
 
 /**
  * The SlashClient logo next to the names of players who also play with it, on the tab
@@ -130,7 +131,7 @@ public final class Badges {
 	private static final HttpClient HTTP = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(5)).build();
 	private static boolean warned;
 	private static final Gson GSON = new Gson();
-	static String server;
+	public static String server;
 	private static long lastHeartbeat;
 	private static int tick;
 	private static boolean busy;
@@ -303,7 +304,7 @@ public final class Badges {
 	}
 
 	/** Asked of the server again at the next lookup (within a second): a live change without the new set. */
-	static void recheck(UUID id) {
+	public static void recheck(UUID id) {
 		checkedAt.remove(id);
 	}
 
@@ -317,7 +318,7 @@ public final class Badges {
 	}
 
 	/** Everyone asked about again at the next lookups (their logos stay meanwhile). */
-	static void recheckAll() {
+	public static void recheckAll() {
 		checkedAt.clear();
 	}
 

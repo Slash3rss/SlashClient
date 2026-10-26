@@ -2,7 +2,9 @@ package dev.slash3rss.slashclient.hud.test;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.slash3rss.slashclient.hud.HudEditScreen;
-import dev.slash3rss.slashclient.hud.InvToolsTestHooks;
+//#if MC >= 1.21.4
+import dev.slash3rss.slashclient.hud.inventory.InvToolsTestHooks;
+//#endif
 import dev.slash3rss.slashclient.hud.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -144,14 +146,14 @@ public class GameInventoryTools implements FabricClientGameTest {
 			context.waitTicks(5);
 			context.takeScreenshot("invtools-search");
 			// pinned with a double click: the next window opened has it already; a double click again unpins
-			String pin = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.InventorySearch.doubleClickForTest());
+			String pin = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.inventory.InventorySearch.doubleClickForTest());
 			context.setScreen(() -> null);
 			context.waitTicks(2);
 			context.runOnClient(mc -> InvToolsTestHooks.openInventory());
 			context.waitTicks(5);
-			String kept = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.InventorySearch.boxText());
+			String kept = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.inventory.InventorySearch.boxText());
 			context.takeScreenshot("invtools-search-pinned");
-			String unpinned = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.InventorySearch.doubleClickForTest());
+			String unpinned = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.inventory.InventorySearch.doubleClickForTest());
 			if (!pin.equals("diamond") || !kept.equals("diamond") || !unpinned.isEmpty())
 				throw new AssertionError("The pinned search (pinned, in the next window, after unpinning): " + pin + " | " + kept + " | " + unpinned);
 			context.computeOnClient(mc -> InvToolsTestHooks.search(""));

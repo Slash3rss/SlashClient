@@ -17,10 +17,20 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import dev.slash3rss.slashclient.hud.inventory.InventoryModule;
+import dev.slash3rss.slashclient.hud.map.Minimap;
+import dev.slash3rss.slashclient.hud.skyup.DungeonMap;
+//#if MC >= 26.3
+import dev.slash3rss.slashclient.hud.skyup.SkyCase;
+import dev.slash3rss.slashclient.hud.skyup.SkyFish;
+import dev.slash3rss.slashclient.hud.skyup.SkyTasks;
+import dev.slash3rss.slashclient.hud.skyup.SkyWardrobe;
+import dev.slash3rss.slashclient.hud.skyup.SkyXp;
+//#endif
 
 /** All HUD modules, in the order the editor lists them. */
 public final class Modules {
-	static final int PAD = 3;
+	public static final int PAD = 3;
 	static HudConfig cfg;
 
 	private Modules() {}
@@ -72,19 +82,19 @@ public final class Modules {
 		else g.fill(x, y, x + w, y + h, color);
 	}
 
-	static int color(int color) {
+	public static int color(int color) {
 		return drawing != null && color == cfg.textColor ? drawing.textColor(cfg) : color;
 	}
 
-	static boolean shadow() {
+	public static boolean shadow() {
 		return drawing != null ? drawing.shadow(cfg) : cfg.textShadow;
 	}
 
-	static void text(GuiGraphicsExtractor g, Minecraft mc, String s, int x, int y, int color) {
+	public static void text(GuiGraphicsExtractor g, Minecraft mc, String s, int x, int y, int color) {
 		g.text(mc.font, s, x, y, color(color), shadow());
 	}
 
-	static void text(GuiGraphicsExtractor g, Minecraft mc, Component s, int x, int y, int color) {
+	public static void text(GuiGraphicsExtractor g, Minecraft mc, Component s, int x, int y, int color) {
 		g.text(mc.font, s, x, y, color(color), shadow());
 	}
 
@@ -135,7 +145,7 @@ public final class Modules {
 	abstract static class TextModule implements HudModule {
 		abstract Component content(Minecraft mc);
 
-		int color(Minecraft mc) {
+		public int color(Minecraft mc) {
 			return cfg.textColor;
 		}
 
@@ -196,7 +206,7 @@ public final class Modules {
 		}
 
 		@Override
-		int color(Minecraft mc) {
+		public int color(Minecraft mc) {
 			// green from 60 up, red at 20 and below
 			return cfg.fpsColored ? grade(-mc.getFps(), -60, -20) : cfg.textColor;
 		}
@@ -227,7 +237,7 @@ public final class Modules {
 		}
 
 		@Override
-		int color(Minecraft mc) {
+		public int color(Minecraft mc) {
 			return grade(Math.max(0, latency(mc)), 60, 250);
 		}
 	}

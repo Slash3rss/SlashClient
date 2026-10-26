@@ -3,7 +3,9 @@ package dev.slash3rss.slashclient.hud.test;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 //#if MC >= 26.3
-import dev.slash3rss.slashclient.hud.SkyWardrobeTestHooks;
+//#if MC >= 26.3
+import dev.slash3rss.slashclient.hud.skyup.SkyWardrobeTestHooks;
+//#endif
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 //#endif
 

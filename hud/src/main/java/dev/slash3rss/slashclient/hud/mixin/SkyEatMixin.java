@@ -3,7 +3,9 @@ package dev.slash3rss.slashclient.hud.mixin;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 //#if MC >= 26.3
-import dev.slash3rss.slashclient.hud.SkyCounters;
+//#if MC >= 26.3
+import dev.slash3rss.slashclient.hud.skyup.SkyCounters;
+//#endif
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;

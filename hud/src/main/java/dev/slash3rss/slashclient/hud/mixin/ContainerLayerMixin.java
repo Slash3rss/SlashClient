@@ -16,7 +16,7 @@ abstract class ContainerLayerMixin {
 	//#endif
 	//#if MC >= 1.21.6
 	private void slashclient$underTooltips(net.minecraft.client.gui.GuiGraphicsExtractor g, int mouseX, int mouseY, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
-		dev.slash3rss.slashclient.hud.ContainerLayer.draw((AbstractContainerScreen<?>) (Object) this, g, mouseX, mouseY);
+		dev.slash3rss.slashclient.hud.inventory.ContainerLayer.draw((AbstractContainerScreen<?>) (Object) this, g, mouseX, mouseY);
 	}
 	//#endif
 }

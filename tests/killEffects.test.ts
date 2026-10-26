@@ -8,12 +8,12 @@ describe('kill effects', () => {
   it('are the same list in the server catalog, the mod and the previews', () => {
     const catalog = ITEMS.filter((i) => i.slot === 'kill');
     assert.deepEqual(catalog.map((i) => i.id), [...KILL_EFFECT_IDS]);
-    const mod = readFileSync('hud/src/main/java/dev/slash3rss/slashclient/hud/KillEffects.java', 'utf8');
+    const mod = readFileSync('hud/src/main/java/dev/slash3rss/slashclient/hud/cosmetics/KillEffects.java', 'utf8');
     const list = /IDS = List\.of\(([^)]*)\)/.exec(mod)?.[1] ?? '';
     assert.deepEqual([...list.matchAll(/"(\w+)"/g)].map((m) => m[1]), [...KILL_EFFECT_IDS]);
     // the mod draws each one, and knows the slot
     for (const id of KILL_EFFECT_IDS) assert.ok(mod.includes(`case "${id}"`) || mod.includes(`"${id}" ->`) || new RegExp(`case [^>]*"${id}"`).test(mod), id);
-    assert.ok(readFileSync('hud/src/main/java/dev/slash3rss/slashclient/hud/Cosmetics.java', 'utf8').includes('"kill", KillEffects.IDS'));
+    assert.ok(readFileSync('hud/src/main/java/dev/slash3rss/slashclient/hud/cosmetics/Cosmetics.java', 'utf8').includes('"kill", KillEffects.IDS'));
   });
 
   it('come with the unreleased launcher, free for everyone', () => {
@@ -28,7 +28,7 @@ describe('kill effects', () => {
   it('have an icon and a name in the launcher, on the website and in the game', () => {
     const app = readFileSync('src/renderer/app.ts', 'utf8');
     const web = readFileSync('server/web/common.js', 'utf8');
-    const screen = readFileSync('hud/src/main/java/dev/slash3rss/slashclient/hud/CosmeticsScreen.java', 'utf8');
+    const screen = readFileSync('hud/src/main/java/dev/slash3rss/slashclient/hud/cosmetics/CosmeticsScreen.java', 'utf8');
     for (const id of KILL_EFFECT_IDS) {
       assert.ok(new RegExp(`\\b${id}: 'fa-`).test(app), `launcher icon ${id}`);
       assert.ok(new RegExp(`\\b${id}: 'fa-`).test(web), `website icon ${id}`);

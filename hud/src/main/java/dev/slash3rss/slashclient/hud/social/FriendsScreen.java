@@ -1230,7 +1230,7 @@ public class FriendsScreen extends Screen {
 
 	/** The screenshot taken a moment ago (F2): one click sends it to this friend. */
 	private void drawRecentShot(GuiGraphicsExtractor g, Social.Friend f, int cx, int cw, int fy, int mx, int my) {
-		java.io.File shot = dev.slash3rss.slashclient.hud.Shots.recent();
+		java.io.File shot = dev.slash3rss.slashclient.hud.replay.Shots.recent();
 		if (shot == null) return;
 		ChatImages.Texture tex = ChatImages.file(shot);
 		int h = 30, w = Math.min(cw - 20, 190), x = cx + cw - 10 - w, y = fy - h - 6;
@@ -1249,11 +1249,11 @@ public class FriendsScreen extends Screen {
 		Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.picture.recentHint", f.name()), x + w - tx - 18), tx, y + 17, Ui.TEXT_2);
 		// not now: the card goes
 		Ui.icon(g, "close", x + w - 12, y + 4, 8, Ui.MUTED);
-		hits.add(new Hit(x + w - 14, y + 2, 12, 12, dev.slash3rss.slashclient.hud.Shots::forgetRecent));
+		hits.add(new Hit(x + w - 14, y + 2, 12, 12, dev.slash3rss.slashclient.hud.replay.Shots::forgetRecent));
 		String fid = f.id(), fname = f.name();
 		hits.add(new Hit(x, y, w, h, () -> {
 			Social.sendImage(fid, shot, null);
-			dev.slash3rss.slashclient.hud.Shots.forgetRecent();
+			dev.slash3rss.slashclient.hud.replay.Shots.forgetRecent();
 			Social.toast(fname, Component.translatable("slashclient-hud.picture.sending").getString(), "m-screenshot");
 		}));
 	}

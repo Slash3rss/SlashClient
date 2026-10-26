@@ -137,15 +137,15 @@ public final class SkinPreview {
 
 	/** The pets' size by the figure: the game's mobs all alike, ours as much smaller as they are in the game (a wheelbarrow). */
 	private static float petScale(String id) {
-		return dev.slash3rss.slashclient.hud.CosmeticLayer.petLayer(id) != null ? 0.55f : 0.55f * dev.slash3rss.slashclient.hud.OurPets.scale(id) / 0.75f;
+		return dev.slash3rss.slashclient.hud.cosmetics.CosmeticLayer.petLayer(id) != null ? 0.55f : 0.55f * dev.slash3rss.slashclient.hud.cosmetics.OurPets.scale(id) / 0.75f;
 	}
 
 	private Object petModel(String id, float time) {
-		var layer = dev.slash3rss.slashclient.hud.CosmeticLayer.petLayer(id);
+		var layer = dev.slash3rss.slashclient.hud.cosmetics.CosmeticLayer.petLayer(id);
 		// the game's mobs by their layer, ours from their boxes
-		if (layer == null && !dev.slash3rss.slashclient.hud.OurPets.IDS.contains(id)) return null;
+		if (layer == null && !dev.slash3rss.slashclient.hud.cosmetics.OurPets.IDS.contains(id)) return null;
 		Object model = pets.computeIfAbsent(id, k -> {
-			ModelPart pet = layer != null ? Minecraft.getInstance().getEntityModels().bakeLayer(layer) : dev.slash3rss.slashclient.hud.OurPets.bake(id);
+			ModelPart pet = layer != null ? Minecraft.getInstance().getEntityModels().bakeLayer(layer) : dev.slash3rss.slashclient.hud.cosmetics.OurPets.bake(id);
 			ModelPart holder = new ModelPart(java.util.List.of(), java.util.Map.of("pet", pet));
 			holder.xScale = holder.yScale = holder.zScale = petScale(id);
 			return wrap(holder);
@@ -160,10 +160,10 @@ public final class SkinPreview {
 
 	/** A clothing item on the figure, its head, body, arms and legs posed as the figure's (with `hat` on; ears twitch by `time`). */
 	private Object clothingModel(String id, boolean slimArms, ModelPart figure, String hat, float time) {
-		Object model = clothes.computeIfAbsent(slimArms ? id + "/slim" : id, k -> wrap(dev.slash3rss.slashclient.hud.Clothing.bake(id, slimArms)));
+		Object model = clothes.computeIfAbsent(slimArms ? id + "/slim" : id, k -> wrap(dev.slash3rss.slashclient.hud.cosmetics.Clothing.bake(id, slimArms)));
 		ModelPart parts = root(model).getChild("slashclient");
-		for (String bone : dev.slash3rss.slashclient.hud.Clothing.BONES) parts.getChild(bone).loadPose(figure.getChild(bone).storePose());
-		dev.slash3rss.slashclient.hud.Clothing.animate(parts, id, hat, time);
+		for (String bone : dev.slash3rss.slashclient.hud.cosmetics.Clothing.BONES) parts.getChild(bone).loadPose(figure.getChild(bone).storePose());
+		dev.slash3rss.slashclient.hud.cosmetics.Clothing.animate(parts, id, hat, time);
 		return model;
 	}
 	private final java.util.Map<String, Object> clothes = new java.util.HashMap<>();
@@ -173,10 +173,10 @@ public final class SkinPreview {
 	 * an elytra or a back item there (`backTaken`), its own tail to a worn tail (`tailTaken`).
 	 */
 	private Object suitModel(String id, boolean slimArms, ModelPart figure, boolean backTaken, boolean tailTaken) {
-		Object model = suits.computeIfAbsent(slimArms ? id + "/slim" : id, k -> wrap(dev.slash3rss.slashclient.hud.Suits.bake(id, slimArms)));
+		Object model = suits.computeIfAbsent(slimArms ? id + "/slim" : id, k -> wrap(dev.slash3rss.slashclient.hud.cosmetics.Suits.bake(id, slimArms)));
 		ModelPart parts = root(model).getChild("slashclient");
 		for (String bone : java.util.List.of("head", "body", "right_arm", "left_arm", "right_leg", "left_leg")) parts.getChild(bone).loadPose(figure.getChild(bone).storePose());
-		dev.slash3rss.slashclient.hud.Suits.showParts(parts, id, dev.slash3rss.slashclient.hud.Suits.backParts(backTaken, tailTaken));
+		dev.slash3rss.slashclient.hud.cosmetics.Suits.showParts(parts, id, dev.slash3rss.slashclient.hud.cosmetics.Suits.backParts(backTaken, tailTaken));
 		return model;
 	}
 	private final java.util.Map<String, Object> suits = new java.util.HashMap<>();
@@ -192,23 +192,23 @@ public final class SkinPreview {
 	/** A back item or a tail on the figure (model and rig, made when first worn), its body posed as the figure's, the tail moving. */
 	private Object gearModel(String id, ModelPart figure, float time, float walk, float phase, boolean caped, float fit) {
 		Object[] made = gear.computeIfAbsent(id, k -> {
-			var rig = dev.slash3rss.slashclient.hud.Gear.bake(k);
+			var rig = dev.slash3rss.slashclient.hud.cosmetics.Gear.bake(k);
 			return new Object[] {wrap(rig.root), rig};
 		});
-		var rig = (dev.slash3rss.slashclient.hud.Gear.Rig) made[1];
+		var rig = (dev.slash3rss.slashclient.hud.cosmetics.Gear.Rig) made[1];
 		rig.body.loadPose(figure.getChild("body").storePose());
-		dev.slash3rss.slashclient.hud.Gear.animate(rig, time, walk, phase, caped, fit);
+		dev.slash3rss.slashclient.hud.cosmetics.Gear.animate(rig, time, walk, phase, caped, fit);
 		return made[0];
 	}
 	private final java.util.Map<String, Object[]> gear = new java.util.HashMap<>();
 
 	/** A prop in front of the figure, its grips in the figure's hands (the arms turned to hold them), the wheel turned by `walked`. */
 	private Object propModel(String id, ModelPart figure, float walked) {
-		if (!dev.slash3rss.slashclient.hud.Props.IDS.contains(id)) return null;
-		Object model = props.computeIfAbsent(id, k -> wrap(dev.slash3rss.slashclient.hud.Props.bake(k)));
+		if (!dev.slash3rss.slashclient.hud.cosmetics.Props.IDS.contains(id)) return null;
+		Object model = props.computeIfAbsent(id, k -> wrap(dev.slash3rss.slashclient.hud.cosmetics.Props.bake(k)));
 		ModelPart right = figure.getChild("right_arm"), left = figure.getChild("left_arm");
-		right.xRot = left.xRot = dev.slash3rss.slashclient.hud.Props.hold(false);
-		dev.slash3rss.slashclient.hud.Props.place(root(model).getChild("slashclient"), (right.y + left.y) / 2, (right.z + left.z) / 2, right.xRot, 24, walked);
+		right.xRot = left.xRot = dev.slash3rss.slashclient.hud.cosmetics.Props.hold(false);
+		dev.slash3rss.slashclient.hud.cosmetics.Props.place(root(model).getChild("slashclient"), (right.y + left.y) / 2, (right.z + left.z) / 2, right.xRot, 24, walked);
 		return model;
 	}
 	private final java.util.Map<String, Object> props = new java.util.HashMap<>();
@@ -226,7 +226,7 @@ public final class SkinPreview {
 
 	/** Draws the figure in the box; the head looks at (mx, my). */
 	public void draw(GuiGraphicsExtractor g, int x, int y, int w, int h, int mx, int my) {
-		PlayerSkin s = dev.slash3rss.slashclient.hud.Cosmetics.withTestSkin(Minecraft.getInstance().getGameProfile().id(), skin.get());
+		PlayerSkin s = dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.withTestSkin(Minecraft.getInstance().getGameProfile().id(), skin.get());
 		var model = s.model() == PlayerModelType.SLIM ? slim : wide;
 		float scale = 0.97f * h / MODEL_HEIGHT;
 		// where the eyes are on screen: a little below the top of the box, in the middle
@@ -263,7 +263,7 @@ public final class SkinPreview {
 		// on the shield's and weapon's tabs it holds them, its arms raised a little as the game's players holding an item
 		String[] holding = look.held ? new String[] {look.worn(self, "shield"), look.worn(self, "weapon")} : new String[0];
 		for (String item : holding) {
-			if (item == null || dev.slash3rss.slashclient.hud.HeldSkins.kind(item) == null) continue;
+			if (item == null || dev.slash3rss.slashclient.hud.cosmetics.HeldSkins.kind(item) == null) continue;
 			ModelPart arm = root.getChild(HeldFigure.leftHand(item) ? "left_arm" : "right_arm");
 			arm.xRot = -(float) Math.PI / 10f;
 			arm.yRot = 0;
@@ -272,7 +272,7 @@ public final class SkinPreview {
 		// holding a shield or a weapon have no room for it, as in the game
 		String prop = look.held ? null : look.worn(self, "prop");
 		Object propModel = prop == null ? null : propModel(prop, root, look.walked(time));
-		dev.slash3rss.slashclient.hud.CosmeticsScreen.loadOwn(Minecraft.getInstance());
+		dev.slash3rss.slashclient.hud.cosmetics.CosmeticsScreen.loadOwn(Minecraft.getInstance());
 		// the aura and the trail: the game's particle pictures, those behind the figure first
 		look.tickParticles(self);
 		float feetX = x + w / 2f, feetY = y + h / 2f + (MODEL_HEIGHT / 2 - 0.0625f) * scale;
@@ -291,32 +291,32 @@ public final class SkinPreview {
 		String suit = look.worn(self, "suit");
 		String backId = look.worn(self, "back"), tailId = look.worn(self, "tail");
 		if (suit != null) layer(layers, suitModel(suit, slimArms, root, elytraId != null || backId != null || wing != null || capeId != null, tailId != null),
-			dev.slash3rss.slashclient.hud.Suits.texture(suit));
+			dev.slash3rss.slashclient.hud.cosmetics.Suits.texture(suit));
 		// back items and tails stand off a suit as off leggings
 		float gearFit = suit != null ? 0.6f : 0f;
 		// the hat that shows (face and ears things it would go through hide)
-		String hat = suit != null && dev.slash3rss.slashclient.hud.Suits.HIDDEN.contains("hat") ? null : look.worn(self, "hat");
-		for (String slot : dev.slash3rss.slashclient.hud.Clothing.SLOTS) {
-			String item = suit != null && dev.slash3rss.slashclient.hud.Suits.HIDDEN.contains(slot) ? null : look.worn(self, slot);
-			if (item != null) layer(layers, clothingModel(item, slimArms, root, hat, time), dev.slash3rss.slashclient.hud.Clothing.texture(item));
+		String hat = suit != null && dev.slash3rss.slashclient.hud.cosmetics.Suits.HIDDEN.contains("hat") ? null : look.worn(self, "hat");
+		for (String slot : dev.slash3rss.slashclient.hud.cosmetics.Clothing.SLOTS) {
+			String item = suit != null && dev.slash3rss.slashclient.hud.cosmetics.Suits.HIDDEN.contains(slot) ? null : look.worn(self, slot);
+			if (item != null) layer(layers, clothingModel(item, slimArms, root, hat, time), dev.slash3rss.slashclient.hud.cosmetics.Clothing.texture(item));
 		}
 		boolean caped = false;
-		if (elytraId != null) layer(layers, elytraModel(), dev.slash3rss.slashclient.hud.Cosmetics.textureId("elytra", elytraId));
-		else if (backId != null) layer(layers, gearModel(backId, root, time, 0, 0, false, gearFit), dev.slash3rss.slashclient.hud.Gear.texture(backId));
-		else if (wing != null) layer(layers, wingsModel(time), dev.slash3rss.slashclient.hud.Cosmetics.textureId("wings", wing));
+		if (elytraId != null) layer(layers, elytraModel(), dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.textureId("elytra", elytraId));
+		else if (backId != null) layer(layers, gearModel(backId, root, time, 0, 0, false, gearFit), dev.slash3rss.slashclient.hud.cosmetics.Gear.texture(backId));
+		else if (wing != null) layer(layers, wingsModel(time), dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.textureId("wings", wing));
 		else if (capeId != null) {
-			layer(layers, capeModel(swing), dev.slash3rss.slashclient.hud.Cosmetics.capeTexture(capeId));
+			layer(layers, capeModel(swing), dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.capeTexture(capeId));
 			caped = true;
 		}
 		for (String item : holding) {
-			if (item != null && dev.slash3rss.slashclient.hud.HeldSkins.kind(item) != null) layer(layers, heldModel(item, slimArms, root), HeldFigure.texture(item));
+			if (item != null && dev.slash3rss.slashclient.hud.cosmetics.HeldSkins.kind(item) != null) layer(layers, heldModel(item, slimArms, root), HeldFigure.texture(item));
 		}
 		// a tail swings with the running steps (the legs swing with sin(time · 11))
-		if (tailId != null) layer(layers, gearModel(tailId, root, time, look.running ? 1 : 0, time * 11f + (float) Math.PI / 2, caped, gearFit), dev.slash3rss.slashclient.hud.Gear.texture(tailId));
+		if (tailId != null) layer(layers, gearModel(tailId, root, time, look.running ? 1 : 0, time * 11f + (float) Math.PI / 2, caped, gearFit), dev.slash3rss.slashclient.hud.cosmetics.Gear.texture(tailId));
 		String pet = look.worn(self, "pet");
 		Object petModel = pet == null ? null : petModel(pet, time);
-		if (petModel != null) layer(layers, petModel, dev.slash3rss.slashclient.hud.CosmeticLayer.petTexture(pet));
-		if (propModel != null) layer(layers, propModel, dev.slash3rss.slashclient.hud.Props.texture(prop));
+		if (petModel != null) layer(layers, petModel, dev.slash3rss.slashclient.hud.cosmetics.CosmeticLayer.petTexture(pet));
+		if (propModel != null) layer(layers, propModel, dev.slash3rss.slashclient.hud.cosmetics.Props.texture(prop));
 		// a box round the figure's own with the same bottom middle (where its feet stand), wide and tall enough for all of it
 		// (a prop pushed in front reaches further)
 		int side = Math.round(w * (propModel != null ? 2.2f : REACH_SIDE)), up = Math.round(h * REACH_UP);
@@ -372,7 +372,7 @@ public final class SkinPreview {
 //$
 //$ 	/** Draws the figure in the box; the head looks at (mx, my). */
 //$ 	public void draw(GuiGraphics graphics, int x, int y, int w, int h, int mx, int my) {
-//$ 		PlayerSkin s = dev.slash3rss.slashclient.hud.Cosmetics.withTestSkin(Minecraft.getInstance().getGameProfile().getId(), skin.get());
+//$ 		PlayerSkin s = dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.withTestSkin(Minecraft.getInstance().getGameProfile().getId(), skin.get());
 //$ 		PlayerModel<?> model = s.model() == PlayerSkin.Model.SLIM ? slim : wide;
 //$ 		float eyesX = x + w / 2f;
 //$ 		float eyesY = y + h * 0.12f;
@@ -394,10 +394,10 @@ public final class SkinPreview {
 //$ 		model.leftLeg.xRot = swing;
 //$ 		// a prop pushed in front: both hands on its grips
 //$ 		String prop = look.worn(Minecraft.getInstance().getGameProfile().getId(), "prop");
-//$ 		net.minecraft.client.model.geom.ModelPart propRoot = prop == null || !dev.slash3rss.slashclient.hud.Props.IDS.contains(prop) ? null : props.computeIfAbsent(prop, dev.slash3rss.slashclient.hud.Props::bake);
+//$ 		net.minecraft.client.model.geom.ModelPart propRoot = prop == null || !dev.slash3rss.slashclient.hud.cosmetics.Props.IDS.contains(prop) ? null : props.computeIfAbsent(prop, dev.slash3rss.slashclient.hud.cosmetics.Props::bake);
 //$ 		if (propRoot != null) {
-//$ 			model.rightArm.xRot = model.leftArm.xRot = dev.slash3rss.slashclient.hud.Props.hold(false);
-//$ 			dev.slash3rss.slashclient.hud.Props.place(propRoot, model.rightArm.y, model.rightArm.z, model.rightArm.xRot, 24, look.walked((System.currentTimeMillis() % 3_600_000) / 1000f));
+//$ 			model.rightArm.xRot = model.leftArm.xRot = dev.slash3rss.slashclient.hud.cosmetics.Props.hold(false);
+//$ 			dev.slash3rss.slashclient.hud.cosmetics.Props.place(propRoot, model.rightArm.y, model.rightArm.z, model.rightArm.xRot, 24, look.walked((System.currentTimeMillis() % 3_600_000) / 1000f));
 //$ 		}
 //$ 		model.rightSleeve.copyFrom(model.rightArm);
 //$ 		model.leftSleeve.copyFrom(model.leftArm);
@@ -427,7 +427,7 @@ public final class SkinPreview {
 //$ 		pose.scale(1f, 1f, -1f);
 //$ 		pose.translate(0f, -1.5f, 0f);
 //$ 		model.renderToBuffer(pose, graphics.bufferSource().getBuffer(model.renderType(s.texture())), 15728880, OverlayTexture.NO_OVERLAY);
-//$ 		if (propRoot != null) propRoot.render(pose, graphics.bufferSource().getBuffer(net.minecraft.client.renderer.RenderType.entityCutoutNoCull(dev.slash3rss.slashclient.hud.Props.texture(prop))), 15728880, OverlayTexture.NO_OVERLAY);
+//$ 		if (propRoot != null) propRoot.render(pose, graphics.bufferSource().getBuffer(net.minecraft.client.renderer.RenderType.entityCutoutNoCull(dev.slash3rss.slashclient.hud.cosmetics.Props.texture(prop))), 15728880, OverlayTexture.NO_OVERLAY);
 //$ 		pose.popPose();
 //$ 		graphics.flush();
 //$ 		Lighting.setupFor3DItems();
@@ -530,10 +530,10 @@ public final class SkinPreview {
 //$ 		var self = Minecraft.getInstance().getUser().getProfileId();
 //$ 		// a prop pushed in front: both hands on its grips
 //$ 		String prop = look.worn(self, "prop");
-//$ 		ModelPart propRoot = prop == null || !dev.slash3rss.slashclient.hud.Props.IDS.contains(prop) ? null : props.computeIfAbsent(prop, dev.slash3rss.slashclient.hud.Props::bake);
+//$ 		ModelPart propRoot = prop == null || !dev.slash3rss.slashclient.hud.cosmetics.Props.IDS.contains(prop) ? null : props.computeIfAbsent(prop, dev.slash3rss.slashclient.hud.cosmetics.Props::bake);
 //$ 		if (propRoot != null) {
-//$ 			model.rightArm.xRot = model.leftArm.xRot = dev.slash3rss.slashclient.hud.Props.hold(false);
-//$ 			dev.slash3rss.slashclient.hud.Props.place(propRoot, model.rightArm.y, model.rightArm.z, model.rightArm.xRot, 24, look.walked((System.currentTimeMillis() % 3_600_000) / 1000f));
+//$ 			model.rightArm.xRot = model.leftArm.xRot = dev.slash3rss.slashclient.hud.cosmetics.Props.hold(false);
+//$ 			dev.slash3rss.slashclient.hud.cosmetics.Props.place(propRoot, model.rightArm.y, model.rightArm.z, model.rightArm.xRot, 24, look.walked((System.currentTimeMillis() % 3_600_000) / 1000f));
 //$ 		}
 //$ 		model.head.yRot = (float) Math.toRadians(headYaw - bodyYaw);
 //$ 		model.head.xRot = (float) Math.toRadians(headPitch);
@@ -565,11 +565,11 @@ public final class SkinPreview {
 //$ 			pose.translate(0, 0, 0.125f);
 //$ 			pose.mulPose(Axis.XP.rotationDegrees(6));
 //$ 			pose.mulPose(Axis.YP.rotationDegrees(180));
-//$ 			model.renderCloak(pose, buffers.getBuffer(RenderType.entitySolid(dev.slash3rss.slashclient.hud.Cosmetics.capeTexture(cape))), 0xF000F0, OverlayTexture.NO_OVERLAY);
+//$ 			model.renderCloak(pose, buffers.getBuffer(RenderType.entitySolid(dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.capeTexture(cape))), 0xF000F0, OverlayTexture.NO_OVERLAY);
 //$ 			pose.popPose();
 //$ 		}
 //$ 		model.renderToBuffer(pose, buffers.getBuffer(RenderType.entityTranslucent(skin)), 0xF000F0, OverlayTexture.NO_OVERLAY, 1, 1, 1, 1);
-//$ 		if (propRoot != null) propRoot.render(pose, buffers.getBuffer(RenderType.entityCutoutNoCull(dev.slash3rss.slashclient.hud.Props.texture(prop))), 0xF000F0, OverlayTexture.NO_OVERLAY);
+//$ 		if (propRoot != null) propRoot.render(pose, buffers.getBuffer(RenderType.entityCutoutNoCull(dev.slash3rss.slashclient.hud.cosmetics.Props.texture(prop))), 0xF000F0, OverlayTexture.NO_OVERLAY);
 //$ 		g.flush();
 //$ 		Lighting.setupFor3DItems();
 //$ 		pose.popPose();

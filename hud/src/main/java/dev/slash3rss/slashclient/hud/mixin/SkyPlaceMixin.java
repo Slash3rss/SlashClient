@@ -3,7 +3,9 @@ package dev.slash3rss.slashclient.hud.mixin;
 import net.minecraft.world.item.BlockItem;
 import org.spongepowered.asm.mixin.Mixin;
 //#if MC >= 26.3
-import dev.slash3rss.slashclient.hud.SkyCounters;
+//#if MC >= 26.3
+import dev.slash3rss.slashclient.hud.skyup.SkyCounters;
+//#endif
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import org.spongepowered.asm.mixin.injection.At;

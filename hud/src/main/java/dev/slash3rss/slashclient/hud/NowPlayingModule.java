@@ -335,7 +335,7 @@ public final class NowPlayingModule implements HudModule {
 	 * Text moved left by `shift` and shown only within `w` pixels: letter by letter, those at the
 	 * edges fading (no scissor, which older game versions would not move with the HUD's scale).
 	 */
-	static void slide(GuiGraphicsExtractor g, Minecraft mc, String text, int x, int y, int w, int color, boolean shadow, int shift) {
+	public static void slide(GuiGraphicsExtractor g, Minecraft mc, String text, int x, int y, int w, int color, boolean shadow, int shift) {
 		int cx = x - shift;
 		int a = color >>> 24;
 		for (int i = 0; i < text.length(); ) {

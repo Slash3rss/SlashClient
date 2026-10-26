@@ -1,6 +1,10 @@
 package dev.slash3rss.slashclient.hud;
 
 import net.minecraft.client.Minecraft;
+//#if MC >= 26.3
+import dev.slash3rss.slashclient.hud.skyup.SkyXp;
+import dev.slash3rss.slashclient.hud.skyup.SkyXpScreen;
+//#endif
 
 /** For the game test of the XP calculators (GameXpCalc): the sums, the windows, the SkyUp countdown. */
 public final class XpTestHooks {

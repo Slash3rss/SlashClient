@@ -5,6 +5,8 @@ package dev.slash3rss.slashclient.hud;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.screens.DeathScreen;
+import dev.slash3rss.slashclient.hud.map.DeathPoint;
+import dev.slash3rss.slashclient.hud.map.Waypoints;
 
 /** For the in-game test of the death screen (src/gametest GameDeathScreen). */
 public final class DeathInfoTestHooks {

@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import dev.slash3rss.slashclient.hud.ChatExtras;
+import dev.slash3rss.slashclient.hud.chat.ChatExtras;
 import dev.slash3rss.slashclient.hud.Compat;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import net.minecraft.client.Minecraft;
@@ -50,14 +50,14 @@ abstract class ChatScreenMixin {
 	//#endif
 		// coordinates marked in a line (ChatCoords), or in a chat window: saved as a waypoint
 		if (e.button() == InputConstants.MOUSE_BUTTON_LEFT && SlashHud.config != null && SlashHud.config.chatCoords
-			&& (dev.slash3rss.slashclient.hud.ChatCoords.clicked(slashclient$styleAt(e.x(), e.y()))
-				|| dev.slash3rss.slashclient.hud.ChatCoords.clicked(dev.slash3rss.slashclient.hud.ChatWindows.styleAt(e.x(), e.y())))) {
+			&& (dev.slash3rss.slashclient.hud.chat.ChatCoords.clicked(slashclient$styleAt(e.x(), e.y()))
+				|| dev.slash3rss.slashclient.hud.chat.ChatCoords.clicked(dev.slash3rss.slashclient.hud.chat.ChatWindows.styleAt(e.x(), e.y())))) {
 			cir.setReturnValue(true);
 			return;
 		}
 		// text in a chat window with its own action (a command to type or run, a link): as in the chat
 		if (e.button() == InputConstants.MOUSE_BUTTON_LEFT) {
-			net.minecraft.network.chat.Style inWindow = dev.slash3rss.slashclient.hud.ChatWindows.styleAt(e.x(), e.y());
+			net.minecraft.network.chat.Style inWindow = dev.slash3rss.slashclient.hud.chat.ChatWindows.styleAt(e.x(), e.y());
 			if (inWindow != null && (inWindow.getClickEvent() != null || inWindow.getInsertion() != null)) {
 				//#if MC >= 1.21.11
 				cir.setReturnValue(handleComponentClicked(inWindow, Minecraft.getInstance().hasShiftDown()));
@@ -86,7 +86,7 @@ abstract class ChatScreenMixin {
 	/** Text in a chat window under the mouse: its hover shown as in the chat (a text, an item, an entity). */
 	@Inject(method = "extractRenderState", at = @At("TAIL"))
 	private void slashclient$windowHover(GuiGraphicsExtractor g, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-		net.minecraft.network.chat.Style style = dev.slash3rss.slashclient.hud.ChatWindows.styleAt(mouseX, mouseY);
+		net.minecraft.network.chat.Style style = dev.slash3rss.slashclient.hud.chat.ChatWindows.styleAt(mouseX, mouseY);
 		if (style == null || style.getHoverEvent() == null) return;
 		//#if MC >= 26.1
 		((HoverEffectInvoker) g).slashclient$hoverEffect(Minecraft.getInstance().font, style, mouseX, mouseY);
@@ -103,9 +103,9 @@ abstract class ChatScreenMixin {
 		if (style.getClickEvent() != null) return true;
 		//#if MC >= 1.21.11
 		// text to insert counts with Shift held, as the game's own search has it
-		return style.getInsertion() != null && Minecraft.getInstance().hasShiftDown() && !dev.slash3rss.slashclient.hud.ChatCoords.isMarked(style);
+		return style.getInsertion() != null && Minecraft.getInstance().hasShiftDown() && !dev.slash3rss.slashclient.hud.chat.ChatCoords.isMarked(style);
 		//#else
-		//$ return style.getInsertion() != null && !dev.slash3rss.slashclient.hud.ChatCoords.isMarked(style);
+		//$ return style.getInsertion() != null && !dev.slash3rss.slashclient.hud.chat.ChatCoords.isMarked(style);
 		//#endif
 	}
 

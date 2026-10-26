@@ -19,7 +19,7 @@ import static dev.slash3rss.slashclient.hud.Modules.grade;
 import static dev.slash3rss.slashclient.hud.Modules.text;
 
 /** The rest of the usual client HUD: server info, world info, combat and inventory. */
-final class MoreModules {
+public final class MoreModules {
 	private MoreModules() {}
 
 	// ---------- combat: reach of the last hit and combo, fed by SlashHud's attack listener ----------
@@ -103,13 +103,13 @@ final class MoreModules {
 		}
 
 		@Override
-		int color(Minecraft mc) {
+		public int color(Minecraft mc) {
 			return grade((double) used() / Runtime.getRuntime().maxMemory(), 0.6, 0.95);
 		}
 	}
 
 	/** The game's share of the processor, over the last second (all cores together = 100%). */
-	static final class Cpu extends Modules.TextModule {
+	public static final class Cpu extends Modules.TextModule {
 		private static final java.lang.management.OperatingSystemMXBean OS = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
 		private static long sampledAt;
 		private static double load = -1;
@@ -119,7 +119,7 @@ final class MoreModules {
 		}
 
 		/** 0..1, or -1 when the JVM cannot tell; read once a second, the call is not free. */
-		static double load() {
+		public static double load() {
 			long now = System.currentTimeMillis();
 			if (now - sampledAt >= 1000) {
 				sampledAt = now;
@@ -138,7 +138,7 @@ final class MoreModules {
 		}
 
 		@Override
-		int color(Minecraft mc) {
+		public int color(Minecraft mc) {
 			return grade(Math.max(0, load()), 0.6, 0.9);
 		}
 	}
@@ -160,7 +160,7 @@ final class MoreModules {
 		}
 
 		@Override
-		int color(Minecraft mc) {
+		public int color(Minecraft mc) {
 			return grade(load(mc) / 100, 0.7, 0.95);
 		}
 	}
@@ -206,7 +206,7 @@ final class MoreModules {
 		}
 
 		@Override
-		int color(Minecraft mc) {
+		public int color(Minecraft mc) {
 			// mobs spawn at light 0 in recent versions: worth a red warning
 			return level(mc) == 0 ? 0xFFFF5555 : cfg.textColor;
 		}

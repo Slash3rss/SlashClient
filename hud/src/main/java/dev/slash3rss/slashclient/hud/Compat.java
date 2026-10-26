@@ -140,10 +140,10 @@ public final class Compat {
 
 	/** Moves an inventory slot's stack into a hotbar slot (as pressing that slot's number over it would). */
 	/** The clicks the mouse tweaks make in an open container. */
-	enum Click { PICKUP, QUICK_MOVE }
+	public enum Click { PICKUP, QUICK_MOVE }
 
 	/** A click in the open container, as the game makes it for a mouse click on that slot. */
-	static void containerClick(Minecraft mc, net.minecraft.world.entity.player.Player player, int containerId, int slot, int button, Click click) {
+	public static void containerClick(Minecraft mc, net.minecraft.world.entity.player.Player player, int containerId, int slot, int button, Click click) {
 		//#if MC >= 26.1
 		var kind = click == Click.PICKUP ? net.minecraft.world.inventory.ContainerInput.PICKUP : net.minecraft.world.inventory.ContainerInput.QUICK_MOVE;
 		mc.gameMode.handleContainerInput(containerId, slot, button, kind, player);
@@ -187,7 +187,7 @@ public final class Compat {
 	}
 
 	/** Lays a screen out again at its size (its widgets made anew). */
-	static void relayout(Screen screen) {
+	public static void relayout(Screen screen) {
 		//#if MC >= 1.21.11
 		screen.resize(screen.width, screen.height);
 		//#else

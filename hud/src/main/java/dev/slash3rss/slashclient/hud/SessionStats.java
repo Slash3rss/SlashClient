@@ -189,11 +189,11 @@ public final class SessionStats {
 		blocksPlaced++;
 	}
 
-	static void screenshot() {
+	public static void screenshot() {
 		screenshots++;
 	}
 
-	static void clip() {
+	public static void clip() {
 		clips++;
 	}
 

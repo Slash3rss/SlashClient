@@ -4,6 +4,52 @@ package dev.slash3rss.slashclient.hud;
 
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Options;
+import dev.slash3rss.slashclient.hud.benchmark.BenchScene;
+import dev.slash3rss.slashclient.hud.benchmark.Benchmark;
+import dev.slash3rss.slashclient.hud.benchmark.BenchmarkScreen;
+import dev.slash3rss.slashclient.hud.chat.ChatExtras;
+import dev.slash3rss.slashclient.hud.chat.ChatLook;
+import dev.slash3rss.slashclient.hud.chat.ChatTabInput;
+import dev.slash3rss.slashclient.hud.chat.ChatTabs;
+import dev.slash3rss.slashclient.hud.chat.ChatTabsScreen;
+import dev.slash3rss.slashclient.hud.chat.ChatWindows;
+import dev.slash3rss.slashclient.hud.cosmetics.Clothing;
+import dev.slash3rss.slashclient.hud.cosmetics.Cosmetics;
+import dev.slash3rss.slashclient.hud.cosmetics.CosmeticsScreen;
+import dev.slash3rss.slashclient.hud.cosmetics.EmoteScreen;
+import dev.slash3rss.slashclient.hud.cosmetics.Gear;
+import dev.slash3rss.slashclient.hud.cosmetics.HeldSkins;
+import dev.slash3rss.slashclient.hud.cosmetics.KillEffects;
+import dev.slash3rss.slashclient.hud.cosmetics.Leaves;
+import dev.slash3rss.slashclient.hud.cosmetics.MoveEffects;
+import dev.slash3rss.slashclient.hud.cosmetics.RingEffects;
+import dev.slash3rss.slashclient.hud.cosmetics.Sprays;
+import dev.slash3rss.slashclient.hud.cosmetics.Suits;
+import dev.slash3rss.slashclient.hud.inventory.DropGuard;
+import dev.slash3rss.slashclient.hud.map.Minimap;
+import dev.slash3rss.slashclient.hud.map.MinimapTerrain;
+import dev.slash3rss.slashclient.hud.map.Waypoints;
+import dev.slash3rss.slashclient.hud.replay.Clips;
+import dev.slash3rss.slashclient.hud.servers.PartnerServers;
+import dev.slash3rss.slashclient.hud.servers.PinnedServer;
+import dev.slash3rss.slashclient.hud.servers.Reconnect;
+import dev.slash3rss.slashclient.hud.servers.ServerLayouts;
+import dev.slash3rss.slashclient.hud.servers.ServerLayoutsPanel;
+import dev.slash3rss.slashclient.hud.skyup.DungeonMap;
+import dev.slash3rss.slashclient.hud.skyup.DungeonMapScreen;
+import dev.slash3rss.slashclient.hud.skyup.DungeonRooms;
+import dev.slash3rss.slashclient.hud.skyup.LootHighlight;
+//#if MC >= 26.3
+import dev.slash3rss.slashclient.hud.skyup.SkyCounters;
+import dev.slash3rss.slashclient.hud.skyup.SkyFish;
+import dev.slash3rss.slashclient.hud.skyup.SkyGenerator;
+import dev.slash3rss.slashclient.hud.skyup.SkyIncubator;
+import dev.slash3rss.slashclient.hud.skyup.SkyShaman;
+//#endif
+import dev.slash3rss.slashclient.hud.skyup.SkyTaskParser;
+//#if MC >= 26.3
+import dev.slash3rss.slashclient.hud.skyup.SkyTasks;
+//#endif
 
 /** Small doors for the in-game tests (src/gametest); not used by the mod itself. */
 public final class TestHooks {

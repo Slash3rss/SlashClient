@@ -2,7 +2,7 @@
 //#if MC >= 1.21.2
 package dev.slash3rss.slashclient.hud.ui;
 
-import dev.slash3rss.slashclient.hud.HeldSkins;
+import dev.slash3rss.slashclient.hud.cosmetics.HeldSkins;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.model.geom.PartPose;

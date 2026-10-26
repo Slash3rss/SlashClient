@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.ui;
 
-import dev.slash3rss.slashclient.hud.Cosmetics;
+import dev.slash3rss.slashclient.hud.cosmetics.Cosmetics;
 
 import java.util.Map;
 import java.util.UUID;

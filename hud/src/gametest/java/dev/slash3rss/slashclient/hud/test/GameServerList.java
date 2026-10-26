@@ -2,9 +2,9 @@ package dev.slash3rss.slashclient.hud.test;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.PartnerIcons;
-import dev.slash3rss.slashclient.hud.PartnerServers;
-import dev.slash3rss.slashclient.hud.PinnedServer;
+import dev.slash3rss.slashclient.hud.servers.PartnerIcons;
+import dev.slash3rss.slashclient.hud.servers.PartnerServers;
+import dev.slash3rss.slashclient.hud.servers.PinnedServer;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import dev.slash3rss.slashclient.hud.TestHooks;
 import dev.slash3rss.slashclient.hud.ui.SlashServerScreen;

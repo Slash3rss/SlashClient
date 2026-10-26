@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
-import dev.slash3rss.slashclient.hud.ShotCaption;
-import dev.slash3rss.slashclient.hud.Shots;
+import dev.slash3rss.slashclient.hud.replay.ShotCaption;
+import dev.slash3rss.slashclient.hud.replay.Shots;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.network.chat.Component;

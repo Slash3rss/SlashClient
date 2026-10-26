@@ -2,7 +2,7 @@ package dev.slash3rss.slashclient.hud.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
-import dev.slash3rss.slashclient.hud.HeldSkins;
+import dev.slash3rss.slashclient.hud.cosmetics.HeldSkins;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;

@@ -93,8 +93,8 @@ public final class FriendToast implements Toast {
 		Ui.draw(g, Ui.fit(Ui.bold(title), textW), 33, 7, Ui.TEXT);
 		Ui.draw(g, Ui.fit(Component.literal(text), textW), 33, 18, Ui.TEXT_2);
 		if (sparks != null) {
-			dev.slash3rss.slashclient.hud.Sparks.icon(g, 33, 29, 8);
-			Ui.draw(g, Ui.fit(Ui.bold(sparks), textW - 11), 44, 29, dev.slash3rss.slashclient.hud.Sparks.GOLD);
+			dev.slash3rss.slashclient.hud.cosmetics.Sparks.icon(g, 33, 29, 8);
+			Ui.draw(g, Ui.fit(Ui.bold(sparks), textW - 11), 44, 29, dev.slash3rss.slashclient.hud.cosmetics.Sparks.GOLD);
 		}
 		// how long it is still shown
 		float left = Math.max(0f, 1f - (float) age / SHOW_MS);

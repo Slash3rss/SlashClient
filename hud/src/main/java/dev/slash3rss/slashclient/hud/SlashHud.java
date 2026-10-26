@@ -23,6 +23,63 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import dev.slash3rss.slashclient.hud.benchmark.BenchDisplay;
+import dev.slash3rss.slashclient.hud.benchmark.Benchmark;
+import dev.slash3rss.slashclient.hud.chat.ChatLook;
+import dev.slash3rss.slashclient.hud.chat.ChatTabs;
+import dev.slash3rss.slashclient.hud.chat.ChatWindows;
+import dev.slash3rss.slashclient.hud.cosmetics.CosmeticEffects;
+//#if MC >= 1.21.2
+import dev.slash3rss.slashclient.hud.cosmetics.CosmeticLayer;
+//#endif
+import dev.slash3rss.slashclient.hud.cosmetics.Cosmetics;
+import dev.slash3rss.slashclient.hud.cosmetics.EmoteLayer;
+import dev.slash3rss.slashclient.hud.cosmetics.Emotes;
+import dev.slash3rss.slashclient.hud.cosmetics.GearLayer;
+import dev.slash3rss.slashclient.hud.cosmetics.HeldSkins;
+import dev.slash3rss.slashclient.hud.cosmetics.KillEffects;
+import dev.slash3rss.slashclient.hud.cosmetics.LimbWear;
+import dev.slash3rss.slashclient.hud.cosmetics.MoveEffects;
+import dev.slash3rss.slashclient.hud.cosmetics.PropLayer;
+import dev.slash3rss.slashclient.hud.cosmetics.RingEffects;
+import dev.slash3rss.slashclient.hud.cosmetics.RingLayer;
+import dev.slash3rss.slashclient.hud.cosmetics.SprayRender;
+import dev.slash3rss.slashclient.hud.cosmetics.Sprays;
+import dev.slash3rss.slashclient.hud.cosmetics.SuitLayer;
+import dev.slash3rss.slashclient.hud.inventory.ContainerLayer;
+import dev.slash3rss.slashclient.hud.inventory.CraftFit;
+import dev.slash3rss.slashclient.hud.inventory.DropGuard;
+import dev.slash3rss.slashclient.hud.inventory.InventorySearch;
+import dev.slash3rss.slashclient.hud.inventory.InventorySort;
+import dev.slash3rss.slashclient.hud.inventory.MouseTweaks;
+import dev.slash3rss.slashclient.hud.inventory.ShulkerPreview;
+import dev.slash3rss.slashclient.hud.inventory.SlotLock;
+import dev.slash3rss.slashclient.hud.map.DeathPoint;
+import dev.slash3rss.slashclient.hud.map.Minimap;
+import dev.slash3rss.slashclient.hud.map.WaypointKeys;
+import dev.slash3rss.slashclient.hud.map.Waypoints;
+import dev.slash3rss.slashclient.hud.map.WaypointsScreen;
+import dev.slash3rss.slashclient.hud.replay.Clips;
+import dev.slash3rss.slashclient.hud.replay.Replay;
+import dev.slash3rss.slashclient.hud.replay.Shots;
+import dev.slash3rss.slashclient.hud.servers.KeptPacks;
+import dev.slash3rss.slashclient.hud.servers.PackForGood;
+import dev.slash3rss.slashclient.hud.servers.PartnerIcons;
+import dev.slash3rss.slashclient.hud.servers.PartnerServers;
+import dev.slash3rss.slashclient.hud.servers.Reconnect;
+import dev.slash3rss.slashclient.hud.servers.ServerLayouts;
+import dev.slash3rss.slashclient.hud.servers.SessionRenew;
+import dev.slash3rss.slashclient.hud.skyup.DungeonMap;
+import dev.slash3rss.slashclient.hud.skyup.LootHighlight;
+//#if MC >= 26.3
+import dev.slash3rss.slashclient.hud.skyup.SkyCase;
+import dev.slash3rss.slashclient.hud.skyup.SkyCounters;
+import dev.slash3rss.slashclient.hud.skyup.SkyDump;
+import dev.slash3rss.slashclient.hud.skyup.SkyFish;
+import dev.slash3rss.slashclient.hud.skyup.SkyTasks;
+import dev.slash3rss.slashclient.hud.skyup.SkyWardrobe;
+import dev.slash3rss.slashclient.hud.skyup.SkyXp;
+//#endif
 
 /**
  * SlashClient HUD: FPS, ping, CPS, coordinates, armour, effects, keystrokes and more
@@ -113,7 +170,7 @@ public class SlashHud implements ClientModInitializer {
 		//$ // there only the clothing, suits, back items, tails, rings and props, drawn straight from the player
 		//$ net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback.EVENT.register((type, renderer, helper, context) -> {
 		//$ 	if (renderer instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer player) {
-		//$ 		helper.register(new ClothingLayer(player));
+		//$ 		helper.register(new dev.slash3rss.slashclient.hud.cosmetics.ClothingLayer(player));
 		//$ 		helper.register(new SuitLayer(player));
 		//$ 		helper.register(new GearLayer(player));
 		//$ 		helper.register(new RingLayer(player));
@@ -347,7 +404,7 @@ public class SlashHud implements ClientModInitializer {
 	}
 
 	/** Where a module goes on screen: its anchor point plus the offset, kept inside the screen. */
-	static int[] position(HudConfig.Placement p, int w, int h, int screenW, int screenH) {
+	public static int[] position(HudConfig.Placement p, int w, int h, int screenW, int screenH) {
 		int x = Math.round(p.ax * (screenW - w)) + p.dx;
 		int y = Math.round(p.ay * (screenH - h)) + p.dy;
 		return new int[] { Math.max(0, Math.min(screenW - w, x)), Math.max(0, Math.min(screenH - h, y)) };

@@ -100,7 +100,7 @@ public class ShotPickerScreen extends Screen {
 		} else {
 			int gap = 8, top = py + 42;
 			int cw = (pw - 20 - gap * (COLS - 1)) / COLS, ch = (ph - (top - py) - 10 - gap * (ROWS - 1)) / ROWS;
-			File recent = dev.slash3rss.slashclient.hud.Shots.recent();
+			File recent = dev.slash3rss.slashclient.hud.replay.Shots.recent();
 			for (int i = 0; i < shots.size(); i++) {
 				File f = shots.get(i);
 				int cx = px + 10 + (i % COLS) * (cw + gap), cy = top + (i / COLS) * (ch + gap);
@@ -134,7 +134,7 @@ public class ShotPickerScreen extends Screen {
 		if (communityId != null) Communities.sendImage(communityId, channelId, f);
 		else if (groupId != null) Social.sendGroupImage(groupId, f);
 		else Social.sendImage(friendId, f, null);
-		if (f.equals(dev.slash3rss.slashclient.hud.Shots.recent())) dev.slash3rss.slashclient.hud.Shots.forgetRecent();
+		if (f.equals(dev.slash3rss.slashclient.hud.replay.Shots.recent())) dev.slash3rss.slashclient.hud.replay.Shots.forgetRecent();
 		Social.toast(friendName, Component.translatable("slashclient-hud.picture.sending").getString(), "m-screenshot");
 		onClose();
 	}

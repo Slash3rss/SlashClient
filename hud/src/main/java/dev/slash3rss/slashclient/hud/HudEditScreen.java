@@ -13,6 +13,11 @@ import net.minecraft.network.chat.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import dev.slash3rss.slashclient.hud.chat.ChatLook;
+import dev.slash3rss.slashclient.hud.chat.ChatTabs;
+import dev.slash3rss.slashclient.hud.chat.ChatTabsScreen;
+import dev.slash3rss.slashclient.hud.servers.ServerLayouts;
+import dev.slash3rss.slashclient.hud.servers.ServerLayoutsPanel;
 
 /**
  * The HUD editor, laid out like Lunar's and Feather's but in the launcher's colours.

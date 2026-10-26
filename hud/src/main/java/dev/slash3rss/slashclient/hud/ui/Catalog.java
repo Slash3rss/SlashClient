@@ -199,7 +199,7 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.dungeon.plan", () -> cfg.dungeonPlan, v -> cfg.dungeonPlan = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.blockColors", () -> cfg.dungeonBlockColors, v -> cfg.dungeonBlockColors = v));
 					settings.add(new Slider("slashclient-hud.dungeon.size", 80f, 240f, 10f, "%.0f px", () -> (float) cfg.dungeonSize, v -> cfg.dungeonSize = Math.round(v)));
-					settings.add(new Slider("slashclient-hud.dungeon.scanRange", dev.slash3rss.slashclient.hud.DungeonMap.MIN_RANGE, dev.slash3rss.slashclient.hud.DungeonMap.MAX_RANGE, 8f, "%.0f",
+					settings.add(new Slider("slashclient-hud.dungeon.scanRange", dev.slash3rss.slashclient.hud.skyup.DungeonMap.MIN_RANGE, dev.slash3rss.slashclient.hud.skyup.DungeonMap.MAX_RANGE, 8f, "%.0f",
 						() -> (float) cfg.dungeonScanRange, v -> cfg.dungeonScanRange = Math.round(v)));
 					settings.add(new Toggle("slashclient-hud.dungeon.title", () -> cfg.dungeonTitle, v -> cfg.dungeonTitle = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.progress", () -> cfg.dungeonProgress, v -> cfg.dungeonProgress = v));
@@ -212,7 +212,7 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.dungeon.players", () -> cfg.dungeonPlayers, v -> cfg.dungeonPlayers = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.mobs", () -> cfg.dungeonMobs, v -> cfg.dungeonMobs = v));
 					// each mob class its own look
-					String[] styles = dev.slash3rss.slashclient.hud.DungeonMap.MOB_STYLES;
+					String[] styles = dev.slash3rss.slashclient.hud.skyup.DungeonMap.MOB_STYLES;
 					settings.add(new Choice("slashclient-hud.dungeon.mobNormal", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobNormal, v -> cfg.dungeonMobNormal = v));
 					settings.add(new Choice("slashclient-hud.dungeon.mobElite", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobElite, v -> cfg.dungeonMobElite = v));
 					settings.add(new Choice("slashclient-hud.dungeon.mobBoss", styles, "slashclient-hud.dungeon.mobStyle.", () -> cfg.dungeonMobBoss, v -> cfg.dungeonMobBoss = v));
@@ -226,9 +226,9 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.dungeon.loot.flowerPot", () -> cfg.dungeonFlowerPots, v -> cfg.dungeonFlowerPots = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.loot.ore", () -> cfg.dungeonOres, v -> cfg.dungeonOres = v));
 					// which ores, one by one
-					for (String ore : dev.slash3rss.slashclient.hud.DungeonRooms.ORES) {
-						settings.add(new Toggle("slashclient-hud.dungeon.ore." + ore, () -> dev.slash3rss.slashclient.hud.DungeonRooms.oreCounted(ore),
-							v -> dev.slash3rss.slashclient.hud.DungeonRooms.countOre(ore, v)));
+					for (String ore : dev.slash3rss.slashclient.hud.skyup.DungeonRooms.ORES) {
+						settings.add(new Toggle("slashclient-hud.dungeon.ore." + ore, () -> dev.slash3rss.slashclient.hud.skyup.DungeonRooms.oreCounted(ore),
+							v -> dev.slash3rss.slashclient.hud.skyup.DungeonRooms.countOre(ore, v)));
 					}
 					settings.add(new Toggle("slashclient-hud.dungeon.cleared", () -> cfg.dungeonCleared, v -> cfg.dungeonCleared = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.noSpawner", () -> cfg.dungeonNoSpawner, v -> cfg.dungeonNoSpawner = v));
@@ -243,7 +243,7 @@ public final class Catalog {
 				case "minimap" -> {
 					settings.add(new Slider("slashclient-hud.minimap.size", 64f, 200f, 8f, "%.0f px", () -> (float) cfg.minimapSize, v -> cfg.minimapSize = Math.round(v)));
 					settings.add(new Slider("slashclient-hud.minimap.zoom", 0.5f, 4f, 0.5f, "%.1f×", () -> cfg.minimapZoom, v -> cfg.minimapZoom = v));
-					settings.add(new Choice("slashclient-hud.set.shape", dev.slash3rss.slashclient.hud.Minimap.SHAPES, "slashclient-hud.dungeon.shape.",
+					settings.add(new Choice("slashclient-hud.set.shape", dev.slash3rss.slashclient.hud.map.Minimap.SHAPES, "slashclient-hud.dungeon.shape.",
 						() -> cfg.minimapShape, v -> cfg.minimapShape = v));
 					settings.add(new Toggle("slashclient-hud.minimap.rotate", () -> cfg.minimapRotate, v -> cfg.minimapRotate = v));
 					settings.add(new Toggle("slashclient-hud.minimap.coords", () -> cfg.minimapCoords, v -> cfg.minimapCoords = v));
@@ -265,10 +265,10 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.skyTasks.joinHintSetting", () -> cfg.skyTasksJoinHint, v -> cfg.skyTasksJoinHint = v));
 					settings.add(new Slider("slashclient-hud.skyTasks.dailyRemind", 0f, 120f, 5f, "%.0f min", () -> (float) cfg.skyDailyRemind, v -> cfg.skyDailyRemind = Math.round(v)));
 					// the chat tabs' sounds ("default" the bell), heard when picked
-					String[] sounds = java.util.Arrays.stream(dev.slash3rss.slashclient.hud.ChatTabs.SOUNDS).map(s -> s.isEmpty() ? "default" : s).toArray(String[]::new);
+					String[] sounds = java.util.Arrays.stream(dev.slash3rss.slashclient.hud.chat.ChatTabs.SOUNDS).map(s -> s.isEmpty() ? "default" : s).toArray(String[]::new);
 					settings.add(new Choice("slashclient-hud.skyTasks.dailySound", sounds, "slashclient-hud.chat.sound.", () -> cfg.skyDailySound, v -> {
 						cfg.skyDailySound = v;
-						dev.slash3rss.slashclient.hud.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), "default".equals(v) ? "" : v);
+						dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), "default".equals(v) ? "" : v);
 					}));
 				}
 				case "skyfish" -> {
@@ -315,7 +315,7 @@ public final class Catalog {
 			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.KeybindsScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
 		}));
 		// SkyUp's dungeon loot not taken yet, outlined in the world (only in a dungeon); through walls only when switched on
-		int[] lootColors = dev.slash3rss.slashclient.hud.LootHighlight.COLORS;
+		int[] lootColors = dev.slash3rss.slashclient.hud.skyup.LootHighlight.COLORS;
 		out.add(new Entry("lootHighlight", "slashclient-hud.lootHighlight", "skyup", "m-loothighlight", () -> cfg.lootHighlight, v -> cfg.lootHighlight = v, List.of(
 			new Toggle("slashclient-hud.dungeon.loot.chest", () -> cfg.lootChests, v -> cfg.lootChests = v),
 			new Colors("slashclient-hud.lootHighlight.chestColor", lootColors, () -> cfg.lootChestColor, v -> cfg.lootChestColor = v),
@@ -334,7 +334,7 @@ public final class Catalog {
 			new Toggle("slashclient-hud.lootHighlight.pulse", () -> cfg.lootHighlightPulse, v -> cfg.lootHighlightPulse = v),
 			new Toggle("slashclient-hud.lootHighlight.walls", () -> cfg.lootHighlightWalls, v -> cfg.lootHighlightWalls = v),
 			new Toggle("slashclient-hud.lootHighlight.limit", () -> cfg.lootHighlightLimit, v -> cfg.lootHighlightLimit = v),
-			new Slider("slashclient-hud.lootHighlight.range", dev.slash3rss.slashclient.hud.LootHighlight.MIN_RANGE, dev.slash3rss.slashclient.hud.LootHighlight.MAX_RANGE, 4f, "%.0f",
+			new Slider("slashclient-hud.lootHighlight.range", dev.slash3rss.slashclient.hud.skyup.LootHighlight.MIN_RANGE, dev.slash3rss.slashclient.hud.skyup.LootHighlight.MAX_RANGE, 4f, "%.0f",
 				() -> (float) cfg.lootHighlightRange, v -> cfg.lootHighlightRange = Math.round(v))), null));
 		// the XP calculator of slash3rss.dev
 		out.add(new Entry("xpCalc", "slashclient-hud.xp.title", "extras", "m-xpcalc", null, null, List.of(), () -> {
@@ -345,7 +345,7 @@ public final class Catalog {
 		// and its SkyUp edition: bottling with the tax, the mending assistant, the AFK countdown
 		out.add(new Entry("skyXpCalc", "slashclient-hud.skyXp.title", "skyup", "m-skyxpcalc", null, null, List.of(), () -> {
 			var mc = net.minecraft.client.Minecraft.getInstance();
-			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.SkyXpScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.skyup.SkyXpScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
 		}));
 		// SkyUp's pack in the player's own resource packs, kept up to date; switched on, the server does not ask
 		out.add(new Entry("skyPack", "slashclient-hud.skyPack", "skyup", "skyup", () -> cfg.skyPackLocal, v -> cfg.skyPackLocal = v, List.of(
@@ -353,14 +353,14 @@ public final class Catalog {
 		// SkyUp's cases in detail: every reward of each case, won or not
 		out.add(new Entry("skyCaseStats", "slashclient-hud.skyCase.screen", "skyup", "m-skycase", null, null, List.of(), () -> {
 			var mc = net.minecraft.client.Minecraft.getInstance();
-			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.SkyCaseScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.skyup.SkyCaseScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
 		}));
 		//#endif
 		out.add(new Entry("reconnect", "slashclient-hud.reconnectButton", "extras", "m-reconnect", () -> cfg.reconnect, v -> cfg.reconnect = v, List.of(), null));
 		out.add(new Entry("sessionRenew", "slashclient-hud.sessionRenew", "extras", "m-accounts", () -> cfg.sessionRenew, v -> cfg.sessionRenew = v, List.of(), null));
 		// each server in the list has its own mode (its edit screen); this one is for the rest
 		out.add(new Entry("serverPacks", "slashclient-hud.serverPacks", "extras", "m-server", null, null, List.of(
-			new Choice("slashclient-hud.serverPacks.default", dev.slash3rss.slashclient.hud.ServerPacks.MODES, "slashclient-hud.serverPacks.choice.",
+			new Choice("slashclient-hud.serverPacks.default", dev.slash3rss.slashclient.hud.servers.ServerPacks.MODES, "slashclient-hud.serverPacks.choice.",
 				() -> cfg.serverPackDefault, v -> cfg.serverPackDefault = v)), null));
 		out.add(new Entry("fullbright", "slashclient-hud.fullbright", "extras", "m-fullbright", () -> cfg.fullbright, v -> cfg.fullbright = v, List.of(), null));
 		out.add(new Entry("lowFire", "slashclient-hud.lowFire", "extras", "m-lowfire", () -> cfg.lowFire, v -> cfg.lowFire = v, List.of(), null));
@@ -444,7 +444,7 @@ public final class Catalog {
 		out.add(new Entry("waypoints", "slashclient-hud.extra.waypoints", "world", "m-waypoints", () -> cfg.waypoints, v -> cfg.waypoints = v, List.of(), null));
 		// M outside a dungeon: all the ground seen, waypoints and friends, over the whole screen
 		out.add(new Entry("worldMap", "slashclient-hud.worldMap", "world", "m-worldmap", () -> cfg.worldMap, v -> cfg.worldMap = v, List.of(
-			new Slider("slashclient-hud.worldMap.zoom", dev.slash3rss.slashclient.hud.WorldMapScreen.MIN_ZOOM, dev.slash3rss.slashclient.hud.WorldMapScreen.MAX_ZOOM, 0.125f, "%.2f×",
+			new Slider("slashclient-hud.worldMap.zoom", dev.slash3rss.slashclient.hud.map.WorldMapScreen.MIN_ZOOM, dev.slash3rss.slashclient.hud.map.WorldMapScreen.MAX_ZOOM, 0.125f, "%.2f×",
 				() -> cfg.worldMapZoom, v -> cfg.worldMapZoom = v),
 			new Toggle("slashclient-hud.map.players", () -> cfg.mapPlayers, v -> cfg.mapPlayers = v),
 			new Toggle("slashclient-hud.map.hostile", () -> cfg.mapHostile, v -> cfg.mapHostile = v),
@@ -468,7 +468,7 @@ public final class Catalog {
 			new Toggle("slashclient-hud.cameraDistance.reset", () -> cfg.cameraDistanceReset, v -> cfg.cameraDistanceReset = v)), null));
 		out.add(new Entry("screenshot", "slashclient-hud.extra.screenshot", "extras", "m-screenshot", () -> cfg.screenshotClipboard, v -> cfg.screenshotClipboard = v, List.of(), null));
 		out.add(new Entry("screenshotCaption", "slashclient-hud.caption", "extras", "m-shotcaption", () -> cfg.screenshotCaption, v -> cfg.screenshotCaption = v, List.of(
-			new Choice("slashclient-hud.caption.corner", dev.slash3rss.slashclient.hud.ShotCaption.CORNERS, "slashclient-hud.caption.corner.",
+			new Choice("slashclient-hud.caption.corner", dev.slash3rss.slashclient.hud.replay.ShotCaption.CORNERS, "slashclient-hud.caption.corner.",
 				() -> cfg.screenshotCaptionCorner, v -> cfg.screenshotCaptionCorner = v),
 			new Toggle("slashclient-hud.caption.coords", () -> cfg.screenshotCaptionCoords, v -> cfg.screenshotCaptionCoords = v),
 			new Toggle("slashclient-hud.caption.server", () -> cfg.screenshotCaptionServer, v -> cfg.screenshotCaptionServer = v)), null));
@@ -478,10 +478,10 @@ public final class Catalog {
 		out.add(new Entry("serverFriends", "slashclient-hud.serverFriends.setting", "extras", "m-friends", () -> cfg.serverFriends, v -> cfg.serverFriends = v, List.of(), null));
 		out.add(new Entry("chatStack", "slashclient-hud.chat.stack", "chat", "m-chatstack", () -> cfg.chatStack, v -> cfg.chatStack = v, List.of(), null));
 		out.add(new Entry("chatCopy", "slashclient-hud.chat.copy", "chat", "m-chatcopy", () -> cfg.chatCopy, v -> cfg.chatCopy = v, List.of(
-			new Choice("slashclient-hud.chat.copy.format", dev.slash3rss.slashclient.hud.ChatExtras.COPY_FORMATS, "slashclient-hud.chat.copy.format.", () -> cfg.chatCopyFormat, v -> cfg.chatCopyFormat = v),
-			new Choice("slashclient-hud.chat.copy.time", dev.slash3rss.slashclient.hud.ChatExtras.COPY_TIMES, "slashclient-hud.chat.copy.time.", () -> cfg.chatCopyTime, v -> cfg.chatCopyTime = v),
+			new Choice("slashclient-hud.chat.copy.format", dev.slash3rss.slashclient.hud.chat.ChatExtras.COPY_FORMATS, "slashclient-hud.chat.copy.format.", () -> cfg.chatCopyFormat, v -> cfg.chatCopyFormat = v),
+			new Choice("slashclient-hud.chat.copy.time", dev.slash3rss.slashclient.hud.chat.ChatExtras.COPY_TIMES, "slashclient-hud.chat.copy.time.", () -> cfg.chatCopyTime, v -> cfg.chatCopyTime = v),
 			new Toggle("slashclient-hud.chat.copy.noSender", () -> cfg.chatCopyNoSender, v -> cfg.chatCopyNoSender = v),
-			new Choice("slashclient-hud.chat.copy.notice", dev.slash3rss.slashclient.hud.ChatExtras.COPY_NOTICES, "slashclient-hud.chat.copy.notice.", () -> cfg.chatCopyNotice, v -> cfg.chatCopyNotice = v)), null));
+			new Choice("slashclient-hud.chat.copy.notice", dev.slash3rss.slashclient.hud.chat.ChatExtras.COPY_NOTICES, "slashclient-hud.chat.copy.notice.", () -> cfg.chatCopyNotice, v -> cfg.chatCopyNotice = v)), null));
 		out.add(new Entry("chatCoords", "slashclient-hud.chatCoords.setting", "chat", "m-waypoints", () -> cfg.chatCoords, v -> cfg.chatCoords = v, List.of(), null));
 		out.add(new Entry("chatSearch", "slashclient-hud.chat.searchBox", "chat", "m-chatsearch", () -> cfg.chatSearch, v -> cfg.chatSearch = v, List.of(), null));
 		// the game's own HUD parts
@@ -508,22 +508,22 @@ public final class Catalog {
 		out.add(new Entry("toasts", "slashclient-hud.game.toasts", "game", "m-toasts", () -> cfg.placement("toasts").enabled, v -> cfg.placement("toasts").enabled = v, List.of(), null));
 		// the chat: the game's own background opacity and scale (above 1 with ours), the same as in its Chat Settings
 		out.add(new Entry("chat", "slashclient-hud.game.chat", "game", "chat", () -> cfg.placement("chat").enabled, v -> cfg.placement("chat").enabled = v, List.of(
-			new Slider("slashclient-hud.set.opacity", 0f, 100f, 5f, "%.0f%%", dev.slash3rss.slashclient.hud.ChatLook::opacity, dev.slash3rss.slashclient.hud.ChatLook::setOpacity),
-			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", dev.slash3rss.slashclient.hud.ChatLook::shownScale, dev.slash3rss.slashclient.hud.ChatLook::setScale)), null));
+			new Slider("slashclient-hud.set.opacity", 0f, 100f, 5f, "%.0f%%", dev.slash3rss.slashclient.hud.chat.ChatLook::opacity, dev.slash3rss.slashclient.hud.chat.ChatLook::setOpacity),
+			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", dev.slash3rss.slashclient.hud.chat.ChatLook::shownScale, dev.slash3rss.slashclient.hud.chat.ChatLook::setScale)), null));
 		out.add(new Entry("nametag", "slashclient-hud.game.nametag", "game", "m-nametag", () -> cfg.ownNametag, v -> cfg.ownNametag = v, List.of(), null));
 		out.add(new Entry("chatMentions", "slashclient-hud.chat.mentions", "chat", "m-mentions", () -> cfg.chatMentions, v -> cfg.chatMentions = v, List.of(), null));
 		out.add(new Entry("chatTimestamps", "slashclient-hud.chatTimestamps", "chat", "m-chattimestamps", () -> cfg.chatTimestamps, v -> cfg.chatTimestamps = v, List.of(), null));
 		// in a world it starts a run, in the menu it shows the last one
 		out.add(new Entry("benchmark", "slashclient-hud.benchmark", "extras", "m-benchmark", null, null, List.of(), () -> {
 			var mc = net.minecraft.client.Minecraft.getInstance();
-			if (mc.player != null) dev.slash3rss.slashclient.hud.Benchmark.start(mc);
-			else mc.setScreenAndShow(dev.slash3rss.slashclient.hud.BenchmarkScreen.latest());
+			if (mc.player != null) dev.slash3rss.slashclient.hud.benchmark.Benchmark.start(mc);
+			else mc.setScreenAndShow(dev.slash3rss.slashclient.hud.benchmark.BenchmarkScreen.latest());
 		}));
 		// the emote wheel (key N): in a world it opens at once
 		out.add(new Entry("emotes", "slashclient-hud.emote", "extras", "m-emotes", null, null, List.of(
 			new Toggle("slashclient-hud.emote.camera", () -> cfg.emoteCamera, v -> cfg.emoteCamera = v)), () -> {
 			var mc = net.minecraft.client.Minecraft.getInstance();
-			if (mc.player != null) mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.EmoteScreen(dev.slash3rss.slashclient.hud.Cosmetics.emoteKey()));
+			if (mc.player != null) mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.cosmetics.EmoteScreen(dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.emoteKey()));
 		}));
 		// clips: the last seconds of the game, saved with F8
 		out.add(new Entry("clips", "slashclient-hud.clips", "extras", "m-clips", () -> cfg.clips, v -> cfg.clips = v, List.of(
@@ -577,7 +577,7 @@ public final class Catalog {
 		out.add(new Entry("chatTabs", "slashclient-hud.chat.tabs", "chat", "m-chattabs", null, null, List.of(), openChatTabs));
 		out.add(new Entry("chatWindowsOnly", "slashclient-hud.chat.windowsOnly", "chat", "m-chattabs", () -> cfg.chatWindowsOnly, v -> {
 			cfg.chatWindowsOnly = v;
-			dev.slash3rss.slashclient.hud.ChatTabs.reapply();
+			dev.slash3rss.slashclient.hud.chat.ChatTabs.reapply();
 		}, List.of(), null));
 		out.replaceAll(Catalog::withKeys);
 		return out;

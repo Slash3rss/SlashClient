@@ -1,9 +1,9 @@
 package dev.slash3rss.slashclient.hud.ui;
 
-import dev.slash3rss.slashclient.hud.PartnerServers;
-import dev.slash3rss.slashclient.hud.PinnedServer;
-import dev.slash3rss.slashclient.hud.ServerFriends;
-import dev.slash3rss.slashclient.hud.ServerPacks;
+import dev.slash3rss.slashclient.hud.servers.PartnerServers;
+import dev.slash3rss.slashclient.hud.servers.PinnedServer;
+import dev.slash3rss.slashclient.hud.servers.ServerFriends;
+import dev.slash3rss.slashclient.hud.servers.ServerPacks;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import dev.slash3rss.slashclient.hud.mixin.JoinMultiplayerScreenAccessor;
 import dev.slash3rss.slashclient.hud.mixin.NetworkServerEntryAccessor;
@@ -419,7 +419,7 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 
 		// the icon: the partner's own animation, else the one the server sent (or the game's "unknown")
 		int ix = x + 4, iy = y + (h - 32) / 2;
-		if (!dev.slash3rss.slashclient.hud.PartnerIcons.draw(g, d, ix, iy, 32)) {
+		if (!dev.slash3rss.slashclient.hud.servers.PartnerIcons.draw(g, d, ix, iy, 32)) {
 			ServerSelectionList.OnlineServerEntry e = entryOf(d);
 			if (e != null) g.blit(RenderPipelines.GUI_TEXTURED, ((OnlineServerEntryAccessor) e).slashclient$icon().textureLocation(), ix, iy, 0, 0, 32, 32, 32, 32);
 		}

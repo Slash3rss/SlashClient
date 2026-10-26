@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.test;
 
 import com.google.gson.JsonObject;
-import dev.slash3rss.slashclient.hud.SessionRenew;
+import dev.slash3rss.slashclient.hud.servers.SessionRenew;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;

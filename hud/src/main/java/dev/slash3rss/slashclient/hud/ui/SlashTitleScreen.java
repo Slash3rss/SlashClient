@@ -120,7 +120,7 @@ public class SlashTitleScreen extends MenuScreen {
 			int bx = Math.max(px + pw + 8, Math.min(width - bw - 4, fx + fw / 2 - bw / 2));
 			int by = py + fh + gap;
 			Ui.button(g, "menu:cosmetics", bx, by, bw, bh, "m-appearance", label, false, mx, my);
-			hits.add(new Hit(bx, by, bw, bh, () -> minecraft.setScreenAndShow(new dev.slash3rss.slashclient.hud.CosmeticsScreen(this))));
+			hits.add(new Hit(bx, by, bw, bh, () -> minecraft.setScreenAndShow(new dev.slash3rss.slashclient.hud.cosmetics.CosmeticsScreen(this))));
 		}
 		drawTooltip(g);
 	}

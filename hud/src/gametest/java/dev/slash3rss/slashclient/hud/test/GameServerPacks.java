@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.test;
 
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.ServerPacks;
+import dev.slash3rss.slashclient.hud.servers.ServerPacks;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import dev.slash3rss.slashclient.hud.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -67,42 +67,42 @@ public class GameServerPacks implements FabricClientGameTest {
 	private static void skyPack(ClientGameTestContext context, TestSingleplayerContext world) {
 		String url = context.computeOnClient(mc -> {
 			try {
-				return dev.slash3rss.slashclient.hud.SkyPackTestHooks.serve("1");
+				return dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.serve("1");
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}
 		});
-		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.skyUp(true));
+		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.skyUp(true));
 		try {
-			boolean first = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.offer(url));
+			boolean first = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.offer(url));
 			waitFetched(context);
 			String saved = context.computeOnClient(mc -> copy());
-			boolean notOn = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.offer(url));
+			boolean notOn = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.offer(url));
 			if (first || !saved.equals("current") || notOn) throw new AssertionError("SkyUp's pack saved: " + first + " " + saved + " " + notOn);
 			// SkyUp's offer with the copy off: the game's question, with "Ustaw na stałe" under it; ticked
 			// and yes, the server's pack loads this time and the copy is switched on for good
 			ServerPacks.heard.clear();
 			SlashHud.config.serverPackDefault = "prompt";
-			String sha = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.sha());
+			String sha = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.sha());
 			world.getServer().runOnServer(server -> server.getPlayerList().getPlayers().get(0).connection.send(new ClientboundResourcePackPushPacket(UUID.randomUUID(), url, sha, true, Optional.empty())));
 			for (int i = 0; i < 40 && !context.computeOnClient(mc -> Compat.screen(mc) instanceof net.minecraft.client.gui.screens.ConfirmScreen); i++) context.waitTick();
 			context.waitTicks(5);
 			context.takeScreenshot("server-packs-for-good");
-			if (!context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.answerForGood())) throw new AssertionError("SkyUp's pack: the game's question has no \"Ustaw na stałe\"");
+			if (!context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.answerForGood())) throw new AssertionError("SkyUp's pack: the game's question has no \"Ustaw na stałe\"");
 			// the question gone: this time the game takes the server's pack its own way
 			context.waitTicks(5);
 			String after = context.computeOnClient(mc -> Compat.screen(mc) == null ? "none" : Compat.screen(mc).getClass().getSimpleName());
 			if (after.contains("PackConfirm")) throw new AssertionError("SkyUp's pack, yes with the box ticked: the question stayed open");
 			// the copy switched on quietly at once, so leaving the server keeps the pack on
 			context.waitTicks(5);
-			if (!context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.inOptions())) throw new AssertionError("SkyUp's pack, ticked: the copy is not on for after leaving");
+			if (!context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.inOptions())) throw new AssertionError("SkyUp's pack, ticked: the copy is not on for after leaving");
 			// the next join, kept "for good" (the test world has no address to keep it by: SkyUp's own here):
 			// the copy switched on, standing in for the offer
-			boolean covered = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.offerKept(url));
+			boolean covered = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.offerKept(url));
 			context.waitTicks(40);
-			boolean on = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.selected());
+			boolean on = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.selected());
 			if (!covered || !on) throw new AssertionError("SkyUp's pack kept for good at the next join: covered " + covered + " on " + on);
-			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.keepSkyUp(true));
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.keepSkyUp(true));
 			// the next offer: the copy on and current, answered at once
 			ServerPacks.heard.clear();
 			List<String> answers;
@@ -113,40 +113,40 @@ public class GameServerPacks implements FabricClientGameTest {
 			// a new version on the server: not standing in any more, the copy brought up to date
 			context.computeOnClient(mc -> {
 				try {
-					return dev.slash3rss.slashclient.hud.SkyPackTestHooks.serve("2");
+					return dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.serve("2");
 				} catch (Exception e) {
 					throw new RuntimeException(e);
 				}
 			});
-			boolean stale = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.offer(url));
+			boolean stale = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.offer(url));
 			waitFetched(context);
 			String updated = context.computeOnClient(mc -> copy());
 			// the copy in use: switched off, replaced and switched on again (two loads of the packs)
 			for (int i = 0; i < 100 && !context.computeOnClient(mc -> copy()).equals("current"); i++) context.waitTicks(2);
 			context.waitTicks(40);
 			String swapped = context.computeOnClient(mc -> copy());
-			boolean stillOn = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.selected());
-			boolean waiting = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.waiting());
+			boolean stillOn = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.selected());
+			boolean waiting = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.waiting());
 			if (stale || !swapped.equals("current") || !stillOn || waiting) throw new AssertionError("SkyUp's pack updated in use: " + stale + " " + updated + " → " + swapped + " on " + stillOn + " waiting " + waiting);
 		} finally {
 			context.runOnClient(mc -> {
-				dev.slash3rss.slashclient.hud.SkyPackTestHooks.select(false);
-				dev.slash3rss.slashclient.hud.SkyPackTestHooks.skyUp(false);
-				dev.slash3rss.slashclient.hud.SkyPackTestHooks.stop();
+				dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.select(false);
+				dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.skyUp(false);
+				dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.stop();
 			});
 		}
 	}
 
 	private static String copy() {
 		try {
-			return dev.slash3rss.slashclient.hud.SkyPackTestHooks.copy();
+			return dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.copy();
 		} catch (Exception e) {
 			return e.toString();
 		}
 	}
 
 	private static void waitFetched(ClientGameTestContext context) {
-		for (int i = 0; i < 100 && context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.SkyPackTestHooks.fetching()); i++) context.waitTicks(2);
+		for (int i = 0; i < 100 && context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.fetching()); i++) context.waitTicks(2);
 		context.waitTicks(2);
 	}
 	//#endif
@@ -229,7 +229,7 @@ public class GameServerPacks implements FabricClientGameTest {
 		if (context.computeOnClient(mc -> ServerPacks.of(server("x", "Pack.Test:25565"))) != ServerPacks.Mode.IGNORE) throw new AssertionError("Ignore not kept for the address after Done");
 
 		// a pinned partner server: name and address locked, the pack mode still there to change
-		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.PinnedServer.sampleForTest(List.of(new dev.slash3rss.slashclient.hud.PinnedServer.Pin("skyup.pl", "SkyUp.pl", false))));
+		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.servers.PinnedServer.sampleForTest(List.of(new dev.slash3rss.slashclient.hud.servers.PinnedServer.Pin("skyup.pl", "SkyUp.pl", false))));
 		context.setScreen(() -> editScreen(server("SkyUp.pl", "skyup.pl")));
 		context.waitTicks(5);
 		String pinned = context.computeOnClient(mc -> packButton());

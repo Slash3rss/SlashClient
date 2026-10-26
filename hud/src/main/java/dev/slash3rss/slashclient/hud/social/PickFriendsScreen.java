@@ -49,7 +49,7 @@ public class PickFriendsScreen extends Screen {
 	}
 
 	/** Sharing one waypoint with friends. */
-	public static PickFriendsScreen shareWaypoint(Screen parent, dev.slash3rss.slashclient.hud.Waypoints.Point p) {
+	public static PickFriendsScreen shareWaypoint(Screen parent, dev.slash3rss.slashclient.hud.map.Waypoints.Point p) {
 		return new PickFriendsScreen(parent, Component.translatable("slashclient-hud.share.pointTitle", p.name), "share",
 			Component.translatable("slashclient-hud.share.subtitle", p.x + " " + p.y + " " + p.z), Component.translatable("slashclient-hud.share.send"),
 			SharedWaypoints.MAX_FRIENDS, false, ids -> SharedWaypoints.send(p, ids));

@@ -1,7 +1,9 @@
 package dev.slash3rss.slashclient.hud.test;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import dev.slash3rss.slashclient.hud.InvToolsTestHooks;
+//#if MC >= 1.21.4
+import dev.slash3rss.slashclient.hud.inventory.InvToolsTestHooks;
+//#endif
 import dev.slash3rss.slashclient.hud.MapSortTestHooks;
 import dev.slash3rss.slashclient.hud.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;

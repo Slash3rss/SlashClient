@@ -12,6 +12,7 @@ import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 
 import java.util.List;
+import dev.slash3rss.slashclient.hud.chat.ChatLook;
 
 /**
  * The game's own HUD parts as boxes in the editor: the scoreboard, the boss bar, the tab list,
@@ -43,7 +44,7 @@ public final class GameParts {
 		abstract float scale();
 
 		/** Shown: switched on in its card and not hidden in the editor. */
-		abstract boolean on();
+		public abstract boolean on();
 
 		/** The game has something to show in it now (then the editor shows that, not a sample). */
 		boolean real(Minecraft mc) {
@@ -114,7 +115,7 @@ public final class GameParts {
 	/** In the middle of the right edge (a little below it: the game puts a third of the lines' height under the middle). */
 	static final Part SCOREBOARD = new Part("scoreboard", 100, 90) {
 		@Override float scale() { return SlashHud.config.scoreboardScale; }
-		@Override boolean on() { return SlashHud.config.scoreboard && SlashHud.config.placement(id()).enabled; }
+		@Override public boolean on() { return SlashHud.config.scoreboard && SlashHud.config.placement(id()).enabled; }
 		@Override float[] boxAnchor(int w, int h) { return new float[] { w, h / 2f }; }
 		@Override float[] screenAnchor(int sw, int sh) { return new float[] { sw, sh / 2f }; }
 		@Override boolean real(Minecraft mc) { return Compat.displayed(mc, true) != null; }
@@ -132,7 +133,7 @@ public final class GameParts {
 	/** Hanging from the top middle. */
 	static final Part BOSS_BAR = new Part("bossbar", 182, 20) {
 		@Override float scale() { return SlashHud.config.bossBarScale; }
-		@Override boolean on() { return SlashHud.config.bossBar && SlashHud.config.placement(id()).enabled; }
+		@Override public boolean on() { return SlashHud.config.bossBar && SlashHud.config.placement(id()).enabled; }
 		@Override float[] boxAnchor(int w, int h) { return new float[] { w / 2f, 0 }; }
 		@Override float[] screenAnchor(int sw, int sh) { return new float[] { sw / 2f, 0 }; }
 		@Override void sample(GuiGraphicsExtractor g, Minecraft mc, int x, int y, int w, int h) {
@@ -143,7 +144,7 @@ public final class GameParts {
 	/** Hanging from the top middle, over the boss bar. */
 	static final Part TAB_LIST = new Part("tablist", 240, 70) {
 		@Override float scale() { return SlashHud.config.tabScale; }
-		@Override boolean on() { return SlashHud.config.placement(id()).enabled; }
+		@Override public boolean on() { return SlashHud.config.placement(id()).enabled; }
 		@Override float[] boxAnchor(int w, int h) { return new float[] { w / 2f, 0 }; }
 		@Override float[] screenAnchor(int sw, int sh) { return new float[] { sw / 2f, 0 }; }
 		@Override boolean real(Minecraft mc) { return mc.getConnection() != null && mc.level != null && mc.player != null && !mc.getConnection().getListedOnlinePlayers().isEmpty(); }
@@ -164,7 +165,7 @@ public final class GameParts {
 	/** Above the hotbar (the "action bar": a server's short messages, "You may not rest now"…). */
 	static final Part ACTION_BAR = new Part("actionbar", 180, 14) {
 		@Override float scale() { return SlashHud.config.actionBarScale; }
-		@Override boolean on() { return SlashHud.config.actionBar && SlashHud.config.placement(id()).enabled; }
+		@Override public boolean on() { return SlashHud.config.actionBar && SlashHud.config.placement(id()).enabled; }
 		@Override float[] boxAnchor(int w, int h) { return new float[] { w / 2f, h / 2f }; }
 		@Override float[] screenAnchor(int sw, int sh) { return new float[] { sw / 2f, sh - 68 }; }
 		@Override boolean real(Minecraft mc) { return Compat.actionBarShown(mc); }
@@ -173,7 +174,7 @@ public final class GameParts {
 	/** In the middle of the screen: a title and its subtitle. */
 	static final Part TITLES = new Part("titles", 200, 56) {
 		@Override float scale() { return SlashHud.config.titleScale; }
-		@Override boolean on() { return SlashHud.config.titles && SlashHud.config.placement(id()).enabled; }
+		@Override public boolean on() { return SlashHud.config.titles && SlashHud.config.placement(id()).enabled; }
 		@Override float[] boxAnchor(int w, int h) { return new float[] { w / 2f, h / 2f }; }
 		@Override float[] screenAnchor(int sw, int sh) { return new float[] { sw / 2f, sh / 2f }; }
 		@Override boolean real(Minecraft mc) { return Compat.titleShown(mc); }
@@ -193,7 +194,7 @@ public final class GameParts {
 	/** In the top right corner: the toasts (advancements, recipes, friends' messages…), one under another. */
 	static final Part TOASTS = new Part("toasts", 160, 64) {
 		@Override float scale() { return 1f; }
-		@Override boolean on() { return SlashHud.config.placement(id()).enabled; }
+		@Override public boolean on() { return SlashHud.config.placement(id()).enabled; }
 		@Override float[] boxAnchor(int w, int h) { return new float[] { w, 0 }; }
 		@Override float[] screenAnchor(int sw, int sh) { return new float[] { sw, 0 }; }
 		@Override void sample(GuiGraphicsExtractor g, Minecraft mc, int x, int y, int w, int h) {
@@ -212,9 +213,9 @@ public final class GameParts {
 	 * sized and made more or less see-through from its card (ChatLook). Its box is the full closed
 	 * chat at that size; its × hides the chat until it is opened.
 	 */
-	static final Part CHAT = new Part("chat", 320, 90) {
+	public static final Part CHAT = new Part("chat", 320, 90) {
 		@Override float scale() { return 1f; }
-		@Override boolean on() { return SlashHud.config.placement(id()).enabled; }
+		@Override public boolean on() { return SlashHud.config.placement(id()).enabled; }
 		@Override boolean real(Minecraft mc) { return true; }
 		@Override float[] boxAnchor(int w, int h) { return new float[] { 0, h }; }
 		@Override float[] screenAnchor(int sw, int sh) { return new float[] { 0, sh - 40 }; }

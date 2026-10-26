@@ -33,6 +33,7 @@ import static dev.slash3rss.slashclient.hud.Modules.PAD;
 import static dev.slash3rss.slashclient.hud.Modules.cfg;
 import static dev.slash3rss.slashclient.hud.Modules.grade;
 import static dev.slash3rss.slashclient.hud.Modules.text;
+import dev.slash3rss.slashclient.hud.map.Waypoints;
 
 /** Durability, ammo, flight, server and network, FPS graph, compass, sky, K/D, block, friends, hits. */
 public final class ExtraModules {
@@ -328,7 +329,7 @@ public final class ExtraModules {
 		}
 
 		@Override
-		int color(Minecraft mc) {
+		public int color(Minecraft mc) {
 			double t = mc.getConnection() == null ? 20 : tps(mc);
 			return t < 0 ? cfg.textColor : grade(20 - t, 1, 8);
 		}
@@ -972,7 +973,7 @@ public final class ExtraModules {
 
 	// ---------- 11. the last hit: how strong, and whether it was critical ----------
 
-	static final class Hits extends Modules.TextModule {
+	public static final class Hits extends Modules.TextModule {
 		private static final long SHOW_MS = 1200;
 
 		public String id() {
@@ -991,7 +992,7 @@ public final class ExtraModules {
 		}
 
 		@Override
-		int color(Minecraft mc) {
+		public int color(Minecraft mc) {
 			int base = !visible(mc) || Stats.hitCritical ? 0xFFFFAA00 : grade(1 - Stats.hitStrength, 0.1, 0.6);
 			if (!visible(mc)) return base;
 			// fades out over its last third

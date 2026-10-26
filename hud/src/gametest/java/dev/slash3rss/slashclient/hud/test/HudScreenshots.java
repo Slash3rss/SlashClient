@@ -141,7 +141,7 @@ public class HudScreenshots implements FabricClientGameTest {
 				context.setScreen(() -> HudEditScreen.category("share"));
 				context.waitTicks(3);
 				context.takeScreenshot("size-" + name(sz) + "-share");
-				context.setScreen(() -> new dev.slash3rss.slashclient.hud.ChatTabsScreen(null));
+				context.setScreen(() -> new dev.slash3rss.slashclient.hud.chat.ChatTabsScreen(null));
 				context.waitTicks(3);
 				context.takeScreenshot("size-" + name(sz) + "-chattabs");
 				context.setScreen(() -> dev.slash3rss.slashclient.hud.Compat.chatScreen());

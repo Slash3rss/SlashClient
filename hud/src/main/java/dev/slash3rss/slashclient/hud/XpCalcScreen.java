@@ -62,7 +62,7 @@ public class XpCalcScreen extends Screen {
 		return b;
 	}
 
-	static int number(EditBox b) {
+	public static int number(EditBox b) {
 		try {
 			return b.getValue().isEmpty() ? 0 : Integer.parseInt(b.getValue());
 		} catch (NumberFormatException e) {
@@ -147,7 +147,7 @@ public class XpCalcScreen extends Screen {
 	}
 
 	/** A card under an edit box, outlined blue while it has the focus. */
-	static void field(GuiGraphicsExtractor g, EditBox box, int x, int y, int w) {
+	public static void field(GuiGraphicsExtractor g, EditBox box, int x, int y, int w) {
 		Ui.round(g, x, y, w, 20, 4, Ui.CARD);
 		Ui.roundOutline(g, x, y, w, 20, 4, box.isFocused() ? 0x993B82F6 : Ui.BORDER);
 	}

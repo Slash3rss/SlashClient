@@ -93,7 +93,7 @@ public class FriendsChat implements FabricClientGameTest {
 			context.takeScreenshot("friends-party");
 			// points friends shared for other worlds: accepting one takes it off the list
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.social.SharedWaypoints.sampleForTest());
-			context.setScreen(() -> new dev.slash3rss.slashclient.hud.WaypointsScreen(true));
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.map.WaypointsScreen(true));
 			context.waitTicks(10);
 			context.takeScreenshot("waypoints-received");
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.social.SharedWaypoints.accept(dev.slash3rss.slashclient.hud.social.SharedWaypoints.pending().get(0)));
