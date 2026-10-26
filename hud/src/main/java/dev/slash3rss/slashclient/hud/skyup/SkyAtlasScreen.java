@@ -36,6 +36,8 @@ import java.util.Locale;
  */
 public class SkyAtlasScreen extends Screen {
 	private static final int CARD_W = 62, CARD_H = 84, GAP = 6, ROW_H = 13;
+	/** The species view's left column: its card, records and fun fact. */
+	private static final int SIDE = 150;
 	private static final String[] FILTERS = { "all", "caught", "missing" };
 	private static final int GOLD = 0xFFFACC15;
 	/** A record this close to the species' highest weight earns its card a star. */
@@ -390,7 +392,7 @@ public class SkyAtlasScreen extends Screen {
 	// ---------- one species ----------
 
 	private void species(GuiGraphicsExtractor g, SkyAtlas.Fish f, int mx, int my) {
-		int x = px + 12, top = py + 32, bottom = py + ph - 10, side = 150;
+		int x = px + 12, top = py + 32, bottom = py + ph - 10, side = SIDE;
 		// its card, bigger, grown from where it lay in the album; the records under it
 		float grow = smooth(progress(openedAt, 280)), appear = smooth(progress(openedAt + 120, 260));
 		int cardX = x + (side - 96) / 2;
@@ -479,9 +481,14 @@ public class SkyAtlasScreen extends Screen {
 	}
 
 	private int line(GuiGraphicsExtractor g, String key, String value, int x, int y) {
-		Component label = Ui.tr(key);
+		Component label = Ui.tr(key), text = Ui.text(value);
 		Ui.draw(g, label, x, y, Ui.MUTED);
-		Ui.draw(g, Ui.text(value), x + Ui.width(label) + 5, y, Ui.TEXT);
+		// too long beside its label (a record with its size): the value goes under it
+		if (Ui.width(label) + 5 + Ui.width(text) > SIDE) {
+			Ui.draw(g, Ui.fit(text, SIDE), x, y + 10, Ui.TEXT);
+			return y + 22;
+		}
+		Ui.draw(g, text, x + Ui.width(label) + 5, y, Ui.TEXT);
 		return y + 12;
 	}
 
