@@ -16,7 +16,7 @@ import { shareLog } from './logshare';
 import { clipFrameResponse, registerMediaSharing } from './mediaShare';
 import { previewPack } from './packPreview';
 import { lastTarget, serverFromLog, worldPlayedSince } from './sessions';
-import { checkForUpdates, installUpdate, startUpdateChecks, updateStatus, moveToApplications, retryMacUpdate } from './updates';
+import { checkForUpdates, installUpdate, startUpdateChecks, updateStatus, moveToApplications, retryMacUpdate, updateChannelChanged } from './updates';
 import { initChangelog } from './changelog';
 import { DiscordPresence, presenceFromLog, type Presence } from './discord';
 import { activityFromLog, SocialClient, SocialError, type SocialUser, type Status } from './social';
@@ -310,6 +310,7 @@ handle('settings:save', async (settings: Partial<Settings>) => {
   const urlChanged = allowed.socialUrl !== undefined && allowed.socialUrl !== store.settings.socialUrl;
   const accountChanged = allowed.selectedAccountId !== undefined && allowed.selectedAccountId !== store.settings.selectedAccountId;
   const previous = store.settings;
+  if (allowed.updateChannel !== undefined && allowed.updateChannel !== 'beta') allowed.updateChannel = 'stable';
   store.settings = { ...store.settings, ...allowed };
   if (allowed.launcherWindow !== undefined && (allowed.launcherWindow || '') !== (previous.launcherWindow || '')) applyWindowChoice(allowed.launcherWindow);
   await applyToolSettings(store.settings, previous);
@@ -319,6 +320,8 @@ handle('settings:save', async (settings: Partial<Settings>) => {
   if (store.settings.discordEnabled) showPresence(games.size ? currentPresence ?? idlePresence() : idlePresence());
   else discordClient(); // closes the connection, which clears the status
   await persist();
+  // another update channel: its feed, checked at once
+  if ((store.settings.updateChannel ?? 'stable') !== (previous.updateChannel ?? 'stable')) void updateChannelChanged();
 });
 
 handle('profile:save', async (profile: Profile) => {
@@ -2724,6 +2727,7 @@ app.whenReady().then(async () => {
   startUpdateChecks({
     serverUrl: () => store.settings.socialUrl, send: (status) => send('update:status', status), onLog: (m) => console.error(m),
     pause: { get: () => store.settings.updatesPausedUntil, set: (v) => { store.settings.updatesPausedUntil = v; return persist(); } },
+    beta: () => store.settings.updateChannel === 'beta',
   });
   showPresence(idlePresence());
   social.start();

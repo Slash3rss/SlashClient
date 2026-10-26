@@ -617,6 +617,15 @@
           <p class="muted">Wersja launchera: <code id="app-version"></code> <span id="update-state"></span></p>
           <button type="button" id="update-check"><i class="fa-solid fa-rotate"></i> Sprawdź aktualizacje</button>
         </div>
+        <div class="hidden" id="update-channel-row">
+          <label>Kanał aktualizacji
+            <select name="updateChannel">
+              <option value="stable">Stabilny</option>
+              <option value="beta">Beta</option>
+            </select>
+          </label>
+          <small class="muted">Beta to wcześniejsze wersje z nowościami przed wydaniem – mogą mieć błędy. Powrót na stabilny czeka na następne zwykłe wydanie.</small>
+        </div>
         <div class="updates-paused hidden" id="updates-paused">
           <label class="check"><input type="checkbox" id="auto-updates"> Automatyczne aktualizacje</label>
           <small class="muted" id="updates-paused-note"></small>

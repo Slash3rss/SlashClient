@@ -95,6 +95,15 @@ Mod (`hud/`, potrzebny JDK 25, np. `JAVA_HOME="/c/Program Files/Eclipse Adoptium
 3. commit „Wydanie X.Y.Z”, tag `vX.Y.Z`, push `main` i tagu – resztę robi `.github/workflows/release.yml`
 4. sprawdź, że kanały aktualizacji (`https://client.slash3rss.dev/aktualizacje/latest*.yml`) pokazują nową wersję
 
+## Wydanie beta (tylko na polecenie)
+
+Jak zwykłe wydanie, ale wersja i tag z `-beta.N`: `npm version X.Y.Z-beta.N --no-git-tag-version`,
+`release-notes/vX.Y.Z-beta.N.md` (bez znaczników „Nowość”), commit „Wydanie X.Y.Z-beta.N”, tag `vX.Y.Z-beta.N`.
+Workflow robi z tego „pre-release” na GitHubie z samymi plikami aktualizacji (bez `Setup.exe` i `.dmg`).
+Bety dostają tylko launchery z kanałem „Beta” w ustawieniach (`/aktualizacje/beta`, przełącznik „Kanał beta
+aktualizacji” w panelu admina); strona, `/pobierz` i stabilny kanał ich nie widzą. Sprawdź
+`https://client.slash3rss.dev/aktualizacje/beta/latest.yml`.
+
 ## Wdrożenie serwera (tylko na polecenie)
 
 Na VPS najpierw kopia bazy i aplikacji:

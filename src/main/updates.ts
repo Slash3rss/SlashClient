@@ -37,6 +37,8 @@ export interface UpdateOptions {
   send: (status: UpdateStatus) => void;
   onLog?: (message: string) => void;
   pause?: PauseStore;
+  /** The player chose the beta channel (Settings): betas come too. */
+  beta?: () => boolean;
 }
 
 /**
@@ -68,6 +70,9 @@ let pause: PauseStore | undefined;
 let rollbackTarget: string | undefined;
 let feedOverride: string | undefined;
 let serverOf: () => string = () => '';
+let betaChosen: () => boolean = () => false;
+/** The server answered the beta channel with "not here" (an older server): the stable one for this run. */
+let betaMissing = false;
 let logTo: ((message: string) => void) | undefined;
 
 function set(next: UpdateStatus) {
@@ -76,8 +81,11 @@ function set(next: UpdateStatus) {
   send(status);
 }
 
+/** The feed of the channel chosen: /aktualizacje, or /aktualizacje/beta (the newest release, a beta or not). */
+const channelFeed = () => `${feedUrl(serverOf())}${betaChosen() && !betaMissing ? '/beta' : ''}`;
+
 /** The feed the files come from now: the newest release's, or the older one's being gone back to. */
-const activeFeed = () => feedOverride ?? feedUrl(serverOf());
+const activeFeed = () => feedOverride ?? channelFeed();
 
 /**
  * electron-updater's own id of this launcher (userData/.updaterId), sent with every update check.
@@ -121,17 +129,22 @@ function feedUrl(server: string): string {
   return (process.env.SLASHCLIENT_UPDATE_URL || `${server.replace(/\/$/, '')}/aktualizacje`).replace(/\/$/, '');
 }
 
-export function startUpdateChecks({ serverUrl, send: sendStatus, onLog, pause: pauseStore }: UpdateOptions): void {
+export function startUpdateChecks({ serverUrl, send: sendStatus, onLog, pause: pauseStore, beta }: UpdateOptions): void {
   send = sendStatus;
   pause = pauseStore;
   serverOf = serverUrl;
+  if (beta) betaChosen = beta;
   logTo = onLog;
   // a version newer than the one left runs already (installed by hand): nothing to wait for any more
   if (pause?.get() && pauseOver(pause.get(), app.getVersion())) void pause.set(undefined);
   status = { ...status, pausedUntil: pause?.get() || undefined };
   if (!app.isPackaged) return;
   syncUpdaterId(pause?.get());
-  autoUpdater.setFeedURL({ provider: 'generic', url: feedUrl(serverUrl()) });
+  // the feeds are latest*.yml on both channels: a beta build would otherwise ask for beta*.yml
+  // (electron-updater picks the channel from its own version); setting it allows going down, which only going back may
+  autoUpdater.channel = 'latest';
+  autoUpdater.allowDowngrade = false;
+  autoUpdater.setFeedURL({ provider: 'generic', url: channelFeed() });
   autoUpdater.autoDownload = !MANUAL && !pause?.get();
   autoUpdater.autoInstallOnAppQuit = !MANUAL;
   autoUpdater.on('checking-for-update', () => {
@@ -158,6 +171,14 @@ export function startUpdateChecks({ serverUrl, send: sendStatus, onLog, pause: p
   autoUpdater.on('update-downloaded', (info) => set({ state: 'ready', version: info.version }));
   autoUpdater.on('error', (err) => {
     onLog?.(`Aktualizacja: ${err.message}`);
+    // the beta channel on a server that has none yet: the stable channel, checked again
+    if (!feedOverride && betaChosen() && !betaMissing && /\b404\b/.test(err.message)) {
+      betaMissing = true;
+      onLog?.('Aktualizacja: serwer nie ma kanału beta, sprawdzam zwykłe wydania');
+      autoUpdater.setFeedURL({ provider: 'generic', url: channelFeed() });
+      void autoUpdater.checkForUpdates().catch(() => {});
+      return;
+    }
     if (status.state !== 'ready') set({ state: 'error', error: err.message });
   });
   void (async () => {
@@ -300,6 +321,18 @@ export async function rollbackTo(version: string): Promise<UpdateStatus> {
 export async function resumeUpdates(): Promise<UpdateStatus> {
   await setPause(undefined);
   return status;
+}
+
+/**
+ * The player switched the update channel (Settings): the feed follows and is checked again. Going
+ * from the beta back to the stable channel installs nothing older: the next stable release newer
+ * than the beta running comes as usual.
+ */
+export async function updateChannelChanged(): Promise<UpdateStatus> {
+  betaMissing = false;
+  if (!app.isPackaged || feedOverride) return status;
+  autoUpdater.setFeedURL({ provider: 'generic', url: channelFeed() });
+  return checkForUpdates();
 }
 
 /** Checks now (the button in Settings); the result also arrives as a status event. */

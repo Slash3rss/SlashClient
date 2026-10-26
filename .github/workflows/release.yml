@@ -2,6 +2,9 @@ name: Release
 
 # Push a tag like v0.2.0 to build installers and publish them as a GitHub Release.
 # Installed launchers pick the new version up through electron-updater.
+# A tag with a dash, like v0.2.1-beta.1, is a beta: a pre-release with what launchers on the beta
+# update channel need (the update feeds, the app's zips, the AppImage) but no installers to download
+# (no Setup.exe, no .dmg); the website and the stable channel never offer it (server/src/downloads.ts).
 on:
   push:
     tags: ['v*']
@@ -24,12 +27,15 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           gh release view "$TAG" >/dev/null 2>&1 && exit 0
+          # a beta (a dash in the tag) is a pre-release
+          beta=()
+          [[ "$TAG" == *-* ]] && beta=(--prerelease)
           # the description comes from release-notes/<tag>.md when there is one
           notes="release-notes/$TAG.md"
           if [ -f "$notes" ]; then
-            gh release create "$TAG" --title "SlashClient ${TAG#v}" --notes-file "$notes"
+            gh release create "$TAG" "${beta[@]}" --title "SlashClient ${TAG#v}" --notes-file "$notes"
           else
-            gh release create "$TAG" --title "SlashClient ${TAG#v}" --generate-notes
+            gh release create "$TAG" "${beta[@]}" --title "SlashClient ${TAG#v}" --generate-notes
           fi
 
   installers:
@@ -65,6 +71,14 @@ jobs:
       - run: npm run build
       - name: Build and publish
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           # macOS signing is optional: only pass the signing variables when the secrets exist
           # (an empty CSC_LINK makes electron-builder look for a certificate file and fail)
@@ -76,11 +90,15 @@ jobs:
           [ -n "$APPLE_ID" ] || unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
           # Windows also uploads what launchers update themselves with in place: SlashClient-<v>-win.zip,
           # SlashClient-<v>-win-app.zip and win-update-<v>.json (scripts/win-update-artifacts.cjs)
-          npx electron-builder ${{ matrix.target }} --publish always
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
-          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # the feeds are latest*.yml for a beta too (electron-builder would name them beta*.yml):
+          # the server's beta channel picks the newest release, beta or not, by its version
+          if [[ "$TAG" != *-* ]]; then
+            npx electron-builder ${{ matrix.target }} -c.detectUpdateChannel=false --publish always
+            exit 0
+          fi
+          # a beta: built the same, then only the update's files go up, no installer
+          npx electron-builder ${{ matrix.target }} -c.detectUpdateChannel=false --publish never
+          shopt -s nullglob
+          files=(release/latest*.yml release/*-win.zip release/*-win-app.zip release/win-update-*.json release/*-mac.zip release/*-mac.zip.blockmap release/*.AppImage)
+          ls -la "${files[@]}"
+          gh release upload "$TAG" "${files[@]}" --clobber

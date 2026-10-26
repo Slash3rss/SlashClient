@@ -26,7 +26,8 @@ async function describe(file) {
 exports.default = async function winUpdateArtifacts(result) {
   const full = result.artifactPaths.find((p) => /-win\.zip$/.test(p));
   if (!full) return [];
-  const version = /-(\d+\.\d+\.\d+[^-]*)-win\.zip$/.exec(path.basename(full))?.[1];
+  // a beta's too: SlashClient-0.9.57-beta.1-win.zip
+  const version = /-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)-win\.zip$/.exec(path.basename(full))?.[1];
   const unpacked = path.join(result.outDir, 'win-unpacked');
   if (!version || !fs.existsSync(path.join(unpacked, 'resources', 'app.asar'))) throw new Error(`win-update-artifacts: no app next to ${full}`);
   // the executable carries the hash of app.asar; with Electron's integrity check turned on, a new

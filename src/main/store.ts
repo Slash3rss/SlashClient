@@ -135,6 +135,8 @@ export interface Settings {
   changelogSeen?: string;
   /** After going back to an older version: automatic updates wait for a release newer than this one. */
   updatesPausedUntil?: string;
+  /** The update channel: 'beta' takes betas too (the server's /aktualizacje/beta); missing = stable. */
+  updateChannel?: 'stable' | 'beta';
 }
 
 export interface StoreData {

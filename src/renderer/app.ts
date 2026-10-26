@@ -25,7 +25,7 @@ import { createDiskCleanup } from './diskCleanup';
 import { createKeyConflicts } from './keyConflicts';
 import { createToolSettings } from './toolSettings';
 import { createSupportCard } from './support';
-import { initFeatures } from './features';
+import { betaUpdatesOffered, initFeatures, onFeatures } from './features';
 import { checkLegalNotices, createLegalCard } from './legal';
 import { createWiki } from './wiki';
 import { createServerPages } from './serverPages';
@@ -75,7 +75,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta' };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -1176,6 +1176,8 @@ function renderSettings() {
   (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked = store.settings.closeOnLaunch;
   (form.elements.namedItem('reduceMotion') as HTMLInputElement).checked = !!store.settings.reduceMotion;
   (form.elements.namedItem('launcherWindow') as HTMLSelectElement).value = store.settings.launcherWindow ?? '';
+  (form.elements.namedItem('updateChannel') as HTMLSelectElement).value = store.settings.updateChannel ?? 'stable';
+  showUpdateChannel();
   const memory = form.elements.namedItem('defaultMemoryMb') as HTMLInputElement;
   memory.max = String(Math.max(4096, Math.floor((store.systemMemoryMb - 2048) / 512) * 512));
   // (the same limit as each profile's own slider: some memory is left to the system)
@@ -1857,6 +1859,7 @@ $('#settings-form').addEventListener('submit', async (e) => {
       systemNotifications: (form.elements.namedItem('systemNotifications') as HTMLInputElement).checked,
       notificationSound: (form.elements.namedItem('notificationSound') as HTMLInputElement).checked,
       language: $<HTMLSelectElement>('#language-select').value,
+      updateChannel: (form.elements.namedItem('updateChannel') as HTMLSelectElement).value === 'beta' ? 'beta' : 'stable',
     }),
   );
   toast('Zapisano ustawienia');
@@ -5025,6 +5028,12 @@ function finishTaskCard({ id, ok, message, profileId, missing }: TaskDone, stayM
 }
 
 // ---------- updates ----------
+
+/** The update channel's choice: shown when the server has a beta channel, or while on the beta (to come back). */
+function showUpdateChannel() {
+  $('#update-channel-row').classList.toggle('hidden', !betaUpdatesOffered() && store.settings.updateChannel !== 'beta');
+}
+onFeatures(showUpdateChannel);
 
 type UpdateStatus = { state: string; version?: string; percent?: number; manual?: boolean; reason?: string; error?: string; pausedUntil?: string; rollback?: string };
 let updateClosed = '';
