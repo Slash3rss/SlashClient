@@ -37,9 +37,11 @@ public final class Assist {
 	 * "hold" mode it pauses the clicking while the buttons are held (paused) and lets it go on.
 	 */
 	private static boolean armed, paused;
-	private static long nextLeft, nextRight;
+	private static long nextLeft, nextRight, nextJump;
+	/** The autoclicker pressed the jump key last tick: let go of it now. */
+	private static boolean jumpPressed;
 	/** Clicks made, for the tests. */
-	static int leftClicks, rightClicks;
+	static int leftClicks, rightClicks, jumps;
 	/** The slot the player had before auto tool picked another (-1 = none). */
 	private static int toolFrom = -1;
 	/** Tools auto tool brought from the backpack ({backpack slot, hotbar slot}), newest last, to put back in reverse. */
@@ -107,6 +109,7 @@ public final class Assist {
 		holdOverScreen(mc, player, inGame);
 
 		if (cfg().autoClicker && inGame && (holdMode() ? !paused : armed)) autoClick(mc, player);
+		else letGoOfJump(mc);
 		// also while the held button digs under the inventory or the pause menu
 		if (cfg().autoTool && (inGame || dugOverScreen)) autoTool(mc, player);
 		if (cfg().autoRefill) refill(mc, player);
@@ -246,7 +249,9 @@ public final class Assist {
 			boolean onMob = aimed instanceof LivingEntity living && living.isAlive() && !atPlayer;
 			// a block being dug with the button held is left alone: clicking would restart the digging
 			boolean digging = mc.options.keyAttack.isDown() && hit != null && hit.getType() == HitResult.Type.BLOCK;
-			boolean want = !atPlayer && (cfg().autoClickMobs ? onMob : !digging);
+			// the player's own shield up: no hits through it (they would lower it)
+			boolean shielding = cfg().autoClickShield && player.isBlocking();
+			boolean want = !atPlayer && !shielding && (cfg().autoClickMobs ? onMob : !digging);
 			if (want && now >= nextLeft) {
 				click(mc.options.keyAttack);
 				leftClicks++;
@@ -258,6 +263,21 @@ public final class Assist {
 			rightClicks++;
 			nextRight = now + interval(cfg().autoClickRightCps);
 		}
+		// jumps in the toggle mode: the key down for a tick, then up (a click does not jump: the game reads it held)
+		if (jumpPressed) letGoOfJump(mc);
+		else if (!hold && cfg().autoClickJump && now >= nextJump) {
+			mc.options.keyJump.setDown(true);
+			jumpPressed = true;
+			jumps++;
+			nextJump = now + Math.round(1000.0 / Math.max(1, Math.min(10, cfg().autoClickJumps)));
+		}
+	}
+
+	/** The jump key the autoclicker pressed, let go (the player's own press is left alone). */
+	private static void letGoOfJump(Minecraft mc) {
+		if (!jumpPressed) return;
+		mc.options.keyJump.setDown(false);
+		jumpPressed = false;
 	}
 
 	private static void click(KeyMapping key) {

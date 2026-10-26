@@ -127,6 +127,8 @@ public final class TestHooks {
 		c.autoClickRight = right;
 		c.autoClickMobs = mobs;
 		c.autoClickCps = c.autoClickRightCps = cps;
+		c.autoClickJump = false;
+		c.autoClickShield = true;
 		Assist.arm(false);
 		Assist.leftClicks = Assist.rightClicks = 0;
 	}
@@ -186,6 +188,22 @@ public final class TestHooks {
 	/** Whether the right button is being held by its key. */
 	public static boolean holdingUse() {
 		return Assist.holding(false);
+	}
+
+	/** The autoclicker jumps too, this many a second; the jumps made so far. */
+	public static int autoClickJumps(int perSecond) {
+		if (perSecond > 0) {
+			SlashHud.config.autoClickJump = true;
+			SlashHud.config.autoClickJumps = perSecond;
+		}
+		return Assist.jumps;
+	}
+
+	/** A shield in the off hand, raised (or lowered). */
+	public static void raiseShield(boolean up) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		if (up) mc.player.setItemSlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SHIELD));
+		mc.options.keyUse.setDown(up);
 	}
 
 	/** The clicks a second the CPS module and the keystrokes show: "left/right". */

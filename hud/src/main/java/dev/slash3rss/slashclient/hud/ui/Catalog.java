@@ -567,7 +567,10 @@ public final class Catalog {
 			new Slider("slashclient-hud.assist.rightCps", 1f, 20f, 1f, "%.0f CPS", () -> (float) cfg.autoClickRightCps, v -> cfg.autoClickRightCps = Math.round(v)),
 			// what the left button clicks at: anything (but a player), or only a mob under the crosshair
 			new Choice("slashclient-hud.assist.target", HudConfig.AUTO_CLICK_TARGETS, "slashclient-hud.assist.target.",
-				() -> cfg.autoClickMobs ? "mobs" : "all", v -> cfg.autoClickMobs = "mobs".equals(v))), null));
+				() -> cfg.autoClickMobs ? "mobs" : "all", v -> cfg.autoClickMobs = "mobs".equals(v)),
+			new Toggle("slashclient-hud.assist.shield", () -> cfg.autoClickShield, v -> cfg.autoClickShield = v),
+			new Toggle("slashclient-hud.assist.jump", () -> cfg.autoClickJump, v -> cfg.autoClickJump = v),
+			new Slider("slashclient-hud.assist.jumps", 1f, 10f, 1f, "%.0f/s", () -> (float) cfg.autoClickJumps, v -> cfg.autoClickJumps = Math.round(v))), null));
 		out.add(new Entry("autoTool", "slashclient-hud.assist.autoTool", "world", "m-autotool", () -> cfg.autoTool,
 			v -> risky(v, () -> cfg.autoTool = v), List.of(
 			new Toggle("slashclient-hud.assist.restore", () -> cfg.autoToolRestore, v -> cfg.autoToolRestore = v),

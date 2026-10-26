@@ -408,6 +408,11 @@ public final class HudConfig {
 	/** Each button's clicks a second, steady. */
 	public int autoClickCps = 10;
 	public int autoClickRightCps = 10;
+	/** In the toggle mode it jumps too, this many times a second (held, the space bar held jumps on its own). */
+	public boolean autoClickJump = false;
+	public int autoClickJumps = 2;
+	/** The left button is not clicked while the player's own shield is up. */
+	public boolean autoClickShield = true;
 	/** Left clicks only with a mob under the crosshair (never at a player either way). */
 	public boolean autoClickMobs = false;
 	public static final String[] AUTO_CLICK_TARGETS = { "all", "mobs" };
@@ -879,6 +884,9 @@ public final class HudConfig {
 		autoClickMode = oneOf(other.autoClickMode, AUTO_CLICK_MODES);
 		autoClickCps = Math.max(1, Math.min(20, other.autoClickCps));
 		autoClickRightCps = Math.max(1, Math.min(20, other.autoClickRightCps));
+		autoClickJump = other.autoClickJump;
+		autoClickJumps = Math.max(1, Math.min(10, other.autoClickJumps));
+		autoClickShield = other.autoClickShield;
 		autoClickMobs = other.autoClickMobs;
 		autoTool = other.autoTool;
 		autoToolRestore = other.autoToolRestore;

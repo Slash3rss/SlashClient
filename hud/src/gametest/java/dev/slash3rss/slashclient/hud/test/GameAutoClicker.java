@@ -52,6 +52,20 @@ public class GameAutoClicker implements FabricClientGameTest {
 			String armed = context.computeOnClient(mc -> TestHooks.autoClicks());
 			if (armed.startsWith("0/")) throw new AssertionError("Did not click once its key was pressed: " + armed);
 
+			// jumps too: on the ground it goes up
+			int jumpsBefore = context.computeOnClient(mc -> TestHooks.autoClickJumps(4));
+			context.waitTicks(30);
+			int jumped = context.computeOnClient(mc -> TestHooks.autoClickJumps(0)) - jumpsBefore;
+			if (jumped < 3) throw new AssertionError("Too few jumps in 1.5 s: " + jumped);
+			// the own shield up: no hits
+			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, false, 10); TestHooks.armAutoClicker(); TestHooks.raiseShield(true); });
+			context.waitTicks(15);
+			context.runOnClient(mc -> TestHooks.autoClicker(true, "toggle", true, false, false, 10));
+			context.runOnClient(mc -> TestHooks.armAutoClicker());
+			context.waitTicks(20);
+			String shielded = context.computeOnClient(mc -> TestHooks.autoClicks());
+			context.runOnClient(mc -> TestHooks.raiseShield(false));
+			if (!shielded.startsWith("0/")) throw new AssertionError("Hit with the shield up: " + shielded);
 			// left only with a mob under the crosshair: looking away, no clicks
 			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, true, 10); TestHooks.armAutoClicker(); mc.player.setYRot(180f); mc.player.setYHeadRot(180f); });
 			context.waitTicks(20);
