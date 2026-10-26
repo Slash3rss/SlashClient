@@ -344,9 +344,8 @@ public final class SlashLoading {
 		g.nextStratum();
 		//#endif
 		Ui.layer(g);
-		// joining a server (and its resource packs): the title screen's panorama behind, dimmed as in our menu
-		boolean join = st.kind().equals("connect") || st.kind().equals("pack") || st.kind().equals("apply");
-		if (join && !panoramaFailed) {
+		// every loading screen: the title screen's panorama behind, dimmed as in our menu
+		if (!panoramaFailed) {
 			g.fill(0, 0, w, h, 0xFF0A0D14);
 			try {
 				panorama(g, w, h, still ? 0 : anim);
