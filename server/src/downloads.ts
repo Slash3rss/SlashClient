@@ -3,6 +3,9 @@
  * /aktualizacje/<file>: the same release as an update feed for the launcher (electron-updater's
  * "generic" provider): latest*.yml served from here, the files themselves as signed links.
  * /aktualizacje/v/<version>/<file>: the same for one older release (going back to a previous version).
+ * /aktualizacje/beta/<file>: the beta update channel: the newest release, a beta (a GitHub pre-release,
+ * v0.9.57-beta.1) or not, by its version. The installers, the stable feed and the changelog never
+ * see a beta.
  * /v1/changelog: the releases' notes, for the site's /zmiany and the launcher.
  * The release list comes from GitHub (kept for a few minutes). With RELEASES_TOKEN set, a
  * private repository works too: GitHub hands out a short-lived signed link to the file,
@@ -104,6 +107,34 @@ export function holdForPaused(yml: string, stagingId: string | string[] | undefi
   const version = /^version:\s*['"]?([^\s'"]+)/m.exec(yml)?.[1];
   if (version && compareVersion(version, until) > 0) return yml;
   return `${yml.replace(/^stagingPercentage:.*$\n?/m, '').trimEnd()}\nstagingPercentage: 0\n`;
+}
+
+/** A release's version with a beta's part ("0.9.57-beta.1" → [0, 9, 57], ["beta", 1]); undefined when it is none. */
+export function parseBeta(v: string | undefined): { nums: [number, number, number]; pre: (string | number)[] } | undefined {
+  const m = /^v?(\d{1,4})\.(\d{1,4})\.(\d{1,4})(?:-([0-9A-Za-z.]{1,40}))?$/.exec(String(v ?? '').trim());
+  if (!m) return undefined;
+  const pre = m[4] ? m[4].split('.').map((p) => (/^\d+$/.test(p) ? Number(p) : p)) : [];
+  return { nums: [Number(m[1]), Number(m[2]), Number(m[3])], pre };
+}
+
+/** Compares two versions as semver does: 0.9.56 < 0.9.57-beta.1 < 0.9.57-beta.2 < 0.9.57 (a version beats none). */
+export function compareBeta(a: string | undefined, b: string | undefined): number {
+  const x = parseBeta(a);
+  const y = parseBeta(b);
+  if (!x || !y) return (x ? 1 : 0) - (y ? 1 : 0);
+  for (let i = 0; i < 3; i++) if (x.nums[i] !== y.nums[i]) return x.nums[i] - y.nums[i];
+  // the release itself comes after its betas
+  if (!x.pre.length || !y.pre.length) return (x.pre.length ? 0 : 1) - (y.pre.length ? 0 : 1);
+  for (let i = 0; i < Math.max(x.pre.length, y.pre.length); i++) {
+    const p = x.pre[i];
+    const q = y.pre[i];
+    if (p === undefined || q === undefined) return p === undefined ? -1 : 1;
+    if (p === q) continue;
+    if (typeof p === 'number' && typeof q === 'number') return p - q;
+    if (typeof p === 'number' || typeof q === 'number') return typeof p === 'number' ? -1 : 1;
+    return p < q ? -1 : 1;
+  }
+  return 0;
 }
 
 const CACHE_MS = 5 * 60_000;
@@ -260,7 +291,22 @@ export function createDownloads(opts: { repo: string; token?: string; fetchImpl:
   /** A small text file of one release (its latest.yml…). */
   const versionFileText = (version: string, name: string) => cachedText(`${version}/${name}`, () => versionFileLink(version, name));
 
-  return { link, fileLink, fileText, news, changelog, changelogOf, versionFileLink, versionFileText };
+  /**
+   * The beta channel's file: from the newest release, a beta or not, that has it (by version: while
+   * a release is still being built its files go up one system at a time, the one before serves the rest).
+   */
+  async function betaFileLink(name: string): Promise<string | undefined> {
+    const releases = (await page(1)).filter((r) => !r.draft && parseBeta(r.tag_name)).sort((a, b) => compareBeta(b.tag_name, a.tag_name));
+    for (const r of releases) {
+      const asset = r.assets?.find((a) => a.name === name);
+      if (asset) return signed(asset);
+    }
+    return undefined;
+  }
+  /** A small text file of the beta channel (its latest.yml…). */
+  const betaFileText = (name: string) => cachedText(`beta/${name}`, () => betaFileLink(name));
+
+  return { link, fileLink, fileText, news, changelog, changelogOf, versionFileLink, versionFileText, betaFileLink, betaFileText };
 }
 
 export type Downloads = ReturnType<typeof createDownloads>;

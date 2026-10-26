@@ -1888,18 +1888,21 @@ export function createApp(cfg: Config) {
       return;
     }
     // the launcher's update feed: what is new (latest*.yml) from here, the files as signed links
-    // (…/v/<version>/<file>: one older release, for a launcher going back to it)
-    const update = /^\/(?:aktualizacje|updates)\/(?:v\/v?(\d{1,4}\.\d{1,4}\.\d{1,4})\/)?([\w][\w.-]{0,120})$/.exec(url.pathname);
+    // (…/v/<version>/<file>: one older release, for a launcher going back to it; …/beta/<file>: the
+    // beta channel, the stable one while the admin has it switched off)
+    const update = /^\/(?:aktualizacje|updates)\/(?:(beta)\/|v\/v?(\d{1,4}\.\d{1,4}\.\d{1,4})\/)?([\w][\w.-]{0,120})$/.exec(url.pathname);
     if (req.method === 'GET' && update) {
-      const [, version, name] = update;
+      const [, betaPath, version, name] = update;
+      const beta = !!betaPath && settings.bool(featureKey('betaUpdates'));
       try {
         if (name.endsWith('.yml')) {
           // a launcher that went back to an older version waits for a release newer than the one it left
-          const text = version ? await downloads.versionFileText(version, name) : await downloads.fileText(name).then((t) => t && holdForPaused(t, req.headers['x-user-staging-id']));
+          const text = version ? await downloads.versionFileText(version, name)
+            : await (beta ? downloads.betaFileText(name) : downloads.fileText(name)).then((t) => t && holdForPaused(t, req.headers['x-user-staging-id']));
           res.writeHead(text === undefined ? 404 : 200, { 'Content-Type': 'text/yaml; charset=utf-8', 'Cache-Control': 'no-cache' });
           res.end(text ?? '');
         } else {
-          const to = version ? await downloads.versionFileLink(version, name) : await downloads.fileLink(name);
+          const to = version ? await downloads.versionFileLink(version, name) : beta ? await downloads.betaFileLink(name) : await downloads.fileLink(name);
           res.writeHead(to ? 302 : 404, to ? { Location: to, 'Cache-Control': 'no-store' } : {});
           res.end();
         }

@@ -25,6 +25,7 @@ export const FEATURES = [
   { id: 'chatImages', label: 'Zdjęcia w czacie', labelEn: 'Pictures in the chat', description: 'Wysyłanie nowych zdjęć w wiadomościach. Wysłane można dalej oglądać.' },
   { id: 'streams', label: 'Streamy (Twitch i Kick)', labelEn: 'Streams (Twitch and Kick)', description: 'Łączenie kanałów, znaczek LIVE u znajomych, powiadomienia i transmisja na profilu. Połączone kanały zostają.' },
   { id: 'registration', label: 'Rejestracja nowych kont', labelEn: 'New accounts', description: 'Zakładanie kont przez nowych graczy. Istniejące konta logują się normalnie.' },
+  { id: 'betaUpdates', label: 'Kanał beta aktualizacji', labelEn: 'Beta update channel', description: 'Launchery z wybranym kanałem beta dostają bety (wydania z tagiem v…-beta.N). Wyłączony: wszyscy dostają tylko zwykłe wydania, a wybór kanału znika z ustawień launchera.' },
 ] as const;
 export type FeatureId = (typeof FEATURES)[number]['id'];
 export const FEATURE_IDS: FeatureId[] = FEATURES.map((f) => f.id);
