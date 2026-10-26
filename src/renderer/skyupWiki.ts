@@ -3,6 +3,8 @@ import { control, el, icon } from './dialog';
 
 /** "Wczytywanie…" only when loading takes longer than this (what was read before comes at once). */
 const LOADING_AFTER_MS = 150;
+/** The wiki's start page (skyup.pl/wiki/start), not in its menu. */
+const SKYUP_START = 'start';
 
 /**
  * The SkyUp.pl wiki tab of the Wiki view: the website's articles in their categories, a filter of
@@ -78,6 +80,8 @@ export function createSkyupWiki(root: HTMLElement, deps: SkyupWikiDeps) {
       categories = (await api.skyupWikiIndex()) as Category[];
       if (input.value.trim()) void search(input.value);
       else showIndex();
+      // the wiki's own start page (skyup.pl/wiki/start) until an article is picked
+      if (!current) void openArticle(SKYUP_START, undefined, true);
     } catch (err) {
       const retry = el('button', { type: 'button' }, icon('fa-rotate-right'), t(' Spróbuj ponownie'));
       retry.addEventListener('click', () => void loadIndex());
@@ -161,6 +165,9 @@ export function createSkyupWiki(root: HTMLElement, deps: SkyupWikiDeps) {
       // safe: the main process allow-lists tags and attributes (no scripts, styles or handlers)
       content.innerHTML = a.html;
       content.querySelectorAll('img').forEach((img) => img.addEventListener('error', () => img.remove(), { once: true }));
+      // a first heading that only repeats the title (the start page's) is left out
+      const first = content.firstElementChild;
+      if (first?.tagName === 'H2' && first.textContent?.trim() === a.title.trim()) first.remove();
       const jump = a.sections.length > 1
         ? el('div', { className: 'wiki-chips wiki-sky-jump' }, ...a.sections.map((s) => {
           const b = el('button', { type: 'button', className: 'wiki-chip', textContent: s.title });

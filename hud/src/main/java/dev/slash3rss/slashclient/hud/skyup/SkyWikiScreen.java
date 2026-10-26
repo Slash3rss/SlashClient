@@ -89,7 +89,8 @@ public class SkyWikiScreen extends Screen {
 			if (a.value() != null) categories = a.value();
 			else problem = a.error();
 		});
-		if (article == null && SkyWiki.lastSlug != null) open(SkyWiki.lastSlug, null, false, SkyWiki.lastScroll);
+		// where the player left off, or the wiki's own start page (skyup.pl/wiki/start, not in its menu)
+		if (article == null && !loadingArticle) open(SkyWiki.lastSlug != null ? SkyWiki.lastSlug : "start", null, false, SkyWiki.lastSlug != null ? SkyWiki.lastScroll : 0);
 	}
 
 	/** Opens an article (and a place on it); `remember` puts the one shown now on the way back. */
@@ -295,8 +296,10 @@ public class SkyWikiScreen extends Screen {
 		anchors.clear();
 		List<Op> out = new ArrayList<>();
 		int y = 2, w = aw - 4;
-		// the article's own title first
-		y = flow(out, List.of(piece(Ui.bold(article.title()), null)), 0, w, y, Ui.TEXT, false) + 6;
+		// the article's own title first (unless its first heading says the same, as the start page's does)
+		JsonArray blocks = article.blocks();
+		boolean titled = !blocks.isEmpty() && "h".equals(str(blocks.get(0).getAsJsonObject(), "k")) && article.title().equals(str(blocks.get(0).getAsJsonObject(), "text"));
+		if (!titled) y = flow(out, List.of(piece(Ui.bold(article.title()), null)), 0, w, y, Ui.TEXT, false) + 6;
 		for (JsonElement e : article.blocks()) {
 			JsonObject b = e.getAsJsonObject();
 			String k = str(b, "k");
