@@ -2514,6 +2514,18 @@ public final class TestHooks {
 			+ " " + dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolne drewno", stone) + " " + dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolne drewno", log);
 	}
 
+	/** For the test: "Dotrzyj do poziomu w dungeonach: 10 poz." before any dungeon, and after level 7 was on the boss bar. */
+	public static String skyDungeonLevel() {
+		var task = SkyTaskParser.parse("WTAJEMNICZONY", "» Kryptomaniak «", java.util.List.of("▪ Opis » Zawalcz w Dungeonach!", "▪ Dotrzyj do poziomu w dungeonach: 10", "  poz.", "▪ Za ukończenie otrzymasz:", "  » 200.0 SC"));
+		var s = task.sections.get(0);
+		var r = s.items.get(0);
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		long before = dev.slash3rss.slashclient.hud.skyup.SkyTasks.current(mc, s, r);
+		dev.slash3rss.slashclient.hud.skyup.SkyCounters.dungeonLevel(7);
+		dev.slash3rss.slashclient.hud.skyup.SkyCounters.dungeonLevel(3);
+		return before + " " + dev.slash3rss.slashclient.hud.skyup.SkyTasks.current(mc, s, r) + "/" + r.required;
+	}
+
 	/** For the test: a task the GUI still shows as handed in (admins' preview) is no task. */
 	public static boolean skyCompletedIsNoTask() {
 		return SkyTaskParser.parse("NOWICJUSZ", "» Ciasno, ale własno «", java.util.List.of("", "• Zadanie ukończone!", "", "Podgląd admina:", "Opis » Zwiększ poziom wyspy.", "Posiadaj poziom wyspy: 20 poz.", "Za ukończenie otrzymasz:", "» 200.0 SC")) == null

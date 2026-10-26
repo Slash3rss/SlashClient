@@ -73,6 +73,8 @@ public final class SkyTasks {
 		/** From SkyUp's sidebar: the island's level (-1: not seen), each job's level. */
 		long islandLevel = -1;
 		Map<String, Long> jobs = new LinkedHashMap<>();
+		/** The highest dungeon level seen on the dungeon's boss bar ("Dungeon poz. 7"; -1: none yet). */
+		long dungeonLevel = -1;
 	}
 
 	/** The progress from before each account had its own file: the first account that plays takes it over. */
@@ -672,7 +674,7 @@ public final class SkyTasks {
 	}
 
 	/** A requirement's progress now: counted from the inventory where it can be. */
-	static long current(Minecraft mc, SkyTaskParser.Section s, SkyTaskParser.Req r) {
+	public static long current(Minecraft mc, SkyTaskParser.Section s, SkyTaskParser.Req r) {
 		if (s.inventory()) {
 			long have = carried(mc, r.thing);
 			if (have >= 0) return have;
@@ -687,7 +689,7 @@ public final class SkyTasks {
 		if (r.current < 0 && SkyIncubator.about(r.thing)) return SkyIncubator.level(r.thing);
 		// "Stój obok": what is around now
 		if (r.current < 0 && SkyCounters.kind(s) == SkyCounters.Kind.NEAR) return SkyCounters.around(mc, r.thing);
-		// the island's and the jobs' levels: from the sidebar
+		// the island's and the jobs' levels: from the sidebar; the dungeon's: from its boss bar
 		if (r.current < 0) {
 			long level = SkyCounters.fromSidebar(s);
 			if (level >= 0) return level;

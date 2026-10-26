@@ -178,6 +178,9 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.waitTicks(3);
 			check(context.computeOnClient(mc -> TestHooks.skyTasks()).contains("|Huta:"), "not SkyUp's line", "");
 			check(context.computeOnClient(mc -> TestHooks.skyCompletedIsNoTask()), "a handed-in task in the GUI is no task", "");
+			// the dungeon's level: the highest seen on its boss bar
+			String dungeon = context.computeOnClient(mc -> TestHooks.skyDungeonLevel());
+			check(dungeon.endsWith(" 7/10") && !dungeon.startsWith("7 "), "dungeon level from the boss bar (the highest seen)", dungeon);
 			String anyBlock = context.computeOnClient(mc -> TestHooks.skyAnyBlock());
 			check(anyBlock.equals("true true false true"), "\"Dowolny blok\" is any block", anyBlock);
 			String hint = context.computeOnClient(mc -> TestHooks.skyCommandHint());

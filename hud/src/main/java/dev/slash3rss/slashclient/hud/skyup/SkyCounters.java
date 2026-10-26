@@ -297,15 +297,27 @@ public final class SkyCounters {
 		}
 	}
 
-	/** A requirement the sidebar answers ("Posiadaj poziom wyspy", "… dowolnej pracy", "… sumę poziomów prac"), or -1. */
+	/**
+	 * A requirement the sidebar answers ("Posiadaj poziom wyspy", "… dowolnej pracy", "… sumę poziomów
+	 * prac"), or the dungeon's boss bar ("Dotrzyj do poziomu w dungeonach": the highest level seen), or -1.
+	 */
 	static long fromSidebar(SkyTaskParser.Section s) {
 		String h = s.header.toLowerCase(Locale.ROOT);
 		SkyTasks.Data d = SkyTasks.data();
 		if (h.startsWith("posiadaj poziom wyspy")) return d.islandLevel;
+		if (h.startsWith("dotrzyj do poziomu w dungeon")) return d.dungeonLevel;
 		if (d.jobs.isEmpty()) return -1;
 		if (h.startsWith("posiadaj poziom dowolnej pracy")) return d.jobs.values().stream().mapToLong(Long::longValue).max().orElse(-1);
 		if (h.startsWith("posiadaj sumę poziomów prac")) return d.jobs.values().stream().mapToLong(Long::longValue).sum();
 		return -1;
+	}
+
+	/** A dungeon's level on its boss bar: the highest one seen is how far the player got. */
+	public static void dungeonLevel(long level) {
+		SkyTasks.Data d = SkyTasks.data();
+		if (d == null || level <= d.dungeonLevel) return;
+		d.dungeonLevel = level;
+		SkyTasks.changed();
 	}
 
 	/** SkyUp's jobs: the sidebar shows them one after another, so all are known once this many came by. */
