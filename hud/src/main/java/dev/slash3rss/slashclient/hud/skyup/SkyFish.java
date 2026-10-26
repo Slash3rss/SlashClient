@@ -27,7 +27,8 @@ import dev.slash3rss.slashclient.hud.Modules;
 import dev.slash3rss.slashclient.hud.SlashHud;
 
 /**
- * SkyUp's fish counted: this session (since joining the server) and for good (saved), with their
+ * SkyUp's fish counted: this fishing trip (until a pause without a catch), this game (since joining
+ * the server, until leaving it) and for good (saved), with their
  * weight and what the fisherman pays, and split by size, species or quality when asked.
  *
  * Each catch comes from SkyUp's chat line "Wędkarstwo » Wyłowiono: …", which carries the fish
@@ -69,6 +70,9 @@ public final class SkyFish {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static Tally lifetime;
 	static Tally session = new Tally();
+	/** This fishing trip: since the first catch after a pause longer than the player set. */
+	static Tally trip = new Tally();
+	static long lastCatch;
 
 	static Tally lifetime() {
 		if (lifetime == null) {
@@ -94,9 +98,10 @@ public final class SkyFish {
 		}
 	}
 
-	/** A new server: a new session. */
+	/** A new server: a new session (and a new trip). */
 	public static void joined() {
 		session = new Tally();
+		trip = new Tally();
 	}
 
 	private static final Pattern WEIGHT = Pattern.compile("Waga\\s*(?:»|>>|:)\\s*([\\d  ]+(?:[.,]\\d+)?)\\s*g\\b\\s*(?:\\(([^)]+)\\))?");
@@ -122,10 +127,18 @@ public final class SkyFish {
 			if (text.toLowerCase(Locale.ROOT).startsWith("sprzedaj") && p.find()) value = number(p.group(1));
 		}
 		String kind = species(fish);
+		count(size, kind, quality, grams, value, System.currentTimeMillis());
+		SkyAtlas.caught(kind, grams, value, size, quality, fish);
+	}
+
+	/** A fish into the trip (a new one after a long pause), the game's session and the all-time count. */
+	static void count(String size, String kind, String quality, double grams, double value, long now) {
+		if (now - lastCatch > SlashHud.config.skyFishPause * 60_000L) trip = new Tally();
+		lastCatch = now;
+		trip.add(size, kind, quality, grams, value);
 		session.add(size, kind, quality, grams, value);
 		lifetime().add(size, kind, quality, grams, value);
 		save();
-		SkyAtlas.caught(kind, grams, value, size, quality, fish);
 	}
 
 	/** The species: SkyUp's own id in the item's data, or the name without its two words of size and quality. */
@@ -171,10 +184,11 @@ public final class SkyFish {
 		return s.toString();
 	}
 
-	private static List<Row> rows(Tally session, Tally life) {
+	private static List<Row> rows(Tally trip, Tally session, Tally life) {
 		HudConfig cfg = SlashHud.config;
 		List<Row> out = new ArrayList<>();
 		out.add(new Row(Component.translatable("slashclient-hud.skyFish.title").getString(), 0xFF55FFFF, ""));
+		if (trip.count > 0) out.add(new Row(Component.translatable("slashclient-hud.skyFish.trip").getString(), 0xFF9CA3AF, summary(trip)));
 		out.add(new Row(Component.translatable("slashclient-hud.skyFish.session").getString(), 0xFF9CA3AF, summary(session)));
 		out.add(new Row(Component.translatable("slashclient-hud.skyFish.lifetime").getString(), 0xFF9CA3AF, summary(life)));
 		String split = cfg.skyFishSplit;
@@ -200,16 +214,17 @@ public final class SkyFish {
 		}
 
 		private List<Row> rowsOrPreview(Minecraft mc) {
-			if (visible(mc)) return rows(session, lifetime());
+			if (visible(mc)) return rows(trip, session, lifetime());
 			// the editor, before the first fish: some made up
-			Tally s = new Tally(), l = new Tally();
+			Tally t = new Tally(), s = new Tally(), l = new Tally();
 			String[][] sample = { { "niewielki", "Krąp", "niezjadliwy" }, { "przeciętny", "Tuńczyk pospolity", "niestrawny" }, { "ogromny", "Sum", "smaczny" } };
 			for (int i = 0; i < 9; i++) {
 				String[] f = sample[i % 3];
 				l.add(f[0], f[1], f[2], 4000 + i * 1500, 6 + i);
 				if (i < 4) s.add(f[0], f[1], f[2], 4000 + i * 1500, 6 + i);
+				if (i < 2) t.add(f[0], f[1], f[2], 4000 + i * 1500, 6 + i);
 			}
-			return rows(s, l);
+			return rows(t, s, l);
 		}
 
 		public int width(Minecraft mc) {
@@ -235,7 +250,7 @@ public final class SkyFish {
 	// ---------- for the in-game tests ----------
 
 	public static String debug() {
-		return "session " + summaryPlain(session) + " lifetime " + summaryPlain(lifetime()) + " sizes " + session.sizes + " species " + session.species + " qualities " + session.qualities;
+		return "trip " + summaryPlain(trip) + " session " + summaryPlain(session) + " lifetime " + summaryPlain(lifetime()) + " sizes " + session.sizes + " species " + session.species + " qualities " + session.qualities;
 	}
 
 	private static String summaryPlain(Tally t) {
@@ -243,8 +258,16 @@ public final class SkyFish {
 	}
 
 	public static void resetForTest() {
+		trip = new Tally();
 		session = new Tally();
 		lifetime = new Tally();
+		lastCatch = 0;
+	}
+
+	/** A pause longer than the player's, then one more fish: a new trip, the same game. */
+	public static String afterPauseForTest() {
+		count("niewielki", "Krąp", "smaczny", 1000, 2, lastCatch + (SlashHud.config.skyFishPause + 1) * 60_000L);
+		return debug();
 	}
 }
 //#endif

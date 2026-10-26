@@ -2470,6 +2470,10 @@ public final class TestHooks {
 		return SkyFish.debug();
 	}
 
+	public static String skyFishAfterPause() {
+		return SkyFish.afterPauseForTest();
+	}
+
 	/** Off SkyUp (another server): the tracker and the fish counter show nothing. */
 	public static String skyElsewhere(boolean elsewhere) {
 		SkyTasks.testWorld = !elsewhere;

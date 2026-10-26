@@ -277,6 +277,7 @@ public final class Catalog {
 						() -> cfg.skyFishSplit, v -> cfg.skyFishSplit = v));
 					settings.add(new Toggle("slashclient-hud.skyFish.weight", () -> cfg.skyFishWeight, v -> cfg.skyFishWeight = v));
 					settings.add(new Toggle("slashclient-hud.skyFish.value", () -> cfg.skyFishValue, v -> cfg.skyFishValue = v));
+					settings.add(new Slider("slashclient-hud.skyFish.pause", 1f, 60f, 1f, "%.0f min", () -> (float) cfg.skyFishPause, v -> cfg.skyFishPause = Math.round(v)));
 				}
 				case "skycase" -> {
 					settings.add(new Choice("slashclient-hud.skyCase.layout", HudConfig.SKY_CASE_LAYOUTS, "slashclient-hud.skyCase.layout.",

@@ -118,8 +118,11 @@ public class GameSkyTasks implements FabricClientGameTest {
 			check(rows.contains(" | ~31/128"), "HUD estimate", rows);
 			// the fish counter: the catch from the chat, its weight, size, species and quality
 			String fish = context.computeOnClient(mc -> TestHooks.skyFish());
-			check(fish.startsWith("session 1/8090g/") && fish.contains("lifetime 1/8090g/") && fish.contains("sizes {ogromny=1}")
+			check(fish.startsWith("trip 1/8090g/") && fish.contains("session 1/8090g/") && fish.contains("lifetime 1/8090g/") && fish.contains("sizes {ogromny=1}")
 				&& fish.contains("species {Halibut atlantycki=1}") && fish.contains("qualities {niezjadliwy=1}"), "fish counter", fish);
+			// a long pause, then a fish: a new fishing trip, the game's session goes on
+			fish = context.computeOnClient(mc -> TestHooks.skyFishAfterPause());
+			check(fish.startsWith("trip 1/1000g/") && fish.contains("session 2/9090g/") && fish.contains("lifetime 2/9090g/"), "fishing trip", fish);
 			// on another server neither shows
 			String elsewhere = context.computeOnClient(mc -> TestHooks.skyElsewhere(true));
 			check(elsewhere.equals("tasks false fish false"), "off SkyUp", elsewhere);

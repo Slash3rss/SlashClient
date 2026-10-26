@@ -247,6 +247,8 @@ public final class HudConfig {
 	/** SkyUp's fish counter: split by "none", "size", "species" or "quality"; their weight and value shown. */
 	public String skyFishSplit = "none";
 	public boolean skyFishWeight = true, skyFishValue = true;
+	/** Minutes without a catch that end a fishing trip (the next fish starts a new one). */
+	public int skyFishPause = 10;
 	/** SkyUp's case counter: "recent" drops, the "top" rewards of the case shown, or its "summary" only; how many rows. */
 	public String skyCaseLayout = "recent";
 	public static final String[] SKY_CASE_LAYOUTS = { "recent", "top", "summary" };
@@ -756,6 +758,7 @@ public final class HudConfig {
 		skyFishSplit = other.skyFishSplit == null ? "none" : other.skyFishSplit;
 		skyFishWeight = other.skyFishWeight;
 		skyFishValue = other.skyFishValue;
+		skyFishPause = Math.max(1, Math.min(60, other.skyFishPause));
 		skyCaseLayout = oneOf(other.skyCaseLayout, SKY_CASE_LAYOUTS);
 		skyCaseRecentShow = oneOf(other.skyCaseRecentShow, SKY_CASE_RECENT);
 		skyCaseRows = Math.max(1, Math.min(10, other.skyCaseRows));
