@@ -143,6 +143,8 @@ public class SlashHud implements ClientModInitializer {
 		SkyDump.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyDump", InputConstants.KEY_F7, category));
 		// and on a task in its GUI, J (or the middle button) tracks it
 		SkyTasks.trackKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyTasksTrack", InputConstants.KEY_J, category));
+		// SkyUp's wiki: no key by default (set in SlashClient's keys window or the game's Controls)
+		dev.slash3rss.slashclient.hud.skyup.SkyWiki.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyWiki", InputConstants.UNKNOWN.getValue(), category));
 		//#endif
 		ChatTabs.register();
 		Assist.register(category);
@@ -298,6 +300,7 @@ public class SlashHud implements ClientModInitializer {
 			SkyCase.tick(mc);
 			SkyWardrobe.tick(mc);
 			SkyXp.tick(mc);
+			dev.slash3rss.slashclient.hud.skyup.SkyWiki.tick(mc);
 			//#endif
 			if (mc.level != null && mc.level.getGameTime() % 20 == 0) dev.slash3rss.slashclient.hud.social.Social.watchLan(mc);
 			// what the server's tab list says ("S3 (Wyspy)"), for friends and Discord
