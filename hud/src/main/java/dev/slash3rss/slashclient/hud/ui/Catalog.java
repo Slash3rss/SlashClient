@@ -52,6 +52,7 @@ public final class Catalog {
 		Map.entry("worldMap", new String[] { "key.slashclient-hud.dungeonMap" }),
 		Map.entry("dungeonmap", new String[] { "key.slashclient-hud.dungeonMap", "key.slashclient-hud.dungeonZoomIn", "key.slashclient-hud.dungeonZoomOut" }),
 		Map.entry("skytasks", new String[] { "key.slashclient-hud.skyTasksTrack" }),
+		Map.entry("skyDump", new String[] { "key.slashclient-hud.skyDump" }),
 		Map.entry("clips", new String[] { "key.slashclient-hud.clip" }),
 		Map.entry("replay", new String[] { "key.slashclient-hud.replay" }),
 		Map.entry("emotes", new String[] { "key.slashclient-hud.emote" }),
@@ -350,6 +351,14 @@ public final class Catalog {
 		// SkyUp's pack in the player's own resource packs, kept up to date; switched on, the server does not ask
 		out.add(new Entry("skyPack", "slashclient-hud.skyPack", "skyup", "skyup", () -> cfg.skyPackLocal, v -> cfg.skyPackLocal = v, List.of(
 			new Note("slashclient-hud.skyPack.note", () -> new Object[0])), null));
+		// the GUI dump for reports: what a server's window holds, saved to a file on its key
+		out.add(new Entry("skyDump", "slashclient-hud.skyDump.title", "skyup", "m-skydump", () -> cfg.skyDump, v -> cfg.skyDump = v, List.of(
+			new Note("slashclient-hud.skyDump.note", () -> new Object[0])), null));
+		// every fish species: what was caught, the records, the fun facts
+		out.add(new Entry("skyAtlas", "slashclient-hud.skyAtlas.title", "skyup", "m-fishatlas", null, null, List.of(), () -> {
+			var mc = net.minecraft.client.Minecraft.getInstance();
+			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.skyup.SkyAtlasScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+		}));
 		// SkyUp's wiki, read through the launcher
 		out.add(new Entry("skyWiki", "slashclient-hud.skyWiki.title", "skyup", "m-skywiki", null, null, List.of(), () -> {
 			var mc = net.minecraft.client.Minecraft.getInstance();

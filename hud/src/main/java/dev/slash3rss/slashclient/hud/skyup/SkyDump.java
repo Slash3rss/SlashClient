@@ -42,7 +42,7 @@ public final class SkyDump {
 
 	/** A key on a container screen: F7 dumps it; true when it was ours. */
 	public static boolean key(AbstractContainerScreen<?> screen, net.minecraft.client.input.KeyEvent e) {
-		if (key == null || !key.matches(e)) return false;
+		if (key == null || !key.matches(e) || SlashHud.config == null || !SlashHud.config.skyDump) return false;
 		dump(Minecraft.getInstance(), screen);
 		return true;
 	}
@@ -113,6 +113,12 @@ public final class SkyDump {
 				out.append("Opis (kolory):\n");
 				for (Component line : lore) out.append("  | ").append(colored(line)).append('\n');
 			}
+			// what else the server set on the item: its model (custom_model_data, item_model), its own data, enchantments, a head's owner…
+			List<String> data = components(mc, stack);
+			if (!data.isEmpty()) {
+				out.append("Dane:\n");
+				for (String line : data) out.append("  ").append(line).append('\n');
+			}
 			SkyTaskParser.Task task = SkyTaskParser.parse(title, stack.getHoverName().getString(), plain);
 			out.append("Zadanie: ").append(task == null ? "nie" : summary(task)).append('\n');
 			out.append("JSON nazwy: ").append(json(mc, stack.getHoverName())).append('\n');
@@ -161,6 +167,37 @@ public final class SkyDump {
 			return Optional.empty();
 		}, Style.EMPTY);
 		return out.toString();
+	}
+
+	/**
+	 * The item's components the server set (all but its name and lore, shown above), as JSON where they
+	 * have a form for it: "minecraft:custom_model_data: {floats:[1001.0]}", "minecraft:custom_data: {…}".
+	 */
+	static List<String> components(Minecraft mc, ItemStack stack) {
+		List<String> out = new ArrayList<>();
+		var ops = mc.level != null ? mc.level.registryAccess().createSerializationContext(JsonOps.INSTANCE) : JsonOps.INSTANCE;
+		var split = stack.getComponentsPatch().split();
+		for (var c : split.added()) {
+			var type = c.type();
+			if (type == DataComponents.CUSTOM_NAME || type == DataComponents.LORE) continue;
+			out.add(BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type) + ": " + value(type, c.value(), ops));
+		}
+		// what the server took away from the item's usual ones
+		for (var type : split.removed()) out.add(BuiltInRegistries.DATA_COMPONENT_TYPE.getKey(type) + ": (usunięte)");
+		return out;
+	}
+
+	@SuppressWarnings("unchecked")
+	private static <T> String value(net.minecraft.core.component.DataComponentType<T> type, Object value, com.mojang.serialization.DynamicOps<com.google.gson.JsonElement> ops) {
+		String text;
+		try {
+			var codec = type.codec();
+			text = codec == null ? String.valueOf(value) : codec.encodeStart(ops, (T) value).result().map(Object::toString).orElse(String.valueOf(value));
+		} catch (Exception ex) {
+			text = String.valueOf(value);
+		}
+		// a head's texture is a long base64: kept whole, it is what tells two heads apart
+		return text.length() > 4000 ? text.substring(0, 4000) + "…" : text;
 	}
 
 	private static String json(Minecraft mc, Component c) {

@@ -416,6 +416,8 @@ public final class HudConfig {
 	public boolean compactHearts = true;
 	/** Food held: what eating it gives, on the food bar (FoodPreview). */
 	public boolean foodPreview = true;
+	/** SkyUp's GUI dump on its key (F7; SkyDump). */
+	public boolean skyDump = true;
 	/** Shift-drag over slots and the wheel move items in inventories. */
 	public boolean mouseTweaks = true;
 	/** Shift-clicking a crafting result crafts only what fits, with room kept for what stays on the grid (CraftFit). */
@@ -874,6 +876,7 @@ public final class HudConfig {
 		toolWarningPercent = Math.max(1, Math.min(50, other.toolWarningPercent));
 		compactHearts = other.compactHearts;
 		foodPreview = other.foodPreview;
+		skyDump = other.skyDump;
 		mouseTweaks = other.mouseTweaks;
 		craftFit = other.craftFit;
 		inventorySort = other.inventorySort;

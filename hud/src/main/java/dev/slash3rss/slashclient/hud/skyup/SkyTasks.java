@@ -213,6 +213,8 @@ public final class SkyTasks {
 			SkyIncubator.seen(items);
 			// the jobs' window: every job's level at once
 			SkyCounters.jobsSeen(items);
+			// the fisherman's "Moje okazy": the fish atlas
+			if (SkyAtlas.window(c.getTitle().getString())) SkyAtlas.seen(items);
 		} else if (dirty && System.currentTimeMillis() - savedAt > 30_000) {
 			// what the counters add is saved now and then, not at every block
 			save();
