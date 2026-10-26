@@ -126,6 +126,11 @@ public final class Modules {
 			while (!right.isEmpty() && now - right.peekFirst() > 1000) right.pollFirst();
 		}
 
+		/** A click the autoclicker made: no button goes down, but it counts as one. */
+		void clicked(boolean onLeft) {
+			(onLeft ? left : right).add(System.currentTimeMillis());
+		}
+
 		int left() {
 			return left.size();
 		}

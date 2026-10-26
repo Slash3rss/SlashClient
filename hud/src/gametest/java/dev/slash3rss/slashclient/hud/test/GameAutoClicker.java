@@ -32,6 +32,9 @@ public class GameAutoClicker implements FabricClientGameTest {
 			// both buttons held: the husk is hit and the right button clicks
 			context.runOnClient(mc -> TestHooks.holdButtons(true, true));
 			context.waitTicks(40);
+			// the CPS shown counts its clicks too
+			String shown = context.computeOnClient(mc -> TestHooks.shownCps());
+			if (Integer.parseInt(shown.split("/")[0]) < 5 || Integer.parseInt(shown.split("/")[1]) < 5) throw new AssertionError("The CPS shown misses its clicks: " + shown);
 			context.runOnClient(mc -> TestHooks.holdButtons(false, false));
 			String clicks = context.computeOnClient(mc -> TestHooks.autoClicks());
 			float hit = context.computeOnClient(mc -> TestHooks.nearestHealth());

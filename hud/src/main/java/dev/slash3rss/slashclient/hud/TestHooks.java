@@ -188,6 +188,11 @@ public final class TestHooks {
 		return Assist.holding(false);
 	}
 
+	/** The clicks a second the CPS module and the keystrokes show: "left/right". */
+	public static String shownCps() {
+		return Modules.CLICKS.left() + "/" + Modules.CLICKS.right();
+	}
+
 	/** The autoclicker's clicks since it was set: "left/right". */
 	public static String autoClicks() {
 		return Assist.leftClicks + "/" + Assist.rightClicks;

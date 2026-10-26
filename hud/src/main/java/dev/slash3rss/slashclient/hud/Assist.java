@@ -261,6 +261,8 @@ public final class Assist {
 	}
 
 	private static void click(KeyMapping key) {
+		// counted on the keystrokes and the CPS module as a click by hand would be
+		Modules.CLICKS.clicked(key == Minecraft.getInstance().options.keyAttack);
 		KeyMapping.click(net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.getBoundKeyOf(key));
 	}
 
