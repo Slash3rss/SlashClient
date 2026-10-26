@@ -824,6 +824,8 @@
 	"slashclient-hud.assist.autoClick.off": "Autoclicker: wyłączony",
 	"slashclient-hud.assist.autoClick.disabled": "Najpierw włącz autoclicker w ustawieniach SlashClient",
 	"slashclient-hud.game.compactHearts": "Stackowanie serc",
+	"slashclient-hud.game.foodPreview": "Podgląd jedzenia na pasku głodu",
+	"slashclient-hud.game.foodPreview.note": "Trzymając jedzenie widzisz, ile udek doda (migają) i ile nasycenia (złota obwódka).",
 	"slashclient-hud.effectIcons": "Ikonki efektów",
 	"slashclient-hud.extra.mouseTweaks": "Mouse tweaks (Shift+przeciąganie, kółko w ekwipunku)",
 	"slashclient-hud.craftFit": "Shift w craftingu tylko tyle, ile się zmieści (z miejscem na resztę z siatki)",

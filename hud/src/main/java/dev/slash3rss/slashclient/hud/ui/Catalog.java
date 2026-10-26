@@ -581,6 +581,8 @@ public final class Catalog {
 		out.add(new Entry("inventorySearch", "slashclient-hud.invSearch", "extras", "m-invsearch", () -> cfg.inventorySearch, v -> cfg.inventorySearch = v, List.of(), null));
 		out.add(new Entry("slotLock", "slashclient-hud.slotLock", "combat", "m-slotlock", () -> cfg.slotLock, v -> cfg.slotLock = v, List.of(), null));
 		out.add(new Entry("compactHearts", "slashclient-hud.game.compactHearts", "game", "m-hearts", () -> cfg.compactHearts, v -> cfg.compactHearts = v, List.of(), null));
+		out.add(new Entry("foodPreview", "slashclient-hud.game.foodPreview", "game", "m-saturation", () -> cfg.foodPreview, v -> cfg.foodPreview = v, List.of(
+			new Note("slashclient-hud.game.foodPreview.note", () -> new Object[0])), null));
 		out.add(new Entry("chatTabs", "slashclient-hud.chat.tabs", "chat", "m-chattabs", null, null, List.of(), openChatTabs));
 		out.add(new Entry("chatWindowsOnly", "slashclient-hud.chat.windowsOnly", "chat", "m-chattabs", () -> cfg.chatWindowsOnly, v -> {
 			cfg.chatWindowsOnly = v;

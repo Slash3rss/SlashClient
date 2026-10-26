@@ -669,6 +669,15 @@ public final class TestHooks {
 		return out.toString().strip();
 	}
 
+	/** What the food in the hand gives and the food bar after eating it: "points saturation -> food saturation". */
+	public static String foodPreview() {
+		var p = net.minecraft.client.Minecraft.getInstance().player;
+		float[] gives = FoodPreview.of(p.getMainHandItem());
+		if (gives == null) return "none";
+		float[] then = FoodPreview.after(p.getFoodData().getFoodLevel(), p.getFoodData().getSaturationLevel(), gives);
+		return String.format(java.util.Locale.ROOT, "%.0f %.1f -> %.0f %.1f", gives[0], gives[1], then[0], then[1]);
+	}
+
 	/** The setting that keeps pulled-out tabs' lines out of "All". */
 	public static void chatWindowsOnly(boolean on) {
 		SlashHud.config.chatWindowsOnly = on;

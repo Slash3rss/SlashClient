@@ -824,6 +824,8 @@
 	"slashclient-hud.assist.autoClick.off": "Autoclicker: off",
 	"slashclient-hud.assist.autoClick.disabled": "Switch the autoclicker on in the SlashClient settings first",
 	"slashclient-hud.game.compactHearts": "Stacked hearts",
+	"slashclient-hud.game.foodPreview": "Food preview on the hunger bar",
+	"slashclient-hud.game.foodPreview.note": "Holding food shows how many drumsticks it adds (they flash) and how much saturation (a golden frame).",
 	"slashclient-hud.effectIcons": "Effect icons",
 	"slashclient-hud.extra.mouseTweaks": "Mouse tweaks (Shift-drag, wheel in inventories)",
 	"slashclient-hud.craftFit": "Shift-craft only what fits (room kept for the grid)",

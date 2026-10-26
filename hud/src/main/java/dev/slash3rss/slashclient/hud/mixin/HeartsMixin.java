@@ -27,6 +27,13 @@ abstract class HeartsMixin {
 		return SlashHud.config != null && SlashHud.config.compactHearts ? Math.min(rows, 1) : rows;
 	}
 
+	/** After the game's bars: what the food held would give, on the food bar (FoodPreview). */
+	@Inject(method = "extractPlayerHealth", at = @At("TAIL"))
+	private void slashclient$foodPreview(GuiGraphicsExtractor g, CallbackInfo ci) {
+		Player player = net.minecraft.client.Minecraft.getInstance().player;
+		if (player != null) dev.slash3rss.slashclient.hud.FoodPreview.draw(g, player);
+	}
+
 	@Inject(method = "extractHearts", at = @At("HEAD"), cancellable = true)
 	private void slashclient$compact(GuiGraphicsExtractor g, Player player, int x, int y, int rowHeight, int regen, float maxHealth, int health, int lastHealth, int absorption, boolean blink, CallbackInfo ci) {
 		if (SlashHud.config == null || !SlashHud.config.compactHearts || maxHealth + absorption <= 20) return;

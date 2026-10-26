@@ -64,7 +64,7 @@
 //$
 //$ 	private static final ResourceLocation ICONS = new ResourceLocation("textures/gui/icons.png");
 //$
-//$ 	/** Where a heart sprite of the newer game sits in 1.20.1's icons.png, or null. */
+//$ 	/** Where a heart (or food) sprite of the newer game sits in 1.20.1's icons.png, or null. */
 //$ 	private static int[] heartUv(ResourceLocation sprite) {
 //$ 		switch (sprite.getPath()) {
 //$ 			case "hud/heart/container": return new int[] { 16, 0 };
@@ -73,6 +73,8 @@
 //$ 			case "hud/heart/half": return new int[] { 61, 0 };
 //$ 			case "hud/heart/frozen_full": return new int[] { 178, 0 };
 //$ 			case "hud/heart/frozen_half": return new int[] { 187, 0 };
+//$ 			case "hud/food_full": return new int[] { 52, 27 };
+//$ 			case "hud/food_half": return new int[] { 61, 27 };
 //$ 			default: return null;
 //$ 		}
 //$ 	}
