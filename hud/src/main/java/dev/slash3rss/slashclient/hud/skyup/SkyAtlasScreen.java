@@ -393,23 +393,28 @@ public class SkyAtlasScreen extends Screen {
 
 	private void species(GuiGraphicsExtractor g, SkyAtlas.Fish f, int mx, int my) {
 		int x = px + 12, top = py + 32, bottom = py + ph - 10, side = SIDE;
-		// its card, bigger, grown from where it lay in the album; the records under it
+		String record = f.recordGrams > 0 ? grams(f.recordGrams) + (f.recordSize.isEmpty() ? "" : " (" + f.recordSize + ")") : "—";
+		// its card, as big as the records under it leave room for (smaller on a small window)
+		int info = 12 + (f.known || f.caught > 0 ? lineHeight("slashclient-hud.skyAtlas.recordWeight", record) + (f.maxGrams > 0 ? 21 : 0) + 12 : 0)
+			+ (f.fact.isEmpty() ? 0 : 4 + Math.min(3, font.split(Ui.text(f.fact), side).size()) * 10);
+		int cardH = Math.max(CARD_H, Math.min(124, bottom - top - 8 - info)), cardW = Math.round(cardH * 96f / 124);
+		// grown from where it lay in the album
 		float grow = smooth(progress(openedAt, 280)), appear = smooth(progress(openedAt + 120, 260));
-		int cardX = x + (side - 96) / 2;
+		int cardX = x + (side - cardW) / 2;
 		var pose = g.pose();
 		pose.pushMatrix();
-		float fromScale = CARD_W / 96f, s = fromScale + (1 - fromScale) * grow;
+		float fromScale = CARD_W / (float) cardW, s = fromScale + (1 - fromScale) * grow;
 		pose.translate(openX + (cardX - openX) * grow, openY + (top - openY) * grow);
 		pose.scale(s, s);
-		card(g, f, 0, 0, 96, 124, false, 3, 0);
+		card(g, f, 0, 0, cardW, cardH, false, cardH >= 110 ? 3 : 2, 0);
 		pose.popMatrix();
 		// the records and the list come in after it
 		pose.pushMatrix();
 		pose.translate(0, (1 - appear) * 10);
-		int y = top + 132;
+		int y = top + cardH + 8;
 		y = line(g, "slashclient-hud.skyAtlas.count", String.valueOf(f.caught), x, y);
 		if (f.known || f.caught > 0) {
-			y = line(g, "slashclient-hud.skyAtlas.recordWeight", f.recordGrams > 0 ? grams(f.recordGrams) + (f.recordSize.isEmpty() ? "" : " (" + f.recordSize + ")") : "—", x, y);
+			y = line(g, "slashclient-hud.skyAtlas.recordWeight", record, x, y);
 			if (f.maxGrams > 0) {
 				float share = (float) Math.min(1, f.recordGrams / f.maxGrams);
 				Ui.round(g, x, y, side, 4, 2, 0x30FFFFFF);
@@ -480,11 +485,16 @@ public class SkyAtlasScreen extends Screen {
 		bar.draw(g, lx + lw + 3, listTop, bottom - listTop, scroll, maxScroll, mx, my);
 	}
 
+	/** How tall a record's line is: one line, or two when its value does not fit beside the label. */
+	private static int lineHeight(String key, String value) {
+		return Ui.width(Ui.tr(key)) + 5 + Ui.width(Ui.text(value)) > SIDE ? 22 : 12;
+	}
+
 	private int line(GuiGraphicsExtractor g, String key, String value, int x, int y) {
 		Component label = Ui.tr(key), text = Ui.text(value);
 		Ui.draw(g, label, x, y, Ui.MUTED);
 		// too long beside its label (a record with its size): the value goes under it
-		if (Ui.width(label) + 5 + Ui.width(text) > SIDE) {
+		if (lineHeight(key, value) > 12) {
 			Ui.draw(g, Ui.fit(text, SIDE), x, y + 10, Ui.TEXT);
 			return y + 22;
 		}
