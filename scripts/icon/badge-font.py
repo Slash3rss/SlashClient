@@ -2,7 +2,8 @@
 (the slashS variant of scripts/icon/icon.html) at U+E000. Minecraft draws TTF glyphs at screen
 resolution, so the logo stays sharp and smooth at every GUI scale, unlike a small bitmap.
 
-Usage: python scripts/icon/badge-font.py hud/src/main/resources/assets/slashclient-hud/font/badge.ttf
+Usage: python scripts/icon/badge-font.py hud/src/main/resources/assets/slashclient-hud/font/badge.ttf \
+    hud/src/main/resources/assets/slashclient-hud/textures/font/badge.png
 """
 import sys
 
@@ -67,3 +68,23 @@ fb.setupOS2(sTypoAscender=800, sTypoDescender=-200, usWinAscent=800, usWinDescen
 fb.setupPost()
 fb.save(sys.argv[1])
 print('saved', sys.argv[1], 'advance', advance)
+
+# the same logo as a white picture, for names above heads: shader packs draw TTF glyphs in the world
+# as a dark box, pictures (bitmap glyphs) as they are
+if len(sys.argv) > 2:
+    from PIL import Image, ImageDraw
+    HEIGHT, SUPER = 128, 4
+    scale = HEIGHT * SUPER / CAP
+    big = Image.new('L', (round(width * scale), HEIGHT * SUPER), 0)
+    draw = ImageDraw.Draw(big)
+    for poly in getattr(logo, 'geoms', [logo]):
+        # font units (y up from the baseline, `SIDE` in) to pixels (y down from the top)
+        px = lambda ring: [((x - SIDE) * scale, (CAP - y) * scale) for x, y in ring.coords]
+        draw.polygon(px(poly.exterior), fill=255)
+        for hole in poly.interiors:
+            draw.polygon(px(hole), fill=0)
+    alpha = big.resize((big.width // SUPER, HEIGHT), Image.LANCZOS)
+    picture = Image.new('RGBA', alpha.size, (255, 255, 255, 0))
+    picture.putalpha(alpha)
+    picture.save(sys.argv[2])
+    print('saved', sys.argv[2], picture.size)

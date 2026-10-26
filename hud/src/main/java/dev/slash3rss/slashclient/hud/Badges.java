@@ -35,6 +35,8 @@ public final class Badges {
 
 	private static final String GLYPH = "\uE000";
 	private static final Style BADGE_STYLE = Style.EMPTY.withFont(Compat.font(Identifier.fromNamespaceAndPath(SlashHud.ID, "badge"))).withoutShadow();
+	/** The logo as a picture (font/badge_world.json), for names above heads. */
+	private static final Style WORLD_STYLE = Style.EMPTY.withFont(Compat.font(Identifier.fromNamespaceAndPath(SlashHud.ID, "badge_world")));
 	private static final MutableComponent BADGE = badge(0xFFFFFF);
 	/** The logo's colour by rank: SlashClient's admins red, support light blue, partners gold, friends green or pink. */
 	private static final Map<String, MutableComponent> RANK_BADGES = Map.of(
@@ -162,10 +164,23 @@ public final class Badges {
 
 	/** `name` with the logo in front, when that player plays with SlashClient, and their clan's [TAG]. */
 	public static Component decorate(UUID id, Component name) {
+		return decorate(id, name, false);
+	}
+
+	/**
+	 * The same for the name above a player's head: the logo as a picture, since shader packs draw the
+	 * vector logo in the world as a dark box.
+	 */
+	public static Component decorateNametag(UUID id, Component name) {
+		return decorate(id, name, true);
+	}
+
+	private static Component decorate(UUID id, Component name, boolean world) {
 		if (name == null || !usesSlash(id)) return name;
 		String rank = ranks.getOrDefault(id, "");
 		MutableComponent logo = colorBadges.containsKey(id) ? colorBadges.get(id)
 			: "supporter".equals(rank) && tierBadges.containsKey(id) ? tierBadges.get(id) : RANK_BADGES.getOrDefault(rank, BADGE);
+		if (world) logo = logo.copy().withStyle(s -> s.withFont(WORLD_STYLE.getFont()));
 		MutableComponent out = Component.empty().append(logo).append(" ");
 		String tag = clans.get(id);
 		if (tag != null && (SlashHud.config == null || SlashHud.config.clanTags)) out.append(Component.literal("[" + tag + "] ").withStyle(Style.EMPTY.withColor(CLAN_COLOR).withBold(true)));
