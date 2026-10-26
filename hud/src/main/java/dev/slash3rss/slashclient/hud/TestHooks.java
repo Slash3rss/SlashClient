@@ -1714,6 +1714,11 @@ public final class TestHooks {
 		return kinds + " spawners " + spawners;
 	}
 
+	/** The name the Target module shows for the mob under the crosshair. */
+	public static String shownTargetName() {
+		return MoreModules.Target.shownName(net.minecraft.client.Minecraft.getInstance());
+	}
+
 	/** A SkyUp mob's name as the Target module shows it (without the health in front). */
 	public static String targetName() {
 		var name = net.minecraft.network.chat.Component.literal("84.36 ❤ ").withStyle(net.minecraft.ChatFormatting.RED)

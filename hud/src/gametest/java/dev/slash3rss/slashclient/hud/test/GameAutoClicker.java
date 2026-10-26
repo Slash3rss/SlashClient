@@ -24,6 +24,19 @@ public class GameAutoClicker implements FabricClientGameTest {
 			float start = context.computeOnClient(mc -> TestHooks.nearestHealth());
 			if (start < 100) throw new AssertionError("No husk in front of us: " + start);
 
+			// the Target box names a mob with no name of its own (a server's model) by the name tag over its head
+			world.getServer().runCommand("data merge entity @e[type=husk,limit=1] {CustomName:\"\"}");
+			world.getServer().runCommand("execute as @e[type=husk,limit=1] at @s run summon armor_stand ~ ~2.2 ~ {Invisible:1b,Marker:1b,NoGravity:1b,CustomNameVisible:1b,CustomName:\"26.0 ❤ | Giermek poz. 4\"}");
+			context.waitTicks(10);
+			String targetName = context.computeOnClient(mc -> TestHooks.shownTargetName());
+			if (!targetName.equals("Giermek poz. 4")) throw new AssertionError("The Target box's name for a mob named over its head: '" + targetName + "'");
+			// or by a text display over it (two lines: the first is the name)
+			world.getServer().runCommand("kill @e[type=armor_stand]");
+			world.getServer().runCommand("execute as @e[type=husk,limit=1] at @s run summon text_display ~ ~2.4 ~ {text:\"27.98 ❤ | Rozbitek poz. 3\nBoss\"}");
+			context.waitTicks(10);
+			String displayName = context.computeOnClient(mc -> TestHooks.shownTargetName());
+			if (!displayName.equals("Rozbitek poz. 3")) throw new AssertionError("The Target box's name from a text display: '" + displayName + "'");
+			world.getServer().runCommand("kill @e[type=text_display]");
 			// held: no button held, no clicks
 			context.runOnClient(mc -> TestHooks.autoClicker(true, "hold", true, true, false, 10));
 			context.waitTicks(20);

@@ -367,8 +367,63 @@ public final class MoreModules {
 			return target(mc) != null;
 		}
 
+		/** The name the box shows for what is under the crosshair (for the tests). */
+		static String shownName(Minecraft mc) {
+			return nameOf(target(mc)).getString();
+		}
+
 		private static Component nameOf(LivingEntity e) {
-			return e == null ? Component.literal("Steve") : withoutHealth(e.getDisplayName());
+			if (e == null) return Component.literal("Steve");
+			Component name = withoutHealth(e.getDisplayName());
+			if (!name.getString().isBlank()) return name;
+			// a mob drawn with a server's model (SkyUp's dungeons) has no name of its own: the name over
+			// its head is on another entity there (a name tag riding it or standing above), else its kind
+			Component tag = tagAbove(e);
+			return tag != null ? tag : e.getType().getDescription();
+		}
+
+		/**
+		 * The name over this one's head: a name tag (an entity riding it or standing just above with its
+		 * name shown) or a text display there, without the health; the nearest, or null if none.
+		 */
+		private static Component tagAbove(LivingEntity e) {
+			if (e.level() == null) return null;
+			var box = e.getBoundingBox();
+			var above = new net.minecraft.world.phys.AABB(box.minX - 0.5, box.minY, box.minZ - 0.5, box.maxX + 0.5, box.maxY + 2.5, box.maxZ + 0.5);
+			Component best = null;
+			double bestDist = Double.MAX_VALUE;
+			for (var other : e.level().getEntities(e, above, o -> !(o instanceof net.minecraft.world.entity.player.Player))) {
+				Component text = null;
+				if (other.hasCustomName() && other.isCustomNameVisible()) text = other.getCustomName();
+				//#if MC >= 1.21
+				else if (other instanceof net.minecraft.world.entity.Display.TextDisplay display) text = display.getText();
+				//#endif
+				if (text == null) continue;
+				// the first line only: a text display may carry more under the name
+				Component name = withoutHealth(firstLine(text));
+				if (name.getString().isBlank()) continue;
+				double d = Math.abs(other.getX() - e.getX()) + Math.abs(other.getZ() - e.getZ());
+				if (d < bestDist) {
+					best = name;
+					bestDist = d;
+				}
+			}
+			return best;
+		}
+
+		/** A text's first line, its colours kept. */
+		private static Component firstLine(Component text) {
+			if (!text.getString().contains("\n")) return text;
+			var out = Component.empty();
+			boolean[] done = { false };
+			text.visit((style, part) -> {
+				if (done[0]) return java.util.Optional.empty();
+				int nl = part.indexOf('\n');
+				out.append(Component.literal(nl < 0 ? part : part.substring(0, nl)).withStyle(style));
+				if (nl >= 0) done[0] = true;
+				return java.util.Optional.empty();
+			}, net.minecraft.network.chat.Style.EMPTY);
+			return out;
 		}
 
 		/**
