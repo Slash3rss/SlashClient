@@ -1151,6 +1151,7 @@
 	"slashclient-hud.xp.mine": "Mój poziom",
 	"slashclient-hud.skyXp.title": "Kalkulator XP SkyUp",
 	"slashclient-hud.skyAtlas.title": "Atlas ryb",
+	"slashclient-hud.skyAtlas.new": "Nowy gatunek!",
 	"slashclient-hud.skyAtlas.back": "Album",
 	"slashclient-hud.skyAtlas.page": "Strona %s/%s",
 	"slashclient-hud.skyAtlas.catches": "Wyłowione sztuki (%s)",

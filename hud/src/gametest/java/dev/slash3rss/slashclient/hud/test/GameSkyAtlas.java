@@ -40,6 +40,13 @@ public class GameSkyAtlas implements FabricClientGameTest {
 			context.runOnClient(mc -> SkyAtlasTestHooks.openMoving());
 			context.waitTicks(2);
 			context.takeScreenshot("skyatlas-dealing");
+			// the species caught are new to the album: turned over with sparkles, then face up for good
+			context.waitTicks(17);
+			context.takeScreenshot("skyatlas-reveal");
+			context.waitTicks(50);
+			String revealed = context.computeOnClient(mc -> SkyAtlasTestHooks.revealed());
+			if (!revealed.equals("Amur biały=true Boleń=true Sum=false"))
+				throw new AssertionError("New species turned over: " + revealed);
 			context.runOnClient(mc -> SkyAtlasTestHooks.open("Amur biały"));
 			context.waitTicks(10);
 			context.takeScreenshot("skyatlas-species");

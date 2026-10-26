@@ -28,9 +28,11 @@ import java.util.Locale;
  * card clicked opens its species: the records and fun fact beside the list of every fish of it caught
  * (when, weight, size, quality, price), the record one in gold (SkyAtlas).
  *
- * It moves a little: the cards are dealt onto each page (from the side the page turns to), a card
- * under the mouse lifts and its fish sways, a starred card shimmers gold, and a card opened grows from
- * where it lay into the species' view while its catches slide in.
+ * It moves: the cards are dealt face down onto each page (from the side the page turns to) and
+ * turned over as they land; a species caught since the album was last looked at is turned over slowly,
+ * with sparkles and "New species!". A card under the mouse lifts, tilts toward it and its fish sways; a
+ * starred card shimmers gold with a holographic gleam sweeping across it; bubbles rise behind the cards;
+ * a card opened grows from where it lay into the species' view while its catches slide in.
  */
 public class SkyAtlasScreen extends Screen {
 	private static final int CARD_W = 62, CARD_H = 84, GAP = 6, ROW_H = 13;
@@ -59,6 +61,8 @@ public class SkyAtlasScreen extends Screen {
 	private int openX, openY;
 	/** Off for the in-game test, so its screenshots are not caught mid-move. */
 	static boolean still;
+	/** When each new species' card is turned over (it waits face down until then). */
+	private final java.util.Map<String, Long> reveals = new java.util.HashMap<>();
 
 	public SkyAtlasScreen(Screen parent) {
 		super(Component.translatable("slashclient-hud.skyAtlas.title"));
@@ -175,21 +179,41 @@ public class SkyAtlasScreen extends Screen {
 			dealt = showing;
 			dealtAt = now();
 		}
+		bubbles(g, px + 12, top, inner, bottom);
 		var pose = g.pose();
 		for (int i = 0; i < per && page * per + i < cards.size(); i++) {
 			SkyAtlas.Fish f = cards.get(page * per + i);
 			int cx = left + (i % cols) * (CARD_W + GAP), cy = top + (i / cols) * (CARD_H + GAP);
 			boolean over = Ui.inside(mx, my, cx, cy, CARD_W, CARD_H);
-			// dealt one after another: it slides in from the side and pops to its size
-			float t = progress(dealtAt + i * 28L, 260), size = backOut(t);
-			if (size <= 0) continue;
-			float lift = Ui.hover("skyatlas:card:" + f.name, over);
+			// dealt one after another, face down, sliding in and dropping a little, turned over as it lands
+			long dealtHere = dealtAt + i * 35L;
+			float t = progress(dealtHere, 420);
+			if (t <= 0) continue;
+			// a new species waits face down a moment longer, then turns over slowly
+			long reveal = revealAt(f, dealtHere + 520);
+			float flip = reveal > 0 ? progress(reveal, 750) : t;
+			double angle = (1 - smooth(flip)) * Math.PI;
+			float across = (float) Math.abs(Math.cos(angle));
+			boolean back = angle > Math.PI / 2;
+			float lift = Ui.hover("skyatlas:card:" + f.name, over && !back);
+			float grow = (1 + 0.05f * lift) * (reveal > 0 && flip < 1 ? 1 + (float) Math.sin(flip * Math.PI) * 0.15f : 1);
 			pose.pushMatrix();
-			pose.translate(cx + CARD_W / 2f + (1 - smooth(t)) * 26 * dealFrom, cy + CARD_H / 2f - lift * 2);
-			pose.scale(size * (1 + 0.05f * lift), size * (1 + 0.05f * lift));
+			pose.translate(cx + CARD_W / 2f + (1 - smooth(t)) * 26 * dealFrom, cy + CARD_H / 2f - lift * 2 - (1 - smooth(t)) * 10);
+			pose.scale(across * grow, grow);
+			// under the mouse it tilts toward it: the side nearer the mouse comes up
+			if (lift > 0) {
+				float toward = Math.max(-1, Math.min(1, (mx - (cx + CARD_W / 2f)) / (CARD_W / 2f)));
+				pose.mul(new org.joml.Matrix3x2f(1 - Math.abs(toward) * 0.04f * lift, -toward * 0.06f * lift, 0, 1, 0, 0));
+			}
 			pose.translate(-CARD_W / 2f, -CARD_H / 2f);
-			card(g, f, 0, 0, CARD_W, CARD_H, over, 2, lift);
+			if (back) cardBack(g, 0, 0, CARD_W, CARD_H);
+			else card(g, f, 0, 0, CARD_W, CARD_H, over, 2, lift);
 			pose.popMatrix();
+			if (reveal > 0) {
+				sparkles(g, cx + CARD_W / 2f, cy + CARD_H / 2f, reveal);
+				// once the sparkles are over it stays face up for good
+				if (now() - reveal > 1700) SkyAtlas.revealed(f);
+			}
 			hits.add(new Hit(cx, cy, CARD_W, CARD_H, () -> {
 				open = f.name;
 				scroll = 0;
@@ -201,6 +225,71 @@ public class SkyAtlasScreen extends Screen {
 	}
 
 	// ---------- moving ----------
+
+	/** When a newly caught species' card turns over (0: it is not new, it lies face up). */
+	private long revealAt(SkyAtlas.Fish f, long after) {
+		if (still || f.caught <= 0 || f.revealed) return 0;
+		return reveals.computeIfAbsent(f.name, k -> after);
+	}
+
+	/** A card face down: SkyUp blue with a frame, a pattern of waves and a fishing rod. */
+	private void cardBack(GuiGraphicsExtractor g, int x, int y, int w, int h) {
+		Ui.round(g, x, y, w, h, 5, 0xFF3B82F6);
+		Ui.round(g, x + 1, y + 1, w - 2, h - 2, 4, 0xFF13204A);
+		g.fillGradient(x + 2, y + 2, x + w - 2, y + h - 2, 0x2060A5FA, 0x00000000);
+		Ui.roundOutline(g, x + 4, y + 4, w - 8, h - 8, 3, 0x5060A5FA);
+		// the waves: rows of short dashes going up and down
+		for (int row = 0; row < 6; row++) {
+			int wy = y + 12 + row * 12;
+			for (int k = 0; k < (w - 14) / 4; k++) {
+				int dy = (int) Math.round(Math.sin((k + row) * 0.9) * 1.5);
+				g.fill(x + 7 + k * 4, wy + dy, x + 9 + k * 4, wy + dy + 1, 0x3093C5FD);
+			}
+		}
+		var pose = g.pose();
+		pose.pushMatrix();
+		pose.translate(x + w / 2f - 12, y + h / 2f - 12);
+		pose.scale(1.5f, 1.5f);
+		g.item(new ItemStack(Items.FISHING_ROD), 0, 0);
+		pose.popMatrix();
+	}
+
+	/** A new species' sparkles: gold stars flying out of the card as it turns, and "New species!" above it. */
+	private void sparkles(GuiGraphicsExtractor g, float cx, float cy, long reveal) {
+		long e = now() - reveal - 300;
+		if (e < 0 || e > 1400) return;
+		float p = e / 1400f, fade = 1 - p * p;
+		int alpha = Math.round(fade * 255);
+		for (int k = 0; k < 12; k++) {
+			double a = k * Math.PI * 2 / 12 + 0.25;
+			float r = 18 + smooth(Math.min(1, p * 1.6f)) * (34 + (k % 3) * 8);
+			int sx = Math.round(cx + (float) Math.cos(a) * r), sy = Math.round(cy + (float) Math.sin(a) * r * 1.2f);
+			int arm = k % 2 == 0 ? 2 : 1, color = (alpha << 24) | (k % 3 == 0 ? 0xFFFFFF : 0xFACC15);
+			g.fill(sx - arm, sy, sx + arm + 1, sy + 1, color);
+			g.fill(sx, sy - arm, sx + 1, sy + arm + 1, color);
+		}
+		// a gold tag on the card's top edge, rising a little as it fades
+		if (alpha > 8) {
+			Component label = Ui.trBold("slashclient-hud.skyAtlas.new");
+			int lw = Ui.width(label), ly = Math.round(cy - CARD_H / 2f - 5 - p * 3);
+			Ui.round(g, Math.round(cx) - lw / 2 - 4, ly - 2, lw + 8, 12, 4, (alpha << 24) | 0xFACC15);
+			Ui.centered(g, label, Math.round(cx), ly, (alpha << 24) | 0x1F2937);
+		}
+	}
+
+	/** Bubbles rising slowly behind the cards, each swaying, the whole page a fish tank. */
+	private void bubbles(GuiGraphicsExtractor g, int x, int top, int w, int bottom) {
+		if (still) return;
+		long t = now();
+		for (int k = 0; k < 16; k++) {
+			int period = 7000 + (k * 1373) % 5000;
+			float p = ((t + k * 977L) % period) / (float) period;
+			float bx = x + ((k * 7919) % Math.max(1, w)) + (float) Math.sin(t / 700.0 + k) * 4;
+			float by = bottom - p * (bottom - top + 10);
+			int size = 2 + k % 3, alpha = Math.round((float) Math.sin(p * Math.PI) * 0x38);
+			Ui.roundOutline(g, Math.round(bx), Math.round(by), size + 2, size + 2, (size + 2) / 2, (alpha << 24) | 0x93C5FD);
+		}
+	}
 
 	private static long now() {
 		return net.minecraft.util.Util.getMillis();
@@ -234,6 +323,7 @@ public class SkyAtlasScreen extends Screen {
 		Ui.round(g, x, y, w, h, 5, edge);
 		Ui.round(g, x + 1, y + 1, w - 2, h - 2, 4, has ? 0xFF16213A : 0xFF0E1117);
 		if (lift > 0) Ui.round(g, x + 1, y + 1, w - 2, h - 2, 4, Ui.blend(0x00FFFFFF, 0x14FFFFFF, lift));
+		if (star && !still) gleam(g, f, x, y, w, h, lift);
 		// the picture straight on the card
 		int size = 16 * scale, ix = x + (w - size) / 2, iy = y + 8;
 		// not caught yet: SkyUp's own grey picture when its pack is on, else the fish in shadow
@@ -263,6 +353,26 @@ public class SkyAtlasScreen extends Screen {
 		Component count = Ui.text(has ? "×" + f.caught : "—");
 		Ui.draw(g, count, x + w - 5 - Ui.width(count), y + h - 12, has ? Ui.ACCENT_LIGHT : 0xFF4B5563);
 		if (star) Ui.draw(g, Ui.text("★"), x + 5, y + h - 12, GOLD);
+	}
+
+	/**
+	 * A holographic gleam: a slanted band of light sweeping across a starred card every few seconds
+	 * (each card at its own moment; under the mouse it follows the mouse instead), its edges in rainbow.
+	 */
+	private void gleam(GuiGraphicsExtractor g, SkyAtlas.Fish f, int x, int y, int w, int h, float lift) {
+		int cycle = 3600;
+		float p = ((now() + (f.name.hashCode() & 0xFFFF)) % cycle) / (float) cycle;
+		if (p > 0.45f && lift <= 0) return;
+		float travel = lift > 0 ? 0.5f + (float) Math.sin(now() / 500.0) * 0.5f : p / 0.45f;
+		float band = -24 + travel * (w + 48);
+		int[] rainbow = { 0x30F472B6, 0x30FACC15, 0x3034D399, 0x3060A5FA };
+		for (int row = 2; row < h - 2; row++) {
+			float left = band + (h - row) * 0.4f;
+			int a = Math.max(x + 2, Math.round(x + left)), b = Math.min(x + w - 2, Math.round(x + left + 10));
+			if (a < b) g.fill(a, y + row, b, y + row + 1, 0x24FFF8DC);
+			int edge = Math.round(x + left - 2);
+			if (edge >= x + 2 && edge < x + w - 2) g.fill(edge, y + row, edge + 2, y + row + 1, rainbow[(row / 6) % rainbow.length]);
+		}
 	}
 
 	/** A species' name; not caught yet, scrambled as SkyUp's own window shows it. */

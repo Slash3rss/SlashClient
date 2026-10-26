@@ -79,6 +79,13 @@ public final class SkyAtlasTestHooks {
 		SkyAtlasScreen.still = false;
 	}
 
+	/** Whether the caught species' cards were turned over for good (they are, after their reveal). */
+	public static String revealed() {
+		StringBuilder out = new StringBuilder();
+		for (SkyAtlas.Fish f : SkyAtlas.all()) if (f.caught > 0) out.append(f.name).append('=').append(f.revealed).append(' ');
+		return out.toString().strip();
+	}
+
 	/** The atlas: the album (null) or one species open. */
 	public static void open(String chosen) {
 		SkyAtlasScreen.still = true;

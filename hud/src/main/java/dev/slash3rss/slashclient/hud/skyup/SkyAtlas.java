@@ -39,6 +39,8 @@ public final class SkyAtlas {
 		public String recordSize = "", fact = "";
 		/** The window showed its details (a species not caught shows only its name on some accounts). */
 		public boolean known;
+		/** Its card was turned over in the album since it was first caught (a new one is, once, with sparkles). */
+		public boolean revealed;
 		/** How it looks: the item as SkyUp shows it (its own model from the server's pack), name and lore left out. */
 		public com.google.gson.JsonElement look;
 		/** Each one caught since the atlas keeps them, newest last (the window only tells how many and the records). */
@@ -175,6 +177,13 @@ public final class SkyAtlas {
 			if (data.fish == null) data.fish = new LinkedHashMap<>();
 		}
 		return data;
+	}
+
+	/** A new species' card was turned over in the album: from now on it lies face up. */
+	public static void revealed(Fish f) {
+		if (f.revealed) return;
+		f.revealed = true;
+		if (data().fish.containsValue(f)) save();
 	}
 
 	private static void save() {
