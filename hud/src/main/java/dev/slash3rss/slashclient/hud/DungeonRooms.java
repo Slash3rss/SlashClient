@@ -183,12 +183,13 @@ public final class DungeonRooms {
 		};
 	}
 
-	/** The deepslate ores there are, to pick which are counted. */
-	public static final String[] ORES = { "coal", "iron", "copper", "gold", "redstone", "lapis", "emerald", "diamond" };
+	/** The deepslate ores there are (and ancient debris), to pick which are counted. */
+	public static final String[] ORES = { "coal", "iron", "copper", "gold", "redstone", "lapis", "emerald", "diamond", "debris" };
 
-	/** "deepslate_diamond_ore" → "diamond". */
+	/** "deepslate_diamond_ore" → "diamond", "ancient_debris" → "debris". */
 	private static String oreType(Block block) {
 		String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).getPath();
+		if (id.equals("ancient_debris")) return "debris";
 		return id.substring("deepslate_".length(), id.length() - "_ore".length());
 	}
 
@@ -233,7 +234,7 @@ public final class DungeonRooms {
 		if (block instanceof DecoratedPotBlock) return 2;
 		if (block instanceof net.minecraft.world.level.block.FlowerPotBlock) return 3;
 		String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(block).getPath();
-		return id.startsWith("deepslate_") && id.endsWith("_ore") ? ORE : -1;
+		return id.startsWith("deepslate_") && id.endsWith("_ore") || id.equals("ancient_debris") ? ORE : -1;
 	}
 
 	/** The containers in one column: found ones are new or back, missing ones were broken. */
@@ -691,7 +692,9 @@ public final class DungeonRooms {
 				if (!shown.test(sx, sz)) continue;
 				// a dot with a dark rim, so it shows on any floor
 				g.fill(ox + sx - 2, oy + sz - 2, ox + sx + 2, oy + sz + 2, 0xFF000000);
-				g.fill(ox + sx - 1, oy + sz - 1, ox + sx + 1, oy + sz + 1, c.taken() ? 0xFF6B7280 : c.ore ? 0xFF22D3EE : 0xFFFACC15);
+				// ores cyan, ancient debris its own brown, the rest yellow; taken ones grey
+				int dot = c.taken() ? 0xFF6B7280 : "debris".equals(c.oreType) ? 0xFFB0703F : c.ore ? 0xFF22D3EE : 0xFFFACC15;
+				g.fill(ox + sx - 1, oy + sz - 1, ox + sx + 1, oy + sz + 1, dot);
 			}
 		}
 		long now = System.currentTimeMillis();

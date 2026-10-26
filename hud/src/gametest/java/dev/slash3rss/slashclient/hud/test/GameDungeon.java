@@ -90,6 +90,8 @@ public class GameDungeon implements FabricClientGameTest {
 			server.runCommand(String.format("setblock %d %d %d potted_dandelion", x0 - 3, y, z0 + 15));
 			// an ore in a wall of the room east of the start, mined later
 			server.runCommand(String.format("setblock %d %d %d deepslate_diamond_ore", x0 + 18, y + 1, z0 + 15));
+			// and ancient debris in the same wall
+			server.runCommand(String.format("setblock %d %d %d ancient_debris", x0 + 18, y + 1, z0 + 17));
 			// the start room has nothing to take: this chest and the potted dandelion there are not counted
 			server.runCommand(String.format("setblock %d %d %d chest", x0 + 3, y, z0 + 15));
 			// the husk's room has a spawner: only such a room counts down to its mobs coming back
@@ -97,13 +99,13 @@ public class GameDungeon implements FabricClientGameTest {
 			server.runCommand(String.format("summon husk %d %d %d {NoAI:1b,PersistenceRequired:1b}", x0 + 12, y, z0 + 12));
 			context.waitTicks(30);
 			String rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
-			if (!rooms.contains("containers 0/3") || !rooms.contains("ores 0/1")) throw new AssertionError("Containers not found: " + rooms);
+			if (!rooms.contains("containers 0/3") || !rooms.contains("ores 0/2")) throw new AssertionError("Containers not found: " + rooms);
 			server.runCommand(String.format("setblock %d %d %d air", x0, y, z0 + 2));
 			server.runCommand(String.format("setblock %d %d %d deepslate_bricks", x0 + 18, y + 1, z0 + 15));
 			server.runCommand("kill @e[type=husk]");
 			context.waitTicks(30);
 			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
-			if (!rooms.contains("containers 1/3") || !rooms.contains("ores 1/1") || rooms.contains("cleared 0") || !rooms.contains("without spawner 0")) throw new AssertionError("Rooms (the start room is never one without a spawner): " + rooms);
+			if (!rooms.contains("containers 1/3") || !rooms.contains("ores 1/2") || rooms.contains("cleared 0") || !rooms.contains("without spawner 0")) throw new AssertionError("Rooms (the start room is never one without a spawner): " + rooms);
 			// from the map above: exactly the nine rooms, none run together through a door
 			if (Integer.parseInt(rooms.split(" ")[0]) != 9) throw new AssertionError("Rooms from the map above: " + rooms);
 			context.takeScreenshot("dungeon-rooms");
