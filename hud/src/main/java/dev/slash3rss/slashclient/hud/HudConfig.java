@@ -250,6 +250,9 @@ public final class HudConfig {
 	/** SkyUp's case counter: "recent" drops, the "top" rewards of the case shown, or its "summary" only; how many rows. */
 	public String skyCaseLayout = "recent";
 	public static final String[] SKY_CASE_LAYOUTS = { "recent", "top", "summary" };
+	/** The latest wins as their names, their items' icons in a row, or both (an icon before each name). */
+	public String skyCaseRecentShow = "name";
+	public static final String[] SKY_CASE_RECENT = { "name", "icon", "both" };
 	public int skyCaseRows = 5;
 	/** A toast when a case gives a reward never won before. */
 	public boolean skyCaseNewDrop = true;
@@ -649,6 +652,7 @@ public final class HudConfig {
 		if (read.skyFishSplit == null) read.skyFishSplit = defaults.skyFishSplit;
 		if (read.sortOffServers == null) read.sortOffServers = defaults.sortOffServers;
 		read.skyCaseLayout = oneOf(read.skyCaseLayout, SKY_CASE_LAYOUTS);
+		read.skyCaseRecentShow = oneOf(read.skyCaseRecentShow, SKY_CASE_RECENT);
 		read.chatCopyFormat = oneOf(read.chatCopyFormat, ChatExtras.COPY_FORMATS);
 		read.chatCopyTime = oneOf(read.chatCopyTime, ChatExtras.COPY_TIMES);
 		read.chatCopyNotice = oneOf(read.chatCopyNotice, ChatExtras.COPY_NOTICES);
@@ -753,6 +757,7 @@ public final class HudConfig {
 		skyFishWeight = other.skyFishWeight;
 		skyFishValue = other.skyFishValue;
 		skyCaseLayout = oneOf(other.skyCaseLayout, SKY_CASE_LAYOUTS);
+		skyCaseRecentShow = oneOf(other.skyCaseRecentShow, SKY_CASE_RECENT);
 		skyCaseRows = Math.max(1, Math.min(10, other.skyCaseRows));
 		skyCaseNewDrop = other.skyCaseNewDrop;
 		skyWardrobeNames = other.skyWardrobeNames;

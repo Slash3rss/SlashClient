@@ -281,6 +281,8 @@ public final class Catalog {
 				case "skycase" -> {
 					settings.add(new Choice("slashclient-hud.skyCase.layout", HudConfig.SKY_CASE_LAYOUTS, "slashclient-hud.skyCase.layout.",
 						() -> cfg.skyCaseLayout, v -> cfg.skyCaseLayout = v));
+					settings.add(new Choice("slashclient-hud.skyCase.recentShow", HudConfig.SKY_CASE_RECENT, "slashclient-hud.skyCase.recentShow.",
+						() -> cfg.skyCaseRecentShow, v -> cfg.skyCaseRecentShow = v));
 					settings.add(new Slider("slashclient-hud.skyCase.rows", 1f, 10f, 1f, "%.0f", () -> (float) cfg.skyCaseRows, v -> cfg.skyCaseRows = Math.round(v)));
 					settings.add(new Toggle("slashclient-hud.skyCase.sum", () -> cfg.skyCaseSum, v -> cfg.skyCaseSum = v));
 					settings.add(new Toggle("slashclient-hud.skyCase.newDropSetting", () -> cfg.skyCaseNewDrop, v -> cfg.skyCaseNewDrop = v));

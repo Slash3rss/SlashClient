@@ -738,7 +738,25 @@ public final class SkyCase {
 		save();
 	}
 
-	private record Row(String left, int leftColor, String right, int rightColor) {}
+	/** A line of the module: text left and right, and the icons it shows (one before the text, or a row of them alone). */
+	private record Row(String left, int leftColor, String right, int rightColor, List<ItemStack> icons) {
+		Row(String left, int leftColor, String right, int rightColor) {
+			this(left, leftColor, right, rightColor, List.of());
+		}
+
+		/** A row of icons and nothing else. */
+		boolean strip() {
+			return icons.size() > 1 || (!icons.isEmpty() && left.isEmpty());
+		}
+	}
+
+	/** A win's icon: as its case's preview showed it, else its item, else a chest. */
+	private static ItemStack icon(Data life, Drop d) {
+		ItemStack look = look(d.type(), d.reward());
+		if (look != null && !look.isEmpty()) return look;
+		Item item = item(itemOf(life, d.reward()));
+		return new ItemStack(item != null ? item : net.minecraft.world.item.Items.CHEST);
+	}
 
 	private static List<Row> rows(Data session, Data life, List<Drop> recent, String type) {
 		HudConfig cfg = SlashHud.config;
@@ -761,13 +779,20 @@ public final class SkyCase {
 				out.add(new Row("  " + r.name(), 0xFFE5E7EB, right, 0xFFFFFFFF));
 			}
 		} else {
-			// the latest wins, newest first, with their case when it is another one
+			// the latest wins, newest first, with their case when it is another one: names, icons in a row, or both
 			if (!recent.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyCase.recent").getString(), 0xFF9CA3AF, "", 0));
+			String show = cfg.skyCaseRecentShow;
+			List<ItemStack> strip = new ArrayList<>();
 			for (int i = recent.size() - 1, n = 0; i >= 0 && n < cfg.skyCaseRows; i--, n++) {
 				Drop d = recent.get(i);
+				if ("icon".equals(show)) {
+					strip.add(icon(life, d));
+					continue;
+				}
 				String from = d.type().equals(type) ? "" : UNASSIGNED.equals(d.type()) ? "?" : d.type();
-				out.add(new Row("  " + d.reward(), 0xFFFFFF55, from, 0xFF9CA3AF));
+				out.add("both".equals(show) ? new Row(d.reward(), 0xFFFFFF55, from, 0xFF9CA3AF, List.of(icon(life, d))) : new Row("  " + d.reward(), 0xFFFFFF55, from, 0xFF9CA3AF));
 			}
+			if (!strip.isEmpty()) out.add(new Row("", 0, "", 0, strip));
 		}
 		return out;
 	}
@@ -796,22 +821,49 @@ public final class SkyCase {
 			return rows(s, l, drops, "Górniczy");
 		}
 
+		/** An icon before a name: half the item's size, as tall as the text. */
+		private static final int SMALL = 9, ICON = 17;
+
+		private static int rowHeight(Minecraft mc, Row r) {
+			return r.strip() ? ICON : mc.font.lineHeight + 1;
+		}
+
 		public int width(Minecraft mc) {
 			int w = 70;
-			for (Row r : rowsOrPreview(mc)) w = Math.max(w, mc.font.width(r.left) + (r.right.isEmpty() ? 0 : 10 + mc.font.width(r.right)));
+			for (Row r : rowsOrPreview(mc)) {
+				if (r.strip()) w = Math.max(w, r.icons.size() * ICON - 1);
+				else w = Math.max(w, (r.icons.isEmpty() ? 0 : SMALL + 2) + mc.font.width(r.left) + (r.right.isEmpty() ? 0 : 10 + mc.font.width(r.right)));
+			}
 			return w + Modules.PAD * 2;
 		}
 
 		public int height(Minecraft mc) {
-			return rowsOrPreview(mc).size() * (mc.font.lineHeight + 1) - 1 + Modules.PAD * 2;
+			int h = 0;
+			for (Row r : rowsOrPreview(mc)) h += rowHeight(mc, r);
+			return h - 1 + Modules.PAD * 2;
 		}
 
 		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
 			int w = width(mc) - Modules.PAD * 2, row = y + Modules.PAD;
 			for (Row r : rowsOrPreview(mc)) {
-				Modules.text(g, mc, r.left, x + Modules.PAD, row, r.leftColor);
-				if (!r.right.isEmpty()) Modules.text(g, mc, r.right, x + Modules.PAD + w - mc.font.width(r.right), row, r.rightColor);
-				row += mc.font.lineHeight + 1;
+				if (r.strip()) {
+					// the latest wins as their icons, newest on the left
+					for (int i = 0; i < r.icons.size(); i++) g.item(r.icons.get(i), x + Modules.PAD + i * ICON, row);
+				} else {
+					int tx = x + Modules.PAD;
+					if (!r.icons.isEmpty()) {
+						var pose = g.pose();
+						pose.pushMatrix();
+						pose.translate(tx, row - 1);
+						pose.scale(SMALL / 16f, SMALL / 16f);
+						g.item(r.icons.get(0), 0, 0);
+						pose.popMatrix();
+						tx += SMALL + 2;
+					}
+					Modules.text(g, mc, r.left, tx, row, r.leftColor);
+					if (!r.right.isEmpty()) Modules.text(g, mc, r.right, x + Modules.PAD + w - mc.font.width(r.right), row, r.rightColor);
+				}
+				row += rowHeight(mc, r);
 			}
 		}
 	}

@@ -192,6 +192,14 @@ public class GameSkyCase implements FabricClientGameTest {
 			check(context.computeOnClient(mc -> SkyCaseTestHooks.visible()), "module shown", "");
 			context.waitTicks(10);
 			context.takeScreenshot("skycase-hud");
+			// the latest wins as icons in a row, then an icon before each name
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.skyCaseRecentShow = "icon");
+			context.waitTicks(5);
+			context.takeScreenshot("skycase-hud-icons");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.skyCaseRecentShow = "both");
+			context.waitTicks(5);
+			context.takeScreenshot("skycase-hud-both");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.skyCaseRecentShow = "name");
 			context.runOnClient(mc -> SkyCaseTestHooks.layout("top"));
 			context.waitTicks(5);
 			context.takeScreenshot("skycase-hud-top");
