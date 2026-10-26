@@ -57,7 +57,7 @@
 //#else
 //$ 		// 1.20.1 has no GUI sprites: the hearts sit in gui/icons.png
 //$ 		int[] uv = heartUv(sprite);
-//$ 		if (uv != null) blit(gfx, pipeline, ICONS, x, y, uv[0], uv[1], w, h, 9, 9, 256, 256, color);
+//$ 		if (uv != null) blit(gfx, pipeline, ICONS, x, y, uv[0], uv[1], w, h, w, h, 256, 256, color);
 //#endif
 //$ 	}
 //#if MC < 1.20.2
@@ -75,6 +75,9 @@
 //$ 			case "hud/heart/frozen_half": return new int[] { 187, 0 };
 //$ 			case "hud/food_full": return new int[] { 52, 27 };
 //$ 			case "hud/food_half": return new int[] { 61, 27 };
+//$ 			case "hud/crosshair_attack_indicator_full": return new int[] { 68, 94 };
+//$ 			case "hud/crosshair_attack_indicator_background": return new int[] { 36, 94 };
+//$ 			case "hud/crosshair_attack_indicator_progress": return new int[] { 52, 94 };
 //$ 			default: return null;
 //$ 		}
 //$ 	}

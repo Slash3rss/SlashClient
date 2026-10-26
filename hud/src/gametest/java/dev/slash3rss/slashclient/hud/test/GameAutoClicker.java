@@ -12,6 +12,15 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
  * switched off, nothing. The key holding a button lets go of it over a window too.
  */
 public class GameAutoClicker implements FabricClientGameTest {
+	/** A text as a command's NBT takes it: SNBT from 1.21.5 on, a JSON string in quotes before. */
+	private static String nbtText(String s) {
+		//#if MC >= 1.21.5
+		return "\"" + s + "\"";
+		//#else
+		//$ return "'\"" + s.replace("\\n", "\\\\n") + "\"'";
+		//#endif
+	}
+
 	@Override
 	public void runTest(ClientGameTestContext context) {
 		if (TestFilter.skip(context, getClass())) return;
@@ -25,14 +34,14 @@ public class GameAutoClicker implements FabricClientGameTest {
 			if (start < 100) throw new AssertionError("No husk in front of us: " + start);
 
 			// the Target box names a mob with no name of its own (a server's model) by the name tag over its head
-			world.getServer().runCommand("data merge entity @e[type=husk,limit=1] {CustomName:\"\"}");
-			world.getServer().runCommand("execute as @e[type=husk,limit=1] at @s run summon armor_stand ~ ~2.2 ~ {Invisible:1b,Marker:1b,NoGravity:1b,CustomNameVisible:1b,CustomName:\"26.0 ❤ | Giermek poz. 4\"}");
+			world.getServer().runCommand("data merge entity @e[type=husk,limit=1] {CustomName:" + nbtText("") + "}");
+			world.getServer().runCommand("execute as @e[type=husk,limit=1] at @s run summon armor_stand ~ ~2.2 ~ {Invisible:1b,Marker:1b,NoGravity:1b,CustomNameVisible:1b,CustomName:" + nbtText("26.0 ❤ | Giermek poz. 4") + "}");
 			context.waitTicks(10);
 			String targetName = context.computeOnClient(mc -> TestHooks.shownTargetName());
 			if (!targetName.equals("Giermek poz. 4")) throw new AssertionError("The Target box's name for a mob named over its head: '" + targetName + "'");
 			// or by a text display over it (two lines: the first is the name)
 			world.getServer().runCommand("kill @e[type=armor_stand]");
-			world.getServer().runCommand("execute as @e[type=husk,limit=1] at @s run summon text_display ~ ~2.4 ~ {text:\"27.98 ❤ | Rozbitek poz. 3\nBoss\"}");
+			world.getServer().runCommand("execute as @e[type=husk,limit=1] at @s run summon text_display ~ ~2.4 ~ {text:" + nbtText("27.98 ❤ | Rozbitek poz. 3\\nBoss") + "}");
 			context.waitTicks(10);
 			String displayName = context.computeOnClient(mc -> TestHooks.shownTargetName());
 			if (!displayName.equals("Rozbitek poz. 3")) throw new AssertionError("The Target box's name from a text display: '" + displayName + "'");
@@ -88,6 +97,9 @@ public class GameAutoClicker implements FabricClientGameTest {
 			int full = Integer.parseInt(context.computeOnClient(mc -> TestHooks.autoClicks()).split("/")[0]);
 			world.getServer().runCommand("item replace entity @a weapon.mainhand with air");
 			if (full < 2 || full > 5) throw new AssertionError("Full hits in 2 s: " + full);
+			// the attack indicator under our crosshair (the game draws its own under its own)
+			String indicator = context.computeOnClient(mc -> TestHooks.attackIndicator());
+			if (!indicator.equals("true/false")) throw new AssertionError("The attack indicator (ours/the game's crosshair): " + indicator);
 			// in a SkyUp dungeon it rests, out of it it goes on (armed as it was)
 			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, false, 10); TestHooks.armAutoClicker();
 				dev.slash3rss.slashclient.hud.skyup.DungeonMap.inDungeonForTest(true); });

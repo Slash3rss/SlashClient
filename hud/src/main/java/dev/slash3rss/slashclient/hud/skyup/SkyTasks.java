@@ -708,8 +708,18 @@ public final class SkyTasks {
 			}
 			return n;
 		}
-		Item item = itemNamed(mc, thing);
 		Inventory inv = mc.player.getInventory();
+		// "Dowolne jajko": every item that is one (white, brown and blue eggs)
+		if (thing.toLowerCase(Locale.ROOT).startsWith("dowoln")) {
+			long any = 0;
+			for (int i = 0; i < inv.getContainerSize(); i++) {
+				if (i >= Inventory.INVENTORY_SIZE && i != Inventory.SLOT_OFFHAND) continue;
+				ItemStack s = inv.getItem(i);
+				if (!s.isEmpty() && SkyCounters.matches(thing, SkyCounters.item(s))) any += s.getCount();
+			}
+			return any;
+		}
+		Item item = itemNamed(mc, thing);
 		long n = 0;
 		boolean named = false;
 		for (int i = 0; i < inv.getContainerSize(); i++) {

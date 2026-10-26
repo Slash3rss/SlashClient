@@ -1,8 +1,10 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import dev.slash3rss.slashclient.hud.Badges;
 import dev.slash3rss.slashclient.hud.GameHud;
+import dev.slash3rss.slashclient.hud.HudConfig;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -17,7 +19,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * The SlashClient logo before the names of its players on the tab list, the ping as a number, and
- * the list as the player set it up: without the server's text above or below, with fewer players.
+ * the list as the player set it up: without the server's text above or below, with fewer players,
+ * its backgrounds as see-through as set.
  */
 @Mixin(PlayerTabOverlay.class)
 abstract class PlayerTabOverlayMixin {
@@ -44,6 +47,24 @@ abstract class PlayerTabOverlayMixin {
 		dev.slash3rss.slashclient.hud.GameRound.end();
 		header = slashclient$header;
 		footer = slashclient$footer;
+	}
+
+	/** The background under each player: the game's (it follows the text background in Accessibility) until set otherwise. */
+	@ModifyExpressionValue(method = "extractRenderState", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Options;getBackgroundColor(I)I"))
+	private int slashclient$rowBackground(int color) {
+		int set = SlashHud.config == null ? HudConfig.TAB_ROW_DEFAULT : SlashHud.config.tabRowOpacity;
+		return set == HudConfig.TAB_ROW_DEFAULT ? color : slashclient$alpha(color, set);
+	}
+
+	/** The list's own background (behind the players, the server's texts above and below). */
+	@ModifyExpressionValue(method = "extractRenderState", at = @At(value = "CONSTANT", args = "intValue=-2147483648"))
+	private int slashclient$panelBackground(int color) {
+		int set = SlashHud.config == null ? HudConfig.TAB_PANEL_DEFAULT : SlashHud.config.tabPanelOpacity;
+		return set == HudConfig.TAB_PANEL_DEFAULT ? color : slashclient$alpha(color, set);
+	}
+
+	private static int slashclient$alpha(int color, int percent) {
+		return Math.round(percent * 2.55f) << 24 | (color & 0xFFFFFF);
 	}
 
 	/** At most as many players as set (the first ones in the list's order). */

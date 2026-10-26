@@ -137,4 +137,66 @@ public final class Extras {
 		Crosshair.draw(g, g.guiWidth() / 2 - mid, g.guiHeight() / 2 - mid, Crosshair.current(), 1, cfg().crosshairColor, cfg().crosshairOutline);
 		return true;
 	}
+
+	private static final net.minecraft.resources.Identifier ATTACK_FULL = net.minecraft.resources.Identifier.withDefaultNamespace("hud/crosshair_attack_indicator_full");
+	private static final net.minecraft.resources.Identifier ATTACK_BACKGROUND = net.minecraft.resources.Identifier.withDefaultNamespace("hud/crosshair_attack_indicator_background");
+	private static final net.minecraft.resources.Identifier ATTACK_PROGRESS = net.minecraft.resources.Identifier.withDefaultNamespace("hud/crosshair_attack_indicator_progress");
+
+	/**
+	 * The game's attack indicator (its option "Attack indicator: Crosshair") as a module: our crosshair
+	 * takes the game's place, and the indicator went with it. It stands where the game draws it, under
+	 * the crosshair, and can be moved like any module. As the game draws it: the bar filling while the
+	 * weapon charges, the sword once a mob under the crosshair can be hit hard. With the game's own
+	 * crosshair the game draws it itself.
+	 */
+	static final class AttackIndicator implements HudModule {
+		public String id() {
+			return "attackindicator";
+		}
+
+		/** The weapon's charge (0–1), and whether a mob under the crosshair can be hit hard now. */
+		private static float strength(Minecraft mc) {
+			return mc.player == null ? 1f : mc.player.getAttackStrengthScale(0f);
+		}
+
+		private static boolean full(Minecraft mc) {
+			return mc.player != null && mc.crosshairPickEntity instanceof net.minecraft.world.entity.LivingEntity target && target.isAlive()
+				&& strength(mc) >= 1f && mc.player.getCurrentItemAttackStrengthDelay() > 5f;
+		}
+
+		@Override
+		public boolean visible(Minecraft mc) {
+			return !"vanilla".equals(cfg().crosshair) && mc.player != null && mc.options.getCameraType().isFirstPerson()
+				&& mc.options.attackIndicator().get() == net.minecraft.client.AttackIndicatorStatus.CROSSHAIR && (full(mc) || strength(mc) < 1f);
+		}
+
+		public int width(Minecraft mc) {
+			return 16;
+		}
+
+		public int height(Minecraft mc) {
+			return 16;
+		}
+
+		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
+			if (full(mc)) g.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, ATTACK_FULL, x, y, 16, 16);
+			else bar(g, x, y, strength(mc));
+		}
+
+		@Override
+		public void drawPreview(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
+			if (visible(mc)) draw(g, mc, x, y);
+			else bar(g, x, y, 0.6f);
+		}
+
+		/** The bar, filled as far as the weapon is charged. */
+		private static void bar(GuiGraphicsExtractor g, int x, int y, float strength) {
+			g.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, ATTACK_BACKGROUND, x, y, 16, 4);
+			int filled = (int) (strength * 17f);
+			if (filled <= 0) return;
+			g.enableScissor(x, y, x + Math.min(16, filled), y + 4);
+			g.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, ATTACK_PROGRESS, x, y, 16, 4);
+			g.disableScissor();
+		}
+	}
 }

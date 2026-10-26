@@ -435,10 +435,10 @@ public final class Social {
 					// muted: the message waits on the list (a waypoint among the received ones), without a toast
 					if (m.waypoint() != null) SharedWaypoints.received(m, f != null ? f.name() : "?", f != null && f.muted());
 					else if (f == null || f.muted()) return;
-					else if (m.image() != null) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.picture.toast").getString(), null);
-					else if (!m.party().isEmpty()) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.party.toast", m.invite()).getString(), null);
-					else if (!m.invite().isEmpty()) toast(f != null ? f.name() : "?", Component.translatable("slashclient-hud.invite.toast", m.invite()).getString(), null);
-					else toast(f != null ? f.name() : "?", ChatGifs.shown(m.text()), null);
+					else if (m.image() != null) toastFrom(f, Component.translatable("slashclient-hud.picture.toast").getString());
+					else if (!m.party().isEmpty()) toastFrom(f, Component.translatable("slashclient-hud.party.toast", m.invite()).getString());
+					else if (!m.invite().isEmpty()) toastFrom(f, Component.translatable("slashclient-hud.invite.toast", m.invite()).getString());
+					else toastFrom(f, ChatGifs.shown(m.text()));
 				}
 			}
 			case "presence" -> {
@@ -588,7 +588,7 @@ public final class Social {
 		String text = !news.playing() ? Component.translatable("slashclient-hud.playing.online").getString()
 			: news.server().isEmpty() ? Component.translatable("slashclient-hud.playing.world").getString()
 			: Component.translatable("slashclient-hud.playing.server", news.server()).getString();
-		toast(f.name(), text, null);
+		toastFrom(f, text);
 	}
 
 	/** For the in-game test: a status as if it came from the launcher, with the toast it makes. */
@@ -763,6 +763,13 @@ public final class Social {
 	/** In SlashClient's own look; `icon` instead of the initial when it is not from a person. */
 	public static void toast(String title, String text, String icon) {
 		toast(title, text, icon, null);
+	}
+
+	/** From a friend: with their face. */
+	static void toastFrom(Friend f, String text) {
+		toasts++;
+		Minecraft mc = Minecraft.getInstance();
+		mc.execute(() -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).addToast(new FriendToast(f.name(), text, null, null, f.id())));
 	}
 
 	/** With a third line in gold for Sparks paid (null: none). */

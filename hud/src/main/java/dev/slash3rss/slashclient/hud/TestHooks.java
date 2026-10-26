@@ -212,6 +212,26 @@ public final class TestHooks {
 		mc.options.keyUse.setDown(up);
 	}
 
+	/**
+	 * The attack indicator module just after a hit (the weapon charging again), with our crosshair and
+	 * with the game's: "shown with ours / shown with the game's" (the game draws its own then).
+	 */
+	public static String attackIndicator() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		String keep = SlashHud.config.crosshair;
+		var option = mc.options.attackIndicator().get();
+		mc.options.attackIndicator().set(net.minecraft.client.AttackIndicatorStatus.CROSSHAIR);
+		mc.player.resetAttackStrengthTicker();
+		var module = new Extras.AttackIndicator();
+		SlashHud.config.crosshair = "plus";
+		boolean ours = module.visible(mc);
+		SlashHud.config.crosshair = "vanilla";
+		boolean game = module.visible(mc);
+		SlashHud.config.crosshair = keep;
+		mc.options.attackIndicator().set(option);
+		return ours + "/" + game;
+	}
+
 	/** The clicks a second the CPS module and the keystrokes show: "left/right". */
 	public static String shownCps() {
 		return Modules.CLICKS.left() + "/" + Modules.CLICKS.right();
@@ -2626,8 +2646,12 @@ public final class TestHooks {
 	public static String skyAnyBlock() {
 		var stone = dev.slash3rss.slashclient.hud.skyup.SkyCounters.Thing.of(false, false, false, false, "Kamień");
 		var log = dev.slash3rss.slashclient.hud.skyup.SkyCounters.Thing.of(false, true, false, false, "Dębowy pień");
+		var brownEgg = dev.slash3rss.slashclient.hud.skyup.SkyCounters.Thing.of(false, false, false, false, "Brązowe jajko");
+		var sherd = dev.slash3rss.slashclient.hud.skyup.SkyCounters.Thing.of(false, false, false, false, "Odłamek ceramiki z łucznikiem");
 		return dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolny blok", stone) + " " + dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolny blok", log)
-			+ " " + dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolne drewno", stone) + " " + dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolne drewno", log);
+			+ " " + dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolne drewno", stone) + " " + dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolne drewno", log)
+			+ " " + dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolne jajko", brownEgg) + " " + dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolny odłamek ceramiki", sherd)
+			+ " " + dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolne jajko", stone);
 	}
 
 	/**

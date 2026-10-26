@@ -38,7 +38,7 @@ public final class Modules {
 	static List<HudModule> all() {
 		List<HudModule> out = new ArrayList<>(List.of(new Fps(), new Ping(), new Cps(), new Coords(), new Speed(), new Clock(), new MoreModules.Server(), new MoreModules.Players(),
 			new MoreModules.Memory(), new MoreModules.Cpu(), new MoreModules.Gpu(), new MoreModules.Biome(), new MoreModules.DayTime(), new MoreModules.Light(), new MoreModules.Session(),
-			new MoreModules.Combo(), new MoreModules.Reach(), new MoreModules.Movement(), new MoreModules.Saturation(), new MoreModules.ItemCounter(), new MoreModules.Target(),
+			new MoreModules.Combo(), new MoreModules.Reach(), new MoreModules.Movement(), new MoreModules.Saturation(), new MoreModules.ItemCounter(), new MoreModules.Target(), new Extras.AttackIndicator(),
 			new Armor(), new Effects(), new Keystrokes(), new Sprint()));
 		out.addAll(ExtraModules.all());
 		// where the player would be in the other dimension (Overworld / Nether)

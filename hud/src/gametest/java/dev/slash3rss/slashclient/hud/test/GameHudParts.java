@@ -39,6 +39,23 @@ public class GameHudParts implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.tabTexts(true));
 			context.waitTicks(5);
 			context.takeScreenshot("game-hud-tab-plain");
+			// its backgrounds see-through: none under the players, a faint one behind the list (in singleplayer
+			// the game shows the list only with a score in it)
+			world.getServer().runCommand("scoreboard objectives add tabtest dummy");
+			world.getServer().runCommand("scoreboard objectives setdisplay list tabtest");
+			context.waitTicks(5);
+			context.takeScreenshot("game-hud-tab-default");
+			context.runOnClient(mc -> {
+				dev.slash3rss.slashclient.hud.SlashHud.config.tabRowOpacity = 0;
+				dev.slash3rss.slashclient.hud.SlashHud.config.tabPanelOpacity = 15;
+			});
+			context.waitTicks(3);
+			context.takeScreenshot("game-hud-tab-clear");
+			context.runOnClient(mc -> {
+				dev.slash3rss.slashclient.hud.SlashHud.config.tabRowOpacity = dev.slash3rss.slashclient.hud.HudConfig.TAB_ROW_DEFAULT;
+				dev.slash3rss.slashclient.hud.SlashHud.config.tabPanelOpacity = dev.slash3rss.slashclient.hud.HudConfig.TAB_PANEL_DEFAULT;
+			});
+			world.getServer().runCommand("scoreboard objectives remove tabtest");
 			String kept = context.computeOnClient(mc -> TestHooks.tabTexts(false));
 			if (!kept.equals("SlashClient\nNagłówek listy graczy, dość długi|Stopka")) throw new AssertionError("The tab list's texts after drawing it without them: " + kept);
 			context.getInput().releaseKey(o -> o.keyPlayerList);

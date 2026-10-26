@@ -188,7 +188,7 @@ public class GameSkyTasks implements FabricClientGameTest {
 			String dungeon = context.computeOnClient(mc -> TestHooks.skyDungeonLevel());
 			check(dungeon.endsWith(" 7/10") && !dungeon.startsWith("7 "), "dungeon level from the boss bar (the highest seen)", dungeon);
 			String anyBlock = context.computeOnClient(mc -> TestHooks.skyAnyBlock());
-			check(anyBlock.equals("true true false true"), "\"Dowolny blok\" is any block", anyBlock);
+			check(anyBlock.equals("true true false true true true false"), "\"Dowolny blok\" is any block, \"Dowolne jajko\" any egg", anyBlock);
 			String hint = context.computeOnClient(mc -> TestHooks.skyCommandHint());
 			check(hint.equals("Stwórz[Stojak na zbroję 3/12;] Stwórz[Stojak na zbroję 3/12;]"), "\"(/recipe)\" in the task's text left out", hint);
 			// the two ready ones untracked again (the rest of the test tracks the quarry and Huta only)

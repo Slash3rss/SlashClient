@@ -124,7 +124,7 @@ public final class Catalog {
 		Map.entry("fpsgraph", "hud"), Map.entry("friends", "hud"), Map.entry("compass", "world"), Map.entry("sky", "world"), Map.entry("elytra", "world"),
 		Map.entry("block", "world"), Map.entry("durability", "combat"), Map.entry("ammo", "combat"), Map.entry("kd", "combat"), Map.entry("hits", "combat"), Map.entry("session", "hud"), Map.entry("biome", "world"), Map.entry("daytime", "world"),
 		Map.entry("light", "world"), Map.entry("saturation", "world"), Map.entry("movement", "world"), Map.entry("combo", "combat"),
-		Map.entry("reach", "combat"), Map.entry("target", "combat"), Map.entry("armor", "combat"), Map.entry("effects", "combat"),
+		Map.entry("reach", "combat"), Map.entry("target", "combat"), Map.entry("attackindicator", "combat"), Map.entry("armor", "combat"), Map.entry("effects", "combat"),
 		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"), Map.entry("skycase", "skyup"), Map.entry("skywardrobe", "skyup"), Map.entry("skyxp", "skyup"),
 		Map.entry("twitchchat", "chat"), Map.entry("kickchat", "chat"), Map.entry("nethercoords", "world"));
 
@@ -517,7 +517,9 @@ public final class Catalog {
 			new Toggle("slashclient-hud.game.numericPing", () -> cfg.tabNumericPing, v -> cfg.tabNumericPing = v),
 			new Toggle("slashclient-hud.game.tabHideHeader", () -> cfg.tabHideHeader, v -> cfg.tabHideHeader = v),
 			new Toggle("slashclient-hud.game.tabHideFooter", () -> cfg.tabHideFooter, v -> cfg.tabHideFooter = v),
-			new Slider("slashclient-hud.game.tabMaxPlayers", 10f, 80f, 5f, "%.0f", () -> (float) cfg.tabMaxPlayers, v -> cfg.tabMaxPlayers = Math.round(v))), null));
+			new Slider("slashclient-hud.game.tabMaxPlayers", 10f, 80f, 5f, "%.0f", () -> (float) cfg.tabMaxPlayers, v -> cfg.tabMaxPlayers = Math.round(v)),
+			new Slider("slashclient-hud.game.tabRowOpacity", 0f, 100f, 1f, "%.0f%%", () -> (float) cfg.tabRowOpacity, v -> cfg.tabRowOpacity = Math.round(v)),
+			new Slider("slashclient-hud.game.tabPanelOpacity", 0f, 100f, 1f, "%.0f%%", () -> (float) cfg.tabPanelOpacity, v -> cfg.tabPanelOpacity = Math.round(v))), null));
 		//#if MC >= 1.20.2
 		out.add(new Entry("actionbar", "slashclient-hud.game.actionbar", "game", "m-actionbar", () -> cfg.actionBar && actionbar.enabled, v -> cfg.actionBar = actionbar.enabled = v, List.of(
 			new Slider("slashclient-hud.set.scale", 0.5f, 1.5f, 0.05f, "%.2f×", () -> cfg.actionBarScale, v -> cfg.actionBarScale = v)), null));

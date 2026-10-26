@@ -375,6 +375,9 @@ public final class HudConfig {
 	/** The tab list without the server's text above or below it, and with at most this many players (80: the game's own). */
 	public boolean tabHideHeader = false, tabHideFooter = false;
 	public int tabMaxPlayers = 80;
+	/** The tab list's backgrounds, 0–100 % opaque: under each player (the game's 13 %) and the whole list (its 50 %). */
+	public int tabRowOpacity = TAB_ROW_DEFAULT, tabPanelOpacity = TAB_PANEL_DEFAULT;
+	public static final int TAB_ROW_DEFAULT = 13, TAB_PANEL_DEFAULT = 50;
 	public boolean titles = true;
 	public float titleScale = 1f;
 	/** The action bar above the hotbar (a server's short messages). */
@@ -625,6 +628,8 @@ public final class HudConfig {
 		c.modules.put("items", new Placement(true, 1, 1, -2, -2));
 		// around the crosshair
 		c.modules.put("target", new Placement(true, 0.5f, 0.5f, 0, 40));
+		// the attack indicator where the game draws it, under the crosshair (shown with our crosshair only)
+		c.modules.put("attackindicator", new Placement(true, 0.5f, 0.5f, 0, 17));
 		c.modules.put("combo", new Placement(false, 0.5f, 0.5f, 30, 12));
 		c.modules.put("reach", new Placement(false, 0.5f, 0.5f, -30, 12));
 		c.modules.put("sprint", new Placement(false, 0, 1, 2, -2));
@@ -869,6 +874,8 @@ public final class HudConfig {
 		tabHideHeader = other.tabHideHeader;
 		tabHideFooter = other.tabHideFooter;
 		tabMaxPlayers = Math.max(10, Math.min(80, other.tabMaxPlayers == 0 ? 80 : other.tabMaxPlayers));
+		tabRowOpacity = Math.max(0, Math.min(100, other.tabRowOpacity));
+		tabPanelOpacity = Math.max(0, Math.min(100, other.tabPanelOpacity));
 		titles = other.titles;
 		titleScale = other.titleScale;
 		actionBar = other.actionBar;

@@ -81,6 +81,14 @@ public final class SkyCounters {
 			if (want.contains("ryb")) return t.fish;
 			// "Dowolny blok" ("Postaw" any 256 blocks), "Dowolny przedmiot": whatever it is
 			if (want.contains("blok") || want.contains("przedmiot")) return true;
+			// anything else ("Dowolne jajko", "Dowolny odłamek ceramiki"): whatever has those words in its
+			// name, in any form ("Brązowe jajko", "Odłamek ceramiki z łucznikiem")
+			String[] words = want.replaceFirst("^dowoln\\S*\\s*", "").split("\\s+");
+			for (String n : t.names) {
+				boolean all = words.length > 0 && !words[0].isEmpty();
+				for (String w : words) all &= n.contains(w.length() > 4 ? w.substring(0, w.length() - 1) : w);
+				if (all) return true;
+			}
 			return false;
 		}
 		// "(dorosły)": only grown ones
@@ -148,7 +156,7 @@ public final class SkyCounters {
 		return pl("entity." + net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(type).toLanguageKey());
 	}
 
-	private static Thing item(ItemStack stack) {
+	static Thing item(ItemStack stack) {
 		// the item's own name too, when the server renamed it
 		return Thing.of(false, stack.is(ItemTags.LOGS), stack.is(ItemTags.SAPLINGS), stack.is(ItemTags.FISHES),
 			name(stack), stack.getItem().getName(stack).getString(), plItem(stack.getItem()));

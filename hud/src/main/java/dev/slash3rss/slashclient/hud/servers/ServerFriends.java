@@ -164,6 +164,14 @@ public final class ServerFriends {
 		return lines;
 	}
 
+	/** A friend's face at this place (a toast's avatar); false while it is not loaded, or they have none (the initial then). */
+	public static boolean drawFace(GuiGraphicsExtractor g, String friendId, int x, int y, int size) {
+		Face tex = friendId == null ? null : texture(friendId);
+		if (tex == null) return false;
+		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, tex.id(), x, y, 0, 0, size, size, tex.width(), tex.height(), tex.width(), tex.height(), 0xFFFFFFFF);
+		return true;
+	}
+
 	/** The friend's face as a texture, asked for once (SlashClient's server cuts it from the skin, 8×8 scaled up). */
 	private static Face texture(String friendId) {
 		String avatar = avatars.get(friendId);
