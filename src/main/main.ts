@@ -59,6 +59,7 @@ import { newsArticle, newsPage, type NewsFilter } from './news';
 import { ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin } from './skins';
 import { GameBridge } from './bridge';
 import { CoverCache, NowPlayingReader } from './nowPlaying';
+import { skyupGameArticle, skyupIndex, skyupPictureBytes, skyupSearch } from './skyupWiki';
 import { LanTunnels } from './lan';
 import { BLOCK_FACES, blockTextures, cosmeticTextures } from './blockTextures';
 import { ConsoleHistory } from './consoleHistory';
@@ -2078,7 +2079,33 @@ const bridge = new GameBridge({
   // the game's "Now playing" module (id "spotify"), only while it is on: what plays on this computer and its cover
   spotifyNow: (onlySpotify) => nowPlaying.get(onlySpotify),
   spotifyCover: (id) => nowPlayingCovers.get(id),
+  // the game's "Wiki SkyUp" screen: the same wiki and cache as the launcher's Wiki view
+  skyupWikiIndex: () => skyupIndex(),
+  skyupWikiArticle: (slug) => skyupGameArticle(slug),
+  skyupWikiSearch: (query) => skyupSearch(query),
+  skyupWikiPicture: (id) => wikiPictures.get(id),
 });
+
+/** The wiki's pictures for the game as PNG (the game reads only that), at most 400 pixels wide; the last few kept. */
+const wikiPictures = {
+  kept: new Map<string, Promise<Buffer>>(),
+  get(id: string): Promise<Buffer> {
+    let png = this.kept.get(id);
+    if (!png) {
+      png = skyupPictureBytes(id).then((data) => {
+        const img = nativeImage.createFromBuffer(data);
+        if (img.isEmpty()) throw new Error('unreadable');
+        const { width, height } = img.getSize();
+        const size = fitSize(width, height, 400);
+        return (size.w < width ? img.resize({ width: size.w, height: size.h, quality: 'good' }) : img).toPNG();
+      });
+      png.catch(() => this.kept.delete(id));
+      this.kept.set(id, png);
+      while (this.kept.size > 64) this.kept.delete(this.kept.keys().next().value!);
+    }
+    return png;
+  },
+};
 
 /** Covers for the game as small square PNGs (a browser's video frame cut to its middle square). */
 const nowPlayingCovers = new CoverCache((data, size) => {

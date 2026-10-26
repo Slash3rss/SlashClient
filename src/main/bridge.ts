@@ -55,6 +55,11 @@ export interface BridgeOptions {
   spotifyNow?: (onlySpotify: boolean) => Promise<unknown>;
   /** The cover of what plays by its id (from the system, or Spotify's image host), as a 64×64 PNG. */
   spotifyCover?: (id: string) => Promise<Buffer>;
+  /** The SkyUp.pl wiki for the game's "Wiki SkyUp" screen (skyupWiki.ts): its articles, one as blocks, a search, a picture as PNG. */
+  skyupWikiIndex?: () => Promise<unknown>;
+  skyupWikiArticle?: (slug: string) => Promise<unknown>;
+  skyupWikiSearch?: (query: string) => Promise<unknown>;
+  skyupWikiPicture?: (id: string) => Promise<Buffer>;
 }
 
 /** What the game may ask for: its friends and the messages with them. */
@@ -362,6 +367,31 @@ export class GameBridge {
         return res.end(png);
       } catch (err) {
         return this.send(res, 404, { error: (err as Error).message });
+      }
+    }
+
+    // the SkyUp.pl wiki for the game (HUD 0.9.52+): the articles, an article, a search, a picture by its id
+    const wiki = /^\/skyup-wiki\/(index|article\/([a-z0-9][a-z0-9-]{0,79})|search\?q=([^&]{1,300})|image\/([0-9a-f]{20}))$/.exec(url);
+    if (method === 'GET' && wiki) {
+      const o = this.opts;
+      if (!o.skyupWikiIndex || !o.skyupWikiArticle || !o.skyupWikiSearch || !o.skyupWikiPicture) return this.send(res, 404, { error: 'not_found' });
+      try {
+        if (wiki[4]) {
+          const png = await o.skyupWikiPicture(wiki[4]);
+          res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-store' });
+          return res.end(png);
+        }
+        if (wiki[1] === 'index') return this.send(res, 200, await o.skyupWikiIndex());
+        if (wiki[2]) return this.send(res, 200, await o.skyupWikiArticle(wiki[2]));
+        let q = '';
+        try {
+          q = decodeURIComponent(wiki[3].replace(/\+/g, ' '));
+        } catch {
+          return this.send(res, 400, { error: 'bad_request' });
+        }
+        return this.send(res, 200, await o.skyupWikiSearch(q));
+      } catch (err) {
+        return this.send(res, 502, { error: (err as Error).message });
       }
     }
 
