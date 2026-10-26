@@ -291,9 +291,46 @@ public final class SkyCounters {
 				if (d.islandLevel != value) SkyTasks.changed();
 				d.islandLevel = value;
 			} else if (part.startsWith("prac") && m.group(3) != null) {
-				Long old = d.jobs.put(key, value);
-				if (old == null || old != value) SkyTasks.changed();
+				job(key, value);
 			}
+		}
+	}
+
+	/** A job's level, wherever it was read (the sidebar, the boss bar, the jobs' window). */
+	static void job(String name, long level) {
+		SkyTasks.Data d = SkyTasks.data();
+		if (d == null || name.isBlank() || level < 0) return;
+		Long old = d.jobs.put(name.strip(), level);
+		if (old == null || old != level) SkyTasks.changed();
+	}
+
+	/** The boss bar while a job earns: "Drwal (poziom 9) 1 504,02/7 000 xp (+15,3 xp)". */
+	private static final java.util.regex.Pattern JOB_BAR = java.util.regex.Pattern.compile("^\\s*(\\p{L}[\\p{L} ]*?)\\s*\\(poziom\\s+(\\d+)\\)");
+
+	static void readBossBar(Minecraft mc) {
+		var overlay = dev.slash3rss.slashclient.hud.Compat.bossOverlay(mc);
+		if (overlay == null) return;
+		for (var event : ((dev.slash3rss.slashclient.hud.mixin.BossHealthOverlayAccessor) overlay).slashclient$events().values()) jobBar(event.getName().getString());
+	}
+
+	/** One boss bar's text: a job's level when it is a job's bar. */
+	public static void jobBar(String text) {
+		java.util.regex.Matcher m = JOB_BAR.matcher(SkyTaskParser.plain(text));
+		if (m.find()) job(m.group(1), Long.parseLong(m.group(2)));
+	}
+
+	/** The jobs' window ("Prace"): each job's head named "» Górnik (7) «", with its progress in the lore. */
+	private static final java.util.regex.Pattern JOB_ITEM = java.util.regex.Pattern.compile("^(?:»|>>)\\s*(\\p{L}[\\p{L} ]*?)\\s*\\((\\d+)\\)\\s*(?:«|<<)$");
+
+	public static void jobsSeen(List<ItemStack> items) {
+		for (ItemStack stack : items) {
+			if (stack.isEmpty()) continue;
+			java.util.regex.Matcher m = JOB_ITEM.matcher(SkyTaskParser.plain(stack.getHoverName().getString()));
+			if (!m.matches()) continue;
+			// a job, not something else with a number in its name: its lore has the level's progress
+			boolean job = false;
+			for (var line : SkyDump.lore(stack)) if (SkyTaskParser.plain(line.getString()).toLowerCase(Locale.ROOT).contains("postęp poziomu")) job = true;
+			if (job) job(m.group(1), Long.parseLong(m.group(2)));
 		}
 	}
 
@@ -387,6 +424,7 @@ public final class SkyCounters {
 		// the sidebar: read again each second
 		if (++tick % 20 == 0) {
 			readSidebar(mc);
+			readBossBar(mc);
 		}
 	}
 

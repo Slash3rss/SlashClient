@@ -72,9 +72,17 @@ public final class SkyTasks {
 		Map<String, Integer> incubators;
 		/** From SkyUp's sidebar: the island's level (-1: not seen), each job's level. */
 		long islandLevel = -1;
-		Map<String, Long> jobs = new LinkedHashMap<>();
+		public Map<String, Long> jobs = new LinkedHashMap<>();
 		/** The highest dungeon level seen on the dungeon's boss bar ("Dungeon poz. 7"; -1: none yet). */
 		long dungeonLevel = -1;
+		/** Tasks seen done (handed in, by the chat, or gone from their category's GUI), by their name's letters: another task may need them. */
+		Set<String> done = new java.util.LinkedHashSet<>();
+
+		/** (A file from before it was kept has none.) */
+		Set<String> done() {
+			if (done == null) done = new java.util.LinkedHashSet<>();
+			return done;
+		}
 	}
 
 	/** The progress from before each account had its own file: the first account that plays takes it over. */
@@ -203,6 +211,8 @@ public final class SkyTasks {
 			for (Slot slot : c.getMenu().slots) if (!(slot.container instanceof Inventory)) items.add(slot.getItem());
 			SkyGenerator.seen(items);
 			SkyIncubator.seen(items);
+			// the jobs' window: every job's level at once
+			SkyCounters.jobsSeen(items);
 		} else if (dirty && System.currentTimeMillis() - savedAt > 30_000) {
 			// what the counters add is saved now and then, not at every block
 			save();
@@ -361,6 +371,7 @@ public final class SkyTasks {
 			boolean gone = t.tier.equals(tier) && !found.containsKey(t.key());
 			if (gone) {
 				dirty = true;
+				d.done().add(nameKey(t.name));
 				d.tracked.remove(t.key());
 				d.untracked.remove(t.key());
 			}
@@ -391,6 +402,11 @@ public final class SkyTasks {
 		completed(m.group(1));
 	}
 
+	/** The task another one needs ("Wymaga ukończenia wyzwania Zmory podziemi") is done. */
+	public static boolean requirementDone(SkyTaskParser.Task t) {
+		return !t.requires.isEmpty() && data().done().contains(nameKey(t.requires));
+	}
+
 	/** The task of that name gone: from the category last open first, else any category (ready, then tracked ones first). */
 	static boolean completed(String name) {
 		String plain = nameKey(name);
@@ -406,7 +422,11 @@ public final class SkyTasks {
 				bestScore = score;
 			}
 		}
-		if (best == null) return false;
+		d.done().add(plain);
+		if (best == null) {
+			save();
+			return false;
+		}
 		String key = best.key();
 		d.tasks.remove(key);
 		d.tracked.remove(key);
@@ -854,7 +874,8 @@ public final class SkyTasks {
 			if (ready) out.add(new Row("✔ " + t.name, GREEN, Component.translatable("slashclient-hud.skyTasks.handIn").getString(), 0xFFFFFFFF, -1, 0, false, true));
 			else out.add(new Row(t.name, GOLD, age, 0xFF6B7280, -1, 0));
 			// locked until another challenge is done
-			if (!cfg.skyTasksCompact && !t.requires.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyTasks.requires", t.requires).getString(), 0xFFF87171, "", 0, -1, 4));
+			// green once that one is done (it may still say so until the GUI is read again)
+			if (!cfg.skyTasksCompact && !t.requires.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyTasks.requires", t.requires).getString(), requirementDone(t) ? GREEN : 0xFFF87171, "", 0, -1, 4));
 			// ready to hand in: its requirements are met, only its name stays
 			for (SkyTaskParser.Section s : ready ? List.<SkyTaskParser.Section>of() : t.sections) {
 				if (!cfg.skyTasksCompact && t.sections.size() > 1) out.add(new Row(s.header, GREY, "", 0, -1, 4));

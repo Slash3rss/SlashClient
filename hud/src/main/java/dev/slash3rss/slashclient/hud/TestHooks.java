@@ -2544,6 +2544,28 @@ public final class TestHooks {
 			+ " " + dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolne drewno", stone) + " " + dev.slash3rss.slashclient.hud.skyup.SkyCounters.matches("Dowolne drewno", log);
 	}
 
+	/**
+	 * For the test: the jobs' levels from the jobs' window (two heads, and a head with a number that is no
+	 * job), then from a job's boss bar; and a task needing another, before and after that one is handed in.
+	 */
+	public static String skyJobsAndNeeds() {
+		var d = dev.slash3rss.slashclient.hud.skyup.SkyTasks.data();
+		java.util.function.BiFunction<String, String, net.minecraft.world.item.ItemStack> head = (name, line) -> {
+			var s = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.PLAYER_HEAD);
+			s.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal(name));
+			s.set(net.minecraft.core.component.DataComponents.LORE, new net.minecraft.world.item.component.ItemLore(java.util.List.of(net.minecraft.network.chat.Component.literal(line))));
+			return s;
+		};
+		dev.slash3rss.slashclient.hud.skyup.SkyCounters.jobsSeen(java.util.List.of(head.apply("» Górnik (7) «", "▪ Postęp poziomu » 14%"),
+			head.apply("» Drwal (9) «", "▪ Postęp poziomu » 22%"), head.apply("» Ranking (3) «", "▪ LPM » Sprawdź")));
+		String window = d.jobs.get("Górnik") + " " + d.jobs.get("Drwal") + " " + d.jobs.containsKey("Ranking");
+		dev.slash3rss.slashclient.hud.skyup.SkyCounters.jobBar("Drwal (poziom 10) 1 504,02/7 000 xp (+15,3 xp)");
+		var task = SkyTaskParser.parse("WTAJEMNICZONY", "» Kryptomaniak «", java.util.List.of("▪ Wymaga ukończenia wyzwania Zmory", "  podziemi", "▪ Dotrzyj do poziomu w dungeonach: 10", "  poz.", "▪ Za ukończenie otrzymasz:", "  » 200.0 SC"));
+		boolean before = dev.slash3rss.slashclient.hud.skyup.SkyTasks.requirementDone(task);
+		dev.slash3rss.slashclient.hud.skyup.SkyTasks.onChat(net.minecraft.network.chat.Component.literal("Wyzwania » Ukończono zadanie Zmory podziemi!"));
+		return window + " | bar " + d.jobs.get("Drwal") + " | needs '" + task.requires + "' " + before + " -> " + dev.slash3rss.slashclient.hud.skyup.SkyTasks.requirementDone(task);
+	}
+
 	/** For the test: "Dotrzyj do poziomu w dungeonach: 10 poz." before any dungeon, and after level 7 was on the boss bar. */
 	public static String skyDungeonLevel() {
 		var task = SkyTaskParser.parse("WTAJEMNICZONY", "» Kryptomaniak «", java.util.List.of("▪ Opis » Zawalcz w Dungeonach!", "▪ Dotrzyj do poziomu w dungeonach: 10", "  poz.", "▪ Za ukończenie otrzymasz:", "  » 200.0 SC"));
