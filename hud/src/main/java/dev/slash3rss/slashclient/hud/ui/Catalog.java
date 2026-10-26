@@ -576,6 +576,8 @@ public final class Catalog {
 			new Toggle("slashclient-hud.sort.moveHotbar", () -> cfg.chestMoveHotbar, v -> cfg.chestMoveHotbar = v),
 			new Text("slashclient-hud.sort.offServers", "slashclient-hud.sort.offServersHint", 200, () -> cfg.sortOffServers, v -> cfg.sortOffServers = v)), null));
 		out.add(new Entry("shulkerPreview", "slashclient-hud.shulkerPreview", "extras", "m-shulker", () -> cfg.shulkerPreview, v -> cfg.shulkerPreview = v, List.of(), null));
+		out.add(new Entry("enchantColors", "slashclient-hud.enchantColors", "extras", "m-enchant", () -> cfg.enchantColors, v -> cfg.enchantColors = v, List.of(
+			new Note("slashclient-hud.enchantColors.note", () -> new Object[0])), null));
 		out.add(new Entry("inventorySearch", "slashclient-hud.invSearch", "extras", "m-invsearch", () -> cfg.inventorySearch, v -> cfg.inventorySearch = v, List.of(), null));
 		out.add(new Entry("slotLock", "slashclient-hud.slotLock", "combat", "m-slotlock", () -> cfg.slotLock, v -> cfg.slotLock = v, List.of(), null));
 		out.add(new Entry("compactHearts", "slashclient-hud.game.compactHearts", "game", "m-hearts", () -> cfg.compactHearts, v -> cfg.compactHearts = v, List.of(), null));

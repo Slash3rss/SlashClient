@@ -849,6 +849,8 @@
 	"slashclient-hud.dropGuard.again": "Naciśnij jeszcze raz, żeby wyrzucić: %s",
 	"slashclient-hud.module.inventory": "Ekwipunek",
 	"slashclient-hud.shulkerPreview": "Podgląd zawartości shulkerów",
+	"slashclient-hud.enchantColors": "Kolory poziomów zaklęć",
+	"slashclient-hud.enchantColors.note": "Szary: poniżej połowy najwyższego poziomu, turkusowy: od połowy, złoty: najwyższy, różowy: ponad najwyższy (z serwera). Klątwy zostają czerwone.",
 	"slashclient-hud.invSearch": "Wyszukiwarka w ekwipunku",
 	"slashclient-hud.invSearch.hint": "Szukaj…",
 	"slashclient-hud.slotLock": "Blokada slotów paska",

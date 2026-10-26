@@ -849,6 +849,8 @@
 	"slashclient-hud.dropGuard.again": "Press again to drop: %s",
 	"slashclient-hud.module.inventory": "Inventory",
 	"slashclient-hud.shulkerPreview": "Shulker box preview",
+	"slashclient-hud.enchantColors": "Enchantment level colours",
+	"slashclient-hud.enchantColors.note": "Grey: below half of the highest level, aqua: from half up, gold: the highest, pink: above the highest (from a server). Curses stay red.",
 	"slashclient-hud.invSearch": "Search in inventories",
 	"slashclient-hud.invSearch.hint": "Search…",
 	"slashclient-hud.slotLock": "Hotbar slot lock",

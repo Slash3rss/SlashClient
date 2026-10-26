@@ -514,6 +514,8 @@ public final class HudConfig {
 	public boolean screenshotCaptionServer = true;
 	/** A shulker box's tooltip shows what is inside as a grid (ShulkerPreview). */
 	public boolean shulkerPreview = true;
+	/** Enchantments' names coloured by how high their level is (EnchantColors). */
+	public boolean enchantColors = true;
 	/** A search box over inventories and chests (InventorySearch). */
 	public boolean inventorySearch = true;
 	/** Locked hotbar slots keep their items (SlotLock); which ones, a bit for each slot. */
@@ -934,6 +936,7 @@ public final class HudConfig {
 		screenshotCaptionCoords = other.screenshotCaptionCoords;
 		screenshotCaptionServer = other.screenshotCaptionServer;
 		shulkerPreview = other.shulkerPreview;
+		enchantColors = other.enchantColors;
 		inventorySearch = other.inventorySearch;
 		slotLock = other.slotLock;
 		friendPlayingToasts = other.friendPlayingToasts;

@@ -648,6 +648,27 @@ public final class TestHooks {
 		if (name != null) Compat.setChatFilter(Compat.chat(net.minecraft.client.Minecraft.getInstance()), m -> true);
 	}
 
+	/** Enchantments' names as tooltips show them: each one's colour (hex) for a few levels, and with the setting off. */
+	public static String enchantColors() {
+		var reg = net.minecraft.client.Minecraft.getInstance().level.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT);
+		StringBuilder out = new StringBuilder();
+		Object[][] cases = { { net.minecraft.world.item.enchantment.Enchantments.SHARPNESS, 1 }, { net.minecraft.world.item.enchantment.Enchantments.SHARPNESS, 3 },
+			{ net.minecraft.world.item.enchantment.Enchantments.SHARPNESS, 5 }, { net.minecraft.world.item.enchantment.Enchantments.SHARPNESS, 6 },
+			{ net.minecraft.world.item.enchantment.Enchantments.MENDING, 1 }, { net.minecraft.world.item.enchantment.Enchantments.VANISHING_CURSE, 1 } };
+		for (int pass = 0; pass < 2; pass++) {
+			SlashHud.config.enchantColors = pass == 0;
+			for (Object[] c : cases) {
+				@SuppressWarnings("unchecked")
+				var key = (net.minecraft.resources.ResourceKey<net.minecraft.world.item.enchantment.Enchantment>) c[0];
+				var color = net.minecraft.world.item.enchantment.Enchantment.getFullname(reg.getOrThrow(key), (int) c[1]).getStyle().getColor();
+				out.append(color == null ? "none" : String.format("%06x", color.getValue())).append(' ');
+			}
+			out.append("| ");
+		}
+		SlashHud.config.enchantColors = true;
+		return out.toString().strip();
+	}
+
 	/** The setting that keeps pulled-out tabs' lines out of "All". */
 	public static void chatWindowsOnly(boolean on) {
 		SlashHud.config.chatWindowsOnly = on;
