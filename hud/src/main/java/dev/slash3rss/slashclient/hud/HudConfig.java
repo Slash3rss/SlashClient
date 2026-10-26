@@ -235,6 +235,8 @@ public final class HudConfig {
 	public boolean skyTasksShaman = true;
 	/** How often the daily task, while tracked and not done, is brought up (minutes); 0 = never. */
 	public int skyDailyRemind = 30;
+	/** The daily task reminder's sound: "default" (the bell), "none", or one of the chat tabs' (ChatTabs.SOUNDS). */
+	public String skyDailySound = "default";
 	/** SkyUp's fish counter: split by "none", "size", "species" or "quality"; their weight and value shown. */
 	public String skyFishSplit = "none";
 	public boolean skyFishWeight = true, skyFishValue = true;
@@ -725,6 +727,7 @@ public final class HudConfig {
 		skyTasksWidth = Math.max(100, Math.min(320, other.skyTasksWidth));
 		skyTasksCompact = other.skyTasksCompact;
 		skyDailyRemind = Math.max(0, Math.min(240, other.skyDailyRemind));
+		skyDailySound = other.skyDailySound == null ? "default" : other.skyDailySound;
 		skyTasksScroll = other.skyTasksScroll;
 		skyTasksShaman = other.skyTasksShaman;
 		skyTasksHideDone = other.skyTasksHideDone;

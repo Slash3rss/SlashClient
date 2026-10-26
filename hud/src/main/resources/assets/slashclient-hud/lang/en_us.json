@@ -1175,6 +1175,7 @@
 	"slashclient-hud.skyTasks.scroll": "Scroll rows that are too long",
 	"slashclient-hud.skyShaman.tools": "wand %s · other hand %s · level %s",
 	"slashclient-hud.skyTasks.shaman": "Shamanism recipe under a mob to summon",
+	"slashclient-hud.skyTasks.dailySound": "Reminder sound",
 	"slashclient-hud.module.skycase": "SkyCase drop counter",
 	"slashclient-hud.skyCase.screen": "SkyCase drops",
 	"slashclient-hud.skyCase.opened": "Opened",

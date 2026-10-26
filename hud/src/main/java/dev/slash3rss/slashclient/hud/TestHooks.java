@@ -2282,6 +2282,15 @@ public final class TestHooks {
 		return rows + "\ncount " + now;
 	}
 
+	/** The daily reminder's sound set so, as it is played ("" the bell); the setting put back after. */
+	public static String skyDailySound(String set) {
+		String keep = SlashHud.config.skyDailySound;
+		SlashHud.config.skyDailySound = set;
+		String out = SkyTasks.dailySound();
+		SlashHud.config.skyDailySound = keep;
+		return out;
+	}
+
 	/** The HUD's rows with the daily task tracked for a moment ("none" without the task). */
 	public static String skyDailyOnTop() {
 		var mc = net.minecraft.client.Minecraft.getInstance();

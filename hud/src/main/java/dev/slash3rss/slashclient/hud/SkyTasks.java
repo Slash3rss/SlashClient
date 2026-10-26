@@ -219,13 +219,23 @@ public final class SkyTasks {
 		remindAt = now + every;
 		Component what = dailyReminder(mc);
 		if (what == null) return;
-		mc.execute(() -> net.minecraft.client.gui.components.toasts.SystemToast.add(Compat.toasts(mc), net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
-			Component.translatable("slashclient-hud.skyTasks.dailyTitle"), what));
+		mc.execute(() -> {
+			net.minecraft.client.gui.components.toasts.SystemToast.add(Compat.toasts(mc), net.minecraft.client.gui.components.toasts.SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+				Component.translatable("slashclient-hud.skyTasks.dailyTitle"), what);
+			// with a sound of its own, as set (the chat tabs' sounds)
+			ChatTabs.playSound(mc, dailySound());
+		});
 	}
 
 	/** SkyUp's daily task ("Zadanie codzienne"). */
 	static boolean daily(SkyTaskParser.Task t) {
 		return nameKey(t.name).equals("zadanie codzienne");
+	}
+
+	/** The reminder's sound as ChatTabs plays them ("" the bell). */
+	static String dailySound() {
+		String s = SlashHud.config.skyDailySound;
+		return s == null || s.equals("default") ? "" : s;
 	}
 
 	/** What the reminder says: the daily task's requirements still to do ("Szkielet 0/6"), or that it is ready; null when none is tracked. */

@@ -264,6 +264,12 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.skyTasks.tierCount", () -> cfg.skyTasksTierCount, v -> cfg.skyTasksTierCount = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.joinHintSetting", () -> cfg.skyTasksJoinHint, v -> cfg.skyTasksJoinHint = v));
 					settings.add(new Slider("slashclient-hud.skyTasks.dailyRemind", 0f, 120f, 5f, "%.0f min", () -> (float) cfg.skyDailyRemind, v -> cfg.skyDailyRemind = Math.round(v)));
+					// the chat tabs' sounds ("default" the bell), heard when picked
+					String[] sounds = java.util.Arrays.stream(dev.slash3rss.slashclient.hud.ChatTabs.SOUNDS).map(s -> s.isEmpty() ? "default" : s).toArray(String[]::new);
+					settings.add(new Choice("slashclient-hud.skyTasks.dailySound", sounds, "slashclient-hud.chat.sound.", () -> cfg.skyDailySound, v -> {
+						cfg.skyDailySound = v;
+						dev.slash3rss.slashclient.hud.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), "default".equals(v) ? "" : v);
+					}));
 				}
 				case "skyfish" -> {
 					settings.add(new Choice("slashclient-hud.skyFish.split", new String[] { "none", "size", "species", "quality" }, "slashclient-hud.skyFish.split.",

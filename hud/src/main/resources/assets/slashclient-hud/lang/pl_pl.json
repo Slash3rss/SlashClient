@@ -1175,6 +1175,7 @@
 	"slashclient-hud.skyTasks.scroll": "Przewijaj za długie wiersze",
 	"slashclient-hud.skyShaman.tools": "różdżka %s · druga ręka %s · poziom %s",
 	"slashclient-hud.skyTasks.shaman": "Przepis szamaństwa pod mobem do przyzwania",
+	"slashclient-hud.skyTasks.dailySound": "Dźwięk przypomnienia",
 	"slashclient-hud.module.skycase": "Licznik dropu SkyCase",
 	"slashclient-hud.skyCase.screen": "Drop ze SkyCase",
 	"slashclient-hud.skyCase.opened": "Otwarte",
