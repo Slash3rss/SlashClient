@@ -41,6 +41,22 @@ function deviceName() {
   return `SlashClient Web · ${/iPhone|iPad|iPod/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Mac OS/.test(ua) ? 'macOS' : /Windows/.test(ua) ? 'Windows' : 'Linux'}`;
 }
 
+/**
+ * A new key for this phone, kept for good. Safari on the iPhone cannot keep the browser's own X25519
+ * key in its storage (the write fails without a word): a phone that kept nothing made a new key at
+ * every start, and the launcher asked about a "new device" each time. So the key is read back after
+ * it is written, and when it did not stay, it is made as plain bytes instead, which every browser keeps.
+ */
+async function keepNewKey(slot) {
+  for (const native of [undefined, false]) {
+    const key = await newDeviceKey(native);
+    const kept = await idbSet(slot, key).then(() => idbGet(slot)).catch((err) => console.error('klucz czatu:', err));
+    if (kept?.device === key.device && kept.privateKey) return key;
+  }
+  // nothing stays (a private window): this start's key, a new one next time
+  return newDeviceKey(false);
+}
+
 /** This phone's key for the account (made the first time), published to the server. */
 export async function startKeys(userId) {
   me = userId;
@@ -49,10 +65,8 @@ export async function startKeys(userId) {
   wraps.clear();
   wrapsAfter = 0;
   own = await idbGet(`chat:${userId}`).catch(() => undefined);
-  if (!own) {
-    own = await newDeviceKey();
-    await idbSet(`chat:${userId}`, own).catch((err) => console.error('klucz czatu:', err));
-  }
+  // (a key kept without its private part is no key)
+  if (!own?.privateKey) own = await keepNewKey(`chat:${userId}`);
   // every start: the server keeps each member's most recent devices, this one among them
   await api('POST', '/v1/keys', { device: own.device, pub: own.publicKey, name: deviceName() }).catch((err) => console.error('klucz czatu:', err));
   await wrapsChanged();
