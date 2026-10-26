@@ -2258,6 +2258,29 @@ public final class TestHooks {
 			+ " " + SkyIncubator.kind("Inkubator wodorostów") + " " + SkyIncubator.kind("Inkubator kakao");
 	}
 
+	/**
+	 * Shamanism: a task "Przyzwij: Wiedźma 0/1" tracked, the HUD's rows under it (the recipe), then a
+	 * summon (SkyUp's line after a click on a campfire) and the requirement's count.
+	 */
+	public static String skyShaman() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		SkyTaskParser.Task t = SkyTaskParser.parse("Wtajemniczony", "» Szamaństwo «", java.util.List.of("Opis » Przyzwij wiedźmę.", "", "Przyzwij:", "  » Wiedźma: 0/1", "",
+			"Za ukończenie otrzymasz:", "  » 100.0 SC"));
+		t.seen = System.currentTimeMillis();
+		SkyTasks.data().tasks.put(t.key(), t);
+		if (!SkyTasks.tracked(t)) SkyTasks.toggle(t);
+		int max = SlashHud.config.skyTasksMax;
+		SlashHud.config.skyTasksMax = 10;
+		String rows = SkyTasks.debugRows(mc);
+		SlashHud.config.skyTasksMax = max;
+		SkyShaman.pendingForTest("Wiedźma");
+		SkyCounters.onChat(net.minecraft.network.chat.Component.literal("Szamaństwo » To… to… TO ŻYJE!!!"));
+		long now = t.sections.get(0).items.get(0).current + t.sections.get(0).items.get(0).extra;
+		SkyTasks.toggle(t);
+		SkyTasks.data().tasks.remove(t.key());
+		return rows + "\ncount " + now;
+	}
+
 	/** The HUD's first row with the daily task tracked for a moment ("none" without the task). */
 	public static String skyDailyOnTop() {
 		var mc = net.minecraft.client.Minecraft.getInstance();

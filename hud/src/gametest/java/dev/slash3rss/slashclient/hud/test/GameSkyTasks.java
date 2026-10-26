@@ -207,6 +207,9 @@ public class GameSkyTasks implements FabricClientGameTest {
 			// an incubator's window: cocoa in its cost is the sugar cane one, at level 5 (its speed-up); no cactus one seen
 			String incubator = context.computeOnClient(mc -> TestHooks.skyIncubator());
 			check(incubator.equals("5 -1 dynia wodorosty null"), "the incubator's level", incubator);
+			// shamanism: the witch's recipe under the task (nothing in hand: all missing), then a summon counted
+			String shaman = context.computeOnClient(mc -> TestHooks.skyShaman());
+			check(shaman.contains("✖ Redstone Torch") && shaman.contains("✖ Glass Bottle") && shaman.contains("Rotten Flesh 0/20") && shaman.endsWith("count 1"), "shamanism", shaman);
 			// the daily task: nothing to remind of until it is tracked, then what is left of it
 			String daily = context.computeOnClient(mc -> TestHooks.skyDaily());
 			check(daily.equals("null | Still to do: Buraki 0/3888"), "the daily task's reminder (untracked | tracked)", daily);

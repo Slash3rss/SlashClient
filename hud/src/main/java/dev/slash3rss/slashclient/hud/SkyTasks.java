@@ -847,6 +847,11 @@ public final class SkyTasks {
 						bar = cfg.skyTasksCompact || spent < 0 ? -1 : Math.min(1f, (float) spent / points);
 					}
 					out.add(new Row((met ? "✔ " : "• ") + thing, met ? 0xFF6B7280 : WHITE, progress, met ? GREEN : WHITE, bar, 6));
+					// a mob to summon: its shamanism recipe, with what is missing
+					if (!met && !cfg.skyTasksCompact && cfg.skyTasksShaman && SkyCounters.kind(s) == SkyCounters.Kind.SUMMON) {
+						SkyShaman.Mob mob = SkyShaman.named(r.thing);
+						if (mob != null) for (String l : SkyShaman.lacking(mc, mob)) out.add(new Row(l, l.contains("✖") ? 0xFFFBBF24 : 0xFFF87171, "", 0, -1, 12));
+					}
 				}
 			}
 			if (cfg.skyTasksRewards && !t.rewards.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyTasks.reward", String.join(", ", t.rewards)).getString(), 0xFF60A5FA, "", 0, -1, 6));

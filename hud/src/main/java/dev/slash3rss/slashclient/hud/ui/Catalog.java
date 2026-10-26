@@ -259,6 +259,7 @@ public final class Catalog {
 					settings.add(new Slider("slashclient-hud.skyTasks.width", 100f, 320f, 10f, "%.0f px", () -> (float) cfg.skyTasksWidth, v -> cfg.skyTasksWidth = Math.round(v)));
 					settings.add(new Toggle("slashclient-hud.skyTasks.compact", () -> cfg.skyTasksCompact, v -> cfg.skyTasksCompact = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.scroll", () -> cfg.skyTasksScroll, v -> cfg.skyTasksScroll = v));
+					settings.add(new Toggle("slashclient-hud.skyTasks.shaman", () -> cfg.skyTasksShaman, v -> cfg.skyTasksShaman = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.hideDone", () -> cfg.skyTasksHideDone, v -> cfg.skyTasksHideDone = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.rewards", () -> cfg.skyTasksRewards, v -> cfg.skyTasksRewards = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.trackAll", () -> cfg.skyTasksTrackAll, v -> cfg.skyTasksTrackAll = v));

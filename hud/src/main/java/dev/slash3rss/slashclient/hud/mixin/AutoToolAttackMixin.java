@@ -20,5 +20,9 @@ abstract class AutoToolAttackMixin {
 	@Inject(method = "startUseItem", at = @At("HEAD"))
 	private void slashclient$shears(org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
 		dev.slash3rss.slashclient.hud.Assist.beforeUse((Minecraft) (Object) this);
+		//#if MC >= 26.3
+		// a click on a campfire with a shaman's wand: the mob coming is remembered for SkyUp's line after
+		dev.slash3rss.slashclient.hud.SkyShaman.used((Minecraft) (Object) this);
+		//#endif
 	}
 }

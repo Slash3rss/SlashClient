@@ -233,6 +233,8 @@ public final class HudConfig {
 	public boolean skyTasksJoinHint = true;
 	/** Rows too long for the tasks module slide along instead of ending with "…". */
 	public boolean skyTasksScroll = true;
+	/** Under a mob to summon: its shamanism recipe (wand, main item, level) and the materials still missing. */
+	public boolean skyTasksShaman = true;
 	/** How often the daily task, while tracked and not done, is brought up (minutes); 0 = never. */
 	public int skyDailyRemind = 30;
 	/** SkyUp's fish counter: split by "none", "size", "species" or "quality"; their weight and value shown. */
@@ -727,6 +729,7 @@ public final class HudConfig {
 		skyTasksCompact = other.skyTasksCompact;
 		skyDailyRemind = Math.max(0, Math.min(240, other.skyDailyRemind));
 		skyTasksScroll = other.skyTasksScroll;
+		skyTasksShaman = other.skyTasksShaman;
 		skyTasksHideDone = other.skyTasksHideDone;
 		skyTasksRewards = other.skyTasksRewards;
 		skyTasksTrackAll = other.skyTasksTrackAll;

@@ -41,7 +41,7 @@ public final class SkyCounters {
 	private SkyCounters() {}
 
 	/** The kind of a section, from its header. */
-	enum Kind { BREAK, PLACE, CRAFT, EAT, FISH, KILL, NEAR, OTHER }
+	enum Kind { BREAK, PLACE, CRAFT, EAT, FISH, KILL, NEAR, SUMMON, OTHER }
 
 	static Kind kind(SkyTaskParser.Section s) {
 		String h = s.header.toLowerCase(Locale.ROOT);
@@ -52,6 +52,7 @@ public final class SkyCounters {
 		if (h.startsWith("wyłów")) return Kind.FISH;
 		if (h.startsWith("zabij")) return Kind.KILL;
 		if (h.startsWith("stój obok") || h.startsWith("stań obok")) return Kind.NEAR;
+		if (h.startsWith("przyzwij")) return Kind.SUMMON;
 		return Kind.OTHER;
 	}
 
@@ -391,6 +392,8 @@ public final class SkyCounters {
 	 */
 	public static void onChat(net.minecraft.network.chat.Component message) {
 		String plain = SkyTaskParser.plain(message.getString());
+		// a mob summoned with shamanism (SkyShaman)
+		if (SkyTasks.onSkyUp(Minecraft.getInstance())) SkyShaman.onChat(plain);
 		if (!plain.contains("Wyłowiono") || !SkyTasks.onSkyUp(Minecraft.getInstance())) return;
 		var fish = message.visit((net.minecraft.network.chat.Style style, String text) ->
 			style.getHoverEvent() instanceof net.minecraft.network.chat.HoverEvent.ShowItem show ? java.util.Optional.of(show.item().create()) : java.util.Optional.<ItemStack>empty(),
