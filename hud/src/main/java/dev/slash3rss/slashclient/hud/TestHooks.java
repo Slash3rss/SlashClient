@@ -2243,8 +2243,8 @@ public final class TestHooks {
 	}
 
 	/**
-	 * An incubator's window as SkyUp sends it (the owner's dumps: cocoa at level 5) seen, then what a
-	 * task's requirement reads: "kakao, kaktusów, Ziarna" levels.
+	 * An incubator's window as SkyUp sends it (the owner's dump: cocoa in its cost, so the sugar cane one,
+	 * at level 5) seen, then what tasks' requirements read: the cane's and the cactus' levels, and kinds named.
 	 */
 	public static String skyIncubator() {
 		java.util.List<net.minecraft.world.item.ItemStack> items = new java.util.ArrayList<>();
@@ -2254,8 +2254,8 @@ public final class TestHooks {
 		for (int i = 9; i < 15; i++) items.set(i, task(net.minecraft.world.item.Items.GLASS_PANE, "Status", "▪ Przyspieszenie » x5/x500",
 			"▪ Prędkość inkubacji » 18,46/min (0,92/3s)", "▪ Stan magazynu » 1", "▪ Pojemność magazynu » 2 225"));
 		SkyIncubator.seen(items);
-		return SkyIncubator.level("Inkubator kakao") + " " + SkyIncubator.level("Inkubator kaktusów") + " " + SkyIncubator.sameCrop("buraków", "nasiona buraka")
-			+ " " + SkyIncubator.sameCrop("marchewek", "marchewka") + " " + SkyIncubator.sameCrop("kaktusów", "ziemniak");
+		return SkyIncubator.level("Inkubator trzciny") + " " + SkyIncubator.level("Inkubator kaktusów") + " " + SkyIncubator.kind("Inkubator dyń")
+			+ " " + SkyIncubator.kind("Inkubator wodorostów") + " " + SkyIncubator.kind("Inkubator kakao");
 	}
 
 	/** The HUD's first row with the daily task tracked for a moment ("none" without the task). */

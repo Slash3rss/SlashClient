@@ -15,14 +15,25 @@ import java.util.regex.Pattern;
 
 /**
  * Incubators' levels, read from their windows for tasks like "Posiadaj na wyspie co najmniej:
- * Inkubator kaktusów: 1 poz.". SkyUp names neither the level nor the crop there: the level is the
+ * Inkubator kaktusów: 1 poz.". SkyUp names neither the level nor the kind there: the level is the
  * speed-up ("Przyspieszenie » x5/x500" is level 5: its speed is five times the first level's), and the
- * crop is in the upgrade's cost ("Ziarna kakaowe: 240/240", next to logs and rarer things). Each
- * cost's item keeps the highest level seen with it; a task's crop ("kaktusów") is matched to an
- * item by the start of the word ("Kaktus").
+ * kind is told by the upgrade's cost, each kind's own (skyup.pl/wiki/inkubatory): cactus – potatoes and
+ * oak logs, pumpkins – wheat seeds and dark oak, melons – beetroot seeds and pale oak, sugar cane – cocoa
+ * and jungle logs, bamboo – nether wart and cherry, kelp – carrots and birch.
  */
 public final class SkyIncubator {
 	private SkyIncubator() {}
+
+	/** A kind: its name kept, what its upgrade costs (the start of the items' names) and how tasks write it. */
+	private record Kind(String id, List<String> costs, List<String> asked) {}
+
+	private static final List<Kind> KINDS = List.of(
+		new Kind("kaktus", List.of("ziemniak", "dębowy pień", "sproszkowany redstone"), List.of("kaktus")),
+		new Kind("dynia", List.of("nasiona pszenicy", "ciemnodębowy pień", "odłamek netherytu"), List.of("dyń", "dyni", "dynia")),
+		new Kind("arbuz", List.of("nasiona buraka", "bladodębowy pień", "łza ghasta"), List.of("arbuz")),
+		new Kind("trzcina", List.of("ziarna kakaowe", "tropikalny pień", "szmaragd"), List.of("trzcin")),
+		new Kind("bambus", List.of("netherowa brodawka", "wiśniowy pień", "dowolny odłamek ceramiki"), List.of("bambus")),
+		new Kind("wodorosty", List.of("marchewka", "brzozowy pień", "sashimi"), List.of("wodoros")));
 
 	private static final Pattern SPEED_UP = Pattern.compile("(?i)Przyspieszenie\\s*»\\s*x\\s*(\\d+)");
 	private static final Pattern COST = Pattern.compile("^»?\\s*(.+?)\\s*:\\s*[\\d  ]+\\s*/\\s*[\\d  ]+\\s*$");
@@ -39,8 +50,8 @@ public final class SkyIncubator {
 		return out;
 	}
 
-	/** An incubator's window: its level and the items of its upgrade's cost; null for any other window. */
-	static Map.Entry<Integer, List<String>> read(List<ItemStack> items) {
+	/** An incubator's window: its kind and level; null for any other window (or a kind not known). */
+	static Map.Entry<String, Integer> read(List<ItemStack> items) {
 		int level = -1;
 		List<String> costs = new ArrayList<>();
 		for (ItemStack it : items) {
@@ -58,25 +69,37 @@ public final class SkyIncubator {
 						continue;
 					}
 					Matcher m = COST.matcher(l);
-					if (cost && m.matches() && !m.group(1).equalsIgnoreCase("koszt")) costs.add(m.group(1).toLowerCase(Locale.ROOT));
+					if (cost && m.matches()) costs.add(m.group(1).toLowerCase(Locale.ROOT));
 				}
 			}
 		}
-		return level < 0 || costs.isEmpty() ? null : Map.entry(level, costs);
+		if (level < 0) return null;
+		// the kind whose items the cost has the most of (one is enough; a "dębowy" log is no "ciemnodębowy" one)
+		Kind best = null;
+		int most = 0;
+		for (Kind k : KINDS) {
+			int n = 0;
+			for (String c : costs) for (String want : k.costs()) if (c.equals(want) || c.startsWith(want + " ") || want.startsWith(c)) n++;
+			if (n > most) {
+				most = n;
+				best = k;
+			}
+		}
+		return best == null ? null : Map.entry(best.id(), level);
 	}
 
-	/** A window seen: when it is an incubator's, each of its upgrade's items keeps the highest level. */
+	/** A window seen: when it is an incubator's, its kind keeps the highest level. */
 	static void seen(List<ItemStack> items) {
 		var read = read(items);
 		if (read == null) return;
 		SkyTasks.Data d = SkyTasks.data();
 		if (d.incubators == null) d.incubators = new LinkedHashMap<>();
-		for (String item : read.getValue()) {
-			Integer old = d.incubators.get(item);
-			if (old == null || read.getKey() > old) {
-				d.incubators.put(item, read.getKey());
-				SkyTasks.dirty = true;
-			}
+		// from before the kinds were known (keyed by an item of the cost): forgotten
+		d.incubators.keySet().removeIf(k -> KINDS.stream().noneMatch(kind -> kind.id().equals(k)));
+		Integer old = d.incubators.get(read.getKey());
+		if (old == null || read.getValue() > old) {
+			d.incubators.put(read.getKey(), read.getValue());
+			SkyTasks.dirty = true;
 		}
 	}
 
@@ -85,29 +108,22 @@ public final class SkyIncubator {
 		return NEEDED.matcher(SkyTaskParser.plain(thing)).matches();
 	}
 
+	/** The kind a requirement names ("kaktusów" is the cactus one), or null. */
+	static String kind(String thing) {
+		Matcher m = NEEDED.matcher(SkyTaskParser.plain(thing));
+		if (!m.matches()) return null;
+		String what = m.group(1).toLowerCase(Locale.ROOT);
+		for (Kind k : KINDS) for (String a : k.asked()) if (what.startsWith(a)) return k.id();
+		return null;
+	}
+
 	/** The highest level seen of the incubator a requirement names; -1 when none of its kind was opened yet. */
 	static int level(String thing) {
-		Matcher m = NEEDED.matcher(SkyTaskParser.plain(thing));
+		String kind = kind(thing);
 		Map<String, Integer> seen = SkyTasks.data().incubators;
-		if (!m.matches() || seen == null) return -1;
-		int best = -1;
-		for (var e : seen.entrySet()) if (sameCrop(m.group(1), e.getKey())) best = Math.max(best, e.getValue());
-		return best;
-	}
-
-	/** "kaktusów" and "Kaktus", "buraków" and "Nasiona buraka": a word of each starting alike (5 letters, or the whole of a shorter one). */
-	static boolean sameCrop(String wanted, String item) {
-		for (String w : words(wanted)) for (String v : words(item)) {
-			int need = Math.min(5, Math.min(w.length(), v.length()));
-			if (need >= 4 && w.regionMatches(0, v, 0, need)) return true;
-		}
-		return false;
-	}
-
-	private static List<String> words(String s) {
-		List<String> out = new ArrayList<>();
-		for (String w : s.toLowerCase(Locale.ROOT).split("[^\\p{L}]+")) if (w.length() >= 4) out.add(w);
-		return out;
+		if (kind == null || seen == null) return -1;
+		Integer v = seen.get(kind);
+		return v == null ? -1 : v;
 	}
 }
 //#endif
