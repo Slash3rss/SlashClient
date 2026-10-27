@@ -23,6 +23,21 @@ public interface HudModule {
 		return false;
 	}
 
+	/** Whether its text takes the text colour option (not when it colours its text itself, e.g. ping by how good it is). */
+	default boolean textColored() {
+		return !bare();
+	}
+
+	/** Whether it has text whose shadow can be switched. */
+	default boolean shadowed() {
+		return !bare();
+	}
+
+	/** Whether the box and the outline go around it now (not around a round map). */
+	default boolean framed() {
+		return !bare();
+	}
+
 	/** What the editor shows while the module has nothing real to show. */
 	default void drawPreview(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
 		draw(g, mc, x, y);

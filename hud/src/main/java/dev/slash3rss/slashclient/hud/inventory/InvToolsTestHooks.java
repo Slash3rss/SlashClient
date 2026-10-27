@@ -84,6 +84,11 @@ public final class InvToolsTestHooks {
 		return InventorySearch.search(text);
 	}
 
+	/** Whether the search finds a line of an item's text by a query typed without Polish letters. */
+	public static boolean searchFinds(String line, String query) {
+		return InventorySearch.plain(line).contains(InventorySearch.plain(query));
+	}
+
 	public static boolean searchFocused() {
 		return InventorySearch.focused();
 	}

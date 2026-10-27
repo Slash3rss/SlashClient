@@ -1016,7 +1016,7 @@ public final class SkyTasks {
 			int over = mc.font.width(r.left) - room;
 			if (over > 0 && SlashHud.config.skyTasksScroll) {
 				// too long: it slides along and back (as in the Spotify module), each row on its own clock
-				NowPlayingModule.slide(g, mc, r.left, left + r.indent, row, room, Modules.color(r.leftColor), Modules.shadow(), Ui.marqueeShift("skytasks:" + r.left, over));
+				NowPlayingModule.slide(g, mc, r.left, left + r.indent, row, room, r.leftColor, Modules.shadow(), Ui.marqueeShift("skytasks:" + r.left, over));
 			} else {
 				String text = over > 0 ? mc.font.plainSubstrByWidth(r.left, room - mc.font.width("…")) + "…" : r.left;
 				Modules.text(g, mc, text, left + r.indent, row, r.leftColor);
@@ -1024,7 +1024,7 @@ public final class SkyTasks {
 			if (r.badge) {
 				int bw = rightWidth(mc, r), bx = left + w - bw;
 				Ui.round(g, bx, row - 1, bw, mc.font.lineHeight + 1, 2, 0xFF16A34A);
-				g.text(mc.font, r.right, bx + 3, row, r.rightColor, false);
+				g.text(mc.font, r.right, bx + 3, row, r.rightColor, Modules.shadow());
 			} else if (!r.right.isEmpty()) Modules.text(g, mc, r.right, left + w - mc.font.width(r.right), row, r.rightColor);
 			if (r.bar >= 0) {
 				int by = row + mc.font.lineHeight + 1, bx = left + r.indent + 8;
@@ -1039,6 +1039,11 @@ public final class SkyTasks {
 	public static final class Module implements HudModule {
 		public String id() {
 			return "skytasks";
+		}
+
+		@Override
+		public boolean textColored() {
+			return false;
 		}
 
 		@Override

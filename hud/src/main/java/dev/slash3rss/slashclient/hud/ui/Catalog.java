@@ -152,6 +152,13 @@ public final class Catalog {
 		settings.add(new Toggle("slashclient-hud.streams.fade", () -> s.get().fade, v -> s.get().fade = v));
 	}
 
+	/** Where a value's colour stops being green and where it turns red (the two may go either way: more FPS is better, more ping worse). */
+	private static void thresholds(List<Setting> settings, float min, float max, float step, String format,
+		Supplier<Integer> good, Consumer<Integer> setGood, Supplier<Integer> bad, Consumer<Integer> setBad) {
+		settings.add(new Slider("slashclient-hud.set.gradeGood", min, max, step, format, () -> (float) good.get(), v -> setGood.accept(Math.round(v))));
+		settings.add(new Slider("slashclient-hud.set.gradeBad", min, max, step, format, () -> (float) bad.get(), v -> setBad.accept(Math.round(v))));
+	}
+
 	public static List<Entry> entries(Runnable openChatTabs) {
 		HudConfig cfg = SlashHud.config;
 		List<Entry> out = new ArrayList<>();
@@ -170,8 +177,12 @@ public final class Catalog {
 				new Toggle("slashclient-hud.set.ownColor", () -> p.color != null, v -> p.color = v ? cfg.textColor : null),
 				new Colors("slashclient-hud.textColor", COLORS, () -> p.textColor(cfg), v -> p.color = v),
 				new Toggle("slashclient-hud.shadow", () -> p.shadow(cfg), v -> p.shadow = v)));
-			// a picture without text: the box and text options would do nothing
-			if (m.bare()) settings.subList(1, settings.size()).clear();
+			// only what does something for it: a picture has no box, a module colouring its text itself takes no text colour
+			java.util.Set<String> pointless = new java.util.HashSet<>();
+			if (m.bare()) pointless.addAll(List.of("slashclient-hud.background", "slashclient-hud.set.opacity", "slashclient-hud.set.outline", "slashclient-hud.set.ownRadius", "slashclient-hud.set.radius"));
+			if (!m.textColored()) pointless.addAll(List.of("slashclient-hud.set.ownColor", "slashclient-hud.textColor"));
+			if (!m.shadowed()) pointless.add("slashclient-hud.shadow");
+			settings.removeIf(s -> pointless.contains(s.labelKey()));
 			// options of single modules
 			switch (m.id()) {
 				case "clock" -> {
@@ -196,7 +207,9 @@ public final class Catalog {
 				}
 				case "coords" -> {
 					settings.add(new Slider("slashclient-hud.set.coordsDecimals", 0f, 2f, 1f, "%.0f", () -> (float) cfg.coordsDecimals, v -> cfg.coordsDecimals = Math.round(v)));
+					settings.add(new Toggle("slashclient-hud.set.coordsY", () -> cfg.coordsY, v -> cfg.coordsY = v));
 					settings.add(new Toggle("slashclient-hud.set.coordsFacing", () -> cfg.coordsFacing, v -> cfg.coordsFacing = v));
+					settings.add(new Toggle("slashclient-hud.set.coordsOneLine", () -> cfg.coordsOneLine, v -> cfg.coordsOneLine = v));
 				}
 				case "dungeonmap" -> {
 					settings.add(new Toggle("slashclient-hud.dungeon.plan", () -> cfg.dungeonPlan, v -> cfg.dungeonPlan = v));
@@ -296,7 +309,38 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.skyWardrobe.names", () -> cfg.skyWardrobeNames, v -> cfg.skyWardrobeNames = v));
 					settings.add(new Toggle("slashclient-hud.skyWardrobe.status", () -> cfg.skyWardrobeStatus, v -> cfg.skyWardrobeStatus = v));
 				}
-				case "fps" -> settings.add(new Toggle("slashclient-hud.set.fpsColored", () -> cfg.fpsColored, v -> cfg.fpsColored = v));
+				case "fps" -> {
+					settings.add(new Toggle("slashclient-hud.set.fpsColored", () -> cfg.fpsColored, v -> cfg.fpsColored = v));
+					thresholds(settings, 10f, 240f, 5f, "%.0f FPS", () -> cfg.fpsGood, v -> cfg.fpsGood = v, () -> cfg.fpsBad, v -> cfg.fpsBad = v);
+				}
+				case "ping" -> thresholds(settings, 10f, 1000f, 10f, "%.0f ms", () -> cfg.pingGood, v -> cfg.pingGood = v, () -> cfg.pingBad, v -> cfg.pingBad = v);
+				case "memory" -> thresholds(settings, 5f, 100f, 5f, "%.0f%%", () -> cfg.memoryGood, v -> cfg.memoryGood = v, () -> cfg.memoryBad, v -> cfg.memoryBad = v);
+				case "cpu" -> thresholds(settings, 5f, 100f, 5f, "%.0f%%", () -> cfg.cpuGood, v -> cfg.cpuGood = v, () -> cfg.cpuBad, v -> cfg.cpuBad = v);
+				case "gpu" -> thresholds(settings, 5f, 100f, 5f, "%.0f%%", () -> cfg.gpuGood, v -> cfg.gpuGood = v, () -> cfg.gpuBad, v -> cfg.gpuBad = v);
+				case "speed" -> settings.add(new Slider("slashclient-hud.set.coordsDecimals", 0f, 3f, 1f, "%.0f", () -> (float) cfg.speedDecimals, v -> cfg.speedDecimals = Math.round(v)));
+				case "armor" -> {
+					settings.add(new Choice("slashclient-hud.set.armorDurability", HudConfig.ARMOR_DURABILITY, "slashclient-hud.armorDurability.", () -> cfg.armorDurability, v -> cfg.armorDurability = v));
+					settings.add(new Toggle("slashclient-hud.set.armorHorizontal", () -> cfg.armorHorizontal, v -> cfg.armorHorizontal = v));
+					settings.add(new Toggle("slashclient-hud.set.armorHand", () -> cfg.armorHand, v -> cfg.armorHand = v));
+				}
+				case "durability" -> {
+					settings.add(new Choice("slashclient-hud.set.durabilityFormat", HudConfig.DURABILITY_FORMATS, "slashclient-hud.durabilityFormat.", () -> cfg.durabilityFormat, v -> cfg.durabilityFormat = v));
+					settings.add(new Toggle("slashclient-hud.set.durabilityBar", () -> cfg.durabilityBar, v -> cfg.durabilityBar = v));
+					settings.add(new Slider("slashclient-hud.set.durabilityWarn", 0f, 50f, 5f, "%.0f%%", () -> (float) cfg.durabilityWarn, v -> cfg.durabilityWarn = Math.round(v)));
+				}
+				case "keystrokes" -> {
+					settings.add(new Colors("slashclient-hud.set.keystrokesPressed", OUTLINE_COLORS, () -> cfg.keystrokesPressed, v -> cfg.keystrokesPressed = v));
+					settings.add(new Toggle("slashclient-hud.set.keystrokesMouse", () -> cfg.keystrokesMouse, v -> cfg.keystrokesMouse = v));
+					settings.add(new Toggle("slashclient-hud.set.keystrokesCps", () -> cfg.keystrokesCps, v -> cfg.keystrokesCps = v));
+					settings.add(new Toggle("slashclient-hud.set.keystrokesSpace", () -> cfg.keystrokesSpace, v -> cfg.keystrokesSpace = v));
+				}
+				case "target" -> {
+					settings.add(new Toggle("slashclient-hud.set.targetBar", () -> cfg.targetBar, v -> cfg.targetBar = v));
+					settings.add(new Toggle("slashclient-hud.set.targetDistance", () -> cfg.targetDistance, v -> cfg.targetDistance = v));
+				}
+				case "compass" -> settings.add(new Toggle("slashclient-hud.set.compassDegrees", () -> cfg.compassDegrees, v -> cfg.compassDegrees = v));
+				case "friends" -> settings.add(new Slider("slashclient-hud.set.friendsRows", 1f, 15f, 1f, "%.0f", () -> (float) cfg.friendsRows, v -> cfg.friendsRows = Math.round(v)));
+				case "inventory" -> settings.add(new Toggle("slashclient-hud.set.inventoryHotbar", () -> cfg.inventoryHotbar, v -> cfg.inventoryHotbar = v));
 				case "twitchchat", "kickchat" -> streamChat(settings, m.id().equals("kickchat") ? () -> cfg.kickChat : () -> cfg.twitchChat, m.id().equals("kickchat"));
 				case "spotify" -> dev.slash3rss.slashclient.hud.NowPlayingModule.settings(settings, () -> SlashHud.config.spotify);
 				default -> {}
@@ -430,7 +474,9 @@ public final class Catalog {
 			new Colors("slashclient-hud.textColor", COLORS, () -> cfg.textColor, v -> cfg.textColor = v),
 			new Toggle("slashclient-hud.shadow", () -> cfg.textShadow, v -> cfg.textShadow = v),
 			new Toggle("slashclient-hud.set.backgroundAll", () -> cfg.background, v -> cfg.background = v),
-			new Slider("slashclient-hud.set.radiusAll", 0f, HudConfig.MAX_RADIUS, 1f, "%.0f px", () -> (float) cfg.cornerRadius, v -> cfg.cornerRadius = Math.round(v))), null));
+			new Colors("slashclient-hud.set.backgroundColor", OUTLINE_COLORS, () -> cfg.backgroundColor, v -> cfg.backgroundColor = v),
+			new Slider("slashclient-hud.set.radiusAll", 0f, HudConfig.MAX_RADIUS, 1f, "%.0f px", () -> (float) cfg.cornerRadius, v -> cfg.cornerRadius = Math.round(v)),
+			new Colors("slashclient-hud.set.outlineColor", OUTLINE_COLORS, () -> cfg.outlineColor, v -> cfg.outlineColor = v)), null));
 		out.add(new Entry("badges", "slashclient-hud.set.badges", "extras", "m-badges", () -> cfg.badges, v -> cfg.badges = v, List.of(
 			new Toggle("slashclient-hud.set.badges.clans", () -> cfg.clanTags, v -> cfg.clanTags = v)), null));
 		out.add(new Entry("killEffects", "slashclient-hud.set.killEffects", "extras", "m-kd", () -> cfg.killEffects, v -> cfg.killEffects = v, List.of(
@@ -582,9 +628,16 @@ public final class Catalog {
 			v -> risky(v, () -> cfg.autoTool = v), List.of(
 			new Toggle("slashclient-hud.assist.restore", () -> cfg.autoToolRestore, v -> cfg.autoToolRestore = v),
 			new Toggle("slashclient-hud.assist.toolBlocks", () -> cfg.autoToolBlocks, v -> cfg.autoToolBlocks = v),
+			// blocks more than one kind of tool digs: which one
+			new Choice("slashclient-hud.assist.toolLeaves", HudConfig.AUTO_TOOL_LEAVES, "slashclient-hud.assist.toolBlock.", () -> cfg.autoToolLeaves, v -> cfg.autoToolLeaves = v),
+			new Choice("slashclient-hud.assist.toolCobweb", HudConfig.AUTO_TOOL_COBWEB, "slashclient-hud.assist.toolBlock.", () -> cfg.autoToolCobweb, v -> cfg.autoToolCobweb = v),
+			new Choice("slashclient-hud.assist.toolBamboo", HudConfig.AUTO_TOOL_BAMBOO, "slashclient-hud.assist.toolBlock.", () -> cfg.autoToolBamboo, v -> cfg.autoToolBamboo = v),
+			new Choice("slashclient-hud.assist.toolGourds", HudConfig.AUTO_TOOL_GOURDS, "slashclient-hud.assist.toolBlock.", () -> cfg.autoToolGourds, v -> cfg.autoToolGourds = v),
 			new Toggle("slashclient-hud.assist.toolWeapons", () -> cfg.autoToolWeapons, v -> cfg.autoToolWeapons = v),
+			new Choice("slashclient-hud.assist.toolWeapon", HudConfig.AUTO_TOOL_WEAPONS, "slashclient-hud.assist.toolWeapon.", () -> cfg.autoToolWeapon, v -> cfg.autoToolWeapon = v),
 			new Toggle("slashclient-hud.assist.toolShears", () -> cfg.autoToolShears, v -> cfg.autoToolShears = v),
 			new Toggle("slashclient-hud.assist.toolMilk", () -> cfg.autoToolMilk, v -> cfg.autoToolMilk = v),
+			new Choice("slashclient-hud.assist.toolMooshroom", HudConfig.AUTO_TOOL_MOOSHROOM, "slashclient-hud.assist.toolMooshroom.", () -> cfg.autoToolMooshroom, v -> cfg.autoToolMooshroom = v),
 			new Toggle("slashclient-hud.assist.toolFish", () -> cfg.autoToolFish, v -> cfg.autoToolFish = v),
 			new Toggle("slashclient-hud.assist.toolBrush", () -> cfg.autoToolBrush, v -> cfg.autoToolBrush = v),
 			new Toggle("slashclient-hud.assist.toolFeed", () -> cfg.autoToolFeed, v -> cfg.autoToolFeed = v)), null));

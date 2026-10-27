@@ -58,6 +58,26 @@ public class GameInventoryTools implements FabricClientGameTest {
 				return fromBackpack + " " + fromHotbar;
 			});
 			if (!slots.equals("20 3")) throw new AssertionError("Auto tool slots (backpack, then hotbar): " + slots);
+			// leaves: the shears are the fastest, a hoe when hoes are preferred for leaves; stone is not leaves
+			String preferred = context.computeOnClient(mc -> {
+				var inv = mc.player.getInventory();
+				var cfg = dev.slash3rss.slashclient.hud.SlashHud.config;
+				var keep3 = inv.getItem(3).copy();
+				var keep20 = inv.getItem(20).copy();
+				inv.setItem(3, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.SHEARS));
+				inv.setItem(20, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_HOE));
+				var leaves = net.minecraft.world.level.block.Blocks.OAK_LEAVES.defaultBlockState();
+				String out = TestHooks.autoToolSlot(inv, leaves) + "";
+				cfg.autoToolLeaves = "hoe";
+				out += " " + TestHooks.autoToolSlot(inv, leaves);
+				out += " " + TestHooks.autoToolSlot(inv, net.minecraft.world.level.block.Blocks.DIRT.defaultBlockState());
+				cfg.autoToolLeaves = "fastest";
+				inv.setItem(3, keep3);
+				inv.setItem(20, keep20);
+				return out;
+			});
+			if (!preferred.equals("3 20 " + context.computeOnClient(mc -> mc.player.getInventory().getSelectedSlot())))
+				throw new AssertionError("Auto tool on leaves (fastest, hoe preferred) and dirt: " + preferred);
 			// for a hit: the weapon that hits hardest (a diamond axe in the backpack over an iron sword on the
 			// hotbar); for a sheep: the shears
 			String weapons = context.computeOnClient(mc -> {
@@ -69,12 +89,16 @@ public class GameInventoryTools implements FabricClientGameTest {
 				inv.setItem(20, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.DIAMOND_AXE));
 				String out = TestHooks.autoToolWeapon(inv) + " " + TestHooks.weaponDamage(inv.getItem(3)) + " " + TestHooks.weaponDamage(inv.getItem(20))
 					+ " " + TestHooks.weaponDamage(net.minecraft.world.item.ItemStack.EMPTY);
+				// a sword preferred: the iron sword, though the axe hits harder
+				dev.slash3rss.slashclient.hud.SlashHud.config.autoToolWeapon = "sword";
+				out += " " + TestHooks.autoToolWeapon(inv);
+				dev.slash3rss.slashclient.hud.SlashHud.config.autoToolWeapon = "strongest";
 				inv.setItem(3, keep3);
 				inv.setItem(20, keep20);
 				inv.setItem(25, keep25);
 				return out;
 			});
-			if (!weapons.equals("20 5.0 8.0 0.0")) throw new AssertionError("Auto tool for a hit (weapon slot, damages): " + weapons);
+			if (!weapons.equals("20 5.0 8.0 0.0 3")) throw new AssertionError("Auto tool for a hit (weapon slot, damages, a sword preferred): " + weapons);
 			// a right click on a mob: shears for the sheep, the bucket for the cow; with milking off the cow
 			// gets its food (feeding switched on), with feeding off nothing
 			world.getServer().runCommand("summon minecraft:sheep ~3 ~ ~");
@@ -142,6 +166,9 @@ public class GameInventoryTools implements FabricClientGameTest {
 			// the search: the diamond, the pickaxe and the box with diamonds inside
 			int found = context.computeOnClient(mc -> InvToolsTestHooks.search("diamond"));
 			if (found != 3) throw new AssertionError("The search for diamond matched " + found + " slots");
+			// enchantments and lore typed without Polish letters, and the server's colour codes left out
+			if (!context.computeOnClient(mc -> InvToolsTestHooks.searchFinds("§7Ostrość V", "ostrosc v") && InvToolsTestHooks.searchFinds("Złota łuska", "zlota LUSKA")))
+				throw new AssertionError("The search without Polish letters");
 			context.getInput().setCursorPos(4, 4);
 			context.waitTicks(5);
 			context.takeScreenshot("invtools-search");

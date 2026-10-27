@@ -907,7 +907,8 @@ public final class SkyCase {
 						tx += SMALL + 2;
 					}
 					Modules.text(g, mc, r.left, tx, row, r.leftColor);
-					if (!r.right.isEmpty()) Modules.text(g, mc, r.right, x + Modules.PAD + w - mc.font.width(r.right), row, r.rightColor);
+					// the numbers (white) take the module's text colour, the rest keeps its own
+					if (!r.right.isEmpty()) Modules.text(g, mc, r.right, x + Modules.PAD + w - mc.font.width(r.right), row, r.rightColor == 0xFFFFFFFF ? Modules.textColor() : r.rightColor);
 				}
 				row += rowHeight(mc, r);
 			}

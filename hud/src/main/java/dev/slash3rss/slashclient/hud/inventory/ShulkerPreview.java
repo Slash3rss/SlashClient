@@ -142,7 +142,7 @@ public final class ShulkerPreview {
 	}
 
 	/** An item's count, durability bar and cooldown over it, as in a slot. */
-	static void decorations(GuiGraphicsExtractor g, Font font, ItemStack s, int x, int y) {
+	public static void decorations(GuiGraphicsExtractor g, Font font, ItemStack s, int x, int y) {
 		//#if MC >= 26.1
 		g.itemDecorations(font, s, x, y);
 		//#else

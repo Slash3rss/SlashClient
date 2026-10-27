@@ -241,7 +241,7 @@ public final class SkyFish {
 			int w = width(mc) - Modules.PAD * 2, row = y + Modules.PAD;
 			for (Row r : rowsOrPreview(mc)) {
 				Modules.text(g, mc, r.left, x + Modules.PAD, row, r.leftColor);
-				if (!r.right.isEmpty()) Modules.text(g, mc, r.right, x + Modules.PAD + w - mc.font.width(r.right), row, 0xFFFFFFFF);
+				if (!r.right.isEmpty()) Modules.text(g, mc, r.right, x + Modules.PAD + w - mc.font.width(r.right), row, Modules.textColor());
 				row += mc.font.lineHeight + 1;
 			}
 		}

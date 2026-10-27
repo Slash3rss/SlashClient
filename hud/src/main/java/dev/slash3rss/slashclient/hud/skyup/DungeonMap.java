@@ -98,6 +98,12 @@ public final class DungeonMap implements HudModule {
 		return "dungeonmap";
 	}
 
+	@Override
+	public boolean framed() {
+		// a round map has no square box or frame around it
+		return !"circle".equals(SlashHud.config.dungeonShape);
+	}
+
 	// ---------- in and out of a dungeon ----------
 
 	/** The server's lines: the hint on entering starts a map, leaving ends it. */
@@ -715,7 +721,7 @@ public final class DungeonMap implements HudModule {
 			: Component.translatable("slashclient-hud.dungeon.level", dungeonLevel).getString();
 		if (!dungeonLevel.isEmpty() && mc.font.width(text) > room) text = Component.translatable("slashclient-hud.dungeon").getString() + " " + dungeonLevel;
 		if (!dungeonLevel.isEmpty() && mc.font.width(text) > room) text = "poz. " + dungeonLevel;
-		Modules.text(g, mc, text, x + 3, y + 2, 0xFFFFFFFF);
+		Modules.text(g, mc, text, x + 3, y + 2, Modules.textColor());
 		if (!share.isEmpty()) Modules.text(g, mc, share, x + W - 3 - mc.font.width(share), y + 2, 0xFFD8B4FE);
 	}
 
@@ -763,7 +769,7 @@ public final class DungeonMap implements HudModule {
 			ItemStack icon = Ui.stack(DungeonRooms.LOOT_ICONS[c[0]]);
 			if (icon != null) item(g, icon, cx + 4, cy + 4, 8);
 			// all of a kind taken: green
-			Modules.text(g, mc, c[1] + "/" + c[2], cx + 10, cy, c[1] == c[2] ? 0xFF86EFAC : 0xFFFFFFFF);
+			Modules.text(g, mc, c[1] + "/" + c[2], cx + 10, cy, c[1] == c[2] ? 0xFF86EFAC : Modules.textColor());
 			at += w + 6;
 		}
 	}
@@ -821,7 +827,7 @@ public final class DungeonMap implements HudModule {
 			draw(g, mc, x, y);
 			return;
 		}
-		if (SlashHud.config.dungeonTitle) Modules.text(g, mc, Component.translatable("slashclient-hud.dungeon").getString(), x + 3, y + 2, 0xFFFFFFFF);
+		if (SlashHud.config.dungeonTitle) Modules.text(g, mc, Component.translatable("slashclient-hud.dungeon").getString(), x + 3, y + 2, Modules.textColor());
 		int top = y + title();
 		int[][] rooms = { { 10, 10, 30, 26 }, { 46, 10, 30, 26 }, { 82, 14, 28, 22 }, { 10, 48, 30, 30 }, { 46, 48, 30, 30 }, { 82, 52, 28, 26 }, { 46, 88, 30, 24 } };
 		for (int[] r : rooms) g.fill(x + r[0], top + r[1], x + r[0] + r[2], top + r[1] + r[3], 0xFF5B6475);

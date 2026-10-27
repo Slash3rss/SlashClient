@@ -112,6 +112,11 @@ public final class SkyXp {
 		}
 
 		@Override
+		public boolean textColored() {
+			return false;
+		}
+
+		@Override
 		public boolean visible(Minecraft mc) {
 			return shown();
 		}

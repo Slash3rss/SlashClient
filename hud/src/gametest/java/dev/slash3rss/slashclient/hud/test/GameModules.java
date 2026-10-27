@@ -37,6 +37,14 @@ public class GameModules implements FabricClientGameTest {
 			}
 			context.waitTicks(5);
 			context.takeScreenshot("modules-in-game");
+			// only the options that do something for each module, and the new ones changing the sizes
+			String options = context.computeOnClient(mc -> TestHooks.moduleOptions());
+			if (!options.equals("ping.textColor=false inventory.shadow=false keystrokes.background=true keys=46 coords=14 armor=flat"))
+				throw new AssertionError("Module options: " + options);
+			context.runOnClient(mc -> TestHooks.moduleOptionsDemo(true));
+			context.waitTicks(5);
+			context.takeScreenshot("modules-options");
+			context.runOnClient(mc -> TestHooks.moduleOptionsDemo(false));
 			// the death reaches the client a little later on some versions: wait for it, up to 5 s
 			String stats = context.computeOnClient(mc -> TestHooks.moduleStats());
 			for (int i = 0; i < 100 && !stats.startsWith("1 "); i++) {

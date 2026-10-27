@@ -104,6 +104,54 @@ public final class TestHooks {
 		for (HudModule m : ExtraModules.all()) SlashHud.config.placement(m.id()).enabled = on;
 	}
 
+	/**
+	 * What the module cards offer and what the new options do to the sizes: "ping.textColor=false
+	 * inventory.shadow=false keystrokes.background=true keys=46 coords=14 armor=5x" (the keys without
+	 * the mouse and the space bar, the coordinates on one line, the armour side by side).
+	 */
+	public static String moduleOptions() {
+		var entries = dev.slash3rss.slashclient.hud.ui.Catalog.entries(() -> {});
+		java.util.function.BiFunction<String, String, Boolean> has = (id, key) -> entries.stream().filter(e -> e.id().equals(id)).findFirst()
+			.map(e -> e.settings().stream().anyMatch(s -> s.labelKey().equals(key))).orElse(false);
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		HudConfig c = SlashHud.config;
+		c.keystrokesMouse = c.keystrokesSpace = false;
+		c.coordsOneLine = true;
+		int keys = new Modules.Keystrokes().height(mc), coords = new Modules.Coords().height(mc);
+		c.keystrokesMouse = c.keystrokesSpace = true;
+		c.coordsOneLine = false;
+		var armor = new Modules.Armor();
+		int tall = armor.height(mc);
+		c.armorHorizontal = true;
+		int flat = armor.height(mc);
+		c.armorHorizontal = false;
+		return "ping.textColor=" + has.apply("ping", "slashclient-hud.textColor") + " inventory.shadow=" + has.apply("inventory", "slashclient-hud.shadow")
+			+ " keystrokes.background=" + has.apply("keystrokes", "slashclient-hud.background") + " keys=" + keys + " coords=" + coords
+			+ " armor=" + (flat < tall ? "flat" : "tall");
+	}
+
+	private static final java.util.Map<String, Boolean> optionsDemoWas = new java.util.HashMap<>();
+
+	/** The new options on, for a screenshot: blue boxes, the armour side by side in percent, keys without the mouse… (off: back to the defaults). */
+	public static void moduleOptionsDemo(boolean on) {
+		HudConfig c = SlashHud.config, d = new HudConfig();
+		for (String id : new String[] { "armor", "keystrokes", "coords" }) {
+			if (on) optionsDemoWas.put(id, c.placement(id).enabled);
+			c.placement(id).enabled = on || optionsDemoWas.getOrDefault(id, false);
+		}
+		c.backgroundColor = on ? 0xFF1E3A8A : d.backgroundColor;
+		c.outlineColor = on ? 0xFFFACC15 : d.outlineColor;
+		c.armorHorizontal = on;
+		c.armorDurability = on ? "percent" : d.armorDurability;
+		c.durabilityFormat = on ? "percent" : d.durabilityFormat;
+		c.durabilityBar = !on;
+		c.compassDegrees = !on;
+		c.keystrokesMouse = !on;
+		c.keystrokesPressed = on ? 0xFF4ADE80 : d.keystrokesPressed;
+		c.coordsOneLine = on;
+		c.coordsY = !on;
+	}
+
 	/** Hits the nearest other living entity, as a left click on it would. */
 	public static boolean attackNearest() {
 		var mc = net.minecraft.client.Minecraft.getInstance();

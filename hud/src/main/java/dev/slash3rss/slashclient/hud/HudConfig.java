@@ -136,6 +136,8 @@ public final class HudConfig {
 	public List<ChatTab> chatTabs = new ArrayList<>();
 	/** ARGB colour of the text. */
 	public int textColor = 0xFFFFFFFF;
+	/** The modules' boxes (their see-through is each module's own) and outlines. */
+	public int backgroundColor = 0xFF000000, outlineColor = 0xFF60A5FA;
 	public boolean background = true;
 	/** How rounded the modules' backgrounds (and the keystrokes' keys) are, in pixels; 0 = square, as always. */
 	public int cornerRadius = 0;
@@ -243,6 +245,7 @@ public final class HudConfig {
 	/** How the challenges' window marks a task ready or handed in: a frame round the slot, or its background behind the item. */
 	public String skyTasksMark = "frame";
 	public static final String[] SKY_TASKS_MARKS = { "frame", "background" };
+	public static final String[] ARMOR_DURABILITY = { "number", "percent", "bar" }, DURABILITY_FORMATS = { "number", "percent" };
 	/** How often the daily task, while tracked and not done, is brought up (minutes); 0 = never. */
 	public int skyDailyRemind = 30;
 	/** The daily task reminder's sound: "default" (the bell), "none", or one of the chat tabs' (ChatTabs.SOUNDS). */
@@ -433,6 +436,16 @@ public final class HudConfig {
 	 * and for a right click on a mob shears, a bucket or a bowl (milk, stew), a water bucket (fish),
 	 * a brush (armadillo) and an animal's food.
 	 */
+	/** The weapon auto tool takes for a hit: the "strongest", or the best "sword" or "axe" there is (the strongest when there is none). */
+	public String autoToolWeapon = "strongest";
+	public static final String[] AUTO_TOOL_WEAPONS = { "strongest", "sword", "axe" };
+	/** The tool auto tool takes for blocks more than one kind digs: the "fastest", or the kind preferred (when there is one of it). */
+	public String autoToolLeaves = "fastest", autoToolCobweb = "fastest", autoToolBamboo = "fastest", autoToolGourds = "fastest";
+	public static final String[] AUTO_TOOL_LEAVES = { "fastest", "shears", "hoe" }, AUTO_TOOL_COBWEB = { "fastest", "sword", "shears" },
+		AUTO_TOOL_BAMBOO = { "fastest", "sword", "axe" }, AUTO_TOOL_GOURDS = { "fastest", "axe", "sword" };
+	/** What a mooshroom gives: "any" (a bowl or a bucket, whichever is found first), its "stew" or its "milk". */
+	public String autoToolMooshroom = "any";
+	public static final String[] AUTO_TOOL_MOOSHROOM = { "any", "stew", "milk" };
 	public boolean autoToolBlocks = true, autoToolWeapons = true, autoToolShears = true, autoToolMilk = true, autoToolFish = true, autoToolBrush = true, autoToolFeed = false;
 	public boolean autoRefill = false;
 	/** Buttons held by their keys go on with the inventory or the pause menu open. */
@@ -491,6 +504,29 @@ public final class HudConfig {
 	/** FPS green, yellow or red by how smooth the game runs. */
 	public boolean fpsColored = false;
 	public boolean effectIcons = true;
+	/** FPS, ping, memory, processor and graphics card: where green ends and where red begins (yellow in between). */
+	public int fpsGood = 60, fpsBad = 20, pingGood = 60, pingBad = 250, memoryGood = 60, memoryBad = 95, cpuGood = 60, cpuBad = 90, gpuGood = 70, gpuBad = 95;
+	public int speedDecimals = 1;
+	/** Coordinates: the facing after the numbers instead of under them, and the height among them. */
+	public boolean coordsOneLine = false, coordsY = true;
+	/** Armour: side by side instead of one under another, and the item in the hand too; wear left as a "number", a "percent" or the game's "bar". */
+	public boolean armorHorizontal = false, armorHand = true;
+	public String armorDurability = "number";
+	/** The item in hand's wear: "number" (left/max) or "percent", the bar under it, and under what share it blinks red. */
+	public String durabilityFormat = "number";
+	public boolean durabilityBar = true;
+	public int durabilityWarn = 10;
+	/** Keystrokes: a pressed key's colour, and whether the mouse buttons, their CPS and the space bar show. */
+	public int keystrokesPressed = 0xFFFFFFFF;
+	public boolean keystrokesMouse = true, keystrokesCps = true, keystrokesSpace = true;
+	/** The target's health bar and how far it is. */
+	public boolean targetBar = true, targetDistance = true;
+	/** The compass's degrees under where you look. */
+	public boolean compassDegrees = true;
+	/** The most friends online the friends module lists. */
+	public int friendsRows = 5;
+	/** The backpack module with the hotbar under it too. */
+	public boolean inventoryHotbar = false;
 
 	// ---- chat ----
 	/** The same line again becomes "×2", "×3" on the last one instead of a new line. */
@@ -700,6 +736,8 @@ public final class HudConfig {
 		modules = other.modules;
 		chatTabs = other.chatTabs;
 		textColor = other.textColor;
+		backgroundColor = other.backgroundColor;
+		outlineColor = other.outlineColor;
 		background = other.background;
 		cornerRadius = Math.max(0, Math.min(MAX_RADIUS, other.cornerRadius));
 		textShadow = other.textShadow;
@@ -909,6 +947,12 @@ public final class HudConfig {
 		autoToolRestore = other.autoToolRestore;
 		autoToolBlocks = other.autoToolBlocks;
 		autoToolWeapons = other.autoToolWeapons;
+		autoToolWeapon = oneOf(other.autoToolWeapon, AUTO_TOOL_WEAPONS);
+		autoToolLeaves = oneOf(other.autoToolLeaves, AUTO_TOOL_LEAVES);
+		autoToolCobweb = oneOf(other.autoToolCobweb, AUTO_TOOL_COBWEB);
+		autoToolBamboo = oneOf(other.autoToolBamboo, AUTO_TOOL_BAMBOO);
+		autoToolGourds = oneOf(other.autoToolGourds, AUTO_TOOL_GOURDS);
+		autoToolMooshroom = oneOf(other.autoToolMooshroom, AUTO_TOOL_MOOSHROOM);
 		autoToolShears = other.autoToolShears;
 		autoToolMilk = other.autoToolMilk;
 		autoToolFish = other.autoToolFish;
@@ -957,6 +1001,34 @@ public final class HudConfig {
 		blockBreakBar = other.blockBreakBar;
 		fpsColored = other.fpsColored;
 		effectIcons = other.effectIcons;
+		fpsGood = Math.max(10, Math.min(240, other.fpsGood));
+		fpsBad = Math.max(5, Math.min(240, other.fpsBad));
+		pingGood = Math.max(10, Math.min(1000, other.pingGood));
+		pingBad = Math.max(10, Math.min(1000, other.pingBad));
+		memoryGood = Math.max(5, Math.min(100, other.memoryGood));
+		memoryBad = Math.max(5, Math.min(100, other.memoryBad));
+		cpuGood = Math.max(5, Math.min(100, other.cpuGood));
+		cpuBad = Math.max(5, Math.min(100, other.cpuBad));
+		gpuGood = Math.max(5, Math.min(100, other.gpuGood));
+		gpuBad = Math.max(5, Math.min(100, other.gpuBad));
+		speedDecimals = Math.max(0, Math.min(3, other.speedDecimals));
+		coordsOneLine = other.coordsOneLine;
+		coordsY = other.coordsY;
+		armorHorizontal = other.armorHorizontal;
+		armorHand = other.armorHand;
+		armorDurability = oneOf(other.armorDurability, ARMOR_DURABILITY);
+		durabilityFormat = oneOf(other.durabilityFormat, DURABILITY_FORMATS);
+		durabilityBar = other.durabilityBar;
+		durabilityWarn = Math.max(0, Math.min(50, other.durabilityWarn));
+		keystrokesPressed = other.keystrokesPressed;
+		keystrokesMouse = other.keystrokesMouse;
+		keystrokesCps = other.keystrokesCps;
+		keystrokesSpace = other.keystrokesSpace;
+		targetBar = other.targetBar;
+		targetDistance = other.targetDistance;
+		compassDegrees = other.compassDegrees;
+		friendsRows = Math.max(1, Math.min(15, other.friendsRows));
+		inventoryHotbar = other.inventoryHotbar;
 		chatStack = other.chatStack;
 		chatCopy = other.chatCopy;
 		chatCoords = other.chatCoords;

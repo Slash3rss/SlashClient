@@ -376,7 +376,11 @@ public final class Assist {
 		boolean adult = !(mob instanceof LivingEntity l) || !l.isBaby();
 		if (c.autoToolShears && mob instanceof net.minecraft.world.entity.Shearable s && s.readyForShearing())
 			return st -> st.getItem() instanceof net.minecraft.world.item.ShearsItem;
-		if (c.autoToolMilk && adult && type.equals("mooshroom")) return st -> st.is(net.minecraft.world.item.Items.BOWL) || st.is(net.minecraft.world.item.Items.BUCKET);
+		if (c.autoToolMilk && adult && type.equals("mooshroom")) return switch (c.autoToolMooshroom) {
+			case "stew" -> st -> st.is(net.minecraft.world.item.Items.BOWL);
+			case "milk" -> st -> st.is(net.minecraft.world.item.Items.BUCKET);
+			default -> st -> st.is(net.minecraft.world.item.Items.BOWL) || st.is(net.minecraft.world.item.Items.BUCKET);
+		};
 		if (c.autoToolMilk && adult && (type.equals("cow") || type.equals("goat"))) return st -> st.is(net.minecraft.world.item.Items.BUCKET);
 		if (c.autoToolFish && mob.isAlive() && FISH.contains(type)) return st -> st.is(net.minecraft.world.item.Items.WATER_BUCKET);
 		if (c.autoToolBrush && type.equals("armadillo")) return st -> st.is(net.minecraft.world.item.Items.BRUSH);
@@ -415,6 +419,22 @@ public final class Assist {
 
 	/** The slot (hotbar 0-8, backpack 9-35) with the stack that breaks the block best; the hand's when nothing beats it. */
 	static int bestSlot(Inventory inv, BlockState state) {
+		// the kind the player prefers, when one of it works on this block (gets its drop, or digs faster than a hand)
+		java.util.function.Predicate<ItemStack> kind = preferredTool(state);
+		if (kind != null) {
+			int best = -1;
+			float bestSpeed = 1f;
+			for (int i : preferHand(inv)) {
+				ItemStack s = inv.getItem(i);
+				if (s.isEmpty() || !kind.test(s)) continue;
+				boolean works = state.requiresCorrectToolForDrops() ? s.isCorrectToolForDrops(state) : s.getDestroySpeed(state) > 1f;
+				if (works && speed(s, state) > bestSpeed + 0.01f) {
+					best = i;
+					bestSpeed = speed(s, state);
+				}
+			}
+			if (best >= 0) return best;
+		}
 		int best = inv.getSelectedSlot();
 		float bestSpeed = speed(inv.getItem(best), state);
 		// the hotbar first: a tool there is used as it is, the backpack only when it has a better one
@@ -428,8 +448,28 @@ public final class Assist {
 		return best;
 	}
 
-	/** The slot (hotbar 0-8, backpack 9-35) with the weapon that hits hardest; the hand's when nothing beats it. */
+	/**
+	 * The slot (hotbar 0-8, backpack 9-35) with the weapon that hits hardest; the hand's when nothing beats it.
+	 * With a kind preferred (a sword, an axe), the hardest hitting of that kind, when there is one.
+	 */
 	static int bestWeapon(Inventory inv) {
+		var kind = switch (cfg().autoToolWeapon) {
+			case "sword" -> net.minecraft.tags.ItemTags.SWORDS;
+			case "axe" -> net.minecraft.tags.ItemTags.AXES;
+			default -> null;
+		};
+		if (kind != null) {
+			int best = -1;
+			double bestDamage = -1;
+			for (int i : preferHand(inv)) {
+				ItemStack s = inv.getItem(i);
+				if (s.is(kind) && damage(s) > bestDamage + 0.01) {
+					best = i;
+					bestDamage = damage(s);
+				}
+			}
+			if (best >= 0) return best;
+		}
 		int best = inv.getSelectedSlot();
 		double bestDamage = damage(inv.getItem(best));
 		for (int i = 0; i < 36; i++) {
@@ -440,6 +480,32 @@ public final class Assist {
 			}
 		}
 		return best;
+	}
+
+	/** The kind of tool the player prefers for this block (leaves, cobweb, bamboo, a pumpkin or a melon), or null for the fastest. */
+	private static java.util.function.Predicate<ItemStack> preferredTool(BlockState state) {
+		HudConfig c = cfg();
+		String kind = state.is(net.minecraft.tags.BlockTags.LEAVES) ? c.autoToolLeaves
+			: state.is(net.minecraft.world.level.block.Blocks.COBWEB) ? c.autoToolCobweb
+			: state.is(net.minecraft.world.level.block.Blocks.BAMBOO) ? c.autoToolBamboo
+			: state.is(net.minecraft.world.level.block.Blocks.PUMPKIN) || state.is(net.minecraft.world.level.block.Blocks.CARVED_PUMPKIN)
+				|| state.is(net.minecraft.world.level.block.Blocks.JACK_O_LANTERN) || state.is(net.minecraft.world.level.block.Blocks.MELON) ? c.autoToolGourds
+			: "fastest";
+		return switch (kind) {
+			case "axe" -> s -> s.is(net.minecraft.tags.ItemTags.AXES);
+			case "hoe" -> s -> s.is(net.minecraft.tags.ItemTags.HOES);
+			case "sword" -> s -> s.is(net.minecraft.tags.ItemTags.SWORDS);
+			case "shears" -> s -> s.getItem() instanceof net.minecraft.world.item.ShearsItem;
+			default -> null;
+		};
+	}
+
+	/** The hand's slot first (it stays when nothing beats it), then all 36. */
+	private static int[] preferHand(Inventory inv) {
+		int[] out = new int[37];
+		out[0] = inv.getSelectedSlot();
+		for (int i = 0; i < 36; i++) out[i + 1] = i;
+		return out;
 	}
 
 	/** The attack damage a stack adds in the main hand (a sword 6, an axe 8, a fist 0). */

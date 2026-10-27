@@ -176,11 +176,29 @@ public final class InventorySearch {
 	static boolean matches(Minecraft mc, ItemStack stack, String q) {
 		if (stack.isEmpty()) return false;
 		String text = TEXT.computeIfAbsent(stack, s -> text(mc, s));
-		for (String word : q.split("\\s+")) if (!word.isEmpty() && !text.contains(word)) return false;
+		for (String word : plain(q).split("\\s+")) if (!word.isEmpty() && !text.contains(word)) return false;
 		return true;
 	}
 
+	/** Lower case, without colour codes and the marks of Polish letters: "ostrosc" finds "§7Ostrość V". */
+	public static String plain(String s) {
+		String lower = s.replaceAll("§.", "").toLowerCase(Locale.ROOT).replace('ł', 'l');
+		return java.text.Normalizer.normalize(lower, java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "");
+	}
+
 	private static String text(Minecraft mc, ItemStack stack) {
+		StringBuilder out = new StringBuilder(tooltip(mc, stack));
+		// a shulker box matches what is inside it too: their names, enchantments and lore
+		ShulkerPreview.Contents box = ShulkerPreview.image(stack);
+		if (box != null) for (ItemStack s : box.items()) {
+			if (!s.isEmpty()) out.append(tooltip(mc, s)).append(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem())).append('\n');
+		}
+		out.append(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()));
+		return plain(out.toString());
+	}
+
+	/** What a stack's tooltip says (its name, enchantments, lore…), and its enchantments again in case the server hides them there. */
+	private static String tooltip(Minecraft mc, ItemStack stack) {
 		StringBuilder out = new StringBuilder();
 		try {
 			//#if MC >= 1.20.5
@@ -193,13 +211,18 @@ public final class InventorySearch {
 			// a server's odd item: its name at least
 			out.append(stack.getHoverName().getString()).append('\n');
 		}
-		// a shulker box matches what is inside it too
-		ShulkerPreview.Contents box = ShulkerPreview.image(stack);
-		if (box != null) for (ItemStack s : box.items()) {
-			if (!s.isEmpty()) out.append(s.getHoverName().getString()).append(' ').append(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(s.getItem())).append('\n');
+		try {
+			//#if MC >= 1.21
+			for (var e : net.minecraft.world.item.enchantment.EnchantmentHelper.getEnchantmentsForCrafting(stack).entrySet())
+				out.append(net.minecraft.world.item.enchantment.Enchantment.getFullname(e.getKey(), e.getIntValue()).getString()).append('\n');
+			//#else
+			//$ for (var e : net.minecraft.world.item.enchantment.EnchantmentHelper.getEnchantments(stack).entrySet())
+			//$ 	out.append(e.getKey().getFullname(e.getValue()).getString()).append('\n');
+			//#endif
+		} catch (RuntimeException e) {
+			// an enchantment the client does not know: the tooltip's lines are there still
 		}
-		out.append(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()));
-		return out.toString().toLowerCase(Locale.ROOT);
+		return out.toString();
 	}
 
 	private static void highlight(AbstractContainerScreen<?> screen, GuiGraphicsExtractor g) {

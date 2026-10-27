@@ -441,13 +441,13 @@ public class SlashHud implements ClientModInitializer {
 		// keystrokes draw their own boxes
 		int w = m.width(mc), h = m.height(mc);
 		int r = p.radius(config);
-		if (p.background(config) && !(m instanceof Modules.Keystrokes) && !(m instanceof GameParts.Part) && !m.bare()) {
-			int bg = Math.round(p.opacity() * 2.55f) << 24;
+		if (p.background(config) && !(m instanceof Modules.Keystrokes) && !(m instanceof GameParts.Part) && m.framed()) {
+			int bg = Math.round(p.opacity() * 2.55f) << 24 | (config.backgroundColor & 0xFFFFFF);
 			if (r > 0) dev.slash3rss.slashclient.hud.ui.Ui.round(g, 0, 0, w, h, r, bg);
 			else g.fill(0, 0, w, h, bg);
 		}
-		if (p.outline && !(m instanceof GameParts.Part) && !m.bare()) {
-			int c = 0xCC60A5FA;
+		if (p.outline && !(m instanceof GameParts.Part) && m.framed()) {
+			int c = 0xCC000000 | (config.outlineColor & 0xFFFFFF);
 			// rounded, the frame follows the corners one pixel out
 			if (r > 0) dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, -1, -1, w + 2, h + 2, r + 1, c);
 			else {

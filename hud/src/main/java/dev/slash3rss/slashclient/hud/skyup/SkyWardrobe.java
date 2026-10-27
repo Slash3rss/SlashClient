@@ -156,6 +156,11 @@ public final class SkyWardrobe {
 		}
 
 		@Override
+		public boolean textColored() {
+			return false;
+		}
+
+		@Override
 		public boolean visible(Minecraft mc) {
 			return SkyTasks.onSkyUp(mc) && saved().on != null;
 		}

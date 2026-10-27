@@ -92,6 +92,11 @@ public final class MoreModules {
 			return "memory";
 		}
 
+		@Override
+		public boolean textColored() {
+			return false;
+		}
+
 		private static long used() {
 			Runtime r = Runtime.getRuntime();
 			return r.totalMemory() - r.freeMemory();
@@ -104,7 +109,7 @@ public final class MoreModules {
 
 		@Override
 		public int color(Minecraft mc) {
-			return grade((double) used() / Runtime.getRuntime().maxMemory(), 0.6, 0.95);
+			return grade((double) used() / Runtime.getRuntime().maxMemory(), cfg.memoryGood / 100.0, cfg.memoryBad / 100.0);
 		}
 	}
 
@@ -116,6 +121,11 @@ public final class MoreModules {
 
 		public String id() {
 			return "cpu";
+		}
+
+		@Override
+		public boolean textColored() {
+			return false;
 		}
 
 		/** 0..1, or -1 when the JVM cannot tell; read once a second, the call is not free. */
@@ -139,7 +149,7 @@ public final class MoreModules {
 
 		@Override
 		public int color(Minecraft mc) {
-			return grade(Math.max(0, load()), 0.6, 0.9);
+			return grade(Math.max(0, load()), cfg.cpuGood / 100.0, cfg.cpuBad / 100.0);
 		}
 	}
 
@@ -147,6 +157,11 @@ public final class MoreModules {
 	static final class Gpu extends Modules.TextModule {
 		public String id() {
 			return "gpu";
+		}
+
+		@Override
+		public boolean textColored() {
+			return false;
 		}
 
 		private static double load(Minecraft mc) {
@@ -161,7 +176,7 @@ public final class MoreModules {
 
 		@Override
 		public int color(Minecraft mc) {
-			return grade(load(mc) / 100, 0.7, 0.95);
+			return grade(load(mc) / 100, cfg.gpuGood / 100.0, cfg.gpuBad / 100.0);
 		}
 	}
 
@@ -208,7 +223,7 @@ public final class MoreModules {
 		@Override
 		public int color(Minecraft mc) {
 			// mobs spawn at light 0 in recent versions: worth a red warning
-			return level(mc) == 0 ? 0xFFFF5555 : cfg.textColor;
+			return level(mc) == 0 ? 0xFFFF5555 : Modules.textColor();
 		}
 	}
 
@@ -333,7 +348,7 @@ public final class MoreModules {
 				// in the main menu (editor before any world) items can't be made yet: an icon badge instead
 				Ui.icon(g, GROUPS[c[0]][0], "#", cx, y + PAD);
 				String n = String.valueOf(c[1]);
-				text(g, mc, n, cx + 18, y + PAD + 4, cfg.textColor);
+				text(g, mc, n, cx + 18, y + PAD + 4, Modules.textColor());
 				cx += 18 + mc.font.width(n) + 4;
 			}
 		}
@@ -471,31 +486,35 @@ public final class MoreModules {
 		}
 
 		public int height(Minecraft mc) {
-			return mc.font.lineHeight * 2 + 6 + PAD * 2;
+			return mc.font.lineHeight * 2 + 1 + (cfg.targetBar ? 5 : 0) + PAD * 2;
 		}
 
 		private void drawFor(GuiGraphicsExtractor g, Minecraft mc, int x, int y, Component name, float health, float max, float absorb, double distance) {
 			int width = widthFor(mc, name);
 			// a name longer than the widest box is made smaller to fit, down to half; only past that cut with "…"
 			int room = width - PAD * 2, full = mc.font.width(name);
-			if (full <= room) text(g, mc, name, x + PAD, y + PAD, cfg.textColor);
+			if (full <= room) text(g, mc, name, x + PAD, y + PAD, Modules.textColor());
 			else {
 				float s = Math.max(0.5f, (float) room / full);
 				var pose = g.pose();
 				pose.pushMatrix();
 				pose.translate(x + PAD, y + PAD + mc.font.lineHeight * (1 - s) / 2f);
 				pose.scale(s, s);
-				text(g, mc, cut(mc, name, (int) (room / s)), 0, 0, cfg.textColor);
+				text(g, mc, cut(mc, name, (int) (room / s)), 0, 0, Modules.textColor());
 				pose.popMatrix();
 			}
 			String hp = String.format("❤ %.1f", health) + (absorb > 0 ? String.format(" +%.0f", absorb) : "");
 			int barY = y + PAD + mc.font.lineHeight + 2;
 			int barW = width - PAD * 2;
-			g.fill(x + PAD, barY, x + PAD + barW, barY + 3, 0xFF333333);
-			g.fill(x + PAD, barY, x + PAD + Math.round(barW * Math.min(1, health / max)), barY + 3, grade(max - health, 0, max));
-			text(g, mc, hp, x + PAD, barY + 5, 0xFFFF7777);
+			if (cfg.targetBar) {
+				g.fill(x + PAD, barY, x + PAD + barW, barY + 3, 0xFF333333);
+				g.fill(x + PAD, barY, x + PAD + Math.round(barW * Math.min(1, health / max)), barY + 3, grade(max - health, 0, max));
+			}
+			int ty = cfg.targetBar ? barY + 5 : barY;
+			text(g, mc, hp, x + PAD, ty, 0xFFFF7777);
+			if (!cfg.targetDistance) return;
 			String dist = String.format("%.1f m", distance);
-			text(g, mc, dist, x + width - PAD - mc.font.width(dist), barY + 5, 0xFFAAAAAA);
+			text(g, mc, dist, x + width - PAD - mc.font.width(dist), ty, 0xFFAAAAAA);
 		}
 
 		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {

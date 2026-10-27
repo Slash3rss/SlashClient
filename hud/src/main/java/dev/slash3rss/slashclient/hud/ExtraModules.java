@@ -148,6 +148,11 @@ public final class ExtraModules {
 			return "durability";
 		}
 
+		@Override
+		public boolean textColored() {
+			return false;
+		}
+
 		private static ItemStack held(Minecraft mc) {
 			if (mc.player == null) return ItemStack.EMPTY;
 			ItemStack s = mc.player.getMainHandItem();
@@ -160,7 +165,7 @@ public final class ExtraModules {
 		}
 
 		private static String label(int left, int max) {
-			return left + "/" + max;
+			return "percent".equals(cfg.durabilityFormat) ? Math.round(100.0 * left / Math.max(1, max)) + "%" : left + "/" + max;
 		}
 
 		public int width(Minecraft mc) {
@@ -177,11 +182,13 @@ public final class ExtraModules {
 			if (s != null && !s.isEmpty()) g.item(s, x + PAD, y + PAD);
 			else Ui.icon(g, fallback, "#", x + PAD, y + PAD);
 			double part = max == 0 ? 1 : (double) left / max;
-			// under a tenth it blinks red, time to repair
-			boolean low = part < 0.1;
+			// under the player's share (a tenth) it blinks red, time to repair
+			boolean low = part < cfg.durabilityWarn / 100.0;
 			int color = low && System.currentTimeMillis() / 400 % 2 == 0 ? 0xFFFF5555 : grade(1 - part, 0.4, 0.9);
 			String l = label(left, max);
-			text(g, mc, l, x + PAD + 20, y + PAD, color);
+			// without the bar the number stands level with the item
+			text(g, mc, l, x + PAD + 20, y + PAD + (cfg.durabilityBar ? 0 : 4), color);
+			if (!cfg.durabilityBar) return;
 			int bw = width(mc) - PAD * 2 - 20;
 			g.fill(x + PAD + 20, y + PAD + 11, x + PAD + 20 + bw, y + PAD + 14, 0x80000000);
 			g.fill(x + PAD + 20, y + PAD + 11, x + PAD + 20 + (int) Math.round(bw * part), y + PAD + 14, color);
@@ -255,7 +262,7 @@ public final class ExtraModules {
 				int n = (int) o[1];
 				String s = String.valueOf(n);
 				// none left is red, a few is yellow
-				text(g, mc, s, cx + 18, y + PAD + 4, n == 0 ? 0xFFFF5555 : n < 16 ? 0xFFFFFF55 : cfg.textColor);
+				text(g, mc, s, cx + 18, y + PAD + 4, n == 0 ? 0xFFFF5555 : n < 16 ? 0xFFFFFF55 : Modules.textColor());
 				cx += 18 + mc.font.width(s) + 6;
 			}
 		}
@@ -331,7 +338,7 @@ public final class ExtraModules {
 		@Override
 		public int color(Minecraft mc) {
 			double t = mc.getConnection() == null ? 20 : tps(mc);
-			return t < 0 ? cfg.textColor : grade(20 - t, 1, 8);
+			return t < 0 ? Modules.textColor() : grade(20 - t, 1, 8);
 		}
 	}
 
@@ -409,7 +416,7 @@ public final class ExtraModules {
 			Arrays.sort(sorted, 0, n);
 			// the 1% low: the FPS of the slowest frames, what you feel as a stutter
 			int low = n == 0 ? 0 : Math.round(1000 / sorted[Math.max(0, n - 1 - n / 100)]);
-			text(g, mc, Component.translatable("slashclient-hud.fpsgraph", mc.getFps(), low), x + PAD, y + PAD, cfg.textColor);
+			text(g, mc, Component.translatable("slashclient-hud.fpsgraph", mc.getFps(), low), x + PAD, y + PAD, Modules.textColor());
 		}
 	}
 
@@ -451,7 +458,7 @@ public final class ExtraModules {
 						case 270 -> "W";
 						default -> "NW";
 					};
-					int color = a == 0 ? 0xFFFF5555 : main ? cfg.textColor : 0xFFAAAAAA;
+					int color = a == 0 ? 0xFFFF5555 : main ? Modules.textColor() : 0xFFAAAAAA;
 					text(g, mc, label, px - mc.font.width(label) / 2, top + 9, color);
 					g.fill(px, top + 2, px + 1, top + 7, color);
 				} else g.fill(px, top + 4, px + 1, top + 7, 0x80FFFFFF);
@@ -471,10 +478,11 @@ public final class ExtraModules {
 			}
 			// where you look
 			g.fill(cx, top, cx + 1, top + 8, 0xFFFFFFFF);
+			if (!cfg.compassDegrees) return;
 			String deg = String.valueOf(Math.round((heading + 360) % 360));
 			int dw = mc.font.width(deg);
 			g.fill(cx - dw / 2 - 2, top + 8, cx + dw / 2 + 2, top + 18, 0xC0000000);
-			text(g, mc, deg, cx - dw / 2, top + 9, 0xFFFFFFFF);
+			text(g, mc, deg, cx - dw / 2, top + 9, Modules.textColor());
 		}
 	}
 
@@ -539,7 +547,7 @@ public final class ExtraModules {
 		private static List<Map.Entry<Component, Integer>> frameLines(net.minecraft.world.entity.decoration.ItemFrame f) {
 			List<Map.Entry<Component, Integer>> out = new ArrayList<>();
 			ItemStack held = f.getItem();
-			out.add(Map.entry(held.isEmpty() ? Component.translatable("slashclient-hud.block.frame.empty") : held.getHoverName(), cfg.textColor));
+			out.add(Map.entry(held.isEmpty() ? Component.translatable("slashclient-hud.block.frame.empty") : held.getHoverName(), Modules.textColor()));
 			// a comparator behind the frame reads its turn
 			out.add(Map.entry(f.getName().copy().append(Component.literal(" · ")).append(Component.translatable("slashclient-hud.block.frame.rotation", f.getRotation(), 8)), 0xFFAAAAAA));
 			if (held.isDamageableItem()) out.add(Map.entry(Component.translatable("slashclient-hud.block.frame.durability", held.getMaxDamage() - held.getDamageValue(), held.getMaxDamage()), 0xFFDDDDDD));
@@ -826,7 +834,7 @@ public final class ExtraModules {
 			BlockState s = mc.level.getBlockState(pos);
 			Item item = s.getBlock().asItem();
 			if (item != Items.AIR) g.item(new ItemStack(item), x + PAD, y + PAD + 2);
-			text(g, mc, s.getBlock().getName(), x + PAD + 20, y + PAD, cfg.textColor);
+			text(g, mc, s.getBlock().getName(), x + PAD + 20, y + PAD, Modules.textColor());
 			int bx = x + PAD + 20;
 			if (cfg.blockTool) {
 				Item tool = toolIcon(s);
@@ -885,7 +893,7 @@ public final class ExtraModules {
 				return;
 			}
 			Ui.icon(g, Items.DIAMOND_ORE, "#", x + PAD, y + PAD + 2);
-			text(g, mc, Component.translatable("block.minecraft.diamond_ore"), x + PAD + 20, y + PAD, cfg.textColor);
+			text(g, mc, Component.translatable("block.minecraft.diamond_ore"), x + PAD + 20, y + PAD, Modules.textColor());
 			var pose = g.pose();
 			pose.pushMatrix();
 			pose.translate(x + PAD + 20, y + PAD + 10);
@@ -900,8 +908,6 @@ public final class ExtraModules {
 	// ---------- 10. friends online, from the launcher's friends list ----------
 
 	static final class Friends implements HudModule {
-		private static final int MAX = 5;
-
 		public String id() {
 			return "friends";
 		}
@@ -920,7 +926,7 @@ public final class ExtraModules {
 			List<Row> out = new ArrayList<>();
 			for (Social.Friend f : Social.friends()) {
 				if ("offline".equals(f.status())) continue;
-				if (out.size() == MAX) break;
+				if (out.size() >= cfg.friendsRows) break;
 				out.add(new Row(f.name(), Social.activity(f), statusColor(f.status())));
 			}
 			return out;
@@ -955,7 +961,7 @@ public final class ExtraModules {
 			int ry = y + PAD + 11;
 			for (Row r : rows) {
 				g.fill(x + PAD, ry + 2, x + PAD + 4, ry + 6, r.color());
-				text(g, mc, Ui.fit(line(r), 170), x + PAD + 9, ry, cfg.textColor);
+				text(g, mc, Ui.fit(line(r), 170), x + PAD + 9, ry, Modules.textColor());
 				ry += 11;
 			}
 		}
@@ -978,6 +984,11 @@ public final class ExtraModules {
 
 		public String id() {
 			return "hits";
+		}
+
+		@Override
+		public boolean textColored() {
+			return false;
 		}
 
 		@Override

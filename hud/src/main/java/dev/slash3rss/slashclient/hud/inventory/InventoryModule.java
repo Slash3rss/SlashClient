@@ -24,18 +24,34 @@ public final class InventoryModule implements HudModule {
 		return "inventory";
 	}
 
+	@Override
+	public boolean textColored() {
+		return false;
+	}
+
+	@Override
+	public boolean shadowed() {
+		return false;
+	}
+
 	public int width(Minecraft mc) {
 		return COLUMNS * SLOT + Modules.PAD * 2 - 2;
 	}
 
-	public int height(Minecraft mc) {
-		return ROWS * SLOT + Modules.PAD * 2 - 2;
+	/** The backpack's three rows, and the hotbar under them when the player wants it. */
+	private static int rows() {
+		return dev.slash3rss.slashclient.hud.SlashHud.config.inventoryHotbar ? ROWS + 1 : ROWS;
 	}
 
-	/** Slots 9–35 of the player's inventory: the three rows above the hotbar. */
+	public int height(Minecraft mc) {
+		return rows() * SLOT + Modules.PAD * 2 - 2;
+	}
+
+	/** Slots 9–35 of the player's inventory: the three rows above the hotbar (and slots 0–8, the hotbar, under them). */
 	private static List<ItemStack> backpack(Minecraft mc) {
-		List<ItemStack> out = new ArrayList<>(COLUMNS * ROWS);
+		List<ItemStack> out = new ArrayList<>(COLUMNS * rows());
 		for (int i = 9; i < 36; i++) out.add(mc.player.getInventory().getItem(i));
+		if (rows() > ROWS) for (int i = 0; i < 9; i++) out.add(mc.player.getInventory().getItem(i));
 		return out;
 	}
 
@@ -56,7 +72,7 @@ public final class InventoryModule implements HudModule {
 		List<ItemStack> sample = new ArrayList<>();
 		Item[] items = { Items.COBBLESTONE, Items.OAK_LOG, Items.TORCH, null, Items.BREAD, Items.IRON_INGOT, null, Items.DIAMOND, Items.ARROW };
 		int[] counts = { 64, 23, 48, 0, 12, 31, 0, 5, 64 };
-		for (int i = 0; i < COLUMNS * ROWS; i++) {
+		for (int i = 0; i < COLUMNS * rows(); i++) {
 			// shifted by four each row, so the rows differ
 			int k = (i + i / COLUMNS * 4) % items.length;
 			ItemStack s = items[k] == null ? null : Ui.stack(items[k]);

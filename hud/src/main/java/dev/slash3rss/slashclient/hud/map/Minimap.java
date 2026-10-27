@@ -44,6 +44,12 @@ public final class Minimap implements HudModule {
 		return "minimap";
 	}
 
+	@Override
+	public boolean framed() {
+		// a round map has no square box or frame around it
+		return !circle();
+	}
+
 	private static boolean on() {
 		return SlashHud.config != null && SlashHud.config.placement("minimap").enabled;
 	}
@@ -340,7 +346,7 @@ public final class Minimap implements HudModule {
 		String text = p.getBlockX() + ", " + p.getBlockY() + ", " + p.getBlockZ() + "  " + DIRECTIONS[Math.round(yaw / 45f) % 8];
 		int tw = mc.font.width(text);
 		if (tw <= W - 2) {
-			Modules.text(g, mc, text, x + (W - tw) / 2, y + 2, SlashHud.config.textColor);
+			Modules.text(g, mc, text, x + (W - tw) / 2, y + 2, Modules.textColor());
 			return;
 		}
 		float k = (W - 2) / (float) tw;
@@ -348,7 +354,7 @@ public final class Minimap implements HudModule {
 		pose.pushMatrix();
 		pose.translate(x + 1, y + 2 + (8 - 8 * k) / 2);
 		pose.scale(k, k);
-		Modules.text(g, mc, text, 0, 0, SlashHud.config.textColor);
+		Modules.text(g, mc, text, 0, 0, Modules.textColor());
 		pose.popMatrix();
 	}
 
