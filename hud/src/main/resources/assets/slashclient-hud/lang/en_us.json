@@ -363,6 +363,7 @@
 	"slashclient-hud.chat.history": "Longer chat history",
 	"slashclient-hud.chat.history.lines": "Lines kept",
 	"slashclient-hud.chat.history.note": "This many chat lines, and this many of your sent messages (the up arrow), are kept. It does not slow the game – at the largest values it may only stutter for a moment when the window or the chat is resized.",
+	"slashclient-hud.chat.keep": "Keep the chat after leaving a server",
 	"slashclient-hud.chatCoords.setting": "Clickable coordinates in chat",
 	"slashclient-hud.chatCoords.hover": "Click to save as a waypoint",
 	"slashclient-hud.chatCoords.title": "Save as a waypoint",

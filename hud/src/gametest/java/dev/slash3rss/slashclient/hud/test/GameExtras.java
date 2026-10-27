@@ -117,7 +117,17 @@ public class GameExtras implements FabricClientGameTest {
 			context.waitTicks(10);
 			context.takeScreenshot("extras-pause-menu");
 			context.setScreen(() -> null);
+			// the chat stays after leaving (the game would empty it)
+			context.runOnClient(mc -> {
+				//#if MC >= 26.1
+				dev.slash3rss.slashclient.hud.Compat.chat(mc).addClientSystemMessage(net.minecraft.network.chat.Component.literal("Zostaje po wyjściu"));
+				//#else
+				//$ dev.slash3rss.slashclient.hud.Compat.chat(mc).addMessage(net.minecraft.network.chat.Component.literal("Zostaje po wyjściu"));
+				//#endif
+			});
 		}
+		String kept = context.computeOnClient(mc -> TestHooks.chatLines());
+		if (!kept.contains("Zostaje po wyjściu")) throw new AssertionError("The chat was emptied on leaving: " + kept);
 		// switching accounts in the main menu, without a restart (an offline account here)
 		context.runOnClient(mc -> TestHooks.slashMenu());
 		context.setScreen(dev.slash3rss.slashclient.hud.ui.SlashTitleScreen::new);

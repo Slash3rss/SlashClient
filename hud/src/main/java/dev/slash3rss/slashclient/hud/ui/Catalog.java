@@ -553,6 +553,8 @@ public final class Catalog {
 		out.add(new Entry("chatHistory", "slashclient-hud.chat.history", "chat", "chat", () -> cfg.chatLongHistory, v -> cfg.chatLongHistory = v, List.of(
 			new Slider("slashclient-hud.chat.history.lines", 100f, 16000f, 100f, "%.0f", () -> (float) cfg.chatHistoryLines, v -> cfg.chatHistoryLines = Math.round(v)),
 			new Note("slashclient-hud.chat.history.note", () -> new Object[0])), null));
+		// the game itself empties the chat on leaving a server
+		out.add(new Entry("chatKeep", "slashclient-hud.chat.keep", "chat", "chat", () -> cfg.chatKeep, v -> cfg.chatKeep = v, List.of(), null));
 		// the game's own HUD parts
 		// the game's own parts: moved in the editor (drag their boxes), shown, scaled
 		HudConfig.Placement scoreboard = cfg.placement("scoreboard"), bossbar = cfg.placement("bossbar"), tablist = cfg.placement("tablist"), actionbar = cfg.placement("actionbar"), titles = cfg.placement("titles");

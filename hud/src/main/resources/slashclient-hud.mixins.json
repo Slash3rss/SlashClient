@@ -68,6 +68,7 @@
 		"NetworkServerEntryAccessor",
 		"LegacyBossBarMixin",
 		"LegacyHudMixin",
+		"ChatKeepMixin",
 		"LightmapMixin",
 		"LineWidthMixin",
 		"MinecraftAccessor",
