@@ -40,6 +40,15 @@ public class GameClips implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.clips(false));
 			context.waitTicks(2);
 			if (context.computeOnClient(mc -> TestHooks.clipFrames()) != 0) throw new AssertionError("Frames kept after clips were turned off");
+			// a window whose size does not divide by the step to the size set (1281x721 halved for 480p) still records
+			context.getInput().resizeWindow(1281, 721);
+			context.runOnClient(mc -> { dev.slash3rss.slashclient.hud.SlashHud.config.clipResolution = "480p"; TestHooks.clips(true); });
+			long odd = System.currentTimeMillis();
+			while (System.currentTimeMillis() - odd < 2000) context.waitTick();
+			int oddFrames = context.computeOnClient(mc -> TestHooks.clipFrames());
+			context.runOnClient(mc -> { TestHooks.clips(false); dev.slash3rss.slashclient.hud.SlashHud.config.clipResolution = "720p"; });
+			context.getInput().resizeWindow(854, 480);
+			if (oddFrames < 10) throw new AssertionError("Too few frames in a 1281x721 window: " + oddFrames);
 		}
 	}
 }

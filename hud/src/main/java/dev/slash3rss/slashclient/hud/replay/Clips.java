@@ -71,7 +71,7 @@ public final class Clips {
 	});
 	private static final AtomicInteger inFlight = new AtomicInteger();
 	private static long lastFrame;
-	private static boolean lostWarned;
+	private static boolean lostWarned, failWarned;
 	private static volatile boolean saving;
 
 	public static boolean enabled() {
@@ -114,10 +114,13 @@ public final class Clips {
 		// at most as wide as set, by a whole step: at 720p a 1920 window is halved, a 4K one a third
 		int max = maxWidth();
 		int scale = max <= 0 ? 1 : Math.max(1, (int) Math.ceil(mc.getWindow().getWidth() / (double) max));
+		// the game's own smaller grab needs a window whose size divides by the step (1920x1017 does not by 2):
+		// otherwise the whole frame is grabbed and shrunk while it is encoded
+		int grab = target.width % scale == 0 && target.height % scale == 0 ? scale : 1;
 		inFlight.incrementAndGet();
 		try {
 			//#if MC >= 1.21.6
-			Screenshot.takeScreenshot(target, scale, image -> WORKER.execute(() -> encode(image, now, 1)));
+			Screenshot.takeScreenshot(target, grab, image -> WORKER.execute(() -> encode(image, now, scale / grab)));
 			//#elif MC >= 1.21.5
 			//$ // no downscaled grab before 1.21.6: the frame is shrunk while it is encoded
 			//$ Screenshot.takeScreenshot(target, image -> WORKER.execute(() -> encode(image, now, scale)));
@@ -125,12 +128,19 @@ public final class Clips {
 			//$ NativeImage image = Screenshot.takeScreenshot(target);
 			//$ WORKER.execute(() -> encode(image, now, scale));
 			//#else
-			//$ Screenshot.takeScreenshot(target, scale, image -> WORKER.execute(() -> encode(image, now, 1)));
+			//$ Screenshot.takeScreenshot(target, grab, image -> WORKER.execute(() -> encode(image, now, scale / grab)));
 			//#endif
 		} catch (RuntimeException e) {
 			inFlight.updateAndGet(n -> Math.max(0, n - 1));
-			SlashHud.LOG.debug("SlashClient clips: {}", e.toString());
+			failed(e);
 		}
+	}
+
+	/** A frame that could not be taken: said in the log once (then every time only for debugging), so a clip that stays empty can be traced. */
+	private static void failed(Exception e) {
+		if (!failWarned) SlashHud.LOG.warn("SlashClient clips: a frame could not be taken", e);
+		else SlashHud.LOG.debug("SlashClient clips: {}", e.toString());
+		failWarned = true;
 	}
 
 	/** Squeezes a frame to JPEG, taking every `step`-th pixel (1 = all). */
@@ -152,7 +162,7 @@ public final class Clips {
 				while (!frames.isEmpty() && at - frames.getFirst().at() > keep) frames.removeFirst();
 			}
 		} catch (Exception e) {
-			SlashHud.LOG.debug("SlashClient clips: {}", e.toString());
+			failed(e);
 		} finally {
 			inFlight.updateAndGet(n -> Math.max(0, n - 1));
 		}
