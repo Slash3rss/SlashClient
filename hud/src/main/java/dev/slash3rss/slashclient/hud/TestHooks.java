@@ -962,6 +962,14 @@ public final class TestHooks {
 		return Assist.bestSlot(inv, state);
 	}
 
+	/** Auto tool on for blocks, its moves from the backpack refused or not (as a server that puts the slots back). */
+	public static void autoToolRefused(boolean refused) {
+		HudConfig c = SlashHud.config;
+		c.assistWarned = c.autoTool = c.autoToolBlocks = true;
+		Assist.refuseMovesForTest = refused;
+		Assist.backpackRefusedUntil = 0;
+	}
+
 	/** Auto tool's weapon for a hit: the slot it picks, and a stack's attack damage. */
 	public static int autoToolWeapon(net.minecraft.world.entity.player.Inventory inv) {
 		return Assist.bestWeapon(inv);

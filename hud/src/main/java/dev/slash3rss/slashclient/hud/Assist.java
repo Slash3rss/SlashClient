@@ -50,6 +50,20 @@ public final class Assist {
 	private static int toolFrom = -1;
 	/** Tools auto tool brought from the backpack ({backpack slot, hotbar slot}), newest last, to put back in reverse. */
 	private static final java.util.ArrayDeque<int[]> swaps = new java.util.ArrayDeque<>();
+	/**
+	 * The last tool brought from the backpack ({backpack slot, hotbar slot}) and what it is, until the
+	 * server is seen to have moved it: some servers refuse moves in the inventory with no window open
+	 * and put the slots back, and the hand would then dig with nothing (or with what came back).
+	 */
+	private static int[] checking;
+	private static net.minecraft.world.item.Item checkingItem;
+	private static int checkingTicks;
+	/** Until when (ms) tools are not taken from the backpack, after the server refused a move. */
+	static long backpackRefusedUntil;
+	/** For the test: moves from the backpack not sent, as if a server put the slots back. */
+	static boolean refuseMovesForTest;
+	private static final int CHECK_TICKS = 20;
+	private static final long REFUSED_MS = 10_000;
 	private static int idleTicks;
 	/** When auto tool last took a weapon for a hit (ms): between hits the fight goes on, so the hand does not go back yet. */
 	private static long weaponAt;
@@ -103,6 +117,7 @@ public final class Assist {
 			lastHand = ItemStack.EMPTY;
 			toolFrom = -1;
 			swaps.clear();
+			checking = null;
 			return;
 		}
 		boolean inGame = Compat.screen(mc) == null;
@@ -128,6 +143,7 @@ public final class Assist {
 			// a button let go after its window closed is not held in the next one
 			if (inGame) screenLeft = screenRight = false;
 		}
+		if (cfg().autoTool) checkSwap(mc, player);
 		// also while the held button digs under the inventory or the pause menu
 		if (cfg().autoTool && (inGame || dugOverScreen)) autoTool(mc, player);
 		if (cfg().autoRefill) refill(mc, player);
@@ -413,7 +429,7 @@ public final class Assist {
 		java.util.function.Predicate<ItemStack> wanted = wanted(mob);
 		if (wanted == null) return -1;
 		if (wanted.test(inv.getItem(inv.getSelectedSlot()))) return inv.getSelectedSlot();
-		for (int i = 0; i < 36; i++) if (!inv.getItem(i).isEmpty() && wanted.test(inv.getItem(i))) return i;
+		for (int i = 0; i < reach(); i++) if (!inv.getItem(i).isEmpty() && wanted.test(inv.getItem(i))) return i;
 		return -1;
 	}
 
@@ -461,9 +477,35 @@ public final class Assist {
 			to = i;
 			break;
 		}
-		Compat.swapIntoHotbar(mc, player, best, to);
-		swaps.addLast(new int[] { best, to });
+		ItemStack tool = inv.getItem(best);
+		if (!refuseMovesForTest) Compat.swapIntoHotbar(mc, player, best, to);
+		int[] swap = { best, to };
+		swaps.addLast(swap);
 		inv.setSelectedSlot(to);
+		checking = swap;
+		checkingItem = tool.getItem();
+		checkingTicks = 0;
+	}
+
+	/**
+	 * A second after a tool came from the backpack: still in the hotbar slot it went to? If the server
+	 * put the slots back, that move is forgotten (it is not undone later either), the hand goes back to
+	 * what it held and for a while only the hotbar's tools are taken.
+	 */
+	private static void checkSwap(Minecraft mc, Player player) {
+		if (checking == null || ++checkingTicks < CHECK_TICKS) return;
+		int[] swap = checking;
+		checking = null;
+		Inventory inv = player.getInventory();
+		if (inv.getItem(swap[1]).is(checkingItem)) return;
+		swaps.removeIf(s -> s == swap);
+		backpackRefusedUntil = System.currentTimeMillis() + REFUSED_MS;
+		if (toolFrom >= 0 && inv.getSelectedSlot() == swap[1]) inv.setSelectedSlot(toolFrom);
+	}
+
+	/** How far auto tool looks: the whole inventory, or only the hotbar while the server refuses moves from the backpack. */
+	private static int reach() {
+		return System.currentTimeMillis() < backpackRefusedUntil ? Inventory.getSelectionSize() : 36;
 	}
 
 	/** The slot (hotbar 0-8, backpack 9-35) with the stack that breaks the block best; the hand's when nothing beats it. */
@@ -487,7 +529,7 @@ public final class Assist {
 		int best = inv.getSelectedSlot();
 		float bestSpeed = speed(inv.getItem(best), state);
 		// the hotbar first: a tool there is used as it is, the backpack only when it has a better one
-		for (int i = 0; i < 36; i++) {
+		for (int i = 0; i < reach(); i++) {
 			float s = speed(inv.getItem(i), state);
 			if (s > bestSpeed + 0.01f) {
 				best = i;
@@ -521,7 +563,7 @@ public final class Assist {
 		}
 		int best = inv.getSelectedSlot();
 		double bestDamage = damage(inv.getItem(best));
-		for (int i = 0; i < 36; i++) {
+		for (int i = 0; i < reach(); i++) {
 			double d = damage(inv.getItem(i));
 			if (d > bestDamage + 0.01) {
 				best = i;
@@ -549,11 +591,11 @@ public final class Assist {
 		};
 	}
 
-	/** The hand's slot first (it stays when nothing beats it), then all 36. */
+	/** The hand's slot first (it stays when nothing beats it), then all 36 (or the hotbar, see `reach`). */
 	private static int[] preferHand(Inventory inv) {
-		int[] out = new int[37];
+		int[] out = new int[reach() + 1];
 		out[0] = inv.getSelectedSlot();
-		for (int i = 0; i < 36; i++) out[i + 1] = i;
+		for (int i = 0; i < out.length - 1; i++) out[i + 1] = i;
 		return out;
 	}
 

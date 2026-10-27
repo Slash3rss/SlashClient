@@ -58,6 +58,26 @@ public class GameInventoryTools implements FabricClientGameTest {
 				return fromBackpack + " " + fromHotbar;
 			});
 			if (!slots.equals("20 3")) throw new AssertionError("Auto tool slots (backpack, then hotbar): " + slots);
+			// digging stone with an iron pickaxe in the backpack and a wooden one on the hotbar: when the server
+			// does not move the iron one, the hand does not stay empty but takes the wooden one a second later
+			world.getServer().runCommand("gamemode survival @a");
+			world.getServer().runCommand("clear @a");
+			world.getServer().runCommand("item replace entity @a hotbar.0 with stick");
+			world.getServer().runCommand("item replace entity @a hotbar.2 with wooden_pickaxe");
+			world.getServer().runCommand("item replace entity @a inventory.11 with iron_pickaxe");
+			world.getServer().runCommand("execute at @a run setblock ~ ~1 ~2 stone");
+			context.waitTicks(5);
+			context.runOnClient(mc -> { TestHooks.lookSouth(); TestHooks.selectSlot(0); TestHooks.autoToolRefused(true); TestHooks.holdButtons(true, false); });
+			context.waitTicks(3);
+			int tried = context.computeOnClient(mc -> TestHooks.selectedSlot());
+			context.waitTicks(30);
+			int fallback = context.computeOnClient(mc -> TestHooks.selectedSlot());
+			context.runOnClient(mc -> { TestHooks.holdButtons(false, false); TestHooks.autoToolRefused(false);
+				dev.slash3rss.slashclient.hud.SlashHud.config.autoTool = false; });
+			world.getServer().runCommand("gamemode creative @a");
+			world.getServer().runCommand("clear @a");
+			world.getServer().runCommand("execute at @a run setblock ~ ~1 ~2 air");
+			if (tried != 1 || fallback != 2) throw new AssertionError("Auto tool after a refused move (tried, then): " + tried + " " + fallback);
 			// leaves: the shears are the fastest, a hoe when hoes are preferred for leaves; stone is not leaves
 			String preferred = context.computeOnClient(mc -> {
 				var inv = mc.player.getInventory();
