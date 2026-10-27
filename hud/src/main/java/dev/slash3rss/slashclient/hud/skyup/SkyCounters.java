@@ -280,16 +280,53 @@ public final class SkyCounters {
 	/** When the player last right-clicked a block (a case's chest is opened so), for "Otwórz SkyCase: Ręcznie". */
 	private static long blockUsedAt;
 
+	/** A bell clicked and when: it counts once the server swings it (a protected one stays still and silent). */
+	private static net.minecraft.core.BlockPos ringing;
+	private static long ringingSince;
+	/** A sheep clicked with shears and when: it counts once the server says it is shorn. */
+	private static int shearing = -1;
+	private static long shearingSince;
+
 	/** A right click: on a bell it rings ("Uderz w dzwony"); shears on a sheep that has wool ("Ostrzyż"). */
 	public static void used(Minecraft mc) {
 		if (mc.player == null || mc.level == null) return;
 		if (mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit && hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
 			blockUsedAt = System.currentTimeMillis();
-			if (mc.level.getBlockState(hit.getBlockPos()).is(Blocks.BELL)) add(Kind.BELL, Thing.of(false, false, false, false, "Dzwon"), 1);
+			if (mc.level.getBlockState(hit.getBlockPos()).is(Blocks.BELL)) {
+				ringing = hit.getBlockPos().immutable();
+				ringingSince = blockUsedAt;
+			}
 		} else if (mc.hitResult instanceof net.minecraft.world.phys.EntityHitResult hit
 			&& hit.getEntity() instanceof net.minecraft.world.entity.animal.sheep.Sheep sheep && sheep.readyForShearing()
 			&& (mc.player.getMainHandItem().is(Items.SHEARS) || mc.player.getOffhandItem().is(Items.SHEARS))) {
-			add(Kind.SHEAR, Thing.of(false, false, false, false, sheep.getType().getDescription().getString(), plEntity(sheep.getType())), 1);
+			shearing = sheep.getId();
+			shearingSince = System.currentTimeMillis();
+		} else if (mc.hitResult instanceof net.minecraft.world.phys.EntityHitResult hit
+			&& hit.getEntity() instanceof net.minecraft.world.entity.monster.piglin.Piglin piglin && mc.player.getMainHandItem().is(Items.GOLD_INGOT)) {
+			// gold given to a piglin by hand (as on SkyUp): what it drops in the next while is the trade
+			traded.put(piglin.getId(), System.currentTimeMillis() + 10_000);
+			bartered.remove(piglin.getId());
+		}
+	}
+
+	/**
+	 * What the server did with the last click: the bell swings (with its sound) only when the server rang it,
+	 * and the sheep loses its wool only when it was shorn, so a click the server refused counts for nothing.
+	 */
+	private static void watchUsed(Minecraft mc, long now) {
+		if (ringing != null) {
+			if (now - ringingSince > 2000) ringing = null;
+			else if (mc.level.getBlockEntity(ringing) instanceof net.minecraft.world.level.block.entity.BellBlockEntity bell && bell.shaking && bell.ticks <= 5) {
+				ringing = null;
+				add(Kind.BELL, Thing.of(false, false, false, false, "Dzwon"), 1);
+			}
+		}
+		if (shearing >= 0) {
+			if (now - shearingSince > 2000) shearing = -1;
+			else if (mc.level.getEntity(shearing) instanceof net.minecraft.world.entity.animal.sheep.Sheep sheep && sheep.isSheared()) {
+				shearing = -1;
+				add(Kind.SHEAR, Thing.of(false, false, false, false, sheep.getType().getDescription().getString(), plEntity(sheep.getType())), 1);
+			}
 		}
 	}
 
@@ -309,8 +346,10 @@ public final class SkyCounters {
 	private static final java.util.Set<Integer> seenItems = new java.util.HashSet<>(), seenChicks = new java.util.HashSet<>();
 	/** Where the player's eggs broke, and when ({x, y, z, ms}): a chick there right after hatched from it. */
 	private static final List<double[]> eggsBroken = new ArrayList<>();
-	/** Piglins that just let go of the gold (id → when): what lies by them right after is what they gave. */
+	/** Piglins given gold or that just let go of it (id → until when): what lies by them by then is what they gave. */
 	private static final Map<Integer, Long> traded = new HashMap<>();
+	/** Those of them whose trade was counted already ("Handluj z piglinami" once per trade, however many items). */
+	private static final java.util.Set<Integer> bartered = new java.util.HashSet<>();
 
 	private static boolean wants(Kind... kinds) {
 		for (SkyTaskParser.Task t : SkyTasks.data().tasks.values()) for (SkyTaskParser.Section s : t.sections) for (Kind k : kinds) if (kind(s) == k) return true;
@@ -334,12 +373,11 @@ public final class SkyCounters {
 				if (was != null && !was && isTamed && e.distanceTo(player) < 8)
 					add(Kind.TAME, Thing.of(false, false, false, false, e.getType().getDescription().getString(), plEntity(e.getType())), 1);
 			}
-			// a piglin taking gold to admire ("Handluj z piglinami"), and letting go of it (its barter drops)
+			// a piglin letting go of the gold it admired: its barter drops come now
 			if (e instanceof net.minecraft.world.entity.monster.piglin.Piglin piglin) {
 				boolean gold = piglin.getOffhandItem().is(Items.GOLD_INGOT);
 				Boolean was = admiring.put(id, gold);
-				if (was != null && !was && gold && e.distanceTo(player) < 16) add(Kind.BARTER, Thing.of(false, false, false, false, "Piglin"), 1);
-				if (was != null && was && !gold) traded.put(id, now);
+				if (was != null && was && !gold && e.distanceTo(player) < 16) traded.merge(id, now + 3000, Math::max);
 			}
 			// the player's thrown eggs, and the witches' thrown potions
 			if (e instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile p) {
@@ -357,11 +395,13 @@ public final class SkyCounters {
 					}
 				}
 			}
-			// what lies by a piglin that just bartered ("Wymień z piglinami: Obsydian")
-			if (e instanceof net.minecraft.world.entity.item.ItemEntity drop && seenItems.add(id)) {
+			// what lies by a piglin that was given gold: a trade done ("Handluj z piglinami") and what it gave
+			// ("Wymień z piglinami: Obsydian"); gold lying there is the player's own, not the piglin's
+			if (e instanceof net.minecraft.world.entity.item.ItemEntity drop && seenItems.add(id) && !drop.getItem().is(Items.GOLD_INGOT)) {
 				for (var t : traded.entrySet()) {
 					var piglin = mc.level.getEntity(t.getKey());
-					if (piglin != null && now - t.getValue() < 3000 && piglin.distanceTo(e) < 3) {
+					if (piglin != null && now < t.getValue() && piglin.distanceTo(e) < 3) {
+						if (bartered.add(t.getKey())) add(Kind.BARTER, Thing.of(false, false, false, false, "Piglin"), 1);
 						add(Kind.TRADE, item(drop.getItem()), drop.getItem().getCount());
 						break;
 					}
@@ -380,7 +420,8 @@ public final class SkyCounters {
 		}
 		witchPotions.clear();
 		witchPotions.putAll(potionsNow);
-		traded.values().removeIf(at -> now - at > 3000);
+		traded.values().removeIf(until -> now > until);
+		bartered.retainAll(traded.keySet());
 		// what was seen keeps to what is still around
 		if (tamed.size() > 2000) tamed.clear();
 		if (admiring.size() > 500) admiring.clear();
@@ -564,6 +605,7 @@ public final class SkyCounters {
 			if (now - reeledAt > 2000) before = null;
 		}
 		watchCrafting(mc, now);
+		watchUsed(mc, now);
 		readNear(mc);
 		watchAround(mc);
 		// the sidebar: read again each second

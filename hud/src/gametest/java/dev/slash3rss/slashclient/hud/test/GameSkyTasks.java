@@ -240,7 +240,13 @@ public class GameSkyTasks implements FabricClientGameTest {
 			world.getServer().runCommand("execute at @p run setblock ^ ^1 ^2 bell");
 			context.runOnClient(mc -> { mc.player.setXRot(0f); mc.player.setYRot(mc.player.getYRot()); });
 			context.waitTicks(10);
+			// a click the server refused (no swing, no sound): nothing counted
+			context.runOnClient(mc -> TestHooks.skyUseRefused());
+			context.waitTicks(10);
+			String refused = context.computeOnClient(mc -> TestHooks.skyMoreProgress());
+			check(refused.startsWith("Uderz w dzwony=0 "), "a bell the server did not ring", refused);
 			context.runOnClient(mc -> TestHooks.skyUse());
+			context.waitTicks(10);
 			// the case's chest clicked (the bell is a block too), then SkyUp's win line
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCase.onChat("SkyCase » Wygrano: 5x Zaklęta butelka!"));
 			world.getServer().runCommand("execute at @p run setblock ^ ^1 ^2 air");
@@ -248,6 +254,7 @@ public class GameSkyTasks implements FabricClientGameTest {
 			world.getServer().runCommand("item replace entity @a weapon.mainhand with shears"); context.runOnClient(mc -> mc.player.setXRot(35f));
 			context.waitTicks(10);
 			context.runOnClient(mc -> TestHooks.skyUse());
+			context.waitTicks(10);
 			String more = context.computeOnClient(mc -> TestHooks.skyMoreProgress());
 			check(more.equals("Uderz w dzwony=1 Ostrzyż=1 Otwórz SkyCase=1 Posiadaj poziom=61"), "bells, sheep, a case by hand, the level", more);
 			world.getServer().runCommand("kill @e[type=sheep]");
