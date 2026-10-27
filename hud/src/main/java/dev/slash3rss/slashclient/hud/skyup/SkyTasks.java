@@ -659,7 +659,7 @@ public final class SkyTasks {
 	private static Map<String, Item> names;
 	private static String namesLang;
 
-	private static Item itemNamed(Minecraft mc, String name) {
+	static Item itemNamed(Minecraft mc, String name) {
 		String lang = mc.options.languageCode;
 		if (names == null || !lang.equals(namesLang)) {
 			names = new HashMap<>();

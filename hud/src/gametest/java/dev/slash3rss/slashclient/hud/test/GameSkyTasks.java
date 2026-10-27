@@ -347,6 +347,31 @@ public class GameSkyTasks implements FabricClientGameTest {
 			state = context.computeOnClient(mc -> TestHooks.skyCategoryState());
 			rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			check(!state.startsWith("Nowicjusz") && !rows.contains("Nowicjusz") && !context.computeOnClient(mc -> TestHooks.skyTasks()).contains("Nowicjusz|"), "a category done", state + "\n" + rows);
+			// SkyUp's shamanism window: each mob's recipe read from it (a name the game does not know kept as it is)
+			String shamanRead = context.computeOnClient(mc -> TestHooks.skyShamanWindow());
+			check(shamanRead.equals("1 x Wiedźma redstone_torch/glass_bottle 10 {bone=10, rotten_flesh=20} | 2 x Świnia stick/carrot_on_a_stick 15 {bone=16, wheat=128} | "
+				+ "1 x Kostka siarki end_rod/slime_ball 40 {name:Pył siarkowy=3} | none | "), "the shamanism window's recipes", shamanRead);
+			// the witch tracked with the key; her things carried and held: ready in the window, ready to summon in the module
+			world.getServer().runCommand("item replace entity @a weapon.mainhand with redstone_torch");
+			world.getServer().runCommand("item replace entity @a weapon.offhand with glass_bottle");
+			world.getServer().runCommand("give @a bone 10");
+			world.getServer().runCommand("give @a rotten_flesh 20");
+			context.waitTicks(10);
+			double[] witch = context.computeOnClient(mc -> TestHooks.slotPoint(0));
+			context.getInput().setCursorPos(witch[0], witch[1]);
+			context.waitTicks(3);
+			context.getInput().pressKey(options -> TestHooks.skyTrackKey());
+			context.waitTicks(3);
+			context.takeScreenshot("skyup-shaman-window");
+			String shamanRows = context.computeOnClient(mc -> TestHooks.skyShamanModule());
+			check(shamanRows.startsWith("Wiedźma | Ready – right-click the campfire | Świnia ×2 | ")
+				&& shamanRows.contains("Wand: Stick ✖") && shamanRows.contains("Bone 10/16") && shamanRows.contains("Wheat 0/128")
+				&& shamanRows.contains("Kostka siarki") && shamanRows.contains("Pył siarkowy 0/3") && shamanRows.endsWith("lit [0]"), "the shamanism module", shamanRows);
+			context.waitTicks(3);
+			context.setScreen(() -> null);
+			context.waitTicks(3);
+			context.takeScreenshot("skyup-shaman-module");
+			world.getServer().runCommand("clear @a");
 			context.runOnClient(mc -> TestHooks.skyTasksOptions(false, false));
 		}
 		//#endif

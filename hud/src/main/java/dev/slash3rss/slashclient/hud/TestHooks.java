@@ -2588,6 +2588,36 @@ public final class TestHooks {
 		return rows + "\ncount " + now;
 	}
 
+	/**
+	 * SkyUp's shamanism window: the witch, two pigs, a mob the game's list does not know and the info item;
+	 * the recipes read from it (nothing known before), one per item.
+	 */
+	public static String skyShamanWindow() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		SkyShaman.resetForTest();
+		var head = net.minecraft.world.item.Items.PLAYER_HEAD;
+		var chest = new net.minecraft.world.SimpleContainer(27);
+		chest.setItem(0, task(head, "1 x Wiedźma", "", "▪ Blok przywołujący » Ognisko", "▪ Różdżka » Pochodnia redstone", "▪ Przedmiot główny » Szklana butelka",
+			"▪ Doświadczenie » 10 poziom", "▪ Potrzebne materiały:", "» Kość: 10", "» Zgniłe mięso: 20", ""));
+		chest.setItem(1, task(head, "2 x Świnia", "", "▪ Blok przywołujący » Ognisko", "▪ Różdżka » Patyk", "▪ Przedmiot główny » Marchewka na patyku",
+			"▪ Doświadczenie » 15 poziom", "▪ Potrzebne materiały:", "» Kość: 16", "» Pszenica: 128", ""));
+		chest.setItem(2, task(head, "1 x Kostka siarki", "", "▪ Blok przywołujący » Ognisko dusz", "▪ Różdżka » Endowy słupek", "▪ Przedmiot główny » Kula szlamu",
+			"▪ Doświadczenie » 40 poziom", "▪ Potrzebne materiały:", "» Pył siarkowy: 3", ""));
+		chest.setItem(4, task(head, "Informacje", "", "▪ Aby przywołać moba:", "» Weź różdzkę do głównej ręki.", ""));
+		var menu = net.minecraft.world.inventory.ChestMenu.threeRows(1001, mc.player.getInventory(), chest);
+		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, mc.player.getInventory(), net.minecraft.network.chat.Component.literal("          Szamaństwo")));
+		StringBuilder sb = new StringBuilder();
+		for (int i : new int[] { 0, 1, 2, 4 }) sb.append(SkyShaman.readForTest(chest.getItem(i))).append(" | ");
+		return sb.toString();
+	}
+
+	/** The pigs and the unknown mob tracked too (the witch by the key); the module's rows and the window's lit slots. */
+	public static String skyShamanModule() {
+		SkyShaman.toggle("Świnia");
+		SkyShaman.toggle("Kostka siarki");
+		return SkyShaman.moduleForTest();
+	}
+
 	/** The daily reminder's sound set so, as it is played ("" the bell); the setting put back after. */
 	public static String skyDailySound(String set) {
 		String keep = SlashHud.config.skyDailySound;

@@ -626,6 +626,9 @@ public final class HudConfig {
 		c.modules.put("skywardrobe", new Placement(true, 1f, 0.35f, -2, 0));
 		// SkyUp's bottling countdown in the middle of the top; shown only while one runs
 		c.modules.put("skyxp", new Placement(true, 0.5f, 0.12f, 0, 0));
+		// the shamanism recipes tracked on the left where the dungeon map is (never both: no summons in a dungeon);
+		// shown only with one tracked
+		c.modules.put("skyshaman", new Placement(true, 0f, 0.55f, 2, 0));
 		// the minimap in the top right corner, off until switched on; its own picture needs no background
 		Placement minimap = new Placement(false, 1f, 0f, -2, 2);
 		minimap.background = false;

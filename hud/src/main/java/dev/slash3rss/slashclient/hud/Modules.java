@@ -58,6 +58,8 @@ public final class Modules {
 		out.add(new SkyWardrobe.Module());
 		// and the bottling countdown of SkyUp's XP calculator, while it runs
 		out.add(new SkyXp.Module());
+		// and the shamanism recipes being tracked, with what is still missing
+		out.add(new dev.slash3rss.slashclient.hud.skyup.SkyShaman.Module());
 		//#endif
 		// a Twitch and a Kick channel's live chat
 		out.addAll(StreamChatModule.all());

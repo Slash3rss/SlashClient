@@ -241,9 +241,14 @@ public class SlashHud implements ClientModInitializer {
 				// the helpers' keys (holding a button, the autoclicker) also over the window
 				Assist.attach(mc, container);
 				//#if MC >= 26.3
-				net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents.allowKeyPress(screen).register((s, e) -> !SkyDump.key(container, e) && !SkyTasks.key(container, e));
-				net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(screen).register((s, e) -> !SkyTasks.click(container, e));
-				ContainerLayer.under(container, (g, mx, my) -> SkyTasks.drawOver(container, g));
+				net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents.allowKeyPress(screen).register((s, e) -> !SkyDump.key(container, e) && !SkyTasks.key(container, e)
+					&& !dev.slash3rss.slashclient.hud.skyup.SkyShaman.key(container, e));
+				net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(screen).register((s, e) -> !SkyTasks.click(container, e)
+					&& !dev.slash3rss.slashclient.hud.skyup.SkyShaman.click(container, e));
+				ContainerLayer.under(container, (g, mx, my) -> {
+					SkyTasks.drawOver(container, g);
+					dev.slash3rss.slashclient.hud.skyup.SkyShaman.drawOver(container, g);
+				});
 				//#endif
 			}
 			// dropped by a server: a way straight back to it
