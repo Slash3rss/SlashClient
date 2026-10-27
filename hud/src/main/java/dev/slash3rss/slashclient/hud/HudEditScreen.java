@@ -979,13 +979,31 @@ public class HudEditScreen extends Screen {
 	private static final String[] CATEGORY_ICONS = { "all", "info", "combat", "world", "layout", "extras", "skyup", "chat", "share" };
 
 
+	/** The names searched: each in the game's language, in Polish and in English, without the marks of Polish letters. */
+	private static final java.util.Map<String, String> SEARCHED = new java.util.HashMap<>();
+	private static net.minecraft.locale.Language polish, english;
+
+	/** Whether a card's name has what was typed, in either language ("zegar" and "clock" both find the clock; "zrodlo" finds "Źródło"). */
+	static boolean found(String nameKey, String query) {
+		String q = dev.slash3rss.slashclient.hud.inventory.InventorySearch.plain(query.trim());
+		if (q.isEmpty()) return true;
+		return SEARCHED.computeIfAbsent(nameKey, k -> {
+			if (polish == null) {
+				var resources = net.minecraft.client.Minecraft.getInstance().getResourceManager();
+				english = net.minecraft.client.resources.language.ClientLanguage.loadFrom(resources, List.of("en_us"), false);
+				polish = net.minecraft.client.resources.language.ClientLanguage.loadFrom(resources, List.of("en_us", "pl_pl"), false);
+			}
+			return dev.slash3rss.slashclient.hud.inventory.InventorySearch.plain(Component.translatable(k).getString() + "\n" + polish.getOrDefault(k) + "\n" + english.getOrDefault(k));
+		}).contains(q);
+	}
+
 	private void drawCards(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h) {
-		String query = search == null ? "" : search.getValue().trim().toLowerCase(Locale.ROOT);
+		String query = search == null ? "" : search.getValue().trim();
 		List<Catalog.Entry> shown = new ArrayList<>();
 		for (Catalog.Entry e : entries) {
 			// "all" is everything for any server; a server's own tab (SkyUp) only in that tab
 			if (category.equals("all") ? e.category().equals("skyup") : !e.category().equals(category)) continue;
-			if (!query.isEmpty() && !Component.translatable(e.nameKey()).getString().toLowerCase(Locale.ROOT).contains(query)) continue;
+			if (!query.isEmpty() && !found(e.nameKey(), query)) continue;
 			shown.add(e);
 		}
 		int gap = 6;

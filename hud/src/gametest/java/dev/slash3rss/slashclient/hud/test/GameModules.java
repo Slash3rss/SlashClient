@@ -37,6 +37,10 @@ public class GameModules implements FabricClientGameTest {
 			}
 			context.waitTicks(5);
 			context.takeScreenshot("modules-in-game");
+			// the search finds a module by its Polish or English name, also without Polish letters
+			String searched = context.computeOnClient(mc -> TestHooks.moduleFound("slashclient-hud.module.clock", "zegar") + " " + TestHooks.moduleFound("slashclient-hud.module.clock", "CLOCK")
+				+ " " + TestHooks.moduleFound("slashclient-hud.module.armor", "pancerz") + " " + TestHooks.moduleFound("slashclient-hud.module.armor", "zegar"));
+			if (!searched.equals("true true true false")) throw new AssertionError("Module search in both languages: " + searched);
 			// only the options that do something for each module, and the new ones changing the sizes
 			String options = context.computeOnClient(mc -> TestHooks.moduleOptions());
 			if (!options.equals("ping.textColor=false inventory.shadow=false keystrokes.background=true keys=46 coords=14 armor=flat"))

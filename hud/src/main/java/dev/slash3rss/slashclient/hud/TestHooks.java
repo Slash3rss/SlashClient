@@ -288,6 +288,11 @@ public final class TestHooks {
 		return Modules.CLICKS.left() + "/" + Modules.CLICKS.right();
 	}
 
+	/** The module search: whether typing this finds the card of that name (either language). */
+	public static boolean moduleFound(String nameKey, String query) {
+		return HudEditScreen.found(nameKey, query);
+	}
+
 	/** The autoclicker's clicks since it was set: "left/right". */
 	public static String autoClicks() {
 		return Assist.leftClicks + "/" + Assist.rightClicks;
