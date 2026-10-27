@@ -422,8 +422,8 @@ public final class HudConfig {
 	public int autoClickJumps = 2;
 	/** The left button is not clicked while the player's own shield is up. */
 	public boolean autoClickShield = true;
-	/** It rests in SkyUp's dungeons and goes on once out (the setting itself stays as it was). */
-	public boolean autoClickDungeonPause = true;
+	/** In a chest's or a server's window (selling, buying) it clicks the slot under the mouse. */
+	public boolean autoClickContainers = true;
 	/** With a mob under the crosshair the left button waits for full hits (the weapon charged); at the rest, the CPS. */
 	public boolean autoClickCooldown = false;
 	/** Left clicks only with a mob under the crosshair (never at a player either way). */
@@ -941,7 +941,7 @@ public final class HudConfig {
 		autoClickJumps = Math.max(1, Math.min(10, other.autoClickJumps));
 		autoClickShield = other.autoClickShield;
 		autoClickCooldown = other.autoClickCooldown;
-		autoClickDungeonPause = other.autoClickDungeonPause;
+		autoClickContainers = other.autoClickContainers;
 		autoClickMobs = other.autoClickMobs;
 		autoTool = other.autoTool;
 		autoToolRestore = other.autoToolRestore;

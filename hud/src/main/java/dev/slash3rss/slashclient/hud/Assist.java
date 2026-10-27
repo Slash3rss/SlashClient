@@ -38,6 +38,8 @@ public final class Assist {
 	 */
 	private static boolean armed, paused;
 	private static long nextLeft, nextRight, nextJump;
+	/** The mouse buttons held over an inventory window (the game does not keep that while one is open). */
+	private static boolean screenLeft, screenRight;
 	/** The autoclicker pressed the jump key last tick: let go of it now. */
 	private static boolean jumpPressed;
 	/** In a SkyUp dungeon the autoclicker rests (see `tick`); this was so last tick. */
@@ -110,14 +112,22 @@ public final class Assist {
 		if (holdUse && inGame) mc.options.keyUse.setDown(true);
 		holdOverScreen(mc, player, inGame);
 
-		// in a dungeon it rests, out of it it goes on as it was (said once each way)
-		boolean dungeon = cfg().autoClickDungeonPause && dev.slash3rss.slashclient.hud.skyup.DungeonMap.active();
+		// in a dungeon it always rests, out of it it goes on as it was (said once each way)
+		boolean dungeon = dev.slash3rss.slashclient.hud.skyup.DungeonMap.active();
 		if (dungeon != inDungeon) {
 			inDungeon = dungeon;
 			if (cfg().autoClicker) Compat.overlay(mc, Component.translatable(dungeon ? "slashclient-hud.assist.dungeonPause.on" : "slashclient-hud.assist.dungeonPause.off"));
 		}
-		if (cfg().autoClicker && inGame && !dungeon && (holdMode() ? !paused : armed)) autoClick(mc, player);
-		else letGoOfJump(mc);
+		boolean clicking = cfg().autoClicker && !dungeon && (holdMode() ? !paused : armed);
+		if (clicking && inGame) autoClick(mc, player);
+		else {
+			letGoOfJump(mc);
+			// in a chest's or a server's window (selling, buying) it clicks the slot under the mouse
+			if (clicking && cfg().autoClickContainers && Compat.screen(mc) instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> s
+				&& !holdsOver(s)) clickSlot(mc, player, s);
+			// a button let go after its window closed is not held in the next one
+			if (inGame) screenLeft = screenRight = false;
+		}
 		// also while the held button digs under the inventory or the pause menu
 		if (cfg().autoTool && (inGame || dugOverScreen)) autoTool(mc, player);
 		if (cfg().autoRefill) refill(mc, player);
@@ -190,10 +200,15 @@ public final class Assist {
 			return true;
 		});
 		net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(screen).register((s, e) -> {
+			mouse(e.button(), true);
 			for (KeyMapping k : keys) if (!k.isUnbound() && k.matchesMouse(e)) {
 				pressed(mc, k);
 				return false;
 			}
+			return true;
+		});
+		net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseRelease(screen).register((s, e) -> {
+			mouse(e.button(), false);
 			return true;
 		});
 		//#else
@@ -205,13 +220,23 @@ public final class Assist {
 		//$ 	return true;
 		//$ });
 		//$ net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseClick(screen).register((s, x, y, button) -> {
+		//$ 	mouse(button, true);
 		//$ 	for (KeyMapping k : keys) if (!k.isUnbound() && k.matchesMouse(button)) {
 		//$ 		pressed(mc, k);
 		//$ 		return false;
 		//$ 	}
 		//$ 	return true;
 		//$ });
+		//$ net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents.allowMouseRelease(screen).register((s, x, y, button) -> {
+		//$ 	mouse(button, false);
+		//$ 	return true;
+		//$ });
 		//#endif
+	}
+
+	private static void mouse(int button, boolean down) {
+		if (button == InputConstants.MOUSE_BUTTON_LEFT) screenLeft = down;
+		else if (button == InputConstants.MOUSE_BUTTON_RIGHT) screenRight = down;
 	}
 
 	/** Whether a key's toggle is on (for the tests). */
@@ -285,6 +310,30 @@ public final class Assist {
 			jumpPressed = true;
 			jumps++;
 			nextJump = now + Math.round(1000.0 / Math.max(1, Math.min(10, cfg().autoClickJumps)));
+		}
+	}
+
+	/**
+	 * The slot under the mouse in a chest's or a server's window clicked as by hand, at each button's
+	 * clicks a second: held, while the player holds that button; toggle, on its own while armed.
+	 */
+	private static void clickSlot(Minecraft mc, Player player, net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> screen) {
+		net.minecraft.world.inventory.Slot slot = ((dev.slash3rss.slashclient.hud.mixin.ContainerScreenAccessor) screen).slashclient$hoveredSlot();
+		if (slot == null || mc.gameMode == null) return;
+		long now = System.currentTimeMillis();
+		boolean hold = holdMode();
+		int id = screen.getMenu().containerId;
+		if (cfg().autoClickLeft && (!hold || screenLeft) && now >= nextLeft) {
+			Modules.CLICKS.clicked(true);
+			Compat.containerClick(mc, player, id, slot.index, 0, Compat.Click.PICKUP);
+			leftClicks++;
+			nextLeft = now + interval(cfg().autoClickCps);
+		}
+		if (cfg().autoClickRight && (!hold || screenRight) && now >= nextRight) {
+			Modules.CLICKS.clicked(false);
+			Compat.containerClick(mc, player, id, slot.index, 1, Compat.Click.PICKUP);
+			rightClicks++;
+			nextRight = now + interval(cfg().autoClickRightCps);
 		}
 	}
 

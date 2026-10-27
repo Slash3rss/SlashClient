@@ -119,6 +119,42 @@ public class GameAutoClicker implements FabricClientGameTest {
 			String onMob = context.computeOnClient(mc -> TestHooks.autoClicks());
 			if (onMob.startsWith("0/")) throw new AssertionError("Did not click the mob under the crosshair: " + onMob);
 
+			// in a chest's window it clicks the slot under the mouse: armed on its own, held while the button is
+			world.getServer().runCommand("execute at @a run setblock ~ ~ ~-2 chest");
+			world.getServer().runCommand("execute at @a run item replace block ~ ~ ~-2 container.0 with stone 1");
+			context.waitTicks(5);
+			context.runOnClient(mc -> {
+				net.minecraft.core.BlockPos chest = mc.player.blockPosition().north(2);
+				mc.gameMode.useItemOn(mc.player, net.minecraft.world.InteractionHand.MAIN_HAND,
+					new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(chest), net.minecraft.core.Direction.SOUTH, chest, false));
+			});
+			context.waitTicks(10);
+			if (!context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.Compat.screen(mc) instanceof net.minecraft.client.gui.screens.inventory.ContainerScreen))
+				throw new AssertionError("The chest did not open");
+			double[] slot0 = context.computeOnClient(mc -> TestHooks.slotOnWindow(0));
+			context.getInput().setCursorPos(slot0[0], slot0[1]);
+			context.waitTicks(3);
+			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, false, 10); TestHooks.armAutoClicker(); });
+			context.waitTicks(20);
+			String inChest = context.computeOnClient(mc -> TestHooks.autoClicks());
+			if (Integer.parseInt(inChest.split("/")[0]) < 5) throw new AssertionError("Too few clicks on the chest's slot in 1 s: " + inChest);
+			context.runOnClient(mc -> TestHooks.autoClicker(true, "hold", true, false, false, 10));
+			context.waitTicks(10);
+			String chestIdle = context.computeOnClient(mc -> TestHooks.autoClicks());
+			context.getInput().holdMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
+			context.waitTicks(20);
+			context.getInput().releaseMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
+			String chestHeld = context.computeOnClient(mc -> TestHooks.autoClicks());
+			if (!chestIdle.equals("0/0") || Integer.parseInt(chestHeld.split("/")[0]) < 5)
+				throw new AssertionError("Held in the chest (no button, button held): " + chestIdle + ", " + chestHeld);
+			// the player's own inventory: never
+			context.setScreen(() -> new net.minecraft.client.gui.screens.inventory.InventoryScreen(net.minecraft.client.Minecraft.getInstance().player));
+			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, false, 10); TestHooks.armAutoClicker(); });
+			context.waitTicks(20);
+			String inInventory = context.computeOnClient(mc -> TestHooks.autoClicks());
+			context.setScreen(() -> null);
+			if (!inInventory.equals("0/0")) throw new AssertionError("Clicked in the own inventory: " + inInventory);
+
 			// switched off: nothing
 			context.runOnClient(mc -> { TestHooks.autoClicker(false, "toggle", true, true, false, 10); TestHooks.armAutoClicker(); });
 			context.waitTicks(20);

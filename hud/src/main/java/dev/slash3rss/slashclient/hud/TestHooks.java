@@ -178,6 +178,7 @@ public final class TestHooks {
 		c.autoClickJump = false;
 		c.autoClickShield = true;
 		c.autoClickCooldown = false;
+		c.autoClickContainers = true;
 		Assist.arm(false);
 		Assist.leftClicks = Assist.rightClicks = 0;
 	}

@@ -820,7 +820,7 @@
 	"slashclient-hud.assist.target.mobs": "Mobs only",
 	"slashclient-hud.assist.cooldown": "Full hits at mobs (the rest at the CPS)",
 	"slashclient-hud.assist.shield": "No left clicks with your shield up",
-	"slashclient-hud.assist.dungeonPause": "Rest in dungeons",
+	"slashclient-hud.assist.containers": "Click in chest windows (e.g. selling on servers)",
 	"slashclient-hud.assist.dungeonPause.on": "Autoclicker resting in the dungeon",
 	"slashclient-hud.assist.dungeonPause.off": "Autoclicker back on",
 	"slashclient-hud.assist.jump": "Jumping (Toggle mode)",

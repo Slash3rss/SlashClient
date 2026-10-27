@@ -621,7 +621,7 @@ public final class Catalog {
 				() -> cfg.autoClickMobs ? "mobs" : "all", v -> cfg.autoClickMobs = "mobs".equals(v)),
 			new Toggle("slashclient-hud.assist.cooldown", () -> cfg.autoClickCooldown, v -> cfg.autoClickCooldown = v),
 			new Toggle("slashclient-hud.assist.shield", () -> cfg.autoClickShield, v -> cfg.autoClickShield = v),
-			new Toggle("slashclient-hud.assist.dungeonPause", () -> cfg.autoClickDungeonPause, v -> cfg.autoClickDungeonPause = v),
+			new Toggle("slashclient-hud.assist.containers", () -> cfg.autoClickContainers, v -> cfg.autoClickContainers = v),
 			new Toggle("slashclient-hud.assist.jump", () -> cfg.autoClickJump, v -> cfg.autoClickJump = v),
 			new Slider("slashclient-hud.assist.jumps", 1f, 10f, 1f, "%.0f/s", () -> (float) cfg.autoClickJumps, v -> cfg.autoClickJumps = Math.round(v))), null));
 		out.add(new Entry("autoTool", "slashclient-hud.assist.autoTool", "world", "m-autotool", () -> cfg.autoTool,
