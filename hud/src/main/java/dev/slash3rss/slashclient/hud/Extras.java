@@ -154,6 +154,11 @@ public final class Extras {
 			return "attackindicator";
 		}
 
+		@Override
+		public boolean bare() {
+			return true;
+		}
+
 		/** The weapon's charge (0–1), and whether a mob under the crosshair can be hit hard now. */
 		private static float strength(Minecraft mc) {
 			return mc.player == null ? 1f : mc.player.getAttackStrengthScale(0f);

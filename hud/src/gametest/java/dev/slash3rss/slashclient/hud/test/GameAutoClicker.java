@@ -99,7 +99,7 @@ public class GameAutoClicker implements FabricClientGameTest {
 			if (full < 2 || full > 5) throw new AssertionError("Full hits in 2 s: " + full);
 			// the attack indicator under our crosshair (the game draws its own under its own)
 			String indicator = context.computeOnClient(mc -> TestHooks.attackIndicator());
-			if (!indicator.equals("true/false")) throw new AssertionError("The attack indicator (ours/the game's crosshair): " + indicator);
+			if (!indicator.equals("true/false/1")) throw new AssertionError("The attack indicator (ours/the game's crosshair/its options): " + indicator);
 			// in a SkyUp dungeon it rests, out of it it goes on (armed as it was)
 			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, false, 10); TestHooks.armAutoClicker();
 				dev.slash3rss.slashclient.hud.skyup.DungeonMap.inDungeonForTest(true); });

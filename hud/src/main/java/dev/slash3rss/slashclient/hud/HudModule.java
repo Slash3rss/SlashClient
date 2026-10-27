@@ -18,6 +18,11 @@ public interface HudModule {
 
 	void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y);
 
+	/** A picture without text (e.g. the attack indicator): no box under it, and its only option is its size. */
+	default boolean bare() {
+		return false;
+	}
+
 	/** What the editor shows while the module has nothing real to show. */
 	default void drawPreview(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
 		draw(g, mc, x, y);

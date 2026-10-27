@@ -229,7 +229,9 @@ public final class TestHooks {
 		boolean game = module.visible(mc);
 		SlashHud.config.crosshair = keep;
 		mc.options.attackIndicator().set(option);
-		return ours + "/" + game;
+		// only its size can be set (no box, no text)
+		int options = dev.slash3rss.slashclient.hud.ui.Catalog.entries(() -> {}).stream().filter(e -> e.id().equals("attackindicator")).findFirst().map(e -> e.settings().size()).orElse(-1);
+		return ours + "/" + game + "/" + options;
 	}
 
 	/** The clicks a second the CPS module and the keystrokes show: "left/right". */
@@ -2496,6 +2498,11 @@ public final class TestHooks {
 
 	/** A right click as the game makes it, on what is under the crosshair now (a bell, a sheep, a chest). */
 	public static void skyUse() {
+		((dev.slash3rss.slashclient.hud.mixin.MinecraftAccessor) net.minecraft.client.Minecraft.getInstance()).slashclient$startUseItem();
+	}
+
+	/** Only what the HUD sees of a right click, the server doing nothing (as on a protected plot). */
+	public static void skyUseRefused() {
 		dev.slash3rss.slashclient.hud.skyup.SkyCounters.used(net.minecraft.client.Minecraft.getInstance());
 	}
 

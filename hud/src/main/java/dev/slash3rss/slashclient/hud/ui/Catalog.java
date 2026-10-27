@@ -170,6 +170,8 @@ public final class Catalog {
 				new Toggle("slashclient-hud.set.ownColor", () -> p.color != null, v -> p.color = v ? cfg.textColor : null),
 				new Colors("slashclient-hud.textColor", COLORS, () -> p.textColor(cfg), v -> p.color = v),
 				new Toggle("slashclient-hud.shadow", () -> p.shadow(cfg), v -> p.shadow = v)));
+			// a picture without text: the box and text options would do nothing
+			if (m.bare()) settings.subList(1, settings.size()).clear();
 			// options of single modules
 			switch (m.id()) {
 				case "clock" -> {
