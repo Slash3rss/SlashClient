@@ -140,9 +140,9 @@ public final class Assist {
 			// in a chest's or a server's window (selling, buying) it clicks the slot under the mouse
 			if (clicking && cfg().autoClickContainers && Compat.screen(mc) instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> s
 				&& !holdsOver(s)) clickSlot(mc, player, s);
-			// a button let go after its window closed is not held in the next one
-			if (inGame) screenLeft = screenRight = false;
 		}
+		// a button let go after its window closed (the server closes a shop's window on a click) is not held in the next one
+		if (inGame) screenLeft = screenRight = false;
 		if (cfg().autoTool) checkSwap(mc, player);
 		// also while the held button digs under the inventory or the pause menu
 		if (cfg().autoTool && (inGame || dugOverScreen)) autoTool(mc, player);
@@ -206,6 +206,8 @@ public final class Assist {
 	 * The key is taken (the window does not see it).
 	 */
 	static void attach(Minecraft mc, net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> screen) {
+		// a new window: no button held in it yet (one let go elsewhere is not held here)
+		screenLeft = screenRight = false;
 		KeyMapping[] keys = { holdAttackKey, holdUseKey, autoClickKey };
 		//#if MC >= 1.21.9
 		net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents.allowKeyPress(screen).register((s, e) -> {

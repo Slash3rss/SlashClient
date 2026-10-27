@@ -147,6 +147,24 @@ public class GameAutoClicker implements FabricClientGameTest {
 			String chestHeld = context.computeOnClient(mc -> TestHooks.autoClicks());
 			if (!chestIdle.equals("0/0") || Integer.parseInt(chestHeld.split("/")[0]) < 5)
 				throw new AssertionError("Held in the chest (no button, button held): " + chestIdle + ", " + chestHeld);
+			// held in the chest, the window closed before letting go (as a shop's window closes on a click), the button let
+			// go in the game: in the chest opened again it does not click on its own
+			context.getInput().holdMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
+			context.waitTicks(3);
+			context.setScreen(() -> null);
+			context.waitTicks(3);
+			context.getInput().releaseMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
+			context.waitTicks(10);
+			context.runOnClient(mc -> {
+				net.minecraft.core.BlockPos chest = mc.player.blockPosition().north(2);
+				mc.gameMode.useItemOn(mc.player, net.minecraft.world.InteractionHand.MAIN_HAND,
+					new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(chest), net.minecraft.core.Direction.SOUTH, chest, false));
+			});
+			context.waitTicks(10);
+			context.runOnClient(mc -> TestHooks.autoClicker(true, "hold", true, false, false, 10));
+			context.waitTicks(20);
+			String reopened = context.computeOnClient(mc -> TestHooks.autoClicks() + (dev.slash3rss.slashclient.hud.Compat.screen(mc) instanceof net.minecraft.client.gui.screens.inventory.ContainerScreen ? "" : " (closed)"));
+			if (!reopened.equals("0/0")) throw new AssertionError("Clicked in a chest opened again with no button held: " + reopened);
 			// the player's own inventory: never
 			context.setScreen(() -> new net.minecraft.client.gui.screens.inventory.InventoryScreen(net.minecraft.client.Minecraft.getInstance().player));
 			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, false, 10); TestHooks.armAutoClicker(); });
