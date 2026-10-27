@@ -101,6 +101,17 @@ public class GameReplay implements FabricClientGameTest {
 			if (c.length < 3 || !c[2].equals("RIFFAVI") || Integer.parseInt(c[1]) != range)
 				throw new AssertionError("The saved clip is not the selection: " + clip + ", selected " + range);
 
+			// its buttons clicked with the mouse: play and pause switch
+			double[] play = context.computeOnClient(mc -> ReplayTestHooks.buttonOnWindow(2));
+			context.getInput().setCursorPos(play[0], play[1]);
+			context.waitTicks(2);
+			String unclicked = context.computeOnClient(mc -> ReplayTestHooks.state());
+			context.getInput().pressMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
+			context.waitTicks(3);
+			String clicked = context.computeOnClient(mc -> ReplayTestHooks.state());
+			System.out.println("SlashClient replay play button: " + unclicked + " -> " + clicked);
+			if (unclicked.split(" ")[7].equals(clicked.split(" ")[7])) throw new AssertionError("The play button did nothing: " + unclicked + " -> " + clicked);
+
 			// Escape closes it; recording goes on afterwards
 			context.getInput().pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE);
 			context.waitTicks(5);

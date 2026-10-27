@@ -169,6 +169,12 @@ public class ReplayScreen extends Screen {
 	}
 
 	/** For the test: frames in the viewer, the one shown, the selection's size and the decoder's work. */
+	/** For the test: the middle of the n-th button drawn last (✕, back, play, forward, the speeds, …), in the GUI's pixels. */
+	double[] buttonForTest(int n) {
+		Hit h = hits.get(n);
+		return new double[] { h.x() + h.w() / 2.0, h.y() + h.h() / 2.0 };
+	}
+
 	String state() {
 		return times.length + " " + shown + " " + index() + " " + (rangeEnd() - rangeStart() + 1) + " " + decoder.decoded.get() + " "
 			+ (decoder.decoded.get() == 0 ? 0 : decoder.decodeNanos / decoder.decoded.get() / 1000) + " " + speed + " " + playing;
@@ -353,7 +359,8 @@ public class ReplayScreen extends Screen {
 	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
 	//$ 	boolean doubleClick = false;
 	//#endif
-		if (e.button() == 0) {
+		// the game's own number for the left button (from 26.3 it is 1, before 0)
+		if (e.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT) {
 			if (Ui.inside(e.x(), e.y(), tx - 4, ty - 5, tw + 8, 16)) {
 				scrubbing = true;
 				playingBeforeScrub = playing;

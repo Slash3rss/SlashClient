@@ -53,6 +53,13 @@ public final class ReplayTestHooks {
 		return screen() != null;
 	}
 
+	/** The middle of the viewer's n-th button in window pixels (for the cursor). */
+	public static double[] buttonOnWindow(int n) {
+		double[] at = screen().buttonForTest(n);
+		double scale = Minecraft.getInstance().getWindow().getGuiScale();
+		return new double[] { at[0] * scale, at[1] * scale };
+	}
+
 	/** The viewer's state (ReplayScreen.state) and whether the game is paused, or "closed". */
 	public static String state() {
 		ReplayScreen s = screen();
