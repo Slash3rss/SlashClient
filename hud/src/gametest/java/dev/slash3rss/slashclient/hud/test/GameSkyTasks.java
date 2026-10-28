@@ -120,6 +120,22 @@ public class GameSkyTasks implements FabricClientGameTest {
 			long golems = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.aroundForTest("Żelazny golem"));
 			check(golems == 1, "an iron golem nearby", String.valueOf(golems));
 			world.getServer().runCommand("kill @e[type=iron_golem]");
+			// a stacked mob: its number in the name (SkyUp's "Sztuk: 5"); each one off it is a kill, and so is the last one dying
+			String stacks = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.stacksForTest("Sztuk: 10", "§6Sztuk: §e3", "x11 Krowa", "Krowa x11",
+				"11x Krowa", "Krowa [x4]", "§ex7 §fŚwinia", "Krowa", "Zombie poz. 5"));
+			check(stacks.equals("10 3 11 11 11 4 7 1 1"), "stacked mobs' numbers", stacks);
+			world.getServer().runCommand("execute at @p run summon cow ~2 ~ ~2 {NoAI:1b,CustomName:\"Sztuk: 5\"}");
+			context.waitTicks(10);
+			long killsBefore = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.killedForTest);
+			context.runOnClient(mc -> TestHooks.skyStackedCowHit());
+			world.getServer().runCommand("data merge entity @e[type=cow,limit=1] {CustomName:\"Sztuk: 3\"}");
+			context.waitTicks(10);
+			world.getServer().runCommand("data merge entity @e[type=cow,limit=1] {CustomName:\"Sztuk: 1\"}");
+			context.waitTicks(10);
+			world.getServer().runCommand("kill @e[type=cow]");
+			context.waitTicks(10);
+			long stackKills = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.killedForTest) - killsBefore;
+			check(stackKills == 5, "kills of a stacked cow (5 in it)", String.valueOf(stackKills));
 			rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			check(rows.contains(" | ~31/128"), "HUD estimate", rows);
 			// the fish counter: the catch from the chat, its weight, size, species and quality

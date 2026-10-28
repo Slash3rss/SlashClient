@@ -553,11 +553,57 @@ public final class SkyCounters {
 
 	// ---------- watched each tick: kills, fish, what is around ----------
 
-	/** Mobs the player hit, and when: one of them dying within a few seconds is the player's kill. */
-	private static final Map<Integer, Long> hit = new HashMap<>();
+	/** A mob the player hit: when, and how many it stood for then (a stacked mob stands for several). */
+	private record Hit(long at, int stack) {}
+
+	/** Mobs the player hit: one of them dying, or its stack shrinking, within a few seconds is the player's kill. */
+	private static final Map<Integer, Hit> hit = new HashMap<>();
+
+	/** For the test: the kills counted so far. */
+	public static long killedForTest;
+
+	/**
+	 * How many mobs a stacked one stands for, from its name (SkyUp's "Sztuk: 10"; elsewhere "x11 Krowa", "Krowa x11",
+	 * "11x Krowa", "Krowa [x11]"): the server keeps one mob for many alike, and each kill takes one off its number.
+	 */
+	private static final java.util.regex.Pattern STACK = java.util.regex.Pattern.compile(
+		"(?iu)sztuk\\s*:?\\s*(\\d{1,5})|(?:^|[\\s\\[(])(?:[x×]\\s?(\\d{1,5})|(\\d{1,5})\\s?[x×])(?=$|[\\s\\])])");
+
+	/** A mob's number: from its own name, else from a hologram just above it (a stand or a text over the mob). */
+	static int stackOf(Entity e) {
+		if (e.hasCustomName() && hasStack(e.getCustomName().getString())) return stackOf(e.getCustomName().getString());
+		var above = e.getBoundingBox().inflate(0.3, 0, 0.3).expandTowards(0, 1.5, 0);
+		for (Entity h : e.level().getEntities(e, above, x -> !(x instanceof LivingEntity) || x instanceof net.minecraft.world.entity.decoration.ArmorStand)) {
+			if (h.hasCustomName() && hasStack(h.getCustomName().getString())) return stackOf(h.getCustomName().getString());
+		}
+		return 1;
+	}
+
+	private static boolean hasStack(String name) {
+		return STACK.matcher(SkyTaskParser.plain(name)).find();
+	}
+
+	static int stackOf(String name) {
+		java.util.regex.Matcher m = STACK.matcher(SkyTaskParser.plain(name));
+		if (!m.find()) return 1;
+		String n = m.group(1) != null ? m.group(1) : m.group(2) != null ? m.group(2) : m.group(3);
+		return Math.max(1, Integer.parseInt(n));
+	}
+
+	/** For the test: the stack each name stands for, space-separated. */
+	public static String stacksForTest(String... names) {
+		StringBuilder out = new StringBuilder();
+		for (String n : names) out.append(out.isEmpty() ? "" : " ").append(stackOf(n));
+		return out.toString();
+	}
 
 	public static void attacked(Player player, Entity target) {
-		if (mine(player) && target instanceof LivingEntity) hit.put(target.getId(), System.currentTimeMillis());
+		if (mine(player) && target instanceof LivingEntity) hit.put(target.getId(), new Hit(System.currentTimeMillis(), stackOf(target)));
+	}
+
+	private static void killed(LivingEntity living, int amount) {
+		killedForTest += amount;
+		add(Kind.KILL, Thing.of(living.isBaby(), false, false, false, living.getType().getDescription().getString(), plEntity(living.getType()), living.getName().getString()), amount);
 	}
 
 	/** The fishing hook was out last tick; the inventory as it was when it came back. */
@@ -576,14 +622,25 @@ public final class SkyCounters {
 			return;
 		}
 		long now = System.currentTimeMillis();
-		// kills
+		// kills: a mob hit dying, or a stacked mob hit standing for fewer (each one fewer a kill)
 		hit.entrySet().removeIf(e -> {
 			Entity entity = mc.level.getEntity(e.getKey());
 			if (entity instanceof LivingEntity living && living.isDeadOrDying()) {
-				add(Kind.KILL, Thing.of(living.isBaby(), false, false, false, living.getType().getDescription().getString(), plEntity(living.getType()), living.getName().getString()), 1);
+				killed(living, 1);
 				return true;
 			}
-			return entity == null || now - e.getValue() > 5000;
+			if (entity instanceof LivingEntity living) {
+				int stack = stackOf(living);
+				if (stack < e.getValue().stack()) {
+					killed(living, e.getValue().stack() - stack);
+					// still being fought: kept a while longer, from what it stands for now
+					e.setValue(new Hit(now, stack));
+				} else if (stack > e.getValue().stack()) {
+					// more joined the stack: counted down from there
+					e.setValue(new Hit(e.getValue().at(), stack));
+				}
+			}
+			return entity == null || now - e.getValue().at() > 5000;
 		});
 		// fish: what came into the inventory within two seconds of reeling in
 		boolean out = mc.player.fishing != null;

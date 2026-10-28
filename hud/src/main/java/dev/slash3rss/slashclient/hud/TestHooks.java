@@ -2365,6 +2365,20 @@ public final class TestHooks {
 		return ((HudEditScreen) screen()).listKeptForTest();
 	}
 
+	//#if MC >= 26.3
+	/** A stacked cow ("Sztuk: 5") near the player, hit by them, as SkyUp's stacking shows it. */
+	public static void skyStackedCowHit() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		for (var e : mc.level.entitiesForRendering()) {
+			if (net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).getPath().equals("cow") && e.hasCustomName()) {
+				dev.slash3rss.slashclient.hud.skyup.SkyCounters.attacked(mc.player, e);
+				return;
+			}
+		}
+		throw new IllegalStateException("No named cow");
+	}
+	//#endif
+
 	/** The settings window's "Edit layout", as if pressed. */
 	public static void editorLayout() {
 		((HudEditScreen) screen()).layoutForTest();
