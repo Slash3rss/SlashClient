@@ -1703,6 +1703,12 @@ public class HudEditScreen extends Screen {
 		p.dy = y - Math.round(p.ay * (height - b[3]));
 	}
 
+	/** For the in-game test: "Edit layout" pressed in the settings window. */
+	void layoutForTest() {
+		window = false;
+		rebuildWidgets();
+	}
+
 	/** For the in-game test: the module the arrows move. */
 	String selectedId() {
 		return selected == null ? null : selected.id();

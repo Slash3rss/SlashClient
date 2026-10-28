@@ -187,6 +187,22 @@ public class GameHudOverlap implements FabricClientGameTest {
 			int[] p2 = box(context, "ping");
 			if (p2[1] - p0[1] != -1 || p2[0] - p0[0] != 4) throw new AssertionError("Undo did not take back the last step: " + (p2[0] - p0[0]) + ", " + (p2[1] - p0[1]));
 			context.setScreen(() -> null);
+			// as a player does it: the settings window from the menu, "Edit layout", a click on the module, the mouse left on it
+			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::settingsWindow);
+			context.waitTicks(3);
+			context.runOnClient(mc -> TestHooks.editorLayout());
+			context.waitTicks(3);
+			int[] q0 = box(context, "ping");
+			cursor(context, q0[0] + 3, q0[1] + 3);
+			click(context);
+			context.getInput().pressKey(InputConstants.KEY_RIGHT);
+			context.getInput().pressKey(InputConstants.KEY_RIGHT);
+			context.getInput().pressKey(InputConstants.KEY_S);
+			context.waitTicks(2);
+			int[] q1 = box(context, "ping");
+			System.out.println("SlashClient nudge as a player: selected " + context.computeOnClient(mc -> TestHooks.editorSelected()) + " moved " + (q1[0] - q0[0]) + ", " + (q1[1] - q0[1]));
+			if (q1[0] - q0[0] != 2 || q1[1] - q0[1] != 1) throw new AssertionError("The keys moved the ping (mouse on it) by " + (q1[0] - q0[0]) + ", " + (q1[1] - q0[1]) + " (expected 2, 1)");
+			context.setScreen(() -> null);
 		} finally {
 			context.runOnClient(mc -> TestHooks.modulesOn(was));
 		}

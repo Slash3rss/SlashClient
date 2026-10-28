@@ -2365,6 +2365,11 @@ public final class TestHooks {
 		return ((HudEditScreen) screen()).listKeptForTest();
 	}
 
+	/** The settings window's "Edit layout", as if pressed. */
+	public static void editorLayout() {
+		((HudEditScreen) screen()).layoutForTest();
+	}
+
 	/** The card starred (or not again) in the open settings window; the ids of the cards as listed then. */
 	public static String favorite(String id) {
 		return ((HudEditScreen) screen()).favoriteForTest(id);
