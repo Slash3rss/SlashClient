@@ -264,6 +264,9 @@ public class GameSkyTasks implements FabricClientGameTest {
 			// the daily task: nothing to remind of until it is tracked, then what is left of it
 			String daily = context.computeOnClient(mc -> TestHooks.skyDaily());
 			check(daily.equals("null | Still to do: Buraki 0/3888"), "the daily task's reminder (untracked | tracked)", daily);
+			// the daily bonus: due until its window shows today's gift taken, due again the next day
+			String bonus = context.computeOnClient(mc -> TestHooks.skyBonus());
+			check(bonus.equals("true true true false false true"), "the daily bonus's reminder", bonus);
 			String sounds = context.computeOnClient(mc -> TestHooks.skyDailySound("default") + "|" + TestHooks.skyDailySound("orb") + "|" + TestHooks.skyDailySound("none"));
 			check(sounds.equals("|orb|none"), "the daily reminder's sound", sounds);
 			double[] wirtuoz = context.computeOnClient(mc -> TestHooks.slotPoint(14));

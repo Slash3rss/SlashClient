@@ -75,6 +75,8 @@ public final class SkyTasks {
 		public Map<String, Long> jobs = new LinkedHashMap<>();
 		/** The highest dungeon level seen on the dungeon's boss bar ("Dungeon poz. 7"; -1: none yet). */
 		long dungeonLevel = -1;
+		/** The day (in Poland, as SkyUp counts them) the daily bonus was last seen taken, or null. */
+		public String bonusDay;
 		/** Tasks seen done (handed in, by the chat, or gone from their category's GUI), by their name's letters: another task may need them. */
 		Set<String> done = new java.util.LinkedHashSet<>();
 
@@ -127,8 +129,9 @@ public final class SkyTasks {
 	public static void joined(Minecraft mc) {
 		readNow.clear();
 		menuReadNow = false;
-		// the first reminder of the daily task one interval after joining
+		// the first reminder of the daily task one interval after joining; of the daily bonus soon after joining
 		remindAt = System.currentTimeMillis() + remindEvery();
+		bonusAt = System.currentTimeMillis() + BONUS_FIRST;
 		if (!on(mc) || !SlashHud.config.skyTasksJoinHint) return;
 		Compat.chat(mc).addClientSystemMessage(Component.translatable("slashclient-hud.skyTasks.joinHint").withStyle(net.minecraft.ChatFormatting.GOLD));
 	}
@@ -215,12 +218,60 @@ public final class SkyTasks {
 			SkyCounters.jobsSeen(items);
 			// the fisherman's "Moje okazy": the fish atlas
 			if (SkyAtlas.window(c.getTitle().getString())) SkyAtlas.seen(items);
+			// the daily bonus's window: whether today's gift is still there
+			bonusSeen(c.getTitle().getString(), items);
 		} else if (dirty && System.currentTimeMillis() - savedAt > 30_000) {
 			// what the counters add is saved now and then, not at every block
 			save();
 		}
 		SkyCounters.tick(mc);
 		remindDaily(mc);
+		remindBonus(mc);
+	}
+
+	// ---------- the daily bonus's reminder ----------
+
+	/** When the daily bonus is to be brought up next (ms): soon after joining, then every hour until it is taken. */
+	private static long bonusAt;
+	private static final long BONUS_FIRST = 20_000, BONUS_EVERY = 60 * 60_000;
+
+	/** Today as SkyUp counts days (its new day starts at midnight in Poland, wherever the player is). */
+	public static String today() {
+		return java.time.LocalDate.now(java.time.ZoneId.of("Europe/Warsaw")).toString();
+	}
+
+	/** The daily bonus's window ("Bonus codzienny"): a gift "gotowy do odebrania" means today's is not taken yet; none, that it is. */
+	public static void bonusSeen(String title, List<ItemStack> items) {
+		if (!title.toLowerCase(Locale.ROOT).contains("bonus codzienny")) return;
+		boolean days = false, ready = false;
+		for (ItemStack s : items) {
+			if (!s.getHoverName().getString().contains("Dzień")) continue;
+			days = true;
+			for (Component line : SkyDump.lore(s)) if (line.getString().toLowerCase(Locale.ROOT).contains("gotowy do odebrania")) ready = true;
+		}
+		// the window still empty (the server sends its items a moment after it opens): nothing learnt
+		if (!days) return;
+		String day = ready ? null : today();
+		if (java.util.Objects.equals(day, data().bonusDay)) return;
+		data().bonusDay = day;
+		changed();
+	}
+
+	/** Whether today's daily bonus has not been seen taken (never opened counts as not taken: worth a look). */
+	public static boolean bonusDue() {
+		return !today().equals(data().bonusDay);
+	}
+
+	/** Now and then on SkyUp, while today's bonus is not taken: a reminder to take it. */
+	private static void remindBonus(Minecraft mc) {
+		long now = System.currentTimeMillis();
+		// not in the in-game tests' worlds: a toast there would show in their screenshots
+		if (testWorld || !SlashHud.config.skyBonusRemind || now < bonusAt) return;
+		bonusAt = now + BONUS_EVERY;
+		if (!bonusDue()) return;
+		dev.slash3rss.slashclient.hud.social.Social.toast(Component.translatable("slashclient-hud.skyTasks.bonusTitle").getString(),
+			Component.translatable("slashclient-hud.skyTasks.bonusText").getString(), "m-skytasks");
+		mc.execute(() -> ChatTabs.playSound(mc, dailySound()));
 	}
 
 	// ---------- the daily task's reminder ----------

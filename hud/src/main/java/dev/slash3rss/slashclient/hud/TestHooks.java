@@ -2616,6 +2616,29 @@ public final class TestHooks {
 		return sb.toString();
 	}
 
+	/** The daily bonus's window read: due before, with today's gift ready, and after it is taken; then a day taken yesterday. */
+	public static String skyBonus() {
+		var head = net.minecraft.world.item.Items.PLAYER_HEAD;
+		java.util.function.Function<Boolean, java.util.List<net.minecraft.world.item.ItemStack>> window = ready -> java.util.List.of(
+			task(head, "» Bonus codzienny «", "", "▪ Wchodź codziennie, by", "odbierać nagrody!"),
+			task(head, "» Dzień 1 «", "▪ Mam coś dla Ciebie!", ready ? "▪ Prezent gotowy do odebrania" : "▪ Prezent odebrany", "▪ Nagrody: ", "  » 100 SC"),
+			task(head, "» Dzień 2 «", "▪ Cierpliwości...", "▪ Na ten prezent musisz jeszcze poczekać!", "▪ Nagrody: ", "  » 200 SC"));
+		SkyTasks.data().bonusDay = null;
+		StringBuilder sb = new StringBuilder().append(SkyTasks.bonusDue());
+		SkyTasks.bonusSeen("SkyUP » Bonus codzienny", java.util.List.of());
+		SkyTasks.bonusSeen("SkyUP » Bonus codzienny", window.apply(true));
+		sb.append(' ').append(SkyTasks.bonusDue());
+		SkyTasks.bonusSeen("SkyUP » Sklep", window.apply(false));
+		sb.append(' ').append(SkyTasks.bonusDue());
+		SkyTasks.bonusSeen("SkyUP » Bonus codzienny", window.apply(false));
+		sb.append(' ').append(SkyTasks.bonusDue());
+		SkyTasks.bonusSeen("SkyUP » Bonus codzienny", java.util.List.of());
+		sb.append(' ').append(SkyTasks.bonusDue());
+		SkyTasks.data().bonusDay = java.time.LocalDate.parse(SkyTasks.today()).minusDays(1).toString();
+		sb.append(' ').append(SkyTasks.bonusDue());
+		return sb.toString();
+	}
+
 	/** The pigs and the unknown mob tracked too (the witch by the key); the module's rows and the window's lit slots. */
 	public static String skyShamanModule() {
 		SkyShaman.toggle("Świnia");
