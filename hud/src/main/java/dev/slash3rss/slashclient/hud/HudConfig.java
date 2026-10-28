@@ -250,8 +250,11 @@ public final class HudConfig {
 	public int skyDailyRemind = 30;
 	/** The daily task reminder's sound: "default" (the bell), "none", or one of the chat tabs' (ChatTabs.SOUNDS). */
 	public String skyDailySound = "default";
-	/** On SkyUp, a reminder to take the daily bonus while today's is not seen taken. */
-	public boolean skyBonusRemind = true;
+	/**
+	 * On SkyUp, how often the daily bonus is brought up while today's is not seen taken (minutes; 0 = never): not
+	 * only on joining, as many take it later (its jobs' bonus runs from when it is taken).
+	 */
+	public int skyBonusEvery = 60;
 	/** SkyUp's fish counter: split by "none", "size", "species" or "quality"; their weight and value shown. */
 	public String skyFishSplit = "none";
 	public boolean skyFishWeight = true, skyFishValue = true;
@@ -820,7 +823,7 @@ public final class HudConfig {
 		skyTasksCompact = other.skyTasksCompact;
 		skyDailyRemind = Math.max(0, Math.min(240, other.skyDailyRemind));
 		skyDailySound = other.skyDailySound == null ? "default" : other.skyDailySound;
-		skyBonusRemind = other.skyBonusRemind;
+		skyBonusEvery = Math.max(0, Math.min(240, other.skyBonusEvery));
 		skyTasksScroll = other.skyTasksScroll;
 		skyTasksShaman = other.skyTasksShaman;
 		skyTasksMark = oneOf(other.skyTasksMark, SKY_TASKS_MARKS);

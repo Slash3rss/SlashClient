@@ -231,9 +231,9 @@ public final class SkyTasks {
 
 	// ---------- the daily bonus's reminder ----------
 
-	/** When the daily bonus is to be brought up next (ms): soon after joining, then every hour until it is taken. */
+	/** When the daily bonus is to be brought up next (ms): soon after joining, then every interval set until it is taken. */
 	private static long bonusAt;
-	private static final long BONUS_FIRST = 20_000, BONUS_EVERY = 60 * 60_000;
+	private static final long BONUS_FIRST = 20_000;
 
 	/** Today as SkyUp counts days (its new day starts at midnight in Poland, wherever the player is). */
 	public static String today() {
@@ -266,8 +266,9 @@ public final class SkyTasks {
 	private static void remindBonus(Minecraft mc) {
 		long now = System.currentTimeMillis();
 		// not in the in-game tests' worlds: a toast there would show in their screenshots
-		if (testWorld || !SlashHud.config.skyBonusRemind || now < bonusAt) return;
-		bonusAt = now + BONUS_EVERY;
+		long every = SlashHud.config.skyBonusEvery * 60_000L;
+		if (testWorld || every <= 0 || now < bonusAt) return;
+		bonusAt = now + every;
 		if (!bonusDue()) return;
 		dev.slash3rss.slashclient.hud.social.Social.toast(Component.translatable("slashclient-hud.skyTasks.bonusTitle").getString(),
 			Component.translatable("slashclient-hud.skyTasks.bonusText").getString(), "m-skytasks");

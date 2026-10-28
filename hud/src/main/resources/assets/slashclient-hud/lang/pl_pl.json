@@ -1286,7 +1286,7 @@
 	"slashclient-hud.skyTasks.dailyTitle": "Zadanie codzienne",
 	"slashclient-hud.skyTasks.dailyLeft": "Zostało: %s",
 	"slashclient-hud.skyTasks.dailyReady": "Gotowe – możesz je oddać",
-	"slashclient-hud.skyTasks.bonusRemind": "Przypominaj o bonusie codziennym",
+	"slashclient-hud.skyTasks.bonusRemind": "Przypominaj o nieodebranym bonusie codziennym co (0 = nie)",
 	"slashclient-hud.skyTasks.bonusTitle": "Bonus codzienny",
 	"slashclient-hud.skyTasks.bonusText": "Dzisiejsza nagroda czeka na odebranie",
 	"slashclient-hud.skyTasks.openGenerator": "otwórz generator",

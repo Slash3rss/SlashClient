@@ -1284,7 +1284,7 @@
 	"slashclient-hud.skyXp.done": "Done – all bottles",
 	"slashclient-hud.skyTasks.dailyRemind": "Remind of the tracked daily task every (0 = never)",
 	"slashclient-hud.skyTasks.dailyTitle": "Daily task",
-	"slashclient-hud.skyTasks.bonusRemind": "Remind of the daily bonus",
+	"slashclient-hud.skyTasks.bonusRemind": "Remind of the unclaimed daily bonus every (0 = never)",
 	"slashclient-hud.skyTasks.bonusTitle": "Daily bonus",
 	"slashclient-hud.skyTasks.bonusText": "Today's reward is waiting to be claimed",
 	"slashclient-hud.skyTasks.dailyLeft": "Still to do: %s",

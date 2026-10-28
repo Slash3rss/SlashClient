@@ -287,7 +287,7 @@ public final class Catalog {
 						cfg.skyDailySound = v;
 						dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), "default".equals(v) ? "" : v);
 					}));
-					settings.add(new Toggle("slashclient-hud.skyTasks.bonusRemind", () -> cfg.skyBonusRemind, v -> cfg.skyBonusRemind = v));
+					settings.add(new Slider("slashclient-hud.skyTasks.bonusRemind", 0f, 240f, 15f, "%.0f min", () -> (float) cfg.skyBonusEvery, v -> cfg.skyBonusEvery = Math.round(v)));
 				}
 				case "skyfish" -> {
 					settings.add(new Choice("slashclient-hud.skyFish.split", new String[] { "none", "size", "species", "quality" }, "slashclient-hud.skyFish.split.",
