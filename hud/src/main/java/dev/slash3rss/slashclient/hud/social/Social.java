@@ -436,8 +436,8 @@ public final class Social {
 					if (m.waypoint() != null) SharedWaypoints.received(m, f != null ? f.name() : "?", f != null && f.muted());
 					else if (f == null || f.muted()) return;
 					else if (m.image() != null) toastFrom(f, Component.translatable("slashclient-hud.picture.toast").getString());
-					else if (!m.party().isEmpty()) toastFrom(f, Component.translatable("slashclient-hud.party.toast", m.invite()).getString());
-					else if (!m.invite().isEmpty()) toastFrom(f, Component.translatable("slashclient-hud.invite.toast", m.invite()).getString());
+					else if (!m.party().isEmpty()) toastFrom(f, Component.translatable("slashclient-hud.party.toast", m.invite()).getString(), FriendToast.Kind.INVITE);
+					else if (!m.invite().isEmpty()) toastFrom(f, Component.translatable("slashclient-hud.invite.toast", m.invite()).getString(), FriendToast.Kind.INVITE);
 					else toastFrom(f, ChatGifs.shown(m.text()));
 				}
 			}
@@ -509,7 +509,7 @@ public final class Social {
 				refreshFriends();
 				// a new friend or request: no longer a suggestion
 				if (!FriendSuggestions.list().isEmpty()) FriendSuggestions.refresh(true);
-				if (e.has("request") && e.get("request").isJsonObject()) toast(str(e.getAsJsonObject("request"), "name"), Component.translatable("slashclient-hud.friends.invite").getString(), null);
+				if (e.has("request") && e.get("request").isJsonObject()) toastAs(FriendToast.Kind.INVITE, str(e.getAsJsonObject("request"), "name"), Component.translatable("slashclient-hud.friends.invite").getString());
 			}
 			case "state" -> {
 				refreshState();
@@ -588,7 +588,7 @@ public final class Social {
 		String text = !news.playing() ? Component.translatable("slashclient-hud.playing.online").getString()
 			: news.server().isEmpty() ? Component.translatable("slashclient-hud.playing.world").getString()
 			: Component.translatable("slashclient-hud.playing.server", news.server()).getString();
-		toastFrom(f, text);
+		toastFrom(f, text, news.playing() ? FriendToast.Kind.PLAYING : FriendToast.Kind.ONLINE);
 	}
 
 	/** For the in-game test: a status as if it came from the launcher, with the toast it makes. */
@@ -767,9 +767,21 @@ public final class Social {
 
 	/** From a friend: with their face. */
 	static void toastFrom(Friend f, String text) {
+		toastFrom(f, text, FriendToast.Kind.MESSAGE);
+	}
+
+	/** From a friend, in the colour of what it is about (online, playing, live, an invite). */
+	static void toastFrom(Friend f, String text, FriendToast.Kind kind) {
 		toasts++;
 		Minecraft mc = Minecraft.getInstance();
-		mc.execute(() -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).addToast(new FriendToast(f.name(), text, null, null, f.id())));
+		mc.execute(() -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).addToast(new FriendToast(f.name(), text, null, null, f.id(), kind)));
+	}
+
+	/** Not from a friend's face, in a kind's colour (a request from someone not a friend yet). */
+	static void toastAs(FriendToast.Kind kind, String title, String text) {
+		toasts++;
+		Minecraft mc = Minecraft.getInstance();
+		mc.execute(() -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).addToast(new FriendToast(title, text, null, null, null, kind)));
 	}
 
 	/** With a third line in gold for Sparks paid (null: none). */

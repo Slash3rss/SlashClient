@@ -11,9 +11,41 @@ import net.minecraft.network.chat.Component;
  * window, the friend's face (their skin's, as on the server list), else their initial on the
  * accent (as on the friends list), or an icon, their name in
  * bold, the text under it and a thin bar running out while it is shown. An achievement's adds a
- * third line in gold: the Sparks it paid.
+ * third line in gold: the Sparks it paid. Each kind has its colour (the rim, a stripe on the left,
+ * the badge and the bar), so a friend coming online is told from an invite or an error at a glance.
  */
 public final class FriendToast implements Toast {
+	/** What a toast is about: its colour, light and dark (the badge's gradient). */
+	public enum Kind {
+		MESSAGE(Ui.ACCENT_LIGHT, Ui.ACCENT_DARK),
+		ONLINE(0xFF4ADE80, 0xFF15803D),
+		PLAYING(0xFF22D3EE, 0xFF0E7490),
+		LIVE(0xFFA78BFA, 0xFF6D28D9),
+		INVITE(0xFFFB923C, 0xFFC2410C),
+		COMMUNITY(0xFFF472B6, 0xFFBE185D),
+		ACHIEVEMENT(0xFFFFC94D, 0xFFB7791F),
+		ERROR(0xFFF87171, 0xFFB91C1C);
+
+		final int light, dark;
+
+		Kind(int light, int dark) {
+			this.light = light;
+			this.dark = dark;
+		}
+
+		/** A toast not from a friend, by its icon: errors red, achievements gold, communities pink, a clan's invite orange. */
+		static Kind of(String icon) {
+			if (icon == null) return MESSAGE;
+			return switch (icon) {
+				case "info" -> ERROR;
+				case "m-advancements" -> ACHIEVEMENT;
+				case "m-players" -> COMMUNITY;
+				case "m-armor" -> INVITE;
+				default -> MESSAGE;
+			};
+		}
+	}
+
 	private static final long SHOW_MS = 5000;
 	// as wide as the game's own toasts, so it fits their box in the HUD editor
 	private static final int WIDTH = 160;
@@ -26,6 +58,7 @@ public final class FriendToast implements Toast {
 	private final String sparks;
 	/** The friend it is from, for their face (null: not from a friend). */
 	private final String friendId;
+	private final Kind kind;
 	/** 32 high, 43 with the Sparks' line; with it, up to 40 wider so an achievement's name and reward show whole. */
 	private final int W, H;
 	private long first = -1, age;
@@ -35,11 +68,12 @@ public final class FriendToast implements Toast {
 	}
 
 	FriendToast(String title, String text, String icon, String sparks) {
-		this(title, text, icon, sparks, null);
+		this(title, text, icon, sparks, null, Kind.of(icon));
 	}
 
-	FriendToast(String title, String text, String icon, String sparks, String friendId) {
+	FriendToast(String title, String text, String icon, String sparks, String friendId, Kind kind) {
 		this.friendId = friendId;
+		this.kind = kind;
 		this.title = title;
 		this.text = text;
 		this.icon = icon;
@@ -89,7 +123,9 @@ public final class FriendToast implements Toast {
 
 	private void draw(GuiGraphicsExtractor g) {
 		Ui.round(g, 0, 0, W, H, 6, Ui.PANEL);
-		Ui.roundOutline(g, 0, 0, W, H, 6, 0x4060A5FA);
+		Ui.roundOutline(g, 0, 0, W, H, 6, kind.light & 0x70FFFFFF);
+		// the kind's stripe down the left edge
+		g.fill(1, 7, 3, H - 7, kind.light);
 		// the avatar: the friend's face, else the initial on the accent, or the icon
 		if (icon == null && friendId != null) {
 			g.fill(6, 6, 26, 26, 0xFF0A0D14);
@@ -98,7 +134,8 @@ public final class FriendToast implements Toast {
 				return;
 			}
 		}
-		Ui.accent(g, 7, 7, 18, 18, 5, 0.5f);
+		Ui.roundGradient(g, 7, 7, 18, 18, 5, kind.light, kind.dark);
+		Ui.roundOutline(g, 7, 7, 18, 18, 5, Ui.blend(kind.dark, kind.light, 0.5f));
 		if (icon != null) Ui.icon(g, icon, 11, 11, 10, 0xFFFFFFFF);
 		else {
 			Component initial = Ui.bold(title.isEmpty() ? "?" : title.substring(0, 1).toUpperCase());
@@ -118,6 +155,6 @@ public final class FriendToast implements Toast {
 		}
 		// how long it is still shown
 		float left = Math.max(0f, 1f - (float) age / SHOW_MS);
-		g.fill(6, H - 3, 6 + Math.round((W - 12) * left), H - 2, Ui.ACCENT_LIGHT);
+		g.fill(6, H - 3, 6 + Math.round((W - 12) * left), H - 2, kind.light);
 	}
 }
