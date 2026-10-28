@@ -280,7 +280,7 @@ public class SlashHud implements ClientModInitializer {
 
 		//#if MC >= 26.3
 		// SkyUp's tasks: blocks the player broke ("Zbierz")
-		net.fabricmc.fabric.api.event.client.player.ClientPlayerBlockBreakEvents.AFTER.register((world, player, pos, state) -> SkyCounters.broken(player, state));
+		net.fabricmc.fabric.api.event.client.player.ClientPlayerBlockBreakEvents.AFTER.register((world, player, pos, state) -> SkyCounters.broken(player, pos, state));
 		//#endif
 		// before the game reads the keys of this tick: the drop key's presses on a valuable item
 		ClientTickEvents.START_CLIENT_TICK.register(DropGuard::tick);

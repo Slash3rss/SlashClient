@@ -2726,7 +2726,12 @@ public final class TestHooks {
 	/** As if the player broke three stone blocks and crafted four torches (what the game's hooks report). */
 	public static void skyEvents() {
 		var mc = net.minecraft.client.Minecraft.getInstance();
-		for (int i = 0; i < 3; i++) SkyCounters.broken(mc.player, net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+		// three broken high above (air there now: the server let them go), one the server put back (stone there still)
+		var high = mc.player.blockPosition().above(40);
+		for (int i = 0; i < 3; i++) SkyCounters.broken(mc.player, high.east(i), net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
+		var back = high.west();
+		mc.level.setBlock(back, net.minecraft.world.level.block.Blocks.STONE.defaultBlockState(), 3);
+		SkyCounters.broken(mc.player, back, net.minecraft.world.level.block.Blocks.STONE.defaultBlockState());
 		// a shift-click: the game foresees the first four torches, the server sends eight more a moment later
 		var inv = mc.player.getInventory();
 		inv.setItem(20, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.TORCH, 4));

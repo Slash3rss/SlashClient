@@ -179,9 +179,23 @@ public final class SkyCounters {
 
 	// ---------- the events ----------
 
-	/** A block broken by the player: crops only when grown; a crop's name and its crop's item both match ("Pszenica"). */
-	public static void broken(Player player, BlockState state) {
+	/**
+	 * A block or a placing the game foresaw, waiting for the server: counted only once it is still so a moment later
+	 * (a server that refuses it, on another's island or a protected spot, puts the block back as it was).
+	 */
+	private record Pending(net.minecraft.core.BlockPos pos, BlockState was, BlockState now, Runnable count, long at) {}
+
+	private static final List<Pending> pending = new ArrayList<>();
+	private static final long CONFIRM_MS = 750;
+
+	/** A block broken by the player: counted once the server has not put it back. */
+	public static void broken(Player player, net.minecraft.core.BlockPos pos, BlockState state) {
 		if (!mine(player)) return;
+		pending.add(new Pending(pos.immutable(), state, null, () -> broken(state), System.currentTimeMillis()));
+	}
+
+	/** Crops only when grown; a crop's name and its crop's item both match ("Pszenica"). */
+	private static void broken(BlockState state) {
 		Block block = state.getBlock();
 		if (block instanceof CropBlock crop && !crop.isMaxAge(state)) return;
 		ItemStack own = new ItemStack(block.asItem());
@@ -204,10 +218,17 @@ public final class SkyCounters {
 		CROPS.put(Blocks.MELON, Items.MELON_SLICE);
 	}
 
+	/** A block the player placed: counted once the server has not taken it away. */
 	public static void placed(Player player, BlockItem item, net.minecraft.core.BlockPos pos) {
 		if (!mine(player)) return;
+		BlockState now = player.level().getBlockState(pos);
+		String dimension = player.level().dimension().toString();
+		pending.add(new Pending(pos.immutable(), null, now, () -> placed(dimension, item, pos), System.currentTimeMillis()));
+	}
+
+	private static void placed(String dimension, BlockItem item, net.minecraft.core.BlockPos pos) {
 		// placing, breaking and placing again on one spot counts once in three minutes (as SkyUp counts it)
-		String spot = player.level().dimension() + " " + pos.asLong();
+		String spot = dimension + " " + pos.asLong();
 		long now = System.currentTimeMillis();
 		Long last = placedAt.get(spot);
 		if (last != null && now - last < PLACE_AGAIN_MS) return;
@@ -633,9 +654,18 @@ public final class SkyCounters {
 			before = null;
 			crafting = null;
 			placedAt.clear();
+			pending.clear();
 			return;
 		}
 		long now = System.currentTimeMillis();
+		// blocks broken and placed, a moment later: still broken (another state there now), still placed (the same block)
+		pending.removeIf(p -> {
+			if (now - p.at() < CONFIRM_MS) return false;
+			BlockState there = mc.level.getBlockState(p.pos());
+			boolean held = p.was() != null ? !there.equals(p.was()) : there.getBlock() == p.now().getBlock();
+			if (held) p.count().run();
+			return true;
+		});
 		// kills: a mob hit dying, or a stacked mob hit standing for fewer (each one fewer a kill)
 		hit.entrySet().removeIf(e -> {
 			Entity entity = mc.level.getEntity(e.getKey());
