@@ -98,8 +98,13 @@ public class GameHudUndo implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.rightClick(fps));
 			context.waitTicks(3);
 			steps(context, "2 0", "opening the settings");
+			// the row scrolled into view first (the module's own options come before the look), then clicked once drawn there
+			context.computeOnClient(mc -> TestHooks.settingsRow("slashclient-hud.background"));
+			context.waitTicks(3);
 			double[] row = context.computeOnClient(mc -> TestHooks.settingsRow("slashclient-hud.background"));
 			if (row == null) throw new AssertionError("The FPS's settings did not open on a right click");
+			System.out.println("SlashClient undo test: background row at " + row[0] + ", " + row[1]);
+			context.takeScreenshot("hud-undo-settings");
 			cursor(context, row);
 			click(context, row);
 			steps(context, "3 0", "switching the background");

@@ -236,6 +236,8 @@ public final class HudConfig {
 	public boolean skyTasksCompact = false, skyTasksHideDone = false, skyTasksRewards = false;
 	/** Every unfinished task tracked (those switched off one by one aside). */
 	public boolean skyTasksTrackAll = false;
+	/** SkyUp's daily task tracked by itself, each day's new one too (unless taken off the HUD by hand). */
+	public boolean skyTasksAutoDaily = true;
 	/** The category last open and how many of its tasks are left. */
 	public boolean skyTasksTierCount = true;
 	/** On joining SkyUp, a line saying the tasks GUI loads the progress. */
@@ -257,6 +259,14 @@ public final class HudConfig {
 	 * only on joining, as many take it later (its jobs' bonus runs from when it is taken).
 	 */
 	public int skyBonusEvery = 60;
+	/** SkyUp's plan of the week: how many coming events the module lists. */
+	public int skyPlanRows = 3;
+	/** How many minutes before an event of the plan the banner says it starts (0 = no banner). */
+	public int skyPlanRemind = 5;
+	/** Which of the plan's kinds the banner is for: SkyUp's events, its fishing contests, its boss arena. */
+	public boolean skyPlanEvents = true, skyPlanFishing = true, skyPlanBoss = true;
+	/** The plan's banner sound: "default" (the bell), "none", or one of the chat tabs' (ChatTabs.SOUNDS). */
+	public String skyPlanSound = "default";
 	/** SkyUp's fish counter: split by "none", "size", "species" or "quality"; their weight and value shown. */
 	public String skyFishSplit = "none";
 	public boolean skyFishWeight = true, skyFishValue = true;
@@ -644,6 +654,8 @@ public final class HudConfig {
 		// the shamanism recipes tracked on the left where the dungeon map is (never both: no summons in a dungeon);
 		// shown only with one tracked
 		c.modules.put("skyshaman", new Placement(true, 0f, 0.55f, 2, 0));
+		// SkyUp's plan of the week under the wardrobe on the right; shown on SkyUp only
+		c.modules.put("skyplan", new Placement(true, 1f, 0.2f, -2, 0));
 		// the minimap in the top right corner, off until switched on; its own picture needs no background
 		Placement minimap = new Placement(false, 1f, 0f, -2, 2);
 		minimap.background = false;
@@ -835,12 +847,19 @@ public final class HudConfig {
 		skyDailyRemind = Math.max(0, Math.min(240, other.skyDailyRemind));
 		skyDailySound = other.skyDailySound == null ? "default" : other.skyDailySound;
 		skyBonusEvery = Math.max(0, Math.min(240, other.skyBonusEvery));
+		skyPlanRows = Math.max(1, Math.min(8, other.skyPlanRows));
+		skyPlanRemind = Math.max(0, Math.min(60, other.skyPlanRemind));
+		skyPlanEvents = other.skyPlanEvents;
+		skyPlanFishing = other.skyPlanFishing;
+		skyPlanBoss = other.skyPlanBoss;
+		skyPlanSound = other.skyPlanSound == null ? "default" : other.skyPlanSound;
 		skyTasksScroll = other.skyTasksScroll;
 		skyTasksShaman = other.skyTasksShaman;
 		skyTasksMark = oneOf(other.skyTasksMark, SKY_TASKS_MARKS);
 		skyTasksHideDone = other.skyTasksHideDone;
 		skyTasksRewards = other.skyTasksRewards;
 		skyTasksTrackAll = other.skyTasksTrackAll;
+		skyTasksAutoDaily = other.skyTasksAutoDaily;
 		skyTasksTierCount = other.skyTasksTierCount;
 		skyTasksJoinHint = other.skyTasksJoinHint;
 		skyFishSplit = other.skyFishSplit == null ? "none" : other.skyFishSplit;

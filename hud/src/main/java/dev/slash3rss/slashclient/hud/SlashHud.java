@@ -218,6 +218,7 @@ public class SlashHud implements ClientModInitializer {
 			DungeonMap.stop();
 			//#if MC >= 26.3
 			SkyTasks.joined(mc);
+			dev.slash3rss.slashclient.hud.skyup.SkyPlan.joined(mc);
 			SkyFish.joined();
 			SkyCase.joined();
 			//#endif
@@ -305,6 +306,7 @@ public class SlashHud implements ClientModInitializer {
 			SkyCase.tick(mc);
 			SkyWardrobe.tick(mc);
 			SkyXp.tick(mc);
+			dev.slash3rss.slashclient.hud.skyup.SkyPlan.tick(mc);
 			dev.slash3rss.slashclient.hud.skyup.SkyWiki.tick(mc);
 			//#endif
 			if (mc.level != null && mc.level.getGameTime() % 20 == 0) dev.slash3rss.slashclient.hud.social.Social.watchLan(mc);

@@ -125,7 +125,7 @@ public final class Catalog {
 		Map.entry("block", "world"), Map.entry("durability", "combat"), Map.entry("ammo", "combat"), Map.entry("kd", "combat"), Map.entry("hits", "combat"), Map.entry("session", "hud"), Map.entry("biome", "world"), Map.entry("daytime", "world"),
 		Map.entry("light", "world"), Map.entry("saturation", "world"), Map.entry("movement", "world"), Map.entry("combo", "combat"),
 		Map.entry("reach", "combat"), Map.entry("target", "combat"), Map.entry("attackindicator", "combat"), Map.entry("armor", "combat"), Map.entry("effects", "combat"),
-		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"), Map.entry("skycase", "skyup"), Map.entry("skywardrobe", "skyup"), Map.entry("skyxp", "skyup"), Map.entry("skyshaman", "skyup"),
+		Map.entry("items", "combat"), Map.entry("keystrokes", "combat"), Map.entry("dungeonmap", "skyup"), Map.entry("minimap", "world"), Map.entry("skytasks", "skyup"), Map.entry("skyfish", "skyup"), Map.entry("skycase", "skyup"), Map.entry("skywardrobe", "skyup"), Map.entry("skyxp", "skyup"), Map.entry("skyshaman", "skyup"), Map.entry("skyplan", "skyup"),
 		Map.entry("twitchchat", "chat"), Map.entry("kickchat", "chat"), Map.entry("nethercoords", "world"));
 
 	static final int[] COLORS = { 0xFFFFFFFF, 0xFF60A5FA, 0xFF4ADE80, 0xFF55FFFF, 0xFFFACC15, 0xFFF87171, 0xFFA855F7, 0xFFFF55FF };
@@ -280,6 +280,7 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.skyTasks.hideDone", () -> cfg.skyTasksHideDone, v -> cfg.skyTasksHideDone = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.rewards", () -> cfg.skyTasksRewards, v -> cfg.skyTasksRewards = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.trackAll", () -> cfg.skyTasksTrackAll, v -> cfg.skyTasksTrackAll = v));
+					settings.add(new Toggle("slashclient-hud.skyTasks.autoDaily", () -> cfg.skyTasksAutoDaily, v -> cfg.skyTasksAutoDaily = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.tierCount", () -> cfg.skyTasksTierCount, v -> cfg.skyTasksTierCount = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.joinHintSetting", () -> cfg.skyTasksJoinHint, v -> cfg.skyTasksJoinHint = v));
 					settings.add(new Slider("slashclient-hud.skyTasks.dailyRemind", 0f, 120f, 5f, "%.0f min", () -> (float) cfg.skyDailyRemind, v -> cfg.skyDailyRemind = Math.round(v)));
@@ -297,6 +298,19 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.skyFish.weight", () -> cfg.skyFishWeight, v -> cfg.skyFishWeight = v));
 					settings.add(new Toggle("slashclient-hud.skyFish.value", () -> cfg.skyFishValue, v -> cfg.skyFishValue = v));
 					settings.add(new Slider("slashclient-hud.skyFish.pause", 1f, 60f, 1f, "%.0f min", () -> (float) cfg.skyFishPause, v -> cfg.skyFishPause = Math.round(v)));
+				}
+				case "skyplan" -> {
+					settings.add(new Slider("slashclient-hud.skyPlan.rows", 1f, 8f, 1f, "%.0f", () -> (float) cfg.skyPlanRows, v -> cfg.skyPlanRows = Math.round(v)));
+					settings.add(new Slider("slashclient-hud.skyPlan.remind", 0f, 60f, 1f, "%.0f min", () -> (float) cfg.skyPlanRemind, v -> cfg.skyPlanRemind = Math.round(v)));
+					// which kinds the banner is for
+					settings.add(new Toggle("slashclient-hud.skyPlan.events", () -> cfg.skyPlanEvents, v -> cfg.skyPlanEvents = v));
+					settings.add(new Toggle("slashclient-hud.skyPlan.fishing", () -> cfg.skyPlanFishing, v -> cfg.skyPlanFishing = v));
+					settings.add(new Toggle("slashclient-hud.skyPlan.boss", () -> cfg.skyPlanBoss, v -> cfg.skyPlanBoss = v));
+					String[] sounds = java.util.Arrays.stream(dev.slash3rss.slashclient.hud.chat.ChatTabs.SOUNDS).map(s -> s.isEmpty() ? "default" : s).toArray(String[]::new);
+					settings.add(new Choice("slashclient-hud.skyPlan.sound", sounds, "slashclient-hud.chat.sound.", () -> cfg.skyPlanSound, v -> {
+						cfg.skyPlanSound = v;
+						dev.slash3rss.slashclient.hud.chat.ChatTabs.playSound(net.minecraft.client.Minecraft.getInstance(), "default".equals(v) ? "" : v);
+					}));
 				}
 				case "skycase" -> {
 					settings.add(new Choice("slashclient-hud.skyCase.layout", HudConfig.SKY_CASE_LAYOUTS, "slashclient-hud.skyCase.layout.",

@@ -554,7 +554,8 @@ public final class SkyTasks {
 		if (t.category) return categoryTracked(t.name);
 		Data d = data();
 		String key = t.key();
-		boolean all = SlashHud.config.skyTasksTrackAll || categoryTracked(t.tier);
+		// the daily task with its own switch: on the HUD by itself, unless the player took it off
+		boolean all = SlashHud.config.skyTasksTrackAll || categoryTracked(t.tier) || (SlashHud.config.skyTasksAutoDaily && daily(t));
 		return all ? !d.untracked.contains(key) : d.tracked.contains(key);
 	}
 
@@ -575,6 +576,12 @@ public final class SkyTasks {
 			d.untracked.removeIf(k -> k.substring(0, Math.max(0, k.indexOf('|'))).equalsIgnoreCase(name));
 		}
 		save();
+	}
+
+	/** For the in-game test: the task neither tracked nor taken off by hand. */
+	public static void untouchedForTest(SkyTaskParser.Task t) {
+		data().tracked.remove(t.key());
+		data().untracked.remove(t.key());
 	}
 
 	public static void toggle(SkyTaskParser.Task t) {

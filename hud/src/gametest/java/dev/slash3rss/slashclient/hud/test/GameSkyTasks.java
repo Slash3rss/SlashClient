@@ -20,6 +20,8 @@ public class GameSkyTasks implements FabricClientGameTest {
 		//#if MC >= 26.3
 		// the test ends on the game's own title screen
 		context.runOnClient(mc -> TestHooks.vanillaMenu());
+		// the daily task tracked by hand like the others (its switch is checked on its own, see skyDaily)
+		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.skyTasksAutoDaily = false);
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			world.getServer().runCommand("time set 6000");
@@ -295,7 +297,7 @@ public class GameSkyTasks implements FabricClientGameTest {
 			check(shaman.contains("✖ Redstone Torch") && shaman.contains("✖ Glass Bottle") && shaman.contains("Rotten Flesh 0/20") && shaman.contains("✔ Rotten Flesh 20/20") && shaman.endsWith("count 1"), "shamanism", shaman);
 			// the daily task: nothing to remind of until it is tracked, then what is left of it
 			String daily = context.computeOnClient(mc -> TestHooks.skyDaily());
-			check(daily.equals("null | Still to do: Buraki 0/3888"), "the daily task's reminder (untracked | tracked)", daily);
+			check(daily.equals("null | Still to do: Buraki 0/3888 | auto true false"), "the daily task's reminder (untracked | tracked | tracked by itself, then taken off)", daily);
 			// the daily bonus: due until its window shows today's gift taken, due again the next day
 			String bonus = context.computeOnClient(mc -> TestHooks.skyBonus());
 			check(bonus.equals("true true true false false true"), "the daily bonus's reminder", bonus);
@@ -414,8 +416,20 @@ public class GameSkyTasks implements FabricClientGameTest {
 			check(context.computeOnClient(mc -> TestHooks.skyBonusReminder(true)), "the daily task reminder shown", "");
 			context.waitTicks(15);
 			context.takeScreenshot("skyup-daily-reminder");
+			// the plan of the week: read from the wiki's table, the next three, and a banner for the fishing contest only when wanted
+			String plan = context.computeOnClient(mc -> TestHooks.skyPlan());
+			System.out.println("SlashClient plan of the week: " + plan);
+			check(plan.startsWith("MONDAY 19:00 Eventy;TUESDAY 21:00 Boss arena;|WEDNESDAY 19:00 Zawody wędkarskie;WEDNESDAY 20:00 Boss arena;WEDNESDAY 21:00 Eventy;|")
+				&& plan.endsWith("|-,Zawody wędkarskie,-"), "the plan of the week", plan);
+			context.waitTicks(15);
+			context.takeScreenshot("skyup-plan");
 			world.getServer().runCommand("clear @a");
 			context.runOnClient(mc -> TestHooks.skyTasksOptions(false, false));
+			// the shamanism and plan modules shown here would lie over other modules in the next tests' editor
+			context.runOnClient(mc -> {
+				dev.slash3rss.slashclient.hud.SlashHud.config.placement("skyshaman").enabled = false;
+				dev.slash3rss.slashclient.hud.SlashHud.config.placement("skyplan").enabled = false;
+			});
 		}
 		//#endif
 	}

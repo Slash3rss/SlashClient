@@ -464,7 +464,7 @@ public final class TestHooks {
 
 	/** The middle of a row of the open settings page, or null when it is not drawn. */
 	public static double[] settingsRow(String labelKey) {
-		int[] r = HudEditScreen.ROWS.get(labelKey);
+		int[] r = HudEditScreen.rowInViewForTest(labelKey);
 		return r == null ? null : new double[] { r[0] + r[2] / 2.0, r[1] + r[3] / 2.0 };
 	}
 
@@ -2518,12 +2518,21 @@ public final class TestHooks {
 		SkyTaskParser.Task daily = null;
 		for (SkyTaskParser.Task t : SkyTasks.data().tasks.values()) if (t.name.contains("Zadanie codzienne")) daily = t;
 		if (daily == null) return "none";
+		SlashHud.config.skyTasksAutoDaily = false;
 		var before = SkyTasks.dailyReminder(mc);
 		boolean was = SkyTasks.tracked(daily);
 		if (!was) SkyTasks.toggle(daily);
 		var after = SkyTasks.dailyReminder(mc);
 		if (!was) SkyTasks.toggle(daily);
-		return (before == null ? "null" : before.getString()) + " | " + (after == null ? "null" : after.getString());
+		// tracked by itself with the switch on, and off the HUD when taken off by hand
+		SkyTasks.untouchedForTest(daily);
+		SlashHud.config.skyTasksAutoDaily = true;
+		boolean auto = SkyTasks.tracked(daily);
+		SkyTasks.toggle(daily);
+		boolean byHand = SkyTasks.tracked(daily);
+		SkyTasks.untouchedForTest(daily);
+		SlashHud.config.skyTasksAutoDaily = false;
+		return (before == null ? "null" : before.getString()) + " | " + (after == null ? "null" : after.getString()) + " | auto " + auto + " " + byHand;
 	}
 
 	/** A generator's window as SkyUp sends it (the owner's dump): the points read as spent in it. */
@@ -2683,6 +2692,12 @@ public final class TestHooks {
 		SkyShaman.toggle("Świnia");
 		SkyShaman.toggle("Kostka siarki");
 		return SkyShaman.moduleForTest();
+	}
+
+	/** SkyUp's plan of the week checked (SkyPlan.checkForTest), with its module switched on for the screenshot. */
+	public static String skyPlan() {
+		SlashHud.config.placement("skyplan").enabled = true;
+		return dev.slash3rss.slashclient.hud.skyup.SkyPlan.checkForTest();
 	}
 
 	/** The daily reminder's sound set so, as it is played ("" the bell); the setting put back after. */

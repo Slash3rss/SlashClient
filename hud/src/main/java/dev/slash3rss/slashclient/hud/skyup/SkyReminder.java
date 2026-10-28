@@ -18,7 +18,9 @@ public final class SkyReminder {
 	private static final long IN = 350, SHOW = 7000, OUT = 300;
 	/** Each reminder's colour: light and dark (the badge's gradient), so they are told apart at a glance. */
 	public enum Look {
-		BONUS(0xFFFFC94D, 0xFFB7791F), DAILY(0xFF4ADE80, 0xFF15803D);
+		BONUS(0xFFFFC94D, 0xFFB7791F), DAILY(0xFF4ADE80, 0xFF15803D),
+		// the plan of the week's: events purple, fishing contests blue, the boss arena red
+		EVENTS(0xFFC084FC, 0xFF7E22CE), FISHING(0xFF60A5FA, 0xFF1D4ED8), BOSS(0xFFF87171, 0xFFB91C1C);
 
 		final int light, dark;
 

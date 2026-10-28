@@ -60,6 +60,8 @@ public final class Modules {
 		out.add(new SkyXp.Module());
 		// and the shamanism recipes being tracked, with what is still missing
 		out.add(new dev.slash3rss.slashclient.hud.skyup.SkyShaman.Module());
+		// and SkyUp's plan of the week: its coming events, fishing contests and boss arena
+		out.add(new dev.slash3rss.slashclient.hud.skyup.SkyPlan.Module());
 		//#endif
 		// a Twitch and a Kick channel's live chat
 		out.addAll(StreamChatModule.all());

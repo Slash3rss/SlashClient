@@ -235,7 +235,7 @@ public class SkyAtlasScreen extends Screen {
 	}
 
 	/** Karpiołap, the Elementium case's fishing rod (its model from SkyUp's pack; a plain rod without it). */
-	private static final ItemStack KARPIOLAP = new ItemStack(Items.FISHING_ROD);
+	static final ItemStack KARPIOLAP = new ItemStack(Items.FISHING_ROD);
 	static {
 		KARPIOLAP.set(net.minecraft.core.component.DataComponents.CUSTOM_MODEL_DATA,
 			new net.minecraft.world.item.component.CustomModelData(List.of(10008f), List.of(), List.of(), List.of()));

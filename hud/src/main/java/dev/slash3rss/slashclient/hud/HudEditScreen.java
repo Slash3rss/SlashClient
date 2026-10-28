@@ -80,6 +80,8 @@ public class HudEditScreen extends Screen {
 	/** Where each row of the open settings page was drawn last (x, y, w, h), and each slider (x, y, w): for the in-game test. */
 	static final java.util.Map<String, int[]> ROWS = new java.util.HashMap<>();
 	static final java.util.Map<String, int[]> SLIDERS = new java.util.HashMap<>();
+	/** The settings list's visible band (top, height) as last drawn: for the test that scrolls a row into it. */
+	private int listTopDrawn, listHDrawn;
 	/** Where the key buttons on the settings page were drawn last, by the key's name; for the tests. */
 	static final java.util.Map<String, int[]> KEYS = new java.util.HashMap<>();
 	/** A key row on the settings page waiting for the new key, or null. */
@@ -1231,6 +1233,8 @@ public class HudEditScreen extends Screen {
 		int listH = h - 26;
 		maxScroll = Math.max(0, contentH - listH);
 		scroll = Math.max(0, Math.min(maxScroll, scroll));
+		listTopDrawn = listTop;
+		listHDrawn = listH;
 		g.enableScissor(x, listTop, x + w, listTop + listH);
 		Ui.beginClip("settings list", x, listTop, w, listH);
 		int ry = listTop + 2 - Math.round(scroll);
@@ -1707,6 +1711,21 @@ public class HudEditScreen extends Screen {
 	void layoutForTest() {
 		window = false;
 		rebuildWidgets();
+	}
+
+	/**
+	 * For the in-game test: the settings list scrolled (if need be) so the row is in view, as a player would; where
+	 * the row is then (x, y, w, h), or null when the page has no such row.
+	 */
+	static int[] rowInViewForTest(String labelKey) {
+		int[] r = ROWS.get(labelKey);
+		if (r == null || !(Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof HudEditScreen s)) return r;
+		float before = s.scroll;
+		if (r[1] + r[3] > s.listTopDrawn + s.listHDrawn) s.scroll += r[1] + r[3] - (s.listTopDrawn + s.listHDrawn) + 2;
+		else if (r[1] < s.listTopDrawn) s.scroll -= s.listTopDrawn - r[1] + 2;
+		s.scroll = Math.max(0, Math.min(s.maxScroll, s.scroll));
+		int moved = Math.round(s.scroll) - Math.round(before);
+		return new int[] { r[0], r[1] - moved, r[2], r[3] };
 	}
 
 	/** For the in-game test: the module the arrows move. */
