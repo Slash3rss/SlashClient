@@ -51,6 +51,13 @@ public class GameFriendStreams implements FabricClientGameTest {
 			stream(context, BOB, "kick", "Speedrun 1.21", 9, true);
 			if (toasts(context) != before) throw new AssertionError("A muted friend made a toast");
 			context.runOnClient(mc -> Social.mute(BOB, false));
+			// unmuted, his Kick stream gets a toast in Kick's lime, not Twitch's purple
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).clear());
+			int beforeKick = toasts(context);
+			stream(context, BOB, "kick", "Speedrun 1.21", 9, true);
+			if (toasts(context) != beforeKick + 1) throw new AssertionError("No toast when a friend went live on Kick");
+			context.waitTicks(15);
+			context.takeScreenshot("friend-kick-toast");
 			JsonObject evil = event(CID, "twitch", "x", 1, true);
 			evil.getAsJsonObject("stream").addProperty("url", "https://evil.example/cid");
 			context.runOnClient(mc -> FriendStreams.eventForTest(evil));

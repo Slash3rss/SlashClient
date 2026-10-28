@@ -68,7 +68,7 @@ public final class FriendStreams {
 		if (l == null || !Social.bool(e, "notify")) return;
 		Social.Friend f = Social.friend(id);
 		if (f == null || f.muted()) return;
-		Social.toastFrom(f, toastText(l), FriendToast.Kind.LIVE);
+		Social.toastFrom(f, toastText(l), "kick".equals(l.platform()) ? FriendToast.Kind.KICK : FriendToast.Kind.LIVE);
 	}
 
 	/** "nadaje na żywo na Twitch: Budujemy zamek". */

@@ -20,7 +20,9 @@ public final class FriendToast implements Toast {
 		MESSAGE(Ui.ACCENT_LIGHT, Ui.ACCENT_DARK),
 		ONLINE(0xFF4ADE80, 0xFF15803D),
 		PLAYING(0xFF22D3EE, 0xFF0E7490),
+		// live in the platforms' own colours: Twitch purple, Kick lime
 		LIVE(0xFFA78BFA, 0xFF6D28D9),
+		KICK(0xFF53FC18, 0xFF2F8F0C),
 		INVITE(0xFFFB923C, 0xFFC2410C),
 		COMMUNITY(0xFFF472B6, 0xFFBE185D),
 		ACHIEVEMENT(0xFFFFC94D, 0xFFB7791F),
