@@ -180,6 +180,26 @@ public final class InventorySearch {
 		return true;
 	}
 
+	private static net.minecraft.locale.Language polish, english;
+
+	/**
+	 * A text of the game by its key in Polish and in English, whatever language the game is in: the searches find
+	 * by either ("miecz" and "sword" both find a sword), besides the game's own language.
+	 */
+	public static String bothLanguages(String key) {
+		if (polish == null) {
+			var resources = Minecraft.getInstance().getResourceManager();
+			english = net.minecraft.client.resources.language.ClientLanguage.loadFrom(resources, java.util.List.of("en_us"), false);
+			polish = net.minecraft.client.resources.language.ClientLanguage.loadFrom(resources, java.util.List.of("en_us", "pl_pl"), false);
+		}
+		return polish.getOrDefault(key) + "\n" + english.getOrDefault(key);
+	}
+
+	/** A text's Polish and English when it is one of the game's (an enchantment's name), else nothing. */
+	private static String bothLanguages(Component c) {
+		return c.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents t ? bothLanguages(t.getKey()) + "\n" : "";
+	}
+
 	/** Lower case, without colour codes and the marks of Polish letters: "ostrosc" finds "§7Ostrość V". */
 	public static String plain(String s) {
 		String lower = s.replaceAll("§.", "").toLowerCase(Locale.ROOT).replace('ł', 'l');
@@ -211,13 +231,19 @@ public final class InventorySearch {
 			// a server's odd item: its name at least
 			out.append(stack.getHoverName().getString()).append('\n');
 		}
+		// the item's own name in Polish and English too (a renamed one keeps it: "diament" finds a named diamond)
+		out.append(bothLanguages(stack.getItem().getDescriptionId())).append('\n');
 		try {
 			//#if MC >= 1.21
-			for (var e : net.minecraft.world.item.enchantment.EnchantmentHelper.getEnchantmentsForCrafting(stack).entrySet())
-				out.append(net.minecraft.world.item.enchantment.Enchantment.getFullname(e.getKey(), e.getIntValue()).getString()).append('\n');
+			for (var e : net.minecraft.world.item.enchantment.EnchantmentHelper.getEnchantmentsForCrafting(stack).entrySet()) {
+				Component name = net.minecraft.world.item.enchantment.Enchantment.getFullname(e.getKey(), e.getIntValue());
+				out.append(name.getString()).append('\n').append(bothLanguages(name));
+			}
 			//#else
-			//$ for (var e : net.minecraft.world.item.enchantment.EnchantmentHelper.getEnchantments(stack).entrySet())
-			//$ 	out.append(e.getKey().getFullname(e.getValue()).getString()).append('\n');
+			//$ for (var e : net.minecraft.world.item.enchantment.EnchantmentHelper.getEnchantments(stack).entrySet()) {
+			//$ 	Component name = e.getKey().getFullname(e.getValue());
+			//$ 	out.append(name.getString()).append('\n').append(bothLanguages(name));
+			//$ }
 			//#endif
 		} catch (RuntimeException e) {
 			// an enchantment the client does not know: the tooltip's lines are there still

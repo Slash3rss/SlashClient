@@ -981,19 +981,14 @@ public class HudEditScreen extends Screen {
 
 	/** The names searched: each in the game's language, in Polish and in English, without the marks of Polish letters. */
 	private static final java.util.Map<String, String> SEARCHED = new java.util.HashMap<>();
-	private static net.minecraft.locale.Language polish, english;
 
 	/** Whether a card's name has what was typed, in either language ("zegar" and "clock" both find the clock; "zrodlo" finds "Źródło"). */
 	static boolean found(String nameKey, String query) {
 		String q = dev.slash3rss.slashclient.hud.inventory.InventorySearch.plain(query.trim());
 		if (q.isEmpty()) return true;
 		return SEARCHED.computeIfAbsent(nameKey, k -> {
-			if (polish == null) {
-				var resources = net.minecraft.client.Minecraft.getInstance().getResourceManager();
-				english = net.minecraft.client.resources.language.ClientLanguage.loadFrom(resources, List.of("en_us"), false);
-				polish = net.minecraft.client.resources.language.ClientLanguage.loadFrom(resources, List.of("en_us", "pl_pl"), false);
-			}
-			return dev.slash3rss.slashclient.hud.inventory.InventorySearch.plain(Component.translatable(k).getString() + "\n" + polish.getOrDefault(k) + "\n" + english.getOrDefault(k));
+			return dev.slash3rss.slashclient.hud.inventory.InventorySearch.plain(Component.translatable(k).getString() + "\n"
+				+ dev.slash3rss.slashclient.hud.inventory.InventorySearch.bothLanguages(k));
 		}).contains(q);
 	}
 

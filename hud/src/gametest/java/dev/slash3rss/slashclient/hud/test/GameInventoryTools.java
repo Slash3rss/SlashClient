@@ -189,6 +189,12 @@ public class GameInventoryTools implements FabricClientGameTest {
 			// enchantments and lore typed without Polish letters, and the server's colour codes left out
 			if (!context.computeOnClient(mc -> InvToolsTestHooks.searchFinds("§7Ostrość V", "ostrosc v") && InvToolsTestHooks.searchFinds("Złota łuska", "zlota LUSKA")))
 				throw new AssertionError("The search without Polish letters");
+			// the game in English: the Polish names find the same (the diamond, the pickaxe, the box with diamonds)
+			int polish = context.computeOnClient(mc -> InvToolsTestHooks.search("diament"));
+			int pickaxes = context.computeOnClient(mc -> InvToolsTestHooks.search("pickaxe"));
+			int kilof = context.computeOnClient(mc -> InvToolsTestHooks.search("kilof"));
+			if (polish != 3 || pickaxes < 1 || kilof != pickaxes) throw new AssertionError("The search in Polish: diament " + polish + ", pickaxe " + pickaxes + ", kilof " + kilof);
+			context.computeOnClient(mc -> InvToolsTestHooks.search("diamond"));
 			context.getInput().setCursorPos(4, 4);
 			context.waitTicks(5);
 			context.takeScreenshot("invtools-search");
