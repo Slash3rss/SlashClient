@@ -49,3 +49,10 @@
   .dash-period button { flex: 1; min-width: 0; }
   .bars .bar { grid-template-columns: 30px minmax(0, 90px) 1fr 36px; }
 }
+
+/* Atlas ryb: sortable columns and rows that open a species */
+.fish-table th.fish-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+.fish-table th.fish-sort i { margin-left: 6px; }
+.fish-table tr.fish-row { cursor: pointer; }
+.fish-table tr.fish-row:hover td { background: rgba(255, 255, 255, .03); }
+.fish-table td { white-space: nowrap; }

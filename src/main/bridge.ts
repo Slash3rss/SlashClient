@@ -84,6 +84,8 @@ const ALLOWED: [string, RegExp][] = [
   ['POST', /^\/v1\/me\/position-sharing$/],
   // a spray on a block, for players there with SlashClient
   ['POST', /^\/v1\/mc\/spray$/],
+  // the SkyUp fish atlas, for the admin panel only (in parts under the size limit)
+  ['POST', /^\/v1\/mc\/fish-atlas$/],
   // the cosmetics menu in the game: what there is, what is worn, and changing it
   ['GET', /^\/v1\/cosmetics$/],
   ['GET', /^\/v1\/me$/],

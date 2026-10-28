@@ -57,6 +57,7 @@ import { createStreams } from './streams/streams.ts';
 import type { KICK, TWITCH } from './streams/providers.ts';
 import { createSuggestions } from './suggestions.ts';
 import { popularRoutes } from './friendsPopular.ts';
+import { fishAtlasRoutes } from './fishAtlas.ts';
 import { createPush } from './push.ts';
 
 /**
@@ -720,6 +721,16 @@ export function createApp(cfg: Config) {
     }),
     serverName: (server) => statusRules.nameFor(server),
     limitReports: limiter('friendsPopular.reportsPerMinute'), limitList: limiter('friendsPopular.listPerMinute'),
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  // the SkyUp fish atlases from the game, seen only in the admin panel (fishAtlas.ts)
+  const fishAtlas = fishAtlasRoutes({
+    sql: db.sql, authed, admin, body,
+    settings: () => ({ enabled: settings.bool('fishAtlas.enabled'), maxCatches: settings.num('fishAtlas.maxCatches'), keepPerSpecies: settings.num('fishAtlas.keepPerSpecies') }),
+    limitUploads: limiter('fishAtlas.uploadsPerMinute'),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -1501,6 +1512,7 @@ export function createApp(cfg: Config) {
     ...positions.routes,
     ...suggestions.routes,
     ...popular.routes,
+    ...fishAtlas.routes,
     ...groups.routes,
     ...clans.routes,
     ...communities.routes,
@@ -2216,6 +2228,8 @@ export function createApp(cfg: Config) {
     suggestions,
     /** For tests: what friends use, its store and the cached results. */
     popular,
+    /** For tests: the shared fish atlas. */
+    fishAtlas,
     /** For tests: linked channels, the live state and the reconcile. */
     streams,
     /** For tests: the phones' notifications. */

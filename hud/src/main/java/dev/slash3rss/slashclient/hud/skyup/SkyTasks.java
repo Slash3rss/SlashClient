@@ -227,6 +227,8 @@ public final class SkyTasks {
 		SkyCounters.tick(mc);
 		remindDaily(mc);
 		remindBonus(mc);
+		// the fish atlas to the server, for the admin panel (after a change, now and then)
+		SkyAtlas.tick();
 	}
 
 	// ---------- the daily bonus's reminder ----------

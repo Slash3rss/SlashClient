@@ -73,6 +73,51 @@ public final class SkyAtlasTestHooks {
 		return look == null ? "none" : look.getItem() + " " + (model == null ? "-" : model.floats());
 	}
 
+	/**
+	 * What goes to the server: after the page and catches of readPage, the species caught or seen
+	 * with their summaries and those catches; then, with a long list of new catches, parts that keep
+	 * under the size and count limits, oldest first, only the ones the server does not have yet.
+	 */
+	public static String uploadParts() {
+		readPage();
+		SkyAtlas.Data d = SkyAtlas.data();
+		StringBuilder out = new StringBuilder();
+		List<SkyAtlas.Part> first = SkyAtlas.parts(d);
+		List<String> keys = new ArrayList<>();
+		int catches = 0;
+		for (SkyAtlas.Part p : first) {
+			for (var e : p.body().getAsJsonArray("species")) keys.add(e.getAsJsonObject().get("key").getAsString());
+			catches += p.body().getAsJsonArray("catches").size();
+		}
+		var amur = first.getFirst().body().getAsJsonArray("species").asList().stream().map(e -> e.getAsJsonObject())
+			.filter(o -> o.get("key").getAsString().equals("amurbialy")).findFirst().orElseThrow();
+		out.append(first.size()).append(' ').append(String.join(",", keys.stream().sorted().toList())).append(" catches=").append(catches)
+			.append(" amur=").append(amur.get("caught").getAsLong()).append('/').append(Math.round(amur.get("recordGrams").getAsDouble()))
+			.append('/').append(amur.get("fact").getAsString().isEmpty() ? "-" : "fact").append(" | ");
+		// 400 more Sum catches, the first 100 already on the server
+		long base = 1_800_000_000_000L;
+		SkyAtlas.Fish sum = d.fish.get(SkyAtlas.key("Sum"));
+		for (int i = 0; i < 400; i++) sum.catches().add(new SkyAtlas.Catch(base + i, 1000 + i, "duży", "dobra", i % 7 == 0 ? -1 : 12.5));
+		d.uploadedUpTo = base + 99;
+		List<SkyAtlas.Part> parts = SkyAtlas.parts(d);
+		long last = base + 99;
+		int sent = 0;
+		boolean ok = parts.size() > 1;
+		for (SkyAtlas.Part p : parts) {
+			ok &= p.body().toString().getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= SkyAtlas.PART_BYTES;
+			var arr = p.body().getAsJsonArray("catches");
+			ok &= arr.size() <= SkyAtlas.PART_CATCHES;
+			for (var e : arr) {
+				long at = e.getAsJsonObject().get("at").getAsLong();
+				ok &= at == last + 1;
+				last = at;
+				sent++;
+			}
+			ok &= p.upTo() == last;
+		}
+		return out.append(ok ? "ok" : "bad").append(" sent=").append(sent).append(" upTo=").append(last - base).toString();
+	}
+
 	/** The album as the player sees it opened: its cards being dealt. */
 	public static void openMoving() {
 		open(null);

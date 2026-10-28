@@ -10,6 +10,7 @@ import { COMMUNITY_LIMITS } from './communityStore.ts';
 import { COMMUNITY_MEDIA_LIMITS } from './communityMedia.ts';
 import { BANNER_DEFS, FEATURE_DEFS } from './features.ts';
 import { POPULAR_SETTING_DEFS } from './friendsPopular.ts';
+import { FISH_ATLAS_SETTING_DEFS } from './fishAtlas.ts';
 import { GIF_SETTING_DEFS } from './gifs.ts';
 import { ALIASES_DEFAULT, ICON_SETTING_DEFAULTS } from './partners.ts';
 import { PUSH_SETTING_DEFS } from './push.ts';
@@ -54,6 +55,7 @@ export const CATEGORIES: { id: SettingCategory; label: string; labelEn: string }
   { id: 'servers', label: 'Lista serwerów', labelEn: 'Server list' },
   { id: 'suggestions', label: 'Propozycje znajomych', labelEn: 'Friend suggestions' },
   { id: 'friendsPopular', label: 'Popularne wśród znajomych', labelEn: 'Popular among friends' },
+  { id: 'fishAtlas', label: 'Atlas ryb', labelEn: 'Fish atlas' },
   { id: 'push', label: 'Powiadomienia na telefon', labelEn: 'Phone notifications' },
 ];
 
@@ -216,6 +218,8 @@ export const SETTING_DEFS: SettingDef[] = [
   ...SUGGESTION_SETTING_DEFS,
   // mods, packs, shaders and servers the friends use (friendsPopular.ts)
   ...POPULAR_SETTING_DEFS,
+  // the SkyUp fish atlases from the game, for the admin panel (fishAtlas.ts)
+  ...FISH_ATLAS_SETTING_DEFS,
   // notifications on the phone app (push.ts)
   ...PUSH_SETTING_DEFS,
 

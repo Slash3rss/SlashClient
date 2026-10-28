@@ -12,6 +12,7 @@ import { homePage } from './adminHome.js';
 import { rankChips, ranksPage, ranksReady, userRanksSection } from './adminRanks.js';
 import { settingsPage, supporterEditor } from './adminSettings.js';
 import { streamsPage } from './adminStreams.js';
+import { fishAtlasPage } from './adminFishAtlas.js';
 import { statusRulesSection } from './adminStatusRules.js';
 import { dashboardPage } from './adminDashboard.js';
 
@@ -30,6 +31,7 @@ const TABS = [
   ['storage', 'Miejsce na pliki', 'fa-solid fa-hard-drive'],
   ['support', 'Wsparcie', 'fa-solid fa-heart'],
   ['streams', 'Streamy', 'fa-solid fa-video'],
+  ['fishAtlas', 'Atlas ryb', 'fa-solid fa-fish'],
   ['home', 'Strona główna', 'fa-solid fa-house'],
   ['legal', 'Dokumenty', 'fa-solid fa-scale-balanced'],
   ['settings', 'Ustawienia', 'fa-solid fa-sliders'],
@@ -122,7 +124,7 @@ function layout() {
     el('button', { class: 'icon-btn', title: 'Wyloguj', onclick: async () => { await signOut(); me = undefined; gate(); } }, icon('fa-solid fa-right-from-bracket'))));
   const main = el('main', { class: 'main', id: 'main' });
   $('#root').replaceChildren(el('div', { class: 'admin' }, side, main));
-  ({ dashboard, users: usersPage, ranks: ranksPage, cosmetics: cosmeticsPage, achievements: achievementsPage, challenges: challengesPage, partners: partnersPage, clans: clansPage, communities: communitiesPage, requests: requestsPage, logs: logsPage, storage: storagePage, support: supportPage, streams: streamsPage, home: homePage, legal: legalPage, settings: settingsPage, log: logPage })[tab]?.();
+  ({ dashboard, users: usersPage, ranks: ranksPage, cosmetics: cosmeticsPage, achievements: achievementsPage, challenges: challengesPage, partners: partnersPage, clans: clansPage, communities: communitiesPage, requests: requestsPage, logs: logsPage, storage: storagePage, support: supportPage, streams: streamsPage, fishAtlas: fishAtlasPage, home: homePage, legal: legalPage, settings: settingsPage, log: logPage })[tab]?.();
 }
 
 const head = (title, ...extra) => el('div', { class: 'page-head' }, el('h1', { textContent: title }), ...extra);

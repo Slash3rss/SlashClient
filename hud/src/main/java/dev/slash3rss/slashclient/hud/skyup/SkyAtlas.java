@@ -149,6 +149,8 @@ public final class SkyAtlas {
 	static final class Data {
 		Map<String, Fish> fish = new LinkedHashMap<>();
 		long seen;
+		/** The newest catch the server has (the shared atlas in the admin panel): later ones are sent next. */
+		long uploadedUpTo;
 	}
 
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -290,6 +292,7 @@ public final class SkyAtlas {
 		if (changed) {
 			d.seen = System.currentTimeMillis();
 			save();
+			pending = true;
 		}
 	}
 
@@ -328,11 +331,147 @@ public final class SkyAtlas {
 		if (price > f.recordPrice) f.recordPrice = price;
 		if (f.look == null && !fish.isEmpty()) keepLook(f, fish);
 		save();
+		pending = true;
+	}
+
+	// ---------- the shared atlas ----------
+
+	/** Sent at most this often, after the atlas changed (and once a session). */
+	private static final long UPLOAD_EVERY = 5 * 60_000L;
+	/** One request stays under the launcher's and the server's 16 KB. */
+	static final int PART_BYTES = 12_000;
+	static final int PART_CATCHES = 150;
+	/** Parts sent in one go (within the server's limit per minute); the rest goes next time. */
+	private static final int PARTS_AT_ONCE = 8;
+	private static volatile boolean pending = true, uploading, stopped;
+	private static long uploadedAt;
+
+	/** A request's body, and the newest catch in it (the one sent before when it has none). */
+	record Part(com.google.gson.JsonObject body, long upTo) {}
+
+	/**
+	 * What the server is sent, in parts: every species caught or seen in the window (its summary, as
+	 * "Moje okazy" shows it), then the catches it does not have yet, oldest first.
+	 */
+	static List<Part> parts(Data d) {
+		List<Part> parts = new ArrayList<>();
+		var species = new com.google.gson.JsonArray();
+		var catches = new com.google.gson.JsonArray();
+		int size = 40;
+		long upTo = d.uploadedUpTo;
+		for (Fish f : d.fish.values()) {
+			if (f.caught <= 0 && !f.known) continue;
+			var o = new com.google.gson.JsonObject();
+			o.addProperty("key", key(f.name));
+			o.addProperty("name", f.name);
+			o.addProperty("caught", f.caught);
+			o.addProperty("recordGrams", f.recordGrams);
+			o.addProperty("recordSize", f.recordSize == null ? "" : f.recordSize);
+			o.addProperty("recordPrice", f.recordPrice);
+			o.addProperty("maxGrams", f.maxGrams);
+			o.addProperty("fact", f.fact == null ? "" : f.fact);
+			int n = bytes(o);
+			if (size + n > PART_BYTES && !species.isEmpty()) {
+				parts.add(part(species, catches, upTo));
+				species = new com.google.gson.JsonArray();
+				size = 40;
+			}
+			species.add(o);
+			size += n + 1;
+		}
+		List<Map.Entry<String, Catch>> fresh = new ArrayList<>();
+		for (Fish f : d.fish.values()) for (Catch c : f.catches()) if (c.at() > d.uploadedUpTo) fresh.add(Map.entry(key(f.name), c));
+		fresh.sort(Comparator.comparingLong(e -> e.getValue().at()));
+		for (var e : fresh) {
+			Catch c = e.getValue();
+			var o = new com.google.gson.JsonObject();
+			o.addProperty("species", e.getKey());
+			o.addProperty("at", c.at());
+			o.addProperty("grams", c.grams());
+			o.addProperty("size", c.size() == null ? "" : c.size());
+			o.addProperty("quality", c.quality() == null ? "" : c.quality());
+			o.addProperty("price", c.price() < 0 ? -1 : c.price());
+			int n = bytes(o);
+			if ((size + n > PART_BYTES || catches.size() >= PART_CATCHES) && (!species.isEmpty() || !catches.isEmpty())) {
+				parts.add(part(species, catches, upTo));
+				species = new com.google.gson.JsonArray();
+				catches = new com.google.gson.JsonArray();
+				size = 40;
+			}
+			catches.add(o);
+			size += n + 1;
+			upTo = c.at();
+		}
+		if (!species.isEmpty() || !catches.isEmpty()) parts.add(part(species, catches, upTo));
+		return parts;
+	}
+
+	private static Part part(com.google.gson.JsonArray species, com.google.gson.JsonArray catches, long upTo) {
+		var body = new com.google.gson.JsonObject();
+		body.add("species", species);
+		body.add("catches", catches);
+		return new Part(body, upTo);
+	}
+
+	private static int bytes(com.google.gson.JsonElement e) {
+		return e.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+	}
+
+	/**
+	 * While on SkyUp: the atlas goes to the server (seen only in the admin panel) when it changed, at
+	 * most every few minutes, off the game's thread. An older launcher or server (403, 404) or the admin's
+	 * switch off stops it for the session.
+	 */
+	static void tick() {
+		if (!pending || uploading || stopped || System.currentTimeMillis() - uploadedAt < UPLOAD_EVERY) return;
+		if (!dev.slash3rss.slashclient.hud.social.Social.available()) {
+			stopped = true;
+			return;
+		}
+		Data d = data();
+		Path from = loadedFrom;
+		List<Part> parts = parts(d);
+		pending = false;
+		uploadedAt = System.currentTimeMillis();
+		if (parts.isEmpty()) return;
+		uploading = true;
+		Thread.ofVirtual().start(() -> {
+			try {
+				for (int i = 0; i < parts.size(); i++) {
+					if (i == PARTS_AT_ONCE) {
+						pending = true;
+						break;
+					}
+					Part p = parts.get(i);
+					var res = dev.slash3rss.slashclient.hud.social.Social.api("POST", "/v1/mc/fish-atlas", p.body());
+					if (res != null && res.has("enabled") && !res.get("enabled").getAsBoolean()) {
+						stopped = true;
+						break;
+					}
+					Minecraft.getInstance().execute(() -> uploaded(from, p.upTo()));
+				}
+			} catch (Exception e) {
+				String m = String.valueOf(e.getMessage());
+				if (m.startsWith("HTTP 403") || m.startsWith("HTTP 404")) stopped = true;
+				else pending = true;
+				SlashHud.LOG.info("SlashClient: SkyUp fish atlas not sent: {}", e.toString());
+			} finally {
+				uploading = false;
+			}
+		});
+	}
+
+	/** The server has the catches up to `upTo` (kept only if the same account's atlas is still loaded). */
+	private static void uploaded(Path from, long upTo) {
+		if (data == null || !from.equals(loadedFrom) || upTo <= data.uploadedUpTo) return;
+		data.uploadedUpTo = upTo;
+		save();
 	}
 
 	/** For the in-game test: no atlas yet. */
 	public static void resetForTest() {
 		looks.clear();
+		stopped = true;
 		data = new Data();
 		loadedFrom = file();
 		save();
