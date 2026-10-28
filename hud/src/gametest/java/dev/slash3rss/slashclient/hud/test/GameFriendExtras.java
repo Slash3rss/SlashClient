@@ -36,7 +36,7 @@ public class GameFriendExtras implements FabricClientGameTest {
 				} catch (Exception e) {
 					throw new RuntimeException(e);
 				}
-				SlashHud.config.friendPlayingToasts = true;
+				SlashHud.config.toastPlaying = true;
 			});
 			long now = System.currentTimeMillis();
 			context.runOnClient(mc -> Social.knowForTest(now));
@@ -72,11 +72,43 @@ public class GameFriendExtras implements FabricClientGameTest {
 			before = toasts(context);
 			message(context, 12, "[Zrzut ekranu]", true, now + 43 * MIN);
 			if (toasts(context) != before + 1) throw new AssertionError("No toast for a picture");
-			context.runOnClient(mc -> SlashHud.config.friendPlayingToasts = false);
+			context.runOnClient(mc -> SlashHud.config.toastPlaying = false);
 			presence(context, "offline", "", "", now + 60 * MIN);
 			presence(context, "online", "server", "skyup.pl", now + 90 * MIN);
 			if (toasts(context) != before + 1) throw new AssertionError("A playing toast with the setting off");
-			context.runOnClient(mc -> SlashHud.config.friendPlayingToasts = true);
+			context.runOnClient(mc -> SlashHud.config.toastPlaying = true);
+			// shown as long as its text needs: a short one the least, a long one longer (to slide through and back), never past the most
+			long[] shownFor = context.computeOnClient(mc -> new long[] { dev.slash3rss.slashclient.hud.social.FriendToast.showMsForTest("Ala", "Hej"),
+				dev.slash3rss.slashclient.hud.social.FriendToast.showMsForTest("Ala", "nadaje na żywo na Twitch: Budujemy wielki zamek na wyspie i szukamy pomocników do kopania"),
+				dev.slash3rss.slashclient.hud.social.FriendToast.showMsForTest("Ala", "x".repeat(2000)) });
+			if (shownFor[0] != 5000 || shownFor[1] <= 5000 || shownFor[1] > 15000 || shownFor[2] != 15000)
+				throw new AssertionError("How long toasts show: " + java.util.Arrays.toString(shownFor));
+			// a long message slides in its toast
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).clear());
+			context.runOnClient(mc -> Social.toast("Społeczność · Ala", "Hej wszystkim, dziś wieczorem robimy wspólny event na wyspie, wbijajcie o 20!", "m-players"));
+			context.waitTicks(60);
+			context.takeScreenshot("toast-long-sliding");
+			// messages switched off: a picture makes no toast; on again, it does
+			context.runOnClient(mc -> SlashHud.config.toastMessages = false);
+			before = toasts(context);
+			message(context, 13, "[Zrzut ekranu]", true, now + 91 * MIN);
+			if (toasts(context) != before) throw new AssertionError("A message toast with messages switched off");
+			context.runOnClient(mc -> SlashHud.config.toastMessages = true);
+			// "Nie przeszkadzać" in the launcher: friends quiet, but the game's own (an error, a clip) still show; with the quiet off, toasts again
+			context.runOnClient(mc -> Social.statusForTest("busy"));
+			before = toasts(context);
+			message(context, 14, "[Zrzut ekranu]", true, now + 92 * MIN);
+			if (toasts(context) != before) throw new AssertionError("A toast while \"Nie przeszkadzać\"");
+			context.runOnClient(mc -> Social.toast("Nie wysłano", "Błąd", "info"));
+			context.runOnClient(mc -> Social.toast("Zapisano klip", "klip.mp4", "m-clips"));
+			if (toasts(context) != before + 2) throw new AssertionError("The game's own toasts hidden while \"Nie przeszkadzać\"");
+			context.runOnClient(mc -> SlashHud.config.toastDnd = false);
+			message(context, 15, "[Zrzut ekranu]", true, now + 93 * MIN);
+			if (toasts(context) != before + 3) throw new AssertionError("No toast with the quiet switched off");
+			context.runOnClient(mc -> {
+				SlashHud.config.toastDnd = true;
+				Social.statusForTest("");
+			});
 			context.waitTicks(120);
 
 			// the friends window: the muted friend (crossed bell) and the pictures each way

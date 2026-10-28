@@ -77,6 +77,8 @@ public final class Social {
 	private static volatile boolean reachable;
 	private static volatile String myId = "";
 	private static volatile String myName = "";
+	/** The status set in the launcher ("online", "away", "busy", "invisible"; "" from a launcher that does not say). */
+	private static volatile String myStatus = "";
 	private static volatile List<Friend> friends = List.of();
 	private static final Map<String, List<Message>> chats = new ConcurrentHashMap<>();
 	private static final Map<String, Long> typingUntil = new ConcurrentHashMap<>();
@@ -302,6 +304,8 @@ public final class Social {
 		JsonObject user = s.has("user") && s.get("user").isJsonObject() ? s.getAsJsonObject("user") : null;
 		myId = user != null ? str(user, "id") : "";
 		myName = user != null ? str(user, "name") : "";
+		// launchers 0.9.59+ say the status set in them
+		myStatus = str(s, "status");
 		if (!signedIn) {
 			friends = List.of();
 			playing.clear();
@@ -454,7 +458,7 @@ public final class Social {
 				friends = List.copyOf(list);
 				Friend f = friend(id);
 				FriendActivity.News news = playing.update(id, status, kind, server, System.currentTimeMillis());
-				if (news != null && f != null && !f.muted() && dev.slash3rss.slashclient.hud.SlashHud.config != null && dev.slash3rss.slashclient.hud.SlashHud.config.friendPlayingToasts) playingToast(f, news);
+				if (news != null && f != null && !f.muted()) playingToast(f, news);
 			}
 			// a friend's position on the same server (the minimap), or that they stopped sharing it
 			case "friend-position" -> FriendPositions.onEvent(e);
@@ -598,7 +602,7 @@ public final class Social {
 		friends = List.copyOf(list);
 		Friend f = friend(id);
 		FriendActivity.News news = playing.update(id, status, kind, server, now);
-		if (news != null && f != null && !f.muted() && dev.slash3rss.slashclient.hud.SlashHud.config.friendPlayingToasts) playingToast(f, news);
+		if (news != null && f != null && !f.muted()) playingToast(f, news);
 		return news;
 	}
 
@@ -760,6 +764,16 @@ public final class Social {
 		return toasts;
 	}
 
+	/** "Nie przeszkadzać" set in the launcher: toasts from friends and communities keep quiet, as set (the game's own do not). */
+	public static boolean doNotDisturb() {
+		return "busy".equals(myStatus);
+	}
+
+	/** For the test: the status as the launcher would say it. */
+	public static void statusForTest(String status) {
+		myStatus = status;
+	}
+
 	/** In SlashClient's own look; `icon` instead of the initial when it is not from a person. */
 	public static void toast(String title, String text, String icon) {
 		toast(title, text, icon, null);
@@ -772,6 +786,7 @@ public final class Social {
 
 	/** From a friend, in the colour of what it is about (online, playing, live, an invite). */
 	static void toastFrom(Friend f, String text, FriendToast.Kind kind) {
+		if (!kind.wanted()) return;
 		toasts++;
 		Minecraft mc = Minecraft.getInstance();
 		mc.execute(() -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).addToast(new FriendToast(f.name(), text, null, null, f.id(), kind)));
@@ -779,6 +794,7 @@ public final class Social {
 
 	/** Not from a friend's face, in a kind's colour (a request from someone not a friend yet). */
 	static void toastAs(FriendToast.Kind kind, String title, String text) {
+		if (!kind.wanted()) return;
 		toasts++;
 		Minecraft mc = Minecraft.getInstance();
 		mc.execute(() -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).addToast(new FriendToast(title, text, null, null, null, kind)));
@@ -786,6 +802,7 @@ public final class Social {
 
 	/** With a third line in gold for Sparks paid (null: none). */
 	static void toast(String title, String text, String icon, String sparks) {
+		if (!FriendToast.Kind.of(icon).wanted()) return;
 		toasts++;
 		Minecraft mc = Minecraft.getInstance();
 		mc.execute(() -> dev.slash3rss.slashclient.hud.Compat.toasts(mc).addToast(new FriendToast(title, text, icon, sparks)));

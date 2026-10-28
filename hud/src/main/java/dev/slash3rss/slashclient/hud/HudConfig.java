@@ -346,6 +346,8 @@ public final class HudConfig {
 	public boolean badges = true;
 	/** The [TAG] of a player's SlashClient clan after that logo: off, so names stay short. */
 	public boolean clanTags = true;
+	/** Other players' clan tags too: off, only your own shows (with clanTags on). */
+	public boolean clanTagsOthers = true;
 	/** Kill effects (a SlashClient cosmetic): ours when we kill something, and those of other players with SlashClient. */
 	public boolean killEffects = true;
 	public boolean killEffectsOthers = true;
@@ -598,8 +600,14 @@ public final class HudConfig {
 	/** Locked hotbar slots keep their items (SlotLock); which ones, a bit for each slot. */
 	public boolean slotLock = true;
 	public int lockedSlots = 0;
-	/** A toast when a friend comes online or starts playing (muted friends never make one). */
+	/** From before each kind had its own switch: off, the online and playing toasts start off. */
 	public boolean friendPlayingToasts = true;
+	/**
+	 * SlashClient's toasts: all of them, and each kind on its own (muted friends never make one); with the
+	 * launcher's status "Nie przeszkadzać", none from friends and communities when `toastDnd` is on (the game's own still come).
+	 */
+	public boolean toasts = true, toastMessages = true, toastOnline = true, toastPlaying = true, toastLive = true, toastInvites = true,
+		toastCommunities = true, toastAchievements = true, toastErrors = true, toastOther = true, toastDnd = true;
 	/** Faces of friends playing on a server next to it in the server list (ServerFriends). */
 	public boolean serverFriends = true;
 	/** "● NA ŻYWO" above SlashClient players live on Twitch or Kick with Minecraft (Badges.liveLabel). */
@@ -906,6 +914,7 @@ public final class HudConfig {
 		loadingTips = other.loadingTips;
 		badges = other.badges;
 		clanTags = other.clanTags;
+		clanTagsOthers = other.clanTagsOthers;
 		killEffects = other.killEffects;
 		killEffectsOthers = other.killEffectsOthers;
 		heldSkinsOthers = other.heldSkinsOthers;
@@ -1075,7 +1084,19 @@ public final class HudConfig {
 		enchantColors = other.enchantColors;
 		inventorySearch = other.inventorySearch;
 		slotLock = other.slotLock;
-		friendPlayingToasts = other.friendPlayingToasts;
+		toasts = other.toasts;
+		toastMessages = other.toastMessages;
+		// switched off before there was a switch for each: both off
+		toastOnline = other.toastOnline && other.friendPlayingToasts;
+		toastPlaying = other.toastPlaying && other.friendPlayingToasts;
+		friendPlayingToasts = true;
+		toastLive = other.toastLive;
+		toastInvites = other.toastInvites;
+		toastCommunities = other.toastCommunities;
+		toastAchievements = other.toastAchievements;
+		toastErrors = other.toastErrors;
+		toastOther = other.toastOther;
+		toastDnd = other.toastDnd;
 		serverFriends = other.serverFriends;
 		liveNametags = other.liveNametags;
 		nametagPing = other.nametagPing;

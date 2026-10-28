@@ -45,6 +45,25 @@ public final class SocialTestHooks {
 		}
 	}
 
+	/** With others' clan tags off: our name, then another SlashClient player's in a clan (the setting back as it was). */
+	public static String namesWithoutOthersClanTags() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		java.util.UUID other = java.util.UUID.nameUUIDFromBytes("clan-other".getBytes());
+		Badges.setSlash(other);
+		Badges.setClan(other, "FOX");
+		boolean was = SlashHud.config.clanTagsOthers;
+		SlashHud.config.clanTagsOthers = false;
+		try {
+			String off = Badges.decorate(mc.player.getUUID(), mc.player.getName()).getString() + " | "
+				+ Badges.decorate(other, net.minecraft.network.chat.Component.literal("Lis")).getString();
+			SlashHud.config.clanTagsOthers = true;
+			return off + " | " + Badges.decorate(other, net.minecraft.network.chat.Component.literal("Lis")).getString();
+		} finally {
+			SlashHud.config.clanTagsOthers = was;
+			Badges.setClan(other, null);
+		}
+	}
+
 	/** What the layout audit found, one per line ("" when everything fits). */
 	public static String problems() {
 		return String.join("\n", dev.slash3rss.slashclient.hud.ui.Ui.PROBLEMS);

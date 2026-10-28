@@ -479,7 +479,8 @@ public final class Catalog {
 			new Slider("slashclient-hud.set.radiusAll", 0f, HudConfig.MAX_RADIUS, 1f, "%.0f px", () -> (float) cfg.cornerRadius, v -> cfg.cornerRadius = Math.round(v)),
 			new Colors("slashclient-hud.set.outlineColor", OUTLINE_COLORS, () -> cfg.outlineColor, v -> cfg.outlineColor = v)), null));
 		out.add(new Entry("badges", "slashclient-hud.set.badges", "extras", "m-badges", () -> cfg.badges, v -> cfg.badges = v, List.of(
-			new Toggle("slashclient-hud.set.badges.clans", () -> cfg.clanTags, v -> cfg.clanTags = v)), null));
+			new Toggle("slashclient-hud.set.badges.clans", () -> cfg.clanTags, v -> cfg.clanTags = v),
+			new Toggle("slashclient-hud.set.badges.clansOthers", () -> cfg.clanTagsOthers, v -> cfg.clanTagsOthers = v)), null));
 		out.add(new Entry("killEffects", "slashclient-hud.set.killEffects", "extras", "m-kd", () -> cfg.killEffects, v -> cfg.killEffects = v, List.of(
 			new Toggle("slashclient-hud.set.killEffects.others", () -> cfg.killEffectsOthers, v -> cfg.killEffectsOthers = v)), null));
 		// your own shield and weapon skins always show; other players' only when asked for (fair PvP)
@@ -541,7 +542,18 @@ public final class Catalog {
 			new Toggle("slashclient-hud.caption.server", () -> cfg.screenshotCaptionServer, v -> cfg.screenshotCaptionServer = v)), null));
 		out.add(new Entry("liveNametags", "slashclient-hud.extra.liveNametags", "extras", "m-badges", () -> cfg.liveNametags, v -> cfg.liveNametags = v, List.of(), null));
 		out.add(new Entry("nametagPing", "slashclient-hud.extra.nametagPing", "extras", "m-tablist", () -> cfg.nametagPing, v -> cfg.nametagPing = v, List.of(), null));
-		out.add(new Entry("friendsPlaying", "slashclient-hud.extra.friendsPlaying", "extras", "m-friends", () -> cfg.friendPlayingToasts, v -> cfg.friendPlayingToasts = v, List.of(), null));
+		// SlashClient's notifications: which kinds come, and quiet while the launcher says "Nie przeszkadzać"
+		out.add(new Entry("notifications", "slashclient-hud.notifications", "extras", "m-toasts", () -> cfg.toasts, v -> cfg.toasts = v, List.of(
+			new Toggle("slashclient-hud.notifications.messages", () -> cfg.toastMessages, v -> cfg.toastMessages = v),
+			new Toggle("slashclient-hud.notifications.online", () -> cfg.toastOnline, v -> cfg.toastOnline = v),
+			new Toggle("slashclient-hud.notifications.playing", () -> cfg.toastPlaying, v -> cfg.toastPlaying = v),
+			new Toggle("slashclient-hud.notifications.live", () -> cfg.toastLive, v -> cfg.toastLive = v),
+			new Toggle("slashclient-hud.notifications.invites", () -> cfg.toastInvites, v -> cfg.toastInvites = v),
+			new Toggle("slashclient-hud.notifications.communities", () -> cfg.toastCommunities, v -> cfg.toastCommunities = v),
+			new Toggle("slashclient-hud.notifications.achievements", () -> cfg.toastAchievements, v -> cfg.toastAchievements = v),
+			new Toggle("slashclient-hud.notifications.errors", () -> cfg.toastErrors, v -> cfg.toastErrors = v),
+			new Toggle("slashclient-hud.notifications.other", () -> cfg.toastOther, v -> cfg.toastOther = v),
+			new Toggle("slashclient-hud.notifications.dnd", () -> cfg.toastDnd, v -> cfg.toastDnd = v)), null));
 		out.add(new Entry("serverFriends", "slashclient-hud.serverFriends.setting", "extras", "m-friends", () -> cfg.serverFriends, v -> cfg.serverFriends = v, List.of(), null));
 		out.add(new Entry("chatStack", "slashclient-hud.chat.stack", "chat", "m-chatstack", () -> cfg.chatStack, v -> cfg.chatStack = v, List.of(), null));
 		out.add(new Entry("chatCopy", "slashclient-hud.chat.copy", "chat", "m-chatcopy", () -> cfg.chatCopy, v -> cfg.chatCopy = v, List.of(

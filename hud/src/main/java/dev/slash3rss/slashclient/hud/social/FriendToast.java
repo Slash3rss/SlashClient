@@ -26,7 +26,9 @@ public final class FriendToast implements Toast {
 		INVITE(0xFFFB923C, 0xFFC2410C),
 		COMMUNITY(0xFFF472B6, 0xFFBE185D),
 		ACHIEVEMENT(0xFFFFC94D, 0xFFB7791F),
-		ERROR(0xFFF87171, 0xFFB91C1C);
+		ERROR(0xFFF87171, 0xFFB91C1C),
+		// a clip saved, a resource pack kept, a LAN world opened…: the blue of messages, switched apart
+		OTHER(Ui.ACCENT_LIGHT, Ui.ACCENT_DARK);
 
 		final int light, dark;
 
@@ -35,7 +37,10 @@ public final class FriendToast implements Toast {
 			this.dark = dark;
 		}
 
-		/** A toast not from a friend, by its icon: errors red, achievements gold, communities pink, a clan's invite orange. */
+		/**
+		 * A toast not from a friend, by its icon: errors red, achievements gold, communities pink, a clan's invite
+		 * orange, a group's message and a picture sent as messages; the rest (clips, packs, LAN) other.
+		 */
 		static Kind of(String icon) {
 			if (icon == null) return MESSAGE;
 			return switch (icon) {
@@ -43,12 +48,41 @@ public final class FriendToast implements Toast {
 				case "m-advancements" -> ACHIEVEMENT;
 				case "m-players" -> COMMUNITY;
 				case "m-armor" -> INVITE;
-				default -> MESSAGE;
+				case "m-friends", "m-screenshot" -> MESSAGE;
+				default -> OTHER;
+			};
+		}
+
+		/** From friends and communities, which "Nie przeszkadzać" keeps quiet (not the game's own: clips, achievements, errors…). */
+		boolean social() {
+			return switch (this) {
+				case MESSAGE, ONLINE, PLAYING, LIVE, KICK, INVITE, COMMUNITY -> true;
+				default -> false;
+			};
+		}
+
+		/** Whether the player wants this kind now (each kind's switch; "Nie przeszkadzać" quiets the social ones). */
+		boolean wanted() {
+			var c = dev.slash3rss.slashclient.hud.SlashHud.config;
+			if (c == null) return true;
+			if (!c.toasts) return false;
+			if (social() && c.toastDnd && Social.doNotDisturb()) return false;
+			return switch (this) {
+				case MESSAGE -> c.toastMessages;
+				case ONLINE -> c.toastOnline;
+				case PLAYING -> c.toastPlaying;
+				case LIVE, KICK -> c.toastLive;
+				case INVITE -> c.toastInvites;
+				case COMMUNITY -> c.toastCommunities;
+				case ACHIEVEMENT -> c.toastAchievements;
+				case ERROR -> c.toastErrors;
+				case OTHER -> c.toastOther;
 			};
 		}
 	}
 
-	private static final long SHOW_MS = 5000;
+	/** Shown at least this long, longer for a long text (to read it, and for one too wide to slide through and back), at most the last. */
+	private static final long MIN_MS = 5000, MAX_MS = 15000;
 	// as wide as the game's own toasts, so it fits their box in the HUD editor
 	private static final int WIDTH = 160;
 
@@ -63,6 +97,8 @@ public final class FriendToast implements Toast {
 	private final Kind kind;
 	/** 32 high, 43 with the Sparks' line; with it, up to 40 wider so an achievement's name and reward show whole. */
 	private final int W, H;
+	/** How long this one is shown, from its text's length. */
+	private final long showMs;
 	private long first = -1, age;
 
 	FriendToast(String title, String text, String icon) {
@@ -82,6 +118,23 @@ public final class FriendToast implements Toast {
 		this.sparks = sparks;
 		H = sparks == null ? 32 : 43;
 		W = sparks == null ? WIDTH : Math.max(WIDTH, Math.min(WIDTH + 40, 40 + Math.max(Ui.width(Ui.bold(title)), Ui.width(Component.literal(text)))));
+		showMs = showMs(title, text, W - 40);
+	}
+
+	/** For the test: how long a toast of this title and text is shown (ms). */
+	public static long showMsForTest(String title, String text) {
+		return showMs(title, text, WIDTH - 40);
+	}
+
+	/**
+	 * Long enough to read the title and text (a moment and 60 ms a letter), and for a line too wide for the
+	 * toast to slide to its end and back once at the marquee's pace.
+	 */
+	private static long showMs(String title, String text, int room) {
+		long read = 2000 + 60L * (title.length() + text.length());
+		int over = Math.max(Ui.width(Ui.bold(title)), Ui.width(Component.literal(text))) - room;
+		long slide = over <= 0 ? 0 : 3 * 700 + 2 * Math.max(600, over * 1000L / 30);
+		return Math.max(MIN_MS, Math.min(MAX_MS, Math.max(read, slide)));
 	}
 
 	@Override
@@ -106,7 +159,7 @@ public final class FriendToast implements Toast {
 	public void update(ToastManager manager, long time) {
 		if (first < 0) first = time;
 		age = time - first;
-		wanted = age < SHOW_MS ? Visibility.SHOW : Visibility.HIDE;
+		wanted = age < showMs ? Visibility.SHOW : Visibility.HIDE;
 	}
 
 	@Override
@@ -119,7 +172,7 @@ public final class FriendToast implements Toast {
 	//$ 	if (first < 0) first = time;
 	//$ 	age = time - first;
 	//$ 	draw(g);
-	//$ 	return age < SHOW_MS ? Visibility.SHOW : Visibility.HIDE;
+	//$ 	return age < showMs ? Visibility.SHOW : Visibility.HIDE;
 	//$ }
 	//#endif
 
@@ -146,17 +199,36 @@ public final class FriendToast implements Toast {
 		drawText(g);
 	}
 
+	/**
+	 * The part of a line shown now: all of it when it fits, else from the letter the marquee's slide has reached
+	 * (a toast is drawn moved to its place, so it is cut by letters rather than clipped).
+	 */
+	private String sliding(String line, boolean bold, int room) {
+		var font = net.minecraft.client.Minecraft.getInstance().font;
+		java.util.function.ToIntFunction<String> width = s -> Ui.width(bold ? Ui.bold(s) : Component.literal(s));
+		int over = width.applyAsInt(line) - room;
+		if (over <= 0) return line;
+		int shift = (int) Math.min(over, Ui.bounce(age, over, 700, Math.max(600, over * 1000L / 30)));
+		int from = 0;
+		while (from < line.length() - 1 && width.applyAsInt(line.substring(0, from + 1)) <= shift) from++;
+		String rest = line.substring(from);
+		// the bold title is a little wider than plain letters: cut by its own width
+		while (rest.length() > 1 && width.applyAsInt(rest) > room) rest = rest.substring(0, rest.length() - 1);
+		return bold ? rest : font.plainSubstrByWidth(rest, room);
+	}
+
 	/** The name, the text, the Sparks' line and the bar running out. */
 	private void drawText(GuiGraphicsExtractor g) {
 		int textW = W - 33 - 7;
-		Ui.draw(g, Ui.fit(Ui.bold(title), textW), 33, 7, Ui.TEXT);
-		Ui.draw(g, Ui.fit(Component.literal(text), textW), 33, 18, Ui.TEXT_2);
+		// a title or text too wide slides through and back while shown, instead of being cut
+		Ui.draw(g, Ui.bold(sliding(title, true, textW)), 33, 7, Ui.TEXT);
+		Ui.draw(g, Component.literal(sliding(text, false, textW)), 33, 18, Ui.TEXT_2);
 		if (sparks != null) {
 			dev.slash3rss.slashclient.hud.cosmetics.Sparks.icon(g, 33, 29, 8);
 			Ui.draw(g, Ui.fit(Ui.bold(sparks), textW - 11), 44, 29, dev.slash3rss.slashclient.hud.cosmetics.Sparks.GOLD);
 		}
 		// how long it is still shown
-		float left = Math.max(0f, 1f - (float) age / SHOW_MS);
+		float left = Math.max(0f, 1f - (float) age / showMs);
 		g.fill(6, H - 3, 6 + Math.round((W - 12) * left), H - 2, kind.light);
 	}
 }

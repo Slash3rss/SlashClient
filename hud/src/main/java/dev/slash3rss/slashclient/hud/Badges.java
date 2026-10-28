@@ -158,6 +158,20 @@ public final class Badges {
 		return slash.contains(id) || (mc.player != null && id.equals(mc.player.getUUID()));
 	}
 
+	/** Whether a player's clan tag shows: clan tags on, and others' too unless it is our own. */
+	private static boolean clanTagShown(UUID id) {
+		HudConfig c = SlashHud.config;
+		if (c == null) return true;
+		if (!c.clanTags) return false;
+		Minecraft mc = Minecraft.getInstance();
+		return c.clanTagsOthers || mc.player != null && id.equals(mc.player.getUUID());
+	}
+
+	/** For the in-game test: as if the server had said this player plays with SlashClient. */
+	static void setSlash(UUID id) {
+		slash.add(id);
+	}
+
 	/** What the server answered about a player (for the test). */
 	static boolean knownFromServer(UUID id) {
 		return slash.contains(id);
@@ -184,7 +198,7 @@ public final class Badges {
 		if (world) logo = logo.copy().withStyle(s -> s.withFont(WORLD_STYLE.getFont()));
 		MutableComponent out = Component.empty().append(logo).append(" ");
 		String tag = clans.get(id);
-		if (tag != null && (SlashHud.config == null || SlashHud.config.clanTags)) out.append(Component.literal("[" + tag + "] ").withStyle(Style.EMPTY.withColor(CLAN_COLOR).withBold(true)));
+		if (tag != null && clanTagShown(id)) out.append(Component.literal("[" + tag + "] ").withStyle(Style.EMPTY.withColor(CLAN_COLOR).withBold(true)));
 		return out.append(name);
 	}
 

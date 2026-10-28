@@ -100,6 +100,11 @@ public class GameGroupsClans implements FabricClientGameTest {
 			// "Tagi klanów przy nickach" off in the settings: the logo stays, the tag goes
 			String plain = context.computeOnClient(mc -> SocialTestHooks.ownNameWithClanTags(false));
 			if (plain.contains("[WOLF]") || plain.isBlank()) throw new AssertionError("The clan tag shows although switched off: " + plain);
+			// others' tags off: ours stays, another player's goes; on again, it is back
+			String others = context.computeOnClient(mc -> SocialTestHooks.namesWithoutOthersClanTags());
+			String[] parts = others.split(" \\| ");
+			if (parts.length != 3 || !parts[0].contains("[WOLF]") || parts[1].contains("[FOX]") || !parts[2].contains("[FOX]"))
+				throw new AssertionError("Others' clan tags (ours | another's off | on): " + others);
 			context.waitTicks(10);
 			context.getInput().holdKey(o -> o.keyPlayerList);
 			context.waitTicks(10);
