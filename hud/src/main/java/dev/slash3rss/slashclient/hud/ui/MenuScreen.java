@@ -106,10 +106,11 @@ public abstract class MenuScreen extends Screen {
 		}
 		int color = primary ? 0xFFFFFFFF : danger ? 0xFFFCA5A5 : Ui.blend(Ui.TEXT_2, Ui.TEXT, t);
 		// icon and name together in the middle of the button, like the game's own buttons
-		Component text = Ui.fit(Ui.text(label.getString()), w - 40);
-		int left = x + (w - (10 + 7 + Ui.width(text))) / 2;
+		// a name too long for the button slides along and back instead of being cut
+		Component text = Ui.text(label.getString());
+		int left = x + (w - (10 + 7 + Ui.slidingWidth(text, w - 40))) / 2;
 		Ui.icon(g, icon, left, y + (h - 10) / 2, 10, primary ? 0xFFFFFFFF : danger ? 0xFFF87171 : Ui.blend(Ui.MUTED, Ui.ACCENT_LIGHT, t));
-		Ui.draw(g, text, left + 17, y + (h - 8) / 2, color);
+		Ui.sliding(g, "nav:" + icon, text, left + 17, y + (h - 8) / 2, w - 40, color);
 		hits.add(new Hit(x, y, w, h, action));
 	}
 

@@ -590,11 +590,11 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		int color = !enabled ? 0xFF4B5563 : kind == 1 ? 0xFFFFFFFF : kind == 2 ? Ui.blend(0xFFF87171, 0xFFFCA5A5, t) : Ui.blend(Ui.TEXT_2, Ui.TEXT, t);
 		boolean hasLabel = !label.getString().isEmpty();
 		int iconSize = Math.min(10, h - 8);
-		Component fitted = hasLabel ? Ui.fit(label, w - 10 - iconSize - 5) : label;
-		int total = iconSize + (hasLabel ? 5 + Ui.width(fitted) : 0);
+		int room = w - 10 - iconSize - 5;
+		int total = iconSize + (hasLabel ? 5 + Ui.slidingWidth(label, room) : 0);
 		int left = x + (w - total) / 2;
 		Ui.icon(g, icon, left, y + (h - iconSize) / 2, iconSize, color);
-		if (hasLabel) Ui.draw(g, fitted, left + iconSize + 5, y + (h - 8) / 2, color);
+		if (hasLabel) Ui.sliding(g, "server button " + id, label, left + iconSize + 5, y + (h - 8) / 2, room, color);
 		if (enabled) hits.add(new Hit(x, y, w, h, action, null));
 	}
 

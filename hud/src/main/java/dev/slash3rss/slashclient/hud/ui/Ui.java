@@ -189,6 +189,30 @@ public final class Ui {
 	}
 
 	/**
+	 * A button's label from `x`, at most `w` pixels wide: one that does not fit is not cut, it slides to its end and
+	 * bounces back (always, so the whole of it can be read without pointing at it). `key` keeps its clock.
+	 */
+	public static void sliding(GuiGraphicsExtractor g, String key, Component c, int x, int y, int w, int color) {
+		int tw = width(c);
+		if (tw <= w) {
+			MARQUEE.remove(key);
+			draw(g, c, x, y, color);
+			return;
+		}
+		int shift = marqueeShift(key, tw - w);
+		beginClip("sliding " + key, x, y - 1, w, 11);
+		g.enableScissor(x, y - 1, x + w, y + 10);
+		draw(g, c, x - shift, y, color);
+		g.disableScissor();
+		end();
+	}
+
+	/** How wide a label drawn by `sliding` in `w` pixels is on screen. */
+	public static int slidingWidth(Component c, int w) {
+		return Math.min(width(c), w);
+	}
+
+	/**
 	 * How far a sliding text is moved now (0…`over` pixels), the marquee's pace: a moment at its
 	 * start, along to its end at an easy reading pace, a moment there, and back the same way (it
 	 * bounces between its ends instead of jumping back). `key` keeps its clock.
@@ -386,11 +410,12 @@ public final class Ui {
 		int iconSize = Math.min(10, h - 6);
 		boolean hasLabel = !label.getString().isEmpty();
 		int iconW = iconName == null ? 0 : iconSize + (hasLabel ? 5 : 0);
-		Component fitted = fit(label, w - 10 - iconW);
-		int total = iconW + (hasLabel ? width(fitted) : 0);
+		// a label too long for the button slides along and back instead of being cut
+		int room = w - 10 - iconW;
+		int total = iconW + (hasLabel ? slidingWidth(label, room) : 0);
 		int left = x + (w - total) / 2;
 		if (iconName != null) icon(g, iconName, left, y + (h - iconSize) / 2, iconSize, color);
-		if (hasLabel) draw(g, fitted, left + iconW, y + (h - 8) / 2, color);
+		if (hasLabel) sliding(g, "button " + id, label, left + iconW, y + (h - 8) / 2, room, color);
 		end();
 	}
 

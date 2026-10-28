@@ -487,7 +487,7 @@ public class HudEditScreen extends Screen {
 		Ui.roundOutline(g, x, top, grid + 4, grid + 4, 4, painting != null ? 0x993B82F6 : Ui.BORDER);
 		int by = top + grid + 8;
 		Component clear = Ui.tr("slashclient-hud.crosshair.clear");
-		Ui.button(g, "crosshair:clear", x, by, grid + 4, 16, "reset", Ui.fit(clear, grid - 20), false, mx, my);
+		Ui.button(g, "crosshair:clear", x, by, grid + 4, 16, "reset", clear, false, mx, my);
 		hits.add(new Hit(x, by, grid + 4, 16, () -> {
 			cfg.crosshair = Crosshair.CUSTOM;
 			cfg.crosshairPattern = Crosshair.encode(new boolean[Crosshair.N * Crosshair.N]);
@@ -1117,7 +1117,7 @@ public class HudEditScreen extends Screen {
 		boolean clash = !Catalog.clashes(key).isEmpty();
 		Component label = waiting ? Ui.text("> … <") : key.isUnbound() ? Ui.tr("slashclient-hud.keybinds.none") : key.getTranslatedKeyMessage();
 		int kx = right - 17 - 4 - KEY_W;
-		Ui.button(g, "key:" + k.labelKey(), kx, cy, KEY_W, 16, null, Ui.fit(label.copy(), KEY_W - 8).copy().withStyle(st -> clash && !waiting ? st.withColor(0xF87171) : st), waiting, mx, my);
+		Ui.button(g, "key:" + k.labelKey(), kx, cy, KEY_W, 16, null, label.copy().withStyle(st -> clash && !waiting ? st.withColor(0xF87171) : st), waiting, mx, my);
 		KEYS.put(k.labelKey(), new int[] { kx, cy, KEY_W, 16 });
 		hits.add(new Hit(kx, cy, KEY_W, 16, () -> waitingKey = waiting ? null : k));
 		boolean changed = !key.getDefaultKey().equals(Catalog.keyOf(key));
