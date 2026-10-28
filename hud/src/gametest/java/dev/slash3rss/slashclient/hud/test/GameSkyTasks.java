@@ -375,9 +375,13 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.waitTicks(3);
 			context.takeScreenshot("skyup-shaman-module");
 			// the daily bonus's reminder: SkyUp's banner slid down to the top of the screen
-			check(context.computeOnClient(mc -> TestHooks.skyBonusReminder()), "the bonus reminder shown", "");
+			check(context.computeOnClient(mc -> TestHooks.skyBonusReminder(false)), "the bonus reminder shown", "");
 			context.waitTicks(15);
 			context.takeScreenshot("skyup-bonus-reminder");
+			// the daily task's in its own colour
+			check(context.computeOnClient(mc -> TestHooks.skyBonusReminder(true)), "the daily task reminder shown", "");
+			context.waitTicks(15);
+			context.takeScreenshot("skyup-daily-reminder");
 			world.getServer().runCommand("clear @a");
 			context.runOnClient(mc -> TestHooks.skyTasksOptions(false, false));
 		}

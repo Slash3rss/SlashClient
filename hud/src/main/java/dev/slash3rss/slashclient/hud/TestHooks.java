@@ -2639,10 +2639,13 @@ public final class TestHooks {
 		return sb.toString();
 	}
 
-	/** The daily bonus's reminder shown as it is on SkyUp; whether it shows. */
-	public static boolean skyBonusReminder() {
-		dev.slash3rss.slashclient.hud.skyup.SkyReminder.show(net.minecraft.network.chat.Component.translatable("slashclient-hud.skyTasks.bonusTitle").getString(),
-			net.minecraft.network.chat.Component.translatable("slashclient-hud.skyTasks.bonusText").getString(), new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.CHEST));
+	/** The daily bonus's reminder (or the daily task's, in its own colour) shown as it is on SkyUp; whether it shows. */
+	public static boolean skyBonusReminder(boolean daily) {
+		var look = daily ? dev.slash3rss.slashclient.hud.skyup.SkyReminder.Look.DAILY : dev.slash3rss.slashclient.hud.skyup.SkyReminder.Look.BONUS;
+		String key = daily ? "dailyTitle" : "bonusTitle";
+		String text = daily ? "Zostało: Szkielet 0/6" : net.minecraft.network.chat.Component.translatable("slashclient-hud.skyTasks.bonusText").getString();
+		dev.slash3rss.slashclient.hud.skyup.SkyReminder.show(look, net.minecraft.network.chat.Component.translatable("slashclient-hud.skyTasks." + key).getString(),
+			text, new net.minecraft.world.item.ItemStack(daily ? net.minecraft.world.item.Items.WRITABLE_BOOK : net.minecraft.world.item.Items.CHEST));
 		return dev.slash3rss.slashclient.hud.skyup.SkyReminder.showing();
 	}
 
