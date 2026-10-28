@@ -389,6 +389,8 @@ public final class Assist {
 				}
 				toolFrom = -1;
 				swaps.clear();
+				// a tool just put back is in the backpack again on purpose, not because the server refused the move
+				checking = null;
 			}
 			return;
 		}
@@ -499,7 +501,9 @@ public final class Assist {
 		int[] swap = checking;
 		checking = null;
 		Inventory inv = player.getInventory();
-		if (inv.getItem(swap[1]).is(checkingItem)) return;
+		// refused only when the tool is back in the backpack slot it came from: a tool that broke while digging
+		// leaves the hotbar slot empty too, and the backpack's other tools are still there to be taken
+		if (inv.getItem(swap[1]).is(checkingItem) || !inv.getItem(swap[0]).is(checkingItem)) return;
 		swaps.removeIf(s -> s == swap);
 		backpackRefusedUntil = System.currentTimeMillis() + REFUSED_MS;
 		if (toolFrom >= 0 && inv.getSelectedSlot() == swap[1]) inv.setSelectedSlot(toolFrom);
