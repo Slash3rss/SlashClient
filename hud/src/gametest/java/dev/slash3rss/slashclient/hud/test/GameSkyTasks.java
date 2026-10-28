@@ -136,6 +136,9 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.waitTicks(10);
 			long stackKills = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.killedForTest) - killsBefore;
 			check(stackKills == 5, "kills of a stacked cow (5 in it)", String.valueOf(stackKills));
+			// in a dungeon a kill counts for no task
+			String dungeonKills = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.dungeonKillForTest());
+			check(dungeonKills.equals("0 1"), "kills in a dungeon (in, out)", dungeonKills);
 			rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			check(rows.contains(" | ~31/128"), "HUD estimate", rows);
 			// the fish counter: the catch from the chat, its weight, size, species and quality

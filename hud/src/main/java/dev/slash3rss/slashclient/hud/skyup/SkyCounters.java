@@ -590,6 +590,18 @@ public final class SkyCounters {
 		return Math.max(1, Integer.parseInt(n));
 	}
 
+	/** For the test: a kill in a dungeon and one out of it, "counted in, counted out" (1 or 0 each). */
+	public static String dungeonKillForTest() {
+		var player = Minecraft.getInstance().player;
+		long before = killedForTest;
+		DungeonMap.activeForTest(true);
+		killed(player, 1);
+		long in = killedForTest - before;
+		DungeonMap.activeForTest(false);
+		killed(player, 1);
+		return in + " " + (killedForTest - before - in);
+	}
+
 	/** For the test: the stack each name stands for, space-separated. */
 	public static String stacksForTest(String... names) {
 		StringBuilder out = new StringBuilder();
@@ -602,6 +614,8 @@ public final class SkyCounters {
 	}
 
 	private static void killed(LivingEntity living, int amount) {
+		// the dungeon's mobs are no task's: SkyUp does not count them
+		if (DungeonMap.active()) return;
 		killedForTest += amount;
 		add(Kind.KILL, Thing.of(living.isBaby(), false, false, false, living.getType().getDescription().getString(), plEntity(living.getType()), living.getName().getString()), amount);
 	}

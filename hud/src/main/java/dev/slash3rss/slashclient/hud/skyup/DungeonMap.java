@@ -170,6 +170,11 @@ public final class DungeonMap implements HudModule {
 		return active;
 	}
 
+	/** For the test: as if in a dungeon (or not). */
+	static void activeForTest(boolean on) {
+		active = on;
+	}
+
 	/** When the last tick ran (ns): how far between two ticks a frame is, for the player's smooth place. */
 	private static long tickAt = System.nanoTime();
 
