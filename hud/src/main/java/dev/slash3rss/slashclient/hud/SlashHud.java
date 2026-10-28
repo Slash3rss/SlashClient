@@ -403,6 +403,9 @@ public class SlashHud implements ClientModInitializer {
 			ChatWindows.draw(g, mc);
 			Shots.draw(g);
 			SlotLock.drawHotbar(g, mc);
+			//#if MC >= 26.3
+			dev.slash3rss.slashclient.hud.skyup.SkyReminder.draw(g, mc);
+			//#endif
 		});
 	}
 

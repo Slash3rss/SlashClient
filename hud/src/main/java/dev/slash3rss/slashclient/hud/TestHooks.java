@@ -2639,6 +2639,13 @@ public final class TestHooks {
 		return sb.toString();
 	}
 
+	/** The daily bonus's reminder shown as it is on SkyUp; whether it shows. */
+	public static boolean skyBonusReminder() {
+		dev.slash3rss.slashclient.hud.skyup.SkyReminder.show(net.minecraft.network.chat.Component.translatable("slashclient-hud.skyTasks.bonusTitle").getString(),
+			net.minecraft.network.chat.Component.translatable("slashclient-hud.skyTasks.bonusText").getString(), new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.CHEST));
+		return dev.slash3rss.slashclient.hud.skyup.SkyReminder.showing();
+	}
+
 	/** The pigs and the unknown mob tracked too (the witch by the key); the module's rows and the window's lit slots. */
 	public static String skyShamanModule() {
 		SkyShaman.toggle("Świnia");

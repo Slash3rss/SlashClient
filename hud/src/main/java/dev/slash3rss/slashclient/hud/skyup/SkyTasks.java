@@ -270,8 +270,8 @@ public final class SkyTasks {
 		if (testWorld || every <= 0 || now < bonusAt) return;
 		bonusAt = now + every;
 		if (!bonusDue()) return;
-		dev.slash3rss.slashclient.hud.social.Social.toast(Component.translatable("slashclient-hud.skyTasks.bonusTitle").getString(),
-			Component.translatable("slashclient-hud.skyTasks.bonusText").getString(), "m-skytasks");
+		SkyReminder.show(Component.translatable("slashclient-hud.skyTasks.bonusTitle").getString(),
+			Component.translatable("slashclient-hud.skyTasks.bonusText").getString(), new ItemStack(net.minecraft.world.item.Items.CHEST));
 		mc.execute(() -> ChatTabs.playSound(mc, dailySound()));
 	}
 
@@ -292,8 +292,8 @@ public final class SkyTasks {
 		remindAt = now + every;
 		Component what = dailyReminder(mc);
 		if (what == null) return;
-		// in SlashClient's own look, as its other notifications
-		dev.slash3rss.slashclient.hud.social.Social.toast(Component.translatable("slashclient-hud.skyTasks.dailyTitle").getString(), what.getString(), "m-skytasks");
+		// a banner of SkyUp's own in the middle of the screen, not a toast in the corner
+		SkyReminder.show(Component.translatable("slashclient-hud.skyTasks.dailyTitle").getString(), what.getString(), new ItemStack(net.minecraft.world.item.Items.WRITABLE_BOOK));
 		// with a sound of its own, as set (the chat tabs' sounds)
 		mc.execute(() -> ChatTabs.playSound(mc, dailySound()));
 	}
