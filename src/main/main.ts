@@ -2031,7 +2031,8 @@ const bridge = new GameBridge({
   call: (method, apiPath, body) => chatCall(method, apiPath, body),
   state: () => {
     const s = social.state();
-    return { signedIn: !!s.user, user: s.user, connected: s.connected };
+    // the status set here: the game keeps its notifications quiet while "Nie przeszkadzać" (HUD 0.9.59+)
+    return { signedIn: !!s.user, user: s.user, connected: s.connected, status: store.settings.socialStatus };
   },
   accounts: () => store.accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, current: a.id === gameAccountId })),
   // the game renews its own Minecraft token before it runs out (about a day), with no restart
@@ -2665,6 +2666,8 @@ handle('social:typing', (friendId: string) => social.typing(friendId));
 /** A friend's message, invite or request while the launcher is in the background. */
 handle('notify:show', (title: unknown, body: unknown, target: unknown) => {
   if (win?.isFocused() || typeof title !== 'string' || typeof body !== 'string') return false;
+  // "Nie przeszkadzać": no notifications from friends and communities on the desktop either (achievements still come)
+  if (store.settings.socialStatus === 'busy' && cleanTarget(target)?.view !== 'achievements') return false;
   return notifier.show({ title: title.slice(0, 100), body, target: cleanTarget(target) });
 });
 
