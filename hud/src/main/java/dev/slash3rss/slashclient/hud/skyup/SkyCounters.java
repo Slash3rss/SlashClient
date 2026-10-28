@@ -813,11 +813,15 @@ public final class SkyCounters {
 		}
 		if (readX > NEAR_RADIUS) {
 			nearCounts = reading;
-			// and the creatures in the same cube (not the player)
+			// and the creatures and things standing in the same cube (an end crystal, a frame): not the player, nor what
+			// only lies or flies there (a dropped item, an arrow, experience)
 			List<Thing> mobs = new ArrayList<>();
 			var box = new net.minecraft.world.phys.AABB(readAt).inflate(NEAR_RADIUS);
-			for (var living : mc.level.getEntitiesOfClass(net.minecraft.world.entity.LivingEntity.class, box, e -> e != mc.player && e.isAlive()))
-				mobs.add(Thing.of(living.isBaby(), false, false, false, living.getType().getDescription().getString(), plEntity(living.getType()), living.getName().getString()));
+			for (var e : mc.level.getEntities(mc.player, box, e -> e.isAlive() && !(e instanceof net.minecraft.world.entity.item.ItemEntity)
+					&& !(e instanceof net.minecraft.world.entity.ExperienceOrb) && !(e instanceof net.minecraft.world.entity.projectile.Projectile))) {
+				boolean baby = e instanceof LivingEntity living && living.isBaby();
+				mobs.add(Thing.of(baby, false, false, false, e.getType().getDescription().getString(), plEntity(e.getType()), e.getName().getString()));
+			}
 			nearMobs = mobs;
 			readX = Integer.MIN_VALUE;
 			nearRead = true;

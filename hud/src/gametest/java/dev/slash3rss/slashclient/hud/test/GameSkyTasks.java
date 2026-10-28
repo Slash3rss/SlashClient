@@ -120,6 +120,12 @@ public class GameSkyTasks implements FabricClientGameTest {
 			long golems = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.aroundForTest("Żelazny golem"));
 			check(golems == 1, "an iron golem nearby", String.valueOf(golems));
 			world.getServer().runCommand("kill @e[type=iron_golem]");
+			// and things that stand there: an end crystal ("Jaki skyblock, taki smok")
+			world.getServer().runCommand("execute at @p run summon end_crystal ~3 ~ ~-3 {ShowBottom:0b}");
+			context.waitTicks(40);
+			long crystals = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.aroundForTest("Kryształ Endu"));
+			check(crystals == 1, "an end crystal nearby", String.valueOf(crystals));
+			world.getServer().runCommand("kill @e[type=end_crystal]");
 			// a stacked mob: its number in the name (SkyUp's "Sztuk: 5"); each one off it is a kill, and so is the last one dying
 			String stacks = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.stacksForTest("Sztuk: 10", "§6Sztuk: §e3", "x11 Krowa", "Krowa x11",
 				"11x Krowa", "Krowa [x4]", "§ex7 §fŚwinia", "Krowa", "Zombie poz. 5"));
