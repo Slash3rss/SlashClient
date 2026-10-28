@@ -134,6 +134,8 @@ public final class HudConfig {
 
 	public Map<String, Placement> modules = new LinkedHashMap<>();
 	public List<ChatTab> chatTabs = new ArrayList<>();
+	/** Cards starred in the settings window (their ids): shown first in every list they are in. */
+	public List<String> favoriteModules = new ArrayList<>();
 	/** ARGB colour of the text. */
 	public int textColor = 0xFFFFFFFF;
 	/** The modules' boxes (their see-through is each module's own) and outlines. */
@@ -753,6 +755,7 @@ public final class HudConfig {
 	public void copyFrom(HudConfig other) {
 		modules = other.modules;
 		chatTabs = other.chatTabs;
+		favoriteModules = other.favoriteModules == null ? new ArrayList<>() : new ArrayList<>(other.favoriteModules);
 		textColor = other.textColor;
 		backgroundColor = other.backgroundColor;
 		outlineColor = other.outlineColor;

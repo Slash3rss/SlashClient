@@ -68,6 +68,20 @@ public class GameModules implements FabricClientGameTest {
 			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::new);
 			context.waitTicks(5);
 			context.takeScreenshot("modules-editor");
+			// back from a module's settings: the list searched and scrolled as it was left
+			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::settingsWindow);
+			context.waitTicks(5);
+			String kept = context.computeOnClient(mc -> TestHooks.listKept());
+			if (!kept.equals("k 30.0")) throw new AssertionError("The list after going back from settings (search scroll): " + kept);
+			// starred cards first: the clock starred goes to the top; unstarred, back in its place
+			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::settingsWindow);
+			context.waitTicks(5);
+			String starred = context.computeOnClient(mc -> TestHooks.favorite("clock"));
+			if (!starred.startsWith("clock,")) throw new AssertionError("A favourite is not first: " + starred);
+			context.waitTicks(5);
+			context.takeScreenshot("modules-favorite");
+			String unstarred = context.computeOnClient(mc -> TestHooks.favorite("clock"));
+			if (unstarred.startsWith("clock,")) throw new AssertionError("Unstarred, still first: " + unstarred);
 			context.setScreen(() -> null);
 			context.runOnClient(mc -> TestHooks.extraModules(false));
 		}

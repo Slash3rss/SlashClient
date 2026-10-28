@@ -183,6 +183,8 @@ public final class Catalog {
 			if (!m.textColored()) pointless.addAll(List.of("slashclient-hud.set.ownColor", "slashclient-hud.textColor"));
 			if (!m.shadowed()) pointless.add("slashclient-hud.shadow");
 			settings.removeIf(s -> pointless.contains(s.labelKey()));
+			// the look every module has: after the module's own options, which come first
+			List<Setting> look = List.copyOf(settings);
 			// options of single modules
 			switch (m.id()) {
 				case "clock" -> {
@@ -347,6 +349,8 @@ public final class Catalog {
 				default -> {}
 			}
 			if (m.id().equals("effects")) settings.add(new Toggle("slashclient-hud.effectIcons", () -> cfg.effectIcons, v -> cfg.effectIcons = v));
+			settings.removeIf(look::contains);
+			settings.addAll(look);
 			out.add(new Entry(m.id(), "slashclient-hud.module." + m.id(), MODULE_CATEGORIES.getOrDefault(m.id(), "hud"),
 				"m-" + m.id().toLowerCase(java.util.Locale.ROOT), () -> p.enabled, v -> p.enabled = v, settings, null));
 		}

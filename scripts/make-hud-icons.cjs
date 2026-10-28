@@ -34,7 +34,7 @@ const ICONS = {
   'm-autoclicker': 'computer-mouse', 'm-autotool': 'screwdriver-wrench', 'm-autorefill': 'arrows-rotate', 'm-holdkeys': 'hand-pointer', 'm-toolwarning': 'triangle-exclamation', 'm-hearts': 'heart', 'm-mousetweaks': 'arrow-pointer',
   'lock': 'lock', 'bell': 'bell', 'bell-slash': 'bell-slash', 'image': 'image', 'pen': 'pen', 'trash': 'trash', 'ban': 'ban', 'm-dropguard': 'hand-holding', 'm-damage': 'heart-crack', 'm-tnt': 'bomb', 'm-nickhider': 'user-secret', 'm-reconnect': 'plug-circle-bolt', 'm-keybinds': 'keyboard', 'm-dungeonmap': 'map', 'm-skytasks': 'list-check', 'm-skyfish': 'fish', 'm-skycase': 'gift', 'm-skywardrobe': 'shirt', 'm-xpcalc': 'calculator', 'm-skyxpcalc': 'flask-vial', 'm-skywiki': 'book-open', 'm-enchant': 'wand-magic-sparkles', 'm-fishatlas': 'book-atlas', 'm-skydump': 'file-export', 'm-skyxp': 'hourglass-half', 'm-skyshaman': 'hat-wizard', 'm-loothighlight': 'gem', 'skyup': 'dungeon',
   'm-inventory': 'table-cells', 'm-shulker': 'box-open', 'm-invsearch': 'magnifying-glass-arrow-right', 'm-slotlock': 'lock', 'm-shotcaption': 'image',
-  'm-sort': 'arrow-down-a-z', 'm-worldmap': 'map-location-dot', 'm-friendmap': 'street-view',
+  'star': 'star', 'star-regular': 'regular/star', 'm-sort': 'arrow-down-a-z', 'm-worldmap': 'map-location-dot', 'm-friendmap': 'street-view',
   // the instant replay (Replay, ReplayScreen)
   'm-replay': 'clock-rotate-left', 'pause': 'pause', 'step-back': 'backward-step', 'step-forward': 'forward-step', 'repeat': 'repeat', 'save': 'floppy-disk',
   // undo and redo in the HUD editor

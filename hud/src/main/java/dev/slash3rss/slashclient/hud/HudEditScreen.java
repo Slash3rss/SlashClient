@@ -657,12 +657,16 @@ public class HudEditScreen extends Screen {
 	}
 
 	private void reopen() {
+		// back from a module's settings to the same category: the list scrolled and searched as it was left
+		boolean back = settingsOf == null && listCategory != null && listCategory.equals(category);
 		scroll = 0;
 		waitingKey = null;
 		status = Component.empty();
-		String keep = search == null ? "" : search.getValue();
+		String keep = back ? listQuery : search == null ? "" : search.getValue();
 		rebuildWidgets();
 		if (search != null) search.setValue(keep);
+		if (back) scroll = listScroll;
+		if (settingsOf == null) listCategory = null;
 	}
 
 	// ---------- drawing ----------
@@ -992,15 +996,39 @@ public class HudEditScreen extends Screen {
 		}).contains(q);
 	}
 
-	private void drawCards(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h) {
+	/** The cards of the category open, as searched: the starred ones first, the rest in their usual order. */
+	private List<Catalog.Entry> shownCards() {
 		String query = search == null ? "" : search.getValue().trim();
 		List<Catalog.Entry> shown = new ArrayList<>();
-		for (Catalog.Entry e : entries) {
+		for (Catalog.Entry e : entries()) {
 			// "all" is everything for any server; a server's own tab (SkyUp) only in that tab
 			if (category.equals("all") ? e.category().equals("skyup") : !e.category().equals(category)) continue;
 			if (!query.isEmpty() && !found(e.nameKey(), query)) continue;
 			shown.add(e);
 		}
+		shown.sort(java.util.Comparator.comparing(e -> !favorite(e.id())));
+		return shown;
+	}
+
+	private static boolean favorite(String id) {
+		return SlashHud.config.favoriteModules.contains(id);
+	}
+
+	/** A card starred or not (saved with the rest of the settings). */
+	private static void toggleFavorite(String id) {
+		List<String> favorites = SlashHud.config.favoriteModules;
+		if (!favorites.remove(id)) favorites.add(id);
+		SlashHud.config.save();
+	}
+
+	/** For the in-game test: this card starred (or not), and the ids of the cards as listed now. */
+	String favoriteForTest(String id) {
+		toggleFavorite(id);
+		return String.join(",", shownCards().stream().map(Catalog.Entry::id).toList());
+	}
+
+	private void drawCards(GuiGraphicsExtractor g, int mx, int my, int x, int y, int w, int h) {
+		List<Catalog.Entry> shown = shownCards();
 		int gap = 6;
 		int cols = Math.max(1, (w + gap) / (104 + gap));
 		int cardW = (w - gap * (cols - 1)) / cols;
@@ -1041,6 +1069,11 @@ public class HudEditScreen extends Screen {
 		Ui.icon(g, e.icon(), x + w / 2 - 8, y + 12, 16, on ? Ui.ACCENT_LIGHT : Ui.blend(Ui.TEXT_2, Ui.TEXT, t));
 		// a name too long for the card slides through while the mouse is on it
 		Ui.marquee(g, "card:" + e.id(), Ui.trBold(e.nameKey()), x + w / 2, y + 38, w - 10, Ui.TEXT, clickable && Ui.inside(mx, my, x, y, w, h));
+		// the star in the corner: gold on a favourite, faint on the others while the mouse is on the card
+		boolean star = favorite(e.id());
+		boolean onStar = clickable && Ui.inside(mx, my, x + 3, y + 3, 14, 14);
+		if (star || t > 0.01f) Ui.icon(g, star ? "star" : "star-regular", x + 5, y + 5, 10,
+			star ? 0xFFFBBF24 : onStar ? 0xFFFDE68A : Ui.blend(0x00FFFFFF, 0x99B4BCC8, t));
 		boolean gear = !e.settings().isEmpty();
 		if (e.hasSwitch()) {
 			Ui.toggle(g, e.id(), x + 8, y + h - 16, on);
@@ -1068,12 +1101,32 @@ public class HudEditScreen extends Screen {
 				if (clickable) hits.add(new Hit(x + w - 24, y + 4, 16, 16, () -> openSettings(e)));
 			}
 		}
+		// last, so the star takes its clicks before the card does
+		if (clickable) hits.add(new Hit(x + 3, y + 3, 14, 14, () -> toggleFavorite(e.id())));
 	}
 
 
+	/** The list as it was when a module's settings opened (its category, scroll and search): back from them, it is so again. */
+	private String listCategory;
+	private float listScroll;
+	private String listQuery = "";
+
 	private void openSettings(Catalog.Entry e) {
+		listCategory = category;
+		listScroll = scroll;
+		listQuery = search == null ? "" : search.getValue();
 		settingsOf = e;
 		reopen();
+	}
+
+	/** For the in-game test: "k" searched and the list scrolled, a module's settings opened and left with "Back": "search scroll". */
+	String listKeptForTest() {
+		search.setValue("k");
+		scroll = 30;
+		openSettings(entries().get(0));
+		settingsOf = null;
+		reopen();
+		return search.getValue() + " " + scroll;
 	}
 
 	/** Width the controls of a setting need on one line. */

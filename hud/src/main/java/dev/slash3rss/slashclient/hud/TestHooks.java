@@ -2360,6 +2360,16 @@ public final class TestHooks {
 	/** The modules that were on before the snapping test (only "fps" and "ping" are on during it). */
 	private static java.util.Map<String, Boolean> snapSaved;
 
+	/** The settings list after a module's settings were opened and left: "search scroll" (kept: "k 30.0"). */
+	public static String listKept() {
+		return ((HudEditScreen) screen()).listKeptForTest();
+	}
+
+	/** The card starred (or not again) in the open settings window; the ids of the cards as listed then. */
+	public static String favorite(String id) {
+		return ((HudEditScreen) screen()).favoriteForTest(id);
+	}
+
 	/** The middle of a settings card as the window's pixels (for TestInput.setCursorPos); null if not drawn. */
 	public static double[] cardCenter(String id) {
 		int[] r = HudEditScreen.CARDS.get(id);
