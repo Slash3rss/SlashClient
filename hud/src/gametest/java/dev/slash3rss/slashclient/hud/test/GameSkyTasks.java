@@ -190,6 +190,13 @@ public class GameSkyTasks implements FabricClientGameTest {
 			check(!tasks.contains("|Składzik:") && !tracked.contains("Składzik") && !rows.contains("Składzik") && tracked.contains("Nowicjusz|Ciasno, ale własno")
 				&& categories.equals("{Nowicjusz=4, Wirtuoz=16}"), "handed in from the chat", tasks + tracked + "\n" + rows + categories);
 			context.takeScreenshot("skyready-handed-in");
+			// the window opened again still shows Składzik as it was (SkyUp updates it later): it does not come back
+			context.runOnClient(mc -> TestHooks.skyTasksScreen(false, false));
+			context.waitTicks(15);
+			String reread = context.computeOnClient(mc -> TestHooks.skyTasks());
+			check(!reread.contains("|Składzik:") && reread.contains("|Ciasno, ale własno:"), "handed in, then the window read again", reread);
+			context.setScreen(() -> null);
+			context.waitTicks(3);
 			// another chest's line of the same words is no completion
 			context.runOnClient(mc -> TestHooks.skyChat("Ukończono zadanie Huta!"));
 			context.waitTicks(3);
@@ -215,13 +222,13 @@ public class GameSkyTasks implements FabricClientGameTest {
 			tracked = context.computeOnClient(mc -> TestHooks.skyTracked());
 			check(tracked.equals("Nowicjusz|Podstawowy kamieniołom,Nowicjusz|Huta"), "tracked again", tracked);
 			context.setScreen(() -> null);
-			// the furnace completed: the GUI without it, and the HUD without it
+			// the furnace completed: the GUI without it, and the HUD without it (nor Składzik, handed in from the chat though the window still shows it)
 			context.runOnClient(mc -> TestHooks.skyTasksScreen(true, false));
 			context.waitTicks(15);
 			context.setScreen(() -> null);
 			context.waitTicks(5);
 			tasks = context.computeOnClient(mc -> TestHooks.skyTasks());
-			check(!tasks.contains("|Huta:") && tasks.strip().split("\n").length == 12, "completed task gone", tasks);
+			check(!tasks.contains("|Huta:") && !tasks.contains("|Składzik:") && tasks.strip().split("\n").length == 11, "completed task gone", tasks);
 			rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			check(!rows.contains("Huta") && rows.contains("Podstawowy kamieniołom") && rows.contains(" | 28/128"), "HUD after completing (the server's number again)", rows);
 			// whole categories tracked from the menu: Wirtuoz (never opened) with the key, Nowicjusz with the middle button

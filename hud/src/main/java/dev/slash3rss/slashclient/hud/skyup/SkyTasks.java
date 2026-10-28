@@ -417,6 +417,8 @@ public final class SkyTasks {
 			d.categoriesSeen = now;
 			menuReadNow = true;
 		}
+		// a task just handed in (the chat said so) that the window still shows as it was does not come back
+		found.values().removeIf(t -> stillShown(t, now));
 		for (SkyTaskParser.Task t : found.values()) {
 			SkyTaskParser.Task old = d.tasks.get(t.key());
 			if (old == null || !same(old, t)) dirty = true;
@@ -492,6 +494,23 @@ public final class SkyTasks {
 		return !t.requires.isEmpty() && data().done().contains(nameKey(t.requires));
 	}
 
+	/** A task handed in by the chat, as it was then, and when. */
+	private record HandedIn(SkyTaskParser.Task task, long at) {}
+
+	/**
+	 * Tasks handed in by the chat: the window open then (or opened again soon) may still show them as they were
+	 * for a while, as SkyUp updates it later; read again, they would come back to the HUD.
+	 */
+	private static final Map<String, HandedIn> justHandedIn = new java.util.HashMap<>();
+	private static final long HANDED_IN_MS = 10 * 60_000;
+
+	/** Whether a task read from the window is one just handed in, shown as it was (a new one of the same name, as the next daily task, is not). */
+	private static boolean stillShown(SkyTaskParser.Task t, long now) {
+		justHandedIn.values().removeIf(h -> now - h.at() > HANDED_IN_MS);
+		HandedIn h = justHandedIn.get(t.key());
+		return h != null && same(h.task(), t);
+	}
+
 	/** The task of that name gone: from the category last open first, else any category (ready, then tracked ones first). */
 	static boolean completed(String name) {
 		String plain = nameKey(name);
@@ -513,6 +532,7 @@ public final class SkyTasks {
 			return false;
 		}
 		String key = best.key();
+		justHandedIn.put(key, new HandedIn(best, System.currentTimeMillis()));
 		d.tasks.remove(key);
 		d.tracked.remove(key);
 		d.untracked.remove(key);
