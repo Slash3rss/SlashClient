@@ -166,7 +166,6 @@ const api = {
   cloudUpload: (profileId: string, force?: boolean) => invoke('cloud:upload', profileId, force),
   cloudDownload: (profileId: string) => invoke('cloud:download', profileId),
   cloudSetAuto: (profileId: string, on: boolean) => invoke('cloud:setAuto', profileId, on),
-  cloudUnlink: (profileId: string) => invoke('cloud:unlink', profileId),
   cloudList: () => invoke('cloud:list'),
   cloudRestore: (cloudId: string) => invoke('cloud:restore', cloudId),
   cloudDelete: (cloudId: string) => invoke('cloud:delete', cloudId),

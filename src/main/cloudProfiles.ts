@@ -404,8 +404,6 @@ export function registerCloudProfiles(deps: CloudDeps) {
     if (link) await links.set(profileId, { ...link, auto: !!on });
     return links.get(profileId);
   });
-  /** Stops syncing this profile; the account's copy stays (it can be restored or deleted from the list). */
-  handle('cloud:unlink', async (profileId: string) => links.set(profileId, undefined));
 
   /** The account's profiles, with the local profile each one is (when it is on this computer). */
   handle('cloud:list', async () => {
