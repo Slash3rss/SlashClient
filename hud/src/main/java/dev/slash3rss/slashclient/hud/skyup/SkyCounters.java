@@ -435,7 +435,7 @@ public final class SkyCounters {
 			if (e instanceof net.minecraft.world.entity.monster.piglin.Piglin piglin) {
 				boolean gold = piglin.getOffhandItem().is(Items.GOLD_INGOT);
 				Boolean was = admiring.put(id, gold);
-				if (was != null && was && !gold && e.distanceTo(player) < 16) traded.merge(id, now + 3000, Math::max);
+				if (was != null && was && !gold && e.distanceTo(player) < 24) traded.merge(id, now + 3000, Math::max);
 			}
 			// the player's thrown eggs, and the witches' thrown potions
 			if (e instanceof net.minecraft.world.entity.projectile.throwableitemprojectile.ThrowableItemProjectile p) {
@@ -455,10 +455,13 @@ public final class SkyCounters {
 			}
 			// what lies by a piglin that was given gold: a trade done ("Handluj z piglinami") and what it gave
 			// ("Wymień z piglinami: Obsydian"); gold lying there is the player's own, not the piglin's
-			if (e instanceof net.minecraft.world.entity.item.ItemEntity drop && seenItems.add(id) && !drop.getItem().is(Items.GOLD_INGOT)) {
+			// (looked at for its first two seconds: it may show up a tick before the piglin is seen letting go of the
+			// gold, and it flies off towards the player, a few blocks away from the piglin by then)
+			if (e instanceof net.minecraft.world.entity.item.ItemEntity drop && drop.tickCount < 40 && !seenItems.contains(id) && !drop.getItem().is(Items.GOLD_INGOT)) {
 				for (var t : traded.entrySet()) {
 					var piglin = mc.level.getEntity(t.getKey());
-					if (piglin != null && now < t.getValue() && piglin.distanceTo(e) < 3) {
+					if (piglin != null && now < t.getValue() && piglin.distanceTo(e) < 6) {
+						seenItems.add(id);
 						if (bartered.add(t.getKey())) add(Kind.BARTER, Thing.of(false, false, false, false, "Piglin"), 1);
 						add(Kind.TRADE, item(drop.getItem()), drop.getItem().getCount());
 						break;

@@ -2579,6 +2579,7 @@ public final class TestHooks {
 			"Uderz w dzwony:", "  » Uderz w dzwony: 0/5", "",
 			"Ostrzyż:", "  » Owca: 0/32", "",
 			"Otwórz SkyCase:", "  » Ręcznie: 0/8", "",
+			"Handluj z piglinami:", "  » Piglin: 0/16", "",
 			"Posiadaj poziom: 60", "  poz.", "",
 			"Za ukończenie otrzymasz:", "  » 100.0 SC"));
 		t.seen = System.currentTimeMillis();
