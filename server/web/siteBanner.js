@@ -48,6 +48,10 @@ if (footRow) {
   footRow.append(button);
   applyMotion();
 }
+// one listener across the router's page changes (this file is loaded again on each)
+window.slashMotionQuery?.removeEventListener('change', window.slashMotionListener);
+window.slashMotionQuery = systemReduced;
+window.slashMotionListener = applyMotion;
 systemReduced.addEventListener('change', applyMotion);
 
 /** { features: { shop: true, … }, banner: … | null }; everything on when the server cannot be asked. */
@@ -113,7 +117,10 @@ fetch('/v1/home/hidden')
     const sweep = () => document.querySelectorAll('a[href]').forEach((a) => { if (hidden(a.getAttribute('href'))) a.remove(); });
     sweep();
     // links drawn later by the page's own scripts too
-    new MutationObserver(sweep).observe(document.body, { childList: true, subtree: true });
+    // the router loads this file again on every page: one watcher only, not one more each time
+    window.slashHiddenLinks?.disconnect();
+    window.slashHiddenLinks = new MutationObserver(sweep);
+    window.slashHiddenLinks.observe(document.body, { childList: true, subtree: true });
   })
   .catch(() => {});
 

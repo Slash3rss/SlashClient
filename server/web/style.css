@@ -152,6 +152,9 @@ button.chip:hover { background: rgba(255, 255, 255, .12); color: var(--text); }
 .admin { display: grid; grid-template-columns: 230px 1fr; min-height: 100vh; }
 .side { padding: 20px 14px; border-right: 1px solid var(--border); background: rgba(10, 13, 20, .6); display: flex; flex-direction: column; gap: 6px; position: sticky; top: 0; height: 100vh; }
 .side .brand { margin: 0 8px 18px; }
+.side { overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(148, 163, 184, .25) transparent; }
+.side .side-group { margin: 10px 12px 2px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-2); opacity: .7; }
+.side .side-group:first-of-type { margin-top: 0; }
 .side .tab { justify-content: flex-start; height: 42px; background: transparent; border-color: transparent; color: var(--text-2); font-weight: 500; }
 .side .tab i { width: 18px; text-align: center; }
 .side .tab:hover { background: var(--card); color: var(--text); }
@@ -214,6 +217,7 @@ tbody tr:hover { background: var(--card); }
   .side { position: static; height: auto; flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--border); }
   .side .brand { margin: 0 8px 0 0; }
   .side .me { margin: 0 0 0 auto; }
+  .side .side-group { display: none; }
   .main { padding: 20px 16px 50px; }
   .hide-sm { display: none; }
 }

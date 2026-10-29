@@ -16,27 +16,41 @@ import { fishAtlasPage } from './adminFishAtlas.js';
 import { statusRulesSection } from './adminStatusRules.js';
 import { dashboardPage } from './adminDashboard.js';
 
-const TABS = [
-  ['dashboard', 'Pulpit', 'fa-solid fa-chart-line'],
-  ['users', 'Konta', 'fa-solid fa-users'],
-  ['ranks', 'Rangi', 'fa-solid fa-certificate'],
-  ['cosmetics', 'Kosmetyki', 'fa-solid fa-wand-magic-sparkles'],
-  ['achievements', 'Osiągnięcia', 'fa-solid fa-trophy'],
-  ['challenges', 'Wyzwania', 'fa-solid fa-list-check'],
-  ['partners', 'Partnerzy', 'fa-solid fa-handshake'],
-  ['clans', 'Klany', 'fa-solid fa-shield-halved'],
-  ['communities', 'Społeczności', 'fa-solid fa-users-rectangle'],
-  ['requests', 'Zapytania', 'fa-solid fa-satellite-dish'],
-  ['logs', 'Logi graczy', 'fa-solid fa-file-lines'],
-  ['storage', 'Miejsce na pliki', 'fa-solid fa-hard-drive'],
-  ['support', 'Wsparcie', 'fa-solid fa-heart'],
-  ['streams', 'Streamy', 'fa-solid fa-video'],
-  ['fishAtlas', 'Atlas ryb', 'fa-solid fa-fish'],
-  ['home', 'Strona główna', 'fa-solid fa-house'],
-  ['legal', 'Dokumenty', 'fa-solid fa-scale-balanced'],
-  ['settings', 'Ustawienia', 'fa-solid fa-sliders'],
-  ['log', 'Dziennik', 'fa-solid fa-clock-rotate-left'],
+// the menu in groups, so a page is found by what it is about
+const GROUPS = [
+  ['Przegląd', [
+    ['dashboard', 'Pulpit', 'fa-solid fa-chart-line'],
+    ['log', 'Dziennik', 'fa-solid fa-clock-rotate-left'],
+  ]],
+  ['Gracze', [
+    ['users', 'Konta', 'fa-solid fa-users'],
+    ['ranks', 'Rangi', 'fa-solid fa-certificate'],
+    ['support', 'Wsparcie', 'fa-solid fa-heart'],
+  ]],
+  ['Nagrody i wygląd', [
+    ['cosmetics', 'Kosmetyki', 'fa-solid fa-wand-magic-sparkles'],
+    ['achievements', 'Osiągnięcia', 'fa-solid fa-trophy'],
+    ['challenges', 'Wyzwania', 'fa-solid fa-list-check'],
+  ]],
+  ['Społeczność', [
+    ['clans', 'Klany', 'fa-solid fa-shield-halved'],
+    ['communities', 'Społeczności', 'fa-solid fa-users-rectangle'],
+    ['partners', 'Partnerzy', 'fa-solid fa-handshake'],
+    ['streams', 'Streamy', 'fa-solid fa-video'],
+  ]],
+  ['Treści', [
+    ['home', 'Strona główna', 'fa-solid fa-house'],
+    ['legal', 'Dokumenty', 'fa-solid fa-scale-balanced'],
+    ['fishAtlas', 'Atlas ryb', 'fa-solid fa-fish'],
+  ]],
+  ['System', [
+    ['settings', 'Ustawienia', 'fa-solid fa-sliders'],
+    ['storage', 'Miejsce na pliki', 'fa-solid fa-hard-drive'],
+    ['requests', 'Zapytania', 'fa-solid fa-satellite-dish'],
+    ['logs', 'Logi graczy', 'fa-solid fa-file-lines'],
+  ]],
 ];
+const TABS = GROUPS.flatMap(([, tabs]) => tabs);
 const ACTIONS = {
   ban: 'zablokował(a)', unban: 'odblokował(a)', make_admin: 'nadał(a) admina', remove_admin: 'odebrał(a) admina',
   set_cape: 'zmienił(a) pelerynę', logout: 'wylogował(a)', delete: 'usunął(ęła) konto', cape_settings: 'zmienił(a) ustawienia peleryny',
@@ -117,8 +131,11 @@ async function start() {
 function layout() {
   closeDrawer();
   const side = el('aside', { class: 'side' }, el('a', { class: 'brand', href: '/' }, el('img', { src: 'vendor/logo.png', alt: '' }), el('span', {}, 'Slash', el('b', { textContent: 'Admin' }))));
-  for (const [id, name, cls] of TABS) {
-    side.append(el('button', { class: `tab${tab === id ? ' active' : ''}`, onclick: () => { tab = id; location.hash = id; layout(); } }, icon(cls), name));
+  for (const [group, tabs] of GROUPS) {
+    side.append(el('small', { class: 'side-group', textContent: group }));
+    for (const [id, name, cls] of tabs) {
+      side.append(el('button', { class: `tab${tab === id ? ' active' : ''}`, onclick: () => { tab = id; location.hash = id; layout(); } }, icon(cls), name));
+    }
   }
   side.append(el('div', { class: 'me' }, avatarEl(me), el('div', { class: 'grow' }, el('b', { textContent: me.name }), el('small', { class: 'muted', textContent: ` @${me.handle}` })),
     el('button', { class: 'icon-btn', title: 'Wyloguj', onclick: async () => { await signOut(); me = undefined; gate(); } }, icon('fa-solid fa-right-from-bracket'))));
@@ -544,7 +561,8 @@ async function logPage() {
   const res = await guard(() => api('GET', '/v1/admin/log'));
   if (!res) return;
   const people = {};
-  const nameOf = async (id) => (people[id] ??= (await api('GET', `/v1/admin/users/${id}`).catch(() => undefined))?.handle ?? id.slice(0, 8));
+  // the lookup itself is kept, so the rows of one admin ask for them once, not once a row
+  const nameOf = (id) => (people[id] ??= api('GET', `/v1/admin/users/${id}`).then((u) => u?.handle ?? id.slice(0, 8), () => id.slice(0, 8)));
   const rows = await Promise.all(res.entries.map(async (e) => el('tr', {},
     el('td', { textContent: fmtDate(e.at) }),
     el('td', { textContent: `@${await nameOf(e.admin)}` }),

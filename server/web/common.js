@@ -382,6 +382,8 @@ let capeFrames;
 const CAPE_FRAME_MS = 150;
 let capeTick = 0;
 let capeTimer;
+/** When the capes last turned: the router stops a page's timers when it is left, so a timer that went quiet is gone. */
+let capeTickAt = 0;
 const framesOfCapes = () => capeFrames ??= fetch('/v1/cosmetics')
   .then((r) => (r.ok ? r.json() : {}))
   .then(({ items }) => new Map((items ?? []).filter((i) => i.slot === 'cape' && i.frames > 1).map((i) => [i.id, i.frames])))
@@ -414,7 +416,10 @@ export function animateCape(node, id) {
     // it turns once all its frames are there
     await capeReady(id, n);
     node.dataset.capeAnim = id;
+    if (capeTimer !== undefined && Date.now() - capeTickAt > CAPE_FRAME_MS * 4 + 1000) capeTimer = undefined;
+    if (capeTimer === undefined) capeTickAt = Date.now();
     capeTimer ??= setInterval(() => {
+      capeTickAt = Date.now();
       if (document.hidden || motionOff()) return;
       capeTick++;
       const all = document.querySelectorAll('[data-cape-anim]');
