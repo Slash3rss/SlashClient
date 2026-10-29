@@ -180,7 +180,7 @@ function renderAccount() {
     const forSale = locked && item.price && !item.owned;
     const why = forSale ? `${name}: w sklepie za ${sparks(item.price)}` : item?.rank ? `${name}: tylko dla rangi ${RANK_NAMES[item.rank] ?? item.rank}` : item?.supporter ? `${name}: dla wspierających projekt (strona Wesprzyj)` : item?.hint ?? `${name}: ekskluzywne, przyznaje admin`;
     const b = el('button', { class: `cape-choice${(worn[slot] || '') === id ? ' selected' : ''}${id ? '' : ' none'}${forSale ? ' for-sale' : ''}`, disabled: !!locked && !forSale, title: locked ? why : name },
-      item ? cosmeticEl(item.id, item.slot) : el('div', { class: 'cape' }, icon('fa-solid fa-ban')), el('span', { textContent: name }), forSale ? priceTag(item.price) : '', locked ? el('i', { class: 'fa-solid fa-lock lock' }) : '');
+      item ? cosmeticEl(item.id, item.slot) : el('div', { class: 'cape' }, icon('fa-solid fa-ban')), el('span', { class: 'cape-name' }, el('span', { textContent: name })), forSale ? priceTag(item.price) : '', locked ? el('i', { class: 'fa-solid fa-lock lock' }) : '');
     // under the mouse the figure tries it on; leaving puts back what is worn
     b.addEventListener('mouseenter', () => tryOn(slot, id));
     b.addEventListener('mouseleave', () => preview?.show(previewWorn));
@@ -190,6 +190,19 @@ function renderAccount() {
   };
   pick.append(choice(undefined));
   for (const c of items.filter((i) => i.slot === slot)) pick.append(choice(c));
+  // every card is as wide as the others; a name too long for it slides from end to end and back
+  // (measured once the cards are on the page, when the site's font has come, and when their size changes)
+  const fit = () => {
+    for (const box of pick.querySelectorAll('.cape-name')) {
+      const over = box.firstElementChild.scrollWidth - box.clientWidth;
+      box.classList.toggle('long', over > 0);
+      box.style.setProperty('--over', `-${Math.max(0, over)}px`);
+      // longer names take longer, so they read at the same pace
+      box.style.setProperty('--slide', `${Math.max(3, over / 12)}s`);
+    }
+  };
+  new ResizeObserver(fit).observe(pick);
+  document.fonts?.ready.then(fit);
   const capes = el('div', { class: 'glass card' }, el('h3', { textContent: 'Kosmetyki' }),
     el('p', { class: 'muted small', textContent: 'Widzą je gracze z SlashClient na każdym serwerze. Każde konto Minecraft może mieć własny zestaw.' }),
     characters.length ? el('div', { class: 'cosmetic-for' }, el('span', { class: 'small', textContent: 'Zestaw dla:' }), whose,

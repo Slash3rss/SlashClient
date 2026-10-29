@@ -70,6 +70,9 @@ input:focus, select:focus { border-color: var(--border-focus); box-shadow: 0 0 0
 .glass { background: rgba(17, 22, 34, .72); border: 1px solid var(--border); border-radius: var(--radius); backdrop-filter: blur(14px); }
 .card { padding: 20px; }
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* a switch with its text: the text wraps beside the switch, never under it */
+label.row:has(> .switch) { flex-wrap: nowrap; }
+label.row > .switch { flex-shrink: 0; }
 /* the admin panel's list of worn capes (not the account page's "worn" slot tabs) */
 div.worn { display: flex; flex-direction: column; gap: 6px; }
 .grow { flex: 1; min-width: 0; }
@@ -143,8 +146,18 @@ button.chip:hover { background: rgba(255, 255, 255, .12); color: var(--text); }
 .slot-tabs button.worn::after { content: ""; position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: #4ade80; }
 .cosmetic-for { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 .slot-head { grid-column: 1 / -1; margin: 10px 0 0; display: flex; align-items: center; gap: 8px; }
-.cape-picker { display: flex; flex-wrap: wrap; gap: 12px; }
-.cape-choice { height: auto; padding: 10px; flex-direction: column; gap: 6px; font-weight: 500; font-size: 12px; min-width: 84px; position: relative; }
+/* all cards the same width (a long name does not push one out to the next row) */
+.cape-picker { display: grid; grid-template-columns: repeat(auto-fill, 88px); gap: 12px; }
+.cape-choice { height: auto; padding: 10px; flex-direction: column; justify-content: flex-start; gap: 6px; font-weight: 500; font-size: 12px; width: 88px; min-width: 0; position: relative; }
+.cape-name { display: block; width: 100%; overflow: hidden; white-space: nowrap; text-align: center; }
+.cape-name > span { display: inline-block; }
+/* a name wider than the card slides to its end and back, pausing at each end */
+.cape-name.long { text-align: left; }
+.cape-name.long > span { animation: cape-name-slide var(--slide, 4s) ease-in-out infinite alternate; }
+@keyframes cape-name-slide { 0%, 15% { transform: translateX(0); } 85%, 100% { transform: translateX(var(--over)); } }
+html.reduce-motion .cape-name.long > span { animation: none; }
+html.reduce-motion .cape-name.long { text-overflow: ellipsis; }
+@media (prefers-reduced-motion: reduce) { .cape-name.long > span { animation: none; } .cape-name.long { text-overflow: ellipsis; } }
 .cape-choice.selected { border-color: var(--accent); background: rgba(59, 130, 246, .12); box-shadow: 0 0 0 3px rgba(59, 130, 246, .15); }
 .cape-choice .lock { position: absolute; top: 6px; right: 6px; color: var(--gold); font-size: 12px; }
 .cape-choice.none .cape { display: grid; place-items: center; background: rgba(255, 255, 255, .04); box-shadow: none; color: var(--muted); font-size: 20px; }
