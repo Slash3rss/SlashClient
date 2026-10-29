@@ -210,7 +210,9 @@ public final class SkyCounters {
 		Block block = state.getBlock();
 		if (block instanceof CropBlock crop && !crop.isMaxAge(state)) return;
 		ItemStack own = new ItemStack(block.asItem());
-		ItemStack crop = new ItemStack(CROPS.getOrDefault(block, Items.AIR));
+		// a glow berry vine is glow berries only while it has them
+		ItemStack crop = block instanceof net.minecraft.world.level.block.CaveVines && !net.minecraft.world.level.block.CaveVines.hasGlowBerries(state)
+			? ItemStack.EMPTY : new ItemStack(CROPS.getOrDefault(block, Items.AIR));
 		add(Kind.BREAK, Thing.of(false, state.is(BlockTags.LOGS), state.is(BlockTags.SAPLINGS), false,
 			block.getName().getString(), plBlock(block), own.isEmpty() ? null : name(own), own.isEmpty() ? null : plItem(own.getItem()),
 			crop.isEmpty() ? null : name(crop), crop.isEmpty() ? null : plItem(crop.getItem())), 1);
@@ -227,6 +229,14 @@ public final class SkyCounters {
 		CROPS.put(Blocks.COCOA, Items.COCOA_BEANS);
 		CROPS.put(Blocks.SWEET_BERRY_BUSH, Items.SWEET_BERRIES);
 		CROPS.put(Blocks.MELON, Items.MELON_SLICE);
+		CROPS.put(Blocks.CAVE_VINES, Items.GLOW_BERRIES);
+		CROPS.put(Blocks.CAVE_VINES_PLANT, Items.GLOW_BERRIES);
+	}
+
+	/** A bush or a vine with berries to pick by hand (a right click picks them and leaves the plant). */
+	private static boolean ripeBerries(BlockState state) {
+		if (state.is(Blocks.SWEET_BERRY_BUSH)) return state.getValue(net.minecraft.world.level.block.SweetBerryBushBlock.AGE) > 1;
+		return state.getBlock() instanceof net.minecraft.world.level.block.CaveVines && net.minecraft.world.level.block.CaveVines.hasGlowBerries(state);
 	}
 
 	/** A block the player placed: counted once the server has not taken it away. */
@@ -315,6 +325,10 @@ public final class SkyCounters {
 	/** A bell clicked and when: it counts once the server swings it (a protected one stays still and silent). */
 	private static net.minecraft.core.BlockPos ringing;
 	private static long ringingSince;
+	/** Berries clicked, the plant as it was and when: they count once the server picks them ("Zbierz: Słodkie jagody"). */
+	private static net.minecraft.core.BlockPos picking;
+	private static BlockState pickingWas;
+	private static long pickingSince;
 	/**
 	 * A sheep clicked with shears, when, how many it stood for (a stacked sheep is many) and where: it counts
 	 * once the server is seen to have shorn it, and not at all when the server refused the click.
@@ -330,9 +344,14 @@ public final class SkyCounters {
 		if (mc.player == null || mc.level == null) return;
 		if (mc.hitResult instanceof net.minecraft.world.phys.BlockHitResult hit && hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
 			blockUsedAt = System.currentTimeMillis();
-			if (mc.level.getBlockState(hit.getBlockPos()).is(Blocks.BELL)) {
+			BlockState clicked = mc.level.getBlockState(hit.getBlockPos());
+			if (clicked.is(Blocks.BELL)) {
 				ringing = hit.getBlockPos().immutable();
 				ringingSince = blockUsedAt;
+			} else if (ripeBerries(clicked)) {
+				picking = hit.getBlockPos().immutable();
+				pickingWas = clicked;
+				pickingSince = blockUsedAt;
 			}
 		} else if (mc.hitResult instanceof net.minecraft.world.phys.EntityHitResult hit
 			&& hit.getEntity() instanceof net.minecraft.world.entity.animal.sheep.Sheep sheep && sheep.readyForShearing()
@@ -360,6 +379,15 @@ public final class SkyCounters {
 			else if (mc.level.getBlockEntity(ringing) instanceof net.minecraft.world.level.block.entity.BellBlockEntity bell && bell.shaking && bell.ticks <= 5) {
 				ringing = null;
 				add(Kind.BELL, Thing.of(false, false, false, false, "Dzwon"), 1);
+			}
+		}
+		// berries picked: the same plant, without them now (a refused click leaves them on)
+		if (picking != null) {
+			BlockState plant = mc.level.getBlockState(picking);
+			if (now - pickingSince > 2000) picking = null;
+			else if (plant.getBlock() == pickingWas.getBlock() && !ripeBerries(plant)) {
+				picking = null;
+				broken(pickingWas);
 			}
 		}
 		if (shearing >= 0) {

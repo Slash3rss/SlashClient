@@ -2618,6 +2618,7 @@ public final class TestHooks {
 			"Ostrzyż:", "  » Owca: 0/32", "",
 			"Otwórz SkyCase:", "  » Ręcznie: 0/8", "",
 			"Handluj z piglinami:", "  » Piglin: 0/16", "",
+			"Zbierz:", "  » Słodkie jagody: 0/8", "",
 			"Posiadaj poziom: 60", "  poz.", "",
 			"Za ukończenie otrzymasz:", "  » 100.0 SC"));
 		t.seen = System.currentTimeMillis();

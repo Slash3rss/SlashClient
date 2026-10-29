@@ -290,7 +290,7 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.skyUse());
 			context.waitTicks(10);
 			String more = context.computeOnClient(mc -> TestHooks.skyMoreProgress());
-			check(more.equals("Uderz w dzwony=1 Ostrzyż=1 Otwórz SkyCase=1 Handluj z piglinami=0 Posiadaj poziom=61"), "bells, sheep, a case by hand, the level", more);
+			check(more.equals("Uderz w dzwony=1 Ostrzyż=1 Otwórz SkyCase=1 Handluj z piglinami=0 Zbierz=0 Posiadaj poziom=61"), "bells, sheep, a case by hand, the level", more);
 			// a stacked sheep ("Sztuk: 4") shorn whole counts four; one the server does not shear (a sheep already shorn) none
 			world.getServer().runCommand("kill @e[type=sheep]");
 			// summoned where the first one stood (in front at eye level, not where the lowered look points)
@@ -325,6 +325,21 @@ public class GameSkyTasks implements FabricClientGameTest {
 			world.getServer().runCommand("item replace entity @a armor.head with air");
 			world.getServer().runCommand("difficulty peaceful");
 			world.getServer().runCommand("item replace entity @a weapon.mainhand with air");
+			// sweet berries picked from a ripe bush by hand (the bush stays): counted once the server picks them,
+			// not for a click it refused
+			world.getServer().runCommand("execute at @p rotated ~ 0 run setblock ^ ^1 ^2 sweet_berry_bush[age=3]");
+			context.runOnClient(mc -> mc.player.setXRot(0f));
+			context.waitTicks(10);
+			context.runOnClient(mc -> TestHooks.skyUseRefused());
+			context.waitTicks(10);
+			String unpicked = context.computeOnClient(mc -> TestHooks.skyMoreProgress());
+			check(unpicked.contains("Zbierz=0 "), "berries the server did not pick", unpicked);
+			context.runOnClient(mc -> TestHooks.skyUse());
+			context.waitTicks(10);
+			String picked = context.computeOnClient(mc -> TestHooks.skyMoreProgress());
+			check(picked.contains("Zbierz=1 "), "berries picked from a bush", picked);
+			world.getServer().runCommand("execute at @p rotated ~ 0 run setblock ^ ^1 ^2 air");
+			world.getServer().runCommand("kill @e[type=item]");
 			String shaman = context.computeOnClient(mc -> TestHooks.skyShaman());
 			check(shaman.contains("✖ Redstone Torch") && shaman.contains("✖ Glass Bottle") && shaman.contains("Rotten Flesh 0/20") && shaman.contains("✔ Rotten Flesh 20/20") && shaman.endsWith("count 1"), "shamanism", shaman);
 			// the daily task: nothing to remind of until it is tracked, then what is left of it
