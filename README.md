@@ -122,60 +122,15 @@ Minecraft 1.20.1, 1.21.1, 1.21.4, 1.21.5, 1.21.6–1.21.8, 1.21.9–1.21.10, 1.2
 - okno gry nazywa się „SlashClient &lt;wersja&gt; · &lt;wersja Minecrafta&gt;”, F3 pokazuje wersję SlashClienta, a serwery
   widzą klienta jako `slashclient <wersja>/<wersja gry>`.
 
-## Uruchomienie
-
-```bash
-npm install
-npm start
-```
-
-Test bez interfejsu (instaluje i uruchamia grę na koncie offline):
-
-```bash
-npm run test:launch -- 1.21.4 MojNick
-```
-
 ## Mod SlashClient
 
-Jeden kod dla wszystkich wersji z `hud/versions/` (budowanie wymaga JDK 25; 1.20.1 kompiluje się do Javy 17,
-1.21.x do 21, 26.x do 25):
-
-```bash
-cd hud
-./build-all.sh                              # wszystkie wersje → build/bundle/slashclient-hud-<wersja>.jar
-./gradlew build -Pmc=26.2                   # jedna wersja (versions/26.2.properties)
-./gradlew runClientGameTest -Pmc=1.21.11    # gra z testem; zrzuty w build/run/clientGameTest/screenshots
-./gametest.sh 26.3                          # wszystkie testy w grze jednej wersji, kilka gier naraz (z oknem postępu)
-./gradlew runClientGameTest -Pmc=26.3 -Ptests=GameSkyTasks,HudScreenshots   # tylko wybrane testy
-```
-
-Różnice między wersjami: `versions/<mc>.properties` (wersja gry, Java, zakres wersji `range`, nazwy plików `targets`,
-zmiany nazw `rename.`/`replace.`) i gałęzie `//#if MC >= 26.2` … `//#else` / `//$ kod` … `//#endif` w kodzie
-(preprocesor w `build.gradle`); większość siedzi w `Compat.java`.
-
-`npm run build` dołącza zbudowane pliki do launchera (`dist/hud/`). HUD nie trafia do `mods/` gracza: launcher kopiuje
+Mod jest dołączony do launchera. HUD nie trafia do `mods/` gracza: launcher kopiuje
 go do `hud/` w folderze danych i wstrzykuje przy starcie przez `-Dfabric.addMods`. Profile Fabric dostają go wprost, a profile
 vanilla są uruchamiane przez ukryty Fabric Loader (jak w Feather), którego folder modów wskazuje pusty katalog.
 Gdy profil nie ma własnego Fabric API, launcher pobiera je z Modrinth do `hud/fabric-api/<wersja>/` i wstrzykuje tak samo.
 Znajomi i czat w grze idą przez lokalny most launchera (127.0.0.1, klucz na sesję), więc gra nie dostaje tokenu konta.
-Test z linii poleceń: `npm run test:launch -- 26.3 MojNick --fabric`.
 
-## Testy i wydania
-
-```bash
-npm test                      # testy launchera (node scripts/test.mjs: esbuild + node:test, pliki tests/*.test.ts)
-npm run typecheck
-cd server && npm test         # testy serwera
-npm run dist:mac              # instalator lokalnie (także dist:win, dist:linux) → release/
-```
-
-GitHub Actions (`.github/workflows/`):
-
-- **CI** (`ci.yml`): mod dla wszystkich wersji, typecheck, testy i build launchera oraz typecheck i testy serwera
-  na Linuksie, macOS i Windowsie przy każdym pushu do `main` i PR.
-- **Release** (`release.yml`): tag `v*` (np. `git tag v0.9.10 && git push --tags`) tworzy wydanie z opisem
-  z `release-notes/<tag>.md`, buduje `.dmg` i `.zip` (macOS), `.exe` i AppImage i publikuje je w GitHub Releases
-  repozytorium `Slash3rss/SlashClient` (pole `build.publish` w `package.json`).
+## Aktualizacje
 
 Zainstalowane launchery szukają aktualizacji na serwerze SlashClient (`/aktualizacje`, które podaje najnowsze wydanie z GitHuba).
 Linux pobiera nową wersję w tle i instaluje ją przy ponownym uruchomieniu. Windows (instalacja dla jednego użytkownika,
@@ -186,15 +141,11 @@ ponownie” sam podmienia `SlashClient.app` (`src/main/macUpdate.ts`). Gdy aplik
 bez prawa zapisu, launcher proponuje „Przenieś do Aplikacji” albo zostaje przycisk „Pobierz”. Włączona gra nie zamyka
 się razem z launcherem, a „Zainstaluj aktualizację” czeka, aż ją zamkniesz.
 
-Bez podpisu pierwszy instalator na Macu trzeba otworzyć przez prawy klik → Otwórz. Podpis włączają sekrety
-`MAC_CERT_P12_BASE64`, `MAC_CERT_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD` i `APPLE_TEAM_ID` (bez nich
-`release.yml` buduje bez podpisu).
-
-Serwer i stronę wdraża `./server/deploy/deploy.sh` (opis w [server/README.md](server/README.md)).
+Pierwszy instalator na Macu (aplikacja bez podpisu Apple) trzeba otworzyć przez prawy klik → Otwórz.
 
 ## Dane
 
-Wszystko trafia do jednego folderu (można go zmienić zmienną `SLASHCLIENT_HOME`):
+Wszystko trafia do jednego folderu:
 
 | System  | Folder                                         |
 |---------|------------------------------------------------|
@@ -208,19 +159,13 @@ Konfiguracja i konta są w `config/launcher.json`. Tokeny Microsoft są szyfrowa
 
 ## Logowanie kontem Microsoft
 
-Launcher ma wbudowaną aplikację Azure zatwierdzoną przez Mojang, więc w Ustawieniach nic nie trzeba wpisywać.
-Własną aplikację (konta osobiste, włączone **Allow public client flows**) można podać zmienną `SLASHCLIENT_MS_CLIENT_ID`.
-Nowa aplikacja musi zostać zatwierdzona przez Mojang (<https://aka.ms/mce-reviewappid>); do tego czasu logowanie kończy się
-błędem na etapie `login_with_xbox` (HTTP 403).
-
-Launcher łączy się z serwerem <https://client.slash3rss.dev>; inny (np. lokalny) wskazuje zmienna `SLASHCLIENT_SOCIAL_URL`.
+Logowanie kontem Microsoft działa od razu, w Ustawieniach nic nie trzeba wpisywać.
 
 ## Status na Discordzie
 
 Launcher pokazuje na Discordzie „Gra w SlashClient”: przy otwartym launcherze „W launcherze”, a w grze wersję,
-loader, czas gry oraz to, czy jesteś w menu, w świecie czy na serwerze (aplikacja Discord `812524751053914112`).
+loader, czas gry oraz to, czy jesteś w menu, w świecie czy na serwerze.
 Status odnawia się co 30 s, więc pojawi się też, gdy Discord zostanie uruchomiony po launcherze. Można go wyłączyć w Ustawieniach.
-Obrazek statusu to zasób `logo` w Rich Presence → Art Assets tej aplikacji.
 
 ## Struktura
 
