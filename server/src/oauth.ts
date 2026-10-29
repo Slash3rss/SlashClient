@@ -37,7 +37,7 @@ async function tokenRequest(url: string, form: Record<string, string>, fetchImpl
 export function discord(app: OAuthApp): Provider {
   return {
     authorizeUrl: (state, redirectUri) =>
-      `https://discord.com/oauth2/authorize?${new URLSearchParams({ client_id: app.clientId, response_type: 'code', redirect_uri: redirectUri, scope: 'identify', state, prompt: 'none' })}`,
+      `https://discord.com/oauth2/authorize?${new URLSearchParams({ client_id: app.clientId, response_type: 'code', redirect_uri: redirectUri, scope: 'identify', state })}`,
     async identityFromCode(code, redirectUri, fetchImpl) {
       const { access_token } = await tokenRequest('https://discord.com/api/oauth2/token', {
         client_id: app.clientId, client_secret: app.clientSecret, grant_type: 'authorization_code', code, redirect_uri: redirectUri,

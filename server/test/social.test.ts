@@ -154,12 +154,24 @@ describe('social server', () => {
     assert.equal((await call('DELETE', `/v1/me/minecraft/${mcId(1)}`, kasia.token)).body.error, 'last_provider');
   });
 
+  /** The provider's redirect lands on "Czy to Ty?"; the player answers with one of its two links. */
+  async function callback(provider: string, state: string, answer: 'confirm' | 'cancel' = 'confirm') {
+    const page = await fetch(`${base}/v1/auth/${provider}/callback?state=${state}&code=xyz`);
+    const html = await page.text();
+    const link = new RegExp(`href="(/v1/auth/${answer}\\?[^"]+)"`).exec(html)?.[1]?.replace(/&amp;/g, '&');
+    if (!link) return { status: page.status, html };
+    const done = await fetch(base + link);
+    return { status: done.status, html, link };
+  }
+
   it('signs in with Discord only to an account it was linked to', async () => {
     const discordLogin = async (token?: string) => {
       const { state, url } = (await call('POST', '/v1/auth/discord/start', token)).body;
       assert.match(url, /discord\.com\/oauth2\/authorize/);
+      // Discord always asks (with "none" it let a link someone else started through without a question)
+      assert.doesNotMatch(url, /prompt=none/);
       assert.equal((await call('GET', `/v1/auth/poll?state=${state}`)).body.pending, true);
-      const page = await fetch(`${base}/v1/auth/discord/callback?state=${state}&code=xyz`);
+      const page = await callback('discord', state);
       return { page: page.status, done: await call('GET', `/v1/auth/poll?state=${state}`) };
     };
     // nobody has this Discord account yet: no new account from Discord
@@ -222,7 +234,7 @@ describe('social server', () => {
       for (const token of [zosia.token, undefined]) {
         const { state, url } = (await call('POST', `/v1/auth/${provider}/start`, token)).body;
         assert.match(url, provider === 'google' ? /accounts\.google\.com/ : /github\.com\/login\/oauth/);
-        await fetch(`${base}/v1/auth/${provider}/callback?state=${state}&code=c`);
+        await callback(provider, state);
         const done = (await call('GET', `/v1/auth/poll?state=${state}`)).body;
         if (token) assert.equal(done.linked, true);
         else {
@@ -235,6 +247,35 @@ describe('social server', () => {
       }
     }
     assert.deepEqual((await call('GET', '/v1/health')).body.providers, ['discord', 'microsoft', 'google', 'github']);
+  });
+
+  it('does not hand an account to whoever started the sign-in until its player confirms it', async () => {
+    // the Discord account the fake provider signs in with belongs to "Discordowy" (linked above)
+    // someone else starts a sign-in and sends the provider's link round; the player opens it
+    const attack = (await call('POST', '/v1/auth/discord/start')).body;
+    assert.match(attack.confirm, /^\d{4}$/);
+    const page = await fetch(`${base}/v1/auth/discord/callback?state=${attack.state}&code=xyz`);
+    const html = await page.text();
+    assert.equal(page.status, 200);
+    // the question, with the code to compare, and no other site may frame it
+    assert.match(html, /Czy to Ty\?/);
+    assert.ok(html.includes(attack.confirm));
+    assert.match(String(page.headers.get('content-security-policy')), /frame-ancestors 'none'/);
+    assert.equal((await call('GET', `/v1/auth/poll?state=${attack.state}`)).body.pending, true);
+    // a made-up key does nothing, the same provider code cannot be used twice
+    assert.equal((await fetch(`${base}/v1/auth/confirm?state=${attack.state}&key=zly`)).status, 400);
+    assert.equal((await fetch(`${base}/v1/auth/discord/callback?state=${attack.state}&code=xyz`)).status, 400);
+    assert.equal((await call('GET', `/v1/auth/poll?state=${attack.state}`)).body.pending, true);
+    // "Nie, anuluj": nobody is signed in
+    const key = /key=([\w-]+)/.exec(html)![1];
+    assert.equal((await fetch(`${base}/v1/auth/cancel?state=${attack.state}&key=${key}`)).status, 200);
+    assert.equal((await call('GET', `/v1/auth/poll?state=${attack.state}`)).body.error, 'provider_denied');
+    assert.equal((await fetch(`${base}/v1/auth/confirm?state=${attack.state}&key=${key}`)).status, 400);
+
+    // the player's own sign-in, confirmed: the session is theirs
+    const own = (await call('POST', '/v1/auth/discord/start')).body;
+    assert.equal((await callback('discord', own.state)).status, 200);
+    assert.equal((await call('GET', `/v1/auth/poll?state=${own.state}`)).body.user.name, 'Discordowy');
   });
 
   it('gives a free handle when the name is taken', async () => {

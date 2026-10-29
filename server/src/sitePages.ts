@@ -43,6 +43,8 @@ export interface SitePage {
   actions?: [string, string, boolean?][];
   /** Small grey line under the buttons. */
   note?: string;
+  /** A script of the site's own (the sign-in confirmation's). */
+  script?: string;
 }
 
 export function sitePage(p: SitePage): string {
@@ -60,7 +62,8 @@ export function sitePage(p: SitePage): string {
   <link rel="stylesheet" href="/vendor/fa/css/all.min.css">
   <link rel="stylesheet" href="/style.css">
   <link rel="stylesheet" href="/landing.css">
-  <link rel="stylesheet" href="/sitePage.css">
+  <link rel="stylesheet" href="/sitePage.css">${p.script ? `
+  <script type="module" src="${esc(p.script)}"></script>` : ''}
 </head>
 <body class="landing site-page">
   <div class="bg" aria-hidden="true"><div class="bg-grid"></div><div class="bg-glow g1"></div></div>

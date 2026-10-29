@@ -1,5 +1,5 @@
 import { decodePng, encodePng, faceOf } from './png.ts';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
 import path from 'node:path';
 import { WebSocketServer, type WebSocket } from 'ws';
@@ -232,7 +232,15 @@ export function createApp(cfg: Config) {
    */
   /** Minecraft sign-ins waiting for the launcher to "join" at Mojang: server id → when. */
   const mcChallenges = new Map<string, number>();
-  type Login = { provider: ProviderId; at: number; linkTo?: string; result?: unknown; error?: string };
+  type Login = {
+    provider: ProviderId; at: number; linkTo?: string; result?: unknown; error?: string;
+    /** Shown by the launcher that started the sign-in and on the confirmation page, to compare. */
+    confirm?: string;
+    /** Where the sign-in was started ("launcher", "strona"), for the confirmation page. */
+    from?: string;
+    /** Who the provider said it is, waiting for the player to confirm in the browser; the key is in the confirm link. */
+    waiting?: { id: Identity; key: string };
+  };
   const logins = new Map<string, Login>();
 
   /** Who the provider says signed in: a new session, or the provider added to the account. */
@@ -1090,9 +1098,10 @@ export function createApp(cfg: Config) {
       limitLogins(clientIp(req));
       const linkTo = req.headers.authorization ? authed(req) : undefined;
       const state = randomBytes(24).toString('base64url');
-      const login = { provider: provider as ProviderId, at: Date.now(), linkTo };
+      const confirm = String(randomBytes(2).readUInt16BE() % 10_000).padStart(4, '0');
+      const login: Login = { provider: provider as ProviderId, at: Date.now(), linkTo, confirm, from: clientOf(req).client };
       logins.set(state, login);
-      if (!p.device) return { state, url: p.authorizeUrl(state, redirectUri(provider)) };
+      if (!p.device) return { state, url: p.authorizeUrl(state, redirectUri(provider)), confirm };
       // a code to type on the provider's page; the server waits for it and /v1/auth/poll reports as usual
       return p.device.start(cfg.fetchImpl ?? fetch).then((d) => {
         void waitForDevice(state, login, p, d);
@@ -1733,20 +1742,48 @@ export function createApp(cfg: Config) {
     const callback = /^\/v1\/auth\/(discord|microsoft|google|github)\/callback$/.exec(url.pathname);
     if (req.method === 'GET' && callback) {
       const provider = callback[1] as ProviderId;
-      const login = logins.get(url.searchParams.get('state') ?? '');
+      const state = url.searchParams.get('state') ?? '';
+      const login = logins.get(state);
       const code = url.searchParams.get('code');
+      const lang = siteLang(req, url.pathname);
       let ok = false;
-      if (login && login.provider === provider && providers[provider] && code) {
+      if (login && login.provider === provider && providers[provider] && code && !login.waiting && !login.result) {
         try {
           const id = await providers[provider]!.identityFromCode(code, redirectUri(provider), cfg.fetchImpl ?? fetch);
-          ok = finishLogin(login, provider, id);
+          // not finished yet: whoever opened this link says it was them. A link someone else started (and sent
+          // round) would otherwise hand them this account the moment it is clicked.
+          const key = randomBytes(18).toString('base64url');
+          login.waiting = { id, key };
+          res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', ...AUTH_PAGE_HEADERS });
+          res.end(confirmPage(login, provider, id, state, key, lang));
+          return;
         } catch (err) {
           console.error(`logowanie ${provider}:`, (err as Error).message);
           login.error = 'provider_failed';
         }
-      } else if (login) login.error = 'provider_denied';
-      res.writeHead(ok ? 200 : 400, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(callbackPage(ok, siteLang(req, url.pathname)));
+      } else if (login && !login.waiting && !login.result) login.error = 'provider_denied';
+      res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8', ...AUTH_PAGE_HEADERS });
+      res.end(callbackPage(false, lang));
+      return;
+    }
+
+    // the player's answer on the confirmation page
+    const answer = /^\/v1\/auth\/(confirm|cancel)$/.exec(url.pathname);
+    if (req.method === 'GET' && answer) {
+      const state = url.searchParams.get('state') ?? '';
+      const login = logins.get(state);
+      const lang = siteLang(req, url.pathname);
+      const waiting = login?.waiting;
+      const right = !!waiting && Date.now() - login!.at <= LOGIN_TTL_MS
+        && timingSafeEqual(createHash('sha256').update(waiting.key).digest(), createHash('sha256').update(url.searchParams.get('key') ?? '').digest());
+      let ok = false;
+      if (login && waiting && right) {
+        login.waiting = undefined;
+        if (answer[1] === 'confirm') ok = finishLogin(login, login.provider, waiting.id);
+        else login.error = 'provider_denied';
+      }
+      res.writeHead(ok || (answer[1] === 'cancel' && right) ? 200 : 400, { 'Content-Type': 'text/html; charset=utf-8', ...AUTH_PAGE_HEADERS });
+      res.end(answer[1] === 'cancel' && right ? cancelledPage(lang) : callbackPage(ok, lang));
       return;
     }
 
@@ -2292,6 +2329,41 @@ function serverError(req: http.IncomingMessage, res: http.ServerResponse, url: U
 function wantsPage(req: http.IncomingMessage, pathname: string): boolean {
   return (req.method === 'GET' || req.method === 'HEAD') && !pathname.startsWith('/v1/') && !/\.[a-z0-9]{1,5}$/i.test(pathname)
     && /text\/html/.test(String(req.headers.accept ?? ''));
+}
+
+/** The sign-in pages: no other site may frame them (a hidden confirm click), only the site's own script runs. */
+const AUTH_PAGE_HEADERS = {
+  'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+  'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store',
+};
+
+const PROVIDER_LABELS: Record<ProviderId, string> = { discord: 'Discord', microsoft: 'Microsoft', google: 'Google', github: 'GitHub' };
+
+/** "Is it you?": which account this signs in to (or links to), where the sign-in began, and the code to compare. */
+function confirmPage(login: { at: number; linkTo?: string; confirm?: string; from?: string }, provider: ProviderId, id: Identity, state: string, key: string, lang: 'pl' | 'en'): string {
+  const en = lang === 'en';
+  const who = `${PROVIDER_LABELS[provider]} ${id.handle ?? id.name ?? ''}`.trim();
+  const mins = Math.max(0, Math.round((Date.now() - login.at) / 60_000));
+  const where = login.from === 'strona' ? (en ? 'on the website' : 'na stronie') : login.from === 'launcher' ? (en ? 'in the launcher' : 'w launcherze') : (en ? 'in another app' : 'w innej aplikacji');
+  const when = en ? (mins ? `${mins} min ago` : 'just now') : (mins ? `${mins} min temu` : 'przed chwilą');
+  const what = login.linkTo
+    ? (en ? `You are linking ${who} to a SlashClient account.` : `Podpinasz ${who} do konta SlashClient.`)
+    : (en ? `You are signing in to SlashClient as ${who}.` : `Logujesz się do SlashClient jako ${who}.`);
+  const q = `state=${encodeURIComponent(state)}&key=${encodeURIComponent(key)}`;
+  return sitePage({
+    lang, icon: 'fa-solid fa-shield-halved', tone: 'warning', code: login.confirm,
+    title: en ? 'Was it you?' : 'Czy to Ty?',
+    text: en
+      ? `${what} Started ${where} ${when}. Confirm only if you just clicked "Sign in" in SlashClient yourself and it shows the same code. If someone sent you this link, do not confirm.`
+      : `${what} Rozpoczęto ${where} ${when}. Potwierdź tylko, jeśli to Ty właśnie kliknąłeś „Zaloguj” w SlashClient i pokazuje on ten sam kod. Jeśli ktoś przysłał Ci ten link, nie potwierdzaj.`,
+    actions: [[en ? 'Yes, it was me' : 'Tak, to ja', `/v1/auth/confirm?${q}`, true], [en ? 'No, cancel' : 'Nie, anuluj', `/v1/auth/cancel?${q}`]],
+    script: '/authConfirm.js',
+  });
+}
+
+function cancelledPage(lang: 'pl' | 'en'): string {
+  const en = lang === 'en';
+  return sitePage({ lang, icon: 'fa-solid fa-ban', tone: 'info', title: en ? 'Cancelled' : 'Anulowano', text: en ? 'Nobody was signed in. You can close this tab.' : 'Nikt nie został zalogowany. Możesz zamknąć tę kartę.' });
 }
 
 function callbackPage(ok: boolean, lang: 'pl' | 'en' = 'pl'): string {

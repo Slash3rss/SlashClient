@@ -577,6 +577,10 @@ export const PROVIDERS = {
 export async function signInWith(provider) {
   const popup = window.open('about:blank', 'slashclient-login', 'width=520,height=720');
   const { state, url, code } = await api('POST', `/v1/auth/${provider}/start`);
+  // the confirmation page after the provider passes by itself for a sign-in this browser started (authConfirm.js)
+  try {
+    localStorage.setItem('slashclient.login', state);
+  } catch {}
   if (popup) popup.location.href = url;
   else window.open(url, '_blank', 'noopener');
   // Microsoft: a code to type on its page, shown here until the sign-in is done
@@ -595,6 +599,9 @@ export async function signInWith(provider) {
     throw new ApiError('login_expired', 400);
   } finally {
     box?.remove();
+    try {
+      localStorage.removeItem('slashclient.login');
+    } catch {}
   }
 }
 
