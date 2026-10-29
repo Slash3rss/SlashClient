@@ -23,7 +23,8 @@ describe('profile privacy window', () => {
     const server = readFileSync('server/src/profiles.ts', 'utf8');
     const list = /export const ELEMENTS = \[([^\]]+)\]/.exec(server)![1].match(/'(\w+)'/g)!.map((s) => s.slice(1, -1)).sort();
     const launcher = [...readFileSync('src/renderer/profilePrivacy.ts', 'utf8').matchAll(/\['(\w+)', '/g)].map((m) => m[1]).sort();
-    const site = [...readFileSync('server/web/profilePrivacy.js', 'utf8').matchAll(/\['(\w+)', '[^']+'\]/g)].map((m) => m[1]).sort();
+    // the site has the list twice, in English and in Polish
+    const site = [...new Set([...readFileSync('server/web/profilePrivacy.js', 'utf8').matchAll(/\['(\w+)', '[^']+'\]/g)].map((m) => m[1]))].sort();
     assert.deepEqual(launcher, list);
     assert.deepEqual(site, list);
   });
