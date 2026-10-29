@@ -709,7 +709,8 @@ public final class HudConfig {
 		// a stream's chat at the top on the left, beside the column of FPS and coordinates: lower down it covered the
 		// keystrokes (and the game's chat under them); off until a channel is set
 		c.modules.put("twitchchat", new Placement(false, 0, 0, 104, 2));
-		c.modules.put("kickchat", new Placement(false, 1, 0.62f, -2, 0));
+		// the other stream's chat lower on the right, clear of the first one at the top in a small window
+		c.modules.put("kickchat", new Placement(false, 1, 0.75f, -2, 0));
 		// what plays on this computer on the right, between the effects and the armour; off until switched on
 		c.modules.put("spotify", new Placement(false, 1, 0.3f, -2, 0));
 		// the backpack's slots low on the right, above the item counter; off until switched on
