@@ -81,7 +81,7 @@ export function changelogPage(o: { lang: Lang; releases: ChangelogEntry[]; more:
   <meta property="og:description" content="${escapeHtml(u.description)}">
   <meta property="og:url" content="${base}${escapeHtml(self)}">
   <meta property="og:image" content="${base}/vendor/logo.png">
-  <meta name="theme-color" content="#07090f">
+  <meta name="theme-color" content="#3b82f6" media="not all"><meta name="theme-color" content="#07090f">
   ${o.failed ? '<meta name="robots" content="noindex">' : ''}
   <link rel="icon" href="/vendor/logo.png">
   <link rel="stylesheet" href="/vendor/fa/css/all.min.css">

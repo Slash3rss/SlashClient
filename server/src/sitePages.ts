@@ -56,7 +56,7 @@ export function sitePage(p: SitePage): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <meta name="theme-color" content="#07090f">
+  <meta name="theme-color" content="#3b82f6" media="not all"><meta name="theme-color" content="#07090f">
   <title>${esc(p.code ? `${p.code} · ${p.title}` : p.title)} · SlashClient</title>
   <link rel="icon" href="/vendor/logo.png">
   <link rel="stylesheet" href="/vendor/fa/css/all.min.css">

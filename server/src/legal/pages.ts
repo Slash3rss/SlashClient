@@ -37,7 +37,7 @@ export function legalPage(o: { doc: string; lang: Lang; rendered: Rendered; upda
   <link rel="canonical" href="${base}${self.path}">
   <link rel="alternate" hreflang="${o.lang}" href="${base}${self.path}">
   <link rel="alternate" hreflang="${other}" href="${base}${meta[other].path}">
-  <meta name="theme-color" content="#07090f">
+  <meta name="theme-color" content="#3b82f6" media="not all"><meta name="theme-color" content="#07090f">
   <link rel="icon" href="/vendor/logo.png">
   <link rel="stylesheet" href="/vendor/fa/css/all.min.css">
   <link rel="stylesheet" href="/style.css">
