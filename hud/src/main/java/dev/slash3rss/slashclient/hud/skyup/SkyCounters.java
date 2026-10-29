@@ -83,7 +83,18 @@ public final class SkyCounters {
 
 	/** Lower case, without "(dorosły)" and the like. */
 	static String norm(String s) {
-		return SkyTaskParser.plain(s).replaceAll("\\s*\\([^)]*\\)", "").toLowerCase(Locale.ROOT).strip();
+		return BRACKETS.matcher(SkyTaskParser.plain(s)).replaceAll("").toLowerCase(Locale.ROOT).strip();
+	}
+
+	private static final java.util.regex.Pattern BRACKETS = java.util.regex.Pattern.compile("\\s*\\([^)]*\\)");
+
+	/** Leaving SkyUp (or another of its sectors): nothing half-counted is carried into the next world. */
+	static void reset() {
+		hit.clear();
+		before = null;
+		crafting = null;
+		placedAt.clear();
+		pending.clear();
 	}
 
 	/** Whether a requirement's thing is this one. */
@@ -650,11 +661,7 @@ public final class SkyCounters {
 
 	static void tick(Minecraft mc) {
 		if (mc.player == null || mc.level == null || !SkyTasks.onSkyUp(mc)) {
-			hit.clear();
-			before = null;
-			crafting = null;
-			placedAt.clear();
-			pending.clear();
+			reset();
 			return;
 		}
 		long now = System.currentTimeMillis();

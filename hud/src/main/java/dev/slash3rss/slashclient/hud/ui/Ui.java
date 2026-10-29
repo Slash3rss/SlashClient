@@ -157,7 +157,8 @@ public final class Ui {
 	}
 
 	public static void draw(GuiGraphicsExtractor g, Component c, int x, int y, int color) {
-		check(g, "text \"" + c.getString() + "\"", x, y, width(c), 8);
+		// the audit's message only built for the screenshot test (this runs for every text drawn)
+		if (audit) check(g, "text \"" + c.getString() + "\"", x, y, width(c), 8);
 		g.text(Minecraft.getInstance().font, c, x, y, color, false);
 	}
 
@@ -269,7 +270,7 @@ public final class Ui {
 	/** A rectangle with corners rounded by `r` pixels (stepped, like the game's own art). */
 	public static void round(GuiGraphicsExtractor g, int x, int y, int w, int h, int r, int color) {
 		if (w <= 0 || h <= 0) return;
-		check(g, "shape " + w + "x" + h, x, y, w, h);
+		if (audit) check(g, "shape " + w + "x" + h, x, y, w, h);
 		r = Math.min(r, Math.min(w, h) / 2);
 		g.fill(x + r, y, x + w - r, y + h, color);
 		for (int i = 0; i < r; i++) {
@@ -364,7 +365,7 @@ public final class Ui {
 	/** Like `round`, filled with a gradient from `top` to `bottom`: each corner column gets its own part of it. */
 	public static void roundGradient(GuiGraphicsExtractor g, int x, int y, int w, int h, int r, int top, int bottom) {
 		if (w <= 0 || h <= 0) return;
-		check(g, "shape " + w + "x" + h, x, y, w, h);
+		if (audit) check(g, "shape " + w + "x" + h, x, y, w, h);
 		r = Math.min(r, Math.min(w, h) / 2);
 		g.fillGradient(x + r, y, x + w - r, y + h, top, bottom);
 		for (int i = 0; i < r; i++) {
@@ -458,14 +459,14 @@ public final class Ui {
 	 * build helper), drawn `size` pixels wide in `color`.
 	 */
 	public static void icon(GuiGraphicsExtractor g, String name, int x, int y, int size, int color) {
-		check(g, "icon " + name, x, y, size, size);
+		if (audit) check(g, "icon " + name, x, y, size, size);
 		Identifier id = Identifier.fromNamespaceAndPath("slashclient-hud", "textures/icon/" + name + ".png");
 		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, id, x, y, 0, 0, size, size, 64, 64, 64, 64, color);
 	}
 
 	/** Text with a soft shadow, for places where it sits on the game or the panorama. */
 	public static void drawOnWorld(GuiGraphicsExtractor g, Component c, int x, int y, int color) {
-		check(g, "text \"" + c.getString() + "\"", x, y, width(c), 8);
+		if (audit) check(g, "text \"" + c.getString() + "\"", x, y, width(c), 8);
 		g.text(Minecraft.getInstance().font, c, x, y, color, true);
 	}
 

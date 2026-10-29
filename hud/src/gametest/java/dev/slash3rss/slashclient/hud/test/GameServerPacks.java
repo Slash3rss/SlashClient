@@ -134,6 +134,13 @@ public class GameServerPacks implements FabricClientGameTest {
 				dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.skyUp(false);
 				dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.stop();
 			});
+			// switching the pack off reloads the resources: a world the next test creates meanwhile never finishes loading
+			context.waitTicks(2);
+			//#if MC >= 26.2
+			context.waitFor(mc -> mc.gui.overlay() == null, 1200);
+			//#else
+			//$ context.waitFor(mc -> mc.getOverlay() == null, 1200);
+			//#endif
 		}
 	}
 

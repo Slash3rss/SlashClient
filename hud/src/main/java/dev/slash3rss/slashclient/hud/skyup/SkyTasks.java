@@ -147,11 +147,17 @@ public final class SkyTasks {
 		}
 		if (data == null) {
 			loadedFrom = file;
+			Path from = Files.exists(file) ? file : Files.exists(FILE) ? FILE : null;
 			try {
-				Path from = Files.exists(file) ? file : Files.exists(FILE) ? FILE : null;
 				if (from != null) data = GSON.fromJson(Files.readString(from), Data.class);
 			} catch (Exception e) {
 				SlashHud.LOG.warn("SlashClient: SkyUp tasks: {}", e.toString());
+				// a file that cannot be read is kept aside, not overwritten by the next save: the progress can be got back
+				try {
+					Files.copy(from, from.resolveSibling(from.getFileName() + ".broken-" + System.currentTimeMillis()));
+				} catch (Exception again) {
+					SlashHud.LOG.warn("SlashClient: SkyUp tasks: {}", again.toString());
+				}
 			}
 			if (data == null) data = new Data();
 			if (data.tasks == null) data.tasks = new LinkedHashMap<>();
@@ -191,7 +197,14 @@ public final class SkyTasks {
 			Data now = data();
 			Path to = loadedFrom != null ? loadedFrom : file();
 			Files.createDirectories(to.getParent());
-			Files.writeString(to, GSON.toJson(now));
+			// written whole to a file beside, then put in place: a crash while writing leaves the last save as it was
+			Path tmp = to.resolveSibling(to.getFileName() + ".tmp");
+			Files.writeString(tmp, GSON.toJson(now));
+			try {
+				Files.move(tmp, to, java.nio.file.StandardCopyOption.REPLACE_EXISTING, java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+			} catch (Exception e) {
+				Files.move(tmp, to, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+			}
 		} catch (Exception e) {
 			SlashHud.LOG.warn("SlashClient: SkyUp tasks: {}", e.toString());
 		}
@@ -204,6 +217,8 @@ public final class SkyTasks {
 		var screen = Compat.screen(mc);
 		if (!onSkyUp(mc)) {
 			if (dirty) save();
+			// what the counters had half-counted stays behind (SkyCounters.tick is not reached off SkyUp)
+			SkyCounters.reset();
 			return;
 		}
 		if (screen instanceof AbstractContainerScreen<?> c && challengesGui(c)) {
@@ -771,6 +786,9 @@ public final class SkyTasks {
 	}
 
 	/** The level of an enchantment named `name` (in the game's language or Polish) on a stack: a real one, or one written in its lore ("Szczęście II"); 0 when none. */
+	/** An enchantment's name written with its level ("Szczęście II"), by the name: compiled once, as it is looked for every frame. */
+	private static final Map<String, java.util.regex.Pattern> WRITTEN = new java.util.concurrent.ConcurrentHashMap<>();
+
 	static int enchantLevel(ItemStack stack, String name) {
 		String want = name.toLowerCase(Locale.ROOT);
 		int best = 0;
@@ -780,7 +798,7 @@ public final class SkyTasks {
 			String own = net.minecraft.world.item.enchantment.Enchantment.getFullname(e.getKey(), 1).getString().replaceAll("\\s+[IVXL]+$", "");
 			if (pl.equalsIgnoreCase(want) || own.equalsIgnoreCase(want)) best = Math.max(best, e.getIntValue());
 		}
-		java.util.regex.Pattern written = java.util.regex.Pattern.compile("(?i)" + java.util.regex.Pattern.quote(name) + "\\s+([IVXL]+|\\d+)\\b");
+		java.util.regex.Pattern written = WRITTEN.computeIfAbsent(name, n -> java.util.regex.Pattern.compile("(?i)" + java.util.regex.Pattern.quote(n) + "\\s+([IVXL]+|\\d+)\\b"));
 		for (Component line : SkyDump.lore(stack)) {
 			java.util.regex.Matcher m = written.matcher(SkyTaskParser.plain(line.getString()));
 			while (m.find()) best = Math.max(best, roman(m.group(1).toUpperCase(Locale.ROOT)));
@@ -1136,9 +1154,19 @@ public final class SkyTasks {
 			return SlashHud.config.skyTasksTierCount && !lastTier.isEmpty() && tierCount(mc, lastTier)[0] > 0;
 		}
 
+		/** The rows as worked out last, and when: width, height and drawing ask for them several times a frame. */
+		private List<Row> rows;
+		private long rowsAt;
+
 		private List<Row> rowsOrPreview(Minecraft mc) {
-			// nothing real to show (the editor): two sample tasks
-			return rows(mc, visible(mc) ? shown(mc) : preview());
+			long now = System.nanoTime();
+			// worked out again once a tick (what they show changes with ticks and windows read)
+			if (rows == null || now - rowsAt > 50_000_000L) {
+				// nothing real to show (the editor): two sample tasks
+				rows = SkyTasks.rows(mc, visible(mc) ? shown(mc) : preview());
+				rowsAt = now;
+			}
+			return rows;
 		}
 
 		public int width(Minecraft mc) {

@@ -442,14 +442,14 @@ public class SlashHud implements ClientModInitializer {
 	private static void drawOne(GuiGraphicsExtractor g, Minecraft mc, boolean preview, HudModule m) {
 		HudConfig.Placement p = config.placement(m.id());
 		if (!p.enabled || (!preview && !m.visible(mc))) return;
-		int[] size = size(m, mc, p);
-		int[] at = position(p, size[0], size[1], g.guiWidth(), g.guiHeight());
+		// measured once a frame (some modules work out their whole content to know their size)
+		int w = m.width(mc), h = m.height(mc);
+		int[] at = position(p, Math.round(w * p.scale()), Math.round(h * p.scale()), g.guiWidth(), g.guiHeight());
 		var pose = g.pose();
 		pose.pushMatrix();
 		pose.translate(at[0], at[1]);
 		pose.scale(p.scale(), p.scale());
 		// keystrokes draw their own boxes
-		int w = m.width(mc), h = m.height(mc);
 		int r = p.radius(config);
 		if (p.background(config) && !(m instanceof Modules.Keystrokes) && !(m instanceof GameParts.Part) && m.framed()) {
 			int bg = Math.round(p.opacity() * 2.55f) << 24 | (config.backgroundColor & 0xFFFFFF);

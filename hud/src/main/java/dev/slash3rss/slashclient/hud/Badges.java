@@ -134,7 +134,8 @@ public final class Badges {
 	public static String server;
 	private static long lastHeartbeat;
 	private static int tick;
-	private static boolean busy;
+	/** Set from the lookup's thread, read on the game's. */
+	private static volatile boolean busy;
 
 	/** Reads the server address the launcher left for the mod; without it only your own logo shows. */
 	static void load() {

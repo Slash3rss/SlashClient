@@ -123,8 +123,13 @@ public final class SkyTaskParser {
 	 */
 	public static String plain(String s) {
 		// SkyUp's no-break spaces ("Stojak na zbroję") as plain ones; written as codes, so no editor loses them
-		return s == null ? "" : s.replaceAll("§.", "").replaceAll("[\\uE000-\\uF8FF]", "").replaceAll("[\\u00A0\\u2007\\u202F]", " ").strip();
+		return s == null ? "" : NO_BREAK.matcher(PRIVATE.matcher(COLOUR.matcher(s).replaceAll("")).replaceAll("")).replaceAll(" ").strip();
 	}
+
+	// compiled once: plain() runs for every slot and line the tracker looks at, many times a frame
+	private static final Pattern COLOUR = Pattern.compile("§.");
+	private static final Pattern PRIVATE = Pattern.compile("[\\uE000-\\uF8FF]");
+	private static final Pattern NO_BREAK = Pattern.compile("[\\u00A0\\u2007\\u202F]");
 
 	private static final Pattern CHALLENGES_TITLE = Pattern.compile("(?i)^wyzwania(\\s*(»|>>)\\s*\\S.*)?$");
 	/** What only the challenges GUIs hold: a task's "LPM » Ukończ", a category's "Sprawdź wyzwania", the info item. */

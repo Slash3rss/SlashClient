@@ -321,14 +321,18 @@ public final class ChatTabs {
 
 	/** Compiled once per pattern; a broken pattern simply catches nothing. */
 	private static Pattern pattern(String regex) {
-		return compiled.computeIfAbsent(regex, r -> {
+		// a broken one is remembered as broken too, not compiled (and failed) again for every chat line
+		Pattern p = compiled.computeIfAbsent(regex, r -> {
 			try {
 				return Pattern.compile(r);
 			} catch (PatternSyntaxException e) {
-				return null;
+				return BROKEN;
 			}
 		});
+		return p == BROKEN ? null : p;
 	}
+
+	private static final Pattern BROKEN = Pattern.compile("(?!)");
 
 	/** Checks a pattern for the editor; null when it is fine, else the problem. */
 	public static String problem(String regex) {
