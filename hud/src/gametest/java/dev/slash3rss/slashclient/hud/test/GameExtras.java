@@ -117,6 +117,8 @@ public class GameExtras implements FabricClientGameTest {
 			context.waitTicks(10);
 			context.takeScreenshot("extras-pause-menu");
 			context.setScreen(() -> null);
+			// the menu paused the world: it runs again before the world is closed (closing it as it wakes hung the game)
+			context.waitTicks(20);
 			// the chat stays after leaving (the game would empty it)
 			context.runOnClient(mc -> {
 				//#if MC >= 26.1
