@@ -6,6 +6,7 @@ import path from 'node:path';
 import AdmZip from 'adm-zip';
 import { fetchWatched } from './download';
 import { throttled } from './rateLimit';
+import { t } from '../shared/i18n';
 
 // Electron treats app.asar as a virtual directory. Update bundles must be handled
 // as real files, including cleanup and replacing an archive left by a failed unpack.
@@ -99,7 +100,7 @@ export async function downloadMacUpdate(feed: string, version: string, file: Mac
     if (percent !== shown) progress((shown = percent));
   }
   await new Promise<void>((resolve, reject) => out.end((err?: Error | null) => (err ? reject(err) : resolve())));
-  if (hash.digest('base64') !== file.sha512) throw new Error('Pobrana aktualizacja jest uszkodzona (zła suma kontrolna).');
+  if (hash.digest('base64') !== file.sha512) throw new Error(t('Pobrana aktualizacja jest uszkodzona (zła suma kontrolna).'));
   // macOS 15 lets no unsigned app write into another app's bundle, so the new one is unpacked under
   // a name that is not one yet (SlashClient.app → SlashClient.next); the swap script names it back
   const unpacked = path.join(dir, 'app');
@@ -120,7 +121,7 @@ export async function unpackRelease(zip: string, into: string): Promise<string> 
     await clearDir(staging);
     await new Promise<void>((resolve, reject) => execFile('/usr/bin/ditto', ['-x', '-k', zip, staging], (err, _out, stderr) => (err ? reject(new Error(`ditto: ${stderr || err.message}`.trim())) : resolve())));
     const app = (await fs.readdir(staging)).find((n) => n.endsWith('.app'));
-    if (!app) throw new Error('W aktualizacji nie ma aplikacji.');
+    if (!app) throw new Error(t('W aktualizacji nie ma aplikacji.'));
     const name = `${app.slice(0, -4)}.next`;
     await fs.mkdir(into, { recursive: true });
     await fs.rename(path.join(staging, app), path.join(into, name));
@@ -148,7 +149,7 @@ export async function unpackApp(zip: string, into: string): Promise<string> {
     if (!first.endsWith('.app')) continue;
     top = `${first.slice(0, -4)}.next`;
     const target = path.join(into, top, entry.entryName.slice(first.length));
-    if (!path.resolve(target).startsWith(path.resolve(into) + path.sep)) throw new Error('W aktualizacji jest zła ścieżka.');
+    if (!path.resolve(target).startsWith(path.resolve(into) + path.sep)) throw new Error(t('W aktualizacji jest zła ścieżka.'));
     const mode = (entry.header.attr >>> 16) & 0o170777;
     if (entry.isDirectory) {
       await fs.mkdir(target, { recursive: true });
@@ -166,7 +167,7 @@ export async function unpackApp(zip: string, into: string): Promise<string> {
     await fs.rm(target, { recursive: true, force: true });
     await fs.symlink(to, target);
   }
-  if (!top) throw new Error('W aktualizacji nie ma aplikacji.');
+  if (!top) throw new Error(t('W aktualizacji nie ma aplikacji.'));
   return top;
 }
 

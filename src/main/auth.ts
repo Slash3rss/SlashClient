@@ -186,6 +186,21 @@ export function gameSessionMargin(force: boolean, lastForcedAt: number | undefin
 /** Returns the account with a valid Minecraft token (at least `marginMs` left), refreshing it through Microsoft if needed. */
 export async function ensureFreshAccount(account: MicrosoftAccount, defaultClientId: string, marginMs = 0): Promise<MicrosoftAccount> {
   if (!needsRefresh(account.expiresAt, Date.now(), marginMs)) return account;
+  // one renewal at a time per account: the others wait for it and get the same fresh token
+  const running = refreshing.get(account.id);
+  if (running) return running;
+  const run = refreshAccount(account, defaultClientId).finally(() => refreshing.delete(account.id));
+  refreshing.set(account.id, run);
+  return run;
+}
+
+/**
+ * Refreshes going on now, by account: the skin panel, the game's start and the game itself can all ask
+ * at once, and they share one renewal instead of each asking Microsoft (which limits sign-ins).
+ */
+const refreshing = new Map<string, Promise<MicrosoftAccount>>();
+
+async function refreshAccount(account: MicrosoftAccount, defaultClientId: string): Promise<MicrosoftAccount> {
   // a refresh token works only with the app that issued it, even after the launcher's default changes
   const clientId = account.clientId || defaultClientId;
   requireClientId(clientId);

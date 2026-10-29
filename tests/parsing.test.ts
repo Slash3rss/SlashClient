@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import os from 'node:os';
 import { describe, it } from 'node:test';
 import { analyzeCrash } from '../src/main/crash';
-import { createLogParser } from '../src/main/gamelog';
+import { createLineBatcher, createLogParser } from '../src/main/gamelog';
 import { readNbt } from '../src/main/nbt';
 import { setLang } from '../src/shared/i18n';
 import { levelDat } from './helpers';
@@ -23,6 +23,22 @@ describe('game log parser', () => {
     const lines: string[] = [];
     createLogParser((l) => lines.push(l))('plain line\nsecond\n');
     assert.deepEqual(lines, ['plain line', 'second']);
+  });
+  it('sends a burst of lines to the window as one batch', async () => {
+    const batches: string[][] = [];
+    const batcher = createLineBatcher((lines) => batches.push(lines), 20);
+    for (let i = 0; i < 1000; i++) batcher.push(`line ${i}`);
+    assert.equal(batches.length, 0);
+    await new Promise((r) => setTimeout(r, 40));
+    assert.equal(batches.length, 1);
+    assert.equal(batches[0].length, 1000);
+    // the last lines go out at once when the game closes, and nothing is sent twice
+    batcher.push('closing');
+    batcher.flush();
+    batcher.flush();
+    await new Promise((r) => setTimeout(r, 40));
+    assert.deepEqual(batches.map((b) => b.length), [1000, 1]);
+    assert.deepEqual(batches[1], ['closing']);
   });
 });
 

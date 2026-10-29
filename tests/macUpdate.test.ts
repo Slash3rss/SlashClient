@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
+import { lookup, setLang } from '../src/shared/i18n';
 import { appBundle, bundleState, clearDir, pickMacZip, swapScript, unpackApp, unpackRelease } from '../src/main/macUpdate';
 
 const FILES = [
@@ -112,5 +114,23 @@ describe('macOS updates', () => {
     await assert.rejects(fs.access(`${current}.old`));
     await fs.access(opened);
     await fs.rm(root, { recursive: true });
+  });
+});
+
+describe('update and content errors in English', () => {
+  it('has an English text for every error the updaters and the content bin show', () => {
+    const files = ['src/main/macUpdate.ts', 'src/main/winUpdate.ts', 'src/main/contentBin.ts'];
+    const keys = new Set<string>(['Najpierw zamknij grę tego profilu.']);
+    for (const f of files) {
+      const code = readFileSync(f, 'utf8');
+      for (const m of code.matchAll(/\bt\('((?:[^'\\]|\\.)*)'/g)) keys.add(m[1]);
+      // a Polish message thrown as is would reach English players untranslated
+      const bare = [...code.matchAll(/new Error\((['`])([^'`]*)\1/g)].map((m) => m[2]).filter((s) => /[ąćęłńóśźż]|\\u0[01]/i.test(s));
+      assert.deepEqual(bare, [], f);
+    }
+    setLang('en');
+    const missing = [...keys].filter((k) => !lookup(k));
+    setLang('pl');
+    assert.deepEqual(missing, []);
   });
 });

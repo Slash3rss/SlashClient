@@ -298,7 +298,20 @@ export function saveStore(data: StoreData): Promise<void> {
     await fs.writeFile(tmp, json, { mode: 0o600 });
     // the file being replaced is the last good one: kept, for a start that cannot read the new one
     await fs.copyFile(FILE(), BACKUP()).catch(() => {});
-    await fs.rename(tmp, FILE());
+    // an antivirus or a backup tool holding launcher.json for a moment (Windows: EPERM, EBUSY): tried again
+    for (let i = 0; ; i++) {
+      try {
+        await fs.rename(tmp, FILE());
+        return;
+      } catch (err) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (i >= 4 || (code !== 'EPERM' && code !== 'EBUSY' && code !== 'EACCES')) {
+          await fs.rm(tmp, { force: true }).catch(() => {});
+          throw err;
+        }
+        await new Promise((r) => setTimeout(r, 200));
+      }
+    }
   };
   const next = saving.then(write, write);
   saving = next.catch(() => {});

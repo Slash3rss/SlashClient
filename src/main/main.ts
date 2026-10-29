@@ -10,6 +10,7 @@ import { analyzeCrash } from './crash';
 import { currentIconId, iconFile, iconFromFile, iconFromLibrary, iconFromUrl, LIBRARY } from './profileIcon';
 import { libraryIcons, removeFromLibrary } from './iconLibrary';
 import { pullShared, pushShared } from './sync';
+import { createLineBatcher } from './gamelog';
 import { recommendedMemoryMb } from './jvm';
 import { markExistingUser } from '../shared/firstRun';
 import { shareLog } from './logshare';
@@ -97,6 +98,12 @@ let store: StoreData;
  */
 interface RunningGame { child: ChildProcess; hasHud: boolean; killRequested: boolean; presence: Presence; link: () => void }
 const games = new Map<string, RunningGame>();
+/**
+ * Profiles being prepared to play (Java, libraries and assets can take minutes): they count as
+ * running, so the folder is not deleted, restored or replaced from the cloud under the starting game.
+ */
+const launching = new Set<string>();
+const profileBusy = (id: string) => games.has(id) || launching.has(id);
 let loginAbort: AbortController | undefined;
 let discord: DiscordPresence | undefined;
 
@@ -422,7 +429,7 @@ handle('profile:delete', async (id: string, trashFiles = false) => {
   const profile = store.profiles.find((p) => p.id === id);
   // the folder only when it is the launcher's own, to the system trash (it can be brought back), never while the game runs in it
   if (trashFiles && profile && ownsGameDir(profile)) {
-    if (games.has(id)) throw new Error('Najpierw zamknij grę tego profilu.');
+    if (profileBusy(id)) throw new Error(t('Najpierw zamknij grę tego profilu.'));
     const dir = profileGameDir(profile);
     if (await fsp.stat(dir).then(() => true, () => false)) await shell.trashItem(dir);
   }
@@ -1092,7 +1099,7 @@ handle('modpack:update', async (profileId: string, versionId?: string) => {
   const profile = profileById(profileId);
   const pack = profile.modpack;
   if (!pack) throw new Error(t('Ten profil nie pochodzi z modpacka Modrinth ani CurseForge.'));
-  if (games.has(profile.id)) throw new Error(t('Zamknij grę przed aktualizacją modpacka.'));
+  if (profileBusy(profile.id)) throw new Error(t('Zamknij grę przed aktualizacją modpacka.'));
   if (snapshotBusy.has(profile.id)) throw new Error(t('Poczekaj, aż skończy się zapisywanie lub przywracanie migawki.'));
   const task = startTask(t('Aktualizowanie modpacka: {0}', pack.title), undefined);
   try {
@@ -1411,10 +1418,10 @@ registerMediaSharing({ handle, gameDirOf, session: () => shareSession(), copy: (
 // ---------- config editor and disk cleanup (maintenance.ts) ----------
 
 registerMaintenance({
-  handle, profiles: () => store.profiles, running: (id) => games.has(id), anyRunning: () => games.size > 0,
+  handle, profiles: () => store.profiles, running: profileBusy, anyRunning: () => games.size > 0 || launching.size > 0,
   trash: (file) => shell.trashItem(file), openPath: (dir) => shell.openPath(dir), defaultJavaVendor: () => store.settings.javaVendor,
 });
-registerLauncherTools({ handle, profiles: () => store.profiles, running: (id) => games.has(id) });
+registerLauncherTools({ handle, profiles: () => store.profiles, running: profileBusy });
 
 handle('file:open', (file: string) => {
   if (isInsideInstances(file)) return shell.openPath(file);
@@ -1510,12 +1517,12 @@ async function withSnapshotLock<T>(profile: Profile, work: () => Promise<T>): Pr
 handle('snapshots:list', (profileId: string) => listSnapshots(snapshotsDirOf(profileById(profileId))));
 handle('snapshots:create', async (profileId: string) => {
   const profile = profileById(profileId);
-  if (games.has(profile.id)) throw new Error(t('Zamknij grę przed zrobieniem migawki.'));
+  if (profileBusy(profile.id)) throw new Error(t('Zamknij grę przed zrobieniem migawki.'));
   return withSnapshotLock(profile, () => createSnapshot({ dir: snapshotsDirOf(profile), gameDir: profileGameDir(profile), profile, reason: 'manual' }));
 });
 handle('snapshots:restore', async (profileId: string, id: string) => {
   const profile = profileById(profileId);
-  if (games.has(profile.id)) throw new Error(t('Zamknij grę przed przywróceniem migawki.'));
+  if (profileBusy(profile.id)) throw new Error(t('Zamknij grę przed przywróceniem migawki.'));
   const info = await withSnapshotLock(profile, () => restoreSnapshot(snapshotsDirOf(profile), id, profileGameDir(profile)));
   applySnapshot(profile, info);
   await persist();
@@ -1528,7 +1535,7 @@ handle('snapshots:delete', (profileId: string, id: string) => deleteSnapshot(sna
 const snapshotBefore = (profile: Profile, label: string) =>
   withSnapshotLock(profile, () => createSnapshot({ dir: snapshotsDirOf(profile), gameDir: profileGameDir(profile), profile, reason: 'manual', label }));
 const cloudProfiles = registerCloudProfiles({
-  handle, profiles: () => store.profiles, gameDir: profileGameDir, running: (id) => games.has(id), persist,
+  handle, profiles: () => store.profiles, gameDir: profileGameDir, running: profileBusy, persist,
   startTask: (title) => startTask(title), session: shareSession, signedIn: () => !!store.settings.socialToken,
   pack: (profile, out, parts, onStage) => packProfile(profile, out, parts, onStage),
   snapshot: snapshotBefore, defaults: newMemory,
@@ -1539,7 +1546,7 @@ const cloudProfiles = registerCloudProfiles({
   linksFile: path.join(paths.root, 'cloud-profiles.json'), tempDir: path.join(app.getPath('temp'), 'slashclient-cloud'),
 });
 registerVersionMove({
-  handle, profiles: () => store.profiles, gameDir: profileGameDir, running: (id) => games.has(id), persist,
+  handle, profiles: () => store.profiles, gameDir: profileGameDir, running: profileBusy, persist,
   startTask: (title) => startTask(title), resolveVersion: resolveVersionId, snapshot: snapshotBefore,
   loaderSupports: async (loader, gameVersion) => loader === 'vanilla' || (await loaderVersions(loader, gameVersion).catch(() => [])).length > 0,
   installMod: (gameDir, projectId, gameVersion, loader) => installProject(gameDir, projectId, 'mod', gameVersion, loader),
@@ -1585,8 +1592,26 @@ handle('skin:save', async (accountId: string) => {
 });
 /** "Install" pressed while a game runs: the launcher quits to install, so it waits for the last game to close. */
 let installAfterGames = false;
+const gamesBusy = () => games.size > 0 || launching.size > 0;
+/**
+ * The waiting update, a moment after the last game: what follows the game (settings, the session) is
+ * written first. A game started again in that moment keeps the update waiting for it instead of the
+ * launcher quitting under it.
+ */
+function installAfterLastGame() {
+  if (!installAfterGames || gamesBusy()) return;
+  setTimeout(() => {
+    if (!installAfterGames || gamesBusy()) return;
+    installAfterGames = false;
+    try {
+      installUpdate();
+    } catch (err) {
+      console.error('aktualizacja:', (err as Error).message);
+    }
+  }, 5_000);
+}
 handle('update:install', () => {
-  if (games.size) {
+  if (gamesBusy()) {
     installAfterGames = true;
     return 'after-game';
   }
@@ -1606,8 +1631,17 @@ async function freshMsa(accountId: string, marginMs = 0): Promise<MicrosoftAccou
   if (account?.type !== 'msa') throw new Error(t('Skin i pelerynę można zmienić tylko na koncie Microsoft.'));
   const fresh = await ensureFreshAccount(account, store.settings.msClientId.trim(), marginMs);
   if (fresh !== account) {
-    store.accounts = store.accounts.map((a) => (a.id === fresh.id ? fresh : a));
-    await saveStore(store);
+    // only over the account it was refreshed from: a sign-in again in the meantime (or another
+    // caller of the same renewal, already saved) is not replaced by this result
+    let changed = false;
+    store.accounts = store.accounts.map((a) => {
+      if (a.id !== fresh.id || a.type !== 'msa' || a.refreshToken !== account.refreshToken) return a;
+      changed = true;
+      return fresh;
+    });
+    if (changed) await saveStore(store);
+    const now = store.accounts.find((a) => a.id === fresh.id);
+    if (!changed && now?.type === 'msa') return now;
   }
   return fresh;
 }
@@ -1690,7 +1724,18 @@ handle('game:launch', (profileId: string, accountId: string, server?: string, wo
 /** Launch options only the launcher itself uses (the Java comparison in javaCompare.ts). */
 interface LaunchExtras { javaVendor?: JavaVendor; quitAfterBenchmark?: boolean; onJava?: (choice: JavaChoice) => void }
 async function launchGame(profileId: string, accountId: string, server?: string, world?: string, benchmark: boolean | 'scene' = false, extras: LaunchExtras = {}) {
-  if (games.has(profileId)) throw new Error(t('Ten profil już działa.'));
+  // a second click on Play (or the Java comparison) while the first one still installs does not start the profile twice
+  if (profileBusy(profileId)) throw new Error(t('Ten profil już działa.'));
+  launching.add(profileId);
+  try {
+    await startGame(profileId, accountId, server, world, benchmark, extras);
+  } finally {
+    launching.delete(profileId);
+    // a launch that failed while an update waited for the games
+    installAfterLastGame();
+  }
+}
+async function startGame(profileId: string, accountId: string, server: string | undefined, world: string | undefined, benchmark: boolean | 'scene', extras: LaunchExtras) {
   if (snapshotBusy.has(profileId)) throw new Error(t('Poczekaj, aż skończy się zapisywanie lub przywracanie migawki.'));
   const profile = store.profiles.find((p) => p.id === profileId);
   // a profile with its own account always plays as it
@@ -1702,9 +1747,8 @@ async function launchGame(profileId: string, accountId: string, server?: string,
   store.settings.selectedAccountId = account.id;
   if (account.type === 'msa') {
     send('launch:stage', { stage: t('Odświeżanie sesji Microsoft'), done: 0, total: 1 });
-    const fresh = await ensureFreshAccount(account, store.settings.msClientId.trim());
-    store.accounts = store.accounts.map((a) => (a.id === fresh.id ? fresh : a));
-    account = fresh;
+    // through the same renewal as the skin panel and the running game: one request to Microsoft
+    account = await freshMsa(account.id);
   }
   await persist();
 
@@ -1716,7 +1760,6 @@ async function launchGame(profileId: string, accountId: string, server?: string,
   let lastServer: { address: string; at: number } | undefined = server ? { address: server, at: Date.now() } : undefined;
   const joins: { address: string; at: number }[] = lastServer ? [lastServer] : [];
   const startedAt = Date.now();
-  const consoleLog = await consoleHistory.start(profile.id, startedAt).catch(() => undefined);
   const loaderName = profile.loader === 'vanilla' ? '' : ` · ${LOADER_NAMES[profile.loader]}`;
   const presence: Presence = {
     details: `Minecraft ${await resolveVersionId(profile.versionId)}${loaderName}`,
@@ -1754,8 +1797,12 @@ async function launchGame(profileId: string, accountId: string, server?: string,
   social.setActivity({ kind: server ? 'server' : 'menu', server: server || undefined, version: activityVersion, since: startedAt });
   // the servers' Discord looks and tab list rules, ready before the game is on one
   void statusRules.refresh();
+  // opened only now: a launch stopped earlier (benchmark without the mod) leaves no empty console session
+  const consoleLog = await consoleHistory.start(profile.id, startedAt).catch(() => undefined);
   // a launch that fails (no network, no Java) takes back what was set for it: friends do not see you "in the game"
+  const gameLog = createLineBatcher((lines) => send('game:logBatch', { profileId: profile.id, lines }));
   const failed = (err: unknown): never => {
+    gameLog.flush();
     void consoleLog?.end(null, false);
     if (!games.size) social.setActivity({ kind: 'launcher' });
     throw err;
@@ -1768,7 +1815,7 @@ async function launchGame(profileId: string, accountId: string, server?: string,
       recentLog.push(line);
       if (recentLog.length > 3000) recentLog.shift();
       consoleLog?.line(line);
-      send('game:log', { profileId: profile.id, line });
+      gameLog.push(line);
       const joined = serverFromLog(line);
       if (joined) {
         lastServer = { address: joined, at: Date.now() };
@@ -1807,10 +1854,7 @@ async function launchGame(profileId: string, accountId: string, server?: string,
     // the game is gone: its LAN world too, and the ports into friends' worlds
     if (!games.size) lan.stop();
     // an update waiting for the game: installed once what follows the game (settings, the session) is written
-    if (!games.size && installAfterGames) {
-      installAfterGames = false;
-      setTimeout(() => installUpdate(), 5_000);
-    }
+    installAfterLastGame();
     const killRequested = running.killRequested;
     // the console goes into the history; the Play screen lists it once it is written
     consoleLog?.end(code, code !== 0 && !killRequested).then(() => send('console:saved', { profileId: profile.id })).catch(() => {});
@@ -1819,7 +1863,7 @@ async function launchGame(profileId: string, accountId: string, server?: string,
     if (benchmark) readBenchmarks(profileGameDir(profile)).then((runs) => {
       if (runs[0] && runs[0].at > benchmarksBefore) send('benchmark:done', { profileId: profile.id, result: runs[0], before: comparableBefore(runs, 0) });
     }).catch(() => {});
-    if (profile.syncOptions) pushShared(profileGameDir(profile)).catch(() => {});
+    if (profile.syncOptions) pushShared(profileGameDir(profile), startedAt).catch(() => {});
     // profiles synced with the account go there after the game
     cloudProfiles.afterGame(profile.id).catch((err) => console.error('chmura:', (err as Error).message));
     recordSession(profile, startedAt, lastServer).catch(() => {});
@@ -1835,6 +1879,8 @@ async function launchGame(profileId: string, accountId: string, server?: string,
     const other = [...games.values()].at(-1);
     showPresence(other ? other.presence : idlePresence());
     if (!other) social.setActivity({ kind: 'launcher' });
+    // the last lines before the console says the game closed
+    gameLog.flush();
     send('game:exit', { code, signal, byUser: killRequested, profileId: profile.id });
     if (code !== 0 && !killRequested) {
       analyzeCrash({ log: recentLog, gameDir: profileGameDir(profile), startedAt, code, signal })
@@ -1865,7 +1911,7 @@ registerJavaCompare({
   handle, send,
   profile: (id) => store.profiles.find((p) => p.id === id),
   defaultVendor: () => store.settings.javaVendor,
-  running: (id) => games.has(id),
+  running: profileBusy,
   launch: (profileId, accountId, javaVendor, onJava) => launchGame(profileId, accountId, undefined, undefined, 'scene', { javaVendor, quitAfterBenchmark: true, onJava }),
   child: (id) => games.get(id)?.child,
   kill: (id) => {
