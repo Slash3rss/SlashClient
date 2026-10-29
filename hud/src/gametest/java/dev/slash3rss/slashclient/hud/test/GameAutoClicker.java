@@ -39,6 +39,9 @@ public class GameAutoClicker implements FabricClientGameTest {
 			context.waitTicks(10);
 			String targetName = context.computeOnClient(mc -> TestHooks.shownTargetName());
 			if (!targetName.equals("Giermek poz. 4")) throw new AssertionError("The Target box's name for a mob named over its head: '" + targetName + "'");
+			// a name with nothing to read (an NPC's hidden one) is looked past
+			String readable = context.computeOnClient(mc -> TestHooks.targetReadable());
+			if (!readable.equals("1100000")) throw new AssertionError("Names the Target box reads: " + readable);
 			// or by a text display over it (two lines: the first is the name)
 			world.getServer().runCommand("kill @e[type=armor_stand]");
 			world.getServer().runCommand("execute as @e[type=husk,limit=1] at @s run summon text_display ~ ~2.4 ~ {text:" + nbtText("27.98 ❤ | Rozbitek poz. 3\\nBoss") + "}");

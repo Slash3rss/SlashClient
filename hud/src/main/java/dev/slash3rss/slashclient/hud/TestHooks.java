@@ -1807,6 +1807,14 @@ public final class TestHooks {
 		return MoreModules.Target.shownName(net.minecraft.client.Minecraft.getInstance());
 	}
 
+	/** Which names the Target module reads as a name ("1" each) and which it looks past (an NPC's hidden one). */
+	public static String targetReadable() {
+		StringBuilder out = new StringBuilder();
+		for (String n : new String[] { "Koczownik", "Zombie poz. 14", " ", "\u200B", "§r", "\uE001", "★" })
+			out.append(MoreModules.Target.readable(n) ? "1" : "0");
+		return out.toString();
+	}
+
 	/** A SkyUp mob's name as the Target module shows it (without the health in front). */
 	public static String targetName() {
 		var name = net.minecraft.network.chat.Component.literal("84.36 ❤ ").withStyle(net.minecraft.ChatFormatting.RED)

@@ -402,12 +402,29 @@ public final class MoreModules {
 		}
 
 		private static Component findName(LivingEntity e) {
+			// a server's mob with a player's model (an NPC, not on the tab list) has a made-up name of its own,
+			// hidden by the server: the name shown over its head is the one the player sees
+			if (e instanceof net.minecraft.world.entity.player.Player && npc(e)) {
+				Component tag = tagAbove(e);
+				if (tag != null) return tag;
+			}
 			Component name = withoutHealth(e.getDisplayName());
-			if (!name.getString().isBlank()) return name;
+			if (readable(name.getString())) return name;
 			// a mob drawn with a server's model (SkyUp's dungeons) has no name of its own: the name over
 			// its head is on another entity there (a name tag riding it or standing above), else its kind
 			Component tag = tagAbove(e);
 			return tag != null ? tag : e.getType().getDescription();
+		}
+
+		/** A player's model with no player behind it: not on the tab list (servers' NPCs leave it at once). */
+		private static boolean npc(LivingEntity e) {
+			var connection = Minecraft.getInstance().getConnection();
+			return e != Minecraft.getInstance().player && (connection == null || connection.getPlayerInfo(e.getUUID()) == null || e.getUUID().version() == 2);
+		}
+
+		/** Whether a name has something to read: a letter or a digit (not only spaces, colour codes or empty glyphs). */
+		static boolean readable(String name) {
+			return name.replaceAll("§.", "").codePoints().anyMatch(Character::isLetterOrDigit);
 		}
 
 		/**
