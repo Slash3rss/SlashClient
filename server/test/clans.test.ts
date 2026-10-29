@@ -275,4 +275,59 @@ describe('clan permissions', () => {
     assert.equal((await call('GET', '/v1/clans/mine', ala.token)).body.clan, null);
     assert.equal((await call('GET', '/v1/groups', ala.token)).body.groups.length, 0);
   });
+
+  it('lets an admin look after a clan: search, members, roles, owner, name and tag', async () => {
+    const admin = await login('ClanAdmin');
+    const { id, owner, officer, member } = await clanOf('Adm', 'ADMQ');
+    const live = await connect(member.token);
+    const kicked = await connect(officer.token);
+    // only admins; search by tag, name and the owner's handle
+    assert.equal((await call('GET', `/v1/admin/clans/${id}`, owner.token)).status, 403);
+    assert.equal((await call('POST', `/v1/admin/clans/${id}/rename`, owner.token, { tag: 'XYZ' })).status, 403);
+    for (const q of ['admq', 'klan adm', `@${owner.user.handle}`]) {
+      assert.deepEqual((await call('GET', `/v1/admin/clans?q=${encodeURIComponent(q)}`, admin.token)).body.clans.map((c: any) => c.id), [id], q);
+    }
+    assert.equal((await call('GET', '/v1/admin/clans?q=nothing-like-it', admin.token)).body.clans.length, 0);
+    const detail = (await call('GET', `/v1/admin/clans/${id}`, admin.token)).body;
+    assert.equal(detail.clan.owner.id, owner.user.id);
+    assert.deepEqual(detail.members.map((m: any) => m.role), ['owner', 'officer', 'member']);
+
+    // a new tag and name: checked like the owner's, and the members see it at once
+    assert.equal((await call('POST', `/v1/admin/clans/${id}/rename`, admin.token, { tag: 'FUCK' })).body.error, 'offensive_tag');
+    assert.equal((await call('POST', `/v1/admin/clans/${id}/rename`, admin.token, { tag: '!' })).body.error, 'bad_tag');
+    live.events.length = 0;
+    assert.equal((await call('POST', `/v1/admin/clans/${id}/rename`, admin.token, { tag: 'NICE', name: 'Grzeczny klan' })).status, 200);
+    await live.waitFor((e) => e.type === 'clan');
+    const mine = (await call('GET', '/v1/clans/mine', member.token)).body.clan;
+    assert.equal(mine.tag, 'NICE');
+    assert.equal(mine.name, 'Grzeczny klan');
+
+    // roles: not the owner's, and a role that is not a clan's
+    assert.equal((await call('POST', `/v1/admin/clans/${id}/members/${owner.user.id}/role`, admin.token, { role: 'member' })).body.error, 'owner_must_transfer');
+    assert.equal((await call('POST', `/v1/admin/clans/${id}/members/${member.user.id}/role`, admin.token, { role: 'owner' })).status, 400);
+    assert.equal((await call('POST', `/v1/admin/clans/${id}/members/${member.user.id}/role`, admin.token, { role: 'officer' })).status, 200);
+    assert.equal((await call('GET', '/v1/clans/mine', member.token)).body.clan.role, 'officer');
+
+    // a new owner (a member of the clan); the old one stays as an officer
+    const stranger = await login('AdmStranger');
+    assert.equal((await call('POST', `/v1/admin/clans/${id}/owner`, admin.token, { user: stranger.user.id })).body.error, 'not_member');
+    assert.equal((await call('POST', `/v1/admin/clans/${id}/owner`, admin.token, { handle: `@${member.user.handle}` })).status, 200);
+    assert.equal((await call('GET', '/v1/clans/mine', member.token)).body.clan.role, 'owner');
+    assert.equal((await call('GET', '/v1/clans/mine', owner.token)).body.clan.role, 'officer');
+
+    // taking a member out: they are told, the owner cannot be
+    assert.equal((await call('DELETE', `/v1/admin/clans/${id}/members/${member.user.id}`, admin.token)).body.error, 'owner_must_transfer');
+    assert.equal((await call('DELETE', `/v1/admin/clans/${id}/members/${stranger.user.id}`, admin.token)).status, 404);
+    assert.equal((await call('DELETE', `/v1/admin/clans/${id}/members/${officer.user.id}`, admin.token)).status, 200);
+    assert.equal((await kicked.waitFor((e) => e.type === 'clan' && e.kicked)).kicked.tag, 'NICE');
+    assert.equal((await call('GET', '/v1/clans/mine', officer.token)).body.clan, null);
+    assert.equal((await call('GET', `/v1/admin/clans/${id}`, admin.token)).body.members.length, 2);
+
+    // every step is in the admin log
+    const log = (await call('GET', '/v1/admin/log', admin.token)).body.entries.filter((e: any) => e.target === id).map((e: any) => e.action);
+    for (const action of ['clan.rename', 'clan.role', 'clan.transfer', 'clan.kick']) assert.ok(log.includes(action), action);
+    // closed before the app goes, so their goodbyes do not reach a closed database
+    await Promise.all([live, kicked].map((c) => new Promise((r) => { c.ws.once('close', r); c.ws.close(); })));
+    await new Promise((r) => setTimeout(r, 50));
+  });
 });

@@ -198,10 +198,13 @@ CREATE TABLE IF NOT EXISTS clan_invites (clan_id TEXT NOT NULL REFERENCES clans(
     return this.sql.prepare('SELECT clan_id AS clan, by_uuid AS by, created_at AS at FROM clan_invites WHERE uuid = ? ORDER BY created_at DESC').all(uuid) as never;
   }
 
-  /** Every clan, for the admin panel. */
-  all(): (ClanRow & { members: number; logo: number | null })[] {
+  /** Every clan, for the admin panel; `q` narrows it to a tag, name or the owner's handle. */
+  all(q = '', limit = 500): (ClanRow & { members: number; logo: number | null; ownerHandle: string })[] {
+    const like = `%${q.toLowerCase().replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    const where = q ? "WHERE c.tag_lower LIKE ? ESCAPE '\\' OR lower(c.name) LIKE ? ESCAPE '\\' OR u.handle_lower LIKE ? ESCAPE '\\'" : '';
     return this.sql.prepare(`SELECT c.id, c.tag, c.name, c.owner, c.chat, c.created_at AS createdAt, (SELECT COUNT(*) FROM clan_members m WHERE m.clan_id = c.id) AS members,
-      (SELECT version FROM clan_logos l WHERE l.clan_id = c.id) AS logo FROM clans c ORDER BY c.tag_lower`).all() as never;
+      (SELECT version FROM clan_logos l WHERE l.clan_id = c.id) AS logo, COALESCE(u.handle, '') AS ownerHandle
+      FROM clans c LEFT JOIN users u ON u.uuid = c.owner ${where} ORDER BY c.tag_lower LIMIT ?`).all(...(q ? [like, like, like] : []), limit) as never;
   }
 }
 
@@ -523,10 +526,89 @@ export function createClans(deps: Deps) {
       removeClan(clan);
       return answer(me);
     }],
-    // moderation: the admin panel can see every clan and remove one (an offensive tag that got through)
-    ['GET', /^\/v1\/admin\/clans$/, (req) => {
+    // moderation: the admin panel can see every clan (search by tag, name or owner) and look after one:
+    // its members and roles, a new owner, a new name or tag (an offensive one that got through), its logo,
+    // or remove it. Every step goes to the admin log, and the clan's members see it at once.
+    ['GET', /^\/v1\/admin\/clans$/, (req, _p, url) => {
       deps.admin(req);
-      return { clans: store.all() };
+      return { clans: store.all((url.searchParams.get('q') ?? '').trim().replace(/^@/, '').slice(0, 40)), limits };
+    }],
+    ['GET', /^\/v1\/admin\/clans\/([\w-]{1,32})$/, (req, [id]) => {
+      deps.admin(req);
+      const c = clanOf(id) ?? fail(404, 'not_found');
+      return {
+        clan: { id: c.id, tag: c.tag, name: c.name, createdAt: c.createdAt, owner: person(c.owner), ...logoField(c.id) },
+        members: store.members(c.id).map((m) => ({ ...person(m.uuid), role: m.role, joinedAt: m.joinedAt, tagHidden: !!store.membership(m.uuid)?.hideTag })),
+        invites: store.sentInvites(c.id).map((i) => ({ ...person(i.uuid), at: i.at, by: person(i.by) })),
+        limits,
+      };
+    }],
+    ['POST', /^\/v1\/admin\/clans\/([\w-]{1,32})\/rename$/, async (req, [id]) => {
+      const me = deps.admin(req);
+      const c = clanOf(id) ?? fail(404, 'not_found');
+      const raw = await body(req);
+      const tag = raw.tag === undefined ? c.tag : raw.tag;
+      const problem = tagProblem(tag);
+      if (problem) fail(400, problem);
+      const name = raw.name === undefined ? c.name : cleanClanName(raw.name, limits.nameMax);
+      if (!name) fail(400, 'bad_clan_name');
+      if (offensive(name!)) fail(400, 'offensive_name');
+      if (store.tagTaken(tag as string, c.id)) fail(409, 'tag_taken');
+      if (tag === c.tag && name === c.name) return { ok: true };
+      store.rename(c.id, tag as string, name!);
+      if (c.chat) groups.clanChat.rename(c.chat, `[${tag}] ${name}`, me);
+      db.log(me, 'clan.rename', id, `[${c.tag}] ${c.name} → [${tag}] ${name}`);
+      changed(c);
+      if (tag !== c.tag) for (const m of store.members(c.id)) friendsChanged(m.uuid);
+      return { ok: true };
+    }],
+    // the owner cannot be taken out here: hand the clan over first (or remove it)
+    ['DELETE', /^\/v1\/admin\/clans\/([\w-]{1,32})\/members\/([\w-]{1,64})$/, (req, [id, user]) => {
+      const me = deps.admin(req);
+      const c = clanOf(id) ?? fail(404, 'not_found');
+      const target = roleOf(c, user) ?? fail(404, 'not_found');
+      if (target === 'owner') fail(400, 'owner_must_transfer');
+      store.leave(user);
+      if (c.chat) groups.clanChat.leave(c.chat, user, me);
+      db.log(me, 'clan.kick', id, `[${c.tag}] @${db.user(user)?.handle ?? user}`);
+      push(user, { type: 'clan', kicked: { tag: c.tag, name: c.name } });
+      changed(c);
+      friendsChanged(user);
+      return { ok: true };
+    }],
+    ['POST', /^\/v1\/admin\/clans\/([\w-]{1,32})\/members\/([\w-]{1,64})\/role$/, async (req, [id, user]) => {
+      const me = deps.admin(req);
+      const c = clanOf(id) ?? fail(404, 'not_found');
+      const { role: wanted } = await body(req);
+      if (wanted !== 'officer' && wanted !== 'member') fail(400, 'bad_request');
+      const target = roleOf(c, user) ?? fail(404, 'not_found');
+      if (target === 'owner') fail(400, 'owner_must_transfer');
+      if (target === wanted) return { ok: true };
+      store.setRole(user, wanted as ClanRole);
+      if (c.chat) groups.clanChat.note(c.chat, me, { kind: wanted === 'officer' ? 'promoted' : 'demoted', users: [db.user(user)?.name || '?'] });
+      db.log(me, 'clan.role', id, `[${c.tag}] @${db.user(user)?.handle ?? user} → ${wanted}`);
+      changed(c);
+      return { ok: true };
+    }],
+    // a new owner (one who abuses it, or is gone for good); the old one stays on as an officer
+    ['POST', /^\/v1\/admin\/clans\/([\w-]{1,32})\/owner$/, async (req, [id]) => {
+      const me = deps.admin(req);
+      const c = clanOf(id) ?? fail(404, 'not_found');
+      const { user, handle } = await body(req);
+      const other = typeof user === 'string' ? db.user(user) : typeof handle === 'string' ? db.userByHandle(handle.trim().replace(/^@/, '')) : undefined;
+      if (!other) fail(404, 'not_found');
+      if (!roleOf(c, other!.id)) fail(400, 'not_member');
+      if (other!.id === c.owner) return { ok: true };
+      store.setRole(c.owner, 'officer');
+      store.setRole(other!.id, 'owner');
+      store.setOwner(c.id, other!.id);
+      if (c.chat) {
+        groups.clanChat.setOwner(c.chat, other!.id);
+        groups.clanChat.note(c.chat, me, { kind: 'owner', users: [other!.name || '?'] });
+      }
+      db.log(me, 'clan.transfer', id, `[${c.tag}] → @${other!.handle}`);
+      changed(c);
+      return { ok: true };
     }],
     ['DELETE', /^\/v1\/admin\/clans\/([\w-]{1,32})$/, (req, [id]) => {
       const me = deps.admin(req);
