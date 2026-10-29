@@ -1452,5 +1452,15 @@
 	"slashclient-hud.loading.tip.shulker": "Shulker boxes show what is inside in their tooltip",
 	"slashclient-hud.loading.tip.cosmetics": "Pick your cosmetics in the main menu, under your skin preview",
 	"slashclient-hud.loading.tip.minimap": "Switch on the minimap in SlashClient's settings",
-	"slashclient-hud.loading.tip.toggle": "Turn this screen off in SlashClient's settings: “Custom loading screen”"
+	"slashclient-hud.loading.tip.toggle": "Turn this screen off in SlashClient's settings: “Custom loading screen”",
+	"slashclient-hud.error.tooMany": "Too many tries, try again in a moment",
+	"slashclient-hud.error.signIn": "Sign in again in the SlashClient launcher",
+	"slashclient-hud.error.forbidden": "You are not allowed to do that",
+	"slashclient-hud.error.unavailable": "The server is unavailable for now, try again in a moment",
+	"slashclient-hud.error.disabled": "This feature is turned off right now",
+	"slashclient-hud.error.notFound": "Not found – it may no longer exist",
+	"slashclient-hud.error.notFriends": "This player is not your friend",
+	"slashclient-hud.error.noLauncher": "Start the game from the SlashClient launcher",
+	"slashclient-hud.error.file": "No access to the file or folder",
+	"slashclient-hud.error.generic": "Something went wrong, try again"
 }

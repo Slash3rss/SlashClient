@@ -125,7 +125,7 @@ public final class Party {
 				Social.toast(Component.translatable("slashclient-hud.party.sent").getString(),
 					Component.translatable("slashclient-hud.party.sentTo", friendIds.size(), made.server()).getString(), "m-friends");
 			} catch (Exception e) {
-				Social.toast(Component.translatable("slashclient-hud.friends.notSent").getString(), e.getMessage() == null ? "" : e.getMessage(), "info");
+				Social.toast(Component.translatable("slashclient-hud.friends.notSent").getString(), Social.errorText(e), "info");
 			}
 		});
 	}

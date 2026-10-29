@@ -60,8 +60,7 @@ public final class SkyDump {
 				.withClickEvent(new ClickEvent.OpenFile(DIR)));
 			Compat.chat(mc).addClientSystemMessage(Component.translatable("slashclient-hud.skyDump.saved", link));
 		} catch (Exception e) {
-			SlashHud.LOG.warn("SlashClient: GUI dump: {}", e.toString());
-			Compat.chat(mc).addClientSystemMessage(Component.translatable("slashclient-hud.skyDump.failed", e.toString()));
+			Compat.chat(mc).addClientSystemMessage(Component.translatable("slashclient-hud.skyDump.failed", dev.slash3rss.slashclient.hud.ErrorText.of(e)));
 		}
 	}
 

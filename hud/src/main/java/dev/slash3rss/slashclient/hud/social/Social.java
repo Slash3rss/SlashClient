@@ -179,7 +179,7 @@ public final class Social {
 			} catch (Exception e) {
 				boolean old = String.valueOf(e.getMessage()).contains("403");
 				toast(Component.translatable("slashclient-hud.friends.answerFailed").getString(),
-					old ? Component.translatable("slashclient-hud.friends.answerOld").getString() : String.valueOf(e.getMessage()).replaceFirst("^HTTP \\d+ ", ""), "info");
+					old ? Component.translatable("slashclient-hud.friends.answerOld").getString() : errorText(e), "info");
 			} finally {
 				answering.remove(r.id());
 			}
@@ -624,7 +624,7 @@ public final class Social {
 				refreshFriends();
 			} catch (Exception e) {
 				setMuted(friendId, !muted);
-				toast(Component.translatable("slashclient-hud.mute.failed").getString(), e.getMessage() == null ? "" : e.getMessage(), "info");
+				toast(Component.translatable("slashclient-hud.mute.failed").getString(), errorText(e), "info");
 			}
 		});
 	}
@@ -925,7 +925,7 @@ public final class Social {
 
 	/**
 	 * What went wrong, in the game's language where we know the server's code: too many messages in a
-	 * row ("slow_down:5", the seconds to wait), an edit too late or not ours; else the launcher's text.
+	 * row ("slow_down:5", the seconds to wait), an edit too late or not ours; else ErrorText's words (never the raw answer).
 	 */
 	public static String errorText(Exception e) {
 		String msg = e.getMessage() == null ? "" : e.getMessage();
@@ -939,7 +939,7 @@ public final class Social {
 		for (String code : List.of("edit_expired", "not_editable", "not_author", "not_allowed")) {
 			if (msg.contains(code)) return Component.translatable("slashclient-hud.message." + code).getString();
 		}
-		return msg;
+		return dev.slash3rss.slashclient.hud.ErrorText.of(e);
 	}
 
 	// ---------- worlds opened to LAN, for friends anywhere ----------
@@ -992,7 +992,7 @@ public final class Social {
 				JsonObject res = request("POST", "/lan/join", body, 10);
 				join("127.0.0.1:" + res.get("port").getAsInt());
 			} catch (Exception e) {
-				toast(Component.translatable("slashclient-hud.lan.failed").getString(), e.getMessage() == null ? "" : e.getMessage(), "info");
+				toast(Component.translatable("slashclient-hud.lan.failed").getString(), errorText(e), "info");
 			}
 		});
 	}
@@ -1102,7 +1102,7 @@ public final class Social {
 			try {
 				dev.slash3rss.slashclient.hud.AccountSwitch.apply(mc, str(s, "name"), uuid, str(s, "accessToken"), str(s, "xuid"), "offline".equals(str(s, "type")));
 			} catch (Exception e) {
-				toast(Component.translatable("slashclient-hud.accounts.failed").getString(), String.valueOf(e.getMessage()), "info");
+				toast(Component.translatable("slashclient-hud.accounts.failed").getString(), dev.slash3rss.slashclient.hud.ErrorText.of(e), "info");
 			}
 		});
 	}

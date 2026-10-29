@@ -47,7 +47,7 @@ public class AccountsScreen extends Screen {
 				Social.useAccount(a.id());
 				minecraft.execute(() -> minecraft.setScreenAndShow(parent));
 			} catch (Exception e) {
-				status = Component.translatable("slashclient-hud.accounts.failed").getString() + ": " + e.getMessage();
+				status = Component.translatable("slashclient-hud.accounts.failed").getString() + ": " + ErrorText.of(e);
 				switching = null;
 			}
 		});
