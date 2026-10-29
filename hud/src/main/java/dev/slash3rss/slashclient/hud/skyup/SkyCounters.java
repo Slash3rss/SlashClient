@@ -315,9 +315,15 @@ public final class SkyCounters {
 	/** A bell clicked and when: it counts once the server swings it (a protected one stays still and silent). */
 	private static net.minecraft.core.BlockPos ringing;
 	private static long ringingSince;
-	/** A sheep clicked with shears and when: it counts once the server says it is shorn. */
+	/**
+	 * A sheep clicked with shears, when, how many it stood for (a stacked sheep is many) and where: it counts
+	 * once the server is seen to have shorn it, and not at all when the server refused the click.
+	 */
 	private static int shearing = -1;
 	private static long shearingSince;
+	private static int shearingStack;
+	private static net.minecraft.world.phys.Vec3 shearingAt;
+	private static net.minecraft.world.entity.EntityType<?> shearingType;
 
 	/** A right click: on a bell it rings ("Uderz w dzwony"); shears on a sheep that has wool ("Ostrzyż"). */
 	public static void used(Minecraft mc) {
@@ -333,6 +339,9 @@ public final class SkyCounters {
 			&& (mc.player.getMainHandItem().is(Items.SHEARS) || mc.player.getOffhandItem().is(Items.SHEARS))) {
 			shearing = sheep.getId();
 			shearingSince = System.currentTimeMillis();
+			shearingStack = stackOf(sheep);
+			shearingAt = sheep.position();
+			shearingType = sheep.getType();
 		} else if (mc.hitResult instanceof net.minecraft.world.phys.EntityHitResult hit
 			&& hit.getEntity() instanceof net.minecraft.world.entity.monster.piglin.Piglin piglin && mc.player.getMainHandItem().is(Items.GOLD_INGOT)) {
 			// gold given to a piglin by hand (as on SkyUp): what it drops in the next while is the trade
@@ -354,12 +363,29 @@ public final class SkyCounters {
 			}
 		}
 		if (shearing >= 0) {
-			if (now - shearingSince > 2000) shearing = -1;
-			else if (mc.level.getEntity(shearing) instanceof net.minecraft.world.entity.animal.sheep.Sheep sheep && sheep.isSheared()) {
-				shearing = -1;
-				add(Kind.SHEAR, Thing.of(false, false, false, false, sheep.getType().getDescription().getString(), plEntity(sheep.getType())), 1);
+			int shorn = now - shearingSince > 2000 ? -1 : shorn(mc);
+			if (shorn != 0) shearing = -1;
+			if (shorn > 0) {
+				var type = shearingType;
+				add(Kind.SHEAR, Thing.of(false, false, false, false, type.getDescription().getString(), plEntity(type)), shorn);
 			}
 		}
+	}
+
+	/**
+	 * How many sheep the server has shorn after the click (0 while nothing is seen yet). Servers that stack mobs
+	 * shear the whole stack (the sheep shorn, its number the same: all of them), take one off it (its number
+	 * smaller: that many), or put a shorn sheep in its place (the clicked one gone, a shorn one where it stood).
+	 */
+	private static int shorn(Minecraft mc) {
+		Entity e = mc.level.getEntity(shearing);
+		if (e instanceof net.minecraft.world.entity.animal.sheep.Sheep sheep && sheep.isAlive()) {
+			int stack = stackOf(sheep);
+			if (sheep.isSheared()) return stack == shearingStack ? shearingStack : 1;
+			return stack < shearingStack ? shearingStack - stack : 0;
+		}
+		var near = net.minecraft.world.phys.AABB.ofSize(shearingAt, 3, 2, 3);
+		return mc.level.getEntitiesOfClass(net.minecraft.world.entity.animal.sheep.Sheep.class, near, s -> s.isSheared() && s.tickCount < 60).isEmpty() ? 0 : 1;
 	}
 
 	/** A case won (SkyCase): one opening; by hand when the player had just clicked a chest (a key gem's run of wins counts once). */

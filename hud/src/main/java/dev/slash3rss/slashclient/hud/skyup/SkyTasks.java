@@ -1048,7 +1048,10 @@ public final class SkyTasks {
 			if (!cfg.skyTasksCompact && !t.requires.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyTasks.requires", t.requires).getString(), requirementDone(t) ? GREEN : 0xFFF87171, "", 0, -1, 4));
 			// ready to hand in: its requirements are met, only its name stays
 			for (SkyTaskParser.Section s : ready ? List.<SkyTaskParser.Section>of() : t.sections) {
-				if (!cfg.skyTasksCompact && t.sections.size() > 1) out.add(new Row(s.header, GREY, "", 0, -1, 4));
+				// what to do ("Zbierz", "Posiadaj w ekwipunku"), also when the task has just one kind of thing to do;
+				// not when its only line already says it
+				boolean said = s.items.stream().allMatch(r -> r.thing.isEmpty() || r.thing.equals(s.header));
+				if (!cfg.skyTasksCompact && !said) out.add(new Row(s.header, GREY, "", 0, -1, 4));
 				for (SkyTaskParser.Req r : s.items) {
 					long c = current(mc, s, r);
 					boolean met = met(mc, s, r);

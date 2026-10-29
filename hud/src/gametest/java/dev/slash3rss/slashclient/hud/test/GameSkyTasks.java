@@ -291,6 +291,19 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.waitTicks(10);
 			String more = context.computeOnClient(mc -> TestHooks.skyMoreProgress());
 			check(more.equals("Uderz w dzwony=1 Ostrzyż=1 Otwórz SkyCase=1 Posiadaj poziom=61"), "bells, sheep, a case by hand, the level", more);
+			// a stacked sheep ("Sztuk: 4") shorn whole counts four; one the server does not shear (a sheep already shorn) none
+			world.getServer().runCommand("kill @e[type=sheep]");
+			// summoned where the first one stood (in front at eye level, not where the lowered look points)
+			world.getServer().runCommand("execute at @p rotated ~ 0 run summon sheep ^ ^ ^2 {NoAI:1b,CustomName:\"Sztuk: 4\"}");
+			context.waitTicks(30);
+			context.runOnClient(mc -> TestHooks.skyUse());
+			context.waitTicks(10);
+			String stacked = context.computeOnClient(mc -> TestHooks.skyMoreProgress());
+			check(stacked.contains("Ostrzyż=5 "), "a stacked sheep shorn", stacked);
+			context.runOnClient(mc -> TestHooks.skyUse());
+			context.waitTicks(10);
+			String again = context.computeOnClient(mc -> TestHooks.skyMoreProgress());
+			check(again.contains("Ostrzyż=5 "), "a shorn sheep clicked again", again);
 			world.getServer().runCommand("kill @e[type=sheep]");
 			world.getServer().runCommand("item replace entity @a weapon.mainhand with air");
 			String shaman = context.computeOnClient(mc -> TestHooks.skyShaman());
