@@ -272,12 +272,22 @@ export function partnerRoutes(ctx: PartnerContext): {
     return data && { data, type: TYPES[path.extname(p.background).slice(1)] ?? 'application/octet-stream' };
   }
 
-  /** The sprite sheet with a strong ETag (its hash), so the game asks again cheaply and gets a 304. */
+  /**
+   * The sprite sheet with a strong ETag (its hash), so the game asks again cheaply and gets a 304. Every
+   * game asks for it, so it is read and hashed once per version of the icon, not on every request.
+   */
+  const icons = new Map<string, { version: string; data: Buffer; etag: string }>();
   async function icon(id: string) {
     const p = db.partner(id);
     if (!p?.icon) return undefined;
+    const version = `${p.icon}:${p.iconUpdatedAt}`;
+    const kept = icons.get(id);
+    if (kept?.version === version) return kept;
     const data = await readFile(iconFileOf(p)).catch(() => undefined);
-    return data && { data, etag: `"${createHash('sha256').update(data).digest('hex').slice(0, 32)}"` };
+    if (!data) return undefined;
+    const found = { version, data, etag: `"${createHash('sha256').update(data).digest('hex').slice(0, 32)}"` };
+    icons.set(id, found);
+    return found;
   }
 
   return { routes, picture, icon };

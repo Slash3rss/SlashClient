@@ -472,7 +472,7 @@ export function createApp(cfg: Config) {
     const chunks: Buffer[] = [];
     for await (const chunk of req) {
       size += chunk.length;
-      if (size > 16_384) throw new HttpError(413, 'too_large');
+      if (size > settings.num('security.bodyKb') * 1024) throw new HttpError(413, 'too_large');
       chunks.push(chunk);
     }
     if (!chunks.length) return {};
@@ -531,7 +531,7 @@ export function createApp(cfg: Config) {
   function closeSession(tokenHash: string) {
     for (const set of sockets.values()) for (const ws of set) if (sessionOf.get(ws) === tokenHash) ws.close(4003, 'signed out');
   }
-  /** At most 20 messages per 10 seconds from one connection. */
+  /** At most so many messages per 10 seconds from one connection (the admin panel's setting, 20 at first). */
   const socketBudget = new WeakMap<WebSocket, { at: number; n: number }>();
   function socketLimit(ws: WebSocket): boolean {
     const now = Date.now();
@@ -540,18 +540,22 @@ export function createApp(cfg: Config) {
       socketBudget.set(ws, { at: now, n: 1 });
       return true;
     }
-    return ++b.n <= 20;
+    return ++b.n <= settings.num('security.socketMessagesPer10s');
   }
 
   function friendList(me: string) {
     const unread = db.unreadCounts(me);
     const last = db.lastMessageTimes(me);
     const muted = mutes.store.muted(me);
+    const friends = db.friends(me);
+    // the clans of all of them in one query, not two per friend
+    const tags = clans.tagsOf(friends.map((f) => f.id));
     return {
-      friends: db.friends(me).map((f) => {
-        const clan = clanTag(f.id);
+      friends: friends.map((f) => {
+        const tagged = tags.get(f.id);
+        const clan = tagged?.tag;
         // the clan's logo (its id and version) next to the tag, when it has one
-        const clanLogo = clan ? clans.logoOf(f.id) : undefined;
+        const clanLogo = tagged && tagged.logo !== null ? { id: tagged.clan, v: tagged.logo } : undefined;
         // the rank badge they show next to their nick (ranks.ts); launchers before 0.9.23 ignore it
         const u = db.user(f.id);
         const shown = u ? ranks.shown(u) : undefined;
@@ -915,7 +919,7 @@ export function createApp(cfg: Config) {
   const support = supportRoutes({
     sql: db.sql, box: storage.box, keyError: storage.keyError, publicUrl: cfg.publicUrl,
     user: (id) => db.user(id), userByHandle: (h) => db.userByHandle(h),
-    authed, admin, body, clientIp, limitCheckout: limiter('support.checkoutsPerMinute'), limitWebhooks: rateLimiter(600),
+    authed, admin, body, clientIp, limitCheckout: limiter('support.checkoutsPerMinute'), limitWebhooks: limiter('support.webhooksPerMinute'),
     limitRefunds: limiter('support.refundsPerMinute'), refundWindowDays: () => settings.num('support.refundWindowDays'), refundsPerDay: () => settings.num('support.refundsPerDay'), notify: (userId, event) => push(userId, event), isAdmin: (userId) => isAdmin(userId),
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
     changed: (userId) => cosmeticsChanged(userId),
@@ -1286,7 +1290,7 @@ export function createApp(cfg: Config) {
       const { uuids, knownRanks } = await body(req);
       // the pink friend came in 0.9.12, the supporter and any rank in its colour ('colors') in 0.9.23: older HUDs get what they know (ranks.ts)
       const known = Array.isArray(knownRanks) ? knownRanks.filter((k): k is string => typeof k === 'string') : [];
-      if (!Array.isArray(uuids) || uuids.length > 250) throw new HttpError(400, 'bad_request');
+      if (!Array.isArray(uuids) || uuids.length > settings.num('security.lookupUuids')) throw new HttpError(400, 'bad_request');
       const now = Date.now();
       const active = uuids.filter((u): u is string => typeof u === 'string' && now - (inGame.get(u.toLowerCase()) ?? 0) < IN_GAME_TTL_MS);
       // the capes of players whose launcher said which account they play as
@@ -1614,14 +1618,24 @@ export function createApp(cfg: Config) {
 
   /** Skins by Minecraft uuid, kept an hour so the page does not ask Mojang on every visit. */
   const skins = new Map<string, { at: number; data: Buffer; slim: boolean } | null>();
-  async function skinOf(uuid: string): Promise<{ data: Buffer; slim: boolean } | undefined> {
+  /** Asking Mojang for a skin not kept yet, per address: random uuids would get the server's address throttled there (and sign-ins with it). */
+  const limitSkinLookups = limiter('security.skinLookupsPerMinute');
+  /** A small cache that forgets its oldest entry when full (instead of everything at once). */
+  const keep = <V>(map: Map<string, V>, key: string, value: V) => {
+    map.delete(key);
+    if (map.size >= 2000) map.delete(map.keys().next().value!);
+    map.set(key, value);
+  };
+  async function skinOf(uuid: string, ip?: string): Promise<{ data: Buffer; slim: boolean } | undefined> {
     if (!/^[0-9a-f]{32}$/.test(uuid)) return undefined;
     const kept = skins.get(uuid);
     if (kept !== undefined && (kept === null || Date.now() - kept.at < 3_600_000)) return kept ?? undefined;
+    if (ip !== undefined) limitSkinLookups(ip);
     const doFetch = cfg.fetchImpl ?? fetch;
-    const profile = await doFetch(`https://sessionserver.mojang.com/session/minecraft/profile/${uuid}`);
+    const profile = await doFetch(`https://sessionserver.mojang.com/session/minecraft/profile/${uuid}`, { signal: AbortSignal.timeout(10_000) });
     if (!profile.ok) {
-      skins.set(uuid, null);
+      // only "no such player" is kept: Mojang being busy (429, 5xx) is asked again next time
+      if (profile.status === 204 || profile.status === 404) keep(skins, uuid, null);
       return undefined;
     }
     const prop = ((await profile.json()) as { properties?: { name: string; value: string }[] }).properties?.find((p) => p.name === 'textures');
@@ -1629,29 +1643,27 @@ export function createApp(cfg: Config) {
     const link = textures?.textures?.SKIN?.url;
     // only Mojang's own picture server
     if (!link || !/^https?:\/\/textures\.minecraft\.net\//.test(link)) {
-      skins.set(uuid, null);
+      keep(skins, uuid, null);
       return undefined;
     }
-    const png = await doFetch(link.replace(/^http:/, 'https:'));
+    const png = await doFetch(link.replace(/^http:/, 'https:'), { signal: AbortSignal.timeout(10_000) });
     if (!png.ok) return undefined;
     const data = Buffer.from(await png.arrayBuffer());
     if (data.length > 256 * 1024) return undefined;
-    if (skins.size > 2000) skins.clear();
     const found = { at: Date.now(), data, slim: textures?.textures?.SKIN?.metadata?.model === 'slim' };
-    skins.set(uuid, found);
+    keep(skins, uuid, found);
     return found;
   }
 
   /** The face cut out of a player's skin, kept with the skin (an hour). */
   const heads = new Map<string, Buffer>();
-  async function headOf(uuid: string): Promise<Buffer | undefined> {
-    const skin = await skinOf(uuid);
+  async function headOf(uuid: string, ip?: string): Promise<Buffer | undefined> {
+    const skin = await skinOf(uuid, ip);
     if (!skin) return undefined;
     const kept = heads.get(uuid + skin.data.length);
     if (kept) return kept;
     const face = encodePng(faceOf(decodePng(skin.data)));
-    if (heads.size > 2000) heads.clear();
-    heads.set(uuid + skin.data.length, face);
+    keep(heads, uuid + skin.data.length, face);
     return face;
   }
 
@@ -1686,7 +1698,7 @@ export function createApp(cfg: Config) {
     // a Minecraft player's skin for the site's 3D preview, from Mojang through here (the page may only talk to us)
     const skin = /^\/v1\/skin\/([0-9a-fA-F-]{32,36})$/.exec(url.pathname);
     if (req.method === 'GET' && skin) {
-      const found = await skinOf(skin[1].replace(/-/g, '').toLowerCase()).catch(() => undefined);
+      const found = await skinOf(skin[1].replace(/-/g, '').toLowerCase(), clientIp(req)).catch(() => undefined);
       if (!found) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'not_found' }));
@@ -1700,7 +1712,7 @@ export function createApp(cfg: Config) {
     // a Minecraft player's face (with the hat), 64×64: the default avatar of SlashClient accounts
     const head = /^\/v1\/head\/([0-9a-fA-F-]{32,36})$/.exec(url.pathname);
     if (req.method === 'GET' && head) {
-      const face = await headOf(head[1].replace(/-/g, '').toLowerCase()).catch(() => undefined);
+      const face = await headOf(head[1].replace(/-/g, '').toLowerCase(), clientIp(req)).catch(() => undefined);
       if (!face) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'not_found' }));

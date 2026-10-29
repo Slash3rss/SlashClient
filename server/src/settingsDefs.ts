@@ -177,6 +177,7 @@ export const SETTING_DEFS: SettingDef[] = [
     { key: 'support.refundWindowDays', label: 'Okno na zwrot', labelEn: 'Refund window', description: 'Ile dni po płatności gracz sam może poprosić o zwrot. Regulamin obiecuje 14 dni (prawo konsumenta), więc nie mniej.', type: 'duration', default: REFUND_WINDOW_DAYS, min: 14, max: 365, unit: 'dni', risky: true },
     { key: 'support.refundsPerDay', label: 'Próśb o zwrot dziennie', labelEn: 'Refund requests a day', description: 'Na konto.', type: 'int', default: REFUNDS_PER_DAY, min: 1, max: 100 },
     rate('support.checkoutsPerMinute', 'Rozpoczęte płatności na minutę', 'Checkouts per minute', 6, 'Na konto i na adres IP.'),
+    rate('support.webhooksPerMinute', 'Powiadomienia operatorów płatności na minutę', 'Payment provider webhooks per minute', 600, 'Na adres IP (Stripe, PayPal i inni wysyłają je po każdej płatności).', 100_000),
     rate('support.refundsPerMinute', 'Prośby o zwrot na minutę', 'Refund requests per minute', 4, 'Na konto.'),
   ]),
 
@@ -194,6 +195,10 @@ export const SETTING_DEFS: SettingDef[] = [
     rate('security.loginsPerMinute', 'Logowania na minutę', 'Sign-ins per minute', 10, 'Na adres IP.', 1000),
     { key: 'security.sessionIdleDays', label: 'Wylogowanie po bezczynności', labelEn: 'Sign-out after idle', description: 'Sesja nieużywana tyle dni wygasa.', type: 'duration', default: 90, min: 1, max: 3650, unit: 'dni', risky: true },
     rate('security.gamePerMinute', 'Zapytania gry na minutę', 'Game requests per minute', 120, 'Logo SlashClient w grze (heartbeat, lookup, link), na adres IP (kilka gier z jednego domu dzieli limit).'),
+    { key: 'security.lookupUuids', label: 'Graczy w jednym zapytaniu gry', labelEn: 'Players in one game lookup', description: 'Ilu graczy z listy (Tab) gra może sprawdzić naraz (logo, peleryny, klany). Mod pyta o najwyżej 250, więc mniej niż to psuje logo na dużych serwerach.', type: 'int', default: 250, min: 50, max: 5000 },
+    { key: 'security.socketMessagesPer10s', label: 'Wiadomości połączenia na żywo na 10 s', labelEn: 'Live connection messages per 10 s', description: 'Ile wiadomości (status, pisanie, pozycja) może wysłać jedno połączenie launchera lub aplikacji w ciągu 10 sekund; nadmiar jest pomijany.', type: 'int', default: 20, min: 5, max: 1000 },
+    { key: 'security.bodyKb', label: 'Największe zapytanie JSON', labelEn: 'Largest JSON request', description: 'Rozmiar treści zwykłego zapytania do API (nie plików). Zaszyfrowana wiadomość czatu potrzebuje do 16 KB, więc mniej się nie da.', type: 'int', default: 16, min: 16, max: 1024, unit: 'KB' },
+    rate('security.skinLookupsPerMinute', 'Nowe skiny z Mojanga na minutę', 'New skins from Mojang per minute', 60, 'Skiny i twarze graczy (podgląd 3D, awatary), których serwer jeszcze nie ma: na adres IP. Zapamiętane nie liczą się.'),
     { key: 'security.gamePlayersPerAddress', label: 'Gracze z logo SlashClient z jednego adresu', labelEn: 'Players with the SlashClient logo from one address', description: 'Gra zgłasza się bez konta, więc jeden adres IP może naraz oznaczyć tylu graczy jako grających z SlashClientem (kilka osób w domu).', type: 'int', default: 10, min: 1, max: 10_000 },
     rate('security.emotesPerMinute', 'Emotki na minutę', 'Emotes per minute', 20, 'Na konto.'),
     { key: 'security.sprayGapSeconds', label: 'Odstęp między sprayami', labelEn: 'Gap between sprays', description: 'Najkrótszy odstęp między sprayami jednego konta.', type: 'duration', default: 3, min: 0, max: 3600, unit: 's' },

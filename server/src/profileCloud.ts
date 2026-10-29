@@ -118,6 +118,11 @@ const text = (v: string | null, max: number) => (v ?? '').trim().slice(0, max);
 
 export function profileCloudRoutes(ctx: CloudContext) {
   const store = new CloudStore(ctx.sql);
+  /**
+   * Uploads of an account being saved right now (their bytes, and the profiles they would add): two sent
+   * at once are checked against each other, so together they cannot go past the space or profile limits.
+   */
+  const saving = new Map<string, { bytes: number; ids: Set<string> }[]>();
   // live: the admin panel's settings are read when used
   const limits = withDefaults(CLOUD_LIMITS, ctx.limits);
   const { storage } = ctx;
@@ -191,16 +196,32 @@ export function profileCloudRoutes(ctx: CloudContext) {
       }
       const data = await readPack(req);
       if (!zipEntryNames(data)?.includes('modrinth.index.json')) ctx.fail(400, 'not_a_pack');
-      const used = all.reduce((sum, p) => sum + p.size, 0) - (current?.size ?? 0);
+      // checked again now that the file is here (reading it took a while): what is saved, and what is being saved
+      const now = store.get(me, id);
+      if (!force && (now?.revision ?? 0) !== (current?.revision ?? 0)) ctx.fail(409, 'cloud_conflict');
+      const others = saving.get(me) ?? [];
+      if (others.some((o) => o.ids.has(id))) ctx.fail(409, 'cloud_conflict');
+      const saved = store.list(me);
+      const adding = new Set(others.flatMap((o) => [...o.ids]));
+      if (!now && saved.length + adding.size >= limitsOf(me).maxProfiles) ctx.fail(409, 'cloud_limit');
+      const used = saved.reduce((sum, p) => sum + p.size, 0) - (now?.size ?? 0) + others.reduce((sum, o) => sum + o.bytes, 0);
       if (used + data.length > limitsOf(me).quotaBytes) ctx.fail(409, 'cloud_quota');
-      // a new file each time, on a backend with room (storage.ts): a download running now keeps reading the old one
-      const file = randomBytes(16).toString('hex');
-      await storage.place([{ key: keyOf(file), data, type: 'application/x-modrinth-modpack+zip' }], (where) => store.put(me, {
-        id, file, size: data.length, revision: (current?.revision ?? 0) + 1, updatedAt: Date.now(),
-        name: text(url.searchParams.get('name'), 60), gameVersion: text(url.searchParams.get('game'), 40),
-        loader: text(url.searchParams.get('loader'), 20), device: text(url.searchParams.get('device'), 60), store: where,
-      }));
-      if (current) await storage.remove(current.store, [keyOf(current.file)]);
+      const mine = { bytes: data.length, ids: new Set([id]) };
+      saving.set(me, [...others, mine]);
+      try {
+        // a new file each time, on a backend with room (storage.ts): a download running now keeps reading the old one
+        const file = randomBytes(16).toString('hex');
+        await storage.place([{ key: keyOf(file), data, type: 'application/x-modrinth-modpack+zip' }], (where) => store.put(me, {
+          id, file, size: data.length, revision: (now?.revision ?? 0) + 1, updatedAt: Date.now(),
+          name: text(url.searchParams.get('name'), 60), gameVersion: text(url.searchParams.get('game'), 40),
+          loader: text(url.searchParams.get('loader'), 20), device: text(url.searchParams.get('device'), 60), store: where,
+        }));
+      } finally {
+        const left = (saving.get(me) ?? []).filter((o) => o !== mine);
+        if (left.length) saving.set(me, left);
+        else saving.delete(me);
+      }
+      if (now) await storage.remove(now.store, [keyOf(now.file)]);
       return { profile: view(store.get(me, id)!) };
     }],
     ['DELETE', /^\/v1\/cloud-profiles\/([\w-]+)$/, async (req, [raw]) => {

@@ -198,6 +198,19 @@ CREATE TABLE IF NOT EXISTS clan_invites (clan_id TEXT NOT NULL REFERENCES clans(
     return this.sql.prepare('SELECT clan_id AS clan, by_uuid AS by, created_at AS at FROM clan_invites WHERE uuid = ? ORDER BY created_at DESC').all(uuid) as never;
   }
 
+  /** Tags (and logo versions) of many players at once, for lists like friends; those who hide the tag are left out. */
+  tagsOf(uuids: string[]): Map<string, { clan: string; tag: string; logo: number | null }> {
+    const out = new Map<string, { clan: string; tag: string; logo: number | null }>();
+    // in pieces: SQLite takes a limited number of parameters
+    for (let i = 0; i < uuids.length; i += 500) {
+      const part = uuids.slice(i, i + 500);
+      const rows = this.sql.prepare(`SELECT m.uuid, c.id AS clan, c.tag, (SELECT version FROM clan_logos l WHERE l.clan_id = c.id) AS logo
+        FROM clan_members m JOIN clans c ON c.id = m.clan_id WHERE m.hide_tag = 0 AND m.uuid IN (${part.map(() => '?').join(',')})`).all(...part) as { uuid: string; clan: string; tag: string; logo: number | null }[];
+      for (const r of rows) out.set(r.uuid, { clan: r.clan, tag: r.tag, logo: r.logo });
+    }
+    return out;
+  }
+
   /** Every clan, for the admin panel; `q` narrows it to a tag, name or the owner's handle. */
   all(q = '', limit = 500): (ClanRow & { members: number; logo: number | null; ownerHandle: string })[] {
     const like = `%${q.toLowerCase().replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
@@ -639,6 +652,8 @@ export function createClans(deps: Deps) {
 
   return {
     routes, tagOf, tagOfClan: (id: string) => store.clan(id)?.tag, logoOf,
+    /** tagOf and logoOf for many players in one go (the friends list). */
+    tagsOf: (uuids: string[]) => store.tagsOf(uuids),
     /** Someone's role in this clan, or undefined when they are not in it (any more). */
     roleIn: (clanId: string, uuid: string): ClanRole | undefined => {
       const m = store.membership(uuid);
