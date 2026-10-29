@@ -103,7 +103,7 @@ public class GameSkyTasks implements FabricClientGameTest {
 			world.getServer().runCommand("execute at @p run setblock ~-2 ~ ~ chest");
 			context.runOnClient(mc -> TestHooks.skyEvents());
 			// SkyUp's sidebar: the island's level, and one job's
-			String[][] sidebar = { { "a", "» Wyspa", "4" }, { "b", "Poziom: 20", "3" }, { "c", "» Prace", "2" }, { "d", "Rybak: 7 poz.", "1" } };
+			String[][] sidebar = { { "a", "» Wyspa", "4" }, { "b", "Poziom: 1\u00a0020", "3" }, { "c", "» Prace", "2" }, { "d", "Rybak: 7 poz.", "1" } };
 			world.getServer().runCommand("scoreboard objectives add sky dummy \"SkyUP.pl\"");
 			world.getServer().runCommand("scoreboard objectives setdisplay sidebar sky");
 			for (String[] line : sidebar) {
@@ -113,7 +113,7 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.waitTicks(30);
 			String progress = context.computeOnClient(mc -> TestHooks.skyProgress());
 			check(progress.contains(" ~31/128") && progress.contains("A co tutaj tak ciemno?: ") && progress.contains(" ~12/64") && progress.contains(" ~2/64") && progress.contains("Składzik: ") && progress.contains(" ~2/8")
-				&& progress.contains("Ciasno, ale własno: Posiadaj poziom wyspy 20/20") && progress.contains("Dobra praca się opłaca: Posiadaj poziom dowolnej pracy ~7/5")
+				&& progress.contains("Ciasno, ale własno: Posiadaj poziom wyspy 1020/20") && progress.contains("Dobra praca się opłaca: Posiadaj poziom dowolnej pracy ~7/5")
 				&& progress.contains("Moczykij: Dowolna ryba ~1/24") && progress.contains("Rybak: Wyłów ~8090/200000") && progress.contains("Mamut morski: Wyłów conajmniej ogromne ~1/45")
 				&& progress.contains("Piecoznawstwo: Piec przynajmniej Szczęście I 1/1"), "counted", progress);
 			// "Stój obok" counts creatures too: an iron golem nearby

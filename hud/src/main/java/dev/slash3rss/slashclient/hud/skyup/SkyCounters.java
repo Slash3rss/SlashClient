@@ -537,7 +537,8 @@ public final class SkyCounters {
 		return out;
 	}
 
-	private static final java.util.regex.Pattern LEVEL = java.util.regex.Pattern.compile("^(.+?):\\s*(\\d+)\\s*(poz\\.?)?.*$");
+	/** "Poziom: 1 559": thousands set apart by a space (a plain or a hard one) are one number, not 1. */
+	private static final java.util.regex.Pattern LEVEL = java.util.regex.Pattern.compile("^(.+?):\\s*(\\d(?:[\\d \\u00a0\\u202f]*\\d)?)\\s*(poz\\.?)?.*$");
 
 	/**
 	 * SkyUp's sidebar, which shows by turns "» Wyspa" with "Poziom: 3" or the island's bank, and "» Prace"
