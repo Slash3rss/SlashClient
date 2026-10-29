@@ -76,7 +76,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta' };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta'; sharedPerAccount?: string[] };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -438,6 +438,7 @@ $('#hud-paste').addEventListener('click', async () => {
 $('#profile-form').addEventListener('change', (e) => {
   const name = (e.target as HTMLInputElement).name;
   if (name === 'loader' || name === 'versionId') renderHudHint();
+  if (name === 'syncOptions') renderSharedAccounts();
 });
 
 // ---------- navigation ----------
@@ -1107,6 +1108,7 @@ function loadProfileForm(profile: Profile) {
     ...store.accounts.map((a) => ({ value: a.id, label: `${a.name}${a.type === 'offline' ? ' (offline)' : ''}` })),
   ], store.accounts.some((a) => a.id === profile.accountId) ? profile.accountId : '');
   (form.elements.namedItem('syncOptions') as HTMLInputElement).checked = profile.syncOptions ?? false;
+  renderSharedAccounts();
   (form.elements.namedItem('hud') as HTMLInputElement).checked = profile.hud ?? true;
   renderHudHint();
   $<HTMLSelectElement>('#loader-select').value = profile.loader ?? 'vanilla';
@@ -1762,6 +1764,36 @@ $('#pack-import-modal').addEventListener('click', (e) => e.target === e.currentT
 
 initProfileSharing({ api, $, el, guard, toast, skeletons, packPartRows, showPackImport, editing: () => editingId });
 // profiles on the account and moving to another Minecraft version: see cloudProfiles.ts and versionMove.ts
+/**
+ * Under "Wspólne ustawienia gry": with two or more Minecraft accounts, the ones whose games keep shared
+ * settings of their own (for every profile; the others share one set). Shown while sharing is ticked.
+ */
+function renderSharedAccounts() {
+  const box = $('#shared-accounts');
+  const on = ($<HTMLFormElement>('#profile-form').elements.namedItem('syncOptions') as HTMLInputElement).checked;
+  const accounts = store.accounts;
+  box.classList.toggle('hidden', !on || accounts.length < 2);
+  if (!on || accounts.length < 2) return box.replaceChildren();
+  const own = new Set(store.settings.sharedPerAccount ?? []);
+  const checks = accounts.map((a) => {
+    // built by hand: el('input', …) makes the TypeScript checker give up on the props union
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = own.has(a.id);
+    input.addEventListener('change', async () => {
+      const picked = accounts.filter((_, i) => checks[i].checked).map((x) => x.id);
+      store.settings.sharedPerAccount = picked;
+      await guard(() => api.saveSettings({ sharedPerAccount: picked }));
+    });
+    const label = document.createElement('label');
+    label.className = 'check';
+    label.append(input, el('span', { textContent: a.name }));
+    return input;
+  });
+  box.replaceChildren(el('span', { className: 'muted', textContent: t('Osobne ustawienia dla kont:') }), ...checks.map((c) => c.parentElement!),
+    el('small', { className: 'muted', textContent: t('Zaznaczone konta mają własny zestaw we wszystkich profilach, pozostałe dzielą jeden.') }));
+}
+
 const cloudCard = initCloudProfiles({
   api, $, guard, toast, busy, editing: () => editingId,
   profileName: (id) => store.profiles.find((p) => p.id === id)?.name,

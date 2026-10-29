@@ -1537,6 +1537,8 @@ const EN: Record<string, string> = {
   'W grze każde konto może mieć inną odznakę. Lista znajomych i czat pokazują tę z konta SlashClient.': 'In game each account can show a different badge. The friends list and the chat show the SlashClient account\'s one.',
   'Mody, ustawienia, configi i układ HUD na Twoim koncie SlashClient, żeby ten sam profil działał na drugim komputerze. Bez światów; widzisz je tylko Ty. Z włączoną synchronizacją profil trafia na konto po każdej grze.': 'Mods, settings, configs and the HUD layout on your SlashClient account, so the same profile works on your other computer. No worlds; only you can see them. With sync on, the profile goes to your account after every game.',
   'Synchronizuj teraz': 'Sync now',
+  'Osobne ustawienia dla kont:': 'Separate settings for accounts:',
+  'Zaznaczone konta mają własny zestaw we wszystkich profilach, pozostałe dzielą jeden.': 'Ticked accounts have a set of their own in every profile, the others share one.',
   'Wyślij na konto': 'Upload to account',
   'Pobierz z konta': 'Download from account',
   'Z konta SlashClient': 'From your SlashClient account',

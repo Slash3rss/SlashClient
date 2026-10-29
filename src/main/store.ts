@@ -137,6 +137,8 @@ export interface Settings {
   updatesPausedUntil?: string;
   /** The update channel: 'beta' takes betas too (the server's /aktualizacje/beta); missing = stable. */
   updateChannel?: 'stable' | 'beta';
+  /** Minecraft accounts (their ids here) whose games keep shared game settings of their own (sync.ts); the rest share one set. */
+  sharedPerAccount?: string[];
 }
 
 export interface StoreData {

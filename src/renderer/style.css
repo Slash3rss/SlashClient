@@ -1497,6 +1497,8 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .pp-actions { justify-content: flex-end; }
 /* profile on the account, moving to another Minecraft version (cloudProfiles.ts, versionMove.ts) */
 .cloud-status { font-size: 13px; margin: 0 0 10px; }
+.shared-accounts { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; font-size: 13px; margin: -4px 0 8px 26px; }
+.shared-accounts small { flex-basis: 100%; }
 .cloud-actions { flex-wrap: wrap; }
 .move-pick { align-items: flex-end; }
 .move-pick button { height: 38px; }

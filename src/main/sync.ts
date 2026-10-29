@@ -6,10 +6,27 @@ import { paths } from './paths';
 /**
  * Game settings shared by every profile that has sync turned on:
  * options (video, sound, controls), the multiplayer server list and saved hotbars.
+ * Minecraft accounts the player picked have a set of their own (shared/accounts/<id>);
+ * the others share the common one.
  */
 export const SYNCED_FILES = ['options.txt', 'servers.dat', 'hotbar.nbt'];
 
-const sharedDir = () => path.join(paths.root, 'shared');
+const commonDir = () => path.join(paths.root, 'shared');
+
+/** Where the shared settings of games played as this account are: its own set when picked, else the common one. */
+export function sharedDirFor(accountId: string | undefined, ownSets: readonly string[] | undefined): string {
+  return accountId && ownSets?.includes(accountId) && /^[\w-]{1,64}$/.test(accountId) ? path.join(commonDir(), 'accounts', accountId) : commonDir();
+}
+
+/**
+ * An account's own set starts as a copy of the common one (the first time only), so picking an
+ * account does not leave its games with no settings; unpicking it keeps its folder for later.
+ */
+export async function seedShared(dir: string): Promise<void> {
+  if (dir === commonDir() || (await fs.stat(dir).catch(() => undefined))) return;
+  await fs.mkdir(dir, { recursive: true });
+  for (const f of SYNCED_FILES) await fs.copyFile(path.join(commonDir(), f), path.join(dir, f)).catch(() => {});
+}
 
 /** One saved server: its address and its tag exactly as the game wrote it (name, icon, resource pack choice). */
 interface ServerEntry { ip: string; raw: Buffer }
@@ -146,9 +163,10 @@ async function sync(file: string, from: string, to: string, opts: SyncOptions): 
 }
 
 /** Before launch: give the profile the shared settings (if there are any yet). */
-export async function pullShared(gameDir: string): Promise<string[]> {
+export async function pullShared(gameDir: string, dir = commonDir()): Promise<string[]> {
+  await seedShared(dir);
   const copied: string[] = [];
-  for (const f of SYNCED_FILES) if (await sync(f, path.join(sharedDir(), f), path.join(gameDir, f), { mergeServers: false, backup: false })) copied.push(f);
+  for (const f of SYNCED_FILES) if (await sync(f, path.join(dir, f), path.join(gameDir, f), { mergeServers: false, backup: false })) copied.push(f);
   return copied;
 }
 
@@ -157,9 +175,9 @@ export async function pullShared(gameDir: string): Promise<string[]> {
  * `startedAt` is when that game started: a shared server list written after it came from another
  * synced profile played at the same time, so the two lists are merged instead of one replacing the other.
  */
-export async function pushShared(gameDir: string, startedAt?: number): Promise<void> {
+export async function pushShared(gameDir: string, startedAt?: number, dir = commonDir()): Promise<void> {
   for (const f of SYNCED_FILES) {
-    const to = path.join(sharedDir(), f);
+    const to = path.join(dir, f);
     const changedMeanwhile = startedAt !== undefined && ((await fs.stat(to).catch(() => undefined))?.mtimeMs ?? 0) > startedAt;
     await sync(f, path.join(gameDir, f), to, { mergeServers: changedMeanwhile, backup: true });
   }

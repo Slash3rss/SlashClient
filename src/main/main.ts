@@ -9,7 +9,7 @@ import { setLang } from '../shared/i18n';
 import { analyzeCrash } from './crash';
 import { currentIconId, iconFile, iconFromFile, iconFromLibrary, iconFromUrl, LIBRARY } from './profileIcon';
 import { libraryIcons, removeFromLibrary } from './iconLibrary';
-import { pullShared, pushShared } from './sync';
+import { pullShared, pushShared, sharedDirFor } from './sync';
 import { createLineBatcher } from './gamelog';
 import { openLoopback } from './oauthLoopback';
 import { recommendedMemoryMb } from './jvm';
@@ -343,6 +343,10 @@ handle('settings:save', async (settings: Partial<Settings>) => {
   const accountChanged = allowed.selectedAccountId !== undefined && allowed.selectedAccountId !== store.settings.selectedAccountId;
   const previous = store.settings;
   if (allowed.updateChannel !== undefined && allowed.updateChannel !== 'beta') allowed.updateChannel = 'stable';
+  if (allowed.sharedPerAccount !== undefined) {
+    const picked = Array.isArray(allowed.sharedPerAccount) ? allowed.sharedPerAccount : [];
+    allowed.sharedPerAccount = store.accounts.map((a) => a.id).filter((id) => picked.includes(id));
+  }
   store.settings = { ...store.settings, ...allowed };
   if (allowed.launcherWindow !== undefined && (allowed.launcherWindow || '') !== (previous.launcherWindow || '')) applyWindowChoice(allowed.launcherWindow);
   await applyToolSettings(store.settings, previous);
@@ -1445,7 +1449,11 @@ registerMaintenance({
   handle, profiles: () => store.profiles, running: profileBusy, anyRunning: () => games.size > 0 || launching.size > 0,
   trash: (file) => shell.trashItem(file), openPath: (dir) => shell.openPath(dir), defaultJavaVendor: () => store.settings.javaVendor,
 });
-registerLauncherTools({ handle, profiles: () => store.profiles, running: profileBusy });
+registerLauncherTools({
+  handle, profiles: () => store.profiles, running: profileBusy,
+  // the account the profile plays as (its own, else the one picked on the Play tab) may have shared settings of its own
+  sharedDir: (profile) => sharedDirFor(store.accounts.some((a) => a.id === profile.accountId) ? profile.accountId : store.settings.selectedAccountId, store.settings.sharedPerAccount),
+});
 
 handle('file:open', (file: string) => {
   if (isInsideInstances(file)) return shell.openPath(file);
@@ -1777,7 +1785,9 @@ async function startGame(profileId: string, accountId: string, server: string | 
   await persist();
 
   // shared game settings: the profile gets them before the game starts and gives them back afterwards
-  if (profile.syncOptions) await pullShared(profileGameDir(profile));
+  // (the account played as may have a set of its own)
+  const sharedDir = sharedDirFor(account.id, store.settings.sharedPerAccount);
+  if (profile.syncOptions) await pullShared(profileGameDir(profile), sharedDir);
 
   // keep the tail of the output for crash analysis
   const recentLog: string[] = [];
@@ -1887,7 +1897,7 @@ async function startGame(profileId: string, accountId: string, server: string | 
     if (benchmark) readBenchmarks(profileGameDir(profile)).then((runs) => {
       if (runs[0] && runs[0].at > benchmarksBefore) send('benchmark:done', { profileId: profile.id, result: runs[0], before: comparableBefore(runs, 0) });
     }).catch(() => {});
-    if (profile.syncOptions) pushShared(profileGameDir(profile), startedAt).catch(() => {});
+    if (profile.syncOptions) pushShared(profileGameDir(profile), startedAt, sharedDir).catch(() => {});
     // profiles synced with the account go there after the game
     cloudProfiles.afterGame(profile.id).catch((err) => console.error('chmura:', (err as Error).message));
     recordSession(profile, startedAt, lastServer).catch(() => {});

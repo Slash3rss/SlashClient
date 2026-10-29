@@ -5,7 +5,6 @@ import { clearDedicatedGpu, dedicatedGpuEnv, gpuOptionSupported, preferDedicated
 import {
   actionLabel, applyKeyChanges, findConflicts, freeKeys, isKeyName, isVanillaAction, keyLabel, modKeyNames, parseKeybinds, suggestFixes,
 } from './keybinds';
-import { paths } from './paths';
 import { setDownloadLimit } from './rateLimit';
 import { profileGameDir, type Profile, type Settings } from './store';
 import { wikiArticle, wikiSearch, wikiSection } from './wiki';
@@ -23,20 +22,21 @@ export interface LauncherToolsDeps {
   profiles: () => Profile[];
   /** Whether this profile's game runs now. */
   running: (profileId: string) => boolean;
+  /** The folder of the shared game settings this profile's games use (sync.ts). */
+  sharedDir: (profile: Profile) => string;
 }
-
-const sharedOptions = () => path.join(paths.root, 'shared', 'options.txt');
 
 /**
  * The options.txt that will really be used: a profile with shared settings gets the shared copy
  * at the next launch, so that one counts when it exists.
  */
-async function optionsFiles(profile: Profile): Promise<{ read: string; write: string[] }> {
+async function optionsFiles(profile: Profile, sharedDir: string): Promise<{ read: string; write: string[]; shared: boolean }> {
   const own = path.join(profileGameDir(profile), 'options.txt');
-  if (profile.syncOptions && (await fs.access(sharedOptions()).then(() => true, () => false))) {
-    return { read: sharedOptions(), write: [sharedOptions(), own] };
+  const sharedOptions = path.join(sharedDir, 'options.txt');
+  if (profile.syncOptions && (await fs.access(sharedOptions).then(() => true, () => false))) {
+    return { read: sharedOptions, write: [sharedOptions, own], shared: true };
   }
-  return { read: own, write: [own] };
+  return { read: own, write: [own], shared: false };
 }
 
 export function registerLauncherTools(deps: LauncherToolsDeps): void {
@@ -54,7 +54,7 @@ export function registerLauncherTools(deps: LauncherToolsDeps): void {
 
   handle('keys:conflicts', async (profileId: string) => {
     const profile = profileById(profileId);
-    const files = await optionsFiles(profile);
+    const files = await optionsFiles(profile, deps.sharedDir(profile));
     const text = await fs.readFile(files.read, 'utf8').catch(() => undefined);
     if (text === undefined) return { exists: false, running: busy(profile), conflicts: [], fixes: [], free: [] };
     const binds = parseKeybinds(text);
@@ -66,7 +66,7 @@ export function registerLauncherTools(deps: LauncherToolsDeps): void {
     return {
       exists: true,
       running: busy(profile),
-      shared: files.read === sharedOptions(),
+      shared: files.shared,
       conflicts: conflicts.map((c) => ({ key: c.key, keyLabel: keyLabel(c.key, c.modifier), actions: c.actions.map(label) })),
       fixes: fixes.map((f) => ({ ...label(f.action), to: f.to, toLabel: keyLabel(f.to) })),
       free: freeKeys(binds).map((k) => ({ key: k, label: keyLabel(k) })),
@@ -79,7 +79,7 @@ export function registerLauncherTools(deps: LauncherToolsDeps): void {
     if (busy(profile)) throw new Error(t('Gra jest uruchomiona: zamknij ją, zanim zmienisz klawisze (gra nadpisuje options.txt przy wyjściu).'));
     if (!Array.isArray(changes) || !changes.length) return 0;
     const clean = changes.filter((c) => c && typeof c.action === 'string' && /^[\w.\-:/]+$/.test(c.action) && isKeyName(c.to));
-    const files = await optionsFiles(profile);
+    const files = await optionsFiles(profile, deps.sharedDir(profile));
     for (const file of files.write) {
       const text = await fs.readFile(file, 'utf8').catch(() => undefined);
       if (text === undefined) continue;

@@ -121,4 +121,23 @@ describe('shared game settings', () => {
     await pushShared(a);
     await assert.rejects(fs.stat(path.join(shared, 'hotbar.nbt')));
   });
+
+  it('keeps a set of its own for the accounts picked, started from the common one', async () => {
+    const { pullShared, pushShared, sharedDirFor, a, b, shared } = await twoProfiles();
+    assert.equal(sharedDirFor('main', ['alt']), shared);
+    assert.equal(sharedDirFor(undefined, ['alt']), shared);
+    const alt = sharedDirFor('alt', ['alt']);
+    assert.equal(alt, path.join(shared, 'accounts', 'alt'));
+    // the common set, written by a game of another account
+    await fs.writeFile(path.join(a, 'options.txt'), 'fov:0.5\n');
+    await pushShared(a);
+    // the alt's first game starts from it, and what it changes stays the alt's
+    await pullShared(b, alt);
+    assert.equal(await fs.readFile(path.join(b, 'options.txt'), 'utf8'), 'fov:0.5\n');
+    await fs.writeFile(path.join(b, 'options.txt'), 'fov:1.0\n');
+    await pushShared(b, undefined, alt);
+    assert.equal(await fs.readFile(path.join(shared, 'options.txt'), 'utf8'), 'fov:0.5\n');
+    await pullShared(a, alt);
+    assert.equal(await fs.readFile(path.join(a, 'options.txt'), 'utf8'), 'fov:1.0\n');
+  });
 });
