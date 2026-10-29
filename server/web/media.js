@@ -1,7 +1,7 @@
 // A shared screenshot or clip (/media/<id>). A picture is shown as it is; a clip is the game's
 // Motion-JPEG AVI, which browsers cannot play in <video>, so its frames (each a whole JPEG) are
 // read out of the file here and drawn one after another on a canvas.
-import { $, L, api, confirmModal, copyText, el, errorText, fmtDate, icon, localizePage, toast, token } from './common.js';
+import { $, L, ShownError, api, confirmModal, copyText, el, errorText, fmtDate, icon, localizePage, toast, token } from './common.js';
 
 localizePage();
 
@@ -46,10 +46,10 @@ async function clipPlayer(m, box) {
   box.replaceChildren(el('div', { class: 'media-stage' }, canvas, status), el('div', { class: 'media-controls row' }, play, seek, time));
 
   const res = await fetch(`/v1/media/${encodeURIComponent(id)}/file`);
-  if (!res.ok) throw new Error(L('Nie udało się wczytać klipu.', 'Could not load the clip.'));
+  if (!res.ok) throw new ShownError(L('Nie udało się wczytać klipu.', 'Could not load the clip.'));
   const buf = await res.arrayBuffer();
   const avi = aviFrames(buf);
-  if (!avi?.frames.length) throw new Error(L('Ten klip jest uszkodzony.', 'This clip is damaged.'));
+  if (!avi?.frames.length) throw new ShownError(L('Ten klip jest uszkodzony.', 'This clip is damaged.'));
   status.remove();
   const ctx = canvas.getContext('2d');
   const frameMs = avi.usPerFrame / 1000;
