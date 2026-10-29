@@ -2,6 +2,8 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { cleanDetail, cleanValues } from './serverStatus';
+import { fileErrorText } from '../shared/fileErrors';
+import { t } from '../shared/i18n';
 
 /**
  * A small HTTP server on 127.0.0.1 through which SlashClient HUD (in the game) reaches
@@ -161,6 +163,38 @@ const FORWARDED = new Set(['message', 'presence', 'friends', 'typing', 'read', '
 const KEEP = 200;
 const LONG_POLL_MS = 25_000;
 
+/** A machine code the game knows ("not_found", "slow_down:30", "too_large"…): passed on as it is. */
+const ERROR_CODE = /^[A-Za-z][\w-]{0,63}(?::\d{1,6})?$/;
+
+/**
+ * What the game gets when something fails: `error` stays a short machine code when there is one
+ * (older HUDs look for those), otherwise a short sentence the player can read, never a path, a
+ * stack or the server's raw JSON. `status` is the HTTP status when one is known (newer HUDs may
+ * use it, older ones ignore it). The raw error goes to the launcher's log.
+ */
+export function bridgeError(err: unknown): { error: string; status?: number } {
+  if (err === undefined || err === null) return { error: t('Launcher nie mógł tego zrobić. Spróbuj ponownie.') };
+  const e = err as { code?: unknown; message?: unknown; httpStatus?: unknown };
+  const raw = typeof e.code === 'string' && e.code ? e.code : typeof e.message === 'string' ? e.message : String(err);
+  const http = typeof e.httpStatus === 'number' && e.httpStatus > 0 ? e.httpStatus : Number(/\bHTTP (\d{3})\b/.exec(raw)?.[1]) || undefined;
+  const withStatus = (error: string) => (http ? { error, status: http } : { error });
+  // a file error (EPERM, ENOENT…) in words, not its code
+  const file = fileErrorText(raw);
+  if (file === undefined && ERROR_CODE.test(raw)) return withStatus(raw);
+  // "HTTP 429 {\"error\":\"slow_down\",…}": the code inside
+  const inner = /"error"\s*:\s*"([\w-]{1,64}(?::\d{1,6})?)"/.exec(raw)?.[1];
+  if (inner) return withStatus(inner);
+  const text = file ?? raw;
+  // an already readable sentence (the wiki's "Na wiki nie ma takiej strony.") is kept
+  // (a bug's own text, "Cannot read properties of undefined", is not for the player)
+  const bug = err instanceof TypeError || err instanceof ReferenceError || err instanceof SyntaxError || err instanceof RangeError;
+  const readable = !bug && text.trim().length > 0 && text.length <= 200 && !/[\\/{}[\]<>\r\n]|\bHTTP\b|\bat \S+ \(/.test(text);
+  if (readable) return withStatus(text.trim());
+  if (http === 429) return withStatus(t('Za dużo zapytań. Spróbuj ponownie za chwilę.'));
+  if (http && http >= 500) return withStatus(t('Serwer ma chwilowe problemy. Spróbuj ponownie później.'));
+  return withStatus(t('Launcher nie mógł tego zrobić. Spróbuj ponownie.'));
+}
+
 export class GameBridge {
   private server?: http.Server;
   private key = randomBytes(24).toString('base64url');
@@ -174,7 +208,7 @@ export class GameBridge {
   /** Starts once; later calls (also while the first is still starting: two games at once) return the same address. */
   async start(): Promise<{ url: string; key: string }> {
     this.starting ??= (async () => {
-      this.server = http.createServer((req, res) => this.handle(req, res).catch((err) => this.send(res, 500, { error: String((err as Error).message ?? err) })));
+      this.server = http.createServer((req, res) => this.handle(req, res).catch((err) => this.fail(res, 500, err)));
       await new Promise<void>((resolve) => this.server!.listen(0, '127.0.0.1', resolve));
       this.url = `http://127.0.0.1:${(this.server.address() as AddressInfo).port}`;
     })();
@@ -218,6 +252,14 @@ export class GameBridge {
     res.end(JSON.stringify(body));
   }
 
+  /** An error answer for the game in words it can show (bridgeError), with the raw error only in the log. */
+  private fail(res: http.ServerResponse, status: number, err: unknown) {
+    const answer = bridgeError(err);
+    const given = err as { code?: unknown; message?: unknown } | undefined;
+    if (answer.error !== (given?.code ?? given?.message)) console.error('bridge:', (err as Error)?.stack ?? err);
+    this.send(res, status, answer);
+  }
+
   private async body(req: http.IncomingMessage): Promise<unknown> {
     let raw = '';
     for await (const chunk of req) {
@@ -246,7 +288,7 @@ export class GameBridge {
       try {
         return this.send(res, 200, await this.opts.useAccount(id));
       } catch (err) {
-        return this.send(res, 502, { error: (err as Error).message });
+        return this.fail(res, 502, err);
       }
     }
 
@@ -258,7 +300,7 @@ export class GameBridge {
         const answer = await this.opts.session(!!session[1]);
         return answer ? this.send(res, 200, answer) : this.send(res, 404, { error: 'no_game_account' });
       } catch (err) {
-        return this.send(res, 502, { error: (err as Error).message });
+        return this.fail(res, 502, err);
       }
     }
 
@@ -296,7 +338,7 @@ export class GameBridge {
         await this.opts.copyImage(path);
         return this.send(res, 200, { ok: true });
       } catch (err) {
-        return this.send(res, 403, { error: (err as Error).message });
+        return this.fail(res, 403, err);
       }
     }
 
@@ -310,7 +352,7 @@ export class GameBridge {
         try {
           return this.send(res, 200, { message: await this.opts.sendCommunityImage!(community as string, channel as string, path as string) });
         } catch (err) {
-          return this.send(res, 502, { error: (err as { code?: string }).code ?? (err as Error).message });
+          return this.fail(res, 502, err);
         }
       }
       const toGroup = typeof group === 'string' && /^[\w-]{1,32}$/.test(group) && !!this.opts.sendGroupImage;
@@ -318,7 +360,7 @@ export class GameBridge {
       try {
         return this.send(res, 200, toGroup ? await this.opts.sendGroupImage!(group as string, path) : await this.opts.sendImage!(friend as string, path));
       } catch (err) {
-        return this.send(res, 502, { error: (err as { code?: string }).code ?? (err as Error).message });
+        return this.fail(res, 502, err);
       }
     }
     const image = /^\/chat\/image\/([\w-]{22})$/.exec(url);
@@ -329,7 +371,7 @@ export class GameBridge {
         res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-store' });
         return res.end(png);
       } catch (err) {
-        return this.send(res, 404, { error: (err as { code?: string }).code ?? (err as Error).message });
+        return this.fail(res, 404, err);
       }
     }
 
@@ -341,7 +383,7 @@ export class GameBridge {
         res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-store' });
         return res.end(png);
       } catch (err) {
-        return this.send(res, 404, { error: (err as { code?: string }).code ?? (err as Error).message });
+        return this.fail(res, 404, err);
       }
     }
 
@@ -354,7 +396,7 @@ export class GameBridge {
         res.writeHead(200, { 'Content-Type': still.type, 'Content-Length': still.data.length, 'Cache-Control': 'no-store' });
         return res.end(still.data);
       } catch (err) {
-        return this.send(res, 404, { error: (err as Error).message });
+        return this.fail(res, 404, err);
       }
     }
 
@@ -372,7 +414,7 @@ export class GameBridge {
         res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-store' });
         return res.end(png);
       } catch (err) {
-        return this.send(res, 404, { error: (err as Error).message });
+        return this.fail(res, 404, err);
       }
     }
 
@@ -397,7 +439,7 @@ export class GameBridge {
         }
         return this.send(res, 200, await o.skyupWikiSearch(q));
       } catch (err) {
-        return this.send(res, 502, { error: (err as Error).message });
+        return this.fail(res, 502, err);
       }
     }
 
@@ -411,7 +453,7 @@ export class GameBridge {
         res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-store' });
         return res.end(png);
       } catch (err) {
-        return this.send(res, 404, { error: (err as { code?: string }).code ?? (err as Error).message });
+        return this.fail(res, 404, err);
       }
     }
 
@@ -450,8 +492,7 @@ export class GameBridge {
       }
       this.send(res, 200, (await this.opts.call(method, url, body)) ?? {});
     } catch (err) {
-      const code = (err as { code?: string }).code ?? (err as Error).message;
-      this.send(res, 502, { error: code });
+      this.fail(res, 502, err);
     }
   }
 }

@@ -18,6 +18,7 @@ import { buyWithConfirm } from './sparkShop';
 import { currencyName, sparks } from '../shared/sparks';
 import { openSkinEditor } from './skinEditor';
 import { getLang, LANGUAGES, locale, lookup, setLang, t } from '../shared/i18n';
+import { fileErrorText } from '../shared/fileErrors';
 import type { SlashApi } from '../main/preload';
 import { BENCH_SCENES, benchTips, comparableBefore, type BenchTip } from '../shared/benchTips';
 import { createConfigEditor } from './configEditor';
@@ -251,7 +252,7 @@ async function busy<T>(button: HTMLButtonElement, work: () => Promise<T>, label?
   }
 }
 
-/** Strips Electron's "Error invoking remote method 'x': Error:" prefix. */
+/** Strips Electron's "Error invoking remote method 'x': Error:" prefix and puts raw system errors in words. */
 function errorText(err: unknown): string {
   const text = String((err as Error)?.message ?? err)
     .replace(/^Error invoking remote method '[^']+': /, '')
@@ -259,6 +260,12 @@ function errorText(err: unknown): string {
   if (text.startsWith('social:')) return socialErrorText(text.slice(7));
   // a raw network failure that slipped through: say it in words
   if (/^fetch failed$|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT/.test(text)) return t('Brak połączenia z internetem. Sprawdź połączenie i spróbuj ponownie.');
+  // a file error (EPERM, ENOSPC…) in plain words; its code and paths only in the log
+  const plain = fileErrorText(text);
+  if (plain !== undefined) {
+    console.warn(text);
+    return plain;
+  }
   return text;
 }
 
