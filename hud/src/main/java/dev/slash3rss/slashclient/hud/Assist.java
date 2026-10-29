@@ -679,8 +679,36 @@ public final class Assist {
 		if (same && warnedLevel >= level) return;
 		warnedFor = hand.copy();
 		warnedLevel = level;
-		Compat.overlay(mc, Component.translatable("slashclient-hud.assist.toolWarning.left", hand.getHoverName(), left).withStyle(s -> s.withColor(level == 2 ? 0xFF5555 : 0xFFAA00)));
+		warning = Component.translatable("slashclient-hud.assist.toolWarning.left", hand.getHoverName(), left).withStyle(s -> s.withColor(level == 2 ? 0xFF5555 : 0xFFAA00));
+		warnedAt = System.currentTimeMillis();
 		mc.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_PLING.value(), level == 2 ? 0.6f : 0.9f, 0.8f));
+	}
+
+	private static Component warning;
+	private static long warnedAt;
+	private static final long WARNING_MS = 3000;
+
+	/**
+	 * The warning, just over the action bar's line and drawn after the chat: as the action bar's message it was
+	 * under the chat's lines, and a server writing there (SkyUp does all the time) took its place at once.
+	 */
+	static void drawWarning(net.minecraft.client.gui.GuiGraphicsExtractor g) {
+		if (warning == null) return;
+		long age = System.currentTimeMillis() - warnedAt;
+		if (age > WARNING_MS) {
+			warning = null;
+			return;
+		}
+		// fading out in its last half second, like the game's own messages
+		int alpha = (int) Math.min(255, (WARNING_MS - age) * 255 / 500);
+		if (alpha < 8) return;
+		var font = Minecraft.getInstance().font;
+		g.text(font, warning, (g.guiWidth() - font.width(warning)) / 2, g.guiHeight() - 68 - 12, alpha << 24 | 0xFFFFFF, true);
+	}
+
+	/** The warning shown now, or "" (for the test). */
+	public static String warningShown() {
+		return warning == null ? "" : warning.getString();
 	}
 
 	/** For the test. */

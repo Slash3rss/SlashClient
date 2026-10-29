@@ -387,8 +387,21 @@ public final class MoreModules {
 			return nameOf(target(mc)).getString();
 		}
 
+		/** The last name worked out, for one entity and one of its ticks: a frame asks for it three times. */
+		private static java.lang.ref.WeakReference<LivingEntity> namedFor = new java.lang.ref.WeakReference<>(null);
+		private static int namedAt;
+		private static Component named;
+
 		private static Component nameOf(LivingEntity e) {
 			if (e == null) return Component.literal("Steve");
+			if (namedFor.get() == e && namedAt == e.tickCount && named != null) return named;
+			named = findName(e);
+			namedFor = new java.lang.ref.WeakReference<>(e);
+			namedAt = e.tickCount;
+			return named;
+		}
+
+		private static Component findName(LivingEntity e) {
 			Component name = withoutHealth(e.getDisplayName());
 			if (!name.getString().isBlank()) return name;
 			// a mob drawn with a server's model (SkyUp's dungeons) has no name of its own: the name over

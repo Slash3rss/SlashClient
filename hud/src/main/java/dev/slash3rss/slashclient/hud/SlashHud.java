@@ -206,6 +206,7 @@ public class SlashHud implements ClientModInitializer {
 		//#endif
 		net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents.JOIN.register((handler, sender, mc) -> {
 			Badges.reset();
+			dev.slash3rss.slashclient.hud.map.MapEntities.forget();
 			// the chat filter is not saved: set again, or after a restart "All" shows pulled-out tabs' lines
 			ChatTabs.reapply();
 			Cosmetics.reset();
@@ -409,6 +410,8 @@ public class SlashHud implements ClientModInitializer {
 			dev.slash3rss.slashclient.hud.skyup.SkyReminder.draw(g, mc);
 			//#endif
 		});
+		// a tool about to break: over the chat, so its lines do not cover it
+		HudElementRegistry.attachElementAfter(VanillaHudElements.CHAT, Identifier.fromNamespaceAndPath(ID, "tool_warning"), (g, delta) -> Assist.drawWarning(g));
 	}
 
 	private static void speed(double value) {

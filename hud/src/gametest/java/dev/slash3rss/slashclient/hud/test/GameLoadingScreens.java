@@ -119,8 +119,9 @@ public class GameLoadingScreens implements FabricClientGameTest {
 		if (!applied) throw new AssertionError("The pack reload was not drawn in our look: " + context.computeOnClient(mc -> new ArrayList<>(SlashLoading.drawnForTest)));
 		context.setScreen(() -> {
 			ProgressScreen p = new ProgressScreen(false);
-			p.progressStartNoAbort(Component.literal("Pobieranie świata"));
-			p.progressStage(Component.literal("Rozpakowywanie"));
+			// the game's own texts (a Realms download), so they are in the game's language like the hint under them
+			p.progressStartNoAbort(Component.translatable("mco.download.title"));
+			p.progressStage(Component.translatable("mco.download.extracting"));
 			p.progressStagePercentage(66);
 			return p;
 		});

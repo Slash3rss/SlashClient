@@ -24,6 +24,7 @@
 //$
 //$ 	private static final Map<ResourceLocation, List<Function<HudElement, HudElement>>> REPLACED = new HashMap<>();
 //$ 	private static final Map<ResourceLocation, List<HudElement>> BEFORE = new HashMap<>();
+//$ 	private static final Map<ResourceLocation, List<HudElement>> AFTER = new HashMap<>();
 //$
 //$ 	public static void replaceElement(ResourceLocation id, Function<HudElement, HudElement> replace) {
 //$ 		REPLACED.computeIfAbsent(id, k -> new ArrayList<>()).add(replace);
@@ -33,12 +34,17 @@
 //$ 		BEFORE.computeIfAbsent(before, k -> new ArrayList<>()).add(element);
 //$ 	}
 //$
+//$ 	public static void attachElementAfter(ResourceLocation after, ResourceLocation id, HudElement element) {
+//$ 		AFTER.computeIfAbsent(after, k -> new ArrayList<>()).add(element);
+//$ 	}
+//$
 //$ 	/** Draws the game's part `id` (drawn by `vanilla`) with what was attached before it and its replacements. */
 //$ 	public static void render(ResourceLocation id, GuiGraphics g, DeltaTracker delta, HudElement vanilla) {
 //$ 		for (HudElement e : BEFORE.getOrDefault(id, List.of())) e.render(g, delta);
 //$ 		HudElement element = vanilla;
 //$ 		for (Function<HudElement, HudElement> replace : REPLACED.getOrDefault(id, List.of())) element = replace.apply(element);
 //$ 		element.render(g, delta);
+//$ 		for (HudElement e : AFTER.getOrDefault(id, List.of())) e.render(g, delta);
 //$ 	}
 //$ }
 //#elif MC < 1.21.6
@@ -63,6 +69,10 @@
 //$
 //$ 	public static void attachElementBefore(ResourceLocation before, ResourceLocation id, HudElement element) {
 //$ 		HudLayerRegistrationCallback.EVENT.register(layers -> layers.attachLayerBefore(before, IdentifiedLayer.of(id, element::render)));
+//$ 	}
+//$
+//$ 	public static void attachElementAfter(ResourceLocation after, ResourceLocation id, HudElement element) {
+//$ 		HudLayerRegistrationCallback.EVENT.register(layers -> layers.attachLayerAfter(after, IdentifiedLayer.of(id, element::render)));
 //$ 	}
 //$ }
 //#endif

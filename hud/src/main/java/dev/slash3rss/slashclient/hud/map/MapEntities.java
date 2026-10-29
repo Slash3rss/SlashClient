@@ -35,9 +35,7 @@ public final class MapEntities {
 	/** One thing to draw: where it is (x, z), which way it looks and what it is. */
 	record Mark(Entity entity, int kind, double x, double z, float yaw) {}
 
-	/** For the tests: what each map drew last ("players,hostile,passive" counts and the players' names). */
-	public static String drawnMinimap = "", drawnWorldMap = "";
-	/** For the tests: the marks each map drew last. */
+	/** For the tests: the marks each map drew last (described only when a test asks, not every frame). */
 	public static List<Mark> shownMinimap = List.of(), shownWorldMap = List.of();
 
 	/** A real player's nick (a Bedrock one through Geyser may start with "." or "*"). */
@@ -81,6 +79,12 @@ public final class MapEntities {
 	 * A real player, not a server's NPC: on the tab list, or else with an id of a real (or offline)
 	 * player and a nick that could be one. Plugins' NPCs have version 2 ids and often odd names.
 	 */
+	/** Another world: the marks kept for the tests let go of its entities. */
+	public static void forget() {
+		shownMinimap = List.of();
+		shownWorldMap = List.of();
+	}
+
 	static boolean realPlayer(Minecraft mc, AbstractClientPlayer p) {
 		var connection = mc.getConnection();
 		if (connection != null && connection.getPlayerInfo(p.getUUID()) != null) return true;
@@ -150,7 +154,7 @@ public final class MapEntities {
 	}
 
 	/** What was drawn, for the tests: "1,2,3:Name" (players, hostile, passive, the players' nicks). */
-	static String describe(List<Mark> drawn) {
+	public static String describe(List<Mark> drawn) {
 		int[] n = new int[3];
 		StringBuilder names = new StringBuilder();
 		for (Mark m : drawn) {

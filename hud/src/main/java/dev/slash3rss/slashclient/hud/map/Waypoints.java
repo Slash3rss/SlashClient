@@ -181,9 +181,11 @@ public final class Waypoints {
 		return p;
 	}
 
+	private static final java.util.regex.Pattern DIMENSION_KEY = java.util.regex.Pattern.compile("^ResourceKey\\[.* / (.+)]$");
+
 	/** "minecraft:overworld" from the key this file keeps ("ResourceKey[minecraft:dimension / minecraft:overworld]"). */
 	public static String dimensionId(String key) {
-		var m = java.util.regex.Pattern.compile("^ResourceKey\\[.* / (.+)]$").matcher(key == null ? "" : key);
+		var m = DIMENSION_KEY.matcher(key == null ? "" : key);
 		return m.matches() ? m.group(1) : key == null ? "" : key;
 	}
 

@@ -94,8 +94,18 @@ public final class SkyTasks {
 	static Path file() {
 		var user = Minecraft.getInstance().getUser();
 		java.util.UUID id = user == null ? null : user.getProfileId();
-		return id == null ? FILE : FILE.resolveSibling("zadania-" + id.toString().replace("-", "") + ".json");
+		if (id == null) return FILE;
+		// asked many times a frame: the path is made again only for another account
+		AccountFile last = accountFile;
+		if (last != null && last.id().equals(id)) return last.path();
+		Path path = FILE.resolveSibling("zadania-" + id.toString().replace("-", "") + ".json");
+		accountFile = new AccountFile(id, path);
+		return path;
 	}
+
+	private record AccountFile(java.util.UUID id, Path path) {}
+
+	private static AccountFile accountFile;
 
 	/** Where the progress in memory came from (and is saved to). */
 	private static Path loadedFrom;
@@ -139,7 +149,7 @@ public final class SkyTasks {
 	public static Data data() {
 		// another account than the progress in memory belongs to: its own file
 		Path file = file();
-		if (data != null && loadedFrom != null && !file.equals(loadedFrom)) {
+		if (data != null && loadedFrom != null && file != loadedFrom && !file.equals(loadedFrom)) {
 			if (dirty) save();
 			data = null;
 			lastTier = "";

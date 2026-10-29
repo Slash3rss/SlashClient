@@ -62,7 +62,8 @@ public final class Badges {
 	private static final int CLAN_COLOR = 0xFBBF24;
 	/** uuid → the platform ("twitch", "kick") of a player live now with Minecraft (servers 0.9.24+): "● NA ŻYWO" above the name. */
 	private static final Map<UUID, String> live = new ConcurrentHashMap<>();
-	private static final int LIVE_DOT = 0xFF3B3B, TWITCH = 0xA970FF, KICK = 0x53FC18;
+	// lighter than the brands' own colours: above a head at night the darker purple and red were hard to read
+	private static final int LIVE_DOT = 0xFF5A5A, TWITCH = 0xC8A6FF, KICK = 0x6BFF3A;
 
 	/**
 	 * The line above a live player's name, or null: not live, the setting off, or the logos off.
@@ -342,5 +343,10 @@ public final class Badges {
 		checkedAt.clear();
 		slash.clear();
 		lastHeartbeat = 0;
+		// the other players' ranks, clans and streams too, so a long session does not keep everyone ever met;
+		// our own stay, so our logo does not lose its colour until the next answer
+		var user = Minecraft.getInstance().getUser();
+		UUID self = user == null ? null : user.getProfileId();
+		for (Map<UUID, ?> m : List.of(ranks, clans, live, tierBadges, colorBadges)) m.keySet().removeIf(id -> !id.equals(self));
 	}
 }

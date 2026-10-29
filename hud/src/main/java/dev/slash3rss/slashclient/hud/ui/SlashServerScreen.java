@@ -471,7 +471,8 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 			for (var line : font.split(motd, Math.max(10, textW))) {
 				if (lines++ == 2) break;
 				g.text(font, line, tx, ly, Ui.TEXT_2, false);
-				ly += 10;
+				// the game's own line height: a second line ended right on the row's edge
+				ly += 9;
 			}
 		}
 		Ui.end();

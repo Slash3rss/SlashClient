@@ -261,13 +261,28 @@ public final class ChatTabs {
 	public static boolean mentions(String text, String nick) {
 		if (nick == null || nick.isEmpty() || text == null) return false;
 		String rest = withoutOwnName(text, nick);
-		return Pattern.compile("(?<![A-Za-z0-9_])" + Pattern.quote(nick) + "(?![A-Za-z0-9_])", Pattern.CASE_INSENSITIVE).matcher(rest).find();
+		return nickPatterns(nick).word().matcher(rest).find();
 	}
 
 	/** A line without the player's own name as its sender ("<Nick> …", "[VIP] Nick » …"): their own lines never name them. */
 	static String withoutOwnName(String text, String nick) {
 		if (nick == null || nick.isEmpty()) return text;
-		return Pattern.compile("^(?:\\[[^\\]]{0,24}\\]\\s*)*<?" + Pattern.quote(nick) + ">?\\s*[:»>\\-]", Pattern.CASE_INSENSITIVE).matcher(text).replaceFirst("");
+		return nickPatterns(nick).sender().matcher(text).replaceFirst("");
+	}
+
+	/** The nick as a word and as a line's sender, made once per nick (it is the same for every line). */
+	private record NickPatterns(String nick, Pattern word, Pattern sender) {}
+
+	private static volatile NickPatterns nickPatterns;
+
+	private static NickPatterns nickPatterns(String nick) {
+		NickPatterns p = nickPatterns;
+		if (p != null && p.nick().equals(nick)) return p;
+		p = new NickPatterns(nick,
+			Pattern.compile("(?<![A-Za-z0-9_])" + Pattern.quote(nick) + "(?![A-Za-z0-9_])", Pattern.CASE_INSENSITIVE),
+			Pattern.compile("^(?:\\[[^\\]]{0,24}\\]\\s*)*<?" + Pattern.quote(nick) + ">?\\s*[:»>\\-]", Pattern.CASE_INSENSITIVE));
+		nickPatterns = p;
+		return p;
 	}
 
 	/** The open chat shows them in the "@" tab: the badge over the closed chat starts again. */

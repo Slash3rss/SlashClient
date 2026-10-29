@@ -57,6 +57,14 @@ public final class LightOverlay {
 	private static List<Crop> crops = List.of();
 	private static int ticks;
 	private static BlockPos scannedAt;
+	/** The pass under way: spread over PASS_TICKS ticks, so a sprinting player gets no stutter from it. */
+	private static final int PASS_TICKS = 4;
+	private static BlockPos passAt;
+	private static Level passLevel;
+	private static int passRadius, passRow;
+	private static boolean passCrops;
+	private static List<Spot> passSpots = new ArrayList<>();
+	private static List<Crop> passFarm = new ArrayList<>();
 
 	static HudConfig cfg() {
 		return SlashHud.config;
@@ -88,24 +96,50 @@ public final class LightOverlay {
 			spots = List.of();
 			crops = List.of();
 			scannedAt = null;
+			passAt = null;
+			passLevel = null;
 			return;
 		}
-		// again twice a second, or at once when the player stepped onto another block
+		// a pass from another world is of no use
+		if (passLevel != mc.level) passAt = null;
+		ticks--;
 		BlockPos at = mc.player.blockPosition();
-		if (--ticks > 0 && at.equals(scannedAt)) return;
-		ticks = 10;
-		scannedAt = at;
-		int radius = Math.max(4, Math.min(32, cfg().lightOverlayRadius));
-		spots = scan(mc.level, at, radius);
-		crops = cfg().lightOverlayCrops ? scanCrops(mc.level, at, radius) : List.of();
+		if (passAt == null) {
+			// again twice a second, or as soon as the last pass is done when the player stepped onto another block
+			if (ticks > 0 && at.equals(scannedAt)) return;
+			ticks = 10;
+			scannedAt = at;
+			passAt = at;
+			passLevel = mc.level;
+			passRadius = Math.max(4, Math.min(32, cfg().lightOverlayRadius));
+			passRow = -passRadius;
+			passCrops = cfg().lightOverlayCrops;
+			passSpots = new ArrayList<>();
+			passFarm = new ArrayList<>();
+		}
+		// a quarter of the circle each tick; the crosses already shown stay until the whole pass is done
+		int to = Math.min(passRadius, passRow + (2 * passRadius + PASS_TICKS) / PASS_TICKS - 1);
+		scanRows(mc.level, passAt, passRadius, passRow, to, passSpots);
+		if (passCrops) scanCropRows(mc.level, passAt, passRadius, passRow, to, passFarm);
+		passRow = to + 1;
+		if (passRow <= passRadius) return;
+		spots = passSpots;
+		crops = passCrops ? passFarm : List.of();
+		passAt = null;
 	}
 
 	/** The farmland within `radius` (a circle) and HEIGHT up and down of `center`, with whether crops on it grow. */
 	public static List<Crop> scanCrops(Level level, BlockPos center, int radius) {
 		List<Crop> out = new ArrayList<>();
+		scanCropRows(level, center, radius, -radius, radius, out);
+		return out;
+	}
+
+	/** Part of scanCrops: the columns from `fromX` to `toX` (offsets from the center) into `out`. */
+	static void scanCropRows(Level level, BlockPos center, int radius, int fromX, int toX, List<Crop> out) {
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(), above = new BlockPos.MutableBlockPos();
 		int r2 = radius * radius;
-		for (int dx = -radius; dx <= radius; dx++) {
+		for (int dx = fromX; dx <= toX; dx++) {
 			for (int dz = -radius; dz <= radius; dz++) {
 				if (dx * dx + dz * dz > r2) continue;
 				int x = center.getX() + dx, z = center.getZ() + dz;
@@ -119,12 +153,17 @@ public final class LightOverlay {
 				}
 			}
 		}
-		return out;
 	}
 
 	/** The spawnable blocks within `radius` (a circle) and HEIGHT up and down of `center`. */
 	public static List<Spot> scan(Level level, BlockPos center, int radius) {
 		List<Spot> out = new ArrayList<>();
+		scanRows(level, center, radius, -radius, radius, out);
+		return out;
+	}
+
+	/** Part of scan: the columns from `fromX` to `toX` (offsets from the center) into `out`. */
+	static void scanRows(Level level, BlockPos center, int radius, int fromX, int toX, List<Spot> out) {
 		var type = level.dimensionType();
 		int blockLimit = type.monsterSpawnBlockLightLimit();
 		// the darkest the game may ask for (0-7 at random in the Overworld): darker than its top always spawns
@@ -135,7 +174,7 @@ public final class LightOverlay {
 		//#endif
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos(), below = new BlockPos.MutableBlockPos();
 		int r2 = radius * radius;
-		for (int dx = -radius; dx <= radius; dx++) {
+		for (int dx = fromX; dx <= toX; dx++) {
 			for (int dz = -radius; dz <= radius; dz++) {
 				if (dx * dx + dz * dz > r2) continue;
 				int x = center.getX() + dx, z = center.getZ() + dz;
@@ -158,7 +197,6 @@ public final class LightOverlay {
 				}
 			}
 		}
-		return out;
 	}
 
 	/** Whether a monster could appear in `pos` standing on `under` (at `below`), light aside. */

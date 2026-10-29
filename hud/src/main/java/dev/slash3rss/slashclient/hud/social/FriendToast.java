@@ -99,7 +99,7 @@ public final class FriendToast implements Toast {
 	private final int W, H;
 	/** How long this one is shown, from its text's length. */
 	private final long showMs;
-	private long first = -1, age;
+	private long first = -1, age, last = -1;
 
 	FriendToast(String title, String text, String icon) {
 		this(title, text, icon, null);
@@ -117,7 +117,7 @@ public final class FriendToast implements Toast {
 		this.icon = icon;
 		this.sparks = sparks;
 		H = sparks == null ? 32 : 43;
-		W = sparks == null ? WIDTH : Math.max(WIDTH, Math.min(WIDTH + 40, 40 + Math.max(Ui.width(Ui.bold(title)), Ui.width(Component.literal(text)))));
+		W = sparks == null ? WIDTH : Math.max(WIDTH, Math.min(WIDTH + 40, 40 + Math.max(Ui.width(Ui.bold(title)), Ui.width(Ui.text(text)))));
 		showMs = showMs(title, text, W - 40);
 	}
 
@@ -132,7 +132,7 @@ public final class FriendToast implements Toast {
 	 */
 	private static long showMs(String title, String text, int room) {
 		long read = 2000 + 60L * (title.length() + text.length());
-		int over = Math.max(Ui.width(Ui.bold(title)), Ui.width(Component.literal(text))) - room;
+		int over = Math.max(Ui.width(Ui.bold(title)), Ui.width(Ui.text(text))) - room;
 		long slide = over <= 0 ? 0 : 3 * 700 + 2 * Math.max(600, over * 1000L / 30);
 		return Math.max(MIN_MS, Math.min(MAX_MS, Math.max(read, slide)));
 	}
@@ -157,7 +157,7 @@ public final class FriendToast implements Toast {
 
 	@Override
 	public void update(ToastManager manager, long time) {
-		if (first < 0) first = time;
+		hold(time);
 		age = time - first;
 		wanted = age < showMs ? Visibility.SHOW : Visibility.HIDE;
 	}
@@ -169,12 +169,22 @@ public final class FriendToast implements Toast {
 	//#else
 	//$ @Override
 	//$ public Visibility render(GuiGraphicsExtractor g, ToastManager manager, long time) {
-	//$ 	if (first < 0) first = time;
+	//$ 	hold(time);
 	//$ 	age = time - first;
 	//$ 	draw(g);
 	//$ 	return age < showMs ? Visibility.SHOW : Visibility.HIDE;
 	//$ }
 	//#endif
+
+	/**
+	 * Its clock: it does not run while a SlashClient window holds the toasts back (or while it was not drawn at all,
+	 * where the game asks only when drawing), so it is shown its whole time after.
+	 */
+	private void hold(long time) {
+		if (first < 0) first = time;
+		else if (last >= 0 && (dev.slash3rss.slashclient.hud.GameHud.toastsHeld() || time - last > 250)) first += time - last;
+		last = time;
+	}
 
 	private void draw(GuiGraphicsExtractor g) {
 		Ui.round(g, 0, 0, W, H, 6, Ui.PANEL);
@@ -204,17 +214,16 @@ public final class FriendToast implements Toast {
 	 * (a toast is drawn moved to its place, so it is cut by letters rather than clipped).
 	 */
 	private String sliding(String line, boolean bold, int room) {
-		var font = net.minecraft.client.Minecraft.getInstance().font;
-		java.util.function.ToIntFunction<String> width = s -> Ui.width(bold ? Ui.bold(s) : Component.literal(s));
+		java.util.function.ToIntFunction<String> width = s -> Ui.width(bold ? Ui.bold(s) : Ui.text(s));
 		int over = width.applyAsInt(line) - room;
 		if (over <= 0) return line;
 		int shift = (int) Math.min(over, Ui.bounce(age, over, 700, Math.max(600, over * 1000L / 30)));
 		int from = 0;
 		while (from < line.length() - 1 && width.applyAsInt(line.substring(0, from + 1)) <= shift) from++;
 		String rest = line.substring(from);
-		// the bold title is a little wider than plain letters: cut by its own width
+		// cut at the end by the line's own font and weight
 		while (rest.length() > 1 && width.applyAsInt(rest) > room) rest = rest.substring(0, rest.length() - 1);
-		return bold ? rest : font.plainSubstrByWidth(rest, room);
+		return rest;
 	}
 
 	/** The name, the text, the Sparks' line and the bar running out. */
@@ -222,7 +231,8 @@ public final class FriendToast implements Toast {
 		int textW = W - 33 - 7;
 		// a title or text too wide slides through and back while shown, instead of being cut
 		Ui.draw(g, Ui.bold(sliding(title, true, textW)), 33, 7, Ui.TEXT);
-		Ui.draw(g, Component.literal(sliding(text, false, textW)), 33, 18, Ui.TEXT_2);
+		// the text in the menus' font like the title (the game's pixel font under it looked out of place)
+		Ui.draw(g, Ui.text(sliding(text, false, textW)), 33, 18, Ui.TEXT_2);
 		if (sparks != null) {
 			dev.slash3rss.slashclient.hud.cosmetics.Sparks.icon(g, 33, 29, 8);
 			Ui.draw(g, Ui.fit(Ui.bold(sparks), textW - 11), 44, 29, dev.slash3rss.slashclient.hud.cosmetics.Sparks.GOLD);

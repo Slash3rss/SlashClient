@@ -57,6 +57,8 @@ public final class GameHud {
 		if (cfg() == null) return true;
 		if (!GameParts.TOASTS.on()) return false;
 		Minecraft mc = Minecraft.getInstance();
+		// over one of our windows a toast hid its close button and top row: they wait until it is closed
+		if (toastsHeld()) return false;
 		HudConfig.Placement p = cfg().placement(GameParts.TOASTS.id());
 		int sw = g.guiWidth(), sh = g.guiHeight();
 		int[] size = SlashHud.size(GameParts.TOASTS, mc, p);
@@ -69,6 +71,15 @@ public final class GameHud {
 		pose.scale(scale, scale);
 		pose.translate(-screen[0], -screen[1]);
 		return true;
+	}
+
+	/**
+	 * A SlashClient window is open (the shop, friends, the waypoints…): toasts are not drawn over it, and ours
+	 * keep their time for when it closes. Not in the HUD editor, which places the toasts' box.
+	 */
+	public static boolean toastsHeld() {
+		var screen = Compat.screen(Minecraft.getInstance());
+		return screen != null && !(screen instanceof HudEditScreen) && screen.getClass().getName().startsWith("dev.slash3rss.slashclient.");
 	}
 
 	public static void toastsEnd(GuiGraphicsExtractor g) {

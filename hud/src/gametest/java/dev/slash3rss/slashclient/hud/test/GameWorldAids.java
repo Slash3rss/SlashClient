@@ -111,6 +111,9 @@ public class GameWorldAids implements FabricClientGameTest {
 		// farmland: under the open sky crops grow on it, in the dark room they do not
 		server.runCommand(String.format("setblock -8 %d 3 farmland", y));
 		server.runCommand(String.format("setblock -9 %d -9 farmland", y));
+		// wheat on both: dry farmland with nothing on it turns back into dirt at random, and the check found none
+		server.runCommand(String.format("setblock -8 %d 3 wheat", y + 1));
+		server.runCommand(String.format("setblock -9 %d -9 wheat", y + 1));
 		server.runCommand("tp @a 0 157 6 180 55");
 		context.runOnClient(mc -> WorldAidsTestHooks.fly());
 		context.waitTicks(60);

@@ -44,10 +44,13 @@ public final class FriendPositions {
 	private static volatile boolean sample;
 	private static volatile String sampleServer;
 
+	private static final java.util.regex.Pattern DEFAULT_PORT = java.util.regex.Pattern.compile(":25565$"),
+		TRAILING_DOTS = java.util.regex.Pattern.compile("\\.+(?=:\\d+$|$)");
+
 	/** The server's key for an address, as it compares them ("Play.Example.com:25565" is "play.example.com"). */
 	static String serverKey(String address) {
 		if (address == null) return "";
-		return address.strip().toLowerCase(Locale.ROOT).replaceAll(":25565$", "").replaceAll("\\.+(?=:\\d+$|$)", "");
+		return TRAILING_DOTS.matcher(DEFAULT_PORT.matcher(address.strip().toLowerCase(Locale.ROOT)).replaceAll("")).replaceAll("");
 	}
 
 	// ---------- receiving ----------

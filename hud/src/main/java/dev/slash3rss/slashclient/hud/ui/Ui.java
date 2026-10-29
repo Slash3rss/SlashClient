@@ -166,7 +166,9 @@ public final class Ui {
 		draw(g, c, cx - width(c) / 2, y, color);
 	}
 
-	private static final Map<String, Long> MARQUEE = new java.util.HashMap<>();
+	/** Each sliding text's clock: when it started and when it was last drawn (texts gone a while are let go). */
+	private static final Map<String, long[]> MARQUEE = new java.util.HashMap<>();
+	private static long marqueeSwept;
 
 	/**
 	 * Text centred in `w` pixels at `cx`: cut with "…" when too long, but while `moving` (the mouse is
@@ -224,8 +226,14 @@ public final class Ui {
 			return 0;
 		}
 		long now = System.currentTimeMillis();
-		long started = MARQUEE.computeIfAbsent(key, k -> now);
-		return bounce(now - started, over, 700, Math.max(600, over * 1000L / 30));
+		// keys hold places and names (a chat tab's spot, a server's name): without this every window size and list kept one
+		if (now - marqueeSwept > 5_000) {
+			marqueeSwept = now;
+			MARQUEE.values().removeIf(v -> now - v[1] > 2_000);
+		}
+		long[] clock = MARQUEE.computeIfAbsent(key, k -> new long[] { now, now });
+		clock[1] = now;
+		return bounce(now - clock[0], over, 700, Math.max(600, over * 1000L / 30));
 	}
 
 	/** `ms` into a bounce between 0 and `to`: `pause` at each end, `slide` ms each way. */
@@ -385,7 +393,9 @@ public final class Ui {
 		float v = HOVER.getOrDefault(id, 0f);
 		v += (over ? 1 : -1) * 0.18f;
 		v = Math.max(0, Math.min(1, v));
-		HOVER.put(id, v);
+		// faded out is the same as never pointed at: not kept, so ids made of places and names do not pile up
+		if (v == 0) HOVER.remove(id);
+		else HOVER.put(id, v);
 		return v;
 	}
 
@@ -429,6 +439,7 @@ public final class Ui {
 
 	/** An on/off switch, 20×10. */
 	public static void toggle(GuiGraphicsExtractor g, String id, int x, int y, boolean on) {
+		// kept at rest too, so a click slides the knob from where it was (switch ids are settings: a fixed few)
 		float t = HOVER.compute("toggle:" + id, (k, v) -> {
 			float cur = v == null ? (on ? 1f : 0f) : v;
 			return cur + ((on ? 1f : 0f) - cur) * 0.3f;
