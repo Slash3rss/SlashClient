@@ -42,3 +42,28 @@ export function createLogParser(onLine: (line: string) => void): (chunk: string)
     }
   };
 }
+
+/**
+ * Game log lines for the launcher window, sent together every `delayMs`: a big modpack prints
+ * thousands of lines in a few seconds, and one message (and one page update) per line made the
+ * launcher stutter. `flush()` sends what is waiting at once (before "the game closed").
+ */
+export function createLineBatcher(send: (lines: string[]) => void, delayMs = 50) {
+  let lines: string[] = [];
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const flush = () => {
+    if (timer) clearTimeout(timer);
+    timer = undefined;
+    if (!lines.length) return;
+    const batch = lines;
+    lines = [];
+    send(batch);
+  };
+  return {
+    push(line: string) {
+      lines.push(line);
+      timer ??= setTimeout(flush, delayMs);
+    },
+    flush,
+  };
+}

@@ -10,6 +10,7 @@ import { analyzeCrash } from './crash';
 import { currentIconId, iconFile, iconFromFile, iconFromLibrary, iconFromUrl, LIBRARY } from './profileIcon';
 import { libraryIcons, removeFromLibrary } from './iconLibrary';
 import { pullShared, pushShared } from './sync';
+import { createLineBatcher } from './gamelog';
 import { recommendedMemoryMb } from './jvm';
 import { markExistingUser } from '../shared/firstRun';
 import { shareLog } from './logshare';
@@ -1799,7 +1800,9 @@ async function startGame(profileId: string, accountId: string, server: string | 
   // opened only now: a launch stopped earlier (benchmark without the mod) leaves no empty console session
   const consoleLog = await consoleHistory.start(profile.id, startedAt).catch(() => undefined);
   // a launch that fails (no network, no Java) takes back what was set for it: friends do not see you "in the game"
+  const gameLog = createLineBatcher((lines) => send('game:logBatch', { profileId: profile.id, lines }));
   const failed = (err: unknown): never => {
+    gameLog.flush();
     void consoleLog?.end(null, false);
     if (!games.size) social.setActivity({ kind: 'launcher' });
     throw err;
@@ -1812,7 +1815,7 @@ async function startGame(profileId: string, accountId: string, server: string | 
       recentLog.push(line);
       if (recentLog.length > 3000) recentLog.shift();
       consoleLog?.line(line);
-      send('game:log', { profileId: profile.id, line });
+      gameLog.push(line);
       const joined = serverFromLog(line);
       if (joined) {
         lastServer = { address: joined, at: Date.now() };
@@ -1876,6 +1879,8 @@ async function startGame(profileId: string, accountId: string, server: string | 
     const other = [...games.values()].at(-1);
     showPresence(other ? other.presence : idlePresence());
     if (!other) social.setActivity({ kind: 'launcher' });
+    // the last lines before the console says the game closed
+    gameLog.flush();
     send('game:exit', { code, signal, byUser: killRequested, profileId: profile.id });
     if (code !== 0 && !killRequested) {
       analyzeCrash({ log: recentLog, gameDir: profileGameDir(profile), startedAt, code, signal })

@@ -1210,13 +1210,19 @@ function lineLevel(line: string): 'error' | 'warn' | '' {
 
 let logQuery = '';
 
-function appendLog(line: string) {
+/** Adds lines to the console at once: one page update and one scroll for a whole batch from a busy game. */
+function appendLog(lines: string[]) {
+  if (!lines.length) return;
   const atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 20;
-  const level = lineLevel(line);
-  const div = el('div', { className: `line${level ? ` lvl-${level}` : ''}`, textContent: line });
-  if (logQuery && !line.toLowerCase().includes(logQuery)) div.classList.add('miss');
-  log.append(div);
+  const part = document.createDocumentFragment();
   // Keep the DOM small during long sessions.
+  for (const line of lines.slice(-2000)) {
+    const level = lineLevel(line);
+    const div = el('div', { className: `line${level ? ` lvl-${level}` : ''}`, textContent: line });
+    if (logQuery && !line.toLowerCase().includes(logQuery)) div.classList.add('miss');
+    part.append(div);
+  }
+  log.append(part);
   while (log.childElementCount > 2000) log.firstElementChild?.remove();
   if (atBottom) log.scrollTop = log.scrollHeight;
 }
@@ -1226,13 +1232,14 @@ const logText = () => [...log.children].map((l) => l.textContent).join('\n');
 /** Each profile's game log (several games can run at once); the console shows the picked profile's. */
 const logs = new Map<string, string[]>();
 const pickedProfile = () => $<HTMLSelectElement>('#play-profile').value;
-function logTo(profileId: string, line: string) {
+function logTo(profileId: string, added: string | string[]) {
+  const batch = typeof added === 'string' ? [added] : added;
   const lines = logs.get(profileId) ?? [];
-  lines.push(line);
+  lines.push(...batch);
   if (lines.length > 2000) lines.splice(0, lines.length - 2000);
   logs.set(profileId, lines);
   if (profileId === pickedProfile() && consoleView === 'live') {
-    appendLog(line);
+    appendLog(batch);
     $('#log-empty').classList.add('hidden');
   }
 }
@@ -1267,14 +1274,14 @@ async function renderConsole() {
   const profileId = pickedProfile();
   if (consoleView === 'live') {
     log.replaceChildren();
-    for (const line of logs.get(profileId) ?? []) appendLog(line);
+    appendLog(logs.get(profileId) ?? []);
   } else {
     // read first: the lines shown stay until the session's own replace them (no empty flash)
     const view = consoleView;
     const text: string = await api.consoleRead(profileId, view).catch(() => '');
     if (profileId !== pickedProfile() || view !== consoleView) return;
     log.replaceChildren();
-    for (const line of text.split('\n')) if (line) appendLog(line);
+    appendLog(text.split('\n').filter(Boolean));
     log.scrollTop = log.scrollHeight;
   }
   $('#log-empty').classList.toggle('hidden', log.childElementCount > 0 || consoleView === 'live');
@@ -1467,7 +1474,7 @@ $('#crash-copy').addEventListener('click', async () => {
 });
 
 api.on('launch:stage', showStage);
-api.on('game:log', ({ profileId, line }: { profileId: string; line: string }) => logTo(profileId, line));
+api.on('game:logBatch', ({ profileId, lines }: { profileId: string; lines: string[] }) => logTo(profileId, lines));
 // the first game download brings the textures for the 3D profile icons
 api.on('game:exit', () => {
   if (!Object.keys(blockIcons).length) loadBlockIcons();
