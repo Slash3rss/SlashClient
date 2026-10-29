@@ -31,7 +31,8 @@ function applyMotion() {
   dispatchEvent(new Event('slashclient-motion'));
 }
 applyMotion();
-const footRow = document.querySelector('footer.foot .foot-row') ?? document.querySelector('footer.foot');
+// pages whose footer is a plain row (the account page and the like) take it inside that row too, not under it
+const footRow = document.querySelector('footer.foot .foot-row') ?? document.querySelector('footer.foot .wrap') ?? document.querySelector('footer.foot');
 if (footRow) {
   const button = document.createElement('button');
   button.type = 'button';
