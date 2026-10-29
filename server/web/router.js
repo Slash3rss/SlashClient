@@ -1,11 +1,11 @@
 // The site's pages switch without reloading: a click on a link to another page of the site (home,
-// account, bug reports, shared logs) fetches that page, puts its content in place of this one's and
-// runs its script again; back and forward work the same way. The admin panel stays a page of its own.
+// account, bug reports, shared logs, the admin panel) fetches that page, puts its content in place of
+// this one's and runs its script again; back and forward work the same way.
 //
 // A page's script may have left timers, animation loops and listeners on window or document behind:
 // they belong to the page they were made on and stop when it is left.
 
-const PAGE = /^\/(|en|konto|account|zgloszenia(\/\d+)?|bugs(\/\d+)?|logi\/[A-Za-z0-9]{10}|logs\/[A-Za-z0-9]{10})\/?$/;
+const PAGE = /^\/(|en|konto|account|admin|zgloszenia(\/\d+)?|bugs(\/\d+)?|logi\/[A-Za-z0-9]{10}|logs\/[A-Za-z0-9]{10})\/?$/;
 const ROUTER = new URL(import.meta.url).pathname;
 
 const native = {
@@ -99,6 +99,9 @@ export async function go(href, { push = true } = {}) {
   for (const m of next.head.querySelectorAll(META)) document.head.append(document.importNode(m, true));
   document.body.className = next.body.className;
   document.body.replaceChildren(...[...next.body.childNodes].map((n) => document.importNode(n, true)));
+  // the look of the page left goes with it (the admin panel's and the site's do not mix)
+  const wanted = new Set([...next.querySelectorAll('link[rel="stylesheet"]')].map((l) => new URL(l.getAttribute('href'), url).href));
+  document.querySelectorAll('link[rel="stylesheet"]').forEach((l) => !wanted.has(l.href) && l.remove());
   // the page's script runs again for the new content (a fresh copy of it; the shared modules stay)
   loads++;
   for (const s of next.querySelectorAll('script[type="module"][src]')) {
