@@ -99,7 +99,7 @@ import { readBenchmarks } from './benchmark';
 import { comparableBefore } from '../shared/benchTips';
 import { appendSession, readSessions, summarize } from './stats';
 import { contentOf, PopularReporter, recentServers } from './friendsPopular';
-import { appendSummary, collectSummary, MIN_SESSION_MS, readSummaries, summaryDisplay, withStats } from './sessionSummary';
+import { appendSummary, collectSummary, MIN_SESSION_MS, readSummaries, removeSummary, summaryDisplay, withStats } from './sessionSummary';
 import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type ForeignInstance } from './importers';
 import { perfModsFor } from './perfmods';
 import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePreset, type SkinPreset } from './skinLibrary';
@@ -692,6 +692,7 @@ handle('stats:get', async (days: number) => {
 
 // the last session summaries, for the statistics page
 handle('sessionSummary:list', () => readSummaries());
+handle('sessionSummary:remove', (id: string) => (typeof id === 'string' ? removeSummary(id) : undefined));
 
 async function finishSessionSummary(o: { profile: Profile; versionId: string; startedAt: number; endedAt: number; joins: { address: string; at: number }[]; code: number | null; byUser: boolean; benchmark: boolean }) {
   const display = summaryDisplay({ enabled: store.settings.sessionSummary !== false, code: o.code, byUser: o.byUser, durationMs: o.endedAt - o.startedAt, benchmark: o.benchmark });

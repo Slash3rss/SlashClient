@@ -66,7 +66,8 @@ export interface SessionSummary {
   context?: { todayMs: number; streak: number; longestIn30Days: boolean };
 }
 
-const MAX_HISTORY = 10;
+/** The summaries kept ("Wszystkie sesje" on the statistics page; the page shows the last ten itself). */
+export const MAX_HISTORY = 300;
 const MAX_MEDIA = 12;
 /** Shorter runs are crashes on start or a quick look: no summary. */
 export const MIN_SESSION_MS = 30_000;
@@ -240,11 +241,21 @@ export async function readSummaries(file = summariesFile()): Promise<SessionSumm
   }
 }
 
-/** Keeps the summary among the last ten (newest first). */
-export async function appendSummary(summary: SessionSummary, file = summariesFile()): Promise<void> {
-  if (summary.end - summary.start < MIN_SESSION_MS) return;
-  const list = [summary, ...(await readSummaries(file)).filter((s) => s.id !== summary.id)].slice(0, MAX_HISTORY);
+async function writeSummaries(list: SessionSummary[], file: string): Promise<void> {
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(`${file}.tmp`, JSON.stringify(list));
   await fs.rename(`${file}.tmp`, file);
+}
+
+/** Keeps the summary among the last ones (newest first). */
+export async function appendSummary(summary: SessionSummary, file = summariesFile(), max = MAX_HISTORY): Promise<void> {
+  if (summary.end - summary.start < MIN_SESSION_MS) return;
+  await writeSummaries([summary, ...(await readSummaries(file)).filter((s) => s.id !== summary.id)].slice(0, max), file);
+}
+
+/** A summary the player deleted from the list. */
+export async function removeSummary(id: string, file = summariesFile()): Promise<void> {
+  const list = await readSummaries(file);
+  const left = list.filter((s) => s.id !== id);
+  if (left.length !== list.length) await writeSummaries(left, file);
 }

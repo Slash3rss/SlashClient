@@ -4,12 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import {
-  appendSummary, buildSummary, collectSummary, modSessionFile, parseModSession, placesFromJoins, readSummaries, summaryDisplay, withStats,
+  appendSummary, buildSummary, collectSummary, MAX_HISTORY, removeSummary, modSessionFile, parseModSession, placesFromJoins, readSummaries, summaryDisplay, withStats,
   type ModStats, type SessionSummary,
 } from '../src/main/sessionSummary';
 import type { SessionRecord } from '../src/main/stats';
 import { earnedDuring, fmtDistance, fmtDuration, highlights, parseChallenges, placesLine } from '../src/renderer/sessionSummary';
 import { setLang } from '../src/shared/i18n';
+import { filterSummaries, summaryTotals } from '../src/shared/sessionTotals';
 
 const M = 60_000;
 const H = 60 * M;
@@ -110,16 +111,28 @@ describe('session summary: when it shows', () => {
 });
 
 describe('session summary: files', () => {
-  it('keeps the last ten, newest first, and skips short runs', async () => {
+  it('keeps the last ones, newest first, and skips short runs', async () => {
     const file = path.join(await fs.mkdtemp(path.join(os.tmpdir(), 'summaries-')), 'session-summaries.json');
     const make = (i: number, length = H) => buildSummary({ start: START + i * 3 * H, end: START + i * 3 * H + length, profile: { id: 'p', name: 'P', loader: 'fabric' }, versionId: '1.21.4', crashed: false, joins: [], screenshots: [], clips: [] });
-    for (let i = 0; i < 12; i++) await appendSummary(make(i), file);
-    await appendSummary(make(20, 5000), file);
+    assert.equal(MAX_HISTORY, 300);
+    for (let i = 0; i < 12; i++) await appendSummary(make(i), file, 10);
+    await appendSummary(make(20, 5000), file, 10);
     const list = await readSummaries(file);
     assert.equal(list.length, 10);
     assert.equal(list[0].start, START + 11 * 3 * H);
     assert.equal(list.at(-1)!.start, START + 2 * 3 * H);
     assert.deepEqual(await readSummaries(path.join(path.dirname(file), 'missing.json')), []);
+    // one deleted from the list; the totals add up the time of the rest
+    await removeSummary(list[0].id, file);
+    const left = await readSummaries(file);
+    assert.equal(left.length, 9);
+    assert.ok(!left.some((s) => s.id === list[0].id));
+    const totals = summaryTotals(left);
+    assert.equal(totals.sessions, 9);
+    assert.equal(totals.ms, 9 * H);
+    assert.equal(filterSummaries(left, 'p', '').length, 9);
+    assert.equal(filterSummaries(left, 'other', '').length, 0);
+    assert.equal(filterSummaries(left, '', 'skyup.pl').length, 0);
   });
   it('gathers the mod file, the world and the media from the profile folder', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'game-'));

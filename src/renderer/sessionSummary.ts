@@ -1,6 +1,7 @@
 import { getLang, locale, t } from '../shared/i18n';
 import type { ModStats, SessionSummary, SummaryPlace } from '../main/sessionSummary';
-import { control, el, icon, modalWindow } from './dialog';
+import { confirmDialog, control, el, icon, modalWindow } from './dialog';
+import { filterSummaries, summaryTotals } from '../shared/sessionTotals';
 
 /**
  * "Podsumowanie sesji": a card after the game closes (sessionSummary.ts in main gathers it) with
@@ -301,7 +302,22 @@ export function createSessionSummary(deps: SessionSummaryDeps) {
   api.on('store', (s: { settings?: { sessionSummary?: boolean } }) => syncCheckbox(s?.settings?.sessionSummary !== false));
   void Promise.resolve(api.getStore()).then((s: { settings?: { sessionSummary?: boolean } }) => syncCheckbox(s?.settings?.sessionSummary !== false), () => undefined);
 
-  /** "Ostatnie sesje" at the end of the statistics page. */
+  /** One session in a list: when, where, the profile and a few numbers; a click opens its summary. */
+  function historyRow(s: SessionSummary, i: number) {
+    const top = highlights(s.stats).filter((h) => ['kills', 'deaths', 'blocks', 'distance'].includes(h.id)).slice(0, 3);
+    const row = el('button', { type: 'button', className: 'ss-history-row' },
+      el('span', { className: 'ss-history-date' }, el('b', { textContent: dateOf(s.start) }), el('small', { className: 'muted', textContent: timeOf(s.start) })),
+      el('span', { className: 'ss-history-main' },
+        raw(el('b', { textContent: placesLine(s.places) })),
+        el('small', { className: 'muted', textContent: [s.profileName, ...top.map((h) => `${h.label} ${h.value}`)].join(' · ') })),
+      s.crashed ? el('span', { className: 'ss-history-crash', title: t('Awaria') }, icon('fa-triangle-exclamation')) : '',
+      el('span', { className: 'ss-history-time', textContent: fmtDuration(s.end - s.start) }));
+    row.style.animationDelay = `${Math.min(i, 20) * 30}ms`;
+    row.addEventListener('click', () => show(s, true));
+    return row;
+  }
+
+  /** "Ostatnie sesje" at the end of the statistics page: the last ten, and every one kept in "Wszystkie sesje". */
   async function renderHistory(pane: Element | null) {
     if (!pane) return;
     let card = pane.querySelector<HTMLElement>('.ss-history');
@@ -310,21 +326,70 @@ export function createSessionSummary(deps: SessionSummaryDeps) {
       pane.append(card);
     }
     const list: SessionSummary[] = (await Promise.resolve(api.sessionSummaries()).catch(() => [])) ?? [];
-    const rows = list.map((s, i) => {
-      const top = highlights(s.stats).filter((h) => ['kills', 'deaths', 'blocks', 'distance'].includes(h.id)).slice(0, 3);
-      const row = el('button', { type: 'button', className: 'ss-history-row' },
-        el('span', { className: 'ss-history-date' }, el('b', { textContent: dateOf(s.start) }), el('small', { className: 'muted', textContent: timeOf(s.start) })),
-        el('span', { className: 'ss-history-main' },
-          raw(el('b', { textContent: placesLine(s.places) })),
-          el('small', { className: 'muted', textContent: [s.profileName, ...top.map((h) => `${h.label} ${h.value}`)].join(' · ') })),
-        s.crashed ? el('span', { className: 'ss-history-crash', title: t('Awaria') }, icon('fa-triangle-exclamation')) : '',
-        el('span', { className: 'ss-history-time', textContent: fmtDuration(s.end - s.start) }));
-      row.style.animationDelay = `${i * 30}ms`;
-      row.addEventListener('click', () => show(s, true));
-      return row;
-    });
-    card.replaceChildren(el('h3', {}, icon('fa-clock-rotate-left'), ' ', t('Ostatnie sesje')),
+    const rows = list.slice(0, 10).map(historyRow);
+    const all = el('button', { type: 'button', className: 'link-button ss-history-all' }, icon('fa-list'), ' ', t('Wszystkie sesje ({0})', list.length));
+    all.addEventListener('click', () => openAll(list, () => void renderHistory(pane)));
+    card.replaceChildren(el('div', { className: 'row ss-history-head' }, el('h3', {}, icon('fa-clock-rotate-left'), ' ', t('Ostatnie sesje')), list.length ? all : ''),
       rows.length ? el('div', { className: 'ss-history-list' }, ...rows) : el('p', { className: 'muted', textContent: t('Po zamknięciu gry pojawi się tu jej podsumowanie.') }));
+  }
+
+  /**
+   * "Wszystkie sesje": every summary kept, by month, filtered by profile and by a server or world, with what
+   * the ones shown add up to; one can be deleted. `changed` redraws the statistics page's list after a delete.
+   */
+  function openAll(start: SessionSummary[], changed: () => void) {
+    let list = start;
+    const profileSel = control<HTMLSelectElement>('select', { className: 'ss-all-filter' });
+    const placeSel = control<HTMLSelectElement>('select', { className: 'ss-all-filter' });
+    const fill = () => {
+      const profiles = [...new Map(list.map((s) => [s.profileId, s.profileName])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+      const places = [...new Set(list.flatMap((s) => s.places.map((p) => p.name)))].sort((a, b) => a.localeCompare(b));
+      const keep = (sel: HTMLSelectElement, items: [string, string][], any: string) => {
+        const was = sel.value;
+        sel.replaceChildren(control<HTMLOptionElement>('option', { value: '', textContent: any }),
+          ...items.map(([value, label]) => control<HTMLOptionElement>('option', { value, textContent: label })));
+        sel.value = items.some(([v]) => v === was) ? was : '';
+      };
+      keep(profileSel, profiles, t('Wszystkie profile'));
+      keep(placeSel, places.map((p) => [p, p]), t('Wszystkie serwery i światy'));
+    };
+    const totals = el('div', { className: 'ss-all-totals' });
+    const body = el('div', { className: 'ss-all-list' });
+    const draw = () => {
+      const shown = filterSummaries(list, profileSel.value, placeSel.value);
+      const sum = summaryTotals(shown);
+      totals.replaceChildren(...[
+        [t('Sesje'), nf(sum.sessions)], [t('Czas gry'), fmtDuration(sum.ms)], [t('Zabójstwa'), nf(sum.kills)], [t('Śmierci'), nf(sum.deaths)], [t('Bloki'), nf(sum.blocks)],
+      ].map(([label, value]) => el('span', { className: 'ss-all-total' }, el('small', { className: 'muted', textContent: label }), el('b', { textContent: value }))));
+      const out: Node[] = [];
+      let month = '';
+      shown.forEach((s, i) => {
+        const name = new Date(s.start).toLocaleDateString(locale(), { month: 'long', year: 'numeric' });
+        if (name !== month) out.push(el('div', { className: 'ss-all-month', textContent: (month = name) }));
+        const remove = el('button', { type: 'button', className: 'icon-btn ss-all-remove', title: t('Usuń z listy') }, icon('fa-trash'));
+        remove.addEventListener('click', async () => {
+          const ok = await confirmDialog({ title: t('Usunąć to podsumowanie?'), body: [el('p', { className: 'muted', textContent: t('Zniknie z listy sesji. Statystyki profilu, zrzuty i klipy zostaną.') })], ok: t('Usuń'), okIcon: 'fa-trash', danger: true });
+          if (!ok) return;
+          try {
+            await api.removeSessionSummary(s.id);
+          } catch (err) {
+            deps.toast(String((err as Error)?.message ?? err), true);
+            return;
+          }
+          list = list.filter((x) => x.id !== s.id);
+          fill();
+          draw();
+          changed();
+        });
+        out.push(el('div', { className: 'ss-all-row' }, historyRow(s, i), remove));
+      });
+      body.replaceChildren(...(out.length ? out : [el('p', { className: 'muted', textContent: t('Żadna sesja nie pasuje do filtrów.') })]));
+    };
+    profileSel.addEventListener('change', draw);
+    placeSel.addEventListener('change', draw);
+    fill();
+    draw();
+    modalWindow(t('Wszystkie sesje'), [el('div', { className: 'row ss-all-filters' }, profileSel, placeSel), totals, body], [], undefined, 'ss-all-modal');
   }
 
   return { show, renderHistory };
