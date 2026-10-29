@@ -21,7 +21,13 @@ export interface Partner {
   icon: string; iconSize: number; iconDelays: number[]; iconUpdatedAt: number;
   /** Other addresses players add the same server under (another domain, a raw IP), normalized; pins stay on `address`. */
   aliases: string[];
+  /** The owners after `owner` (each one may change the pictures as well). */
+  coOwners: string[];
 }
+
+/** Every owner of a partner server, the first one first. */
+export const ownersOf = (p: Partner): string[] => [p.owner, ...p.coOwners].filter(Boolean);
+const MAX_OWNERS = 10;
 
 const MAX_PICTURE = 3 * 1024 * 1024;
 // PNG and JPEG only: the game reads those itself (no WebP)
@@ -93,7 +99,9 @@ export function partnerRoutes(ctx: PartnerContext): {
     aliases: p.aliases,
   });
   const iconLimits = () => ({ bytes: ctx.setting('partners.iconBytes'), frames: ctx.setting('partners.iconFrames'), side: ctx.setting('partners.iconSide') });
-  const withOwner = (p: Partner) => ({ ...view(p), owner: p.owner ? db.user(p.owner)?.handle ?? '' : '' });
+  const handleOf = (id: string) => db.user(id)?.handle ?? '';
+  // `owner` is the first one, for panels from before there could be several
+  const withOwner = (p: Partner) => ({ ...view(p), owner: p.owner ? handleOf(p.owner) : '', owners: ownersOf(p).map(handleOf).filter(Boolean) });
   const partnerOr404 = (id: string) => db.partner(id) ?? ctx.fail(404, 'not_found');
 
   async function setPicture(req: http.IncomingMessage, p: Partner, who: string) {
@@ -145,7 +153,7 @@ export function partnerRoutes(ctx: PartnerContext): {
   const ownedBy = (req: http.IncomingMessage, id: string) => {
     const me = ctx.authed(req);
     const p = partnerOr404(id);
-    if (p.owner !== me) ctx.fail(403, 'not_owner');
+    if (!ownersOf(p).includes(me)) ctx.fail(403, 'not_owner');
     return { me, p };
   };
 
@@ -180,6 +188,22 @@ export function partnerRoutes(ctx: PartnerContext): {
     if (typeof handle !== 'string' || !handle.trim()) return '';
     return db.userByHandle(handle.trim().replace(/^@/, ''))?.id ?? ctx.fail(404, 'no_such_user');
   };
+  /** `owners`: handles as a list or one text ("@a, @b"); the first one first, each once. */
+  const ownersFrom = (raw: unknown): string[] => {
+    const handles = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(/[\s,;]+/) : ctx.fail(400, 'bad_request');
+    const ids = [...new Set(handles.filter((h): h is string => typeof h === 'string' && !!h.trim()).map(ownerFrom))];
+    if (ids.length > MAX_OWNERS) ctx.fail(400, 'too_many_owners', { max: MAX_OWNERS });
+    return ids;
+  };
+  /** The owners a request sets: `owners` (all of them), or the older `owner` (only the first, the others stay). */
+  const ownersSet = (body: Record<string, unknown>, now?: Partner): { owner: string; coOwners: string[] } => {
+    if (body.owners !== undefined) {
+      const [owner = '', ...coOwners] = ownersFrom(body.owners);
+      return { owner, coOwners };
+    }
+    const owner = body.owner === undefined ? now?.owner ?? '' : ownerFrom(body.owner);
+    return { owner, coOwners: (now?.coOwners ?? []).filter((id) => id !== owner) };
+  };
 
   const routes: [string, RegExp, Handler][] = [
     ['GET', /^\/v1\/partners$/, () => ({ partners: db.partners().map(view) })],
@@ -191,22 +215,25 @@ export function partnerRoutes(ctx: PartnerContext): {
     }],
     ['POST', /^\/v1\/admin\/partners$/, async (req) => {
       const me = ctx.admin(req);
-      const { address, name, owner } = await ctx.body(req);
+      const body = await ctx.body(req);
+      const { address, name } = body;
       if (typeof address !== 'string' || !ADDRESS.test(address.trim())) ctx.fail(400, 'bad_server');
       const norm = normalizeAddress(address);
       if (db.partnerByAddress(norm)) ctx.fail(409, 'exists');
       const other = claimedBy(norm);
       if (other) ctx.fail(409, 'alias_taken', { alias: norm, partner: other.name || other.address });
       const id = randomBytes(6).toString('hex');
-      db.addPartner({ id, address: norm, name: typeof name === 'string' ? name.trim().slice(0, 48) : '', owner: ownerFrom(owner), background: '', pinned: false, rotate: false, updatedAt: Date.now(), icon: '', iconSize: 0, iconDelays: [], iconUpdatedAt: 0, aliases: [] });
+      db.addPartner({ id, address: norm, name: typeof name === 'string' ? name.trim().slice(0, 48) : '', ...ownersSet(body), background: '', pinned: false, rotate: false, updatedAt: Date.now(), icon: '', iconSize: 0, iconDelays: [], iconUpdatedAt: 0, aliases: [] });
       db.log(me, 'partner_add', norm);
       return withOwner(db.partner(id)!);
     }],
     ['POST', /^\/v1\/admin\/partners\/(\w+)$/, async (req, [id]) => {
       const me = ctx.admin(req);
       const p = partnerOr404(id);
-      const { name, owner, pinned, rotate } = await ctx.body(req);
-      db.updatePartner(id, typeof name === 'string' ? name.trim().slice(0, 48) : p.name, owner === undefined ? p.owner : ownerFrom(owner));
+      const body = await ctx.body(req);
+      const { name, pinned, rotate } = body;
+      const owners = ownersSet(body, p);
+      db.updatePartner(id, typeof name === 'string' ? name.trim().slice(0, 48) : p.name, owners.owner, owners.coOwners);
       if (typeof pinned === 'boolean' || typeof rotate === 'boolean') {
         const pin = typeof pinned === 'boolean' ? pinned : p.pinned;
         // only a pinned server can take turns at the top
@@ -241,18 +268,18 @@ export function partnerRoutes(ctx: PartnerContext): {
     // -- the server's owner (a partner account) --
     ['GET', /^\/v1\/me\/partners$/, (req) => {
       const me = ctx.authed(req);
-      return { partners: db.partners().filter((p) => p.owner === me).map(withOwner), iconLimits: iconLimits() };
+      return { partners: db.partners().filter((p) => ownersOf(p).includes(me)).map(withOwner), iconLimits: iconLimits() };
     }],
     ['PUT', /^\/v1\/me\/partners\/(\w+)\/background$/, (req, [id]) => {
       const me = ctx.authed(req);
       const p = partnerOr404(id);
-      if (p.owner !== me) ctx.fail(403, 'not_owner');
+      if (!ownersOf(p).includes(me)) ctx.fail(403, 'not_owner');
       return setPicture(req, p, me);
     }],
     ['DELETE', /^\/v1\/me\/partners\/(\w+)\/background$/, (req, [id]) => {
       const me = ctx.authed(req);
       const p = partnerOr404(id);
-      if (p.owner !== me) ctx.fail(403, 'not_owner');
+      if (!ownersOf(p).includes(me)) ctx.fail(403, 'not_owner');
       return clearPicture(p, me);
     }],
     ['PUT', /^\/v1\/me\/partners\/(\w+)\/icon$/, (req, [id]) => {

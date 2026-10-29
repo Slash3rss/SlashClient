@@ -128,8 +128,8 @@ type MessageRow = Omit<Message, 'invite' | 'waypoint' | 'editedAt' | 'deleted'> 
 const toMessage = ({ invite, waypoint, editedAt, deletedAt, ...m }: MessageRow): Message => (deletedAt ? { ...m, text: '', deleted: true } : {
   ...m, ...(invite ? { invite: JSON.parse(invite) as Invite } : {}), ...(waypoint ? { waypoint: JSON.parse(waypoint) as SharedWaypoint } : {}), ...(editedAt ? { editedAt } : {}),
 });
-const PARTNER_COLUMNS = 'id, address, name, owner, background, pinned, rotate, updated_at AS updatedAt, icon, icon_size AS iconSize, icon_delays AS iconDelays, icon_updated_at AS iconUpdatedAt, aliases';
-type PartnerRow = Omit<import('./partners.ts').Partner, 'pinned' | 'rotate' | 'iconDelays' | 'aliases'> & { pinned: number; rotate: number; iconDelays: string; aliases: string };
+const PARTNER_COLUMNS = 'id, address, name, owner, background, pinned, rotate, updated_at AS updatedAt, icon, icon_size AS iconSize, icon_delays AS iconDelays, icon_updated_at AS iconUpdatedAt, aliases, co_owners AS coOwners';
+type PartnerRow = Omit<import('./partners.ts').Partner, 'pinned' | 'rotate' | 'iconDelays' | 'aliases' | 'coOwners'> & { pinned: number; rotate: number; iconDelays: string; aliases: string; coOwners: string };
 const toPartner = (p: PartnerRow): import('./partners.ts').Partner => {
   let iconDelays: number[] = [];
   let aliases: string[] = [];
@@ -144,7 +144,14 @@ const toPartner = (p: PartnerRow): import('./partners.ts').Partner => {
   } catch {
     // a broken value: no other addresses
   }
-  return { ...p, pinned: !!p.pinned, rotate: !!p.rotate, iconDelays, aliases };
+  let coOwners: string[] = [];
+  try {
+    const list: unknown = JSON.parse(p.coOwners);
+    if (Array.isArray(list)) coOwners = list.filter((a): a is string => typeof a === 'string');
+  } catch {
+    // a broken value: only the first owner
+  }
+  return { ...p, pinned: !!p.pinned, rotate: !!p.rotate, iconDelays, aliases, coOwners };
 };
 const SHARE_COLUMNS ='s.code, s.owner, s.name, s.game_version AS gameVersion, s.loader, s.size, s.downloads, s.created_at AS createdAt, s.expires_at AS expiresAt';
 
@@ -229,6 +236,8 @@ CREATE TABLE IF NOT EXISTS chat_backups (uuid TEXT PRIMARY KEY REFERENCES users(
     }
     // a partner's other addresses (another domain, a raw IP) as a JSON list, added the same way
     if (!iconColumns.some((c) => c.name === 'aliases')) this.db.exec("ALTER TABLE partners ADD COLUMN aliases TEXT NOT NULL DEFAULT '[]'");
+    // the owners after the first one (who stays in `owner`, for what reads only that), as a JSON list
+    if (!iconColumns.some((c) => c.name === 'co_owners')) this.db.exec("ALTER TABLE partners ADD COLUMN co_owners TEXT NOT NULL DEFAULT '[]'");
   }
 
   close() {
@@ -769,11 +778,12 @@ CREATE TABLE IF NOT EXISTS chat_backups (uuid TEXT PRIMARY KEY REFERENCES users(
   }
 
   addPartner(p: import('./partners.ts').Partner) {
-    this.db.prepare('INSERT INTO partners (id, address, name, owner, background, updated_at) VALUES (?, ?, ?, ?, ?, ?)').run(p.id, p.address, p.name, p.owner, p.background, p.updatedAt);
+    this.db.prepare('INSERT INTO partners (id, address, name, owner, co_owners, background, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(p.id, p.address, p.name, p.owner, JSON.stringify(p.coOwners), p.background, p.updatedAt);
   }
 
-  updatePartner(id: string, name: string, owner: string) {
-    this.db.prepare('UPDATE partners SET name = ?, owner = ?, updated_at = ? WHERE id = ?').run(name, owner, Date.now(), id);
+  updatePartner(id: string, name: string, owner: string, coOwners: string[]) {
+    this.db.prepare('UPDATE partners SET name = ?, owner = ?, co_owners = ?, updated_at = ? WHERE id = ?').run(name, owner, JSON.stringify(coOwners), Date.now(), id);
   }
 
   setPartnerBackground(id: string, background: string) {

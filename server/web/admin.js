@@ -387,18 +387,19 @@ async function partnersPage() {
   if (!res) return;
   const address = el('input', { type: 'text', placeholder: 'Adres, np. skyup.pl' });
   const name = el('input', { type: 'text', placeholder: 'Nazwa (opcjonalnie)', maxLength: 48 });
-  const owner = el('input', { type: 'text', placeholder: '@właściciel (opcjonalnie)' });
+  const owner = el('input', { type: 'text', placeholder: '@właściciele, po przecinku (opcjonalnie)' });
   const add = el('form', { class: 'glass card row partner-add', onsubmit: async (e) => {
     e.preventDefault();
-    if (await guard(() => api('POST', '/v1/admin/partners', { address: address.value, name: name.value, owner: owner.value }))) { toast('Dodano serwer partnerski.'); partnersPage(); }
+    if (await guard(() => api('POST', '/v1/admin/partners', { address: address.value, name: name.value, owners: owner.value }))) { toast('Dodano serwer partnerski.'); partnersPage(); }
   } }, address, name, owner, el('button', { type: 'submit', class: 'primary' }, icon('fa-solid fa-plus'), 'Dodaj'));
 
   const cards = res.partners.map((p) => {
-    const ownerInput = el('input', { type: 'text', value: p.owner ? `@${p.owner}` : '', placeholder: '@właściciel' });
+    // several owners, each with an account (servers older than that answer only `owner`)
+    const ownerInput = el('input', { type: 'text', value: (p.owners ?? (p.owner ? [p.owner] : [])).map((h) => `@${h}`).join(', '), placeholder: '@właściciel, @drugi' });
     const save = el('form', { class: 'row', onsubmit: async (e) => {
       e.preventDefault();
-      if (await guard(() => api('POST', `/v1/admin/partners/${p.id}`, { owner: ownerInput.value }))) { toast('Zapisano.'); partnersPage(); }
-    } }, el('small', { class: 'muted', textContent: 'Właściciel (konto partnera) może sam zmieniać tło na stronie Konto:' }), ownerInput, el('button', { type: 'submit', class: 'icon-btn', title: 'Zapisz' }, icon('fa-solid fa-check')));
+      if (await guard(() => api('POST', `/v1/admin/partners/${p.id}`, { owners: ownerInput.value }))) { toast('Zapisano.'); partnersPage(); }
+    } }, el('small', { class: 'muted', textContent: 'Właściciele (konta partnera, po przecinku) mogą sami zmieniać tło i ikonę na stronie Konto:' }), ownerInput, el('button', { type: 'submit', class: 'icon-btn', title: 'Zapisz' }, icon('fa-solid fa-check')));
     // pinned: always on top of the game's server list (it cannot be removed there); rotating: the
     // pinned ones with it take turns at the very top
     const pinning = async (change, done) => { if (await guard(() => api('POST', `/v1/admin/partners/${p.id}`, change))) { toast(done); partnersPage(); } };

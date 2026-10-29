@@ -75,6 +75,21 @@ describe('partner servers', () => {
     assert.equal((await call('GET', changed.background)).type, 'image/jpeg');
     assert.equal((await call('GET', withPic.background.replace(/\?.*/, ''))).type, 'image/jpeg');
     assert.equal((await call('DELETE', `/v1/me/partners/${p.id}/background`, owner.token)).body.background, null);
+    // a second owner: both may change it, the first one stays in `owner`
+    const second = await login('DrugiWlasciciel');
+    const both = (await call('POST', `/v1/admin/partners/${p.id}`, boss.token, { owners: '@Wlasciciel, DrugiWlasciciel' })).body;
+    assert.equal(both.owner, 'Wlasciciel');
+    assert.deepEqual(both.owners, ['Wlasciciel', 'DrugiWlasciciel']);
+    assert.deepEqual((await call('GET', '/v1/me/partners', second.token)).body.partners.map((x: any) => x.id), [p.id]);
+    assert.notEqual((await call('PUT', `/v1/me/partners/${p.id}/background`, second.token, undefined, jpg)).body.background, null);
+    // an older panel changing only `owner` keeps the second one
+    const older = (await call('POST', `/v1/admin/partners/${p.id}`, boss.token, { owner: '@Wlasciciel' })).body;
+    assert.deepEqual(older.owners, ['Wlasciciel', 'DrugiWlasciciel']);
+    assert.equal((await call('POST', `/v1/admin/partners/${p.id}`, boss.token, { owners: '@Wlasciciel @nikt_taki' })).body.error, 'no_such_user');
+    // back to one: the second one may not any more
+    await call('POST', `/v1/admin/partners/${p.id}`, boss.token, { owners: ['Wlasciciel'] });
+    assert.equal((await call('DELETE', `/v1/me/partners/${p.id}/background`, second.token)).body.error, 'not_owner');
+    await call('DELETE', `/v1/me/partners/${p.id}/background`, owner.token);
     assert.equal((await call('GET', `/v1/partners/${p.id}/background`)).status, 404);
 
     // too big
