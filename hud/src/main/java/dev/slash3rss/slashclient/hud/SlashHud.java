@@ -152,6 +152,8 @@ public class SlashHud implements ClientModInitializer {
 		InventorySort.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.sort", InputConstants.KEY_R, category));
 		// K locks the hotbar slot in hand (or the one under the mouse in an inventory)
 		SlotLock.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.slotLock", InputConstants.KEY_K, category));
+		// the next saved set of keys (KeyPresets): no key by default
+		KeyPresets.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.keyPresetNext", InputConstants.UNKNOWN.getValue(), category));
 		// shulker boxes show what is inside in their tooltips
 		ShulkerPreview.register();
 		// wings, pets and clothing: a layer more on every player's model (drawn from render states, which 1.21.1 does not have)
@@ -340,6 +342,7 @@ public class SlashHud implements ClientModInitializer {
 			LightOverlay.tick(mc);
 			CameraDistance.tick(mc);
 			SlotLock.keyTick(mc);
+			KeyPresets.tick(mc);
 			while (waypointsKey.consumeClick()) {
 				if (Compat.screen(mc) == null && config.waypoints) mc.setScreenAndShow(new WaypointsScreen());
 			}

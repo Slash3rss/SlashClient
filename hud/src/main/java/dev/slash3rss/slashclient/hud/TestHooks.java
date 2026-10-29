@@ -1885,6 +1885,36 @@ public final class TestHooks {
 		return (int) java.util.Arrays.stream(mc.options.keyMappings).filter(k -> SlashHud.keyCategory.equals(k.getCategory())).count();
 	}
 
+	/**
+	 * Key presets: jump on K saved as "PvP", jump back on Space, "PvP" loaded from its window (jump on K
+	 * again) and deleted. Answers what jump was bound to after each step and how many presets were left.
+	 */
+	public static String keyPresetsRoundTrip() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		var jump = mc.options.keyJump;
+		String before = jump.saveString();
+		KeyPresets.delete("PvP");
+		jump.setKey(com.mojang.blaze3d.platform.InputConstants.getKey("key.keyboard.k"));
+		var screen = new KeyPresetsScreen(null);
+		mc.setScreenAndShow(screen);
+		screen.saveForTest("PvP");
+		jump.setKey(com.mojang.blaze3d.platform.InputConstants.getKey("key.keyboard.space"));
+		String reset = jump.saveString();
+		KeyPresets.reload();
+		int changed = KeyPresets.apply(mc, "pvp");
+		String loaded = jump.saveString() + "," + changed + "," + KeyPresets.active();
+		return reset + "|" + loaded + "|" + KeyPresets.all().size() + "|" + before;
+	}
+
+	/** Deletes the test's preset and gives jump back its key. */
+	public static void keyPresetsCleanUp(String jumpKey) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		KeyPresets.delete("PvP");
+		mc.options.keyJump.setKey(com.mojang.blaze3d.platform.InputConstants.getKey(jumpKey));
+		net.minecraft.client.KeyMapping.resetMapping();
+		mc.setScreenAndShow(null);
+	}
+
 	/** A scrollbar taken by its thumb and dragged, then clicked at the bottom of its track: the scrolls it gave. */
 	public static String scrollbarDrag() {
 		var bar = new dev.slash3rss.slashclient.hud.ui.Scrollbar();

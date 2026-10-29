@@ -46,6 +46,14 @@ public class GameAids implements FabricClientGameTest {
 			context.waitTicks(5);
 			context.takeScreenshot("aids-keybinds");
 			context.runOnClient(mc -> TestHooks.reportAudit());
+			// a key preset saved, the key changed, the preset loaded (read back from its file)
+			String presets = context.computeOnClient(mc -> TestHooks.keyPresetsRoundTrip());
+			String[] p = presets.split("\\|");
+			if (!p[0].equals("key.keyboard.space") || !p[1].equals("key.keyboard.k,1,PvP") || !p[2].equals("1")) throw new AssertionError("Key presets: " + presets);
+			context.waitTicks(5);
+			context.takeScreenshot("aids-key-presets");
+			context.runOnClient(mc -> TestHooks.reportAudit());
+			context.runOnClient(mc -> TestHooks.keyPresetsCleanUp(p[3]));
 			context.runOnClient(mc -> TestHooks.audit(false));
 			context.setScreen(() -> null);
 		}

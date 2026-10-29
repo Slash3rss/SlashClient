@@ -384,6 +384,11 @@ public final class Catalog {
 			var mc = net.minecraft.client.Minecraft.getInstance();
 			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.KeybindsScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
 		}));
+		// every key (the game's and the mods') saved under a name and put back with a click
+		out.add(new Entry("keyPresets", "slashclient-hud.keyPresets", "extras", "m-keypresets", null, null, List.of(), () -> {
+			var mc = net.minecraft.client.Minecraft.getInstance();
+			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.KeyPresetsScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+		}));
 		// SkyUp's dungeon loot not taken yet, outlined in the world (only in a dungeon); through walls only when switched on
 		int[] lootColors = dev.slash3rss.slashclient.hud.skyup.LootHighlight.COLORS;
 		out.add(new Entry("lootHighlight", "slashclient-hud.lootHighlight", "skyup", "m-loothighlight", () -> cfg.lootHighlight, v -> cfg.lootHighlight = v, List.of(
