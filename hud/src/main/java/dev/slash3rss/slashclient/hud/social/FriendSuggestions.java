@@ -119,7 +119,7 @@ public final class FriendSuggestions {
 				// they had asked us already: now a friend, in the list at once
 				if (friends) Social.refreshFriends();
 			} catch (Exception e) {
-				Social.toast(Component.translatable("slashclient-hud.suggestions.failed").getString(), String.valueOf(e.getMessage()).replaceFirst("^HTTP \\d+ ", ""), "info");
+				Social.toast(Component.translatable("slashclient-hud.suggestions.failed").getString(), Social.errorText(e), "info");
 			} finally {
 				busy.remove(s.id());
 			}

@@ -386,7 +386,7 @@ public final class Groups {
 				groups = List.copyOf(list);
 				opened.accept(g.id());
 			} catch (Exception e) {
-				Social.toast(Component.translatable("slashclient-hud.groups.notCreated").getString(), e.getMessage() == null ? "" : e.getMessage(), "info");
+				Social.toast(Component.translatable("slashclient-hud.groups.notCreated").getString(), Social.errorText(e), "info");
 			}
 		});
 	}
@@ -403,7 +403,7 @@ public final class Groups {
 				Social.api("POST", "/v1/groups/" + id + "/members", body);
 				refresh();
 			} catch (Exception e) {
-				Social.toast(Component.translatable("slashclient-hud.friends.notSent").getString(), e.getMessage() == null ? "" : e.getMessage(), "info");
+				Social.toast(Component.translatable("slashclient-hud.friends.notSent").getString(), Social.errorText(e), "info");
 			}
 		});
 	}

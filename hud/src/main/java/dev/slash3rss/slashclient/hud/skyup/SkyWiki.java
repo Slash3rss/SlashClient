@@ -111,23 +111,16 @@ public final class SkyWiki {
 				HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 				// a launcher from before the wiki in the game: its bridge does not know the path
 				if (res.statusCode() == 404 && path.equals("/skyup-wiki/index")) answer = Answer.failed("oldLauncher");
-				else if (res.statusCode() != 200) answer = Answer.failed(errorOf(res.body(), res.statusCode()));
-				else answer = Answer.of(JsonParser.parseString(res.body()));
+				else if (res.statusCode() != 200) {
+					SlashHud.LOG.info("SlashClient: SkyUp wiki {}: HTTP {} {}", path, res.statusCode(), res.body());
+					answer = Answer.failed(dev.slash3rss.slashclient.hud.ErrorText.ofAnswer(res.statusCode(), res.body()));
+				} else answer = Answer.of(JsonParser.parseString(res.body()));
 			} catch (Exception e) {
 				answer = Answer.failed("noLauncher");
 			}
 			Answer<JsonElement> result = answer;
 			mc.execute(() -> done.accept(result));
 		});
-	}
-
-	private static String errorOf(String body, int status) {
-		try {
-			JsonObject o = JsonParser.parseString(body).getAsJsonObject();
-			if (o.has("error")) return o.get("error").getAsString();
-		} catch (Exception ignored) {
-		}
-		return "HTTP " + status;
 	}
 
 	/** The articles by category (kept once read). */

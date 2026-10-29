@@ -154,7 +154,7 @@ public abstract class StreamChat {
 			} catch (InterruptedException e) {
 				return;
 			} catch (Exception e) {
-				if (current(gen)) status(State.RETRYING, "retrying", target.channel(), shortError(e));
+				if (current(gen)) status(State.RETRYING, "retrying", target.channel(), dev.slash3rss.slashclient.hud.ErrorText.of(e));
 			}
 			if (!current(gen)) return;
 			// a connection that held for a while starts the waiting over
@@ -264,13 +264,6 @@ public abstract class StreamChat {
 		WebSocket ws = socket;
 		socket = null;
 		if (ws != null) ws.abort();
-	}
-
-	static String shortError(Throwable e) {
-		while (e.getCause() != null && e.getCause() != e) e = e.getCause();
-		String m = e.getMessage();
-		String s = e.getClass().getSimpleName() + (m == null || m.isBlank() ? "" : ": " + m);
-		return s.length() > 80 ? s.substring(0, 80) + "…" : s;
 	}
 
 	static final String USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36";

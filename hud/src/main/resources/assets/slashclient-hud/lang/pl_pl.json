@@ -1452,5 +1452,15 @@
 	"slashclient-hud.loading.tip.shulker": "Shulkery pokazują swoją zawartość w podpowiedzi",
 	"slashclient-hud.loading.tip.cosmetics": "Kosmetyki wybierzesz w menu głównym, pod podglądem skina",
 	"slashclient-hud.loading.tip.minimap": "Minimapę włączysz w ustawieniach SlashClient",
-	"slashclient-hud.loading.tip.toggle": "Ten ekran wyłączysz w ustawieniach SlashClient: „Własny ekran ładowania”"
+	"slashclient-hud.loading.tip.toggle": "Ten ekran wyłączysz w ustawieniach SlashClient: „Własny ekran ładowania”",
+	"slashclient-hud.error.tooMany": "Za dużo prób, spróbuj za chwilę",
+	"slashclient-hud.error.signIn": "Zaloguj się ponownie w launcherze SlashClient",
+	"slashclient-hud.error.forbidden": "Nie masz do tego uprawnień",
+	"slashclient-hud.error.unavailable": "Serwer chwilowo niedostępny, spróbuj za chwilę",
+	"slashclient-hud.error.disabled": "Ta funkcja jest teraz wyłączona",
+	"slashclient-hud.error.notFound": "Nie znaleziono – może już nie istnieje",
+	"slashclient-hud.error.notFriends": "Ten gracz nie jest twoim znajomym",
+	"slashclient-hud.error.noLauncher": "Uruchom grę z launchera SlashClient",
+	"slashclient-hud.error.file": "Brak dostępu do pliku lub folderu",
+	"slashclient-hud.error.generic": "Coś poszło nie tak, spróbuj ponownie"
 }

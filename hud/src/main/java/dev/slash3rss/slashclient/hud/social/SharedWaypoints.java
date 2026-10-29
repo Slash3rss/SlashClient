@@ -249,7 +249,7 @@ public final class SharedWaypoints {
 				Social.toast(Component.translatable("slashclient-hud.share.sent", p.name).getString(),
 					Component.translatable("slashclient-hud.share.sentTo", friends.size()).getString(), "share");
 			} catch (Exception e) {
-				Social.toast(Component.translatable("slashclient-hud.friends.notSent").getString(), e.getMessage() == null ? "" : e.getMessage(), "info");
+				Social.toast(Component.translatable("slashclient-hud.friends.notSent").getString(), Social.errorText(e), "info");
 			}
 		});
 	}

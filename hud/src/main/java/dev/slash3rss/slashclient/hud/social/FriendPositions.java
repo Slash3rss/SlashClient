@@ -157,7 +157,7 @@ public final class FriendPositions {
 				mode = Social.str(res, "mode");
 			} catch (Exception e) {
 				mode = before;
-				Social.toast(net.minecraft.network.chat.Component.translatable("slashclient-hud.friendMap.failed").getString(), e.getMessage() == null ? "" : e.getMessage(), "info");
+				Social.toast(net.minecraft.network.chat.Component.translatable("slashclient-hud.friendMap.failed").getString(), Social.errorText(e), "info");
 			}
 		});
 	}
