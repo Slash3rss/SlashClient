@@ -85,6 +85,12 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 CREATE INDEX IF NOT EXISTS messages_pair ON messages(from_uuid, to_uuid, id);
 CREATE INDEX IF NOT EXISTS messages_unread ON messages(to_uuid, read_at);
+-- friends() looks up both sides of a friendship, the avatar an account's Minecraft identity, incoming() the requests to
+-- a player, and signing out everywhere a player's sessions: each without a full scan
+CREATE INDEX IF NOT EXISTS friendships_b ON friendships(b);
+CREATE INDEX IF NOT EXISTS identities_uuid ON identities(uuid, provider);
+CREATE INDEX IF NOT EXISTS requests_to ON requests(to_uuid);
+CREATE INDEX IF NOT EXISTS sessions_uuid ON sessions(uuid);
 `;
 
 interface UserRow { uuid: string; handle: string; name: string; avatar: string; show_server: number; cape: string; role: string; rank: string; banned: number; loadout: string }
@@ -632,6 +638,11 @@ CREATE TABLE IF NOT EXISTS chat_backups (uuid TEXT PRIMARY KEY REFERENCES users(
 
   removeSession(tokenHash: string) {
     this.db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(tokenHash);
+  }
+
+  /** Sessions nobody used for `maxIdleMs` (they would be refused anyway), so the table does not grow for good. */
+  removeIdleSessions(maxIdleMs: number): number {
+    return Number(this.db.prepare('DELETE FROM sessions WHERE last_used < ?').run(Date.now() - maxIdleMs).changes);
   }
 
   // ---- friends ----

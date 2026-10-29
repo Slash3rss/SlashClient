@@ -180,6 +180,8 @@ function rateLimiter(rate: number | (() => number)) {
     if (b.tokens < 1) throw new HttpError(429, 'rate_limited');
     b.tokens--;
     buckets.set(key, b);
+    // keyed by address too: buckets full again (a minute untouched) are forgotten, so the map does not grow for good
+    if (buckets.size > 10_000) for (const [k, v] of buckets) if (now - v.at > 60_000) buckets.delete(k);
   };
 }
 
@@ -1954,7 +1956,12 @@ export function createApp(cfg: Config) {
         ms: Math.round(performance.now() - started), user: seen.slashUser ?? '', ip: maskIp(clientIp(req)), ...clientOf(req), error: seen.slashError ?? '',
       });
     });
-    void handle(req, res);
+    // an error outside a route's own handling answers 500 instead of taking the whole server down
+    handle(req, res).catch((err) => {
+      console.error('request:', (err as Error)?.stack ?? err);
+      if (!res.headersSent) serverError(req, res, new URL(req.url ?? '/', 'http://x'));
+      else res.destroy();
+    });
   });
 
   // ---- WebSocket: /v1/ws, the first message must be { type: 'auth', token } ----
@@ -2002,6 +2009,8 @@ export function createApp(cfg: Config) {
     let me: string | undefined;
     alive.add(ws);
     ws.on('pong', () => alive.add(ws));
+    // a bad frame (too big, not UTF-8) is an 'error' event: without a listener it would end the process
+    ws.on('error', () => ws.terminate());
     const authTimer = setTimeout(() => !me && ws.close(4001, 'auth timeout'), 5000);
     ws.on('message', (raw) => {
       let msg: Record<string, unknown>;
@@ -2010,6 +2019,8 @@ export function createApp(cfg: Config) {
       } catch {
         return;
       }
+      // "null", a number or a list is no message
+      if (!msg || typeof msg !== 'object' || Array.isArray(msg)) return;
       if (!me) {
         const userId = msg.type === 'auth' && typeof msg.token === 'string' ? db.sessionUser(hashToken(msg.token), sessionIdleMs()) : undefined;
         if (!userId || db.user(userId)?.banned) return ws.close(4001, 'unauthorized');
@@ -2080,7 +2091,7 @@ export function createApp(cfg: Config) {
   // binary messages go to the other: one Minecraft connection, carried through here, so nobody has
   // to open a port. Only friends, and only to a world that is open.
 
-  const pendingLan = new Map<string, { joiner: WebSocket; host: string; timer: ReturnType<typeof setTimeout> }>();
+  const pendingLan = new Map<string, { joiner: WebSocket; joinerId: string; host: string; timer: ReturnType<typeof setTimeout> }>();
   const tunnels = new Map<string, number>();
   const LAN_TUNNELS = 16;
   const tunnelCount = (user: string, by: number) => {
@@ -2109,6 +2120,9 @@ export function createApp(cfg: Config) {
     b.send(JSON.stringify({ type: 'ok' }));
   }
   lanWss.on('connection', (ws) => {
+    alive.add(ws);
+    ws.on('pong', () => alive.add(ws));
+    ws.on('error', () => ws.terminate());
     const timer = setTimeout(() => ws.close(4001, 'auth timeout'), 10_000);
     ws.once('message', (raw) => {
       clearTimeout(timer);
@@ -2118,6 +2132,7 @@ export function createApp(cfg: Config) {
       } catch {
         return ws.close(4000, 'bad');
       }
+      if (!msg || typeof msg !== 'object' || Array.isArray(msg)) return ws.close(4000, 'bad');
       const me = typeof msg.token === 'string' ? db.sessionUser(hashToken(msg.token), sessionIdleMs()) : undefined;
       if (!me || db.user(me)?.banned) return ws.close(4001, 'unauthorized');
       if (msg.type === 'join' && typeof msg.host === 'string') {
@@ -2125,7 +2140,7 @@ export function createApp(cfg: Config) {
         if (!db.areFriends(me, host) || !lanHosts.has(host)) return ws.close(4003, 'not_open');
         if ((tunnels.get(me) ?? 0) >= LAN_TUNNELS || (tunnels.get(host) ?? 0) >= LAN_TUNNELS) return ws.close(4029, 'too_many');
         const id = randomBytes(12).toString('base64url');
-        pendingLan.set(id, { joiner: ws, host, timer: setTimeout(() => {
+        pendingLan.set(id, { joiner: ws, joinerId: me, host, timer: setTimeout(() => {
           pendingLan.delete(id);
           ws.close(4004, 'no_answer');
         }, 15_000) });
@@ -2136,14 +2151,16 @@ export function createApp(cfg: Config) {
         if (!p || p.host !== me || p.joiner.readyState !== p.joiner.OPEN) return ws.close(4004, 'gone');
         pendingLan.delete(msg.id);
         clearTimeout(p.timer);
-        pair(p.joiner, ws, [me]);
+        // both sides count towards their limit of tunnels
+        pair(p.joiner, ws, [p.joinerId, me]);
       } else ws.close(4000, 'bad');
     });
   });
 
   // drops launchers that vanished without closing (sleep, lost Wi-Fi)
   const heartbeat = setInterval(() => {
-    for (const ws of wss.clients) {
+    // the LAN tunnels too: one half-open for good would hold a place of the host's limit until a restart
+    for (const ws of [...wss.clients, ...lanWss.clients]) {
       if (!alive.has(ws)) {
         ws.terminate();
         continue;
@@ -2179,6 +2196,11 @@ export function createApp(cfg: Config) {
   if (backfilled.paid || backfilled.unlocked) console.log(`osiągnięcia: wypłacono ${backfilled.paid}, odblokowano ${backfilled.unlocked}`);
   // shared logs past their time, once an hour
   const logCleanup = setInterval(() => {
+    try {
+      db.removeIdleSessions(sessionIdleMs());
+    } catch (err) {
+      console.error('sesje:', (err as Error).message);
+    }
     void tracker.cleanup().catch((err) => console.error('logi:', (err as Error).message));
     void shares.cleanup().catch((err) => console.error('profile:', (err as Error).message));
     void media.cleanup().catch((err) => console.error('media:', (err as Error).message));
@@ -2239,6 +2261,8 @@ export function createApp(cfg: Config) {
       clearInterval(playTick);
       clearInterval(encounterTick);
       clearInterval(logCleanup);
+      // the last moment of the request log is kept too
+      requests.flush();
       streams.close();
       for (const timer of cosmeticsTimers.values()) clearTimeout(timer);
       cosmeticsTimers.clear();
