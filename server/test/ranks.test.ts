@@ -163,6 +163,35 @@ describe('ranks', () => {
     assert.equal((await me(filip.token)).badge, 'support');
   });
 
+  it('lets each Minecraft account show a badge of its own', async () => {
+    const igor = await login('Igor');
+    await call('POST', `/v1/admin/users/${igor.user.id}/ranks`, boss.token, { rank: 'support' });
+    await call('POST', `/v1/admin/users/${igor.user.id}/ranks`, boss.token, { rank: 'partner' });
+    const main = await inGame(igor.token, igor.user.id, 8);
+    const alt = await inGame(igor.token, igor.user.id, 9);
+    const altId = alt.replace(/-/g, '');
+    // only a linked account, only a rank held
+    assert.equal((await call('POST', '/v1/me/badge', igor.token, { rank: 'partner', character: '6'.repeat(32) })).body.error, 'not_linked');
+    assert.equal((await call('POST', '/v1/me/badge', igor.token, { rank: 'friend', character: alt })).body.error, 'not_your_rank');
+    const picked = (await call('POST', '/v1/me/badge', igor.token, { rank: 'partner', character: alt })).body;
+    assert.deepEqual(picked.characterBadges, { [altId]: 'partner' });
+    assert.equal(picked.badgeChoice, '');
+    assert.equal((await lookup(main, NEW_HUD)).ranks[main], 'support');
+    assert.equal((await lookup(alt, NEW_HUD)).ranks[alt], 'partner');
+    // none on the alt, while the account shows its badge elsewhere
+    await call('POST', '/v1/me/badge', igor.token, { rank: 'none', character: alt });
+    assert.deepEqual((await lookup(alt, NEW_HUD)).ranks, {});
+    assert.equal((await me(igor.token)).badge, 'support');
+    // a rank taken away: the account's pick again
+    await call('POST', '/v1/me/badge', igor.token, { rank: 'partner', character: alt });
+    await call('DELETE', `/v1/admin/users/${igor.user.id}/ranks/partner`, boss.token);
+    assert.equal((await lookup(alt, NEW_HUD)).ranks[alt], 'support');
+    // '' goes back to the account's
+    await call('POST', '/v1/me/badge', igor.token, { rank: 'none', character: alt });
+    assert.deepEqual((await call('POST', '/v1/me/badge', igor.token, { rank: '', character: alt })).body.characterBadges, {});
+    assert.equal((await lookup(alt, NEW_HUD)).ranks[alt], 'support');
+  });
+
   it('lets rank items be worn with any rank held, whichever badge shows', async () => {
     const gosia = await login('Gosia');
     assert.equal((await call('POST', '/v1/me', gosia.token, { loadout: { wings: 'phoenix' } })).body.error, 'bad_item');

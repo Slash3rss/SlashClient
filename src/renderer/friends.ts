@@ -42,6 +42,8 @@ interface Me extends Person {
   showServer: boolean; providers: string[]; minecraft?: { uuid: string; name: string }[];
   /** every rank held, the pick of the badge ('' = the most important, 'none') and the rank shown (server 0.9.23+) */
   ranks?: RankView[]; badgeChoice?: string; badgeRank?: RankView | null;
+  /** single Minecraft accounts' own picks (uuid without dashes: 'none' or a rank), the rest go with the account's (server 0.9.60+) */
+  characterBadges?: Record<string, string>;
 }
 /** `expiresAt`: after it Join is gone (server 0.9.25+; none: it does not expire). */
 interface Invite { server: string; version?: string; party?: string; expiresAt?: number }
@@ -842,6 +844,41 @@ export function createFriends(root: HTMLElement, badge: HTMLElement, deps: Frien
       el('div', { className: 'fr-rank-chips' }, ...ranks),
       el('div', { className: 'row fr-badge-row' }, pick, el('span', { className: 'fr-names' }, el('b', {}, ...rankTag(me.badgeRank ?? undefined), me.name))),
       el('small', { className: 'muted', textContent: t('Odznaka widoczna w grze, na liście znajomych i na czacie. Profil publiczny pokazuje wszystkie rangi.') }),
+      ...characterBadgeRows(me),
+    ];
+  }
+
+  /**
+   * With two or more Minecraft accounts linked: the badge each one shows in game, or the same as the
+   * account's. Hidden on servers that do not know it (no `characterBadges`).
+   */
+  function characterBadgeRows(me: Me): Node[] {
+    const accounts = me.minecraft ?? [];
+    if (!me.characterBadges || accounts.length < 2 || !me.ranks?.length) return [];
+    const english = getLang() === 'en';
+    const rows = accounts.map((mc) => {
+      const own = me.characterBadges?.[mc.uuid] ?? '';
+      const pick = control<HTMLSelectElement>('select', { className: 'fr-badge-pick' });
+      for (const c of [{ value: '', label: t('Jak całe konto') }, ...(me.ranks ?? []).map((r) => ({ value: r.id, label: rankName(r, english) })), { value: 'none', label: t('Bez odznaki rangi') }]) {
+        pick.append(control<HTMLOptionElement>('option', { value: c.value, textContent: c.label, selected: own === c.value }));
+      }
+      pick.addEventListener('change', async () => {
+        try {
+          const res = await api.socialApi('POST', '/v1/me/badge', { rank: pick.value, character: mc.uuid });
+          Object.assign(state!.user!, res);
+        } catch (err) {
+          deps.toast(deps.errorText(err), true);
+        }
+        renderMe();
+      });
+      // what this account shows: its own pick, else the account's
+      const rank = own === 'none' ? undefined : (me.ranks ?? []).find((r) => r.id === own) ?? me.badgeRank ?? undefined;
+      return el('div', { className: 'row fr-badge-row' }, pick, el('span', { className: 'fr-names' }, el('b', {}, ...rankTag(rank), mc.name)));
+    });
+    return [
+      el('div', { className: 'fr-account-section', textContent: t('Ranga przy nicku na kontach Minecraft') }),
+      ...rows,
+      el('small', { className: 'muted', textContent: t('W grze każde konto może mieć inną odznakę. Lista znajomych i czat pokazują tę z konta SlashClient.') }),
     ];
   }
 

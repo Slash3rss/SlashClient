@@ -131,6 +131,8 @@ CREATE TABLE IF NOT EXISTS user_ranks (
   PRIMARY KEY (uuid, rank));
 CREATE INDEX IF NOT EXISTS user_ranks_rank ON user_ranks(rank);
 CREATE TABLE IF NOT EXISTS rank_badge_choice (uuid TEXT PRIMARY KEY REFERENCES users(uuid) ON DELETE CASCADE, rank TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS rank_badge_character (
+  uuid TEXT NOT NULL REFERENCES users(uuid) ON DELETE CASCADE, character TEXT NOT NULL, rank TEXT NOT NULL, PRIMARY KEY (uuid, character));
 `);
     const at = now();
     const seed = sql.prepare(`INSERT OR IGNORE INTO ranks (id, name, name_en, color, priority, description, description_en, auto, enabled, builtin, created_at, updated_at)
@@ -169,6 +171,7 @@ CREATE TABLE IF NOT EXISTS rank_badge_choice (uuid TEXT PRIMARY KEY REFERENCES u
   /** Deletes a rank and every grant of it (and choices of it fall back to the default). */
   remove(id: string): boolean {
     this.sql.prepare('DELETE FROM rank_badge_choice WHERE rank = ?').run(id);
+    this.sql.prepare('DELETE FROM rank_badge_character WHERE rank = ?').run(id);
     return Number(this.sql.prepare('DELETE FROM ranks WHERE id = ?').run(id).changes) > 0;
   }
 
@@ -209,6 +212,22 @@ CREATE TABLE IF NOT EXISTS rank_badge_choice (uuid TEXT PRIMARY KEY REFERENCES u
     else this.sql.prepare('INSERT INTO rank_badge_choice (uuid, rank) VALUES (?, ?) ON CONFLICT (uuid) DO UPDATE SET rank = excluded.rank').run(uuid, rank);
   }
 
+  /** The picks of single Minecraft accounts (their uuid without dashes): 'none' or a rank's id; one not here goes with the account's pick. */
+  characterChoices(uuid: string): Record<string, string> {
+    const rows = this.sql.prepare('SELECT character, rank FROM rank_badge_character WHERE uuid = ?').all(uuid) as { character: string; rank: string }[];
+    return Object.fromEntries(rows.map((r) => [r.character, r.rank]));
+  }
+
+  characterChoice(uuid: string, character: string): string | undefined {
+    return (this.sql.prepare('SELECT rank FROM rank_badge_character WHERE uuid = ? AND character = ?').get(uuid, character) as { rank: string } | undefined)?.rank;
+  }
+
+  /** '' = back to the account's pick. */
+  setCharacterChoice(uuid: string, character: string, rank: string) {
+    if (!rank) this.sql.prepare('DELETE FROM rank_badge_character WHERE uuid = ? AND character = ?').run(uuid, character);
+    else this.sql.prepare('INSERT INTO rank_badge_character (uuid, character, rank) VALUES (?, ?, ?) ON CONFLICT (uuid, character) DO UPDATE SET rank = excluded.rank').run(uuid, character, rank);
+  }
+
   /** The ids of the ranks given to a player that are in force now. */
   givenNow(uuid: string): { rank: string; source: RankSource; grantedAt: number; expiresAt: number | null }[] {
     return this.sql.prepare('SELECT rank, source, granted_at AS grantedAt, expires_at AS expiresAt FROM user_ranks WHERE uuid = ? AND (expires_at IS NULL OR expires_at > ?)')
@@ -236,6 +255,8 @@ export interface RankDeps {
   isAdmin: (user: RankUser) => boolean;
   /** The active supporter tier's colour and name (payments/support.ts), undefined when none. */
   supporter: (uuid: string) => { color: string; name?: string; nameEn?: string } | undefined;
+  /** The Minecraft accounts linked to a player (uuids without dashes), each of which may show a badge of its own. */
+  characters?: (uuid: string) => string[];
   /** A player's ranks changed: what they show in game is sent again. */
   changed: (uuid: string) => void;
   audit: (admin: string, action: string, target: string, detail?: string) => void;
@@ -278,10 +299,15 @@ export function createRanks(deps: RankDeps) {
     return out.sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
   }
 
-  /** The rank whose badge goes next to the nick: the one picked, else the most important; undefined for none. */
-  function shown(user: RankUser, list = held(user)): HeldRank | undefined {
+  /**
+   * The rank whose badge goes next to the nick: the one picked, else the most important; undefined for none.
+   * In game, as one Minecraft account (`character`), that account's own pick comes first.
+   */
+  function shown(user: RankUser, list = held(user), character?: string): HeldRank | undefined {
     if (user.banned) return undefined;
-    const choice = store.choice(user.id);
+    const own = character ? store.characterChoice(user.id, character) : undefined;
+    // an account's own pick of a rank the player no longer holds goes back to the account's pick
+    const choice = own !== undefined && (own === 'none' || list.some((h) => h.id === own)) ? own : store.choice(user.id);
     if (choice === 'none') return undefined;
     const picked = list.find((h) => h.id === choice);
     // without a choice (or a picked rank gone): the most important, unless the admins set none
@@ -303,11 +329,13 @@ export function createRanks(deps: RankDeps) {
   /** The public view of rank definitions (enabled ones). */
   const publicDef = (d: RankDef) => ({ id: d.id, name: d.name, nameEn: d.nameEn || d.name, color: d.color, priority: d.priority, description: d.description, descriptionEn: d.descriptionEn || d.description, auto: d.auto, ...(iconUrl(d) ? { icon: iconUrl(d) } : {}) });
 
-  /** What /v1/me adds: the ranks held, the choice and the rank shown. */
+  /** What /v1/me adds: the ranks held, the choice and the rank shown, and the picks of single Minecraft accounts. */
   function forMe(user: RankUser) {
     const list = held(user);
     const s = shown(user, list);
-    return { ranks: list, badgeChoice: store.choice(user.id), badgeRank: s ?? null };
+    const mine = new Set(deps.characters?.(user.id) ?? []);
+    const characterBadges = Object.fromEntries(Object.entries(store.characterChoices(user.id)).filter(([c]) => mine.has(c)));
+    return { ranks: list, badgeChoice: store.choice(user.id), badgeRank: s ?? null, characterBadges };
   }
 
   /** The panel's (and the old API's) "this player has exactly this given rank" ('' = none): admin.ts's `rank`. */
@@ -369,13 +397,21 @@ export function createRanks(deps: RankDeps) {
   const routes: [string, RegExp, Handler][] = [
     // the ranks there are (enabled ones), for the pages' and the launcher's names, colours and icons
     ['GET', /^\/v1\/ranks$/, () => ({ ranks: store.defs().filter((d) => d.enabled).map(publicDef) })],
-    // the player's pick of the badge next to their nick: '' = the most important rank, 'none', or a rank they hold
+    // the player's pick of the badge next to their nick: '' = the most important rank, 'none', or a rank they hold;
+    // with `character` (a linked Minecraft account) that account's own pick, '' = the same as the account's
     ['POST', /^\/v1\/me\/badge$/, async (req) => {
       const me = deps.authed(req);
-      const { rank } = await deps.body(req);
+      const { rank, character } = await deps.body(req);
       if (typeof rank !== 'string') fail(400, 'bad_request');
       const u = userOr404(me);
       if (rank && rank !== 'none' && !held(u).some((h) => h.id === rank)) fail(400, 'not_your_rank');
+      if (character !== undefined) {
+        const subject = typeof character === 'string' ? character.toLowerCase().replace(/-/g, '') : '';
+        if (!(deps.characters?.(me) ?? []).includes(subject)) fail(400, 'not_linked');
+        store.setCharacterChoice(me, subject, rank as string);
+        deps.changed(me);
+        return forMe(u);
+      }
       store.setChoice(me, rank as string);
       sync(me);
       return forMe(u);

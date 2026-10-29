@@ -528,6 +528,7 @@ export function createApp(cfg: Config) {
     sql: db.sql, authed, admin, body, user: (uuid) => db.user(uuid),
     isAdmin: (u) => u.role === 'admin' || configAdmins.has(u.handle.toLowerCase()),
     supporter: (uuid) => support.rank(uuid),
+    characters: (uuid) => db.minecraftAccounts(uuid).map((m) => m.uuid),
     changed: (uuid) => cosmeticsChanged(uuid),
     setting: (key) => settings.get(key),
     audit: (who, action, target, detail) => db.log(who, action, target, detail),
@@ -1368,7 +1369,8 @@ export function createApp(cfg: Config) {
         const owner = link && now - link.at < IN_GAME_TTL_MS ? db.user(link.user) : undefined;
         if (!owner || owner.banned) continue;
         const held = ranks.held(owner);
-        const badge = gameBadge(ranks.shown(owner, held), held, known);
+        // the Minecraft account played as may show a badge of its own
+        const badge = gameBadge(ranks.shown(owner, held, link?.character), held, known);
         if (badge) rankOf[u] = badge.rank;
         if (badge?.color) badgeColors[u] = badge.color;
         if (badge?.supporterColor) supporterColors[u] = badge.supporterColor;

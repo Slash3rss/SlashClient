@@ -126,6 +126,27 @@ function badgePicker() {
   return el('div', { class: 'row small badge-choice' }, el('span', { class: 'muted', textContent: L('Odznaka przy nicku:', 'Badge next to the nick:') }), sel, el('span', { class: 'muted', textContent: L('wygląda tak:', 'looks like this:') }), shown);
 }
 
+/** With two or more Minecraft accounts linked: the badge each one shows in game, or the same as the account's. */
+function characterBadgePickers() {
+  const accounts = me.minecraft ?? [];
+  if (!me.characterBadges || accounts.length < 2) return [];
+  const rankName = (r) => (EN ? r.nameEn || r.name : r.name);
+  return accounts.map((mc) => {
+    const own = me.characterBadges[mc.uuid] ?? '';
+    const sel = el('select', { title: L(`Odznaka przy nicku: ${mc.name}`, `Badge next to the nick: ${mc.name}`) },
+      el('option', { value: '', textContent: L('Jak całe konto', 'Same as the account'), selected: !own }),
+      ...me.ranks.map((r) => el('option', { value: r.id, textContent: rankName(r), selected: own === r.id })),
+      el('option', { value: 'none', textContent: L('Bez odznaki rangi', 'No rank badge'), selected: own === 'none' }));
+    sel.addEventListener('change', async () => {
+      const r = await guard(() => api('POST', '/v1/me/badge', { rank: sel.value, character: mc.uuid }));
+      if (!r) return;
+      Object.assign(me, r);
+      toast(L(`Odznaka konta ${mc.name} zmieniona.`, `${mc.name}'s badge changed.`));
+    });
+    return el('div', { class: 'row small badge-choice' }, el('span', { class: 'muted', textContent: L(`W grze jako ${mc.name}:`, `In game as ${mc.name}:`) }), sel);
+  });
+}
+
 async function login(fn) {
   const user = await guard(fn);
   if (!user) return;
@@ -165,7 +186,7 @@ function renderAccount(reload = false) {
       me.avatars.provider ? pick('provider', me.avatars.provider, provider) : ''));
   }
   // which rank's badge goes next to the nick in game, in the launcher and on the friends list
-  if (me.ranks?.length) profile.append(badgePicker());
+  if (me.ranks?.length) profile.append(badgePicker(), ...characterBadgePickers());
   const share = el('input', { type: 'checkbox', checked: me.showServer });
   share.addEventListener('change', async () => {
     const u = await guard(() => api('POST', '/v1/me', { showServer: share.checked }));
