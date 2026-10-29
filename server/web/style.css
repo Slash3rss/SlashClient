@@ -59,6 +59,8 @@ input[type=text], input[type=search], select {
   border-radius: var(--btn-radius); font: 14px "Outfit", sans-serif; outline: none; min-width: 0;
 }
 input:focus, select:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(59, 130, 246, .15); }
+/* the opened list takes the box's see-through background and comes out light grey: its own dark one */
+select option { background: var(--bg-2); color: var(--text); }
 .switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
 .switch input { opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; position: absolute; inset: 0; z-index: 1; }
 .switch span { position: absolute; inset: 0; border-radius: 99px; background: #2a3142; transition: background .2s; }
@@ -79,6 +81,8 @@ tr.row-link:focus-visible { outline: 2px solid rgba(59, 130, 246, .6); outline-o
 /* a switch with its text: the text wraps beside the switch, never under it */
 label.row:has(> .switch) { flex-wrap: nowrap; }
 label.row > .switch { flex-shrink: 0; }
+/* switches one under another: a gap between them, not touching */
+.card > label.row:has(> .switch) + label.row:has(> .switch) { margin-top: 10px; }
 /* the admin panel's list of worn capes (not the account page's "worn" slot tabs) */
 div.worn { display: flex; flex-direction: column; gap: 6px; }
 .grow { flex: 1; min-width: 0; }
@@ -333,6 +337,8 @@ label.btn input.hidden { display: none; }
 .cape-strip .cape.priced { position: relative; }
 .cape-strip .cape .spark-price { position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); font-size: 10px; }
 .sparks-card { display: flex; flex-direction: column; gap: 10px; grid-column: 1 / -1; }
+/* on the account page it stands beside the profile card, not under it with an empty column */
+.account-profile > .sparks-card { grid-column: auto; }
 .spark-balance { font-size: 14px; gap: 6px; }
 .ach-cat h4 { margin: 6px 0 8px; font-size: 14px; display: flex; align-items: center; gap: 6px; }
 .ach-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
