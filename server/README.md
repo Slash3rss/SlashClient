@@ -116,6 +116,7 @@ Launcher otwiera przeglądarkę, a po zalogowaniu sam odbiera wynik (odpytuje `/
 | `STORAGE_MIN_FREE_MB` | `2048` | poniżej tylu MB wolnego dysk serwera nie przyjmuje nowych zrzutów, klipów i profili |
 | `CURSEFORGE_API_KEY` | – | klucz API CurseForge (wyżej) |
 | `MEDIA_DIR`, `SHARES_DIR`, `CLOUD_DIR`, `CHAT_IMAGES_DIR` | obok bazy | foldery zrzutów i klipów, udostępnień, profili w chmurze i obrazków z czatu (gdy pliki są na dysku serwera) |
+| `FAILOVER_NODE`, `FAILOVER_S3_*` | – | zapasowy serwer: nazwa tego serwera i magazyn R2 na dzierżawę i kopie (`deploy/failover/README.md`); foldery plików muszą być wtedy w folderze bazy |
 | `LEGAL_DRAFT` | włączone | `0` = bez paska „wersja robocza, do sprawdzenia przez prawnika” na regulaminach i polityce prywatności (wybór w panelu dla danego dokumentu ma pierwszeństwo) |
 
 ## API (`/v1`)

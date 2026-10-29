@@ -12,6 +12,10 @@ EnvironmentFile=/etc/slashclient/env
 ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning src/index.ts
 Restart=always
 RestartSec=3
+# 75: another server holds the failover lease (failover.ts) – this one must not come back by itself
+RestartPreventExitStatus=75
+# time for the last copy of the database to the bucket (with failover on)
+TimeoutStopSec=20
 # the server only needs its database folder
 NoNewPrivileges=true
 ProtectSystem=strict

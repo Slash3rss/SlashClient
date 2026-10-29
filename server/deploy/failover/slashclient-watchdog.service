@@ -1,0 +1,8 @@
+[Unit]
+Description=SlashClient spare server: watches the main one and takes over when it is down
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/slashclient/app/deploy/failover/watchdog.sh

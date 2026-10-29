@@ -171,6 +171,32 @@ export class S3Backend implements Backend {
     return { body, length: Number.isFinite(length) ? length : undefined, total: Number.isFinite(length) ? length : undefined };
   }
 
+  /** A small object read whole, with its ETag (for `putIf`); undefined when there is none. */
+  async readTagged(key: string): Promise<{ data: Buffer; etag: string } | undefined> {
+    const res = await this.send('GET', this.urlOf(key));
+    if (res.status === 404) {
+      await res.arrayBuffer().catch(() => undefined);
+      return undefined;
+    }
+    if (!res.ok) await S3Backend.fail(res);
+    return { data: Buffer.from(await res.arrayBuffer()), etag: res.headers.get('etag') ?? '' };
+  }
+
+  /**
+   * Writes only if the object is still as it was read (its ETag) or, with null, is not there yet: two
+   * servers cannot both take the failover lease. The new ETag, or undefined when someone else wrote first.
+   */
+  async putIf(key: string, data: Buffer, etag: string | null): Promise<string | undefined> {
+    const res = await this.send('PUT', this.urlOf(key), { body: data, headers: { 'content-type': 'application/json', ...(etag === null ? { 'if-none-match': '*' } : { 'if-match': etag }) } });
+    if (res.status === 412) {
+      await res.arrayBuffer().catch(() => undefined);
+      return undefined;
+    }
+    if (!res.ok) await S3Backend.fail(res);
+    await res.arrayBuffer().catch(() => undefined);
+    return res.headers.get('etag') ?? '';
+  }
+
   async head(key: string): Promise<number | undefined> {
     const res = await this.send('HEAD', this.urlOf(key));
     if (res.status === 404) return undefined;

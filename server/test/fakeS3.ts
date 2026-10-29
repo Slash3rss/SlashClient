@@ -25,6 +25,9 @@ export interface FakeS3 {
 const xml = (code: string, message: string) => `<?xml version="1.0" encoding="UTF-8"?><Error><Code>${code}</Code><Message>${message}</Message></Error>`;
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/** An object's ETag: its content's MD5 in quotes, as S3 gives it for a simple upload. */
+const etagOf = (o: FakeObject) => `"${createHash('md5').update(o.data).digest('hex')}"`;
+
 export async function startFakeS3(opts: { bucket: string; region: string; keys: Record<string, string> }): Promise<FakeS3> {
   const objects = new Map<string, FakeObject>();
   const requests: FakeS3['requests'] = [];
@@ -83,9 +86,15 @@ export async function startFakeS3(opts: { bucket: string; region: string; keys: 
     if (!key) return answer(400, xml('InvalidRequest', 'no key'));
     const obj = objects.get(key);
     switch (req.method) {
-      case 'PUT':
-        objects.set(key, { data: body, type: String(req.headers['content-type'] ?? 'application/octet-stream'), modifiedMs: Date.now() });
-        return answer(200, '', { ETag: '"x"' });
+      case 'PUT': {
+        // conditional writes, as R2 does them (the failover lease)
+        const ifMatch = req.headers['if-match'];
+        if (req.headers['if-none-match'] === '*' && obj) return answer(412, xml('PreconditionFailed', 'exists'));
+        if (ifMatch && (!obj || ifMatch !== etagOf(obj))) return answer(412, xml('PreconditionFailed', 'changed'));
+        const put = { data: body, type: String(req.headers['content-type'] ?? 'application/octet-stream'), modifiedMs: Date.now() };
+        objects.set(key, put);
+        return answer(200, '', { ETag: etagOf(put) });
+      }
       case 'DELETE':
         objects.delete(key);
         return answer(204);
@@ -105,7 +114,7 @@ export async function startFakeS3(opts: { bucket: string; region: string; keys: 
           return res.end(obj.data.subarray(start, end + 1));
         }
         requests.push({ method: 'GET', path: url.pathname, status: 200 });
-        res.writeHead(200, { 'Content-Type': obj.type, 'Content-Length': obj.data.length });
+        res.writeHead(200, { 'Content-Type': obj.type, 'Content-Length': obj.data.length, ETag: etagOf(obj) });
         return res.end(obj.data);
       }
       default:

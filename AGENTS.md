@@ -119,3 +119,7 @@ git archive HEAD:server src web package.json | ssh -i ~/.ssh/slashclient_vps roo
 ```
 Sprawdź `https://client.slash3rss.dev/v1/health`. Na VPS nie ruszaj `/opt/api-slash3rss` ani `/etc/caddy/sites` –
 należą do innego projektu (Caddyfile z repo tylko je importuje).
+
+Zapasowy serwer (awaryjność): `server/deploy/failover/README.md` – dzierżawa lidera i kopie bazy/plików w R2
+(`server/src/failover.ts`), strażnik i przejęcie na zapasowym. Po włączeniu `FAILOVER_*` wdrażaj na oba serwery
+ten sam kod; zapasowy z wyłączonym `slashclient` sam nie wystartuje (dzierżawa).

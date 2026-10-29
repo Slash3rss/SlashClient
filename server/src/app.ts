@@ -70,6 +70,8 @@ import { createPush } from './push.ts';
 
 export interface Config {
   dbFile: string;
+  /** This server's name when there is a spare one (FAILOVER_NODE), told in /v1/health. */
+  node?: string;
   /** Address the server is reachable at, for the sign-in redirects. */
   publicUrl: string;
   /** Sign-in providers that are configured (Discord, Microsoft, Google, GitHub). */
@@ -1066,7 +1068,8 @@ export function createApp(cfg: Config) {
         ...(me ? { wallet: { balance: wallet.balance(me) } } : {}),
       };
     }],
-    ['GET', /^\/v1\/health$/, () => ({ ok: true, providers: Object.keys(providers), dev: cfg.allowDevLogin })],
+    // `node`: which server answered (with failover, deploy/failover/)
+    ['GET', /^\/v1\/health$/, () => ({ ok: true, providers: Object.keys(providers), dev: cfg.allowDevLogin, ...(cfg.node ? { node: cfg.node } : {}) })],
 
     // -- signing in --
     ['POST', /^\/v1\/auth\/dev$/, async (req) => {
