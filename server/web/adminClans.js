@@ -2,7 +2,7 @@
 // members and their roles, taking a member out, a new owner, a new name or tag (an offensive one that
 // got through), the logo off, or the whole clan removed. Everything goes to the log, and the clan's
 // members see the change at once in the launcher.
-import { $, api, confirmModal, el, fmtDate, guard, icon, toast } from './common.js';
+import { $, api, confirmModal, el, fmtDate, guard, icon, linkRow, toast } from './common.js';
 
 const ROLES = { owner: 'lider', officer: 'oficer', member: 'członek' };
 
@@ -15,7 +15,7 @@ export async function clansPage(q = '') {
   if (!res) return;
   const search = el('input', { type: 'search', placeholder: 'Szukaj: tag, nazwa, @lider', value: q, 'aria-label': 'Szukaj klanu' });
   search.addEventListener('keydown', (e) => e.key === 'Enter' && clansPage(search.value.trim()));
-  const rows = res.clans.map((c) => el('tr', {},
+  const rows = res.clans.map((c) => linkRow(() => clanPage(c.id),
     el('td', {}, logoOf(c)),
     el('td', {}, el('b', { textContent: `[${c.tag}]` }), ' ', c.name),
     el('td', { textContent: String(c.members) }),
@@ -39,8 +39,8 @@ async function clanPage(id) {
   const back = el('button', { onclick: () => clansPage() }, icon('fa-solid fa-arrow-left'), ' Wszystkie');
 
   // a new name and/or tag
-  const tag = el('input', { value: c.tag, maxLength: 5, size: 6, 'aria-label': 'Tag klanu' });
-  const name = el('input', { value: c.name, maxLength: res.limits?.nameMax ?? 32, 'aria-label': 'Nazwa klanu' });
+  const tag = el('input', { type: 'text', value: c.tag, maxLength: 5, size: 6, 'aria-label': 'Tag klanu' });
+  const name = el('input', { type: 'text', value: c.name, maxLength: res.limits?.nameMax ?? 32, 'aria-label': 'Nazwa klanu' });
   const rename = el('form', { class: 'row', onsubmit: async (e) => {
     e.preventDefault();
     const next = { tag: tag.value.trim(), name: name.value.trim() };

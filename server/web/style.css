@@ -69,6 +69,12 @@ input:focus, select:focus { border-color: var(--border-focus); box-shadow: 0 0 0
 
 .glass { background: rgba(17, 22, 34, .72); border: 1px solid var(--border); border-radius: var(--radius); backdrop-filter: blur(14px); }
 .card { padding: 20px; }
+/* cards stacked on an admin page (and whatever follows one) keep apart instead of touching */
+#main > * + .card, #main > .card + * { margin-top: 16px; }
+/* a row that opens its details (linkRow in common.js) */
+tr.row-link { cursor: pointer; }
+tr.row-link:hover, tr.row-link:focus-visible { background: rgba(255, 255, 255, .05); }
+tr.row-link:focus-visible { outline: 2px solid rgba(59, 130, 246, .6); outline-offset: -2px; }
 .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .worn { display: flex; flex-direction: column; gap: 6px; }
 .grow { flex: 1; min-width: 0; }

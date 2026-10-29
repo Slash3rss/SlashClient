@@ -221,12 +221,24 @@ export function el(tag, props = {}, ...children) {
     if (k === 'class') node.className = v;
     else if (k === 'dataset') Object.assign(node.dataset, v);
     else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+    // aria-* is an attribute, not a property: set as a property it would do nothing for screen readers
+    else if (k.startsWith('aria-')) { if (v !== undefined && v !== null && v !== false) node.setAttribute(k, String(v)); }
     else if (v !== undefined && v !== null && v !== false) node[k] = v;
   }
   node.append(...children.filter((c) => c !== null && c !== undefined && c !== false));
   return node;
 }
 export const icon = (name) => el('i', { class: name });
+/**
+ * A table row that opens something when clicked anywhere on it, or with Enter from the keyboard;
+ * buttons, links and fields inside it keep doing only their own thing.
+ */
+export function linkRow(open, ...cells) {
+  const tr = el('tr', { class: 'row-link', tabIndex: 0 }, ...cells);
+  tr.addEventListener('click', (e) => !e.target.closest('button, a, input, select, textarea, label') && open());
+  tr.addEventListener('keydown', (e) => e.key === 'Enter' && e.target === tr && (e.preventDefault(), open()));
+  return tr;
+}
 export const $ = (sel) => document.querySelector(sel);
 
 export function toast(text, isError = false) {
