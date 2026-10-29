@@ -69,7 +69,8 @@ Strona: <https://client.slash3rss.dev>. Poradniki dla graczy: [wiki](https://git
   (wybór na stronie konta),
 - ustawienia: limit prędkości pobierania, dedykowana karta graficzna (Windows, Linux), sprzątanie miejsca,
   rozmiar okna przy uruchomieniu, „Ogranicz animacje”, powiadomienia systemowe (z dźwiękiem albo bez),
-- automatyczne aktualizacje launchera na Windowsie, Linuksie i macOS (szczegóły niżej),
+- automatyczne aktualizacje launchera na Windowsie, Linuksie i macOS (szczegóły niżej), kanał stabilny albo beta,
+- status „Nie przeszkadzać” wycisza powiadomienia od znajomych i społeczności (osiągnięcia zostają) i trafia też do gry,
 - status na Discordzie (na SkyUp.pl z sektorem).
 
 **Mod SlashClient** (mod Fabric w `hud/`, dawniej „SlashClient HUD”), instalowany przez launcher razem z Fabric API.
@@ -79,7 +80,10 @@ Minecraft 1.20.1, 1.21.1, 1.21.4, 1.21.5, 1.21.6–1.21.8, 1.21.9–1.21.10, 1.2
   pora dnia, światło, czas sesji, combo, zasięg, sprint/skradanie, nasycenie, licznik przedmiotów, cel, pancerz, efekty,
   klawisze, informacje o bloku (narzędzie i czas kopania, wzrost roślin, liczniki bloków), „Teraz gra” (muzyka
   z komputera), czat Twitch i Kick, minimapa;
-- edytor HUD (Prawy Shift) z przyciąganiem modułów, cofaniem (Ctrl+Z / Ctrl+Y) i zaokrąglonymi rogami; w nim przesuwa się
+- ustawienia modułów: najpierw ich własne opcje, potem wygląd (tło, obwódka, kolory, progi kolorów); ulubione moduły
+  z gwiazdką na początku listy, a lista pamięta przewinięcie i wyszukiwanie (po polsku i po angielsku);
+- edytor HUD (Prawy Shift) z przyciąganiem modułów, cofaniem (Ctrl+Z / Ctrl+Y), przesuwaniem strzałkami lub WSAD
+  i zaokrąglonymi rogami; w nim przesuwa się
   też części gry: scoreboard, pasek bossa, listę graczy (Tab), pasek akcji, tytuły i czat (na 1.20.1 bez paska akcji);
   układy HUD dla serwerów; ustawienia można udostępnić kodem (w grze albo w profilu w launcherze);
 - przybliżenie (C, z trybem przełączania i płynną kamerą), fullbright, freelook (Lewy Alt), punkty nawigacyjne (B,
@@ -89,7 +93,11 @@ Minecraft 1.20.1, 1.21.1, 1.21.4, 1.21.5, 1.21.6–1.21.8, 1.21.9–1.21.10, 1.2
   mouse tweaks, ping graczy nad głową;
 - zakładki czatu wyłapujące wiadomości po tekście albo regexie (też jako osobne okna z własnym polem do pisania
   i prefiksem odpowiedzi, kod zakładek), kopiowanie wiadomości, ochrona przed wyrzuceniem (Q), wskaźniki obrażeń,
-  licznik TNT, ukrywanie nicku, przycisk **Połącz ponownie**, lepszy ekran śmierci;
+  licznik TNT, ukrywanie nicku, przycisk **Połącz ponownie**, lepszy ekran śmierci, dłuższa historia czatu
+  (do 16 000 linii), podgląd jedzenia na pasku głodu i kolory poziomów zaklęć;
+- powiadomienia SlashClient w kolorze swojego rodzaju (wiadomości, znajomi online i w grze, transmisje Twitch i Kick,
+  zaproszenia, społeczności, osiągnięcia, błędy), każdy rodzaj do wyłączenia; długie przewijają się i wiszą dłużej;
+  tagi klanów innych graczy można ukryć;
 - podgląd shulkerów, wyszukiwarka w ekwipunku i skrzyniach (z przypinaniem), sortowanie (R) i strzałki
   „przenieś wszystko”, blokada slotów paska (K), Shift w craftingu tylko tyle, ile się zmieści, moduł „Ekwipunek”
   i podpis na zrzutach F2;
@@ -98,12 +106,19 @@ Minecraft 1.20.1, 1.21.1, 1.21.4, 1.21.5, 1.21.6–1.21.8, 1.21.9–1.21.10, 1.2
 - klawisze SlashClient ustawiane w oknie moda i na stronach modułów, klipy (F8), natychmiastowa powtórka (F6),
   emotki jako ruchy postaci (N, 9 emotek z „six seven”), spraye, menu kosmetyków, benchmark, kalkulator XP,
   znajomi i czat (O);
-- autoclicker, auto tool (bloki, broń, nożyce, wiadra i inne) i uzupełnianie ręki (domyślnie wyłączone, z ostrzeżeniem
-  przed pierwszym włączeniem); trzymanie przycisków działa też przy otwartym ekwipunku i menu pauzy;
+- autoclicker (przytrzymanie albo przełącznik, CPS dla każdego przycisku, nigdy w graczy), auto tool (bloki, broń,
+  nożyce, wiadra i inne; bierze z plecaka i sprawdza, czy serwer nie cofnął ruchu) i uzupełnianie ręki (domyślnie
+  wyłączone, z ostrzeżeniem przed pierwszym włączeniem); trzymanie przycisków działa też przy otwartym ekwipunku
+  i menu pauzy;
 - zakładka **SkyUp** (SkyUp.pl): **mapa dungeonu** (pokoje z mapki z terakoty nad dungeonem, moby z ramką w kolorze
   klasy, czas do respawnu w pokojach ze spawnerem, liczniki łupów, pokój startowy ze strzałką, postęp poziomu; **M**
-  na pełnym ekranie) i podświetlenie lootu; na 26.3 także zadania z wyspy (tracker), licznik ryb, licznik dropu SkyCase,
-  garderoba, kalkulator XP SkyUp i paczka SkyUp w resourcepackach;
+  na pełnym ekranie), podświetlenie lootu i **wiki SkyUp w grze**; na 26.3 także:
+  - zadania z wyspy (tracker z liczeniem kopania, stawiania, zabić także zestackowanych mobów, craftingu i ryb;
+    zadanie dzienne śledzone samo; zaliczenie po wiadomości na czacie; liczy się tylko to, czego serwer nie cofnie),
+  - przypomnienia o zadaniu dziennym i nieodebranym bonusie codziennym (baner u góry ekranu z dźwiękiem),
+  - **Plan tygodnia SkyUp** (eventy, zawody wędkarskie, Boss Arena z wiki) z powiadomieniem przed startem,
+  - szamaństwo (receptury i brakujące materiały), **atlas ryb** (72 gatunki), licznik ryb, licznik dropu SkyCase,
+    garderoba, kalkulator i odliczanie butelkowania XP, zrzut GUI i paczka SkyUp w resourcepackach;
 - okno gry nazywa się „SlashClient &lt;wersja&gt; · &lt;wersja Minecrafta&gt;”, F3 pokazuje wersję SlashClienta, a serwery
   widzą klienta jako `slashclient <wersja>/<wersja gry>`.
 
@@ -129,7 +144,9 @@ Jeden kod dla wszystkich wersji z `hud/versions/` (budowanie wymaga JDK 25; 1.20
 cd hud
 ./build-all.sh                              # wszystkie wersje → build/bundle/slashclient-hud-<wersja>.jar
 ./gradlew build -Pmc=26.2                   # jedna wersja (versions/26.2.properties)
-./gradlew runClientGameTest -Pmc=1.21.11    # gra z testem; zrzuty w build/<mc>/run/clientGameTest/screenshots
+./gradlew runClientGameTest -Pmc=1.21.11    # gra z testem; zrzuty w build/run/clientGameTest/screenshots
+./gametest.sh 26.3                          # wszystkie testy w grze jednej wersji, kilka gier naraz (z oknem postępu)
+./gradlew runClientGameTest -Pmc=26.3 -Ptests=GameSkyTasks,HudScreenshots   # tylko wybrane testy
 ```
 
 Różnice między wersjami: `versions/<mc>.properties` (wersja gry, Java, zakres wersji `range`, nazwy plików `targets`,

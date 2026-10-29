@@ -42,6 +42,10 @@ Adresy są po polsku i po angielsku (`/konto` i `/account`, `/zgloszenia` i `/bu
   - logi graczy: udostępnione logi z możliwością usunięcia;
   - miejsce na pliki: gdzie leżą zrzuty, klipy i profile w chmurze (dysk serwera, Cloudflare R2, Backblaze B2, inne S3),
     zajętość, limity, test połączenia i przenoszenie plików; instrukcja w [docs/przechowywanie.md](docs/przechowywanie.md);
+  - **ustawienia** (`src/settingsDefs.ts`, kategorie w `src/settings.ts`): limity (zapytania na minutę, rozmiary plików,
+    liczby członków), przełączniki funkcji (społeczności, klany, grupy, czat, media, udostępnianie, kanał beta
+    aktualizacji) i klucze dostawców; sekrety są w bazie szyfrowane `STORAGE_SECRET_KEY`. Nowe limity i przełączniki
+    dodaje się tutaj, a nie jako stałe w kodzie;
   - dziennik wszystkich zmian zrobionych w panelu.
 
 Rangi to kolor logo SlashClient przy nicku w grze: admin czerwone, Support błękitne, Partner złote, Przyjaciel zielone;
@@ -110,6 +114,9 @@ Launcher otwiera przeglądarkę, a po zalogowaniu sam odbiera wynik (odpytuje `/
 | `ALLOW_DEV_LOGIN` | – | `1` = logowanie samym nickiem (tylko testy) |
 | `STORAGE_SECRET_KEY` | – | 32 bajty base64 (`openssl rand -base64 32`): szyfruje klucze bucketów R2/B2 dodanych w panelu ([docs/przechowywanie.md](docs/przechowywanie.md)) |
 | `STORAGE_MIN_FREE_MB` | `2048` | poniżej tylu MB wolnego dysk serwera nie przyjmuje nowych zrzutów, klipów i profili |
+| `CURSEFORGE_API_KEY` | – | klucz API CurseForge (wyżej) |
+| `MEDIA_DIR`, `SHARES_DIR`, `CLOUD_DIR`, `CHAT_IMAGES_DIR` | obok bazy | foldery zrzutów i klipów, udostępnień, profili w chmurze i obrazków z czatu (gdy pliki są na dysku serwera) |
+| `LEGAL_DRAFT` | włączone | `0` = bez paska „wersja robocza, do sprawdzenia przez prawnika” na regulaminach i polityce prywatności (wybór w panelu dla danego dokumentu ma pierwszeństwo) |
 
 ## API (`/v1`)
 
@@ -150,7 +157,7 @@ WebSocket `/v1/ws`: pierwsza wiadomość to `{ type: "auth", token, presence }`.
 i `lan-connect`.
 Status `invisible` znajomi widzą jako offline. Adres serwera widzą tylko wtedy, gdy gracz na to pozwala.
 
-WebSocket `/v1/lan` (na `main`, jeszcze nie w wydaniu 0.9.10): przekaźnik światów otwartych w LAN dla znajomych.
+WebSocket `/v1/lan`: przekaźnik światów otwartych w LAN dla znajomych.
 Launcher hosta zgłasza przez `/v1/ws` (`{ type: "lan", open }`), że świat jest otwarty. Dołączający łączy się z
 `{ type: "join", token, host }`, host dostaje `lan-connect` i odpowiada `{ type: "accept", token, id }`; potem serwer
 przekazuje bajty połączenia Minecrafta w obie strony. Tylko między znajomymi i tylko do otwartego świata, bez otwierania portów.
@@ -168,6 +175,8 @@ Strona, API i panel działają pod **https://client.slash3rss.dev** (VPS z Ubunt
 
 - **Wdrożenie:** `./server/deploy/deploy.sh` wysyła `server/` przez SSH (rsync), instaluje zależności i restartuje usługę.
   VPS nie ma dostępu do GitHuba. Host i klucz SSH można zmienić zmiennymi `SLASHCLIENT_HOST` i `SLASHCLIENT_KEY`.
+  Szybsza droga dla samego kodu (bez nowych zależności) i obowiązkowa kopia bazy przed nią są w `AGENTS.md`
+  („Wdrożenie serwera”).
 - **Ustawienia:** `/etc/slashclient/env` na serwerze (token wydań, klucze logowania, klucz CurseForge, admini). Po zmianie: `systemctl restart slashclient`.
 - **Baza:** `/var/lib/slashclient/social.db`.
 - **Logi:** `journalctl -u slashclient -f` (serwer) i `/var/log/caddy/slashclient.log` (ruch).
