@@ -866,7 +866,6 @@
 	"slashclient-hud.assist.toolFish": "Water bucket for fish, axolotls and tadpoles (right click)",
 	"slashclient-hud.assist.toolBrush": "Brush for armadillos (right click)",
 	"slashclient-hud.assist.toolFeed": "Food for animals (right click)",
-	"slashclient-hud.assist.restore": "Go back to the previous slot",
 	"slashclient-hud.assist.autoRefill": "Hand refill",
 	"slashclient-hud.assist.holdKeys": "Holding buttons (keys)",
 	"slashclient-hud.assist.holdScreens": "Also with the inventory or pause menu open",

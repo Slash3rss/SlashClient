@@ -72,14 +72,15 @@ public class GameInventoryTools implements FabricClientGameTest {
 			int tried = context.computeOnClient(mc -> TestHooks.selectedSlot());
 			context.waitTicks(30);
 			int fallback = context.computeOnClient(mc -> TestHooks.selectedSlot());
-			// moves let through: a short dig, the tool back in the backpack, and a second later it is taken again
-			// (its going back is not a refused move)
+			// moves let through: a short dig brings the iron pickaxe to the hotbar, where it stays (and in the
+			// hand) once digging stops; the next dig takes it from there
 			context.runOnClient(mc -> { TestHooks.holdButtons(false, false); TestHooks.autoToolRefused(false); });
 			context.waitTicks(30);
-			context.runOnClient(mc -> { TestHooks.selectSlot(0); dev.slash3rss.slashclient.hud.SlashHud.config.autoToolRestore = true; TestHooks.holdButtons(true, false); });
+			context.runOnClient(mc -> { TestHooks.selectSlot(0); TestHooks.holdButtons(true, false); });
 			context.waitTicks(3);
 			context.runOnClient(mc -> TestHooks.holdButtons(false, false));
 			context.waitTicks(30);
+			String stayed = context.computeOnClient(mc -> TestHooks.selectedSlot() + " " + mc.player.getInventory().getItem(1).getItem());
 			context.runOnClient(mc -> { TestHooks.selectSlot(0); TestHooks.holdButtons(true, false); });
 			context.waitTicks(3);
 			int again = context.computeOnClient(mc -> TestHooks.selectedSlot());
@@ -89,7 +90,8 @@ public class GameInventoryTools implements FabricClientGameTest {
 			world.getServer().runCommand("clear @a");
 			world.getServer().runCommand("execute at @a run setblock ~ ~1 ~2 air");
 			if (tried != 1 || fallback != 2) throw new AssertionError("Auto tool after a refused move (tried, then): " + tried + " " + fallback);
-			if (again != 1) throw new AssertionError("Auto tool after a tool went back to the backpack took slot " + again + " (expected the iron pickaxe brought to 1)");
+			if (!stayed.startsWith("1 ") || !stayed.contains("iron_pickaxe")) throw new AssertionError("Auto tool after digging (slot in hand, item on slot 1): " + stayed);
+			if (again != 1) throw new AssertionError("Auto tool took slot " + again + " (expected the iron pickaxe on 1)");
 			// leaves: the shears are the fastest, a hoe when hoes are preferred for leaves; stone is not leaves
 			String preferred = context.computeOnClient(mc -> {
 				var inv = mc.player.getInventory();

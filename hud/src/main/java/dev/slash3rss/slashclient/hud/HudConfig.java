@@ -449,7 +449,6 @@ public final class HudConfig {
 	public boolean autoClickMobs = false;
 	public static final String[] AUTO_CLICK_TARGETS = { "all", "mobs" };
 	public boolean autoTool = false;
-	public boolean autoToolRestore = true;
 	/**
 	 * What auto tool takes into the hand: the tool for digging, the hardest-hitting weapon for a hit,
 	 * and for a right click on a mob shears, a bucket or a bowl (milk, stew), a water bucket (fish),
@@ -988,7 +987,6 @@ public final class HudConfig {
 		autoClickContainers = other.autoClickContainers;
 		autoClickMobs = other.autoClickMobs;
 		autoTool = other.autoTool;
-		autoToolRestore = other.autoToolRestore;
 		autoToolBlocks = other.autoToolBlocks;
 		autoToolWeapons = other.autoToolWeapons;
 		autoToolWeapon = oneOf(other.autoToolWeapon, AUTO_TOOL_WEAPONS);

@@ -54,8 +54,6 @@ public final class Assist {
 	static int leftClicks, rightClicks, jumps;
 	/** The slot the player had before auto tool picked another (-1 = none). */
 	private static int toolFrom = -1;
-	/** Tools auto tool brought from the backpack ({backpack slot, hotbar slot}), newest last, to put back in reverse. */
-	private static final java.util.ArrayDeque<int[]> swaps = new java.util.ArrayDeque<>();
 	/**
 	 * The last tool brought from the backpack ({backpack slot, hotbar slot}) and what it is, until the
 	 * server is seen to have moved it: some servers refuse moves in the inventory with no window open
@@ -69,7 +67,7 @@ public final class Assist {
 	/** For the test: moves from the backpack not sent, as if a server put the slots back. */
 	static boolean refuseMovesForTest;
 	private static final int CHECK_TICKS = 20;
-	private static final long REFUSED_MS = 10_000;
+	private static final long REFUSED_MS = 3_000;
 	private static int idleTicks;
 	/** When auto tool last took a weapon for a hit (ms): between hits the fight goes on, so the hand does not go back yet. */
 	private static long weaponAt;
@@ -122,7 +120,6 @@ public final class Assist {
 			holdAttack = holdUse = armed = dugOverScreen = false;
 			lastHand = ItemStack.EMPTY;
 			toolFrom = -1;
-			swaps.clear();
 			checking = null;
 			return;
 		}
@@ -388,21 +385,9 @@ public final class Assist {
 		if (!digging) {
 			// in a fight: the weapon stays in the hand between hits
 			if (System.currentTimeMillis() - weaponAt < FIGHT_MS) return;
-			// a moment after digging stops, the hand goes back to what it held
-			if (toolFrom >= 0 && ++idleTicks > 4) {
-				if (cfg().autoToolRestore) {
-					// the tools from the backpack go back where they were, the last one first (and what they replaced comes back)
-					while (!swaps.isEmpty() && mc.gameMode != null) {
-						int[] sw = swaps.removeLast();
-						Compat.swapIntoHotbar(mc, player, sw[0], sw[1]);
-					}
-					inv.setSelectedSlot(toolFrom);
-				}
-				toolFrom = -1;
-				swaps.clear();
-				// a tool just put back is in the backpack again on purpose, not because the server refused the move
-				checking = null;
-			}
+			// the tool stays in the hand after digging (the next block takes what it needs); a moment later
+			// what was held before is forgotten (it is only for a move the server refuses, see checkSwap)
+			if (toolFrom >= 0 && ++idleTicks > 4) toolFrom = -1;
 			return;
 		}
 		idleTicks = 0;
@@ -484,9 +469,9 @@ public final class Assist {
 			inv.setSelectedSlot(best);
 			return;
 		}
-		// the best tool is in the backpack: onto the hotbar (an empty slot, else the one in hand); again for every
-		// block that needs another one (items picked up meanwhile may have filled the empty hotbar slots)
-		if (mc.gameMode == null || swaps.size() >= 9) return;
+		// the best tool is in the backpack: onto the hotbar (an empty slot, else the one in hand), where it stays;
+		// not again while the server's answer to that very move is awaited (a refused move is not sent over and over)
+		if (mc.gameMode == null || checking != null && checking[0] == best) return;
 		int to = inv.getSelectedSlot();
 		for (int i = 0; i < Inventory.getSelectionSize(); i++) if (inv.getItem(i).isEmpty()) {
 			to = i;
@@ -494,10 +479,8 @@ public final class Assist {
 		}
 		ItemStack tool = inv.getItem(best);
 		if (!refuseMovesForTest) Compat.swapIntoHotbar(mc, player, best, to);
-		int[] swap = { best, to };
-		swaps.addLast(swap);
 		inv.setSelectedSlot(to);
-		checking = swap;
+		checking = new int[] { best, to };
 		checkingItem = tool.getItem();
 		checkingTicks = 0;
 	}
@@ -515,7 +498,6 @@ public final class Assist {
 		// refused only when the tool is back in the backpack slot it came from: a tool that broke while digging
 		// leaves the hotbar slot empty too, and the backpack's other tools are still there to be taken
 		if (inv.getItem(swap[1]).is(checkingItem) || !inv.getItem(swap[0]).is(checkingItem)) return;
-		swaps.removeIf(s -> s == swap);
 		backpackRefusedUntil = System.currentTimeMillis() + REFUSED_MS;
 		if (toolFrom >= 0 && inv.getSelectedSlot() == swap[1]) inv.setSelectedSlot(toolFrom);
 	}

@@ -659,7 +659,6 @@ public final class Catalog {
 			new Slider("slashclient-hud.assist.jumps", 1f, 10f, 1f, "%.0f/s", () -> (float) cfg.autoClickJumps, v -> cfg.autoClickJumps = Math.round(v))), null));
 		out.add(new Entry("autoTool", "slashclient-hud.assist.autoTool", "world", "m-autotool", () -> cfg.autoTool,
 			v -> risky(v, () -> cfg.autoTool = v), List.of(
-			new Toggle("slashclient-hud.assist.restore", () -> cfg.autoToolRestore, v -> cfg.autoToolRestore = v),
 			new Toggle("slashclient-hud.assist.toolBlocks", () -> cfg.autoToolBlocks, v -> cfg.autoToolBlocks = v),
 			// blocks more than one kind of tool digs: which one
 			new Choice("slashclient-hud.assist.toolLeaves", HudConfig.AUTO_TOOL_LEAVES, "slashclient-hud.assist.toolBlock.", () -> cfg.autoToolLeaves, v -> cfg.autoToolLeaves = v),
