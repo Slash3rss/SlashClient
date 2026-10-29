@@ -11,6 +11,7 @@ import { currentIconId, iconFile, iconFromFile, iconFromLibrary, iconFromUrl, LI
 import { libraryIcons, removeFromLibrary } from './iconLibrary';
 import { pullShared, pushShared } from './sync';
 import { createLineBatcher } from './gamelog';
+import { openLoopback } from './oauthLoopback';
 import { recommendedMemoryMb } from './jvm';
 import { markExistingUser } from '../shared/firstRun';
 import { shareLog } from './logshare';
@@ -2660,28 +2661,50 @@ let browserLogin = 0;
 handle('social:loginOAuth', (provider: string, link: boolean) => socialCall(async () => {
   if (!['discord', 'microsoft', 'google', 'github'].includes(provider)) throw new SocialError('provider_disabled');
   const attempt = ++browserLogin;
-  const { state, url, code } = await social.call<{ state: string; url: string; code?: string }>('POST', `/v1/auth/${provider}/start`, undefined, link);
-  // Microsoft signs in with a code typed on its page: copied right away, and shown in Friends
-  // the server says where to sign in; only a web page is opened, never another kind of link
-  if (!/^https:\/\//.test(url)) throw new SocialError('provider_failed');
-  if (code) {
-    clipboard.writeText(code);
-    send('social:loginCode', { code, url });
-  }
-  await shell.openExternal(url);
-  const until = Date.now() + 10 * 60_000;
-  while (Date.now() < until) {
-    await new Promise((r) => setTimeout(r, 2000));
-    if (attempt !== browserLogin) throw new SocialError('cancelled');
-    const res = await social.call<{ pending?: boolean; linked?: boolean; token: string; user: never }>('GET', `/v1/auth/poll?state=${state}`, undefined, false);
-    if (res.pending) continue;
-    if (res.linked) {
-      social.updateUser(res.user);
-      return social.state();
+  type Result = { pending?: boolean; linked?: boolean; token: string; user: never };
+  // the browser comes back to this launcher, which alone can end the sign-in (oauthLoopback.ts);
+  // an older server ignores it and the sign-in is picked up by asking, as before
+  let state: string | undefined;
+  let ended: { res?: Result; err?: unknown } | undefined;
+  const server = store.settings.socialUrl.replace(/\/$/, '');
+  const loopback = await openLoopback(() => state, async (key, verifier) => {
+    try {
+      ended = { res: await social.call<Result>('POST', '/v1/auth/finish', { state, key, verifier }, false) };
+      return true;
+    } catch (err) {
+      ended = { err };
+      return false;
     }
-    return social.signedIn(res);
+  }, (ok, lang) => `${server}/v1/auth/done?ok=${ok ? 1 : 0}&lang=${lang}`).catch(() => undefined);
+  try {
+    const started = await social.call<{ state: string; url: string; code?: string }>('POST', `/v1/auth/${provider}/start`, loopback ? { port: loopback.port, challenge: loopback.challenge } : undefined, link);
+    const { url, code } = started;
+    state = started.state;
+    // Microsoft signs in with a code typed on its page: copied right away, and shown in Friends
+    // the server says where to sign in; only a web page is opened, never another kind of link
+    if (!/^https:\/\//.test(url)) throw new SocialError('provider_failed');
+    if (code) {
+      clipboard.writeText(code);
+      send('social:loginCode', { code, url });
+    }
+    await shell.openExternal(url);
+    const until = Date.now() + 10 * 60_000;
+    while (Date.now() < until) {
+      await new Promise((r) => setTimeout(r, ended ? 0 : 2000));
+      if (attempt !== browserLogin) throw new SocialError('cancelled');
+      if (ended?.err) throw ended.err;
+      const res = ended?.res ?? await social.call<Result>('GET', `/v1/auth/poll?state=${state}`, undefined, false);
+      if (res.pending) continue;
+      if (res.linked) {
+        social.updateUser(res.user);
+        return social.state();
+      }
+      return social.signedIn(res);
+    }
+    throw new SocialError('login_expired');
+  } finally {
+    loopback?.close();
   }
-  throw new SocialError('login_expired');
 }));
 /**
  * Links the player's Twitch or Kick channel (server 0.9.24+, streams): the platform's page in the
