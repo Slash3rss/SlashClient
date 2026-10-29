@@ -30,6 +30,7 @@ import { PROJECT_DETAILS_EN } from './i18nProjectDetails';
 import { MOD_DEPS_EN } from './i18nModDeps';
 import { FRIENDS_POPULAR_EN } from './i18nFriendsPopular';
 import { JAVA_EN } from './i18nJava';
+import { ERRORS_EN } from './i18nErrors';
 
 export type Lang = 'pl' | 'en';
 
@@ -89,6 +90,8 @@ const EN: Record<string, string> = {
   ...GIFS_EN,
   // the Java choice of profiles and its comparison in the benchmark (own file)
   ...JAVA_EN,
+  // plain words for file errors, the game bridge's errors and a launcher that could not start (own file)
+  ...ERRORS_EN,
   // navigation and common
   'Graj': 'Play',
   'GRAJ': 'PLAY',

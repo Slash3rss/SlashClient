@@ -65,6 +65,29 @@ import { skyupGameArticle, skyupIndex, skyupPictureBytes, skyupSearch } from './
 import { LanTunnels } from './lan';
 import { BLOCK_FACES, blockTextures, cosmeticTextures } from './blockTextures';
 import { ConsoleHistory } from './consoleHistory';
+import { appendLauncherLog, errorDetails, installErrorHandlers } from './launcherErrors';
+
+/** The launcher's own log (errors nobody caught, a start that failed), next to update.log. */
+function launcherLogFile(): string {
+  try {
+    return path.join(app.getPath('logs'), 'launcher.log');
+  } catch {
+    return path.join(paths.root, 'logs', 'launcher.log');
+  }
+}
+/** The window is open: from then on an uncaught error is only logged, the launcher keeps running. */
+let windowOpened = false;
+/** The player's language from Settings is set (before that a failed start speaks the system's language). */
+let languageSet = false;
+
+/** The launcher could not start: a plain message in the player's language, no stack trace (that is in the log), then quit. */
+function startFailed(): void {
+  if (!languageSet) setLang(app.getLocale().toLowerCase().startsWith('pl') ? 'pl' : 'en');
+  dialog.showErrorBox(t('SlashClient nie mógł się uruchomić'), t('Coś poszło nie tak przy uruchamianiu launchera. Uruchom go ponownie; jeśli to się powtórzy, wyślij nam plik z logiem: {0}', launcherLogFile()));
+  app.quit();
+}
+
+installErrorHandlers({ logFile: launcherLogFile, started: () => windowOpened, fatal: startFailed });
 
 /** Every game session's console, kept for the Play screen (the last ones of each profile). */
 const consoleHistory = new ConsoleHistory(path.join(paths.root, 'console'));
@@ -2791,6 +2814,7 @@ app.whenReady().then(async () => {
   // first start: follow the system language
   if (!store.settings.language) store.settings.language = app.getLocale().toLowerCase().startsWith('pl') ? 'pl' : 'en';
   setLang(store.settings.language);
+  languageSet = true;
   void applyToolSettings(store.settings);
   // the launcher's changelog, "Co nowego" after an update, going back to an older version (changelog.ts)
   initChangelog({
@@ -2801,6 +2825,7 @@ app.whenReady().then(async () => {
     })) as never,
   });
   createWindow();
+  windowOpened = true;
   startUpdateChecks({
     serverUrl: () => store.settings.socialUrl, send: (status) => send('update:status', status), onLog: (m) => console.error(m),
     pause: { get: () => store.settings.updatesPausedUntil, set: (v) => { store.settings.updatesPausedUntil = v; return persist(); } },
@@ -2814,6 +2839,11 @@ app.whenReady().then(async () => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
+}).catch((err) => {
+  // the start failed (an unreadable launcher.json…): in the log with its stack; without a window the player gets a plain message
+  console.error('start:', errorDetails(err));
+  appendLauncherLog(launcherLogFile(), `[start] ${errorDetails(err)}`);
+  if (!windowOpened) startFailed();
 });
 
 app.on('window-all-closed', () => {
