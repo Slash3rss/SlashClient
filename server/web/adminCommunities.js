@@ -2,7 +2,7 @@
 // messages of all of them, and one community in detail: its members, its log, its open reports, and
 // moderation (logo or description off, a new owner, deleting it). Everything goes to the log.
 // Community chat is not end-to-end encrypted, so a reported message's text is here to judge.
-import { $, api, confirmModal, el, fmtDate, guard, icon, toast } from './common.js';
+import { $, api, confirmModal, el, fmtDate, guard, icon, linkRow, toast } from './common.js';
 
 const ROLES = { owner: 'założyciel', admin: 'admin', moderator: 'moderator', member: 'członek' };
 const ACTIONS = {
@@ -75,7 +75,7 @@ export async function communitiesPage(q = '') {
   if (!res) return;
   const search = el('input', { type: 'search', placeholder: 'Szukaj: nazwa, tag, @założyciel', value: q });
   search.addEventListener('keydown', (e) => e.key === 'Enter' && communitiesPage(search.value.trim()));
-  const rows = res.communities.map((c) => el('tr', {},
+  const rows = res.communities.map((c) => linkRow(() => communityPage(c.id),
     el('td', {}, logoOf(c)),
     el('td', {}, el('b', { textContent: c.name }), c.tag ? el('span', { class: 'muted', textContent: ` #${c.tag}` }) : '', c.verified ? ' ' : '', verifiedMark(c),
       el('div', { class: 'muted small', textContent: c.visibility === 'private' ? 'prywatna' : c.joinMode === 'open' ? 'publiczna, otwarta' : 'publiczna, na prośbę' })),
@@ -109,7 +109,7 @@ async function communityPage(id, q = '') {
   const tools = [];
   if (c.logo) tools.push(el('button', { onclick: async () => (await confirmModal({ title: 'Usunąć logo tej społeczności?', ok: 'Usuń logo', okIcon: 'fa-solid fa-eraser', danger: true })) && (await guard(() => api('DELETE', `/v1/admin/communities/${id}/logo`))) && (toast('Logo usunięte.'), again()) }, icon('fa-solid fa-eraser'), ' Usuń logo'));
   if (c.description) tools.push(el('button', { onclick: async () => (await confirmModal({ title: 'Usunąć opis tej społeczności?', ok: 'Usuń opis', okIcon: 'fa-solid fa-eraser', danger: true })) && (await guard(() => api('DELETE', `/v1/admin/communities/${id}/description`))) && (toast('Opis usunięty.'), again()) }, icon('fa-solid fa-eraser'), ' Usuń opis'));
-  const heir = el('input', { placeholder: 'Nowy założyciel: @nick członka' });
+  const heir = el('input', { type: 'text', placeholder: 'Nowy założyciel: @nick członka' });
   tools.push(heir, el('button', { onclick: async () => {
     const handle = heir.value.trim().replace(/^@/, '');
     if (handle && await confirmModal({ title: `Przekazać społeczność graczowi @${handle}?`, ok: 'Przekaż', okIcon: 'fa-solid fa-crown' }) && (await guard(() => api('POST', `/v1/admin/communities/${id}/owner`, { handle })))) {

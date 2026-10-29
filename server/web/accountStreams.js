@@ -1,11 +1,17 @@
 // The account page's "Streamy" card: link a Twitch or Kick channel (not a way to sign in, only to
 // show friends and the profile when the player is live), unlink it, and the two choices: hide the
 // live status from friends, and be told when friends go live. The server keeps it (streams/streams.ts).
-import { ApiError, api, confirmModal, el, errorText, guard, icon, toast } from './common.js';
+import { ApiError, L, api, confirmModal, el, english, errorText, guard, icon, toast } from './common.js';
 import { platformIcon } from './profileStream.js';
 
 const NAMES = { twitch: 'Twitch', kick: 'Kick' };
-const ERRORS = {
+const ERRORS = english() ? {
+  already_linked: 'This channel is already linked to another SlashClient account.',
+  provider_denied: 'Linking was cancelled.',
+  provider_failed: 'Could not link the channel. Try again.',
+  provider_disabled: 'This platform is not set up on the server yet.',
+  login_expired: 'Linking has expired. Try again.',
+} : {
   already_linked: 'Ten kanał jest już połączony z innym kontem SlashClient.',
   provider_denied: 'Łączenie zostało anulowane.',
   provider_failed: 'Nie udało się połączyć kanału. Spróbuj ponownie.',
@@ -34,7 +40,7 @@ export async function streamsCard() {
         const res = await api('GET', `/v1/me/streams/poll?state=${encodeURIComponent(s)}`);
         if (res.pending) continue;
         state = res.streams;
-        toast(`Połączono kanał ${NAMES[platform]}.`);
+        toast(L(`Połączono kanał ${NAMES[platform]}.`, `${NAMES[platform]} channel linked.`));
         draw();
         return;
       }
@@ -48,7 +54,7 @@ export async function streamsCard() {
   }
 
   async function unlink(a) {
-    if (!await confirmModal({ title: `Odłączyć kanał ${NAMES[a.platform]} ${a.login}?`, text: 'Znajomi przestaną widzieć, że nadajesz.', ok: 'Odłącz', okIcon: 'fa-solid fa-link-slash', danger: true })) return;
+    if (!await confirmModal({ title: L(`Odłączyć kanał ${NAMES[a.platform]} ${a.login}?`, `Unlink the ${NAMES[a.platform]} channel ${a.login}?`), text: L('Znajomi przestaną widzieć, że nadajesz.', 'Friends will no longer see when you are live.'), ok: L('Odłącz', 'Unlink'), okIcon: 'fa-solid fa-link-slash', danger: true })) return;
     const res = await guard(() => api('DELETE', `/v1/me/streams/${a.platform}`));
     if (res) {
       state = res;
@@ -69,10 +75,10 @@ export async function streamsCard() {
         return el('div', { class: 'row stream-row' }, platformIcon(p),
           el('a', { class: 'grow', href: a.url, target: '_blank', rel: 'noopener noreferrer', textContent: `${NAMES[p]}: ${a.name}` }),
           a.live ? el('span', { class: 'chip red', textContent: 'LIVE' }) : '',
-          el('button', { type: 'button', class: 'icon-btn', title: 'Odłącz', onclick: () => unlink(a) }, icon('fa-solid fa-link-slash')));
+          el('button', { type: 'button', class: 'icon-btn', title: L('Odłącz', 'Unlink'), onclick: () => unlink(a) }, icon('fa-solid fa-link-slash')));
       }
       if (!state.platforms.includes(p)) return '';
-      const button = el('button', { type: 'button' }, platformIcon(p), ` Połącz ${NAMES[p]}`);
+      const button = el('button', { type: 'button' }, platformIcon(p), L(` Połącz ${NAMES[p]}`, ` Link ${NAMES[p]}`));
       button.addEventListener('click', () => link(p, button));
       return el('div', { class: 'row stream-row' }, button);
     });
@@ -81,12 +87,13 @@ export async function streamsCard() {
       return el('label', { class: 'row small' }, el('span', { class: 'switch' }, box, el('span')), label);
     };
     card.replaceChildren(
-      el('h3', {}, icon('fa-solid fa-video'), ' Streamy'),
-      el('p', { class: 'muted small', textContent: 'Połącz kanał, a znajomi zobaczą znaczek LIVE, gdy nadajesz Minecrafta, a Twój profil pokaże transmisję. To nie jest sposób logowania; SlashClient nie zachowuje dostępu do konta platformy.' }),
+      el('h3', {}, icon('fa-solid fa-video'), L(' Streamy', ' Streams')),
+      el('p', { class: 'muted small', textContent: L('Połącz kanał, a znajomi zobaczą znaczek LIVE, gdy nadajesz Minecrafta, a Twój profil pokaże transmisję. To nie jest sposób logowania; SlashClient nie zachowuje dostępu do konta platformy.',
+        'Link a channel and friends will see a LIVE badge when you stream Minecraft, and your profile will show the stream. This is not a way of signing in; SlashClient does not keep access to the platform account.') }),
       ...rows,
-      state.accounts.length || state.platforms.length ? '' : el('p', { class: 'muted small', textContent: 'Łączenie kanałów nie jest jeszcze skonfigurowane na tym serwerze.' }),
-      check('hide', 'Ukryj przed znajomymi, że streamuję', state.prefs.hide),
-      check('notify', 'Powiadamiaj, gdy znajomi zaczynają streamować', state.prefs.notify));
+      state.accounts.length || state.platforms.length ? '' : el('p', { class: 'muted small', textContent: L('Łączenie kanałów nie jest jeszcze skonfigurowane na tym serwerze.', 'Linking channels is not set up on this server yet.') }),
+      check('hide', L('Ukryj przed znajomymi, że streamuję', 'Hide from friends that I am streaming'), state.prefs.hide),
+      check('notify', L('Powiadamiaj, gdy znajomi zaczynają streamować', 'Tell me when friends start streaming'), state.prefs.notify));
   }
   draw();
   return card;

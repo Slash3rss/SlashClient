@@ -56,7 +56,12 @@ self.addEventListener('push', (e) => {
 
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
-  const url = new URL(e.notification.data?.url || '/app/', location.origin).href;
+  // only this site's own pages: a notification never opens somewhere else
+  let url = new URL('/app/', location.origin).href;
+  try {
+    const wanted = new URL(e.notification.data?.url || '/app/', location.origin);
+    if (wanted.origin === location.origin) url = wanted.href;
+  } catch { /* not an address */ }
   e.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const open = windows.find((w) => new URL(w.url).pathname.startsWith('/app'));

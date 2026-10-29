@@ -167,4 +167,12 @@ describe('profiles on the account', () => {
     assert.equal((await call('PUT', `/v1/cloud-profiles/${ids[1]}?base=1`, p.token, pack('q'.repeat(700)))).body.error, 'cloud_quota');
     assert.equal(readdirSync(cloudDir).filter((f) => f.endsWith('.part')).length, 0);
   });
+
+  it('does not let two uploads sent at once go past the quota together', async () => {
+    const p = await login('Rownolegly');
+    const both = await Promise.all(['dddddddd-4', 'eeeeeeee-5'].map((id) => call('PUT', `/v1/cloud-profiles/${id}`, p.token, pack('q'.repeat(700)))));
+    assert.deepEqual(both.map((r) => r.status).sort(), [200, 409]);
+    assert.equal(both.find((r) => r.status === 409)!.body.error, 'cloud_quota');
+    assert.equal((await call('GET', '/v1/cloud-profiles', p.token)).body.profiles.length, 1);
+  });
 });

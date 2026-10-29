@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SlashClient – Log</title>
-  <meta name="description" content="Log z launchera SlashClient.">
+  <meta name="description" content="Log z launchera SlashClient." data-en-content="A log from the SlashClient launcher.">
   <meta name="robots" content="noindex">
   <meta property="og:image" content="https://client.slash3rss.dev/img/og.jpg">
   <meta property="og:logo" content="https://client.slash3rss.dev/vendor/logo.png">
@@ -24,18 +24,18 @@
 
   <header class="nav scrolled">
     <div class="wrap">
-      <a class="brand" href="/"><img src="/vendor/logo.png" alt=""><span>Slash<b>Client</b></span></a>
+      <a class="brand" href="/" data-en-href="/en"><img src="/vendor/logo.png" alt=""><span>Slash<b>Client</b></span></a>
       <nav class="nav-links">
-        <a href="/#funkcje">Funkcje</a>
-        <a href="/#kosmetyki">Kosmetyki</a>
-        <a href="/#faq">FAQ</a>
-        <a href="/zgloszenia">Zgłoszenia</a>
-        <a href="/wsparcie" class="nav-support"><i class="fa-solid fa-heart"></i> Wesprzyj</a>
+        <a href="/#funkcje" data-en="Features" data-en-href="/en#funkcje">Funkcje</a>
+        <a href="/#kosmetyki" data-en="Cosmetics" data-en-href="/en#kosmetyki">Kosmetyki</a>
+        <a href="/#faq" data-en-href="/en#faq">FAQ</a>
+        <a href="/zgloszenia" data-en="Bug reports" data-en-href="/bugs">Zgłoszenia</a>
+        <a href="/wsparcie" class="nav-support" data-en="Support" data-en-href="/support"><i class="fa-solid fa-heart"></i> Wesprzyj</a>
       </nav>
       <div class="push row">
-        <a class="btn hidden" id="nav-admin" href="/admin" title="Panel admina"><i class="fa-solid fa-shield-halved"></i> <span class="label">Panel admina</span></a>
-        <a class="btn" id="nav-account" href="/konto" title="Twoje konto"><i class="fa-solid fa-user"></i> <span class="label">Zaloguj się</span></a>
-        <a class="btn primary" href="/#pobierz"><i class="fa-solid fa-download"></i> <span class="label">Pobierz</span></a>
+        <a class="btn hidden" id="nav-admin" href="/admin" title="Panel admina" data-en-title="Admin panel"><i class="fa-solid fa-shield-halved"></i> <span class="label" data-en="Admin panel">Panel admina</span></a>
+        <a class="btn" id="nav-account" href="/konto" title="Twoje konto" data-en-title="Your account" data-en-href="/account"><i class="fa-solid fa-user"></i> <span class="label" data-en="Sign in">Zaloguj się</span></a>
+        <a class="btn primary" href="/#pobierz" data-en-href="/en#pobierz"><i class="fa-solid fa-download"></i> <span class="label" data-en="Download">Pobierz</span></a>
       </div>
     </div>
   </header>
@@ -45,16 +45,16 @@
       <div class="wrap">
         <div class="head">
           <span class="eyebrow">Log</span>
-          <h2 id="log-title">Log gry</h2>
-          <p class="muted" id="log-meta">Wczytuję…</p>
+          <h2 id="log-title" data-en="Game log">Log gry</h2>
+          <p class="muted" id="log-meta" data-en="Loading…">Wczytuję…</p>
         </div>
         <div class="glass log-tools row">
-          <input type="search" id="log-search" placeholder="Szukaj w logu…">
-          <label class="row small"><span class="switch"><input type="checkbox" id="log-problems"><span></span></span> Tylko błędy i ostrzeżenia</label>
+          <input type="search" id="log-search" placeholder="Szukaj w logu…" data-en-placeholder="Search the log…">
+          <label class="row small" data-en="Only errors and warnings"><span class="switch"><input type="checkbox" id="log-problems"><span></span></span> Tylko błędy i ostrzeżenia</label>
           <span class="push row">
-            <button type="button" id="log-copy"><i class="fa-regular fa-copy"></i> <span class="label">Kopiuj link</span></button>
-            <button type="button" id="log-download"><i class="fa-solid fa-download"></i> <span class="label">Pobierz</span></button>
-            <a class="btn primary" id="log-report" href="/zgloszenia"><i class="fa-solid fa-bug"></i> <span class="label">Zgłoś błąd</span></a>
+            <button type="button" id="log-copy"><i class="fa-regular fa-copy"></i> <span class="label" data-en="Copy link">Kopiuj link</span></button>
+            <button type="button" id="log-download"><i class="fa-solid fa-download"></i> <span class="label" data-en="Download">Pobierz</span></button>
+            <a class="btn primary" id="log-report" href="/zgloszenia"><i class="fa-solid fa-bug"></i> <span class="label" data-en="Report a bug">Zgłoś błąd</span></a>
           </span>
         </div>
         <div class="glass log-view" id="log"></div>
@@ -64,11 +64,11 @@
 
   <footer class="foot">
     <div class="wrap row">
-      <span class="muted small">SlashClient · nie jest powiązany z Mojang ani Microsoft.</span>
-      <a class="push" href="/wsparcie"><i class="fa-solid fa-heart"></i> Wesprzyj projekt</a>
-      <a class="foot-link" href="/regulamin">Regulamin</a>
-      <a class="foot-link" href="/polityka-prywatnosci">Polityka prywatności</a>
-      <a href="/">Strona główna</a>
+      <span class="muted small" data-en="SlashClient · not affiliated with Mojang or Microsoft.">SlashClient · nie jest powiązany z Mojang ani Microsoft.</span>
+      <a class="push" href="/wsparcie" data-en="Support the project" data-en-href="/support"><i class="fa-solid fa-heart"></i> Wesprzyj projekt</a>
+      <a class="foot-link" href="/regulamin" data-en="Terms of Service" data-en-href="/terms">Regulamin</a>
+      <a class="foot-link" href="/polityka-prywatnosci" data-en="Privacy Policy" data-en-href="/privacy">Polityka prywatności</a>
+      <a href="/" data-en="Home page" data-en-href="/en">Strona główna</a>
     </div>
   </footer>
 </body>

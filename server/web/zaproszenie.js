@@ -43,7 +43,11 @@ async function main() {
   const link = `${location.origin}/c/${code}`;
   const copy = el('button', { class: 'btn primary', type: 'button' }, icon('fa-regular fa-copy'), ' ', L('Kopiuj link', 'Copy link'));
   copy.addEventListener('click', async () => {
-    await navigator.clipboard.writeText(link).catch(() => undefined);
+    // "copied" only when it was; otherwise the link is shown to copy by hand
+    if (!await navigator.clipboard.writeText(link).then(() => true, () => false)) {
+      copy.replaceWith(el('input', { type: 'text', value: link, readOnly: true, class: 'invite-link', onfocus: (e) => e.target.select() }));
+      return;
+    }
     copy.replaceChildren(icon('fa-solid fa-check'), ' ', L('Skopiowano', 'Copied'));
     setTimeout(() => copy.replaceChildren(icon('fa-regular fa-copy'), ' ', L('Kopiuj link', 'Copy link')), 1800);
   });

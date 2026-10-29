@@ -1,7 +1,9 @@
 // A shared screenshot or clip (/media/<id>). A picture is shown as it is; a clip is the game's
 // Motion-JPEG AVI, which browsers cannot play in <video>, so its frames (each a whole JPEG) are
 // read out of the file here and drawn one after another on a canvas.
-import { $, api, confirmModal, el, errorText, fmtDate, icon, toast, token } from './common.js';
+import { $, L, api, confirmModal, copyText, el, errorText, fmtDate, icon, localizePage, toast, token } from './common.js';
+
+localizePage();
 
 const id = location.pathname.split('/')[2] ?? '';
 
@@ -37,17 +39,17 @@ const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStar
 /** A canvas player for an MJPEG clip: play/pause, a seek bar and the time. */
 async function clipPlayer(m, box) {
   const canvas = el('canvas', { class: 'media-canvas', width: m.width, height: m.height });
-  const play = el('button', { type: 'button', class: 'icon-btn', title: 'Odtwórz / pauza' }, icon('fa-solid fa-play'));
+  const play = el('button', { type: 'button', class: 'icon-btn', title: L('Odtwórz / pauza', 'Play / pause') }, icon('fa-solid fa-play'));
   const seek = el('input', { type: 'range', min: '0', max: String(Math.max(0, m.frames - 1)), value: '0', class: 'grow' });
   const time = el('span', { class: 'muted small media-time', textContent: `0:00 / ${clock(m.durationMs / 1000)}` });
-  const status = el('div', { class: 'media-loading muted' }, icon('fa-solid fa-circle-notch fa-spin'), ' Wczytuję klip…');
+  const status = el('div', { class: 'media-loading muted' }, icon('fa-solid fa-circle-notch fa-spin'), L(' Wczytuję klip…', ' Loading the clip…'));
   box.replaceChildren(el('div', { class: 'media-stage' }, canvas, status), el('div', { class: 'media-controls row' }, play, seek, time));
 
   const res = await fetch(`/v1/media/${encodeURIComponent(id)}/file`);
-  if (!res.ok) throw new Error('Nie udało się wczytać klipu.');
+  if (!res.ok) throw new Error(L('Nie udało się wczytać klipu.', 'Could not load the clip.'));
   const buf = await res.arrayBuffer();
   const avi = aviFrames(buf);
-  if (!avi?.frames.length) throw new Error('Ten klip jest uszkodzony.');
+  if (!avi?.frames.length) throw new Error(L('Ten klip jest uszkodzony.', 'This clip is damaged.'));
   status.remove();
   const ctx = canvas.getContext('2d');
   const frameMs = avi.usPerFrame / 1000;
@@ -120,15 +122,15 @@ async function load() {
   try {
     const { media: m, mine } = await api('GET', `/v1/media/${encodeURIComponent(id)}`);
     const clip = m.kind === 'clip';
-    $('#media-kind').textContent = clip ? 'Klip' : 'Zrzut ekranu';
-    $('#media-title').textContent = m.title || (clip ? 'Klip z gry' : 'Zrzut ekranu z gry');
+    $('#media-kind').textContent = clip ? L('Klip', 'Clip') : L('Zrzut ekranu', 'Screenshot');
+    $('#media-title').textContent = m.title || (clip ? L('Klip z gry', 'Game clip') : L('Zrzut ekranu z gry', 'Game screenshot'));
     $('#media-meta').textContent = [
-      m.ownerHandle ? `od @${m.ownerHandle}` : '',
+      m.ownerHandle ? L(`od @${m.ownerHandle}`, `by @${m.ownerHandle}`) : '',
       `${m.width}×${m.height}`,
       clip ? clock(Math.round(m.durationMs / 1000)) : '',
       m.size < 1024 * 1024 ? `${Math.max(1, Math.round(m.size / 1024))} KB` : `${(m.size / 1024 / 1024).toFixed(1)} MB`,
-      `wysłany ${fmtDate(m.createdAt)}`,
-      `zniknie ${fmtDate(m.expiresAt)}`,
+      L(`wysłany ${fmtDate(m.createdAt)}`, `sent ${fmtDate(m.createdAt)}`),
+      L(`zniknie ${fmtDate(m.expiresAt)}`, `expires ${fmtDate(m.expiresAt)}`),
     ].filter(Boolean).join(' · ');
     $('#media-download').href = `/v1/media/${encodeURIComponent(id)}/file?download`;
     $('#media-tools').classList.remove('hidden');
@@ -137,11 +139,11 @@ async function load() {
     box.classList.remove('hidden');
     if (clip) await clipPlayer(m, box);
     else box.replaceChildren(el('a', { href: `/v1/media/${encodeURIComponent(id)}/file`, target: '_blank', rel: 'noopener' },
-      el('img', { class: 'media-image', src: `/v1/media/${encodeURIComponent(id)}/file`, alt: m.title || 'Zrzut ekranu', width: m.width, height: m.height })));
+      el('img', { class: 'media-image', src: `/v1/media/${encodeURIComponent(id)}/file`, alt: m.title || L('Zrzut ekranu', 'Screenshot'), width: m.width, height: m.height })));
   } catch (err) {
-    $('#media-title').textContent = 'Nie znaleziono';
+    $('#media-title').textContent = L('Nie znaleziono', 'Not found');
     $('#media-meta').textContent = err.code === 'not_found'
-      ? 'Tego zrzutu ani klipu nie ma: link jest zły, właściciel go usunął albo już wygasł.'
+      ? L('Tego zrzutu ani klipu nie ma: link jest zły, właściciel go usunął albo już wygasł.', 'This screenshot or clip is not here: the link is wrong, the owner deleted it or it has expired.')
       : errorText(err);
     $('#media-tools').classList.add('hidden');
     $('#media-view').classList.add('hidden');
@@ -149,14 +151,13 @@ async function load() {
 }
 
 $('#media-copy').addEventListener('click', async () => {
-  await navigator.clipboard.writeText(location.href.split('#')[0]).catch(() => {});
-  toast('Skopiowano link');
+  await copyText(location.href.split('#')[0], L('Skopiowano link', 'Link copied'));
 });
 $('#media-delete').addEventListener('click', async () => {
-  if (!await confirmModal({ title: 'Usunąć ten link?', text: 'Nikt już go nie otworzy.', ok: 'Usuń', okIcon: 'fa-solid fa-trash', danger: true })) return;
+  if (!await confirmModal({ title: L('Usunąć ten link?', 'Delete this link?'), text: L('Nikt już go nie otworzy.', 'Nobody will be able to open it any more.'), ok: L('Usuń', 'Delete'), okIcon: 'fa-solid fa-trash', danger: true })) return;
   try {
     await api('DELETE', `/v1/media/${encodeURIComponent(id)}`);
-    toast('Usunięto');
+    toast(L('Usunięto', 'Deleted'));
     setTimeout(() => location.assign('/'), 800);
   } catch (err) {
     toast(errorText(err), true);

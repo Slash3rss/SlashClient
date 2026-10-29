@@ -2,7 +2,7 @@
 // English. Each is edited as Markdown with a live preview (rendered by the server, exactly as the
 // site shows it), saved as a draft or published, and every version stays in the history to view,
 // compare and restore. The administrator's details fill {{admin.…}} in all of them.
-import { $, api, confirmModal, el, fmtDate, guard, icon, toast } from './common.js';
+import { $, api, confirmModal, el, fmtDate, guard, icon, toast, watchUnsaved } from './common.js';
 
 /** The question before leaving the editor's changes behind. */
 const DISCARD = { title: 'Porzucić niezapisane zmiany?', text: 'Zmiany z edytora przepadną.', ok: 'Porzuć', danger: true };
@@ -251,4 +251,6 @@ async function editor(doc, lang) {
     el('div', { class: 'glass card' }, history));
   load(state);
   window.addEventListener('beforeunload', (e) => { if ($('.lg-source') === area && dirty()) e.preventDefault(); });
+  // and before another tab of the panel replaces the editor
+  watchUnsaved(area, dirty);
 }

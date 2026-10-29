@@ -418,7 +418,7 @@ export function mediaRoutes(ctx: MediaContext) {
         'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self'; script-src 'self'; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
         'Referrer-Policy': 'no-referrer',
       });
-      res.end(req.method === 'HEAD' ? undefined : ctx.versioned(html.replace('<!--preview-->', previewTags(m))));
+      res.end(req.method === 'HEAD' ? undefined : ctx.versioned(html.replace('<!--preview-->', () => previewTags(m))));
       return true;
     }
 

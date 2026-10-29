@@ -3,7 +3,7 @@
 // links, icons, pictures, and lists (features, FAQ, modules, blocks) to add, remove and reorder.
 // A live preview shows the page as it would be; changes are saved as a draft or published, every
 // version stays in the history to restore, and each section can go back to its defaults.
-import { $, ApiError, api, confirmModal, el, errorText, fmtDate, guard, icon, toast, token } from './common.js';
+import { $, ApiError, api, confirmModal, el, errorText, fmtDate, guard, icon, toast, token, watchUnsaved } from './common.js';
 
 /** The question before leaving the editor's changes behind. */
 const DISCARD = { title: 'Porzucić niezapisane zmiany?', text: 'Zmiany z edytora przepadną.', ok: 'Porzuć', danger: true };
@@ -73,7 +73,9 @@ async function editor() {
   };
 
   // ---- the preview: the whole page as the server would make it, scaled into the pane ----
-  const frame = el('iframe', { class: 'hm-frame', title: 'Podgląd strony głównej' });
+  // sandboxed without scripts: the editor's content cannot run anything with the admin's session; same origin
+  // only so the preview keeps its scroll position (nothing in it can use that without scripts)
+  const frame = el('iframe', { class: 'hm-frame', title: 'Podgląd strony głównej', sandbox: 'allow-same-origin' });
   const frameBox = el('div', { class: 'hm-frame-box' }, frame);
   const previewNote = el('span', { class: 'muted small' });
   const fit = () => {
@@ -424,4 +426,6 @@ async function editor() {
   renderHistory();
   void preview();
   window.addEventListener('beforeunload', (e) => { if (document.contains(frame) && dirty()) e.preventDefault(); });
+  // and before another tab of the panel replaces the editor
+  watchUnsaved(frame, dirty);
 }

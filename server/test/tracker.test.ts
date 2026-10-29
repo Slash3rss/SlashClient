@@ -9,6 +9,8 @@ import { createApp } from '../src/app.ts';
 const dir = mkdtempSync(path.join(os.tmpdir(), 'slash-tracker-'));
 let base = '';
 let app: ReturnType<typeof createApp>;
+/** The server's disk as the app sees it (tests fill it up). */
+const disk = { free: 100 * 1024 ** 3 };
 
 async function call(method: string, url: string, token?: string, body?: unknown, raw?: Buffer) {
   const res = await fetch(base + url, {
@@ -28,7 +30,7 @@ async function call(method: string, url: string, token?: string, body?: unknown,
 const login = async (name: string) => (await call('POST', '/v1/auth/dev', undefined, { name })).body as { token: string; user: { id: string } };
 
 before(async () => {
-  app = createApp({ dbFile: path.join(dir, 'test.db'), publicUrl: 'http://localhost', allowDevLogin: true, oauth: {}, adminHandles: ['Szef'] });
+  app = createApp({ dbFile: path.join(dir, 'test.db'), publicUrl: 'http://localhost', allowDevLogin: true, oauth: {}, adminHandles: ['Szef'], storage: { diskSpace: async () => ({ total: 200 * 1024 ** 3, free: disk.free }) } });
   await new Promise<void>((r) => app.server.listen(0, r));
   base = `http://127.0.0.1:${(app.server.address() as AddressInfo).port}`;
 });
@@ -68,6 +70,27 @@ describe('shared logs', () => {
   it('refuses a too big log', async () => {
     const res = await call('POST', '/v1/logs', undefined, undefined, Buffer.alloc(4 * 1024 * 1024 + 10, 97));
     assert.equal(res.status, 413);
+  });
+
+  it('keeps logs from filling the disk: smaller without an account, a day\'s share, the free space floor', async () => {
+    const boss = await login('Szef');
+    const player = await login('DuzyLog');
+    const set = async (values: Record<string, unknown>) => assert.equal((await call('POST', '/v1/admin/settings', boss.token, { values })).status, 200);
+    await set({ 'security.reportsPerMinute': 10_000, 'logs.maxAnonymousBytes': 64 * 1024, 'logs.dailyMbEach': 1 });
+    await new Promise((r) => setTimeout(r, 300)); // the address's bucket fills up again at the new rate
+    const big = Buffer.alloc(100 * 1024, 97);
+    assert.equal((await call('POST', '/v1/logs', undefined, undefined, big)).status, 413);
+    assert.equal((await call('POST', '/v1/logs', player.token, undefined, big)).status, 200);
+    // one account's share of the day
+    const half = Buffer.alloc(600 * 1024, 98);
+    assert.equal((await call('POST', '/v1/logs', player.token, undefined, half)).status, 200);
+    assert.equal((await call('POST', '/v1/logs', player.token, undefined, half)).body.error, 'daily_limit');
+    // others still can, until the disk gets near its floor
+    assert.equal((await call('POST', '/v1/logs', boss.token, undefined, Buffer.from('mały log'))).status, 200);
+    disk.free = 10 * 1024 * 1024;
+    assert.equal((await call('POST', '/v1/logs', boss.token, undefined, Buffer.from('mały log'))).body.error, 'storage_full');
+    disk.free = 100 * 1024 ** 3;
+    await set({ 'security.reportsPerMinute': 6, 'logs.maxAnonymousBytes': 1024 * 1024, 'logs.dailyMbEach': 64 });
   });
 });
 

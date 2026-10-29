@@ -1,5 +1,7 @@
 // A shared log (/logi/<id>): numbered lines, errors and warnings coloured, search, a link to a line.
-import { $, api, el, errorText, fmtDate, toast, token } from './common.js';
+import { $, L, api, copyText, el, errorText, fmtDate, localizePage, toast, token } from './common.js';
+
+localizePage();
 
 const id = location.pathname.split('/')[2] ?? '';
 const CHUNK = 3000;
@@ -44,10 +46,10 @@ function render() {
     count++;
   }
   box.replaceChildren(frag);
-  if (!total) box.append(el('p', { class: 'muted log-more', textContent: 'Nic nie pasuje.' }));
+  if (!total) box.append(el('p', { class: 'muted log-more', textContent: L('Nic nie pasuje.', 'Nothing matches.') }));
   if (total > count) {
     box.append(el('div', { class: 'log-more' }, el('button', { type: 'button', onclick: () => { shown += CHUNK; render(); } },
-      `Pokaż więcej (${total - count} linii)`)));
+      L(`Pokaż więcej (${total - count} linii)`, `Show more (${total - count} lines)`))));
   }
 }
 
@@ -56,8 +58,9 @@ async function load() {
     const log = await api('GET', `/v1/logs/${encodeURIComponent(id)}`);
     lines = log.text.replace(/\r/g, '').split('\n');
     const errors = lines.filter((l) => kind(l) === 'error').length;
-    $('#log-title').textContent = /Minecraft|Fabric|LWJGL/.test(log.text.slice(0, 4000)) ? 'Log gry' : 'Log';
-    $('#log-meta').textContent = `${log.lines} linii · ${(log.size / 1024).toFixed(0)} KB · wysłany ${fmtDate(log.createdAt)} · zniknie ${fmtDate(log.expiresAt)}${errors ? ` · błędów: ${errors}` : ''}`;
+    $('#log-title').textContent = /Minecraft|Fabric|LWJGL/.test(log.text.slice(0, 4000)) ? L('Log gry', 'Game log') : 'Log';
+    $('#log-meta').textContent = L(`${log.lines} linii · ${(log.size / 1024).toFixed(0)} KB · wysłany ${fmtDate(log.createdAt)} · zniknie ${fmtDate(log.expiresAt)}${errors ? ` · błędów: ${errors}` : ''}`,
+      `${log.lines} ${log.lines === 1 ? 'line' : 'lines'} · ${(log.size / 1024).toFixed(0)} KB · sent ${fmtDate(log.createdAt)} · expires ${fmtDate(log.expiresAt)}${errors ? ` · errors: ${errors}` : ''}`);
     $('#log-report').href = `/zgloszenia?nowe=1&log=${encodeURIComponent(id)}`;
     // a link to a line opens far enough to show it
     const target = Number(/^#L(\d+)$/.exec(location.hash)?.[1] ?? 0);
@@ -70,7 +73,7 @@ async function load() {
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     };
   } catch (err) {
-    $('#log-meta').textContent = err.code === 'not_found' ? 'Tego logu nie ma: link jest zły albo log już wygasł (logi są trzymane 90 dni).' : errorText(err);
+    $('#log-meta').textContent = err.code === 'not_found' ? L('Tego logu nie ma: link jest zły albo log już wygasł (logi są trzymane 90 dni).', 'This log is not here: the link is wrong or the log has expired (logs are kept for 90 days).') : errorText(err);
     document.querySelector('.log-tools').classList.add('hidden');
     $('#log').classList.add('hidden');
   }
@@ -83,8 +86,7 @@ $('#log-search').addEventListener('input', () => {
 });
 $('#log-problems').addEventListener('change', () => { shown = CHUNK; render(); });
 $('#log-copy').addEventListener('click', async () => {
-  await navigator.clipboard.writeText(location.href.split('#')[0]).catch(() => {});
-  toast('Skopiowano link');
+  await copyText(location.href.split('#')[0], L('Skopiowano link', 'Link copied'));
 });
 window.addEventListener('hashchange', () => {
   document.querySelectorAll('.log-line.target').forEach((n) => n.classList.remove('target'));

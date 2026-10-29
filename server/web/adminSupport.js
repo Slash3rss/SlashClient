@@ -3,7 +3,7 @@
 // supporters with granting, extending and taking back by hand, and the money per month. Every
 // change goes to the log (Dziennik); refunds and chargebacks take back what they gave by themselves.
 import { refundsSection } from './adminRefunds.js';
-import { $, api, confirmModal, el, errorText, fmtDate, guard, icon, promptModal, toast } from './common.js';
+import { $, api, confirmModal, copyText, el, errorText, fmtDate, guard, icon, promptModal, toast } from './common.js';
 
 const ERRORS = {
   provider_not_configured: 'Najpierw wpisz wszystkie klucze dla wybranego trybu.',
@@ -117,7 +117,7 @@ function providerCard(p) {
     result.textContent = res ? (res.ok ? 'Połączenie działa.' : `Błąd: ${res.message}`) : '';
     result.style.color = res?.ok ? 'var(--green)' : '#fca5a5';
   } }, icon('fa-solid fa-plug-circle-check'), 'Test połączenia');
-  const copy = el('button', { type: 'button', class: 'icon-btn', title: 'Kopiuj adres', onclick: async () => { await navigator.clipboard.writeText(p.webhookUrl).catch(() => {}); toast('Skopiowano adres webhooka.'); } }, icon('fa-regular fa-copy'));
+  const copy = el('button', { type: 'button', class: 'icon-btn', title: 'Kopiuj adres', ariaLabel: 'Kopiuj adres', onclick: () => copyText(p.webhookUrl, 'Skopiowano adres webhooka.') }, icon('fa-regular fa-copy'));
   return el('div', { class: `glass card st-card${p.enabled ? '' : ' off'}` },
     el('div', { class: 'row' }, icon(info.icon), el('h3', { class: 'grow', textContent: info.name }),
       p.enabled ? el('span', { class: `chip ${p.mode === 'live' ? 'green' : 'gold'}`, textContent: p.mode === 'live' ? 'LIVE' : 'TEST' }) : el('span', { class: 'chip', textContent: 'wyłączony' })),

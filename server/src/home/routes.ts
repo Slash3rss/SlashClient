@@ -309,7 +309,10 @@ export function homeRoutes(ctx: HomeContext) {
       const content = checked((await json(req)).content, l);
       const t = await template();
       if (!t) ctx.fail(503, 'no_template');
-      return { html: ctx.versioned(homePage(t!.text, content, l, base)) };
+      // the editor shows it without scripts (a sandbox): they are left out (they could not run anyway),
+      // and what waits for them to appear is shown as it is
+      const html = ctx.versioned(homePage(t!.text, content, l, base)).replace(/<script\b[\s\S]*?<\/script>/gi, '').replace(/<html\b/, () => '<html class="reduce-motion"');
+      return { html };
     }],
     ['POST', /^\/v1\/admin\/home\/(\w+)\/draft$/, async (req, [lang]) => {
       const me = ctx.admin(req);
