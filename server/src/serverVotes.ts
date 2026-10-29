@@ -16,7 +16,10 @@ import type { Settings } from './settings.ts';
 export interface ServerVotesContext {
   settings: Settings;
   authed: (req: http.IncomingMessage) => string;
+  /** Who is asking, for the limits (an IPv6 /64 is one). */
   clientIp: (req: http.IncomingMessage) => string;
+  /** The voter's own address, which the server list checks its once-a-day rule against. */
+  clientAddress?: (req: http.IncomingMessage) => string;
   /** The names of the Minecraft accounts linked to an account (verified by Mojang), in link order. */
   minecraftNames: (userId: string) => string[];
   limitVotes: (key: string) => void;
@@ -126,7 +129,7 @@ export function serverVoteRoutes(ctx: ServerVotesContext): [string, RegExp, Hand
       const cfg = config();
       if (!cfg) fail(503, 'votes_unavailable');
       const nick = nickOf(me, b.nick);
-      const ip = ctx.clientIp(req);
+      const ip = (ctx.clientAddress ?? ctx.clientIp)(req);
       if (!ip) fail(400, 'no_ip');
       let res: Response;
       try {

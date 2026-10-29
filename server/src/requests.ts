@@ -68,6 +68,28 @@ export function maskIp(ip: string): string {
   return parts.length > 3 ? `${parts.slice(0, 3).join(':')}::x` : ip;
 }
 
+/**
+ * Whose share of a per-address limit a request takes. An IPv6 home or phone usually gets a whole /64
+ * and can pick any address in it, so every address of one /64 counts as one ("2001:db8:1:2::/64");
+ * IPv4 (and IPv4 written as IPv6, ::ffff:1.2.3.4) stays as it is.
+ */
+export function limitAddress(ip: string): string {
+  const bare = ip.split('%')[0];
+  if (!bare.includes(':') || /^::ffff:\d+\.\d+\.\d+\.\d+$/i.test(bare)) return ip;
+  const groups = (part: string) => part.split(':').filter(Boolean).flatMap((g) => {
+    // an IPv4 tail (64:ff9b::1.2.3.4) takes the last two groups
+    if (!g.includes('.')) return [g];
+    const [a, b, c, d] = g.split('.').map(Number);
+    return [((a << 8) | b).toString(16), ((c << 8) | d).toString(16)];
+  });
+  const [head, tail] = bare.split('::');
+  const left = groups(head);
+  const right = tail === undefined ? [] : groups(tail);
+  const all = [...left, ...Array<string>(Math.max(0, 8 - left.length - right.length)).fill('0'), ...right];
+  if (all.length !== 8 || all.some((g) => !/^[0-9a-f]{1,4}$/i.test(g))) return ip;
+  return `${all.slice(0, 4).map((g) => parseInt(g, 16).toString(16)).join(':')}::/64`;
+}
+
 export class RequestLog {
   private entries: RequestEntry[] = [];
   private readonly sql?: DatabaseSync;

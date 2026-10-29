@@ -53,6 +53,9 @@ export class ApiError extends Error {
   }
 }
 
+/** An error whose message is written for the player (errorText shows it as it is). */
+export class ShownError extends Error {}
+
 export async function api(method, path, body) {
   const headers = { 'Content-Type': 'application/json' };
   if (token.get()) headers.Authorization = `Bearer ${token.get()}`;
@@ -288,7 +291,14 @@ const ERRORS_EN = {
 };
 export const errorText = (err) => {
   const text = (english() && ERRORS_EN[err?.code]) || ERRORS[err?.code];
-  return (typeof text === 'function' ? text(err.data ?? {}) : text) ?? (err?.message || L('Coś poszło nie tak.', 'Something went wrong.'));
+  if (text) return typeof text === 'function' ? text(err.data ?? {}) : text;
+  // the server's own code, or a message written for the player (ShownError)
+  if ((err instanceof ApiError || err instanceof ShownError) && err.message) return err.message;
+  // anything else ("Failed to fetch", a page's own mistake) means nothing to the player: details go to the console
+  console.error(err);
+  return err instanceof TypeError
+    ? L('Brak połączenia z serwerem. Sprawdź internet i spróbuj ponownie.', 'Cannot reach the server. Check your connection and try again.')
+    : L('Coś poszło nie tak. Spróbuj ponownie.', 'Something went wrong. Try again.');
 };
 
 export function el(tag, props = {}, ...children) {

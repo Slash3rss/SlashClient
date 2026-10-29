@@ -33,6 +33,8 @@ export interface TrackerContext {
   body: (req: http.IncomingMessage) => Promise<Record<string, unknown>>;
   /** Throws (429) when this caller sent too much lately. */
   limit: (key: string) => void;
+  /** The same for opening a shared log (logs.viewsPerMinute). */
+  limitViews?: (key: string) => void;
   clientIp: (req: http.IncomingMessage) => string;
   fail: (status: number, code: string) => never;
   /** The admin panel's settings, read when used: days a log is kept, the largest log. */
@@ -106,7 +108,8 @@ export function trackerRoutes(ctx: TrackerContext): { routes: [string, RegExp, H
       db.addLog(id, owner, size, log.split('\n').length);
       return { id, url: `/logi/${id}`, expiresAt: Date.now() + logDays() * 86_400_000 };
     }],
-    ['GET', /^\/v1\/logs\/(\w+)$/, async (_req, [id]) => {
+    ['GET', /^\/v1\/logs\/(\w+)$/, async (req, [id]) => {
+      ctx.limitViews?.(`log-view:${ctx.clientIp(req)}`);
       const log = LOG_ID.test(id) ? db.sharedLog(id) : undefined;
       if (!log) ctx.fail(404, 'not_found');
       const data = await readFile(fileOf(id)).catch(() => ctx.fail(404, 'not_found'));
