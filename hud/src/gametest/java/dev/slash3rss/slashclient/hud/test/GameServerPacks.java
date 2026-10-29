@@ -129,18 +129,24 @@ public class GameServerPacks implements FabricClientGameTest {
 			boolean waiting = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.waiting());
 			if (stale || !swapped.equals("current") || !stillOn || waiting) throw new AssertionError("SkyUp's pack updated in use: " + stale + " " + updated + " → " + swapped + " on " + stillOn + " waiting " + waiting);
 		} finally {
+			// switching the pack off reloads the resources: started here and waited for, not left to come by itself
+			// later, when it could meet the world being closed (the game then hangs: the closing waits for the
+			// server, the server for the client's tick) or a world the next test creates (it never loads)
+			java.util.concurrent.CompletableFuture<?>[] reload = new java.util.concurrent.CompletableFuture<?>[1];
 			context.runOnClient(mc -> {
 				dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.select(false);
 				dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.skyUp(false);
 				dev.slash3rss.slashclient.hud.skyup.SkyPackTestHooks.stop();
+				reload[0] = mc.reloadResourcePacks();
 			});
-			// switching the pack off reloads the resources: a world the next test creates meanwhile never finishes loading
+			context.waitFor(mc -> reload[0] == null || reload[0].isDone(), 1200);
 			context.waitTicks(2);
 			//#if MC >= 26.2
 			context.waitFor(mc -> mc.gui.overlay() == null, 1200);
 			//#else
 			//$ context.waitFor(mc -> mc.getOverlay() == null, 1200);
 			//#endif
+			context.waitTicks(10);
 		}
 	}
 
@@ -160,6 +166,18 @@ public class GameServerPacks implements FabricClientGameTest {
 
 	private static void pop(TestSingleplayerContext world, UUID id) {
 		world.getServer().runOnServer(server -> server.getPlayerList().getPlayers().get(0).connection.send(new ClientboundResourcePackPopPacket(Optional.of(id))));
+	}
+
+	/** Waits for a resource reload that may be about to start: until it shows (a moment at most), then until it is done. */
+	private static void waitReload(ClientGameTestContext context) {
+		//#if MC >= 26.2
+		for (int i = 0; i < 40 && context.computeOnClient(mc -> mc.gui.overlay() == null); i++) context.waitTick();
+		context.waitFor(mc -> mc.gui.overlay() == null, 1200);
+		//#else
+		//$ for (int i = 0; i < 40 && context.computeOnClient(mc -> mc.getOverlay() == null); i++) context.waitTick();
+		//$ context.waitFor(mc -> mc.getOverlay() == null, 1200);
+		//#endif
+		context.waitTicks(10);
 	}
 
 	/** Waits until the server has heard `count` answers (or a few seconds went by). */
@@ -302,6 +320,10 @@ public class GameServerPacks implements FabricClientGameTest {
 			//#if MC >= 26.3
 			skyPack(context, world);
 			//#endif
+			// the server's packs taken off while still in the world, and the reload that brings waited for: left to
+			// the leaving, that reload ran while the world was being closed and the game hung there
+			world.getServer().runOnServer(server -> server.getPlayerList().getPlayers().get(0).connection.send(new ClientboundResourcePackPopPacket(Optional.empty())));
+			waitReload(context);
 		} finally {
 			ServerPacks.listening = false;
 			SlashHud.config.serverPackDefault = before;

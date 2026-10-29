@@ -199,9 +199,9 @@ public final class MapSortTestHooks {
 		WorldMapScreen m = map();
 		Minecraft mc = Minecraft.getInstance();
 		double scale = mc.getWindow().getGuiScale();
-		int aw = m.width - 12, ah = m.height - (22 + 4) - 16;
-		double vx = m.centerX - aw / 2.0 / m.zoom, vz = m.centerZ - ah / 2.0 / m.zoom;
-		return new int[] { (int) ((6 + (x - vx) * m.zoom) * scale), (int) ((26 + (z - vz) * m.zoom) * scale) };
+		int[] a = m.area();
+		double vx = m.centerX - a[2] / 2.0 / m.zoom, vz = m.centerZ - a[3] / 2.0 / m.zoom;
+		return new int[] { (int) ((a[0] + (x - vx) * m.zoom) * scale), (int) ((a[1] + (z - vz) * m.zoom) * scale) };
 	}
 
 	/** The world point in the middle of the open map's screen area, as window pixels. */
