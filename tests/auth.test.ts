@@ -58,4 +58,25 @@ describe('Microsoft sign-in', () => {
       globalThis.fetch = real;
     }
   });
+
+  it('asks Microsoft once when the skin panel, the launch and the game renew together', async () => {
+    let calls = 0;
+    const real = globalThis.fetch;
+    globalThis.fetch = (async () => {
+      calls++;
+      await new Promise((r) => setTimeout(r, 20));
+      return new Response(JSON.stringify({ error: 'invalid_grant', error_description: 'stop here' }), { status: 400 });
+    }) as typeof fetch;
+    const account: MicrosoftAccount = { id: 'shared', type: 'msa', name: 'Steve', uuid: 'u', xuid: 'x', accessToken: 't', expiresAt: 0, refreshToken: secrets.encrypt('r'), clientId: 'app' };
+    try {
+      const all = [ensureFreshAccount(account, 'app'), ensureFreshAccount(account, 'app'), ensureFreshAccount({ ...account }, 'app', GAME_RENEW_MS)];
+      for (const one of all) await assert.rejects(one, /zaloguj się ponownie/);
+      assert.equal(calls, 1);
+      // once it is over, the next renewal asks again
+      await assert.rejects(ensureFreshAccount(account, 'app'), /zaloguj się ponownie/);
+      assert.equal(calls, 2);
+    } finally {
+      globalThis.fetch = real;
+    }
+  });
 });

@@ -1630,8 +1630,17 @@ async function freshMsa(accountId: string, marginMs = 0): Promise<MicrosoftAccou
   if (account?.type !== 'msa') throw new Error(t('Skin i pelerynę można zmienić tylko na koncie Microsoft.'));
   const fresh = await ensureFreshAccount(account, store.settings.msClientId.trim(), marginMs);
   if (fresh !== account) {
-    store.accounts = store.accounts.map((a) => (a.id === fresh.id ? fresh : a));
-    await saveStore(store);
+    // only over the account it was refreshed from: a sign-in again in the meantime (or another
+    // caller of the same renewal, already saved) is not replaced by this result
+    let changed = false;
+    store.accounts = store.accounts.map((a) => {
+      if (a.id !== fresh.id || a.type !== 'msa' || a.refreshToken !== account.refreshToken) return a;
+      changed = true;
+      return fresh;
+    });
+    if (changed) await saveStore(store);
+    const now = store.accounts.find((a) => a.id === fresh.id);
+    if (!changed && now?.type === 'msa') return now;
   }
   return fresh;
 }
@@ -1737,9 +1746,8 @@ async function startGame(profileId: string, accountId: string, server: string | 
   store.settings.selectedAccountId = account.id;
   if (account.type === 'msa') {
     send('launch:stage', { stage: t('Odświeżanie sesji Microsoft'), done: 0, total: 1 });
-    const fresh = await ensureFreshAccount(account, store.settings.msClientId.trim());
-    store.accounts = store.accounts.map((a) => (a.id === fresh.id ? fresh : a));
-    account = fresh;
+    // through the same renewal as the skin panel and the running game: one request to Microsoft
+    account = await freshMsa(account.id);
   }
   await persist();
 
