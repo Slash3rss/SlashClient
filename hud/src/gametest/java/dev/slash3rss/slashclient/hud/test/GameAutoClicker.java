@@ -141,6 +141,16 @@ public class GameAutoClicker implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.autoClicker(true, "hold", true, false, false, 10));
 			context.waitTicks(10);
 			String chestIdle = context.computeOnClient(mc -> TestHooks.autoClicks());
+			// a plain click held: the item is taken in one click (the autoclicker does not put it straight back)
+			world.getServer().runCommand("execute at @a run item replace block ~ ~ ~-2 container.0 with diamond 5");
+			context.waitTicks(5);
+			context.getInput().pressMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
+			context.waitTicks(3);
+			String plain = context.computeOnClient(mc -> TestHooks.autoClicks() + " " + mc.player.containerMenu.getCarried().getCount());
+			if (!plain.equals("0/0 5")) throw new AssertionError("A plain click in the chest with the autoclicker held (clicks, carried): " + plain);
+			// and put back with a second plain click
+			context.getInput().pressMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
+			context.waitTicks(3);
 			context.getInput().holdMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);
 			context.waitTicks(20);
 			context.getInput().releaseMouse(com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_LEFT);

@@ -46,6 +46,10 @@ public final class Assist {
 	private static long nextLeft, nextRight, nextJump;
 	/** The mouse buttons held over an inventory window (the game does not keep that while one is open). */
 	private static boolean screenLeft, screenRight;
+	/** When (ms) each button went down over a window: a plain click there is left to the game (see `clickSlot`). */
+	private static long screenLeftAt, screenRightAt;
+	/** How long a button is held over a window before the autoclicker takes over its clicks. */
+	private static final long WINDOW_HOLD_MS = 300;
 	/** The autoclicker pressed the jump key last tick: let go of it now. */
 	private static boolean jumpPressed;
 	/** In a SkyUp dungeon the autoclicker rests (see `tick`); this was so last tick. */
@@ -261,8 +265,14 @@ public final class Assist {
 	}
 
 	private static void mouse(int button, boolean down) {
-		if (button == InputConstants.MOUSE_BUTTON_LEFT) screenLeft = down;
-		else if (button == InputConstants.MOUSE_BUTTON_RIGHT) screenRight = down;
+		long now = System.currentTimeMillis();
+		if (button == InputConstants.MOUSE_BUTTON_LEFT) {
+			screenLeft = down;
+			if (down) screenLeftAt = now;
+		} else if (button == InputConstants.MOUSE_BUTTON_RIGHT) {
+			screenRight = down;
+			if (down) screenRightAt = now;
+		}
 	}
 
 	/** Whether a key's toggle is on (for the tests). */
@@ -349,13 +359,15 @@ public final class Assist {
 		long now = System.currentTimeMillis();
 		boolean hold = holdMode();
 		int id = screen.getMenu().containerId;
-		if (cfg().autoClickLeft && (!hold || screenLeft) && now >= nextLeft) {
+		// held: only once the button has been down a moment, so a plain click (taking an item) is the player's
+		// alone and not undone by a second click putting the item straight back
+		if (cfg().autoClickLeft && (!hold || screenLeft && now - screenLeftAt >= WINDOW_HOLD_MS) && now >= nextLeft) {
 			Modules.CLICKS.clicked(true);
 			Compat.containerClick(mc, player, id, slot.index, 0, Compat.Click.PICKUP);
 			leftClicks++;
 			nextLeft = now + interval(cfg().autoClickCps);
 		}
-		if (cfg().autoClickRight && (!hold || screenRight) && now >= nextRight) {
+		if (cfg().autoClickRight && (!hold || screenRight && now - screenRightAt >= WINDOW_HOLD_MS) && now >= nextRight) {
 			Modules.CLICKS.clicked(false);
 			Compat.containerClick(mc, player, id, slot.index, 1, Compat.Click.PICKUP);
 			rightClicks++;
