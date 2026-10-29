@@ -37,6 +37,12 @@ public final class Assist {
 	 * "hold" mode it pauses the clicking while the buttons are held (paused) and lets it go on.
 	 */
 	private static boolean armed, paused;
+	/**
+	 * The "hold" mode's buttons count as held only once seen up in the game since the last window: a button
+	 * the game still thinks is down when a chest closes (it opened the chest, it was let go over the window)
+	 * would click again and open the chest straight back.
+	 */
+	private static boolean leftUpInGame, rightUpInGame;
 	private static long nextLeft, nextRight, nextJump;
 	/** The mouse buttons held over an inventory window (the game does not keep that while one is open). */
 	private static boolean screenLeft, screenRight;
@@ -134,6 +140,11 @@ public final class Assist {
 			if (cfg().autoClicker) Compat.overlay(mc, Component.translatable(dungeon ? "slashclient-hud.assist.dungeonPause.on" : "slashclient-hud.assist.dungeonPause.off"));
 		}
 		boolean clicking = cfg().autoClicker && !dungeon && (holdMode() ? !paused : armed);
+		if (!inGame) leftUpInGame = rightUpInGame = false;
+		else {
+			if (!mc.options.keyAttack.isDown()) leftUpInGame = true;
+			if (!mc.options.keyUse.isDown()) rightUpInGame = true;
+		}
 		if (clicking && inGame) autoClick(mc, player);
 		else {
 			letGoOfJump(mc);
@@ -292,7 +303,7 @@ public final class Assist {
 		boolean hold = holdMode();
 		// held: while the player holds the button (no click from the game itself on an entity or the air,
 		// the button held only digs); toggle: on their own while armed
-		if (cfg().autoClickLeft && (!hold || mc.options.keyAttack.isDown())) {
+		if (cfg().autoClickLeft && (!hold || mc.options.keyAttack.isDown() && leftUpInGame)) {
 			HitResult hit = mc.hitResult;
 			Entity aimed = hit instanceof EntityHitResult e ? e.getEntity() : null;
 			// never at a player: it is for mobs, farms and blocks
@@ -316,7 +327,7 @@ public final class Assist {
 				nextLeft = now + interval(cfg().autoClickCps);
 			}
 		}
-		if (cfg().autoClickRight && (!hold || mc.options.keyUse.isDown()) && now >= nextRight) {
+		if (cfg().autoClickRight && (!hold || mc.options.keyUse.isDown() && rightUpInGame) && now >= nextRight) {
 			click(mc.options.keyUse);
 			rightClicks++;
 			nextRight = now + interval(cfg().autoClickRightCps);

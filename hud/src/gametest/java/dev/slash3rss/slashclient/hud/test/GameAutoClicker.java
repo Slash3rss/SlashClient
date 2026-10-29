@@ -165,6 +165,16 @@ public class GameAutoClicker implements FabricClientGameTest {
 			context.waitTicks(20);
 			String reopened = context.computeOnClient(mc -> TestHooks.autoClicks() + (dev.slash3rss.slashclient.hud.Compat.screen(mc) instanceof net.minecraft.client.gui.screens.inventory.ContainerScreen ? "" : " (closed)"));
 			if (!reopened.equals("0/0")) throw new AssertionError("Clicked in a chest opened again with no button held: " + reopened);
+			// the right button clicking while held, the chest closed with Esc while the game still thinks the button is
+			// down (it opened the chest and was let go over the window): the chest is not opened straight back
+			context.runOnClient(mc -> { TestHooks.autoClicker(true, "hold", false, true, false, 10); TestHooks.holdButtons(false, true); });
+			context.waitTicks(3);
+			context.getInput().pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE);
+			context.waitTicks(20);
+			String afterEsc = context.computeOnClient(mc -> TestHooks.autoClicks() + (dev.slash3rss.slashclient.hud.Compat.screen(mc) == null ? "" : " (open again)"));
+			context.runOnClient(mc -> TestHooks.holdButtons(false, false));
+			context.waitTicks(2);
+			if (!afterEsc.equals("0/0")) throw new AssertionError("Clicked after the chest closed with Esc: " + afterEsc);
 			// the player's own inventory: never
 			context.setScreen(() -> new net.minecraft.client.gui.screens.inventory.InventoryScreen(net.minecraft.client.Minecraft.getInstance().player));
 			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, false, 10); TestHooks.armAutoClicker(); });
