@@ -5,6 +5,39 @@ import { gameIconInto } from './preview.js';
 
 const TOKEN = 'slashclient.token';
 
+/**
+ * The player's pages speak English to a browser not set to Polish; the admin panel stays Polish.
+ * Asked on each use: the router moves between the site and the panel without loading this file again.
+ */
+export const english = () => !location.pathname.startsWith('/admin') && !/^pl\b/i.test(navigator.language || 'pl');
+/** The Polish or the English text, by the page's language. */
+export const L = (pl, en) => (english() ? en : pl);
+/** Dates and numbers in the page's language. */
+export const locale = () => (english() ? 'en-GB' : 'pl-PL');
+
+/**
+ * A page's own texts written in its HTML, put into English when the page speaks it: `data-en` (the text,
+ * replacing the last piece of text so an icon before it stays), `data-en-placeholder`, `data-en-title`,
+ * `data-en-content` (a meta tag) and `data-en-href` (the English page of a link), and `title` for the tab. Polish is left as written.
+ */
+export function localizePage(title) {
+  if (!english()) return;
+  document.documentElement.lang = 'en';
+  // the tab's title comes from the page script: the router keeps the first page's <title> element and only changes its text
+  if (title) document.title = title;
+  for (const node of document.querySelectorAll('[data-en]')) {
+    const texts = [...node.childNodes].filter((n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim());
+    const last = texts[texts.length - 1];
+    if (!last || node.children.length === 0) node.textContent = node.dataset.en;
+    else last.textContent = `${/^\s/.test(last.textContent) ? ' ' : ''}${node.dataset.en}`;
+  }
+  for (const [attr, prop] of [['enPlaceholder', 'placeholder'], ['enTitle', 'title'], ['enContent', 'content'], ['enHref', 'href']]) {
+    for (const node of document.querySelectorAll(`[data-${attr.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}]`)) node.setAttribute(prop, node.dataset[attr]);
+  }
+  // the footer's "Animacje" button (siteBanner.js, drawn before this) follows
+  window.dispatchEvent(new Event('slashclient-lang'));
+}
+
 export const token = {
   get: () => localStorage.getItem(TOKEN) ?? '',
   set: (t) => (t ? localStorage.setItem(TOKEN, t) : localStorage.removeItem(TOKEN)),
@@ -95,15 +128,17 @@ export function partnerIconControls(p, path, limits, done) {
     });
     URL.revokeObjectURL(url);
     if (ok) {
-      toast('Ikona zapisana.');
+      toast(L('Ikona zapisana.', 'Icon saved.'));
       done();
     } else show();
   });
   const mb = Math.round(((limits?.bytes ?? 2 * 1024 * 1024) / 1024 / 1024) * 10) / 10;
+  const side = limits?.side ?? 128, frames = limits?.frames ?? 64;
   return el('div', { class: 'row partner-icon' }, preview,
-    el('label', { class: 'btn' }, icon('fa-solid fa-film'), p.icon ? 'Zmień animowaną ikonę' : 'Animowana ikona', input),
-    p.icon ? el('button', { onclick: async () => { if (await guard(() => api('DELETE', path))) done(); } }, icon('fa-solid fa-eraser'), 'Usuń ikonę') : '',
-    el('small', { class: 'muted', textContent: `GIF lub APNG, kwadrat (inne są przycinane do środka), do ${mb} MB i ${limits?.frames ?? 64} klatek; większe niż ${limits?.side ?? 128}×${limits?.side ?? 128} px są zmniejszane. W grze zastępuje ikonę serwera.` }));
+    el('label', { class: 'btn' }, icon('fa-solid fa-film'), p.icon ? L('Zmień animowaną ikonę', 'Change the animated icon') : L('Animowana ikona', 'Animated icon'), input),
+    p.icon ? el('button', { onclick: async () => { if (await guard(() => api('DELETE', path))) done(); } }, icon('fa-solid fa-eraser'), L('Usuń ikonę', 'Remove the icon')) : '',
+    el('small', { class: 'muted', textContent: L(`GIF lub APNG, kwadrat (inne są przycinane do środka), do ${mb} MB i ${frames} klatek; większe niż ${side}×${side} px są zmniejszane. W grze zastępuje ikonę serwera.`,
+      `GIF or APNG, square (others are cropped to the middle), up to ${mb} MB and ${frames} frames; larger than ${side}×${side} px is scaled down. In game it replaces the server's icon.`) }));
 }
 
 /** A partner server's card: its background as it shows behind the server in the game's list. */
@@ -210,9 +245,50 @@ const ERRORS = {
   too_many_frames: 'Animacja ma za dużo klatek.',
   webp_unsupported: 'Animowany WebP nie jest obsługiwany. Zapisz animację jako GIF albo APNG.',
 };
+/** The same in English, for what a player can meet on the site (the admin panel's own ones stay Polish). */
+const ERRORS_EN = {
+  unauthorized: 'Your session has expired, sign in again.',
+  banned: 'This account is banned.',
+  not_admin: 'This account has no access to the admin panel.',
+  bad_picture: 'This is not a PNG or JPG picture.',
+  too_large: 'The picture is too large (up to 3 MB).',
+  bad_server: 'This does not look like a server address.',
+  exists: 'This server is already on the list.',
+  not_owner: 'This is not your server.',
+  bad_alias: (d) => d.alias ? `"${d.alias}" does not look like a server address.` : 'One of the addresses does not look like a server address.',
+  alias_taken: (d) => `The address ${d.alias ?? ''} already belongs to the partner server ${d.partner ?? ''}.`,
+  too_many_aliases: (d) => `Too many addresses (at most ${d.max ?? 20}).`,
+  bad_cape: 'You cannot put this cape on right now.',
+  provider_disabled: 'This way of signing in is switched off.',
+  provider_failed: 'Signing in did not work, try again.',
+  provider_denied: 'Signing in was stopped.',
+  login_expired: 'Signing in has expired, try again.',
+  rate_limited: 'Too many tries, wait a moment.',
+  self: 'You cannot do this to your own account.',
+  no_such_user: 'There is no such player.',
+  not_found: 'Not found.',
+  cancelled: 'Signing in cancelled.',
+  not_linked: 'This account is not linked to any SlashClient account. Create an account in the launcher (with your Minecraft account) and link this way of signing in in the Friends tab.',
+  title_too_short: 'The title is too short.',
+  body_too_short: 'Describe the problem in a bit more detail.',
+  bad_log: 'There is no such log (it may have expired).',
+  empty: 'Nothing was entered.',
+  forbidden: 'You cannot do this.',
+  last_provider: 'This is your only way of signing in. Link another one first.',
+  not_enough_sparks: 'Not enough Sparks.',
+  owned: 'You already have this item.',
+  not_for_sale: 'This is not in the shop.',
+  bad_rank: 'There is no such rank.',
+  not_your_rank: 'You do not have this rank.',
+  feature_disabled: 'This feature is switched off for now.',
+  bad_icon_file: 'This is not an animated GIF or PNG/APNG, or the file is damaged.',
+  icon_too_large: 'The icon is too large.',
+  too_many_frames: 'The animation has too many frames.',
+  webp_unsupported: 'Animated WebP is not supported. Save the animation as GIF or APNG.',
+};
 export const errorText = (err) => {
-  const text = ERRORS[err?.code];
-  return (typeof text === 'function' ? text(err.data ?? {}) : text) ?? (err?.message || 'Coś poszło nie tak.');
+  const text = (english() && ERRORS_EN[err?.code]) || ERRORS[err?.code];
+  return (typeof text === 'function' ? text(err.data ?? {}) : text) ?? (err?.message || L('Coś poszło nie tak.', 'Something went wrong.'));
 };
 
 export function el(tag, props = {}, ...children) {
@@ -243,7 +319,7 @@ export function watchUnsaved(node, dirty) {
  * Copies a text and says "copied" only when it really was (the browser may refuse); when not, it shows
  * the text itself, to copy by hand. `failed` is the start of that message (in the page's language).
  */
-export async function copyText(text, done, failed = 'Nie udało się skopiować, skopiuj ręcznie:') {
+export async function copyText(text, done, failed = L('Nie udało się skopiować, skopiuj ręcznie:', 'Could not copy, copy it by hand:')) {
   try {
     await navigator.clipboard.writeText(text);
     toast(done);
@@ -294,7 +370,7 @@ export async function guard(fn) {
  * "name: old → new" (risky ones in gold); `warning`: a gold box above the buttons; `danger`: the
  * action button in red (deleting, taking away). Resolves true for yes.
  */
-export function confirmModal({ title, text, list, warning, ok = 'OK', okIcon, danger = false, cancel = 'Anuluj', icon: headIcon } = {}) {
+export function confirmModal({ title, text, list, warning, ok = 'OK', okIcon, danger = false, cancel = L('Anuluj', 'Cancel'), icon: headIcon } = {}) {
   return openModal({ title, text, list, warning, ok, okIcon, danger, cancel, headIcon }).then((v) => v !== null);
 }
 
@@ -304,7 +380,7 @@ export function confirmModal({ title, text, list, warning, ok = 'OK', okIcon, da
  * `type`: the field's type ('text', 'number'…); `multiline`: a larger field for longer notes.
  */
 export function promptModal({ title, text, label, value = '', placeholder = '', ok = 'OK', okIcon, danger = false, required = false, type = 'text', multiline = false,
-  min, max, maxLength, cancel = 'Anuluj', requiredText = 'To pole jest wymagane.', icon: headIcon } = {}) {
+  min, max, maxLength, cancel = L('Anuluj', 'Cancel'), requiredText = L('To pole jest wymagane.', 'This field is required.'), icon: headIcon } = {}) {
   const input = multiline
     ? el('textarea', { rows: 3, value, placeholder, maxLength })
     : el('input', { type, value, placeholder, min, max, maxLength, autocomplete: 'off' });
@@ -475,19 +551,19 @@ export function animateCape(node, id) {
   });
 }
 
-/** The cosmetics' slots: name and icon, in the order they are shown. */
+/** The cosmetics' slots: name, icon and the English name (as in the launcher), in the order they are shown. */
 export const SLOTS = [
-  ['cape', 'Peleryna', 'fa-solid fa-flag'], ['wings', 'Skrzydła', 'fa-solid fa-dove'], ['elytra', 'Elytra', 'fa-solid fa-feather'],
-  ['trail', 'Ślad', 'fa-solid fa-shoe-prints'], ['aura', 'Aura', 'fa-solid fa-wand-sparkles'], ['pet', 'Pupil', 'fa-solid fa-paw'],
-  ['hat', 'Na głowę', 'fa-solid fa-hat-cowboy'], ['top', 'Ubranie', 'fa-solid fa-shirt'], ['kill', 'Efekt zabójstwa', 'fa-solid fa-skull-crossbones'],
-  ['suit', 'Strój', 'fa-solid fa-user-astronaut'],
-  ['shield', 'Tarcza', 'fa-solid fa-shield'], ['weapon', 'Skórka broni', 'fa-solid fa-crosshairs'],
-  ['shoes', 'Buty', 'fa-solid fa-socks'], ['hands', 'Dłonie', 'fa-solid fa-mitten'],
-  ['face', 'Twarz', 'fa-solid fa-glasses'], ['ears', 'Uszy i rogi', 'fa-solid fa-cat'],
-  ['back', 'Na plecy', 'fa-solid fa-person-hiking'], ['tail', 'Ogon', 'fa-solid fa-cat'],
-  ['ring', 'Krąg pod stopami', 'fa-solid fa-circle-dot'], ['move', 'Efekt ruchu', 'fa-solid fa-person-running'],
-  ['spray', 'Spray', 'fa-solid fa-spray-can'],
-  ['prop', 'Rekwizyt', 'fa-solid fa-dolly'],
+  ['cape', 'Peleryna', 'fa-solid fa-flag', 'Cape'], ['wings', 'Skrzydła', 'fa-solid fa-dove', 'Wings'], ['elytra', 'Elytra', 'fa-solid fa-feather', 'Elytra'],
+  ['trail', 'Ślad', 'fa-solid fa-shoe-prints', 'Trail'], ['aura', 'Aura', 'fa-solid fa-wand-sparkles', 'Aura'], ['pet', 'Pupil', 'fa-solid fa-paw', 'Pet'],
+  ['hat', 'Na głowę', 'fa-solid fa-hat-cowboy', 'Hat'], ['top', 'Ubranie', 'fa-solid fa-shirt', 'Outfit'], ['kill', 'Efekt zabójstwa', 'fa-solid fa-skull-crossbones', 'Kill effect'],
+  ['suit', 'Strój', 'fa-solid fa-user-astronaut', 'Suit'],
+  ['shield', 'Tarcza', 'fa-solid fa-shield', 'Shield'], ['weapon', 'Skórka broni', 'fa-solid fa-crosshairs', 'Weapon skin'],
+  ['shoes', 'Buty', 'fa-solid fa-socks', 'Shoes'], ['hands', 'Dłonie', 'fa-solid fa-mitten', 'Hands'],
+  ['face', 'Twarz', 'fa-solid fa-glasses', 'Face'], ['ears', 'Uszy i rogi', 'fa-solid fa-cat', 'Ears & horns'],
+  ['back', 'Na plecy', 'fa-solid fa-person-hiking', 'Back'], ['tail', 'Ogon', 'fa-solid fa-cat', 'Tail'],
+  ['ring', 'Krąg pod stopami', 'fa-solid fa-circle-dot', 'Ring'], ['move', 'Efekt ruchu', 'fa-solid fa-person-running', 'Movement effect'],
+  ['spray', 'Spray', 'fa-solid fa-spray-can', 'Spray'],
+  ['prop', 'Rekwizyt', 'fa-solid fa-dolly', 'Prop'],
 ];
 /** Particles and pets are the game's own: on the site they get an icon. */
 const ITEM_ICONS = {
@@ -669,12 +745,13 @@ export async function signOut() {
   token.set('');
 }
 
-export const fmtDate = (ms) => (ms ? new Date(ms).toLocaleString('pl-PL', { dateStyle: 'medium', timeStyle: 'short' }) : '—');
+export const fmtDate = (ms) => (ms ? new Date(ms).toLocaleString(locale(), { dateStyle: 'medium', timeStyle: 'short' }) : '—');
 export function ago(ms) {
   if (!ms) return '—';
   const s = Math.round((Date.now() - ms) / 1000);
-  if (s < 60) return 'przed chwilą';
-  if (s < 3600) return `${Math.floor(s / 60)} min temu`;
-  if (s < 86_400) return `${Math.floor(s / 3600)} godz. temu`;
-  return `${Math.floor(s / 86_400)} dni temu`;
+  if (s < 60) return L('przed chwilą', 'just now');
+  if (s < 3600) return L(`${Math.floor(s / 60)} min temu`, `${Math.floor(s / 60)} min ago`);
+  if (s < 86_400) return L(`${Math.floor(s / 3600)} godz. temu`, `${Math.floor(s / 3600)} h ago`);
+  const d = Math.floor(s / 86_400);
+  return L(`${d} dni temu`, `${d} ${d === 1 ? 'day' : 'days'} ago`);
 }

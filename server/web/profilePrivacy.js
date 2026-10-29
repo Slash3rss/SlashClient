@@ -1,13 +1,28 @@
 // The account page's "Profile privacy" card: who sees the public profile (/u/<handle>) and which
 // parts of it. The server enforces it (profiles.ts); this only edits the settings.
-import { api, copyText, el, guard, icon, toast } from './common.js';
+import { L, api, copyText, el, english, guard, icon, toast } from './common.js';
 
-const VISIBILITY = [
+const VISIBILITY = english() ? [
+  ['public', 'Everyone', 'fa-solid fa-earth-europe', 'Anyone with the link, also without signing in.'],
+  ['friends', 'Friends', 'fa-solid fa-user-group', 'Only your SlashClient friends (signed in).'],
+  ['private', 'Only me', 'fa-solid fa-lock', 'Nobody but you.'],
+] : [
   ['public', 'Wszyscy', 'fa-solid fa-earth-europe', 'Każdy z linkiem, także bez logowania.'],
   ['friends', 'Znajomi', 'fa-solid fa-user-group', 'Tylko Twoi znajomi z SlashClient (zalogowani).'],
   ['private', 'Tylko ja', 'fa-solid fa-lock', 'Nikt poza Tobą.'],
 ];
-export const PRIVACY_ELEMENTS = [
+export const PRIVACY_ELEMENTS = english() ? [
+  ['stats', 'Stats (hours played, streaks, days played)'],
+  ['achievements', 'Achievements'],
+  ['cosmetics', 'Cosmetics worn'],
+  ['clan', 'Clan'],
+  ['communities', 'Communities (only public ones you leave switched on in the launcher)'],
+  ['minecraft', 'Minecraft accounts (nicks)'],
+  ['friends', 'Number of friends'],
+  ['servers', 'Servers you play on'],
+  ['lastOnline', 'When you were last online'],
+  ['streams', 'Streams (linked Twitch and Kick channels, the live stream)'],
+] : [
   ['stats', 'Statystyki (godziny gry, serie, dni gry)'],
   ['achievements', 'Osiągnięcia'],
   ['cosmetics', 'Noszone kosmetyki'],
@@ -30,7 +45,7 @@ export async function privacyCard() {
     const next = await guard(() => api('POST', '/v1/me/suggestions', { visible }));
     if (next) {
       suggest = next;
-      toast('Zapisano ustawienia profilu.');
+      toast(L('Zapisano ustawienia profilu.', 'Profile settings saved.'));
     }
     draw();
   };
@@ -39,7 +54,7 @@ export async function privacyCard() {
     const next = await guard(() => api('POST', '/v1/me/profile-privacy', change));
     if (!next) return draw();
     state = next;
-    toast('Zapisano ustawienia profilu.');
+    toast(L('Zapisano ustawienia profilu.', 'Profile settings saved.'));
     draw();
   };
   function draw() {
@@ -56,16 +71,16 @@ export async function privacyCard() {
     const index = el('input', { type: 'checkbox', checked: p.indexable, disabled: p.visibility !== 'public' });
     index.addEventListener('change', () => save({ indexable: index.checked }));
     card.replaceChildren(
-      el('h3', {}, icon('fa-solid fa-user-lock'), ' Prywatność profilu'),
-      el('p', { class: 'muted small', textContent: 'Twój profil pokazuje statystyki, osiągnięcia i kosmetyki. Wybierz, kto go widzi i co na nim jest. Ty zawsze widzisz całość.' }),
-      state.hidden ? el('p', { class: 'privacy-hidden small' }, icon('fa-solid fa-eye-slash'), ' Moderacja ukryła Twój profil: inni go nie widzą.') : '',
+      el('h3', {}, icon('fa-solid fa-user-lock'), L(' Prywatność profilu', ' Profile privacy')),
+      el('p', { class: 'muted small', textContent: L('Twój profil pokazuje statystyki, osiągnięcia i kosmetyki. Wybierz, kto go widzi i co na nim jest. Ty zawsze widzisz całość.', 'Your profile shows your stats, achievements and cosmetics. Choose who sees it and what is on it. You always see all of it.') }),
+      state.hidden ? el('p', { class: 'privacy-hidden small' }, icon('fa-solid fa-eye-slash'), L(' Moderacja ukryła Twój profil: inni go nie widzą.', ' The moderators have hidden your profile: others cannot see it.')) : '',
       el('div', { class: 'row privacy-link' },
         el('input', { type: 'text', value: link, readOnly: true, class: 'grow', onfocus: (e) => e.target.select() }),
-        el('a', { class: 'btn', href: state.url }, icon('fa-solid fa-id-card'), ' Zobacz swój profil'),
-        el('button', { type: 'button', onclick: () => copyText(link, 'Skopiowano link do profilu.') }, icon('fa-regular fa-copy'), ' Kopiuj link')),
-      el('h4', { textContent: 'Kto widzi profil' }), options,
-      el('h4', { textContent: 'Co jest na profilu' }), switches,
-      el('label', { class: 'row small privacy-index' }, el('span', { class: 'switch' }, index, el('span')), 'Pozwól wyszukiwarkom (Google itp.) pokazywać mój profil'),
+        el('a', { class: 'btn', href: state.url }, icon('fa-solid fa-id-card'), L(' Zobacz swój profil', ' See your profile')),
+        el('button', { type: 'button', onclick: () => copyText(link, L('Skopiowano link do profilu.', 'Profile link copied.')) }, icon('fa-regular fa-copy'), L(' Kopiuj link', ' Copy link'))),
+      el('h4', { textContent: L('Kto widzi profil', 'Who sees the profile') }), options,
+      el('h4', { textContent: L('Co jest na profilu', 'What is on the profile') }), switches,
+      el('label', { class: 'row small privacy-index' }, el('span', { class: 'switch' }, index, el('span')), L('Pozwól wyszukiwarkom (Google itp.) pokazywać mój profil', 'Let search engines (Google etc.) show my profile')),
       ...suggestSection());
   }
   /** Being suggested to players met on the same server, and seeing suggestions. */
@@ -74,9 +89,9 @@ export async function privacyCard() {
     const box = el('input', { type: 'checkbox', checked: suggest.visible });
     box.addEventListener('change', () => saveSuggest(box.checked));
     return [
-      el('h4', { textContent: 'Propozycje znajomych' }),
-      el('label', { class: 'row small privacy-suggest' }, el('span', { class: 'switch' }, box, el('span')), 'Pokazuj mnie w propozycjach znajomych'),
-      el('p', { class: 'muted small', textContent: 'Gracze SlashClient, z którymi grasz na tym samym serwerze, mogą zobaczyć Cię w „Propozycjach” w launcherze i w grze (z nazwą serwera i czasem wspólnej gry), a Ty ich. Wyłączone: nikt Cię nie zobaczy, Ty nie dostaniesz propozycji, a zapisane spotkania zostaną usunięte. Status „Niewidoczny” nigdy nie jest liczony.' }),
+      el('h4', { textContent: L('Propozycje znajomych', 'Friend suggestions') }),
+      el('label', { class: 'row small privacy-suggest' }, el('span', { class: 'switch' }, box, el('span')), L('Pokazuj mnie w propozycjach znajomych', 'Show me in friend suggestions')),
+      el('p', { class: 'muted small', textContent: english() ? 'SlashClient players you play with on the same server can see you in "Suggestions" in the launcher and in game (with the server\'s name and the time played together), and you see them. Switched off: nobody sees you, you get no suggestions, and the saved meetings are deleted. The "Invisible" status is never counted.' : 'Gracze SlashClient, z którymi grasz na tym samym serwerze, mogą zobaczyć Cię w „Propozycjach” w launcherze i w grze (z nazwą serwera i czasem wspólnej gry), a Ty ich. Wyłączone: nikt Cię nie zobaczy, Ty nie dostaniesz propozycji, a zapisane spotkania zostaną usunięte. Status „Niewidoczny” nigdy nie jest liczony.' }),
     ];
   }
   draw();

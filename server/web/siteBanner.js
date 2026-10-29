@@ -53,6 +53,8 @@ window.slashMotionQuery?.removeEventListener('change', window.slashMotionListene
 window.slashMotionQuery = systemReduced;
 window.slashMotionListener = applyMotion;
 systemReduced.addEventListener('change', applyMotion);
+// a page put into English after this ran (common.js localizePage) says it again in English
+addEventListener('slashclient-lang', applyMotion);
 
 /** { features: { shop: true, … }, banner: … | null }; everything on when the server cannot be asked. */
 export const siteFeatures = fetch('/v1/features')
@@ -63,6 +65,12 @@ export const siteFeatures = fetch('/v1/features')
 /** Whether a feature is on (missing: an older server without switches, so on). */
 export const featureOn = (features, id) => features[id] !== false;
 
+/**
+ * The banner's language, asked when it is drawn (the router changes the page's lang): English on a page in
+ * English (the home page's /en) or for a browser not set to Polish, but always Polish in the admin panel's preview.
+ */
+const bannerEnglish = () => document.documentElement.lang === 'en' || (EN && !location.pathname.startsWith('/admin'));
+
 /** The banner's element (also the admin panel's preview). */
 export function bannerElement(b, onClose) {
   const box = document.createElement('div');
@@ -72,13 +80,14 @@ export function bannerElement(b, onClose) {
   ic.className = b.level === 'warning' ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-info';
   const text = document.createElement('span');
   text.className = 'site-banner-text';
-  text.textContent = EN ? b.textEn || b.text : b.text;
+  const en = bannerEnglish();
+  text.textContent = en ? b.textEn || b.text : b.text;
   box.append(ic, text);
   // only http(s) links or this site's paths (the server checks it too)
   if (b.link && /^(https?:\/\/|\/(?!\/))/i.test(b.link)) {
     const a = document.createElement('a');
     a.href = b.link;
-    a.textContent = EN ? 'More' : 'Więcej';
+    a.textContent = en ? 'More' : 'Więcej';
     if (/^https?:/i.test(b.link)) Object.assign(a, { target: '_blank', rel: 'noopener' });
     box.append(a);
   }
@@ -86,7 +95,7 @@ export function bannerElement(b, onClose) {
     const x = document.createElement('button');
     x.type = 'button';
     x.className = 'icon-btn site-banner-close';
-    x.title = EN ? 'Close' : 'Zamknij';
+    x.title = en ? 'Close' : 'Zamknij';
     x.innerHTML = '<i class="fa-solid fa-xmark"></i>';
     x.addEventListener('click', () => {
       box.remove();
