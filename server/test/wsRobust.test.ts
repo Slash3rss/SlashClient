@@ -53,6 +53,13 @@ describe('websockets with bad messages', () => {
     assert.ok(await healthy());
   });
 
+  it('a request body over the limit is refused without ending the process', async () => {
+    const big = await fetch(base + '/v1/auth/dev', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'x'.repeat(40_000) }) }).catch(() => undefined);
+    if (big) assert.equal(big.status, 413);
+    await new Promise((r) => setTimeout(r, 200));
+    assert.ok(await healthy());
+  });
+
   it('signs in afterwards as usual', async () => {
     const { token } = (await (await fetch(base + '/v1/auth/dev', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Ola' }) })).json()) as { token: string };
     const ws = new WebSocket(base.replace('http', 'ws') + '/v1/ws');

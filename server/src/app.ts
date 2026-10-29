@@ -316,7 +316,8 @@ export function createApp(cfg: Config) {
   const requests = new RequestLog(db.sql, () => settings.num('storage.requestsKept'));
   const clientIp = (req: http.IncomingMessage): string => {
     const forwarded = cfg.trustProxy ? String(req.headers['x-forwarded-for'] ?? '').split(',').pop()?.trim() : '';
-    return forwarded || req.socket.remoteAddress || '';
+    // a request cut short (a body over the limit) has no socket left by the time it is logged
+    return forwarded || req.socket?.remoteAddress || '';
   };
   /**
    * Minecraft players in a game with SlashClient right now (uuid → last report), for the
