@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { t } from '../shared/i18n';
 import { contentFile, FOLDERS, mergeManifest, readManifest, writeManifest, type ContentType, type ManifestEntry } from './modrinth';
 
 /**
@@ -17,7 +18,7 @@ const binRoot = (gameDir: string) => path.join(gameDir, '.slashclient', 'removed
 const BATCH_ID = /^\d+-[0-9a-f]{8}$/;
 
 function batchDir(gameDir: string, id: string): string {
-  if (!BATCH_ID.test(id)) throw new Error('Nieprawidłowy identyfikator');
+  if (!BATCH_ID.test(id)) throw new Error(t('Nieprawidłowy identyfikator'));
   return path.join(binRoot(gameDir), id);
 }
 

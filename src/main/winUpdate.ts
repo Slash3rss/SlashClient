@@ -6,6 +6,7 @@ import path from 'node:path';
 import AdmZip from 'adm-zip';
 import { fetchWatched } from './download';
 import { throttled } from './rateLimit';
+import { t } from '../shared/i18n';
 
 // Electron's own fs looks into app.asar as if it were a folder (copying, unpacking and deleting the
 // new version's app.asar then fails); original-fs handles it as the plain file it is
@@ -155,7 +156,7 @@ export async function downloadVerified(url: string, file: WinFile, dest: string,
   } finally {
     await new Promise<void>((resolve) => out.end(() => resolve()));
   }
-  if (hash.digest('base64') !== file.sha512) throw new Error('Pobrana aktualizacja jest uszkodzona (zła suma kontrolna).');
+  if (hash.digest('base64') !== file.sha512) throw new Error(t('Pobrana aktualizacja jest uszkodzona (zła suma kontrolna).'));
 }
 
 /** Unpacks a release zip into a folder (no entry may land outside it). */
@@ -164,7 +165,7 @@ export async function unpackZip(zip: string, into: string): Promise<void> {
   const archive = new AdmZip(zip);
   for (const entry of archive.getEntries()) {
     const target = path.resolve(root, entry.entryName);
-    if (!target.startsWith(root + path.sep)) throw new Error('W aktualizacji jest zła ścieżka.');
+    if (!target.startsWith(root + path.sep)) throw new Error(t('W aktualizacji jest zła ścieżka.'));
     if (entry.isDirectory) {
       await fs.mkdir(target, { recursive: true });
       continue;
@@ -186,8 +187,8 @@ export async function stageWinUpdate(install: WinInstall, zip: string, appOnly: 
   else await fs.mkdir(next, { recursive: true });
   await unpackZip(zip, next);
   const exe = path.basename(install.exe);
-  await fs.access(path.join(next, exe)).catch(() => { throw new Error(`W aktualizacji nie ma ${exe}.`); });
-  await fs.access(path.join(next, 'resources', 'app.asar')).catch(() => { throw new Error('W aktualizacji nie ma aplikacji.'); });
+  await fs.access(path.join(next, exe)).catch(() => { throw new Error(t('W aktualizacji nie ma {0}.', exe)); });
+  await fs.access(path.join(next, 'resources', 'app.asar')).catch(() => { throw new Error(t('W aktualizacji nie ma aplikacji.')); });
   const uninstaller = path.join(next, install.uninstaller);
   if (!(await fs.access(uninstaller).then(() => true, () => false))) await fs.copyFile(path.join(install.dir, install.uninstaller), uninstaller);
   return next;
@@ -322,5 +323,5 @@ export function startSwap(o: SwapOptions): void {
     windowsHide: true, stdio: 'ignore', timeout: 20_000, cwd,
     env: { ...process.env, SLASHCLIENT_SWAP_PS: POWERSHELL, SLASHCLIENT_SWAP_CWD: cwd, SLASHCLIENT_SWAP_FILE: file },
   });
-  if (res.status !== 0) throw new Error(`Nie uda\u0142o si\u0119 uruchomi\u0107 podmiany plik\u00F3w (${res.error?.message ?? `kod ${res.status}`}).`);
+  if (res.status !== 0) throw new Error(t('Nie udało się uruchomić podmiany plików ({0}).', res.error?.message ?? t('kod {0}', String(res.status))));
 }
