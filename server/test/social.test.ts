@@ -278,6 +278,33 @@ describe('social server', () => {
     assert.equal((await call('GET', `/v1/auth/poll?state=${own.state}`)).body.user.name, 'Discordowy');
   });
 
+  it('lets a newer launcher end its own sign-in on this computer, with the secret it kept (PKCE)', async () => {
+    const { createHash } = await import('node:crypto');
+    const verifier = 'v'.repeat(20) + Math.random().toString(36).slice(2) + 'x'.repeat(20);
+    const challenge = createHash('sha256').update(verifier).digest('base64url');
+    const start = (await call('POST', '/v1/auth/discord/start', undefined, { port: 54321, challenge })).body;
+    // the browser goes back to the launcher on this computer, not to "Czy to Ty?"
+    const page = await fetch(`${base}/v1/auth/discord/callback?state=${start.state}&code=xyz`, { redirect: 'manual' });
+    assert.equal(page.status, 302);
+    const back = new URL(page.headers.get('location')!);
+    assert.equal(back.origin, 'http://127.0.0.1:54321');
+    assert.equal(back.searchParams.get('state'), start.state);
+    const key = back.searchParams.get('key')!;
+    // whoever only knows the state gets nothing, nor do the confirm links
+    assert.equal((await call('GET', `/v1/auth/poll?state=${start.state}`)).body.pending, true);
+    assert.equal((await fetch(`${base}/v1/auth/confirm?state=${start.state}&key=${key}`)).status, 400);
+    assert.equal((await call('POST', '/v1/auth/finish', undefined, { state: start.state, key, verifier: verifier + 'x' })).status, 403);
+    assert.equal((await call('POST', '/v1/auth/finish', undefined, { state: start.state, key: 'zly', verifier })).status, 403);
+    const done = await call('POST', '/v1/auth/finish', undefined, { state: start.state, key, verifier });
+    assert.equal(done.body.user.name, 'Discordowy');
+    assert.ok(done.body.token);
+    // handed out once
+    assert.equal((await call('POST', '/v1/auth/finish', undefined, { state: start.state, key, verifier })).status, 404);
+    assert.equal((await call('GET', `/v1/auth/poll?state=${start.state}`)).status, 404);
+    // the page the launcher sends the browser to
+    assert.match(await (await fetch(`${base}/v1/auth/done?ok=1&lang=en`)).text(), /Signed in/);
+  });
+
   it('gives a free handle when the name is taken', async () => {
     const other = await call('POST', '/v1/auth/dev', undefined, { name: 'Kasia' });
     assert.equal(other.body.user.handle, 'Kasia2');

@@ -240,6 +240,11 @@ export function createApp(cfg: Config) {
     from?: string;
     /** Who the provider said it is, waiting for the player to confirm in the browser; the key is in the confirm link. */
     waiting?: { id: Identity; key: string };
+    /**
+     * A newer launcher listens on this computer (127.0.0.1:port) and holds the secret behind `challenge`
+     * (PKCE): the browser is sent back to it, so only the computer the sign-in was finished on can end it.
+     */
+    loopback?: { port: number; challenge: string };
   };
   const logins = new Map<string, Login>();
 
@@ -1092,14 +1097,18 @@ export function createApp(cfg: Config) {
       return { ...session, user: meWithProviders(session.user.id), switched: !!me };
     }],
     // with a session this links the provider to the account instead of signing in
-    ['POST', /^\/v1\/auth\/(discord|microsoft|google|github)\/start$/, (req, [provider]) => {
+    ['POST', /^\/v1\/auth\/(discord|microsoft|google|github)\/start$/, async (req, [provider]) => {
       const p = providers[provider as ProviderId];
       if (!p) throw new HttpError(404, 'provider_disabled');
       limitLogins(clientIp(req));
       const linkTo = req.headers.authorization ? authed(req) : undefined;
+      // older launchers and the website send nothing: they get the "Czy to Ty?" page
+      const { port, challenge } = await body(req);
+      const loopback = !p.device && Number.isInteger(port) && (port as number) >= 1024 && (port as number) <= 65535 && typeof challenge === 'string' && /^[\w-]{43}$/.test(challenge)
+        ? { port: port as number, challenge } : undefined;
       const state = randomBytes(24).toString('base64url');
       const confirm = String(randomBytes(2).readUInt16BE() % 10_000).padStart(4, '0');
-      const login: Login = { provider: provider as ProviderId, at: Date.now(), linkTo, confirm, from: clientOf(req).client };
+      const login: Login = { provider: provider as ProviderId, at: Date.now(), linkTo, confirm, from: clientOf(req).client, loopback };
       logins.set(state, login);
       if (!p.device) return { state, url: p.authorizeUrl(state, redirectUri(provider)), confirm };
       // a code to type on the provider's page; the server waits for it and /v1/auth/poll reports as usual
@@ -1116,8 +1125,23 @@ export function createApp(cfg: Config) {
         logins.delete(state);
         throw new HttpError(400, login.error);
       }
-      if (!login.result) return { pending: true };
+      // a launcher-ended sign-in is handed out only by /v1/auth/finish, to the one with the secret
+      if (!login.result || login.loopback) return { pending: true };
       logins.delete(state);
+      return login.result;
+    }],
+    // the launcher that started the sign-in ends it: the key came to it from the browser, the verifier it kept itself
+    ['POST', /^\/v1\/auth\/finish$/, async (req) => {
+      limitLogins(clientIp(req));
+      const { state, key, verifier } = await body(req);
+      const login = typeof state === 'string' ? logins.get(state) : undefined;
+      const waiting = login?.waiting;
+      if (!login || !login.loopback || !waiting || Date.now() - login.at > LOGIN_TTL_MS) throw new HttpError(404, 'login_expired');
+      const same = (a: string, b: string) => timingSafeEqual(createHash('sha256').update(a).digest(), createHash('sha256').update(b).digest());
+      const proof = typeof verifier === 'string' ? createHash('sha256').update(verifier).digest('base64url') : '';
+      if (typeof key !== 'string' || !same(key, waiting.key) || !same(proof, login.loopback.challenge)) throw new HttpError(403, 'forbidden');
+      logins.delete(state as string);
+      if (!finishLogin(login, login.provider, waiting.id)) throw new HttpError(400, login.error ?? 'provider_failed');
       return login.result;
     }],
     ['POST', /^\/v1\/auth\/logout$/, (req) => {
@@ -1754,6 +1778,12 @@ export function createApp(cfg: Config) {
           // round) would otherwise hand them this account the moment it is clicked.
           const key = randomBytes(18).toString('base64url');
           login.waiting = { id, key };
+          if (login.loopback) {
+            // back to the launcher on this computer; a link someone else started points at a port nothing here listens on
+            res.writeHead(302, { Location: `http://127.0.0.1:${login.loopback.port}/slashclient-login?state=${encodeURIComponent(state)}&key=${encodeURIComponent(key)}&lang=${lang}`, ...AUTH_PAGE_HEADERS });
+            res.end();
+            return;
+          }
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', ...AUTH_PAGE_HEADERS });
           res.end(confirmPage(login, provider, id, state, key, lang));
           return;
@@ -1767,6 +1797,13 @@ export function createApp(cfg: Config) {
       return;
     }
 
+    // where the launcher sends the browser once it has ended the sign-in
+    if (req.method === 'GET' && url.pathname === '/v1/auth/done') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', ...AUTH_PAGE_HEADERS });
+      res.end(callbackPage(url.searchParams.get('ok') === '1', url.searchParams.get('lang') === 'en' ? 'en' : siteLang(req, url.pathname)));
+      return;
+    }
+
     // the player's answer on the confirmation page
     const answer = /^\/v1\/auth\/(confirm|cancel)$/.exec(url.pathname);
     if (req.method === 'GET' && answer) {
@@ -1777,7 +1814,7 @@ export function createApp(cfg: Config) {
       const right = !!waiting && Date.now() - login!.at <= LOGIN_TTL_MS
         && timingSafeEqual(createHash('sha256').update(waiting.key).digest(), createHash('sha256').update(url.searchParams.get('key') ?? '').digest());
       let ok = false;
-      if (login && waiting && right) {
+      if (login && waiting && right && !login.loopback) {
         login.waiting = undefined;
         if (answer[1] === 'confirm') ok = finishLogin(login, login.provider, waiting.id);
         else login.error = 'provider_denied';
