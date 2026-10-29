@@ -270,7 +270,6 @@ public class WorldMapScreen extends Screen {
 			MapEntities.draw(g, mc, m, Math.round(x), Math.round(y), zoom >= 1f);
 			drawn.add(m);
 		}
-		MapEntities.drawnWorldMap = MapEntities.describe(drawn);
 		MapEntities.shownWorldMap = drawn;
 	}
 

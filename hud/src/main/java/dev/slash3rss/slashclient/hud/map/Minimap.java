@@ -236,7 +236,6 @@ public final class Minimap implements HudModule {
 			MapEntities.draw(g, mc, m, cx + Math.round(s[0]), cy + Math.round(s[1]), false);
 			drawn.add(m);
 		}
-		MapEntities.drawnMinimap = MapEntities.describe(drawn);
 		MapEntities.shownMinimap = drawn;
 	}
 

@@ -255,11 +255,11 @@ public final class MapSortTestHooks {
 
 	/** What the minimap and the full map drew last: "players,hostile,passive:nicks". */
 	public static String entitiesOnMinimap() {
-		return MapEntities.drawnMinimap;
+		return MapEntities.describe(MapEntities.shownMinimap);
 	}
 
 	public static String entitiesOnWorldMap() {
-		return MapEntities.drawnWorldMap;
+		return MapEntities.describe(MapEntities.shownWorldMap);
 	}
 
 	/** How each mob was drawn last on a map: "cow:head,silverfish:dot,". */
