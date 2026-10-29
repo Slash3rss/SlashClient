@@ -93,7 +93,8 @@ export class Preview {
     this.cosmetics.show(Object.fromEntries(Object.entries(worn).map(([slot, id]) => [slot, id || undefined])));
     // a tall hat (or ears, horns, a suit's crest or plume) stands above the head: the figure a little smaller, so it stays in view
     // (and the prop's own view, from the side, smaller still: the wheelbarrow reaches out in front)
-    this.viewer.zoom = worn.walk ? 0.62 : worn.hat || worn.ears || worn.suit ? 0.72 : 0.85;
+    // (a cape, wings or an elytra swing out behind when it turns: a little smaller too, so they are not cut at the edge)
+    this.viewer.zoom = worn.walk ? 0.62 : worn.hat || worn.ears || worn.suit ? 0.72 : worn.cape || worn.wings || worn.elytra || worn.back ? 0.76 : 0.85;
     // a back item takes the back first (as in the game), then wings, then an elytra, then the cape
     if (worn.back) this.viewer.loadCape(null);
     else if (worn.wings) await this.viewer.loadCape(`/vendor/wings/${worn.wings}.png`, { backEquipment: 'elytra' });
