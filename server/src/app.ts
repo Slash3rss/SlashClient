@@ -14,7 +14,7 @@ import { createStatusRules } from './statusRules.ts';
 import { trackerRoutes } from './tracker.ts';
 import { sharingRoutes } from './sharing.ts';
 import { positionRoutes } from './positions.ts';
-import { RequestLog, clientOf, maskIp, routeOf } from './requests.ts';
+import { RequestLog, clientOf, limitAddress, maskIp, routeOf } from './requests.ts';
 import { serveWeb, versioned } from './web.ts';
 import { mediaRoutes, type MediaLimits } from './media.ts';
 import { changelogRoutes, createDownloads, holdForPaused, isDownloadOs } from './downloads.ts';
@@ -326,10 +326,19 @@ export function createApp(cfg: Config) {
   };
   /** Searching and installing a modpack asks a lot at once, but one address should not drain the key's quota. */
   const limitCurseForge = limiter('security.curseforgePerMinute');
+  /** A launcher saves its chat key at sign-in; each save tells every friend's launcher to fetch the keys again. */
+  const limitDeviceKeys = limiter('chatKeys.devicesPerMinute');
+  /** Each change of the profile (cosmetics, avatar, server shown) goes out to friends and players nearby. */
+  const limitProfileChanges = limiter('security.profileChangesPerMinute');
+  /** One release's notes or files are asked of GitHub when not kept yet: any version can be typed in. */
+  const limitReleaseLookups = limiter('security.releaseLookupsPerMinute');
+  /** Partner servers' backgrounds are read from the disk on every request. */
+  const limitPartnerPictures = limiter('partners.picturesPerMinute');
   /** Who is asking, for the rate limits: behind Caddy every request comes from 127.0.0.1. */
   // kept in the database too, so the admin panel's list survives a restart
   const requests = new RequestLog(db.sql, () => settings.num('storage.requestsKept'));
-  const clientIp = (req: http.IncomingMessage): string => {
+  /** The visitor's own address (the request log, a vote sent on to the server list). */
+  const clientAddress = (req: http.IncomingMessage): string => {
     // a request cut short (a body over the limit) has no socket left by the time it is logged
     const direct = req.socket?.remoteAddress || '';
     // only the proxy in front (Caddy, on this machine) says who it is passing on: someone reaching the
@@ -338,6 +347,8 @@ export function createApp(cfg: Config) {
     const forwarded = cfg.trustProxy && viaProxy ? String(req.headers['x-forwarded-for'] ?? '').split(',').pop()?.trim() : '';
     return forwarded || direct;
   };
+  /** The same for the per-address limits: one IPv6 /64 is one visitor (requests.ts). */
+  const clientIp = (req: http.IncomingMessage): string => limitAddress(clientAddress(req));
   /**
    * Minecraft players in a game with SlashClient right now (uuid → last report), for the
    * logo next to their name. Kept in memory: the mod reports again every few minutes.
@@ -546,13 +557,18 @@ export function createApp(cfg: Config) {
   function closeSession(tokenHash: string) {
     for (const set of sockets.values()) for (const ws of set) if (sessionOf.get(ws) === tokenHash) ws.close(4003, 'signed out');
   }
-  /** At most so many messages per 10 seconds from one connection (the admin panel's setting, 20 at first). */
-  const socketBudget = new WeakMap<WebSocket, { at: number; n: number }>();
-  function socketLimit(ws: WebSocket): boolean {
+  /**
+   * At most so many messages per 10 seconds from one account (the admin panel's setting, 20 at first),
+   * all its connections together: opening more of them does not buy more.
+   */
+  const socketBudget = new Map<string, { at: number; n: number }>();
+  function socketLimit(userId: string): boolean {
     const now = Date.now();
-    const b = socketBudget.get(ws);
+    const b = socketBudget.get(userId);
     if (!b || now - b.at > 10_000) {
-      socketBudget.set(ws, { at: now, n: 1 });
+      socketBudget.set(userId, { at: now, n: 1 });
+      // accounts quiet for a while are forgotten, so the map does not grow for good
+      if (socketBudget.size > 10_000) for (const [k, v] of socketBudget) if (now - v.at > 10_000) socketBudget.delete(k);
       return true;
     }
     return ++b.n <= settings.num('security.socketMessagesPer10s');
@@ -660,7 +676,7 @@ export function createApp(cfg: Config) {
 
   const limitReports = limiter('security.reportsPerMinute');
   const tracker = trackerRoutes({
-    db, authed, isAdmin, body, clientIp, limit: limitReports, dir: path.join(path.dirname(cfg.dbFile), 'logs'),
+    db, authed, isAdmin, body, clientIp, limit: limitReports, limitViews: limiter('logs.viewsPerMinute'), dir: path.join(path.dirname(cfg.dbFile), 'logs'),
     logDays: () => settings.num('logs.days'), maxLog: () => settings.num('logs.maxBytes'), maxAnonymousLog: () => settings.num('logs.maxAnonymousBytes'),
     dailyBytes: () => settings.num('logs.dailyMb') * 1024 * 1024, dailyBytesEach: () => settings.num('logs.dailyMbEach') * 1024 * 1024,
     diskFree: async (dir) => (await (cfg.storage?.diskSpace ?? realDiskSpace)(dir)).free, minFreeBytes: () => settings.num('storage.minFreeMb') * 1024 * 1024,
@@ -1188,6 +1204,7 @@ export function createApp(cfg: Config) {
     }],
     ['POST', /^\/v1\/me$/, async (req) => {
       const me = authed(req);
+      limitProfileChanges(me);
       const { showServer, cape, loadout, character, own, avatarSource } = await body(req);
       // the avatar: the Minecraft face (the default) or the sign-in provider's picture
       // avatarSource: 'provider', or the uuid of one of the account's Minecraft accounts ('minecraft' = the first)
@@ -1425,6 +1442,7 @@ export function createApp(cfg: Config) {
     // -- chat encryption: launchers publish their public key; friends fetch them to encrypt --
     ['POST', /^\/v1\/keys$/, async (req) => {
       const me = authed(req);
+      limitDeviceKeys(me);
       const { device, pub, name } = await body(req);
       // an X25519 public key in DER (spki) is 44 bytes: 60 characters of base64
       if (typeof device !== 'string' || !/^[0-9a-f]{24}$/.test(device) || typeof pub !== 'string' || !/^[A-Za-z0-9+/=]{40,80}$/.test(pub)) throw new HttpError(400, 'bad_request');
@@ -1610,7 +1628,7 @@ export function createApp(cfg: Config) {
     // the releases' notes (downloads.ts; made further down, asked only later)
     ...changelogRoutes(() => downloads, (status, code) => {
       throw new HttpError(status, code);
-    }),
+    }, (req) => limitReleaseLookups(clientIp(req))),
     ...streams.routes,
     ...phones.routes,
     // GIF and sticker search through the server's key (gifs.ts)
@@ -1622,7 +1640,7 @@ export function createApp(cfg: Config) {
     }),
     // voting for a server on the server list from the launcher (serverVotes.ts)
     ...serverVoteRoutes({
-      settings, authed, clientIp, body, fetchImpl: cfg.fetchImpl,
+      settings, authed, clientIp, clientAddress, body, fetchImpl: cfg.fetchImpl,
       minecraftNames: (id) => db.minecraftAccounts(id).map((a) => a.name),
       limitVotes: limiter('security.serverVotesPerMinute'), limitChecks: limiter('security.serverVoteChecksPerMinute'),
       fail: (status, code) => {
@@ -1762,6 +1780,13 @@ export function createApp(cfg: Config) {
     // a partner server's picture: the address carries its version, so it may be kept for long
     const picture = /^\/v1\/partners\/(\w+)\/background$/.exec(url.pathname);
     if (req.method === 'GET' && picture) {
+      try {
+        limitPartnerPictures(`partner:${clientIp(req)}`);
+      } catch {
+        res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' });
+        res.end(JSON.stringify({ error: 'rate_limited' }));
+        return;
+      }
       const found = await partners.picture(picture[1]);
       if (!found) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
@@ -2015,6 +2040,16 @@ export function createApp(cfg: Config) {
     const update = /^\/(?:aktualizacje|updates)\/(?:(beta)\/|v\/v?(\d{1,4}\.\d{1,4}\.\d{1,4})\/)?([\w][\w.-]{0,120})$/.exec(url.pathname);
     if (req.method === 'GET' && update) {
       const [, betaPath, version, name] = update;
+      // an older release's files: any version can be typed in, and an unknown one is asked of GitHub
+      if (version) {
+        try {
+          limitReleaseLookups(clientIp(req));
+        } catch {
+          res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '60' });
+          res.end(JSON.stringify({ error: 'rate_limited' }));
+          return;
+        }
+      }
       const beta = !!betaPath && settings.bool(featureKey('betaUpdates'));
       try {
         if (name.endsWith('.yml')) {
@@ -2061,7 +2096,7 @@ export function createApp(cfg: Config) {
       const seen = req as SeenRequest;
       requests.add({
         at: Date.now(), method: req.method ?? '', path: path.slice(0, 200), route: routeOf(path), status: res.statusCode,
-        ms: Math.round(performance.now() - started), user: seen.slashUser ?? '', ip: maskIp(clientIp(req)), ...clientOf(req), error: seen.slashError ?? '',
+        ms: Math.round(performance.now() - started), user: seen.slashUser ?? '', ip: maskIp(clientAddress(req)), ...clientOf(req), error: seen.slashError ?? '',
       });
     });
     // an error outside a route's own handling answers 500 instead of taking the whole server down
@@ -2077,10 +2112,22 @@ export function createApp(cfg: Config) {
   // two WebSocket endpoints on one server: each upgrade goes to its own
   const wss = new WebSocketServer({ noServer: true, maxPayload: 8192 });
   const lanWss = new WebSocketServer({ noServer: true, maxPayload: 1 << 20 });
+  /** New live connections per address: a launcher refused here simply tries again a little later. */
+  const limitSocketConnects = limiter('security.socketConnectsPerMinute');
   server.on('upgrade', (req, socket, head) => {
     const at = new URL(req.url ?? '/', 'http://x').pathname;
     const to = at === '/v1/ws' ? wss : at === '/v1/lan' ? lanWss : undefined;
     if (!to) return socket.destroy();
+    // the LAN relay has its own limits (lan.joinsPerMinute, lan.tunnels), checked once it knows the account
+    if (to === wss) {
+      try {
+        limitSocketConnects(`ws:${clientIp(req)}`);
+      } catch {
+        const body = JSON.stringify({ error: 'rate_limited' });
+        socket.end(`HTTP/1.1 429 Too Many Requests\r\nContent-Type: application/json\r\nRetry-After: 60\r\nContent-Length: ${body.length}\r\nConnection: close\r\n\r\n${body}`);
+        return;
+      }
+    }
     to.handleUpgrade(req, socket, head, (ws) => to.emit('connection', ws, req));
   });
   const alive = new WeakSet<WebSocket>();
@@ -2137,7 +2184,15 @@ export function createApp(cfg: Config) {
         sessionOf.set(ws, hashToken(msg.token as string));
         const first = !sockets.get(me)?.size;
         if (!sockets.has(me)) sockets.set(me, new Set());
-        sockets.get(me)!.add(ws);
+        const mine = sockets.get(me)!;
+        // past the account's number of connections the oldest goes: usually one left half-open by a computer
+        // put to sleep (the heartbeat would drop it within a minute); the launcher and the phone app stay
+        for (const old of mine) {
+          if (mine.size < settings.num('security.socketsPerUser')) break;
+          mine.delete(old);
+          old.close(4008, 'too many connections');
+        }
+        mine.add(ws);
         if (msg.client === 'app') appSockets.add(ws);
         const presence = cleanPresence(msg.presence);
         if (presence) {
@@ -2159,7 +2214,7 @@ export function createApp(cfg: Config) {
         return;
       }
       // a connection that floods (presence or typing many times a second) is only ignored, friends are not spammed
-      if (!socketLimit(ws)) return;
+      if (!socketLimit(me)) return;
       if (msg.type === 'presence') {
         const presence = cleanPresence(msg.presence);
         if (!presence) return;
@@ -2217,6 +2272,13 @@ export function createApp(cfg: Config) {
     return n;
   };
   const lanDailyBytes = () => settings.num('lan.dailyMb') * 1024 * 1024;
+  /** Joins still waiting for the host's answer count towards both sides' tunnels, so they cannot pile up. */
+  const pendingOf = (user: string) => {
+    let n = 0;
+    for (const p of pendingLan.values()) if (p.joinerId === user || p.host === user) n++;
+    return n;
+  };
+  const limitLanJoins = limiter('lan.joinsPerMinute');
   function pair(a: WebSocket, b: WebSocket, users: string[]) {
     for (const u of users) tunnelCount(u, 1);
     let open = true;
@@ -2275,8 +2337,13 @@ export function createApp(cfg: Config) {
       if (msg.type === 'join' && typeof msg.host === 'string') {
         const host = msg.host;
         if (!db.areFriends(me, host) || !lanHosts.has(host)) return ws.close(4003, 'not_open');
+        try {
+          limitLanJoins(me);
+        } catch {
+          return ws.close(4029, 'too_many');
+        }
         const most = settings.num('lan.tunnels');
-        if ((tunnels.get(me) ?? 0) >= most || (tunnels.get(host) ?? 0) >= most) return ws.close(4029, 'too_many');
+        if ((tunnels.get(me) ?? 0) + pendingOf(me) >= most || (tunnels.get(host) ?? 0) + pendingOf(host) >= most) return ws.close(4029, 'too_many');
         if (lanUsed(me) >= lanDailyBytes() || lanUsed(host) >= lanDailyBytes()) return ws.close(4029, 'daily_limit');
         const id = randomBytes(12).toString('base64url');
         pendingLan.set(id, { joiner: ws, joinerId: me, host, timer: setTimeout(() => {

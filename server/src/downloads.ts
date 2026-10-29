@@ -138,7 +138,20 @@ export function compareBeta(a: string | undefined, b: string | undefined): numbe
 }
 
 const CACHE_MS = 5 * 60_000;
+/** A version GitHub does not have is asked again sooner: it may be a release being published right now. */
+const MISSING_MS = 60_000;
+/** GitHub's signed links last about five minutes: one is handed out again for a minute. */
+const SIGNED_MS = 60_000;
+/** Versions (and small files, and signed links) kept at most: any version can be typed into the address. */
+const MAX_KEPT = 200;
 const PER_PAGE = 100;
+
+/** Keeps a map at most `max` long, dropping what went in first. */
+function keep<K, V>(map: Map<K, V>, key: K, value: V, max = MAX_KEPT) {
+  map.delete(key);
+  map.set(key, value);
+  while (map.size > max) map.delete(map.keys().next().value as K);
+}
 
 export function createDownloads(opts: { repo: string; token?: string; fetchImpl: typeof fetch }) {
   let cached: { at: number; assets: Asset[]; news: ReleaseNews } | undefined;
@@ -178,12 +191,16 @@ export function createDownloads(opts: { repo: string; token?: string; fetchImpl:
     return asset && signed(asset);
   }
 
+  const signedLinks = new Map<string, { at: number; link: string }>();
   async function signed(asset: Asset): Promise<string> {
     if (!opts.token) return asset.browser_download_url;
+    const hit = signedLinks.get(asset.url);
+    if (hit && Date.now() - hit.at < SIGNED_MS) return hit.link;
     // a private repository: the API answers with a redirect to a signed link, valid for a few minutes
     const res = await opts.fetchImpl(asset.url, { headers: headers('application/octet-stream'), redirect: 'manual' });
     const location = res.headers.get('location');
     if (!location) throw new Error(`GitHub ${res.status}`);
+    keep(signedLinks, asset.url, { at: Date.now(), link: location });
     return location;
   }
 
@@ -218,7 +235,7 @@ export function createDownloads(opts: { repo: string; token?: string; fetchImpl:
     const res = await opts.fetchImpl(url, { headers: { 'User-Agent': 'SlashClient-server' } });
     if (!res.ok) throw new Error(`GitHub ${res.status}`);
     const text = await res.text();
-    texts.set(key, { at: Date.now(), text });
+    keep(texts, key, { at: Date.now(), text });
     return text;
   }
   /** A small text file of the latest release (latest.yml…). */
@@ -263,18 +280,30 @@ export function createDownloads(opts: { repo: string; token?: string; fetchImpl:
   }
 
   const tagged = new Map<string, { at: number; release?: GhRelease }>();
+  /** Versions being asked of GitHub right now: many visitors at once wait for one answer. */
+  const asking = new Map<string, Promise<GhRelease | undefined>>();
   /** One published release by its version (undefined: there is none, or it is a draft or a prerelease). */
   async function release(version: string): Promise<GhRelease | undefined> {
     const v = parseVersion(version)?.join('.');
     if (!v) return undefined;
     const hit = tagged.get(v);
-    if (hit && Date.now() - hit.at < CACHE_MS) return hit.release;
-    const res = await opts.fetchImpl(`https://api.github.com/repos/${opts.repo}/releases/tags/v${v}`, { headers: headers('application/vnd.github+json') });
-    if (!res.ok && res.status !== 404) throw new Error(`GitHub ${res.status}`);
-    const r = res.ok ? ((await res.json()) as GhRelease) : undefined;
-    const ok = r && !r.draft && !r.prerelease ? r : undefined;
-    tagged.set(v, { at: Date.now(), release: ok });
-    return ok;
+    if (hit && Date.now() - hit.at < (hit.release ? CACHE_MS : MISSING_MS)) return hit.release;
+    const pending = asking.get(v);
+    if (pending) return pending;
+    const ask = (async () => {
+      const res = await opts.fetchImpl(`https://api.github.com/repos/${opts.repo}/releases/tags/v${v}`, { headers: headers('application/vnd.github+json') });
+      if (!res.ok && res.status !== 404) throw new Error(`GitHub ${res.status}`);
+      const r = res.ok ? ((await res.json()) as GhRelease) : undefined;
+      const ok = r && !r.draft && !r.prerelease ? r : undefined;
+      keep(tagged, v, { at: Date.now(), release: ok });
+      return ok;
+    })();
+    asking.set(v, ask);
+    try {
+      return await ask;
+    } finally {
+      asking.delete(v);
+    }
   }
 
   /** One release's notes. */
@@ -317,7 +346,7 @@ type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promis
  * GET /v1/changelog?limit=20&before=<version>&lang=en: the releases' notes, newest first, a page at
  * a time (`more`: older ones follow). GET /v1/changelog/<version>: one release.
  */
-export function changelogRoutes(downloads: () => Downloads, fail: (status: number, code: string) => never): [string, RegExp, Handler][] {
+export function changelogRoutes(downloads: () => Downloads, fail: (status: number, code: string) => never, limitLookups?: (req: http.IncomingMessage) => void): [string, RegExp, Handler][] {
   const langOf = (url: URL): 'pl' | 'en' => (url.searchParams.get('lang') === 'en' ? 'en' : 'pl');
   const unavailable = (err: unknown) => {
     console.error('zmiany:', (err as Error).message);
@@ -330,7 +359,9 @@ export function changelogRoutes(downloads: () => Downloads, fail: (status: numbe
       if (before !== undefined && !parseVersion(before)) fail(400, 'bad_version');
       return downloads().changelog({ limit, before, lang: langOf(url) }).catch(unavailable);
     }],
-    ['GET', /^\/v1\/changelog\/v?(\d{1,4}\.\d{1,4}\.\d{1,4})$/, async (_req, [version], url) => {
+    ['GET', /^\/v1\/changelog\/v?(\d{1,4}\.\d{1,4}\.\d{1,4})$/, async (req, [version], url) => {
+      // any version can be typed in, and one not kept yet is asked of GitHub
+      limitLookups?.(req);
       const entry = await downloads().changelogOf(version, langOf(url)).catch(unavailable);
       return entry ?? fail(404, 'not_found');
     }],

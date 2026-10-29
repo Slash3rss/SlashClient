@@ -50,6 +50,7 @@ export const CHAT_KEY_SETTING_DEFS: Omit<SettingDef, 'category'>[] = [
   { key: 'chatKeys.wrapsPerDevice', label: 'Kluczy historii na urządzenie', labelEn: 'History keys per device', description: 'Najwięcej przepakowanych kluczy wiadomości zapisanych dla jednego urządzenia (lub kopii z hasłem).', type: 'int', default: CHAT_KEY_LIMITS.wrapsPerDevice, min: 1000, max: 10_000_000 },
   { key: 'chatKeys.handoverDays', label: 'Pytanie o nowe urządzenie', labelEn: 'New device prompt', description: 'Przez tyle dni inne launchery gracza pytają, czy udostępnić historię czatu nowemu urządzeniu.', type: 'duration', default: CHAT_KEY_LIMITS.handoverDays, min: 1, max: 365, unit: 'dni' },
   { key: 'chatKeys.requestsPerMinute', label: 'Przepakowywanie historii na minutę', labelEn: 'History re-wrapping per minute', description: 'Zapytania o historię i przesłania kluczy, na konto.', type: 'int', default: 120, min: 1, max: 10_000, unit: '/min' },
+  { key: 'chatKeys.devicesPerMinute', label: 'Zapisy klucza urządzenia na minutę', labelEn: 'Device key saves per minute', description: 'Launcher zapisuje klucz swojego urządzenia po zalogowaniu, a znajomi dostają wtedy powiadomienie; na konto.', type: 'int', default: 10, min: 1, max: 1000, unit: '/min' },
   { key: 'chatKeys.backupChangesPerMinute', label: 'Zmiany kopii klucza na minutę', labelEn: 'Key backup changes per minute', description: 'Ustawienie, zmiana hasła i usunięcie kopii klucza czatu, na konto.', type: 'int', default: 6, min: 1, max: 1000, unit: '/min' },
 ];
 
