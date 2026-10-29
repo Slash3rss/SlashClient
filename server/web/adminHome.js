@@ -3,7 +3,7 @@
 // links, icons, pictures, and lists (features, FAQ, modules, blocks) to add, remove and reorder.
 // A live preview shows the page as it would be; changes are saved as a draft or published, every
 // version stays in the history to restore, and each section can go back to its defaults.
-import { $, ApiError, api, confirmModal, el, errorText, fmtDate, guard, icon, toast, token } from './common.js';
+import { $, ApiError, api, confirmModal, el, errorText, fmtDate, guard, icon, toast, token, watchUnsaved } from './common.js';
 
 /** The question before leaving the editor's changes behind. */
 const DISCARD = { title: 'Porzucić niezapisane zmiany?', text: 'Zmiany z edytora przepadną.', ok: 'Porzuć', danger: true };
@@ -426,4 +426,6 @@ async function editor() {
   renderHistory();
   void preview();
   window.addEventListener('beforeunload', (e) => { if (document.contains(frame) && dirty()) e.preventDefault(); });
+  // and before another tab of the panel replaces the editor
+  watchUnsaved(frame, dirty);
 }

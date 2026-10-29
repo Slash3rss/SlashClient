@@ -3,7 +3,7 @@
 // the platforms' consoles, every linked channel with its live state, unlinking one by force and
 // asking the platforms right now. Intervals and limits are in Ustawienia → Streamy, the switch in
 // Ustawienia → Funkcje. Every change goes to the log (Dziennik).
-import { $, api, confirmModal, el, errorText, fmtDate, guard, icon, toast } from './common.js';
+import { $, api, confirmModal, copyText, el, errorText, fmtDate, guard, icon, toast } from './common.js';
 import { platformIcon } from './profileStream.js';
 
 const ERRORS = {
@@ -35,7 +35,7 @@ export async function streamsPage() {
 }
 
 function draw() {
-  const copy = (text) => el('button', { type: 'button', class: 'icon-btn', title: 'Kopiuj', onclick: async () => { await navigator.clipboard.writeText(text).catch(() => {}); toast('Skopiowano.'); } }, icon('fa-regular fa-copy'));
+  const copy = (text) => el('button', { type: 'button', class: 'icon-btn', title: 'Kopiuj', ariaLabel: 'Kopiuj', onclick: () => copyText(text, 'Skopiowano.') }, icon('fa-regular fa-copy'));
   const address = (label, value) => el('div', { class: 'st-field' }, el('span', { textContent: label }), el('div', { class: 'row' }, el('code', { class: 'grow sup-code', textContent: value }), copy(value)));
   const reconcile = el('button', { type: 'button', onclick: async () => {
     reconcile.disabled = true;

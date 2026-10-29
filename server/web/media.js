@@ -1,7 +1,7 @@
 // A shared screenshot or clip (/media/<id>). A picture is shown as it is; a clip is the game's
 // Motion-JPEG AVI, which browsers cannot play in <video>, so its frames (each a whole JPEG) are
 // read out of the file here and drawn one after another on a canvas.
-import { $, api, confirmModal, el, errorText, fmtDate, icon, toast, token } from './common.js';
+import { $, api, confirmModal, copyText, el, errorText, fmtDate, icon, toast, token } from './common.js';
 
 const id = location.pathname.split('/')[2] ?? '';
 
@@ -149,8 +149,7 @@ async function load() {
 }
 
 $('#media-copy').addEventListener('click', async () => {
-  await navigator.clipboard.writeText(location.href.split('#')[0]).catch(() => {});
-  toast('Skopiowano link');
+  await copyText(location.href.split('#')[0], 'Skopiowano link');
 });
 $('#media-delete').addEventListener('click', async () => {
   if (!await confirmModal({ title: 'Usunąć ten link?', text: 'Nikt już go nie otworzy.', ok: 'Usuń', okIcon: 'fa-solid fa-trash', danger: true })) return;

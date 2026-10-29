@@ -1,6 +1,6 @@
 // The account page's "Profile privacy" card: who sees the public profile (/u/<handle>) and which
 // parts of it. The server enforces it (profiles.ts); this only edits the settings.
-import { api, el, guard, icon, toast } from './common.js';
+import { api, copyText, el, guard, icon, toast } from './common.js';
 
 const VISIBILITY = [
   ['public', 'Wszyscy', 'fa-solid fa-earth-europe', 'Każdy z linkiem, także bez logowania.'],
@@ -62,7 +62,7 @@ export async function privacyCard() {
       el('div', { class: 'row privacy-link' },
         el('input', { type: 'text', value: link, readOnly: true, class: 'grow', onfocus: (e) => e.target.select() }),
         el('a', { class: 'btn', href: state.url }, icon('fa-solid fa-id-card'), ' Zobacz swój profil'),
-        el('button', { type: 'button', onclick: async () => { await navigator.clipboard.writeText(link).catch(() => {}); toast('Skopiowano link do profilu.'); } }, icon('fa-regular fa-copy'), ' Kopiuj link')),
+        el('button', { type: 'button', onclick: () => copyText(link, 'Skopiowano link do profilu.') }, icon('fa-regular fa-copy'), ' Kopiuj link')),
       el('h4', { textContent: 'Kto widzi profil' }), options,
       el('h4', { textContent: 'Co jest na profilu' }), switches,
       el('label', { class: 'row small privacy-index' }, el('span', { class: 'switch' }, index, el('span')), 'Pozwól wyszukiwarkom (Google itp.) pokazywać mój profil'),

@@ -1,5 +1,5 @@
 // The admin panel: numbers, accounts (ban, sign out, role, cape, delete), cosmetics and the log.
-import { $, PROVIDERS, partnerBanner, uploadPicture, SLOTS, ago, api, avatarEl, capeEl, confirmModal, cosmeticEl, el, errorText, fmtDate, guard, icon, promptModal, signInDev, signInWith, signOut, toast, token, partnerIconControls } from './common.js';
+import { $, PROVIDERS, partnerBanner, uploadPicture, SLOTS, ago, api, avatarEl, capeEl, confirmModal, cosmeticEl, el, errorText, fmtDate, guard, hasUnsaved, icon, promptModal, signInDev, signInWith, signOut, toast, token, partnerIconControls } from './common.js';
 import { storagePage } from './adminStorage.js';
 import { shopSection, walletSection } from './adminSparks.js';
 import { achievementsPage, foreignHash, obtainLine } from './adminAchievements.js';
@@ -129,13 +129,25 @@ async function start() {
 
 // ---------- layout ----------
 
+/** Another tab: an editor with unsaved changes (home page, documents) asks first, and on "no" the panel stays. */
+async function go(next) {
+  if (next === tab) return;
+  if (hasUnsaved() && !await confirmModal({ title: 'Porzucić niezapisane zmiany?', text: 'Zmiany z edytora przepadną.', ok: 'Porzuć', danger: true })) {
+    history.replaceState(null, '', `#${tab}`);
+    return;
+  }
+  tab = next;
+  if (location.hash.slice(1).split(':')[0] !== next) location.hash = next;
+  layout();
+}
+
 function layout() {
   closeDrawer();
   const side = el('aside', { class: 'side' }, el('a', { class: 'brand', href: '/' }, el('img', { src: 'vendor/logo.png', alt: '' }), el('span', {}, 'Slash', el('b', { textContent: 'Admin' }))));
   for (const [group, tabs] of GROUPS) {
     side.append(el('small', { class: 'side-group', textContent: group }));
     for (const [id, name, cls] of tabs) {
-      side.append(el('button', { class: `tab${tab === id ? ' active' : ''}`, onclick: () => { tab = id; location.hash = id; layout(); } }, icon(cls), name));
+      side.append(el('button', { class: `tab${tab === id ? ' active' : ''}`, onclick: () => go(id) }, icon(cls), name));
     }
   }
   side.append(el('div', { class: 'me' }, avatarEl(me), el('div', { class: 'grow' }, el('b', { textContent: me.name }), el('small', { class: 'muted', textContent: ` @${me.handle}` })),
@@ -183,8 +195,8 @@ async function loadUsers() {
     el('td', {}, badges(u))));
   const pages = el('div', { class: 'pager' },
     `${users.offset + 1}–${Math.min(res.total, users.offset + users.limit)} z ${res.total}`,
-    el('button', { class: 'icon-btn', disabled: users.offset === 0, onclick: () => { users.offset = Math.max(0, users.offset - users.limit); loadUsers(); } }, icon('fa-solid fa-chevron-left')),
-    el('button', { class: 'icon-btn', disabled: users.offset + users.limit >= res.total, onclick: () => { users.offset += users.limit; loadUsers(); } }, icon('fa-solid fa-chevron-right')));
+    el('button', { class: 'icon-btn', title: 'Poprzednia strona', disabled: users.offset === 0, onclick: () => { users.offset = Math.max(0, users.offset - users.limit); loadUsers(); } }, icon('fa-solid fa-chevron-left')),
+    el('button', { class: 'icon-btn', title: 'Następna strona', disabled: users.offset + users.limit >= res.total, onclick: () => { users.offset += users.limit; loadUsers(); } }, icon('fa-solid fa-chevron-right')));
   box.replaceChildren(el('table', {}, el('thead', {}, el('tr', {}, el('th', { textContent: 'Gracz' }), el('th', { class: 'hide-sm', textContent: 'Logowanie' }), el('th', { textContent: 'Peleryna' }), el('th', { class: 'hide-sm', textContent: 'Ostatnio' }), el('th', { textContent: 'Status' }))), el('tbody', {}, ...rows)), pages);
 }
 
@@ -473,11 +485,22 @@ async function requestsPage() {
   $('#main').replaceChildren(head('Zapytania', el('span', { class: 'muted small', textContent: 'Na żywo z serwera, bez treści i tokenów. Po restarcie serwera lista zaczyna się od nowa.' })),
     el('div', { class: 'row req-bar' }, q, client, toggle(errors, 'Tylko błędy'), toggle(live, 'Odświeżaj co 5 s'), who), stats, routesBox, list);
 
+  let loads = 0;
+  let failing = false;
   async function load() {
     if (!document.body.contains(list)) return clearInterval(reqTimer);
     const p = new URLSearchParams({ q: reqState.q, client: reqState.client, user: reqState.user, errors: reqState.errors ? '1' : '' });
-    const res = await api('GET', `/v1/admin/requests?${p}`).catch((err) => { toast(errorText(err), true); return undefined; });
-    if (!res) return;
+    const mine = ++loads;
+    const res = await api('GET', `/v1/admin/requests?${p}`).catch((err) => {
+      // while the server does not answer, the list says so; the message pops up once, not every 5 s
+      if (mine === loads) list.replaceChildren(el('p', { class: 'muted', textContent: `Serwer nie odpowiada: ${errorText(err)}` }));
+      if (!failing) toast(errorText(err), true);
+      failing = true;
+      return undefined;
+    });
+    // an older answer that came late does not overwrite a newer one (typing in the search)
+    if (!res || mine !== loads) return;
+    failing = false;
     const s = res.summary;
     stats.replaceChildren(
       stat('fa-solid fa-gauge-high', 'Na minutę', s.lastMinute),
@@ -577,9 +600,6 @@ async function logPage() {
 
 addEventListener('hashchange', () => {
   const next = location.hash.slice(1).split(':')[0];
-  if (me?.admin && next && next !== tab && TABS.some(([id]) => id === next)) {
-    tab = next;
-    layout();
-  } else if (me?.admin && next === 'achievements' && tab === 'achievements' && foreignHash()) achievementsPage();
+  if (me?.admin && next && next !== tab && TABS.some(([id]) => id === next)) void go(next); else if (me?.admin && next === 'achievements' && tab === 'achievements' && foreignHash()) achievementsPage();
 });
 start().catch((err) => toast(errorText(err), true));

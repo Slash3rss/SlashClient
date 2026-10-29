@@ -64,6 +64,8 @@ export class Preview {
       if (this.viewer.animation) this.viewer.animation.paused = still();
     };
     addEventListener('slashclient-motion', applyMotion);
+    // the page is left without a reload (router.js): its WebGL context goes too, or the browser runs out of them
+    addEventListener('slashclient-leave', () => this.dispose(), { once: true });
     applyMotion();
     this.viewer.autoRotateSpeed = 0.6;
     this.viewer.controls.enableZoom = false;
@@ -112,6 +114,8 @@ export class Preview {
   }
 
   dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
     clearInterval(this.capeTimer);
     this.cosmetics.dispose();
     this.viewer.dispose();

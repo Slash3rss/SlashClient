@@ -226,9 +226,37 @@ export function el(tag, props = {}, ...children) {
     else if (v !== undefined && v !== null && v !== false) node[k] = v;
   }
   node.append(...children.filter((c) => c !== null && c !== undefined && c !== false));
+  // a button with only an icon in it: its title is what a screen reader says
+  if (tag === 'button' && node.title && !node.hasAttribute('aria-label') && !node.textContent.trim()) node.setAttribute('aria-label', node.title);
   return node;
 }
 export const icon = (name) => el('i', { class: name });
+/**
+ * Editors with changes not saved yet (the admin panel's home page and documents): `node` is the editor,
+ * `dirty` says whether it has such changes. The panel asks before another tab would drop them.
+ */
+const editors = new Set();
+export function watchUnsaved(node, dirty) {
+  editors.add({ node, dirty });
+}
+/**
+ * Copies a text and says "copied" only when it really was (the browser may refuse); when not, it shows
+ * the text itself, to copy by hand. `failed` is the start of that message (in the page's language).
+ */
+export async function copyText(text, done, failed = 'Nie udało się skopiować, skopiuj ręcznie:') {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(done);
+    return true;
+  } catch {
+    toast(`${failed} ${text}`, true);
+    return false;
+  }
+}
+export function hasUnsaved() {
+  for (const e of editors) if (!e.node.isConnected) editors.delete(e);
+  return [...editors].some((e) => e.dirty());
+}
 /**
  * A table row that opens something when clicked anywhere on it, or with Enter from the keyboard;
  * buttons, links and fields inside it keep doing only their own thing.

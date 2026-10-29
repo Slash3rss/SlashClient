@@ -50,8 +50,10 @@ document.addEventListener = (type, fn, opts) => {
   native.docAdd(type, fn, opts);
 };
 
-/** Stops what the page being left still had running. */
+/** Stops what the page being left still had running; 'slashclient-leave' on window lets the page let go of the rest. */
 function leave() {
+  // what cannot just be dropped (3D figures with their WebGL context) is told first
+  window.dispatchEvent(new Event('slashclient-leave'));
   page++;
   for (const id of intervals) native.clearInterval(id);
   intervals.clear();

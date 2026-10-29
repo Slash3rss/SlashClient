@@ -1,5 +1,5 @@
 // A shared log (/logi/<id>): numbered lines, errors and warnings coloured, search, a link to a line.
-import { $, api, el, errorText, fmtDate, toast, token } from './common.js';
+import { $, api, copyText, el, errorText, fmtDate, toast, token } from './common.js';
 
 const id = location.pathname.split('/')[2] ?? '';
 const CHUNK = 3000;
@@ -83,8 +83,7 @@ $('#log-search').addEventListener('input', () => {
 });
 $('#log-problems').addEventListener('change', () => { shown = CHUNK; render(); });
 $('#log-copy').addEventListener('click', async () => {
-  await navigator.clipboard.writeText(location.href.split('#')[0]).catch(() => {});
-  toast('Skopiowano link');
+  await copyText(location.href.split('#')[0], 'Skopiowano link');
 });
 window.addEventListener('hashchange', () => {
   document.querySelectorAll('.log-line.target').forEach((n) => n.classList.remove('target'));

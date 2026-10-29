@@ -245,8 +245,13 @@ async function thanks() {
   }
   // the webhook decides; this only waits for it (up to 2 minutes)
   for (let i = 0; i < 60; i++) {
-    const res = await api('GET', `/v1/support/payments/${id}`).catch(() => undefined);
-    if (!res) break;
+    const res = await api('GET', `/v1/support/payments/${id}`).catch((err) => err);
+    // a payment the server does not know (or not this account's) ends the wait; a network hiccup does not
+    if (res instanceof Error) {
+      if (res.status >= 400 && res.status < 500) break;
+      await new Promise((r) => setTimeout(r, 2000));
+      continue;
+    }
     if (res.granted) {
       const s = res.supporter;
       status.textContent = s && !s.past

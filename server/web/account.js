@@ -23,6 +23,27 @@ let previewWorn = {};
 /** Which render of the page the achievements card (loaded after it) belongs to. */
 let renders = 0;
 let scrolledToPrivacy = false;
+let scrolledToSupport = false;
+/**
+ * The cards beside the cosmetics (channels, support, privacy, achievements, notices, partner servers):
+ * loaded once and then kept, so picking a cosmetic or a tab does not ask the server for all of them again.
+ * Signing in, buying or a change on a card itself loads them anew.
+ */
+let side;
+function sideCards(reload) {
+  if (reload || side?.user !== me.id) {
+    side = {
+      user: me.id,
+      streams: streamsCard().catch(() => undefined),
+      support: supportCard().catch(() => undefined),
+      privacy: privacyCard().catch(() => undefined),
+      achievements: achievementsCard().catch(() => undefined),
+      legal: legalNotices().catch(() => []),
+      partners: partnersCard().catch(() => undefined),
+    };
+  }
+  return side;
+}
 
 async function figure(uuid, worn) {
   previewBox ??= el('div', { class: 'figure' });
@@ -95,7 +116,7 @@ async function login(fn) {
   toast(`Witaj, ${me?.name ?? user.name}!`);
 }
 
-function renderAccount() {
+function renderAccount(reload = false) {
   if (!me) return renderSignIn();
   const profile = el('div', { class: 'glass card profile-card' },
     el('div', { class: 'row' }, avatarEl(me, true),
@@ -202,23 +223,27 @@ function renderAccount() {
   // linked Twitch and Kick channels (accountStreams.js), when the server has them
   const streams = el('div', { class: 'streams-slot' });
   $('#account').replaceChildren(el('div', { class: 'account' }, el('div', { class: 'account-side' }, profile, privacy, streams, support), capes));
-  streamsCard().then((card) => card && streams.replaceWith(card)).catch(() => {});
-  supportCard().then((card) => {
-    if (!card) return;
+  // each card goes only into the render of the page it was loaded for (a newer one takes it over)
+  const render = ++renders;
+  const cards = sideCards(reload);
+  const into = (promise, put) => promise.then((card) => card && render === renders && put(card)).catch(() => {});
+  into(cards.streams, (card) => streams.replaceWith(card));
+  into(cards.support, (card) => {
     support.replaceWith(card);
-    if (location.hash === '#wsparcie') card.scrollIntoView({ block: 'start' });
+    if (location.hash === '#wsparcie' && !scrolledToSupport) {
+      scrolledToSupport = true;
+      card.scrollIntoView({ block: 'start' });
+    }
   });
-  privacyCard().then((card) => {
-    if (!card) return;
+  into(cards.privacy, (card) => {
     privacy.replaceWith(card);
     if (location.hash === '#prywatnosc' && !scrolledToPrivacy) {
       scrolledToPrivacy = true;
       card.scrollIntoView({ block: 'start' });
     }
   });
-  // the achievements and the sparks under it, once loaded (only into this render of the page)
-  const render = ++renders;
-  achievementsCard().then((card) => card && render === renders && $('#account .account')?.append(card)).catch(() => {});
+  // the achievements and the sparks under it, once loaded
+  into(cards.achievements, (card) => $('#account .account')?.append(card));
   // the kill and movement effects play on the figure only while their tab is open (they would distract)
   // the shield and the weapon are held only while their tabs are open
   const holding = slot === 'shield' || slot === 'weapon';
@@ -227,15 +252,16 @@ function renderAccount() {
     ...(slot === 'cape' || slot === 'wings' || slot === 'elytra' ? { back: '' } : {}),
     // on the prop's tab the figure walks with it, seen from the side
     walk: slot === 'prop' });
-  renderPartners();
+  into(cards.partners, (card) => $('#account').append(card));
   // "Zaktualizowaliśmy regulamin": important changes not seen yet, above everything else
-  legalNotices().then((cards) => render === renders && $('#account').prepend(...cards)).catch(() => {});
+  into(cards.legal, (list) => $('#account').prepend(...list));
 }
 
 /** A partner account's own servers: the background shown behind them in the game's server list. */
-async function renderPartners() {
+async function partnersCard() {
   const res = await api('GET', '/v1/me/partners').catch(() => undefined);
-  if (!res?.partners.length) return;
+  if (!res?.partners.length) return undefined;
+  const again = () => renderAccount(true);
   const section = el('div', { class: 'glass card partner-own' }, el('h3', { textContent: 'Twój serwer partnerski' }),
     el('p', { class: 'muted small', textContent: 'Tło widać za Twoim serwerem na liście serwerów w grze, u graczy z SlashClient. Najlepiej szeroki obrazek, np. 1200×120 (PNG lub JPG, do 3 MB).' }));
   for (const p of res.partners) {
@@ -243,21 +269,21 @@ async function renderPartners() {
     input.addEventListener('change', async () => {
       const file = input.files?.[0];
       input.value = '';
-      if (file && await guard(() => uploadPicture(`/v1/me/partners/${p.id}/background`, file))) { toast('Tło zapisane.'); renderAccount(); }
+      if (file && await guard(() => uploadPicture(`/v1/me/partners/${p.id}/background`, file))) { toast('Tło zapisane.'); again(); }
     });
     section.append(partnerBanner(p), el('div', { class: 'row' },
       el('label', { class: 'btn' }, icon('fa-solid fa-image'), p.background ? 'Zmień tło' : 'Wgraj tło', input),
-      p.background ? el('button', { onclick: async () => { if (await guard(() => api('DELETE', `/v1/me/partners/${p.id}/background`))) renderAccount(); } }, icon('fa-solid fa-eraser'), 'Usuń tło') : ''),
-      partnerIconControls(p, `/v1/me/partners/${p.id}/icon`, res.iconLimits, renderAccount));
+      p.background ? el('button', { onclick: async () => { if (await guard(() => api('DELETE', `/v1/me/partners/${p.id}/background`))) again(); } }, icon('fa-solid fa-eraser'), 'Usuń tło') : ''),
+      partnerIconControls(p, `/v1/me/partners/${p.id}/icon`, res.iconLimits, again));
   }
-  $('#account').append(section);
+  return section;
 }
 
 async function refresh() {
   me = token.get() ? await api('GET', '/v1/me').catch(() => undefined) : undefined;
   cosmetics = await api('GET', '/v1/cosmetics').catch(() => ({ capes: [] }));
   renderNav();
-  renderAccount();
+  renderAccount(true);
 }
 
 health = await api('GET', '/v1/health').catch(() => health);

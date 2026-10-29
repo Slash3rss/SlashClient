@@ -48,9 +48,12 @@ async function renderList() {
   const pager = el('div', { class: 'pager' });
   box.replaceChildren(el('div', { class: 'bug-bar' }, q, status, add), list, pager);
 
+  // answers can come back out of order (typing, then a status): only the newest one is shown
+  let loads = 0;
   async function load(p) {
+    const mine = ++loads;
     const res = await guard(() => api('GET', `/v1/bugs?${p}`));
-    if (!res) return;
+    if (!res || mine !== loads) return;
     list.replaceChildren(...res.bugs.map((b) => el('a', { class: 'glass bug-row', href: `/zgloszenia/${b.id}` },
       statusChip(b.status),
       el('div', { class: 'grow' }, el('h4', { textContent: b.title }),
