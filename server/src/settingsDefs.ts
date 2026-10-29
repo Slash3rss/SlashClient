@@ -25,7 +25,7 @@ import type { SettingCategory, SettingDef } from './settings.ts';
 import { DEFAULT_MIN_FREE } from './storage.ts';
 import { STREAM_SETTING_DEFS } from './streams/settings.ts';
 import { SUGGESTION_SETTING_DEFS } from './suggestions.ts';
-import { LOG_DAYS, MAX_LOG } from './tracker.ts';
+import { LOG_DAYS, LOGS_PER_DAY, LOGS_PER_DAY_EACH, MAX_ANONYMOUS_LOG, MAX_LOG } from './tracker.ts';
 
 /**
  * Every setting the admin panel can change (settings.ts). The defaults are the constants the code
@@ -187,9 +187,14 @@ export const SETTING_DEFS: SettingDef[] = [
   ]),
 
   ...group('security', [
+    // the LAN relay (/v1/lan): generous enough for an ordinary game with friends
+    { key: 'lan.tunnels', label: 'Połączenia LAN przez serwer naraz', labelEn: 'LAN connections through the server at once', description: 'Ile połączeń „Graj ze znajomymi” (przekaźnik LAN) może mieć jedno konto naraz, jako host albo dołączający.', type: 'int', default: 16, min: 1, max: 1000 },
+    { key: 'lan.tunnelKbps', label: 'Prędkość jednego połączenia LAN', labelEn: 'Speed of one LAN connection', description: 'Najwyżej tyle KB na sekundę w każdą stronę przez przekaźnik LAN (gra po prostu czeka, nic nie ginie).', type: 'int', default: 4096, min: 64, max: 1_000_000, unit: 'KB/s' },
+    { key: 'lan.dailyMb', label: 'Przekaźnik LAN na dobę', labelEn: 'LAN relay a day', description: 'Ile MB jedno konto może przesłać przez przekaźnik LAN w ciągu doby; potem połączenie się kończy do następnej doby.', type: 'int', default: 20_480, min: 1, max: 10_000_000, unit: 'MB' },
     rate('security.loginsPerMinute', 'Logowania na minutę', 'Sign-ins per minute', 10, 'Na adres IP.', 1000),
     { key: 'security.sessionIdleDays', label: 'Wylogowanie po bezczynności', labelEn: 'Sign-out after idle', description: 'Sesja nieużywana tyle dni wygasa.', type: 'duration', default: 90, min: 1, max: 3650, unit: 'dni', risky: true },
     rate('security.gamePerMinute', 'Zapytania gry na minutę', 'Game requests per minute', 120, 'Logo SlashClient w grze (heartbeat, lookup, link), na adres IP (kilka gier z jednego domu dzieli limit).'),
+    { key: 'security.gamePlayersPerAddress', label: 'Gracze z logo SlashClient z jednego adresu', labelEn: 'Players with the SlashClient logo from one address', description: 'Gra zgłasza się bez konta, więc jeden adres IP może naraz oznaczyć tylu graczy jako grających z SlashClientem (kilka osób w domu).', type: 'int', default: 10, min: 1, max: 10_000 },
     rate('security.emotesPerMinute', 'Emotki na minutę', 'Emotes per minute', 20, 'Na konto.'),
     { key: 'security.sprayGapSeconds', label: 'Odstęp między sprayami', labelEn: 'Gap between sprays', description: 'Najkrótszy odstęp między sprayami jednego konta.', type: 'duration', default: 3, min: 0, max: 3600, unit: 's' },
     rate('security.spraysPerMinute', 'Spraye na minutę', 'Sprays per minute', 20, 'Na konto.'),
@@ -205,6 +210,9 @@ export const SETTING_DEFS: SettingDef[] = [
     { key: 'storage.minFreeMb', label: 'Wolne miejsce na dysku serwera', labelEn: 'Free space kept on the server\'s disk', description: 'Poniżej tego dysk serwera nie przyjmuje nowych plików (idą do innych magazynów).', type: 'int', default: DEFAULT_MIN_FREE / MB, min: 0, max: 10_000_000, unit: 'MB', env: 'STORAGE_MIN_FREE_MB' },
     { key: 'logs.days', label: 'Przechowywanie logów (/logi)', labelEn: 'Logs kept (/logi)', description: 'Ile dni działa link do logu udostępnionego z launchera.', type: 'duration', default: LOG_DAYS, min: 1, max: 3650, unit: 'dni' },
     bytes('logs.maxBytes', 'Największy log', 'Largest log', MAX_LOG, 'Log wysyłany z launchera.', 64 * 1024, 64 * MB),
+    bytes('logs.maxAnonymousBytes', 'Największy log bez konta', 'Largest log without an account', MAX_ANONYMOUS_LOG, 'Log od kogoś, kto nie jest zalogowany (nie większy niż „Największy log”).', 64 * 1024, 64 * MB),
+    { key: 'logs.dailyMb', label: 'Logi na dobę (razem)', labelEn: 'Logs a day (all together)', description: 'Ile MB logów serwer przyjmuje w ciągu doby od wszystkich graczy razem; potem odmawia do następnej doby.', type: 'int', default: LOGS_PER_DAY / MB, min: 1, max: 1_000_000, unit: 'MB' },
+    { key: 'logs.dailyMbEach', label: 'Logi na dobę (jedno konto lub adres)', labelEn: 'Logs a day (one account or address)', description: 'Ile MB logów przyjmuje się w ciągu doby od jednego konta, a bez konta od jednego adresu IP.', type: 'int', default: LOGS_PER_DAY_EACH / MB, min: 1, max: 1_000_000, unit: 'MB' },
   ]),
 
   ...group('moderation', [

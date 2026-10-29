@@ -201,6 +201,11 @@ describe('sharing screenshots and clips', () => {
     const html = await (await fetch(`${base}/media/${up.body.media.id}`)).text();
     assert.ok(!html.includes('<script>x'));
     assert.match(html, /&#34;&#62;&#60;script&#62;/);
+    // "$&" and the like in a title stay as written (not read as a replacement pattern)
+    const dollars = await call('POST', `/v1/media?title=${encodeURIComponent("Kasa $& $'")}`, token, png(4, 4), 'image/png');
+    const page = await (await fetch(`${base}/media/${dollars.body.media.id}`)).text();
+    assert.ok(page.includes('Kasa $&#38; $&#39;'), page);
+    assert.ok(!page.includes('<!--preview-->'));
   });
 
   it('refuses what is not a picture or clip, and too big files', async () => {

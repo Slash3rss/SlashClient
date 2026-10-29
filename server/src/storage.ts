@@ -42,7 +42,7 @@ export interface Backend {
 }
 
 export type DiskSpace = (dir: string) => Promise<{ total: number; free: number }>;
-const realDiskSpace: DiskSpace = async (dir) => {
+export const realDiskSpace: DiskSpace = async (dir) => {
   const s = await statfs(dir);
   return { total: s.blocks * s.bsize, free: s.bavail * s.bsize };
 };

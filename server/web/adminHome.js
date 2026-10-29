@@ -73,7 +73,9 @@ async function editor() {
   };
 
   // ---- the preview: the whole page as the server would make it, scaled into the pane ----
-  const frame = el('iframe', { class: 'hm-frame', title: 'Podgląd strony głównej' });
+  // sandboxed without scripts: the editor's content cannot run anything with the admin's session; same origin
+  // only so the preview keeps its scroll position (nothing in it can use that without scripts)
+  const frame = el('iframe', { class: 'hm-frame', title: 'Podgląd strony głównej', sandbox: 'allow-same-origin' });
   const frameBox = el('div', { class: 'hm-frame-box' }, frame);
   const previewNote = el('span', { class: 'muted small' });
   const fit = () => {

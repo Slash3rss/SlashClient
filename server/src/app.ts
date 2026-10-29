@@ -30,7 +30,7 @@ import { createChallenges } from './challenges.ts';
 import { Wallet, economyRoutes } from './economy.ts';
 import { createGroups } from './groups.ts';
 import { createClans } from './clans.ts';
-import { Storage, secretBox, type DiskSpace } from './storage.ts';
+import { Storage, realDiskSpace, secretBox, type DiskSpace } from './storage.ts';
 import { storageAdminRoutes } from './storageAdmin.ts';
 import { muteRoutes } from './mutes.ts';
 import { chatImageRoutes, type ImageLimits } from './chatImages.ts';
@@ -315,15 +315,21 @@ export function createApp(cfg: Config) {
   // kept in the database too, so the admin panel's list survives a restart
   const requests = new RequestLog(db.sql, () => settings.num('storage.requestsKept'));
   const clientIp = (req: http.IncomingMessage): string => {
-    const forwarded = cfg.trustProxy ? String(req.headers['x-forwarded-for'] ?? '').split(',').pop()?.trim() : '';
     // a request cut short (a body over the limit) has no socket left by the time it is logged
-    return forwarded || req.socket?.remoteAddress || '';
+    const direct = req.socket?.remoteAddress || '';
+    // only the proxy in front (Caddy, on this machine) says who it is passing on: someone reaching the
+    // port straight from outside could write any address there and dodge every per-address limit
+    const viaProxy = direct === '127.0.0.1' || direct === '::1' || direct === '::ffff:127.0.0.1';
+    const forwarded = cfg.trustProxy && viaProxy ? String(req.headers['x-forwarded-for'] ?? '').split(',').pop()?.trim() : '';
+    return forwarded || direct;
   };
   /**
    * Minecraft players in a game with SlashClient right now (uuid → last report), for the
    * logo next to their name. Kept in memory: the mod reports again every few minutes.
    */
   const inGame = new Map<string, number>();
+  /** Address → the uuids it reported in game lately (/v1/mc/heartbeat), so one address cannot speak for crowds. */
+  const gameReporters = new Map<string, Map<string, number>>();
   /** Minecraft uuid (lower case) → the SlashClient account playing as it, from the launcher. */
   /** uuid in game → the SlashClient account and which of its Minecraft accounts (no dashes) plays. */
   const linked = new Map<string, { user: string; at: number; character?: string }>();
@@ -636,7 +642,9 @@ export function createApp(cfg: Config) {
   const limitReports = limiter('security.reportsPerMinute');
   const tracker = trackerRoutes({
     db, authed, isAdmin, body, clientIp, limit: limitReports, dir: path.join(path.dirname(cfg.dbFile), 'logs'),
-    logDays: () => settings.num('logs.days'), maxLog: () => settings.num('logs.maxBytes'),
+    logDays: () => settings.num('logs.days'), maxLog: () => settings.num('logs.maxBytes'), maxAnonymousLog: () => settings.num('logs.maxAnonymousBytes'),
+    dailyBytes: () => settings.num('logs.dailyMb') * 1024 * 1024, dailyBytesEach: () => settings.num('logs.dailyMbEach') * 1024 * 1024,
+    diskFree: async (dir) => (await (cfg.storage?.diskSpace ?? realDiskSpace)(dir)).free, minFreeBytes: () => settings.num('storage.minFreeMb') * 1024 * 1024,
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -1257,10 +1265,20 @@ export function createApp(cfg: Config) {
 
     // -- who plays with SlashClient (the logo on the tab list and above heads) --
     ['POST', /^\/v1\/mc\/heartbeat$/, async (req) => {
-      limitGame(clientIp(req));
+      const ip = clientIp(req);
+      limitGame(ip);
       const { uuid } = await body(req);
       if (typeof uuid !== 'string' || !UUID.test(uuid)) throw new HttpError(400, 'bad_request');
-      inGame.set(uuid.toLowerCase(), Date.now());
+      // without an account (mods of every version send just the uuid, and players need not sign in), so one
+      // address may speak for a few players at a time (a home), not mark crowds as SlashClient players
+      const key = uuid.toLowerCase();
+      const now = Date.now();
+      const mine = gameReporters.get(ip) ?? new Map<string, number>();
+      for (const [u, at] of mine) if (now - at > IN_GAME_TTL_MS) mine.delete(u);
+      if (!mine.has(key) && mine.size >= settings.num('security.gamePlayersPerAddress')) throw new HttpError(429, 'rate_limited');
+      mine.set(key, now);
+      gameReporters.set(ip, mine);
+      inGame.set(key, now);
       return { ok: true, ttl: IN_GAME_TTL_MS };
     }],
     ['POST', /^\/v1\/mc\/lookup$/, async (req) => {
@@ -1649,7 +1667,7 @@ export function createApp(cfg: Config) {
         res.writeHead(503, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'feature_disabled', feature }));
       } else {
-        res.writeHead(503, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.writeHead(503, ERROR_PAGE_HEADERS);
         res.end(disabledPage(siteLang(req, url.pathname)));
       }
       req.resume();
@@ -1659,7 +1677,7 @@ export function createApp(cfg: Config) {
     // a page the admin hid with its link in the home page's editor: as if it did not exist
     if ((req.method === 'GET' || req.method === 'HEAD') && !url.pathname.startsWith('/v1/') && home.isHidden(url.pathname)) {
       (req as SeenRequest).slashError = 'hidden';
-      res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.writeHead(404, ERROR_PAGE_HEADERS);
       res.end(notFoundPage(siteLang(req, url.pathname)));
       req.resume();
       return;
@@ -1932,7 +1950,7 @@ export function createApp(cfg: Config) {
     if (cfg.webDir && req.method === 'GET' && !url.pathname.startsWith('/v1/') && await serveWeb(cfg.webDir, url.pathname, res, req.headers['if-modified-since'])) return;
     // a browser asking for a page that is not there gets the site's own page, the API its JSON
     if (wantsPage(req, url.pathname)) {
-      res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.writeHead(404, ERROR_PAGE_HEADERS);
       res.end(notFoundPage(siteLang(req, url.pathname)));
       return;
     }
@@ -2094,28 +2112,57 @@ export function createApp(cfg: Config) {
 
   const pendingLan = new Map<string, { joiner: WebSocket; joinerId: string; host: string; timer: ReturnType<typeof setTimeout> }>();
   const tunnels = new Map<string, number>();
-  const LAN_TUNNELS = 16;
   const tunnelCount = (user: string, by: number) => {
     const n = (tunnels.get(user) ?? 0) + by;
     if (n > 0) tunnels.set(user, n);
     else tunnels.delete(user);
   };
+  // bytes carried today per account (both sides of a tunnel count them): the relay is the server's own
+  // connection, so one account cannot use it up for everyone; a new day starts afresh
+  let lanDay = { at: 0, bytes: new Map<string, number>() };
+  const lanUsed = (user: string, add = 0) => {
+    const d = Math.floor(Date.now() / 86_400_000);
+    if (lanDay.at !== d) lanDay = { at: d, bytes: new Map() };
+    const n = (lanDay.bytes.get(user) ?? 0) + add;
+    if (add) lanDay.bytes.set(user, n);
+    return n;
+  };
+  const lanDailyBytes = () => settings.num('lan.dailyMb') * 1024 * 1024;
   function pair(a: WebSocket, b: WebSocket, users: string[]) {
     for (const u of users) tunnelCount(u, 1);
     let open = true;
-    const end = () => {
+    const end = (code?: number, reason?: string) => {
       if (!open) return;
       open = false;
       for (const u of users) tunnelCount(u, -1);
-      a.close();
-      b.close();
+      a.close(code, reason);
+      b.close(code, reason);
     };
     for (const [from, to] of [[a, b], [b, a]] as const) {
+      // a speed limit each way: past it the sender is read more slowly (Minecraft just waits), nothing is lost
+      let tokens = settings.num('lan.tunnelKbps') * 1024;
+      let at = Date.now();
+      let paused = false;
       from.on('message', (data, binary) => {
-        if (binary && to.readyState === to.OPEN) to.send(data, { binary: true });
+        if (!binary || to.readyState !== to.OPEN) return;
+        const size = Buffer.isBuffer(data) ? data.length : Array.isArray(data) ? data.reduce((n, x) => n + x.length, 0) : (data as ArrayBuffer).byteLength;
+        to.send(data, { binary: true });
+        if (users.some((u) => lanUsed(u, size) > lanDailyBytes())) return end(4029, 'daily_limit');
+        const rate = settings.num('lan.tunnelKbps') * 1024;
+        const now = Date.now();
+        tokens = Math.min(rate, tokens + ((now - at) / 1000) * rate) - size;
+        at = now;
+        if (tokens < 0 && !paused) {
+          paused = true;
+          from.pause();
+          setTimeout(() => {
+            paused = false;
+            if (from.readyState === from.OPEN) from.resume();
+          }, Math.min(5000, Math.ceil((-tokens / rate) * 1000)));
+        }
       });
-      from.on('close', end);
-      from.on('error', end);
+      from.on('close', () => end());
+      from.on('error', () => end());
     }
     a.send(JSON.stringify({ type: 'ok' }));
     b.send(JSON.stringify({ type: 'ok' }));
@@ -2139,7 +2186,9 @@ export function createApp(cfg: Config) {
       if (msg.type === 'join' && typeof msg.host === 'string') {
         const host = msg.host;
         if (!db.areFriends(me, host) || !lanHosts.has(host)) return ws.close(4003, 'not_open');
-        if ((tunnels.get(me) ?? 0) >= LAN_TUNNELS || (tunnels.get(host) ?? 0) >= LAN_TUNNELS) return ws.close(4029, 'too_many');
+        const most = settings.num('lan.tunnels');
+        if ((tunnels.get(me) ?? 0) >= most || (tunnels.get(host) ?? 0) >= most) return ws.close(4029, 'too_many');
+        if (lanUsed(me) >= lanDailyBytes() || lanUsed(host) >= lanDailyBytes()) return ws.close(4029, 'daily_limit');
         const id = randomBytes(12).toString('base64url');
         pendingLan.set(id, { joiner: ws, joinerId: me, host, timer: setTimeout(() => {
           pendingLan.delete(id);
@@ -2171,6 +2220,7 @@ export function createApp(cfg: Config) {
     }
     for (const [state, login] of logins) if (Date.now() - login.at > LOGIN_TTL_MS) logins.delete(state);
     for (const [uuid, at] of inGame) if (Date.now() - at > IN_GAME_TTL_MS) inGame.delete(uuid);
+    for (const [ip, seen] of gameReporters) if ([...seen.values()].every((at) => Date.now() - at > IN_GAME_TTL_MS)) gameReporters.delete(ip);
     for (const [uuid, l] of linked) if (Date.now() - l.at > IN_GAME_TTL_MS) linked.delete(uuid);
     const now = live();
     activity.sample(now.online, now.inGame);
@@ -2282,9 +2332,15 @@ export function createApp(cfg: Config) {
   };
 }
 
+/** The site's own error pages (not found, switched off, failed): no scripts, nothing from elsewhere, not in a frame. */
+const ERROR_PAGE_HEADERS = {
+  'Content-Type': 'text/html; charset=utf-8', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
+  'Content-Security-Policy': "default-src 'self'; img-src 'self' data: https:; style-src 'self'; script-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+};
+
 /** A failure while making a page: the site's error page for a browser, JSON for the API. */
 function serverError(req: http.IncomingMessage, res: http.ServerResponse, url: URL) {
-  if (wantsPage(req, url.pathname)) res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' }).end(errorPage(siteLang(req, url.pathname)));
+  if (wantsPage(req, url.pathname)) res.writeHead(500, ERROR_PAGE_HEADERS).end(errorPage(siteLang(req, url.pathname)));
   else res.writeHead(500, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'server_error' }));
 }
 

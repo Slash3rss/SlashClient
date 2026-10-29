@@ -493,7 +493,7 @@ export function profileRoutes(deps: ProfileDeps) {
       'Content-Security-Policy': `default-src 'self'; img-src 'self' data: blob: https:; style-src 'self'; script-src 'self'; connect-src 'self'; ${deps.embeds?.() ? `frame-src ${EMBED_HOSTS.join(' ')}; ` : ''}frame-ancestors 'none'; base-uri 'none'; form-action 'none'`,
       'Referrer-Policy': 'no-referrer',
     });
-    res.end(req.method === 'HEAD' ? undefined : deps.versioned(html.replace('<!--preview-->', preview.tags)));
+    res.end(req.method === 'HEAD' ? undefined : deps.versioned(html.replace('<!--preview-->', () => preview.tags)));
     return true;
   }
 

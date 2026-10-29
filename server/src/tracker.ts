@@ -14,6 +14,11 @@ import type { Db } from './db.ts';
  */
 
 export const MAX_LOG = 4 * 1024 * 1024;
+/** A log sent without an account is smaller: anyone can send one. */
+export const MAX_ANONYMOUS_LOG = 1024 * 1024;
+/** Bytes of logs taken a day, all together and from one account or address (the disk is shared with everything else). */
+export const LOGS_PER_DAY = 2 * 1024 * 1024 * 1024;
+export const LOGS_PER_DAY_EACH = 64 * 1024 * 1024;
 export const LOG_DAYS = 90;
 export const STATUSES = ['open', 'confirmed', 'fixed', 'closed', 'duplicate'] as const;
 const LOG_ID = /^[A-Za-z0-9]{10}$/;
@@ -33,6 +38,13 @@ export interface TrackerContext {
   /** The admin panel's settings, read when used: days a log is kept, the largest log. */
   logDays?: () => number;
   maxLog?: () => number;
+  /** The largest log from someone without an account, and the bytes a day (all, and per account or address). */
+  maxAnonymousLog?: () => number;
+  dailyBytes?: () => number;
+  dailyBytesEach?: () => number;
+  /** Free bytes on the logs' disk and the floor kept free there (storage.minFreeMb): below it no log is taken. */
+  diskFree?: (dir: string) => Promise<number>;
+  minFreeBytes?: () => number;
 }
 
 type Handler = (req: http.IncomingMessage, params: string[], url: URL) => Promise<unknown> | unknown;
@@ -60,21 +72,38 @@ export function trackerRoutes(ctx: TrackerContext): { routes: [string, RegExp, H
   const fileOf = (id: string) => path.join(ctx.dir, `${id}.log.gz`);
   const optionalUser = (req: http.IncomingMessage) => (req.headers.authorization ? ctx.authed(req) : '');
   const bugOr404 = (id: string) => db.bug(Number(id)) ?? ctx.fail(404, 'not_found');
+  /** Bytes of logs taken today: all, and per sender (an account, or an address without one); a new day starts afresh. */
+  let day = { at: 0, total: 0, each: new Map<string, number>() };
+  const today = () => {
+    const d = Math.floor(Date.now() / 86_400_000);
+    if (day.at !== d) day = { at: d, total: 0, each: new Map() };
+    return day;
+  };
   /** Answers from the team (admins and support) stand out on the page. */
   const comments = (bugId: number) => db.bugComments(bugId).map(({ authorRole, ...c }) => ({ ...c, staff: ctx.isAdmin(c.author) || authorRole === 'support' }));
 
   const routes: [string, RegExp, Handler][] = [
     // ---- logs ----
     ['POST', /^\/v1\/logs$/, async (req) => {
-      ctx.limit(`log:${ctx.clientIp(req)}`);
+      const ip = ctx.clientIp(req);
+      ctx.limit(`log:${ip}`);
       const owner = optionalUser(req);
-      const log = await text(req, ctx.fail, ctx.maxLog?.() ?? MAX_LOG);
+      const max = ctx.maxLog?.() ?? MAX_LOG;
+      const log = await text(req, ctx.fail, owner ? max : Math.min(max, ctx.maxAnonymousLog?.() ?? MAX_ANONYMOUS_LOG));
       if (!log.trim()) ctx.fail(400, 'empty');
+      // nobody fills the server's disk with logs: a day's share for all and for each sender, and the free space kept
+      const size = Buffer.byteLength(log);
+      const d = today();
+      const sender = owner || `ip:${ip}`;
+      if (d.total + size > (ctx.dailyBytes?.() ?? LOGS_PER_DAY) || (d.each.get(sender) ?? 0) + size > (ctx.dailyBytesEach?.() ?? LOGS_PER_DAY_EACH)) ctx.fail(429, 'daily_limit');
+      if (ctx.diskFree && (await ctx.diskFree(ctx.dir).catch(() => Infinity)) - size < (ctx.minFreeBytes?.() ?? 0)) ctx.fail(507, 'storage_full');
+      d.total += size;
+      d.each.set(sender, (d.each.get(sender) ?? 0) + size);
       let id: string;
       do id = randomBytes(8).toString('base64url').replace(/[-_]/g, '').padEnd(10, 'x').slice(0, 10);
       while (db.sharedLog(id));
       await writeFile(fileOf(id), await pack(log));
-      db.addLog(id, owner, Buffer.byteLength(log), log.split('\n').length);
+      db.addLog(id, owner, size, log.split('\n').length);
       return { id, url: `/logi/${id}`, expiresAt: Date.now() + logDays() * 86_400_000 };
     }],
     ['GET', /^\/v1\/logs\/(\w+)$/, async (_req, [id]) => {

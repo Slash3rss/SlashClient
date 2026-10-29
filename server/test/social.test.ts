@@ -622,6 +622,20 @@ describe('social server', () => {
     assert.equal((await call('POST', '/v1/mc/lookup', undefined, { uuids: 'all' })).status, 400);
   });
 
+  it('lets one address speak for a few players at a time, not for crowds', async () => {
+    const boss = await login('Tomek');
+    assert.equal((await call('POST', '/v1/admin/settings', boss.token, { values: { 'security.gamePlayersPerAddress': 2 } })).status, 200);
+    const uuid = (i: number) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`;
+    // what this address already reported (in other tests) counts too, so a fresh pair is let in only while there is room
+    let taken = 0;
+    for (let i = 1; i <= 5; i++) if ((await call('POST', '/v1/mc/heartbeat', undefined, { uuid: uuid(i) })).status === 200) taken++;
+    assert.ok(taken <= 2, String(taken));
+    // one already in (the test before) may report again
+    assert.equal((await call('POST', '/v1/mc/heartbeat', undefined, { uuid: '8667ba71-b85a-4004-af54-457a9734eed7' })).status, 200);
+    assert.equal((await call('POST', '/v1/mc/heartbeat', undefined, { uuid: uuid(5) })).status, 429);
+    assert.equal((await call('POST', '/v1/admin/settings', boss.token, { values: { 'security.gamePlayersPerAddress': 10 } })).status, 200);
+  });
+
   it('rejects messages that are empty or too long', async () => {
     const p = await login('Piotr');
     const q = await login('Quinn');
@@ -738,6 +752,30 @@ describe('LAN worlds through the relay', () => {
     await friendWs.waitFor((e) => e.type === 'presence' && e.id === host.user.id && !e.presence.lan);
     for (const c of [hostWs, friendWs]) c.ws.close();
     // the server sees them go before the test ends
+    await new Promise((r) => setTimeout(r, 100));
+  });
+
+  it('ends a tunnel past the day\'s share of an account, and lets no new one in that day', async () => {
+    const boss = await login('Tomek');
+    const host = await login('LanDzien');
+    const friend = await login('LanKumpel');
+    await call('POST', '/v1/friends/requests', host.token, { handle: 'LanKumpel' });
+    await call('POST', `/v1/friends/requests/${host.user.id}/accept`, friend.token);
+    assert.equal((await call('POST', '/v1/admin/settings', boss.token, { values: { 'lan.dailyMb': 1 } })).status, 200);
+    const hostWs = await connect(host.token, { status: 'online', activity: { kind: 'singleplayer' } });
+    hostWs.ws.send(JSON.stringify({ type: 'lan', open: true }));
+    await new Promise((r) => setTimeout(r, 100));
+    const joiner = await lan({ type: 'join', token: friend.token, host: host.user.id });
+    const ask = await hostWs.waitFor((e) => e.type === 'lan-connect' && e.from === friend.user.id);
+    const hostSide = await lan({ type: 'accept', token: host.token, id: ask.id });
+    await joiner.until(() => joiner.isOk());
+    for (let i = 0; i < 3; i++) joiner.ws.send(Buffer.alloc(500 * 1024, i));
+    await joiner.until(() => joiner.closed() === 4029);
+    await hostSide.until(() => hostSide.closed() === 4029);
+    const again = await lan({ type: 'join', token: friend.token, host: host.user.id });
+    await again.until(() => again.closed() === 4029);
+    assert.equal((await call('POST', '/v1/admin/settings', boss.token, { values: { 'lan.dailyMb': 20_480 } })).status, 200);
+    hostWs.ws.close();
     await new Promise((r) => setTimeout(r, 100));
   });
 });
