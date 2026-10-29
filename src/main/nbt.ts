@@ -7,7 +7,7 @@ import zlib from 'node:zlib';
  */
 export type NbtValue = number | bigint | string | NbtValue[] | { [key: string]: NbtValue } | Int8Array | Int32Array | BigInt64Array;
 
-class Reader {
+export class Reader {
   offset = 0;
   constructor(private buf: Buffer) {}
   byte() { return this.buf.readInt8(this.offset++); }

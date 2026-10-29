@@ -1852,7 +1852,7 @@ async function startGame(profileId: string, accountId: string, server: string | 
     if (benchmark) readBenchmarks(profileGameDir(profile)).then((runs) => {
       if (runs[0] && runs[0].at > benchmarksBefore) send('benchmark:done', { profileId: profile.id, result: runs[0], before: comparableBefore(runs, 0) });
     }).catch(() => {});
-    if (profile.syncOptions) pushShared(profileGameDir(profile)).catch(() => {});
+    if (profile.syncOptions) pushShared(profileGameDir(profile), startedAt).catch(() => {});
     // profiles synced with the account go there after the game
     cloudProfiles.afterGame(profile.id).catch((err) => console.error('chmura:', (err as Error).message));
     recordSession(profile, startedAt, lastServer).catch(() => {});
