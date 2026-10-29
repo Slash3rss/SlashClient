@@ -26,12 +26,51 @@ if [ -z "${CI:-}" ] && [ "${SLASHCLIENT_TEST_WINDOW:-1}" != 0 ] && [ -e "$electr
   # the window's "Restart" runs a share again with the same gradle arguments
   SLASHCLIENT_TEST_ARGS="$*" "$electron" progress --mc="$mc" --n="$n" --run="$run" > /dev/null 2>&1 &
 fi
+# A game whose world-closing got stuck in the test library's threads (it happens now and then, in any test)
+# stops writing to its log: after HANG_SECONDS of silence (default 4 minutes) it is stopped and its share
+# runs once more. The stuck run's log is kept as gametest-<mc>-<i>.hung.log.
+stop_game() {
+  # the game is told its share (build.gradle: -Dslashclient.test.shard=2/4)
+  local mark="slashclient.test.shard=$1/$n"
+  if command -v powershell.exe > /dev/null; then
+    powershell.exe -NoProfile -Command "Get-CimInstance Win32_Process -Filter \"name='java.exe'\" | Where-Object { \$_.CommandLine -like '*$mark *' } | ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }" > /dev/null 2>&1
+  else
+    pkill -f "$mark " || true
+  fi
+}
+share() {
+  local i=$1 try code
+  shift
+  for try in 1 2; do
+    ./gradlew runClientGameTest -Pmc="$mc" -Pshard="$i/$n" $NO_COMPILE "$@" -q > "build/gametest-$i.log" 2>&1 &
+    local game=$! last=-1 still=0 hung=0 size
+    while kill -0 "$game" 2> /dev/null; do
+      sleep 15
+      size=$(wc -c < "build/gametest-$i.log" 2> /dev/null || echo 0)
+      if [ "$size" = "$last" ]; then still=$((still + 15)); else still=0; last=$size; fi
+      if [ "$still" -ge "${HANG_SECONDS:-240}" ]; then
+        hung=1
+        stop_game "$i"
+        break
+      fi
+    done
+    wait "$game"
+    code=$?
+    if [ "$hung" = 1 ] && [ "$try" = 1 ]; then
+      cp "build/gametest-$i.log" "build/gametest-$mc-$i.hung.log"
+      echo "share $i/$n: the game hung (log in hud/build/gametest-$mc-$i.hung.log), running it again" >&2
+      continue
+    fi
+    return "$code"
+  done
+}
+
 for i in $(seq 1 "$n"); do
   rm -rf "build/run/clientGameTest-${i}of$n/screenshots"
   # each share's exit code in a file when it ends, for the progress window
   # compiled once above: the games only run (the version preprocessor rewrites the sources each time
   # gradle starts, and four compiles at once would overwrite each other's classes mid-run)
-  ( ./gradlew runClientGameTest -Pmc="$mc" -Pshard="$i/$n" $NO_COMPILE "$@" -q > "build/gametest-$i.log" 2>&1; code=$?; echo $code > "build/gametest-$i.status"; exit $code ) &
+  ( share "$i" "$@"; code=$?; echo $code > "build/gametest-$i.status"; exit $code ) &
   pids+=($!)
   # the games start a little apart, not all loading at the same moment
   sleep 8
