@@ -130,7 +130,14 @@ button.chip:hover { background: rgba(255, 255, 255, .12); color: var(--text); }
 .nav .push { margin-left: auto; }
 
 /* account */
-.account { display: grid; grid-template-columns: 320px 1fr; gap: 16px; align-items: start; }
+.account { display: block; }
+/* the account page's tabs (account.js): one card or two at a time */
+.account-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.account-tabs button { height: 36px; padding: 0 14px; font-size: 14px; }
+.account-tabs button.active { border-color: var(--accent); background: rgba(59, 130, 246, .12); }
+.account-panel { display: flex; flex-direction: column; gap: 16px; }
+.account-profile { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; align-items: start; }
+.account-panel.hidden { display: none; }
 .signin { max-width: 460px; }
 .signin .providers { display: grid; gap: 10px; margin-top: 16px; }
 .signin .providers button { justify-content: flex-start; height: 46px; }
@@ -231,7 +238,10 @@ tbody tr:hover { background: var(--card); }
 .clan-logo-none { background: #b45309; color: #fff; font-size: 11px; font-weight: 700; }
 
 @media (max-width: 900px) {
-  .account, .two { grid-template-columns: 1fr; }
+  .two, .account-profile { grid-template-columns: 1fr; }
+  /* on a phone the tabs scroll sideways in one row */
+  .account-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .account-tabs button { flex-shrink: 0; }
   .nav-links { display: none; }
   .admin { grid-template-columns: 1fr; }
   .side { position: static; height: auto; flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--border); }

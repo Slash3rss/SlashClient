@@ -25,8 +25,17 @@ let previewSkin;
 let previewWorn = {};
 /** Which render of the page the achievements card (loaded after it) belongs to. */
 let renders = 0;
-let scrolledToPrivacy = false;
-let scrolledToSupport = false;
+/** The account page's tabs: id, address (#…), Polish and English name, icon. */
+const ACCOUNT_TABS = [
+  ['profile', 'profil', 'Profil', 'Profile', 'fa-solid fa-user'],
+  ['cosmetics', 'kosmetyki', 'Kosmetyki', 'Cosmetics', 'fa-solid fa-shirt'],
+  ['privacy', 'prywatnosc', 'Prywatność', 'Privacy', 'fa-solid fa-user-shield'],
+  ['streams', 'streamy', 'Streamy', 'Streams', 'fa-solid fa-video'],
+  ['support', 'wsparcie', 'Wsparcie', 'Support', 'fa-solid fa-heart'],
+  ['partner', 'serwer', 'Serwer partnerski', 'Partner server', 'fa-solid fa-handshake'],
+];
+/** The tab shown: from the address (old links to #wsparcie and #prywatnosc land on theirs), cosmetics at first. */
+let accountTab = ACCOUNT_TABS.find(([, hash]) => location.hash === `#${hash}`)?.[0] ?? 'cosmetics';
 /**
  * The cards beside the cosmetics (channels, support, privacy, achievements, notices, partner servers):
  * loaded once and then kept, so picking a cosmetic or a tab does not ask the server for all of them again.
@@ -246,28 +255,50 @@ function renderAccount(reload = false) {
   const support = el('div', { class: 'support-slot' });
   // linked Twitch and Kick channels (accountStreams.js), when the server has them
   const streams = el('div', { class: 'streams-slot' });
-  $('#account').replaceChildren(el('div', { class: 'account' }, el('div', { class: 'account-side' }, profile, privacy, streams, support), capes));
+  // one tab at a time; a tab whose card the server does not have (streams, support, a partner server) stays out of the bar
+  const panels = Object.fromEntries(ACCOUNT_TABS.map(([id]) => [id, el('div', { class: `account-panel account-${id}` })]));
+  panels.profile.append(profile);
+  panels.cosmetics.append(capes);
+  panels.privacy.append(privacy);
+  panels.streams.append(streams);
+  panels.support.append(support);
+  const partner = el('div', { class: 'partner-slot' });
+  panels.partner.append(partner);
+  const buttons = Object.fromEntries(ACCOUNT_TABS.map(([id, , name, nameEn, ic]) => [id, el('button', { role: 'tab', onclick: () => showTab(id) }, icon(ic), L(name, nameEn))]));
+  const showTab = (id) => {
+    accountTab = id;
+    for (const [tab, b] of Object.entries(buttons)) {
+      b.classList.toggle('active', tab === id);
+      b.setAttribute('aria-selected', String(tab === id));
+    }
+    for (const [tab, panel] of Object.entries(panels)) panel.classList.toggle('hidden', tab !== id);
+    const hash = ACCOUNT_TABS.find(([tab]) => tab === id)[1];
+    if (location.hash !== `#${hash}`) history.replaceState(null, '', `#${hash}`);
+  };
+  const syncTabs = () => {
+    for (const [tab, b] of Object.entries(buttons)) b.classList.toggle('hidden', !panels[tab].querySelector('.card'));
+    // the tab asked for is not there (no partner server): cosmetics
+    if (!panels[accountTab].querySelector('.card') && !panels[accountTab].querySelector('[class$="-slot"]')) showTab('cosmetics');
+  };
+  $('#account').replaceChildren(el('div', { class: 'account-tabs', role: 'tablist' }, ...Object.values(buttons)), el('div', { class: 'account' }, ...Object.values(panels)));
+  showTab(accountTab);
+  syncTabs();
   // each card goes only into the render of the page it was loaded for (a newer one takes it over)
   const render = ++renders;
   const cards = sideCards(reload);
   const into = (promise, put) => promise.then((card) => card && render === renders && put(card)).catch(() => {});
-  into(cards.streams, (card) => streams.replaceWith(card));
-  into(cards.support, (card) => {
-    support.replaceWith(card);
-    if (location.hash === '#wsparcie' && !scrolledToSupport) {
-      scrolledToSupport = true;
-      card.scrollIntoView({ block: 'start' });
-    }
-  });
-  into(cards.privacy, (card) => {
-    privacy.replaceWith(card);
-    if (location.hash === '#prywatnosc' && !scrolledToPrivacy) {
-      scrolledToPrivacy = true;
-      card.scrollIntoView({ block: 'start' });
-    }
-  });
-  // the achievements and the sparks under it, once loaded
-  into(cards.achievements, (card) => $('#account .account')?.append(card));
+  // a card the server has not got (no streams, no support, no partner server) takes its slot away, and the tab with it
+  const place = (promise, slot) => promise.then((card) => {
+    if (render !== renders) return;
+    if (card) slot.replaceWith(card);
+    else slot.remove();
+    syncTabs();
+  }).catch(() => {});
+  place(cards.streams, streams);
+  place(cards.support, support);
+  place(cards.privacy, privacy);
+  // the achievements and the sparks under it, once loaded, with the profile
+  into(cards.achievements, (card) => panels.profile.append(card));
   // the kill and movement effects play on the figure only while their tab is open (they would distract)
   // the shield and the weapon are held only while their tabs are open
   const holding = slot === 'shield' || slot === 'weapon';
@@ -276,7 +307,7 @@ function renderAccount(reload = false) {
     ...(slot === 'cape' || slot === 'wings' || slot === 'elytra' ? { back: '' } : {}),
     // on the prop's tab the figure walks with it, seen from the side
     walk: slot === 'prop' });
-  into(cards.partners, (card) => $('#account').append(card));
+  place(cards.partners, partner);
   // "Zaktualizowaliśmy regulamin": important changes not seen yet, above everything else
   into(cards.legal, (list) => $('#account').prepend(...list));
 }
