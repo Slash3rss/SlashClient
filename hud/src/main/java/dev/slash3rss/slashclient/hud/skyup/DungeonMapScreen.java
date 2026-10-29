@@ -62,9 +62,11 @@ public class DungeonMapScreen extends Screen {
 			onClose();
 			return;
 		}
-		// the top bar: the dungeon and its loot, all of it
-		Ui.draw(g, Component.literal(DungeonMap.titleText()), 10, 8, 0xFFFFFFFF);
-		int at = 12 + Ui.width(Component.literal(DungeonMap.titleText())) + 12;
+		// the top bar: the dungeon and its loot, all of it, on its own strip (the HUD's top modules stay under it)
+		g.fill(0, 0, width, 22, 0xE00A0D14);
+		Component title = Ui.text(DungeonMap.titleText());
+		Ui.draw(g, title, 10, 8, 0xFFFFFFFF);
+		int at = 12 + Ui.width(title) + 12;
 		for (int cat = 0; cat < DungeonRooms.LOOT.length; cat++) {
 			if (!DungeonRooms.shown(cat)) continue;
 			int[] n = DungeonRooms.countAll(cat);
@@ -72,8 +74,8 @@ public class DungeonMapScreen extends Screen {
 			ItemStack icon = Ui.stack(DungeonRooms.LOOT_ICONS[cat]);
 			if (icon != null) g.item(icon, at, 4);
 			String s = n[0] + "/" + n[1];
-			Ui.draw(g, Component.literal(s), at + 19, 8, n[0] == n[1] ? 0xFF86EFAC : 0xFFFFFFFF);
-			at += 19 + Ui.width(Component.literal(s)) + 12;
+			Ui.draw(g, Ui.text(s), at + 19, 8, n[0] == n[1] ? 0xFF86EFAC : 0xFFFFFFFF);
+			at += 19 + Ui.width(Ui.text(s)) + 12;
 		}
 		// close
 		int cx = width - CLOSE - 6, cy = 4;
@@ -197,6 +199,7 @@ public class DungeonMapScreen extends Screen {
 	@Override
 	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
-		g.fill(0, 0, width, height, 0xB0000000);
+		// as dark as the world map's: the HUD's modules under it (FPS, the small dungeon map) do not show through
+		g.fill(0, 0, width, height, 0xE0000000);
 	}
 }

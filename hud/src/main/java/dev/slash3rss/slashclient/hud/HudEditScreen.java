@@ -167,6 +167,11 @@ public class HudEditScreen extends Screen {
 		ChatTabs.changed();
 	}
 
+	/** The text / regex switch of a chat tab's row: as wide as its longer word needs, not more. */
+	private static int modeWidth() {
+		return Math.max(Ui.buttonWidth(Ui.tr("slashclient-hud.chat.regex"), null, 18, 4), Ui.buttonWidth(Ui.tr("slashclient-hud.chat.text"), null, 18, 4));
+	}
+
 	private void initChatTabs() {
 		int cx = winX() + 132, cy = winY() + 42, cw = winW() - 144, ch = winH() - 50;
 		int help = font.split(Ui.tr("slashclient-hud.chat.help"), cw).size();
@@ -180,7 +185,8 @@ public class HudEditScreen extends Screen {
 		for (int i = 0; i < Math.min(tabs.size(), tabsFit); i++) {
 			HudConfig.ChatTab tab = tabs.get(i);
 			int y = tabRowY(i) + 5;
-			EditBox name = new EditBox(font, cx + 6, y, 62, 12, Ui.tr("slashclient-hud.chat.name"));
+			// the name is short (a tab's label): most of the row goes to what the tab catches
+			EditBox name = new EditBox(font, cx + 6, y, 44, 12, Ui.tr("slashclient-hud.chat.name"));
 			name.setBordered(false);
 			name.setTextColor(Ui.TEXT);
 			name.setMaxLength(16);
@@ -192,8 +198,8 @@ public class HudEditScreen extends Screen {
 				typed();
 			});
 			// "catches" takes most of the room, "but not" the rest
-			int room = cw - 82 - 122, pw = Math.round((room - 10) * 0.52f);
-			EditBox patterns = new EditBox(font, cx + 82, y, pw, 12, Ui.tr("slashclient-hud.chat.patterns"));
+			int room = cw - 64 - (modeWidth() + 58), pw = Math.round((room - 10) * 0.6f);
+			EditBox patterns = new EditBox(font, cx + 64, y, pw, 12, Ui.tr("slashclient-hud.chat.patterns"));
 			patterns.setBordered(false);
 			patterns.setTextColor(Ui.TEXT);
 			patterns.setMaxLength(256);
@@ -204,7 +210,7 @@ public class HudEditScreen extends Screen {
 				tabsChanged();
 				typed();
 			});
-			EditBox excludes = new EditBox(font, cx + 82 + pw + 10, y, room - pw - 10, 12, Ui.tr("slashclient-hud.chat.excludes"));
+			EditBox excludes = new EditBox(font, cx + 64 + pw + 10, y, room - pw - 10, 12, Ui.tr("slashclient-hud.chat.excludes"));
 			excludes.setBordered(false);
 			excludes.setTextColor(Ui.TEXT);
 			excludes.setMaxLength(256);
@@ -324,9 +330,9 @@ public class HudEditScreen extends Screen {
 				int edge = box == excludes ? 0x40F87171 : Ui.BORDER;
 				Ui.roundOutline(g, box.getX() - 5, ry, box.getWidth() + 10, 18, 4, box.isFocused() ? 0x993B82F6 : edge);
 			}
-			int bx = x + w - 112;
-			Ui.button(g, "mode:" + i, bx, ry, 64, 18, Ui.tr(tab.regex ? "slashclient-hud.chat.regex" : "slashclient-hud.chat.text"), tab.regex, mx, my);
-			hits.add(new Hit(bx, ry, 64, 18, () -> {
+			int mw = modeWidth(), bx = x + w - 48 - mw;
+			Ui.button(g, "mode:" + i, bx, ry, mw, 18, Ui.tr(tab.regex ? "slashclient-hud.chat.regex" : "slashclient-hud.chat.text"), tab.regex, mx, my);
+			hits.add(new Hit(bx, ry, mw, 18, () -> {
 				String current = patterns.getValue(), currentEx = excludes.getValue();
 				tab.regex = !tab.regex;
 				ChatTabsScreen.setPatterns(tab, current);
@@ -563,6 +569,12 @@ public class HudEditScreen extends Screen {
 		maxScroll = Math.max(0, ry + Math.round(scroll) - top - bodyH);
 		Ui.end();
 		g.disableScissor();
+		// the options go on below the window's edge: a bar says so, as on the other pages
+		if (maxScroll > 0) {
+			Ui.end();
+			bar.draw(g, x + w + 4, top, bodyH, scroll, maxScroll, mx, my);
+			Ui.begin("content", x, y, w, h);
+		}
 	}
 
 	/** For the in-game test: the middle of one of the grid's pixels, in GUI coordinates. */
@@ -699,7 +711,14 @@ public class HudEditScreen extends Screen {
 		tip = null;
 		undoAt = redoAt = null;
 		if (!window) drawLayout(g, mx, my);
-		else drawWindow(g, mx, my);
+		else {
+			//#if MC >= 1.21.6
+			// the window in a layer over the HUD: the GUI draws a layer's texts after its shapes, so the modules'
+			// texts and the game parts' names showed on top of the window's edge
+			g.nextStratum();
+			//#endif
+			drawWindow(g, mx, my);
+		}
 		super.extractRenderState(g, mx, my, delta);
 		drawTip(g);
 		if (!historyStarted) {
@@ -1131,6 +1150,11 @@ public class HudEditScreen extends Screen {
 		return search.getValue() + " " + scroll;
 	}
 
+	/** How many lines a switch's label takes beside its switch (at most two; a longer one still ends in "…"). */
+	private int toggleLines(Catalog.Setting s, int w) {
+		return Math.min(2, font.split(Ui.tr(s.labelKey()), w - 46).size());
+	}
+
 	/** Width the controls of a setting need on one line. */
 	private static int controlsWidth(Catalog.Setting s) {
 		if (s instanceof Catalog.Toggle || s instanceof Catalog.Info) return 20;
@@ -1216,15 +1240,23 @@ public class HudEditScreen extends Screen {
 		// a row is one line, or two when its controls do not fit beside the label (narrow windows)
 		int[] heights = new int[rows.size()];
 		boolean[] split = new boolean[rows.size()];
+		int sliderFrom = 0, valueBox = 0;
 		int contentH = (isModule ? 28 : 0) + (rows.isEmpty() ? 14 : 0);
 		for (int i = 0; i < rows.size(); i++) {
 			Catalog.Setting s = rows.get(i);
 			int labelW = Ui.width(Ui.tr(s.labelKey())) + 24;
 			boolean oneLine = s instanceof Catalog.Toggle || labelW + controlsWidth(s) <= w - 20;
 			heights[i] = s instanceof Catalog.Info info ? infoHeight(info, w) : oneLine ? 26 : 44;
+			// a switch's label too long for its line goes on into a second one instead of ending in "…"
+			if (s instanceof Catalog.Toggle) heights[i] = 26 + 11 * (toggleLines(s, w) - 1);
 			split[i] = !oneLine;
 			// a key: a line more under it while it waits for a key, or when another binding has the same one
 			if (s instanceof Catalog.Key k && keyLine(k) != null) heights[i] += 1 + 11 * font.split(keyLine(k), w - 20).size();
+			// the sliders on one line all start where the longest of their labels ends, one under another
+			if (s instanceof Catalog.Slider && oneLine) sliderFrom = Math.max(sliderFrom, labelW - 10);
+			// and their values in boxes of one width, so the tracks end one under another too
+			if (s instanceof Catalog.Slider sl) valueBox = Math.max(valueBox, Math.max(Ui.width(Ui.text(String.format(Locale.ROOT, sl.format(), sl.min()))),
+				Ui.width(Ui.text(String.format(Locale.ROOT, sl.format(), sl.max())))) + 10);
 			// a note: as many lines as its text needs
 			if (s instanceof Catalog.Note n) heights[i] = Math.max(26, 14 + 11 * font.split(Ui.tr(n.labelKey(), n.args().get()), w - 20).size());
 			contentH += heights[i] + 4;
@@ -1263,6 +1295,7 @@ public class HudEditScreen extends Screen {
 			// a switch's label stops before the switch (a long one ends in "…" instead of running under it)
 			Component label = Ui.fit(Ui.tr(s.labelKey()), s instanceof Catalog.Toggle ? w - 46 : w - 20);
 			if (s instanceof Catalog.Note n) Ui.wrapped(g, Ui.tr(n.labelKey(), n.args().get()), x + 10, ry + 8, w - 20, Ui.TEXT_2);
+			else if (s instanceof Catalog.Toggle && toggleLines(s, w) > 1) Ui.wrapped(g, Ui.tr(s.labelKey()), x + 10, ry + 9, w - 46, Ui.TEXT);
 			else Ui.draw(g, label, x + 10, ry + 9, Ui.TEXT);
 			int labelEnd = x + 10 + Ui.width(label) + 14;
 			int right = x + w - 10;
@@ -1272,13 +1305,14 @@ public class HudEditScreen extends Screen {
 			int hitsBefore = hits.size();
 			if (s instanceof Catalog.Toggle tg) {
 				boolean on = tg.get().get();
-				Ui.toggle(g, e.id() + ":" + s.labelKey(), right - 20, ry + 8, on);
+				Ui.toggle(g, e.id() + ":" + s.labelKey(), right - 20, ry + (rh - 10) / 2, on);
 				hits.add(new Hit(x, ry, w, rh, () -> tg.set().accept(!tg.get().get())));
 			} else if (s instanceof Catalog.Slider sl) {
 				float value = sl.get().get();
 				Component shownValue = Ui.text(String.format(Locale.ROOT, sl.format(), value));
-				int vw = Ui.width(shownValue) + 10;
-				int sx = twoLines ? left + 4 : Math.max(left, right - 196);
+				// the value's box as wide as its widest value, so the track does not change length while dragged
+				int vw = Math.max(Ui.width(shownValue) + 10, valueBox);
+				int sx = twoLines ? left + 4 : Math.max(Math.max(left, x + 10 + sliderFrom), right - 196);
 				int sw = Math.max(30, right - vw - 12 - sx);
 				Ui.slider(g, sx, cy + 3, sw, (value - sl.min()) / (sl.max() - sl.min()));
 				SLIDERS.put(s.labelKey(), new int[] { sx, cy + 3, sw });

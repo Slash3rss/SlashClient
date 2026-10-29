@@ -638,8 +638,8 @@ public final class HudConfig {
 	static HudConfig defaults() {
 		HudConfig c = new HudConfig();
 		// left column, one text line (14 px) apart
-		// the dungeon map on the left, under the usual modules; it shows only in a dungeon
-		c.modules.put("dungeonmap", new Placement(true, 0f, 0.55f, 2, 0));
+		// the dungeon map on the left, beside the keystrokes (not over them); it shows only in a dungeon
+		c.modules.put("dungeonmap", new Placement(true, 0f, 0.55f, 80, 0));
 		// SkyUp's tasks on the left, under the usual top-left modules and above the dungeon map (the right side has
 		// the effects, CPU/GPU and the scoreboard); shown only with tasks to show
 		c.modules.put("skytasks", new Placement(true, 0f, 0.3f, 2, 0));
@@ -651,7 +651,7 @@ public final class HudConfig {
 		c.modules.put("skywardrobe", new Placement(true, 1f, 0.35f, -2, 0));
 		// SkyUp's bottling countdown in the middle of the top; shown only while one runs
 		c.modules.put("skyxp", new Placement(true, 0.5f, 0.12f, 0, 0));
-		// the shamanism recipes tracked on the left where the dungeon map is (never both: no summons in a dungeon);
+		// the shamanism recipes tracked on the left at the dungeon map's height (never both: no summons in a dungeon);
 		// shown only with one tracked
 		c.modules.put("skyshaman", new Placement(true, 0f, 0.55f, 2, 0));
 		// SkyUp's plan of the week under the wardrobe on the right; shown on SkyUp only
@@ -706,8 +706,9 @@ public final class HudConfig {
 		c.modules.put("sprint", new Placement(false, 0, 1, 2, -2));
 		c.modules.put("keystrokes", new Placement(true, 0, 0.5f, 2, 20));
 		c.modules.put("movement", new Placement(false, 0, 0.5f, 2, -2));
-		// a stream's chat low on the left, above the game's chat; off until a channel is set
-		c.modules.put("twitchchat", new Placement(false, 0, 0.62f, 2, 0));
+		// a stream's chat at the top on the left, beside the column of FPS and coordinates: lower down it covered the
+		// keystrokes (and the game's chat under them); off until a channel is set
+		c.modules.put("twitchchat", new Placement(false, 0, 0, 104, 2));
 		c.modules.put("kickchat", new Placement(false, 1, 0.62f, -2, 0));
 		// what plays on this computer on the right, between the effects and the armour; off until switched on
 		c.modules.put("spotify", new Placement(false, 1, 0.3f, -2, 0));

@@ -44,6 +44,11 @@ public class WorldMapScreen extends Screen {
 	public float zoom;
 	/** The map area and the view in it, from the last frame (for the mouse). */
 	private int ox, oy, aw, ah;
+
+	/** The map's area on screen as last drawn: x, y, width, height (for the tests, which click on it). */
+	public int[] area() {
+		return new int[] { ox, oy, aw, ah };
+	}
 	private double vx, vz;
 	private String lastView = "";
 	private int lastVersion = -1, frame;
@@ -138,7 +143,9 @@ public class WorldMapScreen extends Screen {
 		ox = 6;
 		oy = BAR + 4;
 		aw = width - 12;
-		ah = height - oy - 16;
+		// the help under the map: on two lines in a narrow window instead of losing its end
+		List<Component> help = helpLines(width - 12);
+		ah = height - oy - 6 - 10 * help.size();
 		vx = centerX - aw / 2.0 / zoom;
 		vz = centerZ - ah / 2.0 / zoom;
 		// drawn at most 640 pixels across, stretched to the area; again when the view or the ground changes
@@ -167,9 +174,26 @@ public class WorldMapScreen extends Screen {
 			String at = "X " + (int) Math.floor(wx(mx)) + "   Z " + (int) Math.floor(wz(my));
 			Ui.draw(g, Component.literal(at), ox + aw - Ui.width(Component.literal(at)) - 4, oy + ah - 11, 0xFFE5E7EB);
 		}
-		Component help = Ui.fit(Ui.tr("slashclient-hud.worldMap.help"), width - 12);
-		Ui.draw(g, help, (width - Ui.width(help)) / 2, height - 12, 0xFFAAAAAA);
+		for (int i = 0; i < help.size(); i++) {
+			Component line = help.get(i);
+			Ui.draw(g, line, (width - Ui.width(line)) / 2, height - 12 - 10 * (help.size() - 1 - i), 0xFFAAAAAA);
+		}
 		super.extractRenderState(g, mx, my, delta);
+	}
+
+	/** The help's parts ("Drag: move", "Wheel: zoom", …) on as few lines of at most `w` pixels as they fit. */
+	private static List<Component> helpLines(int w) {
+		List<Component> out = new ArrayList<>();
+		String line = "";
+		for (String part : Ui.tr("slashclient-hud.worldMap.help").getString().split(" · ")) {
+			String longer = line.isEmpty() ? part : line + " · " + part;
+			if (!line.isEmpty() && Ui.width(Ui.text(longer)) > w) {
+				out.add(Ui.text(line));
+				line = part;
+			} else line = longer;
+		}
+		out.add(Ui.fit(Ui.text(line), w));
+		return out;
 	}
 
 	/** The ground into the picture: `ps` picture pixels a block, from the view's corner. */

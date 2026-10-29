@@ -139,6 +139,11 @@ public final class ChatWindows {
 			if (tab.window == null) continue;
 			int[] p = at(tab, g.guiWidth(), g.guiHeight());
 			float s = tab.window.scale();
+			//#if MC >= 1.21.6
+			// an open window in a layer of its own: the GUI draws a layer's texts after its shapes, so the HUD's
+			// texts (and another window's) showed through its background, as if it were see-through
+			if (open) g.nextStratum();
+			//#endif
 			var pose = g.pose();
 			pose.pushMatrix();
 			pose.translate(p[0], p[1]);
@@ -278,7 +283,7 @@ public final class ChatWindows {
 		if (tab.collapsed) {
 			// folded: its title only while the chat is open, nothing in the game
 			if (!open) return;
-			Ui.round(g, 0, 0, w, h, 6, 0xC00B0F18);
+			Ui.round(g, 0, 0, w, h, 6, 0xF00B0F18);
 			Ui.roundOutline(g, 0, 0, w, h, 6, Ui.BORDER);
 			Ui.icon(g, "chat", 5, 3, 7, Ui.ACCENT_LIGHT);
 			Ui.draw(g, Ui.fit(Ui.bold(tab.name), w - 52), 16, 3, Ui.TEXT);
@@ -294,7 +299,8 @@ public final class ChatWindows {
 		int n = shown.size();
 		int y = open ? TITLE + 2 + (rows - n) * LINE_H : bottom - 3 - n * LINE_H;
 		if (open) {
-			Ui.round(g, 0, 0, w, h, 6, 0xC00B0F18);
+			// nearly solid: see-through, the HUD's modules under a big window got in the way of its lines
+			Ui.round(g, 0, 0, w, h, 6, 0xF00B0F18);
 			Ui.roundOutline(g, 0, 0, w, h, 6, Ui.BORDER);
 			Ui.round(g, 1, 1, w - 2, TITLE - 1, 5, 0x14FFFFFF);
 			Ui.icon(g, "chat", 5, 3, 7, Ui.ACCENT_LIGHT);

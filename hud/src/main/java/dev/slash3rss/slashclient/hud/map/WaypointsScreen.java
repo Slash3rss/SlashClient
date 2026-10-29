@@ -153,6 +153,9 @@ public class WaypointsScreen extends Screen {
 		String dim = Waypoints.dimension(minecraft);
 		Component hint = null;
 		int hintX = 0, hintY = 0;
+		// the lock's place is kept in every row when any row has one, so the coordinates line up in one column
+		boolean anyLock = false;
+		for (int i = scroll; i < Math.min(list.size(), scroll + fit); i++) anyLock |= WaypointKeys.everyMode(minecraft, list.get(i));
 		for (int i = scroll; i < Math.min(list.size(), scroll + fit); i++) {
 			Waypoints.Point p = list.get(i);
 			int y = top + (i - scroll) * ROW, rx = px + 10, rw = pw - 20;
@@ -181,8 +184,8 @@ public class WaypointsScreen extends Screen {
 				Ui.button(g, "wp:share:" + i, bx, y + 1, 22, ROW - 5, "share", Component.empty(), false, mx, my);
 				hits.add(new Hit(bx, y + 1, 22, ROW - 5, () -> minecraft.setScreenAndShow(dev.slash3rss.slashclient.hud.social.PickFriendsScreen.shareWaypoint(this, p))));
 			}
+			if (anyLock) bx -= 24;
 			if (everyMode) {
-				bx -= 24;
 				Ui.button(g, "wp:mode:" + i, bx, y + 1, 22, ROW - 5, "lock", Component.empty(), false, mx, my);
 				hits.add(new Hit(bx, y + 1, 22, ROW - 5, () -> WaypointKeys.onlyThisMode(minecraft, p)));
 				spots.put("mode:" + p.name, new int[] { bx + 11, y + 9 });
