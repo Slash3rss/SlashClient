@@ -171,19 +171,23 @@ export class GameBridge {
 
   constructor(private readonly opts: BridgeOptions) {}
 
-  /** Starts once; later calls return the same address. */
+  /** Starts once; later calls (also while the first is still starting: two games at once) return the same address. */
   async start(): Promise<{ url: string; key: string }> {
-    if (!this.server) {
+    this.starting ??= (async () => {
       this.server = http.createServer((req, res) => this.handle(req, res).catch((err) => this.send(res, 500, { error: String((err as Error).message ?? err) })));
       await new Promise<void>((resolve) => this.server!.listen(0, '127.0.0.1', resolve));
       this.url = `http://127.0.0.1:${(this.server.address() as AddressInfo).port}`;
-    }
+    })();
+    await this.starting;
     return { url: this.url, key: this.key };
   }
+
+  private starting?: Promise<void>;
 
   stop() {
     this.server?.close();
     this.server = undefined;
+    this.starting = undefined;
     for (const wake of this.waiting) wake();
   }
 

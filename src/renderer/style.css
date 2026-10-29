@@ -237,7 +237,7 @@ input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
   border-color: rgba(59, 130, 246, .35);
 }
 .list li .grow { flex: 1; min-width: 0; }
-.list li small { display: block; color: var(--text-muted); font-weight: 500; font: 11px var(--font-mono); overflow: hidden; text-overflow: ellipsis; }
+.list li small { display: block; color: var(--text-muted); font-size: 11px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
 .accounts li { cursor: default; transition: border-color .2s ease, background .2s ease; }
 .accounts li.switchable { cursor: pointer; }
 .accounts li.switchable:hover { background: var(--glass-bg-hover); }

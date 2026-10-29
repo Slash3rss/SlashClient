@@ -77,7 +77,6 @@ const api = {
   checkModpack: (profileId: string) => invoke('modpack:check', profileId),
   updateModpack: (profileId: string, versionId?: string) => invoke('modpack:update', profileId, versionId),
   toggleContent: (profileId: string, type: string, filename: string, enabled: boolean) => invoke('content:toggle', profileId, type, filename, enabled),
-  removeContent: (profileId: string, type: string, filename: string) => invoke('content:remove', profileId, type, filename),
   toggleContentMany: (profileId: string, items: { type: string; filename: string }[], enabled: boolean) => invoke('content:toggleMany', profileId, items, enabled),
   /** Removal with "Cofnij": the files wait in the profile, then go to the system trash (contentBin.ts). */
   binContent: (profileId: string, items: { type: string; filename: string }[]) => invoke('content:bin', profileId, items),

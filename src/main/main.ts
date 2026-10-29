@@ -38,7 +38,7 @@ import { loadStore, newProfile, orphanProfiles, profileGameDir, saveStore, secre
 import { LOADER_NAMES, loaderVersions, type Loader } from './loaders';
 import {
   checkUpdates, contentFile, datapackFile, downloadModpack, identifyModpack, installMrpack, installProject, latestModpackVersion, listContentVersions,
-  findFitting, installedProjectIds, listInstalled, modrinthLinks, projectGallery, projectsByIds, readManifest, removeContent, search, setEnabled, updateMrpack,
+  findFitting, installedProjectIds, listInstalled, modrinthLinks, projectGallery, projectsByIds, readManifest, search, setEnabled, updateMrpack,
   type ContentType, type InstallRole, type ModpackInfo, type ProjectType, type UpdateInfo, type VersionInfo,
 } from './modrinth';
 import {
@@ -247,7 +247,8 @@ function createWindow() {
     const maximized = win.isMaximized();
     const b = maximized || win.isFullScreen() ? win.getNormalBounds() : win.getBounds();
     store.settings.launcherBounds = { ...b, maximized };
-    void saveStore(store);
+    // an antivirus holding the file must not leave an unhandled error in the main process
+    saveStore(store).catch((err) => console.error('launcher.json:', (err as Error).message));
   });
   // closed: nothing may reach it any more (sending to a destroyed window throws in the main process)
   const opened = win;
@@ -964,8 +965,6 @@ handle('manual:addFolder', async () => {
 handle('manual:removeFolder', (dir: string) => setWatchedFolders(watchedFolders().filter((d) => d !== dir)));
 handle('content:toggle', async (profileId: string, type: ContentType, filename: string, enabled: boolean) =>
   setEnabled((await profileTarget(profileId)).gameDir, type, filename, enabled));
-handle('content:remove', async (profileId: string, type: ContentType, filename: string) =>
-  removeContent((await profileTarget(profileId)).gameDir, type, filename));
 type ContentRef = { type: ContentType; filename: string };
 const contentRefs = (items: unknown): ContentRef[] => (Array.isArray(items) ? items : [])
   .filter((i): i is ContentRef => !!i && typeof i.filename === 'string' && ['mod', 'resourcepack', 'shader'].includes(i.type));
@@ -1755,6 +1754,12 @@ async function launchGame(profileId: string, accountId: string, server?: string,
   social.setActivity({ kind: server ? 'server' : 'menu', server: server || undefined, version: activityVersion, since: startedAt });
   // the servers' Discord looks and tab list rules, ready before the game is on one
   void statusRules.refresh();
+  // a launch that fails (no network, no Java) takes back what was set for it: friends do not see you "in the game"
+  const failed = (err: unknown): never => {
+    void consoleLog?.end(null, false);
+    if (!games.size) social.setActivity({ kind: 'launcher' });
+    throw err;
+  };
   const child = await launch({
     profile: hud.profile,
     account,
@@ -1785,7 +1790,7 @@ async function launchGame(profileId: string, accountId: string, server?: string,
     javaVendor: extras.javaVendor ?? effectiveJavaVendor(profile.javaVendor, store.settings.javaVendor),
     onNotice: (message) => send('launch:notice', { profileId: profile.id, message }),
     onJava: extras.onJava,
-  });
+  }).catch(failed);
   // capes and emotes: the SlashClient account says which Minecraft player it is, while the game runs
   const linkPlayer = () => {
     if (social.state().user && account.uuid) social.call('POST', '/v1/mc/link', { uuid: account.uuid }).catch(() => {});
