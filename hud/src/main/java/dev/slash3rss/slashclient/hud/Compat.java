@@ -159,6 +159,10 @@ public final class Compat {
 		//#else
 		//$ mc.gameMode.handleInventoryMouseClick(player.inventoryMenu.containerId, slot, hotbar, net.minecraft.world.inventory.ClickType.SWAP, player);
 		//#endif
+		// the game always tells the server the inventory was closed after its clicks; without that an anticheat
+		// takes the inventory for open and drops the digging and the moves (the others saw the old item in hand)
+		if (!(screen(mc) instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen) && mc.getConnection() != null)
+			mc.getConnection().send(new net.minecraft.network.protocol.game.ServerboundContainerClosePacket(player.inventoryMenu.containerId));
 	}
 
 	//#if MC >= 1.21.2 && MC < 1.21.6

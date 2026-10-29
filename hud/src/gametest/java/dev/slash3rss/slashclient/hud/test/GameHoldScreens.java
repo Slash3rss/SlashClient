@@ -117,7 +117,20 @@ public class GameHoldScreens implements FabricClientGameTest {
 			check(context.computeOnClient(mc -> TestHooks.openToLan()), "the world did not open to LAN");
 			waitFor(context, () -> air(context), "the block was not dug with the pause menu open (world open to LAN)");
 			context.takeScreenshot("holdscreens-pause");
+			// auto tool under the pause menu: the pickaxe from the backpack is in the hand on the server too
+			// (the others see it), not only on the player's screen
 			context.runOnClient(mc -> TestHooks.hold(true, false, true));
+			server.runCommand("item replace entity @a hotbar.0 with stone");
+			server.runCommand("item replace entity @a inventory.11 with diamond_pickaxe");
+			server.runCommand("setblock 0 101 1 obsidian");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.autoTool = true);
+			context.waitTicks(5);
+			context.runOnClient(mc -> TestHooks.hold(true, true, true));
+			context.waitTicks(30);
+			String held = server.computeOnServer(s -> s.getPlayerList().getPlayers().get(0).getMainHandItem().getItem().toString());
+			context.runOnClient(mc -> { TestHooks.hold(true, false, true); dev.slash3rss.slashclient.hud.SlashHud.config.autoTool = false; });
+			server.runCommand("setblock 0 101 1 air");
+			check(held.contains("diamond_pickaxe"), "auto tool under the pause menu: the server sees " + held + " in the hand");
 			context.setScreen(() -> null);
 			context.waitTicks(3);
 			check(context.computeOnClient(mc -> TestHooks.buttonsDown()).equals("false/false"), "a button stayed down after the pause menu");
