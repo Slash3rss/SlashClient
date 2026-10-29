@@ -1,7 +1,7 @@
 # SlashClient
 
 Launcher Minecraft: Java Edition w Electronie i TypeScripcie, z własnym modem (HUD) i serwerem społecznościowym.
-Strona: <https://client.slash3rss.dev>. Poradniki dla graczy: [wiki](https://github.com/Slash3rss/SlashClient/wiki).
+Strona: <https://slashclient.pl>. Poradniki dla graczy: [wiki](https://github.com/Slash3rss/SlashClient/wiki).
 
 **Launcher**
 

@@ -1,10 +1,35 @@
 # Caddy gets and renews the HTTPS certificate on its own.
-client.slash3rss.dev {
+slashclient.pl {
 	encode zstd gzip
 	reverse_proxy 127.0.0.1:8787
 	header Strict-Transport-Security "max-age=31536000"
 	log {
 		output file /var/log/caddy/slashclient.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}
+
+www.slashclient.pl {
+	redir https://slashclient.pl{uri} permanent
+}
+
+# The old address. Pages opened in a browser move to the new one; launchers and mods from before the
+# move (the API, live chat, updates) are still served here, since a redirect would break their posts
+# and sockets. They ask without text/html, which only a browser opening a page sends.
+client.slash3rss.dev {
+	@page {
+		method GET HEAD
+		header Accept *text/html*
+		not path /v1/* /aktualizacje /aktualizacje/*
+	}
+	redir @page https://slashclient.pl{uri} permanent
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8787
+	header Strict-Transport-Security "max-age=31536000"
+	log {
+		output file /var/log/caddy/slashclient-old.log {
 			roll_size 10MiB
 			roll_keep 5
 		}

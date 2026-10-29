@@ -20,7 +20,7 @@ import { t } from '../shared/i18n';
  * to fetch by hand from the file's page, never fetched some other way.
  */
 
-let api = 'https://client.slash3rss.dev/v1/curseforge';
+let api = 'https://slashclient.pl/v1/curseforge';
 /** The SlashClient server the calls go through (Settings → server address). */
 export function setCurseForgeServer(serverUrl: string): void {
   api = `${serverUrl.replace(/\/$/, '')}/v1/curseforge`;

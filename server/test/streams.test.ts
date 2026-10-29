@@ -567,7 +567,7 @@ describe('the public profile', () => {
     const embed = new URL(s.live[0].embed);
     assert.equal(embed.origin, 'https://player.twitch.tv');
     assert.equal(embed.searchParams.get('channel'), 'ala_tv');
-    assert.deepEqual(embed.searchParams.getAll('parent'), ['client.example', 'client.slash3rss.dev']);
+    assert.deepEqual(embed.searchParams.getAll('parent'), ['client.example', 'slashclient.pl', 'client.slash3rss.dev']);
     // Kick's player by the channel's slug
     const dans = (await call('GET', `/v1/profiles/${dan.user.handle}`)).body.profile.streams;
     assert.deepEqual(dans.channels.map((c: any) => c.url), ['https://kick.com/bobk']);

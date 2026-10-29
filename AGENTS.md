@@ -1,7 +1,7 @@
 # SlashClient – wskazówki dla agentów
 
 Launcher Minecrafta (Electron + TypeScript), własny mod Fabric (HUD) na 10 wersji gry i serwer społecznościowy ze stroną
-i panelem admina (client.slash3rss.dev). Właściciel: Slash3rss. Rozmawiamy po polsku; komunikaty commitów, notki
+i panelem admina (slashclient.pl; stary adres client.slash3rss.dev przekierowuje strony, a API i aktualizacje obsługuje dalej dla starszych launcherów). Właściciel: Slash3rss. Rozmawiamy po polsku; komunikaty commitów, notki
 wydań i teksty w interfejsie też po polsku (każdy tekst interfejsu ma też wersję angielską).
 
 ## Struktura
@@ -93,7 +93,7 @@ Mod (`hud/`, potrzebny JDK 25, np. `JAVA_HOME="/c/Program Files/Eclipse Adoptium
    - English notes…
    ```
 3. commit „Wydanie X.Y.Z”, tag `vX.Y.Z`, push `main` i tagu – resztę robi `.github/workflows/release.yml`
-4. sprawdź, że kanały aktualizacji (`https://client.slash3rss.dev/aktualizacje/latest*.yml`) pokazują nową wersję
+4. sprawdź, że kanały aktualizacji (`https://slashclient.pl/aktualizacje/latest*.yml`) pokazują nową wersję
 
 ## Wydanie beta (tylko na polecenie)
 
@@ -102,7 +102,7 @@ Jak zwykłe wydanie, ale wersja i tag z `-beta.N`: `npm version X.Y.Z-beta.N --n
 Workflow robi z tego „pre-release” na GitHubie z samymi plikami aktualizacji (bez `Setup.exe` i `.dmg`).
 Bety dostają tylko launchery z kanałem „Beta” w ustawieniach (`/aktualizacje/beta`, przełącznik „Kanał beta
 aktualizacji” w panelu admina); strona, `/pobierz` i stabilny kanał ich nie widzą. Sprawdź
-`https://client.slash3rss.dev/aktualizacje/beta/latest.yml`.
+`https://slashclient.pl/aktualizacje/beta/latest.yml`.
 
 ## Wdrożenie serwera (tylko na polecenie)
 
@@ -117,7 +117,7 @@ Potem kod (tylko `src`, `web` i `package.json`):
 git archive HEAD:server src web package.json | ssh -i ~/.ssh/slashclient_vps root@93.95.119.130 \
   'cd /opt/slashclient/app && tar xf - && chown -R root:root src web && systemctl restart slashclient'
 ```
-Sprawdź `https://client.slash3rss.dev/v1/health`. Na VPS nie ruszaj `/opt/api-slash3rss` ani `/etc/caddy/sites` –
+Sprawdź `https://slashclient.pl/v1/health`. Na VPS nie ruszaj `/opt/api-slash3rss` ani `/etc/caddy/sites` –
 należą do innego projektu (Caddyfile z repo tylko je importuje).
 
 Zapasowy serwer (awaryjność): `server/deploy/failover/README.md` – dzierżawa lidera i kopie bazy/plików w R2

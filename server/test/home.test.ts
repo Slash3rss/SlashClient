@@ -50,7 +50,7 @@ describe('home page defaults', () => {
   it('web/index.html holds exactly what the defaults make', () => {
     const file = readFileSync(path.join(WEB, 'index.html'), 'utf8').replace(/\r\n/g, '\n');
     const inFile = templateRegions(file);
-    const made = regions(DEFAULTS.pl, 'pl', 'https://client.slash3rss.dev');
+    const made = regions(DEFAULTS.pl, 'pl', 'https://slashclient.pl');
     assert.deepEqual(Object.keys(inFile).sort(), Object.keys(made).sort());
     for (const [name, html] of Object.entries(made)) assert.equal(inFile[name], html, `region ${name}`);
   });

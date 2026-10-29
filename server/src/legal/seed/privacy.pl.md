@@ -2,7 +2,7 @@
 
 Administratorem Twoich danych osobowych jest {{admin.name}}, {{admin.address}}, {{admin.nip}} („my”). W sprawach danych osobowych pisz na {{admin.email}}. [UZUPEŁNIJ: inspektor ochrony danych, jeśli został wyznaczony; inaczej usuń to zdanie]
 
-Polityka dotyczy launchera SlashClient, moda (HUD), strony [client.slash3rss.dev](https://client.slash3rss.dev/) i serwera usług online (konto, znajomi, czat, klany, osiągnięcia, Kosmetyki, udostępnianie plików, wsparcie). Pojęcia znaczą to samo co w [Regulaminie](/regulamin).
+Polityka dotyczy launchera SlashClient, moda (HUD), strony [slashclient.pl](https://slashclient.pl/) i serwera usług online (konto, znajomi, czat, klany, osiągnięcia, Kosmetyki, udostępnianie plików, wsparcie). Pojęcia znaczą to samo co w [Regulaminie](/regulamin).
 
 ## 2. W skrócie {#w-skrocie}
 

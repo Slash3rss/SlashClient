@@ -24,7 +24,7 @@ czekają, aż DNS się odświeży, a launcher i mod same połączą się ponowni
   1. sprawdza, że dzierżawa wygasła (główny naprawdę nie działa, a nie tylko zapasowy go nie widzi);
   2. pobiera ostatnią kopię bazy i pliki;
   3. startuje serwer, który bierze dzierżawę;
-  4. przez API Cloudflare kieruje `client.slash3rss.dev` na siebie.
+  4. przez API Cloudflare kieruje `slashclient.pl` na siebie.
 
 Utrata danych przy awarii: do ~30 s zmian w bazie i do minuty w plikach. Przerwa: około 4 minut.
 
@@ -44,9 +44,9 @@ FAILOVER_S3_SECRET=...
 Pozostałe zmienne (klucze OAuth, `STORAGE_SECRET_KEY`, `PUBLIC_URL`…) muszą być na obu serwerach takie same.
 Bez tego zaszyfrowane klucze z panelu i logowanie nie zadziałają na zapasowym.
 
-**3. Certyfikat.** Najprościej: Cloudflare → SSL/TLS → Origin Server → certyfikat dla `client.slash3rss.dev` na 15 lat,
+**3. Certyfikat.** Najprościej: Cloudflare → SSL/TLS → Origin Server → certyfikat dla `slashclient.pl` na 15 lat,
 wgrany na oba serwery, i tryb SSL „Full (strict)”. Caddy na obu: `tls /etc/caddy/origin.pem /etc/caddy/origin.key`
-w bloku `client.slash3rss.dev`. Wtedy zapasowy ma ważny certyfikat już przed przejęciem.
+w bloku `slashclient.pl`. Wtedy zapasowy ma ważny certyfikat już przed przejęciem.
 
 **4. Zapasowy serwer.** Ta sama instalacja co główny: Node 24, Caddy, użytkownik `slashclient`, aplikacja w
 `/opt/slashclient/app` razem z `deploy/failover/`, `slashclient.service`. Do tego:
@@ -68,7 +68,7 @@ systemctl enable --now slashclient-watchdog.timer
 1. Na głównym: `systemctl stop slashclient`. Strona przestaje działać.
 2. Na zapasowym, po ~3 min: `journalctl -t slashclient-watchdog -t slashclient-promote`. Pojawi się „Gotowe: ten
    serwer … jest teraz głównym”.
-3. `curl https://client.slash3rss.dev/v1/health`: pole `node` pokazuje nazwę zapasowego.
+3. `curl https://slashclient.pl/v1/health`: pole `node` pokazuje nazwę zapasowego.
 4. Główny teraz nie wystartuje sam. `systemctl start slashclient` kończy się komunikatem, że główny jest teraz
    zapasowy, i tak ma być.
 

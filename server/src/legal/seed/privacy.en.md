@@ -4,7 +4,7 @@
 
 The controller of your personal data is {{admin.name}}, {{admin.address}}, {{admin.nip}} ("we"). For data protection matters write to {{admin.email}}. [UZUPEŁNIJ: data protection officer, if appointed; otherwise delete this sentence]
 
-This policy covers the SlashClient launcher, the mod (HUD), the website [client.slash3rss.dev](https://client.slash3rss.dev/) and the online services server (account, friends, chat, clans, achievements, Cosmetics, file sharing, support). Terms have the same meaning as in the [Terms of Service](/terms).
+This policy covers the SlashClient launcher, the mod (HUD), the website [slashclient.pl](https://slashclient.pl/) and the online services server (account, friends, chat, clans, achievements, Cosmetics, file sharing, support). Terms have the same meaning as in the [Terms of Service](/terms).
 
 ## 2. In short {#summary}
 

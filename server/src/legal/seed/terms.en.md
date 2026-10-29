@@ -2,7 +2,7 @@
 
 ## 1. General provisions {#general}
 
-1. These Terms set out the rules for using SlashClient: the Minecraft launcher for computers (Windows, macOS, Linux), the game modification ("mod", HUD), the website [client.slash3rss.dev](https://client.slash3rss.dev/) and the online services (SlashClient account, friends, chat, clans, achievements, Sparks, cosmetics, file sharing) — together the "Services".
+1. These Terms set out the rules for using SlashClient: the Minecraft launcher for computers (Windows, macOS, Linux), the game modification ("mod", HUD), the website [slashclient.pl](https://slashclient.pl/) and the online services (SlashClient account, friends, chat, clans, achievements, Sparks, cosmetics, file sharing) — together the "Services".
 2. The Services are provided by {{admin.name}}, {{admin.address}}, {{admin.nip}}, e-mail: {{admin.email}} ("Provider", "we").
 3. These Terms are the terms referred to in Art. 8 of the Polish Act of 18 July 2002 on providing services by electronic means. They are available free of charge at [/terms](/terms) and in the launcher (Settings → Legal information), and can be saved and printed.
 4. How we process personal data is described in the [Privacy Policy](/privacy). Voluntary financial support is governed by the separate [Support Terms](/support/terms).

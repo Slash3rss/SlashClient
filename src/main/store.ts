@@ -195,7 +195,7 @@ export function newProfile(partial: Partial<Profile> = {}): Profile {
 /** SlashClient's Microsoft app, approved by Mojang for Minecraft sign-in (a public id, not a secret). */
 export const DEFAULT_MS_CLIENT_ID = process.env.SLASHCLIENT_MS_CLIENT_ID ?? '956312be-af3a-4279-bdbd-1e91128b7e73';
 /** The public SlashClient server; SLASHCLIENT_SOCIAL_URL points a development build at a local one. */
-export const DEFAULT_SOCIAL_URL = process.env.SLASHCLIENT_SOCIAL_URL ?? 'https://client.slash3rss.dev';
+export const DEFAULT_SOCIAL_URL = process.env.SLASHCLIENT_SOCIAL_URL ?? 'https://slashclient.pl';
 
 function defaults(): StoreData {
   return {

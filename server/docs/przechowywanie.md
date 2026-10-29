@@ -78,7 +78,7 @@ journalctl -u slashclient -n 30         # bez błędu „STORAGE_SECRET_KEY musi
 
 ## 4. Dodanie miejsca w panelu
 
-1. Wejdź na `https://client.slash3rss.dev/admin` → **Miejsce na pliki** → **Dodaj miejsce**.
+1. Wejdź na `https://slashclient.pl/admin` → **Miejsce na pliki** → **Dodaj miejsce**.
 2. **Rodzaj:** Cloudflare R2, Backblaze B2, Inne S3 albo Folder na serwerze.
 3. Wypełnij:
    - **Nazwa**, np. „R2 darmowe”,

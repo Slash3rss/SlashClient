@@ -236,7 +236,7 @@ export function createCommunityLinks(deps: Deps) {
     // a pasted link is looked up at once
     input.addEventListener('input', () => linkCodeOf(input.value) && void look());
     const close = modalWindow(t('Dołącz przez zaproszenie'), [
-      el('p', { className: 'muted', textContent: t('Wklej link (np. client.slash3rss.dev/c/abcd2345) albo sam kod. Zaproszenie działa też do prywatnych społeczności.') }),
+      el('p', { className: 'muted', textContent: t('Wklej link (np. slashclient.pl/c/abcd2345) albo sam kod. Zaproszenie działa też do prywatnych społeczności.') }),
       el('div', { className: 'row' }, input, check), result,
     ], [], undefined, 'fr-group-modal fr-com-modal');
     input.focus();

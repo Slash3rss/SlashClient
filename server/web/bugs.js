@@ -87,7 +87,7 @@ function renderNew() {
   const title = el('input', { type: 'text', maxLength: 120, placeholder: L('Krótko: co nie działa? (np. „Gra wyłącza się po wejściu na serwer”)', 'In short: what does not work? (e.g. "The game closes after joining a server")'), required: true });
   const body = el('textarea', { maxLength: 8000, required: true,
     placeholder: L('Co robiłeś, co się stało, a co powinno się stać? Czy dzieje się to za każdym razem?', 'What were you doing, what happened, and what should have happened? Does it happen every time?') });
-  const log = el('input', { type: 'text', maxLength: 80, placeholder: L('Link do logu (opcjonalnie), np. client.slash3rss.dev/logi/…', 'Link to a log (optional), e.g. client.slash3rss.dev/logs/…'), value: params.get('log') ? `${location.origin}/logi/${params.get('log')}` : '' });
+  const log = el('input', { type: 'text', maxLength: 80, placeholder: L('Link do logu (opcjonalnie), np. slashclient.pl/logi/…', 'Link to a log (optional), e.g. slashclient.pl/logs/…'), value: params.get('log') ? `${location.origin}/logi/${params.get('log')}` : '' });
   const version = el('input', { type: 'text', maxLength: 40, placeholder: L('Wersja launchera (opcjonalnie)', 'Launcher version (optional)'), value: params.get('wersja') ?? '' });
   const send = el('button', { type: 'submit', class: 'primary' }, icon('fa-solid fa-paper-plane'), L('Wyślij zgłoszenie', 'Send the report'));
   const form = el('form', { class: 'glass card bug-form', onsubmit: async (e) => {

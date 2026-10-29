@@ -173,8 +173,8 @@ describe('changelog page', () => {
 
   it('is in the sitemap, and the home page badge leads to it', async () => {
     const map = readFileSync(path.resolve(import.meta.dirname, '../web/sitemap.xml'), 'utf8');
-    assert.match(map, /<loc>https:\/\/client.slash3rss.dev\/zmiany<\/loc>/);
-    assert.match(map, /<loc>https:\/\/client.slash3rss.dev\/changelog<\/loc>/);
+    assert.match(map, /<loc>https:\/\/slashclient.pl\/zmiany<\/loc>/);
+    assert.match(map, /<loc>https:\/\/slashclient.pl\/changelog<\/loc>/);
     const en = await (await fetch(`${base}/en`)).text();
     assert.match(en, /<a class="pill" href="\/changelog#0.9.40"/);
   });

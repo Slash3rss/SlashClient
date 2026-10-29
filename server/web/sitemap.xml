@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://client.slash3rss.dev/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://client.slash3rss.dev/en</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://client.slash3rss.dev/app/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-  <url><loc>https://client.slash3rss.dev/wsparcie</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://client.slash3rss.dev/zmiany</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://client.slash3rss.dev/changelog</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://client.slash3rss.dev/zgloszenia</loc><changefreq>daily</changefreq><priority>0.5</priority></url>
-  <url><loc>https://client.slash3rss.dev/regulamin</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://client.slash3rss.dev/polityka-prywatnosci</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://client.slash3rss.dev/terms</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://client.slash3rss.dev/privacy</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://slashclient.pl/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://slashclient.pl/en</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://slashclient.pl/app/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://slashclient.pl/wsparcie</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://slashclient.pl/zmiany</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://slashclient.pl/changelog</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://slashclient.pl/zgloszenia</loc><changefreq>daily</changefreq><priority>0.5</priority></url>
+  <url><loc>https://slashclient.pl/regulamin</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://slashclient.pl/polityka-prywatnosci</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://slashclient.pl/terms</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://slashclient.pl/privacy</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
 </urlset>

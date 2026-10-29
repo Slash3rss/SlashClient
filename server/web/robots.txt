@@ -12,5 +12,5 @@ Allow: /v1/profiles/*/head
 Disallow: /aktualizacje/
 Disallow: /pobierz/
 
-Sitemap: https://client.slash3rss.dev/sitemap.xml
-Sitemap: https://client.slash3rss.dev/sitemap-profiles.xml
+Sitemap: https://slashclient.pl/sitemap.xml
+Sitemap: https://slashclient.pl/sitemap-profiles.xml

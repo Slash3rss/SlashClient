@@ -25,4 +25,4 @@ sleep 2
 systemctl is-active slashclient caddy
 curl -fsS http://127.0.0.1:8787/v1/health'
 echo
-echo "Gotowe: https://client.slash3rss.dev/"
+echo "Gotowe: https://slashclient.pl/"

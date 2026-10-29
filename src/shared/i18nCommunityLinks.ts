@@ -35,7 +35,7 @@ export const COMMUNITY_LINKS_EN: Record<string, string> = {
   'Link zaproszenia albo kod': 'Invite link or code',
   'Sprawdź': 'Check',
   'To nie wygląda na link ani kod zaproszenia.': 'That does not look like an invite link or code.',
-  'Wklej link (np. client.slash3rss.dev/c/abcd2345) albo sam kod. Zaproszenie działa też do prywatnych społeczności.': 'Paste the link (e.g. client.slash3rss.dev/c/abcd2345) or just the code. Invites work for private communities too.',
+  'Wklej link (np. slashclient.pl/c/abcd2345) albo sam kod. Zaproszenie działa też do prywatnych społeczności.': 'Paste the link (e.g. slashclient.pl/c/abcd2345) or just the code. Invites work for private communities too.',
   'Dołącz': 'Join',
   'Otwórz': 'Open',
   'Pełna': 'Full',
