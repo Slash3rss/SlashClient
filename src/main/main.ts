@@ -91,6 +91,8 @@ installErrorHandlers({ logFile: launcherLogFile, started: () => windowOpened, fa
 
 /** Every game session's console, kept for the Play screen (the last ones of each profile). */
 const consoleHistory = new ConsoleHistory(path.join(paths.root, 'console'));
+/** The GNOME title bar hint (gnomeWindow.ts) said once a session. */
+let gnomeHintShown = false;
 import { checkModsFolder, inspectModsFolder, installedModIds, type ModOrigin } from './modcheck';
 import { binContent, emptyBin, restoreContent } from './contentBin';
 import { addModsArgs, hudVersions, prepareHud } from './hud';
@@ -104,6 +106,7 @@ import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type For
 import { perfModsFor } from './perfmods';
 import { applyPerfPreset } from './perfPreset';
 import { partOn, presetEnv, presetMemoryCap, presetNiceness } from '../shared/perfPresets';
+import { gnomeWindowEnv, installCommand } from './gnomeWindow';
 import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePreset, type SkinPreset } from './skinLibrary';
 import fsp from 'node:fs/promises';
 import { backupWorld, deleteFile, listBackups, listClips, listScreenshots, listWorlds, restoreBackup } from './worlds';
@@ -1867,12 +1870,16 @@ async function startGame(profileId: string, accountId: string, server: string | 
   // the preset's memory (less of it leaves more to a small computer) and the Raspberry Pi's graphics driver fix
   const memoryCap = partOn(profile.perfPreset, profile.perfOff, 'memory') ? presetMemoryCap(profile.perfPreset!, systemMemoryMb()) : undefined;
   const gpu = await gpuLaunchOptions(store.settings);
-  // GNOME draws no title bar for Wayland windows, and the game's (26.x, SDL) opens there without the
-  // minimise, maximise and close buttons: on GNOME it opens on XWayland, which has the graphics card's
-  // OpenGL there, unless the player picked SDL's driver themselves
-  const gnome = process.platform === 'linux' && !!process.env.WAYLAND_DISPLAY && !!process.env.DISPLAY && /gnome/i.test(process.env.XDG_CURRENT_DESKTOP ?? '');
-  const windowEnv: Record<string, string> = gnome && !process.env.SDL_VIDEO_DRIVER ? { SDL_VIDEO_DRIVER: 'x11' } : {};
-  const perfEnv = { ...windowEnv, ...presetEnv(profile.perfPreset ?? 'off', profile.perfOff, process.platform, !!process.env.WAYLAND_DISPLAY && !gnome) };
+  // GNOME: the game's window (26.x, SDL) on Wayland with libdecor's Cairo title bar (gnomeWindow.ts);
+  // without that plugin installed, once a session, the command that adds it
+  const sdlGame = !/^1\./.test(profile.versionId);
+  const gnome = sdlGame ? await gnomeWindowEnv(process.env, process.platform, path.join(paths.root, 'libdecor')) : { env: {}, missing: false };
+  if (gnome.missing && !gnomeHintShown) {
+    gnomeHintShown = true;
+    const command = await installCommand();
+    setTimeout(() => send('launch:notice', { profileId: profile.id, message: t('Okno gry na GNOME nie ma przycisków minimalizacji i zamknięcia, bo w systemie brakuje wtyczki libdecor. Zainstaluj ją w terminalu: {0}', command) }), 0);
+  }
+  const perfEnv = { ...gnome.env, ...presetEnv(profile.perfPreset ?? 'off', profile.perfOff, process.platform, !!process.env.WAYLAND_DISPLAY) };
   // and the mod's saving mode (fewer effects and other players' cosmetics)
   if (hud.jvmArgs.length && partOn(profile.perfPreset, profile.perfOff, 'saver')) hud.jvmArgs.push(`-Dslashclient.lowSpec=${profile.perfPreset}`);
   const child = await launch({
