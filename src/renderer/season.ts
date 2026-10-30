@@ -168,11 +168,14 @@ export function initSeason(deps: SeasonDeps) {
   /** A pumpkin glowing on the ground: ribs, a stem and a carved face lit from inside. */
   function pumpkin(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, t: number, glowing = true) {
     const flicker = deps.reduced() || !glowing ? 1 : 0.85 + 0.15 * Math.sin(t / 180 + x);
-    const glow = ctx.createRadialGradient(x, y, r * 0.2, x, y, r * 3);
-    glow.addColorStop(0, `rgba(249, 115, 22, ${0.28 * flicker})`);
-    glow.addColorStop(1, 'rgba(249, 115, 22, 0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(x - r * 3, y - r * 3, r * 6, r * 6);
+    // the glow around it (not in the icon: the picture's edge would cut it into a square)
+    if (glowing) {
+      const glow = ctx.createRadialGradient(x, y, r * 0.2, x, y, r * 3);
+      glow.addColorStop(0, `rgba(249, 115, 22, ${0.28 * flicker})`);
+      glow.addColorStop(1, 'rgba(249, 115, 22, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(x - r * 3, y - r * 3, r * 6, r * 6);
+    }
     for (const [dx, w] of [[-0.45, 0.6], [0.45, 0.6], [0, 0.7]] as const) {
       ctx.beginPath();
       ctx.ellipse(x + dx * r, y, r * w, r * 0.8, 0, 0, Math.PI * 2);
