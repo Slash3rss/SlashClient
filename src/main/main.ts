@@ -693,6 +693,12 @@ handle('stats:get', async (days: number) => {
 // the last session summaries, for the statistics page
 handle('sessionSummary:list', () => readSummaries());
 
+/** Whether the seasonal look is allowed (the player's setting and the admin's switch, as the page knows them): the game is told so. */
+let seasonAllowed = true;
+handle('season:allowed', (on: unknown) => {
+  seasonAllowed = on !== false;
+});
+
 /** The seasonal look's icon for the window and the taskbar (season.ts), or the usual one for null; only a PNG made by the page. */
 handle('window:setIcon', (dataUrl: unknown) => {
   const own = typeof dataUrl === 'string' && dataUrl.length < 2_000_000 && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(dataUrl);
@@ -1995,7 +2001,7 @@ async function prepareProfileHud(profile: Profile): Promise<{ profile: Profile; 
   const loader = hidden ? 'fabric' : profile.loader;
   const cacheDir = path.join(paths.root, 'hud');
   const jars = await prepareHud(HUD_DIR, profileGameDir(profile), {
-    enabled: profile.hud ?? true, loader, gameVersion, cacheDir, socialUrl: store.settings.socialUrl,
+    enabled: profile.hud ?? true, loader, gameVersion, cacheDir, socialUrl: store.settings.socialUrl, seasonal: seasonAllowed,
     // the hidden Fabric has no mods of its own: Fabric API always comes from us
     ignoreProfileMods: hidden,
   }, () => send('launch:stage', { stage: t('Pobieranie Fabric API dla moda SlashClient'), done: 0, total: 1 }));

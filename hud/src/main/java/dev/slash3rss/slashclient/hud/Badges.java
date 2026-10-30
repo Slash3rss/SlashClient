@@ -145,6 +145,8 @@ public final class Badges {
 			if (!Files.exists(file)) return;
 			JsonObject o = GSON.fromJson(Files.readString(file), JsonObject.class);
 			if (o != null && o.has("socialUrl")) server = o.get("socialUrl").getAsString().replaceAll("/+$", "");
+			// the seasonal look switched off in the launcher (its setting or the admin's switch)
+			if (o != null && o.has("seasonal")) dev.slash3rss.slashclient.hud.ui.Season.launcherAllows = o.get("seasonal").getAsBoolean();
 		} catch (Exception e) {
 			SlashHud.LOG.warn("SlashClient: nie udało się wczytać adresu serwera: {}", e.toString());
 		}

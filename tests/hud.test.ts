@@ -101,6 +101,9 @@ describe('HUD and the launcher', () => {
     const { root, game } = await setup();
     await writeLauncherInfo(game, 'https://api.slash3rss.dev');
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(game, 'config', 'slashclient-launcher.json'), 'utf8')), { socialUrl: 'https://api.slash3rss.dev' });
+    // the seasonal look switched off in the launcher: the game is told so
+    await writeLauncherInfo(game, 'https://api.slash3rss.dev', false);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(game, 'config', 'slashclient-launcher.json'), 'utf8')), { socialUrl: 'https://api.slash3rss.dev', seasonal: false });
     await fs.rm(root, { recursive: true });
   });
 });

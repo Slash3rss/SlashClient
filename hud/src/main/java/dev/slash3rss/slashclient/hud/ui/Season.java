@@ -15,10 +15,12 @@ public final class Season {
 
 	/** For the tests: the season on or off whatever the date (null: the date decides). */
 	public static Boolean forTest;
+	/** False when the launcher said the look is off (its setting or the admin's switch, slashclient-launcher.json). */
+	public static boolean launcherAllows = true;
 
 	public static boolean halloween() {
 		if (forTest != null) return forTest;
-		if (SlashHud.config != null && !SlashHud.config.seasonalLook) return false;
+		if (!launcherAllows || SlashHud.config != null && !SlashHud.config.seasonalLook) return false;
 		LocalDate d = LocalDate.now();
 		return (d.getMonthValue() == 10 && d.getDayOfMonth() >= 25) || (d.getMonthValue() == 11 && d.getDayOfMonth() <= 2);
 	}

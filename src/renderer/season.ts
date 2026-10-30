@@ -23,6 +23,8 @@ interface SeasonDeps {
   reduced: () => boolean;
   /** The window's (and the taskbar's) icon: a picture as a PNG data URL, or null for the usual one. */
   setWindowIcon?: (dataUrl: string | null) => unknown;
+  /** Tells the game whether the look is allowed (the next game started gets it). */
+  setAllowed?: (on: boolean) => unknown;
 }
 
 const WEB = `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round">
@@ -237,6 +239,7 @@ export function initSeason(deps: SeasonDeps) {
     // before the server's switches are known (or offline): as decided last time, so an admin's "off" does not flash
     const feature = deps.featureOn();
     const allowed = deps.settingOn() && (feature ?? remembered());
+    deps.setAllowed?.(allowed);
     if (feature !== undefined) {
       try {
         localStorage.setItem(REMEMBER, allowed ? 'on' : 'off');

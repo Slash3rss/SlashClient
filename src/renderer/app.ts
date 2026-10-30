@@ -4935,6 +4935,7 @@ let wakeStars = () => {};
 const season = initSeason({
   settingOn: () => store?.settings?.seasonalLook !== false, featureOn: () => (featuresKnown() ? featureOn('seasonal') : undefined), reduced: motionReduced,
   setWindowIcon: (dataUrl) => api.setWindowIcon?.(dataUrl),
+  setAllowed: (on) => api.setSeasonAllowed?.(on),
 });
 onFeatures(() => season.apply());
 

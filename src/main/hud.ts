@@ -83,10 +83,11 @@ export async function hasFabricApi(gameDir: string): Promise<boolean> {
  * What the mod needs from the launcher: the SlashClient server, for the logo next to
  * other SlashClient players. Separate from the HUD settings, which the player edits.
  */
-export async function writeLauncherInfo(gameDir: string, socialUrl: string): Promise<void> {
+export async function writeLauncherInfo(gameDir: string, socialUrl: string, seasonal = true): Promise<void> {
   const dir = path.join(gameDir, 'config');
   await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(path.join(dir, 'slashclient-launcher.json'), JSON.stringify({ socialUrl }, null, 2));
+  // the seasonal look switched off in the launcher's settings or by the admin: off in the game too
+  await fs.writeFile(path.join(dir, 'slashclient-launcher.json'), JSON.stringify({ socialUrl, ...(seasonal ? {} : { seasonal: false }) }, null, 2));
 }
 
 /** The -Dfabric.addMods argument for these jars (none when the list is empty). */
@@ -102,7 +103,7 @@ export function addModsArgs(jars: string[]): string[] {
 export async function prepareHud(
   bundleDir: string,
   gameDir: string,
-  opts: HudOptions & { cacheDir: string; socialUrl?: string; ignoreProfileMods?: boolean },
+  opts: HudOptions & { cacheDir: string; socialUrl?: string; ignoreProfileMods?: boolean; seasonal?: boolean },
   onStage?: () => void,
 ): Promise<string[]> {
   try {
@@ -110,7 +111,7 @@ export async function prepareHud(
     const source = await hudJarFor(bundleDir, opts);
     if (!source) return [];
     const jars = [await stageJar(source, opts.cacheDir)];
-    if (opts.socialUrl) await writeLauncherInfo(gameDir, opts.socialUrl);
+    if (opts.socialUrl) await writeLauncherInfo(gameDir, opts.socialUrl, opts.seasonal !== false);
     if (opts.ignoreProfileMods || !(await hasFabricApi(gameDir))) {
       onStage?.();
       jars.push(await cachedModFile('fabric-api', opts.gameVersion, 'fabric', path.join(opts.cacheDir, 'fabric-api', opts.gameVersion)));
