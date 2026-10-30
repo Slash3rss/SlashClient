@@ -261,6 +261,7 @@
 	"slashclient-hud.set.appearance": "HUD look",
 	"slashclient-hud.set.backgroundAll": "Background under modules",
 	"slashclient-hud.set.menu": "SlashClient main menu",
+	"slashclient-hud.set.seasonalLook": "Seasonal look (Halloween)",
 	"slashclient-hud.menu.title": "SlashClient",
 	"slashclient-hud.menu.vanilla": "Switch to the Minecraft menu",
 	"slashclient-hud.menu.hello": "Hi, %s!",

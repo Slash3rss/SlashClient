@@ -515,7 +515,8 @@ public final class Catalog {
 			new Toggle("slashclient-hud.set.moveEffects.others", () -> cfg.moveEffectsOthers, v -> cfg.moveEffectsOthers = v)), null));
 		out.add(new Entry("sprays", "slashclient-hud.set.sprays", "extras", "m-appearance", () -> cfg.sprays, v -> cfg.sprays = v, List.of(
 			new Toggle("slashclient-hud.set.sprays.others", () -> cfg.spraysOthers, v -> cfg.spraysOthers = v)), null));
-		out.add(new Entry("menu", "slashclient-hud.set.menu", "extras", "m-menu", () -> cfg.customMenu, v -> cfg.customMenu = v, List.of(), null));
+		out.add(new Entry("menu", "slashclient-hud.set.menu", "extras", "m-menu", () -> cfg.customMenu, v -> cfg.customMenu = v, List.of(
+			new Toggle("slashclient-hud.set.seasonalLook", () -> cfg.seasonalLook, v -> cfg.seasonalLook = v)), null));
 		out.add(new Entry("pause", "slashclient-hud.set.pause", "extras", "m-pause", () -> cfg.customPause, v -> cfg.customPause = v, List.of(), null));
 		out.add(new Entry("serverList", "slashclient-hud.set.serverList", "extras", "m-server", () -> cfg.customServerList, v -> cfg.customServerList = v, List.of(), null));
 		out.add(new Entry("loading", "slashclient-hud.set.loading", "extras", "m-menu", () -> cfg.customLoading, v -> cfg.customLoading = v, List.of(

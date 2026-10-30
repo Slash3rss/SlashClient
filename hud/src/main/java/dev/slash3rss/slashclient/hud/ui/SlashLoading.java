@@ -357,8 +357,10 @@ public final class SlashLoading {
 		} else {
 			g.fill(0, 0, w, h, 0xFF0A0D14);
 		}
-		g.fillGradient(0, 0, w, h * 2 / 3, 0x203B82F6, 0x003B82F6);
+		int glowRgb = Season.accent() & 0xFFFFFF;
+		g.fillGradient(0, 0, w, h * 2 / 3, 0x20000000 | glowRgb, glowRgb);
 		g.fillGradient(0, h / 2, w, h, 0x00000000, 0x70000000);
+		Season.sky(g, w, h, anim, still);
 
 		Subject subject = subject(mc, st);
 		Button cancel = st.cancel();
@@ -383,12 +385,13 @@ public final class SlashLoading {
 				int s = 38 + k * 8 + Math.round(pulse * 4);
 				if (gy - s / 2 < 0 || gx - s / 2 < 0) continue;
 				int alpha = Math.round((10 - k) * (0.75f + 0.25f * pulse));
-				Ui.round(g, gx - s / 2, gy - s / 2, s, s, s / 2, alpha << 24 | 0x3B82F6);
+				Ui.round(g, gx - s / 2, gy - s / 2, s, s, s / 2, alpha << 24 | glowRgb);
 			}
 			g.blit(RenderPipelines.GUI_TEXTURED, LOGO, (w - 32) / 2, y, 0, 0, 32, 32, 32, 32);
 			y += 40;
 		}
 		Ui.brand(g, (w - Ui.brandWidth(1.3f)) / 2, y, 1.3f);
+		Season.lanterns(g, (w - Ui.brandWidth(1.3f)) / 2, y - 3, Ui.brandWidth(1.3f));
 		y += 11 + 14;
 
 		// the card
@@ -404,7 +407,7 @@ public final class SlashLoading {
 				else {
 					Ui.round(g, ix, iy, 32, 32, 6, Ui.CARD);
 					Ui.roundOutline(g, ix, iy, 32, 32, 6, Ui.BORDER);
-					Ui.icon(g, subject.fallback(), ix + 8, iy + 8, 16, Ui.ACCENT_LIGHT);
+					Ui.icon(g, subject.fallback(), ix + 8, iy + 8, 16, Season.accentLight());
 				}
 			}
 			int tx = ix + 32 + 10, tw = cx + cw - pad - tx;
@@ -434,7 +437,7 @@ public final class SlashLoading {
 			cancel.setY(bty);
 			cancel.setWidth(bw);
 			Ui.button(g, "loading:cancel", bx, bty, bw, 20, "close", label, false, mx, my);
-			if (cancel.isFocused()) Ui.roundOutline(g, bx, bty, bw, 20, 4, Ui.ACCENT);
+			if (cancel.isFocused()) Ui.roundOutline(g, bx, bty, bw, 20, 4, Season.accent());
 			cancelForTest = new int[] { bx, bty, bw, 20 };
 		} else cancelForTest = null;
 		Ui.end();
@@ -449,7 +452,7 @@ public final class SlashLoading {
 			Component tip = Ui.fit(tips.get(index), w - 40);
 			int total = 8 + 5 + Ui.width(tip);
 			int tx = (w - total) / 2, ty = h - 14;
-			Ui.icon(g, "info", tx, ty, 8, alpha << 24 | (Ui.ACCENT_LIGHT & 0xFFFFFF));
+			Ui.icon(g, "info", tx, ty, 8, alpha << 24 | (Season.accentLight() & 0xFFFFFF));
 			Ui.draw(g, tip, tx + 13, ty, alpha << 24 | (Ui.TEXT_2 & 0xFFFFFF));
 		}
 	}
@@ -459,16 +462,16 @@ public final class SlashLoading {
 		Ui.round(g, x, y, w, h, 2, 0xFF2A3142);
 		if (p >= 0) {
 			int filled = Math.round(w * Math.min(1, p));
-			if (filled > 0) Ui.roundGradient(g, x, y, Math.max(h, filled), h, 2, Ui.ACCENT_LIGHT, Ui.ACCENT);
+			if (filled > 0) Ui.roundGradient(g, x, y, Math.max(h, filled), h, 2, Season.accentLight(), Season.accent());
 			return;
 		}
 		if (still) {
-			Ui.round(g, x, y, w, h, 2, 0x663B82F6);
+			Ui.round(g, x, y, w, h, 2, 0x66000000 | (Season.accent() & 0xFFFFFF));
 			return;
 		}
 		int seg = Math.max(h * 2, w / 3);
 		double t = 0.5 - 0.5 * Math.cos((now % 1800) / 1800.0 * 2 * Math.PI);
 		int sx = x + (int) Math.round((w - seg) * t);
-		Ui.roundGradient(g, sx, y, seg, h, 2, Ui.ACCENT_LIGHT, Ui.ACCENT);
+		Ui.roundGradient(g, sx, y, seg, h, 2, Season.accentLight(), Season.accent());
 	}
 }

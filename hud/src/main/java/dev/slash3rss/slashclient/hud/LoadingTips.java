@@ -66,7 +66,7 @@ public final class LoadingTips {
 			}
 			KeyMapping key = find(mc, t.key());
 			if (key == null || key.isUnbound()) continue;
-			Component name = Ui.bold(key.getTranslatedKeyMessage().getString()).withStyle(s -> s.withColor(TextColor.fromRgb(Ui.ACCENT_LIGHT & 0xFFFFFF)));
+			Component name = Ui.bold(key.getTranslatedKeyMessage().getString()).withStyle(s -> s.withColor(TextColor.fromRgb(dev.slash3rss.slashclient.hud.ui.Season.accentLight() & 0xFFFFFF)));
 			out.add(Ui.tr(lang, name));
 		}
 		return out;

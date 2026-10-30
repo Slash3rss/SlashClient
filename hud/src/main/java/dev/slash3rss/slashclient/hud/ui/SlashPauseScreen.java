@@ -130,5 +130,6 @@ public class SlashPauseScreen extends MenuScreen {
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		// the game stays visible behind, darker so the panel reads well
 		g.fill(0, 0, width, height, 0x90000000);
+		Season.sky(g, width, height, System.currentTimeMillis(), minecraft.options.screenEffectScale().get() <= 0.0);
 	}
 }

@@ -67,6 +67,7 @@ public class SlashTitleScreen extends MenuScreen {
 		// the launcher's dark blue over the panorama, deeper towards the bottom
 		g.fill(0, 0, width, height, 0x800A0D14);
 		g.fillGradient(0, height / 2, width, height, 0x000A0D14, 0xB00A0D14);
+		Season.sky(g, width, height, System.currentTimeMillis(), minecraft.options.screenEffectScale().get() <= 0.0);
 	}
 
 	@Override
@@ -94,6 +95,7 @@ public class SlashTitleScreen extends MenuScreen {
 			y += 42;
 		}
 		Ui.brand(g, (width - Ui.brandWidth(1.6f)) / 2, y, 1.6f);
+		Season.lanterns(g, (width - Ui.brandWidth(1.6f)) / 2, y - 1, Ui.brandWidth(1.6f));
 		y += 22;
 		Component hello = Ui.tr("slashclient-hud.menu.hello", minecraft.getUser().getName());
 		Ui.drawOnWorld(g, Ui.fit(hello, width - 20), (width - Math.min(Ui.width(hello), width - 20)) / 2, y, Ui.TEXT_2);

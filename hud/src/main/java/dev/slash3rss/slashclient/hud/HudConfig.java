@@ -375,6 +375,8 @@ public final class HudConfig {
 	public boolean spraysOthers = true;
 	/** The SlashClient main menu instead of Minecraft's own. */
 	public boolean customMenu = true;
+	/** The seasonal look of the menus and the loading screen (Halloween, ui/Season). */
+	public boolean seasonalLook = true;
 	/** The SlashClient pause menu instead of Minecraft's own. */
 	public boolean customPause = true;
 	/** The SlashClient server list (cards, search) instead of Minecraft's own. */
@@ -931,6 +933,7 @@ public final class HudConfig {
 		hideOwnBoots = other.hideOwnBoots;
 		hideOwnElytra = other.hideOwnElytra;
 		customMenu = other.customMenu;
+		seasonalLook = other.seasonalLook;
 		customPause = other.customPause;
 		customServerList = other.customServerList;
 		customLoading = other.customLoading;

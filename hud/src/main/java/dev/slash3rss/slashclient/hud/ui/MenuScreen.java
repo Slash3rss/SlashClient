@@ -102,14 +102,14 @@ public abstract class MenuScreen extends Screen {
 		if (primary) Ui.accent(g, x, y, w, h, 5, t);
 		else {
 			Ui.round(g, x, y, w, h, 5, Ui.blend(Ui.CARD, danger ? 0xFF2A1720 : Ui.CARD_HOVER, t));
-			Ui.roundOutline(g, x, y, w, h, 5, Ui.blend(Ui.BORDER, danger ? 0x88EF4444 : 0x883B82F6, t));
+			Ui.roundOutline(g, x, y, w, h, 5, Ui.blend(Ui.BORDER, danger ? 0x88EF4444 : 0x88000000 | (Season.accent() & 0xFFFFFF), t));
 		}
 		int color = primary ? 0xFFFFFFFF : danger ? 0xFFFCA5A5 : Ui.blend(Ui.TEXT_2, Ui.TEXT, t);
 		// icon and name together in the middle of the button, like the game's own buttons
 		// a name too long for the button slides along and back instead of being cut
 		Component text = Ui.text(label.getString());
 		int left = x + (w - (10 + 7 + Ui.slidingWidth(text, w - 40))) / 2;
-		Ui.icon(g, icon, left, y + (h - 10) / 2, 10, primary ? 0xFFFFFFFF : danger ? 0xFFF87171 : Ui.blend(Ui.MUTED, Ui.ACCENT_LIGHT, t));
+		Ui.icon(g, icon, left, y + (h - 10) / 2, 10, primary ? 0xFFFFFFFF : danger ? 0xFFF87171 : Ui.blend(Ui.MUTED, Season.accentLight(), t));
 		Ui.sliding(g, "nav:" + icon, text, left + 17, y + (h - 8) / 2, w - 40, color);
 		hits.add(new Hit(x, y, w, h, action));
 	}
@@ -119,8 +119,8 @@ public abstract class MenuScreen extends Screen {
 		boolean over = Ui.inside(mx, my, x, y, w, h);
 		float t = Ui.hover("tool:" + icon, over);
 		Ui.round(g, x, y, w, h, 5, Ui.blend(Ui.CARD, danger ? 0xFF2A1720 : Ui.CARD_HOVER, t));
-		Ui.roundOutline(g, x, y, w, h, 5, Ui.blend(Ui.BORDER, danger ? 0x88EF4444 : 0x883B82F6, t));
-		int color = danger ? Ui.blend(0xFFF87171, 0xFFFCA5A5, t) : Ui.blend(Ui.MUTED, Ui.ACCENT_LIGHT, t);
+		Ui.roundOutline(g, x, y, w, h, 5, Ui.blend(Ui.BORDER, danger ? 0x88EF4444 : 0x88000000 | (Season.accent() & 0xFFFFFF), t));
+		int color = danger ? Ui.blend(0xFFF87171, 0xFFFCA5A5, t) : Ui.blend(Ui.MUTED, Season.accentLight(), t);
 		Ui.icon(g, icon, x + (w - 10) / 2, y + (h - 10) / 2, 10, color);
 		hits.add(new Hit(x, y, w, h, action));
 	}
@@ -134,7 +134,7 @@ public abstract class MenuScreen extends Screen {
 		int y = tipY - h;
 		Ui.layer(g);
 		Ui.round(g, x, y, w, h, 4, 0xF0111622);
-		Ui.roundOutline(g, x, y, w, h, 4, 0x403B82F6);
+		Ui.roundOutline(g, x, y, w, h, 4, 0x40000000 | (Season.accent() & 0xFFFFFF));
 		Ui.draw(g, text, x + 6, y + 4, Ui.TEXT);
 	}
 

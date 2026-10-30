@@ -366,8 +366,10 @@ public final class Ui {
 	public static void accent(GuiGraphicsExtractor g, int x, int y, int w, int h, int r, float strength) {
 		// the gradient fills the whole rounded shape (a square one on top showed a stepped darker ring
 		// in the corners), with a one-pixel rim along the same curve
-		roundGradient(g, x, y, w, h, r, blend(ACCENT_DARK, ACCENT_LIGHT, 0.55f + strength * 0.2f), ACCENT_DARK);
-		roundOutline(g, x, y, w, h, r, blend(ACCENT_DARK, ACCENT, 0.5f));
+		// (orange in the Halloween season, Season)
+		int dark = Season.accentDark(), light = Season.accentLight();
+		roundGradient(g, x, y, w, h, r, blend(dark, light, 0.55f + strength * 0.2f), dark);
+		roundOutline(g, x, y, w, h, r, blend(dark, Season.accent(), 0.5f));
 	}
 
 	/** Like `round`, filled with a gradient from `top` to `bottom`: each corner column gets its own part of it. */
@@ -592,7 +594,7 @@ public final class Ui {
 		pose.scale(scale, scale);
 		Component slash = bold("Slash");
 		draw(g, slash, 0, 0, 0xFFFFFFFF);
-		draw(g, bold("Client"), width(slash), 0, ACCENT_LIGHT);
+		draw(g, bold("Client"), width(slash), 0, Season.accentLight());
 		pose.popMatrix();
 	}
 

@@ -261,6 +261,7 @@
 	"slashclient-hud.set.appearance": "Wygląd HUD",
 	"slashclient-hud.set.backgroundAll": "Tło pod modułami",
 	"slashclient-hud.set.menu": "Menu główne SlashClient",
+	"slashclient-hud.set.seasonalLook": "Wygląd sezonowy (Halloween)",
 	"slashclient-hud.menu.title": "SlashClient",
 	"slashclient-hud.menu.vanilla": "Przełącz na menu Minecrafta",
 	"slashclient-hud.menu.hello": "Cześć, %s!",
