@@ -102,6 +102,19 @@ public final class SkyCaseTestHooks {
 		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, mc.player.getInventory(), Component.literal(title)));
 	}
 
+	/** A case's draw as SkyUp shows it: the same title as its preview, glass round the rewards rolling by (no "» SkyCase «"). */
+	public static void draw(String title) {
+		var mc = Minecraft.getInstance();
+		var chest = new SimpleContainer(27);
+		for (int i = 0; i < 9; i++) {
+			chest.setItem(i, new ItemStack(SkyCase.item("minecraft:lime_stained_glass_pane")));
+			chest.setItem(18 + i, new ItemStack(SkyCase.item("minecraft:lime_stained_glass_pane")));
+		}
+		chest.setItem(13, named("minecraft:diamond", "Diament", 1));
+		var menu = ChestMenu.threeRows(1001, mc.player.getInventory(), chest);
+		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.ContainerScreen(menu, mc.player.getInventory(), Component.literal(title)));
+	}
+
 	/**
 	 * An item named as SkyUp names it: the count yellow and italic, the rest gold and bold (the window's
 	 * own items plain); "Kask Górnika" with a model of its own, as the server's resource pack gives it.

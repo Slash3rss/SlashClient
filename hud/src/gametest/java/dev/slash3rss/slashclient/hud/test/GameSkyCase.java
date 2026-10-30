@@ -170,6 +170,20 @@ public class GameSkyCase implements FabricClientGameTest {
 			check(types.contains("Testowy") && types.endsWith(",?"), "the new case", types);
 			counted = context.computeOnClient(mc -> SkyCaseTestHooks.counted());
 			check(counted.contains("Testowy: 1/1 {Gwiazda Netheru=1}"), "the new case's win", counted);
+			// a case whose preview was never opened: its draw's window names it, so a reward only Górniczy
+			// gives is still the new case's, not Górniczy's
+			context.runOnClient(mc -> SkyCaseTestHooks.forget());
+			context.runOnClient(mc -> SkyCaseTestHooks.draw("Nowa SkyCase"));
+			context.waitTicks(3);
+			context.runOnClient(mc -> SkyCaseTestHooks.win("Kask Górnika"));
+			context.setScreen(() -> null);
+			// no window: "Wygrano" guessed Górniczy, then the line naming the case moves the win there
+			context.runOnClient(mc -> SkyCaseTestHooks.forget());
+			String self = context.computeOnClient(mc -> mc.player.getGameProfile().name());
+			context.runOnClient(mc -> SkyCaseTestHooks.win("Krzemień"));
+			context.runOnClient(mc -> SkyCaseTestHooks.opened(self, "Nowa", "Krzemień"));
+			counted = context.computeOnClient(mc -> SkyCaseTestHooks.counted());
+			check(counted.contains("Nowa: 2/2 {Kask Górnika=1, Krzemień=1}") && counted.contains("Górniczy: 5/5 {"), "the new case's draw and named line", counted);
 
 			// saved: read back, the pools from the windows and the wins are there
 			context.runOnClient(mc -> SkyCaseTestHooks.reload());

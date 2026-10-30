@@ -295,16 +295,22 @@ public final class SkyCase {
 		String[] opened = parseOpened(line);
 		if (opened != null) {
 			// everyone's wins are said: only the player's own count, and the line names the case
-			if (mc.player != null && opened[0].equalsIgnoreCase(mc.player.getGameProfile().name()) && !again(opened[2], true, now)) {
-				won(caseNamed(opened[1]), opened[2], now);
+			if (mc.player == null || !opened[0].equalsIgnoreCase(mc.player.getGameProfile().name())) return;
+			String named = caseNamed(opened[1]);
+			if (!again(opened[2], true, now)) {
+				lastChatType = won(named, opened[2], now);
 				// "Otwórz SkyCase: Ręcznie" (SkyTasks)
 				SkyCounters.caseOpened();
+			} else if (lastChatType != null && !lastChatType.equals(named)) {
+				// the "Wygrano" line came first and its case was guessed: this line names it, the win moves there
+				move(lastChatType, named, opened[2], now);
 			}
+			lastChatType = null;
 			return;
 		}
 		String reward = parse(line);
 		if (reward != null && !again(reward, false, now)) {
-			won(reward, now);
+			lastChatType = won(reward, now);
 			SkyCounters.caseOpened();
 		}
 	}
@@ -317,6 +323,36 @@ public final class SkyCase {
 	private static String lastChatWin;
 	private static boolean lastChatWinOpened;
 	private static long lastChatWinAt;
+	/** The case the last "Wygrano" line's win was counted for (its pair's other line may name another). */
+	private static String lastChatType;
+
+	/** A win counted for the wrong case moved to the right one (all time, this session and the recent drops). */
+	static void move(String from, String to, String reward, long now) {
+		String k = key(reward);
+		for (Data d : new Data[] { lifetime(), session }) {
+			Stats a = d.of(from);
+			String counted = null;
+			for (var e : a.drops.entrySet()) if (key(e.getKey()).equals(k) && e.getValue() > 0) counted = e.getKey();
+			if (counted == null) continue;
+			if (a.drops.merge(counted, -1L, Long::sum) <= 0) a.drops.remove(counted);
+			a.opened = Math.max(0, a.opened - 1);
+			Stats b = d.of(to);
+			String spelled = counted;
+			for (String known : b.pool.keySet()) if (key(known).equals(k)) spelled = known;
+			b.won(spelled, now);
+			if (from.equals(d.lastType)) d.lastType = to;
+		}
+		// a case left with nothing (the unassigned one) is not listed
+		if (UNASSIGNED.equals(from) && lifetime().get(from).opened == 0) lifetime().cases.remove(from);
+		for (int i = recent.size() - 1; i >= 0; i--) {
+			Drop d = recent.get(i);
+			if (d.type().equals(from) && key(d.reward()).equals(k)) {
+				recent.set(i, new Drop(to, d.reward(), d.at()));
+				break;
+			}
+		}
+		save();
+	}
 
 	private static boolean again(String reward, boolean opened, long now) {
 		String k = key(reward);
@@ -424,13 +460,25 @@ public final class SkyCase {
 	/** Whether the chat has said this game why a win went to "Nieprzypisane" (once, not at every such win). */
 	private static boolean unassignedSaid;
 
-	/** The case looked at last (a preview, or a win only that case gives), and when. */
+	/** The case looked at last (a preview or the draw, or a win only that case gives), and when. */
 	private static String contextType;
 	private static long contextAt;
+	/** Whether that was a window (its title names the case), not a guess from a win. */
+	private static boolean contextFromWindow;
+	/** How long after its draw window a win surely is that case's (the line comes as the draw ends). */
+	private static final long DRAW_MS = 5_000;
 
 	/** The case a reward came from: the one holding it, else the one looked at last if it holds it, else none. */
 	static String attribute(String reward, long now) {
 		String k = key(reward);
+		// the draw's window (its title names the case) open just now: that case's, even when it is new and
+		// another case gives the same reward
+		if (contextType != null && contextFromWindow && now - contextAt <= DRAW_MS) {
+			Stats seen = lifetime().get(contextType);
+			boolean holds = seen.pool.isEmpty();
+			for (String known : seen.pool.keySet()) if (key(known).equals(k)) holds = true;
+			if (holds) return contextType;
+		}
 		List<String> holding = new ArrayList<>();
 		for (var e : lifetime().cases.entrySet()) {
 			if (UNASSIGNED.equals(e.getKey())) continue;
@@ -445,6 +493,7 @@ public final class SkyCase {
 			// a run of keys of one case: the wins more cases give are this one's too
 			contextType = holding.get(0);
 			contextAt = now;
+			contextFromWindow = false;
 			return holding.get(0);
 		}
 		boolean recent = contextType != null && now - contextAt <= SlashHud.config.skyCaseWindow * 1000L;
@@ -478,6 +527,7 @@ public final class SkyCase {
 		if (type == null) return;
 		contextType = type;
 		contextAt = System.currentTimeMillis();
+		contextFromWindow = true;
 		// what it holds: read a few times a second (the items come after the window)
 		if (++tick % 5 == 0) readPreview(type, screen, contextAt);
 	}
