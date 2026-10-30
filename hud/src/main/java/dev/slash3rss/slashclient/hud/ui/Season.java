@@ -7,8 +7,8 @@ import java.time.LocalDate;
 
 /**
  * The seasonal look, as in the launcher: around Halloween (25 October – 2 November) SlashClient's
- * menus and loading screen turn orange and violet, with bats flying over them and jack o'lanterns by
- * the name. "Wygląd sezonowy" in the HUD window switches it off.
+ * menus and loading screen turn orange and violet, with bats flying over them (and jack o'lanterns by
+ * the name on the loading screen). "Wygląd sezonowy" in the HUD window switches it off.
  */
 public final class Season {
 	private Season() {}

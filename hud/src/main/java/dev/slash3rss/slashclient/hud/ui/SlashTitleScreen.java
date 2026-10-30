@@ -95,7 +95,6 @@ public class SlashTitleScreen extends MenuScreen {
 			y += 42;
 		}
 		Ui.brand(g, (width - Ui.brandWidth(1.6f)) / 2, y, 1.6f);
-		Season.lanterns(g, (width - Ui.brandWidth(1.6f)) / 2, y - 1, Ui.brandWidth(1.6f));
 		y += 22;
 		Component hello = Ui.tr("slashclient-hud.menu.hello", minecraft.getUser().getName());
 		Ui.drawOnWorld(g, Ui.fit(hello, width - 20), (width - Math.min(Ui.width(hello), width - 20)) / 2, y, Ui.TEXT_2);
