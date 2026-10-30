@@ -12,8 +12,14 @@ import net.minecraft.resources.Identifier;
 public final class BlockWindows {
 	private BlockWindows() {}
 
+	/**
+	 * Not out yet: hidden from the settings and off whatever the config says, until it is finished (the
+	 * tests switch it on to keep it working meanwhile).
+	 */
+	public static boolean available = false;
+
 	public static boolean on() {
-		return SlashHud.config != null && SlashHud.config.blockWindows;
+		return available && SlashHud.config != null && SlashHud.config.blockWindows;
 	}
 
 	/** Whether this window is drawn as its block (its labels are then white, on the block's colours). */

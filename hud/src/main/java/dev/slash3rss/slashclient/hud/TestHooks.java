@@ -1643,6 +1643,8 @@ public final class TestHooks {
 
 	/** "Okna w wyglądzie bloków" switched as in the settings: the windows' textures read again as they are next shown, no reload. */
 	public static java.util.concurrent.CompletableFuture<Void> blockWindows(boolean on) {
+		// (not out yet: the test switches the look on to keep it working)
+		dev.slash3rss.slashclient.hud.ui.BlockWindows.available = true;
 		SlashHud.config.blockWindows = on;
 		dev.slash3rss.slashclient.hud.ui.BlockWindows.refresh();
 		return java.util.concurrent.CompletableFuture.completedFuture(null);

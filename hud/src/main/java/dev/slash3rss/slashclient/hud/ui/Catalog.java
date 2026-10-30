@@ -523,7 +523,7 @@ public final class Catalog {
 			if (cfg.darkGui) DarkGui.reload();
 		})), null));
 		// the windows' block parts made of their blocks (the crafting table's top, the furnace's front…)
-		out.add(new Entry("blockWindows", "slashclient-hud.set.blockWindows", "extras", "m-block", () -> cfg.blockWindows, v -> {
+		if (dev.slash3rss.slashclient.hud.ui.BlockWindows.available) out.add(new Entry("blockWindows", "slashclient-hud.set.blockWindows", "extras", "m-block", () -> cfg.blockWindows, v -> {
 			if (cfg.blockWindows == v) return;
 			cfg.blockWindows = v;
 			// the windows' own textures only: at once, without reloading the game's resources
