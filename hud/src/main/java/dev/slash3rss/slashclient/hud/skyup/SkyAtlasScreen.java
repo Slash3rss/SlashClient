@@ -243,16 +243,16 @@ public class SkyAtlasScreen extends Screen {
 
 	/** A card face down: SkyUp blue with a frame, a pattern of waves and Karpiołap. */
 	private void cardBack(GuiGraphicsExtractor g, int x, int y, int w, int h) {
-		Ui.round(g, x, y, w, h, 5, 0xFF3B82F6);
+		Ui.round(g, x, y, w, h, 5, Ui.ACCENT);
 		Ui.round(g, x + 1, y + 1, w - 2, h - 2, 4, 0xFF13204A);
-		g.fillGradient(x + 2, y + 2, x + w - 2, y + h - 2, 0x2060A5FA, 0x00000000);
-		Ui.roundOutline(g, x + 4, y + 4, w - 8, h - 8, 3, 0x5060A5FA);
+		g.fillGradient(x + 2, y + 2, x + w - 2, y + h - 2, Ui.withAlpha(Ui.ACCENT_LIGHT, 0x20), 0x00000000);
+		Ui.roundOutline(g, x + 4, y + 4, w - 8, h - 8, 3, Ui.withAlpha(Ui.ACCENT_LIGHT, 0x50));
 		// the waves: rows of short dashes going up and down
 		for (int row = 0; row < 6; row++) {
 			int wy = y + 12 + row * 12;
 			for (int k = 0; k < (w - 14) / 4; k++) {
 				int dy = (int) Math.round(Math.sin((k + row) * 0.9) * 1.5);
-				g.fill(x + 7 + k * 4, wy + dy, x + 9 + k * 4, wy + dy + 1, 0x3093C5FD);
+				g.fill(x + 7 + k * 4, wy + dy, x + 9 + k * 4, wy + dy + 1, Ui.withAlpha(Ui.ACCENT_PALE, 0x30));
 			}
 		}
 		var pose = g.pose();
@@ -327,8 +327,8 @@ public class SkyAtlasScreen extends Screen {
 		boolean has = f.caught > 0, star = has && f.maxGrams > 0 && f.recordGrams >= f.maxGrams * STAR;
 		// a starred card's edge shimmers, brighter and paler in turn
 		float shine = still ? 0 : (float) (Math.sin(now() / 320.0) + 1) / 2;
-		int edge = !has ? 0x30FFFFFF : star ? Ui.blend(GOLD, 0xFFFFF4B8, shine * 0.7f) : Ui.blend(0x8060A5FA, Ui.ACCENT_LIGHT, lift);
-		if (lift > 0 && has) Ui.round(g, x - 1, y - 1, w + 2, h + 2, 6, Ui.blend(0x00000000, star ? 0x40FACC15 : 0x4060A5FA, lift));
+		int edge = !has ? 0x30FFFFFF : star ? Ui.blend(GOLD, 0xFFFFF4B8, shine * 0.7f) : Ui.blend(Ui.withAlpha(Ui.ACCENT_LIGHT, 0x80), Ui.ACCENT_LIGHT, lift);
+		if (lift > 0 && has) Ui.round(g, x - 1, y - 1, w + 2, h + 2, 6, Ui.blend(0x00000000, star ? 0x40FACC15 : Ui.withAlpha(Ui.ACCENT_LIGHT, 0x40), lift));
 		Ui.round(g, x, y, w, h, 5, edge);
 		Ui.round(g, x + 1, y + 1, w - 2, h - 2, 4, has ? 0xFF16213A : 0xFF0E1117);
 		if (lift > 0) Ui.round(g, x + 1, y + 1, w - 2, h - 2, 4, Ui.blend(0x00FFFFFF, 0x14FFFFFF, lift));
@@ -374,7 +374,7 @@ public class SkyAtlasScreen extends Screen {
 		if (p > 0.45f && lift <= 0) return;
 		float travel = lift > 0 ? 0.5f + (float) Math.sin(now() / 500.0) * 0.5f : p / 0.45f;
 		float band = -24 + travel * (w + 48);
-		int[] rainbow = { 0x30F472B6, 0x30FACC15, 0x3034D399, 0x3060A5FA };
+		int[] rainbow = { 0x30F472B6, 0x30FACC15, 0x3034D399, Ui.withAlpha(Ui.ACCENT_LIGHT, 0x30) };
 		for (int row = 2; row < h - 2; row++) {
 			float left = band + (h - row) * 0.4f;
 			int a = Math.max(x + 2, Math.round(x + left)), b = Math.min(x + w - 2, Math.round(x + left + 10));

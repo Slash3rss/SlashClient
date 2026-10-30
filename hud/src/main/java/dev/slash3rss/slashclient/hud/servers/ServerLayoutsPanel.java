@@ -38,7 +38,7 @@ public final class ServerLayoutsPanel {
 		} else {
 			boolean on = here.equals(ServerLayouts.active());
 			Ui.round(g, x, y, w, 22, 4, Ui.CARD);
-			Ui.roundOutline(g, x, y, w, 22, 4, on ? 0xAA3B82F6 : Ui.BORDER);
+			Ui.roundOutline(g, x, y, w, 22, 4, on ? Ui.withAlpha(Ui.ACCENT, 0xAA) : Ui.BORDER);
 			Ui.icon(g, "server", x + 7, y + 6, 10, on ? Ui.ACCENT_LIGHT : Ui.TEXT_2);
 			Component label = Ui.tr("slashclient-hud.servers.here", here);
 			Ui.draw(g, Ui.fit(label, w - 54), x + 22, y + 7, Ui.TEXT);

@@ -107,7 +107,7 @@ public class ShotPickerScreen extends Screen {
 				boolean over = Ui.inside(mx, my, cx, cy, cw, ch);
 				float t = Ui.hover("shot:" + f.getName(), over);
 				Ui.round(g, cx, cy, cw, ch, 5, Ui.blend(Ui.CARD, Ui.CARD_HOVER, t));
-				Ui.roundOutline(g, cx, cy, cw, ch, 5, Ui.blend(Ui.BORDER, 0x993B82F6, t));
+				Ui.roundOutline(g, cx, cy, cw, ch, 5, Ui.blend(Ui.BORDER, Ui.withAlpha(Ui.ACCENT, 0x99), t));
 				// the picture above its date
 				int iw = cw - 8, ih = ch - 20;
 				ChatImages.Texture tex = ChatImages.file(f);

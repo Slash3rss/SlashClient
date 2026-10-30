@@ -208,7 +208,7 @@ public class WaypointsScreen extends Screen {
 		// the name field and "Add here"
 		int fy = py + ph - 32;
 		Ui.round(g, px + 10, fy, pw - 20 - 96 - shareW, 20, 4, Ui.CARD);
-		Ui.roundOutline(g, px + 10, fy, pw - 20 - 96 - shareW, 20, 4, name.isFocused() ? 0x993B82F6 : Ui.BORDER);
+		Ui.roundOutline(g, px + 10, fy, pw - 20 - 96 - shareW, 20, 4, name.isFocused() ? Ui.withAlpha(Ui.ACCENT, 0x99) : Ui.BORDER);
 		// where I stand, to friends (named as typed, or "Here")
 		if (shareW > 0) {
 			int sx = px + pw - 102 - shareW;

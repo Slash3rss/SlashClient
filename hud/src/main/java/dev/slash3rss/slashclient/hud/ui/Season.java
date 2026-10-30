@@ -25,15 +25,31 @@ public final class Season {
 
 	/** The accent's colours: orange in the season, the launcher's blue otherwise. */
 	public static int accent() {
-		return halloween() ? 0xFFF97316 : Ui.ACCENT;
+		return halloween() ? 0xFFF97316 : 0xFF3B82F6;
 	}
 
 	public static int accentLight() {
-		return halloween() ? 0xFFFB923C : Ui.ACCENT_LIGHT;
+		return halloween() ? 0xFFFB923C : 0xFF60A5FA;
 	}
 
 	public static int accentDark() {
-		return halloween() ? 0xFFC2410C : Ui.ACCENT_DARK;
+		return halloween() ? 0xFFC2410C : 0xFF1D4ED8;
+	}
+
+	/** Every window's accent (Ui) as the season says: called each tick, so the date, the setting or a test switch it at once. */
+	public static void refresh() {
+		boolean on = halloween();
+		Ui.ACCENT = accent();
+		Ui.ACCENT_LIGHT = accentLight();
+		Ui.ACCENT_DARK = accentDark();
+		Ui.ACCENT_PALE = on ? 0xFFFDBA74 : 0xFF93C5FD;
+	}
+
+	private static final net.minecraft.resources.Identifier LOGO = net.minecraft.resources.Identifier.fromNamespaceAndPath("slashclient-hud", "icon-halloween.png");
+
+	/** The logo: in the season orange, with a pumpkin in its corner (scripts/make-season-logo.cjs), else `usual`. */
+	public static net.minecraft.resources.Identifier logo(net.minecraft.resources.Identifier usual) {
+		return halloween() ? LOGO : usual;
 	}
 
 	/** A bat, 9×5 pixels, its wings up ('X' a pixel) and down. */

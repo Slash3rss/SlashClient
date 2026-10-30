@@ -251,7 +251,7 @@ public class WorldMapScreen extends Screen {
 			int color = (p.color | 0xFF000000) & (p.visible ? 0xFFFFFFFF : 0x80FFFFFF);
 			String icon = p.death ? "m-deathpoint" : p.from != null ? "share" : "m-waypoints";
 			boolean chosen = p == selected;
-			if (chosen) Ui.round(g, x - 7, y - 13, 14, 14, 4, 0xC03B82F6);
+			if (chosen) Ui.round(g, x - 7, y - 13, 14, 14, 4, Ui.withAlpha(Ui.ACCENT, 0xC0));
 			Ui.icon(g, icon, x - 4, y - 10, 9, 0xC0000000);
 			Ui.icon(g, icon, x - 5, y - 11, 9, color);
 			Minimap.diamond(g, x, y, 1, color);
@@ -341,7 +341,7 @@ public class WorldMapScreen extends Screen {
 		}));
 		int fieldW = panelW - 30 - 4 * 20;
 		Ui.round(g, panelX + 22, panelY + 4, fieldW, 15, 3, Ui.CARD);
-		Ui.roundOutline(g, panelX + 22, panelY + 4, fieldW, 15, 3, name.isFocused() ? 0x993B82F6 : Ui.BORDER);
+		Ui.roundOutline(g, panelX + 22, panelY + 4, fieldW, 15, 3, name.isFocused() ? Ui.withAlpha(Ui.ACCENT, 0x99) : Ui.BORDER);
 		name.setX(panelX + 26);
 		name.setY(panelY + 8);
 		name.setWidth(fieldW - 8);

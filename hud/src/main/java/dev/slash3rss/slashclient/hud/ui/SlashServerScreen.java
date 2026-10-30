@@ -272,7 +272,7 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		if (search != null) {
 			boolean focused = search.isFocused();
 			Ui.round(g, sx, y, sw, s, 4, Ui.CARD);
-			Ui.roundOutline(g, sx, y, sw, s, 4, focused ? 0x993B82F6 : Ui.BORDER);
+			Ui.roundOutline(g, sx, y, sw, s, 4, focused ? Ui.withAlpha(Ui.ACCENT, 0x99) : Ui.BORDER);
 			Ui.icon(g, "search", sx + 5, y + 4, 10, focused ? Ui.ACCENT_LIGHT : Ui.MUTED);
 			search.setX(sx + 19);
 			search.setY(y + 5);
@@ -348,8 +348,8 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 			if (ry + CARD_H <= y || ry >= y + h) continue;
 			if (d == dragging) {
 				// the place it would land: an empty slot, the card itself follows the mouse
-				Ui.round(g, x, ry, w, CARD_H, 5, 0x1A3B82F6);
-				Ui.roundOutline(g, x, ry, w, CARD_H, 5, 0x663B82F6);
+				Ui.round(g, x, ry, w, CARD_H, 5, Ui.withAlpha(Ui.ACCENT, 0x1A));
+				Ui.roundOutline(g, x, ry, w, CARD_H, 5, Ui.withAlpha(Ui.ACCENT, 0x66));
 				continue;
 			}
 			serverCard(g, d, x, ry, w, CARD_H, overList && dragging == null ? mx : -1, overList && dragging == null ? my : -1);
@@ -401,7 +401,7 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		float t = Ui.hover("srv:" + id, over || sel);
 		Ui.round(g, x, y, w, h, 5, Ui.blend(Ui.CARD, Ui.CARD_HOVER, t));
 		if (partner) PartnerServers.drawBehind(g, d, x + 1, y + 1, w - 2, h - 2);
-		int edge = sel ? 0xDD3B82F6 : warn != 0 ? warn : Ui.blend(Ui.BORDER, 0x663B82F6, t);
+		int edge = sel ? Ui.withAlpha(Ui.ACCENT, 0xDD) : warn != 0 ? warn : Ui.blend(Ui.BORDER, Ui.withAlpha(Ui.ACCENT, 0x66), t);
 		if (partner && !sel) PartnerServers.drawFrame(g, x + 1, y + 1, w - 2, h - 2);
 		else Ui.roundOutline(g, x, y, w, h, 5, edge);
 		if (sel) Ui.round(g, x + 1, y + 7, 2, h - 14, 1, Ui.ACCENT_LIGHT);
@@ -536,7 +536,7 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		boolean over = Ui.inside(mx, my, x, y, w, h);
 		cardBase(g, "l" + l.getAddress(), false, null, x, y, w, h, over, selected == l, 0);
 		Ui.begin("lan card", x, y, w, h);
-		Ui.round(g, x + 4, y + 2, 32, 32, 4, 0x332563EB);
+		Ui.round(g, x + 4, y + 2, 32, 32, 4, Ui.withAlpha(Ui.ACCENT_DARK, 0x33));
 		Ui.icon(g, "world", x + 12, y + 10, 16, Ui.ACCENT_LIGHT);
 		int tx = x + 42;
 		Ui.draw(g, Ui.fit(Ui.bold(l.getMotd()), w - 50), tx, y + 4, Ui.TEXT);
@@ -586,7 +586,7 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		} else if (kind == 1) Ui.accent(g, x, y, w, h, 4, t);
 		else {
 			Ui.round(g, x, y, w, h, 4, Ui.blend(Ui.CARD, kind == 2 ? 0xFF2A1720 : Ui.CARD_HOVER, t));
-			Ui.roundOutline(g, x, y, w, h, 4, Ui.blend(Ui.BORDER, kind == 2 ? 0x88EF4444 : 0x883B82F6, t));
+			Ui.roundOutline(g, x, y, w, h, 4, Ui.blend(Ui.BORDER, kind == 2 ? 0x88EF4444 : Ui.withAlpha(Ui.ACCENT, 0x88), t));
 		}
 		int color = !enabled ? 0xFF4B5563 : kind == 1 ? 0xFFFFFFFF : kind == 2 ? Ui.blend(0xFFF87171, 0xFFFCA5A5, t) : Ui.blend(Ui.TEXT_2, Ui.TEXT, t);
 		boolean hasLabel = !label.getString().isEmpty();
@@ -648,7 +648,7 @@ public class SlashServerScreen extends JoinMultiplayerScreen {
 		int y = tipY - h - 2 >= 4 ? tipY - h - 2 : Math.min(height - h - 4, tipY + 14);
 		Ui.layer(g);
 		Ui.round(g, x, y, w, h, 4, 0xF0111622);
-		Ui.roundOutline(g, x, y, w, h, 4, 0x403B82F6);
+		Ui.roundOutline(g, x, y, w, h, 4, Ui.withAlpha(Ui.ACCENT, 0x40));
 		int ly = y + 4;
 		for (Component c : lines) {
 			// a server's own lines keep their colours; ours are plain text

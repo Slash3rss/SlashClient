@@ -328,7 +328,7 @@ public class HudEditScreen extends Screen {
 				Ui.round(g, box.getX() - 5, ry, box.getWidth() + 10, 18, 4, Ui.CARD);
 				// the exclusions field has a faint red edge: what is written there keeps lines out
 				int edge = box == excludes ? 0x40F87171 : Ui.BORDER;
-				Ui.roundOutline(g, box.getX() - 5, ry, box.getWidth() + 10, 18, 4, box.isFocused() ? 0x993B82F6 : edge);
+				Ui.roundOutline(g, box.getX() - 5, ry, box.getWidth() + 10, 18, 4, box.isFocused() ? Ui.withAlpha(Ui.ACCENT, 0x99) : edge);
 			}
 			int mw = modeWidth(), bx = x + w - 48 - mw;
 			Ui.button(g, "mode:" + i, bx, ry, mw, 18, Ui.tr(tab.regex ? "slashclient-hud.chat.regex" : "slashclient-hud.chat.text"), tab.regex, mx, my);
@@ -408,7 +408,7 @@ public class HudEditScreen extends Screen {
 		Ui.draw(g, Ui.tr("slashclient-hud.chat.prefix"), x + 6, y + 5, Ui.TEXT_2);
 		EditBox box = prefixField;
 		Ui.round(g, box.getX() - 5, y, box.getWidth() + 10, 18, 4, Ui.CARD);
-		Ui.roundOutline(g, box.getX() - 5, y, box.getWidth() + 10, 18, 4, box.isFocused() ? 0x993B82F6 : Ui.BORDER);
+		Ui.roundOutline(g, box.getX() - 5, y, box.getWidth() + 10, 18, 4, box.isFocused() ? Ui.withAlpha(Ui.ACCENT, 0x99) : Ui.BORDER);
 		Component input = Ui.tr("slashclient-hud.chat.input");
 		int iw = Ui.width(input), tx = x + w - 22;
 		Ui.draw(g, input, tx - 6 - iw, y + 5, Ui.TEXT_2);
@@ -492,7 +492,7 @@ public class HudEditScreen extends Screen {
 			g.fill(gridX + cx * cell, gridY + cy * cell, gridX + (cx + 1) * cell, gridY + (cy + 1) * cell, bg);
 		}
 		Crosshair.draw(g, gridX, gridY, shown, cell, on ? color : Ui.blend(color, 0xFF0F141F, 0.5f), false);
-		Ui.roundOutline(g, x, top, grid + 4, grid + 4, 4, painting != null ? 0x993B82F6 : Ui.BORDER);
+		Ui.roundOutline(g, x, top, grid + 4, grid + 4, 4, painting != null ? Ui.withAlpha(Ui.ACCENT, 0x99) : Ui.BORDER);
 		int by = top + grid + 8;
 		Component clear = Ui.tr("slashclient-hud.crosshair.clear");
 		Ui.button(g, "crosshair:clear", x, by, grid + 4, 16, "reset", clear, false, mx, my);
@@ -699,8 +699,8 @@ public class HudEditScreen extends Screen {
 		bar.hide();
 		g.fill(0, 0, width, height, window ? 0xB0050710 : 0x30000000);
 		if (dragging != null) {
-			g.fill(width / 2, 0, width / 2 + 1, height, snappedX ? 0xAA60A5FA : 0x30FFFFFF);
-			g.fill(0, height / 2, width, height / 2 + 1, snappedY ? 0xAA60A5FA : 0x30FFFFFF);
+			g.fill(width / 2, 0, width / 2 + 1, height, snappedX ? Ui.withAlpha(Ui.ACCENT_LIGHT, 0xAA) : 0x30FFFFFF);
+			g.fill(0, height / 2, width, height / 2 + 1, snappedY ? Ui.withAlpha(Ui.ACCENT_LIGHT, 0xAA) : 0x30FFFFFF);
 			for (int[] line : guides) {
 				if (line[0] == 0) g.fill(line[1], 0, line[1] + 1, height, 0xCCFACC15);
 				else g.fill(0, line[1], width, line[1] + 1, 0xCCFACC15);
@@ -834,7 +834,7 @@ public class HudEditScreen extends Screen {
 		int y = tipY - h - 3 >= 2 ? tipY - h - 3 : tipY + 21;
 		Ui.layer(g);
 		Ui.round(g, x, y, w, h, 4, 0xF0111622);
-		Ui.roundOutline(g, x, y, w, h, 4, 0x403B82F6);
+		Ui.roundOutline(g, x, y, w, h, 4, Ui.withAlpha(Ui.ACCENT, 0x40));
 		Ui.draw(g, tip, x + 6, y + 4, Ui.TEXT);
 	}
 
@@ -946,7 +946,7 @@ public class HudEditScreen extends Screen {
 		if (search != null) {
 			boolean focused = search.isFocused();
 			Ui.round(g, x + w - 196, y + 7, 156, 18, 4, Ui.CARD);
-			Ui.roundOutline(g, x + w - 196, y + 7, 156, 18, 4, focused ? 0x993B82F6 : Ui.BORDER);
+			Ui.roundOutline(g, x + w - 196, y + 7, 156, 18, 4, focused ? Ui.withAlpha(Ui.ACCENT, 0x99) : Ui.BORDER);
 			Ui.icon(g, "search", x + w - 190, y + 11, 10, focused ? Ui.ACCENT_LIGHT : Ui.MUTED);
 		}
 		Ui.button(g, "close", x + w - 32, y + 7, 18, 18, "close", Component.empty(), false, mx, my);
@@ -1084,7 +1084,7 @@ public class HudEditScreen extends Screen {
 		boolean on = e.hasSwitch() && e.get().get();
 		float t = Ui.hover("card:" + e.id(), clickable && Ui.inside(mx, my, x, y, w, h));
 		Ui.round(g, x, y, w, h, 5, Ui.blend(Ui.CARD, Ui.CARD_HOVER, t));
-		Ui.roundOutline(g, x, y, w, h, 5, on ? 0xAA3B82F6 : Ui.blend(Ui.BORDER, 0x40FFFFFF, t));
+		Ui.roundOutline(g, x, y, w, h, 5, on ? Ui.withAlpha(Ui.ACCENT, 0xAA) : Ui.blend(Ui.BORDER, 0x40FFFFFF, t));
 		// the icon sits on a small tile, blue when the module is on: the same icons as the launcher and the menu
 		Ui.round(g, x + w / 2 - 13, y + 7, 26, 26, 5, on ? 0xFF1B2B4D : 0xFF202839);
 		Ui.icon(g, e.icon(), x + w / 2 - 8, y + 12, 16, on ? Ui.ACCENT_LIGHT : Ui.blend(Ui.TEXT_2, Ui.TEXT, t));
@@ -1353,7 +1353,7 @@ public class HudEditScreen extends Screen {
 				EditBox box = textFields.get(tx);
 				int fx = twoLines ? left : Math.max(left, right - 200);
 				Ui.round(g, fx, cy, right - fx, 16, 4, 0xFF202839);
-				Ui.roundOutline(g, fx, cy, right - fx, 16, 4, box.isFocused() ? 0x993B82F6 : Ui.BORDER);
+				Ui.roundOutline(g, fx, cy, right - fx, 16, 4, box.isFocused() ? Ui.withAlpha(Ui.ACCENT, 0x99) : Ui.BORDER);
 				box.setX(fx + 5);
 				box.setY(cy + 4);
 				box.setWidth(right - fx - 10);

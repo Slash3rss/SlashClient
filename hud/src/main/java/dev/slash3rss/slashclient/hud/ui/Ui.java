@@ -30,9 +30,12 @@ public final class Ui {
 	public static final int GLASS = 0x0DFFFFFF;
 	public static final int GLASS_HOVER = 0x1AFFFFFF;
 	public static final int BORDER = 0x1CFFFFFF;
-	public static final int ACCENT = 0xFF3B82F6;
-	public static final int ACCENT_LIGHT = 0xFF60A5FA;
-	public static final int ACCENT_DARK = 0xFF1D4ED8;
+	/** The accent: the launcher's blue, orange in the Halloween season (Season sets them each tick). */
+	public static int ACCENT = 0xFF3B82F6;
+	public static int ACCENT_LIGHT = 0xFF60A5FA;
+	public static int ACCENT_DARK = 0xFF1D4ED8;
+	/** A pale one, for text on dark tints. */
+	public static int ACCENT_PALE = 0xFF93C5FD;
 	public static final int TEXT = 0xFFF3F4F6;
 	public static final int TEXT_2 = 0xFFB4BCC8;
 	public static final int MUTED = 0xFF6B7280;
@@ -360,6 +363,11 @@ public final class Ui {
 		layer(g);
 		round(g, x, y, w, h, 6, PANEL);
 		roundOutline(g, x, y, w, h, 6, BORDER);
+	}
+
+	/** A colour with another alpha (0–255): the accent's tints and outlines. */
+	public static int withAlpha(int color, int alpha) {
+		return alpha << 24 | (color & 0xFFFFFF);
 	}
 
 	/** The accent gradient of the launcher's primary buttons, top to bottom. */

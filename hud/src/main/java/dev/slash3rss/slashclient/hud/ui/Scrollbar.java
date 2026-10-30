@@ -30,7 +30,7 @@ public final class Scrollbar {
 		if (!layout(x, y, h, scroll, max)) return;
 		boolean over = dragging() || Ui.inside(mx, my, x - 3, thumbY, 9, thumbH);
 		g.fill(x, y, x + 3, y + h, 0x18FFFFFF);
-		Ui.round(g, x, thumbY, 3, thumbH, 1, over ? 0xC060A5FA : 0x50FFFFFF);
+		Ui.round(g, x, thumbY, 3, thumbH, 1, over ? Ui.withAlpha(Ui.ACCENT_LIGHT, 0xC0) : 0x50FFFFFF);
 	}
 
 	/** Where the bar and its thumb are (without drawing them); false when the list fits and there is none. */

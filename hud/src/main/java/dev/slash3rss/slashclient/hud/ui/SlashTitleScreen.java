@@ -91,7 +91,7 @@ public class SlashTitleScreen extends MenuScreen {
 		int y = top;
 		if (logo) {
 			int size = 34;
-			g.blit(RenderPipelines.GUI_TEXTURED, LOGO, (width - size) / 2, y, 0, 0, size, size, size, size);
+			g.blit(RenderPipelines.GUI_TEXTURED, Season.logo(LOGO), (width - size) / 2, y, 0, 0, size, size, size, size);
 			y += 42;
 		}
 		Ui.brand(g, (width - Ui.brandWidth(1.6f)) / 2, y, 1.6f);

@@ -97,6 +97,9 @@ public class GameLoadingScreens implements FabricClientGameTest {
 		context.setScreen(dev.slash3rss.slashclient.hud.ui.SlashTitleScreen::new);
 		context.waitTicks(4);
 		context.takeScreenshot("menu-halloween");
+		context.setScreen(() -> new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(new dev.slash3rss.slashclient.hud.ui.SlashTitleScreen()));
+		context.waitTicks(10);
+		context.takeScreenshot("servers-halloween");
 		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.ui.Season.forTest = false);
 		context.setScreen(GameLoadingScreens::levelLoading);
 		context.waitTicks(2);

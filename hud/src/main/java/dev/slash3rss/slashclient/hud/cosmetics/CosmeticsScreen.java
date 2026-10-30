@@ -748,7 +748,7 @@ public class CosmeticsScreen extends Screen {
 			int w = Math.max(Ui.width(tooltip), tooltip2 == null ? 0 : Ui.width(tooltip2)) + 12, h = tooltip2 == null ? 15 : 26;
 			int tx2 = Math.max(4, Math.min(width - w - 4, tipX - w / 2));
 			Ui.round(g, tx2, tipY - h, w, h, 4, 0xF0111622);
-			Ui.roundOutline(g, tx2, tipY - h, w, h, 4, 0x403B82F6);
+			Ui.roundOutline(g, tx2, tipY - h, w, h, 4, Ui.withAlpha(Ui.ACCENT, 0x40));
 			Ui.draw(g, tooltip, tx2 + 6, tipY - h + 4, Ui.TEXT);
 			if (tooltip2 != null) Ui.draw(g, tooltip2, tx2 + 6, tipY - h + 15, Ui.MUTED);
 		}
@@ -835,7 +835,7 @@ public class CosmeticsScreen extends Screen {
 		boolean sale = e != null && e.forSale();
 		float t = Ui.hover("cos:" + slot + ":" + (e == null ? "" : e.id()), over && (!locked || sale));
 		Ui.round(g, x, y, TILE_W, TILE_H, 5, Ui.blend(Ui.CARD, Ui.CARD_HOVER, t));
-		Ui.roundOutline(g, x, y, TILE_W, TILE_H, 5, selected ? Ui.ACCENT_LIGHT : sale ? Ui.blend(0x40FACC15, 0xA0FACC15, t) : Ui.blend(Ui.BORDER, 0x883B82F6, t));
+		Ui.roundOutline(g, x, y, TILE_W, TILE_H, 5, selected ? Ui.ACCENT_LIGHT : sale ? Ui.blend(0x40FACC15, 0xA0FACC15, t) : Ui.blend(Ui.BORDER, Ui.withAlpha(Ui.ACCENT, 0x88), t));
 		if (e == null) Ui.icon(g, "close", x + (TILE_W - 12) / 2, y + (TILE_H - 12) / 2, 12, Ui.MUTED);
 		else picture(g, x, y, e, sale ? Ui.blend(0x90FFFFFF, 0xFFFFFFFF, t) : locked ? 0x60FFFFFF : 0xFFFFFFFF);
 		if (sale) {

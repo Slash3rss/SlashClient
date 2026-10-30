@@ -177,7 +177,7 @@ public final class ChatTabInput {
 	static void drawRow(GuiGraphicsExtractor g, HudConfig.ChatTab tab, int w, int h, boolean focused) {
 		int y = h - ROW - 1;
 		Ui.round(g, 3, y, w - 6, ROW - 1, 4, 0xD0111622);
-		Ui.roundOutline(g, 3, y, w - 6, ROW - 1, 4, focused ? 0x993B82F6 : Ui.BORDER);
+		Ui.roundOutline(g, 3, y, w - 6, ROW - 1, 4, focused ? Ui.withAlpha(Ui.ACCENT, 0x99) : Ui.BORDER);
 		String prefix = tab.prefix();
 		if (!prefix.isEmpty()) Ui.draw(g, Ui.fit(Ui.text(prefix.strip()), labelWidth(prefix, w) - 3), 6, y + 2, 0xFF7C8699);
 	}

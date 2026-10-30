@@ -387,7 +387,7 @@ public final class SlashLoading {
 				int alpha = Math.round((10 - k) * (0.75f + 0.25f * pulse));
 				Ui.round(g, gx - s / 2, gy - s / 2, s, s, s / 2, alpha << 24 | glowRgb);
 			}
-			g.blit(RenderPipelines.GUI_TEXTURED, LOGO, (w - 32) / 2, y, 0, 0, 32, 32, 32, 32);
+			g.blit(RenderPipelines.GUI_TEXTURED, Season.logo(LOGO), (w - 32) / 2, y, 0, 0, 32, 32, 32, 32);
 			y += 40;
 		}
 		Ui.brand(g, (w - Ui.brandWidth(1.3f)) / 2, y, 1.3f);

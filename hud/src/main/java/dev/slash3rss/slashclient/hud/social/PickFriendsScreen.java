@@ -158,7 +158,7 @@ public class PickFriendsScreen extends Screen {
 		if (p == null) return top;
 		int rx = px + 10, rw = pw - 20, h = 44;
 		Ui.round(g, rx, top, rw, h, 5, Ui.CARD);
-		Ui.roundOutline(g, rx, top, rw, h, 5, 0x663B82F6);
+		Ui.roundOutline(g, rx, top, rw, h, 5, Ui.withAlpha(Ui.ACCENT, 0x66));
 		Component head = p.mine() ? Ui.trBold("slashclient-hud.party.yours") : Ui.trBold("slashclient-hud.party.of", p.leaderName());
 		Component action = Ui.tr(p.mine() ? "slashclient-hud.party.disband" : "slashclient-hud.party.leave");
 		int aw = Ui.buttonWidth(action, "close", 16, 3);

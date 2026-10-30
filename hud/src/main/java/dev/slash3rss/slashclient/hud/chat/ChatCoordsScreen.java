@@ -137,7 +137,7 @@ public class ChatCoordsScreen extends Screen {
 	/** A card under an edit box, outlined blue while it has the focus. */
 	private static void field(GuiGraphicsExtractor g, EditBox box, int x, int y, int w) {
 		Ui.round(g, x, y, w, 20, 4, Ui.CARD);
-		Ui.roundOutline(g, x, y, w, 20, 4, box.isFocused() ? 0x993B82F6 : Ui.BORDER);
+		Ui.roundOutline(g, x, y, w, 20, 4, box.isFocused() ? Ui.withAlpha(Ui.ACCENT, 0x99) : Ui.BORDER);
 	}
 
 	@Override

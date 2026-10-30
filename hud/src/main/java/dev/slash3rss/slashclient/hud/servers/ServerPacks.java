@@ -190,7 +190,7 @@ public final class ServerPacks {
 			case DECLINE -> 0xFFFCA5A5;
 			case IGNORE -> 0xFFFDE68A;
 			case ACCEPT -> 0xFF86EFAC;
-			case KEEP -> 0xFF93C5FD;
+			case KEEP -> Ui.ACCENT_PALE;
 			default -> 0xFFA0A0A0;
 		};
 	}

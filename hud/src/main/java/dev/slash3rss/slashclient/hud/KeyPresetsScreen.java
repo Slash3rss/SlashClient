@@ -85,7 +85,7 @@ public class KeyPresetsScreen extends Screen {
 		// the name and Save
 		int sw = saveWidth(), fw = pw - 24 - sw - 6;
 		Ui.round(g, x, py + 46, fw, 20, 4, Ui.CARD);
-		Ui.roundOutline(g, x, py + 46, fw, 20, 4, name.isFocused() ? 0x993B82F6 : Ui.BORDER);
+		Ui.roundOutline(g, x, py + 46, fw, 20, 4, name.isFocused() ? Ui.withAlpha(Ui.ACCENT, 0x99) : Ui.BORDER);
 		if (name.getValue().isEmpty() && !name.isFocused()) Ui.draw(g, Ui.fit(Ui.tr("slashclient-hud.keyPresets.name"), fw - 12), x + 6, py + 52, Ui.MUTED);
 		boolean ok = KeyPresets.canSave(name.getValue());
 		Ui.button(g, "kp:save", px + pw - 12 - sw, py + 46, sw, 20, "save", Ui.tr("slashclient-hud.keyPresets.save"), ok, mx, my);

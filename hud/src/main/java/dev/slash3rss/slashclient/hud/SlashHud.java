@@ -343,6 +343,7 @@ public class SlashHud implements ClientModInitializer {
 			CameraDistance.tick(mc);
 			SlotLock.keyTick(mc);
 			KeyPresets.tick(mc);
+			dev.slash3rss.slashclient.hud.ui.Season.refresh();
 			while (waypointsKey.consumeClick()) {
 				if (Compat.screen(mc) == null && config.waypoints) mc.setScreenAndShow(new WaypointsScreen());
 			}

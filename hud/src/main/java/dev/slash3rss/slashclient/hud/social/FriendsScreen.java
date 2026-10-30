@@ -722,7 +722,7 @@ public class FriendsScreen extends Screen {
 			int nameColor = switch (m.authorRole()) {
 				case "owner" -> 0xFFFBBF24;
 				case "admin" -> 0xFFFCA5A5;
-				case "moderator" -> 0xFF93C5FD;
+				case "moderator" -> Ui.ACCENT_PALE;
 				default -> Ui.ACCENT_LIGHT;
 			};
 			if (m.deleted()) {
@@ -817,7 +817,7 @@ public class FriendsScreen extends Screen {
 			return;
 		}
 		Ui.round(g, cx + 10, fy, input.getWidth() + 12, INPUT_H, 4, Ui.CARD);
-		Ui.roundOutline(g, cx + 10, fy, input.getWidth() + 12, INPUT_H, 4, input.isFocused() ? 0x993B82F6 : Ui.BORDER);
+		Ui.roundOutline(g, cx + 10, fy, input.getWidth() + 12, INPUT_H, 4, input.isFocused() ? Ui.withAlpha(Ui.ACCENT, 0x99) : Ui.BORDER);
 		int sx = cx + cw - 10 - 24;
 		Ui.button(g, "friends:send", sx, fy, 24, INPUT_H, "arrow", Component.empty(), true, mx, my);
 		hits.add(new Hit(sx, fy, 24, INPUT_H, this::send));
@@ -849,7 +849,7 @@ public class FriendsScreen extends Screen {
 		Ui.round(g, bx, by, bw, bh, 5, mine ? Ui.ACCENT_DARK : Ui.CARD);
 		if (ready) {
 			g.blit(RenderPipelines.GUI_TEXTURED, tex.id(), bx + 4, by + 4, 0, 0, size[0], size[1], tex.w(), tex.h(), tex.w(), tex.h(), 0xFFFFFFFF);
-			if (Ui.inside(mx, my, bx + 4, by + 4, size[0], size[1])) Ui.roundOutline(g, bx + 3, by + 3, size[0] + 2, size[1] + 2, 3, 0x993B82F6);
+			if (Ui.inside(mx, my, bx + 4, by + 4, size[0], size[1])) Ui.roundOutline(g, bx + 3, by + 3, size[0] + 2, size[1] + 2, 3, Ui.withAlpha(Ui.ACCENT, 0x99));
 		} else {
 			Ui.round(g, bx + 4, by + 4, size[0], size[1], 3, 0x40000000);
 			Component state = Ui.tr(img.removed() ? "slashclient-hud.picture.removed" : img.expired() ? "slashclient-hud.picture.expired" : tex.failed() ? "slashclient-hud.picture.gone" : "slashclient-hud.picture.loading");
@@ -888,7 +888,7 @@ public class FriendsScreen extends Screen {
 		int by = y + nameH;
 		lastCard = visible(bx, by, bw, bh, top, bottom);
 		Ui.round(g, bx, by, bw, bh, 5, Ui.CARD);
-		Ui.roundOutline(g, bx, by, bw, bh, 5, mine ? 0x993B82F6 : Ui.BORDER);
+		Ui.roundOutline(g, bx, by, bw, bh, 5, mine ? Ui.withAlpha(Ui.ACCENT, 0x99) : Ui.BORDER);
 		Ui.icon(g, "m-stats", bx + 6, by + 6, 8, open ? Ui.ACCENT_LIGHT : Ui.MUTED);
 		int ly = by + 6;
 		for (FormattedCharSequence l : question) {
@@ -903,8 +903,8 @@ public class FriendsScreen extends Screen {
 			boolean over = canVote && Ui.inside(mx, my, ox, ly, ow, rowH) && my >= top && my <= bottom;
 			Ui.round(g, ox, ly, ow, rowH, 3, over ? 0x40FFFFFF : 0x30000000);
 			int fill = Math.round(ow * pct / 100f);
-			if (fill > 0) Ui.round(g, ox, ly, Math.max(fill, 4), rowH, 3, chosen ? 0x803B82F6 : 0x4060A5FA);
-			if (chosen) Ui.roundOutline(g, ox, ly, ow, rowH, 3, 0xCC60A5FA);
+			if (fill > 0) Ui.round(g, ox, ly, Math.max(fill, 4), rowH, 3, chosen ? Ui.withAlpha(Ui.ACCENT, 0x80) : Ui.withAlpha(Ui.ACCENT_LIGHT, 0x40));
+			if (chosen) Ui.roundOutline(g, ox, ly, ow, rowH, 3, Ui.withAlpha(Ui.ACCENT_LIGHT, 0xCC));
 			if (chosen) Ui.icon(g, "check", ox + 3, ly + 3, 7, Ui.TEXT);
 			Component pctText = Ui.text(pct + "%");
 			int pw2 = Ui.width(pctText);
@@ -993,7 +993,7 @@ public class FriendsScreen extends Screen {
 			if (custom != null && Ui.width(role) > (colW - 30) / 2) role = Ui.fit(Ui.text(custom.name()).withStyle(s -> s.withColor(custom.color())), (colW - 30) / 2);
 			int roleW = Ui.width(role);
 			Ui.draw(g, Ui.fit(Ui.bold(m.name()), colW - 6 - 16 - roleW - 8), rx + 15, y + 4, m.online() ? Ui.TEXT : Ui.MUTED);
-			Ui.draw(g, role, rx + colW - 6 - roleW - 6, y + 4, "owner".equals(m.role()) ? 0xFFFBBF24 : "admin".equals(m.role()) ? 0xFFFCA5A5 : 0xFF93C5FD);
+			Ui.draw(g, role, rx + colW - 6 - roleW - 6, y + 4, "owner".equals(m.role()) ? 0xFFFBBF24 : "admin".equals(m.role()) ? 0xFFFCA5A5 : Ui.ACCENT_PALE);
 			y += 18;
 		}
 	}
@@ -1145,7 +1145,7 @@ public class FriendsScreen extends Screen {
 		// the field (an EditBox drawn by the screen) on a rounded background, and the send button
 		int fy = input.getY() - 6;
 		Ui.round(g, cx + 10, fy, input.getWidth() + 12, INPUT_H, 4, Ui.CARD);
-		Ui.roundOutline(g, cx + 10, fy, input.getWidth() + 12, INPUT_H, 4, input.isFocused() ? 0x993B82F6 : Ui.BORDER);
+		Ui.roundOutline(g, cx + 10, fy, input.getWidth() + 12, INPUT_H, 4, input.isFocused() ? Ui.withAlpha(Ui.ACCENT, 0x99) : Ui.BORDER);
 		int sx = cx + cw - 10 - 24;
 		Ui.button(g, "friends:send", sx, fy, 24, INPUT_H, "arrow", Component.empty(), true, mx, my);
 		hits.add(new Hit(sx, fy, 24, INPUT_H, this::send));
@@ -1237,7 +1237,7 @@ public class FriendsScreen extends Screen {
 		boolean over = Ui.inside(mx, my, x, y, w, h);
 		float t = Ui.hover("friends:recent", over);
 		Ui.round(g, x, y, w, h, 5, Ui.blend(0xF01C2B4A, 0xF0264070, t));
-		Ui.roundOutline(g, x, y, w, h, 5, 0x993B82F6);
+		Ui.roundOutline(g, x, y, w, h, 5, Ui.withAlpha(Ui.ACCENT, 0x99));
 		int tw = 0;
 		if (tex.ready()) {
 			int[] size = ChatImages.fit(tex.w(), tex.h(), 40, h - 6);
@@ -1271,7 +1271,7 @@ public class FriendsScreen extends Screen {
 		Ui.round(g, bx, y, bw, bh, 5, mine ? Ui.ACCENT_DARK : Ui.CARD);
 		if (tex.ready()) {
 			g.blit(RenderPipelines.GUI_TEXTURED, tex.id(), bx + 4, y + 4, 0, 0, size[0], size[1], tex.w(), tex.h(), tex.w(), tex.h(), 0xFFFFFFFF);
-			if (Ui.inside(mx, my, bx + 4, y + 4, size[0], size[1])) Ui.roundOutline(g, bx + 3, y + 3, size[0] + 2, size[1] + 2, 3, 0x993B82F6);
+			if (Ui.inside(mx, my, bx + 4, y + 4, size[0], size[1])) Ui.roundOutline(g, bx + 3, y + 3, size[0] + 2, size[1] + 2, 3, Ui.withAlpha(Ui.ACCENT, 0x99));
 		} else {
 			Ui.round(g, bx + 4, y + 4, size[0], size[1], 3, 0x40000000);
 			Component state = Ui.tr(tex.failed() ? "slashclient-hud.picture.gone" : "slashclient-hud.picture.loading");
@@ -1414,7 +1414,7 @@ public class FriendsScreen extends Screen {
 
 		int fy = input.getY() - 6;
 		Ui.round(g, cx + 10, fy, input.getWidth() + 12, INPUT_H, 4, Ui.CARD);
-		Ui.roundOutline(g, cx + 10, fy, input.getWidth() + 12, INPUT_H, 4, input.isFocused() ? 0x993B82F6 : Ui.BORDER);
+		Ui.roundOutline(g, cx + 10, fy, input.getWidth() + 12, INPUT_H, 4, input.isFocused() ? Ui.withAlpha(Ui.ACCENT, 0x99) : Ui.BORDER);
 		int sx = cx + cw - 10 - 24;
 		Ui.button(g, "friends:send", sx, fy, 24, INPUT_H, "arrow", Component.empty(), true, mx, my);
 		hits.add(new Hit(sx, fy, 24, INPUT_H, this::send));
@@ -1461,7 +1461,7 @@ public class FriendsScreen extends Screen {
 			int roleW = Ui.width(role);
 			int nameW = colW - 6 - 16 - roleW - 8 - ("owner".equals(m.role()) ? 12 : 0);
 			Ui.draw(g, Ui.fit(Ui.bold(m.name()), nameW), rx + 15, y + 4, m.online() ? Ui.TEXT : Ui.MUTED);
-			Ui.draw(g, role, rx + colW - 6 - roleW - 6 - ("owner".equals(m.role()) ? 12 : 0), y + 4, "officer".equals(m.role()) ? 0xFF93C5FD : "owner".equals(m.role()) ? 0xFFFBBF24 : Ui.MUTED);
+			Ui.draw(g, role, rx + colW - 6 - roleW - 6 - ("owner".equals(m.role()) ? 12 : 0), y + 4, "officer".equals(m.role()) ? Ui.ACCENT_PALE : "owner".equals(m.role()) ? 0xFFFBBF24 : Ui.MUTED);
 			y += 18;
 		}
 	}
@@ -1481,7 +1481,7 @@ public class FriendsScreen extends Screen {
 		int bx = mine ? cx + cw - 10 - bw : cx + 10;
 		lastCard = visible(bx, y, bw, bh, top, bottom);
 		Ui.round(g, bx, y, bw, bh, 5, mine ? Ui.ACCENT_DARK : Ui.CARD);
-		Ui.roundOutline(g, bx, y, bw, bh, 5, mine ? 0x40FFFFFF : 0x663B82F6);
+		Ui.roundOutline(g, bx, y, bw, bh, 5, mine ? 0x40FFFFFF : Ui.withAlpha(Ui.ACCENT, 0x66));
 		Ui.icon(g, "play", bx + 6, y + 6, 8, expired ? Ui.MUTED : mine ? Ui.TEXT : Ui.ACCENT_LIGHT);
 		Ui.draw(g, Ui.fit(title, bw - 24), bx + 18, y + 6, expired ? Ui.TEXT_2 : Ui.TEXT);
 		Ui.draw(g, Ui.fit(where, bw - 12), bx + 6, y + 17, expired ? Ui.MUTED : mine ? 0xCCFFFFFF : Ui.TEXT_2);
@@ -1511,7 +1511,7 @@ public class FriendsScreen extends Screen {
 		int bx = mine ? cx + cw - 10 - bw : cx + 10;
 		lastCard = visible(bx, y, bw, bh, top, bottom);
 		Ui.round(g, bx, y, bw, bh, 5, mine ? Ui.ACCENT_DARK : Ui.CARD);
-		Ui.roundOutline(g, bx, y, bw, bh, 5, mine ? 0x40FFFFFF : 0x663B82F6);
+		Ui.roundOutline(g, bx, y, bw, bh, 5, mine ? 0x40FFFFFF : Ui.withAlpha(Ui.ACCENT, 0x66));
 		Ui.icon(g, "m-waypoints", bx + 6, y + 6, 8, mine ? Ui.TEXT : Ui.ACCENT_LIGHT);
 		Ui.draw(g, Ui.fit(title, bw - 24), bx + 18, y + 6, Ui.TEXT);
 		Ui.draw(g, Ui.fit(where, bw - 12), bx + 6, y + 17, mine ? 0xCCFFFFFF : Ui.TEXT_2);

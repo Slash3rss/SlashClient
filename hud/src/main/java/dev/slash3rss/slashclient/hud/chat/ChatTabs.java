@@ -101,7 +101,7 @@ public final class ChatTabs {
 				Screens.getWidgets(screen).add(box);
 				ScreenEvents.beforeExtract(screen).register((s, g, mouseX, mouseY, delta) -> {
 					dev.slash3rss.slashclient.hud.ui.Ui.round(g, bx, y, bw, h, 5, 0xD0111622);
-					dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, bx, y, bw, h, 5, box.isFocused() ? 0x993B82F6 : dev.slash3rss.slashclient.hud.ui.Ui.BORDER);
+					dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, bx, y, bw, h, 5, box.isFocused() ? dev.slash3rss.slashclient.hud.ui.Ui.withAlpha(dev.slash3rss.slashclient.hud.ui.Ui.ACCENT, 0x99) : dev.slash3rss.slashclient.hud.ui.Ui.BORDER);
 					dev.slash3rss.slashclient.hud.ui.Ui.icon(g, "search", bx + 5, y + 3, 7, dev.slash3rss.slashclient.hud.ui.Ui.MUTED);
 				});
 				ScreenEvents.remove(screen).register(s -> {
@@ -148,8 +148,8 @@ public final class ChatTabs {
 		if (dragging < 0 || dragging >= SlashHud.config.chatTabs.size()) return;
 		int w = ChatWindows.width(1f), h = ChatWindows.height(1f);
 		int x = Math.max(0, Math.min(g.guiWidth() - w, mx - w / 2)), y = Math.max(0, Math.min(g.guiHeight() - h, my - 6));
-		dev.slash3rss.slashclient.hud.ui.Ui.round(g, x, y, w, h, 6, 0x603B82F6);
-		dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, x, y, w, h, 6, 0xC060A5FA);
+		dev.slash3rss.slashclient.hud.ui.Ui.round(g, x, y, w, h, 6, dev.slash3rss.slashclient.hud.ui.Ui.withAlpha(dev.slash3rss.slashclient.hud.ui.Ui.ACCENT, 0x60));
+		dev.slash3rss.slashclient.hud.ui.Ui.roundOutline(g, x, y, w, h, 6, dev.slash3rss.slashclient.hud.ui.Ui.withAlpha(dev.slash3rss.slashclient.hud.ui.Ui.ACCENT_LIGHT, 0xC0));
 		Component hint = dev.slash3rss.slashclient.hud.ui.Ui.tr("slashclient-hud.chat.window.drop", SlashHud.config.chatTabs.get(dragging).name);
 		dev.slash3rss.slashclient.hud.ui.Ui.centered(g, dev.slash3rss.slashclient.hud.ui.Ui.fit(hint, w - 12), x + w / 2, y + h / 2 - 4, 0xFFFFFFFF);
 	}

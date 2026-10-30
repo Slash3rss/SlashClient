@@ -32,7 +32,7 @@ import java.util.Map;
  */
 public class SkyWikiScreen extends Screen {
 	private static final int ROW_H = 14, HIT_H = 24, LINE_H = 10, PAD = 12;
-	private static final int LINK = 0xFF60A5FA, CODE = 0xFFFBBF24, LINE = 0x30FFFFFF;
+	private static final int LINK = Ui.ACCENT_LIGHT, CODE = 0xFFFBBF24, LINE = 0x30FFFFFF;
 
 	private record Hit(int x, int y, int w, int h, Runnable action) {}
 	/** Something the article draws: text, a picture, or a filled rectangle (y from the article's top). */
@@ -219,7 +219,7 @@ public class SkyWikiScreen extends Screen {
 				} else {
 					boolean open = article != null && r.slug() != null && r.slug().equals(article.slug()) && found == null;
 					boolean over = Ui.inside(mx, my, x, ry, w - 6, h - 1) && my >= top && my < bottom;
-					if (open || over) Ui.round(g, x, ry, w - 6, h - 1, 3, open ? 0x403B82F6 : 0x18FFFFFF);
+					if (open || over) Ui.round(g, x, ry, w - 6, h - 1, 3, open ? Ui.withAlpha(Ui.ACCENT, 0x40) : 0x18FFFFFF);
 					Ui.draw(g, Ui.fit(Ui.text(r.label()), w - 14), x + 5, ry + 3, open ? Ui.TEXT : Ui.TEXT_2);
 					if (r.note() != null) Ui.draw(g, Ui.fit(Ui.text(r.note()), w - 14), x + 5, ry + 13, Ui.MUTED);
 					if (ry >= top && ry + h <= bottom) {
@@ -431,7 +431,7 @@ public class SkyWikiScreen extends Screen {
 				col += span;
 			}
 			rowH = Math.max(rowH, 14);
-			for (int[] h : heads) back.add(new Op(h[0], y, h[1], rowH, null, 0x283B82F6, null, null));
+			for (int[] h : heads) back.add(new Op(h[0], y, h[1], rowH, null, Ui.withAlpha(Ui.ACCENT, 0x28), null, null));
 			back.add(new Op(0, y + rowH, tableW, 1, null, LINE, null, null));
 			y += rowH;
 		}
