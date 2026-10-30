@@ -21,6 +21,8 @@ interface SeasonDeps {
   featureOn: () => boolean;
   /** Fewer animations: the bats are drawn once and stay. */
   reduced: () => boolean;
+  /** The window's (and the taskbar's) icon: a picture as a PNG data URL, or null for the usual one. */
+  setWindowIcon?: (dataUrl: string | null) => unknown;
 }
 
 const WEB = `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round">
@@ -28,8 +30,20 @@ const WEB = `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" fill=
   <path d="M0 24 Q14 18 24 0 M0 48 Q28 36 34 26 Q40 14 48 0 M0 76 Q30 64 44 50 Q56 34 62 24 Q68 12 76 0 M0 104 Q36 92 56 72 Q72 52 82 42 Q92 24 104 0"/>
 </svg>`;
 
+/** Whether the look was allowed last time (the player's setting and the admin's switch), for the splash before either is known. */
+const REMEMBER = 'slashclient.season';
+function remembered(): boolean {
+  try {
+    return localStorage.getItem(REMEMBER) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
 export function initSeason(deps: SeasonDeps) {
   const root = document.documentElement;
+  // the splash already in the season's colours, from the first frame
+  if (halloweenSeason() && remembered()) root.classList.add('season-halloween');
   const canvas = document.createElement('canvas');
   canvas.className = 'season-sky';
   canvas.setAttribute('aria-hidden', 'true');
@@ -76,6 +90,33 @@ export function initSeason(deps: SeasonDeps) {
       speed: 7 + Math.random() * 5,
     }));
   };
+
+  /** The logo in the season's colours with a pumpkin in its corner (made once, from logo.png). */
+  let seasonLogo: Promise<string | undefined> | undefined;
+  const makeLogo = async (): Promise<string | undefined> => {
+    const img = new Image();
+    img.src = 'logo.png';
+    await img.decode();
+    const size = 256;
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const x = c.getContext('2d');
+    if (!x) return undefined;
+    // the blue turned orange, the night sky purple
+    x.filter = 'hue-rotate(170deg) saturate(1.25)';
+    x.drawImage(img, 0, 0, size, size);
+    x.filter = 'none';
+    pumpkin(x, size * 0.8, size * 0.8, size * 0.14, 0, false);
+    return c.toDataURL('image/png');
+  };
+  /** The logos on the page (the side bar's, the splash's) and the window's icon: the season's, or back to the usual. */
+  let logoShown = false;
+  async function logo(season: boolean) {
+    logoShown = season;
+    const url = season ? await (seasonLogo ??= makeLogo().catch(() => undefined)) : undefined;
+    for (const img of document.querySelectorAll<HTMLImageElement>('.brand-logo, .splash-logo')) img.src = url ?? 'logo.png';
+    deps.setWindowIcon?.(url ?? null);
+  }
 
   /** The pumpkins only where the side bar has room under its menu: they never cover a button. */
   function fitPatch() {
@@ -125,8 +166,8 @@ export function initSeason(deps: SeasonDeps) {
   }
 
   /** A pumpkin glowing on the ground: ribs, a stem and a carved face lit from inside. */
-  function pumpkin(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, t: number) {
-    const flicker = deps.reduced() ? 1 : 0.85 + 0.15 * Math.sin(t / 180 + x);
+  function pumpkin(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, t: number, glowing = true) {
+    const flicker = deps.reduced() || !glowing ? 1 : 0.85 + 0.15 * Math.sin(t / 180 + x);
     const glow = ctx.createRadialGradient(x, y, r * 0.2, x, y, r * 3);
     glow.addColorStop(0, `rgba(249, 115, 22, ${0.28 * flicker})`);
     glow.addColorStop(1, 'rgba(249, 115, 22, 0)');
@@ -188,10 +229,17 @@ export function initSeason(deps: SeasonDeps) {
 
   /** Turns the look on or off as the day, the setting and the switch say; again on any change of them. */
   function apply() {
-    const next = halloweenSeason() && deps.settingOn() && deps.featureOn();
+    const allowed = deps.settingOn() && deps.featureOn();
+    try {
+      localStorage.setItem(REMEMBER, allowed ? 'on' : 'off');
+    } catch {
+      // nothing to remember it in: the splash goes by the date alone
+    }
+    const next = halloweenSeason() && allowed;
     root.classList.toggle('season-halloween', next);
     clearTimeout(timer);
     timer = undefined;
+    if (next !== logoShown) void logo(next);
     if (next && !on) {
       document.body.append(canvas, ...webs);
       document.querySelector('.sidebar')?.append(patch);
@@ -225,5 +273,7 @@ export function initSeason(deps: SeasonDeps) {
   });
   // the season may start or end while the launcher stays open
   setInterval(apply, 60 * 60_000);
+  // and its logo
+  if (root.classList.contains('season-halloween')) void logo(true);
   return { apply };
 }

@@ -104,6 +104,7 @@ const api = {
   cosmeticTextures: () => invoke('cosmetics:textures'),
   getStats: (days: number) => invoke('stats:get', days),
   sessionSummaries: () => invoke('sessionSummary:list'),
+  setWindowIcon: (dataUrl: string | null) => invoke('window:setIcon', dataUrl),
   removeSessionSummary: (id: string) => invoke('sessionSummary:remove', id),
   findInstances: () => invoke('import:find'),
   instancesFromFolder: () => invoke('import:folder'),

@@ -91,6 +91,12 @@ code {
 .season-web svg { width: 100%; height: 100%; }
 .season-web-left { left: 0; }
 .season-web-right { right: 0; transform: scaleX(-1); }
+.season-halloween .splash { background: radial-gradient(circle at 30% 20%, rgba(234, 88, 12, .2), transparent 55%), radial-gradient(circle at 75% 85%, rgba(126, 34, 206, .2), transparent 55%), var(--bg-primary); }
+.season-halloween .splash-logo { filter: drop-shadow(0 0 22px rgba(249, 115, 22, .45)); }
+.season-halloween .brand-name span { background-image: linear-gradient(135deg, #fb923c 0%, #f97316 45%, #9333ea 100%); }
+.season-halloween .brand-logo { filter: drop-shadow(0 6px 18px rgba(249, 115, 22, .3)); }
+.season-halloween .splash-name span { background-image: linear-gradient(135deg, #fb923c 0%, #f97316 45%, #9333ea 100%); }
+.season-halloween .splash-bar div { background: linear-gradient(90deg, #9333ea, #f97316); }
 
 .glass-panel {
   background: var(--glass-bg);

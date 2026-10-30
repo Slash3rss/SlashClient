@@ -4932,7 +4932,10 @@ function applyMotion() {
 systemReduced.addEventListener('change', applyMotion);
 let wakeStars = () => {};
 // Halloween's look (season.ts): the player's setting, the admin's switch and fewer animations
-const season = initSeason({ settingOn: () => store?.settings?.seasonalLook !== false, featureOn: () => featureOn('seasonal'), reduced: motionReduced });
+const season = initSeason({
+  settingOn: () => store?.settings?.seasonalLook !== false, featureOn: () => featureOn('seasonal'), reduced: motionReduced,
+  setWindowIcon: (dataUrl) => api.setWindowIcon?.(dataUrl),
+});
 onFeatures(() => season.apply());
 
 // ---------- starfield (as on lista.slash3rss.dev) ----------

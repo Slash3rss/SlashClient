@@ -692,6 +692,15 @@ handle('stats:get', async (days: number) => {
 
 // the last session summaries, for the statistics page
 handle('sessionSummary:list', () => readSummaries());
+
+/** The seasonal look's icon for the window and the taskbar (season.ts), or the usual one for null; only a PNG made by the page. */
+handle('window:setIcon', (dataUrl: unknown) => {
+  const own = typeof dataUrl === 'string' && dataUrl.length < 2_000_000 && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(dataUrl);
+  const img = own ? nativeImage.createFromDataURL(dataUrl) : nativeImage.createFromPath(ICON);
+  if (img.isEmpty()) return;
+  win?.setIcon(img);
+  if (process.platform === 'darwin') app.dock?.setIcon(img);
+});
 handle('sessionSummary:remove', (id: string) => (typeof id === 'string' ? removeSummary(id) : undefined));
 
 async function finishSessionSummary(o: { profile: Profile; versionId: string; startedAt: number; endedAt: number; joins: { address: string; at: number }[]; code: number | null; byUser: boolean; benchmark: boolean }) {
