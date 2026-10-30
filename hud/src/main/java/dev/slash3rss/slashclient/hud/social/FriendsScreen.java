@@ -495,10 +495,12 @@ public class FriendsScreen extends Screen {
 			float t = Ui.hover("friend:" + f.id(), over);
 			if (f.id().equals(selected)) Ui.round(g, rx, y, rw, ROW_H, 4, 0xFF1C2B4A);
 			else if (t > 0) Ui.round(g, rx, y, rw, ROW_H, 4, Ui.blend(0x00161C2A, Ui.CARD_HOVER, t));
-			// avatar: the first letter on the accent, with the status dot
-			Ui.round(g, rx + 4, y + 4, 18, 18, 5, Ui.ACCENT_DARK);
-			Component initial = Ui.bold(f.name().isEmpty() ? "?" : f.name().substring(0, 1).toUpperCase());
-			Ui.draw(g, initial, rx + 13 - Ui.width(initial) / 2, y + 9, 0xFFFFFFFF);
+			// avatar: their Minecraft face (as in the server list), else the first letter on the accent; the status dot on it
+			if (!dev.slash3rss.slashclient.hud.servers.ServerFriends.drawFace(g, f.id(), rx + 4, y + 4, 18)) {
+				Ui.round(g, rx + 4, y + 4, 18, 18, 5, Ui.ACCENT_DARK);
+				Component initial = Ui.bold(f.name().isEmpty() ? "?" : f.name().substring(0, 1).toUpperCase());
+				Ui.draw(g, initial, rx + 13 - Ui.width(initial) / 2, y + 9, 0xFFFFFFFF);
+			}
 			Ui.round(g, rx + 16, y + 16, 7, 7, 3, Ui.PANEL);
 			Ui.round(g, rx + 17, y + 17, 5, 5, 2, statusColor(f.status()));
 			int textW = rw - 30 - (f.unread() > 0 ? 16 : 0);

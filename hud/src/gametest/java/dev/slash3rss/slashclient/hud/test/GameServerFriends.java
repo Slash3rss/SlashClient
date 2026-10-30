@@ -105,6 +105,11 @@ public class GameServerFriends implements FabricClientGameTest {
 	}
 
 	private void run(ClientGameTestContext context) {
+		// the friends window: the friends with a Minecraft face show it (Ala, Ewa, Hania), the others their first letter
+		context.setScreen(() -> new dev.slash3rss.slashclient.hud.social.FriendsScreen(null));
+		context.waitTicks(5);
+		context.takeScreenshot("friends-faces");
+		context.setScreen(() -> null);
 		// the same server however it was typed, a partner's other address, never another port
 		String places = context.computeOnClient(mc -> ServerFriends.samePlace("Alpha.TEST.:25565", "alpha.test") + " " + ServerFriends.samePlace("51.38.10.20", "play.skyup.pl")
 			+ " " + ServerFriends.samePlace("beta.test:25566", "beta.test") + " " + ServerFriends.samePlace("", ""));
