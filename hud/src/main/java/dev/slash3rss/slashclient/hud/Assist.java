@@ -132,6 +132,8 @@ public final class Assist {
 		// the inventory or the pause menu open
 		if (holdAttack && inGame) mc.options.keyAttack.setDown(true);
 		if (holdUse && inGame) mc.options.keyUse.setDown(true);
+		// a held keyboard key repeats, and the game uses the item on every repeat: the same here, a click a tick
+		if (holdUse && inGame && cfg().holdUseFast) KeyMapping.click(net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper.getBoundKeyOf(mc.options.keyUse));
 		holdOverScreen(mc, player, inGame);
 
 		// in a dungeon it always rests, out of it it goes on as it was (said once each way)

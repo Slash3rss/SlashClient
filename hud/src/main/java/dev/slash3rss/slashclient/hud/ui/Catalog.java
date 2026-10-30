@@ -713,7 +713,8 @@ public final class Catalog {
 			v -> risky(v, () -> cfg.autoRefill = v), List.of(), null));
 		// holding a button is set up with keys of its own: they are its settings (withKeys)
 		out.add(new Entry("holdKeys", "slashclient-hud.assist.holdKeys", "extras", "m-holdkeys", null, null, List.of(
-			new Toggle("slashclient-hud.assist.holdScreens", () -> cfg.holdInScreens, v -> cfg.holdInScreens = v)), null));
+			new Toggle("slashclient-hud.assist.holdScreens", () -> cfg.holdInScreens, v -> cfg.holdInScreens = v),
+			new Toggle("slashclient-hud.assist.holdUseFast", () -> cfg.holdUseFast, v -> cfg.holdUseFast = v)), null));
 		out.add(new Entry("toolWarning", "slashclient-hud.assist.toolWarning", "combat", "m-toolwarning", () -> cfg.toolWarning, v -> cfg.toolWarning = v, List.of(
 			new Slider("slashclient-hud.assist.toolWarningAt", 1f, 30f, 1f, "%.0f%%", () -> (float) cfg.toolWarningPercent, v -> cfg.toolWarningPercent = Math.round(v))), null));
 		out.add(new Entry("mouseTweaks", "slashclient-hud.extra.mouseTweaks", "extras", "m-mousetweaks", () -> cfg.mouseTweaks, v -> cfg.mouseTweaks = v, List.of(), null));

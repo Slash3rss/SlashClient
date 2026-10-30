@@ -877,6 +877,7 @@
 	"slashclient-hud.assist.autoRefill": "Hand refill",
 	"slashclient-hud.assist.holdKeys": "Holding buttons (keys)",
 	"slashclient-hud.assist.holdScreens": "Also with the inventory or pause menu open",
+	"slashclient-hud.assist.holdUseFast": "The right button places fast, like a held keyboard key",
 	"slashclient-hud.assist.toolWarning": "Tool break warning",
 	"slashclient-hud.assist.toolWarningAt": "Warn below",
 	"slashclient-hud.assist.toolWarning.left": "⚠ %s is about to break: %s uses left",

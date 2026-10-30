@@ -104,6 +104,13 @@ public class GameHoldScreens implements FabricClientGameTest {
 			context.waitTicks(3);
 			check(context.computeOnClient(mc -> TestHooks.buttonsDown()).equals("false/false"), "a button stayed down after throwing");
 
+			// "places fast": the right button held by its key uses the item every tick, as a held keyboard
+			// key does, instead of the game's every 4 ticks
+			int slow = thrownIn(context, server, false), fast = thrownIn(context, server, true);
+			check(slow >= 3 && slow <= 8, "the right button held as usual threw " + slow + " snowballs in 20 ticks");
+			check(fast >= slow * 2, "the right button placing fast threw only " + fast + " snowballs in 20 ticks (as usual: " + slow + ")");
+			check(context.computeOnClient(mc -> TestHooks.buttonsDown()).equals("false/false"), "a button stayed down after throwing fast");
+
 			// the pause menu: nothing while it pauses the game, digging once the world is open to LAN
 			server.runCommand("item replace entity @a hotbar.0 with diamond_pickaxe");
 			server.runCommand("setblock 0 101 1 deepslate");
@@ -147,6 +154,25 @@ public class GameHoldScreens implements FabricClientGameTest {
 			context.waitFor(mc -> english.isDone(), 1200);
 			context.setScreen(() -> null);
 		}
+	}
+
+	/** Snowballs thrown with the right button held by its key for 20 ticks in the game, placing fast or not. */
+	private static int thrownIn(ClientGameTestContext context, net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext server, boolean fast) {
+		// emptied first: a stack of the same item put over it does not always reach the player's screen
+		server.runCommand("clear @a");
+		context.waitTicks(3);
+		server.runCommand("give @a snowball 64");
+		context.runOnClient(mc -> { dev.slash3rss.slashclient.hud.SlashHud.config.holdUseFast = fast; TestHooks.selectSlot(0); });
+		context.waitTicks(10);
+		int before = context.computeOnClient(mc -> mc.player.getMainHandItem().getCount());
+		context.runOnClient(mc -> TestHooks.hold(false, true, true));
+		context.waitTicks(20);
+		context.runOnClient(mc -> TestHooks.hold(false, false, true));
+		context.waitTicks(3);
+		int left = context.computeOnClient(mc -> mc.player.getMainHandItem().getCount());
+		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.holdUseFast = false);
+		System.out.println("SlashClient test hold: " + (fast ? "fast" : "as usual") + " " + before + " -> " + left);
+		return before - left;
 	}
 
 	private static boolean air(ClientGameTestContext context) {

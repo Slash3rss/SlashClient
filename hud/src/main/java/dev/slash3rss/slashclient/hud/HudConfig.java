@@ -480,6 +480,8 @@ public final class HudConfig {
 	public boolean autoRefill = false;
 	/** Buttons held by their keys go on with the inventory or the pause menu open. */
 	public boolean holdInScreens = true;
+	/** The right button held by its key places as fast as a held keyboard key (a click every tick), not every 4 ticks. */
+	public boolean holdUseFast = false;
 	public boolean toolWarning = true;
 	public int toolWarningPercent = 10;
 	/** Health above 10 hearts in one row, each 10 hearts more in another colour. */
@@ -1024,6 +1026,7 @@ public final class HudConfig {
 		autoToolFeed = other.autoToolFeed;
 		autoRefill = other.autoRefill;
 		holdInScreens = other.holdInScreens;
+		holdUseFast = other.holdUseFast;
 		toolWarning = other.toolWarning;
 		toolWarningPercent = Math.max(1, Math.min(50, other.toolWarningPercent));
 		compactHearts = other.compactHearts;
