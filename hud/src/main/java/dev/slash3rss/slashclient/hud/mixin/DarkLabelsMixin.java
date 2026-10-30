@@ -21,4 +21,13 @@ public abstract class DarkLabelsMixin {
 	private int slashclient$lightLabel(int color) {
 		return DarkGui.label(color);
 	}
+
+	//#if MC >= 26.1
+	@ModifyArg(method = "extractLabels", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;text(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)V"), index = 5, require = 0)
+	//#else
+	//$ @ModifyArg(method = "renderLabels", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiGraphics;drawString(Lnet/minecraft/client/gui/Font;Lnet/minecraft/network/chat/Component;IIIZ)I"), index = 5, require = 0)
+	//#endif
+	private boolean slashclient$labelShadow(boolean shadow) {
+		return DarkGui.labelShadow(shadow);
+	}
 }

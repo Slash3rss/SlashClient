@@ -264,6 +264,7 @@
 	"slashclient-hud.set.seasonalLook": "Seasonal look (Halloween)",
 	"slashclient-hud.set.darkGui": "Dark game windows",
 	"slashclient-hud.set.darkGuiShade": "Shade",
+	"slashclient-hud.set.blockWindows": "Windows in their blocks' look",
 	"slashclient-hud.set.darkGuiShade.dark": "Dark",
 	"slashclient-hud.set.darkGuiShade.darker": "Very dark",
 	"slashclient-hud.menu.title": "SlashClient",

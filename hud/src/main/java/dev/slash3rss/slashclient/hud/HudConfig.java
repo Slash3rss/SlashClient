@@ -381,6 +381,8 @@ public final class HudConfig {
 	public boolean darkGui;
 	/** How dark: "dark" (dark grey) or "darker" (nearly black). */
 	public String darkGuiShade = "dark";
+	/** The windows' block parts made of their blocks (ui/BlockWindows); off unless switched on. */
+	public boolean blockWindows;
 	/** The SlashClient pause menu instead of Minecraft's own. */
 	public boolean customPause = true;
 	/** The SlashClient server list (cards, search) instead of Minecraft's own. */
@@ -941,6 +943,7 @@ public final class HudConfig {
 		seasonalLook = other.seasonalLook;
 		darkGui = other.darkGui;
 		darkGuiShade = other.darkGuiShade;
+		blockWindows = other.blockWindows;
 		customPause = other.customPause;
 		customServerList = other.customServerList;
 		customLoading = other.customLoading;

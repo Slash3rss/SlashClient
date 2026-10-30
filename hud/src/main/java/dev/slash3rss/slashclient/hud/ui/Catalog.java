@@ -511,6 +511,12 @@ public final class Catalog {
 			cfg.darkGuiShade = v;
 			if (cfg.darkGui) DarkGui.reload();
 		})), null));
+		// the windows' block parts made of their blocks (the crafting table's top, the furnace's front…)
+		out.add(new Entry("blockWindows", "slashclient-hud.set.blockWindows", "extras", "m-block", () -> cfg.blockWindows, v -> {
+			if (cfg.blockWindows == v) return;
+			cfg.blockWindows = v;
+			DarkGui.reload();
+		}, List.of(), null));
 		out.add(new Entry("badges", "slashclient-hud.set.badges", "extras", "m-badges", () -> cfg.badges, v -> cfg.badges = v, List.of(
 			new Toggle("slashclient-hud.set.badges.clans", () -> cfg.clanTags, v -> cfg.clanTags = v),
 			new Toggle("slashclient-hud.set.badges.clansOthers", () -> cfg.clanTagsOthers, v -> cfg.clanTagsOthers = v)), null));

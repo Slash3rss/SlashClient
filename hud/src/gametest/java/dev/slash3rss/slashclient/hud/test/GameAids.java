@@ -80,6 +80,22 @@ public class GameAids implements FabricClientGameTest {
 			var light = context.computeOnClient(mc -> TestHooks.darkGui(false, "dark"));
 			context.waitFor(mc -> light.isDone(), 1200);
 			context.waitTicks(20);
+			// "Okna w wyglądzie bloków": the crafting table's top over its grid, the furnace's front, the enchanting table's cloth…
+			var blocks = context.computeOnClient(mc -> TestHooks.blockWindows(true));
+			context.waitFor(mc -> blocks.isDone(), 1200);
+			context.waitTicks(80);
+			context.runOnClient(mc -> TestHooks.openInventory());
+			context.waitTicks(3);
+			context.takeScreenshot("aids-block-inventory");
+			for (String kind : new String[] { "chest", "furnace", "crafting", "anvil", "enchanting", "brewing", "dispenser", "hopper", "shulker", "smithing" }) {
+				context.runOnClient(mc -> TestHooks.openWindow(kind));
+				context.waitTicks(3);
+				context.takeScreenshot("aids-block-" + kind);
+			}
+			context.setScreen(() -> null);
+			var plain = context.computeOnClient(mc -> TestHooks.blockWindows(false));
+			context.waitFor(mc -> plain.isDone(), 1200);
+			context.waitTicks(20);
 			world.getServer().runCommand("gamemode survival @a");
 			// SlashClient's keys in its own window
 			context.runOnClient(mc -> TestHooks.audit(true));

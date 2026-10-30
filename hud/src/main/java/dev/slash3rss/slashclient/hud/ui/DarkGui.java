@@ -29,6 +29,11 @@ public final class DarkGui {
 		return SlashHud.config != null && SlashHud.config.darkGui;
 	}
 
+	/** Whether any window texture is changed: the dark look or the blocks' (BlockWindows). */
+	public static boolean any() {
+		return on() || BlockWindows.on();
+	}
+
 	/** The window textures: the containers' backgrounds, their sprites, the widgets and the recipe book (1.20.1: one file each). */
 	static boolean window(Identifier id) {
 		if (!"minecraft".equals(id.getNamespace())) return false;
@@ -39,14 +44,20 @@ public final class DarkGui {
 			|| p.equals("textures/gui/recipe_book.png") || p.equals("textures/gui/widgets.png");
 	}
 
-	/** The resource as read, or a dark one in its place when it is a window's texture and the look is on. */
-	public static Resource wrap(Identifier id, Resource r) {
-		if (r == null || !on() || !window(id)) return r;
-		return new Resource(r.source(), () -> darken(r.open()), r::metadata);
+	/**
+	 * The resource as read, or a changed one in its place: a window's block part in its block's texture
+	 * (BlockWindows, read through `lookup`), and a window's texture dark.
+	 */
+	public static Resource wrap(Identifier id, Resource r, java.util.function.Function<Identifier, java.util.Optional<Resource>> lookup) {
+		if (r == null) return r;
+		BlockWindows.Look look = BlockWindows.on() ? BlockWindows.lookOf(id) : null;
+		boolean dark = on() && window(id);
+		if (look == null && !dark) return r;
+		return new Resource(r.source(), () -> change(r.open(), look, dark, lookup), r::metadata);
 	}
 
-	/** A dark copy of a PNG: a broken one is passed on as it is (the game reports it as it would). */
-	static InputStream darken(InputStream in) throws IOException {
+	/** A changed copy of a PNG: a broken one is passed on as it is (the game reports it as it would). */
+	static InputStream change(InputStream in, BlockWindows.Look look, boolean dark, java.util.function.Function<Identifier, java.util.Optional<Resource>> lookup) throws IOException {
 		byte[] bytes;
 		try (in) {
 			bytes = in.readAllBytes();
@@ -55,8 +66,15 @@ public final class DarkGui {
 			BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
 			if (image == null) return new ByteArrayInputStream(bytes);
 			BufferedImage out = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
-			for (int y = 0; y < image.getHeight(); y++) {
-				for (int x = 0; x < image.getWidth(); x++) out.setRGB(x, y, pixel(image.getRGB(x, y)));
+			out.getGraphics().drawImage(image, 0, 0, null);
+			BufferedImage block = look != null ? BlockWindows.block(look.block(), lookup) : null;
+			if (block == null && !dark) return new ByteArrayInputStream(bytes);
+			// the block's part first (its pixels are coloured then: the dark look leaves them), then the rest dark
+			if (block != null) BlockWindows.paint(out, look, block, lookup);
+			if (dark) {
+				for (int y = 0; y < out.getHeight(); y++) {
+					for (int x = 0; x < out.getWidth(); x++) out.setRGB(x, y, pixel(out.getRGB(x, y)));
+				}
 			}
 			ByteArrayOutputStream png = new ByteArrayOutputStream(bytes.length);
 			ImageIO.write(out, "png", png);
@@ -91,8 +109,15 @@ public final class DarkGui {
 		mc.execute(mc::reloadResourcePacks);
 	}
 
-	/** The windows' labels (the game's dark grey 0x404040): light on the dark panel. */
+	/** The windows' labels (the game's dark grey 0x404040): light on the dark panel, white on the blocks' (with a shadow, labelShadow). */
 	public static int label(int color) {
-		return on() && (color & 0xFFFFFF) == 0x404040 ? (color & 0xFF000000) | 0xE0E0E0 : color;
+		if ((color & 0xFFFFFF) != 0x404040) return color;
+		if (BlockWindows.on()) return (color & 0xFF000000) | 0xFFFFFF;
+		return on() ? (color & 0xFF000000) | 0xE0E0E0 : color;
+	}
+
+	/** A shadow under the labels on the blocks' textures, which are busier than the plain panel. */
+	public static boolean labelShadow(boolean shadow) {
+		return shadow || BlockWindows.on();
 	}
 }

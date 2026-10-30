@@ -18,17 +18,19 @@ import java.util.Optional;
 public abstract class DarkTexturesMixin {
 	@Inject(method = "getResource", at = @At("RETURN"), cancellable = true)
 	private void slashclient$dark(Identifier id, CallbackInfoReturnable<Optional<Resource>> cir) {
-		if (!DarkGui.on()) return;
+		if (!DarkGui.any()) return;
 		Optional<Resource> r = cir.getReturnValue();
-		if (r != null && r.isPresent()) cir.setReturnValue(Optional.of(DarkGui.wrap(id, r.get())));
+		MultiPackResourceManager self = (MultiPackResourceManager) (Object) this;
+		if (r != null && r.isPresent()) cir.setReturnValue(Optional.of(DarkGui.wrap(id, r.get(), self::getResource)));
 	}
 
 	@Inject(method = "listResources", at = @At("RETURN"), cancellable = true)
 	private void slashclient$darkList(CallbackInfoReturnable<Map<Identifier, Resource>> cir) {
 		// (the folder asked for is in each key: the selector's type differs between versions)
-		if (!DarkGui.on()) return;
+		if (!DarkGui.any()) return;
+		MultiPackResourceManager self = (MultiPackResourceManager) (Object) this;
 		Map<Identifier, Resource> out = new LinkedHashMap<>();
-		for (var e : cir.getReturnValue().entrySet()) out.put(e.getKey(), DarkGui.wrap(e.getKey(), e.getValue()));
+		for (var e : cir.getReturnValue().entrySet()) out.put(e.getKey(), DarkGui.wrap(e.getKey(), e.getValue(), self::getResource));
 		cir.setReturnValue(out);
 	}
 }

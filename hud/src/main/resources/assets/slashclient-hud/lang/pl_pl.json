@@ -264,6 +264,7 @@
 	"slashclient-hud.set.seasonalLook": "Wygląd sezonowy (Halloween)",
 	"slashclient-hud.set.darkGui": "Ciemne okna gry",
 	"slashclient-hud.set.darkGuiShade": "Odcień",
+	"slashclient-hud.set.blockWindows": "Okna w wyglądzie bloków",
 	"slashclient-hud.set.darkGuiShade.dark": "Ciemny",
 	"slashclient-hud.set.darkGuiShade.darker": "Bardzo ciemny",
 	"slashclient-hud.menu.title": "SlashClient",
