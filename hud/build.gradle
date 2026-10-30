@@ -244,6 +244,29 @@ if (project.hasProperty('bridge')) {
 	}
 }
 
+// the obfuscated versions' jar: a mixin naming one of the game's own classes after remapping (an injection
+// point without its descriptor, which the remapper leaves as it is) finds nothing in the real game and
+// crashes it at start, while the tests (named classes) pass – the build stops instead
+if (obfuscated) tasks.named('remapJar').configure {
+	doLast {
+		// classes the game keeps their names for in every version
+		def kept = java.util.regex.Pattern.compile('^net/minecraft/(class_\\d+|client/main/|server/MinecraftServer|client/ClientBrandRetriever)')
+		def named = java.util.regex.Pattern.compile('L?(net/minecraft/[A-Za-z0-9/$_]+)')
+		def bad = []
+		def zip = new java.util.zip.ZipFile(archiveFile.get().asFile)
+		try {
+			zip.entries().each { e ->
+				if (!e.name.contains('/mixin/') || !e.name.endsWith('.class')) return
+				def text = new String(zip.getInputStream(e).bytes, 'ISO-8859-1')
+				(text =~ named).each { m -> if (!(m[1] =~ kept).find()) bad << "${e.name}: ${m[1]}" }
+			}
+		} finally {
+			zip.close()
+		}
+		if (bad) throw new GradleException("Mixins with the game's names left after remapping (add the whole descriptor):\n  " + bad.unique().join('\n  '))
+	}
+}
+
 // every target version gets a copy named after it, for the launcher (dist/hud/slashclient-hud-<target>.jar)
 tasks.register('bundle', Copy) {
 	dependsOn tasks.named(obfuscated ? 'remapJar' : 'jar')

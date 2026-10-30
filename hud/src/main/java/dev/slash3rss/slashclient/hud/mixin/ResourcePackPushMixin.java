@@ -36,7 +36,13 @@ abstract class ResourcePackPushMixin {
 	}
 
 	// after the game has moved the packet to the main thread (on the network thread it only queues it)
-	@Inject(method = "handleResourcePackPush", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread", shift = At.Shift.AFTER), cancellable = true)
+	// (the whole descriptor: without it the remapper leaves the name as it is, and the obfuscated games before 26.1
+	// find nothing to inject into and crash at start)
+	//#if MC >= 1.21.9
+	@Inject(method = "handleResourcePackPush", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/network/PacketProcessor;)V", shift = At.Shift.AFTER), cancellable = true)
+	//#else
+	//$ @Inject(method = "handleResourcePackPush", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/protocol/PacketUtils;ensureRunningOnSameThread(Lnet/minecraft/network/protocol/Packet;Lnet/minecraft/network/PacketListener;Lnet/minecraft/util/thread/BlockableEventLoop;)V", shift = At.Shift.AFTER), cancellable = true)
+	//#endif
 	private void slashclient$packMode(net.minecraft.network.protocol.common.ClientboundResourcePackPushPacket packet, CallbackInfo ci) {
 		ServerPacks.Mode mode = ServerPacks.forConnection(serverData);
 		// the pack kept in the player's resource packs, current and switched on: nothing to download or ask
