@@ -739,15 +739,16 @@ public final class SkyCase {
 	 * butelka" of "5x Zaklęta butelka") its text in the style of the item's part of the name.
 	 */
 	static Component styledName(ItemStack look, String row, boolean summed) {
-		if (look == null || !look.has(DataComponents.CUSTOM_NAME)) return Component.literal(row);
+		if (look == null || !look.has(DataComponents.CUSTOM_NAME)) return Component.literal(SkyLang.tr(row));
 		Component name = look.getHoverName();
-		if (!summed) return name;
+		// in another language: the name translated, in the colours of the server's
+		if (!summed && SkyLang.polish()) return name;
 		Style[] last = { Style.EMPTY };
 		name.visit((style, text) -> {
 			if (!text.isBlank() && !COUNT_ONLY.matcher(text).matches()) last[0] = style;
 			return Optional.empty();
 		}, Style.EMPTY);
-		MutableComponent out = Component.literal(row);
+		MutableComponent out = Component.literal(SkyLang.tr(row));
 		return out.withStyle(last[0]);
 	}
 
@@ -908,7 +909,7 @@ public final class SkyCase {
 		out.add(new Row(Component.translatable("slashclient-hud.skyCase.opened").getString(), 0xFF9CA3AF, s.opened + " / " + l.opened, 0xFFFFFFFF));
 		String layout = cfg.skyCaseLayout;
 		if ("summary".equals(layout)) {
-			if (!l.last.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyCase.last").getString(), 0xFF9CA3AF, l.last, 0xFFFFFF55));
+			if (!l.last.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyCase.last").getString(), 0xFF9CA3AF, SkyLang.tr(l.last), 0xFFFFFF55));
 		} else if ("top".equals(layout)) {
 			// the rewards won most, this session / all time and their share; summed, the items won most in pieces
 			boolean sum = cfg.skyCaseSum;
@@ -918,7 +919,7 @@ public final class SkyCase {
 			for (int i = 0; i < Math.min(cfg.skyCaseRows, won.size()); i++) {
 				Reward r = won.get(i);
 				String right = sum ? r.sessionAmount() + " / " + r.amount() : r.session() + " / " + r.lifetime() + "  " + percent(r.share());
-				out.add(new Row("  " + r.name(), 0xFFE5E7EB, right, 0xFFFFFFFF));
+				out.add(new Row("  " + SkyLang.tr(r.name()), 0xFFE5E7EB, right, 0xFFFFFFFF));
 			}
 		} else {
 			// the latest wins, newest first, with their case when it is another one: names, icons in a row, or both
@@ -932,7 +933,7 @@ public final class SkyCase {
 					continue;
 				}
 				String from = d.type().equals(type) ? "" : UNASSIGNED.equals(d.type()) ? "?" : d.type();
-				out.add("both".equals(show) ? new Row(d.reward(), 0xFFFFFF55, from, 0xFF9CA3AF, List.of(icon(life, d))) : new Row("  " + d.reward(), 0xFFFFFF55, from, 0xFF9CA3AF));
+				out.add("both".equals(show) ? new Row(SkyLang.tr(d.reward()), 0xFFFFFF55, from, 0xFF9CA3AF, List.of(icon(life, d))) : new Row("  " + SkyLang.tr(d.reward()), 0xFFFFFF55, from, 0xFF9CA3AF));
 			}
 			if (!strip.isEmpty()) out.add(new Row("", 0, "", 0, strip));
 		}
@@ -1063,7 +1064,7 @@ public final class SkyCase {
 			else Ui.icon(g, "m-skycase", 10, 10, 12, 0xFFFFAA00);
 			int textW = W - 32 - 7;
 			Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.skyCase.newDrop"), textW), 32, 7, 0xFFFFAA00);
-			Ui.draw(g, Ui.fit(Component.literal(reward + " · " + (UNASSIGNED.equals(type) ? "SkyCase" : type)), textW), 32, 18, Ui.TEXT_2);
+			Ui.draw(g, Ui.fit(Component.literal(SkyLang.tr(reward) + " · " + (UNASSIGNED.equals(type) ? "SkyCase" : type)), textW), 32, 18, Ui.TEXT_2);
 			float left = Math.max(0f, 1f - (float) age / SHOW_MS);
 			g.fill(6, H - 3, 6 + Math.round((W - 12) * left), H - 2, 0xFFFFAA00);
 		}

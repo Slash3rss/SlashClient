@@ -242,7 +242,7 @@ public final class SkyPlan {
 			if (minutes < 0 || minutes >= c.skyPlanRemind) continue;
 			Kind kind = Kind.of(n.slot().name());
 			if (!kind.reminded(c) || !reminded.add(n.at().toLocalDateTime() + " " + n.slot().name())) continue;
-			SkyReminder.show(kind.look, n.slot().name(),
+			SkyReminder.show(kind.look, SkyLang.tr(n.slot().name()),
 				Component.translatable("slashclient-hud.skyPlan.starts", Math.max(1, minutes + 1), hour(n.at())).getString(), kind.icon());
 			mc.execute(() -> ChatTabs.playSound(mc, sound()));
 			return n;
@@ -295,7 +295,7 @@ public final class SkyPlan {
 		public int width(Minecraft mc) {
 			ZonedDateTime now = ZonedDateTime.now(ZONE);
 			int w = mc.font.width(Component.translatable("slashclient-hud.skyPlan.title"));
-			for (Next n : coming(now, rows())) w = Math.max(w, mc.font.width(n.slot().name()) + 8 + mc.font.width(when(now, n.at())));
+			for (Next n : coming(now, rows())) w = Math.max(w, mc.font.width(SkyLang.tr(n.slot().name())) + 8 + mc.font.width(when(now, n.at())));
 			return Math.max(110, w) + Modules.PAD * 2;
 		}
 
@@ -310,7 +310,7 @@ public final class SkyPlan {
 			int row = top + 10;
 			for (Next n : coming(now, rows())) {
 				Kind kind = Kind.of(n.slot().name());
-				Modules.text(g, mc, n.slot().name(), left, row, kind.look.light);
+				Modules.text(g, mc, SkyLang.tr(n.slot().name()), left, row, kind.look.light);
 				Component when = when(now, n.at());
 				boolean going = !n.at().isAfter(now);
 				Modules.text(g, mc, when, left + w - mc.font.width(when), row, going ? 0xFF4ADE80 : 0xFFE5E7EB);

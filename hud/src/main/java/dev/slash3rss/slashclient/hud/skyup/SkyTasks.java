@@ -344,7 +344,7 @@ public final class SkyTasks {
 			List<String> left = new ArrayList<>();
 			for (SkyTaskParser.Section s : t.sections) for (SkyTaskParser.Req r : s.items) {
 				if (met(mc, s, r)) continue;
-				left.add(r.known() ? r.thing + " " + Math.min(r.required, r.current + r.extra) + "/" + r.required : r.thing);
+				left.add(r.known() ? SkyLang.tr(r.thing) + " " + Math.min(r.required, r.current + r.extra) + "/" + r.required : SkyLang.tr(r.thing));
 			}
 			return Component.translatable("slashclient-hud.skyTasks.dailyLeft", left.isEmpty() ? t.name : String.join(", ", left));
 		}
@@ -1051,13 +1051,14 @@ public final class SkyTasks {
 				// what to do ("Zbierz", "Posiadaj w ekwipunku"), also when the task has just one kind of thing to do;
 				// not when its only line already says it
 				boolean said = s.items.stream().allMatch(r -> r.thing.isEmpty() || r.thing.equals(s.header));
-				if (!cfg.skyTasksCompact && !said) out.add(new Row(s.header, GREY, "", 0, -1, 4));
+				// (SkyUp's Polish shown in the game's language: SkyLang)
+				if (!cfg.skyTasksCompact && !said) out.add(new Row(SkyLang.tr(s.header), GREY, "", 0, -1, 4));
 				for (SkyTaskParser.Req r : s.items) {
 					long c = current(mc, s, r);
 					boolean met = met(mc, s, r);
-					String progress = r.required < 0 ? r.unit
-						: (c >= 0 ? (estimated(s, r) || (stale && !s.inventory()) ? "~" : "") + c + "/" : "") + r.required + (r.unit.isEmpty() ? "" : " " + r.unit);
-					String thing = r.thing.equals(s.header) || r.thing.isEmpty() ? s.header : r.thing;
+					String progress = r.required < 0 ? SkyLang.tr(r.unit)
+						: (c >= 0 ? (estimated(s, r) || (stale && !s.inventory()) ? "~" : "") + c + "/" : "") + r.required + (r.unit.isEmpty() ? "" : " " + SkyLang.tr(r.unit));
+					String thing = SkyLang.tr(r.thing.equals(s.header) || r.thing.isEmpty() ? s.header : r.thing);
 					float bar = cfg.skyTasksCompact || c < 0 || r.required <= 0 ? -1 : Math.min(1f, (float) c / r.required);
 					// the generator's spent points: "~7/10 pkt" from its window (or a hint to open it)
 					int points = SkyGenerator.needed(r.thing), spent = SkyGenerator.spent();
@@ -1067,7 +1068,7 @@ public final class SkyTasks {
 					if (r.current < 0 && c < 0 && s.header.toLowerCase(Locale.ROOT).startsWith("dotrzyj do poziomu w dungeon"))
 						progress = Component.translatable("slashclient-hud.skyTasks.enterDungeon", r.required).getString();
 					if (points > 0 && r.current < 0) {
-						progress = spent < 0 ? Component.translatable("slashclient-hud.skyTasks.openGenerator").getString() : "~" + Math.min(spent, points) + "/" + points + " pkt";
+						progress = spent < 0 ? Component.translatable("slashclient-hud.skyTasks.openGenerator").getString() : "~" + Math.min(spent, points) + "/" + points + " " + SkyLang.tr("pkt");
 						bar = cfg.skyTasksCompact || spent < 0 ? -1 : Math.min(1f, (float) spent / points);
 					}
 					out.add(new Row((met ? "✔ " : "• ") + thing, met ? 0xFF6B7280 : WHITE, progress, met ? GREEN : WHITE, bar, 6));
@@ -1084,7 +1085,7 @@ public final class SkyTasks {
 					}
 				}
 			}
-			if (cfg.skyTasksRewards && !t.rewards.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyTasks.reward", String.join(", ", t.rewards)).getString(), 0xFF60A5FA, "", 0, -1, 6));
+			if (cfg.skyTasksRewards && !t.rewards.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyTasks.reward", String.join(", ", t.rewards.stream().map(SkyLang::tr).toList())).getString(), 0xFF60A5FA, "", 0, -1, 6));
 			// the whole task on a green band (not in the compact mode: the badge says it there)
 			if (ready && !cfg.skyTasksCompact) for (int i = first; i < out.size(); i++) out.set(i, out.get(i).lit());
 		}

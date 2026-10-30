@@ -82,6 +82,12 @@ public class GameSkyTasks implements FabricClientGameTest {
 			String rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			check(rows.contains("Nowicjusz | ") && rows.contains("Podstawowy kamieniołom") && rows.contains(" | 28/128") && rows.contains("Huta") && rows.contains(" | 5/16"), "HUD rows", rows);
 			context.takeScreenshot("skytasks-hud");
+			// the game in English: SkyUp's Polish shown in it (the game's names, SkyUp's words, the rest as it is)
+			String english = context.computeOnClient(mc -> String.join("|", dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Zbierz"),
+				dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Sztabka żelaza"), dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Owca (dorosła)"),
+				dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("1 x Żelazny miecz (Ostrość V)"), dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Piec przynajmniej Wydajność V, Szczęście III"),
+				dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Zawody wędkarskie"), dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Kryptomaniak")));
+			check(english.equals("Collect|Iron Ingot|Sheep (adult)|1x Iron Sword (Sharpness V)|Furnace at least Efficiency V, Fortune III|Fishing contest|Kryptomaniak"), "SkyUp's Polish in English", english);
 			// narrow: rows too long slide along (two moments apart), instead of ending with "…"
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.skyTasksWidth = 120);
 			context.waitTicks(30);
@@ -344,7 +350,8 @@ public class GameSkyTasks implements FabricClientGameTest {
 			check(shaman.contains("✖ Redstone Torch") && shaman.contains("✖ Glass Bottle") && shaman.contains("Rotten Flesh 0/20") && shaman.contains("✔ Rotten Flesh 20/20") && shaman.endsWith("count 1"), "shamanism", shaman);
 			// the daily task: nothing to remind of until it is tracked, then what is left of it
 			String daily = context.computeOnClient(mc -> TestHooks.skyDaily());
-			check(daily.equals("null | Still to do: Buraki 0/3888 | auto true false"), "the daily task's reminder (untracked | tracked | tracked by itself, then taken off)", daily);
+			// (the game is in English in the tests: SkyUp's "Buraki" shown as "Beetroots")
+			check(daily.equals("null | Still to do: Beetroots 0/3888 | auto true false"), "the daily task's reminder (untracked | tracked | tracked by itself, then taken off)", daily);
 			// the daily bonus: due until its window shows today's gift taken, due again the next day
 			String bonus = context.computeOnClient(mc -> TestHooks.skyBonus());
 			check(bonus.equals("true true true false false true"), "the daily bonus's reminder", bonus);
@@ -448,9 +455,10 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.waitTicks(3);
 			context.takeScreenshot("skyup-shaman-window");
 			String shamanRows = context.computeOnClient(mc -> TestHooks.skyShamanModule());
-			check(shamanRows.startsWith("Wiedźma | Ready – right-click the campfire | Świnia ×2 | ")
+			// (the mobs in the game's English; SkyUp's own "Pył siarkowy" as it is)
+			check(shamanRows.startsWith("Witch | Ready – right-click the campfire | Pig ×2 | ")
 				&& shamanRows.contains("Wand: Stick ✖") && shamanRows.contains("Bone 10/16") && shamanRows.contains("Wheat 0/128")
-				&& shamanRows.contains("Kostka siarki") && shamanRows.contains("Pył siarkowy 0/3") && shamanRows.endsWith("lit [0]"), "the shamanism module", shamanRows);
+				&& shamanRows.contains("Sulfur Cube") && shamanRows.contains("Pył siarkowy 0/3") && shamanRows.endsWith("lit [0]"), "the shamanism module", shamanRows);
 			context.waitTicks(3);
 			context.setScreen(() -> null);
 			context.waitTicks(3);

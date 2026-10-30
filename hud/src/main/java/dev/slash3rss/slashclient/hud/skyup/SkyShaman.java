@@ -107,7 +107,7 @@ public final class SkyShaman {
 
 	/** An item's name in the game's language. */
 	static String itemName(String id) {
-		if (id.startsWith(BY_NAME)) return id.substring(BY_NAME.length());
+		if (id.startsWith(BY_NAME)) return SkyLang.tr(id.substring(BY_NAME.length()));
 		Item item = item(id);
 		return item == null ? id : Component.translatable(item.getDescriptionId()).getString();
 	}
@@ -425,7 +425,7 @@ public final class SkyShaman {
 		for (Mob mob : mobs) {
 			int n = count(mob);
 			boolean ready = mc.player != null && summonable(mc, mob);
-			out.add(new Row(mob.names().get(0) + (n > 1 ? " ×" + n : ""), ready ? GREEN : GOLD, "", 0, 0));
+			out.add(new Row(SkyLang.tr(mob.names().get(0)) + (n > 1 ? " ×" + n : ""), ready ? GREEN : GOLD, "", 0, 0));
 			if (mc.player == null) continue;
 			if (ready) {
 				out.add(new Row(Component.translatable("slashclient-hud.skyShaman.ready").getString(), GREEN, "", 0, 6));
