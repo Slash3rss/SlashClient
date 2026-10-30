@@ -501,6 +501,16 @@ public final class Catalog {
 			new Colors("slashclient-hud.set.backgroundColor", OUTLINE_COLORS, () -> cfg.backgroundColor, v -> cfg.backgroundColor = v),
 			new Slider("slashclient-hud.set.radiusAll", 0f, HudConfig.MAX_RADIUS, 1f, "%.0f px", () -> (float) cfg.cornerRadius, v -> cfg.cornerRadius = Math.round(v)),
 			new Colors("slashclient-hud.set.outlineColor", OUTLINE_COLORS, () -> cfg.outlineColor, v -> cfg.outlineColor = v)), null));
+		// the game's windows in dark grey: the textures are read again, dark or not
+		out.add(new Entry("darkGui", "slashclient-hud.set.darkGui", "extras", "m-fullbright", () -> cfg.darkGui, v -> {
+			if (cfg.darkGui == v) return;
+			cfg.darkGui = v;
+			DarkGui.reload();
+		}, List.of(new Choice("slashclient-hud.set.darkGuiShade", DarkGui.SHADES, "slashclient-hud.set.darkGuiShade.", () -> cfg.darkGuiShade, v -> {
+			if (v.equals(cfg.darkGuiShade)) return;
+			cfg.darkGuiShade = v;
+			if (cfg.darkGui) DarkGui.reload();
+		})), null));
 		out.add(new Entry("badges", "slashclient-hud.set.badges", "extras", "m-badges", () -> cfg.badges, v -> cfg.badges = v, List.of(
 			new Toggle("slashclient-hud.set.badges.clans", () -> cfg.clanTags, v -> cfg.clanTags = v),
 			new Toggle("slashclient-hud.set.badges.clansOthers", () -> cfg.clanTagsOthers, v -> cfg.clanTagsOthers = v)), null));

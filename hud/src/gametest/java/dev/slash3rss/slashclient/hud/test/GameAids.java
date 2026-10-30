@@ -49,6 +49,32 @@ public class GameAids implements FabricClientGameTest {
 			context.waitTicks(3);
 			context.takeScreenshot("aids-creative-search");
 			context.setScreen(() -> null);
+			// "Ciemne okna gry": the inventory and the creative inventory dark, their labels light; then back
+			var dark = context.computeOnClient(mc -> TestHooks.darkGui(true, "dark"));
+			context.waitFor(mc -> dark.isDone(), 1200);
+			// past the reload screen fading out
+			context.waitTicks(80);
+			int darkLabel = context.computeOnClient(mc -> TestHooks.darkLabel());
+			if (darkLabel != 0xE0E0E0) throw new AssertionError("A window's label with the dark windows: " + Integer.toHexString(darkLabel));
+			context.computeOnClient(mc -> TestHooks.creativeSearch("diamond sword"));
+			context.waitTicks(3);
+			context.takeScreenshot("aids-dark-creative");
+			world.getServer().runCommand("gamemode survival @a");
+			context.waitTicks(5);
+			context.runOnClient(mc -> TestHooks.openInventory());
+			context.waitTicks(3);
+			context.takeScreenshot("aids-dark-inventory");
+			context.setScreen(() -> null);
+			var darker = context.computeOnClient(mc -> TestHooks.darkGui(true, "darker"));
+			context.waitFor(mc -> darker.isDone(), 1200);
+			context.waitTicks(80);
+			context.runOnClient(mc -> TestHooks.openInventory());
+			context.waitTicks(3);
+			context.takeScreenshot("aids-darker-inventory");
+			context.setScreen(() -> null);
+			var light = context.computeOnClient(mc -> TestHooks.darkGui(false, "dark"));
+			context.waitFor(mc -> light.isDone(), 1200);
+			context.waitTicks(20);
 			world.getServer().runCommand("gamemode survival @a");
 			// SlashClient's keys in its own window
 			context.runOnClient(mc -> TestHooks.audit(true));

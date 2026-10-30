@@ -16,6 +16,8 @@
 		"LevelLoadingScreenAccessor",
 		"CreativeSearchMixin",
 		"CreativeScreenAccessor",
+		"DarkLabelsMixin",
+		"DarkTexturesMixin",
 		"ReceivingLevelScreenAccessor",
 		"PackDownloadMixin",
 		"BenchCameraMixin",

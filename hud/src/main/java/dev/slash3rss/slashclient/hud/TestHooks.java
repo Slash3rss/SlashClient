@@ -1611,6 +1611,24 @@ public final class TestHooks {
 		if (Compat.screen(net.minecraft.client.Minecraft.getInstance()) instanceof CosmeticsScreen c) c.confirmForTest();
 	}
 
+	/** "Ciemne okna gry" switched, the textures read again; the future is done when they are. */
+	public static java.util.concurrent.CompletableFuture<Void> darkGui(boolean on, String shade) {
+		SlashHud.config.darkGui = on;
+		SlashHud.config.darkGuiShade = shade;
+		return net.minecraft.client.Minecraft.getInstance().reloadResourcePacks();
+	}
+
+	/** The player's inventory, as E opens it. */
+	public static void openInventory() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		mc.setScreenAndShow(new net.minecraft.client.gui.screens.inventory.InventoryScreen(mc.player));
+	}
+
+	/** The colour a window's label is drawn in now (the game's dark grey, or light with the dark windows). */
+	public static int darkLabel() {
+		return dev.slash3rss.slashclient.hud.ui.DarkGui.label(0x404040);
+	}
+
 	/** The game's language switched (as in its options), the texts reloaded; the future is done when they are. */
 	public static java.util.concurrent.CompletableFuture<Void> language(String code) {
 		var mc = net.minecraft.client.Minecraft.getInstance();

@@ -377,6 +377,10 @@ public final class HudConfig {
 	public boolean customMenu = true;
 	/** The seasonal look of the menus and the loading screen (Halloween, ui/Season). */
 	public boolean seasonalLook = true;
+	/** The game's own windows in dark grey (ui/DarkGui); off unless switched on. */
+	public boolean darkGui;
+	/** How dark: "dark" (dark grey) or "darker" (nearly black). */
+	public String darkGuiShade = "dark";
 	/** The SlashClient pause menu instead of Minecraft's own. */
 	public boolean customPause = true;
 	/** The SlashClient server list (cards, search) instead of Minecraft's own. */
@@ -749,6 +753,7 @@ public final class HudConfig {
 		if (read.crosshair == null) read.crosshair = defaults.crosshair;
 		if (read.crosshairLast == null) read.crosshairLast = defaults.crosshairLast;
 		if (read.nickAlias == null) read.nickAlias = defaults.nickAlias;
+		read.darkGuiShade = oneOf(read.darkGuiShade, dev.slash3rss.slashclient.hud.ui.DarkGui.SHADES);
 		if (read.skyFishSplit == null) read.skyFishSplit = defaults.skyFishSplit;
 		if (read.sortOffServers == null) read.sortOffServers = defaults.sortOffServers;
 		read.skyCaseLayout = oneOf(read.skyCaseLayout, SKY_CASE_LAYOUTS);
@@ -934,6 +939,8 @@ public final class HudConfig {
 		hideOwnElytra = other.hideOwnElytra;
 		customMenu = other.customMenu;
 		seasonalLook = other.seasonalLook;
+		darkGui = other.darkGui;
+		darkGuiShade = other.darkGuiShade;
 		customPause = other.customPause;
 		customServerList = other.customServerList;
 		customLoading = other.customLoading;
