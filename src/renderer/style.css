@@ -72,6 +72,26 @@ code {
 .orb-2 { width: 768px; height: 768px; bottom: -380px; right: -260px; background: radial-gradient(circle, #7c3aed 0%, transparent 70%); }
 .orb-3 { width: 448px; height: 448px; top: 30%; left: 45%; background: radial-gradient(circle, #60a5fa 0%, transparent 70%); }
 
+/* the Halloween season (season.ts): orange and violet, bats and pumpkins over the sky, cobwebs at the top */
+:root.season-halloween {
+  --accent: #f97316;
+  --accent-light: #fb923c;
+  --accent-dark: #c2410c;
+  --accent-glow: rgba(249, 115, 22, .4);
+  --accent-gradient: linear-gradient(135deg, #f97316, #9333ea);
+  --glass-border-focus: rgba(249, 115, 22, .45);
+}
+.season-halloween .orb-1 { background: radial-gradient(circle, #ea580c 0%, transparent 70%); }
+.season-halloween .orb-2 { background: radial-gradient(circle, #7e22ce 0%, transparent 70%); opacity: .22; }
+.season-halloween .orb-3 { background: radial-gradient(circle, #f59e0b 0%, transparent 70%); }
+.season-sky { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+.sidebar:has(> .season-pumpkins) { position: relative; }
+.season-pumpkins { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); pointer-events: none; }
+.season-web { position: fixed; top: 0; width: 120px; height: 120px; z-index: 50; pointer-events: none; color: rgba(229, 231, 235, .16); }
+.season-web svg { width: 100%; height: 100%; }
+.season-web-left { left: 0; }
+.season-web-right { right: 0; transform: scaleX(-1); }
+
 .glass-panel {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);

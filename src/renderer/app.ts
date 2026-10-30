@@ -26,7 +26,8 @@ import { createDiskCleanup } from './diskCleanup';
 import { createKeyConflicts } from './keyConflicts';
 import { createToolSettings } from './toolSettings';
 import { createSupportCard } from './support';
-import { betaUpdatesOffered, initFeatures, onFeatures } from './features';
+import { betaUpdatesOffered, featureOn, initFeatures, onFeatures } from './features';
+import { initSeason } from './season';
 import { checkLegalNotices, createLegalCard } from './legal';
 import { createWiki } from './wiki';
 import { createServerPages } from './serverPages';
@@ -76,7 +77,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta'; sharedPerAccount?: string[] };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; seasonalLook?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta'; sharedPerAccount?: string[] };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -1184,6 +1185,7 @@ function renderSettings() {
   fillSelect($<HTMLSelectElement>('#language-select'), LANGUAGES.map((l) => ({ value: l.code, label: l.name })), getLang());
   (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked = store.settings.closeOnLaunch;
   (form.elements.namedItem('reduceMotion') as HTMLInputElement).checked = !!store.settings.reduceMotion;
+  (form.elements.namedItem('seasonalLook') as HTMLInputElement).checked = store.settings.seasonalLook !== false;
   (form.elements.namedItem('launcherWindow') as HTMLSelectElement).value = store.settings.launcherWindow ?? '';
   (form.elements.namedItem('updateChannel') as HTMLSelectElement).value = store.settings.updateChannel ?? 'stable';
   showUpdateChannel();
@@ -1513,6 +1515,7 @@ api.on('game:exit', ({ code, signal, byUser, profileId }: { code: number | null;
 api.on('store', (s: PublicStore) => {
   store = s;
   render();
+  season.apply();
 });
 
 // ---------- profiles ----------
@@ -1884,6 +1887,13 @@ $<HTMLInputElement>('#settings-form input[name="reduceMotion"]').addEventListene
   await guard(() => api.saveSettings({ reduceMotion }));
   store.settings.reduceMotion = reduceMotion;
   applyMotion();
+});
+// the seasonal look: at once too
+$<HTMLInputElement>('#settings-form input[name="seasonalLook"]').addEventListener('change', async (e) => {
+  const seasonalLook = (e.target as HTMLInputElement).checked;
+  await guard(() => api.saveSettings({ seasonalLook }));
+  store.settings.seasonalLook = seasonalLook;
+  season.apply();
 });
 // the window's size takes effect (and is kept) as soon as it is picked, without "Zapisz"
 $<HTMLSelectElement>('#settings-form select[name="launcherWindow"]').addEventListener('change', async (e) => {
@@ -4917,9 +4927,13 @@ function applyMotion() {
   document.documentElement.classList.toggle('reduce-motion', motionReduced());
   if (skinViewer) skinViewer.autoRotate = !motionReduced();
   wakeStars();
+  season.apply();
 }
 systemReduced.addEventListener('change', applyMotion);
 let wakeStars = () => {};
+// Halloween's look (season.ts): the player's setting, the admin's switch and fewer animations
+const season = initSeason({ settingOn: () => store?.settings?.seasonalLook !== false, featureOn: () => featureOn('seasonal'), reduced: motionReduced });
+onFeatures(() => season.apply());
 
 // ---------- starfield (as on lista.slash3rss.dev) ----------
 
@@ -4949,9 +4963,11 @@ function startStars() {
 
   const draw = (t: number) => {
     ctx.clearRect(0, 0, innerWidth, innerHeight);
+    // a warm sky in the Halloween season (season.ts)
+    const tint = document.documentElement.classList.contains('season-halloween') ? '253, 186, 116' : '191, 219, 254';
     for (const s of stars) {
       const alpha = still ? 0.5 : 0.25 + 0.55 * (0.5 + 0.5 * Math.sin(s.phase + (t / 1000) * s.speed));
-      ctx.fillStyle = `rgba(191, 219, 254, ${alpha.toFixed(3)})`;
+      ctx.fillStyle = `rgba(${tint}, ${alpha.toFixed(3)})`;
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
       ctx.fill();

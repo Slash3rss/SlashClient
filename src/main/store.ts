@@ -89,6 +89,8 @@ export interface Settings {
   notificationSound?: boolean;
   /** Fewer animations (slower computers): no transitions, a still starry sky, 3D previews that don't spin. */
   reduceMotion?: boolean;
+  /** The seasonal look (Halloween, season.ts); missing = on. */
+  seasonalLook?: boolean;
   /** Whose Java profiles play on unless they choose their own; missing = Mojang's. */
   javaVendor?: JavaVendor;
   /** How much memory new profiles start with (MB); each profile can change its own. */
