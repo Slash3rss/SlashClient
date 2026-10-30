@@ -81,7 +81,7 @@ function fmtAgo(at: number): string {
 interface PublicStore {
   accounts: PublicAccount[];
   profiles: Profile[];
-  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; seasonalLook?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta'; sharedPerAccount?: string[] };
+  settings: { msClientId: string; selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; systemNotifications?: boolean; notificationSound?: boolean; launcherWindow?: string; reduceMotion?: boolean; seasonalLook?: boolean; linuxInstallAsked?: boolean; defaultMemoryMb?: number; autoMemory?: boolean; benchDisplay?: '' | 'fullscreen' | 'borderless'; javaVendor?: string; discordEnabled: boolean; language: string; serverProfiles?: Record<string, string>; socialUrl: string; updateChannel?: 'stable' | 'beta'; sharedPerAccount?: string[] };
   running: boolean;
   /** Profiles whose game runs now (several can at once). */
   runningProfiles?: string[];
@@ -5293,6 +5293,43 @@ const wizard = createWizard({
 // ---------- boot ----------
 
 /** Hides the start-up screen and lets the interface slide in. */
+/**
+ * Linux: started from an AppImage that is not installed (Downloads, no menu entry): asked once whether to
+ * install it into ~/Applications with an entry in the menu of applications; the button in Settings stays.
+ */
+async function offerLinuxInstall() {
+  const state = await api.linuxInstallState().catch(() => undefined);
+  $('#linux-install').classList.toggle('hidden', state !== 'not-installed');
+  if (state !== 'not-installed' || store.settings.linuxInstallAsked) return;
+  // not over the first-run wizard: once it is closed
+  if (document.body.classList.contains('wz-open')) {
+    const watch = new MutationObserver(() => {
+      if (document.body.classList.contains('wz-open')) return;
+      watch.disconnect();
+      void offerLinuxInstall();
+    });
+    watch.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    return;
+  }
+  const yes = await ask(t('Zainstalować SlashClient w Aplikacjach?'), t('Zainstaluj'), {
+    detail: t('Launcher przeniesie się do folderu ~/Applications i pojawi się w menu aplikacji, z ikoną. Dalej będzie sam się aktualizował.'),
+    okIcon: 'fa-download',
+  });
+  await api.saveSettings({ linuxInstallAsked: true }).catch(() => {});
+  store.settings.linuxInstallAsked = true;
+  if (yes) await installLinuxNow();
+}
+
+async function installLinuxNow() {
+  try {
+    // the launcher starts again from its new place
+    if (!(await api.linuxInstall())) toast(t('Nie udało się zainstalować SlashClient.'), true);
+  } catch (err) {
+    toast(t('Nie udało się zainstalować SlashClient: {0}', errorText(err)), true);
+  }
+}
+$('#linux-install').addEventListener('click', () => void installLinuxNow());
+
 function finishBoot() {
   $('#splash').classList.add('done');
   document.body.classList.remove('booting');
@@ -5325,6 +5362,7 @@ function finishBoot() {
   }
   // a brand new installation: the first-run wizard
   wizard.maybeShow(store);
+  void offerLinuxInstall();
   // the launcher's releases; after an update "Co nowego w SlashClient X"
   void launcherNews?.init();
   versions =(await guard(() => api.listVersions())) ?? [];

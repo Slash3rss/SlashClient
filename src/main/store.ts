@@ -96,6 +96,8 @@ export interface Settings {
   reduceMotion?: boolean;
   /** The seasonal look (Halloween, season.ts); missing = on. */
   seasonalLook?: boolean;
+  /** Linux: the question about installing the AppImage into ~/Applications was answered (linuxInstall.ts). */
+  linuxInstallAsked?: boolean;
   /** Whose Java profiles play on unless they choose their own; missing = Mojang's. */
   javaVendor?: JavaVendor;
   /** How much memory new profiles start with (MB); each profile can change its own. */

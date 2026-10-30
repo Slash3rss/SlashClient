@@ -2,7 +2,7 @@ import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, nativeIm
 import { randomBytes, randomUUID } from 'node:crypto';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
-import type { ChildProcess } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
 import { completeMicrosoftLogin, createOfflineAccount, ensureFreshAccount, gameSessionMargin, pollDeviceCode, startDeviceCode } from './auth';
 import { setLang } from '../shared/i18n';
@@ -107,6 +107,7 @@ import { perfModsFor } from './perfmods';
 import { applyPerfPreset } from './perfPreset';
 import { partOn, presetEnv, presetMemoryCap, presetNiceness } from '../shared/perfPresets';
 import { gnomeWindowEnv, installCommand } from './gnomeWindow';
+import { install as installLinux, installState as linuxInstallState, linuxPlaces } from './linuxInstall';
 import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePreset, type SkinPreset } from './skinLibrary';
 import fsp from 'node:fs/promises';
 import { backupWorld, deleteFile, listBackups, listClips, listScreenshots, listWorlds, restoreBackup } from './worlds';
@@ -1679,6 +1680,19 @@ handle('update:check', () => checkForUpdates());
 // macOS: the new version from the website (Apple Silicon or Intel, like this build)
 handle('update:retry', () => retryMacUpdate());
 handle('update:moveToApplications', () => moveToApplications());
+// Linux: the AppImage installed into ~/Applications with a menu entry, then started from there (linuxInstall.ts)
+handle('linux:installState', () => (process.platform === 'linux' && app.isPackaged ? linuxInstallState(process.env.APPIMAGE, linuxPlaces()) : undefined));
+handle('linux:install', async () => {
+  const appImage = process.env.APPIMAGE;
+  if (process.platform !== 'linux' || !appImage) return false;
+  const icons = process.env.APPDIR ? path.join(process.env.APPDIR, 'usr', 'share', 'icons', 'hicolor') : undefined;
+  const target = await installLinux(appImage, linuxPlaces(), icons, t('SlashClient – launcher Minecrafta'));
+  // started anew from there once this one is gone (its single-instance lock released); Electron's own
+  // relaunch runs its helper through the AppImage, which does not come back up
+  spawn('/bin/sh', ['-c', 'sleep 1; exec "$0"', target], { detached: true, stdio: 'ignore' }).unref();
+  app.exit(0);
+  return true;
+});
 handle('update:download', () => shell.openExternal(`${store.settings.socialUrl}/pobierz/${process.arch === 'arm64' ? 'mac' : 'mac-intel'}`));
 handle('app:version', () => app.getVersion());
 /** A Microsoft account with a valid Minecraft token, at least `marginMs` left (refreshed and saved if needed). */
