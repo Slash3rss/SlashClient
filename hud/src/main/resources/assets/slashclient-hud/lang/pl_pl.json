@@ -875,6 +875,7 @@
 	"slashclient-hud.assist.toolBrush": "Pędzel na pancernika (PPM)",
 	"slashclient-hud.assist.toolFeed": "Jedzenie dla zwierząt (PPM)",
 	"slashclient-hud.assist.autoRefill": "Uzupełnianie ręki",
+	"slashclient-hud.assist.autoRefillHotbar": "Bierze też z innych slotów paska, gdy w plecaku nie ma",
 	"slashclient-hud.assist.holdKeys": "Trzymanie przycisków (klawisze)",
 	"slashclient-hud.assist.holdScreens": "Działa też z otwartym ekwipunkiem i menu pauzy",
 	"slashclient-hud.assist.holdUseFast": "Prawy przycisk stawia szybko, jak trzymany klawisz klawiatury",

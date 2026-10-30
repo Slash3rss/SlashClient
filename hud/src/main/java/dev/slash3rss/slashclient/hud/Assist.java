@@ -652,6 +652,11 @@ public final class Assist {
 			int from = -1;
 			for (int i = Inventory.getSelectionSize(); i < 36 && from < 0; i++) if (ItemStack.isSameItemSameComponents(inv.getItem(i), lastHand)) from = i;
 			for (int i = Inventory.getSelectionSize(); i < 36 && from < 0; i++) if (!inv.getItem(i).isEmpty() && inv.getItem(i).is(lastHand.getItem())) from = i;
+			// none there: from another slot of the hotbar (the inventory window counts the hotbar from 36)
+			if (from < 0 && cfg().autoRefillHotbar) {
+				for (int i = 0; i < Inventory.getSelectionSize() && from < 0; i++) if (i != slot && ItemStack.isSameItemSameComponents(inv.getItem(i), lastHand)) from = 36 + i;
+				for (int i = 0; i < Inventory.getSelectionSize() && from < 0; i++) if (i != slot && !inv.getItem(i).isEmpty() && inv.getItem(i).is(lastHand.getItem())) from = 36 + i;
+			}
 			if (from >= 0) Compat.swapIntoHotbar(mc, player, from, slot);
 		}
 		lastSlot = slot;

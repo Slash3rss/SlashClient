@@ -711,7 +711,8 @@ public final class Catalog {
 			new Toggle("slashclient-hud.assist.toolBrush", () -> cfg.autoToolBrush, v -> cfg.autoToolBrush = v),
 			new Toggle("slashclient-hud.assist.toolFeed", () -> cfg.autoToolFeed, v -> cfg.autoToolFeed = v)), null));
 		out.add(new Entry("autoRefill", "slashclient-hud.assist.autoRefill", "world", "m-autorefill", () -> cfg.autoRefill,
-			v -> risky(v, () -> cfg.autoRefill = v), List.of(), null));
+			v -> risky(v, () -> cfg.autoRefill = v), List.of(
+			new Toggle("slashclient-hud.assist.autoRefillHotbar", () -> cfg.autoRefillHotbar, v -> cfg.autoRefillHotbar = v)), null));
 		// holding a button is set up with keys of its own: they are its settings (withKeys)
 		out.add(new Entry("holdKeys", "slashclient-hud.assist.holdKeys", "extras", "m-holdkeys", null, null, List.of(
 			new Toggle("slashclient-hud.assist.holdScreens", () -> cfg.holdInScreens, v -> cfg.holdInScreens = v),

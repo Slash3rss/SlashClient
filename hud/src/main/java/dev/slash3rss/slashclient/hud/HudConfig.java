@@ -478,6 +478,8 @@ public final class HudConfig {
 	public static final String[] AUTO_TOOL_MOOSHROOM = { "any", "stew", "milk" };
 	public boolean autoToolBlocks = true, autoToolWeapons = true, autoToolShears = true, autoToolMilk = true, autoToolFish = true, autoToolBrush = true, autoToolFeed = false;
 	public boolean autoRefill = false;
+	/** The hand refilled from another hotbar slot too, when the backpack has none of it. */
+	public boolean autoRefillHotbar = true;
 	/** Buttons held by their keys go on with the inventory or the pause menu open. */
 	public boolean holdInScreens = true;
 	/** The right button held by its key places as fast as a held keyboard key (a click every tick), not every 4 ticks. */
@@ -1029,6 +1031,7 @@ public final class HudConfig {
 		autoToolBrush = other.autoToolBrush;
 		autoToolFeed = other.autoToolFeed;
 		autoRefill = other.autoRefill;
+		autoRefillHotbar = other.autoRefillHotbar;
 		holdInScreens = other.holdInScreens;
 		holdUseFast = other.holdUseFast;
 		toolWarning = other.toolWarning;

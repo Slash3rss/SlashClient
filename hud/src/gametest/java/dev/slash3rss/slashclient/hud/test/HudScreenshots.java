@@ -359,6 +359,15 @@ public class HudScreenshots implements FabricClientGameTest {
 			context.waitTicks(10);
 			String hand = context.computeOnClient(mc -> TestHooks.handItem());
 			if (!hand.equals("minecraft:cobblestone x40")) throw new AssertionError("hand refill: " + hand);
+			// none in the backpack: from another slot of the hotbar
+			world.getServer().runCommand("clear @p cobblestone");
+			world.getServer().runCommand("item replace entity @p weapon.mainhand with minecraft:cobblestone 1");
+			world.getServer().runCommand("item replace entity @p hotbar.7 with minecraft:cobblestone 25");
+			context.waitTicks(5);
+			world.getServer().runCommand("item replace entity @p weapon.mainhand with minecraft:air");
+			context.waitTicks(10);
+			hand = context.computeOnClient(mc -> TestHooks.handItem());
+			if (!hand.equals("minecraft:cobblestone x25")) throw new AssertionError("hand refill from the hotbar: " + hand);
 			context.runOnClient(mc -> TestHooks.assist(false));
 
 			// mouse tweaks: the wheel over a hotbar stack sends one to the backpack, and brings it back

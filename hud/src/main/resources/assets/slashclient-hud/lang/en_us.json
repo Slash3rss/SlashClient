@@ -875,6 +875,7 @@
 	"slashclient-hud.assist.toolBrush": "Brush for armadillos (right click)",
 	"slashclient-hud.assist.toolFeed": "Food for animals (right click)",
 	"slashclient-hud.assist.autoRefill": "Hand refill",
+	"slashclient-hud.assist.autoRefillHotbar": "Takes from other hotbar slots too when the backpack has none",
 	"slashclient-hud.assist.holdKeys": "Holding buttons (keys)",
 	"slashclient-hud.assist.holdScreens": "Also with the inventory or pause menu open",
 	"slashclient-hud.assist.holdUseFast": "The right button places fast, like a held keyboard key",
