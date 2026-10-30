@@ -202,6 +202,51 @@ public final class TestHooks {
 	}
 
 	/** A button held by its key (attack: the left one) on or off, and whether it goes on over the inventory and the pause menu. */
+	/** One-click crafting on or off. */
+	public static void quickCraft(boolean on) {
+		SlashHud.config.quickCraft = on;
+	}
+
+	/** Crafts one-click crafting made since this was last asked. */
+	public static int quickCrafted() {
+		return dev.slash3rss.slashclient.hud.inventory.QuickCraft.takeCrafted();
+	}
+
+	//#if MC >= 1.21.2
+	/** A recipe clicked in the open window's recipe book, as the book does it: the first whose result is this item ("oak_planks"). */
+	public static boolean placeRecipe(String item, boolean all) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		for (var collection : mc.player.getRecipeBook().getCollections()) {
+			for (var entry : collection.getRecipes()) {
+				// the item's name as a whole word ("oak_planks", not "dark_oak_planks"), however the version writes the display
+				if (!java.util.regex.Pattern.compile("(^|[^a-z_])" + item + "($|[^a-z_])").matcher(entry.display().result().toString()).find()) continue;
+				mc.gameMode.handlePlaceRecipe(mc.player.containerMenu.containerId, entry.id(), all);
+				return true;
+			}
+		}
+		return false;
+	}
+	//#endif
+
+	/** A variant picked in the open stonecutter, as its screen does it. */
+	public static void stonecutterPick(int index) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		var menu = mc.player.containerMenu;
+		menu.clickMenuButton(mc.player, index);
+		mc.gameMode.handleInventoryButtonClick(menu.containerId, index);
+	}
+
+	/** How many of an item the player carries ("minecraft:oak_planks"). */
+	public static int carried(String item) {
+		var inv = net.minecraft.client.Minecraft.getInstance().player.getInventory();
+		int n = 0;
+		for (int i = 0; i < inv.getContainerSize(); i++) {
+			var stack = inv.getItem(i);
+			if (net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString().equals(item)) n += stack.getCount();
+		}
+		return n;
+	}
+
 	public static void hold(boolean attack, boolean on, boolean inScreens) {
 		SlashHud.config.holdInScreens = inScreens;
 		Assist.hold(attack, on);

@@ -67,6 +67,7 @@ public final class Catalog {
 		Map.entry("cameraDistance", new String[] { "key.slashclient-hud.cameraDistance" }),
 		Map.entry("autoClicker", new String[] { "key.slashclient-hud.autoClick" }),
 		Map.entry("holdKeys", new String[] { "key.slashclient-hud.holdAttack", "key.slashclient-hud.holdUse" }),
+		Map.entry("quickCraft", new String[] { "key.slashclient-hud.quickCraftRepeat", "key.slashclient-hud.quickCraftPause" }),
 		Map.entry("inventorySort", new String[] { "key.slashclient-hud.sort" }),
 		Map.entry("slotLock", new String[] { "key.slashclient-hud.slotLock" }));
 
@@ -719,6 +720,11 @@ public final class Catalog {
 			new Slider("slashclient-hud.assist.toolWarningAt", 1f, 30f, 1f, "%.0f%%", () -> (float) cfg.toolWarningPercent, v -> cfg.toolWarningPercent = Math.round(v))), null));
 		out.add(new Entry("mouseTweaks", "slashclient-hud.extra.mouseTweaks", "extras", "m-mousetweaks", () -> cfg.mouseTweaks, v -> cfg.mouseTweaks = v, List.of(), null));
 		out.add(new Entry("craftFit", "slashclient-hud.craftFit", "extras", "m-mousetweaks", () -> cfg.craftFit, v -> cfg.craftFit = v, List.of(), null));
+		out.add(new Entry("quickCraft", "slashclient-hud.quickCraft", "extras", "m-mousetweaks", () -> cfg.quickCraft, v -> cfg.quickCraft = v, List.of(
+			new Note("slashclient-hud.quickCraft.note", () -> new Object[0]),
+			new Toggle("slashclient-hud.quickCraft.alt", () -> cfg.quickCraftAlt, v -> cfg.quickCraftAlt = v),
+			new Toggle("slashclient-hud.quickCraft.ctrl", () -> cfg.quickCraftCtrl, v -> cfg.quickCraftCtrl = v),
+			new Toggle("slashclient-hud.quickCraft.drop", () -> cfg.quickCraftDrop, v -> cfg.quickCraftDrop = v)), null));
 		// sorting with R or the window's button, with the normal clicks at a pace servers accept; off on the servers listed
 		out.add(new Entry("inventorySort", "slashclient-hud.sort", "extras", "m-sort", () -> cfg.inventorySort, v -> cfg.inventorySort = v, List.of(
 			new Slider("slashclient-hud.sort.delay", 0f, 250f, 10f, "%.0f ms", () -> (float) cfg.sortDelay, v -> cfg.sortDelay = Math.round(v)),

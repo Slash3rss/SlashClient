@@ -160,6 +160,7 @@ public class SlashHud implements ClientModInitializer {
 		//#endif
 		ChatTabs.register();
 		Assist.register(category);
+		dev.slash3rss.slashclient.hud.inventory.QuickCraft.register(category);
 		// R over a chest or the inventory sorts it (InventorySort; the window's small button does too)
 		InventorySort.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.sort", InputConstants.KEY_R, category));
 		// K locks the hotbar slot in hand (or the one under the mouse in an inventory)
@@ -332,6 +333,7 @@ public class SlashHud implements ClientModInitializer {
 			DamageNumbers.tick(mc);
 			Extras.tick(mc);
 			Assist.tick(mc);
+			dev.slash3rss.slashclient.hud.inventory.QuickCraft.tick(mc);
 			Latency.tick(mc);
 			Benchmark.tick(mc);
 			Cosmetics.tick(mc);

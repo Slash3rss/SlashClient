@@ -496,6 +496,8 @@ public final class HudConfig {
 	public boolean mouseTweaks = true;
 	/** Shift-clicking a crafting result crafts only what fits, with room kept for what stays on the grid (CraftFit). */
 	public boolean craftFit = true;
+	/** One-click crafting (QuickCraft): on, Alt or Ctrl held turn it off for a click, the drop key held throws the result. */
+	public boolean quickCraft = false, quickCraftAlt = true, quickCraftCtrl = false, quickCraftDrop = true;
 	/**
 	 * Sorting chests and the inventory with a key (InventorySort): the pause between its clicks (ms),
 	 * the hotbar sorted too, the small button in the window's corner, and the servers it stays off on.
@@ -1041,6 +1043,10 @@ public final class HudConfig {
 		skyDump = other.skyDump;
 		mouseTweaks = other.mouseTweaks;
 		craftFit = other.craftFit;
+		quickCraft = other.quickCraft;
+		quickCraftAlt = other.quickCraftAlt;
+		quickCraftCtrl = other.quickCraftCtrl;
+		quickCraftDrop = other.quickCraftDrop;
 		inventorySort = other.inventorySort;
 		sortDelay = Math.max(0, Math.min(250, other.sortDelay));
 		// the old default (50 ms between clicks), never changed by the player: now all at once

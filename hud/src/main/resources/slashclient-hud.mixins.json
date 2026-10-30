@@ -59,6 +59,8 @@
 		"DebugVersionMixin",
 		"FoodDataAccessor",
 		"FoodDebugMixin",
+		"QuickCraftMixin",
+		"QuickCraftPacketMixin",
 		"EditServerScreenMixin",
 		"GuiGraphicsAccessor",
 		"GuiMixin",
