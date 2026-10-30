@@ -65,6 +65,9 @@ describe('presets for slower computers', () => {
     assert.equal(presetOptions('pi').enableVsync, 'true');
     // OpenGL on the Pi: its driver's Vulkan lacks what the game needs
     assert.equal(presetOptions('pi').preferredGraphicsBackend, '"opengl"');
+    // 26.x's own graphics preset would set the view distance back at start
+    assert.equal(presetOptions('light').graphicsPreset, '"custom"');
+    assert.deepEqual(presetOptions('off'), {});
     await fs.rm(dir, { recursive: true, force: true });
   });
 });

@@ -1867,7 +1867,12 @@ async function startGame(profileId: string, accountId: string, server: string | 
   // the preset's memory (less of it leaves more to a small computer) and the Raspberry Pi's graphics driver fix
   const memoryCap = partOn(profile.perfPreset, profile.perfOff, 'memory') ? presetMemoryCap(profile.perfPreset!, systemMemoryMb()) : undefined;
   const gpu = await gpuLaunchOptions(store.settings);
-  const perfEnv = presetEnv(profile.perfPreset ?? 'off', profile.perfOff, process.platform, !!process.env.WAYLAND_DISPLAY);
+  // GNOME draws no title bar for Wayland windows, and the game's (26.x, SDL) opens there without the
+  // minimise, maximise and close buttons: on GNOME it opens on XWayland, which has the graphics card's
+  // OpenGL there, unless the player picked SDL's driver themselves
+  const gnome = process.platform === 'linux' && !!process.env.WAYLAND_DISPLAY && !!process.env.DISPLAY && /gnome/i.test(process.env.XDG_CURRENT_DESKTOP ?? '');
+  const windowEnv: Record<string, string> = gnome && !process.env.SDL_VIDEO_DRIVER ? { SDL_VIDEO_DRIVER: 'x11' } : {};
+  const perfEnv = { ...windowEnv, ...presetEnv(profile.perfPreset ?? 'off', profile.perfOff, process.platform, !!process.env.WAYLAND_DISPLAY && !gnome) };
   // and the mod's saving mode (fewer effects and other players' cosmetics)
   if (hud.jvmArgs.length && partOn(profile.perfPreset, profile.perfOff, 'saver')) hud.jvmArgs.push(`-Dslashclient.lowSpec=${profile.perfPreset}`);
   const child = await launch({

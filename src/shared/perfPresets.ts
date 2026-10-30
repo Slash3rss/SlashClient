@@ -25,6 +25,13 @@ export function partOn(preset: PerfPreset | undefined, off: string[] | undefined
  * clouds, a frame limit; the game's own names, each version reads those it knows.
  */
 export function presetOptions(preset: PerfPreset): Record<string, string> {
+  // 26.x: the game's own graphics preset (Fancy by default) sets the view, particles and clouds again
+  // at every start; "custom" keeps ours
+  const options = presetValues(preset);
+  return Object.keys(options).length ? { ...options, graphicsPreset: '"custom"' } : options;
+}
+
+function presetValues(preset: PerfPreset): Record<string, string> {
   switch (preset) {
     case 'light':
       return { renderDistance: '8', simulationDistance: '6', graphicsMode: '0', renderClouds: '"fast"', particles: '1', entityShadows: 'false', biomeBlendRadius: '1', mipmapLevels: '2' };
