@@ -34,6 +34,7 @@ import { createWiki } from './wiki';
 import { createServerPages } from './serverPages';
 import { ask, confirmDialog, modalWindow } from './dialog';
 import { createWizard } from './wizard';
+import { createProfileWizard, presetAbout, presetName } from './profileWizard';
 import { createSessionSummary } from './sessionSummary';
 import { createLauncherNews } from './launcherNews';
 import { askDependants, depsDetails, modsCount, pickOrphans } from './modDepsUi';
@@ -1525,10 +1526,15 @@ api.on('store', (s: PublicStore) => {
 
 // ---------- profiles ----------
 
-$('#profile-add').addEventListener('click', async () => {
-  const profile = await api.newProfile();
-  editingId = await guard(() => api.saveProfile(profile));
+const profileWizard = createProfileWizard({
+  api, toast, errorText,
+  store: () => store,
+  created: (id) => {
+    editingId = id;
+    render();
+  },
 });
+$('#profile-add').addEventListener('click', () => void profileWizard.open());
 
 $('#show-snapshots').addEventListener('change', () => renderVersionOptions($<HTMLSelectElement>('#version-select').value));
 $('#show-old').addEventListener('change', () => renderVersionOptions($<HTMLSelectElement>('#version-select').value));
@@ -1581,8 +1587,7 @@ function fillPerfPreset(profile: Profile) {
   (form.elements.namedItem('perfPreset') as HTMLSelectElement).value = preset;
   for (const box of form.querySelectorAll<HTMLInputElement>('input[name="perfPart"]')) box.checked = !(profile.perfOff ?? []).includes(box.value as PerfPart);
   const suggested = suggestedPreset(store.systemMemoryMb, navigator.hardwareConcurrency || 0, store.platform ?? '', store.arch ?? '');
-  const names: Record<PerfPreset, string> = { off: t('Wyłączony'), light: t('Lekki – słabszy laptop'), lighter: t('Bardzo lekki – stary komputer'), pi: t('Raspberry Pi i inne ARM') };
-  $('#perf-suggest').textContent = suggested !== 'off' ? t('dla tego komputera polecamy: {0}', names[suggested]) : '';
+  $('#perf-suggest').textContent = suggested !== 'off' ? t('dla tego komputera polecamy: {0}', presetName(suggested)) : '';
   renderPerfParts();
 }
 
@@ -1591,13 +1596,8 @@ function renderPerfParts() {
   const form = $<HTMLFormElement>('#profile-form');
   const preset = (form.elements.namedItem('perfPreset') as HTMLSelectElement).value;
   // what each preset does, in a sentence under the choice
-  const about: Record<string, string> = {
-    light: t('Zasięg widzenia 8, szybka grafika, mniej cząsteczek, bez cieni postaci. Limit FPS i pamięć zostają Twoje.'),
-    lighter: t('Zasięg widzenia 6, szybka grafika bez chmur i cieni, mało cząsteczek, limit 60 FPS, 2–3 GB pamięci dla gry.'),
-    pi: t('Zasięg widzenia 4, wszystko na minimum, limit 30 FPS z synchronizacją pionową, do 2 GB pamięci, grafika przez OpenGL.'),
-  };
-  $('#perf-about').textContent = about[preset] ?? '';
-  $('#perf-about').classList.toggle('hidden', !about[preset]);
+  $('#perf-about').textContent = presetAbout(preset);
+  $('#perf-about').classList.toggle('hidden', !presetAbout(preset));
   $('#perf-parts').classList.toggle('hidden', preset === 'off');
   form.querySelector<HTMLElement>('.perf-gl')!.classList.toggle('hidden', preset !== 'pi');
 }
