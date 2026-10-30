@@ -38,6 +38,48 @@ public class GameFoodPreview implements FabricClientGameTest {
 			context.waitTicks(5);
 			food = context.computeOnClient(mc -> TestHooks.foodPreview());
 			if (!food.equals("none")) throw new AssertionError("Stone is no food: " + food);
+
+			// the bread's tooltip says what it gives
+			String tip = context.computeOnClient(mc -> String.join(" | ", new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BREAD)
+				.getTooltipLines(net.minecraft.world.item.Item.TooltipContext.of(mc.level), mc.player, net.minecraft.world.item.TooltipFlag.Default.NORMAL)
+				.stream().map(c -> c.getString()).toList()));
+			if (!tip.contains("Hunger +5 · saturation +6.0")) throw new AssertionError("The bread's tooltip: " + tip);
+
+			// hurt, nearly full, a little tired: the exhaustion is known in this world (F3 and the strip on the bar),
+			// steak in hand heals some hearts once eaten (flashing on the health bar)
+			server.runOnServer(s -> s.getPlayerList().getPlayers().forEach(p -> {
+				p.setHealth(9);
+				p.getFoodData().setFoodLevel(16);
+				p.getFoodData().setSaturation(0f);
+				p.getFoodData().addExhaustion(2.5f);
+			}));
+			server.runCommand("item replace entity @p weapon.mainhand with minecraft:cooked_beef");
+			context.waitTicks(10);
+			String f3 = context.computeOnClient(mc -> String.join(" ", dev.slash3rss.slashclient.hud.FoodPreview.debugLines(mc.player)));
+			if (!f3.contains("Food: 16") || !f3.contains("Exhaustion: 2.")) throw new AssertionError("F3's food line: " + f3);
+			// steak: 8 food and 12.8 saturation, from 16 and 0 the bar goes full: its saturation alone heals some 8 health
+			float healed = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.FoodPreview.healed(20, 12.8f, 2.5f, 9, 20));
+			if (healed < 6) throw new AssertionError("The steak would heal only " + healed);
+			float none = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.FoodPreview.healed(16, 0, 2.5f, 9, 20));
+			if (none != 0) throw new AssertionError("Without eating, 16 food heals " + none);
+			context.takeScreenshot("food-steak-healing");
+			context.getInput().pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_F3);
+			context.waitTicks(5);
+			context.takeScreenshot("food-f3");
+			context.getInput().pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_F3);
+			// switched off: no F3 line, no tooltip line
+			context.runOnClient(mc -> { var c = dev.slash3rss.slashclient.hud.SlashHud.config; c.foodDebug = false; c.foodTooltip = false; });
+			f3 = context.computeOnClient(mc -> String.join(" ", dev.slash3rss.slashclient.hud.FoodPreview.debugLines(mc.player)));
+			if (!f3.isEmpty()) throw new AssertionError("F3's food line with it off: " + f3);
+			context.runOnClient(mc -> { var c = dev.slash3rss.slashclient.hud.SlashHud.config; c.foodDebug = true; c.foodTooltip = true; });
+			// without food in hand: the saturation outlined and the exhaustion strip
+			server.runOnServer(s -> s.getPlayerList().getPlayers().forEach(p -> {
+				p.getFoodData().setFoodLevel(20);
+				p.getFoodData().setSaturation(7f);
+			}));
+			server.runCommand("item replace entity @p weapon.mainhand with minecraft:stone");
+			context.waitTicks(10);
+			context.takeScreenshot("food-saturation");
 		}
 		//#endif
 	}

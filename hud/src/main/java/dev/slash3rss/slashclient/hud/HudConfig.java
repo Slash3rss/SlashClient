@@ -488,6 +488,8 @@ public final class HudConfig {
 	public boolean compactHearts = true;
 	/** Food held: what eating it gives, on the food bar (FoodPreview). */
 	public boolean foodPreview = true;
+	/** The food module's parts (FoodPreview): food values in tooltips, saturation always on the food bar, the exhaustion bar, health eating would heal, F3's lines. */
+	public boolean foodTooltip = true, foodSaturation = true, foodExhaustion = true, foodHealth = true, foodDebug = true;
 	/** SkyUp's GUI dump on its key (F7; SkyDump). */
 	public boolean skyDump = true;
 	/** Shift-drag over slots and the wheel move items in inventories. */
@@ -1031,6 +1033,11 @@ public final class HudConfig {
 		toolWarningPercent = Math.max(1, Math.min(50, other.toolWarningPercent));
 		compactHearts = other.compactHearts;
 		foodPreview = other.foodPreview;
+		foodTooltip = other.foodTooltip;
+		foodSaturation = other.foodSaturation;
+		foodExhaustion = other.foodExhaustion;
+		foodHealth = other.foodHealth;
+		foodDebug = other.foodDebug;
 		skyDump = other.skyDump;
 		mouseTweaks = other.mouseTweaks;
 		craftFit = other.craftFit;

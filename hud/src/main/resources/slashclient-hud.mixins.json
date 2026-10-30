@@ -57,6 +57,8 @@
 		"ContainerScreenAccessor",
 		"ContainerLayerMixin",
 		"DebugVersionMixin",
+		"FoodDataAccessor",
+		"FoodDebugMixin",
 		"EditServerScreenMixin",
 		"GuiGraphicsAccessor",
 		"GuiMixin",

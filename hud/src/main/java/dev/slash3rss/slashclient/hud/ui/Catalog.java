@@ -734,7 +734,12 @@ public final class Catalog {
 		out.add(new Entry("slotLock", "slashclient-hud.slotLock", "combat", "m-slotlock", () -> cfg.slotLock, v -> cfg.slotLock = v, List.of(), null));
 		out.add(new Entry("compactHearts", "slashclient-hud.game.compactHearts", "game", "m-hearts", () -> cfg.compactHearts, v -> cfg.compactHearts = v, List.of(), null));
 		out.add(new Entry("foodPreview", "slashclient-hud.game.foodPreview", "game", "m-saturation", () -> cfg.foodPreview, v -> cfg.foodPreview = v, List.of(
-			new Note("slashclient-hud.game.foodPreview.note", () -> new Object[0])), null));
+			new Note("slashclient-hud.game.foodPreview.note", () -> new Object[0]),
+			new Toggle("slashclient-hud.food.tooltipSetting", () -> cfg.foodTooltip, v -> cfg.foodTooltip = v),
+			new Toggle("slashclient-hud.food.saturationSetting", () -> cfg.foodSaturation, v -> cfg.foodSaturation = v),
+			new Toggle("slashclient-hud.food.exhaustionSetting", () -> cfg.foodExhaustion, v -> cfg.foodExhaustion = v),
+			new Toggle("slashclient-hud.food.healthSetting", () -> cfg.foodHealth, v -> cfg.foodHealth = v),
+			new Toggle("slashclient-hud.food.debugSetting", () -> cfg.foodDebug, v -> cfg.foodDebug = v)), null));
 		out.add(new Entry("chatTabs", "slashclient-hud.chat.tabs", "chat", "m-chattabs", null, null, List.of(), openChatTabs));
 		out.add(new Entry("chatWindowsOnly", "slashclient-hud.chat.windowsOnly", "chat", "m-chattabs", () -> cfg.chatWindowsOnly, v -> {
 			cfg.chatWindowsOnly = v;
