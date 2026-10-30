@@ -529,7 +529,7 @@ public final class Ui {
 			g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, picture, x, y, 0, 0, 16, 16, 16, 16);
 			return;
 		}
-		round(g, x, y, 16, 16, 4, 0x332563EB);
+		round(g, x, y, 16, 16, 4, withAlpha(ACCENT_DARK, 0x33));
 		if (fallback.length() > 2) {
 			// a name, not a symbol: never drawn as text (it would spill out of the badge)
 			icon(g, fallback, x + 2, y + 2, 12, ACCENT_LIGHT);

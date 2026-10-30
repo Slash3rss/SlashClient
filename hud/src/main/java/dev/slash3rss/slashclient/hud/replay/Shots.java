@@ -92,7 +92,7 @@ public final class Shots {
 		boolean hint = Social.signedIn() && !Social.friends().isEmpty() && SlashHud.friendsKey != null;
 		int extra = hint ? 10 : 0;
 		Ui.round(g, x - 3, y - 3, w + 6, h + 18 + extra, 5, Ui.PANEL);
-		Ui.roundOutline(g, x - 3, y - 3, w + 6, h + 18 + extra, 5, 0x803B82F6);
+		Ui.roundOutline(g, x - 3, y - 3, w + 6, h + 18 + extra, 5, Ui.withAlpha(Ui.ACCENT, 0x80));
 		g.blit(RenderPipelines.GUI_TEXTURED, THUMB, x, y, 0, 0, w, h, imgW, imgH, imgW, imgH, 0xFFFFFFFF);
 		Component label = Component.translatable(copied ? "slashclient-hud.screenshot.copied" : "slashclient-hud.screenshot.saved");
 		Ui.draw(g, Ui.fit(Ui.text(label.getString()), w), x, y + h + 4, copied ? Ui.GREEN : Ui.TEXT_2);

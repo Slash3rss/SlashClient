@@ -722,7 +722,7 @@ public class FriendsScreen extends Screen {
 			int nameColor = switch (m.authorRole()) {
 				case "owner" -> 0xFFFBBF24;
 				case "admin" -> 0xFFFCA5A5;
-				case "moderator" -> Ui.ACCENT_PALE;
+				case "moderator" -> 0xFF93C5FD;
 				default -> Ui.ACCENT_LIGHT;
 			};
 			if (m.deleted()) {
@@ -993,7 +993,7 @@ public class FriendsScreen extends Screen {
 			if (custom != null && Ui.width(role) > (colW - 30) / 2) role = Ui.fit(Ui.text(custom.name()).withStyle(s -> s.withColor(custom.color())), (colW - 30) / 2);
 			int roleW = Ui.width(role);
 			Ui.draw(g, Ui.fit(Ui.bold(m.name()), colW - 6 - 16 - roleW - 8), rx + 15, y + 4, m.online() ? Ui.TEXT : Ui.MUTED);
-			Ui.draw(g, role, rx + colW - 6 - roleW - 6, y + 4, "owner".equals(m.role()) ? 0xFFFBBF24 : "admin".equals(m.role()) ? 0xFFFCA5A5 : Ui.ACCENT_PALE);
+			Ui.draw(g, role, rx + colW - 6 - roleW - 6, y + 4, "owner".equals(m.role()) ? 0xFFFBBF24 : "admin".equals(m.role()) ? 0xFFFCA5A5 : 0xFF93C5FD);
 			y += 18;
 		}
 	}
@@ -1461,7 +1461,7 @@ public class FriendsScreen extends Screen {
 			int roleW = Ui.width(role);
 			int nameW = colW - 6 - 16 - roleW - 8 - ("owner".equals(m.role()) ? 12 : 0);
 			Ui.draw(g, Ui.fit(Ui.bold(m.name()), nameW), rx + 15, y + 4, m.online() ? Ui.TEXT : Ui.MUTED);
-			Ui.draw(g, role, rx + colW - 6 - roleW - 6 - ("owner".equals(m.role()) ? 12 : 0), y + 4, "officer".equals(m.role()) ? Ui.ACCENT_PALE : "owner".equals(m.role()) ? 0xFFFBBF24 : Ui.MUTED);
+			Ui.draw(g, role, rx + colW - 6 - roleW - 6 - ("owner".equals(m.role()) ? 12 : 0), y + 4, "officer".equals(m.role()) ? 0xFF93C5FD : "owner".equals(m.role()) ? 0xFFFBBF24 : Ui.MUTED);
 			y += 18;
 		}
 	}

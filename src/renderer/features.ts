@@ -16,6 +16,9 @@ export interface Banner { id: string; text: string; textEn: string; level: 'info
 export interface FeatureState { features: Partial<Record<FeatureId, boolean>>; banner: Banner | null }
 
 let state: FeatureState = { features: {}, banner: null };
+/** Whether the server has answered once (before that every switch reads as on, though it may not be). */
+let known = false;
+export const featuresKnown = () => known;
 const listeners: ((s: FeatureState) => void)[] = [];
 
 /** Whether a feature is on (anything the server did not mention is on). */
@@ -117,9 +120,10 @@ export function initFeatures(deps: FeatureDeps) {
   }
 
   function apply(next: FeatureState) {
-    const changed = JSON.stringify(next) !== JSON.stringify(state);
+    const changed = JSON.stringify(next) !== JSON.stringify(state) || !known;
     state = next;
-    for (const id of ['shop', 'support', 'communities', 'clans', 'groups', 'media', 'cloud', 'profiles', 'sprays', 'chatImages', 'registration'] as FeatureId[]) {
+    known = true;
+    for (const id of ['shop', 'support', 'communities', 'clans', 'groups', 'media', 'cloud', 'profiles', 'sprays', 'chatImages', 'registration', 'seasonal'] as FeatureId[]) {
       document.body.classList.toggle(`feature-off-${id}`, !featureOn(id));
     }
     drawBanner();

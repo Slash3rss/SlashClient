@@ -17,8 +17,8 @@ interface Bat { x: number; y: number; vx: number; vy: number; size: number; phas
 interface SeasonDeps {
   /** The player's setting (on unless switched off). */
   settingOn: () => boolean;
-  /** The admin's switch (on unless the server says otherwise). */
-  featureOn: () => boolean;
+  /** The admin's switch (on unless the server says otherwise); undefined until the server has answered. */
+  featureOn: () => boolean | undefined;
   /** Fewer animations: the bats are drawn once and stay. */
   reduced: () => boolean;
   /** The window's (and the taskbar's) icon: a picture as a PNG data URL, or null for the usual one. */
@@ -114,6 +114,8 @@ export function initSeason(deps: SeasonDeps) {
   async function logo(season: boolean) {
     logoShown = season;
     const url = season ? await (seasonLogo ??= makeLogo().catch(() => undefined)) : undefined;
+    // switched again while the picture was being made: the later call decides
+    if (logoShown !== season) return;
     for (const img of document.querySelectorAll<HTMLImageElement>('.brand-logo, .splash-logo')) img.src = url ?? 'logo.png';
     deps.setWindowIcon?.(url ?? null);
   }
@@ -232,11 +234,15 @@ export function initSeason(deps: SeasonDeps) {
 
   /** Turns the look on or off as the day, the setting and the switch say; again on any change of them. */
   function apply() {
-    const allowed = deps.settingOn() && deps.featureOn();
-    try {
-      localStorage.setItem(REMEMBER, allowed ? 'on' : 'off');
-    } catch {
-      // nothing to remember it in: the splash goes by the date alone
+    // before the server's switches are known (or offline): as decided last time, so an admin's "off" does not flash
+    const feature = deps.featureOn();
+    const allowed = deps.settingOn() && (feature ?? remembered());
+    if (feature !== undefined) {
+      try {
+        localStorage.setItem(REMEMBER, allowed ? 'on' : 'off');
+      } catch {
+        // nothing to remember it in: the splash goes by the date alone
+      }
     }
     const next = halloweenSeason() && allowed;
     root.classList.toggle('season-halloween', next);

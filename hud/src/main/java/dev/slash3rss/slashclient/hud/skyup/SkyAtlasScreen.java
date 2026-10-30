@@ -374,7 +374,7 @@ public class SkyAtlasScreen extends Screen {
 		if (p > 0.45f && lift <= 0) return;
 		float travel = lift > 0 ? 0.5f + (float) Math.sin(now() / 500.0) * 0.5f : p / 0.45f;
 		float band = -24 + travel * (w + 48);
-		int[] rainbow = { 0x30F472B6, 0x30FACC15, 0x3034D399, Ui.withAlpha(Ui.ACCENT_LIGHT, 0x30) };
+		int[] rainbow = { 0x30F472B6, 0x30FACC15, 0x3034D399, 0x3060A5FA };
 		for (int row = 2; row < h - 2; row++) {
 			float left = band + (h - row) * 0.4f;
 			int a = Math.max(x + 2, Math.round(x + left)), b = Math.min(x + w - 2, Math.round(x + left + 10));

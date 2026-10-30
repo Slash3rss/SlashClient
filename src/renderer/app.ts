@@ -26,7 +26,7 @@ import { createDiskCleanup } from './diskCleanup';
 import { createKeyConflicts } from './keyConflicts';
 import { createToolSettings } from './toolSettings';
 import { createSupportCard } from './support';
-import { betaUpdatesOffered, featureOn, initFeatures, onFeatures } from './features';
+import { betaUpdatesOffered, featureOn, featuresKnown, initFeatures, onFeatures } from './features';
 import { initSeason } from './season';
 import { checkLegalNotices, createLegalCard } from './legal';
 import { createWiki } from './wiki';
@@ -4933,7 +4933,7 @@ systemReduced.addEventListener('change', applyMotion);
 let wakeStars = () => {};
 // Halloween's look (season.ts): the player's setting, the admin's switch and fewer animations
 const season = initSeason({
-  settingOn: () => store?.settings?.seasonalLook !== false, featureOn: () => featureOn('seasonal'), reduced: motionReduced,
+  settingOn: () => store?.settings?.seasonalLook !== false, featureOn: () => (featuresKnown() ? featureOn('seasonal') : undefined), reduced: motionReduced,
   setWindowIcon: (dataUrl) => api.setWindowIcon?.(dataUrl),
 });
 onFeatures(() => season.apply());

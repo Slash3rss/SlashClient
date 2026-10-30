@@ -152,7 +152,7 @@ public final class InventorySearch {
 		int x = field.getX() - 14, y = field.getY() - 2;
 		boolean pin = pinned != null;
 		Ui.round(g, x, y, W, H, 4, 0xE0111622);
-		Ui.roundOutline(g, x, y, W, H, 4, field.isFocused() ? 0x993B82F6 : pin ? 0xC04ADE80 : !query.isEmpty() ? 0x80FACC15 : Ui.BORDER);
+		Ui.roundOutline(g, x, y, W, H, 4, field.isFocused() ? Ui.withAlpha(Ui.ACCENT, 0x99) : pin ? 0xC04ADE80 : !query.isEmpty() ? 0x80FACC15 : Ui.BORDER);
 		Ui.icon(g, pin ? "thumbtack" : "search", x + 4, y + 3, 6, pin ? Ui.GREEN : field.isFocused() ? Ui.ACCENT_LIGHT : Ui.MUTED);
 	}
 

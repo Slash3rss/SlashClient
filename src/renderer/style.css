@@ -464,7 +464,7 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 .mod-dep-link { all: unset; display: flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; cursor: pointer; border-radius: 6px; padding: 1px 4px; margin-left: -4px; color: var(--text-secondary); }
 .mod-dep-link:hover, .mod-dep-link:focus-visible { background: rgba(255, 255, 255, .06); color: var(--text-primary); }
 .mod-dep-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mod-dep-list .tag { font-size: 11px; padding: 1px 6px; flex-shrink: 0; text-transform: none; letter-spacing: 0; font-weight: 600; background: rgba(var(--accent-rgb), .15); color: #bfdbfe; }
+.mod-dep-list .tag { font-size: 11px; padding: 1px 6px; flex-shrink: 0; text-transform: none; letter-spacing: 0; font-weight: 600; background: rgba(var(--accent-rgb), .15); color: var(--accent-pale); }
 .mod-dep-list .tag.bad-tag { color: #fecaca; background: rgba(239, 68, 68, .18); }
 .mod-dep-list .tag.muted-tag { color: var(--text-muted); background: rgba(255, 255, 255, .05); }
 @media (max-width: 760px) { .mod-deps { grid-template-columns: 1fr; } }
@@ -1008,7 +1008,8 @@ button.fr-row:hover:not(:disabled) { background: var(--glass-bg-hover); border-c
 .fr-avatar img { width: 100%; height: 100%; border-radius: 10px; object-fit: cover; }
 .fr-dot { position: absolute; right: -3px; bottom: -3px; width: 13px; height: 13px; border-radius: 50%; border: 2.5px solid #111622; background: #6b7280; }
 .fr-dot.online { background: #22c55e; }
-.fr-dot.ingame { background: var(--accent); }
+/* statuses and roles keep their own colours in every season: they tell things apart */
+.fr-dot.ingame { background: #3b82f6; }
 .fr-dot.away { background: #eab308; }
 .fr-dot.busy { background: #ef4444; }
 /* a friend only on the phone app: a small phone in the status' colour instead of the dot */
@@ -1577,7 +1578,7 @@ button.fr-sug-head:hover { color: var(--text); background: transparent; transfor
 .fr-clan-members { display: flex; flex-direction: column; gap: 2px; max-height: 300px; overflow-y: auto; margin: 0 -8px; }
 .fr-clan-members .icon-btn { width: 30px; height: 30px; padding: 0; flex-shrink: 0; }
 .fr-role-owner { color: #fbbf24 !important; }
-.fr-role-officer { color: var(--accent-pale) !important; }
+.fr-role-officer { color: #93c5fd !important; }
 .fr-clan-leave { justify-content: flex-end; margin-top: 8px; }
 
 /* ---------- sparks (the achievements' currency), the shop and the achievements in categories ---------- */
@@ -1744,10 +1745,10 @@ button.fr-sug-head:hover { color: var(--text); background: transparent; transfor
 .fr-com-role { margin-right: 4px; padding: 0 5px; border-radius: 4px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
 .fr-com-role.owner { background: rgba(251, 191, 36, .18); color: #fbbf24; }
 .fr-com-role.admin { background: rgba(239, 68, 68, .18); color: #fca5a5; }
-.fr-com-role.moderator { background: rgba(var(--accent-rgb), .18); color: var(--accent-pale); }
+.fr-com-role.moderator { background: rgba(59, 130, 246, .18); color: #93c5fd; }
 .fr-com-role-line.owner { color: #fbbf24 !important; }
 .fr-com-role-line.admin { color: #fca5a5 !important; }
-.fr-com-role-line.moderator { color: var(--accent-pale) !important; }
+.fr-com-role-line.moderator { color: #93c5fd !important; }
 .fr-com-modal { width: min(600px, 100%); }
 .fr-com-modal textarea { width: 100%; resize: vertical; padding: 10px 14px; font: inherit; font-size: 14px; color: var(--text-primary); background: rgba(0, 0, 0, .2); border: 1px solid var(--glass-border); border-radius: var(--btn-radius); }
 .fr-com-modal textarea:focus { outline: none; border-color: var(--glass-border-focus); }
@@ -1819,7 +1820,7 @@ button.fr-sug-head:hover { color: var(--text); background: transparent; transfor
 
 /* the admin's announcement on top of the views, and parts switched off in the server's panel (features.ts) */
 .feature-banner { display: flex; align-items: center; gap: 10px; position: absolute; top: 8px; left: 4px; right: 6px; z-index: 5; padding: 8px 10px 8px 14px; border-radius: 12px; font-size: 13px;
-  color: #dbeafe; background: rgba(23, 37, 84, .92); border: 1px solid rgba(var(--accent-light-rgb), .4); backdrop-filter: blur(8px); }
+  color: #f3f4f6; background: rgba(17, 22, 34, .94); border: 1px solid rgba(var(--accent-light-rgb), .4); backdrop-filter: blur(8px); }
 .feature-banner.warning { color: #fef3c7; background: rgba(69, 39, 6, .92); border-color: rgba(251, 191, 36, .45); }
 /* the views start under the banner (its height is set by features.ts) */
 main.with-banner .view { top: var(--banner-h, 52px); }
@@ -1835,6 +1836,7 @@ body.feature-off-media .feature-media-off, body.feature-off-profiles .feature-pr
 
 /* friends live on Twitch or Kick (streams.ts): the red LIVE pill, the platform's mark, "Oglądaj" */
 body.feature-off-streams .feature-streams { display: none !important; }
+body.feature-off-seasonal .feature-seasonal { display: none !important; }
 .live-badge { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; margin-left: 2px; border-radius: 5px; background: #e11d48; color: #fff; font-size: 10px; font-weight: 800; letter-spacing: .05em; vertical-align: 1px; line-height: 1.5; }
 .live-badge.small { padding: 0 5px; font-size: 9.5px; }
 .live-badge .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: live-pulse 1.6s ease-in-out infinite; }

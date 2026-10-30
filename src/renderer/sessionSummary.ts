@@ -342,7 +342,8 @@ export function createSessionSummary(deps: SessionSummaryDeps) {
     const profileSel = control<HTMLSelectElement>('select', { className: 'ss-all-filter' });
     const placeSel = control<HTMLSelectElement>('select', { className: 'ss-all-filter' });
     const fill = () => {
-      const profiles = [...new Map(list.map((s) => [s.profileId, s.profileName])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+      // the newest name of each profile (the list is newest first: set last, it wins)
+      const profiles = [...new Map([...list].reverse().map((s) => [s.profileId, s.profileName])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
       const places = [...new Set(list.flatMap((s) => s.places.map((p) => p.name)))].sort((a, b) => a.localeCompare(b));
       const keep = (sel: HTMLSelectElement, items: [string, string][], any: string) => {
         const was = sel.value;

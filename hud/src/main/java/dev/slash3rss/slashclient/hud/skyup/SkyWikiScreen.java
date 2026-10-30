@@ -32,7 +32,7 @@ import java.util.Map;
  */
 public class SkyWikiScreen extends Screen {
 	private static final int ROW_H = 14, HIT_H = 24, LINE_H = 10, PAD = 12;
-	private static final int LINK = Ui.ACCENT_LIGHT, CODE = 0xFFFBBF24, LINE = 0x30FFFFFF;
+	private static final int CODE = 0xFFFBBF24, LINE = 0x30FFFFFF;
 
 	private record Hit(int x, int y, int w, int h, Runnable action) {}
 	/** Something the article draws: text, a picture, or a filled rectangle (y from the article's top). */
@@ -496,7 +496,7 @@ public class SkyWikiScreen extends Screen {
 				if (word.isEmpty()) continue;
 				MutableComponent c = bold || s.has("b") ? Ui.bold(word) : Ui.text(word);
 				boolean italic = s.has("i"), under = s.has("u") || link != null, strike = s.has("s"), code = s.has("code");
-				int color = link != null ? LINK : code ? CODE : -1;
+				int color = link != null ? Ui.ACCENT_LIGHT : code ? CODE : -1;
 				c = c.withStyle(st -> st.withItalic(italic).withUnderlined(under).withStrikethrough(strike));
 				if (color != -1) c = c.withStyle(st -> st.withColor(color & 0xFFFFFF));
 				out.add(piece(c, link));
