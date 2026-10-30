@@ -1878,6 +1878,19 @@ public final class TestHooks {
 		Waypoints.save();
 	}
 
+	/** The creative inventory searched for `q` as typing does: whether a diamond sword is among the results, and how many there are. */
+	public static String creativeSearch(String q) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		var screen = new net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen(mc.player, mc.player.connection.enabledFeatures(), true);
+		mc.setScreenAndShow(screen);
+		var access = (dev.slash3rss.slashclient.hud.mixin.CreativeScreenAccessor) screen;
+		access.slashclient$selectTab(net.minecraft.world.item.CreativeModeTabs.searchTab());
+		access.slashclient$searchBox().setValue(q);
+		access.slashclient$refreshSearch();
+		var items = screen.getMenu().items;
+		return items.stream().anyMatch(s -> s.is(net.minecraft.world.item.Items.DIAMOND_SWORD)) + " " + items.size();
+	}
+
 	/** The keys window, and how many SlashClient keys it lists. */
 	public static int openKeybinds() {
 		var mc = net.minecraft.client.Minecraft.getInstance();

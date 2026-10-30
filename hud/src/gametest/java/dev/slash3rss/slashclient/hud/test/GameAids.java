@@ -39,6 +39,17 @@ public class GameAids implements FabricClientGameTest {
 			String bar = context.computeOnClient(mc -> TestHooks.scrollbarDrag());
 			String[] parts = bar.split(",");
 			if (!parts[0].equals("true") || Integer.parseInt(parts[1]) < 150 || Integer.parseInt(parts[2]) < 390) throw new AssertionError("The scrollbar does not follow the mouse: " + bar);
+			// the creative inventory's search: Polish names (without Polish letters) in a game in English, and English ones
+			world.getServer().runCommand("gamemode creative @a");
+			context.waitTicks(5);
+			for (String q : new String[] { "miecz diament", "diamond sword", "diamentowy miecz" }) {
+				String found = context.computeOnClient(mc -> TestHooks.creativeSearch(q));
+				if (!found.startsWith("true ")) throw new AssertionError("The creative search for '" + q + "' misses the diamond sword: " + found);
+			}
+			context.waitTicks(3);
+			context.takeScreenshot("aids-creative-search");
+			context.setScreen(() -> null);
+			world.getServer().runCommand("gamemode survival @a");
 			// SlashClient's keys in its own window
 			context.runOnClient(mc -> TestHooks.audit(true));
 			int keys = context.computeOnClient(mc -> TestHooks.openKeybinds());
