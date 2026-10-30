@@ -732,7 +732,8 @@ public final class Catalog {
 			new Note("slashclient-hud.enchantColors.note", () -> new Object[0])), null));
 		out.add(new Entry("inventorySearch", "slashclient-hud.invSearch", "extras", "m-invsearch", () -> cfg.inventorySearch, v -> cfg.inventorySearch = v, List.of(), null));
 		out.add(new Entry("slotLock", "slashclient-hud.slotLock", "combat", "m-slotlock", () -> cfg.slotLock, v -> cfg.slotLock = v, List.of(), null));
-		out.add(new Entry("compactHearts", "slashclient-hud.game.compactHearts", "game", "m-hearts", () -> cfg.compactHearts, v -> cfg.compactHearts = v, List.of(), null));
+		out.add(new Entry("compactHearts", "slashclient-hud.game.compactHearts", "game", "m-hearts", () -> cfg.compactHearts, v -> cfg.compactHearts = v, List.of(
+			new Note("slashclient-hud.hearts.legend", () -> new Object[] { dev.slash3rss.slashclient.hud.Hearts.legend() })), null));
 		out.add(new Entry("foodPreview", "slashclient-hud.game.foodPreview", "game", "m-saturation", () -> cfg.foodPreview, v -> cfg.foodPreview = v, List.of(
 			new Note("slashclient-hud.game.foodPreview.note", () -> new Object[0]),
 			new Toggle("slashclient-hud.food.tooltipSetting", () -> cfg.foodTooltip, v -> cfg.foodTooltip = v),

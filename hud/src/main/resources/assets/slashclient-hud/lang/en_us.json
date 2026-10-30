@@ -889,6 +889,7 @@
 	"slashclient-hud.assist.autoClick.off": "Autoclicker: off",
 	"slashclient-hud.assist.autoClick.disabled": "Switch the autoclicker on in the SlashClient settings first",
 	"slashclient-hud.game.compactHearts": "Stacked hearts",
+	"slashclient-hud.hearts.legend": "Every 10 hearts past the first 10 fill the row again in the next colour, and the \"×2\" beside it says which row it is. Each colour reaches this many hearts: %s",
 	"slashclient-hud.game.foodPreview": "Food: hunger, saturation and healing",
 	"slashclient-hud.game.foodPreview.note": "Holding food shows how many drumsticks it adds (they flash), how much saturation (a golden outline) and how many hearts eating it heals. Exhaustion is known only in singleplayer – servers do not send it.",
 	"slashclient-hud.food.tooltipSetting": "Food values in item tooltips",

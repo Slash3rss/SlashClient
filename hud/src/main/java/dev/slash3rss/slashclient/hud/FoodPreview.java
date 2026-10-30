@@ -138,14 +138,22 @@ public final class FoodPreview {
 		if (gives != null && c.foodHealth) drawHealth(g, player, food, saturation, Math.max(tired, 0), then, flash);
 	}
 
-	/** The hearts the health coming back after eating fills, flashing on the health bar (one row of hearts only). */
+	/**
+	 * The hearts the health coming back after eating fills, flashing on the health bar: on its one row,
+	 * or on the compact hearts' row (Hearts.preview); not over the game's several rows.
+	 */
 	private static void drawHealth(GuiGraphicsExtractor g, Player player, int food, float saturation, float tired, float[] then, int flash) {
 		float max = player.getMaxHealth(), health = player.getHealth();
-		if (max + player.getAbsorptionAmount() > 20 || health >= max) return;
+		boolean rows = max + player.getAbsorptionAmount() > 20;
+		if (rows && !SlashHud.config.compactHearts || health >= max) return;
 		float back = healed((int) then[0], then[1], tired, health, max);
 		int from = (int) Math.ceil(health), to = (int) Math.min(max, Math.floor(health + back));
 		if (to <= from) return;
 		int left = g.guiWidth() / 2 - 91, y = g.guiHeight() - 39;
+		if (rows) {
+			Hearts.preview(g, left, y, from, to, flash);
+			return;
+		}
 		for (int i = from / 2; i * 2 < to; i++) {
 			// a heart already half full shows its new half as a whole one
 			g.blitSprite(RenderPipelines.GUI_TEXTURED, to - i * 2 >= 2 ? HEART_FULL : HEART_HALF, left + i * 8, y, 9, 9, flash | 0xFFFFFF);

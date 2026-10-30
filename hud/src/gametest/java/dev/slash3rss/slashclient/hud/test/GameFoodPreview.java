@@ -80,6 +80,25 @@ public class GameFoodPreview implements FabricClientGameTest {
 			server.runCommand("item replace entity @p weapon.mainhand with minecraft:stone");
 			context.waitTicks(10);
 			context.takeScreenshot("food-saturation");
+
+			// compact hearts with 40 health, 25 of it left: the steak's healing flashes on the second (golden) row
+			server.runCommand("attribute @p minecraft:max_health base set 40");
+			server.runOnServer(s -> s.getPlayerList().getPlayers().forEach(p -> {
+				p.setHealth(25);
+				p.getFoodData().setFoodLevel(16);
+				p.getFoodData().setSaturation(0f);
+			}));
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.compactHearts = true);
+			server.runCommand("item replace entity @p weapon.mainhand with minecraft:cooked_beef");
+			context.waitTicks(10);
+			context.takeScreenshot("food-compact-healing");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.compactHearts = false);
+			server.runCommand("attribute @p minecraft:max_health base set 20");
+			// the compact hearts' page: which colour reaches how many hearts
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("compactHearts"));
+			context.waitTicks(5);
+			context.takeScreenshot("food-hearts-legend");
+			context.setScreen(() -> null);
 		}
 		//#endif
 	}

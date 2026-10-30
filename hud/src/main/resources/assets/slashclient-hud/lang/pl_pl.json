@@ -889,6 +889,7 @@
 	"slashclient-hud.assist.autoClick.off": "Autoclicker: wyłączony",
 	"slashclient-hud.assist.autoClick.disabled": "Najpierw włącz autoclicker w ustawieniach SlashClient",
 	"slashclient-hud.game.compactHearts": "Stackowanie serc",
+	"slashclient-hud.hearts.legend": "Każde 10 serc ponad pierwsze 10 wypełnia rząd od nowa w kolejnym kolorze, a „×2” obok mówi, który to rząd. Kolor sięga do tylu serc: %s",
 	"slashclient-hud.game.foodPreview": "Jedzenie: głód, nasycenie i leczenie",
 	"slashclient-hud.game.foodPreview.note": "Trzymając jedzenie widzisz, ile udek doda (migają), ile nasycenia (złoty obrys udka) i ile serc odnowisz po zjedzeniu. Zmęczenie zna tylko świat jednoosobowy – serwer go nie wysyła.",
 	"slashclient-hud.food.tooltipSetting": "Wartości jedzenia w opisie przedmiotu",
