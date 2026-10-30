@@ -44,20 +44,17 @@ public final class DarkGui {
 			|| p.equals("textures/gui/recipe_book.png") || p.equals("textures/gui/widgets.png");
 	}
 
-	/**
-	 * The resource as read, or a changed one in its place: a window's block part in its block's texture
-	 * (BlockWindows, read through `lookup`), and a window's texture dark.
-	 */
-	public static Resource wrap(Identifier id, Resource r, java.util.function.Function<Identifier, java.util.Optional<Resource>> lookup) {
+	/** The resource as read, or a changed one in its place: a window drawn as its block (BlockWindows), or a window's texture dark. */
+	public static Resource wrap(Identifier id, Resource r) {
 		if (r == null) return r;
-		BlockWindows.Look look = BlockWindows.on() ? BlockWindows.lookOf(id) : null;
+		BlockArt.Art art = BlockWindows.on() ? BlockWindows.artOf(id) : null;
 		boolean dark = on() && window(id);
-		if (look == null && !dark) return r;
-		return new Resource(r.source(), () -> change(r.open(), look, dark, lookup), r::metadata);
+		if (art == null && !dark) return r;
+		return new Resource(r.source(), () -> change(r.open(), art), r::metadata);
 	}
 
 	/** A changed copy of a PNG: a broken one is passed on as it is (the game reports it as it would). */
-	static InputStream change(InputStream in, BlockWindows.Look look, boolean dark, java.util.function.Function<Identifier, java.util.Optional<Resource>> lookup) throws IOException {
+	static InputStream change(InputStream in, BlockArt.Art art) throws IOException {
 		byte[] bytes;
 		try (in) {
 			bytes = in.readAllBytes();
@@ -67,11 +64,9 @@ public final class DarkGui {
 			if (image == null) return new ByteArrayInputStream(bytes);
 			BufferedImage out = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
 			out.getGraphics().drawImage(image, 0, 0, null);
-			BufferedImage block = look != null ? BlockWindows.block(look.block(), lookup) : null;
-			if (block == null && !dark) return new ByteArrayInputStream(bytes);
-			// the block's part first (its pixels are coloured then: the dark look leaves them), then the rest dark
-			if (block != null) BlockWindows.paint(out, look, block, lookup);
-			if (dark) {
+			// a window drawn as its block: the rest of it dark too with the dark look; any other dark all over
+			if (art != null) BlockArt.paint(out, art, on(), darker());
+			else {
 				for (int y = 0; y < out.getHeight(); y++) {
 					for (int x = 0; x < out.getWidth(); x++) out.setRGB(x, y, pixel(out.getRGB(x, y)));
 				}
@@ -90,17 +85,12 @@ public final class DarkGui {
 	 * the light edges stay lighter than the panel and the slots darker; a coloured one as it is.
 	 */
 	static int pixel(int argb) {
-		int a = argb >>> 24;
-		if (a == 0) return argb;
-		int r = argb >> 16 & 0xFF, g = argb >> 8 & 0xFF, b = argb & 0xFF;
-		int max = Math.max(r, Math.max(g, b)), min = Math.min(r, Math.min(g, b));
-		if (max - min > 28) return argb;
-		int l = (r + g + b) / 3;
-		// dark: 0 → 20, 0x55 → 43, 0x8B → 58, 0xC6 → 74, 0xFF → 90 (a dark panel, darker slots, soft edges);
-		// darker: 0 → 8, 0xC6 → 42, 0xFF → 52 (nearly black, the edges still a step lighter)
-		boolean darker = SlashHud.config != null && "darker".equals(SlashHud.config.darkGuiShade);
-		int n = darker ? 8 + l * 44 / 255 : 20 + l * 70 / 255;
-		return a << 24 | n << 16 | n << 8 | Math.min(255, n + 6);
+		return BlockArt.dark(argb, darker());
+	}
+
+	/** Whether the nearly black shade is picked. */
+	static boolean darker() {
+		return SlashHud.config != null && "darker".equals(SlashHud.config.darkGuiShade);
 	}
 
 	/** After the switch: the textures read again, dark or not. */
@@ -110,14 +100,14 @@ public final class DarkGui {
 	}
 
 	/** The windows' labels (the game's dark grey 0x404040): light on the dark panel, white on the blocks' (with a shadow, labelShadow). */
-	public static int label(int color) {
+	public static int label(int color, Object screen) {
 		if ((color & 0xFFFFFF) != 0x404040) return color;
-		if (BlockWindows.on()) return (color & 0xFF000000) | 0xFFFFFF;
+		if (BlockWindows.drawn(screen)) return (color & 0xFF000000) | 0xFFFFFF;
 		return on() ? (color & 0xFF000000) | 0xE0E0E0 : color;
 	}
 
 	/** A shadow under the labels on the blocks' textures, which are busier than the plain panel. */
-	public static boolean labelShadow(boolean shadow) {
-		return shadow || BlockWindows.on();
+	public static boolean labelShadow(boolean shadow, Object screen) {
+		return shadow || BlockWindows.drawn(screen);
 	}
 }

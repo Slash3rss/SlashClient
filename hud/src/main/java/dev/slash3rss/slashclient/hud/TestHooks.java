@@ -1652,7 +1652,7 @@ public final class TestHooks {
 
 	/** The colour a window's label is drawn in now (the game's dark grey, or light with the dark windows). */
 	public static int darkLabel() {
-		return dev.slash3rss.slashclient.hud.ui.DarkGui.label(0x404040);
+		return dev.slash3rss.slashclient.hud.ui.DarkGui.label(0x404040, Compat.screen(net.minecraft.client.Minecraft.getInstance()));
 	}
 
 	/** The game's language switched (as in its options), the texts reloaded; the future is done when they are. */

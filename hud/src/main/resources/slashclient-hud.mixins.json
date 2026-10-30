@@ -18,6 +18,7 @@
 		"CreativeScreenAccessor",
 		"DarkLabelsMixin",
 		"DarkTexturesMixin",
+		"ShulkerColorMixin",
 		"ReceivingLevelScreenAccessor",
 		"PackDownloadMixin",
 		"BenchCameraMixin",

@@ -92,7 +92,17 @@ public class GameAids implements FabricClientGameTest {
 				context.waitTicks(3);
 				context.takeScreenshot("aids-block-" + kind);
 			}
+			int blockLabel = context.computeOnClient(mc -> TestHooks.darkLabel());
+			if (blockLabel != 0xFFFFFF) throw new AssertionError("A window's label on its block: " + Integer.toHexString(blockLabel));
+			// a red shulker box in front of the player: its window red
 			context.setScreen(() -> null);
+			world.getServer().runCommand("execute as @p at @s anchored eyes run setblock ^ ^ ^2 red_shulker_box");
+			context.waitTicks(10);
+			context.runOnClient(mc -> TestHooks.openWindow("shulker"));
+			context.waitTicks(10);
+			context.takeScreenshot("aids-block-shulker-red");
+			context.setScreen(() -> null);
+			world.getServer().runCommand("execute as @p at @s anchored eyes run setblock ^ ^ ^2 air");
 			var plain = context.computeOnClient(mc -> TestHooks.blockWindows(false));
 			context.waitFor(mc -> plain.isDone(), 1200);
 			context.waitTicks(20);
