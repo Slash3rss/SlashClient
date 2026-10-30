@@ -1395,6 +1395,8 @@
 	"slashclient-hud.skyCase.items": "%s pcs",
 	"slashclient-hud.skyCase.removed": "(removed from the pool)",
 	"slashclient-hud.skyCase.empty": "No rewards yet: open this case's preview on the server.",
+	"slashclient-hud.skyCase.unassignedHint": "Drops that can't be matched to any case end up here. When the server has a new case, open its preview once – from then on its drops are counted separately.",
+	"slashclient-hud.skyCase.unassignedChat": "SlashClient: this drop can't be matched to any case (it went to \"Unassigned\"). A new case? Open its preview on the server once and its next drops will be counted separately.",
 	"slashclient-hud.suggestions.title": "Friend suggestions",
 	"slashclient-hud.suggestions.hint": "SlashClient players you met recently on servers",
 	"slashclient-hud.suggestions.played": "Played together on %s",

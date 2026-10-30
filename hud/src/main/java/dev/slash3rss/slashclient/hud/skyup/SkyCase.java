@@ -407,6 +407,12 @@ public final class SkyCase {
 		recent.add(new Drop(type, reward, now));
 		if (recent.size() > 50) recent.remove(0);
 		save();
+		if (UNASSIGNED.equals(type) && !unassignedSaid) {
+			// a case the mod does not know yet (a new one on the server): its wins count to it once its preview is opened
+			unassignedSaid = true;
+			Minecraft mc = Minecraft.getInstance();
+			if (mc.player != null) mc.player.sendSystemMessage(Component.translatable("slashclient-hud.skyCase.unassignedChat").withStyle(net.minecraft.ChatFormatting.YELLOW));
+		}
 		if (first && SlashHud.config.skyCaseNewDrop) {
 			Minecraft mc = Minecraft.getInstance();
 			// the reward as its case showed it: a head with its own skin, not the plain item (Steve's head)
@@ -414,6 +420,9 @@ public final class SkyCase {
 		}
 		return type;
 	}
+
+	/** Whether the chat has said this game why a win went to "Nieprzypisane" (once, not at every such win). */
+	private static boolean unassignedSaid;
 
 	/** The case looked at last (a preview, or a win only that case gives), and when. */
 	private static String contextType;

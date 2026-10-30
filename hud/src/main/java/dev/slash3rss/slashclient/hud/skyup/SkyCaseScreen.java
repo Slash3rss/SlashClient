@@ -108,6 +108,8 @@ public class SkyCaseScreen extends Screen {
 		Component summary = Ui.text(SkyCase.title(type) + " · ").append(Ui.tr("slashclient-hud.skyCase.openedCount", now.opened, life.opened));
 		Ui.draw(g, Ui.fit(summary, pw - 24), x, y, Ui.MUTED);
 		y += 14;
+		// why wins land here: a case the mod has not seen the preview of (a new one)
+		if (SkyCase.UNASSIGNED.equals(type)) y = Ui.wrapped(g, Ui.tr("slashclient-hud.skyCase.unassignedHint"), x, y, pw - 24, Ui.TEXT_2) + 4;
 
 		// the cases
 		int top = y, bottom = py + ph - 10;

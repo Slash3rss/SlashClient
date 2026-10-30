@@ -1395,6 +1395,8 @@
 	"slashclient-hud.skyCase.items": "%s szt.",
 	"slashclient-hud.skyCase.removed": "(usunięta z puli)",
 	"slashclient-hud.skyCase.empty": "Brak nagród – otwórz podgląd tej skrzyni na serwerze.",
+	"slashclient-hud.skyCase.unassignedHint": "Tu trafiają dropy, których nie da się przypisać do żadnej skrzyni. Gdy na serwerze jest nowa skrzynia, otwórz raz jej podgląd – od tej pory jej dropy będą się liczyć osobno.",
+	"slashclient-hud.skyCase.unassignedChat": "SlashClient: tego dropu nie da się przypisać do żadnej skrzyni (trafił do „Nieprzypisane”). Nowa skrzynia? Otwórz raz jej podgląd na serwerze, a jej kolejne dropy będą się liczyć osobno.",
 	"slashclient-hud.suggestions.title": "Propozycje znajomych",
 	"slashclient-hud.suggestions.hint": "Gracze SlashClient spotkani ostatnio na serwerach",
 	"slashclient-hud.suggestions.played": "Razem na %s",
