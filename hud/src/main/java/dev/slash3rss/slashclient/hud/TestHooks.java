@@ -1618,6 +1618,22 @@ public final class TestHooks {
 		return net.minecraft.client.Minecraft.getInstance().reloadResourcePacks();
 	}
 
+	/** One of the game's windows as a block opens it (only its picture: nothing is on the server): chest, furnace, crafting, anvil, enchanting, brewing. */
+	public static void openWindow(String kind) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		var inv = mc.player.getInventory();
+		var title = net.minecraft.network.chat.Component.literal(kind);
+		net.minecraft.client.gui.screens.Screen screen = switch (kind) {
+			case "furnace" -> new net.minecraft.client.gui.screens.inventory.FurnaceScreen(new net.minecraft.world.inventory.FurnaceMenu(0, inv), inv, title);
+			case "crafting" -> new net.minecraft.client.gui.screens.inventory.CraftingScreen(new net.minecraft.world.inventory.CraftingMenu(0, inv), inv, title);
+			case "anvil" -> new net.minecraft.client.gui.screens.inventory.AnvilScreen(new net.minecraft.world.inventory.AnvilMenu(0, inv), inv, title);
+			case "enchanting" -> new net.minecraft.client.gui.screens.inventory.EnchantmentScreen(new net.minecraft.world.inventory.EnchantmentMenu(0, inv), inv, title);
+			case "brewing" -> new net.minecraft.client.gui.screens.inventory.BrewingStandScreen(new net.minecraft.world.inventory.BrewingStandMenu(0, inv), inv, title);
+			default -> new net.minecraft.client.gui.screens.inventory.ContainerScreen(net.minecraft.world.inventory.ChestMenu.threeRows(0, inv), inv, title);
+		};
+		mc.setScreenAndShow(screen);
+	}
+
 	/** The player's inventory, as E opens it. */
 	public static void openInventory() {
 		var mc = net.minecraft.client.Minecraft.getInstance();

@@ -64,6 +64,11 @@ public class GameAids implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.openInventory());
 			context.waitTicks(3);
 			context.takeScreenshot("aids-dark-inventory");
+			for (String kind : new String[] { "chest", "furnace", "crafting", "anvil", "enchanting", "brewing" }) {
+				context.runOnClient(mc -> TestHooks.openWindow(kind));
+				context.waitTicks(3);
+				context.takeScreenshot("aids-dark-" + kind);
+			}
 			context.setScreen(() -> null);
 			var darker = context.computeOnClient(mc -> TestHooks.darkGui(true, "darker"));
 			context.waitFor(mc -> darker.isDone(), 1200);
