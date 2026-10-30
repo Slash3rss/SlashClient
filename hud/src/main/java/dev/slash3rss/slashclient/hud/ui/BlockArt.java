@@ -17,6 +17,14 @@ final class BlockArt {
 	/** Width of the windows in their textures (the rest of a texture is other pictures, in older versions). */
 	static final int WIDE = 176;
 
+	/** A picture's pixel that leaves the window as it is there (a villager's inventory beside the trades). */
+	private static final int KEEP = 0x01000000;
+
+	/** The windows with a picture (their textures' names), to read them again when the look is switched. */
+	static final String[] WINDOWS = { "crafting_table", "inventory", "crafter", "generic_54", "shulker_box", "furnace", "blast_furnace", "smoker",
+		"enchanting_table", "anvil", "hopper", "dispenser", "brewing_stand", "smithing", "stonecutter", "grindstone", "loom", "cartography_table",
+		"beacon", "horse", "nautilus", "villager" };
+
 	/** The line round the dark part where the block above it is cut to its shape. */
 	private static final int EDGE = 0xFF141416;
 
@@ -55,6 +63,10 @@ final class BlockArt {
 			case "stonecutter", "grindstone" -> stone();
 			case "loom" -> loom();
 			case "cartography_table" -> cartography();
+			case "beacon" -> beacon();
+			case "horse" -> mount(0x7A4A2A, 0x6C4022, 0xC9935A);
+			case "nautilus" -> nautilus();
+			case "villager" -> villager();
 			case "recipe_book" -> recipeBook();
 			default -> null;
 		};
@@ -126,6 +138,11 @@ final class BlockArt {
 		java.util.Map.entry("cyan", 0x16848C), java.util.Map.entry("purple", 0x7A2FA8), java.util.Map.entry("blue", 0x373C9B),
 		java.util.Map.entry("brown", 0x704729), java.util.Map.entry("green", 0x55701E), java.util.Map.entry("red", 0x9E2A24),
 		java.util.Map.entry("black", 0x1F1F24));
+
+	/** The dyes a shulker box can have (its window's texture named after it). */
+	static java.util.Set<String> shulkerColours() {
+		return SHULKERS.keySet();
+	}
 
 	/** A shulker box in its colour: the shell, the lid's lighter band and the seam under it. */
 	private static Art shulker(int c) {
@@ -317,6 +334,60 @@ final class BlockArt {
 		return new Art(p.im, 168, -1, true);
 	}
 
+	/** The beacon: its cyan glass over an obsidian base, diamonds in the top corners. */
+	private static Art beacon() {
+		Pic p = new Pic(230, 136, 0x3E7C86);
+		p.speckle(0x4A8C96, 8, 19);
+		p.speckle(0x356E78, 6, 20);
+		p.rect(0, 118, 230, 18, 0x1E1528);
+		p.speckle(0x2C2140, 10, 21, 0, 118, 230, 18);
+		p.hline(0, 229, 117, 0x7FD6DE);
+		for (int x : new int[] { 4, 220 }) p.box(x, 3, 6, 6, 0x45D8C8, 0x0E4640, 0xB4FFF2, 0x1E9488);
+		p.hline(0, 229, 135, 0x120C18);
+		return new Art(p.im, 136, -1);
+	}
+
+	/** A horse's (a donkey's, a llama's, a camel's) window: saddle leather stitched round its edge. */
+	private static Art mount(int leather, int grain, int stitch) {
+		Pic p = new Pic(83, leather);
+		p.grain(grain, 22);
+		for (int x = 5; x < WIDE - 5; x += 4) {
+			p.hline(x, x + 1, 3, stitch);
+			p.hline(x, x + 1, 79, stitch);
+		}
+		for (int y = 5; y < 78; y += 4) {
+			p.vline(3, y, y + 1, stitch);
+			p.vline(WIDE - 4, y, y + 1, stitch);
+		}
+		p.hline(0, WIDE - 1, 82, shade(leather, 0.5f));
+		return new Art(p.im, 83, -1);
+	}
+
+	/** The nautilus's window: prismarine bricks from the sea. */
+	private static Art nautilus() {
+		Pic p = new Pic(83, 0x5BA59A);
+		p.speckle(0x4E8F86, 10, 23);
+		p.speckle(0x6FB8AB, 6, 24);
+		for (int y = 15; y < 83; y += 16) p.hline(0, WIDE - 1, y, 0x3F7A72);
+		for (int row = 0; row * 16 < 83; row++) for (int x = row % 2 == 0 ? 24 : 8; x < WIDE; x += 32) p.vline(x, row * 16, row * 16 + 14, 0x3F7A72);
+		p.hline(0, WIDE - 1, 82, 0x2E5C56);
+		return new Art(p.im, 83, -1);
+	}
+
+	/**
+	 * A villager's trades: a spruce trading table with emeralds in its corners round the trades and what is
+	 * traded; the inventory beside it as it is.
+	 */
+	private static Art villager() {
+		Pic p = new Pic(276, 166, 0x6B4A2B);
+		p.grain(0x5E4024, 25);
+		for (int y = 23; y < 166; y += 24) p.hline(0, 275, y, 0x4E3520);
+		p.keep(107, 83, 169, 83);
+		p.hline(107, 275, 82, 0x3A2616);
+		for (int[] c : new int[][] { { 4, 4 }, { 266, 4 } }) p.box(c[0], c[1], 6, 6, 0x2FBF5A, 0x0C4A1E, 0x9CF5B4, 0x1C8A3C);
+		return new Art(p.im, 166, -1);
+	}
+
 	// ---- putting a picture on a window ----
 
 	/**
@@ -326,16 +397,16 @@ final class BlockArt {
 	 */
 	static void paint(BufferedImage image, Art art, boolean dark, boolean darker) {
 		int w = image.getWidth(), h = image.getHeight();
-		// a texture 256 wide holds a window 176 wide (a pack in a higher resolution: in proportion)
-		float scale = w / 256f;
+		// a texture 256 tall holds the window (a villager's is twice as wide; a pack in a higher resolution: in proportion)
+		float scale = h / 256f;
 		int wide = Math.min(w, Math.round(art.image().getWidth() * scale)), top = Math.min(h, Math.round(art.top() * scale));
 		int band = art.band() < 0 ? h : Math.round(art.band() * scale), end = Math.min(h, Math.round(art.image().getHeight() * scale));
 		int[] before = image.getRGB(0, 0, w, h, null, 0, w), after = new int[before.length];
 		for (int y = 0; y < h; y++) {
 			for (int x = 0; x < w; x++) {
 				int v = before[y * w + x], ax = Math.min(art.image().getWidth() - 1, (int) (x / scale)), ay = (int) (y / scale);
-				boolean drawn = x < wide && (y < top || y >= band && y < end);
-				after[y * w + x] = drawn ? map(v, art.image().getRGB(ax, Math.min(art.image().getHeight() - 1, ay)), art.pages()) : dark ? dark(v, darker) : v;
+				int m = x < wide && (y < top || y >= band && y < end) ? art.image().getRGB(ax, Math.min(art.image().getHeight() - 1, ay)) : KEEP;
+				after[y * w + x] = m != KEEP ? map(v, m, art.pages()) : dark ? dark(v, darker) : v;
 			}
 		}
 		// where the picture cut the window to the block's shape, the dark part under it gets an edge
@@ -440,6 +511,11 @@ final class BlockArt {
 
 		void rect(int x, int y, int w, int hh, int c) {
 			for (int j = y; j < y + hh; j++) for (int i = x; i < x + w; i++) dot(i, j, c);
+		}
+
+		/** A part left as the window has it. */
+		void keep(int x, int y, int w, int hh) {
+			for (int j = y; j < y + hh; j++) for (int i = x; i < x + w; i++) if (i >= 0 && j >= 0 && i < wide && j < h) im.setRGB(i, j, KEEP);
 		}
 
 		void hline(int x0, int x1, int y, int c) {

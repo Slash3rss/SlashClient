@@ -19,6 +19,7 @@
 		"DarkLabelsMixin",
 		"DarkTexturesMixin",
 		"ShulkerColorMixin",
+		"DarkAdvancementsMixin",
 		"ReceivingLevelScreenAccessor",
 		"PackDownloadMixin",
 		"BenchCameraMixin",

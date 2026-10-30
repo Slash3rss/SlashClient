@@ -22,6 +22,9 @@ public final class BlockWindows {
 		//#if MC >= 1.21
 		if (screen instanceof net.minecraft.client.gui.screens.inventory.CrafterScreen) return true;
 		//#endif
+		//#if MC >= 1.21.11
+		if (screen instanceof net.minecraft.client.gui.screens.inventory.NautilusInventoryScreen) return true;
+		//#endif
 		return screen instanceof net.minecraft.client.gui.screens.inventory.CraftingScreen || screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen
 			|| screen instanceof net.minecraft.client.gui.screens.inventory.ContainerScreen || screen instanceof net.minecraft.client.gui.screens.inventory.ShulkerBoxScreen
 			|| screen instanceof net.minecraft.client.gui.screens.inventory.AbstractFurnaceScreen<?> || screen instanceof net.minecraft.client.gui.screens.inventory.EnchantmentScreen
@@ -29,7 +32,8 @@ public final class BlockWindows {
 			|| screen instanceof net.minecraft.client.gui.screens.inventory.DispenserScreen || screen instanceof net.minecraft.client.gui.screens.inventory.BrewingStandScreen
 			|| screen instanceof net.minecraft.client.gui.screens.inventory.SmithingScreen || screen instanceof net.minecraft.client.gui.screens.inventory.StonecutterScreen
 			|| screen instanceof net.minecraft.client.gui.screens.inventory.GrindstoneScreen || screen instanceof net.minecraft.client.gui.screens.inventory.LoomScreen
-			|| screen instanceof net.minecraft.client.gui.screens.inventory.CartographyTableScreen;
+			|| screen instanceof net.minecraft.client.gui.screens.inventory.CartographyTableScreen || screen instanceof net.minecraft.client.gui.screens.inventory.BeaconScreen
+			|| screen instanceof net.minecraft.client.gui.screens.inventory.HorseInventoryScreen || screen instanceof net.minecraft.client.gui.screens.inventory.MerchantScreen;
 	}
 
 	/**
@@ -50,6 +54,25 @@ public final class BlockWindows {
 		String p = id.getPath();
 		if (!"minecraft".equals(id.getNamespace()) || !p.startsWith("textures/gui/container/shulker_box_") || !p.endsWith(".png")) return null;
 		return Identifier.tryParse("minecraft:textures/gui/container/shulker_box.png");
+	}
+
+	/**
+	 * After the switch: the windows' textures read again as they are next shown (with their pictures or
+	 * without), at once and without reloading the game's resources.
+	 */
+	public static void refresh() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		mc.execute(() -> {
+			var textures = mc.getTextureManager();
+			java.util.List<String> names = new java.util.ArrayList<>(java.util.List.of(BlockArt.WINDOWS));
+			for (String colour : BlockArt.shulkerColours()) names.add("shulker_box_" + colour);
+			for (String name : names) {
+				Identifier id = Identifier.tryParse("minecraft:textures/gui/container/" + name + ".png");
+				if (id != null) textures.release(id);
+			}
+			Identifier book = Identifier.tryParse("minecraft:textures/gui/recipe_book.png");
+			if (book != null) textures.release(book);
+		});
 	}
 
 	/** The picture for a window's background (or the recipe book's), or null when it has none (villagers, beacons, creative…). */

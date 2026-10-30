@@ -39,7 +39,10 @@ public final class DarkGui {
 		if (!"minecraft".equals(id.getNamespace())) return false;
 		String p = id.getPath();
 		if (!p.endsWith(".png")) return false;
-		return p.startsWith("textures/gui/container/") || p.startsWith("textures/gui/sprites/container/")
+		// the advancements' window, tabs and frames too (not the pictures behind the advancements)
+		if (p.startsWith("textures/gui/advancements/") && !p.contains("/backgrounds/")) return true;
+		return p.startsWith("textures/gui/container/") || p.startsWith("textures/gui/sprites/container/") || p.startsWith("textures/gui/sprites/advancements/")
+			|| p.startsWith("textures/gui/sprites/friends/")
 			|| p.startsWith("textures/gui/sprites/widget/") || p.startsWith("textures/gui/sprites/recipe_book/")
 			|| p.equals("textures/gui/recipe_book.png") || p.equals("textures/gui/widgets.png");
 	}

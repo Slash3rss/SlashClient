@@ -1633,15 +1633,29 @@ public final class TestHooks {
 			case "hopper" -> new net.minecraft.client.gui.screens.inventory.HopperScreen(new net.minecraft.world.inventory.HopperMenu(0, inv), inv, title);
 			case "shulker" -> new net.minecraft.client.gui.screens.inventory.ShulkerBoxScreen(new net.minecraft.world.inventory.ShulkerBoxMenu(0, inv), inv, title);
 			case "smithing" -> new net.minecraft.client.gui.screens.inventory.SmithingScreen(new net.minecraft.world.inventory.SmithingMenu(0, inv), inv, title);
+			case "beacon" -> new net.minecraft.client.gui.screens.inventory.BeaconScreen(new net.minecraft.world.inventory.BeaconMenu(0, inv), inv, title);
+			case "villager" -> new net.minecraft.client.gui.screens.inventory.MerchantScreen(new net.minecraft.world.inventory.MerchantMenu(0, inv), inv, title);
+			case "advancements" -> new net.minecraft.client.gui.screens.advancements.AdvancementsScreen(mc.player.connection.getAdvancements());
 			default -> new net.minecraft.client.gui.screens.inventory.ContainerScreen(net.minecraft.world.inventory.ChestMenu.threeRows(0, inv), inv, title);
 		};
 		mc.setScreenAndShow(screen);
 	}
 
-	/** "Okna w wyglądzie bloków" switched, the textures read again; the future is done when they are. */
+	/** "Okna w wyglądzie bloków" switched as in the settings: the windows' textures read again as they are next shown, no reload. */
 	public static java.util.concurrent.CompletableFuture<Void> blockWindows(boolean on) {
 		SlashHud.config.blockWindows = on;
-		return net.minecraft.client.Minecraft.getInstance().reloadResourcePacks();
+		dev.slash3rss.slashclient.hud.ui.BlockWindows.refresh();
+		return java.util.concurrent.CompletableFuture.completedFuture(null);
+	}
+
+	/** Whether the game is reloading its resources (the switch above must not). */
+	public static boolean reloading() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		//#if MC >= 26.2
+		return mc.gui.overlay() != null;
+		//#else
+		//$ return mc.getOverlay() != null;
+		//#endif
 	}
 
 	/** The player's inventory, as E opens it. */

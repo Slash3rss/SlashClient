@@ -64,7 +64,7 @@ public class GameAids implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.openInventory());
 			context.waitTicks(3);
 			context.takeScreenshot("aids-dark-inventory");
-			for (String kind : new String[] { "chest", "furnace", "crafting", "anvil", "enchanting", "brewing" }) {
+			for (String kind : new String[] { "chest", "furnace", "crafting", "anvil", "enchanting", "brewing", "advancements" }) {
 				context.runOnClient(mc -> TestHooks.openWindow(kind));
 				context.waitTicks(3);
 				context.takeScreenshot("aids-dark-" + kind);
@@ -81,13 +81,17 @@ public class GameAids implements FabricClientGameTest {
 			context.waitFor(mc -> light.isDone(), 1200);
 			context.waitTicks(20);
 			// "Okna w wyglądzie bloków": the crafting table's top over its grid, the furnace's front, the enchanting table's cloth…
+			// (past the light windows' reload fading out first)
+			context.waitTicks(60);
 			var blocks = context.computeOnClient(mc -> TestHooks.blockWindows(true));
 			context.waitFor(mc -> blocks.isDone(), 1200);
-			context.waitTicks(80);
+			// switched at once: the game's resources are not reloaded
+			context.waitTicks(2);
+			if (context.computeOnClient(mc -> TestHooks.reloading())) throw new AssertionError("The block windows' switch reloaded the resources");
 			context.runOnClient(mc -> TestHooks.openInventory());
 			context.waitTicks(3);
 			context.takeScreenshot("aids-block-inventory");
-			for (String kind : new String[] { "chest", "furnace", "crafting", "anvil", "enchanting", "brewing", "dispenser", "hopper", "shulker", "smithing" }) {
+			for (String kind : new String[] { "chest", "furnace", "crafting", "anvil", "enchanting", "brewing", "dispenser", "hopper", "shulker", "smithing", "beacon", "villager" }) {
 				context.runOnClient(mc -> TestHooks.openWindow(kind));
 				context.waitTicks(3);
 				context.takeScreenshot("aids-block-" + kind);

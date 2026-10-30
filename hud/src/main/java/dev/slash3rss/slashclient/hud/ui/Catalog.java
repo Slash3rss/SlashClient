@@ -515,7 +515,8 @@ public final class Catalog {
 		out.add(new Entry("blockWindows", "slashclient-hud.set.blockWindows", "extras", "m-block", () -> cfg.blockWindows, v -> {
 			if (cfg.blockWindows == v) return;
 			cfg.blockWindows = v;
-			DarkGui.reload();
+			// the windows' own textures only: at once, without reloading the game's resources
+			dev.slash3rss.slashclient.hud.ui.BlockWindows.refresh();
 		}, List.of(), null));
 		out.add(new Entry("badges", "slashclient-hud.set.badges", "extras", "m-badges", () -> cfg.badges, v -> cfg.badges = v, List.of(
 			new Toggle("slashclient-hud.set.badges.clans", () -> cfg.clanTags, v -> cfg.clanTags = v),
