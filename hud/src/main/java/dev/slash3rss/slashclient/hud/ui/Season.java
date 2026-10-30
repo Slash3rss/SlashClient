@@ -7,8 +7,8 @@ import java.time.LocalDate;
 
 /**
  * The seasonal look, as in the launcher: around Halloween (25 October – 2 November) SlashClient's
- * menus and loading screen turn orange and violet, with bats flying over them (and jack o'lanterns by
- * the name on the loading screen). "Wygląd sezonowy" in the HUD window switches it off.
+ * menus and loading screen turn orange and violet, with bats flying over them and the logo with a
+ * pumpkin. "Wygląd sezonowy" in the HUD window switches it off.
  */
 public final class Season {
 	private Season() {}
@@ -89,12 +89,5 @@ public final class Season {
 				g.fill(x + c * scale, y + r * scale, x + (c + 1) * scale, y + (r + 1) * scale, 0xE0140A1E);
 			}
 		}
-	}
-
-	/** Two jack o'lanterns either side of something `w` wide at (x, y), in the season. */
-	public static void lanterns(GuiGraphicsExtractor g, int x, int y, int w) {
-		if (!halloween()) return;
-		Ui.icon(g, net.minecraft.world.item.Items.JACK_O_LANTERN, "", x - 22, y);
-		Ui.icon(g, net.minecraft.world.item.Items.JACK_O_LANTERN, "", x + w + 6, y);
 	}
 }

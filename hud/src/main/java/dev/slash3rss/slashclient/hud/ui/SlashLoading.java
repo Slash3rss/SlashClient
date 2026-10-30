@@ -391,7 +391,6 @@ public final class SlashLoading {
 			y += 40;
 		}
 		Ui.brand(g, (w - Ui.brandWidth(1.3f)) / 2, y, 1.3f);
-		Season.lanterns(g, (w - Ui.brandWidth(1.3f)) / 2, y - 3, Ui.brandWidth(1.3f));
 		y += 11 + 14;
 
 		// the card

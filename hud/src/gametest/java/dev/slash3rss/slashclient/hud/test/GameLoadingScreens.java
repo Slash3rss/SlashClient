@@ -90,7 +90,7 @@ public class GameLoadingScreens implements FabricClientGameTest {
 		context.setScreen(GameLoadingScreens::levelLoading);
 		context.waitTicks(4);
 		context.takeScreenshot("loading-world");
-		// the Halloween season: orange, bats and jack o'lanterns on the loading screen and in the main menu
+		// the Halloween season: orange, bats and the pumpkin logo on the loading screen and in the main menu
 		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.ui.Season.forTest = true);
 		context.waitTicks(2);
 		context.takeScreenshot("loading-halloween");
