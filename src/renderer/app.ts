@@ -1590,6 +1590,14 @@ function fillPerfPreset(profile: Profile) {
 function renderPerfParts() {
   const form = $<HTMLFormElement>('#profile-form');
   const preset = (form.elements.namedItem('perfPreset') as HTMLSelectElement).value;
+  // what each preset does, in a sentence under the choice
+  const about: Record<string, string> = {
+    light: t('Zasięg widzenia 8, szybka grafika, mniej cząsteczek, bez cieni postaci. Limit FPS i pamięć zostają Twoje.'),
+    lighter: t('Zasięg widzenia 6, szybka grafika bez chmur i cieni, mało cząsteczek, limit 60 FPS, 2–3 GB pamięci dla gry.'),
+    pi: t('Zasięg widzenia 4, wszystko na minimum, limit 30 FPS z synchronizacją pionową, do 2 GB pamięci, grafika przez OpenGL.'),
+  };
+  $('#perf-about').textContent = about[preset] ?? '';
+  $('#perf-about').classList.toggle('hidden', !about[preset]);
   $('#perf-parts').classList.toggle('hidden', preset === 'off');
   form.querySelector<HTMLElement>('.perf-gl')!.classList.toggle('hidden', preset !== 'pi');
 }
