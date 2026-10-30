@@ -17,7 +17,9 @@ import java.util.List;
 abstract class ServerListMixin {
 	@Shadow @Final private List<ServerData> serverList;
 
-	@Inject(method = "load", at = @At("TAIL"))
+	// at every return: with no servers.dat yet (a new profile, a crashed game) the game stops reading early,
+	// and the pinned partners were missing from the list until it was saved once
+	@Inject(method = "load", at = @At("RETURN"))
 	private void slashclient$pin(CallbackInfo ci) {
 		PinnedServer.ensure(serverList);
 		dev.slash3rss.slashclient.hud.servers.ServerPacks.listed(serverList);

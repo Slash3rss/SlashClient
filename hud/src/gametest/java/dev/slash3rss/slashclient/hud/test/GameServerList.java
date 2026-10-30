@@ -107,6 +107,19 @@ public class GameServerList implements FabricClientGameTest {
 			SlashHud.config.customServerList = true;
 			SlashServerScreen.sampleStatusForTest = true;
 			PinnedServer.sampleForTest(List.of(new PinnedServer.Pin("skyup.pl", "SkyUp.pl", false)));
+			// no servers.dat yet (a new profile): the pinned partner is in the list all the same
+			try {
+				java.nio.file.Path file = mc.gameDirectory.toPath().resolve("servers.dat"), kept = file.resolveSibling("servers.dat.test");
+				boolean had = java.nio.file.Files.exists(file);
+				if (had) java.nio.file.Files.move(file, kept, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+				ServerList fresh = new ServerList(mc);
+				fresh.load();
+				String first = fresh.size() > 0 ? fresh.get(0).ip : "none";
+				if (had) java.nio.file.Files.move(kept, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+				if (!"skyup.pl".equals(first)) throw new AssertionError("Without servers.dat the pinned partner is missing: " + first);
+			} catch (java.io.IOException e) {
+				throw new RuntimeException(e);
+			}
 			PartnerServers.sampleForTest("skyup.pl", "skyup.eu", "51.38.10.20");
 			// four frames, a second each: two screenshots a second apart show two of them
 			PartnerIcons.sampleForTest("skyup.pl", 4, 1000);
