@@ -79,9 +79,11 @@ export interface LaunchOptions {
   onNotice?: (message: string) => void;
   /** The Java the game starts with, once it is known. */
   onJava?: (choice: JavaChoice) => void;
+  /** Linux: the game started with a lower priority (`nice`, 1–19), so the desktop stays smooth while it loads. */
+  niceness?: number;
 }
 
-export async function launch({ profile, account, onStage, onLog, server, world, extraJvmArgs = [], extraEnv, prepareJava, javaVendor = 'mojang', onNotice, onJava }: LaunchOptions): Promise<ChildProcess> {
+export async function launch({ profile, account, onStage, onLog, server, world, extraJvmArgs = [], extraEnv, prepareJava, javaVendor = 'mojang', onNotice, onJava, niceness }: LaunchOptions): Promise<ChildProcess> {
   const gameVersion = await resolveVersionId(profile.versionId);
   const gameDir = profileGameDir(profile);
   await fs.mkdir(gameDir, { recursive: true });
@@ -176,7 +178,10 @@ export async function launch({ profile, account, onStage, onLog, server, world, 
   // on Windows a child of the launcher is closed together with it (Node puts it in a job that ends
   // with the launcher): the game is started on its own, so quitting the launcher (to update it, say)
   // never takes a running game down with it; without a console window of its own
-  const child = spawn(java, args, { cwd: gameDir, stdio: ['ignore', 'pipe', 'pipe'], env, detached: process.platform === 'win32', windowsHide: true });
+  // a lower priority through `nice`, so every thread of the game has it from its very start (the
+  // compiler's threads too, busy for the first minutes)
+  const [command, commandArgs] = niceness && process.platform === 'linux' ? ['nice', ['-n', String(niceness), java, ...args]] : [java, args];
+  const child = spawn(command, commandArgs, { cwd: gameDir, stdio: ['ignore', 'pipe', 'pipe'], env, detached: process.platform === 'win32', windowsHide: true });
   child.stdout?.setEncoding('utf8').on('data', createLogParser(onLog));
   child.stderr?.setEncoding('utf8').on('data', createLogParser(onLog));
   return child;

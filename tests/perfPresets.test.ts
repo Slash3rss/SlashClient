@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import { applyPerfPreset, withOptions } from '../src/main/perfPreset';
-import { partOn, presetEnv, presetMemoryCap, presetOptions, suggestedPreset } from '../src/shared/perfPresets';
+import { partOn, presetEnv, presetMemoryCap, presetNiceness, presetOptions, suggestedPreset } from '../src/shared/perfPresets';
 
 describe('presets for slower computers', () => {
   it('suggests the Pi\'s on Linux on ARM, a lighter one for little memory or few cores, none for a strong computer', () => {
@@ -27,6 +27,13 @@ describe('presets for slower computers', () => {
     // on a Wayland desktop the game's window opens on Wayland itself (through XWayland the Pi has no OpenGL)
     assert.equal(presetEnv('pi', [], 'linux', true).SDL_VIDEO_DRIVER, 'wayland');
     assert.equal(presetEnv('pi', [], 'linux', false).SDL_VIDEO_DRIVER, undefined);
+  });
+
+  it('starts the game with a lower priority with the Pi preset on Linux only', () => {
+    assert.equal(presetNiceness('pi', 'linux'), 10);
+    assert.equal(presetNiceness('pi', 'win32'), undefined);
+    assert.equal(presetNiceness('lighter', 'linux'), undefined);
+    assert.equal(presetNiceness(undefined, 'linux'), undefined);
   });
 
   it('gives the game less memory on a small computer, as the profile says otherwise', () => {

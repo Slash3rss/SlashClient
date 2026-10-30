@@ -70,6 +70,15 @@ export function presetEnv(preset: PerfPreset, off: string[] | undefined, platfor
   return { MESA_GL_VERSION_OVERRIDE: '3.3', MESA_GLSL_VERSION_OVERRIDE: '330', ...(wayland ? { SDL_VIDEO_DRIVER: 'wayland' } : {}) };
 }
 
+/**
+ * The game's priority on Linux with the Raspberry Pi's preset (`nice`): for its first minutes Java compiles
+ * the game on every core, and the desktop (and a remote desktop over it) would stutter; the game gets what
+ * is left. Undefined: as usual.
+ */
+export function presetNiceness(preset: PerfPreset | undefined, platform: string): number | undefined {
+  return preset === 'pi' && platform === 'linux' ? 10 : undefined;
+}
+
 /** The preset suggested for this computer: the Pi's on Linux on ARM, a lighter one for little memory or few cores, else none. */
 export function suggestedPreset(systemMb: number, cores: number, platform: string, arch: string): PerfPreset {
   if (platform === 'linux' && (arch === 'arm64' || arch === 'arm')) return 'pi';

@@ -103,7 +103,7 @@ import { appendSummary, collectSummary, MIN_SESSION_MS, readSummaries, removeSum
 import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type ForeignInstance } from './importers';
 import { perfModsFor } from './perfmods';
 import { applyPerfPreset } from './perfPreset';
-import { partOn, presetEnv, presetMemoryCap } from '../shared/perfPresets';
+import { partOn, presetEnv, presetMemoryCap, presetNiceness } from '../shared/perfPresets';
 import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePreset, type SkinPreset } from './skinLibrary';
 import fsp from 'node:fs/promises';
 import { backupWorld, deleteFile, listBackups, listClips, listScreenshots, listWorlds, restoreBackup } from './worlds';
@@ -1903,6 +1903,7 @@ async function startGame(profileId: string, accountId: string, server: string | 
     extraJvmArgs: hud.jvmArgs,
     ...gpu,
     ...(Object.keys(perfEnv).length ? { extraEnv: { ...gpu.extraEnv, ...perfEnv } } : {}),
+    niceness: presetNiceness(profile.perfPreset, process.platform),
     javaVendor: extras.javaVendor ?? effectiveJavaVendor(profile.javaVendor, store.settings.javaVendor),
     onNotice: (message) => send('launch:notice', { profileId: profile.id, message }),
     onJava: extras.onJava,
