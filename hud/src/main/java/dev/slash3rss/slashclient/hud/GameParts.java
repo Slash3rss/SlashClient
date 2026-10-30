@@ -358,6 +358,9 @@ public final class GameParts {
 	 * the right edge (moved by the old offset slider, when it was used), the others where the game
 	 * draws them.
 	 */
+	/** The game's own parts placed like modules (left on in the saving mode for slower computers, HudConfig.defaults). */
+	static final java.util.Set<String> IDS = java.util.Set.of("scoreboard", "bossbar", "tablist", "titles", "toasts", "actionbar", "chat");
+
 	static void defaults(HudConfig cfg) {
 		cfg.modules.putIfAbsent("scoreboard", new HudConfig.Placement(true, 1f, 0.5f, 0, cfg.scoreboardOffset));
 		cfg.modules.putIfAbsent("bossbar", new HudConfig.Placement(true, 0.5f, 0f, 0, cfg.bossBarOffset));

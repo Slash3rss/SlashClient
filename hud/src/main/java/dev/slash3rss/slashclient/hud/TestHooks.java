@@ -1676,6 +1676,14 @@ public final class TestHooks {
 		return dev.slash3rss.slashclient.hud.ui.Season.current() != null;
 	}
 
+	/** The modules a new config starts with switched on (sorted, ","), as the saving mode decides now. */
+	public static String defaultModulesOn() {
+		java.util.List<String> on = new java.util.ArrayList<>();
+		for (var e : HudConfig.defaults().modules.entrySet()) if (e.getValue().enabled) on.add(e.getKey());
+		java.util.Collections.sort(on);
+		return String.join(",", on);
+	}
+
 	/** Whether the game is reloading its resources (the switch above must not). */
 	public static boolean reloading() {
 		var mc = net.minecraft.client.Minecraft.getInstance();

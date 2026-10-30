@@ -729,6 +729,9 @@ public final class HudConfig {
 		c.chatTabs.add(new ChatTab("@", false, "{nick}"));
 		// private messages look different on every server; these catch the common ones
 		c.chatTabs.add(new ChatTab("PM", true, "(?i)(whispers to you|szepcze|\\[msg\\]|-> ?(me|ja)\\b|\\bfrom \\w+:)"));
+		// a slower computer (the launcher's saving mode): only the game's own parts on to begin with, SlashClient's
+		// modules off until switched on
+		if (SlashHud.saver()) for (var e : c.modules.entrySet()) if (!GameParts.IDS.contains(e.getKey())) e.getValue().enabled = false;
 		return c;
 	}
 

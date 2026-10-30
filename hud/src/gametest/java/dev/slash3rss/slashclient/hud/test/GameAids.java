@@ -91,6 +91,9 @@ public class GameAids implements FabricClientGameTest {
 			// the launcher's saving mode for slower computers: other players' cosmetics and the season gone, ours still on
 			boolean seasonSaving = context.computeOnClient(mc -> TestHooks.lowSpec("pi"));
 			String saving = context.computeOnClient(mc -> TestHooks.othersCosmetics(true));
+			// and a new config with only the game's own parts on
+			String savingModules = context.computeOnClient(mc -> TestHooks.defaultModulesOn());
+			if (!savingModules.equals("actionbar,bossbar,chat,scoreboard,tablist,titles,toasts")) throw new AssertionError("The saving mode's modules: " + savingModules);
 			context.runOnClient(mc -> TestHooks.lowSpec(null));
 			if (seasonSaving || !saving.equals("null | aurora")) throw new AssertionError("The saving mode: season " + seasonSaving + ", cosmetics " + saving);
 			// switched at once: the game's resources are not reloaded
