@@ -409,7 +409,8 @@ public final class SkyCase {
 		save();
 		if (first && SlashHud.config.skyCaseNewDrop) {
 			Minecraft mc = Minecraft.getInstance();
-			Compat.toasts(mc).addToast(new NewDropToast(type, reward, item(itemOf(life, reward))));
+			// the reward as its case showed it: a head with its own skin, not the plain item (Steve's head)
+			Compat.toasts(mc).addToast(new NewDropToast(type, reward, icon(life, new Drop(type, reward, System.currentTimeMillis()))));
 		}
 		return type;
 	}
@@ -920,14 +921,14 @@ public final class SkyCase {
 		private static final long SHOW_MS = 5000;
 		private static final int W = 160, H = 32;
 		private final String type, reward;
-		private final Item item;
+		private final ItemStack icon;
 		private long first = -1, age;
 		private Visibility wanted = Visibility.SHOW;
 
-		NewDropToast(String type, String reward, Item item) {
+		NewDropToast(String type, String reward, ItemStack icon) {
 			this.type = type;
 			this.reward = reward;
-			this.item = item;
+			this.icon = icon;
 		}
 
 		@Override
@@ -956,7 +957,7 @@ public final class SkyCase {
 		public void extractRenderState(GuiGraphicsExtractor g, net.minecraft.client.gui.Font font, long time) {
 			Ui.round(g, 0, 0, W, H, 6, Ui.PANEL);
 			Ui.roundOutline(g, 0, 0, W, H, 6, 0x60FFAA00);
-			if (item != null) Ui.icon(g, item, "spark", 8, 8);
+			if (icon != null && !icon.isEmpty()) g.item(icon, 8, 8);
 			else Ui.icon(g, "m-skycase", 10, 10, 12, 0xFFFFAA00);
 			int textW = W - 32 - 7;
 			Ui.draw(g, Ui.fit(Ui.trBold("slashclient-hud.skyCase.newDrop"), textW), 32, 7, 0xFFFFAA00);

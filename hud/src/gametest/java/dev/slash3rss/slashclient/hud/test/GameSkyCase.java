@@ -194,6 +194,8 @@ public class GameSkyCase implements FabricClientGameTest {
 			context.runOnClient(mc -> SkyCaseTestHooks.newDropToast(true));
 			context.runOnClient(mc -> SkyCaseTestHooks.win("Kask Górnika"));
 			context.runOnClient(mc -> SkyCaseTestHooks.win("Sztabka miedzi"));
+			// a head won: its toast shows the key's own head, not Steve's
+			context.runOnClient(mc -> SkyCaseTestHooks.win("Klucz do Elementium SkyCase"));
 			check(context.computeOnClient(mc -> SkyCaseTestHooks.visible()), "module shown", "");
 			context.waitTicks(10);
 			context.takeScreenshot("skycase-hud");
