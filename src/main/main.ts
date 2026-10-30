@@ -1867,7 +1867,7 @@ async function startGame(profileId: string, accountId: string, server: string | 
   // the preset's memory (less of it leaves more to a small computer) and the Raspberry Pi's graphics driver fix
   const memoryCap = partOn(profile.perfPreset, profile.perfOff, 'memory') ? presetMemoryCap(profile.perfPreset!, systemMemoryMb()) : undefined;
   const gpu = await gpuLaunchOptions(store.settings);
-  const perfEnv = presetEnv(profile.perfPreset ?? 'off', profile.perfOff, process.platform);
+  const perfEnv = presetEnv(profile.perfPreset ?? 'off', profile.perfOff, process.platform, !!process.env.WAYLAND_DISPLAY);
   // and the mod's saving mode (fewer effects and other players' cosmetics)
   if (hud.jvmArgs.length && partOn(profile.perfPreset, profile.perfOff, 'saver')) hud.jvmArgs.push(`-Dslashclient.lowSpec=${profile.perfPreset}`);
   const child = await launch({

@@ -24,6 +24,9 @@ describe('presets for slower computers', () => {
     assert.deepEqual(presetEnv('pi', [], 'linux'), { MESA_GL_VERSION_OVERRIDE: '3.3', MESA_GLSL_VERSION_OVERRIDE: '330' });
     assert.deepEqual(presetEnv('pi', ['gl'], 'linux'), {});
     assert.deepEqual(presetEnv('pi', [], 'win32'), {});
+    // on a Wayland desktop the game's window opens on Wayland itself (through XWayland the Pi has no OpenGL)
+    assert.equal(presetEnv('pi', [], 'linux', true).SDL_VIDEO_DRIVER, 'wayland');
+    assert.equal(presetEnv('pi', [], 'linux', false).SDL_VIDEO_DRIVER, undefined);
   });
 
   it('gives the game less memory on a small computer, as the profile says otherwise', () => {
@@ -59,7 +62,9 @@ describe('presets for slower computers', () => {
     assert.doesNotMatch(text, /maxFps/);
     // the graphics part switched off is the same as no preset for the game's settings
     assert.equal(await applyPerfPreset(dir, 'pi', ['graphics']), false);
-    assert.equal(Object.keys(presetOptions('pi')).includes('enableVsync'), true);
+    assert.equal(presetOptions('pi').enableVsync, 'true');
+    // OpenGL on the Pi: its driver's Vulkan lacks what the game needs
+    assert.equal(presetOptions('pi').preferredGraphicsBackend, '"opengl"');
     await fs.rm(dir, { recursive: true, force: true });
   });
 });

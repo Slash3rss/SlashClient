@@ -227,7 +227,10 @@ public class BenchmarkScreen extends Screen {
 		}
 		labels.add(Ui.tr("gui.done"));
 		icons.add("check");
-		actions.add(this::onClose);
+		// in the test scene's world (opened for the benchmark) "Done" leaves it for the menu; in the player's own world the game goes on
+		actions.add(minecraft.level != null && BenchScene.isSceneWorld(minecraft)
+			? () -> dev.slash3rss.slashclient.hud.Compat.leaveWorld(minecraft, Component.translatable("menu.savingLevel"))
+			: this::onClose);
 		int gap = 6, total = -gap;
 		int[] ws = new int[labels.size()];
 		for (int i = 0; i < ws.length; i++) total += (ws[i] = Ui.buttonWidth(labels.get(i), icons.get(i), 20, 6)) + gap;

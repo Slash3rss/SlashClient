@@ -34,9 +34,11 @@ export function presetOptions(preset: PerfPreset): Record<string, string> {
         biomeBlendRadius: '0', mipmapLevels: '0', entityDistanceScaling: '0.75', maxFps: '60',
       };
     case 'pi':
+      // OpenGL: the Pi's own driver lacks what the game's Vulkan needs (26.x), and the game would take a Vulkan
+      // drawn by the processor instead, many times slower
       return {
         renderDistance: '4', simulationDistance: '5', graphicsMode: '0', renderClouds: '"false"', particles: '2', entityShadows: 'false', ao: 'false',
-        biomeBlendRadius: '0', mipmapLevels: '0', entityDistanceScaling: '0.5', maxFps: '30', enableVsync: 'true',
+        biomeBlendRadius: '0', mipmapLevels: '0', entityDistanceScaling: '0.5', maxFps: '30', enableVsync: 'true', preferredGraphicsBackend: '"opengl"',
       };
     default:
       return {};
@@ -52,11 +54,13 @@ export function presetMemoryCap(preset: PerfPreset, systemMb: number): number | 
 
 /**
  * The Raspberry Pi's graphics driver tells an older OpenGL than it can run, and the newer Minecraft does
- * not start on it: the version asked for instead (as other launchers do there), on Linux only.
+ * not start on it: the version asked for instead (as other launchers do there), on Linux only. On a Wayland
+ * desktop the game's window (SDL, 26.x) also opens on Wayland itself: through XWayland it finds no OpenGL
+ * on the Pi and draws with a Vulkan done by the processor, many times slower.
  */
-export function presetEnv(preset: PerfPreset, off: string[] | undefined, platform: string): Record<string, string> {
+export function presetEnv(preset: PerfPreset, off: string[] | undefined, platform: string, wayland = false): Record<string, string> {
   if (platform !== 'linux' || !partOn(preset, off, 'gl')) return {};
-  return { MESA_GL_VERSION_OVERRIDE: '3.3', MESA_GLSL_VERSION_OVERRIDE: '330' };
+  return { MESA_GL_VERSION_OVERRIDE: '3.3', MESA_GLSL_VERSION_OVERRIDE: '330', ...(wayland ? { SDL_VIDEO_DRIVER: 'wayland' } : {}) };
 }
 
 /** The preset suggested for this computer: the Pi's on Linux on ARM, a lighter one for little memory or few cores, else none. */
