@@ -35,6 +35,7 @@ import { createServerPages } from './serverPages';
 import { ask, confirmDialog, modalWindow } from './dialog';
 import { createWizard } from './wizard';
 import { createProfileWizard, presetAbout, presetName } from './profileWizard';
+import { trackUnsaved } from './unsaved';
 import { createSessionSummary } from './sessionSummary';
 import { createLauncherNews } from './launcherNews';
 import { askDependants, depsDetails, modsCount, pickOrphans } from './modDepsUi';
@@ -468,6 +469,23 @@ function updateSkinRendering() {
 }
 document.addEventListener('visibilitychange', updateSkinRendering);
 
+// "Masz niezapisane zmiany" for the profile's and the launcher's settings; a form with changes is not
+// filled again by a store update (the player's edits stay until they save or go back)
+let loadedProfileId: string | undefined;
+const profileUnsaved = trackUnsaved($<HTMLFormElement>('#profile-form'), {
+  label: () => t('w profilu „{0}”', store.profiles.find((p) => p.id === loadedProfileId)?.name ?? ''),
+  revert: () => {
+    const profile = store.profiles.find((p) => p.id === loadedProfileId);
+    if (profile) loadProfileForm(profile);
+  },
+});
+const settingsUnsaved = trackUnsaved($<HTMLFormElement>('#settings-form'), {
+  label: () => t('w ustawieniach launchera'),
+  revert: () => renderSettings(),
+  // saved as soon as they change
+  autosaved: ['reduceMotion', 'seasonalLook', 'launcherWindow', 'language'],
+});
+
 // ---------- rendering ----------
 
 function render() {
@@ -845,7 +863,7 @@ function renderProfiles() {
     }),
   );
   const profile = store.profiles.find((p) => p.id === editingId);
-  if (profile) loadProfileForm(profile);
+  if (profile && !(profileUnsaved.isDirty() && profile.id === loadedProfileId)) loadProfileForm(profile);
 }
 
 // ---------- profile panes: settings, mods, worlds, and the statistics of all profiles ----------
@@ -1094,6 +1112,8 @@ api.on('benchmark:done', ({ profileId, result, before }: { profileId: string; re
 });
 
 function loadProfileForm(profile: Profile) {
+  loadedProfileId = profile.id;
+  profileUnsaved.clean();
   $<HTMLSelectElement>('#bench-display').value = store.settings.benchDisplay ?? '';
   renderBenchmarks(profile.id);
   void renderBenchTarget(profile.id);
@@ -1187,6 +1207,7 @@ function renderAccounts() {
 }
 
 function renderSettings() {
+  if (settingsUnsaved.isDirty()) return;
   const form = $<HTMLFormElement>('#settings-form');
   fillSelect($<HTMLSelectElement>('#language-select'), LANGUAGES.map((l) => ({ value: l.code, label: l.name })), getLang());
   (form.elements.namedItem('closeOnLaunch') as HTMLInputElement).checked = store.settings.closeOnLaunch;
@@ -1573,6 +1594,7 @@ $('#profile-form').addEventListener('submit', async (e) => {
     height: Number(str('height')) || 480,
   };
   if ((await guard(() => api.saveProfile(updated))) !== undefined) {
+    profileUnsaved.clean();
     toast('Zapisano profil');
     // a preset picked with its mods: the performance mods this profile lacks, installed now
     const wasMods = partOn(current.perfPreset, current.perfOff, 'mods');
@@ -1967,6 +1989,7 @@ $('#settings-form').addEventListener('submit', async (e) => {
       updateChannel: (form.elements.namedItem('updateChannel') as HTMLSelectElement).value === 'beta' ? 'beta' : 'stable',
     }),
   );
+  settingsUnsaved.clean();
   toast('Zapisano ustawienia');
   store = await api.getStore();
   friends.init();

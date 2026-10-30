@@ -2035,3 +2035,18 @@ body.feature-off-seasonal .feature-seasonal { display: none !important; }
   font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; box-shadow: 0 8px 24px rgba(0, 0, 0, .45); pointer-events: none;
 }
 .server-title .friends-used { font-size: 12px; margin-left: 4px; }
+
+/* "Masz niezapisane zmiany": over everything at the bottom of the window until saved or undone */
+.unsaved-bar { position: fixed; left: 50%; bottom: 18px; z-index: 900; transform: translateX(-50%); width: min(720px, calc(100% - 32px));
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-radius: 14px; background: rgb(17, 22, 34); backdrop-filter: blur(12px);
+  border: 1px solid rgba(var(--accent-rgb), .45); box-shadow: 0 12px 40px rgba(0, 0, 0, .5), 0 0 0 1px rgba(var(--accent-rgb), .15);
+  animation: unsaved-in .28s cubic-bezier(.2, .7, .3, 1); }
+.unsaved-bar > i { color: var(--accent-light); font-size: 17px; }
+.unsaved-bar .unsaved-text { color: var(--text-secondary); font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.unsaved-bar .unsaved-text b { color: var(--text-primary); }
+.unsaved-bar .grow { flex: 1; }
+.unsaved-bar button { flex: none; }
+.unsaved-bar.leaving { animation: unsaved-out .2s ease forwards; }
+.reduce-motion .unsaved-bar, .reduce-motion .unsaved-bar.leaving { animation: none; }
+@keyframes unsaved-in { from { opacity: 0; transform: translate(-50%, 16px); } }
+@keyframes unsaved-out { to { opacity: 0; transform: translate(-50%, 16px); } }
