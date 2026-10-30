@@ -15,7 +15,7 @@
 import type http from 'node:http';
 import { compareVersion, notesFor, parseVersion, pausedUntil } from './releaseNotes.ts';
 
-export type DownloadOs = 'windows' | 'mac' | 'mac-intel' | 'linux';
+export type DownloadOs = 'windows' | 'mac' | 'mac-intel' | 'linux' | 'linux-arm';
 
 /** Which file of a release is for which system (names from electron-builder). */
 const FILES: Record<DownloadOs, RegExp> = {
@@ -23,6 +23,7 @@ const FILES: Record<DownloadOs, RegExp> = {
   mac: /^SlashClient-[\d.]+-arm64\.dmg$/,
   'mac-intel': /^SlashClient-[\d.]+\.dmg$/,
   linux: /^SlashClient-[\d.]+\.AppImage$/,
+  'linux-arm': /^SlashClient-[\d.]+-arm64\.AppImage$/,
 };
 
 export function isDownloadOs(os: string): os is DownloadOs {
@@ -72,7 +73,7 @@ export function releaseNews(body: string | undefined, releaseUrl?: string | Part
 
 /** The systems a release can update (its update feed files). */
 export type FeedPlatform = 'windows' | 'mac' | 'linux';
-const FEEDS: Record<string, FeedPlatform> = { 'latest.yml': 'windows', 'latest-mac.yml': 'mac', 'latest-linux.yml': 'linux' };
+const FEEDS: Record<string, FeedPlatform> = { 'latest.yml': 'windows', 'latest-mac.yml': 'mac', 'latest-linux.yml': 'linux', 'latest-linux-arm64.yml': 'linux' };
 
 /** One release in the changelog. */
 export interface ChangelogEntry {

@@ -329,7 +329,12 @@ export interface JavaChoice {
 export interface ResolveDeps {
   vendorJava: typeof ensureVendorJava;
   mojangJava: typeof ensureJava;
+  /** Whether Mojang has no Java for this computer (Linux on ARM). */
+  noMojangJava?: boolean;
 }
+
+/** Linux on ARM: Mojang gives no Java for it, so the game plays on Eclipse Temurin's. */
+export const NO_MOJANG_JAVA = process.platform === 'linux' && process.arch === 'arm64';
 
 /**
  * The Java for a launch: the chosen vendor's, or Mojang's when that is the choice, the vendor has no
@@ -337,6 +342,7 @@ export interface ResolveDeps {
  */
 export async function resolveJava(vendor: JavaVendor, version: VersionJson, onProgress: ProgressFn | undefined, onNotice: (message: string) => void,
   deps: ResolveDeps = { vendorJava: ensureVendorJava, mojangJava: ensureJava }): Promise<JavaChoice> {
+  if (vendor === 'mojang' && (deps.noMojangJava ?? NO_MOJANG_JAVA)) vendor = 'temurin';
   if (vendor !== 'mojang') {
     try {
       const { java, release } = await deps.vendorJava(vendor, javaMajorOf(version), onProgress);

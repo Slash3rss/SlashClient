@@ -115,6 +115,8 @@ describe('downloads', () => {
     assert.equal(linux.status, 302);
     assert.equal(linux.headers.get('location'), 'https://objects.githubusercontent.com/signed/9');
     assert.equal((await fetch(`${base}/pobierz/android`, { redirect: 'manual' })).status, 404);
+    // Linux on ARM has a build of its own (none in these releases yet)
+    assert.equal((await fetch(`${base}/pobierz/linux-arm`, { redirect: 'manual' })).status, 404);
   });
 
   it('puts the newest release badge on the home page, in each language', async () => {

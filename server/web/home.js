@@ -14,8 +14,11 @@ const SYSTEMS = {
   windows: ['Windows', 'fa-brands fa-windows'],
   mac: ['macOS', 'fa-brands fa-apple'],
   linux: ['Linux', 'fa-brands fa-linux'],
+  'linux-arm': ['Linux (ARM)', 'fa-brands fa-linux'],
 };
-const mine = /Mac/i.test(ua) ? 'mac' : /Linux|X11|CrOS/i.test(ua) ? 'linux' : 'windows';
+// Linux on ARM says so ("Linux aarch64"): its own build
+const linux = /aarch64|arm64|armv8/i.test(ua) ? 'linux-arm' : 'linux';
+const mine = /Mac/i.test(ua) ? 'mac' : /Linux|X11|CrOS/i.test(ua) ? linux : 'windows';
 // the button's words from the page ({os} is the system's name)
 const words = $('#download-main').dataset;
 const downloadPath = words.path || '/pobierz/';
@@ -36,7 +39,7 @@ if (phone) {
   $('#os-icon').className = SYSTEMS[mine][1];
   for (const id of ['#download-main', '#download-final']) $(id).href = `${downloadPath}${mine}`;
   // the others, and the Intel build for older Macs (the main macOS button is Apple Silicon)
-  const links = [['windows', 'Windows'], ['mac', 'macOS (Apple Silicon)'], ['mac-intel', 'macOS (Intel)'], ['linux', 'Linux']]
+  const links = [['windows', 'Windows'], ['mac', 'macOS (Apple Silicon)'], ['mac-intel', 'macOS (Intel)'], ['linux', 'Linux'], ['linux-arm', 'Linux (ARM)']]
     .filter(([os]) => os !== mine)
     .map(([os, name]) => el('a', { href: `${downloadPath}${os}` }, name));
   const note = $('#download-note');

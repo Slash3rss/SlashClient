@@ -57,7 +57,20 @@ function classpathArtifacts(version: VersionJson): Artifact[] {
 }
 
 export function activeLibraries(version: VersionJson): Library[] {
-  return version.libraries.filter((lib) => rulesAllow(lib.rules));
+  return version.libraries.filter((lib) => rulesAllow(lib.rules)).map((lib) => hostLibrary(lib));
+}
+
+/**
+ * Linux on ARM (a Raspberry Pi, Asahi Linux on a Mac): Mojang lists LWJGL's Linux natives for x64 only,
+ * so the same LWJGL version's arm64 natives come from Maven Central, where LWJGL publishes them.
+ */
+export function hostLibrary(lib: Library, platform: string = process.platform, arch: string = process.arch): Library {
+  if (platform !== 'linux' || arch !== 'arm64') return lib;
+  const m = /^org\.lwjgl:([\w-]+):([\w.+-]+):natives-linux$/.exec(lib.name);
+  if (!m) return lib;
+  const name = `org.lwjgl:${m[1]}:${m[2]}:natives-linux-arm64`;
+  const rel = mavenPath(name);
+  return { name, rules: lib.rules, downloads: { artifact: { path: rel, url: `https://repo1.maven.org/maven2/${rel}` } } };
 }
 
 /** Absolute paths of all jars that belong on the classpath (excluding the client jar). */

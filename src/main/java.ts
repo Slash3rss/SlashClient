@@ -25,7 +25,8 @@ function platformKeys(): string[] {
   const { platform, arch } = process;
   if (platform === 'darwin') return arch === 'arm64' ? ['mac-os-arm64', 'mac-os'] : ['mac-os'];
   if (platform === 'win32') return arch === 'arm64' ? ['windows-arm64', 'windows-x64'] : arch === 'ia32' ? ['windows-x86'] : ['windows-x64'];
-  return arch === 'ia32' ? ['linux-i386'] : ['linux'];
+  // Mojang has no Java for Linux on ARM (its "linux" is x64): another vendor's is used there (javaVendors.ts)
+  return arch === 'ia32' ? ['linux-i386'] : arch === 'arm64' ? ['linux-arm64'] : ['linux'];
 }
 
 function javaExecutable(home: string): string {

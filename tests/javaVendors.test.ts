@@ -218,8 +218,16 @@ describe('falling back to Mojang\'s Java', () => {
   });
 
   it('Mojang\'s choice never asks a vendor', async () => {
-    const c = await resolveJava('mojang', version(21), undefined, () => assert.fail('no notice'), { vendorJava: async () => assert.fail('no vendor'), mojangJava: mojang });
+    const c = await resolveJava('mojang', version(21), undefined, () => assert.fail('no notice'), { vendorJava: async () => assert.fail('no vendor'), mojangJava: mojang, noMojangJava: false });
     assert.equal(c.vendor, 'mojang');
+  });
+
+  it('plays on Temurin where Mojang has no Java (Linux on ARM)', async () => {
+    const c = await resolveJava('mojang', version(21), undefined, () => assert.fail('no notice'), {
+      vendorJava: async (vendor) => ({ java: `/java/${vendor}`, release: 'jdk-21' }), mojangJava: async () => assert.fail('no Mojang'), noMojangJava: true,
+    });
+    assert.equal(c.vendor, 'temurin');
+    assert.equal(c.java, '/java/temurin');
   });
 });
 
