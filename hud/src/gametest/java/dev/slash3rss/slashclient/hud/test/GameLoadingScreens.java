@@ -91,7 +91,7 @@ public class GameLoadingScreens implements FabricClientGameTest {
 		context.waitTicks(4);
 		context.takeScreenshot("loading-world");
 		// the Halloween season: orange, bats and the pumpkin logo on the loading screen and in the main menu
-		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.ui.Season.forTest = true);
+		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.ui.Season.forTest = dev.slash3rss.slashclient.hud.ui.Season.HALLOWEEN);
 		context.waitTicks(2);
 		context.takeScreenshot("loading-halloween");
 		context.setScreen(dev.slash3rss.slashclient.hud.ui.SlashTitleScreen::new);
@@ -100,7 +100,15 @@ public class GameLoadingScreens implements FabricClientGameTest {
 		context.setScreen(() -> new net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen(new dev.slash3rss.slashclient.hud.ui.SlashTitleScreen()));
 		context.waitTicks(10);
 		context.takeScreenshot("servers-halloween");
-		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.ui.Season.forTest = false);
+		// Independence Day: white and red, confetti, the flag on the logo and "Polska górą!" in the menu
+		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.ui.Season.forTest = dev.slash3rss.slashclient.hud.ui.Season.INDEPENDENCE);
+		context.setScreen(GameLoadingScreens::levelLoading);
+		context.waitTicks(2);
+		context.takeScreenshot("loading-independence");
+		context.setScreen(dev.slash3rss.slashclient.hud.ui.SlashTitleScreen::new);
+		context.waitTicks(4);
+		context.takeScreenshot("menu-independence");
+		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.ui.Season.forTest = "");
 		context.setScreen(GameLoadingScreens::levelLoading);
 		context.waitTicks(2);
 		context.runOnClient(mc -> {

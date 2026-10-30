@@ -107,6 +107,30 @@ code {
 .season-halloween .splash-name span { background-image: linear-gradient(135deg, #fb923c 0%, #f97316 45%, #9333ea 100%); }
 .season-halloween .splash-bar div { background: linear-gradient(90deg, #9333ea, #f97316); }
 
+/* Poland's Independence Day (season.ts): white and red, bunting across the top, confetti and a flag over "POLSKA GUROM!" */
+:root.season-independence {
+  --accent: #dc2626;
+  --accent-light: #f87171;
+  --accent-dark: #b91c1c;
+  --accent-glow: rgba(220, 38, 38, .4);
+  --accent-gradient: linear-gradient(135deg, #ef4444, #b91c1c);
+  --glass-border-focus: rgba(220, 38, 38, .45);
+  --accent-rgb: 220, 38, 38;
+  --accent-light-rgb: 248, 113, 113;
+  --accent-dark-rgb: 185, 28, 28;
+  --accent-pale: #fecaca;
+}
+.season-independence .orb-1 { background: radial-gradient(circle, #dc2626 0%, transparent 70%); }
+.season-independence .orb-2 { background: radial-gradient(circle, #f8fafc 0%, transparent 70%); opacity: .12; }
+.season-independence .orb-3 { background: radial-gradient(circle, #ef4444 0%, transparent 70%); }
+.season-bunting { position: fixed; top: 0; left: 0; right: 0; height: 48px; z-index: 50; pointer-events: none; opacity: .85; }
+.season-bunting svg { width: 100%; height: 100%; display: block; }
+.season-independence .splash { background: radial-gradient(circle at 30% 20%, rgba(248, 250, 252, .1), transparent 55%), radial-gradient(circle at 75% 85%, rgba(220, 38, 38, .22), transparent 55%), var(--bg-primary); }
+.season-independence .splash-logo { filter: drop-shadow(0 0 22px rgba(220, 38, 38, .45)); }
+.season-independence .brand-name span, .season-independence .splash-name span { background-image: linear-gradient(180deg, #f8fafc 0%, #f8fafc 50%, #dc2626 50%, #dc2626 100%); }
+.season-independence .brand-logo { filter: drop-shadow(0 6px 18px rgba(220, 38, 38, .3)); }
+.season-independence .splash-bar div { background: linear-gradient(90deg, #f8fafc, #dc2626); }
+
 .glass-panel {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);

@@ -4931,7 +4931,7 @@ function applyMotion() {
 }
 systemReduced.addEventListener('change', applyMotion);
 let wakeStars = () => {};
-// Halloween's look (season.ts): the player's setting, the admin's switch and fewer animations
+// the seasonal looks (season.ts): the player's setting, the admin's switch and fewer animations
 const season = initSeason({
   settingOn: () => store?.settings?.seasonalLook !== false, featureOn: () => (featuresKnown() ? featureOn('seasonal') : undefined), reduced: motionReduced,
   setWindowIcon: (dataUrl) => api.setWindowIcon?.(dataUrl),
@@ -4967,8 +4967,9 @@ function startStars() {
 
   const draw = (t: number) => {
     ctx.clearRect(0, 0, innerWidth, innerHeight);
-    // a warm sky in the Halloween season (season.ts)
-    const tint = document.documentElement.classList.contains('season-halloween') ? '253, 186, 116' : '191, 219, 254';
+    // a warm sky in the Halloween season, white and red stars on Independence Day (season.ts)
+    const cls = document.documentElement.classList;
+    const tint = cls.contains('season-halloween') ? '253, 186, 116' : cls.contains('season-independence') ? '254, 202, 202' : '191, 219, 254';
     for (const s of stars) {
       const alpha = still ? 0.5 : 0.25 + 0.55 * (0.5 + 0.5 * Math.sin(s.phase + (t / 1000) * s.speed));
       ctx.fillStyle = `rgba(${tint}, ${alpha.toFixed(3)})`;

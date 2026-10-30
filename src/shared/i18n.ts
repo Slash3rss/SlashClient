@@ -1533,7 +1533,9 @@ const EN: Record<string, string> = {
   // profiles on the account (cloudProfiles.ts)
   'Profil na koncie': 'Profile on your account',
   'Synchronizuj z kontem': 'Sync with account',
-  'Wygląd sezonowy (Halloween)': 'Seasonal look (Halloween)',
+  'Wygląd sezonowy (Halloween, 11 listopada)': 'Seasonal look (Halloween, 11 November)',
+  // a Polish meme, left as it is in English too
+  'POLSKA GUROM!': 'POLSKA GUROM!',
   'Ranga przy nicku na kontach Minecraft': 'Rank next to the nick on Minecraft accounts',
   'W grze każde konto może mieć inną odznakę. Lista znajomych i czat pokazują tę z konta SlashClient.': 'In game each account can show a different badge. The friends list and the chat show the SlashClient account\'s one.',
   'Mody, ustawienia, configi i układ HUD na Twoim koncie SlashClient, żeby ten sam profil działał na drugim komputerze. Bez światów; widzisz je tylko Ty. Z włączoną synchronizacją profil trafia na konto po każdej grze.': 'Mods, settings, configs and the HUD layout on your SlashClient account, so the same profile works on your other computer. No worlds; only you can see them. With sync on, the profile goes to your account after every game.',

@@ -96,8 +96,13 @@ public class SlashTitleScreen extends MenuScreen {
 		}
 		Ui.brand(g, (width - Ui.brandWidth(1.6f)) / 2, y, 1.6f);
 		y += 22;
-		Component hello = Ui.tr("slashclient-hud.menu.hello", minecraft.getUser().getName());
-		Ui.drawOnWorld(g, Ui.fit(hello, width - 20), (width - Math.min(Ui.width(hello), width - 20)) / 2, y, Ui.TEXT_2);
+		// on Independence Day "POLSKA GUROM, <nick>!" on fire (Season)
+		Component hello = Season.greeting(minecraft.getUser().getName());
+		if (hello != null) Season.burning(g, Ui.fit(hello, width - 20).getString(), width / 2, y, System.currentTimeMillis(), minecraft.options.screenEffectScale().get() <= 0.0);
+		else {
+			hello = Ui.tr("slashclient-hud.menu.hello", minecraft.getUser().getName());
+			Ui.drawOnWorld(g, Ui.fit(hello, width - 20), (width - Math.min(Ui.width(hello), width - 20)) / 2, y, Ui.TEXT_2);
+		}
 		y += 14 + 10;
 
 		// the buttons on one panel

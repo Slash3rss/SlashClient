@@ -30,7 +30,7 @@ public final class Ui {
 	public static final int GLASS = 0x0DFFFFFF;
 	public static final int GLASS_HOVER = 0x1AFFFFFF;
 	public static final int BORDER = 0x1CFFFFFF;
-	/** The accent: the launcher's blue, orange in the Halloween season (Season sets them each tick). */
+	/** The accent: the launcher's blue, orange for Halloween, red on Independence Day (Season sets them each tick). */
 	public static int ACCENT = 0xFF3B82F6;
 	public static int ACCENT_LIGHT = 0xFF60A5FA;
 	public static int ACCENT_DARK = 0xFF1D4ED8;
@@ -374,7 +374,7 @@ public final class Ui {
 	public static void accent(GuiGraphicsExtractor g, int x, int y, int w, int h, int r, float strength) {
 		// the gradient fills the whole rounded shape (a square one on top showed a stepped darker ring
 		// in the corners), with a one-pixel rim along the same curve
-		// (orange in the Halloween season, Season)
+		// (in the season's colours, Season)
 		int dark = Season.accentDark(), light = Season.accentLight();
 		roundGradient(g, x, y, w, h, r, blend(dark, light, 0.55f + strength * 0.2f), dark);
 		roundOutline(g, x, y, w, h, r, blend(dark, Season.accent(), 0.5f));

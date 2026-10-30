@@ -26,7 +26,7 @@ export const FEATURES = [
   { id: 'streams', label: 'Streamy (Twitch i Kick)', labelEn: 'Streams (Twitch and Kick)', description: 'Łączenie kanałów, znaczek LIVE u znajomych, powiadomienia i transmisja na profilu. Połączone kanały zostają.' },
   { id: 'registration', label: 'Rejestracja nowych kont', labelEn: 'New accounts', description: 'Zakładanie kont przez nowych graczy. Istniejące konta logują się normalnie.' },
   { id: 'betaUpdates', label: 'Kanał beta aktualizacji', labelEn: 'Beta update channel', description: 'Launchery z wybranym kanałem beta dostają bety (wydania z tagiem v…-beta.N). Wyłączony: wszyscy dostają tylko zwykłe wydania, a wybór kanału znika z ustawień launchera.' },
-  { id: 'seasonal', label: 'Wygląd sezonowy', labelEn: 'Seasonal look', description: 'Halloweenowy wygląd launchera od 25 października do 2 listopada (gracze mogą go też wyłączyć sami w Ustawieniach).' },
+  { id: 'seasonal', label: 'Wygląd sezonowy', labelEn: 'Seasonal look', description: 'Halloweenowy wygląd launchera i moda od 25 października do 2 listopada, biało-czerwony na Święto Niepodległości od 8 do 12 listopada (gracze mogą go też wyłączyć sami w Ustawieniach).' },
 ] as const;
 export type FeatureId = (typeof FEATURES)[number]['id'];
 export const FEATURE_IDS: FeatureId[] = FEATURES.map((f) => f.id);
