@@ -16,7 +16,7 @@ public final class Catalog {
 	public static final String[] CATEGORIES = { "all", "hud", "combat", "world", "game", "extras", "skyup", "chat", "share" };
 
 	/** One row in an entry's settings. */
-	public sealed interface Setting permits Toggle, Slider, Choice, Colors, Text, Info, Note, Key {
+	public sealed interface Setting permits Toggle, Slider, Choice, Colors, Text, Info, Note, Key, Order {
 		String labelKey();
 	}
 
@@ -41,6 +41,12 @@ public final class Catalog {
 	 * It is the game's own key, so the Controls screen and SlashClient's keys window show the same one.
 	 */
 	public record Key(String labelKey) implements Setting {}
+
+	/**
+	 * A list put in order by hand: each of `items` (as shown, asked each time it is drawn) with buttons that
+	 * move it up or down (`move` gets its place and -1 or 1); `emptyKey` says why the list is empty.
+	 */
+	public record Order(String labelKey, String emptyKey, Supplier<List<String>> items, java.util.function.BiConsumer<Integer, Integer> move) implements Setting {}
 
 	/** The keys each card works with, shown first on its page (only those this version of the game has). */
 	private static final Map<String, String[]> ENTRY_KEYS = Map.ofEntries(
@@ -278,6 +284,11 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.skyTasks.shaman", () -> cfg.skyTasksShaman, v -> cfg.skyTasksShaman = v));
 					settings.add(new Choice("slashclient-hud.skyTasks.mark", HudConfig.SKY_TASKS_MARKS, "slashclient-hud.skyTasks.mark.", () -> cfg.skyTasksMark, v -> cfg.skyTasksMark = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.hideDone", () -> cfg.skyTasksHideDone, v -> cfg.skyTasksHideDone = v));
+					settings.add(new Toggle("slashclient-hud.skyTasks.nearTop", () -> cfg.skyTasksNearTop, v -> cfg.skyTasksNearTop = v));
+					//#if MC >= 26.3
+					settings.add(new Order("slashclient-hud.skyTasks.order", "slashclient-hud.skyTasks.orderEmpty",
+						dev.slash3rss.slashclient.hud.skyup.SkyTasks::orderNames, dev.slash3rss.slashclient.hud.skyup.SkyTasks::move));
+					//#endif
 					settings.add(new Toggle("slashclient-hud.skyTasks.rewards", () -> cfg.skyTasksRewards, v -> cfg.skyTasksRewards = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.trackAll", () -> cfg.skyTasksTrackAll, v -> cfg.skyTasksTrackAll = v));
 					settings.add(new Toggle("slashclient-hud.skyTasks.autoDaily", () -> cfg.skyTasksAutoDaily, v -> cfg.skyTasksAutoDaily = v));

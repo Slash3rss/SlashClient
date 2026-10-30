@@ -77,6 +77,8 @@ public final class SkyTasks {
 		long dungeonLevel = -1;
 		/** The day (in Poland, as SkyUp counts them) the daily bonus was last seen taken, or null. */
 		public String bonusDay;
+		/** The tracked tasks in the order the player put them on the HUD (their keys; a task not in it comes after, as seen). */
+		List<String> order;
 		/** Tasks seen done (handed in, by the chat, or gone from their category's GUI), by their name's letters: another task may need them. */
 		Set<String> done = new java.util.LinkedHashSet<>();
 
@@ -903,7 +905,10 @@ public final class SkyTasks {
 		return !t.sections.isEmpty();
 	}
 
-	/** The tasks on the HUD: the ones ready to hand in first, then in the order they were seen. */
+	/**
+	 * The tasks on the HUD: the ones ready to hand in first, then the nearest to done (when that setting is on)
+	 * and in the order the player set (Catalog.Order), else as they were seen.
+	 */
 	static List<SkyTaskParser.Task> shown(Minecraft mc) {
 		List<SkyTaskParser.Task> ready = new ArrayList<>(), rest = new ArrayList<>();
 		HudConfig cfg = SlashHud.config;
@@ -913,10 +918,77 @@ public final class SkyTasks {
 			if (cfg.skyTasksHideDone && done) continue;
 			(done ? ready : rest).add(t);
 		}
-		ready.addAll(rest);
+		ready.addAll(ordered(mc, rest));
 		// the daily task first: it is always on top of the list
 		ready.sort(java.util.Comparator.comparing(t -> !daily(t)));
 		return ready.size() > cfg.skyTasksMax ? new ArrayList<>(ready.subList(0, cfg.skyTasksMax)) : ready;
+	}
+
+	/** Tasks in the order the player set, the nearest to done first when that setting is on (the sort keeps ties in order). */
+	static List<SkyTaskParser.Task> ordered(Minecraft mc, List<SkyTaskParser.Task> tasks) {
+		List<String> order = data().order == null ? List.of() : data().order;
+		List<SkyTaskParser.Task> out = new ArrayList<>(tasks);
+		out.sort(java.util.Comparator.comparingInt(t -> {
+			int i = order.indexOf(t.key());
+			return i < 0 ? Integer.MAX_VALUE : i;
+		}));
+		if (SlashHud.config.skyTasksNearTop) {
+			Map<SkyTaskParser.Task, Double> done = new java.util.HashMap<>();
+			for (SkyTaskParser.Task t : out) done.put(t, progress(mc, t));
+			out.sort(java.util.Comparator.comparingDouble(t -> -done.get(t)));
+		}
+		return out;
+	}
+
+	/** How much of a task is done, 0 to 1: its requirements' shares averaged (one with no count yet as nothing done). */
+	static double progress(Minecraft mc, SkyTaskParser.Task t) {
+		double sum = 0;
+		int n = 0;
+		for (SkyTaskParser.Section s : t.sections) {
+			for (SkyTaskParser.Req r : s.items) {
+				n++;
+				if (met(mc, s, r)) sum += 1;
+				else {
+					long c = current(mc, s, r);
+					if (c > 0 && r.required > 0) sum += Math.min(1.0, (double) c / r.required);
+				}
+			}
+		}
+		return n == 0 ? 0 : sum / n;
+	}
+
+	/** The tracked tasks as the settings list them to put in order: "name (category)", in their order now. */
+	public static List<String> orderNames() {
+		List<String> out = new ArrayList<>();
+		for (SkyTaskParser.Task t : orderedTracked()) out.add(SkyLang.tr(t.name) + (t.tier.isEmpty() ? "" : " (" + t.tier + ")"));
+		return out;
+	}
+
+	/** The tracked tasks (not the daily one: it is always on top) in the order the player set. */
+	private static List<SkyTaskParser.Task> orderedTracked() {
+		List<SkyTaskParser.Task> tracked = new ArrayList<>();
+		for (SkyTaskParser.Task t : data().tasks.values()) if (tracked(t) && !daily(t)) tracked.add(t);
+		List<String> order = data().order == null ? List.of() : data().order;
+		tracked.sort(java.util.Comparator.comparingInt(t -> {
+			int i = order.indexOf(t.key());
+			return i < 0 ? Integer.MAX_VALUE : i;
+		}));
+		return tracked;
+	}
+
+	/** The task at `place` in the settings' list moved one up (-1) or down (1); the order kept on disk. */
+	public static void move(int place, int by) {
+		List<SkyTaskParser.Task> tasks = orderedTracked();
+		int to = place + by;
+		if (place < 0 || to < 0 || place >= tasks.size() || to >= tasks.size()) return;
+		java.util.Collections.swap(tasks, place, to);
+		List<String> order = new ArrayList<>();
+		for (SkyTaskParser.Task t : tasks) order.add(t.key());
+		// the tasks not tracked now keep their places after these, for when they are tracked again
+		if (data().order != null) for (String k : data().order) if (!order.contains(k)) order.add(k);
+		data().order = order;
+		save();
+		changed();
 	}
 
 	/** A value of a map keyed by category, whatever the letters' case (the menu's item and the GUI's title). */
@@ -1005,6 +1077,7 @@ public final class SkyTasks {
 		left.removeAll(dailies);
 		taskRows(mc, done, out);
 		taskRows(mc, dailies, out);
+		left = ordered(mc, left);
 		for (String tier : headerTiers()) {
 			int[] c = tierCount(mc, tier);
 			boolean fresh = fresh(tier), unopened = unopened(tier);

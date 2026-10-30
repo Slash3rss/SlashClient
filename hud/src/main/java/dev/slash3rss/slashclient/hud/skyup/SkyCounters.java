@@ -870,6 +870,8 @@ public final class SkyCounters {
 		if (any) SkyTasks.changed();
 	}
 
+	/** How far from a barrel's middle its storage hologram floats (above, below or before one of its sides). */
+	static final double STORAGE_REACH = 1.6;
 	/** How far around the player "Stój obok" looks: SkyUp's own reach, 30 blocks each way. */
 	static final int NEAR_RADIUS = 30;
 	/** The cube is read a few slices (x) a tick, all of it in about a second, so no tick takes long. */
@@ -879,6 +881,8 @@ public final class SkyCounters {
 	/** The creatures around in the last full read ("Stój obok: Żelazny golem"), each as its names. */
 	private static List<Thing> nearMobs = List.of();
 	private static Map<Block, Long> reading = new HashMap<>();
+	/** The barrels in the cube being read: a storage ("Magazyn") is one with its hologram by it. */
+	private static List<BlockPos> barrels = new ArrayList<>();
 	private static BlockPos readAt;
 	private static int readX = Integer.MIN_VALUE;
 	private static boolean nearRead;
@@ -898,12 +902,15 @@ public final class SkyCounters {
 			readAt = mc.player.blockPosition();
 			readX = -NEAR_RADIUS;
 			reading = new HashMap<>();
+			barrels = new ArrayList<>();
 		}
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 		for (int i = 0; i < SLICES_PER_TICK && readX <= NEAR_RADIUS; i++, readX++) {
 			for (int dy = -NEAR_RADIUS; dy <= NEAR_RADIUS; dy++) for (int dz = -NEAR_RADIUS; dz <= NEAR_RADIUS; dz++) {
 				BlockState state = mc.level.getBlockState(pos.set(readAt.getX() + readX, readAt.getY() + dy, readAt.getZ() + dz));
-				if (!state.isAir()) reading.merge(state.getBlock(), 1L, Long::sum);
+				if (state.isAir()) continue;
+				reading.merge(state.getBlock(), 1L, Long::sum);
+				if (state.is(net.minecraft.world.level.block.Blocks.BARREL)) barrels.add(pos.immutable());
 			}
 		}
 		if (readX > NEAR_RADIUS) {
@@ -917,6 +924,22 @@ public final class SkyCounters {
 				boolean baby = e instanceof LivingEntity living && living.isBaby();
 				mobs.add(Thing.of(baby, false, false, false, e.getType().getDescription().getString(), plEntity(e.getType()), e.getName().getString()));
 			}
+			// SkyUp's storages ("Magazyn"): barrels with their hologram (its count, "Brak typu", the item) floating on
+			// one of their sides; each hologram goes to the barrel nearest to it, so a plain barrel beside one is no storage
+			java.util.Set<BlockPos> storages = new java.util.HashSet<>();
+			for (var e : mc.level.getEntities(mc.player, box, e -> e instanceof net.minecraft.world.entity.Display)) {
+				BlockPos nearest = null;
+				double best = STORAGE_REACH * STORAGE_REACH;
+				for (BlockPos barrel : barrels) {
+					double d = e.position().distanceToSqr(net.minecraft.world.phys.Vec3.atCenterOf(barrel));
+					if (d < best) {
+						best = d;
+						nearest = barrel;
+					}
+				}
+				if (nearest != null) storages.add(nearest);
+			}
+			for (int i = 0; i < storages.size(); i++) mobs.add(Thing.of(false, false, false, false, "Magazyn"));
 			nearMobs = mobs;
 			readX = Integer.MIN_VALUE;
 			nearRead = true;

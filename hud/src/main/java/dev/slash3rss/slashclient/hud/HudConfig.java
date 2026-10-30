@@ -234,6 +234,8 @@ public final class HudConfig {
 	/** The module's widest, in pixels: longer names are cut with "…". */
 	public int skyTasksWidth = 220;
 	public boolean skyTasksCompact = false, skyTasksHideDone = false, skyTasksRewards = false;
+	/** The tasks nearest to done higher on the HUD, by how much of them is done (else in the order set by hand). */
+	public boolean skyTasksNearTop = true;
 	/** Every unfinished task tracked (those switched off one by one aside). */
 	public boolean skyTasksTrackAll = false;
 	/** SkyUp's daily task tracked by itself, each day's new one too (unless taken off the HUD by hand). */
@@ -867,6 +869,7 @@ public final class HudConfig {
 		skyTasksShaman = other.skyTasksShaman;
 		skyTasksMark = oneOf(other.skyTasksMark, SKY_TASKS_MARKS);
 		skyTasksHideDone = other.skyTasksHideDone;
+		skyTasksNearTop = other.skyTasksNearTop;
 		skyTasksRewards = other.skyTasksRewards;
 		skyTasksTrackAll = other.skyTasksTrackAll;
 		skyTasksAutoDaily = other.skyTasksAutoDaily;

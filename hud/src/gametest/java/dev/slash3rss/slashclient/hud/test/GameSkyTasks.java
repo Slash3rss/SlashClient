@@ -82,6 +82,25 @@ public class GameSkyTasks implements FabricClientGameTest {
 			String rows = context.computeOnClient(mc -> TestHooks.skyRows());
 			check(rows.contains("Nowicjusz | ") && rows.contains("Podstawowy kamieniołom") && rows.contains(" | 28/128") && rows.contains("Huta") && rows.contains(" | 5/16"), "HUD rows", rows);
 			context.takeScreenshot("skytasks-hud");
+			// the order: the task nearer to done higher (Huta 5/16 above the quarry's 28/128), then as set by hand
+			check(rows.indexOf("Huta") < rows.indexOf("Podstawowy kamieniołom"), "the task nearer to done first", rows);
+			String names = context.computeOnClient(mc -> String.join(" | ", dev.slash3rss.slashclient.hud.skyup.SkyTasks.orderNames()));
+			context.runOnClient(mc -> {
+				dev.slash3rss.slashclient.hud.SlashHud.config.skyTasksNearTop = false;
+				// the second of the list moved up: first now
+				dev.slash3rss.slashclient.hud.skyup.SkyTasks.move(1, -1);
+			});
+			String moved = context.computeOnClient(mc -> String.join(" | ", dev.slash3rss.slashclient.hud.skyup.SkyTasks.orderNames()));
+			String byHand = context.computeOnClient(mc -> TestHooks.skyRows());
+			String[] was = names.split(" \\| "), now = moved.split(" \\| ");
+			check(was.length == 2 && now.length == 2 && now[0].equals(was[1]) && now[1].equals(was[0]), "a task moved up in the list (" + names + ")", moved);
+			String first = now[0].substring(0, now[0].indexOf(" ("));
+			String second = now[1].substring(0, now[1].indexOf(" ("));
+			check(byHand.indexOf(first) < byHand.indexOf(second), "the HUD in the order set by hand", byHand);
+			context.runOnClient(mc -> {
+				dev.slash3rss.slashclient.hud.skyup.SkyTasks.move(0, 1);
+				dev.slash3rss.slashclient.hud.SlashHud.config.skyTasksNearTop = true;
+			});
 			// the game in English: SkyUp's Polish shown in it (the game's names, SkyUp's words, the rest as it is)
 			String english = context.computeOnClient(mc -> String.join("|", dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Zbierz"),
 				dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Sztabka żelaza"), dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Owca (dorosła)"),
@@ -134,6 +153,15 @@ public class GameSkyTasks implements FabricClientGameTest {
 			long crystals = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.aroundForTest("Kryształ Endu"));
 			check(crystals == 1, "an end crystal nearby", String.valueOf(crystals));
 			world.getServer().runCommand("kill @e[type=end_crystal]");
+			// SkyUp's storages ("Magazynier"): barrels with a hologram before them; the plain barrel beside one is none
+			world.getServer().runCommand("execute at @p align xyz run setblock ~4 ~ ~4 barrel");
+			world.getServer().runCommand("execute at @p align xyz run setblock ~5 ~ ~4 barrel");
+			world.getServer().runCommand("execute at @p align xyz run summon text_display ~4.5 ~0.6 ~3.4 {text:\"x0\"}");
+			context.waitTicks(40);
+			long storages = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.aroundForTest("Magazyn"));
+			check(storages == 1, "a storage nearby (a barrel with its hologram)", String.valueOf(storages));
+			world.getServer().runCommand("kill @e[type=text_display]");
+			world.getServer().runCommand("execute at @p align xyz run fill ~4 ~ ~4 ~5 ~ ~4 air");
 			// a stacked mob: its number in the name (SkyUp's "Sztuk: 5"); each one off it is a kill, and so is the last one dying
 			String stacks = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.SkyCounters.stacksForTest("Sztuk: 10", "§6Sztuk: §e3", "x11 Krowa", "Krowa x11",
 				"11x Krowa", "Krowa [x4]", "§ex7 §fŚwinia", "Krowa", "Zombie poz. 5"));

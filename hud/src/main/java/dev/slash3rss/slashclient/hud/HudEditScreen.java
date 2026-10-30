@@ -1158,7 +1158,7 @@ public class HudEditScreen extends Screen {
 	/** Width the controls of a setting need on one line. */
 	private static int controlsWidth(Catalog.Setting s) {
 		if (s instanceof Catalog.Toggle || s instanceof Catalog.Info) return 20;
-		if (s instanceof Catalog.Note) return 0;
+		if (s instanceof Catalog.Note || s instanceof Catalog.Order) return 0;
 		if (s instanceof Catalog.Slider) return 150;
 		if (s instanceof Catalog.Text) return 150;
 		if (s instanceof Catalog.Key) return KEY_W + 4 + 17;
@@ -1259,6 +1259,8 @@ public class HudEditScreen extends Screen {
 				Ui.width(Ui.text(String.format(Locale.ROOT, sl.format(), sl.max())))) + 10);
 			// a note: as many lines as its text needs
 			if (s instanceof Catalog.Note n) heights[i] = Math.max(26, 14 + 11 * font.split(Ui.tr(n.labelKey(), n.args().get()), w - 20).size());
+			// a list in order: its label, then a line for each of its items (or for why it is empty)
+			if (s instanceof Catalog.Order o) heights[i] = 26 + 20 * Math.max(1, o.items().get().size());
 			contentH += heights[i] + 4;
 		}
 		int listTop = y + 26;
@@ -1370,6 +1372,23 @@ public class HudEditScreen extends Screen {
 				}
 			} else if (s instanceof Catalog.Key k) {
 				drawKey(g, mx, my, k, right, cy, twoLines ? ry + 44 - 2 : ry + 26 - 2, w - 20, x + 10);
+			} else if (s instanceof Catalog.Order o) {
+				// each item on its line, numbered, with arrows moving it up and down (none past the ends)
+				List<String> items = o.items().get();
+				if (items.isEmpty()) Ui.draw(g, Ui.fit(Ui.tr(o.emptyKey()), w - 30), x + 14, ry + 30, Ui.MUTED);
+				for (int k = 0; k < items.size(); k++) {
+					int iy = ry + 24 + k * 20, place = k;
+					Ui.round(g, x + 8, iy, w - 16, 18, 4, 0xFF202839);
+					Ui.draw(g, Ui.fit(Ui.text((k + 1) + ". " + items.get(k)), w - 70), x + 14, iy + 5, Ui.TEXT);
+					if (k > 0) {
+						Ui.button(g, "order:up:" + k, right - 38, iy + 1, 18, 16, "arrow-up", Component.empty(), false, mx, my);
+						hits.add(new Hit(right - 38, iy + 1, 18, 16, () -> o.move().accept(place, -1)));
+					}
+					if (k < items.size() - 1) {
+						Ui.button(g, "order:down:" + k, right - 18, iy + 1, 18, 16, "arrow-down", Component.empty(), false, mx, my);
+						hits.add(new Hit(right - 18, iy + 1, 18, 16, () -> o.move().accept(place, 1)));
+					}
+				}
 			}
 			// controls on the label's line must not cover it
 			if (!twoLines && !(s instanceof Catalog.Toggle) && !(s instanceof Catalog.Note)) Ui.expect(labelEnd - 14 <= right - controlsWidth(s) || s instanceof Catalog.Slider, "controls cover the label of " + s.labelKey());
