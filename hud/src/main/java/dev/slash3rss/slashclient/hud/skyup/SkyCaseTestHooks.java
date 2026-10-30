@@ -141,6 +141,21 @@ public final class SkyCaseTestHooks {
 		return stack.get(DataComponents.ITEM_MODEL) + "|" + stack.getHoverName().getString() + "|" + (color == null ? "none" : color.serialize());
 	}
 
+	/** A reward come into the inventory as the server gives it: its name and a model of its own from the server's pack. */
+	public static void receive(String id, String name, float model) {
+		var stack = new ItemStack(SkyCase.item(id));
+		stack.set(DataComponents.CUSTOM_NAME, Component.literal(name).withStyle(ChatFormatting.GOLD));
+		stack.set(DataComponents.CUSTOM_MODEL_DATA, new net.minecraft.world.item.component.CustomModelData(java.util.List.of(model), java.util.List.of(), java.util.List.of(), java.util.List.of()));
+		Minecraft.getInstance().player.getInventory().add(stack);
+	}
+
+	/** The model a reward is shown with ("[4242.0]"), or "-" without one. */
+	public static String lookModel(String type, String reward) {
+		ItemStack stack = SkyCase.look(type, reward);
+		var model = stack == null ? null : stack.get(DataComponents.CUSTOM_MODEL_DATA);
+		return model == null ? "-" : String.valueOf(model.floats());
+	}
+
 	/** No case looked at lately (as after the time a case stays assigned). */
 	public static void forget() {
 		SkyCase.forgetContextForTest();

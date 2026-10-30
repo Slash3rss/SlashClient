@@ -184,6 +184,16 @@ public class GameSkyCase implements FabricClientGameTest {
 			context.runOnClient(mc -> SkyCaseTestHooks.opened(self, "Nowa", "Krzemień"));
 			counted = context.computeOnClient(mc -> SkyCaseTestHooks.counted());
 			check(counted.contains("Nowa: 2/2 {Kask Górnika=1, Krzemień=1}") && counted.contains("Górniczy: 5/5 {"), "the new case's draw and named line", counted);
+			// a reward no preview showed: its look (the server pack's model) taken from the item that came in
+			context.runOnClient(mc -> SkyCaseTestHooks.draw("Nowa SkyCase"));
+			context.waitTicks(3);
+			context.runOnClient(mc -> SkyCaseTestHooks.win("Złota rybka"));
+			context.setScreen(() -> null);
+			context.runOnClient(mc -> SkyCaseTestHooks.receive("minecraft:cod", ":: Złota rybka ::", 4242f));
+			context.waitTicks(5);
+			String model = context.computeOnClient(mc -> SkyCaseTestHooks.lookModel("Nowa", "Złota rybka"));
+			check(model.equals("[4242.0]"), "the look from the inventory", model);
+			context.runOnClient(mc -> SkyCaseTestHooks.forget());
 
 			// saved: read back, the pools from the windows and the wins are there
 			context.runOnClient(mc -> SkyCaseTestHooks.reload());

@@ -443,6 +443,8 @@ public final class SkyCase {
 		recent.add(new Drop(type, reward, now));
 		if (recent.size() > 50) recent.remove(0);
 		save();
+		// its look as it lands in the inventory, when no preview has shown it (its model from the server's pack)
+		received = new Drop(type, reward, now);
 		if (UNASSIGNED.equals(type) && !unassignedSaid) {
 			// a case the mod does not know yet (a new one on the server): its wins count to it once its preview is opened
 			unassignedSaid = true;
@@ -522,6 +524,7 @@ public final class SkyCase {
 	private static final long BROWSE_MS = 10_000;
 
 	public static void tick(Minecraft mc) {
+		if (received != null) learnLook(mc);
 		if (!SkyTasks.onSkyUp(mc) || !(Compat.screen(mc) instanceof AbstractContainerScreen<?> screen)) return;
 		String type = caseType(screen.getTitle().getString());
 		if (type == null) return;
@@ -530,6 +533,39 @@ public final class SkyCase {
 		contextFromWindow = true;
 		// what it holds: read a few times a second (the items come after the window)
 		if (++tick % 5 == 0) readPreview(type, screen, contextAt);
+	}
+
+	/** The last win whose look is not known yet, while its item may still come into the inventory. */
+	private static Drop received;
+	/** How long after a win its item may take to come. */
+	private static final long RECEIVED_MS = 10_000;
+
+	/**
+	 * The look of a win no preview showed, taken from the item that came into the inventory (its model,
+	 * coloured name, head), so the toast, the HUD and the window show it as the player got it.
+	 */
+	static void learnLook(Minecraft mc) {
+		Drop d = received;
+		if (mc.player == null || System.currentTimeMillis() - d.at() > RECEIVED_MS) {
+			received = null;
+			return;
+		}
+		Stats stats = lifetime().of(d.type());
+		String k = key(base(d.reward()));
+		for (String known : stats.looks.keySet()) {
+			if (key(known).equals(key(d.reward()))) {
+				received = null;
+				return;
+			}
+		}
+		Inventory inv = mc.player.getInventory();
+		for (int i = 0; i < inv.getContainerSize(); i++) {
+			ItemStack stack = inv.getItem(i);
+			if (stack.isEmpty() || !stack.has(DataComponents.CUSTOM_NAME) || !key(base(plain(stack.getHoverName().getString()))).equals(k)) continue;
+			if (keepLooks(stats, Map.of(d.reward(), stack))) save();
+			received = null;
+			return;
+		}
 	}
 
 	/** One page of a case's preview: its rewards, and whether pages come before and after it. */
@@ -980,7 +1016,8 @@ public final class SkyCase {
 		private static final long SHOW_MS = 5000;
 		private static final int W = 160, H = 32;
 		private final String type, reward;
-		private final ItemStack icon;
+		private ItemStack icon;
+		private long looked;
 		private long first = -1, age;
 		private Visibility wanted = Visibility.SHOW;
 
@@ -1010,6 +1047,12 @@ public final class SkyCase {
 			if (first < 0) first = time;
 			age = time - first;
 			wanted = age < SHOW_MS ? Visibility.SHOW : Visibility.HIDE;
+			// the look again now and then: one learnt from the item that came into the inventory after the win
+			if (age - looked >= 500) {
+				looked = age;
+				ItemStack later = look(type, reward);
+				if (later != null && !later.isEmpty()) icon = later;
+			}
 		}
 
 		@Override
@@ -1051,6 +1094,7 @@ public final class SkyCase {
 		recent.clear();
 		contextType = null;
 		browse = null;
+		received = null;
 	}
 
 	/** What was saved read again (as after a restart). */
