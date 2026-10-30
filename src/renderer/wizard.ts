@@ -60,6 +60,8 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLEl
   return node;
 }
 const icon = (cls: string) => el('i', { className: cls });
+/** The logo as the side bar shows it now (the season's: Halloween, 11 November), so the wizard's matches it. */
+const seasonLogo = () => document.querySelector<HTMLImageElement>('.brand-logo')?.src || 'logo.png';
 const gb = (mb: number) => (mb / 1024).toLocaleString(locale(), { maximumFractionDigits: 1 });
 
 export function createWizard(deps: WizardDeps) {
@@ -185,7 +187,7 @@ export function createWizard(deps: WizardDeps) {
       el('div', { className: 'wz-drag' }),
       el('div', { className: 'wz-shell' },
         el('aside', { className: 'wz-rail glass-panel' },
-          el('div', { className: 'wz-brand' }, el('img', { src: 'logo.png', alt: '' }), el('div', { className: 'brand-name' }, 'Slash', el('span', { textContent: 'Client' }))),
+          el('div', { className: 'wz-brand' }, el('img', { className: 'season-logo', src: seasonLogo(), alt: '' }), el('div', { className: 'brand-name' }, 'Slash', el('span', { textContent: 'Client' }))),
           rail, skipAll),
         el('section', { className: 'wz-main glass-panel' }, body, foot)),
     );

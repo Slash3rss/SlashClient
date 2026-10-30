@@ -187,7 +187,7 @@ export function initSeason(deps: SeasonDeps) {
     x.putImageData(image, 0, 0);
   }
 
-  /** The logos on the page (the side bar's, the splash's) and the window's icon: the season's, or back to the usual. */
+  /** The logos on the page (the side bar's, the splash's, any other marked .season-logo) and the window's icon: the season's, or back to the usual. */
   let logoShown: SeasonId | null = null;
   async function logo(season: SeasonId | null) {
     logoShown = season;
@@ -198,7 +198,7 @@ export function initSeason(deps: SeasonDeps) {
     }
     // switched again while the picture was being made: the later call decides
     if (logoShown !== season) return;
-    for (const img of document.querySelectorAll<HTMLImageElement>('.brand-logo, .splash-logo')) img.src = url ?? 'logo.png';
+    for (const img of document.querySelectorAll<HTMLImageElement>('.brand-logo, .splash-logo, .season-logo')) img.src = url ?? 'logo.png';
     deps.setWindowIcon?.(url ?? null);
   }
 
