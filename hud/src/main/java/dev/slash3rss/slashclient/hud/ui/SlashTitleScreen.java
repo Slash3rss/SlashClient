@@ -63,7 +63,9 @@ public class SlashTitleScreen extends MenuScreen {
 	@Override
 	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
-		extractPanorama(g, delta);
+		// a slower computer (the launcher's saving mode): a still dark background instead of the turning panorama
+		if (SlashHud.saver()) g.fill(0, 0, width, height, 0xFF0A0D14);
+		else extractPanorama(g, delta);
 		// the launcher's dark blue over the panorama, deeper towards the bottom
 		g.fill(0, 0, width, height, 0x800A0D14);
 		g.fillGradient(0, height / 2, width, height, 0x000A0D14, 0xB00A0D14);

@@ -1,3 +1,4 @@
+import type { PerfPart, PerfPreset } from '../shared/perfPresets';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -69,6 +70,10 @@ export interface Profile {
   javaPath: string;
   /** Whose Java the launcher installs for this profile (javaVendors.ts); missing or empty = the default from Settings. */
   javaVendor?: '' | JavaVendor;
+  /** "Tryb dla słabszych komputerów" (shared/perfPresets.ts); missing = off. */
+  perfPreset?: PerfPreset;
+  /** The preset's parts the player switched off ('graphics', 'memory', 'mods', 'saver', 'gl'). */
+  perfOff?: PerfPart[];
   width: number;
   height: number;
 }

@@ -28,6 +28,7 @@ import { createToolSettings } from './toolSettings';
 import { createSupportCard } from './support';
 import { betaUpdatesOffered, featureOn, featuresKnown, initFeatures, onFeatures } from './features';
 import { initSeason } from './season';
+import { isPerfPreset, partOn, PERF_PARTS, suggestedPreset, type PerfPart, type PerfPreset } from '../shared/perfPresets';
 import { checkLegalNotices, createLegalCard } from './legal';
 import { createWiki } from './wiki';
 import { createServerPages } from './serverPages';
@@ -54,6 +55,7 @@ interface Profile {
   icon: string; iconVersion: number; syncOptions: boolean; hud?: boolean; iconFile?: string;
   modpack?: { projectId: string; versionId: string; versionNumber: string; title: string; source?: 'curseforge' };
   playTimeMs?: number; lastPlayedAt?: number; jvmPreset?: 'default' | 'g1' | 'zgc';
+  perfPreset?: PerfPreset; perfOff?: PerfPart[];
   lastTarget?: { kind: 'server'; address: string } | { kind: 'world'; folder: string; name: string };
 }
 
@@ -83,6 +85,8 @@ interface PublicStore {
   runningProfiles?: string[];
   dataDir: string;
   systemMemoryMb: number;
+  platform?: string;
+  arch?: string;
   hudVersions?: string[];
 }
 interface VersionInfo { id: string; type: string }
@@ -1116,6 +1120,7 @@ function loadProfileForm(profile: Profile) {
   renderLoaderVersions(profile.loaderVersion ?? '');
   $('#memory-value').textContent = `${profile.memoryMb} MB`;
   (form.elements.namedItem('jvmPreset') as HTMLSelectElement).value = profile.jvmPreset ?? 'default';
+  fillPerfPreset(profile);
   // the slider goes up to what this computer has (leaving 2 GB), the hint suggests a value
   const slider = form.elements.namedItem('memoryMb') as HTMLInputElement;
   slider.max = String(Math.max(4096, Math.floor((store.systemMemoryMb - 2048) / 512) * 512));
@@ -1550,6 +1555,9 @@ $('#profile-form').addEventListener('submit', async (e) => {
     syncOptions: data.get('syncOptions') === 'on',
     hud: data.get('hud') === 'on',
     jvmPreset: str('jvmPreset') as Profile['jvmPreset'],
+    perfPreset: isPerfPreset(str('perfPreset')) ? str('perfPreset') as PerfPreset : 'off',
+    // the parts left unticked are the ones switched off
+    perfOff: PERF_PARTS.filter((part) => !data.getAll('perfPart').includes(part)),
     loaderVersion: str('loaderVersion'),
     gameDir: str('gameDir'),
     jvmArgs: str('jvmArgs'),
@@ -1558,8 +1566,41 @@ $('#profile-form').addEventListener('submit', async (e) => {
     width: Number(str('width')) || 854,
     height: Number(str('height')) || 480,
   };
-  if ((await guard(() => api.saveProfile(updated))) !== undefined) toast('Zapisano profil');
+  if ((await guard(() => api.saveProfile(updated))) !== undefined) {
+    toast('Zapisano profil');
+    // a preset picked with its mods: the performance mods this profile lacks, installed now
+    const wasMods = partOn(current.perfPreset, current.perfOff, 'mods');
+    if (!wasMods && partOn(updated.perfPreset, updated.perfOff, 'mods') && updated.loader !== 'vanilla') void installPresetMods(updated.id);
+  }
 });
+
+/** "Tryb dla słabszych komputerów" in the profile's settings: the preset, its parts, and the one suggested for this computer. */
+function fillPerfPreset(profile: Profile) {
+  const form = $<HTMLFormElement>('#profile-form');
+  const preset = profile.perfPreset ?? 'off';
+  (form.elements.namedItem('perfPreset') as HTMLSelectElement).value = preset;
+  for (const box of form.querySelectorAll<HTMLInputElement>('input[name="perfPart"]')) box.checked = !(profile.perfOff ?? []).includes(box.value as PerfPart);
+  const suggested = suggestedPreset(store.systemMemoryMb, navigator.hardwareConcurrency || 0, store.platform ?? '', store.arch ?? '');
+  const names: Record<PerfPreset, string> = { off: t('Wyłączony'), light: t('Lekki – słabszy laptop'), lighter: t('Bardzo lekki – stary komputer'), pi: t('Raspberry Pi i inne ARM') };
+  $('#perf-suggest').textContent = suggested !== 'off' ? t('dla tego komputera polecamy: {0}', names[suggested]) : '';
+  renderPerfParts();
+}
+
+/** The parts only with a preset on; the Raspberry Pi's graphics fix only with its own preset. */
+function renderPerfParts() {
+  const form = $<HTMLFormElement>('#profile-form');
+  const preset = (form.elements.namedItem('perfPreset') as HTMLSelectElement).value;
+  $('#perf-parts').classList.toggle('hidden', preset === 'off');
+  form.querySelector<HTMLElement>('.perf-gl')!.classList.toggle('hidden', preset !== 'pi');
+}
+$<HTMLSelectElement>('#profile-form select[name="perfPreset"]').addEventListener('change', renderPerfParts);
+
+/** The performance mods a preset brings (shared/perfmods: Sodium, Lithium…), those not there yet. */
+async function installPresetMods(profileId: string) {
+  const plan = await api.perfPlan(profileId).catch(() => [] as { projectId?: string; title: string; installed: boolean }[]);
+  const items = plan.filter((p: { projectId?: string; installed: boolean }) => p.projectId && !p.installed).map((p: { projectId?: string; title: string }) => ({ projectId: p.projectId!, title: p.title }));
+  if (items.length) await guard(() => api.installPerf(profileId, items));
+}
 
 // deleting a profile: its own game folder (instances/<id>) may go to the system trash too; an imported one never
 let deleting: string | undefined;

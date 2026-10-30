@@ -102,6 +102,8 @@ import { contentOf, PopularReporter, recentServers } from './friendsPopular';
 import { appendSummary, collectSummary, MIN_SESSION_MS, readSummaries, removeSummary, summaryDisplay, withStats } from './sessionSummary';
 import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type ForeignInstance } from './importers';
 import { perfModsFor } from './perfmods';
+import { applyPerfPreset } from './perfPreset';
+import { partOn, presetEnv, presetMemoryCap } from '../shared/perfPresets';
 import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePreset, type SkinPreset } from './skinLibrary';
 import fsp from 'node:fs/promises';
 import { backupWorld, deleteFile, listBackups, listClips, listScreenshots, listWorlds, restoreBackup } from './worlds';
@@ -215,6 +217,9 @@ function publicStore() {
     runningProfiles: [...games.keys()],
     dataDir: paths.root,
     systemMemoryMb: Math.round(os.totalmem() / 1024 / 1024),
+    // for the preset suggested for slower computers (the Raspberry Pi's on Linux on ARM)
+    platform: process.platform,
+    arch: process.arch,
     hudVersions: hudSupported,
   };
 }
@@ -1804,6 +1809,8 @@ async function startGame(profileId: string, accountId: string, server: string | 
   // (the account played as may have a set of its own)
   const sharedDir = sharedDirFor(account.id, store.settings.sharedPerAccount);
   if (profile.syncOptions) await pullShared(profileGameDir(profile), sharedDir);
+  // "Tryb dla słabszych komputerów": its game settings written when it was picked or changed (the player's own kept)
+  await applyPerfPreset(profileGameDir(profile), profile.perfPreset, profile.perfOff).catch((err) => console.error('tryb wydajności:', (err as Error).message));
 
   // keep the tail of the output for crash analysis
   const recentLog: string[] = [];
@@ -1857,8 +1864,14 @@ async function startGame(profileId: string, accountId: string, server: string | 
     if (!games.size) social.setActivity({ kind: 'launcher' });
     throw err;
   };
+  // the preset's memory (less of it leaves more to a small computer) and the Raspberry Pi's graphics driver fix
+  const memoryCap = partOn(profile.perfPreset, profile.perfOff, 'memory') ? presetMemoryCap(profile.perfPreset!, systemMemoryMb()) : undefined;
+  const gpu = await gpuLaunchOptions(store.settings);
+  const perfEnv = presetEnv(profile.perfPreset ?? 'off', profile.perfOff, process.platform);
+  // and the mod's saving mode (fewer effects and other players' cosmetics)
+  if (hud.jvmArgs.length && partOn(profile.perfPreset, profile.perfOff, 'saver')) hud.jvmArgs.push(`-Dslashclient.lowSpec=${profile.perfPreset}`);
   const child = await launch({
-    profile: hud.profile,
+    profile: memoryCap && memoryCap < hud.profile.memoryMb ? { ...hud.profile, memoryMb: memoryCap } : hud.profile,
     account,
     onStage: (stage, done, total, stats) => send('launch:stage', { stage, done, total, ...stats }),
     onLog: (line) => {
@@ -1883,7 +1896,8 @@ async function startGame(profileId: string, accountId: string, server: string | 
     server,
     world,
     extraJvmArgs: hud.jvmArgs,
-    ...(await gpuLaunchOptions(store.settings)),
+    ...gpu,
+    ...(Object.keys(perfEnv).length ? { extraEnv: { ...gpu.extraEnv, ...perfEnv } } : {}),
     javaVendor: extras.javaVendor ?? effectiveJavaVendor(profile.javaVendor, store.settings.javaVendor),
     onNotice: (message) => send('launch:notice', { profileId: profile.id, message }),
     onJava: extras.onJava,

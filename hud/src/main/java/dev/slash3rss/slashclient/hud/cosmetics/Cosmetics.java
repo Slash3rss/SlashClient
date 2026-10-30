@@ -177,7 +177,7 @@ public final class Cosmetics {
 
 	/** Another player's cosmetics, switched off ("Kosmetyki innych graczy"): none of theirs shows; ours always do. */
 	static boolean hidden(UUID id) {
-		if (SlashHud.config == null || SlashHud.config.cosmeticsOthers || id == null) return false;
+		if (SlashHud.config == null || id == null || SlashHud.config.cosmeticsOthers && !SlashHud.saver()) return false;
 		var user = Minecraft.getInstance().getUser();
 		return user == null || !id.equals(user.getProfileId());
 	}

@@ -251,6 +251,23 @@
                   <option value="default">Domyślne Minecrafta</option>
                 </select>
               </label>
+              <div class="perf-preset" id="perf-preset">
+                <label class="field"><span class="label">Tryb dla słabszych komputerów <span class="hint" id="perf-suggest"></span></span>
+                  <select name="perfPreset">
+                    <option value="off">Wyłączony</option>
+                    <option value="light">Lekki – słabszy laptop</option>
+                    <option value="lighter">Bardzo lekki – stary komputer</option>
+                    <option value="pi">Raspberry Pi i inne ARM</option>
+                  </select>
+                </label>
+                <div class="perf-parts" id="perf-parts">
+                  <label class="check"><input type="checkbox" name="perfPart" value="graphics"><span>Lżejsza grafika <span class="hint">zasięg widzenia, cząsteczki, chmury, limit FPS – Twoje ustawienia wracają po wyłączeniu</span></span></label>
+                  <label class="check"><input type="checkbox" name="perfPart" value="memory"><span>Mniej pamięci dla gry <span class="hint">więcej zostaje dla systemu</span></span></label>
+                  <label class="check"><input type="checkbox" name="perfPart" value="mods"><span>Mody wydajności <span class="hint">Sodium, Lithium i inne, instalowane przy zapisie</span></span></label>
+                  <label class="check"><input type="checkbox" name="perfPart" value="saver"><span>Tryb oszczędny w grze <span class="hint">bez cudzych kosmetyków, efektów i animacji menu</span></span></label>
+                  <label class="check perf-gl"><input type="checkbox" name="perfPart" value="gl"><span>Poprawka grafiki dla Raspberry Pi <span class="hint">nowsze wersje gry na sterowniku Pi</span></span></label>
+                </div>
+              </div>
               <label class="field"><span class="label">Dodatkowe argumenty JVM <span class="hint">opcjonalne</span></span><input name="jvmArgs" placeholder="-Dfml.ignorePatchDiscrepancies=true"></label>
               <div class="java-choice" id="java-choice">
                 <label class="field">Java

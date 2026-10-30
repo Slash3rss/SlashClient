@@ -90,6 +90,15 @@ public class SlashHud implements ClientModInitializer {
 	public static final Logger LOG = LoggerFactory.getLogger(ID);
 
 	public static HudConfig config;
+
+	/**
+	 * The launcher's "Tryb dla słabszych komputerów" with its saving part on (-Dslashclient.lowSpec=<preset>):
+	 * no other players' cosmetics, no seasonal effects, a still menu background.
+	 */
+	public static boolean saver() {
+		String s = System.getProperty("slashclient.lowSpec");
+		return s != null && !s.isEmpty() && !"off".equals(s);
+	}
 	/** The key that opens friends (O): named in hints, e.g. under a screenshot's preview. */
 	public static KeyMapping friendsKey;
 	static final List<HudModule> MODULES = Modules.all();

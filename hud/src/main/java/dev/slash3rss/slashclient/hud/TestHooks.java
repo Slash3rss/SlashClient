@@ -1668,6 +1668,14 @@ public final class TestHooks {
 		return out;
 	}
 
+	/** The launcher's saving mode for slower computers on or off (as -Dslashclient.lowSpec gives it), and whether the season shows then. */
+	public static boolean lowSpec(String preset) {
+		if (preset == null) System.clearProperty("slashclient.lowSpec");
+		else System.setProperty("slashclient.lowSpec", preset);
+		dev.slash3rss.slashclient.hud.ui.Season.forTest = null;
+		return dev.slash3rss.slashclient.hud.ui.Season.current() != null;
+	}
+
 	/** Whether the game is reloading its resources (the switch above must not). */
 	public static boolean reloading() {
 		var mc = net.minecraft.client.Minecraft.getInstance();

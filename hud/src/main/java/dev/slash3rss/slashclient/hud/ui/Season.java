@@ -24,7 +24,8 @@ public final class Season {
 	/** The season now (HALLOWEEN, INDEPENDENCE), or null outside them or when the look is off. */
 	public static String current() {
 		if (forTest != null) return forTest.isEmpty() ? null : forTest;
-		if (!launcherAllows || SlashHud.config != null && !SlashHud.config.seasonalLook) return null;
+		// (nor with the launcher's saving mode for slower computers)
+		if (!launcherAllows || SlashHud.saver() || SlashHud.config != null && !SlashHud.config.seasonalLook) return null;
 		LocalDate d = LocalDate.now();
 		if ((d.getMonthValue() == 10 && d.getDayOfMonth() >= 25) || (d.getMonthValue() == 11 && d.getDayOfMonth() <= 2)) return HALLOWEEN;
 		if (d.getMonthValue() == 11 && d.getDayOfMonth() >= 8 && d.getDayOfMonth() <= 12) return INDEPENDENCE;

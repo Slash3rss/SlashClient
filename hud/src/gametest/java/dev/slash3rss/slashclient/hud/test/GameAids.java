@@ -88,6 +88,11 @@ public class GameAids implements FabricClientGameTest {
 			// other players' cosmetics switched off: theirs gone, ours still on
 			String theirsOn = context.computeOnClient(mc -> TestHooks.othersCosmetics(true)), theirsOff = context.computeOnClient(mc -> TestHooks.othersCosmetics(false));
 			if (!theirsOn.equals("aurora | aurora") || !theirsOff.equals("null | aurora")) throw new AssertionError("Other players' cosmetics: " + theirsOn + " / " + theirsOff);
+			// the launcher's saving mode for slower computers: other players' cosmetics and the season gone, ours still on
+			boolean seasonSaving = context.computeOnClient(mc -> TestHooks.lowSpec("pi"));
+			String saving = context.computeOnClient(mc -> TestHooks.othersCosmetics(true));
+			context.runOnClient(mc -> TestHooks.lowSpec(null));
+			if (seasonSaving || !saving.equals("null | aurora")) throw new AssertionError("The saving mode: season " + seasonSaving + ", cosmetics " + saving);
 			// switched at once: the game's resources are not reloaded
 			context.waitTicks(2);
 			if (context.computeOnClient(mc -> TestHooks.reloading())) throw new AssertionError("The block windows' switch reloaded the resources");
