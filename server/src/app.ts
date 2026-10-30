@@ -49,7 +49,7 @@ import { SETTING_DEFS } from './settingsDefs.ts';
 import { settingsAdminRoutes } from './settingsAdmin.ts';
 import { serverVoteRoutes } from './serverVotes.ts';
 import { featureKey, featuresFor } from './features.ts';
-import { disabledPage, errorPage, homeRedirect, notFoundPage, sitePage, siteLang } from './sitePages.ts';
+import { disabledPage, downloadDownPage, errorPage, homeRedirect, noInstallerPage, notFoundPage, sitePage, siteLang } from './sitePages.ts';
 import { useBlocklist } from './clans.ts';
 import { useLogoLimit } from './clanLogos.ts';
 import { createRanks, gameBadge, type RankUser } from './ranks.ts';
@@ -2027,12 +2027,12 @@ export function createApp(cfg: Config) {
     if (req.method === 'GET' && download && isDownloadOs(download[1])) {
       try {
         const to = await downloads.link(download[1]);
-        res.writeHead(to ? 302 : 404, to ? { Location: to, 'Cache-Control': 'no-store' } : { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end(to ? undefined : 'Brak instalatora dla tego systemu w najnowszym wydaniu.');
+        // no installer for that system (yet): the site's own page with the other systems, not a bare line of text
+        if (to) res.writeHead(302, { Location: to, 'Cache-Control': 'no-store' }).end();
+        else res.writeHead(404, { ...ERROR_PAGE_HEADERS, 'Cache-Control': 'no-store' }).end(noInstallerPage(siteLang(req, url.pathname), download[1]));
       } catch (err) {
         console.error('pobieranie:', (err as Error).message);
-        res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end('Pobieranie jest chwilowo niedostępne. Spróbuj za chwilę.');
+        res.writeHead(503, { ...ERROR_PAGE_HEADERS, 'Cache-Control': 'no-store', 'Retry-After': '60' }).end(downloadDownPage(siteLang(req, url.pathname), url.pathname));
       }
       return;
     }

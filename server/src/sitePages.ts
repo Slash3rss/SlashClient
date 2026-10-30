@@ -94,12 +94,18 @@ const T = {
     notFound: ['Nie ma takiej strony', 'Ten adres nie prowadzi nigdzie – może link jest stary albo jest w nim literówka.'],
     disabled: ['Chwilowo niedostępne', 'Ta część SlashClient jest teraz wyłączona. Zajrzyj później.'],
     error: ['Coś poszło nie tak', 'Serwer nie dał rady obsłużyć tej strony. Spróbuj za chwilę – jeśli to się powtarza, zgłoś nam to.'],
+    noInstaller: ['Jeszcze nie ma wersji na {0}', 'Najnowsze wydanie SlashClient nie ma jeszcze instalatora na ten system. Pojawi się w jednym z kolejnych wydań – a na razie możesz pobrać wersję na inny system.'],
+    downloadDown: ['Pobieranie chwilowo niedostępne', 'Nie udało się teraz sięgnąć po pliki wydania. Spróbuj ponownie za chwilę.'],
+    other: 'Inne systemy', again: 'Spróbuj ponownie', changelog: 'Historia zmian',
   },
   en: {
     home: 'Home page', report: 'Report a problem', account: 'Your account',
     notFound: ['Page not found', 'This address leads nowhere – the link may be old or have a typo in it.'],
     disabled: ['Temporarily unavailable', 'This part of SlashClient is switched off right now. Check back later.'],
     error: ['Something went wrong', 'The server could not show this page. Try again in a moment – if it keeps happening, let us know.'],
+    noInstaller: ['No version for {0} yet', "SlashClient's latest release has no installer for this system yet. It will come in one of the next releases – for now you can download it for another system."],
+    downloadDown: ['Downloads unavailable for now', "The release's files could not be reached just now. Try again in a moment."],
+    other: 'Other systems', again: 'Try again', changelog: 'Changelog',
   },
 };
 
@@ -113,6 +119,28 @@ export function notFoundPage(lang: SiteLang): string {
 export function disabledPage(lang: SiteLang = 'pl'): string {
   const t = T[lang];
   return sitePage({ lang, code: '503', icon: 'fa-solid fa-person-digging', tone: 'warning', title: t.disabled[0], text: t.disabled[1], actions: [[t.home, lang === 'en' ? '/en' : '/', true]] });
+}
+
+/** The systems' names on the download pages. */
+const SYSTEM_NAMES: Record<string, string> = { windows: 'Windows', mac: 'macOS (Apple Silicon)', 'mac-intel': 'macOS (Intel)', linux: 'Linux', 'linux-arm': 'Linux (ARM)' };
+
+/** 404 at /pobierz/<system>: the latest release has no installer for it (yet); the other systems' downloads instead. */
+export function noInstallerPage(lang: SiteLang, os: string): string {
+  const t = T[lang];
+  const home = lang === 'en' ? '/en' : '/';
+  return sitePage({
+    lang, code: '404', icon: 'fa-solid fa-box-open', tone: 'warning', title: t.noInstaller[0].replace('{0}', SYSTEM_NAMES[os] ?? os), text: t.noInstaller[1],
+    actions: [[t.other, `${home}#pobierz`, true], [t.changelog, lang === 'en' ? '/changelog' : '/zmiany']],
+  });
+}
+
+/** 503 at /pobierz/<system>: the release list could not be read (GitHub away); the same address again later. */
+export function downloadDownPage(lang: SiteLang, again: string): string {
+  const t = T[lang];
+  return sitePage({
+    lang, code: '503', icon: 'fa-solid fa-cloud-arrow-down', tone: 'warning', title: t.downloadDown[0], text: t.downloadDown[1],
+    actions: [[t.again, again, true], [t.home, lang === 'en' ? '/en' : '/']],
+  });
 }
 
 /** 500: the server failed at a page. */
