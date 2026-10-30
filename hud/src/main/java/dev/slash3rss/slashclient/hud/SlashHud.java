@@ -143,6 +143,9 @@ public class SlashHud implements ClientModInitializer {
 		SkyDump.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyDump", InputConstants.KEY_F7, category));
 		// and on a task in its GUI, J (or the middle button) tracks it
 		SkyTasks.trackKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyTasksTrack", InputConstants.KEY_J, category));
+		// and the arrows move a tracked one up or down the tracker
+		SkyTasks.upKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyTasksUp", InputConstants.KEY_UP, category));
+		SkyTasks.downKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyTasksDown", InputConstants.KEY_DOWN, category));
 		// SkyUp's wiki: no key by default (set in SlashClient's keys window or the game's Controls)
 		dev.slash3rss.slashclient.hud.skyup.SkyWiki.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyWiki", InputConstants.UNKNOWN.getValue(), category));
 		//#endif

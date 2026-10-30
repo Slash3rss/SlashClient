@@ -362,6 +362,8 @@ public final class HudConfig {
 	public boolean clanTags = true;
 	/** Other players' clan tags too: off, only your own shows (with clanTags on). */
 	public boolean clanTagsOthers = true;
+	/** Other players' SlashClient cosmetics at all (capes, wings, clothes, pets, effects, emotes); ours always show. */
+	public boolean cosmeticsOthers = true;
 	/** Kill effects (a SlashClient cosmetic): ours when we kill something, and those of other players with SlashClient. */
 	public boolean killEffects = true;
 	public boolean killEffectsOthers = true;
@@ -956,6 +958,7 @@ public final class HudConfig {
 		clanTagsOthers = other.clanTagsOthers;
 		killEffects = other.killEffects;
 		killEffectsOthers = other.killEffectsOthers;
+		cosmeticsOthers = other.cosmeticsOthers;
 		heldSkinsOthers = other.heldSkinsOthers;
 		ringEffects = other.ringEffects;
 		ringEffectsOthers = other.ringEffectsOthers;

@@ -1648,6 +1648,24 @@ public final class TestHooks {
 		return java.util.concurrent.CompletableFuture.completedFuture(null);
 	}
 
+	/**
+	 * Another player's cape and ours as worn with "Kosmetyki innych graczy" `on`: "their | ours"
+	 * (null where none shows).
+	 */
+	public static String othersCosmetics(boolean on) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		java.util.UUID other = java.util.UUID.fromString("00000000-0000-4000-8000-000000000042"), own = mc.getUser().getProfileId();
+		dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.setCape(other, "aurora");
+		dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.setCape(own, "aurora");
+		boolean was = SlashHud.config.cosmeticsOthers;
+		SlashHud.config.cosmeticsOthers = on;
+		String out = dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.worn(other, "cape") + " | " + dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.worn(own, "cape");
+		SlashHud.config.cosmeticsOthers = was;
+		dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.setCape(other, null);
+		dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.setCape(own, null);
+		return out;
+	}
+
 	/** Whether the game is reloading its resources (the switch above must not). */
 	public static boolean reloading() {
 		var mc = net.minecraft.client.Minecraft.getInstance();
@@ -2923,6 +2941,10 @@ public final class TestHooks {
 
 	public static KeyMapping skyTrackKey() {
 		return SkyTasks.trackKey;
+	}
+
+	public static KeyMapping skyUpKey() {
+		return SkyTasks.upKey;
 	}
 
 	public static String skyTasks() {

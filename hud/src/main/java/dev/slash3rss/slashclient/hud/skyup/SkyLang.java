@@ -48,6 +48,7 @@ public final class SkyLang {
 	private static final Pattern LEVEL = Pattern.compile("^(.+?)\\s+([IVXL]+|\\d+)$");
 	private static final Pattern AT_LEAST = Pattern.compile("^(.+?)\\s+(?:przynajmniej|co najmniej|conajmniej)\\s+(.+)$");
 	private static final Pattern GENERATOR = Pattern.compile("^Generator kamienia z (\\d+) zużytymi punktami ulepszeń$");
+	private static final Pattern CASE_KEY = Pattern.compile("^Klucz do (.+?) SkyCase$");
 
 	/** A SkyUp text in the game's language when it is not Polish, as far as it is known; else as it is. */
 	public static String tr(String text) {
@@ -70,6 +71,7 @@ public final class SkyLang {
 		Matcher m;
 		if ((m = COUNT.matcher(s)).matches()) return part(m.group(1) + "x ", m.group(2), "", depth);
 		if ((m = GENERATOR.matcher(s)).matches()) return "Stone generator with " + m.group(1) + " upgrade points spent";
+		if ((m = CASE_KEY.matcher(s)).matches()) return "Key to " + m.group(1) + " SkyCase";
 		if ((m = GROWN.matcher(s)).matches()) return part("", m.group(1), " (adult)", depth);
 		if ((m = EVERY_COLOUR.matcher(s)).matches()) return part("", m.group(1), " in every colour", depth);
 		if ((m = AT_LEAST.matcher(s)).matches()) {

@@ -57,7 +57,7 @@ public final class Catalog {
 		Map.entry("waypoints", new String[] { "key.slashclient-hud.waypoints" }),
 		Map.entry("worldMap", new String[] { "key.slashclient-hud.dungeonMap" }),
 		Map.entry("dungeonmap", new String[] { "key.slashclient-hud.dungeonMap", "key.slashclient-hud.dungeonZoomIn", "key.slashclient-hud.dungeonZoomOut" }),
-		Map.entry("skytasks", new String[] { "key.slashclient-hud.skyTasksTrack" }),
+		Map.entry("skytasks", new String[] { "key.slashclient-hud.skyTasksTrack", "key.slashclient-hud.skyTasksUp", "key.slashclient-hud.skyTasksDown" }),
 		Map.entry("skyDump", new String[] { "key.slashclient-hud.skyDump" }),
 		Map.entry("clips", new String[] { "key.slashclient-hud.clip" }),
 		Map.entry("replay", new String[] { "key.slashclient-hud.replay" }),
@@ -532,6 +532,8 @@ public final class Catalog {
 		out.add(new Entry("badges", "slashclient-hud.set.badges", "extras", "m-badges", () -> cfg.badges, v -> cfg.badges = v, List.of(
 			new Toggle("slashclient-hud.set.badges.clans", () -> cfg.clanTags, v -> cfg.clanTags = v),
 			new Toggle("slashclient-hud.set.badges.clansOthers", () -> cfg.clanTagsOthers, v -> cfg.clanTagsOthers = v)), null));
+		// other players' cosmetics: all of them off at once (ours always show)
+		out.add(new Entry("cosmeticsOthers", "slashclient-hud.set.cosmeticsOthers", "extras", "m-appearance", () -> cfg.cosmeticsOthers, v -> cfg.cosmeticsOthers = v, List.of(), null));
 		out.add(new Entry("killEffects", "slashclient-hud.set.killEffects", "extras", "m-kd", () -> cfg.killEffects, v -> cfg.killEffects = v, List.of(
 			new Toggle("slashclient-hud.set.killEffects.others", () -> cfg.killEffectsOthers, v -> cfg.killEffectsOthers = v)), null));
 		// your own shield and weapon skins always show; other players' only when asked for (fair PvP)

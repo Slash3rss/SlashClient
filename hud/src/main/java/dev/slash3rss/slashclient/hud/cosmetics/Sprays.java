@@ -150,7 +150,7 @@ public final class Sprays {
 	public static void received(JsonObject e) {
 		Minecraft mc = Minecraft.getInstance();
 		mc.execute(() -> {
-			if (SlashHud.config == null || !SlashHud.config.sprays || !SlashHud.config.spraysOthers || mc.level == null || mc.player == null) return;
+			if (SlashHud.config == null || !SlashHud.config.sprays || !SlashHud.config.spraysOthers || !SlashHud.config.cosmeticsOthers || mc.level == null || mc.player == null) return;
 			try {
 				UUID owner = UUID.fromString(e.get("uuid").getAsString());
 				String id = e.get("spray").getAsString();

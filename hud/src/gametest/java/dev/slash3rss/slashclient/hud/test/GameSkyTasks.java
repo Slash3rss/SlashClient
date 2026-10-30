@@ -75,6 +75,12 @@ public class GameSkyTasks implements FabricClientGameTest {
 			context.getInput().setCursorPos(huta[0], huta[1]);
 			context.waitTicks(5);
 			context.takeScreenshot("skytasks-toggle");
+			// the arrow up on the furnace (second in the tracker): first now
+			context.getInput().pressKey(options -> TestHooks.skyUpKey());
+			context.waitTicks(3);
+			String afterUp = context.computeOnClient(mc -> String.join(" | ", dev.slash3rss.slashclient.hud.skyup.SkyTasks.orderNames()));
+			check(afterUp.startsWith("Huta"), "the furnace moved up with the arrow", afterUp);
+			context.takeScreenshot("skytasks-move-hint");
 			// on the HUD: the category, the two tasks, the iron counted from the inventory
 			context.setScreen(() -> null);
 			context.runOnClient(mc -> TestHooks.skyTasksOptions(true, false));
@@ -105,8 +111,9 @@ public class GameSkyTasks implements FabricClientGameTest {
 			String english = context.computeOnClient(mc -> String.join("|", dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Zbierz"),
 				dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Sztabka żelaza"), dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Owca (dorosła)"),
 				dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("1 x Żelazny miecz (Ostrość V)"), dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Piec przynajmniej Wydajność V, Szczęście III"),
-				dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Zawody wędkarskie"), dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Kryptomaniak")));
-			check(english.equals("Collect|Iron Ingot|Sheep (adult)|1x Iron Sword (Sharpness V)|Furnace at least Efficiency V, Fortune III|Fishing contest|Kryptomaniak"), "SkyUp's Polish in English", english);
+				dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Zawody wędkarskie"), dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Kryptomaniak"),
+				dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("2 x Klucz do Platinum SkyCase"), dev.slash3rss.slashclient.hud.skyup.SkyLang.tr("Zadanie codzienne")));
+			check(english.equals("Collect|Iron Ingot|Sheep (adult)|1x Iron Sword (Sharpness V)|Furnace at least Efficiency V, Fortune III|Fishing contest|Kryptomaniak|2x Key to Platinum SkyCase|Daily task"), "SkyUp's Polish in English", english);
 			// narrow: rows too long slide along (two moments apart), instead of ending with "…"
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.skyTasksWidth = 120);
 			context.waitTicks(30);
@@ -406,7 +413,8 @@ public class GameSkyTasks implements FabricClientGameTest {
 			// the daily task, tracked, above the categories
 			String top = context.computeOnClient(mc -> TestHooks.skyDailyOnTop());
 			// under the ready ones, above the categories
-			int dailyAt = top.indexOf("Zadanie codzienne"), categoryAt = top.indexOf("Nowicjusz |"), readyAt = top.indexOf("✔ ");
+			// (the game in English: "Zadanie codzienne" shown as "Daily task", with the time left of the day)
+			int dailyAt = top.indexOf("Daily task"), categoryAt = top.indexOf("Nowicjusz |"), readyAt = top.indexOf("✔ ");
 			check(dailyAt > readyAt && readyAt == 0 && dailyAt < categoryAt, "the daily task on top", top);
 			context.getInput().setCursorPos(wirtuoz[0], wirtuoz[1]);
 			context.waitTicks(5);

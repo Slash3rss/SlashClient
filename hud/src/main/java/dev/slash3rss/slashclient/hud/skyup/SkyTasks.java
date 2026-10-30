@@ -116,6 +116,8 @@ public final class SkyTasks {
 	static boolean dirty;
 	private static int tick;
 	public static KeyMapping trackKey;
+	/** On a tracked task in its GUI: up or down the tracker's order (the arrows). */
+	public static KeyMapping upKey, downKey;
 	/** The tier whose GUI was open last: its count is shown on the HUD. */
 	private static String lastTier = "";
 	/** Tiers whose GUI was open since joining: the others show what was saved before. */
@@ -265,6 +267,19 @@ public final class SkyTasks {
 	private static final long BONUS_FIRST = 20_000;
 
 	/** Today as SkyUp counts days (its new day starts at midnight in Poland, wherever the player is). */
+	/** How long until the day ends in Poland (when SkyUp gives a new daily task). */
+	static long dailyLeftMs() {
+		java.time.ZoneId pl = java.time.ZoneId.of("Europe/Warsaw");
+		java.time.ZonedDateTime now = java.time.ZonedDateTime.now(pl);
+		return java.time.Duration.between(now, now.toLocalDate().plusDays(1).atStartOfDay(pl)).toMillis();
+	}
+
+	/** A time left as "5 h 12 min", in the last hour "12 min" (at least a minute). */
+	static String duration(long ms) {
+		long minutes = Math.max(1, (ms + 59_999) / 60_000);
+		return minutes >= 60 ? (minutes / 60) + " h " + (minutes % 60) + " min" : minutes + " min";
+	}
+
 	public static String today() {
 		return java.time.LocalDate.now(java.time.ZoneId.of("Europe/Warsaw")).toString();
 	}
@@ -348,7 +363,7 @@ public final class SkyTasks {
 				if (met(mc, s, r)) continue;
 				left.add(r.known() ? SkyLang.tr(r.thing) + " " + Math.min(r.required, r.current + r.extra) + "/" + r.required : SkyLang.tr(r.thing));
 			}
-			return Component.translatable("slashclient-hud.skyTasks.dailyLeft", left.isEmpty() ? t.name : String.join(", ", left));
+			return Component.translatable("slashclient-hud.skyTasks.dailyLeft", left.isEmpty() ? SkyLang.tr(t.name) : String.join(", ", left));
 		}
 		return null;
 	}
@@ -646,13 +661,28 @@ public final class SkyTasks {
 		return true;
 	}
 
-	/** The track key on a task. */
+	/** The track key on a task; the arrows on a tracked one move it up or down the tracker. */
 	public static boolean key(AbstractContainerScreen<?> screen, net.minecraft.client.input.KeyEvent e) {
-		if (trackKey == null || !trackKey.matches(e) || !on(Minecraft.getInstance())) return false;
+		if (!on(Minecraft.getInstance())) return false;
+		boolean track = trackKey != null && trackKey.matches(e), up = upKey != null && upKey.matches(e), down = downKey != null && downKey.matches(e);
+		if (!track && !up && !down) return false;
 		SkyTaskParser.Task t = hovered(screen);
 		if (t == null) return false;
-		toggle(t);
+		if (track) toggle(t);
+		else {
+			int place = place(t);
+			if (place < 0) return false;
+			move(place, up ? -1 : 1);
+		}
 		return true;
+	}
+
+	/** A tracked task's place in the tracker's own order (from 0), or -1 (not tracked, the daily one, a category). */
+	static int place(SkyTaskParser.Task t) {
+		if (t.category) return -1;
+		List<SkyTaskParser.Task> tasks = orderedTracked();
+		for (int i = 0; i < tasks.size(); i++) if (tasks.get(i).key().equals(t.key())) return i;
+		return -1;
 	}
 
 	/** Over the GUI: a mark on tracked tasks, and under it what the key does for the one under the mouse. */
@@ -702,7 +732,20 @@ public final class SkyTasks {
 		SkyTaskParser.Task t = hovered(screen);
 		Component keyName = trackKey == null ? Component.literal("?") : trackKey.getTranslatedKeyMessage();
 		Component hint = t == null ? Component.translatable("slashclient-hud.skyTasks.hint", keyName)
-			: Component.translatable("slashclient-hud.skyTasks." + (tracked(t) ? "untrack" : "track") + (t.category ? "Category" : ""), keyName, t.name);
+			: Component.translatable("slashclient-hud.skyTasks." + (tracked(t) ? "untrack" : "track") + (t.category ? "Category" : ""), keyName, SkyLang.tr(t.name));
+		// a tracked one: under it, that the arrows move it, and where it is in the tracker
+		int place = t == null ? -1 : place(t);
+		if (place >= 0 && upKey != null && downKey != null) {
+			Component move = Component.translatable("slashclient-hud.skyTasks.moveHint", upKey.getTranslatedKeyMessage(), downKey.getTranslatedKeyMessage(), place + 1, orderedTracked().size());
+			int mw = mc.font.width(move) + 8;
+			int mx = at.slashclient$leftPos() + (at.slashclient$imageWidth() - mw) / 2;
+			int my = Math.min(screen.height - 14, at.slashclient$topPos() + at.slashclient$imageHeight() + 3) + 13;
+			if (my + 12 <= screen.height) {
+				g.fill(mx, my, mx + mw, my + 12, 0xE0101827);
+				g.fill(mx, my + 11, mx + mw, my + 12, 0xFFFACC15);
+				g.text(mc.font, move, mx + 4, my + 2, 0xFFFFFFFF, false);
+			}
+		}
 		int w = mc.font.width(hint) + 8;
 		int x = at.slashclient$leftPos() + (at.slashclient$imageWidth() - w) / 2;
 		int y = Math.min(screen.height - 14, at.slashclient$topPos() + at.slashclient$imageHeight() + 3);
@@ -1113,9 +1156,18 @@ public final class SkyTasks {
 				long min = (now - t.seen) / 60_000;
 				age = min < 1 ? Component.translatable("slashclient-hud.skyTasks.now").getString() : Component.translatable("slashclient-hud.skyTasks.ago", min).getString();
 			}
+			// the daily task: how long is left before the day ends (SkyUp's day, in Poland), amber in its last hour
+			int ageColor = 0xFF6B7280;
+			if (daily(t)) {
+				long left = dailyLeftMs();
+				age = Component.translatable("slashclient-hud.skyTasks.dailyLeftTime", duration(left)).getString();
+				ageColor = left < 3_600_000 ? 0xFFF59E0B : 0xFF9CA3AF;
+			}
+			// (SkyUp's Polish shown in the game's language: SkyLang)
+			String name = SkyLang.tr(t.name);
 			// ready to hand in: "Oddaj!" on a green badge where the age would be
-			if (ready) out.add(new Row("✔ " + t.name, GREEN, Component.translatable("slashclient-hud.skyTasks.handIn").getString(), 0xFFFFFFFF, -1, 0, false, true));
-			else out.add(new Row(t.name, GOLD, age, 0xFF6B7280, -1, 0));
+			if (ready) out.add(new Row("✔ " + name, GREEN, Component.translatable("slashclient-hud.skyTasks.handIn").getString(), 0xFFFFFFFF, -1, 0, false, true));
+			else out.add(new Row(name, GOLD, age, ageColor, -1, 0));
 			// locked until another challenge is done
 			// green once that one is done (it may still say so until the GUI is read again)
 			if (!cfg.skyTasksCompact && !t.requires.isEmpty()) out.add(new Row(Component.translatable("slashclient-hud.skyTasks.requires", t.requires).getString(), requirementDone(t) ? GREEN : 0xFFF87171, "", 0, -1, 4));

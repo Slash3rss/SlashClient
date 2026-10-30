@@ -85,6 +85,9 @@ public class GameAids implements FabricClientGameTest {
 			context.waitTicks(60);
 			var blocks = context.computeOnClient(mc -> TestHooks.blockWindows(true));
 			context.waitFor(mc -> blocks.isDone(), 1200);
+			// other players' cosmetics switched off: theirs gone, ours still on
+			String theirsOn = context.computeOnClient(mc -> TestHooks.othersCosmetics(true)), theirsOff = context.computeOnClient(mc -> TestHooks.othersCosmetics(false));
+			if (!theirsOn.equals("aurora | aurora") || !theirsOff.equals("null | aurora")) throw new AssertionError("Other players' cosmetics: " + theirsOn + " / " + theirsOff);
 			// switched at once: the game's resources are not reloaded
 			context.waitTicks(2);
 			if (context.computeOnClient(mc -> TestHooks.reloading())) throw new AssertionError("The block windows' switch reloaded the resources");

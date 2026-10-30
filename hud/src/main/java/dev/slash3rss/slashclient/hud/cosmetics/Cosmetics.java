@@ -170,9 +170,16 @@ public final class Cosmetics {
 	}
 
 	public static String worn(UUID id, String slot) {
-		if (!SlashHud.config.badges) return null;
+		if (!SlashHud.config.badges || hidden(id)) return null;
 		var w = worn.get(id);
 		return w == null ? null : w.get(slot);
+	}
+
+	/** Another player's cosmetics, switched off ("Kosmetyki innych graczy"): none of theirs shows; ours always do. */
+	static boolean hidden(UUID id) {
+		if (SlashHud.config == null || SlashHud.config.cosmeticsOthers || id == null) return false;
+		var user = Minecraft.getInstance().getUser();
+		return user == null || !id.equals(user.getProfileId());
 	}
 
 	public static void reset() {
@@ -279,6 +286,7 @@ public final class Cosmetics {
 
 	/** The emote a player plays now, or null. */
 	public static Playing playing(UUID id) {
+		if (hidden(id)) return null;
 		Shown s = emotes.get(id);
 		if (s == null) return null;
 		if (System.currentTimeMillis() > s.until()) {
