@@ -44,6 +44,7 @@ const api = {
   cancelLogin: () => invoke('account:cancelLogin'),
   launch: (profileId: string, accountId: string, server?: string, world?: string, benchmark?: boolean | 'scene') => invoke('game:launch', profileId, accountId, server, world, benchmark),
   listBenchmarks: (profileId: string) => invoke('benchmark:list', profileId),
+  shareBenchmark: (run: unknown) => invoke('benchmark:share', run),
   javaCompare: (profileId: string, accountId: string, vendor: string) => invoke('javaCompare:run', profileId, accountId, vendor),
   javaComparisons: (profileId: string) => invoke('javaCompare:list', profileId),
   listServers: (force?: boolean) => invoke('servers:list', force),

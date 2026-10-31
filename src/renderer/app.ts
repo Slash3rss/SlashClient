@@ -950,6 +950,7 @@ interface BenchmarkResult {
   scene?: string; scenes?: { id: string; avg: number; low1: number; frames: number; stutters: number }[];
   fps: { avg: number; low1: number; low01: number; median: number; min: number; max: number };
   frames: number; stutters: number; cpu?: number; gpu?: number;
+  hardware?: { cpu?: string; gpu?: string; java?: string };
   settings: { renderDistance: number; simulationDistance?: number; width: number; height: number; vsync: boolean; maxFps: number; fullscreen: boolean; mods: number; memoryMb?: number };
 }
 
@@ -997,7 +998,8 @@ async function renderBenchmarks(profileId: string) {
         el('b', { className: 'bench-fps', textContent: t('{0} FPS', fmtFps(r.fps.avg)) }),
         change === undefined ? '' : el('span', { className: `bench-change ${change >= 0 ? 'up' : 'down'}`, textContent: `${change >= 0 ? '+' : ''}${change.toFixed(0)}%` }),
         r.scene ? el('span', { className: 'bench-kind scene', textContent: t('Scena testowa') }) : el('span', { className: 'bench-kind', textContent: r.world || t('Własny świat') }),
-        el('small', { className: 'muted', textContent: new Date(r.at).toLocaleString(locale(), { dateStyle: 'medium', timeStyle: 'short' }) })),
+        el('small', { className: 'muted', textContent: new Date(r.at).toLocaleString(locale(), { dateStyle: 'medium', timeStyle: 'short' }) }),
+        benchShareButton(r)),
       bar, low,
       el('small', { textContent: details }),
       el('small', { className: 'muted', textContent: setup + (diff.length ? ` · ${t('zmiana: {0}', diff.join(', '))}` : '') }),
@@ -1030,6 +1032,19 @@ function benchScenes(r: BenchmarkResult, before: BenchmarkResult | undefined, op
     el('summary', { textContent: t('Sceny: FPS średnio · 1% low · zmiana') }), ...rows);
   if (open) box.setAttribute('open', '');
   return box;
+}
+
+/** "Udostępnij": a link to the run and the computer it ran on (text on a server without such links), in the clipboard. */
+function benchShareButton(r: BenchmarkResult): HTMLElement {
+  const b = iconButton('fa-solid fa-share-nodes', t('Udostępnij wynik ze specyfikacją komputera'), async () => {
+    b.disabled = true;
+    const shared: { url?: string; text?: string } | undefined = await guard(() => api.shareBenchmark(r));
+    b.disabled = false;
+    if (shared?.url) toast(t('Skopiowano link do wyniku ze specyfikacją komputera. Wklej go na Discordzie albo na forum.'));
+    else if (shared?.text) toast(t('Skopiowano wynik ze specyfikacją komputera. Wklej go na Discordzie albo na forum.'));
+  }, 'bench-share');
+  b.setAttribute('aria-label', t('Udostępnij wynik ze specyfikacją komputera'));
+  return b;
 }
 
 /** Where the profile card's benchmark runs: the test scene first, then the profile's worlds. */

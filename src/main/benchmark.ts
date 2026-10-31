@@ -34,6 +34,8 @@ export interface BenchmarkResult {
   cpu?: number;
   /** 0..100, when the game can read the GPU. */
   gpu?: number;
+  /** What the game ran on, from newer mods: the GPU it drew with, the processor and Java. */
+  hardware?: { cpu?: string; gpu?: string; java?: string };
   settings: {
     renderDistance: number;
     simulationDistance?: number;
@@ -65,6 +67,32 @@ export async function readBenchmarks(gameDir: string): Promise<BenchmarkResult[]
   } catch {
     return [];
   }
+}
+
+/** The computer, as a shared result shows it: names and sizes only, never the user, host name or paths. */
+export interface DeviceSpecs {
+  os: string;
+  cpu?: string;
+  threads: number;
+  ramGb: number;
+  /** The launcher's own guess, for runs from mods that did not write the GPU down. */
+  gpu?: string;
+}
+
+/** "Windows 11", "macOS 15.1", the Linux distribution's name. */
+export function osName(platform: string, version: string, distro?: string): string {
+  if (platform === 'win32') {
+    const build = Number(version.split('.')[2] ?? 0);
+    return build >= 22000 ? 'Windows 11' : 'Windows 10';
+  }
+  if (platform === 'darwin') return `macOS ${version.split('.').slice(0, 2).join('.')}`;
+  return distro || 'Linux';
+}
+
+/** PRETTY_NAME from /etc/os-release ("Ubuntu 24.04.1 LTS"). */
+export function distroName(osRelease: string): string | undefined {
+  const m = /^PRETTY_NAME=("?)(.*)\1$/m.exec(osRelease);
+  return m?.[2] || undefined;
 }
 
 /** How much `now` is better (+) or worse (-) than `before`, in percent of average FPS. */

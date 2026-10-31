@@ -3,7 +3,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
-import { fpsChange, readBenchmarks, type BenchmarkResult } from '../src/main/benchmark';
+import { distroName, fpsChange, osName, readBenchmarks, type BenchmarkResult } from '../src/main/benchmark';
+import { benchSharePayload, benchShareText, cpuName, gpuName } from '../src/shared/benchShare';
 import { BENCH_SCENES, benchTips, comparableBefore } from '../src/shared/benchTips';
 
 const run = (at: number, avg: number): BenchmarkResult => ({
@@ -92,5 +93,53 @@ describe('benchmark tips without repeats', () => {
     const all = tips.flatMap((t) => t.mods ?? []);
     assert.equal(all.length, new Set(all).size);
     assert.deepEqual(tips.find((t) => t.id === 'cpu')?.mods, ['lithium', 'entityculling']);
+  });
+});
+
+describe('sharing a benchmark run', () => {
+  it('cleans GPU and CPU names from the game, ANGLE and the system', () => {
+    assert.equal(gpuName('NVIDIA GeForce RTX 3070/PCIe/SSE2'), 'NVIDIA GeForce RTX 3070');
+    assert.equal(gpuName('ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 Direct3D11 vs_5_0 ps_5_0, D3D11)'), 'NVIDIA GeForce RTX 3070');
+    assert.equal(gpuName('ANGLE (Apple, ANGLE Metal Renderer: Apple M2, Unspecified Version)'), 'Apple M2');
+    assert.equal(gpuName('AMD Radeon(TM) Graphics'), 'AMD Radeon Graphics');
+    assert.equal(gpuName('  '), undefined);
+    assert.equal(cpuName('Intel(R) Core(TM) i7-9700K CPU @ 3.60GHz '), 'Intel Core i7-9700K CPU @ 3.60GHz');
+  });
+
+  it('names the system without anything about the user', () => {
+    assert.equal(osName('win32', '10.0.26200'), 'Windows 11');
+    assert.equal(osName('win32', '10.0.19045'), 'Windows 10');
+    assert.equal(osName('darwin', '15.1.0'), 'macOS 15.1');
+    assert.equal(osName('linux', '6.8.0', distroName('NAME="Ubuntu"\nPRETTY_NAME="Ubuntu 24.04.1 LTS"\n')), 'Ubuntu 24.04.1 LTS');
+    assert.equal(osName('linux', '6.8.0', distroName('')), 'Linux');
+  });
+
+  it('puts the result, the settings and the computer in the text, the mod\'s GPU before the launcher\'s', () => {
+    const r: BenchmarkResult = { ...run(1, 143.4), scene: 'slashclient-1', scenes: [{ id: 'forest', avg: 150, low1: 90, frames: 100, stutters: 0 }],
+      hardware: { cpu: 'AMD Ryzen 7 5800X 8-Core Processor', gpu: 'NVIDIA GeForce RTX 3070/PCIe/SSE2', java: '21.0.5+11-LTS (Eclipse Adoptium)' } };
+    r.settings.memoryMb = 4096;
+    const text = benchShareText(r, { os: 'Windows 11', cpu: 'other', threads: 16, ramGb: 32, gpu: 'Intel UHD' });
+    assert.match(text, /^SlashClient Benchmark · Scena testowa\n143 FPS średnio · 1% low 72/);
+    assert.match(text, /Las 150/);
+    assert.match(text, /Minecraft 26\.3 · zasięg 12 · 1920×1080 · modów: 3/);
+    assert.match(text, /CPU: AMD Ryzen 7 5800X 8-Core Processor \(16 wątków\)/);
+    assert.match(text, /GPU: NVIDIA GeForce RTX 3070\n/);
+    assert.match(text, /RAM: 32 GB, dla gry 4 GB/);
+    assert.match(text, /System: Windows 11 · Java 21\.0\.5 \(Eclipse Adoptium\)/);
+    // a run from an older mod: the launcher's names
+    assert.match(benchShareText(run(2, 60), { os: 'Linux', cpu: 'Intel Core i5', threads: 8, ramGb: 16, gpu: 'Intel UHD' }), /CPU: Intel Core i5 \(8 wątków\)\nGPU: Intel UHD/);
+    assert.doesNotMatch(text, /Users|home|\\/);
+  });
+});
+
+describe('a benchmark link', () => {
+  it('sends the run without the world\'s name, the mod\'s names first and the launcher\'s for the rest', () => {
+    const r: BenchmarkResult = { ...run(5, 90), world: 'Mój świat Jana', cpu: 0.4, gpu: 88, hardware: { gpu: 'AMD Radeon(TM) RX 6600/PCIe/SSE2', java: '21.0.5+11-LTS (Microsoft)' } };
+    const p = benchSharePayload(r, { os: 'Windows 11', cpu: 'Intel Core i5', threads: 12, ramGb: 16, gpu: 'Intel UHD' });
+    assert.equal(JSON.stringify(p).includes('Jana'), false);
+    assert.equal(p.kind, 'world');
+    assert.equal(p.cpuUse, 40);
+    assert.equal(p.gpuUse, 88);
+    assert.deepEqual(p.device, { os: 'Windows 11', cpu: 'Intel Core i5', threads: 12, ramGb: 16, gpu: 'AMD Radeon RX 6600', java: '21.0.5 (Microsoft)' });
   });
 });

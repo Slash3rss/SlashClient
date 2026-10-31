@@ -15,6 +15,7 @@ import { openLoopback } from './oauthLoopback';
 import { recommendedMemoryMb } from './jvm';
 import { markExistingUser } from '../shared/firstRun';
 import { shareLog } from './logshare';
+import { httpMessage, netFetch } from './download';
 import { clipFrameResponse, registerMediaSharing } from './mediaShare';
 import { previewPack } from './packPreview';
 import { lastTarget, serverFromLog, worldPlayedSince } from './sessions';
@@ -99,7 +100,8 @@ import { checkModsFolder, inspectModsFolder, installedModIds, type ModOrigin } f
 import { binContent, emptyBin, restoreContent } from './contentBin';
 import { addModsArgs, hudVersions, prepareHud } from './hud';
 import { exportHud, importHud } from './hudShare';
-import { readBenchmarks } from './benchmark';
+import { distroName, osName, readBenchmarks, type BenchmarkResult, type DeviceSpecs } from './benchmark';
+import { benchSharePayload, benchShareText, cpuName, gpuName } from '../shared/benchShare';
 import { comparableBefore } from '../shared/benchTips';
 import { appendSession, readSessions, summarize } from './stats';
 import { contentOf, PopularReporter, recentServers } from './friendsPopular';
@@ -2019,6 +2021,42 @@ registerJavaCompare({
 handle('benchmark:list', (profileId: string) => {
   const profile = profileById(profileId);
   return profile ? readBenchmarks(profileGameDir(profile)) : [];
+});
+
+/** The computer next to a shared result (the GPU only as a fallback for runs from older mods). */
+async function deviceSpecs(): Promise<DeviceSpecs> {
+  const cpus = os.cpus();
+  const distro = process.platform === 'linux' ? distroName(await fsp.readFile('/etc/os-release', 'utf8').catch(() => '')) : undefined;
+  const info = (await app.getGPUInfo('complete').catch(() => undefined)) as { auxAttributes?: { glRenderer?: string }; gpuDevice?: { active?: boolean; deviceString?: string }[] } | undefined;
+  const active = info?.gpuDevice?.find((d) => d.active) ?? info?.gpuDevice?.[0];
+  return {
+    os: osName(process.platform, process.getSystemVersion(), distro),
+    cpu: cpuName(cpus[0]?.model),
+    threads: cpus.length,
+    ramGb: Math.round(os.totalmem() / 1024 ** 3),
+    gpu: gpuName(active?.deviceString) ?? gpuName(info?.auxAttributes?.glRenderer),
+  };
+}
+
+/**
+ * "Udostępnij" on a run: a link on the SlashClient server (/benchmark/<id>) in the clipboard. A server
+ * without such links (older, or with them switched off) gets nothing: the run is copied as text instead.
+ */
+handle('benchmark:share', async (run: BenchmarkResult): Promise<{ url?: string; text?: string }> => {
+  const specs = await deviceSpecs().catch(() => undefined);
+  const base = store.settings.socialUrl.replace(/\/$/, '');
+  const endpoint = `${base}/v1/benchmarks`;
+  const res = await netFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(benchSharePayload(run, specs)) });
+  if (res.status === 404 || res.status === 503) {
+    const text = benchShareText(run, specs);
+    clipboard.writeText(text);
+    return { text };
+  }
+  if (!res.ok) throw new Error(httpMessage(res.status, endpoint));
+  const body = (await res.json()) as { url?: string };
+  if (!body.url) throw new Error(httpMessage(res.status, endpoint));
+  clipboard.writeText(base + body.url);
+  return { url: base + body.url };
 });
 
 /** HUD settings of a profile as a share code in the clipboard, and back. */
