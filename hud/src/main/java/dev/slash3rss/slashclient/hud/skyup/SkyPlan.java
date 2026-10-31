@@ -38,14 +38,16 @@ import java.util.Set;
  * module lists the next few with how long until each, and a few minutes before one starts a banner (SkyReminder)
  * says so, for the kinds the player wants. The plan is read from the wiki through the launcher once a game, as it
  * changes with SkyUp's editions, and kept for the next time; the plan below is for a launcher without the wiki.
+ * The wiki gives only when things start: when they end the chat says (a fishing contest's "zakończyły się!", the
+ * last of the three events' "został zakończony!"), and without it each kind is taken to last as long as it usually does.
  */
 public final class SkyPlan {
 	private SkyPlan() {}
 
 	/** SkyUp's own time: its plan is in Polish hours. */
 	static final ZoneId ZONE = ZoneId.of("Europe/Warsaw");
-	/** How long an event is shown as going on after it starts (the wiki says nothing of how long they last). */
-	private static final Duration NOW = Duration.ofMinutes(10);
+	/** The longest anything is shown as going on when the chat said it started and never that it ended (left SkyUp). */
+	private static final Duration LONGEST = Duration.ofHours(1);
 
 	/** One thing on the plan: the day, the hour, and its name as the wiki has it ("Zawody wędkarskie"). */
 	public record Slot(DayOfWeek day, LocalTime at, String name) {}
@@ -61,6 +63,14 @@ public final class SkyPlan {
 
 		Kind(SkyReminder.Look look) {
 			this.look = look;
+		}
+
+		/**
+		 * How long it goes on when the chat has said nothing (as SkyUp's chat had them in October 2026): a fishing
+		 * contest 10 minutes, the three events one after another some 15; the boss arena's chat is not known yet.
+		 */
+		Duration usual() {
+			return Duration.ofMinutes(this == EVENTS ? 15 : 10);
 		}
 
 		static Kind of(String name) {
@@ -213,22 +223,128 @@ public final class SkyPlan {
 		return o.has(key) && o.get(key).isJsonPrimitive() ? o.get(key).getAsString() : "";
 	}
 
-	/** The coming slots from a moment, soonest first: one going on (started less than NOW ago) counts as coming. */
+	/** The coming slots from a moment, soonest first: one going on counts as coming. */
 	static List<Next> coming(ZonedDateTime now, int count) {
 		List<Next> all = new ArrayList<>();
 		for (Slot s : plan()) {
 			ZonedDateTime at = now.with(java.time.temporal.TemporalAdjusters.nextOrSame(s.day())).with(s.at()).withSecond(0).withNano(0);
 			// this week's has passed (and is no longer going on): next week's
-			if (at.plus(NOW).isBefore(now) || at.plus(NOW).isEqual(now)) at = at.plusWeeks(1);
+			if (over(Kind.of(s.name()), at, now)) at = at.plusWeeks(1);
 			all.add(new Next(s, at));
 		}
 		all.sort(java.util.Comparator.comparing(Next::at));
 		return all.subList(0, Math.min(count, all.size()));
 	}
 
+	/** Whether a slot starting then is over: as the chat said, or (heard nothing of it) after its usual length. */
+	private static boolean over(Kind kind, ZonedDateTime at, ZonedDateTime now) {
+		if (now.isBefore(at)) return false;
+		Heard h = heard.get(kind);
+		if (h != null && h.of(at)) return h.ended != null && !h.ended.isAfter(now) || !now.isBefore(at.plus(LONGEST));
+		return !now.isBefore(at.plus(kind.usual()));
+	}
+
+	// ---------- what the chat says ----------
+
+	/** When SkyUp's chat said one of a kind started and ended (null: not said). */
+	private static final class Heard {
+		ZonedDateTime started, ended;
+
+		/** Whether this is about the slot starting then (the chat is a few seconds off the plan's hour, or more). */
+		boolean of(ZonedDateTime at) {
+			ZonedDateTime said = started != null ? started : ended;
+			return !said.isBefore(at.minusMinutes(10)) && said.isBefore(at.plus(LONGEST));
+		}
+	}
+
+	private static final Map<Kind, Heard> heard = new java.util.EnumMap<>(Kind.class);
+	/** The events Fortuna picked for this round ("Labirynt", "Parkour miłosny", …), the one going on and how many are done. */
+	private static List<String> picked = List.of();
+	private static String event;
+	private static int eventsDone;
+	/** An event ended without the next said: when no other is announced by then, the round is over. */
+	private static ZonedDateTime roundEnds;
+
+	private static final java.util.regex.Pattern PICKED = java.util.regex.Pattern.compile("^Event » Eventy rozpoczną się za .*Fortuna wybrała (.+)!$");
+	private static final java.util.regex.Pattern EVENT_STARTED = java.util.regex.Pattern.compile("^Event » (.+) rozpoczął się!$");
+	private static final java.util.regex.Pattern EVENT_ENDED = java.util.regex.Pattern.compile("^Event » (.+) został zakończony!$");
+
+	/** A line of the chat (ChatComponentMixin): SkyUp's fishing contests and events starting and ending. */
+	public static void onChat(Component message) {
+		if (SlashHud.config == null || !SkyTasks.onSkyUp(Minecraft.getInstance())) return;
+		heard(message.getString(), ZonedDateTime.now(ZONE));
+	}
+
+	static void heard(String line, ZonedDateTime now) {
+		line = line.replaceAll("§.", "").replaceAll("\\s+", " ").trim();
+		if (line.startsWith("Wędkarstwo » Zawody wędkarskie")) {
+			if (line.endsWith("wystartowały!")) started(Kind.FISHING, now);
+			else if (line.contains("zakończyły się!")) ended(Kind.FISHING, now);
+			return;
+		}
+		if (!line.startsWith("Event »")) return;
+		var m = PICKED.matcher(line);
+		if (m.matches()) {
+			picked = List.of(m.group(1).split(", "));
+			eventsDone = 0;
+			event = null;
+		} else if ((m = EVENT_STARTED.matcher(line)).matches()) {
+			Heard h = heard.get(Kind.EVENTS);
+			// the first of the round (the others go on in it)
+			if (h == null || h.ended != null || h.started == null || !now.isBefore(h.started.plus(LONGEST))) started(Kind.EVENTS, now);
+			event = m.group(1);
+			roundEnds = null;
+		} else if (line.contains(" rozpocznie się za ")) {
+			// the next one announced: the round goes on
+			roundEnds = null;
+		} else if (EVENT_ENDED.matcher(line).matches()) {
+			event = null;
+			eventsDone++;
+			// the last of those picked; not knowing which were, only when nothing else is said in a moment
+			if (!picked.isEmpty() && eventsDone >= picked.size()) ended(Kind.EVENTS, now);
+			else roundEnds = now.plusSeconds(15);
+		}
+	}
+
+	private static void started(Kind kind, ZonedDateTime now) {
+		Heard h = new Heard();
+		h.started = now;
+		heard.put(kind, h);
+	}
+
+	private static void ended(Kind kind, ZonedDateTime now) {
+		Heard h = heard.get(kind);
+		if (h == null || h.ended != null) heard.put(kind, h = new Heard());
+		h.ended = now;
+		if (kind == Kind.EVENTS) {
+			picked = List.of();
+			event = null;
+			roundEnds = null;
+		}
+	}
+
+	/** The round's end once nothing more was announced. */
+	private static void tickChat(ZonedDateTime now) {
+		if (roundEnds != null && !now.isBefore(roundEnds)) ended(Kind.EVENTS, now);
+	}
+
+	/** What a row says: its name, or the event going on now ("Labirynt") while the events are. */
+	static Component label(Next n, ZonedDateTime now) {
+		if (event != null && !n.at().isAfter(now) && Kind.of(n.slot().name()) == Kind.EVENTS) return Component.literal(event);
+		return Component.literal(SkyLang.tr(n.slot().name()));
+	}
+
+	/** When a row is: as when(), and while the events go on which of them it is ("trwa 2/3"). */
+	static Component whenOf(Next n, ZonedDateTime now) {
+		if (event != null && !picked.isEmpty() && !n.at().isAfter(now) && Kind.of(n.slot().name()) == Kind.EVENTS)
+			return Component.translatable("slashclient-hud.skyPlan.nowOf", eventsDone + 1, picked.size());
+		return when(now, n.at());
+	}
+
 	// ---------- the reminder ----------
 
 	public static void tick(Minecraft mc) {
+		tickChat(ZonedDateTime.now(ZONE));
 		HudConfig c = SlashHud.config;
 		if (c == null || c.skyPlanRemind <= 0 || !c.placement("skyplan").enabled || !SkyTasks.onSkyUp(mc) || SkyTasks.testWorld) return;
 		remind(mc, ZonedDateTime.now(ZONE));
@@ -303,7 +419,7 @@ public final class SkyPlan {
 		public int width(Minecraft mc) {
 			ZonedDateTime now = ZonedDateTime.now(ZONE);
 			int w = mc.font.width(Component.translatable("slashclient-hud.skyPlan.title"));
-			for (Next n : coming(now, rows())) w = Math.max(w, mc.font.width(SkyLang.tr(n.slot().name())) + 8 + mc.font.width(when(now, n.at())));
+			for (Next n : coming(now, rows())) w = Math.max(w, mc.font.width(label(n, now)) + 8 + mc.font.width(whenOf(n, now)));
 			return Math.max(110, w) + Modules.PAD * 2;
 		}
 
@@ -318,8 +434,8 @@ public final class SkyPlan {
 			int row = top + 10;
 			for (Next n : coming(now, rows())) {
 				Kind kind = Kind.of(n.slot().name());
-				Modules.text(g, mc, SkyLang.tr(n.slot().name()), left, row, kind.look.light);
-				Component when = when(now, n.at());
+				Modules.text(g, mc, label(n, now), left, row, kind.look.light);
+				Component when = whenOf(n, now);
 				boolean going = !n.at().isAfter(now);
 				Modules.text(g, mc, when, left + w - mc.font.width(when), row, going ? 0xFF4ADE80 : 0xFFE5E7EB);
 				row += 10;
@@ -334,6 +450,11 @@ public final class SkyPlan {
 		plan = BUILT_IN;
 		reminded.clear();
 		asked = false;
+		heard.clear();
+		picked = List.of();
+		event = null;
+		eventsDone = 0;
+		roundEnds = null;
 	}
 
 	/**
@@ -376,6 +497,47 @@ public final class SkyPlan {
 		c.skyPlanFishing = fishing;
 		c.skyPlanRemind = remind;
 		out.append('|').append(off == null ? "-" : off.slot().name()).append(',').append(on == null ? "-" : on.slot().name()).append(',').append(again == null ? "-" : again.slot().name());
+		out.append('|').append(liveForTest());
+		return out.toString();
+	}
+
+	/**
+	 * The chat on the same Wednesday, as SkyUp says it: the fishing contest at 19:00 over at 19:06 (not 19:10), the
+	 * three events at 21:00 going on past their usual 15 minutes with the one going on shown, over with the last;
+	 * Thursday's events not knowing which were picked, over a moment after one ends with no next announced.
+	 * Each moment as "<hour> <first row's name>=<when>;".
+	 */
+	private static String liveForTest() {
+		StringBuilder out = new StringBuilder();
+		String time = SlashHud.config.skyPlanTime;
+		SlashHud.config.skyPlanTime = "both";
+		java.util.function.Consumer<ZonedDateTime> row = at -> {
+			tickChat(at);
+			Next n = coming(at, 1).get(0);
+			out.append(hour(at)).append(' ').append(label(n, at).getString()).append('=').append(whenOf(n, at).getString()).append(';');
+		};
+		ZonedDateTime day = ZonedDateTime.of(2026, 10, 28, 0, 0, 0, 0, ZONE);
+		row.accept(day.withHour(19).withMinute(5));
+		heard("Wędkarstwo » Zawody wędkarskie o największą rybę zakończyły się! Zwyciężył Kaseczek Mamuci Jesiotr 69932.63g", day.withHour(19).withMinute(6));
+		row.accept(day.withHour(19).withMinute(7));
+		heard("§6Event §8» §eEventy rozpoczną się za 10 minut! Fortuna wybrała Labirynt, Parkour miłosny, Strzelec na boisku!", day.withHour(20).withMinute(50));
+		heard("Event » Labirynt rozpoczął się!", day.withHour(21));
+		row.accept(day.withHour(21).withMinute(1));
+		heard("Event » Labirynt został zakończony!", day.withHour(21).withMinute(2));
+		heard("Event » Parkour miłosny rozpocznie się za 1 min! Wpisz /event, by dołączyć!", day.withHour(21).withMinute(2).withSecond(2));
+		heard("Event » Parkour miłosny rozpoczął się!", day.withHour(21).withMinute(3));
+		row.accept(day.withHour(21).withMinute(20));
+		heard("Event » Parkour miłosny został zakończony!", day.withHour(21).withMinute(21));
+		heard("Event » Strzelec na boisku rozpoczął się!", day.withHour(21).withMinute(22));
+		heard("Event » Strzelec na boisku został zakończony!", day.withHour(21).withMinute(25));
+		row.accept(day.withHour(21).withMinute(26));
+		ZonedDateTime thu = day.plusDays(1);
+		heard("Event » Kopacz w jaskini rozpoczął się!", thu.withHour(18));
+		heard("Event » Kopacz w jaskini został zakończony!", thu.withHour(18).withMinute(3));
+		row.accept(thu.withHour(18).withMinute(3).withSecond(5));
+		row.accept(thu.withHour(18).withMinute(3).withSecond(20));
+		SlashHud.config.skyPlanTime = time;
+		resetForTest();
 		return out.toString();
 	}
 }

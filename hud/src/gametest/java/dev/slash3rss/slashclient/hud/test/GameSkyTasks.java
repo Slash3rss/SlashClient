@@ -516,7 +516,11 @@ public class GameSkyTasks implements FabricClientGameTest {
 			System.out.println("SlashClient plan of the week: " + plan);
 			check(plan.startsWith("MONDAY 19:00 Eventy;TUESDAY 21:00 Boss arena;|WEDNESDAY 19:00 Zawody wędkarskie;WEDNESDAY 20:00 Boss arena;WEDNESDAY 21:00 Eventy;|")
 				&& plan.contains(",in 1 h 5 min,") && plan.contains(",20:00,in 1 h 5 min (20:00)|")
-				&& plan.endsWith("|-,Zawody wędkarskie,-"), "the plan of the week", plan);
+				&& plan.contains("|-,Zawody wędkarskie,-|"), "the plan of the week", plan);
+			// the chat saying when things end: the contest over early, the events going on past 15 minutes, over with the last
+			check(plan.endsWith("|-,Zawody wędkarskie,-|19:05 Fishing contest=on now;19:07 Boss arena=in 54 min (20:00);"
+				+ "21:01 Labirynt=on now 1/3;21:20 Parkour miłosny=on now 2/3;21:26 Events=tomorrow 18:00;"
+				+ "18:03 Events=on now;18:03 Fishing contest=in 1 h 57 min (20:00);"), "the plan's end from the chat", plan);
 			context.waitTicks(15);
 			context.takeScreenshot("skyup-plan");
 			world.getServer().runCommand("clear @a");

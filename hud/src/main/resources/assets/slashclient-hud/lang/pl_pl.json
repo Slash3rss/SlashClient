@@ -1412,6 +1412,7 @@
 	"slashclient-hud.module.skyplan": "Plan tygodnia SkyUp",
 	"slashclient-hud.skyPlan.title": "Plan tygodnia",
 	"slashclient-hud.skyPlan.now": "trwa",
+	"slashclient-hud.skyPlan.nowOf": "trwa %s/%s",
 	"slashclient-hud.skyPlan.in": "za %s",
 	"slashclient-hud.skyPlan.inAt": "za %s (%s)",
 	"slashclient-hud.skyPlan.tomorrow": "jutro %s",
