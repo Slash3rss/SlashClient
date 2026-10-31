@@ -2,7 +2,7 @@
 // progress bar and the test running now, the whole run's progress and time left, and what failed.
 // It reads the shares' logs (build/gametest-N.log); closing it changes nothing in the tests. A share's
 // "Restart" closes only that share's test game (never a real one) and runs the share again.
-const { app, BrowserWindow, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('node:path');
 
 const arg = (name, fallback) => (process.argv.find((a) => a.startsWith(`--${name}=`)) ?? `=${fallback}`).split('=')[1];
@@ -22,5 +22,17 @@ app.whenReady().then(() => {
   });
   // shown without taking the focus from what the player is doing
   win.once('ready-to-show', () => win.showInactive());
+  // as tall as what it shows (every game's share and the summary, no scrolling), its bottom edge staying where it is,
+  // never taller than the screen
+  ipcMain.on('fit', (_e, contentHeight) => {
+    const area = screen.getDisplayMatching(win.getBounds()).workArea;
+    const [w, h] = win.getContentSize();
+    const want = Math.min(Math.ceil(contentHeight), area.height - 32);
+    if (Math.abs(want - h) < 2) return;
+    const b = win.getBounds();
+    win.setContentSize(w, want);
+    const grown = win.getBounds().height - b.height;
+    win.setPosition(b.x, Math.max(area.y + 8, b.y - grown));
+  });
 });
 app.on('window-all-closed', () => app.quit());
