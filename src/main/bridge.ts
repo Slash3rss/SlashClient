@@ -62,6 +62,11 @@ export interface BridgeOptions {
   skyupWikiArticle?: (slug: string) => Promise<unknown>;
   skyupWikiSearch?: (query: string) => Promise<unknown>;
   skyupWikiPicture?: (id: string) => Promise<Buffer>;
+  /** The Minecraft Wiki for the game's "Minecraft Wiki" screen (mcWiki.ts), in its language ("pl" or "en"): a search, an article as blocks, the article about an item (null when there is none), a picture as PNG. */
+  mcWikiSearch?: (lang: 'pl' | 'en', query: string) => Promise<unknown>;
+  mcWikiArticle?: (lang: 'pl' | 'en', title: string) => Promise<unknown>;
+  mcWikiLookup?: (lang: 'pl' | 'en', id: string, name: string) => Promise<unknown>;
+  mcWikiPicture?: (id: string) => Promise<Buffer>;
 }
 
 /** What the game may ask for: its friends and the messages with them. */
@@ -438,6 +443,29 @@ export class GameBridge {
           return this.send(res, 400, { error: 'bad_request' });
         }
         return this.send(res, 200, await o.skyupWikiSearch(q));
+      } catch (err) {
+        return this.fail(res, 502, err);
+      }
+    }
+
+    // the Minecraft Wiki for the game: a search, an article, the article about an item, a picture by its id
+    // (an older launcher answers 404 here, and the screen says the launcher needs updating)
+    const mc = /^\/mc-wiki\/(?:(search|article|lookup)(?:\?(.{0,2000}))?|image\/([0-9a-f]{20}))$/.exec(url);
+    if (method === 'GET' && mc) {
+      const o = this.opts;
+      if (!o.mcWikiSearch || !o.mcWikiArticle || !o.mcWikiLookup || !o.mcWikiPicture) return this.send(res, 404, { error: 'not_found' });
+      try {
+        if (mc[3]) {
+          const png = await o.mcWikiPicture(mc[3]);
+          res.writeHead(200, { 'Content-Type': 'image/png', 'Content-Length': png.length, 'Cache-Control': 'no-store' });
+          return res.end(png);
+        }
+        const q = new URLSearchParams(mc[2] ?? '');
+        const lang = q.get('lang') === 'pl' ? 'pl' : 'en';
+        if (mc[1] === 'search') return this.send(res, 200, await o.mcWikiSearch(lang, q.get('q') ?? ''));
+        if (mc[1] === 'article') return this.send(res, 200, await o.mcWikiArticle(lang, q.get('title') ?? ''));
+        const found = await o.mcWikiLookup(lang, q.get('id') ?? '', q.get('name') ?? '');
+        return found ? this.send(res, 200, found) : this.send(res, 404, { error: 'not_found' });
       } catch (err) {
         return this.fail(res, 502, err);
       }

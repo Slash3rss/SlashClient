@@ -65,25 +65,32 @@ function parseAttrs(src: string): Record<string, string> {
   return attrs;
 }
 
-/** An article title from a wiki link ("/w/Oak_Planks#Crafting" → "Oak Planks"), or undefined for other pages. */
-export function articleFromHref(href: string): string | undefined {
+/**
+ * The article a wiki link leads to and the place on it ("/w/Oak_Planks#Crafting" → "Oak Planks", "Crafting"),
+ * or undefined for other pages. A wiki other than minecraft.wiki gives its origin and the path its articles live under.
+ */
+export function wikiLink(href: string, origin = WIKI_ORIGIN, articlePath = '/w/'): { page: string; anchor?: string } | undefined {
   let url: URL;
   try {
-    url = new URL(href, WIKI_ORIGIN);
+    url = new URL(href, origin);
   } catch {
     return undefined;
   }
-  if (url.origin !== WIKI_ORIGIN || !url.pathname.startsWith('/w/')) return undefined;
+  if (url.origin !== origin || !url.pathname.startsWith(articlePath)) return undefined;
   let title: string;
   try {
-    title = decodeURIComponent(url.pathname.slice(3)).replace(/_/g, ' ');
+    title = decodeURIComponent(url.pathname.slice(articlePath.length)).replace(/_/g, ' ');
   } catch {
     return undefined;
   }
-  // only articles: files, categories, special and talk pages open in the browser
-  if (!title || /^[A-Za-z ]+:/.test(title)) return undefined;
-  return title;
+  // only articles: files, categories, special and talk pages ("Plik:", "Użytkownik:") open in the browser
+  if (!title || /^[\p{L} ]+:/u.test(title)) return undefined;
+  const anchor = url.hash.length > 1 ? decodeHref(url.hash.slice(1)) : undefined;
+  return anchor ? { page: title, anchor } : { page: title };
 }
+
+/** An article title from a wiki link ("/w/Oak_Planks#Crafting" → "Oak Planks"), or undefined for other pages. */
+export const articleFromHref = (href: string, origin = WIKI_ORIGIN, articlePath = '/w/') => wikiLink(href, origin, articlePath)?.page;
 
 /** A link target that is safe to open in the browser: a full https URL, or undefined. */
 export function externalHref(href: string, base = WIKI_ORIGIN): string | undefined {
@@ -96,11 +103,11 @@ export function externalHref(href: string, base = WIKI_ORIGIN): string | undefin
   }
 }
 
-/** An image address from the wiki itself, made absolute; anything else is refused. */
-export function imageSrc(src: string): string | undefined {
+/** An image address from the wiki itself (or the host a wiki keeps its images on), made absolute; anything else is refused. */
+export function imageSrc(src: string, origin = WIKI_ORIGIN, imagePath = '/images/'): string | undefined {
   try {
-    const url = new URL(src, WIKI_ORIGIN);
-    return url.origin === WIKI_ORIGIN && url.pathname.startsWith('/images/') ? url.toString() : undefined;
+    const url = new URL(src, origin);
+    return url.origin === origin && url.pathname.startsWith(imagePath) ? url.toString() : undefined;
   } catch {
     return undefined;
   }
@@ -123,6 +130,11 @@ export interface WikiSite {
   anchors?: boolean;
   /** An image's size in pixels from its inline style, when it has no width/height attributes. */
   styleSize?: boolean;
+  /**
+   * Of what the wiki shows one frame at a time (a crafting slot cycling through every kind of wood, the
+   * infobox's picture tabs), only the first frame: for a reader without the wiki's scripts, like the game.
+   */
+  stillFrames?: boolean;
 }
 
 export const MINECRAFT_WIKI: WikiSite = {
@@ -172,11 +184,14 @@ function sanitizeTag(name: string, attrs: Record<string, string>, site: WikiSite
   }
   if (attrs.title && name !== 'img') out.push(`title="${escapeHtml(attrs.title)}"`);
   if (name === 'img') {
-    const src = site.image(attrs.src ?? '');
+    // Fandom wikis load the images further down the page later: the real address waits in data-src
+    const src = site.image(attrs.src ?? '') ?? (attrs['data-src'] ? site.image(attrs['data-src']) : undefined);
     if (!src) return undefined;
     out.push(`src="${escapeHtml(src)}"`, 'loading="lazy"');
   }
-  if (site.anchors && /^h[1-6]$/.test(name) && attrs.id) {
+  // older MediaWiki (as on Fandom) keeps a heading's id on the span inside it
+  const headline = name === 'span' && /(^|\s)mw-headline(\s|$)/.test(attrs.class ?? '');
+  if (site.anchors && (/^h[1-6]$/.test(name) || headline) && attrs.id) {
     const anchor = safeAnchor(attrs.id);
     if (anchor) out.push(`data-anchor="${escapeHtml(anchor)}"`);
   }
@@ -189,7 +204,8 @@ function sanitizeTag(name: string, attrs: Record<string, string>, site: WikiSite
       const anchor = target.anchor && safeAnchor(target.anchor);
       if (anchor) out.push(`data-anchor="${escapeHtml(anchor)}"`);
     } else if (local) out.push('href="#"', `data-anchor="${escapeHtml(local)}"`);
-    else {
+    // (a link without an address is the article's own name in bold, not a link to the wiki's front page)
+    else if (href) {
       const ext = externalHref(href, site.origin);
       if (ext) out.push(`href="${escapeHtml(ext)}"`, 'data-external="1"');
     }
@@ -202,8 +218,11 @@ function sanitizeTag(name: string, attrs: Record<string, string>, site: WikiSite
 /** The safe version of a piece of wiki HTML (from minecraft.wiki unless another site is given). */
 export function sanitizeWikiHtml(html: string, site: WikiSite = MINECRAFT_WIKI): string {
   const out: string[] = [];
-  /** Open elements: name, and the tag written for it, if any (an unknown tag drops only itself, not its text). */
-  const stack: { name: string; out?: string }[] = [];
+  /**
+   * Open elements: name, and the tag written for it, if any (an unknown tag drops only itself, not its text);
+   * for frames shown one at a time, 1 + how many of its children were seen; whether it is in the infobox's pictures.
+   */
+  const stack: { name: string; out?: string; frames?: number; imageArea?: boolean }[] = [];
   /** While set, everything is skipped until this element closes (depth counts nested ones of the same name). */
   let skip: { name: string; depth: number } | undefined;
   const re = /<!--[\s\S]*?(?:-->|$)|<!\[CDATA\[[\s\S]*?(?:\]\]>|$)|<!?\/?([A-Za-z][A-Za-z0-9-]*)((?:[^>"']|"[^"]*"|'[^']*')*)>|([^<]+)|</g;
@@ -237,8 +256,12 @@ export function sanitizeWikiHtml(html: string, site: WikiSite = MINECRAFT_WIKI):
       continue;
     }
     const attrs = parseAttrs(rawAttrs ?? '');
-    const dropByClass = (attrs.class ?? '').split(/\s+/).some((c) => DROP_CLASSES.has(c));
-    if (DROP_WITH_CONTENT.has(name) || dropByClass) {
+    const classes = (attrs.class ?? '').split(/\s+/);
+    const dropByClass = classes.some((c) => DROP_CLASSES.has(c));
+    // a frame after the first one the wiki shows (stillFrames)
+    const parent = stack[stack.length - 1];
+    const laterFrame = parent?.frames && parent.frames++ > 1;
+    if (DROP_WITH_CONTENT.has(name) || dropByClass || laterFrame) {
       if (!selfClosing) skip = { name, depth: 1 };
       continue;
     }
@@ -246,7 +269,11 @@ export function sanitizeWikiHtml(html: string, site: WikiSite = MINECRAFT_WIKI):
     const outName = renamed?.tag ?? name;
     const tag = ALLOWED.has(outName) ? sanitizeTag(name, attrs, site, outName, renamed?.className) : undefined;
     if (tag) out.push(tag);
-    if (!selfClosing) stack.push({ name, out: tag ? outName : undefined });
+    if (!selfClosing) {
+      const imageArea = classes.includes('infobox-imagearea') || !!parent?.imageArea;
+      const frames = site.stillFrames && (classes.includes('animated') || (imageArea && classes.includes('tabber'))) ? 1 : undefined;
+      stack.push({ name, out: tag ? outName : undefined, ...(frames ? { frames } : {}), ...(imageArea ? { imageArea } : {}) });
+    }
   }
   while (stack.length) {
     const top = stack.pop()!;

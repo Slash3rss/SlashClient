@@ -1,4 +1,5 @@
 import { httpMessage, netFetch } from './download';
+import { rememberGamePictures } from './gamePictures';
 import { cached } from './wiki';
 import { t } from '../shared/i18n';
 import { decodeEntities } from '../shared/wikiHtml';
@@ -92,28 +93,10 @@ export async function skyupSearch(text: string): Promise<SkyupHit[]> {
 
 // ---------- for the game's "Wiki SkyUp" screen (bridge /skyup-wiki/…) ----------
 
-/**
- * The pictures of the articles the game opened, id → address: the game asks for a picture by its
- * id only, so it cannot make the launcher fetch any other address.
- */
-const gamePictures = new Map<string, string>();
-const MAX_PICTURE_BYTES = 4 * 1024 * 1024;
-
-/** An article as blocks the game draws itself (src/shared/skyupWikiGame.ts). */
+/** An article as blocks the game draws itself (src/shared/skyupWikiGame.ts), its pictures by id (gamePictures.ts). */
 export async function skyupGameArticle(slug: string) {
   const a = await skyupArticle(slug);
   const { blocks, pictures } = gameArticle(a.html);
-  for (const [id, url] of Object.entries(pictures)) gamePictures.set(id, url);
+  rememberGamePictures(pictures);
   return { slug: a.slug, title: a.title, url: a.url, sections: a.sections, blocks };
-}
-
-/** A picture of an article the game opened, as it comes from the wiki's host. */
-export async function skyupPictureBytes(id: string): Promise<Buffer> {
-  const url = gamePictures.get(id);
-  if (!url) throw new Error('not_found');
-  const res = await netFetch(url, { signal: AbortSignal.timeout(20_000) });
-  if (!res.ok) throw new Error(httpMessage(res.status, url));
-  const data = Buffer.from(await res.arrayBuffer());
-  if (data.length > MAX_PICTURE_BYTES) throw new Error('too_big');
-  return data;
 }
