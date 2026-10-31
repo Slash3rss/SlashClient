@@ -1,0 +1,3507 @@
+{
+  "title": "Diament",
+  "url": "https://minecraft.fandom.com/pl/wiki/Diament",
+  "lang": "pl",
+  "blocks": [
+    {
+      "k": "p",
+      "spans": [
+        {
+          "t": "Diament"
+        }
+      ]
+    },
+    {
+      "k": "img",
+      "img": {
+        "id": "ce149aa0e09de9479dc0",
+        "w": 160,
+        "h": 160
+      }
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "t": "Typ"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Minerał"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Wytrzymałość"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "N/A"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Zasoby odnawialne",
+                "t": "Odnawialne"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Nie"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Możliwość grupowania"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Tak, 64"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Rzadkość",
+                "t": "Rzadkość"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Pospolita"
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "a875e60cc95bcee2d04d",
+                  "w": 16,
+                  "h": 16
+                }
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Ten artykuł dotyczy materiału. Zobacz też "
+              },
+              {
+                "wiki": "Diament (ujednoznacznienie)",
+                "t": "inne znaczenia tego pojęcia"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "b": 1,
+          "t": "Diament"
+        },
+        {
+          "t": " (ang. "
+        },
+        {
+          "i": 1,
+          "t": "Diamond"
+        },
+        {
+          "t": ") − rzadki "
+        },
+        {
+          "wiki": "Minerały",
+          "t": "minerał"
+        },
+        {
+          "t": " występujący w "
+        },
+        {
+          "wiki": "Minecraft",
+          "t": "grze"
+        },
+        {
+          "t": " służący do wytwarzania przedmiotów o wysokiej "
+        },
+        {
+          "wiki": "Trwałość przedmiotów",
+          "t": "trwałości"
+        },
+        {
+          "t": "."
+        }
+      ]
+    },
+    {
+      "k": "h",
+      "level": 1,
+      "text": "Otrzymywanie",
+      "anchor": "Otrzymywanie"
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Wydobywanie",
+      "anchor": "Wydobywanie"
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "t": "Diament można uzyskać po wydobyciu "
+        },
+        {
+          "wiki": "Złoże diamentu",
+          "t": "złoża diamentu"
+        },
+        {
+          "t": " "
+        },
+        {
+          "wiki": "Kilof",
+          "t": "żelaznym kilofem"
+        },
+        {
+          "t": " lub lepszym. Jeśli kilof "
+        },
+        {
+          "wiki": "Zaklinanie",
+          "anchor": "zaklęcia_narzędzi",
+          "t": "zaklęty"
+        },
+        {
+          "t": " jest na "
+        },
+        {
+          "i": 1,
+          "t": "Szczęście"
+        },
+        {
+          "t": ", z pojedynczego złoża wypadnie więcej diamentów (im wyższy poziom zaklęcia, tym jeden diament więcej; maksymalna ilość diamentów wynosi 4 przy poziomie trzecim)."
+        }
+      ]
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Wytwarzanie",
+      "anchor": "Wytwarzanie"
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "t": "Składniki"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Wejście → Wyjście"
+              }
+            ],
+            "head": 1
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Blok diamentu",
+                "t": "Blok diamentu"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "42171e46bc2dd0e69c8a",
+                  "w": 32,
+                  "h": 27
+                }
+              },
+              {
+                "t": "  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "9  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "  "
+              },
+              {
+                "img": {
+                  "id": "b5dd6a38b016d2366fcf",
+                  "w": 19,
+                  "h": 15
+                }
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Przetapianie",
+      "anchor": "Przetapianie"
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "t": "Składniki"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Wejście → Wyjście"
+              }
+            ],
+            "head": 1
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Złoże diamentu",
+                "t": "Złoże diamentu"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "e2856e9d740b0b143111",
+                  "w": 44,
+                  "h": 36
+                }
+              },
+              {
+                "t": "  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " "
+              },
+              {
+                "img": {
+                  "id": "627605208aa5f7e86fe4",
+                  "w": 36,
+                  "h": 36
+                }
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Naturalne generowanie",
+      "anchor": "Naturalne_generowanie"
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "t": "Diament można odnaleźć w skrzyniach w strukturach:"
+        }
+      ]
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "w ilości 1–3:"
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "wiki": "Forteca Netheru",
+          "t": "forteca Netheru"
+        },
+        {
+          "t": " (19,2%),"
+        }
+      ],
+      "depth": 2,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "wiki": "Wioski",
+          "t": "wioska"
+        },
+        {
+          "t": " – kuźnia (16,3%),"
+        }
+      ],
+      "depth": 2,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "wiki": "Dżunglowa świątynia",
+          "t": "dżunglowa świątynia"
+        },
+        {
+          "t": " (15,5%),"
+        }
+      ],
+      "depth": 2,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "wiki": "Twierdza",
+          "t": "twierdza"
+        },
+        {
+          "t": " (7,4%),"
+        }
+      ],
+      "depth": 2,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "wiki": "Piramida",
+          "t": "piramida"
+        },
+        {
+          "t": " (6,3%);"
+        }
+      ],
+      "depth": 2,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "w ilości 1–2:"
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "wiki": "Opuszczona kopalnia",
+          "t": "opuszczona kopalnia"
+        },
+        {
+          "t": " (10,5%);"
+        }
+      ],
+      "depth": 2,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "w ilości 2–7:"
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "wiki": "Miasto Endu",
+          "t": "miasto Endu"
+        },
+        {
+          "t": " (21,5%),"
+        }
+      ],
+      "depth": 2,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "wiki": "Statek Endu",
+          "t": "statek Endu"
+        },
+        {
+          "t": " (21,5%);"
+        }
+      ],
+      "depth": 2,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "w ilości 1:["
+        },
+        {
+          "i": 1,
+          "t": "tylko "
+        },
+        {
+          "i": 1,
+          "wiki": "Bedrock Edition",
+          "t": "Bedrock Edition"
+        },
+        {
+          "t": "]"
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "wiki": "Wrak statku",
+          "t": "wrak statku"
+        },
+        {
+          "t": " (14,1%)."
+        }
+      ],
+      "depth": 2,
+      "mark": "•"
+    },
+    {
+      "k": "h",
+      "level": 1,
+      "text": "Zastosowanie",
+      "anchor": "Zastosowanie"
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Wytwarzanie",
+      "anchor": "Wytwarzanie_2"
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "t": "Diamenty są używane do wytwarzania niezwykle trwałych "
+        },
+        {
+          "wiki": "Narzędzia",
+          "t": "narzędzi"
+        },
+        {
+          "t": " i "
+        },
+        {
+          "wiki": "Zbroja",
+          "t": "zbroi"
+        },
+        {
+          "t": "."
+        }
+      ]
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "t": "Nazwa"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Składniki"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Wejście → Wyjście"
+              }
+            ],
+            "head": 1
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Diamentowy miecz",
+                "t": "Diamentowy miecz"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "b": 1,
+                "t": "Diamenty"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "+"
+              },
+              {
+                "br": 1
+              },
+              {
+                "b": 1,
+                "wiki": "Patyk",
+                "t": "Patyki"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "42171e46bc2dd0e69c8a",
+                  "w": 32,
+                  "h": 27
+                }
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Diamentowa łopata",
+                "t": "Diamentowa łopata"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "42171e46bc2dd0e69c8a",
+                  "w": 32,
+                  "h": 27
+                }
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Diamentowy kilof",
+                "t": "Diamentowy kilof"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "42171e46bc2dd0e69c8a",
+                  "w": 32,
+                  "h": 27
+                }
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Diamentowa motyka",
+                "t": "Diamentowa motyka"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "42171e46bc2dd0e69c8a",
+                  "w": 32,
+                  "h": 27
+                }
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Diamentowa siekiera",
+                "t": "Diamentowa siekiera"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "42171e46bc2dd0e69c8a",
+                  "w": 32,
+                  "h": 27
+                }
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Blok diamentu",
+                "t": "Blok diamentu"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "b": 1,
+                "t": "Diamenty"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "42171e46bc2dd0e69c8a",
+                  "w": 32,
+                  "h": 27
+                }
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Diamentowy hełm",
+                "t": "Diamentowy hełm"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "42171e46bc2dd0e69c8a",
+                  "w": 32,
+                  "h": 27
+                }
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Diamentowy napierśnik",
+                "t": "Diamentowy napierśnik"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "42171e46bc2dd0e69c8a",
+                  "w": 32,
+                  "h": 27
+                }
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Diamentowe nogawice",
+                "t": "Diamentowe nogawice"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "42171e46bc2dd0e69c8a",
+                  "w": 32,
+                  "h": 27
+                }
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Diamentowe buty",
+                "t": "Diamentowe buty"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "42171e46bc2dd0e69c8a",
+                  "w": 32,
+                  "h": 27
+                }
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Szafa grająca",
+                "t": "Szafa grająca"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "b": 1,
+                "t": "Diament"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "+"
+              },
+              {
+                "br": 1
+              },
+              {
+                "b": 1,
+                "wiki": "Deski",
+                "t": "Deski"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "42171e46bc2dd0e69c8a",
+                  "w": 32,
+                  "h": 27
+                }
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Stół do zaklęć",
+                "t": "Stół do zaklęć"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Książka",
+                "t": "Książka"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "+"
+              },
+              {
+                "br": 1
+              },
+              {
+                "b": 1,
+                "t": "Diamenty"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "+"
+              },
+              {
+                "br": 1
+              },
+              {
+                "b": 1,
+                "wiki": "Obsydian",
+                "t": "Obsydian"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "42171e46bc2dd0e69c8a",
+                  "w": 32,
+                  "h": 27
+                }
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "b": 1,
+                "wiki": "Szablon kowalski",
+                "t": "Szablon kowalski"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "b": 1,
+                "t": "Diamenty"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "+"
+              },
+              {
+                "br": 1
+              },
+              {
+                "wiki": "Netherrack",
+                "t": "Netherrack"
+              },
+              {
+                "t": " "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "lub "
+              },
+              {
+                "wiki": "Bruk",
+                "t": "bruk"
+              },
+              {
+                "t": " "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Piaskowiec",
+                "t": "piaskowiec"
+              },
+              {
+                "t": " "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Kamień Endu",
+                "t": "kamień Endu"
+              },
+              {
+                "t": " "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Czernit",
+                "t": "czernit"
+              },
+              {
+                "t": " "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Blok purpuru",
+                "t": "blok purpuru"
+              },
+              {
+                "t": " "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Pryzmaryn",
+                "t": "pryzmaryn"
+              },
+              {
+                "t": " "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Łupkowy bruk",
+                "t": "łupkowy bruk"
+              },
+              {
+                "t": " "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Zamszony bruk",
+                "t": "zamszony bruk"
+              },
+              {
+                "t": " "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Terakota",
+                "t": "terakota"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "+"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " "
+              },
+              {
+                "b": 1,
+                "wiki": "Szablon kowalski",
+                "t": "Szablon kowalski"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "42171e46bc2dd0e69c8a",
+                  "w": 32,
+                  "h": 27
+                }
+              },
+              {
+                "t": "  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "wiki": "Szablon kowalski (Netherytowe ulepszenie)",
+                "t": "2"
+              },
+              {
+                "t": "  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "  "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "  "
+              },
+              {
+                "img": {
+                  "id": "b5dd6a38b016d2366fcf",
+                  "w": 19,
+                  "h": 15
+                }
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Barwienie zdobień na zbroję",
+      "anchor": "Barwienie_zdobień_na_zbroję"
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "t": "Diament służy do barwienia zdobień na zbroję w kolorach jasnego błękitu."
+        }
+      ]
+    },
+    {
+      "k": "h",
+      "level": 1,
+      "text": "Historia",
+      "anchor": "Historia"
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "t": "Historia używa dawnego formatu wersji konsolowych"
+        }
+      ]
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Indev",
+                "t": "Indev"
+              }
+            ],
+            "head": 1,
+            "cols": 6
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Indev",
+                "anchor": "0.31",
+                "t": "0.31"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Indev",
+                "anchor": "28#stycznia#2010",
+                "t": "28 stycznia 2010"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Dodano szmaragdy."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Złoże diamentu",
+                "t": "Ruda szmaragdu"
+              },
+              {
+                "t": " upuszcza 1–3 sztuk szmaragdów."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Indev",
+                "anchor": "29#stycznia#2010",
+                "t": "29 stycznia 2010"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Szmaragdy używane są do tworzenia szmaragdowych "
+              },
+              {
+                "wiki": "Miecz",
+                "t": "mieczy"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Siekiera",
+                "t": "siekier"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Kilof",
+                "t": "kilofów"
+              },
+              {
+                "t": " i "
+              },
+              {
+                "wiki": "Łopata",
+                "t": "łopat"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "4 szmaragdy używane są do wytworzenia "
+              },
+              {
+                "wiki": "Blok diamentu",
+                "t": "bloku szmaragdu"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Złoże diamentu",
+                "t": "Ruda szmaragdu"
+              },
+              {
+                "t": " może zostać przetopiona na 1–3 sztuki szmaragdów."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Indev",
+                "anchor": "30#stycznia#2010",
+                "t": "30 stycznia 2010"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Zmieniono nazwę ze "
+              },
+              {
+                "i": 1,
+                "t": "Szmaragd"
+              },
+              {
+                "t": " na "
+              },
+              {
+                "i": 1,
+                "t": "Diament"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Do stworzenia "
+              },
+              {
+                "wiki": "Blok diamentu",
+                "t": "bloku diamentu"
+              },
+              {
+                "t": " potrzeba teraz 9 sztuk diamentu."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Blok diamentu",
+                "t": "Blok diamentu"
+              },
+              {
+                "t": " wykorzystywany jest do wytworzenia 9 sztuk diamentów."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Indev",
+                "anchor": "1#lutego#2010",
+                "t": "1 lutego 2010"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Przetapianie oraz wykopanie "
+              },
+              {
+                "wiki": "Złoże diamentu",
+                "t": "złoża diamentu"
+              },
+              {
+                "t": " daje teraz zawsze 1 diament."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Indev",
+                "anchor": "6#lutego#2010",
+                "t": "6 lutego 2010"
+              }
+            ],
+            "head": 1,
+            "cols": 5
+          },
+          {
+            "spans": [
+              {
+                "t": "Z diamentów można robić "
+              },
+              {
+                "wiki": "Motyka",
+                "t": "motyki"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Indev",
+                "anchor": "12#lutego#2010",
+                "t": "12 lutego 2010"
+              }
+            ],
+            "head": 1,
+            "cols": 5
+          },
+          {
+            "spans": [
+              {
+                "t": "Z diamentów można robić "
+              },
+              {
+                "wiki": "Zbroja",
+                "t": "zbroję"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Indev",
+                "anchor": "19#lutego#2010",
+                "t": "19 lutego 2010"
+              }
+            ],
+            "head": 1,
+            "cols": 5
+          },
+          {
+            "spans": [
+              {
+                "t": "W "
+              },
+              {
+                "wiki": "Piec",
+                "t": "piecu"
+              },
+              {
+                "t": " można przepalać "
+              },
+              {
+                "wiki": "Złoże diamentu",
+                "t": "złoże diamentu"
+              },
+              {
+                "t": " na diamenty."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Alpha",
+                "t": "Alpha"
+              }
+            ],
+            "head": 1,
+            "cols": 6
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Alpha",
+                "anchor": "v1.0.14",
+                "t": "v1.0.14"
+              }
+            ],
+            "head": 1,
+            "cols": 5
+          },
+          {
+            "spans": [
+              {
+                "t": "Z diamentów można zrobić "
+              },
+              {
+                "wiki": "Szafa grająca",
+                "t": "szafy grające"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Beta",
+                "t": "Beta"
+              }
+            ],
+            "head": 1,
+            "cols": 6
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Beta",
+                "anchor": "1.8",
+                "t": "1.8"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "B1.8-pre1",
+                "t": "1.8-pre1"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w "
+              },
+              {
+                "wiki": "Skrzynia",
+                "t": "skrzyniach"
+              },
+              {
+                "t": " w "
+              },
+              {
+                "wiki": "Opuszczona kopalnia",
+                "t": "opuszczonych kopalniach"
+              },
+              {
+                "t": " i "
+              },
+              {
+                "wiki": "Twierdza",
+                "t": "twierdzach"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pełna wersja",
+                "t": "Pełna wersja"
+              }
+            ],
+            "head": 1,
+            "cols": 6
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji",
+                "anchor": "1.0.0",
+                "t": "1.0.0"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "B1.9-pre2",
+                "t": "Beta 1.9-pre2"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Złoże diamentu",
+                "t": "Złoże diamentu"
+              },
+              {
+                "t": " może zostać "
+              },
+              {
+                "wiki": "Przetapianie",
+                "t": "przetopione"
+              },
+              {
+                "t": " na diament."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "B1.9-pre3",
+                "t": "Beta 1.9-pre3"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Z diamentów można zrobić "
+              },
+              {
+                "wiki": "Stół do zaklęć",
+                "t": "stoły do zaklęć"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji",
+                "anchor": "1.1",
+                "t": "1.1"
+              }
+            ],
+            "head": 1,
+            "cols": 5
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w skrzyniach w "
+              },
+              {
+                "wiki": "Wioski/Struktury",
+                "t": "kuźniach"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji",
+                "anchor": "1.3.1",
+                "t": "1.3.1"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "12w21a",
+                "t": "12w21a"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Od teraz można "
+              },
+              {
+                "wiki": "Handel",
+                "t": "kupić"
+              },
+              {
+                "t": " od "
+              },
+              {
+                "wiki": "Osadnik",
+                "t": "osadników"
+              },
+              {
+                "t": " jeden "
+              },
+              {
+                "wiki": "Szmaragd",
+                "t": "szmaragd"
+              },
+              {
+                "t": " za 3–5 diamentów."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w skrzyniach w "
+              },
+              {
+                "wiki": "Piramida",
+                "t": "piramidach"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "12w22a",
+                "t": "12w22a"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w skrzyniach w "
+              },
+              {
+                "wiki": "Dżunglowa świątynia",
+                "t": "dżunglowych świątyniach"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji",
+                "anchor": "_1.3",
+                "t": "1.3"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "52ff3c40672df83b1862",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " Przesunięto teksturę diamentu o 1 piksel w lewo."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji",
+                "anchor": "1.4.6",
+                "t": "1.4.6"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "12w49a",
+                "t": "12w49a"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Przy użyciu diamentów można wytworzyć "
+              },
+              {
+                "wiki": "Gwiazdka pirotechniczna",
+                "t": "gwiazdki pirotechniczne"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji",
+                "anchor": "1.6.1",
+                "t": "1.6.1"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "13w18a",
+                "t": "13w18a"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w skrzyniach w "
+              },
+              {
+                "wiki": "Forteca Netheru",
+                "t": "fortecach Netheru"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji",
+                "anchor": "1.8",
+                "t": "1.8"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "14w02a",
+                "t": "14w02a"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Cena za jeden "
+              },
+              {
+                "wiki": "Szmaragd",
+                "t": "szmaragd"
+              },
+              {
+                "t": " została zmniejszona i wynosi teraz od 3 do 4 diamentów."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji",
+                "anchor": "1.9",
+                "t": "1.9"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "15w31a",
+                "t": "15w31a"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w skrzyniach "
+              },
+              {
+                "wiki": "Miasto Endu",
+                "t": "miast"
+              },
+              {
+                "t": " i "
+              },
+              {
+                "wiki": "Statek Endu",
+                "t": "statków Endu"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji",
+                "anchor": "1.13",
+                "t": "1.13"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "18w10a",
+                "t": "18w10a"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w "
+              },
+              {
+                "wiki": "Zakopany skarb",
+                "t": "zakopanych skarbach"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji",
+                "anchor": "1.14",
+                "t": "1.14"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "18w43a",
+                "t": "18w43a"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Zmieniono teksturę "
+              },
+              {
+                "img": {
+                  "id": "52ff3c40672df83b1862",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " → "
+              },
+              {
+                "img": {
+                  "id": "8cf088a0ab33a7d4aeda",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji",
+                "anchor": "1.16",
+                "t": "1.16"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "20w16a",
+                "t": "20w16a"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w skrzyniach w "
+              },
+              {
+                "wiki": "Ruiny bastionu",
+                "t": "ruinach bastionów"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji",
+                "anchor": "1.16.2",
+                "t": "1.16.2"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "20w30a",
+                "t": "20w30a"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Zwiększono szansę na znalezienie diamentów w skrzyni w ruinach bastionu z 8,6% do 15,8%."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji",
+                "anchor": "1.19.4",
+                "t": "1.19.4"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "23w04a",
+                "t": "23w04a"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Diament służy do barwienia zdobień na zbroję na jasnobłękitno na stole kowalskim.["
+              },
+              {
+                "b": 1,
+                "i": 1,
+                "t": "tylko z włączoną wbudowaną paczką danych „update_1.20”"
+              },
+              {
+                "t": "]"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Diamenty pozwalają na replikację szablonów kowalskich.["
+              },
+              {
+                "b": 1,
+                "i": 1,
+                "t": "tylko z włączoną wbudowaną paczką danych „update_1.20”"
+              },
+              {
+                "t": "]"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "23w07a",
+                "t": "23w07a"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Można za pomocą "
+              },
+              {
+                "wiki": "Pędzel",
+                "t": "pędzla"
+              },
+              {
+                "t": " wyszczotkować diamenty z podejrzanego piasku w pustynnych piramidach.["
+              },
+              {
+                "b": 1,
+                "i": 1,
+                "t": "tylko z włączoną wbudowaną paczką danych „update_1.20”"
+              },
+              {
+                "t": "]"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji",
+                "anchor": "1.20",
+                "t": "1.20"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "23w12a",
+                "t": "23w12a"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Zmieniono szansę na wygenerowanie się diamentu w podejrzanym piasku w piramidzie z 1⁄7 na 1⁄8."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Pocket Edition",
+                "t": "Pocket Edition Alpha"
+              }
+            ],
+            "head": 1,
+            "cols": 6
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition/Historia wersji",
+                "anchor": "Av0.2.0",
+                "t": "v0.2.0"
+              }
+            ],
+            "head": 1,
+            "cols": 5
+          },
+          {
+            "spans": [
+              {
+                "t": "Dodano diamenty. Nie mają w tej chwili żadnego zastosowania."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition/Historia wersji",
+                "anchor": "Av0.3.2",
+                "t": "v0.3.2"
+              }
+            ],
+            "head": 1,
+            "cols": 5
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty mogą być zebrane i przetworzone na "
+              },
+              {
+                "wiki": "Blok diamentu",
+                "t": "blok diamentu"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Siekiera",
+                "t": "siekierę"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Kilof",
+                "t": "kilof"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Miecz",
+                "t": "miecz"
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Łopata",
+                "t": "łopatę"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition/Historia wersji",
+                "anchor": "Av0.4.0",
+                "t": "v0.4.0"
+              }
+            ],
+            "head": 1,
+            "cols": 5
+          },
+          {
+            "spans": [
+              {
+                "t": "Z diamentów można stworzyć "
+              },
+              {
+                "wiki": "Motyka",
+                "t": "motyki"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition/Historia wersji",
+                "anchor": "Av0.5.0",
+                "t": "v0.5.0"
+              }
+            ],
+            "head": 1,
+            "cols": 5
+          },
+          {
+            "spans": [
+              {
+                "t": "Z diamentów można skonstruować "
+              },
+              {
+                "wiki": "Rdzeń reaktora Netheru",
+                "t": "rdzeń reaktora Netheru"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition/Historia wersji",
+                "anchor": "Av0.6.0",
+                "t": "v0.6.0"
+              }
+            ],
+            "head": 1,
+            "cols": 5
+          },
+          {
+            "spans": [
+              {
+                "t": "Z diamentów można zrobić "
+              },
+              {
+                "wiki": "Zbroja",
+                "t": "zbroję"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition/Historia wersji",
+                "anchor": "Av0.8.0",
+                "t": "v0.8.0"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition/Historia wersji",
+                "anchor": "A1",
+                "t": "build 1"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "52ff3c40672df83b1862",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " Przesunięto teksturę diamentu o 1 piksel w lewo."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition/Historia wersji",
+                "anchor": "Av0.12.1",
+                "t": "v0.12.1"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition/Historia wersji",
+                "anchor": "A1",
+                "t": "build 1"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Z diamentów można zrobić "
+              },
+              {
+                "wiki": "Stół do zaklęć",
+                "t": "stół do zaklęć"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Usunięto rdzeń reaktora Netheru, zatem również usunięto jego recepturę tworzenia."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w skrzyniach w "
+              },
+              {
+                "wiki": "Forteca Netheru",
+                "t": "fortecy Netheru"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition/Historia wersji",
+                "anchor": "Av0.13.0",
+                "t": "v0.13.0"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition/Historia wersji",
+                "anchor": "A1",
+                "t": "build 1"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w skrzyniach w "
+              },
+              {
+                "wiki": "Piramida",
+                "t": "piramidzie"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition/Historia wersji",
+                "anchor": "Av0.14.0",
+                "t": "v0.14.0"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition/Historia wersji",
+                "anchor": "A1",
+                "t": "build 1"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w "
+              },
+              {
+                "wiki": "Wagonik ze skrzynią",
+                "t": "wagonikach ze skrzynią"
+              },
+              {
+                "t": " w "
+              },
+              {
+                "wiki": "Opuszczona kopalnia",
+                "t": "opuszczonych kopalniach"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Bedrock Edition",
+                "t": "Bedrock Edition"
+              }
+            ],
+            "head": 1,
+            "cols": 6
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Bedrock",
+                "anchor": "Edition#1.2.0",
+                "t": "1.2.0"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Bedrock",
+                "anchor": "Edition#beta#1.2.0.2",
+                "t": "beta 1.2.0.2"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Przy użyciu diamentów można stworzyć "
+              },
+              {
+                "wiki": "Gwiazdka pirotechniczna",
+                "t": "gwiazdki pirotechniczne"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Z diamentów można zrobić "
+              },
+              {
+                "wiki": "Szafa grająca",
+                "t": "szafy grające"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Bedrock",
+                "anchor": "Edition#1.4.0",
+                "t": "1.4.0"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Bedrock",
+                "anchor": "Edition#beta#1.2.14.2",
+                "t": "beta 1.2.14.2"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w "
+              },
+              {
+                "wiki": "Zakopany skarb",
+                "t": "zakopanych skarbach"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Bedrock",
+                "anchor": "Edition#1.10.0",
+                "t": "1.10.0"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Bedrock",
+                "anchor": "Edition#beta#1.10.0.3",
+                "t": "beta 1.10.0.3"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "8cf088a0ab33a7d4aeda",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " Zmieniono teksturę diamentu."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Bedrock",
+                "anchor": "Edition#1.16.0",
+                "t": "1.16.0"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Bedrock",
+                "anchor": "Edition#beta#1.16.0.57",
+                "t": "beta 1.16.0.57"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w skrzyniach w "
+              },
+              {
+                "wiki": "Ruiny bastionu",
+                "t": "ruinach bastionów"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Bedrock",
+                "anchor": "Edition#1.19.70",
+                "t": "1.19.70"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Bedrock",
+                "anchor": "Edition#beta#1.19.70.23",
+                "t": "beta 1.19.70.23"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Można za pomocą "
+              },
+              {
+                "wiki": "Pędzel",
+                "t": "pędzla"
+              },
+              {
+                "t": " wyszczotkować diamenty z podejrzanego piasku w pustynnych piramidach."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Bedrock",
+                "anchor": "Edition#1.19.80",
+                "t": "1.19.80"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Bedrock",
+                "anchor": "Edition#beta#1.19.80.21",
+                "t": "beta 1.19.80.21"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty pozwalają na replikację szablonów kowalskich."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Diament służy do barwienia zdobień na zbroję na jasnobłękitno na stole kowalskim."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Konsola",
+                "t": "Console Edition"
+              }
+            ],
+            "head": 1,
+            "cols": 6
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "TU1",
+                "t": "TU1"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "CU1",
+                "t": "CU1"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "1.00",
+                "t": "1.00"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "Patch#1",
+                "t": "Patch 1"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Dodano diamenty."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "TU5",
+                "t": "TU5"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w "
+              },
+              {
+                "wiki": "Skrzynia",
+                "t": "skrzyniach"
+              },
+              {
+                "t": " w "
+              },
+              {
+                "wiki": "Opuszczona kopalnia",
+                "t": "opuszczonych kopalniach"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "TU7",
+                "t": "TU7"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Z diamentów można skonstruować "
+              },
+              {
+                "wiki": "Stół do zaklęć",
+                "t": "stół do zaklęć"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "TU14",
+                "t": "TU14"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "1.04",
+                "t": "1.04"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Od teraz można "
+              },
+              {
+                "wiki": "Handel",
+                "t": "kupić"
+              },
+              {
+                "t": " od "
+              },
+              {
+                "wiki": "Osadnik",
+                "t": "osadników"
+              },
+              {
+                "t": " jeden "
+              },
+              {
+                "wiki": "Szmaragd",
+                "t": "szmaragd"
+              },
+              {
+                "t": " za 3–5 diamentów."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w skrzyniach w "
+              },
+              {
+                "wiki": "Piramida",
+                "t": "piramidach"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w skrzyniach w "
+              },
+              {
+                "wiki": "Dżunglowa świątynia",
+                "t": "dżunglowych świątyniach"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "52ff3c40672df83b1862",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " Przesunięto teksturę diamentu o 1 piksel w lewo."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "TU19",
+                "t": "TU19"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "CU7",
+                "t": "CU7"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "1.12",
+                "t": "1.12"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Przy użyciu diamentów można stworzyć "
+              },
+              {
+                "wiki": "Gwiazdka pirotechniczna",
+                "t": "gwiazdki pirotechniczne"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "TU46",
+                "t": "TU46"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "CU36",
+                "t": "CU36"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "1.36",
+                "t": "1.36"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "Patch#15",
+                "t": "Patch 15"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w skrzyniach "
+              },
+              {
+                "wiki": "Miasto Endu",
+                "t": "miast"
+              },
+              {
+                "t": " i "
+              },
+              {
+                "wiki": "Statek Endu",
+                "t": "statków Endu"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "TU69",
+                "t": "TU69"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "1.76",
+                "t": "1.76"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "Patch#38",
+                "t": "Patch 38"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamenty można znaleźć w "
+              },
+              {
+                "wiki": "Zakopany skarb",
+                "t": "zakopanych skarbach"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Console",
+                "anchor": "1.90",
+                "t": "1.90"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "8cf088a0ab33a7d4aeda",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " Ponownie zmieniono teksturę diamentu."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "New Nintendo 3DS Edition"
+              }
+            ],
+            "head": 1,
+            "cols": 6
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "New_Nintendo_3DS_Edition_0.1.0",
+                "t": "0.1.0"
+              }
+            ],
+            "head": 1,
+            "cols": 5
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "52ff3c40672df83b1862",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " Dodano diament."
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 1,
+      "text": "Ciekawostki",
+      "anchor": "Ciekawostki"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "Pierwotnie diament nazywał się „"
+        },
+        {
+          "wiki": "Szmaragd",
+          "t": "Szmaragd"
+        },
+        {
+          "t": "”. Nazwa ta została zmieniona 30 stycznia 2010, czyli dzień po dodaniu go do gry. Właściwy szmaragd dodano do gry w wersji "
+        },
+        {
+          "wiki": "1.3.1",
+          "t": "1.3.1"
+        },
+        {
+          "t": " 2 lata później."
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "W primaaprilisowej wersji 2.0 "
+        },
+        {
+          "wiki": "Diamentowy kurczak",
+          "t": "diamentowe kurczaki"
+        },
+        {
+          "t": " znosiły diamenty lub "
+        },
+        {
+          "wiki": "Lazuryt",
+          "t": "lazuryt"
+        },
+        {
+          "t": "."
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    }
+  ]
+}

@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import { decodeEntities } from './wikiHtml';
 
 /**
- * A SkyUp.pl wiki article for the game's "Wiki SkyUp" screen: the launcher's sanitized HTML
- * (skyupArticleHtml) as simple blocks the game can draw without reading HTML — headings, paragraphs,
+ * A SkyUp.pl wiki article for the game's "Wiki SkyUp" screen (and a Minecraft Wiki article for its
+ * "Minecraft Wiki" screen, mcWikiGame.ts): the launcher's sanitized HTML (skyupArticleHtml, sanitizeWikiHtml) as simple blocks the game can draw without reading HTML — headings, paragraphs,
  * list items, tables, pictures and lines. Pictures are named by an id; the launcher keeps which
  * address each id stands for and hands the game a small PNG of it (bridge /skyup-wiki/image/<id>).
  */
@@ -19,7 +19,7 @@ export interface GameSpan {
   u?: 1;
   s?: 1;
   code?: 1;
-  /** A link to another article (its slug), and a place on it. */
+  /** A link to another article (its slug, or a Minecraft Wiki article's title), and a place on it. */
   wiki?: string;
   anchor?: string;
   /** A link out of the wiki (opened in the browser after asking, as the game does with chat links). */
@@ -130,6 +130,8 @@ export function gameArticle(html: string): { blocks: GameBlock[]; pictures: Reco
     const close = m[1] === '/';
     const tag = m[2].toLowerCase();
     const attrs = close ? {} : attrsOf(m[3]);
+    // a heading's anchor on the span inside it (older MediaWiki, as the Polish Minecraft Wiki on Fandom)
+    if (tag === 'span' && heading && !heading.anchor && attrs['data-anchor']) heading.anchor = attrs['data-anchor'];
     if (STYLE[tag]) {
       if (tag === 'pre') flush();
       styles[STYLE[tag]] = (styles[STYLE[tag]] ?? 0) + (close ? -1 : 1);

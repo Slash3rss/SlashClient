@@ -1,0 +1,3005 @@
+{
+  "title": "Zasoby odnawialne",
+  "url": "https://minecraft.fandom.com/pl/wiki/Zasoby_odnawialne",
+  "lang": "pl",
+  "blocks": [
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "1ec3c98a1767b5a3279a",
+                  "w": 32,
+                  "h": 32
+                }
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "b": 1,
+                "t": "Nieaktualne informacje!"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "Artykuł w całości lub w części jest nieaktualny i wymaga zaktualizowania. Jeśli jesteś gotów podjąć się tego, sprawdź stronę "
+              },
+              {
+                "url": "https://minecraft.fandom.com/pl/wiki/Dyskusja:Zasoby_odnawialne",
+                "t": "dyskusji"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "b": 1,
+          "t": "Zasoby odnawialne"
+        },
+        {
+          "t": " to surowce, które mogą być odnawiane nieskończoną ilość razy na trybie przetrwania (przeciwnie do surowców nieodnawialnych). Wyczerpujące się surowce mogą stanowić problem na mapach "
+        },
+        {
+          "wiki": "Rodzaje mapy",
+          "anchor": "P.C5.82aska",
+          "t": "płaskich"
+        },
+        {
+          "t": ", gdzie zasoby są mniej obfite."
+        }
+      ]
+    },
+    {
+      "k": "h",
+      "level": 1,
+      "text": "Całkowicie odnawialne surowce",
+      "anchor": "Całkowicie_odnawialne_surowce"
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "t": "Te surowce nie potrzebują nieodnawialnych przedmiotów w celu zgromadzenia."
+        }
+      ]
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "t": "Surowiec"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Całkowicie odnawialne produkty"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Metoda"
+              }
+            ],
+            "head": 1
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Netherowa brodawka",
+                "t": "Netherowa brodawka"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Zbierane z uprawy dorosłej brodawki."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Bruk",
+                "t": "Bruk"
+              },
+              {
+                "t": " oraz "
+              },
+              {
+                "wiki": "Kamień",
+                "t": "kamień"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Tworzony ze spływającej wody na płynącą lawę (bruk) lub odwrotnie (kamień)."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Butelka z wodą",
+                "t": "Butelka z wodą"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Do stworzenia tych mikstur nie potrzeba "
+              },
+              {
+                "wiki": "Redstone",
+                "t": "sproszkowanego redstone"
+              },
+              {
+                "t": " czy też "
+              },
+              {
+                "wiki": "Jasnopył",
+                "t": "jasnopyłu"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Głowa",
+                "t": "Czaszka witherowego szkieletu"
+              },
+              {
+                "br": 1
+              },
+              {
+                "img": {
+                  "id": "220cd7b0e662bd8fcb5d",
+                  "w": 1024,
+                  "h": 4000
+                }
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane przez witherowy szkielet (rzadko)."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Diamentowe "
+              },
+              {
+                "wiki": "Narzędzia",
+                "t": "narzędzia"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Uzyskane poprzez "
+              },
+              {
+                "wiki": "Handel",
+                "t": "handel"
+              },
+              {
+                "t": " szmaragdami z "
+              },
+              {
+                "wiki": "Osadnik",
+                "t": "wieśniakiem"
+              },
+              {
+                "t": " o profesji kowala."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Diamentowa "
+              },
+              {
+                "wiki": "Zbroja",
+                "t": "zbroja"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Uzyskane poprzez "
+              },
+              {
+                "wiki": "Handel",
+                "t": "handel"
+              },
+              {
+                "t": " szmaragdami z "
+              },
+              {
+                "wiki": "Osadnik",
+                "t": "osadnikiem"
+              },
+              {
+                "t": " o profesji kowala. Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Zombie",
+                "t": "zombie"
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Szkielet",
+                "t": "szkieletu"
+              },
+              {
+                "t": " noszącego diamentową zbroję."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Głowa",
+                "t": "Głowy"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane przez "
+              },
+              {
+                "wiki": "Zombie",
+                "t": "zombie"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Szkielet",
+                "t": "szkielet"
+              },
+              {
+                "t": " i "
+              },
+              {
+                "wiki": "Creeper",
+                "t": "creepera"
+              },
+              {
+                "t": " zabitego przez wybuch naładowanego creepera."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Grzyby",
+                "t": "Grzyby"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Użycie "
+              },
+              {
+                "wiki": "Mączka kostna",
+                "t": "mączki kostnej"
+              },
+              {
+                "t": " na normalnym grzybie spowoduje jego wzrost do postaci wielkiego grzyba,a po jego zniszczeniu otrzymamy wielokrotny zwrot tego samego gatunku grzyba. Normalne grzyby również rozprzestrzeniają się powoli na ich terenie. "
+              },
+              {
+                "wiki": "Grzyby",
+                "t": "Grzyby"
+              },
+              {
+                "t": " mogą być zdobyte poprzez użycie "
+              },
+              {
+                "wiki": "Nożyce",
+                "t": "nożyc"
+              },
+              {
+                "t": " na "
+              },
+              {
+                "wiki": "Mooshroom",
+                "t": "grzybowej krowie"
+              },
+              {
+                "t": ". Grzyby wykorzystuje się do stworzenia "
+              },
+              {
+                "wiki": "Zupa grzybowa",
+                "t": "potrawki grzybowej"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Jajko",
+                "t": "Jajko"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Wypada w przybliżeniu co 5–10 minut z dorosłych "
+              },
+              {
+                "wiki": "Kura",
+                "t": "kur"
+              },
+              {
+                "t": ". Jajko może być użyte do wyklucia większej liczby kurczaków."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Jasnogłaz",
+                "t": "Jasnogłaz"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " oraz "
+              },
+              {
+                "wiki": "Jasnopył",
+                "t": "jasnopył"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Jasnogłaz jest uzyskiwany poprzez "
+              },
+              {
+                "wiki": "Handel",
+                "t": "handel"
+              },
+              {
+                "t": " szmaragdami z "
+              },
+              {
+                "wiki": "Mieszkaniec wioski",
+                "t": "wieśniakiem"
+              },
+              {
+                "t": " o profesji kapłana. Jasnopył jest upuszczany po zabiciu "
+              },
+              {
+                "wiki": "Wiedźma",
+                "t": "wiedźmy"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Kakao",
+                "t": "Kakao"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Można znaleźć w "
+              },
+              {
+                "wiki": "Skrzynia",
+                "t": "Skrzyniach"
+              },
+              {
+                "t": " znajdujących się w "
+              },
+              {
+                "wiki": "Lochy",
+                "t": "lochach"
+              },
+              {
+                "t": ", lecz nie mogą być one przesadzane i są tylko jednorazowym przedmiotem. W wersji "
+              },
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "12w18a",
+                "t": "12w18a"
+              },
+              {
+                "t": ", Kakao mogło wypadać po zniszczeniu "
+              },
+              {
+                "wiki": "Liście",
+                "t": "liści"
+              },
+              {
+                "t": " pochodzenia dżunglowego z podobną szansą na wypadnięcie, jak jabłka z "
+              },
+              {
+                "i": 1,
+                "wiki": "Dąb",
+                "t": "dębu"
+              },
+              {
+                "t": ". W aktualizacji "
+              },
+              {
+                "wiki": "Historia wersji/Nieoficjalne wersje",
+                "anchor": "12w19a",
+                "t": "12w19a"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Roślina kakao",
+                "t": "roślinę kakao"
+              },
+              {
+                "t": " można znaleźć na naturalnie wygenerowanych drzewach dżunglowych. Roślina kakao może być uprawiana poprzez użycie PPM na pień drzewa dżunglowego."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Kaktus",
+                "t": "Kaktus"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "220cd7b0e662bd8fcb5d",
+                  "w": 1024,
+                  "h": 4000
+                }
+              },
+              {
+                "img": {
+                  "id": "220cd7b0e662bd8fcb5d",
+                  "w": 1024,
+                  "h": 4000
+                }
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Urośnie do trzech bloków wysokości, może być przycinany oraz przesadzany. Będzie rósł bez względu na to, czy blok piasku został użyty ponownie."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Kolczuga",
+                "t": "Kolczuga"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Uzyskane poprzez "
+              },
+              {
+                "wiki": "Handel",
+                "t": "handel"
+              },
+              {
+                "t": " szmaragdami z "
+              },
+              {
+                "wiki": "Mieszkaniec wioski",
+                "t": "wieśniakiem"
+              },
+              {
+                "t": " o profesji kowala. Uzyskiwane również poprzez zabicie "
+              },
+              {
+                "wiki": "Zombie",
+                "t": "zombie"
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Szkielet",
+                "t": "szkieletu"
+              },
+              {
+                "t": " noszącego kolczugę."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Kość",
+                "t": "Kość"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Szkielet",
+                "t": "szkieletu"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Tułacz",
+                "t": "tułacza"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Nieumarły koń",
+                "t": "konia szkieletu"
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Witherowy szkielet",
+                "t": "witherowego szkieletu"
+              },
+              {
+                "t": ". "
+              },
+              {
+                "wiki": "Wędka",
+                "t": "Wyławiane"
+              },
+              {
+                "t": " jako śmieć."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Królicza łapka",
+                "t": "Królicza łapka"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu królika (rzadko)."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Królicza skóra",
+                "t": "Królicza skóra"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "99ac9b69e9a2e5e6a814",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "img": {
+                  "id": "2e043ba22059bdeba4cd",
+                  "w": 32,
+                  "h": 32
+                }
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Królik",
+                "t": "królika"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Kryształy pryzmarynu",
+                "t": "Kryształy pryzmarynu"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Strażnik",
+                "t": "strażnika"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Krzesiwo",
+                "t": "Krzesiwo"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Krzesiwo jest odnawialne dzięki odnawialnemu żwirowi, kupowanemu od piglinów (a co za tym idzie, to odnawialny krzemień), oraz odnawialnych sztabek żelaza."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Kula doświadczenia",
+                "t": "Kula doświadczenia"
+              },
+              {
+                "br": 1
+              },
+              {
+                "img": {
+                  "id": "b96965ffce1da5c494ae",
+                  "w": 32,
+                  "h": 32
+                }
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane przez każdego "
+              },
+              {
+                "wiki": "Mob",
+                "t": "moba"
+              },
+              {
+                "t": " (poza "
+              },
+              {
+                "wiki": "Osadnik",
+                "t": "wieśniakami"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Bałwan",
+                "t": "bałwanem"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Żelazny golem",
+                "t": "żelaznym golemem"
+              },
+              {
+                "t": " oraz małymi zwierzętami) zabitego przez gracza. Wypada również po zabiciu innego "
+              },
+              {
+                "wiki": "Gracz",
+                "t": "gracza"
+              },
+              {
+                "t": " w "
+              },
+              {
+                "wiki": "Gra wieloosobowa",
+                "t": "grze wieloosobowej"
+              },
+              {
+                "t": " tylko wtedy, jeśli ten uzbierał przed śmiercią jakąś ilość kul doświadczenia."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Kula szlamu",
+                "t": "Kula szlamu"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Szlam",
+                "t": "szlamu"
+              },
+              {
+                "t": " lub możliwe do kupienia od "
+              },
+              {
+                "wiki": "Wędrowny handlarz",
+                "t": "wędrownego handlarza"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Kwiaty",
+                "t": "Kwiaty"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Po użyciu "
+              },
+              {
+                "wiki": "Mączka kostna",
+                "t": "mączki kostnej"
+              },
+              {
+                "t": " na trawie mogą utworzyć się kwiaty. "
+              },
+              {
+                "wiki": "Kwiaty",
+                "t": "Maki"
+              },
+              {
+                "t": " czasami są upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Żelazny golem",
+                "t": "żelaznego golema"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Lazuryt",
+                "t": "Lazuryt"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "d87e92304328fbc940a6",
+                  "w": 32,
+                  "h": 32
+                }
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Uzyskiwane poprzez handel z "
+              },
+              {
+                "wiki": "Osadnik",
+                "t": "osadnikiem"
+              },
+              {
+                "t": " o profesji kapłana."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Lilia wodna",
+                "t": "Lilia wodna"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Możliwe do zdobycia poprzez wyłowienie."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Lód",
+                "t": "Lód"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Bloki źródła "
+              },
+              {
+                "wiki": "Woda",
+                "t": "wodnego"
+              },
+              {
+                "t": " w śnieżnych "
+              },
+              {
+                "wiki": "Biom",
+                "t": "biomach"
+              },
+              {
+                "t": " zamieniają się w lód. "
+              },
+              {
+                "br": 1
+              },
+              {
+                "b": 1,
+                "t": "Jednakże"
+              },
+              {
+                "t": ", ulepszenie o "
+              },
+              {
+                "i": 1,
+                "t": "Jedwabny dotyk"
+              },
+              {
+                "t": " wymaga użycia nieodnawialnego "
+              },
+              {
+                "wiki": "Stół do zaklęć",
+                "t": "stołu do zaklęć"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Łuk",
+                "t": "Łuk"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Rzadko upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Szkielet",
+                "t": "szkieleta"
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Tułacz",
+                "t": "tułacza"
+              },
+              {
+                "t": ". Może również być stworzony z "
+              },
+              {
+                "wiki": "Patyk",
+                "t": "patyków"
+              },
+              {
+                "t": " i "
+              },
+              {
+                "wiki": "Nić",
+                "t": "nici"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Łza Ghasta",
+                "t": "Łza Ghasta"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Ghast",
+                "t": "ghasta"
+              },
+              {
+                "t": " ."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Magmowy krem",
+                "t": "Magmowy krem"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Kostka magmy",
+                "t": "kostki magmy"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Marchewka",
+                "t": "Marchewka"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Otrzymywane z upraw marchewek. Upuszczana jest (rzadko) po zabiciu "
+              },
+              {
+                "wiki": "Zombie",
+                "t": "zombie"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Mleko",
+                "t": "Mleko"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Uzyskane poprzez wydojenie "
+              },
+              {
+                "wiki": "Krowa",
+                "t": "krowy"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Mooshroom",
+                "t": "grzybowej krowy"
+              },
+              {
+                "t": " bądź "
+              },
+              {
+                "wiki": "Koza",
+                "t": "kozy"
+              },
+              {
+                "t": " z pustym "
+              },
+              {
+                "wiki": "Wiadro",
+                "t": "wiadrem"
+              },
+              {
+                "t": " w dłoni."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Nasiona arbuza",
+                "t": "Nasiona arbuza"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Nasiona arbuza można znaleźć tylko w "
+              },
+              {
+                "wiki": "Opuszczona kopalnia",
+                "t": "opuszczonych kopalniach"
+              },
+              {
+                "t": ". Mogą być odzyskane przez niszczenie rosnącej łodygi arbuza lub metodą wytwarzania z "
+              },
+              {
+                "wiki": "Kawałek arbuza",
+                "t": "kawałków arbuza"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Nasiona dyni",
+                "t": "Nasiona dyni"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Nasiona dyni można znaleźć w "
+              },
+              {
+                "wiki": "Opuszczona kopalnia",
+                "t": "opuszczonych kopalniach"
+              },
+              {
+                "t": ". Podczas wędrówki po świecie można napotkać na grupę położonych blisko siebie dyń. Nasiona można również uzyskać metodą wytwarzania z "
+              },
+              {
+                "wiki": "Dynia",
+                "t": "dyni"
+              },
+              {
+                "t": " lub poprzez zniszczenie łodygi dyni."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Nasiona pszenicy",
+                "t": "Nasiona pszenicy"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Podczas żniw pól zboża można uzyskać "
+              },
+              {
+                "wiki": "Nasiona pszenicy",
+                "t": "nasiona pszenicy"
+              },
+              {
+                "t": ", którymi można później zasiać zaoraną ziemię. Ziarna mogą być również uzyskane z "
+              },
+              {
+                "wiki": "Wysoka trawa",
+                "t": "wysokiej trawy"
+              },
+              {
+                "t": " lub kupione od "
+              },
+              {
+                "wiki": "Wędrowny handlarz",
+                "t": "wędrownego handlarza"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Nić",
+                "t": "Nić"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Pająk",
+                "t": "pająka"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Pająk jaskiniowy",
+                "t": "pająka jaskiniowego"
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Magmołaz",
+                "t": "magmołaza"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Obsydian",
+                "t": "Obsydian"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Skrzynia Endu",
+                "t": "Skrzynia Endu"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Wejście do "
+              },
+              {
+                "wiki": "Portal Netheru",
+                "t": "portalu Netheru"
+              },
+              {
+                "t": ", dla którego nie ma pasującego wyjścia, generuje nowy portal z 14 obsydianowymi blokami (18, jeśli generuje się w powietrzu), które można wykopać."
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "Podróż do "
+              },
+              {
+                "wiki": "End",
+                "t": "Endu"
+              },
+              {
+                "t": " generuje platformę 5×5, którą można wydobyć."
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " Filary w Endzie pojawiają się na nowo po odrodzeniu "
+              },
+              {
+                "wiki": "Smok Endu",
+                "t": "smoka Endu"
+              },
+              {
+                "t": ", dzięki czemu można je wykopywać bez końca."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Odłamek pryzmarynu",
+                "t": "Odłamek pryzmarynu"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Strażnik",
+                "t": "strażnika"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Oko pająka",
+                "t": "Oko pająka"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Pająk",
+                "t": "pająka"
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Pająk jaskiniowy",
+                "t": "pająka jaskiniowego"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Paproć",
+                "t": "Paproć"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Po użyciu mączki kostnej na paproci urośnie ona do dwóch bloków wysokości. Po ścięciu jej za pomocą nożyc wypadają dwie paprocie."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Enderperła",
+                "t": "Enderperła"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Enderman",
+                "t": "endermana"
+              },
+              {
+                "t": " lub po handlu z "
+              },
+              {
+                "wiki": "Piglin",
+                "t": "piglinem"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pióro",
+                "t": "Pióro"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "99ac9b69e9a2e5e6a814",
+                  "w": 32,
+                  "h": 32
+                }
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Kura",
+                "t": "kury"
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Papuga",
+                "t": "papugi"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Płomienna różdżka",
+                "t": "Płomienna różdżka"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Płomyk",
+                "t": "płomyka"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Płyta muzyczna",
+                "t": "Płyta muzyczna"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Strzała "
+              },
+              {
+                "wiki": "Szkielet",
+                "t": "szkieletu"
+              },
+              {
+                "t": " musi zabić "
+              },
+              {
+                "wiki": "Creeper",
+                "t": "creepera"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pnącze",
+                "t": "Pnącze"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Znajdywane na drzewach w biomie bagiennym, dżunglowym oraz jaskiniach w dżunglach. Aby odzyskać pnącze, należy użyć "
+              },
+              {
+                "wiki": "Nożyce",
+                "t": "nożyc"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Proch",
+                "t": "Proch"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Creeper",
+                "t": "creepera"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Ghast",
+                "t": "ghasta"
+              },
+              {
+                "t": " bądź "
+              },
+              {
+                "wiki": "Wiedźma",
+                "t": "wiedźmy"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Redstone",
+                "t": "Redstone"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Uzyskany poprzez "
+              },
+              {
+                "wiki": "Handel",
+                "t": "handel"
+              },
+              {
+                "t": " szmaragdami z "
+              },
+              {
+                "wiki": "Osadnik",
+                "t": "wieśniakiem"
+              },
+              {
+                "t": " o profesji kapłana. Znajdowany w skrzyniach w "
+              },
+              {
+                "wiki": "Loch",
+                "t": "lochu"
+              },
+              {
+                "t": ". Upuszczany przez "
+              },
+              {
+                "wiki": "Wiedźma",
+                "t": "wiedźmę"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Ryba (ujednoznacznienie)",
+                "t": "Ryby"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Uzyskane poprzez łowienie z użyciem "
+              },
+              {
+                "wiki": "Wędka",
+                "t": "wędki"
+              },
+              {
+                "t": " lub zabicie "
+              },
+              {
+                "wiki": "Strażnik",
+                "t": "strażnika"
+              },
+              {
+                "t": " albo "
+              },
+              {
+                "wiki": "Niedźwiedź polarny",
+                "t": "niedźwiedzia polarnego"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Sadzonka",
+                "t": "Sadzonki"
+              },
+              {
+                "t": " oraz "
+              },
+              {
+                "wiki": "Drzewo",
+                "t": "drzewa"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Drzewa mogą urosnąć z "
+              },
+              {
+                "wiki": "Sadzonka",
+                "t": "sadzonki"
+              },
+              {
+                "t": " postawionej na oświetlonym bloku "
+              },
+              {
+                "wiki": "Ziemia",
+                "t": "ziemi"
+              },
+              {
+                "t": ". Zniszczone "
+              },
+              {
+                "wiki": "Liście",
+                "t": "liście"
+              },
+              {
+                "t": " mają 5% szansy na wypadnięcie "
+              },
+              {
+                "wiki": "Sadzonka",
+                "t": "sadzonki"
+              },
+              {
+                "t": ". "
+              },
+              {
+                "wiki": "Węgiel drzewny",
+                "t": "Węgiel drzewny"
+              },
+              {
+                "t": " można uzyskać, przepalając pień dowolnego drzewa. Liście mogą być odzyskane z użyciem "
+              },
+              {
+                "wiki": "Nożyce",
+                "t": "nożyc"
+              },
+              {
+                "t": ". "
+              },
+              {
+                "wiki": "Patyk",
+                "t": "Patyki"
+              },
+              {
+                "t": " możemy również uzyskać po zabiciu "
+              },
+              {
+                "wiki": "Wiedźma",
+                "t": "wiedźmy"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Bryłka złota",
+                "t": "Bryłka złota"
+              },
+              {
+                "t": " oraz "
+              },
+              {
+                "wiki": "Sztabka złota",
+                "t": "Sztabka złota"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane bryłki złota po zabiciu "
+              },
+              {
+                "wiki": "Zzombifikowany piglin",
+                "t": "zzombifikowanego piglina"
+              },
+              {
+                "t": ", rzadziej sztabki złota."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Siodło",
+                "t": "Siodło"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Uzyskane poprzez "
+              },
+              {
+                "wiki": "Handel",
+                "t": "handel"
+              },
+              {
+                "t": " szmaragdami z "
+              },
+              {
+                "wiki": "Osadnik",
+                "t": "wieśniakiem"
+              },
+              {
+                "t": " o profesji rzeźnika, poprzez wyłowienie lub przez zabicie "
+              },
+              {
+                "wiki": "Dewastator",
+                "t": "dewastatora"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Skóra",
+                "t": "Skóra"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "99ac9b69e9a2e5e6a814",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "img": {
+                  "id": "d87e92304328fbc940a6",
+                  "w": 32,
+                  "h": 32
+                }
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Krowa",
+                "t": "krowy"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Mooshroom",
+                "t": "mooshrooma"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Koń",
+                "t": "konia"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Osioł",
+                "t": "osła"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Muł",
+                "t": "muła"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Lama",
+                "t": "lamy"
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Hoglin",
+                "t": "hoglina"
+              },
+              {
+                "t": ", poprzez wyłowienie, znajdowane w skrzyniach w "
+              },
+              {
+                "wiki": "Ruiny bastionu",
+                "t": "ruinach bastionu"
+              },
+              {
+                "t": " oraz "
+              },
+              {
+                "wiki": "Wioski",
+                "t": "wiosce"
+              },
+              {
+                "t": " lub otrzymywane od "
+              },
+              {
+                "wiki": "Osadnik",
+                "t": "rymarzy"
+              },
+              {
+                "t": " jako prezent za powstrzymanie najazdu."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Strzały",
+                "t": "Strzały"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Szkielet",
+                "t": "szkieletu"
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Tułacz",
+                "t": "tułacza"
+              },
+              {
+                "t": ". Mogą być również uzyskane poprzez handel z "
+              },
+              {
+                "wiki": "Osadnik",
+                "t": "wieśniakiem"
+              },
+              {
+                "t": " o profesji łuczarza."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Surowa baranina",
+                "t": "Surowa baranina"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Owca",
+                "t": "owcy"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Surowy befsztyk",
+                "t": "Surowy befsztyk"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Krowa",
+                "t": "krowy"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Surowy kurczak",
+                "t": "Surowy kurczak"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Kura",
+                "t": "kury"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Surowy królik",
+                "t": "Surowy królik"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Królik",
+                "t": "królika"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Surowy schab",
+                "t": "Surowy schab"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Świnia",
+                "t": "świni"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Szkło",
+                "t": "Szkło"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Uzyskane poprzez "
+              },
+              {
+                "wiki": "Handel",
+                "t": "handel"
+              },
+              {
+                "t": " szmaragdami z "
+              },
+              {
+                "wiki": "Osadnik",
+                "t": "osadnikiem"
+              },
+              {
+                "t": " o profesji bibliotekarza."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Szmaragd",
+                "t": "Szmaragd"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Uzyskane poprzez "
+              },
+              {
+                "wiki": "Handel",
+                "t": "handel"
+              },
+              {
+                "t": " odnawialnymi przedmiotami z "
+              },
+              {
+                "wiki": "Osadnik",
+                "t": "osadnikiem"
+              },
+              {
+                "t": " jak np. "
+              },
+              {
+                "wiki": "Surowy kurczak",
+                "t": "surowy kurczak"
+              },
+              {
+                "t": ". Te mogą być użyte, by kupić inne rzeczy od wieśniaków, takie jak np. kolczuga, przez użycie szmaragdów uzyskanych z sprzedanych wieśniakom odnawialnych przedmiotów."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Sztabka żelaza",
+                "t": "Sztabka żelaza"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Żelazny golem",
+                "t": "Żelaznego golema"
+              },
+              {
+                "t": " bądź "
+              },
+              {
+                "wiki": "Zombie",
+                "t": "zombie"
+              },
+              {
+                "t": " (rzadko)."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Śnieżka",
+                "t": "Śnieżka"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Śnieg pokrywa wiele bloków w biomie śnieżnym. Pokrywa śnieżna jest odnawiana z każdymi opadami śniegu oraz na bloku, po którym chodził "
+              },
+              {
+                "wiki": "Bałwan",
+                "t": "bałwan"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Torbiel z atramentem",
+                "t": "Torbiel z atramentem"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "99ac9b69e9a2e5e6a814",
+                  "w": 32,
+                  "h": 32
+                }
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Kałamarnica",
+                "t": "kałamarnicy"
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Wędka",
+                "t": "wyławiane"
+              },
+              {
+                "t": " jako śmieć."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Trzcina cukrowa",
+                "t": "Trzcina cukrowa"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "99ac9b69e9a2e5e6a814",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "img": {
+                  "id": "d87e92304328fbc940a6",
+                  "w": 32,
+                  "h": 32
+                }
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Rosnąca do trzech bloków wysokości, może być przycinana oraz przesadzana."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Wełna",
+                "t": "Wełna"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Uzyskanie po zabiciu lub ostrzyżeniu "
+              },
+              {
+                "wiki": "Owca",
+                "t": "owcy"
+              },
+              {
+                "t": "; po połączeniu czterech nici metodą craftingu; poprzez rozmnożenie dwóch takich owiec, dzięki czemu mała owca uzyska kolor jednego z rodziców. Sześć pokazanych kolorów (biała, jasnoszara, szara, czarna, brązowa i różowa) naturalnie występują jako zabarwienie owcy; zielona, limonkowa, czerwona, pomarańczowa, żółta, karmazynowa i jasnoniebieska wełna wymaga odnawialnych "
+              },
+              {
+                "wiki": "Barwnik",
+                "t": "barwników"
+              },
+              {
+                "t": " do produkcji."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Węgiel",
+                "t": "Węgiel"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczany po zabiciu "
+              },
+              {
+                "wiki": "Witherowy szkielet",
+                "t": "witherowego szkieletu"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Wysoka trawa",
+                "t": "Wysoka trawa"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Po użyciu "
+              },
+              {
+                "wiki": "Mączka kostna",
+                "t": "mączki kostnej"
+              },
+              {
+                "t": " na "
+              },
+              {
+                "wiki": "Trawa",
+                "t": "trawie"
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Ziemia",
+                "t": "ziemi"
+              },
+              {
+                "t": " może utworzyć się "
+              },
+              {
+                "wiki": "Wysoka trawa",
+                "t": "wysoka trawa"
+              },
+              {
+                "t": ". Aby odzyskać wysoką trawę, należy użyć "
+              },
+              {
+                "wiki": "Nożyce",
+                "t": "nożyc"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Kwiaty",
+                "t": "Wysokie kwiaty"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Po użyciu "
+              },
+              {
+                "wiki": "Mączka kostna",
+                "t": "mączki kostnej"
+              },
+              {
+                "t": " na wysokim kwiecie otrzymywany jest drugi."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Zaklęta butelka",
+                "t": "Zaklęta butelka"
+              },
+              {
+                "br": 1
+              },
+              {
+                "img": {
+                  "id": "08ef63390ed913ec8dbc",
+                  "w": 32,
+                  "h": 32
+                }
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Uzyskane poprzez "
+              },
+              {
+                "wiki": "Handel",
+                "t": "handel"
+              },
+              {
+                "t": " szmaragdami z "
+              },
+              {
+                "wiki": "Osadnik",
+                "t": "wieśniakiem"
+              },
+              {
+                "t": " o profesji kapłana."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Zaklęta książka",
+                "t": "Zaklęta książka"
+              },
+              {
+                "br": 1
+              },
+              {
+                "img": {
+                  "id": "d87e92304328fbc940a6",
+                  "w": 32,
+                  "h": 32
+                }
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Uzyskiwane poprzez "
+              },
+              {
+                "wiki": "Wędka",
+                "t": "wyłowienie"
+              },
+              {
+                "t": ". Może być również uzyskana poprzez zaklęcie zwykłej "
+              },
+              {
+                "wiki": "Książka",
+                "t": "książki"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Zgniłe mięso",
+                "t": "Zgniłe mięso"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Zombie",
+                "t": "zombie"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Posuch",
+                "t": "posucha"
+              },
+              {
+                "t": " bądź "
+              },
+              {
+                "wiki": "Zzombifikowany piglin",
+                "t": "zzombifikowanego piglina"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Ziemniak",
+                "t": "Ziemniak"
+              },
+              {
+                "t": " oraz "
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": " "
+              },
+              {
+                "wiki": "Trujący ziemniak",
+                "t": "trujący ziemniak"
+              }
+            ]
+          },
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Otrzymywane z upraw ziemniaków. Upuszczany (rzadko) po zabiciu "
+              },
+              {
+                "wiki": "Zombie",
+                "t": "zombie"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Złoty miecz",
+                "t": "Złoty miecz"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Rzadko upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Piglin",
+                "t": "piglina"
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Zzombifikowany piglin",
+                "t": "zzombifikowanego piglina"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Znacznik",
+                "t": "Znacznik"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Uzyskane poprzez "
+              },
+              {
+                "wiki": "Handel",
+                "t": "handel"
+              },
+              {
+                "t": " lub "
+              },
+              {
+                "wiki": "Wędka",
+                "t": "wyłowienie"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Żelazny miecz",
+                "t": "Żelazny miecz"
+              },
+              {
+                "t": " oraz "
+              },
+              {
+                "wiki": "Żelazna łopata",
+                "t": "żelazna łopata"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Rzadko upuszczane po zabiciu "
+              },
+              {
+                "wiki": "Zombie",
+                "t": "zombie"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Bielica",
+                "t": "Bielica"
+              },
+              {
+                "t": ", "
+              },
+              {
+                "wiki": "Piasek",
+                "t": "piasek"
+              },
+              {
+                "t": " oraz "
+              },
+              {
+                "wiki": "Czerwony piasek",
+                "t": "czerwony piasek"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "—"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Uzyskiwane poprzez handel z "
+              },
+              {
+                "wiki": "Wędrowny handlarz",
+                "t": "wędrownym handlarzem"
+              }
+            ]
+          }
+        ]
+      ]
+    }
+  ]
+}

@@ -40,8 +40,11 @@ export interface WikiArticle {
 const cacheDir = () => path.join(paths.root, 'cache', 'wiki');
 const memory = new Map<string, { at: number; value: unknown }>();
 
-/** Raised when sanitizeWikiHtml changes, so articles kept on disk are cleaned again (2: without the infobox's history JSON). */
-const CACHE_VERSION = 2;
+/**
+ * Raised when sanitizeWikiHtml changes, so articles kept on disk are cleaned again (2: without the infobox's
+ * history JSON; 3: an article's own name in bold no longer links to the wiki's front page).
+ */
+const CACHE_VERSION = 3;
 const keyFile = (key: string) => path.join(cacheDir(), `${createHash('sha1').update(`${CACHE_VERSION}:${key}`).digest('hex')}.json`);
 
 export async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
@@ -71,12 +74,14 @@ function remember(key: string, at: number, value: unknown) {
   while (memory.size > MEMORY_ENTRIES) memory.delete(memory.keys().next().value!);
 }
 
-const api = <T>(params: Record<string, string>) =>
-  fetchJson<T & { error?: { code: string; info: string } }>(`${API}?${new URLSearchParams({ format: 'json', formatversion: '2', ...params })}`, {
+/** A MediaWiki API call (minecraft.wiki's unless another wiki's api.php is given). */
+export const wikiApi = <T>(params: Record<string, string>, endpoint = API) =>
+  fetchJson<T & { error?: { code: string; info: string } }>(`${endpoint}?${new URLSearchParams({ format: 'json', formatversion: '2', ...params })}`, {
     signal: AbortSignal.timeout(15_000),
   });
+const api = <T>(params: Record<string, string>) => wikiApi<T>(params);
 
-const normalize = (s: string) => s.trim().replace(/\s+/g, ' ').slice(0, 200);
+export const normalize =(s: string) => s.trim().replace(/\s+/g, ' ').slice(0, 200);
 
 interface SearchResponse {
   query?: {
@@ -103,12 +108,12 @@ export async function wikiSearch(query: string): Promise<WikiHit[]> {
   });
 }
 
-interface ParseResponse {
+export interface ParseResponse {
   error?: { code: string; info: string };
   parse?: { title: string; text?: string; sections?: { index: string; line: string; level: string; fromtitle?: string }[] };
 }
 
-const failed = (res: ParseResponse) => {
+export const failed =(res: ParseResponse) => {
   if (res.error?.code === 'missingtitle') throw new Error(t('Na wiki nie ma takiej strony.'));
   if (res.error || !res.parse) throw new Error(t('Wiki zwróciła błąd: {0}', res.error?.info ?? '?'));
 };

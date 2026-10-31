@@ -61,7 +61,9 @@ import { newsArticle, newsPage, type NewsFilter } from './news';
 import { ownedCapes, readSkinFile, resetSkin, setCape, skinFor, uploadSkin } from './skins';
 import { GameBridge } from './bridge';
 import { CoverCache, NowPlayingReader } from './nowPlaying';
-import { skyupGameArticle, skyupIndex, skyupPictureBytes, skyupSearch } from './skyupWiki';
+import { skyupGameArticle, skyupIndex, skyupSearch } from './skyupWiki';
+import { gamePictureBytes } from './gamePictures';
+import { mcWikiArticle, mcWikiLookup, mcWikiSearch } from './mcWiki';
 import { LanTunnels } from './lan';
 import { BLOCK_FACES, blockTextures, cosmeticTextures } from './blockTextures';
 import { ConsoleHistory } from './consoleHistory';
@@ -2230,15 +2232,20 @@ const bridge = new GameBridge({
   skyupWikiArticle: (slug) => skyupGameArticle(slug),
   skyupWikiSearch: (query) => skyupSearch(query),
   skyupWikiPicture: (id) => wikiPictures.get(id),
+  // the game's "Minecraft Wiki" screen: minecraft.wiki (or the Polish wiki), cached like the Wiki view
+  mcWikiSearch: (lang, query) => mcWikiSearch(lang, query),
+  mcWikiArticle: (lang, title) => mcWikiArticle(lang, title),
+  mcWikiLookup: (lang, id, name) => mcWikiLookup(lang, id, name),
+  mcWikiPicture: (id) => wikiPictures.get(id),
 });
 
-/** The wiki's pictures for the game as PNG (the game reads only that), at most 400 pixels wide; the last few kept. */
+/** The wikis' pictures for the game as PNG (the game reads only that), at most 400 pixels wide; the last few kept. */
 const wikiPictures = {
   kept: new Map<string, Promise<Buffer>>(),
   get(id: string): Promise<Buffer> {
     let png = this.kept.get(id);
     if (!png) {
-      png = skyupPictureBytes(id).then((data) => {
+      png = gamePictureBytes(id).then((data) => {
         const img = nativeImage.createFromBuffer(data);
         if (img.isEmpty()) throw new Error('unreadable');
         const { width, height } = img.getSize();
