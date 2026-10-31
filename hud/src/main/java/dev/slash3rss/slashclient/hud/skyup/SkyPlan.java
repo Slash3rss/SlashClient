@@ -260,12 +260,20 @@ public final class SkyPlan {
 		return String.format(Locale.ROOT, "%d:%02d", at.getHour(), at.getMinute());
 	}
 
-	/** When, said short: "trwa", "za 45 min", "za 2 h 10 min" today; "jutro 19:00", "pt 19:00" later. */
+	/**
+	 * When, said short: "trwa", "za 45 min", "za 2 h 10 min" today (or the hour, or both, as the player set it);
+	 * "jutro 19:00", "pt 19:00" later.
+	 */
 	static Component when(ZonedDateTime now, ZonedDateTime at) {
 		if (!at.isAfter(now)) return Component.translatable("slashclient-hud.skyPlan.now");
 		long minutes = Duration.between(now, at).toMinutes() + 1;
 		if (at.toLocalDate().equals(now.toLocalDate()) || minutes < 60) {
-			return Component.translatable("slashclient-hud.skyPlan.in", minutes < 60 ? minutes + " min" : (minutes / 60) + " h " + (minutes % 60) + " min");
+			String in = minutes < 60 ? minutes + " min" : (minutes / 60) + " h " + (minutes % 60) + " min";
+			return switch (SlashHud.config.skyPlanTime) {
+				case "clock" -> Component.literal(hour(at));
+				case "relative" -> Component.translatable("slashclient-hud.skyPlan.in", in);
+				default -> Component.translatable("slashclient-hud.skyPlan.inAt", in, hour(at));
+			};
 		}
 		if (at.toLocalDate().equals(now.toLocalDate().plusDays(1))) return Component.translatable("slashclient-hud.skyPlan.tomorrow", hour(at));
 		return Component.translatable("slashclient-hud.skyPlan.day." + at.getDayOfWeek().getValue()).append(" " + hour(at));
@@ -346,9 +354,17 @@ public final class SkyPlan {
 		List<Next> next = coming(now, 3);
 		out.append('|');
 		for (Next n : next) out.append(n.at().getDayOfWeek()).append(' ').append(hour(n.at())).append(' ').append(n.slot().name()).append(';');
+		HudConfig c = SlashHud.config;
+		String time = c.skyPlanTime;
+		c.skyPlanTime = "relative";
 		out.append('|').append(when(now, next.get(0).at()).getString()).append(',').append(when(now, next.get(1).at()).getString());
 		out.append(',').append(when(now.plusDays(1), next.get(0).at().plusWeeks(1)).getString());
-		HudConfig c = SlashHud.config;
+		// the hour instead, and both
+		for (String t : List.of("clock", "both")) {
+			c.skyPlanTime = t;
+			out.append(',').append(when(now, next.get(1).at()).getString());
+		}
+		c.skyPlanTime = time;
 		boolean fishing = c.skyPlanFishing;
 		int remind = c.skyPlanRemind;
 		c.skyPlanRemind = 5;

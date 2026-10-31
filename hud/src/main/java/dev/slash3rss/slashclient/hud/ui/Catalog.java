@@ -343,6 +343,7 @@ public final class Catalog {
 				}
 				case "skyplan" -> {
 					settings.add(new Slider("slashclient-hud.skyPlan.rows", 1f, 8f, 1f, "%.0f", () -> (float) cfg.skyPlanRows, v -> cfg.skyPlanRows = Math.round(v)));
+					settings.add(new Choice("slashclient-hud.skyPlan.time", HudConfig.SKY_PLAN_TIMES, "slashclient-hud.skyPlan.time.", () -> cfg.skyPlanTime, v -> cfg.skyPlanTime = v));
 					settings.add(new Slider("slashclient-hud.skyPlan.remind", 0f, 60f, 1f, "%.0f min", () -> (float) cfg.skyPlanRemind, v -> cfg.skyPlanRemind = Math.round(v)));
 					// which kinds the banner is for
 					settings.add(new Toggle("slashclient-hud.skyPlan.events", () -> cfg.skyPlanEvents, v -> cfg.skyPlanEvents = v));

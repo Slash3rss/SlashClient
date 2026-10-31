@@ -515,6 +515,7 @@ public class GameSkyTasks implements FabricClientGameTest {
 			String plan = context.computeOnClient(mc -> TestHooks.skyPlan());
 			System.out.println("SlashClient plan of the week: " + plan);
 			check(plan.startsWith("MONDAY 19:00 Eventy;TUESDAY 21:00 Boss arena;|WEDNESDAY 19:00 Zawody wędkarskie;WEDNESDAY 20:00 Boss arena;WEDNESDAY 21:00 Eventy;|")
+				&& plan.contains(",in 1 h 5 min,") && plan.contains(",20:00,in 1 h 5 min (20:00)|")
 				&& plan.endsWith("|-,Zawody wędkarskie,-"), "the plan of the week", plan);
 			context.waitTicks(15);
 			context.takeScreenshot("skyup-plan");

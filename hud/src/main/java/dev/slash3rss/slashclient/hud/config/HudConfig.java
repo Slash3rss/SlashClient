@@ -281,6 +281,9 @@ public final class HudConfig {
 	public boolean skyPlanEvents = true, skyPlanFishing = true, skyPlanBoss = true;
 	/** The plan's banner sound: "default" (the bell), "none", or one of the chat tabs' (ChatTabs.SOUNDS). */
 	public String skyPlanSound = "default";
+	/** How the plan says when today's events start: "relative" (za 45 min), "clock" (19:00) or "both" (za 45 min (19:00)). */
+	public String skyPlanTime = "both";
+	public static final String[] SKY_PLAN_TIMES = { "relative", "clock", "both" };
 	/** SkyUp's fish counter: split by "none", "size", "species" or "quality"; their weight and value shown. */
 	public String skyFishSplit = "none";
 	public boolean skyFishWeight = true, skyFishValue = true;
@@ -902,6 +905,7 @@ public final class HudConfig {
 		skyPlanFishing = other.skyPlanFishing;
 		skyPlanBoss = other.skyPlanBoss;
 		skyPlanSound = other.skyPlanSound == null ? "default" : other.skyPlanSound;
+		skyPlanTime = java.util.Arrays.asList(SKY_PLAN_TIMES).contains(other.skyPlanTime) ? other.skyPlanTime : "both";
 		skyTasksScroll = other.skyTasksScroll;
 		skyTasksShaman = other.skyTasksShaman;
 		skyTasksMark = oneOf(other.skyTasksMark, SKY_TASKS_MARKS);
