@@ -2852,11 +2852,12 @@ public final class TestHooks {
 		var kinds = SkyTasks.colours("Glazurowana terakota");
 		for (int i = 0; i < kinds.size(); i++) inv.setItem(9 + i, new net.minecraft.world.item.ItemStack(kinds.get(i), i == 3 ? 5 : 40));
 		long some = SkyTasks.current(mc, s, r);
+		String rows = SkyTasks.colourRowsForTest(r.thing, r.required);
 		inv.setItem(9 + 3, net.minecraft.world.item.ItemStack.EMPTY);
 		long missing = SkyTasks.current(mc, s, r);
 		for (int i = 0; i < kinds.size(); i++) inv.setItem(9 + i, net.minecraft.world.item.ItemStack.EMPTY);
 		boolean chicken = SkyCounters.matches("Kura", SkyCounters.item(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.CHICKEN)));
-		return kinds.size() + " " + SkyTasks.colours("Cement").size() + " " + SkyTasks.colours("Świeca").size() + " | " + none + " " + some + " " + missing + "/" + r.required + " | " + chicken;
+		return kinds.size() + " " + SkyTasks.colours("Cement").size() + " " + SkyTasks.colours("Świeca").size() + " | " + none + " " + some + " " + missing + "/" + r.required + " | " + chicken + " | " + rows;
 	}
 
 	/**

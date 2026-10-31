@@ -1390,6 +1390,7 @@
 	"slashclient-hud.skyTasks.dailyLeft": "Still to do: %s",
 	"slashclient-hud.skyTasks.dailyReady": "Done – you can hand it in",
 	"slashclient-hud.skyTasks.openGenerator": "open the generator",
+	"slashclient-hud.skyTasks.coloursDone": "Colours done: %s/%s",
 	"slashclient-hud.skyTasks.openIncubator": "open the incubator",
 	"slashclient-hud.skyTasks.enterDungeon": "enter a dungeon (?/%s)",
 	"slashclient-hud.skyTasks.scroll": "Scroll rows that are too long",

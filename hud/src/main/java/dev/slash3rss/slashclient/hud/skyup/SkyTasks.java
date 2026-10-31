@@ -881,6 +881,80 @@ public final class SkyTasks {
 		return out;
 	}
 
+	/** How many of an item the player carries (not the armour worn). */
+	private static long count(Inventory inv, Item item) {
+		long n = 0;
+		for (int i = 0; i < inv.getContainerSize(); i++) {
+			if (i >= Inventory.INVENTORY_SIZE && i != Inventory.SLOT_OFFHAND) continue;
+			ItemStack s = inv.getItem(i);
+			if (s.is(item)) n += s.getCount();
+		}
+		return n;
+	}
+
+	/**
+	 * "… w każdym kolorze": a row for every colour still short of `required` ("Biała 5/32"), in the game's language and
+	 * without the words all the colours share, then how many colours are done; nothing for other requirements.
+	 */
+	static List<Row> colourRows(Minecraft mc, String thing, long required) {
+		java.util.regex.Matcher m = EVERY_COLOUR.matcher(SkyTaskParser.plain(thing));
+		if (mc.player == null || required <= 0 || !m.matches()) return List.of();
+		List<Item> kinds = colours(m.group(1));
+		if (kinds.isEmpty()) return List.of();
+		List<String> names = new ArrayList<>();
+		for (Item kind : kinds) names.add(new ItemStack(kind).getHoverName().getString());
+		// the words at the end ("glazurowana terakota") or at the start that every colour's name has
+		int tail = sharedTail(names);
+		int head = tail > 0 ? 0 : sharedHead(names);
+		List<Row> out = new ArrayList<>();
+		int done = 0;
+		for (int i = 0; i < kinds.size(); i++) {
+			long have = count(mc.player.getInventory(), kinds.get(i));
+			if (have >= required) {
+				done++;
+				continue;
+			}
+			String[] words = names.get(i).split(" ");
+			String colour = String.join(" ", java.util.Arrays.copyOfRange(words, head, words.length - tail));
+			if (colour.isEmpty()) colour = names.get(i);
+			colour = colour.substring(0, 1).toUpperCase(Locale.ROOT) + colour.substring(1);
+			out.add(new Row(colour, have > 0 ? 0xFFFBBF24 : 0xFFF87171, have + "/" + required, have > 0 ? 0xFFFBBF24 : 0xFFF87171, -1, 12));
+		}
+		if (done > 0) out.add(new Row(Component.translatable("slashclient-hud.skyTasks.coloursDone", done, kinds.size()).getString(), GREEN, "", 0, -1, 12));
+		return out;
+	}
+
+	/** For the test: the colour rows, "left right" each. */
+	public static String colourRowsForTest(String thing, long required) {
+		StringBuilder out = new StringBuilder();
+		for (Row r : colourRows(Minecraft.getInstance(), thing, required)) out.append(r.left).append(' ').append(r.right).append(" | ");
+		return out.toString().strip();
+	}
+
+	/** How many words at the end every name has in common (" Glazed Terracotta", " glazurowana terakota"). */
+	private static int sharedTail(List<String> names) {
+		String[] first = names.get(0).split(" ");
+		int n = 0;
+		while (n < first.length - 1) {
+			String end = " " + String.join(" ", java.util.Arrays.copyOfRange(first, first.length - 1 - n, first.length));
+			if (!names.stream().allMatch(s -> s.endsWith(end))) break;
+			n++;
+		}
+		return n;
+	}
+
+	/** How many words at the start every name has in common (a language that puts the colour last). */
+	private static int sharedHead(List<String> names) {
+		String[] first = names.get(0).split(" ");
+		int n = 0;
+		while (n < first.length - 1) {
+			String start = String.join(" ", java.util.Arrays.copyOfRange(first, 0, n + 1)) + " ";
+			if (!names.stream().allMatch(s -> s.startsWith(start))) break;
+			n++;
+		}
+		return n;
+	}
+
 	static long carried(Minecraft mc, String thing) {
 		if (mc.player == null || thing.isEmpty()) return -1;
 		// tasks read before SkyUp's no-break spaces were made plain ones still have them
@@ -907,15 +981,7 @@ public final class SkyTasks {
 			List<Item> kinds = colours(colours.group(1));
 			if (kinds.isEmpty()) return -1;
 			long fewest = Long.MAX_VALUE;
-			for (Item kind : kinds) {
-				long n = 0;
-				for (int i = 0; i < inv.getContainerSize(); i++) {
-					if (i >= Inventory.INVENTORY_SIZE && i != Inventory.SLOT_OFFHAND) continue;
-					ItemStack s = inv.getItem(i);
-					if (s.is(kind)) n += s.getCount();
-				}
-				fewest = Math.min(fewest, n);
-			}
+			for (Item kind : kinds) fewest = Math.min(fewest, count(inv, kind));
 			return fewest;
 		}
 		// "Dowolne jajko": every item that is one (white, brown and blue eggs)
@@ -1235,6 +1301,8 @@ public final class SkyTasks {
 						bar = cfg.skyTasksCompact || spent < 0 ? -1 : Math.min(1f, (float) spent / points);
 					}
 					out.add(new Row((met ? "✔ " : "• ") + thing, met ? 0xFF6B7280 : WHITE, progress, met ? GREEN : WHITE, bar, 6));
+					// "… w każdym kolorze": the colours still short, each with its count
+					if (!met && !cfg.skyTasksCompact && s.inventory()) out.addAll(colourRows(mc, r.thing, r.required));
 					// a mob to summon: its shamanism recipe, what is carried already in green
 					if (!met && !cfg.skyTasksCompact && cfg.skyTasksShaman && SkyCounters.kind(s) == SkyCounters.Kind.SUMMON) {
 						SkyShaman.Mob mob = SkyShaman.named(r.thing);

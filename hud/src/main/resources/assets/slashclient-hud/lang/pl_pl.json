@@ -1390,6 +1390,7 @@
 	"slashclient-hud.skyTasks.bonusTitle": "Bonus codzienny",
 	"slashclient-hud.skyTasks.bonusText": "Dzisiejsza nagroda czeka na odebranie",
 	"slashclient-hud.skyTasks.openGenerator": "otwórz generator",
+	"slashclient-hud.skyTasks.coloursDone": "Gotowe kolory: %s/%s",
 	"slashclient-hud.skyTasks.openIncubator": "otwórz inkubator",
 	"slashclient-hud.skyTasks.enterDungeon": "wejdź do dungeona (?/%s)",
 	"slashclient-hud.skyTasks.scroll": "Przewijaj za długie wiersze",
