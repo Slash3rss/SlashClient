@@ -57,6 +57,8 @@
 		"ContainerScreenAccessor",
 		"ContainerLayerMixin",
 		"DebugVersionMixin",
+		"ExhaustionMixin",
+		"ExhaustionJumpMixin",
 		"FoodDataAccessor",
 		"FoodDebugMixin",
 		"QuickCraftMixin",

@@ -34,6 +34,14 @@ abstract class HeartsMixin {
 		if (player != null) dev.slash3rss.slashclient.hud.gamehud.FoodPreview.draw(g, player);
 	}
 
+	//#if MC >= 1.20.5
+	/** Before the drumsticks: the exhaustion's strip under them (FoodPreview). */
+	@Inject(method = "extractFood", at = @At("HEAD"))
+	private void slashclient$exhaustion(GuiGraphicsExtractor g, Player player, int y, int right, CallbackInfo ci) {
+		dev.slash3rss.slashclient.hud.gamehud.FoodPreview.drawExhaustion(g, player, right, y);
+	}
+	//#endif
+
 	@Inject(method = "extractHearts", at = @At("HEAD"), cancellable = true)
 	private void slashclient$compact(GuiGraphicsExtractor g, Player player, int x, int y, int rowHeight, int regen, float maxHealth, int health, int lastHealth, int absorption, boolean blink, CallbackInfo ci) {
 		if (SlashHud.config == null || !SlashHud.config.compactHearts || maxHealth + absorption <= 20) return;

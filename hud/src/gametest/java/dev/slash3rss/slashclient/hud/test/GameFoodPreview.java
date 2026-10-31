@@ -72,14 +72,28 @@ public class GameFoodPreview implements FabricClientGameTest {
 			f3 = context.computeOnClient(mc -> String.join(" ", dev.slash3rss.slashclient.hud.gamehud.FoodPreview.debugLines(mc.player)));
 			if (!f3.isEmpty()) throw new AssertionError("F3's food line with it off: " + f3);
 			context.runOnClient(mc -> { var c = dev.slash3rss.slashclient.hud.SlashHud.config; c.foodDebug = true; c.foodTooltip = true; });
-			// without food in hand: the saturation outlined and the exhaustion strip
+			// without food in hand: the saturation outlined and the exhaustion strip (full health: no healing spends it)
 			server.runOnServer(s -> s.getPlayerList().getPlayers().forEach(p -> {
+				p.setHealth(20);
 				p.getFoodData().setFoodLevel(20);
 				p.getFoodData().setSaturation(7f);
 			}));
 			server.runCommand("item replace entity @p weapon.mainhand with minecraft:stone");
 			context.waitTicks(10);
 			context.takeScreenshot("food-saturation");
+
+			// on a server the exhaustion is counted in the game: what the player's side asks for adds up and
+			// starts again at 4, and the last of the saturation going (the server says so) starts it there
+			float before = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.gamehud.Exhaustion.value());
+			float added = context.computeOnClient(mc -> {
+				for (int i = 0; i < 3; i++) mc.player.causeFoodExhaustion(1.5f);
+				return dev.slash3rss.slashclient.hud.gamehud.Exhaustion.value();
+			});
+			if (Math.abs(added - (before + 4.5f) % 4f) > 0.01f) throw new AssertionError("Counted exhaustion: " + before + " -> " + added);
+			server.runOnServer(s -> s.getPlayerList().getPlayers().forEach(p -> p.getFoodData().setSaturation(0f)));
+			context.waitTicks(5);
+			float after = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.gamehud.Exhaustion.value());
+			if (after > 0.05f) throw new AssertionError("Counted exhaustion after the saturation went: " + after);
 
 			// compact hearts with 40 health, 25 of it left: the steak's healing flashes on the second (golden) row
 			server.runCommand("attribute @p minecraft:max_health base set 40");

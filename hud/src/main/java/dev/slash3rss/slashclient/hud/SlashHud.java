@@ -334,8 +334,13 @@ public class SlashHud implements ClientModInitializer {
 		//#endif
 		// before the game reads the keys of this tick: the drop key's presses on a valuable item
 		ClientTickEvents.START_CLIENT_TICK.register(DropGuard::tick);
+		// the exhaustion on a server, counted in the game (the food bar's strip): a block broken costs a little
+		//#if MC >= 1.21.1
+		net.fabricmc.fabric.api.event.client.player.ClientPlayerBlockBreakEvents.AFTER.register((world, player, pos, state) -> dev.slash3rss.slashclient.hud.gamehud.Exhaustion.broke());
+		//#endif
 		ClientTickEvents.END_CLIENT_TICK.register(mc -> {
 			TntTimer.tick(mc);
+			dev.slash3rss.slashclient.hud.gamehud.Exhaustion.tick(mc);
 			// a fresh Microsoft token from the launcher before the game's runs out (in the menus)
 			SessionRenew.tick(mc);
 			PartnerIcons.tick(mc);

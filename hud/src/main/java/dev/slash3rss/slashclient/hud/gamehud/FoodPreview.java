@@ -21,8 +21,9 @@ import java.util.Locale;
  * Food on the food bar (HeartsMixin, after the game's bars). Food held in a hand shows what eating it
  * gives: the drumsticks it adds flash, a golden outline of each drumstick marks the saturation (the
  * part it adds flashing too), and the hearts that health coming back after it would fill flash on the
- * health bar. Without food in hand the saturation stays outlined, and a pale strip over the
- * drumsticks shows the exhaustion, how near the next point of saturation or hunger is to going. The
+ * health bar. Without food in hand the saturation stays outlined, and a dotted strip under the
+ * drumsticks fills from the right with the exhaustion: when it reaches the left end, the server takes
+ * a point of saturation (or hunger). On a server the exhaustion is counted in the game (Exhaustion). The
  * food's values are in its tooltip too, and the three numbers on F3 (FoodDebugMixin). Not while
  * riding something with its own health (the game shows that instead of the food bar).
  */
@@ -36,6 +37,9 @@ public final class FoodPreview {
 	/** The outline of the game's drumstick (and of its half), drawn for this, white to be tinted. */
 	private static final Identifier SATURATION_FULL = Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/misc/saturation_full.png");
 	private static final Identifier SATURATION_HALF = Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/misc/saturation_half.png");
+	/** A dotted strip as wide as the food bar, white to be tinted (as AppleSkin draws the exhaustion). */
+	private static final int EXHAUSTION_COLOR = 0xB0A8A8A8;
+	private static final Identifier EXHAUSTION = Identifier.fromNamespaceAndPath(SlashHud.ID, "textures/misc/exhaustion.png");
 	private static final int GOLD = 0xFFD84A;
 	/** The game takes a point of saturation (or hunger) for every 4 of exhaustion. */
 	private static final float EXHAUSTION_STEP = 4f;
@@ -63,15 +67,28 @@ public final class FoodPreview {
 	}
 
 	/**
-	 * The exhaustion (0 to 4), or -1 when it is not known: the game keeps it on the server and never
-	 * sends it, so only a world of the player's own (singleplayer, opened to LAN) has it, from its
-	 * server's copy of the player.
+	 * The exhaustion (0 to 4): the game keeps it on the server and never sends it, so a world of the
+	 * player's own (singleplayer, opened to LAN) reads its server's copy of the player, and on a server
+	 * it is counted in the game (Exhaustion).
 	 */
 	public static float exhaustion(Player player) {
 		var server = Minecraft.getInstance().getSingleplayerServer();
-		if (server == null) return -1;
-		Player own = server.getPlayerList().getPlayer(player.getUUID());
-		return own == null ? -1 : ((dev.slash3rss.slashclient.hud.mixin.FoodDataAccessor) own.getFoodData()).slashclient$exhaustion();
+		Player own = server == null ? null : server.getPlayerList().getPlayer(player.getUUID());
+		return own == null ? Exhaustion.value() : ((dev.slash3rss.slashclient.hud.mixin.FoodDataAccessor) own.getFoodData()).slashclient$exhaustion();
+	}
+
+	/** Whether the exhaustion is counted in the game, not read (shown as "~" on F3). */
+	private static boolean counted() {
+		return Minecraft.getInstance().getSingleplayerServer() == null;
+	}
+
+	/** The exhaustion: a grey dotted strip under the drumsticks from the right end, full when the next point goes. */
+	public static void drawExhaustion(GuiGraphicsExtractor g, Player player, int right, int y) {
+		if (!on() || !SlashHud.config.foodExhaustion) return;
+		if (player.getVehicle() instanceof LivingEntity vehicle && vehicle.showVehicleHealth()) return;
+		float tired = exhaustion(player);
+		int w = Math.round(Math.min(Math.max(tired, 0), EXHAUSTION_STEP) / EXHAUSTION_STEP * 81);
+		if (w > 0) g.blit(RenderPipelines.GUI_TEXTURED, EXHAUSTION, right - w, y, 81 - w, 0, w, 9, w, 9, 81, 9, EXHAUSTION_COLOR);
 	}
 
 	/**
@@ -110,15 +127,10 @@ public final class FoodPreview {
 		float saturation = data.getSaturationLevel();
 		int right = g.guiWidth() / 2 + 91, y = g.guiHeight() - 39;
 		float tired = c.foodExhaustion ? exhaustion(player) : -1;
-		// the exhaustion: a pale strip from the right end, as long as the way to the next point lost
-		if (tired > 0) {
-			int w = Math.round(Math.min(tired, EXHAUSTION_STEP) / EXHAUSTION_STEP * 81);
-			if (w > 0) {
-				g.fill(right - w, y, right, y + 9, 0x30FFFFFF);
-				// and a bright line under the drumsticks, plain to see over any ground
-				g.fill(right - w, y + 9, right, y + 10, 0xD0FFFFFF);
-			}
-		}
+		//#if MC < 1.20.5
+		//$ // no call of its own for the food bar to go under: over it
+		//$ drawExhaustion(g, player, right, y);
+		//#endif
 		if (gives == null && !c.foodSaturation) return;
 		float[] then = gives == null ? new float[] { food, saturation } : after(food, saturation, gives);
 		// a slow flash, never quite gone
@@ -173,13 +185,13 @@ public final class FoodPreview {
 		lines.add(1, line);
 	}
 
-	/** F3's lines, or none when switched off: the exhaustion only where it is known. */
+	/** F3's lines, or none when switched off: the exhaustion with "~" where it is counted in the game. */
 	public static List<String> debugLines(Player player) {
 		if (!on() || !SlashHud.config.foodDebug || player == null) return List.of();
 		FoodData data = player.getFoodData();
 		float tired = exhaustion(player);
-		return List.of(String.format(Locale.ROOT, "Food: %d  Saturation: %.1f  Exhaustion: %s", data.getFoodLevel(), data.getSaturationLevel(),
-			tired < 0 ? "?" : String.format(Locale.ROOT, "%.2f", tired)));
+		return List.of(String.format(Locale.ROOT, "Food: %d  Saturation: %.1f  Exhaustion: %s%.2f", data.getFoodLevel(), data.getSaturationLevel(),
+			counted() ? "~" : "", tired));
 	}
 
 	public static void register() {
