@@ -294,37 +294,77 @@ public final class MoreModules {
 	// ---------- items worth counting in PvP and on long trips ----------
 
 	static final class ItemCounter implements HudModule {
-		private static final Item[][] GROUPS = {
-			{ Items.ARROW, Items.SPECTRAL_ARROW, Items.TIPPED_ARROW },
-			{ Items.ENDER_PEARL },
-			{ Items.TOTEM_OF_UNDYING },
-			{ Items.GOLDEN_APPLE, Items.ENCHANTED_GOLDEN_APPLE },
-			{ Items.EXPERIENCE_BOTTLE },
-			{ Items.FIREWORK_ROCKET },
+		/** The groups to count, each switched on in the module's settings; its first item is the icon. */
+		private record Group(java.util.function.Predicate<HudConfig> on, Item... items) {}
+		private static final Group[] GROUPS = {
+			new Group(c -> c.itemsArrows, Items.ARROW, Items.SPECTRAL_ARROW, Items.TIPPED_ARROW),
+			new Group(c -> c.itemsPearls, Items.ENDER_PEARL),
+			new Group(c -> c.itemsTotems, Items.TOTEM_OF_UNDYING),
+			new Group(c -> c.itemsGapples, Items.GOLDEN_APPLE, Items.ENCHANTED_GOLDEN_APPLE),
+			new Group(c -> c.itemsXp, Items.EXPERIENCE_BOTTLE),
+			new Group(c -> c.itemsFireworks, Items.FIREWORK_ROCKET),
+			new Group(c -> c.itemsPotions, Items.SPLASH_POTION, Items.LINGERING_POTION, Items.POTION),
 		};
+
+		/** An item shown, with how many the player carries. */
+		record Count(Item icon, int n) {}
 
 		public String id() {
 			return "items";
 		}
 
-		private static List<int[]> counts(Minecraft mc) {
-			List<int[]> out = new ArrayList<>();
-			if (mc.player == null) return out;
-			Inventory inv = mc.player.getInventory();
-			for (int g = 0; g < GROUPS.length; g++) {
-				int n = 0;
-				for (int i = 0; i < inv.getContainerSize(); i++) {
-					ItemStack s = inv.getItem(i);
-					for (Item item : GROUPS[g]) if (s.is(item)) n += s.getCount();
-				}
-				if (n > 0) out.add(new int[] { g, n });
+		/** "cobblestone, minecraft:tnt" → the item names the player's own list asks for. */
+		static java.util.Set<String> ownItems(String list) {
+			java.util.Set<String> out = new java.util.LinkedHashSet<>();
+			for (String part : (list == null ? "" : list).split("[,;\\s]+")) {
+				String id = part.trim().toLowerCase(java.util.Locale.ROOT);
+				if (!id.isEmpty()) out.add(id.contains(":") ? id : "minecraft:" + id);
 			}
 			return out;
 		}
 
-		private static List<int[]> shown(Minecraft mc) {
-			List<int[]> c = counts(mc);
-			return c.isEmpty() ? List.of(new int[] { 0, 64 }, new int[] { 1, 16 }, new int[] { 2, 1 }) : c;
+		private static String key(Item item) {
+			return net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).toString();
+		}
+
+		private static int carried(Inventory inv, Item item) {
+			int n = 0;
+			for (int i = 0; i < inv.getContainerSize(); i++) if (inv.getItem(i).is(item)) n += inv.getItem(i).getCount();
+			return n;
+		}
+
+		static List<Count> counts(Minecraft mc) {
+			List<Count> out = new ArrayList<>();
+			if (mc.player == null) return out;
+			HudConfig c = Modules.cfg;
+			Inventory inv = mc.player.getInventory();
+			java.util.Set<Item> counted = new java.util.HashSet<>();
+			for (Group group : GROUPS) {
+				if (!group.on().test(c)) continue;
+				counted.addAll(List.of(group.items()));
+				int n = 0;
+				for (Item item : group.items()) n += carried(inv, item);
+				if (n > 0) out.add(new Count(group.items()[0], n));
+			}
+			// the player's own items, each on its own
+			for (String id : ownItems(c.itemsCustom)) {
+				for (int i = 0; i < inv.getContainerSize(); i++) {
+					ItemStack s = inv.getItem(i);
+					if (s.isEmpty() || counted.contains(s.getItem()) || !key(s.getItem()).equals(id)) continue;
+					counted.add(s.getItem());
+					out.add(new Count(s.getItem(), carried(inv, s.getItem())));
+					break;
+				}
+			}
+			// what is in the hand, all of it in the inventory (blocks while building), unless counted above
+			ItemStack hand = mc.player.getMainHandItem();
+			if (c.itemsHeld && !hand.isEmpty() && !counted.contains(hand.getItem())) out.add(new Count(hand.getItem(), carried(inv, hand.getItem())));
+			return out;
+		}
+
+		private static List<Count> shown(Minecraft mc) {
+			List<Count> c = counts(mc);
+			return c.isEmpty() ? List.of(new Count(Items.ARROW, 64), new Count(Items.ENDER_PEARL, 16), new Count(Items.TOTEM_OF_UNDYING, 1)) : c;
 		}
 
 		@Override
@@ -334,7 +374,7 @@ public final class MoreModules {
 
 		public int width(Minecraft mc) {
 			int w = 0;
-			for (int[] c : shown(mc)) w += 18 + mc.font.width(String.valueOf(c[1])) + 4;
+			for (Count c : shown(mc)) w += 18 + mc.font.width(String.valueOf(c.n())) + 4;
 			return w - 4 + PAD * 2;
 		}
 
@@ -342,12 +382,12 @@ public final class MoreModules {
 			return 16 + PAD * 2;
 		}
 
-		private void drawCounts(GuiGraphicsExtractor g, Minecraft mc, int x, int y, List<int[]> list) {
+		private void drawCounts(GuiGraphicsExtractor g, Minecraft mc, int x, int y, List<Count> list) {
 			int cx = x + PAD;
-			for (int[] c : list) {
+			for (Count c : list) {
 				// in the main menu (editor before any world) items can't be made yet: an icon badge instead
-				Ui.icon(g, GROUPS[c[0]][0], "#", cx, y + PAD);
-				String n = String.valueOf(c[1]);
+				Ui.icon(g, c.icon(), "#", cx, y + PAD);
+				String n = String.valueOf(c.n());
 				text(g, mc, n, cx + 18, y + PAD + 4, Modules.textColor());
 				cx += 18 + mc.font.width(n) + 4;
 			}

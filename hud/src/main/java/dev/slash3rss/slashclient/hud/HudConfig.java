@@ -559,6 +559,9 @@ public final class HudConfig {
 	public boolean keystrokesMouse = true, keystrokesCps = true, keystrokesSpace = true;
 	/** The target's health bar and how far it is. */
 	public boolean targetBar = true, targetDistance = true;
+	/** The item counter: which groups it counts, the item in hand too, and the player's own items ("cobblestone, tnt"). */
+	public boolean itemsArrows = true, itemsPearls = true, itemsTotems = true, itemsGapples = true, itemsXp = true, itemsFireworks = true, itemsPotions = false, itemsHeld = false;
+	public String itemsCustom = "";
 	/** The compass's degrees under where you look. */
 	public boolean compassDegrees = true;
 	/** The most friends online the friends module lists. */
@@ -1109,6 +1112,15 @@ public final class HudConfig {
 		keystrokesSpace = other.keystrokesSpace;
 		targetBar = other.targetBar;
 		targetDistance = other.targetDistance;
+		itemsArrows = other.itemsArrows;
+		itemsPearls = other.itemsPearls;
+		itemsTotems = other.itemsTotems;
+		itemsGapples = other.itemsGapples;
+		itemsXp = other.itemsXp;
+		itemsFireworks = other.itemsFireworks;
+		itemsPotions = other.itemsPotions;
+		itemsHeld = other.itemsHeld;
+		itemsCustom = other.itemsCustom;
 		compassDegrees = other.compassDegrees;
 		friendsRows = Math.max(1, Math.min(15, other.friendsRows));
 		inventoryHotbar = other.inventoryHotbar;

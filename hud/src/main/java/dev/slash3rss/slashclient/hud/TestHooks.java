@@ -202,6 +202,14 @@ public final class TestHooks {
 	}
 
 	/** A button held by its key (attack: the left one) on or off, and whether it goes on over the inventory and the pause menu. */
+	/** What the item counter shows now: "arrow 32, ender_pearl 4, …". */
+	public static String itemCounts() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		var out = new java.util.ArrayList<String>();
+		for (var c : MoreModules.ItemCounter.counts(mc)) out.add(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(c.icon()).getPath() + " " + c.n());
+		return String.join(", ", out);
+	}
+
 	/** One-click crafting on or off. */
 	public static void quickCraft(boolean on) {
 		SlashHud.config.quickCraft = on;

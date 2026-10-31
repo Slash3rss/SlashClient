@@ -367,6 +367,17 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.set.targetBar", () -> cfg.targetBar, v -> cfg.targetBar = v));
 					settings.add(new Toggle("slashclient-hud.set.targetDistance", () -> cfg.targetDistance, v -> cfg.targetDistance = v));
 				}
+				case "items" -> {
+					settings.add(new Toggle("slashclient-hud.set.itemsArrows", () -> cfg.itemsArrows, v -> cfg.itemsArrows = v));
+					settings.add(new Toggle("slashclient-hud.set.itemsPearls", () -> cfg.itemsPearls, v -> cfg.itemsPearls = v));
+					settings.add(new Toggle("slashclient-hud.set.itemsTotems", () -> cfg.itemsTotems, v -> cfg.itemsTotems = v));
+					settings.add(new Toggle("slashclient-hud.set.itemsGapples", () -> cfg.itemsGapples, v -> cfg.itemsGapples = v));
+					settings.add(new Toggle("slashclient-hud.set.itemsXp", () -> cfg.itemsXp, v -> cfg.itemsXp = v));
+					settings.add(new Toggle("slashclient-hud.set.itemsFireworks", () -> cfg.itemsFireworks, v -> cfg.itemsFireworks = v));
+					settings.add(new Toggle("slashclient-hud.set.itemsPotions", () -> cfg.itemsPotions, v -> cfg.itemsPotions = v));
+					settings.add(new Toggle("slashclient-hud.set.itemsHeld", () -> cfg.itemsHeld, v -> cfg.itemsHeld = v));
+					settings.add(new Text("slashclient-hud.set.itemsCustom", "slashclient-hud.set.itemsCustomHint", 300, () -> cfg.itemsCustom, v -> cfg.itemsCustom = v));
+				}
 				case "compass" -> settings.add(new Toggle("slashclient-hud.set.compassDegrees", () -> cfg.compassDegrees, v -> cfg.compassDegrees = v));
 				case "friends" -> settings.add(new Slider("slashclient-hud.set.friendsRows", 1f, 15f, 1f, "%.0f", () -> (float) cfg.friendsRows, v -> cfg.friendsRows = Math.round(v)));
 				case "inventory" -> settings.add(new Toggle("slashclient-hud.set.inventoryHotbar", () -> cfg.inventoryHotbar, v -> cfg.inventoryHotbar = v));
