@@ -54,6 +54,7 @@ public final class Catalog {
 		Map.entry("fullbright", new String[] { "key.slashclient-hud.fullbright" }),
 		Map.entry("friends", new String[] { "key.slashclient-hud.friends" }),
 		Map.entry("freelook", new String[] { "key.slashclient-hud.freelook" }),
+		Map.entry("lookLock", new String[] { "key.slashclient-hud.lookLock" }),
 		Map.entry("waypoints", new String[] { "key.slashclient-hud.waypoints" }),
 		Map.entry("worldMap", new String[] { "key.slashclient-hud.dungeonMap" }),
 		Map.entry("dungeonmap", new String[] { "key.slashclient-hud.dungeonMap", "key.slashclient-hud.dungeonZoomIn", "key.slashclient-hud.dungeonZoomOut" }),
@@ -615,6 +616,9 @@ public final class Catalog {
 			new Choice("slashclient-hud.extra.timeOfDay", new String[] { "1000", "6000", "12500", "18000" }, "slashclient-hud.extra.time.",
 				() -> String.valueOf(cfg.fixedTime), v -> cfg.fixedTime = Integer.parseInt(v))), null));
 		out.add(new Entry("freelook", "slashclient-hud.extra.freelook", "extras", "m-freelook", () -> cfg.freelook, v -> cfg.freelook = v, List.of(), null));
+		out.add(new Entry("lookLock", "slashclient-hud.lookLock", "extras", "m-looklock", () -> cfg.lookLock, v -> cfg.lookLock = v, List.of(
+			new Choice("slashclient-hud.lookLock.onReturn", dev.slash3rss.slashclient.hud.camera.LookLock.ON_RETURN, "slashclient-hud.lookLock.onReturn.",
+				() -> cfg.lookLockOnReturn, v -> cfg.lookLockOnReturn = v)), null));
 		out.add(new Entry("waypoints", "slashclient-hud.extra.waypoints", "world", "m-waypoints", () -> cfg.waypoints, v -> cfg.waypoints = v, List.of(), null));
 		// M outside a dungeon: all the ground seen, waypoints and friends, over the whole screen
 		out.add(new Entry("worldMap", "slashclient-hud.worldMap", "world", "m-worldmap", () -> cfg.worldMap, v -> cfg.worldMap = v, List.of(

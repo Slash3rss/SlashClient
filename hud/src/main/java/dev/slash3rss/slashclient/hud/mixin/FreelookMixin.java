@@ -7,11 +7,11 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Freelook: the mouse turns only the camera while the key is held. */
+/** Freelook: the mouse turns only the camera while the key is held; with the view locked (LookLock) it turns nothing. */
 @Mixin(Entity.class)
 abstract class FreelookMixin {
 	@Inject(method = "turn", at = @At("HEAD"), cancellable = true)
 	private void slashclient$freelook(double yRot, double xRot, CallbackInfo ci) {
-		if (Freelook.turn((Entity) (Object) this, yRot, xRot)) ci.cancel();
+		if (Freelook.turn((Entity) (Object) this, yRot, xRot) || dev.slash3rss.slashclient.hud.camera.LookLock.turn((Entity) (Object) this, yRot, xRot)) ci.cancel();
 	}
 }

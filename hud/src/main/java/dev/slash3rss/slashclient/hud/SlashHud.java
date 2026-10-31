@@ -157,6 +157,8 @@ public class SlashHud implements ClientModInitializer {
 		dev.slash3rss.slashclient.hud.social.Social.start();
 		// Left Alt holds freelook (only once it is switched on in the HUD window); B opens the waypoints
 		Freelook.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.freelook", InputConstants.KEY_LALT, category));
+		// the view locked: no key by default (set in SlashClient's keys window)
+		dev.slash3rss.slashclient.hud.camera.LookLock.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.lookLock", InputConstants.UNKNOWN.getValue(), category));
 		KeyMapping waypointsKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.waypoints", InputConstants.KEY_B, category));
 		Clips.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.clip", InputConstants.KEY_F8, category));
 		// the instant replay: F6 (F7–F9 are taken by SkyUp's dump, clips and the light overlay)
@@ -390,6 +392,7 @@ public class SlashHud implements ClientModInitializer {
 				if (Compat.screen(mc) == null) mc.setScreenAndShow(new HudEditScreen());
 			}
 			Freelook.tick(mc);
+			dev.slash3rss.slashclient.hud.camera.LookLock.tick(mc);
 			DeathPoint.tick(mc);
 			DeathInfo.tick(mc);
 			LightOverlay.tick(mc);

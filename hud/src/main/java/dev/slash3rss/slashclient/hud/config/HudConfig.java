@@ -625,6 +625,9 @@ public final class HudConfig {
 	public int fixedTime = 6000;
 	/** Hold the key to look around without turning (off by default: some servers forbid it). */
 	public boolean freelook = false;
+	/** The view locked by its key, or by itself on coming back from another window (LookLock). */
+	public boolean lookLock = false;
+	public String lookLockOnReturn = "holding";
 	public boolean waypoints = true;
 	/** A waypoint put by itself where you last died (one per world and dimension, see DeathPoint). */
 	public boolean deathWaypoint = true;
@@ -1184,6 +1187,8 @@ public final class HudConfig {
 		timeChanger = other.timeChanger;
 		fixedTime = other.fixedTime;
 		freelook = other.freelook;
+		lookLock = other.lookLock;
+		lookLockOnReturn = other.lookLockOnReturn;
 		waypoints = other.waypoints;
 		deathWaypoint = other.deathWaypoint;
 		deathScreen = other.deathScreen;
