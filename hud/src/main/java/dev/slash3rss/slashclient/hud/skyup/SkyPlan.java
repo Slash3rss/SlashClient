@@ -39,7 +39,8 @@ import java.util.Set;
  * says so, for the kinds the player wants. The plan is read from the wiki through the launcher once a game, as it
  * changes with SkyUp's editions, and kept for the next time; the plan below is for a launcher without the wiki.
  * The wiki gives only when things start: when they end the chat says (a fishing contest's "zakończyły się!", the
- * last of the three events' "został zakończony!"), and without it each kind is taken to last as long as it usually does.
+ * last of the three events' "został zakończony!", the boss "pokonany!"), and without it each kind is taken to last as
+ * long as it usually does.
  */
 public final class SkyPlan {
 	private SkyPlan() {}
@@ -67,7 +68,7 @@ public final class SkyPlan {
 
 		/**
 		 * How long it goes on when the chat has said nothing (as SkyUp's chat had them in October 2026): a fishing
-		 * contest 10 minutes, the three events one after another some 15; the boss arena's chat is not known yet.
+		 * contest 10 minutes, the three events one after another some 15, the boss fight some 6 (taken as 10).
 		 */
 		Duration usual() {
 			return Duration.ofMinutes(this == EVENTS ? 15 : 10);
@@ -268,8 +269,9 @@ public final class SkyPlan {
 	private static final java.util.regex.Pattern PICKED = java.util.regex.Pattern.compile("^Event » Eventy rozpoczną się za .*Fortuna wybrała (.+)!$");
 	private static final java.util.regex.Pattern EVENT_STARTED = java.util.regex.Pattern.compile("^Event » (.+) rozpoczął się!$");
 	private static final java.util.regex.Pattern EVENT_ENDED = java.util.regex.Pattern.compile("^Event » (.+) został zakończony!$");
+	private static final java.util.regex.Pattern BOSS_BEATEN = java.util.regex.Pattern.compile("^Dungeon » Boss został .*pokonany!$");
 
-	/** A line of the chat (ChatComponentMixin): SkyUp's fishing contests and events starting and ending. */
+	/** A line of the chat (ChatComponentMixin): SkyUp's fishing contests, events and boss fights starting and ending. */
 	public static void onChat(Component message) {
 		if (SlashHud.config == null || !SkyTasks.onSkyUp(Minecraft.getInstance())) return;
 		heard(message.getString(), ZonedDateTime.now(ZONE));
@@ -280,6 +282,17 @@ public final class SkyPlan {
 		if (line.startsWith("Wędkarstwo » Zawody wędkarskie")) {
 			if (line.endsWith("wystartowały!")) started(Kind.FISHING, now);
 			else if (line.contains("zakończyły się!")) ended(Kind.FISHING, now);
+			return;
+		}
+		if (line.startsWith("Dungeon »")) {
+			Heard h = heard.get(Kind.BOSS);
+			boolean on = h != null && h.started != null && h.ended == null && now.isBefore(h.started.plus(LONGEST));
+			// the arena's gates open a minute before the fight (and say so every few seconds)
+			if (line.startsWith("Dungeon » Wrota Boss Areny otwarte!")) {
+				if (!on) started(Kind.BOSS, now);
+			} else if (BOSS_BEATEN.matcher(line).matches()) ended(Kind.BOSS, now);
+			// the answer to /dng boss: only after the gates opened, as before them there is no fight yet either
+			else if (on && line.startsWith("Dungeon » Aktualnie nie ma walki z bossem")) ended(Kind.BOSS, now);
 			return;
 		}
 		if (!line.startsWith("Event »")) return;
@@ -503,7 +516,8 @@ public final class SkyPlan {
 
 	/**
 	 * The chat on the same Wednesday, as SkyUp says it: the fishing contest at 19:00 over at 19:06 (not 19:10), the
-	 * three events at 21:00 going on past their usual 15 minutes with the one going on shown, over with the last;
+	 * boss at 20:00 beaten at 20:06 (the /dng boss answer before the gates opened changing nothing), the three events
+	 * at 21:00 going on past their usual 15 minutes with the one going on shown, over with the last;
 	 * Thursday's events not knowing which were picked, over a moment after one ends with no next announced.
 	 * Each moment as "<hour> <first row's name>=<when>;".
 	 */
@@ -520,6 +534,13 @@ public final class SkyPlan {
 		row.accept(day.withHour(19).withMinute(5));
 		heard("Wędkarstwo » Zawody wędkarskie o największą rybę zakończyły się! Zwyciężył Kaseczek Mamuci Jesiotr 69932.63g", day.withHour(19).withMinute(6));
 		row.accept(day.withHour(19).withMinute(7));
+		heard("Dungeon » Aktualnie nie ma walki z bossem!", day.withHour(19).withMinute(30));
+		heard("§5Dungeon §8» §7W dungeonach budzi się §4ɴᴀᴅᴘʟᴏᴍʏᴋ §8(§5ᴘʀᴢᴇᴋʟᴇᴛʏ§8)! Pozostało 10 minut do otwarcia wrot Boss Areny!", day.withHour(19).withMinute(49));
+		heard("Dungeon » Wrota Boss Areny otwarte! Pozostało 1 min do rozpoczęcia walki! Wpisz /dng boss, by dołączyć!", day.withHour(19).withMinute(59));
+		heard("Dungeon » Wrota Boss Areny otwarte! Pozostało 5 sek do rozpoczęcia walki! Wpisz /dng boss, by dołączyć!", day.withHour(19).withMinute(59).withSecond(55));
+		row.accept(day.withHour(20).withMinute(5));
+		heard("Dungeon » Boss został sromotnie pokonany!", day.withHour(20).withMinute(6));
+		row.accept(day.withHour(20).withMinute(7));
 		heard("§6Event §8» §eEventy rozpoczną się za 10 minut! Fortuna wybrała Labirynt, Parkour miłosny, Strzelec na boisku!", day.withHour(20).withMinute(50));
 		heard("Event » Labirynt rozpoczął się!", day.withHour(21));
 		row.accept(day.withHour(21).withMinute(1));

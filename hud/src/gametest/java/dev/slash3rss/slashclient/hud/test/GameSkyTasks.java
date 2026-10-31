@@ -518,7 +518,7 @@ public class GameSkyTasks implements FabricClientGameTest {
 				&& plan.contains(",in 1 h 5 min,") && plan.contains(",20:00,in 1 h 5 min (20:00)|")
 				&& plan.contains("|-,Zawody wędkarskie,-|"), "the plan of the week", plan);
 			// the chat saying when things end: the contest over early, the events going on past 15 minutes, over with the last
-			check(plan.endsWith("|-,Zawody wędkarskie,-|19:05 Fishing contest=on now;19:07 Boss arena=in 54 min (20:00);"
+			check(plan.endsWith("|-,Zawody wędkarskie,-|19:05 Fishing contest=on now;19:07 Boss arena=in 54 min (20:00);20:05 Boss arena=on now;20:07 Events=in 54 min (21:00);"
 				+ "21:01 Labirynt=on now 1/3;21:20 Parkour miłosny=on now 2/3;21:26 Events=tomorrow 18:00;"
 				+ "18:03 Events=on now;18:03 Fishing contest=in 1 h 57 min (20:00);"), "the plan's end from the chat", plan);
 			context.waitTicks(15);
