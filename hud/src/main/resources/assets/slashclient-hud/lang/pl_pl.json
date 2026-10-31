@@ -898,7 +898,6 @@
 	"slashclient-hud.food.exhaustionSetting": "Pasek zmęczenia na udkach",
 	"slashclient-hud.food.healthSetting": "Serca odnowione po zjedzeniu (migają)",
 	"slashclient-hud.food.debugSetting": "Głód, nasycenie i zmęczenie w F3",
-	"slashclient-hud.food.tooltip": "Głód +%s · nasycenie +%s",
 	"slashclient-hud.effectIcons": "Ikonki efektów",
 	"slashclient-hud.extra.mouseTweaks": "Mouse tweaks (Shift+przeciąganie, kółko w ekwipunku)",
 	"slashclient-hud.craftFit": "Shift w craftingu tylko tyle, ile się zmieści (z miejscem na resztę z siatki)",

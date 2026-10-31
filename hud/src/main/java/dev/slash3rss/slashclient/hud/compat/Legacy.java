@@ -75,6 +75,7 @@
 //$ 			case "hud/heart/frozen_half": return new int[] { 187, 0 };
 //$ 			case "hud/food_full": return new int[] { 52, 27 };
 //$ 			case "hud/food_half": return new int[] { 61, 27 };
+//$ 			case "hud/food_empty": return new int[] { 16, 27 };
 //$ 			case "hud/crosshair_attack_indicator_full": return new int[] { 68, 94 };
 //$ 			case "hud/crosshair_attack_indicator_background": return new int[] { 36, 94 };
 //$ 			case "hud/crosshair_attack_indicator_progress": return new int[] { 52, 94 };

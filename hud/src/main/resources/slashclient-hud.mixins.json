@@ -104,6 +104,7 @@
 		"SessionMineMixin",
 		"SessionPlaceMixin",
 		"ShulkerTooltipMixin",
+		"FoodTooltipMixin",
 		"SkyCraftMixin",
 		"SkyEatMixin",
 		"SkyPlaceMixin",

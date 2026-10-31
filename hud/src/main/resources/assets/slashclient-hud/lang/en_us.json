@@ -898,7 +898,6 @@
 	"slashclient-hud.food.exhaustionSetting": "Exhaustion bar over the drumsticks",
 	"slashclient-hud.food.healthSetting": "Hearts healed after eating (flashing)",
 	"slashclient-hud.food.debugSetting": "Hunger, saturation and exhaustion on F3",
-	"slashclient-hud.food.tooltip": "Hunger +%s · saturation +%s",
 	"slashclient-hud.effectIcons": "Effect icons",
 	"slashclient-hud.extra.mouseTweaks": "Mouse tweaks (Shift-drag, wheel in inventories)",
 	"slashclient-hud.craftFit": "Shift-craft only what fits (room kept for the grid)",

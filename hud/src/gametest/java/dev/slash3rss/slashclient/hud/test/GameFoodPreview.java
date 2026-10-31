@@ -39,11 +39,17 @@ public class GameFoodPreview implements FabricClientGameTest {
 			food = context.computeOnClient(mc -> TestHooks.foodPreview());
 			if (!food.equals("none")) throw new AssertionError("Stone is no food: " + food);
 
-			// the bread's tooltip says what it gives
-			String tip = context.computeOnClient(mc -> String.join(" | ", new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BREAD)
-				.getTooltipLines(net.minecraft.world.item.Item.TooltipContext.of(mc.level), mc.player, net.minecraft.world.item.TooltipFlag.Default.NORMAL)
-				.stream().map(c -> c.getString()).toList()));
-			if (!tip.contains("Hunger +5 · saturation +6.0")) throw new AssertionError("The bread's tooltip: " + tip);
+			// the bread's tooltip shows what it gives: 5 food points (two and a half drumsticks), 6 saturation
+			String tip = context.computeOnClient(mc -> String.valueOf(dev.slash3rss.slashclient.hud.gamehud.FoodPreview.image(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BREAD))));
+			if (!tip.equals("Gives[food=5, saturation=6.0]")) throw new AssertionError("The bread's tooltip: " + tip);
+			server.runCommand("item replace entity @p hotbar.1 with minecraft:golden_carrot");
+			context.setScreen(() -> new net.minecraft.client.gui.screens.inventory.InventoryScreen(net.minecraft.client.Minecraft.getInstance().player));
+			context.waitTicks(5);
+			double[] slot = context.computeOnClient(mc -> TestHooks.slotOnWindow(37));
+			context.getInput().setCursorPos(slot[0], slot[1]);
+			context.waitTicks(5);
+			context.takeScreenshot("food-tooltip");
+			context.setScreen(() -> null);
 
 			// hurt, nearly full, a little tired: the exhaustion is known in this world (F3 and the strip on the bar),
 			// steak in hand heals some hearts once eaten (flashing on the health bar)
@@ -67,10 +73,12 @@ public class GameFoodPreview implements FabricClientGameTest {
 			context.waitTicks(5);
 			context.takeScreenshot("food-f3");
 			context.getInput().pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_F3);
-			// switched off: no F3 line, no tooltip line
+			// switched off: no F3 line, no drumsticks in the tooltip
 			context.runOnClient(mc -> { var c = dev.slash3rss.slashclient.hud.SlashHud.config; c.foodDebug = false; c.foodTooltip = false; });
 			f3 = context.computeOnClient(mc -> String.join(" ", dev.slash3rss.slashclient.hud.gamehud.FoodPreview.debugLines(mc.player)));
 			if (!f3.isEmpty()) throw new AssertionError("F3's food line with it off: " + f3);
+			if (context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.gamehud.FoodPreview.image(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BREAD))) != null)
+				throw new AssertionError("The bread's tooltip with it off");
 			context.runOnClient(mc -> { var c = dev.slash3rss.slashclient.hud.SlashHud.config; c.foodDebug = true; c.foodTooltip = true; });
 			// without food in hand: the saturation outlined and the exhaustion strip (full health: no healing spends it)
 			server.runOnServer(s -> s.getPlayerList().getPlayers().forEach(p -> {

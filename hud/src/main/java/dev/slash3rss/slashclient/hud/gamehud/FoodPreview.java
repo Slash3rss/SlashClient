@@ -4,14 +4,15 @@ import dev.slash3rss.slashclient.hud.config.HudConfig;
 import dev.slash3rss.slashclient.hud.SlashHud;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.Style;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodData;
+import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
@@ -24,7 +25,7 @@ import java.util.Locale;
  * health bar. Without food in hand the saturation stays outlined, and a dotted strip under the
  * drumsticks fills from the right with the exhaustion: when it reaches the left end, the server takes
  * a point of saturation (or hunger). On a server the exhaustion is counted in the game (Exhaustion). The
- * food's values are in its tooltip too, and the three numbers on F3 (FoodDebugMixin). Not while
+ * food's values are in its tooltip too, as drumsticks and golden outlines, and the three numbers on F3 (FoodDebugMixin). Not while
  * riding something with its own health (the game shows that instead of the food bar).
  */
 public final class FoodPreview {
@@ -32,6 +33,7 @@ public final class FoodPreview {
 
 	private static final Identifier FULL = Identifier.withDefaultNamespace("hud/food_full");
 	private static final Identifier HALF = Identifier.withDefaultNamespace("hud/food_half");
+	private static final Identifier EMPTY = Identifier.withDefaultNamespace("hud/food_empty");
 	private static final Identifier HEART_FULL = Identifier.withDefaultNamespace("hud/heart/full");
 	private static final Identifier HEART_HALF = Identifier.withDefaultNamespace("hud/heart/half");
 	/** The outline of the game's drumstick (and of its half), drawn for this, white to be tinted. */
@@ -175,14 +177,98 @@ public final class FoodPreview {
 		}
 	}
 
-	/** "Głód +4 · nasycenie +2.4" under a food's name. */
-	private static void tooltip(ItemStack stack, List<Component> lines) {
-		if (!on() || !SlashHud.config.foodTooltip || lines.isEmpty()) return;
+	/** What a food's tooltip carries to its picture (FoodTooltipMixin): food points and saturation it gives. */
+	public record Gives(int food, float saturation) implements TooltipComponent {}
+
+	/** The picture for a food's tooltip, or null for anything else (or with it switched off). */
+	public static Gives image(ItemStack stack) {
+		if (!on() || !SlashHud.config.foodTooltip) return null;
 		float[] gives = of(stack);
-		if (gives == null) return;
-		Component line = Component.translatable("slashclient-hud.food.tooltip", Math.round(gives[0]), String.format(Locale.ROOT, "%.1f", gives[1]))
-			.withStyle(Style.EMPTY.withColor(0xA8A29E));
-		lines.add(1, line);
+		return gives == null ? null : new Gives(Math.round(gives[0]), gives[1]);
+	}
+
+	/**
+	 * Under a food's name, as on the food bar: the drumsticks it fills, then the saturation as golden outlines
+	 * (a half of either for one point). More than ten of a kind show one with "×12".
+	 */
+	static final class Icons implements ClientTooltipComponent {
+		private static final int MOST = 10, GAP = 5;
+		private final int food, saturation;
+
+		Icons(Gives gives) {
+			food = Math.max(gives.food(), 0);
+			saturation = Math.max(Math.round(gives.saturation()), 0);
+		}
+
+		//#if MC >= 1.21.2
+		@Override
+		public int getHeight(Font font) {
+			return 11;
+		}
+		//#else
+		//$ @Override
+		//$ public int getHeight() {
+		//$ 	return 11;
+		//$ }
+		//#endif
+
+		@Override
+		public int getWidth(Font font) {
+			int w = width(font, food);
+			if (saturation > 0) w += (w > 0 ? GAP : 0) + width(font, saturation);
+			return w;
+		}
+
+		/** A row of icons for these points: one for every two, or one with the count when they are many. */
+		private static int width(Font font, int points) {
+			if (points <= 0) return 0;
+			int icons = (points + 1) / 2;
+			return icons > MOST ? 10 + font.width(count(points)) : icons * 8 + 1;
+		}
+
+		private static String count(int points) {
+			return "×" + (points % 2 == 0 ? String.valueOf(points / 2) : String.format(Locale.ROOT, "%.1f", points / 2f));
+		}
+
+		//#if MC >= 26.1
+		@Override
+		public void extractImage(Font font, int x, int y, int w, int h, GuiGraphicsExtractor g) {
+			draw(font, x, y, g);
+		}
+		//#elif MC >= 1.21.2
+		//$ @Override
+		//$ public void renderImage(Font font, int x, int y, int w, int h, GuiGraphicsExtractor g) {
+		//$ 	draw(font, x, y, g);
+		//$ }
+		//#else
+		//$ @Override
+		//$ public void renderImage(Font font, int x, int y, GuiGraphicsExtractor g) {
+		//$ 	draw(font, x, y, g);
+		//$ }
+		//#endif
+
+		private void draw(Font font, int x, int y, GuiGraphicsExtractor g) {
+			x = row(font, g, x, y, food, false);
+			if (food > 0) x += GAP;
+			row(font, g, x, y, saturation, true);
+		}
+
+		/** One row, on the empty drumsticks of the food bar; returns where it ends. */
+		private static int row(Font font, GuiGraphicsExtractor g, int x, int y, int points, boolean gold) {
+			if (points <= 0) return x;
+			int icons = (points + 1) / 2;
+			boolean many = icons > MOST;
+			for (int i = 0; i < (many ? 1 : icons); i++) {
+				boolean half = !many && points - i * 2 == 1;
+				g.blitSprite(RenderPipelines.GUI_TEXTURED, EMPTY, x + i * 8, y, 9, 9);
+				if (gold) g.blit(RenderPipelines.GUI_TEXTURED, half ? SATURATION_HALF : SATURATION_FULL, x + i * 8, y, 0, 0, 9, 9, 9, 9, 9, 9, 0xFF000000 | GOLD);
+				else g.blitSprite(RenderPipelines.GUI_TEXTURED, half ? HALF : FULL, x + i * 8, y, 9, 9);
+			}
+			if (!many) return x + icons * 8 + 1;
+			String count = count(points);
+			g.text(font, count, x + 10, y + 1, gold ? 0xFF000000 | GOLD : 0xFFA8A29E, true);
+			return x + 10 + font.width(count);
+		}
 	}
 
 	/** F3's lines, or none when switched off: the exhaustion with "~" where it is counted in the game. */
@@ -195,10 +281,10 @@ public final class FoodPreview {
 	}
 
 	public static void register() {
-		//#if MC >= 1.20.5
-		net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback.EVENT.register((stack, context, flag, lines) -> tooltip(stack, lines));
+		//#if MC >= 26.1
+		net.fabricmc.fabric.api.client.rendering.v1.ClientTooltipComponentCallback.EVENT.register(data -> data instanceof Gives gives ? new Icons(gives) : null);
 		//#else
-		//$ net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback.EVENT.register((stack, flag, lines) -> tooltip(stack, lines));
+		//$ net.fabricmc.fabric.api.client.rendering.v1.TooltipComponentCallback.EVENT.register(data -> data instanceof Gives gives ? new Icons(gives) : null);
 		//#endif
 	}
 }
