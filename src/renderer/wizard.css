@@ -172,3 +172,11 @@
 .pw-blank { color: var(--text-secondary); }
 @media (prefers-reduced-motion: reduce) { .pw-body { animation: none; } }
 .reduce-motion .pw-body { animation: none; }
+
+/* the season's touches over the wizard too: the cobwebs and the bunting above it, and the sky (bats,
+   confetti) showing through a background a little less dark */
+.wz-open .season-web, .wz-open .season-bunting { z-index: 51; }
+.season-halloween .wz, .season-independence .wz {
+  background: radial-gradient(1200px 700px at 15% -10%, rgba(var(--accent-dark-rgb), .22), transparent 60%),
+    radial-gradient(900px 600px at 110% 110%, rgba(124, 58, 237, .18), transparent 60%), rgba(10, 13, 20, .8);
+}
