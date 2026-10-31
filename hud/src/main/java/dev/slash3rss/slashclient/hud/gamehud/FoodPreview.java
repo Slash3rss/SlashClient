@@ -188,11 +188,11 @@ public final class FoodPreview {
 	}
 
 	/**
-	 * Under a food's name, as on the food bar: the drumsticks it fills, then the saturation as golden outlines
+	 * Under a food's name, as on the food bar: the drumsticks it fills, and under them the saturation as golden outlines
 	 * (a half of either for one point). More than ten of a kind show one with "×12".
 	 */
 	static final class Icons implements ClientTooltipComponent {
-		private static final int MOST = 10, GAP = 5;
+		private static final int MOST = 10, ROW = 10;
 		private final int food, saturation;
 
 		Icons(Gives gives) {
@@ -203,20 +203,22 @@ public final class FoodPreview {
 		//#if MC >= 1.21.2
 		@Override
 		public int getHeight(Font font) {
-			return 11;
+			return rows() * ROW + 1;
 		}
 		//#else
 		//$ @Override
 		//$ public int getHeight() {
-		//$ 	return 11;
+		//$ 	return rows() * ROW + 1;
 		//$ }
 		//#endif
 
 		@Override
 		public int getWidth(Font font) {
-			int w = width(font, food);
-			if (saturation > 0) w += (w > 0 ? GAP : 0) + width(font, saturation);
-			return w;
+			return Math.max(width(font, food), width(font, saturation));
+		}
+
+		private int rows() {
+			return (food > 0 ? 1 : 0) + (saturation > 0 ? 1 : 0);
 		}
 
 		/** A row of icons for these points: one for every two, or one with the count when they are many. */
@@ -248,14 +250,13 @@ public final class FoodPreview {
 		//#endif
 
 		private void draw(Font font, int x, int y, GuiGraphicsExtractor g) {
-			x = row(font, g, x, y, food, false);
-			if (food > 0) x += GAP;
-			row(font, g, x, y, saturation, true);
+			row(font, g, x, y, food, false);
+			row(font, g, x, food > 0 ? y + ROW : y, saturation, true);
 		}
 
-		/** One row, on the empty drumsticks of the food bar; returns where it ends. */
-		private static int row(Font font, GuiGraphicsExtractor g, int x, int y, int points, boolean gold) {
-			if (points <= 0) return x;
+		/** One row, on the empty drumsticks of the food bar. */
+		private static void row(Font font, GuiGraphicsExtractor g, int x, int y, int points, boolean gold) {
+			if (points <= 0) return;
 			int icons = (points + 1) / 2;
 			boolean many = icons > MOST;
 			for (int i = 0; i < (many ? 1 : icons); i++) {
@@ -264,10 +265,9 @@ public final class FoodPreview {
 				if (gold) g.blit(RenderPipelines.GUI_TEXTURED, half ? SATURATION_HALF : SATURATION_FULL, x + i * 8, y, 0, 0, 9, 9, 9, 9, 9, 9, 0xFF000000 | GOLD);
 				else g.blitSprite(RenderPipelines.GUI_TEXTURED, half ? HALF : FULL, x + i * 8, y, 9, 9);
 			}
-			if (!many) return x + icons * 8 + 1;
+			if (!many) return;
 			String count = count(points);
 			g.text(font, count, x + 10, y + 1, gold ? 0xFF000000 | GOLD : 0xFFA8A29E, true);
-			return x + 10 + font.width(count);
 		}
 	}
 
