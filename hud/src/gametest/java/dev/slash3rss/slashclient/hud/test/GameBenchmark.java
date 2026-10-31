@@ -34,6 +34,8 @@ public class GameBenchmark implements FabricClientGameTest {
 			if (r.length < 5 || Integer.parseInt(r[0]) < 100 || Double.parseDouble(r[1]) <= 0 || Double.parseDouble(r[2]) <= 0)
 				throw new AssertionError("No proper result saved: " + String.join(" ", r));
 			if (!"true".equals(r[3])) throw new AssertionError("The result screen did not open");
+			// the GPU, processor and Java a shared result shows, saved with the run
+			if (r.length < 6 || !"true".equals(r[5])) throw new AssertionError("No hardware saved with the result");
 			float after = context.computeOnClient(mc -> TestHooks.yaw());
 			if (Math.abs(after - yaw) > 0.5f) throw new AssertionError("The look was not restored: " + yaw + " -> " + after);
 			context.runOnClient(mc -> TestHooks.reportAudit());

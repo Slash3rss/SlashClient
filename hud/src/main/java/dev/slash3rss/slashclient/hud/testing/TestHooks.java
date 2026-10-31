@@ -1260,11 +1260,12 @@ public final class TestHooks {
 		return Benchmark.running();
 	}
 
-	/** The newest saved run as "frames avg low1 screen", for the benchmark test. */
+	/** The newest saved run as "frames avg low1 screen renderDistance hardware", for the benchmark test. */
 	public static String benchmarkResult() {
 		Benchmark.Result r = Benchmark.latest();
 		if (r == null) return "none";
-		return r.frames + " " + r.fps.avg + " " + r.fps.low1 + " " + (screen() instanceof BenchmarkScreen) + " " + r.settings.renderDistance;
+		return r.frames + " " + r.fps.avg + " " + r.fps.low1 + " " + (screen() instanceof BenchmarkScreen) + " " + r.settings.renderDistance
+			+ " " + (r.hardware != null && r.hardware.gpu != null && r.hardware.cpu != null && r.hardware.java != null);
 	}
 
 	/** The test scene from the menu, flown `speed` times faster than a real run. */

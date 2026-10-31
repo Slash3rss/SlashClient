@@ -88,6 +88,8 @@ public final class Benchmark {
 		public String scene;
 		/** The test scene's parts, each measured on its own. */
 		public List<SceneFps> scenes;
+		/** What the run was measured on, so a shared result says it (the launcher adds RAM and the system). */
+		public Hardware hardware;
 		/** Frame times in ms; only for the screen right after the run, not saved. */
 		public transient float[] frameTimes;
 	}
@@ -112,6 +114,37 @@ public final class Benchmark {
 		public boolean fullscreen;
 		public int mods;
 		public Long memoryMb;
+	}
+
+	/** Names only, nothing that tells who the player is. */
+	public static final class Hardware {
+		public String cpu, gpu, java;
+	}
+
+	private static Hardware hardware;
+
+	/** The graphics card the game draws with (the one it really uses on laptops with two), the processor and Java. */
+	static Hardware hardware() {
+		if (hardware != null) return hardware;
+		Hardware h = new Hardware();
+		try {
+			//#if MC >= 26.2
+			h.gpu = com.mojang.blaze3d.systems.RenderSystem.getDevice().getDeviceInfo().name();
+			//#elif MC >= 1.21.5
+			//$ h.gpu = com.mojang.blaze3d.systems.RenderSystem.getDevice().getRenderer();
+			//#else
+			//$ h.gpu = com.mojang.blaze3d.platform.GlUtil.getRenderer();
+			//#endif
+		} catch (Throwable e) {
+			SlashHud.LOG.debug("Benchmark: no GPU name", e);
+		}
+		try {
+			h.cpu = new oshi.SystemInfo().getHardware().getProcessor().getProcessorIdentifier().getName().trim();
+		} catch (Throwable e) {
+			SlashHud.LOG.debug("Benchmark: no CPU name", e);
+		}
+		h.java = Runtime.version() + " (" + System.getProperty("java.vendor", "?") + ")";
+		return hardware = h;
 	}
 
 	public static void start(Minecraft mc) {
@@ -319,6 +352,7 @@ public final class Benchmark {
 		r.settings.mods = mods();
 		r.settings.memoryMb = Runtime.getRuntime().maxMemory() / (1024 * 1024);
 		r.frameTimes = times;
+		r.hardware = hardware();
 		return r;
 	}
 
