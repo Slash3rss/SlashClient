@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
-import dev.slash3rss.slashclient.hud.SessionStats;
+import dev.slash3rss.slashclient.hud.modules.SessionStats;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;

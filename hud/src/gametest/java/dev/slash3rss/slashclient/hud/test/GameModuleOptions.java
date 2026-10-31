@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.test;
 
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -77,7 +77,7 @@ public class GameModuleOptions implements FabricClientGameTest {
 			context.setScreen(() -> null);
 
 			// the clock's page: its options and the conditions every module has
-			context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("clock"));
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.ui.HudEditScreen("clock"));
 			context.waitTicks(5);
 			context.takeScreenshot("module-options-clock");
 			context.setScreen(() -> null);

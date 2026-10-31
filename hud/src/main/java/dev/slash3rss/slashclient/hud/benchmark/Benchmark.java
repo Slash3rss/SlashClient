@@ -17,7 +17,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.MoreModules;
+import dev.slash3rss.slashclient.hud.modules.MoreModules;
 import dev.slash3rss.slashclient.hud.SlashHud;
 
 /**

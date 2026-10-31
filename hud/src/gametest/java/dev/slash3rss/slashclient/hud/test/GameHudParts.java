@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -52,8 +52,8 @@ public class GameHudParts implements FabricClientGameTest {
 			context.waitTicks(3);
 			context.takeScreenshot("game-hud-tab-clear");
 			context.runOnClient(mc -> {
-				dev.slash3rss.slashclient.hud.SlashHud.config.tabRowOpacity = dev.slash3rss.slashclient.hud.HudConfig.TAB_ROW_DEFAULT;
-				dev.slash3rss.slashclient.hud.SlashHud.config.tabPanelOpacity = dev.slash3rss.slashclient.hud.HudConfig.TAB_PANEL_DEFAULT;
+				dev.slash3rss.slashclient.hud.SlashHud.config.tabRowOpacity = dev.slash3rss.slashclient.hud.config.HudConfig.TAB_ROW_DEFAULT;
+				dev.slash3rss.slashclient.hud.SlashHud.config.tabPanelOpacity = dev.slash3rss.slashclient.hud.config.HudConfig.TAB_PANEL_DEFAULT;
 			});
 			world.getServer().runCommand("scoreboard objectives remove tabtest");
 			String kept = context.computeOnClient(mc -> TestHooks.tabTexts(false));
@@ -70,7 +70,7 @@ public class GameHudParts implements FabricClientGameTest {
 			context.waitTicks(5);
 			context.takeScreenshot("game-hud-parts-moved");
 			// the editor: the parts as boxes, and the armour at its biggest
-			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::new);
+			context.setScreen(dev.slash3rss.slashclient.hud.ui.HudEditScreen::new);
 			context.waitTicks(5);
 			context.takeScreenshot("game-hud-parts-editor");
 			// nothing on the scoreboard and no action bar: samples in their boxes

@@ -153,7 +153,7 @@ public final class Compat {
 		//#endif
 	}
 
-	static void swapIntoHotbar(Minecraft mc, net.minecraft.world.entity.player.Player player, int slot, int hotbar) {
+	public static void swapIntoHotbar(Minecraft mc, net.minecraft.world.entity.player.Player player, int slot, int hotbar) {
 		//#if MC >= 26.1
 		mc.gameMode.handleContainerInput(player.inventoryMenu.containerId, slot, hotbar, net.minecraft.world.inventory.ContainerInput.SWAP, player);
 		//#else
@@ -167,12 +167,12 @@ public final class Compat {
 
 	//#if MC >= 1.21.2 && MC < 1.21.6
 	//$ /** The game's picture of a status effect (before 1.21.6 a sprite of the effect atlas). */
-	//$ static net.minecraft.client.renderer.texture.TextureAtlasSprite effectSprite(net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
+	//$ public static net.minecraft.client.renderer.texture.TextureAtlasSprite effectSprite(net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
 	//$ 	return Minecraft.getInstance().getMobEffectTextures().get(effect);
 	//$ }
 	//#elif MC >= 1.21.2
 	/** The game's picture of a status effect (the one in the corner of the screen). */
-	static net.minecraft.resources.Identifier effectSprite(net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
+	public static net.minecraft.resources.Identifier effectSprite(net.minecraft.core.Holder<net.minecraft.world.effect.MobEffect> effect) {
 		//#if MC >= 26.2
 		return net.minecraft.client.gui.Hud.getMobEffectSprite(effect);
 		//#else
@@ -251,7 +251,7 @@ public final class Compat {
 
 	//#if MC >= 1.21.2 && MC < 1.21.5
 	//$ /** The hotbar slot in hand, a plain field of the inventory before 1.21.5. */
-	//$ static void setSelectedSlot(net.minecraft.world.entity.player.Inventory inv, int slot) {
+	//$ public static void setSelectedSlot(net.minecraft.world.entity.player.Inventory inv, int slot) {
 	//$ 	inv.selected = slot;
 	//$ }
 	//#endif

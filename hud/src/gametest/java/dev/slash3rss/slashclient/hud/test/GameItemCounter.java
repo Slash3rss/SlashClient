@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.test;
 
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -50,7 +50,7 @@ public class GameItemCounter implements FabricClientGameTest {
 			if (!shown.equals("arrow 32, ender_pearl 4, totem_of_undying 1")) throw new AssertionError("The item counter as it was: " + shown);
 
 			// its page with the groups and the own items' field
-			context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("items"));
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.ui.HudEditScreen("items"));
 			context.waitTicks(5);
 			context.takeScreenshot("item-counter-settings");
 			context.setScreen(() -> null);

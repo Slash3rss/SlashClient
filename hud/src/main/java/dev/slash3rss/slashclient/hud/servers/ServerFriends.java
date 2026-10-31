@@ -21,7 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.Badges;
+import dev.slash3rss.slashclient.hud.players.Badges;
 
 /**
  * Friends next to servers in the server list: the faces of SlashClient friends who play on that

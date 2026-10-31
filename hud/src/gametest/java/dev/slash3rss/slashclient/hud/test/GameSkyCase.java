@@ -75,7 +75,7 @@ public class GameSkyCase implements FabricClientGameTest {
 		if (TestFilter.skip(context, getClass())) return;
 		//#if MC >= 26.3
 		// the test ends on the game's own title screen
-		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.TestHooks.vanillaMenu());
+		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.testing.TestHooks.vanillaMenu());
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			world.getServer().runCommand("time set 6000");

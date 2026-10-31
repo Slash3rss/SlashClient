@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
-import dev.slash3rss.slashclient.hud.ExtraModules;
+import dev.slash3rss.slashclient.hud.modules.ExtraModules;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
 import org.spongepowered.asm.mixin.Mixin;

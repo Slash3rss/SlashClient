@@ -11,7 +11,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.HudConfig;
+import dev.slash3rss.slashclient.hud.config.HudConfig;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import dev.slash3rss.slashclient.hud.replay.ShotCaption;
 

@@ -17,8 +17,8 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.HudConfig;
-import dev.slash3rss.slashclient.hud.HudEditScreen;
+import dev.slash3rss.slashclient.hud.config.HudConfig;
+import dev.slash3rss.slashclient.hud.ui.HudEditScreen;
 
 /**
  * Chat tabs: "All" plus the player's own tabs, each catching lines by text or regex.

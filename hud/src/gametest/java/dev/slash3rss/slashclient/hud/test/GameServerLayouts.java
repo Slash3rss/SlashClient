@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -27,7 +27,7 @@ public class GameServerLayouts implements FabricClientGameTest {
 
 			// on the server: the switch in the editor gives it a layout of its own
 			context.runOnClient(mc -> TestHooks.joinServer(SERVER));
-			context.setScreen(() -> dev.slash3rss.slashclient.hud.HudEditScreen.category("share"));
+			context.setScreen(() -> dev.slash3rss.slashclient.hud.ui.HudEditScreen.category("share"));
 			context.waitTicks(3);
 			// a low window: the page scrolls down to the servers
 			context.runOnClient(mc -> TestHooks.scrollDown());
@@ -56,7 +56,7 @@ public class GameServerLayouts implements FabricClientGameTest {
 			context.takeScreenshot("server-layouts-server-hud");
 
 			// the bigger chat: its box is where the game draws it, and a click lands on the line clicked
-			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::new);
+			context.setScreen(dev.slash3rss.slashclient.hud.ui.HudEditScreen::new);
 			context.waitTicks(5);
 			String box = context.computeOnClient(mc -> TestHooks.chatBoxCheck());
 			if (!box.isEmpty()) throw new AssertionError("The chat's box is not where the game draws it:" + box);
@@ -86,7 +86,7 @@ public class GameServerLayouts implements FabricClientGameTest {
 			if (!share.equals("ok")) throw new AssertionError("The share code lost the layout: " + share);
 
 			// forgotten with its × in the editor: the player's own layout at once
-			context.setScreen(() -> dev.slash3rss.slashclient.hud.HudEditScreen.category("share"));
+			context.setScreen(() -> dev.slash3rss.slashclient.hud.ui.HudEditScreen.category("share"));
 			context.waitTicks(3);
 			context.runOnClient(mc -> TestHooks.scrollDown());
 			context.waitTicks(3);

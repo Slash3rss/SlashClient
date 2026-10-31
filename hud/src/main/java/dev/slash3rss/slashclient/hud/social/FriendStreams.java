@@ -1,8 +1,9 @@
 package dev.slash3rss.slashclient.hud.social;
 
+import dev.slash3rss.slashclient.hud.ui.Ui;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import dev.slash3rss.slashclient.hud.ui.Ui;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import java.util.Map;

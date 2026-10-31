@@ -11,6 +11,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 abstract class RoundFillMixin {
 	@Inject(method = "fill(IIIII)V", at = @At("HEAD"), cancellable = true)
 	private void slashclient$round(int x1, int y1, int x2, int y2, int color, CallbackInfo ci) {
-		if (dev.slash3rss.slashclient.hud.GameRound.fill((GuiGraphicsExtractor) (Object) this, x1, y1, x2, y2, color)) ci.cancel();
+		if (dev.slash3rss.slashclient.hud.gamehud.GameRound.fill((GuiGraphicsExtractor) (Object) this, x1, y1, x2, y2, color)) ci.cancel();
 	}
 }

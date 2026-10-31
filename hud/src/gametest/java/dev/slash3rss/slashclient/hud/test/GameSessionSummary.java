@@ -2,9 +2,9 @@ package dev.slash3rss.slashclient.hud.test;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import dev.slash3rss.slashclient.hud.SessionStats;
-import dev.slash3rss.slashclient.hud.TestHooks;
-import dev.slash3rss.slashclient.hud.WorldAidsTestHooks;
+import dev.slash3rss.slashclient.hud.modules.SessionStats;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.WorldAidsTestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;

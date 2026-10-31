@@ -2,6 +2,12 @@
 //#if MC >= 26.3
 package dev.slash3rss.slashclient.hud.skyup;
 
+import dev.slash3rss.slashclient.hud.Compat;
+
+import dev.slash3rss.slashclient.hud.servers.PackForGood;
+
+import dev.slash3rss.slashclient.hud.servers.KeptPacks;
+
 import com.sun.net.httpserver.HttpServer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
@@ -14,9 +20,6 @@ import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.servers.KeptPacks;
-import dev.slash3rss.slashclient.hud.servers.PackForGood;
 import dev.slash3rss.slashclient.hud.servers.ServerPacks;
 
 /** SkyUp's pack in the resource packs, for the in-game test (src/gametest GameServerPacks): a pack served locally. */

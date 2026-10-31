@@ -18,7 +18,7 @@ public class GameSkyWardrobe implements FabricClientGameTest {
 	public void runTest(ClientGameTestContext context) {
 		//#if MC >= 26.3
 		if (TestFilter.skip(context, getClass())) return;
-		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.TestHooks.endOnVanillaMenu());
+		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.testing.TestHooks.endOnVanillaMenu());
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			context.runOnClient(mc -> SkyWardrobeTestHooks.reset());

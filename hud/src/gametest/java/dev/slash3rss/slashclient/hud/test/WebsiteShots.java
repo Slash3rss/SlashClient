@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -52,11 +52,11 @@ public class WebsiteShots implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.cleanScreen());
 			context.takeScreenshot("web-hud");
 
-			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::new);
+			context.setScreen(dev.slash3rss.slashclient.hud.ui.HudEditScreen::new);
 			context.waitTicks(10);
 			context.runOnClient(mc -> TestHooks.cleanScreen());
 			context.takeScreenshot("web-hud-editor");
-			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::settingsWindow);
+			context.setScreen(dev.slash3rss.slashclient.hud.ui.HudEditScreen::settingsWindow);
 			context.waitTicks(10);
 			context.runOnClient(mc -> TestHooks.cleanScreen());
 			context.takeScreenshot("web-hud-settings");

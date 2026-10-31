@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
-import dev.slash3rss.slashclient.hud.Hearts;
+import dev.slash3rss.slashclient.hud.gamehud.Hearts;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.world.entity.player.Player;
@@ -31,7 +31,7 @@ abstract class HeartsMixin {
 	@Inject(method = "extractPlayerHealth", at = @At("TAIL"))
 	private void slashclient$foodPreview(GuiGraphicsExtractor g, CallbackInfo ci) {
 		Player player = net.minecraft.client.Minecraft.getInstance().player;
-		if (player != null) dev.slash3rss.slashclient.hud.FoodPreview.draw(g, player);
+		if (player != null) dev.slash3rss.slashclient.hud.gamehud.FoodPreview.draw(g, player);
 	}
 
 	@Inject(method = "extractHearts", at = @At("HEAD"), cancellable = true)

@@ -2,10 +2,10 @@ package dev.slash3rss.slashclient.hud.test;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.DeathInfoTestHooks;
-import dev.slash3rss.slashclient.hud.HudConfig;
+import dev.slash3rss.slashclient.hud.testing.DeathInfoTestHooks;
+import dev.slash3rss.slashclient.hud.config.HudConfig;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -31,7 +31,7 @@ public class GameDialogEnter implements FabricClientGameTest {
 			SlashHud.config.chatTabs.clear();
 			SlashHud.config.chatTabs.add(new HudConfig.ChatTab("SPY", false));
 		});
-		context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("chatTabs"));
+		context.setScreen(() -> new dev.slash3rss.slashclient.hud.ui.HudEditScreen("chatTabs"));
 		context.waitTicks(10);
 		context.takeScreenshot("hint-scroll-start");
 		context.waitTicks(60);
@@ -46,7 +46,7 @@ public class GameDialogEnter implements FabricClientGameTest {
 			check(context.computeOnClient(mc -> Compat.screen(mc) instanceof net.minecraft.client.gui.screens.dialog.DialogScreen<?>), "the login window did not open");
 			context.runOnClient(mc -> mc.keyboardHandler.setClipboard("none"));
 			// into the field, a password, Enter
-			double[] field = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.DialogEnter.firstFieldPoint(Compat.screen(mc)));
+			double[] field = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.ui.DialogEnter.firstFieldPoint(Compat.screen(mc)));
 			check(field != null, "no field to type in");
 			context.getInput().setCursorPos(field[0], field[1]);
 			context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);

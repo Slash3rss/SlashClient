@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.cosmetics;
 
 import net.minecraft.client.Minecraft;
-import dev.slash3rss.slashclient.hud.Freelook;
+import dev.slash3rss.slashclient.hud.camera.Freelook;
 import dev.slash3rss.slashclient.hud.SlashHud;
 
 /** For the game test of props (GameProps): what is shown, how far the wheel has rolled, and views of our own player from any side. */

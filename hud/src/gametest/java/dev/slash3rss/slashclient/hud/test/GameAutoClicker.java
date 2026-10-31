@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -102,7 +102,8 @@ public class GameAutoClicker implements FabricClientGameTest {
 			if (full < 2 || full > 5) throw new AssertionError("Full hits in 2 s: " + full);
 			// the attack indicator under our crosshair (the game draws its own under its own)
 			String indicator = context.computeOnClient(mc -> TestHooks.attackIndicator());
-			if (!indicator.equals("true/false/1")) throw new AssertionError("The attack indicator (ours/the game's crosshair/its options): " + indicator);
+			// its options: the size and when it shows (where, with the chat or a window open)
+			if (!indicator.equals("true/false/5")) throw new AssertionError("The attack indicator (ours/the game's crosshair/its options): " + indicator);
 			// in a SkyUp dungeon it rests, out of it it goes on (armed as it was)
 			context.runOnClient(mc -> { TestHooks.autoClicker(true, "toggle", true, false, false, 10); TestHooks.armAutoClicker();
 				dev.slash3rss.slashclient.hud.skyup.DungeonMap.inDungeonForTest(true); });
@@ -216,7 +217,7 @@ public class GameAutoClicker implements FabricClientGameTest {
 			context.setScreen(() -> null);
 			context.runOnClient(mc -> TestHooks.bindHoldUse(null));
 			// its settings: the mode, each button's steady clicks a second, what the left one clicks at
-			context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("autoClicker"));
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.ui.HudEditScreen("autoClicker"));
 			context.waitTicks(5);
 			context.takeScreenshot("autoclicker-settings");
 			// the rest of the card, scrolled down

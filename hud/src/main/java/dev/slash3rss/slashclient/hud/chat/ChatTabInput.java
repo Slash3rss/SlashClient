@@ -17,7 +17,7 @@ import net.minecraft.network.chat.Component;
 import java.util.ArrayList;
 import java.util.List;
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.HudConfig;
+import dev.slash3rss.slashclient.hud.config.HudConfig;
 import dev.slash3rss.slashclient.hud.SlashHud;
 
 /**

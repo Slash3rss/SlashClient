@@ -1,5 +1,32 @@
 package dev.slash3rss.slashclient.hud;
 
+import dev.slash3rss.slashclient.hud.assist.Assist;
+import dev.slash3rss.slashclient.hud.players.Badges;
+import dev.slash3rss.slashclient.hud.camera.CameraDistance;
+import dev.slash3rss.slashclient.hud.gamehud.DamageNumbers;
+import dev.slash3rss.slashclient.hud.world.DeathInfo;
+import dev.slash3rss.slashclient.hud.ui.DialogEnter;
+import dev.slash3rss.slashclient.hud.modules.ExtraModules;
+import dev.slash3rss.slashclient.hud.gamehud.FoodPreview;
+import dev.slash3rss.slashclient.hud.camera.Freelook;
+import dev.slash3rss.slashclient.hud.gamehud.GameHud;
+import dev.slash3rss.slashclient.hud.gamehud.GameParts;
+import dev.slash3rss.slashclient.hud.gamehud.HitMarker;
+import dev.slash3rss.slashclient.hud.config.HudConfig;
+import dev.slash3rss.slashclient.hud.ui.HudEditScreen;
+import dev.slash3rss.slashclient.hud.modules.HudModule;
+import dev.slash3rss.slashclient.hud.config.KeyPresets;
+import dev.slash3rss.slashclient.hud.modules.Latency;
+import dev.slash3rss.slashclient.hud.world.LightOverlay;
+import dev.slash3rss.slashclient.hud.modules.Modules;
+import dev.slash3rss.slashclient.hud.modules.MoreModules;
+import dev.slash3rss.slashclient.hud.modules.NetCounter;
+import dev.slash3rss.slashclient.hud.modules.NowPlayingModule;
+import dev.slash3rss.slashclient.hud.modules.SessionStats;
+import dev.slash3rss.slashclient.hud.modules.StreamChatModule;
+import dev.slash3rss.slashclient.hud.players.TabStatus;
+import dev.slash3rss.slashclient.hud.world.TntTimer;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -101,14 +128,14 @@ public class SlashHud implements ClientModInitializer {
 	}
 	/** The key that opens friends (O): named in hints, e.g. under a screenshot's preview. */
 	public static KeyMapping friendsKey;
-	static final List<HudModule> MODULES = Modules.all();
+	public static final List<HudModule> MODULES = Modules.all();
 
 	public static List<HudModule> modules() {
 		return MODULES;
 	}
 	private static Vec3 lastPos;
 	/** SlashClient's own group of keys (a category in 1.21.9+, a name before): the keys window lists it. */
-	static Object keyCategory;
+	public static Object keyCategory;
 
 	@Override
 	public void onInitializeClient() {
@@ -447,23 +474,23 @@ public class SlashHud implements ClientModInitializer {
 	}
 
 	/** On-screen size of a module, with its scale. */
-	static int[] size(HudModule m, Minecraft mc, HudConfig.Placement p) {
+	public static int[] size(HudModule m, Minecraft mc, HudConfig.Placement p) {
 		return new int[] { Math.round(m.width(mc) * p.scale()), Math.round(m.height(mc) * p.scale()) };
 	}
 
-	static void drawAll(GuiGraphicsExtractor g, Minecraft mc, boolean preview) {
+	public static void drawAll(GuiGraphicsExtractor g, Minecraft mc, boolean preview) {
 		drawAll(g, mc, preview, null);
 	}
 
 	/** Every module, with {@code top} (the one the editor's mouse is on) drawn last, over the others. */
-	static void drawAll(GuiGraphicsExtractor g, Minecraft mc, boolean preview, HudModule top) {
+	public static void drawAll(GuiGraphicsExtractor g, Minecraft mc, boolean preview, HudModule top) {
 		Modules.CLICKS.sample(mc);
 		for (HudModule m : MODULES) if (m != top) drawOne(g, mc, preview, m);
 		if (top != null) drawOne(g, mc, preview, top);
 	}
 
 	/** A module's own condition (its settings' "Pokazuj"): where it shows, and whether the chat or another window hides it. */
-	static boolean shownNow(HudConfig.Placement p, Minecraft mc) {
+	public static boolean shownNow(HudConfig.Placement p, Minecraft mc) {
 		var screen = Compat.screen(mc);
 		boolean chat = screen instanceof net.minecraft.client.gui.screens.ChatScreen;
 		if (p.hideInChat && chat || p.hideInScreens && screen != null && !chat) return false;

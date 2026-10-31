@@ -1,5 +1,9 @@
 package dev.slash3rss.slashclient.hud;
 
+import dev.slash3rss.slashclient.hud.gamehud.Crosshair;
+import dev.slash3rss.slashclient.hud.config.HudConfig;
+import dev.slash3rss.slashclient.hud.modules.HudModule;
+
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -14,7 +18,7 @@ import dev.slash3rss.slashclient.hud.benchmark.BenchScene;
 public final class Extras {
 	private Extras() {}
 
-	static KeyMapping zoomKey;
+	public static KeyMapping zoomKey;
 	static KeyMapping fullbrightKey;
 
 	/** How far the view is zoomed right now (1 = not at all), eased towards the target. */
@@ -149,7 +153,7 @@ public final class Extras {
 	 * weapon charges, the sword once a mob under the crosshair can be hit hard. With the game's own
 	 * crosshair the game draws it itself.
 	 */
-	static final class AttackIndicator implements HudModule {
+	public static final class AttackIndicator implements HudModule {
 		public String id() {
 			return "attackindicator";
 		}

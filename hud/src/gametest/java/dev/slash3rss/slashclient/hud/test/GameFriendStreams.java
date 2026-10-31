@@ -1,10 +1,13 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import com.google.gson.JsonObject;
-import dev.slash3rss.slashclient.hud.TestHooks;
-import dev.slash3rss.slashclient.hud.social.FriendStreams;
-import dev.slash3rss.slashclient.hud.social.FriendSuggestions;
 import dev.slash3rss.slashclient.hud.social.FriendsScreen;
+
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
+
+import dev.slash3rss.slashclient.hud.social.FriendSuggestions;
+
+import com.google.gson.JsonObject;
+import dev.slash3rss.slashclient.hud.social.FriendStreams;
 import dev.slash3rss.slashclient.hud.social.Social;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;

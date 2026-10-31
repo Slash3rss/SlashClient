@@ -5,7 +5,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 //#if MC >= 1.21.4
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 //#endif
 
 /**
@@ -55,12 +55,12 @@ public class GameFoodPreview implements FabricClientGameTest {
 			}));
 			server.runCommand("item replace entity @p weapon.mainhand with minecraft:cooked_beef");
 			context.waitTicks(10);
-			String f3 = context.computeOnClient(mc -> String.join(" ", dev.slash3rss.slashclient.hud.FoodPreview.debugLines(mc.player)));
+			String f3 = context.computeOnClient(mc -> String.join(" ", dev.slash3rss.slashclient.hud.gamehud.FoodPreview.debugLines(mc.player)));
 			if (!f3.contains("Food: 16") || !f3.contains("Exhaustion: 2.")) throw new AssertionError("F3's food line: " + f3);
 			// steak: 8 food and 12.8 saturation, from 16 and 0 the bar goes full: its saturation alone heals some 8 health
-			float healed = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.FoodPreview.healed(20, 12.8f, 2.5f, 9, 20));
+			float healed = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.gamehud.FoodPreview.healed(20, 12.8f, 2.5f, 9, 20));
 			if (healed < 6) throw new AssertionError("The steak would heal only " + healed);
-			float none = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.FoodPreview.healed(16, 0, 2.5f, 9, 20));
+			float none = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.gamehud.FoodPreview.healed(16, 0, 2.5f, 9, 20));
 			if (none != 0) throw new AssertionError("Without eating, 16 food heals " + none);
 			context.takeScreenshot("food-steak-healing");
 			context.getInput().pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_F3);
@@ -69,7 +69,7 @@ public class GameFoodPreview implements FabricClientGameTest {
 			context.getInput().pressKey(com.mojang.blaze3d.platform.InputConstants.KEY_F3);
 			// switched off: no F3 line, no tooltip line
 			context.runOnClient(mc -> { var c = dev.slash3rss.slashclient.hud.SlashHud.config; c.foodDebug = false; c.foodTooltip = false; });
-			f3 = context.computeOnClient(mc -> String.join(" ", dev.slash3rss.slashclient.hud.FoodPreview.debugLines(mc.player)));
+			f3 = context.computeOnClient(mc -> String.join(" ", dev.slash3rss.slashclient.hud.gamehud.FoodPreview.debugLines(mc.player)));
 			if (!f3.isEmpty()) throw new AssertionError("F3's food line with it off: " + f3);
 			context.runOnClient(mc -> { var c = dev.slash3rss.slashclient.hud.SlashHud.config; c.foodDebug = true; c.foodTooltip = true; });
 			// without food in hand: the saturation outlined and the exhaustion strip
@@ -95,7 +95,7 @@ public class GameFoodPreview implements FabricClientGameTest {
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.compactHearts = false);
 			server.runCommand("attribute @p minecraft:max_health base set 20");
 			// the compact hearts' page: which colour reaches how many hearts
-			context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("compactHearts"));
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.ui.HudEditScreen("compactHearts"));
 			context.waitTicks(5);
 			context.takeScreenshot("food-hearts-legend");
 			context.setScreen(() -> null);

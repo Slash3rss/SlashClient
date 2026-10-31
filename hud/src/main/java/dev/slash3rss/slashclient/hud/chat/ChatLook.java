@@ -17,10 +17,10 @@ import net.minecraft.util.Mth;
 import java.util.ArrayList;
 import java.util.List;
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.HudConfig;
+import dev.slash3rss.slashclient.hud.config.HudConfig;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.GameParts;
-import dev.slash3rss.slashclient.hud.HudEditScreen;
+import dev.slash3rss.slashclient.hud.gamehud.GameParts;
+import dev.slash3rss.slashclient.hud.ui.HudEditScreen;
 
 /**
  * The chat's look from the HUD editor: how opaque its background is and how big it is. Both are

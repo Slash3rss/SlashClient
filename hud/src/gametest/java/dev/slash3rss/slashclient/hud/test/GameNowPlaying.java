@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.HudEditScreen;
-import dev.slash3rss.slashclient.hud.NowPlayingTestHooks;
+import dev.slash3rss.slashclient.hud.ui.HudEditScreen;
+import dev.slash3rss.slashclient.hud.testing.NowPlayingTestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -136,21 +136,21 @@ public class GameNowPlaying implements FabricClientGameTest {
 			String preview = context.computeOnClient(mc -> NowPlayingTestHooks.shown());
 			if (!preview.startsWith("Nocna jazda")) throw new AssertionError("The editor shows: " + preview);
 			context.takeScreenshot("spotify-editor");
-			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.TestHooks.audit(true));
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.testing.TestHooks.audit(true));
 			context.setScreen(() -> new HudEditScreen("spotify"));
 			context.waitTicks(5);
 			context.takeScreenshot("spotify-settings");
 			// the module's own options, at the end of the page
-			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.TestHooks.scrollDown());
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.testing.TestHooks.scrollDown());
 			context.waitTicks(5);
 			context.takeScreenshot("spotify-settings-end");
 			String problems = context.computeOnClient(mc -> String.join("\n", dev.slash3rss.slashclient.hud.ui.Ui.PROBLEMS));
-			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.TestHooks.audit(false));
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.testing.TestHooks.audit(false));
 			if (problems.contains("spotify")) throw new AssertionError("The Now playing settings do not fit:\n" + problems);
 			context.setScreen(() -> null);
 			context.runOnClient(mc -> NowPlayingTestHooks.reset());
 		}
-		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.TestHooks.vanillaMenu());
+		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.testing.TestHooks.vanillaMenu());
 	}
 
 	/** A made-up album cover: a sunset gradient, a sun and hills. */

@@ -15,9 +15,9 @@ import net.minecraft.world.entity.player.PlayerModelType;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import dev.slash3rss.slashclient.hud.Badges;
+import dev.slash3rss.slashclient.hud.players.Badges;
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.OwnArmor;
+import dev.slash3rss.slashclient.hud.players.OwnArmor;
 
 /**
  * SlashClient suits ({@link Suits}) on players who wear them, drawn by {@link CosmeticLayer} from the
@@ -91,8 +91,8 @@ public final class SuitLayer {
 //$
 //$ import java.util.HashMap;
 //$ import java.util.Map;
-//$ import dev.slash3rss.slashclient.hud.Badges;
-//$ import dev.slash3rss.slashclient.hud.OwnArmor;
+//$ import dev.slash3rss.slashclient.hud.players.Badges;
+//$ import dev.slash3rss.slashclient.hud.players.OwnArmor;
 //$
 //$ /** SlashClient suits ({@link Suits}) on players who wear them, posed like the player model this frame, without the parts real armour covers. */
 //$ public final class SuitLayer extends RenderLayer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> {

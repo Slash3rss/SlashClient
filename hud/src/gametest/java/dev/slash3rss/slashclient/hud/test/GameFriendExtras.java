@@ -3,7 +3,7 @@ package dev.slash3rss.slashclient.hud.test;
 import com.google.gson.JsonObject;
 import dev.slash3rss.slashclient.hud.replay.Shots;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import dev.slash3rss.slashclient.hud.social.FriendActivity;
 import dev.slash3rss.slashclient.hud.social.FriendExtrasTestHooks;
 import dev.slash3rss.slashclient.hud.social.FriendsScreen;

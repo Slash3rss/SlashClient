@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.test;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import dev.slash3rss.slashclient.hud.social.ChatEditsTestHooks;
 import dev.slash3rss.slashclient.hud.social.ClanLogos;
 import dev.slash3rss.slashclient.hud.social.Communities;

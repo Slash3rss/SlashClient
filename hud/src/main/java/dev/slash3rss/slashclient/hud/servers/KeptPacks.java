@@ -23,7 +23,6 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.Compat;
 
 /**
  * A server's resource pack kept in the player's own resource packs, so it is not downloaded and

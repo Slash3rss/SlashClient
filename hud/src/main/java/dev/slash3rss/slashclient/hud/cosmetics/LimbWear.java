@@ -18,9 +18,9 @@ import net.minecraft.world.entity.player.Player;
 
 import java.util.HashMap;
 import java.util.Map;
-import dev.slash3rss.slashclient.hud.Badges;
+import dev.slash3rss.slashclient.hud.players.Badges;
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.OwnArmor;
+import dev.slash3rss.slashclient.hud.players.OwnArmor;
 
 /**
  * What the shoes and the hands' items ({@link Clothing}, slots "shoes" and "hands") do beyond

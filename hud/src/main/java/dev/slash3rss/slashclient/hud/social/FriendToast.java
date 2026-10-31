@@ -182,7 +182,7 @@ public final class FriendToast implements Toast {
 	 */
 	private void hold(long time) {
 		if (first < 0) first = time;
-		else if (last >= 0 && (dev.slash3rss.slashclient.hud.GameHud.toastsHeld() || time - last > 250)) first += time - last;
+		else if (last >= 0 && (dev.slash3rss.slashclient.hud.gamehud.GameHud.toastsHeld() || time - last > 250)) first += time - last;
 		last = time;
 	}
 

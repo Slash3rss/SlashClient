@@ -1,10 +1,12 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
+import dev.slash3rss.slashclient.hud.players.OwnArmor;
+
 //#if MC >= 1.21.4
 import net.minecraft.client.renderer.entity.HumanoidMobRenderer;
 //#else
 //$ import com.mojang.blaze3d.vertex.PoseStack;
-//$ import dev.slash3rss.slashclient.hud.OwnArmor;
+//$ import dev.slash3rss.slashclient.hud.players.OwnArmor;
 //$ import net.minecraft.client.renderer.MultiBufferSource;
 //$ import net.minecraft.client.renderer.entity.layers.ElytraLayer;
 //$ import net.minecraft.world.entity.EquipmentSlot;

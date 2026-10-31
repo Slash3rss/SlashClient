@@ -12,10 +12,10 @@ import net.minecraft.network.chat.Component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import dev.slash3rss.slashclient.hud.HudConfig;
+import dev.slash3rss.slashclient.hud.config.HudConfig;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.XpCalcScreen;
-import dev.slash3rss.slashclient.hud.XpMath;
+import dev.slash3rss.slashclient.hud.world.XpCalcScreen;
+import dev.slash3rss.slashclient.hud.world.XpMath;
 
 /**
  * The XP calculator of slash3rss.dev, SkyUp edition: the mending assistant (what a bottle should

@@ -1,8 +1,8 @@
 package dev.slash3rss.slashclient.hud.test;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import dev.slash3rss.slashclient.hud.HudEditScreen;
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.ui.HudEditScreen;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;

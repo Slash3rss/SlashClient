@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
 import com.mojang.authlib.minecraft.UserApiService;
-import dev.slash3rss.slashclient.hud.AccountSwitch;
+import dev.slash3rss.slashclient.hud.account.AccountSwitch;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.main.GameConfig;
 import org.spongepowered.asm.mixin.Mixin;

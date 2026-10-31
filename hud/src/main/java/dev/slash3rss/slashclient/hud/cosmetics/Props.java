@@ -26,7 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.Badges;
+import dev.slash3rss.slashclient.hud.players.Badges;
 
 /**
  * SlashClient props ("prop" slot): a wheelbarrow the player pushes in front of them, the wheel on

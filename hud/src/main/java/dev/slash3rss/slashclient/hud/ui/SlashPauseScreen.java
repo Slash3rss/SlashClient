@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.ui;
 
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.HudEditScreen;
+import dev.slash3rss.slashclient.hud.ui.HudEditScreen;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import dev.slash3rss.slashclient.hud.map.WaypointsScreen;
 import dev.slash3rss.slashclient.hud.social.FriendsScreen;

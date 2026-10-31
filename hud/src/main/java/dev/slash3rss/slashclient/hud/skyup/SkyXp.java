@@ -7,10 +7,10 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
-import dev.slash3rss.slashclient.hud.HudModule;
-import dev.slash3rss.slashclient.hud.Modules;
+import dev.slash3rss.slashclient.hud.modules.HudModule;
+import dev.slash3rss.slashclient.hud.modules.Modules;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.XpMath;
+import dev.slash3rss.slashclient.hud.world.XpMath;
 
 /**
  * The AFK mining countdown of SkyUp's XP calculator: the session is the bottles times the clock

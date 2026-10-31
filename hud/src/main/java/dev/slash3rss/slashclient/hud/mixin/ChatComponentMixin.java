@@ -20,7 +20,7 @@ abstract class ChatComponentMixin {
 	//#endif
 	private Component slashclient$incoming(Component message) {
 		ChatExtras.arrived();
-		message = dev.slash3rss.slashclient.hud.NickHider.apply(message);
+		message = dev.slash3rss.slashclient.hud.players.NickHider.apply(message);
 		// coordinates in the line: underlined, a click saves them as a waypoint
 		message = dev.slash3rss.slashclient.hud.chat.ChatCoords.mark(message);
 		ChatTabs.onMessage(message.getString());

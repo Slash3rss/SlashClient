@@ -2,7 +2,7 @@ package dev.slash3rss.slashclient.hud.test;
 
 import dev.slash3rss.slashclient.hud.Compat;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import dev.slash3rss.slashclient.hud.ui.SlashLoading;
 import dev.slash3rss.slashclient.hud.ui.Ui;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;

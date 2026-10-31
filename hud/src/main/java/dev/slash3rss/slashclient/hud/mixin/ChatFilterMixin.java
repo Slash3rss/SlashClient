@@ -1,5 +1,7 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
+import dev.slash3rss.slashclient.hud.Compat;
+
 import net.minecraft.client.gui.components.ChatComponent;
 import org.spongepowered.asm.mixin.Mixin;
 //#if MC < 26.1

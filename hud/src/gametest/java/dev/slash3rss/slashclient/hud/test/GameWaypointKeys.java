@@ -2,8 +2,8 @@ package dev.slash3rss.slashclient.hud.test;
 
 import dev.slash3rss.slashclient.hud.Compat;
 import dev.slash3rss.slashclient.hud.map.DeathPoint;
-import dev.slash3rss.slashclient.hud.TabStatus;
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.players.TabStatus;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import dev.slash3rss.slashclient.hud.map.WaypointKeys;
 import dev.slash3rss.slashclient.hud.map.WaypointKeysTestHooks;
 import dev.slash3rss.slashclient.hud.map.Waypoints;

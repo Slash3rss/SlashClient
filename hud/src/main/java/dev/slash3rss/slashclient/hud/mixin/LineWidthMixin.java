@@ -1,9 +1,11 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
+import dev.slash3rss.slashclient.hud.gamehud.BlockOutline;
+
 import com.mojang.blaze3d.systems.RenderSystem;
 import org.spongepowered.asm.mixin.Mixin;
 //#if MC < 1.21.11
-//$ import dev.slash3rss.slashclient.hud.BlockOutline;
+//$ import dev.slash3rss.slashclient.hud.gamehud.BlockOutline;
 //$ import org.spongepowered.asm.mixin.injection.At;
 //$ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 //#endif

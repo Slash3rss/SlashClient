@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -143,7 +143,7 @@ public class GameHoldScreens implements FabricClientGameTest {
 			check(context.computeOnClient(mc -> TestHooks.buttonsDown()).equals("false/false"), "a button stayed down after the pause menu");
 
 			// the setting on the page of holding a button, under its two keys
-			context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("holdKeys"));
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.ui.HudEditScreen("holdKeys"));
 			context.waitTicks(5);
 			context.takeScreenshot("holdscreens-settings");
 			var polish = context.computeOnClient(mc -> TestHooks.language("pl_pl"));

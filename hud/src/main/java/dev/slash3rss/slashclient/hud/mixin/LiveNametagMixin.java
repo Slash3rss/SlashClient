@@ -3,8 +3,8 @@ package dev.slash3rss.slashclient.hud.mixin;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 //#if MC >= 1.21.2
-import dev.slash3rss.slashclient.hud.Badges;
-import dev.slash3rss.slashclient.hud.LiveTag;
+import dev.slash3rss.slashclient.hud.players.Badges;
+import dev.slash3rss.slashclient.hud.players.LiveTag;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;

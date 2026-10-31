@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import dev.slash3rss.slashclient.hud.Badges;
+import dev.slash3rss.slashclient.hud.players.Badges;
 import dev.slash3rss.slashclient.hud.SlashHud;
 
 /**

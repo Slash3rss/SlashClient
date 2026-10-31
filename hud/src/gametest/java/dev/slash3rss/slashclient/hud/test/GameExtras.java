@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -63,12 +63,12 @@ public class GameExtras implements FabricClientGameTest {
 			context.takeScreenshot("extras-screenshot-preview");
 
 			// freelook: the camera turns, the player does not
-			context.getInput().holdKey(o -> dev.slash3rss.slashclient.hud.Freelook.key);
+			context.getInput().holdKey(o -> dev.slash3rss.slashclient.hud.camera.Freelook.key);
 			context.waitTicks(3);
 			boolean ok = context.computeOnClient(mc -> TestHooks.freelookTurn());
 			context.waitTicks(3);
 			context.takeScreenshot("extras-freelook");
-			context.getInput().releaseKey(o -> dev.slash3rss.slashclient.hud.Freelook.key);
+			context.getInput().releaseKey(o -> dev.slash3rss.slashclient.hud.camera.Freelook.key);
 			if (!ok) throw new AssertionError("Freelook turned the player");
 
 			// crosshair presets, the pixel editor, and the × that hides a module in the layout editor
@@ -83,7 +83,7 @@ public class GameExtras implements FabricClientGameTest {
 			boolean mac = System.getProperty("os.name").toLowerCase().contains("mac");
 			if (Double.parseDouble(cg[0]) < 0 || (!mac && Double.parseDouble(cg[1]) <= 0)) throw new AssertionError("CPU or GPU not measured: " + loads);
 			context.takeScreenshot("extras-crosshair-circle");
-			context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("crosshair"));
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.ui.HudEditScreen("crosshair"));
 			context.waitTicks(5);
 			double[] from = context.computeOnClient(mc -> TestHooks.gridPoint(13, 4));
 			double[] to = context.computeOnClient(mc -> TestHooks.gridPoint(16, 4));
@@ -97,7 +97,7 @@ public class GameExtras implements FabricClientGameTest {
 			String state = context.computeOnClient(mc -> TestHooks.crosshairState());
 			String row4 = state.startsWith("custom ") ? state.substring(7).split("/")[4] : "";
 			if (!row4.startsWith(".............####")) throw new AssertionError("Painting the crosshair failed: " + state);
-			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::new);
+			context.setScreen(dev.slash3rss.slashclient.hud.ui.HudEditScreen::new);
 			context.waitTicks(3);
 			double[] x = context.computeOnClient(mc -> TestHooks.closePoint("fps"));
 			// the × shows with the mouse on the module (the test's cursor sits in GUI points × scale)

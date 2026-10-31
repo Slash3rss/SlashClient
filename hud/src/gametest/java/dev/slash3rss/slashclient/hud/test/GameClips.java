@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -13,7 +13,7 @@ public class GameClips implements FabricClientGameTest {
 		try (TestSingleplayerContext world = context.worldBuilder().create()) {
 			context.waitTicks(40);
 			// turned on in the middle of play, from the settings (as a player does), then back in the game
-			context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("clips"));
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.ui.HudEditScreen("clips"));
 			context.waitTicks(5);
 			context.runOnClient(mc -> TestHooks.clips(true));
 			long open = System.currentTimeMillis();

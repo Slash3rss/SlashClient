@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
-import dev.slash3rss.slashclient.hud.OwnArmor;
+import dev.slash3rss.slashclient.hud.players.OwnArmor;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;

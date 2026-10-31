@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.TabStatus;
+import dev.slash3rss.slashclient.hud.players.TabStatus;
 
 /**
  * Which list of waypoints belongs to the place the player is in (and which explored map, and which

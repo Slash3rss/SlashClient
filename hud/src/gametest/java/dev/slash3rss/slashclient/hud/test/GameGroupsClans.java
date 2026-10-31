@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.SocialTestHooks;
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.SocialTestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import dev.slash3rss.slashclient.hud.social.ClanLogos;
 import dev.slash3rss.slashclient.hud.social.FriendsScreen;
 import dev.slash3rss.slashclient.hud.social.Groups;
@@ -112,7 +112,7 @@ public class GameGroupsClans implements FabricClientGameTest {
 			context.getInput().releaseKey(o -> o.keyPlayerList);
 			context.runOnClient(mc -> SocialTestHooks.ownClan(null));
 			// where it is switched off: under "Logo przy nickach"
-			context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("badges"));
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.ui.HudEditScreen("badges"));
 			context.waitTicks(5);
 			context.takeScreenshot("groups-clan-tags-setting");
 			context.setScreen(() -> null);

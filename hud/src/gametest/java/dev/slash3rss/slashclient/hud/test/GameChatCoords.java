@@ -4,7 +4,7 @@ import dev.slash3rss.slashclient.hud.chat.ChatCoords;
 import dev.slash3rss.slashclient.hud.chat.ChatCoordsScreen;
 import dev.slash3rss.slashclient.hud.Compat;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import dev.slash3rss.slashclient.hud.map.WaypointKeysTestHooks;
 import dev.slash3rss.slashclient.hud.map.Waypoints;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;

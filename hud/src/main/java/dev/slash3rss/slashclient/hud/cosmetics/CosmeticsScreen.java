@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.KeybindsScreen;
+import dev.slash3rss.slashclient.hud.config.KeybindsScreen;
 import dev.slash3rss.slashclient.hud.SlashHud;
 
 /**

@@ -1,8 +1,8 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.GameHud;
+import dev.slash3rss.slashclient.hud.gamehud.GameHud;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -28,7 +28,7 @@ public class GameNametagPing implements FabricClientGameTest {
 			String name = context.computeOnClient(mc -> mc.player.getName().getString());
 
 			// the setting is off by default
-			if (context.computeOnClient(mc -> new dev.slash3rss.slashclient.hud.HudConfig().nametagPing)) throw new AssertionError("Nametag ping on by default");
+			if (context.computeOnClient(mc -> new dev.slash3rss.slashclient.hud.config.HudConfig().nametagPing)) throw new AssertionError("Nametag ping on by default");
 			context.runOnClient(mc -> SlashHud.config.nametagPing = true);
 			// singleplayer: everyone's ping is ours, nothing shows
 			check(context, false, 45, name);

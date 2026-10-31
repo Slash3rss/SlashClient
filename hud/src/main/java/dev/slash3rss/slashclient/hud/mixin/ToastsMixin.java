@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
-import dev.slash3rss.slashclient.hud.GameHud;
+import dev.slash3rss.slashclient.hud.gamehud.GameHud;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.toasts.ToastManager;
 import org.spongepowered.asm.mixin.Mixin;

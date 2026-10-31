@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import dev.slash3rss.slashclient.hud.HeldItems;
+import dev.slash3rss.slashclient.hud.gamehud.HeldItems;
 //#if MC >= 26.3
 import net.minecraft.client.renderer.FirstPersonHandsAndItemsRenderer;
 import net.minecraft.client.renderer.SubmitNodeCollector;

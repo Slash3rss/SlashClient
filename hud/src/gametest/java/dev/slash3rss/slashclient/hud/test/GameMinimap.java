@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -58,7 +58,7 @@ public class GameMinimap implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.minimap(true, "circle", true, 2f, 140));
 			context.waitTicks(20);
 			context.takeScreenshot("minimap-round-rotated");
-			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::new);
+			context.setScreen(dev.slash3rss.slashclient.hud.ui.HudEditScreen::new);
 			context.waitTicks(5);
 			context.takeScreenshot("minimap-editor");
 			context.setScreen(() -> null);

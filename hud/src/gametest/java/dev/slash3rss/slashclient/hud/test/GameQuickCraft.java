@@ -5,7 +5,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 //#if MC >= 1.21.4
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 //#endif
@@ -81,7 +81,7 @@ public class GameQuickCraft implements FabricClientGameTest {
 			context.setScreen(() -> null);
 
 			// the module's page, with its two keys
-			context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("quickCraft"));
+			context.setScreen(() -> new dev.slash3rss.slashclient.hud.ui.HudEditScreen("quickCraft"));
 			context.waitTicks(5);
 			context.takeScreenshot("quickcraft-settings");
 			context.setScreen(() -> null);

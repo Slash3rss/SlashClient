@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.HudEditScreen;
-import dev.slash3rss.slashclient.hud.StreamChatTestHooks;
+import dev.slash3rss.slashclient.hud.ui.HudEditScreen;
+import dev.slash3rss.slashclient.hud.testing.StreamChatTestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -69,6 +69,6 @@ public class GameStreamChat implements FabricClientGameTest {
 			context.takeScreenshot("streamchat-faded");
 			context.runOnClient(mc -> StreamChatTestHooks.reset());
 		}
-		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.TestHooks.vanillaMenu());
+		context.runOnClient(mc -> dev.slash3rss.slashclient.hud.testing.TestHooks.vanillaMenu());
 	}
 }

@@ -2,9 +2,9 @@ package dev.slash3rss.slashclient.hud.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import dev.slash3rss.slashclient.hud.Badges;
-import dev.slash3rss.slashclient.hud.GameHud;
-import dev.slash3rss.slashclient.hud.HudConfig;
+import dev.slash3rss.slashclient.hud.players.Badges;
+import dev.slash3rss.slashclient.hud.gamehud.GameHud;
+import dev.slash3rss.slashclient.hud.config.HudConfig;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -39,12 +39,12 @@ abstract class PlayerTabOverlayMixin {
 		if (SlashHud.config.tabHideHeader) header = null;
 		if (SlashHud.config.tabHideFooter) footer = null;
 		// its backgrounds rounded at the list's top and bottom, like the modules
-		dev.slash3rss.slashclient.hud.GameRound.begin("tablist", dev.slash3rss.slashclient.hud.GameParts.tabListRect(Minecraft.getInstance()));
+		dev.slash3rss.slashclient.hud.gamehud.GameRound.begin("tablist", dev.slash3rss.slashclient.hud.gamehud.GameParts.tabListRect(Minecraft.getInstance()));
 	}
 
 	@Inject(method = "extractRenderState", at = @At("RETURN"))
 	private void slashclient$restoreTexts(CallbackInfo ci) {
-		dev.slash3rss.slashclient.hud.GameRound.end();
+		dev.slash3rss.slashclient.hud.gamehud.GameRound.end();
 		header = slashclient$header;
 		footer = slashclient$footer;
 	}
@@ -75,7 +75,7 @@ abstract class PlayerTabOverlayMixin {
 	}
 	@ModifyReturnValue(method = "getNameForDisplay", at = @At("RETURN"))
 	private Component slashclient$badge(Component name, PlayerInfo info) {
-		return Badges.decorate(info.getProfile().id(), dev.slash3rss.slashclient.hud.NickHider.apply(name));
+		return Badges.decorate(info.getProfile().id(), dev.slash3rss.slashclient.hud.players.NickHider.apply(name));
 	}
 
 	/** Milliseconds in the ping's colour instead of the signal bars (a little smaller, to fit their space). */

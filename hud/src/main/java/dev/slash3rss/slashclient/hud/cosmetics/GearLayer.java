@@ -19,9 +19,9 @@ import net.minecraft.world.item.Items;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import dev.slash3rss.slashclient.hud.Badges;
+import dev.slash3rss.slashclient.hud.players.Badges;
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.OwnArmor;
+import dev.slash3rss.slashclient.hud.players.OwnArmor;
 
 /** SlashClient back items and tails ({@link Gear}) on players who wear them, posed like the player's body this frame. */
 public final class GearLayer extends RenderLayer<AvatarRenderState, PlayerModel> {
@@ -122,8 +122,8 @@ public final class GearLayer extends RenderLayer<AvatarRenderState, PlayerModel>
 //$
 //$ import java.util.HashMap;
 //$ import java.util.Map;
-//$ import dev.slash3rss.slashclient.hud.Badges;
-//$ import dev.slash3rss.slashclient.hud.OwnArmor;
+//$ import dev.slash3rss.slashclient.hud.players.Badges;
+//$ import dev.slash3rss.slashclient.hud.players.OwnArmor;
 //$
 //$ /** SlashClient back items and tails ({@link Gear}) on players who wear them, posed like the player's body this frame. */
 //$ public final class GearLayer extends RenderLayer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> {

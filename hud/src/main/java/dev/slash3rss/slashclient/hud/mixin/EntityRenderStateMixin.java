@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
 //#if MC >= 1.21.2
-import dev.slash3rss.slashclient.hud.LiveTag;
+import dev.slash3rss.slashclient.hud.players.LiveTag;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Unique;

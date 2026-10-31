@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
-import dev.slash3rss.slashclient.hud.Latency;
+import dev.slash3rss.slashclient.hud.modules.Latency;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 //#if MC >= 1.20.2
 import net.minecraft.network.protocol.ping.ClientboundPongResponsePacket;

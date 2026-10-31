@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import dev.slash3rss.slashclient.hud.Badges;
+import dev.slash3rss.slashclient.hud.players.Badges;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
@@ -26,8 +26,8 @@ abstract class EntityRendererMixin {
 	//#endif
 		//#if MC >= 1.21.2
 		// the ping after the name (before render states the players' renderer adds it: LivePlayerNametagMixin, so the score line keeps none)
-		name = dev.slash3rss.slashclient.hud.NametagPing.decorate(entity, name);
+		name = dev.slash3rss.slashclient.hud.players.NametagPing.decorate(entity, name);
 		//#endif
-		return entity instanceof Player ? dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.decorate(entity.getUUID(), Badges.decorateNametag(entity.getUUID(), dev.slash3rss.slashclient.hud.NickHider.apply(name))) : name;
+		return entity instanceof Player ? dev.slash3rss.slashclient.hud.cosmetics.Cosmetics.decorate(entity.getUUID(), Badges.decorateNametag(entity.getUUID(), dev.slash3rss.slashclient.hud.players.NickHider.apply(name))) : name;
 	}
 }

@@ -1,8 +1,8 @@
 package dev.slash3rss.slashclient.hud.test;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import dev.slash3rss.slashclient.hud.HudEditScreen;
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.ui.HudEditScreen;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -188,7 +188,7 @@ public class GameHudOverlap implements FabricClientGameTest {
 			if (p2[1] - p0[1] != -1 || p2[0] - p0[0] != 4) throw new AssertionError("Undo did not take back the last step: " + (p2[0] - p0[0]) + ", " + (p2[1] - p0[1]));
 			context.setScreen(() -> null);
 			// as a player does it: the settings window from the menu, "Edit layout", a click on the module, the mouse left on it
-			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::settingsWindow);
+			context.setScreen(dev.slash3rss.slashclient.hud.ui.HudEditScreen::settingsWindow);
 			context.waitTicks(3);
 			context.runOnClient(mc -> TestHooks.editorLayout());
 			context.waitTicks(3);

@@ -1100,7 +1100,7 @@ public final class Social {
 		java.util.UUID uuid = java.util.UUID.fromString(str(s, "uuid"));
 		mc.execute(() -> {
 			try {
-				dev.slash3rss.slashclient.hud.AccountSwitch.apply(mc, str(s, "name"), uuid, str(s, "accessToken"), str(s, "xuid"), "offline".equals(str(s, "type")));
+				dev.slash3rss.slashclient.hud.account.AccountSwitch.apply(mc, str(s, "name"), uuid, str(s, "accessToken"), str(s, "xuid"), "offline".equals(str(s, "type")));
 			} catch (Exception e) {
 				toast(Component.translatable("slashclient-hud.accounts.failed").getString(), dev.slash3rss.slashclient.hud.ErrorText.of(e), "info");
 			}

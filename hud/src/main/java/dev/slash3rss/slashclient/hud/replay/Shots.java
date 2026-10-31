@@ -15,7 +15,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Comparator;
-import dev.slash3rss.slashclient.hud.SessionStats;
+import dev.slash3rss.slashclient.hud.modules.SessionStats;
 import dev.slash3rss.slashclient.hud.SlashHud;
 
 /**

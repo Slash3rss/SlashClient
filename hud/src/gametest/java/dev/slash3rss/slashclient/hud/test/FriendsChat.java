@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import dev.slash3rss.slashclient.hud.social.FriendsScreen;
 import dev.slash3rss.slashclient.hud.social.Social;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -17,16 +17,16 @@ public class FriendsChat implements FabricClientGameTest {
 		if (TestFilter.skip(context, getClass())) return;
 		context.waitTicks(40);
 		// the HUD window's cards, with the launcher's icons
-		context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::settingsWindow);
+		context.setScreen(dev.slash3rss.slashclient.hud.ui.HudEditScreen::settingsWindow);
 		context.waitTicks(10);
 		context.takeScreenshot("editor-cards");
 		// layout mode, with the toolbar at the top
-		context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::new);
+		context.setScreen(dev.slash3rss.slashclient.hud.ui.HudEditScreen::new);
 		context.waitTicks(10);
 		context.takeScreenshot("editor-layout");
 		// chat tabs as a page of the HUD window (with one tab to show the row)
 		context.runOnClient(mc -> TestHooks.sampleChatTab());
-		context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("chatTabs"));
+		context.setScreen(() -> new dev.slash3rss.slashclient.hud.ui.HudEditScreen("chatTabs"));
 		context.waitTicks(10);
 		context.takeScreenshot("chat-tabs-page");
 		// closing the HUD window without a world goes back to our menu, not the game's

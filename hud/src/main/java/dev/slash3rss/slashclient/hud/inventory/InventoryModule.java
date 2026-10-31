@@ -9,8 +9,8 @@ import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
 import java.util.List;
-import dev.slash3rss.slashclient.hud.HudModule;
-import dev.slash3rss.slashclient.hud.Modules;
+import dev.slash3rss.slashclient.hud.modules.HudModule;
+import dev.slash3rss.slashclient.hud.modules.Modules;
 
 /**
  * "Ekwipunek": the backpack's 27 slots (the main inventory above the hotbar) as a grid on the

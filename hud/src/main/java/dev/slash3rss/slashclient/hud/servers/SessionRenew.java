@@ -17,7 +17,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
-import dev.slash3rss.slashclient.hud.AccountSwitch;
+import dev.slash3rss.slashclient.hud.account.AccountSwitch;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import dev.slash3rss.slashclient.hud.Compat;
 

@@ -6,7 +6,7 @@ import dev.slash3rss.slashclient.hud.servers.PartnerIcons;
 import dev.slash3rss.slashclient.hud.servers.PartnerServers;
 import dev.slash3rss.slashclient.hud.servers.PinnedServer;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import dev.slash3rss.slashclient.hud.ui.SlashServerScreen;
 import dev.slash3rss.slashclient.hud.ui.Ui;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;

@@ -15,8 +15,8 @@
 //$
 //$ import java.util.HashMap;
 //$ import java.util.Map;
-//$ import dev.slash3rss.slashclient.hud.Badges;
-//$ import dev.slash3rss.slashclient.hud.OwnArmor;
+//$ import dev.slash3rss.slashclient.hud.players.Badges;
+//$ import dev.slash3rss.slashclient.hud.players.OwnArmor;
 //$
 //$ /** SlashClient clothing ({@link Clothing}) on players who wear it, posed like the player model this frame. */
 //$ public final class ClothingLayer extends RenderLayer<AbstractClientPlayer, PlayerModel<AbstractClientPlayer>> {

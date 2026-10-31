@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
-import dev.slash3rss.slashclient.hud.SessionStats;
+import dev.slash3rss.slashclient.hud.modules.SessionStats;
 import net.minecraft.client.multiplayer.MultiPlayerGameMode;
 import net.minecraft.core.BlockPos;
 import org.spongepowered.asm.mixin.Mixin;

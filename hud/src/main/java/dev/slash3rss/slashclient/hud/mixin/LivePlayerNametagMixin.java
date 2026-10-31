@@ -1,5 +1,7 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
+import dev.slash3rss.slashclient.hud.players.LiveTag;
+
 import org.spongepowered.asm.mixin.Mixin;
 //#if MC >= 1.21.9
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
@@ -7,7 +9,7 @@ import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 //$ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 //$ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 //$ import com.mojang.blaze3d.vertex.PoseStack;
-//$ import dev.slash3rss.slashclient.hud.LiveTag;
+//$ import dev.slash3rss.slashclient.hud.players.LiveTag;
 //$ import net.minecraft.client.renderer.MultiBufferSource;
 //$ import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 //$ import net.minecraft.network.chat.Component;
@@ -18,7 +20,7 @@ import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 //$ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 //$ import com.llamalad7.mixinextras.sugar.Local;
 //$ import com.mojang.blaze3d.vertex.PoseStack;
-//$ import dev.slash3rss.slashclient.hud.LiveTag;
+//$ import dev.slash3rss.slashclient.hud.players.LiveTag;
 //$ import net.minecraft.client.renderer.SubmitNodeCollector;
 //$ import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 //$ import net.minecraft.client.renderer.state.CameraRenderState;
@@ -70,8 +72,8 @@ abstract class LivePlayerNametagMixin {
 	//$ @WrapOperation(method = "renderNameTag(Lnet/minecraft/client/player/AbstractClientPlayer;Lnet/minecraft/network/chat/Component;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;IF)V",
 	//$ 	at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/LivingEntityRenderer;renderNameTag(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/network/chat/Component;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;IF)V", ordinal = 1))
 	//$ private void slashclient$liveLine(PlayerRenderer self, net.minecraft.world.entity.Entity entity, Component name, PoseStack pose, MultiBufferSource buffers, int light, float partialTick, Operation<Void> original) {
-	//$ 	original.call(self, entity, dev.slash3rss.slashclient.hud.NametagPing.decorate(entity, name), pose, buffers, light, partialTick);
-	//$ 	Component live = dev.slash3rss.slashclient.hud.Badges.liveLabel(entity.getUUID());
+	//$ 	original.call(self, entity, dev.slash3rss.slashclient.hud.players.NametagPing.decorate(entity, name), pose, buffers, light, partialTick);
+	//$ 	Component live = dev.slash3rss.slashclient.hud.players.Badges.liveLabel(entity.getUUID());
 	//$ 	if (live == null) return;
 	//$ 	pose.pushPose();
 	//$ 	pose.translate(0, LiveTag.LINE, 0);
@@ -82,8 +84,8 @@ abstract class LivePlayerNametagMixin {
 	//$ @WrapOperation(method = "renderNameTag(Lnet/minecraft/client/player/AbstractClientPlayer;Lnet/minecraft/network/chat/Component;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V",
 	//$ 	at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/LivingEntityRenderer;renderNameTag(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/network/chat/Component;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V", ordinal = 1))
 	//$ private void slashclient$liveLine(PlayerRenderer self, net.minecraft.world.entity.Entity entity, Component name, PoseStack pose, MultiBufferSource buffers, int light, Operation<Void> original) {
-	//$ 	original.call(self, entity, dev.slash3rss.slashclient.hud.NametagPing.decorate(entity, name), pose, buffers, light);
-	//$ 	Component live = dev.slash3rss.slashclient.hud.Badges.liveLabel(entity.getUUID());
+	//$ 	original.call(self, entity, dev.slash3rss.slashclient.hud.players.NametagPing.decorate(entity, name), pose, buffers, light);
+	//$ 	Component live = dev.slash3rss.slashclient.hud.players.Badges.liveLabel(entity.getUUID());
 	//$ 	if (live == null) return;
 	//$ 	pose.pushPose();
 	//$ 	pose.translate(0, LiveTag.LINE, 0);

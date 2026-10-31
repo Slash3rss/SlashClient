@@ -1,8 +1,8 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.CameraDistance;
-import dev.slash3rss.slashclient.hud.TestHooks;
-import dev.slash3rss.slashclient.hud.WorldAidsTestHooks;
+import dev.slash3rss.slashclient.hud.camera.CameraDistance;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.WorldAidsTestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -137,15 +137,15 @@ public class GameWorldAids implements FabricClientGameTest {
 		context.waitTicks(10);
 		context.takeScreenshot("worldaids-light-overlay-night");
 		server.runCommand("time set 6000");
-		context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("lightOverlay"));
+		context.setScreen(() -> new dev.slash3rss.slashclient.hud.ui.HudEditScreen("lightOverlay"));
 		context.waitTicks(5);
 		context.takeScreenshot("worldaids-light-overlay-settings");
 		context.setScreen(() -> null);
 		context.waitTicks(2);
 		// its key switches it off
-		context.getInput().pressKey(o -> dev.slash3rss.slashclient.hud.LightOverlay.key);
+		context.getInput().pressKey(o -> dev.slash3rss.slashclient.hud.world.LightOverlay.key);
 		context.waitTicks(5);
-		boolean off = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.LightOverlay.spots().isEmpty());
+		boolean off = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.world.LightOverlay.spots().isEmpty());
 		if (!off) throw new AssertionError("The overlay's key did not switch it off");
 	}
 
@@ -209,7 +209,7 @@ public class GameWorldAids implements FabricClientGameTest {
 		context.waitTicks(10);
 		context.takeScreenshot("worldaids-camera-near");
 		// its settings card
-		context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("cameraDistance"));
+		context.setScreen(() -> new dev.slash3rss.slashclient.hud.ui.HudEditScreen("cameraDistance"));
 		context.waitTicks(5);
 		context.takeScreenshot("worldaids-camera-settings");
 		context.setScreen(() -> null);

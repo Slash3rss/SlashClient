@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.TestHooks;
-import dev.slash3rss.slashclient.hud.XpTestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.XpTestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;

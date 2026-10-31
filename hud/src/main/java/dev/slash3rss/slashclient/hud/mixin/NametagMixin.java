@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import dev.slash3rss.slashclient.hud.GameHud;
+import dev.slash3rss.slashclient.hud.gamehud.GameHud;
 //#if MC >= 1.21.9
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.world.entity.Avatar;

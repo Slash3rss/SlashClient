@@ -8,7 +8,7 @@ import java.nio.ByteOrder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.HudEditScreen;
+import dev.slash3rss.slashclient.hud.ui.HudEditScreen;
 import dev.slash3rss.slashclient.hud.SlashHud;
 
 /** For the game test of the instant replay (GameReplay): settings, the viewer's controls and what it shows. */

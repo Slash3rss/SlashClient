@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -110,12 +110,12 @@ public class GameLimbWear implements FabricClientGameTest {
 	/** A view from the side: freelook held, the camera turned round the player by `degrees` (the player stays as it was). */
 	private static void side(ClientGameTestContext context, String name, float degrees) {
 		context.runOnClient(mc -> TestHooks.freelookAllowed(true));
-		context.getInput().holdKey(o -> dev.slash3rss.slashclient.hud.Freelook.key);
+		context.getInput().holdKey(o -> dev.slash3rss.slashclient.hud.camera.Freelook.key);
 		context.waitTicks(3);
 		context.runOnClient(mc -> TestHooks.freelookYaw(degrees));
 		context.waitTicks(5);
 		context.takeScreenshot(name);
-		context.getInput().releaseKey(o -> dev.slash3rss.slashclient.hud.Freelook.key);
+		context.getInput().releaseKey(o -> dev.slash3rss.slashclient.hud.camera.Freelook.key);
 		context.waitTicks(3);
 		context.runOnClient(mc -> TestHooks.freelookAllowed(false));
 	}

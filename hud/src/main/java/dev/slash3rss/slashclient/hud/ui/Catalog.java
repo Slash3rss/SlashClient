@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.ui;
 
-import dev.slash3rss.slashclient.hud.HudConfig;
+import dev.slash3rss.slashclient.hud.config.HudConfig;
 import dev.slash3rss.slashclient.hud.SlashHud;
 
 import java.util.ArrayList;
@@ -141,7 +141,7 @@ public final class Catalog {
 
 	/** Switching on asks first (once); switching off is at once. */
 	private static void risky(boolean on, Runnable apply) {
-		if (on) dev.slash3rss.slashclient.hud.Assist.enableRisky(apply);
+		if (on) dev.slash3rss.slashclient.hud.assist.Assist.enableRisky(apply);
 		else apply.run();
 	}
 
@@ -171,7 +171,7 @@ public final class Catalog {
 		List<Entry> out = new ArrayList<>();
 		for (var m : SlashHud.modules()) {
 			// the game's parts have their own cards (below)
-			if (m instanceof dev.slash3rss.slashclient.hud.GameParts.Part) continue;
+			if (m instanceof dev.slash3rss.slashclient.hud.gamehud.GameParts.Part) continue;
 			HudConfig.Placement p = cfg.placement(m.id());
 			List<Setting> settings = new ArrayList<>(List.of(
 				new Slider("slashclient-hud.set.scale", 0.5f, 2f, 0.05f, "%.2f×", p::scale, v -> p.scale = v),
@@ -416,7 +416,7 @@ public final class Catalog {
 				case "friends" -> settings.add(new Slider("slashclient-hud.set.friendsRows", 1f, 15f, 1f, "%.0f", () -> (float) cfg.friendsRows, v -> cfg.friendsRows = Math.round(v)));
 				case "inventory" -> settings.add(new Toggle("slashclient-hud.set.inventoryHotbar", () -> cfg.inventoryHotbar, v -> cfg.inventoryHotbar = v));
 				case "twitchchat", "kickchat" -> streamChat(settings, m.id().equals("kickchat") ? () -> cfg.kickChat : () -> cfg.twitchChat, m.id().equals("kickchat"));
-				case "spotify" -> dev.slash3rss.slashclient.hud.NowPlayingModule.settings(settings, () -> SlashHud.config.spotify);
+				case "spotify" -> dev.slash3rss.slashclient.hud.modules.NowPlayingModule.settings(settings, () -> SlashHud.config.spotify);
 				default -> {}
 			}
 			if (m.id().equals("effects")) settings.add(new Toggle("slashclient-hud.effectIcons", () -> cfg.effectIcons, v -> cfg.effectIcons = v));
@@ -439,12 +439,12 @@ public final class Catalog {
 				() -> cfg.nickAlias, v -> cfg.nickAlias = v)), null));
 		out.add(new Entry("keybinds", "slashclient-hud.keybinds", "extras", "m-keybinds", null, null, List.of(), () -> {
 			var mc = net.minecraft.client.Minecraft.getInstance();
-			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.KeybindsScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.config.KeybindsScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
 		}));
 		// every key (the game's and the mods') saved under a name and put back with a click
 		out.add(new Entry("keyPresets", "slashclient-hud.keyPresets", "extras", "m-keypresets", null, null, List.of(), () -> {
 			var mc = net.minecraft.client.Minecraft.getInstance();
-			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.KeyPresetsScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.config.KeyPresetsScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
 		}));
 		// SkyUp's dungeon loot not taken yet, outlined in the world (only in a dungeon); through walls only when switched on
 		int[] lootColors = dev.slash3rss.slashclient.hud.skyup.LootHighlight.COLORS;
@@ -471,7 +471,7 @@ public final class Catalog {
 		// the XP calculator of slash3rss.dev
 		out.add(new Entry("xpCalc", "slashclient-hud.xp.title", "extras", "m-xpcalc", null, null, List.of(), () -> {
 			var mc = net.minecraft.client.Minecraft.getInstance();
-			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.XpCalcScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.world.XpCalcScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
 		}));
 		//#if MC >= 26.3
 		// and its SkyUp edition: bottling with the tax, the mending assistant, the AFK countdown
@@ -526,23 +526,23 @@ public final class Catalog {
 				if (!v && !"vanilla".equals(cfg.crosshair)) cfg.crosshairLast = cfg.crosshair;
 				cfg.crosshair = v ? ("vanilla".equals(cfg.crosshair) ? cfg.crosshairLast : cfg.crosshair) : "vanilla";
 			}, List.of(
-			new Choice("slashclient-hud.set.shape", dev.slash3rss.slashclient.hud.Crosshair.PRESETS, "slashclient-hud.crosshair.", () -> cfg.crosshair, v -> cfg.crosshair = v),
+			new Choice("slashclient-hud.set.shape", dev.slash3rss.slashclient.hud.gamehud.Crosshair.PRESETS, "slashclient-hud.crosshair.", () -> cfg.crosshair, v -> cfg.crosshair = v),
 			new Colors("slashclient-hud.crosshairColor", COLORS, () -> cfg.crosshairColor, v -> cfg.crosshairColor = v),
 			new Slider("slashclient-hud.set.size", 1f, 8f, 1f, "%.0f", () -> (float) cfg.crosshairSize, v -> cfg.crosshairSize = Math.round(v)),
 			new Slider("slashclient-hud.set.gap", 0f, 5f, 1f, "%.0f", () -> (float) cfg.crosshairGap, v -> cfg.crosshairGap = Math.round(v)),
 			new Toggle("slashclient-hud.crosshair.outline", () -> cfg.crosshairOutline, v -> cfg.crosshairOutline = v)), null));
 		// a marker at the crosshair for our own hits (with the game's crosshair too)
 		out.add(new Entry("hitMarker", "slashclient-hud.hitMarker", "combat", "m-hits", () -> cfg.hitMarker, v -> cfg.hitMarker = v, List.of(
-			new Choice("slashclient-hud.set.shape", dev.slash3rss.slashclient.hud.HitMarker.STYLES, "slashclient-hud.hitMarker.style.", () -> cfg.hitMarkerStyle, v -> cfg.hitMarkerStyle = v),
+			new Choice("slashclient-hud.set.shape", dev.slash3rss.slashclient.hud.gamehud.HitMarker.STYLES, "slashclient-hud.hitMarker.style.", () -> cfg.hitMarkerStyle, v -> cfg.hitMarkerStyle = v),
 			new Colors("slashclient-hud.hitMarker.color", COLORS, () -> cfg.hitMarkerColor, v -> cfg.hitMarkerColor = v),
-			new Slider("slashclient-hud.set.size", dev.slash3rss.slashclient.hud.HitMarker.MIN_SIZE, dev.slash3rss.slashclient.hud.HitMarker.MAX_SIZE, 1f, "%.0f",
+			new Slider("slashclient-hud.set.size", dev.slash3rss.slashclient.hud.gamehud.HitMarker.MIN_SIZE, dev.slash3rss.slashclient.hud.gamehud.HitMarker.MAX_SIZE, 1f, "%.0f",
 				() -> (float) cfg.hitMarkerSize, v -> cfg.hitMarkerSize = Math.round(v)),
 			new Slider("slashclient-hud.hitMarker.duration", 100f, 1000f, 50f, "%.0f ms", () -> (float) cfg.hitMarkerDuration, v -> cfg.hitMarkerDuration = Math.round(v)),
 			new Toggle("slashclient-hud.hitMarker.kill", () -> cfg.hitMarkerKill, v -> cfg.hitMarkerKill = v),
 			new Colors("slashclient-hud.hitMarker.killColor", COLORS, () -> cfg.hitMarkerKillColor, v -> cfg.hitMarkerKillColor = v),
 			new Toggle("slashclient-hud.hitMarker.projectiles", () -> cfg.hitMarkerProjectiles, v -> cfg.hitMarkerProjectiles = v),
 			new Toggle("slashclient-hud.hitMarker.sound", () -> cfg.hitMarkerSound, v -> cfg.hitMarkerSound = v),
-			new Choice("slashclient-hud.hitMarker.soundKind", dev.slash3rss.slashclient.hud.HitMarker.SOUNDS, "slashclient-hud.hitMarker.sound.", () -> cfg.hitMarkerSoundKind, v -> cfg.hitMarkerSoundKind = v),
+			new Choice("slashclient-hud.hitMarker.soundKind", dev.slash3rss.slashclient.hud.gamehud.HitMarker.SOUNDS, "slashclient-hud.hitMarker.sound.", () -> cfg.hitMarkerSoundKind, v -> cfg.hitMarkerSoundKind = v),
 			new Slider("slashclient-hud.hitMarker.volume", 0f, 100f, 5f, "%.0f%%", () -> (float) cfg.hitMarkerVolume, v -> cfg.hitMarkerVolume = Math.round(v))), null));
 		// our own armour off our own player, piece by piece (the elytra on its own: off, it shows gliding)
 		out.add(new Entry("hideOwnArmor", "slashclient-hud.hideArmor", "extras", "m-armor", () -> cfg.hideOwnArmor, v -> cfg.hideOwnArmor = v, List.of(
@@ -630,7 +630,7 @@ public final class Catalog {
 			new Toggle("slashclient-hud.lightOverlay.crops", () -> cfg.lightOverlayCrops, v -> cfg.lightOverlayCrops = v)), null));
 		out.add(new Entry("weatherOff", "slashclient-hud.weatherOff", "world", "m-weather", () -> cfg.weatherOff, v -> cfg.weatherOff = v, List.of(), null));
 		out.add(new Entry("cameraDistance", "slashclient-hud.cameraDistance", "extras", "m-cameradistance", () -> cfg.cameraDistance, v -> cfg.cameraDistance = v, List.of(
-			new Slider("slashclient-hud.cameraDistance.default", dev.slash3rss.slashclient.hud.CameraDistance.MIN, dev.slash3rss.slashclient.hud.CameraDistance.MAX, 0.5f, "%.1f",
+			new Slider("slashclient-hud.cameraDistance.default", dev.slash3rss.slashclient.hud.camera.CameraDistance.MIN, dev.slash3rss.slashclient.hud.camera.CameraDistance.MAX, 0.5f, "%.1f",
 				() -> cfg.cameraDistanceDefault, v -> cfg.cameraDistanceDefault = v),
 			new Toggle("slashclient-hud.cameraDistance.key", () -> cfg.cameraDistanceKey, v -> cfg.cameraDistanceKey = v),
 			new Toggle("slashclient-hud.cameraDistance.reset", () -> cfg.cameraDistanceReset, v -> cfg.cameraDistanceReset = v)), null));
@@ -785,7 +785,7 @@ public final class Catalog {
 		out.add(new Entry("inventorySearch", "slashclient-hud.invSearch", "extras", "m-invsearch", () -> cfg.inventorySearch, v -> cfg.inventorySearch = v, List.of(), null));
 		out.add(new Entry("slotLock", "slashclient-hud.slotLock", "combat", "m-slotlock", () -> cfg.slotLock, v -> cfg.slotLock = v, List.of(), null));
 		out.add(new Entry("compactHearts", "slashclient-hud.game.compactHearts", "game", "m-hearts", () -> cfg.compactHearts, v -> cfg.compactHearts = v, List.of(
-			new Note("slashclient-hud.hearts.legend", () -> new Object[] { dev.slash3rss.slashclient.hud.Hearts.legend() })), null));
+			new Note("slashclient-hud.hearts.legend", () -> new Object[] { dev.slash3rss.slashclient.hud.gamehud.Hearts.legend() })), null));
 		out.add(new Entry("foodPreview", "slashclient-hud.game.foodPreview", "game", "m-saturation", () -> cfg.foodPreview, v -> cfg.foodPreview = v, List.of(
 			new Note("slashclient-hud.game.foodPreview.note", () -> new Object[0]),
 			new Toggle("slashclient-hud.food.tooltipSetting", () -> cfg.foodTooltip, v -> cfg.foodTooltip = v),

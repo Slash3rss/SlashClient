@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.mixin;
 
-import dev.slash3rss.slashclient.hud.HitMarker;
+import dev.slash3rss.slashclient.hud.gamehud.HitMarker;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.game.ClientboundDamageEventPacket;
 import org.spongepowered.asm.mixin.Mixin;

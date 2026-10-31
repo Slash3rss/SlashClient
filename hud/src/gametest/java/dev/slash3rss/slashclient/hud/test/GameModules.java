@@ -1,6 +1,6 @@
 package dev.slash3rss.slashclient.hud.test;
 
-import dev.slash3rss.slashclient.hud.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
@@ -65,16 +65,16 @@ public class GameModules implements FabricClientGameTest {
 			context.takeScreenshot("ranks");
 			context.runOnClient(mc -> TestHooks.ownRank(null));
 
-			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::new);
+			context.setScreen(dev.slash3rss.slashclient.hud.ui.HudEditScreen::new);
 			context.waitTicks(5);
 			context.takeScreenshot("modules-editor");
 			// back from a module's settings: the list searched and scrolled as it was left
-			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::settingsWindow);
+			context.setScreen(dev.slash3rss.slashclient.hud.ui.HudEditScreen::settingsWindow);
 			context.waitTicks(5);
 			String kept = context.computeOnClient(mc -> TestHooks.listKept());
 			if (!kept.equals("k 30.0")) throw new AssertionError("The list after going back from settings (search scroll): " + kept);
 			// starred cards first: the clock starred goes to the top; unstarred, back in its place
-			context.setScreen(dev.slash3rss.slashclient.hud.HudEditScreen::settingsWindow);
+			context.setScreen(dev.slash3rss.slashclient.hud.ui.HudEditScreen::settingsWindow);
 			context.waitTicks(5);
 			String starred = context.computeOnClient(mc -> TestHooks.favorite("clock"));
 			if (!starred.startsWith("clock,")) throw new AssertionError("A favourite is not first: " + starred);

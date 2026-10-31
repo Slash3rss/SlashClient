@@ -1,7 +1,7 @@
 package dev.slash3rss.slashclient.hud.ui;
 
 import com.mojang.realmsclient.RealmsMainScreen;
-import dev.slash3rss.slashclient.hud.HudEditScreen;
+import dev.slash3rss.slashclient.hud.ui.HudEditScreen;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.TitleScreen;
@@ -48,7 +48,7 @@ public class SlashTitleScreen extends MenuScreen {
 	/** Less used things: icons only, their names show on hover. Quitting is the last, in red. */
 	private List<Nav> tools() {
 		return List.of(
-			new Nav(Ui.tr("slashclient-hud.accounts.switch"), "m-accounts", () -> minecraft.setScreenAndShow(new dev.slash3rss.slashclient.hud.AccountsScreen(this))),
+			new Nav(Ui.tr("slashclient-hud.accounts.switch"), "m-accounts", () -> minecraft.setScreenAndShow(new dev.slash3rss.slashclient.hud.account.AccountsScreen(this))),
 			new Nav(Ui.tr("menu.online"), "cloud", () -> minecraft.setScreenAndShow(new RealmsMainScreen(this))),
 			new Nav(Ui.tr("options.language"), "language", () -> minecraft.setScreenAndShow(new LanguageSelectScreen(this, minecraft.options, minecraft.getLanguageManager()))),
 			new Nav(Ui.tr("slashclient-hud.menu.vanilla"), "back", () -> {

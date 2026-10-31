@@ -1,10 +1,10 @@
 package dev.slash3rss.slashclient.hud.test;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import dev.slash3rss.slashclient.hud.DeathInfoTestHooks;
+import dev.slash3rss.slashclient.hud.testing.DeathInfoTestHooks;
 import dev.slash3rss.slashclient.hud.SlashHud;
-import dev.slash3rss.slashclient.hud.TestHooks;
-import dev.slash3rss.slashclient.hud.WorldAidsTestHooks;
+import dev.slash3rss.slashclient.hud.testing.TestHooks;
+import dev.slash3rss.slashclient.hud.testing.WorldAidsTestHooks;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestServerContext;
@@ -151,7 +151,7 @@ public class GameDeathScreen implements FabricClientGameTest {
 		server.runCommand("execute in minecraft:overworld run tp @a 0 120 0");
 		context.waitTicks(40);
 		// its switch among the mod's settings
-		context.setScreen(() -> new dev.slash3rss.slashclient.hud.HudEditScreen("deathScreen"));
+		context.setScreen(() -> new dev.slash3rss.slashclient.hud.ui.HudEditScreen("deathScreen"));
 		context.waitTicks(5);
 		context.takeScreenshot("death-screen-settings-pl");
 		context.setScreen(() -> null);

@@ -26,7 +26,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import dev.slash3rss.slashclient.hud.SlashHud;
 import dev.slash3rss.slashclient.hud.Compat;
-import dev.slash3rss.slashclient.hud.SessionStats;
+import dev.slash3rss.slashclient.hud.modules.SessionStats;
 
 /**
  * Clips, like ShadowPlay: while on, the game keeps the last seconds of what is on screen (20, 30 or
