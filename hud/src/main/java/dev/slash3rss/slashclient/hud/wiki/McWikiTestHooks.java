@@ -32,6 +32,11 @@ public final class McWikiTestHooks {
 		screen().open(slug, null, true, 0);
 	}
 
+	/** An article at one of its headings. */
+	public static void openArticle(String slug, String anchor) {
+		screen().open(slug, anchor, true, 0);
+	}
+
 	public static boolean followLink(String wiki) {
 		return screen().followLink(wiki);
 	}

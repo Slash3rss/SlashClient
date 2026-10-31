@@ -1,0 +1,4769 @@
+{
+  "title": "Block of Diamond",
+  "url": "https://minecraft.wiki/w/Block_of_Diamond",
+  "lang": "en",
+  "blocks": [
+    {
+      "k": "p",
+      "spans": [
+        {
+          "t": "Block of Diamond"
+        }
+      ]
+    },
+    {
+      "k": "img",
+      "img": {
+        "id": "02e2ca302e7368008863",
+        "w": 150,
+        "h": 150
+      }
+    },
+    {
+      "k": "img",
+      "img": {
+        "id": "c2fc5b8c9a29e8615485",
+        "w": 32,
+        "h": 32
+      }
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Renewable resource",
+                "t": "Renewable"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "No ("
+              },
+              {
+                "wiki": "Renewable resource",
+                "anchor": "Vault",
+                "t": "except via vault"
+              },
+              {
+                "t": ")"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Stackable"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Yes (64)"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Tool"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "67a1b1ba55573ac2676e",
+                  "w": 32,
+                  "h": 32
+                }
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Explosion",
+                "anchor": "Blast_resistance",
+                "t": "Blast resistance"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "6"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Breaking",
+                "anchor": "Blocks_by_hardness",
+                "t": "Hardness"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "5"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Light",
+                "t": "Luminous"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "No"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Opacity",
+                "t": "Transparent"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "No"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Fire",
+                "anchor": "Flammable_blocks",
+                "t": "Flammable"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "No"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Catches fire"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "from "
+              },
+              {
+                "wiki": "Lava",
+                "t": "lava"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "No"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Map item format",
+                "anchor": "Color_table",
+                "t": "Map color"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "31 DIAMOND"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Note Block",
+                "anchor": "Instruments",
+                "t": "Note block instrument"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Default (Harp)"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Sulfur Cube",
+                "anchor": "Archetypes",
+                "t": "Sulfur cube archetype"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Slow Bouncy"
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "t": "A "
+        },
+        {
+          "b": 1,
+          "t": "block of diamond"
+        },
+        {
+          "t": ", known internally as a "
+        },
+        {
+          "b": 1,
+          "t": "diamond block"
+        },
+        {
+          "t": ", is a precious mineral "
+        },
+        {
+          "wiki": "Block",
+          "t": "block"
+        },
+        {
+          "t": " equivalent to nine "
+        },
+        {
+          "wiki": "Diamond",
+          "t": "diamonds"
+        },
+        {
+          "t": "."
+        }
+      ]
+    },
+    {
+      "k": "h",
+      "level": 1,
+      "text": "Obtaining",
+      "anchor": "Obtaining"
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Breaking",
+      "anchor": "Breaking"
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "t": "Blocks of diamond can be mined with an "
+        },
+        {
+          "wiki": "Iron pickaxe",
+          "t": "iron pickaxe"
+        },
+        {
+          "t": " or better."
+        }
+      ]
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "t": "Block"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "bae3fba90309182b1a1f",
+                  "w": 16,
+                  "h": 16
+                }
+              },
+              {
+                "t": "Block of Diamond"
+              }
+            ],
+            "head": 1
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Hardness"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "5"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Tool"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "420635af9f83825bf3b8",
+                  "w": 16,
+                  "h": 16
+                }
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Breaking",
+                "t": "Breaking"
+              },
+              {
+                "t": " time (sec)"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Default"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "25 (JE)"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "25 (BE)"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "a84cc7ae77136d96ea80",
+                  "w": 16,
+                  "h": 16
+                }
+              },
+              {
+                "t": "Wooden"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "12.5 (JE)"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "12.5 (BE)"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "151346d015a12345ccc3",
+                  "w": 16,
+                  "h": 16
+                }
+              },
+              {
+                "t": "Stone"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "6.25 (JE)"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "6.25 (BE)"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "ebc302f91b5f300cd71f",
+                  "w": 16,
+                  "h": 16
+                }
+              },
+              {
+                "t": "Copper"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "5.05 (JE)"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "5 (BE)"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "420635af9f83825bf3b8",
+                  "w": 16,
+                  "h": 16
+                }
+              },
+              {
+                "t": "Iron"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "1.25 (JE)"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "1.25 (BE)"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "5314e8b0c68b27ff1427",
+                  "w": 16,
+                  "h": 16
+                }
+              },
+              {
+                "t": "Diamond"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "0.95 (JE)"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "0.95 (BE)"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "db3f9e5f902fa8ae05ee",
+                  "w": 16,
+                  "h": 16
+                }
+              },
+              {
+                "t": "Netherite"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "0.85 (JE)"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "0.85 (BE)"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "0c5a06668cb94b3708f4",
+                  "w": 16,
+                  "h": 16
+                }
+              },
+              {
+                "t": "Golden"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "2.1 (JE)"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "2.1 (BE)"
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "b": 1,
+          "t": "Legend"
+        }
+      ]
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "incorrect tool, drops nothing"
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "correct tool, drops nothing or something other than the block itself"
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "correct tool, drops the block itself"
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "i": 1,
+          "t": "italicized"
+        },
+        {
+          "t": " can be "
+        },
+        {
+          "wiki": "Instant mining",
+          "t": "instant mined"
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Natural generation",
+      "anchor": "Natural_generation"
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "t": "Blocks of diamond generate as the cores of \"obsidian rooms\" and \"lava rooms\" in "
+        },
+        {
+          "wiki": "Woodland mansion",
+          "t": "woodland mansions"
+        },
+        {
+          "t": "."
+        }
+      ]
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Generated loot",
+      "anchor": "Generated_loot"
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "t": "Item"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Structure"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Container"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Quantity"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Chance"
+              }
+            ],
+            "head": 1
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "i": 1,
+                "wiki": "Java Edition",
+                "t": "Java Edition"
+              },
+              {
+                "t": " and "
+              },
+              {
+                "i": 1,
+                "wiki": "Bedrock Edition",
+                "t": "Bedrock Edition"
+              }
+            ],
+            "head": 1,
+            "cols": 5
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "bae3fba90309182b1a1f",
+                  "w": 16,
+                  "h": 16
+                }
+              },
+              {
+                "b": 1,
+                "t": "Block of Diamond"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "c30d627a7f535760f52f",
+                  "w": 16,
+                  "h": 16
+                }
+              },
+              {
+                "b": 1,
+                "wiki": "Trial Chambers",
+                "t": "Trial Chambers"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Corridor pot"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "0.3%"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1
+          },
+          {
+            "spans": [],
+            "under": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Intersection chest"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "2.3%"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1
+          },
+          {
+            "spans": [],
+            "under": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Ominous vault"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "2.8%"
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Crafting",
+      "anchor": "Crafting"
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "t": "Ingredients"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Crafting",
+                "t": "Crafting"
+              },
+              {
+                "t": " recipe"
+              }
+            ],
+            "head": 1
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Diamond",
+                "t": "Diamond"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "dd585db2cb865dbb8a1a",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "img": {
+                  "id": "dd585db2cb865dbb8a1a",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "img": {
+                  "id": "dd585db2cb865dbb8a1a",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "img": {
+                  "id": "dd585db2cb865dbb8a1a",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "img": {
+                  "id": "dd585db2cb865dbb8a1a",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "img": {
+                  "id": "dd585db2cb865dbb8a1a",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "img": {
+                  "id": "dd585db2cb865dbb8a1a",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "img": {
+                  "id": "dd585db2cb865dbb8a1a",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "img": {
+                  "id": "dd585db2cb865dbb8a1a",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "br": 1
+              },
+              {
+                "img": {
+                  "id": "c2fc5b8c9a29e8615485",
+                  "w": 32,
+                  "h": 32
+                }
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 1,
+      "text": "Usage",
+      "anchor": "Usage"
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "t": "Blocks of diamond can be used to store "
+        },
+        {
+          "wiki": "Diamond",
+          "t": "diamonds"
+        },
+        {
+          "t": " in a compact fashion."
+        }
+      ]
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Beacons",
+      "anchor": "Beacons"
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "t": "Blocks of diamond can be used to \"power\" a "
+        },
+        {
+          "wiki": "Beacon",
+          "t": "beacon"
+        },
+        {
+          "t": ". The beacon can be powered by a 3×3 square of diamond blocks underneath it, and can optionally also include a 5×5, 7×7 and 9×9 layer in the shape of a pyramid under the original layer to increase the effects from the beacon. The layers do not have to be entirely diamond blocks, as they may also contain "
+        },
+        {
+          "wiki": "Blocks of iron",
+          "t": "blocks of iron"
+        },
+        {
+          "t": ", "
+        },
+        {
+          "wiki": "Blocks of gold",
+          "t": "blocks of gold"
+        },
+        {
+          "t": ", "
+        },
+        {
+          "wiki": "Blocks of netherite",
+          "t": "blocks of netherite"
+        },
+        {
+          "t": ", and "
+        },
+        {
+          "wiki": "Blocks of emerald",
+          "t": "blocks of emerald"
+        },
+        {
+          "t": "."
+        }
+      ]
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Crafting ingredient",
+      "anchor": "Crafting_ingredient"
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "t": "Name"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Ingredients"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Crafting",
+                "t": "Crafting"
+              },
+              {
+                "t": " recipe"
+              }
+            ],
+            "head": 1
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Diamond",
+                "t": "Diamond"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Block of Diamond"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "c2fc5b8c9a29e8615485",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "br": 1
+              },
+              {
+                "img": {
+                  "id": "dd585db2cb865dbb8a1a",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "wiki": "Diamond",
+                "t": "9"
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 1,
+      "text": "Sounds",
+      "anchor": "Sounds"
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "t": "Blocks of diamond use \"metal\" sounds, despite diamond not being a "
+        },
+        {
+          "wiki": "Metal",
+          "t": "metal"
+        },
+        {
+          "t": "."
+        }
+      ]
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "i": 1,
+          "wiki": "Java Edition",
+          "t": "Java Edition"
+        },
+        {
+          "t": ":"
+        }
+      ]
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "cde5eb2d8a8bca918a10",
+                  "w": 16,
+                  "h": 16
+                }
+              },
+              {
+                "t": " "
+              },
+              {
+                "code": 1,
+                "t": "metal"
+              },
+              {
+                "t": " "
+              },
+              {
+                "wiki": "Sound type",
+                "t": "sound type"
+              }
+            ],
+            "head": 1,
+            "cols": 9
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Sound"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Closed captions",
+                "t": "Closed captions"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Source"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Description"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Identifier",
+                "t": "Identifier"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Translation key"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Volume"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Pitch"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Attenuation"
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "distance"
+              }
+            ],
+            "head": 1
+          }
+        ],
+        [
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Block broken"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Once the block has broken"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "block.metal.break"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "subtitles.block.generic.break"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1.0"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1.2"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "16"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Block placed["
+              },
+              {
+                "i": 1,
+                "t": "until: "
+              },
+              {
+                "i": 1,
+                "wiki": "Java Edition 26.4",
+                "t": "JE 26.4"
+              },
+              {
+                "t": "]"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "When the block is placed"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "block.metal.place"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "subtitles.block.generic.place"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1.0"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1.2"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "16"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Block breaking"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "While the block is in the process of being broken"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "block.metal.hit"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "subtitles.block.generic.hit"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "0.25"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "0.75"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "16"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Something falls on a block"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "i": 1,
+                "wiki": "Sound",
+                "anchor": "Entity-dependent_categories",
+                "t": "Entity-Dependent"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Falling on the block with fall damage"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "block.metal.fall"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "subtitles.block.generic.fall"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "0.5"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1.25"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "16"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Footsteps"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "i": 1,
+                "wiki": "Sound",
+                "anchor": "Entity-dependent_categories",
+                "t": "Entity-Dependent"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Walking on the block"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "block.metal.step"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "subtitles.block.generic.footsteps"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "0.15"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1.5"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "16"
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "i": 1,
+          "wiki": "Bedrock Edition",
+          "t": "Bedrock Edition"
+        },
+        {
+          "t": ":"
+        }
+      ]
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "cde5eb2d8a8bca918a10",
+                  "w": 16,
+                  "h": 16
+                }
+              },
+              {
+                "t": " "
+              },
+              {
+                "code": 1,
+                "t": "metal"
+              },
+              {
+                "t": " "
+              },
+              {
+                "wiki": "Sound type",
+                "t": "sound type"
+              }
+            ],
+            "head": 1,
+            "cols": 8
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "Sound"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Closed captions",
+                "t": "Closed captions"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Source"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Description"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Identifier",
+                "t": "Identifier"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Translation key"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Volume"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Pitch"
+              }
+            ],
+            "head": 1
+          }
+        ],
+        [
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Block broken"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Once the block has broken"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "dig.stone"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "subtitles.block.generic.break"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1.0"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1.1–1.2"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Block placed"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "When the block is placed"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "use.stone"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "subtitles.block.generic.place"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1.0"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1.2–1.25"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Block breaking"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "While the block is in the process of being broken"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "hit.stone"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "subtitles.block.generic.hit"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "0.3"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "0.75"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Footsteps"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Players"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Falling on the block with fall damage"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "fall.stone"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "subtitles.block.generic.footsteps"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "0.4"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1.0"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Footsteps"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Players"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Walking on the block"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "step.stone"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "subtitles.block.generic.footsteps"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "0.35"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1.0"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": []
+          },
+          {
+            "spans": [
+              {
+                "t": "Footsteps"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Jumping from the block"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "jump.stone"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "subtitles.block.generic.footsteps"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "0.12"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1.0"
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Footsteps"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Falling on the block without fall damage"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "land.stone"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "subtitles.block.generic.footsteps"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "0.22"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "1.0"
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 1,
+      "text": "Data values",
+      "anchor": "Data_values"
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "ID",
+      "anchor": "ID"
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "i": 1,
+          "wiki": "Java Edition",
+          "t": "Java Edition"
+        },
+        {
+          "t": ":"
+        }
+      ]
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "t": "Name"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Identifier",
+                "t": "Identifier"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Form"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Block tag (Java Edition)",
+                "t": "Block tags"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Translation key"
+              }
+            ],
+            "head": 1
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "bae3fba90309182b1a1f",
+                  "w": 16,
+                  "h": 16
+                }
+              },
+              {
+                "t": " Block of Diamond"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "diamond_block"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Block & Item"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "beacon_base_blocks"
+              },
+              {
+                "br": 1
+              },
+              {
+                "code": 1,
+                "t": "mineable/pickaxe"
+              },
+              {
+                "br": 1
+              },
+              {
+                "code": 1,
+                "t": "needs_iron_tool"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "block.minecraft.diamond_block"
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "i": 1,
+          "wiki": "Bedrock Edition",
+          "t": "Bedrock Edition"
+        },
+        {
+          "t": ":"
+        }
+      ]
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "t": "Name"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Identifier",
+                "t": "Identifier"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Numeric ID"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Form"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Bedrock Edition data values",
+                "anchor": "Block_items",
+                "t": "Item ID"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Translation key"
+              }
+            ],
+            "head": 1
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "bae3fba90309182b1a1f",
+                  "w": 16,
+                  "h": 16
+                }
+              },
+              {
+                "t": " Block of Diamond"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "diamond_block"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "57"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Block & Giveable Item"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Identical"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "code": 1,
+                "t": "tile.diamond_block.name"
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 1,
+      "text": "Achievements",
+      "anchor": "Achievements"
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "t": "Icon"
+              }
+            ],
+            "head": 1,
+            "cols": 2
+          },
+          {
+            "spans": [
+              {
+                "t": "Achievement"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "In-game description"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Actual requirements (if different)"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Gamerscore earned"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Trophy type (PS)"
+              }
+            ],
+            "head": 1
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "t": "PS4"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Other"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1
+          },
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1
+          },
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1
+          },
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1
+          },
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "e3063335941ee1c53dbf",
+                  "w": 47,
+                  "h": 47
+                }
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "fc9f93a5b7543b77760e",
+                  "w": 84,
+                  "h": 48
+                }
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Achievement",
+                "anchor": "The_Beaconator",
+                "t": "The Beaconator"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Create and fully power a "
+              },
+              {
+                "wiki": "Beacon",
+                "t": "Beacon"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Be within a 20×20×14 cuboid centered on the pyramid when the beacon block realizes it is fully powered."
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "60"
+              }
+            ]
+          },
+          {
+            "spans": [
+              {
+                "t": "Gold"
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 1,
+      "text": "History",
+      "anchor": "History"
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Development",
+      "anchor": "Development"
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "url": "https://twitter.com/jeb_/status/887580942910586880",
+                "t": "July 19, 2017"
+              }
+            ],
+            "head": 1,
+            "cols": 7
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "fbd032133ca18cf0d2db",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " "
+              },
+              {
+                "wiki": "Jeb",
+                "t": "Jeb"
+              },
+              {
+                "t": " tweets image of new "
+              },
+              {
+                "wiki": "Obsidian",
+                "t": "obsidian"
+              },
+              {
+                "t": " and diamond block textures."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "url": "https://twitter.com/JasperBoerstra/status/887775577993867269",
+                "t": "July 20, 2017"
+              }
+            ],
+            "head": 1,
+            "cols": 7
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "491594520925a7b5c817",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " "
+              },
+              {
+                "wiki": "Jasper Boerstra",
+                "t": "Jasper Boerstra"
+              },
+              {
+                "t": " tweets an image of an updated diamond block texture."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "url": "https://twitter.com/JasperBoerstra/status/1017060957237989376",
+                "t": "July 11, 2018"
+              }
+            ],
+            "head": 1,
+            "cols": 7
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "deb828b5e0bfb552b88e",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " "
+              },
+              {
+                "wiki": "Jasper Boerstra",
+                "t": "Jasper Boerstra"
+              },
+              {
+                "t": " tweets an image of an updated diamond block texture."
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Java Edition",
+      "anchor": "Java_Edition"
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition Indev",
+                "t": "Java Edition Indev"
+              }
+            ],
+            "head": 1,
+            "cols": 8
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition Indev 0.31",
+                "t": "0.31"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition Indev 0.31 20100128-2200",
+                "t": "20100128-2200"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "f2380214932448c81e3a",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " Added diamond blocks, then known as emerald blocks."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition Indev 0.31 20100129-1447",
+                "t": "20100129-1447"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Emerald blocks can now be "
+              },
+              {
+                "wiki": "Craft",
+                "t": "crafted"
+              },
+              {
+                "t": " from 4 "
+              },
+              {
+                "wiki": "Diamond",
+                "t": "emeralds"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition Indev 0.31 20100129-2332",
+                "t": "20100129-2332"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Emerald blocks have been renamed to diamond blocks."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamond blocks are now more expensive, requiring 9 "
+              },
+              {
+                "wiki": "Diamond",
+                "t": "diamonds"
+              },
+              {
+                "t": " (3×3) instead of 4 (2×2)."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamond blocks can be crafted into 9 individual diamonds."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition Alpha",
+                "t": "Java Edition Alpha"
+              }
+            ],
+            "head": 1,
+            "cols": 8
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition Alpha v1.2.0",
+                "t": "v1.2.0"
+              }
+            ],
+            "head": 1,
+            "cols": 7
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "55dc5c4cd56b0777c39d",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " The top texture is now used on all sides, making the old side and bottom textures unused."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition Beta",
+                "t": "Java Edition Beta"
+              }
+            ],
+            "head": 1,
+            "cols": 8
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition Beta 1.2",
+                "t": "1.2"
+              }
+            ],
+            "head": 1,
+            "cols": 7
+          },
+          {
+            "spans": [
+              {
+                "t": "The unused side and bottom textures of blocks of diamonds have now been removed from "
+              },
+              {
+                "wiki": "Terrain.png",
+                "t": "terrain.png"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "i": 1,
+                "wiki": "Java Edition version history",
+                "t": "Java Edition"
+              }
+            ],
+            "head": 1,
+            "cols": 8
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 1.0.0",
+                "t": "1.0.0"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition Beta 1.9 Prerelease 5",
+                "t": "Beta 1.9 Prerelease 5"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "74acdf19df0b721b8998",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " The texture of diamond blocks has slightly changed. The texture has been given less drastic dark gradients in the top-left and bottom-right corners."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 1.4.2",
+                "t": "1.4.2"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 12w32a",
+                "t": "12w32a"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamond blocks can now be used to construct "
+              },
+              {
+                "wiki": "Beacon",
+                "t": "beacon"
+              },
+              {
+                "t": " pyramids."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 1.11",
+                "t": "1.11"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 16w39a",
+                "t": "16w39a"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamond blocks can now be found in "
+              },
+              {
+                "wiki": "Woodland mansion",
+                "t": "woodland mansions"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 1.14",
+                "t": "1.14"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 18w43a",
+                "t": "18w43a"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "deb828b5e0bfb552b88e",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " The texture of blocks of diamonds has changed."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 18w47a",
+                "t": "18w47a"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "d45e53891556e1d93d2f",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " The texture of blocks of diamonds has changed, once again."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 1.20.3",
+                "t": "1.20.3"
+              },
+              {
+                "br": 1
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "Experiment"
+              },
+              {
+                "wiki": "Tricky Trials",
+                "t": "Update 1.21"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 23w45a",
+                "t": "23w45a"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks of diamond can now be found in "
+              },
+              {
+                "wiki": "Trial chambers",
+                "t": "trial chambers"
+              },
+              {
+                "t": " intersection chests and "
+              },
+              {
+                "wiki": "Decorated pot",
+                "t": "decorated pots"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 1.20.5",
+                "t": "1.20.5"
+              },
+              {
+                "br": 1
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "Experiment"
+              },
+              {
+                "wiki": "Tricky Trials",
+                "t": "Update 1.21"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 24w13a",
+                "t": "24w13a"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks of diamond can now be found in "
+              },
+              {
+                "wiki": "Ominous vault",
+                "t": "ominous vaults"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 26.2",
+                "t": "26.2"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 26.2 Snapshot 1",
+                "t": "snap1"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Added "
+              },
+              {
+                "wiki": "Sulfur cube",
+                "t": "sulfur cubes"
+              },
+              {
+                "t": ", which have the ability to absorb blocks of diamond, providing the football/regular effect to the mob."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 26.2 Snapshot 6",
+                "t": "snap6"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Changed effect from football/regular to slow bouncy."
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Bedrock Edition",
+      "anchor": "Bedrock_Edition"
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition Alpha",
+                "t": "Pocket Edition Alpha"
+              }
+            ],
+            "head": 1,
+            "cols": 8
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition Demo",
+                "t": "Demo"
+              }
+            ],
+            "head": 1,
+            "cols": 7
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "55dc5c4cd56b0777c39d",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " Added blocks of diamond."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition v0.2.0 alpha",
+                "t": "v0.2.0"
+              }
+            ],
+            "head": 1,
+            "cols": 7
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "74acdf19df0b721b8998",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " The texture of blocks of diamond has slightly changed. The texture has less drastic dark gradients in the top-left and bottom-right corners."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition v0.3.2 alpha",
+                "t": "v0.3.2"
+              }
+            ],
+            "head": 1,
+            "cols": 7
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks of diamond can now be "
+              },
+              {
+                "wiki": "Craft",
+                "t": "crafted"
+              },
+              {
+                "t": " from 6 "
+              },
+              {
+                "wiki": "Diamond",
+                "t": "diamonds"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1,
+            "cols": 7
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks of diamond can now be uncrafted into 9 diamonds."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition v0.3.3 alpha",
+                "t": "v0.3.3"
+              }
+            ],
+            "head": 1,
+            "cols": 7
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks of diamond now requires 9 "
+              },
+              {
+                "wiki": "Diamond",
+                "t": "diamonds"
+              },
+              {
+                "t": " instead of 6."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition v0.16.0 alpha",
+                "t": "v0.16.0"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition v0.16.0 alpha build 4",
+                "t": "build 4"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks of diamond can now be used to construct "
+              },
+              {
+                "wiki": "Beacon",
+                "t": "beacon"
+              },
+              {
+                "t": " pyramids."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "i": 1,
+                "wiki": "Pocket Edition",
+                "t": "Pocket Edition"
+              }
+            ],
+            "head": 1,
+            "cols": 8
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition 1.1.0",
+                "t": "1.1.0"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Pocket Edition alpha 1.1.0.0",
+                "t": "alpha 1.1.0.0"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks of diamond can now be found in "
+              },
+              {
+                "wiki": "Woodland mansion",
+                "t": "woodland mansions"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "i": 1,
+                "wiki": "Bedrock Edition version history",
+                "t": "Bedrock Edition"
+              }
+            ],
+            "head": 1,
+            "cols": 8
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Bedrock Edition 1.10.0",
+                "t": "1.10.0"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Bedrock Edition beta 1.10.0.3",
+                "t": "beta 1.10.0.3"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "d45e53891556e1d93d2f",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " The texture of blocks of diamond have been changed."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Bedrock Edition 1.20.60",
+                "t": "1.20.60"
+              },
+              {
+                "br": 1
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "Experiment"
+              },
+              {
+                "wiki": "Tricky Trials",
+                "t": "Update 1.21"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Bedrock Edition Preview 1.20.60.20",
+                "t": "Preview 1.20.60.20"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks of diamond can now be found in "
+              },
+              {
+                "wiki": "Trial chambers",
+                "t": "trial chambers"
+              },
+              {
+                "t": " intersection chests and "
+              },
+              {
+                "wiki": "Decorated pot",
+                "t": "decorated pots"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Bedrock Edition 1.21.0",
+                "t": "1.21.0"
+              },
+              {
+                "br": 1
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "Experiment"
+              },
+              {
+                "wiki": "Tricky Trials",
+                "t": "Update 1.21"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Bedrock Edition Preview 1.21.0.20",
+                "t": "Preview 1.21.0.20"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks of diamond can now be found in "
+              },
+              {
+                "wiki": "Ominous vault",
+                "t": "ominous vaults"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Bedrock Edition 26.20",
+                "t": "26.20"
+              },
+              {
+                "br": 1
+              },
+              {
+                "br": 1
+              },
+              {
+                "t": "Experiment"
+              },
+              {
+                "wiki": "Chaos Cubed",
+                "t": "Drop 2 of 2026"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Bedrock Edition Preview 26.20.23",
+                "t": "Preview 26.20.23"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Added "
+              },
+              {
+                "wiki": "Sulfur cube",
+                "t": "sulfur cubes"
+              },
+              {
+                "t": ", which have the ability to absorb blocks of diamond, providing the football/regular effect to the mob."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Bedrock Edition 26.30",
+                "t": "26.30"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Bedrock Edition Preview 26.30.20",
+                "t": "Preview 26.30.20"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Implemented all features from the \"Drop 2 of 2026\" experiment in vanilla gameplay."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Bedrock Edition Preview 26.30.27",
+                "t": "Preview 26.30.27"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks of diamond's sulfur cube archetype has been changed from regular to slow bouncy."
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Legacy Console Edition",
+      "anchor": "Legacy_Console_Edition"
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Legacy Console Edition version history",
+                "t": "Legacy Console Edition"
+              }
+            ],
+            "head": 1,
+            "cols": 8
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Xbox 360 Edition",
+                "t": "Xbox 360"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Xbox One Edition",
+                "t": "Xbox One"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "PlayStation 3 Edition",
+                "t": "PS3"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "PlayStation 4 Edition",
+                "t": "PS4"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "PlayStation Vita Edition",
+                "t": "PS Vita"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Wii U Edition",
+                "t": "Wii U"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Nintendo Switch Edition",
+                "t": "Switch"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [],
+            "head": 1
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Xbox 360 Edition TU1",
+                "t": "TU1"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Xbox One Edition CU1",
+                "t": "CU1"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "PlayStation 3 Edition 1.00",
+                "t": "1.00"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "PlayStation 4 Edition 1.00",
+                "t": "1.00"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "PlayStation Vita Edition 1.00",
+                "t": "1.00"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Wii U Edition Patch 1",
+                "t": "Patch 1"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Nintendo Switch Edition 1.0.1",
+                "t": "1.0.1"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "55dc5c4cd56b0777c39d",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " Added blocks of diamonds."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Xbox 360 Edition TU3",
+                "t": "TU3"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1
+          },
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1
+          },
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1
+          },
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1
+          },
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1
+          },
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "74acdf19df0b721b8998",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " The texture of diamond blocks has slightly changed. The texture has less drastic dark gradients in the top-left and bottom-right corners."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Xbox 360 Edition TU19",
+                "t": "TU19"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Xbox One Edition CU7",
+                "t": "CU7"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "PlayStation 3 Edition 1.12",
+                "t": "1.12"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "PlayStation 4 Edition 1.12",
+                "t": "1.12"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "PlayStation Vita Edition 1.12",
+                "t": "1.12"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1
+          },
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks of diamonds can now be used to construct "
+              },
+              {
+                "wiki": "Beacon",
+                "t": "beacon"
+              },
+              {
+                "t": " pyramids."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Xbox 360 Edition TU54",
+                "t": "TU54"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Xbox One Edition CU44",
+                "t": "CU44"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "PlayStation 3 Edition 1.52",
+                "t": "1.52"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "PlayStation 4 Edition 1.52",
+                "t": "1.52"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "PlayStation Vita Edition 1.52",
+                "t": "1.52"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Wii U Edition Patch 24",
+                "t": "Patch 24"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Nintendo Switch Edition 1.0.4",
+                "t": "1.0.4"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "t": "Diamond blocks can now be found in "
+              },
+              {
+                "wiki": "Woodland mansion",
+                "t": "woodland mansions"
+              },
+              {
+                "t": "."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "head": 1
+          },
+          {
+            "spans": [],
+            "head": 1
+          },
+          {
+            "spans": [],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "wiki": "PlayStation 4 Edition 1.90",
+                "t": "1.90"
+              }
+            ],
+            "head": 1
+          },
+          {
+            "spans": [],
+            "head": 1
+          },
+          {
+            "spans": [],
+            "head": 1
+          },
+          {
+            "spans": [],
+            "head": 1
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "d45e53891556e1d93d2f",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " The texture of blocks of diamonds has changed."
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "New Nintendo 3DS Edition",
+      "anchor": "New_Nintendo_3DS_Edition"
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "i": 1,
+                "wiki": "New Nintendo 3DS Edition version history",
+                "t": "New Nintendo 3DS Edition"
+              }
+            ],
+            "head": 1,
+            "cols": 8
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "New Nintendo 3DS Edition 0.1.0",
+                "t": "0.1.0"
+              }
+            ],
+            "head": 1,
+            "cols": 7
+          },
+          {
+            "spans": [
+              {
+                "img": {
+                  "id": "74acdf19df0b721b8998",
+                  "w": 32,
+                  "h": 32
+                }
+              },
+              {
+                "t": " Added blocks of diamonds."
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Data history",
+      "anchor": "Data_history"
+    },
+    {
+      "k": "table",
+      "rows": [
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition Indev",
+                "t": "Java Edition Indev"
+              }
+            ],
+            "head": 1,
+            "cols": 8
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition Indev 0.31",
+                "t": "0.31"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition Indev 0.31 20100128-2200",
+                "t": "20100128-2200"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Initially, diamond blocks were referred to as \"emerald blocks\"."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [],
+            "under": 1,
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition Indev 0.31 20100130",
+                "t": "20100130"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "\"Emerald blocks\" from the previous version are now referred to as diamond blocks."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "i": 1,
+                "wiki": "Java Edition version history",
+                "t": "Java Edition"
+              }
+            ],
+            "head": 1,
+            "cols": 8
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 1.8",
+                "t": "1.8"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 14w06a",
+                "t": "14w06a"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Blocks of diamond now use the newly-implemented model json file "
+              },
+              {
+                "code": 1,
+                "t": "models/block/cube.json"
+              },
+              {
+                "t": "; previously the geometry was defined in the game code itself."
+              }
+            ]
+          }
+        ],
+        [
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 1.13",
+                "t": "1.13"
+              }
+            ],
+            "head": 1,
+            "cols": 3
+          },
+          {
+            "spans": [
+              {
+                "wiki": "Java Edition 17w47a",
+                "t": "17w47a"
+              }
+            ],
+            "head": 1,
+            "cols": 4
+          },
+          {
+            "spans": [
+              {
+                "t": "Prior to "
+              },
+              {
+                "i": 1,
+                "wiki": "1.13/Flattening",
+                "t": "The Flattening"
+              },
+              {
+                "t": ", this block's numeral ID was 57."
+              }
+            ]
+          }
+        ]
+      ]
+    },
+    {
+      "k": "h",
+      "level": 1,
+      "text": "Issues",
+      "anchor": "Issues"
+    },
+    {
+      "k": "p",
+      "spans": [
+        {
+          "t": "Issues relating to \"Block of Diamond\" are maintained on the "
+        },
+        {
+          "wiki": "Bug tracker",
+          "t": "bug tracker"
+        },
+        {
+          "t": ". Issues should be reported and viewed "
+        },
+        {
+          "url": "https://bugs.mojang.com/issues/?jql=project%20in%20%28MC%2C%20MCPE%29%20AND%20%28resolution%20is%20EMPTY%20OR%20resolution%20in%20%281%2C%202%2C%206%29%29%20AND%20%28summary%20~%20%22Block%20of%20Diamond%22%29%20ORDER%20BY%20resolution%20DESC",
+          "t": "there"
+        },
+        {
+          "t": "."
+        }
+      ]
+    },
+    {
+      "k": "h",
+      "level": 1,
+      "text": "Trivia",
+      "anchor": "Trivia"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "The block of diamond has the same texture as the "
+        },
+        {
+          "wiki": "Block of gold",
+          "t": "block of gold"
+        },
+        {
+          "t": ", but tinted blue. This is also true of its texture from before the Texture Update."
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "h",
+      "level": 1,
+      "text": "Gallery",
+      "anchor": "Gallery"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "img": {
+            "id": "63a818060657a39cce31",
+            "w": 120,
+            "h": 67
+          }
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "A pile of diamond blocks"
+        }
+      ],
+      "depth": 1,
+      "mark": ""
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "img": {
+            "id": "a31b4057a3d481e37d70",
+            "w": 120,
+            "h": 70
+          }
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "A house made mostly out of diamond blocks"
+        }
+      ],
+      "depth": 1,
+      "mark": ""
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "Development images",
+      "anchor": "Development_images"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "img": {
+            "id": "9770b974231e6f9b5d88",
+            "w": 120,
+            "h": 90
+          }
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "A teaser image released by Jeb of updated block of diamond textures"
+        }
+      ],
+      "depth": 1,
+      "mark": ""
+    },
+    {
+      "k": "h",
+      "level": 2,
+      "text": "In other media",
+      "anchor": "In_other_media"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "img": {
+            "id": "1d5d4e5b6e96dc501686",
+            "w": 120,
+            "h": 68
+          }
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "Certified diamond tested by the diamond tester"
+        }
+      ],
+      "depth": 1,
+      "mark": ""
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "img": {
+            "id": "51c909a7218fd072615b",
+            "w": 120,
+            "h": 100
+          }
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "Diamond blocks as part of a temporary exhibit at the Museum of Architecture and Design"
+        }
+      ],
+      "depth": 1,
+      "mark": ""
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "img": {
+            "id": "9f49597b509bbfc15664",
+            "w": 120,
+            "h": 120
+          }
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "t": "A "
+        },
+        {
+          "url": "https://minecraft.wiki/w/Earth:Block_of_Diamond",
+          "t": "block of diamond"
+        },
+        {
+          "t": " as it appears in "
+        },
+        {
+          "i": 1,
+          "wiki": "Minecraft Earth",
+          "t": "Minecraft Earth"
+        }
+      ],
+      "depth": 1,
+      "mark": ""
+    },
+    {
+      "k": "h",
+      "level": 1,
+      "text": "External links",
+      "anchor": "External_links"
+    },
+    {
+      "k": "li",
+      "spans": [
+        {
+          "url": "https://www.minecraft.net/en-us/article/block-week-diamond",
+          "t": "\"Block of the Week: Diamond\""
+        },
+        {
+          "t": " by "
+        },
+        {
+          "wiki": "Alex Wiltshire",
+          "t": "Alex Wiltshire"
+        },
+        {
+          "t": " – "
+        },
+        {
+          "wiki": "Minecraft.net",
+          "t": "Minecraft.net"
+        },
+        {
+          "t": ", April 7, 2017."
+        }
+      ],
+      "depth": 1,
+      "mark": "•"
+    }
+  ],
+  "pictures": {
+    "02e2ca302e7368008863": "https://minecraft.wiki/images/thumb/Block_of_Diamond_JE5_BE3.png/150px-Block_of_Diamond_JE5_BE3.png?542ee",
+    "c2fc5b8c9a29e8615485": "https://minecraft.wiki/images/Invicon_Block_of_Diamond.png?57338",
+    "67a1b1ba55573ac2676e": "https://minecraft.wiki/images/Invicon_Iron_Pickaxe.png?64d21",
+    "bae3fba90309182b1a1f": "https://minecraft.wiki/images/BlockSprite_block-of-diamond.png?62583",
+    "420635af9f83825bf3b8": "https://minecraft.wiki/images/ItemSprite_iron-pickaxe.png?77536",
+    "a84cc7ae77136d96ea80": "https://minecraft.wiki/images/ItemSprite_wooden-pickaxe.png?b638a",
+    "151346d015a12345ccc3": "https://minecraft.wiki/images/ItemSprite_stone-pickaxe.png?7a740",
+    "ebc302f91b5f300cd71f": "https://minecraft.wiki/images/ItemSprite_copper-pickaxe.png?68ec0",
+    "5314e8b0c68b27ff1427": "https://minecraft.wiki/images/ItemSprite_diamond-pickaxe.png?8c314",
+    "db3f9e5f902fa8ae05ee": "https://minecraft.wiki/images/ItemSprite_netherite-pickaxe.png?da230",
+    "0c5a06668cb94b3708f4": "https://minecraft.wiki/images/ItemSprite_golden-pickaxe.png?b2806",
+    "c30d627a7f535760f52f": "https://minecraft.wiki/images/EnvSprite_trial-chambers.png?7ef12",
+    "dd585db2cb865dbb8a1a": "https://minecraft.wiki/images/Invicon_Diamond.png?18e8a",
+    "cde5eb2d8a8bca918a10": "https://minecraft.wiki/images/BlockSprite_block-of-gold.png?3beb4",
+    "e3063335941ee1c53dbf": "https://minecraft.wiki/images/thumb/AchievementSprite_beaconator.png/47px-AchievementSprite_beaconator.png?5291c",
+    "fc9f93a5b7543b77760e": "https://minecraft.wiki/images/NewAchievementSprite_the-beaconator.png?16bda",
+    "fbd032133ca18cf0d2db": "https://minecraft.wiki/images/thumb/Block_of_Diamond_pJE20170719-1.png/32px-Block_of_Diamond_pJE20170719-1.png?fea86",
+    "491594520925a7b5c817": "https://minecraft.wiki/images/thumb/Block_of_Diamond_pJE20170719-2.png/32px-Block_of_Diamond_pJE20170719-2.png?965b4",
+    "deb828b5e0bfb552b88e": "https://minecraft.wiki/images/thumb/Block_of_Diamond_JE4.png/32px-Block_of_Diamond_JE4.png?6bf31",
+    "f2380214932448c81e3a": "https://minecraft.wiki/images/thumb/Block_of_Diamond_JE1.png/32px-Block_of_Diamond_JE1.png?4bc95",
+    "55dc5c4cd56b0777c39d": "https://minecraft.wiki/images/thumb/Block_of_Diamond_JE2_BE1.png/32px-Block_of_Diamond_JE2_BE1.png?b5040",
+    "74acdf19df0b721b8998": "https://minecraft.wiki/images/thumb/Block_of_Diamond_JE3_BE2.png/32px-Block_of_Diamond_JE3_BE2.png?b7e65",
+    "d45e53891556e1d93d2f": "https://minecraft.wiki/images/thumb/Block_of_Diamond_JE5_BE3.png/32px-Block_of_Diamond_JE5_BE3.png?542ee",
+    "63a818060657a39cce31": "https://minecraft.wiki/images/thumb/Diamond_Pile.png/120px-Diamond_Pile.png?f7dfa",
+    "a31b4057a3d481e37d70": "https://minecraft.wiki/images/thumb/Le_Diamond_House.png/120px-Le_Diamond_House.png?4151c",
+    "9770b974231e6f9b5d88": "https://minecraft.wiki/images/thumb/1.13_teased_diamond_textures.jpg/120px-1.13_teased_diamond_textures.jpg?d1ff1",
+    "1d5d4e5b6e96dc501686": "https://minecraft.wiki/images/thumb/Certified_diamond.jpeg/120px-Certified_diamond.jpeg?b4d60",
+    "51c909a7218fd072615b": "https://minecraft.wiki/images/thumb/Blockholm_rainbow.png/120px-Blockholm_rainbow.png?5135d",
+    "9f49597b509bbfc15664": "https://minecraft.wiki/images/thumb/Block_of_Diamond_%28inventory%29_MCE.png/120px-Block_of_Diamond_%28inventory%29_MCE.png?f97de"
+  }
+}

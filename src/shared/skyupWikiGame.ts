@@ -28,7 +28,8 @@ export interface GameSpan {
   br?: 1;
 }
 
-export interface GameCell { spans: GameSpan[]; head?: 1; cols?: number }
+/** A table's cell; `under`: the place of a cell above going down over this row (rowspan), empty, its lines left out. */
+export interface GameCell { spans: GameSpan[]; head?: 1; cols?: number; under?: 1 }
 
 export type GameBlock =
   | { k: 'h'; level: 1 | 2 | 3; text: string; anchor?: string }
@@ -40,6 +41,50 @@ export type GameBlock =
 
 /** A picture's id: the same address always gets the same one. */
 export const pictureId = (url: string) => createHash('sha1').update(url).digest('hex').slice(0, 20);
+
+/**
+ * The rows with a cell's place kept in the rows a cell above goes down over (rowspan), so the columns after it stay
+ * under their headings (a mod without `under` draws them as empty cells).
+ */
+function underCells(rows: GameCell[][], down: Map<GameCell, number>): GameCell[][] {
+  // per column: the rows still to go and the cell going down
+  const left: { n: number; cell: GameCell }[] = [];
+  const out: GameCell[][] = [];
+  for (const row of rows) {
+    const line: GameCell[] = [];
+    let col = 0;
+    const keep = () => {
+      while (left[col]?.n > 0) {
+        const above = left[col];
+        above.n--;
+        const width = above.cell.cols ?? 1;
+        const place: GameCell = { spans: [], under: 1 };
+        if (above.cell.head) place.head = 1;
+        if (width > 1) place.cols = width;
+        line.push(place);
+        col += width;
+      }
+    };
+    for (const c of row) {
+      keep();
+      line.push(c);
+      const width = c.cols ?? 1;
+      const n = down.get(c);
+      if (n) for (let i = 0; i < width; i++) left[col + i] = i ? { n: 0, cell: c } : { n: n - 1, cell: c };
+      col += width;
+    }
+    // the cells going down at the row's end
+    while (col < left.length) {
+      if (left[col]?.n > 0) keep();
+      else if (left.slice(col).some((l) => l?.n > 0)) {
+        line.push({ spans: [] });
+        col++;
+      } else break;
+    }
+    out.push(line);
+  }
+  return out;
+}
 
 const BLOCK = new Set(['p', 'div', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'table', 'blockquote', 'pre', 'hr', 'figure', 'figcaption', 'dl', 'dt', 'dd', 'caption']);
 const STYLE: Record<string, keyof GameSpan> = { b: 'b', strong: 'b', i: 'i', em: 'i', u: 'u', ins: 'u', s: 's', del: 's', code: 'code', kbd: 'code', pre: 'code' };
@@ -68,6 +113,8 @@ export function gameArticle(html: string): { blocks: GameBlock[]; pictures: Reco
   let table: { rows: GameCell[][]; depth: number } | undefined;
   let tableDepth = 0;
   let cell: GameCell | undefined;
+  /** How many rows a cell goes down over (rowspan), for underCells. */
+  const down = new Map<GameCell, number>();
 
   const target = () => (cell ? cell.spans : spans);
   function add(span: GameSpan) {
@@ -122,7 +169,8 @@ export function gameArticle(html: string): { blocks: GameBlock[]; pictures: Reco
 
   for (const m of html.matchAll(/<(\/?)([a-z0-9]+)([^>]*)>|([^<]+)/gi)) {
     if (m[4] !== undefined) {
-      const text = decodeEntities(m[4]).replace(/\s+/g, ' ');
+      // invisible marks (zero-width spaces, soft hyphens) the game's font has no letter for and draws as boxes
+      const text = decodeEntities(m[4]).replace(/[\u200b-\u200d\u2060\ufeff\u00ad]/g, '').replace(/\s+/g, ' ');
       if (heading) heading.text += text;
       else if (text) add({ ...styled(), t: text });
       continue;
@@ -179,7 +227,7 @@ export function gameArticle(html: string): { blocks: GameBlock[]; pictures: Reco
           table = { rows: [], depth: 1 };
         }
       } else if (--tableDepth === 0 && table) {
-        const rows = table.rows.map((r) => r.map((c) => ({ ...c, spans: tidy(c.spans) }))).filter((r) => r.some((c) => c.spans.length));
+        const rows = underCells(table.rows, down).map((r) => r.map((c) => ({ ...c, spans: tidy(c.spans) }))).filter((r) => r.some((c) => c.spans.length));
         table = undefined;
         cell = undefined;
         if (rows.length) blocks.push({ k: 'table', rows });
@@ -199,6 +247,8 @@ export function gameArticle(html: string): { blocks: GameBlock[]; pictures: Reco
         if (tag === 'th') cell.head = 1;
         const cols = Number(attrs.colspan);
         if (cols > 1) cell.cols = Math.min(cols, 12);
+        const rowsDown = Number(attrs.rowspan);
+        if (rowsDown > 1) down.set(cell, Math.min(rowsDown, 50));
         table.rows[table.rows.length - 1].push(cell);
       } else if ((tag === 'td' || tag === 'th') && close) cell = undefined;
       else if (cell && !close && (tag === 'p' || tag === 'div' || tag === 'li' || tag === 'ul' || tag === 'ol') && cell.spans.length) add({ br: 1 });

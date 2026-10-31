@@ -26,8 +26,12 @@ const VOID = new Set(['br', 'hr', 'img', 'wbr', 'col', 'area', 'source', 'track'
 const DROP_CLASSES = new Set([
   'mw-editsection', 'navbox', 'navbox-wrapper', 'reference', 'mw-references-wrap', 'references', 'noprint', 'toc', 'mw-empty-elt',
   'printfooter', 'catlinks', 'mw-cite-backlink', 'hidden-alt-text', 'msgbox',
+  // a template's "v t e" links (view, talk, edit) in a table's title
+  'navbox-navbar', 'navbar-mini', 'navbar',
   // the infobox's data for the wiki's history tool (a <pre> of JSON the wiki hides with its styles)
   'history-json',
+  // the same for the loot tables' chances in chests (a JSON line after each percentage)
+  'chest-json',
 ]);
 
 const KEEP_ATTRS: Record<string, string[]> = {
@@ -257,7 +261,8 @@ export function sanitizeWikiHtml(html: string, site: WikiSite = MINECRAFT_WIKI):
     }
     const attrs = parseAttrs(rawAttrs ?? '');
     const classes = (attrs.class ?? '').split(/\s+/);
-    const dropByClass = classes.some((c) => DROP_CLASSES.has(c));
+    // what the wiki hides on its own page stays hidden here too
+    const dropByClass = classes.some((c) => DROP_CLASSES.has(c)) || /display\s*:\s*none/i.test(attrs.style ?? '');
     // a frame after the first one the wiki shows (stillFrames)
     const parent = stack[stack.length - 1];
     const laterFrame = parent?.frames && parent.frames++ > 1;

@@ -29,6 +29,7 @@ public class GameMcWiki implements FabricClientGameTest {
 		answers.put("/mc-wiki/article?lang=pl&title=Diament", read("article-pl-diament"));
 		answers.put("/mc-wiki/article?lang=pl&title=" + LINKED_PATH, read(LINKED_FILE));
 		answers.put("/mc-wiki/article?lang=en&title=Oak+Planks", read("article-en-oak-planks"));
+		answers.put("/mc-wiki/article?lang=en&title=Block+of+Diamond", read("article-en-block-of-diamond"));
 		// the Polish wiki has no such article here: the English one
 		answers.put("/mc-wiki/lookup?lang=pl&id=minecraft%3Aoak_planks&name=Deski+d%C4%99bowe", "{\"title\":\"Oak Planks\",\"lang\":\"en\"}");
 		String language = context.computeOnClient(mc -> mc.options.languageCode);
@@ -74,6 +75,15 @@ public class GameMcWiki implements FabricClientGameTest {
 			state = context.computeOnClient(mc -> McWikiTestHooks.state());
 			if (!state.contains("article=en:Planks ") || !state.contains("Planks (EN)|")) throw new AssertionError("The lookup: " + state);
 			context.takeScreenshot("mcwiki-lookup");
+			// tables with cells going down over rows (the loot's structure) and a title over all columns (the sounds')
+			context.runOnClient(mc -> McWikiTestHooks.openArticle("en:Block of Diamond", "Generated_loot"));
+			context.waitTicks(20);
+			state = context.computeOnClient(mc -> McWikiTestHooks.state());
+			if (!state.contains("article=en:Block of Diamond ")) throw new AssertionError("The tables' article: " + state);
+			context.takeScreenshot("mcwiki-table-rows");
+			context.runOnClient(mc -> McWikiTestHooks.openArticle("en:Block of Diamond", "Sounds"));
+			context.waitTicks(20);
+			context.takeScreenshot("mcwiki-table-title");
 			// the language button: English, and the game's again
 			String switched = context.computeOnClient(mc -> McWikiTestHooks.switchOver() + "|" + McWikiTestHooks.switchOver());
 			if (!switched.equals("en,PL|pl,EN")) throw new AssertionError("The language button: " + switched);

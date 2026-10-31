@@ -63,6 +63,24 @@ describe('Minecraft Wiki for the game', () => {
     assert.deepEqual(shown(sanitizeWikiHtml(raw)), ['Oak', 'Spruce', 'A', 'B', 'C', 'D']);
   });
 
+  it('keeps a table\'s columns under their headings: cells going down over rows, hidden data and template links left out', () => {
+    const raw = `<table class="wikitable"><tr><th colspan="3"><div class="navbox-navbar"><div class="hlist navbar-mini"><ul><li><a href="/w/Template:X">v</a></li></ul></div></div>Loot</th></tr>
+      <tr><th>Item</th><th>Container</th><th>Chance</th></tr>
+      <tr><td rowspan="3">Diamond block</td><td>Pot</td><td>0.3%<pre class="chest-json">{ "chance": 0.0028 }</pre></td></tr>
+      <tr><td>Chest</td><td>2.3%<span style="display: none">hidden</span></td></tr>
+      <tr><td>&#8203;Vault</td><td>2.8%</td></tr>
+      <tr><td>Gold</td><td rowspan="2">Chest</td><td>5%</td></tr>
+      <tr><td>Iron</td></tr></table>`;
+    const table = gameArticle(sanitizeWikiHtml(raw, MC_WIKIS.en.site)).blocks[0];
+    const text = (c: { spans: { t?: string }[]; under?: 1 }) => c.under ? '^' : c.spans.map((s) => s.t).join('');
+    assert.ok(table.k === 'table');
+    assert.deepEqual(table.rows.map((r) => r.map(text)), [
+      ['Loot'], ['Item', 'Container', 'Chance'],
+      ['Diamond block', 'Pot', '0.3%'], ['^', 'Chest', '2.3%'], ['^', 'Vault', '2.8%'],
+      ['Gold', 'Chest', '5%'], ['Iron', '^'],
+    ]);
+  });
+
   it('keeps the launcher\'s own Wiki view as it was', () => {
     assert.equal(articleFromHref('/w/Crafting_Table#Usage'), 'Crafting Table');
     assert.equal(articleFromHref('/pl/wiki/Deski', 'https://minecraft.fandom.com', '/pl/wiki/'), 'Deski');

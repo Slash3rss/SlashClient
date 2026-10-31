@@ -448,12 +448,16 @@ public class WikiScreen extends Screen {
 		for (JsonElement r : rows) {
 			int col = 0, x = 0, rowH = 0;
 			List<int[]> heads = new ArrayList<>();
+			List<Integer> edges = new ArrayList<>();
 			for (JsonElement c : r.getAsJsonArray()) {
 				if (col >= cols) break;
 				int span = Math.min(cells(c), cols - col), cw = 0;
 				for (int i = 0; i < span; i++) cw += colW[col + i];
 				JsonObject cell = c.getAsJsonObject();
 				boolean head = cell.has("head");
+				// the line above a cell, but not inside one going down over this row (rowspan)
+				if (!cell.has("under") || y == top) back.add(new Op(x, y, cw, 1, null, LINE, null, null));
+				edges.add(x);
 				int bottom = flow(cellsOut, pieces(cell.getAsJsonArray("spans"), head), x + 4, cw - 8, y + 3, head ? Ui.TEXT : Ui.TEXT_2, head);
 				rowH = Math.max(rowH, bottom - y + 3);
 				if (head) heads.add(new int[] { x, cw });
@@ -462,17 +466,13 @@ public class WikiScreen extends Screen {
 			}
 			rowH = Math.max(rowH, 14);
 			for (int[] h : heads) back.add(new Op(h[0], y, h[1], rowH, null, Ui.withAlpha(Ui.ACCENT, 0x28), null, null));
-			back.add(new Op(0, y + rowH, tableW, 1, null, LINE, null, null));
+			// the lines between this row's cells (not through a cell over several columns) and the table's right edge
+			for (int e : edges) back.add(new Op(e, y, 1, rowH + 1, null, LINE, null, null));
+			back.add(new Op(tableW - 1, y, 1, rowH + 1, null, LINE, null, null));
 			y += rowH;
 		}
-		out.add(new Op(0, top, tableW, 1, null, LINE, null, null));
+		back.add(new Op(0, y, tableW, 1, null, LINE, null, null));
 		out.addAll(back);
-		// the columns' lines
-		int x = 0;
-		for (int i = 0; i <= cols; i++) {
-			out.add(new Op(Math.min(x, tableW - 1), top, 1, y - top + 1, null, LINE, null, null));
-			if (i < cols) x += colW[i];
-		}
 		out.addAll(cellsOut);
 		return y + 1;
 	}
