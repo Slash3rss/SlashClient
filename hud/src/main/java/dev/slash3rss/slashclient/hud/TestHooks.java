@@ -202,6 +202,42 @@ public final class TestHooks {
 	}
 
 	/** A button held by its key (attack: the left one) on or off, and whether it goes on over the inventory and the pause menu. */
+	private static HudModule module(String id) {
+		for (HudModule m : SlashHud.modules()) if (m.id().equals(id)) return m;
+		throw new IllegalArgumentException(id);
+	}
+
+	/** A text module's text now, its colour ("#RRGGBB"), and whether its own condition lets it show. */
+	public static String moduleText(String id) {
+		return ((Modules.TextModule) module(id)).content(net.minecraft.client.Minecraft.getInstance()).getString();
+	}
+
+	public static String moduleColor(String id) {
+		return String.format("#%06X", ((Modules.TextModule) module(id)).color(net.minecraft.client.Minecraft.getInstance()) & 0xFFFFFF);
+	}
+
+	public static boolean moduleShown(String id) {
+		return SlashHud.shownNow(SlashHud.config.placement(id), net.minecraft.client.Minecraft.getInstance());
+	}
+
+	public static int moduleWidth(String id) {
+		return module(id).width(net.minecraft.client.Minecraft.getInstance());
+	}
+
+	/** A waypoint where the player stands (removed by the next call with null). */
+	public static void addWaypointHere(String name) {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		if (name == null) Waypoints.here(mc).removeIf(p -> p.name.equals("Dom"));
+		else Waypoints.add(mc, name);
+		Waypoints.save();
+	}
+
+	/** The compass's target's name, or "none". */
+	public static String compassTarget() {
+		var p = ExtraModules.Compass.target(net.minecraft.client.Minecraft.getInstance());
+		return p == null ? "none" : p.name;
+	}
+
 	/** What the item counter shows now: "arrow 32, ender_pearl 4, …". */
 	public static String itemCounts() {
 		var mc = net.minecraft.client.Minecraft.getInstance();

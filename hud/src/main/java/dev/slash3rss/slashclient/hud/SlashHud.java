@@ -371,6 +371,7 @@ public class SlashHud implements ClientModInitializer {
 			if (mc.getConnection() == null) ExtraModules.Stats.disconnected();
 			// a new world or server starts a new session
 			if (mc.player != null && MoreModules.sessionStart == 0) MoreModules.sessionStart = System.currentTimeMillis();
+			if (mc.player != null && MoreModules.gameStart == 0) MoreModules.gameStart = MoreModules.sessionStart;
 			if (mc.player == null) MoreModules.sessionStart = 0;
 			// speed over the last tick, ignoring height so jumping does not count
 			if (mc.player != null) {
@@ -461,9 +462,27 @@ public class SlashHud implements ClientModInitializer {
 		if (top != null) drawOne(g, mc, preview, top);
 	}
 
+	/** A module's own condition (its settings' "Pokazuj"): where it shows, and whether the chat or another window hides it. */
+	static boolean shownNow(HudConfig.Placement p, Minecraft mc) {
+		var screen = Compat.screen(mc);
+		boolean chat = screen instanceof net.minecraft.client.gui.screens.ChatScreen;
+		if (p.hideInChat && chat || p.hideInScreens && screen != null && !chat) return false;
+		boolean single = mc.hasSingleplayerServer();
+		return switch (p.showWhen()) {
+			case "single" -> single;
+			case "multi" -> !single && mc.getConnection() != null;
+			case "server" -> {
+				var server = mc.getCurrentServer();
+				String want = p.showServer == null ? "" : p.showServer.trim().toLowerCase(java.util.Locale.ROOT);
+				yield !single && server != null && !want.isEmpty() && server.ip.toLowerCase(java.util.Locale.ROOT).contains(want);
+			}
+			default -> true;
+		};
+	}
+
 	private static void drawOne(GuiGraphicsExtractor g, Minecraft mc, boolean preview, HudModule m) {
 		HudConfig.Placement p = config.placement(m.id());
-		if (!p.enabled || (!preview && !m.visible(mc))) return;
+		if (!p.enabled || (!preview && (!m.visible(mc) || !shownNow(p, mc)))) return;
 		// measured once a frame (some modules work out their whole content to know their size)
 		int w = m.width(mc), h = m.height(mc);
 		int[] at = position(p, Math.round(w * p.scale()), Math.round(h * p.scale()), g.guiWidth(), g.guiHeight());

@@ -52,6 +52,8 @@ public final class MoreModules {
 
 	/** When the current world or server session started, for the session timer. */
 	static long sessionStart;
+	/** When the game first went into a world or server (the session module from the game's start). */
+	static long gameStart;
 
 	// ---------- simple text modules ----------
 
@@ -188,7 +190,21 @@ public final class MoreModules {
 		Component content(Minecraft mc) {
 			if (mc.player == null || mc.level == null) return Component.translatable("biome.minecraft.plains");
 			String name = mc.level.getBiome(mc.player.blockPosition()).getRegisteredName();
-			return Component.translatable("biome." + name.replace(':', '.'));
+			// its id ("minecraft:plains") as packs and commands write it, or its name in the game's language
+			return Modules.cfg.biomeId ? Component.literal(name) : Component.translatable("biome." + name.replace(':', '.'));
+		}
+
+		/** With colours on: red in the Nether, violet in the End, blue by water, light blue in the cold, orange in the heat, green elsewhere. */
+		@Override
+		public int color(Minecraft mc) {
+			if (!Modules.cfg.biomeColored || mc.player == null || mc.level == null) return Modules.textColor();
+			if (mc.level.dimension() == net.minecraft.world.level.Level.NETHER) return 0xFFFF6B4A;
+			if (mc.level.dimension() == net.minecraft.world.level.Level.END) return 0xFFC084FC;
+			var biome = mc.level.getBiome(mc.player.blockPosition());
+			String name = biome.getRegisteredName();
+			if (name.contains("ocean") || name.contains("river")) return 0xFF4FA3FF;
+			float temperature = biome.value().getBaseTemperature();
+			return temperature < 0.15f ? 0xFFA5E8FF : temperature > 1.0f ? 0xFFFFB04A : 0xFF7CDB6A;
 		}
 	}
 
@@ -203,7 +219,16 @@ public final class MoreModules {
 			// tick 0 is 6:00 in the morning
 			long ofDay = (t + 6000) % 24000;
 			String clock = String.format("%02d:%02d", ofDay / 1000, ofDay % 1000 * 60 / 1000);
-			return Component.translatable("slashclient-hud.daytime", day, clock);
+			return Modules.cfg.daytimeDay ? Component.translatable("slashclient-hud.daytime", day, clock) : Component.literal(clock);
+		}
+
+		/** With the warning on: orange in the last minute before night (monsters come out at 13000), red through the night. */
+		@Override
+		public int color(Minecraft mc) {
+			if (!Modules.cfg.daytimeWarn || mc.level == null) return Modules.textColor();
+			long t = mc.level.getOverworldClockTime() % 24000;
+			if (t >= 13000 && t < 23000) return 0xFFFF5555;
+			return t >= 13000 - 1200 && t < 13000 ? 0xFFFFAA33 : Modules.textColor();
 		}
 	}
 
@@ -217,13 +242,16 @@ public final class MoreModules {
 		}
 
 		Component content(Minecraft mc) {
-			return Component.translatable("slashclient-hud.light", level(mc));
+			if (!Modules.cfg.lightSplit || mc.player == null || mc.level == null) return Component.translatable("slashclient-hud.light", level(mc));
+			var pos = mc.player.blockPosition();
+			return Component.translatable("slashclient-hud.light.split", level(mc),
+				mc.level.getBrightness(net.minecraft.world.level.LightLayer.SKY, pos), mc.level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK, pos));
 		}
 
 		@Override
 		public int color(Minecraft mc) {
-			// mobs spawn at light 0 in recent versions: worth a red warning
-			return level(mc) == 0 ? 0xFFFF5555 : Modules.textColor();
+			// mobs spawn at light 0 in recent versions: red at that (or the level set in its settings) and below
+			return level(mc) <= Modules.cfg.lightWarn ? 0xFFFF5555 : Modules.textColor();
 		}
 	}
 
@@ -233,7 +261,9 @@ public final class MoreModules {
 		}
 
 		Component content(Minecraft mc) {
-			long s = sessionStart == 0 ? 0 : (System.currentTimeMillis() - sessionStart) / 1000;
+			// from joining this world or server, or (set so) from the game's start
+			long from = Modules.cfg.sessionWholeGame ? gameStart : sessionStart;
+			long s = from == 0 ? 0 : (System.currentTimeMillis() - from) / 1000;
 			return Component.translatable("slashclient-hud.session", String.format("%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60));
 		}
 	}

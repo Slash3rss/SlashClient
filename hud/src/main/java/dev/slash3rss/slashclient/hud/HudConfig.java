@@ -51,6 +51,13 @@ public final class HudConfig {
 		public boolean outline;
 		/** How rounded the background's corners are, in pixels (null = the HUD-wide `cornerRadius`). */
 		public Integer radius;
+		/** When it shows (HudConfig.SHOW_WHEN; null = always), the server for "server" (a part of its address), and hidden with the chat or another window open. */
+		public String showWhen, showServer;
+		public boolean hideInChat, hideInScreens;
+
+		public String showWhen() {
+			return showWhen == null ? "always" : showWhen;
+		}
 
 		/** For Gson, so missing fields keep the defaults above. */
 		Placement() {}
@@ -562,6 +569,14 @@ public final class HudConfig {
 	/** The item counter: which groups it counts, the item in hand too, and the player's own items ("cobblestone, tnt"). */
 	public boolean itemsArrows = true, itemsPearls = true, itemsTotems = true, itemsGapples = true, itemsXp = true, itemsFireworks = true, itemsPotions = false, itemsHeld = false;
 	public String itemsCustom = "";
+	/** More of the modules' own options: the clock's date, the day's number and the night's warning, the biome's colour and id, light's warning level and its two kinds, the weather's time left, the session from the game's start, TPS's colours, the FPS graph's length and range, the elytra's rockets and warning. */
+	public boolean clockDate = false, daytimeDay = true, daytimeWarn = false, biomeColored = false, biomeId = false, lightSplit = false, skyWeatherTime = true, sessionWholeGame = false, fpsGraphMinMax = false, elytraRockets = true, elytraWarn = true;
+	public int lightWarn = 0, tpsGood = 19, tpsBad = 12, fpsGraphSamples = 90;
+	/** The compass's target: none, the nearest waypoint, the last death, or the waypoint named `compassTargetName`. */
+	public String compassTarget = "none", compassTargetName = "";
+	public static final String[] COMPASS_TARGETS = { "none", "nearest", "death", "named" };
+	/** When a module shows: always, in singleplayer, on servers, on the server named in its `showServer`. */
+	public static final String[] SHOW_WHEN = { "always", "single", "multi", "server" };
 	/** The compass's degrees under where you look. */
 	public boolean compassDegrees = true;
 	/** The most friends online the friends module lists. */
@@ -706,6 +721,7 @@ public final class HudConfig {
 		c.modules.put("tps", new Placement(false, 1, 0, -2, 92));
 		c.modules.put("network", new Placement(false, 1, 0, -2, 107));
 		c.modules.put("fpsgraph", new Placement(false, 0, 0, 2, 74));
+		c.modules.put("pinggraph", new Placement(false, 0, 0, 2, 120));
 		c.modules.put("friends", new Placement(false, 1, 1, -2, -28));
 		c.modules.put("kd", new Placement(false, 0.5f, 0, 0, 45));
 		c.modules.put("sky", new Placement(false, 0.5f, 0, 0, 30));
@@ -1121,6 +1137,23 @@ public final class HudConfig {
 		itemsPotions = other.itemsPotions;
 		itemsHeld = other.itemsHeld;
 		itemsCustom = other.itemsCustom;
+		clockDate = other.clockDate;
+		daytimeDay = other.daytimeDay;
+		daytimeWarn = other.daytimeWarn;
+		biomeColored = other.biomeColored;
+		biomeId = other.biomeId;
+		lightSplit = other.lightSplit;
+		skyWeatherTime = other.skyWeatherTime;
+		sessionWholeGame = other.sessionWholeGame;
+		fpsGraphMinMax = other.fpsGraphMinMax;
+		elytraRockets = other.elytraRockets;
+		elytraWarn = other.elytraWarn;
+		lightWarn = other.lightWarn;
+		tpsGood = other.tpsGood;
+		tpsBad = other.tpsBad;
+		fpsGraphSamples = other.fpsGraphSamples;
+		compassTarget = other.compassTarget;
+		compassTargetName = other.compassTargetName;
 		compassDegrees = other.compassDegrees;
 		friendsRows = Math.max(1, Math.min(15, other.friendsRows));
 		inventoryHotbar = other.inventoryHotbar;

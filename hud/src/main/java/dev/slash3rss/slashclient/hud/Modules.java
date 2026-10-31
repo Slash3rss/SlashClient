@@ -335,7 +335,11 @@ public final class Modules {
 
 		Component content(Minecraft mc) {
 			DateTimeFormatter f = cfg.clock12h ? (cfg.clockSeconds ? H12S : H12) : (cfg.clockSeconds ? H24S : H24);
-			return Component.literal(LocalTime.now().format(f));
+			String time = LocalTime.now().format(f);
+			// the date first, as the player's language writes it short (31.10.2026, 10/31/26)
+			if (!cfg.clockDate) return Component.literal(time);
+			java.util.Locale locale = java.util.Locale.forLanguageTag(mc.options.languageCode.replace('_', '-'));
+			return Component.literal(java.time.LocalDate.now().format(DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.SHORT).withLocale(locale)) + " · " + time);
 		}
 	}
 

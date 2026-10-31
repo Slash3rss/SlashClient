@@ -40,7 +40,7 @@ public final class ExtraModules {
 	private ExtraModules() {}
 
 	static List<HudModule> all() {
-		return List.of(new Durability(), new Ammo(), new Elytra(), new Tps(), new Network(), new FpsGraph(), new Compass(), new Sky(),
+		return List.of(new Durability(), new Ammo(), new Elytra(), new Tps(), new Network(), new FpsGraph(), new PingGraph(), new Compass(), new Sky(),
 			new KillsDeaths(), new BlockInfo(), new Friends(), new Hits());
 	}
 
@@ -295,8 +295,25 @@ public final class ExtraModules {
 			int left = e.isDamageableItem() ? (e.getMaxDamage() - e.getDamageValue()) * 100 / Math.max(1, e.getMaxDamage()) : 100;
 			// pitch up is negative in the game; shown as climbing (+) or diving (-)
 			int pitch = Math.round(-mc.player.getXRot());
-			return Component.translatable("slashclient-hud.elytra", String.format(java.util.Locale.ROOT, "%.1f", Stats.flightSpeed),
+			var out = Component.translatable("slashclient-hud.elytra", String.format(java.util.Locale.ROOT, "%.1f", Stats.flightSpeed),
 				(int) Math.floor(mc.player.getY()), pitch, left);
+			if (Modules.cfg.elytraRockets) {
+				int rockets = 0;
+				var inv = mc.player.getInventory();
+				for (int i = 0; i < inv.getContainerSize(); i++) if (inv.getItem(i).is(net.minecraft.world.item.Items.FIREWORK_ROCKET)) rockets += inv.getItem(i).getCount();
+				out.append(Component.literal(" · ")).append(Component.translatable("slashclient-hud.elytra.rockets", rockets));
+			}
+			return out;
+		}
+
+		/** With the warning on: orange when the elytra has a fifth left, red at a tenth. */
+		@Override
+		public int color(Minecraft mc) {
+			if (!Modules.cfg.elytraWarn || mc.player == null) return Modules.textColor();
+			ItemStack e = mc.player.getItemBySlot(EquipmentSlot.CHEST);
+			if (!e.isDamageableItem()) return Modules.textColor();
+			float left = (float) (e.getMaxDamage() - e.getDamageValue()) / Math.max(1, e.getMaxDamage());
+			return left <= 0.1f ? 0xFFFF5555 : left <= 0.2f ? 0xFFFFAA33 : Modules.textColor();
 		}
 	}
 
@@ -338,7 +355,8 @@ public final class ExtraModules {
 		@Override
 		public int color(Minecraft mc) {
 			double t = mc.getConnection() == null ? 20 : tps(mc);
-			return t < 0 ? Modules.textColor() : grade(20 - t, 1, 8);
+			// lost ticks graded by the thresholds set (in TPS: green from `tpsGood`, red at `tpsBad` and below)
+			return t < 0 ? Modules.textColor() : grade(20 - t, 20 - Modules.cfg.tpsGood, 20 - Modules.cfg.tpsBad);
 		}
 	}
 
@@ -371,14 +389,19 @@ public final class ExtraModules {
 	// ---------- 5. FPS graph: the last frames' times, the 1% lows ----------
 
 	static final class FpsGraph implements HudModule {
-		private static final int N = 90;
-		private static final float[] frames = new float[N];
+		/** The most frames kept; the graph shows the last `fpsGraphSamples` of them. */
+		private static final int MAX = 240;
+		private static final float[] frames = new float[MAX];
 		private static int next;
 		private static long lastFrame;
-		private static long lastSampleFrame = -1;
 
 		public String id() {
 			return "fpsgraph";
+		}
+
+		/** How many frames the graph is long (its settings), one pixel each. */
+		private static int length() {
+			return Math.max(30, Math.min(MAX, Modules.cfg.fpsGraphSamples));
 		}
 
 		/** One sample per drawn frame (the editor and the HUD both call this). */
@@ -386,28 +409,28 @@ public final class ExtraModules {
 			long now = System.nanoTime();
 			if (lastFrame != 0) {
 				frames[next] = (now - lastFrame) / 1e6f;
-				next = (next + 1) % N;
+				next = (next + 1) % MAX;
 			}
 			lastFrame = now;
 		}
 
 		public int width(Minecraft mc) {
-			return N + PAD * 2;
+			return length() + PAD * 2;
 		}
 
 		public int height(Minecraft mc) {
-			return 24 + 10 + PAD * 2;
+			return 24 + 10 + (Modules.cfg.fpsGraphMinMax ? 10 : 0) + PAD * 2;
 		}
 
 		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
 			sample();
-			int top = y + PAD + 10, h = 24;
+			int len = length(), top = y + PAD + 10, h = 24;
 			// 33 ms (30 FPS) fills the height; a guide line at 16.7 ms (60 FPS)
-			g.fill(x + PAD, top + h - Math.round(h * 16.7f / 33.3f), x + PAD + N, top + h - Math.round(h * 16.7f / 33.3f) + 1, 0x30FFFFFF);
-			float[] sorted = new float[N];
+			g.fill(x + PAD, top + h - Math.round(h * 16.7f / 33.3f), x + PAD + len, top + h - Math.round(h * 16.7f / 33.3f) + 1, 0x30FFFFFF);
+			float[] sorted = new float[len];
 			int n = 0;
-			for (int i = 0; i < N; i++) {
-				float ms = frames[(next + i) % N];
+			for (int i = 0; i < len; i++) {
+				float ms = frames[Math.floorMod(next - len + i, MAX)];
 				if (ms <= 0) continue;
 				sorted[n++] = ms;
 				int bh = Math.max(1, Math.min(h, Math.round(h * ms / 33.3f)));
@@ -417,6 +440,81 @@ public final class ExtraModules {
 			// the 1% low: the FPS of the slowest frames, what you feel as a stutter
 			int low = n == 0 ? 0 : Math.round(1000 / sorted[Math.max(0, n - 1 - n / 100)]);
 			text(g, mc, Component.translatable("slashclient-hud.fpsgraph", mc.getFps(), low), x + PAD, y + PAD, Modules.textColor());
+			if (Modules.cfg.fpsGraphMinMax && n > 0) {
+				// the slowest and the fastest frame on the graph, as FPS
+				text(g, mc, Component.translatable("slashclient-hud.fpsgraph.range", Math.round(1000 / sorted[n - 1]), Math.round(1000 / Math.max(0.1f, sorted[0]))),
+					x + PAD, top + h + 2, Modules.textColor());
+			}
+		}
+	}
+
+	// ---------- the ping over the last minute ----------
+
+	static final class PingGraph implements HudModule {
+		/** A sample a second, a minute of them, two pixels each. */
+		private static final int N = 60, BAR = 2;
+		private static final int[] samples = new int[N];
+		private static int next, count;
+		private static long sampledAt;
+
+		public String id() {
+			return "pinggraph";
+		}
+
+		/** Our own measurement; until its first answer the tab list's number (-1: unknown). */
+		private static int latency(Minecraft mc) {
+			if (mc.player == null || mc.getConnection() == null) return -1;
+			if (Latency.ms() >= 0) return Latency.ms();
+			var info = mc.getConnection().getPlayerInfo(mc.player.getUUID());
+			return info == null || info.getLatency() <= 0 ? -1 : info.getLatency();
+		}
+
+		private static void sample(Minecraft mc) {
+			long now = System.currentTimeMillis();
+			if (now - sampledAt < 1000) return;
+			sampledAt = now;
+			int ms = latency(mc);
+			if (ms < 0) return;
+			samples[next] = ms;
+			next = (next + 1) % N;
+			count = Math.min(N, count + 1);
+		}
+
+		@Override
+		public boolean visible(Minecraft mc) {
+			// in singleplayer there is no network between you and the world
+			return !mc.hasSingleplayerServer() && latency(mc) >= 0;
+		}
+
+		public int width(Minecraft mc) {
+			return N * BAR + PAD * 2;
+		}
+
+		public int height(Minecraft mc) {
+			return 24 + 10 + PAD * 2;
+		}
+
+		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
+			sample(mc);
+			int top = y + PAD + 10, h = 24;
+			// the "bad" threshold fills the height, the "good" one is a guide line
+			int scale = Math.max(Modules.cfg.pingBad, 50);
+			int guide = top + h - Math.round(h * Math.min(1f, (float) Modules.cfg.pingGood / scale));
+			g.fill(x + PAD, guide, x + PAD + N * BAR, guide + 1, 0x30FFFFFF);
+			long sum = 0;
+			boolean sample = count == 0 && mc.player == null;
+			int shown = sample ? N : count;
+			for (int i = 0; i < shown; i++) {
+				// in the editor before any server: a made-up wave
+				int ms = sample ? 40 + (int) Math.round(25 * Math.sin(i / 5.0)) : samples[Math.floorMod(next - count + i, N)];
+				sum += ms;
+				int bh = Math.max(1, Math.min(h, Math.round(h * (float) ms / scale)));
+				int bx = x + PAD + (N - shown + i) * BAR;
+				g.fill(bx, top + h - bh, bx + BAR - 1, top + h, grade(ms, Modules.cfg.pingGood, Modules.cfg.pingBad));
+			}
+			int now = sample ? 42 : latency(mc);
+			long avg = shown == 0 ? Math.max(now, 0) : sum / shown;
+			text(g, mc, Component.translatable("slashclient-hud.pinggraph", Math.max(now, 0), avg), x + PAD, y + PAD, Modules.textColor());
 		}
 	}
 
@@ -435,10 +533,41 @@ public final class ExtraModules {
 		}
 
 		public int height(Minecraft mc) {
-			return 20 + PAD * 2;
+			// a line more for the target's arrow, name and distance
+			return 20 + (cfg.compassTarget.equals("none") ? 0 : 10) + PAD * 2;
+		}
+
+		/** The waypoint the compass points to (its settings' target) in this dimension, or null. */
+		static Waypoints.Point target(Minecraft mc) {
+			if (mc.player == null || mc.level == null || cfg.compassTarget.equals("none")) return null;
+			String dim = Waypoints.dimension(mc);
+			Waypoints.Point best = null;
+			double bestD = Double.MAX_VALUE;
+			for (Waypoints.Point p : Waypoints.points(mc)) {
+				if (!dim.equals(p.dimension)) continue;
+				boolean fits = switch (cfg.compassTarget) {
+					case "death" -> p.death;
+					case "named" -> p.name != null && p.name.trim().equalsIgnoreCase(cfg.compassTargetName.trim());
+					default -> !p.death;
+				};
+				if (!fits) continue;
+				double d = mc.player.distanceToSqr(p.x + 0.5, mc.player.getY(), p.z + 0.5);
+				if (d < bestD) {
+					bestD = d;
+					best = p;
+				}
+			}
+			return best;
+		}
+
+		/** The arrow for a direction relative to where you look (0 = straight ahead, clockwise). */
+		static String arrow(float off) {
+			String[] arrows = { "\u2191", "\u2197", "\u2192", "\u2198", "\u2193", "\u2199", "\u2190", "\u2196" };
+			return arrows[Math.floorMod(Math.round(off / 45f), 8)];
 		}
 
 		public void draw(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
+			drawTarget(g, mc, x, y);
 			// 0 = north, clockwise, as on a map; the game's yaw is 0 to the south
 			float heading = mc.player == null ? 0 : Mth.wrapDegrees(mc.player.getYRot() + 180);
 			int cx = x + PAD + W / 2, top = y + PAD;
@@ -484,6 +613,26 @@ public final class ExtraModules {
 			g.fill(cx - dw / 2 - 2, top + 8, cx + dw / 2 + 2, top + 18, 0xC0000000);
 			text(g, mc, deg, cx - dw / 2, top + 9, Modules.textColor());
 		}
+
+		/** Under the strip: an arrow towards the target, its name and how far it is (a made-up one in the editor). */
+		private static void drawTarget(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
+			if (cfg.compassTarget.equals("none")) return;
+			Waypoints.Point p = target(mc);
+			String line;
+			int color = Modules.textColor();
+			if (p == null) {
+				if (mc.player != null) return;
+				line = arrow(30) + " " + Ui.tr("slashclient-hud.compassTarget.sample").getString() + " · 120 m";
+			} else {
+				float heading = Mth.wrapDegrees(mc.player.getYRot() + 180);
+				double dx = p.x + 0.5 - mc.player.getX(), dz = p.z + 0.5 - mc.player.getZ();
+				float bearing = (float) Math.toDegrees(Math.atan2(dx, -dz));
+				line = arrow(Mth.wrapDegrees(bearing - heading)) + " " + p.name + " · " + Math.round(Math.sqrt(dx * dx + dz * dz)) + " m";
+				color = p.color | 0xFF000000;
+			}
+			String shown = mc.font.plainSubstrByWidth(line, W);
+			text(g, mc, shown, x + PAD + (W - mc.font.width(shown)) / 2, y + PAD + 21, color);
+		}
 	}
 
 	// ---------- 7. the sky: time until dusk or dawn, and the weather ----------
@@ -499,8 +648,28 @@ public final class ExtraModules {
 			boolean day = t < 13000 || t >= 23000;
 			long until = day ? (13000 - t + 24000) % 24000 : 23000 - t;
 			String weather = mc.level == null ? "clear" : mc.level.isThundering() ? "thunder" : mc.level.isRaining() ? "rain" : "clear";
-			return Component.translatable(day ? "slashclient-hud.sky.dusk" : "slashclient-hud.sky.dawn", seconds(until / 20.0))
+			var out = Component.translatable(day ? "slashclient-hud.sky.dusk" : "slashclient-hud.sky.dawn", seconds(until / 20.0))
 				.append(Component.literal(" · ")).append(Component.translatable("slashclient-hud.sky." + weather));
+			int left = Modules.cfg.skyWeatherTime ? weatherLeft(mc) : -1;
+			if (left > 0) out.append(Component.literal(" · ")).append(Component.translatable(weather.equals("clear") ? "slashclient-hud.sky.rainIn" : "slashclient-hud.sky.endsIn", seconds(left / 20.0)));
+			return out;
+		}
+
+		/**
+		 * Ticks until the weather changes, known only in a world of the player's own (the server keeps its
+		 * timers): clear until the rain, or the rain (and the storm) until it stops; -1 elsewhere.
+		 */
+		static int weatherLeft(Minecraft mc) {
+			var server = mc.getSingleplayerServer();
+			if (server == null || mc.level == null) return -1;
+			//#if MC >= 26.1
+			var data = server.overworld().getWeatherData();
+			//#else
+			//$ var data = server.getWorldData().overworldData();
+			//#endif
+			if (mc.level.isThundering()) return Math.min(data.getThunderTime(), data.getRainTime());
+			if (mc.level.isRaining()) return data.getRainTime();
+			return data.getClearWeatherTime() > 0 ? data.getClearWeatherTime() : data.getRainTime();
 		}
 	}
 

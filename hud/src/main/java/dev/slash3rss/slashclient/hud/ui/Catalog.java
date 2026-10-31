@@ -128,7 +128,7 @@ public final class Catalog {
 		Map.entry("fps", "hud"), Map.entry("ping", "hud"), Map.entry("cps", "combat"), Map.entry("coords", "hud"),
 		Map.entry("speed", "hud"), Map.entry("clock", "hud"), Map.entry("server", "hud"), Map.entry("players", "hud"),
 		Map.entry("memory", "hud"), Map.entry("cpu", "hud"), Map.entry("gpu", "hud"), Map.entry("tps", "hud"), Map.entry("network", "hud"),
-		Map.entry("fpsgraph", "hud"), Map.entry("friends", "hud"), Map.entry("compass", "world"), Map.entry("sky", "world"), Map.entry("elytra", "world"),
+		Map.entry("fpsgraph", "hud"), Map.entry("pinggraph", "hud"), Map.entry("friends", "hud"), Map.entry("compass", "world"), Map.entry("sky", "world"), Map.entry("elytra", "world"),
 		Map.entry("block", "world"), Map.entry("durability", "combat"), Map.entry("ammo", "combat"), Map.entry("kd", "combat"), Map.entry("hits", "combat"), Map.entry("session", "hud"), Map.entry("biome", "world"), Map.entry("daytime", "world"),
 		Map.entry("light", "world"), Map.entry("saturation", "world"), Map.entry("movement", "world"), Map.entry("combo", "combat"),
 		Map.entry("reach", "combat"), Map.entry("target", "combat"), Map.entry("attackindicator", "combat"), Map.entry("armor", "combat"), Map.entry("effects", "combat"),
@@ -183,7 +183,12 @@ public final class Catalog {
 				new Slider("slashclient-hud.set.radius", 0f, HudConfig.MAX_RADIUS, 1f, "%.0f px", () -> (float) p.radius(cfg), v -> p.radius = Math.round(v)),
 				new Toggle("slashclient-hud.set.ownColor", () -> p.color != null, v -> p.color = v ? cfg.textColor : null),
 				new Colors("slashclient-hud.textColor", COLORS, () -> p.textColor(cfg), v -> p.color = v),
-				new Toggle("slashclient-hud.shadow", () -> p.shadow(cfg), v -> p.shadow = v)));
+				new Toggle("slashclient-hud.shadow", () -> p.shadow(cfg), v -> p.shadow = v),
+				// when it shows
+				new Choice("slashclient-hud.set.showWhen", HudConfig.SHOW_WHEN, "slashclient-hud.showWhen.", p::showWhen, v -> p.showWhen = v),
+				new Text("slashclient-hud.set.showServer", "slashclient-hud.set.showServerHint", 100, () -> p.showServer == null ? "" : p.showServer, v -> p.showServer = v),
+				new Toggle("slashclient-hud.set.hideInChat", () -> p.hideInChat, v -> p.hideInChat = v),
+				new Toggle("slashclient-hud.set.hideInScreens", () -> p.hideInScreens, v -> p.hideInScreens = v)));
 			// only what does something for it: a picture has no box, a module colouring its text itself takes no text colour
 			java.util.Set<String> pointless = new java.util.HashSet<>();
 			if (m.bare()) pointless.addAll(List.of("slashclient-hud.background", "slashclient-hud.set.opacity", "slashclient-hud.set.outline", "slashclient-hud.set.ownRadius", "slashclient-hud.set.radius"));
@@ -197,7 +202,32 @@ public final class Catalog {
 				case "clock" -> {
 					settings.add(new Toggle("slashclient-hud.set.clockSeconds", () -> cfg.clockSeconds, v -> cfg.clockSeconds = v));
 					settings.add(new Toggle("slashclient-hud.set.clock12h", () -> cfg.clock12h, v -> cfg.clock12h = v));
+					settings.add(new Toggle("slashclient-hud.set.clockDate", () -> cfg.clockDate, v -> cfg.clockDate = v));
 				}
+				case "daytime" -> {
+					settings.add(new Toggle("slashclient-hud.set.daytimeDay", () -> cfg.daytimeDay, v -> cfg.daytimeDay = v));
+					settings.add(new Toggle("slashclient-hud.set.daytimeWarn", () -> cfg.daytimeWarn, v -> cfg.daytimeWarn = v));
+				}
+				case "biome" -> {
+					settings.add(new Toggle("slashclient-hud.set.biomeColored", () -> cfg.biomeColored, v -> cfg.biomeColored = v));
+					settings.add(new Toggle("slashclient-hud.set.biomeId", () -> cfg.biomeId, v -> cfg.biomeId = v));
+				}
+				case "light" -> {
+					settings.add(new Slider("slashclient-hud.set.lightWarn", 0f, 15f, 1f, "%.0f", () -> (float) cfg.lightWarn, v -> cfg.lightWarn = Math.round(v)));
+					settings.add(new Toggle("slashclient-hud.set.lightSplit", () -> cfg.lightSplit, v -> cfg.lightSplit = v));
+				}
+				case "sky" -> settings.add(new Toggle("slashclient-hud.set.skyWeatherTime", () -> cfg.skyWeatherTime, v -> cfg.skyWeatherTime = v));
+				case "session" -> settings.add(new Toggle("slashclient-hud.set.sessionWholeGame", () -> cfg.sessionWholeGame, v -> cfg.sessionWholeGame = v));
+				case "tps" -> thresholds(settings, 1f, 20f, 1f, "%.0f TPS", () -> cfg.tpsGood, v -> cfg.tpsGood = v, () -> cfg.tpsBad, v -> cfg.tpsBad = v);
+				case "fpsgraph" -> {
+					settings.add(new Slider("slashclient-hud.set.fpsGraphSamples", 30f, 240f, 10f, "%.0f", () -> (float) cfg.fpsGraphSamples, v -> cfg.fpsGraphSamples = Math.round(v)));
+					settings.add(new Toggle("slashclient-hud.set.fpsGraphMinMax", () -> cfg.fpsGraphMinMax, v -> cfg.fpsGraphMinMax = v));
+				}
+				case "elytra" -> {
+					settings.add(new Toggle("slashclient-hud.set.elytraRockets", () -> cfg.elytraRockets, v -> cfg.elytraRockets = v));
+					settings.add(new Toggle("slashclient-hud.set.elytraWarn", () -> cfg.elytraWarn, v -> cfg.elytraWarn = v));
+				}
+				case "pinggraph" -> thresholds(settings, 10f, 1000f, 10f, "%.0f ms", () -> cfg.pingGood, v -> cfg.pingGood = v, () -> cfg.pingBad, v -> cfg.pingBad = v);
 				case "block" -> {
 					settings.add(new Toggle("slashclient-hud.set.blockTool", () -> cfg.blockTool, v -> cfg.blockTool = v));
 					settings.add(new Toggle("slashclient-hud.set.blockBestTool", () -> cfg.blockBestTool, v -> cfg.blockBestTool = v));
@@ -378,7 +408,11 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.set.itemsHeld", () -> cfg.itemsHeld, v -> cfg.itemsHeld = v));
 					settings.add(new Text("slashclient-hud.set.itemsCustom", "slashclient-hud.set.itemsCustomHint", 300, () -> cfg.itemsCustom, v -> cfg.itemsCustom = v));
 				}
-				case "compass" -> settings.add(new Toggle("slashclient-hud.set.compassDegrees", () -> cfg.compassDegrees, v -> cfg.compassDegrees = v));
+				case "compass" -> {
+					settings.add(new Toggle("slashclient-hud.set.compassDegrees", () -> cfg.compassDegrees, v -> cfg.compassDegrees = v));
+					settings.add(new Choice("slashclient-hud.set.compassTarget", HudConfig.COMPASS_TARGETS, "slashclient-hud.compassTarget.", () -> cfg.compassTarget, v -> cfg.compassTarget = v));
+					settings.add(new Text("slashclient-hud.set.compassTargetName", "slashclient-hud.set.compassTargetNameHint", 40, () -> cfg.compassTargetName, v -> cfg.compassTargetName = v));
+				}
 				case "friends" -> settings.add(new Slider("slashclient-hud.set.friendsRows", 1f, 15f, 1f, "%.0f", () -> (float) cfg.friendsRows, v -> cfg.friendsRows = Math.round(v)));
 				case "inventory" -> settings.add(new Toggle("slashclient-hud.set.inventoryHotbar", () -> cfg.inventoryHotbar, v -> cfg.inventoryHotbar = v));
 				case "twitchchat", "kickchat" -> streamChat(settings, m.id().equals("kickchat") ? () -> cfg.kickChat : () -> cfg.twitchChat, m.id().equals("kickchat"));
