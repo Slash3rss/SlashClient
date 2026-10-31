@@ -283,6 +283,8 @@ public final class HudConfig {
 	public String skyPlanSound = "default";
 	/** How the plan says when today's events start: "relative" (za 45 min), "clock" (19:00) or "both" (za 45 min (19:00)). */
 	public String skyPlanTime = "both";
+	/** minecraft.wiki in the game read in English although the game is in a language the wiki also has. */
+	public boolean mcWikiEnglish;
 	public static final String[] SKY_PLAN_TIMES = { "relative", "clock", "both" };
 	/** SkyUp's fish counter: split by "none", "size", "species" or "quality"; their weight and value shown. */
 	public String skyFishSplit = "none";
@@ -906,6 +908,7 @@ public final class HudConfig {
 		skyPlanBoss = other.skyPlanBoss;
 		skyPlanSound = other.skyPlanSound == null ? "default" : other.skyPlanSound;
 		skyPlanTime = java.util.Arrays.asList(SKY_PLAN_TIMES).contains(other.skyPlanTime) ? other.skyPlanTime : "both";
+		mcWikiEnglish = other.mcWikiEnglish;
 		skyTasksScroll = other.skyTasksScroll;
 		skyTasksShaman = other.skyTasksShaman;
 		skyTasksMark = oneOf(other.skyTasksMark, SKY_TASKS_MARKS);

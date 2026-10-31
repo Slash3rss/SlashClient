@@ -1,6 +1,4 @@
-// SkyUp's wiki is for SkyUp, played on 26.3: the screen is there only
-//#if MC >= 26.3
-package dev.slash3rss.slashclient.hud.skyup;
+package dev.slash3rss.slashclient.hud.wiki;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -12,6 +10,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -25,12 +24,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The SkyUp.pl wiki in the game: the articles by category (or the search's hits) on the left, the
- * article on the right with its headings, lists, tables and pictures, links to other articles
- * (followed here, "back" returns) and out of the wiki (opened in the browser after asking). It
- * reads through the launcher (SkyWiki); the article opened last opens again, where it was left.
+ * A wiki in the game (the SkyUp.pl wiki, minecraft.wiki): the articles by category (or the search's hits) on the
+ * left, the article on the right with its headings, lists, tables and pictures, links to other articles (followed
+ * here, "back" returns) and out of the wiki (opened in the browser after asking). It reads through the launcher
+ * (WikiSource); the article opened last opens again, where it was left.
  */
-public class SkyWikiScreen extends Screen {
+public class WikiScreen extends Screen {
 	private static final int ROW_H = 14, HIT_H = 24, LINE_H = 10, PAD = 12;
 	private static final int CODE = 0xFFFBBF24, LINE = 0x30FFFFFF;
 
@@ -40,15 +39,16 @@ public class SkyWikiScreen extends Screen {
 	/** One row of the list: a category's name (no slug) or an article, or a search's hit. */
 	private record Row(String label, String slug, String anchor, String note) {}
 
+	private final WikiSource source;
 	private final Screen parent;
 	private final List<Hit> hits = new ArrayList<>();
 	private final Scrollbar listBar = new Scrollbar(), articleBar = new Scrollbar();
 	private EditBox search;
-	private List<SkyWiki.Category> categories = List.of();
-	private List<SkyWiki.Hit> found;
+	private List<WikiSource.Category> categories = List.of();
+	private List<WikiSource.Hit> found;
 	private String searched = "";
 	private long searchAt;
-	private SkyWiki.Article article;
+	private WikiSource.Article article;
 	/** Where to go once the article is laid out (a link to a place on it). */
 	private String pendingAnchor;
 	private final Deque<String> back = new ArrayDeque<>();
@@ -64,9 +64,21 @@ public class SkyWikiScreen extends Screen {
 	private final Map<String, Integer> anchors = new HashMap<>();
 	private int laidWidth = -1, laidPictures = -1, contentH;
 
-	public SkyWikiScreen(Screen parent) {
-		super(Component.translatable("slashclient-hud.skyWiki.title"));
+	public WikiScreen(WikiSource source, Screen parent) {
+		super(Component.translatable(source.texts() + ".title"));
+		this.source = source;
 		this.parent = parent;
+	}
+
+	/** The window opened on an article (the thing in the player's hand, say), not where it was left. */
+	public WikiScreen(WikiSource source, Screen parent, String slug) {
+		this(source, parent);
+		open(slug, null, false, 0);
+	}
+
+	/** One of the window's texts (the wiki's own: "Szukaj w wiki", "Wiki SkyUp"). */
+	private Component tr(String name, Object... args) {
+		return Ui.tr(source.texts() + "." + name, args);
 	}
 
 	@Override
@@ -77,24 +89,26 @@ public class SkyWikiScreen extends Screen {
 		py = (height - ph) / 2;
 		listW = Math.max(100, Math.min(150, pw * 3 / 10));
 		String before = search == null ? "" : search.getValue();
-		search = new EditBox(font, px + PAD + 14, py + 30, listW - 16, 14, Ui.tr("slashclient-hud.skyWiki.search"));
-		search.setHint(Ui.tr("slashclient-hud.skyWiki.search"));
+		search = new EditBox(font, px + PAD + 14, py + 30, listW - 16, 14, tr("search"));
+		search.setHint(tr("search"));
 		search.setMaxLength(100);
 		search.setValue(before);
 		search.setResponder(v -> searchAt = System.currentTimeMillis() + 400);
 		addRenderableWidget(search);
 		laidWidth = -1;
-		if (categories.isEmpty()) SkyWiki.index(a -> {
+		source.index(a -> {
 			loadingIndex = false;
 			if (a.value() != null) categories = a.value();
 			else problem = a.error();
 		});
-		// where the player left off, or the wiki's own start page (skyup.pl/wiki/start, not in its menu)
-		if (article == null && !loadingArticle) open(SkyWiki.lastSlug != null ? SkyWiki.lastSlug : "start", null, false, SkyWiki.lastSlug != null ? SkyWiki.lastScroll : 0);
+		// where the player left off, or the wiki's own start page
+		String first = source.lastSlug != null ? source.lastSlug : source.start();
+		if (article == null && !loadingArticle && first != null) open(first, null, false, source.lastSlug != null ? source.lastScroll : 0);
+		else if (article == null && !loadingArticle) loadingIndex = loadingIndex && categories.isEmpty();
 	}
 
 	/** Opens an article (and a place on it); `remember` puts the one shown now on the way back. */
-	void open(String slug, String anchor, boolean remember, int at) {
+	public void open(String slug, String anchor, boolean remember, int at) {
 		if (slug == null || slug.isEmpty()) {
 			if (anchor != null) jump(anchor);
 			return;
@@ -105,7 +119,7 @@ public class SkyWikiScreen extends Screen {
 		}
 		if (remember && article != null) back.push(article.slug());
 		loadingArticle = true;
-		SkyWiki.article(slug, a -> {
+		source.article(slug, a -> {
 			loadingArticle = false;
 			if (a.value() == null) {
 				problem = a.error();
@@ -116,7 +130,11 @@ public class SkyWikiScreen extends Screen {
 			laidWidth = -1;
 			scroll = at;
 			pendingAnchor = anchor;
-			SkyWiki.lastSlug = slug;
+			source.lastSlug = slug;
+			// the list may name the article now (minecraft.wiki's articles read lately)
+			source.index(i -> {
+				if (i.value() != null) categories = i.value();
+			});
 		});
 	}
 
@@ -131,12 +149,12 @@ public class SkyWikiScreen extends Screen {
 		if (searchAt > 0 && System.currentTimeMillis() >= searchAt) {
 			searchAt = 0;
 			String q = search.getValue().strip();
-			if (q.length() < 3) {
+			if (q.length() < source.minSearch()) {
 				found = null;
 				searched = "";
 			} else if (!q.equals(searched)) {
 				searched = q;
-				SkyWiki.search(q, a -> {
+				source.search(q, a -> {
 					if (!q.equals(searched)) return;
 					found = a.value() != null ? a.value() : List.of();
 					listScroll = 0;
@@ -149,30 +167,41 @@ public class SkyWikiScreen extends Screen {
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
+		//#if MC < 1.20.2
+		//$ extractBackground(g, mx, my, delta);
+		//#endif
 		hits.clear();
 		listBar.hide();
 		articleBar.hide();
 		Ui.panel(g, px, py, pw, ph);
-		Ui.begin("skywiki", px, py, pw, ph);
+		Ui.begin("wiki", px, py, pw, ph);
 		int x = px + PAD, y = py + 10;
-		Ui.draw(g, Ui.trBold("slashclient-hud.skyWiki.title"), x, y, Ui.TEXT);
-		// the buttons on the right: close, the browser, back
+		Ui.draw(g, Ui.trBold(source.texts() + ".title"), x, y, Ui.TEXT);
+		// the buttons on the right: close, the browser, back, the wiki's language
 		int bx = px + pw - 24;
-		Ui.button(g, "skywiki:close", bx, y - 4, 16, 15, "close", Component.empty(), false, mx, my);
+		Ui.button(g, "wiki:close", bx, y - 4, 16, 15, "close", Component.empty(), false, mx, my);
 		hits.add(new Hit(bx, y - 4, 16, 15, this::onClose));
 		if (article != null && !article.url().isEmpty()) {
-			Component browser = Ui.tr("slashclient-hud.skyWiki.browser");
+			Component browser = tr("browser");
 			int w = Ui.buttonWidth(browser, "world", 15, 2);
 			bx -= w + 4;
-			Ui.button(g, "skywiki:browser", bx, y - 4, w, 15, "world", browser, false, mx, my);
+			Ui.button(g, "wiki:browser", bx, y - 4, w, 15, "world", browser, false, mx, my);
 			String url = article.url();
 			hits.add(new Hit(bx, y - 4, w, 15, () -> openUrl(url)));
 		}
+		String language = source.switchLabel();
+		if (language != null) {
+			Component label = Ui.text(language);
+			int w = Ui.buttonWidth(label, "language", 15, 2);
+			bx -= w + 4;
+			Ui.button(g, "wiki:language", bx, y - 4, w, 15, "language", label, false, mx, my);
+			hits.add(new Hit(bx, y - 4, w, 15, this::switchOver));
+		}
 		if (!back.isEmpty()) {
-			Component label = Ui.tr("slashclient-hud.skyWiki.back");
+			Component label = tr("back");
 			int w = Ui.buttonWidth(label, "back", 15, 2);
 			bx -= w + 4;
-			Ui.button(g, "skywiki:back", bx, y - 4, w, 15, "back", label, false, mx, my);
+			Ui.button(g, "wiki:back", bx, y - 4, w, 15, "back", label, false, mx, my);
 			hits.add(new Hit(bx, y - 4, w, 15, () -> open(back.pop(), null, false, 0)));
 		}
 		Ui.icon(g, "search", x, py + 32, 10, Ui.MUTED);
@@ -185,12 +214,12 @@ public class SkyWikiScreen extends Screen {
 	private List<Row> rows() {
 		List<Row> out = new ArrayList<>();
 		if (found != null) {
-			for (SkyWiki.Hit h : found) out.add(new Row(h.title(), h.slug(), h.anchor(), h.article().isEmpty() ? h.snippet() : h.article() + " · " + h.snippet()));
+			for (WikiSource.Hit h : found) out.add(new Row(h.title(), h.slug(), h.anchor(), h.article().isEmpty() ? h.snippet() : h.article() + " · " + h.snippet()));
 			return out;
 		}
-		for (SkyWiki.Category c : categories) {
+		for (WikiSource.Category c : categories) {
 			if (!c.name().isEmpty()) out.add(new Row(c.name(), null, null, null));
-			for (SkyWiki.Ref r : c.articles()) out.add(new Row(r.title(), r.slug(), null, null));
+			for (WikiSource.Ref r : c.articles()) out.add(new Row(r.title(), r.slug(), null, null));
 		}
 		return out;
 	}
@@ -203,12 +232,12 @@ public class SkyWikiScreen extends Screen {
 		listMax = Math.max(0, total - (bottom - top));
 		listScroll = Math.max(0, Math.min(listMax, listScroll));
 		if (rows.isEmpty()) {
-			String key = loadingIndex ? "slashclient-hud.skyWiki.loading" : found != null ? "slashclient-hud.skyWiki.noHits" : null;
-			if (key != null) Ui.draw(g, Ui.tr(key), x, top + 2, Ui.MUTED);
+			String key = loadingIndex ? "loading" : found != null ? "noHits" : null;
+			if (key != null) Ui.draw(g, tr(key), x, top + 2, Ui.MUTED);
 			return;
 		}
 		g.enableScissor(x, top, x + w, bottom);
-		Ui.beginClip("skywiki list", x, top, w, bottom - top);
+		Ui.beginClip("wiki list", x, top, w, bottom - top);
 		int ry = top - listScroll;
 		for (Row r : rows) {
 			int h = height(r);
@@ -246,11 +275,9 @@ public class SkyWikiScreen extends Screen {
 		ah = py + ph - 10 - ay;
 		g.fill(ax - 6, ay, ax - 5, ay + ah, LINE);
 		if (problem != null || article == null || loadingArticle) {
-			String key = loadingArticle ? "slashclient-hud.skyWiki.loading"
-				: "noLauncher".equals(problem) ? "slashclient-hud.skyWiki.noLauncher"
-				: "oldLauncher".equals(problem) ? "slashclient-hud.skyWiki.oldLauncher"
-				: problem != null ? null : "slashclient-hud.skyWiki.pick";
-			Component text = key != null ? Ui.tr(key) : Ui.tr("slashclient-hud.skyWiki.error", problem);
+			String key = loadingArticle ? "loading" : "noLauncher".equals(problem) ? "noLauncher" : "oldLauncher".equals(problem) ? "oldLauncher"
+				: problem != null ? null : "pick";
+			Component text = key != null ? tr(key) : tr("error", problem);
 			int ty = ay + 6;
 			for (var line : font.split(text, aw - 8)) {
 				g.text(font, line, ax + 4, ty, problem != null ? 0xFFF87171 : Ui.MUTED, false);
@@ -258,16 +285,16 @@ public class SkyWikiScreen extends Screen {
 			}
 			return;
 		}
-		if (laidWidth != aw || laidPictures != SkyWiki.pictureVersion) layout();
+		if (laidWidth != aw || laidPictures != source.pictureVersion) layout();
 		maxScroll = Math.max(0, contentH - ah);
 		if (pendingAnchor != null) {
 			jump(pendingAnchor);
 			pendingAnchor = null;
 		}
 		scroll = Math.max(0, Math.min(maxScroll, scroll));
-		SkyWiki.lastScroll = scroll;
+		source.lastScroll = scroll;
 		g.enableScissor(ax, ay, ax + aw, ay + ah);
-		Ui.beginClip("skywiki article", ax, ay, aw, ah);
+		Ui.beginClip("wiki article", ax, ay, aw, ah);
 		for (Op op : ops) {
 			int oy = ay + op.y() - scroll;
 			if (oy + op.h() < ay || oy > ay + ah) continue;
@@ -275,7 +302,7 @@ public class SkyWikiScreen extends Screen {
 			if (op.text() != null) {
 				g.text(font, op.text(), ox, oy, op.color(), false);
 			} else if (op.picture() != null) {
-				SkyWiki.Picture p = SkyWiki.picture(op.picture());
+				WikiSource.Picture p = source.picture(op.picture());
 				if (p != null) g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, p.id(), ox, oy, 0, 0, op.w(), op.h(), p.w(), p.h(), p.w(), p.h(), 0xFFFFFFFF);
 				else g.fill(ox, oy, ox + op.w(), oy + op.h(), 0x14FFFFFF);
 			} else if (op.link() == null) {
@@ -292,7 +319,7 @@ public class SkyWikiScreen extends Screen {
 
 	private void layout() {
 		laidWidth = aw;
-		laidPictures = SkyWiki.pictureVersion;
+		laidPictures = source.pictureVersion;
 		anchors.clear();
 		List<Op> out = new ArrayList<>();
 		int y = 2, w = aw - 4;
@@ -343,6 +370,9 @@ public class SkyWikiScreen extends Screen {
 				default -> {}
 			}
 		}
+		// where the article comes from, under it (the wiki's licence asks to name it)
+		Component credit = source.credit(article);
+		if (credit != null) y = flow(out, List.of(piece(Ui.text(credit.getString()).withStyle(st -> st.withItalic(true)), null)), 0, w, y + 6, Ui.MUTED, false) + 2;
 		ops = out;
 		contentH = y + 4;
 	}
@@ -353,13 +383,13 @@ public class SkyWikiScreen extends Screen {
 		int[] size = pictureSize(img, w, false);
 		int x = center ? (w - size[0]) / 2 : 0;
 		out.add(new Op(x, y, size[0], size[1], null, 0, id, null));
-		SkyWiki.picture(id);
+		source.picture(id);
 		return y + size[1];
 	}
 
 	/** A picture's size in the article: the wiki's (or the picture's) halved, never wider than `max`; in a line, as tall as the text. */
-	private static int[] pictureSize(JsonObject img, int max, boolean inline) {
-		SkyWiki.Picture p = SkyWiki.picture(str(img, "id"));
+	private int[] pictureSize(JsonObject img, int max, boolean inline) {
+		WikiSource.Picture p = source.picture(str(img, "id"));
 		int w = img.has("w") ? img.get("w").getAsInt() : 0, h = img.has("h") ? img.get("h").getAsInt() : 0;
 		if ((w == 0 || h == 0) && p != null) {
 			w = p.w();
@@ -394,7 +424,7 @@ public class SkyWikiScreen extends Screen {
 				if (cells(c) == 1) {
 					JsonObject cell = c.getAsJsonObject();
 					want[col] = Math.max(want[col], Math.min(w / 2, natural(cell) + 8));
-					for (Piece p : pieces(cell.getAsJsonArray("spans"), cell.has("head"))) need[col] = Math.max(need[col], p.width(font) + 8);
+					for (Piece p : pieces(cell.getAsJsonArray("spans"), cell.has("head"))) need[col] = Math.max(need[col], width(p) + 8);
 				}
 				col += cells(c);
 			}
@@ -459,16 +489,16 @@ public class SkyWikiScreen extends Screen {
 			if (p.br) {
 				best = Math.max(best, line);
 				line = 0;
-			} else line += p.width(font);
+			} else line += width(p);
 		}
 		return Math.max(best, line);
 	}
 
 	/** A word (with its space), a picture in the line, or a line break, and where a click on it goes. */
-	private record Piece(Component text, JsonObject img, boolean br, Runnable link) {
-		int width(net.minecraft.client.gui.Font font) {
-			return text != null ? font.width(text) : img != null ? pictureSize(img, 0, true)[0] + 1 : 0;
-		}
+	private record Piece(Component text, JsonObject img, boolean br, Runnable link) {}
+
+	private int width(Piece p) {
+		return p.text != null ? font.width(p.text) : p.img != null ? pictureSize(p.img, 0, true)[0] + 1 : 0;
 	}
 
 	private static Piece piece(Component text, Runnable link) {
@@ -507,7 +537,10 @@ public class SkyWikiScreen extends Screen {
 
 	private Runnable link(JsonObject s) {
 		String wiki = str(s, "wiki"), anchor = str(s, "anchor"), url = str(s, "url");
-		if (!wiki.isEmpty()) return () -> open(wiki, anchor.isEmpty() ? null : anchor, true, 0);
+		if (!wiki.isEmpty()) {
+			String slug = source.linked(article, wiki);
+			return () -> open(slug, anchor.isEmpty() ? null : anchor, true, 0);
+		}
 		if (!anchor.isEmpty()) return () -> jump(anchor);
 		if (!url.isEmpty()) return () -> openUrl(url);
 		return null;
@@ -524,7 +557,7 @@ public class SkyWikiScreen extends Screen {
 				lineW = 0;
 				continue;
 			}
-			int pw = p.width(font);
+			int pw = width(p);
 			if (!line.isEmpty() && lineW + pw > w) {
 				y = emit(out, line, lineW, x, w, y, color, center);
 				line.clear();
@@ -566,12 +599,12 @@ public class SkyWikiScreen extends Screen {
 		for (Piece p : line) if (p.img != null) lineH = Math.max(lineH, pictureSize(p.img, 0, true)[1] + 1);
 		int textY = y + (lineH - LINE_H) / 2;
 		for (Piece p : line) {
-			int pw = p.width(font);
+			int pw = width(p);
 			if (p.text != null) out.add(new Op(cx, textY, pw, 9, p.text, color, null, null));
 			else if (p.img != null) {
 				int[] size = pictureSize(p.img, 0, true);
 				out.add(new Op(cx, y + (lineH - 1 - size[1]) / 2, size[0], size[1], null, 0, str(p.img, "id"), null));
-				SkyWiki.picture(str(p.img, "id"));
+				source.picture(str(p.img, "id"));
 			}
 			if (p.link != null) out.add(new Op(cx, y - 1, pw, lineH, null, 0, null, p.link));
 			cx += pw;
@@ -588,14 +621,34 @@ public class SkyWikiScreen extends Screen {
 		try {
 			URI uri = URI.create(url);
 			if (!"https".equals(uri.getScheme())) return;
+			//#if MC >= 1.21.1
 			ConfirmLinkScreen.confirmLinkNow(this, uri);
+			//#else
+			//$ minecraft.setScreenAndShow(new ConfirmLinkScreen(yes -> {
+			//$ 	if (yes) net.minecraft.Util.getPlatform().openUri(url);
+			//$ 	minecraft.setScreenAndShow(this);
+			//$ }, url, true));
+			//#endif
 		} catch (IllegalArgumentException ignored) {
 		}
 	}
 
+	/** The wiki in the other language (minecraft.wiki in English or the game's): the search asked again there. */
+	private void switchOver() {
+		source.switchOver();
+		found = null;
+		searched = "";
+		searchAt = search.getValue().strip().isEmpty() ? 0 : 1;
+		source.index(a -> {
+			if (a.value() != null) categories = a.value();
+		});
+	}
+
 	// ---------- input ----------
 
+	//#if MC >= 1.20.2
 	@Override
+	//#endif
 	public void extractBackground(GuiGraphicsExtractor g, int mx, int my, float delta) {
 		// the main menu's panorama, or the game dimmed behind
 		if (minecraft.level == null) extractPanorama(g, delta);
@@ -603,7 +656,12 @@ public class SkyWikiScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean mouseClicked(MouseButtonEvent e, boolean doubleClick) {
+	//#else
+	//$ public boolean mouseClicked(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//#endif
 		if (e.button() == InputConstants.MOUSE_BUTTON_LEFT) {
 			if (listBar.press(e.x(), e.y())) {
 				listScroll = Math.round(listBar.drag(e.y()));
@@ -614,7 +672,11 @@ public class SkyWikiScreen extends Screen {
 				return true;
 			}
 		}
+		//#if MC >= 1.21.9
 		if (super.mouseClicked(e, doubleClick)) return true;
+		//#else
+		//$ if (super.mouseClicked(e.x(), e.y(), e.button())) return true;
+		//#endif
 		for (int i = hits.size() - 1; i >= 0; i--) {
 			Hit h = hits.get(i);
 			if (Ui.inside(e.x(), e.y(), h.x(), h.y(), h.w(), h.h())) {
@@ -626,7 +688,12 @@ public class SkyWikiScreen extends Screen {
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean mouseDragged(MouseButtonEvent e, double dx, double dy) {
+	//#else
+	//$ public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//#endif
 		if (listBar.dragging()) {
 			listScroll = Math.round(listBar.drag(e.y()));
 			return true;
@@ -635,18 +702,54 @@ public class SkyWikiScreen extends Screen {
 			scroll = Math.round(articleBar.drag(e.y()));
 			return true;
 		}
+		//#if MC >= 1.21.9
 		return super.mouseDragged(e, dx, dy);
+		//#else
+		//$ return super.mouseDragged(e.x(), e.y(), e.button(), dx, dy);
+		//#endif
 	}
 
 	@Override
+	//#if MC >= 1.21.9
 	public boolean mouseReleased(MouseButtonEvent e) {
+	//#else
+	//$ public boolean mouseReleased(double mouseX, double mouseY, int button) {
+	//$ 	MouseButtonEvent e = new MouseButtonEvent(mouseX, mouseY, button);
+	//#endif
 		listBar.release();
 		articleBar.release();
+		//#if MC >= 1.21.9
 		return super.mouseReleased(e);
+		//#else
+		//$ return super.mouseReleased(e.x(), e.y(), e.button());
+		//#endif
 	}
 
 	@Override
+	//#if MC >= 1.21.9
+	public boolean keyPressed(KeyEvent e) {
+	//#else
+	//$ public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+	//$ 	KeyEvent e = new KeyEvent(keyCode, scanCode, modifiers);
+	//#endif
+		// Backspace outside the search goes back, as in a browser
+		if (e.key() == InputConstants.KEY_BACKSPACE && !search.isFocused() && !back.isEmpty()) {
+			goBack();
+			return true;
+		}
+		//#if MC >= 1.21.9
+		return super.keyPressed(e);
+		//#else
+		//$ return super.keyPressed(e.key(), e.scancode(), e.modifiers());
+		//#endif
+	}
+
+	@Override
+	//#if MC >= 1.20.2
 	public boolean mouseScrolled(double x, double y, double h, double v) {
+	//#else
+	//$ public boolean mouseScrolled(double x, double y, double v) {
+	//#endif
 		if (x < ax - 6) listScroll = Math.max(0, Math.min(listMax, listScroll - (int) Math.round(v * ROW_H * 2)));
 		else scroll = Math.max(0, Math.min(maxScroll, scroll - (int) Math.round(v * LINE_H * 3)));
 		return true;
@@ -665,7 +768,7 @@ public class SkyWikiScreen extends Screen {
 	// ---------- for the in-game test ----------
 
 	/** What the screen shows: the list's labels, the article's title, how tall it is laid out, its links. */
-	String state() {
+	public String state() {
 		StringBuilder s = new StringBuilder();
 		for (Row r : rows()) s.append(r.slug() == null && r.anchor() == null ? "#" : "").append(r.label()).append('|');
 		s.append(" article=").append(article == null ? "" : article.slug()).append(" height=").append(contentH).append(" back=").append(back.size());
@@ -674,7 +777,7 @@ public class SkyWikiScreen extends Screen {
 	}
 
 	/** Follows the article's first link to another article. */
-	boolean followFirstLink() {
+	public boolean followFirstLink() {
 		for (JsonElement e : article.blocks()) {
 			JsonObject b = e.getAsJsonObject();
 			if (!b.has("spans")) continue;
@@ -688,17 +791,33 @@ public class SkyWikiScreen extends Screen {
 		return false;
 	}
 
-	void jumpTo(String anchor) {
+	/** Follows the article's link to another article, in its text or its tables (the infobox). */
+	public boolean followLink(String wiki) {
+		for (JsonElement e : article.blocks()) {
+			JsonObject b = e.getAsJsonObject();
+			List<JsonElement> spans = new ArrayList<>();
+			if (b.has("spans")) b.getAsJsonArray("spans").forEach(spans::add);
+			if (b.has("rows")) for (JsonElement r : b.getAsJsonArray("rows")) for (JsonElement c : r.getAsJsonArray()) c.getAsJsonObject().getAsJsonArray("spans").forEach(spans::add);
+			for (JsonElement s : spans) {
+				if (wiki.equals(str(s.getAsJsonObject(), "wiki"))) {
+					link(s.getAsJsonObject()).run();
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	public void jumpTo(String anchor) {
 		jump(anchor);
 	}
 
-	void goBack() {
+	public void goBack() {
 		if (!back.isEmpty()) open(back.pop(), null, false, 0);
 	}
 
-	void typeSearch(String q) {
+	public void typeSearch(String q) {
 		search.setValue(q);
 		searchAt = 1;
 	}
 }
-//#endif

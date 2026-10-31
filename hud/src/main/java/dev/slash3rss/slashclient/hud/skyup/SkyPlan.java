@@ -152,9 +152,9 @@ public final class SkyPlan {
 
 	/** Joining SkyUp: the plan read from the wiki, once a game. */
 	public static void joined(Minecraft mc) {
-		if (asked || !SkyTasks.onSkyUp(mc) || !SkyWiki.bridged()) return;
+		if (asked || !SkyTasks.onSkyUp(mc) || !SkyWiki.bridgedNow()) return;
 		asked = true;
-		SkyWiki.article("plan-tygodnia", a -> {
+		SkyWiki.read("plan-tygodnia", a -> {
 			if (a.value() == null) return;
 			List<Slot> read = parse(a.value().blocks());
 			if (read.isEmpty()) return;

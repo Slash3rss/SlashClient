@@ -2,6 +2,7 @@
 //#if MC >= 26.3
 package dev.slash3rss.slashclient.hud.skyup;
 
+import dev.slash3rss.slashclient.hud.wiki.WikiScreen;
 import net.minecraft.client.Minecraft;
 
 import java.util.Map;
@@ -12,20 +13,20 @@ public final class SkyWikiTestHooks {
 
 	/** The bridge's answers by path (null: the launcher again). */
 	public static void feed(Map<String, String> answers) {
-		SkyWiki.feed(answers);
+		SkyWiki.feedAnswers(answers);
 	}
 
 	public static void open() {
-		Minecraft.getInstance().setScreenAndShow(new SkyWikiScreen(null));
+		Minecraft.getInstance().setScreenAndShow(SkyWiki.screen(null));
 	}
 
-	private static SkyWikiScreen screen() {
-		return dev.slash3rss.slashclient.hud.Compat.screen(Minecraft.getInstance()) instanceof SkyWikiScreen s ? s : null;
+	private static WikiScreen screen() {
+		return dev.slash3rss.slashclient.hud.Compat.screen(Minecraft.getInstance()) instanceof WikiScreen s ? s : null;
 	}
 
 	/** What the screen shows (its list, the article and how tall it is), or "" when it is not open. */
 	public static String state() {
-		SkyWikiScreen s = screen();
+		WikiScreen s = screen();
 		return s == null ? "" : s.state();
 	}
 

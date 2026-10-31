@@ -474,6 +474,11 @@ public final class Catalog {
 			var mc = net.minecraft.client.Minecraft.getInstance();
 			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.world.XpCalcScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
 		}));
+		// minecraft.wiki, read through the launcher
+		out.add(new Entry("mcWiki", "slashclient-hud.mcWiki.title", "extras", "m-mcwiki", null, null, List.of(), () -> {
+			var mc = net.minecraft.client.Minecraft.getInstance();
+			mc.setScreenAndShow(dev.slash3rss.slashclient.hud.wiki.McWiki.screen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+		}));
 		//#if MC >= 26.3
 		// and its SkyUp edition: bottling with the tax, the mending assistant, the AFK countdown
 		out.add(new Entry("skyXpCalc", "slashclient-hud.skyXp.title", "skyup", "m-skyxpcalc", null, null, List.of(), () -> {
@@ -494,7 +499,7 @@ public final class Catalog {
 		// SkyUp's wiki, read through the launcher
 		out.add(new Entry("skyWiki", "slashclient-hud.skyWiki.title", "skyup", "m-skywiki", null, null, List.of(), () -> {
 			var mc = net.minecraft.client.Minecraft.getInstance();
-			mc.setScreenAndShow(new dev.slash3rss.slashclient.hud.skyup.SkyWikiScreen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
+			mc.setScreenAndShow(dev.slash3rss.slashclient.hud.skyup.SkyWiki.screen(dev.slash3rss.slashclient.hud.Compat.screen(mc)));
 		}));
 		// SkyUp's cases in detail: every reward of each case, won or not
 		out.add(new Entry("skyCaseStats", "slashclient-hud.skyCase.screen", "skyup", "m-skycase", null, null, List.of(), () -> {

@@ -174,6 +174,9 @@ public class SlashHud implements ClientModInitializer {
 		DungeonMap.zoomInKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonZoomIn", InputConstants.KEY_EQUALS, category));
 		DungeonMap.zoomOutKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonZoomOut", InputConstants.KEY_MINUS, category));
 		DungeonMap.fullKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.dungeonMap", InputConstants.KEY_M, category));
+		// minecraft.wiki: the window, and the article about the thing in hand (no keys by default)
+		dev.slash3rss.slashclient.hud.wiki.McWiki.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.mcWiki", InputConstants.UNKNOWN.getValue(), category));
+		dev.slash3rss.slashclient.hud.wiki.McWiki.lookupKey = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.mcWikiLookup", InputConstants.UNKNOWN.getValue(), category));
 		//#if MC >= 26.3
 		// SkyUp's GUIs (the island tasks): F7 on an open one saves what it holds
 		SkyDump.key = KeyMappingHelper.registerKeyMapping(new KeyMapping("key.slashclient-hud.skyDump", InputConstants.KEY_F7, category));
@@ -285,6 +288,8 @@ public class SlashHud implements ClientModInitializer {
 				InventorySort.attach(mc, container);
 				// the helpers' keys (holding a button, the autoclicker) also over the window
 				Assist.attach(mc, container);
+				// the wiki's lookup key over an item
+				dev.slash3rss.slashclient.hud.wiki.McWiki.attach(mc, container);
 				//#if MC >= 26.3
 				net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents.allowKeyPress(screen).register((s, e) -> !SkyDump.key(container, e) && !SkyTasks.key(container, e)
 					&& !dev.slash3rss.slashclient.hud.skyup.SkyShaman.key(container, e));
@@ -345,6 +350,7 @@ public class SlashHud implements ClientModInitializer {
 			BenchDisplay.tick(mc);
 			StreamChatModule.tick(mc);
 			NowPlayingModule.tick(mc);
+			dev.slash3rss.slashclient.hud.wiki.McWiki.tick(mc);
 			//#if MC >= 26.3
 			SkyTasks.tick(mc);
 			SkyCase.tick(mc);
