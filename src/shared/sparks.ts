@@ -36,3 +36,13 @@ export const signedSparks = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}$
 
 /** An amount with the sign only, for tight spots: "✦ 1 250". */
 export const sparkAmount = (n: number) => `${CURRENCY.sign} ${n.toLocaleString(locale())}`;
+
+/** An amount cut short for the menu's badge: "✦ 1.4k", "✦ 12k", "✦ 2.1M" (rounded down, never more than there is). */
+export function sparkShort(n: number): string {
+  const abs = Math.abs(n);
+  if (abs < 1000) return sparkAmount(n);
+  const [unit, suffix] = abs >= 1e6 ? [1e6, 'M'] : [1e3, 'k'];
+  const step = abs >= unit * 100 ? 1 : 10;
+  const short = Math.trunc((n / unit) * step) / step;
+  return `${CURRENCY.sign} ${short.toLocaleString(locale(), { maximumFractionDigits: 1 })}${suffix}`;
+}

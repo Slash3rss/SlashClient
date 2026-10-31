@@ -1,5 +1,5 @@
 import { getLang, locale, t } from '../shared/i18n';
-import { currencyName, currencyOf, signedSparks, sparkAmount, sparks } from '../shared/sparks';
+import { currencyName, currencyOf, signedSparks, sparkAmount, sparkShort, sparks } from '../shared/sparks';
 import { buyWithConfirm, shortBy, type ShopItem } from './sparkShop';
 import { bonusText, completedText, renderChallenges, type Challenge, type Challenges } from './challenges';
 
@@ -125,7 +125,7 @@ export function createAchievements(root: HTMLElement, deps: AchievementsDeps) {
     }
     balance = n;
     if (deps.badge) {
-      deps.badge.textContent = sparkAmount(n);
+      deps.badge.textContent = sparkShort(n);
       deps.badge.title = t('Twoje {0}: {1}', currencyName(), sparks(n));
       deps.badge.classList.remove('hidden');
     }

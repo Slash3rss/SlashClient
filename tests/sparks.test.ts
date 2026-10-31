@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { setLang } from '../src/shared/i18n';
-import { CURRENCY, polishForm, signedSparks, sparks } from '../src/shared/sparks';
+import { CURRENCY, polishForm, signedSparks, sparkShort, sparks } from '../src/shared/sparks';
 import { byCategory, iconFor, summaryText, unlockText, type Achievement } from '../src/renderer/achievements';
 import { shortBy } from '../src/renderer/sparkShop';
 import { ITEMS } from '../server/src/cosmetics';
@@ -80,6 +80,19 @@ describe('sparks', () => {
     assert.equal(iconFor({ group: 'server_visit' }), 'fa-plane-arrival');
     // not a Font Awesome name: never put into the class
     assert.equal(iconFor({ icon: 'fa-x" onclick="', group: 'hours' }), 'fa-clock');
+  });
+
+  it('cuts the menu badge short, rounding down', () => {
+    setLang('en');
+    const sign = CURRENCY.sign;
+    assert.equal(sparkShort(999), `${sign} 999`);
+    assert.equal(sparkShort(1455), `${sign} 1.4k`);
+    assert.equal(sparkShort(1000), `${sign} 1k`);
+    assert.equal(sparkShort(12_980), `${sign} 12.9k`);
+    assert.equal(sparkShort(154_321), `${sign} 154k`);
+    assert.equal(sparkShort(2_150_000), `${sign} 2.1M`);
+    setLang('pl');
+    assert.equal(sparkShort(1455), `${sign} 1,4k`);
   });
 
   it('has every icon the admin may pick in the Font Awesome the launcher and the website ship', () => {
