@@ -108,6 +108,17 @@ public final class SkyIncubator {
 		return NEEDED.matcher(SkyTaskParser.plain(thing)).matches();
 	}
 
+	/**
+	 * The incubator a requirement is about, as "Inkubator …", or null: "Inkubator kaktusów", or a kind alone where the
+	 * task counts what is on the island ("Posiadaj na wyspie co najmniej: wodorost 5 poz.").
+	 */
+	static String asked(SkyTaskParser.Section s, String thing) {
+		if (about(thing)) return thing;
+		if (!s.header.toLowerCase(Locale.ROOT).startsWith("posiadaj na wyspie")) return null;
+		String named = "Inkubator " + SkyTaskParser.plain(thing).strip();
+		return kind(named) != null ? named : null;
+	}
+
 	/** The kind a requirement names ("kaktusów" is the cactus one), or null. */
 	public static String kind(String thing) {
 		Matcher m = NEEDED.matcher(SkyTaskParser.plain(thing));

@@ -861,6 +861,26 @@ public final class SkyTasks {
 		return best;
 	}
 
+	private static final java.util.regex.Pattern EVERY_COLOUR = java.util.regex.Pattern.compile("(?i)^(.+?)\\s+w każdym kolorze$");
+
+	/** The coloured ones of a kind ("Cement": white, orange, … concrete): items whose Polish name is a colour and then that name. */
+	private static final Map<String, List<Item>> COLOURED = new HashMap<>();
+
+	public static List<Item> colours(String kind) {
+		String k = kind.toLowerCase(Locale.ROOT);
+		List<Item> out = COLOURED.get(k);
+		if (out != null) return out;
+		out = new ArrayList<>();
+		for (Item item : BuiltInRegistries.ITEM) {
+			String pl = SkyCounters.plItem(item).toLowerCase(Locale.ROOT);
+			// "Biała świeca", not the plain "Świeca"; "Biały cement", not "Biały cement w proszku"
+			if (pl.endsWith(" " + k) && pl.indexOf(' ') == pl.length() - k.length() - 1) out.add(item);
+		}
+		// kept only once the names are there (they are read from the game's resources)
+		if (!out.isEmpty()) COLOURED.put(k, out);
+		return out;
+	}
+
 	static long carried(Minecraft mc, String thing) {
 		if (mc.player == null || thing.isEmpty()) return -1;
 		// tasks read before SkyUp's no-break spaces were made plain ones still have them
@@ -881,6 +901,23 @@ public final class SkyTasks {
 			return n;
 		}
 		Inventory inv = mc.player.getInventory();
+		// "Glazurowana terakota w każdym kolorze": that many of every colour, so the colour the player has least of
+		java.util.regex.Matcher colours = EVERY_COLOUR.matcher(thing);
+		if (colours.matches()) {
+			List<Item> kinds = colours(colours.group(1));
+			if (kinds.isEmpty()) return -1;
+			long fewest = Long.MAX_VALUE;
+			for (Item kind : kinds) {
+				long n = 0;
+				for (int i = 0; i < inv.getContainerSize(); i++) {
+					if (i >= Inventory.INVENTORY_SIZE && i != Inventory.SLOT_OFFHAND) continue;
+					ItemStack s = inv.getItem(i);
+					if (s.is(kind)) n += s.getCount();
+				}
+				fewest = Math.min(fewest, n);
+			}
+			return fewest;
+		}
 		// "Dowolne jajko": every item that is one (white, brown and blue eggs)
 		if (thing.toLowerCase(Locale.ROOT).startsWith("dowoln")) {
 			long any = 0;
@@ -921,7 +958,8 @@ public final class SkyTasks {
 			return spent < 0 ? -1 : spent >= points ? Math.max(1, r.required) : 0;
 		}
 		// "Inkubator kaktusów: 1 poz.": the level read from the incubator's window
-		if (r.current < 0 && SkyIncubator.about(r.thing)) return SkyIncubator.level(r.thing);
+		String incubator = SkyIncubator.asked(s, r.thing);
+		if (r.current < 0 && incubator != null) return SkyIncubator.level(incubator);
 		// "Stój obok": what is around now
 		if (r.current < 0 && SkyCounters.kind(s) == SkyCounters.Kind.NEAR) return SkyCounters.around(mc, r.thing);
 		// the island's and the jobs' levels: from the sidebar; the dungeon's: from its boss bar
@@ -934,7 +972,7 @@ public final class SkyTasks {
 
 	/** The number shown is the client's own count, not the server's (shown with "~"). */
 	static boolean estimated(SkyTaskParser.Section s, SkyTaskParser.Req r) {
-		return !s.inventory() && (r.extra > 0 || (r.current < 0 && SkyCounters.kind(s) == SkyCounters.Kind.NEAR) || (r.current < 0 && SkyIncubator.about(r.thing))
+		return !s.inventory() && (r.extra > 0 || (r.current < 0 && SkyCounters.kind(s) == SkyCounters.Kind.NEAR) || (r.current < 0 && SkyIncubator.asked(s, r.thing) != null)
 			|| (r.current < 0 && SkyCounters.sidebarEstimate(s) && SkyCounters.fromSidebar(s) >= 0));
 	}
 
@@ -1188,7 +1226,7 @@ public final class SkyTasks {
 					// the generator's spent points: "~7/10 pkt" from its window (or a hint to open it)
 					int points = SkyGenerator.needed(r.thing), spent = SkyGenerator.spent();
 					// an incubator never opened: where to look
-					if (r.current < 0 && c < 0 && SkyIncubator.about(r.thing)) progress = Component.translatable("slashclient-hud.skyTasks.openIncubator").getString();
+					if (r.current < 0 && c < 0 && SkyIncubator.asked(s, r.thing) != null) progress = Component.translatable("slashclient-hud.skyTasks.openIncubator").getString();
 					// the dungeon's level comes from its boss bar: not in one since, where to look
 					if (r.current < 0 && c < 0 && s.header.toLowerCase(Locale.ROOT).startsWith("dotrzyj do poziomu w dungeon"))
 						progress = Component.translatable("slashclient-hud.skyTasks.enterDungeon", r.required).getString();

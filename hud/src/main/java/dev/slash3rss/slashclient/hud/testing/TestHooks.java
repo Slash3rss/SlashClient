@@ -2827,7 +2827,36 @@ public final class TestHooks {
 			"▪ Prędkość inkubacji » 18,46/min (0,92/3s)", "▪ Stan magazynu » 1", "▪ Pojemność magazynu » 2 225"));
 		SkyIncubator.seen(items);
 		return SkyIncubator.level("Inkubator trzciny") + " " + SkyIncubator.level("Inkubator kaktusów") + " " + SkyIncubator.kind("Inkubator dyń")
-			+ " " + SkyIncubator.kind("Inkubator wodorostów") + " " + SkyIncubator.kind("Inkubator kakao");
+			+ " " + SkyIncubator.kind("Inkubator wodorostów") + " " + SkyIncubator.kind("Inkubator kakao")
+			// the kind alone where the task counts what is on the island ("Posiadaj na wyspie co najmniej: trzcina 1 poz.")
+			+ " " + bareIncubator("trzcina") + " " + bareIncubator("wodorost");
+	}
+
+	private static long bareIncubator(String kind) {
+		var task = SkyTaskParser.parse("WTAJEMNICZONY", "» Glonopol «", java.util.List.of("Posiadaj na wyspie co najmniej:", "  » " + kind + ": 1 poz.", "", "Za ukończenie otrzymasz:", "» 200.0 SC"));
+		var s = task.sections.get(0);
+		return SkyTasks.current(net.minecraft.client.Minecraft.getInstance(), s, s.items.get(0));
+	}
+
+	/**
+	 * "Glazurowana terakota w każdym kolorze: 32", "Zjedz: Kura": the colour carried least counts (every colour 40 but
+	 * one 5, then none of it), and raw chicken is SkyUp's "Kura".
+	 */
+	public static String skyEveryColour() {
+		var mc = net.minecraft.client.Minecraft.getInstance();
+		var inv = mc.player.getInventory();
+		var task = SkyTaskParser.parse("MISTRZ", "» Glazurnik «", java.util.List.of("Posiadaj w ekwipunku:", "  » Glazurowana terakota w każdym kolorze: 32", "", "Za ukończenie otrzymasz:", "» 600.0 SC"));
+		var s = task.sections.get(0);
+		var r = s.items.get(0);
+		long none = SkyTasks.current(mc, s, r);
+		var kinds = SkyTasks.colours("Glazurowana terakota");
+		for (int i = 0; i < kinds.size(); i++) inv.setItem(9 + i, new net.minecraft.world.item.ItemStack(kinds.get(i), i == 3 ? 5 : 40));
+		long some = SkyTasks.current(mc, s, r);
+		inv.setItem(9 + 3, net.minecraft.world.item.ItemStack.EMPTY);
+		long missing = SkyTasks.current(mc, s, r);
+		for (int i = 0; i < kinds.size(); i++) inv.setItem(9 + i, net.minecraft.world.item.ItemStack.EMPTY);
+		boolean chicken = SkyCounters.matches("Kura", SkyCounters.item(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.CHICKEN)));
+		return kinds.size() + " " + SkyTasks.colours("Cement").size() + " " + SkyTasks.colours("Świeca").size() + " | " + none + " " + some + " " + missing + "/" + r.required + " | " + chicken;
 	}
 
 	/**

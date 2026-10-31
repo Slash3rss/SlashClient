@@ -307,7 +307,10 @@ public class GameSkyTasks implements FabricClientGameTest {
 			check(spentPoints == 6, "the generator's spent points", String.valueOf(spentPoints));
 			// an incubator's window: cocoa in its cost is the sugar cane one, at level 5 (its speed-up); no cactus one seen
 			String incubator = context.computeOnClient(mc -> TestHooks.skyIncubator());
-			check(incubator.equals("5 -1 dynia wodorosty null"), "the incubator's level", incubator);
+			check(incubator.equals("5 -1 dynia wodorosty null 5 -1"), "the incubator's level", incubator);
+			// "… w każdym kolorze": the colour carried least; "Zjedz: Kura" is raw chicken
+			String colours = context.computeOnClient(mc -> TestHooks.skyEveryColour());
+			check(colours.equals("16 16 16 | 0 5 0/32 | true"), "every colour", colours);
 			// shamanism: the witch's recipe under the task (nothing in hand: all missing), then a summon counted
 			// more counted live: a bell rung, a sheep shorn, the level, a case opened by hand
 			context.runOnClient(mc -> TestHooks.skyMoreTasks());

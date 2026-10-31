@@ -182,10 +182,12 @@ public final class SkyCounters {
 		return pl("entity." + net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(type).toLanguageKey());
 	}
 
-	static Thing item(ItemStack stack) {
+	public static Thing item(ItemStack stack) {
 		// the item's own name too, when the server renamed it
+		// and SkyUp's own name where it differs from the game's: raw chicken is "Kura" ("Zjedz: Kura")
 		return Thing.of(false, stack.is(ItemTags.LOGS), stack.is(ItemTags.SAPLINGS), stack.is(ItemTags.FISHES),
-			name(stack), stack.getItem().getName(stack).getString(), plItem(stack.getItem()));
+			name(stack), stack.getItem().getName(stack).getString(), plItem(stack.getItem()),
+			stack.is(net.minecraft.world.item.Items.CHICKEN) ? "Kura" : null);
 	}
 
 	// ---------- the events ----------
