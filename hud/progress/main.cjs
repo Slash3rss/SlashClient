@@ -13,6 +13,8 @@ app.whenReady().then(() => {
   const win = new BrowserWindow({
     width, height, x: workArea.x + workArea.width - width - 16, y: workArea.y + workArea.height - height - 16,
     alwaysOnTop: true, resizable: true, minimizable: true, maximizable: false, autoHideMenuBar: true,
+    // its own title bar (index.html): the title to drag it by, and buttons to hide and close it
+    frame: false,
     title: `Testy SlashClient ${arg('mc', '')}`, backgroundColor: '#0a0d14', show: false,
     // a local page of our own reading local logs: no remote content ever loads here
     webPreferences: { nodeIntegration: true, contextIsolation: false },
@@ -24,6 +26,8 @@ app.whenReady().then(() => {
   win.once('ready-to-show', () => win.showInactive());
   // as tall as what it shows (every game's share and the summary, no scrolling), its bottom edge staying where it is,
   // never taller than the screen
+  ipcMain.on('minimize', () => win.minimize());
+  ipcMain.on('close', () => win.close());
   ipcMain.on('fit', (_e, contentHeight) => {
     const area = screen.getDisplayMatching(win.getBounds()).workArea;
     const [w, h] = win.getContentSize();

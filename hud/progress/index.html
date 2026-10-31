@@ -6,9 +6,14 @@
 <style>
   :root { --bg: #0a0d14; --card: #121826; --border: #1f2937; --text: #e5e7eb; --muted: #8b95a7; --accent: #3b82f6; --ok: #22c55e; --bad: #ef4444; }
   * { box-sizing: border-box; }
-  body { margin: 0; padding: 14px; background: var(--bg); color: var(--text); font: 13px/1.4 "Segoe UI", system-ui, sans-serif; user-select: none; }
-  h1 { margin: 0 0 2px; font-size: 15px; font-weight: 700; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  body { margin: 0; padding: 14px; background: var(--bg); color: var(--text); font: 13px/1.4 "Segoe UI", system-ui, sans-serif; user-select: none; border: 1px solid var(--border); min-height: 100vh; }
+  /* the window's own title bar: dragged by it, its two buttons not */
+  h1 { margin: -8px -6px 2px 0; padding-top: 8px; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; -webkit-app-region: drag; }
+  h1 #title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   h1 small { color: var(--muted); font-weight: 500; font-size: 12px; }
+  .win { -webkit-app-region: no-drag; width: 26px; height: 22px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 13px; line-height: 22px; cursor: pointer; padding: 0; }
+  .win:hover { background: #1a2232; color: var(--text); }
+  .win.close:hover { background: var(--bad); color: #fff; }
   .overall { margin: 8px 0 12px; }
   .bar { height: 8px; border-radius: 999px; background: #1a2232; overflow: hidden; }
   .bar > div { height: 100%; width: 0; background: var(--accent); transition: width .4s ease; }
@@ -16,6 +21,7 @@
   .bar.bad > div { background: var(--bad); }
   .meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin-top: 4px; }
   .share { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+  .share:last-child { margin-bottom: 0; }
   .share .row { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
   .share b { font-weight: 600; }
   .share .now { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 4px; }
@@ -37,7 +43,8 @@
 </style>
 </head>
 <body>
-<h1><span id="title">Testy SlashClient</span><small id="clock"></small></h1>
+<h1><span id="title">Testy SlashClient</span><small id="clock"></small>
+  <button class="win" id="min" title="Minimalizuj">&#x2013;</button><button class="win close" id="close" title="Zamknij (testy biegną dalej)">&#x2715;</button></h1>
 <div class="overall">
   <div class="bar" id="all"><div></div></div>
   <div class="meta"><span id="count"></span><span id="eta"></span></div>
@@ -60,6 +67,10 @@ function overtaken() {
   }
 }
 const { execFile, spawn } = require('node:child_process');
+const { ipcRenderer } = require('electron');
+document.getElementById('min').onclick = () => ipcRenderer.send('minimize');
+// closing the window changes nothing in the tests
+document.getElementById('close').onclick = () => ipcRenderer.send('close');
 
 /** Shares asked to run again: the one clicked once waits for a second click (until then: when). */
 const restartArmed = {};
@@ -255,7 +266,7 @@ function render() {
   document.getElementById('clock').textContent = fmt(((ended ?? Date.now()) - started) / 1000);
   document.title = allFinished ? (failed ? `✖ Testy SlashClient ${mc}` : `✔ Testy SlashClient ${mc}`) : `${total ? Math.round((done / total) * 100) : 0}% · Testy SlashClient ${mc}`;
   // the window grows (or shrinks) to all of it
-  require('electron').ipcRenderer.send('fit', document.body.getBoundingClientRect().height);
+  ipcRenderer.send('fit', document.getElementById('shares').getBoundingClientRect().bottom + 15);
 }
 render();
 const timer = setInterval(() => {
