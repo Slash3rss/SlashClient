@@ -24,6 +24,7 @@ export const FEATURES = [
   { id: 'sprays', label: 'Spraye', labelEn: 'Sprays', description: 'Wysyłanie sprayów w grze do innych graczy.' },
   { id: 'chatImages', label: 'Zdjęcia w czacie', labelEn: 'Pictures in the chat', description: 'Wysyłanie nowych zdjęć w wiadomościach. Wysłane można dalej oglądać.' },
   { id: 'streams', label: 'Streamy (Twitch i Kick)', labelEn: 'Streams (Twitch and Kick)', description: 'Łączenie kanałów, znaczek LIVE u znajomych, powiadomienia i transmisja na profilu. Połączone kanały zostają.' },
+  { id: 'benchmarks', label: 'Linki do wyników benchmarka', labelEn: 'Benchmark result links', description: 'Nowe linki do wyników benchmarka ze specyfikacją komputera. Istniejące linki działają, a launcher kopiuje wtedy wynik jako tekst.' },
   { id: 'registration', label: 'Rejestracja nowych kont', labelEn: 'New accounts', description: 'Zakładanie kont przez nowych graczy. Istniejące konta logują się normalnie.' },
   { id: 'betaUpdates', label: 'Kanał beta aktualizacji', labelEn: 'Beta update channel', description: 'Launchery z wybranym kanałem beta dostają bety (wydania z tagiem v…-beta.N). Wyłączony: wszyscy dostają tylko zwykłe wydania, a wybór kanału znika z ustawień launchera.' },
   { id: 'seasonal', label: 'Wygląd sezonowy', labelEn: 'Seasonal look', description: 'Halloweenowy wygląd launchera i moda od 25 października do 2 listopada, biało-czerwony na Święto Niepodległości od 8 do 12 listopada (gracze mogą go też wyłączyć sami w Ustawieniach).' },
@@ -87,6 +88,7 @@ export function featuresFor(method: string, path: string, groupClan: (id: string
     else if (clan === '') out.push('groups');
   }
   if (method === 'POST' && path === '/v1/media') out.push('media');
+  if (method === 'POST' && path === '/v1/benchmarks') out.push('benchmarks');
   if (method === 'PUT' && /^\/v1\/cloud-profiles\/[\w-]+$/.test(path)) out.push('cloud');
   if (method === 'GET' && (/^\/(u|gracz|profil|player)\/[^/]+\/?$/.test(path) || /^\/v1\/profiles\/[^/]+(\/(head|skin))?$/.test(path) || path === '/sitemap-profiles.xml')) out.push('profiles');
   if (method === 'POST' && path === '/v1/mc/spray') out.push('sprays');

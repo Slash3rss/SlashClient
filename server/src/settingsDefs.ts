@@ -25,6 +25,7 @@ import type { SettingCategory, SettingDef } from './settings.ts';
 import { DEFAULT_MIN_FREE } from './storage.ts';
 import { STREAM_SETTING_DEFS } from './streams/settings.ts';
 import { SUGGESTION_SETTING_DEFS } from './suggestions.ts';
+import { BENCHMARK_DAYS } from './benchmarkShares.ts';
 import { LOG_DAYS, LOGS_PER_DAY, LOGS_PER_DAY_EACH, MAX_ANONYMOUS_LOG, MAX_LOG } from './tracker.ts';
 
 /**
@@ -223,6 +224,9 @@ export const SETTING_DEFS: SettingDef[] = [
     bytes('logs.maxAnonymousBytes', 'Największy log bez konta', 'Largest log without an account', MAX_ANONYMOUS_LOG, 'Log od kogoś, kto nie jest zalogowany (nie większy niż „Największy log”).', 64 * 1024, 64 * MB),
     { key: 'logs.dailyMb', label: 'Logi na dobę (razem)', labelEn: 'Logs a day (all together)', description: 'Ile MB logów serwer przyjmuje w ciągu doby od wszystkich graczy razem; potem odmawia do następnej doby.', type: 'int', default: LOGS_PER_DAY / MB, min: 1, max: 1_000_000, unit: 'MB' },
     rate('logs.viewsPerMinute', 'Otwarcia logów na minutę', 'Log views per minute', 60, 'Na adres IP (strony /logi/<id>).'),
+    { key: 'benchmarks.days', label: 'Przechowywanie wyników benchmarka (/benchmark)', labelEn: 'Benchmark results kept (/benchmark)', description: 'Ile dni działa link do wyniku benchmarka udostępnionego z launchera.', type: 'duration', default: BENCHMARK_DAYS, min: 1, max: 3650, unit: 'dni' },
+    rate('benchmarks.sharesPerMinute', 'Udostępnione wyniki benchmarka na minutę', 'Benchmark results shared per minute', 6, 'Na adres IP.'),
+    rate('benchmarks.viewsPerMinute', 'Otwarcia wyników benchmarka na minutę', 'Benchmark result views per minute', 60, 'Na adres IP (strony /benchmark/<id>).'),
     { key: 'logs.dailyMbEach', label: 'Logi na dobę (jedno konto lub adres)', labelEn: 'Logs a day (one account or address)', description: 'Ile MB logów przyjmuje się w ciągu doby od jednego konta, a bez konta od jednego adresu IP.', type: 'int', default: LOGS_PER_DAY_EACH / MB, min: 1, max: 1_000_000, unit: 'MB' },
   ]),
 

@@ -12,6 +12,7 @@ import { adminRoutes } from './admin.ts';
 import { partnerRoutes } from './partners.ts';
 import { createStatusRules } from './statusRules.ts';
 import { trackerRoutes } from './tracker.ts';
+import { benchmarkShareRoutes } from './benchmarkShares.ts';
 import { sharingRoutes } from './sharing.ts';
 import { positionRoutes } from './positions.ts';
 import { RequestLog, clientOf, limitAddress, maskIp, routeOf } from './requests.ts';
@@ -681,6 +682,16 @@ export function createApp(cfg: Config) {
     logDays: () => settings.num('logs.days'), maxLog: () => settings.num('logs.maxBytes'), maxAnonymousLog: () => settings.num('logs.maxAnonymousBytes'),
     dailyBytes: () => settings.num('logs.dailyMb') * 1024 * 1024, dailyBytesEach: () => settings.num('logs.dailyMbEach') * 1024 * 1024,
     diskFree: async (dir) => (await (cfg.storage?.diskSpace ?? realDiskSpace)(dir)).free, minFreeBytes: () => settings.num('storage.minFreeMb') * 1024 * 1024,
+    fail: (status, code) => {
+      throw new HttpError(status, code);
+    },
+  });
+
+  // benchmark results shared from the launcher (/benchmark/<id>)
+  const benchmarks = benchmarkShareRoutes({
+    sql: db.sql, webDir: cfg.webDir, publicUrl: cfg.publicUrl, days: () => settings.num('benchmarks.days'), clientIp, body,
+    limitShares: limiter('benchmarks.sharesPerMinute'), limitViews: limiter('benchmarks.viewsPerMinute'),
+    versioned: (html) => versioned(html, 'text/html'),
     fail: (status, code) => {
       throw new HttpError(status, code);
     },
@@ -1586,6 +1597,7 @@ export function createApp(cfg: Config) {
       },
     }),
     ...tracker.routes,
+    ...benchmarks.routes,
     ...shares.routes,
     ...media.routes,
     ...cloud.routes,
@@ -1984,9 +1996,10 @@ export function createApp(cfg: Config) {
       return;
     }
 
-    // a shared screenshot or clip: its file, and its page with the preview
+    // a shared screenshot or clip: its file, and its page with the preview; a shared benchmark result's page
     try {
       if (await media.serve(req, res, url)) return;
+      if (await benchmarks.serve(req, res, url)) return;
     } catch (err) {
       console.error('media:', (err as Error).message);
       if (!res.headersSent) serverError(req, res, url);
@@ -2411,6 +2424,11 @@ export function createApp(cfg: Config) {
       console.error('sesje:', (err as Error).message);
     }
     void tracker.cleanup().catch((err) => console.error('logi:', (err as Error).message));
+    try {
+      benchmarks.cleanup();
+    } catch (err) {
+      console.error('benchmarki:', (err as Error).message);
+    }
     void shares.cleanup().catch((err) => console.error('profile:', (err as Error).message));
     void media.cleanup().catch((err) => console.error('media:', (err as Error).message));
     void cloud.cleanup().catch((err) => console.error('chmura:', (err as Error).message));

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!--preview-->
+  <meta name="theme-color" content="#3b82f6" media="not all"><meta name="theme-color" content="#07090f">
+  <link rel="icon" href="/vendor/logo.png">
+  <link rel="stylesheet" href="/vendor/fa/css/all.min.css">
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/siteBanner.js"></script>
+  <link rel="stylesheet" href="/landing.css">
+  <link rel="stylesheet" href="/tracker.css">
+  <link rel="stylesheet" href="/media.css">
+  <link rel="stylesheet" href="/benchmark.css">
+  <script type="module" src="/benchmark.js"></script>
+</head>
+<body class="landing">
+  <div class="bg" aria-hidden="true"><div class="bg-grid"></div><div class="bg-glow g1"></div></div>
+
+  <header class="nav scrolled">
+    <div class="wrap">
+      <a class="brand" href="/" data-en-href="/en"><img src="/vendor/logo.png" alt=""><span>Slash<b>Client</b></span></a>
+      <nav class="nav-links">
+        <a href="/#funkcje" data-en="Features" data-en-href="/en#funkcje">Funkcje</a>
+        <a href="/#kosmetyki" data-en="Cosmetics" data-en-href="/en#kosmetyki">Kosmetyki</a>
+        <a href="/#faq" data-en-href="/en#faq">FAQ</a>
+        <a href="/zgloszenia" data-en="Bug reports" data-en-href="/bugs">Zgłoszenia</a>
+        <a href="/wsparcie" class="nav-support" data-en="Support" data-en-href="/support"><i class="fa-solid fa-heart"></i> Wesprzyj</a>
+      </nav>
+      <div class="push row">
+        <a class="btn hidden" id="nav-admin" href="/admin" title="Panel admina" data-en-title="Admin panel"><i class="fa-solid fa-shield-halved"></i> <span class="label" data-en="Admin panel">Panel admina</span></a>
+        <a class="btn" id="nav-account" href="/konto" title="Twoje konto" data-en-title="Your account" data-en-href="/account"><i class="fa-solid fa-user"></i> <span class="label" data-en="Sign in">Zaloguj się</span></a>
+        <a class="btn primary" href="/#pobierz" data-en-href="/en#pobierz"><i class="fa-solid fa-download"></i> <span class="label" data-en="Download">Pobierz</span></a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="account-page">
+      <div class="wrap bench-page">
+        <div class="head">
+          <span class="eyebrow" id="bench-kind">Benchmark</span>
+          <h2 id="bench-title" data-en="Loading…">Wczytuję…</h2>
+          <p class="muted" id="bench-meta"></p>
+        </div>
+        <div class="glass media-tools row hidden" id="bench-tools">
+          <span class="muted small" data-en="Measured with the SlashClient launcher and mod.">Zmierzone launcherem i modem SlashClient.</span>
+          <span class="push row">
+            <button type="button" id="bench-copy"><i class="fa-regular fa-copy"></i> <span class="label" data-en="Copy link">Kopiuj link</span></button>
+            <a class="btn primary" href="/#pobierz" data-en-href="/en#pobierz"><i class="fa-solid fa-gauge-high"></i> <span class="label" data-en="Measure your computer">Zmierz swój komputer</span></a>
+          </span>
+        </div>
+        <div class="bench-grid hidden" id="bench-view"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap row">
+      <span class="muted small" data-en="SlashClient · not affiliated with Mojang or Microsoft.">SlashClient · nie jest powiązany z Mojang ani Microsoft.</span>
+      <a class="push" href="/wsparcie" data-en="Support the project" data-en-href="/support"><i class="fa-solid fa-heart"></i> Wesprzyj projekt</a>
+      <a class="foot-link" href="/regulamin" data-en="Terms of Service" data-en-href="/terms">Regulamin</a>
+      <a class="foot-link" href="/polityka-prywatnosci" data-en="Privacy Policy" data-en-href="/privacy">Polityka prywatności</a>
+      <a href="/" data-en="Home page" data-en-href="/en">Strona główna</a>
+    </div>
+  </footer>
+</body>
+</html>
