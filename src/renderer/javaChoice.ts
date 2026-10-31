@@ -17,7 +17,7 @@ interface Comparison { at: number; version: string; runs: [CompareRun, CompareRu
 export interface JavaChoiceDeps {
   api: any;
   $: <T extends HTMLElement = HTMLElement>(sel: string) => T;
-  toast: (message: string, isError?: boolean) => void;
+  toast: (message: string, isError?: boolean, action?: { label: string; run: () => void; icon?: string }) => void;
   errorText: (err: unknown) => string;
   editing: () => string | undefined;
   profile: (id: string) => JavaProfile | undefined;
@@ -143,7 +143,10 @@ export function initJavaChoice(d: JavaChoiceDeps) {
     if (d.editing() === profileId) $('#java-compare-result').replaceChildren(el('p', { className: 'muted loading-text', textContent: t('Pomiar {0} z {1}: {2}', step, steps, name(vendor)) }));
   });
   // the chosen Java was not there (or did not download): the game starts on Mojang's, and the player hears why
-  api.on('launch:notice', ({ message }: { message: string }) => d.toast(message, true));
+  // with a command to run in a terminal (the GNOME window's plugin): a button that copies it
+  api.on('launch:notice', ({ message, command }: { message: string; command?: string }) => d.toast(message, true, command
+    ? { label: t('Kopiuj polecenie'), icon: 'fa-copy', run: () => void navigator.clipboard.writeText(command).then(() => d.toast(t('Skopiowano polecenie'))) }
+    : undefined));
 
   select().addEventListener('change', refresh);
   $('#java-compare').addEventListener('click', () => void compare());

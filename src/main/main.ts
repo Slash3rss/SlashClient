@@ -1893,7 +1893,8 @@ async function startGame(profileId: string, accountId: string, server: string | 
   if (gnome.missing && !gnomeHintShown) {
     gnomeHintShown = true;
     const command = await installCommand();
-    setTimeout(() => send('launch:notice', { profileId: profile.id, message: t('Okno gry na GNOME nie ma przycisków minimalizacji i zamknięcia, bo w systemie brakuje wtyczki libdecor. Zainstaluj ją w terminalu: {0}', command) }), 0);
+    // the command also on its own, for the notice's copy button
+    setTimeout(() => send('launch:notice', { profileId: profile.id, message: t('Okno gry na GNOME nie ma przycisków minimalizacji i zamknięcia, bo w systemie brakuje wtyczki libdecor. Zainstaluj ją w terminalu: {0}', command), command }), 0);
   }
   const perfEnv = { ...gnome.env, ...presetEnv(profile.perfPreset ?? 'off', profile.perfOff, process.platform, !!process.env.WAYLAND_DISPLAY) };
   // and the mod's saving mode (fewer effects and other players' cosmetics)

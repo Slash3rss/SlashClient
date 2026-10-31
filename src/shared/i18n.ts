@@ -939,6 +939,8 @@ const EN: Record<string, string> = {
   'Konta i logowanie nigdy nie trafiają do paczki. Każdy, kto zna kod, może pobrać profil.': 'Accounts and sign-ins never go into the pack. Anyone who knows the code can download the profile.',
   'Kod profilu (ważny 30 dni):': 'Profile code (valid for 30 days):',
   'Kopiuj': 'Copy',
+  'Kopiuj polecenie': 'Copy command',
+  'Skopiowano polecenie': 'Command copied',
   'Moje udostępnione profile': 'My shared profiles',
   'Z pliku .mrpack lub .zip (CurseForge), albo z kodu, który dał Ci znajomy.': 'From a .mrpack or .zip (CurseForge) file, or from a code a friend gave you.',
   'Z pliku…': 'From a file…',
