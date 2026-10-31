@@ -28,6 +28,12 @@
   .restart { margin-left: 6px; font: inherit; font-size: 11px; color: var(--text); background: #1a2232; border: 1px solid var(--border); border-radius: 6px; padding: 1px 8px; cursor: pointer; }
   .restart:hover { border-color: var(--accent); }
   .restart.sure { background: rgba(239,68,68,.18); color: #fca5a5; border-color: rgba(239,68,68,.5); }
+  .summary { border-radius: 10px; padding: 9px 11px; margin-bottom: 10px; border: 1px solid rgba(34,197,94,.45); background: rgba(34,197,94,.10); }
+  .summary.bad { border-color: rgba(239,68,68,.5); background: rgba(239,68,68,.10); }
+  .summary b { font-size: 14px; }
+  .summary .line { color: var(--muted); font-size: 12px; margin-top: 3px; }
+  .summary button { margin-top: 7px; font: inherit; font-size: 12px; color: var(--text); background: #1a2232; border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+  .summary button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
@@ -36,6 +42,7 @@
   <div class="bar" id="all"><div></div></div>
   <div class="meta"><span id="count"></span><span id="eta"></span></div>
 </div>
+<div id="summary"></div>
 <div id="shares"></div>
 <script>
 const fs = require('node:fs');
@@ -107,6 +114,8 @@ async function restart(i) {
   }
 }
 const started = Date.now();
+/** When the last share finished (the clock stops there; a share run again starts it once more). */
+let ended = null;
 document.getElementById('title').textContent = `Testy SlashClient · ${mc}`;
 const fmt = (s) => (s >= 60 ? `${Math.floor(s / 60)} min ${String(Math.round(s % 60)).padStart(2, '0')} s` : `${Math.round(s)} s`);
 
@@ -131,6 +140,46 @@ function read(i) {
   };
 }
 
+/** Every finished test of the run with its time, slowest first ("GameCosmetics 32 s"). */
+function times() {
+  const all = [];
+  for (let i = 1; i <= n; i++) {
+    let text = '';
+    try { text = fs.readFileSync(path.join(logs, `gametest-${i}.log`), 'utf8'); } catch {}
+    for (const m of text.matchAll(/SlashClient test time: (\S+) (\d+) s/g)) all.push({ name: m[1], s: Number(m[2]) });
+  }
+  return all.sort((a, b) => b.s - a.s);
+}
+
+/** The run's end said in a box over the games: how it went, how long it took, the slowest tests, the screenshots. */
+function summary(total, failedShares) {
+  const box = document.getElementById('summary');
+  if (!ended) { box.replaceChildren(); return; }
+  const el = document.createElement('div');
+  el.className = `summary${failedShares.length ? ' bad' : ''}`;
+  const head = document.createElement('b');
+  head.textContent = failedShares.length
+    ? `✖ Błędy w ${failedShares.length === 1 ? 'grze' : 'grach'} ${failedShares.join(', ')}/${n}`
+    : `✔ Wszystko przeszło`;
+  const line = document.createElement('div');
+  line.className = 'line';
+  line.textContent = `${total} testów · ${n} ${n === 1 ? 'gra' : n < 5 ? 'gry' : 'gier'} · ${fmt((ended - started) / 1000)}`;
+  el.append(head, line);
+  const slow = times().slice(0, 3);
+  if (slow.length) {
+    const s = document.createElement('div');
+    s.className = 'line';
+    s.textContent = `Najdłuższe: ${slow.map((t) => `${t.name} ${fmt(t.s)}`).join(', ')}`;
+    el.append(s);
+  }
+  const shots = document.createElement('button');
+  shots.textContent = 'Otwórz zrzuty ekranu';
+  // gametest.sh gathers every game's screenshots there once all are done
+  shots.onclick = () => require('electron').shell.openPath(path.join(logs, 'run', 'clientGameTest-all'));
+  el.append(shots);
+  box.replaceChildren(el);
+}
+
 /** When each share's current test started (by when its line first appeared). */
 const since = {};
 
@@ -138,12 +187,16 @@ function render() {
   const box = document.getElementById('shares');
   box.replaceChildren();
   let total = 0, done = 0, left = 0, failed = false, allFinished = true;
+  const failedShares = [];
   for (let i = 1; i <= n; i++) {
     const s = read(i);
     total += s.total;
     done += s.finished && s.ok ? s.total : s.done;
     if (!s.finished) allFinished = false;
-    if (s.failed) failed = true;
+    if (s.failed) {
+      failed = true;
+      failedShares.push(i);
+    }
     const key = `${i}:${s.current}`;
     if (s.current && !since[key]) since[key] = Date.now();
     const runFor = s.current ? (Date.now() - since[key]) / 1000 : 0;
@@ -189,6 +242,9 @@ function render() {
     }
     box.append(el);
   }
+  if (allFinished && !ended) ended = Date.now();
+  if (!allFinished) ended = null;
+  summary(total, failedShares);
   const bar = document.getElementById('all');
   bar.className = `bar${allFinished ? (failed ? ' bad' : ' ok') : failed ? ' bad' : ''}`;
   bar.firstElementChild.style.width = `${total ? Math.round((done / total) * 100) : 0}%`;
@@ -196,7 +252,7 @@ function render() {
   document.getElementById('eta').textContent = allFinished
     ? (failed ? 'Zakończone z błędami' : 'Wszystko przeszło')
     : left ? `zostało ok. ${fmt(left)}` : '';
-  document.getElementById('clock').textContent = fmt((Date.now() - started) / 1000);
+  document.getElementById('clock').textContent = fmt(((ended ?? Date.now()) - started) / 1000);
   document.title = allFinished ? (failed ? `✖ Testy SlashClient ${mc}` : `✔ Testy SlashClient ${mc}`) : `${total ? Math.round((done / total) * 100) : 0}% · Testy SlashClient ${mc}`;
 }
 render();
