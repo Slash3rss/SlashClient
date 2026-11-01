@@ -31,7 +31,7 @@ import dev.slash3rss.slashclient.hud.Compat;
 /**
  * The dungeon map's rooms, and what is known about each.
  *
- * Rooms come from the map SkyUp builds of each dungeon above it (terracotta at y 37–39, one to one
+ * Rooms come from the map SkyUp builds of each dungeon above it (concrete or terracotta at y 37, one to one
  * over the rooms): black is a room's walls, the rest its inside, yellow the ways through it; where
  * yellow crosses a wall, that is a door. Where there is no such map, from the floor alone: no floor
  * to stand on is a wall. A gap in a wall up to eleven blocks wide is a doorway, and rooms do not run

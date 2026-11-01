@@ -11,8 +11,8 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
  * and under each room at y 20 a sign with its size ("1x3-G-1") in the corner block the room spreads
  * from (as on SkyUp: top left unturned; rooms turned, their signs with them). A 5×5 start room with
  * walls of its own inside on the grid's lines, rooms of 1×1, 2×2, 1×3, 2×1 (its sign turned: "1x2"),
- * one with a pillar in it and one not seen yet, known from its sign alone: each its own tile on the
- * simple map, and one start room, whole.
+ * one with a pillar in it and one not seen yet, known from its sign and SkyUp's concrete map over it
+ * (its door too): each its own tile on the simple map, and one start room, whole.
  */
 public class GameDungeonRooms implements FabricClientGameTest {
 	@Override
@@ -45,6 +45,11 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			}
 			// a room below the start room not seen yet: only its sign
 			server.runCommand(sign(x0, z0, c, new int[] { 0, 5, 1, 5 }, 2, "2x1-G-1"));
+			// over it SkyUp's map in concrete (y 37, one to one): grey inside, a black wall round it, and a
+			// yellow way through the wall to the start room, so the map knows its door before it is seen
+			server.runCommand(String.format("fill %d 37 %d %d 37 %d black_concrete", x0, z0 + 5 * c, x0 + 2 * c - 1, z0 + 6 * c - 1));
+			server.runCommand(String.format("fill %d 37 %d %d 37 %d gray_concrete", x0 + 1, z0 + 5 * c + 1, x0 + 2 * c - 2, z0 + 6 * c - 2));
+			server.runCommand(String.format("fill %d 37 %d %d 37 %d yellow_concrete", x0 + 6, z0 + 5 * c - 1, x0 + 6, z0 + 5 * c + 6));
 			// doorways five wide through the two blocks of wall between rooms: across (x of the wall line, square down) or down
 			int[][] across = { { 5, 0 }, { 5, 2 }, { 5, 4 }, { 6, 0 }, { 6, 2 }, { 6, 3 }, { 7, 3 }, { 7, 5 } };
 			int[][] down = { { 5, 1 }, { 6, 2 }, { 5, 4 } };
@@ -81,7 +86,7 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonDebug = false);
 			// (the pictures first: on a failure they show what went wrong)
 			String found = context.computeOnClient(mc -> TestHooks.dungeonRooms());
-			if (!found.startsWith("8 rooms") || !found.contains("doors 11,") || !found.endsWith("tiles 9, tile doors 11, starts 1")) throw new AssertionError("Rooms and doors as SkyUp builds them: " + found);
+			if (!found.startsWith("9 rooms") || !found.contains("doors 12,") || !found.endsWith("tiles 9, tile doors 12, starts 1")) throw new AssertionError("Rooms and doors as SkyUp builds them: " + found);
 			context.runOnClient(mc -> {
 				TestHooks.dungeonFull(false);
 				dev.slash3rss.slashclient.hud.SlashHud.config.dungeonStyle = "detailed";

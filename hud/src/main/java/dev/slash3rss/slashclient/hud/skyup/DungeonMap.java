@@ -343,8 +343,8 @@ public final class DungeonMap implements HudModule {
 	}
 
 	/**
-	 * The map above the dungeon (terracotta at y 37–39): what each column has there, the first
-	 * terracotta from the top. It lies one to one over the rooms, so it tells their walls before
+	 * The map above the dungeon (concrete or terracotta at y 37): what each column has there, the first
+	 * coloured block (y 37 first). It lies one to one over the rooms, so it tells their walls before
 	 * they are seen.
 	 */
 	private static void scanPlan(Minecraft mc) {
@@ -371,11 +371,14 @@ public final class DungeonMap implements HudModule {
 		}
 	}
 
-	/** Black terracotta a wall, yellow (or orange) a way, green the start room's mark, any other terracotta inside a room. */
+	/**
+	 * The map is concrete (black, grey and yellow on SkyUp now) or terracotta: black a wall, yellow
+	 * (or orange) a way, green the start room's mark, any other colour inside a room.
+	 */
 	private static byte planKind(BlockState state) {
 		if (state.isAir()) return 0;
 		String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
-		if (!id.contains("terracotta")) return 0;
+		if (!id.contains("terracotta") && !id.endsWith("_concrete")) return 0;
 		if (id.startsWith("black_")) return DungeonRooms.PLAN_WALL;
 		if (id.startsWith("yellow_") || id.startsWith("orange_")) return DungeonRooms.PLAN_WAY;
 		if (id.startsWith("lime_") || id.startsWith("green_")) return DungeonRooms.PLAN_START;
