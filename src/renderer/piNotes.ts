@@ -27,7 +27,7 @@ export function piNotes(): { icon: string; title: string; text: string }[] {
     },
     {
       icon: 'fa-computer-mouse', title: t('Myszka przez VNC i Raspberry Pi Connect'),
-      text: t('Na Raspberry Pi OS z nowym pulpitem (labwc 0.20) kamera nie reaguje na myszkę z VNC, a bez „Poprawki grafiki” nawet zwykła myszka wraca na miejsce. Graj myszką podłączoną do Pi, z włączoną poprawką.'),
+      text: t('Na Raspberry Pi OS z nowym pulpitem (labwc 0.20) kamera nie reaguje na myszkę z VNC. Włącz w grze moduł SlashClient „Myszka przez VNC”: kamera idzie wtedy za kursorem, a przy brzegu okna obraca się dalej sama. Graj na pełnym ekranie (F11), żeby kursor nie wychodził poza grę. Bez „Poprawki grafiki” nawet zwykła myszka wraca na miejsce.'),
     },
     {
       icon: 'fa-cube', title: t('Vulkan na karcie Pi'),
