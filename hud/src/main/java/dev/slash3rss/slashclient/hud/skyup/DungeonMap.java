@@ -882,6 +882,12 @@ public final class DungeonMap implements HudModule {
 		arrow(g, x + 61, top + 98, 180);
 	}
 
+	/** Debug: what the map knows saved to a file (DungeonRooms.dump); null when there is nothing yet. */
+	public static java.nio.file.Path dumpDebug(Minecraft mc) throws java.io.IOException {
+		if (!active || minX > maxX) return null;
+		return DungeonRooms.dump(mc, cell, plan, minX, minZ, maxX, maxZ, dungeonLevel);
+	}
+
 	/** For the test: walk into a dungeon without the server's chat line. */
 	static void startForTest() {
 		start();

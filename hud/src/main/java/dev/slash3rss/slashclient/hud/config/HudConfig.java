@@ -185,6 +185,8 @@ public final class HudConfig {
 	public int dungeonScanRange = 96;
 	/** Rooms not seen yet drawn from the map SkyUp builds above the dungeon. */
 	public boolean dungeonPlan = false;
+	/** The full dungeon map shows the grid and the rooms' signs, and D there saves what the map knows to a file. */
+	public boolean dungeonDebug = false;
 	/** Progress to the next level (the boss bar's fill) on the dungeon map. */
 	public boolean dungeonProgress = true;
 	/** You on the dungeon map as your head instead of an arrow. */
@@ -850,6 +852,7 @@ public final class HudConfig {
 		dungeonSize = other.dungeonSize;
 		dungeonScanRange = Math.max(32, Math.min(128, other.dungeonScanRange));
 		dungeonPlan = other.dungeonPlan;
+		dungeonDebug = other.dungeonDebug;
 		dungeonProgress = other.dungeonProgress;
 		dungeonSelfHead = other.dungeonSelfHead;
 		dungeonStartArrow = other.dungeonStartArrow;

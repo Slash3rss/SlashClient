@@ -51,6 +51,9 @@ public class DungeonMapScreen extends Screen {
 	private String lastView = "";
 
 	private static final int CLOSE = 14;
+	/** Debug: where the last file was saved, and when. */
+	private String saved = "";
+	private long savedAt;
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor g, int mx, int my, float delta) {
@@ -115,8 +118,11 @@ public class DungeonMapScreen extends Screen {
 		if (!DungeonMap.simple()) g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, textureId, ox, oy, 0, 0, aw, ah, pw, ph, pw, ph, 0xFFFFFFFF);
 		final int w = aw, h = ah;
 		DungeonMap.drawOver(g, mc, ox, oy, w, h, vx, vz, scale, (x, z) -> x >= 0 && z >= 0 && x < w && z < h);
+		if (SlashHud.config.dungeonDebug) DungeonRooms.drawDebug(g, mc, ox, oy, w, h, vx, vz, scale);
 		// how to use it
 		Component help = Ui.tr("slashclient-hud.dungeon.fullHelp");
+		// debug: how to save it, and where it was saved for a few seconds after
+		if (SlashHud.config.dungeonDebug) help = System.currentTimeMillis() - savedAt < 6000 ? Component.literal(saved) : Ui.tr("slashclient-hud.dungeon.debugHelp");
 		Ui.draw(g, help, (width - Ui.width(help)) / 2, height - 13, 0xFFAAAAAA);
 	}
 
@@ -191,6 +197,16 @@ public class DungeonMapScreen extends Screen {
 	//#endif
 		if (key.matches(e)) {
 			onClose();
+			return true;
+		}
+		if (SlashHud.config.dungeonDebug && e.key() == com.mojang.blaze3d.platform.InputConstants.KEY_D) {
+			try {
+				java.nio.file.Path file = DungeonMap.dumpDebug(Minecraft.getInstance());
+				saved = file == null ? "" : Ui.tr("slashclient-hud.dungeon.debugSaved", file.toString()).getString();
+			} catch (java.io.IOException ex) {
+				saved = ex.toString();
+			}
+			savedAt = System.currentTimeMillis();
 			return true;
 		}
 		if (e.key() == com.mojang.blaze3d.platform.InputConstants.KEY_TAB) {

@@ -177,6 +177,7 @@ public final class DungeonRooms {
 		rooms.clear();
 		doors.clear();
 		signs.clear();
+		signText.clear();
 		gridTiles.clear();
 		gridDoors.clear();
 		phaseX = phaseZ = -1;
@@ -775,8 +776,9 @@ public final class DungeonRooms {
 	/**
 	 * SkyUp builds its dungeons of squares 13 blocks across (each room's own wall included, so two
 	 * rooms are two blocks of wall apart): a room is 1×1, 1×3, 2×2… of them, the start room 5×5.
-	 * Under each room, at y 20 in its bottom right corner (+x, +z), a sign says which it is:
-	 * "<<DUNGEON_TC>>", "d-zwykly", "1x3-G-1" (or "5x5-start-1").
+	 * Under each room, at y 20 by its first corner, a sign says which it is: "<<DUNGEON_TC>>",
+	 * "d-zwykly", "1x3-G-1" (its size, its kind and number; or "5x5-start-1"). SkyUp turns some
+	 * rooms, their signs with them (the start room never): which way is worked out from the walls.
 	 */
 	static final int CELL = 13;
 	private static final java.util.regex.Pattern SIGN_SIZE = java.util.regex.Pattern.compile("(\\d+)\\s*x\\s*(\\d+)");
@@ -804,6 +806,10 @@ public final class DungeonRooms {
 
 	/** Signs under the rooms, by their place: map x, z, the size across (x) and down (z), 1 for the start room. */
 	private static final Map<Long, int[]> signs = new HashMap<>();
+	/** For the debug file: each sign where it is in the world and all its lines. */
+	private static final Map<Long, String> signText = new HashMap<>();
+	/** For the debug file: how far a sign is from its room's first corner, as found (0–8). */
+	private static int signOff = -1;
 	/** The grid: where its lines are (map x, z of a square's first block), or -1 while not known. */
 	private static int phaseX = -1, phaseZ = -1;
 	/** The rooms on the grid and the doors between them; empty when the dungeon is not on SkyUp's grid. */
@@ -832,6 +838,9 @@ public final class DungeonRooms {
 					int x = p.getX() - originX, z = p.getZ() - originZ;
 					if (x < 0 || z < 0 || x >= size || z >= size) continue;
 					signs.put(key(x, z), new int[] { x, z, Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), kind.contains("start") ? 1 : 0 });
+					StringBuilder all = new StringBuilder();
+					for (var line : lines) all.append(all.length() == 0 ? "" : " | ").append(line.getString());
+					signText.put(key(x, z), p.getX() + " " + p.getY() + " " + p.getZ() + ": " + all);
 				}
 			}
 		}
@@ -890,11 +899,13 @@ public final class DungeonRooms {
 			phaseZ = Math.floorMod(s[1] + 1, CELL);
 		}
 		if (phaseX < 0 || phaseZ < 0) return;
+		// a sign's room may reach its size (and a square more) any way from it
 		for (int[] s : signs.values()) {
-			x0 = Math.min(x0, s[0] - s[2] * CELL);
-			z0 = Math.min(z0, s[1] - Math.max(s[2], s[3]) * CELL);
-			x1 = Math.max(x1, s[0]);
-			z1 = Math.max(z1, s[1]);
+			int reach = (Math.max(s[2], s[3]) + 1) * CELL;
+			x0 = Math.min(x0, s[0] - reach);
+			z0 = Math.min(z0, s[1] - reach);
+			x1 = Math.max(x1, s[0] + reach);
+			z1 = Math.max(z1, s[1] + reach);
 		}
 		int gx = cellX(x0), gz = cellZ(z0), gw = cellX(x1) - gx + 1, gh = cellZ(z1) - gz + 1;
 		if (gw <= 0 || gh <= 0 || (long) gw * gh > 10_000) return;
@@ -910,32 +921,28 @@ public final class DungeonRooms {
 		// the boundary between two squares: 0 open, 1..7 a door (its middle), 8 and more open (one room)
 		int[] owner = new int[gw * gh];
 		Arrays.fill(owner, -1);
-		// first the rooms the signs tell, each the way (across or down) its walls agree with
-		for (int[] s : signs.values()) {
-			int ci = cellX(s[0]) - gx, cj = cellZ(s[1]) - gz;
-			int[] best = null;
-			int bestScore = Integer.MIN_VALUE;
-			for (int turn = 0; turn < (s[2] == s[3] ? 1 : 2); turn++) {
-				int a = turn == 0 ? s[2] : s[3], b = turn == 0 ? s[3] : s[2];
-				int[] r = { ci - a + 1, cj - b + 1, ci, cj };
-				if (r[0] < 0 || r[1] < 0) continue;
-				int score = 0;
-				for (int j = r[1]; j <= r[3]; j++) {
-					for (int i = r[0]; i <= r[2]; i++) {
-						if (owner[j * gw + i] >= 0) score -= 10;
-						if (i < r[2]) score += openness(cell, plan, gx + i, gz + j, true) >= 8 ? 1 : -2;
-						if (j < r[3]) score += openness(cell, plan, gx + i, gz + j, false) >= 8 ? 1 : -2;
-					}
-				}
-				if (score > bestScore) {
-					bestScore = score;
-					best = r;
-				}
+		// first the rooms the signs tell. A sign stands by its room's first corner (top left, the room
+		// unturned), maybe a square off; SkyUp turns rooms, and the sign with them, but never the start
+		// room. How far off is worked out from all signs at once: the way that fits the walls best
+		int off = 4, offScore = Integer.MIN_VALUE;
+		for (int o = 0; o < 9; o++) {
+			int score = 0;
+			for (int[] s : signs.values()) score += placeSign(cell, plan, present, null, gx, gz, gw, gh, s, o)[4];
+			if (score > offScore) {
+				offScore = score;
+				off = o;
 			}
-			if (best == null) continue;
+		}
+		signOff = off;
+		// the start room first, then the larger rooms, so a small one does not take a big one's square
+		List<int[]> bySize = new ArrayList<>(signs.values());
+		bySize.sort((a, b) -> b[4] != a[4] ? b[4] - a[4] : b[2] * b[3] - a[2] * a[3]);
+		for (int[] s : bySize) {
+			int[] r = placeSign(cell, plan, present, owner, gx, gz, gw, gh, s, off);
+			if (r[4] == Integer.MIN_VALUE) continue;
 			Tile t = new Tile();
 			t.start = s[4] == 1;
-			for (int j = best[1]; j <= best[3]; j++) for (int i = best[0]; i <= best[2]; i++) if (owner[j * gw + i] < 0) claim(t, owner, gw, i, j, gridTiles.size());
+			for (int j = r[1]; j <= r[3]; j++) for (int i = r[0]; i <= r[2]; i++) if (owner[j * gw + i] < 0) claim(t, owner, gw, i, j, gridTiles.size());
 			if (t.cells > 0) gridTiles.add(t);
 		}
 		// then squares with floor no sign tells about: together where nothing walls them apart
@@ -980,10 +987,14 @@ public final class DungeonRooms {
 			int i = cellX(room.centerX()) - gx, j = cellZ(room.centerZ()) - gz;
 			if (i >= 0 && j >= 0 && i < gw && j < gh && owner[j * gw + i] >= 0) gridTiles.get(owner[j * gw + i]).add(room);
 		}
+		// one start room: where the player came in, when that is known, before what a sign says
 		int[] start = start();
 		if (start != null) {
 			int i = cellX(start[0]) - gx, j = cellZ(start[1]) - gz;
-			if (i >= 0 && j >= 0 && i < gw && j < gh && owner[j * gw + i] >= 0) gridTiles.get(owner[j * gw + i]).start = true;
+			if (i >= 0 && j >= 0 && i < gw && j < gh && owner[j * gw + i] >= 0) {
+				for (Tile t : gridTiles) t.start = false;
+				gridTiles.get(owner[j * gw + i]).start = true;
+			}
 		}
 		if (lastX >= 0) {
 			int i = cellX(lastX) - gx, j = cellZ(lastZ) - gz;
@@ -996,6 +1007,44 @@ public final class DungeonRooms {
 			gridTiles.clear();
 			gridDoors.clear();
 		}
+	}
+
+	/**
+	 * Where a sign's room lies on the grid (squares x0, z0, x1, z1, and how well that fits the walls):
+	 * unturned, its first corner (top left) `off` (0–8) a square from the sign either way; turned a
+	 * quarter, a half or three quarters round with its sign, whichever fits best (the start room
+	 * never). Its inside open, its edges walled and floor in its squares count for it; squares
+	 * another room has (`owner`, when given) against it. MIN_VALUE when it fits on the grid no way.
+	 */
+	private static int[] placeSign(byte[] cell, byte[] plan, boolean[] present, int[] owner, int gx, int gz, int gw, int gh, int[] s, int off) {
+		int si = cellX(s[0]) - gx, sj = cellZ(s[1]) - gz, dx = off % 3 - 1, dz = off / 3 - 1, a = s[2], b = s[3];
+		int[] best = { 0, 0, 0, 0, Integer.MIN_VALUE };
+		for (int turn = 0; turn < (s[4] == 1 ? 1 : 4); turn++) {
+			// the sign's square from the room's first corner, turned with the room (screen: x right, z down)
+			int rx = turn == 0 ? dx : turn == 1 ? -dz : turn == 2 ? -dx : dz, rz = turn == 0 ? dz : turn == 1 ? dx : turn == 2 ? -dz : -dx;
+			int ox = si - rx, oz = sj - rz;
+			int x0 = turn == 0 || turn == 3 ? ox : ox - (turn == 1 ? b : a) + 1, x1 = x0 + (turn % 2 == 0 ? a : b) - 1;
+			int z0 = turn <= 1 ? oz : oz - (turn == 2 ? b : a) + 1, z1 = z0 + (turn % 2 == 0 ? b : a) - 1;
+			if (x0 < 0 || z0 < 0 || x1 >= gw || z1 >= gh) continue;
+			int score = 0;
+			for (int j = z0; j <= z1; j++) {
+				for (int i = x0; i <= x1; i++) {
+					if (owner != null && owner[j * gw + i] >= 0) score -= 10;
+					if (present[j * gw + i]) score++;
+					// inside: open between its squares; on its edge: a wall to the next square
+					if (i < x1) score += openness(cell, plan, gx + i, gz + j, true) >= 8 ? 1 : -2;
+					else if (i + 1 < gw && present[j * gw + i + 1]) score += openness(cell, plan, gx + i, gz + j, true) >= 8 ? -2 : 1;
+					if (j < z1) score += openness(cell, plan, gx + i, gz + j, false) >= 8 ? 1 : -2;
+					else if (j + 1 < gh && present[(j + 1) * gw + i]) score += openness(cell, plan, gx + i, gz + j, false) >= 8 ? -2 : 1;
+					if (i == x0 && i > 0 && present[j * gw + i - 1]) score += openness(cell, plan, gx + i - 1, gz + j, true) >= 8 ? -2 : 1;
+					if (j == z0 && j > 0 && present[(j - 1) * gw + i]) score += openness(cell, plan, gx + i, gz + j - 1, false) >= 8 ? -2 : 1;
+				}
+			}
+			if (score > best[4]) best = new int[] { x0, z0, x1, z1, score };
+		}
+		// a sign that fits nowhere counts as badly as can be, but not past adding up
+		if (owner == null && best[4] == Integer.MIN_VALUE) best[4] = -1000;
+		return best;
 	}
 
 	private static void claim(Tile t, int[] owner, int gw, int i, int j, int id) {
@@ -1129,6 +1178,69 @@ public final class DungeonRooms {
 		}
 	}
 
+	/** Debug, on the full map: the grid's lines, and each sign as a magenta dot with its size. */
+	static void drawDebug(GuiGraphicsExtractor g, Minecraft mc, int ox, int oy, int w, int h, float viewX, float viewZ, float scale) {
+		if (phaseX >= 0 && scale * CELL >= 4) {
+			int first = (int) Math.floor((viewX - phaseX) / CELL);
+			for (int i = first; phaseX + i * CELL <= viewX + w / scale; i++) {
+				int x = ox + Math.round((phaseX + i * CELL - viewX) * scale);
+				box(g, x, oy, x + 1, oy + h, ox, oy, w, h, 0x50FFFFFF);
+			}
+			first = (int) Math.floor((viewZ - phaseZ) / CELL);
+			for (int j = first; phaseZ + j * CELL <= viewZ + h / scale; j++) {
+				int z = oy + Math.round((phaseZ + j * CELL - viewZ) * scale);
+				box(g, ox, z, ox + w, z + 1, ox, oy, w, h, 0x50FFFFFF);
+			}
+		}
+		for (int[] s : signs.values()) {
+			int x = ox + Math.round((s[0] + 0.5f - viewX) * scale), z = oy + Math.round((s[1] + 0.5f - viewZ) * scale);
+			if (x < ox || z < oy || x >= ox + w || z >= oy + h) continue;
+			g.fill(x - 2, z - 2, x + 3, z + 3, 0xFF000000);
+			g.fill(x - 1, z - 1, x + 2, z + 2, 0xFFFF00FF);
+			g.text(mc.font, s[2] + "x" + s[3] + (s[4] == 1 ? "S" : ""), x + 4, z - 4, 0xFFFF80FF, true);
+		}
+	}
+
+	/**
+	 * Debug: what the map knows, as a text file (in the game's folder, slashclient-dungeon): the
+	 * grid, the signs as read, the rooms worked out, and the dungeon block by block (the floor as
+	 * seen and the map above it), to build the same dungeon in a test.
+	 */
+	static java.nio.file.Path dump(Minecraft mc, byte[] cell, byte[] plan, int x0, int z0, int x1, int z1, String level) throws java.io.IOException {
+		StringBuilder out = new StringBuilder();
+		out.append("SlashClient dungeon debug ").append(java.time.LocalDateTime.now()).append(", level ").append(level).append('\n');
+		out.append("map origin (world) ").append(originX).append(' ').append(originZ).append(", seen map x ").append(x0).append("..").append(x1).append(" z ").append(z0).append("..").append(z1).append('\n');
+		int[] st = start();
+		out.append("start point ").append(st == null ? "-" : st[0] + " " + st[1]).append(", player in room at ").append(lastX).append(' ').append(lastZ).append('\n');
+		out.append("grid phase x ").append(phaseX).append(" z ").append(phaseZ).append(", sign offset ").append(signOff).append('\n');
+		out.append(summary()).append('\n');
+		out.append("\nsigns (world x y z: lines):\n");
+		for (String s : signText.values()) out.append(s).append('\n');
+		out.append("\ntiles (map blocks x0 z0 x1 z1):\n");
+		for (Tile t : gridTiles) out.append(t.x0).append(' ').append(t.z0).append(' ').append(t.x1).append(' ').append(t.z1).append(t.start ? " start" : "").append(t.current ? " current" : "").append('\n');
+		out.append("\nfloor, from map x ").append(x0).append(" z ").append(z0).append(" (# wall, . floor, space not seen):\n");
+		for (int z = z0; z <= z1; z++) {
+			for (int x = x0; x <= x1; x++) {
+				byte c = cell[z * size + x];
+				out.append(c == 1 ? '#' : c == 2 ? '.' : ' ');
+			}
+			out.append('\n');
+		}
+		out.append("\nmap above (y 37), from map x ").append(x0).append(" z ").append(z0).append(" (# black, . inside, y yellow, g green, space none):\n");
+		for (int z = z0; z <= z1; z++) {
+			for (int x = x0; x <= x1; x++) {
+				byte p = plan[z * size + x];
+				out.append(p == PLAN_WALL ? '#' : p == PLAN_INSIDE ? '.' : p == PLAN_WAY ? 'y' : p == PLAN_START ? 'g' : ' ');
+			}
+			out.append('\n');
+		}
+		java.nio.file.Path dir = mc.gameDirectory.toPath().resolve("slashclient-dungeon");
+		java.nio.file.Files.createDirectories(dir);
+		java.nio.file.Path file = dir.resolve("dungeon-" + java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")) + ".txt");
+		java.nio.file.Files.writeString(file, out.toString());
+		return file;
+	}
+
 	/** A filled box, only the part of it within w×h at (ox, oy). */
 	private static void box(GuiGraphicsExtractor g, int x0, int z0, int x1, int z1, int ox, int oy, int w, int h, int color) {
 		x0 = Math.max(x0, ox);
@@ -1198,6 +1310,6 @@ public final class DungeonRooms {
 			if (r.respawnAt > 0) clearedRooms++;
 			if (r.visited && r.spawners == 0 && rooms.indexOf(r) != startRoom()) noSpawner++;
 		}
-		return rooms.size() + " rooms, containers " + containerCount(false) + ", ores " + containerCount(true) + ", cleared " + clearedRooms + ", without spawner " + noSpawner + ", doors " + doors.size() + ", tiles " + gridTiles.size() + ", tile doors " + gridDoors.size();
+		return rooms.size() + " rooms, containers " + containerCount(false) + ", ores " + containerCount(true) + ", cleared " + clearedRooms + ", without spawner " + noSpawner + ", doors " + doors.size() + ", tiles " + gridTiles.size() + ", tile doors " + gridDoors.size() + ", starts " + gridTiles.stream().filter(t -> t.start).count();
 	}
 }

@@ -1949,6 +1949,16 @@ public final class TestHooks {
 		return DungeonRooms.summary();
 	}
 
+	/** The dungeon map's debug file saved now (as D on the full map does): its text. */
+	public static String dungeonDebugFile() {
+		try {
+			var file = dev.slash3rss.slashclient.hud.skyup.DungeonMap.dumpDebug(net.minecraft.client.Minecraft.getInstance());
+			return file == null ? "" : java.nio.file.Files.readString(file);
+		} catch (java.io.IOException e) {
+			return e.toString();
+		}
+	}
+
 	/**
 	 * The dungeon loot highlight on (through walls or not; a distance limit, or -1 for none) or
 	 * off, made at once: how many boxes, and per kind of DungeonRooms.LOOT ("6 [2, 1, 1, 1, 1]").
