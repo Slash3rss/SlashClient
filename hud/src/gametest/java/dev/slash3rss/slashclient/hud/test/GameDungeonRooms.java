@@ -80,6 +80,14 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			// such a mob on the tab list still: its name has health and a level in it, a player's has not
 			if (!dev.slash3rss.slashclient.hud.skyup.DungeonMap.mobName("27.5 ❤ | ☠ Dezerter (poz. 6)") || dev.slash3rss.slashclient.hud.skyup.DungeonMap.mobName("Slash3rss"))
 				throw new AssertionError("A mob's name told from a player's");
+			// the long room's tile shows its strongest mobs: the mini boss, the elite, then normal ones
+			String[][] mobs = { { "Rycerz poz. 2", "yellow" }, { "Rycerz poz. 3", "yellow" }, { "Rycerz poz. 2", "yellow" }, { "Kat poz. 5", "dark_red" }, { "Łucznik poz. 1", "gold" } };
+			for (int i = 0; i < mobs.length; i++) {
+				server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b," + name("{\"text\":\"" + mobs[i][0] + "\",\"color\":\"" + mobs[i][1] + "\"}") + "}", x0 + 7 * c + 3 + i % 3 * 3, y, z0 + 3 * c + 3 + i / 3 * 6));
+			}
+			context.waitTicks(20);
+			String shown = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.DungeonRooms.shownMobs());
+			if (!shown.contains("[3, 2, 1, 1]")) throw new AssertionError("The strongest mobs first on a tile: " + shown);
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonStyle = "simple");
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-rooms-simple");
@@ -115,7 +123,7 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			server.runCommand(String.format("tp @a %d %d %d 180 30", x0 + 30, y + 10, z0 + 300));
 			context.waitTicks(40);
 			String far = context.computeOnClient(mc -> TestHooks.dungeonRooms() + (java.util.stream.StreamSupport.stream(mc.level.entitiesForRendering().spliterator(), false).noneMatch(e -> net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).getPath().equals("zombie")) ? " (out of sight)" : " (still known)"));
-			if (!far.contains("remembered 1") || !far.contains("(out of sight)")) throw new AssertionError("A mob out of sight is remembered on its room: " + far);
+			if (!far.contains("remembered 6") || !far.contains("(out of sight)")) throw new AssertionError("A mob out of sight is remembered on its room: " + far);
 			context.runOnClient(mc -> TestHooks.dungeonFull(true));
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-rooms-remembered");
@@ -151,6 +159,15 @@ public class GameDungeonRooms implements FabricClientGameTest {
 		int left = x0 + r[0] * c, top = z0 + r[1] * c, right = x0 + (r[2] + 1) * c - 1, bottom = z0 + (r[3] + 1) * c - 1;
 		int[][] corner = { { left, top }, { right, top }, { right, bottom }, { left, bottom } };
 		return sign(corner[turn][0], corner[turn][1], kind);
+	}
+
+	/** A custom name in a summon's NBT (JSON text): a component from 1.21.5, a JSON string before. */
+	private static String name(String json) {
+		//#if MC >= 1.21.5
+		return "CustomName:" + json;
+		//#else
+		//$ return "CustomName:'" + json + "'";
+		//#endif
 	}
 
 	/** The sign under a room (y 20) with SkyUp's three lines; its text as SNBT from 1.21.5, JSON strings before. */

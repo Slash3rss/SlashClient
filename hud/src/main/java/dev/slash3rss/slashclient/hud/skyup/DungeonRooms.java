@@ -191,6 +191,7 @@ public final class DungeonRooms {
 		holograms.clear();
 		seenMobs.clear();
 		seenMobEntities.clear();
+		mobRank.clear();
 	}
 
 	/** The kinds of loot, each counted on its own: their names (for the settings) and icons. */
@@ -312,6 +313,26 @@ public final class DungeonRooms {
 	 */
 	private static final Map<Integer, long[]> seenMobs = new HashMap<>();
 	private static final Map<Integer, Entity> seenMobEntities = new HashMap<>();
+	/** Each mob's tier as last worked out (DungeonMap.rank), so the strongest show on its room's tile. */
+	private static final Map<Integer, Integer> mobRank = new HashMap<>();
+
+	/** A tile's mobs strongest first (class, then level), the same order each time for equals (by id). */
+	private static void strongestFirst(List<net.minecraft.world.entity.LivingEntity> mobs) {
+		mobs.sort(java.util.Comparator.<net.minecraft.world.entity.LivingEntity>comparingInt(e -> -mobRank.getOrDefault(e.getId(), 0)).thenComparingInt(Entity::getId));
+	}
+
+	/** For the test: each tile's mobs shown, as their classes in the order drawn ("[3, 1, 1, 1]"). */
+	public static String shownMobs() {
+		List<String> out = new ArrayList<>();
+		for (Tile t : gridTiles) {
+			List<net.minecraft.world.entity.LivingEntity> mobs = new ArrayList<>();
+			for (Entity m : t.mobList) if (m instanceof net.minecraft.world.entity.LivingEntity e && DungeonMap.mobShown(e)) mobs.add(e);
+			if (mobs.isEmpty()) continue;
+			strongestFirst(mobs);
+			out.add(mobs.subList(0, Math.min(4, mobs.size())).stream().map(DungeonMap::kind).toList().toString());
+		}
+		return String.join(" ", out);
+	}
 	private static final long REMEMBER_MS = 300_000;
 	/** How close the player must be to a remembered mob's place to see whether it is still there. */
 	private static final int SEES = 24;
@@ -329,6 +350,7 @@ public final class DungeonRooms {
 			if (e == null || dead || now - at[2] > REMEMBER_MS || Math.abs(at[0] - px) < SEES && Math.abs(at[1] - pz) < SEES) {
 				it.remove();
 				seenMobEntities.remove(m.getKey());
+				mobRank.remove(m.getKey());
 				continue;
 			}
 			int r = roomAt((int) at[0], (int) at[1], 8);
@@ -414,6 +436,7 @@ public final class DungeonRooms {
 				}
 				seenMobs.put(e.getId(), new long[] { ex, ez, System.currentTimeMillis() });
 				seenMobEntities.put(e.getId(), e);
+				mobRank.put(e.getId(), DungeonMap.rank(e));
 			}
 		}
 		rememberMobs(mc, px, pz);
@@ -1174,8 +1197,8 @@ public final class DungeonRooms {
 					near = true;
 					if (DungeonMap.mobShown(e)) seen.add(e);
 				}
-				// always the same ones in the same places (the oldest four), not as the game happens to list them
-				seen.sort(java.util.Comparator.comparingInt(Entity::getId));
+				// the strongest four (class, then level), always in the same places, not as the game happens to list them
+				strongestFirst(seen);
 				if (seen.size() > 4) seen = new ArrayList<>(seen.subList(0, 4));
 				// heads smaller than the other icons, so a few fit side by side with room around them
 				int head = Math.max(6, Math.min(icon * 2 / 3, seen.size() > 1 ? side / 2 - 3 : icon));

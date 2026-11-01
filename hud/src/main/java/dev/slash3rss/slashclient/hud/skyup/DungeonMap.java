@@ -709,6 +709,26 @@ public final class DungeonMap implements HudModule {
 		return MOB_NAME.matcher(name.replaceAll("§.", "")).find();
 	}
 
+	/**
+	 * How strong a mob is, for which show on its room's tile: its class (mini boss, elite, normal,
+	 * minion, then the rest), then its level ("poz. 6" in its name, or the one shown over it).
+	 */
+	static int rank(Entity mob) {
+		int kind = kind(mob);
+		int tier = switch (kind) {
+			case 3 -> 4;
+			case 2 -> 3;
+			case 1 -> 2;
+			case 4 -> 1;
+			default -> 0;
+		};
+		Component name = npc(mob) ? dev.slash3rss.slashclient.hud.modules.MoreModules.Target.tagAbove((net.minecraft.world.entity.LivingEntity) mob) : mob.getCustomName();
+		Matcher level = name == null ? null : LEVEL_IN_NAME.matcher(name.getString());
+		return tier * 10_000 + (level != null && level.find() ? Math.min(9_999, Integer.parseInt(level.group(1))) : 0);
+	}
+
+	private static final Pattern LEVEL_IN_NAME = Pattern.compile("poz\\.?\\s*(\\d{1,6})", Pattern.CASE_INSENSITIVE);
+
 	/** A name's class by its colour (see kind(Entity)). */
 	private static int kind(Component name) {
 		// the colour of the name itself: the first piece with letters in it, so the health before it
