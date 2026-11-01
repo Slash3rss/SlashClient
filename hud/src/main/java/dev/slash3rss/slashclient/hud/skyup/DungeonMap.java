@@ -338,6 +338,8 @@ public final class DungeonMap implements HudModule {
 						byte c = cell[iz * SIZE + ix];
 						// plain: one grey for the floor (green where the start room's is green), walls near black
 						if (c == 2) color = DungeonRooms.tint(ix, iz, cfg.dungeonBlockColors ? color : plain(color));
+						// a wall one block thick, along the floor: the rock behind it is left out
+						else if (c == 1 && !byFloor(ix, iz)) color = UNKNOWN;
 						else if (c == 1 && !cfg.dungeonBlockColors) color = 0xFF0B0F17;
 						// not seen yet: the room as the map above shows it, dimmer
 						else if (c == 0 && cfg.dungeonPlan) color = ghost(plan[iz * SIZE + ix]);
@@ -348,6 +350,17 @@ public final class DungeonMap implements HudModule {
 				view.setPixel(px, py, color);
 			}
 		}
+	}
+
+	/** Whether a map pixel has floor next to it (any of the eight round it). */
+	private static boolean byFloor(int x, int z) {
+		for (int dz = -1; dz <= 1; dz++) {
+			for (int dx = -1; dx <= 1; dx++) {
+				int nx = x + dx, nz = z + dz;
+				if (nx >= 0 && nz >= 0 && nx < SIZE && nz < SIZE && cell[nz * SIZE + nx] == 2) return true;
+			}
+		}
+		return false;
 	}
 
 	/** The part of the map seen (x, z, width, height), with a margin, or null before anything was seen. */
