@@ -1639,8 +1639,6 @@ function renderPerfParts() {
   $('#perf-parts').classList.toggle('hidden', preset === 'off');
   form.querySelector<HTMLElement>('.perf-gl')!.classList.toggle('hidden', preset !== 'pi');
   $('#pi-info-open').classList.toggle('hidden', preset !== 'pi');
-  form.querySelector<HTMLElement>('.perf-mods-usual')!.classList.toggle('hidden', preset === 'pi');
-  form.querySelector<HTMLElement>('.perf-mods-pi')!.classList.toggle('hidden', preset !== 'pi');
 }
 $<HTMLSelectElement>('#profile-form select[name="perfPreset"]').addEventListener('change', renderPerfParts);
 // what we know about the game on the Pi (graphics, Sodium, server packs, the mouse over VNC), by its preset

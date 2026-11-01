@@ -3,7 +3,7 @@ import { el } from './dialog';
 
 /**
  * "Raspberry Pi – co warto wiedzieć": what we learned about the game on the Pi, behind a button by the
- * Pi's preset in a profile's settings – why the graphics fix, why no Sodium, which server packs do not
+ * Pi's preset in a profile's settings – why the graphics fix, Sodium's error checks, which server packs do not
  * fit, the mouse over VNC after the system's update. Plain notes, nothing here changes settings.
  */
 export function piNotes(): { icon: string; title: string; text: string }[] {
@@ -13,8 +13,8 @@ export function piNotes(): { icon: string; title: string; text: string }[] {
       text: t('Z „Poprawką grafiki dla Raspberry Pi” gra rysuje kartą graficzną Pi przez OpenGL i trzyma limit presetu (30 FPS). Bez niej Minecraft 26.x rysuje przez Vulkan liczony przez procesor: 10–15 FPS przy mocno zajętym procesorze.'),
     },
     {
-      icon: 'fa-ban', title: t('Bez Sodium'),
-      text: t('Sodium zawiesza sterownik grafiki Pi: na serwerach, gdzie bloki ciągle się zmieniają, gra spada do 0 FPS, a z nowszym sterownikiem potrafi zawiesić całą kartę razem z pulpitem. Preset go nie instaluje. Jeśli masz Sodium z wcześniejszych wersji launchera, wyłącz je na liście modów profilu.'),
+      icon: 'fa-shield-halved', title: t('Sodium ze sprawdzaniem błędów'),
+      text: t('Sodium domyślnie wyłącza sprawdzanie błędów sterownika grafiki. Na Pi przepuszczało wtedy za duże tekstury z paczek serwerów, a gra spadała do 0 FPS albo zawieszała kartę razem z pulpitem. Z „Poprawką grafiki” launcher przy każdym starcie włącza Sodium to sprawdzanie i gra trzyma 30 FPS.'),
     },
     {
       icon: 'fa-images', title: t('Duże paczki zasobów serwerów'),

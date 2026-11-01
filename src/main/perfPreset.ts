@@ -76,3 +76,32 @@ export async function applyPerfPreset(gameDir: string, preset: PerfPreset | unde
   await fs.writeFile(file, JSON.stringify({ preset: wanted, before, added } satisfies Applied, null, 2));
   return true;
 }
+
+/**
+ * With the Raspberry Pi's graphics fix: Sodium (from the preset's mods or added by hand) keeps the driver's
+ * error checks on. Without them a server's big resource pack slipped through as a texture larger than
+ * the Pi's graphics chip takes (8192 pixels where it takes 4096), and the game dropped to 0 FPS or hung
+ * the chip with the desktop; with them the game turns the pack down and runs at the preset's 30 FPS.
+ * Only this one setting of Sodium's own file changes, the rest stays the player's. Returns whether it changed.
+ */
+export async function piSodiumChecks(gameDir: string, preset: PerfPreset | undefined, off: string[] | undefined): Promise<boolean> {
+  if (!partOn(preset, off, 'gl')) return false;
+  const file = path.join(gameDir, 'config', 'sodium-options.json');
+  const text = await fs.readFile(file, 'utf8').catch(() => undefined);
+  let options: { performance?: Record<string, unknown> } & Record<string, unknown> = {};
+  if (text !== undefined) {
+    try {
+      options = JSON.parse(text);
+    } catch {
+      // a file Sodium could not read either: it starts again from its defaults, ours on top
+      options = {};
+    }
+  }
+  if (typeof options !== 'object' || options === null || Array.isArray(options)) options = {};
+  if (typeof options.performance !== 'object' || options.performance === null) options.performance = {};
+  if (options.performance.use_no_error_g_l_context === false) return false;
+  options.performance.use_no_error_g_l_context = false;
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, JSON.stringify(options, null, 2));
+  return true;
+}

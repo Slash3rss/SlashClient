@@ -108,7 +108,7 @@ import { contentOf, PopularReporter, recentServers } from './friendsPopular';
 import { appendSummary, collectSummary, MIN_SESSION_MS, readSummaries, removeSummary, summaryDisplay, withStats } from './sessionSummary';
 import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type ForeignInstance } from './importers';
 import { perfModsFor } from './perfmods';
-import { applyPerfPreset } from './perfPreset';
+import { applyPerfPreset, piSodiumChecks } from './perfPreset';
 import { partOn, presetEnv, presetMemoryCap, presetNiceness } from '../shared/perfPresets';
 import { gnomeWindowEnv, installCommand } from './gnomeWindow';
 import { install as installLinux, installState as linuxInstallState, linuxPlaces } from './linuxInstall';
@@ -789,7 +789,7 @@ interface PerfPlanItem { slug: string; projectId?: string; title: string; why: s
 /** Which performance mods fit this profile, and which of them are already there. */
 handle('perf:plan', async (profileId: string): Promise<PerfPlanItem[]> => {
   const { profile, gameDir, gameVersion } = await profileTarget(profileId);
-  const entries = perfModsFor(profile.loader, profile.perfPreset);
+  const entries = perfModsFor(profile.loader);
   const have = await installedProjectIds(gameDir);
   // mods from a modpack or added by hand are not in our list: match them by mod id ("ferrite-core" ↔ "ferritecore")
   const norm = (s: string) => s.toLowerCase().replace(/[-_]/g, '');
@@ -1832,6 +1832,7 @@ async function startGame(profileId: string, accountId: string, server: string | 
   if (profile.syncOptions) await pullShared(profileGameDir(profile), sharedDir);
   // "Tryb dla słabszych komputerów": its game settings written when it was picked or changed (the player's own kept)
   await applyPerfPreset(profileGameDir(profile), profile.perfPreset, profile.perfOff).catch((err) => console.error('tryb wydajności:', (err as Error).message));
+  await piSodiumChecks(profileGameDir(profile), profile.perfPreset, profile.perfOff).catch((err) => console.error('Sodium na Pi:', (err as Error).message));
 
   // keep the tail of the output for crash analysis
   const recentLog: string[] = [];

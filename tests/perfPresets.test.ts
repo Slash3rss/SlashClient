@@ -4,22 +4,11 @@ import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
-import { applyPerfPreset, withOptions } from '../src/main/perfPreset';
-import { perfModsFor } from '../src/main/perfmods';
+import { applyPerfPreset, piSodiumChecks, withOptions } from '../src/main/perfPreset';
 import { lookup, setLang } from '../src/shared/i18n';
 import { partOn, presetEnv, presetMemoryCap, presetNiceness, presetOptions, suggestedPreset } from '../src/shared/perfPresets';
 
 describe('presets for slower computers', () => {
-  it("brings no Sodium with the Pi's preset (its graphics driver stalls on Sodium's chunk uploads), the other mods as usual", () => {
-    const slugs = (loader: string, preset?: string) => perfModsFor(loader, preset).flatMap((e) => e.slugs);
-    assert.ok(slugs('fabric').includes('sodium'));
-    assert.ok(slugs('fabric', 'lighter').includes('sodium'));
-    assert.ok(!slugs('fabric', 'pi').includes('sodium'));
-    assert.ok(slugs('fabric', 'pi').includes('lithium'));
-    assert.ok(!slugs('neoforge', 'pi').some((s) => s === 'sodium' || s === 'embeddium'));
-    assert.ok(!slugs('forge', 'pi').some((s) => s === 'embeddium' || s === 'rubidium'));
-  });
-
   it('suggests the Pi\'s on Linux on ARM, a lighter one for little memory or few cores, none for a strong computer', () => {
     assert.equal(suggestedPreset(4096, 4, 'linux', 'arm64'), 'pi');
     assert.equal(suggestedPreset(4096, 4, 'win32', 'x64'), 'lighter');
@@ -92,17 +81,41 @@ describe('presets for slower computers', () => {
   });
 });
 
+describe("Sodium on the Raspberry Pi", () => {
+  it('keeps the driver error checks on with the Pi graphics fix, the rest of Sodium settings as they were', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'pi-sodium-'));
+    const file = path.join(dir, 'config', 'sodium-options.json');
+    // no file yet (Sodium not started once): only our setting, Sodium fills in its defaults
+    assert.equal(await piSodiumChecks(dir, 'pi', []), true);
+    assert.deepEqual(JSON.parse(await fs.readFile(file, 'utf8')), { performance: { use_no_error_g_l_context: false } });
+    // the player's own settings stay
+    await fs.writeFile(file, JSON.stringify({ quality: { pixel_filtering_mode: 'NEAREST' }, performance: { chunk_builder_threads: 2, use_no_error_g_l_context: true } }));
+    assert.equal(await piSodiumChecks(dir, 'pi', []), true);
+    assert.deepEqual(JSON.parse(await fs.readFile(file, 'utf8')), { quality: { pixel_filtering_mode: 'NEAREST' }, performance: { chunk_builder_threads: 2, use_no_error_g_l_context: false } });
+    assert.equal(await piSodiumChecks(dir, 'pi', []), false);
+    // not with another preset or with the graphics fix switched off
+    await fs.writeFile(file, '{"performance":{"use_no_error_g_l_context":true}}');
+    assert.equal(await piSodiumChecks(dir, 'lighter', []), false);
+    assert.equal(await piSodiumChecks(dir, 'pi', ['gl']), false);
+    assert.equal(await piSodiumChecks(dir, undefined, []), false);
+    // a broken file: Sodium starts it over from its defaults anyway
+    await fs.writeFile(file, '{oops');
+    assert.equal(await piSodiumChecks(dir, 'pi', []), true);
+    assert.deepEqual(JSON.parse(await fs.readFile(file, 'utf8')), { performance: { use_no_error_g_l_context: false } });
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+});
+
 describe('Raspberry Pi notes in English', () => {
   it('every text of the notes and their window has a translation', () => {
     const keys = new Set<string>();
     for (const m of readFileSync('src/renderer/piNotes.ts', 'utf8').matchAll(/\bt\('((?:[^'\\]|\\.)*)'/g)) keys.add(m[1]);
     assert.ok(readFileSync('src/renderer/index.html', 'utf8').includes('Raspberry Pi – co warto wiedzieć'));
     keys.add('Raspberry Pi – co warto wiedzieć');
-    keys.add('Lithium i inne, bez Sodium (zawiesza grafikę Pi), instalowane przy zapisie');
     setLang('en');
     const missing = [...keys].filter((k) => !lookup(k));
     setLang('pl');
-    assert.equal(keys.size, 14);
+    assert.equal(keys.size, 13);
     assert.deepEqual(missing, []);
   });
 });

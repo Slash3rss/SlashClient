@@ -34,16 +34,8 @@ export const PERF_MODS: Record<string, { slugs: string[]; why: string }[]> = {
 };
 PERF_MODS.quilt = PERF_MODS.fabric;
 
-/** Sodium and its ports: they replace the game's terrain renderer. */
-const RENDERERS = ['sodium', 'embeddium', 'rubidium'];
-
-/**
- * The performance mods for a profile. Not a renderer with the Raspberry Pi's preset: the Pi's graphics
- * driver waits for the graphics chip at each chunk Sodium uploads, and on a server where blocks change
- * all the time (a stone generator, other players) the game drops to 0 FPS; without it it holds 30.
- */
-export function perfModsFor(loader: string, preset?: string): { slugs: string[]; why: string }[] {
+export function perfModsFor(loader: string): { slugs: string[]; why: string }[] {
   const list = PERF_MODS[loader];
   if (!list) throw new Error(t('Mody wydajności wymagają mod loadera. Ustaw Fabric w ustawieniach profilu.'));
-  return preset === 'pi' ? list.filter((e) => !e.slugs.some((s) => RENDERERS.includes(s))) : list;
+  return list;
 }

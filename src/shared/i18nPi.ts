@@ -1,13 +1,12 @@
 /** English texts of the Raspberry Pi notes by the Pi's preset (renderer/piNotes.ts and its window). */
 export const PI_EN: Record<string, string> = {
   'Raspberry Pi – co warto wiedzieć': 'Raspberry Pi – good to know',
-  'Lithium i inne, bez Sodium (zawiesza grafikę Pi), instalowane przy zapisie': "Lithium and others, no Sodium (it stalls the Pi's graphics), installed on saving",
   'Grafika na karcie Pi': "Graphics on the Pi's chip",
   'Z „Poprawką grafiki dla Raspberry Pi” gra rysuje kartą graficzną Pi przez OpenGL i trzyma limit presetu (30 FPS). Bez niej Minecraft 26.x rysuje przez Vulkan liczony przez procesor: 10–15 FPS przy mocno zajętym procesorze.':
     "With \"The Raspberry Pi's graphics fix\" the game draws with the Pi's graphics chip through OpenGL and holds the preset's limit (30 FPS). Without it Minecraft 26.x draws through a Vulkan done by the processor: 10–15 FPS with the processor working hard.",
-  'Bez Sodium': 'No Sodium',
-  'Sodium zawiesza sterownik grafiki Pi: na serwerach, gdzie bloki ciągle się zmieniają, gra spada do 0 FPS, a z nowszym sterownikiem potrafi zawiesić całą kartę razem z pulpitem. Preset go nie instaluje. Jeśli masz Sodium z wcześniejszych wersji launchera, wyłącz je na liście modów profilu.':
-    "Sodium stalls the Pi's graphics driver: on servers where blocks change all the time the game drops to 0 FPS, and with a newer driver it can hang the whole graphics chip along with the desktop. The preset does not install it. If you have Sodium from earlier launcher versions, switch it off in the profile's mod list.",
+  'Sodium ze sprawdzaniem błędów': 'Sodium with error checks',
+  'Sodium domyślnie wyłącza sprawdzanie błędów sterownika grafiki. Na Pi przepuszczało wtedy za duże tekstury z paczek serwerów, a gra spadała do 0 FPS albo zawieszała kartę razem z pulpitem. Z „Poprawką grafiki” launcher przy każdym starcie włącza Sodium to sprawdzanie i gra trzyma 30 FPS.':
+    "Sodium switches the graphics driver's error checks off by default. On the Pi it then let through textures from servers' packs that were too big, and the game dropped to 0 FPS or hung the graphics chip with the desktop. With the graphics fix the launcher turns these checks back on for Sodium at every start, and the game holds 30 FPS.",
   'Duże paczki zasobów serwerów': "Servers' big resource packs",
   'Karta Pi przyjmuje tekstury do 4096 pikseli. Gdy paczka serwera potrzebuje większych, gra ją odrzuca („Unable to fit”) i grasz bez niej. Bez „Poprawki grafiki” paczka się wczyta, ale za cenę połowy FPS.':
     "The Pi's graphics chip takes textures up to 4096 pixels. When a server's pack needs bigger ones, the game drops it (\"Unable to fit\") and you play without it. Without the graphics fix the pack loads, at the cost of half the FPS.",
