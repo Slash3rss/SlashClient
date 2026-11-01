@@ -139,6 +139,8 @@ public class SlashHud implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
+		// our texts before the game loads its languages: the first notifications otherwise show their keys
+		EarlyLang.install();
 		config = HudConfig.load();
 		Modules.cfg = config;
 
