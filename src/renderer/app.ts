@@ -5321,6 +5321,7 @@ const wizard = createWizard({
 async function offerLinuxInstall() {
   const state = await api.linuxInstallState().catch(() => undefined);
   $('#linux-install').classList.toggle('hidden', state !== 'not-installed');
+  $('#linux-shortcut').classList.toggle('hidden', state !== 'installed');
   if (state !== 'not-installed' || store.settings.linuxInstallAsked) return;
   // not over the first-run wizard: once it is closed
   if (document.body.classList.contains('wz-open')) {
@@ -5350,6 +5351,14 @@ async function installLinuxNow() {
   }
 }
 $('#linux-install').addEventListener('click', () => void installLinuxNow());
+// a shortcut on the desktop: the Raspberry Pi's "Add to Desktop" makes a broken one for a user's own programs
+$('#linux-shortcut').addEventListener('click', async () => {
+  try {
+    toast(await api.linuxDesktopShortcut() ? t('Skrót SlashClient jest na pulpicie.') : t('Nie udało się dodać skrótu na pulpit.'), false);
+  } catch (err) {
+    toast(t('Nie udało się dodać skrótu na pulpit: {0}', errorText(err)), true);
+  }
+});
 
 function finishBoot() {
   $('#splash').classList.add('done');

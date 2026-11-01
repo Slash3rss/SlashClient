@@ -3,9 +3,23 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
-import { DESKTOP_NAME, desktopEntry, install, installState, linuxPlaces } from '../src/main/linuxInstall';
+import { addDesktopShortcut, DESKTOP_NAME, desktopDir, desktopEntry, install, installState, linuxPlaces } from '../src/main/linuxInstall';
 
 describe('installing the Linux AppImage', () => {
+  it('puts a shortcut on the desktop as the system names it (user-dirs.dirs), ~/Desktop otherwise', async () => {
+    const home = await fs.mkdtemp(path.join(os.tmpdir(), 'linux-desktop-'));
+    assert.equal(await desktopDir(home, {}), path.join(home, 'Desktop'));
+    await fs.mkdir(path.join(home, '.config'), { recursive: true });
+    await fs.writeFile(path.join(home, '.config', 'user-dirs.dirs'), '# xdg\nXDG_DOWNLOAD_DIR="$HOME/Pobrane"\nXDG_DESKTOP_DIR="$HOME/Pulpit"\n');
+    const desktop = await desktopDir(home, {});
+    assert.equal(desktop, path.join(home, 'Pulpit'));
+    const file = await addDesktopShortcut('/home/a/Applications/SlashClient.AppImage', desktop, 'SlashClient');
+    assert.equal(file, path.join(home, 'Pulpit', DESKTOP_NAME));
+    assert.match(await fs.readFile(file, 'utf8'), /^Exec=\/home\/a\/Applications\/SlashClient\.AppImage %U$/m);
+    if (process.platform !== 'win32') assert.equal((await fs.stat(file)).mode & 0o111, 0o111);
+    await fs.rm(home, { recursive: true, force: true });
+  });
+
   it('writes a menu entry that starts the AppImage, quoting a path with spaces', () => {
     assert.match(desktopEntry('/home/a/Applications/SlashClient.AppImage', 'x'), /^Exec=\/home\/a\/Applications\/SlashClient\.AppImage %U$/m);
     assert.match(desktopEntry('/home/a b/Applications/SlashClient.AppImage', 'x'), /^Exec="\/home\/a b\/Applications\/SlashClient\.AppImage" %U$/m);

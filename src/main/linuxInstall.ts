@@ -84,3 +84,28 @@ export async function install(appImage: string, places: LinuxPlaces, iconsFrom: 
   await fs.writeFile(path.join(places.entries, DESKTOP_NAME), desktopEntry(target, comment), { mode: 0o755 });
   return target;
 }
+
+/**
+ * The desktop folder: as the system's user-dirs.dirs names it (it may be "Pulpit" on a Polish system),
+ * else ~/Desktop.
+ */
+export async function desktopDir(home = os.homedir(), env: NodeJS.ProcessEnv = process.env): Promise<string> {
+  const config = env.XDG_CONFIG_HOME || path.join(home, '.config');
+  const dirs = await fs.readFile(path.join(config, 'user-dirs.dirs'), 'utf8').catch(() => '');
+  const m = /^XDG_DESKTOP_DIR="([^"]*)"/m.exec(dirs);
+  if (m) return path.normalize(m[1].replace(/^\$HOME(?=\/|$)/, home));
+  return path.join(home, 'Desktop');
+}
+
+/**
+ * A shortcut on the desktop, a copy of the menu entry. The Raspberry Pi's menu ("Add to Desktop") points
+ * its shortcuts at /usr/share/applications, where a user's own programs are not, and the desktop then
+ * says "Invalid desktop entry file". Returns the shortcut's path.
+ */
+export async function addDesktopShortcut(appImage: string, desktop: string, comment: string): Promise<string> {
+  await fs.mkdir(desktop, { recursive: true });
+  const file = path.join(desktop, DESKTOP_NAME);
+  await fs.writeFile(file, desktopEntry(appImage, comment), { mode: 0o755 });
+  await fs.chmod(file, 0o755);
+  return file;
+}

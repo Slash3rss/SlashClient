@@ -133,6 +133,7 @@ const api = {
   moveToApplications: () => invoke('update:moveToApplications'),
   linuxInstallState: () => invoke('linux:installState'),
   linuxInstall: () => invoke('linux:install'),
+  linuxDesktopShortcut: () => invoke('linux:desktopShortcut'),
   /** The launcher's releases (server's /v1/changelog); null from an older server without it. */
   changelog: (before?: string, limit?: number, lang?: string) => invoke('changelog:list', before, limit, lang),
   changelogRelease: (version: string, lang?: string) => invoke('changelog:get', version, lang),

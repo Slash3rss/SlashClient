@@ -111,7 +111,7 @@ import { perfModsFor } from './perfmods';
 import { applyPerfPreset, piSodiumChecks } from './perfPreset';
 import { isOtherArmBoard, partOn, presetEnv, presetMemoryCap, presetNiceness } from '../shared/perfPresets';
 import { gnomeWindowEnv, installCommand } from './gnomeWindow';
-import { install as installLinux, installState as linuxInstallState, linuxPlaces } from './linuxInstall';
+import { addDesktopShortcut, desktopDir, install as installLinux, installState as linuxInstallState, linuxPlaces } from './linuxInstall';
 import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePreset, type SkinPreset } from './skinLibrary';
 import fsp from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
@@ -1710,6 +1710,15 @@ handle('linux:install', async () => {
   // relaunch runs its helper through the AppImage, which does not come back up
   spawn('/bin/sh', ['-c', 'sleep 1; exec "$0"', target], { detached: true, stdio: 'ignore' }).unref();
   app.exit(0);
+  return true;
+});
+// a shortcut on the desktop (the Raspberry Pi's "Add to Desktop" makes a broken one for a user's own programs)
+handle('linux:desktopShortcut', async () => {
+  const appImage = process.env.APPIMAGE;
+  if (process.platform !== 'linux' || !appImage) return false;
+  const file = await addDesktopShortcut(appImage, await desktopDir(), t('SlashClient – launcher Minecrafta'));
+  // GNOME's desktop icons start only shortcuts marked trusted; elsewhere there is no gio, or it does not matter
+  spawn('gio', ['set', file, 'metadata::trusted', 'true'], { stdio: 'ignore' }).on('error', () => {});
   return true;
 });
 handle('update:download', () => shell.openExternal(`${store.settings.socialUrl}/pobierz/${process.arch === 'arm64' ? 'mac' : 'mac-intel'}`));
