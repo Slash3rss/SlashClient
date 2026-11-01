@@ -67,9 +67,12 @@ public final class DungeonMap implements HudModule {
 	/** The map SkyUp builds above each dungeon, read block for block (see DungeonRooms.PLAN_*). */
 	private static final byte[] plan = new byte[SIZE * SIZE];
 	/** Where that map is (y), and how far around the player it is read. */
-	private static final int PLAN_LOW = 35, PLAN_HIGH = 41, PLAN_Y = 37, PLAN_RADIUS = 96;
-	/** The map above is read over this many ticks, a slice each, so no tick takes long. */
-	private static final int PLAN_TICKS = 20;
+	private static final int PLAN_LOW = 35, PLAN_HIGH = 41, PLAN_Y = 37, PLAN_RADIUS = 160;
+	/**
+	 * The map above is read over this many ticks, a slice each, so no tick takes long; as far out as
+	 * the rooms' signs are read, so a room known from its sign has its walls and doors too.
+	 */
+	private static final int PLAN_TICKS = 40;
 	private static int planRow;
 	/** The dungeon's ground (y), and how far its rooms reach below and above it. */
 	private static int groundY;
