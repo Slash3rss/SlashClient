@@ -191,6 +191,7 @@ public final class DungeonRooms {
 		holograms.clear();
 		seenMobs.clear();
 		seenMobEntities.clear();
+		outOfSight.clear();
 		mobRank.clear();
 	}
 
@@ -316,6 +317,22 @@ public final class DungeonRooms {
 	/** Each mob's tier as last worked out (DungeonMap.rank), so the strongest show on its room's tile. */
 	private static final Map<Integer, Integer> mobRank = new HashMap<>();
 
+	/**
+	 * A mob's class as last worked out (a remembered one's name over its head is out of sight now),
+	 * or -1 when not known.
+	 */
+	static int knownKind(Entity e) {
+		Integer rank = mobRank.get(e.getId());
+		if (rank == null) return -1;
+		return switch (rank / 10_000) {
+			case 4 -> 3;
+			case 3 -> 2;
+			case 2 -> 1;
+			case 1 -> 4;
+			default -> 0;
+		};
+	}
+
 	/** A tile's mobs strongest first (class, then level), the same order each time for equals (by id). */
 	private static void strongestFirst(List<net.minecraft.world.entity.LivingEntity> mobs) {
 		mobs.sort(java.util.Comparator.<net.minecraft.world.entity.LivingEntity>comparingInt(e -> -mobRank.getOrDefault(e.getId(), 0)).thenComparingInt(Entity::getId));
@@ -329,7 +346,7 @@ public final class DungeonRooms {
 			for (Entity m : t.mobList) if (m instanceof net.minecraft.world.entity.LivingEntity e && DungeonMap.mobShown(e)) mobs.add(e);
 			if (mobs.isEmpty()) continue;
 			strongestFirst(mobs);
-			out.add(mobs.subList(0, Math.min(4, mobs.size())).stream().map(e -> DungeonMap.kind(e) + "/" + mobRank.getOrDefault(e.getId(), 0) % 10_000).toList().toString());
+			out.add(mobs.subList(0, Math.min(4, mobs.size())).stream().map(e -> DungeonMap.mobKind(e) + "/" + mobRank.getOrDefault(e.getId(), 0) % 10_000).toList().toString());
 		}
 		return String.join(" ", out);
 	}
@@ -337,9 +354,20 @@ public final class DungeonRooms {
 	/** How close the player must be to a remembered mob's place to see whether it is still there. */
 	private static final int SEES = 24;
 
+	/** A mob remembered out of sight, and where it was last seen (map x, z). */
+	record Remembered(Entity mob, double x, double z) {}
+
+	/** The mobs remembered out of sight now, for the detailed map (the simple one shows them on their rooms' tiles). */
+	private static final List<Remembered> outOfSight = new ArrayList<>();
+
+	static List<Remembered> outOfSight() {
+		return outOfSight;
+	}
+
 	/** The mobs remembered out of sight onto their rooms; those dead, gone or old forgotten. */
 	private static void rememberMobs(Minecraft mc, int px, int pz) {
 		long now = System.currentTimeMillis();
+		outOfSight.clear();
 		for (Iterator<Map.Entry<Integer, long[]>> it = seenMobs.entrySet().iterator(); it.hasNext();) {
 			var m = it.next();
 			Entity e = seenMobEntities.get(m.getKey());
@@ -353,6 +381,7 @@ public final class DungeonRooms {
 				mobRank.remove(m.getKey());
 				continue;
 			}
+			outOfSight.add(new Remembered(e, at[0] + 0.5, at[1] + 0.5));
 			int r = roomAt((int) at[0], (int) at[1], 8);
 			if (r < 0) continue;
 			Room room = rooms.get(r);

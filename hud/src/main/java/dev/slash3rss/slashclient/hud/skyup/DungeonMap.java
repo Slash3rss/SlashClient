@@ -613,6 +613,15 @@ public final class DungeonMap implements HudModule {
 				mob(g, (net.minecraft.world.entity.LivingEntity) e, ox + sx, oy + sz, size, frame, mobStyle(kind));
 			}
 		}
+		// mobs further off than the game is told about: where they were last seen (the simple map has them on its tiles)
+		if (!cfg.dungeonMobs || simple()) return;
+		for (DungeonRooms.Remembered m : DungeonRooms.outOfSight()) {
+			if (!(m.mob() instanceof net.minecraft.world.entity.LivingEntity e)) continue;
+			int sx = Math.round((float) (m.x() - viewX) * viewScale), sz = Math.round((float) (m.z() - viewZ) * viewScale);
+			if (!clip.test(sx, sz)) continue;
+			int kind = mobKind(e), size = kind == 3 ? 12 : 8;
+			mob(g, e, ox + sx, oy + sz, size, FRAMES[kind], mobStyle(kind));
+		}
 	}
 
 	/** How a mob class is drawn: "head", "dot", "skull" or "hidden" (0 other mobs, 1 normal, 2 elite, 3 mini boss, 4 minion). */
@@ -656,13 +665,19 @@ public final class DungeonMap implements HudModule {
 
 	/** A mob on a room's tile of the simple map, as its class is set to be drawn, framed in its class's colour. */
 	static void tileMob(GuiGraphicsExtractor g, net.minecraft.world.entity.LivingEntity e, int x, int y, int size) {
-		int kind = kind(e);
+		int kind = mobKind(e);
 		mob(g, e, x, y, size, FRAMES[kind], mobStyle(kind));
 	}
 
 	/** Whether a mob is drawn at all (its class not set to hidden, mobs on the map switched on). */
 	static boolean mobShown(Entity e) {
-		return SlashHud.config.dungeonMobs && !"hidden".equals(mobStyle(kind(e)));
+		return SlashHud.config.dungeonMobs && !"hidden".equals(mobStyle(mobKind(e)));
+	}
+
+	/** A mob's class: as worked out when the map last looked at it (remembered ones), else now. */
+	static int mobKind(Entity e) {
+		int known = DungeonRooms.knownKind(e);
+		return known >= 0 ? known : kind(e);
 	}
 
 	/** A face from the skin (with its hat layer) in a frame of the given colour, 8 pixels round the point. */

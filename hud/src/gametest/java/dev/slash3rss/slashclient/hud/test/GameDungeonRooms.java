@@ -135,7 +135,14 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			context.runOnClient(mc -> TestHooks.dungeonFull(true));
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-rooms-remembered");
-			context.runOnClient(mc -> TestHooks.dungeonFull(false));
+			// the detailed map remembers them too, where they were last seen
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonStyle = "detailed");
+			context.waitTicks(10);
+			context.takeScreenshot("dungeon-rooms-remembered-detailed");
+			context.runOnClient(mc -> {
+				TestHooks.dungeonFull(false);
+				dev.slash3rss.slashclient.hud.SlashHud.config.dungeonStyle = "simple";
+			});
 			server.runCommand(String.format("tp @a %d %d %d 180 30", x0 + 58, y, z0 + 58));
 			context.waitTicks(20);
 			String hidden = context.computeOnClient(mc -> {
