@@ -888,7 +888,29 @@ public final class DungeonMap implements HudModule {
 	/** Debug: what the map knows saved to a file (DungeonRooms.dump); null when there is nothing yet. */
 	public static java.nio.file.Path dumpDebug(Minecraft mc) throws java.io.IOException {
 		if (!active || minX > maxX) return null;
-		return DungeonRooms.dump(mc, cell, plan, minX, minZ, maxX, maxZ, dungeonLevel);
+		// where the player is, and what lies at the map's heights around them (is the map above there?)
+		StringBuilder near = new StringBuilder("player ").append(mc.player.getBlockX()).append(' ').append(mc.player.getBlockY()).append(' ').append(mc.player.getBlockZ())
+			.append(", ground y ").append(groundY).append(grounded ? "" : " (not sure)").append("\nblocks at y 30-45 within 24 blocks, terracotta, concrete and wool (first 40):\n");
+		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
+		java.util.Map<String, Integer> kinds = new java.util.TreeMap<>();
+		int listed = 0;
+		for (int y = 30; y <= 45; y++) {
+			for (int x = mc.player.getBlockX() - 24; x <= mc.player.getBlockX() + 24; x++) {
+				for (int z = mc.player.getBlockZ() - 24; z <= mc.player.getBlockZ() + 24; z++) {
+					BlockState state = mc.level.getBlockState(pos.set(x, y, z));
+					if (state.isAir()) continue;
+					String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).getPath();
+					kinds.merge(y + " " + id, 1, Integer::sum);
+					if (listed < 40 && (id.contains("terracotta") || id.contains("concrete") || id.contains("wool"))) {
+						near.append(x).append(' ').append(y).append(' ').append(z).append(' ').append(id).append('\n');
+						listed++;
+					}
+				}
+			}
+		}
+		near.append("counts by height and block:\n");
+		for (var e : kinds.entrySet()) near.append(e.getKey()).append(": ").append(e.getValue()).append('\n');
+		return DungeonRooms.dump(mc, cell, plan, minX, minZ, maxX, maxZ, dungeonLevel, near.toString());
 	}
 
 	/** For the test: walk into a dungeon without the server's chat line. */

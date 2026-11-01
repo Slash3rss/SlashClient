@@ -8,11 +8,11 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 /**
  * The dungeon map's rooms as SkyUp builds them, from the floor alone (no map above it): squares of
  * 13 blocks, each room with its own wall (two rooms are two blocks apart), doorways five blocks wide,
- * and under each room at y 20 a sign with its size ("1x3-G-1"), by its top left corner a square up
- * (as on SkyUp; rooms turned, their signs with them). A 5×5 start room with walls of its
- * own inside on the grid's lines, rooms of 1×1, 2×2, 1×3, 2×1 (its sign turned: "1x2"), one with a
- * pillar in it, one without a sign and one not seen yet, known from its sign alone: each its own
- * tile on the simple map, and one start room, whole.
+ * and under each room at y 20 a sign with its size ("1x3-G-1") in the corner block the room spreads
+ * from (as on SkyUp: top left unturned; rooms turned, their signs with them). A 5×5 start room with
+ * walls of its own inside on the grid's lines, rooms of 1×1, 2×2, 1×3, 2×1 (its sign turned: "1x2"),
+ * one with a pillar in it and one not seen yet, known from its sign alone: each its own tile on the
+ * simple map, and one start room, whole.
  */
 public class GameDungeonRooms implements FabricClientGameTest {
 	@Override
@@ -36,12 +36,12 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			// rooms in squares (x from, z from, x to, z to) and their signs' text (null: no sign)
 			int[][] rooms = { { 0, 0, 4, 4 }, { 5, 0, 5, 0 }, { 6, 0, 7, 1 }, { 5, 1, 5, 3 }, { 6, 2, 7, 2 }, { 6, 3, 6, 3 }, { 7, 3, 7, 5 }, { 5, 4, 6, 5 } };
 			// signs as SkyUp's: the size unturned, the room turned (quarters round, the start room never)
-			String[] kinds = { "5x5-start-1", "1x1-G-1", "2x2-G-1", "1x3-G-1", "1x2-G-1", null, "3x1-G-1", "2x2-G-1" };
-			int[] turns = { 0, 1, 2, 0, 1, 0, 3, 0 };
+			String[] kinds = { "5x5-start-1", "1x1-G-1", "2x2-G-1", "1x3-G-1", "1x2-G-1", "1x1-A-1", "3x1-G-1", "2x2-G-1" };
+			int[] turns = { 0, 1, 2, 0, 1, 3, 3, 0 };
 			for (int i = 0; i < rooms.length; i++) {
 				int[] r = rooms[i];
 				server.runCommand(String.format("fill %d %d %d %d %d %d air", x0 + r[0] * c + 1, y, z0 + r[1] * c + 1, x0 + (r[2] + 1) * c - 2, y + 2, z0 + (r[3] + 1) * c - 2));
-				if (kinds[i] != null) server.runCommand(sign(x0, z0, c, r, turns[i], kinds[i]));
+				server.runCommand(sign(x0, z0, c, r, turns[i], kinds[i]));
 			}
 			// a room below the start room not seen yet: only its sign
 			server.runCommand(sign(x0, z0, c, new int[] { 0, 5, 1, 5 }, 2, "2x1-G-1"));
@@ -94,12 +94,12 @@ public class GameDungeonRooms implements FabricClientGameTest {
 
 	/**
 	 * The sign under a room (squares x from, z from, x to, z to), turned `turn` quarters round: as on
-	 * SkyUp, a square above the room's first corner (top left unturned), turned with the room.
+	 * SkyUp, in the corner block the room spreads from (top left unturned), turned with the room.
 	 */
 	private static String sign(int x0, int z0, int c, int[] r, int turn, String kind) {
-		int[][] corner = { { r[0], r[1] }, { r[2], r[1] }, { r[2], r[3] }, { r[0], r[3] } };
-		int[][] off = { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } };
-		return sign(x0 + (corner[turn][0] + off[turn][0]) * c + 6, z0 + (corner[turn][1] + off[turn][1]) * c + 6, kind);
+		int left = x0 + r[0] * c, top = z0 + r[1] * c, right = x0 + (r[2] + 1) * c - 1, bottom = z0 + (r[3] + 1) * c - 1;
+		int[][] corner = { { left, top }, { right, top }, { right, bottom }, { left, bottom } };
+		return sign(corner[turn][0], corner[turn][1], kind);
 	}
 
 	/** The sign under a room (y 20) with SkyUp's three lines; its text as SNBT from 1.21.5, JSON strings before. */

@@ -776,9 +776,10 @@ public final class DungeonRooms {
 	/**
 	 * SkyUp builds its dungeons of squares 13 blocks across (each room's own wall included, so two
 	 * rooms are two blocks of wall apart): a room is 1×1, 1×3, 2×2… of them, the start room 5×5.
-	 * Under each room, at y 20 by its first corner, a sign says which it is: "<<DUNGEON_TC>>",
-	 * "d-zwykly", "1x3-G-1" (its size, its kind and number; or "5x5-start-1"). SkyUp turns some
-	 * rooms, their signs with them (the start room never): which way is worked out from the walls.
+	 * Under each room, at y 20 in the corner block it spreads from, a sign says which it is:
+	 * "<<DUNGEON_TC>>", "d-zwykly", "1x3-G-1" (its size, its kind and number; or "5x5-start-1").
+	 * Unturned that is the top left corner; SkyUp turns some rooms, their signs with them (the start
+	 * room never), so the corner the sign is in tells which way the room lies.
 	 */
 	static final int CELL = 13;
 	private static final java.util.regex.Pattern SIGN_SIZE = java.util.regex.Pattern.compile("(\\d+)\\s*x\\s*(\\d+)");
@@ -808,8 +809,6 @@ public final class DungeonRooms {
 	private static final Map<Long, int[]> signs = new HashMap<>();
 	/** For the debug file: each sign where it is in the world and all its lines. */
 	private static final Map<Long, String> signText = new HashMap<>();
-	/** For the debug file: how far a sign is from its room's first corner, as found (0–8). */
-	private static int signOff = -1;
 	/** The grid: where its lines are (map x, z of a square's first block), or -1 while not known. */
 	private static int phaseX = -1, phaseZ = -1;
 	/** The rooms on the grid and the doors between them; empty when the dungeon is not on SkyUp's grid. */
@@ -892,11 +891,16 @@ public final class DungeonRooms {
 		}
 		phaseX = phase(wx);
 		phaseZ = phase(wz);
-		// nothing seen to tell yet: a sign's corner is the last block of its room
-		if ((phaseX < 0 || phaseZ < 0) && !signs.isEmpty()) {
-			int[] s = signs.values().iterator().next();
-			phaseX = Math.floorMod(s[0] + 1, CELL);
-			phaseZ = Math.floorMod(s[1] + 1, CELL);
+		// the signs tell better than the walls: the start room's stands on its first block (the start
+		// room is never turned), the others on their square's first or last block
+		int[] startSign = null;
+		for (int[] s : signs.values()) if (s[4] == 1) startSign = s;
+		if (startSign != null) {
+			phaseX = Math.floorMod(startSign[0], CELL);
+			phaseZ = Math.floorMod(startSign[1], CELL);
+		} else if (!signs.isEmpty()) {
+			phaseX = signPhase(phaseX, true);
+			phaseZ = signPhase(phaseZ, false);
 		}
 		if (phaseX < 0 || phaseZ < 0) return;
 		// a sign's room may reach its size (and a square more) any way from it
@@ -921,33 +925,28 @@ public final class DungeonRooms {
 		// the boundary between two squares: 0 open, 1..7 a door (its middle), 8 and more open (one room)
 		int[] owner = new int[gw * gh];
 		Arrays.fill(owner, -1);
-		// first the rooms the signs tell. A sign stands by its room's first corner (top left, the room
-		// unturned), maybe a square off; SkyUp turns rooms, and the sign with them, but never the start
-		// room. How far off is worked out from all signs at once: the way that fits the walls best
-		int off = 4, offScore = Integer.MIN_VALUE;
-		for (int o = 0; o < 9; o++) {
-			int score = 0;
-			for (int[] s : signs.values()) score += placeSign(cell, plan, present, null, gx, gz, gw, gh, s, o)[4];
-			if (score > offScore) {
-				offScore = score;
-				off = o;
-			}
-		}
-		signOff = off;
-		// the start room first, then the larger rooms, so a small one does not take a big one's square
+		// first the rooms the signs tell: a sign stands in its room's corner block, the corner it
+		// spreads from (top left unturned; SkyUp turns rooms, and the sign with them, but never the
+		// start room); turned a quarter either way, its size across and down swap
 		List<int[]> bySize = new ArrayList<>(signs.values());
 		bySize.sort((a, b) -> b[4] != a[4] ? b[4] - a[4] : b[2] * b[3] - a[2] * a[3]);
 		for (int[] s : bySize) {
-			int[] r = placeSign(cell, plan, present, owner, gx, gz, gw, gh, s, off);
-			if (r[4] == Integer.MIN_VALUE) continue;
+			boolean right = Math.floorMod(s[0] - phaseX, CELL) >= CELL / 2, down = Math.floorMod(s[1] - phaseZ, CELL) >= CELL / 2;
+			// top left and bottom right: as written; top right and bottom left: a quarter turn
+			boolean quarter = right != down;
+			int across = quarter ? s[3] : s[2], along = quarter ? s[2] : s[3];
+			int ci = cellX(s[0]) - gx, cj = cellZ(s[1]) - gz;
+			int rx0 = right ? ci - across + 1 : ci, rz0 = down ? cj - along + 1 : cj;
 			Tile t = new Tile();
 			t.start = s[4] == 1;
-			for (int j = r[1]; j <= r[3]; j++) for (int i = r[0]; i <= r[2]; i++) if (owner[j * gw + i] < 0) claim(t, owner, gw, i, j, gridTiles.size());
+			for (int j = rz0; j < rz0 + along; j++) {
+				for (int i = rx0; i < rx0 + across; i++) if (i >= 0 && j >= 0 && i < gw && j < gh && owner[j * gw + i] < 0) claim(t, owner, gw, i, j, gridTiles.size());
+			}
 			if (t.cells > 0) gridTiles.add(t);
 		}
-		// then squares with floor no sign tells about: together where nothing walls them apart
+		// then, without signs, squares with floor: together where nothing walls them apart
 		ArrayDeque<Integer> queue = new ArrayDeque<>();
-		for (int start = 0; start < gw * gh; start++) {
+		for (int start = 0; start < gw * gh && signs.isEmpty(); start++) {
 			if (!present[start] || owner[start] >= 0) continue;
 			Tile t = new Tile();
 			int id = gridTiles.size();
@@ -1010,41 +1009,16 @@ public final class DungeonRooms {
 	}
 
 	/**
-	 * Where a sign's room lies on the grid (squares x0, z0, x1, z1, and how well that fits the walls):
-	 * unturned, its first corner (top left) `off` (0–8) a square from the sign either way; turned a
-	 * quarter, a half or three quarters round with its sign, whichever fits best (the start room
-	 * never). Its inside open, its edges walled and floor in its squares count for it; squares
-	 * another room has (`owner`, when given) against it. MIN_VALUE when it fits on the grid no way.
+	 * Where the grid's lines are along one way from the signs alone (no start room's sign): each on
+	 * its square's first or last block, so two neighbouring places; the later is a square's first.
+	 * One place only: the walls' guess if it agrees, else that place as a first block.
 	 */
-	private static int[] placeSign(byte[] cell, byte[] plan, boolean[] present, int[] owner, int gx, int gz, int gw, int gh, int[] s, int off) {
-		int si = cellX(s[0]) - gx, sj = cellZ(s[1]) - gz, dx = off % 3 - 1, dz = off / 3 - 1, a = s[2], b = s[3];
-		int[] best = { 0, 0, 0, 0, Integer.MIN_VALUE };
-		for (int turn = 0; turn < (s[4] == 1 ? 1 : 4); turn++) {
-			// the sign's square from the room's first corner, turned with the room (screen: x right, z down)
-			int rx = turn == 0 ? dx : turn == 1 ? -dz : turn == 2 ? -dx : dz, rz = turn == 0 ? dz : turn == 1 ? dx : turn == 2 ? -dz : -dx;
-			int ox = si - rx, oz = sj - rz;
-			int x0 = turn == 0 || turn == 3 ? ox : ox - (turn == 1 ? b : a) + 1, x1 = x0 + (turn % 2 == 0 ? a : b) - 1;
-			int z0 = turn <= 1 ? oz : oz - (turn == 2 ? b : a) + 1, z1 = z0 + (turn % 2 == 0 ? b : a) - 1;
-			if (x0 < 0 || z0 < 0 || x1 >= gw || z1 >= gh) continue;
-			int score = 0;
-			for (int j = z0; j <= z1; j++) {
-				for (int i = x0; i <= x1; i++) {
-					if (owner != null && owner[j * gw + i] >= 0) score -= 10;
-					if (present[j * gw + i]) score++;
-					// inside: open between its squares; on its edge: a wall to the next square
-					if (i < x1) score += openness(cell, plan, gx + i, gz + j, true) >= 8 ? 1 : -2;
-					else if (i + 1 < gw && present[j * gw + i + 1]) score += openness(cell, plan, gx + i, gz + j, true) >= 8 ? -2 : 1;
-					if (j < z1) score += openness(cell, plan, gx + i, gz + j, false) >= 8 ? 1 : -2;
-					else if (j + 1 < gh && present[(j + 1) * gw + i]) score += openness(cell, plan, gx + i, gz + j, false) >= 8 ? -2 : 1;
-					if (i == x0 && i > 0 && present[j * gw + i - 1]) score += openness(cell, plan, gx + i - 1, gz + j, true) >= 8 ? -2 : 1;
-					if (j == z0 && j > 0 && present[(j - 1) * gw + i]) score += openness(cell, plan, gx + i, gz + j - 1, false) >= 8 ? -2 : 1;
-				}
-			}
-			if (score > best[4]) best = new int[] { x0, z0, x1, z1, score };
-		}
-		// a sign that fits nowhere counts as badly as can be, but not past adding up
-		if (owner == null && best[4] == Integer.MIN_VALUE) best[4] = -1000;
-		return best;
+	private static int signPhase(int walls, boolean across) {
+		boolean[] at = new boolean[CELL];
+		for (int[] s : signs.values()) at[Math.floorMod(across ? s[0] : s[1], CELL)] = true;
+		for (int r = 0; r < CELL; r++) if (at[r] && at[(r + 1) % CELL]) return (r + 1) % CELL;
+		for (int r = 0; r < CELL; r++) if (at[r]) return walls == r || walls == (r + 1) % CELL ? walls : r;
+		return walls;
 	}
 
 	private static void claim(Tile t, int[] owner, int gw, int i, int j, int id) {
@@ -1206,14 +1180,15 @@ public final class DungeonRooms {
 	 * grid, the signs as read, the rooms worked out, and the dungeon block by block (the floor as
 	 * seen and the map above it), to build the same dungeon in a test.
 	 */
-	static java.nio.file.Path dump(Minecraft mc, byte[] cell, byte[] plan, int x0, int z0, int x1, int z1, String level) throws java.io.IOException {
+	static java.nio.file.Path dump(Minecraft mc, byte[] cell, byte[] plan, int x0, int z0, int x1, int z1, String level, String around) throws java.io.IOException {
 		StringBuilder out = new StringBuilder();
 		out.append("SlashClient dungeon debug ").append(java.time.LocalDateTime.now()).append(", level ").append(level).append('\n');
 		out.append("map origin (world) ").append(originX).append(' ').append(originZ).append(", seen map x ").append(x0).append("..").append(x1).append(" z ").append(z0).append("..").append(z1).append('\n');
 		int[] st = start();
 		out.append("start point ").append(st == null ? "-" : st[0] + " " + st[1]).append(", player in room at ").append(lastX).append(' ').append(lastZ).append('\n');
-		out.append("grid phase x ").append(phaseX).append(" z ").append(phaseZ).append(", sign offset ").append(signOff).append('\n');
+		out.append("grid phase x ").append(phaseX).append(" z ").append(phaseZ).append('\n');
 		out.append(summary()).append('\n');
+		out.append(around);
 		out.append("\nsigns (world x y z: lines):\n");
 		for (String s : signText.values()) out.append(s).append('\n');
 		out.append("\ntiles (map blocks x0 z0 x1 z1):\n");
