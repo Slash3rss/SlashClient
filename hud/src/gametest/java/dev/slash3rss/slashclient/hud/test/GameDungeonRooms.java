@@ -88,8 +88,14 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			// the zombie without a name of its own: its name, class and level over its head, on a hologram (as on SkyUp)
 			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,Marker:1b,CustomNameVisible:1b," + name("{\"text\":\"Rycerz poz. 9\",\"color\":\"yellow\"}") + "}", x0 + 7 * c + 6, y + 2, z0 + 5 * c + 6));
 			context.waitTicks(20);
-			String shown = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.DungeonRooms.shownMobs());
+			var shown = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.DungeonRooms.shownMobs());
 			if (!shown.contains("[3/5, 2/1, 1/9, 1/3]")) throw new AssertionError("The strongest mobs first on a tile (class, then level): " + shown);
+			// three mini bosses in a room: all three on its tile, the strongest of the rest after them
+			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b," + name("{\"text\":\"Kat poz. 7\",\"color\":\"dark_red\"}") + "}", x0 + 7 * c + 4, y, z0 + 4 * c + 8));
+			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b," + name("{\"text\":\"Kat poz. 4\",\"color\":\"dark_red\"}") + "}", x0 + 7 * c + 8, y, z0 + 4 * c + 8));
+			context.waitTicks(20);
+			shown = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.DungeonRooms.shownMobs());
+			if (!shown.contains("[3/7, 3/5, 3/4, 2/1]")) throw new AssertionError("All the bosses of a room on its tile: " + shown);
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonStyle = "simple");
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-rooms-simple");
@@ -125,7 +131,7 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			server.runCommand(String.format("tp @a %d %d %d 180 30", x0 + 30, y + 10, z0 + 300));
 			context.waitTicks(40);
 			String far = context.computeOnClient(mc -> TestHooks.dungeonRooms() + (java.util.stream.StreamSupport.stream(mc.level.entitiesForRendering().spliterator(), false).noneMatch(e -> net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).getPath().equals("zombie")) ? " (out of sight)" : " (still known)"));
-			if (!far.contains("remembered 6") || !far.contains("(out of sight)")) throw new AssertionError("A mob out of sight is remembered on its room: " + far);
+			if (!far.contains("remembered 8") || !far.contains("(out of sight)")) throw new AssertionError("A mob out of sight is remembered on its room: " + far);
 			context.runOnClient(mc -> TestHooks.dungeonFull(true));
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-rooms-remembered");
