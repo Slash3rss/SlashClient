@@ -230,6 +230,8 @@ public final class HudConfig {
 	public int dungeonY = 64;
 	/** "square" or "circle". */
 	public String dungeonShape = "square";
+	/** "detailed" (the floor as seen) or "simple" (each room a tile, doors between them). */
+	public String dungeonStyle = "detailed";
 	/** The minimap: its size in pixels, pixels per block, shape, turning with the player, the line under it, waypoints on it. */
 	public int minimapSize = 100;
 	public float minimapZoom = 1f;
@@ -889,6 +891,7 @@ public final class HudConfig {
 		dungeonFixedY = other.dungeonFixedY;
 		dungeonY = other.dungeonY;
 		dungeonShape = other.dungeonShape;
+		dungeonStyle = other.dungeonStyle;
 		minimapSize = other.minimapSize;
 		minimapZoom = other.minimapZoom;
 		minimapShape = other.minimapShape;

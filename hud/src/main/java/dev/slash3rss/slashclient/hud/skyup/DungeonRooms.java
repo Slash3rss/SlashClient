@@ -80,6 +80,12 @@ public final class DungeonRooms {
 		int pixels, containers, taken, ores, oresTaken, mobs, spawners;
 		/** Its extent on the map, wall to wall. */
 		int minX = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+		/** Its extent without the doorways that reach into the walls: its tile on the simple map. */
+		int coreMinX = Integer.MAX_VALUE, coreMinZ = Integer.MAX_VALUE, coreMaxX = Integer.MIN_VALUE, coreMaxZ = Integer.MIN_VALUE;
+		/** A few of the mobs in it now (entity ids), for their heads on its tile. */
+		final List<Integer> mobIds = new ArrayList<>();
+		/** The kind of loot (of LOOT) still to take in it, a container before an ore; -1 for none. */
+		int lootCat = -1;
 		boolean visited;
 		/** When its mobs come back (0: not cleared), and how many are left (-1: not known). */
 		long respawnAt;
@@ -102,7 +108,11 @@ public final class DungeonRooms {
 	private static boolean[] edge = new boolean[0];
 	private static int[] dist = new int[0];
 	private static boolean[] visited = new boolean[0];
+	/** Map pixels in a run of their room at least four across (along x): not a doorway. */
+	private static boolean[] wide = new boolean[0];
 	private static final List<Room> rooms = new ArrayList<>();
+	/** Where two rooms meet (a door between them): x, z on the map. */
+	private static final List<float[]> doors = new ArrayList<>();
 	/** The map's corner in the world, and where the player last stood in a room. */
 	private static int originX, originZ, lastX = -1, lastZ = -1;
 	private static final Map<Long, Container> containers = new HashMap<>();
@@ -157,12 +167,14 @@ public final class DungeonRooms {
 			edge = new boolean[size * size];
 			dist = new int[size * size];
 			visited = new boolean[size * size];
+			wide = new boolean[size * size];
 		}
 		Arrays.fill(roomOf, -1);
 		Arrays.fill(edge, false);
 		Arrays.fill(visited, false);
 		lastX = lastZ = -1;
 		rooms.clear();
+		doors.clear();
 		containers.clear();
 		spawners.clear();
 		spawnerBlocks.clear();
@@ -329,6 +341,7 @@ public final class DungeonRooms {
 			if (r < 0) continue;
 			Room room = rooms.get(r);
 			if (!shown(c)) continue;
+			if (!c.taken() && c.present && (room.lootCat < 0 || room.lootCat == ORE && !c.ore)) room.lootCat = c.cat;
 			if (c.ore) {
 				room.ores++;
 				if (c.taken()) room.oresTaken++;
@@ -351,7 +364,11 @@ public final class DungeonRooms {
 			} else if (e instanceof Mob && !inStart(ex, ez)) {
 				// on a ledge or in a pit its column may be no floor where the map was read: a room a few blocks off
 				int r = roomAt(ex, ez, 8);
-				if (r >= 0) rooms.get(r).mobs++;
+				if (r >= 0) {
+					Room room = rooms.get(r);
+					room.mobs++;
+					if (room.mobIds.size() < 4) room.mobIds.add(e.getId());
+				}
 			}
 		}
 		// spawners near the player that are gone now were destroyed
@@ -661,6 +678,53 @@ public final class DungeonRooms {
 				}
 			}
 		}
+		// each room's tile: its pixels in runs at least four long both ways, so a doorway reaching
+		// into the wall (a block or three across) does not make the tile lopsided
+		for (int z = z0; z <= z1; z++) {
+			for (int x = x0; x <= x1;) {
+				int r = roomOf[z * size + x], end = x;
+				while (end + 1 <= x1 && roomOf[z * size + end + 1] == r) end++;
+				for (int i = x; i <= end; i++) wide[z * size + i] = r >= 0 && end - x + 1 >= 4;
+				x = end + 1;
+			}
+		}
+		for (int x = x0; x <= x1; x++) {
+			for (int z = z0; z <= z1;) {
+				int r = roomOf[z * size + x], end = z;
+				while (end + 1 <= z1 && roomOf[(end + 1) * size + x] == r) end++;
+				if (r >= 0 && end - z + 1 >= 4) {
+					Room room = rooms.get(r);
+					for (int i = z; i <= end; i++) {
+						if (!wide[i * size + x]) continue;
+						room.coreMinX = Math.min(room.coreMinX, x);
+						room.coreMaxX = Math.max(room.coreMaxX, x);
+						room.coreMinZ = Math.min(room.coreMinZ, i);
+						room.coreMaxZ = Math.max(room.coreMaxZ, i);
+					}
+				}
+				z = end + 1;
+			}
+		}
+		// doors: where two rooms touch, the middle of where they do
+		doors.clear();
+		Map<Long, double[]> touching = new HashMap<>();
+		for (int z = z0; z <= z1; z++) {
+			for (int x = x0; x <= x1; x++) {
+				int r = roomOf[z * size + x];
+				if (r < 0) continue;
+				for (int[] d : new int[][] { { 1, 0 }, { 0, 1 } }) {
+					int nx = x + d[0], nz = z + d[1];
+					if (nx > x1 || nz > z1) continue;
+					int n = roomOf[nz * size + nx];
+					if (n < 0 || n == r) continue;
+					double[] t = touching.computeIfAbsent(key(Math.min(r, n), Math.max(r, n)), k -> new double[3]);
+					t[0] += x + d[0] / 2.0;
+					t[1] += z + d[1] / 2.0;
+					t[2]++;
+				}
+			}
+		}
+		for (double[] t : touching.values()) doors.add(new float[] { (float) (t[0] / t[2]), (float) (t[1] / t[2]) });
 	}
 
 	private static final int[][] STEPS = { { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } };
@@ -751,6 +815,76 @@ public final class DungeonRooms {
 		}
 	}
 
+	/**
+	 * The simple map: each room a tile in the colour of what is going on in it, with an icon in the
+	 * middle, and a small yellow square on each door between two rooms. The start room is dark green
+	 * with a campfire, the room the player is in light green, a room with mobs dark red with their
+	 * heads, a cleared one green with the time until its mobs come back, the rest light red (dimmer
+	 * when not visited yet) with the loot still to take in it.
+	 */
+	static void drawTiles(GuiGraphicsExtractor g, Minecraft mc, int ox, int oy, int w, int h, float viewX, float viewZ, float scale) {
+		long now = System.currentTimeMillis();
+		int start = startRoom(), current = roomAt(lastX, lastZ);
+		int[] you = { ox + Math.round((float) (mc.player.getX() - originX - viewX) * scale), oy + Math.round((float) (mc.player.getZ() - originZ - viewZ) * scale) };
+		for (int r = 0; r < rooms.size(); r++) {
+			Room room = rooms.get(r);
+			if (room.coreMinX > room.coreMaxX) continue;
+			int x0 = ox + Math.round((room.coreMinX - viewX) * scale) + 1, z0 = oy + Math.round((room.coreMinZ - viewZ) * scale) + 1;
+			int x1 = ox + Math.round((room.coreMaxX + 1 - viewX) * scale) - 1, z1 = oy + Math.round((room.coreMaxZ + 1 - viewZ) * scale) - 1;
+			if (x1 - x0 < 2 || z1 - z0 < 2) continue;
+			boolean mobs = room.mobs > 0 || room.left > 0, cleared = room.respawnAt > now;
+			int color = r == start ? 0xFF0EA30E : r == current ? 0xFF6EE86E : mobs ? 0xFFA30E0E : cleared ? 0xFF3E9E5A : room.visited ? 0xFFF06B6B : 0xFFB45656;
+			// a rim a shade darker, as on a tile; zoomed in, cut at the map's edge
+			box(g, x0, z0, x1, z1, ox, oy, w, h, mix(color, 0x000000, 0.3f));
+			box(g, x0 + 1, z0 + 1, x1 - 1, z1 - 1, ox, oy, w, h, color);
+			int cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, side = Math.min(x1 - x0, z1 - z0);
+			int icon = Math.min(16, side * 3 / 5);
+			if (icon < 6 || cx - icon / 2 < ox || cz - icon / 2 < oy || cx + icon / 2 > ox + w || cz + icon / 2 > oy + h) continue;
+			// items are drawn over everything else: none where it would hide the player's own mark
+			if (Math.abs(you[0] - cx) < icon / 2 + 5 && Math.abs(you[1] - cz) < icon / 2 + 5) continue;
+			if (r == start) {
+				DungeonMap.item(g, new net.minecraft.world.item.ItemStack(Items.CAMPFIRE), cx, cz, icon);
+				continue;
+			}
+			if (mobs) {
+				// up to four heads, two to a row; a mob out of sight (only the hologram's count): a skull
+				List<net.minecraft.world.entity.LivingEntity> seen = new ArrayList<>();
+				for (int id : room.mobIds) if (mc.level.getEntity(id) instanceof net.minecraft.world.entity.LivingEntity e && e.isAlive()) seen.add(e);
+				// heads smaller than the other icons, so a few fit side by side with room around them
+				int head = Math.max(6, Math.min(icon * 2 / 3, seen.size() > 1 ? side / 2 - 3 : icon));
+				if (seen.isEmpty()) DungeonMap.item(g, new net.minecraft.world.item.ItemStack(Items.SKELETON_SKULL), cx, cz, head);
+				for (int i = 0; i < seen.size(); i++) {
+					int cols = Math.min(2, seen.size() - i / 2 * 2), rows = (seen.size() + 1) / 2;
+					int hx = cx + Math.round((i % 2 - (cols - 1) / 2f) * (head + 2)), hz = cz + Math.round((i / 2 - (rows - 1) / 2f) * (head + 2));
+					DungeonMap.tileMob(g, seen.get(i), hx, hz, head);
+				}
+				continue;
+			}
+			if (cleared) {
+				if (SlashHud.config.dungeonCleared) plate(g, mc, clock((room.respawnAt - now + 999) / 1000), cx, cz, 0xFF4ADE80, Math.min(1f, side / 30f));
+				continue;
+			}
+			if (room.lootCat >= 0) {
+				net.minecraft.world.item.ItemStack loot = dev.slash3rss.slashclient.hud.ui.Ui.stack(LOOT_ICONS[room.lootCat]);
+				if (loot != null) DungeonMap.item(g, loot, cx, cz, icon);
+			}
+		}
+		int door = Math.max(2, Math.min(4, Math.round(scale * 1.5f)));
+		for (float[] d : doors) {
+			int x = ox + Math.round((d[0] + 0.5f - viewX) * scale) - door / 2, z = oy + Math.round((d[1] + 0.5f - viewZ) * scale) - door / 2;
+			box(g, x, z, x + door, z + door, ox, oy, w, h, 0xFFFDE047);
+		}
+	}
+
+	/** A filled box, only the part of it within w×h at (ox, oy). */
+	private static void box(GuiGraphicsExtractor g, int x0, int z0, int x1, int z1, int ox, int oy, int w, int h, int color) {
+		x0 = Math.max(x0, ox);
+		z0 = Math.max(z0, oy);
+		x1 = Math.min(x1, ox + w);
+		z1 = Math.min(z1, oy + h);
+		if (x0 < x1 && z0 < z1) g.fill(x0, z0, x1, z1, color);
+	}
+
 	/** "1:05" for 65 seconds. */
 	private static String clock(long seconds) {
 		return seconds / 60 + ":" + String.format("%02d", seconds % 60);
@@ -811,6 +945,6 @@ public final class DungeonRooms {
 			if (r.respawnAt > 0) clearedRooms++;
 			if (r.visited && r.spawners == 0 && rooms.indexOf(r) != startRoom()) noSpawner++;
 		}
-		return rooms.size() + " rooms, containers " + containerCount(false) + ", ores " + containerCount(true) + ", cleared " + clearedRooms + ", without spawner " + noSpawner;
+		return rooms.size() + " rooms, containers " + containerCount(false) + ", ores " + containerCount(true) + ", cleared " + clearedRooms + ", without spawner " + noSpawner + ", doors " + doors.size();
 	}
 }

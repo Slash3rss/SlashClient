@@ -143,6 +143,18 @@ public class GameDungeon implements FabricClientGameTest {
 			rooms = context.computeOnClient(mc -> TestHooks.dungeonRooms());
 			if (!rooms.contains("cleared 2")) throw new AssertionError("Hologram not read: " + rooms);
 			context.takeScreenshot("dungeon-holograms");
+			// the simple map: the nine rooms as tiles, a yellow square on each of the twelve doors between them
+			if (!rooms.contains("doors 12")) throw new AssertionError("Doors between the rooms: " + rooms);
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonStyle = "simple");
+			context.waitTicks(10);
+			context.takeScreenshot("dungeon-simple");
+			context.runOnClient(mc -> TestHooks.dungeonFull(true));
+			context.waitTicks(10);
+			context.takeScreenshot("dungeon-simple-full");
+			context.runOnClient(mc -> {
+				TestHooks.dungeonFull(false);
+				dev.slash3rss.slashclient.hud.SlashHud.config.dungeonStyle = "detailed";
+			});
 			// a room can have up to three spawners: one cleared and one still with mobs is no cleared room yet
 			server.runCommand(String.format("summon armor_stand %d %d %d {Tags:[\"second\"],Invisible:1b,NoGravity:1b,CustomNameVisible:1b," + name("\"Pozostałe moby: 2\"") + "}", x0 - 9, y + 1, z0 - 12));
 			context.waitTicks(30);

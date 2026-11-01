@@ -252,6 +252,8 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.set.coordsOneLine", () -> cfg.coordsOneLine, v -> cfg.coordsOneLine = v));
 				}
 				case "dungeonmap" -> {
+					settings.add(new Choice("slashclient-hud.dungeon.style", new String[] { "detailed", "simple" }, "slashclient-hud.dungeon.style.",
+						() -> cfg.dungeonStyle, v -> cfg.dungeonStyle = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.plan", () -> cfg.dungeonPlan, v -> cfg.dungeonPlan = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.blockColors", () -> cfg.dungeonBlockColors, v -> cfg.dungeonBlockColors = v));
 					settings.add(new Slider("slashclient-hud.dungeon.size", 80f, 240f, 10f, "%.0f px", () -> (float) cfg.dungeonSize, v -> cfg.dungeonSize = Math.round(v)));

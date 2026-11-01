@@ -101,7 +101,17 @@ public final class DungeonMap implements HudModule {
 	@Override
 	public boolean framed() {
 		// a round map has no square box or frame around it
-		return !"circle".equals(SlashHud.config.dungeonShape);
+		return !round();
+	}
+
+	/** The simple map: rooms as tiles instead of the floor as seen. */
+	static boolean simple() {
+		return "simple".equals(SlashHud.config.dungeonStyle);
+	}
+
+	/** A round map (the simple one is always square: its tiles are). */
+	private static boolean round() {
+		return "circle".equals(SlashHud.config.dungeonShape) && !simple();
 	}
 
 	// ---------- in and out of a dungeon ----------
@@ -188,7 +198,7 @@ public final class DungeonMap implements HudModule {
 	/** The map follows the player (round, or set so, or zoomed in): drawn again each frame. */
 	private static boolean following() {
 		HudConfig cfg = SlashHud.config;
-		return "circle".equals(cfg.dungeonShape) || cfg.dungeonFollow || cfg.dungeonZoom > 1.001f;
+		return round() || cfg.dungeonFollow || cfg.dungeonZoom > 1.001f;
 	}
 
 	public static void tick(Minecraft mc) {
@@ -257,7 +267,7 @@ public final class DungeonMap implements HudModule {
 		resize();
 		if (minX > maxX) return;
 		HudConfig cfg = SlashHud.config;
-		boolean circle = "circle".equals(cfg.dungeonShape);
+		boolean circle = round();
 		int mx0 = Math.max(0, minX - 2), mz0 = Math.max(0, minZ - 2);
 		int mw = Math.min(SIZE, maxX + 3) - mx0, mh = Math.min(SIZE, maxZ + 3) - mz0;
 		if (!circle && !cfg.dungeonFollow && cfg.dungeonZoom <= 1.001f) {
@@ -273,6 +283,8 @@ public final class DungeonMap implements HudModule {
 			viewX = (float) (at[0] - originX) - span / 2f;
 			viewZ = (float) (at[1] - originZ) - span / 2f;
 		}
+		// the simple map draws its tiles straight on screen: no picture
+		if (simple()) return;
 		paint(view, W, H, viewX, viewZ, viewScale, circle);
 		viewTexture.upload();
 	}
@@ -526,13 +538,14 @@ public final class DungeonMap implements HudModule {
 		if (SlashHud.config.dungeonTitle) title(g, mc, x, y);
 		progress(g, x, y + (SlashHud.config.dungeonTitle ? TITLE : 0));
 		int ox = x, oy = y + title();
-		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, viewId, ox, oy, 0, 0, W, H, W, H, W, H, 0xFFFFFFFF);
+		if (simple()) g.fill(ox, oy, ox + W, oy + H, 0x60101828);
+		else g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, viewId, ox, oy, 0, 0, W, H, W, H, W, H, 0xFFFFFFFF);
 		drawCounters(g, mc, ox, oy + H, counters());
-		drawOver(g, mc, ox, oy, viewX, viewZ, viewScale, SHOWN);
+		drawOver(g, mc, ox, oy, W, H, viewX, viewZ, viewScale, SHOWN);
 	}
 
-	/** What goes over the map's picture: room marks, loot, mobs, players and you. */
-	static void drawOver(GuiGraphicsExtractor g, Minecraft mc, int ox, int oy, float vx, float vz, float scale, java.util.function.BiPredicate<Integer, Integer> inside) {
+	/** What goes over the map's picture (w×h at ox, oy): room marks, loot, mobs, players and you. */
+	static void drawOver(GuiGraphicsExtractor g, Minecraft mc, int ox, int oy, int w, int h, float vx, float vz, float scale, java.util.function.BiPredicate<Integer, Integer> inside) {
 		float keepX = viewX, keepZ = viewZ, keepScale = viewScale;
 		var keepClip = clip;
 		viewX = vx;
@@ -540,7 +553,7 @@ public final class DungeonMap implements HudModule {
 		viewScale = scale;
 		clip = inside;
 		try {
-			drawOverView(g, mc, ox, oy);
+			drawOverView(g, mc, ox, oy, w, h);
 		} finally {
 			viewX = keepX;
 			viewZ = keepZ;
@@ -553,8 +566,9 @@ public final class DungeonMap implements HudModule {
 	private static final java.util.function.BiPredicate<Integer, Integer> SHOWN = DungeonMap::shown;
 	private static java.util.function.BiPredicate<Integer, Integer> clip = SHOWN;
 
-	private static void drawOverView(GuiGraphicsExtractor g, Minecraft mc, int ox, int oy) {
-		DungeonRooms.draw(g, mc, ox, oy, viewX, viewZ, viewScale, originX, originZ, clip);
+	private static void drawOverView(GuiGraphicsExtractor g, Minecraft mc, int ox, int oy, int w, int h) {
+		if (simple()) DungeonRooms.drawTiles(g, mc, ox, oy, w, h, viewX, viewZ, viewScale);
+		else DungeonRooms.draw(g, mc, ox, oy, viewX, viewZ, viewScale, originX, originZ, clip);
 		markers(g, mc, ox, oy);
 		if (SlashHud.config.dungeonStartArrow) startMark(g, ox, oy);
 		double[] at = smooth(mc);
@@ -586,7 +600,8 @@ public final class DungeonMap implements HudModule {
 			if (DungeonRooms.spawnerLabel(e) || e instanceof ArmorStand) continue;
 			if (e instanceof AbstractClientPlayer p && connection != null && connection.getPlayerInfo(p.getUUID()) != null) {
 				if (cfg.dungeonPlayers) face(g, p, ox + sx, oy + sz, 0xFF60A5FA);
-			} else if ((e instanceof Mob || e instanceof AbstractClientPlayer) && cfg.dungeonMobs && !e.isInvisible()) {
+			} else if ((e instanceof Mob || e instanceof AbstractClientPlayer) && cfg.dungeonMobs && !e.isInvisible() && !simple()) {
+				// (on the simple map mobs are heads on their room's tile)
 				// a mob, or an NPC (a player with a skin who is not on the tab list): drawn as its class is set to be
 				int kind = kind(e), size = kind == 3 ? 12 : 8, frame = FRAMES[kind];
 				mob(g, (net.minecraft.world.entity.LivingEntity) e, ox + sx, oy + sz, size, frame, mobStyle(kind));
@@ -631,6 +646,11 @@ public final class DungeonMap implements HudModule {
 				} else if (!MobHeads.draw(g, e, x, y, size, frame)) g.fill(x - 1, y - 1, x + 2, y + 2, frame);
 			}
 		}
+	}
+
+	/** A mob's head on a room's tile of the simple map, framed in its class's colour. */
+	static void tileMob(GuiGraphicsExtractor g, net.minecraft.world.entity.LivingEntity e, int x, int y, int size) {
+		mob(g, e, x, y, size, FRAMES[kind(e)], "head");
 	}
 
 	/** A face from the skin (with its hat layer) in a frame of the given colour, 8 pixels round the point. */
@@ -701,7 +721,7 @@ public final class DungeonMap implements HudModule {
 	/** A point of the picture inside its shape. */
 	private static boolean shown(int px, int pz) {
 		if (px < 1 || pz < 1 || px >= W - 1 || pz >= H - 1) return false;
-		if (!"circle".equals(SlashHud.config.dungeonShape)) return true;
+		if (!round()) return true;
 		float dx = px - W / 2f, dz = pz - H / 2f;
 		return dx * dx + dz * dz <= (W / 2f - 1) * (W / 2f - 1);
 	}
@@ -788,6 +808,8 @@ public final class DungeonMap implements HudModule {
 		if (start == null) return;
 		float sx = (start[0] + 0.5f - viewX) * viewScale, sz = (start[1] + 0.5f - viewZ) * viewScale;
 		if (clip.test(Math.round(sx), Math.round(sz))) {
+			// the simple map shows the start room as its own tile, with a campfire
+			if (simple()) return;
 			int x = ox + Math.round(sx), y = oy + Math.round(sz);
 			g.fill(x - 3, y - 3, x + 4, y + 4, 0xFF000000);
 			g.fill(x - 2, y - 2, x + 3, y + 3, 0xFF4ADE80);
@@ -799,7 +821,7 @@ public final class DungeonMap implements HudModule {
 		double len = Math.sqrt(dx * dx + dz * dz);
 		if (len < 1) return;
 		// as far out as the map goes, a few pixels in from its edge (a round map: its circle)
-		double reach = "circle".equals(SlashHud.config.dungeonShape) ? Math.min(W, H) / 2.0 - 6
+		double reach = round() ? Math.min(W, H) / 2.0 - 6
 			: Math.min((W / 2.0 - 6) / Math.max(1e-6, Math.abs(dx)), (H / 2.0 - 6) / Math.max(1e-6, Math.abs(dz))) * len;
 		double ux = dx / len, uz = dz / len;
 		double tipX = ox + cx + ux * reach, tipZ = oy + cz + uz * reach;
@@ -834,7 +856,20 @@ public final class DungeonMap implements HudModule {
 		}
 		if (SlashHud.config.dungeonTitle) Modules.text(g, mc, Component.translatable("slashclient-hud.dungeon").getString(), x + 3, y + 2, Modules.textColor());
 		int top = y + title();
-		int[][] rooms = { { 10, 10, 30, 26 }, { 46, 10, 30, 26 }, { 82, 14, 28, 22 }, { 10, 48, 30, 30 }, { 46, 48, 30, 30 }, { 82, 52, 28, 26 }, { 46, 88, 30, 24 } };
+		if (simple()) {
+			// tiles in a grid: the start room, the one you are in, one with mobs, the rest; doors between them
+			int[][] tiles = { { 0, 0, 0xFFF06B6B }, { 1, 0, 0xFFA30E0E }, { 2, 0, 0xFFF06B6B }, { 0, 1, 0xFFF06B6B }, { 1, 1, 0xFF6EE86E }, { 2, 1, 0xFFB45656 }, { 1, 2, 0xFF0EA30E } };
+			for (int[] t : tiles) {
+				int tx = x + 8 + t[0] * 36, ty = top + 6 + t[1] * 36;
+				g.fill(tx, ty, tx + 32, ty + 32, 0xFF000000 | (t[2] & 0xFEFEFE) >> 1);
+				g.fill(tx + 1, ty + 1, tx + 31, ty + 31, t[2]);
+			}
+			int[][] doors = { { 42, 22 }, { 78, 22 }, { 24, 40 }, { 60, 40 }, { 96, 40 }, { 42, 58 }, { 78, 58 }, { 60, 76 } };
+			for (int[] d : doors) g.fill(x + d[0] - 2, top + d[1] - 2, x + d[0] + 2, top + d[1] + 2, 0xFFFDE047);
+			item(g, new ItemStack(Items.CAMPFIRE), x + 60, top + 94, 16);
+			return;
+		}
+		int[][] rooms ={ { 10, 10, 30, 26 }, { 46, 10, 30, 26 }, { 82, 14, 28, 22 }, { 10, 48, 30, 30 }, { 46, 48, 30, 30 }, { 82, 52, 28, 26 }, { 46, 88, 30, 24 } };
 		for (int[] r : rooms) g.fill(x + r[0], top + r[1], x + r[0] + r[2], top + r[1] + r[3], 0xFF5B6475);
 		// the start room and the corridors between the rooms
 		g.fill(x + 50, top + 92, x + 72, top + 108, 0xFF4ADE80);

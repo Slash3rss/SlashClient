@@ -106,9 +106,9 @@ public class DungeonMapScreen extends Screen {
 			texture.upload();
 		}
 		g.fill(ox - 2, oy - 2, ox + aw + 2, oy + ah + 2, 0xC0000000);
-		g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, textureId, ox, oy, 0, 0, aw, ah, pw, ph, pw, ph, 0xFFFFFFFF);
+		if (!DungeonMap.simple()) g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, textureId, ox, oy, 0, 0, aw, ah, pw, ph, pw, ph, 0xFFFFFFFF);
 		final int w = aw, h = ah;
-		DungeonMap.drawOver(g, mc, ox, oy, vx, vz, scale, (x, z) -> x >= 0 && z >= 0 && x < w && z < h);
+		DungeonMap.drawOver(g, mc, ox, oy, w, h, vx, vz, scale, (x, z) -> x >= 0 && z >= 0 && x < w && z < h);
 		// how to use it
 		Component help = Ui.tr("slashclient-hud.dungeon.fullHelp");
 		Ui.draw(g, help, (width - Ui.width(help)) / 2, height - 13, 0xFFAAAAAA);
