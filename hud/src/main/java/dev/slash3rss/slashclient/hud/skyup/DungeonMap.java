@@ -69,17 +69,48 @@ public final class DungeonMap implements HudModule {
 	/** Where that map is (y), and how far around the player it is read. */
 	private static final int PLAN_LOW = 35, PLAN_HIGH = 41, PLAN_Y = 37, PLAN_RADIUS = 160;
 	/**
-	 * The map above is read over this many ticks, a slice each, so no tick takes long; as far out as
-	 * the rooms' signs are read, so a room known from its sign has its walls and doors too.
+	 * The map above is read a few thousand columns a tick, so no tick takes long; as far out as the
+	 * rooms' signs are read, so a room known from its sign has its walls and doors too.
 	 */
-	private static final int PLAN_TICKS = 40;
-	private static int planRow;
+	private static final int PLAN_COLUMNS_PER_TICK = 2600;
+	/**
+	 * The places around the player (dx, dz packed), nearest first, out to PLAN_RADIUS: the order the
+	 * map above and the far floor are read in, so the map grows from the player evenly every way.
+	 */
+	private static final long[] AROUND = around(PLAN_RADIUS);
+	/** Where in AROUND the map above and the far floor read next. */
+	private static int planAt, farAt;
+
+	private static long[] around(int r) {
+		java.util.List<Long> out = new java.util.ArrayList<>();
+		for (int dx = -r; dx <= r; dx++) {
+			for (int dz = -r; dz <= r; dz++) {
+				long d = (long) dx * dx + (long) dz * dz;
+				if (d <= (long) r * r) out.add(d << 32 | (long) (dx + 1024) << 16 | dz + 1024);
+			}
+		}
+		long[] sorted = out.stream().mapToLong(Long::longValue).toArray();
+		java.util.Arrays.sort(sorted);
+		return sorted;
+	}
+
+	private static int aroundDx(long p) {
+		return (int) (p >> 16 & 0xFFFF) - 1024;
+	}
+
+	private static int aroundDz(long p) {
+		return (int) (p & 0xFFFF) - 1024;
+	}
+
+	private static long aroundDist(long p) {
+		return p >>> 32;
+	}
 	/** The dungeon's ground (y), and how far its rooms reach below and above it. */
 	private static int groundY;
 	private static boolean grounded;
 	private static final int BELOW = 21, ABOVE = 14;
-	/** Which slice of rows each ring reads next. */
-	private static int scanRow, farRow;
+	/** Which slice of rows the near ring reads next. */
+	private static int scanRow;
 	private static int tick;
 	private static String dungeonLevel = "";
 	/** The boss bar's fill: progress to the next level (0–1), or -1 when not known. */
@@ -351,23 +382,25 @@ public final class DungeonMap implements HudModule {
 		ClientLevel world = mc.level;
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 		int cx = mc.player.getBlockX(), cz = mc.player.getBlockZ();
-		int rows = (PLAN_RADIUS * 2 + 1 + PLAN_TICKS - 1) / PLAN_TICKS;
-		int from = cx - PLAN_RADIUS + planRow * rows;
-		planRow = (planRow + 1) % PLAN_TICKS;
-		for (int x = from; x < from + rows && x <= cx + PLAN_RADIUS; x++) {
-			for (int z = cz - PLAN_RADIUS; z <= cz + PLAN_RADIUS; z++) {
-				int ix = x - originX, iz = z - originZ;
-				if (ix < 0 || iz < 0 || ix >= SIZE || iz >= SIZE || !world.hasChunk(x >> 4, z >> 4)) continue;
-				// the map's own layer first (y 37): the start room's green mark lies over it, a block higher
-				byte kind = planKind(world.getBlockState(pos.set(x, PLAN_Y, z)));
-				for (int y = PLAN_HIGH; y >= PLAN_LOW && kind == 0; y--) kind = planKind(world.getBlockState(pos.set(x, y, z)));
-				if (kind == 0) continue;
-				plan[iz * SIZE + ix] = kind;
-				minX = Math.min(minX, ix);
-				minZ = Math.min(minZ, iz);
-				maxX = Math.max(maxX, ix);
-				maxZ = Math.max(maxZ, iz);
-			}
+		// from the player outwards, nearest first; columns already read cost next to nothing (the map
+		// does not change), so each round gets further out sooner
+		int read = 0;
+		for (int steps = 0; steps < AROUND.length && read < PLAN_COLUMNS_PER_TICK; steps++) {
+			if (planAt >= AROUND.length) planAt = 0;
+			long p = AROUND[planAt++];
+			int x = cx + aroundDx(p), z = cz + aroundDz(p);
+			int ix = x - originX, iz = z - originZ;
+			if (ix < 0 || iz < 0 || ix >= SIZE || iz >= SIZE || plan[iz * SIZE + ix] != 0 || !world.hasChunk(x >> 4, z >> 4)) continue;
+			read++;
+			// the map's own layer first (y 37): the start room's green mark lies over it, a block higher
+			byte kind = planKind(world.getBlockState(pos.set(x, PLAN_Y, z)));
+			for (int y = PLAN_HIGH; y >= PLAN_LOW && kind == 0; y--) kind = planKind(world.getBlockState(pos.set(x, y, z)));
+			if (kind == 0) continue;
+			plan[iz * SIZE + ix] = kind;
+			minX = Math.min(minX, ix);
+			minZ = Math.min(minZ, iz);
+			maxX = Math.max(maxX, ix);
+			maxZ = Math.max(maxZ, iz);
 		}
 	}
 
@@ -433,24 +466,18 @@ public final class DungeonMap implements HudModule {
 		for (int x = nearFrom; x < nearFrom + nearRows && x <= cx + NEAR; x++) {
 			for (int z = cz - NEAR; z <= cz + NEAR; z++) column(world, pos, x, z, low, high, near);
 		}
-		// further out: what the near ring does not cover, from the player's own slice outwards (middle,
-		// one left, one right…) so the nearest part shows first; 96 blocks take about five seconds
+		// further out: what the near ring does not cover, in rings from the player outwards (nearest
+		// first, every way alike) as far as the setting says; 96 blocks take about five seconds
 		int radius = Math.max(MIN_RANGE, Math.min(MAX_RANGE, SlashHud.config.dungeonScanRange));
 		if (radius <= NEAR) return;
-		int side = radius * 2 + 1;
-		int ticks = Math.max(1, (side * side - (NEAR * 2 + 1) * (NEAR * 2 + 1) + FAR_COLUMNS_PER_TICK - 1) / FAR_COLUMNS_PER_TICK);
-		int rows = (side + ticks - 1) / ticks;
-		if (farRow >= ticks) farRow = 0;
-		int middle = ticks / 2;
-		int slice = farRow % 2 == 0 ? middle + farRow / 2 : middle - (farRow + 1) / 2;
-		int from = cx - radius + Math.floorMod(slice, ticks) * rows;
-		farRow = (farRow + 1) % ticks;
-		for (int x = from; x < from + rows && x <= cx + radius; x++) {
-			boolean nearX = Math.abs(x - cx) <= NEAR;
-			for (int z = cz - radius; z <= cz + radius; z++) {
-				if (nearX && Math.abs(z - cz) <= NEAR) continue;
-				column(world, pos, x, z, low, high, near);
-			}
+		long reach = (long) radius * radius;
+		for (int done = 0, steps = 0; done < FAR_COLUMNS_PER_TICK && steps < AROUND.length; steps++) {
+			if (farAt >= AROUND.length || aroundDist(AROUND[farAt]) > reach) farAt = 0;
+			long p = AROUND[farAt++];
+			int dx = aroundDx(p), dz = aroundDz(p);
+			if (Math.abs(dx) <= NEAR && Math.abs(dz) <= NEAR) continue;
+			column(world, pos, cx + dx, cz + dz, low, high, near);
+			done++;
 		}
 	}
 
