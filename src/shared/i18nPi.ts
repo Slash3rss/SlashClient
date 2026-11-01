@@ -42,6 +42,6 @@ export const PI_EN: Record<string, string> = {
   'Zaraz po starcie Java kompiluje grę na wszystkich rdzeniach i gra może się przycinać. Gra dostaje niższy priorytet, żeby pulpit i zdalny pulpit się nie zacinały.':
     'Right after the start Java compiles the game on every core and the game may stutter. The game gets a lower priority so the desktop and a remote desktop stay smooth.',
   'Inne płytki ARM (Orange Pi, Radxa)': 'Other ARM boards (Orange Pi, Radxa)',
-  'Ten preset jest dla Raspberry Pi. Płytki z układem RK3588 (np. Orange Pi 5, Radxa ROCK 5) rysują grę własnym Vulkanem (sterownik panvk), a wymuszony OpenGL tam nie startuje, dlatego launcher poleca im „Bardzo lekki”.':
-    'This preset is for the Raspberry Pi. Boards with the RK3588 chip (e.g. Orange Pi 5, Radxa ROCK 5) draw the game with their own Vulkan (the panvk driver), and a forced OpenGL does not start there, so the launcher suggests "Very light" for them.',
+  'Ten preset jest dla Raspberry Pi. Płytki z układem RK3588 (np. Orange Pi 5, Radxa ROCK 5) rysują grę własnym Vulkanem (sterownik panvk), a wymuszony OpenGL tam nie startuje, dlatego launcher poleca im „Bardzo lekki”. Synchronizacja pionowa trzyma tam grę na 30 FPS; po jej wyłączeniu w ustawieniach grafiki gra trzyma limit presetu (60 FPS).':
+    'This preset is for the Raspberry Pi. Boards with the RK3588 chip (e.g. Orange Pi 5, Radxa ROCK 5) draw the game with their own Vulkan (the panvk driver), and a forced OpenGL does not start there, so the launcher suggests "Very light" for them. Vertical sync holds the game at 30 FPS there; with it switched off in the graphics settings the game holds the preset\'s limit (60 FPS).',
 };
