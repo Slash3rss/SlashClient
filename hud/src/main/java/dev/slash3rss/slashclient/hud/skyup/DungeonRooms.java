@@ -968,14 +968,14 @@ public final class DungeonRooms {
 		int[] owner = new int[gw * gh];
 		Arrays.fill(owner, -1);
 		// first the rooms the signs tell: a sign stands in its room's corner block, the corner it
-		// spreads from (top left unturned; SkyUp turns rooms, and the sign with them, but never the
-		// start room); turned a quarter either way, its size across and down swap
+		// spreads from (SkyUp turns rooms, and the sign with them, but never the start room). Its
+		// size reads down by across in the top left and bottom right corners ("1x3" there is three
+		// squares across, as SkyUp's own map shows), across by down in the other two
 		List<int[]> bySize = new ArrayList<>(signs.values());
 		bySize.sort((a, b) -> b[4] != a[4] ? b[4] - a[4] : b[2] * b[3] - a[2] * a[3]);
 		for (int[] s : bySize) {
 			boolean right = Math.floorMod(s[0] - phaseX, CELL) >= CELL / 2, down = Math.floorMod(s[1] - phaseZ, CELL) >= CELL / 2;
-			// top left and bottom right: as written; top right and bottom left: a quarter turn
-			boolean quarter = right != down;
+			boolean quarter = right == down;
 			int across = quarter ? s[3] : s[2], along = quarter ? s[2] : s[3];
 			int ci = cellX(s[0]) - gx, cj = cellZ(s[1]) - gz;
 			int rx0 = right ? ci - across + 1 : ci, rz0 = down ? cj - along + 1 : cj;

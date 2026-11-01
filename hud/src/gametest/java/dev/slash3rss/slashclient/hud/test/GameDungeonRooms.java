@@ -10,7 +10,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
  * 13 blocks, each room with its own wall (two rooms are two blocks apart), doorways five blocks wide,
  * and under each room at y 20 a sign with its size ("1x3-G-1") in the corner block the room spreads
  * from (as on SkyUp: top left unturned; rooms turned, their signs with them). A 5×5 start room with
- * walls of its own inside on the grid's lines, rooms of 1×1, 2×2, 1×3, 2×1 (its sign turned: "1x2"),
+ * walls of its own inside on the grid's lines, rooms of 1×1, 2×2, 1×3, 2×1 (their signs as SkyUp writes them),
  * one with a pillar in it and one not seen yet, known from its sign and SkyUp's concrete map over it
  * (its door too): each its own tile on the simple map, and one start room, whole.
  */
@@ -36,7 +36,8 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			// rooms in squares (x from, z from, x to, z to) and their signs' text (null: no sign)
 			int[][] rooms = { { 0, 0, 4, 4 }, { 5, 0, 5, 0 }, { 6, 0, 7, 1 }, { 5, 1, 5, 3 }, { 6, 2, 7, 2 }, { 6, 3, 6, 3 }, { 7, 3, 7, 5 }, { 5, 4, 6, 5 } };
 			// signs as SkyUp's: the size unturned, the room turned (quarters round, the start room never)
-			String[] kinds = { "5x5-start-1", "1x1-G-1", "2x2-G-1", "1x3-G-1", "1x2-G-1", "1x1-A-1", "3x1-G-1", "2x2-G-1" };
+			// (the size down by across in the top left and bottom right corners, across by down in the others)
+			String[] kinds = { "5x5-start-1", "1x1-G-1", "2x2-G-1", "3x1-G-1", "2x1-G-1", "1x1-A-1", "1x3-G-1", "2x2-G-1" };
 			int[] turns = { 0, 1, 2, 0, 1, 3, 3, 0 };
 			for (int i = 0; i < rooms.length; i++) {
 				int[] r = rooms[i];
@@ -44,7 +45,7 @@ public class GameDungeonRooms implements FabricClientGameTest {
 				server.runCommand(sign(x0, z0, c, r, turns[i], kinds[i]));
 			}
 			// a room below the start room not seen yet: only its sign
-			server.runCommand(sign(x0, z0, c, new int[] { 0, 5, 1, 5 }, 2, "2x1-G-1"));
+			server.runCommand(sign(x0, z0, c, new int[] { 0, 5, 1, 5 }, 2, "1x2-G-1"));
 			// over it SkyUp's map in concrete (y 37, one to one): grey inside, a black wall round it, and a
 			// yellow way through the wall to the start room, so the map knows its door before it is seen
 			server.runCommand(String.format("fill %d 37 %d %d 37 %d black_concrete", x0, z0 + 5 * c, x0 + 2 * c - 1, z0 + 6 * c - 1));
