@@ -35,7 +35,7 @@ import { createServerPages } from './serverPages';
 import { ask, confirmDialog, modalWindow } from './dialog';
 import { createWizard } from './wizard';
 import { createProfileWizard, presetAbout, presetName } from './profileWizard';
-import { piNoteRows } from './piNotes';
+import { showPiNotes } from './piNotes';
 import { trackUnsaved } from './unsaved';
 import { createSessionSummary } from './sessionSummary';
 import { createLauncherNews } from './launcherNews';
@@ -90,6 +90,7 @@ interface PublicStore {
   systemMemoryMb: number;
   platform?: string;
   arch?: string;
+  board?: string;
   hudVersions?: string[];
 }
 interface VersionInfo { id: string; type: string }
@@ -1624,7 +1625,7 @@ function fillPerfPreset(profile: Profile) {
   const preset = profile.perfPreset ?? 'off';
   (form.elements.namedItem('perfPreset') as HTMLSelectElement).value = preset;
   for (const box of form.querySelectorAll<HTMLInputElement>('input[name="perfPart"]')) box.checked = !(profile.perfOff ?? []).includes(box.value as PerfPart);
-  const suggested = suggestedPreset(store.systemMemoryMb, navigator.hardwareConcurrency || 0, store.platform ?? '', store.arch ?? '');
+  const suggested = suggestedPreset(store.systemMemoryMb, navigator.hardwareConcurrency || 0, store.platform ?? '', store.arch ?? '', store.board ?? '');
   $('#perf-suggest').textContent = suggested !== 'off' ? t('dla tego komputera polecamy: {0}', presetName(suggested)) : '';
   renderPerfParts();
 }
@@ -1638,16 +1639,12 @@ function renderPerfParts() {
   $('#perf-about').classList.toggle('hidden', !presetAbout(preset));
   $('#perf-parts').classList.toggle('hidden', preset === 'off');
   form.querySelector<HTMLElement>('.perf-gl')!.classList.toggle('hidden', preset !== 'pi');
+  form.querySelector<HTMLElement>('.perf-fps')!.classList.toggle('hidden', preset !== 'pi');
   $('#pi-info-open').classList.toggle('hidden', preset !== 'pi');
 }
 $<HTMLSelectElement>('#profile-form select[name="perfPreset"]').addEventListener('change', renderPerfParts);
 // what we know about the game on the Pi (graphics, Sodium, server packs, the mouse over VNC), by its preset
-$('#pi-info-open').addEventListener('click', () => {
-  $('#pi-notes').replaceChildren(...piNoteRows());
-  $('#pi-info-modal').classList.remove('hidden');
-});
-$('#pi-info-close').addEventListener('click', () => $('#pi-info-modal').classList.add('hidden'));
-$('#pi-info-modal').addEventListener('click', (e) => e.target === e.currentTarget && $('#pi-info-modal').classList.add('hidden'));
+$('#pi-info-open').addEventListener('click', showPiNotes);
 
 /** The performance mods a preset brings (shared/perfmods: Sodium, Lithium…), those not there yet. */
 async function installPresetMods(profileId: string) {

@@ -114,6 +114,7 @@ import { gnomeWindowEnv, installCommand } from './gnomeWindow';
 import { install as installLinux, installState as linuxInstallState, linuxPlaces } from './linuxInstall';
 import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePreset, type SkinPreset } from './skinLibrary';
 import fsp from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { backupWorld, deleteFile, listBackups, listClips, listScreenshots, listWorlds, restoreBackup } from './worlds';
 import { applySnapshot, createSnapshot, deleteSnapshot, listSnapshots, restoreSnapshot } from './snapshots';
 import { exportWorld, importWorldZip, installDatapack, listDatapacks, readWorldZip, removeDatapack, type WorldZipSummary } from './worldFiles';
@@ -225,11 +226,25 @@ function publicStore() {
     runningProfiles: [...games.keys()],
     dataDir: paths.root,
     systemMemoryMb: Math.round(os.totalmem() / 1024 / 1024),
-    // for the preset suggested for slower computers (the Raspberry Pi's on Linux on ARM)
+    // for the preset suggested for slower computers (the Raspberry Pi's on a Raspberry Pi, a lighter one on other ARM boards)
     platform: process.platform,
     arch: process.arch,
+    board: boardModel(),
     hudVersions: hudSupported,
   };
+}
+
+/** The single-board computer this runs on ("Raspberry Pi 5 Model B Rev 1.1", "Radxa ROCK 5B+"), or '' elsewhere. */
+let board: string | undefined;
+function boardModel(): string {
+  if (board === undefined) {
+    try {
+      board = process.platform === 'linux' ? readFileSync('/proc/device-tree/model', 'utf8').replace(/\0/g, '').trim() : '';
+    } catch {
+      board = '';
+    }
+  }
+  return board;
 }
 
 /** The size the window opens with, from the setting (Settings → Okno launchera). */

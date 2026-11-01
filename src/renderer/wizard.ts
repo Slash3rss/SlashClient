@@ -2,6 +2,9 @@ import { getLang, LANGUAGES, locale, t } from '../shared/i18n';
 import { isLowEndMachine, isPristineProfile, needsFirstRun, newestRelease, wizardVersions } from '../shared/firstRun';
 import { recommendedMemoryMb } from '../main/jvm';
 import type { SlashApi } from '../main/preload';
+import { PERF_PRESETS, partOn, suggestedPreset, type PerfPreset } from '../shared/perfPresets';
+import { presetAbout, presetName } from './profileWizard';
+import { piNotesLink } from './piNotes';
 
 /**
  * The first-run wizard: a full-window guide through the first minutes (language, account,
@@ -13,7 +16,7 @@ import type { SlashApi } from '../main/preload';
 interface Account { id: string; type: 'offline' | 'msa'; name: string; uuid: string }
 interface Profile {
   id: string; name: string; versionId: string; loader: string; loaderVersion: string; memoryMb: number; hud?: boolean;
-  playTimeMs?: number; lastPlayedAt?: number; gameDir: string; modpack?: unknown;
+  playTimeMs?: number; lastPlayedAt?: number; gameDir: string; modpack?: unknown; perfPreset?: PerfPreset; perfOff?: string[];
 }
 interface Store {
   accounts: Account[];
@@ -21,6 +24,9 @@ interface Store {
   settings: { selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; launcherWindow?: string; reduceMotion?: boolean;
     defaultMemoryMb?: number; discordEnabled: boolean; language: string; firstRunDone?: boolean };
   systemMemoryMb: number;
+  platform?: string;
+  arch?: string;
+  board?: string;
   hudVersions?: string[];
 }
 interface Found { key: string; source: string; sourceName: string; name: string; versionId: string; loader: string; mods: number; sharedDir: boolean }
@@ -84,7 +90,7 @@ export function createWizard(deps: WizardDeps) {
   let profileSummary = '';
   let perfInstall: Promise<unknown> | undefined;
   let versionList: { id: string; hud: boolean }[] | undefined;
-  const choice = { versionId: '', loader: 'fabric' as 'fabric' | 'vanilla', perf: true, memoryMb: 0, memoryTouched: false, forceNew: false };
+  const choice = { versionId: '', loader: 'fabric' as 'fabric' | 'vanilla', perf: true, memoryMb: 0, memoryTouched: false, forceNew: false, preset: undefined as PerfPreset | undefined };
 
   const motionReduced = () => document.documentElement.classList.contains('reduce-motion');
   const save = (s: Partial<Store['settings']>) => api.saveSettings(s).catch((err: unknown) => deps.toast(deps.errorText(err), true));
@@ -424,8 +430,17 @@ export function createWizard(deps: WizardDeps) {
     const loaders = el('div', { className: 'wz-tiles two' },
       tile({ icon: 'fa-solid fa-wand-magic-sparkles', title: 'Fabric + SlashClient HUD', sub: 'Mody, HUD, kosmetyki i znajomi w grze', badge: 'zalecane', selected: choice.loader === 'fabric', onPick: pick('fabric') }),
       tile({ icon: 'fa-solid fa-cube', title: 'Czysta gra (vanilla)', sub: 'Minecraft bez żadnych dodatków', selected: choice.loader === 'vanilla', onPick: pick('vanilla') }));
-    // performance mods (Fabric only)
-    const perf = el('input', { type: 'checkbox', checked: choice.loader === 'fabric' && choice.perf, disabled: choice.loader !== 'fabric' });
+    // the mode for slower computers, the one this computer wants picked (on a Raspberry Pi its own: the game
+    // on the Pi's graphics chip instead of some 10 FPS drawn by the processor)
+    const suggested = suggestedPreset(store?.systemMemoryMb ?? 0, navigator.hardwareConcurrency || 0, store?.platform ?? '', store?.arch ?? '', store?.board ?? '');
+    choice.preset ??= suggested;
+    const preset = el('select', { className: 'wz-version' });
+    for (const p of PERF_PRESETS) preset.append(el('option', { value: p, textContent: presetName(p), selected: p === choice.preset }));
+    preset.dataset.noI18n = '';
+    preset.addEventListener('change', () => { choice.preset = preset.value as PerfPreset; render(); });
+    // performance mods (Fabric only; a preset's mods part brings them anyway)
+    const inPreset = partOn(choice.preset, [], 'mods');
+    const perf = el('input', { type: 'checkbox', checked: choice.loader === 'fabric' && (choice.perf || inPreset), disabled: choice.loader !== 'fabric' || inPreset });
     perf.addEventListener('change', () => {
       choice.perf = perf.checked;
       if (!choice.memoryTouched) choice.memoryMb = recommended();
@@ -445,9 +460,14 @@ export function createWizard(deps: WizardDeps) {
     body.append(
       el('div', { className: 'wz-field' }, el('h4', { className: 'wz-label', textContent: 'Wersja Minecrafta' }), select, versionHint),
       el('h4', { className: 'wz-label', textContent: 'Rodzaj gry' }), loaders,
-      el('label', { className: `check wz-check${choice.loader !== 'fabric' ? ' off' : ''}` }, perf, el('span', { textContent: 'Zainstaluj mody poprawiające wydajność (Sodium, Lithium…)' })),
+      el('label', { className: `check wz-check${choice.loader !== 'fabric' || inPreset ? ' off' : ''}` }, perf,
+        el('span', { textContent: inPreset ? t('Mody poprawiające wydajność (w trybie dla słabszych komputerów)') : 'Zainstaluj mody poprawiające wydajność (Sodium, Lithium…)' })),
       el('div', { className: 'wz-field' }, el('h4', { className: 'wz-label' }, t('Pamięć RAM'), ' ', value), range,
         el('small', { className: 'muted', textContent: t('Zalecane dla Twojego komputera ({0} GB RAM): {1} GB.', gb(sys), gb(recommended())) })),
+      el('div', { className: 'wz-field' }, el('h4', { className: 'wz-label', textContent: t('Tryb dla słabszych komputerów') }), preset,
+        el('small', { className: 'muted', textContent: [presetAbout(choice.preset) || t('Gra z Twoimi ustawieniami grafiki.'),
+          suggested !== 'off' ? t('dla tego komputera polecamy: {0}', presetName(suggested)) : ''].filter(Boolean).join(' ') }),
+        ...(choice.preset === 'pi' ? [piNotesLink()] : [])),
     );
     footer(foot, { run: (btn) => createProfile(btn) });
   }
@@ -463,14 +483,14 @@ export function createWizard(deps: WizardDeps) {
     const base = made
       ? made
       : store && store.profiles.length === 1 && isPristineProfile(store.profiles[0]) ? store.profiles[0] : ((await api.newProfile()) as Profile);
-    const profile: Profile = { ...base, name, versionId, loader: choice.loader, loaderVersion: '', hud: fabric, memoryMb: choice.memoryMb || recommended() };
+    const profile: Profile = { ...base, name, versionId, loader: choice.loader, loaderVersion: '', hud: fabric, memoryMb: choice.memoryMb || recommended(), perfPreset: choice.preset ?? 'off', perfOff: [] };
     const id = (await api.saveProfile(profile)) as string;
     profileId = createdId = id;
     imported = [];
     await save({ selectedProfileId: id, defaultMemoryMb: profile.memoryMb });
     profileSummary = `${name} · ${gb(profile.memoryMb)} GB RAM`;
     // performance mods: in the background (a task card shows the progress); "Graj" waits for them
-    if (fabric && choice.perf) {
+    if (fabric && (choice.perf || partOn(choice.preset, [], 'mods'))) {
       profileSummary += ` · ${t('mody wydajności')}`;
       perfInstall = (async () => {
         const plan = (await api.perfPlan(id)) as { projectId?: string; title: string; installed: boolean }[];

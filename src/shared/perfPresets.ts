@@ -8,26 +8,28 @@ export type PerfPreset = 'off' | 'light' | 'lighter' | 'pi';
 export const PERF_PRESETS: PerfPreset[] = ['off', 'light', 'lighter', 'pi'];
 
 /** The parts of a preset, each of which can be switched off on its own. */
-export type PerfPart = 'graphics' | 'memory' | 'mods' | 'saver' | 'gl';
-export const PERF_PARTS: PerfPart[] = ['graphics', 'memory', 'mods', 'saver', 'gl'];
+export type PerfPart = 'graphics' | 'memory' | 'mods' | 'saver' | 'gl' | 'fps30';
+export const PERF_PARTS: PerfPart[] = ['graphics', 'memory', 'mods', 'saver', 'gl', 'fps30'];
 
 export const isPerfPreset = (v: unknown): v is PerfPreset => typeof v === 'string' && (PERF_PRESETS as string[]).includes(v);
 
 /** A part used by a profile: its preset is on, the part belongs to it, and the player did not switch it off. */
 export function partOn(preset: PerfPreset | undefined, off: string[] | undefined, part: PerfPart): boolean {
   if (!preset || preset === 'off' || off?.includes(part)) return false;
-  // the graphics driver fix only on the Raspberry Pi's preset
-  return part !== 'gl' || preset === 'pi';
+  // the graphics driver fix and the 30 FPS limit (switched off: 60) only on the Raspberry Pi's preset
+  return (part !== 'gl' && part !== 'fps30') || preset === 'pi';
 }
 
 /**
  * The game's settings (options.txt) each preset writes: a shorter view, fast graphics, fewer particles and
  * clouds, a frame limit; the game's own names, each version reads those it knows.
  */
-export function presetOptions(preset: PerfPreset): Record<string, string> {
+export function presetOptions(preset: PerfPreset, off?: string[]): Record<string, string> {
   // 26.x: the game's own graphics preset (Fancy by default) sets the view, particles and clouds again
   // at every start; "custom" keeps ours
   const options = presetValues(preset);
+  // the Pi's 30 FPS switched off: 60 (a Pi 5 then holds some 45–50 on a busy server, its processor working harder)
+  if (preset === 'pi' && !partOn(preset, off, 'fps30')) options.maxFps = '60';
   return Object.keys(options).length ? { ...options, graphicsPreset: '"custom"' } : options;
 }
 
@@ -79,9 +81,13 @@ export function presetNiceness(preset: PerfPreset | undefined, platform: string)
   return preset === 'pi' && platform === 'linux' ? 10 : undefined;
 }
 
-/** The preset suggested for this computer: the Pi's on Linux on ARM, a lighter one for little memory or few cores, else none. */
-export function suggestedPreset(systemMb: number, cores: number, platform: string, arch: string): PerfPreset {
-  if (platform === 'linux' && (arch === 'arm64' || arch === 'arm')) return 'pi';
+/**
+ * The preset suggested for this computer: the Pi's on a Raspberry Pi (its board's model says so), a lighter one
+ * on other ARM boards and for little memory or few cores, else none. Other boards (an Orange Pi 5, a Radxa ROCK 5:
+ * Mali graphics) draw the game with their own Vulkan, and the Pi's forced OpenGL does not even start there.
+ */
+export function suggestedPreset(systemMb: number, cores: number, platform: string, arch: string, board = ''): PerfPreset {
+  if (platform === 'linux' && (arch === 'arm64' || arch === 'arm')) return /raspberry pi/i.test(board) ? 'pi' : 'lighter';
   if ((systemMb > 0 && systemMb <= 4.5 * 1024) || (cores > 0 && cores <= 2)) return 'lighter';
   if ((systemMb > 0 && systemMb <= 8.5 * 1024) || (cores > 0 && cores <= 4)) return 'light';
   return 'off';

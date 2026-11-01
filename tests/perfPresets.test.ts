@@ -9,8 +9,13 @@ import { lookup, setLang } from '../src/shared/i18n';
 import { partOn, presetEnv, presetMemoryCap, presetNiceness, presetOptions, suggestedPreset } from '../src/shared/perfPresets';
 
 describe('presets for slower computers', () => {
-  it('suggests the Pi\'s on Linux on ARM, a lighter one for little memory or few cores, none for a strong computer', () => {
-    assert.equal(suggestedPreset(4096, 4, 'linux', 'arm64'), 'pi');
+  it('suggests the Pi\'s on a Raspberry Pi, a lighter one on other ARM boards and for little memory or few cores, none for a strong computer', () => {
+    assert.equal(suggestedPreset(4096, 4, 'linux', 'arm64', 'Raspberry Pi 5 Model B Rev 1.1'), 'pi');
+    assert.equal(suggestedPreset(8192, 4, 'linux', 'arm64', 'Raspberry Pi 4 Model B Rev 1.4'), 'pi');
+    // RK3588 boards draw with their own Vulkan: no forced OpenGL there
+    assert.equal(suggestedPreset(16384, 8, 'linux', 'arm64', 'Radxa ROCK 5B+'), 'lighter');
+    assert.equal(suggestedPreset(16384, 8, 'linux', 'arm64', 'Xunlong Orange Pi 5 Plus'), 'lighter');
+    assert.equal(suggestedPreset(16384, 8, 'linux', 'arm64'), 'lighter');
     assert.equal(suggestedPreset(4096, 4, 'win32', 'x64'), 'lighter');
     assert.equal(suggestedPreset(8192, 8, 'win32', 'x64'), 'light');
     assert.equal(suggestedPreset(16384, 4, 'win32', 'x64'), 'light');
@@ -23,6 +28,13 @@ describe('presets for slower computers', () => {
     assert.equal(partOn('off', [], 'memory'), false);
     assert.equal(partOn('lighter', [], 'gl'), false);
     assert.equal(partOn('pi', [], 'gl'), true);
+    // the Pi's 30 FPS: on by default, 60 with it switched off; no such part for the other presets
+    assert.equal(partOn('pi', [], 'fps30'), true);
+    assert.equal(partOn('lighter', [], 'fps30'), false);
+    assert.equal(presetOptions('pi').maxFps, '30');
+    assert.equal(presetOptions('pi', ['fps30']).maxFps, '60');
+    assert.equal(presetOptions('lighter', ['fps30']).maxFps, '60');
+    assert.equal(presetOptions('light', ['fps30']).maxFps, undefined);
     assert.deepEqual(presetEnv('pi', [], 'linux'), { MESA_GL_VERSION_OVERRIDE: '3.3', MESA_GLSL_VERSION_OVERRIDE: '330' });
     assert.deepEqual(presetEnv('pi', ['gl'], 'linux'), {});
     assert.deepEqual(presetEnv('pi', [], 'win32'), {});
@@ -81,6 +93,33 @@ describe('presets for slower computers', () => {
   });
 });
 
+describe("the Raspberry Pi's frame limit", () => {
+  it('writes 30 FPS, 60 once its limit is switched off, and 30 again when it is back on', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'pi-fps-'));
+    const options = path.join(dir, 'options.txt');
+    await fs.writeFile(options, 'maxFps:120\nrenderDistance:12\n');
+    assert.equal(await applyPerfPreset(dir, 'pi', []), true);
+    assert.match(await fs.readFile(options, 'utf8'), /^maxFps:30$/m);
+    assert.equal(await applyPerfPreset(dir, 'pi', []), false);
+    assert.equal(await applyPerfPreset(dir, 'pi', ['fps30']), true);
+    assert.match(await fs.readFile(options, 'utf8'), /^maxFps:60$/m);
+    assert.equal(await applyPerfPreset(dir, 'pi', ['fps30']), false);
+    assert.equal(await applyPerfPreset(dir, 'pi', []), true);
+    assert.match(await fs.readFile(options, 'utf8'), /^maxFps:30$/m);
+    // off: the player's own limit back
+    assert.equal(await applyPerfPreset(dir, 'off', []), true);
+    assert.match(await fs.readFile(options, 'utf8'), /^maxFps:120$/m);
+    // a preset written by an older launcher (no limit noted) counts as its own 30
+    await applyPerfPreset(dir, 'pi', []);
+    const state = path.join(dir, '.slashclient', 'perf-preset.json');
+    const old = JSON.parse(await fs.readFile(state, 'utf8'));
+    delete old.maxFps;
+    await fs.writeFile(state, JSON.stringify(old));
+    assert.equal(await applyPerfPreset(dir, 'pi', []), false);
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+});
+
 describe("Sodium on the Raspberry Pi", () => {
   it('keeps the driver error checks on with the Pi graphics fix, the rest of Sodium settings as they were', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'pi-sodium-'));
@@ -112,10 +151,14 @@ describe('Raspberry Pi notes in English', () => {
     for (const m of readFileSync('src/renderer/piNotes.ts', 'utf8').matchAll(/\bt\('((?:[^'\\]|\\.)*)'/g)) keys.add(m[1]);
     assert.ok(readFileSync('src/renderer/index.html', 'utf8').includes('Raspberry Pi – co warto wiedzieć'));
     keys.add('Raspberry Pi – co warto wiedzieć');
+    for (const k of ['Limit 30 FPS', 'odznaczony: 60 FPS – płynniej (Pi 5 na serwerze ok. 45–50 FPS), ale procesor pracuje więcej i Pi mocniej się grzeje']) {
+      assert.ok(readFileSync('src/renderer/index.html', 'utf8').includes(k), k);
+      keys.add(k);
+    }
     setLang('en');
     const missing = [...keys].filter((k) => !lookup(k));
     setLang('pl');
-    assert.equal(keys.size, 13);
+    assert.equal(keys.size, 29);
     assert.deepEqual(missing, []);
   });
 });

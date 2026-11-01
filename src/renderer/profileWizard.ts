@@ -4,6 +4,7 @@ import { PERF_PRESETS, partOn, suggestedPreset, type PerfPreset } from '../share
 import { recommendedMemoryMb } from '../main/jvm';
 import type { SlashApi } from '../main/preload';
 import { control, el, icon } from './dialog';
+import { piNotesLink } from './piNotes';
 
 /**
  * "Nowy profil": a small guide in a window of its own instead of an empty profile – the game (version and
@@ -16,7 +17,7 @@ interface Profile {
   id: string; name: string; versionId: string; loader: string; loaderVersion: string; memoryMb: number; hud?: boolean;
   perfPreset?: PerfPreset; perfOff?: string[];
 }
-interface Store { systemMemoryMb: number; platform?: string; arch?: string; hudVersions?: string[] }
+interface Store { systemMemoryMb: number; platform?: string; arch?: string; board?: string; hudVersions?: string[] }
 
 export interface ProfileWizardDeps {
   api: SlashApi;
@@ -29,7 +30,7 @@ export interface ProfileWizardDeps {
 
 /** The mode for slower computers' presets, as the player reads them. */
 export function presetName(preset: PerfPreset): string {
-  return { off: t('Wyłączony'), light: t('Lekki – słabszy laptop'), lighter: t('Bardzo lekki – stary komputer'), pi: t('Raspberry Pi i inne ARM') }[preset];
+  return { off: t('Wyłączony'), light: t('Lekki – słabszy laptop'), lighter: t('Bardzo lekki – stary komputer'), pi: t('Raspberry Pi') }[preset];
 }
 
 /** What each preset does, in a sentence. */
@@ -78,7 +79,7 @@ export function createProfileWizard(deps: ProfileWizardDeps) {
     allVersions = false;
     Object.assign(choice, {
       versionId: '', loader: 'fabric', perf: true, memoryMb: 0, memoryTouched: false, name: '', nameTouched: false,
-      preset: suggestedPreset(s.systemMemoryMb, navigator.hardwareConcurrency || 0, s.platform ?? '', s.arch ?? ''),
+      preset: suggestedPreset(s.systemMemoryMb, navigator.hardwareConcurrency || 0, s.platform ?? '', s.arch ?? '', s.board ?? ''),
     });
     modal = el('div', { className: 'modal pw' });
     modal.setAttribute('role', 'dialog');
@@ -103,7 +104,8 @@ export function createProfileWizard(deps: ProfileWizardDeps) {
   }
 
   function onKey(e: KeyboardEvent) {
-    if (e.key !== 'Escape' || !modal) return;
+    // (Escape over the Raspberry Pi notes closes only them)
+    if (e.key !== 'Escape' || !modal || document.querySelector('.pi-notes-box')) return;
     e.stopPropagation();
     close();
   }
@@ -220,7 +222,7 @@ export function createProfileWizard(deps: ProfileWizardDeps) {
       if (!choice.memoryTouched) choice.memoryMb = 0;
       render();
     });
-    const suggested = suggestedPreset(s.systemMemoryMb, navigator.hardwareConcurrency || 0, s.platform ?? '', s.arch ?? '');
+    const suggested = suggestedPreset(s.systemMemoryMb, navigator.hardwareConcurrency || 0, s.platform ?? '', s.arch ?? '', s.board ?? '');
     // performance mods (Fabric and Quilt): a preset's mods part brings them anyway
     const inPreset = partOn(choice.preset, [], 'mods');
     const perf = control<HTMLInputElement>('input', { type: 'checkbox', checked: perfMods(), disabled: !fabricLike() || inPreset });
@@ -247,7 +249,8 @@ export function createProfileWizard(deps: ProfileWizardDeps) {
       el('div', { className: 'wz-field' },
         el('h4', { className: 'wz-label', textContent: t('Tryb dla słabszych komputerów') }), preset,
         el('small', { className: 'muted', textContent: [presetAbout(choice.preset) || t('Gra z Twoimi ustawieniami grafiki.'),
-          suggested !== 'off' ? t('dla tego komputera polecamy: {0}', presetName(suggested)) : ''].filter(Boolean).join(' ') })),
+          suggested !== 'off' ? t('dla tego komputera polecamy: {0}', presetName(suggested)) : ''].filter(Boolean).join(' ') }),
+        ...(choice.preset === 'pi' ? [piNotesLink()] : [])),
     );
   }
 

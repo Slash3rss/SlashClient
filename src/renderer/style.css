@@ -866,6 +866,7 @@ a.button-link { display: inline-flex; align-items: center; gap: 6px; height: 32p
 #perf-about { margin: -4px 0 12px; font-size: 12.5px; line-height: 1.45; }
 .pi-info-open { height: auto; padding: 0; margin: -6px 0 12px; border: 0; background: none; box-shadow: none; color: var(--accent-light); font-size: 12.5px; cursor: pointer; }
 .pi-info-open:hover { text-decoration: underline; }
+.modal:has(> .pi-notes-box) { z-index: 60; }
 .pi-notes { display: flex; flex-direction: column; gap: 12px; max-height: 60vh; overflow-y: auto; }
 .pi-note { display: flex; gap: 12px; align-items: flex-start; }
 .pi-note > i { flex: 0 0 20px; margin-top: 3px; text-align: center; color: var(--accent-light); }
