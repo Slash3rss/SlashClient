@@ -85,9 +85,11 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			for (int i = 0; i < mobs.length; i++) {
 				server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b," + name("{\"text\":\"" + mobs[i][0] + "\",\"color\":\"" + mobs[i][1] + "\"}") + "}", x0 + 7 * c + 3 + i % 3 * 3, y, z0 + 3 * c + 3 + i / 3 * 6));
 			}
+			// the zombie without a name of its own: its name, class and level over its head, on a hologram (as on SkyUp)
+			server.runCommand(String.format("summon armor_stand %d %d %d {Invisible:1b,NoGravity:1b,Marker:1b,CustomNameVisible:1b," + name("{\"text\":\"Rycerz poz. 9\",\"color\":\"yellow\"}") + "}", x0 + 7 * c + 6, y + 2, z0 + 5 * c + 6));
 			context.waitTicks(20);
 			String shown = context.computeOnClient(mc -> dev.slash3rss.slashclient.hud.skyup.DungeonRooms.shownMobs());
-			if (!shown.contains("[3, 2, 1, 1]")) throw new AssertionError("The strongest mobs first on a tile: " + shown);
+			if (!shown.contains("[3/5, 2/1, 1/9, 1/3]")) throw new AssertionError("The strongest mobs first on a tile (class, then level): " + shown);
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonStyle = "simple");
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-rooms-simple");

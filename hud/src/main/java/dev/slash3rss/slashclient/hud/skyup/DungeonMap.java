@@ -681,13 +681,18 @@ public final class DungeonMap implements HudModule {
 	 * 1, 2, 3, 4, or 0 for a mob with no such name.
 	 */
 	public static int kind(Entity mob) {
-		// a mob with a player's model (an NPC) has its own name hidden: its class is in the name shown over it
-		if (npc(mob)) {
-			Component tag = dev.slash3rss.slashclient.hud.modules.MoreModules.Target.tagAbove((net.minecraft.world.entity.LivingEntity) mob);
-			return tag == null ? 0 : kind(tag);
-		}
-		if (!mob.hasCustomName()) return 0;
-		return kind(mob.getCustomName());
+		// its own name; a mob with a player's model (an NPC), or one whose name tells no class, has its
+		// name shown over it on another entity (as the Target module reads it)
+		Component own = !npc(mob) && mob.hasCustomName() ? mob.getCustomName() : null;
+		int kind = own == null ? 0 : kind(own);
+		if (kind != 0) return kind;
+		Component tag = tagOver(mob);
+		return tag == null ? 0 : kind(tag);
+	}
+
+	/** The name shown over a mob on another entity (a hologram, a riding name tag), or null. */
+	private static Component tagOver(Entity mob) {
+		return mob instanceof net.minecraft.world.entity.LivingEntity e ? dev.slash3rss.slashclient.hud.modules.MoreModules.Target.tagAbove(e) : null;
 	}
 
 	/**
@@ -722,9 +727,42 @@ public final class DungeonMap implements HudModule {
 			case 4 -> 1;
 			default -> 0;
 		};
-		Component name = npc(mob) ? dev.slash3rss.slashclient.hud.modules.MoreModules.Target.tagAbove((net.minecraft.world.entity.LivingEntity) mob) : mob.getCustomName();
-		Matcher level = name == null ? null : LEVEL_IN_NAME.matcher(name.getString());
-		return tier * 10_000 + (level != null && level.find() ? Math.min(9_999, Integer.parseInt(level.group(1))) : 0);
+		// the level in its own name, else in the one shown over it
+		int level = !npc(mob) && mob.hasCustomName() ? level(mob.getCustomName()) : -1;
+		if (level < 0) level = level(tagOver(mob));
+		return tier * 10_000 + Math.max(0, level);
+	}
+
+	/** The level in a name ("poz. 6"), colour codes left out; -1 for none. */
+	private static int level(Component name) {
+		if (name == null) return -1;
+		Matcher m = LEVEL_IN_NAME.matcher(name.getString().replaceAll("§.", ""));
+		return m.find() ? Math.min(9_999, Integer.parseInt(m.group(1))) : -1;
+	}
+
+	/** Debug: a name with each piece's colour ("Dezerter{#FFAA00}"), as the server sent it. */
+	private static String styled(Component name) {
+		if (name == null) return "-";
+		StringBuilder out = new StringBuilder();
+		name.visit((style, text) -> {
+			out.append(text);
+			if (style.getColor() != null) out.append("{#").append(String.format("%06X", style.getColor().getValue())).append('}');
+			return java.util.Optional.empty();
+		}, net.minecraft.network.chat.Style.EMPTY);
+		return out.toString();
+	}
+
+	/** Debug: the mobs about, with their names as sent and the class and level worked out from them. */
+	private static String mobsAbout(Minecraft mc) {
+		StringBuilder out = new StringBuilder("mobs within 48 blocks (id type x y z | own name | shown name | name over it | class, rank):\n");
+		for (Entity e : mc.level.entitiesForRendering()) {
+			if (!(e instanceof Mob) && !(e instanceof AbstractClientPlayer) || e == mc.player || e.distanceTo(mc.player) > 48) continue;
+			out.append(e.getId()).append(' ').append(net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).getPath())
+				.append(' ').append(e.getBlockX()).append(' ').append(e.getBlockY()).append(' ').append(e.getBlockZ())
+				.append(" | ").append(styled(e.getCustomName())).append(" | ").append(styled(e.getDisplayName())).append(" | ").append(styled(tagOver(e)))
+				.append(" | ").append(kind(e)).append(", ").append(rank(e)).append(npc(e) ? " npc" : "").append('\n');
+		}
+		return out.toString();
 	}
 
 	private static final Pattern LEVEL_IN_NAME = Pattern.compile("poz\\.?\\s*(\\d{1,6})", Pattern.CASE_INSENSITIVE);
@@ -965,6 +1003,7 @@ public final class DungeonMap implements HudModule {
 				}
 			}
 		}
+		near.append(mobsAbout(mc));
 		near.append("counts by height and block:\n");
 		for (var e : kinds.entrySet()) near.append(e.getKey()).append(": ").append(e.getValue()).append('\n');
 		return DungeonRooms.dump(mc, cell, plan, minX, minZ, maxX, maxZ, dungeonLevel, near.toString());

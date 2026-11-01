@@ -321,7 +321,7 @@ public final class DungeonRooms {
 		mobs.sort(java.util.Comparator.<net.minecraft.world.entity.LivingEntity>comparingInt(e -> -mobRank.getOrDefault(e.getId(), 0)).thenComparingInt(Entity::getId));
 	}
 
-	/** For the test: each tile's mobs shown, as their classes in the order drawn ("[3, 1, 1, 1]"). */
+	/** For the test: each tile's mobs shown, as class/level in the order drawn ("[3/5, 1/9, 1/2]"). */
 	public static String shownMobs() {
 		List<String> out = new ArrayList<>();
 		for (Tile t : gridTiles) {
@@ -329,7 +329,7 @@ public final class DungeonRooms {
 			for (Entity m : t.mobList) if (m instanceof net.minecraft.world.entity.LivingEntity e && DungeonMap.mobShown(e)) mobs.add(e);
 			if (mobs.isEmpty()) continue;
 			strongestFirst(mobs);
-			out.add(mobs.subList(0, Math.min(4, mobs.size())).stream().map(DungeonMap::kind).toList().toString());
+			out.add(mobs.subList(0, Math.min(4, mobs.size())).stream().map(e -> DungeonMap.kind(e) + "/" + mobRank.getOrDefault(e.getId(), 0) % 10_000).toList().toString());
 		}
 		return String.join(" ", out);
 	}
