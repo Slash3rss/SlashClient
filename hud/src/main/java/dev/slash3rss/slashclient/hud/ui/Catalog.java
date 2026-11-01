@@ -55,6 +55,7 @@ public final class Catalog {
 		Map.entry("friends", new String[] { "key.slashclient-hud.friends" }),
 		Map.entry("freelook", new String[] { "key.slashclient-hud.freelook" }),
 		Map.entry("lookLock", new String[] { "key.slashclient-hud.lookLock" }),
+		Map.entry("vncMouse", new String[] { "key.slashclient-hud.vncMouse" }),
 		Map.entry("waypoints", new String[] { "key.slashclient-hud.waypoints" }),
 		Map.entry("worldMap", new String[] { "key.slashclient-hud.dungeonMap" }),
 		Map.entry("dungeonmap", new String[] { "key.slashclient-hud.dungeonMap", "key.slashclient-hud.dungeonZoomIn", "key.slashclient-hud.dungeonZoomOut" }),
@@ -621,6 +622,14 @@ public final class Catalog {
 		out.add(new Entry("lookLock", "slashclient-hud.lookLock", "extras", "m-looklock", () -> cfg.lookLock, v -> cfg.lookLock = v, List.of(
 			new Choice("slashclient-hud.lookLock.onReturn", dev.slash3rss.slashclient.hud.camera.LookLock.ON_RETURN, "slashclient-hud.lookLock.onReturn.",
 				() -> cfg.lookLockOnReturn, v -> cfg.lookLockOnReturn = v)), null));
+		//#if MC >= 26.3
+		out.add(new Entry("vncMouse", "slashclient-hud.vncMouse", "extras", "m-vncmouse", () -> cfg.vncMouse, v -> {
+			cfg.vncMouse = v;
+			dev.slash3rss.slashclient.hud.camera.VncMouse.regrab(net.minecraft.client.Minecraft.getInstance());
+		}, List.of(
+			new Choice("slashclient-hud.vncMouse.edge", dev.slash3rss.slashclient.hud.camera.VncMouse.EDGE, "slashclient-hud.vncMouse.edge.",
+				() -> cfg.vncMouseEdge, v -> cfg.vncMouseEdge = v)), null));
+		//#endif
 		out.add(new Entry("waypoints", "slashclient-hud.extra.waypoints", "world", "m-waypoints", () -> cfg.waypoints, v -> cfg.waypoints = v, List.of(), null));
 		// M outside a dungeon: all the ground seen, waypoints and friends, over the whole screen
 		out.add(new Entry("worldMap", "slashclient-hud.worldMap", "world", "m-worldmap", () -> cfg.worldMap, v -> cfg.worldMap = v, List.of(

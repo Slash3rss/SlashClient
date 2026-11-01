@@ -24,7 +24,7 @@ const ICONS = {
   'm-crosshair': 'crosshairs', 'm-attackindicator': 'hand-fist', 'm-appearance': 'palette', 'm-badges': 'id-badge', 'm-menu': 'house',
   'm-chattimestamps': 'comment-dots', 'm-chattabs': 'table-columns',
   // the game's own HUD parts
-  'm-togglesprint': 'forward-fast', 'm-time': 'cloud-sun', 'm-freelook': 'eye', 'm-looklock': 'lock', 'm-waypoints': 'location-dot',
+  'm-togglesprint': 'forward-fast', 'm-time': 'cloud-sun', 'm-freelook': 'eye', 'm-looklock': 'lock', 'm-vncmouse': 'computer-mouse', 'm-waypoints': 'location-dot',
   'm-screenshot': 'camera', 'm-chatstack': 'layer-group', 'm-chatcopy': 'copy', 'm-chatsearch': 'magnifying-glass',
   'm-advancements': 'trophy', 'm-stats': 'chart-simple', 'm-pause': 'pause', 'm-accounts': 'user-gear',
   'm-scoreboard': 'list-ol', 'm-bossbar': 'skull', 'm-tablist': 'table-list', 'm-titles': 'heading', 'm-toasts': 'bell', 'm-actionbar': 'message', 'm-nametag': 'tag',

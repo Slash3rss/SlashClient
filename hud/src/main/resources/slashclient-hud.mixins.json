@@ -55,6 +55,8 @@
 		"FreelookMixin",
 		"GpuTimerMixin",
 		"AtlasFitMixin",
+		"VncMouseMixin",
+		"VncCursorMixin",
 		"SpriteContentsAccessor",
 		"ContainerScreenAccessor",
 		"ContainerLayerMixin",

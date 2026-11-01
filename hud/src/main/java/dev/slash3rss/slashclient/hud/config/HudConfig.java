@@ -630,6 +630,9 @@ public final class HudConfig {
 	/** The view locked by its key, or by itself on coming back from another window (LookLock). */
 	public boolean lookLock = false;
 	public String lookLockOnReturn = "holding";
+	/** The camera turned by where the cursor is, for a remote desktop (VncMouse); how fast the window's edges turn it. */
+	public boolean vncMouse = false;
+	public String vncMouseEdge = "normal";
 	public boolean waypoints = true;
 	/** A waypoint put by itself where you last died (one per world and dimension, see DeathPoint). */
 	public boolean deathWaypoint = true;
@@ -1192,6 +1195,8 @@ public final class HudConfig {
 		freelook = other.freelook;
 		lookLock = other.lookLock;
 		lookLockOnReturn = other.lookLockOnReturn;
+		vncMouse = other.vncMouse;
+		vncMouseEdge = other.vncMouseEdge;
 		waypoints = other.waypoints;
 		deathWaypoint = other.deathWaypoint;
 		deathScreen = other.deathScreen;
