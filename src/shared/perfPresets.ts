@@ -24,12 +24,15 @@ export function partOn(preset: PerfPreset | undefined, off: string[] | undefined
  * The game's settings (options.txt) each preset writes: a shorter view, fast graphics, fewer particles and
  * clouds, a frame limit; the game's own names, each version reads those it knows.
  */
-export function presetOptions(preset: PerfPreset, off?: string[]): Record<string, string> {
+export function presetOptions(preset: PerfPreset, off?: string[], otherArm = false): Record<string, string> {
   // 26.x: the game's own graphics preset (Fancy by default) sets the view, particles and clouds again
   // at every start; "custom" keeps ours
   const options = presetValues(preset);
   // the Pi's 30 FPS switched off: 60 (a Pi 5 then holds some 45–50 on a busy server, its processor working harder)
   if (preset === 'pi' && !partOn(preset, off, 'fps30')) options.maxFps = '60';
+  // ARM boards other than the Pi (RK3588: an Orange Pi 5, a Radxa ROCK 5): vertical sync holds the game at 30 FPS
+  // there, without it at the preset's limit (60)
+  if (otherArm && preset !== 'off' && preset !== 'pi') options.enableVsync = 'false';
   return Object.keys(options).length ? { ...options, graphicsPreset: '"custom"' } : options;
 }
 
@@ -86,6 +89,11 @@ export function presetNiceness(preset: PerfPreset | undefined, platform: string)
  * on other ARM boards and for little memory or few cores, else none. Other boards (an Orange Pi 5, a Radxa ROCK 5:
  * Mali graphics) draw the game with their own Vulkan, and the Pi's forced OpenGL does not even start there.
  */
+/** An ARM board other than a Raspberry Pi (its board's model does not say Raspberry Pi). */
+export function isOtherArmBoard(platform: string, arch: string, board: string): boolean {
+  return platform === 'linux' && (arch === 'arm64' || arch === 'arm') && !/raspberry pi/i.test(board);
+}
+
 export function suggestedPreset(systemMb: number, cores: number, platform: string, arch: string, board = ''): PerfPreset {
   if (platform === 'linux' && (arch === 'arm64' || arch === 'arm')) return /raspberry pi/i.test(board) ? 'pi' : 'lighter';
   if ((systemMb > 0 && systemMb <= 4.5 * 1024) || (cores > 0 && cores <= 2)) return 'lighter';

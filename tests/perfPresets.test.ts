@@ -6,7 +6,7 @@ import path from 'node:path';
 import { describe, it } from 'node:test';
 import { applyPerfPreset, piSodiumChecks, withOptions } from '../src/main/perfPreset';
 import { lookup, setLang } from '../src/shared/i18n';
-import { partOn, presetEnv, presetMemoryCap, presetNiceness, presetOptions, suggestedPreset } from '../src/shared/perfPresets';
+import { isOtherArmBoard, partOn, presetEnv, presetMemoryCap, presetNiceness, presetOptions, suggestedPreset } from '../src/shared/perfPresets';
 
 describe('presets for slower computers', () => {
   it('suggests the Pi\'s on a Raspberry Pi, a lighter one on other ARM boards and for little memory or few cores, none for a strong computer', () => {
@@ -109,13 +109,37 @@ describe("the Raspberry Pi's frame limit", () => {
     // off: the player's own limit back
     assert.equal(await applyPerfPreset(dir, 'off', []), true);
     assert.match(await fs.readFile(options, 'utf8'), /^maxFps:120$/m);
-    // a preset written by an older launcher (no limit noted) counts as its own 30
+    // a preset written by an older launcher (no values noted) counts as its own 30
     await applyPerfPreset(dir, 'pi', []);
     const state = path.join(dir, '.slashclient', 'perf-preset.json');
     const old = JSON.parse(await fs.readFile(state, 'utf8'));
-    delete old.maxFps;
+    delete old.values;
     await fs.writeFile(state, JSON.stringify(old));
     assert.equal(await applyPerfPreset(dir, 'pi', []), false);
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+});
+
+describe('VSync on ARM boards other than the Pi', () => {
+  it('turns vertical sync off with a preset on an RK3588 board, not on the Pi or elsewhere, and gives it back with the preset off', async () => {
+    assert.equal(isOtherArmBoard('linux', 'arm64', 'Radxa ROCK 5B+'), true);
+    assert.equal(isOtherArmBoard('linux', 'arm64', 'Raspberry Pi 5 Model B Rev 1.1'), false);
+    assert.equal(isOtherArmBoard('win32', 'arm64', ''), false);
+    assert.equal(presetOptions('lighter', [], true).enableVsync, 'false');
+    assert.equal(presetOptions('lighter', [], false).enableVsync, undefined);
+    assert.equal(presetOptions('pi', [], true).enableVsync, 'true');
+    assert.deepEqual(presetOptions('off', [], true), {});
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'arm-vsync-'));
+    const options = path.join(dir, 'options.txt');
+    await fs.writeFile(options, 'enableVsync:true\nmaxFps:120\n');
+    // the preset applied before on a desktop: on the board its VSync goes too
+    assert.equal(await applyPerfPreset(dir, 'lighter', []), true);
+    assert.match(await fs.readFile(options, 'utf8'), /^enableVsync:true$/m);
+    assert.equal(await applyPerfPreset(dir, 'lighter', [], true), true);
+    assert.match(await fs.readFile(options, 'utf8'), /^enableVsync:false$/m);
+    assert.equal(await applyPerfPreset(dir, 'lighter', [], true), false);
+    assert.equal(await applyPerfPreset(dir, 'off', [], true), true);
+    assert.match(await fs.readFile(options, 'utf8'), /^enableVsync:true$/m);
     await fs.rm(dir, { recursive: true, force: true });
   });
 });

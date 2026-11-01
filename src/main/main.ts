@@ -109,7 +109,7 @@ import { appendSummary, collectSummary, MIN_SESSION_MS, readSummaries, removeSum
 import { copyInstance, findInstances, instanceFromFolder, SOURCE_NAMES, type ForeignInstance } from './importers';
 import { perfModsFor } from './perfmods';
 import { applyPerfPreset, piSodiumChecks } from './perfPreset';
-import { partOn, presetEnv, presetMemoryCap, presetNiceness } from '../shared/perfPresets';
+import { isOtherArmBoard, partOn, presetEnv, presetMemoryCap, presetNiceness } from '../shared/perfPresets';
 import { gnomeWindowEnv, installCommand } from './gnomeWindow';
 import { install as installLinux, installState as linuxInstallState, linuxPlaces } from './linuxInstall';
 import { addPreset, listPresets, looksSlim, readPreset, removePreset, updatePreset, type SkinPreset } from './skinLibrary';
@@ -1846,7 +1846,7 @@ async function startGame(profileId: string, accountId: string, server: string | 
   const sharedDir = sharedDirFor(account.id, store.settings.sharedPerAccount);
   if (profile.syncOptions) await pullShared(profileGameDir(profile), sharedDir);
   // "Tryb dla słabszych komputerów": its game settings written when it was picked or changed (the player's own kept)
-  await applyPerfPreset(profileGameDir(profile), profile.perfPreset, profile.perfOff).catch((err) => console.error('tryb wydajności:', (err as Error).message));
+  await applyPerfPreset(profileGameDir(profile), profile.perfPreset, profile.perfOff, isOtherArmBoard(process.platform, process.arch, boardModel())).catch((err) => console.error('tryb wydajności:', (err as Error).message));
   await piSodiumChecks(profileGameDir(profile), profile.perfPreset, profile.perfOff).catch((err) => console.error('Sodium na Pi:', (err as Error).message));
 
   // keep the tail of the output for crash analysis

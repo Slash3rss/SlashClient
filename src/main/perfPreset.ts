@@ -16,8 +16,8 @@ interface Applied {
   before: Record<string, string>;
   /** The settings it added that the file did not have (the game's defaults then): taken out again. */
   added?: string[];
-  /** The frame limit it wrote (the Pi's: 30, or 60 with its limit switched off); missing: the preset's own. */
-  maxFps?: string;
+  /** The settings it wrote (the Pi's limit switched off, VSync off on other ARM boards); missing: the preset's own. */
+  values?: Record<string, string>;
 }
 
 const stateFile = (gameDir: string) => path.join(gameDir, '.slashclient', 'perf-preset.json');
@@ -56,12 +56,12 @@ export function withOptions(text: string, values: Record<string, string>, remove
  * Before a launch: the profile's preset (with its graphics part on) written into options.txt when it is
  * not the one written last; the one before taken back first. Returns whether anything changed.
  */
-export async function applyPerfPreset(gameDir: string, preset: PerfPreset | undefined, off: string[] | undefined): Promise<boolean> {
+export async function applyPerfPreset(gameDir: string, preset: PerfPreset | undefined, off: string[] | undefined, otherArm = false): Promise<boolean> {
   const wanted: PerfPreset = partOn(preset, off, 'graphics') ? preset! : 'off';
   const file = stateFile(gameDir);
   const applied: Applied = await fs.readFile(file, 'utf8').then((t) => JSON.parse(t) as Applied, () => ({ preset: 'off', before: {} }));
-  const values = presetOptions(wanted, off);
-  if (applied.preset === wanted && (applied.maxFps ?? presetOptions(wanted).maxFps) === values.maxFps) return false;
+  const values = presetOptions(wanted, off, otherArm);
+  if (applied.preset === wanted && JSON.stringify(applied.values ?? presetOptions(wanted)) === JSON.stringify(values)) return false;
   const optionsPath = path.join(gameDir, 'options.txt');
   // the player's own settings back from the preset written before
   let text = withOptions(await fs.readFile(optionsPath, 'utf8').catch(() => ''), applied.before ?? {}, applied.added ?? []);
@@ -75,7 +75,7 @@ export async function applyPerfPreset(gameDir: string, preset: PerfPreset | unde
   text = withOptions(text, values);
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(optionsPath, text);
-  await fs.writeFile(file, JSON.stringify({ preset: wanted, before, added, maxFps: values.maxFps } satisfies Applied, null, 2));
+  await fs.writeFile(file, JSON.stringify({ preset: wanted, before, added, values } satisfies Applied, null, 2));
   return true;
 }
 

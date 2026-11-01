@@ -59,7 +59,7 @@ export function piNotes(): { icon: string; title: string; text: string }[] {
     },
     {
       icon: 'fa-server', title: t('Inne płytki ARM (Orange Pi, Radxa)'),
-      text: t('Ten preset jest dla Raspberry Pi. Płytki z układem RK3588 (np. Orange Pi 5, Radxa ROCK 5) rysują grę własnym Vulkanem (sterownik panvk), a wymuszony OpenGL tam nie startuje, dlatego launcher poleca im „Bardzo lekki”. Synchronizacja pionowa trzyma tam grę na 30 FPS; po jej wyłączeniu w ustawieniach grafiki gra trzyma limit presetu (60 FPS).'),
+      text: t('Ten preset jest dla Raspberry Pi. Płytki z układem RK3588 (np. Orange Pi 5, Radxa ROCK 5) rysują grę własnym Vulkanem (sterownik panvk), a wymuszony OpenGL tam nie startuje, dlatego launcher poleca im „Bardzo lekki”. Synchronizacja pionowa trzymała tam grę na 30 FPS, więc z presetem launcher ją wyłącza i gra trzyma limit presetu (60 FPS).'),
     },
   ];
 }
