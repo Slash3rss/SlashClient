@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import { applyPerfPreset, withOptions } from '../src/main/perfPreset';
 import { perfModsFor } from '../src/main/perfmods';
+import { lookup, setLang } from '../src/shared/i18n';
 import { partOn, presetEnv, presetMemoryCap, presetNiceness, presetOptions, suggestedPreset } from '../src/shared/perfPresets';
 
 describe('presets for slower computers', () => {
@@ -87,5 +89,20 @@ describe('presets for slower computers', () => {
     assert.equal(presetOptions('light').graphicsPreset, '"custom"');
     assert.deepEqual(presetOptions('off'), {});
     await fs.rm(dir, { recursive: true, force: true });
+  });
+});
+
+describe('Raspberry Pi notes in English', () => {
+  it('every text of the notes and their window has a translation', () => {
+    const keys = new Set<string>();
+    for (const m of readFileSync('src/renderer/piNotes.ts', 'utf8').matchAll(/\bt\('((?:[^'\\]|\\.)*)'/g)) keys.add(m[1]);
+    assert.ok(readFileSync('src/renderer/index.html', 'utf8').includes('Raspberry Pi – co warto wiedzieć'));
+    keys.add('Raspberry Pi – co warto wiedzieć');
+    keys.add('Lithium i inne, bez Sodium (zawiesza grafikę Pi), instalowane przy zapisie');
+    setLang('en');
+    const missing = [...keys].filter((k) => !lookup(k));
+    setLang('pl');
+    assert.equal(keys.size, 14);
+    assert.deepEqual(missing, []);
   });
 });

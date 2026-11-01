@@ -31,6 +31,7 @@ import { MOD_DEPS_EN } from './i18nModDeps';
 import { FRIENDS_POPULAR_EN } from './i18nFriendsPopular';
 import { JAVA_EN } from './i18nJava';
 import { ERRORS_EN } from './i18nErrors';
+import { PI_EN } from './i18nPi';
 
 export type Lang = 'pl' | 'en';
 
@@ -42,6 +43,8 @@ export const LANGUAGES: { code: Lang; name: string; locale: string }[] = [
 const EN: Record<string, string> = {
   // key conflicts, minecraft.wiki, download limit, dedicated GPU (own file; the entries below win)
   ...TOOLS_EN,
+  // the Raspberry Pi notes by the Pi's preset (own file)
+  ...PI_EN,
   // sparks, the shop and the achievements in categories (own file)
   ...SPARKS_EN,
   // the Installed list's dependencies, leftover libraries and multi-select (own file)
