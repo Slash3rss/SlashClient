@@ -4,9 +4,20 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import { applyPerfPreset, withOptions } from '../src/main/perfPreset';
+import { perfModsFor } from '../src/main/perfmods';
 import { partOn, presetEnv, presetMemoryCap, presetNiceness, presetOptions, suggestedPreset } from '../src/shared/perfPresets';
 
 describe('presets for slower computers', () => {
+  it("brings no Sodium with the Pi's preset (its graphics driver stalls on Sodium's chunk uploads), the other mods as usual", () => {
+    const slugs = (loader: string, preset?: string) => perfModsFor(loader, preset).flatMap((e) => e.slugs);
+    assert.ok(slugs('fabric').includes('sodium'));
+    assert.ok(slugs('fabric', 'lighter').includes('sodium'));
+    assert.ok(!slugs('fabric', 'pi').includes('sodium'));
+    assert.ok(slugs('fabric', 'pi').includes('lithium'));
+    assert.ok(!slugs('neoforge', 'pi').some((s) => s === 'sodium' || s === 'embeddium'));
+    assert.ok(!slugs('forge', 'pi').some((s) => s === 'embeddium' || s === 'rubidium'));
+  });
+
   it('suggests the Pi\'s on Linux on ARM, a lighter one for little memory or few cores, none for a strong computer', () => {
     assert.equal(suggestedPreset(4096, 4, 'linux', 'arm64'), 'pi');
     assert.equal(suggestedPreset(4096, 4, 'win32', 'x64'), 'lighter');

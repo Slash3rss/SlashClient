@@ -789,7 +789,7 @@ interface PerfPlanItem { slug: string; projectId?: string; title: string; why: s
 /** Which performance mods fit this profile, and which of them are already there. */
 handle('perf:plan', async (profileId: string): Promise<PerfPlanItem[]> => {
   const { profile, gameDir, gameVersion } = await profileTarget(profileId);
-  const entries = perfModsFor(profile.loader);
+  const entries = perfModsFor(profile.loader, profile.perfPreset);
   const have = await installedProjectIds(gameDir);
   // mods from a modpack or added by hand are not in our list: match them by mod id ("ferrite-core" ↔ "ferritecore")
   const norm = (s: string) => s.toLowerCase().replace(/[-_]/g, '');
