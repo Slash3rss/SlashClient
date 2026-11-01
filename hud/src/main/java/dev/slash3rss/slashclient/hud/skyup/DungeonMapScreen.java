@@ -17,7 +17,8 @@ import dev.slash3rss.slashclient.hud.SlashHud;
 /**
  * The dungeon map over the whole screen (M, or the key set for it): all that was seen, as large
  * as fits, with the loot counted over the whole dungeon above it. Dragging moves it, the wheel
- * zooms, a right click shows all of it again; the same key, Escape or ✕ closes it.
+ * zooms (out past the whole map too), a right click shows all of it again; the button by ✕ (or Tab)
+ * switches between the detailed and the simple map; the same key, Escape or ✕ closes it.
  */
 public class DungeonMapScreen extends Screen {
 	private static NativeImage picture;
@@ -41,7 +42,7 @@ public class DungeonMapScreen extends Screen {
 		mc.getTextureManager().register(textureId, texture);
 	}
 
-	/** Closer than the whole map (1 = all of it fits), and the map point in the middle (NaN: the middle of what was seen). */
+	/** Closer than the whole map (1 = all of it fits, less: further out), and the map point in the middle (NaN: the middle of what was seen). */
 	private float zoom = 1f, centerX = Float.NaN, centerZ = Float.NaN;
 	/** The map area on screen and the view drawn in it, from the last frame (for the mouse). */
 	private int ox, oy, aw, ah;
@@ -82,6 +83,11 @@ public class DungeonMapScreen extends Screen {
 		boolean over = Ui.inside(mx, my, cx, cy, CLOSE, CLOSE);
 		g.fill(cx, cy, cx + CLOSE, cy + CLOSE, over ? 0xFFDC2626 : 0xC0374151);
 		Ui.draw(g, Component.literal("✕"), cx + (CLOSE - Ui.width(Component.literal("✕"))) / 2 + 1, cy + 3, 0xFFFFFFFF);
+		// the map's style, switched here too
+		Component style = styleLabel();
+		int sw = styleWidth(), sx = cx - sw - 6;
+		g.fill(sx, cy, sx + sw, cy + CLOSE, Ui.inside(mx, my, sx, cy, sw, CLOSE) ? 0xC04B5563 : 0xC0374151);
+		Ui.draw(g, style, sx + 5, cy + 3, 0xFFFFFFFF);
 
 		// the map area: all of it below the bar; the view in it from the zoom and the middle point
 		ox = 10;
@@ -126,6 +132,10 @@ public class DungeonMapScreen extends Screen {
 			onClose();
 			return true;
 		}
+		if (Ui.inside(e.x(), e.y(), width - CLOSE - 12 - styleWidth(), 4, styleWidth(), CLOSE)) {
+			switchStyle();
+			return true;
+		}
 		// right click: back to the whole map
 		if (e.button() == com.mojang.blaze3d.platform.InputConstants.MOUSE_BUTTON_RIGHT) {
 			zoom = 1f;
@@ -163,7 +173,7 @@ public class DungeonMapScreen extends Screen {
 	//#endif
 		if (scale <= 0 || v == 0) return false;
 		float px = vx + (float) (x - ox) / scale, pz = vz + (float) (y - oy) / scale;
-		float next = Math.max(1f, Math.min(10f, zoom * (v > 0 ? 1.25f : 0.8f)));
+		float next = Math.max(0.25f, Math.min(10f, zoom * (v > 0 ? 1.25f : 0.8f)));
 		float nextScale = scale / zoom * next;
 		zoom = next;
 		// the point under the mouse stays under it
@@ -183,11 +193,31 @@ public class DungeonMapScreen extends Screen {
 			onClose();
 			return true;
 		}
+		if (e.key() == com.mojang.blaze3d.platform.InputConstants.KEY_TAB) {
+			switchStyle();
+			return true;
+		}
 		//#if MC >= 1.21.9
 		return super.keyPressed(e);
 		//#else
 		//$ return super.keyPressed(e.key(), e.scancode(), e.modifiers());
 		//#endif
+	}
+
+	/** "View: simple" or "View: detailed", on the button that switches it. */
+	private static Component styleLabel() {
+		return Ui.tr("slashclient-hud.dungeon.fullStyle." + (DungeonMap.simple() ? "simple" : "detailed"));
+	}
+
+	private static int styleWidth() {
+		return Ui.width(styleLabel()) + 10;
+	}
+
+	/** The detailed map or the simple one, kept in the settings (the HUD's map follows). */
+	private void switchStyle() {
+		SlashHud.config.dungeonStyle = DungeonMap.simple() ? "detailed" : "simple";
+		SlashHud.config.save();
+		lastView = "";
 	}
 
 	@Override
