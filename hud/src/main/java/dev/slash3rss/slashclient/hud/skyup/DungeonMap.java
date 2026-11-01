@@ -67,7 +67,7 @@ public final class DungeonMap implements HudModule {
 	/** The map SkyUp builds above each dungeon, read block for block (see DungeonRooms.PLAN_*). */
 	private static final byte[] plan = new byte[SIZE * SIZE];
 	/** Where that map is (y), and how far around the player it is read. */
-	private static final int PLAN_LOW = 35, PLAN_HIGH = 41, PLAN_RADIUS = 96;
+	private static final int PLAN_LOW = 35, PLAN_HIGH = 41, PLAN_Y = 37, PLAN_RADIUS = 96;
 	/** The map above is read over this many ticks, a slice each, so no tick takes long. */
 	private static final int PLAN_TICKS = 20;
 	private static int planRow;
@@ -355,7 +355,8 @@ public final class DungeonMap implements HudModule {
 			for (int z = cz - PLAN_RADIUS; z <= cz + PLAN_RADIUS; z++) {
 				int ix = x - originX, iz = z - originZ;
 				if (ix < 0 || iz < 0 || ix >= SIZE || iz >= SIZE || !world.hasChunk(x >> 4, z >> 4)) continue;
-				byte kind = 0;
+				// the map's own layer first (y 37): the start room's green mark lies over it, a block higher
+				byte kind = planKind(world.getBlockState(pos.set(x, PLAN_Y, z)));
 				for (int y = PLAN_HIGH; y >= PLAN_LOW && kind == 0; y--) kind = planKind(world.getBlockState(pos.set(x, y, z)));
 				if (kind == 0) continue;
 				plan[iz * SIZE + ix] = kind;

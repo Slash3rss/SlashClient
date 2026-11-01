@@ -144,7 +144,8 @@ public class GameDungeon implements FabricClientGameTest {
 			if (!rooms.contains("cleared 2")) throw new AssertionError("Hologram not read: " + rooms);
 			context.takeScreenshot("dungeon-holograms");
 			// the simple map: the nine rooms as tiles, a yellow square on each of the twelve doors between them
-			if (!rooms.contains("doors 12")) throw new AssertionError("Doors between the rooms: " + rooms);
+			// (the floor's own rooms: these are not on SkyUp's grid of 13 blocks)
+			if (!rooms.contains("doors 12") || !rooms.contains("tiles 0,")) throw new AssertionError("Doors between the rooms: " + rooms);
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonStyle = "simple");
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-simple");

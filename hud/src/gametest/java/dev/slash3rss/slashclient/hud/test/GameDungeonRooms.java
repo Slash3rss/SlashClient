@@ -6,10 +6,11 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 
 /**
- * The dungeon map's rooms as on SkyUp, from the floor alone (no map above it): each room has its own
- * wall, so two rooms are two blocks apart, and the doorways between them are five blocks wide. A big
- * start room, small rooms around it, one with a pillar in it, a long one: each its own tile on the
- * simple map, none run together through a doorway or split by the pillar.
+ * The dungeon map's rooms as SkyUp builds them, from the floor alone (no map above it): squares of
+ * 13 blocks, each room with its own wall (two rooms are two blocks apart), doorways five blocks wide,
+ * and under each room at y 20 in its bottom right corner a sign with its size ("1x3-G-1"). A 5×5
+ * start room, rooms of 1×1, 2×2, 1×3, 2×1 (its sign turned: "1x2"), one with a pillar in it, one
+ * without a sign and one not seen yet, known from its sign alone: each its own tile on the simple map.
  */
 public class GameDungeonRooms implements FabricClientGameTest {
 	@Override
@@ -20,42 +21,54 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			var server = world.getServer();
 			server.runCommand("time set 6000");
 			server.runCommand("gamemode creative @a");
-			int x0 = 3000, z0 = 3000, y = 120;
-			server.runCommand(String.format("tp @a %d %d %d 180 30", x0 + 30, y + 20, z0 + 30));
+			int x0 = 3003, z0 = 2994, y = 120, c = 13;
+			server.runCommand(String.format("tp @a %d %d %d 180 30", x0 + 50, y + 20, z0 + 40));
 			context.waitTicks(60);
-			// floor, ceiling and solid walls everywhere; the rooms and doorways are cut out of them
-			server.runCommand(String.format("fill %d %d %d %d %d %d polished_deepslate", x0 - 3, y - 1, z0 - 3, x0 + 69, y - 1, z0 + 68));
-			server.runCommand(String.format("fill %d %d %d %d %d %d deepslate_tiles", x0 - 3, y + 4, z0 - 3, x0 + 69, y + 4, z0 + 68));
-			server.runCommand(String.format("fill %d %d %d %d %d %d deepslate_bricks", x0 - 3, y, z0 - 3, x0 + 69, y + 3, z0 + 68));
-			// rooms (x from, x to, z from, z to): the start room, then columns 35–49 and 52–66, rows 0–14, 17–31, 34–48, 51–65
-			int[][] rooms = { { 0, 32, 0, 32 }, { 35, 49, 0, 14 }, { 35, 49, 17, 31 }, { 52, 66, 0, 14 }, { 52, 66, 17, 31 }, { 35, 49, 34, 48 }, { 35, 49, 51, 65 }, { 52, 66, 34, 65 } };
-			for (int[] r : rooms) server.runCommand(String.format("fill %d %d %d %d %d %d air", x0 + r[0], y, z0 + r[2], x0 + r[1], y + 3, z0 + r[3]));
-			// doorways five wide through the two blocks of wall between rooms
-			int[][] doors = { { 33, 34, 5, 9 }, { 33, 34, 22, 26 }, { 40, 44, 15, 16 }, { 50, 51, 5, 9 }, { 50, 51, 22, 26 }, { 57, 61, 15, 16 },
-				{ 40, 44, 32, 33 }, { 40, 44, 49, 50 }, { 57, 61, 32, 33 }, { 50, 51, 39, 43 } };
-			for (int[] d : doors) server.runCommand(String.format("fill %d %d %d %d %d %d air", x0 + d[0], y, z0 + d[2], x0 + d[1], y + 2, z0 + d[3]));
-			// a pillar in the middle of a room: not a wall between two rooms
-			server.runCommand(String.format("fill %d %d %d %d %d %d stone", x0 + 58, y, z0 + 23, x0 + 59, y + 3, z0 + 24));
-			server.runCommand(String.format("fill %d %d %d %d %d %d lime_concrete", x0, y - 1, z0, x0 + 32, y - 1, z0 + 32));
+			// floor, ceiling and solid walls over the squares used; the rooms and doorways are cut out of them
+			for (int[] part : new int[][] { { 0, 0, 8, 5 }, { 5, 5, 8, 6 } }) {
+				server.runCommand(String.format("fill %d %d %d %d %d %d polished_deepslate", x0 + part[0] * c, y - 1, z0 + part[1] * c, x0 + part[2] * c - 1, y - 1, z0 + part[3] * c - 1));
+				server.runCommand(String.format("fill %d %d %d %d %d %d deepslate_tiles", x0 + part[0] * c, y + 3, z0 + part[1] * c, x0 + part[2] * c - 1, y + 3, z0 + part[3] * c - 1));
+			}
+			server.runCommand(String.format("fill %d %d %d %d %d %d deepslate_bricks", x0, y, z0, x0 + 8 * c - 1, y + 2, z0 + 5 * c - 1));
+			server.runCommand(String.format("fill %d %d %d %d %d %d deepslate_bricks", x0 + 5 * c, y, z0 + 5 * c, x0 + 8 * c - 1, y + 2, z0 + 6 * c - 1));
+			// rooms in squares (x from, z from, x to, z to) and their signs' text (null: no sign)
+			int[][] rooms = { { 0, 0, 4, 4 }, { 5, 0, 5, 0 }, { 6, 0, 7, 1 }, { 5, 1, 5, 3 }, { 6, 2, 7, 2 }, { 6, 3, 6, 3 }, { 7, 3, 7, 5 }, { 5, 4, 6, 5 } };
+			String[] kinds = { "5x5-start-1", "1x1-G-1", "2x2-G-1", "1x3-G-1", "1x2-G-1", null, "1x3-G-1", "2x2-G-1" };
+			for (int i = 0; i < rooms.length; i++) {
+				int[] r = rooms[i];
+				server.runCommand(String.format("fill %d %d %d %d %d %d air", x0 + r[0] * c + 1, y, z0 + r[1] * c + 1, x0 + (r[2] + 1) * c - 2, y + 2, z0 + (r[3] + 1) * c - 2));
+				if (kinds[i] != null) server.runCommand(sign(x0 + (r[2] + 1) * c - 1, z0 + (r[3] + 1) * c - 1, kinds[i]));
+			}
+			// a room below the start room not seen yet: only its sign
+			server.runCommand(sign(x0 + 2 * c - 1, z0 + 6 * c - 1, "2x1-G-1"));
+			// doorways five wide through the two blocks of wall between rooms: across (x of the wall line, square down) or down
+			int[][] across = { { 5, 0 }, { 5, 2 }, { 5, 4 }, { 6, 0 }, { 6, 2 }, { 6, 3 }, { 7, 3 }, { 7, 5 } };
+			int[][] down = { { 5, 1 }, { 6, 2 }, { 5, 4 } };
+			for (int[] d : across) server.runCommand(String.format("fill %d %d %d %d %d %d air", x0 + d[0] * c - 1, y, z0 + d[1] * c + 4, x0 + d[0] * c, y + 1, z0 + d[1] * c + 8));
+			for (int[] d : down) server.runCommand(String.format("fill %d %d %d %d %d %d air", x0 + d[0] * c + 4, y, z0 + d[1] * c - 1, x0 + d[0] * c + 8, y + 1, z0 + d[1] * c));
+			// a pillar in the middle of the 2×2 room: not a wall between two rooms
+			server.runCommand(String.format("fill %d %d %d %d %d %d stone", x0 + 6 * c + 12, y, z0 + 12, x0 + 6 * c + 14, y + 2, z0 + 14));
+			server.runCommand(String.format("fill %d %d %d %d %d %d lime_concrete", x0 + 1, y - 1, z0 + 1, x0 + 5 * c - 2, y - 1, z0 + 5 * c - 2));
 			// in, as on SkyUp: the hint, the teleport into the start room, the boss bar
 			server.runCommand("tellraw @a \"Dungeon » Czy wiesz że... test\"");
 			context.waitTicks(10);
-			server.runCommand(String.format("tp @a %d %d %d 180 30", x0 + 16, y, z0 + 16));
+			server.runCommand(String.format("tp @a %d %d %d 180 30", x0 + 30, y, z0 + 34));
 			context.waitTicks(20);
 			server.runCommand("bossbar add dungeon \"Dungeon poz. 5\"");
 			server.runCommand("bossbar set dungeon players @a");
 			// a mob in the long room, a chest in the room with the pillar
-			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b}", x0 + 59, y, z0 + 50));
-			server.runCommand(String.format("setblock %d %d %d chest", x0 + 54, y, z0 + 19));
+			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b}", x0 + 7 * c + 6, y, z0 + 5 * c + 6));
+			server.runCommand(String.format("setblock %d %d %d chest", x0 + 6 * c + 3, y, z0 + 3));
 			context.waitTicks(140);
-			String found = context.computeOnClient(mc -> TestHooks.dungeonRooms());
-			if (!found.startsWith("8 rooms") || !found.endsWith("doors 10")) throw new AssertionError("Rooms and doors as SkyUp builds them: " + found);
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonStyle = "simple");
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-rooms-simple");
 			context.runOnClient(mc -> TestHooks.dungeonFull(true));
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-rooms-simple-full");
+			// (the pictures first: on a failure they show what went wrong)
+			String found = context.computeOnClient(mc -> TestHooks.dungeonRooms());
+			if (!found.startsWith("8 rooms") || !found.contains("doors 11,") || !found.endsWith("tiles 9, tile doors 11")) throw new AssertionError("Rooms and doors as SkyUp builds them: " + found);
 			context.runOnClient(mc -> {
 				TestHooks.dungeonFull(false);
 				dev.slash3rss.slashclient.hud.SlashHud.config.dungeonStyle = "detailed";
@@ -64,5 +77,14 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			context.takeScreenshot("dungeon-rooms-detailed");
 			server.runCommand("bossbar remove dungeon");
 		}
+	}
+
+	/** The sign under a room (y 20) with SkyUp's three lines; its text as SNBT from 1.21.5, JSON strings before. */
+	private static String sign(int x, int z, String kind) {
+		//#if MC >= 1.21.5
+		return String.format("setblock %d 20 %d oak_sign{front_text:{messages:[\"<<DUNGEON_TC>>\",\"d-zwykly\",\"%s\",\"\"]}}", x, z, kind);
+		//#else
+		//$ return String.format("setblock %d 20 %d oak_sign{front_text:{messages:['\"<<DUNGEON_TC>>\"','\"d-zwykly\"','\"%s\"','\"\"']}}", x, z, kind);
+		//#endif
 	}
 }

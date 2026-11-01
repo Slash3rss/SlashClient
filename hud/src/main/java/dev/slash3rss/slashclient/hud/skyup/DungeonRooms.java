@@ -176,6 +176,10 @@ public final class DungeonRooms {
 		lastX = lastZ = -1;
 		rooms.clear();
 		doors.clear();
+		signs.clear();
+		gridTiles.clear();
+		gridDoors.clear();
+		phaseX = phaseZ = -1;
 		containers.clear();
 		spawners.clear();
 		spawnerBlocks.clear();
@@ -433,6 +437,7 @@ public final class DungeonRooms {
 			}
 			if (rooms.get(r).respawnAt == 0 && rooms.get(r).left <= 0) rooms.get(r).respawnAt = c[2];
 		}
+		grid(mc, cell, plan, x0, z0, x1, z1);
 	}
 
 	/** A hologram's text: an armour stand's name or a text display's text, without colour codes; null for neither. */
@@ -765,6 +770,306 @@ public final class DungeonRooms {
 		}
 	}
 
+	// ---------- the simple map: rooms on SkyUp's grid ----------
+
+	/**
+	 * SkyUp builds its dungeons of squares 13 blocks across (each room's own wall included, so two
+	 * rooms are two blocks of wall apart): a room is 1×1, 1×3, 2×2… of them, the start room 5×5.
+	 * Under each room, at y 20 in its bottom right corner (+x, +z), a sign says which it is:
+	 * "<<DUNGEON_TC>>", "d-zwykly", "1x3-G-1" (or "5x5-start-1").
+	 */
+	static final int CELL = 13;
+	private static final java.util.regex.Pattern SIGN_SIZE = java.util.regex.Pattern.compile("(\\d+)\\s*x\\s*(\\d+)");
+
+	/** One tile of the simple map: where (map blocks, inclusive) and what is going on in it. */
+	private static final class Tile {
+		int x0, z0, x1, z1;
+		boolean start, current, visited;
+		int mobs, left = -1, lootCat = -1;
+		long respawnAt;
+		final List<Integer> mobIds = new ArrayList<>();
+		/** On the grid: its squares (from the grid's first one), and how many. */
+		int cx0 = Integer.MAX_VALUE, cz0 = Integer.MAX_VALUE, cx1 = Integer.MIN_VALUE, cz1 = Integer.MIN_VALUE, cells;
+
+		/** What one of the rooms found on the floor tells about it. */
+		void add(Room room) {
+			mobs += room.mobs;
+			for (int id : room.mobIds) if (mobIds.size() < 4) mobIds.add(id);
+			if (room.left >= 0) left = Math.max(0, left) + room.left;
+			respawnAt = Math.max(respawnAt, room.respawnAt);
+			visited |= room.visited;
+			if (room.lootCat >= 0 && (lootCat < 0 || lootCat == ORE)) lootCat = room.lootCat;
+		}
+	}
+
+	/** Signs under the rooms, by their place: map x, z, the size across (x) and down (z), 1 for the start room. */
+	private static final Map<Long, int[]> signs = new HashMap<>();
+	/** The grid: where its lines are (map x, z of a square's first block), or -1 while not known. */
+	private static int phaseX = -1, phaseZ = -1;
+	/** The rooms on the grid and the doors between them; empty when the dungeon is not on SkyUp's grid. */
+	private static final List<Tile> gridTiles = new ArrayList<>();
+	private static final List<float[]> gridDoors = new ArrayList<>();
+
+	/** The rooms' signs in the chunks around the player (the game has them before the rooms are seen). */
+	private static void readSigns(Minecraft mc) {
+		ClientLevel world = mc.level;
+		int pcx = mc.player.getBlockX() >> 4, pcz = mc.player.getBlockZ() >> 4;
+		for (int cx = pcx - 10; cx <= pcx + 10; cx++) {
+			for (int cz = pcz - 10; cz <= pcz + 10; cz++) {
+				if (!world.hasChunk(cx, cz)) continue;
+				for (net.minecraft.world.level.block.entity.BlockEntity be : world.getChunk(cx, cz).getBlockEntities().values()) {
+					if (!(be instanceof net.minecraft.world.level.block.entity.SignBlockEntity sign)) continue;
+					//#if MC >= 26.3
+					List<net.minecraft.network.chat.Component> lines = sign.getText(net.minecraft.world.level.block.entity.SignTextSlot.FRONT).getMessages(false);
+					//#else
+					//$ List<net.minecraft.network.chat.Component> lines = java.util.Arrays.asList(sign.getFrontText().getMessages(false));
+					//#endif
+					if (lines.size() < 3 || !lines.get(0).getString().contains("DUNGEON_TC")) continue;
+					String kind = lines.get(2).getString();
+					java.util.regex.Matcher m = SIGN_SIZE.matcher(kind);
+					if (!m.find()) continue;
+					BlockPos p = be.getBlockPos();
+					int x = p.getX() - originX, z = p.getZ() - originZ;
+					if (x < 0 || z < 0 || x >= size || z >= size) continue;
+					signs.put(key(x, z), new int[] { x, z, Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)), kind.contains("start") ? 1 : 0 });
+				}
+			}
+		}
+	}
+
+	/**
+	 * Where the grid's lines are along one way: the two neighbouring places (of 13) with the most wall
+	 * (a room's wall and its neighbour's); -1 when walls are not clearly there (not SkyUp's grid).
+	 */
+	private static int phase(long[] walls) {
+		long all = 0, best = -1;
+		int at = -1;
+		for (long w : walls) all += w;
+		for (int p = 0; p < CELL; p++) {
+			long w = walls[(p + CELL - 1) % CELL] + walls[p];
+			if (w > best) {
+				best = w;
+				at = p;
+			}
+		}
+		return all > 0 && best >= 1.8 * 2 * all / CELL ? at : -1;
+	}
+
+	/** Which square of the grid a map block is in. */
+	private static int cellX(int x) {
+		return Math.floorDiv(x - phaseX, CELL);
+	}
+
+	private static int cellZ(int z) {
+		return Math.floorDiv(z - phaseZ, CELL);
+	}
+
+	/**
+	 * The simple map's rooms: squares of the grid with floor (or a sign saying a room is there), put
+	 * together into rooms by the signs, else where nothing walls two squares apart; two squares
+	 * with a wall between them and a gap in it have a door there.
+	 */
+	private static void grid(Minecraft mc, byte[] cell, byte[] plan, int x0, int z0, int x1, int z1) {
+		readSigns(mc);
+		gridTiles.clear();
+		gridDoors.clear();
+		long[] wx = new long[CELL], wz = new long[CELL];
+		for (int z = z0; z <= z1; z++) {
+			for (int x = x0; x <= x1; x++) {
+				if (!wallAt(cell, plan, x, z)) continue;
+				wx[Math.floorMod(x, CELL)]++;
+				wz[Math.floorMod(z, CELL)]++;
+			}
+		}
+		phaseX = phase(wx);
+		phaseZ = phase(wz);
+		// nothing seen to tell yet: a sign's corner is the last block of its room
+		if ((phaseX < 0 || phaseZ < 0) && !signs.isEmpty()) {
+			int[] s = signs.values().iterator().next();
+			phaseX = Math.floorMod(s[0] + 1, CELL);
+			phaseZ = Math.floorMod(s[1] + 1, CELL);
+		}
+		if (phaseX < 0 || phaseZ < 0) return;
+		for (int[] s : signs.values()) {
+			x0 = Math.min(x0, s[0] - s[2] * CELL);
+			z0 = Math.min(z0, s[1] - Math.max(s[2], s[3]) * CELL);
+			x1 = Math.max(x1, s[0]);
+			z1 = Math.max(z1, s[1]);
+		}
+		int gx = cellX(x0), gz = cellZ(z0), gw = cellX(x1) - gx + 1, gh = cellZ(z1) - gz + 1;
+		if (gw <= 0 || gh <= 0 || (long) gw * gh > 10_000) return;
+		// squares with floor in them
+		boolean[] present = new boolean[gw * gh];
+		for (int j = 0; j < gh; j++) {
+			for (int i = 0; i < gw; i++) {
+				int bx = phaseX + (gx + i) * CELL, bz = phaseZ + (gz + j) * CELL, open = 0;
+				for (int z = bz + 1; z < bz + CELL - 1; z++) for (int x = bx + 1; x < bx + CELL - 1; x++) if (openAt(cell, plan, x, z)) open++;
+				present[j * gw + i] = open >= 20;
+			}
+		}
+		// the boundary between two squares: 0 open, 1..7 a door (its middle), 8 and more open (one room)
+		int[] owner = new int[gw * gh];
+		Arrays.fill(owner, -1);
+		// first the rooms the signs tell, each the way (across or down) its walls agree with
+		for (int[] s : signs.values()) {
+			int ci = cellX(s[0]) - gx, cj = cellZ(s[1]) - gz;
+			int[] best = null;
+			int bestScore = Integer.MIN_VALUE;
+			for (int turn = 0; turn < (s[2] == s[3] ? 1 : 2); turn++) {
+				int a = turn == 0 ? s[2] : s[3], b = turn == 0 ? s[3] : s[2];
+				int[] r = { ci - a + 1, cj - b + 1, ci, cj };
+				if (r[0] < 0 || r[1] < 0) continue;
+				int score = 0;
+				for (int j = r[1]; j <= r[3]; j++) {
+					for (int i = r[0]; i <= r[2]; i++) {
+						if (owner[j * gw + i] >= 0) score -= 10;
+						if (i < r[2]) score += openness(cell, plan, gx + i, gz + j, true) >= 8 ? 1 : -2;
+						if (j < r[3]) score += openness(cell, plan, gx + i, gz + j, false) >= 8 ? 1 : -2;
+					}
+				}
+				if (score > bestScore) {
+					bestScore = score;
+					best = r;
+				}
+			}
+			if (best == null) continue;
+			Tile t = new Tile();
+			t.start = s[4] == 1;
+			for (int j = best[1]; j <= best[3]; j++) for (int i = best[0]; i <= best[2]; i++) if (owner[j * gw + i] < 0) claim(t, owner, gw, i, j, gridTiles.size());
+			if (t.cells > 0) gridTiles.add(t);
+		}
+		// then squares with floor no sign tells about: together where nothing walls them apart
+		ArrayDeque<Integer> queue = new ArrayDeque<>();
+		for (int start = 0; start < gw * gh; start++) {
+			if (!present[start] || owner[start] >= 0) continue;
+			Tile t = new Tile();
+			int id = gridTiles.size();
+			claim(t, owner, gw, start % gw, start / gw, id);
+			queue.add(start);
+			while (!queue.isEmpty()) {
+				int c = queue.poll(), i = c % gw, j = c / gw;
+				int[][] next = { { i + 1, j, i, j, 1 }, { i - 1, j, i - 1, j, 1 }, { i, j + 1, i, j, 0 }, { i, j - 1, i, j - 1, 0 } };
+				for (int[] n : next) {
+					if (n[0] < 0 || n[1] < 0 || n[0] >= gw || n[1] >= gh) continue;
+					int k = n[1] * gw + n[0];
+					if (!present[k] || owner[k] >= 0 || openness(cell, plan, gx + n[2], gz + n[3], n[4] == 1) < 8) continue;
+					claim(t, owner, gw, n[0], n[1], id);
+					queue.add(k);
+				}
+			}
+			gridTiles.add(t);
+		}
+		// doors: a gap in the wall between two rooms
+		for (int j = 0; j < gh; j++) {
+			for (int i = 0; i < gw; i++) {
+				int here = owner[j * gw + i];
+				if (here < 0) continue;
+				if (i + 1 < gw && owner[j * gw + i + 1] >= 0 && owner[j * gw + i + 1] != here) door(cell, plan, gx + i, gz + j, true);
+				if (j + 1 < gh && owner[(j + 1) * gw + i] >= 0 && owner[(j + 1) * gw + i] != here) door(cell, plan, gx + i, gz + j, false);
+			}
+		}
+		for (Tile t : gridTiles) {
+			t.x0 = phaseX + (gx + t.cx0) * CELL;
+			t.z0 = phaseZ + (gz + t.cz0) * CELL;
+			t.x1 = phaseX + (gx + t.cx1 + 1) * CELL - 1;
+			t.z1 = phaseZ + (gz + t.cz1 + 1) * CELL - 1;
+		}
+		// what is going on in each: the floor's rooms in it, the start, the player
+		for (Room room : rooms) {
+			if (room.pixels == 0) continue;
+			int i = cellX(room.centerX()) - gx, j = cellZ(room.centerZ()) - gz;
+			if (i >= 0 && j >= 0 && i < gw && j < gh && owner[j * gw + i] >= 0) gridTiles.get(owner[j * gw + i]).add(room);
+		}
+		int[] start = start();
+		if (start != null) {
+			int i = cellX(start[0]) - gx, j = cellZ(start[1]) - gz;
+			if (i >= 0 && j >= 0 && i < gw && j < gh && owner[j * gw + i] >= 0) gridTiles.get(owner[j * gw + i]).start = true;
+		}
+		if (lastX >= 0) {
+			int i = cellX(lastX) - gx, j = cellZ(lastZ) - gz;
+			if (i >= 0 && j >= 0 && i < gw && j < gh && owner[j * gw + i] >= 0) gridTiles.get(owner[j * gw + i]).current = true;
+		}
+		// sure it is SkyUp's grid: its signs, or a start room of 5×5 squares; else the floor's own rooms
+		boolean sure = !signs.isEmpty();
+		for (Tile t : gridTiles) if (t.start && t.cx1 - t.cx0 == 4 && t.cz1 - t.cz0 == 4) sure = true;
+		if (!sure) {
+			gridTiles.clear();
+			gridDoors.clear();
+		}
+	}
+
+	private static void claim(Tile t, int[] owner, int gw, int i, int j, int id) {
+		owner[j * gw + i] = id;
+		t.cells++;
+		t.cx0 = Math.min(t.cx0, i);
+		t.cz0 = Math.min(t.cz0, j);
+		t.cx1 = Math.max(t.cx1, i);
+		t.cz1 = Math.max(t.cz1, j);
+	}
+
+	/**
+	 * How open the boundary is between grid square (ci, cj) and the next one across (or down): of
+	 * the 11 places along it between the corners, how many go through both walls.
+	 */
+	private static int openness(byte[] cell, byte[] plan, int ci, int cj, boolean across) {
+		int open = 0;
+		for (int t = 1; t < CELL - 1; t++) {
+			if (across) {
+				int g = phaseX + (ci + 1) * CELL, z = phaseZ + cj * CELL + t;
+				if (openAt(cell, plan, g - 1, z) && openAt(cell, plan, g, z)) open++;
+			} else {
+				int g = phaseZ + (cj + 1) * CELL, x = phaseX + ci * CELL + t;
+				if (openAt(cell, plan, x, g - 1) && openAt(cell, plan, x, g)) open++;
+			}
+		}
+		return open;
+	}
+
+	/** A door in the boundary between two rooms' squares, in the middle of its gap, if it has one. */
+	private static void door(byte[] cell, byte[] plan, int ci, int cj, boolean across) {
+		int open = 0;
+		float sum = 0;
+		for (int t = 1; t < CELL - 1; t++) {
+			if (across) {
+				int g = phaseX + (ci + 1) * CELL, z = phaseZ + cj * CELL + t;
+				if (openAt(cell, plan, g - 1, z) && openAt(cell, plan, g, z)) {
+					open++;
+					sum += z;
+				}
+			} else {
+				int g = phaseZ + (cj + 1) * CELL, x = phaseX + ci * CELL + t;
+				if (openAt(cell, plan, x, g - 1) && openAt(cell, plan, x, g)) {
+					open++;
+					sum += x;
+				}
+			}
+		}
+		if (open == 0) return;
+		// drawn half a block on: here the point between the two walls, and the middle of the gap's blocks
+		if (across) gridDoors.add(new float[] { phaseX + (ci + 1) * CELL - 0.5f, sum / open });
+		else gridDoors.add(new float[] { sum / open, phaseZ + (cj + 1) * CELL - 0.5f });
+	}
+
+	/** The tiles of the floor's own rooms, where the dungeon is not on the grid. */
+	private static List<Tile> floorTiles() {
+		List<Tile> out = new ArrayList<>();
+		int start = startRoom(), current = roomAt(lastX, lastZ);
+		for (int r = 0; r < rooms.size(); r++) {
+			Room room = rooms.get(r);
+			if (room.coreMinX > room.coreMaxX) continue;
+			Tile t = new Tile();
+			t.x0 = room.coreMinX;
+			t.z0 = room.coreMinZ;
+			t.x1 = room.coreMaxX;
+			t.z1 = room.coreMaxZ;
+			t.start = r == start;
+			t.current = r == current;
+			t.add(room);
+			out.add(t);
+		}
+		return out;
+	}
+
 	/**
 	 * The simple map: each room a tile in the colour of what is going on in it, with an icon in the
 	 * middle, and a small yellow square on each door between two rooms. The start room is dark green
@@ -774,16 +1079,14 @@ public final class DungeonRooms {
 	 */
 	static void drawTiles(GuiGraphicsExtractor g, Minecraft mc, int ox, int oy, int w, int h, float viewX, float viewZ, float scale) {
 		long now = System.currentTimeMillis();
-		int start = startRoom(), current = roomAt(lastX, lastZ);
+		boolean onGrid = !gridTiles.isEmpty();
 		int[] you = { ox + Math.round((float) (mc.player.getX() - originX - viewX) * scale), oy + Math.round((float) (mc.player.getZ() - originZ - viewZ) * scale) };
-		for (int r = 0; r < rooms.size(); r++) {
-			Room room = rooms.get(r);
-			if (room.coreMinX > room.coreMaxX) continue;
-			int x0 = ox + Math.round((room.coreMinX - viewX) * scale) + 1, z0 = oy + Math.round((room.coreMinZ - viewZ) * scale) + 1;
-			int x1 = ox + Math.round((room.coreMaxX + 1 - viewX) * scale) - 1, z1 = oy + Math.round((room.coreMaxZ + 1 - viewZ) * scale) - 1;
+		for (Tile t : onGrid ? gridTiles : floorTiles()) {
+			int x0 = ox + Math.round((t.x0 - viewX) * scale) + 1, z0 = oy + Math.round((t.z0 - viewZ) * scale) + 1;
+			int x1 = ox + Math.round((t.x1 + 1 - viewX) * scale) - 1, z1 = oy + Math.round((t.z1 + 1 - viewZ) * scale) - 1;
 			if (x1 - x0 < 2 || z1 - z0 < 2) continue;
-			boolean mobs = room.mobs > 0 || room.left > 0, cleared = room.respawnAt > now;
-			int color = r == start ? 0xFF0EA30E : r == current ? 0xFF6EE86E : mobs ? 0xFFA30E0E : cleared ? 0xFF3E9E5A : room.visited ? 0xFFF06B6B : 0xFFB45656;
+			boolean mobs = t.mobs > 0 || t.left > 0, cleared = t.respawnAt > now;
+			int color = t.start ? 0xFF0EA30E : t.current ? 0xFF6EE86E : mobs ? 0xFFA30E0E : cleared ? 0xFF3E9E5A : t.visited ? 0xFFF06B6B : 0xFFB45656;
 			// a rim a shade darker, as on a tile; zoomed in, cut at the map's edge
 			box(g, x0, z0, x1, z1, ox, oy, w, h, mix(color, 0x000000, 0.3f));
 			box(g, x0 + 1, z0 + 1, x1 - 1, z1 - 1, ox, oy, w, h, color);
@@ -792,14 +1095,14 @@ public final class DungeonRooms {
 			if (icon < 6 || cx - icon / 2 < ox || cz - icon / 2 < oy || cx + icon / 2 > ox + w || cz + icon / 2 > oy + h) continue;
 			// items are drawn over everything else: none where it would hide the player's own mark
 			if (Math.abs(you[0] - cx) < icon / 2 + 5 && Math.abs(you[1] - cz) < icon / 2 + 5) continue;
-			if (r == start) {
+			if (t.start) {
 				DungeonMap.item(g, new net.minecraft.world.item.ItemStack(Items.CAMPFIRE), cx, cz, icon);
 				continue;
 			}
 			if (mobs) {
 				// up to four heads, two to a row; a mob out of sight (only the hologram's count): a skull
 				List<net.minecraft.world.entity.LivingEntity> seen = new ArrayList<>();
-				for (int id : room.mobIds) if (mc.level.getEntity(id) instanceof net.minecraft.world.entity.LivingEntity e && e.isAlive()) seen.add(e);
+				for (int id : t.mobIds) if (mc.level.getEntity(id) instanceof net.minecraft.world.entity.LivingEntity e && e.isAlive()) seen.add(e);
 				// heads smaller than the other icons, so a few fit side by side with room around them
 				int head = Math.max(6, Math.min(icon * 2 / 3, seen.size() > 1 ? side / 2 - 3 : icon));
 				if (seen.isEmpty()) DungeonMap.item(g, new net.minecraft.world.item.ItemStack(Items.SKELETON_SKULL), cx, cz, head);
@@ -811,16 +1114,16 @@ public final class DungeonRooms {
 				continue;
 			}
 			if (cleared) {
-				if (SlashHud.config.dungeonCleared) plate(g, mc, clock((room.respawnAt - now + 999) / 1000), cx, cz, 0xFF4ADE80, Math.min(1f, side / 30f));
+				if (SlashHud.config.dungeonCleared) plate(g, mc, clock((t.respawnAt - now + 999) / 1000), cx, cz, 0xFF4ADE80, Math.min(1f, side / 30f));
 				continue;
 			}
-			if (room.lootCat >= 0) {
-				net.minecraft.world.item.ItemStack loot = dev.slash3rss.slashclient.hud.ui.Ui.stack(LOOT_ICONS[room.lootCat]);
+			if (t.lootCat >= 0) {
+				net.minecraft.world.item.ItemStack loot = dev.slash3rss.slashclient.hud.ui.Ui.stack(LOOT_ICONS[t.lootCat]);
 				if (loot != null) DungeonMap.item(g, loot, cx, cz, icon);
 			}
 		}
 		int door = Math.max(2, Math.min(4, Math.round(scale * 1.5f)));
-		for (float[] d : doors) {
+		for (float[] d : onGrid ? gridDoors : doors) {
 			int x = ox + Math.round((d[0] + 0.5f - viewX) * scale) - door / 2, z = oy + Math.round((d[1] + 0.5f - viewZ) * scale) - door / 2;
 			box(g, x, z, x + door, z + door, ox, oy, w, h, 0xFFFDE047);
 		}
@@ -895,6 +1198,6 @@ public final class DungeonRooms {
 			if (r.respawnAt > 0) clearedRooms++;
 			if (r.visited && r.spawners == 0 && rooms.indexOf(r) != startRoom()) noSpawner++;
 		}
-		return rooms.size() + " rooms, containers " + containerCount(false) + ", ores " + containerCount(true) + ", cleared " + clearedRooms + ", without spawner " + noSpawner + ", doors " + doors.size();
+		return rooms.size() + " rooms, containers " + containerCount(false) + ", ores " + containerCount(true) + ", cleared " + clearedRooms + ", without spawner " + noSpawner + ", doors " + doors.size() + ", tiles " + gridTiles.size() + ", tile doors " + gridDoors.size();
 	}
 }
