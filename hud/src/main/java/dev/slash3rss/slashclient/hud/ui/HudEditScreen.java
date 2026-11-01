@@ -1241,6 +1241,8 @@ public class HudEditScreen extends Screen {
 		Ui.icon(g, e.icon(), x + 82, y + 3, 12, Ui.ACCENT_LIGHT);
 		Ui.draw(g, Ui.fit(Ui.trBold(e.nameKey()), w - 106), x + 104, y + 5, Ui.TEXT);
 		List<Catalog.Setting> rows = new ArrayList<>(e.settings());
+		// rows that do nothing with what else is set (a dungeon map's floor colours on the simple map)
+		rows.removeIf(s -> Catalog.hidden(e.id(), s));
 		if (e.hasSwitch()) {
 			rows.add(0, new Catalog.Toggle("slashclient-hud.ui.enabled", e.get(), e.set()));
 		}

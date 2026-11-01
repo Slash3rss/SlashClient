@@ -655,9 +655,15 @@ public final class DungeonMap implements HudModule {
 		}
 	}
 
-	/** A mob's head on a room's tile of the simple map, framed in its class's colour. */
+	/** A mob on a room's tile of the simple map, as its class is set to be drawn, framed in its class's colour. */
 	static void tileMob(GuiGraphicsExtractor g, net.minecraft.world.entity.LivingEntity e, int x, int y, int size) {
-		mob(g, e, x, y, size, FRAMES[kind(e)], "head");
+		int kind = kind(e);
+		mob(g, e, x, y, size, FRAMES[kind], mobStyle(kind));
+	}
+
+	/** Whether a mob is drawn at all (its class not set to hidden, mobs on the map switched on). */
+	static boolean mobShown(Entity e) {
+		return SlashHud.config.dungeonMobs && !"hidden".equals(mobStyle(kind(e)));
 	}
 
 	/** A face from the skin (with its hat layer) in a frame of the given colour, 8 pixels round the point. */

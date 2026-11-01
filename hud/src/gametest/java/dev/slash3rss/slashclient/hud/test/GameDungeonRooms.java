@@ -87,9 +87,34 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			// (the pictures first: on a failure they show what went wrong)
 			String found = context.computeOnClient(mc -> TestHooks.dungeonRooms());
 			if (!found.startsWith("9 rooms") || !found.contains("doors 12,") || !found.endsWith("tiles 9, tile doors 12, starts 1")) throw new AssertionError("Rooms and doors as SkyUp builds them: " + found);
+			// the map's settings on the simple map: larger, following the player zoomed in, mobs as dots,
+			// no loot icons; the floor's own settings (colours, a round map) hidden while it is simple
 			context.runOnClient(mc -> {
 				TestHooks.dungeonFull(false);
-				dev.slash3rss.slashclient.hud.SlashHud.config.dungeonStyle = "detailed";
+				var cfg = dev.slash3rss.slashclient.hud.SlashHud.config;
+				cfg.dungeonSize = 180;
+				cfg.dungeonFollow = true;
+				cfg.dungeonZoom = 2f;
+				cfg.dungeonMobOther = "dot";
+				cfg.dungeonContainers = false;
+			});
+			// by the start room's corner, the other rooms in sight
+			server.runCommand(String.format("tp @a %d %d %d 180 30", x0 + 58, y, z0 + 58));
+			context.waitTicks(15);
+			context.takeScreenshot("dungeon-rooms-simple-settings");
+			String hidden = context.computeOnClient(mc -> {
+				var entry = dev.slash3rss.slashclient.hud.ui.Catalog.entries(() -> {}).stream().filter(e -> e.id().equals("dungeonmap")).findFirst().orElseThrow();
+				return entry.settings().stream().filter(st -> dev.slash3rss.slashclient.hud.ui.Catalog.hidden("dungeonmap", st)).map(st -> st.labelKey()).toList().toString();
+			});
+			if (!hidden.equals("[slashclient-hud.dungeon.plan, slashclient-hud.dungeon.blockColors, slashclient-hud.set.shape, slashclient-hud.dungeon.noSpawner]")) throw new AssertionError("Settings hidden on the simple map: " + hidden);
+			context.runOnClient(mc -> {
+				var cfg = dev.slash3rss.slashclient.hud.SlashHud.config;
+				cfg.dungeonSize = 120;
+				cfg.dungeonFollow = false;
+				cfg.dungeonZoom = 1f;
+				cfg.dungeonMobOther = "head";
+				cfg.dungeonContainers = true;
+				cfg.dungeonStyle = "detailed";
 			});
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-rooms-detailed");

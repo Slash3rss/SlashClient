@@ -22,6 +22,20 @@ public final class Catalog {
 
 	public record Toggle(String labelKey, Supplier<Boolean> get, Consumer<Boolean> set) implements Setting {}
 
+	/** Rows hidden while something else is set ("entry|label" → when): a dungeon map's floor colours on the simple map. */
+	private static final Map<String, Supplier<Boolean>> HIDDEN = new java.util.concurrent.ConcurrentHashMap<>();
+
+	/** The setting just added to `settings` of entry `id` is hidden while `when` says so. */
+	private static void hideWhen(String id, List<Setting> settings, Supplier<Boolean> when) {
+		HIDDEN.put(id + "|" + settings.get(settings.size() - 1).labelKey(), when);
+	}
+
+	/** Whether a row of entry `id` is hidden now. */
+	public static boolean hidden(String id, Setting s) {
+		Supplier<Boolean> when = HIDDEN.get(id + "|" + s.labelKey());
+		return when != null && when.get();
+	}
+
 	/** A number between min and max, shown with `format` ("%.1f×", "%d", …). */
 	public record Slider(String labelKey, float min, float max, float step, String format, Supplier<Float> get, Consumer<Float> set) implements Setting {}
 
@@ -255,8 +269,12 @@ public final class Catalog {
 				case "dungeonmap" -> {
 					settings.add(new Choice("slashclient-hud.dungeon.style", new String[] { "detailed", "simple" }, "slashclient-hud.dungeon.style.",
 						() -> cfg.dungeonStyle, v -> cfg.dungeonStyle = v));
+					// the simple map draws rooms as tiles: the floor's look and a round map are not for it
+					Supplier<Boolean> simple = () -> "simple".equals(cfg.dungeonStyle);
 					settings.add(new Toggle("slashclient-hud.dungeon.plan", () -> cfg.dungeonPlan, v -> cfg.dungeonPlan = v));
+					hideWhen("dungeonmap", settings, simple);
 					settings.add(new Toggle("slashclient-hud.dungeon.blockColors", () -> cfg.dungeonBlockColors, v -> cfg.dungeonBlockColors = v));
+					hideWhen("dungeonmap", settings, simple);
 					settings.add(new Slider("slashclient-hud.dungeon.size", 80f, 240f, 10f, "%.0f px", () -> (float) cfg.dungeonSize, v -> cfg.dungeonSize = Math.round(v)));
 					settings.add(new Slider("slashclient-hud.dungeon.scanRange", dev.slash3rss.slashclient.hud.skyup.DungeonMap.MIN_RANGE, dev.slash3rss.slashclient.hud.skyup.DungeonMap.MAX_RANGE, 8f, "%.0f",
 						() -> (float) cfg.dungeonScanRange, v -> cfg.dungeonScanRange = Math.round(v)));
@@ -264,6 +282,7 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.dungeon.progress", () -> cfg.dungeonProgress, v -> cfg.dungeonProgress = v));
 					settings.add(new Choice("slashclient-hud.set.shape", new String[] { "square", "circle" }, "slashclient-hud.dungeon.shape.",
 						() -> cfg.dungeonShape, v -> cfg.dungeonShape = v));
+					hideWhen("dungeonmap", settings, simple);
 					settings.add(new Slider("slashclient-hud.dungeon.zoom", 1f, 4f, 0.25f, "%.2f×", () -> cfg.dungeonZoom, v -> cfg.dungeonZoom = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.follow", () -> cfg.dungeonFollow, v -> cfg.dungeonFollow = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.selfHead", () -> cfg.dungeonSelfHead, v -> cfg.dungeonSelfHead = v));
@@ -292,6 +311,7 @@ public final class Catalog {
 					}
 					settings.add(new Toggle("slashclient-hud.dungeon.cleared", () -> cfg.dungeonCleared, v -> cfg.dungeonCleared = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.noSpawner", () -> cfg.dungeonNoSpawner, v -> cfg.dungeonNoSpawner = v));
+					hideWhen("dungeonmap", settings, simple);
 					// switched on, it holds the height the player stands at now; the slider moves it
 					settings.add(new Toggle("slashclient-hud.dungeon.fixedY", () -> cfg.dungeonFixedY, v -> {
 						var player = net.minecraft.client.Minecraft.getInstance().player;

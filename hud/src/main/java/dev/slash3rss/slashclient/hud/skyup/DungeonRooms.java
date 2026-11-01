@@ -1125,10 +1125,16 @@ public final class DungeonRooms {
 			if (mobs) {
 				// up to four heads, two to a row; a mob out of sight (only the hologram's count): a skull
 				List<net.minecraft.world.entity.LivingEntity> seen = new ArrayList<>();
-				for (int id : t.mobIds) if (mc.level.getEntity(id) instanceof net.minecraft.world.entity.LivingEntity e && e.isAlive()) seen.add(e);
+				// (mobs switched off, or their class hidden, on the map: the tile's colour alone)
+				boolean near = false;
+				for (int id : t.mobIds) {
+					if (!(mc.level.getEntity(id) instanceof net.minecraft.world.entity.LivingEntity e) || !e.isAlive()) continue;
+					near = true;
+					if (DungeonMap.mobShown(e)) seen.add(e);
+				}
 				// heads smaller than the other icons, so a few fit side by side with room around them
 				int head = Math.max(6, Math.min(icon * 2 / 3, seen.size() > 1 ? side / 2 - 3 : icon));
-				if (seen.isEmpty()) DungeonMap.item(g, new net.minecraft.world.item.ItemStack(Items.SKELETON_SKULL), cx, cz, head);
+				if (!near && SlashHud.config.dungeonMobs) DungeonMap.item(g, new net.minecraft.world.item.ItemStack(Items.SKELETON_SKULL), cx, cz, head);
 				for (int i = 0; i < seen.size(); i++) {
 					int cols = Math.min(2, seen.size() - i / 2 * 2), rows = (seen.size() + 1) / 2;
 					int hx = cx + Math.round((i % 2 - (cols - 1) / 2f) * (head + 2)), hz = cz + Math.round((i / 2 - (rows - 1) / 2f) * (head + 2));
@@ -1140,7 +1146,7 @@ public final class DungeonRooms {
 				if (SlashHud.config.dungeonCleared) plate(g, mc, clock((t.respawnAt - now + 999) / 1000), cx, cz, 0xFF4ADE80, Math.min(1f, side / 30f));
 				continue;
 			}
-			if (t.lootCat >= 0) {
+			if (t.lootCat >= 0 && SlashHud.config.dungeonContainers) {
 				net.minecraft.world.item.ItemStack loot = dev.slash3rss.slashclient.hud.ui.Ui.stack(LOOT_ICONS[t.lootCat]);
 				if (loot != null) DungeonMap.item(g, loot, cx, cz, icon);
 			}
