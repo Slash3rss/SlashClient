@@ -98,6 +98,8 @@ export interface Settings {
   seasonalLook?: boolean;
   /** Linux: the question about installing the AppImage into ~/Applications was answered (linuxInstall.ts). */
   linuxInstallAsked?: boolean;
+  /** Linux: a shortcut on the desktop wanted (first-run wizard), made now or once the AppImage is installed. */
+  linuxDesktopShortcut?: boolean;
   /** Whose Java profiles play on unless they choose their own; missing = Mojang's. */
   javaVendor?: JavaVendor;
   /** How much memory new profiles start with (MB); each profile can change its own. */

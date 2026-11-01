@@ -894,6 +894,8 @@ const EN: Record<string, string> = {
   'Nie udało się zainstalować SlashClient: {0}': 'SlashClient could not be installed: {0}',
   'Zainstaluj w Aplikacjach': 'Install in Applications',
   'Dodaj skrót na pulpit': 'Add a desktop shortcut',
+  'Skrót na pulpicie': 'Desktop shortcut',
+  'Ikona SlashClient na pulpicie, obok tej w menu aplikacji.': 'A SlashClient icon on the desktop, next to the one in the applications menu.',
   'Skrót SlashClient jest na pulpicie.': 'The SlashClient shortcut is on the desktop.',
   'Nie udało się dodać skrótu na pulpit.': 'The desktop shortcut could not be added.',
   'Nie udało się dodać skrótu na pulpit: {0}': 'The desktop shortcut could not be added: {0}',

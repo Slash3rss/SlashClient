@@ -1706,6 +1706,8 @@ handle('linux:install', async () => {
   if (process.platform !== 'linux' || !appImage) return false;
   const icons = process.env.APPDIR ? path.join(process.env.APPDIR, 'usr', 'share', 'icons', 'hicolor') : undefined;
   const target = await installLinux(appImage, linuxPlaces(), icons, t('SlashClient – launcher Minecrafta'));
+  // the desktop shortcut asked for in the first-run wizard, pointing at the AppImage's new place
+  if (store.settings.linuxDesktopShortcut) await desktopShortcut(target).catch((err) => console.error('skrót na pulpicie:', (err as Error).message));
   // started anew from there once this one is gone (its single-instance lock released); Electron's own
   // relaunch runs its helper through the AppImage, which does not come back up
   spawn('/bin/sh', ['-c', 'sleep 1; exec "$0"', target], { detached: true, stdio: 'ignore' }).unref();
@@ -1716,11 +1718,14 @@ handle('linux:install', async () => {
 handle('linux:desktopShortcut', async () => {
   const appImage = process.env.APPIMAGE;
   if (process.platform !== 'linux' || !appImage) return false;
+  await desktopShortcut(appImage);
+  return true;
+});
+async function desktopShortcut(appImage: string) {
   const file = await addDesktopShortcut(appImage, await desktopDir(), t('SlashClient – launcher Minecrafta'));
   // GNOME's desktop icons start only shortcuts marked trusted; elsewhere there is no gio, or it does not matter
   spawn('gio', ['set', file, 'metadata::trusted', 'true'], { stdio: 'ignore' }).on('error', () => {});
-  return true;
-});
+}
 handle('update:download', () => shell.openExternal(`${store.settings.socialUrl}/pobierz/${process.arch === 'arm64' ? 'mac' : 'mac-intel'}`));
 handle('app:version', () => app.getVersion());
 /** A Microsoft account with a valid Minecraft token, at least `marginMs` left (refreshed and saved if needed). */

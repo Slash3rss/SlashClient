@@ -22,7 +22,7 @@ interface Store {
   accounts: Account[];
   profiles: Profile[];
   settings: { selectedProfileId?: string; selectedAccountId?: string; closeOnLaunch: boolean; launcherWindow?: string; reduceMotion?: boolean;
-    defaultMemoryMb?: number; discordEnabled: boolean; language: string; firstRunDone?: boolean };
+    defaultMemoryMb?: number; discordEnabled: boolean; language: string; firstRunDone?: boolean; linuxDesktopShortcut?: boolean };
   systemMemoryMb: number;
   platform?: string;
   arch?: string;
@@ -90,6 +90,8 @@ export function createWizard(deps: WizardDeps) {
   let profileSummary = '';
   let perfInstall: Promise<unknown> | undefined;
   let versionList: { id: string; hud: boolean }[] | undefined;
+  /** Linux from an AppImage: whether it is installed (undefined elsewhere: no desktop shortcut to offer). */
+  let linuxState: 'installed' | 'not-installed' | undefined;
   const choice = { versionId: '', loader: 'fabric' as 'fabric' | 'vanilla', perf: true, memoryMb: 0, memoryTouched: false, forceNew: false, preset: undefined as PerfPreset | undefined };
 
   const motionReduced = () => document.documentElement.classList.contains('reduce-motion');
@@ -110,6 +112,7 @@ export function createWizard(deps: WizardDeps) {
   async function open() {
     if (root) return;
     await refresh();
+    linuxState = await api.linuxInstallState().catch(() => undefined);
     step = 0;
     scan = undefined;
     chosen.clear();
@@ -516,13 +519,21 @@ export function createWizard(deps: WizardDeps) {
     const windowSel = (original?.cloneNode(true) as HTMLSelectElement | undefined) ?? el('select');
     windowSel.removeAttribute('name');
     windowSel.value = s.launcherWindow ?? '';
+    // Linux: a shortcut on the desktop (made now, or by the install into ~/Applications offered after the wizard)
+    const shortcut = el('input', { type: 'checkbox', checked: s.linuxDesktopShortcut ?? true });
     const persist = () => {
       const reduceMotion = reduce.checked;
       if (reduceMotion !== !!store!.settings.reduceMotion) deps.setReduceMotion(reduceMotion);
-      Object.assign(store!.settings, { reduceMotion, closeOnLaunch: closeOn.checked, discordEnabled: discord.checked, launcherWindow: windowSel.value });
-      return save({ reduceMotion, closeOnLaunch: closeOn.checked, discordEnabled: discord.checked, launcherWindow: windowSel.value });
+      const chosen = { reduceMotion, closeOnLaunch: closeOn.checked, discordEnabled: discord.checked, launcherWindow: windowSel.value,
+        ...(linuxState ? { linuxDesktopShortcut: shortcut.checked } : {}) };
+      Object.assign(store!.settings, chosen);
+      return save(chosen);
     };
-    for (const input of [reduce, closeOn, discord, windowSel]) input.addEventListener('change', () => void persist());
+    for (const input of [reduce, closeOn, discord, windowSel, shortcut]) input.addEventListener('change', () => void persist());
+    const next = async () => {
+      await persist();
+      if (linuxState === 'installed' && shortcut.checked) await api.linuxDesktopShortcut().catch(() => false);
+    };
     const machine = t('Twój komputer: {0} GB RAM, {1} rdzeni procesora.', gb(store?.systemMemoryMb ?? 0), cores || '?');
     body.append(
       ...head('Wygoda', 'Kilka ustawień launchera. Zmienisz je w każdej chwili w Ustawieniach.'),
@@ -533,9 +544,11 @@ export function createWizard(deps: WizardDeps) {
           el('small', { textContent: 'Wróci sam po zamknięciu gry.' }))),
         el('label', { className: 'wz-option' }, discord, el('span', { className: 'grow' }, el('b', { textContent: 'Pokazuj na Discordzie, w co grasz' }),
           el('small', { textContent: 'Status w profilu Discorda, gdy Discord jest włączony.' }))),
-        el('div', { className: 'wz-option' }, icon('fa-regular fa-window-maximize'), el('span', { className: 'grow' }, el('b', { textContent: 'Okno launchera przy uruchomieniu' })), windowSel)),
+        el('div', { className: 'wz-option' }, icon('fa-regular fa-window-maximize'), el('span', { className: 'grow' }, el('b', { textContent: 'Okno launchera przy uruchomieniu' })), windowSel),
+        ...(linuxState ? [el('label', { className: 'wz-option' }, shortcut, el('span', { className: 'grow' }, el('b', { textContent: 'Skrót na pulpicie' }),
+          el('small', { textContent: 'Ikona SlashClient na pulpicie, obok tej w menu aplikacji.' })))] : [])),
     );
-    footer(foot, { run: () => persist().then(() => undefined) });
+    footer(foot, { run: () => next() });
   }
 
   // ---------- 6. friends ----------
