@@ -598,14 +598,13 @@ public final class DungeonMap implements HudModule {
 	 */
 	private static void markers(GuiGraphicsExtractor g, Minecraft mc, int ox, int oy) {
 		HudConfig cfg = SlashHud.config;
-		var connection = mc.getConnection();
 		for (Entity e : mc.level.entitiesForRendering()) {
 			if (e == mc.player || !e.isAlive()) continue;
 			int sx = Math.round((float) (e.getX() - originX - viewX) * viewScale), sz = Math.round((float) (e.getZ() - originZ - viewZ) * viewScale);
 			if (!clip.test(sx, sz)) continue;
 			// SkyUp's spawners (a hologram over a floating spawner on an armour stand): nothing on the map
 			if (DungeonRooms.spawnerLabel(e) || e instanceof ArmorStand) continue;
-			if (e instanceof AbstractClientPlayer p && connection != null && connection.getPlayerInfo(p.getUUID()) != null) {
+			if (e instanceof AbstractClientPlayer p && !npc(p)) {
 				if (cfg.dungeonPlayers) face(g, p, ox + sx, oy + sz, 0xFF60A5FA);
 			} else if ((e instanceof Mob || e instanceof AbstractClientPlayer) && cfg.dungeonMobs && !e.isInvisible() && !simple()) {
 				// (on the simple map mobs are heads on their room's tile)
@@ -682,11 +681,40 @@ public final class DungeonMap implements HudModule {
 	 * 1, 2, 3, 4, or 0 for a mob with no such name.
 	 */
 	public static int kind(Entity mob) {
+		// a mob with a player's model (an NPC) has its own name hidden: its class is in the name shown over it
+		if (npc(mob)) {
+			Component tag = dev.slash3rss.slashclient.hud.modules.MoreModules.Target.tagAbove((net.minecraft.world.entity.LivingEntity) mob);
+			return tag == null ? 0 : kind(tag);
+		}
 		if (!mob.hasCustomName()) return 0;
+		return kind(mob.getCustomName());
+	}
+
+	/**
+	 * A server's mob with a player's model (an NPC): as the Target module tells them (not on the tab
+	 * list, or with an NPC's id), or by its name, which has a level and health in it ("20.0 ❤ |
+	 * Giermek poz. 1") where a player's has neither.
+	 */
+	static boolean npc(Entity e) {
+		if (!(e instanceof AbstractClientPlayer p) || e == Minecraft.getInstance().player) return false;
+		if (dev.slash3rss.slashclient.hud.modules.MoreModules.Target.npc(p)) return true;
+		Component tag = dev.slash3rss.slashclient.hud.modules.MoreModules.Target.tagAbove(p);
+		return mobName(p.getDisplayName().getString()) || tag != null && mobName(tag.getString());
+	}
+
+	private static final Pattern MOB_NAME = Pattern.compile("❤|\\bpoz\\.\\s*\\d+", Pattern.CASE_INSENSITIVE);
+
+	/** A dungeon mob's name: its health ("❤") or level ("poz. 1") in it. */
+	public static boolean mobName(String name) {
+		return MOB_NAME.matcher(name.replaceAll("§.", "")).find();
+	}
+
+	/** A name's class by its colour (see kind(Entity)). */
+	private static int kind(Component name) {
 		// the colour of the name itself: the first piece with letters in it, so the health before it
 		// ("20.0 ❤" in &c), the heart, "|" and such do not count; colour codes written in the text count too
 		int[] found = { -1 };
-		mob.getCustomName().visit((style, text) -> {
+		name.visit((style, text) -> {
 			int color = style.getColor() != null ? style.getColor().getValue() : -1;
 			for (int i = 0; i < text.length(); i++) {
 				char c = text.charAt(i);

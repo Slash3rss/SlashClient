@@ -72,6 +72,14 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			server.runCommand(String.format("summon zombie %d %d %d {NoAI:1b,PersistenceRequired:1b}", x0 + 7 * c + 6, y, z0 + 5 * c + 6));
 			server.runCommand(String.format("setblock %d %d %d chest", x0 + 6 * c + 3, y, z0 + 3));
 			context.waitTicks(140);
+			// a mob with a player's model (an NPC's id, as servers' NPCs have) in the 1×1 room: a mob there, not a player
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.testing.MapSortTestHooks.fakePlayer("Npc", x0 + 5 * c + 6.5, y, z0 + 6.5, true));
+			context.waitTicks(20);
+			String npc = context.computeOnClient(mc -> TestHooks.dungeonRooms());
+			if (!npc.contains("mob tiles 2")) throw new AssertionError("A mob with a player's model on its room's tile: " + npc);
+			// such a mob on the tab list still: its name has health and a level in it, a player's has not
+			if (!dev.slash3rss.slashclient.hud.skyup.DungeonMap.mobName("27.5 ❤ | ☠ Dezerter (poz. 6)") || dev.slash3rss.slashclient.hud.skyup.DungeonMap.mobName("Slash3rss"))
+				throw new AssertionError("A mob's name told from a player's");
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonStyle = "simple");
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-rooms-simple");
@@ -130,6 +138,7 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			});
 			context.waitTicks(10);
 			context.takeScreenshot("dungeon-rooms-detailed");
+			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.testing.MapSortTestHooks.fakePlayersGone());
 			server.runCommand("bossbar remove dungeon");
 		}
 	}

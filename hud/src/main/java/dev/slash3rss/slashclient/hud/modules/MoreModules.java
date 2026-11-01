@@ -489,7 +489,7 @@ public final class MoreModules {
 		}
 
 		/** A player's model with no player behind it: not on the tab list (servers' NPCs leave it at once). */
-		private static boolean npc(LivingEntity e) {
+		public static boolean npc(LivingEntity e) {
 			var connection = Minecraft.getInstance().getConnection();
 			return e != Minecraft.getInstance().player && (connection == null || connection.getPlayerInfo(e.getUUID()) == null || e.getUUID().version() == 2);
 		}
@@ -503,7 +503,7 @@ public final class MoreModules {
 		 * The name over this one's head: a name tag (an entity riding it or standing just above with its
 		 * name shown) or a text display there, without the health; the nearest, or null if none.
 		 */
-		private static Component tagAbove(LivingEntity e) {
+		public static Component tagAbove(LivingEntity e) {
 			if (e.level() == null) return null;
 			var box = e.getBoundingBox();
 			var above = new net.minecraft.world.phys.AABB(box.minX - 0.5, box.minY, box.minZ - 0.5, box.maxX + 0.5, box.maxY + 2.5, box.maxZ + 0.5);

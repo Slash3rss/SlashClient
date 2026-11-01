@@ -404,7 +404,7 @@ public final class DungeonRooms {
 			if (spawnerLabel(e)) seenSpawners.put(key(ex, ez), new int[] { ex, ez });
 			else if (e instanceof ArmorStand stand) {
 				if (stand.getItemBySlot(EquipmentSlot.HEAD).is(Items.SPAWNER)) seenSpawners.put(key(ex, ez), new int[] { ex, ez });
-			} else if (e instanceof Mob && !inStart(ex, ez)) {
+			} else if ((e instanceof Mob || DungeonMap.npc(e)) && !inStart(ex, ez)) {
 				// on a ledge or in a pit its column may be no floor where the map was read: a room a few blocks off
 				int r = roomAt(ex, ez, 8);
 				if (r >= 0) {
@@ -1336,6 +1336,7 @@ public final class DungeonRooms {
 			if (r.respawnAt > 0) clearedRooms++;
 			if (r.visited && r.spawners == 0 && rooms.indexOf(r) != startRoom()) noSpawner++;
 		}
-		return rooms.size() + " rooms, containers " + containerCount(false) + ", ores " + containerCount(true) + ", cleared " + clearedRooms + ", without spawner " + noSpawner + ", doors " + doors.size() + ", tiles " + gridTiles.size() + ", tile doors " + gridDoors.size() + ", starts " + gridTiles.stream().filter(t -> t.start).count() + ", remembered " + rooms.stream().mapToInt(r -> r.remembered).sum();
+		return rooms.size() + " rooms, containers " + containerCount(false) + ", ores " + containerCount(true) + ", cleared " + clearedRooms + ", without spawner " + noSpawner + ", doors " + doors.size() + ", tiles " + gridTiles.size() + ", tile doors " + gridDoors.size() + ", starts " + gridTiles.stream().filter(t -> t.start).count() + ", remembered " + rooms.stream().mapToInt(r -> r.remembered).sum()
+			+ ", mob tiles " + gridTiles.stream().filter(t -> t.mobs + t.remembered > 0).count();
 	}
 }
