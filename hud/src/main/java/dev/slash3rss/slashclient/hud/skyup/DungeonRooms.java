@@ -82,8 +82,10 @@ public final class DungeonRooms {
 		int minX = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
 		/** Its extent without the doorways that reach into the walls: its tile on the simple map. */
 		int coreMinX = Integer.MAX_VALUE, coreMinZ = Integer.MAX_VALUE, coreMaxX = Integer.MIN_VALUE, coreMaxZ = Integer.MIN_VALUE;
-		/** A few of the mobs in it now (entity ids), for their heads on its tile. */
-		final List<Integer> mobIds = new ArrayList<>();
+		/** The mobs in it (up to 32), for their heads on its tile: about now, and remembered out of sight. */
+		final List<Entity> mobList = new ArrayList<>();
+		/** Of those, how many are remembered (out of the game's sight, still there when last seen). */
+		int remembered;
 		/** The kind of loot (of LOOT) still to take in it, a container before an ore; -1 for none. */
 		int lootCat = -1;
 		boolean visited;
@@ -187,6 +189,8 @@ public final class DungeonRooms {
 		infested.clear();
 		cleared.clear();
 		holograms.clear();
+		seenMobs.clear();
+		seenMobEntities.clear();
 	}
 
 	/** The kinds of loot, each counted on its own: their names (for the settings) and icons. */
@@ -301,6 +305,40 @@ public final class DungeonRooms {
 		else spawnerBlocks.remove(key(x, z));
 	}
 
+	/**
+	 * Mobs seen in the dungeon (by id): where (map x, z) and when last. The server tells the game only
+	 * about mobs near the player, so a room further off would look empty: a mob seen there stays on its
+	 * room's tile until it dies, the player comes close enough to see it is gone, or five minutes pass.
+	 */
+	private static final Map<Integer, long[]> seenMobs = new HashMap<>();
+	private static final Map<Integer, Entity> seenMobEntities = new HashMap<>();
+	private static final long REMEMBER_MS = 300_000;
+	/** How close the player must be to a remembered mob's place to see whether it is still there. */
+	private static final int SEES = 24;
+
+	/** The mobs remembered out of sight onto their rooms; those dead, gone or old forgotten. */
+	private static void rememberMobs(Minecraft mc, int px, int pz) {
+		long now = System.currentTimeMillis();
+		for (Iterator<Map.Entry<Integer, long[]>> it = seenMobs.entrySet().iterator(); it.hasNext();) {
+			var m = it.next();
+			Entity e = seenMobEntities.get(m.getKey());
+			long[] at = m.getValue();
+			boolean here = mc.level.getEntity(m.getKey()) == e && e != null && e.isAlive();
+			if (here) continue;
+			boolean dead = e instanceof net.minecraft.world.entity.LivingEntity le && le.isDeadOrDying();
+			if (e == null || dead || now - at[2] > REMEMBER_MS || Math.abs(at[0] - px) < SEES && Math.abs(at[1] - pz) < SEES) {
+				it.remove();
+				seenMobEntities.remove(m.getKey());
+				continue;
+			}
+			int r = roomAt((int) at[0], (int) at[1], 8);
+			if (r < 0) continue;
+			Room room = rooms.get(r);
+			room.remembered++;
+			if (room.mobList.size() < 32) room.mobList.add(e);
+		}
+	}
+
 	/** Columns with a spawner block in them (world x, z). */
 	private static final java.util.Set<Long> spawnerBlocks = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
@@ -372,10 +410,13 @@ public final class DungeonRooms {
 				if (r >= 0) {
 					Room room = rooms.get(r);
 					room.mobs++;
-					if (room.mobIds.size() < 4) room.mobIds.add(e.getId());
+					if (room.mobList.size() < 32) room.mobList.add(e);
 				}
+				seenMobs.put(e.getId(), new long[] { ex, ez, System.currentTimeMillis() });
+				seenMobEntities.put(e.getId(), e);
 			}
 		}
+		rememberMobs(mc, px, pz);
 		// spawners near the player that are gone now were destroyed
 		spawners.values().removeIf(s -> Math.abs(s[0] - px) < NEAR && Math.abs(s[1] - pz) < NEAR && !seenSpawners.containsKey(key(s[0], s[1])));
 		spawners.putAll(seenSpawners);
@@ -788,16 +829,17 @@ public final class DungeonRooms {
 	private static final class Tile {
 		int x0, z0, x1, z1;
 		boolean start, current, visited;
-		int mobs, left = -1, lootCat = -1;
+		int mobs, remembered, left = -1, lootCat = -1;
 		long respawnAt;
-		final List<Integer> mobIds = new ArrayList<>();
+		final List<Entity> mobList = new ArrayList<>();
 		/** On the grid: its squares (from the grid's first one), and how many. */
 		int cx0 = Integer.MAX_VALUE, cz0 = Integer.MAX_VALUE, cx1 = Integer.MIN_VALUE, cz1 = Integer.MIN_VALUE, cells;
 
 		/** What one of the rooms found on the floor tells about it. */
 		void add(Room room) {
 			mobs += room.mobs;
-			for (int id : room.mobIds) if (mobIds.size() < 4) mobIds.add(id);
+			remembered += room.remembered;
+			for (Entity e : room.mobList) if (mobList.size() < 32) mobList.add(e);
 			if (room.left >= 0) left = Math.max(0, left) + room.left;
 			respawnAt = Math.max(respawnAt, room.respawnAt);
 			visited |= room.visited;
@@ -1108,7 +1150,7 @@ public final class DungeonRooms {
 			int x0 = ox + Math.round((t.x0 - viewX) * scale) + 1, z0 = oy + Math.round((t.z0 - viewZ) * scale) + 1;
 			int x1 = ox + Math.round((t.x1 + 1 - viewX) * scale) - 1, z1 = oy + Math.round((t.z1 + 1 - viewZ) * scale) - 1;
 			if (x1 - x0 < 2 || z1 - z0 < 2) continue;
-			boolean mobs = t.mobs > 0 || t.left > 0, cleared = t.respawnAt > now;
+			boolean mobs = t.mobs > 0 || t.remembered > 0 || t.left > 0, cleared = t.respawnAt > now;
 			int color = t.start ? 0xFF0EA30E : t.current ? 0xFF6EE86E : mobs ? 0xFFA30E0E : cleared ? 0xFF3E9E5A : t.visited ? 0xFFF06B6B : 0xFFB45656;
 			// a rim a shade darker, as on a tile; zoomed in, cut at the map's edge
 			box(g, x0, z0, x1, z1, ox, oy, w, h, mix(color, 0x000000, 0.3f));
@@ -1127,11 +1169,14 @@ public final class DungeonRooms {
 				List<net.minecraft.world.entity.LivingEntity> seen = new ArrayList<>();
 				// (mobs switched off, or their class hidden, on the map: the tile's colour alone)
 				boolean near = false;
-				for (int id : t.mobIds) {
-					if (!(mc.level.getEntity(id) instanceof net.minecraft.world.entity.LivingEntity e) || !e.isAlive()) continue;
+				for (Entity m : t.mobList) {
+					if (!(m instanceof net.minecraft.world.entity.LivingEntity e)) continue;
 					near = true;
 					if (DungeonMap.mobShown(e)) seen.add(e);
 				}
+				// always the same ones in the same places (the oldest four), not as the game happens to list them
+				seen.sort(java.util.Comparator.comparingInt(Entity::getId));
+				if (seen.size() > 4) seen = new ArrayList<>(seen.subList(0, 4));
 				// heads smaller than the other icons, so a few fit side by side with room around them
 				int head = Math.max(6, Math.min(icon * 2 / 3, seen.size() > 1 ? side / 2 - 3 : icon));
 				if (!near && SlashHud.config.dungeonMobs) DungeonMap.item(g, new net.minecraft.world.item.ItemStack(Items.SKELETON_SKULL), cx, cz, head);
@@ -1291,6 +1336,6 @@ public final class DungeonRooms {
 			if (r.respawnAt > 0) clearedRooms++;
 			if (r.visited && r.spawners == 0 && rooms.indexOf(r) != startRoom()) noSpawner++;
 		}
-		return rooms.size() + " rooms, containers " + containerCount(false) + ", ores " + containerCount(true) + ", cleared " + clearedRooms + ", without spawner " + noSpawner + ", doors " + doors.size() + ", tiles " + gridTiles.size() + ", tile doors " + gridDoors.size() + ", starts " + gridTiles.stream().filter(t -> t.start).count();
+		return rooms.size() + " rooms, containers " + containerCount(false) + ", ores " + containerCount(true) + ", cleared " + clearedRooms + ", without spawner " + noSpawner + ", doors " + doors.size() + ", tiles " + gridTiles.size() + ", tile doors " + gridDoors.size() + ", starts " + gridTiles.stream().filter(t -> t.start).count() + ", remembered " + rooms.stream().mapToInt(r -> r.remembered).sum();
 	}
 }

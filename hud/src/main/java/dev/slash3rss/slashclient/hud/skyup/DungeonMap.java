@@ -545,8 +545,8 @@ public final class DungeonMap implements HudModule {
 		if (SlashHud.config.dungeonTitle) title(g, mc, x, y);
 		progress(g, x, y + (SlashHud.config.dungeonTitle ? TITLE : 0));
 		int ox = x, oy = y + title();
-		if (simple()) g.fill(ox, oy, ox + W, oy + H, 0x60101828);
-		else g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, viewId, ox, oy, 0, 0, W, H, W, H, W, H, 0xFFFFFFFF);
+		// the simple map has no picture of its own: the module's background (or none) under its tiles
+		if (!simple()) g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, viewId, ox, oy, 0, 0, W, H, W, H, W, H, 0xFFFFFFFF);
 		drawCounters(g, mc, ox, oy + H, counters());
 		drawOver(g, mc, ox, oy, W, H, viewX, viewZ, viewScale, SHOWN);
 	}

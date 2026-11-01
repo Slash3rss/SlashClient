@@ -86,7 +86,7 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			context.runOnClient(mc -> dev.slash3rss.slashclient.hud.SlashHud.config.dungeonDebug = false);
 			// (the pictures first: on a failure they show what went wrong)
 			String found = context.computeOnClient(mc -> TestHooks.dungeonRooms());
-			if (!found.startsWith("9 rooms") || !found.contains("doors 12,") || !found.endsWith("tiles 9, tile doors 12, starts 1")) throw new AssertionError("Rooms and doors as SkyUp builds them: " + found);
+			if (!found.startsWith("9 rooms") || !found.contains("doors 12,") || !found.contains("tiles 9, tile doors 12, starts 1,")) throw new AssertionError("Rooms and doors as SkyUp builds them: " + found);
 			// the map's settings on the simple map: larger, following the player zoomed in, mobs as dots,
 			// no loot icons; the floor's own settings (colours, a round map) hidden while it is simple
 			context.runOnClient(mc -> {
@@ -102,6 +102,17 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			server.runCommand(String.format("tp @a %d %d %d 180 30", x0 + 58, y, z0 + 58));
 			context.waitTicks(15);
 			context.takeScreenshot("dungeon-rooms-simple-settings");
+			// far off, the game no longer knows of the zombie in the long room: the map still shows it there
+			server.runCommand(String.format("tp @a %d %d %d 180 30", x0 + 30, y + 10, z0 + 300));
+			context.waitTicks(40);
+			String far = context.computeOnClient(mc -> TestHooks.dungeonRooms() + (java.util.stream.StreamSupport.stream(mc.level.entitiesForRendering().spliterator(), false).noneMatch(e -> net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(e.getType()).getPath().equals("zombie")) ? " (out of sight)" : " (still known)"));
+			if (!far.contains("remembered 1") || !far.contains("(out of sight)")) throw new AssertionError("A mob out of sight is remembered on its room: " + far);
+			context.runOnClient(mc -> TestHooks.dungeonFull(true));
+			context.waitTicks(10);
+			context.takeScreenshot("dungeon-rooms-remembered");
+			context.runOnClient(mc -> TestHooks.dungeonFull(false));
+			server.runCommand(String.format("tp @a %d %d %d 180 30", x0 + 58, y, z0 + 58));
+			context.waitTicks(20);
 			String hidden = context.computeOnClient(mc -> {
 				var entry = dev.slash3rss.slashclient.hud.ui.Catalog.entries(() -> {}).stream().filter(e -> e.id().equals("dungeonmap")).findFirst().orElseThrow();
 				return entry.settings().stream().filter(st -> dev.slash3rss.slashclient.hud.ui.Catalog.hidden("dungeonmap", st)).map(st -> st.labelKey()).toList().toString();
