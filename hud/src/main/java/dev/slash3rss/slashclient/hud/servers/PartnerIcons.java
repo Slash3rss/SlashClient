@@ -41,6 +41,8 @@ public final class PartnerIcons {
 	private static final Map<String, Loaded> loaded = new ConcurrentHashMap<>();
 	private static final Map<String, Boolean> loading = new ConcurrentHashMap<>();
 	private static final Map<String, Long> drawn = new ConcurrentHashMap<>();
+	/** Strips the graphics card turned down (taller than it takes, e.g. 4224 px on a Raspberry Pi): not fetched again. */
+	private static final java.util.Set<String> failed = ConcurrentHashMap.newKeySet();
 	private static final long START = System.currentTimeMillis();
 	private static int counter;
 	private static long sweptAt;
@@ -86,7 +88,7 @@ public final class PartnerIcons {
 
 	/** Fetches and decodes a strip on the network's threads; only making the texture waits for the render thread. */
 	private static void load(Anim a) {
-		if (loading.putIfAbsent(a.url(), true) != null) return;
+		if (failed.contains(a.url()) || loading.putIfAbsent(a.url(), true) != null) return;
 		HttpRequest request;
 		try {
 			request = HttpRequest.newBuilder(URI.create(a.url())).timeout(Duration.ofSeconds(15)).GET().build();
@@ -124,7 +126,17 @@ public final class PartnerIcons {
 				return;
 			}
 			Identifier id = Identifier.fromNamespaceAndPath(SlashHud.ID, "partner_icon/" + counter++);
-			Minecraft.getInstance().getTextureManager().register(id, new DynamicTexture(() -> "SlashClient partner icon", image));
+			DynamicTexture texture;
+			try {
+				texture = new DynamicTexture(() -> "SlashClient partner icon", image);
+			} catch (RuntimeException e) {
+				// a strip taller than the card takes: the server's own icon shows, and no fetching it again every frame
+				SlashHud.LOG.info("SlashClient: partner icon {} ({}x{}) does not fit the graphics card: {}", url, image.getWidth(), image.getHeight(), e.toString());
+				image.close();
+				failed.add(url);
+				return;
+			}
+			Minecraft.getInstance().getTextureManager().register(id, texture);
 			loaded.put(url, new Loaded(id, side, frames));
 		} finally {
 			loading.remove(url);

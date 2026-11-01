@@ -18,7 +18,7 @@ export function piNotes(): { icon: string; title: string; text: string }[] {
     },
     {
       icon: 'fa-images', title: t('Duże paczki zasobów serwerów'),
-      text: t('Karta Pi przyjmuje tekstury do 4096 pikseli. Gdy paczka serwera potrzebuje większych, gra ją odrzuca („Unable to fit”) i grasz bez niej. Bez „Poprawki grafiki” paczka się wczyta, ale za cenę połowy FPS.'),
+      text: t('Karta Pi przyjmuje tekstury do 4096 pikseli, a duże paczki serwerów potrzebują więcej. Sama gra odrzuciłaby wtedy całą paczkę („Unable to fit”), więc SlashClient zmniejsza o połowę jej największe tekstury, aż się zmieszczą: paczka działa, tylko te obrazki są trochę mniej ostre.'),
     },
     {
       icon: 'fa-computer-mouse', title: t('Myszka przez VNC i Raspberry Pi Connect'),

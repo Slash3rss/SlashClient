@@ -54,6 +54,8 @@
 		"FreelookCameraMixin",
 		"FreelookMixin",
 		"GpuTimerMixin",
+		"AtlasFitMixin",
+		"SpriteContentsAccessor",
 		"ContainerScreenAccessor",
 		"ContainerLayerMixin",
 		"DebugVersionMixin",
