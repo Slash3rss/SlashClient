@@ -177,20 +177,12 @@ public final class HudConfig {
 	public float dungeonZoom = 1f;
 	/** Other players on the dungeon map. */
 	public boolean dungeonPlayers = true;
-	/** The dungeon map's title ("Dungeon · poziom 3" and the containers taken). */
-	public boolean dungeonTitle = true;
 	/** The dungeon map's size on screen, in pixels (80–240): more map, the text and icons as they are. */
 	public int dungeonSize = 120;
-	/** How far around the player the dungeon's floor is read for the map (blocks; DungeonMap.MIN_RANGE–MAX_RANGE). */
-	public int dungeonScanRange = 96;
 	/** Rooms not seen yet drawn from the map SkyUp builds above the dungeon. */
 	public boolean dungeonPlan = false;
 	/** The full dungeon map shows the grid and the rooms' signs, and D there saves what the map knows to a file. */
 	public boolean dungeonDebug = false;
-	/** Progress to the next level (the boss bar's fill) on the dungeon map. */
-	public boolean dungeonProgress = true;
-	/** You on the dungeon map as your head instead of an arrow. */
-	public boolean dungeonSelfHead = false;
 	/** The start room marked on the dungeon map, with an arrow on its edge when it is out of sight. */
 	public boolean dungeonStartArrow = true;
 	/** The player's own emote watched from the front: the camera turns while it plays, and back after. */
@@ -227,9 +219,6 @@ public final class HudConfig {
 	public boolean dungeonNoSpawner = true;
 	/** The dungeon map keeps the player in its middle. */
 	public boolean dungeonFollow = false;
-	/** The dungeon map is read at one height (dungeonY) instead of at the player's feet. */
-	public boolean dungeonFixedY = false;
-	public int dungeonY = 64;
 	/** "square" or "circle". */
 	public String dungeonShape = "square";
 	/** "detailed" (the floor as seen) or "simple" (each room a tile, doors between them). */
@@ -848,13 +837,9 @@ public final class HudConfig {
 		tntTimer = other.tntTimer;
 		dungeonZoom = other.dungeonZoom;
 		dungeonPlayers = other.dungeonPlayers;
-		dungeonTitle = other.dungeonTitle;
 		dungeonSize = other.dungeonSize;
-		dungeonScanRange = Math.max(32, Math.min(128, other.dungeonScanRange));
 		dungeonPlan = other.dungeonPlan;
 		dungeonDebug = other.dungeonDebug;
-		dungeonProgress = other.dungeonProgress;
-		dungeonSelfHead = other.dungeonSelfHead;
 		dungeonStartArrow = other.dungeonStartArrow;
 		emoteCamera = other.emoteCamera;
 		dungeonMobs = other.dungeonMobs;
@@ -894,8 +879,6 @@ public final class HudConfig {
 		dungeonCleared = other.dungeonCleared;
 		dungeonNoSpawner = other.dungeonNoSpawner;
 		dungeonFollow = other.dungeonFollow;
-		dungeonFixedY = other.dungeonFixedY;
-		dungeonY = other.dungeonY;
 		dungeonShape = other.dungeonShape;
 		dungeonStyle = other.dungeonStyle;
 		minimapSize = other.minimapSize;

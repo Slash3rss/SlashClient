@@ -147,7 +147,7 @@ public class GameDungeonRooms implements FabricClientGameTest {
 			context.waitTicks(20);
 			String hidden = context.computeOnClient(mc -> {
 				var entry = dev.slash3rss.slashclient.hud.ui.Catalog.entries(() -> {}).stream().filter(e -> e.id().equals("dungeonmap")).findFirst().orElseThrow();
-				return entry.settings().stream().filter(st -> dev.slash3rss.slashclient.hud.ui.Catalog.hidden("dungeonmap", st)).map(st -> st.labelKey()).toList().toString();
+				return entry.settings().stream().filter(st -> !st.labelKey().startsWith("slashclient-hud.dungeon.ore.") && dev.slash3rss.slashclient.hud.ui.Catalog.hidden("dungeonmap", st)).map(st -> st.labelKey()).toList().toString();
 			});
 			if (!hidden.equals("[slashclient-hud.dungeon.plan, slashclient-hud.dungeon.blockColors, slashclient-hud.set.shape, slashclient-hud.dungeon.noSpawner]")) throw new AssertionError("Settings hidden on the simple map: " + hidden);
 			context.runOnClient(mc -> {

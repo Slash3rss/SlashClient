@@ -2063,7 +2063,6 @@ public final class TestHooks {
 		SlashHud.config.dungeonSize = round ? 180 : 120;
 		SlashHud.config.dungeonZoom = round ? 1.5f : 1f;
 		SlashHud.config.dungeonFollow = round;
-		SlashHud.config.dungeonSelfHead = round;
 	}
 
 	/** The minimap on or off, and how it looks. */

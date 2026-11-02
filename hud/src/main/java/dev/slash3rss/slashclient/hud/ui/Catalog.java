@@ -24,10 +24,17 @@ public final class Catalog {
 
 	/** Rows hidden while something else is set ("entry|label" → when): a dungeon map's floor colours on the simple map. */
 	private static final Map<String, Supplier<Boolean>> HIDDEN = new java.util.concurrent.ConcurrentHashMap<>();
+	/** Whether the dungeon map's list of ores is unfolded (folded each time the game starts: nine rows nobody needs every time). */
+	private static boolean oresOpen;
 
 	/** The setting just added to `settings` of entry `id` is hidden while `when` says so. */
 	private static void hideWhen(String id, List<Setting> settings, Supplier<Boolean> when) {
 		HIDDEN.put(id + "|" + settings.get(settings.size() - 1).labelKey(), when);
+	}
+
+	/** Whether module `id` is one of SkyUp's: it shows there whatever its "show" option once said (the option is gone for them). */
+	public static boolean skyup(String id) {
+		return "skyup".equals(MODULE_CATEGORIES.get(id));
 	}
 
 	/** Whether a row of entry `id` is hidden now. */
@@ -210,6 +217,8 @@ public final class Catalog {
 			if (m.bare()) pointless.addAll(List.of("slashclient-hud.background", "slashclient-hud.set.opacity", "slashclient-hud.set.outline", "slashclient-hud.set.ownRadius", "slashclient-hud.set.radius"));
 			if (!m.textColored()) pointless.addAll(List.of("slashclient-hud.set.ownColor", "slashclient-hud.textColor"));
 			if (!m.shadowed()) pointless.add("slashclient-hud.shadow");
+			// SkyUp's modules show only on SkyUp anyway
+			if (skyup(m.id())) pointless.addAll(List.of("slashclient-hud.set.showWhen", "slashclient-hud.set.showServer"));
 			settings.removeIf(s -> pointless.contains(s.labelKey()));
 			// the look every module has: after the module's own options, which come first
 			List<Setting> look = List.copyOf(settings);
@@ -276,16 +285,11 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.dungeon.blockColors", () -> cfg.dungeonBlockColors, v -> cfg.dungeonBlockColors = v));
 					hideWhen("dungeonmap", settings, simple);
 					settings.add(new Slider("slashclient-hud.dungeon.size", 80f, 240f, 10f, "%.0f px", () -> (float) cfg.dungeonSize, v -> cfg.dungeonSize = Math.round(v)));
-					settings.add(new Slider("slashclient-hud.dungeon.scanRange", dev.slash3rss.slashclient.hud.skyup.DungeonMap.MIN_RANGE, dev.slash3rss.slashclient.hud.skyup.DungeonMap.MAX_RANGE, 8f, "%.0f",
-						() -> (float) cfg.dungeonScanRange, v -> cfg.dungeonScanRange = Math.round(v)));
-					settings.add(new Toggle("slashclient-hud.dungeon.title", () -> cfg.dungeonTitle, v -> cfg.dungeonTitle = v));
-					settings.add(new Toggle("slashclient-hud.dungeon.progress", () -> cfg.dungeonProgress, v -> cfg.dungeonProgress = v));
 					settings.add(new Choice("slashclient-hud.set.shape", new String[] { "square", "circle" }, "slashclient-hud.dungeon.shape.",
 						() -> cfg.dungeonShape, v -> cfg.dungeonShape = v));
 					hideWhen("dungeonmap", settings, simple);
 					settings.add(new Slider("slashclient-hud.dungeon.zoom", 1f, 4f, 0.25f, "%.2f×", () -> cfg.dungeonZoom, v -> cfg.dungeonZoom = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.follow", () -> cfg.dungeonFollow, v -> cfg.dungeonFollow = v));
-					settings.add(new Toggle("slashclient-hud.dungeon.selfHead", () -> cfg.dungeonSelfHead, v -> cfg.dungeonSelfHead = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.startArrow", () -> cfg.dungeonStartArrow, v -> cfg.dungeonStartArrow = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.players", () -> cfg.dungeonPlayers, v -> cfg.dungeonPlayers = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.mobs", () -> cfg.dungeonMobs, v -> cfg.dungeonMobs = v));
@@ -304,21 +308,17 @@ public final class Catalog {
 					settings.add(new Toggle("slashclient-hud.dungeon.loot.pot", () -> cfg.dungeonPots, v -> cfg.dungeonPots = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.loot.flowerPot", () -> cfg.dungeonFlowerPots, v -> cfg.dungeonFlowerPots = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.loot.ore", () -> cfg.dungeonOres, v -> cfg.dungeonOres = v));
-					// which ores, one by one
+					// which ores, one by one, only once unfolded
+					settings.add(new Toggle("slashclient-hud.dungeon.oreChoice", () -> oresOpen, v -> oresOpen = v));
+					hideWhen("dungeonmap", settings, () -> !cfg.dungeonOres);
 					for (String ore : dev.slash3rss.slashclient.hud.skyup.DungeonRooms.ORES) {
 						settings.add(new Toggle("slashclient-hud.dungeon.ore." + ore, () -> dev.slash3rss.slashclient.hud.skyup.DungeonRooms.oreCounted(ore),
 							v -> dev.slash3rss.slashclient.hud.skyup.DungeonRooms.countOre(ore, v)));
+						hideWhen("dungeonmap", settings, () -> !oresOpen || !cfg.dungeonOres);
 					}
 					settings.add(new Toggle("slashclient-hud.dungeon.cleared", () -> cfg.dungeonCleared, v -> cfg.dungeonCleared = v));
 					settings.add(new Toggle("slashclient-hud.dungeon.noSpawner", () -> cfg.dungeonNoSpawner, v -> cfg.dungeonNoSpawner = v));
 					hideWhen("dungeonmap", settings, simple);
-					// switched on, it holds the height the player stands at now; the slider moves it
-					settings.add(new Toggle("slashclient-hud.dungeon.fixedY", () -> cfg.dungeonFixedY, v -> {
-						var player = net.minecraft.client.Minecraft.getInstance().player;
-						if (v && player != null) cfg.dungeonY = player.getBlockY();
-						cfg.dungeonFixedY = v;
-					}));
-					settings.add(new Slider("slashclient-hud.dungeon.y", -64f, 320f, 1f, "Y %.0f", () -> (float) cfg.dungeonY, v -> cfg.dungeonY = Math.round(v)));
 				}
 				case "minimap" -> {
 					settings.add(new Slider("slashclient-hud.minimap.size", 64f, 200f, 8f, "%.0f px", () -> (float) cfg.minimapSize, v -> cfg.minimapSize = Math.round(v)));

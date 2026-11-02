@@ -528,7 +528,7 @@ public class SlashHud implements ClientModInitializer {
 
 	private static void drawOne(GuiGraphicsExtractor g, Minecraft mc, boolean preview, HudModule m) {
 		HudConfig.Placement p = config.placement(m.id());
-		if (!p.enabled || (!preview && (!m.visible(mc) || !shownNow(p, mc)))) return;
+		if (!p.enabled || (!preview && (!m.visible(mc) || !dev.slash3rss.slashclient.hud.ui.Catalog.skyup(m.id()) && !shownNow(p, mc)))) return;
 		// measured once a frame (some modules work out their whole content to know their size)
 		int w = m.width(mc), h = m.height(mc);
 		int[] at = position(p, Math.round(w * p.scale()), Math.round(h * p.scale()), g.guiWidth(), g.guiHeight());

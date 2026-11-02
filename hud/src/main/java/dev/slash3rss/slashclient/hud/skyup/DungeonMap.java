@@ -47,11 +47,11 @@ public final class DungeonMap implements HudModule {
 	private static final int SIZE = 1024;
 	/**
 	 * The floor is read in two rings: close by (NEAR) all of it every half second, so a broken pot or
-	 * a mined ore shows at once; further out, as far as the setting says (MIN_RANGE–MAX_RANGE: the map
-	 * fills in as far as the game has the dungeon loaded), a few hundred columns each tick.
+	 * a mined ore shows at once; further out, as far as RANGE (the map fills in as far as the game has
+	 * the dungeon loaded), a few hundred columns each tick.
 	 */
 	private static final int NEAR = 36, NEAR_TICKS = 10;
-	public static final int MIN_RANGE = 32, MAX_RANGE = 128;
+	private static final int RANGE = 128;
 	private static final int FAR_COLUMNS_PER_TICK = 320;
 	private static final int UNKNOWN = 0, WALL = 0xFF0E131C;
 	private static final Pattern LEVEL = Pattern.compile("Dungeon\\s+poz\\.?\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
@@ -113,8 +113,6 @@ public final class DungeonMap implements HudModule {
 	private static int scanRow;
 	private static int tick;
 	private static String dungeonLevel = "";
-	/** The boss bar's fill: progress to the next level (0–1), or -1 when not known. */
-	private static float dungeonProgress = -1;
 	/** The dungeon's boss bar was on screen at the last look. */
 	private static boolean bossBar;
 	/** Started by the entering hint (no boss bar seen yet): it may still be the lobby. */
@@ -203,7 +201,6 @@ public final class DungeonMap implements HudModule {
 
 	public static void stop() {
 		active = false;
-		dungeonProgress = -1;
 		level = null;
 		dungeonLevel = "";
 		hintedAt = 0;
@@ -445,7 +442,6 @@ public final class DungeonMap implements HudModule {
 			Matcher m = LEVEL.matcher(event.getName().getString());
 			if (m.find()) {
 				dungeonLevel = m.group(1);
-				dungeonProgress = event.getProgress();
 				// how far the player got, for SkyUp's task "Dotrzyj do poziomu w dungeonach" (the tasks are on 26.3)
 				//#if MC >= 26.3
 				SkyCounters.dungeonLevel(Long.parseLong(dungeonLevel));
@@ -463,15 +459,16 @@ public final class DungeonMap implements HudModule {
 	private static void scan(Minecraft mc) {
 		ClientLevel world = mc.level;
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-		int at = SlashHud.config.dungeonFixedY ? SlashHud.config.dungeonY : Integer.MIN_VALUE;
+		// always at the start room's floor, so going up or down stairs does not draw another storey
+		int at = groundY;
 		if (at != readAt) {
 			readAt = at;
 			clear();
 		}
-		int cx = mc.player.getBlockX(), py = mc.player.getBlockY(), cz = mc.player.getBlockZ();
+		int cx = mc.player.getBlockX(), cz = mc.player.getBlockZ();
 		// loot is counted in all of a room: from 21 blocks below the start room's floor to 14 above it
 		int low = groundY - BELOW, high = groundY + ABOVE;
-		int near = at == Integer.MIN_VALUE ? py : at;
+		int near = at;
 		// close by: a slice of the rows each tick, all of them every NEAR_TICKS ticks
 		int nearRows = (NEAR * 2 + 1 + NEAR_TICKS - 1) / NEAR_TICKS;
 		int nearFrom = cx - NEAR + scanRow * nearRows;
@@ -480,10 +477,8 @@ public final class DungeonMap implements HudModule {
 			for (int z = cz - NEAR; z <= cz + NEAR; z++) column(world, pos, x, z, low, high, near);
 		}
 		// further out: what the near ring does not cover, in rings from the player outwards (nearest
-		// first, every way alike) as far as the setting says; 96 blocks take about five seconds
-		int radius = Math.max(MIN_RANGE, Math.min(MAX_RANGE, SlashHud.config.dungeonScanRange));
-		if (radius <= NEAR) return;
-		long reach = (long) radius * radius;
+		// first, every way alike) as far as RANGE; all of it takes about ten seconds
+		long reach = (long) RANGE * RANGE;
 		for (int done = 0, steps = 0; done < FAR_COLUMNS_PER_TICK && steps < AROUND.length; steps++) {
 			if (farAt >= AROUND.length || aroundDist(AROUND[farAt]) > reach) farAt = 0;
 			long p = AROUND[farAt++];
@@ -544,9 +539,8 @@ public final class DungeonMap implements HudModule {
 
 	// ---------- the module ----------
 
-	/** The map's size on screen (set in its settings), and its title line. */
+	/** The map's size on screen (set in its settings). */
 	private static int W = 120, H = 120;
-	private static final int TITLE = 11;
 
 	/** The size from the settings; the picture is made anew when it changes. */
 	private static void resize() {
@@ -574,7 +568,7 @@ public final class DungeonMap implements HudModule {
 	@Override
 	public int height(Minecraft mc) {
 		java.util.List<int[]> counters = counters();
-		return H + title() + (counters.isEmpty() ? 0 : counterRows(mc, counters) * ROW + 2);
+		return H + (counters.isEmpty() ? 0 : counterRows(mc, counters) * ROW + 2);
 	}
 
 	@Override
@@ -582,9 +576,7 @@ public final class DungeonMap implements HudModule {
 		if (!visible(mc)) return;
 		// following the player: the picture made again for this frame, where they are now
 		if (viewTexture == null || following()) render(mc);
-		if (SlashHud.config.dungeonTitle) title(g, mc, x, y);
-		progress(g, x, y + (SlashHud.config.dungeonTitle ? TITLE : 0));
-		int ox = x, oy = y + title();
+		int ox = x, oy = y;
 		// the simple map has no picture of its own: the module's background (or none) under its tiles
 		if (!simple()) g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, viewId, ox, oy, 0, 0, W, H, W, H, W, H, 0xFFFFFFFF);
 		drawCounters(g, mc, ox, oy + H, counters());
@@ -621,13 +613,11 @@ public final class DungeonMap implements HudModule {
 		double[] at = smooth(mc);
 		int sx = Math.round((float) (at[0] - originX - viewX) * viewScale), sz = Math.round((float) (at[1] - originZ - viewZ) * viewScale);
 		if (clip.test(sx, sz)) {
-			if (SlashHud.config.dungeonSelfHead) {
-				// the face, and a dot just past its edge the way they look
-				double a = Math.toRadians(mc.player.getYRot());
-				int lx = ox + sx + (int) Math.round(-Math.sin(a) * 7), lz = oy + sz + (int) Math.round(Math.cos(a) * 7);
-				g.fill(lx - 1, lz - 1, lx + 1, lz + 1, 0xFFFDE047);
-				face(g, mc.player, ox + sx, oy + sz, 0xFFFDE047);
-			} else arrow(g, ox + sx, oy + sz, mc.player.getYRot());
+			// the face, and a dot just past its edge the way they look
+			double a = Math.toRadians(mc.player.getYRot());
+			int lx = ox + sx + (int) Math.round(-Math.sin(a) * 7), lz = oy + sz + (int) Math.round(Math.cos(a) * 7);
+			g.fill(lx - 1, lz - 1, lx + 1, lz + 1, 0xFFFDE047);
+			face(g, mc.player, ox + sx, oy + sz, 0xFFFDE047);
 		}
 	}
 
@@ -880,30 +870,6 @@ public final class DungeonMap implements HudModule {
 		return dx * dx + dz * dz <= (W / 2f - 1) * (W / 2f - 1);
 	}
 
-	/** The title line's height, or 0 when it is hidden. */
-	private static int title() {
-		return (SlashHud.config.dungeonTitle ? TITLE : 0) + (SlashHud.config.dungeonProgress ? 4 : 0);
-	}
-
-	/** The boss bar's progress to the next level as a thin bar across the map, the share on it in the title. */
-	private static void progress(GuiGraphicsExtractor g, int x, int y) {
-		if (!SlashHud.config.dungeonProgress) return;
-		g.fill(x + 1, y, x + W - 1, y + 3, 0xFF111827);
-		if (dungeonProgress >= 0) g.fill(x + 1, y, x + 1 + Math.round((W - 2) * Math.min(1f, dungeonProgress)), y + 3, 0xFFA855F7);
-	}
-
-	private static void title(GuiGraphicsExtractor g, Minecraft mc, int x, int y) {
-		String share = SlashHud.config.dungeonProgress && dungeonProgress >= 0 ? Math.round(dungeonProgress * 100) + "%" : "";
-		int room = W - 6 - (share.isEmpty() ? 0 : mc.font.width(share) + 6);
-		// the title shorter when it would run into the share: "Dungeon · poziom 100", "Dungeon 100", "poz. 100"
-		String text = dungeonLevel.isEmpty() ? Component.translatable("slashclient-hud.dungeon").getString()
-			: Component.translatable("slashclient-hud.dungeon.level", dungeonLevel).getString();
-		if (!dungeonLevel.isEmpty() && mc.font.width(text) > room) text = Component.translatable("slashclient-hud.dungeon").getString() + " " + dungeonLevel;
-		if (!dungeonLevel.isEmpty() && mc.font.width(text) > room) text = "poz. " + dungeonLevel;
-		Modules.text(g, mc, text, x + 3, y + 2, Modules.textColor());
-		if (!share.isEmpty()) Modules.text(g, mc, share, x + W - 3 - mc.font.width(share), y + 2, 0xFFD8B4FE);
-	}
-
 	/** The counters under the map: each kind of loot shown and found, its icon and taken of all. */
 	private static java.util.List<int[]> counters() {
 		java.util.List<int[]> out = new java.util.ArrayList<>();
@@ -1008,8 +974,7 @@ public final class DungeonMap implements HudModule {
 			draw(g, mc, x, y);
 			return;
 		}
-		if (SlashHud.config.dungeonTitle) Modules.text(g, mc, Component.translatable("slashclient-hud.dungeon").getString(), x + 3, y + 2, Modules.textColor());
-		int top = y + title();
+		int top = y;
 		if (simple()) {
 			// tiles in a grid: the start room, the one you are in, one with mobs, the rest; doors between them
 			int[][] tiles = { { 0, 0, 0xFFF06B6B }, { 1, 0, 0xFFA30E0E }, { 2, 0, 0xFFF06B6B }, { 0, 1, 0xFFF06B6B }, { 1, 1, 0xFF6EE86E }, { 2, 1, 0xFFB45656 }, { 1, 2, 0xFF0EA30E } };
